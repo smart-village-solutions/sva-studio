@@ -356,8 +356,10 @@ export const i18nResources = {
       authError: {
         loginFailed: 'Login fehlgeschlagen. Bitte erneut versuchen.',
         stateExpired: 'Login abgebrochen oder abgelaufen. Bitte erneut anmelden.',
+        sessionExpired: 'Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an.',
         insufficientRole: 'Keine Berechtigung für diese Seite. Bitte wenden Sie sich an die Administration.',
         sessionLoadFailed: 'Fehler beim Laden der Session. Bitte erneut anmelden.',
+        loginAction: 'Erneut anmelden',
       },
     },
     interfaces: {
@@ -2257,8 +2259,10 @@ export const i18nResources = {
       authError: {
         loginFailed: 'Login failed. Please try again.',
         stateExpired: 'Login was cancelled or expired. Please sign in again.',
+        sessionExpired: 'Your session has expired. Please sign in again.',
         insufficientRole: 'You do not have permission to access this page. Please contact an administrator.',
         sessionLoadFailed: 'Session could not be loaded. Please sign in again.',
+        loginAction: 'Sign in again',
       },
     },
     interfaces: {

@@ -2,23 +2,30 @@ import React from 'react';
 import { Link } from '@tanstack/react-router';
 
 import { t } from '../i18n';
+import { createLoginHref, sanitizeReturnTo } from '../lib/auth-navigation';
 import { useAuth } from '../providers/auth-provider';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 
 export const HomePage = () => {
-  const { isAuthenticated, isLoading, error } = useAuth();
+  const { isAuthenticated, isLoading, error, sessionRecoveryFailed } = useAuth();
   const [authStateError, setAuthStateError] = React.useState<string | null>(null);
   const [routeError, setRouteError] = React.useState<string | null>(null);
+  const [authReturnTo, setAuthReturnTo] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     const search = new URLSearchParams(window.location.search);
     const authState = search.get('auth');
     const routeErrorCode = search.get('error');
+    const returnTo = sanitizeReturnTo(search.get('returnTo'));
+    setAuthReturnTo(returnTo);
+
     if (authState === 'error') {
       setAuthStateError(t('home.authError.loginFailed'));
     } else if (authState === 'state-expired') {
       setAuthStateError(t('home.authError.stateExpired'));
+    } else if (authState === 'session-expired') {
+      setAuthStateError(t('home.authError.sessionExpired'));
     } else {
       setAuthStateError(null);
     }
@@ -30,7 +37,12 @@ export const HomePage = () => {
     }
   }, []);
 
-  const authError = authStateError ?? routeError ?? (error ? t('home.authError.sessionLoadFailed') : null);
+  const authError =
+    authStateError ??
+    routeError ??
+    (sessionRecoveryFailed ? t('home.authError.sessionExpired') : null) ??
+    (error ? t('home.authError.sessionLoadFailed') : null);
+  const authErrorLoginHref = authError && !isAuthenticated ? createLoginHref(authReturnTo ?? undefined) : null;
 
   return (
     <div className="min-h-full bg-background text-foreground">
@@ -54,8 +66,13 @@ export const HomePage = () => {
               </div>
             ) : null}
             {authError ? (
-              <div className="max-w-2xl rounded-lg border border-secondary/40 bg-secondary/10 px-4 py-3 text-sm text-secondary">
-                {authError}
+              <div className="flex max-w-2xl flex-col gap-3 rounded-lg border border-secondary/40 bg-secondary/10 px-4 py-3 text-sm text-secondary sm:flex-row sm:items-center sm:justify-between">
+                <span>{authError}</span>
+                {authErrorLoginHref ? (
+                  <Button asChild size="sm" variant="outline">
+                    <a href={authErrorLoginHref}>{t('home.authError.loginAction')}</a>
+                  </Button>
+                ) : null}
               </div>
             ) : null}
           </div>

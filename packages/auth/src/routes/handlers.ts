@@ -17,7 +17,7 @@ import { getAuthConfig, resolveAuthConfigForRequest } from '../config.js';
 import { createMockSessionUser, isMockAuthEnabled } from '../mock-auth.server.js';
 import { getSession } from '../redis-session.server.js';
 import { buildRequestOriginFromHeaders, resolveEffectiveRequestHost } from '../request-hosts.js';
-import { SessionStoreUnavailableError, TenantAuthResolutionError } from '../runtime-errors.js';
+import { SessionStoreUnavailableError, TenantAuthResolutionError, TenantScopeConflictError } from '../runtime-errors.js';
 import { DEFAULT_WORKSPACE_ID, PLATFORM_WORKSPACE_ID, getScopeFromAuthConfig, getWorkspaceIdForScope } from '../scope.js';
 import { isTokenErrorLike } from '../shared/error-guards.js';
 import { buildLogContext } from '../shared/log-context.js';
@@ -562,7 +562,37 @@ export const callbackHandler = async (request: Request): Promise<Response> => {
         return response;
       } catch (error) {
         const isSilent = cookieLoginState?.silent === true;
-        if (isTokenErrorLike(error)) {
+        if (error instanceof TenantScopeConflictError) {
+          const callbackScope = cookieLoginState ?? authScope;
+          logger.error('Tenant scope conflict in callback', {
+            operation: 'tenant_scope_validate',
+            is_silent: isSilent,
+            error_type: error.name,
+            reason_code: error.reason,
+            expected_instance_id: error.expectedInstanceId,
+            token_instance_id: error.actualInstanceId,
+            auth_realm: authConfig.authRealm ?? PLATFORM_WORKSPACE_ID,
+            client_id: authConfig.clientId,
+            issuer: authConfig.issuer,
+            ...buildLogContext(callbackScope),
+          });
+          logger.error('tenant_auth_callback_result', {
+            operation: 'tenant_auth_callback',
+            scope_kind: callbackScope.kind,
+            instance_id: callbackScope.kind === 'instance' ? callbackScope.instanceId : undefined,
+            auth_realm: authConfig.authRealm ?? PLATFORM_WORKSPACE_ID,
+            client_id: authConfig.clientId,
+            issuer: authConfig.issuer,
+            redirect_uri: authConfig.redirectUri,
+            is_silent: isSilent,
+            retry_performed: false,
+            result: 'failure',
+            error_type: error.name,
+            reason_code: error.reason,
+            auth_scope_kind: authScope.kind,
+            ...buildLogContext(callbackScope),
+          });
+        } else if (isTokenErrorLike(error)) {
           const callbackScope = cookieLoginState ?? authScope;
           logger.warn('Token validation failed in callback', {
             operation: 'token_validate',

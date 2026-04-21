@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AuthProvider, useAuth } from './auth-provider';
 
@@ -9,6 +9,20 @@ const browserLoggerMock = vi.hoisted(() => ({
   warn: vi.fn(),
   error: vi.fn(),
 }));
+
+const localStorageState = new Map<string, string>();
+const localStorageMock = {
+  getItem: vi.fn((key: string) => localStorageState.get(key) ?? null),
+  setItem: vi.fn((key: string, value: string) => {
+    localStorageState.set(key, value);
+  }),
+  removeItem: vi.fn((key: string) => {
+    localStorageState.delete(key);
+  }),
+  clear: vi.fn(() => {
+    localStorageState.clear();
+  }),
+};
 
 vi.mock('@sva/sdk/logging', () => ({
   createBrowserLogger: () => browserLoggerMock,
@@ -23,6 +37,7 @@ const AuthProbe = () => {
       <p data-testid="authenticated">{auth.isAuthenticated ? 'yes' : 'no'}</p>
       <p data-testid="has-resolved-session">{auth.hasResolvedSession ? 'yes' : 'no'}</p>
       <p data-testid="is-recovering-session">{auth.isRecoveringSession ? 'yes' : 'no'}</p>
+      <p data-testid="session-recovery-failed">{auth.sessionRecoveryFailed ? 'yes' : 'no'}</p>
       <p data-testid="user-id">{auth.user?.id ?? 'none'}</p>
       <p data-testid="user-roles">{auth.user?.roles.join(',') ?? 'none'}</p>
       <button type="button" onClick={() => void auth.refetch()}>
@@ -39,12 +54,26 @@ const AuthProbe = () => {
 };
 
 describe('AuthProvider', () => {
+  beforeEach(() => {
+    localStorageState.clear();
+    localStorageMock.getItem.mockClear();
+    localStorageMock.setItem.mockClear();
+    localStorageMock.removeItem.mockClear();
+    localStorageMock.clear.mockClear();
+    Object.defineProperty(window, 'localStorage', {
+      configurable: true,
+      value: localStorageMock,
+    });
+  });
+
   afterEach(() => {
     cleanup();
     browserLoggerMock.debug.mockReset();
     browserLoggerMock.info.mockReset();
     browserLoggerMock.warn.mockReset();
     browserLoggerMock.error.mockReset();
+    localStorageState.clear();
+    window.history.replaceState({}, '', '/');
     vi.unstubAllGlobals();
   });
 
@@ -75,6 +104,7 @@ describe('AuthProvider', () => {
 
     expect(screen.getByTestId('authenticated').textContent).toBe('yes');
     expect(screen.getByTestId('has-resolved-session').textContent).toBe('yes');
+    expect(screen.getByTestId('session-recovery-failed').textContent).toBe('no');
     expect(screen.getByTestId('user-id').textContent).toBe('user-1');
     expect(screen.getByTestId('user-roles').textContent).toBe('editor');
     expect(browserLoggerMock.info).toHaveBeenCalledWith(
@@ -218,7 +248,57 @@ describe('AuthProvider', () => {
 
     expect(screen.getByTestId('authenticated').textContent).toBe('no');
     expect(screen.getByTestId('is-recovering-session').textContent).toBe('no');
+    expect(screen.getByTestId('session-recovery-failed').textContent).toBe('no');
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('marks a known session as expired and redirects to the notice page after failed recovery', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+    } satisfies Partial<Response>);
+    const assignMock = vi.fn();
+    const originalLocation = window.location;
+
+    window.localStorage.setItem('sva_auth_had_session', '1');
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: {
+        ...originalLocation,
+        pathname: '/admin/users',
+        search: '?page=2',
+        assign: assignMock,
+      },
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <AuthProvider>
+        <AuthProbe />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('is-recovering-session').textContent).toBe('yes');
+    });
+
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        origin: window.location.origin,
+        data: { type: 'sva-auth:silent-sso', status: 'failed' },
+      })
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-recovery-failed').textContent).toBe('yes');
+    });
+
+    expect(assignMock).toHaveBeenCalledWith('/?auth=session-expired&returnTo=%2Fadmin%2Fusers%3Fpage%3D2');
+
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: originalLocation,
+    });
   });
 
   it('ignores cross-origin silent-sso messages and accepts same-origin success', async () => {
@@ -413,6 +493,8 @@ describe('AuthProvider', () => {
       expect(screen.getByTestId('authenticated').textContent).toBe('no');
     });
 
+    expect(screen.getByTestId('session-recovery-failed').textContent).toBe('no');
+    expect(window.localStorage.getItem('sva_auth_had_session')).toBeNull();
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
       '/auth/logout',

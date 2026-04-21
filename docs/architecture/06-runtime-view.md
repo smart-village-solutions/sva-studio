@@ -72,6 +72,8 @@ Fehlerpfad:
 2. `loginHandler()` erstellt PKCE-LoginState, setzt signiertes State-Cookie und redirectet zum IdP
 3. IdP redirectet nach `/auth/callback?code=...&state=...`
 4. `callbackHandler()` validiert State, tauscht Code gegen Tokens und erstellt eine versionierte Session mit `issuedAt`, `expiresAt` und `sessionVersion`
+   - Bei Tenant-Hosts wird `instanceId` aus dem zuvor aufgelösten Auth-Scope aus Host, Registry und Realm in den Session-User übernommen.
+   - Ein fehlender `instanceId`-Claim blockiert den Tenant-Login nicht; ein widersprüchlicher Claim beendet den Callback fail-closed als Scope-Konflikt.
 5. Session-Cookie wird mit expliziter Laufzeit aus `expiresAt` gesetzt; Redis-TTL wird technisch aus der Restlaufzeit plus Puffer abgeleitet
 6. App ruft `/auth/me` fuer minimalen Auth-Kontext (`id`, `instanceId`, Rollen)
 7. Falls UI Profildaten wie Name oder E-Mail braucht, laedt sie diese ueber dedizierte Profil-Endpunkte getrennt nach
@@ -81,6 +83,7 @@ Fehlerpfad:
 - Fehlender/abgelaufener State -> Redirect mit Fehlerstatus
 - Token-/Refresh-Fehler -> Session invalidiert oder unauthorized Antwort
 - Profilfehler beruehren die Session-Hydration nicht; die App behaelt ihren minimalen Auth-State
+- Host-/Realm-/Claim-Konflikte erzeugen keinen tenant-losen Fallback, sondern bleiben als Auth-Fehler sichtbar.
 
 ### Szenario 2c: Root-Host-Instanzverwaltung
 
@@ -132,10 +135,11 @@ Fehlerpfad:
 
 1. Ein Administrator startet in `/admin/users` den Keycloak-User-Sync oder in `/admin/roles` den Rollen-Reconcile.
 2. Der Server lädt den Instanzkontext und prüft vor jeder tenantlokalen Admin-Mutation blockerrelevanten Drift aus Registry, Preflight und Provisioning-Plan.
-3. Liegt ein Blocker vor, endet der Lauf sofort fail-closed mit technischem Fehlervertrag inklusive `classification`, `requestId` und freigegebenen Safe-Details.
-4. Ohne Blocker führt `packages/auth` den Sync oder Reconcile deterministisch aus und trennt pro Eintrag zwischen korrigiert, fehlgeschlagen und fachlichem Restzustand `manual_review`.
-5. Die Handler antworten immer mit genau einem Abschlusszustand `success`, `partial_failure`, `blocked` oder `failed` sowie aggregierten Zählwerten.
-6. Read-Pfade für Profil, User-Liste und Rollenansicht laden anschließend denselben kanonischen Projektionskern nach, damit UI und Fachzustand übereinstimmen.
+3. Beim Keycloak-User-Sync ist der aktive Tenant-Realm die führende Benutzergrenze; fehlende `instanceId`-Attribute blockieren den Import nicht.
+4. Liegt ein Blocker vor, endet der Lauf sofort fail-closed mit technischem Fehlervertrag inklusive `classification`, `requestId` und freigegebenen Safe-Details.
+5. Ohne Blocker führt `packages/auth` den Sync oder Reconcile deterministisch aus und trennt pro Eintrag zwischen korrigiert, fehlgeschlagen und fachlichem Restzustand `manual_review`.
+6. Die Handler antworten immer mit genau einem Abschlusszustand `success`, `partial_failure`, `blocked` oder `failed` sowie aggregierten Zählwerten.
+7. Read-Pfade für Profil, User-Liste und Rollenansicht laden anschließend denselben kanonischen Projektionskern nach, damit UI und Fachzustand übereinstimmen.
 
 Fehlerpfad:
 

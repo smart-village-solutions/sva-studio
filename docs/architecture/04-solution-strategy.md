@@ -26,6 +26,7 @@ Architekturprinzipien auf IST-Basis.
 - Auth-Sessions folgen einer klaren Führungslogik: `expiresAt` ist fachlich maßgeblich; Cookie und Redis-TTL sind abgeleitete Technik
 - Redis-Permission-Snapshots sind der primäre Shared-Read-Path für effektive IAM-Berechtigungen; der lokale In-Memory-Cache dient nur als L1
 - `instanceId` ist der kanonische Mandanten-Scope für IAM-Datenzugriff und Autorisierung und wird als fachlicher String-Schlüssel geführt
+- Für tenant-spezifische Logins stammt `instanceId` aus Host, Registry und dem zugeordneten Realm-Scope; ein benutzerbezogener OIDC-Claim ist nur Interop-/Diagnoseartefakt und kein zweites Login-Gate
 - Externe SVA-Mainserver-Zugriffe laufen strikt serverseitig und per User delegiert; Browser-Code erhält nur Studio-eigene Server-Funktionsverträge
 - Der SVA-Mainserver wird über ein dediziertes Integrationspaket mit client-sicheren Root-Exports und serverseitigem `./server`-Subpfad angebunden
 - Instanzbezogene Upstream-Endpunkte liegen in Postgres, per-User-Credentials ausschließlich in Keycloak-Attributen
@@ -113,7 +114,7 @@ Referenzen:
 ### Fortschreibung 2026-04: Kanonischer IAM-Projektions- und Reconcile-Vertrag
 
 - User-Sync und Rollen-Reconcile werden als fachlich deterministische Laufzeitverträge behandelt und nicht mehr nur als technische Admin-Hilfsaktionen.
-- Führend ist ein gemeinsamer Projektionskern von Keycloak-Identität (`sub`, `instanceId`) über IAM-User und Membership bis zur Darstellung in `/auth/me`, `/account`, `/admin/users` und `/admin/roles`.
+- Führend ist ein gemeinsamer Projektionskern von Keycloak-Identität (`sub`), tenant-spezifischem Auth-Scope (`instanceId` aus Host/Registry/Realm), IAM-User und Membership bis zur Darstellung in `/auth/me`, `/account`, `/admin/users` und `/admin/roles`.
 - Tenant-Admin-abhängige Reconcile- und Sync-Pfade reagieren fail-closed, sobald blockerrelevanter Drift in Registry oder Provisioning erkannt wird.
 - `manual_review` bleibt bewusst ein fachlicher Restzustand für nicht deterministisch behebbaren Abgleich; technische Fehler wie `IDP_UNAVAILABLE` und `IDP_FORBIDDEN` bleiben getrennt sichtbar.
 - Browser- und UI-Verträge behalten `classification`, `requestId` und `safeDetails` vollständig, damit Diagnose, Operator-Handlung und Fachzustand nicht auseinanderlaufen.

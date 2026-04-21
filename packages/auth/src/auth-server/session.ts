@@ -71,6 +71,7 @@ const hydrateSessionUserFromAccessToken = async (
     accessToken: session.accessToken,
     claims: {},
     clientId: authConfig.clientId,
+    scope: session.auth,
   });
 
   if (!hydratedUser.id || needsSessionUserHydration(hydratedUser)) {
@@ -99,6 +100,7 @@ const refreshSession = async (sessionId: string, session: Session) => {
     accessToken: refreshed.access_token,
     claims: (refreshed.claims() ?? {}) as Record<string, unknown>,
     clientId: authConfig.clientId,
+    scope: session.auth,
   });
 
   await updateSession(sessionId, {

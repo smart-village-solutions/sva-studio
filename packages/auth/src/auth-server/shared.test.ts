@@ -69,6 +69,57 @@ describe('auth-server/shared', () => {
     });
   });
 
+  it('uses the tenant auth scope as instance context when the token has no instanceId claim', () => {
+    const user = buildSessionUser({
+      claims: {
+        sub: 'tenant-user-1',
+        preferred_username: 'tenant.user',
+        roles: ['viewer'],
+      },
+      clientId: 'sva-client',
+      scope: { kind: 'instance', instanceId: 'bb-guben' },
+    });
+
+    expect(user).toEqual({
+      id: 'tenant-user-1',
+      instanceId: 'bb-guben',
+      roles: ['viewer'],
+      username: 'tenant.user',
+      email: undefined,
+      firstName: undefined,
+      lastName: undefined,
+      displayName: 'tenant.user',
+    });
+  });
+
+  it('keeps platform scope tenant-less even when an optional instanceId claim exists', () => {
+    const user = buildSessionUser({
+      claims: {
+        sub: 'platform-user-1',
+        instanceId: 'legacy-claim',
+        roles: ['viewer'],
+      },
+      clientId: 'sva-client',
+      scope: { kind: 'platform' },
+    });
+
+    expect(user.instanceId).toBeUndefined();
+  });
+
+  it('fails closed when an instance-scoped token carries a conflicting instanceId claim', () => {
+    expect(() =>
+      buildSessionUser({
+        claims: {
+          sub: 'tenant-user-2',
+          instanceId: 'other-tenant',
+          roles: ['viewer'],
+        },
+        clientId: 'sva-client',
+        scope: { kind: 'instance', instanceId: 'bb-guben' },
+      })
+    ).toThrow('Tenant login token contains a conflicting instance context');
+  });
+
   it('keeps the fallback expiry when expiresIn is missing or zero', () => {
     expect(resolveExpiresAt(undefined, 123)).toBe(123);
     expect(resolveExpiresAt(0, 456)).toBe(456);

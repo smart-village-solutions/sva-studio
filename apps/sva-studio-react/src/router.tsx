@@ -1,4 +1,4 @@
-import { studioPlugins } from './lib/plugins';
+import { studioAdminResources, studioPlugins } from './lib/plugins';
 import { createRouter, type RootRoute } from '@tanstack/react-router';
 import { createIsomorphicFn } from '@tanstack/react-start';
 import type { AppRouteFactory, RouteGuardUser } from '@sva/routing';
@@ -12,6 +12,7 @@ const getRuntimeRouteFactories = createIsomorphicFn()
     const mod = await import('@sva/routing/server');
     return mod.getServerRouteFactories({
       bindings: appRouteBindings,
+      adminResources: studioAdminResources,
       plugins: studioPlugins,
     });
   })
@@ -19,6 +20,7 @@ const getRuntimeRouteFactories = createIsomorphicFn()
     const mod = await import('@sva/routing');
     return mod.getClientRouteFactories({
       bindings: appRouteBindings,
+      adminResources: studioAdminResources,
       plugins: studioPlugins,
     });
   });

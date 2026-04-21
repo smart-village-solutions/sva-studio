@@ -1,7 +1,13 @@
-import type { PluginDefinition, PluginRouteGuard, RouteFactory } from '@sva/sdk';
+import type { AdminResourceDefinition, PluginDefinition, PluginRouteGuard, RouteFactory } from '@sva/sdk';
+import { mergeAdminResourceDefinitions } from '@sva/sdk/admin-resources';
 import { createRoute, type AnyRoute, type RootRoute, type RouteComponent } from '@tanstack/react-router';
 
 import { createAccountUiRouteGuard, type AccountUiRouteGuardKey } from './account-ui.routes.js';
+import {
+  adminDetailParamNameByBinding,
+  createAdminResourceRouteFactories,
+  createLegacyContentAliasFactories,
+} from './admin-resource-routes.js';
 import {
   emitRoutingDiagnostic,
   type RoutingDiagnosticsHook,
@@ -49,12 +55,13 @@ export type AppRouteBindings = {
   readonly adminApiPhase1Test: RouteComponent;
 };
 
-type BindingKey = keyof AppRouteBindings;
+export type AppRouteBindingKey = keyof AppRouteBindings;
 
+type BindingKey = AppRouteBindingKey;
 type UiRouteDefinition = {
   readonly binding: BindingKey;
   readonly guard?: AccountUiRouteGuardKey;
-  readonly path: (typeof uiRoutePaths)[BindingKey];
+  readonly path: string;
   readonly validateSearch?: (search: Record<string, unknown>) => unknown;
 };
 
@@ -62,9 +69,6 @@ const uiRouteDefinitions: readonly UiRouteDefinition[] = [
   { binding: 'home', path: uiRoutePaths.home },
   { binding: 'account', path: uiRoutePaths.account, guard: 'account' },
   { binding: 'accountPrivacy', path: uiRoutePaths.accountPrivacy, guard: 'accountPrivacy' },
-  { binding: 'content', path: uiRoutePaths.content, guard: 'content' },
-  { binding: 'contentCreate', path: uiRoutePaths.contentCreate, guard: 'contentCreate' },
-  { binding: 'contentDetail', path: uiRoutePaths.contentDetail, guard: 'contentDetail' },
   { binding: 'media', path: uiRoutePaths.media, guard: 'account' },
   { binding: 'categories', path: uiRoutePaths.categories, guard: 'account' },
   { binding: 'app', path: uiRoutePaths.app, guard: 'account' },
@@ -110,36 +114,80 @@ const uiRouteDefinitions: readonly UiRouteDefinition[] = [
   { binding: 'adminApiPhase1Test', path: uiRoutePaths.adminApiPhase1Test },
 ] as const;
 
+export const getAdminDetailRoutePath = (basePath: string, bindingKey: string): string => {
+  const detailParamName =
+    adminDetailParamNameByBinding[bindingKey as keyof typeof adminDetailParamNameByBinding] ??
+    adminDetailParamNameByBinding.contentDetail;
+
+  return `${basePath}/$${detailParamName}`;
+};
+
+const collectAdminResourceRoutePaths = (resources: readonly AdminResourceDefinition[]): ReadonlyMap<string, string> => {
+  const paths = new Map<string, string>();
+
+  for (const resource of resources) {
+    const basePath = `/admin/${resource.basePath}`;
+    const detailPath = getAdminDetailRoutePath(basePath, resource.views.detail.bindingKey);
+
+    paths.set(basePath, resource.resourceId);
+    paths.set(`${basePath}/new`, resource.resourceId);
+    paths.set(detailPath, resource.resourceId);
+    if (resource.views.history) {
+      paths.set(`${detailPath}/history`, resource.resourceId);
+    }
+  }
+
+  return paths;
+};
+
+const assertNoStaticAdminRouteShadowing = (adminResourcePaths: ReadonlyMap<string, string>): void => {
+  for (const definition of uiRouteDefinitions) {
+    const resourceId = adminResourcePaths.get(definition.path);
+    if (resourceId && definition.path.startsWith('/admin/')) {
+      throw new Error(`admin_resource_static_route_conflict:${resourceId}:${definition.path}`);
+    }
+  }
+};
+
 export const createUiRouteFactories = (
   bindings: AppRouteBindings,
   options: {
+    readonly adminResources?: readonly AdminResourceDefinition[];
     readonly diagnostics?: RoutingDiagnosticsHook;
   } = {}
 ): readonly AppRouteFactory[] => {
   const diagnostics = options.diagnostics;
+  const adminResources = mergeAdminResourceDefinitions(options.adminResources ?? []);
+  const adminResourcePaths = collectAdminResourceRoutePaths(adminResources);
+  assertNoStaticAdminRouteShadowing(adminResourcePaths);
+  const routeDefinitions = uiRouteDefinitions.filter((definition) => !adminResourcePaths.has(definition.path));
 
-  return uiRouteDefinitions.map((definition) => {
-    if (definition.guard) {
-      const guard = createAccountUiRouteGuard(definition.guard, diagnostics, definition.path);
+  return [
+    ...routeDefinitions.map((definition) => {
+      if (definition.guard) {
+        const guard = createAccountUiRouteGuard(definition.guard, diagnostics, definition.path);
+
+        return (rootRoute: RootRoute) =>
+          createRoute({
+            getParentRoute: () => rootRoute,
+            path: definition.path,
+            beforeLoad: (beforeLoadOptions) => guard(beforeLoadOptions),
+            validateSearch: definition.validateSearch,
+            component: bindings[definition.binding],
+          });
+      }
 
       return (rootRoute: RootRoute) =>
         createRoute({
           getParentRoute: () => rootRoute,
           path: definition.path,
-          beforeLoad: (beforeLoadOptions) => guard(beforeLoadOptions),
           validateSearch: definition.validateSearch,
           component: bindings[definition.binding],
         });
-    }
-
-    return (rootRoute: RootRoute) =>
-      createRoute({
-        getParentRoute: () => rootRoute,
-        path: definition.path,
-        validateSearch: definition.validateSearch,
-        component: bindings[definition.binding],
-      });
-  });
+    }),
+    ...createAdminResourceRouteFactories(bindings, adminResources, diagnostics),
+    ...createLegacyContentAliasFactories(adminResources),
+  ];
 };
 
 export const mapPluginGuardToAccountGuard = (

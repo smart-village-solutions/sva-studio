@@ -15,9 +15,9 @@ describe('router diagnostics helpers', () => {
           fullPath: '/',
           children: [
             {
-              id: '/content',
-              path: '/content',
-              fullPath: '/content',
+              id: '/admin/content',
+              path: '/admin/content',
+              fullPath: '/admin/content',
             },
           ],
         },
@@ -27,7 +27,7 @@ describe('router diagnostics helpers', () => {
     expect(snapshot.id).toBe('__root__');
     expect(snapshot.childCount).toBe(1);
     expect(snapshot.children[0]?.fullPath).toBe('/');
-    expect(snapshot.children[0]?.children[0]?.fullPath).toBe('/content');
+    expect(snapshot.children[0]?.children[0]?.fullPath).toBe('/admin/content');
     expect(countRouteNodes(snapshot)).toBe(3);
   });
 
@@ -43,9 +43,9 @@ describe('router diagnostics helpers', () => {
             fullPath: '/',
           },
           {
-            id: '/content',
-            path: '/content',
-            fullPath: '/content',
+            id: '/admin/content',
+            path: '/admin/content',
+            fullPath: '/admin/content',
           },
         ],
       },
@@ -53,23 +53,23 @@ describe('router diagnostics helpers', () => {
         routesById: {
           root: { id: '__root__', fullPath: '/' },
           index: { id: '/', fullPath: '/' },
-          content: { id: '/content', fullPath: '/content' },
+          content: { id: '/admin/content', fullPath: '/admin/content' },
         },
         routesByPath: {
           root: { id: '/', fullPath: '/' },
-          content: { id: '/content', fullPath: '/content' },
+          content: { id: '/admin/content', fullPath: '/admin/content' },
         },
         flatRoutes: [
           { id: '__root__', fullPath: '/' },
           { id: '/', fullPath: '/' },
-          { id: '/content', fullPath: '/content' },
+          { id: '/admin/content', fullPath: '/admin/content' },
         ],
       },
     });
 
     expect(snapshot.routeTreeNodeCount).toBe(3);
-    expect(snapshot.routerRegistry.routeIds).toEqual(['/', '/content', '__root__']);
-    expect(snapshot.routerRegistry.routePaths).toEqual(['/', '/content']);
+    expect(snapshot.routerRegistry.routeIds).toEqual(['/', '/admin/content', '__root__']);
+    expect(snapshot.routerRegistry.routePaths).toEqual(['/', '/admin/content']);
     expect(snapshot.routeFlags.hasRootRoute).toBe(true);
     expect(snapshot.routeFlags.hasContentRoute).toBe(true);
   });
@@ -114,7 +114,7 @@ describe('router diagnostics helpers', () => {
         id: '__root__',
         fullPath: null,
         children: [
-          { id: '/content', fullPath: '/content' },
+          { id: '/admin/content', fullPath: '/admin/content' },
           { id: '/missing', fullPath: null },
         ],
       },

@@ -2,6 +2,8 @@
 
 Dieser Guide beschreibt den verbindlichen Entwicklungsweg für Studio-Plugins ab Plugin-SDK-Vertrag v1.
 
+Er beschreibt die verpflichtenden Regeln für Studio-Plugins. Eine ergänzende Schritt-für-Schritt-Anleitung zum Anlegen neuer Plugins im Monorepo wird separat dokumentiert und ist nicht Teil dieses verbindlichen Guides.
+
 ## Zielbild
 
 Studio-Plugins sind eigenständige Workspace-Packages mit `scope:plugin`. Sie hängen fachlich nur vom öffentlichen SDK-Vertrag ab und werden statisch im App-Bundle registriert.
@@ -27,6 +29,8 @@ export const pluginNews: PluginDefinition = {
   routes: [],
   navigation: [],
   contentTypes: [],
+  adminResources: [],
+  auditEvents: [],
   translations: {},
 };
 ```
@@ -55,6 +59,21 @@ Zulässige Guards in v1:
 
 - Beschreibt die fachlichen Inhaltstypen, die das Plugin im UI repräsentiert
 - Die serverseitige Validierung bleibt davon getrennt und muss im jeweiligen Server-Package registriert werden
+- Plugin-`contentType`s müssen fully-qualified im Format `<pluginId>.<name>` definiert werden
+- Der Namespace muss der `PluginDefinition.id` entsprechen
+- Core-Typen wie `generic` und `legal` bleiben Host-Identifier und werden nicht von Plugins registriert
+
+### `adminResources`
+
+- Plugin-beigestellte Admin-Ressourcen verwenden eine `resourceId` im Format `<pluginId>.<name>`
+- `resourceId` und `basePath` bleiben global kollisionsfrei
+- Host-Ressourcen wie `content` bleiben unverändert und fallen nicht unter die Plugin-Namespace-Pflicht
+
+### `auditEvents`
+
+- Plugin-spezifische Audit-Event-Typen verwenden das Format `<pluginId>.<eventName>`
+- Plugins dürfen nur Audit-Events im eigenen Namespace deklarieren
+- Bestehende hosteigene Audit-Event-Typen bleiben unverändert
 
 ### `translations`
 
@@ -93,7 +112,7 @@ Wenn ein Plugin einen spezialisierten `contentType` nutzt:
 3. Bei HTML-Feldern serverseitig sanitizen.
 4. Rechte weiter über die bestehenden Core-Aktionen anwenden.
 
-Das News-Plugin ist die Referenz dafür.
+Das News-Plugin ist die Referenz dafür und verwendet dafür den kanonischen Typ `news.article`.
 
 ## i18n
 

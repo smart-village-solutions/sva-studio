@@ -7,7 +7,8 @@ import { withLegalTextCompliance } from './legal-text-enforcement.server.js';
 import { shouldEnforceLegalTextCompliance } from './middleware-compliance.js';
 import { resolveSessionUser, validateTenantHost } from './middleware-hosts.js';
 import { createMockSessionUser, isMockAuthEnabled } from './mock-auth.server.js';
-import { SessionStoreUnavailableError } from './runtime-errors.js';
+import { SessionStoreUnavailableError, SessionUserHydrationError } from './runtime-errors.js';
+import { createApiError } from './shared/request-helpers.js';
 import { buildLogContext } from './shared/log-context.js';
 import type { SessionUser } from './types.js';
 
@@ -159,6 +160,27 @@ const logUnexpectedMiddlewareError = (request: Request, error: unknown): Respons
       'Authentifizierung ist momentan nicht verfügbar, weil der Sitzungsspeicher nicht erreichbar ist.',
       {
         requestId: logContext.request_id,
+      }
+    );
+  }
+
+  if (error instanceof SessionUserHydrationError) {
+    logger.warn('Auth middleware rejected request because the session user is missing required tenant context', {
+      endpoint: request.url,
+      operation: 'auth_middleware',
+      reason_code: 'missing_session_instance_id',
+      request_host: error.requestHost,
+      ...logContext,
+    });
+
+    return createApiError(
+      401,
+      'unauthorized',
+      'Die Sitzung enthält keinen gültigen Instanzkontext.',
+      logContext.request_id,
+      {
+        reason_code: 'missing_session_instance_id',
+        request_host: error.requestHost,
       }
     );
   }

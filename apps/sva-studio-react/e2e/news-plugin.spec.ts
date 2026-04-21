@@ -5,7 +5,7 @@ import type { Page, Route } from '@playwright/test';
 type NewsRecord = {
   id: string;
   title: string;
-  contentType: 'news';
+  contentType: 'news.article';
   status: 'draft' | 'in_review' | 'approved' | 'published' | 'archived';
   author: string;
   createdAt: string;
@@ -137,7 +137,7 @@ const fulfillContentRoute = async (
     newsItems.push({
       id: createdId,
       title: String(body.title),
-      contentType: 'news',
+      contentType: 'news.article',
       status: body.status as NewsRecord['status'],
       publishedAt: typeof body.publishedAt === 'string' ? body.publishedAt : undefined,
       payload: body.payload as NewsRecord['payload'],
@@ -225,7 +225,7 @@ test.describe('news plugin', () => {
       newsItems.push({
         id: 'news-1',
         title: String(body.title),
-        contentType: 'news',
+        contentType: 'news.article',
         status: body.status as NewsRecord['status'],
         publishedAt: typeof body.publishedAt === 'string' ? body.publishedAt : undefined,
         payload: body.payload as NewsRecord['payload'],
@@ -335,7 +335,7 @@ test.describe('news plugin', () => {
       {
         id: 'news-1',
         title: 'A11y News',
-        contentType: 'news',
+        contentType: 'news.article',
         status: 'published',
         author: 'Editor One',
         createdAt: '2026-04-13T12:10:00.000Z',

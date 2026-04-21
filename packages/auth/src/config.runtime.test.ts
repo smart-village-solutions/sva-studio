@@ -276,7 +276,7 @@ describe('runtime auth config resolution', () => {
     const request = new Request('https://bb-guben.studio.smart-village.app/admin');
 
     await expect(resolveAuthConfigForRequest(request)).rejects.toThrow(
-      'Tenant host bb-guben.studio.smart-village.app is not active'
+      'Tenant auth configuration for bb-guben.studio.smart-village.app is inactive'
     );
   });
 

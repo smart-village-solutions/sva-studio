@@ -11,7 +11,7 @@ Es ergänzt die technische Service-Account-Doku um den fachlichen Vertrag für:
 - Tenant-Realm
 - OIDC-Client `sva-studio`
 - Tenant-Admins
-- Claims und Mapper
+- optionale Interop-Claims und Mapper
 
 Der Fokus liegt auf dem frühen produktionsnahen Betrieb von `studio.smart-village.app` und Tenant-Hosts unter `https://<instanceId>.studio.smart-village.app`.
 
@@ -40,10 +40,9 @@ Jeder Tenant-Realm muss mindestens enthalten:
 1. einen Realm mit exakt dem in `iam.instances.authRealm` hinterlegten Namen
 2. den OIDC-Client `sva-studio`
 3. tenant-spezifische Redirect- und Logout-Ziele
-4. einen Protocol Mapper für den Claim `instanceId`
-5. mindestens einen aktiven Tenant-Admin mit Rolle `system_admin`
+4. mindestens einen aktiven Tenant-Admin mit Rolle `system_admin`
 
-Ohne diesen Zustand kann ein Login technisch zwar teilweise funktionieren, aber Studio erhält nicht zuverlässig den fachlichen Mandantenkontext.
+Der Mandantenkontext für den Studio-Login stammt aus Host, Registry und Realm. Ein `instanceId`-Claim im Token ist nicht mehr Teil des harten Login-Vertrags.
 
 ## Führende Quelle
 
@@ -67,9 +66,9 @@ Wichtige Regeln:
 - bei `existing` bedeutet ein leeres Secret-Feld "unverändert lassen"
 - bei `new` wird kein Secret als Eingabe erwartet; es wird beim Provisioning erzeugt und danach in Studio gespeichert
 - temporäre Admin-Passwörter werden nur für den Bootstrap-/Reset-Vorgang verwendet und nicht gespeichert
-- Realm-, Client-, Mapper- und Tenant-Admin-Abgleich laufen idempotent über den expliziten Provisioning-Pfad
+- Realm-, Client-, optionale Mapper- und Tenant-Admin-Abgleiche laufen idempotent über den expliziten Provisioning-Pfad
 
-Für die App ist `instanceId` der fachliche Mandantenschlüssel. Der Keycloak-Realm muss diesen Schlüssel deshalb als OIDC-Claim an die App weitergeben.
+Für die App ist `instanceId` weiterhin der fachliche Mandantenschlüssel. Im Login-Pfad leitet Studio diesen Wert für tenant-spezifische Realms aus dem bereits verifizierten Host-/Registry-/Realm-Scope ab.
 
 ## Studio-Workflow
 
@@ -114,17 +113,17 @@ Regel:
 Studio erwartet im Login-/Session-Pfad mindestens:
 
 - `sub`
-- `instanceId`
 - Rollen aus `realm_access.roles` und/oder `resource_access`
 
 Der entscheidende Punkt ist:
 
-- `instanceId` muss als OIDC-Claim im Token vorhanden sein
-- ein bloßes Keycloak-User-Attribut ohne Mapper reicht nicht aus
+- Der Tenant-Kontext `instanceId` wird bei Tenant-Hosts aus Registry und Realm-Scope in die Session geschrieben.
+- Ein fehlender benutzerbezogener OIDC-Claim `instanceId` blockiert den Login nicht.
+- Ein vorhandener, aber widersprüchlicher `instanceId`-Claim ist Konfigurationsdrift und wird fail-closed als Scope-Konflikt behandelt.
 
 ## Protocol Mapper
 
-Auf dem Client `sva-studio` muss pro Tenant-Realm ein Mapper für `instanceId` existieren.
+Auf dem Client `sva-studio` darf pro Tenant-Realm ein Mapper für `instanceId` existieren. Er ist nützlich für Interoperabilität, Exporte und Diagnose, aber kein hartes Login-Gate.
 
 ### Sollzustand
 
@@ -143,7 +142,8 @@ Auf dem Client `sva-studio` muss pro Tenant-Realm ein Mapper für `instanceId` e
 ### Bedeutung
 
 - Das User-Attribut `instanceId` wird in den OIDC-Claim `instanceId` transformiert.
-- Ohne diesen Mapper kann Studio nach dem Login keine stabile Session mit Instanzkontext aufbauen.
+- Ohne diesen Mapper baut Studio weiterhin eine stabile Tenant-Session aus Host, Registry und Realm auf.
+- Wenn der Mapper vorhanden ist, muss sein Claim zum Host-/Realm-Scope passen.
 
 ## Benutzervertrag für Tenant-Admins
 
@@ -155,7 +155,7 @@ Ein Tenant-Admin benötigt mindestens:
 - `lastName`
 - `enabled=true`
 - sinnvollerweise `emailVerified=true`
-- User-Attribut `instanceId=<tenant-id>`
+- optional User-Attribut `instanceId=<tenant-id>` für Interop und Diagnose
 
 Beispiel für `bb-guben`:
 
@@ -219,19 +219,22 @@ Vor Freigabe eines Tenant-Realm müssen mindestens diese Punkte erfüllt sein:
 1. `iam.instances.authRealm` zeigt auf den korrekten Realm
 2. `iam.instances.authClientId = sva-studio`
 3. `rootUrl`, `redirectUris`, `webOrigins` und `post.logout.redirect.uris` passen exakt zum Tenant-Host
-4. der Protocol Mapper `instanceId` existiert
-5. ein Tenant-Admin existiert mit:
+4. ein Tenant-Admin existiert mit:
    - Rolle `system_admin`
    - ohne Rolle `instance_registry_admin`
-   - `attributes.instanceId = <instanceId>`
-6. das Tenant-Client-Secret ist bei `existing` mit der Registry abgeglichen oder wurde bei `new` erfolgreich erzeugt und zurückgeschrieben
+5. das Tenant-Client-Secret ist bei `existing` mit der Registry abgeglichen oder wurde bei `new` erfolgreich erzeugt und zurückgeschrieben
+
+Zusätzlich sichtbar, aber nicht login-blockierend:
+
+- Protocol Mapper `instanceId`
+- `attributes.instanceId = <instanceId>` am Tenant-Admin
 
 ## Operativer Freigabehinweis
 
 Für den täglichen Betrieb gilt:
 
 - Die Realm-Existenz oder ein erfolgreiches Provisioning allein reichen nicht als Freigabe.
-- Eine Instanz ist erst dann betriebsbereit, wenn die Detailseite unter `/admin/instances/<instanceId>` alle fachlichen Prüfpunkte grün zeigt.
+- Eine Instanz ist erst dann betriebsbereit, wenn die Detailseite unter `/admin/instances/<instanceId>` alle login-blockierenden Prüfpunkte grün zeigt. Optionale Interop-Hinweise dürfen als Warnung sichtbar bleiben.
 - Bei bestehenden Realms ist Secret-Drift der häufigste verbleibende Fehler. Der Standard-Fix ist `Rotate client secret`.
 
 Die vollständige Root-Host-Bedienfolge steht unter [Instanzverwaltung als Keycloak-Control-Plane](./instance-keycloak-provisioning.md).
@@ -245,15 +248,15 @@ Die folgende Matrix ist die schlanke Referenz dafür, welche Eingaben in Studio 
 | `realmMode` + `authRealm` | Realm | `existing`: Realm existiert bereits. `new`: Realm darf angelegt werden. |
 | `authClientId` | OIDC-Client | Client existiert im Tenant-Realm. |
 | `instanceId` + `parentDomain` | `rootUrl`, `redirectUris`, `webOrigins`, `post.logout.redirect.uris` | Alle URLs zeigen ausschließlich auf den Tenant-Host. |
-| `instanceId` | Protocol Mapper `instanceId` | Claim `instanceId` wird in ID-, Access- und Userinfo-Token ausgegeben. |
+| `instanceId` | Protocol Mapper `instanceId` | Optionales Interop-Artefakt; Claim wird in ID-, Access- und Userinfo-Token ausgegeben, ist aber kein Login-Gate. |
 | `authClientSecret` | Client-Secret | `existing`: Das in der Registry gespeicherte Secret entspricht dem aktiven Keycloak-Secret. `new`: Das Secret wird beim Provisioning erzeugt und danach in der Registry gespeichert. |
 | `tenantAdminBootstrap.username` | Tenant-Admin-User | User existiert. |
 | `tenantAdminBootstrap.firstName`, `lastName`, `email` | Tenant-Admin-Userprofil | Stammdaten sind auf dem User gepflegt. |
 | `tenantAdminBootstrap.username` | Realm-Rolle `system_admin` | Rolle ist zugewiesen. |
 | `tenantAdminBootstrap.username` | Realm-Rolle `instance_registry_admin` | Rolle ist nicht zugewiesen. |
-| `instanceId` + `tenantAdminBootstrap.username` | User-Attribut `instanceId` | Attribut stimmt exakt mit der Instanz-ID überein. |
+| `instanceId` + `tenantAdminBootstrap.username` | User-Attribut `instanceId` | Optionales Interop-/Diagnoseartefakt; Abweichungen blockieren den Login nicht. |
 
-Wenn einer dieser Punkte fehlt, darf der Provisioning-Status nicht als fachlich sauber bewertet werden.
+Fehlende Pflichtpunkte verhindern die Login-Bereitschaft. Fehlende optionale Interop-Artefakte bleiben als Diagnosehinweis sichtbar.
 
 ## Smoke-Nachweis
 
@@ -271,8 +274,8 @@ Ein Realm gilt erst dann als betriebsbereit, wenn zusätzlich folgende Nachweise
 
 | Symptom | Wahrscheinliche Ursache |
 | --- | --- |
-| Login landet im richtigen Realm, aber Studio verhält sich wie Root | `instanceId`-Claim fehlt |
-| User kann sich anmelden, aber Session ist tenant-los | Mapper für `instanceId` fehlt oder falsches User-Attribut |
+| Login landet im richtigen Realm, aber Studio verhält sich wie Root | Registry-/Realm-Auflösung oder Session-Scope prüfen |
+| Login endet mit Scope-Konflikt | vorhandener `instanceId`-Claim widerspricht Host-/Realm-Scope |
 | Tenant-Admin sieht globale Instanzverwaltung | Rolle `instance_registry_admin` versehentlich vergeben |
 | Logout springt auf fremden Tenant oder Root | `post.logout.redirect.uris` oder `rootUrl` zu breit konfiguriert |
 | Redirect nach Login zeigt falschen Host | `redirectUris` oder Realm-/Client-Zuordnung in `iam.instances` falsch |

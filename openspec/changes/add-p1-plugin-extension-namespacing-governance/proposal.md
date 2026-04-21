@@ -1,30 +1,30 @@
-# Change: Namespacing-Governance für Plugin-Erweiterungen ausbauen
+# Change: Namespacing-Governance für registrierte Plugin-Identifier ausbauen
 
 ## Why
 
-Das Studio nutzt bereits fully-qualified Action-IDs, aber derselbe Ordnungsgrad fehlt noch für andere Plugin-Beiträge wie Admin-Ressourcen, Content-Typen, Audit-Events und Registrierungskennungen. Mit wachsender Zahl statischer Packages wird ein konsequentes Namespacing nötig, um Kollisionen und uneinheitliche Benennung zu vermeiden.
+Das Studio nutzt bereits fully-qualified Action-IDs, aber fuer andere registrierte Plugin-Identifier fehlt noch ein gleichermassen belastbarer Governance-Vertrag. Mit wachsender Zahl statischer Packages braucht der Host eine kanonische Regel, wie Plugin-Identitaet, Content-Typen, Admin-Ressourcen und Audit-Ereignisse namespace-sicher benannt und validiert werden, damit Kollisionen und uneinheitliche Benennung nicht spaeter in mehreren Teilvertraegen nachgezogen werden muessen.
 
 ## What Changes
 
-- Einführung verbindlicher Namespace-Regeln für alle pluginbezogenen Host-Beiträge
-- Ausdehnung der Namespace-Governance über Action-IDs hinaus auf Content-Typen, Admin-Ressourcen, Search-Facets, Audit-Events und i18n-Namespaces
-- Definition technischer Identitäten für Plugins und ihrer abgeleiteten Registrierungsnamen
-- Verankerung von Validierungs- und Review-Anforderungen für neue Namespaces
-- Vorbereitung eines einheitlichen Diagnose- und Governance-Modells für wachsende Package-Landschaften
+- Definition einer kanonischen technischen Plugin-Identitaet mit genau einem owning namespace je Plugin-Package
+- Einfuehrung verbindlicher Namespace-Regeln fuer registrierte Plugin-Identifier ausserhalb der bestehenden Action-ID-Governance
+- Festlegung namespaceter Identifier fuer plugin-beigestellte Content-Typen, Admin-Ressourcen und Audit-Event-Typen
+- Verankerung hostseitiger Ownership- und Kollisionsvalidierung fuer diese Identifier
+- Abgrenzung zu separaten Folge-Changes fuer Extension-Tiers, Registrierungsphasen, Host-Guardrails, Search-Facets und i18n-Namespaces
 
 ## Impact
 
 - Affected specs:
-  - `iam-access-control`
-  - `iam-auditing`
-  - `content-management`
   - `monorepo-structure`
+  - `routing`
+  - `content-management`
+  - `iam-auditing`
 - Affected code:
   - `packages/sdk`
-  - `packages/auth`
-  - `packages/plugin-example`
+  - `packages/routing`
   - `packages/plugin-news`
 - Affected arc42 sections:
+  - `docs/architecture/04-solution-strategy.md`
   - `docs/architecture/05-building-block-view.md`
   - `docs/architecture/08-cross-cutting-concepts.md`
   - `docs/architecture/09-architecture-decisions.md`

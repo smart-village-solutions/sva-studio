@@ -77,6 +77,11 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - degradierte und Recovery-nahe Zustände dürfen nicht implizit als vollständig gesund dargestellt werden
   - Reconcile- und Sync-Responses müssen deterministische Abschlusszustände und die Zählwerte `checked`, `corrected`, `failed`, `manualReview` stabil serialisieren
   - blockerrelevanter Drift muss User-Sync und Rollen-Reconcile fail-closed blockieren und darf nicht als scheinbarer Erfolg in UI oder Audit erscheinen
+- IAM Keycloak-Admin-UI:
+  - `/admin/users` und `/admin/roles` müssen Mappingstatus, Bearbeitbarkeit und Diagnosecodes aus dem IAM-v1-Vertrag anzeigen
+  - Tenant-Scope darf nie auf Platform- oder globale Keycloak-Admin-Credentials zurückfallen
+  - Keycloak-Count/Pagination für User und Rollen muss serverseitig testbar bleiben
+  - read-only oder blockierte Aktionen müssen in UI und Serverprüfung konsistent deaktiviert beziehungsweise abgewiesen werden
 - IAM Redis-Betrieb:
   - Session-Store folgt dem Plattform-RTO `<= 2h`
   - Permission-Snapshots sind rekonstruierbar und müssen operativ innerhalb von `15 min` wieder in `ready|degraded` überführt werden

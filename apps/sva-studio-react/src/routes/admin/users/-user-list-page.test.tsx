@@ -6,6 +6,7 @@ import { UserListPage } from './-user-list-page';
 
 const useUsersMock = vi.fn();
 const isIamBulkEnabledMock = vi.fn();
+const useAuthMock = vi.fn();
 
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ to, children, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { to: string }) => (
@@ -21,6 +22,10 @@ vi.mock('../../../hooks/use-users', () => ({
 
 vi.mock('../../../lib/iam-admin-access', () => ({
   isIamBulkEnabled: () => isIamBulkEnabledMock(),
+}));
+
+vi.mock('../../../providers/auth-provider', () => ({
+  useAuth: () => useAuthMock(),
 }));
 
 const createUsersApiState = (overrides: Record<string, unknown> = {}) => ({
@@ -81,6 +86,8 @@ describe('UserListPage', () => {
     useUsersMock.mockReset();
     isIamBulkEnabledMock.mockReset();
     isIamBulkEnabledMock.mockReturnValue(true);
+    useAuthMock.mockReset();
+    useAuthMock.mockReturnValue({ user: { id: 'user-admin', instanceId: 'de-musterhausen', roles: ['system_admin'] } });
   });
 
   it('renders list actions and uses route links for create and edit', () => {
@@ -91,6 +98,39 @@ describe('UserListPage', () => {
     expect(screen.getByRole('heading', { name: 'Benutzerverwaltung' })).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Nutzer anlegen' }).getAttribute('href')).toBe('/admin/users/new');
     expect(screen.getAllByRole('link', { name: 'Bearbeiten' })[0]!.getAttribute('href')).toBe('/admin/users/$userId');
+  });
+
+  it('shows Keycloak mapping diagnostics and disables blocked row actions', () => {
+    useUsersMock.mockReturnValue(
+      createUsersApiState({
+        users: [
+          {
+            id: 'keycloak:subject-unmapped',
+            keycloakSubject: 'subject-unmapped',
+            displayName: 'Unmapped User',
+            email: 'unmapped@example.com',
+            status: 'active',
+            mappingStatus: 'manual_review',
+            editability: 'blocked',
+            diagnostics: [{ code: 'missing_instance_attribute', objectId: 'subject-unmapped', objectType: 'user' }],
+            roles: [],
+          },
+        ],
+      })
+    );
+
+    render(<UserListPage />);
+
+    expect(screen.getAllByText('Manuell prüfen').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Blockiert').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Diagnose: missing_instance_attribute').length).toBeGreaterThan(0);
+    expect(screen.queryByRole('link', { name: 'Bearbeiten' })).toBeNull();
+    screen
+      .getAllByRole('button', { name: 'Bearbeiten' })
+      .forEach((button) => expect(button.hasAttribute('disabled')).toBe(true));
+    screen
+      .getAllByRole('button', { name: 'Deaktivieren' })
+      .forEach((button) => expect(button.hasAttribute('disabled')).toBe(true));
   });
 
   it('updates filters and pagination controls', () => {
@@ -141,6 +181,13 @@ describe('UserListPage', () => {
           providerSource: 'instance',
           matchedWithoutInstanceAttributeCount: 2,
         },
+        objects: [
+          {
+            keycloakSubject: 'subject-2',
+            mappingStatus: 'manual_review',
+            diagnostics: [{ code: 'missing_instance_attribute', objectId: 'subject-2', objectType: 'user' }],
+          },
+        ],
       },
     });
 
@@ -165,6 +212,7 @@ describe('UserListPage', () => {
         screen.getByText(/Realm de-musterhausen, Quelle Instanz-Realm\. 2 Benutzer ohne `instanceId`/i)
       ).toBeTruthy()
     );
+    expect(screen.getByText('1 Benutzerobjekte mit Diagnose: missing_instance_attribute')).toBeTruthy();
     expect(screen.getByText(/teilweisen Fehlern oder manuellem Nachlauf/i)).toBeTruthy();
   });
 
@@ -225,5 +273,18 @@ describe('UserListPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Deaktivieren' }));
 
     await waitFor(() => expect(deactivateUser).toHaveBeenCalledWith('user-1'));
+  });
+
+  it('renders platform user management on root scope without tenant mutations', () => {
+    useAuthMock.mockReturnValue({ user: { id: 'platform-admin', roles: ['system_admin'] } });
+    useUsersMock.mockReturnValue(createUsersApiState());
+
+    render(<UserListPage />);
+
+    expect(screen.getByRole('heading', { name: 'Plattform-Benutzer' })).toBeTruthy();
+    expect(screen.queryByRole('link', { name: 'Nutzer anlegen' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Bearbeiten' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Deaktivieren' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Aus Keycloak synchronisieren' })).toBeTruthy();
   });
 });

@@ -4,6 +4,7 @@
 
 Diese Anleitung beschreibt die minimale Keycloak-Konfiguration für den IAM-Service des SVA Studio (`sva-studio-iam-service`).
 Sie deckt sowohl User-Management als auch den Studio-verwalteten Rollen-Katalog-Sync nach Keycloak ab.
+Studio ist für Benutzer, Rollen und Rollenzuordnungen eine auditierte Admin-UI über Keycloak: Keycloak bleibt System of Record, Studio schreibt Keycloak-first und aktualisiert anschließend seine Read-Models.
 
 Der fachliche Sollzustand tenant-spezifischer Realms, inklusive `sva-studio`-Client, `instanceId`-Claim, Protocol Mappern und minimalen Tenant-Admin-Rollen, ist separat unter [Keycloak-Tenant-Realm-Bootstrap für Studio](./keycloak-tenant-realm-bootstrap.md) dokumentiert.
 Der vollständige Root-Host-Betriebspfad für Preflight, Plan und Provisioning-Läufe ist unter [Instanzverwaltung als Keycloak-Control-Plane](./instance-keycloak-provisioning.md) beschrieben.
@@ -45,6 +46,13 @@ Explizit verboten:
 - `manage-identity-providers`
 - `manage-events`
 - zusätzliche globale Admin-Rollen außerhalb von `realm-management`
+
+Für Tenant-Hosts gilt zusätzlich:
+
+- Studio verwendet ausschließlich den in der Instanz-Registry hinterlegten Tenant-Admin-Client.
+- Ein fehlender Tenant-Admin-Client oder ein fehlendes Tenant-Admin-Secret führt fail-closed zu `tenant_admin_client_not_configured`.
+- Platform- oder globale Admin-Credentials dürfen tenantlokale User-, Rollen- oder Rollenzuordnungsoperationen nicht ersetzen.
+- Built-in-/Default-Rollen aus Keycloak dürfen sichtbar und abhängig von der Rechte-Matrix zuweisbar sein; ihre Rollenobjekte selbst bleiben read-only.
 
 ## 3. Secret-Handling
 
@@ -100,5 +108,7 @@ Die Rotation erfolgt spätestens alle 90 Tage (BSI-Grundschutz ORP.4) im Dual-Se
 - IAM-Health-Check (`/health/ready`) meldet Keycloak als `healthy`.
 - `POST /api/v1/iam/roles`, `PATCH /api/v1/iam/roles/:id` und `DELETE /api/v1/iam/roles/:id` liefern keinen `keycloak_unavailable`-Fehler.
 - `POST /api/v1/iam/admin/reconcile` erzeugt keinen Berechtigungsfehler im Keycloak-Adapter.
+- `GET /api/v1/iam/users` listet im Tenant-Scope Keycloak-Benutzer auch dann, wenn die Studio-Zuordnung fehlt; solche Objekte müssen als `unmapped` oder `manual_review` sichtbar sein.
+- `GET /api/v1/iam/roles` zeigt Built-in-Rollen als read-only und enthält bei Drift stabile Diagnosecodes.
 - Keine `401`/`403`-Fehler bei Keycloak-Admin-Aufrufen.
 - Keine Secrets oder Tokens in Logs; Audit-Events enthalten nur `workspace_id`, `operation`, `result`, `error_code?`, `request_id`, `trace_id?`, `span_id?`.

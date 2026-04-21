@@ -5,13 +5,14 @@ import { registerPluginTranslationResolver } from '@sva/sdk';
 
 import { NewsCreatePage, NewsEditPage, NewsListPage } from '../src/news.pages.js';
 import { createNews, deleteNews, getNews, listNews, updateNews } from '../src/news.api.js';
+import { NEWS_CONTENT_TYPE } from '../src/plugin.js';
 
 vi.mock('../src/news.api.js', () => ({
   listNews: vi.fn(async () => []),
   getNews: vi.fn(async () => ({
     id: 'news-1',
     title: 'Bestehende News',
-    contentType: 'news',
+    contentType: NEWS_CONTENT_TYPE,
     payload: {
       teaser: 'Kurztext',
       body: '<p>Body</p>',
@@ -125,7 +126,7 @@ describe('NewsListPage', () => {
       {
         id: 'news-1',
         title: 'Neuigkeit',
-        contentType: 'news',
+        contentType: NEWS_CONTENT_TYPE,
         payload: {
           teaser: 'Kurztext',
           body: '<p>Body</p>',
@@ -153,7 +154,7 @@ describe('NewsListPage', () => {
       {
         id: 'news-2',
         title: 'Prüfmeldung',
-        contentType: 'news',
+        contentType: NEWS_CONTENT_TYPE,
         payload: {
           teaser: 'Wird geprüft',
           body: '<p>Body</p>',
@@ -408,7 +409,7 @@ describe('NewsListPage', () => {
     vi.mocked(getNews).mockResolvedValueOnce({
       id: 'news-3',
       title: 'Termin',
-      contentType: 'news',
+      contentType: NEWS_CONTENT_TYPE,
       payload: {
         teaser: 'Kurztext',
         body: '<p>Body</p>',

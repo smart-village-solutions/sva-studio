@@ -25,7 +25,7 @@ describe('instance keycloak checklist', () => {
     ]);
   });
 
-  it('evaluates all requirements against the shared status contract', () => {
+  it('evaluates login-blocking requirements against the shared status contract', () => {
     const status = {
       realmExists: true,
       clientExists: true,
@@ -54,5 +54,13 @@ describe('instance keycloak checklist', () => {
         INSTANCE_KEYCLOAK_REQUIREMENTS.find((requirement) => requirement.key === 'tenant_admin_instance_id')!
       )
     ).toBe(false);
+    expect(
+      areAllInstanceKeycloakRequirementsSatisfied({
+        ...status,
+        instanceIdMapperExists: false,
+        tenantAdminInstanceIdMatches: false,
+      })
+    ).toBe(true);
+    expect(areAllInstanceKeycloakRequirementsSatisfied({ ...status, clientExists: false })).toBe(false);
   });
 });

@@ -26,15 +26,27 @@ vi.mock('../../lib/iam-api', () => ({
   IamHttpError: class IamHttpError extends Error {
     status: number;
     code: string;
+    requestId?: string;
+    classification?: string;
+    recommendedAction?: string;
 
-    constructor(input: { status: number; code: string; message: string }) {
+    constructor(input: {
+      status: number;
+      code: string;
+      message: string;
+      requestId?: string;
+      classification?: string;
+      recommendedAction?: string;
+    }) {
       super(input.message);
       this.status = input.status;
       this.code = input.code;
+      this.requestId = input.requestId;
+      this.classification = input.classification;
+      this.recommendedAction = input.recommendedAction;
     }
   },
   getMyProfile: (...args: unknown[]) => getMyProfileMock(...args),
-  fetchWithRequestTimeout: (...args: Parameters<typeof fetch>) => fetch(...args),
   updateMyProfile: (...args: unknown[]) => updateMyProfileMock(...args),
   asIamError: (...args: unknown[]) => asIamErrorMock(...args),
 }));
@@ -178,28 +190,30 @@ describe('AccountProfilePage', () => {
     expect(screen.getByRole('status').textContent).toContain('Profil wird geladen ...');
   });
 
-  it('clears an invalid session and offers re-login when the profile request returns 401', async () => {
-    const loadError = { status: 401, code: 'unauthorized', message: 'Unauthorized' };
+  it('shows request id and recommended action when the profile request returns 401', async () => {
+    const loadError = {
+      status: 401,
+      code: 'unauthorized',
+      message: 'Unauthorized',
+      requestId: 'req-account-profile',
+      classification: 'session_store_or_session_hydration',
+      diagnosticStatus: 'recovery_laeuft',
+      recommendedAction: 'erneut_anmelden',
+    };
     asIamErrorMock.mockReturnValue(loadError);
     getMyProfileMock.mockRejectedValue(loadError);
-    fetchMock.mockResolvedValue({ ok: true });
 
     render(<AccountProfilePage />);
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith(
-        '/auth/logout',
-        expect.objectContaining({
-          method: 'POST',
-          redirect: 'manual',
-        }),
-        expect.objectContaining({
-          timeoutMs: 5_000,
-        })
-      );
+      expect(screen.getByText('Die Sitzung konnte nicht stabil wiederhergestellt werden. Bitte erneut anmelden.')).toBeTruthy();
     });
-    expect(authMockValue.refetch).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('Status: Recovery läuft')).toBeTruthy();
+    expect(screen.getByText('Empfohlene Aktion: Erneut anmelden')).toBeTruthy();
+    expect(screen.getByText('Request-ID: req-account-profile')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Login' }).getAttribute('href')).toBe('/auth/login?returnTo=%2F');
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(authMockValue.refetch).not.toHaveBeenCalled();
   });
 
   it('derives the display name from first and last name when no custom display name exists', async () => {

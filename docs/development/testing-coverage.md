@@ -211,7 +211,6 @@ Aktuell als coverage-exempt markiert:
 
 - `core`
 - `data`
-- `plugin-example`
 
 Diese Liste wird schrittweise reduziert, sobald echte Unit-Tests vorhanden sind.
 

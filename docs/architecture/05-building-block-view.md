@@ -54,12 +54,10 @@ Abhängigkeiten des aktuellen Systems.
 8. SVA Mainserver (`packages/sva-mainserver`)
    - dedizierte Integrationsschicht für OAuth2, GraphQL-Transport, Fehlerabbildung und Fachadapter
    - trennt client-sichere Typen von serverseitigen Delegations- und Diagnostikfunktionen
-9. Plugin Example (`packages/plugin-example`)
-   - Minimalreferenz für den Plugin-SDK-Vertrag v1
-10. Plugin News (`packages/plugin-news`)
+9. Plugin News (`packages/plugin-news`)
    - produktives Fachplugin für `contentType = news.article`
    - eigene Listen- und Editor-Ansichten, Plugin-Navigation und Plugin-Übersetzungen
-11. Instanz-Registry (`packages/core`, `packages/data`, `packages/auth`, `apps/sva-studio-react`)
+10. Instanz-Registry (`packages/core`, `packages/data`, `packages/auth`, `apps/sva-studio-react`)
    - `packages/core`: Host-Klassifikation, Vertrags- und Run-Modell fuer Registry, Preflight, Plan und Provisioning-Protokoll
    - `packages/data`: Registry-Repositories, Migrationen, persistente Provisioning-Runs und L1-Cache
    - `packages/auth`: Plattformvertrag, Keycloak-Control-Plane, Provisioning-Fassade und Root-Host-Guard
@@ -145,7 +143,7 @@ Abhängigkeiten des aktuellen Systems.
 
 ### Abhängigkeiten (vereinfacht)
 
-- App -> `@sva/core`, `@sva/routing`, `@sva/auth`, `@sva/sva-mainserver`, `@sva/plugin-example`, `@sva/plugin-news`
+- App -> `@sva/core`, `@sva/routing`, `@sva/auth`, `@sva/sva-mainserver`, `@sva/plugin-news`
 - `@sva/routing` -> `@sva/auth`, `@sva/core`, `@sva/sdk`
 - `@sva/auth` -> `@sva/sdk`
 - `@sva/sva-mainserver` -> `@sva/auth`, `@sva/data`, `@sva/sdk`
@@ -173,7 +171,7 @@ Nicht erlaubt: `@sva/plugin-*` -> `@sva/core`
 1. `packages/sdk/src/plugins.ts`
    - definiert `PluginDefinition` und Merge-Helfer für Plugin-Routen, Navigation, Content-Typen und Übersetzungen
 2. `apps/sva-studio-react/src/lib/plugins.ts`
-   - registriert `pluginExample` und `pluginNews` statisch im Host und materialisiert daraus Route-, Navigations-, Admin-Ressourcen-, Audit- und i18n-Metadaten
+   - registriert `pluginNews` statisch im Host und materialisiert daraus Route-, Navigations-, Admin-Ressourcen-, Audit- und i18n-Metadaten
 3. `packages/auth/src/iam-contents/content-type-registry.ts`
    - erweitert den generischen Content-Write-Pfad um contentType-spezifische Payload-Validierung und Sanitisierung
 4. `packages/plugin-news/src/*`

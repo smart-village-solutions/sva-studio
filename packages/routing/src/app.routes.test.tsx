@@ -153,13 +153,13 @@ describe('app.routes', () => {
       plugins: [
         newsPlugin,
         {
-          id: 'example',
-          displayName: 'Example',
+          id: 'calendar',
+          displayName: 'Calendar',
           routes: [
             {
-              id: 'example.list',
-              path: '/plugins/example',
-              component: () => 'example',
+              id: 'calendar.list',
+              path: '/plugins/calendar',
+              component: () => 'calendar',
             },
           ],
         },
@@ -177,7 +177,7 @@ describe('app.routes', () => {
     expect(routeMap.has('/modules')).toBe(true);
     expect(routeMap.has('/monitoring')).toBe(true);
     expect(routeMap.has('/auth/login')).toBe(true);
-    expect(routeMap.has('/plugins/example')).toBe(true);
+    expect(routeMap.has('/plugins/calendar')).toBe(true);
     expect(pluginFactories).toHaveLength(1);
     expect(readRouteOptions(routeMap.get('/account')).getParentRoute?.()).toBe(rootRoute);
 
@@ -185,7 +185,7 @@ describe('app.routes', () => {
     await readRouteOptions(routeMap.get('/admin/users')).beforeLoad?.({ href: '/admin/users' });
     await readRouteOptions(routeMap.get('/modules')).beforeLoad?.({ href: '/modules' });
     await readRouteOptions(routeMap.get('/monitoring')).beforeLoad?.({ href: '/monitoring' });
-    await readRouteOptions(routeMap.get('/plugins/example')).beforeLoad?.({ href: '/plugins/example' });
+    await readRouteOptions(routeMap.get('/plugins/calendar')).beforeLoad?.({ href: '/plugins/calendar' });
     await readRouteOptions(routeMap.get('/plugins/news')).beforeLoad?.({ href: '/plugins/news' });
 
     expect(guardSpies.account).toHaveBeenCalledWith({ href: '/account' });

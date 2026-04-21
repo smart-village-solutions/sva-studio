@@ -20,7 +20,6 @@
     "@radix-ui/react-tabs": "^1.1.13",
     "@sva/auth": "workspace:*",
     "@sva/core": "workspace:*",
-    "@sva/plugin-example": "workspace:*",
     "@sva/plugin-news": "workspace:*",
     "@sva/routing": "workspace:*",
     "@sva/sdk": "workspace:*",
@@ -56,7 +55,7 @@
     "@vitejs/plugin-react": "^5.2.0",
     "@vitest/coverage-v8": "^4.1.2",
     "jsdom": "^29.0.1",
-    "typescript": "^6.0.2",
+    "typescript": "^6.0.3",
     "vite": "^8.0.5",
     "vitest": "^4.1.2",
     "web-vitals": "^5.1.0"

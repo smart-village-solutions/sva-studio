@@ -86,6 +86,82 @@ const expectInterfacesShellReady = async (page: Page, timeout = 20_000) => {
     .toBe(true);
 };
 
+const mockAuthenticatedPluginShell = async (page: Page) => {
+  await page.route('**/auth/me', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        user: {
+          id: 'kc-editor-1',
+          name: 'Editor One',
+          email: 'editor@example.com',
+          instanceId: 'de-musterhausen',
+          roles: ['editor'],
+        },
+      }),
+    });
+  });
+
+  await page.route('**/iam/me/permissions?**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        instanceId: 'de-musterhausen',
+        permissions: [
+          { action: 'content.read', resourceType: 'content' },
+          { action: 'content.create', resourceType: 'content' },
+          { action: 'content.write', resourceType: 'content' },
+        ],
+        subject: {
+          actorUserId: 'kc-editor-1',
+          effectiveUserId: 'kc-editor-1',
+          isImpersonating: false,
+        },
+        evaluatedAt: '2026-04-13T12:00:00.000Z',
+      }),
+    });
+  });
+
+  await page.route('**/iam/authorize', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ allowed: true, reason: 'mocked_authorize' }),
+    });
+  });
+
+  await page.route('**/iam/me/legal-texts/pending', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: [], pagination: { page: 1, pageSize: 0, total: 0 } }),
+    });
+  });
+
+  await page.route('**/api/v1/iam/me/context', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: {
+          activeOrganizationId: null,
+          organizations: [],
+        },
+      }),
+    });
+  });
+
+  await page.route('**/api/v1/iam/contents', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: [] }),
+    });
+  });
+};
+
 test('GET / returns 200 and renders app shell', async ({ page }) => {
   const response = await page.goto('/');
   expect(response).not.toBeNull();
@@ -160,14 +236,35 @@ test('interfaces page uses the real /_server transport during overview load', as
   expect(pageErrors).toEqual([]);
 });
 
-test('GET /plugins/example returns 200', async ({ page }) => {
-  const response = await page.goto('/plugins/example');
+const navigateWithPlaywrightRouter = async (page: Page, to: string) => {
+  await page.evaluate(async (target) => {
+    const router = (
+      window as typeof window & {
+        __SVA_PLAYWRIGHT_ROUTER__?: {
+          navigate: (options: { to: string }) => Promise<void> | void;
+        };
+      }
+    ).__SVA_PLAYWRIGHT_ROUTER__;
+
+    if (!router) {
+      throw new Error('Playwright router hook fehlt.');
+    }
+
+    await router.navigate({ to: target });
+  }, to);
+};
+
+test('authenticated client navigation to /plugins/news renders the plugin route', async ({ page }) => {
+  await mockAuthenticatedPluginShell(page);
+
+  const response = await page.goto('/interfaces');
   expect(response).not.toBeNull();
-  if (!response) {
-    throw new Error('Antwort für GET /plugins/example erwartet.');
-  }
-  expect(response.status()).toBeLessThan(400);
-  await expect(page.getByRole('heading', { name: 'Plugin-Beispiel' })).toBeVisible();
+  expect(response?.status()).toBeLessThan(400);
+  await expectInterfacesShellReady(page);
+  await expect(page.locator('html')).toHaveAttribute('data-theme', /.+/);
+  await navigateWithPlaywrightRouter(page, '/plugins/news');
+  await expect(page).toHaveURL(/\/plugins\/news$/);
+  await expect(page.getByRole('heading', { name: 'News', exact: true })).toBeVisible();
 });
 
 test('GET /auth/login returns redirect response', async ({ request }) => {
@@ -213,28 +310,18 @@ test('tenant-host login fails closed when canonical auth redirect prerequisites 
 test('router keeps the shell active during client-side navigation', async ({ page }) => {
   const pageErrors: string[] = [];
 
+  await mockAuthenticatedPluginShell(page);
+
   page.on('pageerror', (error) => {
     pageErrors.push(error.message);
   });
 
-  await page.goto('/plugins/example');
+  await page.goto('/interfaces');
+  await expectInterfacesShellReady(page);
   await expect(page.locator('html')).toHaveAttribute('data-theme', /.+/);
-  await expect(page.getByRole('heading', { name: 'Plugin-Beispiel' })).toBeVisible();
-  await page.evaluate(async () => {
-    const router = (
-      window as typeof window & {
-        __SVA_PLAYWRIGHT_ROUTER__?: {
-          navigate: (options: { to: string }) => Promise<void> | void;
-        };
-      }
-    ).__SVA_PLAYWRIGHT_ROUTER__;
-
-    if (!router) {
-      throw new Error('Playwright router hook fehlt.');
-    }
-
-    await router.navigate({ to: '/interfaces' });
-  });
+  await navigateWithPlaywrightRouter(page, '/plugins/news');
+  await expect(page.getByRole('heading', { name: 'News', exact: true })).toBeVisible();
+  await navigateWithPlaywrightRouter(page, '/interfaces');
   await expect(page).toHaveURL(/\/interfaces$/);
   await expectInterfacesShellReady(page);
   expect(pageErrors).toEqual([]);

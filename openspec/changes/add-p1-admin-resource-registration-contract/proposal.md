@@ -22,7 +22,7 @@ Der Admin-Teil des Studios benötigt für neue Fachmodule einen einheitlichen Ve
   - `packages/sdk`
   - `packages/routing`
   - `apps/sva-studio-react/src/routes/admin`
-  - `packages/plugin-example`
+  - `packages/plugin-news`
 - Affected arc42 sections:
   - `docs/architecture/04-solution-strategy.md`
   - `docs/architecture/05-building-block-view.md`

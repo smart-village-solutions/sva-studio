@@ -43,7 +43,7 @@ export type IamRoleRow = {
   valid_to?: string | null;
 };
 
-export type ManagedBy = 'studio' | 'external';
+export type ManagedBy = 'studio' | 'external' | 'keycloak_builtin';
 
 export type RoleSyncErrorCode =
   | 'IDP_UNAVAILABLE'

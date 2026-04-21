@@ -65,9 +65,12 @@ const STATUS_LABEL_KEYS = {
 
 const statusLabel = (syncState: 'synced' | 'pending' | 'failed'): string => t(STATUS_LABEL_KEYS[syncState]);
 
-const roleTypeLabel = (role: { isSystemRole: boolean; managedBy: 'studio' | 'external' }): string => {
+const roleTypeLabel = (role: { isSystemRole: boolean; managedBy: 'studio' | 'external' | 'keycloak_builtin' }): string => {
   if (role.isSystemRole) {
     return t('admin.roles.labels.systemRole');
+  }
+  if (role.managedBy === 'keycloak_builtin') {
+    return t('admin.roles.labels.builtInRole');
   }
   if (role.managedBy === 'external') {
     return t('admin.roles.labels.externalRole');

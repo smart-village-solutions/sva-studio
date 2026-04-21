@@ -31,7 +31,6 @@ vi.mock('@sva/sdk/server', () => ({
   createSdkLogger: () => middlewareLogger,
   getInstanceConfig: () => instanceConfigState,
   getWorkspaceContext: () => workspaceContext,
-  parseInstanceIdFromHost: (host: string) => (host.startsWith('hb-meinquartier.') ? 'hb-meinquartier' : null),
   toJsonErrorResponse: (status: number, code: string, publicMessage?: string, options?: { requestId?: string }) =>
     new Response(
       JSON.stringify({
@@ -122,6 +121,77 @@ describe('withAuthenticatedUser', () => {
     );
   });
 
+  it('returns a structured tenant host error for inactive tenant hosts before session resolution', async () => {
+    instanceConfigState.canonicalAuthHost = 'studio.smart-village.app';
+    instanceConfigState.parentDomain = 'studio.smart-village.app';
+    loadInstanceByHostnameMock.mockResolvedValue({
+      instanceId: 'hb-meinquartier',
+      status: 'suspended',
+    });
+    const { withAuthenticatedUser } = await import('./middleware.server');
+    const request = new Request('https://hb-meinquartier.studio.smart-village.app/api/v1/iam/users', {
+      headers: { cookie: 'sva_auth_session=session-inactive-tenant' },
+    });
+
+    const response = await withAuthenticatedUser(request, () => new Response('ok'));
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toEqual({
+      error: {
+        code: 'forbidden',
+        message: 'Host not permitted for this operation',
+        classification: 'registry_or_provisioning_drift',
+        status: 'manuelle_pruefung_erforderlich',
+        recommendedAction: 'provisioning_pruefen',
+        details: {
+          reason_code: 'tenant_inactive',
+          instance_id: 'hb-meinquartier',
+        },
+        safeDetails: {
+          reason_code: 'tenant_inactive',
+          instance_id: 'hb-meinquartier',
+        },
+      },
+      requestId: 'req-middleware',
+    });
+    expect(response.headers.get('x-request-id')).toBe('req-middleware');
+    expect(getSessionUserMock).not.toHaveBeenCalled();
+  });
+
+  it('returns a structured database error when tenant host lookup fails', async () => {
+    instanceConfigState.canonicalAuthHost = 'studio.smart-village.app';
+    instanceConfigState.parentDomain = 'studio.smart-village.app';
+    loadInstanceByHostnameMock.mockRejectedValue(new Error('database down'));
+    const { withAuthenticatedUser } = await import('./middleware.server');
+    const request = new Request('https://hb-meinquartier.studio.smart-village.app/api/v1/iam/users', {
+      headers: { cookie: 'sva_auth_session=session-tenant-db-failure' },
+    });
+
+    const response = await withAuthenticatedUser(request, () => new Response('ok'));
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toEqual({
+      error: {
+        code: 'database_unavailable',
+        message: 'Host not permitted for this operation',
+        classification: 'tenant_host_validation',
+        status: 'degradiert',
+        recommendedAction: 'erneut_versuchen',
+        details: {
+          dependency: 'database',
+          reason_code: 'tenant_lookup_failed',
+        },
+        safeDetails: {
+          dependency: 'database',
+          reason_code: 'tenant_lookup_failed',
+        },
+      },
+      requestId: 'req-middleware',
+    });
+    expect(response.headers.get('x-request-id')).toBe('req-middleware');
+    expect(getSessionUserMock).not.toHaveBeenCalled();
+  });
+
   it('passes authenticated user to handler', async () => {
     instanceConfigState.canonicalAuthHost = 'localhost';
     instanceConfigState.parentDomain = 'localhost';
@@ -147,7 +217,7 @@ describe('withAuthenticatedUser', () => {
     expect(await response.json()).toEqual({ sessionId: 'session-2', userId: 'user-1' });
   });
 
-  it('derives a missing session instance id from the request host', async () => {
+  it('rejects tenant requests when the session user lacks instance context', async () => {
     instanceConfigState.canonicalAuthHost = 'studio.smart-village.app';
     instanceConfigState.parentDomain = 'studio.smart-village.app';
     loadInstanceByHostnameMock.mockResolvedValue({
@@ -170,25 +240,69 @@ describe('withAuthenticatedUser', () => {
       headers: { cookie: 'sva_auth_session=session-host-instance' },
     });
 
+    const response = await withAuthenticatedUser(request, () => new Response('ok'));
+
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toEqual({
+      error: {
+        code: 'unauthorized',
+        message: 'Die Sitzung enthält keinen gültigen Instanzkontext.',
+        classification: 'session_store_or_session_hydration',
+        status: 'recovery_laeuft',
+        recommendedAction: 'erneut_anmelden',
+        details: {
+          reason_code: 'missing_session_instance_id',
+          request_host: 'hb-meinquartier.studio.smart-village.app',
+        },
+        safeDetails: {
+          reason_code: 'missing_session_instance_id',
+        },
+      },
+      requestId: 'req-middleware',
+    });
+    expect(middlewareLogger.warn).toHaveBeenCalledWith(
+      'Auth middleware rejected tenant request because the session user lacks instance context',
+      expect.objectContaining({
+        user_id: 'user-host-instance',
+        tenant_host: 'hb-meinquartier.studio.smart-village.app',
+      })
+    );
+    expect(middlewareLogger.warn).toHaveBeenCalledWith(
+      'Auth middleware rejected request because the session user is missing required tenant context',
+      expect.objectContaining({
+        reason_code: 'missing_session_instance_id',
+        request_host: 'hb-meinquartier.studio.smart-village.app',
+      })
+    );
+  });
+
+  it('keeps platform requests without instance context valid', async () => {
+    instanceConfigState.canonicalAuthHost = 'studio.smart-village.app';
+    instanceConfigState.parentDomain = 'studio.smart-village.app';
+    getSessionUserMock.mockResolvedValue({
+      id: 'user-platform',
+      name: 'Platform User',
+      roles: ['admin'],
+    });
+    const { withAuthenticatedUser } = await import('./middleware.server');
+    const request = new Request('https://studio.smart-village.app/api/v1/iam/users', {
+      headers: {
+        cookie: 'sva_auth_session=session-platform',
+      },
+    });
+
     const response = await withAuthenticatedUser(request, ({ user }) =>
-      new Response(JSON.stringify({ instanceId: user.instanceId }), {
+      new Response(JSON.stringify({ instanceId: user.instanceId ?? null }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       })
     );
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ instanceId: 'hb-meinquartier' });
-    expect(middlewareLogger.warn).toHaveBeenCalledWith(
-      'Auth middleware derived missing session instance from request host',
-      expect.objectContaining({
-        user_id: 'user-host-instance',
-        derived_instance_id: 'hb-meinquartier',
-      })
-    );
+    expect(await response.json()).toEqual({ instanceId: null });
   });
 
-  it('derives a missing session instance id from the host header when request.url stays on the root host', async () => {
+  it('rejects tenant requests when request.url stays on the root host but the host header targets a tenant', async () => {
     instanceConfigState.canonicalAuthHost = 'studio.smart-village.app';
     instanceConfigState.parentDomain = 'studio.smart-village.app';
     loadInstanceByHostnameMock.mockResolvedValue({
@@ -214,15 +328,9 @@ describe('withAuthenticatedUser', () => {
       },
     });
 
-    const response = await withAuthenticatedUser(request, ({ user }) =>
-      new Response(JSON.stringify({ instanceId: user.instanceId }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      })
-    );
+    const response = await withAuthenticatedUser(request, () => new Response('ok'));
 
-    expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ instanceId: 'hb-meinquartier' });
+    expect(response.status).toBe(401);
     expect(loadInstanceByHostnameMock).toHaveBeenCalledWith('hb-meinquartier.studio.smart-village.app');
   });
 
@@ -618,9 +726,22 @@ describe('withAuthenticatedUser', () => {
 
     expect(response.status).toBe(403);
     expect(await response.json()).toEqual({
-      error: 'forbidden',
-      message: 'Host not permitted for this operation',
+      error: {
+        code: 'forbidden',
+        message: 'Host not permitted for this operation',
+        classification: 'registry_or_provisioning_drift',
+        status: 'manuelle_pruefung_erforderlich',
+        recommendedAction: 'provisioning_pruefen',
+        details: {
+          reason_code: 'tenant_not_found',
+        },
+        safeDetails: {
+          reason_code: 'tenant_not_found',
+        },
+      },
+      requestId: 'req-middleware',
     });
+    expect(response.headers.get('x-request-id')).toBe('req-middleware');
     expect(getSessionUserMock).not.toHaveBeenCalled();
   });
 
@@ -648,9 +769,24 @@ describe('withAuthenticatedUser', () => {
 
     expect(response.status).toBe(403);
     expect(await response.json()).toEqual({
-      error: 'forbidden',
-      message: 'Host not permitted for this operation',
+      error: {
+        code: 'forbidden',
+        message: 'Host not permitted for this operation',
+        classification: 'registry_or_provisioning_drift',
+        status: 'manuelle_pruefung_erforderlich',
+        recommendedAction: 'provisioning_pruefen',
+        details: {
+          reason_code: 'tenant_inactive',
+          instance_id: 'hb',
+        },
+        safeDetails: {
+          reason_code: 'tenant_inactive',
+          instance_id: 'hb',
+        },
+      },
+      requestId: 'req-middleware',
     });
+    expect(response.headers.get('x-request-id')).toBe('req-middleware');
     expect(getSessionUserMock).not.toHaveBeenCalled();
   });
 });

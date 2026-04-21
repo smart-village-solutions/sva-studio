@@ -24,14 +24,26 @@ Fehlerpfad:
 
 - Fehlerhafte Route-Factory oder server-only Import im Client kann Build/Runtime brechen.
 
+### Szenario 1b: Materialisierung registrierter Admin-Ressourcen
+
+1. Die App lädt neben Seiten-Bindings auch die statische Liste `appAdminResources`.
+2. `@sva/routing` validiert die Admin-Ressourcen gegen den SDK-Vertrag und materialisiert daraus Listen-, Create- und Detailrouten.
+3. Der Host wendet den deklarativ referenzierten Guard auf alle Teilrouten der Ressource an.
+4. Legacy-Pfade wie `/content`, `/content/new` und `/content/$contentId` werden im Routing-Layer auf `/admin/content*` umgeleitet.
+
+Fehlerpfad:
+
+- Doppelte Ressourcen-IDs oder kollidierende Basispfade brechen die Registrierungsphase fail-fast ab.
+- Ohne gültige Ressourcendefinition wird kein teilweise inkonsistenter Admin-Route-Baum veröffentlicht.
+
 ### Szenario 4a: Plugin-Registrierung und News-CRUD
 
 1. Die App initialisiert `studioPlugins` und merged Plugin-Übersetzungen in die i18n-Ressourcen.
 2. Der Router materialisiert die Plugin-Routen `/plugins/news`, `/plugins/news/new` und `/plugins/news/$contentId`.
 3. Beim Aufruf der Route wendet der Host den passenden Content-Guard an.
-4. Die News-Liste lädt die generische Content-Liste und filtert clientseitig auf `contentType = news`.
+4. Die News-Liste lädt die generische Content-Liste und filtert clientseitig auf `contentType = news.article`.
 5. Der Editor sendet Create- oder Update-Requests an die bestehende IAM-Content-API.
-6. `packages/auth` validiert zuerst den generischen Content-Envelope und danach das registrierte News-Payload-Schema.
+6. `packages/auth` validiert zuerst den generischen Content-Envelope und danach das registrierte News-Payload-Schema für `news.article`.
 7. Vor Persistenz sanitisiert der Server `body` allowlist-basiert und normalisiert `teaser` auf Plain Text.
 8. Repository, Historie und Audit-Logging bleiben unverändert Teil des generischen Content-Pfads.
 9. Nach erfolgreichem Speichern oder Löschen zeigt das Plugin Statusfeedback und navigiert zurück zur News-Liste.
@@ -60,6 +72,8 @@ Fehlerpfad:
 2. `loginHandler()` erstellt PKCE-LoginState, setzt signiertes State-Cookie und redirectet zum IdP
 3. IdP redirectet nach `/auth/callback?code=...&state=...`
 4. `callbackHandler()` validiert State, tauscht Code gegen Tokens und erstellt eine versionierte Session mit `issuedAt`, `expiresAt` und `sessionVersion`
+   - Bei Tenant-Hosts wird `instanceId` aus dem zuvor aufgelösten Auth-Scope aus Host, Registry und Realm in den Session-User übernommen.
+   - Ein fehlender `instanceId`-Claim blockiert den Tenant-Login nicht; ein widersprüchlicher Claim beendet den Callback fail-closed als Scope-Konflikt.
 5. Session-Cookie wird mit expliziter Laufzeit aus `expiresAt` gesetzt; Redis-TTL wird technisch aus der Restlaufzeit plus Puffer abgeleitet
 6. App ruft `/auth/me` fuer minimalen Auth-Kontext (`id`, `instanceId`, Rollen)
 7. Falls UI Profildaten wie Name oder E-Mail braucht, laedt sie diese ueber dedizierte Profil-Endpunkte getrennt nach
@@ -69,6 +83,7 @@ Fehlerpfad:
 - Fehlender/abgelaufener State -> Redirect mit Fehlerstatus
 - Token-/Refresh-Fehler -> Session invalidiert oder unauthorized Antwort
 - Profilfehler beruehren die Session-Hydration nicht; die App behaelt ihren minimalen Auth-State
+- Host-/Realm-/Claim-Konflikte erzeugen keinen tenant-losen Fallback, sondern bleiben als Auth-Fehler sichtbar.
 
 ### Szenario 2c: Root-Host-Instanzverwaltung
 
@@ -119,17 +134,35 @@ Fehlerpfad:
 ### Szenario 2e: Deterministischer User-Sync und Rollen-Reconcile
 
 1. Ein Administrator startet in `/admin/users` den Keycloak-User-Sync oder in `/admin/roles` den Rollen-Reconcile.
-2. Der Server lädt den Instanzkontext und prüft vor jeder tenantlokalen Admin-Mutation blockerrelevanten Drift aus Registry, Preflight und Provisioning-Plan.
-3. Liegt ein Blocker vor, endet der Lauf sofort fail-closed mit technischem Fehlervertrag inklusive `classification`, `requestId` und freigegebenen Safe-Details.
-4. Ohne Blocker führt `packages/auth` den Sync oder Reconcile deterministisch aus und trennt pro Eintrag zwischen korrigiert, fehlgeschlagen und fachlichem Restzustand `manual_review`.
-5. Die Handler antworten immer mit genau einem Abschlusszustand `success`, `partial_failure`, `blocked` oder `failed` sowie aggregierten Zählwerten.
-6. Read-Pfade für Profil, User-Liste und Rollenansicht laden anschließend denselben kanonischen Projektionskern nach, damit UI und Fachzustand übereinstimmen.
+2. Der Server unterscheidet Root-Host-Platform-Scope und Tenant-Instance-Scope. Im Platform-Scope nutzt er den Plattform-Realm ohne `instanceId`; im Tenant-Scope lädt er den Instanzkontext und prüft vor jeder tenantlokalen Admin-Mutation blockerrelevanten Drift aus Registry, Preflight und Provisioning-Plan.
+3. Beim Keycloak-User-Sync ist der aktive Tenant-Realm die führende Benutzergrenze; fehlende `instanceId`-Attribute blockieren den Import nicht.
+4. Liegt ein Blocker vor, endet der Lauf sofort fail-closed mit technischem Fehlervertrag inklusive `classification`, `requestId` und freigegebenen Safe-Details.
+5. Ohne Blocker führt `packages/auth` den Sync oder Reconcile deterministisch aus und trennt pro Eintrag zwischen korrigiert, fehlgeschlagen und fachlichem Restzustand `manual_review`.
+6. Die Handler antworten immer mit genau einem Abschlusszustand `success`, `partial_failure`, `blocked` oder `failed` sowie aggregierten Zählwerten.
+7. Read-Pfade für Profil, User-Liste und Rollenansicht laden anschließend denselben kanonischen Projektionskern nach, damit UI und Fachzustand übereinstimmen.
 
 Fehlerpfad:
 
 - fehlender Tenant-Admin-Client, Secret-Drift oder blockierter Provisioning-Plan verhindern den Start des Laufs vollständig.
 - `IDP_FORBIDDEN` und `IDP_UNAVAILABLE` bleiben als technische oder Berechtigungsfehler sichtbar und werden nicht als `manual_review` kaschiert.
 - einzelne fachlich mehrdeutige Fälle können in `manual_review` enden, ohne dass der Gesamt-Request hängen bleibt.
+
+### Szenario 2f: Keycloak-first User- und Rollenverwaltung
+
+1. `/admin/users` und `/admin/roles` laden Listen über den aktiven Keycloak-Admin-Pfad.
+2. Im Platform-Scope wird nur der Platform-Admin-Keycloak-Client verwendet.
+3. Im Tenant-Scope wird nur der Tenant-Admin-Keycloak-Client der Instanz verwendet; fehlt dieser, endet der Request mit `tenant_admin_client_not_configured`.
+4. Tenant-Userlisten lesen den vollständigen Realm-Ausschnitt aus Keycloak und verbinden ihn anschließend mit Studio-Read-Models.
+5. Keycloak-Objekte ohne Studio-Zuordnung bleiben als `unmapped` oder `manual_review` sichtbar.
+6. Mutierende Aktionen schreiben zuerst Keycloak, synchronisieren anschließend Studio-Read-Models und erzeugen Audit-Events.
+7. Read-only- oder blockierte Objekte werden in der UI mit Diagnosecode angezeigt und serverseitig erneut vor der Mutation geprüft.
+
+Fehlerpfad:
+
+- Keycloak `403` wird als `IDP_FORBIDDEN` beziehungsweise `idp_forbidden` eingeordnet.
+- föderierte oder profilrichtliniengeschützte Felder werden als `read_only_federated_field` sichtbar und nicht überschrieben.
+- verbotene Rollenzuordnungen werden als `forbidden_role_mapping` sichtbar.
+- Built-in-Rollen bleiben als Rollenobjekt read-only, dürfen aber abhängig von der aktiven Rechte-Matrix zugewiesen oder entfernt werden.
 
 ### Szenario 2b: Forced Reauth für einen Benutzer
 

@@ -41,7 +41,7 @@ const formatDateTime = (value?: string) => {
 };
 
 export const LegalTextAcceptanceDialog = ({ pathname }: LegalTextAcceptanceDialogProps) => {
-  const { isAuthenticated, isLoading: isAuthLoading, invalidatePermissions, logout, user } = useAuth();
+  const { isAuthenticated, isLoading: isAuthLoading, invalidatePermissions, user } = useAuth();
   const [pendingTexts, setPendingTexts] = React.useState<Awaited<ReturnType<typeof getMyPendingLegalTexts>>['data']>([]);
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const [isLoadingPending, setIsLoadingPending] = React.useState(false);
@@ -269,9 +269,12 @@ export const LegalTextAcceptanceDialog = ({ pathname }: LegalTextAcceptanceDialo
           <Button type="button" variant="outline" onClick={() => void loadPendingTexts()} disabled={isSubmitting}>
             {t('admin.legalAcceptance.retry')}
           </Button>
-          <Button type="button" variant="outline" onClick={() => void logout()} disabled={isSubmitting}>
-            {t('admin.legalAcceptance.logout')}
-          </Button>
+          <form action="/auth/logout" method="post">
+            <input type="hidden" name="logoutIntent" value="user" />
+            <Button type="submit" variant="outline" disabled={isSubmitting}>
+              {t('admin.legalAcceptance.logout')}
+            </Button>
+          </form>
           <Button type="button" onClick={() => void handleAcceptAll()} disabled={isSubmitting || pendingTexts.length === 0}>
             {isSubmitting ? t('admin.legalAcceptance.accepting') : t('admin.legalAcceptance.acceptAll')}
           </Button>

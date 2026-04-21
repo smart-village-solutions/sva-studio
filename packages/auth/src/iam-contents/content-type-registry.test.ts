@@ -4,7 +4,7 @@ import { validateContentTypePayload } from './content-type-registry.js';
 
 describe('content type registry', () => {
   it('accepts and sanitizes valid news payloads', () => {
-    const result = validateContentTypePayload('news', {
+    const result = validateContentTypePayload('news.article', {
       teaser: '  <strong>Kurzmeldung</strong>  ',
       body: '<p>Hallo</p><script>alert(1)</script>',
       imageUrl: 'https://example.com/image.jpg',
@@ -27,7 +27,7 @@ describe('content type registry', () => {
   });
 
   it('rejects invalid news payloads', () => {
-    const result = validateContentTypePayload('news', {
+    const result = validateContentTypePayload('news.article', {
       teaser: '',
       body: '<p>Hallo</p>',
       externalUrl: 'javascript:alert(1)',
@@ -41,8 +41,31 @@ describe('content type registry', () => {
     expect(result.message.length).toBeGreaterThan(0);
   });
 
-  it('rejects news bodies without visible text and returns localized validation messages', () => {
+  it('keeps legacy news payload validation and sanitization during the content type rename', () => {
     const result = validateContentTypePayload('news', {
+      teaser: '  <strong>Altmeldung</strong>  ',
+      body: '<p>Archiv</p><script>alert(1)</script>',
+      externalUrl: 'javascript:alert(1)',
+    });
+
+    expect(result.ok).toBe(false);
+
+    const sanitizedResult = validateContentTypePayload('news', {
+      teaser: '  <strong>Altmeldung</strong>  ',
+      body: '<p>Archiv</p><script>alert(1)</script>',
+    });
+
+    expect(sanitizedResult).toEqual({
+      ok: true,
+      payload: {
+        teaser: 'Altmeldung',
+        body: '<p>Archiv</p>',
+      },
+    });
+  });
+
+  it('rejects news bodies without visible text and returns localized validation messages', () => {
+    const result = validateContentTypePayload('news.article', {
       teaser: '',
       body: '<p><br></p>',
     });
@@ -52,7 +75,7 @@ describe('content type registry', () => {
       message: 'Der Teaser ist erforderlich.',
     });
 
-    const emptyBodyResult = validateContentTypePayload('news', {
+    const emptyBodyResult = validateContentTypePayload('news.article', {
       teaser: 'Kurzmeldung',
       body: '<p><br></p>',
     });

@@ -426,3 +426,55 @@ Das System SHALL für jedes Runtime-Profil standardisierte Befehle für `up`, `d
 - **THEN** ruft das System nur einen repository-lokalen `goose`-Wrapper auf
 - **AND** der Wrapper installiert bzw. verwendet eine gepinnte `goose`-Version
 - **AND** es ist keine globale `goose`-Installation Voraussetzung
+
+### Requirement: Plugin-Action-Contracts bleiben an der SDK-Grenze
+Plugin-Packages SHALL ihre Action-Definitionen ausschließlich über SDK-Contracts deklarieren und dieselben Definitionen sowohl für Registrierung als auch für UI-nahe Bindings wiederverwenden.
+
+#### Scenario: Plugin wiederverwendet eine deklarierte Action-Definition
+- **WHEN** ein Plugin eine Create/Edit/Delete-Oberfläche rendert
+- **THEN** stammen Action-ID und Title-Key aus derselben SDK-basierten Action-Definition wie bei der Registrierung
+- **AND** das Plugin führt keine zweite, ungebundene Action-Liste außerhalb des SDK-Vertrags
+
+#### Scenario: Host-App baut Registry aus Plugin-Definitionen
+- **WHEN** die Host-App Plugin-Metadaten zusammenführt
+- **THEN** entsteht die Plugin-Action-Registry aus den exportierten Plugin-Definitionen
+- **AND** Plugins benötigen dafür keine direkte Host-Abhängigkeit außerhalb von `@sva/sdk`
+
+### Requirement: Final-Artifact-Verify als offizieller App-Target
+
+Das System SHALL fuer `apps/sva-studio-react` einen dedizierten Nx-Target bereitstellen, der den finalen Runtime-Vertrag gegen den gebauten `.output/server/**`-Output prueft.
+
+#### Scenario: App-Target prueft finalen Node-Output
+
+- **WHEN** `pnpm nx run sva-studio-react:verify:runtime-artifact` ausgefuehrt wird
+- **THEN** baut das Target zuerst die App
+- **AND** startet danach den finalen Node-Output aus `.output/server/index.mjs`
+- **AND** klassifiziert Fehler mindestens als `artifact-contract-failed`, `dependency-failed`, `runtime-start-failed` oder `http-dispatch-failed`
+
+#### Scenario: Root-Skript delegiert an denselben Verify-Target
+
+- **WHEN** das Root-`package.json` geprueft wird
+- **THEN** existiert ein Skript `verify:runtime-artifact`
+- **AND** dieses delegiert an `pnpm nx run sva-studio-react:verify:runtime-artifact`
+
+### Requirement: Toolchain-Drift wird vor dem Runtime-Verify fail-fast erkannt
+
+Das System SHALL vor dem produktionsnahen Runtime-Verify pruefen, ob lokale Toolchain und Lockfile denselben Abhaengigkeitsgraphen verwenden.
+
+#### Scenario: Toolchain-Check stoppt bei veraltetem `node_modules`
+
+- **WHEN** `pnpm check:toolchain-consistency` oder `pnpm nx run sva-studio-react:build` ausgefuehrt wird
+- **AND** installierte Build-Tooling-Pakete von `pnpm-lock.yaml` abweichen
+- **THEN** bricht der Check vor dem eigentlichen App-Build mit einer klaren Aufforderung zu `pnpm install --frozen-lockfile` ab
+
+### Requirement: Root-Scripts bilden den Studio-Releasepfad ab
+
+Das System SHALL fuer `studio` einen Root-Skript-Einstieg bereitstellen, der den lokalen Operator-Schritt fuer produktionsnahe Mutationen kapselt.
+
+#### Scenario: Lokaler Studio-Release ist als Root-Skript verfuegbar
+
+- **WHEN** ein Operator den finalen `studio`-Deploy aus dem Repository heraus starten will
+- **THEN** existiert ein dediziertes Root-Skript fuer den lokalen Release-Einstieg
+- **AND** dieses Skript verlangt explizit `image_digest`, `release_mode` und `rollback_hint`
+- **AND** es fuehrt `env:precheck:studio`, `env:deploy:studio`, `env:smoke:studio` und `env:feedback:studio` in fester Reihenfolge aus
+

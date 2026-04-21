@@ -116,3 +116,37 @@ Das System SHALL den Registry-basierten Tenant-Lebenszyklus und den Provisioning
 - **WHEN** die Dokumentation das produktive Multi-Tenant-Modell beschreibt
 - **THEN** wird die zentrale Registry als fuehrende Freigabequelle genannt
 - **AND** env-basierte Tenant-Freigaben werden als lokaler oder migrierender Sonderfall eingeordnet
+
+### Requirement: Analysechanges mit Diagnosewirkung liefern versionierte Befundartefakte
+
+Die Architektur- und Betriebsdokumentation SHALL bei Analysechanges mit IAM-, Auth-, Session-, Registry- oder Provisioning-Diagnosewirkung einen versionierten Bericht, einen expliziten Live-Triage-Status und eine nachvollziehbare Folgechange-Übergabe enthalten.
+
+#### Scenario: Repo-Analyse wird als Bericht konserviert
+
+- **WHEN** ein Analysechange die Diagnosefähigkeit eines kritischen Laufzeitpfads bewertet
+- **THEN** wird der Befund als versionierter Bericht unter `docs/reports/` abgelegt
+- **AND** der Bericht dokumentiert mindestens Fehlerklassen, heutige Signale, Recovery-Pfade, erkannte Lücken und empfohlene Folgearbeit
+
+#### Scenario: Live-Triage darf nicht stillschweigend entfallen
+
+- **WHEN** ein Analysechange einen verpflichtenden Live-Triage-Block gegen eine reale Umgebung vorsieht
+- **THEN** dokumentiert die Architektur- oder Betriebsdoku explizit, ob dieser Block durchgeführt wurde, offen ist oder an fehlender Umgebung/Testdaten scheitert
+- **AND** ein offener Live-Triage-Block wird nicht als erledigt oder implizit grün kommuniziert
+
+#### Scenario: Folgechange-Übergabe bleibt entscheidungsfähig
+
+- **WHEN** ein Analysechange mit priorisierter Folgearbeit endet
+- **THEN** dokumentiert der Bericht mindestens mehrere Zuschnittsoptionen, eine Empfehlung und einen vorbereiteten Folgechange
+- **AND** können Reviewer nachvollziehen, welche Folgearbeit auf welcher Analysebasis aufsetzt
+
+### Requirement: Architektur dokumentiert finalen Runtime-Vertrag
+
+Die Architektur- und Betriebsdokumentation SHALL den finalen Runtime-Vertrag fuer `studio` explizit gegenueber Intermediate-SSR-Artefakten und Legacy-Recovery-Pfaden abgrenzen.
+
+#### Scenario: Arc42 beschreibt finale Runtime als Release-Wahrheit
+
+- **WHEN** die Dokumentation den `studio`-Releasepfad beschreibt
+- **THEN** benennen `05-building-block-view`, `07-deployment-view`, `08-cross-cutting-concepts` und `11-risks-and-technical-debt` das finale `.output/server/**`-Artefakt als verbindliche technische Wahrheit
+- **AND** ordnen sie `.nitro/vite/services/ssr/**` als Diagnosematerial ein
+- **AND** beschreiben sie den Entrypoint-Patch als Legacy-Recovery-Pfad mit explizitem Flag statt als Standardbetrieb
+

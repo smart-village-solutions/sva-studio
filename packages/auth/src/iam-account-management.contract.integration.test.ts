@@ -334,6 +334,39 @@ vi.mock('@sva/sdk/server', async () => {
 
 vi.mock('./keycloak-admin-client', () => {
   class MockKeycloakAdminClient {
+    async listUsers(query: { first?: number; max?: number; search?: string; enabled?: boolean } = {}) {
+      const users = [
+        {
+          externalId: contractState.targetUser.keycloakSubject,
+          username: contractState.targetUser.email,
+          email: contractState.targetUser.email,
+          firstName: contractState.targetUser.firstName,
+          lastName: contractState.targetUser.lastName,
+          enabled: contractState.targetUser.status === 'active',
+          attributes: { instanceId: [INSTANCE_ID] },
+        },
+      ];
+      const filtered = users.filter((user) => {
+        if (typeof query.enabled === 'boolean' && user.enabled !== query.enabled) {
+          return false;
+        }
+        if (!query.search) {
+          return true;
+        }
+        const search = query.search.toLowerCase();
+        return [user.username, user.email, user.firstName, user.lastName].some((value) =>
+          value.toLowerCase().includes(search)
+        );
+      });
+      const first = query.first ?? 0;
+      const max = query.max ?? filtered.length;
+      return filtered.slice(first, first + max);
+    }
+
+    async countUsers(query: { search?: string; enabled?: boolean } = {}): Promise<number> {
+      return (await this.listUsers(query)).length;
+    }
+
     async listUserRoleNames(keycloakSubject: string): Promise<readonly string[]> {
       return contractState.syncedRoleNamesBySubject.get(keycloakSubject) ?? [];
     }
@@ -431,6 +464,15 @@ vi.mock('pg', () => ({
 
           if (text.includes('COUNT(DISTINCT a.id)::int AS total')) {
             return { rowCount: 1, rows: [{ total: 1 }] };
+          }
+
+          if (text.includes('WHERE a.keycloak_subject = ANY($2::text[])')) {
+            const instanceId = String(values?.[0]);
+            const subjects = new Set(((values?.[1] as readonly string[]) ?? []).map(String));
+            if (instanceId === INSTANCE_ID && subjects.has(contractState.targetUser.keycloakSubject)) {
+              return { rowCount: 1, rows: [toUserListRow(contractState.targetUser)] };
+            }
+            return { rowCount: 0, rows: [] };
           }
 
           if (text.includes('ORDER BY a.created_at DESC')) {

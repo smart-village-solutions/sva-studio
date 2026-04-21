@@ -246,7 +246,7 @@ export const ContentListPage = () => {
             </Button>
           ) : (
             <Button asChild>
-              <Link to="/content/new">{t('content.actions.create')}</Link>
+              <Link to="/admin/content/new">{t('content.actions.create')}</Link>
             </Button>
           ),
         }}
@@ -328,7 +328,7 @@ export const ContentListPage = () => {
 
           return access.canRead ? (
             <Button asChild size="sm" variant="outline">
-              <Link to="/content/$contentId" params={{ contentId: item.id }}>
+              <Link to="/admin/content/$id" params={{ id: item.id }}>
                 {actionLabel}
               </Link>
             </Button>

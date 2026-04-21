@@ -488,13 +488,15 @@ describe('LegalTextAcceptanceDialog', () => {
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Erneut laden' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Abmelden' }));
 
     await waitFor(() => {
       expect(getMyPendingLegalTextsMock).toHaveBeenCalledTimes(2);
-      const fetchMock = vi.mocked(fetch);
-      expect(fetchMock).toHaveBeenCalledWith('/auth/logout', expect.any(Object));
     });
+
+    const logoutForm = document.querySelector('form[action="/auth/logout"]');
+    const logoutIntent = logoutForm?.querySelector('input[name="logoutIntent"]');
+    expect(logoutForm?.getAttribute('method')).toBe('post');
+    expect(logoutIntent?.getAttribute('value')).toBe('user');
   });
 
 });

@@ -7,6 +7,7 @@ import { SYSTEM_ADMIN_ROLES } from './constants.js';
 import { asApiItem, createApiError } from './api-helpers.js';
 import { ensureFeature, getFeatureFlags } from './feature-flags.js';
 import { consumeRateLimit } from './rate-limit.js';
+import { reconcilePlatformRolesInternal } from './platform-iam-handlers.js';
 import { runRoleCatalogReconciliation } from './reconcile-core.js';
 import { logger, requireRoles, resolveActorInfo } from './shared.js';
 import { validateCsrf } from './csrf.js';
@@ -24,6 +25,9 @@ export const reconcilePlaceholderInternal = async (
   const roleCheck = requireRoles(ctx, SYSTEM_ADMIN_ROLES, requestContext.requestId);
   if (roleCheck) {
     return roleCheck;
+  }
+  if (!ctx.user.instanceId) {
+    return reconcilePlatformRolesInternal(request, ctx, requestContext.requestId, requestContext.traceId);
   }
   const actorResolution = await resolveActorInfo(request, ctx, { requireActorMembership: true });
   if ('error' in actorResolution) {

@@ -125,7 +125,7 @@ export const createRouterDiagnosticsSnapshot = ({
     },
     routeFlags: {
       hasRootRoute: knownPaths.has('/'),
-      hasContentRoute: knownPaths.has('/content'),
+      hasContentRoute: knownPaths.has('/admin/content'),
     },
   };
 };

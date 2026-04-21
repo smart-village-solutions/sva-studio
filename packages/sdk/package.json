@@ -11,6 +11,10 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
+    "./admin-resources": {
+      "types": "./dist/admin-resources.d.ts",
+      "default": "./dist/admin-resources.js"
+    },
     "./logging": {
       "types": "./dist/logging.d.ts",
       "default": "./dist/logging.js"

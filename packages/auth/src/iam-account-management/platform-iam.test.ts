@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
   providerEnabled: true,
+  listUsersCalls: [] as Array<{ first?: number; max?: number; enabled?: boolean }>,
   users: [
     {
       externalId: 'kc-platform-1',
@@ -31,8 +32,13 @@ vi.mock('./shared-runtime.js', () => ({
     state.providerEnabled
       ? {
           provider: {
-            listUsers: async ({ first = 0, max = 100 }: { first?: number; max?: number } = {}) =>
-              state.users.slice(first, first + max),
+            listUsers: async ({ first = 0, max = 100, enabled }: { first?: number; max?: number; enabled?: boolean } = {}) => {
+              state.listUsersCalls.push({ first, max, enabled });
+              const filteredUsers = typeof enabled === 'boolean'
+                ? state.users.filter((user) => (user.enabled !== false) === enabled)
+                : state.users;
+              return filteredUsers.slice(first, first + max);
+            },
             listUserRoleNames: async (externalId: string) => {
               const roles = state.rolesByUser.get(externalId);
               if (roles instanceof Error) {
@@ -69,6 +75,7 @@ import {
 describe('platform IAM projection', () => {
   beforeEach(() => {
     state.providerEnabled = true;
+    state.listUsersCalls = [];
     state.users = [
       {
         externalId: 'kc-platform-1',
@@ -175,6 +182,7 @@ describe('platform IAM projection', () => {
       total: 1,
       users: [expect.objectContaining({ displayName: 'registry-admin', status: 'inactive' })],
     });
+    expect(state.listUsersCalls.at(-1)).toMatchObject({ enabled: false });
     await expect(
       listPlatformUsers({ page: 1, pageSize: 25, role: 'missing_role' })
     ).resolves.toMatchObject({ total: 0 });

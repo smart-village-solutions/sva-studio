@@ -244,19 +244,17 @@ export const UserListPage = () => {
               </Button>
             </>
           }
-          rowActions={(user) => (
-            isPlatformScope ? null : (
-              <>
-                <Button asChild size="sm" variant="outline">
-                  <Link to="/admin/users/$userId" params={{ userId: user.id }}>
-                    {t('admin.users.actions.edit')}
-                  </Link>
-                </Button>
-                <Button type="button" size="sm" variant="destructive" onClick={() => setDeactivateDialog({ mode: 'single', userId: user.id })}>
-                  {t('admin.users.actions.deactivate')}
-                </Button>
-              </>
-            )
+          rowActions={isPlatformScope ? undefined : (user) => (
+            <>
+              <Button asChild size="sm" variant="outline">
+                <Link to="/admin/users/$userId" params={{ userId: user.id }}>
+                  {t('admin.users.actions.edit')}
+                </Link>
+              </Button>
+              <Button type="button" size="sm" variant="destructive" onClick={() => setDeactivateDialog({ mode: 'single', userId: user.id })}>
+                {t('admin.users.actions.deactivate')}
+              </Button>
+            </>
           )}
         />
       </StudioListPageTemplate>

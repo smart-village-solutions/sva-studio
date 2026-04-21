@@ -1,12 +1,13 @@
 import type { IamRoleListItem, IamUserImportSyncReport, IamUserListItem } from '@sva/core';
 
-import type { IdentityListedUser, IdentityRole } from '../identity-provider-port.js';
+import type { IdentityListedUser, IdentityRole, IdentityUserListQuery } from '../identity-provider-port.js';
 
 import { resolveIdentityProvider } from './shared-runtime.js';
 import { logger, trackKeycloakCall } from './shared-observability.js';
 import type { UserStatus } from './types.js';
 
 const PLATFORM_KEYCLOAK_PAGE_SIZE = 100;
+const PLATFORM_USER_ROLE_PROJECTION_CONCURRENCY = 5;
 const PLATFORM_ROLE_LEVEL_BY_NAME: Readonly<Record<string, number>> = {
   system_admin: 100,
   instance_registry_admin: 90,
@@ -58,6 +59,17 @@ const matchesUserFilters = (
     .some((value) => value.toLowerCase().includes(query));
 };
 
+const matchesUserSearchFilter = (user: IamUserListItem, search?: string): boolean => {
+  if (!search) {
+    return true;
+  }
+
+  const query = search.toLowerCase();
+  return [user.displayName, user.email, user.keycloakSubject]
+    .filter((value): value is string => typeof value === 'string')
+    .some((value) => value.toLowerCase().includes(query));
+};
+
 const isBuiltInRealmRole = (role: IdentityRole): boolean =>
   BUILTIN_REALM_ROLE_NAMES.has(role.externalName) || role.externalName.startsWith('default-roles-');
 
@@ -85,7 +97,9 @@ const mapPlatformRole = (role: IdentityRole): IamRoleListItem => {
   };
 };
 
-const listAllPlatformUsers = async (): Promise<{
+const listAllPlatformUsers = async (
+  query: Omit<IdentityUserListQuery, 'first' | 'max'> = {}
+): Promise<{
   readonly realm: string;
   readonly users: readonly IdentityListedUser[];
 }> => {
@@ -97,13 +111,74 @@ const listAllPlatformUsers = async (): Promise<{
   const users: IdentityListedUser[] = [];
   for (let first = 0; ; first += PLATFORM_KEYCLOAK_PAGE_SIZE) {
     const page = await trackKeycloakCall('list_platform_users', () =>
-      identityProvider.provider.listUsers({ first, max: PLATFORM_KEYCLOAK_PAGE_SIZE })
+      identityProvider.provider.listUsers({ ...query, first, max: PLATFORM_KEYCLOAK_PAGE_SIZE })
     );
     users.push(...page);
     if (page.length < PLATFORM_KEYCLOAK_PAGE_SIZE) {
       return { realm: identityProvider.realm, users };
     }
   }
+};
+
+const mapPlatformUser = (
+  user: IdentityListedUser,
+  roleNames: readonly string[] = []
+): IamUserListItem => ({
+  id: `platform:${user.externalId}`,
+  keycloakSubject: user.externalId,
+  displayName: resolveDisplayName(user),
+  email: user.email,
+  status: mapUserStatus(user),
+  roles: roleNames.map((roleName) => ({
+    roleId: `platform:${roleName}`,
+    roleKey: roleName,
+    roleName,
+    roleLevel: PLATFORM_ROLE_LEVEL_BY_NAME[roleName] ?? 0,
+  })),
+});
+
+const resolvePlatformUserRoleNames = async (
+  input: {
+    readonly users: readonly IdentityListedUser[];
+    readonly provider: {
+      readonly listUserRoleNames: (externalId: string) => Promise<readonly string[]>;
+    };
+    readonly requestId?: string;
+    readonly traceId?: string;
+  }
+): Promise<ReadonlyMap<string, readonly string[]>> => {
+  const roleNamesBySubject = new Map<string, readonly string[]>();
+  const workers = Array.from(
+    { length: Math.min(PLATFORM_USER_ROLE_PROJECTION_CONCURRENCY, input.users.length) },
+    async (_, workerIndex) => {
+      for (let index = workerIndex; index < input.users.length; index += PLATFORM_USER_ROLE_PROJECTION_CONCURRENCY) {
+        const user = input.users[index];
+        if (!user) {
+          continue;
+        }
+        try {
+          roleNamesBySubject.set(
+            user.externalId,
+            await trackKeycloakCall('list_platform_user_roles', () =>
+              input.provider.listUserRoleNames(user.externalId)
+            )
+          );
+        } catch (error) {
+          logger.warn('Platform user role projection degraded', {
+            operation: 'list_platform_users',
+            request_id: input.requestId,
+            trace_id: input.traceId,
+            user_ref: user.externalId,
+            error: error instanceof Error ? error.message : String(error),
+          });
+          roleNamesBySubject.set(user.externalId, []);
+        }
+      }
+    }
+  );
+
+  await Promise.all(workers);
+  return roleNamesBySubject;
 };
 
 export const listPlatformUsers = async (input: {
@@ -120,48 +195,43 @@ export const listPlatformUsers = async (input: {
     throw new Error('platform_identity_provider_not_configured');
   }
 
-  const { users: listedUsers } = await listAllPlatformUsers();
-  const roleNamesBySubject = new Map<string, readonly string[]>();
-  await Promise.all(
-    listedUsers.map(async (user) => {
-      try {
-        roleNamesBySubject.set(
-          user.externalId,
-          await trackKeycloakCall('list_platform_user_roles', () =>
-            identityProvider.provider.listUserRoleNames(user.externalId)
-          )
-        );
-      } catch (error) {
-        logger.warn('Platform user role projection degraded', {
-          operation: 'list_platform_users',
-          request_id: input.requestId,
-          trace_id: input.traceId,
-          user_ref: user.externalId,
-          error: error instanceof Error ? error.message : String(error),
-        });
-        roleNamesBySubject.set(user.externalId, []);
-      }
-    })
-  );
+  const keycloakQuery: Omit<IdentityUserListQuery, 'first' | 'max'> =
+    input.status === 'active'
+      ? { enabled: true }
+      : input.status === 'inactive'
+        ? { enabled: false }
+        : {};
+  const { users: listedUsers } = await listAllPlatformUsers(keycloakQuery);
+  const listedUserBySubject = new Map(listedUsers.map((user) => [user.externalId, user]));
 
-  const projectedUsers = listedUsers
-    .map<IamUserListItem>((user) => ({
-      id: `platform:${user.externalId}`,
-      keycloakSubject: user.externalId,
-      displayName: resolveDisplayName(user),
-      email: user.email,
-      status: mapUserStatus(user),
-      roles: (roleNamesBySubject.get(user.externalId) ?? []).map((roleName) => ({
-        roleId: `platform:${roleName}`,
-        roleKey: roleName,
-        roleName,
-        roleLevel: PLATFORM_ROLE_LEVEL_BY_NAME[roleName] ?? 0,
-      })),
-    }))
-    .filter((user) => matchesUserFilters(user, input))
+  const projectedUsersWithoutRoles = listedUsers
+    .map((user) => mapPlatformUser(user))
+    .filter((user) => matchesUserSearchFilter(user, input.search))
     .sort((left, right) => left.displayName.localeCompare(right.displayName, 'de'));
 
   const start = Math.max(0, (input.page - 1) * input.pageSize);
+  const visibleSubjects = new Set(
+    projectedUsersWithoutRoles.slice(start, start + input.pageSize).map((user) => user.keycloakSubject)
+  );
+  const searchedSubjects = new Set(projectedUsersWithoutRoles.map((user) => user.keycloakSubject));
+  const roleProjectionCandidates = input.role
+    ? listedUsers.filter((user) => searchedSubjects.has(user.externalId))
+    : listedUsers.filter((user) => visibleSubjects.has(user.externalId));
+  const roleNamesBySubject = await resolvePlatformUserRoleNames({
+    users: roleProjectionCandidates,
+    provider: identityProvider.provider,
+    requestId: input.requestId,
+    traceId: input.traceId,
+  });
+  const projectedUsers = projectedUsersWithoutRoles
+    .map((user) =>
+      mapPlatformUser(
+        listedUserBySubject.get(user.keycloakSubject) ?? { externalId: user.keycloakSubject },
+        roleNamesBySubject.get(user.keycloakSubject) ?? []
+      )
+    )
+    .filter((user) => matchesUserFilters(user, input));
+
   return {
     users: projectedUsers.slice(start, start + input.pageSize),
     total: projectedUsers.length,

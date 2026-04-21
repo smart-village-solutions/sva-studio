@@ -59,7 +59,7 @@ export const listRolesInternal = async (
     return roleCheck;
   }
   if (!ctx.user.instanceId) {
-    return listPlatformRolesInternal(ctx, requestContext.requestId);
+    return listPlatformRolesInternal(ctx, requestContext.requestId, requestContext.traceId);
   }
   const actorResolution = await resolveActorInfo(request, ctx, { requireActorMembership: true });
   if ('error' in actorResolution) {

@@ -5,7 +5,7 @@ import { jsonResponse } from '../shared/db-helpers.js';
 import { readString } from '../shared/input-readers.js';
 
 import { asApiItem, asApiList, createApiError, readPage } from './api-helpers.js';
-import { ADMIN_ROLES } from './constants.js';
+import { ADMIN_ROLES, PLATFORM_RATE_LIMIT_INSTANCE_ID } from './constants.js';
 import { validateCsrf } from './csrf.js';
 import { ensureFeature, getFeatureFlags } from './feature-flags.js';
 import { listPlatformRoles, listPlatformUsers, runPlatformRoleReconcile } from './platform-iam.js';
@@ -21,6 +21,22 @@ const platformKeycloakError = (message: string, requestId?: string): Response =>
     reason_code: 'platform_keycloak_unavailable',
     scope_kind: 'platform',
   });
+
+const isPlatformIdentityProviderConfigurationError = (error: unknown): boolean =>
+  error instanceof Error && error.message === 'platform_identity_provider_not_configured';
+
+const platformIdentityProviderConfigurationError = (requestId?: string): Response =>
+  createApiError(
+    503,
+    'keycloak_unavailable',
+    'Plattform-IAM ist nicht konfiguriert.',
+    requestId,
+    {
+      dependency: 'keycloak',
+      reason_code: 'platform_identity_provider_not_configured',
+      scope_kind: 'platform',
+    }
+  );
 
 export const listPlatformUsersInternal = async (
   request: Request,
@@ -42,7 +58,7 @@ export const listPlatformUsersInternal = async (
     return roleCheck;
   }
   const rateLimit = consumeRateLimit({
-    instanceId: 'platform',
+    instanceId: PLATFORM_RATE_LIMIT_INSTANCE_ID,
     actorKeycloakSubject: ctx.user.id,
     scope: 'read',
     requestId: requestContext.requestId,
@@ -85,10 +101,11 @@ export const listPlatformUsersInternal = async (
 
 export const listPlatformRolesInternal = async (
   ctx: AuthenticatedRequestContext,
-  requestId?: string
+  requestId?: string,
+  traceId?: string
 ): Promise<Response> => {
   const rateLimit = consumeRateLimit({
-    instanceId: 'platform',
+    instanceId: PLATFORM_RATE_LIMIT_INSTANCE_ID,
     actorKeycloakSubject: ctx.user.id,
     scope: 'read',
     requestId,
@@ -100,7 +117,17 @@ export const listPlatformRolesInternal = async (
   try {
     const roles = await listPlatformRoles();
     return jsonResponse(200, asApiList(roles, { page: 1, pageSize: Math.max(1, roles.length), total: roles.length }, requestId));
-  } catch {
+  } catch (error) {
+    logger.error('Platform role list failed', {
+      operation: 'list_platform_roles',
+      scope_kind: 'platform',
+      request_id: requestId,
+      trace_id: traceId,
+      error: sanitizeRoleErrorMessage(error),
+    });
+    if (isPlatformIdentityProviderConfigurationError(error)) {
+      return platformIdentityProviderConfigurationError(requestId);
+    }
     return platformKeycloakError('Plattform-Rollen konnten nicht aus Keycloak geladen werden.', requestId);
   }
 };
@@ -116,7 +143,7 @@ export const reconcilePlatformRolesInternal = async (
     return csrfError;
   }
   const rateLimit = consumeRateLimit({
-    instanceId: 'platform',
+    instanceId: PLATFORM_RATE_LIMIT_INSTANCE_ID,
     actorKeycloakSubject: ctx.user.id,
     scope: 'write',
     requestId,

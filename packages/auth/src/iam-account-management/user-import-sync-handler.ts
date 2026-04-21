@@ -13,7 +13,7 @@ import { jsonResponse } from '../shared/db-helpers.js';
 import { buildLogContext } from '../shared/log-context.js';
 import { IamSchemaDriftError } from '../runtime-errors.js';
 
-import { ADMIN_ROLES } from './constants.js';
+import { ADMIN_ROLES, PLATFORM_RATE_LIMIT_INSTANCE_ID } from './constants.js';
 import { asApiItem, createApiError } from './api-helpers.js';
 import { validateCsrf } from './csrf.js';
 import { protectField } from './encryption.js';
@@ -770,7 +770,7 @@ export const syncUsersFromKeycloakInternal = async (
       return csrfError;
     }
     const rateLimit = consumeRateLimit({
-      instanceId: 'platform',
+      instanceId: PLATFORM_RATE_LIMIT_INSTANCE_ID,
       actorKeycloakSubject: ctx.user.id,
       scope: 'write',
       requestId: requestContext.requestId,

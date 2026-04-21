@@ -80,15 +80,15 @@ export const listUsersInternal = async (
   request: Request,
   ctx: AuthenticatedRequestContext
 ): Promise<Response> => {
+  if (!ctx.user.instanceId) {
+    return listPlatformUsersInternal(request, ctx);
+  }
+
   const { page, pageSize } = readPage(request);
   const url = new URL(request.url);
   const status = readString(url.searchParams.get('status')) as UserStatus | undefined;
   const role = readString(url.searchParams.get('role'));
   const search = readString(url.searchParams.get('search'));
-
-  if (!ctx.user.instanceId) {
-    return listPlatformUsersInternal(request, ctx);
-  }
 
   const access = await resolveUserReadAccess(request, ctx);
   if (access.response) {

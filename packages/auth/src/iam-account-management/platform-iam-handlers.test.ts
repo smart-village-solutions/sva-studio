@@ -106,6 +106,8 @@ import {
   listPlatformUsersInternal,
   reconcilePlatformRolesInternal,
 } from './platform-iam-handlers.js';
+import { consumeRateLimit } from './rate-limit.js';
+import { logger } from './shared.js';
 
 const ctx = { user: { id: 'kc-platform', roles: ['system_admin'] } } as never;
 
@@ -177,6 +179,27 @@ describe('platform IAM handlers', () => {
     state.platformRoleError = new Error('keycloak denied');
     const rolesFailure = await listPlatformRolesInternal(ctx, 'req-platform');
     expect(rolesFailure.status).toBe(503);
+    expect(logger.error).toHaveBeenCalledWith(
+      'Platform role list failed',
+      expect.objectContaining({
+        operation: 'list_platform_roles',
+        request_id: 'req-platform',
+        scope_kind: 'platform',
+      })
+    );
+
+    state.platformRoleError = new Error('platform_identity_provider_not_configured');
+    const rolesConfigurationFailure = await listPlatformRolesInternal(ctx, 'req-platform');
+    expect(rolesConfigurationFailure.status).toBe(503);
+    await expect(rolesConfigurationFailure.json()).resolves.toMatchObject({
+      error: {
+        code: 'keycloak_unavailable',
+        details: {
+          reason_code: 'platform_identity_provider_not_configured',
+          scope_kind: 'platform',
+        },
+      },
+    });
 
     state.platformReconcileError = new Error('forbidden');
     const reconcileFailure = await reconcilePlatformRolesInternal(
@@ -220,6 +243,9 @@ describe('platform IAM handlers', () => {
       ctx
     );
     expect(userRateLimitResponse.status).toBe(429);
+    expect(consumeRateLimit).toHaveBeenLastCalledWith(
+      expect.objectContaining({ instanceId: '__platform__' })
+    );
 
     state.rateLimitResponse = null;
     state.csrfResponse = new Response(JSON.stringify({ error: { code: 'csrf_validation_failed' } }), { status: 403 });

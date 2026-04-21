@@ -223,10 +223,7 @@ export const RolesPage = () => {
               />
             </div>
           }
-          rowActions={(role) => {
-            if (isPlatformScope) {
-              return null;
-            }
+          rowActions={isPlatformScope ? undefined : (role) => {
             const isReadOnly = role.isSystemRole || role.managedBy !== 'studio';
 
             return (

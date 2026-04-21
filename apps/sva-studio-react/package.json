@@ -44,7 +44,7 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.11.1",
-    "@codecov/rollup-plugin": "^1.9.1",
+    "@codecov/rollup-plugin": "^2.0.1",
     "@playwright/test": "^1.58.2",
     "@tanstack/devtools-vite": "^0.6.0",
     "@testing-library/dom": "^10.4.0",

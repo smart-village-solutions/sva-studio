@@ -1,30 +1,28 @@
 ## ADDED Requirements
-### Requirement: Mandantenisolation von Medien-Assets zur Laufzeit
+### Requirement: Medienmanagement-Architektur in arc42 dokumentieren
 
-Das System SHALL Media Assets strikt anhand ihrer `instanceId` isolieren.
+Das System SHALL die Architekturwirkung des Medienmanagements in den betroffenen arc42-Abschnitten nachvollziehbar dokumentieren.
 
-#### Scenario: Zugriff auf Asset einer fremden Instanz wird verhindert
+#### Scenario: Externe Medieninfrastruktur ist im Systemkontext beschrieben
 
-- **WHEN** ein Benutzer oder Dienst ein Media Asset anfragt
-- **THEN** prüft das System, ob das Asset zur aktiven Instanz des Aufrufers gehört
-- **AND** ein Asset einer anderen Instanz wird nicht zurückgegeben, auch wenn die Asset-ID bekannt ist
+- **WHEN** Medienmanagement einen Objektspeicher, CDN- oder geschützte Auslieferungspfade einführt
+- **THEN** beschreiben die arc42-Abschnitte für Kontext, Deployment und Querschnitt die externen Systeme, Vertrauensgrenzen und Laufzeitverantwortlichkeiten
+- **AND** sie duplizieren keine fachlichen Laufzeitregeln aus den Capability-Spezifikationen
 
-### Requirement: Referenzintegrität beim Löschen von Assets
+#### Scenario: Medienbausteine sind in der Baustein- und Laufzeitsicht verortet
 
-Das System SHALL sicherstellen, dass ein Media Asset nicht gelöscht werden kann, solange aktive `MediaReference`-Einträge darauf verweisen.
+- **WHEN** die Medien-Capability umgesetzt wird
+- **THEN** dokumentiert die arc42-Bausteinsicht die hostseitigen Medienbausteine, Schnittstellen und Abhängigkeiten zu Content, IAM und Audit
+- **AND** die Laufzeitsicht beschreibt Upload, Variantenableitung, Verwendungsnachweis und kontrollierte Auslieferung auf Architektur-Ebene
 
-#### Scenario: Löschversuch bei aktivem Referenzbestand schlägt kontrolliert fehl
+#### Scenario: Querschnittliche Medienregeln referenzieren die fachlichen Specs
 
-- **WHEN** ein Benutzer ein Asset löschen will und mindestens eine aktive `MediaReference` auf dieses Asset verweist
-- **THEN** lehnt das System die Löschung fail-closed ab
-- **AND** die Ablehnung ist auditierbar und für den Benutzer nachvollziehbar
+- **WHEN** Mandantentrennung, Löschschutz, geschützte Auslieferung oder Audit im Architekturkapitel behandelt werden
+- **THEN** verweisen die Dokumentationsabschnitte auf `media-management`, `content-management`, `iam-access-control` und `iam-auditing`
+- **AND** die Laufzeitregeln bleiben in diesen fachlichen Spezifikationen führend
 
-### Requirement: Autorisierungspflicht für alle geschützten Auslieferungspfade
+#### Scenario: ADR für Package- und Storage-Entscheidungen ist verlinkt
 
-Das System SHALL sicherstellen, dass geschützte Medien ausschließlich über autorisierte Pfade erreichbar sind.
-
-#### Scenario: Direktaufruf eines geschützten Mediums ohne gültigen Berechtigungsnachweis schlägt fehl
-
-- **WHEN** ein Zugriff auf ein als geschützt markiertes Medium ohne gültigen Berechtigungsnachweis erfolgt
-- **THEN** verweigert das System den Zugriff unabhängig davon, ob der Storage-Pfad bekannt ist
-- **AND** es werden keine Metadaten oder Vorschaudaten des Mediums offengelegt
+- **WHEN** die Umsetzung startet
+- **THEN** dokumentiert ADR-037 Package-Zuschnitt, Storage-/Processing-Vertrag und Bezug zum Plugin-SDK-Vertrag aus ADR-034
+- **AND** `docs/architecture/09-architecture-decisions.md` referenziert diese Entscheidung

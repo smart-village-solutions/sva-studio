@@ -3,7 +3,7 @@
 - [ ] 1.2 `content-management` um referenzbasierte Mediennutzung statt direkter Dateikopplung ergänzen
 - [ ] 1.3 `iam-access-control` um Medienrechte für Upload, Pflege, Referenzierung, Löschung und geschützte Auslieferung ergänzen
 - [ ] 1.4 `iam-auditing` um revisionssichere Auditspur für Medienereignisse ergänzen
-- [ ] 1.5 Technische Entscheidungen zu Package-Zuschnitt, Storage-Vertrag, Variantenstrategie, Referenzmodell und Worker-Schnitt in `design.md` dokumentieren; ADR-035 für Package-Zuschnitt und Storage-/Processing-Vertrag als Entwurf in `docs/adr/` anlegen (Querverweis zu ADR-034 herstellen) – **vor** Umsetzung in Abschnitt 2
+- [ ] 1.5 Technische Entscheidungen zu Package-Zuschnitt, Storage-Vertrag, Variantenstrategie, Referenzmodell und Worker-Schnitt in `design.md` dokumentieren; ADR-037 für Package-Zuschnitt und Storage-/Processing-Vertrag als Entwurf in `docs/adr/` anlegen (Querverweis zu ADR-034 herstellen) – **vor** Umsetzung in Abschnitt 2
 - [ ] 1.6 Architekturwirkung und betroffene arc42-Abschnitte im Change explizit referenzieren; dabei arc42-03 (S3-Objektspeicher als neues externes System im Kontextdiagramm) und arc42-04 (Medienmanagement als hostseitige Querschnittsstrategie) prüfen und ggf. ergänzen
 
 ## 2. Umsetzung
@@ -25,5 +25,5 @@
   - **Typ-Tests:** `MediaAsset`, `MediaVariant`, `MediaReference` als exportierte Typen aus `packages/media` über `test:types`
   - **E2E-MVP-Scope:** Upload-Flow (Bild hochladen, Metadaten pflegen) + Lösch-Blockierungs-Flow
 - [ ] 3.2 Relevante Dokumentation unter `docs/` sowie die betroffenen arc42-Abschnitte (03–11) aktualisieren; folgende Guides als Stubs anlegen: `docs/guides/media-management.md` (Zielgruppe: Redakteure – Upload, Rollen, Nutzungstransparenz) und bestehenden `docs/guides/plugin-development.md` um Medien-Extension-Points und verbotene Direktzugriffe ergänzen
-- [ ] 3.3 ADR-035 für Package-Zuschnitt `packages/media` und Storage-/Processing-Vertrag finalisieren (Entwurf aus Task 1.5); in `docs/architecture/09-architecture-decisions.md` verlinken; Querverweis zu ADR-034 (Plugin-SDK-Vertrag) sicherstellen
+- [ ] 3.3 ADR-037 für Package-Zuschnitt `packages/media` und Storage-/Processing-Vertrag finalisieren (Entwurf aus Task 1.5); in `docs/architecture/09-architecture-decisions.md` verlinken; Querverweis zu ADR-034 (Plugin-SDK-Vertrag) sicherstellen
 - [ ] 3.4 `openspec validate add-media-management --strict` ausführen

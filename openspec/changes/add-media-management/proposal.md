@@ -30,6 +30,6 @@ Benötigt wird deshalb eine eigenständige hostseitige Capability für Medienman
   - `docs/architecture/06-runtime-view.md`
   - `docs/architecture/07-deployment-view.md`
   - `docs/architecture/08-cross-cutting-concepts.md`
-  - `docs/architecture/09-architecture-decisions.md` (ADR-035 eintragen)
+  - `docs/architecture/09-architecture-decisions.md` (ADR-037 eintragen)
   - `docs/architecture/10-quality-requirements.md`
   - `docs/architecture/11-risks-and-technical-debt.md` (Async-Variantenpfad als bekannte technische Schuld, CDN/PII-Risiko)

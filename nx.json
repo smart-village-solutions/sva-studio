@@ -14,6 +14,18 @@
   },
   "workspaceLayout": { "appsDir": "apps", "libsDir": "packages" },
   "targetDefaults": {
+    "build": {
+      "cache": true,
+      "inputs": ["production", "^production"]
+    },
+    "check:runtime": {
+      "cache": true,
+      "inputs": ["production", "^production"]
+    },
+    "lint": {
+      "cache": true,
+      "inputs": ["default", "^production"]
+    },
     "test:unit": { "cache": true, "inputs": ["default", "^production", "testing"] },
     "test:coverage": {
       "cache": true,
@@ -25,6 +37,14 @@
         "{workspaceRoot}/vitest.workspace.ts"
       ],
       "outputs": ["{projectRoot}/coverage"]
+    },
+    "test:integration": {
+      "cache": true,
+      "inputs": ["default", "^production", "testing"]
+    },
+    "typecheck": {
+      "cache": true,
+      "inputs": ["production", "^production", "frontendTooling"]
     }
   },
   "namedInputs": {

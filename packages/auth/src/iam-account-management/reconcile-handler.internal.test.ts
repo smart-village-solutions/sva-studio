@@ -29,6 +29,12 @@ const state = vi.hoisted(() => ({
 }));
 
 vi.mock('@sva/sdk/server', () => ({
+  createSdkLogger: () => ({
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  }),
   getWorkspaceContext: () => ({ requestId: 'req-reconcile' }),
 }));
 
@@ -59,6 +65,10 @@ vi.mock('./feature-flags.js', () => ({
 
 vi.mock('./rate-limit.js', () => ({
   consumeRateLimit: vi.fn(() => null),
+}));
+
+vi.mock('./platform-iam-handlers.js', () => ({
+  reconcilePlatformRolesInternal: vi.fn(),
 }));
 
 vi.mock('./shared.js', () => ({
@@ -118,6 +128,7 @@ import { runRoleCatalogReconciliation } from './reconcile-core';
 const ctx = {
   user: {
     id: 'kc-1',
+    instanceId: 'de-musterhausen',
     roles: ['system_admin'],
   },
 } as never;

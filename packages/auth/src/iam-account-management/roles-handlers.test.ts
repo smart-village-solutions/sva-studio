@@ -96,6 +96,10 @@ vi.mock('./rate-limit.js', () => ({
   consumeRateLimit: vi.fn(() => null),
 }));
 
+vi.mock('./platform-iam-handlers.js', () => ({
+  listPlatformRolesInternal: vi.fn(),
+}));
+
 vi.mock('./shared-actor-resolution.js', () => ({
   requireRoles: vi.fn(() => null),
   resolveActorInfo: vi.fn(async () => state.actorResolution),
@@ -139,6 +143,7 @@ import { createRoleInternal, listPermissionsInternal, listRolesInternal, updateR
 const ctx = {
   user: {
     id: 'kc-1',
+    instanceId: 'de-musterhausen',
     roles: ['system_admin'],
   },
 } as never;

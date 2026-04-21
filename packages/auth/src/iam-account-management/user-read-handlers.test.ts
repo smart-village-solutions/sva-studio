@@ -127,6 +127,10 @@ vi.mock('./rate-limit.js', () => ({
   consumeRateLimit: vi.fn(() => state.rateLimitResult),
 }));
 
+vi.mock('./platform-iam-handlers.js', () => ({
+  listPlatformUsersInternal: vi.fn(),
+}));
+
 vi.mock('./types.js', () => ({
   USER_STATUS: ['active', 'inactive', 'pending'],
 }));
@@ -150,7 +154,7 @@ describe('user-read-handlers', () => {
       const { listUsersInternal } = await import('./user-read-handlers');
 
       const request = new Request('http://localhost/users?page=0&pageSize=10');
-      const ctx = { user: { id: 'actor-1' } } as any;
+      const ctx = { user: { id: 'actor-1', instanceId: 'test-instance' } } as any;
 
       const response = await listUsersInternal(request, ctx);
 
@@ -164,7 +168,7 @@ describe('user-read-handlers', () => {
       const { listUsersInternal } = await import('./user-read-handlers');
 
       const request = new Request('http://localhost/users?status=active');
-      const ctx = { user: { id: 'actor-1' } } as any;
+      const ctx = { user: { id: 'actor-1', instanceId: 'test-instance' } } as any;
 
       const response = await listUsersInternal(request, ctx);
 
@@ -175,7 +179,7 @@ describe('user-read-handlers', () => {
       const { listUsersInternal } = await import('./user-read-handlers');
 
       const request = new Request('http://localhost/users?status=invalid_status');
-      const ctx = { user: { id: 'actor-1' } } as any;
+      const ctx = { user: { id: 'actor-1', instanceId: 'test-instance' } } as any;
 
       const response = await listUsersInternal(request, ctx);
 
@@ -192,7 +196,7 @@ describe('user-read-handlers', () => {
       const { listUsersInternal } = await import('./user-read-handlers');
 
       const request = new Request('http://localhost/users');
-      const ctx = { user: { id: 'actor-1' } } as any;
+      const ctx = { user: { id: 'actor-1', instanceId: 'test-instance' } } as any;
 
       const response = await listUsersInternal(request, ctx);
 
@@ -205,7 +209,7 @@ describe('user-read-handlers', () => {
       const { getUserInternal } = await import('./user-read-handlers');
 
       const request = new Request('http://localhost/users/user-1');
-      const ctx = { user: { id: 'actor-1' } } as any;
+      const ctx = { user: { id: 'actor-1', instanceId: 'test-instance' } } as any;
 
       const response = await getUserInternal(request, ctx);
 
@@ -220,7 +224,7 @@ describe('user-read-handlers', () => {
       const { getUserInternal } = await import('./user-read-handlers');
 
       const request = new Request('http://localhost/users/nonexistent');
-      const ctx = { user: { id: 'actor-1' } } as any;
+      const ctx = { user: { id: 'actor-1', instanceId: 'test-instance' } } as any;
 
       const response = await getUserInternal(request, ctx);
 
@@ -245,7 +249,7 @@ describe('user-read-handlers', () => {
       const { getUserInternal } = await import('./user-read-handlers');
 
       const request = new Request('http://localhost/users/user-1');
-      const ctx = { user: { id: 'actor-1' } } as any;
+      const ctx = { user: { id: 'actor-1', instanceId: 'test-instance' } } as any;
 
       const response = await getUserInternal(request, ctx);
 

@@ -1,5 +1,5 @@
 import type { AdminResourceDefinition, PluginDefinition, PluginRouteGuard, RouteFactory } from '@sva/sdk';
-import { mergeAdminResourceDefinitions } from '@sva/sdk';
+import { mergeAdminResourceDefinitions } from '@sva/sdk/admin-resources';
 import { createRoute, type AnyRoute, type RootRoute, type RouteComponent } from '@tanstack/react-router';
 
 import { createAccountUiRouteGuard, type AccountUiRouteGuardKey } from './account-ui.routes.js';

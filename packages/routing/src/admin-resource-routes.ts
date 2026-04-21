@@ -13,12 +13,7 @@ type UiRouteDefinition = {
   readonly path: string;
 };
 
-type AdminResourceBindingResolver = {
-  readonly list: BindingKey;
-  readonly create: BindingKey;
-  readonly detail: BindingKey;
-  readonly history?: BindingKey;
-};
+type AdminResourceBindingResolver = { readonly list: BindingKey; readonly create: BindingKey; readonly detail: BindingKey; readonly history?: BindingKey };
 
 type AdminResourceRouteKind = 'list' | 'create' | 'detail' | 'history';
 type AdminResourceViewKind = keyof AdminResourceDefinition['views'];
@@ -39,6 +34,8 @@ const coreContentAdminResource = {
 } as const satisfies AdminResourceDefinition;
 
 const toAdminRoutePath = (basePath: string) => `/admin/${basePath}` as const;
+const toAdminCreateRoutePath = (basePath: string) => `${basePath}/new`;
+const toAdminHistoryRoutePath = (detailPath: string) => `${detailPath}/history`;
 
 export const adminDetailParamNameByBinding = {
   contentDetail: 'id',
@@ -53,12 +50,7 @@ export const adminDetailParamNameByBinding = {
 const hasBindingKey = (bindings: AppRouteBindings, bindingKey: string): bindingKey is BindingKey =>
   Object.prototype.hasOwnProperty.call(bindings, bindingKey);
 
-const resolveBindingKey = (
-  bindings: AppRouteBindings,
-  resource: AdminResourceDefinition,
-  viewName: AdminResourceViewKind,
-  bindingKey: string | undefined
-): BindingKey => {
+const resolveBindingKey = (bindings: AppRouteBindings, resource: AdminResourceDefinition, viewName: AdminResourceViewKind, bindingKey: string | undefined): BindingKey => {
   if (typeof bindingKey !== 'string' || !hasBindingKey(bindings, bindingKey)) {
     throw new Error(`unknown_admin_resource_binding_key:${resource.resourceId}:${viewName}:${bindingKey ?? ''}`);
   }
@@ -66,10 +58,7 @@ const resolveBindingKey = (
   return bindingKey;
 };
 
-const getAdminResourceBindings = (
-  bindings: AppRouteBindings,
-  resource: AdminResourceDefinition
-): AdminResourceBindingResolver => ({
+const getAdminResourceBindings = (bindings: AppRouteBindings, resource: AdminResourceDefinition): AdminResourceBindingResolver => ({
   list: resolveBindingKey(bindings, resource, 'list', resource.views.list.bindingKey),
   create: resolveBindingKey(bindings, resource, 'create', resource.views.create.bindingKey),
   detail: resolveBindingKey(bindings, resource, 'detail', resource.views.detail.bindingKey),
@@ -97,9 +86,7 @@ const withCoreContentAdminResource = (resources: readonly AdminResourceDefinitio
 };
 
 const resolveCanonicalContentAdminRoutePath = (resources: readonly AdminResourceDefinition[]): string => {
-  const contentResource = withCoreContentAdminResource(resources).find(
-    (resource) => resource.resourceId === coreContentAdminResource.resourceId
-  );
+  const contentResource = withCoreContentAdminResource(resources).find((resource) => resource.resourceId === coreContentAdminResource.resourceId);
 
   return toAdminRoutePath(contentResource?.basePath ?? coreContentAdminResource.basePath);
 };
@@ -176,7 +163,7 @@ const createAdminResourceRouteDefinitions = (
       {
         binding: resolvedBindings.create,
         guard: resolveAdminResourceGuard(resource, 'create'),
-        path: `${basePath}/new`,
+        path: toAdminCreateRoutePath(basePath),
       },
       {
         binding: resolvedBindings.detail,
@@ -188,7 +175,7 @@ const createAdminResourceRouteDefinitions = (
             {
               binding: resolvedBindings.history,
               guard: resolveAdminResourceGuard(resource, 'history'),
-              path: `${detailPath}/history`,
+              path: toAdminHistoryRoutePath(detailPath),
             } satisfies UiRouteDefinition,
           ]
         : []),
@@ -247,7 +234,7 @@ export const createAdminResourceRouteFactories = (
 export const createLegacyContentAliasFactories = (
   resources: readonly AdminResourceDefinition[] = []
 ): readonly AppRouteFactory[] => {
-  const aliasPaths = ['/content', '/content/new', '/content/$contentId'] as const;
+  const aliasPaths = [LEGACY_CONTENT_ALIAS_PREFIX, toAdminCreateRoutePath(LEGACY_CONTENT_ALIAS_PREFIX), '/content/$contentId'] as const;
   const canonicalContentPath = resolveCanonicalContentAdminRoutePath(resources);
 
   return aliasPaths.map(

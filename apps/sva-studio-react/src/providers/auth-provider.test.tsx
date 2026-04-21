@@ -419,6 +419,9 @@ describe('AuthProvider', () => {
       expect.objectContaining({
         method: 'POST',
         credentials: 'include',
+        headers: {
+          'x-sva-logout-intent': 'user',
+        },
         signal: expect.any(AbortSignal),
       })
     );

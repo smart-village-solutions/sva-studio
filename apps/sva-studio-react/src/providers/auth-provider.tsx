@@ -39,6 +39,8 @@ type AuthMeResponse = {
 
 const AUTH_ME_ENDPOINT = '/auth/me';
 const AUTH_LOGOUT_ENDPOINT = '/auth/logout';
+const LOGOUT_INTENT_HEADER = 'x-sva-logout-intent';
+const LOGOUT_INTENT_VALUE = 'user';
 const SILENT_SSO_MESSAGE_TYPE = 'sva-auth:silent-sso';
 const isProductionMode = import.meta.env.PROD;
 const isTestRuntime = () =>
@@ -267,6 +269,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     try {
       await fetchWithRequestTimeout(AUTH_LOGOUT_ENDPOINT, {
         method: 'POST',
+        headers: {
+          [LOGOUT_INTENT_HEADER]: LOGOUT_INTENT_VALUE,
+        },
       }, {
         timeoutMs: 5_000,
       });

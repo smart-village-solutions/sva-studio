@@ -33,7 +33,7 @@ export default function Header({
   isMobileNavigationOpen = false,
   onOpenMobileNavigation,
 }: HeaderProps) {
-  const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
+  const { user, isAuthenticated, isLoading: isAuthLoading, logout } = useAuth();
   const { locale, setLocale } = useLocale();
   const { mode, toggleMode } = useTheme();
   const [isHydrated, setIsHydrated] = React.useState(false);
@@ -68,11 +68,9 @@ export default function Header({
         <Button asChild className="ml-2" variant="outline">
           <Link to="/account">{t('shell.sidebar.account')}</Link>
         </Button>
-        <form action="/auth/logout" method="post" className="ml-2">
-          <Button type="submit" variant="destructive">
-            {t('shell.header.logout')}
-          </Button>
-        </form>
+        <Button type="button" className="ml-2" variant="destructive" onClick={() => void logout()}>
+          {t('shell.header.logout')}
+        </Button>
       </>
     );
   }

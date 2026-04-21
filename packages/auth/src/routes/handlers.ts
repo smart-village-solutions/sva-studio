@@ -275,6 +275,8 @@ window.parent.postMessage({ type: 'sva-auth:silent-sso', status: '${status}' }, 
   );
 
 const DEFAULT_POST_LOGIN_REDIRECT = '/';
+const LOGOUT_INTENT_HEADER = 'x-sva-logout-intent';
+const LOGOUT_INTENT_VALUE = 'user';
 
 const resolveCallbackInput = (request: Request) => {
   const url = new URL(request.url);
@@ -681,6 +683,19 @@ export const logoutHandler = async (request: Request): Promise<Response> => {
     }
 
     try {
+      if (request.headers.get(LOGOUT_INTENT_HEADER) !== LOGOUT_INTENT_VALUE) {
+        logger.warn('Logout rejected without explicit user intent', {
+          endpoint: '/auth/logout',
+          operation: 'logout',
+          reason_code: 'missing_logout_intent',
+          ...buildLogContext(undefined),
+        });
+
+        return toJsonErrorResponse(400, 'logout_intent_required', 'Logout requires explicit user intent.', {
+          requestId: getWorkspaceContext().requestId,
+        });
+      }
+
       const authConfig = await resolveAuthConfigForRequest(request);
       const authScope = getScopeFromAuthConfig(authConfig);
       const { sessionCookieName, postLogoutRedirectUri, silentSsoSuppressCookieName, silentSsoSuppressAfterLogoutMs } =

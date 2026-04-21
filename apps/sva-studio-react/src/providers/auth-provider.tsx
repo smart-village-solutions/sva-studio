@@ -5,7 +5,7 @@ import {
   logBrowserOperationStart,
   logBrowserOperationSuccess,
 } from '../lib/browser-operation-logging';
-import { createLoginHref } from '../lib/auth-navigation';
+import { createLoginHref, createSessionExpiredHref, resolveCurrentReturnTo } from '../lib/auth-navigation';
 import { fetchWithRequestTimeout } from '../lib/iam-api';
 
 type SessionUser = {
@@ -21,6 +21,7 @@ type AuthState = {
   readonly error: Error | null;
   readonly hasResolvedSession: boolean;
   readonly isRecoveringSession: boolean;
+  readonly sessionRecoveryFailed: boolean;
 };
 
 type AuthContextValue = AuthState & {
@@ -39,7 +40,10 @@ type AuthMeResponse = {
 
 const AUTH_ME_ENDPOINT = '/auth/me';
 const AUTH_LOGOUT_ENDPOINT = '/auth/logout';
+const LOGOUT_INTENT_HEADER = 'x-sva-logout-intent';
+const LOGOUT_INTENT_VALUE = 'user';
 const SILENT_SSO_MESSAGE_TYPE = 'sva-auth:silent-sso';
+const AUTH_KNOWN_SESSION_STORAGE_KEY = 'sva_auth_had_session';
 const isProductionMode = import.meta.env.PROD;
 const isTestRuntime = () =>
   import.meta.env.MODE === 'test' ||
@@ -50,6 +54,39 @@ const AUTH_DEBUG_ENABLED = !isProductionMode;
 const authLogger = createOperationLogger('auth-provider', AUTH_DEBUG_ENABLED ? 'debug' : 'info');
 
 const AuthContext = React.createContext<AuthContextValue | null>(null);
+
+const readHadKnownSession = (): boolean => {
+  try {
+    return globalThis.window?.localStorage.getItem(AUTH_KNOWN_SESSION_STORAGE_KEY) === '1';
+  } catch {
+    return false;
+  }
+};
+
+const markKnownSession = (): void => {
+  try {
+    globalThis.window?.localStorage.setItem(AUTH_KNOWN_SESSION_STORAGE_KEY, '1');
+  } catch {
+    // Storage can be unavailable in restricted browser contexts.
+  }
+};
+
+const clearKnownSession = (): void => {
+  try {
+    globalThis.window?.localStorage.removeItem(AUTH_KNOWN_SESSION_STORAGE_KEY);
+  } catch {
+    // Storage can be unavailable in restricted browser contexts.
+  }
+};
+
+const redirectToSessionExpiredNotice = (): void => {
+  const currentWindow = globalThis.window;
+  if (!currentWindow || currentWindow.location.pathname === '/') {
+    return;
+  }
+
+  currentWindow.location.assign(createSessionExpiredHref(resolveCurrentReturnTo()));
+};
 
 const parseAuthUser = (payload: unknown): SessionUser | null => {
   if (!payload || typeof payload !== 'object') {
@@ -70,6 +107,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [error, setError] = React.useState<Error | null>(null);
   const [hasResolvedSession, setHasResolvedSession] = React.useState(false);
   const [isRecoveringSession, setIsRecoveringSession] = React.useState(false);
+  const [sessionRecoveryFailed, setSessionRecoveryFailed] = React.useState(false);
 
   const isMountedRef = React.useRef(true);
 
@@ -179,6 +217,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       });
 
       if (!response.ok && response.status === 401) {
+        const hadKnownSession = readHadKnownSession();
+
         if (!silent && isMountedRef.current) {
           setUser(null);
           setHasResolvedSession(true);
@@ -194,6 +234,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
         if (isMountedRef.current) {
           setIsRecoveringSession(false);
+        }
+
+        if (!recovered && hadKnownSession && !silent && isMountedRef.current) {
+          setSessionRecoveryFailed(true);
+          redirectToSessionExpiredNotice();
         }
 
         if (recovered) {
@@ -222,6 +267,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       if (isMountedRef.current) {
         setUser(payload);
         setHasResolvedSession(true);
+        setSessionRecoveryFailed(false);
+      }
+      if (payload) {
+        markKnownSession();
       }
       logBrowserOperationSuccess(authLogger, 'auth_session_authenticated', {
         operation: silent ? 'invalidate_permissions' : 'load_session',
@@ -267,6 +316,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     try {
       await fetchWithRequestTimeout(AUTH_LOGOUT_ENDPOINT, {
         method: 'POST',
+        headers: {
+          [LOGOUT_INTENT_HEADER]: LOGOUT_INTENT_VALUE,
+        },
       }, {
         timeoutMs: 5_000,
       });
@@ -285,9 +337,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setIsLoading(false);
         setHasResolvedSession(true);
         setIsRecoveringSession(false);
+        setSessionRecoveryFailed(false);
       }
+      clearKnownSession();
     }
-  }, [attemptSilentSessionRecovery]);
+  }, []);
 
   const value = React.useMemo<AuthContextValue>(
     () => ({
@@ -297,11 +351,22 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       error,
       hasResolvedSession,
       isRecoveringSession,
+      sessionRecoveryFailed,
       refetch,
       logout,
       invalidatePermissions,
     }),
-    [error, hasResolvedSession, invalidatePermissions, isLoading, isRecoveringSession, logout, refetch, user]
+    [
+      error,
+      hasResolvedSession,
+      invalidatePermissions,
+      isLoading,
+      isRecoveringSession,
+      logout,
+      refetch,
+      sessionRecoveryFailed,
+      user,
+    ]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

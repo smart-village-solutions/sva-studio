@@ -1,11 +1,12 @@
-import type { IamUserDetail, IamUserListItem } from '@sva/core';
-
+import type { IamUserDetail } from '@sva/core';
 import type { AuthenticatedRequestContext } from '../middleware.server.js';
 import { jsonResponse } from '../shared/db-helpers.js';
 import { readString } from '../shared/input-readers.js';
 
 import { asApiItem, asApiList, createApiError, readPage } from './api-helpers.js';
+import { listPlatformUsersInternal } from './platform-iam-handlers.js';
 import { consumeRateLimit } from './rate-limit.js';
+import { resolveTenantKeycloakUsersWithPagination } from './tenant-keycloak-users.js';
 import {
   createDatabaseApiError,
   logUserProjectionDegraded,
@@ -16,71 +17,72 @@ import {
   logger,
   withInstanceScopedDb,
 } from './shared.js';
-import type { UserStatus } from './types.js';
-import { USER_STATUS } from './types.js';
+import { USER_STATUS, type UserStatus } from './types.js';
 import { resolveUserDetail } from './user-detail-query.js';
-import { resolveUsersWithPagination } from './user-list-query.js';
 import {
   applyCanonicalUserDetailProjection,
   applyCanonicalUserListProjection,
-  isRecoverableUserProjectionError,
   resolveKeycloakRoleNames,
   resolveProjectedMainserverCredentialState,
 } from './user-projection.js';
 import { resolveUserTimeline } from './user-timeline-query.js';
 
-const USER_LIST_ROLE_PROJECTION_CONCURRENCY = 5;
+const createTenantAdminClientNotConfiguredResponse = (actor: {
+  readonly instanceId: string;
+  readonly requestId?: string;
+}): Response =>
+  createApiError(
+    409,
+    'tenant_admin_client_not_configured',
+    'Tenant-lokale Keycloak-Administration ist nicht konfiguriert.',
+    actor.requestId,
+    {
+      dependency: 'keycloak',
+      execution_mode: 'tenant_admin',
+      instance_id: actor.instanceId,
+      reason_code: 'tenant_admin_client_not_configured',
+    }
+  );
 
-const resolveListProjectionInputs = async (input: {
-  actor: {
-    instanceId: string;
-    requestId?: string;
-    traceId?: string;
-  };
-  users: readonly IamUserListItem[];
-}) =>
-  {
-    const keycloakRoleNamesBySubject = new Map<string, readonly string[] | null>();
-    const workers = Array.from(
-      { length: Math.min(USER_LIST_ROLE_PROJECTION_CONCURRENCY, input.users.length) },
-      async (_, workerIndex) => {
-        for (let index = workerIndex; index < input.users.length; index += USER_LIST_ROLE_PROJECTION_CONCURRENCY) {
-          const user = input.users[index];
-          if (!user) {
-            continue;
-          }
-          try {
-            keycloakRoleNamesBySubject.set(
-              user.keycloakSubject,
-              await resolveKeycloakRoleNames(input.actor.instanceId, user.keycloakSubject)
-            );
-          } catch (error) {
-            if (!isRecoverableUserProjectionError(error)) {
-              throw error;
-            }
-            logger.warn('IAM user list role projection degraded', {
-              operation: 'list_users',
-              instance_id: input.actor.instanceId,
-              request_id: input.actor.requestId,
-              trace_id: input.actor.traceId,
-              user_id: user.id,
-              error: error.message,
-            });
-            keycloakRoleNamesBySubject.set(user.keycloakSubject, null);
-          }
-        }
-      }
-    );
+const listTenantUsersWithCanonicalProjection = async (input: {
+  readonly instanceId: string;
+  readonly page: number;
+  readonly pageSize: number;
+  readonly status?: UserStatus;
+  readonly role?: string;
+  readonly search?: string;
+  readonly requestId?: string;
+  readonly traceId?: string;
+}) => {
+  const resolved = await withInstanceScopedDb(input.instanceId, (client) =>
+    resolveTenantKeycloakUsersWithPagination({ client, ...input })
+  );
+  const users = await withInstanceScopedDb(input.instanceId, (client) =>
+    applyCanonicalUserListProjection({
+      client,
+      instanceId: input.instanceId,
+      users: resolved.users,
+      keycloakRoleNamesBySubject: resolved.keycloakRoleNamesBySubject,
+    })
+  );
 
-    await Promise.all(workers);
-
-    return keycloakRoleNamesBySubject;
-  };
+  return { users, total: resolved.total };
+};
 
 export const listUsersInternal = async (
   request: Request,
   ctx: AuthenticatedRequestContext
 ): Promise<Response> => {
+  if (!ctx.user.instanceId) {
+    return listPlatformUsersInternal(request, ctx);
+  }
+
+  const { page, pageSize } = readPage(request);
+  const url = new URL(request.url);
+  const status = readString(url.searchParams.get('status')) as UserStatus | undefined;
+  const role = readString(url.searchParams.get('role'));
+  const search = readString(url.searchParams.get('search'));
+
   const access = await resolveUserReadAccess(request, ctx);
   if (access.response) {
     return access.response;
@@ -94,43 +96,26 @@ export const listUsersInternal = async (
   if (rateLimit) {
     return rateLimit;
   }
-  const { page, pageSize } = readPage(request);
-  const url = new URL(request.url);
-  const status = readString(url.searchParams.get('status')) as UserStatus | undefined;
-  const role = readString(url.searchParams.get('role'));
-  const search = readString(url.searchParams.get('search'));
 
   if (status && !USER_STATUS.includes(status)) {
     return createApiError(400, 'invalid_request', 'Ungültiger Status-Filter.', access.actor.requestId);
   }
 
   try {
-    const resolved = await withInstanceScopedDb(access.actor.instanceId, (client) =>
-      resolveUsersWithPagination(client, {
-        instanceId: access.actor.instanceId,
-        page,
-        pageSize,
-        status,
-        role: role ?? undefined,
-        search: search ?? undefined,
-      })
-    );
-    const keycloakRoleNamesBySubject = await resolveListProjectionInputs({
-      actor: access.actor,
-      users: resolved.users,
+    const resolved = await listTenantUsersWithCanonicalProjection({
+      instanceId: access.actor.instanceId,
+      page,
+      pageSize,
+      status,
+      role: role ?? undefined,
+      search: search ?? undefined,
+      requestId: access.actor.requestId,
+      traceId: access.actor.traceId,
     });
-    const users = await withInstanceScopedDb(access.actor.instanceId, (client) =>
-      applyCanonicalUserListProjection({
-        client,
-        instanceId: access.actor.instanceId,
-        users: resolved.users,
-        keycloakRoleNamesBySubject,
-      })
-    );
 
     return jsonResponse(
       200,
-      asApiList(users, { page, pageSize, total: resolved.total }, access.actor.requestId)
+      asApiList(resolved.users, { page, pageSize, total: resolved.total }, access.actor.requestId)
     );
   } catch (error) {
     logger.error('IAM user list failed', {
@@ -140,6 +125,9 @@ export const listUsersInternal = async (
       trace_id: access.actor.traceId,
       error: error instanceof Error ? error.message : String(error),
     });
+    if (error instanceof Error && error.message === 'tenant_admin_client_not_configured') {
+      return createTenantAdminClientNotConfiguredResponse(access.actor);
+    }
     return createDatabaseApiError(error, access.actor.requestId);
   }
 };

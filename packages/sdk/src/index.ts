@@ -3,8 +3,21 @@ import { coreVersion } from '@sva/core';
 export const sdkVersion = coreVersion;
 export type { RouteFactory } from '@sva/core';
 export type {
+  BuildTimeRegistry,
+  BuildTimeRegistryInput,
+} from './build-time-registry.js';
+export type {
+  AdminResourceDefinition,
+  AdminResourceGuard,
+  AdminResourceViewDefinition,
+  AdminResourceViews,
+} from './admin-resources.js';
+export type {
   PluginActionDefinition,
   PluginActionRegistryEntry,
+  PluginAdminResourceDefinition,
+  PluginAuditEventDefinition,
+  PluginAuditEventRegistryEntry,
   PluginDefinition,
   PluginNavigationItem,
   PluginNavigationSection,
@@ -21,13 +34,26 @@ export type {
 } from './content-types.js';
 export {
   createContentTypeRegistry,
+  definePluginContentTypes,
   genericContentTypeDefinition,
   getContentTypeDefinition,
 } from './content-types.js';
 export {
+  createBuildTimeRegistry,
+} from './build-time-registry.js';
+export {
+  createAdminResourceRegistry,
+  definePluginAdminResources,
+  mergeAdminResourceDefinitions,
+} from './admin-resources.js';
+export {
   createPluginActionRegistry,
+  createPluginAuditEventRegistry,
   createPluginRegistry,
   definePluginActions,
+  definePluginAuditEvents,
+  mergePluginAdminResourceDefinitions,
+  mergePluginAuditEventDefinitions,
   mergePluginActions,
   mergePluginContentTypes,
   mergePluginNavigationItems,

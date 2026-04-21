@@ -21,7 +21,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      NX_CLOUD_ENCRYPTION_KEY: ${{ secrets.NX_CLOUD_ENCRYPTION_KEY }}
       SVA_MAINSERVER_SCHEMA_GRAPHQL_URL: ${{ secrets.SVA_MAINSERVER_SCHEMA_GRAPHQL_URL }}
       SVA_MAINSERVER_SCHEMA_OAUTH_TOKEN_URL: ${{ secrets.SVA_MAINSERVER_SCHEMA_OAUTH_TOKEN_URL }}
       SVA_MAINSERVER_SCHEMA_CLIENT_ID: ${{ secrets.SVA_MAINSERVER_SCHEMA_CLIENT_ID }}
@@ -35,8 +34,6 @@ jobs:
 
       - name: Setup workspace
         uses: ./.github/actions/setup-pnpm-workspace
-        with:
-          nx-cloud-encryption-key: ${{ secrets.NX_CLOUD_ENCRYPTION_KEY }}
 
       - name: Skip when schema diff secrets are missing
         if: env.SVA_MAINSERVER_SCHEMA_GRAPHQL_URL == '' || env.SVA_MAINSERVER_SCHEMA_OAUTH_TOKEN_URL == '' || env.SVA_MAINSERVER_SCHEMA_CLIENT_ID == '' || env.SVA_MAINSERVER_SCHEMA_CLIENT_SECRET == ''

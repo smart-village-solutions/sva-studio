@@ -7,6 +7,7 @@ import type {
   IdentityUserAttributes,
   CreateIdentityUserInput,
   IdentityRole,
+  IdentityRoleListQuery,
   IdentityProviderPort,
   IdentityUser,
   IdentityUserListQuery,
@@ -101,6 +102,7 @@ type KeycloakUserCreateResponse = {
 };
 
 export type KeycloakListUsersQuery = IdentityUserListQuery;
+export type KeycloakListRolesQuery = IdentityRoleListQuery;
 
 export type KeycloakAdminUser = {
   readonly id: string;
@@ -526,6 +528,65 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     }
   }
 
+  async assignRealmRoles(externalId: string, roles: readonly string[]): Promise<void> {
+    await this.assertWriteAvailability();
+    const uniqueRoleNames = [...new Set(roles)];
+    if (uniqueRoleNames.length === 0) {
+      return;
+    }
+    const availableRoles = await this.listRoles();
+    const availableByName = new Map(availableRoles.map((role) => [role.externalName, role]));
+    const roleMappings = uniqueRoleNames.map((roleName) => availableByName.get(roleName));
+    const missingRoles = uniqueRoleNames.filter((roleName, index) => !roleMappings[index]);
+    if (missingRoles.length > 0) {
+      throw new KeycloakAdminRequestError({
+        message: `Unknown Keycloak roles: ${missingRoles.join(', ')}`,
+        statusCode: 400,
+        code: 'unknown_role',
+        retryable: false,
+      });
+    }
+
+    await this.executeWithResilience<void>({
+      method: 'POST',
+      path: `/admin/realms/${encodePathSegment(this.realm)}/users/${encodePathSegment(externalId)}/role-mappings/realm`,
+      body: JSON.stringify(
+        roleMappings
+          .filter((role): role is IdentityRole => role !== undefined)
+          .map((role): KeycloakRealmRole => ({
+            id: role.id ?? role.externalName,
+            name: role.externalName,
+            description: role.description,
+            attributes: role.attributes,
+            composite: role.composite,
+            clientRole: role.clientRole,
+            containerId: role.containerId,
+          }))
+      ),
+      operation: 'assign_realm_roles',
+    });
+  }
+
+  async removeRealmRoles(externalId: string, roles: readonly string[]): Promise<void> {
+    await this.assertWriteAvailability();
+    const roleNames = new Set(roles);
+    if (roleNames.size === 0) {
+      return;
+    }
+    const currentRoleMappings = await this.readUserRoleMappings(externalId, 'remove_realm_roles_read_current');
+    const toRemove = currentRoleMappings.filter((role) => roleNames.has(role.name));
+    if (toRemove.length === 0) {
+      return;
+    }
+
+    await this.executeWithResilience<void>({
+      method: 'DELETE',
+      path: `/admin/realms/${encodePathSegment(this.realm)}/users/${encodePathSegment(externalId)}/role-mappings/realm`,
+      body: JSON.stringify(toRemove),
+      operation: 'remove_realm_roles',
+    });
+  }
+
   async listUserRoleNames(externalId: string): Promise<readonly string[]> {
     const currentRoleMappings = await this.readUserRoleMappings(externalId, 'list_user_roles');
     return currentRoleMappings.map((role) => role.name);
@@ -597,6 +658,49 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     }
   }
 
+  async countUsers(query?: Omit<KeycloakListUsersQuery, 'first' | 'max'>): Promise<number> {
+    if (this.isCircuitOpen()) {
+      logger.error('Keycloak read blocked because circuit breaker is open', {
+        operation: 'count_users',
+        mode: 'fail_fast',
+      });
+      throw new KeycloakAdminUnavailableError('Keycloak unavailable; user count cannot be loaded.');
+    }
+
+    const searchParams = new URLSearchParams();
+    if (query?.enabled !== undefined) {
+      searchParams.set('enabled', String(query.enabled));
+    }
+    for (const [key, value] of [
+      ['search', query?.search],
+      ['email', query?.email],
+      ['username', query?.username],
+    ] as const) {
+      if (value) {
+        searchParams.set(key, value);
+      }
+    }
+
+    const querySuffix = searchParams.size > 0 ? `?${searchParams.toString()}` : '';
+    try {
+      const count = await this.executeWithResilience<number>({
+        method: 'GET',
+        path: `/admin/realms/${encodePathSegment(this.realm)}/users/count${querySuffix}`,
+        operation: 'count_users',
+      });
+      return count;
+    } catch (error) {
+      if (this.isRetryableError(error)) {
+        logger.error('Keycloak read failed without fallback', {
+          operation: 'count_users',
+          mode: 'fail_fast',
+          reason: toRetryLogReason(error),
+        });
+      }
+      throw error;
+    }
+  }
+
   private async readUserRoleMappings(
     externalId: string,
     operation: string
@@ -612,7 +716,7 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     });
   }
 
-  async listRoles(): Promise<readonly IdentityRole[]> {
+  async listRoles(query?: KeycloakListRolesQuery): Promise<readonly IdentityRole[]> {
     if (this.isCircuitOpen()) {
       logger.error('Keycloak read blocked because circuit breaker is open', {
         operation: 'list_roles',
@@ -621,10 +725,24 @@ export class KeycloakAdminClient implements IdentityProviderPort {
       throw new KeycloakAdminUnavailableError('Keycloak unavailable; role list cannot be loaded.');
     }
 
+    const searchParams = new URLSearchParams();
+    for (const [key, value] of [
+      ['first', query?.first],
+      ['max', query?.max],
+    ] as const) {
+      if (value !== undefined) {
+        searchParams.set(key, String(value));
+      }
+    }
+    if (query?.search) {
+      searchParams.set('search', query.search);
+    }
+    const querySuffix = searchParams.size > 0 ? `?${searchParams.toString()}` : '';
+
     try {
       const roles = await this.executeWithResilience<KeycloakRealmRole[]>({
         method: 'GET',
-        path: `/admin/realms/${encodePathSegment(this.realm)}/roles`,
+        path: `/admin/realms/${encodePathSegment(this.realm)}/roles${querySuffix}`,
         operation: 'list_roles',
       });
       return roles.map(mapKeycloakRole);
@@ -638,6 +756,29 @@ export class KeycloakAdminClient implements IdentityProviderPort {
       }
       throw error;
     }
+  }
+
+  async countRoles(query?: Omit<KeycloakListRolesQuery, 'first' | 'max'>): Promise<number> {
+    if (this.isCircuitOpen()) {
+      logger.error('Keycloak read blocked because circuit breaker is open', {
+        operation: 'count_roles',
+        mode: 'fail_fast',
+      });
+      throw new KeycloakAdminUnavailableError('Keycloak unavailable; role count cannot be loaded.');
+    }
+
+    const searchParams = new URLSearchParams();
+    if (query?.search) {
+      searchParams.set('search', query.search);
+    }
+    const querySuffix = searchParams.size > 0 ? `?${searchParams.toString()}` : '';
+    const response = await this.executeWithResilience<number | { count?: number }>({
+      method: 'GET',
+      path: `/admin/realms/${encodePathSegment(this.realm)}/roles/count${querySuffix}`,
+      operation: 'count_roles',
+    });
+
+    return typeof response === 'number' ? response : response.count ?? 0;
   }
 
   async getRoleByName(externalName: string): Promise<IdentityRole | null> {

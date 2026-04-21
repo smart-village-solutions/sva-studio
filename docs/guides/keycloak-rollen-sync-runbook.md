@@ -79,8 +79,19 @@ Häufige Fehlercodes:
 1. `iam_role_sync_operations_total` nach `operation`, `result` und `error_code` auswerten.
 2. Prüfen, ob die Fehler nur den `retry`-Pfad oder alle Write-Operationen betreffen.
 3. `iam_keycloak_request_duration_seconds` und `iam_circuit_breaker_state` parallel prüfen.
-4. Bei `IDP_FORBIDDEN` sofort die Rollenmatrix des Service-Accounts gegen `docs/guides/keycloak-service-account-setup-iam.md` prüfen.
-5. Bei `DB_WRITE_FAILED` Postgres-Verfügbarkeit und Migration `0007_iam_role_catalog_sync.sql` verifizieren.
+4. Bei `IDP_FORBIDDEN` zuerst den Scope bestimmen:
+   - Root-Host/Platform-Scope: Plattform-Service-Account und Plattform-Realm prüfen.
+   - Tenant-Host/Instance-Scope: `tenantAdminClient.clientId`, Tenant-Admin-Client-Secret, Realm-Zuordnung und Rechte im Tenant-Realm prüfen.
+5. Bei Tenant-`IDP_FORBIDDEN` keinen Fallback auf globale Plattform-Credentials verwenden; stattdessen Tenant-Admin-Client über die Instanzverwaltung neu provisionieren, Secret rotieren oder den Tenant-Admin zurücksetzen.
+6. Die Rollenmatrix des betroffenen Service-Accounts gegen `docs/guides/keycloak-service-account-setup-iam.md` prüfen.
+7. Bei `DB_WRITE_FAILED` Postgres-Verfügbarkeit und Migration `0007_iam_role_catalog_sync.sql` verifizieren.
+
+### Tenant-User-Sync liefert `partial_failure`
+
+1. `manualReviewCount`, `updatedCount`, `skippedCount`, `totalKeycloakUsers` und `diagnostics.executionMode` aus dem Sync-Report sichern.
+2. Bei `executionMode=tenant_admin` fehlende Profilfelder, widersprüchliche `instanceId`-Attribute und übersprungene Fremdinstanz-Attribute prüfen.
+3. Ein HTTP-200-`partial_failure` ist kein UI-Crash; er bleibt ein fachlicher Nachlauf, bis die manuell zu prüfenden Keycloak-Profile bereinigt sind.
+4. Bei Root-Host-Sync muss `executionMode=platform_admin` erscheinen; andernfalls liegt eine Scope-Auflösungslücke vor.
 
 ### Drift-Backlog erhöht
 

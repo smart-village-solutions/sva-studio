@@ -21,7 +21,8 @@ gleichzeitig beeinflussen.
 - `Session.expiresAt` ist die fachlich führende Session-Gültigkeit; Cookie und Redis-TTL werden daraus abgeleitet
 - Sessions bleiben datensparsam und tragen nur Auth-Kern plus Lifecycle-Felder (`issuedAt`, `expiresAt`, `sessionVersion`)
 - Optionale Verschlüsselung von Tokens im Redis-Store via `ENCRYPTION_KEY`
-- Sessionen fuehren nur den minimalen Auth-Kern (`sub/id`, `instanceId`, Rollen); Profilattribute wie Name und E-Mail gehoeren nicht zum Pflichtumfang der Session
+- Sessionen führen nur den minimalen Auth-Kern (`sub/id`, `instanceId`, Rollen); Profilattribute wie Name und E-Mail gehören nicht zum Pflichtumfang der Session
+- Tenant-Sessions beziehen `instanceId` aus Host, Registry und Realm-Scope. Ein optionaler Token-Claim `instanceId` darf diesen Scope bestätigen, aber nicht ersetzen.
 - Forced Reauth pro Benutzer erfolgt über `minimumSessionVersion` und `forcedReauthAt`; Keycloak-Logout ist optional zuschaltbar
 - Silent SSO ist nur ein einmaliger Recovery-Versuch nach `401` und wird nach explizitem Logout temporär unterdrückt
 - Application-Level Column Encryption für IAM-PII-Felder (`email_ciphertext`, `display_name_ciphertext`)
@@ -44,11 +45,12 @@ gleichzeitig beeinflussen.
 - News-Payloads werden serverseitig contentType-spezifisch validiert; HTML-Inhalte durchlaufen eine Allowlist-Sanitisierung, bevor sie persistiert werden
 - DataClient unterstützt optionale Runtime-Schema-Validierung (`get(path, schema)`) für API-Responses
 - IAM-Server-Fassaden bleiben bewusst dünn; fachliche Erweiterungen gehören in Unterordner und nicht zurück in Monolith-Dateien
-- Profil-Synchronisation mit Keycloak bleibt zulaessig, erfolgt aber ausschliesslich ueber dedizierte Profil-/Sync-Flows und nicht implizit ueber Session- oder Logging-Pfade
+- Profil-Synchronisation mit Keycloak bleibt zulässig, erfolgt aber ausschließlich über dedizierte Profil-/Sync-Flows und nicht implizit über Session- oder Logging-Pfade
 
 ### IAM Multi-Tenancy, Caching und Audit-Logging
 
 - Mandantenisolation basiert auf kanonischem Scope `instanceId` als fachlichem String-Schlüssel (inkl. Mapping zu `workspace_id` in Logs)
+- Im tenant-spezifischen Login ist Host/Registry/Realm die führende Quelle für diesen Scope; ein fehlender benutzerbezogener `instanceId`-Claim blockiert die Session nicht.
 - Keycloak ist führend für Authentifizierung; Postgres ist führend für Studio-verwaltete IAM-Fachdaten
 - Autorisierungspfade erzwingen `instanceId`-Filterung vor Rollen-/Policy-Evaluation
 - Effektive Berechtigungen aggregieren direkte Nutzerrechte, direkte Rollen und gruppenvermittelte Rollen; die Provenance hält `direct_user`, `direct_role` und `group_role` als strukturierte Quelle fest
@@ -78,10 +80,14 @@ gleichzeitig beeinflussen.
 - Globale Instanzmutationen verwenden die dedizierte Plattformrolle `instance_registry_admin`
 - Instanzverwaltung ist nur auf dem Root-Host zulässig; Tenant-Hosts rendern keine globale Control Plane
 - Normale Tenant-Administration nutzt ausschließlich einen tenantlokalen Keycloak-Adminpfad; Plattform-/Root-Credentials sind dafür kein zulässiger Fallback
-- Root-/Plattform-Zugriff bleibt auf Instanz-Lifecycle, Provisioning, Reconcile und explizites Break-Glass begrenzt
-- Keycloak-Provisioning fuer Instanzen ist ein expliziter mehrstufiger Root-Host-Workflow aus Preflight, Plan, Ausfuehrung und persistiertem Schrittprotokoll
-- Registry-Daten und Keycloak-Mutation sind getrennte Aktionen; ein Speichern von Instanzdaten fuehrt keine implizite Keycloak-Aenderung aus
+- Root-/Plattform-Zugriff umfasst Instanz-Lifecycle, Provisioning, Platform-User, Platform-Rollen, Platform-Sync und explizites Break-Glass; tenantlokale Daten bleiben davon getrennt
+- User-, Rollen- und Rollenzuordnungsänderungen folgen einem Keycloak-first-Vertrag. Studio schreibt erst Keycloak, synchronisiert danach die lokalen Read-Models und macht Abweichungen über `mappingStatus`, `editability` und Diagnosecodes sichtbar.
+- Tenant-Userlisten richten sich nach dem Tenant-Realm in Keycloak; ungemappte oder mehrdeutige Benutzer werden als `unmapped` beziehungsweise `manual_review` angezeigt.
+- Keycloak-Built-in-Rollen bleiben als Rollenobjekte read-only, werden aber in Listen nicht ausgeblendet.
+- Keycloak-Provisioning für Instanzen ist ein expliziter mehrstufiger Root-Host-Workflow aus Preflight, Plan, Ausführung und persistiertem Schrittprotokoll
+- Registry-Daten und Keycloak-Mutation sind getrennte Aktionen; ein Speichern von Instanzdaten führt keine implizite Keycloak-Änderung aus
 - Registry-Lookups verwenden einen kurzen In-Process-L1-Cache mit expliziter Invalidation, aber ohne Stale-Serve-Strategie
+- Tenant-gebundene Requests arbeiten fail-closed, wenn der Session-User keinen gültigen `instanceId`-Kontext mehr trägt. Neue Login-Sessions erhalten diesen Kontext bereits beim Callback aus dem Auth-Scope; Middleware-Hydration bleibt nur Absicherung für alte oder beschädigte Sessions.
 
 ### Logging und Observability
 
@@ -89,10 +95,10 @@ gleichzeitig beeinflussen.
 - AsyncLocalStorage für `workspace_id`/request context
 - OTEL Pipeline für Logs + Metrics
 - Development nutzt zusätzlich eine lokale Debug-Konsole im Frontend; sie zeigt Browser-Logs und redaktierte Server-Logs, ist aber kein produktiver Telemetriepfad
-- Operative Logs enthalten keine Tokens, keine tokenhaltigen Redirect- oder Logout-URLs und keine decodierbaren JWT-Strings; zulaessig sind nur sichere Summary-Felder
+- Operative Logs enthalten keine Tokens, keine tokenhaltigen Redirect- oder Logout-URLs und keine decodierbaren JWT-Strings; zulässig sind nur sichere Summary-Felder
 - Runtime-Diagnostik folgt einem zweistufigen Modell: öffentliche Health-/API-Responses liefern knappe, nicht-sensitive `reason_code`s; OTEL liefert die tiefe technische Korrelation über Span-Attribute und Events
-- Der Server-Entry-Diagnosevertrag ist env-gesteuert: `SVA_SERVER_ENTRY_DEBUG=true` aktiviert strukturierte Logs fuer Request-Eingang, Auth-Dispatch, Delegation an TanStack Start und Antwortstatus, ohne Secrets oder Tokeninhalte zu protokollieren
-- Fuer produktionsnahe Remote-Profile ist `app-db-principal` ein eigener Diagnosevertrag: `/health/ready` muss `db`, `redis` und `keycloak` aus Sicht des laufenden `APP_DB_USER` als bereit ausweisen
+- Der Server-Entry-Diagnosevertrag ist env-gesteuert: `SVA_SERVER_ENTRY_DEBUG=true` aktiviert strukturierte Logs für Request-Eingang, Auth-Dispatch, Delegation an TanStack Start und Antwortstatus, ohne Secrets oder Tokeninhalte zu protokollieren
+- Für produktionsnahe Remote-Profile ist `app-db-principal` ein eigener Diagnosevertrag: `/health/ready` muss `db`, `redis` und `keycloak` aus Sicht des laufenden `APP_DB_USER` als bereit ausweisen
 - Die Studio-Root-Shell rendert in allen Environments einen sichtbaren Runtime-Health-Indikator auf Basis des bestehenden IAM-Readiness-Endpunkts; die UI zeigt nur sichere Statuszustände und `reason_code`s, keine rohen Provider- oder Stack-Details
 - Label-Whitelist und PII-Blockliste in OTEL/Promtail
 - IAM-Authorize/Cache-Logs nutzen strukturierte Operations (`cache_lookup`, `cache_invalidate`, `cache_stale_detected`, `cache_invalidate_failed`)
@@ -100,9 +106,11 @@ gleichzeitig beeinflussen.
 - Korrelationsfelder `request_id` und `trace_id` sind im IAM-Pfad verpflichtend
 - Scope-aware Logs enthalten zusätzlich `scope_kind`, `workspace_id` und im Tenant-Scope `instance_id`
 - Außerhalb des `AsyncLocalStorage`-Kontexts werden `request_id` und `trace_id` best effort aus validierten Headern (`X-Request-Id`, `traceparent`) extrahiert
-- Serverseitige JSON-Fehlerantworten für Auth-/IAM-Hotspots nutzen den flachen Vertrag `{ error: string, message?: string }` und setzen best effort `X-Request-Id`
+- Serverseitige JSON-Fehlerantworten für Auth-/IAM-Hotspots nutzen einen strukturierten Fehlervertrag mit `error.code`, `error.message`, optionalen `details`, `classification`, `status`, `recommendedAction` und allowlist-basierten `safeDetails`; `X-Request-Id` bleibt best effort und API-v1-Antworten dürfen zusätzlich `requestId` tragen
 - IAM-v1-Fehlerantworten dürfen additive `details` tragen, enthalten dort aber nur nicht-sensitive Diagnosefelder wie `reason_code`, `dependency`, `schema_object`, `expected_migration`, `actor_resolution` und `instance_id`
 - Für den Zielpfad der IAM-Diagnostik ist derselbe allowlist-basierte Feldsatz die Grundlage für einen classification-basierten öffentlichen Diagnosevertrag; tiefe Rohfehler bleiben weiterhin OTEL- und Serverlog-intern
+- Tenant-Host-Validierung unterscheidet öffentlich zwischen `tenant_not_found`, `tenant_inactive`, `tenant_lookup_failed` und Session-Hydration-Defekten wie `missing_session_instance_id`; UI und Betrieb erhalten damit denselben sicheren Diagnosekern statt generischer `403`-/`401`-Fälle
+- Widerspricht ein vorhandener OIDC-Claim `instanceId` dem Host-/Realm-Scope, wird der Callback mit `tenant_scope_conflict` fail-closed protokolliert und nicht als tenant-lose Session fortgesetzt.
 - Tenant-Admin-Fehler dürfen zusätzlich `execution_mode`, `auth_realm` und `provider_source` tragen, damit Realm- oder Control-Plane-Drift ohne Rohfehler analysierbar bleibt
 - Auth-, Resolver- und Audit-Fehler protokollieren redigiert nur `error_type`, `reason_code`, `dependency`, `scope_kind` und Korrelationsfelder; rohe Provider-/DB-Fehltexte bleiben außerhalb des Standard-Logs
 - IAM-Readiness und Diagnosepfade exponieren Schema-Drift bewusst knapp (`schema_drift`, `missing_table`, `missing_column`) statt rohe SQL-, Redis- oder Provider-Fehler an UI oder Browser weiterzugeben
@@ -111,6 +119,8 @@ gleichzeitig beeinflussen.
 - Der Sync-Report darf additive, nicht-sensitive Diagnosefelder wie `authRealm`, `providerSource`, `executionMode`, `matchedWithoutInstanceAttributeCount` und `skippedInstanceIds` zurückgeben, damit UI und Doctor Realm-/Instanz-Drift ohne `kcadm.sh` eingrenzen können
 - Role-Sync- und Reconcile-Pfade verwenden ausschließlich den SDK-Logger; `console.*` ist serverseitig ausgeschlossen
 - Role-Sync-Audit nutzt ein einheitliches Schema mit `workspace_id`, `operation`, `result`, `error_code?`, `request_id`, `trace_id?`, `span_id?`
+- Keycloak-Admin-UI-Diagnosen verwenden stabile objektbezogene Codes wie `missing_instance_attribute`, `mapping_missing`, `forbidden_role_mapping`, `read_only_federated_field` und `idp_forbidden`.
+- Sync- und Reconcile-Reports dürfen betroffene Objektlisten enthalten; öffentliche Payloads bleiben auf nicht-sensitive IDs, Zähler, Codes und Korrelationsdaten begrenzt.
 - Zusätzliche Metriken für den Rollenpfad: `iam_role_sync_operations_total` und `iam_role_drift_backlog`
 - Zusätzliche Cache-Metriken für IAM: `sva_iam_cache_lookup_total`, `sva_iam_cache_invalidation_duration_ms`, `sva_iam_cache_stale_entry_rate`
 - Redis-Infrastrukturmetriken werden über `redis-exporter` in denselben Monitoring-Stack eingespeist und mit den IAM-Cache-Metriken korreliert
@@ -135,7 +145,7 @@ gleichzeitig beeinflussen.
 
 ### Routing-Observability-Vertrag
 
-- `@sva/routing` verwendet einen optional injizierten `RoutingDiagnosticsHook` fuer client-shared Routing-Entscheidungen.
+- `@sva/routing` verwendet einen optional injizierten `RoutingDiagnosticsHook` für client-shared Routing-Entscheidungen.
 - Browser-Produktion bleibt ohne expliziten Hook No-op; es entsteht kein implizites Tracking normaler Navigation.
 - Client-shared Routing-Dateien importieren kein `@sva/sdk` oder `@sva/sdk/server`.
 - Serverseitige Bindung an den SDK-Logger erfolgt nur in `packages/routing/src/auth.routes.server.ts`.
@@ -150,21 +160,22 @@ gleichzeitig beeinflussen.
 - Auth-Flow mit klaren Redirect-Fehlerpfaden (`auth=error`, `auth=state-expired`)
 - Silent Session-Recovery arbeitet ohne Retry-Schleifen und fällt bei Browser-/IdP-Limits deterministisch auf aktiven Login zurück
 - Recovery-Pfade wie Silent-Recovery, Session-Hydration, Host-Fallbacks oder degradierte Projektionen gelten diagnostisch nicht automatisch als gesunder Zustand; ein erfolgreicher Workaround darf die zugrunde liegende Fehlerklasse nicht unsichtbar machen
+- Fehlende `instanceId` in bestehenden tenantgebundenen Sessions gilt explizit als Defektklasse `session_store_or_session_hydration` mit empfohlener Aktion `erneut_anmelden`, nicht als automatisch reparierbarer Zwischenzustand
 - Root-Route nutzt ein zentrales `errorComponent` für unbehandelte Laufzeitfehler mit Retry-Option
 - Runtime-Profile verwenden einen verbindlichen Diagnosepfad `pnpm env:doctor:<profil>`; manuelle `psql`-/Browser-Netzwerkdiagnose ist nur Fallback
 - Read-only Remote-Diagnostik trennt strikt zwischen Portainer-API als Primaerkanal und `quantum-cli` als Mutations-/Fallback-Kanal
-- Mutierende `studio`-Kommandos laufen regulaer ueber den expliziten lokalen Operator-Kontext `local-operator`; der bisherige CI-/Runner-Deploypfad ist hoechstens noch Legacy-Fallback
-- `studio` verwendet einen verbindlichen, fehlertoleranten Deploypfad ueber `Studio Image Build and Publish`, `Studio Image Verify` und den lokalen Einstieg `env:release:studio:local`; direkte `up`-/`update`-Deploys sind fuer Serverrollouts gesperrt
+- Mutierende `studio`-Kommandos laufen regulär über den expliziten lokalen Operator-Kontext `local-operator`; der bisherige CI-/Runner-Deploypfad ist höchstens noch Legacy-Fallback
+- `studio` verwendet einen verbindlichen, fehlertoleranten Deploypfad über `Studio Image Build and Publish`, `Studio Image Verify` und den lokalen Einstieg `env:release:studio:local`; direkte `up`-/`update`-Deploys sind für Serverrollouts gesperrt
 - Der produktionsnahe Releasevertrag klassifiziert Fehler verbindlich in `config`, `image`, `migration`, `bootstrap`, `startup`, `health`, `ingress` und `dependency`; spätere Phasen dürfen frühere Resultate nicht überschreiben
 - Release-Modus `schema-and-app` arbeitet fail-closed: ohne dokumentiertes Wartungsfenster startet kein orchestrierter Studio-Deploy
 - Release-Modus `schema-and-app` arbeitet zusätzlich fail-closed auf Basis dedizierter Swarm-Jobs: ohne erfolgreichen Exit-Code von `migrate` und `bootstrap`, Post-Migration-Assertions und Schema-Guard startet kein App-Rollout
 - Studio-Releases arbeiten fail-closed ohne `SVA_IMAGE_DIGEST`; ein nicht bestehender `image-smoke` blockiert jeden Rollout vor dem Stack-Update
-- Prod-nahe Paritaet fuer `studio` muss Root-Host, Tenant-Host und OIDC-Verhalten bewerten. Wenn dasselbe Digest bereits live laeuft, darf nur die Live-Evidenz dieses Digests wiederverwendet werden.
+- Prod-nahe Parität für `studio` muss Root-Host, Tenant-Host und OIDC-Verhalten bewerten. Wenn dasselbe Digest bereits live läuft, darf nur die Live-Evidenz dieses Digests wiederverwendet werden.
 - Der Live-Rollout-Render validiert vor `quantum-cli stacks update`, dass `app` die Netzwerke `internal` und `public` sowie die benoetigten Traefik-Labels weiterhin enthält; fehlende Einträge blockieren den Rollout fail-fast
 - Temp-Job-Stacks für `migrate` und `bootstrap` sind von Live-Rollouts strikt getrennt. Sie nutzen nur `<stack>_internal`, enthalten keinen `app`-Service und dürfen die Live-Spec von `studio_app` nicht mutieren
 - Deploy-Reports unterscheiden explizit zwischen `migration`, `bootstrap`, `health`, `verify` und `ingress_consistency`; ein Zustand `app 1/1`, aber externer `502` wird als eigener Drift-/Ingress-Fehler ausgewiesen
-- Vor dem Docker-Build prueft `verify:runtime-artifact` den finalen Node-Output `apps/sva-studio-react/.output/server/index.mjs` mit Artefakt-Assertions, temporaeren Migrationen und Health-Probes. Das Image-Verify prueft danach denselben Vertrag erneut am gepushten Digest.
-- Laufzeit-Patching im Container ist kein Normalpfad mehr. Wenn `SVA_ENABLE_RUNTIME_RECOVERY_PATCH` nicht explizit gesetzt ist, muss der Container mit dem unveraenderten Build-Output start- und health-faehig sein.
+- Vor dem Docker-Build prüft `verify:runtime-artifact` den finalen Node-Output `apps/sva-studio-react/.output/server/index.mjs` mit Artefakt-Assertions, temporären Migrationen und Health-Probes. Das Image-Verify prüft danach denselben Vertrag erneut am gepushten Digest.
+- Laufzeit-Patching im Container ist kein Normalpfad mehr. Wenn `SVA_ENABLE_RUNTIME_RECOVERY_PATCH` nicht explizit gesetzt ist, muss der Container mit dem unveränderten Build-Output start- und health-fähig sein.
 - IAM-Cache-Invalidierung folgt Event-first (Postgres NOTIFY) mit TTL/Recompute-Fallback
 - Redis-Lookup-, Snapshot-Write- und Recompute-Fehler im Autorisierungspfad enden fail-closed mit HTTP `503` und Fehlercode `database_unavailable`
 - Der Authorization-Cache gilt als `degraded`, wenn Redis-Latenz > `50 ms` oder die Recompute-Rate > `20/min` steigt; nach drei Redis-Fehlern wechselt der Zustand auf `failed`
@@ -213,6 +224,12 @@ gleichzeitig beeinflussen.
 ### i18n und Accessibility
 
 - Core- und Plugin-UI-Texte werden über gemeinsame i18n-Ressourcen aufgelöst; Plugin-Namespaces folgen der Konvention `<pluginId>.*`
+- Plugin-beigestellte registrierte Host-Identifier folgen einem einheitlichen Namespace-Modell:
+  - `contentType` im Format `<pluginId>.<name>`
+  - plugin-spezifische Admin-Ressourcen-IDs im Format `<pluginId>.<name>`
+  - plugin-spezifische Audit-Event-Typen im Format `<pluginId>.<name>`
+- Die technische Ownership liegt bei `PluginDefinition.id`; Plugins dürfen keine fremden oder reservierten Core-Namespaces wie `content`, `iam`, `admin` oder `core` belegen
+- Core-Identifier wie `generic`, `legal` oder hosteigene Admin-Ressourcen wie `content` bleiben ausdrücklich außerhalb dieser Plugin-Namespace-Pflicht
 - A11y wird pro Review/Template eingefordert, aber noch nicht zentral automatisiert
 - Rollen-Statusindikatoren in `/admin/roles` verwenden i18n-Labels für `synced`, `pending` und `failed`
 - Retry- und Reconcile-Aktionen bleiben über semantische Buttons und Testabdeckung tastatur- und screenreader-freundlich prüfbar
@@ -223,6 +240,8 @@ gleichzeitig beeinflussen.
   - Erstellungsansicht unter `/admin/<resource>/new`
   - Detail- und Bearbeitungsansicht unter `/admin/<resource>/$id`
 - Create- und Edit-Flows dieser Ressourcen werden nicht über lokalen Dialog-State der Listenansicht gesteuert; Listenaktionen navigieren immer auf die kanonische Zielroute
+- Die technische Quelle dieser Navigationskonvention ist ein deklarativer Admin-Ressourcenvertrag im SDK; Packages liefern nur Bindings und Guard-Referenzen, keine eigene Admin-Shell oder abweichende Top-Level-Pfade
+- Legacy-Einstiege dürfen nur als explizite Host-Aliase bestehen bleiben; für die Inhaltsverwaltung redirectet der Host `/content*` kontrolliert auf `/admin/content*`
 
 ### UI-Theming, Design-Tokens und Shell-Verhalten
 

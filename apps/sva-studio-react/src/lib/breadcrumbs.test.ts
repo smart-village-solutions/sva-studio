@@ -4,6 +4,14 @@ import './plugins';
 import { resolveBreadcrumbItems } from './breadcrumbs';
 
 describe('resolveBreadcrumbItems', () => {
+  it('returns content breadcrumbs for canonical admin content paths', () => {
+    expect(resolveBreadcrumbItems('/admin/content/content-1')).toEqual([
+      { href: '/', label: 'Übersicht' },
+      { href: '/admin/content', label: 'Inhalte' },
+      { label: 'Inhalt bearbeiten' },
+    ]);
+  });
+
   it('returns edit breadcrumbs for dynamic user detail pages', () => {
     expect(resolveBreadcrumbItems('/admin/users/123')).toEqual([
       { href: '/', label: 'Übersicht' },

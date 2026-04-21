@@ -4,6 +4,7 @@ import React from 'react';
 
 import { StudioDataTable, type StudioColumnDef } from '../../../components/StudioDataTable';
 import { StudioListPageTemplate } from '../../../components/StudioListPageTemplate';
+import { IamRuntimeDiagnosticDetails } from '../../../components/iam-runtime-diagnostic-details';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
@@ -152,7 +153,10 @@ export const InstancesPage = () => {
 
       {instancesApi.error ? (
         <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
-          <AlertDescription>{getErrorMessage(instancesApi.error)}</AlertDescription>
+          <AlertDescription className="flex flex-col gap-3">
+            <span>{getErrorMessage(instancesApi.error)}</span>
+            <IamRuntimeDiagnosticDetails error={instancesApi.error} />
+          </AlertDescription>
         </Alert>
       ) : null}
     </section>

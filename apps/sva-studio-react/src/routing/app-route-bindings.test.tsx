@@ -198,7 +198,7 @@ describe('appRouteBindings', () => {
     const { appRouteBindings } = await import('./app-route-bindings');
 
     routeState.params = {
-      contentId: 'content-7',
+      id: 'content-7',
       groupId: 'group-5',
       instanceId: 'instance-3',
       legalTextVersionId: 'legal-2',
@@ -269,7 +269,7 @@ describe('appRouteBindings', () => {
     const { appRouteBindings } = await import('./app-route-bindings');
 
     routeState.params = {
-      contentId: 123,
+      id: 123,
       groupId: null,
       instanceId: false,
       legalTextVersionId: { value: 'legal-2' },

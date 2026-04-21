@@ -20,6 +20,7 @@ describe('IamRuntimeDiagnosticDetails', () => {
             code: 'keycloak_unavailable',
             message: 'boom',
             classification: 'keycloak_reconcile',
+            diagnosticStatus: 'manuelle_pruefung_erforderlich',
             recommendedAction: 'rollenabgleich_pruefen',
             requestId: 'req-known',
             safeDetails: { sync_error_code: 'IDP_FORBIDDEN' },
@@ -29,6 +30,7 @@ describe('IamRuntimeDiagnosticDetails', () => {
     );
 
     expect(screen.getByText('Diagnose: Keycloak-Reconcile')).toBeTruthy();
+    expect(screen.getByText('Status: Manuelle Prüfung erforderlich')).toBeTruthy();
     expect(screen.getByText('Empfohlene Aktion: Rollenabgleich prüfen')).toBeTruthy();
     expect(screen.getByText('Sync-Fehlercode: IDP_FORBIDDEN')).toBeTruthy();
     expect(screen.getByText('Request-ID: req-known')).toBeTruthy();

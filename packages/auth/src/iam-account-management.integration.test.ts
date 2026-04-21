@@ -109,7 +109,7 @@ describe('iam-account-management tenant isolation integration', () => {
     expect(payload.error.details?.reason_code).toBe('missing_actor_account');
   });
 
-  it('returns 200 for list users when instanceId matches own tenant', async () => {
+  it('returns 409 for list users when own tenant has no tenant-admin client', async () => {
     const response = await listUsersHandler(
       new Request('http://localhost/api/v1/iam/users?instanceId=de-musterhausen', {
         method: 'GET',
@@ -118,11 +118,12 @@ describe('iam-account-management tenant isolation integration', () => {
 
     const payload = (await response.json()) as {
       data?: unknown[];
-      error?: { code: string; message: string };
+      error?: { code: string; details?: { reason_code?: string }; message: string };
     };
-    expect(response.status).toBe(200);
-    expect(Array.isArray(payload.data)).toBe(true);
-    expect(payload.error).toBeUndefined();
+    expect(response.status).toBe(409);
+    expect(payload.data).toBeUndefined();
+    expect(payload.error?.code).toBe('tenant_admin_client_not_configured');
+    expect(payload.error?.details?.reason_code).toBe('tenant_admin_client_not_configured');
   });
 
   it('returns 403 for get user when instanceId points to a foreign tenant', async () => {

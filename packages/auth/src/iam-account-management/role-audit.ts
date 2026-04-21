@@ -113,6 +113,18 @@ export const mapRoleListItem = (row: {
   managedBy: row.managed_by,
   description: row.description ?? undefined,
   isSystemRole: row.is_system_role,
+  editability:
+    row.is_system_role || row.managed_by !== 'studio'
+      ? 'read_only'
+      : 'editable',
+  diagnostics:
+    row.is_system_role
+      ? [{ code: 'system_role', objectId: row.id, objectType: 'role' }]
+      : row.managed_by === 'keycloak_builtin'
+        ? [{ code: 'built_in_role', objectId: row.id, objectType: 'role' }]
+        : row.managed_by === 'external'
+          ? [{ code: 'external_managed', objectId: row.id, objectType: 'role' }]
+          : undefined,
   roleLevel: row.role_level,
   memberCount: row.member_count,
   syncState: row.sync_state,

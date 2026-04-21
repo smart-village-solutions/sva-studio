@@ -232,7 +232,7 @@ describe('iam-contents mutations', () => {
     state.parseRequestBody.mockResolvedValueOnce({
       ok: true,
       rawBody: '{}',
-      data: { title: 'Startseite', contentType: 'news', payload: { teaser: '' } },
+      data: { title: 'Startseite', contentType: 'news.article', payload: { teaser: '' } },
     });
     vi.mocked(validateContentTypePayload).mockReturnValueOnce({
       ok: false,
@@ -251,7 +251,7 @@ describe('iam-contents mutations', () => {
     });
     state.loadContentById.mockResolvedValueOnce({
       id: 'content-1',
-      contentType: 'news',
+      contentType: 'news.article',
       title: 'Alt',
       payload: {},
       status: 'draft',
@@ -341,7 +341,7 @@ describe('iam-contents mutations', () => {
     });
     state.loadContentById.mockResolvedValueOnce({
       id: 'content-1',
-      contentType: 'news',
+      contentType: 'news.article',
       title: 'Alt',
       payload: {},
       status: 'draft',

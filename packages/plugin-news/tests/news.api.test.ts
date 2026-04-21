@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createNews, deleteNews, getNews, listNews, updateNews, type NewsFormInput } from '../src/news.api.js';
+import { NEWS_CONTENT_TYPE } from '../src/plugin.js';
 
 const sampleInput: NewsFormInput = {
   title: 'Neue News',
@@ -32,14 +33,47 @@ describe('news api', () => {
       ok: true,
       json: async () => ({
         data: [
-          { id: 'news-1', title: 'News', contentType: 'news', payload: sampleInput.payload, status: 'draft', author: 'Editor', createdAt: '2026-01-01', updatedAt: '2026-01-02' },
+          {
+            id: 'news-1',
+            title: 'News',
+            contentType: NEWS_CONTENT_TYPE,
+            payload: sampleInput.payload,
+            status: 'draft',
+            author: 'Editor',
+            createdAt: '2026-01-01',
+            updatedAt: '2026-01-02',
+          },
           { id: 'page-1', title: 'Page', contentType: 'generic', payload: sampleInput.payload, status: 'draft', author: 'Editor', createdAt: '2026-01-01', updatedAt: '2026-01-02' },
         ],
       }),
     } as Response);
 
     await expect(listNews()).resolves.toEqual([
-      expect.objectContaining({ id: 'news-1', contentType: 'news' }),
+      expect.objectContaining({ id: 'news-1', contentType: NEWS_CONTENT_TYPE }),
+    ]);
+  });
+
+  it('keeps legacy news records visible during the canonical content type rename', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        data: [
+          {
+            id: 'news-legacy',
+            title: 'Legacy News',
+            contentType: 'news',
+            payload: sampleInput.payload,
+            status: 'draft',
+            author: 'Editor',
+            createdAt: '2026-01-01',
+            updatedAt: '2026-01-02',
+          },
+        ],
+      }),
+    } as Response);
+
+    await expect(listNews()).resolves.toEqual([
+      expect.objectContaining({ id: 'news-legacy', contentType: 'news' }),
     ]);
   });
 
@@ -47,7 +81,7 @@ describe('news api', () => {
     vi.mocked(fetch).mockResolvedValueOnce({
       ok: true,
       json: async () => ({
-        data: { id: 'news-1', title: sampleInput.title, contentType: 'news', payload: sampleInput.payload, status: sampleInput.status, author: 'Editor', createdAt: '2026-01-01', updatedAt: '2026-01-02' },
+        data: { id: 'news-1', title: sampleInput.title, contentType: NEWS_CONTENT_TYPE, payload: sampleInput.payload, status: sampleInput.status, author: 'Editor', createdAt: '2026-01-01', updatedAt: '2026-01-02' },
       }),
     } as Response);
 
@@ -67,7 +101,7 @@ describe('news api', () => {
     );
     expect(JSON.parse(vi.mocked(fetch).mock.calls[0]?.[1]?.body as string)).toEqual({
       title: sampleInput.title,
-      contentType: 'news',
+      contentType: NEWS_CONTENT_TYPE,
       status: sampleInput.status,
       publishedAt: sampleInput.publishedAt,
       payload: sampleInput.payload,
@@ -79,7 +113,7 @@ describe('news api', () => {
       .mockResolvedValueOnce({
         ok: true,
         json: async () => ({
-          data: { id: 'news-1', title: sampleInput.title, contentType: 'news', payload: sampleInput.payload, status: sampleInput.status, author: 'Editor', createdAt: '2026-01-01', updatedAt: '2026-01-02' },
+          data: { id: 'news-1', title: sampleInput.title, contentType: NEWS_CONTENT_TYPE, payload: sampleInput.payload, status: sampleInput.status, author: 'Editor', createdAt: '2026-01-01', updatedAt: '2026-01-02' },
         }),
       } as Response)
       .mockResolvedValueOnce({
@@ -107,7 +141,7 @@ describe('news api', () => {
       .mockResolvedValueOnce({
         ok: true,
         json: async () => ({
-          data: { id: 'news-1', title: sampleInput.title, contentType: 'news', payload: sampleInput.payload, status: sampleInput.status, author: 'Editor', createdAt: '2026-01-01', updatedAt: '2026-01-02' },
+          data: { id: 'news-1', title: sampleInput.title, contentType: NEWS_CONTENT_TYPE, payload: sampleInput.payload, status: sampleInput.status, author: 'Editor', createdAt: '2026-01-01', updatedAt: '2026-01-02' },
         }),
       } as Response)
       .mockResolvedValueOnce({

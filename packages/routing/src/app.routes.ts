@@ -1,4 +1,4 @@
-import type { PluginDefinition } from '@sva/sdk';
+import type { AdminResourceDefinition, PluginDefinition } from '@sva/sdk';
 
 import { authRouteFactories } from './auth.routes.js';
 import {
@@ -17,14 +17,16 @@ export {
 
 export const getClientRouteFactories = ({
   bindings,
+  adminResources = [],
   plugins = [],
   diagnostics,
 }: {
   readonly bindings: AppRouteBindings;
+  readonly adminResources?: readonly AdminResourceDefinition[];
   readonly plugins?: readonly PluginDefinition[];
   readonly diagnostics?: import('./diagnostics.js').RoutingDiagnosticsHook;
 }): readonly AppRouteFactory[] => [
-  ...createUiRouteFactories(bindings, { diagnostics }),
+  ...createUiRouteFactories(bindings, { adminResources, diagnostics }),
   ...authRouteFactories,
   ...getPluginRouteFactories(plugins, { diagnostics }),
 ] as const;

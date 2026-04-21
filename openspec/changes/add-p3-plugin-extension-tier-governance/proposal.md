@@ -21,7 +21,6 @@ Nicht jedes Workspace-Package sollte dieselben Erweiterungsrechte im Studio erha
   - `iam-access-control`
 - Affected code:
   - `packages/sdk`
-  - `packages/plugin-example`
   - `packages/plugin-news`
   - potenziell weitere `packages/plugin-*`
 - Affected arc42 sections:

@@ -19,8 +19,8 @@ describe('plugin translations', () => {
 
   it('returns a scoped translator helper for plugin components', () => {
     registerPluginTranslationResolver((key) => `translated:${key}`);
-    const t = usePluginTranslation('example');
+    const t = usePluginTranslation('calendar');
 
-    expect(t('navigation.title')).toBe('translated:example.navigation.title');
+    expect(t('navigation.title')).toBe('translated:calendar.navigation.title');
   });
 });

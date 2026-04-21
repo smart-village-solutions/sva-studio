@@ -16,11 +16,12 @@ Das System SHALL mindestens die Root-Shell, eine echte Kernroute, eine Plugin-Ro
 
 #### Scenario: Kernrouten verfügbar
 - **WHEN** der E2E-Smoketest läuft
-- **THEN** liefern `/`, `/interfaces` und `/plugins/example` erfolgreiche Antworten
+- **THEN** liefern `/` und `/interfaces` erfolgreiche Antworten
+- **AND** die produktive Plugin-Route `/plugins/news` wird über authentifizierte clientseitige Navigation erfolgreich gerendert
 - **AND** `/auth/login` liefert den erwarteten Redirect-Flow
 
 #### Scenario: Clientseitige Navigation hält die Shell aktiv
-- **WHEN** der Browser von `/` clientseitig nach `/interfaces` navigiert
+- **WHEN** der Browser von `/` clientseitig über `/plugins/news` nach `/interfaces` navigiert
 - **THEN** bleibt die App-Shell erhalten
 - **AND** es erfolgt kein Full Reload der gesamten Anwendung
 
@@ -31,4 +32,3 @@ Das System SHALL vor dem eigentlichen E2E-Lauf die Verfügbarkeit der benötigte
 - **WHEN** Redis, Loki, OTEL oder Promtail nicht erreichbar/healthy ist
 - **THEN** bricht der E2E-Lauf frühzeitig mit klarer Fehlermeldung ab
 - **AND** der Fehler nennt den betroffenen Service explizit
-

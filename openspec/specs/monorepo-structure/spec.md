@@ -324,7 +324,7 @@ berücksichtigen, damit der Container korrekt deployed werden kann.
 
 - **WHEN** das Produktions-Dockerfile ausgeführt wird
 - **THEN** wird `pnpm nx run sva-mainserver:build` als Build-Step ausgeführt
-- **AND** der Step steht in der korrekten Abhängigkeitsreihenfolge (nach `auth:build`, vor `plugin-example:build`)
+- **AND** der Step steht in der korrekten Abhängigkeitsreihenfolge (nach `auth:build`, vor `routing:build` und dem App-Build)
 
 ### Requirement: Standardisierter Runtime-Doctor pro Profil
 
@@ -477,4 +477,3 @@ Das System SHALL fuer `studio` einen Root-Skript-Einstieg bereitstellen, der den
 - **THEN** existiert ein dediziertes Root-Skript fuer den lokalen Release-Einstieg
 - **AND** dieses Skript verlangt explizit `image_digest`, `release_mode` und `rollback_hint`
 - **AND** es fuehrt `env:precheck:studio`, `env:deploy:studio`, `env:smoke:studio` und `env:feedback:studio` in fester Reihenfolge aus
-

@@ -31,7 +31,7 @@ SVA Studio (ehemals "CMS 2.0") modernisiert das Redaktionssystem der Smart Villa
 - **Modulare Architektur:** Plugin-System implementiert; klar abgegrenzte Features
 - **Monorepo:** Nx Integrated Setup mit:
   - **Apps:** `sva-studio-react` (Frontend-Anwendung mit Router, Styling, Components)
-  - **Packages:** `core` (Routing Registry), `sdk` (Plugin SDK), `data` (Datenmodelle), `plugin-example` (Beispiel)
+  - **Packages:** `core` (Routing Registry), `sdk` (Plugin SDK), `data` (Datenmodelle), `plugin-news` (produktives Fachplugin)
 - **Separation of Concerns:** Backend/Frontend klar getrennt; API als zentrale Schnittstelle
 - **OpenSpec:** Strukturierte Change-Proposals und Specs in `openspec/` für Architektur-Entscheidungen
 - **Architekturdoku (arc42):** Architektur-/Systemdoku unter `docs/architecture/README.md` mit Abschnitten 1-12; bei Architekturwirkung muessen betroffene Abschnitte in OpenSpec-Changes referenziert werden

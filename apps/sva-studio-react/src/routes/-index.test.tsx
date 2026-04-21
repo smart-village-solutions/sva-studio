@@ -54,7 +54,7 @@ describe('HomePage', () => {
     expect(
       screen
         .getAllByRole('link', { name: 'Inhalte öffnen' })
-        .some((link) => link.getAttribute('href') === '/content')
+        .some((link) => link.getAttribute('href') === '/admin/content')
     ).toBe(true);
   });
 
@@ -122,7 +122,7 @@ describe('HomePage', () => {
     expect(
       screen
         .getAllByRole('link', { name: 'Inhalte öffnen' })
-        .some((link) => link.getAttribute('href') === '/content')
+        .some((link) => link.getAttribute('href') === '/admin/content')
     ).toBe(true);
     expect(
       screen
@@ -210,5 +210,49 @@ describe('HomePage', () => {
     render(<HomePage />);
 
     expect(screen.getByText('Fehler beim Laden der Session. Bitte erneut anmelden.')).toBeTruthy();
+  });
+
+  it('shows session-expired notice with login link to the original page', () => {
+    useAuthMock.mockReturnValue({
+      user: null,
+      isAuthenticated: false,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      logout: vi.fn(),
+      invalidatePermissions: vi.fn(),
+      hasResolvedSession: true,
+      isRecoveringSession: false,
+      sessionRecoveryFailed: false,
+    });
+
+    globalThis.history.replaceState({}, '', '/?auth=session-expired&returnTo=%2Fadmin%2Fusers%3Fpage%3D2');
+
+    render(<HomePage />);
+
+    expect(screen.getByText('Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an.')).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Erneut anmelden' }).getAttribute('href')).toBe(
+      '/auth/login?returnTo=%2Fadmin%2Fusers%3Fpage%3D2'
+    );
+  });
+
+  it('shows session-expired notice from auth provider state', () => {
+    useAuthMock.mockReturnValue({
+      user: null,
+      isAuthenticated: false,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      logout: vi.fn(),
+      invalidatePermissions: vi.fn(),
+      hasResolvedSession: true,
+      isRecoveringSession: false,
+      sessionRecoveryFailed: true,
+    });
+
+    render(<HomePage />);
+
+    expect(screen.getByText('Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an.')).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Erneut anmelden' }).getAttribute('href')).toBe('/auth/login?returnTo=%2F');
   });
 });

@@ -261,21 +261,16 @@ Das System SHALL kritische Rechteänderungen als approval-pflichtige Governance-
 
 Das System SHALL tenant-lokale Admin-Rollen und globale Plattformrollen in der Instanzverwaltung strikt trennen.
 
-#### Scenario: Tenant-Admin-Bootstrap entfernt versehentliche Plattformrolle
-
-- **WHEN** ein Tenant-Admin im Reconcile-Pfad die Rolle `instance_registry_admin` traegt
-- **THEN** entfernt der Reconcile diese Rolle
-- **AND** stellt mindestens `system_admin` sicher
-
 #### Scenario: Nur Plattform-Admin darf Keycloak-Provisioning anstossen
 
-- **WHEN** ein Benutzer ohne `instance_registry_admin` versucht, Instanz-Realm-Grundeinstellungen zu aendern oder ein Keycloak-Provisioning auszulösen
+- **WHEN** ein Benutzer ohne `instance_registry_admin` versucht, Instanz-Realm-Grundeinstellungen zu ändern oder ein Keycloak-Provisioning auszulösen
 - **THEN** lehnt das System die Operation ab
 
 #### Scenario: Technischer Keycloak-Zugang blockiert fehlende Rechte vor dem Lauf
 
 - **WHEN** der technische Keycloak-Admin-Zugang den Ziel-Realm nicht verwalten kann
-- **THEN** markiert der Preflight die Ausfuehrung als blockiert
+- **THEN** markiert der Preflight die Ausführung als blockiert
+- **AND** wird getrennt ausgewiesen, ob der Plattformpfad oder der Tenant-Admin-Client betroffen ist
 - **AND** es wird kein Keycloak-Mutationslauf gestartet
 
 ### Requirement: Ticket-Validierung für kritische Governance-Aktionen
@@ -984,3 +979,71 @@ Das System SHALL die Inhaltsverwaltung über die zentrale IAM-Autorisierung absi
 - **WHEN** eine Berechtigungsprüfung für Inhaltsverwaltung erfolgt
 - **THEN** wertet das System die Rechte im aktiven `instanceId`- und Organisationskontext aus
 - **AND** Rechte aus fremden Instanzen oder unzulässigen Organisationskontexten bleiben wirkungslos
+
+### Requirement: Einheitliches Zielformat für autorisierbare Action-IDs
+Das IAM-System MUST autorisierbare Action-IDs langfristig in einem einheitlichen fully-qualified Format `<namespace>.<actionName>` behandeln, unabhängig davon, ob die Action aus dem Core oder aus einem Plugin stammt.
+
+#### Scenario: Core-Action verwendet das gemeinsame Zielformat
+- **WHEN** ein Client `POST /iam/authorize` für eine interne Action wie `content.read` aufruft
+- **THEN** wird die Action als gültige fully-qualified Action-ID akzeptiert
+- **AND** sie folgt demselben Formatvertrag wie eine Plugin-Action
+
+#### Scenario: Plugin-Action verwendet das gemeinsame Zielformat
+- **WHEN** ein Client `POST /iam/authorize` für eine Plugin-Action wie `news.create` aufruft
+- **THEN** wird die Action als gültige fully-qualified Action-ID akzeptiert
+- **AND** sie folgt demselben Formatvertrag wie eine interne Core-Action
+
+### Requirement: Namespace-sichere Plugin-Action-Autorisierung
+Das IAM-System MUST Plugin-Aktionen in vollständig qualifizierter Form autorisieren und Action-IDs ohne Namespace-Kollaps oder implizites Prefix-Mapping auswerten.
+
+#### Scenario: Authorize nutzt vollständig qualifizierte Action-ID
+- **WHEN** ein Client `POST /iam/authorize` für `news.create` aufruft
+- **THEN** wird genau `news.create` gegen die effektiven Berechtigungen ausgewertet
+- **AND** es findet keine implizite Umdeutung auf `create`, `content.create` oder einen anderen Namespace statt
+
+#### Scenario: Fremder Namespace bleibt verboten
+- **WHEN** ein Plugin ohne passende Berechtigung eine fremde Action-ID wie `events.publish` ausführen will
+- **THEN** liefert die Autorisierung eine Deny-Entscheidung
+- **AND** die Diagnose bleibt auf die vollständig qualifizierte Action-ID referenzierbar
+
+### Requirement: Legacy-Kurzformen bleiben eine explizite Übergangsphase
+Das IAM-System MUST unqualifizierte Legacy-Action-Strings wie `read`, `write` oder `create` nur als zeitlich begrenzte Übergangsphase behandeln und darf daraus keine implizite Namespace-Zuordnung ableiten.
+
+#### Scenario: Legacy-Kurzform erhält keinen impliziten Namespace
+- **WHEN** eine unqualifizierte Legacy-Action wie `read` verarbeitet wird
+- **THEN** wird sie nicht implizit zu `content.read`, `news.read` oder einem anderen fully-qualified Namen umgedeutet
+- **AND** eine zukünftige Verschärfung des Request-Schemas kann diese Legacy-Kurzform vollständig verbieten
+
+### Requirement: Normale Tenant-Admin-Mutationen nutzen ausschließlich den Tenant-Admin-Client
+
+Das System SHALL normale Tenant-Admin-Mutationen ausschließlich über den tenantlokalen Admin-Client der aktiven Instanz ausführen.
+
+#### Scenario: Tenant-User-CRUD löst Tenant-Admin-Client auf
+
+- **WHEN** innerhalb eines Tenant-Hosts Nutzer, Rollen, Gruppen oder Zuordnungen geändert werden
+- **THEN** löst der Server Realm und Client aus `iam.instances.authRealm` und `iam.instances.tenantAdminClient`
+- **AND** verwendet keinen globalen Plattform-Admin-Client als stillen Fallback
+
+#### Scenario: Tenant-Admin-Client ist nicht konfiguriert
+
+- **WHEN** eine normale Tenant-Mutation ausgeführt werden soll, aber `tenantAdminClient` fehlt oder unvollständig ist
+- **THEN** lehnt das System die Mutation fail-closed ab
+- **AND** liefert einen strukturierten Fehler wie `tenant_admin_not_configured`
+- **AND** leitet die Operation nicht implizit auf den Plattformpfad um
+
+### Requirement: Login-Client und Tenant-Admin-Client bleiben diagnostisch getrennt
+
+Das System SHALL Login-Pfad, Tenant-Admin-Pfad und Plattformpfad in Diagnosen und Health-Antworten getrennt ausweisen.
+
+#### Scenario: Tenant-Health zeigt getrennte Auth-Artefakte
+
+- **WHEN** Health-, Doctor- oder Diagnoseinformationen für eine Tenant-Instanz abgefragt werden
+- **THEN** enthalten sie mindestens den Login-Realm, den Login-Client, den Tenant-Admin-Realm und den Tenant-Admin-Client
+- **AND** weisen sie den verwendeten `executionMode` und die `resolutionSource` aus
+
+#### Scenario: Break-Glass bleibt expliziter Sonderpfad
+
+- **WHEN** eine Plattform- oder Break-Glass-Operation tenant-interne Daten ändern darf
+- **THEN** ist dieser Modus technisch und auditierbar als `break_glass` oder `platform_admin` gekennzeichnet
+- **AND** wird nicht als Normalpfad für Tenant-Admin-Screens verwendet
+

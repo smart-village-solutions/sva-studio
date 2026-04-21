@@ -1,6 +1,7 @@
 import { Link } from '@tanstack/react-router';
 import React from 'react';
 
+import { IamRuntimeDiagnosticDetails } from '../../../components/iam-runtime-diagnostic-details';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Button } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
@@ -192,7 +193,10 @@ export const InstanceCreatePage = () => {
 
       {instancesApi.mutationError && !createdInstance ? (
         <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
-          <AlertDescription>{getErrorMessage(instancesApi.mutationError)}</AlertDescription>
+          <AlertDescription className="flex flex-col gap-3">
+            <span>{getErrorMessage(instancesApi.mutationError)}</span>
+            <IamRuntimeDiagnosticDetails error={instancesApi.mutationError} />
+          </AlertDescription>
         </Alert>
       ) : null}
 

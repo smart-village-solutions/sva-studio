@@ -733,7 +733,7 @@ export default function Sidebar({ isLoading = false, isMobileOpen = false, onMob
             {
               kind: 'link' as const,
               id: 'content',
-              to: '/content',
+              to: '/admin/content',
               label: t('shell.sidebar.content'),
               icon: IconArticle,
             },

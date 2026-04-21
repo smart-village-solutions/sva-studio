@@ -42,6 +42,9 @@ const instanceConfigState = {
   canonicalAuthHost: 'studio.example.org',
   parentDomain: 'studio.example.org',
 };
+const workspaceContextState = {
+  requestId: 'req-handlers',
+};
 const resolveAuthConfigForRequestMock = vi.fn(async () => ({ ...resolvedAuthConfigState }));
 const TEST_LOGIN_STATE_SECRET = ['sec', 'ret'].join('');
 
@@ -54,6 +57,7 @@ const createSignedLoginStateCookie = (payload: Record<string, unknown>) => {
 
 vi.mock('@sva/sdk/server', () => ({
   createSdkLogger: () => loggerMock,
+  getWorkspaceContext: () => workspaceContextState,
   getInstanceConfig: () => instanceConfigState,
   initializeOtelSdk: vi.fn(async () => ({ status: 'ready' as const })),
   isCanonicalAuthHost: (host: string) => {
@@ -121,6 +125,7 @@ describe('routes/handlers', () => {
     resolveAuthConfigForRequestMock.mockReset();
     resolveAuthConfigForRequestMock.mockImplementation(async () => ({ ...resolvedAuthConfigState }));
     toJsonErrorResponseMock.mockClear();
+    workspaceContextState.requestId = 'req-handlers';
   });
 
   it('logs only a summarized logout redirect target', async () => {
@@ -140,7 +145,7 @@ describe('routes/handlers', () => {
     const response = await logoutHandler(
       new Request('http://localhost/auth/logout', {
         method: 'POST',
-        headers: { cookie: 'sva_auth_session=session-1' },
+        headers: { cookie: 'sva_auth_session=session-1', 'x-sva-logout-intent': 'user' },
       })
     );
 
@@ -511,6 +516,31 @@ describe('routes/handlers', () => {
           code: 'internal_error',
           message: 'Anmeldung ist für diesen Mandanten momentan nicht verfügbar. Bitte später erneut versuchen.',
         }),
+        requestId: 'req-handlers',
+      })
+    );
+  });
+
+  it('returns 503 JSON when tenant auth resolution fails because the tenant is inactive', async () => {
+    const { TenantAuthResolutionError: RuntimeTenantAuthResolutionError } = await import('../runtime-errors.js');
+    resolveAuthConfigForRequestMock.mockRejectedValueOnce(
+      new RuntimeTenantAuthResolutionError({
+        host: 'de-musterhausen.studio.example.org',
+        reason: 'tenant_inactive',
+      })
+    );
+
+    const { loginHandler } = await import('./handlers.js');
+    const response = await loginHandler(new Request('https://de-musterhausen.studio.example.org/auth/login'));
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toEqual(
+      expect.objectContaining({
+        error: expect.objectContaining({
+          code: 'internal_error',
+          message: 'Anmeldung ist für diesen Mandanten derzeit nicht verfügbar, weil die Instanz nicht aktiv ist.',
+        }),
+        requestId: 'req-handlers',
       })
     );
   });
@@ -701,7 +731,12 @@ describe('routes/handlers', () => {
     );
     const { logoutHandler } = await import('./handlers.js');
 
-    const response = await logoutHandler(new Request('https://de-musterhausen.studio.example.org/auth/logout'));
+    const response = await logoutHandler(
+      new Request('https://de-musterhausen.studio.example.org/auth/logout', {
+        method: 'POST',
+        headers: { 'x-sva-logout-intent': 'user' },
+      })
+    );
 
     expect(response.status).toBe(503);
     await expect(response.json()).resolves.toEqual(
@@ -722,7 +757,7 @@ describe('routes/handlers', () => {
     const response = await logoutHandler(
       new Request('https://studio.example.org/auth/logout', {
         method: 'POST',
-        headers: { cookie: 'sva_auth_session=session-1' },
+        headers: { cookie: 'sva_auth_session=session-1', 'x-sva-logout-intent': 'user' },
       })
     );
 
@@ -951,10 +986,31 @@ describe('routes/handlers', () => {
     );
   });
 
-  it('logs logout without session and still sets suppression cookie', async () => {
+  it('rejects logout without explicit user intent before clearing cookies', async () => {
     const { logoutHandler } = await import('./handlers.js');
 
     const response = await logoutHandler(new Request('http://localhost/auth/logout', { method: 'POST' }));
+
+    expect(response.status).toBe(400);
+    expect(response.headers.get('set-cookie')).toBeNull();
+    expect(loggerMock.warn).toHaveBeenCalledWith(
+      'Logout rejected without explicit user intent',
+      expect.objectContaining({
+        operation: 'logout',
+        reason_code: 'missing_logout_intent',
+      })
+    );
+  });
+
+  it('logs logout without session and still sets suppression cookie when intent is explicit', async () => {
+    const { logoutHandler } = await import('./handlers.js');
+
+    const response = await logoutHandler(
+      new Request('http://localhost/auth/logout', {
+        method: 'POST',
+        headers: { 'x-sva-logout-intent': 'user' },
+      })
+    );
 
     expect(response.status).toBe(302);
     expect(loggerMock.debug).toHaveBeenCalledWith(
@@ -962,6 +1018,25 @@ describe('routes/handlers', () => {
       expect.objectContaining({ operation: 'logout', session_exists: false })
     );
     expect(response.headers.get('set-cookie')).toContain('sva_auth_silent_sso=');
+  });
+
+  it('accepts explicit logout intent from browser form posts', async () => {
+    const { logoutHandler } = await import('./handlers.js');
+
+    const response = await logoutHandler(
+      new Request('http://localhost/auth/logout', {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ logoutIntent: 'user' }),
+      })
+    );
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get('set-cookie')).toContain('sva_auth_silent_sso=');
+    expect(loggerMock.warn).not.toHaveBeenCalledWith(
+      'Logout rejected without explicit user intent',
+      expect.any(Object)
+    );
   });
 
   it('handles logout errors and falls back to post logout redirect', async () => {
@@ -978,7 +1053,7 @@ describe('routes/handlers', () => {
     const response = await logoutHandler(
       new Request('http://localhost/auth/logout', {
         method: 'POST',
-        headers: { cookie: 'sva_auth_session=session-err' },
+        headers: { cookie: 'sva_auth_session=session-err', 'x-sva-logout-intent': 'user' },
       })
     );
 
@@ -1004,7 +1079,7 @@ describe('routes/handlers', () => {
     const response = await logoutHandler(
       new Request('http://localhost/auth/logout', {
         method: 'POST',
-        headers: { cookie: 'sva_auth_session=session-rel' },
+        headers: { cookie: 'sva_auth_session=session-rel', 'x-sva-logout-intent': 'user' },
       })
     );
 

@@ -6,6 +6,7 @@ import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
+import { IamRuntimeDiagnosticDetails } from '../../../components/iam-runtime-diagnostic-details';
 import { Checkbox } from '../../../components/ui/checkbox';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
@@ -384,7 +385,10 @@ export const UserEditPage = ({ userId }: UserEditPageProps) => {
       <section className="space-y-3">
         <h1 className="text-3xl font-semibold text-foreground">{t('admin.users.edit.title')}</h1>
         <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
-          <AlertDescription>{userErrorMessage(userApi.error)}</AlertDescription>
+          <AlertDescription className="flex flex-col gap-3">
+            <span>{userErrorMessage(userApi.error)}</span>
+            {userApi.error ? <IamRuntimeDiagnosticDetails error={userApi.error} /> : null}
+          </AlertDescription>
         </Alert>
       </section>
     );
@@ -833,7 +837,10 @@ export const UserEditPage = ({ userId }: UserEditPageProps) => {
 
         {userApi.error ? (
           <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
-            <AlertDescription>{userErrorMessage(userApi.error)}</AlertDescription>
+            <AlertDescription className="flex flex-col gap-3">
+              <span>{userErrorMessage(userApi.error)}</span>
+              {userApi.error ? <IamRuntimeDiagnosticDetails error={userApi.error} /> : null}
+            </AlertDescription>
           </Alert>
         ) : null}
         {saveSuccess ? (

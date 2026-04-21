@@ -1,6 +1,7 @@
 import { extractRoles, parseJwtPayload, resolveInstanceId } from '@sva/core';
 
-import type { SessionUser } from '../types.js';
+import { TenantScopeConflictError } from '../runtime-errors.js';
+import type { RuntimeScopeRef, SessionUser } from '../types.js';
 
 export const TOKEN_REFRESH_SKEW_MS = 60_000;
 
@@ -11,16 +12,37 @@ export const buildSessionUser = (input: {
   accessToken?: string;
   claims: Record<string, unknown>;
   clientId: string;
+  scope?: RuntimeScopeRef;
 }): SessionUser => {
   const accessTokenClaims = input.accessToken ? parseJwtPayload(input.accessToken) : null;
   const claims = { ...accessTokenClaims, ...input.claims };
   const roleClaims = accessTokenClaims ?? input.claims;
   const preferredUsername = readClaimString(claims, 'preferred_username');
   const username = readClaimString(claims, 'username');
+  const tokenInstanceIds = [accessTokenClaims, input.claims]
+    .map((claimSet) => (claimSet ? resolveInstanceId(claimSet) : undefined))
+    .filter((value): value is string => typeof value === 'string');
+  const expectedInstanceId = input.scope?.kind === 'instance' ? input.scope.instanceId : undefined;
+  const scopedInstanceId =
+    expectedInstanceId
+      ? expectedInstanceId
+      : input.scope?.kind === 'platform'
+        ? undefined
+        : resolveInstanceId(claims);
+
+  if (expectedInstanceId) {
+    const conflictingInstanceId = tokenInstanceIds.find((instanceId) => instanceId !== expectedInstanceId);
+    if (conflictingInstanceId) {
+      throw new TenantScopeConflictError({
+        actualInstanceId: conflictingInstanceId,
+        expectedInstanceId,
+      });
+    }
+  }
 
   return {
     id: String(claims.sub ?? ''),
-    instanceId: resolveInstanceId(claims),
+    instanceId: scopedInstanceId,
     roles: extractRoles(roleClaims, input.clientId),
     username: preferredUsername ?? username,
     email: readClaimString(claims, 'email'),

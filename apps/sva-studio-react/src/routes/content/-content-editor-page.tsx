@@ -271,7 +271,7 @@ export const ContentEditorPage = ({ mode, contentId }: ContentEditorPageProps) =
 
     const success = await createApi.createContent(payload);
     if (success) {
-      await navigate({ to: '/content' });
+      await navigate({ to: '/admin/content' });
     }
   };
 
@@ -338,7 +338,7 @@ export const ContentEditorPage = ({ mode, contentId }: ContentEditorPageProps) =
           ) : null}
         </div>
         <Button asChild variant="outline">
-          <Link to="/content">{t('content.actions.back')}</Link>
+          <Link to="/admin/content">{t('content.actions.back')}</Link>
         </Button>
       </header>
 
@@ -424,7 +424,7 @@ export const ContentEditorPage = ({ mode, contentId }: ContentEditorPageProps) =
                   {mode === 'create' ? t('content.actions.createNow') : t('content.actions.save')}
                 </Button>
                 <Button asChild variant="outline">
-                  <Link to="/content">{t('content.actions.cancel')}</Link>
+                  <Link to="/admin/content">{t('content.actions.cancel')}</Link>
                 </Button>
               </div>
             </form>

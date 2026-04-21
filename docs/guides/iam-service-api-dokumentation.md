@@ -57,6 +57,8 @@ Diese Anleitung beschreibt die aktuell stabilen IAM-v1-Endpunkte, Response-Envel
 
 - `GET /api/v1/iam/users`
   - Query: `page`, `pageSize`, `status`, `role`, `search`
+  - Tenant-Scope lädt die Benutzer führend aus dem Tenant-Realm in Keycloak. Fehlende Studio-Read-Model-Zuordnungen bleiben sichtbar und werden nicht herausgefiltert.
+  - Listeneinträge können additiv `mappingStatus`, `editability` und `diagnostics[]` enthalten.
 - `GET /api/v1/iam/users/{userId}`
   - enthält additiv `groups[]` mit `groupId`, `groupKey`, `displayName`, `groupType`, `origin`, `validFrom`, `validTo`
 - `POST /api/v1/iam/users`
@@ -70,6 +72,9 @@ Diese Anleitung beschreibt die aktuell stabilen IAM-v1-Endpunkte, Response-Envel
 ### Roles
 
 - `GET /api/v1/iam/roles`
+  - Rollenlisten verwenden Keycloak-Pagination und Keycloak-Count, wenn der aktive Scope das unterstützt.
+  - Keycloak-Built-in-Rollen bleiben sichtbar, werden aber als Rollenobjekte read-only markiert.
+  - Listeneinträge können additiv `editability` und `diagnostics[]` enthalten.
 - `POST /api/v1/iam/roles`
 - `PATCH /api/v1/iam/roles/{roleId}`
 - `DELETE /api/v1/iam/roles/{roleId}`
@@ -116,7 +121,19 @@ Diese Anleitung beschreibt die aktuell stabilen IAM-v1-Endpunkte, Response-Envel
 - `self_protection`
 - `feature_disabled`
 - `conflict`
+- `tenant_admin_client_not_configured`
 - `internal_error`
+
+## Keycloak-first Admin-Vertrag
+
+- Keycloak ist für Benutzer, Realm-Rollen und Rollenzuordnungen die führende Quelle. Studio mutiert zuerst Keycloak und synchronisiert danach die Studio-Read-Models.
+- Root-/Platform-Scope nutzt ausschließlich den Platform-Admin-Keycloak-Client. Tenant-Scope nutzt ausschließlich den Tenant-Admin-Keycloak-Client der Instanz; ein Fallback auf Platform- oder globale Admin-Credentials ist nicht zulässig.
+- `user === null` im Frontend ist ein Loading-/Unknown-Zustand und darf keinen Platform-Scope auslösen.
+- `mappingStatus` hat die stabilen Werte `mapped`, `unmapped` und `manual_review`.
+- `editability` hat die stabilen Werte `editable`, `read_only` und `blocked`.
+- Objektbezogene Diagnosen werden als stabile Codes übertragen, zum Beispiel `missing_instance_attribute`, `mapping_missing`, `forbidden_role_mapping`, `read_only_federated_field` und `idp_forbidden`.
+- Sync- und Reconcile-Reports verwenden die Abschlusszustände `success`, `partial_failure`, `blocked` und `failed` und dürfen betroffene Objektlisten sowie Zähler additiv enthalten.
+- Keycloak-Fehler werden differenziert gemappt; insbesondere `403` aus Keycloak wird als IdP-Berechtigungsproblem (`IDP_FORBIDDEN` beziehungsweise API-Diagnose `idp_forbidden`) sichtbar.
 
 ## Wichtige Vertragszusagen für Gruppen
 

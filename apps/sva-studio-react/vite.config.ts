@@ -96,6 +96,7 @@ const config = defineConfig({
       '@sva/data': resolveAppPath('../../packages/data/src/index.ts'),
       '@sva/sva-mainserver/server': resolveAppPath('../../packages/sva-mainserver/src/index.server.ts'),
       '@sva/sva-mainserver': resolveAppPath('../../packages/sva-mainserver/src/index.ts'),
+      '@sva/sdk/admin-resources': resolveAppPath('../../packages/sdk/src/admin-resources.ts'),
       '@sva/sdk/logging': resolveAppPath('../../packages/sdk/src/logging.ts'),
       '@sva/sdk/server': resolveAppPath('../../packages/sdk/src/server.ts'),
       '@sva/sdk/logger/index.server': resolveAppPath('../../packages/sdk/src/logger/index.server.ts'),

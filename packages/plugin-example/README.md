@@ -36,6 +36,7 @@ App (sva-studio-react) ← registriert Plugins statisch im Host
 ```ts
 import { pluginExample } from '@sva/plugin-example';
 import {
+  createBuildTimeRegistry,
   createPluginRegistry,
   mergePluginNavigationItems,
   mergePluginRouteDefinitions,
@@ -44,6 +45,7 @@ import {
 
 const plugins = [pluginExample] as const;
 
+const buildTimeRegistry = createBuildTimeRegistry({ plugins });
 const registry = createPluginRegistry(plugins);
 const routes = mergePluginRouteDefinitions(plugins);
 const navigation = mergePluginNavigationItems(plugins);

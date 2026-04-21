@@ -32,15 +32,15 @@ describe('accountUiRouteGuards', () => {
   });
 
   it('allows content routes for editor role', async () => {
-    await expect(invoke(accountUiRouteGuards.content, ['editor'], '/content')).resolves.toBeUndefined();
-    await expect(invoke(accountUiRouteGuards.contentCreate, ['editor'], '/content/new')).resolves.toBeUndefined();
-    await expect(invoke(accountUiRouteGuards.contentDetail, ['editor'], '/content/content-1')).resolves.toBeUndefined();
+    await expect(invoke(accountUiRouteGuards.content, ['editor'], '/admin/content')).resolves.toBeUndefined();
+    await expect(invoke(accountUiRouteGuards.contentCreate, ['editor'], '/admin/content/new')).resolves.toBeUndefined();
+    await expect(invoke(accountUiRouteGuards.contentDetail, ['editor'], '/admin/content/content-1')).resolves.toBeUndefined();
   });
 
   it('allows content routes for any authenticated user', async () => {
-    await expect(invoke(accountUiRouteGuards.content, ['viewer'], '/content')).resolves.toBeUndefined();
-    await expect(invoke(accountUiRouteGuards.contentCreate, ['viewer'], '/content/new')).resolves.toBeUndefined();
-    await expect(invoke(accountUiRouteGuards.contentDetail, ['viewer'], '/content/content-1')).resolves.toBeUndefined();
+    await expect(invoke(accountUiRouteGuards.content, ['viewer'], '/admin/content')).resolves.toBeUndefined();
+    await expect(invoke(accountUiRouteGuards.contentCreate, ['viewer'], '/admin/content/new')).resolves.toBeUndefined();
+    await expect(invoke(accountUiRouteGuards.contentDetail, ['viewer'], '/admin/content/content-1')).resolves.toBeUndefined();
   });
 
   it('allows admin users route for app_manager role', async () => {

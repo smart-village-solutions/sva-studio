@@ -31,7 +31,8 @@ import { getClientRouteFactories, routePaths } from '@sva/routing';
 
 const routeFactories = getClientRouteFactories({
   bindings: appRouteBindings,
-  plugins: studioPlugins,
+  adminResources: studioBuildTimeRegistry.adminResources,
+  plugins: studioBuildTimeRegistry.plugins,
 });
 
 routePaths.ui.interfaces;
@@ -44,7 +45,8 @@ import { getServerRouteFactories } from '@sva/routing/server';
 
 const routeFactories = getServerRouteFactories({
   bindings: appRouteBindings,
-  plugins: studioPlugins,
+  adminResources: studioBuildTimeRegistry.adminResources,
+  plugins: studioBuildTimeRegistry.plugins,
 });
 ```
 
@@ -94,7 +96,8 @@ const diagnostics: RoutingDiagnosticsHook = (event) => {
 
 const routeFactories = getClientRouteFactories({
   bindings: appRouteBindings,
-  plugins: studioPlugins,
+  adminResources: studioBuildTimeRegistry.adminResources,
+  plugins: studioBuildTimeRegistry.plugins,
   diagnostics,
 });
 ```

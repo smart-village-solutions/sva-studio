@@ -137,6 +137,8 @@ export type IamUserRoleAssignment = {
   readonly roleKey: string;
   readonly roleName: string;
   readonly roleLevel: number;
+  readonly editability?: IamKeycloakObjectEditability;
+  readonly diagnostics?: readonly IamKeycloakObjectDiagnostic[];
   readonly validFrom?: string;
   readonly validTo?: string;
 };
@@ -191,6 +193,9 @@ export type IamUserListItem = {
   readonly displayName: string;
   readonly email?: string;
   readonly status: 'active' | 'inactive' | 'pending';
+  readonly mappingStatus?: IamKeycloakMappingStatus;
+  readonly editability?: IamKeycloakObjectEditability;
+  readonly diagnostics?: readonly IamKeycloakObjectDiagnostic[];
   readonly position?: string;
   readonly department?: string;
   readonly lastLoginAt?: string;
@@ -212,10 +217,47 @@ export type IamUserDetail = IamUserListItem & {
   readonly groups?: readonly IamUserGroupAssignment[];
   readonly mainserverUserApplicationId?: string;
   readonly mainserverUserApplicationSecretSet: boolean;
+  readonly fieldEditability?: IamKeycloakUserFieldEditability;
+};
+
+export type IamKeycloakMappingStatus = 'mapped' | 'unmapped' | 'manual_review';
+
+export type IamKeycloakObjectEditability = 'editable' | 'read_only' | 'blocked';
+
+export type IamKeycloakObjectDiagnosticCode =
+  | 'missing_instance_attribute'
+  | 'forbidden_role_mapping'
+  | 'read_only_federated_field'
+  | 'idp_forbidden'
+  | 'mapping_missing'
+  | 'mapping_incomplete'
+  | 'keycloak_projection_degraded'
+  | 'tenant_admin_client_not_configured'
+  | 'external_managed'
+  | 'built_in_role'
+  | 'system_role';
+
+export type IamKeycloakObjectDiagnostic = {
+  readonly code: IamKeycloakObjectDiagnosticCode;
+  readonly message?: string;
+  readonly objectId?: string;
+  readonly objectType?: 'user' | 'role' | 'role_assignment';
+};
+
+export type IamKeycloakUserFieldEditability = {
+  readonly profile: IamKeycloakObjectEditability;
+  readonly status: IamKeycloakObjectEditability;
+  readonly roles: IamKeycloakObjectEditability;
+};
+
+export type IamUserSyncObjectDiagnostic = {
+  readonly keycloakSubject: string;
+  readonly mappingStatus: IamKeycloakMappingStatus;
+  readonly diagnostics: readonly IamKeycloakObjectDiagnostic[];
 };
 
 export type IamUserImportSyncReport = {
-  readonly outcome: 'success' | 'partial_failure' | 'failed';
+  readonly outcome: 'success' | 'partial_failure' | 'blocked' | 'failed';
   readonly checkedCount: number;
   readonly correctedCount: number;
   readonly manualReviewCount: number;
@@ -224,9 +266,10 @@ export type IamUserImportSyncReport = {
   readonly repairedProfileCount?: number;
   readonly skippedCount: number;
   readonly totalKeycloakUsers: number;
+  readonly objects?: readonly IamUserSyncObjectDiagnostic[];
   readonly diagnostics?: {
     readonly authRealm: string;
-    readonly providerSource: 'instance' | 'global' | 'fallback_global';
+    readonly providerSource: 'instance' | 'global' | 'fallback_global' | 'platform';
     readonly executionMode?: 'platform_admin' | 'tenant_admin' | 'break_glass';
     readonly matchedWithoutInstanceAttributeCount?: number;
     readonly skippedInstanceIds?: readonly string[];
@@ -238,9 +281,11 @@ export type IamRoleListItem = {
   readonly roleKey: string;
   readonly roleName: string;
   readonly externalRoleName: string;
-  readonly managedBy: 'studio' | 'external';
+  readonly managedBy: 'studio' | 'external' | 'keycloak_builtin';
   readonly description?: string;
   readonly isSystemRole: boolean;
+  readonly editability?: IamKeycloakObjectEditability;
+  readonly diagnostics?: readonly IamKeycloakObjectDiagnostic[];
   readonly roleLevel: number;
   readonly memberCount: number;
   readonly syncState: IamRoleSyncState;
@@ -260,10 +305,11 @@ export type IamRoleReconcileEntry = {
   readonly action: 'noop' | 'create' | 'update' | 'report';
   readonly status: 'synced' | 'corrected' | 'failed' | 'requires_manual_action';
   readonly errorCode?: string;
+  readonly diagnostics?: readonly IamKeycloakObjectDiagnostic[];
 };
 
 export type IamRoleReconcileReport = {
-  readonly outcome: 'success' | 'partial_failure' | 'failed';
+  readonly outcome: 'success' | 'partial_failure' | 'blocked' | 'failed';
   readonly checkedCount: number;
   readonly correctedCount: number;
   readonly failedCount: number;

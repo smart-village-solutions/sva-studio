@@ -1,3 +1,4 @@
+import type { IamUserImportSyncReport } from '@sva/core';
 import { Link } from '@tanstack/react-router';
 import React from 'react';
 
@@ -43,21 +44,7 @@ export const UserListPage = () => {
     null
   );
   const [syncStatus, setSyncStatus] = React.useState<'idle' | 'pending' | 'success' | 'empty' | 'error'>('idle');
-  const [syncResult, setSyncResult] = React.useState<{
-    outcome: 'success' | 'partial_failure' | 'failed';
-    checkedCount: number;
-    correctedCount: number;
-    manualReviewCount: number;
-    importedCount: number;
-    updatedCount: number;
-    skippedCount: number;
-    diagnostics?: {
-      authRealm: string;
-      providerSource: 'instance' | 'global' | 'fallback_global' | 'platform';
-      matchedWithoutInstanceAttributeCount?: number;
-      skippedInstanceIds?: readonly string[];
-    };
-  } | null>(null);
+  const [syncResult, setSyncResult] = React.useState<IamUserImportSyncReport | null>(null);
   const [syncError, setSyncError] = React.useState<Parameters<typeof userErrorMessage>[0]>(null);
   const { user } = useAuth();
   const isPlatformScope = !user?.instanceId;

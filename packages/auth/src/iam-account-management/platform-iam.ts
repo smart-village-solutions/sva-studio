@@ -1,4 +1,4 @@
-import type { IamUserImportSyncReport, IamUserListItem } from '@sva/core';
+import type { IamUserListItem } from '@sva/core';
 
 import type { IdentityListedUser, IdentityUserListQuery } from '../identity-provider-port.js';
 
@@ -8,6 +8,7 @@ import { logger, trackKeycloakCall } from './shared-observability.js';
 import type { UserStatus } from './types.js';
 
 export { listPlatformRoles, runPlatformRoleReconcile } from './platform-iam-roles.js';
+export { runPlatformKeycloakUserSync } from './platform-iam-sync.js';
 
 const PLATFORM_KEYCLOAK_PAGE_SIZE = 100;
 const PLATFORM_USER_ROLE_PROJECTION_CONCURRENCY = 5;
@@ -59,7 +60,7 @@ const matchesUserSearchFilter = (user: IamUserListItem, search?: string): boolea
     .some((value) => value.toLowerCase().includes(query));
 };
 
-const listAllPlatformUsers = async (
+export const listAllPlatformUsers = async (
   query: Omit<IdentityUserListQuery, 'first' | 'max'> = {}
 ): Promise<{
   readonly realm: string;
@@ -156,6 +157,37 @@ const resolvePlatformUserRoleNames = async (
   return roleNamesBySubject;
 };
 
+const listPlatformUsersPage = async (input: {
+  readonly provider: {
+    readonly listUsers: (query?: IdentityUserListQuery) => Promise<readonly IdentityListedUser[]>;
+    readonly listUserRoleNames: (externalId: string) => Promise<readonly string[]>;
+    readonly countUsers?: (query?: Omit<IdentityUserListQuery, 'first' | 'max'>) => Promise<number>;
+  };
+  readonly query: Omit<IdentityUserListQuery, 'first' | 'max'>;
+  readonly first: number;
+  readonly max: number;
+  readonly requestId?: string;
+  readonly traceId?: string;
+}): Promise<{ readonly users: readonly IamUserListItem[]; readonly total: number }> => {
+  const [listedUsers, countedUsers] = await Promise.all([
+    trackKeycloakCall('list_platform_users', () =>
+      input.provider.listUsers({ ...input.query, first: input.first, max: input.max })
+    ),
+    countPlatformUsers(input.provider, input.query),
+  ]);
+  const roleNamesBySubject = await resolvePlatformUserRoleNames({
+    users: listedUsers,
+    provider: input.provider,
+    requestId: input.requestId,
+    traceId: input.traceId,
+  });
+  const users = listedUsers
+    .map((user) => mapPlatformUser(user, roleNamesBySubject.get(user.externalId) ?? []))
+    .sort((left, right) => left.displayName.localeCompare(right.displayName, 'de'));
+
+  return { users, total: countedUsers ?? users.length };
+};
+
 export const listPlatformUsers = async (input: {
   readonly page: number;
   readonly pageSize: number;
@@ -181,35 +213,17 @@ export const listPlatformUsers = async (input: {
   const start = Math.max(0, (input.page - 1) * input.pageSize);
 
   if (!input.role) {
-    const [listedUsers, countedUsers] = await Promise.all([
-      trackKeycloakCall('list_platform_users', () =>
-        identityProvider.provider.listUsers({ ...keycloakQuery, first: start, max: input.pageSize })
-      ),
-      countPlatformUsers(identityProvider.provider, keycloakQuery),
-    ]);
-    const roleNamesBySubject = await resolvePlatformUserRoleNames({
-      users: listedUsers,
+    return listPlatformUsersPage({
       provider: identityProvider.provider,
+      query: keycloakQuery,
+      first: start,
+      max: input.pageSize,
       requestId: input.requestId,
       traceId: input.traceId,
     });
-    const projectedUsers = listedUsers
-      .map((user) => mapPlatformUser(user, roleNamesBySubject.get(user.externalId) ?? []))
-      .sort((left, right) => left.displayName.localeCompare(right.displayName, 'de'));
-
-    return {
-      users: projectedUsers,
-      total: countedUsers ?? projectedUsers.length,
-    };
   }
 
-  const roleFilterQuery: Omit<IdentityUserListQuery, 'first' | 'max'> =
-    input.status === 'active'
-      ? { ...keycloakQuery, enabled: true }
-      : input.status === 'inactive'
-        ? { ...keycloakQuery, enabled: false }
-        : keycloakQuery;
-  const { users: listedUsers } = await listAllPlatformUsers(roleFilterQuery);
+  const { users: listedUsers } = await listAllPlatformUsers(keycloakQuery);
   const listedUserBySubject = new Map(listedUsers.map((user) => [user.externalId, user]));
 
   const projectedUsersWithoutRoles = listedUsers
@@ -217,13 +231,8 @@ export const listPlatformUsers = async (input: {
     .filter((user) => matchesUserSearchFilter(user, input.search))
     .sort((left, right) => left.displayName.localeCompare(right.displayName, 'de'));
 
-  const visibleSubjects = new Set(
-    projectedUsersWithoutRoles.slice(start, start + input.pageSize).map((user) => user.keycloakSubject)
-  );
   const searchedSubjects = new Set(projectedUsersWithoutRoles.map((user) => user.keycloakSubject));
-  const roleProjectionCandidates = input.role
-    ? listedUsers.filter((user) => searchedSubjects.has(user.externalId))
-    : listedUsers.filter((user) => visibleSubjects.has(user.externalId));
+  const roleProjectionCandidates = listedUsers.filter((user) => searchedSubjects.has(user.externalId));
   const roleNamesBySubject = await resolvePlatformUserRoleNames({
     users: roleProjectionCandidates,
     provider: identityProvider.provider,
@@ -242,35 +251,5 @@ export const listPlatformUsers = async (input: {
   return {
     users: projectedUsers.slice(start, start + input.pageSize),
     total: projectedUsers.length,
-  };
-};
-
-export const runPlatformKeycloakUserSync = async (input: {
-  readonly requestId?: string;
-  readonly traceId?: string;
-}): Promise<IamUserImportSyncReport> => {
-  const { realm, users } = await listAllPlatformUsers();
-  logger.info('sync_platform_keycloak_users_completed', {
-    operation: 'sync_platform_keycloak_users',
-    scope_kind: 'platform',
-    auth_realm: realm,
-    request_id: input.requestId,
-    trace_id: input.traceId,
-    checked_count: users.length,
-  });
-  return {
-    outcome: 'success',
-    checkedCount: users.length,
-    correctedCount: 0,
-    manualReviewCount: 0,
-    importedCount: 0,
-    updatedCount: 0,
-    skippedCount: 0,
-    totalKeycloakUsers: users.length,
-    diagnostics: {
-      authRealm: realm,
-      providerSource: 'platform',
-      executionMode: 'platform_admin',
-    },
   };
 };

@@ -18,7 +18,6 @@ Erhöhung der Review-Sicherheit auf `develop` durch ausführbare Qualitäts-Targ
   - `@sva/auth`
   - `@sva/core`
   - `@sva/data`
-  - `@sva/plugin-example`
   - `@sva/monitoring-client`
   - `@sva/sdk`
 - `@sva/monitoring-client:test:unit` führt echte Vitest-Tests aus.

@@ -234,9 +234,9 @@ describe('plugin registry', () => {
     const registry = createPluginRegistry([
       pluginA,
       {
-        id: 'example',
-        displayName: 'Example',
-        routes: [{ id: 'example.list', path: '/plugins/example', component: (() => null) as never }],
+        id: 'calendar',
+        displayName: 'Calendar',
+        routes: [{ id: 'calendar.list', path: '/plugins/calendar', component: (() => null) as never }],
       },
       {
         id: 'news-override',
@@ -254,7 +254,7 @@ describe('plugin registry', () => {
       },
     ]);
 
-    expect(Array.from(registry.keys())).toEqual(['news', 'example', 'news-override']);
+    expect(Array.from(registry.keys())).toEqual(['news', 'calendar', 'news-override']);
     expect(mergePluginNavigationItems(Array.from(registry.values()))).toHaveLength(1);
     expect(mergePluginActions(Array.from(registry.values()))).toHaveLength(1);
     expect(mergePluginContentTypes(Array.from(registry.values()))).toHaveLength(1);

@@ -18,7 +18,7 @@ COPY . .
 RUN find apps packages -name "*.tsbuildinfo" -type f -delete
 
 RUN pnpm install --frozen-lockfile
-# Build workspace libraries in dependency order (Nx graph: core → monitoring-client,sdk → auth,routing → plugin-example → app)
+# Build workspace libraries in dependency order (Nx graph: core -> monitoring-client,sdk -> auth,routing -> app)
 # --skip-nx-cache ensures builds are never skipped due to a stale cache
 RUN pnpm nx run core:build --skip-nx-cache
 RUN pnpm nx run monitoring-client:build --skip-nx-cache
@@ -27,7 +27,6 @@ RUN pnpm nx run data:build --skip-nx-cache
 RUN pnpm nx run auth:build --skip-nx-cache
 RUN pnpm nx run sva-mainserver:build --skip-nx-cache
 RUN pnpm nx run routing:build --skip-nx-cache
-RUN pnpm nx run plugin-example:build --skip-nx-cache
 # Fix ESM relative imports/exports: add .js extensions to extensionless local paths.
 # Some TypeScript emits extensionless ESM in dist/, which fails under Node ESM in runtime images.
 RUN node -e "\

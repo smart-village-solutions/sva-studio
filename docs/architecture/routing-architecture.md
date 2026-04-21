@@ -50,7 +50,7 @@ apps/sva-studio-react
   routes/__root.tsx
   router.tsx
 
-packages/plugin-example / packages/plugin-news
+packages/plugin-news
   -> PluginDefinition
 
 @sva/sdk

@@ -39,11 +39,12 @@ docker compose -f docker-compose.yml -f docker-compose.monitoring.yml down
 - Browser-Smoketest für Kernrouten:
   - `/`
   - `/interfaces`
-  - `/plugins/example`
+- Authentifizierte clientseitige Navigation zur produktiven Plugin-Route `/plugins/news`
 - Echter TanStack-Start-ServerFn-Transport:
   - `/interfaces` lädt die Übersicht über einen echten Request auf `/_server/...`
   - Die Smoke-Suite prüft explizit, dass keine HTML-Fallback-Antwort statt ServerFn-Transport zurückkommt
 - Clientseitige Router-Navigation:
+  - Navigation von `/` nach `/plugins/news` rendert die produktive Plugin-Route
   - Navigation von `/` nach `/interfaces` hält die Shell aktiv
   - Die Navigation erfolgt ohne Full Reload der gesamten App
 - Auth-Entry-Point:

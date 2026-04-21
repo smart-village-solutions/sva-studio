@@ -20,11 +20,11 @@ Non-Goals:
 
 ## Decisions
 
-- Decision: Der Deduplizierungs-Scope ist `instance_id + intent + idempotency_key`.
-  Alternatives considered: `instance_id + idempotency_key` wäre zu breit und könnte verschiedene Intents blockieren. `instance_id + step_key + idempotency_key` wäre zu eng, weil Reconcile/Execute den Run als Auftrag und nicht als einzelne Worker-Step-Mutation modellieren.
+- Decision: Der Deduplizierungs-Scope ist `instance_id + mutation + idempotency_key`, wobei `mutation` die stabile API-Mutation wie `reconcileKeycloak` oder `executeKeycloakProvisioning` bezeichnet.
+  Alternatives considered: `instance_id + idempotency_key` wäre zu breit und könnte verschiedene Mutationen blockieren. `instance_id + intent + idempotency_key` wurde verworfen, weil der Reconcile-Intent aus veränderlichem Instanzzustand abgeleitet wird und ein Retry nach Zustandsänderung sonst einen zweiten Run erzeugen könnte. `instance_id + step_key + idempotency_key` wäre zu eng, weil Reconcile/Execute den Run als Auftrag und nicht als einzelne Worker-Step-Mutation modellieren.
 
 - Decision: Der fachliche Payload-Fingerprint wird aus den enqueue-relevanten Eingaben gebildet.
-  Alternatives considered: Nur den Key speichern. Verworfen, weil wiederverwendete Keys mit anderer Payload sonst still denselben oder einen neuen Auftrag erzeugen könnten.
+  Alternatives considered: Nur den Key speichern. Verworfen, weil wiederverwendete Keys mit anderer Payload sonst still denselben oder einen neuen Auftrag erzeugen könnten. Für `reconcileKeycloak` wird der abgeleitete Intent im gespeicherten Run und im Fingerprint nachvollziehbar gehalten, aber nicht Teil des Deduplizierungs-Scopes.
 
 - Decision: Replay liefert den bestehenden Run zurück; Payload-Mismatch liefert einen stabilen Konfliktfehler.
   Alternatives considered: Replay als `202 Accepted` ohne Run-Body. Verworfen, weil Clients den bestehenden Run für Polling und UI-Status benötigen.

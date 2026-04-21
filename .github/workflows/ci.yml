@@ -22,6 +22,6 @@ jobs:
 
       - uses: ./.github/actions/setup-pnpm-workspace
 
-      - uses: nrwl/nx-set-shas@v4
+      - uses: nrwl/nx-set-shas@v5
 
       - run: pnpm exec nx affected -t lint test build

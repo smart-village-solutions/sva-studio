@@ -22,6 +22,7 @@ gleichzeitig beeinflussen.
 - Sessions bleiben datensparsam und tragen nur Auth-Kern plus Lifecycle-Felder (`issuedAt`, `expiresAt`, `sessionVersion`)
 - Optionale Verschlüsselung von Tokens im Redis-Store via `ENCRYPTION_KEY`
 - Sessionen führen nur den minimalen Auth-Kern (`sub/id`, `instanceId`, Rollen); Profilattribute wie Name und E-Mail gehören nicht zum Pflichtumfang der Session
+- Tenant-Sessions beziehen `instanceId` aus Host, Registry und Realm-Scope. Ein optionaler Token-Claim `instanceId` darf diesen Scope bestätigen, aber nicht ersetzen.
 - Forced Reauth pro Benutzer erfolgt über `minimumSessionVersion` und `forcedReauthAt`; Keycloak-Logout ist optional zuschaltbar
 - Silent SSO ist nur ein einmaliger Recovery-Versuch nach `401` und wird nach explizitem Logout temporär unterdrückt
 - Application-Level Column Encryption für IAM-PII-Felder (`email_ciphertext`, `display_name_ciphertext`)
@@ -49,6 +50,7 @@ gleichzeitig beeinflussen.
 ### IAM Multi-Tenancy, Caching und Audit-Logging
 
 - Mandantenisolation basiert auf kanonischem Scope `instanceId` als fachlichem String-Schlüssel (inkl. Mapping zu `workspace_id` in Logs)
+- Im tenant-spezifischen Login ist Host/Registry/Realm die führende Quelle für diesen Scope; ein fehlender benutzerbezogener `instanceId`-Claim blockiert die Session nicht.
 - Keycloak ist führend für Authentifizierung; Postgres ist führend für Studio-verwaltete IAM-Fachdaten
 - Autorisierungspfade erzwingen `instanceId`-Filterung vor Rollen-/Policy-Evaluation
 - Effektive Berechtigungen aggregieren direkte Nutzerrechte, direkte Rollen und gruppenvermittelte Rollen; die Provenance hält `direct_user`, `direct_role` und `group_role` als strukturierte Quelle fest
@@ -82,7 +84,7 @@ gleichzeitig beeinflussen.
 - Keycloak-Provisioning für Instanzen ist ein expliziter mehrstufiger Root-Host-Workflow aus Preflight, Plan, Ausführung und persistiertem Schrittprotokoll
 - Registry-Daten und Keycloak-Mutation sind getrennte Aktionen; ein Speichern von Instanzdaten führt keine implizite Keycloak-Änderung aus
 - Registry-Lookups verwenden einen kurzen In-Process-L1-Cache mit expliziter Invalidation, aber ohne Stale-Serve-Strategie
-- Tenant-gebundene Requests arbeiten fail-closed, wenn der Session-User keinen gültigen `instanceId`-Kontext mehr trägt; eine hostbasierte automatische Nachheilung dieses Pflichtfelds findet im IAM-Pfad nicht mehr statt
+- Tenant-gebundene Requests arbeiten fail-closed, wenn der Session-User keinen gültigen `instanceId`-Kontext mehr trägt. Neue Login-Sessions erhalten diesen Kontext bereits beim Callback aus dem Auth-Scope; Middleware-Hydration bleibt nur Absicherung für alte oder beschädigte Sessions.
 
 ### Logging und Observability
 
@@ -105,6 +107,7 @@ gleichzeitig beeinflussen.
 - IAM-v1-Fehlerantworten dürfen additive `details` tragen, enthalten dort aber nur nicht-sensitive Diagnosefelder wie `reason_code`, `dependency`, `schema_object`, `expected_migration`, `actor_resolution` und `instance_id`
 - Für den Zielpfad der IAM-Diagnostik ist derselbe allowlist-basierte Feldsatz die Grundlage für einen classification-basierten öffentlichen Diagnosevertrag; tiefe Rohfehler bleiben weiterhin OTEL- und Serverlog-intern
 - Tenant-Host-Validierung unterscheidet öffentlich zwischen `tenant_not_found`, `tenant_inactive`, `tenant_lookup_failed` und Session-Hydration-Defekten wie `missing_session_instance_id`; UI und Betrieb erhalten damit denselben sicheren Diagnosekern statt generischer `403`-/`401`-Fälle
+- Widerspricht ein vorhandener OIDC-Claim `instanceId` dem Host-/Realm-Scope, wird der Callback mit `tenant_scope_conflict` fail-closed protokolliert und nicht als tenant-lose Session fortgesetzt.
 - Tenant-Admin-Fehler dürfen zusätzlich `execution_mode`, `auth_realm` und `provider_source` tragen, damit Realm- oder Control-Plane-Drift ohne Rohfehler analysierbar bleibt
 - Auth-, Resolver- und Audit-Fehler protokollieren redigiert nur `error_type`, `reason_code`, `dependency`, `scope_kind` und Korrelationsfelder; rohe Provider-/DB-Fehltexte bleiben außerhalb des Standard-Logs
 - IAM-Readiness und Diagnosepfade exponieren Schema-Drift bewusst knapp (`schema_drift`, `missing_table`, `missing_column`) statt rohe SQL-, Redis- oder Provider-Fehler an UI oder Browser weiterzugeben
@@ -152,7 +155,7 @@ gleichzeitig beeinflussen.
 - Auth-Flow mit klaren Redirect-Fehlerpfaden (`auth=error`, `auth=state-expired`)
 - Silent Session-Recovery arbeitet ohne Retry-Schleifen und fällt bei Browser-/IdP-Limits deterministisch auf aktiven Login zurück
 - Recovery-Pfade wie Silent-Recovery, Session-Hydration, Host-Fallbacks oder degradierte Projektionen gelten diagnostisch nicht automatisch als gesunder Zustand; ein erfolgreicher Workaround darf die zugrunde liegende Fehlerklasse nicht unsichtbar machen
-- Fehlende `instanceId` in tenantgebundenen Sessions gilt explizit als Defektklasse `session_store_or_session_hydration` mit empfohlener Aktion `erneut_anmelden`, nicht als automatisch reparierbarer Zwischenzustand
+- Fehlende `instanceId` in bestehenden tenantgebundenen Sessions gilt explizit als Defektklasse `session_store_or_session_hydration` mit empfohlener Aktion `erneut_anmelden`, nicht als automatisch reparierbarer Zwischenzustand
 - Root-Route nutzt ein zentrales `errorComponent` für unbehandelte Laufzeitfehler mit Retry-Option
 - Runtime-Profile verwenden einen verbindlichen Diagnosepfad `pnpm env:doctor:<profil>`; manuelle `psql`-/Browser-Netzwerkdiagnose ist nur Fallback
 - Read-only Remote-Diagnostik trennt strikt zwischen Portainer-API als Primaerkanal und `quantum-cli` als Mutations-/Fallback-Kanal
@@ -216,6 +219,12 @@ gleichzeitig beeinflussen.
 ### i18n und Accessibility
 
 - Core- und Plugin-UI-Texte werden über gemeinsame i18n-Ressourcen aufgelöst; Plugin-Namespaces folgen der Konvention `<pluginId>.*`
+- Plugin-beigestellte registrierte Host-Identifier folgen einem einheitlichen Namespace-Modell:
+  - `contentType` im Format `<pluginId>.<name>`
+  - plugin-spezifische Admin-Ressourcen-IDs im Format `<pluginId>.<name>`
+  - plugin-spezifische Audit-Event-Typen im Format `<pluginId>.<name>`
+- Die technische Ownership liegt bei `PluginDefinition.id`; Plugins dürfen keine fremden oder reservierten Core-Namespaces wie `content`, `iam`, `admin` oder `core` belegen
+- Core-Identifier wie `generic`, `legal` oder hosteigene Admin-Ressourcen wie `content` bleiben ausdrücklich außerhalb dieser Plugin-Namespace-Pflicht
 - A11y wird pro Review/Template eingefordert, aber noch nicht zentral automatisiert
 - Rollen-Statusindikatoren in `/admin/roles` verwenden i18n-Labels für `synced`, `pending` und `failed`
 - Retry- und Reconcile-Aktionen bleiben über semantische Buttons und Testabdeckung tastatur- und screenreader-freundlich prüfbar
@@ -226,6 +235,8 @@ gleichzeitig beeinflussen.
   - Erstellungsansicht unter `/admin/<resource>/new`
   - Detail- und Bearbeitungsansicht unter `/admin/<resource>/$id`
 - Create- und Edit-Flows dieser Ressourcen werden nicht über lokalen Dialog-State der Listenansicht gesteuert; Listenaktionen navigieren immer auf die kanonische Zielroute
+- Die technische Quelle dieser Navigationskonvention ist ein deklarativer Admin-Ressourcenvertrag im SDK; Packages liefern nur Bindings und Guard-Referenzen, keine eigene Admin-Shell oder abweichende Top-Level-Pfade
+- Legacy-Einstiege dürfen nur als explizite Host-Aliase bestehen bleiben; für die Inhaltsverwaltung redirectet der Host `/content*` kontrolliert auf `/admin/content*`
 
 ### UI-Theming, Design-Tokens und Shell-Verhalten
 

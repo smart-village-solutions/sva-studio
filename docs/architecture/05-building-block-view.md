@@ -41,6 +41,8 @@ Abhängigkeiten des aktuellen Systems.
 5. SDK (`packages/sdk`)
    - Logger, Context-Propagation, OTEL-Bootstrap
    - öffentlicher Plugin-Vertrag v1 (`PluginDefinition`, Navigation, Routen-, Content-Type- und Translation-Merge)
+   - Build-time-Registry-Vertrag für Plugins, Admin-Ressourcen und plugin-spezifische Audit-Events
+   - Namespacing- und Ownership-Validierung für plugin-beigestellte registrierte Host-Identifier
    - Instance-Config-Modul (`instance/config.server.ts`): lokaler und migrationsbezogener Fallback für Allowlist-Validierung, Host-Parsing und Mapping auf `instanceId`; produktiver Tenant-Traffic wird registrygeführt validiert
    - deklarative Registries für erweiterbare Inhalts-Typen und typgebundene UI-/Validierungs-Metadaten
 6. Monitoring Client (`packages/monitoring-client`)
@@ -55,7 +57,7 @@ Abhängigkeiten des aktuellen Systems.
 9. Plugin Example (`packages/plugin-example`)
    - Minimalreferenz für den Plugin-SDK-Vertrag v1
 10. Plugin News (`packages/plugin-news`)
-   - produktives Fachplugin für `contentType = news`
+   - produktives Fachplugin für `contentType = news.article`
    - eigene Listen- und Editor-Ansichten, Plugin-Navigation und Plugin-Übersetzungen
 11. Instanz-Registry (`packages/core`, `packages/data`, `packages/auth`, `apps/sva-studio-react`)
    - `packages/core`: Host-Klassifikation, Vertrags- und Run-Modell fuer Registry, Preflight, Plan und Provisioning-Protokoll
@@ -95,9 +97,9 @@ Abhängigkeiten des aktuellen Systems.
   - `packages/auth` (`iam-governance.server.ts`, `iam-governance/*`, `iam-data-subject-rights.server.ts`, `iam-data-subject-rights/*`)
 - Inhaltsverwaltung als Core-Element:
   - `packages/core` (`content-management.ts`) für Kernvertrag
-  - `packages/sdk` (`content-types.ts`) für Erweiterungspunkte
-  - `packages/auth` (`iam-contents.server.ts`, `iam-contents/*`) für serverseitige Read-/Write-Pfade, Historie und Audit
-  - `apps/sva-studio-react/src/routes/content/*` für Listen- und Editor-UI unter `/content`
+  - `packages/sdk` (`content-types.ts`, `admin-resources.ts`, `build-time-registry.ts`) für Erweiterungspunkte, Registries und Namespace-Verträge
+  - `packages/auth` (`iam-contents.server.ts`, `iam-contents/*`) für serverseitige Read-/Write-Pfade, Historie, Audit und contentType-spezifische Payload-Validierung
+  - `apps/sva-studio-react/src/routes/content/*` für Listen- und Editor-UI unter `/admin/content`
   - `packages/plugin-news` für plugin-spezifische News-Ansichten auf Basis derselben Core-Content-API
 - Externe Mainserver-Anbindung:
   - `packages/sva-mainserver` (`server/config-store.ts`, `server/service.ts`, `generated/*`)
@@ -158,11 +160,22 @@ Nicht erlaubt: `@sva/plugin-*` -> `@sva/core`
 1. `packages/sdk/src/plugins.ts`
    - definiert `PluginDefinition` und Merge-Helfer für Plugin-Routen, Navigation, Content-Typen und Übersetzungen
 2. `apps/sva-studio-react/src/lib/plugins.ts`
-   - registriert `pluginExample` und `pluginNews` statisch im Host und materialisiert daraus Route-, Navigations- und i18n-Metadaten
+   - registriert `pluginExample` und `pluginNews` statisch im Host und materialisiert daraus Route-, Navigations-, Admin-Ressourcen-, Audit- und i18n-Metadaten
 3. `packages/auth/src/iam-contents/content-type-registry.ts`
    - erweitert den generischen Content-Write-Pfad um contentType-spezifische Payload-Validierung und Sanitisierung
 4. `packages/plugin-news/src/*`
    - kapselt News-Liste, Editor, Delete-Flow und plugin-eigene Übersetzungen unter der SDK-Boundary
+
+### Erweiterung 2026-04: Namespacete Plugin-Identität über Build-time-Registries
+
+1. `packages/sdk/src/plugins.ts` + `packages/sdk/src/plugin-identifiers.ts`
+   - definieren die technische Plugin-Identität über `PluginDefinition.id` als führenden Namespace und validieren plugin-beigestellte `contentType`s, Admin-Ressourcen und Audit-Event-Typen gegen `<pluginId>.<name>`
+2. `packages/sdk/src/build-time-registry.ts`
+   - verdichtet Plugins, hosteigene Admin-Ressourcen und plugin-spezifische Audit-Event-Definitionen in einen gemeinsamen Registry-Snapshot für Host und Routing
+3. `packages/routing/src/app.routes.shared.ts`
+   - materialisiert deklarative Admin-Ressourcen unter `/admin/<resource>` und hält Legacy-Aliase wie `/content*` nur noch als Redirect-Vertrag
+4. `packages/auth/src/iam-contents/content-type-registry.ts`
+   - führt `news.article` als kanonischen plugin-beigestellten `contentType` im serverseitigen Validierungsvertrag
 
 ### Schichtdefinition `scope:integration`
 
@@ -313,10 +326,21 @@ Neu hinzugekommene Bausteine im Change `add-iam-organization-management-hierarch
 5. `packages/routing/src/account-ui.routes.ts`
    - Enthält die kanonischen Guard-Pfade für Listen-, Create- und Detailrouten dieser CRUD-artigen Admin-Ressourcen.
 
+### Ergänzung 2026-04: Admin-Ressourcen-Registry
+
+1. `packages/sdk/src/admin-resources.ts`
+   - Definiert `AdminResourceDefinition` sowie fail-fast Registry-/Merge-Logik für Ressourcen-ID, Basispfad und deklarative Listen-/Create-/Detail-/History-Bindings.
+2. `packages/routing/src/app.routes.shared.ts`
+   - Materialisiert kanonische Admin-Routen aus registrierten Admin-Ressourcen und hält Legacy-Aliase wie `/content* -> /admin/content*` zentral im Routing-Layer.
+3. `apps/sva-studio-react/src/routing/admin-resources.ts`
+   - Registriert die im Host aktivierten Admin-Ressourcen; aktuell dient `content` als Referenzmigration.
+4. `apps/sva-studio-react/src/routing/app-route-bindings.tsx`
+   - Bindet nur noch Seitenkomponenten und Param-Adapter an den Vertrag; der kanonische Detailparam für Admin-Ressourcen ist `$id`.
+
 ### Ergänzung 2026-03: Manueller Keycloak-User-Import
 
 1. `packages/auth/src/iam-account-management/user-import-sync-handler.ts`
-   - Führt einen expliziten Admin-Sync aus, liest Keycloak-Benutzer seitenweise, filtert sie über das `instanceId`-Attribut und spiegelt Basisdaten idempotent nach `iam.accounts`.
+   - Führt einen expliziten Admin-Sync aus, liest Keycloak-Benutzer seitenweise aus dem aktiven Tenant-Realm, akzeptiert Benutzer ohne `instanceId`-Attribut und spiegelt Basisdaten idempotent nach `iam.accounts`; widersprüchliche Attribute bleiben als Diagnose sichtbar.
 2. `packages/auth/src/identity-provider-port.ts`
    - Erweitert die IdP-Abstraktion um typisierte User-Listing-Operationen für administrative Import- und Reconcile-Flows.
 3. `packages/routing/src/auth.routes.server.ts` und `packages/auth/src/routes.shared.ts`

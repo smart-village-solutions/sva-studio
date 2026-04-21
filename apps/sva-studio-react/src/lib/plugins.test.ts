@@ -55,7 +55,7 @@ describe('plugin action alias lookup', () => {
   });
 
   it('resolves legacy aliases and warns only once per alias', async () => {
-    const { getStudioPluginAction } = await import('./plugins');
+    const { getStudioPluginAction, studioAdminResources, studioBuildTimeRegistry } = await import('./plugins');
 
     const first = getStudioPluginAction('create');
     const second = getStudioPluginAction('create');
@@ -74,6 +74,14 @@ describe('plugin action alias lookup', () => {
       requested_action_id: 'create',
       canonical_action_id: 'news.create',
       owner_plugin_id: 'news',
+    });
+
+    expect(studioBuildTimeRegistry.plugins).toHaveLength(2);
+    expect(studioBuildTimeRegistry.routes).toHaveLength(2);
+    expect(studioBuildTimeRegistry.adminResources).toEqual(studioAdminResources);
+    expect(studioAdminResources[0]).toMatchObject({
+      resourceId: 'content',
+      basePath: 'content',
     });
   });
 });

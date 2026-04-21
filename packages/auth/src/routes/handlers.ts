@@ -17,7 +17,7 @@ import { getAuthConfig, resolveAuthConfigForRequest } from '../config.js';
 import { createMockSessionUser, isMockAuthEnabled } from '../mock-auth.server.js';
 import { getSession } from '../redis-session.server.js';
 import { buildRequestOriginFromHeaders, resolveEffectiveRequestHost } from '../request-hosts.js';
-import { SessionStoreUnavailableError, TenantAuthResolutionError } from '../runtime-errors.js';
+import { SessionStoreUnavailableError, TenantAuthResolutionError, TenantScopeConflictError } from '../runtime-errors.js';
 import { DEFAULT_WORKSPACE_ID, PLATFORM_WORKSPACE_ID, getScopeFromAuthConfig, getWorkspaceIdForScope } from '../scope.js';
 import { isTokenErrorLike } from '../shared/error-guards.js';
 import { buildLogContext } from '../shared/log-context.js';
@@ -275,6 +275,9 @@ window.parent.postMessage({ type: 'sva-auth:silent-sso', status: '${status}' }, 
   );
 
 const DEFAULT_POST_LOGIN_REDIRECT = '/';
+const LOGOUT_INTENT_HEADER = 'x-sva-logout-intent';
+const LOGOUT_INTENT_VALUE = 'user';
+const LOGOUT_INTENT_FORM_FIELD = 'logoutIntent';
 
 const resolveCallbackInput = (request: Request) => {
   const url = new URL(request.url);
@@ -284,6 +287,24 @@ const resolveCallbackInput = (request: Request) => {
     error: url.searchParams.get('error'),
     iss: url.searchParams.get('iss'),
   };
+};
+
+const hasExplicitLogoutIntent = async (request: Request): Promise<boolean> => {
+  if (request.headers.get(LOGOUT_INTENT_HEADER) === LOGOUT_INTENT_VALUE) {
+    return true;
+  }
+
+  const contentType = request.headers.get('content-type') ?? '';
+  if (!contentType.toLowerCase().startsWith('application/x-www-form-urlencoded')) {
+    return false;
+  }
+
+  try {
+    const formData = await request.clone().formData();
+    return formData.get(LOGOUT_INTENT_FORM_FIELD) === LOGOUT_INTENT_VALUE;
+  } catch {
+    return false;
+  }
 };
 
 const isTrustedAbsoluteReturnTo = async (request: Request, target: URL): Promise<boolean> => {
@@ -560,7 +581,37 @@ export const callbackHandler = async (request: Request): Promise<Response> => {
         return response;
       } catch (error) {
         const isSilent = cookieLoginState?.silent === true;
-        if (isTokenErrorLike(error)) {
+        if (error instanceof TenantScopeConflictError) {
+          const callbackScope = cookieLoginState ?? authScope;
+          logger.error('Tenant scope conflict in callback', {
+            operation: 'tenant_scope_validate',
+            is_silent: isSilent,
+            error_type: error.name,
+            reason_code: error.reason,
+            expected_instance_id: error.expectedInstanceId,
+            token_instance_id: error.actualInstanceId,
+            auth_realm: authConfig.authRealm ?? PLATFORM_WORKSPACE_ID,
+            client_id: authConfig.clientId,
+            issuer: authConfig.issuer,
+            ...buildLogContext(callbackScope),
+          });
+          logger.error('tenant_auth_callback_result', {
+            operation: 'tenant_auth_callback',
+            scope_kind: callbackScope.kind,
+            instance_id: callbackScope.kind === 'instance' ? callbackScope.instanceId : undefined,
+            auth_realm: authConfig.authRealm ?? PLATFORM_WORKSPACE_ID,
+            client_id: authConfig.clientId,
+            issuer: authConfig.issuer,
+            redirect_uri: authConfig.redirectUri,
+            is_silent: isSilent,
+            retry_performed: false,
+            result: 'failure',
+            error_type: error.name,
+            reason_code: error.reason,
+            auth_scope_kind: authScope.kind,
+            ...buildLogContext(callbackScope),
+          });
+        } else if (isTokenErrorLike(error)) {
           const callbackScope = cookieLoginState ?? authScope;
           logger.warn('Token validation failed in callback', {
             operation: 'token_validate',
@@ -681,6 +732,19 @@ export const logoutHandler = async (request: Request): Promise<Response> => {
     }
 
     try {
+      if (!(await hasExplicitLogoutIntent(request))) {
+        logger.warn('Logout rejected without explicit user intent', {
+          endpoint: '/auth/logout',
+          operation: 'logout',
+          reason_code: 'missing_logout_intent',
+          ...buildLogContext(undefined),
+        });
+
+        return toJsonErrorResponse(400, 'logout_intent_required', 'Logout requires explicit user intent.', {
+          requestId: getWorkspaceContext().requestId,
+        });
+      }
+
       const authConfig = await resolveAuthConfigForRequest(request);
       const authScope = getScopeFromAuthConfig(authConfig);
       const { sessionCookieName, postLogoutRedirectUri, silentSsoSuppressCookieName, silentSsoSuppressAfterLogoutMs } =

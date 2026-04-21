@@ -19,6 +19,7 @@ export default defineConfig({
       '@sva/auth': fileURLToPath(new URL('../../packages/auth/src/index.ts', import.meta.url)),
       '@sva/sva-mainserver/server': fileURLToPath(new URL('../../packages/sva-mainserver/src/index.server.ts', import.meta.url)),
       '@sva/sva-mainserver': fileURLToPath(new URL('../../packages/sva-mainserver/src/index.ts', import.meta.url)),
+      '@sva/sdk/admin-resources': fileURLToPath(new URL('../../packages/sdk/src/admin-resources.ts', import.meta.url)),
       '@sva/sdk/server': fileURLToPath(new URL('../../packages/sdk/src/server.ts', import.meta.url)),
       '@sva/sdk/logging': fileURLToPath(new URL('../../packages/sdk/src/logging.ts', import.meta.url)),
       '@sva/sdk/logger/index.server': fileURLToPath(new URL('../../packages/sdk/src/logger/index.server.ts', import.meta.url)),

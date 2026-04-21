@@ -76,6 +76,20 @@ export class SessionUserHydrationError extends Error {
   }
 }
 
+export class TenantScopeConflictError extends Error {
+  readonly actualInstanceId: string;
+  readonly expectedInstanceId: string;
+  readonly reason = 'tenant_scope_conflict';
+  readonly statusCode = 401;
+
+  constructor(input: { actualInstanceId: string; expectedInstanceId: string }) {
+    super('Tenant login token contains a conflicting instance context');
+    this.name = 'TenantScopeConflictError';
+    this.actualInstanceId = input.actualInstanceId;
+    this.expectedInstanceId = input.expectedInstanceId;
+  }
+}
+
 export class IamSchemaDriftError extends Error {
   readonly cause?: unknown;
   readonly expectedMigration?: string;

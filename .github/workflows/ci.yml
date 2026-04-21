@@ -14,8 +14,6 @@ jobs:
   main:
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    env:
-      NX_CLOUD_ENCRYPTION_KEY: ${{ secrets.NX_CLOUD_ENCRYPTION_KEY }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -23,12 +21,7 @@ jobs:
           fetch-depth: 0
 
       - uses: ./.github/actions/setup-pnpm-workspace
-        with:
-          disable-nx-cloud: "true"
-          nx-cloud-encryption-key: ${{ secrets.NX_CLOUD_ENCRYPTION_KEY }}
 
       - uses: nrwl/nx-set-shas@v4
 
       - run: pnpm exec nx affected -t lint test build
-      - run: pnpm exec nx fix-ci
-        if: always()

@@ -1,10 +1,18 @@
 import { describe, expect, expectTypeOf, it } from 'vitest';
 
 import {
+  createBuildTimeRegistry,
+  createAdminResourceRegistry,
   createPluginActionRegistry,
+  createPluginAuditEventRegistry,
   createPluginRegistry,
+  definePluginAdminResources,
   definePluginActions,
+  definePluginAuditEvents,
+  definePluginContentTypes,
   mergePluginActions,
+  mergeAdminResourceDefinitions,
+  mergePluginAuditEventDefinitions,
   mergePluginContentTypes,
   mergePluginNavigationItems,
   mergePluginRouteDefinitions,
@@ -25,7 +33,8 @@ describe('plugin registry', () => {
         requiredAction: 'content.write',
       },
     ]),
-    contentTypes: [{ contentType: 'news', displayName: 'News' }],
+    contentTypes: definePluginContentTypes('news', [{ contentType: 'news.article', displayName: 'News' }]),
+    auditEvents: definePluginAuditEvents('news', [{ eventType: 'news.published', titleKey: 'news.audit.published' }]),
     translations: {
       de: {
         news: {
@@ -91,6 +100,15 @@ describe('plugin registry', () => {
         },
       ])
     ).toThrow('invalid_plugin_definition');
+
+    expect(() =>
+      createPluginRegistry([
+        {
+          ...pluginA,
+          id: 'News Plugin',
+        },
+      ])
+    ).toThrow('invalid_plugin_namespace:News Plugin');
 
     expect(() =>
       createPluginRegistry([
@@ -208,6 +226,7 @@ describe('plugin registry', () => {
     expect(mergePluginNavigationItems([pluginA])).toHaveLength(1);
     expect(mergePluginActions([pluginA])).toHaveLength(1);
     expect(mergePluginContentTypes([pluginA])).toHaveLength(1);
+    expect(mergePluginAuditEventDefinitions([pluginA])).toHaveLength(1);
     expect(mergePluginTranslations([pluginA])).toEqual(pluginA.translations);
   });
 
@@ -239,6 +258,7 @@ describe('plugin registry', () => {
     expect(mergePluginNavigationItems(Array.from(registry.values()))).toHaveLength(1);
     expect(mergePluginActions(Array.from(registry.values()))).toHaveLength(1);
     expect(mergePluginContentTypes(Array.from(registry.values()))).toHaveLength(1);
+    expect(mergePluginAuditEventDefinitions(Array.from(registry.values()))).toHaveLength(1);
     expect(mergePluginTranslations(Array.from(registry.values()))).toEqual({
       de: {
         news: {
@@ -255,6 +275,65 @@ describe('plugin registry', () => {
     expectTypeOf(pluginA).toMatchTypeOf<PluginDefinition>();
     expectTypeOf<(typeof pluginA.routes)[number]['guard']>().toEqualTypeOf<'content.read' | undefined>();
     expectTypeOf<(typeof pluginA.navigation)[number]['section']>().toEqualTypeOf<'dataManagement'>();
+  });
+
+  it('enforces namespace isolation for plugin content types, admin resources and audit events', () => {
+    expect(() =>
+      definePluginContentTypes('news', [{ contentType: 'article', displayName: 'Article' }])
+    ).toThrow('invalid_plugin_content_type:article');
+
+    expect(() =>
+      definePluginContentTypes('news', [{ contentType: 'events.article', displayName: 'Article' }])
+    ).toThrow('plugin_content_type_namespace_mismatch:news:events:events.article');
+
+    expect(() =>
+      createPluginRegistry([
+        {
+          ...pluginA,
+          contentTypes: [{ contentType: 'article', displayName: 'Article' }],
+        },
+      ])
+    ).toThrow('invalid_plugin_content_type:article');
+
+    expect(() =>
+      definePluginAdminResources('news', [
+        {
+          resourceId: 'articles',
+          basePath: 'news-articles',
+          titleKey: 'news.articles.title',
+          guard: 'content',
+          views: {
+            list: { bindingKey: 'newsArticles' },
+            create: { bindingKey: 'newsArticlesCreate' },
+            detail: { bindingKey: 'newsArticlesDetail' },
+          },
+        },
+      ])
+    ).toThrow('invalid_plugin_admin_resource:articles');
+
+    expect(() =>
+      definePluginAdminResources('news', [
+        {
+          resourceId: 'events.articles',
+          basePath: 'news-articles',
+          titleKey: 'news.articles.title',
+          guard: 'content',
+          views: {
+            list: { bindingKey: 'newsArticles' },
+            create: { bindingKey: 'newsArticlesCreate' },
+            detail: { bindingKey: 'newsArticlesDetail' },
+          },
+        },
+      ])
+    ).toThrow('plugin_admin_resource_namespace_mismatch:news:events:events.articles');
+
+    expect(() =>
+      definePluginAuditEvents('news', [{ eventType: 'published', titleKey: 'news.audit.published' }])
+    ).toThrow('invalid_plugin_audit_event_type:published');
+
+    expect(() =>
+      definePluginAuditEvents('news', [{ eventType: 'events.published', titleKey: 'news.audit.published' }])
+    ).toThrow('plugin_audit_event_namespace_mismatch:news:events:events.published');
   });
 
   it('builds a namespaced action registry and rejects duplicates', () => {
@@ -300,8 +379,33 @@ describe('plugin registry', () => {
     ).toThrow('duplicate_plugin_action:news-duplicate.publish');
   });
 
+  it('builds a namespaced plugin audit event registry and rejects duplicates', () => {
+    const auditEvents = createPluginAuditEventRegistry([pluginA]);
+
+    expect(auditEvents.get('news.published')).toMatchObject({
+      eventType: 'news.published',
+      namespace: 'news',
+      eventName: 'published',
+      ownerPluginId: 'news',
+      titleKey: 'news.audit.published',
+    });
+
+    expect(() =>
+      createPluginAuditEventRegistry([
+        {
+          ...pluginA,
+          auditEvents: [
+            ...pluginA.auditEvents,
+            { eventType: 'news.published', titleKey: 'news.audit.publishedAgain' },
+          ],
+        },
+      ])
+    ).toThrow('duplicate_plugin_audit_event:news.published');
+  });
+
   it('enforces namespace isolation for plugin actions', () => {
     expect(() => definePluginActions('   ', [])).toThrow('invalid_plugin_action_namespace');
+    expect(() => definePluginActions('News', [])).toThrow('invalid_plugin_namespace:News');
 
     expect(() => definePluginActions('core', [])).toThrow('reserved_plugin_action_namespace:core');
     expect(() => definePluginActions('content', [])).toThrow('reserved_plugin_action_namespace:content');
@@ -550,5 +654,119 @@ describe('plugin registry', () => {
         },
       ])
     ).toThrow('duplicate_plugin_action:publish');
+  });
+});
+
+describe('admin resource registry', () => {
+  const contentResource = {
+    resourceId: 'content',
+    basePath: 'content',
+    titleKey: 'content.page.title',
+    guard: 'content',
+    views: {
+      list: { bindingKey: 'content' },
+      create: { bindingKey: 'contentCreate' },
+      detail: { bindingKey: 'contentDetail' },
+    },
+  } as const;
+
+  it('registers valid admin resources and keeps optional history optional', () => {
+    const registry = createAdminResourceRegistry([contentResource]);
+
+    expect(registry.get('content')).toEqual(contentResource);
+    expect(mergeAdminResourceDefinitions([contentResource])).toEqual([contentResource]);
+  });
+
+  it('rejects duplicate resource ids and colliding base paths', () => {
+    expect(() =>
+      createAdminResourceRegistry([
+        contentResource,
+        {
+          ...contentResource,
+          basePath: 'content-alt',
+        },
+      ])
+    ).toThrow('duplicate_admin_resource:content');
+
+    expect(() =>
+      createAdminResourceRegistry([
+        contentResource,
+        {
+          ...contentResource,
+          resourceId: 'legal-texts',
+        },
+      ])
+    ).toThrow('admin_resource_base_path_conflict:content:legal-texts:content');
+  });
+});
+
+describe('build-time registry', () => {
+  it('materializes plugin and admin contributions through a single canonical contract', () => {
+    const plugin = {
+      id: 'news',
+      displayName: 'News',
+      routes: [{ id: 'news.list', path: '/plugins/news', component: (() => null) as never }],
+      navigation: [
+        {
+          id: 'news.navigation',
+          to: '/plugins/news',
+          titleKey: 'news.navigation.title',
+          section: 'dataManagement' as const,
+        },
+      ],
+      translations: {
+        de: {
+          news: {
+            navigation: {
+              title: 'News',
+            },
+          },
+        },
+      },
+      contentTypes: definePluginContentTypes('news', [{ contentType: 'news.article', displayName: 'News' }]),
+      auditEvents: definePluginAuditEvents('news', [{ eventType: 'news.published' }]),
+      adminResources: definePluginAdminResources('news', [
+        {
+          resourceId: 'news.articles',
+          basePath: 'news-articles',
+          titleKey: 'news.articles.title',
+          guard: 'content',
+          views: {
+            list: { bindingKey: 'newsArticles' },
+            create: { bindingKey: 'newsArticlesCreate' },
+            detail: { bindingKey: 'newsArticlesDetail' },
+          },
+        },
+      ]),
+    } as const;
+
+    const registry = createBuildTimeRegistry({
+      plugins: [plugin],
+      adminResources: [
+        {
+          resourceId: 'content',
+          basePath: 'content',
+          titleKey: 'content.page.title',
+          guard: 'content',
+          views: {
+            list: { bindingKey: 'content' },
+            create: { bindingKey: 'contentCreate' },
+            detail: { bindingKey: 'contentDetail' },
+          },
+        },
+      ],
+    });
+
+    expect(registry.plugins).toEqual([plugin]);
+    expect(registry.routes).toEqual(plugin.routes);
+    expect(registry.navigation).toEqual(plugin.navigation);
+    expect(registry.contentTypes).toEqual(plugin.contentTypes);
+    expect(registry.auditEvents).toEqual(plugin.auditEvents);
+    expect(registry.translations).toEqual(plugin.translations);
+    expect(registry.adminResources).toHaveLength(2);
+    expect(registry.adminResourceRegistry.get('content')?.basePath).toBe('content');
+    expect(registry.adminResourceRegistry.get('news.articles')?.basePath).toBe('news-articles');
+    expect(registry.pluginRegistry.get('news')?.displayName).toBe('News');
+    expect(registry.pluginAuditEventRegistry.get('news.published')?.ownerPluginId).toBe('news');
   });
 });

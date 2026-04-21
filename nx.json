@@ -56,6 +56,5 @@
     "frontendEnvE2E": [{ "env": "CI" }],
     "sharedGlobals": ["{workspaceRoot}/tsconfig.base.json", "{workspaceRoot}/pnpm-lock.yaml"]
   },
-  "analytics": false,
-  "nxCloudId": "69e4e2584679d3b4b2845b37"
+  "analytics": false
 }

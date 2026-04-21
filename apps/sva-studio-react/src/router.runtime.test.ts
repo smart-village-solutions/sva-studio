@@ -109,6 +109,19 @@ vi.mock('./routing/app-route-bindings', () => ({
 
 vi.mock('./lib/plugins', () => ({
   studioPlugins: [{ id: 'plugin-a' }],
+  studioAdminResources: [
+    {
+      resourceId: 'content',
+      basePath: 'content',
+      titleKey: 'content.page.title',
+      guard: 'content',
+      views: {
+        list: { bindingKey: 'content' },
+        create: { bindingKey: 'contentCreate' },
+        detail: { bindingKey: 'contentDetail' },
+      },
+    },
+  ],
 }));
 
 vi.mock('./routes/__root', () => ({
@@ -190,6 +203,19 @@ describe('router runtime helpers', () => {
     const router = await getRouter();
 
     expect(routerMocks.getClientRouteFactoriesSpy).toHaveBeenCalledWith({
+      adminResources: [
+        {
+          resourceId: 'content',
+          basePath: 'content',
+          titleKey: 'content.page.title',
+          guard: 'content',
+          views: {
+            list: { bindingKey: 'content' },
+            create: { bindingKey: 'contentCreate' },
+            detail: { bindingKey: 'contentDetail' },
+          },
+        },
+      ],
       bindings: { home: expect.any(Function) },
       plugins: [{ id: 'plugin-a' }],
     });
@@ -293,6 +319,19 @@ describe('router runtime helpers', () => {
     const router = await getRouter();
 
     expect(routerMocks.getServerRouteFactoriesSpy).toHaveBeenCalledWith({
+      adminResources: [
+        {
+          resourceId: 'content',
+          basePath: 'content',
+          titleKey: 'content.page.title',
+          guard: 'content',
+          views: {
+            list: { bindingKey: 'content' },
+            create: { bindingKey: 'contentCreate' },
+            detail: { bindingKey: 'contentDetail' },
+          },
+        },
+      ],
       bindings: { home: expect.any(Function) },
       plugins: [{ id: 'plugin-a' }],
     });

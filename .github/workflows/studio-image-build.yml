@@ -35,8 +35,6 @@ jobs:
     name: Build and Publish Studio Image
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    env:
-      NX_CLOUD_ENCRYPTION_KEY: ${{ secrets.NX_CLOUD_ENCRYPTION_KEY }}
     outputs:
       image_digest: ${{ steps.inspect.outputs.image_digest }}
       image_ref: ${{ steps.inspect.outputs.image_ref }}
@@ -50,9 +48,6 @@ jobs:
 
       - name: Setup workspace
         uses: ./.github/actions/setup-pnpm-workspace
-        with:
-          disable-nx-cloud: "true"
-          nx-cloud-encryption-key: ${{ secrets.NX_CLOUD_ENCRYPTION_KEY }}
 
       - name: Verify final runtime artifact
         run: pnpm nx run sva-studio-react:verify:runtime-artifact

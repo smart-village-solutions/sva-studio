@@ -92,6 +92,7 @@ mit Bezug auf die arc42-Abschnitte.
 - ADR-033: Getrennter Tenant-Login-Client und Tenant-Admin-Client als kanonischer Instanzvertrag (Abschnitt 04, 05, 06, 08, 09, 10, 11)
 - ADR-032: Plattform-Scope vs. tenantgebundene Instanz als kanonische Runtime- und Audit-Trennung (Abschnitt 04, 05, 06, 08, 09, 11)
 - ADR-034: Statischer Plugin-SDK-Vertrag v1 für Routing, Navigation, Content-Typen und Übersetzungen (Abschnitt 04, 05, 06, 08, 09, 11, 12)
+- ADR-034 trägt weiterhin auch die technische Plugin-Identität als führenden Namespace; die Namespacing-Regeln für plugin-beigestellte `contentType`s, Admin-Ressourcen-IDs und Audit-Event-Typen wurden als Fortschreibung dieses Vertrags umgesetzt, ohne eine separate ADR-Serie zu eröffnen.
 - ADR-035: Routing-Observability über Diagnostics-Hook, Safe-Event-Vertrag und Browser-/Server-Split (Abschnitt 04, 05, 06, 08, 09, 10, 11)
 - ADR-036: Kanonischer IAM-Projektionskern, deterministischer Reconcile-/Sync-Vertrag und fail-closed Drift-Blocker (Abschnitt 04, 05, 06, 08, 09, 10, 11)
 
@@ -218,6 +219,19 @@ Zuordnung:
 - Die maßgeblichen Architekturentscheidungen bleiben daher:
   - ADR-012 und ADR-013 für Permission- und Governance-Semantik
   - ADR-017 für die modulare Zerlegung der Auth-/IAM-Serverbausteine
+
+### Fortschreibung 2026-04: Plugin-Namespacing-Governance ohne neue ADR
+
+- Für `add-p1-plugin-extension-namespacing-governance` wurde keine neue ADR angelegt.
+- Maßgeblich bleibt `ADR-034-plugin-sdk-vertrag-v1.md`, weil der Change den bestehenden statischen Plugin-Vertrag schärft statt ein neues konkurrierendes Plugin-Modell einzuführen.
+- Die Fortschreibung konkretisiert ADR-034 in drei Punkten:
+  - `PluginDefinition.id` ist der führende Namespace für plugin-beigestellte registrierte Host-Identifier
+  - plugin-beigestellte `contentType`s, Admin-Ressourcen-IDs und Audit-Event-Typen verwenden `<pluginId>.<name>`
+  - Core-Identifier wie `generic`, `legal` oder hosteigene Admin-Ressourcen bleiben ausdrücklich außerhalb dieser Plugin-Namespace-Pflicht
+
+Zuordnung:
+
+- Abschnitt 04/05/06/08/09/11: ADR-034 Fortschreibung
   - ADR-018 für Fehlervertrag und korrelierbare Transparenz-Reads
 
 Zuordnung:

@@ -145,7 +145,7 @@ describe('routes/handlers', () => {
     const response = await logoutHandler(
       new Request('http://localhost/auth/logout', {
         method: 'POST',
-        headers: { cookie: 'sva_auth_session=session-1' },
+        headers: { cookie: 'sva_auth_session=session-1', 'x-sva-logout-intent': 'user' },
       })
     );
 
@@ -731,7 +731,12 @@ describe('routes/handlers', () => {
     );
     const { logoutHandler } = await import('./handlers.js');
 
-    const response = await logoutHandler(new Request('https://de-musterhausen.studio.example.org/auth/logout'));
+    const response = await logoutHandler(
+      new Request('https://de-musterhausen.studio.example.org/auth/logout', {
+        method: 'POST',
+        headers: { 'x-sva-logout-intent': 'user' },
+      })
+    );
 
     expect(response.status).toBe(503);
     await expect(response.json()).resolves.toEqual(
@@ -752,7 +757,7 @@ describe('routes/handlers', () => {
     const response = await logoutHandler(
       new Request('https://studio.example.org/auth/logout', {
         method: 'POST',
-        headers: { cookie: 'sva_auth_session=session-1' },
+        headers: { cookie: 'sva_auth_session=session-1', 'x-sva-logout-intent': 'user' },
       })
     );
 
@@ -981,10 +986,31 @@ describe('routes/handlers', () => {
     );
   });
 
-  it('logs logout without session and still sets suppression cookie', async () => {
+  it('rejects logout without explicit user intent before clearing cookies', async () => {
     const { logoutHandler } = await import('./handlers.js');
 
     const response = await logoutHandler(new Request('http://localhost/auth/logout', { method: 'POST' }));
+
+    expect(response.status).toBe(400);
+    expect(response.headers.get('set-cookie')).toBeNull();
+    expect(loggerMock.warn).toHaveBeenCalledWith(
+      'Logout rejected without explicit user intent',
+      expect.objectContaining({
+        operation: 'logout',
+        reason_code: 'missing_logout_intent',
+      })
+    );
+  });
+
+  it('logs logout without session and still sets suppression cookie when intent is explicit', async () => {
+    const { logoutHandler } = await import('./handlers.js');
+
+    const response = await logoutHandler(
+      new Request('http://localhost/auth/logout', {
+        method: 'POST',
+        headers: { 'x-sva-logout-intent': 'user' },
+      })
+    );
 
     expect(response.status).toBe(302);
     expect(loggerMock.debug).toHaveBeenCalledWith(
@@ -992,6 +1018,25 @@ describe('routes/handlers', () => {
       expect.objectContaining({ operation: 'logout', session_exists: false })
     );
     expect(response.headers.get('set-cookie')).toContain('sva_auth_silent_sso=');
+  });
+
+  it('accepts explicit logout intent from browser form posts', async () => {
+    const { logoutHandler } = await import('./handlers.js');
+
+    const response = await logoutHandler(
+      new Request('http://localhost/auth/logout', {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ logoutIntent: 'user' }),
+      })
+    );
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get('set-cookie')).toContain('sva_auth_silent_sso=');
+    expect(loggerMock.warn).not.toHaveBeenCalledWith(
+      'Logout rejected without explicit user intent',
+      expect.any(Object)
+    );
   });
 
   it('handles logout errors and falls back to post logout redirect', async () => {
@@ -1008,7 +1053,7 @@ describe('routes/handlers', () => {
     const response = await logoutHandler(
       new Request('http://localhost/auth/logout', {
         method: 'POST',
-        headers: { cookie: 'sva_auth_session=session-err' },
+        headers: { cookie: 'sva_auth_session=session-err', 'x-sva-logout-intent': 'user' },
       })
     );
 
@@ -1034,7 +1079,7 @@ describe('routes/handlers', () => {
     const response = await logoutHandler(
       new Request('http://localhost/auth/logout', {
         method: 'POST',
-        headers: { cookie: 'sva_auth_session=session-rel' },
+        headers: { cookie: 'sva_auth_session=session-rel', 'x-sva-logout-intent': 'user' },
       })
     );
 

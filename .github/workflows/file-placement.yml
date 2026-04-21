@@ -17,8 +17,6 @@ jobs:
   check-file-placement:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    env:
-      NX_CLOUD_ENCRYPTION_KEY: ${{ secrets.NX_CLOUD_ENCRYPTION_KEY }}
 
     steps:
       - name: Checkout
@@ -28,9 +26,6 @@ jobs:
 
       - name: Setup workspace
         uses: ./.github/actions/setup-pnpm-workspace
-        with:
-          disable-nx-cloud: "true"
-          nx-cloud-encryption-key: ${{ secrets.NX_CLOUD_ENCRYPTION_KEY }}
 
       - name: Validate file placement
         run: pnpm check:file-placement

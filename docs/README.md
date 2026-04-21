@@ -33,7 +33,7 @@ Diese Übersicht ist der zentrale Einstiegspunkt für die Projekt-Dokumentation 
 Der Workspace besteht aktuell aus einer App und acht Nx-Libraries:
 
 - App: `sva-studio-react`
-- Libraries: `auth`, `core`, `data`, `monitoring-client`, `plugin-example`, `routing`, `sdk`, `sva-mainserver`
+- Libraries: `auth`, `core`, `data`, `monitoring-client`, `plugin-news`, `routing`, `sdk`, `sva-mainserver`
 
 Für die technische Einordnung dieser Projekte sind folgende Dokumente die primären Einstiege:
 

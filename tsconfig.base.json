@@ -29,8 +29,7 @@
       "@sva/sva-mainserver/server": ["packages/sva-mainserver/src/index.server.ts"],
       "@sva/monitoring-client": ["packages/monitoring-client/src/index.ts"],
       "@sva/monitoring-client/server": ["packages/monitoring-client/src/server.ts"],
-      "@sva/monitoring-client/logger-provider.server": ["packages/monitoring-client/src/logger-provider.server.ts"],
-      "@sva/plugin-example": ["packages/plugin-example/src/index.ts"]
+      "@sva/monitoring-client/logger-provider.server": ["packages/monitoring-client/src/logger-provider.server.ts"]
     }
   }
 }

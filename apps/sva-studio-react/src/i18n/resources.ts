@@ -69,7 +69,6 @@ export const i18nResources = {
         themeModeDark: 'Dunkel',
         home: 'Startseite',
         demos: 'Demos',
-        pluginExample: 'Plugin-Beispiel',
         account: 'Konto',
         adminUsers: 'Benutzer',
         adminOrganizations: 'Organisationen',
@@ -110,7 +109,6 @@ export const i18nResources = {
         legalTexts: 'Rechtstexte',
         privacy: 'Datenschutz',
         demos: 'Demos',
-        pluginExample: 'Plugin-Beispiel',
         account: 'Mein Konto',
         interfaces: 'Schnittstellen',
         modules: 'Module',
@@ -148,11 +146,6 @@ export const i18nResources = {
       nextStepLabel: 'Nächster Ausbau',
       nextStepTitle: 'Anschluss an echte Inhalte',
       nextStepBody: 'Definieren Sie für „{{area}}“ die konkreten Daten, Aktionen und Freigaben. Die Route und Navigation sind bereits vorbereitet.',
-    },
-    example: {
-      navigation: {
-        title: 'Plugin-Beispiel',
-      },
     },
     news: {
       navigation: {
@@ -2003,7 +1996,6 @@ export const i18nResources = {
         themeModeDark: 'Dark',
         home: 'Home',
         demos: 'Demos',
-        pluginExample: 'Plugin Example',
         account: 'Account',
         adminUsers: 'Users',
         adminOrganizations: 'Organizations',
@@ -2044,7 +2036,6 @@ export const i18nResources = {
         legalTexts: 'Legal texts',
         privacy: 'Privacy',
         demos: 'Demos',
-        pluginExample: 'Plugin Example',
         account: 'My Account',
         interfaces: 'Interfaces',
         modules: 'Modules',
@@ -2082,11 +2073,6 @@ export const i18nResources = {
       nextStepLabel: 'Next expansion',
       nextStepTitle: 'Connect real content',
       nextStepBody: 'Define the concrete data, actions, and access rules for "{{area}}". The route and navigation are already in place.',
-    },
-    example: {
-      navigation: {
-        title: 'Plugin Example',
-      },
     },
     news: {
       navigation: {

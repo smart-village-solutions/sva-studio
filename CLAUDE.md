@@ -64,7 +64,6 @@ packages/
   routing/              # @sva/routing — type-safe route factories (core + plugin routes)
   sdk/                  # @sva/sdk   — createSdkLogger, OpenTelemetry pipeline
   monitoring-client/    # @sva/monitoring-client
-  plugin-example/       # reference plugin implementation
   plugin-news/          # news plugin
 tooling/
   quality/              # complexity-policy.json
@@ -92,7 +91,7 @@ Internal packages use `workspace:*` protocol. Dependency direction: `core` → `
 
 **Design system**: Tailwind CSS 4 with HSL-based CSS variables. Use semantic tokens (`bg-primary`, `text-foreground`, etc.) — not raw colors. Dynamic data-driven styles may use inline styles only when encapsulated in a reusable component.
 
-**Plugins**: Self-contained packages with their own routes, components, and translations. `plugin-example` is the reference implementation.
+**Plugins**: Self-contained packages with their own routes, components, and translations. `plugin-news` is the current productive plugin package.
 
 **Module boundaries**: Enforced by `@nx/enforce-module-boundaries` via scope tags in `project.json`. Scope hierarchy: `core` → `data/sdk/monitoring` → `auth` → `routing/plugin` → `app`.
 

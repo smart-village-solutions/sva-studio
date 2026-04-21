@@ -7,14 +7,6 @@ const browserLoggerMock = vi.hoisted(() => ({
   error: vi.fn(),
 }));
 
-vi.mock('@sva/plugin-example', () => ({
-  pluginExample: {
-    id: 'example',
-    displayName: 'Example',
-    routes: [{ id: 'example.list', path: '/plugins/example', component: (() => null) as never }],
-  },
-}));
-
 vi.mock('@sva/plugin-news', () => ({
   pluginNews: {
     id: 'news',
@@ -76,8 +68,8 @@ describe('plugin action alias lookup', () => {
       owner_plugin_id: 'news',
     });
 
-    expect(studioBuildTimeRegistry.plugins).toHaveLength(2);
-    expect(studioBuildTimeRegistry.routes).toHaveLength(2);
+    expect(studioBuildTimeRegistry.plugins).toHaveLength(1);
+    expect(studioBuildTimeRegistry.routes).toHaveLength(1);
     expect(studioBuildTimeRegistry.adminResources).toEqual(studioAdminResources);
     expect(studioAdminResources[0]).toMatchObject({
       resourceId: 'content',

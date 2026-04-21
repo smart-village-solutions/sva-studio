@@ -74,7 +74,7 @@ Kurzübersicht:
 - Root/Shell: `src/routes/__root.tsx`
 - App Route Bindings: `src/routing/app-route-bindings.tsx`
 - Router-Komposition: `src/router.tsx` konsumiert ausschließlich `@sva/routing`
-- Plugin Example: `@sva/plugin-example`
+- Produktives Plugin: `@sva/plugin-news`
 
 Weitere Details:
 

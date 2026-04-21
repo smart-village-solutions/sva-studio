@@ -92,7 +92,7 @@ und Vorführungszwecke. Unterschiede zum Referenzprofil:
 
 #### Deployment-Muster
 
-- Der Build-Graph des Portainer-Images baut `sva-mainserver` explizit nach `auth` und vor `plugin-example`, damit die serverseitige Integrationsschicht im Deploy-Artefakt verlässlich vorhanden ist.
+- Der Build-Graph des Portainer-Images baut `sva-mainserver` explizit nach `auth` und vor `routing` sowie dem App-Build, damit die serverseitige Integrationsschicht im Deploy-Artefakt verlässlich vorhanden ist.
 
 - **Image-basiert:** Vorgebaute Images aus Container-Registry; für die App ist im Acceptance-Referenzpfad `SVA_IMAGE_REF` mit Digest verpflichtend, der Tag bleibt nur Metadatum. Kein `build:`-Block im Stack.
 - **Traefik-Labels:** Host-basiertes Routing über `HostRegexp` für Instanz-Subdomains unter `SVA_PARENT_DOMAIN`. TLS über Traefiks `certresolver`.

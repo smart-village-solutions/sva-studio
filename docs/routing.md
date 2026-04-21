@@ -14,4 +14,4 @@ Core-Routen werden in der App definiert und in der Registry registriert.
 ## Plugin-Routen
 
 Plugins exportieren Route-Factories, die im Router registriert werden.
-Beispiel: `@sva/plugin-example` liefert eine Route unter `/plugins/example`.
+Aktuell registriert der Host produktive Plugin-Routen aus `@sva/plugin-news`, zum Beispiel unter `/plugins/news`.

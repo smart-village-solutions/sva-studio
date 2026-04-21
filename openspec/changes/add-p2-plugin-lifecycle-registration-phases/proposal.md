@@ -22,7 +22,7 @@ Build-time-Erweiterungen bleiben langfristig nur dann übersichtlich, wenn klar 
   - `packages/sdk`
   - `packages/routing`
   - `apps/sva-studio-react`
-  - `packages/plugin-example`
+  - `packages/plugin-news`
 - Affected arc42 sections:
   - `docs/architecture/05-building-block-view.md`
   - `docs/architecture/06-runtime-view.md`

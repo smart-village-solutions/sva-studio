@@ -8,9 +8,7 @@
     "branches": 85
   },
   "maxAllowedDropPctPoints": 0.5,
-  "exemptProjects": [
-    "plugin-example"
-  ],
+  "exemptProjects": [],
   "perProjectFloors": {
     "core": {
       "lines": 75,

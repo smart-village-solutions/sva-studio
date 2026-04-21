@@ -343,103 +343,26 @@ describe('app.routes', () => {
     expect(getAdminDetailRoutePath('/admin/custom', 'help')).toBe('/admin/custom/$id');
   });
 
-  it('deduplicates static admin routes when equivalent admin resources are injected', () => {
-    const routeFactories = getClientRouteFactories({
-      bindings,
-      adminResources: [
-        ...adminResources,
-        {
-          resourceId: 'iam.users',
-          basePath: 'users',
-          titleKey: 'iam.users.title',
-          guard: 'adminUsers',
-          views: {
-            list: { bindingKey: 'adminUsers' },
-            create: { bindingKey: 'adminUserCreate' },
-            detail: { bindingKey: 'adminUserDetail' },
+  it('fails fast when injected admin resources shadow built-in admin routes', () => {
+    expect(() =>
+      getClientRouteFactories({
+        bindings,
+        adminResources: [
+          ...adminResources,
+          {
+            resourceId: 'plugin.users',
+            basePath: 'users',
+            titleKey: 'plugin.users.title',
+            guard: 'adminUsers',
+            views: {
+              list: { bindingKey: 'adminUsers' },
+              create: { bindingKey: 'adminUserCreate' },
+              detail: { bindingKey: 'adminUserDetail' },
+            },
           },
-        },
-        {
-          resourceId: 'iam.organizations',
-          basePath: 'organizations',
-          titleKey: 'iam.organizations.title',
-          guard: 'adminOrganizations',
-          views: {
-            list: { bindingKey: 'adminOrganizations' },
-            create: { bindingKey: 'adminOrganizationCreate' },
-            detail: { bindingKey: 'adminOrganizationDetail' },
-          },
-        },
-        {
-          resourceId: 'iam.instances',
-          basePath: 'instances',
-          titleKey: 'iam.instances.title',
-          guard: 'adminInstances',
-          views: {
-            list: { bindingKey: 'adminInstances' },
-            create: { bindingKey: 'adminInstanceCreate' },
-            detail: { bindingKey: 'adminInstanceDetail' },
-          },
-        },
-        {
-          resourceId: 'iam.roles',
-          basePath: 'roles',
-          titleKey: 'iam.roles.title',
-          guard: 'adminRoles',
-          views: {
-            list: { bindingKey: 'adminRoles' },
-            create: { bindingKey: 'adminRoleCreate' },
-            detail: { bindingKey: 'adminRoleDetail' },
-            history: { bindingKey: 'adminRoles' },
-          },
-        },
-        {
-          resourceId: 'iam.groups',
-          basePath: 'groups',
-          titleKey: 'iam.groups.title',
-          guard: 'adminGroups',
-          views: {
-            list: { bindingKey: 'adminGroups' },
-            create: { bindingKey: 'adminGroupCreate' },
-            detail: { bindingKey: 'adminGroupDetail' },
-          },
-        },
-        {
-          resourceId: 'iam.legal_texts',
-          basePath: 'legal-texts',
-          titleKey: 'iam.legalTexts.title',
-          guard: 'adminLegalTexts',
-          views: {
-            list: { bindingKey: 'adminLegalTexts' },
-            create: { bindingKey: 'adminLegalTextCreate' },
-            detail: { bindingKey: 'adminLegalTextDetail' },
-          },
-        },
-      ],
-    });
-    const rootRoute = { id: 'root' };
-    const routes = routeFactories.map((factory) => factory(rootRoute as never));
-    const paths = routes.map((route) => String(readRouteOptions(route).path));
-
-    expect(paths.filter((path) => path === '/admin/users')).toHaveLength(1);
-    expect(paths.filter((path) => path === '/admin/users/new')).toHaveLength(1);
-    expect(paths.filter((path) => path === '/admin/users/$userId')).toHaveLength(1);
-    expect(paths.filter((path) => path === '/admin/organizations')).toHaveLength(1);
-    expect(paths.filter((path) => path === '/admin/organizations/new')).toHaveLength(1);
-    expect(paths.filter((path) => path === '/admin/organizations/$organizationId')).toHaveLength(1);
-    expect(paths.filter((path) => path === '/admin/instances')).toHaveLength(1);
-    expect(paths.filter((path) => path === '/admin/instances/new')).toHaveLength(1);
-    expect(paths.filter((path) => path === '/admin/instances/$instanceId')).toHaveLength(1);
-    expect(paths.filter((path) => path === '/admin/roles')).toHaveLength(1);
-    expect(paths.filter((path) => path === '/admin/roles/new')).toHaveLength(1);
-    expect(paths.filter((path) => path === '/admin/roles/$roleId')).toHaveLength(1);
-    expect(paths.filter((path) => path === '/admin/roles/$roleId/history')).toHaveLength(1);
-    expect(paths.filter((path) => path === '/admin/groups')).toHaveLength(1);
-    expect(paths.filter((path) => path === '/admin/groups/new')).toHaveLength(1);
-    expect(paths.filter((path) => path === '/admin/groups/$groupId')).toHaveLength(1);
-    expect(paths.filter((path) => path === '/admin/legal-texts')).toHaveLength(1);
-    expect(paths.filter((path) => path === '/admin/legal-texts/new')).toHaveLength(1);
-    expect(paths.filter((path) => path === '/admin/legal-texts/$legalTextVersionId')).toHaveLength(1);
+        ],
+      })
+    ).toThrow('admin_resource_static_route_conflict:plugin.users:/admin/users');
   });
 
   it('fails fast when injected admin resources contain duplicate base paths', () => {

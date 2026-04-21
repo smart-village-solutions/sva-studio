@@ -122,22 +122,31 @@ export const getAdminDetailRoutePath = (basePath: string, bindingKey: string): s
   return `${basePath}/$${detailParamName}`;
 };
 
-const collectAdminResourceRoutePaths = (resources: readonly AdminResourceDefinition[]): ReadonlySet<string> => {
-  const paths = new Set<string>();
+const collectAdminResourceRoutePaths = (resources: readonly AdminResourceDefinition[]): ReadonlyMap<string, string> => {
+  const paths = new Map<string, string>();
 
   for (const resource of resources) {
     const basePath = `/admin/${resource.basePath}`;
     const detailPath = getAdminDetailRoutePath(basePath, resource.views.detail.bindingKey);
 
-    paths.add(basePath);
-    paths.add(`${basePath}/new`);
-    paths.add(detailPath);
+    paths.set(basePath, resource.resourceId);
+    paths.set(`${basePath}/new`, resource.resourceId);
+    paths.set(detailPath, resource.resourceId);
     if (resource.views.history) {
-      paths.add(`${detailPath}/history`);
+      paths.set(`${detailPath}/history`, resource.resourceId);
     }
   }
 
   return paths;
+};
+
+const assertNoStaticAdminRouteShadowing = (adminResourcePaths: ReadonlyMap<string, string>): void => {
+  for (const definition of uiRouteDefinitions) {
+    const resourceId = adminResourcePaths.get(definition.path);
+    if (resourceId && definition.path.startsWith('/admin/')) {
+      throw new Error(`admin_resource_static_route_conflict:${resourceId}:${definition.path}`);
+    }
+  }
 };
 
 export const createUiRouteFactories = (
@@ -150,6 +159,7 @@ export const createUiRouteFactories = (
   const diagnostics = options.diagnostics;
   const adminResources = mergeAdminResourceDefinitions(options.adminResources ?? []);
   const adminResourcePaths = collectAdminResourceRoutePaths(adminResources);
+  assertNoStaticAdminRouteShadowing(adminResourcePaths);
   const routeDefinitions = uiRouteDefinitions.filter((definition) => !adminResourcePaths.has(definition.path));
 
   return [

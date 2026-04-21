@@ -27,7 +27,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     env:
-      NX_CLOUD_ENCRYPTION_KEY: ${{ secrets.NX_CLOUD_ENCRYPTION_KEY }}
       SVA_AUTH_ISSUER: https://accounts.google.com
       SVA_AUTH_CLIENT_ID: gha-e2e-client
       SVA_AUTH_CLIENT_SECRET: gha-e2e-secret
@@ -43,8 +42,6 @@ jobs:
 
       - name: Setup workspace
         uses: ./.github/actions/setup-pnpm-workspace
-        with:
-          nx-cloud-encryption-key: ${{ secrets.NX_CLOUD_ENCRYPTION_KEY }}
 
       - name: Install Playwright browser
         run: pnpm --filter sva-studio-react exec playwright install --with-deps chromium

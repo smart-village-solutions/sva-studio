@@ -26,6 +26,7 @@ export type InstanceKeycloakRequirement = {
   readonly keycloakArtifacts: readonly string[];
   readonly workerStepKey: string;
   readonly uiStepKey: string;
+  readonly blocksLoginReadiness?: boolean;
 };
 
 export const INSTANCE_KEYCLOAK_REQUIREMENTS: readonly InstanceKeycloakRequirement[] = [
@@ -98,6 +99,7 @@ export const INSTANCE_KEYCLOAK_REQUIREMENTS: readonly InstanceKeycloakRequiremen
     keycloakArtifacts: ['protocol-mapper:instanceId'],
     workerStepKey: 'mapper',
     uiStepKey: 'mapper',
+    blocksLoginReadiness: false,
   },
   {
     key: 'tenant_secret',
@@ -168,6 +170,7 @@ export const INSTANCE_KEYCLOAK_REQUIREMENTS: readonly InstanceKeycloakRequiremen
     keycloakArtifacts: ['user-attribute:instanceId'],
     workerStepKey: 'tenant_admin',
     uiStepKey: 'tenantAdmin',
+    blocksLoginReadiness: false,
   },
 ] as const;
 
@@ -177,4 +180,6 @@ export const isInstanceKeycloakRequirementSatisfied = (
 ): boolean => status[requirement.statusField] === requirement.expectedValue;
 
 export const areAllInstanceKeycloakRequirementsSatisfied = (status: IamInstanceKeycloakStatus): boolean =>
-  INSTANCE_KEYCLOAK_REQUIREMENTS.every((requirement) => isInstanceKeycloakRequirementSatisfied(status, requirement));
+  INSTANCE_KEYCLOAK_REQUIREMENTS.filter((requirement) => requirement.blocksLoginReadiness !== false).every(
+    (requirement) => isInstanceKeycloakRequirementSatisfied(status, requirement)
+  );

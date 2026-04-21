@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { createLoginHref, resolveCurrentReturnTo } from './auth-navigation';
+import { createLoginHref, createSessionExpiredHref, resolveCurrentReturnTo } from './auth-navigation';
 
 describe('auth-navigation', () => {
   it('resolves default returnTo on server runtime', () => {
@@ -35,5 +35,32 @@ describe('auth-navigation', () => {
       configurable: true,
       value: originalLocation,
     });
+  });
+
+  it('uses the session-expired returnTo when creating login hrefs from the notice page', () => {
+    const originalLocation = window.location;
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: {
+        ...originalLocation,
+        pathname: '/',
+        search: '?auth=session-expired&returnTo=%2Fadmin%2Fusers%3Fpage%3D2',
+      },
+    });
+
+    expect(resolveCurrentReturnTo()).toBe('/admin/users?page=2');
+    expect(createLoginHref()).toBe('/auth/login?returnTo=%2Fadmin%2Fusers%3Fpage%3D2');
+
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: originalLocation,
+    });
+  });
+
+  it('creates a safe session-expired notice href with the original target', () => {
+    expect(createSessionExpiredHref('/admin/users?page=2')).toBe(
+      '/?auth=session-expired&returnTo=%2Fadmin%2Fusers%3Fpage%3D2'
+    );
+    expect(createSessionExpiredHref('https://evil.example')).toBe('/?auth=session-expired&returnTo=%2F');
   });
 });

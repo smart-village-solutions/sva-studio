@@ -2,13 +2,8 @@ import type { IamUserDetail } from '@sva/core';
 import { Link } from '@tanstack/react-router';
 import React from 'react';
 
-import {
-  asIamError,
-  fetchWithRequestTimeout,
-  getMyProfile,
-  IamHttpError,
-  updateMyProfile,
-} from '../../lib/iam-api';
+import { asIamError, getMyProfile, IamHttpError, updateMyProfile } from '../../lib/iam-api';
+import { IamRuntimeDiagnosticDetails } from '../../components/iam-runtime-diagnostic-details';
 import { Alert, AlertDescription, AlertTitle } from '../../components/ui/alert';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
@@ -120,7 +115,7 @@ const getLoadErrorDescription = (error: IamHttpError) => {
 };
 
 export const AccountProfilePage = () => {
-  const { user, isAuthenticated, isLoading: isAuthLoading, hasResolvedSession, refetch } = useAuth();
+  const { user, isAuthenticated, isLoading: isAuthLoading, hasResolvedSession } = useAuth();
 
   const [profile, setProfile] = React.useState<IamUserDetail | null>(null);
   const [formValues, setFormValues] = React.useState<ProfileFormValues>(EMPTY_FORM);
@@ -143,24 +138,12 @@ export const AccountProfilePage = () => {
       setProfile(response.data);
       setFormValues(toFormValues(response.data));
     } catch (cause) {
-      const resolvedError = asIamError(cause);
-      if (resolvedError.status === 401) {
-        await fetchWithRequestTimeout(
-          '/auth/logout',
-          {
-            method: 'POST',
-            redirect: 'manual',
-          },
-          { timeoutMs: 5_000 }
-        ).catch(() => undefined);
-        await refetch();
-      }
-      setLoadError(resolvedError);
+      setLoadError(asIamError(cause));
       setProfile(null);
     } finally {
       setIsLoading(false);
     }
-  }, [refetch]);
+  }, []);
 
   React.useEffect(() => {
     if (isAuthLoading || !hasResolvedSession) {
@@ -270,9 +253,7 @@ export const AccountProfilePage = () => {
           <AlertDescription className="mt-3">
             <div className="space-y-3">
               <p>{getLoadErrorDescription(loadError)}</p>
-              {loadError.requestId ? (
-                <p className="text-xs text-muted-foreground">{t('account.diagnostics.requestId', { requestId: loadError.requestId })}</p>
-              ) : null}
+              <IamRuntimeDiagnosticDetails error={loadError} />
               <div className="flex flex-wrap gap-3">
                 {isUnauthorized ? (
                   <Button asChild type="button" variant="outline">
@@ -352,7 +333,10 @@ export const AccountProfilePage = () => {
 
       {saveError ? (
         <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
-          <AlertDescription>{t('account.messages.saveError')}</AlertDescription>
+          <AlertDescription className="flex flex-col gap-3">
+            <span>{t('account.messages.saveError')}</span>
+            <IamRuntimeDiagnosticDetails error={saveError} />
+          </AlertDescription>
         </Alert>
       ) : null}
       {saveSuccess ? (

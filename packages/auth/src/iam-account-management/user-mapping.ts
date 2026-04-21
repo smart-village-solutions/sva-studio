@@ -77,6 +77,8 @@ export const mapUserRowToListItem = (row: {
     displayName,
     email,
     status: row.status,
+    mappingStatus: 'mapped',
+    editability: 'editable',
     position: row.position ?? undefined,
     department: row.department ?? undefined,
     lastLoginAt: row.last_login_at ?? undefined,

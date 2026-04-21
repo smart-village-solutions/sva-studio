@@ -15,6 +15,11 @@ export type {
   IamGroupListItem,
   IamGroupMembershipOrigin,
   IamGroupType,
+  IamKeycloakMappingStatus,
+  IamKeycloakObjectDiagnostic,
+  IamKeycloakObjectDiagnosticCode,
+  IamKeycloakObjectEditability,
+  IamKeycloakUserFieldEditability,
   IamInstanceAuditEvent,
   IamInstanceDetail,
   IamInstanceKeycloakPlan,
@@ -51,6 +56,7 @@ export type {
   IamUserPermissionTraceSourceKind,
   IamUserPermissionTraceStatus,
   IamUserRoleAssignment,
+  IamUserSyncObjectDiagnostic,
 } from './account-management-contract.js';
 export { deriveIamRuntimeDiagnostics } from './runtime-diagnostics.js';
 export type {

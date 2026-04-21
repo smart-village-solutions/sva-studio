@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  type IamKeycloakObjectDiagnostic,
   iamRuntimeDiagnosticClassifications,
   iamRuntimeDiagnosticStatuses,
   iamRuntimeRecommendedActions,
@@ -39,5 +40,19 @@ describe('account-management-contract runtime diagnostics exports', () => {
       'manuell_pruefen',
       'support_kontaktieren',
     ]);
+  });
+
+  it('allows object-level Keycloak diagnostics for admin UI projections', () => {
+    const diagnostic: IamKeycloakObjectDiagnostic = {
+      code: 'missing_instance_attribute',
+      objectId: 'kc-user-1',
+      objectType: 'user',
+    };
+
+    expect(diagnostic).toEqual({
+      code: 'missing_instance_attribute',
+      objectId: 'kc-user-1',
+      objectType: 'user',
+    });
   });
 });

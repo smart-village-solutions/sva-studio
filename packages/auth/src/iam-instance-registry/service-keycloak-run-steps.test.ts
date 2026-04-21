@@ -144,7 +144,7 @@ describe('service-keycloak-run-steps', () => {
     );
   });
 
-  it('buildFinalRunSteps reports tenant_admin attribute mismatch', () => {
+  it('buildFinalRunSteps reports tenant_admin attribute mismatch as optional interop drift', () => {
     const status = {
       realmExists: true,
       clientExists: true,
@@ -168,11 +168,40 @@ describe('service-keycloak-run-steps', () => {
     const tenantAdminStep = steps.find((step) => step.stepKey === 'tenant_admin');
     expect(tenantAdminStep).toEqual(
       expect.objectContaining({
-        ok: false,
-        summary: 'Der Tenant-Admin ist vorhanden, aber das instanceId-Attribut weicht ab.',
+        ok: true,
+        summary: 'Der Tenant-Admin ist vorhanden; das optionale instanceId-Attribut weicht ab oder fehlt.',
       })
     );
 
     expect(steps.map((step) => step.stepKey)).toContain('tenant_admin_password');
+  });
+
+  it('buildFinalRunSteps keeps missing instanceId mapper as non-blocking interop drift', () => {
+    const status = {
+      realmExists: true,
+      clientExists: true,
+      redirectUrisMatch: true,
+      logoutUrisMatch: true,
+      webOriginsMatch: true,
+      instanceIdMapperExists: false,
+      clientSecretAligned: true,
+      tenantAdminHasSystemAdmin: true,
+      tenantAdminHasInstanceRegistryAdmin: false,
+      tenantAdminExists: true,
+      tenantAdminInstanceIdMatches: true,
+    };
+
+    const steps = buildFinalRunSteps({
+      status: status as never,
+      intent: 'provision',
+      usedTemporaryPassword: false,
+    });
+
+    expect(steps.find((step) => step.stepKey === 'mapper')).toEqual(
+      expect.objectContaining({
+        ok: true,
+        summary: 'Der instanceId-Mapper fehlt als optionales Interop-Artefakt.',
+      })
+    );
   });
 });

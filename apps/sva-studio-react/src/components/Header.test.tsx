@@ -120,6 +120,11 @@ describe('Header auth actions', () => {
     expect(screen.getByRole('link', { name: 'Mein Konto' }).getAttribute('href')).toBe('/account');
     expect(screen.queryByRole('link', { name: 'Benutzer' })).toBeNull();
     expect(screen.getByTestId('organization-context-switcher')).toBeTruthy();
+
+    const logoutForm = document.querySelector('form[action="/auth/logout"]');
+    const logoutIntent = logoutForm?.querySelector('input[name="logoutIntent"]');
+    expect(logoutForm?.getAttribute('method')).toBe('post');
+    expect(logoutIntent?.getAttribute('value')).toBe('user');
   });
 
   it('zeigt auch für system_admin keine Navigationslinks im Header', async () => {

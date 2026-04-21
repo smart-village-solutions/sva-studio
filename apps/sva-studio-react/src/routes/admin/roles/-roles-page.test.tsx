@@ -5,6 +5,7 @@ import React from 'react';
 import { RolesPage } from './-roles-page';
 
 const useRolesMock = vi.fn();
+const useAuthMock = vi.fn();
 
 vi.mock('@tanstack/react-router', () => ({
   Link: ({
@@ -39,9 +40,15 @@ vi.mock('../../../hooks/use-roles', () => ({
   useRoles: () => useRolesMock(),
 }));
 
+vi.mock('../../../providers/auth-provider', () => ({
+  useAuth: () => useAuthMock(),
+}));
+
 describe('RolesPage', () => {
   beforeEach(() => {
     useRolesMock.mockReset();
+    useAuthMock.mockReset();
+    useAuthMock.mockReturnValue({ user: { id: 'user-admin', instanceId: 'de-musterhausen', roles: ['system_admin'] } });
   });
 
   afterEach(() => {
@@ -139,6 +146,48 @@ describe('RolesPage', () => {
     expect(reconcile).toHaveBeenCalledTimes(1);
   });
 
+  it('shows built-in role diagnostics as read-only state', () => {
+    useRolesMock.mockReturnValue({
+      roles: [
+        {
+          id: 'realm:default-roles',
+          roleKey: 'default-roles-de-musterhausen',
+          roleName: 'default-roles-de-musterhausen',
+          externalRoleName: 'default-roles-de-musterhausen',
+          managedBy: 'keycloak_builtin',
+          description: 'Default roles',
+          isSystemRole: false,
+          roleLevel: 0,
+          memberCount: 0,
+          syncState: 'synced',
+          editability: 'read_only',
+          diagnostics: [{ code: 'built_in_role', objectId: 'realm:default-roles', objectType: 'role' }],
+          permissions: [],
+        },
+      ],
+      isLoading: false,
+      error: null,
+      mutationError: null,
+      reconcileReport: null,
+      refetch: vi.fn(),
+      clearMutationError: vi.fn(),
+      createRole: vi.fn(),
+      updateRole: vi.fn(),
+      deleteRole: vi.fn(),
+      retryRoleSync: vi.fn(),
+      reconcile: vi.fn(),
+    });
+
+    render(<RolesPage />);
+
+    expect(screen.getAllByText('Keycloak-Built-in-Rolle').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Read-only').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Diagnose: built_in_role').length).toBeGreaterThan(0);
+    screen
+      .getAllByRole('button', { name: 'Rolle löschen' })
+      .forEach((button) => expect(button.hasAttribute('disabled')).toBe(true));
+  });
+
   it('triggers delete confirmation for custom roles', () => {
     const deleteRole = vi.fn().mockResolvedValue(true);
 
@@ -219,5 +268,87 @@ describe('RolesPage', () => {
     expect(screen.getByText('Empfohlene Aktion: Rollenabgleich prüfen')).toBeTruthy();
     expect(screen.getByText('Sync-Fehlercode: IDP_UNAVAILABLE')).toBeTruthy();
     expect(screen.getByText('Request-ID: req-role-list-7')).toBeTruthy();
+  });
+
+  it('renders object diagnostics from reconcile reports', () => {
+    useRolesMock.mockReturnValue({
+      roles: [],
+      isLoading: false,
+      error: null,
+      mutationError: null,
+      reconcileReport: {
+        outcome: 'partial_failure',
+        checkedCount: 2,
+        correctedCount: 1,
+        failedCount: 1,
+        manualReviewCount: 1,
+        requiresManualActionCount: 1,
+        roles: [
+          {
+            externalRoleName: 'default-roles-de-musterhausen',
+            action: 'report',
+            status: 'requires_manual_action',
+            errorCode: 'IDP_FORBIDDEN',
+            diagnostics: [{ code: 'forbidden_role_mapping', objectId: 'role-1', objectType: 'role' }],
+          },
+        ],
+      },
+      refetch: vi.fn(),
+      clearMutationError: vi.fn(),
+      createRole: vi.fn(),
+      updateRole: vi.fn(),
+      deleteRole: vi.fn(),
+      retryRoleSync: vi.fn(),
+      reconcile: vi.fn(),
+    });
+
+    render(<RolesPage />);
+
+    expect(screen.getByText(/Reconcile abgeschlossen\. Geprüft: 2, korrigiert: 1/i)).toBeTruthy();
+    expect(
+      screen.getByText('1 Rollenobjekte mit Diagnose: IDP_FORBIDDEN, forbidden_role_mapping')
+    ).toBeTruthy();
+  });
+
+  it('renders platform roles on root scope without tenant mutations', () => {
+    const reconcile = vi.fn();
+    useAuthMock.mockReturnValue({ user: { id: 'platform-admin', roles: ['system_admin'] } });
+    useRolesMock.mockReturnValue({
+      roles: [
+        {
+          id: 'platform:system_admin',
+          roleKey: 'system_admin',
+          roleName: 'system_admin',
+          externalRoleName: 'system_admin',
+          managedBy: 'external',
+          description: 'Platform admin',
+          isSystemRole: true,
+          roleLevel: 100,
+          memberCount: 0,
+          syncState: 'synced',
+          permissions: [],
+        },
+      ],
+      isLoading: false,
+      error: null,
+      mutationError: null,
+      reconcileReport: null,
+      refetch: vi.fn(),
+      clearMutationError: vi.fn(),
+      createRole: vi.fn(),
+      updateRole: vi.fn(),
+      deleteRole: vi.fn(),
+      retryRoleSync: vi.fn(),
+      reconcile,
+    });
+
+    render(<RolesPage />);
+
+    expect(screen.getByRole('heading', { name: 'Plattform-Rollen' })).toBeTruthy();
+    expect(screen.queryByRole('link', { name: 'Rolle anlegen' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Rolle bearbeiten' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Rolle löschen' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Plattform-Rollen abgleichen' }));
+    expect(reconcile).toHaveBeenCalledTimes(1);
   });
 });

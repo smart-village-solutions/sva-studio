@@ -69,6 +69,7 @@ export default function Header({
           <Link to="/account">{t('shell.sidebar.account')}</Link>
         </Button>
         <form action="/auth/logout" method="post" className="ml-2">
+          <input type="hidden" name="logoutIntent" value="user" />
           <Button type="submit" variant="destructive">
             {t('shell.header.logout')}
           </Button>

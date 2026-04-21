@@ -18,6 +18,23 @@ const state = vi.hoisted(() => ({
   identityProviderRealm: 'de-musterhausen',
   identityProviderSource: 'instance' as 'instance' | 'global',
   identityProviderExecutionMode: 'tenant_admin' as 'platform_admin' | 'tenant_admin' | 'break_glass',
+  platformSyncError: null as Error | null,
+  platformSyncReport: {
+    outcome: 'success',
+    checkedCount: 1,
+    correctedCount: 0,
+    failedCount: 0,
+    requiresManualActionCount: 0,
+    importedCount: 0,
+    updatedCount: 0,
+    skippedCount: 0,
+    totalKeycloakUsers: 1,
+    diagnostics: {
+      authRealm: 'platform',
+      providerSource: 'platform',
+      executionMode: 'platform_admin',
+    },
+  },
   emitActivityLog: vi.fn(async () => undefined),
   logger: {
     isLevelEnabled: vi.fn(() => false),
@@ -98,6 +115,89 @@ vi.mock('./iam-account-management/shared.js', async () => {
       error: (...args: Parameters<typeof state.logger.error>) => state.logger.error(...args),
     },
   };
+});
+
+vi.mock('./iam-account-management/platform-iam.js', () => ({
+  runPlatformKeycloakUserSync: vi.fn(async () => {
+    if (state.platformSyncError) {
+      throw state.platformSyncError;
+    }
+    return state.platformSyncReport;
+  }),
+}));
+
+describe('syncUsersFromKeycloakInternal platform scope', () => {
+  const platformCtx = {
+    user: {
+      id: 'kc-platform-admin',
+      roles: ['system_admin'],
+    },
+  } as never;
+
+  const platformSyncRequest = () =>
+    new Request('https://studio.smart-village.app/api/v1/iam/users/sync-keycloak', {
+      method: 'POST',
+      headers: {
+        origin: 'https://studio.smart-village.app',
+        'x-requested-with': 'XMLHttpRequest',
+      },
+    });
+
+  beforeEach(() => {
+    state.listUsersImpl = null;
+    state.identityProviderRealm = 'platform';
+    state.identityProviderSource = 'global';
+    state.identityProviderExecutionMode = 'platform_admin';
+    state.platformSyncError = null;
+  });
+
+  it('runs the platform Keycloak user sync without tenant persistence', async () => {
+    state.listUsersImpl = () => [
+      {
+        externalId: 'kc-platform',
+        username: 'platform.admin',
+        email: 'platform.admin@example.com',
+        enabled: true,
+        attributes: {},
+      },
+    ];
+
+    const { syncUsersFromKeycloakInternal } = await import('./iam-account-management/user-import-sync-handler.js');
+
+    const response = await syncUsersFromKeycloakInternal(platformSyncRequest(), platformCtx);
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      data: {
+        outcome: 'success',
+        totalKeycloakUsers: 1,
+        diagnostics: {
+          providerSource: 'platform',
+          executionMode: 'platform_admin',
+        },
+      },
+    });
+  });
+
+  it('maps platform Keycloak sync failures to keycloak_unavailable diagnostics', async () => {
+    state.platformSyncError = new Error('keycloak unavailable');
+
+    const { syncUsersFromKeycloakInternal } = await import('./iam-account-management/user-import-sync-handler.js');
+
+    const response = await syncUsersFromKeycloakInternal(platformSyncRequest(), platformCtx);
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        code: 'keycloak_unavailable',
+        details: {
+          dependency: 'keycloak',
+          reason_code: 'platform_keycloak_unavailable',
+          scope_kind: 'platform',
+        },
+      },
+    });
+  });
 });
 
 describe('runKeycloakUserImportSync', () => {

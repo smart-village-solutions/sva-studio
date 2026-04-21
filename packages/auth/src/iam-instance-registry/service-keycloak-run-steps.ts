@@ -77,10 +77,10 @@ const buildMapperCompletionStep = (status: KeycloakTenantStatus): CompletionStep
   stepKey: 'mapper',
   title: 'instanceId-Mapper sicherstellen',
   summary: status.instanceIdMapperExists
-    ? 'Der instanceId-Mapper ist vorhanden.'
-    : 'Der instanceId-Mapper fehlt weiterhin.',
+    ? 'Der instanceId-Mapper ist als Interop-Artefakt vorhanden.'
+    : 'Der instanceId-Mapper fehlt als optionales Interop-Artefakt.',
   details: { instanceIdMapperExists: status.instanceIdMapperExists, titleKey: 'iam.provisioning.steps.mapper.title' },
-  ok: status.instanceIdMapperExists,
+  ok: true,
 });
 
 const buildSecretCompletionStep = (status: KeycloakTenantStatus): CompletionStep => ({
@@ -126,16 +126,16 @@ const buildTenantAdminCompletionStep = (status: KeycloakTenantStatus): Completio
   title: 'Tenant-Admin sicherstellen',
   summary:
     status.tenantAdminExists && status.tenantAdminInstanceIdMatches
-      ? 'Der Tenant-Admin ist vorhanden und dem korrekten instanceId-Attribut zugeordnet.'
+      ? 'Der Tenant-Admin ist vorhanden und führt das optionale instanceId-Attribut.'
       : status.tenantAdminExists
-        ? 'Der Tenant-Admin ist vorhanden, aber das instanceId-Attribut weicht ab.'
+        ? 'Der Tenant-Admin ist vorhanden; das optionale instanceId-Attribut weicht ab oder fehlt.'
         : 'Der Tenant-Admin fehlt weiterhin.',
   details: {
     tenantAdminExists: status.tenantAdminExists,
     tenantAdminInstanceIdMatches: status.tenantAdminInstanceIdMatches,
     titleKey: 'iam.provisioning.steps.tenant_admin.title',
   },
-  ok: status.tenantAdminExists && status.tenantAdminInstanceIdMatches,
+  ok: status.tenantAdminExists,
 });
 
 const buildTenantAdminPasswordStep = (usedTemporaryPassword: boolean): CompletionStep => ({

@@ -41,18 +41,18 @@ Die Instanzverwaltung und der Provisioning-Worker verwenden für den fachlichen 
 | Redirect-URIs | `instanceId`, `parentDomain`, `primaryHostname` | `client.redirectUris` | Redirect-Ziele stimmen exakt | Client-URLs abgleichen |
 | Logout-URIs | `instanceId`, `parentDomain`, `primaryHostname` | `client.attributes.post.logout.redirect.uris` | Logout-Ziele stimmen exakt | Client-URLs abgleichen |
 | Web-Origins | `instanceId`, `parentDomain`, `primaryHostname` | `client.webOrigins` | Origins stimmen exakt | Client-URLs abgleichen |
-| `instanceId`-Mapper | `instanceId` | Protocol Mapper `instanceId` | Mapper existiert | Mapper anlegen oder korrigieren |
+| `instanceId`-Mapper | `instanceId` | Protocol Mapper `instanceId` | Optionaler Interop-Hinweis; Mapper existiert oder fehlt sichtbar als Warnung | Mapper anlegen oder korrigieren |
 | Tenant-Secret | `authClientSecret` | Client-Secret des Login-Clients | `existing`: Registry-Secret und Keycloak-Secret sind identisch. `new`: Secret wird beim Provisioning erzeugt und danach in die Registry zurückgeschrieben. | Secret setzen, erzeugen, rotieren und Rückschreiben in die Registry |
 | Tenant-Admin | `tenantAdminBootstrap.*` | User `<username>` | User existiert | User anlegen oder aktualisieren |
 | Rolle `system_admin` | `tenantAdminBootstrap.username` | Realm-Rolle auf Tenant-Admin | Rolle vorhanden | Rollen synchronisieren |
 | Ausschluss `instance_registry_admin` | `tenantAdminBootstrap.username` | Realm-Rolle auf Tenant-Admin | Rolle ist nicht zugewiesen | Rollen synchronisieren |
-| User-Attribut `instanceId` | `instanceId`, `tenantAdminBootstrap.username` | `attributes.instanceId` am Tenant-Admin | Attribut entspricht exakt der Instanz-ID | User-Attribute aktualisieren |
+| User-Attribut `instanceId` | `instanceId`, `tenantAdminBootstrap.username` | `attributes.instanceId` am Tenant-Admin | Optionaler Interop-Hinweis; Attribut entspricht der Instanz-ID oder fehlt sichtbar als Warnung | User-Attribute aktualisieren |
 
 Wichtig:
 
-- Diese Checkliste ist bewusst klein und normativ.
+- Diese Checkliste ist bewusst klein. Realm, Client, URLs, Secrets, Tenant-Admin und Rollen sind login-blockierend; Mapper und User-Attribut bleiben sichtbare Interop-/Diagnosepunkte.
 - Die UI-Schritte `Realm`, `Client`, `Mapper`, `Tenant-Secret` und `Tenant-Admin` gruppieren jeweils genau diese Pflichtpunkte.
-- Ein Provisioning-Lauf gilt nur dann als fachlich erfolgreich, wenn alle Punkte der Checkliste erfüllt sind.
+- Ein Provisioning-Lauf gilt für den Login-Pfad als erfolgreich, wenn alle login-blockierenden Punkte erfüllt sind. Optionale Interop-Hinweise dürfen danach weiter sichtbar bleiben.
 
 ## Vorbedingungen
 
@@ -80,7 +80,7 @@ Sollverhalten:
 - Realm wird erstellt
 - Login-Client wird erstellt oder vollständig eingerichtet
 - Client-Secret wird von Keycloak erzeugt und anschließend in der Registry gespeichert
-- `instanceId`-Mapper wird angelegt
+- optionaler `instanceId`-Mapper wird angelegt
 - Realm-Rollen werden sichergestellt
 - Tenant-Admin wird angelegt oder aktualisiert
 
@@ -139,7 +139,7 @@ Diese Kurzfassung ist der empfohlene operative Standardpfad für neue oder zu re
 10. Wenn `Tenant client secret aligned with Keycloak` noch nicht grün ist:
     - `Rotate client secret`
     - danach Status erneut laden und nur bei weiterem Drift erneut provisionieren
-11. Erst wenn die vollständige Checkliste grün ist:
+11. Erst wenn alle login-blockierenden Checklistenpunkte grün sind:
     - `Activate`
 
 ## Validierte Fallstricke aus dem Live-Betrieb
@@ -166,7 +166,7 @@ Typische Planschritte:
 - Realm erstellen oder vorhandenen Realm validieren
 - OIDC-Client abgleichen
 - Redirect-/Logout-/Origin-Werte korrigieren
-- `instanceId`-Mapper sicherstellen
+- optionalen `instanceId`-Mapper sicherstellen
 - Tenant-Secret abgleichen
 - Realm-Rollen sicherstellen
 - Tenant-Admin erstellen oder aktualisieren
@@ -212,10 +212,14 @@ Das Provisioning stellt mindestens folgenden Zustand sicher:
 - Realm `authRealm` existiert
 - OIDC-Client `authClientId` existiert
 - `rootUrl`, `redirectUris`, `webOrigins` und `post.logout.redirect.uris` sind tenant-spezifisch
-- Protocol Mapper `instanceId` existiert
 - Realm-Rolle `system_admin` existiert
 - Realm-Rolle `instance_registry_admin` existiert nur für Plattformpfade, nicht als Default-Rolle des Tenant-Admins
-- Tenant-Admin existiert, trägt `system_admin`, hat nicht `instance_registry_admin` und besitzt das korrekte User-Attribut `instanceId`
+- Tenant-Admin existiert, trägt `system_admin` und hat nicht `instance_registry_admin`
+
+Optional und weiter diagnostizierbar:
+
+- Protocol Mapper `instanceId` existiert
+- Tenant-Admin besitzt das korrekte User-Attribut `instanceId`
 
 ## Rollen- und Rechte-Modell
 
@@ -246,7 +250,7 @@ Ein Tenant gilt erst dann als betriebsbereit, wenn zusätzlich folgende Nachweis
 2. Plan ist nicht `blocked`
 3. letzter Provisioning-Run ist `succeeded`
 4. Tenant-Login gegen `https://<instanceId>.studio.smart-village.app/auth/login` funktioniert
-5. `/auth/me` liefert den korrekten `instanceId`-Kontext
+5. `/auth/me` liefert den korrekten `instanceId`-Kontext aus Host, Registry und Realm
 
 ## Referenzen
 

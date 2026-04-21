@@ -172,7 +172,7 @@ describe('Sidebar', () => {
     expect(screen.getByText('Anwendungen')).toBeTruthy();
     expect(screen.getByText('System')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Übersicht' }).getAttribute('href')).toBe('/');
-    expect(screen.getByRole('link', { name: 'Inhalte' }).getAttribute('href')).toBe('/content');
+    expect(screen.getByRole('link', { name: 'Inhalte' }).getAttribute('href')).toBe('/admin/content');
     expect(screen.getByRole('link', { name: 'App' }).getAttribute('href')).toBe('/app');
     expect(screen.getByRole('link', { name: 'Cockpit' }).getAttribute('href')).toBe(COCKPIT_URL);
     expect(screen.getByRole('link', { name: 'Cockpit' }).getAttribute('target')).toBe('_blank');

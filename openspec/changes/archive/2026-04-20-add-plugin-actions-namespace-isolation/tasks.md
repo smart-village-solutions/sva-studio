@@ -22,4 +22,4 @@
 - [x] 5.1 Unit-Tests für Validator und Registry ergänzen.
 - [x] 5.2 Type-Tests für SDK-Inferenz und Namespace-Verstöße ergänzen.
 - [x] 5.3 Integrations-/E2E-Tests für erlaubte und verbotene Cross-Namespace-Aufrufe ergänzen.
-- [ ] 5.4 PR-Gate ausführen (`pnpm test:pr`) oder dokumentierte Mindest-Gates nachweisen.
+- [x] 5.4 PR-Gate ausführen (`pnpm test:pr`) oder dokumentierte Mindest-Gates nachweisen.

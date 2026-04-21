@@ -10,8 +10,9 @@ Die Routing-Architektur ist auf folgende Ziele ausgelegt:
 2. **Eine öffentliche Routing-Schnittstelle** über `@sva/routing`.
 3. **Code-basierte produktive Seitenrouten** ohne app-lokale Parallel-Registrierung.
 4. **Saubere Server/Client-Grenze**, damit server-only Module nicht in den Client-Bundle gelangen.
-5. **Erweiterbarkeit** durch statisch registrierte SDK-Plugins.
+5. **Erweiterbarkeit** durch statisch registrierte SDK-Plugins und einen kanonischen Build-time-Registry-Vertrag.
 6. **Gezielte Routing-Observability** für Guard-Denials, Plugin-Anomalien und serverseitige Dispatch-Fehler ohne Browser-Noise.
+7. **Deklarative Admin-Ressourcen** für CRUD-artige Host-Flächen statt verteilter Einzelverdrahtung.
 
 ## Scope
 
@@ -21,6 +22,8 @@ Abgedeckt:
 - `packages/auth` für Auth-/API-Pfade und Server-Handler
 - `apps/sva-studio-react` für Root-Shell, Router-Erzeugung und Seiten-Bindings
 - statisch registrierte Plugin-Routen über `PluginDefinition`
+- statisch registrierte Admin-Ressourcen über `AdminResourceDefinition`
+- konsolidierte Build-time-Materialisierung über `createBuildTimeRegistry(...)`
 
 Nicht abgedeckt:
 
@@ -39,6 +42,7 @@ packages/routing
   -> getClientRouteFactories()
   -> getServerRouteFactories()
   -> getPluginRouteFactories()
+  -> Admin-Ressourcen-Materialisierung
   -> routePaths / Guards / Search-Normalisierung
 
 apps/sva-studio-react
@@ -49,8 +53,11 @@ apps/sva-studio-react
 packages/plugin-example / packages/plugin-news
   -> PluginDefinition
 
+@sva/sdk
+  -> createBuildTimeRegistry()
+
 Result:
-  rootRoute + route factories from @sva/routing -> runtime route tree
+  build-time registry + route factories from @sva/routing -> runtime route tree
 ```
 
 ## Komponenten im Detail
@@ -101,15 +108,25 @@ Die App hält nur noch die Bindung zwischen kanonischen Routen und React-Seiten-
 
 Die Datei enthält **keine** Pfad- oder Guard-Definitionen.
 
+### 3a) Admin-Ressourcen (`apps/sva-studio-react/src/routing/admin-resources.ts`)
+
+Die App registriert CRUD-artige Admin-Flächen deklarativ über `AdminResourceDefinition`.
+
+- Die Ressource beschreibt `resourceId`, `basePath`, `titleKey`, Guard-Referenz und Seiten-Bindings.
+- Hosteigene Admin-Ressourcen wie `content` behalten ihre unqualifizierte `resourceId`; plugin-beigestellte Admin-Ressourcen verwenden dagegen `<pluginId>.<name>`.
+- `@sva/routing` leitet daraus die kanonischen Pfade `/admin/<resource>`, `/admin/<resource>/new` und `/admin/<resource>/$id` ab.
+- Legacy-Einstiege bleiben nur als explizite Alias-Routen im Host-Routing bestehen; aktuell redirectet `/content*` auf `/admin/content*`.
+
 ### 4) Router-Instanz (`apps/sva-studio-react/src/router.tsx`)
 
 Ablauf in `getRouter()`:
 
 1. Die App importiert `appRouteBindings`.
-2. Die App liest die statische Plugin-Liste aus `src/lib/plugins.ts`.
-3. Server und Client laden isomorph die passende Factory-Menge aus `@sva/routing`.
-4. Die App materialisiert diese Factories gegen `rootRoute`.
-5. `createRouter({ routeTree, ... })`
+2. Die App erzeugt in `src/lib/plugins.ts` einen Build-time-Registry-Snapshot über `createBuildTimeRegistry(...)`.
+3. Der Snapshot enthält normalisierte Plugin-Beiträge, die registrierten Admin-Ressourcen und plugin-spezifische Audit-Event-Definitionen.
+4. Server und Client laden isomorph die passende Factory-Menge aus `@sva/routing`.
+5. Die App materialisiert diese Factories gegen `rootRoute`.
+6. `createRouter({ routeTree, ... })`
 
 Damit bleibt die Route-Komposition zentralisiert, während die App weiterhin die Seiten selbst rendert.
 
@@ -123,9 +140,10 @@ Damit bleibt die Route-Komposition zentralisiert, während die App weiterhin die
 
 Plugins exportieren `PluginDefinition`-Objekte.
 
-- Die Host-App registriert Plugins statisch.
+- Die Host-App registriert Plugins statisch und verdichtet ihre Build-time-Beiträge in einen kanonischen Registry-Snapshot.
 - `@sva/routing` materialisiert die Plugin-Routen zentral.
 - Plugin-Guards werden auf die kanonischen Guard-Regeln des Hosts gemappt.
+- Plugin-beigestellte registrierte Host-Identifier werden bereits vor der Routing-Materialisierung gegen den Namespace-Vertrag `<pluginId>.<name>` validiert.
 - Nicht unterstützte Plugin-Guard-Mappings erzeugen genau ein `routing.plugin.guard_unsupported`-Ereignis bei der Factory-Erstellung. Erfolgreiche Guard-Mappings bleiben still.
 
 ## Request/Response Routing für Auth
@@ -189,6 +207,7 @@ Wichtig:
 3. Shared Pfade als `const` + Typ in zentralen Modulen definieren.
 4. Seiten-Komponenten nur über die App-Route-Bindings einspeisen.
 5. Plugin-Routen ausschließlich über `PluginDefinition.routes` beschreiben und zentral im Routing-Paket materialisieren.
+6. Neue CRUD-artige Admin-Flächen über `AdminResourceDefinition` registrieren statt einzelne Host-Routen ad hoc zu ergänzen.
 
 ### Don't
 
@@ -196,6 +215,7 @@ Wichtig:
 2. Keine duplizierten Auth-Path-Strings in App-Code.
 3. Keine app-lokale Parallel-Registrierung produktiver Seitenrouten.
 4. Keine Demo- oder Sandbox-Routen in das Produkt-Routing mischen.
+5. Keine parallelen Legacy-Top-Level-Pfade ohne expliziten Alias-/Redirect-Vertrag im Host-Routing einführen.
 
 ## Bekannte Trade-offs
 

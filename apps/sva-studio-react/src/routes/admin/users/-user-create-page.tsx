@@ -4,6 +4,7 @@ import React from 'react';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Button } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
+import { IamRuntimeDiagnosticDetails } from '../../../components/iam-runtime-diagnostic-details';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
 import { Select } from '../../../components/ui/select';
@@ -126,7 +127,10 @@ export const UserCreatePage = () => {
 
       {usersApi.error ? (
         <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
-          <AlertDescription>{userErrorMessage(usersApi.error)}</AlertDescription>
+          <AlertDescription className="flex flex-col gap-3">
+            <span>{userErrorMessage(usersApi.error)}</span>
+            <IamRuntimeDiagnosticDetails error={usersApi.error} />
+          </AlertDescription>
         </Alert>
       ) : null}
     </section>

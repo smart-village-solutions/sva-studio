@@ -117,6 +117,13 @@ Referenzen:
 - Führend ist ein gemeinsamer Projektionskern von Keycloak-Identität (`sub`), tenant-spezifischem Auth-Scope (`instanceId` aus Host/Registry/Realm), IAM-User und Membership bis zur Darstellung in `/auth/me`, `/account`, `/admin/users` und `/admin/roles`.
 - Auf dem Root-Host wird derselbe IAM-v1-Routenvertrag im `platform`-Scope ausgewertet; Plattform-User und Plattform-Rollen stammen aus dem Plattform-Realm und benötigen keine tenantgebundene `instanceId`.
 - Tenant-Admin-abhängige Reconcile- und Sync-Pfade reagieren fail-closed, sobald blockerrelevanter Drift in Registry oder Provisioning erkannt wird.
+
+### Fortschreibung 2026-04: Studio als Keycloak-first Admin-UI
+
+- Studio wird für Benutzer, Realm-Rollen und Rollenzuordnungen als auditierte Admin-UI über Keycloak positioniert; Keycloak bleibt System of Record.
+- Platform-Scope und Tenant-Scope sind strategisch getrennte Admin-Pfade: Platform-Scope nutzt ausschließlich den Platform-Admin-Keycloak-Client, Tenant-Scope ausschließlich den Tenant-Admin-Keycloak-Client der Instanz.
+- Tenant-Listen folgen dem Keycloak-Realm als Benutzergrenze. Fehlende Studio-Zuordnungen werden nicht versteckt, sondern über `mappingStatus`, `editability` und stabile Diagnosecodes angezeigt.
+- Mutationen sind Keycloak-first. Studio-Read-Models werden nachgelagert synchronisiert oder als Drift/Diagnose sichtbar gemacht.
 - `manual_review` bleibt bewusst ein fachlicher Restzustand für nicht deterministisch behebbaren Abgleich; technische Fehler wie `IDP_UNAVAILABLE` und `IDP_FORBIDDEN` bleiben getrennt sichtbar.
 - Browser- und UI-Verträge behalten `classification`, `requestId` und `safeDetails` vollständig, damit Diagnose, Operator-Handlung und Fachzustand nicht auseinanderlaufen.
 

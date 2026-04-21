@@ -123,6 +123,19 @@ Abhängigkeiten des aktuellen Systems.
 - Der SVA-Mainserver bleibt fachliche Source of Truth für seine GraphQL-Daten; Studio hält nur Endpunktkonfiguration und kurzlebige Laufzeit-Caches für Credentials und Access-Tokens.
 - Fachmodule konsumieren zentrale IAM-Entscheidungen und duplizieren keine eigene Berechtigungsauflösung gegen IAM-Tabellen.
 
+### Fortschreibung 2026-04: Keycloak-Admin-UI-Bausteine
+
+1. `@sva/core`
+   - Definiert additive Verträge für `mappingStatus`, `editability`, objektbezogene Diagnosecodes und Sync-/Reconcile-Objektlisten.
+2. `packages/auth/src/identity-provider-port.ts`
+   - Kapselt Keycloak-nahe Listen-, Count-, Mutations- und explizite Role-Assignment-Operationen.
+3. `packages/auth/src/keycloak-admin-client`
+   - Implementiert serverseitige Pagination/Count für Realm-Rollen und User sowie differenzierte Fehlerabbildung für Keycloak-Admin-Aufrufe.
+4. `packages/auth/src/iam-account-management`
+   - Trennt Platform-Admin-Client, Tenant-Admin-Client, Keycloak-first Mutationen, Read-Model-Synchronisation und Drift-/Diagnoseprojektion.
+5. `apps/sva-studio-react/src/routes/admin/users` und `apps/sva-studio-react/src/routes/admin/roles`
+   - Rendern Mappingstatus, Bearbeitbarkeit und Diagnosecodes; blockierte oder read-only Aktionen bleiben sichtbar, aber deaktiviert.
+
 ### Fortschreibung 2026-04: Diagnosegrenzen im IAM-Pfad
 
 - `packages/data` liefert tenant- und registrynahe Drift- und Fallback-Signale, insbesondere in der Host-Auflösung.

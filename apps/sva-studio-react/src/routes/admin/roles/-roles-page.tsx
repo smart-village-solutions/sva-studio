@@ -1,3 +1,4 @@
+import type { IamKeycloakObjectDiagnostic } from '@sva/core';
 import React from 'react';
 import { Link } from '@tanstack/react-router';
 
@@ -36,20 +37,45 @@ const STATUS_LABEL_KEYS = {
 const RECONCILE_OUTCOME_LABEL_KEYS = {
   success: 'admin.roles.messages.reconcileOutcome.success',
   partial_failure: 'admin.roles.messages.reconcileOutcome.partialFailure',
+  blocked: 'admin.roles.messages.reconcileOutcome.blocked',
   failed: 'admin.roles.messages.reconcileOutcome.failed',
 } as const satisfies Record<RoleReconcileReport['outcome'], TranslationKey>;
 
 const statusLabel = (syncState: 'synced' | 'pending' | 'failed'): string => t(STATUS_LABEL_KEYS[syncState]);
 
-const roleTypeLabel = (role: { isSystemRole: boolean; managedBy: 'studio' | 'external' }): string => {
+const roleTypeLabel = (role: { isSystemRole: boolean; managedBy: 'studio' | 'external' | 'keycloak_builtin' }): string => {
   if (role.isSystemRole) {
     return t('admin.roles.labels.systemRole');
+  }
+  if (role.managedBy === 'keycloak_builtin') {
+    return t('admin.roles.labels.builtInRole');
   }
   if (role.managedBy === 'external') {
     return t('admin.roles.labels.externalRole');
   }
   return t('admin.roles.labels.customRole');
 };
+
+const editabilityClassByValue = {
+  editable: 'border-primary/40 bg-primary/10 text-primary',
+  read_only: 'border-secondary/40 bg-secondary/10 text-secondary',
+  blocked: 'border-destructive/40 bg-destructive/10 text-destructive',
+} as const;
+
+const editabilityLabelKey = {
+  editable: 'admin.roles.editability.editable',
+  read_only: 'admin.roles.editability.readOnly',
+  blocked: 'admin.roles.editability.blocked',
+} as const;
+
+const renderDiagnosticCodes = (diagnostics: readonly IamKeycloakObjectDiagnostic[] | undefined) =>
+  diagnostics && diagnostics.length > 0 ? (
+    <p className="mt-2 text-xs text-muted-foreground">
+      {t('admin.roles.messages.diagnosticCodes', {
+        codes: diagnostics.map((diagnostic) => diagnostic.code).join(', '),
+      })}
+    </p>
+  ) : null;
 
 const roleErrorMessage = (error: IamHttpError | null, fallbackKey: TranslationKey): string => {
   if (!error) {
@@ -123,7 +149,18 @@ export const RolesPage = () => {
       {
         id: 'type',
         header: t('admin.roles.table.headerType'),
-        cell: (role) => roleTypeLabel(role),
+        cell: (role) => {
+          const editability = role.editability ?? 'editable';
+          return (
+            <div className="space-y-2">
+              <span className="block">{roleTypeLabel(role)}</span>
+              <Badge className={`rounded-full ${editabilityClassByValue[editability]}`} variant="outline">
+                {t(editabilityLabelKey[editability])}
+              </Badge>
+              {renderDiagnosticCodes(role.diagnostics)}
+            </div>
+          );
+        },
       },
       {
         id: 'sync',
@@ -278,6 +315,21 @@ export const RolesPage = () => {
             <span className="text-xs text-muted-foreground">
               {t(RECONCILE_OUTCOME_LABEL_KEYS[rolesApi.reconcileReport.outcome])}
             </span>
+            {rolesApi.reconcileReport.roles.length > 0 ? (
+              <span className="text-xs text-muted-foreground">
+                {t('admin.roles.messages.reconcileObjectDiagnostics', {
+                  count: rolesApi.reconcileReport.roles.length,
+                  codes: Array.from(
+                    new Set(
+                      rolesApi.reconcileReport.roles.flatMap((entry) => [
+                        ...(entry.errorCode ? [entry.errorCode] : []),
+                        ...(entry.diagnostics?.map((diagnostic) => diagnostic.code) ?? []),
+                      ])
+                    )
+                  ).join(', '),
+                })}
+              </span>
+            ) : null}
           </AlertDescription>
         </Alert>
       ) : null}

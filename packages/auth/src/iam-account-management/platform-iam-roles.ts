@@ -31,15 +31,26 @@ const mapPlatformRole = (role: IdentityRole): IamRoleListItem => {
   const displayName = readRoleAttribute(role.attributes, 'display_name') ?? role.externalName;
   const roleLevelRaw = readRoleAttribute(role.attributes, 'role_level');
   const parsedRoleLevel = roleLevelRaw ? Number(roleLevelRaw) : PLATFORM_ROLE_LEVEL_BY_NAME[role.externalName] ?? 0;
+  const builtIn = isBuiltInRealmRole(role);
+  const systemRole = role.externalName in PLATFORM_ROLE_LEVEL_BY_NAME;
+  const managedBy = builtIn ? 'keycloak_builtin' : isStudioManagedRole(role) ? 'studio' : 'external';
 
   return {
     id: role.id ?? `platform:${role.externalName}`,
     roleKey,
     roleName: displayName,
     externalRoleName: role.externalName,
-    managedBy: isStudioManagedRole(role) ? 'studio' : 'external',
+    managedBy,
     description: role.description,
-    isSystemRole: role.externalName in PLATFORM_ROLE_LEVEL_BY_NAME,
+    isSystemRole: systemRole,
+    editability: managedBy === 'studio' && !systemRole ? 'editable' : 'read_only',
+    diagnostics: builtIn
+      ? [{ code: 'built_in_role', objectId: role.externalName, objectType: 'role' }]
+      : systemRole
+        ? [{ code: 'system_role', objectId: role.externalName, objectType: 'role' }]
+        : managedBy === 'external'
+          ? [{ code: 'external_managed', objectId: role.externalName, objectType: 'role' }]
+          : undefined,
     roleLevel: Number.isFinite(parsedRoleLevel) ? parsedRoleLevel : 0,
     memberCount: 0,
     syncState: 'synced',
@@ -55,7 +66,6 @@ export const listPlatformRoles = async (): Promise<readonly IamRoleListItem[]> =
 
   const roles = await trackKeycloakCall('list_platform_roles', () => identityProvider.provider.listRoles());
   return roles
-    .filter((role) => !isBuiltInRealmRole(role))
     .map(mapPlatformRole)
     .sort((left, right) => right.roleLevel - left.roleLevel || left.roleName.localeCompare(right.roleName, 'de'));
 };

@@ -104,6 +104,10 @@ vi.mock('./user-list-query.js', () => ({
   resolveUsersWithPagination: vi.fn(async () => state.usersListResult),
 }));
 
+vi.mock('./tenant-keycloak-users.js', () => ({
+  resolveTenantKeycloakUsersWithPagination: vi.fn(async () => state.usersListResult),
+}));
+
 vi.mock('./user-projection.js', () => ({
   resolveKeycloakRoleNames: vi.fn(async () => state.keycloakRolesResult),
   resolveProjectedMainserverCredentialState: vi.fn(async () => state.mainserverCredentialResult),

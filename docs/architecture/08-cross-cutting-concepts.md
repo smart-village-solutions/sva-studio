@@ -81,6 +81,9 @@ gleichzeitig beeinflussen.
 - Instanzverwaltung ist nur auf dem Root-Host zulässig; Tenant-Hosts rendern keine globale Control Plane
 - Normale Tenant-Administration nutzt ausschließlich einen tenantlokalen Keycloak-Adminpfad; Plattform-/Root-Credentials sind dafür kein zulässiger Fallback
 - Root-/Plattform-Zugriff umfasst Instanz-Lifecycle, Provisioning, Platform-User, Platform-Rollen, Platform-Sync und explizites Break-Glass; tenantlokale Daten bleiben davon getrennt
+- User-, Rollen- und Rollenzuordnungsänderungen folgen einem Keycloak-first-Vertrag. Studio schreibt erst Keycloak, synchronisiert danach die lokalen Read-Models und macht Abweichungen über `mappingStatus`, `editability` und Diagnosecodes sichtbar.
+- Tenant-Userlisten richten sich nach dem Tenant-Realm in Keycloak; ungemappte oder mehrdeutige Benutzer werden als `unmapped` beziehungsweise `manual_review` angezeigt.
+- Keycloak-Built-in-Rollen bleiben als Rollenobjekte read-only, werden aber in Listen nicht ausgeblendet.
 - Keycloak-Provisioning für Instanzen ist ein expliziter mehrstufiger Root-Host-Workflow aus Preflight, Plan, Ausführung und persistiertem Schrittprotokoll
 - Registry-Daten und Keycloak-Mutation sind getrennte Aktionen; ein Speichern von Instanzdaten führt keine implizite Keycloak-Änderung aus
 - Registry-Lookups verwenden einen kurzen In-Process-L1-Cache mit expliziter Invalidation, aber ohne Stale-Serve-Strategie
@@ -116,6 +119,8 @@ gleichzeitig beeinflussen.
 - Der Sync-Report darf additive, nicht-sensitive Diagnosefelder wie `authRealm`, `providerSource`, `executionMode`, `matchedWithoutInstanceAttributeCount` und `skippedInstanceIds` zurückgeben, damit UI und Doctor Realm-/Instanz-Drift ohne `kcadm.sh` eingrenzen können
 - Role-Sync- und Reconcile-Pfade verwenden ausschließlich den SDK-Logger; `console.*` ist serverseitig ausgeschlossen
 - Role-Sync-Audit nutzt ein einheitliches Schema mit `workspace_id`, `operation`, `result`, `error_code?`, `request_id`, `trace_id?`, `span_id?`
+- Keycloak-Admin-UI-Diagnosen verwenden stabile objektbezogene Codes wie `missing_instance_attribute`, `mapping_missing`, `forbidden_role_mapping`, `read_only_federated_field` und `idp_forbidden`.
+- Sync- und Reconcile-Reports dürfen betroffene Objektlisten enthalten; öffentliche Payloads bleiben auf nicht-sensitive IDs, Zähler, Codes und Korrelationsdaten begrenzt.
 - Zusätzliche Metriken für den Rollenpfad: `iam_role_sync_operations_total` und `iam_role_drift_backlog`
 - Zusätzliche Cache-Metriken für IAM: `sva_iam_cache_lookup_total`, `sva_iam_cache_invalidation_duration_ms`, `sva_iam_cache_stale_entry_rate`
 - Redis-Infrastrukturmetriken werden über `redis-exporter` in denselben Monitoring-Stack eingespeist und mit den IAM-Cache-Metriken korreliert

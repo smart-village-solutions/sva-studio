@@ -67,6 +67,12 @@ export type IdentityRole = {
   readonly containerId?: string;
 };
 
+export type IdentityRoleListQuery = {
+  readonly first?: number;
+  readonly max?: number;
+  readonly search?: string;
+};
+
 export type IdentityUserAttributes = Readonly<Record<string, readonly string[]>>;
 
 export interface IdentityProviderPort {
@@ -76,9 +82,12 @@ export interface IdentityProviderPort {
   listUsers(query?: IdentityUserListQuery): Promise<readonly IdentityListedUser[]>;
   getUserAttributes(externalId: string, attributeNames?: readonly string[]): Promise<IdentityUserAttributes>;
   syncRoles(externalId: string, roles: readonly string[]): Promise<void>;
+  assignRealmRoles?(externalId: string, roles: readonly string[]): Promise<void>;
+  removeRealmRoles?(externalId: string, roles: readonly string[]): Promise<void>;
   listUserRoleNames(externalId: string): Promise<readonly string[]>;
   countUsers?(query?: Omit<IdentityUserListQuery, 'first' | 'max'>): Promise<number>;
-  listRoles(): Promise<readonly IdentityRole[]>;
+  listRoles(query?: IdentityRoleListQuery): Promise<readonly IdentityRole[]>;
+  countRoles?(query?: Omit<IdentityRoleListQuery, 'first' | 'max'>): Promise<number>;
   getRoleByName(externalName: string): Promise<IdentityRole | null>;
   createRole(input: CreateIdentityRoleInput): Promise<IdentityRole>;
   updateRole(externalName: string, input: UpdateIdentityRoleInput): Promise<IdentityRole>;

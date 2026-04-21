@@ -100,6 +100,39 @@ describe('UserListPage', () => {
     expect(screen.getAllByRole('link', { name: 'Bearbeiten' })[0]!.getAttribute('href')).toBe('/admin/users/$userId');
   });
 
+  it('shows Keycloak mapping diagnostics and disables blocked row actions', () => {
+    useUsersMock.mockReturnValue(
+      createUsersApiState({
+        users: [
+          {
+            id: 'keycloak:subject-unmapped',
+            keycloakSubject: 'subject-unmapped',
+            displayName: 'Unmapped User',
+            email: 'unmapped@example.com',
+            status: 'active',
+            mappingStatus: 'manual_review',
+            editability: 'blocked',
+            diagnostics: [{ code: 'missing_instance_attribute', objectId: 'subject-unmapped', objectType: 'user' }],
+            roles: [],
+          },
+        ],
+      })
+    );
+
+    render(<UserListPage />);
+
+    expect(screen.getAllByText('Manuell prüfen').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Blockiert').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Diagnose: missing_instance_attribute').length).toBeGreaterThan(0);
+    expect(screen.queryByRole('link', { name: 'Bearbeiten' })).toBeNull();
+    screen
+      .getAllByRole('button', { name: 'Bearbeiten' })
+      .forEach((button) => expect(button.hasAttribute('disabled')).toBe(true));
+    screen
+      .getAllByRole('button', { name: 'Deaktivieren' })
+      .forEach((button) => expect(button.hasAttribute('disabled')).toBe(true));
+  });
+
   it('updates filters and pagination controls', () => {
     const setSearch = vi.fn();
     const setStatus = vi.fn();
@@ -148,6 +181,13 @@ describe('UserListPage', () => {
           providerSource: 'instance',
           matchedWithoutInstanceAttributeCount: 2,
         },
+        objects: [
+          {
+            keycloakSubject: 'subject-2',
+            mappingStatus: 'manual_review',
+            diagnostics: [{ code: 'missing_instance_attribute', objectId: 'subject-2', objectType: 'user' }],
+          },
+        ],
       },
     });
 
@@ -172,6 +212,7 @@ describe('UserListPage', () => {
         screen.getByText(/Realm de-musterhausen, Quelle Instanz-Realm\. 2 Benutzer ohne `instanceId`/i)
       ).toBeTruthy()
     );
+    expect(screen.getByText('1 Benutzerobjekte mit Diagnose: missing_instance_attribute')).toBeTruthy();
     expect(screen.getByText(/teilweisen Fehlern oder manuellem Nachlauf/i)).toBeTruthy();
   });
 

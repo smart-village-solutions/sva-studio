@@ -1,4 +1,9 @@
-import type { IamUserImportSyncReport } from '@sva/core';
+import type {
+  IamKeycloakMappingStatus,
+  IamKeycloakObjectDiagnostic,
+  IamKeycloakObjectEditability,
+  IamUserImportSyncReport,
+} from '@sva/core';
 import { Link } from '@tanstack/react-router';
 import React from 'react';
 
@@ -34,8 +39,36 @@ const statusTranslationKeyByValue = {
 const syncOutcomeTranslationKey = {
   success: 'admin.users.messages.syncOutcome.success',
   partial_failure: 'admin.users.messages.syncOutcome.partialFailure',
+  blocked: 'admin.users.messages.syncOutcome.blocked',
   failed: 'admin.users.messages.syncOutcome.failed',
 } as const;
+
+const mappingStatusTranslationKey: Record<IamKeycloakMappingStatus, string> = {
+  mapped: 'admin.users.mapping.mapped',
+  unmapped: 'admin.users.mapping.unmapped',
+  manual_review: 'admin.users.mapping.manualReview',
+};
+
+const editabilityTranslationKey: Record<IamKeycloakObjectEditability, string> = {
+  editable: 'admin.users.editability.editable',
+  read_only: 'admin.users.editability.readOnly',
+  blocked: 'admin.users.editability.blocked',
+};
+
+const editabilityClassByValue: Record<IamKeycloakObjectEditability, string> = {
+  editable: 'border-primary/40 bg-primary/10 text-primary',
+  read_only: 'border-secondary/40 bg-secondary/10 text-secondary',
+  blocked: 'border-destructive/40 bg-destructive/10 text-destructive',
+};
+
+const renderDiagnosticCodes = (diagnostics: readonly IamKeycloakObjectDiagnostic[] | undefined) =>
+  diagnostics && diagnostics.length > 0 ? (
+    <span className="block text-xs text-muted-foreground">
+      {t('admin.users.messages.diagnosticCodes', {
+        codes: diagnostics.map((diagnostic) => diagnostic.code).join(', '),
+      })}
+    </span>
+  ) : null;
 
 export const UserListPage = () => {
   const usersApi = useUsers();
@@ -48,6 +81,7 @@ export const UserListPage = () => {
   const [syncError, setSyncError] = React.useState<Parameters<typeof userErrorMessage>[0]>(null);
   const { user } = useAuth();
   const isPlatformScope = user !== null && !user.instanceId;
+  const isAuthLoading = user === null;
 
   const onConfirmDeactivate = async () => {
     const action = deactivateDialog;
@@ -124,6 +158,29 @@ export const UserListPage = () => {
         sortValue: (user) => user.status,
       },
       {
+        id: 'keycloak',
+        header: t('admin.users.table.headerKeycloak'),
+        cell: (user) => {
+          const mappingStatus = user.mappingStatus ?? 'mapped';
+          const editability = user.editability ?? 'editable';
+          return (
+            <div className="space-y-2">
+              <div className="flex flex-wrap gap-2">
+                <Badge className="rounded-full" variant="outline">
+                  {t(mappingStatusTranslationKey[mappingStatus])}
+                </Badge>
+                <Badge className={`rounded-full ${editabilityClassByValue[editability]}`} variant="outline">
+                  {t(editabilityTranslationKey[editability])}
+                </Badge>
+              </div>
+              {renderDiagnosticCodes(user.diagnostics)}
+            </div>
+          );
+        },
+        sortable: true,
+        sortValue: (user) => `${user.mappingStatus ?? 'mapped'}:${user.editability ?? 'editable'}`,
+      },
+      {
         id: 'lastLoginAt',
         header: t('admin.users.table.headerLastLogin'),
         cell: (user) => user.lastLoginAt ?? '-',
@@ -140,7 +197,7 @@ export const UserListPage = () => {
         title={t(isPlatformScope ? 'admin.users.page.platformTitle' : 'admin.users.page.title')}
         description={t(isPlatformScope ? 'admin.users.page.platformSubtitle' : 'admin.users.page.subtitle')}
         primaryAction={
-          isPlatformScope
+          isPlatformScope || isAuthLoading
             ? undefined
             : {
                 label: t('admin.users.actions.create'),
@@ -222,14 +279,26 @@ export const UserListPage = () => {
               </Button>
             </>
           }
-          rowActions={isPlatformScope ? undefined : (user) => (
+          rowActions={isPlatformScope || isAuthLoading ? undefined : (user) => (
             <>
-              <Button asChild size="sm" variant="outline">
-                <Link to="/admin/users/$userId" params={{ userId: user.id }}>
+              {user.editability === 'blocked' ? (
+                <Button size="sm" variant="outline" disabled>
                   {t('admin.users.actions.edit')}
-                </Link>
-              </Button>
-              <Button type="button" size="sm" variant="destructive" onClick={() => setDeactivateDialog({ mode: 'single', userId: user.id })}>
+                </Button>
+              ) : (
+                <Button asChild size="sm" variant="outline">
+                  <Link to="/admin/users/$userId" params={{ userId: user.id }}>
+                    {t('admin.users.actions.edit')}
+                  </Link>
+                </Button>
+              )}
+              <Button
+                type="button"
+                size="sm"
+                variant="destructive"
+                disabled={user.editability === 'blocked' || user.editability === 'read_only'}
+                onClick={() => setDeactivateDialog({ mode: 'single', userId: user.id })}
+              >
                 {t('admin.users.actions.deactivate')}
               </Button>
             </>
@@ -272,6 +341,20 @@ export const UserListPage = () => {
                   matchedWithoutInstanceAttributeCount: String(
                     syncResult.diagnostics.matchedWithoutInstanceAttributeCount ?? 0
                   ),
+                })}
+              </span>
+            ) : null}
+            {syncResult.objects && syncResult.objects.length > 0 ? (
+              <span className="block text-xs text-muted-foreground">
+                {t('admin.users.messages.syncObjectDiagnostics', {
+                  count: syncResult.objects.length,
+                  codes: Array.from(
+                    new Set(
+                      syncResult.objects.flatMap((entry) =>
+                        entry.diagnostics.map((diagnostic) => diagnostic.code)
+                      )
+                    )
+                  ).join(', '),
                 })}
               </span>
             ) : null}

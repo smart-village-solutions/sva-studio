@@ -138,17 +138,27 @@ describe('platform IAM projection', () => {
     );
   });
 
-  it('filters built-in roles from platform role lists', async () => {
+  it('keeps built-in roles visible as read-only platform roles', async () => {
     const roles = await listPlatformRoles();
 
-    expect(roles).toHaveLength(1);
+    expect(roles).toHaveLength(2);
     expect(roles[0]).toEqual(
       expect.objectContaining({
         id: 'role-system-admin',
         roleKey: 'system_admin',
         roleName: 'system_admin',
         isSystemRole: true,
+        editability: 'read_only',
         roleLevel: 100,
+      })
+    );
+    expect(roles[1]).toEqual(
+      expect.objectContaining({
+        id: 'role-default',
+        roleKey: 'default-roles-sva-studio',
+        managedBy: 'keycloak_builtin',
+        editability: 'read_only',
+        diagnostics: [expect.objectContaining({ code: 'built_in_role' })],
       })
     );
   });
@@ -250,21 +260,33 @@ describe('platform IAM projection', () => {
         roleKey: 'custom.admin',
         roleName: 'Custom Admin',
         managedBy: 'studio',
+        editability: 'editable',
         roleLevel: 77,
       }),
       expect.objectContaining({
         id: 'platform:external_role',
         roleKey: 'external_role',
         managedBy: 'external',
+        editability: 'read_only',
         roleLevel: 0,
+      }),
+      expect.objectContaining({
+        id: 'platform:offline_access',
+        managedBy: 'keycloak_builtin',
+      }),
+      expect.objectContaining({
+        id: 'platform:uma_authorization',
+        managedBy: 'keycloak_builtin',
       }),
     ]);
     await expect(runPlatformRoleReconcile()).resolves.toMatchObject({
       outcome: 'success',
-      checkedCount: 2,
+      checkedCount: 4,
       roles: [
         { externalRoleName: 'custom_admin', action: 'noop', status: 'synced' },
         { externalRoleName: 'external_role', action: 'noop', status: 'synced' },
+        { externalRoleName: 'offline_access', action: 'noop', status: 'synced' },
+        { externalRoleName: 'uma_authorization', action: 'noop', status: 'synced' },
       ],
     });
   });

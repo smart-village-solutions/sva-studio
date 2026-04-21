@@ -13,7 +13,7 @@ Framework-agnostisches Kernpaket für SVA Studio. Stellt gemeinsame Typen, Routi
   ├── @sva/auth
   ├── @sva/sdk
   ├── @sva/routing
-  └── @sva/plugin-example
+  └── @sva/plugin-news
 ```
 
 ## Exports

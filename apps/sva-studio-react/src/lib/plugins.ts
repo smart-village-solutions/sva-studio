@@ -1,4 +1,3 @@
-import { pluginExample } from '@sva/plugin-example';
 import { pluginNews } from '@sva/plugin-news';
 import {
   createBuildTimeRegistry,
@@ -17,7 +16,7 @@ const pluginLogger = createBrowserLogger({
 const warnedDeprecatedPluginActionAliases = new Set<string>();
 
 export const studioBuildTimeRegistry = createBuildTimeRegistry({
-  plugins: [pluginExample, pluginNews],
+  plugins: [pluginNews],
   adminResources: appAdminResources,
 });
 

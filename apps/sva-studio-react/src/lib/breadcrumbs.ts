@@ -86,10 +86,6 @@ const breadcrumbRoutes: ReadonlyArray<
     build: () => [overviewBreadcrumb(), { label: t('news.navigation.title') }],
   },
   {
-    pattern: /^\/plugins\/example$/,
-    build: () => [overviewBreadcrumb(), { label: t('example.navigation.title') }],
-  },
-  {
     pattern: /^\/interfaces$/,
     build: () => [overviewBreadcrumb(), { label: t('interfaces.page.title') }],
   },

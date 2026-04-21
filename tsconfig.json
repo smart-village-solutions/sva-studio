@@ -7,7 +7,6 @@
   "references": [
     { "path": "packages/core" },
     { "path": "packages/data" },
-    { "path": "packages/sdk" },
-    { "path": "packages/plugin-example" }
+    { "path": "packages/sdk" }
   ]
 }

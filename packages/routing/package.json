@@ -31,11 +31,11 @@
     "@sva/auth": "workspace:*",
     "@sva/core": "workspace:*",
     "@sva/sdk": "workspace:*",
-    "@tanstack/react-router": "^1.168.19"
+    "@tanstack/react-router": "^1.168.23"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^4.1.2",
-    "typescript": "^6.0.2",
+    "typescript": "^6.0.3",
     "vitest": "^4.1.2"
   }
 }

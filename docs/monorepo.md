@@ -13,7 +13,7 @@ Dieses Dokument beschreibt die aktuelle Organisation des Nx-/pnpm-Workspaces, di
 | `core` | Library | `packages/core/` | Framework-agnostische Kernlogik |
 | `data` | Library | `packages/data/` | Datenzugriff, Migrationen, Seeds |
 | `monitoring-client` | Library | `packages/monitoring-client/` | Logging, Metriken, OTel-Anbindung |
-| `plugin-example` | Library | `packages/plugin-example/` | Referenz-Plugin für Erweiterungspunkte |
+| `plugin-news` | Library | `packages/plugin-news/` | Produktives News-Plugin für CMS-Erweiterungspunkte |
 | `routing` | Library | `packages/routing/` | Typsichere Routing-Factories und Route-Definitionen |
 | `sdk` | Library | `packages/sdk/` | Server-/Observability-Bausteine für interne Konsument:innen |
 | `sva-mainserver` | Library | `packages/sva-mainserver/` | Serverseitige Integration des externen SVA-Mainservers |
@@ -207,7 +207,7 @@ Wir nutzen Nx, weil es als integrierte Monorepo-Plattform mehr liefert als „nu
 - **Projektgraph & affected commands:** Nx modelliert Abhängigkeiten zwischen Apps und Packages und kann dadurch in CI/CD gezielt nur die betroffenen Projekte bauen/testen.
 - **Generatoren & Konsistenz:** Neue Apps/Packages lassen sich mit `nx g @nx/js:lib` etc. scaffolden — das bedeutet automatisches Setup von Targets, TypeScript-Konfiguration und Projektgraph-Integration. Das reduziert manuellen Aufwand und hält Konventionen über Zeit konsistent (weniger Copy/Paste, weniger Drift).
 - **Architektur-Governance:** Mechanismen wie Tags/Boundaries helfen, Schichten (Core vs. Plugins) langfristig sauber zu halten.
-- **Caching & Skalierung:** Lokales/Remote-Caching ist integriert; optional kann Nx Cloud für Team-Setups genutzt werden.
+- **Caching & Skalierung:** Lokales Caching ist integriert; im Repository setzen wir auf lokalen Cache plus `affected`-Workflows.
 
 Details und Trade-offs: siehe openspec/specs/monorepo-structure/design.md
 

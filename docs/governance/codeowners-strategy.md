@@ -41,7 +41,6 @@ Pfade für Beispiele, Debugging-Tools oder rein informative Dokumente. Hier reic
 
 | Pfad | Komponente |
 | --- | --- |
-| `packages/plugin-example/` | Beispiele |
 | `scripts/debug/` | Debug-Tools |
 | `docs/images/`, `docs/reports/` | Bilder und Berichte |
 | `concepts/`, `specs/` | Konzepte und Spezifikationen |

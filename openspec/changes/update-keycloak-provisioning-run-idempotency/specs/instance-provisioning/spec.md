@@ -13,7 +13,7 @@ Das System SHALL Keycloak-Reconcile- und Execute-Mutationen end-to-end idempoten
 
 #### Scenario: Key-Reuse mit abweichender Payload wird abgelehnt
 
-- **WHEN** ein Client denselben `Idempotency-Key` im selben Scope aus Instanz und Mutation wiederverwendet, aber eine fachlich abweichende Payload oder einen abweichenden Reconcile-Intent-Fingerprint sendet
+- **WHEN** ein Client denselben `Idempotency-Key` im selben Scope aus Instanz und Mutation wiederverwendet, aber eine fachlich abweichende stabile Request-Payload sendet
 - **THEN** lehnt das System den Request mit einem Konfliktfehler ab
 - **AND** erzeugt es keinen neuen Keycloak-Provisioning-Run
 

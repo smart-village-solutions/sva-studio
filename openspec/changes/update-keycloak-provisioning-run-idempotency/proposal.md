@@ -5,7 +5,7 @@
 
 ## What Changes
 - Der validierte `Idempotency-Key` wird für Keycloak-Reconcile- und Execute-Mutationen bis in Service- und Repository-Schicht weitergereicht.
-- `iam.instance_keycloak_provisioning_runs` erhält einen persistenten Idempotenzbezug und eine eindeutige Deduplizierungsregel für denselben Instanz-/Mutation-/Key-Scope; mutable Reconcile-Intents bleiben Teil des fachlichen Payload-Fingerprints, aber nicht des Deduplizierungs-Scopes.
+- `iam.instance_keycloak_provisioning_runs` erhält einen persistenten Idempotenzbezug und eine eindeutige Deduplizierungsregel für denselben Instanz-/Mutation-/Key-Scope; mutable Reconcile-Intents werden am Run nachvollziehbar gespeichert, aber weder im Deduplizierungs-Scope noch im Konflikt-Fingerprint geführt.
 - Wiederholte Requests mit identischem Key und identischem fachlichem Payload erzeugen keinen zweiten Run und geben deterministisch die passende ursprüngliche Response-Form zurück: Reconcile liefert den bestehenden Status-/Snapshot-Pfad, Execute liefert den bestehenden Keycloak-Provisioning-Run.
 - Wiederverwendung eines Keys mit abweichendem fachlichem Payload wird als Konflikt behandelt und erzeugt keinen neuen Run.
 - API-, Service-, Repository- und Migrationstests decken Replay, Parallelität und Payload-Mismatch ab.

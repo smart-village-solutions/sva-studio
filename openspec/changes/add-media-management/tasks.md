@@ -12,7 +12,7 @@
 - [ ] 2.3 Serverseitige Endpunkte für Upload-Initialisierung, Metadatenpflege, Referenzverwaltung, Verwendungsnachweis und kontrollierte Auslieferung implementieren
 - [ ] 2.4 Rollen- und Rechteprüfung für Medienoperationen serverseitig und in der UI integrieren
 - [ ] 2.5 Studio-UI für Medienbibliothek, Picker, Metadatenpflege und Nutzungsanzeige implementieren
-- [ ] 2.6 **MVP-Scope (Phase 1):** Metadaten-Extraktion synchron im Upload-Handler; Variantengenerierung lazy on-demand ohne Job-Queue-Infrastruktur; kein dedizierter async Worker in Phase 1. Async-Verarbeitungspfad als eigenständiger Folge-Change `add-media-async-processing` spezifizieren und als technische Schuld in `docs/architecture/11-risks-and-technical-debt.md` eintragen.
+- [ ] 2.6 **MVP-Scope (Phase 1):** Metadaten-Extraktion und definierte häufige Varianten synchron im Upload-Handler erzeugen; seltene Varianten lazy on-demand ohne Job-Queue-Infrastruktur generieren; kein dedizierter async Worker in Phase 1. Async-Verarbeitungspfad als eigenständiger Folge-Change `add-media-async-processing` spezifizieren und als technische Schuld in `docs/architecture/11-risks-and-technical-debt.md` eintragen.
 - [ ] 2.7 Anbindung an `content-management` und mindestens ein Fachmodul über referenzbasierte Medienrollen herstellen
 - [ ] 2.8 Audit- und Historienpfad für Medienereignisse implementieren
 - [ ] 2.9 i18n-Keys für Medienbibliothek-UI, Media-Picker, Metadatenfelder, Übersetzungen für Medienrollen (Rollen-IDs z. B. `teaser_image`, `header_image`; i18n-Keys gemäß Repo-Konvention in Dot-Notation, z. B. `media.roles.teaser_image`) und Fehlerzustände in `de` und `en` definieren; `check:i18n`-Gate muss grün bleiben

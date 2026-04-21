@@ -78,16 +78,7 @@ export const UserListPage = () => {
       return;
     }
 
-    setSyncResult({
-      outcome: result.report.outcome,
-      checkedCount: result.report.checkedCount,
-      correctedCount: result.report.correctedCount,
-      manualReviewCount: result.report.manualReviewCount,
-      importedCount: result.report.importedCount,
-      updatedCount: result.report.updatedCount,
-      skippedCount: result.report.skippedCount,
-      diagnostics: result.report.diagnostics,
-    });
+    setSyncResult(result.report);
     setSyncStatus(
       result.report.importedCount === 0 &&
         result.report.updatedCount === 0 &&

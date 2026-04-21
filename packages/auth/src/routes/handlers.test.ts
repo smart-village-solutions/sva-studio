@@ -1020,6 +1020,25 @@ describe('routes/handlers', () => {
     expect(response.headers.get('set-cookie')).toContain('sva_auth_silent_sso=');
   });
 
+  it('accepts explicit logout intent from browser form posts', async () => {
+    const { logoutHandler } = await import('./handlers.js');
+
+    const response = await logoutHandler(
+      new Request('http://localhost/auth/logout', {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ logoutIntent: 'user' }),
+      })
+    );
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get('set-cookie')).toContain('sva_auth_silent_sso=');
+    expect(loggerMock.warn).not.toHaveBeenCalledWith(
+      'Logout rejected without explicit user intent',
+      expect.any(Object)
+    );
+  });
+
   it('handles logout errors and falls back to post logout redirect', async () => {
     getSessionMock.mockResolvedValue({
       user: {

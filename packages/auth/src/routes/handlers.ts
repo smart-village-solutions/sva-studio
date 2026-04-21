@@ -277,6 +277,7 @@ window.parent.postMessage({ type: 'sva-auth:silent-sso', status: '${status}' }, 
 const DEFAULT_POST_LOGIN_REDIRECT = '/';
 const LOGOUT_INTENT_HEADER = 'x-sva-logout-intent';
 const LOGOUT_INTENT_VALUE = 'user';
+const LOGOUT_INTENT_FORM_FIELD = 'logoutIntent';
 
 const resolveCallbackInput = (request: Request) => {
   const url = new URL(request.url);
@@ -286,6 +287,24 @@ const resolveCallbackInput = (request: Request) => {
     error: url.searchParams.get('error'),
     iss: url.searchParams.get('iss'),
   };
+};
+
+const hasExplicitLogoutIntent = async (request: Request): Promise<boolean> => {
+  if (request.headers.get(LOGOUT_INTENT_HEADER) === LOGOUT_INTENT_VALUE) {
+    return true;
+  }
+
+  const contentType = request.headers.get('content-type') ?? '';
+  if (!contentType.toLowerCase().startsWith('application/x-www-form-urlencoded')) {
+    return false;
+  }
+
+  try {
+    const formData = await request.clone().formData();
+    return formData.get(LOGOUT_INTENT_FORM_FIELD) === LOGOUT_INTENT_VALUE;
+  } catch {
+    return false;
+  }
 };
 
 const isTrustedAbsoluteReturnTo = async (request: Request, target: URL): Promise<boolean> => {
@@ -713,7 +732,7 @@ export const logoutHandler = async (request: Request): Promise<Response> => {
     }
 
     try {
-      if (request.headers.get(LOGOUT_INTENT_HEADER) !== LOGOUT_INTENT_VALUE) {
+      if (!(await hasExplicitLogoutIntent(request))) {
         logger.warn('Logout rejected without explicit user intent', {
           endpoint: '/auth/logout',
           operation: 'logout',

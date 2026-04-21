@@ -66,14 +66,14 @@ const sanitizeNewsPayload = (payload: ContentJsonValue): ContentJsonValue => {
   } satisfies ContentJsonValue;
 };
 
+const newsContentTypeDefinition: RegisteredContentTypeDefinition = {
+  payloadSchema: newsPayloadSchema as z.ZodType<ContentJsonValue>,
+  sanitizePayload: sanitizeNewsPayload,
+};
+
 const registry = new Map<string, RegisteredContentTypeDefinition>([
-  [
-    'news.article',
-    {
-      payloadSchema: newsPayloadSchema as z.ZodType<ContentJsonValue>,
-      sanitizePayload: sanitizeNewsPayload,
-    },
-  ],
+  ['news.article', newsContentTypeDefinition],
+  ['news', newsContentTypeDefinition],
 ]);
 
 export const validateContentTypePayload = (

@@ -41,6 +41,29 @@ describe('content type registry', () => {
     expect(result.message.length).toBeGreaterThan(0);
   });
 
+  it('keeps legacy news payload validation and sanitization during the content type rename', () => {
+    const result = validateContentTypePayload('news', {
+      teaser: '  <strong>Altmeldung</strong>  ',
+      body: '<p>Archiv</p><script>alert(1)</script>',
+      externalUrl: 'javascript:alert(1)',
+    });
+
+    expect(result.ok).toBe(false);
+
+    const sanitizedResult = validateContentTypePayload('news', {
+      teaser: '  <strong>Altmeldung</strong>  ',
+      body: '<p>Archiv</p><script>alert(1)</script>',
+    });
+
+    expect(sanitizedResult).toEqual({
+      ok: true,
+      payload: {
+        teaser: 'Altmeldung',
+        body: '<p>Archiv</p>',
+      },
+    });
+  });
+
   it('rejects news bodies without visible text and returns localized validation messages', () => {
     const result = validateContentTypePayload('news.article', {
       teaser: '',

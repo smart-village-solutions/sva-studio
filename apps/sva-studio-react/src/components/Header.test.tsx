@@ -1,7 +1,7 @@
 /**
  * Unit-Tests für Header-Auth-Aktionen und Loading-Zustand.
  */
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import Header from './Header';
 
@@ -84,7 +84,6 @@ describe('Header auth actions', () => {
   });
 
   it('zeigt für authenticated user Konto-Link und Logout', async () => {
-    const logoutMock = vi.fn();
     useAuthMock.mockReturnValue({
       user: {
         id: 'user-1',
@@ -96,7 +95,7 @@ describe('Header auth actions', () => {
       error: null,
       hasResolvedSession: true,
       refetch: vi.fn(),
-      logout: logoutMock,
+      logout: vi.fn(),
       invalidatePermissions: vi.fn(),
     });
     useThemeMock.mockReturnValue({
@@ -122,10 +121,10 @@ describe('Header auth actions', () => {
     expect(screen.queryByRole('link', { name: 'Benutzer' })).toBeNull();
     expect(screen.getByTestId('organization-context-switcher')).toBeTruthy();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Logout' }));
-
-    expect(logoutMock).toHaveBeenCalledTimes(1);
-    expect(document.querySelector('form[action="/auth/logout"]')).toBeNull();
+    const logoutForm = document.querySelector('form[action="/auth/logout"]');
+    const logoutIntent = logoutForm?.querySelector('input[name="logoutIntent"]');
+    expect(logoutForm?.getAttribute('method')).toBe('post');
+    expect(logoutIntent?.getAttribute('value')).toBe('user');
   });
 
   it('zeigt auch für system_admin keine Navigationslinks im Header', async () => {

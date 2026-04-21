@@ -196,4 +196,47 @@ describe('platform IAM handlers', () => {
       },
     });
   });
+
+  it('returns platform guard responses before dependency calls', async () => {
+    state.featureResponse = new Response(JSON.stringify({ error: { code: 'feature_disabled' } }), { status: 404 });
+    const featureResponse = await listPlatformUsersInternal(
+      new Request('https://studio.smart-village.app/api/v1/iam/users'),
+      ctx
+    );
+    expect(featureResponse.status).toBe(404);
+
+    state.featureResponse = null;
+    state.roleResponse = new Response(JSON.stringify({ error: { code: 'forbidden' } }), { status: 403 });
+    const roleResponse = await listPlatformUsersInternal(
+      new Request('https://studio.smart-village.app/api/v1/iam/users'),
+      ctx
+    );
+    expect(roleResponse.status).toBe(403);
+
+    state.roleResponse = null;
+    state.rateLimitResponse = new Response(JSON.stringify({ error: { code: 'rate_limited' } }), { status: 429 });
+    const userRateLimitResponse = await listPlatformUsersInternal(
+      new Request('https://studio.smart-village.app/api/v1/iam/users'),
+      ctx
+    );
+    expect(userRateLimitResponse.status).toBe(429);
+
+    state.rateLimitResponse = null;
+    state.csrfResponse = new Response(JSON.stringify({ error: { code: 'csrf_validation_failed' } }), { status: 403 });
+    const csrfResponse = await reconcilePlatformRolesInternal(
+      new Request('https://studio.smart-village.app/api/v1/iam/admin/reconcile', { method: 'POST' }),
+      ctx,
+      'req-platform'
+    );
+    expect(csrfResponse.status).toBe(403);
+
+    state.csrfResponse = null;
+    state.rateLimitResponse = new Response(JSON.stringify({ error: { code: 'rate_limited' } }), { status: 429 });
+    const reconcileRateLimitResponse = await reconcilePlatformRolesInternal(
+      new Request('https://studio.smart-village.app/api/v1/iam/admin/reconcile', { method: 'POST' }),
+      ctx,
+      'req-platform'
+    );
+    expect(reconcileRateLimitResponse.status).toBe(429);
+  });
 });

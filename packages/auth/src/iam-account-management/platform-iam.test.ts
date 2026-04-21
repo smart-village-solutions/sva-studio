@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
+  providerEnabled: true,
   users: [
     {
       externalId: 'kc-platform-1',
@@ -11,7 +12,7 @@ const state = vi.hoisted(() => ({
       enabled: true,
     },
   ],
-  rolesByUser: new Map<string, readonly string[]>([['kc-platform-1', ['system_admin']]]),
+  rolesByUser: new Map<string, readonly string[] | Error>([['kc-platform-1', ['system_admin']]]),
   roles: [
     {
       id: 'role-system-admin',
@@ -26,19 +27,28 @@ const state = vi.hoisted(() => ({
 }));
 
 vi.mock('./shared-runtime.js', () => ({
-  resolveIdentityProvider: () => ({
-    provider: {
-      listUsers: async ({ first = 0, max = 100 }: { first?: number; max?: number } = {}) =>
-        state.users.slice(first, first + max),
-      listUserRoleNames: async (externalId: string) => state.rolesByUser.get(externalId) ?? [],
-      listRoles: async () => state.roles,
-    },
-    realm: 'sva-studio',
-    source: 'global',
-    clientId: 'platform-admin',
-    adminRealm: 'sva-studio',
-    executionMode: 'platform_admin',
-  }),
+  resolveIdentityProvider: () =>
+    state.providerEnabled
+      ? {
+          provider: {
+            listUsers: async ({ first = 0, max = 100 }: { first?: number; max?: number } = {}) =>
+              state.users.slice(first, first + max),
+            listUserRoleNames: async (externalId: string) => {
+              const roles = state.rolesByUser.get(externalId);
+              if (roles instanceof Error) {
+                throw roles;
+              }
+              return roles ?? [];
+            },
+            listRoles: async () => state.roles,
+          },
+          realm: 'sva-studio',
+          source: 'global',
+          clientId: 'platform-admin',
+          adminRealm: 'sva-studio',
+          executionMode: 'platform_admin',
+        }
+      : null,
 }));
 
 vi.mock('./shared-observability.js', () => ({
@@ -49,10 +59,16 @@ vi.mock('./shared-observability.js', () => ({
   trackKeycloakCall: vi.fn(async (_operation: string, execute: () => Promise<unknown>) => execute()),
 }));
 
-import { listPlatformRoles, listPlatformUsers, runPlatformKeycloakUserSync } from './platform-iam';
+import {
+  listPlatformRoles,
+  listPlatformUsers,
+  runPlatformKeycloakUserSync,
+  runPlatformRoleReconcile,
+} from './platform-iam';
 
 describe('platform IAM projection', () => {
   beforeEach(() => {
+    state.providerEnabled = true;
     state.users = [
       {
         externalId: 'kc-platform-1',
@@ -63,7 +79,7 @@ describe('platform IAM projection', () => {
         enabled: true,
       },
     ];
-    state.rolesByUser = new Map<string, readonly string[]>([['kc-platform-1', ['system_admin']]]);
+    state.rolesByUser = new Map<string, readonly string[] | Error>([['kc-platform-1', ['system_admin']]]);
     state.roles = [
       {
         id: 'role-system-admin',
@@ -124,5 +140,112 @@ describe('platform IAM projection', () => {
         }),
       })
     );
+  });
+
+  it('applies platform user filters and tolerates degraded role projection', async () => {
+    state.users = [
+      {
+        externalId: 'kc-platform-1',
+        username: 'platform-admin',
+        email: 'platform@example.org',
+        firstName: 'Platform',
+        lastName: 'Admin',
+        enabled: true,
+      },
+      {
+        externalId: 'kc-platform-2',
+        username: 'registry-admin',
+        email: 'registry@example.org',
+        enabled: false,
+      },
+      {
+        externalId: 'kc-platform-3',
+        enabled: true,
+      },
+    ];
+    state.rolesByUser = new Map<string, readonly string[] | Error>([
+      ['kc-platform-1', ['system_admin']],
+      ['kc-platform-2', ['instance_registry_admin']],
+      ['kc-platform-3', new Error('roles unavailable')],
+    ]);
+
+    await expect(
+      listPlatformUsers({ page: 1, pageSize: 25, status: 'inactive', role: 'instance_registry_admin', search: 'registry' })
+    ).resolves.toMatchObject({
+      total: 1,
+      users: [expect.objectContaining({ displayName: 'registry-admin', status: 'inactive' })],
+    });
+    await expect(
+      listPlatformUsers({ page: 1, pageSize: 25, role: 'missing_role' })
+    ).resolves.toMatchObject({ total: 0 });
+    await expect(
+      listPlatformUsers({ page: 1, pageSize: 25, search: 'kc-platform-3' })
+    ).resolves.toMatchObject({
+      total: 1,
+      users: [expect.objectContaining({ displayName: 'kc-platform-3', roles: [] })],
+    });
+  });
+
+  it('maps platform role attributes and reconcile summaries', async () => {
+    state.roles = [
+      {
+        externalName: 'custom_admin',
+        description: 'Custom admin',
+        attributes: {
+          managed_by: ['studio'],
+          role_key: ['custom.admin'],
+          display_name: ['Custom Admin'],
+          role_level: ['77'],
+        },
+      },
+      {
+        externalName: 'external_role',
+        attributes: {
+          role_level: ['not-a-number'],
+        },
+      },
+      {
+        externalName: 'offline_access',
+      },
+      {
+        externalName: 'uma_authorization',
+      },
+    ];
+
+    const roles = await listPlatformRoles();
+
+    expect(roles).toEqual([
+      expect.objectContaining({
+        id: 'platform:custom_admin',
+        roleKey: 'custom.admin',
+        roleName: 'Custom Admin',
+        managedBy: 'studio',
+        roleLevel: 77,
+      }),
+      expect.objectContaining({
+        id: 'platform:external_role',
+        roleKey: 'external_role',
+        managedBy: 'external',
+        roleLevel: 0,
+      }),
+    ]);
+    await expect(runPlatformRoleReconcile()).resolves.toMatchObject({
+      outcome: 'success',
+      checkedCount: 2,
+      roles: [
+        { externalRoleName: 'custom_admin', action: 'noop', status: 'synced' },
+        { externalRoleName: 'external_role', action: 'noop', status: 'synced' },
+      ],
+    });
+  });
+
+  it('fails when the platform identity provider is not configured', async () => {
+    state.providerEnabled = false;
+
+    await expect(listPlatformUsers({ page: 1, pageSize: 25 })).rejects.toThrow(
+      'platform_identity_provider_not_configured'
+    );
+    await expect(listPlatformRoles()).rejects.toThrow('platform_identity_provider_not_configured');
+    await expect(runPlatformKeycloakUserSync({})).rejects.toThrow('platform_identity_provider_not_configured');
   });
 });

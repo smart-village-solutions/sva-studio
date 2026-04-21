@@ -1,37 +1,16 @@
-import type { IamKeycloakObjectDiagnostic, IamUserListItem } from '@sva/core';
+import type { IamUserListItem } from '@sva/core';
 
 import type { IdentityListedUser, IdentityProviderPort, IdentityUserListQuery } from '../identity-provider-port.js';
 import type { QueryClient } from '../shared/db-helpers.js';
 
-import { mapUserRowToListItem } from './user-mapping.js';
 import { resolveIdentityProviderForInstance } from './shared-runtime.js';
 import { logger, trackKeycloakCall } from './shared-observability.js';
-import type { IamRoleRow, UserStatus } from './types.js';
+import { loadMappedUsersBySubject } from './tenant-keycloak-user-query.js';
+import { mapUnmappedKeycloakUser, mergeMappedUserWithKeycloak } from './tenant-keycloak-user-projection.js';
+import type { UserStatus } from './types.js';
 
 const TENANT_KEYCLOAK_PAGE_SIZE = 100;
 const TENANT_USER_ROLE_PROJECTION_CONCURRENCY = 5;
-
-type AccountProjectionRow = {
-  id: string;
-  keycloak_subject: string;
-  display_name_ciphertext: string | null;
-  first_name_ciphertext: string | null;
-  last_name_ciphertext: string | null;
-  email_ciphertext: string | null;
-  position: string | null;
-  department: string | null;
-  status: UserStatus;
-  last_login_at: string | null;
-  role_rows: Array<{
-    id: string;
-    role_key: string;
-    role_name: string;
-    display_name: string | null;
-    external_role_name: string | null;
-    role_level: number;
-    is_system_role: boolean;
-  }> | null;
-};
 
 type TenantKeycloakUsersInput = {
   readonly client: QueryClient;
@@ -45,30 +24,6 @@ type TenantKeycloakUsersInput = {
   readonly traceId?: string;
 };
 
-const readSingleAttribute = (
-  attributes: Readonly<Record<string, readonly string[]>> | undefined,
-  key: string
-): string | undefined => {
-  const value = attributes?.[key]?.[0]?.trim();
-  return value && value.length > 0 ? value : undefined;
-};
-
-const resolveDisplayName = (user: IdentityListedUser): string => {
-  const explicitDisplayName = readSingleAttribute(user.attributes, 'displayName');
-  if (explicitDisplayName) {
-    return explicitDisplayName;
-  }
-
-  const fullName = [user.firstName, user.lastName]
-    .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
-    .join(' ')
-    .trim();
-
-  return fullName || user.username || user.email || user.externalId;
-};
-
-const mapKeycloakUserStatus = (user: IdentityListedUser): UserStatus => (user.enabled === false ? 'inactive' : 'active');
-
 const toKeycloakQuery = (
   input: Pick<TenantKeycloakUsersInput, 'search' | 'status'>
 ): Omit<IdentityUserListQuery, 'first' | 'max'> => ({
@@ -79,85 +34,6 @@ const toKeycloakQuery = (
       ? { enabled: false }
       : {}),
 });
-
-const mapRoleRows = (roleRows: AccountProjectionRow['role_rows']): readonly IamRoleRow[] =>
-  roleRows?.map((entry) => ({
-    id: entry.id,
-    role_key: entry.role_key,
-    role_name: entry.role_name,
-    display_name: entry.display_name,
-    external_role_name: entry.external_role_name,
-    role_level: Number(entry.role_level),
-    is_system_role: Boolean(entry.is_system_role),
-  })) ?? [];
-
-const loadMappedUsersBySubject = async (
-  client: QueryClient,
-  input: { instanceId: string; subjects: readonly string[] }
-): Promise<ReadonlyMap<string, IamUserListItem>> => {
-  if (input.subjects.length === 0) {
-    return new Map();
-  }
-
-  const result = await client.query<AccountProjectionRow>(
-    `
-SELECT
-  a.id,
-  a.keycloak_subject,
-  a.display_name_ciphertext,
-  a.first_name_ciphertext,
-  a.last_name_ciphertext,
-  a.email_ciphertext,
-  a.position,
-  a.department,
-  a.status,
-  MAX(al.created_at)::text AS last_login_at,
-  COALESCE(
-    json_agg(
-      DISTINCT jsonb_build_object(
-        'id', r.id,
-        'role_key', r.role_key,
-        'role_name', r.role_name,
-        'display_name', r.display_name,
-        'external_role_name', r.external_role_name,
-        'role_level', r.role_level,
-        'is_system_role', r.is_system_role
-      )
-    ) FILTER (WHERE r.id IS NOT NULL),
-    '[]'::json
-  ) AS role_rows
-FROM iam.accounts a
-JOIN iam.instance_memberships im
-  ON im.account_id = a.id
- AND im.instance_id = $1
-LEFT JOIN iam.account_roles ar
-  ON ar.instance_id = im.instance_id
- AND ar.account_id = im.account_id
- AND ar.valid_from <= NOW()
- AND (ar.valid_to IS NULL OR ar.valid_to > NOW())
-LEFT JOIN iam.roles r
-  ON r.instance_id = ar.instance_id
- AND r.id = ar.role_id
-LEFT JOIN iam.activity_logs al
-  ON al.instance_id = im.instance_id
- AND al.account_id = a.id
- AND al.event_type = 'login'
-WHERE a.keycloak_subject = ANY($2::text[])
-GROUP BY a.id;
-`,
-    [input.instanceId, input.subjects]
-  );
-
-  return new Map(
-    result.rows.map((row) => [
-      row.keycloak_subject,
-      mapUserRowToListItem({
-        ...row,
-        roles: mapRoleRows(row.role_rows),
-      }),
-    ])
-  );
-};
 
 const resolveRoleNamesForUsers = async (input: {
   readonly provider: IdentityProviderPort;
@@ -213,56 +89,6 @@ const listAllTenantUsers = async (
     }
   }
 };
-
-const mapUnmappedKeycloakUser = (
-  user: IdentityListedUser,
-  roleNames: readonly string[] | null,
-  instanceId: string
-): IamUserListItem => {
-  const configuredInstanceIds = user.attributes?.instanceId ?? [];
-  const missingInstanceAttribute = configuredInstanceIds.length === 0;
-  const wrongInstanceAttribute = configuredInstanceIds.length > 0 && !configuredInstanceIds.includes(instanceId);
-  const diagnostics: IamKeycloakObjectDiagnostic[] = [];
-  if (missingInstanceAttribute) {
-    diagnostics.push({ code: 'missing_instance_attribute', objectId: user.externalId, objectType: 'user' });
-  } else if (wrongInstanceAttribute) {
-    diagnostics.push({ code: 'mapping_incomplete', objectId: user.externalId, objectType: 'user' });
-  } else {
-    diagnostics.push({ code: 'mapping_missing', objectId: user.externalId, objectType: 'user' });
-  }
-  if (roleNames === null) {
-    diagnostics.push({ code: 'keycloak_projection_degraded', objectId: user.externalId, objectType: 'user' });
-  }
-
-  return {
-    id: `keycloak:${user.externalId}`,
-    keycloakSubject: user.externalId,
-    displayName: resolveDisplayName(user),
-    email: user.email,
-    status: mapKeycloakUserStatus(user),
-    mappingStatus: missingInstanceAttribute || wrongInstanceAttribute ? 'manual_review' : 'unmapped',
-    editability: 'blocked',
-    diagnostics,
-    roles: [],
-  };
-};
-
-const mergeMappedUserWithKeycloak = (
-  mapped: IamUserListItem,
-  user: IdentityListedUser,
-  roleNames: readonly string[] | null
-): IamUserListItem => ({
-  ...mapped,
-  displayName: mapped.displayName || resolveDisplayName(user),
-  email: mapped.email ?? user.email,
-  status: mapKeycloakUserStatus(user),
-  mappingStatus: roleNames === null ? 'manual_review' : 'mapped',
-  editability: roleNames === null ? 'blocked' : 'editable',
-  diagnostics:
-    roleNames === null
-      ? [{ code: 'keycloak_projection_degraded', objectId: user.externalId, objectType: 'user' }]
-      : mapped.diagnostics,
-});
 
 export const resolveTenantKeycloakUsersWithPagination = async (
   input: TenantKeycloakUsersInput

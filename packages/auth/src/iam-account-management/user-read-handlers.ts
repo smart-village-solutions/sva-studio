@@ -27,6 +27,47 @@ import {
 } from './user-projection.js';
 import { resolveUserTimeline } from './user-timeline-query.js';
 
+const createTenantAdminClientNotConfiguredResponse = (actor: {
+  readonly instanceId: string;
+  readonly requestId?: string;
+}): Response =>
+  createApiError(
+    409,
+    'tenant_admin_client_not_configured',
+    'Tenant-lokale Keycloak-Administration ist nicht konfiguriert.',
+    actor.requestId,
+    {
+      dependency: 'keycloak',
+      execution_mode: 'tenant_admin',
+      instance_id: actor.instanceId,
+      reason_code: 'tenant_admin_client_not_configured',
+    }
+  );
+
+const listTenantUsersWithCanonicalProjection = async (input: {
+  readonly instanceId: string;
+  readonly page: number;
+  readonly pageSize: number;
+  readonly status?: UserStatus;
+  readonly role?: string;
+  readonly search?: string;
+  readonly requestId?: string;
+  readonly traceId?: string;
+}) => {
+  const resolved = await withInstanceScopedDb(input.instanceId, (client) =>
+    resolveTenantKeycloakUsersWithPagination({ client, ...input })
+  );
+  const users = await withInstanceScopedDb(input.instanceId, (client) =>
+    applyCanonicalUserListProjection({
+      client,
+      instanceId: input.instanceId,
+      users: resolved.users,
+    })
+  );
+
+  return { users, total: resolved.total };
+};
+
 export const listUsersInternal = async (
   request: Request,
   ctx: AuthenticatedRequestContext
@@ -60,30 +101,20 @@ export const listUsersInternal = async (
   }
 
   try {
-    const resolved = await withInstanceScopedDb(access.actor.instanceId, (client) =>
-      resolveTenantKeycloakUsersWithPagination({
-        client,
-        instanceId: access.actor.instanceId,
-        page,
-        pageSize,
-        status,
-        role: role ?? undefined,
-        search: search ?? undefined,
-        requestId: access.actor.requestId,
-        traceId: access.actor.traceId,
-      })
-    );
-    const users = await withInstanceScopedDb(access.actor.instanceId, (client) =>
-      applyCanonicalUserListProjection({
-        client,
-        instanceId: access.actor.instanceId,
-        users: resolved.users,
-      })
-    );
+    const resolved = await listTenantUsersWithCanonicalProjection({
+      instanceId: access.actor.instanceId,
+      page,
+      pageSize,
+      status,
+      role: role ?? undefined,
+      search: search ?? undefined,
+      requestId: access.actor.requestId,
+      traceId: access.actor.traceId,
+    });
 
     return jsonResponse(
       200,
-      asApiList(users, { page, pageSize, total: resolved.total }, access.actor.requestId)
+      asApiList(resolved.users, { page, pageSize, total: resolved.total }, access.actor.requestId)
     );
   } catch (error) {
     logger.error('IAM user list failed', {
@@ -94,18 +125,7 @@ export const listUsersInternal = async (
       error: error instanceof Error ? error.message : String(error),
     });
     if (error instanceof Error && error.message === 'tenant_admin_client_not_configured') {
-      return createApiError(
-        409,
-        'tenant_admin_client_not_configured',
-        'Tenant-lokale Keycloak-Administration ist nicht konfiguriert.',
-        access.actor.requestId,
-        {
-          dependency: 'keycloak',
-          execution_mode: 'tenant_admin',
-          instance_id: access.actor.instanceId,
-          reason_code: 'tenant_admin_client_not_configured',
-        }
-      );
+      return createTenantAdminClientNotConfiguredResponse(access.actor);
     }
     return createDatabaseApiError(error, access.actor.requestId);
   }

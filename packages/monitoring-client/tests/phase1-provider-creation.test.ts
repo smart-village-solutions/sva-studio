@@ -11,15 +11,30 @@
  */
 
 import { describe, it, expect, afterAll } from 'vitest';
+import { ROOT_CONTEXT } from '@opentelemetry/api';
 import { NodeSDK } from '@opentelemetry/sdk-node';
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions';
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http';
-import { OTLPLogExporter } from '@opentelemetry/exporter-logs-otlp-http';
 import { PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics';
-import { BatchLogRecordProcessor } from '@opentelemetry/sdk-logs';
+import type { LogRecordProcessor, SdkLogRecord } from '@opentelemetry/sdk-logs';
 import { logs } from '@opentelemetry/api-logs';
 import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
+
+class NoopLogRecordProcessor implements LogRecordProcessor {
+  onEmit(_logRecord: SdkLogRecord, _context = ROOT_CONTEXT): void {
+    void _logRecord;
+    void _context;
+  }
+
+  forceFlush(): Promise<void> {
+    return Promise.resolve();
+  }
+
+  shutdown(): Promise<void> {
+    return Promise.resolve();
+  }
+}
 
 describe('Phase 1.1: OTEL SDK & Logger Provider Creation', () => {
   let sdk: NodeSDK;
@@ -40,14 +55,7 @@ describe('Phase 1.1: OTEL SDK & Logger Provider Creation', () => {
         metricReader: new PeriodicExportingMetricReader({
           exporter: new OTLPMetricExporter({ url: 'http://localhost:4318/v1/metrics' })
         }),
-        logRecordProcessor: new BatchLogRecordProcessor(
-          new OTLPLogExporter({ url: 'http://localhost:4318/v1/logs' }),
-          {
-            maxQueueSize: 4096,
-            maxExportBatchSize: 10,
-            scheduledDelayMillis: 500
-          }
-        ),
+        logRecordProcessor: new NoopLogRecordProcessor(),
         instrumentations: [
           getNodeAutoInstrumentations({
             '@opentelemetry/instrumentation-http': { enabled: true }

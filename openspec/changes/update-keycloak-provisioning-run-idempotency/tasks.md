@@ -10,5 +10,5 @@
 ## 2. Validation
 - [ ] 2.1 `pnpm nx run auth:test:unit`
 - [ ] 2.2 `pnpm nx run data:test:unit`
-- [ ] 2.3 `pnpm nx affected --target=typecheck --base=origin/main`
+- [ ] 2.3 `pnpm test:types`
 - [ ] 2.4 `openspec validate update-keycloak-provisioning-run-idempotency --strict`

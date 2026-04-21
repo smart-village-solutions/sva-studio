@@ -7,6 +7,7 @@ import { SYSTEM_ADMIN_ROLES } from './constants.js';
 import { asApiItem, createApiError } from './api-helpers.js';
 import { ensureFeature, getFeatureFlags } from './feature-flags.js';
 import { consumeRateLimit } from './rate-limit.js';
+import { runPlatformRoleReconcile } from './platform-iam.js';
 import { runRoleCatalogReconciliation } from './reconcile-core.js';
 import { logger, requireRoles, resolveActorInfo } from './shared.js';
 import { validateCsrf } from './csrf.js';
@@ -24,6 +25,44 @@ export const reconcilePlaceholderInternal = async (
   const roleCheck = requireRoles(ctx, SYSTEM_ADMIN_ROLES, requestContext.requestId);
   if (roleCheck) {
     return roleCheck;
+  }
+  if (!ctx.user.instanceId) {
+    const csrfError = validateCsrf(request, requestContext.requestId);
+    if (csrfError) {
+      return csrfError;
+    }
+    const rateLimit = consumeRateLimit({
+      instanceId: 'platform',
+      actorKeycloakSubject: ctx.user.id,
+      scope: 'write',
+      requestId: requestContext.requestId,
+    });
+    if (rateLimit) {
+      return rateLimit;
+    }
+    try {
+      const report = await runPlatformRoleReconcile();
+      return jsonResponse(200, asApiItem(report, requestContext.requestId));
+    } catch (error) {
+      logger.error('Platform role reconciliation failed', {
+        operation: 'reconcile_platform_roles',
+        scope_kind: 'platform',
+        request_id: requestContext.requestId,
+        trace_id: requestContext.traceId,
+        error: sanitizeRoleErrorMessage(error),
+      });
+      return createApiError(
+        503,
+        'keycloak_unavailable',
+        'Plattform-Rollen konnten nicht aus Keycloak abgeglichen werden.',
+        requestContext.requestId,
+        {
+          syncState: 'failed',
+          syncError: { code: mapRoleSyncErrorCode(error) },
+          scope_kind: 'platform',
+        }
+      );
+    }
   }
   const actorResolution = await resolveActorInfo(request, ctx, { requireActorMembership: true });
   if ('error' in actorResolution) {

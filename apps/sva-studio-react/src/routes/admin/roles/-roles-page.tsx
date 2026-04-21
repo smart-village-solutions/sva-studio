@@ -11,6 +11,7 @@ import { Card } from '../../../components/ui/card';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
 import { useRoles } from '../../../hooks/use-roles';
+import { useAuth } from '../../../providers/auth-provider';
 import { t } from '../../../i18n';
 import type { TranslationKey } from '../../../i18n/translate';
 import type { IamHttpError, RoleReconcileReport } from '../../../lib/iam-api';
@@ -83,6 +84,8 @@ const roleErrorMessage = (error: IamHttpError | null, fallbackKey: TranslationKe
 
 export const RolesPage = () => {
   const rolesApi = useRoles();
+  const { user } = useAuth();
+  const isPlatformScope = !user?.instanceId;
 
   const [search, setSearch] = React.useState('');
   const [deleteRoleId, setDeleteRoleId] = React.useState<string | null>(null);
@@ -177,25 +180,27 @@ export const RolesPage = () => {
   return (
     <section className="space-y-5" aria-busy={rolesApi.isLoading}>
       <StudioListPageTemplate
-        title={t('admin.roles.page.title')}
-        description={t('admin.roles.page.subtitle')}
+        title={t(isPlatformScope ? 'admin.roles.page.platformTitle' : 'admin.roles.page.title')}
+        description={t(isPlatformScope ? 'admin.roles.page.platformSubtitle' : 'admin.roles.page.subtitle')}
         primaryAction={{
-          label: t('admin.roles.actions.create'),
+          label: t(isPlatformScope ? 'admin.roles.actions.reconcilePlatform' : 'admin.roles.actions.create'),
           render: (
             <div className="flex flex-wrap gap-2">
               <Button type="button" variant="secondary" onClick={() => void rolesApi.reconcile()}>
-                {t('admin.roles.actions.importFromKeycloak')}
+                {t(isPlatformScope ? 'admin.roles.actions.reconcilePlatform' : 'admin.roles.actions.importFromKeycloak')}
               </Button>
-              <Button asChild type="button">
-                <Link to="/admin/roles/new">{t('admin.roles.actions.create')}</Link>
-              </Button>
+              {isPlatformScope ? null : (
+                <Button asChild type="button">
+                  <Link to="/admin/roles/new">{t('admin.roles.actions.create')}</Link>
+                </Button>
+              )}
             </div>
           ),
         }}
       >
         <StudioDataTable
-          ariaLabel={t('admin.roles.table.ariaLabel')}
-          caption={t('admin.roles.table.caption')}
+          ariaLabel={t(isPlatformScope ? 'admin.roles.table.platformAriaLabel' : 'admin.roles.table.ariaLabel')}
+          caption={t(isPlatformScope ? 'admin.roles.table.platformCaption' : 'admin.roles.table.caption')}
           data={filteredRoles}
           columns={roleColumns}
           getRowId={(role) => role.id}
@@ -219,6 +224,9 @@ export const RolesPage = () => {
             </div>
           }
           rowActions={(role) => {
+            if (isPlatformScope) {
+              return null;
+            }
             const isReadOnly = role.isSystemRole || role.managedBy !== 'studio';
 
             return (

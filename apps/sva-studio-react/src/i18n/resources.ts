@@ -1055,10 +1055,14 @@ export const i18nResources = {
         page: {
           title: 'Benutzerverwaltung',
           subtitle: 'Benutzerkonten suchen, filtern und verwalten',
+          platformTitle: 'Plattform-Benutzer',
+          platformSubtitle: 'Root-Benutzer aus dem Plattform-Realm suchen, filtern und synchronisieren',
         },
         table: {
           caption: 'Tabelle mit allen Benutzern in der aktuellen Instanz',
+          platformCaption: 'Tabelle mit allen Benutzern im Plattform-Realm',
           ariaLabel: 'Benutzertabelle',
+          platformAriaLabel: 'Plattform-Benutzertabelle',
           headerName: 'Name',
           headerEmail: 'E-Mail',
           headerRole: 'Rolle',
@@ -1214,6 +1218,7 @@ export const i18nResources = {
             instance: 'Instanz-Realm',
             global: 'globaler Realm',
             fallback_global: 'globaler Fallback-Realm',
+            platform: 'Plattform-Realm',
           },
         },
         errors: {
@@ -1354,10 +1359,14 @@ export const i18nResources = {
         page: {
           title: 'Rollenverwaltung',
           subtitle: 'System- und benutzerdefinierte Rollen verwalten',
+          platformTitle: 'Plattform-Rollen',
+          platformSubtitle: 'Root-Rollen und Plattform-Berechtigungen aus dem Plattform-Realm prüfen',
         },
         table: {
           caption: 'Tabelle aller Rollen mit Einstieg in die Rollen-Detailansicht',
+          platformCaption: 'Tabelle aller Plattform-Rollen aus dem Plattform-Realm',
           ariaLabel: 'Rollen-Tabelle',
+          platformAriaLabel: 'Plattform-Rollen-Tabelle',
           headerName: 'Rolle',
           headerType: 'Typ',
           headerSync: 'Synchronisierung',
@@ -1372,6 +1381,7 @@ export const i18nResources = {
           delete: 'Rolle löschen',
           reconcile: 'Abgleich starten',
           importFromKeycloak: 'Bereits in Keycloak angelegte Rollen importieren',
+          reconcilePlatform: 'Plattform-Rollen abgleichen',
           retrySync: 'Erneut synchronisieren',
           sort: 'Sortierung wechseln',
           retry: 'Erneut versuchen',
@@ -2962,10 +2972,14 @@ export const i18nResources = {
         page: {
           title: 'User Management',
           subtitle: 'Search, filter and manage user accounts',
+          platformTitle: 'Platform Users',
+          platformSubtitle: 'Search, filter and synchronize root users from the platform realm',
         },
         table: {
           caption: 'Table of all users in the current instance',
+          platformCaption: 'Table of all users in the platform realm',
           ariaLabel: 'Users table',
+          platformAriaLabel: 'Platform users table',
           headerName: 'Name',
           headerEmail: 'Email',
           headerRole: 'Role',
@@ -3122,6 +3136,7 @@ export const i18nResources = {
             instance: 'instance realm',
             global: 'global realm',
             fallback_global: 'global fallback realm',
+            platform: 'platform realm',
           },
         },
         errors: {
@@ -3262,10 +3277,14 @@ export const i18nResources = {
         page: {
           title: 'Role Management',
           subtitle: 'Manage system and custom roles',
+          platformTitle: 'Platform Roles',
+          platformSubtitle: 'Inspect root roles and platform permissions from the platform realm',
         },
         table: {
           caption: 'Role table with access to the role detail view',
+          platformCaption: 'Table of all platform roles from the platform realm',
           ariaLabel: 'Roles table',
+          platformAriaLabel: 'Platform roles table',
           headerName: 'Role',
           headerType: 'Type',
           headerSync: 'Sync',
@@ -3280,6 +3299,7 @@ export const i18nResources = {
           delete: 'Delete role',
           reconcile: 'Run reconcile',
           importFromKeycloak: 'Import roles already created in Keycloak',
+          reconcilePlatform: 'Reconcile platform roles',
           retrySync: 'Retry sync',
           sort: 'Toggle sorting',
           retry: 'Retry',

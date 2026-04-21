@@ -1,10 +1,14 @@
 import type { IamUserDetail, IamUserListItem } from '@sva/core';
+import { getWorkspaceContext } from '@sva/sdk/server';
 
 import type { AuthenticatedRequestContext } from '../middleware.server.js';
 import { jsonResponse } from '../shared/db-helpers.js';
 import { readString } from '../shared/input-readers.js';
 
 import { asApiItem, asApiList, createApiError, readPage } from './api-helpers.js';
+import { ADMIN_ROLES } from './constants.js';
+import { ensureFeature, getFeatureFlags } from './feature-flags.js';
+import { listPlatformUsers } from './platform-iam.js';
 import { consumeRateLimit } from './rate-limit.js';
 import {
   createDatabaseApiError,
@@ -14,6 +18,7 @@ import {
 } from './user-read-shared.js';
 import {
   logger,
+  requireRoles,
   withInstanceScopedDb,
 } from './shared.js';
 import type { UserStatus } from './types.js';
@@ -81,6 +86,70 @@ export const listUsersInternal = async (
   request: Request,
   ctx: AuthenticatedRequestContext
 ): Promise<Response> => {
+  const { page, pageSize } = readPage(request);
+  const url = new URL(request.url);
+  const status = readString(url.searchParams.get('status')) as UserStatus | undefined;
+  const role = readString(url.searchParams.get('role'));
+  const search = readString(url.searchParams.get('search'));
+
+  if (!ctx.user.instanceId) {
+    const requestContext = getWorkspaceContext();
+    const featureCheck = ensureFeature(getFeatureFlags(), 'iam_admin', requestContext.requestId);
+    if (featureCheck) {
+      return featureCheck;
+    }
+    const roleCheck = requireRoles(ctx, ADMIN_ROLES, requestContext.requestId);
+    if (roleCheck) {
+      return roleCheck;
+    }
+    const rateLimit = consumeRateLimit({
+      instanceId: 'platform',
+      actorKeycloakSubject: ctx.user.id,
+      scope: 'read',
+      requestId: requestContext.requestId,
+    });
+    if (rateLimit) {
+      return rateLimit;
+    }
+    if (status && !USER_STATUS.includes(status)) {
+      return createApiError(400, 'invalid_request', 'Ungültiger Status-Filter.', requestContext.requestId);
+    }
+    try {
+      const resolved = await listPlatformUsers({
+        page,
+        pageSize,
+        status,
+        role: role ?? undefined,
+        search: search ?? undefined,
+        requestId: requestContext.requestId,
+        traceId: requestContext.traceId,
+      });
+      return jsonResponse(
+        200,
+        asApiList(resolved.users, { page, pageSize, total: resolved.total }, requestContext.requestId)
+      );
+    } catch (error) {
+      logger.error('Platform user list failed', {
+        operation: 'list_platform_users',
+        scope_kind: 'platform',
+        request_id: requestContext.requestId,
+        trace_id: requestContext.traceId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return createApiError(
+        503,
+        'keycloak_unavailable',
+        'Plattform-Benutzer konnten nicht aus Keycloak geladen werden.',
+        requestContext.requestId,
+        {
+          dependency: 'keycloak',
+          reason_code: 'platform_keycloak_unavailable',
+          scope_kind: 'platform',
+        }
+      );
+    }
+  }
+
   const access = await resolveUserReadAccess(request, ctx);
   if (access.response) {
     return access.response;
@@ -94,11 +163,6 @@ export const listUsersInternal = async (
   if (rateLimit) {
     return rateLimit;
   }
-  const { page, pageSize } = readPage(request);
-  const url = new URL(request.url);
-  const status = readString(url.searchParams.get('status')) as UserStatus | undefined;
-  const role = readString(url.searchParams.get('role'));
-  const search = readString(url.searchParams.get('search'));
 
   if (status && !USER_STATUS.includes(status)) {
     return createApiError(400, 'invalid_request', 'Ungültiger Status-Filter.', access.actor.requestId);

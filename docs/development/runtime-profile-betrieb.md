@@ -290,10 +290,13 @@ Fuer `studio` gilt bei Tenant-Smokes zusaetzlich:
 Zusatzvertrag fuer den Root-Host:
 
 - `/admin/instances` ist die fuehrende Control Plane fuer tenant-spezifische Realm-Basisdaten
+- `/admin/users` und `/admin/roles` laufen auf dem Root-Host im Platform-Scope und lesen Plattform-User bzw. Plattform-Rollen aus dem Plattform-Realm; diese Pfade duerfen keine tenantgebundene `instanceId` voraussetzen
+- `POST /api/v1/iam/users/sync-keycloak` nutzt auf dem Root-Host `executionMode=platform_admin`; derselbe Endpunkt nutzt auf Tenant-Hosts weiter `executionMode=tenant_admin`
 - dort werden `authRealm`, `authClientId`, `tenantAdminClient.clientId`, optional `authIssuerUrl`, das tenant-spezifische OIDC-Client-Secret, das Tenant-Admin-Client-Secret und die Tenant-Admin-Stammdaten gepflegt
 - das Client-Secret ist write-only; im UI wird nur angezeigt, ob es bereits konfiguriert ist
 - Realm-/Login-Client-/Tenant-Admin-Client-/Mapper-/Tenant-Admin-Abgleich erfolgt explizit ueber den Keycloak-Reconcile-Pfad der Instanzverwaltung
 - tenant-lokale `system_admin`s duerfen diese globale Root-Host-Verwaltung nicht sehen oder mutieren
+- Tenant-Smokes werden separat gegen echte Tenant-Hosts ausgefuehrt; `partial_failure` beim Tenant-User-Sync ist ein fachlich offener Befund, aber kein Nachweis fuer einen Browser- oder Seitenabsturz
 
 `smoke` validiert zusätzlich den kritischen IAM-Schema-Stand. Fehlende Tabellen, Indizes oder RLS-Policies gelten als deterministischer Fehler und werden als maschinenlesbarer Drift gemeldet.
 

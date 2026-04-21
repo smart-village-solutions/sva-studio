@@ -226,7 +226,7 @@ export type IamUserImportSyncReport = {
   readonly totalKeycloakUsers: number;
   readonly diagnostics?: {
     readonly authRealm: string;
-    readonly providerSource: 'instance' | 'global' | 'fallback_global';
+    readonly providerSource: 'instance' | 'global' | 'fallback_global' | 'platform';
     readonly executionMode?: 'platform_admin' | 'tenant_admin' | 'break_glass';
     readonly matchedWithoutInstanceAttributeCount?: number;
     readonly skippedInstanceIds?: readonly string[];

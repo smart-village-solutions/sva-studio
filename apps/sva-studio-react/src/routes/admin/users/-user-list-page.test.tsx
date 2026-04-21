@@ -6,6 +6,7 @@ import { UserListPage } from './-user-list-page';
 
 const useUsersMock = vi.fn();
 const isIamBulkEnabledMock = vi.fn();
+const useAuthMock = vi.fn();
 
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ to, children, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { to: string }) => (
@@ -21,6 +22,10 @@ vi.mock('../../../hooks/use-users', () => ({
 
 vi.mock('../../../lib/iam-admin-access', () => ({
   isIamBulkEnabled: () => isIamBulkEnabledMock(),
+}));
+
+vi.mock('../../../providers/auth-provider', () => ({
+  useAuth: () => useAuthMock(),
 }));
 
 const createUsersApiState = (overrides: Record<string, unknown> = {}) => ({
@@ -81,6 +86,8 @@ describe('UserListPage', () => {
     useUsersMock.mockReset();
     isIamBulkEnabledMock.mockReset();
     isIamBulkEnabledMock.mockReturnValue(true);
+    useAuthMock.mockReset();
+    useAuthMock.mockReturnValue({ user: { id: 'user-admin', instanceId: 'de-musterhausen', roles: ['system_admin'] } });
   });
 
   it('renders list actions and uses route links for create and edit', () => {
@@ -225,5 +232,18 @@ describe('UserListPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Deaktivieren' }));
 
     await waitFor(() => expect(deactivateUser).toHaveBeenCalledWith('user-1'));
+  });
+
+  it('renders platform user management on root scope without tenant mutations', () => {
+    useAuthMock.mockReturnValue({ user: { id: 'platform-admin', roles: ['system_admin'] } });
+    useUsersMock.mockReturnValue(createUsersApiState());
+
+    render(<UserListPage />);
+
+    expect(screen.getByRole('heading', { name: 'Plattform-Benutzer' })).toBeTruthy();
+    expect(screen.queryByRole('link', { name: 'Nutzer anlegen' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Bearbeiten' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Deaktivieren' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Aus Keycloak synchronisieren' })).toBeTruthy();
   });
 });

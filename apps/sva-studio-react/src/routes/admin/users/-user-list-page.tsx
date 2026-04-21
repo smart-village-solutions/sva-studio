@@ -13,6 +13,7 @@ import { Label } from '../../../components/ui/label';
 import { Select } from '../../../components/ui/select';
 import { useUsers } from '../../../hooks/use-users';
 import { isIamBulkEnabled } from '../../../lib/iam-admin-access';
+import { useAuth } from '../../../providers/auth-provider';
 import { t } from '../../../i18n';
 import { IamRuntimeDiagnosticDetails } from '../-iam-runtime-diagnostic-details';
 import { userErrorMessage } from './-user-error-message';
@@ -52,12 +53,14 @@ export const UserListPage = () => {
     skippedCount: number;
     diagnostics?: {
       authRealm: string;
-      providerSource: 'instance' | 'global' | 'fallback_global';
+      providerSource: 'instance' | 'global' | 'fallback_global' | 'platform';
       matchedWithoutInstanceAttributeCount?: number;
       skippedInstanceIds?: readonly string[];
     };
   } | null>(null);
   const [syncError, setSyncError] = React.useState<Parameters<typeof userErrorMessage>[0]>(null);
+  const { user } = useAuth();
+  const isPlatformScope = !user?.instanceId;
 
   const onConfirmDeactivate = async () => {
     const action = deactivateDialog;
@@ -156,20 +159,24 @@ export const UserListPage = () => {
   return (
     <section className="space-y-5" aria-busy={usersApi.isLoading}>
       <StudioListPageTemplate
-        title={t('admin.users.page.title')}
-        description={t('admin.users.page.subtitle')}
-        primaryAction={{
-          label: t('admin.users.actions.create'),
-          render: (
-            <Button asChild type="button">
-              <Link to="/admin/users/new">{t('admin.users.actions.create')}</Link>
-            </Button>
-          ),
-        }}
+        title={t(isPlatformScope ? 'admin.users.page.platformTitle' : 'admin.users.page.title')}
+        description={t(isPlatformScope ? 'admin.users.page.platformSubtitle' : 'admin.users.page.subtitle')}
+        primaryAction={
+          isPlatformScope
+            ? undefined
+            : {
+                label: t('admin.users.actions.create'),
+                render: (
+                  <Button asChild type="button">
+                    <Link to="/admin/users/new">{t('admin.users.actions.create')}</Link>
+                  </Button>
+                ),
+              }
+        }
       >
         <StudioDataTable
-          ariaLabel={t('admin.users.table.ariaLabel')}
-          caption={t('admin.users.table.caption')}
+          ariaLabel={t(isPlatformScope ? 'admin.users.table.platformAriaLabel' : 'admin.users.table.ariaLabel')}
+          caption={t(isPlatformScope ? 'admin.users.table.platformCaption' : 'admin.users.table.caption')}
           data={usersApi.users}
           columns={userColumns}
           getRowId={(user) => user.id}
@@ -181,7 +188,7 @@ export const UserListPage = () => {
             </Card>
           }
           bulkActions={
-            isIamBulkEnabled()
+            isIamBulkEnabled() && !isPlatformScope
               ? [
                   {
                     id: 'bulk-deactivate',
@@ -238,16 +245,18 @@ export const UserListPage = () => {
             </>
           }
           rowActions={(user) => (
-            <>
-              <Button asChild size="sm" variant="outline">
-                <Link to="/admin/users/$userId" params={{ userId: user.id }}>
-                  {t('admin.users.actions.edit')}
-                </Link>
-              </Button>
-              <Button type="button" size="sm" variant="destructive" onClick={() => setDeactivateDialog({ mode: 'single', userId: user.id })}>
-                {t('admin.users.actions.deactivate')}
-              </Button>
-            </>
+            isPlatformScope ? null : (
+              <>
+                <Button asChild size="sm" variant="outline">
+                  <Link to="/admin/users/$userId" params={{ userId: user.id }}>
+                    {t('admin.users.actions.edit')}
+                  </Link>
+                </Button>
+                <Button type="button" size="sm" variant="destructive" onClick={() => setDeactivateDialog({ mode: 'single', userId: user.id })}>
+                  {t('admin.users.actions.deactivate')}
+                </Button>
+              </>
+            )
           )}
         />
       </StudioListPageTemplate>
@@ -281,7 +290,9 @@ export const UserListPage = () => {
                       ? t('admin.users.messages.syncProviderSource.instance')
                       : syncResult.diagnostics.providerSource === 'fallback_global'
                         ? t('admin.users.messages.syncProviderSource.fallback_global')
-                        : t('admin.users.messages.syncProviderSource.global'),
+                        : syncResult.diagnostics.providerSource === 'platform'
+                          ? t('admin.users.messages.syncProviderSource.platform')
+                          : t('admin.users.messages.syncProviderSource.global'),
                   matchedWithoutInstanceAttributeCount: String(
                     syncResult.diagnostics.matchedWithoutInstanceAttributeCount ?? 0
                   ),

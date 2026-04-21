@@ -5,6 +5,7 @@ import React from 'react';
 import { RolesPage } from './-roles-page';
 
 const useRolesMock = vi.fn();
+const useAuthMock = vi.fn();
 
 vi.mock('@tanstack/react-router', () => ({
   Link: ({
@@ -39,9 +40,15 @@ vi.mock('../../../hooks/use-roles', () => ({
   useRoles: () => useRolesMock(),
 }));
 
+vi.mock('../../../providers/auth-provider', () => ({
+  useAuth: () => useAuthMock(),
+}));
+
 describe('RolesPage', () => {
   beforeEach(() => {
     useRolesMock.mockReset();
+    useAuthMock.mockReset();
+    useAuthMock.mockReturnValue({ user: { id: 'user-admin', instanceId: 'de-musterhausen', roles: ['system_admin'] } });
   });
 
   afterEach(() => {
@@ -219,5 +226,47 @@ describe('RolesPage', () => {
     expect(screen.getByText('Empfohlene Aktion: Rollenabgleich prüfen')).toBeTruthy();
     expect(screen.getByText('Sync-Fehlercode: IDP_UNAVAILABLE')).toBeTruthy();
     expect(screen.getByText('Request-ID: req-role-list-7')).toBeTruthy();
+  });
+
+  it('renders platform roles on root scope without tenant mutations', () => {
+    const reconcile = vi.fn();
+    useAuthMock.mockReturnValue({ user: { id: 'platform-admin', roles: ['system_admin'] } });
+    useRolesMock.mockReturnValue({
+      roles: [
+        {
+          id: 'platform:system_admin',
+          roleKey: 'system_admin',
+          roleName: 'system_admin',
+          externalRoleName: 'system_admin',
+          managedBy: 'external',
+          description: 'Platform admin',
+          isSystemRole: true,
+          roleLevel: 100,
+          memberCount: 0,
+          syncState: 'synced',
+          permissions: [],
+        },
+      ],
+      isLoading: false,
+      error: null,
+      mutationError: null,
+      reconcileReport: null,
+      refetch: vi.fn(),
+      clearMutationError: vi.fn(),
+      createRole: vi.fn(),
+      updateRole: vi.fn(),
+      deleteRole: vi.fn(),
+      retryRoleSync: vi.fn(),
+      reconcile,
+    });
+
+    render(<RolesPage />);
+
+    expect(screen.getByRole('heading', { name: 'Plattform-Rollen' })).toBeTruthy();
+    expect(screen.queryByRole('link', { name: 'Rolle anlegen' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Rolle bearbeiten' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Rolle löschen' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Plattform-Rollen abgleichen' }));
+    expect(reconcile).toHaveBeenCalledTimes(1);
   });
 });

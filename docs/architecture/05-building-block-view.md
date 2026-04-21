@@ -341,6 +341,7 @@ Neu hinzugekommene Bausteine im Change `add-iam-organization-management-hierarch
 
 1. `packages/auth/src/iam-account-management/user-import-sync-handler.ts`
    - Führt einen expliziten Admin-Sync aus, liest Keycloak-Benutzer seitenweise aus dem aktiven Tenant-Realm, akzeptiert Benutzer ohne `instanceId`-Attribut und spiegelt Basisdaten idempotent nach `iam.accounts`; widersprüchliche Attribute bleiben als Diagnose sichtbar.
+   - Auf dem Root-Host führt derselbe Endpunkt einen Platform-Sync über den Plattform-Realm aus und meldet `executionMode=platform_admin`, ohne eine Pseudo-Instanz anzulegen.
 2. `packages/auth/src/identity-provider-port.ts`
    - Erweitert die IdP-Abstraktion um typisierte User-Listing-Operationen für administrative Import- und Reconcile-Flows.
 3. `packages/routing/src/auth.routes.server.ts` und `packages/auth/src/routes.shared.ts`

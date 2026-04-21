@@ -18,6 +18,7 @@ import { asApiItem, createApiError } from './api-helpers.js';
 import { validateCsrf } from './csrf.js';
 import { protectField } from './encryption.js';
 import { ensureFeature, getFeatureFlags } from './feature-flags.js';
+import { runPlatformKeycloakUserSync } from './platform-iam.js';
 import { consumeRateLimit } from './rate-limit.js';
 import type { ActorInfo } from './types.js';
 import {
@@ -754,6 +755,59 @@ export const syncUsersFromKeycloakInternal = async (
   request: Request,
   ctx: AuthenticatedRequestContext
 ): Promise<Response> => {
+  if (!ctx.user.instanceId) {
+    const requestContext = getWorkspaceContext();
+    const featureCheck = ensureFeature(getFeatureFlags(), 'iam_admin', requestContext.requestId);
+    if (featureCheck) {
+      return featureCheck;
+    }
+    const roleCheck = requireRoles(ctx, ADMIN_ROLES, requestContext.requestId);
+    if (roleCheck) {
+      return roleCheck;
+    }
+    const csrfError = validateCsrf(request, requestContext.requestId);
+    if (csrfError) {
+      return csrfError;
+    }
+    const rateLimit = consumeRateLimit({
+      instanceId: 'platform',
+      actorKeycloakSubject: ctx.user.id,
+      scope: 'write',
+      requestId: requestContext.requestId,
+    });
+    if (rateLimit) {
+      return rateLimit;
+    }
+    try {
+      const report = await runPlatformKeycloakUserSync({
+        requestId: requestContext.requestId,
+        traceId: requestContext.traceId,
+      });
+      iamUserOperationsCounter.add(1, { action: 'sync_platform_keycloak_users', result: 'success' });
+      return jsonResponse(200, asApiItem(report, requestContext.requestId));
+    } catch (error) {
+      logger.error('Platform keycloak user sync failed', {
+        operation: 'sync_platform_keycloak_users',
+        scope_kind: 'platform',
+        request_id: requestContext.requestId,
+        trace_id: requestContext.traceId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      iamUserOperationsCounter.add(1, { action: 'sync_platform_keycloak_users', result: 'failure' });
+      return createApiError(
+        503,
+        'keycloak_unavailable',
+        'Plattform-Benutzer konnten nicht aus Keycloak synchronisiert werden.',
+        requestContext.requestId,
+        {
+          dependency: 'keycloak',
+          reason_code: 'platform_keycloak_unavailable',
+          scope_kind: 'platform',
+        }
+      );
+    }
+  }
+
   const actorResolution = await resolveSyncActor(request, ctx);
   if ('error' in actorResolution) {
     return actorResolution.error;

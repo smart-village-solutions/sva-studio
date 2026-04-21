@@ -18,6 +18,23 @@ const state = vi.hoisted(() => ({
   identityProviderRealm: 'de-musterhausen',
   identityProviderSource: 'instance' as 'instance' | 'global',
   identityProviderExecutionMode: 'tenant_admin' as 'platform_admin' | 'tenant_admin' | 'break_glass',
+  platformSyncError: null as Error | null,
+  platformSyncReport: {
+    outcome: 'success',
+    checkedCount: 1,
+    correctedCount: 0,
+    failedCount: 0,
+    requiresManualActionCount: 0,
+    importedCount: 0,
+    updatedCount: 0,
+    skippedCount: 0,
+    totalKeycloakUsers: 1,
+    diagnostics: {
+      authRealm: 'platform',
+      providerSource: 'platform',
+      executionMode: 'platform_admin',
+    },
+  },
   emitActivityLog: vi.fn(async () => undefined),
   logger: {
     isLevelEnabled: vi.fn(() => false),
@@ -100,6 +117,15 @@ vi.mock('./iam-account-management/shared.js', async () => {
   };
 });
 
+vi.mock('./iam-account-management/platform-iam.js', () => ({
+  runPlatformKeycloakUserSync: vi.fn(async () => {
+    if (state.platformSyncError) {
+      throw state.platformSyncError;
+    }
+    return state.platformSyncReport;
+  }),
+}));
+
 describe('syncUsersFromKeycloakInternal platform scope', () => {
   const platformCtx = {
     user: {
@@ -122,6 +148,7 @@ describe('syncUsersFromKeycloakInternal platform scope', () => {
     state.identityProviderRealm = 'platform';
     state.identityProviderSource = 'global';
     state.identityProviderExecutionMode = 'platform_admin';
+    state.platformSyncError = null;
   });
 
   it('runs the platform Keycloak user sync without tenant persistence', async () => {
@@ -153,9 +180,7 @@ describe('syncUsersFromKeycloakInternal platform scope', () => {
   });
 
   it('maps platform Keycloak sync failures to keycloak_unavailable diagnostics', async () => {
-    state.listUsersImpl = () => {
-      throw new Error('keycloak unavailable');
-    };
+    state.platformSyncError = new Error('keycloak unavailable');
 
     const { syncUsersFromKeycloakInternal } = await import('./iam-account-management/user-import-sync-handler.js');
 

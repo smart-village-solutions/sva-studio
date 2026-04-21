@@ -37,6 +37,9 @@ const KEYCLOAK_PAGE_SIZE = 100;
 const SKIPPED_USER_DEBUG_LOG_CAP = 20;
 const SKIPPED_USER_INSTANCE_SAMPLE_CAP = 5;
 
+const isPlatformIdentityProviderConfigurationError = (error: unknown): boolean =>
+  error instanceof Error && error.message === 'platform_identity_provider_not_configured';
+
 const readSingleAttribute = (
   attributes: Readonly<Record<string, readonly string[]>> | undefined,
   key: string
@@ -794,6 +797,19 @@ export const syncUsersFromKeycloakInternal = async (
         error: error instanceof Error ? error.message : String(error),
       });
       iamUserOperationsCounter.add(1, { action: 'sync_platform_keycloak_users', result: 'failure' });
+      if (isPlatformIdentityProviderConfigurationError(error)) {
+        return createApiError(
+          503,
+          'keycloak_unavailable',
+          'Plattform-IAM ist nicht konfiguriert.',
+          requestContext.requestId,
+          {
+            dependency: 'keycloak',
+            reason_code: 'platform_identity_provider_not_configured',
+            scope_kind: 'platform',
+          }
+        );
+      }
       return createApiError(
         503,
         'keycloak_unavailable',

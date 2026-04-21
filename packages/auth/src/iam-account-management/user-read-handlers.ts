@@ -62,6 +62,7 @@ const listTenantUsersWithCanonicalProjection = async (input: {
       client,
       instanceId: input.instanceId,
       users: resolved.users,
+      keycloakRoleNamesBySubject: resolved.keycloakRoleNamesBySubject,
     })
   );
 

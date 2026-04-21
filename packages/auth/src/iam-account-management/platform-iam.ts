@@ -201,6 +201,9 @@ export const listPlatformUsers = async (input: {
   if (!identityProvider) {
     throw new Error('platform_identity_provider_not_configured');
   }
+  if (input.status === 'pending') {
+    return { users: [], total: 0 };
+  }
 
   const keycloakQuery: Omit<IdentityUserListQuery, 'first' | 'max'> = {
     ...(input.search ? { search: input.search } : {}),

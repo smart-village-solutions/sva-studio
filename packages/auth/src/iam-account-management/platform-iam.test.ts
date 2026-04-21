@@ -226,6 +226,14 @@ describe('platform IAM projection', () => {
     });
   });
 
+  it('returns an empty platform user page for pending status without querying Keycloak', async () => {
+    await expect(listPlatformUsers({ page: 1, pageSize: 25, status: 'pending' })).resolves.toEqual({
+      users: [],
+      total: 0,
+    });
+    expect(state.listUsersCalls).toEqual([]);
+  });
+
   it('maps platform role attributes and reconcile summaries', async () => {
     state.roles = [
       {

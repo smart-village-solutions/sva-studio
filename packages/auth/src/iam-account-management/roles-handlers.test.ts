@@ -351,6 +351,25 @@ describe('iam-account-management/roles-handlers internals', () => {
     expect(response.status).toBe(429);
   });
 
+  it('delegates role listing to the platform admin client without tenant actor resolution', async () => {
+    const { listPlatformRolesInternal } = await import('./platform-iam-handlers.js');
+    const { resolveActorInfo } = await import('./shared-actor-resolution.js');
+    const platformResponse = new Response(JSON.stringify({ data: [] }), { status: 200 });
+    vi.mocked(listPlatformRolesInternal).mockResolvedValueOnce(platformResponse);
+
+    const response = await listRolesInternal(new Request('http://localhost/api/v1/iam/roles'), {
+      user: { id: 'kc-platform-admin', roles: ['system_admin'] },
+    } as never);
+
+    expect(response).toBe(platformResponse);
+    expect(listPlatformRolesInternal).toHaveBeenCalledWith(
+      { user: { id: 'kc-platform-admin', roles: ['system_admin'] } },
+      'req-roles',
+      undefined
+    );
+    expect(resolveActorInfo).not.toHaveBeenCalled();
+  });
+
   it('lists permissions and keeps page size at least one for empty result sets', async () => {
     const { withInstanceScopedDb } = await import('./shared-runtime.js');
     const { asApiList } = await import('./api-helpers.js');

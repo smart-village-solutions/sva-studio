@@ -18,6 +18,10 @@ const state = vi.hoisted(() => ({
       { id: 'user-2', username: 'bob', email: 'bob@example.com' },
     ],
     total: 2,
+    keycloakRoleNamesBySubject: new Map<string, readonly string[] | null>([
+      ['kc-user-1', ['admin']],
+      ['kc-user-2', null],
+    ]),
   },
   userDetailResult: {
     id: 'user-1',
@@ -166,6 +170,12 @@ describe('user-read-handlers', () => {
       const data = await response.json();
       expect(data.data.items).toHaveLength(2);
       expect(data.data.items[0].roles).toEqual(['admin', 'user']);
+      const { applyCanonicalUserListProjection } = await import('./user-projection.js');
+      expect(applyCanonicalUserListProjection).toHaveBeenCalledWith(
+        expect.objectContaining({
+          keycloakRoleNamesBySubject: state.usersListResult.keycloakRoleNamesBySubject,
+        })
+      );
     });
 
     it('respects status filter parameter', async () => {

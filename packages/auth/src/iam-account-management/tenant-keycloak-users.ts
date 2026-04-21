@@ -1,6 +1,10 @@
 import type { IamUserListItem } from '@sva/core';
 
 import type { IdentityListedUser, IdentityProviderPort, IdentityUserListQuery } from '../identity-provider-port.js';
+import {
+  KeycloakAdminRequestError,
+  KeycloakAdminUnavailableError,
+} from '../keycloak-admin-client.js';
 import type { QueryClient } from '../shared/db-helpers.js';
 
 import { resolveIdentityProviderForInstance } from './shared-runtime.js';
@@ -11,6 +15,12 @@ import type { UserStatus } from './types.js';
 
 const TENANT_KEYCLOAK_PAGE_SIZE = 100;
 const TENANT_USER_ROLE_PROJECTION_CONCURRENCY = 5;
+
+type TenantKeycloakUsersResult = {
+  readonly users: readonly IamUserListItem[];
+  readonly total: number;
+  readonly keycloakRoleNamesBySubject: ReadonlyMap<string, readonly string[] | null>;
+};
 
 type TenantKeycloakUsersInput = {
   readonly client: QueryClient;
@@ -57,6 +67,9 @@ const resolveRoleNamesForUsers = async (input: {
             await trackKeycloakCall('list_tenant_user_roles', () => input.provider.listUserRoleNames(user.externalId))
           );
         } catch (error) {
+          if (!(error instanceof KeycloakAdminRequestError) && !(error instanceof KeycloakAdminUnavailableError)) {
+            throw error;
+          }
           logger.warn('Tenant user role projection degraded', {
             operation: 'list_tenant_keycloak_users',
             instance_id: input.instanceId,
@@ -92,10 +105,13 @@ const listAllTenantUsers = async (
 
 export const resolveTenantKeycloakUsersWithPagination = async (
   input: TenantKeycloakUsersInput
-): Promise<{ readonly users: readonly IamUserListItem[]; readonly total: number }> => {
+): Promise<TenantKeycloakUsersResult> => {
   const identityProvider = await resolveIdentityProviderForInstance(input.instanceId, { executionMode: 'tenant_admin' });
   if (!identityProvider) {
     throw new Error('tenant_admin_client_not_configured');
+  }
+  if (input.status === 'pending') {
+    return { users: [], total: 0, keycloakRoleNamesBySubject: new Map() };
   }
 
   const query = toKeycloakQuery(input);
@@ -134,5 +150,9 @@ export const resolveTenantKeycloakUsersWithPagination = async (
     ? roleFilteredUsers.length
     : (await identityProvider.provider.countUsers?.(query)) ?? users.length;
 
-  return { users, total };
+  const visibleRoleNamesBySubject = new Map(
+    users.map((user) => [user.keycloakSubject, roleNamesBySubject.get(user.keycloakSubject) ?? null] as const)
+  );
+
+  return { users, total, keycloakRoleNamesBySubject: visibleRoleNamesBySubject };
 };

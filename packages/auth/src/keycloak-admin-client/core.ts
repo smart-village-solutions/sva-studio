@@ -597,6 +597,49 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     }
   }
 
+  async countUsers(query?: Omit<KeycloakListUsersQuery, 'first' | 'max'>): Promise<number> {
+    if (this.isCircuitOpen()) {
+      logger.error('Keycloak read blocked because circuit breaker is open', {
+        operation: 'count_users',
+        mode: 'fail_fast',
+      });
+      throw new KeycloakAdminUnavailableError('Keycloak unavailable; user count cannot be loaded.');
+    }
+
+    const searchParams = new URLSearchParams();
+    if (query?.enabled !== undefined) {
+      searchParams.set('enabled', String(query.enabled));
+    }
+    for (const [key, value] of [
+      ['search', query?.search],
+      ['email', query?.email],
+      ['username', query?.username],
+    ] as const) {
+      if (value) {
+        searchParams.set(key, value);
+      }
+    }
+
+    const querySuffix = searchParams.size > 0 ? `?${searchParams.toString()}` : '';
+    try {
+      const count = await this.executeWithResilience<number>({
+        method: 'GET',
+        path: `/admin/realms/${encodePathSegment(this.realm)}/users/count${querySuffix}`,
+        operation: 'count_users',
+      });
+      return count;
+    } catch (error) {
+      if (this.isRetryableError(error)) {
+        logger.error('Keycloak read failed without fallback', {
+          operation: 'count_users',
+          mode: 'fail_fast',
+          reason: toRetryLogReason(error),
+        });
+      }
+      throw error;
+    }
+  }
+
   private async readUserRoleMappings(
     externalId: string,
     operation: string

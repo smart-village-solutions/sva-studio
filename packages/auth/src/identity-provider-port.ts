@@ -77,6 +77,7 @@ export interface IdentityProviderPort {
   getUserAttributes(externalId: string, attributeNames?: readonly string[]): Promise<IdentityUserAttributes>;
   syncRoles(externalId: string, roles: readonly string[]): Promise<void>;
   listUserRoleNames(externalId: string): Promise<readonly string[]>;
+  countUsers?(query?: Omit<IdentityUserListQuery, 'first' | 'max'>): Promise<number>;
   listRoles(): Promise<readonly IdentityRole[]>;
   getRoleByName(externalName: string): Promise<IdentityRole | null>;
   createRole(input: CreateIdentityRoleInput): Promise<IdentityRole>;

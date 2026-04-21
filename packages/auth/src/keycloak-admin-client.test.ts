@@ -587,6 +587,28 @@ describe('KeycloakAdminClient', () => {
     ).rejects.toBeInstanceOf(KeycloakAdminRequestError);
   });
 
+  it('counts users with server-side filters', async () => {
+    const { fetchImpl, calls } = createFetchStub([
+      createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }),
+      createJsonResponse(200, 7),
+    ]);
+
+    const client = new KeycloakAdminClient({
+      baseUrl: 'https://keycloak.example.com',
+      realm: 'demo',
+      clientId: 'svc-client',
+      clientSecret: 'svc-secret',
+      fetchImpl,
+    });
+
+    await expect(
+      client.countUsers({ search: 'alice', email: 'a@example.com', username: 'alice', enabled: true })
+    ).resolves.toBe(7);
+    expect(String(calls[1]?.input)).toBe(
+      'https://keycloak.example.com/admin/realms/demo/users/count?enabled=true&search=alice&email=a%40example.com&username=alice'
+    );
+  });
+
   it('fails fast after a retryable listRoles error', async () => {
     const { fetchImpl } = createFetchStub([
       createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }),

@@ -92,6 +92,9 @@ export const listPlatformUsersInternal = async (
       trace_id: requestContext.traceId,
       error: error instanceof Error ? error.message : String(error),
     });
+    if (isPlatformIdentityProviderConfigurationError(error)) {
+      return platformIdentityProviderConfigurationError(requestContext.requestId);
+    }
     return platformKeycloakError(
       'Plattform-Benutzer konnten nicht aus Keycloak geladen werden.',
       requestContext.requestId
@@ -116,7 +119,7 @@ export const listPlatformRolesInternal = async (
 
   try {
     const roles = await listPlatformRoles();
-    return jsonResponse(200, asApiList(roles, { page: 1, pageSize: Math.max(1, roles.length), total: roles.length }, requestId));
+    return jsonResponse(200, asApiList(roles, { page: 1, pageSize: roles.length, total: roles.length }, requestId));
   } catch (error) {
     logger.error('Platform role list failed', {
       operation: 'list_platform_roles',

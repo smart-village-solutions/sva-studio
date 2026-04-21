@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
   providerEnabled: true,
-  listUsersCalls: [] as Array<{ first?: number; max?: number; enabled?: boolean }>,
+  listUsersCalls: [] as Array<{ first?: number; max?: number; enabled?: boolean; search?: string }>,
   users: [
     {
       externalId: 'kc-platform-1',
@@ -32,13 +32,35 @@ vi.mock('./shared-runtime.js', () => ({
     state.providerEnabled
       ? {
           provider: {
-            listUsers: async ({ first = 0, max = 100, enabled }: { first?: number; max?: number; enabled?: boolean } = {}) => {
-              state.listUsersCalls.push({ first, max, enabled });
-              const filteredUsers = typeof enabled === 'boolean'
-                ? state.users.filter((user) => (user.enabled !== false) === enabled)
-                : state.users;
+            listUsers: async ({ first = 0, max = 100, enabled, search }: { first?: number; max?: number; enabled?: boolean; search?: string } = {}) => {
+              state.listUsersCalls.push({ first, max, enabled, search });
+              const filteredUsers = state.users.filter((user) => {
+                if (typeof enabled === 'boolean' && (user.enabled !== false) !== enabled) {
+                  return false;
+                }
+                if (!search) {
+                  return true;
+                }
+                const query = search.toLowerCase();
+                return [user.externalId, user.username, user.email, user.firstName, user.lastName]
+                  .filter((value): value is string => typeof value === 'string')
+                  .some((value) => value.toLowerCase().includes(query));
+              });
               return filteredUsers.slice(first, first + max);
             },
+            countUsers: async ({ enabled, search }: { enabled?: boolean; search?: string } = {}) =>
+              state.users.filter((user) => {
+                if (typeof enabled === 'boolean' && (user.enabled !== false) !== enabled) {
+                  return false;
+                }
+                if (!search) {
+                  return true;
+                }
+                const query = search.toLowerCase();
+                return [user.externalId, user.username, user.email, user.firstName, user.lastName]
+                  .filter((value): value is string => typeof value === 'string')
+                  .some((value) => value.toLowerCase().includes(query));
+              }).length,
             listUserRoleNames: async (externalId: string) => {
               const roles = state.rolesByUser.get(externalId);
               if (roles instanceof Error) {

@@ -47,7 +47,7 @@ export const UserListPage = () => {
   const [syncResult, setSyncResult] = React.useState<IamUserImportSyncReport | null>(null);
   const [syncError, setSyncError] = React.useState<Parameters<typeof userErrorMessage>[0]>(null);
   const { user } = useAuth();
-  const isPlatformScope = !user?.instanceId;
+  const isPlatformScope = user !== null && !user.instanceId;
 
   const onConfirmDeactivate = async () => {
     const action = deactivateDialog;

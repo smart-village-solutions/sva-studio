@@ -85,7 +85,7 @@ const roleErrorMessage = (error: IamHttpError | null, fallbackKey: TranslationKe
 export const RolesPage = () => {
   const rolesApi = useRoles();
   const { user } = useAuth();
-  const isPlatformScope = !user?.instanceId;
+  const isPlatformScope = user !== null && !user.instanceId;
 
   const [search, setSearch] = React.useState('');
   const [deleteRoleId, setDeleteRoleId] = React.useState<string | null>(null);

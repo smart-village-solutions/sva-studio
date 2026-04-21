@@ -82,6 +82,19 @@ const listAllPlatformUsers = async (
   }
 };
 
+const countPlatformUsers = async (
+  provider: {
+    readonly countUsers?: (query?: Omit<IdentityUserListQuery, 'first' | 'max'>) => Promise<number>;
+  },
+  query: Omit<IdentityUserListQuery, 'first' | 'max'>
+): Promise<number | null> => {
+  if (!provider.countUsers) {
+    return null;
+  }
+
+  return trackKeycloakCall('count_platform_users', () => provider.countUsers?.(query) ?? Promise.resolve(null));
+};
+
 const mapPlatformUser = (
   user: IdentityListedUser,
   roleNames: readonly string[] = []
@@ -157,13 +170,46 @@ export const listPlatformUsers = async (input: {
     throw new Error('platform_identity_provider_not_configured');
   }
 
-  const keycloakQuery: Omit<IdentityUserListQuery, 'first' | 'max'> =
-    input.status === 'active'
+  const keycloakQuery: Omit<IdentityUserListQuery, 'first' | 'max'> = {
+    ...(input.search ? { search: input.search } : {}),
+    ...(input.status === 'active'
       ? { enabled: true }
       : input.status === 'inactive'
         ? { enabled: false }
-        : {};
-  const { users: listedUsers } = await listAllPlatformUsers(keycloakQuery);
+        : {}),
+  };
+  const start = Math.max(0, (input.page - 1) * input.pageSize);
+
+  if (!input.role) {
+    const [listedUsers, countedUsers] = await Promise.all([
+      trackKeycloakCall('list_platform_users', () =>
+        identityProvider.provider.listUsers({ ...keycloakQuery, first: start, max: input.pageSize })
+      ),
+      countPlatformUsers(identityProvider.provider, keycloakQuery),
+    ]);
+    const roleNamesBySubject = await resolvePlatformUserRoleNames({
+      users: listedUsers,
+      provider: identityProvider.provider,
+      requestId: input.requestId,
+      traceId: input.traceId,
+    });
+    const projectedUsers = listedUsers
+      .map((user) => mapPlatformUser(user, roleNamesBySubject.get(user.externalId) ?? []))
+      .sort((left, right) => left.displayName.localeCompare(right.displayName, 'de'));
+
+    return {
+      users: projectedUsers,
+      total: countedUsers ?? projectedUsers.length,
+    };
+  }
+
+  const roleFilterQuery: Omit<IdentityUserListQuery, 'first' | 'max'> =
+    input.status === 'active'
+      ? { ...keycloakQuery, enabled: true }
+      : input.status === 'inactive'
+        ? { ...keycloakQuery, enabled: false }
+        : keycloakQuery;
+  const { users: listedUsers } = await listAllPlatformUsers(roleFilterQuery);
   const listedUserBySubject = new Map(listedUsers.map((user) => [user.externalId, user]));
 
   const projectedUsersWithoutRoles = listedUsers
@@ -171,7 +217,6 @@ export const listPlatformUsers = async (input: {
     .filter((user) => matchesUserSearchFilter(user, input.search))
     .sort((left, right) => left.displayName.localeCompare(right.displayName, 'de'));
 
-  const start = Math.max(0, (input.page - 1) * input.pageSize);
   const visibleSubjects = new Set(
     projectedUsersWithoutRoles.slice(start, start + input.pageSize).map((user) => user.keycloakSubject)
   );

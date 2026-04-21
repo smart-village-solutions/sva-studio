@@ -15,7 +15,7 @@
 - [ ] 2.6 **MVP-Scope (Phase 1):** Metadaten-Extraktion synchron im Upload-Handler; Variantengenerierung lazy on-demand ohne Job-Queue-Infrastruktur; kein dedizierter async Worker in Phase 1. Async-Verarbeitungspfad als eigenständiger Folge-Change `add-media-async-processing` spezifizieren und als technische Schuld in `docs/architecture/11-risks-and-technical-debt.md` eintragen.
 - [ ] 2.7 Anbindung an `content-management` und mindestens ein Fachmodul über referenzbasierte Medienrollen herstellen
 - [ ] 2.8 Audit- und Historienpfad für Medienereignisse implementieren
-- [ ] 2.9 i18n-Keys für Medienbibliothek-UI, Media-Picker, Metadatenfelder, Rollennamen (z. B. `teaser_image`, `header_image`) und Fehlerzustände in `de` und `en` definieren; `check:i18n`-Gate muss grün bleiben
+- [ ] 2.9 i18n-Keys für Medienbibliothek-UI, Media-Picker, Metadatenfelder, Übersetzungen für Medienrollen (Rollen-IDs z. B. `teaser_image`, `header_image`; i18n-Keys gemäß Repo-Konvention in Dot-Notation, z. B. `media.roles.teaser_image`) und Fehlerzustände in `de` und `en` definieren; `check:i18n`-Gate muss grün bleiben
 
 ## 3. Qualität und Dokumentation
 - [ ] 3.1 Unit-, Typ-, Integrations- und UI-Tests für Referenzen, Varianten, Rechtepfade, Löschschutz und Auslieferung ergänzen. Folgende Hochrisiko-Pfade müssen explizit durch Tests abgedeckt sein:

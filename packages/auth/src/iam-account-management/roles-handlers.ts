@@ -8,7 +8,7 @@ import { ADMIN_ROLES } from './constants.js';
 import { asApiList, createApiError } from './api-helpers.js';
 import { classifyIamDiagnosticError } from './diagnostics.js';
 import { ensureFeature, getFeatureFlags } from './feature-flags.js';
-import { listPlatformRoles } from './platform-iam.js';
+import { listPlatformRolesInternal } from './platform-iam-handlers.js';
 import { consumeRateLimit } from './rate-limit.js';
 import { loadRoleListItems } from './role-query.js';
 import { requireRoles, resolveActorInfo } from './shared-actor-resolution.js';
@@ -59,34 +59,7 @@ export const listRolesInternal = async (
     return roleCheck;
   }
   if (!ctx.user.instanceId) {
-    const rateLimit = consumeRateLimit({
-      instanceId: 'platform',
-      actorKeycloakSubject: ctx.user.id,
-      scope: 'read',
-      requestId: requestContext.requestId,
-    });
-    if (rateLimit) {
-      return rateLimit;
-    }
-    try {
-      const roles = await listPlatformRoles();
-      return jsonResponse(
-        200,
-        asApiList(roles, { page: 1, pageSize: Math.max(1, roles.length), total: roles.length }, requestContext.requestId)
-      );
-    } catch {
-      return createApiError(
-        503,
-        'keycloak_unavailable',
-        'Plattform-Rollen konnten nicht aus Keycloak geladen werden.',
-        requestContext.requestId,
-        {
-          dependency: 'keycloak',
-          reason_code: 'platform_keycloak_unavailable',
-          scope_kind: 'platform',
-        }
-      );
-    }
+    return listPlatformRolesInternal(ctx, requestContext.requestId);
   }
   const actorResolution = await resolveActorInfo(request, ctx, { requireActorMembership: true });
   if ('error' in actorResolution) {

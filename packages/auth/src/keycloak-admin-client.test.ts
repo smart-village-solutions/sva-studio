@@ -587,6 +587,83 @@ describe('KeycloakAdminClient', () => {
     ).rejects.toBeInstanceOf(KeycloakAdminRequestError);
   });
 
+  it('counts users with server-side filters', async () => {
+    const { fetchImpl, calls } = createFetchStub([
+      createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }),
+      createJsonResponse(200, 7),
+    ]);
+
+    const client = new KeycloakAdminClient({
+      baseUrl: 'https://keycloak.example.com',
+      realm: 'demo',
+      clientId: 'svc-client',
+      clientSecret: 'svc-secret',
+      fetchImpl,
+    });
+
+    await expect(
+      client.countUsers({ search: 'alice', email: 'a@example.com', username: 'alice', enabled: true })
+    ).resolves.toBe(7);
+    expect(String(calls[1]?.input)).toBe(
+      'https://keycloak.example.com/admin/realms/demo/users/count?enabled=true&search=alice&email=a%40example.com&username=alice'
+    );
+  });
+
+  it('lists and counts roles with server-side filters', async () => {
+    const { fetchImpl, calls } = createFetchStub([
+      createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }),
+      createJsonResponse(200, [{ id: 'role-editor', name: 'editor' }]),
+      createJsonResponse(200, { count: 1 }),
+    ]);
+
+    const client = new KeycloakAdminClient({
+      baseUrl: 'https://keycloak.example.com',
+      realm: 'demo',
+      clientId: 'svc-client',
+      clientSecret: 'svc-secret',
+      fetchImpl,
+    });
+
+    await expect(client.listRoles({ first: 5, max: 10, search: 'edit' })).resolves.toEqual([
+      expect.objectContaining({ id: 'role-editor', externalName: 'editor' }),
+    ]);
+    await expect(client.countRoles({ search: 'edit' })).resolves.toBe(1);
+    expect(String(calls[1]?.input)).toBe(
+      'https://keycloak.example.com/admin/realms/demo/roles?first=5&max=10&search=edit'
+    );
+    expect(String(calls[2]?.input)).toBe('https://keycloak.example.com/admin/realms/demo/roles/count?search=edit');
+  });
+
+  it('assigns and removes explicit realm role mappings', async () => {
+    const { fetchImpl, calls } = createFetchStub([
+      createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }),
+      createJsonResponse(200, [{ id: 'role-editor', name: 'editor' }]),
+      createTextResponse(204, ''),
+      createJsonResponse(200, [{ id: 'role-editor', name: 'editor' }]),
+      createTextResponse(204, ''),
+    ]);
+
+    const client = new KeycloakAdminClient({
+      baseUrl: 'https://keycloak.example.com',
+      realm: 'demo',
+      clientId: 'svc-client',
+      clientSecret: 'svc-secret',
+      fetchImpl,
+    });
+
+    await client.assignRealmRoles('user-1', ['editor']);
+    await client.removeRealmRoles('user-1', ['editor']);
+
+    const addCall = calls.find(
+      (entry) => String(entry.input).includes('/users/user-1/role-mappings/realm') && entry.init?.method === 'POST'
+    );
+    const removeCall = calls.find(
+      (entry) => String(entry.input).includes('/users/user-1/role-mappings/realm') && entry.init?.method === 'DELETE'
+    );
+    expect(JSON.parse(String(addCall?.init?.body))).toEqual([expect.objectContaining({ id: 'role-editor', name: 'editor' })]);
+    expect(JSON.parse(String(removeCall?.init?.body))).toEqual([expect.objectContaining({ id: 'role-editor', name: 'editor' })]);
+  });
+
   it('fails fast after a retryable listRoles error', async () => {
     const { fetchImpl } = createFetchStub([
       createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }),

@@ -360,7 +360,7 @@ describe('getSessionUser', () => {
     );
   });
 
-  it('handleCallback creates session and user from OIDC claims', async () => {
+  it('handleCallback creates platform session without deriving instanceId from optional claims', async () => {
     const accessToken = createUnsignedJwt({
       sub: 'user-cb-1',
       preferred_username: 'Callback User',
@@ -396,22 +396,22 @@ describe('getSessionUser', () => {
     });
 
     expect(result.user.id).toBe('user-cb-1');
+    expect(result.user.instanceId).toBeUndefined();
     expect(result.user.roles.toSorted((left, right) => left.localeCompare(right))).toEqual(
       ['Admin', 'system_admin'].toSorted((left, right) => left.localeCompare(right))
     );
     expect(createSessionMock).toHaveBeenCalledTimes(1);
     expect(jitProvisionAccountMock).toHaveBeenCalledWith({
-      instanceId: 'de-musterhausen',
+      instanceId: undefined,
       keycloakSubject: 'user-cb-1',
     });
   });
 
-  it('handleCallback persists string instanceId claims unchanged', async () => {
+  it('handleCallback derives tenant session instanceId from the auth scope without requiring an instanceId claim', async () => {
     const accessToken = createUnsignedJwt({
       sub: 'user-cb-2',
       preferred_username: 'Tenant User',
       email: 'tenant@example.com',
-      instanceId: 'tenant-1',
       realm_access: { roles: ['Editor'] },
     });
 
@@ -423,7 +423,6 @@ describe('getSessionUser', () => {
         sub: 'user-cb-2',
         preferred_username: 'Tenant User',
         email: 'tenant@example.com',
-        instanceId: 'tenant-1',
         realm_access: { roles: ['Editor'] },
       }),
       expiresIn: () => 300,
@@ -433,8 +432,27 @@ describe('getSessionUser', () => {
     const result = await handleCallback({
       code: 'code-3',
       state: 'state-3',
+      authConfig: {
+        issuer: 'https://issuer.example/realms/tenant-1',
+        clientId: 'sva-client',
+        clientSecret: 'tenant-secret',
+        loginStateSecret: 'state-secret',
+        redirectUri: 'https://tenant-1.studio.example.org/auth/callback',
+        postLogoutRedirectUri: 'https://tenant-1.studio.example.org/',
+        scopes: 'openid',
+        sessionCookieName: 'sva_auth_session',
+        loginStateCookieName: 'sva_auth_state',
+        silentSsoSuppressCookieName: 'sva_auth_silent_sso',
+        sessionTtlMs: 60_000,
+        sessionRedisTtlBufferMs: 5_000,
+        silentSsoSuppressAfterLogoutMs: 60_000,
+        kind: 'instance',
+        instanceId: 'tenant-1',
+        authRealm: 'tenant-1',
+      },
       loginState: {
-          kind: 'platform',
+        kind: 'instance',
+        instanceId: 'tenant-1',
         codeVerifier: 'verifier-3',
         nonce: 'nonce-3',
         createdAt: Date.now(),
@@ -449,6 +467,71 @@ describe('getSessionUser', () => {
         user: expect.objectContaining({ instanceId: 'tenant-1' }),
       }),
     );
+    expect(jitProvisionAccountMock).toHaveBeenCalledWith({
+      instanceId: 'tenant-1',
+      keycloakSubject: 'user-cb-2',
+    });
+  });
+
+  it('handleCallback fails closed when a tenant token carries a conflicting instanceId claim', async () => {
+    const accessToken = createUnsignedJwt({
+      sub: 'user-cb-conflict',
+      instanceId: 'other-tenant',
+      roles: ['viewer'],
+    });
+
+    authorizationCodeGrantMock.mockResolvedValue({
+      access_token: accessToken,
+      refresh_token: 'refresh-conflict',
+      id_token: 'id-conflict',
+      claims: () => ({
+        sub: 'user-cb-conflict',
+        instanceId: 'other-tenant',
+        roles: ['viewer'],
+      }),
+      expiresIn: () => 300,
+    });
+
+    const { handleCallback } = await import('./auth.server');
+
+    await expect(
+      handleCallback({
+        code: 'code-conflict',
+        state: 'state-conflict',
+        authConfig: {
+          issuer: 'https://issuer.example/realms/tenant-1',
+          clientId: 'sva-client',
+          clientSecret: 'tenant-secret',
+          loginStateSecret: 'state-secret',
+          redirectUri: 'https://tenant-1.studio.example.org/auth/callback',
+          postLogoutRedirectUri: 'https://tenant-1.studio.example.org/',
+          scopes: 'openid',
+          sessionCookieName: 'sva_auth_session',
+          loginStateCookieName: 'sva_auth_state',
+          silentSsoSuppressCookieName: 'sva_auth_silent_sso',
+          sessionTtlMs: 60_000,
+          sessionRedisTtlBufferMs: 5_000,
+          silentSsoSuppressAfterLogoutMs: 60_000,
+          kind: 'instance',
+          instanceId: 'tenant-1',
+          authRealm: 'tenant-1',
+        },
+        loginState: {
+          kind: 'instance',
+          instanceId: 'tenant-1',
+          codeVerifier: 'verifier-conflict',
+          nonce: 'nonce-conflict',
+          createdAt: Date.now(),
+        },
+      })
+    ).rejects.toMatchObject({
+      reason: 'tenant_scope_conflict',
+      expectedInstanceId: 'tenant-1',
+      actualInstanceId: 'other-tenant',
+    });
+
+    expect(createSessionMock).not.toHaveBeenCalled();
+    expect(jitProvisionAccountMock).not.toHaveBeenCalled();
   });
 
   it('handleCallback throws for invalid login state', async () => {
@@ -613,6 +696,7 @@ describe('getSessionUser', () => {
         sessionTtlMs: 60_000,
         sessionRedisTtlBufferMs: 5_000,
         silentSsoSuppressAfterLogoutMs: 60_000,
+        kind: 'instance',
         instanceId: 'bb-guben',
         authRealm: 'bb-guben',
       },
@@ -663,6 +747,7 @@ describe('getSessionUser', () => {
           sessionTtlMs: 60_000,
           sessionRedisTtlBufferMs: 5_000,
           silentSsoSuppressAfterLogoutMs: 60_000,
+          kind: 'instance',
           instanceId: 'bb-guben',
           authRealm: 'bb-guben',
         },

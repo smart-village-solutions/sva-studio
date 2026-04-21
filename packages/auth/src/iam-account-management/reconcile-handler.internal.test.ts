@@ -29,6 +29,12 @@ const state = vi.hoisted(() => ({
 }));
 
 vi.mock('@sva/sdk/server', () => ({
+  createSdkLogger: () => ({
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  }),
   getWorkspaceContext: () => ({ requestId: 'req-reconcile' }),
 }));
 
@@ -59,6 +65,10 @@ vi.mock('./feature-flags.js', () => ({
 
 vi.mock('./rate-limit.js', () => ({
   consumeRateLimit: vi.fn(() => null),
+}));
+
+vi.mock('./platform-iam-handlers.js', () => ({
+  reconcilePlatformRolesInternal: vi.fn(),
 }));
 
 vi.mock('./shared.js', () => ({
@@ -118,6 +128,7 @@ import { runRoleCatalogReconciliation } from './reconcile-core';
 const ctx = {
   user: {
     id: 'kc-1',
+    instanceId: 'de-musterhausen',
     roles: ['system_admin'],
   },
 } as never;
@@ -265,5 +276,25 @@ describe('iam-account-management/reconcile-handler internals', () => {
       },
       requestId: 'req-reconcile',
     });
+  });
+
+  it('delegates platform reconciliation without tenant actor resolution', async () => {
+    const { reconcilePlatformRolesInternal } = await import('./platform-iam-handlers.js');
+    const { resolveActorInfo } = await import('./shared.js');
+    const platformResponse = new Response(JSON.stringify({ data: { outcome: 'success' } }), { status: 200 });
+    vi.mocked(reconcilePlatformRolesInternal).mockResolvedValueOnce(platformResponse);
+    const platformCtx = {
+      user: {
+        id: 'kc-platform-admin',
+        roles: ['system_admin'],
+      },
+    } as never;
+    const request = new Request('http://localhost/api/v1/iam/admin/reconcile', { method: 'POST' });
+
+    const response = await reconcilePlaceholderInternal(request, platformCtx);
+
+    expect(response).toBe(platformResponse);
+    expect(reconcilePlatformRolesInternal).toHaveBeenCalledWith(request, platformCtx, 'req-reconcile', undefined);
+    expect(resolveActorInfo).not.toHaveBeenCalled();
   });
 });

@@ -96,6 +96,10 @@ vi.mock('./rate-limit.js', () => ({
   consumeRateLimit: vi.fn(() => null),
 }));
 
+vi.mock('./platform-iam-handlers.js', () => ({
+  listPlatformRolesInternal: vi.fn(),
+}));
+
 vi.mock('./shared-actor-resolution.js', () => ({
   requireRoles: vi.fn(() => null),
   resolveActorInfo: vi.fn(async () => state.actorResolution),
@@ -139,6 +143,7 @@ import { createRoleInternal, listPermissionsInternal, listRolesInternal, updateR
 const ctx = {
   user: {
     id: 'kc-1',
+    instanceId: 'de-musterhausen',
     roles: ['system_admin'],
   },
 } as never;
@@ -344,6 +349,25 @@ describe('iam-account-management/roles-handlers internals', () => {
     const response = await listRolesInternal(new Request('http://localhost/api/v1/iam/roles'), ctx);
 
     expect(response.status).toBe(429);
+  });
+
+  it('delegates role listing to the platform admin client without tenant actor resolution', async () => {
+    const { listPlatformRolesInternal } = await import('./platform-iam-handlers.js');
+    const { resolveActorInfo } = await import('./shared-actor-resolution.js');
+    const platformResponse = new Response(JSON.stringify({ data: [] }), { status: 200 });
+    vi.mocked(listPlatformRolesInternal).mockResolvedValueOnce(platformResponse);
+
+    const response = await listRolesInternal(new Request('http://localhost/api/v1/iam/roles'), {
+      user: { id: 'kc-platform-admin', roles: ['system_admin'] },
+    } as never);
+
+    expect(response).toBe(platformResponse);
+    expect(listPlatformRolesInternal).toHaveBeenCalledWith(
+      { user: { id: 'kc-platform-admin', roles: ['system_admin'] } },
+      'req-roles',
+      undefined
+    );
+    expect(resolveActorInfo).not.toHaveBeenCalled();
   });
 
   it('lists permissions and keeps page size at least one for empty result sets', async () => {

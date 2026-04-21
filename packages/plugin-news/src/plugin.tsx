@@ -1,6 +1,13 @@
-import { definePluginActions, type PluginDefinition } from '@sva/sdk';
+import {
+  definePluginActions,
+  definePluginAuditEvents,
+  definePluginContentTypes,
+  type PluginDefinition,
+} from '@sva/sdk';
 
+import { NEWS_CONTENT_TYPE } from './news.constants.js';
 import { NewsCreatePage, NewsEditPage, NewsListPage } from './news.pages.js';
+export { NEWS_CONTENT_TYPE } from './news.constants.js';
 
 export const pluginNewsActionIds = {
   create: 'news.create',
@@ -75,12 +82,13 @@ export const pluginNews: PluginDefinition = {
     },
   ],
   actions: pluginNewsActionDefinitions,
-  contentTypes: [
+  contentTypes: definePluginContentTypes('news', [
     {
-      contentType: 'news',
+      contentType: NEWS_CONTENT_TYPE,
       displayName: 'News',
     },
-  ],
+  ]),
+  auditEvents: definePluginAuditEvents('news', []),
   translations: {
     de: {
       news: {

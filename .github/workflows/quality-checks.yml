@@ -19,8 +19,6 @@ jobs:
     name: Lint / lint
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    env:
-      NX_CLOUD_ENCRYPTION_KEY: ${{ secrets.NX_CLOUD_ENCRYPTION_KEY }}
 
     steps:
       - name: Checkout
@@ -46,8 +44,6 @@ jobs:
       - name: Setup workspace
         if: github.event_name != 'pull_request' || steps.changes.outputs.relevant == 'true'
         uses: ./.github/actions/setup-pnpm-workspace
-        with:
-          nx-cloud-encryption-key: ${{ secrets.NX_CLOUD_ENCRYPTION_KEY }}
 
       - name: Run lint gate
         if: github.event_name != 'pull_request' || steps.changes.outputs.relevant == 'true'
@@ -67,8 +63,6 @@ jobs:
     name: Unit / unit
     runs-on: ubuntu-latest
     timeout-minutes: 25
-    env:
-      NX_CLOUD_ENCRYPTION_KEY: ${{ secrets.NX_CLOUD_ENCRYPTION_KEY }}
 
     steps:
       - name: Checkout
@@ -94,8 +88,6 @@ jobs:
       - name: Setup workspace
         if: github.event_name != 'pull_request' || steps.changes.outputs.relevant == 'true'
         uses: ./.github/actions/setup-pnpm-workspace
-        with:
-          nx-cloud-encryption-key: ${{ secrets.NX_CLOUD_ENCRYPTION_KEY }}
 
       - name: Run unit gate
         if: github.event_name != 'pull_request' || steps.changes.outputs.relevant == 'true'
@@ -115,8 +107,6 @@ jobs:
     name: Types / types
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    env:
-      NX_CLOUD_ENCRYPTION_KEY: ${{ secrets.NX_CLOUD_ENCRYPTION_KEY }}
 
     steps:
       - name: Checkout
@@ -142,8 +132,6 @@ jobs:
       - name: Setup workspace
         if: github.event_name != 'pull_request' || steps.changes.outputs.relevant == 'true'
         uses: ./.github/actions/setup-pnpm-workspace
-        with:
-          nx-cloud-encryption-key: ${{ secrets.NX_CLOUD_ENCRYPTION_KEY }}
 
       - name: Run types gate
         if: github.event_name != 'pull_request' || steps.changes.outputs.relevant == 'true'

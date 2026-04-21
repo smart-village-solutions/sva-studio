@@ -111,7 +111,11 @@ export const assertActiveRegistryEntry = (host: string, requestOrigin: string, r
       instance_id: registryEntry.instanceId,
       tenant_status: registryEntry.status,
     });
-    throw new Error(`Tenant host ${host} is not active`);
+    throw new TenantAuthResolutionError({
+      host,
+      reason: 'tenant_inactive',
+      publicMessage: 'Anmeldung ist für diesen Mandanten derzeit nicht verfügbar, weil die Instanz nicht aktiv ist.',
+    });
   }
 };
 

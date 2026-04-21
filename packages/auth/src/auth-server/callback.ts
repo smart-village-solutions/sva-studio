@@ -122,6 +122,7 @@ const persistSession = async (input: {
     accessToken: input.accessToken,
     claims: input.claims,
     clientId: input.clientId,
+    scope: getScopeFromAuthConfig(input.authConfig),
   });
 
   await createSession(sessionId, {

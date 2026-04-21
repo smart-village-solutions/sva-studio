@@ -239,14 +239,21 @@ Das System SHALL die Unterschiede zwischen lokaler Entwicklungsumgebung und dem 
 
 ### Requirement: Kanonischer Studio-Rollout-Pfad
 
-Das System SHALL fuer das Runtime-Profil `studio` genau einen offiziellen Rollout-Pfad ueber die Runtime-CLI bereitstellen.
+Das System SHALL fuer das Runtime-Profil `studio` genau einen offiziellen Rollout-Pfad ueber verifizierte Digests und einen expliziten lokalen Operator-Schritt bereitstellen.
 
-#### Scenario: Studio-Deploy wird regulär vorbereitet und ausgerollt
+#### Scenario: Studio-Release wird in Vorbereitung und lokalen Final-Deploy getrennt
 
 - **WHEN** ein Operator `studio` ausrollen moechte
-- **THEN** verwendet der offizielle Pfad `env:precheck:studio`, `env:deploy:studio` und `env:smoke:studio`
-- **AND** direkte Service- oder Portainer-Manipulationen gelten nur als dokumentierter Notfallpfad
-- **AND** der Rollout-Vertrag benennt den festen Stack- und Endpoint-Kontext fuer `studio`
+- **THEN** liefern GitHub Actions nur `Final Runtime Artifact Verify`, `Studio Image Build` und `Studio Artifact Verify`
+- **AND** der finale mutierende Rollout laeuft lokal ueber einen expliziten Operator-Einstieg mit `env:precheck:studio`, `env:deploy:studio`, `env:smoke:studio` und `env:feedback:studio`
+- **AND** GitHub-Deployworkflows gelten hoechstens als dokumentierter Legacy-Fallback und nicht mehr als offizieller Standardpfad
+
+#### Scenario: Lokaler Operator-Deploy verwendet einen expliziten Digest
+
+- **WHEN** der lokale `studio`-Release-Einstieg aufgerufen wird
+- **THEN** ist `--image-digest=sha256:...` verpflichtend
+- **AND** der Einstieg loest keinen Digest still aus GitHub-Runs, Branches oder Tags auf
+- **AND** `schema-and-app` erfordert weiterhin ein explizites Wartungsfenster
 
 ### Requirement: Pragmaticher Runtime-Contract fuer Studio
 
@@ -415,3 +422,26 @@ Das System SHALL den Rollout fuer das Runtime-Profil `studio` ueber feste diagno
 - **WHEN** `pnpm env:doctor:studio` oder `pnpm env:precheck:studio` ausgefuehrt wird
 - **THEN** prueft das System mindestens tenant-spezifische Login-Redirects und zugehoerige Diagnose-Events in Loki
 - **AND** meldet den Gate-Zustand als `tenant-auth-proof`
+
+### Requirement: Finaler Runtime-Artefaktvertrag fuer Studio
+
+Das System SHALL fuer `studio` den finalen Node-Output unter `apps/sva-studio-react/.output/server/**` als einzigen technischen Freigabegegenstand vor dem Image-Build behandeln.
+
+#### Scenario: Finales Runtime-Artefakt wird vor dem Image-Build verifiziert
+
+- **WHEN** der kanonische `studio`-Releasepfad ein neues Image bauen will
+- **THEN** prueft der CI-Pfad zuerst den finalen Node-Output `apps/sva-studio-react/.output/server/index.mjs`
+- **AND** der Check validiert mindestens den Server-Entry-Vertrag, `/health/live`, `/health/ready` und `/`
+- **AND** Intermediate-Artefakte unter `.nitro/vite/services/ssr/**` gelten nur als Diagnosematerial
+
+### Requirement: Recovery-Patching bleibt expliziter Ausnahmeweg
+
+Das System SHALL Laufzeit-Patching des finalen Nitro-Entrys nicht mehr als Standardmodell verwenden.
+
+#### Scenario: Entrypoint startet im Standardbetrieb ohne Patch
+
+- **WHEN** ein `studio`-Container regulaer startet
+- **THEN** schreibt `deploy/portainer/entrypoint.sh` das Build-Artefakt nicht still um
+- **AND** ein Recovery-Patch ist nur mit explizitem Flag `SVA_ENABLE_RUNTIME_RECOVERY_PATCH=1` zulaessig
+- **AND** fehlende Startfaehigkeit ohne dieses Flag blockiert den Releasepfad
+

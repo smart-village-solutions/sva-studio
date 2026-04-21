@@ -10,7 +10,11 @@ const useContentAccessMock = vi.fn();
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ children, to, params, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { to: string; params?: Record<string, string> }) => {
     const href =
-      typeof params?.contentId === 'string' ? to.replace('$contentId', params.contentId) : to;
+      typeof params?.contentId === 'string'
+        ? to.replace('$contentId', params.contentId)
+        : typeof params?.id === 'string'
+          ? to.replace('$id', params.id)
+          : to;
     return (
       <a href={href} {...props}>
         {children}
@@ -101,7 +105,7 @@ describe('ContentListPage', () => {
     render(<ContentListPage />);
 
     expect(screen.getByRole('heading', { name: 'Inhalte' })).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'Neuer Inhalt' }).getAttribute('href')).toBe('/content/new');
+    expect(screen.getByRole('link', { name: 'Neuer Inhalt' }).getAttribute('href')).toBe('/admin/content/new');
 
     fireEvent.change(screen.getByLabelText('Suche'), {
       target: { value: 'archiv' },
@@ -109,7 +113,7 @@ describe('ContentListPage', () => {
 
     expect(screen.queryByText('Startseite')).toBeNull();
     expect(screen.getAllByText('Archiv').length).toBeGreaterThan(0);
-    expect(screen.getAllByRole('link', { name: 'Nur lesen' })[0]?.getAttribute('href')).toBe('/content/content-2');
+    expect(screen.getAllByRole('link', { name: 'Nur lesen' })[0]?.getAttribute('href')).toBe('/admin/content/content-2');
     expect(screen.getAllByText('Nur lesbar').length).toBeGreaterThan(0);
   });
 

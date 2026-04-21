@@ -14,11 +14,6 @@ inputs:
     description: Command used to install workspace dependencies
     required: false
     default: pnpm install --frozen-lockfile
-  nx-cloud-encryption-key:
-    description: Optional Nx Cloud end-to-end encryption key
-    required: false
-    default: ""
-
 runs:
   using: composite
   steps:
@@ -35,6 +30,4 @@ runs:
 
     - name: Install dependencies
       shell: bash
-      env:
-        NX_CLOUD_ENCRYPTION_KEY: ${{ inputs.nx-cloud-encryption-key }}
       run: ${{ inputs.install-command }}

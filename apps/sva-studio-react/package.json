@@ -36,7 +36,7 @@
     "clsx": "^2.1.1",
     "jiti": "^2.6.1",
     "lucide-react": "^0.577.0",
-    "nitro": "^3.0.0",
+    "nitro": "3.0.260415-beta",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "tailwind-merge": "^3.5.0",
@@ -44,7 +44,7 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.11.1",
-    "@codecov/rollup-plugin": "^1.9.1",
+    "@codecov/rollup-plugin": "^2.0.1",
     "@playwright/test": "^1.58.2",
     "@tanstack/devtools-vite": "^0.6.0",
     "@testing-library/dom": "^10.4.0",

@@ -71,7 +71,9 @@ KEYCLOAK_STDERR_PATH="${ARTIFACT_DIR}/${VERIFY_ID}.keycloak.stderr.log"
 
 SERVER_INDEX_PATH="${APP_DIR}/.output/server/index.mjs"
 SERVER_CHUNK_PATH=""
-PATCHED_SERVER_ENTRY_PATH="${APP_DIR}/.output/server/chunks/build/tanstack-server-entry.mjs"
+LEGACY_PATCHED_SERVER_ENTRY_PATH="${APP_DIR}/.output/server/chunks/build/tanstack-server-entry.mjs"
+NITRO_SSR_SERVER_ENTRY_PATH="${APP_DIR}/.output/server/_ssr/ssr.mjs"
+PATCHED_SERVER_ENTRY_PATH="${LEGACY_PATCHED_SERVER_ENTRY_PATH}"
 
 FAILURE_CLASS="none"
 FAILED_PHASE=""
@@ -156,8 +158,12 @@ assert_artifact_contract() {
     return 1
   fi
 
-  if [ ! -f "${PATCHED_SERVER_ENTRY_PATH}" ]; then
-    echo "Finaler gepatchter Server-Entry fehlt: ${PATCHED_SERVER_ENTRY_PATH}" >&2
+  if [ -f "${NITRO_SSR_SERVER_ENTRY_PATH}" ] && grep -Fq './_ssr/ssr.mjs' "${SERVER_INDEX_PATH}"; then
+    PATCHED_SERVER_ENTRY_PATH="${NITRO_SSR_SERVER_ENTRY_PATH}"
+  elif [ -f "${LEGACY_PATCHED_SERVER_ENTRY_PATH}" ]; then
+    PATCHED_SERVER_ENTRY_PATH="${LEGACY_PATCHED_SERVER_ENTRY_PATH}"
+  else
+    echo "Finaler gepatchter Server-Entry fehlt: ${LEGACY_PATCHED_SERVER_ENTRY_PATH} oder ${NITRO_SSR_SERVER_ENTRY_PATH}" >&2
     return 1
   fi
 
@@ -176,16 +182,26 @@ assert_artifact_contract() {
     return 1
   fi
 
-  if ! grep -Fq './chunks/build/tanstack-server-entry.mjs' "${SERVER_INDEX_PATH}"; then
+  if ! grep -Fq './chunks/build/tanstack-server-entry.mjs' "${SERVER_INDEX_PATH}" && \
+     ! grep -Fq './_ssr/ssr.mjs' "${SERVER_INDEX_PATH}"; then
     echo 'Finaler Server-Entry delegiert nicht an den finalen gepatchten Server-Entry.' >&2
     return 1
   fi
 
-  SERVER_CHUNK_PATH="$(
-    find "${APP_DIR}/.output/server/chunks/build" -maxdepth 1 -type f -name 'server*.mjs' | head -n 1
-  )"
+  if [ -d "${APP_DIR}/.output/server/chunks/build" ]; then
+    SERVER_CHUNK_PATH="$(
+      find "${APP_DIR}/.output/server/chunks/build" -maxdepth 1 -type f -name 'server*.mjs' | head -n 1
+    )"
+  fi
+
+  if [ -z "${SERVER_CHUNK_PATH}" ] && [ -d "${APP_DIR}/.output/server/_ssr" ]; then
+    SERVER_CHUNK_PATH="$(
+      find "${APP_DIR}/.output/server/_ssr" -maxdepth 1 -type f -name 'server*.mjs' | head -n 1
+    )"
+  fi
+
   if [ -z "${SERVER_CHUNK_PATH}" ]; then
-    echo "Finaler SSR-Chunk unter .output/server/chunks/build/server*.mjs fehlt." >&2
+    echo "Finaler SSR-Chunk unter .output/server/chunks/build/server*.mjs oder .output/server/_ssr/server*.mjs fehlt." >&2
     return 1
   fi
 

@@ -36,6 +36,7 @@ venv/
 # Logs
 *.log
 log/
+output/
 
 # Caches
 .cache/

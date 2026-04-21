@@ -20,11 +20,11 @@
     },
     "check:runtime": {
       "cache": true,
-      "inputs": ["production", "^production"]
+      "inputs": ["production", "^production", "serverRuntimeTooling"]
     },
     "lint": {
       "cache": true,
-      "inputs": ["default", "^production"]
+      "inputs": ["default", "^production", "lintTooling"]
     },
     "test:unit": { "cache": true, "inputs": ["default", "^production", "testing"] },
     "test:coverage": {
@@ -39,7 +39,7 @@
       "outputs": ["{projectRoot}/coverage"]
     },
     "test:integration": {
-      "cache": true,
+      "cache": false,
       "inputs": ["default", "^production", "testing"]
     },
     "typecheck": {
@@ -74,6 +74,8 @@
     "frontendEnvBuild": [{ "env": "CODECOV_TOKEN" }],
     "frontendEnvServe": [{ "env": "TSS_DEV_SERVER" }],
     "frontendEnvE2E": [{ "env": "CI" }],
+    "lintTooling": ["{workspaceRoot}/eslint.config.mjs"],
+    "serverRuntimeTooling": ["{workspaceRoot}/scripts/ci/check-server-package-runtime.ts"],
     "sharedGlobals": ["{workspaceRoot}/tsconfig.base.json", "{workspaceRoot}/pnpm-lock.yaml"]
   },
   "analytics": false

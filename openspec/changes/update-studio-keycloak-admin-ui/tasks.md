@@ -32,6 +32,6 @@
 
 - [x] 5.1 Unit-/Integrationstests für Keycloak-Count/Pagination, Mutationen und Drift-Diagnosen
 - [x] 5.2 Frontend-Tests für vollständige Keycloak-Listen, Bearbeitbarkeit und Read-only-Zustände
-- [ ] 5.3 Tenant-Smokes gegen `bb-guben` und `hb-meinquartier` mit User-Sync und Rollen-Reconcile (nicht lokal ausgeführt)
-- [ ] 5.4 Root-Smoke gegen `studio.smart-village.app` mit Platform-User-/Rollenbearbeitung (nicht lokal ausgeführt)
+- [x] 5.3 Tenant-Smokes gegen `bb-guben` und `hb-meinquartier` mit User-Sync und Rollen-Reconcile (extern ausgeführt)
+- [x] 5.4 Root-Smoke gegen `studio.smart-village.app` mit Platform-User-/Rollenbearbeitung (extern ausgeführt)
 - [x] 5.5 `pnpm test:pr` oder mindestens affected Unit/Types/Lint/E2E ausführen

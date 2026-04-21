@@ -13,6 +13,6 @@
 ## 3. Verifikation
 
 - [x] 3.1 Betroffene Unit- und Type-Tests fuer Auth-, Session-, Import- und Actor-Resolution-Pfade anpassen oder ergaenzen
-- [ ] 3.2 Tenant-Login-Repro fuer `hb-meinquartier` und mindestens einen weiteren Tenant gegen die neue Soll-Logik absichern
+- [x] 3.2 Tenant-Login-Repro fuer `hb-meinquartier` und mindestens einen weiteren Tenant gegen die neue Soll-Logik absichern (extern ausgeführt)
 - [x] 3.3 Relevante Betriebs- und Architektur-Dokumentation aktualisieren, inklusive betroffener arc42-Abschnitte unter `docs/architecture/`
 - [x] 3.4 `openspec validate refactor-tenant-auth-instance-context-source --strict` erfolgreich ausfuehren

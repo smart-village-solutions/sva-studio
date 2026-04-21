@@ -1,27 +1,16 @@
-import type { IamRoleListItem, IamUserImportSyncReport, IamUserListItem } from '@sva/core';
+import type { IamUserImportSyncReport, IamUserListItem } from '@sva/core';
 
-import type { IdentityListedUser, IdentityRole, IdentityUserListQuery } from '../identity-provider-port.js';
+import type { IdentityListedUser, IdentityUserListQuery } from '../identity-provider-port.js';
 
+import { PLATFORM_ROLE_LEVEL_BY_NAME } from './platform-iam-roles.js';
 import { resolveIdentityProvider } from './shared-runtime.js';
 import { logger, trackKeycloakCall } from './shared-observability.js';
 import type { UserStatus } from './types.js';
 
+export { listPlatformRoles, runPlatformRoleReconcile } from './platform-iam-roles.js';
+
 const PLATFORM_KEYCLOAK_PAGE_SIZE = 100;
 const PLATFORM_USER_ROLE_PROJECTION_CONCURRENCY = 5;
-const PLATFORM_ROLE_LEVEL_BY_NAME: Readonly<Record<string, number>> = {
-  system_admin: 100,
-  instance_registry_admin: 90,
-};
-
-const BUILTIN_REALM_ROLE_NAMES = new Set(['offline_access', 'uma_authorization']);
-
-const readRoleAttribute = (
-  attributes: Readonly<Record<string, readonly string[]>> | undefined,
-  key: string
-): string | undefined => {
-  const value = attributes?.[key]?.[0]?.trim();
-  return value && value.length > 0 ? value : undefined;
-};
 
 const resolveDisplayName = (user: IdentityListedUser): string => {
   const fullName = [user.firstName, user.lastName]
@@ -68,33 +57,6 @@ const matchesUserSearchFilter = (user: IamUserListItem, search?: string): boolea
   return [user.displayName, user.email, user.keycloakSubject]
     .filter((value): value is string => typeof value === 'string')
     .some((value) => value.toLowerCase().includes(query));
-};
-
-const isBuiltInRealmRole = (role: IdentityRole): boolean =>
-  BUILTIN_REALM_ROLE_NAMES.has(role.externalName) || role.externalName.startsWith('default-roles-');
-
-const isStudioManagedRole = (role: IdentityRole): boolean =>
-  readRoleAttribute(role.attributes, 'managed_by') === 'studio';
-
-const mapPlatformRole = (role: IdentityRole): IamRoleListItem => {
-  const roleKey = readRoleAttribute(role.attributes, 'role_key') ?? role.externalName;
-  const displayName = readRoleAttribute(role.attributes, 'display_name') ?? role.externalName;
-  const roleLevelRaw = readRoleAttribute(role.attributes, 'role_level');
-  const parsedRoleLevel = roleLevelRaw ? Number(roleLevelRaw) : PLATFORM_ROLE_LEVEL_BY_NAME[role.externalName] ?? 0;
-
-  return {
-    id: role.id ?? `platform:${role.externalName}`,
-    roleKey,
-    roleName: displayName,
-    externalRoleName: role.externalName,
-    managedBy: isStudioManagedRole(role) ? 'studio' : 'external',
-    description: role.description,
-    isSystemRole: role.externalName in PLATFORM_ROLE_LEVEL_BY_NAME,
-    roleLevel: Number.isFinite(parsedRoleLevel) ? parsedRoleLevel : 0,
-    memberCount: 0,
-    syncState: 'synced',
-    permissions: [],
-  };
 };
 
 const listAllPlatformUsers = async (
@@ -238,19 +200,6 @@ export const listPlatformUsers = async (input: {
   };
 };
 
-export const listPlatformRoles = async (): Promise<readonly IamRoleListItem[]> => {
-  const identityProvider = resolveIdentityProvider();
-  if (!identityProvider) {
-    throw new Error('platform_identity_provider_not_configured');
-  }
-
-  const roles = await trackKeycloakCall('list_platform_roles', () => identityProvider.provider.listRoles());
-  return roles
-    .filter((role) => !isBuiltInRealmRole(role))
-    .map(mapPlatformRole)
-    .sort((left, right) => right.roleLevel - left.roleLevel || left.roleName.localeCompare(right.roleName, 'de'));
-};
-
 export const runPlatformKeycloakUserSync = async (input: {
   readonly requestId?: string;
   readonly traceId?: string;
@@ -278,34 +227,5 @@ export const runPlatformKeycloakUserSync = async (input: {
       providerSource: 'platform',
       executionMode: 'platform_admin',
     },
-  };
-};
-
-export const runPlatformRoleReconcile = async (): Promise<{
-  outcome: 'success';
-  checkedCount: number;
-  correctedCount: 0;
-  failedCount: 0;
-  manualReviewCount: 0;
-  requiresManualActionCount: 0;
-  roles: readonly {
-    externalRoleName: string;
-    action: 'noop';
-    status: 'synced';
-  }[];
-}> => {
-  const roles = await listPlatformRoles();
-  return {
-    outcome: 'success',
-    checkedCount: roles.length,
-    correctedCount: 0,
-    failedCount: 0,
-    manualReviewCount: 0,
-    requiresManualActionCount: 0,
-    roles: roles.map((role) => ({
-      externalRoleName: role.externalRoleName,
-      action: 'noop',
-      status: 'synced',
-    })),
   };
 };

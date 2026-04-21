@@ -8,6 +8,7 @@ import { ADMIN_ROLES } from './constants.js';
 import { asApiList, createApiError } from './api-helpers.js';
 import { classifyIamDiagnosticError } from './diagnostics.js';
 import { ensureFeature, getFeatureFlags } from './feature-flags.js';
+import { listPlatformRolesInternal } from './platform-iam-handlers.js';
 import { consumeRateLimit } from './rate-limit.js';
 import { loadRoleListItems } from './role-query.js';
 import { requireRoles, resolveActorInfo } from './shared-actor-resolution.js';
@@ -56,6 +57,9 @@ export const listRolesInternal = async (
   const roleCheck = requireRoles(ctx, ADMIN_ROLES, requestContext.requestId);
   if (roleCheck) {
     return roleCheck;
+  }
+  if (!ctx.user.instanceId) {
+    return listPlatformRolesInternal(ctx, requestContext.requestId, requestContext.traceId);
   }
   const actorResolution = await resolveActorInfo(request, ctx, { requireActorMembership: true });
   if ('error' in actorResolution) {

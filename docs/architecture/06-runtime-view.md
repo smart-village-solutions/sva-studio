@@ -134,7 +134,7 @@ Fehlerpfad:
 ### Szenario 2e: Deterministischer User-Sync und Rollen-Reconcile
 
 1. Ein Administrator startet in `/admin/users` den Keycloak-User-Sync oder in `/admin/roles` den Rollen-Reconcile.
-2. Der Server lädt den Instanzkontext und prüft vor jeder tenantlokalen Admin-Mutation blockerrelevanten Drift aus Registry, Preflight und Provisioning-Plan.
+2. Der Server unterscheidet Root-Host-Platform-Scope und Tenant-Instance-Scope. Im Platform-Scope nutzt er den Plattform-Realm ohne `instanceId`; im Tenant-Scope lädt er den Instanzkontext und prüft vor jeder tenantlokalen Admin-Mutation blockerrelevanten Drift aus Registry, Preflight und Provisioning-Plan.
 3. Beim Keycloak-User-Sync ist der aktive Tenant-Realm die führende Benutzergrenze; fehlende `instanceId`-Attribute blockieren den Import nicht.
 4. Liegt ein Blocker vor, endet der Lauf sofort fail-closed mit technischem Fehlervertrag inklusive `classification`, `requestId` und freigegebenen Safe-Details.
 5. Ohne Blocker führt `packages/auth` den Sync oder Reconcile deterministisch aus und trennt pro Eintrag zwischen korrigiert, fehlgeschlagen und fachlichem Restzustand `manual_review`.
@@ -146,6 +146,23 @@ Fehlerpfad:
 - fehlender Tenant-Admin-Client, Secret-Drift oder blockierter Provisioning-Plan verhindern den Start des Laufs vollständig.
 - `IDP_FORBIDDEN` und `IDP_UNAVAILABLE` bleiben als technische oder Berechtigungsfehler sichtbar und werden nicht als `manual_review` kaschiert.
 - einzelne fachlich mehrdeutige Fälle können in `manual_review` enden, ohne dass der Gesamt-Request hängen bleibt.
+
+### Szenario 2f: Keycloak-first User- und Rollenverwaltung
+
+1. `/admin/users` und `/admin/roles` laden Listen über den aktiven Keycloak-Admin-Pfad.
+2. Im Platform-Scope wird nur der Platform-Admin-Keycloak-Client verwendet.
+3. Im Tenant-Scope wird nur der Tenant-Admin-Keycloak-Client der Instanz verwendet; fehlt dieser, endet der Request mit `tenant_admin_client_not_configured`.
+4. Tenant-Userlisten lesen den vollständigen Realm-Ausschnitt aus Keycloak und verbinden ihn anschließend mit Studio-Read-Models.
+5. Keycloak-Objekte ohne Studio-Zuordnung bleiben als `unmapped` oder `manual_review` sichtbar.
+6. Mutierende Aktionen schreiben zuerst Keycloak, synchronisieren anschließend Studio-Read-Models und erzeugen Audit-Events.
+7. Read-only- oder blockierte Objekte werden in der UI mit Diagnosecode angezeigt und serverseitig erneut vor der Mutation geprüft.
+
+Fehlerpfad:
+
+- Keycloak `403` wird als `IDP_FORBIDDEN` beziehungsweise `idp_forbidden` eingeordnet.
+- föderierte oder profilrichtliniengeschützte Felder werden als `read_only_federated_field` sichtbar und nicht überschrieben.
+- verbotene Rollenzuordnungen werden als `forbidden_role_mapping` sichtbar.
+- Built-in-Rollen bleiben als Rollenobjekt read-only, dürfen aber abhängig von der aktiven Rechte-Matrix zugewiesen oder entfernt werden.
 
 ### Szenario 2b: Forced Reauth für einen Benutzer
 

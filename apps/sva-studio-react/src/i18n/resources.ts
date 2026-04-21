@@ -1055,18 +1055,33 @@ export const i18nResources = {
         page: {
           title: 'Benutzerverwaltung',
           subtitle: 'Benutzerkonten suchen, filtern und verwalten',
+          platformTitle: 'Plattform-Benutzer',
+          platformSubtitle: 'Root-Benutzer aus dem Plattform-Realm suchen, filtern und synchronisieren',
         },
         table: {
           caption: 'Tabelle mit allen Benutzern in der aktuellen Instanz',
+          platformCaption: 'Tabelle mit allen Benutzern im Plattform-Realm',
           ariaLabel: 'Benutzertabelle',
+          platformAriaLabel: 'Plattform-Benutzertabelle',
           headerName: 'Name',
           headerEmail: 'E-Mail',
           headerRole: 'Rolle',
           headerStatus: 'Status',
+          headerKeycloak: 'Keycloak',
           headerLastLogin: 'Letzter Login',
           headerActions: 'Aktionen',
           selectAll: 'Alle Nutzer markieren',
           selectOne: 'Nutzer {{name}} markieren',
+        },
+        mapping: {
+          mapped: 'Zugeordnet',
+          unmapped: 'Nicht zugeordnet',
+          manualReview: 'Manuell prüfen',
+        },
+        editability: {
+          editable: 'Bearbeitbar',
+          readOnly: 'Read-only',
+          blocked: 'Blockiert',
         },
         actions: {
           create: 'Nutzer anlegen',
@@ -1204,6 +1219,8 @@ export const i18nResources = {
             '{{checkedCount}} geprüft: {{correctedCount}} korrigiert, {{manualReviewCount}} manuell prüfen. {{importedCount}} importiert, {{updatedCount}} aktualisiert, {{skippedCount}} ohne passenden Instanzkontext übersprungen.',
           syncDiagnostics:
             'Realm {{authRealm}}, Quelle {{providerSource}}. {{matchedWithoutInstanceAttributeCount}} Benutzer ohne `instanceId` wurden über den Realm-Kontext zugeordnet.',
+          syncObjectDiagnostics: '{{count}} Benutzerobjekte mit Diagnose: {{codes}}',
+          diagnosticCodes: 'Diagnose: {{codes}}',
           syncOutcome: {
             success: 'Der Sync wurde deterministisch ohne offenen Nachlauf abgeschlossen.',
             partialFailure: 'Der Sync wurde mit teilweisen Fehlern oder manuellem Nachlauf abgeschlossen.',
@@ -1214,6 +1231,7 @@ export const i18nResources = {
             instance: 'Instanz-Realm',
             global: 'globaler Realm',
             fallback_global: 'globaler Fallback-Realm',
+            platform: 'Plattform-Realm',
           },
         },
         errors: {
@@ -1354,10 +1372,14 @@ export const i18nResources = {
         page: {
           title: 'Rollenverwaltung',
           subtitle: 'System- und benutzerdefinierte Rollen verwalten',
+          platformTitle: 'Plattform-Rollen',
+          platformSubtitle: 'Root-Rollen und Plattform-Berechtigungen aus dem Plattform-Realm prüfen',
         },
         table: {
           caption: 'Tabelle aller Rollen mit Einstieg in die Rollen-Detailansicht',
+          platformCaption: 'Tabelle aller Plattform-Rollen aus dem Plattform-Realm',
           ariaLabel: 'Rollen-Tabelle',
+          platformAriaLabel: 'Plattform-Rollen-Tabelle',
           headerName: 'Rolle',
           headerType: 'Typ',
           headerSync: 'Synchronisierung',
@@ -1372,6 +1394,7 @@ export const i18nResources = {
           delete: 'Rolle löschen',
           reconcile: 'Abgleich starten',
           importFromKeycloak: 'Bereits in Keycloak angelegte Rollen importieren',
+          reconcilePlatform: 'Plattform-Rollen abgleichen',
           retrySync: 'Erneut synchronisieren',
           sort: 'Sortierung wechseln',
           retry: 'Erneut versuchen',
@@ -1384,7 +1407,13 @@ export const i18nResources = {
           systemRole: 'Systemrolle',
           customRole: 'Benutzerdefinierte Rolle',
           externalRole: 'Externe Rolle',
+          builtInRole: 'Keycloak-Built-in-Rolle',
           temporaryNotice: 'Rollen sind vorläufig und werden weiterentwickelt.',
+        },
+        editability: {
+          editable: 'Bearbeitbar',
+          readOnly: 'Read-only',
+          blocked: 'Blockiert',
         },
         permissionActions: {
           read: 'Lesen',
@@ -1444,6 +1473,7 @@ export const i18nResources = {
           error: 'Rollen konnten nicht geladen werden.',
           permissionsEmpty: 'Keine Berechtigungen zugeordnet.',
           syncErrorCode: 'Synchronisierungsfehlercode: {{code}}',
+          diagnosticCodes: 'Diagnose: {{codes}}',
           lastSyncedAt: 'Zuletzt synchronisiert: {{value}}',
           noDescription: 'Keine Beschreibung',
           externalRoleName: 'Externer Rollenname: {{value}}',
@@ -1451,6 +1481,7 @@ export const i18nResources = {
           roleLevel: 'Rollenlevel: {{value}}',
           reconcileSummary:
             'Reconcile abgeschlossen. Geprüft: {{checked}}, korrigiert: {{corrected}}, fehlgeschlagen: {{failed}}, manuell prüfen: {{manual}}.',
+          reconcileObjectDiagnostics: '{{count}} Rollenobjekte mit Diagnose: {{codes}}',
           reconcileOutcome: {
             success: 'Der Abgleich wurde deterministisch ohne offenen Nachlauf abgeschlossen.',
             partialFailure: 'Der Abgleich wurde mit fehlgeschlagenen oder manuell zu prüfenden Einträgen abgeschlossen.',
@@ -2962,18 +2993,33 @@ export const i18nResources = {
         page: {
           title: 'User Management',
           subtitle: 'Search, filter and manage user accounts',
+          platformTitle: 'Platform Users',
+          platformSubtitle: 'Search, filter and synchronize root users from the platform realm',
         },
         table: {
           caption: 'Table of all users in the current instance',
+          platformCaption: 'Table of all users in the platform realm',
           ariaLabel: 'Users table',
+          platformAriaLabel: 'Platform users table',
           headerName: 'Name',
           headerEmail: 'Email',
           headerRole: 'Role',
           headerStatus: 'Status',
+          headerKeycloak: 'Keycloak',
           headerLastLogin: 'Last login',
           headerActions: 'Actions',
           selectAll: 'Select all users',
           selectOne: 'Select user {{name}}',
+        },
+        mapping: {
+          mapped: 'Mapped',
+          unmapped: 'Unmapped',
+          manualReview: 'Manual review',
+        },
+        editability: {
+          editable: 'Editable',
+          readOnly: 'Read-only',
+          blocked: 'Blocked',
         },
         actions: {
           create: 'Create user',
@@ -3112,6 +3158,8 @@ export const i18nResources = {
             'Checked {{checkedCount}} users: {{correctedCount}} corrected, {{manualReviewCount}} require manual review. {{importedCount}} imported, {{updatedCount}} updated, {{skippedCount}} skipped without matching instance context.',
           syncDiagnostics:
             'Realm {{authRealm}}, source {{providerSource}}. {{matchedWithoutInstanceAttributeCount}} users without `instanceId` were matched by realm scope.',
+          syncObjectDiagnostics: '{{count}} user objects with diagnostics: {{codes}}',
+          diagnosticCodes: 'Diagnostics: {{codes}}',
           syncOutcome: {
             success: 'The sync completed deterministically without remaining follow-up.',
             partialFailure: 'The sync completed with partial failures or manual follow-up items.',
@@ -3122,6 +3170,7 @@ export const i18nResources = {
             instance: 'instance realm',
             global: 'global realm',
             fallback_global: 'global fallback realm',
+            platform: 'platform realm',
           },
         },
         errors: {
@@ -3262,10 +3311,14 @@ export const i18nResources = {
         page: {
           title: 'Role Management',
           subtitle: 'Manage system and custom roles',
+          platformTitle: 'Platform Roles',
+          platformSubtitle: 'Inspect root roles and platform permissions from the platform realm',
         },
         table: {
           caption: 'Role table with access to the role detail view',
+          platformCaption: 'Table of all platform roles from the platform realm',
           ariaLabel: 'Roles table',
+          platformAriaLabel: 'Platform roles table',
           headerName: 'Role',
           headerType: 'Type',
           headerSync: 'Sync',
@@ -3280,6 +3333,7 @@ export const i18nResources = {
           delete: 'Delete role',
           reconcile: 'Run reconcile',
           importFromKeycloak: 'Import roles already created in Keycloak',
+          reconcilePlatform: 'Reconcile platform roles',
           retrySync: 'Retry sync',
           sort: 'Toggle sorting',
           retry: 'Retry',
@@ -3292,7 +3346,13 @@ export const i18nResources = {
           systemRole: 'System role',
           customRole: 'Custom role',
           externalRole: 'External role',
+          builtInRole: 'Keycloak built-in role',
           temporaryNotice: 'Role names are temporary and will evolve.',
+        },
+        editability: {
+          editable: 'Editable',
+          readOnly: 'Read-only',
+          blocked: 'Blocked',
         },
         permissionActions: {
           read: 'Read',
@@ -3352,6 +3412,7 @@ export const i18nResources = {
           error: 'Roles could not be loaded.',
           permissionsEmpty: 'No permissions assigned.',
           syncErrorCode: 'Sync error code: {{code}}',
+          diagnosticCodes: 'Diagnostics: {{codes}}',
           lastSyncedAt: 'Last synced: {{value}}',
           noDescription: 'No description',
           externalRoleName: 'External role name: {{value}}',
@@ -3359,6 +3420,7 @@ export const i18nResources = {
           roleLevel: 'Role level: {{value}}',
           reconcileSummary:
             'Reconcile finished. Checked: {{checked}}, corrected: {{corrected}}, failed: {{failed}}, manual review: {{manual}}.',
+          reconcileObjectDiagnostics: '{{count}} role objects with diagnostics: {{codes}}',
           reconcileOutcome: {
             success: 'The reconcile completed deterministically without remaining follow-up.',
             partialFailure: 'The reconcile completed with failed or manually reviewable items.',

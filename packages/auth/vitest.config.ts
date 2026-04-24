@@ -28,6 +28,7 @@ export default defineConfig({
       { find: '@sva/monitoring-client/server', replacement: resolve(__dirname, '../monitoring-client/src/server.ts') },
       { find: /^@sva\/core$/, replacement: resolve(__dirname, '../core/src/index.ts') },
       { find: /^@sva\/data-repositories$/, replacement: resolve(__dirname, '../data-repositories/src/index.ts') },
+      { find: /^@sva\/instance-registry$/, replacement: resolve(__dirname, '../instance-registry/src/index.ts') },
       { find: /^@sva\/server-runtime$/, replacement: resolve(__dirname, '../server-runtime/src/index.ts') },
       { find: /^@sva\/sdk$/, replacement: resolve(__dirname, '../sdk/src/index.ts') },
     ],

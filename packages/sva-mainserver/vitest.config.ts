@@ -22,6 +22,7 @@ export default defineConfig({
       '@sva/auth': resolve(__dirname, '../auth/src/index.ts'),
       '@sva/data-repositories/server': resolve(__dirname, '../data-repositories/src/server.ts'),
       '@sva/data-repositories': resolve(__dirname, '../data-repositories/src/index.ts'),
+      '@sva/instance-registry': resolve(__dirname, '../instance-registry/src/index.ts'),
       '@sva/monitoring-client/logger-provider.server': resolve(
         __dirname,
         '../monitoring-client/src/logger-provider.server.ts',

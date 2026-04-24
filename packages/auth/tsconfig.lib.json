@@ -14,6 +14,7 @@
       "@sva/data-repositories": ["packages/data-repositories/dist/index.d.ts"],
       "@sva/data-repositories/server": ["packages/data-repositories/dist/server.d.ts"],
       "@sva/iam-core": ["packages/iam-core/dist/index.d.ts"],
+      "@sva/instance-registry": ["packages/instance-registry/dist/index.d.ts"],
       "@sva/sdk": ["packages/sdk/dist/index.d.ts"],
       "@sva/server-runtime": ["packages/server-runtime/dist/index.d.ts"]
     }

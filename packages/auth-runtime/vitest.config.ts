@@ -14,6 +14,7 @@ export default defineConfig({
       { find: '@sva/core/security', replacement: resolve(currentDir, '../core/src/security/index.ts') },
       { find: /^@sva\/auth$/, replacement: resolve(currentDir, '../auth/src/index.ts') },
       { find: /^@sva\/core$/, replacement: resolve(currentDir, '../core/src/index.ts') },
+      { find: /^@sva\/instance-registry$/, replacement: resolve(currentDir, '../instance-registry/src/index.ts') },
     ],
   },
   test: {

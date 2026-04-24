@@ -28,6 +28,7 @@
     "@sva/core": "workspace:*",
     "@sva/data-repositories": "workspace:*",
     "@sva/iam-core": "workspace:*",
+    "@sva/instance-registry": "workspace:*",
     "@sva/sdk": "workspace:*",
     "@sva/server-runtime": "workspace:*",
     "@types/sanitize-html": "^2.16.1",

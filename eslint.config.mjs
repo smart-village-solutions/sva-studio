@@ -110,6 +110,7 @@ export default [
                 'scope:sdk',
                 'scope:monitoring',
                 'scope:iam-core',
+                'scope:instance-registry',
                 'scope:server-runtime',
                 'scope:auth',
               ],

@@ -243,6 +243,9 @@ importers:
       '@sva/iam-core':
         specifier: workspace:*
         version: link:../iam-core
+      '@sva/instance-registry':
+        specifier: workspace:*
+        version: link:../instance-registry
       '@sva/sdk':
         specifier: workspace:*
         version: link:../sdk

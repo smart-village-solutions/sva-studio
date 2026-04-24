@@ -26,7 +26,8 @@
 - [x] 4.1 Zentrale Autorisierungsentscheidung nach `@sva/iam-core` verschieben
 - [x] 4.2 Server-Runtime-Fassade über `@sva/server-runtime` bereitstellen und erste Auth-Consumer umstellen
 - [ ] 4.2a Server-Runtime-Implementierung physisch aus `@sva/sdk/server` nach `@sva/server-runtime` verschieben
-- [ ] 4.3 Plugin-Verträge nach `@sva/plugin-sdk` verschieben
+- [x] 4.3 Plugin-SDK-Fassade über `@sva/plugin-sdk` bereitstellen und `@sva/plugin-news` umstellen
+- [ ] 4.3a Plugin-SDK-Implementierung physisch aus `@sva/sdk` nach `@sva/plugin-sdk` verschieben
 - [ ] 4.4 Client-sichere Datenverträge nach `@sva/data-client` verschieben
 - [ ] 4.5 DB-Repositories und serverseitige Datenzugriffe nach `@sva/data-repositories` verschieben
 - [ ] 4.6 Auth-Routenverträge so neutralisieren, dass `@sva/routing` keine Auth-Runtime-Implementierung importiert

@@ -12,7 +12,7 @@
     }
   },
   "dependencies": {
-    "@sva/sdk": "workspace:*"
+    "@sva/plugin-sdk": "workspace:*"
   },
   "peerDependencies": {
     "@tanstack/react-router": "^1.168.10",

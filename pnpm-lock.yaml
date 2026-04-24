@@ -478,9 +478,9 @@ importers:
 
   packages/plugin-news:
     dependencies:
-      '@sva/sdk':
+      '@sva/plugin-sdk':
         specifier: workspace:*
-        version: link:../sdk
+        version: link:../plugin-sdk
       '@tanstack/react-router':
         specifier: 1.168.21
         version: 1.168.21(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
@@ -515,6 +515,9 @@ importers:
       '@sva/core':
         specifier: workspace:*
         version: link:../core
+      '@sva/sdk':
+        specifier: workspace:*
+        version: link:../sdk
     devDependencies:
       '@vitest/coverage-v8':
         specifier: ^4.1.2

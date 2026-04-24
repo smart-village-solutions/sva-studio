@@ -38,7 +38,7 @@ export default [
             },
             {
               sourceTag: 'scope:plugin-sdk',
-              onlyDependOnLibsWithTags: ['scope:core', 'scope:plugin-sdk'],
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:sdk', 'scope:plugin-sdk'],
             },
             {
               sourceTag: 'scope:server-runtime',
@@ -111,7 +111,7 @@ export default [
             },
             {
               sourceTag: 'scope:plugin',
-              onlyDependOnLibsWithTags: ['scope:sdk', 'scope:plugin'],
+              onlyDependOnLibsWithTags: ['scope:plugin-sdk', 'scope:plugin'],
             },
             {
               sourceTag: 'scope:routing',
@@ -135,7 +135,7 @@ export default [
     },
   },
   {
-    files: ['packages/plugin-*/**/*.{ts,tsx,js,jsx}'],
+    files: ['packages/plugin-news/**/*.{ts,tsx,js,jsx}'],
     rules: {
       'no-restricted-imports': [
         'error',
@@ -143,13 +143,21 @@ export default [
           paths: [
             {
               name: '@sva/core',
-              message: 'Plugins müssen über @sva/sdk auf Host-APIs zugreifen.',
+              message: 'Plugins müssen über @sva/plugin-sdk auf Host-APIs zugreifen.',
+            },
+            {
+              name: '@sva/sdk',
+              message: 'Plugins müssen über @sva/plugin-sdk auf Host-APIs zugreifen.',
             },
           ],
           patterns: [
             {
               group: ['@sva/core/*'],
-              message: 'Plugins müssen über @sva/sdk auf Host-APIs zugreifen.',
+              message: 'Plugins müssen über @sva/plugin-sdk auf Host-APIs zugreifen.',
+            },
+            {
+              group: ['@sva/sdk/*'],
+              message: 'Plugins müssen über @sva/plugin-sdk auf Host-APIs zugreifen.',
             },
           ],
         },

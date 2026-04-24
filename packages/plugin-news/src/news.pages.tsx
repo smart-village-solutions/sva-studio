@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
-import { translatePluginKey, usePluginTranslation } from '@sva/sdk';
+import { translatePluginKey, usePluginTranslation } from '@sva/plugin-sdk';
 
 import { createNews, deleteNews, getNews, listNews, updateNews, type NewsFormInput } from './news.api.js';
 import { getPluginNewsActionDefinition, pluginNewsActionIds } from './plugin.js';

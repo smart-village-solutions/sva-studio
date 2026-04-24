@@ -138,7 +138,8 @@ export default [
               onlyDependOnLibsWithTags: [
                 'scope:core',
                 'scope:data',
-                'scope:sdk',
+                'scope:plugin-sdk',
+                'scope:server-runtime',
                 'scope:auth-runtime',
                 'scope:monitoring',
                 'scope:routing',
@@ -155,6 +156,164 @@ export default [
                 'scope:auth',
                 'scope:integration',
               ],
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['packages/routing/**/*.{ts,tsx,js,jsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '@sva/auth',
+              message: 'Routing darf Auth nur über @sva/auth-runtime anbinden.',
+            },
+            {
+              name: '@sva/auth/server',
+              message: 'Routing darf Auth nur über @sva/auth-runtime anbinden.',
+            },
+            {
+              name: '@sva/auth/runtime-routes',
+              message: 'Routing darf Runtime-Routen nur über @sva/auth-runtime/runtime-routes anbinden.',
+            },
+            {
+              name: '@sva/auth/runtime-health',
+              message: 'Routing darf Runtime-Health nur über @sva/auth-runtime/runtime-health anbinden.',
+            },
+            {
+              name: '@sva/sdk',
+              message: 'Routing verwendet Plugin-Verträge über @sva/plugin-sdk.',
+            },
+            {
+              name: '@sva/sdk/admin-resources',
+              message: 'Routing verwendet Admin-Resource-Verträge über @sva/plugin-sdk.',
+            },
+            {
+              name: '@sva/sdk/server',
+              message: 'Routing verwendet Server-Helfer über @sva/server-runtime.',
+            },
+          ],
+          patterns: [
+            {
+              group: ['@sva/auth/*'],
+              message: 'Routing darf Auth nur über @sva/auth-runtime anbinden.',
+            },
+            {
+              group: ['@sva/sdk/*'],
+              message: 'Routing verwendet Zielpackages statt @sva/sdk-Subpaths.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['packages/server-runtime/**/*.{ts,tsx,js,jsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '@sva/sdk',
+              message: 'server-runtime ist die Zielgrenze und darf nicht zurück auf @sva/sdk importieren.',
+            },
+            {
+              name: '@sva/sdk/server',
+              message: 'server-runtime ist die Zielgrenze und darf nicht zurück auf @sva/sdk/server importieren.',
+            },
+          ],
+          patterns: [
+            {
+              group: ['@sva/sdk/*'],
+              message: 'server-runtime ist die Zielgrenze und darf nicht zurück auf @sva/sdk-Subpaths importieren.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['packages/plugin-sdk/**/*.{ts,tsx,js,jsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '@sva/sdk',
+              message: 'plugin-sdk ist die Zielgrenze und darf nicht zurück auf @sva/sdk importieren.',
+            },
+          ],
+          patterns: [
+            {
+              group: ['@sva/sdk/*'],
+              message: 'plugin-sdk ist die Zielgrenze und darf nicht zurück auf @sva/sdk-Subpaths importieren.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['packages/data-client/**/*.{ts,tsx,js,jsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '@sva/data',
+              message: 'data-client ist die Zielgrenze und darf nicht zurück auf @sva/data importieren.',
+            },
+            {
+              name: '@sva/data/server',
+              message: 'data-client darf keine Server-Repositories anbinden.',
+            },
+          ],
+          patterns: [
+            {
+              group: ['@sva/data/*'],
+              message: 'data-client ist die Zielgrenze und darf nicht zurück auf @sva/data-Subpaths importieren.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['packages/data-repositories/**/*.{ts,tsx,js,jsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '@sva/data',
+              message: 'data-repositories ist die Zielgrenze und darf nicht zurück auf @sva/data importieren.',
+            },
+            {
+              name: '@sva/data/server',
+              message: 'data-repositories ist die Zielgrenze und darf nicht zurück auf @sva/data/server importieren.',
+            },
+            {
+              name: '@sva/sdk/server',
+              message: 'data-repositories verwendet Server-Helfer über @sva/server-runtime.',
+            },
+          ],
+          patterns: [
+            {
+              group: ['@sva/data/*'],
+              message: 'data-repositories ist die Zielgrenze und darf nicht zurück auf @sva/data-Subpaths importieren.',
+            },
+            {
+              group: ['@sva/sdk/*'],
+              message: 'data-repositories verwendet Zielpackages statt @sva/sdk-Subpaths.',
             },
           ],
         },

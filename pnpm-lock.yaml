@@ -552,9 +552,12 @@ importers:
       '@sva/core':
         specifier: workspace:*
         version: link:../core
-      '@sva/sdk':
+      '@sva/plugin-sdk':
         specifier: workspace:*
-        version: link:../sdk
+        version: link:../plugin-sdk
+      '@sva/server-runtime':
+        specifier: workspace:*
+        version: link:../server-runtime
       '@tanstack/react-router':
         specifier: 1.168.21
         version: 1.168.21(react-dom@19.2.5(react@19.2.5))(react@19.2.5)

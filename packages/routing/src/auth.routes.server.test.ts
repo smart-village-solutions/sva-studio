@@ -7,7 +7,7 @@ const routingLogger = vi.hoisted(() => ({
   error: vi.fn(),
 }));
 
-vi.mock('@sva/sdk/server', () => ({
+vi.mock('@sva/server-runtime', () => ({
   createSdkLogger: () => routingLogger,
   getHeadersFromRequest: (request: Request) => {
     const headers: Record<string, string> = {};

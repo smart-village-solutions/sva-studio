@@ -43,17 +43,17 @@
 
 ## 6. Enforcement
 
-- [ ] 6.1 Nx-Tags für alle Zielpackages und PII-relevanten Packages setzen
-- [ ] 6.2 `depConstraints` für Zielgrenzen, PII-Grenzen, Plugin-Grenzen und Browser-/Server-Grenzen aktivieren
-- [ ] 6.3 Alte Sammelimporte in ESLint verbieten
-- [ ] 6.4 Runtime-Import-Regeln und `check:server-runtime` für neue serverseitige Packages sicherstellen
+- [x] 6.1 Nx-Tags für alle Zielpackages und PII-relevanten Packages setzen
+- [x] 6.2 `depConstraints` für Zielgrenzen, PII-Grenzen, Plugin-Grenzen und Browser-/Server-Grenzen aktivieren
+- [x] 6.3 Alte Sammelimporte in ESLint verbieten
+- [x] 6.4 Runtime-Import-Regeln und `check:server-runtime` für neue serverseitige Packages sicherstellen
 - [ ] 6.5 Boundary-Disables entfernen oder mit blockierendem Folgeticket dokumentieren
 
 ## 7. Consumer Migration
 
 - [ ] 7.1 App-Imports auf Server-Funktionen, client-sichere Contracts oder Zielpackages umstellen
-- [ ] 7.2 Plugin-Imports ausschließlich auf Plugin-SDK-Verträge umstellen
-- [ ] 7.3 Routing-Imports auf neutrale Contracts umstellen
+- [x] 7.2 Plugin-Imports ausschließlich auf Plugin-SDK-Verträge umstellen
+- [x] 7.3 Routing-Imports auf neutrale Contracts umstellen
 - [ ] 7.4 Tests, Mocks und Fixtures auf neue Package-Grenzen umstellen
 - [ ] 7.5 Alte Re-Exports und Sammel-Barrels löschen
 

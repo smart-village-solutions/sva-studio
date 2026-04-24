@@ -9,7 +9,8 @@
       "@sva/auth-runtime": ["packages/auth-runtime/dist/index.d.ts"],
       "@sva/auth-runtime/runtime-routes": ["packages/auth-runtime/dist/runtime-routes.d.ts"],
       "@sva/auth-runtime/runtime-health": ["packages/auth-runtime/dist/runtime-health.d.ts"],
-      "@sva/sdk/server": ["packages/sdk/dist/server.d.ts"]
+      "@sva/plugin-sdk": ["packages/plugin-sdk/dist/index.d.ts"],
+      "@sva/server-runtime": ["packages/server-runtime/dist/index.d.ts"]
     }
   },
   "include": ["src/**/*.ts"]

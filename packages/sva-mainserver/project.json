@@ -22,8 +22,7 @@
     "lint": {
       "executor": "@nx/eslint:lint",
       "options": {
-        "lintFilePatterns": ["packages/sva-mainserver/src/**/*.{ts,tsx,js,jsx}"],
-        "command": "pnpm --filter @sva/sva-mainserver exec tsc -p tsconfig.lib.json --noEmit"
+        "lintFilePatterns": ["packages/sva-mainserver/src/**/*.{ts,tsx,js,jsx}"]
       }
     },
     "test:unit": {

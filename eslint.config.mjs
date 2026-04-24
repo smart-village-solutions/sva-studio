@@ -26,7 +26,6 @@ export default [
                 'scope:core',
                 'scope:data-client',
                 'scope:data-repositories',
-                'scope:sdk',
                 'scope:data',
               ],
             },
@@ -105,10 +104,7 @@ export default [
               sourceTag: 'scope:auth',
               onlyDependOnLibsWithTags: [
                 'scope:core',
-                'scope:data',
                 'scope:data-repositories',
-                'scope:sdk',
-                'scope:monitoring',
                 'scope:iam-core',
                 'scope:instance-registry',
                 'scope:server-runtime',
@@ -119,19 +115,15 @@ export default [
               sourceTag: 'scope:integration',
               onlyDependOnLibsWithTags: [
                 'scope:core',
-                'scope:data',
                 'scope:data-repositories',
-                'scope:sdk',
                 'scope:server-runtime',
-                'scope:monitoring',
-                'scope:auth',
                 'scope:auth-runtime',
                 'scope:integration',
               ],
             },
             {
               sourceTag: 'scope:monitoring',
-              onlyDependOnLibsWithTags: ['scope:monitoring', 'scope:sdk', 'scope:core'],
+              onlyDependOnLibsWithTags: ['scope:monitoring', 'scope:core'],
             },
             {
               sourceTag: 'scope:plugin',
@@ -141,7 +133,6 @@ export default [
               sourceTag: 'scope:routing',
               onlyDependOnLibsWithTags: [
                 'scope:core',
-                'scope:data',
                 'scope:plugin-sdk',
                 'scope:server-runtime',
                 'scope:auth-runtime',
@@ -153,16 +144,73 @@ export default [
               sourceTag: 'scope:app',
               onlyDependOnLibsWithTags: [
                 'scope:core',
-                'scope:data',
-                'scope:sdk',
                 'scope:plugin-sdk',
                 'scope:server-runtime',
                 'scope:plugin',
                 'scope:routing',
-                'scope:auth',
                 'scope:auth-runtime',
                 'scope:integration',
               ],
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['apps/sva-studio-react/**/*.{ts,tsx,js,jsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '@sva/auth',
+              message: 'Die App nutzt Auth nur über @sva/auth-runtime.',
+            },
+            {
+              name: '@sva/auth/server',
+              message: 'Die App nutzt Auth-Server-Funktionen nur über @sva/auth-runtime/server.',
+            },
+            {
+              name: '@sva/data',
+              message: 'Die App nutzt Datenzugriffe über Zielpackages statt @sva/data.',
+            },
+            {
+              name: '@sva/sdk',
+              message: 'Die App nutzt Core, Monitoring, Plugin-SDK oder Server-Runtime statt @sva/sdk.',
+            },
+          ],
+          patterns: [
+            {
+              group: ['@sva/sdk/*'],
+              message: 'Die App nutzt Zielpackages statt @sva/sdk-Subpaths.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['packages/auth/**/*.{ts,tsx,js,jsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '@sva/data',
+              message: 'Auth nutzt Datenzugriffe über @sva/data-repositories oder @sva/data-client.',
+            },
+            {
+              name: '@sva/sdk',
+              message: 'Auth nutzt Core oder Server-Runtime statt @sva/sdk.',
+            },
+          ],
+          patterns: [
+            {
+              group: ['@sva/sdk/*'],
+              message: 'Auth nutzt Zielpackages statt @sva/sdk-Subpaths.',
             },
           ],
         },

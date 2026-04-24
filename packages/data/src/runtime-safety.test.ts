@@ -46,3 +46,40 @@ test('runtime artifact verification runs workspace node helper via bash', () => 
   assert.match(script, /KEYCLOAK_PORT="\$\{KEYCLOAK_PORT\}" bash "\$\{WORKSPACE_ROOT\}\/scripts\/ci\/run-workspace-node\.sh" <<'NODE'/);
   assert.doesNotMatch(script, /(^|[^[:alnum:]_])"\$\{WORKSPACE_ROOT\}\/scripts\/ci\/run-workspace-node\.sh" <<'NODE'/);
 });
+
+test('runtime artifact checks avoid stale images and dev JSX false positives', () => {
+  const imageVerifyScript = readFileSync(
+    resolve(testDirectory, '..', '..', '..', 'scripts/ci/verify-studio-image.sh'),
+    'utf8'
+  );
+  const runtimeVerifyScript = readFileSync(
+    resolve(testDirectory, '..', '..', '..', 'scripts/ci/verify-runtime-artifact.sh'),
+    'utf8'
+  );
+  const portainerDockerfile = readFileSync(
+    resolve(testDirectory, '..', '..', '..', 'deploy/portainer/Dockerfile'),
+    'utf8'
+  );
+  const patchRuntimeArtifact = readFileSync(
+    resolve(testDirectory, '..', '..', '..', 'scripts/ci/patch-runtime-artifact.ts'),
+    'utf8'
+  );
+
+  assert.match(imageVerifyScript, /docker pull "\$\{IMAGE_REF\}"/);
+  assert.doesNotMatch(imageVerifyScript, /skipped-local/);
+  assert.doesNotMatch(imageVerifyScript, /docker image inspect "\$\{IMAGE_REF\}"/);
+
+  assert.match(runtimeVerifyScript, /grep -E -q 'jsxDEV\|jsx-dev-runtime'/);
+  assert.match(runtimeVerifyScript, /"\$\{SERVER_INDEX_PATH\}"/);
+  assert.match(runtimeVerifyScript, /"\$\{PATCHED_SERVER_ENTRY_PATH\}"/);
+  assert.match(runtimeVerifyScript, /"\$\{SERVER_CHUNK_PATH\}"/);
+  assert.doesNotMatch(runtimeVerifyScript, /grep -R -E 'jsxDEV\|jsx-dev-runtime' "\$\{APP_DIR\}\/\.output\/server"/);
+
+  assert.match(portainerDockerfile, /--exclude-dir='node_modules'/);
+  assert.match(portainerDockerfile, /--exclude='\*\.map'/);
+  assert.match(portainerDockerfile, /--include='\*\.mjs'/);
+
+  assert.match(patchRuntimeArtifact, /createRequire/);
+  assert.match(patchRuntimeArtifact, /requireFromApp\.resolve\(`\$\{packageName\}\/package\.json`\)/);
+  assert.doesNotMatch(patchRuntimeArtifact, /node_modules', '\.pnpm', 'node_modules'/);
+});

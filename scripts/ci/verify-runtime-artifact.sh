@@ -205,7 +205,10 @@ assert_artifact_contract() {
     return 1
   fi
 
-  if grep -R -E 'jsxDEV|jsx-dev-runtime' "${APP_DIR}/.output/server"; then
+  if grep -E -q 'jsxDEV|jsx-dev-runtime' \
+    "${SERVER_INDEX_PATH}" \
+    "${PATCHED_SERVER_ENTRY_PATH}" \
+    "${SERVER_CHUNK_PATH}"; then
     echo "Finaler Server-Output enthaelt React Development-JSX und ist nicht production-tauglich." >&2
     return 1
   fi

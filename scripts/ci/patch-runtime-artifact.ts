@@ -1,8 +1,10 @@
 import { cp, mkdir, readdir, readFile, realpath, rm, stat, writeFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import path from 'node:path';
 
 const appDirArg = process.argv[2] ?? 'apps/sva-studio-react';
 const appDir = path.resolve(appDirArg);
+const requireFromApp = createRequire(path.join(appDir, 'package.json'));
 const outputServerDir = path.join(appDir, '.output', 'server');
 const outputBuildDir = path.join(outputServerDir, 'chunks', 'build');
 const outputSsrDir = path.join(outputServerDir, '_ssr');
@@ -38,24 +40,11 @@ const assertServerEntryContract = (source: string, filePath: string) => {
 };
 
 const findWorkspacePackageDir = async (packageName: string) => {
-  let currentDir = appDir;
-
-  while (true) {
-    const pnpmPackageDir = path.join(currentDir, 'node_modules', '.pnpm', 'node_modules', packageName);
-    if (await pathExists(pnpmPackageDir)) {
-      return realpath(pnpmPackageDir);
-    }
-
-    const packageDir = path.join(currentDir, 'node_modules', packageName);
-    if (await pathExists(packageDir)) {
-      return realpath(packageDir);
-    }
-
-    const parentDir = path.dirname(currentDir);
-    if (parentDir === currentDir) {
-      return null;
-    }
-    currentDir = parentDir;
+  try {
+    const packageJsonPath = requireFromApp.resolve(`${packageName}/package.json`);
+    return realpath(path.dirname(packageJsonPath));
+  } catch {
+    return null;
   }
 };
 

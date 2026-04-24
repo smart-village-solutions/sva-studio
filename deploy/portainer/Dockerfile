@@ -79,7 +79,13 @@ for (const distRoot of distRoots) walk(distRoot);"
 # emits the client bundle for this TanStack Start app, while `vite build`
 # produces client, SSR service bundle and Nitro server output in one pass.
 RUN pnpm nx run sva-studio-react:build --skip-nx-cache
-RUN if grep -R -E 'jsxDEV|jsx-dev-runtime' /workspace/apps/sva-studio-react/.output/server; then \
+RUN if grep -R -E -q \
+      --include='*.js' \
+      --include='*.mjs' \
+      --include='*.cjs' \
+      --exclude='*.map' \
+      --exclude-dir='node_modules' \
+      'jsxDEV|jsx-dev-runtime' /workspace/apps/sva-studio-react/.output/server; then \
       echo "Docker production artifact must not contain React development JSX runtime." >&2; \
       exit 1; \
     fi

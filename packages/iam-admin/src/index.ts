@@ -26,3 +26,8 @@ export {
   loadRoleListItems,
   type ManagedRoleRow,
 } from './role-query.js';
+
+export {
+  resolveUsersForBulkDeactivation,
+  type BulkUserAccess,
+} from './user-bulk-query.js';

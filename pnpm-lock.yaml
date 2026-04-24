@@ -305,6 +305,9 @@ importers:
       '@sva/core':
         specifier: workspace:*
         version: link:../core
+      '@sva/data-client':
+        specifier: workspace:*
+        version: link:../data-client
       '@sva/sdk':
         specifier: workspace:*
         version: link:../sdk
@@ -330,6 +333,9 @@ importers:
       '@sva/core':
         specifier: workspace:*
         version: link:../core
+      zod:
+        specifier: ^4.3.6
+        version: 4.3.6
     devDependencies:
       '@vitest/coverage-v8':
         specifier: ^4.1.2

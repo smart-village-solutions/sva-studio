@@ -12,6 +12,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@sva/core': resolve(__dirname, '../core/src/index.ts'),
+      '@sva/data-client': resolve(__dirname, '../data-client/src/index.ts'),
     },
   },
 });

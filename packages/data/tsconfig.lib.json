@@ -8,6 +8,7 @@
     "rootDir": "src",
     "paths": {
       "@sva/core": ["packages/core/dist/index.d.ts"],
+      "@sva/data-client": ["packages/data-client/dist/index.d.ts"],
       "@sva/sdk": ["packages/sdk/dist/index.d.ts"],
       "@sva/sdk/server": ["packages/sdk/dist/server.d.ts"]
     }

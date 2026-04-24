@@ -22,7 +22,7 @@ export default [
             },
             {
               sourceTag: 'scope:data',
-              onlyDependOnLibsWithTags: ['scope:core', 'scope:data'],
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:data-client', 'scope:sdk', 'scope:data'],
             },
             {
               sourceTag: 'scope:data-client',

@@ -25,8 +25,62 @@ export default [
               onlyDependOnLibsWithTags: ['scope:core', 'scope:data'],
             },
             {
+              sourceTag: 'scope:data-client',
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:data-client'],
+            },
+            {
+              sourceTag: 'scope:data-repositories',
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:server-runtime', 'scope:data-repositories'],
+            },
+            {
               sourceTag: 'scope:sdk',
               onlyDependOnLibsWithTags: ['scope:core', 'scope:data', 'scope:sdk', 'scope:monitoring'],
+            },
+            {
+              sourceTag: 'scope:plugin-sdk',
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:plugin-sdk'],
+            },
+            {
+              sourceTag: 'scope:server-runtime',
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:monitoring', 'scope:server-runtime'],
+            },
+            {
+              sourceTag: 'scope:iam-core',
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:server-runtime', 'scope:iam-core'],
+            },
+            {
+              sourceTag: 'scope:auth-runtime',
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:server-runtime', 'scope:iam-core', 'scope:auth-runtime'],
+            },
+            {
+              sourceTag: 'scope:iam-admin',
+              onlyDependOnLibsWithTags: [
+                'scope:core',
+                'scope:server-runtime',
+                'scope:data-repositories',
+                'scope:iam-core',
+                'scope:iam-admin',
+              ],
+            },
+            {
+              sourceTag: 'scope:iam-governance',
+              onlyDependOnLibsWithTags: [
+                'scope:core',
+                'scope:server-runtime',
+                'scope:data-repositories',
+                'scope:iam-core',
+                'scope:iam-governance',
+              ],
+            },
+            {
+              sourceTag: 'scope:instance-registry',
+              onlyDependOnLibsWithTags: [
+                'scope:core',
+                'scope:server-runtime',
+                'scope:data-repositories',
+                'scope:iam-core',
+                'scope:instance-registry',
+              ],
             },
             {
               sourceTag: 'scope:auth',

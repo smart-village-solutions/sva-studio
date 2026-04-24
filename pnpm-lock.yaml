@@ -269,6 +269,25 @@ importers:
         specifier: ^4.1.2
         version: 4.1.4(@opentelemetry/api@1.9.1)(@types/node@25.6.0)(@vitest/coverage-v8@4.1.4)(happy-dom@20.8.9)(jsdom@29.0.2)(vite@8.0.8(@types/node@25.6.0)(esbuild@0.27.7)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.3))
 
+  packages/auth-runtime:
+    dependencies:
+      '@sva/core':
+        specifier: workspace:*
+        version: link:../core
+      '@sva/iam-core':
+        specifier: workspace:*
+        version: link:../iam-core
+      '@sva/server-runtime':
+        specifier: workspace:*
+        version: link:../server-runtime
+    devDependencies:
+      '@vitest/coverage-v8':
+        specifier: ^4.1.2
+        version: 4.1.4(vitest@4.1.4)
+      vitest:
+        specifier: ^4.1.2
+        version: 4.1.4(@opentelemetry/api@1.9.1)(@types/node@25.6.0)(@vitest/coverage-v8@4.1.4)(happy-dom@20.8.9)(jsdom@29.0.2)(vite@8.0.8(@types/node@25.6.0)(esbuild@0.27.7)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.3))
+
   packages/core:
     devDependencies:
       vitest:
@@ -293,6 +312,114 @@ importers:
       '@types/pg':
         specifier: ^8.20.0
         version: 8.20.0
+      '@vitest/coverage-v8':
+        specifier: ^4.1.2
+        version: 4.1.4(vitest@4.1.4)
+      vitest:
+        specifier: ^4.1.2
+        version: 4.1.4(@opentelemetry/api@1.9.1)(@types/node@25.6.0)(@vitest/coverage-v8@4.1.4)(happy-dom@20.8.9)(jsdom@29.0.2)(vite@8.0.8(@types/node@25.6.0)(esbuild@0.27.7)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.3))
+
+  packages/data-client:
+    dependencies:
+      '@sva/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      '@vitest/coverage-v8':
+        specifier: ^4.1.2
+        version: 4.1.4(vitest@4.1.4)
+      vitest:
+        specifier: ^4.1.2
+        version: 4.1.4(@opentelemetry/api@1.9.1)(@types/node@25.6.0)(@vitest/coverage-v8@4.1.4)(happy-dom@20.8.9)(jsdom@29.0.2)(vite@8.0.8(@types/node@25.6.0)(esbuild@0.27.7)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.3))
+
+  packages/data-repositories:
+    dependencies:
+      '@sva/core':
+        specifier: workspace:*
+        version: link:../core
+      '@sva/server-runtime':
+        specifier: workspace:*
+        version: link:../server-runtime
+    devDependencies:
+      '@vitest/coverage-v8':
+        specifier: ^4.1.2
+        version: 4.1.4(vitest@4.1.4)
+      vitest:
+        specifier: ^4.1.2
+        version: 4.1.4(@opentelemetry/api@1.9.1)(@types/node@25.6.0)(@vitest/coverage-v8@4.1.4)(happy-dom@20.8.9)(jsdom@29.0.2)(vite@8.0.8(@types/node@25.6.0)(esbuild@0.27.7)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.3))
+
+  packages/iam-admin:
+    dependencies:
+      '@sva/core':
+        specifier: workspace:*
+        version: link:../core
+      '@sva/data-repositories':
+        specifier: workspace:*
+        version: link:../data-repositories
+      '@sva/iam-core':
+        specifier: workspace:*
+        version: link:../iam-core
+      '@sva/server-runtime':
+        specifier: workspace:*
+        version: link:../server-runtime
+    devDependencies:
+      '@vitest/coverage-v8':
+        specifier: ^4.1.2
+        version: 4.1.4(vitest@4.1.4)
+      vitest:
+        specifier: ^4.1.2
+        version: 4.1.4(@opentelemetry/api@1.9.1)(@types/node@25.6.0)(@vitest/coverage-v8@4.1.4)(happy-dom@20.8.9)(jsdom@29.0.2)(vite@8.0.8(@types/node@25.6.0)(esbuild@0.27.7)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.3))
+
+  packages/iam-core:
+    dependencies:
+      '@sva/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      '@vitest/coverage-v8':
+        specifier: ^4.1.2
+        version: 4.1.4(vitest@4.1.4)
+      vitest:
+        specifier: ^4.1.2
+        version: 4.1.4(@opentelemetry/api@1.9.1)(@types/node@25.6.0)(@vitest/coverage-v8@4.1.4)(happy-dom@20.8.9)(jsdom@29.0.2)(vite@8.0.8(@types/node@25.6.0)(esbuild@0.27.7)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.3))
+
+  packages/iam-governance:
+    dependencies:
+      '@sva/core':
+        specifier: workspace:*
+        version: link:../core
+      '@sva/data-repositories':
+        specifier: workspace:*
+        version: link:../data-repositories
+      '@sva/iam-core':
+        specifier: workspace:*
+        version: link:../iam-core
+      '@sva/server-runtime':
+        specifier: workspace:*
+        version: link:../server-runtime
+    devDependencies:
+      '@vitest/coverage-v8':
+        specifier: ^4.1.2
+        version: 4.1.4(vitest@4.1.4)
+      vitest:
+        specifier: ^4.1.2
+        version: 4.1.4(@opentelemetry/api@1.9.1)(@types/node@25.6.0)(@vitest/coverage-v8@4.1.4)(happy-dom@20.8.9)(jsdom@29.0.2)(vite@8.0.8(@types/node@25.6.0)(esbuild@0.27.7)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.3))
+
+  packages/instance-registry:
+    dependencies:
+      '@sva/core':
+        specifier: workspace:*
+        version: link:../core
+      '@sva/data-repositories':
+        specifier: workspace:*
+        version: link:../data-repositories
+      '@sva/iam-core':
+        specifier: workspace:*
+        version: link:../iam-core
+      '@sva/server-runtime':
+        specifier: workspace:*
+        version: link:../server-runtime
+    devDependencies:
       '@vitest/coverage-v8':
         specifier: ^4.1.2
         version: 4.1.4(vitest@4.1.4)
@@ -377,6 +504,19 @@ importers:
         specifier: ^4.1.2
         version: 4.1.4(@opentelemetry/api@1.9.1)(@types/node@25.6.0)(@vitest/coverage-v8@4.1.4)(happy-dom@20.8.9)(jsdom@29.0.2)(vite@8.0.8(@types/node@25.6.0)(esbuild@0.27.7)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.3))
 
+  packages/plugin-sdk:
+    dependencies:
+      '@sva/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      '@vitest/coverage-v8':
+        specifier: ^4.1.2
+        version: 4.1.4(vitest@4.1.4)
+      vitest:
+        specifier: ^4.1.2
+        version: 4.1.4(@opentelemetry/api@1.9.1)(@types/node@25.6.0)(@vitest/coverage-v8@4.1.4)(happy-dom@20.8.9)(jsdom@29.0.2)(vite@8.0.8(@types/node@25.6.0)(esbuild@0.27.7)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.3))
+
   packages/routing:
     dependencies:
       '@sva/auth':
@@ -422,6 +562,22 @@ importers:
       winston-transport:
         specifier: ^4.9.0
         version: 4.9.0
+    devDependencies:
+      '@vitest/coverage-v8':
+        specifier: ^4.1.2
+        version: 4.1.4(vitest@4.1.4)
+      vitest:
+        specifier: ^4.1.2
+        version: 4.1.4(@opentelemetry/api@1.9.1)(@types/node@25.6.0)(@vitest/coverage-v8@4.1.4)(happy-dom@20.8.9)(jsdom@29.0.2)(vite@8.0.8(@types/node@25.6.0)(esbuild@0.27.7)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.3))
+
+  packages/server-runtime:
+    dependencies:
+      '@sva/core':
+        specifier: workspace:*
+        version: link:../core
+      '@sva/monitoring-client':
+        specifier: workspace:*
+        version: link:../monitoring-client
     devDependencies:
       '@vitest/coverage-v8':
         specifier: ^4.1.2

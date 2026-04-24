@@ -13,13 +13,13 @@
 
 ## 3. Package Scaffold
 
-- [ ] 3.1 `@sva/iam-core` anlegen und Autorisierungs-/PII-Basisverträge vorbereiten
-- [ ] 3.2 `@sva/auth-runtime` anlegen und Login-/Session-/OIDC-Verträge vorbereiten
-- [ ] 3.3 `@sva/iam-admin` anlegen und Benutzer-/Rollen-/Organisation-Verträge vorbereiten
-- [ ] 3.4 `@sva/iam-governance` anlegen und DSR-/Legal-/Audit-Verträge vorbereiten
-- [ ] 3.5 `@sva/instance-registry` anlegen und Instanz-/Registry-/Provisioning-Verträge vorbereiten
-- [ ] 3.6 `@sva/plugin-sdk` und `@sva/server-runtime` als getrennte öffentliche Rollen herstellen
-- [ ] 3.7 `@sva/data-client` und `@sva/data-repositories` als getrennte Datenrollen herstellen
+- [x] 3.1 `@sva/iam-core` anlegen und Autorisierungs-/PII-Basisverträge vorbereiten
+- [x] 3.2 `@sva/auth-runtime` anlegen und Login-/Session-/OIDC-Verträge vorbereiten
+- [x] 3.3 `@sva/iam-admin` anlegen und Benutzer-/Rollen-/Organisation-Verträge vorbereiten
+- [x] 3.4 `@sva/iam-governance` anlegen und DSR-/Legal-/Audit-Verträge vorbereiten
+- [x] 3.5 `@sva/instance-registry` anlegen und Instanz-/Registry-/Provisioning-Verträge vorbereiten
+- [x] 3.6 `@sva/plugin-sdk` und `@sva/server-runtime` als getrennte öffentliche Rollen herstellen
+- [x] 3.7 `@sva/data-client` und `@sva/data-repositories` als getrennte Datenrollen herstellen
 
 ## 4. Contract Migration
 

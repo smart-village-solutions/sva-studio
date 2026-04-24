@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { evaluateAuthorizeDecision } from '@sva/core';
-import type { AuthorizeRequest, EffectivePermission } from '@sva/core';
+import {
+  evaluateAuthorizeDecision,
+  type AuthorizeRequest,
+  type EffectivePermission,
+} from '@sva/iam-core';
 
 const INSTANCE = 'inst-test';
 const ORG_A = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';

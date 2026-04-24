@@ -84,7 +84,14 @@ export default [
             },
             {
               sourceTag: 'scope:auth',
-              onlyDependOnLibsWithTags: ['scope:core', 'scope:data', 'scope:sdk', 'scope:monitoring', 'scope:auth'],
+              onlyDependOnLibsWithTags: [
+                'scope:core',
+                'scope:data',
+                'scope:sdk',
+                'scope:monitoring',
+                'scope:iam-core',
+                'scope:auth',
+              ],
             },
             {
               sourceTag: 'scope:integration',

@@ -27,7 +27,7 @@ vi.mock('@sva/sdk/server', () => ({
   withRequestContext: (_opts: unknown, fn: () => Promise<Response>) => fn(),
 }));
 
-vi.mock('@sva/core', () => ({
+vi.mock('@sva/iam-core', () => ({
   evaluateAuthorizeDecision: vi.fn(() => ({
     allowed: true,
     reason: 'permission_match',

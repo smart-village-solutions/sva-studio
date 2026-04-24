@@ -23,7 +23,7 @@
 
 ## 4. Contract Migration
 
-- [ ] 4.1 Zentrale Autorisierungsentscheidung nach `@sva/iam-core` verschieben
+- [x] 4.1 Zentrale Autorisierungsentscheidung nach `@sva/iam-core` verschieben
 - [ ] 4.2 Server-Runtime-Hilfen nach `@sva/server-runtime` verschieben
 - [ ] 4.3 Plugin-Verträge nach `@sva/plugin-sdk` verschieben
 - [ ] 4.4 Client-sichere Datenverträge nach `@sva/data-client` verschieben

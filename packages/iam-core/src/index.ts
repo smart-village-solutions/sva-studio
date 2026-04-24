@@ -7,3 +7,17 @@ export const iamCorePackageRoles = [
   'permission-engine',
   'pii-invariants',
 ] as const satisfies readonly IamCorePackageRole[];
+
+export { evaluateAuthorizeDecision } from '@sva/core';
+export type {
+  AllowReasonCode,
+  AuthorizeRequest,
+  AuthorizeResponse,
+  AuthorizeReasonCode,
+  DenyReasonCode,
+  EffectivePermission,
+  IamAction,
+  IamPermissionEffect,
+  IamResourceRef,
+  MatchedPermissionSummary,
+} from '@sva/core';

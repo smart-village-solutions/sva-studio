@@ -22,6 +22,7 @@ type AuthHandlers = {
 };
 
 type AuthRoutePath = (typeof authRoutePaths)[number];
+type CreateRouteOptions = Parameters<typeof createRoute>[0];
 type RouteGuardLogger = {
   warn: (message: string, meta: Record<string, unknown>) => void;
 };
@@ -738,17 +739,18 @@ export const wrapHandlersWithJsonErrorBoundary = (handlers: AuthHandlers, routeP
  */
 const createAuthServerRouteFactory = (path: AuthRoutePath) => {
   return (rootRoute: RootRoute) => {
-    return createRoute({
+    const routeOptions = {
       getParentRoute: () => rootRoute,
       path,
       component: () => null,
       server: {
         handlers: wrapHandlersWithJsonErrorBoundary(resolveAuthHandlers(path), path),
       },
-      // TanStack router types do not currently model the `server` option in this context.
-      // Keep the cast local until upstream types allow full inference here.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any);
+    };
+
+    // TanStack router types do not currently model the `server` option in this context.
+    // Keep the cast local until upstream types allow full inference here.
+    return createRoute(routeOptions as unknown as CreateRouteOptions);
   };
 };
 

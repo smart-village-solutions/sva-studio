@@ -320,9 +320,9 @@ importers:
       '@sva/data-repositories':
         specifier: workspace:*
         version: link:../data-repositories
-      '@sva/sdk':
+      '@sva/server-runtime':
         specifier: workspace:*
-        version: link:../sdk
+        version: link:../server-runtime
       pg:
         specifier: ^8.20.0
         version: 8.20.0

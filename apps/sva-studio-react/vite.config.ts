@@ -100,7 +100,6 @@ const config = defineConfig({
       '@sva/auth/runtime-health': resolveAppPath('../../packages/auth/src/runtime-health.server.ts'),
       '@sva/auth/server': resolveAppPath('../../packages/auth/src/index.server.ts'),
       '@sva/auth': resolveAppPath('../../packages/auth/src/index.ts'),
-      '@sva/data/server': resolveAppPath('../../packages/data/src/server.ts'),
       '@sva/data': resolveAppPath('../../packages/data/src/index.ts'),
       '@sva/sva-mainserver/server': resolveAppPath('../../packages/sva-mainserver/src/index.server.ts'),
       '@sva/sva-mainserver': resolveAppPath('../../packages/sva-mainserver/src/index.ts'),

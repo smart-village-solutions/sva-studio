@@ -39,7 +39,6 @@ export default defineConfig({
         '../sdk/src/observability/context.server.ts',
       ),
       '@sva/server-runtime': resolve(__dirname, '../server-runtime/src/index.ts'),
-      '@sva/sdk/server': resolve(__dirname, '../sdk/src/server.ts'),
       '@sva/sdk': resolve(__dirname, '../sdk/src/index.ts'),
     },
   },

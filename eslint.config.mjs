@@ -385,6 +385,28 @@ export default [
     },
   },
   {
+    files: ['packages/data/**/*.{ts,tsx,js,jsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '@sva/sdk/server',
+              message: 'data verwendet Server-Helfer über @sva/server-runtime.',
+            },
+          ],
+          patterns: [
+            {
+              group: ['@sva/sdk/server/*'],
+              message: 'data verwendet Zielpackages statt @sva/sdk/server-Subpaths.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: ['apps/sva-studio-react/**/*.{ts,tsx,js,jsx}'],
     rules: {
       'no-restricted-imports': [

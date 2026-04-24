@@ -1,6 +1,6 @@
 import { normalizeHost, type InstanceRegistryRecord } from '@sva/core';
 import { Pool } from 'pg';
-import { createSdkLogger } from '@sva/sdk/server';
+import { createSdkLogger } from '@sva/server-runtime';
 
 import { createInstanceRegistryRepository } from './index.js';
 

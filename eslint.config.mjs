@@ -119,7 +119,9 @@ export default [
               onlyDependOnLibsWithTags: [
                 'scope:core',
                 'scope:data',
+                'scope:data-repositories',
                 'scope:sdk',
+                'scope:server-runtime',
                 'scope:monitoring',
                 'scope:auth',
                 'scope:integration',
@@ -314,6 +316,36 @@ export default [
             {
               group: ['@sva/sdk/*'],
               message: 'data-repositories verwendet Zielpackages statt @sva/sdk-Subpaths.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['packages/sva-mainserver/**/*.{ts,tsx,js,jsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '@sva/data/server',
+              message: 'sva-mainserver verwendet Repository-Zugriffe über @sva/data-repositories/server.',
+            },
+            {
+              name: '@sva/sdk/server',
+              message: 'sva-mainserver verwendet Server-Helfer über @sva/server-runtime.',
+            },
+          ],
+          patterns: [
+            {
+              group: ['@sva/data/*'],
+              message: 'sva-mainserver verwendet Zielpackages statt @sva/data-Subpaths.',
+            },
+            {
+              group: ['@sva/sdk/*'],
+              message: 'sva-mainserver verwendet Zielpackages statt @sva/sdk-Subpaths.',
             },
           ],
         },

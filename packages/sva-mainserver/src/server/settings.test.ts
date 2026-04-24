@@ -6,7 +6,7 @@ const state = vi.hoisted(() => ({
   dnsLookup: vi.fn(async () => [{ address: '203.0.113.10', family: 4 }]),
 }));
 
-vi.mock('@sva/data/server', () => ({
+vi.mock('@sva/data-repositories/server', () => ({
   loadInstanceIntegrationRecord: state.loadInstanceIntegrationRecord,
   saveInstanceIntegrationRecord: state.saveInstanceIntegrationRecord,
 }));

@@ -18,8 +18,8 @@ export default defineConfig({
       '@sva/core': resolve(__dirname, '../core/src/index.ts'),
       '@sva/auth/server': resolve(__dirname, '../auth/src/index.server.ts'),
       '@sva/auth': resolve(__dirname, '../auth/src/index.ts'),
-      '@sva/data/server': resolve(__dirname, '../data/src/server.ts'),
-      '@sva/data': resolve(__dirname, '../data/src/index.ts'),
+      '@sva/data-repositories/server': resolve(__dirname, '../data-repositories/src/server.ts'),
+      '@sva/data-repositories': resolve(__dirname, '../data-repositories/src/index.ts'),
       '@sva/monitoring-client/logger-provider.server': resolve(
         __dirname,
         '../monitoring-client/src/logger-provider.server.ts',
@@ -38,6 +38,7 @@ export default defineConfig({
         __dirname,
         '../sdk/src/observability/context.server.ts',
       ),
+      '@sva/server-runtime': resolve(__dirname, '../server-runtime/src/index.ts'),
       '@sva/sdk/server': resolve(__dirname, '../sdk/src/server.ts'),
       '@sva/sdk': resolve(__dirname, '../sdk/src/index.ts'),
     },

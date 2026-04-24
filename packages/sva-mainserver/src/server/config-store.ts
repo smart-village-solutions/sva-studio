@@ -1,5 +1,5 @@
-import { loadInstanceIntegrationRecord } from '@sva/data/server';
-import { createSdkLogger, getWorkspaceContext } from '@sva/sdk/server';
+import { loadInstanceIntegrationRecord } from '@sva/data-repositories/server';
+import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 
 import type { SvaMainserverInstanceConfig } from '../types.js';
 import { SvaMainserverError } from './errors.js';

@@ -642,12 +642,12 @@ importers:
       '@sva/auth':
         specifier: workspace:*
         version: link:../auth
-      '@sva/data':
+      '@sva/data-repositories':
         specifier: workspace:*
-        version: link:../data
-      '@sva/sdk':
+        version: link:../data-repositories
+      '@sva/server-runtime':
         specifier: workspace:*
-        version: link:../sdk
+        version: link:../server-runtime
       zod:
         specifier: ^4.3.6
         version: 4.3.6

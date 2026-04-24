@@ -11,7 +11,7 @@ const state = vi.hoisted(() => ({
   },
 }));
 
-vi.mock('@sva/data/server', () => ({
+vi.mock('@sva/data-repositories/server', () => ({
   loadInstanceIntegrationRecord: state.loadInstanceIntegrationRecord,
 }));
 
@@ -19,7 +19,7 @@ vi.mock('node:dns/promises', () => ({
   lookup: state.dnsLookup,
 }));
 
-vi.mock('@sva/sdk/server', () => ({
+vi.mock('@sva/server-runtime', () => ({
   createSdkLogger: () => state.logger,
   getWorkspaceContext: () => ({
     requestId: 'req-mainserver',

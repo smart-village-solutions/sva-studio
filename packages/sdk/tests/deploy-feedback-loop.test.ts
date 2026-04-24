@@ -38,7 +38,7 @@ const createReport = (overrides: Partial<AcceptanceDeployReport> = {}): Acceptan
   migrationFiles: [],
   observability: { notes: [] },
   externalProbes: [],
-  profile: 'acceptance-hb',
+  profile: 'studio',
   releaseDecision: {
     summary: 'Alle technischen Gates erfolgreich.',
     technicalGatePassed: true,
@@ -48,7 +48,7 @@ const createReport = (overrides: Partial<AcceptanceDeployReport> = {}): Acceptan
     imageDigest: 'sha256:abc',
     imageRef: 'ghcr.io/example/sva-studio@sha256:abc',
     imageRepository: 'sva-studio',
-    profile: 'acceptance-hb',
+    profile: 'studio',
     releaseMode: 'app-only',
     workflow: 'Acceptance Deploy',
   },

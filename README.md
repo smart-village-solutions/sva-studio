@@ -61,7 +61,7 @@ Die drei offiziellen Laufzeitprofile werden zentral über `SVA_RUNTIME_PROFILE` 
 
 - `local-keycloak` für lokalen Betrieb auf `http://localhost:3000` mit Test-Realm
 - `local-builder` für lokalen Builder.io-Betrieb mit Mock-User
-- `acceptance-hb` für die HB-Abnahme auf `https://hb-meinquartier.studio.smart-village.app`
+- `studio` für den produktionsnahen Serverbetrieb auf `https://studio.smart-village.app`
 
 Kanonische Profildefinitionen liegen unter `config/runtime/`. Projektweite Start-, Stop-, Update-, Smoke- und Migrationskommandos sind in `docs/development/runtime-profile-betrieb.md` dokumentiert.
 

@@ -34,8 +34,8 @@ const readPostgresSuperuserPasswords = (): readonly string[] => {
   return [...new Set(candidates)];
 };
 
-const shouldAttemptAcceptanceBootstrap = (error: unknown): boolean => {
-  if (process.env.SVA_RUNTIME_PROFILE !== 'acceptance-hb') {
+const shouldAttemptStudioBootstrap = (error: unknown): boolean => {
+  if (process.env.SVA_RUNTIME_PROFILE !== 'studio') {
     return false;
   }
 
@@ -93,8 +93,8 @@ $bootstrap$;
         `GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA iam TO ${quotedAppDbUser}`
       );
       await client.query(`GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA iam TO ${quotedAppDbUser}`);
-      logger.info('Bootstrapped acceptance app DB role', {
-        operation: 'acceptance_db_bootstrap',
+      logger.info('Bootstrapped studio app DB role', {
+        operation: 'studio_db_bootstrap',
         app_db_user: appDbUser,
         database: postgresDb,
       });
@@ -109,16 +109,16 @@ $bootstrap$;
   throw lastError instanceof Error ? lastError : new Error(String(lastError ?? 'DB bootstrap failed'));
 };
 
-export const bootstrapAcceptanceAppDbUserIfNeeded = async (error: unknown): Promise<boolean> => {
-  if (!shouldAttemptAcceptanceBootstrap(error)) {
+export const bootstrapStudioAppDbUserIfNeeded = async (error: unknown): Promise<boolean> => {
+  if (!shouldAttemptStudioBootstrap(error)) {
     return false;
   }
 
   if (!bootstrapPromise) {
     bootstrapPromise = runBootstrap()
       .catch((bootstrapError) => {
-        logger.warn('Acceptance DB bootstrap failed', {
-          operation: 'acceptance_db_bootstrap',
+        logger.warn('Studio DB bootstrap failed', {
+          operation: 'studio_db_bootstrap',
           error: bootstrapError instanceof Error ? bootstrapError.message : String(bootstrapError),
         });
         return false;

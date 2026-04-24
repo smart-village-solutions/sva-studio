@@ -14,14 +14,13 @@ describe('runtime-profile', () => {
   it('parses supported profiles', () => {
     expect(parseRuntimeProfile('local-keycloak')).toBe('local-keycloak');
     expect(parseRuntimeProfile('local-builder')).toBe('local-builder');
-    expect(parseRuntimeProfile('acceptance-hb')).toBe('acceptance-hb');
     expect(parseRuntimeProfile('studio')).toBe('studio');
     expect(parseRuntimeProfile('unknown')).toBeNull();
   });
 
   it('resolves the runtime profile from env', () => {
     expect(getRuntimeProfileFromEnv({ SVA_RUNTIME_PROFILE: 'local-builder' })).toBe('local-builder');
-    expect(getRuntimeProfileFromEnv({ VITE_SVA_RUNTIME_PROFILE: 'acceptance-hb' })).toBe('acceptance-hb');
+    expect(getRuntimeProfileFromEnv({ VITE_SVA_RUNTIME_PROFILE: 'studio' })).toBe('studio');
     expect(getRuntimeProfileFromEnv({})).toBeNull();
   });
 
@@ -32,9 +31,8 @@ describe('runtime-profile', () => {
 
   it('exposes required env keys per profile', () => {
     expect(getRuntimeProfileRequiredEnvKeys('local-builder')).toContain('VITE_PUBLIC_BUILDER_KEY');
-    expect(getRuntimeProfileRequiredEnvKeys('acceptance-hb')).toContain('SVA_PARENT_DOMAIN');
-    expect(getRuntimeProfileRequiredEnvKeys('acceptance-hb')).toContain('SVA_AUTH_STATE_SECRET');
     expect(getRuntimeProfileRequiredEnvKeys('studio')).toContain('SVA_PARENT_DOMAIN');
+    expect(getRuntimeProfileRequiredEnvKeys('studio')).toContain('SVA_AUTH_STATE_SECRET');
     expect(getRuntimeProfileRequiredEnvKeys('studio')).toContain('KEYCLOAK_ADMIN_CLIENT_SECRET');
     expect(getRuntimeProfileDerivedEnvKeys('local-builder')).toEqual([]);
     expect(getRuntimeProfileDerivedEnvKeys('studio')).toEqual(['IAM_DATABASE_URL', 'REDIS_URL']);
@@ -83,8 +81,8 @@ describe('runtime-profile', () => {
   });
 
   it('reports invalid runtime env values', () => {
-    const result = validateRuntimeProfileEnv('acceptance-hb', {
-      SVA_RUNTIME_PROFILE: 'acceptance-hb',
+    const result = validateRuntimeProfileEnv('studio', {
+      SVA_RUNTIME_PROFILE: 'studio',
       SVA_PUBLIC_BASE_URL: 'https://hb.example.app',
       OTEL_EXPORTER_OTLP_ENDPOINT: 'http://localhost:4318',
       SVA_MAINSERVER_GRAPHQL_URL: 'https://mainserver.example/graphql',

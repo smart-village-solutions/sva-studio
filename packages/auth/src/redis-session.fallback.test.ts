@@ -54,7 +54,7 @@ describe('redis-session fail-fast behavior', () => {
     state.logger.error.mockReset();
     process.env = {
       ...originalEnv,
-      SVA_RUNTIME_PROFILE: 'acceptance-hb',
+      SVA_RUNTIME_PROFILE: 'studio',
       SVA_AUTH_ALLOW_IN_MEMORY_SESSION_FALLBACK: 'true',
     };
   });

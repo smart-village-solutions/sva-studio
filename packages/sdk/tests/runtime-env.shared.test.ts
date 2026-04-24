@@ -111,7 +111,7 @@ SET
       {
         jsonOutput: false,
       },
-      'acceptance-hb'
+      'studio'
     );
 
     expect(result).toEqual({
@@ -134,7 +134,7 @@ SET
           GITHUB_ACTIONS: 'true',
           GITHUB_WORKFLOW: 'Acceptance Deploy',
         },
-        'acceptance-hb',
+        'studio',
         'deploy',
       ),
     ).toEqual({ mode: 'ci-runner' });
@@ -162,18 +162,6 @@ SET
         'deploy',
       ),
     ).toEqual({ mode: 'local-operator' });
-  });
-
-  it('rejects explicit local operator context outside the studio profile', () => {
-    expect(() =>
-      assertDeterministicRemoteMutationContext(
-        {
-          SVA_REMOTE_OPERATOR_CONTEXT: 'local-operator',
-        },
-        'acceptance-hb',
-        'deploy',
-      ),
-    ).toThrow(/greift nur, wenn SVA_REMOTE_OPERATOR_CONTEXT nicht auf local-operator steht/);
   });
 
   it('detects documented truthy flag values for local emergency overrides', () => {
@@ -218,7 +206,7 @@ SET
   it('renders a markdown report with the required evidence fields', () => {
     const paths = buildAcceptanceReportPaths('/tmp/artifacts', 'acceptance-deploy', '2026-03-20T12:00:00.000Z');
     const report: AcceptanceDeployReport = {
-      profile: 'acceptance-hb',
+      profile: 'studio',
       status: 'ok',
       generatedAt: '2026-03-20T12:00:00.000Z',
       reportId: paths.reportId,
@@ -278,7 +266,7 @@ SET
         requiredKeys: ['SVA_RUNTIME_PROFILE', 'SVA_PUBLIC_BASE_URL', 'SVA_STACK_NAME'],
         derivedKeys: ['IAM_DATABASE_URL', 'REDIS_URL'],
         effectiveSummary: {
-          runtimeProfile: 'acceptance-hb',
+          runtimeProfile: 'studio',
           stackName: 'sva-studio',
           publicBaseUrl: 'https://example.test',
         },
@@ -306,7 +294,7 @@ SET
         imageRepository: 'sva-studio',
         imageTag: 'ghcr.io/example/sva-studio:1.2.3',
         monitoringConfigImageTag: '1.2.3',
-        profile: 'acceptance-hb',
+        profile: 'studio',
         releaseMode: 'schema-and-app',
         workflow: 'Acceptance Deploy',
       },
@@ -373,7 +361,6 @@ SET
 
   it('uses remote status execution for swarm profiles and local status execution for local profiles', () => {
     expect(getRuntimeStatusExecutionMode('studio')).toBe('remote');
-    expect(getRuntimeStatusExecutionMode('acceptance-hb')).toBe('remote');
     expect(getRuntimeStatusExecutionMode('local-keycloak')).toBe('local');
   });
 });

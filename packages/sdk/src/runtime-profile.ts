@@ -1,4 +1,4 @@
-export const RUNTIME_PROFILES = ['local-keycloak', 'local-builder', 'acceptance-hb', 'studio'] as const;
+export const RUNTIME_PROFILES = ['local-keycloak', 'local-builder', 'studio'] as const;
 
 export type RuntimeProfile = (typeof RUNTIME_PROFILES)[number];
 export type RuntimeProfileAuthMode = 'keycloak' | 'mock';
@@ -85,25 +85,6 @@ const PROFILE_DEFINITIONS = {
       'VITE_PUBLIC_BUILDER_KEY',
     ],
     usesBuilder: true,
-  },
-  'acceptance-hb': {
-    authMode: 'keycloak',
-    description: 'Serverbetrieb fuer HB-Abnahme mit produktionsnaher Realm-Anbindung.',
-    isLocal: false,
-    requiredEnvKeys: [
-      ...COMMON_REQUIRED_ENV_KEYS,
-      ...REMOTE_CONNECTION_REQUIRED_ENV_KEYS,
-      'SVA_AUTH_CLIENT_SECRET',
-      'SVA_AUTH_STATE_SECRET',
-      'SVA_AUTH_REDIRECT_URI',
-      'SVA_AUTH_POST_LOGOUT_REDIRECT_URI',
-      'KEYCLOAK_ADMIN_BASE_URL',
-      'KEYCLOAK_ADMIN_REALM',
-      'KEYCLOAK_ADMIN_CLIENT_SECRET',
-      'KEYCLOAK_ADMIN_CLIENT_ID',
-      'SVA_PARENT_DOMAIN',
-    ],
-    usesBuilder: false,
   },
   studio: {
     authMode: 'keycloak',

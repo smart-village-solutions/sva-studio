@@ -23,7 +23,6 @@ export default defineConfig({
       '@sva/sva-mainserver': fileURLToPath(new URL('../../packages/sva-mainserver/src/index.ts', import.meta.url)),
       '@sva/instance-registry': fileURLToPath(new URL('../../packages/instance-registry/src/index.ts', import.meta.url)),
       '@sva/plugin-sdk': fileURLToPath(new URL('../../packages/plugin-sdk/src/index.ts', import.meta.url)),
-      '@sva/sdk/logging': fileURLToPath(new URL('../../packages/sdk/src/logging.ts', import.meta.url)),
       '@sva/sdk/logger/index.server': fileURLToPath(new URL('../../packages/sdk/src/logger/index.server.ts', import.meta.url)),
       '@sva/sdk/middleware/request-context.server': fileURLToPath(
         new URL('../../packages/sdk/src/middleware/request-context.server.ts', import.meta.url)
@@ -37,6 +36,7 @@ export default defineConfig({
       '@sva/monitoring-client/logger-provider.server': fileURLToPath(
         new URL('../../packages/monitoring-client/src/logger-provider.server.ts', import.meta.url)
       ),
+      '@sva/monitoring-client/logging': fileURLToPath(new URL('../../packages/monitoring-client/src/logging.ts', import.meta.url)),
       '@sva/monitoring-client': fileURLToPath(new URL('../../packages/monitoring-client/src/index.ts', import.meta.url)),
       '@sva/core/security': fileURLToPath(new URL('../../packages/core/src/security/index.ts', import.meta.url)),
       '@sva/core': fileURLToPath(new URL('../../packages/core/src/index.ts', import.meta.url)),

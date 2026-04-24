@@ -33,6 +33,7 @@ export default mergeConfig(
           currentDir,
           '../monitoring-client/src/logger-provider.server.ts'
         ),
+        '@sva/monitoring-client/logging': resolve(currentDir, '../monitoring-client/src/logging.ts'),
         '@sva/monitoring-client': resolve(currentDir, '../monitoring-client/src/index.ts'),
       },
     },

@@ -110,6 +110,9 @@ importers:
       '@sva/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@sva/monitoring-client':
+        specifier: workspace:*
+        version: link:../../packages/monitoring-client
       '@sva/plugin-news':
         specifier: workspace:*
         version: link:../../packages/plugin-news

@@ -106,7 +106,6 @@ const config = defineConfig({
       '@sva/sva-mainserver/server': resolveAppPath('../../packages/sva-mainserver/src/index.server.ts'),
       '@sva/sva-mainserver': resolveAppPath('../../packages/sva-mainserver/src/index.ts'),
       '@sva/plugin-sdk': resolveAppPath('../../packages/plugin-sdk/src/index.ts'),
-      '@sva/sdk/logging': resolveAppPath('../../packages/sdk/src/logging.ts'),
       '@sva/sdk/logger/index.server': resolveAppPath('../../packages/sdk/src/logger/index.server.ts'),
       '@sva/sdk/middleware/request-context.server': resolveAppPath('../../packages/sdk/src/middleware/request-context.server.ts'),
       '@sva/sdk/observability/context.server': resolveAppPath('../../packages/sdk/src/observability/context.server.ts'),
@@ -116,6 +115,7 @@ const config = defineConfig({
       '@sva/monitoring-client/logger-provider.server': resolveAppPath(
         '../../packages/monitoring-client/src/logger-provider.server.ts'
       ),
+      '@sva/monitoring-client/logging': resolveAppPath('../../packages/monitoring-client/src/logging.ts'),
       '@sva/monitoring-client': resolveAppPath('../../packages/monitoring-client/src/index.ts'),
       '@sva/core/security': resolveAppPath('../../packages/core/src/security/index.ts'),
       '@sva/core': resolveAppPath('../../packages/core/src/index.ts'),

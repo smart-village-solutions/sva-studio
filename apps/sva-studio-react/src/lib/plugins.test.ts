@@ -23,7 +23,7 @@ vi.mock('@sva/plugin-news', () => ({
   },
 }));
 
-vi.mock('@sva/sdk/logging', () => {
+vi.mock('@sva/monitoring-client/logging', () => {
   return {
     createBrowserLogger: () => browserLoggerMock,
   };

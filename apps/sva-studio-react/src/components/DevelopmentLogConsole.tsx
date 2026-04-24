@@ -1,7 +1,7 @@
 import React, { startTransition } from 'react';
 import { useServerFn } from '@tanstack/react-start';
 
-import { createBrowserLogger } from '@sva/sdk/logging';
+import { createBrowserLogger } from '@sva/monitoring-client/logging';
 import type { DevelopmentLogEntry } from '@sva/server-runtime';
 
 import { t } from '../i18n';

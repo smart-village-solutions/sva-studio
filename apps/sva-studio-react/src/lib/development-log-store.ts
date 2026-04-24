@@ -4,7 +4,7 @@ import {
   registerBrowserLogSink,
   serializeAndRedactLogValue,
   stringifyNonPlainValue,
-} from '@sva/sdk/logging';
+} from '@sva/monitoring-client/logging';
 
 export type BrowserDevelopmentLogLevel = 'debug' | 'info' | 'warn' | 'error';
 

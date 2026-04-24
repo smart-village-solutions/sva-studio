@@ -54,7 +54,7 @@ vi.mock('../lib/development-log-store', () => ({
   subscribeToBrowserDevelopmentLogs,
 }));
 
-vi.mock('@sva/sdk/logging', () => ({
+vi.mock('@sva/monitoring-client/logging', () => ({
   createBrowserLogger: () => browserLoggerMock,
 }));
 

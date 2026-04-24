@@ -20,6 +20,7 @@
     "@radix-ui/react-tabs": "^1.1.13",
     "@sva/auth-runtime": "workspace:*",
     "@sva/core": "workspace:*",
+    "@sva/monitoring-client": "workspace:*",
     "@sva/plugin-sdk": "workspace:*",
     "@sva/plugin-news": "workspace:*",
     "@sva/routing": "workspace:*",

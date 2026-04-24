@@ -4,7 +4,7 @@ import {
   createBrowserLogger,
   isBrowserConsoleCaptureSuppressed,
   registerBrowserLogSink,
-} from '../../src/logging';
+} from '../src/logging.js';
 
 describe('browser logger', () => {
   beforeEach(() => {

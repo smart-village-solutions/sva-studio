@@ -24,7 +24,7 @@ const localStorageMock = {
   }),
 };
 
-vi.mock('@sva/sdk/logging', () => ({
+vi.mock('@sva/monitoring-client/logging', () => ({
   createBrowserLogger: () => browserLoggerMock,
 }));
 

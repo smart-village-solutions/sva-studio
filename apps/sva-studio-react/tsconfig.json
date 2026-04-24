@@ -33,7 +33,7 @@
       "@sva/auth/server": ["../../packages/auth/dist/index.server.d.ts"],
       "@sva/plugin-sdk": ["../../packages/plugin-sdk/src/index.ts"],
       "@sva/sdk": ["../../packages/sdk/src/index.ts"],
-      "@sva/sdk/logging": ["../../packages/sdk/src/logging.ts"],
+      "@sva/monitoring-client/logging": ["../../packages/monitoring-client/src/logging.ts"],
       "@sva/server-runtime": ["../../packages/server-runtime/src/index.ts"],
       "@sva/plugin-news": ["../../packages/plugin-news/src/index.ts"]
     }

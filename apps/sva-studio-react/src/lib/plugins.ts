@@ -3,7 +3,7 @@ import {
   createBuildTimeRegistry,
   registerPluginTranslationResolver,
 } from '@sva/plugin-sdk';
-import { createBrowserLogger } from '@sva/sdk/logging';
+import { createBrowserLogger } from '@sva/monitoring-client/logging';
 import { appAdminResources } from '../routing/admin-resources';
 
 import { mergeI18nResources, resetTranslatorCache, t } from '../i18n';

@@ -28,7 +28,7 @@ vi.mock('./use-iam-admin-list', () => ({
   useIamAdminList: (...args: Parameters<typeof useIamAdminListMock>) => useIamAdminListMock(...args),
 }));
 
-vi.mock('@sva/sdk/logging', () => ({
+vi.mock('@sva/monitoring-client/logging', () => ({
   createBrowserLogger: () => browserLoggerMock,
 }));
 

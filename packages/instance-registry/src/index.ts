@@ -60,5 +60,6 @@ export {
   buildInstanceDetail,
 } from './service-helpers.js';
 export { appendRunStep, buildFinalRunSteps } from './service-keycloak-run-steps.js';
+export { failClaimedRun, failRun } from './service-keycloak-execution-failures.js';
 export { createProvisioningArtifacts, provisionInstanceAuth } from './service-provisioning.js';
 export type { InstanceRegistryService, InstanceRegistryServiceDeps } from './service-types.js';

@@ -5,7 +5,7 @@ import type { InstanceRegistryServiceDeps } from '@sva/instance-registry';
 import { createGetKeycloakStatusHandler, loadInstanceWithSecret } from './service-keycloak.js';
 import { appendRunStep } from '@sva/instance-registry';
 import { buildProvisioningInput, completeRun, createQueuedRun, readQueuedTemporaryPassword, syncProvisionedClientSecretToRegistry, syncRotatedClientSecretToRegistry } from './service-keycloak-execution-shared.js';
-import { failClaimedRun, failRun } from './service-keycloak-execution-failures.js';
+import { failClaimedRun, failRun } from '@sva/instance-registry';
 
 const logger = createSdkLogger({ component: 'iam-instance-registry-keycloak', level: 'info' });
 

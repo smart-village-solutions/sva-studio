@@ -1,6 +1,7 @@
-import type { InstanceRegistryServiceDeps } from '@sva/instance-registry';
-import { appendRunStep } from '@sva/instance-registry';
 import { createSdkLogger } from '@sva/server-runtime';
+
+import { appendRunStep } from './service-keycloak-run-steps.js';
+import type { InstanceRegistryServiceDeps } from './service-types.js';
 
 const logger = createSdkLogger({ component: 'keycloak-provisioning-failures', level: 'error' });
 

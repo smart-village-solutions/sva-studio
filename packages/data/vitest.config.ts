@@ -13,6 +13,8 @@ export default defineConfig({
     alias: {
       '@sva/core': resolve(__dirname, '../core/src/index.ts'),
       '@sva/data-client': resolve(__dirname, '../data-client/src/index.ts'),
+      '@sva/data-repositories/server': resolve(__dirname, '../data-repositories/src/server.ts'),
+      '@sva/data-repositories': resolve(__dirname, '../data-repositories/src/index.ts'),
     },
   },
 });

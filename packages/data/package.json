@@ -18,6 +18,7 @@
   "dependencies": {
     "@sva/core": "workspace:*",
     "@sva/data-client": "workspace:*",
+    "@sva/data-repositories": "workspace:*",
     "@sva/sdk": "workspace:*",
     "pg": "^8.20.0",
     "zod": "^4.3.6"

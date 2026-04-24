@@ -15,7 +15,7 @@ export {
   iamSeedPlan,
   iamSeedStatements,
   instanceIntegrationStatements,
-} from '@sva/data';
+} from './public-api.js';
 
 export type {
   CachedInstanceIntegrationLoader,
@@ -32,6 +32,6 @@ export type {
   SqlExecutor,
   SqlPrimitive,
   SqlStatement,
-} from '@sva/data';
+} from './public-api.js';
 
 export type { InstanceAuditEvent, InstanceProvisioningRun, InstanceRegistryRecord } from '@sva/core';

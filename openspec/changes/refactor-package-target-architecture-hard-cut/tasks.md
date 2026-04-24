@@ -30,7 +30,7 @@
 - [x] 4.3a Plugin-SDK-Implementierung physisch aus `@sva/sdk` nach `@sva/plugin-sdk` verschieben
 - [x] 4.4 Client-sicheren HTTP-Data-Client nach `@sva/data-client` verschieben und `@sva/data` als Kompatibilitäts-Barrel belassen
 - [x] 4.5 Repository-Fassade über `@sva/data-repositories` bereitstellen und Auth-Instance-Registry-Consumer umstellen
-- [ ] 4.5a DB-Repository-Implementierung physisch aus `@sva/data` nach `@sva/data-repositories` verschieben
+- [x] 4.5a DB-Repository-Implementierung physisch aus `@sva/data` nach `@sva/data-repositories` verschieben
 - [x] 4.6 Auth-Routing über `@sva/auth-runtime` entkoppeln, sodass `@sva/routing` nicht mehr direkt aus `@sva/auth` importiert
 
 ## 5. Fachpackage Migration

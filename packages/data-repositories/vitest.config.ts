@@ -9,7 +9,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@sva/core': resolve(currentDir, '../core/src/index.ts'),
-      '@sva/data': resolve(currentDir, '../data/src/index.ts'),
+      '@sva/server-runtime': resolve(currentDir, '../server-runtime/src/index.ts'),
     },
   },
   test: {

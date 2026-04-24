@@ -9,8 +9,7 @@
     "types": ["node"],
     "paths": {
       "@sva/core": ["packages/core/dist/index.d.ts"],
-      "@sva/data-client": ["packages/data-client/dist/index.d.ts"],
-      "@sva/data": ["packages/data/dist/index.d.ts"]
+      "@sva/server-runtime": ["packages/server-runtime/dist/index.d.ts"]
     }
   },
   "include": ["src/**/*.ts"],

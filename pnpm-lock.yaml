@@ -314,6 +314,9 @@ importers:
       '@sva/data-client':
         specifier: workspace:*
         version: link:../data-client
+      '@sva/data-repositories':
+        specifier: workspace:*
+        version: link:../data-repositories
       '@sva/sdk':
         specifier: workspace:*
         version: link:../sdk
@@ -355,13 +358,16 @@ importers:
       '@sva/core':
         specifier: workspace:*
         version: link:../core
-      '@sva/data':
-        specifier: workspace:*
-        version: link:../data
       '@sva/server-runtime':
         specifier: workspace:*
         version: link:../server-runtime
+      pg:
+        specifier: ^8.20.0
+        version: 8.20.0
     devDependencies:
+      '@types/pg':
+        specifier: ^8.20.0
+        version: 8.20.0
       '@vitest/coverage-v8':
         specifier: ^4.1.2
         version: 4.1.4(vitest@4.1.4)

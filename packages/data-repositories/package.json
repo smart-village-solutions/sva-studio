@@ -9,14 +9,19 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./server": {
+      "types": "./dist/server.d.ts",
+      "default": "./dist/server.js"
     }
   },
   "dependencies": {
     "@sva/core": "workspace:*",
-    "@sva/data": "workspace:*",
-    "@sva/server-runtime": "workspace:*"
+    "@sva/server-runtime": "workspace:*",
+    "pg": "^8.20.0"
   },
   "devDependencies": {
+    "@types/pg": "^8.20.0",
     "@vitest/coverage-v8": "^4.1.2",
     "vitest": "^4.1.2"
   }

@@ -22,7 +22,13 @@ export default [
             },
             {
               sourceTag: 'scope:data',
-              onlyDependOnLibsWithTags: ['scope:core', 'scope:data-client', 'scope:sdk', 'scope:data'],
+              onlyDependOnLibsWithTags: [
+                'scope:core',
+                'scope:data-client',
+                'scope:data-repositories',
+                'scope:sdk',
+                'scope:data',
+              ],
             },
             {
               sourceTag: 'scope:data-client',
@@ -30,12 +36,7 @@ export default [
             },
             {
               sourceTag: 'scope:data-repositories',
-              onlyDependOnLibsWithTags: [
-                'scope:core',
-                'scope:data',
-                'scope:server-runtime',
-                'scope:data-repositories',
-              ],
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:server-runtime', 'scope:data-repositories'],
             },
             {
               sourceTag: 'scope:sdk',

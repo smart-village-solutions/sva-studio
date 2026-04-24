@@ -1,9 +1,9 @@
 import { createSdkLogger } from '@sva/server-runtime';
 import type { InstanceKeycloakProvisioningRun } from '@sva/core';
 import type { ExecuteInstanceKeycloakProvisioningInput } from '@sva/instance-registry';
-import type { InstanceRegistryServiceDeps } from './service-types.js';
+import type { InstanceRegistryServiceDeps } from '@sva/instance-registry';
 import { createGetKeycloakStatusHandler, loadInstanceWithSecret } from './service-keycloak.js';
-import { appendRunStep } from './service-keycloak-run-steps.js';
+import { appendRunStep } from '@sva/instance-registry';
 import { buildProvisioningInput, completeRun, createQueuedRun, readQueuedTemporaryPassword, syncProvisionedClientSecretToRegistry, syncRotatedClientSecretToRegistry } from './service-keycloak-execution-shared.js';
 import { failClaimedRun, failRun } from './service-keycloak-execution-failures.js';
 

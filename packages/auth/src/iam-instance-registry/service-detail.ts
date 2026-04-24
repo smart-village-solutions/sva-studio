@@ -5,10 +5,10 @@ import {
   createGetKeycloakStatusHandler,
   createPlanKeycloakProvisioningHandler,
 } from './service-keycloak.js';
-import { buildInstanceDetail } from './service-helpers.js';
+import { buildInstanceDetail } from '@sva/instance-registry';
 
 import type { InstanceRegistryRepository } from '@sva/data-repositories';
-import type { InstanceRegistryService, InstanceRegistryServiceDeps } from './service-types.js';
+import type { InstanceRegistryService, InstanceRegistryServiceDeps } from '@sva/instance-registry';
 
 type InstanceRecord = NonNullable<Awaited<ReturnType<InstanceRegistryRepository['getInstanceById']>>>;
 const logger = createSdkLogger({ component: 'iam-instance-registry-service', level: 'info' });

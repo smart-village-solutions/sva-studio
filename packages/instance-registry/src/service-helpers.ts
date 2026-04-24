@@ -8,8 +8,8 @@ import type {
 } from '@sva/core';
 
 import type { InstanceRegistryRepository } from '@sva/data-repositories';
-import type { ChangeInstanceStatusInput } from '@sva/instance-registry';
-import type { KeycloakTenantStatus } from '@sva/instance-registry';
+import type { KeycloakTenantStatus } from './keycloak-types.js';
+import type { ChangeInstanceStatusInput } from './mutation-types.js';
 
 type InstanceRecord = Awaited<ReturnType<InstanceRegistryRepository['listInstances']>>[number];
 type ProvisioningRun = Awaited<ReturnType<InstanceRegistryRepository['listProvisioningRuns']>>[number];

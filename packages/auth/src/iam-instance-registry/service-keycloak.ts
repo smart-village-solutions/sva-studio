@@ -1,7 +1,7 @@
 import { classifyHost, normalizeHost } from '@sva/core';
 import { createSdkLogger } from '@sva/server-runtime';
 import type { InstanceRegistryRepository } from '@sva/data-repositories';
-import type { InstanceRegistryServiceDeps } from './service-types.js';
+import type { InstanceRegistryServiceDeps } from '@sva/instance-registry';
 import type {
   KeycloakTenantPlan,
   KeycloakTenantPreflight,
@@ -10,7 +10,7 @@ import type {
 } from '@sva/instance-registry';
 import { revealField } from '../iam-account-management/encryption.js';
 import { buildPlan, toOverallPreflightStatus } from '@sva/instance-registry';
-import { toListItem } from './service-helpers.js';
+import { toListItem } from '@sva/instance-registry';
 import { createExecuteKeycloakProvisioningHandler, createReconcileKeycloakHandler } from './service-keycloak-execution.js';
 
 const buildAuthClientSecretAad = (instanceId: string): string => `iam.instances.auth_client_secret:${instanceId}`;

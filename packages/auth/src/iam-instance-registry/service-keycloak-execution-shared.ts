@@ -1,9 +1,9 @@
 import { areAllInstanceKeycloakRequirementsSatisfied } from '@sva/core';
 
 import type { ExecuteInstanceKeycloakProvisioningInput } from '@sva/instance-registry';
-import type { InstanceRegistryServiceDeps } from './service-types.js';
+import type { InstanceRegistryServiceDeps } from '@sva/instance-registry';
 import { loadInstanceWithSecret } from './service-keycloak.js';
-import { appendRunStep, buildFinalRunSteps } from './service-keycloak-run-steps.js';
+import { appendRunStep, buildFinalRunSteps } from '@sva/instance-registry';
 import { protectField, revealField } from '../iam-account-management/encryption.js';
 import { readKeycloakStateViaProvisioner } from './provisioning-auth-state.js';
 

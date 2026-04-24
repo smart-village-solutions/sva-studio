@@ -8,15 +8,15 @@ import type {
   ExecuteInstanceKeycloakProvisioningInput,
   ReconcileInstanceKeycloakInput,
   UpdateInstanceInput,
-} from '@sva/instance-registry';
+} from './mutation-types.js';
 import type {
   KeycloakTenantPlan,
   KeycloakTenantPreflight,
   KeycloakTenantProvisioningRun,
   KeycloakTenantStatus,
   ResolveRuntimeInstanceResult,
-} from '@sva/instance-registry';
-import type { TenantAdminBootstrap } from '@sva/instance-registry';
+} from './keycloak-types.js';
+import type { TenantAdminBootstrap } from './provisioning-auth-types.js';
 
 type KeycloakProvisioningContext = {
   instanceId: string;

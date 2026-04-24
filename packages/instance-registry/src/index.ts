@@ -51,3 +51,14 @@ export {
   SYSTEM_ADMIN_ROLE,
   toSortedUnique,
 } from './provisioning-auth-utils.js';
+export {
+  createAuditDetails,
+  createStatusArtifacts,
+  getAuditEventType,
+  getStatusOperation,
+  toListItem,
+  buildInstanceDetail,
+} from './service-helpers.js';
+export { appendRunStep, buildFinalRunSteps } from './service-keycloak-run-steps.js';
+export { createProvisioningArtifacts, provisionInstanceAuth } from './service-provisioning.js';
+export type { InstanceRegistryService, InstanceRegistryServiceDeps } from './service-types.js';

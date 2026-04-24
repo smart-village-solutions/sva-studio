@@ -4,8 +4,8 @@ import { protectField } from '../iam-account-management/encryption.js';
 
 import type { InstanceRegistryRepository } from '@sva/data-repositories';
 import type { CreateInstanceProvisioningInput, UpdateInstanceInput } from '@sva/instance-registry';
-import type { InstanceRegistryService, InstanceRegistryServiceDeps } from './service-types.js';
-import { createStatusArtifacts, toListItem } from './service-helpers.js';
+import type { InstanceRegistryService, InstanceRegistryServiceDeps } from '@sva/instance-registry';
+import { createStatusArtifacts, toListItem } from '@sva/instance-registry';
 import { createGetInstanceDetail } from './service-detail.js';
 import {
   createExecuteKeycloakProvisioningHandler,
@@ -16,7 +16,7 @@ import {
   createReconcileKeycloakHandler,
   createRuntimeResolver,
 } from './service-keycloak.js';
-import { createProvisioningArtifacts } from './service-provisioning.js';
+import { createProvisioningArtifacts } from '@sva/instance-registry';
 
 const logger = createSdkLogger({ component: 'iam-instance-registry-service', level: 'info' });
 

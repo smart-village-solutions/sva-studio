@@ -21,7 +21,7 @@ vi.mock('../iam-governance.server.js', () => ({
   resolveImpersonationSubject: vi.fn(async () => ({ ok: true })),
 }));
 
-vi.mock('@sva/sdk/server', () => ({
+vi.mock('@sva/server-runtime', () => ({
   createSdkLogger: () => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }),
   getWorkspaceContext: () => ({ workspaceId: 'inst-1', requestId: 'req-x', traceId: 'trace-x' }),
   withRequestContext: (_opts: unknown, fn: () => Promise<Response>) => fn(),

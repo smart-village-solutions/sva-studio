@@ -6,7 +6,13 @@
     "declarationMap": true,
     "outDir": "dist",
     "rootDir": "src",
-    "types": ["node"]
+    "types": ["node"],
+    "paths": {
+      "@sva/core": ["packages/core/dist/index.d.ts"],
+      "@sva/monitoring-client": ["packages/monitoring-client/dist/index.d.ts"],
+      "@sva/monitoring-client/server": ["packages/monitoring-client/dist/server.d.ts"],
+      "@sva/sdk/server": ["packages/sdk/dist/server.d.ts"]
+    }
   },
   "include": ["src/**/*.ts"],
   "exclude": ["src/**/*.test.ts"]

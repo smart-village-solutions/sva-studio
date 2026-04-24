@@ -42,7 +42,7 @@ export default [
             },
             {
               sourceTag: 'scope:server-runtime',
-              onlyDependOnLibsWithTags: ['scope:core', 'scope:monitoring', 'scope:server-runtime'],
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:monitoring', 'scope:sdk', 'scope:server-runtime'],
             },
             {
               sourceTag: 'scope:iam-core',
@@ -90,6 +90,7 @@ export default [
                 'scope:sdk',
                 'scope:monitoring',
                 'scope:iam-core',
+                'scope:server-runtime',
                 'scope:auth',
               ],
             },

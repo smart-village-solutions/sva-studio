@@ -13,7 +13,8 @@
       "@sva/core/security": ["packages/core/dist/security/index.d.ts"],
       "@sva/data": ["packages/data/dist/index.d.ts"],
       "@sva/data/server": ["packages/data/dist/server.d.ts"],
-      "@sva/iam-core": ["packages/iam-core/dist/index.d.ts"]
+      "@sva/iam-core": ["packages/iam-core/dist/index.d.ts"],
+      "@sva/server-runtime": ["packages/server-runtime/dist/index.d.ts"]
     }
   },
   "include": ["src/**/*.ts"],

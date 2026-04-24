@@ -13,7 +13,8 @@
   },
   "dependencies": {
     "@sva/core": "workspace:*",
-    "@sva/monitoring-client": "workspace:*"
+    "@sva/monitoring-client": "workspace:*",
+    "@sva/sdk": "workspace:*"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^4.1.2",

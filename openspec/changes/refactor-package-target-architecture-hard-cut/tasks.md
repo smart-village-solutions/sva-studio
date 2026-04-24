@@ -24,7 +24,8 @@
 ## 4. Contract Migration
 
 - [x] 4.1 Zentrale Autorisierungsentscheidung nach `@sva/iam-core` verschieben
-- [ ] 4.2 Server-Runtime-Hilfen nach `@sva/server-runtime` verschieben
+- [x] 4.2 Server-Runtime-Fassade über `@sva/server-runtime` bereitstellen und erste Auth-Consumer umstellen
+- [ ] 4.2a Server-Runtime-Implementierung physisch aus `@sva/sdk/server` nach `@sva/server-runtime` verschieben
 - [ ] 4.3 Plugin-Verträge nach `@sva/plugin-sdk` verschieben
 - [ ] 4.4 Client-sichere Datenverträge nach `@sva/data-client` verschieben
 - [ ] 4.5 DB-Repositories und serverseitige Datenzugriffe nach `@sva/data-repositories` verschieben

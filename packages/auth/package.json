@@ -29,6 +29,7 @@
     "@sva/data": "workspace:*",
     "@sva/iam-core": "workspace:*",
     "@sva/sdk": "workspace:*",
+    "@sva/server-runtime": "workspace:*",
     "@types/sanitize-html": "^2.16.1",
     "cookie-es": "^2.0.0",
     "ioredis": "^5.10.1",

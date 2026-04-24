@@ -1,4 +1,4 @@
-import { mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises';
+import { cp, mkdir, readdir, readFile, realpath, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 const appDirArg = process.argv[2] ?? 'apps/sva-studio-react';
@@ -37,11 +37,82 @@ const assertServerEntryContract = (source: string, filePath: string) => {
   }
 };
 
+const findPnpmPackageDir = async (currentDir: string, packageName: string) => {
+  const pnpmDir = path.join(currentDir, 'node_modules', '.pnpm');
+  if (!(await pathExists(pnpmDir))) {
+    return null;
+  }
+
+  const packageSegments = packageName.split('/');
+  const entries = await readdir(pnpmDir, { withFileTypes: true });
+  for (const entry of entries) {
+    if (!entry.isDirectory()) {
+      continue;
+    }
+
+    const packageDir = path.join(pnpmDir, entry.name, 'node_modules', ...packageSegments);
+    if (await pathExists(packageDir)) {
+      return realpath(packageDir);
+    }
+  }
+
+  return null;
+};
+
+const findWorkspacePackageDir = async (packageName: string) => {
+  let currentDir = appDir;
+  const packageSegments = packageName.split('/');
+
+  while (true) {
+    const packageDir = path.join(currentDir, 'node_modules', ...packageSegments);
+    if (await pathExists(packageDir)) {
+      return realpath(packageDir);
+    }
+
+    const pnpmPackageDir = await findPnpmPackageDir(currentDir, packageName);
+    if (pnpmPackageDir) {
+      return pnpmPackageDir;
+    }
+
+    const parentDir = path.dirname(currentDir);
+    if (parentDir === currentDir) {
+      return null;
+    }
+    currentDir = parentDir;
+  }
+};
+
+const ensureTslibRuntimeContract = async () => {
+  const sourceTslibDir = await findWorkspacePackageDir('tslib');
+  if (!sourceTslibDir) {
+    throw new Error('tslib konnte im Workspace-node_modules nicht gefunden werden.');
+  }
+
+  const sourceModuleEntryPath = path.join(sourceTslibDir, 'modules', 'index.js');
+  const sourceCjsEntryPath = path.join(sourceTslibDir, 'tslib.js');
+  if (!(await pathExists(sourceModuleEntryPath)) || !(await pathExists(sourceCjsEntryPath))) {
+    throw new Error(`tslib Runtime-Vertrag ist unvollstaendig: ${sourceTslibDir}`);
+  }
+
+  const outputTslibDir = path.join(outputServerDir, 'node_modules', 'tslib');
+  await mkdir(path.dirname(outputTslibDir), { recursive: true });
+  await rm(outputTslibDir, { force: true, recursive: true });
+  await cp(sourceTslibDir, outputTslibDir, { force: true, recursive: true });
+
+  const outputModuleEntryPath = path.join(outputTslibDir, 'modules', 'index.js');
+  const outputCjsEntryPath = path.join(outputTslibDir, 'tslib.js');
+  if (!(await pathExists(outputModuleEntryPath)) || !(await pathExists(outputCjsEntryPath))) {
+    throw new Error(`tslib Runtime-Vertrag wurde nicht vollstaendig nach ${outputTslibDir} kopiert.`);
+  }
+};
+
 const main = async () => {
   const [finalServerEntrySource, nitroSsrEntryExists] = await Promise.all([
     readFile(finalServerEntryPath, 'utf8'),
     pathExists(generatedNitroSsrEntryPath),
   ]);
+
+  await ensureTslibRuntimeContract();
 
   if (nitroSsrEntryExists && finalServerEntrySource.includes('./_ssr/ssr.mjs')) {
     const generatedNitroSsrEntrySource = await readFile(generatedNitroSsrEntryPath, 'utf8');

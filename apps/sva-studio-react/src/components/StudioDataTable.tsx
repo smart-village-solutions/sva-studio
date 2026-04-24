@@ -155,6 +155,8 @@ export function StudioDataTable<TData>({
     setRowSelection({});
   }, []);
 
+  const tableData = React.useMemo(() => [...data], [data]);
+
   const coreColumns = React.useMemo<ColumnDef<TData>[]>(() => {
     const tableColumns = columns.map<ColumnDef<TData>>((column) => ({
       id: column.id,
@@ -208,7 +210,7 @@ export function StudioDataTable<TData>({
   }, [ariaLabel, columns, rowActions, selectionMode]);
 
   const table = useReactTable({
-    data: [...data],
+    data: tableData,
     columns: coreColumns,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),

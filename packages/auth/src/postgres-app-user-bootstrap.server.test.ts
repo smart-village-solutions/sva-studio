@@ -47,41 +47,41 @@ describe('postgres-app-user bootstrap', () => {
   });
 
   it('returns false when bootstrap conditions are not met', async () => {
-    const { bootstrapAcceptanceAppDbUserIfNeeded } = await import('./postgres-app-user-bootstrap.server.js');
+    const { bootstrapStudioAppDbUserIfNeeded } = await import('./postgres-app-user-bootstrap.server.js');
 
-    await expect(bootstrapAcceptanceAppDbUserIfNeeded(new Error('password authentication failed'))).resolves.toBe(
+    await expect(bootstrapStudioAppDbUserIfNeeded(new Error('password authentication failed'))).resolves.toBe(
       false
     );
 
-    process.env.SVA_RUNTIME_PROFILE = 'acceptance-hb';
-    await expect(bootstrapAcceptanceAppDbUserIfNeeded(new Error('another error'))).resolves.toBe(false);
+    process.env.SVA_RUNTIME_PROFILE = 'studio';
+    await expect(bootstrapStudioAppDbUserIfNeeded(new Error('another error'))).resolves.toBe(false);
   });
 
   it('returns false when required passwords are unavailable', async () => {
-    process.env.SVA_RUNTIME_PROFILE = 'acceptance-hb';
+    process.env.SVA_RUNTIME_PROFILE = 'studio';
     process.env.POSTGRES_PASSWORD = '';
     delete process.env.POSTGRES_PASSWORD_FILE;
     state.getAppDbPassword.mockReturnValue(undefined);
 
-    const { bootstrapAcceptanceAppDbUserIfNeeded } = await import('./postgres-app-user-bootstrap.server.js');
+    const { bootstrapStudioAppDbUserIfNeeded } = await import('./postgres-app-user-bootstrap.server.js');
 
     await expect(
-      bootstrapAcceptanceAppDbUserIfNeeded(new Error('password authentication failed for user "sva_app"'))
+      bootstrapStudioAppDbUserIfNeeded(new Error('password authentication failed for user "sva_app"'))
     ).resolves.toBe(false);
   });
 
-  it('bootstraps the acceptance app user with file-based superuser password', async () => {
-    process.env.SVA_RUNTIME_PROFILE = 'acceptance-hb';
+  it('bootstraps the studio app user with file-based superuser password', async () => {
+    process.env.SVA_RUNTIME_PROFILE = 'studio';
     process.env.POSTGRES_PASSWORD_FILE = '/run/secrets/postgres-password';
     delete process.env.POSTGRES_PASSWORD;
     process.env.APP_DB_USER = 'app_user';
     process.env.POSTGRES_USER = 'postgres';
     process.env.POSTGRES_DB = 'studio';
 
-    const { bootstrapAcceptanceAppDbUserIfNeeded } = await import('./postgres-app-user-bootstrap.server.js');
+    const { bootstrapStudioAppDbUserIfNeeded } = await import('./postgres-app-user-bootstrap.server.js');
 
     await expect(
-      bootstrapAcceptanceAppDbUserIfNeeded(new Error('password authentication failed for user "sva_app"'))
+      bootstrapStudioAppDbUserIfNeeded(new Error('password authentication failed for user "sva_app"'))
     ).resolves.toBe(true);
 
     expect(state.readFileSync).toHaveBeenCalledWith('/run/secrets/postgres-password', 'utf8');
@@ -91,9 +91,9 @@ describe('postgres-app-user bootstrap', () => {
     );
     expect(state.clientQuery).toHaveBeenCalledWith('GRANT iam_app TO "app_user"');
     expect(state.logger.info).toHaveBeenCalledWith(
-      'Bootstrapped acceptance app DB role',
+      'Bootstrapped studio app DB role',
       expect.objectContaining({
-        operation: 'acceptance_db_bootstrap',
+        operation: 'studio_db_bootstrap',
         app_db_user: 'app_user',
         database: 'studio',
       })
@@ -101,20 +101,20 @@ describe('postgres-app-user bootstrap', () => {
   });
 
   it('logs a warning and returns false when bootstrap itself fails', async () => {
-    process.env.SVA_RUNTIME_PROFILE = 'acceptance-hb';
+    process.env.SVA_RUNTIME_PROFILE = 'studio';
     process.env.POSTGRES_PASSWORD = 'super-secret';
     state.clientQuery.mockRejectedValue(new Error('bootstrap failed'));
 
-    const { bootstrapAcceptanceAppDbUserIfNeeded } = await import('./postgres-app-user-bootstrap.server.js');
+    const { bootstrapStudioAppDbUserIfNeeded } = await import('./postgres-app-user-bootstrap.server.js');
 
     await expect(
-      bootstrapAcceptanceAppDbUserIfNeeded(new Error('password authentication failed for user "sva_app"'))
+      bootstrapStudioAppDbUserIfNeeded(new Error('password authentication failed for user "sva_app"'))
     ).resolves.toBe(false);
 
     expect(state.logger.warn).toHaveBeenCalledWith(
-      'Acceptance DB bootstrap failed',
+      'Studio DB bootstrap failed',
       expect.objectContaining({
-        operation: 'acceptance_db_bootstrap',
+        operation: 'studio_db_bootstrap',
         error: 'bootstrap failed',
       })
     );

@@ -1,5 +1,5 @@
 import { Pool, type PoolClient } from 'pg';
-import { bootstrapAcceptanceAppDbUserIfNeeded } from '../postgres-app-user-bootstrap.server.js';
+import { bootstrapStudioAppDbUserIfNeeded } from '../postgres-app-user-bootstrap.server.js';
 
 export type QueryResult<TRow> = {
   rowCount: number;
@@ -70,7 +70,7 @@ export const withInstanceDb = async <T>(
   try {
     client = (await pool.connect()) as PoolClient & QueryClient;
   } catch (error) {
-    const bootstrapped = await bootstrapAcceptanceAppDbUserIfNeeded(error);
+    const bootstrapped = await bootstrapStudioAppDbUserIfNeeded(error);
     if (!bootstrapped) {
       throw error;
     }

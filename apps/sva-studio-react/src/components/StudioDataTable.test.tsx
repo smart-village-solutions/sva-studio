@@ -1,3 +1,4 @@
+import * as React from 'react';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -58,6 +59,42 @@ describe('StudioDataTable', () => {
     fireEvent.click(screen.getByRole('button', { name: /Region/i }));
     rows = screen.getAllByRole('row');
     expect(rows[1]?.textContent).toContain('Prignitz');
+  });
+
+  it('keeps table data stable across parent rerenders while sorting', () => {
+    const CountingTable = () => {
+      const [, forceRerender] = React.useReducer((value: number) => value + 1, 0);
+      const rows = React.useMemo(
+        () => [
+          { id: '2', region: 'Prignitz', city: 'Pritzwalk' },
+          { id: '1', region: 'Barnim', city: 'Bernau' },
+        ],
+        []
+      );
+
+      return (
+        <>
+          <Button type="button" onClick={forceRerender}>
+            Neu rendern
+          </Button>
+          <StudioDataTable
+            ariaLabel="Abholorte"
+            data={rows}
+            columns={demoColumns}
+            emptyState={<div>leer</div>}
+            getRowId={(row) => row.id}
+          />
+        </>
+      );
+    };
+
+    render(<CountingTable />);
+
+    fireEvent.click(screen.getByRole('button', { name: /Region/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Neu rendern' }));
+
+    const rows = screen.getAllByRole('row');
+    expect(rows[1]?.textContent).toContain('Barnim');
   });
 
   it('supports row selection and bulk actions', () => {

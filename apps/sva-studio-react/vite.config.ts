@@ -60,6 +60,14 @@ if (process.cwd() !== appRoot) {
 
 const config = defineConfig({
   root: appRoot,
+  oxc: {
+    jsx: {
+      runtime: 'automatic',
+      importSource: 'react',
+      development: false,
+      refresh: false,
+    },
+  },
   server: {
     host: configuredDevHost || '127.0.0.1',
     // Disable HMR in this TanStack Start SSR setup to avoid React preamble runtime crashes.

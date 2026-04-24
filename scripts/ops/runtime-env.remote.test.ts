@@ -24,7 +24,7 @@ __SVA_DOCTOR_JSON___END
 noise after
 `);
 
-    const resolution = await resolveTenantRuntimeTargets('acceptance-hb', {
+    const resolution = await resolveTenantRuntimeTargets('studio', {
       IAM_DATABASE_URL: 'postgres://db',
       REDIS_URL: 'redis://cache',
       SVA_AUTH_CLIENT_SECRET: 'secret',

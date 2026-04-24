@@ -92,7 +92,7 @@ describe('runtime-secrets.server', () => {
   it('keeps docker redis hostname for non-local runtime profiles', async () => {
     process.env = {
       ...originalEnv,
-      SVA_RUNTIME_PROFILE: 'acceptance-hb',
+      SVA_RUNTIME_PROFILE: 'studio',
     };
     delete process.env.REDIS_URL;
 

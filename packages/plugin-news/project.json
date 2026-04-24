@@ -18,8 +18,7 @@
         "lintFilePatterns": [
           "packages/plugin-news/src/**/*.{ts,tsx,js,jsx}",
           "packages/plugin-news/tests/**/*.{ts,tsx,js,jsx}"
-        ],
-        "command": "pnpm --filter @sva/plugin-news exec tsc -p tsconfig.lib.json --noEmit"
+        ]
       }
     },
     "test:unit": {

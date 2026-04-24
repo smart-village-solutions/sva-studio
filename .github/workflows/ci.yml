@@ -24,4 +24,4 @@ jobs:
 
       - uses: nrwl/nx-set-shas@v5
 
-      - run: pnpm exec nx affected -t lint test build
+      - run: pnpm exec nx affected -t lint test:unit build

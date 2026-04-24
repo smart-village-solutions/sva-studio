@@ -4,7 +4,7 @@ import { classifyHost, isTrafficEnabledInstanceStatus } from '@sva/core';
 import { loadInstanceByHostname } from '@sva/data/server';
 
 import { getPermissionCacheHealth } from '../iam-authorization/shared.js';
-import { bootstrapAcceptanceAppDbUserIfNeeded } from '../postgres-app-user-bootstrap.server.js';
+import { bootstrapStudioAppDbUserIfNeeded } from '../postgres-app-user-bootstrap.server.js';
 import { getLastRedisError, isRedisAvailable } from '../redis.server.js';
 import { jsonResponse } from '../shared/db-helpers.js';
 import { resolveEffectiveRequestHost } from '../request-hosts.js';
@@ -180,7 +180,7 @@ export const readyInternal = async (request: Request): Promise<Response> => {
       try {
         client = await pool.connect();
       } catch (error) {
-        const bootstrapped = await bootstrapAcceptanceAppDbUserIfNeeded(error);
+        const bootstrapped = await bootstrapStudioAppDbUserIfNeeded(error);
         if (!bootstrapped) {
           throw error;
         }

@@ -6,10 +6,10 @@
 
 ## 2. Inventory und Freeze
 
-- [ ] 2.1 Aktuelle Importkanten zwischen `auth`, `core`, `data`, `sdk`, `routing`, App und Plugins inventarisieren
-- [ ] 2.2 Boundary-Disables und erlaubte Ausnahmen mit Ticketbezug erfassen
-- [ ] 2.3 PII-Datenflüsse und Credential-Flüsse pro betroffenem Package klassifizieren
-- [ ] 2.4 Freeze-Regel dokumentieren: keine neue Fachlogik in Sammelpackages ohne Zielpackage-Zuordnung
+- [x] 2.1 Aktuelle Importkanten zwischen `auth`, `core`, `data`, `sdk`, `routing`, App und Plugins inventarisieren
+- [x] 2.2 Boundary-Disables und erlaubte Ausnahmen mit Ticketbezug erfassen
+- [x] 2.3 PII-Datenflüsse und Credential-Flüsse pro betroffenem Package klassifizieren
+- [x] 2.4 Freeze-Regel dokumentieren: keine neue Fachlogik in Sammelpackages ohne Zielpackage-Zuordnung
 
 ## 3. Package Scaffold
 

@@ -153,6 +153,8 @@ export default [
                 'scope:core',
                 'scope:data',
                 'scope:sdk',
+                'scope:plugin-sdk',
+                'scope:server-runtime',
                 'scope:plugin',
                 'scope:routing',
                 'scope:auth',
@@ -346,6 +348,26 @@ export default [
             {
               group: ['@sva/sdk/*'],
               message: 'sva-mainserver verwendet Zielpackages statt @sva/sdk-Subpaths.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['apps/sva-studio-react/**/*.{ts,tsx,js,jsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '@sva/sdk/admin-resources',
+              message: 'Die App verwendet Admin-Resource-Verträge über @sva/plugin-sdk.',
+            },
+            {
+              name: '@sva/sdk/server',
+              message: 'Die App verwendet Server-Helfer über @sva/server-runtime.',
             },
           ],
         },

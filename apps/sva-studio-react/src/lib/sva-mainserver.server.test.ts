@@ -30,7 +30,7 @@ vi.mock('@sva/sva-mainserver/server', () => ({
   getSvaMainserverConnectionStatus: state.getSvaMainserverConnectionStatus,
 }));
 
-vi.mock('@sva/sdk/server', () => ({
+vi.mock('@sva/server-runtime', () => ({
   createSdkLogger: () => state.logger,
 }));
 

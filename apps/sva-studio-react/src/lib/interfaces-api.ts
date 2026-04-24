@@ -236,7 +236,7 @@ export const loadInterfacesOverview = createServerFn().handler(async (): Promise
     const { getRequest } = await import('@tanstack/react-start/server');
     const { withAuthenticatedUser } = await import('@sva/auth/server');
     const { getSvaMainserverConnectionStatus, loadSvaMainserverSettings } = await import('@sva/sva-mainserver/server');
-    const { createSdkLogger } = await import('@sva/sdk/server');
+    const { createSdkLogger } = await import('@sva/server-runtime');
     const logger = createSdkLogger({ component: COMPONENT });
     const request = getRequest();
 
@@ -337,7 +337,7 @@ export const loadInterfacesOverview = createServerFn().handler(async (): Promise
       status: getOverviewFallbackStatus(response, isErrorPayload(payload) ? payload : null),
     };
   } catch (error) {
-    const { createSdkLogger } = await import('@sva/sdk/server');
+    const { createSdkLogger } = await import('@sva/server-runtime');
     const logger = createSdkLogger({ component: COMPONENT });
     logger.error('Unexpected error loading interfaces overview', {
       operation: 'load_interfaces_overview',
@@ -358,7 +358,7 @@ export const saveSvaMainserverInterfaceSettings = createServerFn({ method: 'POST
       const { getRequest } = await import('@tanstack/react-start/server');
       const { withAuthenticatedUser } = await import('@sva/auth/server');
       const { saveSvaMainserverSettings } = await import('@sva/sva-mainserver/server');
-      const { createSdkLogger } = await import('@sva/sdk/server');
+      const { createSdkLogger } = await import('@sva/server-runtime');
       const logger = createSdkLogger({ component: COMPONENT });
       const request = getRequest();
       const payloadData = (data ?? {}) as SaveInterfacesPayload;
@@ -438,7 +438,7 @@ export const saveSvaMainserverInterfaceSettings = createServerFn({ method: 'POST
         `Schnittstellen-Einstellungen konnten nicht gespeichert werden (HTTP ${response.status}).`
       );
     } catch (error) {
-      const { createSdkLogger } = await import('@sva/sdk/server');
+      const { createSdkLogger } = await import('@sva/server-runtime');
       const logger = createSdkLogger({ component: COMPONENT });
       const payload = error instanceof Error && isRecord(error.cause) && isErrorPayload(error.cause) ? error.cause : null;
       const message =

@@ -113,12 +113,18 @@ importers:
       '@sva/plugin-news':
         specifier: workspace:*
         version: link:../../packages/plugin-news
+      '@sva/plugin-sdk':
+        specifier: workspace:*
+        version: link:../../packages/plugin-sdk
       '@sva/routing':
         specifier: workspace:*
         version: link:../../packages/routing
       '@sva/sdk':
         specifier: workspace:*
         version: link:../../packages/sdk
+      '@sva/server-runtime':
+        specifier: workspace:*
+        version: link:../../packages/server-runtime
       '@sva/sva-mainserver':
         specifier: workspace:*
         version: link:../../packages/sva-mainserver

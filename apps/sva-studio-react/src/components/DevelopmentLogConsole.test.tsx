@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { DevelopmentLogEntry } from '@sva/sdk/server';
+import type { DevelopmentLogEntry } from '@sva/server-runtime';
 
 import type { BrowserDevelopmentLogEntry } from '../lib/development-log-store';
 

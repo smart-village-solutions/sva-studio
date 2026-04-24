@@ -10,7 +10,7 @@ type SvaMainserverLogger = {
 let loggerPromise: Promise<SvaMainserverLogger> | null = null;
 
 const getLogger = async (): Promise<SvaMainserverLogger> => {
-  loggerPromise ??= import('@sva/sdk/server').then(({ createSdkLogger }) =>
+  loggerPromise ??= import('@sva/server-runtime').then(({ createSdkLogger }) =>
     createSdkLogger({ component: 'sva-mainserver-route', level: 'info' }),
   );
 

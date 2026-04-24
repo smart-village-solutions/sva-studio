@@ -23,10 +23,8 @@ vi.mock('@sva/plugin-news', () => ({
   },
 }));
 
-vi.mock('@sva/sdk', async () => {
-  const actual = await vi.importActual<typeof import('@sva/sdk')>('@sva/sdk');
+vi.mock('@sva/sdk/logging', () => {
   return {
-    ...actual,
     createBrowserLogger: () => browserLoggerMock,
   };
 });

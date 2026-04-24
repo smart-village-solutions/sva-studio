@@ -1,9 +1,9 @@
 import { pluginNews } from '@sva/plugin-news';
 import {
   createBuildTimeRegistry,
-  createBrowserLogger,
   registerPluginTranslationResolver,
-} from '@sva/sdk';
+} from '@sva/plugin-sdk';
+import { createBrowserLogger } from '@sva/sdk/logging';
 import { appAdminResources } from '../routing/admin-resources';
 
 import { mergeI18nResources, resetTranslatorCache, t } from '../i18n';

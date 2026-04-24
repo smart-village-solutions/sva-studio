@@ -1,4 +1,4 @@
-import type { AdminResourceDefinition } from '@sva/sdk';
+import type { AdminResourceDefinition } from '@sva/plugin-sdk';
 
 export const appAdminResources = [
   {

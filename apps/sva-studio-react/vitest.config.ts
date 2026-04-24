@@ -19,8 +19,7 @@ export default defineConfig({
       '@sva/auth': fileURLToPath(new URL('../../packages/auth/src/index.ts', import.meta.url)),
       '@sva/sva-mainserver/server': fileURLToPath(new URL('../../packages/sva-mainserver/src/index.server.ts', import.meta.url)),
       '@sva/sva-mainserver': fileURLToPath(new URL('../../packages/sva-mainserver/src/index.ts', import.meta.url)),
-      '@sva/sdk/admin-resources': fileURLToPath(new URL('../../packages/sdk/src/admin-resources.ts', import.meta.url)),
-      '@sva/sdk/server': fileURLToPath(new URL('../../packages/sdk/src/server.ts', import.meta.url)),
+      '@sva/plugin-sdk': fileURLToPath(new URL('../../packages/plugin-sdk/src/index.ts', import.meta.url)),
       '@sva/sdk/logging': fileURLToPath(new URL('../../packages/sdk/src/logging.ts', import.meta.url)),
       '@sva/sdk/logger/index.server': fileURLToPath(new URL('../../packages/sdk/src/logger/index.server.ts', import.meta.url)),
       '@sva/sdk/middleware/request-context.server': fileURLToPath(
@@ -29,6 +28,7 @@ export default defineConfig({
       '@sva/sdk/observability/context.server': fileURLToPath(
         new URL('../../packages/sdk/src/observability/context.server.ts', import.meta.url)
       ),
+      '@sva/server-runtime': fileURLToPath(new URL('../../packages/server-runtime/src/index.ts', import.meta.url)),
       '@sva/sdk': fileURLToPath(new URL('../../packages/sdk/src/index.ts', import.meta.url)),
       '@sva/monitoring-client/server': fileURLToPath(new URL('../../packages/monitoring-client/src/server.ts', import.meta.url)),
       '@sva/monitoring-client/logger-provider.server': fileURLToPath(

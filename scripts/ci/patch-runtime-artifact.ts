@@ -1,10 +1,8 @@
 import { cp, mkdir, readdir, readFile, realpath, rm, stat, writeFile } from 'node:fs/promises';
-import { createRequire } from 'node:module';
 import path from 'node:path';
 
 const appDirArg = process.argv[2] ?? 'apps/sva-studio-react';
 const appDir = path.resolve(appDirArg);
-const requireFromApp = createRequire(path.join(appDir, 'package.json'));
 const outputServerDir = path.join(appDir, '.output', 'server');
 const outputBuildDir = path.join(outputServerDir, 'chunks', 'build');
 const outputSsrDir = path.join(outputServerDir, '_ssr');
@@ -39,12 +37,48 @@ const assertServerEntryContract = (source: string, filePath: string) => {
   }
 };
 
-const findWorkspacePackageDir = async (packageName: string) => {
-  try {
-    const packageJsonPath = requireFromApp.resolve(`${packageName}/package.json`);
-    return realpath(path.dirname(packageJsonPath));
-  } catch {
+const findPnpmPackageDir = async (currentDir: string, packageName: string) => {
+  const pnpmDir = path.join(currentDir, 'node_modules', '.pnpm');
+  if (!(await pathExists(pnpmDir))) {
     return null;
+  }
+
+  const packageSegments = packageName.split('/');
+  const entries = await readdir(pnpmDir, { withFileTypes: true });
+  for (const entry of entries) {
+    if (!entry.isDirectory()) {
+      continue;
+    }
+
+    const packageDir = path.join(pnpmDir, entry.name, 'node_modules', ...packageSegments);
+    if (await pathExists(packageDir)) {
+      return realpath(packageDir);
+    }
+  }
+
+  return null;
+};
+
+const findWorkspacePackageDir = async (packageName: string) => {
+  let currentDir = appDir;
+  const packageSegments = packageName.split('/');
+
+  while (true) {
+    const packageDir = path.join(currentDir, 'node_modules', ...packageSegments);
+    if (await pathExists(packageDir)) {
+      return realpath(packageDir);
+    }
+
+    const pnpmPackageDir = await findPnpmPackageDir(currentDir, packageName);
+    if (pnpmPackageDir) {
+      return pnpmPackageDir;
+    }
+
+    const parentDir = path.dirname(currentDir);
+    if (parentDir === currentDir) {
+      return null;
+    }
+    currentDir = parentDir;
   }
 };
 

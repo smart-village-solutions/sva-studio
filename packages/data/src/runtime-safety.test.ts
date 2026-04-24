@@ -79,7 +79,9 @@ test('runtime artifact checks avoid stale images and dev JSX false positives', (
   assert.match(portainerDockerfile, /--exclude='\*\.map'/);
   assert.match(portainerDockerfile, /--include='\*\.mjs'/);
 
-  assert.match(patchRuntimeArtifact, /createRequire/);
-  assert.match(patchRuntimeArtifact, /requireFromApp\.resolve\(`\$\{packageName\}\/package\.json`\)/);
+  assert.match(patchRuntimeArtifact, /findPnpmPackageDir/);
+  assert.match(patchRuntimeArtifact, /path\.join\(pnpmDir, entry\.name, 'node_modules', \.\.\.packageSegments\)/);
+  assert.match(patchRuntimeArtifact, /path\.join\(currentDir, 'node_modules', \.\.\.packageSegments\)/);
   assert.doesNotMatch(patchRuntimeArtifact, /node_modules', '\.pnpm', 'node_modules'/);
+  assert.doesNotMatch(patchRuntimeArtifact, /requireFromApp\.resolve/);
 });

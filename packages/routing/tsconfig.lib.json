@@ -6,10 +6,9 @@
     "declarationMap": true,
     "paths": {
       "@sva/core": ["packages/core/dist/index.d.ts"],
-      "@sva/auth": ["packages/auth/dist/index.d.ts"],
-      "@sva/auth/server": ["packages/auth/dist/index.server.d.ts"],
-      "@sva/auth/runtime-routes": ["packages/auth/dist/runtime-routes.server.d.ts"],
-      "@sva/auth/runtime-health": ["packages/auth/dist/runtime-health.server.d.ts"],
+      "@sva/auth-runtime": ["packages/auth-runtime/dist/index.d.ts"],
+      "@sva/auth-runtime/runtime-routes": ["packages/auth-runtime/dist/runtime-routes.d.ts"],
+      "@sva/auth-runtime/runtime-health": ["packages/auth-runtime/dist/runtime-health.d.ts"],
       "@sva/sdk/server": ["packages/sdk/dist/server.d.ts"]
     }
   },

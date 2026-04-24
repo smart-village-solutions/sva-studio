@@ -280,6 +280,9 @@ importers:
 
   packages/auth-runtime:
     dependencies:
+      '@sva/auth':
+        specifier: workspace:*
+        version: link:../auth
       '@sva/core':
         specifier: workspace:*
         version: link:../core
@@ -540,9 +543,9 @@ importers:
 
   packages/routing:
     dependencies:
-      '@sva/auth':
+      '@sva/auth-runtime':
         specifier: workspace:*
-        version: link:../auth
+        version: link:../auth-runtime
       '@sva/core':
         specifier: workspace:*
         version: link:../core

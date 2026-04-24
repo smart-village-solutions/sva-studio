@@ -168,9 +168,8 @@ const authServerMocks = vi.hoisted(() => {
   };
 });
 
-vi.mock('@sva/auth/server', () => authServerMocks);
-vi.mock('@sva/auth/runtime-routes', () => authServerMocks);
-vi.mock('@sva/auth/runtime-health', () => ({
+vi.mock('@sva/auth-runtime/runtime-routes', () => authServerMocks);
+vi.mock('@sva/auth-runtime/runtime-health', () => ({
   healthLiveHandler: authServerMocks.healthLiveHandler,
   healthReadyHandler: authServerMocks.healthReadyHandler,
 }));

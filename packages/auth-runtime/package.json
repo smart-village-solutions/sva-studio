@@ -9,9 +9,18 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./runtime-routes": {
+      "types": "./dist/runtime-routes.d.ts",
+      "default": "./dist/runtime-routes.js"
+    },
+    "./runtime-health": {
+      "types": "./dist/runtime-health.d.ts",
+      "default": "./dist/runtime-health.js"
     }
   },
   "dependencies": {
+    "@sva/auth": "workspace:*",
     "@sva/core": "workspace:*",
     "@sva/iam-core": "workspace:*",
     "@sva/server-runtime": "workspace:*"

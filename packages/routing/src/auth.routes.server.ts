@@ -217,455 +217,455 @@ const createMethodNotAllowedHandler =
 const authHandlerMap = {
   '/auth/login': {
     GET: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.loginHandler(request);
     },
   },
   '/auth/callback': {
     GET: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.callbackHandler(request);
     },
   },
   '/auth/me': {
     GET: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.meHandler(request);
     },
   },
   '/auth/logout': {
     POST: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.logoutHandler(request);
     },
   },
   '/health/ready': {
     GET: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-health');
+      const mod = await import('@sva/auth-runtime/runtime-health');
       return mod.healthReadyHandler(request);
     },
   },
   '/health/live': {
     GET: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-health');
+      const mod = await import('@sva/auth-runtime/runtime-health');
       return mod.healthLiveHandler(request);
     },
   },
   '/api/v1/iam/health/ready': {
     GET: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-health');
+      const mod = await import('@sva/auth-runtime/runtime-health');
       return mod.healthReadyHandler(request);
     },
   },
   '/api/v1/iam/health/live': {
     GET: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-health');
+      const mod = await import('@sva/auth-runtime/runtime-health');
       return mod.healthLiveHandler(request);
     },
   },
   '/iam/me/permissions': {
     GET: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.mePermissionsHandler(request);
     },
   },
   '/iam/authorize': {
     POST: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.authorizeHandler(request);
     },
   },
   '/api/v1/iam/users': {
     GET: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.listUsersHandler(request);
     },
     POST: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.createUserHandler(request);
     },
   },
   '/api/v1/iam/users/$userId': {
     GET: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.getUserHandler(request);
     },
     PATCH: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.updateUserHandler(request);
     },
     DELETE: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.deactivateUserHandler(request);
     },
   },
   '/api/v1/iam/users/$userId/timeline': {
     GET: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.getUserTimelineHandler(request);
     },
   },
   '/api/v1/iam/users/bulk-deactivate': {
     POST: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.bulkDeactivateUsersHandler(request);
     },
   },
   '/api/v1/iam/users/sync-keycloak': {
     POST: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.syncUsersFromKeycloakHandler(request);
     },
   },
   '/api/v1/iam/users/me/profile': {
     GET: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.getMyProfileHandler(request);
     },
     PATCH: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.updateMyProfileHandler(request);
     },
   },
   '/api/v1/iam/organizations': {
     GET: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.listOrganizationsHandler(request);
     },
     POST: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.createOrganizationHandler(request);
     },
   },
   '/api/v1/iam/organizations/$organizationId': {
     GET: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.getOrganizationHandler(request);
     },
     PATCH: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.updateOrganizationHandler(request);
     },
     DELETE: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.deactivateOrganizationHandler(request);
     },
   },
   '/api/v1/iam/organizations/$organizationId/memberships': {
     POST: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.assignOrganizationMembershipHandler(request);
     },
   },
   '/api/v1/iam/organizations/$organizationId/memberships/$accountId': {
     DELETE: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.removeOrganizationMembershipHandler(request);
     },
   },
   '/api/v1/iam/me/context': {
     GET: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.getMyOrganizationContextHandler(request);
     },
     PUT: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.updateMyOrganizationContextHandler(request);
     },
   },
   '/api/v1/iam/permissions': {
     GET: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.listPermissionsHandler(request);
     },
   },
   '/api/v1/iam/roles': {
     GET: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.listRolesHandler(request);
     },
     POST: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.createRoleHandler(request);
     },
   },
   '/api/v1/iam/roles/$roleId': {
     PATCH: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.updateRoleHandler(request);
     },
     DELETE: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.deleteRoleHandler(request);
     },
   },
   '/api/v1/iam/groups': {
     GET: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.listGroupsHandler(request);
     },
     POST: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.createGroupHandler(request);
     },
   },
   '/api/v1/iam/groups/$groupId': {
     GET: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.getGroupHandler(request);
     },
     PATCH: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.updateGroupHandler(request);
     },
     DELETE: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.deleteGroupHandler(request);
     },
   },
   '/api/v1/iam/groups/$groupId/roles': {
     POST: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.assignGroupRoleHandler(request);
     },
   },
   '/api/v1/iam/groups/$groupId/roles/$roleId': {
     DELETE: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.removeGroupRoleHandler(request);
     },
   },
   '/api/v1/iam/groups/$groupId/memberships': {
     POST: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.assignGroupMembershipHandler(request);
     },
     DELETE: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.removeGroupMembershipHandler(request);
     },
   },
   '/api/v1/iam/instances': {
     GET: async (ctx: { request: Request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.instanceRegistryHandlers.listInstances(ctx.request);
     },
     POST: async (ctx: { request: Request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.instanceRegistryHandlers.createInstance(ctx.request);
     },
   },
   '/api/v1/iam/instances/$instanceId': {
     GET: async (ctx: { request: Request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.instanceRegistryHandlers.getInstance(ctx.request);
     },
     PATCH: async (ctx: { request: Request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.instanceRegistryHandlers.updateInstance(ctx.request);
     },
   },
   '/api/v1/iam/instances/$instanceId/keycloak/status': {
     GET: async (ctx: { request: Request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.instanceRegistryHandlers.getInstanceKeycloakStatus(ctx.request);
     },
   },
   '/api/v1/iam/instances/$instanceId/keycloak/preflight': {
     GET: async (ctx: { request: Request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.instanceRegistryHandlers.getInstanceKeycloakPreflight(ctx.request);
     },
   },
   '/api/v1/iam/instances/$instanceId/keycloak/plan': {
     POST: async (ctx: { request: Request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.instanceRegistryHandlers.planInstanceKeycloakProvisioning(ctx.request);
     },
   },
   '/api/v1/iam/instances/$instanceId/keycloak/execute': {
     POST: async (ctx: { request: Request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.instanceRegistryHandlers.executeInstanceKeycloakProvisioning(ctx.request);
     },
   },
   '/api/v1/iam/instances/$instanceId/keycloak/runs/$runId': {
     GET: async (ctx: { request: Request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.instanceRegistryHandlers.getInstanceKeycloakProvisioningRun(ctx.request);
     },
   },
   '/api/v1/iam/instances/$instanceId/keycloak/reconcile': {
     POST: async (ctx: { request: Request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.instanceRegistryHandlers.reconcileInstanceKeycloak(ctx.request);
     },
   },
   '/api/v1/iam/instances/$instanceId/activate': {
     POST: async (ctx: { request: Request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.instanceRegistryHandlers.activateInstance(ctx.request);
     },
   },
   '/api/v1/iam/instances/$instanceId/suspend': {
     POST: async (ctx: { request: Request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.instanceRegistryHandlers.suspendInstance(ctx.request);
     },
   },
   '/api/v1/iam/instances/$instanceId/archive': {
     POST: async (ctx: { request: Request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.instanceRegistryHandlers.archiveInstance(ctx.request);
     },
   },
   '/api/v1/iam/contents': {
     GET: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.listContentsHandler(request);
     },
     POST: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.createContentHandler(request);
     },
   },
   '/api/v1/iam/contents/$contentId': {
     GET: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.getContentHandler(request);
     },
     PATCH: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.updateContentHandler(request);
     },
     DELETE: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.deleteContentHandler(request);
     },
   },
   '/api/v1/iam/contents/$contentId/history': {
     GET: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.getContentHistoryHandler(request);
     },
   },
   '/api/v1/iam/legal-texts': {
     GET: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.listLegalTextsHandler(request);
     },
     POST: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.createLegalTextHandler(request);
     },
   },
   '/api/v1/iam/legal-texts/$legalTextVersionId': {
     PATCH: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.updateLegalTextHandler(request);
     },
     DELETE: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.deleteLegalTextHandler(request);
     },
   },
   '/api/v1/iam/admin/reconcile': {
     POST: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.reconcileHandler(request);
     },
   },
   '/iam/governance/workflows': {
     GET: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.listGovernanceCasesHandler(request);
     },
     POST: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.governanceWorkflowHandler(request);
     },
   },
   '/iam/governance/compliance/export': {
     GET: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.governanceComplianceExportHandler(request);
     },
   },
   '/iam/me/data-export': {
     GET: createMethodNotAllowedHandler('/iam/me/data-export', 'POST'),
     POST: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.dataExportHandler(request);
     },
   },
   '/iam/me/data-export/status': {
     GET: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.dataExportStatusHandler(request);
     },
   },
   '/iam/me/data-subject-rights/requests': {
     GET: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.getMyDataSubjectRightsHandler(request);
     },
     POST: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.dataSubjectRequestHandler(request);
     },
   },
   '/iam/me/legal-texts/pending': {
     GET: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.listPendingLegalTextsHandler(request);
     },
   },
   '/iam/me/profile': {
     POST: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.profileCorrectionHandler(request);
     },
   },
   '/iam/me/optional-processing/execute': {
     POST: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.optionalProcessingExecuteHandler(request);
     },
   },
   '/iam/admin/data-subject-rights/export': {
     GET: createMethodNotAllowedHandler('/iam/admin/data-subject-rights/export', 'POST'),
     POST: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.adminDataExportHandler(request);
     },
   },
   '/iam/admin/data-subject-rights/export/status': {
     GET: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.adminDataExportStatusHandler(request);
     },
   },
   '/iam/admin/data-subject-rights/cases': {
     GET: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.listAdminDataSubjectRightsCasesHandler(request);
     },
   },
   '/iam/admin/data-subject-rights/legal-holds/apply': {
     POST: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.legalHoldApplyHandler(request);
     },
   },
   '/iam/admin/data-subject-rights/legal-holds/release': {
     POST: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.legalHoldReleaseHandler(request);
     },
   },
   '/iam/admin/data-subject-rights/maintenance': {
     POST: async ({ request }) => {
-      const mod = await import('@sva/auth/runtime-routes');
+      const mod = await import('@sva/auth-runtime/runtime-routes');
       return mod.dataSubjectMaintenanceHandler(request);
     },
   },
@@ -815,7 +815,7 @@ export const wrapHandlersWithJsonErrorBoundary = (handlers: AuthHandlers, routeP
 
 /**
  * Server-side authentication route factory
- * Creates routes with actual handler implementations from @sva/auth/server
+ * Creates routes with actual handler implementations from @sva/auth-runtime.
  */
 const createAuthServerRouteFactory = (path: AuthRoutePath) => {
   return (rootRoute: RootRoute) => {

@@ -55,7 +55,13 @@ export default [
             },
             {
               sourceTag: 'scope:auth-runtime',
-              onlyDependOnLibsWithTags: ['scope:core', 'scope:server-runtime', 'scope:iam-core', 'scope:auth-runtime'],
+              onlyDependOnLibsWithTags: [
+                'scope:core',
+                'scope:server-runtime',
+                'scope:iam-core',
+                'scope:auth',
+                'scope:auth-runtime',
+              ],
             },
             {
               sourceTag: 'scope:iam-admin',
@@ -121,7 +127,14 @@ export default [
             },
             {
               sourceTag: 'scope:routing',
-              onlyDependOnLibsWithTags: ['scope:core', 'scope:data', 'scope:sdk', 'scope:auth', 'scope:monitoring', 'scope:routing'],
+              onlyDependOnLibsWithTags: [
+                'scope:core',
+                'scope:data',
+                'scope:sdk',
+                'scope:auth-runtime',
+                'scope:monitoring',
+                'scope:routing',
+              ],
             },
             {
               sourceTag: 'scope:app',

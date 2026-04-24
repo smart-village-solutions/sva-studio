@@ -1,5 +1,4 @@
-/* eslint-disable-next-line @nx/enforce-module-boundaries */
-import { authRoutePaths } from '@sva/auth';
+import { authRoutePaths } from '@sva/auth-runtime';
 
 export const uiRoutePaths = {
   home: '/',

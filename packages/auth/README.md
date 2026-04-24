@@ -14,14 +14,14 @@ Authentifizierungs- und Autorisierungspaket für SVA Studio. Implementiert OIDC-
 ```
 @sva/core ← IAM-Typen, Claims, JWT
   ↑
-@sva/sdk  ← Logger, Request-Context
+@sva/server-runtime  ← Logger, Request-Context
   ↑
 @sva/auth
 ```
 
 **Abhängigkeiten:**
 - `@sva/core` (workspace) – IAM-Typen, Claims, JWT-Parsing
-- `@sva/sdk` (workspace) – SDK Logger, Request-Context
+- `@sva/server-runtime` (workspace) – Logger, Request-Context
 - `openid-client` – OIDC-Protokoll (PKCE-Flow)
 - `ioredis` – Redis Session Storage
 - `pg` – PostgreSQL für IAM-Daten

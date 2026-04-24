@@ -1,6 +1,7 @@
 import { studioAdminResources, studioPlugins } from './lib/plugins';
 import { createRouter, type RootRoute } from '@tanstack/react-router';
 import { createIsomorphicFn } from '@tanstack/react-start';
+import { isMockAuthRuntimeProfile, parseRuntimeProfile } from '@sva/core';
 import type { AppRouteFactory, RouteGuardUser } from '@sva/routing';
 
 import { fetchWithRequestTimeout } from './lib/iam-api';
@@ -32,25 +33,13 @@ export const resolveBaseUrl = () => {
   return process.env.SVA_PUBLIC_BASE_URL ?? 'http://localhost:3000';
 };
 
-let sdkRuntimeProfilePromise: Promise<Pick<typeof import('@sva/sdk'), 'isMockAuthRuntimeProfile' | 'parseRuntimeProfile'>> | null = null;
-
-export const getSdkRuntimeProfileHelpers = async () => {
-  sdkRuntimeProfilePromise ??= import('@sva/sdk').then((mod) => ({
-    isMockAuthRuntimeProfile: mod.isMockAuthRuntimeProfile,
-    parseRuntimeProfile: mod.parseRuntimeProfile,
-  }));
-
-  return sdkRuntimeProfilePromise;
-};
-
 export const isMockAuthEnabled = async () => {
-  const sdk = await getSdkRuntimeProfileHelpers();
-  const runtimeProfile = sdk.parseRuntimeProfile(import.meta.env.VITE_SVA_RUNTIME_PROFILE);
+  const runtimeProfile = parseRuntimeProfile(import.meta.env.VITE_SVA_RUNTIME_PROFILE);
 
   return (
     import.meta.env.VITE_MOCK_AUTH === true ||
     import.meta.env.VITE_MOCK_AUTH === 'true' ||
-    (runtimeProfile !== null && sdk.isMockAuthRuntimeProfile(runtimeProfile))
+    (runtimeProfile !== null && isMockAuthRuntimeProfile(runtimeProfile))
   );
 };
 

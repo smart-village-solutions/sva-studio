@@ -1,4 +1,4 @@
-import { getRuntimeProfileFromEnv, isMockAuthRuntimeProfile } from '@sva/sdk';
+import { getRuntimeProfileFromEnv, isMockAuthRuntimeProfile } from '@sva/core';
 
 import type { SessionUser } from './types.js';
 

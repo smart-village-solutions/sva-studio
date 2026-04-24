@@ -8,7 +8,7 @@ import {
   isMockAuthRuntimeProfile,
   parseRuntimeProfile,
   validateRuntimeProfileEnv,
-} from '../src/runtime-profile';
+} from './runtime-profile.js';
 
 describe('runtime-profile', () => {
   it('parses supported profiles', () => {

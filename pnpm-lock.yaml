@@ -122,9 +122,6 @@ importers:
       '@sva/routing':
         specifier: workspace:*
         version: link:../../packages/routing
-      '@sva/sdk':
-        specifier: workspace:*
-        version: link:../../packages/sdk
       '@sva/server-runtime':
         specifier: workspace:*
         version: link:../../packages/server-runtime
@@ -249,9 +246,6 @@ importers:
       '@sva/instance-registry':
         specifier: workspace:*
         version: link:../instance-registry
-      '@sva/sdk':
-        specifier: workspace:*
-        version: link:../sdk
       '@sva/server-runtime':
         specifier: workspace:*
         version: link:../server-runtime

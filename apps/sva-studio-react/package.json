@@ -24,7 +24,6 @@
     "@sva/plugin-sdk": "workspace:*",
     "@sva/plugin-news": "workspace:*",
     "@sva/routing": "workspace:*",
-    "@sva/sdk": "workspace:*",
     "@sva/server-runtime": "workspace:*",
     "@sva/sva-mainserver": "workspace:*",
     "@tabler/icons-react": "^3.41.1",

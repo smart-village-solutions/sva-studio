@@ -1,5 +1,5 @@
 import type { IamRoleListItem, IamRoleSyncState } from '@sva/core';
-import { redactObject } from '@sva/sdk/server';
+import { redactObject } from '@sva/server-runtime';
 import {
   KeycloakAdminRequestError,
   KeycloakAdminUnavailableError,

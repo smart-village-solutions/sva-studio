@@ -29,7 +29,7 @@ const keycloakHandlers = {
   reconcileInstanceKeycloakInternal: vi.fn(),
 };
 
-vi.mock('@sva/sdk/server', () => ({
+vi.mock('@sva/server-runtime', () => ({
   createSdkLogger: () => loggerMock,
   toJsonErrorResponse: toJsonErrorResponseMock,
   withRequestContext: withRequestContextMock,

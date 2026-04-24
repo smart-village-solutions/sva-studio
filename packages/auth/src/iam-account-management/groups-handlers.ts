@@ -1,5 +1,5 @@
 import type { IamGroupDetail, IamGroupListItem, IamUserGroupAssignment } from '@sva/core';
-import { getWorkspaceContext } from '@sva/sdk/server';
+import { getWorkspaceContext } from '@sva/server-runtime';
 
 import type { AuthenticatedRequestContext } from '../middleware.server.js';
 import { jsonResponse, type QueryClient } from '../shared/db-helpers.js';

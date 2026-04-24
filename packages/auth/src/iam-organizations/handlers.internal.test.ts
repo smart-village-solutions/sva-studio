@@ -29,7 +29,7 @@ const state = vi.hoisted(() => ({
   updateSession: vi.fn(),
 }));
 
-vi.mock('@sva/sdk/server', () => ({
+vi.mock('@sva/server-runtime', () => ({
   createSdkLogger: () => ({ info: vi.fn() }),
   getWorkspaceContext: () => ({ requestId: 'req-org' }),
 }));

@@ -355,6 +355,36 @@ export default [
     },
   },
   {
+    files: ['packages/auth/**/*.{ts,tsx,js,jsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '@sva/data/server',
+              message: 'Auth verwendet Repository-Zugriffe über @sva/data-repositories/server.',
+            },
+            {
+              name: '@sva/sdk/server',
+              message: 'Auth verwendet Server-Helfer über @sva/server-runtime.',
+            },
+          ],
+          patterns: [
+            {
+              group: ['@sva/data/*'],
+              message: 'Auth verwendet Zielpackages statt @sva/data-Subpaths.',
+            },
+            {
+              group: ['@sva/sdk/server/*'],
+              message: 'Auth verwendet Zielpackages statt @sva/sdk/server-Subpaths.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: ['apps/sva-studio-react/**/*.{ts,tsx,js,jsx}'],
     rules: {
       'no-restricted-imports': [

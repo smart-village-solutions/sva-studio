@@ -7,7 +7,7 @@ import type {
   IamOrganizationListItem,
   IamOrganizationType,
 } from '@sva/core';
-import { createSdkLogger, getWorkspaceContext } from '@sva/sdk/server';
+import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 
 import type { AuthenticatedRequestContext } from '../middleware.server.js';
 import { getSession, updateSession } from '../redis-session.server.js';

@@ -1,4 +1,4 @@
-import { createSdkLogger } from '@sva/sdk/server';
+import { createSdkLogger } from '@sva/server-runtime';
 import { realpathSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';

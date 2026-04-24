@@ -20,7 +20,7 @@ const state = vi.hoisted(() => ({
   mapMutationError: vi.fn(() => new Response(JSON.stringify({ code: 'mapped' }), { status: 502 })),
 }));
 
-vi.mock('@sva/sdk/server', () => ({
+vi.mock('@sva/server-runtime', () => ({
   getWorkspaceContext: () => ({ requestId: state.requestId }),
 }));
 

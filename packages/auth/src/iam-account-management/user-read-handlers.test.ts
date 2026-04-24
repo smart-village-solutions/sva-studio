@@ -39,7 +39,7 @@ const state = vi.hoisted(() => ({
   ],
 }));
 
-vi.mock('@sva/sdk/server', () => ({
+vi.mock('@sva/server-runtime', () => ({
   createSdkLogger: () => ({
     info: vi.fn(),
     warn: vi.fn(),

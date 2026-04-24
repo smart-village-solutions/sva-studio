@@ -1,4 +1,4 @@
-import { createSdkLogger, getWorkspaceContext } from '@sva/sdk/server';
+import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 import { persistAuthAuditEventToDb } from './audit-db-sink.server.js';
 import type { AuthAuditEvent } from './audit-events.types.js';
 import { getRuntimeScopeRef, getWorkspaceIdForScope } from './scope.js';

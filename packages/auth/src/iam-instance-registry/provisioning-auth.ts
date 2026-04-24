@@ -1,4 +1,4 @@
-import { createSdkLogger } from '@sva/sdk/server';
+import { createSdkLogger } from '@sva/server-runtime';
 
 import type { KeycloakTenantPlan, KeycloakTenantPreflight, KeycloakTenantStatus } from './keycloak-types.js';
 import type { KeycloakProvisioningInput } from './provisioning-auth-types.js';

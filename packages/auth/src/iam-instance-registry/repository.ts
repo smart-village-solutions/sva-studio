@@ -1,6 +1,6 @@
 import { createPoolResolver } from '../shared/db-helpers.js';
 import { createInstanceRegistryRepository } from '@sva/data-repositories';
-import { invalidateInstanceRegistryHost } from '@sva/data/server';
+import { invalidateInstanceRegistryHost } from '@sva/data-repositories/server';
 
 import { createInstanceRegistryService } from './service.js';
 import { getIamDatabaseUrl } from '../runtime-secrets.server.js';

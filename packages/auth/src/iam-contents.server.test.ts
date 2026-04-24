@@ -32,7 +32,7 @@ vi.mock('./middleware.server', () => ({
   ),
 }));
 
-vi.mock('@sva/sdk/server', () => ({
+vi.mock('@sva/server-runtime', () => ({
   createSdkLogger: () => state.logger,
   getWorkspaceContext: () => state.workspaceContext,
   toJsonErrorResponse: (status: number, code: string, publicMessage?: string, options?: { requestId?: string }) =>

@@ -1,4 +1,4 @@
-import { withRequestContext } from '@sva/sdk/server';
+import { withRequestContext } from '@sva/server-runtime';
 
 import { liveInternal, readyInternal } from './iam-account-management/platform-handlers.js';
 

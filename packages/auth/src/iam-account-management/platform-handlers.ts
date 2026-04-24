@@ -1,7 +1,7 @@
-import { createSdkLogger, getInstanceConfig, getWorkspaceContext, isCanonicalAuthHost } from '@sva/sdk/server';
+import { createSdkLogger, getInstanceConfig, getWorkspaceContext, isCanonicalAuthHost } from '@sva/server-runtime';
 import type { RuntimeDependencyHealth, RuntimeHealthServices } from '@sva/core';
 import { classifyHost, isTrafficEnabledInstanceStatus } from '@sva/core';
-import { loadInstanceByHostname } from '@sva/data/server';
+import { loadInstanceByHostname } from '@sva/data-repositories/server';
 
 import { getPermissionCacheHealth } from '../iam-authorization/shared.js';
 import { bootstrapStudioAppDbUserIfNeeded } from '../postgres-app-user-bootstrap.server.js';

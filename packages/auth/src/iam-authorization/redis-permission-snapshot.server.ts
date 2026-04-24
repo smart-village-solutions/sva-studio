@@ -1,6 +1,6 @@
 import type { EffectivePermission } from '@sva/core';
 import { createHash, createHmac } from 'node:crypto';
-import { createSdkLogger } from '@sva/sdk/server';
+import { createSdkLogger } from '@sva/server-runtime';
 
 import { getRedisClient } from '../redis.server.js';
 

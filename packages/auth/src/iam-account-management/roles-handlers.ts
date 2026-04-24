@@ -1,4 +1,4 @@
-import { getWorkspaceContext } from '@sva/sdk/server';
+import { getWorkspaceContext } from '@sva/server-runtime';
 import type { IamPermission } from '@sva/core';
 
 import type { AuthenticatedRequestContext } from '../middleware.server.js';

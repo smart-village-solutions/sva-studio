@@ -1,11 +1,11 @@
-import { createSdkLogger } from '@sva/sdk/server';
+import { createSdkLogger } from '@sva/server-runtime';
 import { metrics } from '@opentelemetry/api';
 import type { IdentityProviderPort } from '../identity-provider-port.js';
 import {
   KeycloakAdminClient,
   getKeycloakAdminClientConfigFromEnv,
 } from '../keycloak-admin-client.js';
-import { loadInstanceById } from '@sva/data/server';
+import { loadInstanceById } from '@sva/data-repositories/server';
 import { getIamDatabaseUrl } from '../runtime-secrets.server.js';
 import { createPoolResolver, type QueryClient, withInstanceDb } from '../shared/db-helpers.js';
 import { resolveTenantAdminClientSecret } from '../config-tenant-secret.js';

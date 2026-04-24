@@ -1,5 +1,5 @@
 import type { LegalAcceptanceActionType, LegalConsentExportRecord } from '@sva/core';
-import { createSdkLogger } from '@sva/sdk/server';
+import { createSdkLogger } from '@sva/server-runtime';
 
 import { readPathSegment } from '../iam-account-management/api-helpers.js';
 import {

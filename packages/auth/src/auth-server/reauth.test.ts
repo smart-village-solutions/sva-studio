@@ -39,7 +39,7 @@ vi.mock('../shared/log-context.js', () => ({
   buildLogContext: vi.fn(() => ({ workspace_id: 'default' })),
 }));
 
-vi.mock('@sva/sdk/server', () => ({
+vi.mock('@sva/server-runtime', () => ({
   createSdkLogger: () => ({
     info: vi.fn(),
   }),

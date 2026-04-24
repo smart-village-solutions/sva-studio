@@ -1,7 +1,7 @@
 import type { AuthConfig, SessionAuthContext } from './types.js';
 import { classifyHost, isTrafficEnabledInstanceStatus, normalizeHost } from '@sva/core';
-import { loadInstanceById } from '@sva/data/server';
-import { getInstanceConfig, isCanonicalAuthHost } from '@sva/sdk/server';
+import { loadInstanceById } from '@sva/data-repositories/server';
+import { getInstanceConfig, isCanonicalAuthHost } from '@sva/server-runtime';
 import { getAuthClientSecret, getAuthStateSecret } from './runtime-secrets.server.js';
 import { buildRequestOriginFromHeaders, resolveEffectiveRequestHost } from './request-hosts.js';
 import { resolveTenantAuthClientSecret } from './config-tenant-secret.js';

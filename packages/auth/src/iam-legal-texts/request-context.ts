@@ -1,4 +1,4 @@
-import { getWorkspaceContext, toJsonErrorResponse, withRequestContext } from '@sva/sdk/server';
+import { getWorkspaceContext, toJsonErrorResponse, withRequestContext } from '@sva/server-runtime';
 
 import { createApiError } from '../iam-account-management/api-helpers.js';
 import { ADMIN_ROLES } from '../iam-account-management/constants.js';

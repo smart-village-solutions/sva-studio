@@ -1,8 +1,8 @@
 import type { AuthConfig } from './types.js';
 import type { ResolvedTenantClientSecret } from './config-tenant-secret.js';
-import { createSdkLogger, getInstanceConfig } from '@sva/sdk/server';
+import { createSdkLogger, getInstanceConfig } from '@sva/server-runtime';
 import { isTrafficEnabledInstanceStatus } from '@sva/core';
-import { loadInstanceByHostname } from '@sva/data/server';
+import { loadInstanceByHostname } from '@sva/data-repositories/server';
 import { TenantAuthResolutionError, type TenantAuthResolutionFailureReason } from './runtime-errors.js';
 
 const logger = createSdkLogger({ component: 'iam-auth-config', level: 'info' });

@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { ConnectionOptions as TlsConnectionOptions } from 'node:tls';
 import { metrics } from '@opentelemetry/api';
-import { createSdkLogger } from '@sva/sdk/server';
+import { createSdkLogger } from '@sva/server-runtime';
 import { getRedisPassword, getRedisUrl } from './runtime-secrets.server.js';
 
 const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });

@@ -34,7 +34,7 @@ vi.mock('./crypto.server.js', () => ({
   decryptToken: (value: string) => value,
 }));
 
-vi.mock('@sva/sdk/server', () => ({
+vi.mock('@sva/server-runtime', () => ({
   createSdkLogger: () => state.logger,
   getWorkspaceContext: () => ({
     workspaceId: 'hb-meinquartier',

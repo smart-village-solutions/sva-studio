@@ -1,5 +1,5 @@
 import { buildPrimaryHostname, canTransitionInstanceStatus, isTrafficEnabledInstanceStatus, normalizeHost } from '@sva/core';
-import { createSdkLogger } from '@sva/sdk/server';
+import { createSdkLogger } from '@sva/server-runtime';
 import { protectField } from '../iam-account-management/encryption.js';
 
 import type { InstanceRegistryRepository } from '@sva/data-repositories';

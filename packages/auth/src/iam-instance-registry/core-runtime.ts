@@ -1,5 +1,5 @@
 import { createApiError } from '../iam-account-management/api-helpers.js';
-import { getWorkspaceContext } from '@sva/sdk/server';
+import { getWorkspaceContext } from '@sva/server-runtime';
 import { isTrafficEnabledInstanceStatus, type InstanceStatus } from '@sva/core';
 
 import { resolveEffectiveRequestHost } from '../request-hosts.js';

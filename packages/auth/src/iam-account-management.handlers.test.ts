@@ -151,7 +151,7 @@ vi.mock('./middleware.server', () => ({
   }),
 }));
 
-vi.mock('@sva/sdk/server', () => ({
+vi.mock('@sva/server-runtime', () => ({
   createSdkLogger: () => state.logger,
   getInstanceConfig: () => state.instanceConfig,
   isCanonicalAuthHost: (host: string) => {
@@ -176,8 +176,8 @@ vi.mock('@sva/sdk/server', () => ({
   withRequestContext: async (_opts: unknown, handler: () => Promise<Response> | Response) => handler(),
 }));
 
-vi.mock('@sva/data/server', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@sva/data/server')>();
+vi.mock('@sva/data-repositories/server', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@sva/data-repositories/server')>();
   return {
     ...actual,
     loadInstanceByHostname: vi.fn(async () => state.instanceByHostname),

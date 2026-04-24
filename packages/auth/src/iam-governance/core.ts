@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import type { IamGovernanceCaseType } from '@sva/core';
-import { createSdkLogger, getWorkspaceContext, withRequestContext } from '@sva/sdk/server';
+import { createSdkLogger, getWorkspaceContext, withRequestContext } from '@sva/server-runtime';
 
 import { withAuthenticatedUser } from '../middleware.server.js';
 import { getIamDatabaseUrl } from '../runtime-secrets.server.js';

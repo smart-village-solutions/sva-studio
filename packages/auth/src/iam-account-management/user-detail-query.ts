@@ -1,7 +1,7 @@
 import type {
   IamUserDetail,
 } from '@sva/core';
-import { createSdkLogger } from '@sva/sdk/server';
+import { createSdkLogger } from '@sva/server-runtime';
 
 import type { QueryClient } from '../shared/db-helpers.js';
 

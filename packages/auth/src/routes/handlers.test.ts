@@ -55,7 +55,7 @@ const createSignedLoginStateCookie = (payload: Record<string, unknown>) => {
   return `sva_auth_state=${encodedPayload}.${signature}`;
 };
 
-vi.mock('@sva/sdk/server', () => ({
+vi.mock('@sva/server-runtime', () => ({
   createSdkLogger: () => loggerMock,
   getWorkspaceContext: () => workspaceContextState,
   getInstanceConfig: () => instanceConfigState,
@@ -68,7 +68,7 @@ vi.mock('@sva/sdk/server', () => ({
   withRequestContext: requestContextMock,
 }));
 
-vi.mock('@sva/data/server', () => ({
+vi.mock('@sva/data-repositories/server', () => ({
   loadInstanceByHostname: loadInstanceByHostnameMock,
 }));
 

@@ -50,7 +50,7 @@ vi.mock('../shared/log-context.js', () => ({
   buildLogContext: buildLogContextMock,
 }));
 
-vi.mock('@sva/sdk/server', () => ({
+vi.mock('@sva/server-runtime', () => ({
   createSdkLogger: () => loggerMock,
   getWorkspaceContext: () => workspaceContext,
 }));

@@ -1,4 +1,4 @@
-import { createSdkLogger } from '@sva/sdk/server';
+import { createSdkLogger } from '@sva/server-runtime';
 import { metrics } from '@opentelemetry/api';
 import { resolvePool } from './shared-runtime.js';
 

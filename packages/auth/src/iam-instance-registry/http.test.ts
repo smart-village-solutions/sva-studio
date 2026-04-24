@@ -20,7 +20,7 @@ vi.mock('../iam-account-management/shared-actor-resolution.js', () => ({
   requireRoles: requireRolesMock,
 }));
 
-vi.mock('@sva/sdk/server', () => ({
+vi.mock('@sva/server-runtime', () => ({
   getWorkspaceContext: () => ({ requestId: 'req-http' }),
   isCanonicalAuthHost: isCanonicalAuthHostMock,
 }));

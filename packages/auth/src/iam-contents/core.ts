@@ -1,4 +1,4 @@
-import { createSdkLogger } from '@sva/sdk/server';
+import { createSdkLogger } from '@sva/server-runtime';
 
 import { asApiItem, asApiList, createApiError, readPathSegment } from '../iam-account-management/api-helpers.js';
 import type { AuthenticatedRequestContext } from '../middleware.server.js';

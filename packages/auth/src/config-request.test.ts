@@ -13,7 +13,7 @@ const state = vi.hoisted(() => ({
   loadInstanceByHostname: vi.fn(),
 }));
 
-vi.mock('@sva/sdk/server', () => ({
+vi.mock('@sva/server-runtime', () => ({
   createSdkLogger: () => ({
     debug: vi.fn(),
     info: state.loggerInfo,
@@ -23,7 +23,7 @@ vi.mock('@sva/sdk/server', () => ({
   getInstanceConfig: () => state.instanceConfig,
 }));
 
-vi.mock('@sva/data/server', () => ({
+vi.mock('@sva/data-repositories/server', () => ({
   loadInstanceByHostname: (host: string) => state.loadInstanceByHostname(host),
 }));
 

@@ -1,4 +1,4 @@
-import { createSdkLogger } from '@sva/sdk/server';
+import { createSdkLogger } from '@sva/server-runtime';
 
 import { invalidateRedisPermissionSnapshots } from './redis-permission-snapshot.server.js';
 

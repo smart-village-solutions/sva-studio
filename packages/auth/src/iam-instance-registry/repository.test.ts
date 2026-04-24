@@ -14,7 +14,7 @@ vi.mock('@sva/data-repositories', () => ({
   createInstanceRegistryRepository: createInstanceRegistryRepositoryMock,
 }));
 
-vi.mock('@sva/data/server', () => ({
+vi.mock('@sva/data-repositories/server', () => ({
   invalidateInstanceRegistryHost: invalidateInstanceRegistryHostMock,
 }));
 

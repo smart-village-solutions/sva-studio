@@ -26,7 +26,7 @@ const state = vi.hoisted(() => ({
   },
 }));
 
-vi.mock('@sva/sdk/server', () => ({
+vi.mock('@sva/server-runtime', () => ({
   getWorkspaceContext: () => state.workspaceContext,
   toJsonErrorResponse: (...args: Parameters<typeof state.toJsonErrorResponse>) => state.toJsonErrorResponse(...args),
   withRequestContext: (...args: Parameters<typeof state.withRequestContext>) => state.withRequestContext(...args),

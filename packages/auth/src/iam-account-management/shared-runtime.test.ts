@@ -18,7 +18,7 @@ const state: {
   clients: [],
 };
 
-vi.mock('@sva/data/server', () => ({
+vi.mock('@sva/data-repositories/server', () => ({
   loadInstanceById: vi.fn(async () => {
     if (state.loadInstanceError) {
       throw state.loadInstanceError;

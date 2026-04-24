@@ -1,5 +1,5 @@
 import { classifyHost, normalizeHost } from '@sva/core';
-import { createSdkLogger } from '@sva/sdk/server';
+import { createSdkLogger } from '@sva/server-runtime';
 import type { InstanceRegistryRepository } from '@sva/data-repositories';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
 import type {

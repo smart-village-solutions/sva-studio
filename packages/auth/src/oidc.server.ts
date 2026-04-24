@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import * as client from 'openid-client';
-import { createSdkLogger, getWorkspaceContext } from '@sva/sdk/server';
+import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 
 import { getAuthConfig } from './config.js';
 import type { AuthConfig } from './types.js';

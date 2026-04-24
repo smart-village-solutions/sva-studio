@@ -16,7 +16,7 @@ vi.mock('node:fs', () => ({
   readFileSync: state.readFileSync,
 }));
 
-vi.mock('@sva/sdk/server', () => ({
+vi.mock('@sva/server-runtime', () => ({
   createSdkLogger: () => state.logger,
 }));
 

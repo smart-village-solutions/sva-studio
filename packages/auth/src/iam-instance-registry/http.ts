@@ -1,6 +1,6 @@
 import { createApiError } from '../iam-account-management/api-helpers.js';
 import { requireRoles } from '../iam-account-management/shared-actor-resolution.js';
-import { getWorkspaceContext, isCanonicalAuthHost } from '@sva/sdk/server';
+import { getWorkspaceContext, isCanonicalAuthHost } from '@sva/server-runtime';
 import { instanceStatuses } from '@sva/core';
 import { z } from 'zod';
 

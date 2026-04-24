@@ -8,7 +8,7 @@ const state = vi.hoisted(() => ({
   globalSecret: 'global-auth-secret',
 }));
 
-vi.mock('@sva/data/server', () => ({
+vi.mock('@sva/data-repositories/server', () => ({
   loadInstanceAuthClientSecretCiphertext: (instanceId: string) => state.loadAuthCiphertext(instanceId),
   loadTenantAdminClientSecretCiphertext: (instanceId: string) => state.loadAdminCiphertext(instanceId),
 }));
@@ -21,7 +21,7 @@ vi.mock('./runtime-secrets.server.js', () => ({
   getAuthClientSecret: () => state.globalSecret,
 }));
 
-vi.mock('@sva/sdk/server', () => ({
+vi.mock('@sva/server-runtime', () => ({
   createSdkLogger: () => ({
     debug: vi.fn(),
     info: vi.fn(),

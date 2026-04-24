@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { createSdkLogger, getWorkspaceContext, withRequestContext } from '@sva/sdk/server';
+import { createSdkLogger, getWorkspaceContext, withRequestContext } from '@sva/server-runtime';
 import type { IamDsrCanonicalStatus, IamDsrCaseListItem } from '@sva/core';
 import { decryptFieldValue, encryptFieldValue, parseFieldEncryptionConfigFromEnv } from '@sva/core/security';
 

@@ -27,7 +27,7 @@ vi.mock('./config', () => ({
   }),
 }));
 
-vi.mock('@sva/sdk/server', () => ({
+vi.mock('@sva/server-runtime', () => ({
   createSdkLogger: () => middlewareLogger,
   getInstanceConfig: () => instanceConfigState,
   getWorkspaceContext: () => workspaceContext,
@@ -48,7 +48,7 @@ vi.mock('@sva/sdk/server', () => ({
     ),
 }));
 
-vi.mock('@sva/data/server', () => ({
+vi.mock('@sva/data-repositories/server', () => ({
   loadInstanceByHostname: loadInstanceByHostnameMock,
 }));
 

@@ -18,19 +18,18 @@ export default defineConfig({
     env: testEnv,
   },
   resolve: {
-    alias: {
-      '@sva/core/security': resolve(__dirname, '../core/src/security/index.ts'),
-      '@sva/core': resolve(__dirname, '../core/src/index.ts'),
-      '@sva/data-repositories': resolve(__dirname, '../data-repositories/src/index.ts'),
-      '@sva/data/server': resolve(__dirname, '../data/src/server.ts'),
-      '@sva/data': resolve(__dirname, '../data/src/index.ts'),
-      '@sva/sdk/server': resolve(__dirname, '../sdk/src/server.ts'),
-      '@sva/sdk': resolve(__dirname, '../sdk/src/index.ts'),
-      '@sva/monitoring-client/server': resolve(__dirname, '../monitoring-client/src/server.ts'),
-      '@sva/monitoring-client/logger-provider.server': resolve(
-        __dirname,
-        '../monitoring-client/src/logger-provider.server.ts'
-      ),
-    },
+    alias: [
+      { find: '@sva/core/security', replacement: resolve(__dirname, '../core/src/security/index.ts') },
+      { find: '@sva/data-repositories/server', replacement: resolve(__dirname, '../data-repositories/src/server.ts') },
+      {
+        find: '@sva/monitoring-client/logger-provider.server',
+        replacement: resolve(__dirname, '../monitoring-client/src/logger-provider.server.ts'),
+      },
+      { find: '@sva/monitoring-client/server', replacement: resolve(__dirname, '../monitoring-client/src/server.ts') },
+      { find: /^@sva\/core$/, replacement: resolve(__dirname, '../core/src/index.ts') },
+      { find: /^@sva\/data-repositories$/, replacement: resolve(__dirname, '../data-repositories/src/index.ts') },
+      { find: /^@sva\/server-runtime$/, replacement: resolve(__dirname, '../server-runtime/src/index.ts') },
+      { find: /^@sva\/sdk$/, replacement: resolve(__dirname, '../sdk/src/index.ts') },
+    ],
   },
 });

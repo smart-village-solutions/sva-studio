@@ -1,7 +1,7 @@
 import { asApiItem, createApiError, parseRequestBody, requireIdempotencyKey } from '../iam-account-management/api-helpers.js';
 import { validateCsrf } from '../iam-account-management/csrf.js';
 import { jsonResponse } from '../shared/db-helpers.js';
-import { getWorkspaceContext } from '@sva/sdk/server';
+import { getWorkspaceContext } from '@sva/server-runtime';
 import type { ApiErrorCode, InstanceStatus } from '@sva/core';
 import type { AuthenticatedRequestContext } from '../middleware.server.js';
 import {

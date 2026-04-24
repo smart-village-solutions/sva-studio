@@ -2,7 +2,7 @@ import { asApiItem, asApiList, createApiError, parseRequestBody, requireIdempote
 import { validateCsrf } from '../iam-account-management/csrf.js';
 import { jsonResponse } from '../shared/db-helpers.js';
 import { buildLogContext } from '../shared/log-context.js';
-import { createSdkLogger, getWorkspaceContext } from '@sva/sdk/server';
+import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 import { buildPrimaryHostname, normalizeHost } from '@sva/core';
 
 import type { AuthenticatedRequestContext } from '../middleware.server.js';

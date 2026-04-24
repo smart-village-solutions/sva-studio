@@ -18,11 +18,11 @@ const loggerMock = vi.hoisted(() => ({
   error: vi.fn(),
 }));
 
-vi.mock('@sva/data/server', () => ({
+vi.mock('@sva/data-repositories/server', () => ({
   loadInstanceByHostname: loadInstanceByHostnameMock,
 }));
 
-vi.mock('@sva/sdk/server', () => ({
+vi.mock('@sva/server-runtime', () => ({
   createSdkLogger: () => loggerMock,
   getInstanceConfig: () => instanceConfigState.value,
   getWorkspaceContext: () => workspaceContext,

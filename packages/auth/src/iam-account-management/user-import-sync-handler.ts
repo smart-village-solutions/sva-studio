@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { IamUserImportSyncReport } from '@sva/core';
-import { getWorkspaceContext } from '@sva/sdk/server';
+import { getWorkspaceContext } from '@sva/server-runtime';
 
 import type { IdentityListedUser } from '../identity-provider-port.js';
 import {

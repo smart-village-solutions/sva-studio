@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import type { IamAdminGroupDetail } from '@sva/core';
-import { createSdkLogger, getWorkspaceContext } from '@sva/sdk/server';
+import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 
 import type { AuthenticatedRequestContext } from '../middleware.server.js';
 import type { QueryClient } from '../shared/db-helpers.js';

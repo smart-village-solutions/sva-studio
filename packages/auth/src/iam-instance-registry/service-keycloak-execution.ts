@@ -1,4 +1,4 @@
-import { createSdkLogger } from '@sva/sdk/server';
+import { createSdkLogger } from '@sva/server-runtime';
 import type { InstanceKeycloakProvisioningRun } from '@sva/core';
 import type { ExecuteInstanceKeycloakProvisioningInput } from './mutation-types.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';

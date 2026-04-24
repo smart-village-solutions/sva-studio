@@ -41,6 +41,7 @@
     "@opentelemetry/sdk-node": "^0.215.0",
     "@sva/core": "workspace:*",
     "@sva/monitoring-client": "workspace:*",
+    "@sva/plugin-sdk": "workspace:*",
     "@sva/server-runtime": "workspace:*",
     "winston": "^3.19.0",
     "winston-transport": "^4.9.0"

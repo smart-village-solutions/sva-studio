@@ -45,11 +45,12 @@ export default [
                 'scope:sdk',
                 'scope:monitoring',
                 'scope:server-runtime',
+                'scope:plugin-sdk',
               ],
             },
             {
               sourceTag: 'scope:plugin-sdk',
-              onlyDependOnLibsWithTags: ['scope:core', 'scope:sdk', 'scope:plugin-sdk'],
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:plugin-sdk'],
             },
             {
               sourceTag: 'scope:server-runtime',

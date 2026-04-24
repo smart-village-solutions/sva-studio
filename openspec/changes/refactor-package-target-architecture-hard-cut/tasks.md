@@ -27,7 +27,7 @@
 - [x] 4.2 Server-Runtime-Fassade über `@sva/server-runtime` bereitstellen und erste Auth-Consumer umstellen
 - [x] 4.2a Server-Runtime-Implementierung physisch aus `@sva/sdk/server` nach `@sva/server-runtime` verschieben
 - [x] 4.3 Plugin-SDK-Fassade über `@sva/plugin-sdk` bereitstellen und `@sva/plugin-news` umstellen
-- [ ] 4.3a Plugin-SDK-Implementierung physisch aus `@sva/sdk` nach `@sva/plugin-sdk` verschieben
+- [x] 4.3a Plugin-SDK-Implementierung physisch aus `@sva/sdk` nach `@sva/plugin-sdk` verschieben
 - [x] 4.4 Client-sicheren HTTP-Data-Client nach `@sva/data-client` verschieben und `@sva/data` als Kompatibilitäts-Barrel belassen
 - [x] 4.5 Repository-Fassade über `@sva/data-repositories` bereitstellen und Auth-Instance-Registry-Consumer umstellen
 - [ ] 4.5a DB-Repository-Implementierung physisch aus `@sva/data` nach `@sva/data-repositories` verschieben

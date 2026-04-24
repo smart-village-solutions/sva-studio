@@ -1,17 +1,17 @@
 import { coreVersion } from '@sva/core';
 
 export const sdkVersion = coreVersion;
-export type { RouteFactory } from '@sva/core';
 export type {
   BuildTimeRegistry,
   BuildTimeRegistryInput,
-} from './build-time-registry.js';
+  RouteFactory,
+} from '@sva/plugin-sdk';
 export type {
   AdminResourceDefinition,
   AdminResourceGuard,
   AdminResourceViewDefinition,
   AdminResourceViews,
-} from './admin-resources.js';
+} from '@sva/plugin-sdk';
 export type {
   PluginActionDefinition,
   PluginActionRegistryEntry,
@@ -24,28 +24,28 @@ export type {
   PluginRouteDefinition,
   PluginRouteGuard,
   PluginTranslations,
-} from './plugins.js';
+} from '@sva/plugin-sdk';
 export type {
   ContentTypeActionDefinition,
   ContentTypeDefinition,
   ContentTypeEditorFieldDefinition,
   ContentTypeEditorFieldKind,
   ContentTypeListColumnDefinition,
-} from './content-types.js';
+} from '@sva/plugin-sdk';
 export {
   createContentTypeRegistry,
   definePluginContentTypes,
   genericContentTypeDefinition,
   getContentTypeDefinition,
-} from './content-types.js';
+} from '@sva/plugin-sdk';
 export {
   createBuildTimeRegistry,
-} from './build-time-registry.js';
+} from '@sva/plugin-sdk';
 export {
   createAdminResourceRegistry,
   definePluginAdminResources,
   mergeAdminResourceDefinitions,
-} from './admin-resources.js';
+} from '@sva/plugin-sdk';
 export {
   createPluginActionRegistry,
   createPluginAuditEventRegistry,
@@ -59,16 +59,16 @@ export {
   mergePluginNavigationItems,
   mergePluginRouteDefinitions,
   mergePluginTranslations,
-} from './plugins.js';
+} from '@sva/plugin-sdk';
 export type {
   PluginTranslationResolver,
   PluginTranslationVariables,
-} from './plugin-translations.js';
+} from '@sva/plugin-sdk';
 export {
   registerPluginTranslationResolver,
   translatePluginKey,
   usePluginTranslation,
-} from './plugin-translations.js';
+} from '@sva/plugin-sdk';
 export type {
   RuntimeProfile,
   RuntimeProfileAuthMode,

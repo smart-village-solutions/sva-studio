@@ -530,9 +530,6 @@ importers:
       '@sva/core':
         specifier: workspace:*
         version: link:../core
-      '@sva/sdk':
-        specifier: workspace:*
-        version: link:../sdk
     devDependencies:
       '@vitest/coverage-v8':
         specifier: ^4.1.2
@@ -580,6 +577,9 @@ importers:
       '@sva/monitoring-client':
         specifier: workspace:*
         version: link:../monitoring-client
+      '@sva/plugin-sdk':
+        specifier: workspace:*
+        version: link:../plugin-sdk
       '@sva/server-runtime':
         specifier: workspace:*
         version: link:../server-runtime

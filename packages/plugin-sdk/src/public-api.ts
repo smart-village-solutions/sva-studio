@@ -1,26 +1,36 @@
-export const pluginSdkVersion = '0.0.1';
-
-export type PluginSdkPackageRole = 'plugin-contracts' | 'admin-resources' | 'content-types' | 'plugin-i18n';
-
-export const pluginSdkPackageRoles = [
-  'plugin-contracts',
-  'admin-resources',
-  'content-types',
-  'plugin-i18n',
-] as const satisfies readonly PluginSdkPackageRole[];
-
+export type { RouteFactory } from '@sva/core';
+export type {
+  BuildTimeRegistry,
+  BuildTimeRegistryInput,
+} from './build-time-registry.js';
+export {
+  createBuildTimeRegistry,
+} from './build-time-registry.js';
 export type {
   AdminResourceDefinition,
   AdminResourceGuard,
   AdminResourceViewDefinition,
   AdminResourceViews,
-  BuildTimeRegistry,
-  BuildTimeRegistryInput,
+} from './admin-resources.js';
+export {
+  createAdminResourceRegistry,
+  definePluginAdminResources,
+  mergeAdminResourceDefinitions,
+} from './admin-resources.js';
+export type {
   ContentTypeActionDefinition,
   ContentTypeDefinition,
   ContentTypeEditorFieldDefinition,
   ContentTypeEditorFieldKind,
   ContentTypeListColumnDefinition,
+} from './content-types.js';
+export {
+  createContentTypeRegistry,
+  definePluginContentTypes,
+  genericContentTypeDefinition,
+  getContentTypeDefinition,
+} from './content-types.js';
+export type {
   PluginActionDefinition,
   PluginActionRegistryEntry,
   PluginAdminResourceDefinition,
@@ -32,25 +42,13 @@ export type {
   PluginRouteDefinition,
   PluginRouteGuard,
   PluginTranslations,
-  PluginTranslationResolver,
-  PluginTranslationVariables,
-  RouteFactory,
-} from './public-api.js';
-
+} from './plugins.js';
 export {
-  createAdminResourceRegistry,
-  createBuildTimeRegistry,
-  createContentTypeRegistry,
   createPluginActionRegistry,
   createPluginAuditEventRegistry,
   createPluginRegistry,
   definePluginActions,
-  definePluginAdminResources,
   definePluginAuditEvents,
-  definePluginContentTypes,
-  genericContentTypeDefinition,
-  getContentTypeDefinition,
-  mergeAdminResourceDefinitions,
   mergePluginActions,
   mergePluginAdminResourceDefinitions,
   mergePluginAuditEventDefinitions,
@@ -58,7 +56,13 @@ export {
   mergePluginNavigationItems,
   mergePluginRouteDefinitions,
   mergePluginTranslations,
+} from './plugins.js';
+export type {
+  PluginTranslationResolver,
+  PluginTranslationVariables,
+} from './plugin-translations.js';
+export {
   registerPluginTranslationResolver,
   translatePluginKey,
   usePluginTranslation,
-} from './public-api.js';
+} from './plugin-translations.js';

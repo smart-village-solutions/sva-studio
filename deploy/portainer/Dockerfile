@@ -18,6 +18,11 @@ COPY . .
 RUN find apps packages -name "*.tsbuildinfo" -type f -delete
 
 RUN pnpm install --frozen-lockfile
+
+# Keep devDependencies available for the build toolchain, but build the
+# deployable artifact under production runtime semantics.
+ENV NODE_ENV=production
+
 # Build workspace libraries in dependency order (Nx graph: core -> monitoring-client,sdk -> auth,routing -> app)
 # --skip-nx-cache ensures builds are never skipped due to a stale cache
 RUN pnpm nx run core:build --skip-nx-cache
@@ -74,6 +79,10 @@ for (const distRoot of distRoots) walk(distRoot);"
 # emits the client bundle for this TanStack Start app, while `vite build`
 # produces client, SSR service bundle and Nitro server output in one pass.
 RUN pnpm nx run sva-studio-react:build --skip-nx-cache
+RUN if grep -R -E 'jsxDEV|jsx-dev-runtime' /workspace/apps/sva-studio-react/.output/server; then \
+      echo "Docker production artifact must not contain React development JSX runtime." >&2; \
+      exit 1; \
+    fi
 RUN pnpm --filter sva-studio-react deploy --prod /workspace/.deploy/sva-studio-react
 
 # Copy built dist/ artifacts of workspace packages into deployed pnpm package locations.

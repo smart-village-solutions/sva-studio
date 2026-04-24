@@ -205,6 +205,23 @@ assert_artifact_contract() {
     return 1
   fi
 
+  if grep -R -E 'jsxDEV|jsx-dev-runtime' "${APP_DIR}/.output/server"; then
+    echo "Finaler Server-Output enthaelt React Development-JSX und ist nicht production-tauglich." >&2
+    return 1
+  fi
+
+  if grep -R -Fq 'from "tslib"' "${APP_DIR}/.output/server"; then
+    if [ ! -f "${APP_DIR}/.output/server/node_modules/tslib/modules/index.js" ]; then
+      echo "Finaler Server-Output importiert tslib, aber tslib/modules/index.js fehlt." >&2
+      return 1
+    fi
+
+    if [ ! -f "${APP_DIR}/.output/server/node_modules/tslib/tslib.js" ]; then
+      echo "Finaler Server-Output importiert tslib, aber tslib/tslib.js fehlt." >&2
+      return 1
+    fi
+  fi
+
   return 0
 }
 

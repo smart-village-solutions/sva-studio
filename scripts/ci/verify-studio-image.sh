@@ -255,7 +255,10 @@ if [ "${VERIFY_STATUS}" = "ok" ]; then
 fi
 
 if [ "${VERIFY_STATUS}" = "ok" ]; then
-  if docker pull "${IMAGE_REF}" >/dev/null; then
+  if docker image inspect "${IMAGE_REF}" >/dev/null 2>&1 && [[ "${IMAGE_REF}" != */* ]]; then
+    set_phase_var IMAGE_PULL_STATUS skipped-local
+    mark_phase image-pull skipped-local
+  elif docker pull "${IMAGE_REF}" >/dev/null; then
     set_phase_var IMAGE_PULL_STATUS ok
     mark_phase image-pull ok
   else

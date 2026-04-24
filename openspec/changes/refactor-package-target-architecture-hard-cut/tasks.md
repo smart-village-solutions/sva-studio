@@ -1,0 +1,76 @@
+## 1. Specification
+
+- [x] 1.1 OpenSpec-Change mit Proposal, Design, Tasks und Spec-Deltas erstellen
+- [x] 1.2 Betroffene arc42-Abschnitte und Zielarchitektur-Dokument verlinken
+- [x] 1.3 `openspec validate refactor-package-target-architecture-hard-cut --strict` ausführen
+
+## 2. Inventory und Freeze
+
+- [ ] 2.1 Aktuelle Importkanten zwischen `auth`, `core`, `data`, `sdk`, `routing`, App und Plugins inventarisieren
+- [ ] 2.2 Boundary-Disables und erlaubte Ausnahmen mit Ticketbezug erfassen
+- [ ] 2.3 PII-Datenflüsse und Credential-Flüsse pro betroffenem Package klassifizieren
+- [ ] 2.4 Freeze-Regel dokumentieren: keine neue Fachlogik in Sammelpackages ohne Zielpackage-Zuordnung
+
+## 3. Package Scaffold
+
+- [ ] 3.1 `@sva/iam-core` anlegen und Autorisierungs-/PII-Basisverträge vorbereiten
+- [ ] 3.2 `@sva/auth-runtime` anlegen und Login-/Session-/OIDC-Verträge vorbereiten
+- [ ] 3.3 `@sva/iam-admin` anlegen und Benutzer-/Rollen-/Organisation-Verträge vorbereiten
+- [ ] 3.4 `@sva/iam-governance` anlegen und DSR-/Legal-/Audit-Verträge vorbereiten
+- [ ] 3.5 `@sva/instance-registry` anlegen und Instanz-/Registry-/Provisioning-Verträge vorbereiten
+- [ ] 3.6 `@sva/plugin-sdk` und `@sva/server-runtime` als getrennte öffentliche Rollen herstellen
+- [ ] 3.7 `@sva/data-client` und `@sva/data-repositories` als getrennte Datenrollen herstellen
+
+## 4. Contract Migration
+
+- [ ] 4.1 Zentrale Autorisierungsentscheidung nach `@sva/iam-core` verschieben
+- [ ] 4.2 Server-Runtime-Hilfen nach `@sva/server-runtime` verschieben
+- [ ] 4.3 Plugin-Verträge nach `@sva/plugin-sdk` verschieben
+- [ ] 4.4 Client-sichere Datenverträge nach `@sva/data-client` verschieben
+- [ ] 4.5 DB-Repositories und serverseitige Datenzugriffe nach `@sva/data-repositories` verschieben
+- [ ] 4.6 Auth-Routenverträge so neutralisieren, dass `@sva/routing` keine Auth-Runtime-Implementierung importiert
+
+## 5. Fachpackage Migration
+
+- [ ] 5.1 Login, Logout, OIDC, Cookies, Session und Middleware in `@sva/auth-runtime` bündeln
+- [ ] 5.2 Benutzer, Rollen, Gruppen, Organisationen und Reconcile in `@sva/iam-admin` verschieben
+- [ ] 5.3 DSR, Legal Texts und Audit-nahe Governance-Flows in `@sva/iam-governance` verschieben
+- [ ] 5.4 Instanzmodell, Host-Klassifikation, Registry und Provisioning in `@sva/instance-registry` verschieben
+- [ ] 5.5 Integrationspackages auf Zielverträge umstellen und direkte Auth-/Data-Interna entfernen
+
+## 6. Enforcement
+
+- [ ] 6.1 Nx-Tags für alle Zielpackages und PII-relevanten Packages setzen
+- [ ] 6.2 `depConstraints` für Zielgrenzen, PII-Grenzen, Plugin-Grenzen und Browser-/Server-Grenzen aktivieren
+- [ ] 6.3 Alte Sammelimporte in ESLint verbieten
+- [ ] 6.4 Runtime-Import-Regeln und `check:server-runtime` für neue serverseitige Packages sicherstellen
+- [ ] 6.5 Boundary-Disables entfernen oder mit blockierendem Folgeticket dokumentieren
+
+## 7. Consumer Migration
+
+- [ ] 7.1 App-Imports auf Server-Funktionen, client-sichere Contracts oder Zielpackages umstellen
+- [ ] 7.2 Plugin-Imports ausschließlich auf Plugin-SDK-Verträge umstellen
+- [ ] 7.3 Routing-Imports auf neutrale Contracts umstellen
+- [ ] 7.4 Tests, Mocks und Fixtures auf neue Package-Grenzen umstellen
+- [ ] 7.5 Alte Re-Exports und Sammel-Barrels löschen
+
+## 8. Documentation
+
+- [ ] 8.1 `docs/architecture/package-zielarchitektur.md` finalisieren
+- [ ] 8.2 `docs/architecture/04-solution-strategy.md` aktualisieren
+- [ ] 8.3 `docs/architecture/05-building-block-view.md` aktualisieren
+- [ ] 8.4 `docs/architecture/06-runtime-view.md` aktualisieren
+- [ ] 8.5 `docs/architecture/08-cross-cutting-concepts.md` aktualisieren
+- [ ] 8.6 `docs/architecture/09-architecture-decisions.md` und relevante ADRs aktualisieren
+- [ ] 8.7 `docs/architecture/10-quality-requirements.md` und `11-risks-and-technical-debt.md` aktualisieren
+
+## 9. Verification
+
+- [ ] 9.1 `pnpm nx graph` oder gleichwertige Importanalyse gegen Zielgrenzen prüfen
+- [ ] 9.2 `pnpm lint`
+- [ ] 9.3 `pnpm test:unit`
+- [ ] 9.4 `pnpm test:types`
+- [ ] 9.5 `pnpm test:eslint`
+- [ ] 9.6 `pnpm check:server-runtime`
+- [ ] 9.7 `pnpm test:e2e`
+- [ ] 9.8 `pnpm test:pr`

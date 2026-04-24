@@ -59,6 +59,10 @@ const state = vi.hoisted(() => ({
     instanceId: 'de-musterhausen',
   },
   queryHandler: null as null | ((text: string, values?: readonly unknown[]) => { rowCount: number; rows: unknown[] }),
+  poolConnectAttempts: 0,
+  poolConnectFailuresRemaining: 0,
+  bootstrapStudioResult: false,
+  bootstrapStudioCalls: [] as Error[],
   redisAvailable: true,
   permissionCacheHealth: {
     status: 'ready',
@@ -211,6 +215,13 @@ vi.mock('./redis.server', () => ({
   isRedisAvailable: vi.fn(async () => state.redisAvailable),
 }));
 
+vi.mock('./postgres-app-user-bootstrap.server', () => ({
+  bootstrapStudioAppDbUserIfNeeded: vi.fn(async (error: Error) => {
+    state.bootstrapStudioCalls.push(error);
+    return state.bootstrapStudioResult;
+  }),
+}));
+
 vi.mock('./config.js', () => ({
   resolveAuthConfigForRequest: vi.fn(async () => ({
     authRealm: state.runtimeAuthRealm,
@@ -234,6 +245,12 @@ vi.mock('./iam-account-management/user-timeline-query', () => ({
 vi.mock('pg', () => ({
   Pool: class MockPool {
     async connect() {
+      state.poolConnectAttempts += 1;
+      if (state.poolConnectFailuresRemaining > 0) {
+        state.poolConnectFailuresRemaining -= 1;
+        throw new Error('password authentication failed for user "sva_app"');
+      }
+
       return {
         async query(text: string, values?: readonly unknown[]) {
           const isUserDetailSchemaSupportQuery =
@@ -552,6 +569,10 @@ describe('iam-account-management handlers (guards)', () => {
       }
       return { rowCount: 0, rows: [] };
     };
+    state.poolConnectAttempts = 0;
+    state.poolConnectFailuresRemaining = 0;
+    state.bootstrapStudioResult = false;
+    state.bootstrapStudioCalls = [];
     state.createRoleImpl = null;
     state.updateRoleImpl = null;
     state.deleteRoleImpl = null;
@@ -6054,6 +6075,73 @@ describe('iam-account-management additional handlers', () => {
         }),
       })
     );
+  });
+
+  it('bootstraps the studio app database user and retries readiness connection', async () => {
+    vi.resetModules();
+    state.redisAvailable = true;
+    state.listRolesImpl = async () => [];
+    state.poolConnectAttempts = 0;
+    state.poolConnectFailuresRemaining = 1;
+    state.bootstrapStudioResult = true;
+    state.bootstrapStudioCalls = [];
+    state.queryHandler = (text) => {
+      if (text.includes('SELECT 1;')) {
+        return { rowCount: 1, rows: [{ '?column?': 1 }] };
+      }
+      if (text.includes("to_regclass('iam.groups')")) {
+        return {
+          rowCount: 1,
+          rows: [
+            {
+              groups_exists: true,
+              group_roles_exists: true,
+              account_groups_exists: true,
+              account_groups_origin_column_exists: true,
+              activity_logs_exists: true,
+              platform_activity_logs_exists: true,
+              accounts_avatar_url_column_exists: true,
+              accounts_instance_id_column_exists: true,
+              accounts_username_ciphertext_column_exists: true,
+              accounts_notes_column_exists: true,
+              accounts_preferred_language_column_exists: true,
+              accounts_timezone_column_exists: true,
+              instance_hostnames_exists: true,
+              instance_hostnames_rls_disabled: true,
+              instances_primary_hostname_column_exists: true,
+              instances_auth_realm_column_exists: true,
+              instances_auth_client_id_column_exists: true,
+              instances_auth_issuer_url_column_exists: true,
+              instances_auth_client_secret_ciphertext_column_exists: true,
+              instances_rls_disabled: true,
+              instances_tenant_admin_username_column_exists: true,
+              instances_tenant_admin_email_column_exists: true,
+              instances_tenant_admin_first_name_column_exists: true,
+              instances_tenant_admin_last_name_column_exists: true,
+              instances_tenant_admin_client_id_column_exists: true,
+              instances_tenant_admin_client_secret_ciphertext_column_exists: true,
+              idx_accounts_kc_subject_instance_exists: true,
+              accounts_isolation_policy_matches: true,
+              instance_memberships_isolation_policy_matches: true,
+            },
+          ],
+        };
+      }
+      return { rowCount: 0, rows: [] };
+    };
+
+    const { healthReadyHandler: freshHealthReadyHandler } = await import('./iam-account-management.server');
+    const response = await freshHealthReadyHandler(
+      new Request('http://localhost/api/v1/iam/health/ready', { method: 'GET' })
+    );
+    const payload = (await response.json()) as { status: string; checks: { db: boolean } };
+
+    expect(response.status).toBe(200);
+    expect(payload.status).toBe('ready');
+    expect(payload.checks.db).toBe(true);
+    expect(state.poolConnectAttempts).toBe(2);
+    expect(state.bootstrapStudioCalls).toHaveLength(1);
+    expect(state.bootstrapStudioCalls[0]?.message).toContain('password authentication failed');
   });
 
   it('returns degraded when authorization cache exceeds latency threshold', async () => {

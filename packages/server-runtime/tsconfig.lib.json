@@ -11,7 +11,7 @@
       "@sva/core": ["packages/core/dist/index.d.ts"],
       "@sva/monitoring-client": ["packages/monitoring-client/dist/index.d.ts"],
       "@sva/monitoring-client/server": ["packages/monitoring-client/dist/server.d.ts"],
-      "@sva/sdk/server": ["packages/sdk/dist/server.d.ts"]
+      "@sva/monitoring-client/logger-provider.server": ["packages/monitoring-client/dist/logger-provider.server.d.ts"]
     }
   },
   "include": ["src/**/*.ts"],

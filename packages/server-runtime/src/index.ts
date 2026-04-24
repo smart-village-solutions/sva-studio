@@ -1,28 +1,3 @@
-import {
-  createSdkLogger as sdkCreateSdkLogger,
-  createWorkspaceContextMiddleware as sdkCreateWorkspaceContextMiddleware,
-  extractRequestIdFromHeaders as sdkExtractRequestIdFromHeaders,
-  extractTraceIdFromHeaders as sdkExtractTraceIdFromHeaders,
-  extractWorkspaceId as sdkExtractWorkspaceId,
-  extractWorkspaceIdFromHeaders as sdkExtractWorkspaceIdFromHeaders,
-  getHeadersFromRequest as sdkGetHeadersFromRequest,
-  getInstanceConfig as sdkGetInstanceConfig,
-  getLoggingRuntimeConfig as sdkGetLoggingRuntimeConfig,
-  getOtelInitializationResult as sdkGetOtelInitializationResult,
-  getWorkspaceContext as sdkGetWorkspaceContext,
-  initializeOtelSdk as sdkInitializeOtelSdk,
-  isCanonicalAuthHost as sdkIsCanonicalAuthHost,
-  MissingWorkspaceIdError as SdkMissingWorkspaceIdError,
-  parseInstanceIdFromHost as sdkParseInstanceIdFromHost,
-  readDevelopmentLogEntries as sdkReadDevelopmentLogEntries,
-  redactObject as sdkRedactObject,
-  resetInstanceConfigCache as sdkResetInstanceConfigCache,
-  runWithWorkspaceContext as sdkRunWithWorkspaceContext,
-  setWorkspaceContext as sdkSetWorkspaceContext,
-  toJsonErrorResponse as sdkToJsonErrorResponse,
-  withRequestContext as sdkWithRequestContext,
-} from '@sva/sdk/server';
-
 export const serverRuntimeVersion = '0.0.1';
 
 export type ServerRuntimePackageRole = 'request-context' | 'json-errors' | 'logging' | 'observability';
@@ -37,43 +12,74 @@ export const serverRuntimePackageRoles = [
 export type ServerRuntimeLogger = {
   debug: (message: string, meta?: unknown) => void;
   info: (message: string, meta?: unknown) => void;
+  isLevelEnabled: (level: string) => boolean;
   warn: (message: string, meta?: unknown) => void;
   error: (message: string, meta?: unknown) => void;
 };
 
 export type {
   DevelopmentLogEntry,
-  InstanceConfig,
-  JsonErrorResponseOptions,
+} from './logger/dev-log-buffer.server.js';
+export type {
   LoggerOptions,
+} from './logger/index.server.js';
+export {
+  redactObject,
+} from './logger/index.server.js';
+import { createSdkLogger as createSdkLoggerInternal } from './logger/index.server.js';
+export type {
   LoggingRuntimeConfig,
   OtelInitializationResult,
+} from './logger/logging-runtime.server.js';
+export {
+  getLoggingRuntimeConfig,
+  getOtelInitializationResult,
+} from './logger/logging-runtime.server.js';
+export {
+  readDevelopmentLogEntries,
+} from './logger/dev-log-buffer.server.js';
+export type {
   RequestContextOptions,
+} from './middleware/request-context.server.js';
+export {
+  extractRequestIdFromHeaders,
+  extractTraceIdFromHeaders,
+  extractWorkspaceIdFromHeaders,
+  getHeadersFromRequest,
+  withRequestContext,
+} from './middleware/request-context.server.js';
+export type {
+  InstanceConfig,
+} from './instance/config.server.js';
+export {
+  getInstanceConfig,
+  isCanonicalAuthHost,
+  parseInstanceIdFromHost,
+  resetInstanceConfigCache,
+} from './instance/config.server.js';
+export type {
+  JsonErrorResponseOptions,
+} from './server/json-error-response.server.js';
+export {
+  toJsonErrorResponse,
+} from './server/json-error-response.server.js';
+export type {
   WorkspaceContext,
   WorkspaceMiddleware,
   WorkspaceMiddlewareOptions,
-} from '@sva/sdk/server';
+} from './observability/context.server.js';
+export {
+  createWorkspaceContextMiddleware,
+  extractWorkspaceId,
+  getWorkspaceContext,
+  MissingWorkspaceIdError,
+  runWithWorkspaceContext,
+  setWorkspaceContext,
+} from './observability/context.server.js';
+export {
+  initializeOtelSdk,
+} from './server/bootstrap.server.js';
 
-export const createSdkLogger = (...args: Parameters<typeof sdkCreateSdkLogger>): ServerRuntimeLogger =>
-  sdkCreateSdkLogger(...args) as ServerRuntimeLogger;
-export const createWorkspaceContextMiddleware = sdkCreateWorkspaceContextMiddleware;
-export const extractRequestIdFromHeaders = sdkExtractRequestIdFromHeaders;
-export const extractTraceIdFromHeaders = sdkExtractTraceIdFromHeaders;
-export const extractWorkspaceId = sdkExtractWorkspaceId;
-export const extractWorkspaceIdFromHeaders = sdkExtractWorkspaceIdFromHeaders;
-export const getHeadersFromRequest = sdkGetHeadersFromRequest;
-export const getInstanceConfig = sdkGetInstanceConfig;
-export const getLoggingRuntimeConfig = sdkGetLoggingRuntimeConfig;
-export const getOtelInitializationResult = sdkGetOtelInitializationResult;
-export const getWorkspaceContext = sdkGetWorkspaceContext;
-export const initializeOtelSdk = sdkInitializeOtelSdk;
-export const isCanonicalAuthHost = sdkIsCanonicalAuthHost;
-export const MissingWorkspaceIdError = SdkMissingWorkspaceIdError;
-export const parseInstanceIdFromHost = sdkParseInstanceIdFromHost;
-export const readDevelopmentLogEntries = sdkReadDevelopmentLogEntries;
-export const redactObject = sdkRedactObject;
-export const resetInstanceConfigCache = sdkResetInstanceConfigCache;
-export const runWithWorkspaceContext = sdkRunWithWorkspaceContext;
-export const setWorkspaceContext = sdkSetWorkspaceContext;
-export const toJsonErrorResponse = sdkToJsonErrorResponse;
-export const withRequestContext = sdkWithRequestContext;
+export const createSdkLogger = (
+  ...args: Parameters<typeof createSdkLoggerInternal>
+): ServerRuntimeLogger => createSdkLoggerInternal(...args) as ServerRuntimeLogger;

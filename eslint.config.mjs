@@ -39,7 +39,13 @@ export default [
             },
             {
               sourceTag: 'scope:sdk',
-              onlyDependOnLibsWithTags: ['scope:core', 'scope:data', 'scope:sdk', 'scope:monitoring'],
+              onlyDependOnLibsWithTags: [
+                'scope:core',
+                'scope:data',
+                'scope:sdk',
+                'scope:monitoring',
+                'scope:server-runtime',
+              ],
             },
             {
               sourceTag: 'scope:plugin-sdk',
@@ -47,7 +53,7 @@ export default [
             },
             {
               sourceTag: 'scope:server-runtime',
-              onlyDependOnLibsWithTags: ['scope:core', 'scope:monitoring', 'scope:sdk', 'scope:server-runtime'],
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:monitoring', 'scope:server-runtime'],
             },
             {
               sourceTag: 'scope:iam-core',

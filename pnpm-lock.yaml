@@ -580,6 +580,9 @@ importers:
       '@sva/monitoring-client':
         specifier: workspace:*
         version: link:../monitoring-client
+      '@sva/server-runtime':
+        specifier: workspace:*
+        version: link:../server-runtime
       winston:
         specifier: ^3.19.0
         version: 3.19.0
@@ -596,15 +599,24 @@ importers:
 
   packages/server-runtime:
     dependencies:
+      '@opentelemetry/api':
+        specifier: ^1.9.0
+        version: 1.9.1
+      '@opentelemetry/sdk-node':
+        specifier: ^0.215.0
+        version: 0.215.0(@opentelemetry/api@1.9.1)
       '@sva/core':
         specifier: workspace:*
         version: link:../core
       '@sva/monitoring-client':
         specifier: workspace:*
         version: link:../monitoring-client
-      '@sva/sdk':
-        specifier: workspace:*
-        version: link:../sdk
+      winston:
+        specifier: ^3.19.0
+        version: 3.19.0
+      winston-transport:
+        specifier: ^4.9.0
+        version: 4.9.0
     devDependencies:
       '@vitest/coverage-v8':
         specifier: ^4.1.2

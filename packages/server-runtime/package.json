@@ -9,12 +9,27 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./logger/index.server": {
+      "types": "./dist/logger/index.server.d.ts",
+      "default": "./dist/logger/index.server.js"
+    },
+    "./middleware/request-context.server": {
+      "types": "./dist/middleware/request-context.server.d.ts",
+      "default": "./dist/middleware/request-context.server.js"
+    },
+    "./observability/context.server": {
+      "types": "./dist/observability/context.server.d.ts",
+      "default": "./dist/observability/context.server.js"
     }
   },
   "dependencies": {
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/sdk-node": "^0.215.0",
     "@sva/core": "workspace:*",
     "@sva/monitoring-client": "workspace:*",
-    "@sva/sdk": "workspace:*"
+    "winston": "^3.19.0",
+    "winston-transport": "^4.9.0"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^4.1.2",

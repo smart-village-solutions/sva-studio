@@ -33,17 +33,7 @@ export default defineConfig({
       '@sva/routing/auth': resolve(__dirname, '../routing/src/auth.routes.ts'),
       '@sva/routing/server': resolve(__dirname, '../routing/src/index.server.ts'),
       '@sva/routing': resolve(__dirname, '../routing/src/index.ts'),
-      '@sva/sdk/logger/index.server': resolve(__dirname, '../sdk/src/logger/index.server.ts'),
-      '@sva/sdk/middleware/request-context.server': resolve(
-        __dirname,
-        '../sdk/src/middleware/request-context.server.ts',
-      ),
-      '@sva/sdk/observability/context.server': resolve(
-        __dirname,
-        '../sdk/src/observability/context.server.ts',
-      ),
       '@sva/server-runtime': resolve(__dirname, '../server-runtime/src/index.ts'),
-      '@sva/sdk': resolve(__dirname, '../sdk/src/index.ts'),
     },
   },
 });

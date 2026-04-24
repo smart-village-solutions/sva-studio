@@ -10,5 +10,5 @@ export const authRuntimePackageRoles = [
   'auth-middleware',
 ] as const satisfies readonly AuthRuntimePackageRole[];
 
-export { authRoutePaths } from '@sva/auth';
-export type { AuthRoutePath } from '@sva/auth';
+export { authRoutePaths } from './routes.js';
+export type { AuthRoutePath } from './routes.js';

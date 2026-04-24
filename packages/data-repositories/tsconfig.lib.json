@@ -6,7 +6,12 @@
     "declarationMap": true,
     "outDir": "dist",
     "rootDir": "src",
-    "types": ["node"]
+    "types": ["node"],
+    "paths": {
+      "@sva/core": ["packages/core/dist/index.d.ts"],
+      "@sva/data-client": ["packages/data-client/dist/index.d.ts"],
+      "@sva/data": ["packages/data/dist/index.d.ts"]
+    }
   },
   "include": ["src/**/*.ts"],
   "exclude": ["src/**/*.test.ts"]

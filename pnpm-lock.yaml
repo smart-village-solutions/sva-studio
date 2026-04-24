@@ -234,6 +234,9 @@ importers:
       '@sva/data':
         specifier: workspace:*
         version: link:../data
+      '@sva/data-repositories':
+        specifier: workspace:*
+        version: link:../data-repositories
       '@sva/iam-core':
         specifier: workspace:*
         version: link:../iam-core
@@ -349,6 +352,9 @@ importers:
       '@sva/core':
         specifier: workspace:*
         version: link:../core
+      '@sva/data':
+        specifier: workspace:*
+        version: link:../data
       '@sva/server-runtime':
         specifier: workspace:*
         version: link:../server-runtime

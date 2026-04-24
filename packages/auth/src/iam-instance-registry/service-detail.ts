@@ -7,7 +7,7 @@ import {
 } from './service-keycloak.js';
 import { buildInstanceDetail } from './service-helpers.js';
 
-import type { InstanceRegistryRepository } from '@sva/data';
+import type { InstanceRegistryRepository } from '@sva/data-repositories';
 import type { InstanceRegistryService, InstanceRegistryServiceDeps } from './service-types.js';
 
 type InstanceRecord = NonNullable<Awaited<ReturnType<InstanceRegistryRepository['getInstanceById']>>>;

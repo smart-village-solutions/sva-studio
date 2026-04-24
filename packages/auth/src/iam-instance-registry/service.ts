@@ -2,7 +2,7 @@ import { buildPrimaryHostname, canTransitionInstanceStatus, isTrafficEnabledInst
 import { createSdkLogger } from '@sva/sdk/server';
 import { protectField } from '../iam-account-management/encryption.js';
 
-import type { InstanceRegistryRepository } from '@sva/data';
+import type { InstanceRegistryRepository } from '@sva/data-repositories';
 import type { CreateInstanceProvisioningInput, UpdateInstanceInput } from './mutation-types.js';
 import type { InstanceRegistryService, InstanceRegistryServiceDeps } from './service-types.js';
 import { createStatusArtifacts, toListItem } from './service-helpers.js';

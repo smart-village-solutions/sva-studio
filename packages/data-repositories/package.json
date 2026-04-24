@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@sva/core": "workspace:*",
+    "@sva/data": "workspace:*",
     "@sva/server-runtime": "workspace:*"
   },
   "devDependencies": {

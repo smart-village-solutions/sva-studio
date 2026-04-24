@@ -30,7 +30,12 @@ export default [
             },
             {
               sourceTag: 'scope:data-repositories',
-              onlyDependOnLibsWithTags: ['scope:core', 'scope:server-runtime', 'scope:data-repositories'],
+              onlyDependOnLibsWithTags: [
+                'scope:core',
+                'scope:data',
+                'scope:server-runtime',
+                'scope:data-repositories',
+              ],
             },
             {
               sourceTag: 'scope:sdk',
@@ -87,6 +92,7 @@ export default [
               onlyDependOnLibsWithTags: [
                 'scope:core',
                 'scope:data',
+                'scope:data-repositories',
                 'scope:sdk',
                 'scope:monitoring',
                 'scope:iam-core',

@@ -1,6 +1,6 @@
 import { classifyHost, normalizeHost } from '@sva/core';
 import { createSdkLogger } from '@sva/sdk/server';
-import type { InstanceRegistryRepository } from '@sva/data';
+import type { InstanceRegistryRepository } from '@sva/data-repositories';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
 import type {
   KeycloakTenantPlan,
@@ -8,7 +8,6 @@ import type {
   KeycloakTenantStatus,
   ResolveRuntimeInstanceResult,
 } from './keycloak-types.js';
-import type { KeycloakProvisioningInput } from './provisioning-auth-types.js';
 import { revealField } from '../iam-account-management/encryption.js';
 import { buildPlan, toOverallPreflightStatus } from './provisioning-auth-evaluation.js';
 import { toListItem } from './service-helpers.js';

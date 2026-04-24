@@ -10,7 +10,7 @@ vi.mock('../shared/db-helpers.js', () => ({
   createPoolResolver: createPoolResolverMock,
 }));
 
-vi.mock('@sva/data', () => ({
+vi.mock('@sva/data-repositories', () => ({
   createInstanceRegistryRepository: createInstanceRegistryRepositoryMock,
 }));
 

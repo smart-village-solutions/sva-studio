@@ -1,5 +1,5 @@
 import type { InstanceRealmMode, InstanceStatus, IamInstanceDetail, IamInstanceListItem } from '@sva/core';
-import type { InstanceRegistryRepository } from '@sva/data';
+import type { InstanceRegistryRepository } from '@sva/data-repositories';
 import type {
   ChangeInstanceStatusInput,
   ChangeInstanceStatusResult,

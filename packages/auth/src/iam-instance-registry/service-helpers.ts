@@ -7,7 +7,7 @@ import type {
   IamInstanceListItem,
 } from '@sva/core';
 
-import type { InstanceRegistryRepository } from '@sva/data';
+import type { InstanceRegistryRepository } from '@sva/data-repositories';
 import type { ChangeInstanceStatusInput } from './mutation-types.js';
 import type { KeycloakTenantStatus } from './keycloak-types.js';
 

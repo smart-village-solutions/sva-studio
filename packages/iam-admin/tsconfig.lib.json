@@ -6,7 +6,11 @@
     "declarationMap": true,
     "outDir": "dist",
     "rootDir": "src",
-    "types": ["node"]
+    "types": ["node"],
+    "paths": {
+      "@sva/core": ["packages/core/dist/index.d.ts"],
+      "@sva/server-runtime": ["packages/server-runtime/dist/index.d.ts"]
+    }
   },
   "include": ["src/**/*.ts"],
   "exclude": ["src/**/*.test.ts"]

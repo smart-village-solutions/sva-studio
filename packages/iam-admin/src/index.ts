@@ -9,3 +9,13 @@ export const iamAdminPackageRoles = [
   'organizations',
   'tenant-admin-client',
 ] as const satisfies readonly IamAdminPackageRole[];
+
+export {
+  buildRoleSyncFailure,
+  getRoleDisplayName,
+  getRoleExternalName,
+  mapRoleListItem,
+  mapRoleSyncErrorCode,
+  sanitizeRoleAuditDetails,
+  sanitizeRoleErrorMessage,
+} from './role-audit.js';

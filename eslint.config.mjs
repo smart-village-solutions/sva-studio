@@ -105,6 +105,7 @@ export default [
               onlyDependOnLibsWithTags: [
                 'scope:core',
                 'scope:data-repositories',
+                'scope:iam-admin',
                 'scope:iam-core',
                 'scope:instance-registry',
                 'scope:server-runtime',

@@ -5,7 +5,7 @@ import { isTrafficEnabledInstanceStatus, type InstanceStatus } from '@sva/core';
 import { resolveEffectiveRequestHost } from '../request-hosts.js';
 import { withRegistryService } from './repository.js';
 
-import type { ResolveRuntimeInstanceResult } from './keycloak-types.js';
+import type { ResolveRuntimeInstanceResult } from '@sva/instance-registry';
 
 export const resolveRuntimeInstanceFromRequest = async (request: Request): Promise<ResolveRuntimeInstanceResult> => {
   const host = resolveEffectiveRequestHost(request);

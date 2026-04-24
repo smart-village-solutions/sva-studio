@@ -1,14 +1,14 @@
 import { createSdkLogger } from '@sva/server-runtime';
 
-import type { KeycloakTenantPlan, KeycloakTenantPreflight, KeycloakTenantStatus } from './keycloak-types.js';
-import type { KeycloakProvisioningInput } from './provisioning-auth-types.js';
+import type { KeycloakTenantPlan, KeycloakTenantPreflight, KeycloakTenantStatus } from '@sva/instance-registry';
+import type { KeycloakProvisioningInput } from '@sva/instance-registry';
 import {
   buildKeycloakStatus,
   buildMissingRealmStatus,
   buildPlan,
   buildPreflightChecks,
   toOverallPreflightStatus,
-} from './provisioning-auth-evaluation.js';
+} from '@sva/instance-registry';
 import {
   provisionInstanceAuthArtifacts,
   provisionInstanceAuthArtifactsViaProvisioner,

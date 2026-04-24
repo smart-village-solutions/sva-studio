@@ -1,6 +1,6 @@
 import { createSdkLogger } from '@sva/server-runtime';
 import type { InstanceRegistryRepository } from '@sva/data-repositories';
-import type { CreateInstanceProvisioningInput } from './mutation-types.js';
+import type { CreateInstanceProvisioningInput } from '@sva/instance-registry';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
 import { createAuditDetails } from './service-helpers.js';
 

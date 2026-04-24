@@ -3,7 +3,7 @@ import { createSdkLogger } from '@sva/server-runtime';
 import { protectField } from '../iam-account-management/encryption.js';
 
 import type { InstanceRegistryRepository } from '@sva/data-repositories';
-import type { CreateInstanceProvisioningInput, UpdateInstanceInput } from './mutation-types.js';
+import type { CreateInstanceProvisioningInput, UpdateInstanceInput } from '@sva/instance-registry';
 import type { InstanceRegistryService, InstanceRegistryServiceDeps } from './service-types.js';
 import { createStatusArtifacts, toListItem } from './service-helpers.js';
 import { createGetInstanceDetail } from './service-detail.js';

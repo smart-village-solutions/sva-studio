@@ -7,9 +7,9 @@ import type {
   KeycloakTenantPreflight,
   KeycloakTenantStatus,
   ResolveRuntimeInstanceResult,
-} from './keycloak-types.js';
+} from '@sva/instance-registry';
 import { revealField } from '../iam-account-management/encryption.js';
-import { buildPlan, toOverallPreflightStatus } from './provisioning-auth-evaluation.js';
+import { buildPlan, toOverallPreflightStatus } from '@sva/instance-registry';
 import { toListItem } from './service-helpers.js';
 import { createExecuteKeycloakProvisioningHandler, createReconcileKeycloakHandler } from './service-keycloak-execution.js';
 

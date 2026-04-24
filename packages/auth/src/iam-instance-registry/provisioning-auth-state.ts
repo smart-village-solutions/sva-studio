@@ -6,14 +6,14 @@ import {
   getKeycloakProvisionerClientConfigFromEnv,
   type KeycloakAdminClientConfig,
 } from '../keycloak-admin-client.js';
-import type { KeycloakProvisioningInput, KeycloakReadState, TenantAdminBootstrap, TenantAdminStatus } from './provisioning-auth-types.js';
+import type { KeycloakProvisioningInput, KeycloakReadState, TenantAdminBootstrap, TenantAdminStatus } from '@sva/instance-registry';
 import {
   buildExpectedClientConfig,
   buildExpectedTenantAdminClientConfig,
   INSTANCE_ID_MAPPER_NAME,
   INSTANCE_REGISTRY_ADMIN_ROLE,
   SYSTEM_ADMIN_ROLE,
-} from './provisioning-auth-utils.js';
+} from '@sva/instance-registry';
 
 type KeycloakClientConfigResolver = (realm?: string) => KeycloakAdminClientConfig;
 type TenantAdminInput = {

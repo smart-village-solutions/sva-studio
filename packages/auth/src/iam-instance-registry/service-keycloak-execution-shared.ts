@@ -1,6 +1,6 @@
 import { areAllInstanceKeycloakRequirementsSatisfied } from '@sva/core';
 
-import type { ExecuteInstanceKeycloakProvisioningInput } from './mutation-types.js';
+import type { ExecuteInstanceKeycloakProvisioningInput } from '@sva/instance-registry';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
 import { loadInstanceWithSecret } from './service-keycloak.js';
 import { appendRunStep, buildFinalRunSteps } from './service-keycloak-run-steps.js';

@@ -1,5 +1,5 @@
-import type { ExecuteInstanceKeycloakProvisioningInput } from './mutation-types.js';
-import type { KeycloakTenantStatus } from './keycloak-types.js';
+import type { ExecuteInstanceKeycloakProvisioningInput } from '@sva/instance-registry';
+import type { KeycloakTenantStatus } from '@sva/instance-registry';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
 
 export const appendRunStep = async (deps: InstanceRegistryServiceDeps, input: {

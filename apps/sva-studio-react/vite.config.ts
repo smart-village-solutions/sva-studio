@@ -60,9 +60,6 @@ if (process.cwd() !== appRoot) {
 
 const config = defineConfig({
   root: appRoot,
-  esbuild: {
-    jsxDev: false,
-  },
   oxc: {
     jsx: {
       runtime: 'automatic',

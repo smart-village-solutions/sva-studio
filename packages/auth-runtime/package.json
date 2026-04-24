@@ -17,6 +17,10 @@
     "./runtime-health": {
       "types": "./dist/runtime-health.d.ts",
       "default": "./dist/runtime-health.js"
+    },
+    "./server": {
+      "types": "./dist/server.d.ts",
+      "default": "./dist/server.js"
     }
   },
   "dependencies": {

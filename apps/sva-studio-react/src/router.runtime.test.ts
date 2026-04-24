@@ -132,7 +132,7 @@ vi.mock('@tanstack/react-start/server', () => ({
   getRequest: routerMocks.getRequestSpy,
 }));
 
-vi.mock('@sva/auth/server', () => ({
+vi.mock('@sva/auth-runtime/server', () => ({
   withAuthenticatedUser: routerMocks.withAuthenticatedUserSpy,
 }));
 

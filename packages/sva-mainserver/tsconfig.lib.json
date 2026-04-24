@@ -2,6 +2,8 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "paths": {
+      "@sva/auth-runtime": ["packages/auth-runtime/dist/index.d.ts"],
+      "@sva/auth-runtime/server": ["packages/auth-runtime/dist/server.d.ts"],
       "@sva/auth": ["packages/auth/dist/index.d.ts"],
       "@sva/auth/server": ["packages/auth/dist/index.server.d.ts"],
       "@sva/auth/runtime-routes": ["packages/auth/dist/runtime-routes.server.d.ts"],

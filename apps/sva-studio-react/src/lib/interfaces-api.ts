@@ -234,7 +234,7 @@ const getOverviewFallbackStatus = (
 export const loadInterfacesOverview = createServerFn().handler(async (): Promise<InterfacesOverviewModel> => {
   try {
     const { getRequest } = await import('@tanstack/react-start/server');
-    const { withAuthenticatedUser } = await import('@sva/auth/server');
+    const { withAuthenticatedUser } = await import('@sva/auth-runtime/server');
     const { getSvaMainserverConnectionStatus, loadSvaMainserverSettings } = await import('@sva/sva-mainserver/server');
     const { createSdkLogger } = await import('@sva/server-runtime');
     const logger = createSdkLogger({ component: COMPONENT });
@@ -356,7 +356,7 @@ export const saveSvaMainserverInterfaceSettings = createServerFn({ method: 'POST
   .handler(async ({ data }): Promise<SvaMainserverInstanceConfig> => {
     try {
       const { getRequest } = await import('@tanstack/react-start/server');
-      const { withAuthenticatedUser } = await import('@sva/auth/server');
+      const { withAuthenticatedUser } = await import('@sva/auth-runtime/server');
       const { saveSvaMainserverSettings } = await import('@sva/sva-mainserver/server');
       const { createSdkLogger } = await import('@sva/server-runtime');
       const logger = createSdkLogger({ component: COMPONENT });

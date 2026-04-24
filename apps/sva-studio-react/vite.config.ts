@@ -96,6 +96,8 @@ const config = defineConfig({
       '@sva/routing/server': resolveAppPath('../../packages/routing/src/index.server.ts'),
       '@sva/routing/auth': resolveAppPath('../../packages/routing/src/auth.routes.ts'),
       '@sva/routing': resolveAppPath('../../packages/routing/src/index.ts'),
+      '@sva/auth-runtime/server': resolveAppPath('../../packages/auth-runtime/src/server.ts'),
+      '@sva/auth-runtime': resolveAppPath('../../packages/auth-runtime/src/index.ts'),
       '@sva/auth/runtime-routes': resolveAppPath('../../packages/auth/src/runtime-routes.server.ts'),
       '@sva/auth/runtime-health': resolveAppPath('../../packages/auth/src/runtime-health.server.ts'),
       '@sva/auth/server': resolveAppPath('../../packages/auth/src/index.server.ts'),
@@ -123,6 +125,7 @@ const config = defineConfig({
     // Workspace packages müssen in Dev-SSR transpiliert werden, weil Vite package.json exports nicht korrekt auflöst
     noExternal: [
       '@sva/auth',
+      '@sva/auth-runtime',
       '@sva/data',
       '@sva/routing',
       '@sva/sva-mainserver',

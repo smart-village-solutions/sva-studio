@@ -18,7 +18,7 @@
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-slot": "^1.2.4",
     "@radix-ui/react-tabs": "^1.1.13",
-    "@sva/auth": "workspace:*",
+    "@sva/auth-runtime": "workspace:*",
     "@sva/core": "workspace:*",
     "@sva/plugin-sdk": "workspace:*",
     "@sva/plugin-news": "workspace:*",

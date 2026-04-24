@@ -7,12 +7,14 @@ const currentDir = dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   resolve: {
-    alias: {
-      '@sva/auth/runtime-routes': resolve(currentDir, '../auth/src/runtime-routes.server.ts'),
-      '@sva/auth/runtime-health': resolve(currentDir, '../auth/src/runtime-health.server.ts'),
-      '@sva/auth': resolve(currentDir, '../auth/src/index.ts'),
-      '@sva/core': resolve(currentDir, '../core/src/index.ts'),
-    },
+    alias: [
+      { find: '@sva/auth/runtime-routes', replacement: resolve(currentDir, '../auth/src/runtime-routes.server.ts') },
+      { find: '@sva/auth/runtime-health', replacement: resolve(currentDir, '../auth/src/runtime-health.server.ts') },
+      { find: '@sva/auth/server', replacement: resolve(currentDir, '../auth/src/index.server.ts') },
+      { find: '@sva/core/security', replacement: resolve(currentDir, '../core/src/security/index.ts') },
+      { find: /^@sva\/auth$/, replacement: resolve(currentDir, '../auth/src/index.ts') },
+      { find: /^@sva\/core$/, replacement: resolve(currentDir, '../core/src/index.ts') },
+    ],
   },
   test: {
     include: ['src/**/*.test.ts'],

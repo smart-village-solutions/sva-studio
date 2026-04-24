@@ -14,6 +14,14 @@
       "types": "./dist/logger/index.server.d.ts",
       "default": "./dist/logger/index.server.js"
     },
+    "./logger/logging-runtime.server": {
+      "types": "./dist/logger/logging-runtime.server.d.ts",
+      "default": "./dist/logger/logging-runtime.server.js"
+    },
+    "./logger/dev-log-buffer.server": {
+      "types": "./dist/logger/dev-log-buffer.server.d.ts",
+      "default": "./dist/logger/dev-log-buffer.server.js"
+    },
     "./middleware/request-context.server": {
       "types": "./dist/middleware/request-context.server.d.ts",
       "default": "./dist/middleware/request-context.server.js"

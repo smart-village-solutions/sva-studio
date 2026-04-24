@@ -124,6 +124,7 @@ export default [
                 'scope:server-runtime',
                 'scope:monitoring',
                 'scope:auth',
+                'scope:auth-runtime',
                 'scope:integration',
               ],
             },
@@ -158,6 +159,7 @@ export default [
                 'scope:plugin',
                 'scope:routing',
                 'scope:auth',
+                'scope:auth-runtime',
                 'scope:integration',
               ],
             },
@@ -332,6 +334,10 @@ export default [
         {
           paths: [
             {
+              name: '@sva/auth/server',
+              message: 'sva-mainserver verwendet Auth-Server-Verträge über @sva/auth-runtime/server.',
+            },
+            {
               name: '@sva/data/server',
               message: 'sva-mainserver verwendet Repository-Zugriffe über @sva/data-repositories/server.',
             },
@@ -413,6 +419,10 @@ export default [
         'error',
         {
           paths: [
+            {
+              name: '@sva/auth/server',
+              message: 'Die App verwendet Auth-Server-Verträge über @sva/auth-runtime/server.',
+            },
             {
               name: '@sva/sdk/admin-resources',
               message: 'Die App verwendet Admin-Resource-Verträge über @sva/plugin-sdk.',

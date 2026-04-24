@@ -11,6 +11,23 @@ export default mergeConfig(
     resolve: {
       alias: {
         '@sva/core': resolve(currentDir, '../core/src/index.ts'),
+        '@sva/server-runtime/logger/index.server': resolve(currentDir, '../server-runtime/src/logger/index.server.ts'),
+        '@sva/server-runtime/logger/logging-runtime.server': resolve(
+          currentDir,
+          '../server-runtime/src/logger/logging-runtime.server.ts'
+        ),
+        '@sva/server-runtime/logger/dev-log-buffer.server': resolve(
+          currentDir,
+          '../server-runtime/src/logger/dev-log-buffer.server.ts'
+        ),
+        '@sva/server-runtime/observability/context.server': resolve(
+          currentDir,
+          '../server-runtime/src/observability/context.server.ts'
+        ),
+        '@sva/server-runtime/middleware/request-context.server': resolve(
+          currentDir,
+          '../server-runtime/src/middleware/request-context.server.ts'
+        ),
         '@sva/monitoring-client/server': resolve(currentDir, '../monitoring-client/src/server.ts'),
         '@sva/monitoring-client/logger-provider.server': resolve(
           currentDir,

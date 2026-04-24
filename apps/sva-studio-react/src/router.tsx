@@ -89,7 +89,7 @@ const getRouteGuardUser = createIsomorphicFn()
       }
 
       const [{ withAuthenticatedUser }, { getRequest }] = await Promise.all([
-        import('@sva/auth/server'),
+        import('@sva/auth-runtime/server'),
         import('@tanstack/react-start/server'),
       ]);
 

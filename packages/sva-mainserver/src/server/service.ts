@@ -1,7 +1,7 @@
 import { randomInt } from 'node:crypto';
 
 import { metrics, SpanStatusCode, trace } from '@opentelemetry/api';
-import { readSvaMainserverCredentialsWithStatus } from '@sva/auth/server';
+import { readSvaMainserverCredentialsWithStatus } from '@sva/auth-runtime/server';
 import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 import { z } from 'zod';
 

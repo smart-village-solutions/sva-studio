@@ -22,7 +22,7 @@ vi.mock('@tanstack/react-start/server', () => ({
   getRequest: () => state.request,
 }));
 
-vi.mock('@sva/auth/server', () => ({
+vi.mock('@sva/auth-runtime/server', () => ({
   withAuthenticatedUser: state.withAuthenticatedUser,
 }));
 

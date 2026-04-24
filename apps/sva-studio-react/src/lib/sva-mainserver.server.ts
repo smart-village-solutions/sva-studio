@@ -42,7 +42,7 @@ const createUnauthorizedStatus = (message: string): SvaMainserverConnectionStatu
 
 export const loadSvaMainserverConnectionStatus = createServerFn().handler(async (): Promise<SvaMainserverConnectionStatus> => {
   const { getRequest } = await import('@tanstack/react-start/server');
-  const { withAuthenticatedUser } = await import('@sva/auth/server');
+  const { withAuthenticatedUser } = await import('@sva/auth-runtime/server');
   const { getSvaMainserverConnectionStatus } = await import('@sva/sva-mainserver/server');
 
   const request = getRequest();

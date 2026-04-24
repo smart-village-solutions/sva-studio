@@ -35,7 +35,7 @@ vi.mock('@opentelemetry/api', () => ({
   },
 }));
 
-vi.mock('@sva/auth/server', () => ({
+vi.mock('@sva/auth-runtime/server', () => ({
   readSvaMainserverCredentialsWithStatus: state.readSvaMainserverCredentialsWithStatus,
 }));
 

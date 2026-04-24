@@ -19,3 +19,10 @@ export {
   sanitizeRoleAuditDetails,
   sanitizeRoleErrorMessage,
 } from './role-audit.js';
+
+export {
+  loadRoleById,
+  loadRoleListItemById,
+  loadRoleListItems,
+  type ManagedRoleRow,
+} from './role-query.js';

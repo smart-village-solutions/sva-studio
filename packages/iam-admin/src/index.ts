@@ -21,6 +21,12 @@ export {
 } from './role-audit.js';
 
 export {
+  createRoleReadHandlers,
+  type RoleReadAuthenticatedRequestContext,
+  type RoleReadHandlerDeps,
+} from './role-read-handlers.js';
+
+export {
   loadRoleById,
   loadRoleListItemById,
   loadRoleListItems,

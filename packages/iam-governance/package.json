@@ -21,6 +21,10 @@
     "./legal-text-repository-shared": {
       "types": "./dist/legal-text-repository-shared.d.ts",
       "default": "./dist/legal-text-repository-shared.js"
+    },
+    "./legal-text-repository": {
+      "types": "./dist/legal-text-repository.d.ts",
+      "default": "./dist/legal-text-repository.js"
     }
   },
   "dependencies": {

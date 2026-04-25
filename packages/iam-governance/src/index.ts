@@ -24,3 +24,10 @@ export {
   loadConsentExportRecords,
 } from './legal-consent-export.js';
 export { createLegalTextSchema, updateLegalTextSchema } from './legal-text-schemas.js';
+export {
+  createLegalTextRepository,
+  LegalTextDeleteConflictError,
+  type DeleteLegalTextInput,
+  type LegalTextActivityLogInput,
+  type LegalTextRepositoryDeps,
+} from './legal-text-repository.js';

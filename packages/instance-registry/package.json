@@ -17,6 +17,10 @@
     "./mutation-errors": {
       "types": "./dist/mutation-errors.d.ts",
       "default": "./dist/mutation-errors.js"
+    },
+    "./provisioning-worker": {
+      "types": "./dist/provisioning-worker.d.ts",
+      "default": "./dist/provisioning-worker.js"
     }
   },
   "dependencies": {

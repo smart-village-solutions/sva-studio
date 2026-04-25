@@ -52,6 +52,11 @@ export {
   type InstanceMutationErrorClassification,
   type InstanceMutationErrorCode,
 } from './mutation-errors.js';
+export {
+  isWorkerEntrypoint,
+  runKeycloakProvisioningWorkerLoop,
+  type KeycloakProvisioningWorkerIteration,
+} from './provisioning-worker.js';
 export type {
   KeycloakClientRepresentation,
   KeycloakProvisioningInput,

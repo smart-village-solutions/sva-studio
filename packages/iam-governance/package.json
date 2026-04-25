@@ -29,6 +29,10 @@
     "./legal-text-mutation-handlers": {
       "types": "./dist/legal-text-mutation-handlers.d.ts",
       "default": "./dist/legal-text-mutation-handlers.js"
+    },
+    "./legal-text-http-handlers": {
+      "types": "./dist/legal-text-http-handlers.d.ts",
+      "default": "./dist/legal-text-http-handlers.js"
     }
   },
   "dependencies": {

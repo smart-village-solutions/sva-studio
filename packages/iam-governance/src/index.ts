@@ -35,3 +35,9 @@ export {
   createLegalTextMutationHandlers,
   type LegalTextMutationHandlerDeps,
 } from './legal-text-mutation-handlers.js';
+export {
+  createLegalTextHttpHandlers,
+  type LegalTextHttpActor,
+  type LegalTextHttpHandlerDeps,
+  type LegalTextPendingUser,
+} from './legal-text-http-handlers.js';

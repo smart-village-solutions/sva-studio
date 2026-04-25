@@ -200,7 +200,6 @@ describe('iam-instance-registry core handlers', () => {
       new Request('https://studio.example.org/api/v1/iam/instances/demo'),
       ctx
     );
-    readDetailInstanceIdMock.mockReturnValueOnce(undefined);
     const missingId = await getInstanceInternal(
       new Request('https://studio.example.org/api/v1/iam/instances'),
       ctx
@@ -289,6 +288,7 @@ describe('iam-instance-registry core handlers', () => {
   });
 
   it('handles instance status mutations across success and failure branches', async () => {
+    parseRequestBodyMock.mockReset();
     parseRequestBodyMock
       .mockResolvedValueOnce({ ok: true, data: { status: 'active' } })
       .mockResolvedValueOnce({ ok: true, data: { status: 'active' } })
@@ -457,9 +457,8 @@ describe('iam-instance-registry core handlers', () => {
         authClientId: 'sva-studio',
       },
     });
-    readDetailInstanceIdMock.mockReturnValueOnce(undefined);
     const missingId = await updateInstanceInternal(
-      new Request('https://studio.example.org/api/v1/iam/instances/demo', { method: 'PATCH' }),
+      new Request('https://studio.example.org/api/v1/iam/instances', { method: 'PATCH' }),
       ctx
     );
     expect(missingId.status).toBe(400);

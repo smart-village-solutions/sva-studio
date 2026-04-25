@@ -42,6 +42,12 @@ export {
   type InstanceRegistryKeycloakHttpDeps,
 } from './http-keycloak-handlers.js';
 export {
+  createInstanceRegistryHttpHandlers,
+  type InstanceRegistryHttpActor,
+  type InstanceRegistryHttpDeps,
+  type InstanceRegistryStatusMutation,
+} from './http-instance-handlers.js';
+export {
   buildKeycloakStatus,
   buildMissingRealmStatus,
   buildPlan,

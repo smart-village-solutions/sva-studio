@@ -1,6 +1,15 @@
 import { createHash, randomUUID } from 'node:crypto';
-import type { IamGovernanceCaseType } from '@sva/core';
 import { createSdkLogger, getWorkspaceContext, withRequestContext } from '@sva/server-runtime';
+import {
+  governanceComplianceExportRoles,
+  governanceReadRoles,
+  governanceWorkflowRoles,
+  hasRequiredGovernanceRole,
+  readGovernanceCaseType,
+  requiresPrivilegedGovernanceWorkflowRole,
+  validateGovernanceTicketState,
+  type GovernanceOperation,
+} from '@sva/iam-governance/governance-workflow-policy';
 
 import { withAuthenticatedUser } from '../middleware.server.js';
 import { getIamDatabaseUrl } from '../runtime-secrets.server.js';
@@ -15,38 +24,6 @@ const logger = createSdkLogger({ component: 'iam-governance', level: 'info' });
 
 const MAX_IMPERSONATION_MINUTES = 120;
 const MAX_DELEGATION_DAYS = 30;
-const ALLOWED_TICKET_STATES = new Set(['open', 'in_progress', 'approved_for_execution']);
-const GOVERNANCE_WORKFLOW_ROLES = new Set(['iam_admin', 'support_admin', 'system_admin']);
-const GOVERNANCE_READ_ROLES = new Set([
-  'iam_admin',
-  'support_admin',
-  'system_admin',
-  'security_admin',
-  'compliance_officer',
-]);
-const GOVERNANCE_COMPLIANCE_EXPORT_ROLES = new Set([
-  'iam_admin',
-  'system_admin',
-  'security_admin',
-  'compliance_officer',
-]);
-const GOVERNANCE_CASE_TYPES = new Set<IamGovernanceCaseType>([
-  'permission_change',
-  'delegation',
-  'impersonation',
-  'legal_acceptance',
-]);
-
-type GovernanceOperation =
-  | 'submit_permission_change'
-  | 'approve_permission_change'
-  | 'apply_permission_change'
-  | 'create_delegation'
-  | 'revoke_delegation'
-  | 'start_impersonation'
-  | 'end_impersonation'
-  | 'accept_legal_text'
-  | 'revoke_legal_acceptance';
 
 type GovernanceWorkflowRequest = GovernanceRequestInput;
 
@@ -82,13 +59,6 @@ const parseWorkflowRequest = async (request: Request): Promise<GovernanceWorkflo
 
   const parsed = governanceRequestSchema.safeParse(body);
   return parsed.success ? parsed.data : null;
-};
-
-const readGovernanceCaseType = (value: string | undefined): IamGovernanceCaseType | undefined | null => {
-  if (!value) {
-    return undefined;
-  }
-  return GOVERNANCE_CASE_TYPES.has(value as IamGovernanceCaseType) ? (value as IamGovernanceCaseType) : null;
 };
 
 const withInstanceScopedDb = async <T>(
@@ -144,26 +114,6 @@ const isCriticalRoleChange = async (
 ): Promise<boolean> => {
   const permissions = await resolvePermissionKeyForRole(client, input);
   return permissions.some((permission) => /(admin|security|iam)/i.test(permission));
-};
-
-const validateTicketState = (ticketState: string | undefined): { ok: boolean; reasonCode?: string } => {
-  if (!ticketState) {
-    return { ok: false, reasonCode: 'DENY_TICKET_REQUIRED' };
-  }
-  if (!ALLOWED_TICKET_STATES.has(ticketState)) {
-    return { ok: false, reasonCode: 'DENY_TICKET_STATE_INVALID' };
-  }
-  return { ok: true };
-};
-
-const hasRequiredRole = (userRoles: readonly string[], allowedRoles: ReadonlySet<string>): boolean =>
-  userRoles.some((role) => allowedRoles.has(role));
-
-const requiresPrivilegedWorkflowRole = (operation: GovernanceOperation): boolean => {
-  if (operation === 'accept_legal_text' || operation === 'revoke_legal_acceptance') {
-    return false;
-  }
-  return true;
 };
 
 const emitGovernanceAuditEvent = async (
@@ -250,7 +200,7 @@ const submitPermissionChange = async (
     return { operation: 'submit_permission_change', status: 'error', reasonCode: 'invalid_request' };
   }
 
-  const ticketValidation = validateTicketState(ticketState);
+  const ticketValidation = validateGovernanceTicketState(ticketState);
   if (!ticketValidation.ok) {
     return {
       operation: 'submit_permission_change',
@@ -489,7 +439,7 @@ const createDelegation = async (
     return { operation: 'create_delegation', status: 'error', reasonCode: 'invalid_request' };
   }
 
-  const ticketValidation = validateTicketState(ticketState);
+  const ticketValidation = validateGovernanceTicketState(ticketState);
   if (!ticketValidation.ok) {
     return { operation: 'create_delegation', status: 'error', reasonCode: ticketValidation.reasonCode };
   }
@@ -642,7 +592,7 @@ const startImpersonation = async (
     return { operation: 'start_impersonation', status: 'error', reasonCode: 'invalid_request' };
   }
 
-  const ticketValidation = validateTicketState(ticketState);
+  const ticketValidation = validateGovernanceTicketState(ticketState);
   if (!ticketValidation.ok) {
     return { operation: 'start_impersonation', status: 'error', reasonCode: ticketValidation.reasonCode };
   }
@@ -1029,8 +979,8 @@ export const governanceWorkflowHandler = async (request: Request): Promise<Respo
         return jsonResponse(403, { error: 'instance_scope_mismatch' });
       }
       if (
-        requiresPrivilegedWorkflowRole(parsed.operation) &&
-        !hasRequiredRole(user.roles, GOVERNANCE_WORKFLOW_ROLES)
+        requiresPrivilegedGovernanceWorkflowRole(parsed.operation) &&
+        !hasRequiredGovernanceRole(user.roles, governanceWorkflowRoles)
       ) {
         logger.warn('Governance workflow denied due to missing role', {
           operation: parsed.operation,
@@ -1081,7 +1031,7 @@ export const governanceWorkflowHandler = async (request: Request): Promise<Respo
 export const listGovernanceCasesHandler = async (request: Request): Promise<Response> => {
   return withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
     return withAuthenticatedUser(request, async ({ user }) => {
-      if (!hasRequiredRole(user.roles, GOVERNANCE_READ_ROLES)) {
+      if (!hasRequiredGovernanceRole(user.roles, governanceReadRoles)) {
         logger.warn('Governance read denied due to missing role', {
           operation: 'list_governance_cases',
           reason_code: 'forbidden',
@@ -1134,7 +1084,7 @@ export const listGovernanceCasesHandler = async (request: Request): Promise<Resp
 export const governanceComplianceExportHandler = async (request: Request): Promise<Response> => {
   return withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
     return withAuthenticatedUser(request, async ({ user }) => {
-      if (!hasRequiredRole(user.roles, GOVERNANCE_COMPLIANCE_EXPORT_ROLES)) {
+      if (!hasRequiredGovernanceRole(user.roles, governanceComplianceExportRoles)) {
         logger.warn('Governance compliance export denied due to missing role', {
           operation: 'compliance_export',
           reason_code: 'forbidden',

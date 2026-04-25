@@ -40,6 +40,17 @@ export {
   type DsrMaintenanceInput,
   type DsrMaintenanceResult,
 } from './dsr-maintenance.js';
+export {
+  governanceComplianceExportRoles,
+  governanceReadRoles,
+  governanceWorkflowRoles,
+  hasRequiredGovernanceRole,
+  readGovernanceCaseType,
+  readGovernanceOperation,
+  requiresPrivilegedGovernanceWorkflowRole,
+  validateGovernanceTicketState,
+  type GovernanceOperation,
+} from './governance-workflow-policy.js';
 export { hashLegalTextHtml, sanitizeLegalTextHtml } from './legal-text-html.js';
 export {
   consumeLegalConsentExportRateLimit,

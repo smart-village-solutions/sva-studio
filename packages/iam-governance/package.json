@@ -34,6 +34,10 @@
       "types": "./dist/dsr-maintenance.d.ts",
       "default": "./dist/dsr-maintenance.js"
     },
+    "./governance-workflow-policy": {
+      "types": "./dist/governance-workflow-policy.d.ts",
+      "default": "./dist/governance-workflow-policy.js"
+    },
     "./legal-text-repository-shared": {
       "types": "./dist/legal-text-repository-shared.d.ts",
       "default": "./dist/legal-text-repository-shared.js"

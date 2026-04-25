@@ -17,6 +17,13 @@ export {
   toCanonicalDsrStatus,
 } from './dsr-read-models.js';
 export type { DsrFilters } from './dsr-read-models.types.js';
+export {
+  collectDsrExportPayload,
+  serializeDsrExportPayload,
+  type DsrExportAccountSnapshot,
+  type DsrExportFormat,
+  type DsrExportPayload,
+} from './dsr-export-payload.js';
 export { hashLegalTextHtml, sanitizeLegalTextHtml } from './legal-text-html.js';
 export {
   consumeLegalConsentExportRateLimit,

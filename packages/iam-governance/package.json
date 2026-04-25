@@ -18,6 +18,10 @@
       "types": "./dist/dsr-read-models-internal.d.ts",
       "default": "./dist/dsr-read-models-internal.js"
     },
+    "./dsr-export-payload": {
+      "types": "./dist/dsr-export-payload.d.ts",
+      "default": "./dist/dsr-export-payload.js"
+    },
     "./legal-text-repository-shared": {
       "types": "./dist/legal-text-repository-shared.d.ts",
       "default": "./dist/legal-text-repository-shared.js"

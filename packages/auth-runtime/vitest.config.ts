@@ -21,6 +21,10 @@ export default defineConfig({
         find: /^@sva\/iam-governance\/dsr-read-models-internal$/,
         replacement: resolve(currentDir, '../iam-governance/src/dsr-read-models-internal.ts'),
       },
+      {
+        find: /^@sva\/iam-governance\/legal-text-repository-shared$/,
+        replacement: resolve(currentDir, '../iam-governance/src/legal-text-repository-shared.ts'),
+      },
       { find: /^@sva\/iam-governance$/, replacement: resolve(currentDir, '../iam-governance/src/index.ts') },
       { find: /^@sva\/auth$/, replacement: resolve(currentDir, '../auth/src/index.ts') },
       { find: /^@sva\/core$/, replacement: resolve(currentDir, '../core/src/index.ts') },

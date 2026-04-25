@@ -2,9 +2,8 @@ import { randomUUID } from 'node:crypto';
 import { createSdkLogger } from '@sva/server-runtime';
 import { z } from 'zod';
 
-import { jitProvisionAccount } from '@sva/auth/server';
-
 import { getAuthConfig } from '../config.js';
+import { jitProvisionAccount } from '../jit-provisioning.js';
 import { buildLogContext } from '../log-context.js';
 import { client, getOidcConfig, invalidateOidcConfig } from '../oidc.js';
 import { consumeLoginState, createSession, getSessionControlState } from '../redis-session.js';

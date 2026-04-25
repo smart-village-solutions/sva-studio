@@ -44,6 +44,8 @@ export { createMockSessionUser, isMockAuthEnabled } from './mock-auth.js';
 export { resolveSessionUser, validateTenantHost } from './middleware-hosts.js';
 export { shouldEnforceLegalTextCompliance } from './middleware-compliance.js';
 export { withLegalTextCompliance } from './legal-text-enforcement.js';
+export { jitProvisionAccount, jitProvisionAccountWithClient } from './jit-provisioning.js';
+export type { JitProvisionInput, JitProvisionResult } from './jit-provisioning.js';
 export {
   closeRedis,
   getLastRedisError,

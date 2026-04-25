@@ -36,8 +36,8 @@
 ## 5. Fachpackage Migration
 
 - [ ] 5.1 Login, Logout, OIDC, Cookies, Session und Middleware in `@sva/auth-runtime` bündeln
-  - Fortschritt: Auth-/Session-Typen, Scope-Helfer, Runtime-Session-Fehler, Token-Fehler-Guards, Mock-Auth, Token-Verschlüsselung, Redis-Client, Request-Host-Auflösung, Tenant-Host-Middleware-Prüfung, Runtime-Secrets, Auth-Config inklusive Tenant-Auth-Resolution, Return-To-Sanitizing, Audit-Events inklusive DB-Sink und Legal-Text-Compliance liegen in `@sva/auth-runtime`; OIDC-, Login-, Callback-, Logout-, Session-, Cookie- und Route-Handler-Code nutzt diese Runtime-Verträge lokal.
-  - Offen: `@sva/auth-runtime` importiert noch serverseitige Implementierung aus `@sva/auth/server` für JIT, Mainserver-Credentials und Kompatibilitäts-Routen.
+  - Fortschritt: Auth-/Session-Typen, Scope-Helfer, Runtime-Session-Fehler, Token-Fehler-Guards, Mock-Auth, Token-Verschlüsselung, Redis-Client, Request-Host-Auflösung, Tenant-Host-Middleware-Prüfung, Runtime-Secrets, Auth-Config inklusive Tenant-Auth-Resolution, Return-To-Sanitizing, Audit-Events inklusive DB-Sink, Legal-Text-Compliance und JIT-Provisioning liegen in `@sva/auth-runtime`; OIDC-, Login-, Callback-, Logout-, Session-, Cookie- und Route-Handler-Code nutzt diese Runtime-Verträge lokal.
+  - Offen: `@sva/auth-runtime` importiert noch serverseitige Implementierung aus `@sva/auth/server` für Mainserver-Credentials und Kompatibilitäts-Routen.
 - [ ] 5.2 Benutzer, Rollen, Gruppen, Organisationen und Reconcile in `@sva/iam-admin` verschieben
   - Offen: Handler, Orchestrierung und Teile der Persistenz liegen noch unter `packages/auth/src/iam-account-management`, `packages/auth/src/iam-groups` und `packages/auth/src/iam-organizations`.
 - [x] 5.3 DSR, Legal Texts und Audit-nahe Governance-Flows in `@sva/iam-governance` verschieben

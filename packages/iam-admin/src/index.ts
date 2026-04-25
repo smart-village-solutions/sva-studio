@@ -135,6 +135,12 @@ export {
 } from './user-detail-query.js';
 
 export {
+  createUserReadHandlers,
+  type UserReadAuthenticatedRequestContext,
+  type UserReadHandlerDeps,
+} from './user-read-handlers.js';
+
+export {
   mapUserDetailRow,
 } from './user-detail-query.mapping.js';
 

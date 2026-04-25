@@ -27,6 +27,12 @@ export {
 } from './role-read-handlers.js';
 
 export {
+  createCreateRoleHandlerInternal,
+  type CreateRoleAuthenticatedRequestContext,
+  type CreateRoleHandlerDeps,
+} from './role-create-handler.js';
+
+export {
   loadRoleById,
   loadRoleListItemById,
   loadRoleListItems,

@@ -1,3 +1,5 @@
+export { callbackHandler, loginHandler, logoutHandler, meHandler } from './auth-route-handlers.js';
+
 export {
   adminDataExportHandler,
   adminDataExportStatusHandler,
@@ -6,7 +8,6 @@ export {
   assignOrganizationMembershipHandler,
   authorizeHandler,
   bulkDeactivateUsersHandler,
-  callbackHandler,
   createContentHandler,
   createGroupHandler,
   createLegalTextHandler,
@@ -49,9 +50,6 @@ export {
   listPermissionsHandler,
   listRolesHandler,
   listUsersHandler,
-  loginHandler,
-  logoutHandler,
-  meHandler,
   mePermissionsHandler,
   optionalProcessingExecuteHandler,
   profileCorrectionHandler,

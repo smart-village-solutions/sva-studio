@@ -47,6 +47,18 @@ export { withLegalTextCompliance } from './legal-text-enforcement.js';
 export { jitProvisionAccount, jitProvisionAccountWithClient } from './jit-provisioning.js';
 export type { JitProvisionInput, JitProvisionResult } from './jit-provisioning.js';
 export {
+  buildMainserverIdentityAttributes,
+  getSvaMainserverCredentialAttributeNames,
+  readIdentityUserAttributes,
+  readSvaMainserverCredentials,
+  readSvaMainserverCredentialsWithStatus,
+  resolveMainserverCredentialState,
+} from './mainserver-credentials.js';
+export type {
+  MainserverCredentialState,
+  SvaMainserverCredentials,
+} from './mainserver-credentials.js';
+export {
   closeRedis,
   getLastRedisError,
   getRedisClient,

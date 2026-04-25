@@ -1,6 +1,11 @@
 export {
+  readSvaMainserverCredentials,
   readSvaMainserverCredentialsWithStatus,
-} from '@sva/auth/server';
+} from './mainserver-credentials.js';
+export type {
+  MainserverCredentialState,
+  SvaMainserverCredentials,
+} from './mainserver-credentials.js';
 export {
   getAuthConfig,
   resolveAuthConfigForInstance,

@@ -35,6 +35,9 @@ export const getAuthClientSecret = (): string | undefined =>
 export const getAuthStateSecret = (): string | undefined =>
   readEnvOrSecret(['SVA_AUTH_STATE_SECRET'], 'sva_studio_app_auth_state_secret');
 
+export const getKeycloakAdminClientSecret = (): string | undefined =>
+  readEnvOrSecret(['KEYCLOAK_ADMIN_CLIENT_SECRET'], 'sva_studio_keycloak_admin_client_secret');
+
 export const getAppDbPassword = (): string | undefined =>
   readEnvOrSecret(['APP_DB_PASSWORD', 'POSTGRES_PASSWORD'], 'sva_studio_app_db_password');
 

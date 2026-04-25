@@ -1,12 +1,8 @@
 import { createSdkLogger, getWorkspaceContext, withRequestContext } from '@sva/server-runtime';
 import type { IamDsrCanonicalStatus, IamDsrCaseListItem } from '@sva/core';
 import { encryptFieldValue, parseFieldEncryptionConfigFromEnv } from '@sva/core/security';
-import {
-  collectDsrExportPayload as collectExportPayload,
-  serializeDsrExportPayload as serializeExportPayload,
-  type DsrExportAccountSnapshot as AccountSnapshot,
-  type DsrExportFormat as ExportFormat,
-} from '@sva/iam-governance/dsr-export-payload';
+import { createDsrExportFlows } from '@sva/iam-governance/dsr-export-flows';
+import type { DsrExportAccountSnapshot as AccountSnapshot, DsrExportFormat as ExportFormat } from '@sva/iam-governance/dsr-export-payload';
 import { runDsrMaintenance } from '@sva/iam-governance/dsr-maintenance';
 
 import { withAuthenticatedUser } from '../middleware.server.js';
@@ -28,6 +24,13 @@ import { listAdminDsrCases, loadDsrSelfServiceOverview } from './read-models.js'
 import { DsrAccountSnapshotNotFoundError } from './read-models.self-service-queries.js';
 
 const logger = createSdkLogger({ component: 'iam-dsr', level: 'info' });
+const dsrExportFlows = createDsrExportFlows({
+  reserveIdempotency,
+  completeIdempotency,
+  toPayloadHash,
+  jsonResponse,
+  textResponse,
+});
 
 const EXPORT_FORMATS = new Set(['json', 'csv', 'xml']);
 const ADMIN_ROLES = new Set(['iam_admin', 'support_admin', 'system_admin']);
@@ -54,17 +57,6 @@ type ExportRequestInput = {
 type AdminExportRequestInput = ExportRequestInput & {
   targetKeycloakSubject: string;
 };
-
-type IdempotentTextResponse =
-  | {
-      kind: 'json';
-      payload: Record<string, unknown>;
-    }
-  | {
-      kind: 'text';
-      body: string;
-      contentType: string;
-    };
 
 const isAdminRole = (roles: readonly string[]): boolean => roles.some((role) => ADMIN_ROLES.has(role));
 
@@ -178,30 +170,6 @@ const parseAdminExportRequestBody = async (
 const resolveInstanceId = (input: { bodyInstanceId?: string; request: Request; fallback?: string }): string | undefined => {
   const fromQuery = readString(new URL(input.request.url).searchParams.get('instanceId'));
   return input.bodyInstanceId ?? fromQuery ?? input.fallback;
-};
-
-const asIdempotentTextResponse = (body: string, contentType: string): IdempotentTextResponse => ({
-  kind: 'text',
-  body,
-  contentType,
-});
-
-const toResponseFromIdempotencyPayload = (status: number, payload: unknown): Response => {
-  if (
-    payload &&
-    typeof payload === 'object' &&
-    'kind' in payload &&
-    (payload as { kind?: unknown }).kind === 'text'
-  ) {
-    const typedPayload = payload as { body?: unknown; contentType?: unknown };
-    return textResponse(
-      status,
-      typeof typedPayload.body === 'string' ? typedPayload.body : '',
-      typeof typedPayload.contentType === 'string' ? typedPayload.contentType : 'text/plain; charset=utf-8'
-    );
-  }
-
-  return jsonResponse(status, payload);
 };
 
 const resolveRetentionHours = () => {
@@ -349,33 +317,6 @@ ON CONFLICT (instance_id, request_id, recipient_class) DO NOTHING;
   }
 };
 
-const createAsyncExportJob = async (
-  client: QueryClient,
-  input: {
-    instanceId: string;
-    targetAccountId: string;
-    requestedByAccountId: string;
-    format: ExportFormat;
-  }
-): Promise<{ id: string; status: string }> => {
-  const created = await client.query<{ id: string; status: string }>(
-    `
-INSERT INTO iam.data_subject_export_jobs (
-  instance_id,
-  target_account_id,
-  requested_by_account_id,
-  format,
-  status
-)
-VALUES ($1, $2::uuid, $3::uuid, $4, 'queued')
-RETURNING id, status;
-`,
-    [input.instanceId, input.targetAccountId, input.requestedByAccountId, input.format]
-  );
-
-  return created.rows[0]!;
-};
-
 const resolveRequesterAccountId = async (
   client: QueryClient,
   input: { instanceId: string; keycloakSubject: string }
@@ -442,156 +383,13 @@ export const dataExportHandler = async (request: Request): Promise<Response> => 
 
       try {
         return await withInstanceScopedDb(instanceId, async (client) => {
-          const account = await resolveAccountBySubject(client, {
+          return dsrExportFlows.runSelfExport({
+            client,
             instanceId,
             keycloakSubject: user.id,
-          });
-          if (!account) {
-            return jsonResponse(404, { error: 'account_not_found' });
-          }
-
-          const reserve = await reserveIdempotency({
-            instanceId,
-            actorAccountId: account.id,
-            endpoint: 'POST:/iam/me/data-export',
+            exportRequest,
             idempotencyKey: idempotencyKey.key,
-            payloadHash: toPayloadHash(JSON.stringify(exportRequest)),
           });
-          if (reserve.status === 'replay') {
-            return toResponseFromIdempotencyPayload(reserve.responseStatus, reserve.responseBody);
-          }
-          if (reserve.status === 'conflict') {
-            return jsonResponse(409, { error: 'idempotency_key_reuse', message: reserve.message });
-          }
-
-          if (exportRequest.async) {
-            const job = await createAsyncExportJob(client, {
-              instanceId,
-              targetAccountId: account.id,
-              requestedByAccountId: account.id,
-              format: exportRequest.format,
-            });
-
-            const requestId = await createDsrRequest(client, {
-              instanceId,
-              requestType: 'access',
-              status: 'accepted',
-              requesterAccountId: account.id,
-              targetAccountId: account.id,
-              payload: { format: exportRequest.format, mode: 'async', exportJobId: job.id },
-            });
-
-            await appendDsrRequestEvent(client, {
-              instanceId,
-              requestId,
-              actorAccountId: account.id,
-              eventType: 'export_job_queued',
-              payload: { exportJobId: job.id, format: exportRequest.format },
-            });
-
-            await emitDsrAuditEvent(client, {
-              instanceId,
-              accountId: account.id,
-              eventType: 'dsr_export_requested',
-              payload: {
-                request_id: requestId,
-                export_job_id: job.id,
-                format: exportRequest.format,
-                mode: 'async',
-              },
-            });
-
-            const responseBody = {
-              exportJobId: job.id,
-              status: job.status,
-              format: exportRequest.format,
-            };
-            await completeIdempotency({
-              instanceId,
-              actorAccountId: account.id,
-              endpoint: 'POST:/iam/me/data-export',
-              idempotencyKey: idempotencyKey.key,
-              status: 'COMPLETED',
-              responseStatus: 202,
-              responseBody,
-            });
-            return jsonResponse(202, responseBody);
-          }
-
-          const payload = await collectExportPayload(client, {
-            instanceId,
-            account,
-            format: exportRequest.format,
-          });
-
-          const requestId = await createDsrRequest(client, {
-            instanceId,
-            requestType: 'access',
-            status: 'completed',
-            requesterAccountId: account.id,
-            targetAccountId: account.id,
-            payload: { format: exportRequest.format, mode: 'sync' },
-            completedAt: new Date().toISOString(),
-          });
-
-          await appendDsrRequestEvent(client, {
-            instanceId,
-            requestId,
-            actorAccountId: account.id,
-            eventType: 'export_delivered',
-            payload: { format: exportRequest.format, mode: 'sync' },
-          });
-
-          await emitDsrAuditEvent(client, {
-            instanceId,
-            accountId: account.id,
-            eventType: 'dsr_export_delivered',
-            payload: {
-              request_id: requestId,
-              format: exportRequest.format,
-              mode: 'sync',
-              result: 'success',
-            },
-          });
-
-          if (exportRequest.format === 'json') {
-            const body = JSON.stringify(payload, null, 2);
-            await completeIdempotency({
-              instanceId,
-              actorAccountId: account.id,
-              endpoint: 'POST:/iam/me/data-export',
-              idempotencyKey: idempotencyKey.key,
-              status: 'COMPLETED',
-              responseStatus: 200,
-              responseBody: asIdempotentTextResponse(body, 'application/json'),
-            });
-            return textResponse(200, body, 'application/json');
-          }
-          if (exportRequest.format === 'csv') {
-            const body = serializeExportPayload(exportRequest.format, payload);
-            await completeIdempotency({
-              instanceId,
-              actorAccountId: account.id,
-              endpoint: 'POST:/iam/me/data-export',
-              idempotencyKey: idempotencyKey.key,
-              status: 'COMPLETED',
-              responseStatus: 200,
-              responseBody: asIdempotentTextResponse(body, 'text/csv; charset=utf-8'),
-            });
-            return textResponse(200, body, 'text/csv; charset=utf-8');
-          }
-
-          const body = serializeExportPayload(exportRequest.format, payload);
-          await completeIdempotency({
-            instanceId,
-            actorAccountId: account.id,
-            endpoint: 'POST:/iam/me/data-export',
-            idempotencyKey: idempotencyKey.key,
-            status: 'COMPLETED',
-            responseStatus: 200,
-            responseBody: asIdempotentTextResponse(body, 'application/xml; charset=utf-8'),
-          });
-          return textResponse(200, body, 'application/xml; charset=utf-8');
         });
       } catch (error) {
         logger.error('DSR self export failed', {
@@ -728,124 +526,13 @@ export const adminDataExportHandler = async (request: Request): Promise<Response
 
       try {
         return await withInstanceScopedDb(instanceId, async (client) => {
-          const actor = await resolveRequesterAccountId(client, {
+          return dsrExportFlows.runAdminExport({
+            client,
             instanceId,
-            keycloakSubject: user.id,
-          });
-          const target = await resolveAccountBySubject(client, {
-            instanceId,
-            keycloakSubject: exportRequest.targetKeycloakSubject,
-          });
-          if (!target) {
-            return jsonResponse(404, { error: 'target_account_not_found' });
-          }
-
-          const reserve = await reserveIdempotency({
-            instanceId,
-            actorAccountId: actor ?? target.id,
-            endpoint: 'POST:/iam/admin/data-subject-rights/export',
+            actorKeycloakSubject: user.id,
+            exportRequest,
             idempotencyKey: idempotencyKey.key,
-            payloadHash: toPayloadHash(JSON.stringify(exportRequest)),
           });
-          if (reserve.status === 'replay') {
-            return toResponseFromIdempotencyPayload(reserve.responseStatus, reserve.responseBody);
-          }
-          if (reserve.status === 'conflict') {
-            return jsonResponse(409, { error: 'idempotency_key_reuse', message: reserve.message });
-          }
-
-          if (exportRequest.async) {
-            const job = await createAsyncExportJob(client, {
-              instanceId,
-              targetAccountId: target.id,
-              requestedByAccountId: actor ?? target.id,
-              format: exportRequest.format,
-            });
-            await emitDsrAuditEvent(client, {
-              instanceId,
-              accountId: actor,
-              eventType: 'dsr_admin_export_requested',
-              payload: {
-                target_subject: exportRequest.targetKeycloakSubject,
-                export_job_id: job.id,
-                format: exportRequest.format,
-                mode: 'async',
-              },
-            });
-            const responseBody = {
-              exportJobId: job.id,
-              status: job.status,
-              format: exportRequest.format,
-              target: exportRequest.targetKeycloakSubject,
-            };
-            await completeIdempotency({
-              instanceId,
-              actorAccountId: actor ?? target.id,
-              endpoint: 'POST:/iam/admin/data-subject-rights/export',
-              idempotencyKey: idempotencyKey.key,
-              status: 'COMPLETED',
-              responseStatus: 202,
-              responseBody,
-            });
-            return jsonResponse(202, responseBody);
-          }
-
-          const payload = await collectExportPayload(client, {
-            instanceId,
-            account: target,
-            format: exportRequest.format,
-          });
-
-          await emitDsrAuditEvent(client, {
-            instanceId,
-            accountId: actor,
-            eventType: 'dsr_admin_export_delivered',
-            payload: {
-              target_subject: exportRequest.targetKeycloakSubject,
-              format: exportRequest.format,
-              mode: 'sync',
-              result: 'success',
-            },
-          });
-
-          if (exportRequest.format === 'json') {
-            const body = JSON.stringify(payload, null, 2);
-            await completeIdempotency({
-              instanceId,
-              actorAccountId: actor ?? target.id,
-              endpoint: 'POST:/iam/admin/data-subject-rights/export',
-              idempotencyKey: idempotencyKey.key,
-              status: 'COMPLETED',
-              responseStatus: 200,
-              responseBody: asIdempotentTextResponse(body, 'application/json'),
-            });
-            return textResponse(200, body, 'application/json');
-          }
-          if (exportRequest.format === 'csv') {
-            const body = serializeExportPayload(exportRequest.format, payload);
-            await completeIdempotency({
-              instanceId,
-              actorAccountId: actor ?? target.id,
-              endpoint: 'POST:/iam/admin/data-subject-rights/export',
-              idempotencyKey: idempotencyKey.key,
-              status: 'COMPLETED',
-              responseStatus: 200,
-              responseBody: asIdempotentTextResponse(body, 'text/csv; charset=utf-8'),
-            });
-            return textResponse(200, body, 'text/csv; charset=utf-8');
-          }
-
-          const body = serializeExportPayload(exportRequest.format, payload);
-          await completeIdempotency({
-            instanceId,
-            actorAccountId: actor ?? target.id,
-            endpoint: 'POST:/iam/admin/data-subject-rights/export',
-            idempotencyKey: idempotencyKey.key,
-            status: 'COMPLETED',
-            responseStatus: 200,
-            responseBody: asIdempotentTextResponse(body, 'application/xml; charset=utf-8'),
-          });
-          return textResponse(200, body, 'application/xml; charset=utf-8');
         });
       } catch (error) {
         logger.error('DSR admin export failed', {

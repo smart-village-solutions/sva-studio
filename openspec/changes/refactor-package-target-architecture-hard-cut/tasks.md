@@ -40,8 +40,8 @@
 - [ ] 5.2 Benutzer, Rollen, Gruppen, Organisationen und Reconcile in `@sva/iam-admin` verschieben
   - Offen: Handler, Orchestrierung und Teile der Persistenz liegen noch unter `packages/auth/src/iam-account-management`, `packages/auth/src/iam-groups` und `packages/auth/src/iam-organizations`.
 - [ ] 5.3 DSR, Legal Texts und Audit-nahe Governance-Flows in `@sva/iam-governance` verschieben
-  - Fortschritt: Read-Models, DSR-Export-Payload/Serialisierung, DSR-Maintenance-Runner, Legal-Text-HTML/Schemas, Legal-Text-Repository, Legal-Text-Mutation-Handler, Legal-Text-Listen-/Pending-Handler und Legal-Text-Request-Context liegen in `@sva/iam-governance`; `auth` nutzt dafür Boundary-Adapter.
-  - Offen: DSR-Export-Handler-Flows und Governance-Workflow-Implementierung liegen noch unter `packages/auth/src/iam-data-subject-rights` und `packages/auth/src/iam-governance`.
+  - Fortschritt: Read-Models, DSR-Export-Payload/Serialisierung, DSR-Export-POST-Flows, DSR-Maintenance-Runner, Legal-Text-HTML/Schemas, Legal-Text-Repository, Legal-Text-Mutation-Handler, Legal-Text-Listen-/Pending-Handler und Legal-Text-Request-Context liegen in `@sva/iam-governance`; `auth` nutzt dafür Boundary-Adapter.
+  - Offen: DSR-Export-Status-/Download-Flows und Governance-Workflow-Implementierung liegen noch unter `packages/auth/src/iam-data-subject-rights` und `packages/auth/src/iam-governance`.
 - [x] 5.4 Instanzmodell, Host-Klassifikation, Registry und Provisioning in `@sva/instance-registry` verschieben
   - Abgeschlossen: Service-Orchestrierung, Keycloak-Ausführung, Provisioning-Reader, Keycloak-State-Adapter, Keycloak-Client-Factory-Helfer, Worker-Loop, allgemeine Instanz-HTTP-Handler, Keycloak-HTTP-Handler, Statusmutations-HTTP-Adapter, Auth-/Reauth-Guard-Regeln, Runtime-Wiring, Mutation-Fehlerklassifikation und Mutation-Input-Builder liegen in `@sva/instance-registry`; `auth` enthält nur noch Boundary-Adapter für Auth-Kontext, CSRF, konkrete Secrets, Keycloak-Admin-Client und Kompatibilitäts-Exports.
 - [x] 5.5 Integrationspackages auf Zielverträge umstellen und direkte Auth-/Data-Interna entfernen

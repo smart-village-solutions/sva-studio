@@ -22,6 +22,10 @@
       "types": "./dist/dsr-export-payload.d.ts",
       "default": "./dist/dsr-export-payload.js"
     },
+    "./dsr-export-flows": {
+      "types": "./dist/dsr-export-flows.d.ts",
+      "default": "./dist/dsr-export-flows.js"
+    },
     "./dsr-maintenance": {
       "types": "./dist/dsr-maintenance.d.ts",
       "default": "./dist/dsr-maintenance.js"

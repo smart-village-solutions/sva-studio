@@ -25,6 +25,13 @@ export {
   type DsrExportPayload,
 } from './dsr-export-payload.js';
 export {
+  createDsrExportFlows,
+  type DsrAdminExportRequestInput,
+  type DsrExportFlowDeps,
+  type DsrExportRequestInput,
+  type DsrIdempotencyReservation,
+} from './dsr-export-flows.js';
+export {
   runDsrMaintenance,
   type DsrMaintenanceInput,
   type DsrMaintenanceResult,

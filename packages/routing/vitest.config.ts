@@ -19,7 +19,13 @@ export default defineConfig({
       { find: /^@sva\/data-repositories\/server$/, replacement: resolve(__dirname, '../data-repositories/src/server.ts') },
       { find: /^@sva\/data-repositories$/, replacement: resolve(__dirname, '../data-repositories/src/index.ts') },
       { find: /^@sva\/auth-runtime$/, replacement: resolve(__dirname, '../auth-runtime/src/index.ts') },
+      { find: /^@sva\/iam-core$/, replacement: resolve(__dirname, '../iam-core/src/index.ts') },
       { find: /^@sva\/iam-admin$/, replacement: resolve(__dirname, '../iam-admin/src/index.ts') },
+      {
+        find: /^@sva\/monitoring-client\/logger-provider.server$/,
+        replacement: resolve(__dirname, '../monitoring-client/src/logger-provider.server.ts'),
+      },
+      { find: /^@sva\/monitoring-client\/server$/, replacement: resolve(__dirname, '../monitoring-client/src/server.ts') },
       {
         find: /^@sva\/iam-governance\/governance-compliance-export$/,
         replacement: resolve(__dirname, '../iam-governance/src/governance-compliance-export.ts'),

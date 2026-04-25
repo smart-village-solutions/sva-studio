@@ -11,6 +11,7 @@ import {
 } from '../iam-account-management/api-helpers.js';
 import { validateCsrf } from '../iam-account-management/csrf.js';
 import { completeIdempotency, reserveIdempotency } from '../iam-account-management/shared.js';
+import { jsonResponse } from '../db.js';
 
 import type { ResolvedLegalTextsActor } from './request-context.js';
 import {
@@ -21,12 +22,6 @@ import {
 } from './repository.js';
 
 const logger = createSdkLogger({ component: 'iam-legal-texts', level: 'info' });
-
-const jsonResponse = (status: number, body: unknown) =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: { 'Content-Type': 'application/json' },
-  });
 
 const parseLegalTextRequestBody = async <T>(
   request: Request,

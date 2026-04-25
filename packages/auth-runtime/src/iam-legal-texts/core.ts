@@ -2,6 +2,7 @@ import { createLegalTextHttpHandlers } from '@sva/iam-governance/legal-text-http
 import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 
 import { asApiList, createApiError } from '../iam-account-management/api-helpers.js';
+import { jsonResponse } from '../db.js';
 import type { AuthenticatedRequestContext } from '../middleware.js';
 import { withAuthenticatedUser } from '../middleware.js';
 import { createLegalTextResponse, deleteLegalTextResponse, updateLegalTextResponse } from './mutations.js';
@@ -13,12 +14,6 @@ import {
 } from './request-context.js';
 
 const logger = createSdkLogger({ component: 'iam-legal-texts', level: 'info' });
-
-const jsonResponse = (status: number, body: unknown) =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: { 'Content-Type': 'application/json' },
-  });
 
 const legalTextHttpHandlers = createLegalTextHttpHandlers<AuthenticatedRequestContext>({
   resolveAdminActor: resolveLegalTextsAdminActor,

@@ -17,10 +17,20 @@ export const permissionCacheRuntimeState = {
 };
 
 const pruneRecomputeTimestamps = (nowMs: number): void => {
-  permissionCacheRuntimeState.recomputeTimestampsMs =
-    permissionCacheRuntimeState.recomputeTimestampsMs.filter(
-      (timestamp) => nowMs - timestamp <= CACHE_RECOMPUTE_WINDOW_MS
-    );
+  const recomputeTimestampsMs = permissionCacheRuntimeState.recomputeTimestampsMs;
+  const cutoffMs = nowMs - CACHE_RECOMPUTE_WINDOW_MS;
+  let firstValidIndex = 0;
+
+  while (
+    firstValidIndex < recomputeTimestampsMs.length
+    && recomputeTimestampsMs[firstValidIndex]! < cutoffMs
+  ) {
+    firstValidIndex += 1;
+  }
+
+  if (firstValidIndex > 0) {
+    recomputeTimestampsMs.splice(0, firstValidIndex);
+  }
 };
 
 export const markPermissionCacheColdStart = (): boolean => {
@@ -32,12 +42,12 @@ export const markPermissionCacheColdStart = (): boolean => {
   return true;
 };
 
-export const buildPermissionCacheColdStartLog = (instanceId: string) => ({
+export const buildPermissionCacheColdStartLog = (workspaceId: string) => ({
   message: 'Permission cache cold start detected',
   attributes: {
     operation: 'cache_lookup',
     cache_cold_start: true,
-    ...buildRequestContext(instanceId),
+    ...buildRequestContext(workspaceId),
   },
 });
 

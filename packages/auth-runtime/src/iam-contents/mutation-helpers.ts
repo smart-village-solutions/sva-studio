@@ -9,6 +9,7 @@ import {
 } from '../iam-account-management/api-helpers.js';
 import { validateCsrf } from '../iam-account-management/csrf.js';
 import { completeIdempotency, reserveIdempotency } from '../iam-account-management/shared.js';
+import { jsonResponse } from '../db.js';
 
 import type { CreateContentInput } from './repository-shared.js';
 import type { ResolvedContentActor } from './request-context.js';
@@ -17,11 +18,7 @@ import { createContentSchema } from './schemas.js';
 
 const logger = createSdkLogger({ component: 'iam-contents', level: 'info' });
 
-export const jsonResponse = (status: number, body: unknown) =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: { 'Content-Type': 'application/json' },
-  });
+export { jsonResponse };
 
 export const completeCreateIdempotency = async (
   actor: ResolvedContentActor['actor'],

@@ -5,14 +5,15 @@ export const jsonResponse = (
   status: number,
   payload: unknown,
   headers?: HeadersInit
-): Response =>
-  new Response(JSON.stringify(payload), {
+): Response => {
+  const responseHeaders = new Headers(headers);
+  responseHeaders.set('Content-Type', 'application/json');
+
+  return new Response(JSON.stringify(payload), {
     status,
-    headers: {
-      'Content-Type': 'application/json',
-      ...headers,
-    },
+    headers: responseHeaders,
   });
+};
 
 export const createApiError = (
   status: number,

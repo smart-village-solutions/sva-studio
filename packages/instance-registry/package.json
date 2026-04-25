@@ -22,6 +22,10 @@
       "types": "./dist/http-keycloak-handlers.d.ts",
       "default": "./dist/http-keycloak-handlers.js"
     },
+    "./http-mutation-handlers": {
+      "types": "./dist/http-mutation-handlers.d.ts",
+      "default": "./dist/http-mutation-handlers.js"
+    },
     "./keycloak-types": {
       "types": "./dist/keycloak-types.d.ts",
       "default": "./dist/keycloak-types.js"

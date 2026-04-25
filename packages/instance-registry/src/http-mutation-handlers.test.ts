@@ -1,0 +1,151 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import {
+  createInstanceMutationErrorMapper,
+  createInstanceRegistryMutationHttpHandlers,
+  type InstanceRegistryMutationHttpDeps,
+} from './http-mutation-handlers.js';
+
+type TestContext = {
+  readonly userId: string;
+};
+
+const readBody = async (response: Response) => JSON.parse(await response.text());
+
+const createDeps = (): InstanceRegistryMutationHttpDeps<TestContext> => ({
+  getRequestId: () => 'req-test',
+  getActor: (ctx) => ({ id: ctx.userId }),
+  createApiError: (
+    status: number,
+    code: string,
+    message: string,
+    requestId?: string,
+    details?: Record<string, unknown>
+  ) =>
+    new Response(JSON.stringify({ code, message, requestId, ...(details ? { details } : {}) }), {
+      status,
+      headers: { 'Content-Type': 'application/json' },
+    }),
+  jsonResponse: (status, payload) =>
+    new Response(JSON.stringify(payload), {
+      status,
+      headers: { 'Content-Type': 'application/json' },
+    }),
+  asApiItem: (value) => value,
+  parseRequestBody: vi.fn(async () => ({ ok: true, data: { rotateClientSecret: false, intent: 'provision' } })),
+  requireIdempotencyKey: vi.fn(() => ({ key: 'idem-1' })),
+  ensurePlatformAccess: vi.fn(() => null),
+  validateCsrf: vi.fn(() => null),
+  requireFreshReauth: vi.fn(() => null),
+  withRegistryService: vi.fn(async (work) =>
+    work({
+      reconcileKeycloak: vi.fn(async () => ({ realmExists: true })),
+      executeKeycloakProvisioning: vi.fn(async () => ({ id: 'run-1' })),
+      changeStatus: vi.fn(async () => ({ ok: true, instance: { instanceId: 'inst-1', status: 'active' } })),
+    } as never)
+  ),
+});
+
+describe('http mutation handlers', () => {
+  let deps: InstanceRegistryMutationHttpDeps<TestContext>;
+
+  beforeEach(() => {
+    deps = createDeps();
+  });
+
+  it('maps known mutation errors with stable API codes', async () => {
+    const mapError = createInstanceMutationErrorMapper(deps);
+
+    const response = mapError(new Error('tenant_auth_client_secret_missing'));
+    const body = await readBody(response);
+
+    expect(response.status).toBe(409);
+    expect(body).toMatchObject({
+      code: 'tenant_auth_client_secret_missing',
+      requestId: 'req-test',
+    });
+  });
+
+  it('reconcileInstanceKeycloak validates guards before parsing the body', async () => {
+    vi.mocked(deps.ensurePlatformAccess).mockReturnValueOnce(new Response('forbidden', { status: 403 }));
+    const handlers = createInstanceRegistryMutationHttpHandlers(deps);
+
+    const response = await handlers.reconcileInstanceKeycloak(
+      new Request('http://localhost/api/instances/inst-1/keycloak/reconcile'),
+      { userId: 'u-1' }
+    );
+
+    expect(response.status).toBe(403);
+    expect(deps.parseRequestBody).not.toHaveBeenCalled();
+  });
+
+  it('reconcileInstanceKeycloak returns not_found when the service has no instance', async () => {
+    vi.mocked(deps.withRegistryService).mockImplementationOnce(async (work) =>
+      work({ reconcileKeycloak: vi.fn(async () => null) } as never)
+    );
+    const handlers = createInstanceRegistryMutationHttpHandlers(deps);
+
+    const response = await handlers.reconcileInstanceKeycloak(
+      new Request('http://localhost/api/instances/inst-1/keycloak/reconcile'),
+      { userId: 'u-1' }
+    );
+    const body = await readBody(response);
+
+    expect(response.status).toBe(404);
+    expect(body.code).toBe('not_found');
+  });
+
+  it('executeInstanceKeycloakProvisioning maps thrown registry errors', async () => {
+    vi.mocked(deps.withRegistryService).mockImplementationOnce(async () => {
+      throw new Error('tenant_admin_client_secret_missing');
+    });
+    const handlers = createInstanceRegistryMutationHttpHandlers(deps);
+
+    const response = await handlers.executeInstanceKeycloakProvisioning(
+      new Request('http://localhost/api/instances/inst-1/keycloak/runs'),
+      { userId: 'u-1' }
+    );
+    const body = await readBody(response);
+
+    expect(response.status).toBe(409);
+    expect(body.code).toBe('tenant_admin_client_secret_missing');
+  });
+
+  it('mutateInstanceStatus rejects mismatched status payloads', async () => {
+    vi.mocked(deps.parseRequestBody).mockResolvedValueOnce({ ok: true, data: { status: 'archived' } });
+    const handlers = createInstanceRegistryMutationHttpHandlers(deps);
+
+    const response = await handlers.mutateInstanceStatus(
+      new Request('http://localhost/api/instances/inst-1/status'),
+      { userId: 'u-1' },
+      'active'
+    );
+    const body = await readBody(response);
+
+    expect(response.status).toBe(400);
+    expect(body.code).toBe('invalid_request');
+  });
+
+  it('mutateInstanceStatus returns the changed instance on success', async () => {
+    vi.mocked(deps.parseRequestBody).mockResolvedValueOnce({ ok: true, data: { status: 'suspended' } });
+    vi.mocked(deps.withRegistryService).mockImplementationOnce(async (work) =>
+      work({
+        changeStatus: vi.fn(async () => ({
+          ok: true,
+          instance: { instanceId: 'inst-1', status: 'suspended' },
+        })),
+      } as never)
+    );
+    const handlers = createInstanceRegistryMutationHttpHandlers(deps);
+
+    const response = await handlers.mutateInstanceStatus(
+      new Request('http://localhost/api/instances/inst-1/status'),
+      { userId: 'u-1' },
+      'suspended'
+    );
+    const body = await readBody(response);
+
+    expect(response.status).toBe(200);
+    expect(body).toMatchObject({ instanceId: 'inst-1', status: 'suspended' });
+  });
+});

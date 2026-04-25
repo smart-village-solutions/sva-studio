@@ -71,6 +71,7 @@ import {
 } from './core-mutations.js';
 
 const readBody = async (response: Response) => JSON.parse(await response.text());
+const registryRequest = (): Request => new Request('http://localhost/api/instances/inst-1');
 
 describe('core-mutations', () => {
   beforeEach(() => {
@@ -146,7 +147,7 @@ describe('core-mutations', () => {
   it('reconcileInstanceKeycloakMutation returns guard errors early', async () => {
     state.ensurePlatformAccess.mockReturnValue(new Response('forbidden', { status: 403 }));
 
-    const response = await reconcileInstanceKeycloakMutation(new Request('http://localhost'), { user: { id: 'u-1' } } as never);
+    const response = await reconcileInstanceKeycloakMutation(registryRequest(), { user: { id: 'u-1' } } as never);
     expect(response.status).toBe(403);
     expect(state.parseRequestBody).not.toHaveBeenCalled();
   });
@@ -154,7 +155,7 @@ describe('core-mutations', () => {
   it('reconcileInstanceKeycloakMutation validates payload and returns 400 on invalid body', async () => {
     state.parseRequestBody.mockResolvedValueOnce({ ok: false, message: 'invalid' });
 
-    const response = await reconcileInstanceKeycloakMutation(new Request('http://localhost'), { user: { id: 'u-1' } } as never);
+    const response = await reconcileInstanceKeycloakMutation(registryRequest(), { user: { id: 'u-1' } } as never);
     const body = await readBody(response);
     expect(response.status).toBe(400);
     expect(body.code).toBe('invalid_request');
@@ -163,7 +164,7 @@ describe('core-mutations', () => {
   it('reconcileInstanceKeycloakMutation returns csrf error before body parsing', async () => {
     state.validateCsrf.mockReturnValueOnce(new Response('csrf', { status: 419 }));
 
-    const response = await reconcileInstanceKeycloakMutation(new Request('http://localhost'), { user: { id: 'u-1' } } as never);
+    const response = await reconcileInstanceKeycloakMutation(registryRequest(), { user: { id: 'u-1' } } as never);
 
     expect(response.status).toBe(419);
     expect(state.parseRequestBody).not.toHaveBeenCalled();
@@ -172,7 +173,7 @@ describe('core-mutations', () => {
   it('reconcileInstanceKeycloakMutation returns reauth error', async () => {
     state.requireFreshReauth.mockReturnValueOnce(new Response('reauth', { status: 428 }));
 
-    const response = await reconcileInstanceKeycloakMutation(new Request('http://localhost'), { user: { id: 'u-1' } } as never);
+    const response = await reconcileInstanceKeycloakMutation(registryRequest(), { user: { id: 'u-1' } } as never);
 
     expect(response.status).toBe(428);
   });
@@ -180,7 +181,7 @@ describe('core-mutations', () => {
   it('reconcileInstanceKeycloakMutation returns idempotency error', async () => {
     state.requireIdempotencyKey.mockReturnValueOnce({ error: new Response('idem', { status: 400 }) });
 
-    const response = await reconcileInstanceKeycloakMutation(new Request('http://localhost'), { user: { id: 'u-1' } } as never);
+    const response = await reconcileInstanceKeycloakMutation(registryRequest(), { user: { id: 'u-1' } } as never);
 
     expect(response.status).toBe(400);
   });
@@ -200,7 +201,7 @@ describe('core-mutations', () => {
       work({ reconcileKeycloak: vi.fn(async () => null) })
     );
 
-    const response = await reconcileInstanceKeycloakMutation(new Request('http://localhost'), { user: { id: 'u-1' } } as never);
+    const response = await reconcileInstanceKeycloakMutation(registryRequest(), { user: { id: 'u-1' } } as never);
     const body = await readBody(response);
 
     expect(response.status).toBe(404);
@@ -226,7 +227,7 @@ describe('core-mutations', () => {
     });
 
     const response = await executeInstanceKeycloakProvisioningMutation(
-      new Request('http://localhost'),
+      registryRequest(),
       { user: { id: 'u-1' } } as never
     );
     const body = await readBody(response);
@@ -241,7 +242,7 @@ describe('core-mutations', () => {
     );
 
     const response = await executeInstanceKeycloakProvisioningMutation(
-      new Request('http://localhost'),
+      registryRequest(),
       { user: { id: 'u-1' } } as never
     );
 
@@ -253,7 +254,7 @@ describe('core-mutations', () => {
   it('executeInstanceKeycloakProvisioningMutation returns guard errors in order', async () => {
     state.ensurePlatformAccess.mockReturnValueOnce(new Response('forbidden', { status: 403 }));
     const access = await executeInstanceKeycloakProvisioningMutation(
-      new Request('http://localhost'),
+      registryRequest(),
       { user: { id: 'u-1' } } as never
     );
     expect(access.status).toBe(403);
@@ -261,7 +262,7 @@ describe('core-mutations', () => {
     state.ensurePlatformAccess.mockReturnValue(null);
     state.validateCsrf.mockReturnValueOnce(new Response('csrf', { status: 419 }));
     const csrf = await executeInstanceKeycloakProvisioningMutation(
-      new Request('http://localhost'),
+      registryRequest(),
       { user: { id: 'u-1' } } as never
     );
     expect(csrf.status).toBe(419);
@@ -269,7 +270,7 @@ describe('core-mutations', () => {
     state.validateCsrf.mockReturnValue(null);
     state.requireFreshReauth.mockReturnValueOnce(new Response('reauth', { status: 428 }));
     const reauth = await executeInstanceKeycloakProvisioningMutation(
-      new Request('http://localhost'),
+      registryRequest(),
       { user: { id: 'u-1' } } as never
     );
     expect(reauth.status).toBe(428);
@@ -277,7 +278,7 @@ describe('core-mutations', () => {
     state.requireFreshReauth.mockReturnValue(null);
     state.requireIdempotencyKey.mockReturnValueOnce({ error: new Response('idem', { status: 400 }) });
     const idem = await executeInstanceKeycloakProvisioningMutation(
-      new Request('http://localhost'),
+      registryRequest(),
       { user: { id: 'u-1' } } as never
     );
     expect(idem.status).toBe(400);
@@ -285,7 +286,7 @@ describe('core-mutations', () => {
     state.requireIdempotencyKey.mockReturnValue({ key: 'idem-1' });
     state.parseRequestBody.mockResolvedValueOnce({ ok: false, message: 'invalid' });
     const invalid = await executeInstanceKeycloakProvisioningMutation(
-      new Request('http://localhost'),
+      registryRequest(),
       { user: { id: 'u-1' } } as never
     );
     const invalidBody = await readBody(invalid);
@@ -303,7 +304,7 @@ describe('core-mutations', () => {
     );
 
     const response = await executeInstanceKeycloakProvisioningMutation(
-      new Request('http://localhost'),
+      registryRequest(),
       { user: { id: 'u-1' } } as never
     );
     const body = await readBody(response);
@@ -319,7 +320,7 @@ describe('core-mutations', () => {
     );
 
     const response = await mutateInstanceStatus(
-      new Request('http://localhost'),
+      registryRequest(),
       { user: { id: 'u-1' } } as never,
       'active'
     );
@@ -336,7 +337,7 @@ describe('core-mutations', () => {
     );
 
     const response = await mutateInstanceStatus(
-      new Request('http://localhost'),
+      registryRequest(),
       { user: { id: 'u-1' } } as never,
       'suspended'
     );
@@ -348,17 +349,17 @@ describe('core-mutations', () => {
 
   it('mutateInstanceStatus returns guard errors in order before mutation', async () => {
     state.ensurePlatformAccess.mockReturnValueOnce(new Response('forbidden', { status: 403 }));
-    const responseAccess = await mutateInstanceStatus(new Request('http://localhost'), { user: { id: 'u-1' } } as never, 'active');
+    const responseAccess = await mutateInstanceStatus(registryRequest(), { user: { id: 'u-1' } } as never, 'active');
     expect(responseAccess.status).toBe(403);
 
     state.ensurePlatformAccess.mockReturnValue(null);
     state.validateCsrf.mockReturnValueOnce(new Response('csrf', { status: 419 }));
-    const responseCsrf = await mutateInstanceStatus(new Request('http://localhost'), { user: { id: 'u-1' } } as never, 'active');
+    const responseCsrf = await mutateInstanceStatus(registryRequest(), { user: { id: 'u-1' } } as never, 'active');
     expect(responseCsrf.status).toBe(419);
 
     state.validateCsrf.mockReturnValue(null);
     state.requireFreshReauth.mockReturnValueOnce(new Response('reauth', { status: 428 }));
-    const responseReauth = await mutateInstanceStatus(new Request('http://localhost'), { user: { id: 'u-1' } } as never, 'active');
+    const responseReauth = await mutateInstanceStatus(registryRequest(), { user: { id: 'u-1' } } as never, 'active');
     expect(responseReauth.status).toBe(428);
   });
 
@@ -366,7 +367,7 @@ describe('core-mutations', () => {
     state.parseRequestBody.mockResolvedValueOnce({ ok: true, data: { status: 'archived' } });
 
     const response = await mutateInstanceStatus(
-      new Request('http://localhost'),
+      registryRequest(),
       { user: { id: 'u-1' } } as never,
       'active'
     );

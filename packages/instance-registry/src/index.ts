@@ -42,6 +42,12 @@ export {
   type InstanceRegistryKeycloakHttpDeps,
 } from './http-keycloak-handlers.js';
 export {
+  createInstanceMutationErrorMapper,
+  createInstanceRegistryMutationHttpHandlers,
+  type InstanceRegistryMutationHttpActor,
+  type InstanceRegistryMutationHttpDeps,
+} from './http-mutation-handlers.js';
+export {
   createInstanceRegistryHttpHandlers,
   type InstanceRegistryHttpActor,
   type InstanceRegistryHttpDeps,

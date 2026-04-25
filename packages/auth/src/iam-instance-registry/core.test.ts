@@ -318,7 +318,7 @@ describe('iam-instance-registry core handlers', () => {
     readDetailInstanceIdMock.mockReturnValueOnce(undefined);
     parseRequestBodyMock.mockResolvedValueOnce({ ok: true, data: { status: 'archived' } });
     const missingId = await archiveInstanceInternal(
-      new Request('https://studio.example.org/api/v1/iam/instances/demo/archive', { method: 'POST' }),
+      new Request('https://studio.example.org/api/v1/iam/archive', { method: 'POST' }),
       ctx
     );
 

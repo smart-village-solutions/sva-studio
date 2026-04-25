@@ -4,198 +4,62 @@ import { jsonResponse } from '../shared/db-helpers.js';
 import { getWorkspaceContext } from '@sva/server-runtime';
 import type { InstanceStatus } from '@sva/core';
 import {
-  classifyInstanceMutationError,
-  type InstanceMutationErrorCode,
-} from '@sva/instance-registry/mutation-errors';
-import {
-  buildChangeInstanceStatusInput,
-  buildExecuteInstanceKeycloakProvisioningInput,
-  buildReconcileInstanceKeycloakInput,
-} from '@sva/instance-registry/mutation-input-builders';
+  createInstanceMutationErrorMapper,
+  createInstanceRegistryMutationHttpHandlers,
+} from '@sva/instance-registry/http-mutation-handlers';
 import type { AuthenticatedRequestContext } from '../middleware.server.js';
 import {
   ensurePlatformAccess,
-  executeKeycloakProvisioningSchema,
-  readDetailInstanceId,
-  reconcileKeycloakSchema,
   requireFreshReauth,
-  statusMutationSchema,
 } from './http.js';
 import { withRegistryService } from './repository.js';
 
-const mutationErrorMessages: Record<InstanceMutationErrorCode, string> = {
-  tenant_admin_client_not_configured:
-    'Für diese Instanz ist noch kein Tenant-Admin-Client hinterlegt.',
-  tenant_admin_client_secret_missing:
-    'Für diese Instanz ist noch kein Tenant-Admin-Client-Secret hinterlegt.',
-  tenant_auth_client_secret_missing:
-    'Für diese Instanz ist noch kein Tenant-Client-Secret hinterlegt.',
-  encryption_not_configured:
-    'Die Feldverschlüsselung für Tenant-Secrets ist nicht konfiguriert.',
-  keycloak_unavailable:
-    'Keycloak konnte für diese Instanz nicht abgeglichen werden.',
+const getRequestId = (): string | undefined => getWorkspaceContext().requestId;
+
+const parseRegistryRequestBody = async <T>(
+  request: Request,
+  schema: unknown
+): Promise<{ ok: true; data: T } | { ok: false; message: string }> => {
+  const result = await parseRequestBody(request, schema as Parameters<typeof parseRequestBody>[1]);
+  if (!result.ok) {
+    return { ok: false, message: result.message };
+  }
+  return { ok: true, data: result.data as T };
 };
 
-export const mapInstanceMutationError = (error: unknown): Response => {
-  const classification = classifyInstanceMutationError(error);
-  return createApiError(
-    classification.status,
-    classification.code,
-    mutationErrorMessages[classification.code],
-    getWorkspaceContext().requestId,
-    classification.details
-  );
-};
+const mutationHandlers = createInstanceRegistryMutationHttpHandlers<AuthenticatedRequestContext>({
+  getRequestId,
+  getActor: (ctx) => ({ id: ctx.user.id }),
+  createApiError: (status, code, message, requestId, details) =>
+    createApiError(status, code as Parameters<typeof createApiError>[1], message, requestId, details),
+  jsonResponse,
+  asApiItem,
+  parseRequestBody: parseRegistryRequestBody,
+  requireIdempotencyKey,
+  ensurePlatformAccess,
+  validateCsrf,
+  requireFreshReauth,
+  withRegistryService,
+});
 
-export const reconcileInstanceKeycloakMutation = async (
+export const mapInstanceMutationError = createInstanceMutationErrorMapper({
+  getRequestId,
+  createApiError: (status, code, message, requestId, details) =>
+    createApiError(status, code as Parameters<typeof createApiError>[1], message, requestId, details),
+});
+
+export const reconcileInstanceKeycloakMutation = (
   request: Request,
   ctx: AuthenticatedRequestContext
-): Promise<Response> => {
-  const accessError = ensurePlatformAccess(request, ctx);
-  if (accessError) {
-    return accessError;
-  }
+): Promise<Response> => mutationHandlers.reconcileInstanceKeycloak(request, ctx);
 
-  const csrfError = validateCsrf(request, getWorkspaceContext().requestId);
-  if (csrfError) {
-    return csrfError;
-  }
-
-  const reauthError = requireFreshReauth(request);
-  if (reauthError) {
-    return reauthError;
-  }
-
-  const idempotencyResult = requireIdempotencyKey(request, getWorkspaceContext().requestId);
-  if ('error' in idempotencyResult) {
-    return idempotencyResult.error;
-  }
-
-  const instanceId = readDetailInstanceId(request);
-  if (!instanceId) {
-    return createApiError(400, 'invalid_instance_id', 'Instanz-ID fehlt.', getWorkspaceContext().requestId);
-  }
-
-  const payloadResult = await parseRequestBody(request, reconcileKeycloakSchema);
-  if (!payloadResult.ok) {
-    return createApiError(400, 'invalid_request', payloadResult.message, getWorkspaceContext().requestId);
-  }
-
-  try {
-    const status = await withRegistryService((service) =>
-      service.reconcileKeycloak(buildReconcileInstanceKeycloakInput(instanceId, payloadResult.data, {
-        actorId: ctx.user.id,
-        requestId: getWorkspaceContext().requestId,
-      }))
-    );
-    if (!status) {
-      return createApiError(404, 'not_found', 'Instanz wurde nicht gefunden.', getWorkspaceContext().requestId);
-    }
-    return jsonResponse(200, asApiItem(status, getWorkspaceContext().requestId));
-  } catch (error) {
-    return mapInstanceMutationError(error);
-  }
-};
-
-export const executeInstanceKeycloakProvisioningMutation = async (
+export const executeInstanceKeycloakProvisioningMutation = (
   request: Request,
   ctx: AuthenticatedRequestContext
-): Promise<Response> => {
-  const accessError = ensurePlatformAccess(request, ctx);
-  if (accessError) {
-    return accessError;
-  }
+): Promise<Response> => mutationHandlers.executeInstanceKeycloakProvisioning(request, ctx);
 
-  const csrfError = validateCsrf(request, getWorkspaceContext().requestId);
-  if (csrfError) {
-    return csrfError;
-  }
-
-  const reauthError = requireFreshReauth(request);
-  if (reauthError) {
-    return reauthError;
-  }
-
-  const idempotencyResult = requireIdempotencyKey(request, getWorkspaceContext().requestId);
-  if ('error' in idempotencyResult) {
-    return idempotencyResult.error;
-  }
-
-  const instanceId = readDetailInstanceId(request);
-  if (!instanceId) {
-    return createApiError(400, 'invalid_instance_id', 'Instanz-ID fehlt.', getWorkspaceContext().requestId);
-  }
-
-  const payloadResult = await parseRequestBody(request, executeKeycloakProvisioningSchema);
-  if (!payloadResult.ok) {
-    return createApiError(400, 'invalid_request', payloadResult.message, getWorkspaceContext().requestId);
-  }
-
-  try {
-    const run = await withRegistryService((service) =>
-      service.executeKeycloakProvisioning(buildExecuteInstanceKeycloakProvisioningInput(instanceId, payloadResult.data, {
-        actorId: ctx.user.id,
-        requestId: getWorkspaceContext().requestId,
-      }))
-    );
-    if (!run) {
-      return createApiError(404, 'not_found', 'Instanz wurde nicht gefunden.', getWorkspaceContext().requestId);
-    }
-    return jsonResponse(200, asApiItem(run, getWorkspaceContext().requestId));
-  } catch (error) {
-    return mapInstanceMutationError(error);
-  }
-};
-
-export const mutateInstanceStatus = async (
+export const mutateInstanceStatus = (
   request: Request,
   ctx: AuthenticatedRequestContext,
   nextStatus: Extract<InstanceStatus, 'active' | 'suspended' | 'archived'>
-): Promise<Response> => {
-  const accessError = ensurePlatformAccess(request, ctx);
-  if (accessError) {
-    return accessError;
-  }
-
-  const csrfError = validateCsrf(request, getWorkspaceContext().requestId);
-  if (csrfError) {
-    return csrfError;
-  }
-
-  const reauthError = requireFreshReauth(request);
-  if (reauthError) {
-    return reauthError;
-  }
-
-  const idempotencyResult = requireIdempotencyKey(request, getWorkspaceContext().requestId);
-  if ('error' in idempotencyResult) {
-    return idempotencyResult.error;
-  }
-
-  const payloadResult = await parseRequestBody(request, statusMutationSchema);
-  if (!payloadResult.ok || payloadResult.data.status !== nextStatus) {
-    return createApiError(400, 'invalid_request', 'Ungültiger Statuswechsel.', getWorkspaceContext().requestId);
-  }
-
-  const instanceId = readDetailInstanceId(request);
-  if (!instanceId) {
-    return createApiError(400, 'invalid_instance_id', 'Instanz-ID fehlt.', getWorkspaceContext().requestId);
-  }
-
-  const result = await withRegistryService((service) =>
-    service.changeStatus(buildChangeInstanceStatusInput(instanceId, nextStatus, {
-      idempotencyKey: idempotencyResult.key,
-      actorId: ctx.user.id,
-      requestId: getWorkspaceContext().requestId,
-    }))
-  );
-
-  if (!result.ok) {
-    if (result.reason === 'not_found') {
-      return createApiError(404, 'not_found', 'Instanz wurde nicht gefunden.', getWorkspaceContext().requestId);
-    }
-    return createApiError(409, 'conflict', 'Statuswechsel ist im aktuellen Zustand nicht erlaubt.', getWorkspaceContext().requestId);
-  }
-
-  return jsonResponse(200, asApiItem(result.instance, getWorkspaceContext().requestId));
-};
+): Promise<Response> => mutationHandlers.mutateInstanceStatus(request, ctx, nextStatus);

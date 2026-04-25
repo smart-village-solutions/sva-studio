@@ -29,6 +29,7 @@
     "@sva/iam-core": "workspace:*",
     "@sva/server-runtime": "workspace:*",
     "cookie-es": "^2.0.0",
+    "openid-client": "^6.4.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {

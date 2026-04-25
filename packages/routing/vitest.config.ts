@@ -30,6 +30,26 @@ export default defineConfig({
         replacement: resolve(__dirname, '../iam-governance/src/governance-workflow-policy.ts'),
       },
       {
+        find: /^@sva\/iam-governance\/dsr-read-models-internal$/,
+        replacement: resolve(__dirname, '../iam-governance/src/dsr-read-models-internal.ts'),
+      },
+      {
+        find: /^@sva\/iam-governance\/dsr-export-flows$/,
+        replacement: resolve(__dirname, '../iam-governance/src/dsr-export-flows.ts'),
+      },
+      {
+        find: /^@sva\/iam-governance\/dsr-export-payload$/,
+        replacement: resolve(__dirname, '../iam-governance/src/dsr-export-payload.ts'),
+      },
+      {
+        find: /^@sva\/iam-governance\/dsr-export-status$/,
+        replacement: resolve(__dirname, '../iam-governance/src/dsr-export-status.ts'),
+      },
+      {
+        find: /^@sva\/iam-governance\/dsr-maintenance$/,
+        replacement: resolve(__dirname, '../iam-governance/src/dsr-maintenance.ts'),
+      },
+      {
         find: /^@sva\/iam-governance\/legal-text-repository-shared$/,
         replacement: resolve(__dirname, '../iam-governance/src/legal-text-repository-shared.ts'),
       },

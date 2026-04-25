@@ -22,6 +22,22 @@ export default defineConfig({
         replacement: resolve(currentDir, '../iam-governance/src/dsr-read-models-internal.ts'),
       },
       {
+        find: /^@sva\/iam-governance\/dsr-export-flows$/,
+        replacement: resolve(currentDir, '../iam-governance/src/dsr-export-flows.ts'),
+      },
+      {
+        find: /^@sva\/iam-governance\/dsr-export-payload$/,
+        replacement: resolve(currentDir, '../iam-governance/src/dsr-export-payload.ts'),
+      },
+      {
+        find: /^@sva\/iam-governance\/dsr-export-status$/,
+        replacement: resolve(currentDir, '../iam-governance/src/dsr-export-status.ts'),
+      },
+      {
+        find: /^@sva\/iam-governance\/dsr-maintenance$/,
+        replacement: resolve(currentDir, '../iam-governance/src/dsr-maintenance.ts'),
+      },
+      {
         find: /^@sva\/iam-governance\/legal-text-repository-shared$/,
         replacement: resolve(currentDir, '../iam-governance/src/legal-text-repository-shared.ts'),
       },

@@ -15,6 +15,21 @@
       "@sva/data-repositories/server": ["packages/data-repositories/dist/server.d.ts"],
       "@sva/iam-admin": ["packages/iam-admin/dist/index.d.ts"],
       "@sva/iam-core": ["packages/iam-core/dist/index.d.ts"],
+      "@sva/iam-governance/dsr-export-flows": [
+        "packages/iam-governance/dist/dsr-export-flows.d.ts"
+      ],
+      "@sva/iam-governance/dsr-export-payload": [
+        "packages/iam-governance/dist/dsr-export-payload.d.ts"
+      ],
+      "@sva/iam-governance/dsr-export-status": [
+        "packages/iam-governance/dist/dsr-export-status.d.ts"
+      ],
+      "@sva/iam-governance/dsr-maintenance": [
+        "packages/iam-governance/dist/dsr-maintenance.d.ts"
+      ],
+      "@sva/iam-governance/dsr-read-models-internal": [
+        "packages/iam-governance/dist/dsr-read-models-internal.d.ts"
+      ],
       "@sva/iam-governance/governance-compliance-export": [
         "packages/iam-governance/dist/governance-compliance-export.d.ts"
       ],

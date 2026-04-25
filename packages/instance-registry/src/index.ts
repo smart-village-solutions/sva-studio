@@ -40,6 +40,12 @@ export {
   type ReadKeycloakAccessError,
   type ReadKeycloakState,
 } from './provisioning-auth.js';
+export {
+  createProvisionInstanceAuthArtifacts,
+  createReadKeycloakState,
+  type KeycloakProvisioningClient,
+  type KeycloakProvisioningClientFactory,
+} from './provisioning-auth-state.js';
 export type {
   KeycloakClientRepresentation,
   KeycloakProvisioningInput,

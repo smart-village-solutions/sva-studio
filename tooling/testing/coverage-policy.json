@@ -57,10 +57,10 @@
       "branches": 80
     },
     "iam-admin": {
-      "lines": 67,
-      "statements": 67,
-      "functions": 80,
-      "branches": 50
+      "lines": 70,
+      "statements": 70,
+      "functions": 81,
+      "branches": 53
     },
     "iam-governance": {
       "lines": 72,

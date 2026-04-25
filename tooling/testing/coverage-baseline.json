@@ -43,10 +43,10 @@
       "branches": 84.37
     },
     "iam-admin": {
-      "lines": 68.48,
-      "statements": 68.66,
-      "functions": 80.55,
-      "branches": 51.18
+      "lines": 70.79,
+      "statements": 70.91,
+      "functions": 81.81,
+      "branches": 53.47
     },
     "iam-core": {
       "lines": 100,

@@ -106,6 +106,18 @@ export {
 } from './tenant-keycloak-user-query.js';
 
 export {
+  createGroupReadHandlers,
+  type GroupReadAuthenticatedRequestContext,
+  type GroupReadHandlerDeps,
+} from './group-read-handlers.js';
+
+export {
+  loadGroupDetail,
+  loadGroupListItems,
+  type GroupQueryClient,
+} from './group-query.js';
+
+export {
   mapGroupListItem,
   mapGroupMembership,
   type AccountGroupRow,

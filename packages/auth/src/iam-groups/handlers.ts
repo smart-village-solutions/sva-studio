@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import type { IamAdminGroupDetail } from '@sva/core';
+import { createGroupReadHandlers } from '@sva/iam-admin';
 import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 
 import type { AuthenticatedRequestContext } from '../middleware.server.js';
@@ -31,51 +31,28 @@ import {
   removeGroupMembershipSchema,
   updateGroupSchema,
 } from './schemas.js';
-import { mapGroupListItem, mapGroupMembership, type AccountGroupRow, type GroupRow } from './types.js';
+import type { AccountGroupRow } from './types.js';
 
 const logger = createSdkLogger({ component: 'iam-groups', level: 'info' });
+
+const groupReadHandlers = createGroupReadHandlers({
+  asApiItem,
+  asApiList,
+  createApiError,
+  getWorkspaceContext,
+  isUuid,
+  jsonResponse,
+  logger,
+  readPage,
+  readPathSegment,
+  requireRoles,
+  resolveActorInfo,
+  withInstanceScopedDb,
+});
 
 // ---------------------------------------------------------------------------
 // Queries
 // ---------------------------------------------------------------------------
-
-const GROUP_SELECT_SQL = `
-  g.id,
-  g.instance_id,
-  g.group_key,
-  g.display_name,
-  g.description,
-  g.group_type,
-  g.is_active,
-  g.created_at,
-  g.updated_at,
-  COUNT(DISTINCT ag.account_id)::int AS member_count,
-  COUNT(DISTINCT gr.role_id)::int    AS role_count
-FROM iam.groups g
-LEFT JOIN iam.account_groups ag
-  ON ag.instance_id = g.instance_id
- AND ag.group_id = g.id
- AND (ag.valid_until IS NULL OR ag.valid_until > now())
-LEFT JOIN iam.group_roles gr
-  ON gr.instance_id = g.instance_id
- AND gr.group_id = g.id
-WHERE g.instance_id = $1
-GROUP BY g.id
-`;
-
-const GROUP_LIST_SQL = `
-SELECT
-${GROUP_SELECT_SQL}
-ORDER BY g.display_name ASC
-`;
-
-const GROUP_DETAIL_SQL = `
-SELECT
-${GROUP_SELECT_SQL}
-WHERE g.instance_id = $1
-  AND g.id = $2::uuid
-LIMIT 1
-`;
 
 const GROUP_MEMBERSHIPS_SQL = `
 SELECT
@@ -117,97 +94,7 @@ LIMIT 1;
 // Handlers
 // ---------------------------------------------------------------------------
 
-export const listGroupsInternal = async (
-  request: Request,
-  ctx: AuthenticatedRequestContext
-): Promise<Response> => {
-  const requestContext = getWorkspaceContext();
-
-  const roleCheck = requireRoles(ctx, ADMIN_ROLES, requestContext.requestId);
-  if (roleCheck) return roleCheck;
-
-  const actorResolution = await resolveActorInfo(request, ctx, { requireActorMembership: true });
-  if ('error' in actorResolution) return actorResolution.error;
-  const { actor } = actorResolution;
-
-  const { page, pageSize } = readPage(request);
-
-  try {
-    const rows = await withInstanceScopedDb(actor.instanceId, async (client) => {
-      const result = await client.query<GroupRow>(GROUP_LIST_SQL, [actor.instanceId]);
-      return result.rows;
-    });
-
-    const paginated = rows.slice((page - 1) * pageSize, page * pageSize);
-    return jsonResponse(
-      200,
-      asApiList(paginated.map(mapGroupListItem), { page, pageSize, total: rows.length }, actor.requestId)
-    );
-  } catch (error) {
-    logger.error('Group list query failed', {
-      operation: 'group_list',
-      workspace_id: actor.instanceId,
-      error: error instanceof Error ? error.message : String(error),
-      request_id: actor.requestId,
-      trace_id: actor.traceId,
-    });
-    return createApiError(503, 'database_unavailable', 'Gruppen konnten nicht geladen werden.', actor.requestId);
-  }
-};
-
-export const getGroupInternal = async (
-  request: Request,
-  ctx: AuthenticatedRequestContext
-): Promise<Response> => {
-  const requestContext = getWorkspaceContext();
-
-  const roleCheck = requireRoles(ctx, ADMIN_ROLES, requestContext.requestId);
-  if (roleCheck) return roleCheck;
-
-  const actorResolution = await resolveActorInfo(request, ctx, { requireActorMembership: true });
-  if ('error' in actorResolution) return actorResolution.error;
-  const { actor } = actorResolution;
-
-  const groupId = readPathSegment(request, 4);
-  if (!groupId || !isUuid(groupId)) {
-    return createApiError(400, 'invalid_request', 'Ungültige Gruppen-ID', actor.requestId);
-  }
-
-  try {
-    const result = await withInstanceScopedDb(actor.instanceId, async (client) => {
-      const rows = await client.query<GroupRow>(GROUP_DETAIL_SQL, [actor.instanceId, groupId]);
-      if (rows.rowCount === 0) return null;
-      const row = rows.rows[0]!;
-
-      const roleRows = await client.query<{ role_id: string }>(
-        `SELECT role_id FROM iam.group_roles WHERE instance_id = $1 AND group_id = $2::uuid`,
-        [actor.instanceId, groupId]
-      );
-      const membershipRows = await client.query<AccountGroupRow>(GROUP_MEMBERSHIPS_SQL, [actor.instanceId, groupId]);
-      const detail: IamAdminGroupDetail = {
-        ...mapGroupListItem(row),
-        assignedRoleIds: roleRows.rows.map((r) => r.role_id),
-        memberships: membershipRows.rows.map(mapGroupMembership),
-      };
-      return detail;
-    });
-
-    if (!result) {
-      return createApiError(404, 'invalid_request', 'Gruppe nicht gefunden', actor.requestId);
-    }
-    return jsonResponse(200, asApiItem(result, actor.requestId));
-  } catch (error) {
-    logger.error('Group detail query failed', {
-      operation: 'group_detail',
-      workspace_id: actor.instanceId,
-      group_id: groupId,
-      error: error instanceof Error ? error.message : String(error),
-      request_id: actor.requestId,
-      trace_id: actor.traceId,
-    });
-    return createApiError(503, 'database_unavailable', 'Gruppe konnte nicht geladen werden.', actor.requestId);
-  }
-};
+export const { getGroupInternal, listGroupsInternal } = groupReadHandlers;
 
 export const createGroupInternal = async (
   request: Request,

@@ -32,6 +32,10 @@ export {
   type ReconcileReport,
   type RoleCatalogReconciliationDeps,
 } from './reconcile-core.js';
+export {
+  createReconcileHandlerInternal,
+  type ReconcileHandlerDeps,
+} from './reconcile-handler.js';
 
 export {
   resolveUsersForBulkDeactivation,

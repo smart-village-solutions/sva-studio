@@ -60,11 +60,19 @@ coverage:
         - apps/sva-studio-react/
         - packages/core/
         - packages/auth/
+        - packages/auth-runtime/
         - packages/data/
+        - packages/data-client/
+        - packages/data-repositories/
+        - packages/iam-admin/
+        - packages/iam-governance/
+        - packages/instance-registry/
         - packages/sdk/
         - packages/routing/
         - packages/monitoring-client/
         - packages/plugin-news/
+        - packages/plugin-sdk/
+        - packages/server-runtime/
         - packages/sva-mainserver/
 
 # Comment format optimized for PR reviews

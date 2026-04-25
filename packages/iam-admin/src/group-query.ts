@@ -92,10 +92,7 @@ export const loadGroupDetail = async (
     'SELECT role_id FROM iam.group_roles WHERE instance_id = $1 AND group_id = $2::uuid',
     [input.instanceId, input.groupId]
   );
-  const membershipRows = await client.query<AccountGroupRow>(GROUP_MEMBERSHIPS_SQL, [
-    input.instanceId,
-    input.groupId,
-  ]);
+  const membershipRows = await loadGroupMembershipRows(client, input);
 
   return {
     ...mapGroupListItem(row),
@@ -103,3 +100,8 @@ export const loadGroupDetail = async (
     memberships: membershipRows.rows.map(mapGroupMembership),
   };
 };
+
+export const loadGroupMembershipRows = (
+  client: GroupQueryClient,
+  input: { readonly instanceId: string; readonly groupId: string }
+) => client.query<AccountGroupRow>(GROUP_MEMBERSHIPS_SQL, [input.instanceId, input.groupId]);

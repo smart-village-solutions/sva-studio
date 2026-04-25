@@ -106,6 +106,12 @@ export {
 } from './tenant-keycloak-user-query.js';
 
 export {
+  createGroupMutationHandlers,
+  type GroupMutationAuthenticatedRequestContext,
+  type GroupMutationHandlerDeps,
+} from './group-mutation-handlers.js';
+
+export {
   createGroupReadHandlers,
   type GroupReadAuthenticatedRequestContext,
   type GroupReadHandlerDeps,
@@ -113,6 +119,7 @@ export {
 
 export {
   loadGroupDetail,
+  loadGroupMembershipRows,
   loadGroupListItems,
   type GroupQueryClient,
 } from './group-query.js';

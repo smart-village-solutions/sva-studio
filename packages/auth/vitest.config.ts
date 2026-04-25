@@ -47,6 +47,54 @@ export default defineConfig({
         replacement: resolve(__dirname, '../instance-registry/src/http-contracts.ts'),
       },
       {
+        find: /^@sva\/instance-registry\/http-guards$/,
+        replacement: resolve(__dirname, '../instance-registry/src/http-guards.ts'),
+      },
+      {
+        find: /^@sva\/instance-registry\/http-instance-handlers$/,
+        replacement: resolve(__dirname, '../instance-registry/src/http-instance-handlers.ts'),
+      },
+      {
+        find: /^@sva\/instance-registry\/http-keycloak-handlers$/,
+        replacement: resolve(__dirname, '../instance-registry/src/http-keycloak-handlers.ts'),
+      },
+      {
+        find: /^@sva\/instance-registry\/http-mutation-handlers$/,
+        replacement: resolve(__dirname, '../instance-registry/src/http-mutation-handlers.ts'),
+      },
+      {
+        find: /^@sva\/instance-registry\/keycloak-types$/,
+        replacement: resolve(__dirname, '../instance-registry/src/keycloak-types.ts'),
+      },
+      {
+        find: /^@sva\/instance-registry\/provisioning-auth$/,
+        replacement: resolve(__dirname, '../instance-registry/src/provisioning-auth.ts'),
+      },
+      {
+        find: /^@sva\/instance-registry\/provisioning-auth-state$/,
+        replacement: resolve(__dirname, '../instance-registry/src/provisioning-auth-state.ts'),
+      },
+      {
+        find: /^@sva\/instance-registry\/provisioning-worker$/,
+        replacement: resolve(__dirname, '../instance-registry/src/provisioning-worker.ts'),
+      },
+      {
+        find: /^@sva\/instance-registry\/runtime-resolution$/,
+        replacement: resolve(__dirname, '../instance-registry/src/runtime-resolution.ts'),
+      },
+      {
+        find: /^@sva\/instance-registry\/runtime-wiring$/,
+        replacement: resolve(__dirname, '../instance-registry/src/runtime-wiring.ts'),
+      },
+      {
+        find: /^@sva\/instance-registry\/service$/,
+        replacement: resolve(__dirname, '../instance-registry/src/service.ts'),
+      },
+      {
+        find: /^@sva\/instance-registry\/service-detail$/,
+        replacement: resolve(__dirname, '../instance-registry/src/service-detail.ts'),
+      },
+      {
         find: /^@sva\/instance-registry\/service-keycloak$/,
         replacement: resolve(__dirname, '../instance-registry/src/service-keycloak.ts'),
       },

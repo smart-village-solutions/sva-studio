@@ -21,6 +21,26 @@
       "@sva/iam-governance/legal-text-repository-shared": ["packages/iam-governance/dist/legal-text-repository-shared.d.ts"],
       "@sva/iam-governance": ["packages/iam-governance/dist/index.d.ts"],
       "@sva/instance-registry/http-contracts": ["packages/instance-registry/dist/http-contracts.d.ts"],
+      "@sva/instance-registry/http-guards": ["packages/instance-registry/dist/http-guards.d.ts"],
+      "@sva/instance-registry/http-instance-handlers": [
+        "packages/instance-registry/dist/http-instance-handlers.d.ts"
+      ],
+      "@sva/instance-registry/http-keycloak-handlers": [
+        "packages/instance-registry/dist/http-keycloak-handlers.d.ts"
+      ],
+      "@sva/instance-registry/http-mutation-handlers": [
+        "packages/instance-registry/dist/http-mutation-handlers.d.ts"
+      ],
+      "@sva/instance-registry/keycloak-types": ["packages/instance-registry/dist/keycloak-types.d.ts"],
+      "@sva/instance-registry/provisioning-auth": ["packages/instance-registry/dist/provisioning-auth.d.ts"],
+      "@sva/instance-registry/provisioning-auth-state": [
+        "packages/instance-registry/dist/provisioning-auth-state.d.ts"
+      ],
+      "@sva/instance-registry/provisioning-worker": ["packages/instance-registry/dist/provisioning-worker.d.ts"],
+      "@sva/instance-registry/runtime-resolution": ["packages/instance-registry/dist/runtime-resolution.d.ts"],
+      "@sva/instance-registry/runtime-wiring": ["packages/instance-registry/dist/runtime-wiring.d.ts"],
+      "@sva/instance-registry/service": ["packages/instance-registry/dist/service.d.ts"],
+      "@sva/instance-registry/service-detail": ["packages/instance-registry/dist/service-detail.d.ts"],
       "@sva/instance-registry/service-keycloak": ["packages/instance-registry/dist/service-keycloak.d.ts"],
       "@sva/instance-registry/service-keycloak-execution": [
         "packages/instance-registry/dist/service-keycloak-execution.d.ts"

@@ -4,11 +4,8 @@ import { z } from 'zod';
 
 import {
   buildLogContext,
-  consumeLoginState,
-  createSession,
   getAuthConfig,
   getScopeFromAuthConfig,
-  getSessionControlState,
   isRetryableTokenExchangeError,
   jitProvisionAccount,
   type AuthConfig,
@@ -19,6 +16,7 @@ import {
 } from '@sva/auth/server';
 
 import { client, getOidcConfig, invalidateOidcConfig } from '../oidc.js';
+import { consumeLoginState, createSession, getSessionControlState } from '../redis-session.js';
 import { buildSessionUser, resolveSessionExpiry } from './shared.js';
 
 const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });

@@ -19,7 +19,6 @@ import {
   emitAuthAuditEvent,
   getAuthConfig,
   getScopeFromAuthConfig,
-  getSession,
   getWorkspaceIdForScope,
   isMockAuthEnabled,
   isTokenErrorLike,
@@ -31,6 +30,7 @@ import {
 import { handleCallback } from './auth-server/callback.js';
 import { createLoginUrl } from './auth-server/login.js';
 import { logoutSession } from './auth-server/logout.js';
+import { getSession } from './redis-session.js';
 import { appendSetCookie, deleteCookieHeader, readCookieFromRequest } from './cookies.js';
 import { decodeLoginStateCookie, encodeLoginStateCookie, type LoginStateCookiePayload } from './login-state-cookie.js';
 

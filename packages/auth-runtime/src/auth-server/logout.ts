@@ -1,12 +1,11 @@
 import {
-  deleteSession,
   getAuthConfig,
-  getSession,
   resolveAuthConfigFromSessionAuth,
   type AuthConfig,
 } from '@sva/auth/server';
 
 import { client, getOidcConfig } from '../oidc.js';
+import { deleteSession, getSession } from '../redis-session.js';
 
 export const logoutSession = async (sessionId: string, authConfigOverride?: AuthConfig): Promise<string> => {
   const session = await getSession(sessionId);

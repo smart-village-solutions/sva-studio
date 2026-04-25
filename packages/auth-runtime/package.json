@@ -24,6 +24,7 @@
     }
   },
   "dependencies": {
+    "@opentelemetry/api": "^1.9.0",
     "@sva/auth": "workspace:*",
     "@sva/core": "workspace:*",
     "@sva/iam-core": "workspace:*",

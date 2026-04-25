@@ -3,19 +3,16 @@ import { createSdkLogger } from '@sva/server-runtime';
 import {
   SessionStoreUnavailableError,
   buildLogContext,
-  deleteSession,
   getAuthConfig,
-  getSession,
-  getSessionControlState,
   isTokenErrorLike,
   resolveAuthConfigFromSessionAuth,
-  updateSession,
   type RuntimeScopeRef,
   type Session,
   type SessionUser,
 } from '@sva/auth/server';
 
 import { client, getOidcConfig } from '../oidc.js';
+import { deleteSession, getSession, getSessionControlState, updateSession } from '../redis-session.js';
 import { buildSessionUser, resolveSessionExpiry, TOKEN_REFRESH_SKEW_MS } from './shared.js';
 
 const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });

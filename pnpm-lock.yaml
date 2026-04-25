@@ -289,6 +289,9 @@ importers:
 
   packages/auth-runtime:
     dependencies:
+      '@opentelemetry/api':
+        specifier: ^1.9.0
+        version: 1.9.1
       '@sva/auth':
         specifier: workspace:*
         version: link:../auth

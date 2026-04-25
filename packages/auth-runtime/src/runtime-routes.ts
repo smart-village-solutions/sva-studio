@@ -35,8 +35,6 @@ export {
   getUserTimelineHandler,
   governanceComplianceExportHandler,
   governanceWorkflowHandler,
-  healthLiveHandler,
-  healthReadyHandler,
   instanceRegistryHandlers,
   legalHoldApplyHandler,
   legalHoldReleaseHandler,

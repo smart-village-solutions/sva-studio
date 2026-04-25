@@ -33,6 +33,13 @@ export {
   buildPreflightChecks,
   toOverallPreflightStatus,
 } from './provisioning-auth-evaluation.js';
+export {
+  createInstanceKeycloakPlanReader,
+  createInstanceKeycloakPreflightReader,
+  createInstanceKeycloakStatusReader,
+  type ReadKeycloakAccessError,
+  type ReadKeycloakState,
+} from './provisioning-auth.js';
 export type {
   KeycloakClientRepresentation,
   KeycloakProvisioningInput,

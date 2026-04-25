@@ -35,10 +35,14 @@
 
 ## 5. Fachpackage Migration
 
-- [x] 5.1 Login, Logout, OIDC, Cookies, Session und Middleware in `@sva/auth-runtime` bündeln
-- [x] 5.2 Benutzer, Rollen, Gruppen, Organisationen und Reconcile in `@sva/iam-admin` verschieben
-- [x] 5.3 DSR, Legal Texts und Audit-nahe Governance-Flows in `@sva/iam-governance` verschieben
-- [x] 5.4 Instanzmodell, Host-Klassifikation, Registry und Provisioning in `@sva/instance-registry` verschieben
+- [ ] 5.1 Login, Logout, OIDC, Cookies, Session und Middleware in `@sva/auth-runtime` bündeln
+  - Offen: `@sva/auth-runtime` importiert noch serverseitige Implementierung aus `@sva/auth/server`.
+- [ ] 5.2 Benutzer, Rollen, Gruppen, Organisationen und Reconcile in `@sva/iam-admin` verschieben
+  - Offen: Handler, Orchestrierung und Teile der Persistenz liegen noch unter `packages/auth/src/iam-account-management`, `packages/auth/src/iam-groups` und `packages/auth/src/iam-organizations`.
+- [ ] 5.3 DSR, Legal Texts und Audit-nahe Governance-Flows in `@sva/iam-governance` verschieben
+  - Offen: Handler und Workflow-Implementierung liegen noch unter `packages/auth/src/iam-data-subject-rights`, `packages/auth/src/iam-legal-texts` und `packages/auth/src/iam-governance`.
+- [ ] 5.4 Instanzmodell, Host-Klassifikation, Registry und Provisioning in `@sva/instance-registry` verschieben
+  - Offen: Service, Keycloak-Ausführung, Provisioning-Worker und Repository-Wiring liegen noch unter `packages/auth/src/iam-instance-registry`.
 - [x] 5.5 Integrationspackages auf Zielverträge umstellen und direkte Auth-/Data-Interna entfernen
 
 ## 6. Enforcement

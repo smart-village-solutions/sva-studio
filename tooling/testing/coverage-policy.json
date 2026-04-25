@@ -117,10 +117,10 @@
       "branches": 35
     },
     "server-runtime": {
-      "lines": 25,
-      "statements": 25,
-      "functions": 15,
-      "branches": 10
+      "lines": 60,
+      "statements": 60,
+      "functions": 60,
+      "branches": 50
     }
   },
   "criticalProjects": {

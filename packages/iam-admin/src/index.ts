@@ -59,6 +59,13 @@ export {
 } from './role-mutation-persistence.js';
 
 export {
+  createManagedRoleSync,
+  type ManagedRoleIdentityProviderResolution,
+  type ManagedRoleSyncDeps,
+  type ManagedRoleSyncRow,
+} from './managed-role-sync.js';
+
+export {
   resolveGroupsByIds,
   resolveRoleIdsForGroups,
   resolveRolesByExternalNames,

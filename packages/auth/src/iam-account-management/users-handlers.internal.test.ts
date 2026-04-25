@@ -113,7 +113,9 @@ vi.mock('./shared-observability.js', () => ({
 
 vi.mock('./shared-activity.js', () => ({
   emitActivityLog: vi.fn(),
+  emitRoleAuditEvent: vi.fn(),
   notifyPermissionInvalidation: vi.fn(),
+  setRoleSyncState: vi.fn(),
 }));
 
 vi.mock('./shared-actor-authorization.js', () => ({

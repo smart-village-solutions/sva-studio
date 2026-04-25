@@ -28,6 +28,7 @@ export default defineConfig({
       { find: '@sva/monitoring-client/server', replacement: resolve(__dirname, '../monitoring-client/src/server.ts') },
       { find: /^@sva\/core$/, replacement: resolve(__dirname, '../core/src/index.ts') },
       { find: /^@sva\/data-repositories$/, replacement: resolve(__dirname, '../data-repositories/src/index.ts') },
+      { find: /^@sva\/iam-core$/, replacement: resolve(__dirname, '../iam-core/src/index.ts') },
       { find: /^@sva\/iam-admin$/, replacement: resolve(__dirname, '../iam-admin/src/index.ts') },
       {
         find: /^@sva\/iam-governance\/read-models-internal$/,
@@ -38,8 +39,52 @@ export default defineConfig({
         replacement: resolve(__dirname, '../iam-governance/src/dsr-read-models-internal.ts'),
       },
       {
+        find: /^@sva\/iam-governance\/dsr-export-flows$/,
+        replacement: resolve(__dirname, '../iam-governance/src/dsr-export-flows.ts'),
+      },
+      {
+        find: /^@sva\/iam-governance\/dsr-export-payload$/,
+        replacement: resolve(__dirname, '../iam-governance/src/dsr-export-payload.ts'),
+      },
+      {
+        find: /^@sva\/iam-governance\/dsr-export-status$/,
+        replacement: resolve(__dirname, '../iam-governance/src/dsr-export-status.ts'),
+      },
+      {
+        find: /^@sva\/iam-governance\/dsr-maintenance$/,
+        replacement: resolve(__dirname, '../iam-governance/src/dsr-maintenance.ts'),
+      },
+      {
         find: /^@sva\/iam-governance\/legal-text-repository-shared$/,
         replacement: resolve(__dirname, '../iam-governance/src/legal-text-repository-shared.ts'),
+      },
+      {
+        find: /^@sva\/iam-governance\/legal-text-repository$/,
+        replacement: resolve(__dirname, '../iam-governance/src/legal-text-repository.ts'),
+      },
+      {
+        find: /^@sva\/iam-governance\/legal-text-mutation-handlers$/,
+        replacement: resolve(__dirname, '../iam-governance/src/legal-text-mutation-handlers.ts'),
+      },
+      {
+        find: /^@sva\/iam-governance\/legal-text-http-handlers$/,
+        replacement: resolve(__dirname, '../iam-governance/src/legal-text-http-handlers.ts'),
+      },
+      {
+        find: /^@sva\/iam-governance\/legal-text-request-context$/,
+        replacement: resolve(__dirname, '../iam-governance/src/legal-text-request-context.ts'),
+      },
+      {
+        find: /^@sva\/iam-governance\/governance-compliance-export$/,
+        replacement: resolve(__dirname, '../iam-governance/src/governance-compliance-export.ts'),
+      },
+      {
+        find: /^@sva\/iam-governance\/governance-workflow-executor$/,
+        replacement: resolve(__dirname, '../iam-governance/src/governance-workflow-executor.ts'),
+      },
+      {
+        find: /^@sva\/iam-governance\/governance-workflow-policy$/,
+        replacement: resolve(__dirname, '../iam-governance/src/governance-workflow-policy.ts'),
       },
       { find: /^@sva\/iam-governance$/, replacement: resolve(__dirname, '../iam-governance/src/index.ts') },
       {

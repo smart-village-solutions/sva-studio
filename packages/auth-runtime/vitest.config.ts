@@ -11,6 +11,8 @@ export default defineConfig({
       { find: '@sva/core/security', replacement: resolve(currentDir, '../core/src/security/index.ts') },
       { find: /^@sva\/data-repositories\/server$/, replacement: resolve(currentDir, '../data-repositories/src/server.ts') },
       { find: /^@sva\/data-repositories$/, replacement: resolve(currentDir, '../data-repositories/src/index.ts') },
+      { find: /^@sva\/server-runtime$/, replacement: resolve(currentDir, '../server-runtime/src/index.ts') },
+      { find: /^@sva\/iam-core$/, replacement: resolve(currentDir, '../iam-core/src/index.ts') },
       { find: /^@sva\/iam-admin$/, replacement: resolve(currentDir, '../iam-admin/src/index.ts') },
       {
         find: /^@sva\/iam-governance\/read-models-internal$/,
@@ -71,6 +73,74 @@ export default defineConfig({
       { find: /^@sva\/iam-governance$/, replacement: resolve(currentDir, '../iam-governance/src/index.ts') },
       { find: /^@sva\/auth$/, replacement: resolve(currentDir, '../auth/src/index.ts') },
       { find: /^@sva\/core$/, replacement: resolve(currentDir, '../core/src/index.ts') },
+      {
+        find: /^@sva\/instance-registry\/http-contracts$/,
+        replacement: resolve(currentDir, '../instance-registry/src/http-contracts.ts'),
+      },
+      {
+        find: /^@sva\/instance-registry\/http-guards$/,
+        replacement: resolve(currentDir, '../instance-registry/src/http-guards.ts'),
+      },
+      {
+        find: /^@sva\/instance-registry\/http-instance-handlers$/,
+        replacement: resolve(currentDir, '../instance-registry/src/http-instance-handlers.ts'),
+      },
+      {
+        find: /^@sva\/instance-registry\/http-keycloak-handlers$/,
+        replacement: resolve(currentDir, '../instance-registry/src/http-keycloak-handlers.ts'),
+      },
+      {
+        find: /^@sva\/instance-registry\/http-mutation-handlers$/,
+        replacement: resolve(currentDir, '../instance-registry/src/http-mutation-handlers.ts'),
+      },
+      {
+        find: /^@sva\/instance-registry\/keycloak-types$/,
+        replacement: resolve(currentDir, '../instance-registry/src/keycloak-types.ts'),
+      },
+      {
+        find: /^@sva\/instance-registry\/provisioning-auth$/,
+        replacement: resolve(currentDir, '../instance-registry/src/provisioning-auth.ts'),
+      },
+      {
+        find: /^@sva\/instance-registry\/provisioning-auth-state$/,
+        replacement: resolve(currentDir, '../instance-registry/src/provisioning-auth-state.ts'),
+      },
+      {
+        find: /^@sva\/instance-registry\/provisioning-worker$/,
+        replacement: resolve(currentDir, '../instance-registry/src/provisioning-worker.ts'),
+      },
+      {
+        find: /^@sva\/instance-registry\/runtime-resolution$/,
+        replacement: resolve(currentDir, '../instance-registry/src/runtime-resolution.ts'),
+      },
+      {
+        find: /^@sva\/instance-registry\/runtime-wiring$/,
+        replacement: resolve(currentDir, '../instance-registry/src/runtime-wiring.ts'),
+      },
+      {
+        find: /^@sva\/instance-registry\/service$/,
+        replacement: resolve(currentDir, '../instance-registry/src/service.ts'),
+      },
+      {
+        find: /^@sva\/instance-registry\/service-detail$/,
+        replacement: resolve(currentDir, '../instance-registry/src/service-detail.ts'),
+      },
+      {
+        find: /^@sva\/instance-registry\/service-keycloak$/,
+        replacement: resolve(currentDir, '../instance-registry/src/service-keycloak.ts'),
+      },
+      {
+        find: /^@sva\/instance-registry\/service-keycloak-execution$/,
+        replacement: resolve(currentDir, '../instance-registry/src/service-keycloak-execution.ts'),
+      },
+      {
+        find: /^@sva\/instance-registry\/service-keycloak-execution-shared$/,
+        replacement: resolve(currentDir, '../instance-registry/src/service-keycloak-execution-shared.ts'),
+      },
+      {
+        find: /^@sva\/instance-registry\/service-types$/,
+        replacement: resolve(currentDir, '../instance-registry/src/service-types.ts'),
+      },
       { find: /^@sva\/instance-registry$/, replacement: resolve(currentDir, '../instance-registry/src/index.ts') },
     ],
   },

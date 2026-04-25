@@ -1,7 +1,33 @@
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('./encryption', () => ({
-  protectField: (value: string) => `enc:${value}`,
+vi.mock('@sva/iam-admin', () => ({
+  buildUpdatedUserParams: (
+    userId: string,
+    instanceId: string,
+    _keycloakSubject: string,
+    payload: {
+      readonly email?: string;
+      readonly displayName?: string;
+      readonly firstName?: string;
+      readonly lastName?: string;
+      readonly status?: 'active' | 'inactive' | 'pending';
+    }
+  ) => [
+    userId,
+    instanceId,
+    payload.email ? `enc:${payload.email}` : null,
+    payload.displayName ? `enc:${payload.displayName}` : null,
+    payload.firstName ? `enc:${payload.firstName}` : null,
+    payload.lastName ? `enc:${payload.lastName}` : null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    payload.status ?? null,
+    null,
+  ],
 }));
 
 import { buildUpdatedUserParams, hasSystemAdminRole } from './user-update-utils.ts';

@@ -132,6 +132,14 @@ export {
 } from './user-update-handler.js';
 
 export {
+  buildUpdatedUserParams,
+  createUserUpdatePersistence,
+  type UpdateUserPersistencePayload,
+  type UserMainserverCredentialState,
+  type UserUpdatePersistenceDeps,
+} from './user-update-persistence.js';
+
+export {
   createSyncUsersFromKeycloakHandlerInternal,
   type SyncUsersAuthenticatedRequestContext,
   type SyncUsersHandlerDeps,

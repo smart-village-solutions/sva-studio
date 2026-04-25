@@ -12,6 +12,7 @@ export {
   isPlatformScope,
 } from './scope.js';
 export { isRetryableTokenExchangeError, isTokenErrorLike } from './error-guards.js';
+export { decryptToken, encryptToken, generateEncryptionKey, isEncrypted } from './crypto.js';
 export { createMockSessionUser, isMockAuthEnabled } from './mock-auth.js';
 export { SessionStoreUnavailableError, TenantScopeConflictError } from './runtime-errors.js';
 export type {

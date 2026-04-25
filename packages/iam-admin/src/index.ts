@@ -112,9 +112,22 @@ export {
 } from './legacy-group-read-handlers.js';
 
 export {
+  createLegacyGroupMutationHandlers,
+  type LegacyGroupMutationAuthenticatedRequestContext,
+  type LegacyGroupMutationHandlerDeps,
+} from './legacy-group-mutation-handlers.js';
+
+export {
   loadLegacyGroupById,
   loadLegacyGroups,
 } from './legacy-group-query.js';
+
+export {
+  createLegacyGroupSchema,
+  updateLegacyGroupSchema,
+  type CreateLegacyGroupInput,
+  type UpdateLegacyGroupInput,
+} from './legacy-group-schemas.js';
 
 export {
   createGroupMutationHandlers,

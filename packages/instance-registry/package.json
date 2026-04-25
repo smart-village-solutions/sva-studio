@@ -58,6 +58,10 @@
       "types": "./dist/runtime-resolution.d.ts",
       "default": "./dist/runtime-resolution.js"
     },
+    "./runtime-wiring": {
+      "types": "./dist/runtime-wiring.d.ts",
+      "default": "./dist/runtime-wiring.js"
+    },
     "./service": {
       "types": "./dist/service.d.ts",
       "default": "./dist/service.js"

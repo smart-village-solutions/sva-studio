@@ -152,3 +152,9 @@ export {
   resolveRuntimeInstanceFromRequest,
   type RuntimeInstanceResolutionDeps,
 } from './runtime-resolution.js';
+export {
+  createInstanceRegistryRuntime,
+  type InstanceRegistryPool,
+  type InstanceRegistryQueryClient,
+  type InstanceRegistryRuntimeDeps,
+} from './runtime-wiring.js';

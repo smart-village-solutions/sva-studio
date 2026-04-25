@@ -37,10 +37,10 @@
       "branches": 54.83
     },
     "data-repositories": {
-      "lines": 17.64,
-      "statements": 16.04,
-      "functions": 2.38,
-      "branches": 0.39
+      "lines": 87.64,
+      "statements": 88.23,
+      "functions": 88.09,
+      "branches": 84.37
     },
     "iam-admin": {
       "lines": 64.98,

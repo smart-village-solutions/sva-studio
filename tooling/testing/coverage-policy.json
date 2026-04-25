@@ -51,10 +51,10 @@
       "branches": 50
     },
     "data-repositories": {
-      "lines": 15,
-      "statements": 15,
-      "functions": 2,
-      "branches": 0
+      "lines": 85,
+      "statements": 85,
+      "functions": 85,
+      "branches": 80
     },
     "iam-admin": {
       "lines": 60,

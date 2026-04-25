@@ -71,7 +71,7 @@ const connectWithStudioBootstrap = async (pool: Pool): Promise<PoolClient & Quer
   }
 };
 
-const withResolvedInstanceDb = async <T>(
+export const withResolvedInstanceDb = async <T>(
   resolvePool: () => Pool | null,
   instanceId: string,
   work: (client: QueryClient) => Promise<T>

@@ -84,6 +84,7 @@ export default [
                 'scope:data-repositories',
                 'scope:iam-admin',
                 'scope:iam-core',
+                'scope:iam-governance',
                 'scope:auth',
                 'scope:auth-runtime',
               ],

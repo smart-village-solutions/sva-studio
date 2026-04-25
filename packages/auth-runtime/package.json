@@ -30,6 +30,7 @@
     "@sva/data-repositories": "workspace:*",
     "@sva/iam-admin": "workspace:*",
     "@sva/iam-core": "workspace:*",
+    "@sva/iam-governance": "workspace:*",
     "@sva/server-runtime": "workspace:*",
     "cookie-es": "^2.0.0",
     "ioredis": "^5.10.1",

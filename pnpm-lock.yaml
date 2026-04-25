@@ -307,6 +307,9 @@ importers:
       '@sva/iam-core':
         specifier: workspace:*
         version: link:../iam-core
+      '@sva/iam-governance':
+        specifier: workspace:*
+        version: link:../iam-governance
       '@sva/server-runtime':
         specifier: workspace:*
         version: link:../server-runtime

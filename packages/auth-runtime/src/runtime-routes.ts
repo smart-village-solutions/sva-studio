@@ -1,4 +1,6 @@
 export { callbackHandler, loginHandler, logoutHandler, meHandler } from './auth-route-handlers.js';
+export { authorizeHandler } from './iam-authorization/authorize.js';
+export { mePermissionsHandler } from './iam-authorization/me-permissions.js';
 
 export {
   adminDataExportHandler,
@@ -6,7 +8,6 @@ export {
   assignGroupMembershipHandler,
   assignGroupRoleHandler,
   assignOrganizationMembershipHandler,
-  authorizeHandler,
   bulkDeactivateUsersHandler,
   createContentHandler,
   createGroupHandler,
@@ -48,7 +49,6 @@ export {
   listPermissionsHandler,
   listRolesHandler,
   listUsersHandler,
-  mePermissionsHandler,
   optionalProcessingExecuteHandler,
   profileCorrectionHandler,
   reconcileHandler,

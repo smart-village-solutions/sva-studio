@@ -1,5 +1,4 @@
 import { getWorkspaceContext } from '@sva/server-runtime';
-import { resolveActorAccountId } from '@sva/iam-admin';
 
 import type { AuthenticatedRequestContext } from '../middleware.server.js';
 import { resolveInstanceId } from '../shared/instance-id-resolution.js';
@@ -118,7 +117,6 @@ const resolveActorAccountLookup = async (input: {
       requestId: input.requestId,
       traceId: input.traceId,
       mayProvisionMissingActorMembership: input.mayProvisionMissingActorMembership,
-      resolveActorAccountId,
     });
   } catch (error) {
     annotateActiveSpan({

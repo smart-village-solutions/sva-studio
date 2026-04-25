@@ -79,6 +79,13 @@ export {
 } from './actor-resolution-query.js';
 
 export {
+  createActorResolutionServices,
+  type ActorResolutionProvisionResult,
+  type ActorResolutionServiceDeps,
+  type ResolveActorAccountIdWithProvisionInput,
+} from './actor-resolution-service.js';
+
+export {
   resolveGroupsByIds,
   resolveRoleIdsForGroups,
   resolveRolesByExternalNames,

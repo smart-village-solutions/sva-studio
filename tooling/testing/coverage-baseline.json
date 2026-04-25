@@ -97,10 +97,10 @@
       "branches": 87.17
     },
     "server-runtime": {
-      "lines": 63.35,
-      "statements": 63.48,
-      "functions": 61.7,
-      "branches": 54.19
+      "lines": 82.82,
+      "statements": 82.58,
+      "functions": 85.1,
+      "branches": 70.73
     },
     "sva-mainserver": {
       "lines": 91.39,

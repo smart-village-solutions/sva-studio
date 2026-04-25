@@ -11,6 +11,8 @@ export default mergeConfig(
     resolve: {
       alias: {
         '@sva/core': resolve(currentDir, '../core/src/index.ts'),
+        '@sva/plugin-sdk/admin-resources': resolve(currentDir, '../plugin-sdk/src/admin-resources.ts'),
+        '@sva/plugin-sdk': resolve(currentDir, '../plugin-sdk/src/index.ts'),
         '@sva/server-runtime/logger/index.server': resolve(currentDir, '../server-runtime/src/logger/index.server.ts'),
         '@sva/server-runtime/logger/logging-runtime.server': resolve(
           currentDir,

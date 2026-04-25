@@ -113,6 +113,13 @@ export {
 } from './user-create-handler.js';
 
 export {
+  createUserCreatePersistence,
+  type CreateUserPersistenceActor,
+  type CreateUserPersistenceDeps,
+  type CreateUserPersistencePayload,
+} from './user-create-persistence.js';
+
+export {
   createDeactivateUserHandlerInternal,
   type DeactivateAuthenticatedRequestContext,
   type DeactivateUserHandlerDeps,

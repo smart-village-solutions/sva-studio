@@ -55,10 +55,10 @@
       "branches": 100
     },
     "iam-governance": {
-      "lines": 57.33,
-      "statements": 57.38,
-      "functions": 71.92,
-      "branches": 42.4
+      "lines": 74.46,
+      "statements": 74.45,
+      "functions": 81.77,
+      "branches": 61.01
     },
     "instance-registry": {
       "lines": 72.83,

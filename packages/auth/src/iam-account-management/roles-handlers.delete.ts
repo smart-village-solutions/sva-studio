@@ -1,14 +1,10 @@
+import { createDeleteRoleHandlerInternal } from '@sva/iam-admin';
+
 import { KeycloakAdminRequestError } from '../keycloak-admin-client.js';
-import type { AuthenticatedRequestContext } from '../middleware.server.js';
 import { jsonResponse } from '../shared/db-helpers.js';
 
 import { asApiItem, createApiError } from './api-helpers.js';
-import {
-  getRoleDisplayName,
-  getRoleExternalName,
-  mapRoleSyncErrorCode,
-  sanitizeRoleErrorMessage,
-} from './role-audit.js';
+import { mapRoleSyncErrorCode, sanitizeRoleErrorMessage } from './role-audit.js';
 import { loadRoleById } from './role-query.js';
 import {
   emitActivityLog,
@@ -152,141 +148,21 @@ const deleteRoleFromDatabase = async (input: {
   });
 };
 
-export const deleteRoleInternal = async (
-  request: Request,
-  ctx: AuthenticatedRequestContext
-): Promise<Response> => {
-  const resolvedActor = await resolveRoleMutationActor(request, ctx);
-  if ('response' in resolvedActor) {
-    return resolvedActor.response;
-  }
-
-  const { actor } = resolvedActor;
-  const roleId = requireRoleId(request, actor.requestId);
-  if (roleId instanceof Response) {
-    return roleId;
-  }
-
-  const identityProvider = await requireRoleIdentityProvider(actor.instanceId, actor.requestId);
-  if (identityProvider instanceof Response) {
-    return identityProvider;
-  }
-
-  try {
-    const existing = await resolveDeletableRole(actor, roleId);
-    if (existing instanceof Response) {
-      return existing;
-    }
-
-    const externalRoleName = getRoleExternalName(existing);
-    await markDeleteRoleSyncState({
-      actor,
-      roleId,
-      roleKey: existing.role_key,
-      externalRoleName,
-      result: 'success',
-      eventType: 'role.sync_started',
-      syncState: 'pending',
-    });
-
-    try {
-      await trackKeycloakCall('delete_role', () => identityProvider.provider.deleteRole(externalRoleName));
-    } catch (error) {
-      if (!(error instanceof KeycloakAdminRequestError && error.statusCode === 404)) {
-        const errorCode = mapRoleSyncErrorCode(error);
-        await markDeleteRoleSyncState({
-          actor,
-          roleId,
-          roleKey: existing.role_key,
-          externalRoleName,
-          result: 'failure',
-          eventType: 'role.sync_failed',
-          errorCode,
-          syncState: 'failed',
-        });
-        iamRoleSyncCounter.add(1, { operation: 'delete', result: 'failure', error_code: errorCode });
-        return createApiError(503, 'keycloak_unavailable', 'Rolle konnte nicht gelöscht werden.', actor.requestId, {
-          syncState: 'failed',
-          syncError: { code: errorCode },
-        });
-      }
-    }
-
-    try {
-      await deleteRoleFromDatabase({
-        actor,
-        roleId,
-        roleKey: existing.role_key,
-        externalRoleName,
-      });
-    } catch {
-      try {
-        await trackKeycloakCall('create_role_compensation', () =>
-          identityProvider.provider.createRole({
-            externalName: externalRoleName,
-            description: existing.description ?? undefined,
-            attributes: buildRoleAttributes({
-              instanceId: actor.instanceId,
-              roleKey: existing.role_key,
-              displayName: getRoleDisplayName(existing),
-            }),
-          })
-        );
-      } catch (compensationError) {
-        iamRoleSyncCounter.add(1, { operation: 'delete', result: 'failure', error_code: 'COMPENSATION_FAILED' });
-        logger.error('Role delete compensation failed', {
-          operation: 'delete_role_compensation',
-          instance_id: actor.instanceId,
-          request_id: actor.requestId,
-          trace_id: actor.traceId,
-          role_id: roleId,
-          role_key: existing.role_key,
-          error: sanitizeRoleErrorMessage(compensationError),
-        });
-        return createApiError(
-          500,
-          'internal_error',
-          'Rolle konnte nicht konsistent gelöscht werden.',
-          actor.requestId,
-          {
-            syncState: 'failed',
-            syncError: { code: 'COMPENSATION_FAILED' },
-          }
-        );
-      }
-
-      await markDeleteRoleSyncState({
-        actor,
-        roleId,
-        roleKey: existing.role_key,
-        externalRoleName,
-        result: 'failure',
-        eventType: 'role.sync_failed',
-        errorCode: 'DB_WRITE_FAILED',
-        syncState: 'failed',
-      });
-      iamRoleSyncCounter.add(1, { operation: 'delete', result: 'failure', error_code: 'DB_WRITE_FAILED' });
-      return createApiError(500, 'internal_error', 'Rolle konnte nicht gelöscht werden.', actor.requestId, {
-        syncState: 'failed',
-        syncError: { code: 'DB_WRITE_FAILED' },
-      });
-    }
-
-    iamRoleSyncCounter.add(1, { operation: 'delete', result: 'success', error_code: 'none' });
-    return jsonResponse(
-      200,
-      asApiItem(
-        {
-          id: roleId,
-          roleKey: existing.role_key,
-          roleName: getRoleDisplayName(existing),
-          externalRoleName,
-          syncState: 'synced' as const,
-        },
-        actor.requestId
-      )
-    );
-  } catch {
-    return createApiError(500, 'internal_error', 'Rolle konnte nicht gelöscht werden.', actor.requestId);
-  }
-};
+export const deleteRoleInternal = createDeleteRoleHandlerInternal({
+  asApiItem,
+  buildRoleAttributes,
+  createApiError,
+  deleteRoleFromDatabase,
+  iamRoleSyncCounter,
+  isIdentityRoleNotFoundError: (error) => error instanceof KeycloakAdminRequestError && error.statusCode === 404,
+  jsonResponse,
+  logger,
+  mapRoleSyncErrorCode,
+  markDeleteRoleSyncState,
+  requireRoleId,
+  requireRoleIdentityProvider,
+  resolveDeletableRole,
+  resolveRoleMutationActor,
+  sanitizeRoleErrorMessage,
+  trackKeycloakCall,
+});

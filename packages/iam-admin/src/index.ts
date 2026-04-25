@@ -39,6 +39,12 @@ export {
 } from './role-update-handler.js';
 
 export {
+  createDeleteRoleHandlerInternal,
+  type DeleteRoleAuthenticatedRequestContext,
+  type DeleteRoleHandlerDeps,
+} from './role-delete-handler.js';
+
+export {
   loadRoleById,
   loadRoleListItemById,
   loadRoleListItems,

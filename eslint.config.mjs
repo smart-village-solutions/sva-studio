@@ -85,7 +85,7 @@ export default [
                 'scope:iam-admin',
                 'scope:iam-core',
                 'scope:iam-governance',
-                'scope:auth',
+                'scope:instance-registry',
                 'scope:auth-runtime',
               ],
             },

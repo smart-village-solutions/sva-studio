@@ -292,9 +292,6 @@ importers:
       '@opentelemetry/api':
         specifier: ^1.9.0
         version: 1.9.1
-      '@sva/auth':
-        specifier: workspace:*
-        version: link:../auth
       '@sva/core':
         specifier: workspace:*
         version: link:../core
@@ -310,6 +307,9 @@ importers:
       '@sva/iam-governance':
         specifier: workspace:*
         version: link:../iam-governance
+      '@sva/instance-registry':
+        specifier: workspace:*
+        version: link:../instance-registry
       '@sva/server-runtime':
         specifier: workspace:*
         version: link:../server-runtime

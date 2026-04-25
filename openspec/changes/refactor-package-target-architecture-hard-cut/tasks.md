@@ -37,7 +37,6 @@
 
 - [x] 5.1 Login, Logout, OIDC, Cookies, Session und Middleware in `@sva/auth-runtime` bündeln
   - Abgeschlossen: Auth-/Session-Typen, Scope-Helfer, Runtime-Session-Fehler, Token-Fehler-Guards, Mock-Auth, Token-Verschlüsselung, Redis-Client, Request-Host-Auflösung, Tenant-Host-Middleware-Prüfung, Runtime-Secrets, Auth-Config inklusive Tenant-Auth-Resolution, Return-To-Sanitizing, Audit-Events inklusive DB-Sink, Legal-Text-Compliance, JIT-Provisioning, Mainserver-Credentials und Runtime-Health liegen in `@sva/auth-runtime`; OIDC-, Login-, Callback-, Logout-, Session-, Cookie-, Health- und Middleware-Code nutzt diese Runtime-Verträge lokal.
-  - Hinweis: `runtime-routes.ts` enthält weiterhin ein bewusstes Legacy-Kompatibilitäts-Barrel auf `@sva/auth/server`; dessen Entfernung ist Teil von 7.5, nicht von 5.1.
 - [x] 5.2 Benutzer, Rollen, Gruppen, Organisationen und Reconcile in `@sva/iam-admin` verschieben
   - Abgeschlossen: Role-Catalog-Reconciliation-Core, injizierbare Reconcile-HTTP-Orchestrierung, Rollen-Read-Orchestrierung, Rollen-Create-/Update-/Delete-Orchestrierung, Rollen-Mutationspersistenz, Rollen-/Gruppen-Resolution, Rollen-Sync-Helfer, Actor-Autorisierung mit Role-Level-Queries, Actor-Account- und Actor-Diagnose-Queries, Actor-Resolution-Service mit JIT-Übergang, User-Read-Orchestrierung für Liste, Detail und Timeline, User-Create-/Update-Orchestrierung, User-Create-/Update-/Import-Persistenz, Profilprojektion/-Persistenz, Sync-User-Import-Orchestrierung, Bulk-/Einzel-Deactivate-Orchestrierung, Legacy-Gruppen-Read-/Mutations-Orchestrierung, Organisations-Read-/Kontext-Read-/Mutations-Orchestrierung, Organisations-Persistenz/-Projektion sowie Gruppen-Read- und `iam-groups`-Mutations-Orchestrierung liegen in `@sva/iam-admin`; `auth` verdrahtet dafür nur noch Auth-Kontext, Feature-Flag, CSRF, Rate-Limit, Plattform-Flows, Response-Adapter und konkrete Runtime-Dependencies.
 - [x] 5.3 DSR, Legal Texts und Audit-nahe Governance-Flows in `@sva/iam-governance` verschieben
@@ -61,9 +60,9 @@
 - [x] 7.2 Plugin-Imports ausschließlich auf Plugin-SDK-Verträge umstellen
 - [x] 7.3 Routing-Imports auf neutrale Contracts umstellen
 - [x] 7.4 Tests, Mocks und Fixtures auf neue Package-Grenzen umstellen
-  - Stand: App-, Routing-, Mainserver-, Vitest- und Root-TS-Aliasse zeigen auf Zielpackages; der Restkanten-Scan findet nur noch die dokumentierte `auth-runtime`-zu-`auth/server`-Kante.
-- [ ] 7.5 Alte Re-Exports und Sammel-Barrels löschen
-  - Offen: `@sva/auth-runtime/runtime-routes` re-exportiert noch Legacy-Admin-/Governance-/Registry-Handler aus `@sva/auth/server`; Health wird bereits direkt über `@sva/auth-runtime/runtime-health` bedient und nicht mehr über das Legacy-Barrel weitergereicht.
+  - Stand: App-, Routing-, Mainserver-, Vitest- und Root-TS-Aliasse zeigen auf Zielpackages; `@sva/auth-runtime` enthält keine `@sva/auth`-/`@sva/auth/server`-Kante mehr.
+- [x] 7.5 Alte Re-Exports und Sammel-Barrels löschen
+  - Abgeschlossen: `@sva/auth-runtime/runtime-routes` exportiert Auth-, IAM-, Governance-, Legal-Text-, DSR-, Content- und Instance-Registry-Handler lokal aus `@sva/auth-runtime`; die temporäre `@sva/auth`-Dependency, TS-Pfade, Vitest-Aliasse und die Boundary-Ausnahme für `scope:auth-runtime -> scope:auth` wurden entfernt.
 
 ## 8. Documentation
 

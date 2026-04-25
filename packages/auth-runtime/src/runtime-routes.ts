@@ -75,7 +75,4 @@ export {
   updateRoleHandler,
   updateUserHandler,
 } from './iam-account-management/core.js';
-
-export {
-  instanceRegistryHandlers,
-} from '@sva/auth/server';
+export { instanceRegistryHandlers } from './iam-instance-registry/server.js';

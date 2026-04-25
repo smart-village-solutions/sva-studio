@@ -8,7 +8,6 @@ const currentDir = dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
   resolve: {
     alias: [
-      { find: '@sva/auth/server', replacement: resolve(currentDir, '../auth/src/index.server.ts') },
       { find: '@sva/core/security', replacement: resolve(currentDir, '../core/src/security/index.ts') },
       { find: /^@sva\/data-repositories\/server$/, replacement: resolve(currentDir, '../data-repositories/src/server.ts') },
       { find: /^@sva\/data-repositories$/, replacement: resolve(currentDir, '../data-repositories/src/index.ts') },

@@ -29,6 +29,10 @@ export default defineConfig({
       { find: /^@sva\/core$/, replacement: resolve(__dirname, '../core/src/index.ts') },
       { find: /^@sva\/data-repositories$/, replacement: resolve(__dirname, '../data-repositories/src/index.ts') },
       { find: /^@sva\/iam-admin$/, replacement: resolve(__dirname, '../iam-admin/src/index.ts') },
+      {
+        find: /^@sva\/instance-registry\/http-contracts$/,
+        replacement: resolve(__dirname, '../instance-registry/src/http-contracts.ts'),
+      },
       { find: /^@sva\/instance-registry$/, replacement: resolve(__dirname, '../instance-registry/src/index.ts') },
       { find: /^@sva\/server-runtime$/, replacement: resolve(__dirname, '../server-runtime/src/index.ts') },
       { find: /^@sva\/sdk$/, replacement: resolve(__dirname, '../sdk/src/index.ts') },

@@ -23,6 +23,7 @@
       "@sva/iam-admin": ["packages/iam-admin/src/index.ts"],
       "@sva/iam-core": ["packages/iam-core/src/index.ts"],
       "@sva/iam-governance": ["packages/iam-governance/src/index.ts"],
+      "@sva/instance-registry/http-contracts": ["packages/instance-registry/src/http-contracts.ts"],
       "@sva/instance-registry": ["packages/instance-registry/src/index.ts"],
       "@sva/plugin-sdk": ["packages/plugin-sdk/src/index.ts"],
       "@sva/server-runtime": ["packages/server-runtime/src/index.ts"],

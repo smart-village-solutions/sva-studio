@@ -9,13 +9,18 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./http-contracts": {
+      "types": "./dist/http-contracts.d.ts",
+      "default": "./dist/http-contracts.js"
     }
   },
   "dependencies": {
     "@sva/core": "workspace:*",
     "@sva/data-repositories": "workspace:*",
     "@sva/iam-core": "workspace:*",
-    "@sva/server-runtime": "workspace:*"
+    "@sva/server-runtime": "workspace:*",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^4.1.2",

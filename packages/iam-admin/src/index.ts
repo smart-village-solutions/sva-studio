@@ -36,3 +36,9 @@ export {
   mapUnmappedKeycloakUser,
   mergeMappedUserWithKeycloak,
 } from './tenant-keycloak-user-projection.js';
+
+export {
+  buildDirectPermissionRowsSql,
+  buildPermissionRowsSql,
+  buildPermissionTraceRowsSql,
+} from './user-detail-permission-sql.js';

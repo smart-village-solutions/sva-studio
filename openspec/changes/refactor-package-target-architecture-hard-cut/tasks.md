@@ -42,8 +42,8 @@
 - [ ] 5.3 DSR, Legal Texts und Audit-nahe Governance-Flows in `@sva/iam-governance` verschieben
   - Offen: Handler und Workflow-Implementierung liegen noch unter `packages/auth/src/iam-data-subject-rights`, `packages/auth/src/iam-legal-texts` und `packages/auth/src/iam-governance`.
 - [ ] 5.4 Instanzmodell, Host-Klassifikation, Registry und Provisioning in `@sva/instance-registry` verschieben
-  - Fortschritt: Service-Orchestrierung, Keycloak-Ausführung, Provisioning-Reader, Keycloak-State-Adapter, Worker-Loop, Mutation-Fehlerklassifikation und Mutation-Input-Builder liegen in `@sva/instance-registry`; `auth` nutzt gezielte Subpath-Contracts.
-  - Offen: HTTP/Core-Handler, Auth-/CSRF-/Reauth-Guards, concrete Keycloak-Admin-Client-Factory und Repository-/Secret-Wiring liegen noch unter `packages/auth/src/iam-instance-registry`.
+  - Fortschritt: Service-Orchestrierung, Keycloak-Ausführung, Provisioning-Reader, Keycloak-State-Adapter, Worker-Loop, Keycloak-HTTP-Handler, Mutation-Fehlerklassifikation und Mutation-Input-Builder liegen in `@sva/instance-registry`; `auth` nutzt gezielte Subpath-Contracts.
+  - Offen: allgemeine Instanz-HTTP/Core-Handler, Auth-/CSRF-/Reauth-Guards, concrete Keycloak-Admin-Client-Factory und Repository-/Secret-Wiring liegen noch unter `packages/auth/src/iam-instance-registry`.
 - [x] 5.5 Integrationspackages auf Zielverträge umstellen und direkte Auth-/Data-Interna entfernen
 
 ## 6. Enforcement

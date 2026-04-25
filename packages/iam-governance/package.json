@@ -33,6 +33,10 @@
     "./legal-text-http-handlers": {
       "types": "./dist/legal-text-http-handlers.d.ts",
       "default": "./dist/legal-text-http-handlers.js"
+    },
+    "./legal-text-request-context": {
+      "types": "./dist/legal-text-request-context.d.ts",
+      "default": "./dist/legal-text-request-context.js"
     }
   },
   "dependencies": {

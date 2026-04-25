@@ -41,3 +41,12 @@ export {
   type LegalTextHttpHandlerDeps,
   type LegalTextPendingUser,
 } from './legal-text-http-handlers.js';
+export {
+  createLegalTextsAdminActorResolver,
+  createLegalTextsRequestContextHandlers,
+  withLegalTextsRequestContext,
+  type LegalTextsActorInfo,
+  type LegalTextsAdminActorResolverDeps,
+  type LegalTextsRequestContextDeps,
+  type ResolvedLegalTextsActor,
+} from './legal-text-request-context.js';

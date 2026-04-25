@@ -33,16 +33,6 @@ const authServerMocks = vi.hoisted(() => ({
   ),
 }));
 
-class TestSessionUserHydrationError extends Error {
-  requestHost: string;
-
-  constructor(requestHost = 'tenant.example.org') {
-    super('session user hydration failed');
-    this.name = 'SessionUserHydrationError';
-    this.requestHost = requestHost;
-  }
-}
-
 vi.mock('@sva/server-runtime', () => ({
   createSdkLogger: () => middlewareLogger,
   getWorkspaceContext: () => ({
@@ -67,35 +57,17 @@ vi.mock('@sva/server-runtime', () => ({
     ),
 }));
 
-vi.mock('@sva/auth/server', () => ({
-  SessionUserHydrationError: TestSessionUserHydrationError,
-  createApiError: (status: number, code: string, message: string, requestId?: string, details?: Record<string, unknown>) =>
-    new Response(
-      JSON.stringify({
-        error: {
-          code,
-          message,
-          ...(details ? { details } : {}),
-        },
-        ...(requestId ? { requestId } : {}),
-      }),
-      {
-        status,
-        headers: {
-          'Content-Type': 'application/json',
-          ...(requestId ? { 'X-Request-Id': requestId } : {}),
-        },
-      }
-    ),
-  resolveSessionUser: authServerMocks.resolveSessionUser,
-  shouldEnforceLegalTextCompliance: authServerMocks.shouldEnforceLegalTextCompliance,
-  validateTenantHost: authServerMocks.validateTenantHost,
-  withLegalTextCompliance: authServerMocks.withLegalTextCompliance,
-}));
-
 vi.mock('./middleware-hosts.js', () => ({
   resolveSessionUser: authServerMocks.resolveSessionUser,
   validateTenantHost: authServerMocks.validateTenantHost,
+}));
+
+vi.mock('./middleware-compliance.js', () => ({
+  shouldEnforceLegalTextCompliance: authServerMocks.shouldEnforceLegalTextCompliance,
+}));
+
+vi.mock('./legal-text-enforcement.js', () => ({
+  withLegalTextCompliance: authServerMocks.withLegalTextCompliance,
 }));
 
 vi.mock('./config.js', () => ({

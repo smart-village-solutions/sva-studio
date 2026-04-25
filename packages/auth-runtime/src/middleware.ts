@@ -1,11 +1,9 @@
 import { parse as parseCookie } from 'cookie-es';
 import { createSdkLogger, toJsonErrorResponse } from '@sva/server-runtime';
 
-import {
-  createApiError,
-  shouldEnforceLegalTextCompliance,
-  withLegalTextCompliance,
-} from '@sva/auth/server';
+import { createApiError } from './api-error.js';
+import { shouldEnforceLegalTextCompliance } from './middleware-compliance.js';
+import { withLegalTextCompliance } from './legal-text-enforcement.js';
 import { resolveSessionUser, validateTenantHost } from './middleware-hosts.js';
 import { getSessionUser } from './auth-server/session.js';
 import { getAuthConfig } from './config.js';

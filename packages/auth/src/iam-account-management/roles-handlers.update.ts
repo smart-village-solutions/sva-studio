@@ -1,13 +1,12 @@
+import { createUpdateRoleHandlerInternal } from '@sva/iam-admin';
+
 import type { ManagedRoleRow } from './types.js';
 
-import type { AuthenticatedRequestContext } from '../middleware.server.js';
 import { jsonResponse } from '../shared/db-helpers.js';
 
 import { asApiItem, createApiError, parseRequestBody } from './api-helpers.js';
 import {
   buildRoleSyncFailure,
-  getRoleDisplayName,
-  getRoleExternalName,
   mapRoleSyncErrorCode,
   sanitizeRoleErrorMessage,
 } from './role-audit.js';
@@ -186,161 +185,22 @@ ON CONFLICT (instance_id, role_id, permission_id) DO NOTHING;
   });
 };
 
-export const updateRoleInternal = async (
-  request: Request,
-  ctx: AuthenticatedRequestContext
-): Promise<Response> => {
-  const resolvedActor = await resolveRoleMutationActor(request, ctx);
-  if ('response' in resolvedActor) {
-    return resolvedActor.response;
-  }
-
-  const { actor } = resolvedActor;
-  const roleId = requireRoleId(request, actor.requestId);
-  if (roleId instanceof Response) {
-    return roleId;
-  }
-
-  const parsed = await parseRequestBody(request, updateRoleSchema);
-  if (!parsed.ok) {
-    return createApiError(400, 'invalid_request', 'Ungültiger Payload.', actor.requestId);
-  }
-
-  const identityProvider = await requireRoleIdentityProvider(actor.instanceId, actor.requestId);
-  if (identityProvider instanceof Response) {
-    return identityProvider;
-  }
-
-  try {
-    const existing = await resolveMutableRole(actor, roleId);
-    if (existing instanceof Response) {
-      return existing;
-    }
-
-    const operation = parsed.data.retrySync ? 'retry' : 'update';
-    const nextDisplayName = parsed.data.displayName?.trim() || getRoleDisplayName(existing);
-    const nextDescription = parsed.data.description ?? existing.description ?? undefined;
-    const nextRoleLevel = parsed.data.roleLevel ?? existing.role_level;
-    const externalRoleName = getRoleExternalName(existing);
-
-    await markRoleSyncState({
-      actor,
-      roleId,
-      operation,
-      result: 'success',
-      roleKey: existing.role_key,
-      externalRoleName,
-      syncState: 'pending',
-    });
-
-    try {
-      await trackKeycloakCall('update_role', () =>
-        identityProvider.provider.updateRole(externalRoleName, {
-          description: nextDescription,
-          attributes: buildRoleAttributes({
-            instanceId: actor.instanceId,
-            roleKey: existing.role_key,
-            displayName: nextDisplayName,
-          }),
-        })
-      );
-    } catch (error) {
-      const errorCode = mapRoleSyncErrorCode(error);
-      iamRoleSyncCounter.add(1, { operation, result: 'failure', error_code: errorCode });
-      await markRoleSyncState({
-        actor,
-        roleId,
-        operation,
-        result: 'failure',
-        roleKey: existing.role_key,
-        externalRoleName,
-        errorCode,
-        syncState: 'failed',
-      });
-      return buildRoleSyncFailure({
-        error,
-        requestId: actor.requestId,
-        fallbackMessage: 'Rolle konnte nicht mit Keycloak synchronisiert werden.',
-        roleId,
-      });
-    }
-
-    try {
-      const roleItem = await persistUpdatedRole({
-        actor,
-        roleId,
-        existing,
-        displayName: nextDisplayName,
-        description: nextDescription,
-        roleLevel: nextRoleLevel,
-        externalRoleName,
-        permissionIds: parsed.data.permissionIds,
-        operation,
-      });
-      iamRoleSyncCounter.add(1, { operation, result: 'success', error_code: 'none' });
-      return jsonResponse(200, asApiItem(roleItem, actor.requestId));
-    } catch (error) {
-      try {
-        await trackKeycloakCall('update_role_compensation', () =>
-          identityProvider.provider.updateRole(externalRoleName, {
-            description: existing.description ?? undefined,
-            attributes: buildRoleAttributes({
-              instanceId: actor.instanceId,
-              roleKey: existing.role_key,
-              displayName: getRoleDisplayName(existing),
-            }),
-          })
-        );
-      } catch {
-        await markRoleSyncState({
-          actor,
-          roleId,
-          operation: 'update',
-          result: 'failure',
-          roleKey: existing.role_key,
-          externalRoleName,
-          errorCode: 'COMPENSATION_FAILED',
-          syncState: 'failed',
-        });
-        iamRoleSyncCounter.add(1, { operation: 'update', result: 'failure', error_code: 'COMPENSATION_FAILED' });
-        return createApiError(
-          500,
-          'internal_error',
-          'Rolle konnte nicht konsistent aktualisiert werden.',
-          actor.requestId,
-          {
-            syncState: 'failed',
-            syncError: { code: 'COMPENSATION_FAILED' },
-          }
-        );
-      }
-
-      await markRoleSyncState({
-        actor,
-        roleId,
-        operation: 'update',
-        result: 'failure',
-        roleKey: existing.role_key,
-        externalRoleName,
-        errorCode: 'DB_WRITE_FAILED',
-        syncState: 'failed',
-      });
-      iamRoleSyncCounter.add(1, { operation: 'update', result: 'failure', error_code: 'DB_WRITE_FAILED' });
-      logger.error('Role update database write failed after successful Keycloak update', {
-        operation: 'update_role',
-        instance_id: actor.instanceId,
-        request_id: actor.requestId,
-        trace_id: actor.traceId,
-        role_id: roleId,
-        role_key: existing.role_key,
-        error: sanitizeRoleErrorMessage(error),
-      });
-      return createApiError(500, 'internal_error', 'Rolle konnte nicht aktualisiert werden.', actor.requestId, {
-        syncState: 'failed',
-        syncError: { code: 'DB_WRITE_FAILED' },
-      });
-    }
-  } catch {
-    return createApiError(500, 'internal_error', 'Rolle konnte nicht aktualisiert werden.', actor.requestId);
-  }
-};
+export const updateRoleInternal = createUpdateRoleHandlerInternal({
+  asApiItem,
+  buildRoleAttributes,
+  buildRoleSyncFailure,
+  createApiError,
+  iamRoleSyncCounter,
+  jsonResponse,
+  logger,
+  mapRoleSyncErrorCode,
+  markRoleSyncState,
+  parseUpdateRoleBody: (request) => parseRequestBody(request, updateRoleSchema),
+  persistUpdatedRole,
+  requireRoleId,
+  requireRoleIdentityProvider,
+  resolveMutableRole,
+  resolveRoleMutationActor,
+  sanitizeRoleErrorMessage,
+  trackKeycloakCall,
+});

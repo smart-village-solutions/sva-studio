@@ -33,6 +33,12 @@ export {
 } from './role-create-handler.js';
 
 export {
+  createUpdateRoleHandlerInternal,
+  type UpdateRoleAuthenticatedRequestContext,
+  type UpdateRoleHandlerDeps,
+} from './role-update-handler.js';
+
+export {
   loadRoleById,
   loadRoleListItemById,
   loadRoleListItems,

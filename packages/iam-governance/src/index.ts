@@ -18,3 +18,8 @@ export {
 } from './dsr-read-models.js';
 export type { DsrFilters } from './dsr-read-models.types.js';
 export { hashLegalTextHtml, sanitizeLegalTextHtml } from './legal-text-html.js';
+export {
+  consumeLegalConsentExportRateLimit,
+  hasLegalConsentExportPermission,
+  loadConsentExportRecords,
+} from './legal-consent-export.js';

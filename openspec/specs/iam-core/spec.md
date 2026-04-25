@@ -108,14 +108,14 @@ Das System MUST alle sicherheitsrelevanten IAM-Ereignisse unveränderbar protoko
 - **THEN** wird ein neuer Account-Datensatz in `iam.accounts` angelegt
 - **AND** das Erstellungsereignis wird mit der Keycloak-ID als Verknüpfung protokolliert
 
-### Requirement: SDK Logger for IAM Server Modules
-Das System MUST den SDK Logger (`createSdkLogger` aus `@sva/sdk`) fuer alle operativen Logs in IAM-Servermodulen verwenden und tokenhaltige oder personenbeziehbare Werte minimieren.
+### Requirement: Server-Runtime-Logger for IAM Server Modules
+Das System MUST den Server-Runtime-Logger (`createSdkLogger` aus `@sva/server-runtime`) fuer alle operativen Logs in IAM-Servermodulen verwenden und tokenhaltige oder personenbeziehbare Werte minimieren.
 
 #### Scenario: Structured logging with mandatory fields
 
 - **WHEN** ein IAM-Servermodul einen Log-Eintrag erzeugt
 - **THEN** enthaelt der Eintrag mindestens: `workspace_id` (= `instanceId`), `component` (z. B. `iam-auth`), `environment`, `level`
-- **AND** PII-Redaktion wird automatisch durch den SDK Logger angewendet
+- **AND** PII-Redaktion wird automatisch durch den Server-Runtime-Logger angewendet
 - **AND** es erscheinen keine Klartext-Tokens, tokenhaltigen Redirect-URLs, Session-IDs oder E-Mail-Adressen in operativen Logs
 
 ### Requirement: Browser diagnostics use safe structured logging in development
@@ -345,7 +345,7 @@ Das System MUST alle IAM-API-Endpunkte serverseitig gegen unberechtigte Zugriffe
 #### Scenario: Operatives Logging ohne Klartext-PII
 
 - **WENN** IAM-Endpunkte Fehler oder Warnungen loggen
-- **DANN** erfolgt das Logging ausschließlich über den SDK Logger (`@sva/sdk`) mit Component-Label
+- **DANN** erfolgt das Logging ausschließlich über den Server-Runtime-Logger (`@sva/server-runtime`) mit Component-Label
 - **UND** es werden keine Klartext-PII, Tokens oder Session-IDs in operativen Logs ausgegeben
 - **UND** E-Mail-Adressen werden maskiert (`u***@example.com`) falls in Fehlermeldungen nötig
 
@@ -1020,4 +1020,3 @@ Das System SHALL für den IAM-Laufzeitpfad eine konsistente, schichtübergreifen
 - **WHEN** ein IAM-Fehler UI- oder API-seitig als diagnosefähiger Fehler ausgegeben wird
 - **THEN** enthält der öffentliche Vertrag mindestens einen stabilen Fehlercode, eine Fehlerklasse, `requestId`, allowlist-basierte `safeDetails`, einen handlungsleitenden Status und eine empfohlene nächste Handlung
 - **AND** diese Felder bleiben über Auth-, IAM- und Provisioning-nahe Laufzeitpfade semantisch kompatibel
-

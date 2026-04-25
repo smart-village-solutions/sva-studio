@@ -1,5 +1,5 @@
 import fs from 'node:fs';
-import * as shared from '/app/node_modules/@sva/auth/dist/iam-account-management/shared.js';
+import * as shared from '/app/node_modules/@sva/auth-runtime/dist/iam-account-management/shared.js';
 
 const raw = fs.readFileSync('/proc/1/environ', 'utf8');
 const vars = Object.fromEntries(

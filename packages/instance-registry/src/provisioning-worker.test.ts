@@ -22,7 +22,7 @@ describe('provisioning-worker', () => {
   });
 
   it('accepts relative argv entry paths', () => {
-    const argvEntry = 'node_modules/@sva/auth/dist/iam-instance-registry/worker.js';
+    const argvEntry = 'node_modules/@sva/auth-runtime/dist/iam-instance-registry/worker.js';
     const moduleUrl = pathToFileURL(resolve(argvEntry)).href;
 
     expect(isWorkerEntrypoint(moduleUrl, argvEntry)).toBe(true);

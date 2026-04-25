@@ -111,7 +111,7 @@ services:
       - node
       - --import
       - ./otel-bootstrap.mjs
-      - node_modules/@sva/auth/dist/iam-instance-registry/worker.js
+      - node_modules/@sva/auth-runtime/dist/iam-instance-registry/worker.js
     environment:
       NODE_ENV: production
       HOST: 0.0.0.0

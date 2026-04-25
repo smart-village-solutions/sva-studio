@@ -9,9 +9,9 @@ Framework-agnostisches Kernpaket für SVA Studio. Stellt gemeinsame Typen, Routi
 ```
 @sva/core (keine Abhängigkeiten)
   ↑
-  ├── @sva/data
-  ├── @sva/auth
-  ├── @sva/sdk
+  ├── @sva/data-client / @sva/data-repositories
+  ├── @sva/auth-runtime / @sva/iam-*
+  ├── @sva/plugin-sdk / @sva/server-runtime
   ├── @sva/routing
   └── @sva/plugin-news
 ```

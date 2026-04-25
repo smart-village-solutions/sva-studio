@@ -626,8 +626,8 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
 ## 9. Logging & Observability
 
 ### ✅ REQUIRED
-- **Server-Code**: SDK Logger verwenden (`createSdkLogger` aus `@sva/sdk`)
-- **Produktiver Browser-App-Code**: Runtime-sicheren Browser-Logger aus dem SDK verwenden; rohe `console.*`-Aufrufe vermeiden
+- **Server-Code**: Server-Runtime-Logger verwenden (`createSdkLogger` aus `@sva/server-runtime`)
+- **Produktiver Browser-App-Code**: Runtime-sicheren Browser-Logger aus dem passenden Zielpackage verwenden; rohe `console.*`-Aufrufe vermeiden
 - **Strukturierte Logs**: Immer mit Context-Feldern (component, operation, error, etc.)
 - **PII-Schutz**: Keine Session-IDs, Tokens, tokenhaltigen URLs oder Emails direkt loggen
 - **Component-Labels**: Jeder Logger braucht eindeutigen `component` (z.B. `auth`, `auth-redis`)
@@ -654,7 +654,7 @@ Frontend darf `console.*` nutzen, aber:
 
 **Backend-Beispiel:**
 ```typescript
-import { createSdkLogger } from '@sva/sdk';
+import { createSdkLogger } from '@sva/server-runtime';
 
 const logger = createSdkLogger({ component: 'auth' });
 

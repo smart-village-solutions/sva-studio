@@ -32,7 +32,7 @@ Die folgenden Leitplanken SHALL verbindlich für alle IAM-Child-Changes gelten:
 - PII-Pseudonymisierung: Klartext-PII (E-Mail, IP, User-Agent) werden in Audit-Logs durch pseudonymisierte Referenzen ersetzt; Re-Identifikation nur durch autorisiertes Personal mit dokumentiertem Grund
 - Encryption at Rest: Sensible IAM-Daten werden verschlüsselt gespeichert, wo sinnvoll und notwendig
 - DSGVO-Betroffenenrechte (Art. 15–21): In separatem Child-Change `add-iam-data-subject-rights` adressiert
-- Operative Observability: Alle IAM-Server-Module nutzen den SDK Logger (`@sva/sdk`) gemäß ADR-006; kein `console.log` in IAM-Code
+- Operative Observability: Alle IAM-Server-Module nutzen den Server-Runtime-Logger (`@sva/server-runtime`) gemäß ADR-006; kein `console.log` in IAM-Code
 - Logging-Pflichtfelder: `workspace_id` (= `instanceId`), `component`, `environment`, `level`
 - Korrelation: Alle IAM-API-Endpunkte propagieren `X-Request-Id` und OTEL-Trace-Context
 - Audit Dual-Write: Sicherheitsrelevante Audit-Events werden parallel in DB (`iam.activity_logs`) und OTEL-Pipeline (SDK Logger) emittiert
@@ -93,9 +93,9 @@ Die Keycloak-seitige Sicherheitskonfiguration (MFA, Passwortrichtlinien, Session
 
 ### Requirement: Verbindliche operative Observability für IAM-Module
 
-Alle IAM-Server-Module SHALL den SDK Logger (`@sva/sdk`, `createSdkLogger`) gemäß ADR-006 verwenden. Operative Logs werden über die OTEL→Collector→Loki-Pipeline exportiert. `console.log`/`console.error` ist in IAM-Server-Code nicht zulässig.
+Alle IAM-Server-Module SHALL den Server-Runtime-Logger (`@sva/server-runtime`, `createSdkLogger`) gemäß ADR-006 verwenden. Operative Logs werden über die OTEL→Collector→Loki-Pipeline exportiert. `console.log`/`console.error` ist in IAM-Server-Code nicht zulässig.
 
-#### Scenario: IAM-Modul ohne SDK Logger
+#### Scenario: IAM-Modul ohne Server-Runtime-Logger
 
 - **WHEN** ein Child-Change IAM-Server-Code enthält
 - **AND** dieser Code `console.log`, `console.error` oder `console.warn` statt des SDK Loggers verwendet
@@ -131,4 +131,3 @@ Sicherheitsrelevante IAM-Events SHALL sowohl in die DB (`iam.activity_logs`) als
 - **WHEN** mehr als 10 fehlgeschlagene Login-Versuche pro Account innerhalb einer Minute auftreten
 - **THEN** erzeugt der SDK Logger einen `warn`-Level-Eintrag mit `{ operation: 'login_anomaly', count: N }`
 - **AND** dieser Eintrag ist über die OTEL-Pipeline für Grafana-Alerts nutzbar
-

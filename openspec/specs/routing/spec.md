@@ -57,8 +57,8 @@ Auth-Route-Handler und routing-nahe Server-Dispatch-Pfade SHALL bei unbehandelte
 
 #### Scenario: Error-Boundary loggt mit Kontext
 - **WHEN** ein Auth-Route-Handler einen unbehandelten Fehler wirft
-- **THEN** erzeugt die Error-Boundary einen `error`-Log-Eintrag über den SDK Logger mit `component: 'auth-routing'`
-- **AND** der Eintrag enthält `event: "routing.handler.error_caught"`, `request_id` (aus `@sva/sdk/server`-Extraktion, Pflicht für Server-Handler), `trace_id` (aus `@sva/sdk/server`-Extraktion, Pflicht für Server-Handler), `route`, `method`, `error_type`, `error_message`
+- **THEN** erzeugt die Error-Boundary einen `error`-Log-Eintrag über den Server-Runtime-Logger mit `component: 'auth-routing'`
+- **AND** der Eintrag enthält `event: "routing.handler.error_caught"`, `request_id` (aus `@sva/server-runtime`-Extraktion, Pflicht für Server-Handler), `trace_id` (aus `@sva/server-runtime`-Extraktion, Pflicht für Server-Handler), `route`, `method`, `error_type`, `error_message`
 - **AND** der Eintrag enthält **kein** `error.stack`-Feld
 - **AND** es wird kein `console.error` verwendet
 
@@ -80,8 +80,8 @@ Auth-Route-Handler und routing-nahe Server-Dispatch-Pfade SHALL bei unbehandelte
 - **AND** der Log-Eintrag enthält `request_id: undefined` und/oder `trace_id: undefined`
 - **AND** kein ungefilterter Headerwert erscheint im Log-Eintrag
 
-#### Scenario: SDK-Logger-Fallback
-- **WHEN** der SDK Logger bei der Fehlerbehandlung selbst eine Exception wirft
+#### Scenario: Server-Runtime-Logger-Fallback
+- **WHEN** der Server-Runtime-Logger bei der Fehlerbehandlung selbst eine Exception wirft
 - **THEN** wird ein sanitierter Minimal-JSON-Eintrag auf `process.stderr` geschrieben
 - **AND** der Fallback enthält nur Safe-Felder wie `component`, `event`, `route`, `method`, `error_type` und best-effort `request_id`
 - **AND** das rohe Error-Objekt und Stack-Traces werden nicht ausgegeben
@@ -97,7 +97,7 @@ Auth-Route-Handler und routing-nahe Server-Dispatch-Pfade SHALL bei unbehandelte
 #### Scenario: JSON-Response bei Handler-Fehler
 - **WHEN** ein Auth-Route-Handler einen unbehandelten Fehler wirft
 - **THEN** antwortet der Server mit HTTP 500 und einem JSON-Body `{ error: "internal_error", message: "Ein unerwarteter Fehler ist aufgetreten." }`
-- **AND** der Response-Shape wird über den gemeinsamen `toJsonErrorResponse()`-Utility aus `@sva/sdk/server` erzeugt
+- **AND** der Response-Shape wird über den gemeinsamen `toJsonErrorResponse()`-Utility aus `@sva/server-runtime` erzeugt
 - **AND** keine Stack-Traces oder internen Details werden an den Client übermittelt
 
 ### Requirement: Einheitlicher Error-Response-Contract
@@ -107,7 +107,7 @@ Auth-Error-Boundaries SHALL einen einheitlichen JSON-Error-Response-Shape verwen
 - **WHEN** `wrapHandlersWithJsonErrorBoundary` (Infrastruktur) oder `withAuthenticatedIamHandler` (Business) einen Fehler abfängt
 - **THEN** erzeugen beide für stabile IAM-v1-Endpunkte eine Response mit dem Shape `{ error: string, message?: string }`
 - **AND** das Feld `error` bleibt der maschinenlesbare Fehlercode; `message` ist additiv und nicht für Client-Logik bestimmt
-- **AND** beide nutzen den `toJsonErrorResponse()`-Utility aus `@sva/sdk/server`
+- **AND** beide nutzen den `toJsonErrorResponse()`-Utility aus `@sva/server-runtime`
 
 #### Scenario: toJsonErrorResponse liefert korrektes Format
 - **WHEN** `toJsonErrorResponse(500, 'internal_error', 'Ein unerwarteter Fehler ist aufgetreten.')` aufgerufen wird
@@ -142,8 +142,8 @@ Das System SHALL für `@sva/routing` einen einheitlichen, typisierten Observabil
 - **WHEN** Guard-, Plugin- oder Dispatch-Logik in `@sva/routing` ein beobachtbares Ereignis emittiert
 - **THEN** erfolgt die Emission über einen expliziten Routing-Diagnostics- oder Logger-Vertrag
 - **AND** die framework-agnostische Routing-Logik bleibt von konkreten Transporten wie Console oder OTEL getrennt
-- **AND** client-shared Routing-Dateien (`protected.routes.ts`, `account-ui.routes.ts`, `app.routes.shared.ts`, `route-search.ts`) enthalten **keinen Runtime-Import** aus `@sva/sdk` oder `@sva/sdk/server`
-- **AND** der Diagnostics-Hook ist ein optionaler Parameter (Dependency-Injection) mit No-op-Default; die Hook-Typ-Definition lebt als reine `interface`-Deklaration in `@sva/routing` ohne SDK-Import
+- **AND** client-shared Routing-Dateien (`protected.routes.ts`, `account-ui.routes.ts`, `app.routes.shared.ts`, `route-search.ts`) enthalten **keinen Runtime-Import** aus `@sva/server-runtime`
+- **AND** der Diagnostics-Hook ist ein optionaler Parameter (Dependency-Injection) mit No-op-Default; die Hook-Typ-Definition lebt als reine `interface`-Deklaration in `@sva/routing` ohne Server-Runtime-Import
 
 #### Scenario: Diagnostics-Hook-Injektion über Options-Parameter
 - **WHEN** ein Consumer `createProtectedRoute()` oder `getPluginRouteFactories()` aufruft
@@ -206,4 +206,3 @@ Das Routing-System MUST Plugin-Routen und zugehörige UI-Bindings so integrieren
 - **WHEN** eine Plugin-Oberfläche eine Aktion wie `news.create` rendert
 - **THEN** liest sie den Titel- und Guard-Bezug aus der deklarierten Plugin-Action-Definition
 - **AND** es existiert keine separate, ungebundene UI-Konvention für dieselbe Aktion
-

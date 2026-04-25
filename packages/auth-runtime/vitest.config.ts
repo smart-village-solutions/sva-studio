@@ -26,6 +26,22 @@ export default defineConfig({
         replacement: resolve(currentDir, '../iam-governance/src/legal-text-repository-shared.ts'),
       },
       {
+        find: /^@sva\/iam-governance\/legal-text-repository$/,
+        replacement: resolve(currentDir, '../iam-governance/src/legal-text-repository.ts'),
+      },
+      {
+        find: /^@sva\/iam-governance\/legal-text-mutation-handlers$/,
+        replacement: resolve(currentDir, '../iam-governance/src/legal-text-mutation-handlers.ts'),
+      },
+      {
+        find: /^@sva\/iam-governance\/legal-text-http-handlers$/,
+        replacement: resolve(currentDir, '../iam-governance/src/legal-text-http-handlers.ts'),
+      },
+      {
+        find: /^@sva\/iam-governance\/legal-text-request-context$/,
+        replacement: resolve(currentDir, '../iam-governance/src/legal-text-request-context.ts'),
+      },
+      {
         find: /^@sva\/iam-governance\/governance-compliance-export$/,
         replacement: resolve(currentDir, '../iam-governance/src/governance-compliance-export.ts'),
       },

@@ -29,6 +29,26 @@ export default defineConfig({
         find: /^@sva\/iam-governance\/governance-workflow-policy$/,
         replacement: resolve(__dirname, '../iam-governance/src/governance-workflow-policy.ts'),
       },
+      {
+        find: /^@sva\/iam-governance\/legal-text-repository-shared$/,
+        replacement: resolve(__dirname, '../iam-governance/src/legal-text-repository-shared.ts'),
+      },
+      {
+        find: /^@sva\/iam-governance\/legal-text-repository$/,
+        replacement: resolve(__dirname, '../iam-governance/src/legal-text-repository.ts'),
+      },
+      {
+        find: /^@sva\/iam-governance\/legal-text-mutation-handlers$/,
+        replacement: resolve(__dirname, '../iam-governance/src/legal-text-mutation-handlers.ts'),
+      },
+      {
+        find: /^@sva\/iam-governance\/legal-text-http-handlers$/,
+        replacement: resolve(__dirname, '../iam-governance/src/legal-text-http-handlers.ts'),
+      },
+      {
+        find: /^@sva\/iam-governance\/legal-text-request-context$/,
+        replacement: resolve(__dirname, '../iam-governance/src/legal-text-request-context.ts'),
+      },
       { find: /^@sva\/iam-governance$/, replacement: resolve(__dirname, '../iam-governance/src/index.ts') },
       { find: /^@sva\/instance-registry$/, replacement: resolve(__dirname, '../instance-registry/src/index.ts') },
       { find: '@sva/plugin-sdk', replacement: resolve(__dirname, '../plugin-sdk/src/index.ts') },

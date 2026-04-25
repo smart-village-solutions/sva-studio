@@ -24,6 +24,21 @@
       "@sva/iam-governance/governance-workflow-policy": [
         "packages/iam-governance/dist/governance-workflow-policy.d.ts"
       ],
+      "@sva/iam-governance/legal-text-http-handlers": [
+        "packages/iam-governance/dist/legal-text-http-handlers.d.ts"
+      ],
+      "@sva/iam-governance/legal-text-mutation-handlers": [
+        "packages/iam-governance/dist/legal-text-mutation-handlers.d.ts"
+      ],
+      "@sva/iam-governance/legal-text-repository": [
+        "packages/iam-governance/dist/legal-text-repository.d.ts"
+      ],
+      "@sva/iam-governance/legal-text-repository-shared": [
+        "packages/iam-governance/dist/legal-text-repository-shared.d.ts"
+      ],
+      "@sva/iam-governance/legal-text-request-context": [
+        "packages/iam-governance/dist/legal-text-request-context.d.ts"
+      ],
       "@sva/iam-governance": ["packages/iam-governance/dist/index.d.ts"],
       "@sva/server-runtime": ["packages/server-runtime/dist/index.d.ts"]
     }

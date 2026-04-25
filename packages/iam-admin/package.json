@@ -15,7 +15,8 @@
     "@sva/core": "workspace:*",
     "@sva/data-repositories": "workspace:*",
     "@sva/iam-core": "workspace:*",
-    "@sva/server-runtime": "workspace:*"
+    "@sva/server-runtime": "workspace:*",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^4.1.2",

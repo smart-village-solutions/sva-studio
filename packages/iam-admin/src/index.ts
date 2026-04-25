@@ -42,6 +42,43 @@ export {
 } from './tenant-keycloak-user-query.js';
 
 export {
+  mapGroupListItem,
+  mapGroupMembership,
+  type AccountGroupRow,
+  type GroupRoleRow,
+  type GroupRow,
+  type IamAdminGroupDetail,
+  type IamAdminGroupListItem,
+  type IamAdminGroupMembership,
+  type IamAdminGroupType,
+  type IamUuid,
+} from './group-types.js';
+
+export {
+  assignGroupMembershipSchema,
+  assignGroupRoleSchema,
+  createGroupSchema,
+  groupKeySchema,
+  removeGroupMembershipSchema,
+  updateGroupSchema,
+  type AssignGroupMembershipInput,
+  type AssignGroupRoleInput,
+  type CreateGroupInput,
+  type RemoveGroupMembershipInput,
+  type UpdateGroupInput,
+} from './group-schemas.js';
+
+export {
+  assignOrganizationMembershipSchema,
+  contentAuthorPolicySchema,
+  createOrganizationSchema,
+  membershipVisibilitySchema,
+  organizationTypeSchema,
+  updateOrganizationContextSchema,
+  updateOrganizationSchema,
+} from './organization-schemas.js';
+
+export {
   buildDirectPermissionRowsSql,
   buildPermissionRowsSql,
   buildPermissionTraceRowsSql,

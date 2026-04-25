@@ -153,6 +153,14 @@ export {
 } from './user-import-persistence.js';
 
 export {
+  createProfileCommands,
+  type ProfileActorInfo,
+  type ProfileCommandsDeps,
+  type ProfileUpdatePayload,
+  type SessionProfileSeed,
+} from './profile-commands.js';
+
+export {
   mapUnmappedKeycloakUser,
   mergeMappedUserWithKeycloak,
 } from './tenant-keycloak-user-projection.js';

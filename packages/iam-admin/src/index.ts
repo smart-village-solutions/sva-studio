@@ -198,6 +198,27 @@ export {
 } from './organization-mutation-handlers.js';
 
 export {
+  chooseActiveOrganizationId,
+  escapeIlikePattern,
+  isHierarchyError,
+  loadContextOptions,
+  loadOrganizationById,
+  loadOrganizationDetail,
+  loadOrganizationList,
+  mapContextOption,
+  mapMembershipRow,
+  mapOrganizationListItem,
+  readOrganizationTypeFilter,
+  readStatusFilter,
+  rebuildOrganizationSubtree,
+  resolveHierarchyFields,
+  type ContextOptionRow,
+  type HierarchyResolution,
+  type MembershipRow,
+  type OrganizationRow,
+} from './organization-query.js';
+
+export {
   buildDirectPermissionRowsSql,
   buildPermissionRowsSql,
   buildPermissionTraceRowsSql,

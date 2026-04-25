@@ -36,6 +36,7 @@ vi.mock('@sva/server-runtime', () => ({
     error: vi.fn(),
   }),
   getWorkspaceContext: () => ({ requestId: 'req-reconcile' }),
+  redactObject: <T>(value: T): T => value,
 }));
 
 vi.mock('../shared/db-helpers.js', () => ({
@@ -251,7 +252,7 @@ describe('iam-account-management/reconcile-handler internals', () => {
         externalRoleName: 'Realm Editor',
         action: 'create',
         status: 'failed',
-        errorCode: 'SYNC_FAILED',
+        errorCode: 'IDP_UNKNOWN',
       }),
     ]);
   });

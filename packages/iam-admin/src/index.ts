@@ -28,6 +28,12 @@ export {
 } from './role-query.js';
 
 export {
+  runRoleCatalogReconciliation,
+  type ReconcileReport,
+  type RoleCatalogReconciliationDeps,
+} from './reconcile-core.js';
+
+export {
   resolveUsersForBulkDeactivation,
   type BulkUserAccess,
 } from './user-bulk-query.js';

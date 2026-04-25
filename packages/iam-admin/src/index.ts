@@ -49,6 +49,12 @@ export {
 } from './user-bulk-deactivate-handler.js';
 
 export {
+  createDeactivateUserHandlerInternal,
+  type DeactivateAuthenticatedRequestContext,
+  type DeactivateUserHandlerDeps,
+} from './user-deactivate-handler.js';
+
+export {
   mapUnmappedKeycloakUser,
   mergeMappedUserWithKeycloak,
 } from './tenant-keycloak-user-projection.js';

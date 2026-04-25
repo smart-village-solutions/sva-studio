@@ -23,7 +23,15 @@ export {
 export { isRetryableTokenExchangeError, isTokenErrorLike } from './error-guards.js';
 export { decryptToken, encryptToken, generateEncryptionKey, isEncrypted } from './crypto.js';
 export { createMockSessionUser, isMockAuthEnabled } from './mock-auth.js';
-export { SessionStoreUnavailableError, TenantScopeConflictError } from './runtime-errors.js';
+export {
+  closeRedis,
+  getLastRedisError,
+  getRedisClient,
+  getRedisHealthSnapshot,
+  isRedisAvailable,
+  type RedisHealthSnapshot,
+} from './redis.js';
+export { SessionStoreUnavailableError, TenantAuthResolutionError, TenantScopeConflictError } from './runtime-errors.js';
 export type {
   AuthConfig,
   ForceReauthInput,

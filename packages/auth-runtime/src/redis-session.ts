@@ -1,9 +1,9 @@
 import {
   emitAuthAuditEvent,
-  getRedisClient,
 } from '@sva/auth/server';
 import { getAuthConfig } from './config.js';
 import { decryptToken, encryptToken } from './crypto.js';
+import { getRedisClient } from './redis.js';
 import { SessionStoreUnavailableError } from './runtime-errors.js';
 import { getRuntimeScopeRef, getWorkspaceIdForScope } from './scope.js';
 import type { LoginState, Session, SessionControlState } from './types.js';

@@ -72,6 +72,8 @@ describe('iam-instance-registry repository wiring', () => {
     expect(createInstanceRegistryServiceMock).toHaveBeenCalledWith({
       repository,
       invalidateHost: invalidateInstanceRegistryHostMock,
+      protectSecret: expect.any(Function),
+      revealSecret: expect.any(Function),
     });
     expect(release).toHaveBeenCalledTimes(1);
   });
@@ -93,6 +95,9 @@ describe('iam-instance-registry repository wiring', () => {
     expect(createInstanceRegistryServiceMock).toHaveBeenCalledWith({
       repository,
       invalidateHost: invalidateInstanceRegistryHostMock,
+      protectSecret: expect.any(Function),
+      revealSecret: expect.any(Function),
+      readKeycloakStateViaProvisioner: expect.any(Function),
       provisionInstanceAuth: expect.any(Function),
       getKeycloakPreflight: expect.any(Function),
       planKeycloakProvisioning: expect.any(Function),

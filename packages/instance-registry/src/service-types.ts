@@ -16,7 +16,7 @@ import type {
   KeycloakTenantStatus,
   ResolveRuntimeInstanceResult,
 } from './keycloak-types.js';
-import type { TenantAdminBootstrap } from './provisioning-auth-types.js';
+import type { KeycloakProvisioningInput, KeycloakReadState, TenantAdminBootstrap } from './provisioning-auth-types.js';
 
 type KeycloakProvisioningContext = {
   instanceId: string;
@@ -54,6 +54,9 @@ export type InstanceRegistryService = {
 export type InstanceRegistryServiceDeps = {
   readonly repository: InstanceRegistryRepository;
   readonly invalidateHost: (hostname: string) => void;
+  readonly protectSecret?: (value: string | undefined, aad: string) => string | null;
+  readonly revealSecret?: (value: string | null | undefined, aad: string) => string | undefined;
+  readonly readKeycloakStateViaProvisioner?: (input: KeycloakProvisioningInput) => Promise<KeycloakReadState>;
   readonly provisionInstanceAuth?: (input: {
     instanceId: string;
     primaryHostname: string;

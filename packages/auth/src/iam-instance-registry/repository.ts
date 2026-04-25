@@ -10,6 +10,8 @@ import {
   getInstanceKeycloakStatusViaProvisioner,
   provisionInstanceAuthArtifactsViaProvisioner,
 } from './provisioning-auth.js';
+import { readKeycloakStateViaProvisioner } from './provisioning-auth-state.js';
+import { protectField, revealField } from '../iam-account-management/encryption.js';
 
 const getWorkerKeycloakPreflight = async (input: Parameters<typeof getInstanceKeycloakPreflightViaProvisioner>[0]) =>
   getInstanceKeycloakPreflightViaProvisioner(input);
@@ -40,6 +42,9 @@ const createExecutor = (client: QueryClient) => ({
 const createProvisioningWorkerDeps = (repository: ReturnType<typeof createInstanceRegistryRepository>) => ({
   repository,
   invalidateHost: invalidateInstanceRegistryHost,
+  protectSecret: protectField,
+  revealSecret: revealField,
+  readKeycloakStateViaProvisioner,
   provisionInstanceAuth: provisionInstanceAuthArtifactsViaProvisioner,
   getKeycloakPreflight: getWorkerKeycloakPreflight,
   planKeycloakProvisioning: getWorkerKeycloakPlan,
@@ -68,6 +73,8 @@ export const withRegistryService = async <T>(work: (service: ReturnType<typeof c
       createInstanceRegistryService({
         repository,
         invalidateHost: invalidateInstanceRegistryHost,
+        protectSecret: protectField,
+        revealSecret: revealField,
       })
     )
   );

@@ -63,6 +63,34 @@ export { appendRunStep, buildFinalRunSteps } from './service-keycloak-run-steps.
 export { failClaimedRun, failRun } from './service-keycloak-execution-failures.js';
 export { createProvisioningArtifacts, provisionInstanceAuth } from './service-provisioning.js';
 export type { InstanceRegistryService, InstanceRegistryServiceDeps } from './service-types.js';
+export { createInstanceRegistryService } from './service.js';
+export { createGetInstanceDetail, loadKeycloakDetailArtifacts } from './service-detail.js';
+export {
+  buildProvisioningInput,
+  completeRun,
+  createQueuedRun,
+  readQueuedTemporaryPassword,
+  syncProvisionedClientSecretToRegistry,
+  syncRotatedClientSecretToRegistry,
+} from './service-keycloak-execution-shared.js';
+export {
+  createExecuteKeycloakProvisioningHandler,
+  createReconcileKeycloakHandler,
+  processClaimedKeycloakProvisioningRun,
+  processNextQueuedKeycloakProvisioningRun,
+} from './service-keycloak-execution.js';
+export {
+  createGetKeycloakPreflightHandler,
+  createGetKeycloakProvisioningRunHandler,
+  createGetKeycloakStatusHandler,
+  createPlanKeycloakProvisioningHandler,
+  createRuntimeResolver,
+  decryptAuthClientSecret,
+  decryptTenantAdminClientSecret,
+  loadInstanceWithSecret,
+  loadRepositoryAuthClientSecret,
+  loadRepositoryTenantAdminClientSecret,
+} from './service-keycloak.js';
 export {
   isInstanceTrafficAllowed,
   resolveRuntimeInstanceFromRequest,

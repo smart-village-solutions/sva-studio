@@ -13,6 +13,10 @@
     "./http-contracts": {
       "types": "./dist/http-contracts.d.ts",
       "default": "./dist/http-contracts.js"
+    },
+    "./mutation-errors": {
+      "types": "./dist/mutation-errors.d.ts",
+      "default": "./dist/mutation-errors.js"
     }
   },
   "dependencies": {

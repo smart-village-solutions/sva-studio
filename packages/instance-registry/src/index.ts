@@ -46,6 +46,12 @@ export {
   type KeycloakProvisioningClient,
   type KeycloakProvisioningClientFactory,
 } from './provisioning-auth-state.js';
+export {
+  classifyInstanceMutationError,
+  type BlockedDriftErrorCode,
+  type InstanceMutationErrorClassification,
+  type InstanceMutationErrorCode,
+} from './mutation-errors.js';
 export type {
   KeycloakClientRepresentation,
   KeycloakProvisioningInput,

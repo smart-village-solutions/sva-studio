@@ -2,7 +2,11 @@ import { asApiItem, createApiError, parseRequestBody, requireIdempotencyKey } fr
 import { validateCsrf } from '../iam-account-management/csrf.js';
 import { jsonResponse } from '../shared/db-helpers.js';
 import { getWorkspaceContext } from '@sva/server-runtime';
-import type { ApiErrorCode, InstanceStatus } from '@sva/core';
+import type { InstanceStatus } from '@sva/core';
+import {
+  classifyInstanceMutationError,
+  type InstanceMutationErrorCode,
+} from '@sva/instance-registry/mutation-errors';
 import type { AuthenticatedRequestContext } from '../middleware.server.js';
 import {
   ensurePlatformAccess,
@@ -14,65 +18,28 @@ import {
 } from './http.js';
 import { withRegistryService } from './repository.js';
 
-type BlockedDriftErrorCode =
-  | 'tenant_admin_client_not_configured'
-  | 'tenant_admin_client_secret_missing'
-  | 'tenant_auth_client_secret_missing';
-
-const inferBlockedDriftErrorCode = (driftSummary: string): BlockedDriftErrorCode => {
-  const normalizedSummary = driftSummary.toLowerCase();
-  if (
-    normalizedSummary.includes('tenant_auth_client_secret_missing') ||
-    normalizedSummary.includes('tenant-client-secret')
-  ) {
-    return 'tenant_auth_client_secret_missing';
-  }
-  if (
-    normalizedSummary.includes('tenant_admin_client_secret_missing') ||
-    (normalizedSummary.includes('tenant-admin-client') && normalizedSummary.includes('secret'))
-  ) {
-    return 'tenant_admin_client_secret_missing';
-  }
-  return 'tenant_admin_client_not_configured';
-};
-
-const createBlockedDriftError = (driftSummary: string): Response => {
-  const code = inferBlockedDriftErrorCode(driftSummary);
-  const messageByCode: Record<BlockedDriftErrorCode, string> = {
-    tenant_admin_client_not_configured:
-      'Blockerrelevanter Drift verhindert den Keycloak-Abgleich für diese Instanz.',
-    tenant_admin_client_secret_missing:
-      'Für diese Instanz fehlt ein lesbares Tenant-Admin-Client-Secret für den Keycloak-Abgleich.',
-    tenant_auth_client_secret_missing:
-      'Für diese Instanz fehlt ein lesbares Tenant-Client-Secret für den Keycloak-Abgleich.',
-  };
-
-  return createApiError(409, code, messageByCode[code], getWorkspaceContext().requestId, {
-    dependency: 'keycloak',
-    reason_code: 'registry_or_provisioning_drift_blocked',
-    drift_summary: driftSummary || undefined,
-  });
+const mutationErrorMessages: Record<InstanceMutationErrorCode, string> = {
+  tenant_admin_client_not_configured:
+    'Für diese Instanz ist noch kein Tenant-Admin-Client hinterlegt.',
+  tenant_admin_client_secret_missing:
+    'Für diese Instanz ist noch kein Tenant-Admin-Client-Secret hinterlegt.',
+  tenant_auth_client_secret_missing:
+    'Für diese Instanz ist noch kein Tenant-Client-Secret hinterlegt.',
+  encryption_not_configured:
+    'Die Feldverschlüsselung für Tenant-Secrets ist nicht konfiguriert.',
+  keycloak_unavailable:
+    'Keycloak konnte für diese Instanz nicht abgeglichen werden.',
 };
 
 export const mapInstanceMutationError = (error: unknown): Response => {
-  const message = error instanceof Error ? error.message : String(error);
-  if (message.startsWith('registry_or_provisioning_drift_blocked:')) {
-    const driftSummary = message.slice('registry_or_provisioning_drift_blocked:'.length).trim();
-    return createBlockedDriftError(driftSummary);
-  }
-  if (message.includes('tenant_admin_client_not_configured')) {
-    return createApiError(409, 'tenant_admin_client_not_configured', 'Für diese Instanz ist noch kein Tenant-Admin-Client hinterlegt.', getWorkspaceContext().requestId);
-  }
-  if (message.includes('tenant_admin_client_secret_missing')) {
-    return createApiError(409, 'tenant_admin_client_secret_missing', 'Für diese Instanz ist noch kein Tenant-Admin-Client-Secret hinterlegt.', getWorkspaceContext().requestId);
-  }
-  if (message.includes('tenant_auth_client_secret_missing')) {
-    return createApiError(409, 'tenant_auth_client_secret_missing', 'Für diese Instanz ist noch kein Tenant-Client-Secret hinterlegt.', getWorkspaceContext().requestId);
-  }
-  if (message.startsWith('pii_encryption_required')) {
-    return createApiError(503, 'encryption_not_configured', 'Die Feldverschlüsselung für Tenant-Secrets ist nicht konfiguriert.', getWorkspaceContext().requestId);
-  }
-  return createApiError(502, 'keycloak_unavailable', 'Keycloak konnte für diese Instanz nicht abgeglichen werden.', getWorkspaceContext().requestId);
+  const classification = classifyInstanceMutationError(error);
+  return createApiError(
+    classification.status,
+    classification.code,
+    mutationErrorMessages[classification.code],
+    getWorkspaceContext().requestId,
+    classification.details
+  );
 };
 
 export const reconcileInstanceKeycloakMutation = async (

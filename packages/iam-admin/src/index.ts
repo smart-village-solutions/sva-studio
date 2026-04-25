@@ -52,6 +52,13 @@ export {
 } from './role-query.js';
 
 export {
+  createRoleMutationPersistence,
+  type MutableRole,
+  type RoleMutationPersistenceActor,
+  type RoleMutationPersistenceDeps,
+} from './role-mutation-persistence.js';
+
+export {
   runRoleCatalogReconciliation,
   type ReconcileReport,
   type RoleCatalogReconciliationDeps,

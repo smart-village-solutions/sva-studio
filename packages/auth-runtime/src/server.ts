@@ -1,6 +1,15 @@
 export {
   readSvaMainserverCredentialsWithStatus,
 } from '@sva/auth/server';
+export {
+  getAuthConfig,
+  resolveAuthConfigForInstance,
+  resolveAuthConfigForRequest,
+  resolveAuthConfigFromSessionAuth,
+  resolveBaseAuthConfig,
+} from './config.js';
+export { buildLogContext } from './log-context.js';
+export { buildRequestOriginFromHeaders, resolveEffectiveRequestHost } from './request-hosts.js';
 export { withAuthenticatedUser, type AuthenticatedRequestContext } from './middleware.js';
 export { getSessionUser } from './auth-server/session.js';
 export {

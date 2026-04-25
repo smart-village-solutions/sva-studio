@@ -8,15 +8,10 @@ import {
 } from '@sva/server-runtime';
 
 import {
-  TenantAuthResolutionError,
-  buildLogContext,
-  buildRequestOriginFromHeaders,
   emitAuthAuditEvent,
-  getAuthConfig,
   sanitizeAuthReturnTo,
-  resolveAuthConfigForRequest,
-  resolveEffectiveRequestHost,
 } from '@sva/auth/server';
+import { getAuthConfig, resolveAuthConfigForRequest } from './config.js';
 import { handleCallback } from './auth-server/callback.js';
 import { createLoginUrl } from './auth-server/login.js';
 import { logoutSession } from './auth-server/logout.js';
@@ -24,6 +19,7 @@ import { withAuthenticatedUser } from './middleware.js';
 import { getSession } from './redis-session.js';
 import { appendSetCookie, deleteCookieHeader, readCookieFromRequest } from './cookies.js';
 import { decodeLoginStateCookie, encodeLoginStateCookie, type LoginStateCookiePayload } from './login-state-cookie.js';
+import { buildLogContext } from './log-context.js';
 import {
   DEFAULT_WORKSPACE_ID,
   PLATFORM_WORKSPACE_ID,
@@ -32,7 +28,8 @@ import {
 } from './scope.js';
 import { isTokenErrorLike } from './error-guards.js';
 import { createMockSessionUser, isMockAuthEnabled } from './mock-auth.js';
-import { SessionStoreUnavailableError, TenantScopeConflictError } from './runtime-errors.js';
+import { buildRequestOriginFromHeaders, resolveEffectiveRequestHost } from './request-hosts.js';
+import { SessionStoreUnavailableError, TenantAuthResolutionError, TenantScopeConflictError } from './runtime-errors.js';
 
 const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
 

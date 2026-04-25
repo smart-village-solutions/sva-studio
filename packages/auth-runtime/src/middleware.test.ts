@@ -33,16 +33,6 @@ const authServerMocks = vi.hoisted(() => ({
   ),
 }));
 
-class TestSessionStoreUnavailableError extends Error {
-  operation: string;
-
-  constructor(operation = 'get') {
-    super('session store unavailable');
-    this.name = 'SessionStoreUnavailableError';
-    this.operation = operation;
-  }
-}
-
 class TestSessionUserHydrationError extends Error {
   requestHost: string;
 
@@ -55,6 +45,11 @@ class TestSessionUserHydrationError extends Error {
 
 vi.mock('@sva/server-runtime', () => ({
   createSdkLogger: () => middlewareLogger,
+  getWorkspaceContext: () => ({
+    requestId: 'req-auth-runtime',
+    traceId: 'trace-auth-runtime',
+    workspaceId: 'de-musterhausen',
+  }),
   toJsonErrorResponse: (status: number, code: string, publicMessage?: string, options?: { requestId?: string }) =>
     new Response(
       JSON.stringify({
@@ -73,12 +68,7 @@ vi.mock('@sva/server-runtime', () => ({
 }));
 
 vi.mock('@sva/auth/server', () => ({
-  SessionStoreUnavailableError: TestSessionStoreUnavailableError,
   SessionUserHydrationError: TestSessionUserHydrationError,
-  buildLogContext: () => ({
-    request_id: 'req-auth-runtime',
-    trace_id: 'trace-auth-runtime',
-  }),
   createApiError: (status: number, code: string, message: string, requestId?: string, details?: Record<string, unknown>) =>
     new Response(
       JSON.stringify({
@@ -97,13 +87,19 @@ vi.mock('@sva/auth/server', () => ({
         },
       }
     ),
-  createMockSessionUser: authServerMocks.createMockSessionUser,
-  getAuthConfig: authServerMocks.getAuthConfig,
-  isMockAuthEnabled: authServerMocks.isMockAuthEnabled,
   resolveSessionUser: authServerMocks.resolveSessionUser,
   shouldEnforceLegalTextCompliance: authServerMocks.shouldEnforceLegalTextCompliance,
   validateTenantHost: authServerMocks.validateTenantHost,
   withLegalTextCompliance: authServerMocks.withLegalTextCompliance,
+}));
+
+vi.mock('./config.js', () => ({
+  getAuthConfig: authServerMocks.getAuthConfig,
+}));
+
+vi.mock('./mock-auth.js', () => ({
+  createMockSessionUser: authServerMocks.createMockSessionUser,
+  isMockAuthEnabled: authServerMocks.isMockAuthEnabled,
 }));
 
 vi.mock('./auth-server/session.js', () => ({

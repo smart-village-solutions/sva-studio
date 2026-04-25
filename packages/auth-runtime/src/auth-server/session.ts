@@ -1,11 +1,8 @@
 import { createSdkLogger } from '@sva/server-runtime';
 
-import {
-  buildLogContext,
-  getAuthConfig,
-  resolveAuthConfigFromSessionAuth,
-} from '@sva/auth/server';
+import { getAuthConfig, resolveAuthConfigFromSessionAuth } from '../config.js';
 import { isTokenErrorLike } from '../error-guards.js';
+import { buildLogContext } from '../log-context.js';
 import { SessionStoreUnavailableError } from '../runtime-errors.js';
 import type { RuntimeScopeRef, Session, SessionUser } from '../types.js';
 

@@ -15,6 +15,7 @@
       "@sva/data": ["packages/data/src/index.ts"],
       "@sva/data-client": ["packages/data-client/src/index.ts"],
       "@sva/data-repositories": ["packages/data-repositories/src/index.ts"],
+      "@sva/data-repositories/server": ["packages/data-repositories/src/server.ts"],
       "@sva/data/server": ["packages/data/src/server.ts"],
       "@sva/auth": ["packages/auth/src/index.ts"],
       "@sva/auth/server": ["packages/auth/src/index.server.ts"],

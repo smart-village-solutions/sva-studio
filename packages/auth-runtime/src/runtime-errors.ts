@@ -13,6 +13,56 @@ export class SessionStoreUnavailableError extends Error {
   }
 }
 
+export type TenantAuthResolutionFailureReason =
+  | 'tenant_lookup_failed'
+  | 'tenant_not_found'
+  | 'tenant_host_invalid'
+  | 'tenant_inactive';
+
+const buildTenantAuthResolutionMessage = (input: {
+  host: string;
+  reason: TenantAuthResolutionFailureReason;
+}): string => {
+  switch (input.reason) {
+    case 'tenant_lookup_failed':
+      return `Tenant auth configuration could not be loaded for ${input.host}`;
+    case 'tenant_not_found':
+      return `Tenant auth configuration not found for ${input.host}`;
+    case 'tenant_host_invalid':
+      return `Tenant host ${input.host} is not valid for tenant auth resolution`;
+    case 'tenant_inactive':
+      return `Tenant auth configuration for ${input.host} is inactive`;
+  }
+};
+
+export class TenantAuthResolutionError extends Error {
+  readonly cause?: unknown;
+  readonly host: string;
+  readonly publicMessage: string;
+  readonly reason: TenantAuthResolutionFailureReason;
+  readonly statusCode = 503;
+
+  constructor(input: {
+    host: string;
+    publicMessage?: string;
+    reason: TenantAuthResolutionFailureReason;
+    cause?: unknown;
+  }) {
+    super(buildTenantAuthResolutionMessage(input));
+    this.name = 'TenantAuthResolutionError';
+    this.host = input.host;
+    this.reason = input.reason;
+    this.publicMessage =
+      input.publicMessage ??
+      (input.reason === 'tenant_inactive'
+        ? 'Anmeldung ist für diesen Mandanten derzeit nicht verfügbar, weil die Instanz nicht aktiv ist.'
+        : 'Anmeldung ist für diesen Mandanten momentan nicht verfügbar. Bitte später erneut versuchen.');
+    if (input.cause !== undefined) {
+      this.cause = input.cause;
+    }
+  }
+}
+
 export class TenantScopeConflictError extends Error {
   readonly actualInstanceId: string;
   readonly expectedInstanceId: string;

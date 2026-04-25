@@ -1,5 +1,4 @@
-import { getAuthConfig } from '@sva/auth/server';
-
+import { getAuthConfig } from '../config.js';
 import { client, getOidcConfig } from '../oidc.js';
 import { createLoginState } from '../redis-session.js';
 import { getScopeFromAuthConfig } from '../scope.js';

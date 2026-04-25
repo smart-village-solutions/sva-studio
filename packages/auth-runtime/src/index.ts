@@ -13,6 +13,15 @@ export const authRuntimePackageRoles = [
 export { authRoutePaths } from './routes.js';
 export type { AuthRoutePath } from './routes.js';
 export {
+  getAuthConfig,
+  resolveAuthConfigForInstance,
+  resolveAuthConfigForRequest,
+  resolveAuthConfigFromSessionAuth,
+  resolveBaseAuthConfig,
+} from './config.js';
+export { buildLogContext } from './log-context.js';
+export { buildRequestOriginFromHeaders, resolveEffectiveRequestHost } from './request-hosts.js';
+export {
   DEFAULT_WORKSPACE_ID,
   PLATFORM_WORKSPACE_ID,
   getRuntimeScopeRef,

@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import * as client from 'openid-client';
 import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 
-import { getAuthConfig } from '@sva/auth/server';
+import { getAuthConfig } from './config.js';
 import type { AuthConfig } from './types.js';
 
 const configPromises = new Map<string, Promise<client.Configuration>>();

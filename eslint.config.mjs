@@ -81,6 +81,8 @@ export default [
               onlyDependOnLibsWithTags: [
                 'scope:core',
                 'scope:server-runtime',
+                'scope:data-repositories',
+                'scope:iam-admin',
                 'scope:iam-core',
                 'scope:auth',
                 'scope:auth-runtime',

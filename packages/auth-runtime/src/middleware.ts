@@ -3,15 +3,15 @@ import { createSdkLogger, toJsonErrorResponse } from '@sva/server-runtime';
 
 import {
   SessionUserHydrationError,
-  buildLogContext,
   createApiError,
-  getAuthConfig,
   resolveSessionUser,
   shouldEnforceLegalTextCompliance,
   validateTenantHost,
   withLegalTextCompliance,
 } from '@sva/auth/server';
 import { getSessionUser } from './auth-server/session.js';
+import { getAuthConfig } from './config.js';
+import { buildLogContext } from './log-context.js';
 import { createMockSessionUser, isMockAuthEnabled } from './mock-auth.js';
 import { SessionStoreUnavailableError } from './runtime-errors.js';
 import type { SessionUser } from './types.js';

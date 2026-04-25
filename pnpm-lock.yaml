@@ -298,6 +298,12 @@ importers:
       '@sva/core':
         specifier: workspace:*
         version: link:../core
+      '@sva/data-repositories':
+        specifier: workspace:*
+        version: link:../data-repositories
+      '@sva/iam-admin':
+        specifier: workspace:*
+        version: link:../iam-admin
       '@sva/iam-core':
         specifier: workspace:*
         version: link:../iam-core

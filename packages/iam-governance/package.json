@@ -23,9 +23,11 @@
     "@sva/core": "workspace:*",
     "@sva/data-repositories": "workspace:*",
     "@sva/iam-core": "workspace:*",
-    "@sva/server-runtime": "workspace:*"
+    "@sva/server-runtime": "workspace:*",
+    "sanitize-html": "^2.17.3"
   },
   "devDependencies": {
+    "@types/sanitize-html": "^2.16.1",
     "@vitest/coverage-v8": "^4.1.2",
     "vitest": "^4.1.2"
   }

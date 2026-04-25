@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { hashLegalTextHtml, sanitizeLegalTextHtml } from './iam-legal-texts/html.js';
+import { hashLegalTextHtml, sanitizeLegalTextHtml } from './legal-text-html.js';
 
 describe('iam legal texts html sanitization', () => {
   it('removes script blocks including closing tags with whitespace', () => {

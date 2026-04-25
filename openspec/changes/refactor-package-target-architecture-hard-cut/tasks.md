@@ -41,9 +41,8 @@
   - Offen: Handler, Orchestrierung und Teile der Persistenz liegen noch unter `packages/auth/src/iam-account-management`, `packages/auth/src/iam-groups` und `packages/auth/src/iam-organizations`.
 - [ ] 5.3 DSR, Legal Texts und Audit-nahe Governance-Flows in `@sva/iam-governance` verschieben
   - Offen: Handler und Workflow-Implementierung liegen noch unter `packages/auth/src/iam-data-subject-rights`, `packages/auth/src/iam-legal-texts` und `packages/auth/src/iam-governance`.
-- [ ] 5.4 Instanzmodell, Host-Klassifikation, Registry und Provisioning in `@sva/instance-registry` verschieben
-  - Fortschritt: Service-Orchestrierung, Keycloak-Ausführung, Provisioning-Reader, Keycloak-State-Adapter, Keycloak-Client-Factory-Helfer, Worker-Loop, allgemeine Instanz-HTTP-Handler, Keycloak-HTTP-Handler, Statusmutations-HTTP-Adapter, Auth-/Reauth-Guard-Regeln, Runtime-Wiring, Mutation-Fehlerklassifikation und Mutation-Input-Builder liegen in `@sva/instance-registry`; `auth` nutzt gezielte Subpath-Contracts.
-  - Offen: CSRF-Adapter und konkrete Secret-/Provisioner-Adapter liegen noch unter `packages/auth/src/iam-instance-registry`.
+- [x] 5.4 Instanzmodell, Host-Klassifikation, Registry und Provisioning in `@sva/instance-registry` verschieben
+  - Abgeschlossen: Service-Orchestrierung, Keycloak-Ausführung, Provisioning-Reader, Keycloak-State-Adapter, Keycloak-Client-Factory-Helfer, Worker-Loop, allgemeine Instanz-HTTP-Handler, Keycloak-HTTP-Handler, Statusmutations-HTTP-Adapter, Auth-/Reauth-Guard-Regeln, Runtime-Wiring, Mutation-Fehlerklassifikation und Mutation-Input-Builder liegen in `@sva/instance-registry`; `auth` enthält nur noch Boundary-Adapter für Auth-Kontext, CSRF, konkrete Secrets, Keycloak-Admin-Client und Kompatibilitäts-Exports.
 - [x] 5.5 Integrationspackages auf Zielverträge umstellen und direkte Auth-/Data-Interna entfernen
 
 ## 6. Enforcement

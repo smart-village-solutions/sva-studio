@@ -32,6 +32,10 @@ export {
   type DsrIdempotencyReservation,
 } from './dsr-export-flows.js';
 export {
+  createDsrExportStatusHandlers,
+  type DsrExportStatusDeps,
+} from './dsr-export-status.js';
+export {
   runDsrMaintenance,
   type DsrMaintenanceInput,
   type DsrMaintenanceResult,

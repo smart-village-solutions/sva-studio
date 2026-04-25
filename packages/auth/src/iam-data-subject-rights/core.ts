@@ -2,6 +2,7 @@ import { createSdkLogger, getWorkspaceContext, withRequestContext } from '@sva/s
 import type { IamDsrCanonicalStatus, IamDsrCaseListItem } from '@sva/core';
 import { encryptFieldValue, parseFieldEncryptionConfigFromEnv } from '@sva/core/security';
 import { createDsrExportFlows } from '@sva/iam-governance/dsr-export-flows';
+import { createDsrExportStatusHandlers } from '@sva/iam-governance/dsr-export-status';
 import type { DsrExportAccountSnapshot as AccountSnapshot, DsrExportFormat as ExportFormat } from '@sva/iam-governance/dsr-export-payload';
 import { runDsrMaintenance } from '@sva/iam-governance/dsr-maintenance';
 
@@ -24,6 +25,8 @@ import { listAdminDsrCases, loadDsrSelfServiceOverview } from './read-models.js'
 import { DsrAccountSnapshotNotFoundError } from './read-models.self-service-queries.js';
 
 const logger = createSdkLogger({ component: 'iam-dsr', level: 'info' });
+const isExportFormat = (value: string | undefined): value is ExportFormat =>
+  value === 'json' || value === 'csv' || value === 'xml';
 const dsrExportFlows = createDsrExportFlows({
   reserveIdempotency,
   completeIdempotency,
@@ -31,8 +34,12 @@ const dsrExportFlows = createDsrExportFlows({
   jsonResponse,
   textResponse,
 });
+const dsrExportStatusHandlers = createDsrExportStatusHandlers({
+  jsonResponse,
+  textResponse,
+  isExportFormat,
+});
 
-const EXPORT_FORMATS = new Set(['json', 'csv', 'xml']);
 const ADMIN_ROLES = new Set(['iam_admin', 'support_admin', 'system_admin']);
 const ART19_RECIPIENT_CLASSES = ['internal_processor', 'downstream_export', 'analytics_sink'] as const;
 const DELETE_SLA_HOURS = 48;
@@ -98,10 +105,10 @@ LIMIT 1;
 
 const parseExportFormat = (value: unknown): ExportFormat | null => {
   const format = (readString(value) ?? 'json').toLowerCase();
-  if (!EXPORT_FORMATS.has(format)) {
+  if (!isExportFormat(format)) {
     return null;
   }
-  return format as ExportFormat;
+  return format;
 };
 
 const parseAsyncMode = (value: unknown): boolean => {
@@ -409,7 +416,7 @@ export const dataExportStatusHandler = async (request: Request): Promise<Respons
       const url = new URL(request.url);
       const instanceId = resolveInstanceId({ request, fallback: user.instanceId });
       const jobId = readString(url.searchParams.get('jobId'));
-      const downloadFormat = readString(url.searchParams.get('download'))?.toLowerCase() as ExportFormat | undefined;
+      const downloadFormat = readString(url.searchParams.get('download'))?.toLowerCase();
       if (!instanceId) {
         return jsonResponse(400, { error: 'invalid_instance_id' });
       }
@@ -422,58 +429,12 @@ export const dataExportStatusHandler = async (request: Request): Promise<Respons
 
       try {
         return await withInstanceScopedDb(instanceId, async (client) => {
-          const requester = await resolveRequesterAccountId(client, {
+          return dsrExportStatusHandlers.getSelfExportStatus({
+            client,
             instanceId,
             keycloakSubject: user.id,
-          });
-          if (!requester) {
-            return jsonResponse(404, { error: 'account_not_found' });
-          }
-
-          const result = await client.query<{
-            id: string;
-            format: ExportFormat;
-            status: string;
-            error_message: string | null;
-            payload_json: Record<string, unknown> | null;
-            payload_csv: string | null;
-            payload_xml: string | null;
-            created_at: string;
-            completed_at: string | null;
-          }>(
-            `
-SELECT id, format, status, error_message, payload_json, payload_csv, payload_xml, created_at, completed_at
-FROM iam.data_subject_export_jobs
-WHERE instance_id = $1
-  AND id = $2::uuid
-  AND requested_by_account_id = $3::uuid
-LIMIT 1;
-`,
-            [instanceId, jobId, requester]
-          );
-
-          if (result.rowCount <= 0) {
-            return jsonResponse(404, { error: 'export_job_not_found' });
-          }
-
-          const job = result.rows[0]!;
-          if (job.status === 'completed' && downloadFormat && EXPORT_FORMATS.has(downloadFormat)) {
-            if (downloadFormat === 'json') {
-              return textResponse(200, JSON.stringify(job.payload_json ?? {}, null, 2), 'application/json');
-            }
-            if (downloadFormat === 'csv') {
-              return textResponse(200, job.payload_csv ?? '', 'text/csv; charset=utf-8');
-            }
-            return textResponse(200, job.payload_xml ?? '', 'application/xml; charset=utf-8');
-          }
-
-          return jsonResponse(200, {
-            id: job.id,
-            format: job.format,
-            status: job.status,
-            createdAt: job.created_at,
-            completedAt: job.completed_at,
-            errorMessage: job.error_message,
+            jobId,
+            downloadFormat,
           });
         });
       } catch (error) {
@@ -1282,7 +1243,7 @@ export const adminDataExportStatusHandler = async (request: Request): Promise<Re
       const url = new URL(request.url);
       const instanceId = resolveInstanceId({ request, fallback: user.instanceId });
       const jobId = readString(url.searchParams.get('jobId'));
-      const downloadFormat = readString(url.searchParams.get('download'))?.toLowerCase() as ExportFormat | undefined;
+      const downloadFormat = readString(url.searchParams.get('download'))?.toLowerCase();
       if (!instanceId) {
         return jsonResponse(400, { error: 'invalid_instance_id' });
       }
@@ -1295,49 +1256,11 @@ export const adminDataExportStatusHandler = async (request: Request): Promise<Re
 
       try {
         return await withInstanceScopedDb(instanceId, async (client) => {
-          const result = await client.query<{
-            id: string;
-            format: ExportFormat;
-            status: string;
-            error_message: string | null;
-            payload_json: Record<string, unknown> | null;
-            payload_csv: string | null;
-            payload_xml: string | null;
-            created_at: string;
-            completed_at: string | null;
-          }>(
-            `
-SELECT id, format, status, error_message, payload_json, payload_csv, payload_xml, created_at, completed_at
-FROM iam.data_subject_export_jobs
-WHERE instance_id = $1
-  AND id = $2::uuid
-LIMIT 1;
-`,
-            [instanceId, jobId]
-          );
-
-          if (result.rowCount <= 0) {
-            return jsonResponse(404, { error: 'export_job_not_found' });
-          }
-
-          const job = result.rows[0]!;
-          if (job.status === 'completed' && downloadFormat && EXPORT_FORMATS.has(downloadFormat)) {
-            if (downloadFormat === 'json') {
-              return textResponse(200, JSON.stringify(job.payload_json ?? {}, null, 2), 'application/json');
-            }
-            if (downloadFormat === 'csv') {
-              return textResponse(200, job.payload_csv ?? '', 'text/csv; charset=utf-8');
-            }
-            return textResponse(200, job.payload_xml ?? '', 'application/xml; charset=utf-8');
-          }
-
-          return jsonResponse(200, {
-            id: job.id,
-            format: job.format,
-            status: job.status,
-            createdAt: job.created_at,
-            completedAt: job.completed_at,
-            errorMessage: job.error_message,
+          return dsrExportStatusHandlers.getAdminExportStatus({
+            client,
+            instanceId,
+            jobId,
+            downloadFormat,
           });
         });
       } catch (error) {

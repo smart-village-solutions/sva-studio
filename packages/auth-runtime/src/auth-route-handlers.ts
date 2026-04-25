@@ -25,11 +25,11 @@ import {
   sanitizeAuthReturnTo,
   resolveAuthConfigForRequest,
   resolveEffectiveRequestHost,
-  withAuthenticatedUser,
 } from '@sva/auth/server';
 import { handleCallback } from './auth-server/callback.js';
 import { createLoginUrl } from './auth-server/login.js';
 import { logoutSession } from './auth-server/logout.js';
+import { withAuthenticatedUser } from './middleware.js';
 import { getSession } from './redis-session.js';
 import { appendSetCookie, deleteCookieHeader, readCookieFromRequest } from './cookies.js';
 import { decodeLoginStateCookie, encodeLoginStateCookie, type LoginStateCookiePayload } from './login-state-cookie.js';

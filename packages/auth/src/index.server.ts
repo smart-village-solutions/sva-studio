@@ -27,7 +27,11 @@ export {
 } from './iam-groups.server.js';
 export * from './jit-provisioning.server.js';
 export * from './mainserver-credentials.server.js';
+export * from './legal-text-enforcement.server.js';
+export * from './middleware-compliance.js';
+export * from './middleware-hosts.js';
 export * from './middleware.server.js';
+export * from './shared/request-helpers.js';
 export * from './keycloak-admin-client.js';
 export * from './routes.server.js';
 export type * from './contracts.server.js';

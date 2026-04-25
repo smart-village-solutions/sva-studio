@@ -35,7 +35,7 @@
     "check:file-placement": "tsx scripts/ci/check-file-placement.ts",
     "check:file-placement:staged": "tsx scripts/ci/check-file-placement.ts --staged",
     "check:openapi:iam": "tsx scripts/ci/check-openapi-iam.ts",
-    "check:server-runtime": "env -u NO_COLOR nx run-many -t check:runtime --projects=core,data,monitoring-client,sdk,auth,routing,sva-mainserver --parallel=1",
+    "check:server-runtime": "env -u NO_COLOR nx run-many -t check:runtime --projects=core,data,data-client,data-repositories,monitoring-client,sdk,plugin-sdk,server-runtime,iam-core,auth-runtime,iam-admin,iam-governance,instance-registry,auth,routing,sva-mainserver --parallel=1",
     "sonar:hotspots": "tsx scripts/ci/sonar-hotspots.ts",
     "sonar:hotspots:list": "tsx scripts/ci/sonar-hotspots.ts list",
     "env:up:local-keycloak": "tsx scripts/ops/runtime-env.ts up local-keycloak",

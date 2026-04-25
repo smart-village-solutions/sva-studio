@@ -48,10 +48,10 @@
 
 ## 6. Enforcement
 
-- [ ] 6.1 Nx-Tags für alle Zielpackages und PII-relevanten Packages setzen
+- [x] 6.1 Nx-Tags für alle Zielpackages und PII-relevanten Packages setzen
 - [ ] 6.2 `depConstraints` für Zielgrenzen, PII-Grenzen, Plugin-Grenzen und Browser-/Server-Grenzen aktivieren
 - [ ] 6.3 Alte Sammelimporte in ESLint verbieten
-- [ ] 6.4 Runtime-Import-Regeln und `check:server-runtime` für neue serverseitige Packages sicherstellen
+- [x] 6.4 Runtime-Import-Regeln und `check:server-runtime` für neue serverseitige Packages sicherstellen
 - [ ] 6.5 Boundary-Disables entfernen oder mit blockierendem Folgeticket dokumentieren
 
 ## 7. Consumer Migration

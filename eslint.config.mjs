@@ -227,6 +227,56 @@ export default [
     },
   },
   {
+    files: ['packages/{iam-admin,iam-governance,instance-registry}/**/*.{ts,tsx,js,jsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '@sva/auth',
+              message: 'Zielpackages dürfen nicht zurück auf @sva/auth importieren.',
+            },
+            {
+              name: '@sva/auth/server',
+              message: 'Zielpackages dürfen keine Auth-Sammelserver-Fassade verwenden.',
+            },
+            {
+              name: '@sva/data',
+              message: 'Zielpackages verwenden @sva/data-repositories oder @sva/data-client statt @sva/data.',
+            },
+            {
+              name: '@sva/data/server',
+              message: 'Zielpackages verwenden @sva/data-repositories/server statt @sva/data/server.',
+            },
+            {
+              name: '@sva/sdk',
+              message: 'Zielpackages verwenden Core, Plugin-SDK oder Server-Runtime statt @sva/sdk.',
+            },
+            {
+              name: '@sva/sdk/server',
+              message: 'Zielpackages verwenden @sva/server-runtime statt @sva/sdk/server.',
+            },
+          ],
+          patterns: [
+            {
+              group: ['@sva/auth/*'],
+              message: 'Zielpackages dürfen nicht auf Auth-Subpaths zurückgreifen.',
+            },
+            {
+              group: ['@sva/data/*'],
+              message: 'Zielpackages verwenden Data-Zielpackages statt @sva/data-Subpaths.',
+            },
+            {
+              group: ['@sva/sdk/*'],
+              message: 'Zielpackages verwenden Zielpackages statt @sva/sdk-Subpaths.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: ['packages/server-runtime/**/*.{ts,tsx,js,jsx}'],
     rules: {
       'no-restricted-imports': [

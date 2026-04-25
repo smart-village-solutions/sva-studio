@@ -55,8 +55,7 @@ type RegisteredContentTypeDefinition = {
   readonly sanitizePayload?: (payload: ContentJsonValue) => ContentJsonValue;
 };
 
-const sanitizeNewsPayload = (payload: ContentJsonValue): ContentJsonValue => {
-  const parsed = newsPayloadSchema.parse(payload);
+const sanitizeNewsPayload = (parsed: z.infer<typeof newsPayloadSchema>): ContentJsonValue => {
   const sanitizedBody = sanitizeHtml(parsed.body, NEWS_BODY_SANITIZER_OPTIONS).trim();
 
   return {
@@ -68,7 +67,7 @@ const sanitizeNewsPayload = (payload: ContentJsonValue): ContentJsonValue => {
 
 const newsContentTypeDefinition: RegisteredContentTypeDefinition = {
   payloadSchema: newsPayloadSchema as z.ZodType<ContentJsonValue>,
-  sanitizePayload: sanitizeNewsPayload,
+  sanitizePayload: (payload) => sanitizeNewsPayload(payload as z.infer<typeof newsPayloadSchema>),
 };
 
 const registry = new Map<string, RegisteredContentTypeDefinition>([

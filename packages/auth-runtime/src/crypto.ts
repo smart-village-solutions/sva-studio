@@ -8,6 +8,7 @@ const FORMAT_MAGIC = Buffer.from('SVA1', 'ascii');
 const SALT_LENGTH = 16;
 const IV_LENGTH = 12;
 const AUTH_TAG_LENGTH = 16;
+const LEGACY_MIN_ENCRYPTED_LENGTH = SALT_LENGTH + IV_LENGTH + 1 + AUTH_TAG_LENGTH;
 const MIN_ENCRYPTED_LENGTH = FORMAT_MAGIC.length + SALT_LENGTH + IV_LENGTH + 1 + AUTH_TAG_LENGTH;
 
 const deriveKey = (password: string, salt: Buffer): Buffer => scryptSync(password, salt, 32);
@@ -69,7 +70,12 @@ export const decryptToken = (encrypted: string, encryptionKey: string): string =
 
   try {
     const buffer = Buffer.from(encrypted, 'base64');
-    const offset = hasFormatMagic(buffer) ? FORMAT_MAGIC.length : 0;
+    const hasCurrentFormat = hasFormatMagic(buffer);
+    if (!hasCurrentFormat && buffer.length < LEGACY_MIN_ENCRYPTED_LENGTH) {
+      return encrypted;
+    }
+
+    const offset = hasCurrentFormat ? FORMAT_MAGIC.length : 0;
     const salt = buffer.subarray(offset, offset + SALT_LENGTH);
     const iv = buffer.subarray(offset + SALT_LENGTH, offset + SALT_LENGTH + IV_LENGTH);
     const authTag = buffer.subarray(buffer.length - AUTH_TAG_LENGTH);
@@ -81,6 +87,14 @@ export const decryptToken = (encrypted: string, encryptionKey: string): string =
 
     return Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString('utf8');
   } catch (err) {
+    if (!isEncrypted(encrypted)) {
+      logger.warn('Token decryption skipped for unrecognized payload format', {
+        operation: 'decrypt',
+        error_type: err instanceof Error ? err.constructor.name : typeof err,
+      });
+      return encrypted;
+    }
+
     logger.error('Token decryption failed', {
       operation: 'decrypt',
       error: err instanceof Error ? err.message : String(err),

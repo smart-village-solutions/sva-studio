@@ -94,6 +94,7 @@ describe('auth audit event emitter', () => {
       expect.objectContaining({
         action_id: 'news.publish',
         action_namespace: 'news',
+        plugin_action_result: 'denied',
         reason_code: 'missing_permission',
         workspace_id: 'platform',
         sink: 'db',

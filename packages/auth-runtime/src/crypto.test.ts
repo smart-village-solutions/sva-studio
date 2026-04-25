@@ -31,4 +31,13 @@ describe('auth-runtime crypto', () => {
     expect(isEncrypted(withoutHeader)).toBe(false);
     expect(decryptToken(withoutHeader, key)).toBe('access-token');
   });
+
+  it('leaves unencrypted tokens unchanged when a key is configured', () => {
+    const key = generateEncryptionKey();
+
+    expect(decryptToken('plain-access-token', key)).toBe('plain-access-token');
+    expect(decryptToken(Buffer.from('long-but-not-encrypted-payload').toString('base64'), key)).toBe(
+      Buffer.from('long-but-not-encrypted-payload').toString('base64')
+    );
+  });
 });

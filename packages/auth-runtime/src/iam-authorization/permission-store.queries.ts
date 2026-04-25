@@ -83,6 +83,7 @@ JOIN iam.permissions p
  ON p.instance_id = rp.instance_id
  AND p.id = rp.permission_id
 WHERE a.keycloak_subject = $2
+  AND a.instance_id = $1
   AND (
     ao.organization_id = target.id
     OR ao.organization_id = ANY(target.hierarchy_path)
@@ -114,6 +115,7 @@ JOIN iam.permissions p
   ON p.instance_id = rp.instance_id
  AND p.id = rp.permission_id
 WHERE a.keycloak_subject = $2
+  AND a.instance_id = $1
 `,
     [input.instanceId, input.keycloakSubject]
   );

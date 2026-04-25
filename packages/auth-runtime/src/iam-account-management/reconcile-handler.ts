@@ -102,5 +102,3 @@ export const ensureRoleCatalogSchedulerStarted = (): void => {
 
   timer.unref?.();
 };
-
-ensureRoleCatalogSchedulerStarted();

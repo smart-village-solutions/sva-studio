@@ -13,6 +13,10 @@
     "./read-models-internal": {
       "types": "./dist/read-models-internal.d.ts",
       "default": "./dist/read-models-internal.js"
+    },
+    "./dsr-read-models-internal": {
+      "types": "./dist/dsr-read-models-internal.d.ts",
+      "default": "./dist/dsr-read-models-internal.js"
     }
   },
   "dependencies": {

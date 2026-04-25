@@ -1,28 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('./iam-account-management/encryption', () => ({
-  revealField: vi.fn((value: string | null) => value),
-}));
-
-vi.mock('./iam-account-management/user-mapping', () => ({
-  resolveUserDisplayName: vi.fn(
-    (input: {
-      decryptedDisplayName?: string | null;
-      firstName?: string | null;
-      lastName?: string | null;
-      keycloakSubject: string;
-    }) =>
-      input.decryptedDisplayName ??
-      ([input.firstName, input.lastName].filter((value): value is string => Boolean(value)).join(' ') ||
-        input.keycloakSubject)
-  ),
-}));
-
 import {
   listAdminDsrCases,
   loadDsrSelfServiceOverview,
   toCanonicalDsrStatus,
-} from './iam-data-subject-rights/read-models';
+} from './dsr-read-models';
 
 type QueryResult = {
   rowCount: number;

@@ -11,3 +11,9 @@ export const iamGovernancePackageRoles = [
 
 export { listGovernanceCases } from './read-models.js';
 export type { GovernanceFilters } from './read-models.types.js';
+export {
+  listAdminDsrCases,
+  loadDsrSelfServiceOverview,
+  toCanonicalDsrStatus,
+} from './dsr-read-models.js';
+export type { DsrFilters } from './dsr-read-models.types.js';

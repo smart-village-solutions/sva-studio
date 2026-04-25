@@ -33,6 +33,10 @@ export default defineConfig({
         find: /^@sva\/iam-governance\/read-models-internal$/,
         replacement: resolve(__dirname, '../iam-governance/src/read-models-internal.ts'),
       },
+      {
+        find: /^@sva\/iam-governance\/dsr-read-models-internal$/,
+        replacement: resolve(__dirname, '../iam-governance/src/dsr-read-models-internal.ts'),
+      },
       { find: /^@sva\/iam-governance$/, replacement: resolve(__dirname, '../iam-governance/src/index.ts') },
       {
         find: /^@sva\/instance-registry\/http-contracts$/,

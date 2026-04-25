@@ -89,3 +89,5 @@ export class TenantScopeConflictError extends Error {
     this.expectedInstanceId = input.expectedInstanceId;
   }
 }
+
+export { IamSchemaDriftError } from '@sva/iam-admin';

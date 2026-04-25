@@ -1,0 +1,17 @@
+export {
+  USER_STATUS,
+  type ActorInfo,
+  type FeatureFlags,
+  type IamGroupMembershipRow,
+  type IamGroupRow,
+  type IamRoleRow,
+  type IdempotencyReserveResult,
+  type IdempotencyStatus,
+  type ManagedBy,
+  type ManagedRoleRow,
+  type RateBucket,
+  type RateScope,
+  type ResolveActorOptions,
+  type RoleSyncErrorCode,
+  type UserStatus,
+} from '@sva/iam-admin';

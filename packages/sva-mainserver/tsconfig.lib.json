@@ -4,10 +4,6 @@
     "paths": {
       "@sva/auth-runtime": ["packages/auth-runtime/dist/index.d.ts"],
       "@sva/auth-runtime/server": ["packages/auth-runtime/dist/server.d.ts"],
-      "@sva/auth": ["packages/auth/dist/index.d.ts"],
-      "@sva/auth/server": ["packages/auth/dist/index.server.d.ts"],
-      "@sva/auth/runtime-routes": ["packages/auth/dist/runtime-routes.server.d.ts"],
-      "@sva/auth/runtime-health": ["packages/auth/dist/runtime-health.server.d.ts"],
       "@sva/data-repositories": ["packages/data-repositories/dist/index.d.ts"],
       "@sva/data-repositories/server": ["packages/data-repositories/dist/server.d.ts"],
       "@sva/server-runtime": ["packages/server-runtime/dist/index.d.ts"]

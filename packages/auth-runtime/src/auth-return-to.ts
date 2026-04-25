@@ -34,7 +34,7 @@ const isTrustedAbsoluteReturnTo = async (target: URL): Promise<boolean> => {
 };
 
 export const sanitizeAuthReturnTo = async (
-  request: Request,
+  _request: Request,
   value: string | null | undefined,
   options: { defaultPath?: string } = {}
 ): Promise<string> => {

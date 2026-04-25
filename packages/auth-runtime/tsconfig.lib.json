@@ -15,6 +15,15 @@
       "@sva/data-repositories/server": ["packages/data-repositories/dist/server.d.ts"],
       "@sva/iam-admin": ["packages/iam-admin/dist/index.d.ts"],
       "@sva/iam-core": ["packages/iam-core/dist/index.d.ts"],
+      "@sva/iam-governance/governance-compliance-export": [
+        "packages/iam-governance/dist/governance-compliance-export.d.ts"
+      ],
+      "@sva/iam-governance/governance-workflow-executor": [
+        "packages/iam-governance/dist/governance-workflow-executor.d.ts"
+      ],
+      "@sva/iam-governance/governance-workflow-policy": [
+        "packages/iam-governance/dist/governance-workflow-policy.d.ts"
+      ],
       "@sva/iam-governance": ["packages/iam-governance/dist/index.d.ts"],
       "@sva/server-runtime": ["packages/server-runtime/dist/index.d.ts"]
     }

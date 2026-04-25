@@ -23,6 +23,11 @@ export {
   updateMyOrganizationContextHandler,
   updateOrganizationHandler,
 } from './iam-organizations/core.js';
+export {
+  governanceComplianceExportHandler,
+  governanceWorkflowHandler,
+  listGovernanceCasesHandler,
+} from './iam-governance/core.js';
 
 export {
   adminDataExportHandler,
@@ -46,14 +51,11 @@ export {
   getMyProfileHandler,
   getUserHandler,
   getUserTimelineHandler,
-  governanceComplianceExportHandler,
-  governanceWorkflowHandler,
   instanceRegistryHandlers,
   legalHoldApplyHandler,
   legalHoldReleaseHandler,
   listAdminDataSubjectRightsCasesHandler,
   listContentsHandler,
-  listGovernanceCasesHandler,
   listLegalTextsHandler,
   listPendingLegalTextsHandler,
   listPermissionsHandler,

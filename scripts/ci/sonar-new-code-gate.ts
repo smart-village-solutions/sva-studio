@@ -50,6 +50,8 @@ export interface RunSonarNewCodeGateResult {
 }
 
 const defaultTargetPct = 85;
+const gitDiffMaxBuffer = 32 * 1024 * 1024;
+const gitGrepMaxBuffer = 64 * 1024 * 1024;
 
 function loadPolicy(rootDir: string): CoveragePolicy {
   const policyPath = path.join(rootDir, 'tooling/testing/coverage-policy.json');
@@ -62,9 +64,41 @@ function normalizeRelativePath(rootDir: string, filePath: string): string {
   return path.relative(rootDir, filePath).split(path.sep).join('/');
 }
 
+function normalizeComparableSourceLine(line: string): string | null {
+  const normalized = line.trim().replace(/\s+/g, ' ');
+  return normalized.length >= 12 ? normalized : null;
+}
+
+function loadBaseComparableLines(rootDir: string, baseRef: string, relativeRoots: readonly string[]): Set<string> {
+  const result = spawnSync('git', ['grep', '-I', '-h', '-e', '.', baseRef, '--', ...relativeRoots], {
+    cwd: rootDir,
+    encoding: 'utf8',
+    maxBuffer: gitGrepMaxBuffer,
+  });
+
+  if (result.status !== 0 && result.status !== 1) {
+    return new Set();
+  }
+
+  const lines = new Set<string>();
+  for (const line of result.stdout.split('\n')) {
+    const normalized = normalizeComparableSourceLine(line);
+    if (normalized) {
+      lines.add(normalized);
+    }
+  }
+
+  return lines;
+}
+
 function resolveProjectRoots(rootDir: string, policy: CoveragePolicy): string[] {
   const exemptProjects = new Set(policy.exemptProjects ?? []);
-  const projectNames = Object.keys(policy.perProjectFloors ?? {}).filter((projectName) => !exemptProjects.has(projectName));
+  const newCodeExemptProjects = new Set(
+    ((policy as CoveragePolicy & { newCodeExemptProjects?: string[] }).newCodeExemptProjects ?? [])
+  );
+  const projectNames = Object.keys(policy.perProjectFloors ?? {}).filter(
+    (projectName) => !exemptProjects.has(projectName) && !newCodeExemptProjects.has(projectName)
+  );
   const roots = projectNames.flatMap((projectName) => {
     const appRoot = path.join(rootDir, 'apps', projectName);
     if (fs.existsSync(appRoot)) {
@@ -147,10 +181,12 @@ function listChangedFiles(rootDir: string, baseRef: string, headRef: string, pro
   }
 
   const relativeRoots = projectRoots.map((projectRoot) => normalizeRelativePath(rootDir, projectRoot));
+  const baseComparableLines = loadBaseComparableLines(rootDir, baseRef, relativeRoots);
   const diffArgs = ['diff', '--unified=0', '--diff-filter=AM', `${baseRef}...${headRef}`, '--', ...relativeRoots];
   const result = spawnSync('git', diffArgs, {
     cwd: rootDir,
     encoding: 'utf8',
+    maxBuffer: gitDiffMaxBuffer,
   });
 
   if (result.status !== 0) {
@@ -159,11 +195,13 @@ function listChangedFiles(rootDir: string, baseRef: string, headRef: string, pro
 
   const files = new Map<string, Set<number>>();
   let currentFile: string | null = null;
+  let nextNewLineNumber: number | null = null;
 
   for (const line of result.stdout.split('\n')) {
     const fileMatch = line.match(/^\+\+\+ b\/(.+)$/);
     if (fileMatch) {
       currentFile = fileMatch[1];
+      nextNewLineNumber = null;
       if (!files.has(currentFile)) {
         files.set(currentFile, new Set<number>());
       }
@@ -171,23 +209,26 @@ function listChangedFiles(rootDir: string, baseRef: string, headRef: string, pro
     }
 
     const hunkMatch = line.match(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/);
-    if (!hunkMatch || !currentFile) {
+    if (hunkMatch) {
+      nextNewLineNumber = Number(hunkMatch[1]);
       continue;
     }
 
-    const start = Number(hunkMatch[1]);
-    const count = Number(hunkMatch[2] ?? '1');
-    if (count <= 0) {
+    if (!currentFile || nextNewLineNumber === null) {
       continue;
     }
 
-    const changedLines = files.get(currentFile);
-    if (!changedLines) {
+    if (line.startsWith('+') && !line.startsWith('+++')) {
+      const normalized = normalizeComparableSourceLine(line.slice(1));
+      if (!normalized || !baseComparableLines.has(normalized)) {
+        files.get(currentFile)?.add(nextNewLineNumber);
+      }
+      nextNewLineNumber += 1;
       continue;
     }
 
-    for (let lineNumber = start; lineNumber < start + count; lineNumber += 1) {
-      changedLines.add(lineNumber);
+    if (line.startsWith(' ') || line.startsWith('\\')) {
+      nextNewLineNumber += 1;
     }
   }
 

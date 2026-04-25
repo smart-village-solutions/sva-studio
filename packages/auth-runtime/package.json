@@ -10,6 +10,10 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
+    "./routes": {
+      "types": "./dist/routes.d.ts",
+      "default": "./dist/routes.js"
+    },
     "./runtime-routes": {
       "types": "./dist/runtime-routes.d.ts",
       "default": "./dist/runtime-routes.js"

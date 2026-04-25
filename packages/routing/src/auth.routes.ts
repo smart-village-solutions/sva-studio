@@ -1,4 +1,4 @@
-import { authRoutePaths } from '@sva/auth-runtime';
+import { authRoutePaths } from '@sva/auth-runtime/routes';
 import type { RootRoute } from '@tanstack/react-router';
 import { createRoute } from '@tanstack/react-router';
 

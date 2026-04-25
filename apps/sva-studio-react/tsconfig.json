@@ -27,6 +27,7 @@
       "@/*": ["./src/*"],
       "@sva/core": ["../../packages/core/src/index.ts"],
       "@sva/auth-runtime": ["../../packages/auth-runtime/src/index.ts"],
+      "@sva/auth-runtime/routes": ["../../packages/auth-runtime/src/routes.ts"],
       "@sva/auth-runtime/server": ["../../packages/auth-runtime/src/server.ts"],
       "@sva/plugin-sdk": ["../../packages/plugin-sdk/src/index.ts"],
       "@sva/monitoring-client/logging": ["../../packages/monitoring-client/src/logging.ts"],

@@ -97,6 +97,7 @@ const config = defineConfig({
       '@sva/routing/auth': resolveAppPath('../../packages/routing/src/auth.routes.ts'),
       '@sva/routing': resolveAppPath('../../packages/routing/src/index.ts'),
       '@sva/auth-runtime/server': resolveAppPath('../../packages/auth-runtime/src/server.ts'),
+      '@sva/auth-runtime/routes': resolveAppPath('../../packages/auth-runtime/src/routes.ts'),
       '@sva/auth-runtime': resolveAppPath('../../packages/auth-runtime/src/index.ts'),
       '@sva/iam-admin': resolveAppPath('../../packages/iam-admin/src/index.ts'),
       '@sva/sva-mainserver/server': resolveAppPath('../../packages/sva-mainserver/src/index.server.ts'),

@@ -12,6 +12,7 @@
       "@sva/core": ["packages/core/src/index.ts"],
       "@sva/core/security": ["packages/core/src/security/index.ts"],
       "@sva/auth-runtime": ["packages/auth-runtime/src/index.ts"],
+      "@sva/auth-runtime/routes": ["packages/auth-runtime/src/routes.ts"],
       "@sva/data-client": ["packages/data-client/src/index.ts"],
       "@sva/data-repositories": ["packages/data-repositories/src/index.ts"],
       "@sva/data-repositories/server": ["packages/data-repositories/src/server.ts"],

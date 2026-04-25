@@ -14,6 +14,7 @@ export default defineConfig({
       '@sva/routing/auth': fileURLToPath(new URL('../../packages/routing/src/auth.routes.ts', import.meta.url)),
       '@sva/routing': fileURLToPath(new URL('../../packages/routing/src/index.ts', import.meta.url)),
       '@sva/auth-runtime/server': fileURLToPath(new URL('../../packages/auth-runtime/src/server.ts', import.meta.url)),
+      '@sva/auth-runtime/routes': fileURLToPath(new URL('../../packages/auth-runtime/src/routes.ts', import.meta.url)),
       '@sva/auth-runtime': fileURLToPath(new URL('../../packages/auth-runtime/src/index.ts', import.meta.url)),
       '@sva/iam-admin': fileURLToPath(new URL('../../packages/iam-admin/src/index.ts', import.meta.url)),
       '@sva/sva-mainserver/server': fileURLToPath(new URL('../../packages/sva-mainserver/src/index.server.ts', import.meta.url)),

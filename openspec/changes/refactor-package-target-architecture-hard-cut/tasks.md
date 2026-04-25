@@ -76,11 +76,11 @@
 
 ## 9. Verification
 
-- [ ] 9.1 `pnpm nx graph` oder gleichwertige Importanalyse gegen Zielgrenzen prüfen
-- [ ] 9.2 `pnpm lint`
-- [ ] 9.3 `pnpm test:unit`
-- [ ] 9.4 `pnpm test:types`
-- [ ] 9.5 `pnpm test:eslint`
-- [ ] 9.6 `pnpm check:server-runtime`
-- [ ] 9.7 `pnpm test:e2e`
-- [ ] 9.8 `pnpm test:pr`
+- [x] 9.1 `pnpm nx graph` oder gleichwertige Importanalyse gegen Zielgrenzen prüfen
+- [x] 9.2 `pnpm lint`
+- [x] 9.3 `pnpm test:unit`
+- [x] 9.4 `pnpm test:types`
+- [x] 9.5 `pnpm test:eslint`
+- [x] 9.6 `pnpm check:server-runtime`
+- [x] 9.7 `pnpm test:e2e`
+- [x] 9.8 `pnpm test:pr`

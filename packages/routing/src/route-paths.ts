@@ -1,4 +1,4 @@
-import { authRoutePaths } from '@sva/auth-runtime';
+import { authRoutePaths } from '@sva/auth-runtime/routes';
 
 export const uiRoutePaths = {
   home: '/',

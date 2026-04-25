@@ -13,6 +13,7 @@ export default defineConfig({
     alias: [
       { find: '@sva/core/security', replacement: resolve(__dirname, '../core/src/security/index.ts') },
       { find: '@sva/core', replacement: resolve(__dirname, '../core/src/index.ts') },
+      { find: '@sva/auth-runtime/routes', replacement: resolve(__dirname, '../auth-runtime/src/routes.ts') },
       { find: '@sva/auth-runtime/runtime-routes', replacement: resolve(__dirname, '../auth-runtime/src/runtime-routes.ts') },
       { find: '@sva/auth-runtime/runtime-health', replacement: resolve(__dirname, '../auth-runtime/src/runtime-health.ts') },
       { find: /^@sva\/auth-runtime$/, replacement: resolve(__dirname, '../auth-runtime/src/index.ts') },

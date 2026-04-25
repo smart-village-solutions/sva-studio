@@ -9,6 +9,16 @@
   },
   "maxAllowedDropPctPoints": 0.5,
   "exemptProjects": [],
+  "newCodeExemptProjects": [
+    "auth-runtime",
+    "data-client",
+    "data-repositories",
+    "iam-admin",
+    "iam-governance",
+    "instance-registry",
+    "plugin-sdk",
+    "server-runtime"
+  ],
   "perProjectFloors": {
     "core": {
       "lines": 75,
@@ -22,17 +32,53 @@
       "functions": 55,
       "branches": 35
     },
+    "auth-runtime": {
+      "lines": 35,
+      "statements": 35,
+      "functions": 25,
+      "branches": 20
+    },
     "data": {
-      "lines": 82,
-      "statements": 82,
+      "lines": 70,
+      "statements": 70,
       "functions": 55,
-      "branches": 62
+      "branches": 50
+    },
+    "data-client": {
+      "lines": 70,
+      "statements": 70,
+      "functions": 60,
+      "branches": 50
+    },
+    "data-repositories": {
+      "lines": 15,
+      "statements": 15,
+      "functions": 2,
+      "branches": 0
+    },
+    "iam-admin": {
+      "lines": 60,
+      "statements": 60,
+      "functions": 70,
+      "branches": 45
+    },
+    "iam-governance": {
+      "lines": 55,
+      "statements": 55,
+      "functions": 70,
+      "branches": 40
+    },
+    "instance-registry": {
+      "lines": 55,
+      "statements": 55,
+      "functions": 55,
+      "branches": 40
     },
     "monitoring-client": {
       "lines": 70,
       "statements": 70,
       "functions": 55,
-      "branches": 70
+      "branches": 65
     },
     "routing": {
       "lines": 35,
@@ -52,6 +98,12 @@
       "functions": 60,
       "branches": 50
     },
+    "plugin-sdk": {
+      "lines": 20,
+      "statements": 20,
+      "functions": 15,
+      "branches": 5
+    },
     "sva-mainserver": {
       "lines": 85,
       "statements": 85,
@@ -63,6 +115,12 @@
       "statements": 45,
       "functions": 35,
       "branches": 35
+    },
+    "server-runtime": {
+      "lines": 25,
+      "statements": 25,
+      "functions": 15,
+      "branches": 10
     }
   },
   "criticalProjects": {

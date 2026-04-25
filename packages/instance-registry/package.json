@@ -14,6 +14,10 @@
       "types": "./dist/http-contracts.d.ts",
       "default": "./dist/http-contracts.js"
     },
+    "./http-guards": {
+      "types": "./dist/http-guards.d.ts",
+      "default": "./dist/http-guards.js"
+    },
     "./http-instance-handlers": {
       "types": "./dist/http-instance-handlers.d.ts",
       "default": "./dist/http-instance-handlers.js"

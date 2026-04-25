@@ -31,3 +31,8 @@ export {
   resolveUsersForBulkDeactivation,
   type BulkUserAccess,
 } from './user-bulk-query.js';
+
+export {
+  mapUnmappedKeycloakUser,
+  mergeMappedUserWithKeycloak,
+} from './tenant-keycloak-user-projection.js';

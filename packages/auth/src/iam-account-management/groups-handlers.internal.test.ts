@@ -39,6 +39,7 @@ const state = vi.hoisted(() => ({
 }));
 
 vi.mock('@sva/server-runtime', () => ({
+  createSdkLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }),
   getWorkspaceContext: () => ({ requestId: 'req-groups' }),
 }));
 

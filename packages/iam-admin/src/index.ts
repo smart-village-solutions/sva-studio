@@ -106,6 +106,17 @@ export {
 } from './tenant-keycloak-user-query.js';
 
 export {
+  createLegacyGroupReadHandlers,
+  type LegacyGroupReadAuthenticatedRequestContext,
+  type LegacyGroupReadHandlerDeps,
+} from './legacy-group-read-handlers.js';
+
+export {
+  loadLegacyGroupById,
+  loadLegacyGroups,
+} from './legacy-group-query.js';
+
+export {
   createGroupMutationHandlers,
   type GroupMutationAuthenticatedRequestContext,
   type GroupMutationHandlerDeps,

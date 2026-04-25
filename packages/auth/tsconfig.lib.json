@@ -15,6 +15,8 @@
       "@sva/data-repositories/server": ["packages/data-repositories/dist/server.d.ts"],
       "@sva/iam-admin": ["packages/iam-admin/dist/index.d.ts"],
       "@sva/iam-core": ["packages/iam-core/dist/index.d.ts"],
+      "@sva/iam-governance/read-models-internal": ["packages/iam-governance/dist/read-models-internal.d.ts"],
+      "@sva/iam-governance": ["packages/iam-governance/dist/index.d.ts"],
       "@sva/instance-registry/http-contracts": ["packages/instance-registry/dist/http-contracts.d.ts"],
       "@sva/instance-registry": ["packages/instance-registry/dist/index.d.ts"],
       "@sva/server-runtime": ["packages/server-runtime/dist/index.d.ts"]

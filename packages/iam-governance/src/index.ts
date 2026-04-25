@@ -8,3 +8,6 @@ export const iamGovernancePackageRoles = [
   'audit',
   'governance-cases',
 ] as const satisfies readonly IamGovernancePackageRole[];
+
+export { listGovernanceCases } from './read-models.js';
+export type { GovernanceFilters } from './read-models.types.js';

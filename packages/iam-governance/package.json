@@ -9,6 +9,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./read-models-internal": {
+      "types": "./dist/read-models-internal.d.ts",
+      "default": "./dist/read-models-internal.js"
     }
   },
   "dependencies": {

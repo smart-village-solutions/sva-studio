@@ -22,6 +22,7 @@
       "@sva/auth/runtime-health": ["packages/auth/src/runtime-health.server.ts"],
       "@sva/iam-admin": ["packages/iam-admin/src/index.ts"],
       "@sva/iam-core": ["packages/iam-core/src/index.ts"],
+      "@sva/iam-governance/read-models-internal": ["packages/iam-governance/src/read-models-internal.ts"],
       "@sva/iam-governance": ["packages/iam-governance/src/index.ts"],
       "@sva/instance-registry/http-contracts": ["packages/instance-registry/src/http-contracts.ts"],
       "@sva/instance-registry": ["packages/instance-registry/src/index.ts"],

@@ -1,11 +1,11 @@
 import {
-  SessionStoreUnavailableError,
   decryptToken,
   emitAuthAuditEvent,
   encryptToken,
   getAuthConfig,
   getRedisClient,
 } from '@sva/auth/server';
+import { SessionStoreUnavailableError } from './runtime-errors.js';
 import { getRuntimeScopeRef, getWorkspaceIdForScope } from './scope.js';
 import type { LoginState, Session, SessionControlState } from './types.js';
 import { metrics } from '@opentelemetry/api';

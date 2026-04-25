@@ -5,12 +5,12 @@ import { z } from 'zod';
 import {
   buildLogContext,
   getAuthConfig,
-  isRetryableTokenExchangeError,
   jitProvisionAccount,
 } from '@sva/auth/server';
 
 import { client, getOidcConfig, invalidateOidcConfig } from '../oidc.js';
 import { consumeLoginState, createSession, getSessionControlState } from '../redis-session.js';
+import { isRetryableTokenExchangeError } from '../error-guards.js';
 import { getScopeFromAuthConfig } from '../scope.js';
 import type { AuthConfig, InstanceScopeRef, LoginState, PlatformScopeRef, ScopeKind } from '../types.js';
 import { buildSessionUser, resolveSessionExpiry } from './shared.js';

@@ -11,6 +11,8 @@ export {
   getWorkspaceIdForScope,
   isPlatformScope,
 } from './scope.js';
+export { isRetryableTokenExchangeError, isTokenErrorLike } from './error-guards.js';
+export { SessionStoreUnavailableError, TenantScopeConflictError } from './runtime-errors.js';
 export type {
   AuthConfig,
   ForceReauthInput,

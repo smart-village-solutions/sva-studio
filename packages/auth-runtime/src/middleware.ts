@@ -2,7 +2,6 @@ import { parse as parseCookie } from 'cookie-es';
 import { createSdkLogger, toJsonErrorResponse } from '@sva/server-runtime';
 
 import {
-  SessionStoreUnavailableError,
   SessionUserHydrationError,
   buildLogContext,
   createApiError,
@@ -15,6 +14,7 @@ import {
   withLegalTextCompliance,
 } from '@sva/auth/server';
 import { getSessionUser } from './auth-server/session.js';
+import { SessionStoreUnavailableError } from './runtime-errors.js';
 import type { SessionUser } from './types.js';
 
 const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });

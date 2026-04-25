@@ -8,16 +8,13 @@ import {
 } from '@sva/server-runtime';
 
 import {
-  SessionStoreUnavailableError,
   TenantAuthResolutionError,
-  TenantScopeConflictError,
   buildLogContext,
   buildRequestOriginFromHeaders,
   createMockSessionUser,
   emitAuthAuditEvent,
   getAuthConfig,
   isMockAuthEnabled,
-  isTokenErrorLike,
   sanitizeAuthReturnTo,
   resolveAuthConfigForRequest,
   resolveEffectiveRequestHost,
@@ -35,6 +32,8 @@ import {
   getScopeFromAuthConfig,
   getWorkspaceIdForScope,
 } from './scope.js';
+import { isTokenErrorLike } from './error-guards.js';
+import { SessionStoreUnavailableError, TenantScopeConflictError } from './runtime-errors.js';
 
 const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
 

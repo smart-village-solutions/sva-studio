@@ -146,6 +146,13 @@ export {
 } from './user-import-sync-handler.js';
 
 export {
+  createUserImportPersistence,
+  type ImportIdentityListedUser,
+  type UserImportLocalProfileSeed,
+  type UserImportPersistenceDeps,
+} from './user-import-persistence.js';
+
+export {
   mapUnmappedKeycloakUser,
   mergeMappedUserWithKeycloak,
 } from './tenant-keycloak-user-projection.js';

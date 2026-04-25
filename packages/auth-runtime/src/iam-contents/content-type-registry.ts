@@ -12,7 +12,13 @@ const NEWS_CATEGORY_LENGTH_ERROR = 'Die Kategorie darf maximal 128 Zeichen entha
 const httpsUrlSchema = z
   .string()
   .url('URL ist ungültig.')
-  .refine((value) => value.startsWith('https://'), HTTPS_URL_ERROR);
+  .refine((value) => {
+    try {
+      return new URL(value).protocol === 'https:';
+    } catch {
+      return false;
+    }
+  }, HTTPS_URL_ERROR);
 
 const sanitizePlainText = (value: string): string =>
   sanitizeHtml(value, {

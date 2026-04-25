@@ -5,7 +5,7 @@ import { z } from 'zod';
 const isoDateTimeString = z
   .string()
   .trim()
-  .refine((value) => !Number.isNaN(new Date(value).getTime()), 'Datum ist ungültig.');
+  .datetime({ offset: true, message: 'Datum ist ungültig.' });
 
 const contentStatusSchema = z.enum(iamContentStatuses);
 const jsonValueSchema: z.ZodType<ContentJsonValue> = z.lazy(() =>

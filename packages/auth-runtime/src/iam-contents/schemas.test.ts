@@ -35,5 +35,7 @@ describe('iam content schemas', () => {
   it('rejects empty update payloads and invalid timestamps', () => {
     expect(updateContentSchema.safeParse({ title: undefined }).success).toBe(false);
     expect(updateContentSchema.safeParse({ publishedAt: 'not-a-date' }).success).toBe(false);
+    expect(updateContentSchema.safeParse({ publishedAt: '2026-04-25' }).success).toBe(false);
+    expect(updateContentSchema.safeParse({ publishedAt: '2026-04-25T12:00:00' }).success).toBe(false);
   });
 });

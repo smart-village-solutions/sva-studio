@@ -32,6 +32,8 @@ describe('auth return-to handling', () => {
 
   it('keeps safe relative return targets and falls back for unsafe auth paths', async () => {
     await expect(sanitizeAuthReturnTo(request(), '/dashboard')).resolves.toBe('/dashboard');
+    await expect(sanitizeAuthReturnTo(request(), '/auth', { defaultPath: '/home' })).resolves.toBe('/home');
+    await expect(sanitizeAuthReturnTo(request(), '/auth?next=/dashboard', { defaultPath: '/home' })).resolves.toBe('/home');
     await expect(sanitizeAuthReturnTo(request(), '/auth/callback', { defaultPath: '/home' })).resolves.toBe('/home');
     await expect(sanitizeAuthReturnTo(request(), '//evil.example.test', { defaultPath: '/home' })).resolves.toBe(
       '/home'
@@ -62,6 +64,12 @@ describe('auth return-to handling', () => {
     await expect(
       sanitizeAuthReturnTo(request(), 'https://auth.example.test/account', { defaultPath: '/' })
     ).resolves.toBe('https://auth.example.test/account');
+    await expect(
+      sanitizeAuthReturnTo(request(), 'https://auth.example.test/auth', { defaultPath: '/home' })
+    ).resolves.toBe('/home');
+    await expect(
+      sanitizeAuthReturnTo(request(), 'https://auth.example.test/auth?next=/dashboard', { defaultPath: '/home' })
+    ).resolves.toBe('/home');
     await expect(
       sanitizeAuthReturnTo(request(), 'https://tenant.example.test/dashboard', { defaultPath: '/' })
     ).resolves.toBe('https://tenant.example.test/dashboard');

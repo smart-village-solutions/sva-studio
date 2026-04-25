@@ -198,6 +198,38 @@ describe('patch coverage gate', () => {
     expect(result.uncoveredFiles[0]?.path).toBe('packages/sdk/src/index.ts');
   }, 20_000);
 
+  it('counts repeated executable added lines as changed patch lines', async () => {
+    const runPatchCoverageGate = await loadRunPatchCoverageGate();
+    const rootDir = createTempWorkspace();
+    initGitRepo(rootDir);
+    writePolicy(rootDir);
+    writeSourceFile(
+      rootDir,
+      'packages/sdk/src/index.ts',
+      'export function existing(): string {\n  return "shared-value";\n}\n'
+    );
+    commitAll(rootDir, 'base');
+    runGit(rootDir, ['checkout', '-b', 'feature/test']);
+
+    writeSourceFile(
+      rootDir,
+      'packages/sdk/src/index.ts',
+      'export function existing(): string {\n  return "shared-value";\n}\n\nexport function added(): string {\n  return "shared-value";\n}\n'
+    );
+    commitAll(rootDir, 'change');
+
+    const result = runPatchCoverageGate({
+      rootDir,
+      baseRef: 'main',
+      headRef: 'HEAD',
+      targetPct: 85,
+    });
+
+    expect(result.passed).toBe(false);
+    expect(result.missedLines).toBe(2);
+    expect(result.uncoveredFiles[0]?.path).toBe('packages/sdk/src/index.ts');
+  }, 20_000);
+
   it('ignores generated route tree artifacts without lcov data', async () => {
     const runPatchCoverageGate = await loadRunPatchCoverageGate();
     const rootDir = createTempWorkspace();

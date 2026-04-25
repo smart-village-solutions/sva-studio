@@ -19,7 +19,7 @@ const getAuditLogContext = (input: {
   workspace_id: input.workspaceId,
   request_id: input.requestId,
   trace_id: input.traceId,
-      ...(input.event.pluginAction
+  ...(input.event.pluginAction
     ? {
         action_id: input.event.pluginAction.actionId,
         action_namespace: input.event.pluginAction.actionNamespace,

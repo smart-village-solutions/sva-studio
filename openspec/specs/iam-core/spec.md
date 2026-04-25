@@ -109,7 +109,7 @@ Das System MUST alle sicherheitsrelevanten IAM-Ereignisse unveränderbar protoko
 - **AND** das Erstellungsereignis wird mit der Keycloak-ID als Verknüpfung protokolliert
 
 ### Requirement: Server-Runtime-Logger for IAM Server Modules
-Das System MUST den Server-Runtime-Logger (`createSdkLogger` aus `@sva/server-runtime`) fuer alle operativen Logs in IAM-Servermodulen verwenden und tokenhaltige oder personenbeziehbare Werte minimieren.
+Das System MUST den Server-Runtime-Logger (`createSdkLogger` aus `@sva/server-runtime`) für alle operativen Logs in IAM-Servermodulen verwenden und tokenhaltige oder personenbeziehbare Werte minimieren.
 
 #### Scenario: Structured logging with mandatory fields
 

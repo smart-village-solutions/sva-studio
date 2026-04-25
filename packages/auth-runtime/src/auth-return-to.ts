@@ -15,7 +15,7 @@ const isTrustedAbsoluteReturnTo = async (target: URL): Promise<boolean> => {
     return false;
   }
 
-  if (target.pathname.startsWith('/auth/')) {
+  if (target.pathname === '/auth' || target.pathname.startsWith('/auth/')) {
     return false;
   }
 
@@ -48,7 +48,7 @@ export const sanitizeAuthReturnTo = async (
   }
 
   if (value.startsWith('/')) {
-    if (value.startsWith('//') || value.startsWith('/auth/')) {
+    if (value.startsWith('//') || value === '/auth' || value.startsWith('/auth?') || value.startsWith('/auth/')) {
       return defaultPath;
     }
     return value;

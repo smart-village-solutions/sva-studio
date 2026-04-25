@@ -1,4 +1,4 @@
-import { asApiItem, createApiError, parseRequestBody, requireIdempotencyKey } from '../iam-account-management/api-helpers.js';
+import { asApiItem, createApiError, requireIdempotencyKey } from '../iam-account-management/api-helpers.js';
 import { validateCsrf } from '../iam-account-management/csrf.js';
 import { jsonResponse } from '../db.js';
 import { getWorkspaceContext } from '@sva/server-runtime';
@@ -12,20 +12,10 @@ import {
   ensurePlatformAccess,
   requireFreshReauth,
 } from './http.js';
+import { parseRegistryRequestBody } from './request-parsing.js';
 import { withRegistryService } from './repository.js';
 
 const getRequestId = (): string | undefined => getWorkspaceContext().requestId;
-
-const parseRegistryRequestBody = async <T>(
-  request: Request,
-  schema: unknown
-): Promise<{ ok: true; data: T } | { ok: false; message: string }> => {
-  const result = await parseRequestBody(request, schema as Parameters<typeof parseRequestBody>[1]);
-  if (!result.ok) {
-    return { ok: false, message: result.message };
-  }
-  return { ok: true, data: result.data as T };
-};
 
 const mutationHandlers = createInstanceRegistryMutationHttpHandlers<AuthenticatedRequestContext>({
   getRequestId,

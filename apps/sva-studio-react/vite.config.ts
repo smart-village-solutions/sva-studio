@@ -98,6 +98,8 @@ const config = defineConfig({
       '@sva/routing': resolveAppPath('../../packages/routing/src/index.ts'),
       '@sva/auth-runtime/server': resolveAppPath('../../packages/auth-runtime/src/server.ts'),
       '@sva/auth-runtime/routes': resolveAppPath('../../packages/auth-runtime/src/routes.ts'),
+      '@sva/auth-runtime/runtime-routes': resolveAppPath('../../packages/auth-runtime/src/runtime-routes.ts'),
+      '@sva/auth-runtime/runtime-health': resolveAppPath('../../packages/auth-runtime/src/runtime-health.ts'),
       '@sva/auth-runtime': resolveAppPath('../../packages/auth-runtime/src/index.ts'),
       '@sva/iam-admin': resolveAppPath('../../packages/iam-admin/src/index.ts'),
       '@sva/sva-mainserver/server': resolveAppPath('../../packages/sva-mainserver/src/index.server.ts'),
@@ -123,6 +125,7 @@ const config = defineConfig({
       '@sva/sva-mainserver',
       '@sva/core',
       '@sva/monitoring-client',
+      '@sva/server-runtime',
     ],
   },
   build: {

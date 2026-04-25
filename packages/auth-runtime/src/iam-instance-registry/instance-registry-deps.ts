@@ -6,8 +6,8 @@ import { readKeycloakStateViaProvisioner } from './provisioning-auth-state.js';
 export const withAuthInstanceRegistryDeps = <TDeps extends Partial<InstanceRegistryServiceDeps>>(
   deps: TDeps
 ): TDeps & Pick<InstanceRegistryServiceDeps, 'protectSecret' | 'revealSecret' | 'readKeycloakStateViaProvisioner'> => ({
+  ...deps,
   protectSecret: protectField,
   revealSecret: revealField,
   readKeycloakStateViaProvisioner,
-  ...deps,
 });

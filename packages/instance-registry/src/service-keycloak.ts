@@ -16,6 +16,7 @@ const buildAuthClientSecretAad = (instanceId: string): string => `iam.instances.
 const buildTenantAdminClientSecretAad = (instanceId: string): string =>
   `iam.instances.tenant_admin_client_secret:${instanceId}`;
 const logger = createSdkLogger({ component: 'iam-instance-registry-keycloak', level: 'info' });
+type SecretReaderDeps = Pick<InstanceRegistryServiceDeps, 'revealSecret'>;
 
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null;
 
@@ -132,7 +133,7 @@ const buildLocalPreflight = (input: {
 };
 
 const revealSecret = (
-  deps: InstanceRegistryServiceDeps,
+  deps: SecretReaderDeps,
   value: string | null | undefined,
   aad: string
 ): string | undefined => {
@@ -143,19 +144,19 @@ const revealSecret = (
 };
 
 export const decryptAuthClientSecret = (
-  deps: InstanceRegistryServiceDeps,
+  deps: SecretReaderDeps,
   instanceId: string,
   ciphertext: string | null | undefined
 ): string | undefined => revealSecret(deps, ciphertext, buildAuthClientSecretAad(instanceId));
 
 export const decryptTenantAdminClientSecret = (
-  deps: InstanceRegistryServiceDeps,
+  deps: SecretReaderDeps,
   instanceId: string,
   ciphertext: string | null | undefined
 ): string | undefined => revealSecret(deps, ciphertext, buildTenantAdminClientSecretAad(instanceId));
 
 export const loadRepositoryAuthClientSecret = async (
-  deps: InstanceRegistryServiceDeps,
+  deps: SecretReaderDeps,
   repository: InstanceRegistryRepository,
   instanceId: string
 ): Promise<string | undefined> => {
@@ -164,7 +165,7 @@ export const loadRepositoryAuthClientSecret = async (
 };
 
 export const loadRepositoryTenantAdminClientSecret = async (
-  deps: InstanceRegistryServiceDeps,
+  deps: SecretReaderDeps,
   repository: InstanceRegistryRepository,
   instanceId: string
 ): Promise<string | undefined> => {

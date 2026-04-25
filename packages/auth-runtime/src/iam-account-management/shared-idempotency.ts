@@ -1,6 +1,19 @@
 import { type IdempotencyReserveResult, type IdempotencyStatus } from './types.js';
 import { withInstanceScopedDb } from './shared-runtime.js';
 
+const IDEMPOTENCY_CLEANUP_INTERVAL_MS = 60_000;
+
+let nextCleanupAt = 0;
+
+const cleanupExpiredIdempotencyKeys = async (client: Parameters<Parameters<typeof withInstanceScopedDb>[1]>[0]) => {
+  const now = Date.now();
+  if (now < nextCleanupAt) {
+    return;
+  }
+  nextCleanupAt = now + IDEMPOTENCY_CLEANUP_INTERVAL_MS;
+  await client.query('DELETE FROM iam.idempotency_keys WHERE expires_at < NOW();');
+};
+
 export const reserveIdempotency = async (input: {
   instanceId: string;
   actorAccountId: string;
@@ -9,7 +22,7 @@ export const reserveIdempotency = async (input: {
   payloadHash: string;
 }): Promise<IdempotencyReserveResult> =>
   withInstanceScopedDb(input.instanceId, async (client) => {
-    await client.query('DELETE FROM iam.idempotency_keys WHERE expires_at < NOW();');
+    await cleanupExpiredIdempotencyKeys(client);
 
     await client.query('SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2));', [
       `${input.instanceId}:${input.actorAccountId}`,

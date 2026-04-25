@@ -9,6 +9,7 @@ const buildTempPasswordAad = (runId: string): string => `iam.instances.keycloak_
 const buildAuthClientSecretAad = (instanceId: string): string => `iam.instances.auth_client_secret:${instanceId}`;
 const buildTenantAdminClientSecretAad = (instanceId: string): string =>
   `iam.instances.tenant_admin_client_secret:${instanceId}`;
+type SecretReaderDeps = Pick<InstanceRegistryServiceDeps, 'revealSecret'>;
 
 export const buildProvisioningInput = (
   loaded: NonNullable<Awaited<ReturnType<typeof loadInstanceWithSecret>>>
@@ -27,7 +28,7 @@ export const buildProvisioningInput = (
 });
 
 export const readQueuedTemporaryPassword = (
-  deps: InstanceRegistryServiceDeps,
+  deps: SecretReaderDeps,
   runId: string,
   details: Readonly<Record<string, unknown>> | undefined
 ): string | undefined => {

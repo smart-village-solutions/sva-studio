@@ -12,7 +12,7 @@ import { withAuthInstanceRegistryDeps } from './instance-registry-deps.js';
 
 export { buildProvisioningInput };
 
-const authSecretDeps = () => withAuthInstanceRegistryDeps({}) as InstanceRegistryServiceDeps;
+const authSecretDeps = () => withAuthInstanceRegistryDeps({});
 
 export const readQueuedTemporaryPassword = (
   runId: string,

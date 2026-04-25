@@ -5,9 +5,13 @@ import { getInstanceConfig, isCanonicalAuthHost } from '@sva/server-runtime';
 import { resolveEffectiveRequestHost } from './request-hosts.js';
 
 const normalizeDefaultReturnTo = (value: string | undefined): string => value ?? '/';
+const isLocalHttpHost = (hostname: string): boolean => hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1';
 
 const isTrustedAbsoluteReturnTo = async (target: URL): Promise<boolean> => {
   if (target.protocol !== 'http:' && target.protocol !== 'https:') {
+    return false;
+  }
+  if (target.protocol === 'http:' && !isLocalHttpHost(target.hostname)) {
     return false;
   }
 

@@ -19,7 +19,7 @@ import { withAuthInstanceRegistryDeps } from './instance-registry-deps.js';
 
 export { createGetKeycloakProvisioningRunHandler, createRuntimeResolver };
 
-const authSecretDeps = () => withAuthInstanceRegistryDeps({}) as InstanceRegistryServiceDeps;
+const authSecretDeps = () => withAuthInstanceRegistryDeps({});
 
 export const decryptAuthClientSecret = (
   instanceId: string,

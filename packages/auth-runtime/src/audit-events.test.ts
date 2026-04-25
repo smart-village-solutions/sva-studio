@@ -27,7 +27,7 @@ describe('auth audit event emitter', () => {
   });
 
   it('logs and persists audit events with ambient workspace context', async () => {
-    mocks.getWorkspaceContext.mockReturnValue({ workspaceId: 'tenant-a', requestId: 'req-1' });
+    mocks.getWorkspaceContext.mockReturnValue({ workspaceId: 'tenant-a', requestId: 'req-1', traceId: 'trace-1' });
     mocks.persistAuthAuditEventToDb.mockResolvedValue({
       persisted: true,
       writtenEventTypes: ['login', 'account_created'],
@@ -45,6 +45,7 @@ describe('auth audit event emitter', () => {
         event_type: 'login',
         workspace_id: 'tenant-a',
         request_id: 'req-1',
+        trace_id: 'trace-1',
         actor_user_id: 'user-1',
         sink: 'otel',
       })
@@ -54,6 +55,7 @@ describe('auth audit event emitter', () => {
         eventType: 'login',
         workspaceId: 'tenant-a',
         requestId: 'req-1',
+        traceId: 'trace-1',
       })
     );
     expect(mocks.logger.info).toHaveBeenCalledWith(

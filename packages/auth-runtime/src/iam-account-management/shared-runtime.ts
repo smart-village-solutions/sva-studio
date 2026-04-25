@@ -1,4 +1,3 @@
-import { createSdkLogger } from '@sva/server-runtime';
 import { metrics } from '@opentelemetry/api';
 import type { IdentityProviderPort } from '../identity-provider-port.js';
 import {
@@ -11,8 +10,6 @@ import { createPoolResolver, type QueryClient, withResolvedInstanceDb } from '..
 import { resolveTenantAdminClientSecret } from '../config-tenant-secret.js';
 
 export const resolvePool = createPoolResolver(getIamDatabaseUrl);
-
-const logger = createSdkLogger({ component: 'iam-identity-provider', level: 'info' });
 
 let identityProviderCache:
   | IdentityProviderResolution

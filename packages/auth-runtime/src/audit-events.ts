@@ -43,7 +43,7 @@ export const emitAuthAuditEvent = async (event: AuthAuditEvent): Promise<void> =
     ?? getRuntimeScopeRef({ workspaceId: event.workspaceId ?? context.workspaceId });
   const workspaceId = getWorkspaceIdForScope(scope) ?? event.workspaceId ?? context.workspaceId ?? 'default';
   const requestId = event.requestId ?? context.requestId;
-  const traceId = event.traceId;
+  const traceId = event.traceId ?? context.traceId;
   const logContext = getAuditLogContext({
     event,
     scope,

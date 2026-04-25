@@ -4,11 +4,15 @@ import { createSdkLogger } from '@sva/server-runtime';
 const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
 
 const ALGORITHM = 'aes-256-gcm';
+const FORMAT_MAGIC = Buffer.from('SVA1', 'ascii');
 const SALT_LENGTH = 16;
 const IV_LENGTH = 12;
 const AUTH_TAG_LENGTH = 16;
+const MIN_ENCRYPTED_LENGTH = FORMAT_MAGIC.length + SALT_LENGTH + IV_LENGTH + 1 + AUTH_TAG_LENGTH;
 
 const deriveKey = (password: string, salt: Buffer): Buffer => scryptSync(password, salt, 32);
+const hasFormatMagic = (buffer: Buffer): boolean =>
+  buffer.length >= FORMAT_MAGIC.length && buffer.subarray(0, FORMAT_MAGIC.length).equals(FORMAT_MAGIC);
 
 export const encryptToken = (token: string, encryptionKey: string): string => {
   if (!token) {
@@ -30,13 +34,13 @@ export const encryptToken = (token: string, encryptionKey: string): string => {
     const key = deriveKey(encryptionKey, salt);
 
     const cipher = createCipheriv(ALGORITHM, key, iv);
-    let ciphertext = cipher.update(token, 'utf8', 'binary');
-    ciphertext += cipher.final('binary');
+    const ciphertext = Buffer.concat([cipher.update(token, 'utf8'), cipher.final()]);
 
     return Buffer.concat([
+      FORMAT_MAGIC,
       salt,
       iv,
-      Buffer.from(ciphertext, 'binary'),
+      ciphertext,
       cipher.getAuthTag(),
     ]).toString('base64');
   } catch (err) {
@@ -65,19 +69,17 @@ export const decryptToken = (encrypted: string, encryptionKey: string): string =
 
   try {
     const buffer = Buffer.from(encrypted, 'base64');
-    const salt = buffer.slice(0, SALT_LENGTH);
-    const iv = buffer.slice(SALT_LENGTH, SALT_LENGTH + IV_LENGTH);
-    const authTag = buffer.slice(buffer.length - AUTH_TAG_LENGTH);
-    const ciphertext = buffer.slice(SALT_LENGTH + IV_LENGTH, buffer.length - AUTH_TAG_LENGTH);
+    const offset = hasFormatMagic(buffer) ? FORMAT_MAGIC.length : 0;
+    const salt = buffer.subarray(offset, offset + SALT_LENGTH);
+    const iv = buffer.subarray(offset + SALT_LENGTH, offset + SALT_LENGTH + IV_LENGTH);
+    const authTag = buffer.subarray(buffer.length - AUTH_TAG_LENGTH);
+    const ciphertext = buffer.subarray(offset + SALT_LENGTH + IV_LENGTH, buffer.length - AUTH_TAG_LENGTH);
     const key = deriveKey(encryptionKey, salt);
 
     const decipher = createDecipheriv(ALGORITHM, key, iv);
     decipher.setAuthTag(authTag);
 
-    let plaintext = decipher.update(ciphertext.toString('binary'), 'binary', 'utf8');
-    plaintext += decipher.final('utf8');
-
-    return plaintext;
+    return Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString('utf8');
   } catch (err) {
     logger.error('Token decryption failed', {
       operation: 'decrypt',
@@ -95,7 +97,8 @@ export const isEncrypted = (token: string): boolean => {
     return false;
   }
   try {
-    return Buffer.from(token, 'base64').length >= SALT_LENGTH + IV_LENGTH + 1 + AUTH_TAG_LENGTH;
+    const buffer = Buffer.from(token, 'base64');
+    return buffer.length >= MIN_ENCRYPTED_LENGTH && hasFormatMagic(buffer);
   } catch {
     return false;
   }

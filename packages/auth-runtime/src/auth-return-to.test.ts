@@ -65,6 +65,9 @@ describe('auth return-to handling', () => {
     await expect(
       sanitizeAuthReturnTo(request(), 'https://tenant.example.test/dashboard', { defaultPath: '/' })
     ).resolves.toBe('https://tenant.example.test/dashboard');
+    await expect(
+      sanitizeAuthReturnTo(request(), 'http://tenant.example.test/dashboard', { defaultPath: '/' })
+    ).resolves.toBe('/');
   });
 
   it('resolves the effective request host through the shared host parser', () => {

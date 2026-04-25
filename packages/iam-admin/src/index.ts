@@ -192,6 +192,12 @@ export {
 } from './organization-read-handlers.js';
 
 export {
+  createOrganizationMutationHandlers,
+  type OrganizationMutationAuthenticatedRequestContext,
+  type OrganizationMutationHandlerDeps,
+} from './organization-mutation-handlers.js';
+
+export {
   buildDirectPermissionRowsSql,
   buildPermissionRowsSql,
   buildPermissionTraceRowsSql,

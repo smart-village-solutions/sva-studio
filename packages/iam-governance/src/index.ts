@@ -31,3 +31,7 @@ export {
   type LegalTextActivityLogInput,
   type LegalTextRepositoryDeps,
 } from './legal-text-repository.js';
+export {
+  createLegalTextMutationHandlers,
+  type LegalTextMutationHandlerDeps,
+} from './legal-text-mutation-handlers.js';

@@ -8,8 +8,6 @@ import {
 } from '@sva/server-runtime';
 
 import {
-  DEFAULT_WORKSPACE_ID,
-  PLATFORM_WORKSPACE_ID,
   SessionStoreUnavailableError,
   TenantAuthResolutionError,
   TenantScopeConflictError,
@@ -18,8 +16,6 @@ import {
   createMockSessionUser,
   emitAuthAuditEvent,
   getAuthConfig,
-  getScopeFromAuthConfig,
-  getWorkspaceIdForScope,
   isMockAuthEnabled,
   isTokenErrorLike,
   sanitizeAuthReturnTo,
@@ -33,6 +29,12 @@ import { withAuthenticatedUser } from './middleware.js';
 import { getSession } from './redis-session.js';
 import { appendSetCookie, deleteCookieHeader, readCookieFromRequest } from './cookies.js';
 import { decodeLoginStateCookie, encodeLoginStateCookie, type LoginStateCookiePayload } from './login-state-cookie.js';
+import {
+  DEFAULT_WORKSPACE_ID,
+  PLATFORM_WORKSPACE_ID,
+  getScopeFromAuthConfig,
+  getWorkspaceIdForScope,
+} from './scope.js';
 
 const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
 

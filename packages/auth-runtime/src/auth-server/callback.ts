@@ -5,18 +5,14 @@ import { z } from 'zod';
 import {
   buildLogContext,
   getAuthConfig,
-  getScopeFromAuthConfig,
   isRetryableTokenExchangeError,
   jitProvisionAccount,
-  type AuthConfig,
-  type InstanceScopeRef,
-  type LoginState,
-  type PlatformScopeRef,
-  type ScopeKind,
 } from '@sva/auth/server';
 
 import { client, getOidcConfig, invalidateOidcConfig } from '../oidc.js';
 import { consumeLoginState, createSession, getSessionControlState } from '../redis-session.js';
+import { getScopeFromAuthConfig } from '../scope.js';
+import type { AuthConfig, InstanceScopeRef, LoginState, PlatformScopeRef, ScopeKind } from '../types.js';
 import { buildSessionUser, resolveSessionExpiry } from './shared.js';
 
 const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });

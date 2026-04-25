@@ -2,7 +2,8 @@ import { createHash } from 'node:crypto';
 import * as client from 'openid-client';
 import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 
-import { getAuthConfig, type AuthConfig } from '@sva/auth/server';
+import { getAuthConfig } from '@sva/auth/server';
+import type { AuthConfig } from './types.js';
 
 const configPromises = new Map<string, Promise<client.Configuration>>();
 const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });

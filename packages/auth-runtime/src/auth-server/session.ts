@@ -6,10 +6,8 @@ import {
   getAuthConfig,
   isTokenErrorLike,
   resolveAuthConfigFromSessionAuth,
-  type RuntimeScopeRef,
-  type Session,
-  type SessionUser,
 } from '@sva/auth/server';
+import type { RuntimeScopeRef, Session, SessionUser } from '../types.js';
 
 import { client, getOidcConfig } from '../oidc.js';
 import { deleteSession, getSession, getSessionControlState, updateSession } from '../redis-session.js';

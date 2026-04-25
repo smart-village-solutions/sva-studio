@@ -1,6 +1,7 @@
 import { extractRoles, parseJwtPayload, resolveInstanceId } from '@sva/core';
 
-import { TenantScopeConflictError, type RuntimeScopeRef, type SessionUser } from '@sva/auth/server';
+import { TenantScopeConflictError } from '@sva/auth/server';
+import type { RuntimeScopeRef, SessionUser } from '../types.js';
 
 export const TOKEN_REFRESH_SKEW_MS = 60_000;
 

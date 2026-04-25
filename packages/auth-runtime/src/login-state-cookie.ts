@@ -1,7 +1,7 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
 
-import type { LoginState } from '@sva/auth/server';
+import type { LoginState } from './types.js';
 
 export type LoginStateCookiePayload = LoginState & {
   state: string;

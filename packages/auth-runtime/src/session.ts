@@ -1,4 +1,4 @@
-import type { LoginState, Session } from '@sva/auth/server';
+import type { LoginState, Session } from './types.js';
 
 const loginStates = new Map<string, LoginState>();
 const sessions = new Map<string, Session>();

@@ -5,12 +5,9 @@ import {
   encryptToken,
   getAuthConfig,
   getRedisClient,
-  getRuntimeScopeRef,
-  getWorkspaceIdForScope,
-  type LoginState,
-  type Session,
-  type SessionControlState,
 } from '@sva/auth/server';
+import { getRuntimeScopeRef, getWorkspaceIdForScope } from './scope.js';
+import type { LoginState, Session, SessionControlState } from './types.js';
 import { metrics } from '@opentelemetry/api';
 import {
   clearExpiredLoginStates as clearExpiredInMemoryLoginStates,

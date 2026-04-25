@@ -13,9 +13,9 @@ import {
   shouldEnforceLegalTextCompliance,
   validateTenantHost,
   withLegalTextCompliance,
-  type SessionUser,
 } from '@sva/auth/server';
 import { getSessionUser } from './auth-server/session.js';
+import type { SessionUser } from './types.js';
 
 const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
 

@@ -24,6 +24,11 @@ export {
   type DsrExportFormat,
   type DsrExportPayload,
 } from './dsr-export-payload.js';
+export {
+  runDsrMaintenance,
+  type DsrMaintenanceInput,
+  type DsrMaintenanceResult,
+} from './dsr-maintenance.js';
 export { hashLegalTextHtml, sanitizeLegalTextHtml } from './legal-text-html.js';
 export {
   consumeLegalConsentExportRateLimit,

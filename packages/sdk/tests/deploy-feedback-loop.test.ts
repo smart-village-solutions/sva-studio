@@ -4,14 +4,12 @@ import { resolve } from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-// eslint-disable-next-line @nx/enforce-module-boundaries
 import {
   listDeployReports,
   renderDeployFeedbackSummaryMarkdown,
   renderDeployReviewTemplate,
   summarizeDeployReports,
 } from '../../../scripts/ops/deploy-feedback-loop.ts';
-// eslint-disable-next-line @nx/enforce-module-boundaries
 import type { AcceptanceDeployReport } from '../../../scripts/ops/runtime-env.shared.ts';
 
 const tempDirs: string[] = [];

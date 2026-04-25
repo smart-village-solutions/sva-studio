@@ -47,7 +47,7 @@
 - [x] 6.2 `depConstraints` für Zielgrenzen, PII-Grenzen, Plugin-Grenzen und Browser-/Server-Grenzen aktivieren
 - [x] 6.3 Alte Sammelimporte in ESLint verbieten
 - [x] 6.4 Runtime-Import-Regeln und `check:server-runtime` für neue serverseitige Packages sicherstellen
-- [ ] 6.5 Boundary-Disables entfernen oder mit blockierendem Folgeticket dokumentieren
+- [x] 6.5 Boundary-Disables entfernen oder mit blockierendem Folgeticket dokumentieren
 
 ## 7. Consumer Migration
 

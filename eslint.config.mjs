@@ -14,7 +14,23 @@ export default [
         'error',
         {
           enforceBuildableLibDependency: true,
-          allow: ['../../../scripts/ci/coverage-gate.ts'],
+          allow: [
+            '../../../scripts/ci/check-file-placement.ts',
+            '../../../scripts/ci/check-openapi-iam.ts',
+            '../../../scripts/ci/check-server-package-runtime.ts',
+            '../../../scripts/ci/clean-source-artifacts.ts',
+            '../../../scripts/ci/complexity-gate.ts',
+            '../../../scripts/ci/coverage-gate.ts',
+            '../../../scripts/ops/deploy-feedback-loop.ts',
+            '../../../scripts/ops/runtime/bootstrap-job.ts',
+            '../../../scripts/ops/runtime/deploy-project.ts',
+            '../../../scripts/ops/runtime/image-platform.ts',
+            '../../../scripts/ops/runtime/migration-job.ts',
+            '../../../scripts/ops/runtime/remote-service-spec.ts',
+            '../../../scripts/ops/runtime/remote-stack-state.ts',
+            '../../../scripts/ops/runtime-env.shared.ts',
+            '../../../scripts/ops/studio-release-local.ts',
+          ],
           depConstraints: [
             {
               sourceTag: 'scope:core',

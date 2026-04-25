@@ -59,6 +59,13 @@ export {
 } from './role-mutation-persistence.js';
 
 export {
+  resolveGroupsByIds,
+  resolveRoleIdsForGroups,
+  resolveRolesByExternalNames,
+  resolveRolesByIds,
+} from './role-resolution.js';
+
+export {
   runRoleCatalogReconciliation,
   type ReconcileReport,
   type RoleCatalogReconciliationDeps,

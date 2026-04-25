@@ -99,10 +99,10 @@
       "branches": 50
     },
     "plugin-sdk": {
-      "lines": 20,
-      "statements": 20,
-      "functions": 15,
-      "branches": 5
+      "lines": 85,
+      "statements": 85,
+      "functions": 90,
+      "branches": 70
     },
     "sva-mainserver": {
       "lines": 85,

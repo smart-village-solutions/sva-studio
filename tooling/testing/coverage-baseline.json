@@ -79,10 +79,10 @@
       "branches": 80.74
     },
     "plugin-sdk": {
-      "lines": 22.61,
-      "statements": 21.75,
-      "functions": 18.86,
-      "branches": 6.93
+      "lines": 86.3,
+      "statements": 86.4,
+      "functions": 94.33,
+      "branches": 72.27
     },
     "routing": {
       "lines": 99.51,

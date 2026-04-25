@@ -1,6 +1,7 @@
 export {
   createRoleHandler,
   deleteRoleHandler,
+  listPermissionsHandler,
   listRolesHandler,
   sanitizeRoleAuditDetails,
   sanitizeRoleErrorMessage,

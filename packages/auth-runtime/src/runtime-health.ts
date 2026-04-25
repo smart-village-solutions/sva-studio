@@ -1,1 +1,1 @@
-export * from '@sva/auth/runtime-health';
+export { healthLiveHandler, healthReadyHandler } from '@sva/auth/server';

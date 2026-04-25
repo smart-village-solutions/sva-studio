@@ -38,6 +38,10 @@ export {
   type UpdateInstancePayload,
 } from './mutation-input-builders.js';
 export {
+  createInstanceRegistryKeycloakHttpHandlers,
+  type InstanceRegistryKeycloakHttpDeps,
+} from './http-keycloak-handlers.js';
+export {
   buildKeycloakStatus,
   buildMissingRealmStatus,
   buildPlan,

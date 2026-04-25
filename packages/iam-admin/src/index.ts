@@ -43,6 +43,12 @@ export {
 } from './user-bulk-query.js';
 
 export {
+  createBulkDeactivateHandlerInternal,
+  type BulkDeactivateAuthenticatedRequestContext,
+  type BulkDeactivateHandlerDeps,
+} from './user-bulk-deactivate-handler.js';
+
+export {
   mapUnmappedKeycloakUser,
   mergeMappedUserWithKeycloak,
 } from './tenant-keycloak-user-projection.js';

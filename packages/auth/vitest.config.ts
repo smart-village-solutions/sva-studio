@@ -46,6 +46,22 @@ export default defineConfig({
         find: /^@sva\/instance-registry\/http-contracts$/,
         replacement: resolve(__dirname, '../instance-registry/src/http-contracts.ts'),
       },
+      {
+        find: /^@sva\/instance-registry\/service-keycloak$/,
+        replacement: resolve(__dirname, '../instance-registry/src/service-keycloak.ts'),
+      },
+      {
+        find: /^@sva\/instance-registry\/service-keycloak-execution$/,
+        replacement: resolve(__dirname, '../instance-registry/src/service-keycloak-execution.ts'),
+      },
+      {
+        find: /^@sva\/instance-registry\/service-keycloak-execution-shared$/,
+        replacement: resolve(__dirname, '../instance-registry/src/service-keycloak-execution-shared.ts'),
+      },
+      {
+        find: /^@sva\/instance-registry\/service-types$/,
+        replacement: resolve(__dirname, '../instance-registry/src/service-types.ts'),
+      },
       { find: /^@sva\/instance-registry$/, replacement: resolve(__dirname, '../instance-registry/src/index.ts') },
       { find: /^@sva\/server-runtime$/, replacement: resolve(__dirname, '../server-runtime/src/index.ts') },
       { find: /^@sva\/sdk$/, replacement: resolve(__dirname, '../sdk/src/index.ts') },

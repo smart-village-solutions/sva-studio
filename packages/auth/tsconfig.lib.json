@@ -21,6 +21,14 @@
       "@sva/iam-governance/legal-text-repository-shared": ["packages/iam-governance/dist/legal-text-repository-shared.d.ts"],
       "@sva/iam-governance": ["packages/iam-governance/dist/index.d.ts"],
       "@sva/instance-registry/http-contracts": ["packages/instance-registry/dist/http-contracts.d.ts"],
+      "@sva/instance-registry/service-keycloak": ["packages/instance-registry/dist/service-keycloak.d.ts"],
+      "@sva/instance-registry/service-keycloak-execution": [
+        "packages/instance-registry/dist/service-keycloak-execution.d.ts"
+      ],
+      "@sva/instance-registry/service-keycloak-execution-shared": [
+        "packages/instance-registry/dist/service-keycloak-execution-shared.d.ts"
+      ],
+      "@sva/instance-registry/service-types": ["packages/instance-registry/dist/service-types.d.ts"],
       "@sva/instance-registry": ["packages/instance-registry/dist/index.d.ts"],
       "@sva/server-runtime": ["packages/server-runtime/dist/index.d.ts"]
     }

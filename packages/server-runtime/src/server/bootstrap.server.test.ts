@@ -109,7 +109,7 @@ describe('server bootstrap', () => {
     expect(setWorkspaceContextGetter).toHaveBeenCalledWith(expect.any(Function));
     expect(startOtelSdk).toHaveBeenCalledWith({
       serviceName: 'server-runtime-test',
-      environment: 'development',
+      environment: process.env.NODE_ENV ?? 'development',
       otlpEndpoint: 'http://otel.example',
     });
     expect(setOtelInitializationResult).toHaveBeenCalledWith({ status: 'ready', sdk });

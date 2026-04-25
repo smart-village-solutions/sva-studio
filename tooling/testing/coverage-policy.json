@@ -33,10 +33,10 @@
       "branches": 35
     },
     "auth-runtime": {
-      "lines": 45,
-      "statements": 44,
-      "functions": 35,
-      "branches": 30
+      "lines": 49,
+      "statements": 48,
+      "functions": 42,
+      "branches": 35
     },
     "data": {
       "lines": 70,

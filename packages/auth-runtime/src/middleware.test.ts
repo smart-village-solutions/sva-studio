@@ -93,6 +93,11 @@ vi.mock('@sva/auth/server', () => ({
   withLegalTextCompliance: authServerMocks.withLegalTextCompliance,
 }));
 
+vi.mock('./middleware-hosts.js', () => ({
+  resolveSessionUser: authServerMocks.resolveSessionUser,
+  validateTenantHost: authServerMocks.validateTenantHost,
+}));
+
 vi.mock('./config.js', () => ({
   getAuthConfig: authServerMocks.getAuthConfig,
 }));

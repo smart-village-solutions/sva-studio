@@ -2,18 +2,16 @@ import { parse as parseCookie } from 'cookie-es';
 import { createSdkLogger, toJsonErrorResponse } from '@sva/server-runtime';
 
 import {
-  SessionUserHydrationError,
   createApiError,
-  resolveSessionUser,
   shouldEnforceLegalTextCompliance,
-  validateTenantHost,
   withLegalTextCompliance,
 } from '@sva/auth/server';
+import { resolveSessionUser, validateTenantHost } from './middleware-hosts.js';
 import { getSessionUser } from './auth-server/session.js';
 import { getAuthConfig } from './config.js';
 import { buildLogContext } from './log-context.js';
 import { createMockSessionUser, isMockAuthEnabled } from './mock-auth.js';
-import { SessionStoreUnavailableError } from './runtime-errors.js';
+import { SessionStoreUnavailableError, SessionUserHydrationError } from './runtime-errors.js';
 import type { SessionUser } from './types.js';
 
 const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });

@@ -63,6 +63,19 @@ export class TenantAuthResolutionError extends Error {
   }
 }
 
+export class SessionUserHydrationError extends Error {
+  readonly requestHost?: string;
+  readonly reason: 'missing_instance_id';
+  readonly statusCode = 401;
+
+  constructor(input: { reason: 'missing_instance_id'; requestHost?: string }) {
+    super('Session user is missing required instance context');
+    this.name = 'SessionUserHydrationError';
+    this.reason = input.reason;
+    this.requestHost = input.requestHost;
+  }
+}
+
 export class TenantScopeConflictError extends Error {
   readonly actualInstanceId: string;
   readonly expectedInstanceId: string;

@@ -67,6 +67,12 @@ export {
 } from './user-update-handler.js';
 
 export {
+  createSyncUsersFromKeycloakHandlerInternal,
+  type SyncUsersAuthenticatedRequestContext,
+  type SyncUsersHandlerDeps,
+} from './user-import-sync-handler.js';
+
+export {
   mapUnmappedKeycloakUser,
   mergeMappedUserWithKeycloak,
 } from './tenant-keycloak-user-projection.js';

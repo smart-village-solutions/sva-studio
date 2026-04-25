@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { IamUserImportSyncReport } from '@sva/core';
+import { createSyncUsersFromKeycloakHandlerInternal } from '@sva/iam-admin';
 import { getWorkspaceContext } from '@sva/server-runtime';
 
 import type { IdentityListedUser } from '../identity-provider-port.js';
@@ -754,121 +755,23 @@ export const runKeycloakUserImportSync = async (input: {
   };
 };
 
-export const syncUsersFromKeycloakInternal = async (
-  request: Request,
-  ctx: AuthenticatedRequestContext
-): Promise<Response> => {
-  if (!ctx.user.instanceId) {
-    const requestContext = getWorkspaceContext();
-    const featureCheck = ensureFeature(getFeatureFlags(), 'iam_admin', requestContext.requestId);
-    if (featureCheck) {
-      return featureCheck;
-    }
-    const roleCheck = requireRoles(ctx, ADMIN_ROLES, requestContext.requestId);
-    if (roleCheck) {
-      return roleCheck;
-    }
-    const csrfError = validateCsrf(request, requestContext.requestId);
-    if (csrfError) {
-      return csrfError;
-    }
-    const rateLimit = consumeRateLimit({
-      instanceId: PLATFORM_RATE_LIMIT_INSTANCE_ID,
-      actorKeycloakSubject: ctx.user.id,
-      scope: 'write',
-      requestId: requestContext.requestId,
-    });
-    if (rateLimit) {
-      return rateLimit;
-    }
-    try {
-      const report = await runPlatformKeycloakUserSync({
-        requestId: requestContext.requestId,
-        traceId: requestContext.traceId,
-      });
-      iamUserOperationsCounter.add(1, { action: 'sync_platform_keycloak_users', result: 'success' });
-      return jsonResponse(200, asApiItem(report, requestContext.requestId));
-    } catch (error) {
-      logger.error('Platform keycloak user sync failed', {
-        operation: 'sync_platform_keycloak_users',
-        scope_kind: 'platform',
-        request_id: requestContext.requestId,
-        trace_id: requestContext.traceId,
-        error: error instanceof Error ? error.message : String(error),
-      });
-      iamUserOperationsCounter.add(1, { action: 'sync_platform_keycloak_users', result: 'failure' });
-      if (isPlatformIdentityProviderConfigurationError(error)) {
-        return createApiError(
-          503,
-          'keycloak_unavailable',
-          'Plattform-IAM ist nicht konfiguriert.',
-          requestContext.requestId,
-          {
-            dependency: 'keycloak',
-            reason_code: 'platform_identity_provider_not_configured',
-            scope_kind: 'platform',
-          }
-        );
-      }
-      return createApiError(
-        503,
-        'keycloak_unavailable',
-        'Plattform-Benutzer konnten nicht aus Keycloak synchronisiert werden.',
-        requestContext.requestId,
-        {
-          dependency: 'keycloak',
-          reason_code: 'platform_keycloak_unavailable',
-          scope_kind: 'platform',
-        }
-      );
-    }
-  }
-
-  const actorResolution = await resolveSyncActor(request, ctx);
-  if ('error' in actorResolution) {
-    return actorResolution.error;
-  }
-  const { actor } = actorResolution;
-
-  try {
-    const { report, skippedCount, skippedInstanceIds } = await runKeycloakUserImportSync({
-      instanceId: actor.instanceId,
-      actorAccountId: actor.actorAccountId,
-      requestId: actor.requestId,
-      traceId: actor.traceId,
-    });
-
-    if (skippedCount > 0) {
-      logger.info('Keycloak user sync skipped users because instance ids did not match', {
-        operation: 'sync_keycloak_users',
-        skipped_count: skippedCount,
-        sample_instance_ids: Array.from(skippedInstanceIds).join(','),
-        ...buildLogContext(actor.instanceId, { includeTraceId: true }),
-      });
-    }
-
-    iamUserOperationsCounter.add(1, { action: 'sync_keycloak_users', result: 'success' });
-    return jsonResponse(200, asApiItem(report, actor.requestId));
-  } catch (error) {
-    const mappedError = mapSyncErrorResponse(error, actor.requestId);
-    if (mappedError) {
-      iamUserOperationsCounter.add(1, { action: 'sync_keycloak_users', result: 'failure' });
-      return mappedError;
-    }
-
-    logger.error('IAM keycloak user import failed', {
-      operation: 'sync_keycloak_users',
-      instance_id: actor.instanceId,
-      request_id: actor.requestId,
-      trace_id: actor.traceId,
-      error: error instanceof Error ? error.message : String(error),
-    });
-    iamUserOperationsCounter.add(1, { action: 'sync_keycloak_users', result: 'failure' });
-    return createApiError(
-      500,
-      'internal_error',
-      'Keycloak-Benutzer konnten nicht in IAM synchronisiert werden.',
-      actor.requestId
-    );
-  }
-};
+export const syncUsersFromKeycloakInternal = createSyncUsersFromKeycloakHandlerInternal({
+  asApiItem,
+  buildLogContext,
+  consumeRateLimit,
+  createApiError,
+  ensureFeature,
+  getFeatureFlags,
+  getWorkspaceContext,
+  iamUserOperationsCounter,
+  isPlatformIdentityProviderConfigurationError,
+  jsonResponse,
+  logger,
+  mapSyncErrorResponse,
+  platformRateLimitInstanceId: PLATFORM_RATE_LIMIT_INSTANCE_ID,
+  requireRoles,
+  resolveSyncActor,
+  runKeycloakUserImportSync,
+  runPlatformKeycloakUserSync,
+  validateCsrf,
+});

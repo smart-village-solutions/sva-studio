@@ -3,9 +3,9 @@ import { getWorkspaceContext } from '@sva/server-runtime';
 import {
   isInstanceTrafficAllowed,
   resolveRuntimeInstanceFromRequest as resolveInstanceRegistryRuntimeInstanceFromRequest,
-  type ResolveRuntimeInstanceResult,
   type RuntimeInstanceResolutionDeps,
-} from '@sva/instance-registry';
+} from '@sva/instance-registry/runtime-resolution';
+import type { ResolveRuntimeInstanceResult } from '@sva/instance-registry/keycloak-types';
 
 import { resolveEffectiveRequestHost } from '../request-hosts.js';
 import { withRegistryService } from './repository.js';

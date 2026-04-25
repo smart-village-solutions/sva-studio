@@ -3,9 +3,9 @@ import {
   createReconcileKeycloakHandler as createTargetReconcileKeycloakHandler,
   processClaimedKeycloakProvisioningRun as processTargetClaimedKeycloakProvisioningRun,
   processNextQueuedKeycloakProvisioningRun as processTargetNextQueuedKeycloakProvisioningRun,
-  type InstanceRegistryServiceDeps,
-} from '@sva/instance-registry';
+} from '@sva/instance-registry/service-keycloak-execution';
 import type { InstanceKeycloakProvisioningRun } from '@sva/core';
+import type { InstanceRegistryServiceDeps } from '@sva/instance-registry/service-types';
 
 import { withAuthInstanceRegistryDeps } from './instance-registry-deps.js';
 

@@ -2,7 +2,7 @@ import {
   createProvisionInstanceAuthArtifacts,
   createReadKeycloakState,
   type KeycloakProvisioningClientFactory,
-} from '@sva/instance-registry';
+} from '@sva/instance-registry/provisioning-auth-state';
 
 import {
   KeycloakAdminClient,

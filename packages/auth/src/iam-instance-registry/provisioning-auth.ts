@@ -2,7 +2,7 @@ import {
   createInstanceKeycloakPlanReader,
   createInstanceKeycloakPreflightReader,
   createInstanceKeycloakStatusReader,
-} from '@sva/instance-registry';
+} from '@sva/instance-registry/provisioning-auth';
 
 import {
   provisionInstanceAuthArtifacts,

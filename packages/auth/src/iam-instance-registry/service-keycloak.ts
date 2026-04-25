@@ -11,8 +11,8 @@ import {
   loadInstanceWithSecret as loadTargetInstanceWithSecret,
   loadRepositoryAuthClientSecret as loadTargetRepositoryAuthClientSecret,
   loadRepositoryTenantAdminClientSecret as loadTargetRepositoryTenantAdminClientSecret,
-  type InstanceRegistryServiceDeps,
-} from '@sva/instance-registry';
+} from '@sva/instance-registry/service-keycloak';
+import type { InstanceRegistryServiceDeps } from '@sva/instance-registry/service-types';
 import type { InstanceRegistryRepository } from '@sva/data-repositories';
 
 import { withAuthInstanceRegistryDeps } from './instance-registry-deps.js';

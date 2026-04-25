@@ -5,8 +5,8 @@ import {
   readQueuedTemporaryPassword as readTargetQueuedTemporaryPassword,
   syncProvisionedClientSecretToRegistry as syncTargetProvisionedClientSecretToRegistry,
   syncRotatedClientSecretToRegistry as syncTargetRotatedClientSecretToRegistry,
-  type InstanceRegistryServiceDeps,
-} from '@sva/instance-registry';
+} from '@sva/instance-registry/service-keycloak-execution-shared';
+import type { InstanceRegistryServiceDeps } from '@sva/instance-registry/service-types';
 
 import { withAuthInstanceRegistryDeps } from './instance-registry-deps.js';
 

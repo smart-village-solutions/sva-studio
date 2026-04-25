@@ -1,1 +1,1 @@
-export { createGetInstanceDetail, loadKeycloakDetailArtifacts } from '@sva/instance-registry';
+export { createGetInstanceDetail, loadKeycloakDetailArtifacts } from '@sva/instance-registry/service-detail';

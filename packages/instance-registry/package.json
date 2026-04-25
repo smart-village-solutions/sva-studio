@@ -14,6 +14,10 @@
       "types": "./dist/http-contracts.d.ts",
       "default": "./dist/http-contracts.js"
     },
+    "./keycloak-types": {
+      "types": "./dist/keycloak-types.d.ts",
+      "default": "./dist/keycloak-types.js"
+    },
     "./mutation-errors": {
       "types": "./dist/mutation-errors.d.ts",
       "default": "./dist/mutation-errors.js"
@@ -25,6 +29,42 @@
     "./provisioning-worker": {
       "types": "./dist/provisioning-worker.d.ts",
       "default": "./dist/provisioning-worker.js"
+    },
+    "./provisioning-auth": {
+      "types": "./dist/provisioning-auth.d.ts",
+      "default": "./dist/provisioning-auth.js"
+    },
+    "./provisioning-auth-state": {
+      "types": "./dist/provisioning-auth-state.d.ts",
+      "default": "./dist/provisioning-auth-state.js"
+    },
+    "./runtime-resolution": {
+      "types": "./dist/runtime-resolution.d.ts",
+      "default": "./dist/runtime-resolution.js"
+    },
+    "./service": {
+      "types": "./dist/service.d.ts",
+      "default": "./dist/service.js"
+    },
+    "./service-detail": {
+      "types": "./dist/service-detail.d.ts",
+      "default": "./dist/service-detail.js"
+    },
+    "./service-keycloak": {
+      "types": "./dist/service-keycloak.d.ts",
+      "default": "./dist/service-keycloak.js"
+    },
+    "./service-keycloak-execution": {
+      "types": "./dist/service-keycloak-execution.d.ts",
+      "default": "./dist/service-keycloak-execution.js"
+    },
+    "./service-keycloak-execution-shared": {
+      "types": "./dist/service-keycloak-execution-shared.d.ts",
+      "default": "./dist/service-keycloak-execution-shared.js"
+    },
+    "./service-types": {
+      "types": "./dist/service-types.d.ts",
+      "default": "./dist/service-types.js"
     }
   },
   "dependencies": {

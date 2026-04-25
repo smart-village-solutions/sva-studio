@@ -1,7 +1,7 @@
 import {
   createInstanceRegistryService as createTargetInstanceRegistryService,
-  type InstanceRegistryServiceDeps,
-} from '@sva/instance-registry';
+} from '@sva/instance-registry/service';
+import type { InstanceRegistryServiceDeps } from '@sva/instance-registry/service-types';
 
 import { withAuthInstanceRegistryDeps } from './instance-registry-deps.js';
 

@@ -1,0 +1,77 @@
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+const mocks = vi.hoisted(() => ({
+  getInstanceConfig: vi.fn(),
+  isCanonicalAuthHost: vi.fn(),
+  loadInstanceByHostname: vi.fn(),
+}));
+
+vi.mock('@sva/server-runtime', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@sva/server-runtime')>();
+  return {
+    ...actual,
+    getInstanceConfig: mocks.getInstanceConfig,
+    isCanonicalAuthHost: mocks.isCanonicalAuthHost,
+  };
+});
+
+vi.mock('@sva/data-repositories/server', () => ({
+  loadInstanceByHostname: mocks.loadInstanceByHostname,
+}));
+
+import { resolveAuthRequestHost, sanitizeAuthReturnTo } from './auth-return-to.js';
+
+const request = (headers: HeadersInit = {}, url = 'https://auth.example.test/login') =>
+  new Request(url, { headers });
+
+describe('auth return-to handling', () => {
+  afterEach(() => {
+    vi.clearAllMocks();
+    vi.unstubAllEnvs();
+  });
+
+  it('keeps safe relative return targets and falls back for unsafe auth paths', async () => {
+    await expect(sanitizeAuthReturnTo(request(), '/dashboard')).resolves.toBe('/dashboard');
+    await expect(sanitizeAuthReturnTo(request(), '/auth/callback', { defaultPath: '/home' })).resolves.toBe('/home');
+    await expect(sanitizeAuthReturnTo(request(), '//evil.example.test', { defaultPath: '/home' })).resolves.toBe(
+      '/home'
+    );
+    await expect(sanitizeAuthReturnTo(request(), null, { defaultPath: '/home' })).resolves.toBe('/home');
+  });
+
+  it('rejects invalid or untrusted absolute return targets', async () => {
+    mocks.getInstanceConfig.mockReturnValue(null);
+
+    await expect(sanitizeAuthReturnTo(request(), 'javascript:alert(1)', { defaultPath: '/' })).resolves.toBe('/');
+    await expect(sanitizeAuthReturnTo(request(), 'https://tenant.example.test/dashboard', { defaultPath: '/' })).resolves.toBe(
+      '/'
+    );
+  });
+
+  it('allows canonical auth hosts and active tenant hosts', async () => {
+    mocks.getInstanceConfig.mockReturnValue({
+      parentDomain: 'example.test',
+      canonicalAuthHost: 'auth.example.test',
+    });
+    mocks.isCanonicalAuthHost.mockImplementation((host: string) => host === 'auth.example.test');
+    mocks.loadInstanceByHostname.mockResolvedValue({
+      instanceId: 'tenant-a',
+      status: 'active',
+    });
+
+    await expect(
+      sanitizeAuthReturnTo(request(), 'https://auth.example.test/account', { defaultPath: '/' })
+    ).resolves.toBe('https://auth.example.test/account');
+    await expect(
+      sanitizeAuthReturnTo(request(), 'https://tenant.example.test/dashboard', { defaultPath: '/' })
+    ).resolves.toBe('https://tenant.example.test/dashboard');
+  });
+
+  it('resolves the effective request host through the shared host parser', () => {
+    vi.stubEnv('NODE_ENV', 'production');
+
+    expect(resolveAuthRequestHost(request({ 'x-forwarded-host': 'Tenant.Example.Test' }))).toBe(
+      'tenant.example.test'
+    );
+  });
+});

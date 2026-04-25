@@ -42,6 +42,10 @@
       "types": "./dist/governance-workflow-executor.d.ts",
       "default": "./dist/governance-workflow-executor.js"
     },
+    "./governance-compliance-export": {
+      "types": "./dist/governance-compliance-export.d.ts",
+      "default": "./dist/governance-compliance-export.js"
+    },
     "./legal-text-repository-shared": {
       "types": "./dist/legal-text-repository-shared.d.ts",
       "default": "./dist/legal-text-repository-shared.js"

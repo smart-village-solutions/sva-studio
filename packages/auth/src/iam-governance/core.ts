@@ -3,6 +3,7 @@ import {
   createGovernanceWorkflowExecutor,
   type GovernanceActor,
 } from '@sva/iam-governance/governance-workflow-executor';
+import { buildGovernanceComplianceExport } from '@sva/iam-governance/governance-compliance-export';
 import {
   governanceComplianceExportRoles,
   governanceReadRoles,
@@ -52,71 +53,6 @@ const withInstanceScopedDb = async <T>(
   instanceId: string,
   work: (client: QueryClient) => Promise<T>
 ): Promise<T> => withInstanceDb(resolvePool, instanceId, work);
-
-const csvEscape = (value: string | number | null | undefined) => {
-  if (value === null || value === undefined) {
-    return '';
-  }
-  const raw = String(value);
-  if (raw.includes(',') || raw.includes('"') || raw.includes('\n')) {
-    return `"${raw.replace(/"/g, '""')}"`;
-  }
-  return raw;
-};
-
-type ComplianceRow = {
-  id: string;
-  event_type: string;
-  payload: Record<string, unknown>;
-  request_id: string | null;
-  trace_id: string | null;
-  created_at: string;
-};
-
-const loadComplianceRows = async (
-  client: QueryClient,
-  input: { instanceId: string; from?: string; to?: string }
-): Promise<ComplianceRow[]> => {
-  const rows = await client.query<ComplianceRow>(
-    `
-SELECT
-  id,
-  event_type,
-  payload,
-  request_id,
-  trace_id,
-  created_at
-FROM iam.activity_logs
-WHERE instance_id = $1
-  AND event_type LIKE 'governance_%'
-  AND ($2::timestamptz IS NULL OR created_at >= $2::timestamptz)
-  AND ($3::timestamptz IS NULL OR created_at <= $3::timestamptz)
-ORDER BY created_at ASC;
-`,
-    [input.instanceId, input.from ?? null, input.to ?? null]
-  );
-
-  return rows.rows;
-};
-
-const toExportRows = (rows: readonly ComplianceRow[]) =>
-  rows.map((row) => {
-    const payload = row.payload ?? {};
-    const payloadRecord = typeof payload === 'object' && payload !== null ? payload : {};
-    return {
-      event_id: readString(payloadRecord.event_id) ?? row.id,
-      timestamp: readString(payloadRecord.timestamp) ?? row.created_at,
-      instance_id: readString(payloadRecord.instance_id),
-      action: readString(payloadRecord.action),
-      result: readString(payloadRecord.result),
-      actor_pseudonym: readString(payloadRecord.actor_pseudonym),
-      target_ref: readString(payloadRecord.target_ref),
-      reason_code: readString(payloadRecord.reason_code),
-      request_id: readString(payloadRecord.request_id) ?? row.request_id ?? undefined,
-      trace_id: readString(payloadRecord.trace_id) ?? row.trace_id ?? undefined,
-      event_type: row.event_type,
-    };
-  });
 
 export const governanceWorkflowHandler = async (request: Request): Promise<Response> => {
   return withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
@@ -260,71 +196,20 @@ export const governanceComplianceExportHandler = async (request: Request): Promi
       }
 
       try {
-        const exportRows = await withInstanceScopedDb(instanceId, async (client) => {
-          const rows = await loadComplianceRows(client, { instanceId, from, to });
-          return toExportRows(rows);
-        });
+        const exportResult = await withInstanceScopedDb(instanceId, async (client) =>
+          buildGovernanceComplianceExport(client, { instanceId, format, from, to })
+        );
 
-        if (format === 'csv') {
-          const header = [
-            'event_id',
-            'timestamp',
-            'instance_id',
-            'action',
-            'result',
-            'actor_pseudonym',
-            'target_ref',
-            'reason_code',
-            'request_id',
-            'trace_id',
-            'event_type',
-          ];
-          const lines = [header.join(',')];
-          for (const row of exportRows) {
-            lines.push(
-              [
-                row.event_id,
-                row.timestamp,
-                row.instance_id,
-                row.action,
-                row.result,
-                row.actor_pseudonym,
-                row.target_ref,
-                row.reason_code,
-                row.request_id,
-                row.trace_id,
-                row.event_type,
-              ]
-                .map(csvEscape)
-                .join(',')
-            );
-          }
-          return new Response(lines.join('\n'), {
+        if (exportResult.format === 'csv') {
+          return new Response(exportResult.body, {
             status: 200,
             headers: {
-              'Content-Type': 'text/csv; charset=utf-8',
+              'Content-Type': exportResult.contentType,
             },
           });
         }
 
-        if (format === 'siem') {
-          const siem = exportRows.map((row) => ({
-            '@timestamp': row.timestamp,
-            event_id: row.event_id,
-            instance_id: row.instance_id,
-            action: row.action,
-            result: row.result,
-            actor_pseudonym: row.actor_pseudonym,
-            target_ref: row.target_ref,
-            reason_code: row.reason_code,
-            request_id: row.request_id,
-            trace_id: row.trace_id,
-            event_type: row.event_type,
-          }));
-          return jsonResponse(200, { format: 'siem', rows: siem });
-        }
-
-        return jsonResponse(200, { format: 'json', rows: exportRows });
+        return jsonResponse(200, exportResult.body);
       } catch (error) {
         logger.error('Governance compliance export failed', {
           operation: 'compliance_export',

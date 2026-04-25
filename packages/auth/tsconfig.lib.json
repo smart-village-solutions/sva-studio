@@ -17,6 +17,7 @@
       "@sva/iam-core": ["packages/iam-core/dist/index.d.ts"],
       "@sva/iam-governance/read-models-internal": ["packages/iam-governance/dist/read-models-internal.d.ts"],
       "@sva/iam-governance/dsr-read-models-internal": ["packages/iam-governance/dist/dsr-read-models-internal.d.ts"],
+      "@sva/iam-governance/governance-compliance-export": ["packages/iam-governance/dist/governance-compliance-export.d.ts"],
       "@sva/iam-governance/legal-text-repository-shared": ["packages/iam-governance/dist/legal-text-repository-shared.d.ts"],
       "@sva/iam-governance": ["packages/iam-governance/dist/index.d.ts"],
       "@sva/instance-registry/http-contracts": ["packages/instance-registry/dist/http-contracts.d.ts"],

@@ -58,6 +58,17 @@ export {
   type GovernanceWorkflowRequest,
   type GovernanceWorkflowResponse,
 } from './governance-workflow-executor.js';
+export {
+  buildGovernanceComplianceExport,
+  loadGovernanceComplianceRows,
+  serializeGovernanceComplianceCsv,
+  toGovernanceComplianceExportRows,
+  toGovernanceComplianceSiemRows,
+  type GovernanceComplianceExportFormat,
+  type GovernanceComplianceExportResult,
+  type GovernanceComplianceExportRow,
+  type GovernanceComplianceSiemRow,
+} from './governance-compliance-export.js';
 export { hashLegalTextHtml, sanitizeLegalTextHtml } from './legal-text-html.js';
 export {
   consumeLegalConsentExportRateLimit,

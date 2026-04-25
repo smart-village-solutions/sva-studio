@@ -66,13 +66,13 @@
 
 ## 8. Documentation
 
-- [ ] 8.1 `docs/architecture/package-zielarchitektur.md` finalisieren
-- [ ] 8.2 `docs/architecture/04-solution-strategy.md` aktualisieren
-- [ ] 8.3 `docs/architecture/05-building-block-view.md` aktualisieren
-- [ ] 8.4 `docs/architecture/06-runtime-view.md` aktualisieren
-- [ ] 8.5 `docs/architecture/08-cross-cutting-concepts.md` aktualisieren
-- [ ] 8.6 `docs/architecture/09-architecture-decisions.md` und relevante ADRs aktualisieren
-- [ ] 8.7 `docs/architecture/10-quality-requirements.md` und `11-risks-and-technical-debt.md` aktualisieren
+- [x] 8.1 `docs/architecture/package-zielarchitektur.md` finalisieren
+- [x] 8.2 `docs/architecture/04-solution-strategy.md` aktualisieren
+- [x] 8.3 `docs/architecture/05-building-block-view.md` aktualisieren
+- [x] 8.4 `docs/architecture/06-runtime-view.md` aktualisieren
+- [x] 8.5 `docs/architecture/08-cross-cutting-concepts.md` aktualisieren
+- [x] 8.6 `docs/architecture/09-architecture-decisions.md` und relevante ADRs aktualisieren
+- [x] 8.7 `docs/architecture/10-quality-requirements.md` und `11-risks-and-technical-debt.md` aktualisieren
 
 ## 9. Verification
 

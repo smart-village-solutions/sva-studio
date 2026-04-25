@@ -91,7 +91,7 @@ gleichzeitig beeinflussen.
 
 ### Logging und Observability
 
-- Einheitlicher Server-Logger über `@sva/sdk/server`
+- Einheitlicher Server-Logger über `@sva/server-runtime`
 - AsyncLocalStorage für `workspace_id`/request context
 - OTEL Pipeline für Logs + Metrics
 - Development nutzt zusätzlich eine lokale Debug-Konsole im Frontend; sie zeigt Browser-Logs und redaktierte Server-Logs, ist aber kein produktiver Telemetriepfad
@@ -117,7 +117,7 @@ gleichzeitig beeinflussen.
 - Runtime-Doctor und Deploy-Report ergänzen den fachlichen Schema-Guard um die verwendete `goose`-Version sowie Metadaten des dedizierten Swarm-Migrations- und Bootstrap-Jobs, ohne Secrets oder Roh-SQL nach außen zu exponieren
 - Keycloak-User-Sync loggt übersprungene Benutzer nur begrenzt, auf Debug-Level und ohne Klartext-PII; Summary-Logs enthalten `auth_realm`, `provider_source`, `execution_mode`, `skipped_count` und `sample_instance_ids`
 - Der Sync-Report darf additive, nicht-sensitive Diagnosefelder wie `authRealm`, `providerSource`, `executionMode`, `matchedWithoutInstanceAttributeCount` und `skippedInstanceIds` zurückgeben, damit UI und Doctor Realm-/Instanz-Drift ohne `kcadm.sh` eingrenzen können
-- Role-Sync- und Reconcile-Pfade verwenden ausschließlich den SDK-Logger; `console.*` ist serverseitig ausgeschlossen
+- Role-Sync- und Reconcile-Pfade verwenden ausschließlich den Server-Runtime-Logger; `console.*` ist serverseitig ausgeschlossen
 - Role-Sync-Audit nutzt ein einheitliches Schema mit `workspace_id`, `operation`, `result`, `error_code?`, `request_id`, `trace_id?`, `span_id?`
 - Keycloak-Admin-UI-Diagnosen verwenden stabile objektbezogene Codes wie `missing_instance_attribute`, `mapping_missing`, `forbidden_role_mapping`, `read_only_federated_field` und `idp_forbidden`.
 - Sync- und Reconcile-Reports dürfen betroffene Objektlisten enthalten; öffentliche Payloads bleiben auf nicht-sensitive IDs, Zähler, Codes und Korrelationsdaten begrenzt.
@@ -130,7 +130,7 @@ gleichzeitig beeinflussen.
 - PII-Schutz in Governance-Events: nur pseudonymisierte Actor-/Target-Referenzen
 - DSR-Wartungslauf emittiert strukturierte Audit-Events (`dsr_maintenance_executed`, `dsr_deletion_sla_escalated`)
 - Finale Löschung pseudonymisiert Audit-Referenzen (`subject_pseudonym`) statt Klartext-PII
-- SDK-Logger nutzt typisierte OTEL-Bridge (keine `any`-Casts in Transport/Bootstrap)
+- Server-Runtime-Logger nutzt typisierte OTEL-Bridge (keine `any`-Casts in Transport/Bootstrap)
 - Sensitive-Keys-Redaction umfasst zusätzlich Cookie-, Session-, CSRF- und API-Key-Header/Felder
 - Pseudonyme technische IDs bleiben personenbezogen und werden nur geloggt, wenn sie fuer Betrieb, Audit oder Korrelation wirklich erforderlich sind
 - Auth-Audit und Betriebslogs unterscheiden `login`, `silent_reauth_success`, `silent_reauth_failed`, `forced_reauth` und `logout`
@@ -147,8 +147,8 @@ gleichzeitig beeinflussen.
 
 - `@sva/routing` verwendet einen optional injizierten `RoutingDiagnosticsHook` für client-shared Routing-Entscheidungen.
 - Browser-Produktion bleibt ohne expliziten Hook No-op; es entsteht kein implizites Tracking normaler Navigation.
-- Client-shared Routing-Dateien importieren kein `@sva/sdk` oder `@sva/sdk/server`.
-- Serverseitige Bindung an den SDK-Logger erfolgt nur in `packages/routing/src/auth.routes.server.ts`.
+- Client-shared Routing-Dateien importieren kein `@sva/server-runtime`.
+- Serverseitige Bindung an den Server-Runtime-Logger erfolgt nur in serverseitigen Routing- und Runtime-Adaptern.
 - Guard-Denials, unbekannte Plugin-Guard-Mappings, unbehandelte Handler-Fehler und `405`-Dispatch-Anomalien nutzen einen gemeinsamen Safe-Feldsatz.
 - Health-Check-Routen sind explizit vom `routing.handler.method_not_allowed`-Logging ausgenommen.
 
@@ -267,6 +267,14 @@ gleichzeitig beeinflussen.
 - i18n/harte Strings werden als eigener Governance-Strang behandelt und nicht nur implizit im Code-Review geprüft
 - Konflikte zwischen Review-Perspektiven werden auf Orchestrator-Ebene explizit gemacht, die Entscheidung bleibt beim Menschen
 
+### Package-Boundaries und Runtime-Imports
+
+- Neue Fachlogik wird direkt im Zielpackage umgesetzt: `@sva/auth-runtime`, `@sva/iam-core`, `@sva/iam-admin`, `@sva/iam-governance`, `@sva/instance-registry`, `@sva/data-client`, `@sva/data-repositories`, `@sva/plugin-sdk` oder `@sva/server-runtime`.
+- Alte Sammelpackages bleiben nur Kompatibilitätsbereiche; sie dürfen keine neue fachliche Ownership begründen.
+- Nx-`depConstraints` und ESLint-Importverbote verhindern Rückfälle auf alte Sammelimporte in produktiven Consumer-Pfaden.
+- Serverseitig von Node geladene Workspace-Packages verwenden explizite `.js`-Endungen für relative Runtime-Imports und bestehen `check:runtime`.
+- Runtime-Imports auf andere Workspace-Packages stehen im lokalen `package.json` unter `dependencies`.
+
 ### UI-Shell, Responsivität und Skeleton UX
 
 - Die Root-Shell trennt die Bereiche Kopfzeile, Seitenleiste und Hauptinhalt explizit
@@ -277,17 +285,14 @@ gleichzeitig beeinflussen.
 
 Referenzen:
 
-- `packages/auth/src/routes.server.ts`
-- `packages/auth/src/iam-authorization.server.ts`
-- `packages/auth/src/iam-account-management/groups-handlers.ts`
-- `packages/auth/src/iam-governance.server.ts`
-- `packages/auth/src/iam-data-subject-rights.server.ts`
-- `packages/auth/src/redis-session.server.ts`
-- `packages/auth/src/audit-db-sink.server.ts`
-- `packages/auth/src/iam-authorization/permission-store.ts`
-- `packages/auth/src/iam-authorization/shared.ts`
+- `packages/auth-runtime/src/runtime-routes.ts`
+- `packages/auth-runtime/src/index.server.ts`
+- `packages/iam-core/src/index.ts`
+- `packages/iam-admin/src/index.ts`
+- `packages/iam-governance/src/index.ts`
+- `packages/instance-registry/src/index.ts`
 - `packages/core/src/iam/authorization-engine.ts`
-- `packages/sdk/src/logger/index.server.ts`
+- `packages/server-runtime/src/index.ts`
 - `packages/monitoring-client/src/otel.server.ts`
 - `docs/adr/ADR-014-postgres-notify-cache-invalidierung.md`
 - `docs/architecture/iam-service-architektur.md`

@@ -146,8 +146,27 @@ Zuordnung:
 ### Fortschreibung 2026-03: Modulare IAM-Server-Bausteine
 
 - `ADR-017-modulare-iam-server-bausteine.md`
-  - begründet die Fassade-plus-Kernmodul-Struktur für `packages/auth` und `packages/data`
+  - begründete die frühere Fassade-plus-Kernmodul-Struktur; der OpenSpec-Hard-Cut führt diese Entscheidung in eigenständige Zielpackages über.
   - verschiebt Complexity-Restschuld an die tatsächlichen Kernmodule statt an historische Fassadenpfade
+
+### Fortschreibung 2026-04: Package-Zielarchitektur-Hard-Cut ohne neue ADR
+
+- Für `refactor-package-target-architecture-hard-cut` wurde keine neue ADR angelegt.
+- Maßgeblich bleiben ADR-017 für die modulare Zerlegung, ADR-021 für die Mainserver-Integrationsgrenze, ADR-030 für Instance-Registry/Provisioning, ADR-034 für Plugin-SDK und ADR-036 für IAM-Projektion/Reconcile.
+- Der Change setzt diese Entscheidungen als Paketgrenzen um:
+  - Auth-Runtime in `@sva/auth-runtime`
+  - IAM-Core in `@sva/iam-core`
+  - Benutzer-/Rollen-/Gruppen-/Organisationsverwaltung in `@sva/iam-admin`
+  - Governance, Legal Texts und DSR in `@sva/iam-governance`
+  - Instanzverwaltung und Provisioning in `@sva/instance-registry`
+  - Plugin-Verträge in `@sva/plugin-sdk`
+  - Server-Hilfen in `@sva/server-runtime`
+  - Datenzugriff getrennt in `@sva/data-client` und `@sva/data-repositories`
+
+Zuordnung:
+
+- Abschnitt 04/05/06/08/10/11: OpenSpec-Change `refactor-package-target-architecture-hard-cut`
+- `docs/architecture/package-zielarchitektur.md` ist die verbindliche Zusammenfassung des umgesetzten Schnitts.
 
 ### Fortschreibung 2026-03: Swarm-Deployment und Multi-Host-Betrieb
 
@@ -264,7 +283,7 @@ Zuordnung:
 ### Fortschreibung 2026-04: Plugin-SDK-Vertrag v1
 
 - `ADR-034-plugin-sdk-vertrag-v1.md`
-  - definiert `@sva/sdk` als einzige öffentliche Boundary für Studio-Plugins
+  - definiert den Plugin-SDK-Vertrag, der nach dem Hard-Cut in `@sva/plugin-sdk` liegt
   - bündelt Routen, Navigation, Content-Typen und Übersetzungen in `PluginDefinition`
   - hält die Registrierung in v1 bewusst statisch im App-Bundle und ordnet Guards dem Host zu
 

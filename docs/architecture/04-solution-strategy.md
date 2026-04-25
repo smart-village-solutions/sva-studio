@@ -17,7 +17,7 @@ Architekturprinzipien auf IST-Basis.
 
 - Monorepo mit klaren Paketgrenzen und Workspace-Abhängigkeiten (`workspace:*`)
 - Framework-agnostische Kernlogik in `@sva/core`, Integration in App-Ebene
-- Plugin-SDK-Boundary: Plugins greifen ausschließlich über `@sva/sdk` auf Host-APIs zu
+- Plugin-SDK-Boundary: Plugins greifen ausschließlich über `@sva/plugin-sdk` auf Host-APIs zu
 - Plugin-Vertrag v1: Routen, Navigation, Content-Typen und Übersetzungen werden als statische SDK-Metadaten beschrieben; Guard-Anwendung und Route-Materialisierung bleiben Host-Verantwortung
 - Plugin-Governance folgt einem einheitlichen Namespace-Modell: plugin-beigestellte registrierte Host-Identifier verwenden `<pluginId>.<name>`, während Core-Identifier bewusst hosteigen und unqualifiziert bleiben dürfen
 - Trennung von client-sicheren und serverseitigen Routen/Handlern
@@ -31,8 +31,8 @@ Architekturprinzipien auf IST-Basis.
 - Der SVA-Mainserver wird über ein dediziertes Integrationspaket mit client-sicheren Root-Exports und serverseitigem `./server`-Subpfad angebunden
 - Instanzbezogene Upstream-Endpunkte liegen in Postgres, per-User-Credentials ausschließlich in Keycloak-Attributen
 - Datenbankmigrationen bleiben SQL-first und werden über einen repository-lokalen, versionsgepinn­ten `goose`-Pfad statt über ad-hoc SQL-Ausführung standardisiert
-- IAM-Server-Module folgen einer Fassade-plus-Kernmodul-Strategie: dünne öffentliche Entry-Points, fachliche Unterordner und explizit dokumentierte Restschuld in `core.ts`
-- HTTP-spezifische Fehlerantworten werden nicht im Core modelliert, sondern serverseitig über gemeinsame Utilities in `@sva/sdk/server`
+- IAM-Server-Module folgen der Package-Zielarchitektur: Auth-Runtime, IAM-Core, IAM-Admin, IAM-Governance und Instance-Registry haben getrennte Ownership.
+- HTTP-spezifische Fehlerantworten werden nicht im Core modelliert, sondern serverseitig über gemeinsame Utilities in `@sva/server-runtime`
 - Doku-getriebene Architekturpflege (arc42 + OpenSpec + ADR)
 - UI-Shell folgt semantischen Design-Tokens statt direkter Farbcodes und bleibt kompatibel zu Tailwind-/shadcn-Primitives
 - Theming wird instanzfähig gedacht: `instanceId` kann Theme-Varianten bestimmen, Light/Dark-Mode bleibt dabei ein orthogonaler Modus
@@ -79,6 +79,7 @@ Architekturprinzipien auf IST-Basis.
 - Per-User-Mainserver-Delegation und Integrationsgrenze: `ADR-021`
 - OSS-Standard für SQL-Migrationen: `ADR-029`
 - Registry-basierte Instanzfreigabe und gemeinsamer Provisioning-Vertrag: `ADR-030`
+- Package-Zielarchitektur-Hard-Cut: OpenSpec-Change `refactor-package-target-architecture-hard-cut`
 
 Referenzen:
 
@@ -103,6 +104,13 @@ Referenzen:
 - Tenant-Freigabe wird nicht mehr strategisch über tenant-spezifische Env-Konfiguration modelliert, sondern über eine zentrale Registry in Postgres.
 - Root-Host bleibt die einzige globale Control-Plane-Oberfläche; Tenant-Hosts dienen nur dem instanzgebundenen Betrieb.
 - HTTP, Studio-UI und Ops-CLI verwenden denselben fachlichen Provisioning-Vertrag für Neuanlage und Statusmutationen.
+
+### Fortschreibung 2026-04: Package-Zielarchitektur-Hard-Cut
+
+- Die früheren Sammelrollen von `@sva/auth`, `@sva/data` und `@sva/sdk` sind in Zielpackages getrennt.
+- Authentifizierung und Runtime-Routen liegen in `@sva/auth-runtime`; Benutzer-/Rollen-/Gruppen-/Organisationsverwaltung liegt in `@sva/iam-admin`; Governance, Legal Texts und DSR liegen in `@sva/iam-governance`; Instanzverwaltung und Provisioning liegen in `@sva/instance-registry`.
+- Plugin-Verträge laufen über `@sva/plugin-sdk`, serverseitige Hilfen über `@sva/server-runtime`, Browser-Datenzugriff über `@sva/data-client` und DB-Repositories über `@sva/data-repositories`.
+- Die Package-Grenzen werden durch Nx-`depConstraints`, ESLint-Importverbote und serverseitige Runtime-Checks abgesichert.
 
 ### Fortschreibung 2026-04: IAM-Diagnostik vor Refactoring
 

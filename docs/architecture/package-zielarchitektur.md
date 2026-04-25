@@ -2,35 +2,41 @@
 
 ## Ziel und Einordnung
 
-Dieses Dokument beschreibt das Zielbild für die Package-Struktur des SVA Studio. Es ergänzt die Bausteinsicht in `./05-building-block-view.md` und dient als Leitplanke für funktionales Wachstum, Refactorings und OpenSpec-Changes mit Architekturwirkung.
+Dieses Dokument beschreibt die umgesetzte Zielstruktur für die Package-Struktur des SVA Studio. Es ergänzt die Bausteinsicht in `./05-building-block-view.md` und dient als verbindliche Leitplanke für funktionales Wachstum, Refactorings und OpenSpec-Changes mit Architekturwirkung.
 
-Das Ziel ist nicht, sofort alle bestehenden Packages aufzuteilen. Das Ziel ist, neue Funktionalität ab jetzt konsequent in fachlich tragfähige Grenzen zu lenken und bestehende Hotspots schrittweise zu entlasten.
+Der harte Package-Schnitt ist durch den OpenSpec-Change `refactor-package-target-architecture-hard-cut` umgesetzt: neue fachliche Arbeit nutzt die Zielpackages direkt. Die früheren Sammelpackages `@sva/auth`, `@sva/data` und `@sva/sdk` bleiben nur noch als Kompatibilitäts- oder Altpfade für ausdrücklich migrierte Stellen relevant.
 
 ## Architekturziele
 
 - Fachliche Verantwortlichkeiten sollen pro Package klar erkennbar sein.
 - Framework-agnostische Kernlogik bleibt von React-, TanStack- und Node-Runtime-Bindings getrennt.
 - Serverseitig von Node geladene Packages bleiben ESM-strikt und verwenden explizite Runtime-Endungen.
-- Plugins konsumieren Host-Verträge nur über das SDK und nicht direkt über interne Core- oder App-Module.
+- Plugins konsumieren Host-Verträge nur über `@sva/plugin-sdk` und nicht direkt über interne Core- oder App-Module.
 - Autorisierung, Routing, Datenzugriff, Runtime-Kontext und UI-Komposition bleiben getrennte Änderungsachsen.
-- Große IAM- und Instanz-Funktionalität wächst nicht weiter unkontrolliert in `@sva/auth`.
+- Große IAM- und Instanz-Funktionalität wächst nicht mehr in `@sva/auth`; sie liegt in den fachlichen Zielpackages.
 - PII-Datenflüsse werden bei Package-Schnitten explizit klassifiziert; nur autorisierte Fachmodule dürfen personenbezogene Daten im Klartext verarbeiten (siehe [PII-Datenfluss-Regel](#pii-datenfluss-regel)).
 - `@sva/iam-core` ist der einzige Ort für zentrale Autorisierungsentscheidungen (`authorize()`); Fachmodule konsumieren diesen Vertrag, duplizieren ihn nicht (Fail-closed bei fehlendem Autorisierungskontext).
 
-## Aktuelle Ausgangslage
+## Umgesetzter Stand
 
-Die aktuelle Struktur ist grundsätzlich tragfähig:
+Die aktuelle Struktur trennt die vorherigen Sammelrollen in eigenständige Pakete:
 
 - `@sva/core` enthält framework-agnostische Verträge und reine Kernlogik.
-- `@sva/sdk` stellt Host-, Plugin-, Logging- und Server-Kontext-Verträge bereit.
-- `@sva/data` bündelt Datenzugriff, Repositories, Seeds und DB-nahe Hilfen.
-- `@sva/auth` enthält Authentifizierung, Session, IAM, Governance, DSR, Instanzverwaltung und Keycloak-nahe Control-Plane-Logik.
+- `@sva/plugin-sdk` stellt Host-, Plugin-, Registry- und Content-Type-Verträge bereit.
+- `@sva/server-runtime` stellt Request-Kontext, Logging, Fehlerantworten und OTEL-Bootstrap bereit.
+- `@sva/data-client` stellt den client-sicheren HTTP-/Schema-Client bereit.
+- `@sva/data-repositories` bündelt serverseitige Repositories, Migration-nahe Typen und DB-Zugriffe.
+- `@sva/auth-runtime` enthält Authentifizierung, Session, OIDC, Cookies, Auth-Middleware und Runtime-Routen.
+- `@sva/iam-core` enthält zentrale Autorisierungsverträge und die Permission-Entscheidung.
+- `@sva/iam-admin` enthält Benutzer, Rollen, Gruppen, Organisationen, Actor-Auflösung, Reconcile und Keycloak-nahe Admin-Orchestrierung.
+- `@sva/iam-governance` enthält Governance, Legal Texts, DSR und audit-nahe IAM-Fachfälle.
+- `@sva/instance-registry` enthält Instanzmodell, Host-Klassifikation, Registry, Provisioning und Tenant-Keycloak-Control-Plane.
 - `@sva/routing` stellt Route-Factories, Pfade, Guards und serverseitiges Auth-Routing bereit.
 - `@sva/sva-mainserver` kapselt die externe Mainserver-Integration.
 - `@sva/plugin-news` zeigt das Zielmuster für fachliche Plugins.
 - `apps/sva-studio-react` enthält UI, TanStack-Start-Runtime, Router-Wiring und App-nahe Server-Funktionen.
 
-Die größte strukturelle Last liegt in `@sva/auth`. Dort liegen mehrere fachliche Subdomänen, die langfristig eigene Bausteine verdienen.
+Die größte frühere strukturelle Last in `@sva/auth` ist fachlich aufgelöst. `@sva/auth` ist kein Zielort für neue Runtime-, IAM-, Governance- oder Registry-Fachlogik.
 
 ## Ziel-Layer
 
@@ -39,7 +45,7 @@ flowchart TB
   App[apps/sva-studio-react]
   Plugins[@sva/plugin-*]
   Routing[@sva/routing]
-  PluginSdk[@sva/plugin-sdk / @sva/sdk]
+  PluginSdk[@sva/plugin-sdk]
   AuthRuntime[@sva/auth-runtime]
   IamCore[@sva/iam-core]
   IamAdmin[@sva/iam-admin]
@@ -48,7 +54,7 @@ flowchart TB
   Integrations[@sva/*-integration]
   DataRepos[@sva/data-repositories]
   DataClient[@sva/data-client]
-  ServerRuntime[@sva/server-runtime / @sva/sdk-server]
+  ServerRuntime[@sva/server-runtime]
   Core[@sva/core]
   Monitoring[@sva/monitoring-client]
 
@@ -90,26 +96,26 @@ flowchart TB
   Monitoring --> Core
 ```
 
-Die Namen `@sva/plugin-sdk`, `@sva/server-runtime`, `@sva/data-client` und `@sva/data-repositories` sind Zielrollen. Sie müssen nicht sofort als neue Packages existieren. Solange sie in bestehenden Packages liegen, gelten die Verantwortungsgrenzen trotzdem.
+Die Zielrollen sind als Workspace-Packages vorhanden und werden über Nx-, ESLint- und Runtime-Gates abgesichert.
 
 ## Ziel-Packages und Verantwortlichkeiten
 
 | Zielbaustein | Verantwortung | Aktueller Ort | Zielregel |
 | --- | --- | --- | --- |
 | `@sva/core` | Pure Domänenverträge, Value Objects, Validierungslogik ohne Runtime-Bindung | `packages/core` | Bleibt basal und darf keine App-, DB-, SDK- oder Runtime-Abhängigkeiten aufnehmen. |
-| `@sva/plugin-sdk` | Öffentlicher Vertrag für Plugins, Registries, Admin-Ressourcen, Content-Type-Erweiterungen, Plugin-i18n | aktuell `packages/sdk` | Plugins dürfen Host-Funktionen nur über diesen Vertrag konsumieren. |
-| `@sva/server-runtime` | Request-Kontext, JSON-Fehlerantworten, Logger-Fassade, OTEL-Bootstrap, Workspace-Kontext | aktuell `packages/sdk/server` | Server-Hilfen bleiben fachfrei und dürfen keine IAM-Fachlogik enthalten. |
-| `@sva/data-client` | HTTP-Client, Cache, Runtime-Schema-Validierung für Browser-/Universal-Zugriff | aktuell `packages/data/src/index.ts` | Keine DB-Treiber, keine serverseitigen Repositories, keine IAM-Fachlogik. |
-| `@sva/data-repositories` | Postgres-Repositories, Migration-nahe Typen, DB-Operationen | aktuell `packages/data` | Keine UI- oder Routing-Abhängigkeiten; nur serverseitige Konsumenten. |
-| `@sva/auth-runtime` | OIDC, Login, Logout, Session, Cookies, Silent-Reauth, Auth-Middleware | aktuell `packages/auth` | Authentifizierung und Session bleiben getrennt von IAM-Fachverwaltung. |
-| `@sva/iam-core` | Permission Engine, Authorize-Verträge, effektive Rechte, IAM-Basisregeln | aktuell `packages/core` und `packages/auth` | Fachliche Entscheidung bleibt zentral; Fachmodule duplizieren keine Berechtigungsauflösung. |
-| `@sva/iam-admin` | Benutzer, Rollen, Gruppen, Organisationen, Keycloak-Admin-Abstraktion, Reconcile | aktuell `packages/auth/src/iam-account-management`, `iam-groups`, `iam-organizations`, `keycloak-admin-client` | Admin-Funktionalität wird aus Auth-Runtime herausgelöst. |
-| `@sva/iam-governance` | Governance-Cases, DSR, Legal Texts, Audit-nahe IAM-Fachfälle | aktuell `packages/auth/src/iam-governance`, `iam-data-subject-rights`, `iam-legal-texts`, `iam-auditing` | Compliance-nahe Fachlogik bekommt eigene Ownership und eigene Tests. |
-| `@sva/instance-registry` | Instanzmodell, Host-Klassifikation, Registry, Provisioning, Keycloak-Tenant-Control-Plane | aktuell `packages/core`, `packages/data`, `packages/auth`, App-UI | Instanzverwaltung wird als eigene Control-Plane behandelt, nicht als Unterfunktion von Auth. |
-| `@sva/routing` | Route-Verträge, Search-Param-Normalisierung, Route-Factories, Guard-Schnittstellen | aktuell `packages/routing` | Routing kennt Verträge, aber keine Auth-Runtime-Implementierung. |
-| `@sva/*-integration` | Downstream-Integrationen mit getrennten client-sicheren Typen und serverseitigen Adaptern | aktuell `packages/sva-mainserver` | Integrationspakete kapseln OAuth2, GraphQL, Secret-Lookups und Fehlerabbildung. |
-| `@sva/plugin-*` | Fachliche Erweiterungen über SDK-Verträge | aktuell `packages/plugin-news` | Keine Direktimporte aus `@sva/core`, `@sva/auth`, `@sva/data` oder App-Modulen. |
-| `apps/sva-studio-react` | UI, TanStack Start, Router-Wiring, App-Shell, Server-Funktionen als Adapter | aktuell `apps/sva-studio-react` | Keine dauerhafte Domänenlogik, keine rohen DB-/Keycloak-/GraphQL-Zugriffe im Browser-Bundle. |
+| `@sva/plugin-sdk` | Öffentlicher Vertrag für Plugins, Registries, Admin-Ressourcen, Content-Type-Erweiterungen, Plugin-i18n | `packages/plugin-sdk` | Plugins dürfen Host-Funktionen nur über diesen Vertrag konsumieren. |
+| `@sva/server-runtime` | Request-Kontext, JSON-Fehlerantworten, Logger-Fassade, OTEL-Bootstrap, Workspace-Kontext | `packages/server-runtime` | Server-Hilfen bleiben fachfrei und dürfen keine IAM-Fachlogik enthalten. |
+| `@sva/data-client` | HTTP-Client, Cache, Runtime-Schema-Validierung für Browser-/Universal-Zugriff | `packages/data-client` | Keine DB-Treiber, keine serverseitigen Repositories, keine IAM-Fachlogik. |
+| `@sva/data-repositories` | Postgres-Repositories, Migration-nahe Typen, DB-Operationen | `packages/data-repositories` | Keine UI- oder Routing-Abhängigkeiten; nur serverseitige Konsumenten. |
+| `@sva/auth-runtime` | OIDC, Login, Logout, Session, Cookies, Silent-Reauth, Auth-Middleware, Runtime-Routen | `packages/auth-runtime` | Authentifizierung und Session bleiben getrennt von IAM-Fachverwaltung. |
+| `@sva/iam-core` | Permission Engine, Authorize-Verträge, effektive Rechte, IAM-Basisregeln | `packages/iam-core` | Fachliche Entscheidung bleibt zentral; Fachmodule duplizieren keine Berechtigungsauflösung. |
+| `@sva/iam-admin` | Benutzer, Rollen, Gruppen, Organisationen, Keycloak-Admin-Abstraktion, Reconcile | `packages/iam-admin` | Admin-Funktionalität bleibt aus Auth-Runtime herausgelöst. |
+| `@sva/iam-governance` | Governance-Cases, DSR, Legal Texts, Audit-nahe IAM-Fachfälle | `packages/iam-governance` | Compliance-nahe Fachlogik hat eigene Ownership und eigene Tests. |
+| `@sva/instance-registry` | Instanzmodell, Host-Klassifikation, Registry, Provisioning, Keycloak-Tenant-Control-Plane | `packages/instance-registry` | Instanzverwaltung ist eine eigene Control-Plane, nicht eine Unterfunktion von Auth. |
+| `@sva/routing` | Route-Verträge, Search-Param-Normalisierung, Route-Factories, Guard-Schnittstellen | `packages/routing` | Routing kennt Verträge und verdrahtet Runtime-Routen über `@sva/auth-runtime`. |
+| `@sva/*-integration` | Downstream-Integrationen mit getrennten client-sicheren Typen und serverseitigen Adaptern | `packages/sva-mainserver` | Integrationspakete kapseln OAuth2, GraphQL, Secret-Lookups und Fehlerabbildung. |
+| `@sva/plugin-*` | Fachliche Erweiterungen über Plugin-SDK-Verträge | `packages/plugin-news` | Keine Direktimporte aus `@sva/core`, `@sva/auth`, `@sva/data` oder App-Modulen. |
+| `apps/sva-studio-react` | UI, TanStack Start, Router-Wiring, App-Shell, Server-Funktionen als Adapter | `apps/sva-studio-react` | Keine dauerhafte Domänenlogik, keine rohen DB-/Keycloak-/GraphQL-Zugriffe im Browser-Bundle. |
 
 ## Erlaubte Abhängigkeitsrichtung
 
@@ -165,39 +171,33 @@ Neue Packages, die PII verarbeiten, müssen dies in ihrer `project.json` mit ein
   - `@sva/instance-registry` nutzt den **Platform-Admin-Client**.
   - Beide konsumieren denselben Port, halten aber keine eigenen Keycloak-Credentials.
 
-## Zielbild für aktuelle Hotspots
+## Ehemalige Hotspots und heutige Zielgrenzen
 
 ### Auth und IAM
 
-`@sva/auth` wird langfristig in zwei Rollen getrennt:
+`@sva/auth` ist nicht mehr der fachliche Sammelort. Die Rollen sind getrennt:
 
 - Auth-Runtime: Login, Session, OIDC, Cookies, Middleware, Runtime-Routes.
 - IAM-Fachmodule: Administration, Autorisierung, Governance, DSR, Instanzen.
 
-Neue Endpunkte im IAM-Umfeld sollen nicht mehr pauschal in `packages/auth/src` ergänzt werden. Sie sollen einem fachlichen Zielbaustein zugeordnet werden. Wenn der Zielbaustein noch kein eigenes Package ist, wird die Struktur im bestehenden Package mit einem klaren Unterordner und öffentlicher Fassade vorbereitet.
+Neue Endpunkte im IAM-Umfeld werden nicht in `packages/auth/src` ergänzt. Sie werden einem fachlichen Zielpackage zugeordnet; `@sva/auth` bleibt nur dort im Spiel, wo ein bestehender Kompatibilitätsadapter ausdrücklich erhalten ist.
 
 ### Routing
 
-`@sva/routing` soll Auth-Pfade und Handler nicht aus `@sva/auth` beziehen. Auth-Routen sind als Contract in einem neutralen Baustein zu führen:
+`@sva/routing` bezieht Auth-Pfade und Runtime-Handler über `@sva/auth-runtime`. Eine direkte Kante auf `@sva/auth` ist nicht zulässig.
 
-- kurzfristig: Contract nach `@sva/core` oder in einen neutralen Subpath verschieben
-- mittelfristig: `@sva/routing` hängt nicht mehr von `@sva/auth` ab
-- langfristig: App und Auth-Runtime registrieren Routen über deklarative Verträge
-
-Boundary-Disables für `@nx/enforce-module-boundaries` in Routing-Dateien sind als technische Schuld zu behandeln und schrittweise zu entfernen.
+Boundary-Disables für `@nx/enforce-module-boundaries` in produktiven Routing-Dateien sind nicht zulässig; bekannte Ausnahmen müssen blockierend dokumentiert werden.
 
 ### SDK
 
-`@sva/sdk` bleibt vorerst ein Bündel aus Plugin-Vertrag und serverseitigen Runtime-Hilfen. Wachstum in diesem Package ist nur akzeptabel, wenn die neue Funktion fachfrei ist oder explizit ein öffentlicher Host-/Plugin-Vertrag ist.
-
-Bei weiterem Wachstum wird getrennt:
+`@sva/sdk` ist nicht mehr Zielort für neue Plugin- oder Server-Runtime-Verträge. Die Zielrollen sind getrennt:
 
 - `@sva/plugin-sdk` für Plugin- und Host-Erweiterungsverträge
 - `@sva/server-runtime` für Logging, Request-Kontext, OTEL und Fehlerantworten
 
 ### Data
 
-`@sva/data` wird fachlich in zwei Rollen behandelt:
+`@sva/data` ist nicht mehr Zielort für neue DataClient- oder Repository-Funktionalität. Die Zielrollen sind getrennt:
 
 - universeller HTTP- und Schema-validierter DataClient
 - serverseitige Postgres-Repositories und Migration-nahe Datenzugriffe
@@ -215,51 +215,16 @@ Neue Instanzfunktionen sollen das Zielpackage `@sva/instance-registry` vorbereit
 - Keycloak-Provisioning wird über eine Fassade gekapselt.
 - UI ruft nur öffentliche Server-Funktionen oder HTTP-Verträge auf.
 
-## Migrationsstrategie
+## Umsetzungs- und Betriebsregel
 
-Die Zielarchitektur wird inkrementell umgesetzt.
+Die Zielarchitektur ist durch den harten OpenSpec-Schnitt umgesetzt. Für laufende Entwicklung gelten jetzt diese Regeln:
 
-### Phase 1: Grenzen stabilisieren
-
-- Keine neue große Fachlogik mehr direkt in `@sva/auth` ohne Zielbaustein.
-- Neue OpenSpec-Changes benennen betroffene Zielpackages.
-- Boundary-Disables werden inventarisiert und mit Abbaupfad versehen.
-- `@sva/routing -> @sva/auth` wird als zu entfernende Abhängigkeit markiert.
-
-**Exit-Kriterium:** Alle bestehenden Boundary-Disables sind inventarisiert, `pnpm lint` ist grün, keine neue IAM-Fachlogik ohne Zielbaustein-Zuordnung.
-
-### Phase 2: Verträge herausziehen
-
-- Auth-Routenpfade und route-nahe Contracts in einen neutralen Baustein verschieben.
-- IAM-Admin-, Governance- und Instance-Contracts öffentlich stabilisieren.
-- DataClient- und Repository-Exports klarer trennen.
-- SDK-Subpaths für Plugin- und Server-Runtime-Verträge dokumentieren.
-
-**Security-Gate:** Contract-Tests müssen Autorisierungs-Invarianten und PII-Grenzen abdecken.
-**Exit-Kriterium:** Alle öffentlichen Verträge der Zielbausteine sind stabilisiert und getestet.
-
-### Phase 3: Packages schneiden
-
-- `@sva/instance-registry` als erstes neues Fachpackage herauslösen, wenn weitere Instanzfunktionen anstehen.
-- Danach `@sva/iam-governance` oder `@sva/iam-admin` anhand des nächsten größeren Feature-Drucks herauslösen.
-- Erst nach stabilen Verträgen `@sva/sdk` in `plugin-sdk` und `server-runtime` trennen.
-- Pro neuem Package: `project.json` mit Scope-Tag, Nx-Targets (`build`, `lint`, `test:unit`, `test:types`, `check:runtime`) und Pipeline-Validierung.
-
-**Security-Gate:** Herausgelöste Packages bestehen sofort `check:server-runtime` und alle bestehenden Security-Tests.
-**Rollback-Strategie:** Deprecated-Re-Exports am alten Pfad als Übergangslösung; alter und neuer Import-Pfad parallel nutzbar.
-**Observability-Übergang:** `createSdkLogger({ component: '...' })`-Komponentennamen für neue Packages vorab festlegen. Bestehende Dashboard-Queries und Alerts parallel um neue Bezeichner erweitern, bevor alte entfernt werden.
-**Exit-Kriterium:** Neues Package ist in Nx-Graph, CI/CD und `depConstraints` vollständig integriert; bestehende Tests grün.
-
-### Phase 4: Grenzen erzwingen
-
-- Nx-`depConstraints` an die Zielstruktur anpassen (neue Scope-Tags: `scope:iam-core`, `scope:iam-admin`, `scope:iam-governance`, `scope:instance-registry`, `scope:auth-runtime` etc.).
-- PII- und Credential-Grenzen über `depConstraints` durchsetzen.
-- Tests auf Package-Contracts ausrichten.
-- Veraltete Importpfade deprecaten und entfernen.
-- Architektur- und OpenSpec-Dokumentation nachziehen.
-
-**Security-Gate:** Nx-`depConstraints` erzwingen die PII- und Credential-Grenzen aus der PII-Datenfluss-Regel.
-**Exit-Kriterium:** Alle Boundary-Disables entfernt, `pnpm lint` erzwingt Zielarchitektur.
+- Neue Fachlogik wird direkt im fachlichen Zielpackage umgesetzt.
+- Alte Sammelimporte werden nicht für neue Consumer verwendet.
+- Kompatibilitätsadapter in `@sva/auth`, `@sva/data` und `@sva/sdk` dürfen keine neue Ownership begründen.
+- Pro neuem oder geändertem serverseitigem Package bleiben `build`, `lint`, `test:unit`, `test:types` und `check:runtime` Teil des lokalen Gates.
+- Nx-`depConstraints`, `no-restricted-imports` und `check:server-runtime` sind die durchsetzenden Grenzen.
+- Architektur- und OpenSpec-Dokumentation werden im selben Change aktualisiert, wenn sich Package-Grenzen ändern.
 
 ## Entscheidungsregeln für neue Funktionalität
 
@@ -290,12 +255,11 @@ Wenn mehr als zwei Zielbausteine betroffen sind, benötigt die Änderung ein Ope
 
 | Priorität | Schuld | Zielzustand |
 | --- | --- | --- |
-| P1 | `@sva/routing` hängt direkt an `@sva/auth`. | Routenverträge liegen neutral; Routing kennt keine Auth-Runtime. |
-| P1 | Neue IAM-Funktionalität landet standardmäßig in `@sva/auth`. | Neue IAM-Funktionalität wird einem Zielbaustein zugeordnet. |
-| P2 | Instanz-Registry ist über Core, Data, Auth und App verteilt. | Eigene Control-Plane mit klaren Contracts und Fassaden. |
-| P2 | Governance, DSR und Legal Texts liegen in Auth. | Eigenes Governance-Package oder klar abgegrenzter Zielbaustein. |
-| P3 | SDK bündelt Plugin-Verträge und Server-Runtime-Hilfen. | Trennung bei weiterem Wachstum. |
-| P3 | DataClient und serverseitige Repositories teilen ein Package. | Trennung nach Browser-/Server-Vertrag bei weiterem Wachstum. |
+| P1 | Rückfall auf alte Sammelimporte in neuen Consumer-Pfaden. | Lint, Nx-Boundaries und Review-Regel verhindern neue Kanten. |
+| P1 | Fachlogik wächst wieder in Kompatibilitätsadapter. | Adapter bleiben dünn; Ownership liegt im Zielpackage. |
+| P2 | Zielpackages und alte README-/Architekturhinweise driften auseinander. | Arc42, Package-READMEs und OpenSpec-Tasks werden im selben Change gepflegt. |
+| P2 | Server-Runtime-Imports verlieren Node-ESM-Konformität. | `check:server-runtime` bleibt Teil der Gates für serverseitige Packages. |
+| P3 | Tests bleiben historisch nach Altpackage gruppiert. | Neue Tests werden fachlich im Zielpackage ergänzt; alte Tests werden nur bei Bedarf nachgezogen. |
 
 ## Pflege-Regeln
 

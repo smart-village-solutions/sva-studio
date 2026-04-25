@@ -29,6 +29,10 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
 - Lint/Build Qualitaet:
   - `pnpm test:eslint` muss grün sein
   - `pnpm nx show project sva-studio-react` zeigt explizite Targets mit definierten `inputs` und `outputs`
+- Package-Boundary-Qualität:
+  - alte Sammelimporte in neuen Consumer-Pfaden werden durch ESLint und Nx-Boundaries blockiert
+  - serverseitige Zielpackages bestehen `check:runtime` und verwenden Node-ESM-konforme Runtime-Imports mit expliziter `.js`-Endung
+  - `pnpm openspec validate refactor-package-target-architecture-hard-cut --strict` muss für Package-Grenzänderungen grün sein
 - Unit-Test-Basis:
   - `pnpm test:unit` muss grün sein
 - IAM-Acceptance-Gate:
@@ -149,8 +153,8 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
 - Nicht alle Projekte haben vollwertige Unit/Coverage-Suites (teils exempt)
 - App-Tests laufen derzeit mit `--passWithNoTests`, daher eingeschränkte Aussagekraft
 - Fehlende oder implizite Cache-Inputs für Frontend-Tooling können zu falschen Cache-Hits führen, wenn neue App-Targets nicht konsistent gepflegt werden
-- Mehrere IAM-Hotspots liegen bewusst über den Komplexitäts-Schwellwerten und werden über Refactoring-Tickets nachverfolgt
-- Die neue modulare IAM-Fassade reduziert öffentliche Importflächen; vollständige Kernzerlegung bleibt für einzelne `core.ts`-Bausteine Folgearbeit
+- Mehrere IAM-Hotspots können fachlich weiterhin komplex sein, liegen aber nicht mehr als neue Ownership in den alten Sammelpackages.
+- Die Package-Zielarchitektur reduziert öffentliche Importflächen; verbleibende Restkomplexität wird im jeweiligen Zielpackage statt am historischen Fassadenpfad nachverfolgt.
 - Performance-Nachweis für Routing-Startup-Guard und begrenztes Sync-Debug-Logging bleibt als Folgearbeit beobachtbar
 - Alertmanager-Receiver, automatisierte Backup-Automation und produktive Digest-Promotion bleiben trotz gehärtetem Releasevertrag externe Folgearbeit
 - Ein lokaler Kandidatencontainer kann fuer `studio` Private-DNS-, Ingress- und Swarm-Vertraege nicht vollstaendig abbilden; prod-nahe Freigaben bleiben deshalb bewusst an Remote-Evidenz gebunden
@@ -204,7 +208,7 @@ Referenzen:
 
 ### Ergänzung 2026-03: Qualitätsziele Inhaltsverwaltung
 
-- Das Core-Modell für Inhalte bleibt framework-agnostisch; `packages/core` und `packages/sdk` definieren nur den stabilen Kern und deklarative Erweiterungspunkte.
+- Das Core-Modell für Inhalte bleibt framework-agnostisch; `packages/core` und `packages/plugin-sdk` definieren nur den stabilen Kern und deklarative Erweiterungspunkte.
 - Die UI unter `/content` muss bestehende `shadcn/ui`-Patterns und Admin-Tabellen wiederverwenden und darf keine parallele Tabellen-Basis einführen.
 - Inhalts-Create und -Update müssen JSON-Payloads, Statuswechsel und Historie über Unit-Tests für Hooks und Seiten explizit abdecken.
 - Rollen-Gates für `system_admin`, `app_manager` und `editor` müssen auf Route-, UI- und Server-Ebene konsistent wirken.

@@ -4,14 +4,14 @@ Typsicheres Routing-Paket für SVA Studio. `@sva/routing` ist die kanonische öf
 
 ## Architektur-Rolle
 
-`@sva/routing` definiert die Route-API der App. Die Anwendung liefert nur noch Root-Shell, Context-Wiring, Plugin-Liste und Seiten-Bindings.
+`@sva/routing` definiert die Route-API der App. Die Anwendung liefert nur noch Root-Shell, Context-Wiring, Plugin-Liste und Seiten-Bindings. Auth-/HTTP-Routen werden über `@sva/auth-runtime` verdrahtet; eine direkte Kante zum alten Auth-Sammelpackage ist nicht zulässig.
 
 ```text
-@sva/auth    <- kanonische Auth-/API-Pfade + Server-Handler
+@sva/auth-runtime <- kanonische Auth-/API-Pfade + Server-Handler
   ^
-@sva/routing <- UI-/Auth-/Plugin-Routing API
+@sva/routing      <- UI-/Auth-/Plugin-Routing API
   ^
-App          <- Root, Context, Seiten-Bindings
+App               <- Root, Context, Seiten-Bindings
 ```
 
 ## Öffentliche API
@@ -106,7 +106,7 @@ const routeFactories = getClientRouteFactories({
 
 - Client- und shared Routing-Dateien bleiben ohne expliziten `diagnostics`-Hook standardmäßig still.
 - Browser-seitig entsteht nur dann Routing-Diagnostik, wenn der Consumer bewusst einen Hook injiziert.
-- Serverseitig nutzen Auth-Routen und Server-Route-Factories denselben Adapter auf den SDK-/OTEL-Logger.
+- Serverseitig nutzen Auth-Routen und Server-Route-Factories denselben Adapter auf den Server-Runtime-/OTEL-Logger.
 
 ### Was bewusst nicht geloggt wird
 

@@ -17,7 +17,7 @@ Dieser Abschnitt beschreibt kritische Laufzeitszenarien und Interaktionen.
 1. App lädt `getRouter()` in `apps/sva-studio-react/src/router.tsx`
 2. Core-Route-Factories werden client- oder serverseitig geladen
 3. Der Host liest die statische Plugin-Liste und materialisiert Plugin-Routen aus `PluginDefinition`
-4. Core-/Auth-Routen und Plugin-Routen werden zu einem gemeinsamen Route-Tree kombiniert
+4. Core-/Auth-Runtime-Routen und Plugin-Routen werden zu einem gemeinsamen Route-Tree kombiniert
 5. Router wird mit RouteTree und SSR-Kontext erstellt
 
 Fehlerpfad:
@@ -27,7 +27,7 @@ Fehlerpfad:
 ### Szenario 1b: Materialisierung registrierter Admin-Ressourcen
 
 1. Die App lädt neben Seiten-Bindings auch die statische Liste `appAdminResources`.
-2. `@sva/routing` validiert die Admin-Ressourcen gegen den SDK-Vertrag und materialisiert daraus Listen-, Create- und Detailrouten.
+2. `@sva/routing` validiert die Admin-Ressourcen gegen den Plugin-SDK-Vertrag und materialisiert daraus Listen-, Create- und Detailrouten.
 3. Der Host wendet den deklarativ referenzierten Guard auf alle Teilrouten der Ressource an.
 4. Legacy-Pfade wie `/content`, `/content/new` und `/content/$contentId` werden im Routing-Layer auf `/admin/content*` umgeleitet.
 
@@ -43,7 +43,7 @@ Fehlerpfad:
 3. Beim Aufruf der Route wendet der Host den passenden Content-Guard an.
 4. Die News-Liste lädt die generische Content-Liste und filtert clientseitig auf `contentType = news.article`.
 5. Der Editor sendet Create- oder Update-Requests an die bestehende IAM-Content-API.
-6. `packages/auth` validiert zuerst den generischen Content-Envelope und danach das registrierte News-Payload-Schema für `news.article`.
+6. `packages/auth-runtime` validiert zuerst den generischen Content-Envelope und danach das registrierte News-Payload-Schema für `news.article`.
 7. Vor Persistenz sanitisiert der Server `body` allowlist-basiert und normalisiert `teaser` auf Plain Text.
 8. Repository, Historie und Audit-Logging bleiben unverändert Teil des generischen Content-Pfads.
 9. Nach erfolgreichem Speichern oder Löschen zeigt das Plugin Statusfeedback und navigiert zurück zur News-Liste.
@@ -92,7 +92,7 @@ Fehlerpfad:
 3. Das Detail lädt zusaetzlich Preflight, Plan, Status und vorhandene Provisioning-Runs.
 4. `Instanzdaten speichern` sendet CSRF-Header, Idempotency-Key und Reauth-Bestaetigung und schreibt nur Registry-Daten.
 5. `Provisioning ausfuehren` startet einen expliziten Run mit Realm-Modus `new` oder `existing`.
-6. `packages/auth` delegiert an die gemeinsame Provisioning-Fassade.
+6. `packages/auth-runtime` delegiert an die gemeinsame Provisioning-Fassade in `packages/instance-registry`.
 7. Die Fassade provisioniert getrennt Login-Client (`authClientId`) und Tenant-Admin-Client (`tenantAdminClient.clientId`) inklusive separater Secret-Aufloesung.
 8. Die Fassade persistiert Run, Schritte und Audit-Event und invalidiert anschliessend betroffene Host-Caches.
 
@@ -137,7 +137,7 @@ Fehlerpfad:
 2. Der Server unterscheidet Root-Host-Platform-Scope und Tenant-Instance-Scope. Im Platform-Scope nutzt er den Plattform-Realm ohne `instanceId`; im Tenant-Scope lädt er den Instanzkontext und prüft vor jeder tenantlokalen Admin-Mutation blockerrelevanten Drift aus Registry, Preflight und Provisioning-Plan.
 3. Beim Keycloak-User-Sync ist der aktive Tenant-Realm die führende Benutzergrenze; fehlende `instanceId`-Attribute blockieren den Import nicht.
 4. Liegt ein Blocker vor, endet der Lauf sofort fail-closed mit technischem Fehlervertrag inklusive `classification`, `requestId` und freigegebenen Safe-Details.
-5. Ohne Blocker führt `packages/auth` den Sync oder Reconcile deterministisch aus und trennt pro Eintrag zwischen korrigiert, fehlgeschlagen und fachlichem Restzustand `manual_review`.
+5. Ohne Blocker führt `packages/iam-admin` den Sync oder Reconcile deterministisch aus und trennt pro Eintrag zwischen korrigiert, fehlgeschlagen und fachlichem Restzustand `manual_review`.
 6. Die Handler antworten immer mit genau einem Abschlusszustand `success`, `partial_failure`, `blocked` oder `failed` sowie aggregierten Zählwerten.
 7. Read-Pfade für Profil, User-Liste und Rollenansicht laden anschließend denselben kanonischen Projektionskern nach, damit UI und Fachzustand übereinstimmen.
 
@@ -272,7 +272,7 @@ Fehlerpfad:
 1. Änderung an Rollen, Permission-Zuordnung oder Policy wird in Postgres persistiert.
 2. Writer emittiert ein Invalidation-Ereignis über `NOTIFY` mit `eventId`, `instanceId` und betroffenem Scope.
 3. Der Autorisierungspfad prüft zuerst den lokalen L1-Snapshot und danach Redis als Shared-Read-Path.
-4. Cache-Worker in `packages/auth` empfängt das Event, dedupliziert per `eventId` und invalidiert passende Redis-Snapshots gezielt per `keycloakSubject` oder instanzweit.
+4. Cache-Worker in `packages/auth-runtime` empfängt das Event, dedupliziert per `eventId` und invalidiert passende Redis-Snapshots gezielt per `keycloakSubject` oder instanzweit.
 5. Nachfolgende `POST /iam/authorize`-Aufrufe erzwingen Recompute für invalidierte Einträge und schreiben zuerst Redis, danach den L1-Cache.
 6. Invalidation, Recompute, Cold-Start und Degraded-State werden mit `request_id`/`trace_id` strukturiert geloggt.
 
@@ -286,11 +286,11 @@ Referenzen:
 
 - `apps/sva-studio-react/src/router.tsx`
 - `apps/sva-studio-react/src/routes/__root.tsx`
-- `packages/auth/src/routes.server.ts`
-- `packages/auth/src/iam-authorization.server.ts`
-- `packages/auth/src/iam-governance.server.ts`
-- `packages/auth/src/iam-authorization.cache.ts`
-- `packages/sdk/src/logger/index.server.ts`
+- `packages/auth-runtime/src/runtime-routes.ts`
+- `packages/iam-core/src/index.ts`
+- `packages/iam-admin/src/index.ts`
+- `packages/iam-governance/src/index.ts`
+- `packages/server-runtime/src/index.ts`
 - `packages/monitoring-client/src/otel.server.ts`
 - `docs/architecture/iam-service-architektur.md`
 
@@ -356,12 +356,12 @@ Fehlerpfad:
 - Fehlt die Keycloak-Verbindung oder der Service-Account hat zu wenige Rechte, endet der Lauf mit `keycloak_unavailable`.
 - Einzelne Rollen können im Report als `failed` auftauchen, ohne den gesamten Drift-Kontext zu verlieren.
 
-### Szenario 11: Modulare Server-Fassade delegiert in Fachkern
+### Szenario 11: Zielpackage-Fassaden delegieren in Fachkern
 
-1. Routing oder ein externer Konsument importiert eine stabile Fassade wie `@sva/auth/server` oder `iam-account-management.server.ts`.
-2. Die Fassade delegiert in einen fachlichen Unterordner wie `routes/*`, `iam-authorization/*` oder `iam-account-management/*`.
-3. Der Fachbaustein orchestriert Request-Handling, Authentifizierung und Response-Mapping.
-4. Verbleibende Altlogik liegt gezielt im jeweiligen `core.ts`, bis Folge-Refactorings sie weiter zerlegen.
+1. Routing oder ein externer Konsument importiert eine stabile Zielpackage-Fassade wie `@sva/auth-runtime/server`, `@sva/iam-admin`, `@sva/iam-governance` oder `@sva/instance-registry`.
+2. Die Fassade delegiert in fachliche Bausteine des jeweiligen Zielpackages.
+3. Der Fachbaustein orchestriert Request-Handling, Authentifizierungskontext, Autorisierung und Response-Mapping über injizierte Runtime-Dependencies.
+4. Alte Sammelpackage-Fassaden bleiben nur als Kompatibilitätsadapter bestehen und begründen keine neue fachliche Ownership.
 
 Fehlerpfad:
 
@@ -487,7 +487,7 @@ Fehlerpfad:
 1. Ein berechtigter Studio-Benutzer löst eine serverseitige Mainserver-Funktion aus.
 2. Die App prüft lokal Rollen und aktiven `instanceId`-Kontext, bevor ein Upstream-Call gestartet wird.
 3. `@sva/sva-mainserver/server` lädt die aktive Endpunktkonfiguration für die Instanz aus `iam.instance_integrations`.
-4. `@sva/auth/server` liest `mainserverUserApplicationId` und `mainserverUserApplicationSecret` aus Keycloak-User-Attributen des aktuellen Benutzers; Legacy-Attribute werden nur noch als Fallback berücksichtigt.
+4. `@sva/auth-runtime/server` liest `mainserverUserApplicationId` und `mainserverUserApplicationSecret` aus Keycloak-User-Attributen des aktuellen Benutzers; Legacy-Attribute werden nur noch als Fallback berücksichtigt.
 5. Die Integrationsschicht fordert per OAuth2-Client-Credentials ein Access-Token an und cached es kurzlebig pro `(instanceId, keycloakSubject, apiKey)`.
 6. Danach wird der GraphQL-Request serverseitig an den SVA-Mainserver gesendet; `request_id` und `trace_id` werden als Korrelation weitergereicht.
 7. Die Server-Funktion gibt ein kuratiertes Diagnose-Read-Model an die App zurück; Credentials oder rohe Upstream-Fehlerdetails verlassen den Server nicht.

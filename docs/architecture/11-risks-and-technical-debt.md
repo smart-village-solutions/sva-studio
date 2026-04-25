@@ -185,6 +185,11 @@ Schulden auf IST-Basis.
    - Wahrscheinlichkeit: mittel
    - Maßnahme: Drift-Blocker im Root-Host, in Sync-/Reconcile-Fehlern und in den Admin-Ansichten konsistent korrelieren; Diagnosevertrag nicht auf reine Readiness reduzieren
 
+32. Rückfall auf alte Sammelpackage-Importe nach dem Hard-Cut
+   - Impact: hoch (neue Fachlogik würde wieder in unklare Ownership laufen)
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: Nx-`depConstraints`, ESLint-Importverbote, `check:server-runtime` und Review-Gates als harte Package-Grenze behandeln
+
 ### Technische Schulden (Auswahl)
 
 - Teilweise No-Op Testtargets in Libraries
@@ -195,7 +200,8 @@ Schulden auf IST-Basis.
 - Reifegrad von Governance-E2E-Tests muss im Produktiv-Rollout weiter erhöht werden
 - Risiko von Scope-Bleeding bei schnellen IAM-Iterationen ohne harte Gate-Disziplin
 - Mehrere historische IAM-Hotspots sind bewusst als tracked findings mit Refactoring-Backlog dokumentiert
-- Nach der Fassaden-Zerlegung verbleibt Restkomplexität gezielt in `iam-account-management/users-handlers.ts`, `iam-account-management/roles-handlers.ts`, `iam-account-management/reconcile-handler.ts`, `iam-account-management/shared.ts`, `iam-data-subject-rights/core.ts`, `iam-governance/core.ts` und `keycloak-admin-client/core.ts`
+- Nach dem Package-Hard-Cut verbleibt Restkomplexität gezielt in fachlichen Zielpackages wie `auth-runtime`, `iam-admin`, `iam-governance`, `instance-registry` und `data-repositories`; alte Sammelpackages sind dafür kein neuer Zielort.
+- Einige Tests und historische Berichte referenzieren weiterhin alte Pfadnamen; neue fachliche Tests sollen im Zielpackage entstehen und nur dort am Altpfad bleiben, wo Kompatibilität explizit geprüft wird.
 - Route-Komponenten außerhalb der Shell verwenden noch teilweise direkte `slate-*`-/`emerald-*`-Farben und sind nicht vollständig tokenisiert
 - Gruppen sind im ersten Schnitt reine Rollenbündel; direkte Gruppen-Permissions und ein separates Gruppen-Gültigkeitsmanagement pro UI-Flow bleiben Folgearbeit
 - Die Geo-Hierarchie ist intern bereits auswertbar, besitzt aber noch keine dedizierte Admin-Oberfläche oder externe Pflegepipeline

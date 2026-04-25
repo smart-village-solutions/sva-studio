@@ -1,144 +1,38 @@
 # @sva/data
 
-Data-Layer für SVA Studio – stellt einen framework-agnostischen HTTP-DataClient mit In-Memory-Cache sowie SQL-basierte IAM-Repositories bereit.
+`@sva/data` ist nach dem Package-Hard-Cut kein Zielpackage für neue Datenzugriffe mehr. Die vorher gebündelten Rollen sind getrennt:
 
-## Architektur-Rolle
-
-`@sva/data` bildet die Datenschicht zwischen Kernlogik und persistenten Backends. Das Paket enthält:
-
-- Einen generischen **HTTP-DataClient** für REST-Anbindungen
-- **IAM-Repositories** mit SQL-Operationen für Identity & Access Management
-- **Seed-Pläne** für reproduzierbare IAM-Testdaten (7 Personas, 13 Permissions)
-
-```
-@sva/core
-  ↑
-  @sva/data
-```
-
-**Abhängigkeit:** `@sva/core` (workspace) – für IAM-Typen und Core-Version.
-
-## Export
-
-| Pfad | Beschreibung |
+| Aufgabe | Zielpackage |
 | --- | --- |
-| `@sva/data` | DataClient, IAM-Repositories, Seed-Pläne, IAM-Typen |
+| Client-sicherer HTTP-Client, Cache und Runtime-Schema-Validierung | `@sva/data-client` |
+| Serverseitige Postgres-Repositories, DB-Operationen und migrationsnahe Typen | `@sva/data-repositories` |
 
-## API
+Neue Consumer importieren die passende Zielrolle direkt. `@sva/data` bleibt nur für Altpfade und ausdrücklich erhaltene Kompatibilität relevant.
 
-### DataClient
+## Betrieb
 
-Leichtgewichtiger HTTP-Client mit TTL-basiertem In-Memory-Cache.
-Rückgabe:
+- **Name:** `data`
+- **Tags:** `scope:data`, `type:lib`
+- **Build:** `pnpm nx run data:build`
+- **Lint:** `pnpm nx run data:lint`
+- **Unit-Tests:** `pnpm nx run data:test:unit`
 
-- `get<T>(path, schema, init?)` -> `Promise<T>`
-- Legacy-kompatibel: `get<T>(path, init?)` weiterhin möglich (liefert Deprecation-Warnung ohne Runtime-Schema)
+## Datenbank-Verwaltung
 
-## Beispiel
-
-```ts
-import { createDataClient } from '@sva/data';
-import { z } from 'zod';
-
-const client = createDataClient({
-  baseUrl: 'https://api.example.invalid',
-  cacheTtlMs: 30_000, // Optional, Default: 30 Sekunden
-});
-
-type Health = { ok: boolean };
-const healthSchema = z.object({ ok: z.boolean() });
-const health = await client.get<Health>('/health', healthSchema);
-```
-
-**Optionen:**
-- `baseUrl` – Basis-URL des Zielsystems
-- `cacheTtlMs` – Cache-TTL in Millisekunden (Default: `30_000`)
-
-**Methoden:**
-- `get<T>(path, init?)` → `Promise<T>` – GET-Request mit automatischem Caching
-
-### IAM-Repositories
-
-SQL-basierte Repositories für IAM-Entitäten. Alle Operationen nutzen `ON CONFLICT ... DO UPDATE` (idempotent).
-
-```ts
-import { IamSeedRepository } from '@sva/data';
-
-// SqlExecutor-Abstraktion für flexible DB-Anbindung
-const repo = new IamSeedRepository(sqlExecutor);
-```
-
-**Operationen:** Upsert für Instances, Organizations, Roles, Permissions, Accounts, Memberships, Role-Assignments.
-
-### Seed-Plan
-
-Vorkonfigurierter Seed-Plan mit 7 Personas und vollständiger Rollenzuordnung.
-
-```ts
-import { getPersonaSeed } from '@sva/data';
-
-const admin = getPersonaSeed('system_admin');
-```
-
-**Personas:** `system_admin`, `app_manager`, `feature_manager`, `interface_manager`, `designer`, `editor`, `moderator`
-
-**Permissions (13):** `iam.*`, `content.*`, `integration.manage`, `feature.toggle`
-
-### IAM-Typen
-
-```ts
-import type {
-  PersonaKey,        // 7 Persona-Schlüssel
-  PermissionKey,     // 13 Permission-Schlüssel
-  PersonaSeed,       // Persona-Seed-Datenstruktur
-  IamSeedContext,    // Seed-Kontext
-  IamSeedPlan,       // Vollständiger Seed-Plan
-  PersonaScope,      // 'instance' | 'org'
-  MfaPolicy,         // 'required' | 'recommended' | 'optional'
-} from '@sva/data';
-```
-
-## Projektstruktur
-
-```
-src/
-├── index.ts                   # Haupt-Export (DataClient + IAM Re-Exports)
-└── iam/
-    ├── repositories.ts        # SQL-basierte IAM-Repositories (225 Zeilen)
-    ├── repositories.test.ts   # Repository-Tests
-    ├── seed-plan.ts           # 7 Personas mit Rollenzuordnung
-    ├── seed-plan.test.ts      # Seed-Plan-Tests
-    └── types.ts               # IAM-Datenmodell
-```
-
-## Nx-Targets
-
-### Datenbank-Verwaltung
+Die Migrations- und Seed-Targets bleiben am historischen `data`-Projekt gebunden, solange die Workspace-Tooling-Verträge dort liegen:
 
 | Target | Beschreibung |
 | --- | --- |
 | `pnpm nx run data:db:up` | Startet Postgres lokal via Docker Compose |
-| `pnpm nx run data:db:status` | Zeigt den Service-Status |
 | `pnpm nx run data:db:migrate` | Führt kanonische `goose`-Up-Migrationen aus `migrations/*.sql` aus |
 | `pnpm nx run data:db:migrate:down` | Führt den Rollback bis Version `0` über `goose` aus |
 | `pnpm nx run data:db:migrate:status` | Zeigt den `goose`-Migrationsstatus der lokalen Datenbank |
-| `pnpm nx run data:db:migrate:validate` | Prüft den Zyklus `up → down → up` auf einer separaten temporären Datenbank |
+| `pnpm nx run data:db:migrate:validate` | Prüft den Zyklus `up -> down -> up` auf einer separaten temporären Datenbank |
 | `pnpm nx run data:db:seed` | Führt idempotente IAM-Seeds aus `seeds/*.sql` aus |
-| `pnpm nx run data:db:reset` | Entfernt lokalen Postgres-Container und Volume |
-
-### Tests
-
-| Target | Beschreibung |
-| --- | --- |
-| `pnpm nx run data:test:unit` | Strict-TS Unit-Tests für `src/iam/*` |
-| `pnpm nx run data:test:integration` | Seed-Integrationscheck gegen lokale Postgres-DB |
-| `pnpm nx run data:db:test:seeds` | Prüft Seed-Idempotenz (zweifache Ausführung) |
-| `pnpm nx run data:db:test:encryption` | Prüft PII-At-Rest-Verschlüsselung via SQL |
-| `pnpm nx run data:db:test:rls` | Validiert Instanzisolation (RLS Fail-Closed) auf dem letzten RLS-erzwingenden Schema-Stand vor `0023_iam_disable_rls.sql` |
 
 ## Verwandte Dokumentation
 
+- [Package-Zielarchitektur](../../docs/architecture/package-zielarchitektur.md)
 - [Bausteinsicht (arc42 §5)](../../docs/architecture/05-building-block-view.md)
 - [IAM-Datenklassifizierung](../../docs/architecture/iam-datenklassifizierung.md)
-- [ADR-014: Postgres NOTIFY Cache-Invalidierung](../../docs/adr/ADR-014-postgres-notify-cache-invalidierung.md)
 - [Postgres-Setup](../../docs/development/postgres-setup.md)

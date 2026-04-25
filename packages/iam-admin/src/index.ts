@@ -49,6 +49,12 @@ export {
 } from './user-bulk-deactivate-handler.js';
 
 export {
+  createCreateUserHandlerInternal,
+  type CreateAuthenticatedRequestContext,
+  type CreateUserHandlerDeps,
+} from './user-create-handler.js';
+
+export {
   createDeactivateUserHandlerInternal,
   type DeactivateAuthenticatedRequestContext,
   type DeactivateUserHandlerDeps,

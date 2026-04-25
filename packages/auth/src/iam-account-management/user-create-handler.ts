@@ -1,4 +1,5 @@
 import type { ApiErrorResponse } from '@sva/core';
+import { createCreateUserHandlerInternal } from '@sva/iam-admin';
 import { getWorkspaceContext } from '@sva/server-runtime';
 
 import type { AuthenticatedRequestContext } from '../middleware.server.js';
@@ -35,8 +36,6 @@ type CreateUserActorContext = {
   };
   actorSubject: string;
 };
-
-const CREATE_USER_ENDPOINT = 'POST:/api/v1/iam/users';
 
 const resolveCreateUserActorContext = async (
   request: Request,
@@ -99,99 +98,18 @@ const createIdpUnavailableBody = (requestId?: string) =>
     ...(requestId ? { requestId } : {}),
   }) satisfies ApiErrorResponse;
 
-const failCreateIdempotency = async (
-  actor: CreateUserActorContext['actor'],
-  idempotencyKey: string,
-  responseStatus: number,
-  responseBody: ApiErrorResponse
-): Promise<Response> => {
-  await completeIdempotency({
-    instanceId: actor.instanceId,
-    actorAccountId: actor.actorAccountId,
-    endpoint: CREATE_USER_ENDPOINT,
-    idempotencyKey,
-    status: 'FAILED',
-    responseStatus,
-    responseBody,
-  });
-  return jsonResponse(responseStatus, responseBody);
-};
-
-export const createUserInternal = async (
-  request: Request,
-  ctx: AuthenticatedRequestContext
-): Promise<Response> => {
-  const actorContext = await resolveCreateUserActorContext(request, ctx);
-  if (actorContext instanceof Response) {
-    return actorContext;
-  }
-
-  const idempotencyKey = requireIdempotencyKey(request, actorContext.actor.requestId);
-  if ('error' in idempotencyKey) {
-    return idempotencyKey.error;
-  }
-
-  const parsed = await parseRequestBody(request, createUserSchema);
-  if (!parsed.ok) {
-    return createApiError(400, 'invalid_request', 'Ungültiger Payload.', actorContext.actor.requestId);
-  }
-
-  const reserve = await reserveIdempotency({
-    instanceId: actorContext.actor.instanceId,
-    actorAccountId: actorContext.actor.actorAccountId,
-    endpoint: CREATE_USER_ENDPOINT,
-    idempotencyKey: idempotencyKey.key,
-    payloadHash: toPayloadHash(parsed.rawBody),
-  });
-  if (reserve.status === 'replay') {
-    return jsonResponse(reserve.responseStatus, reserve.responseBody);
-  }
-  if (reserve.status === 'conflict') {
-    return createApiError(409, 'idempotency_key_reuse', reserve.message, actorContext.actor.requestId);
-  }
-
-  const identityProvider = await resolveIdentityProviderForInstance(actorContext.actor.instanceId, {
-    executionMode: 'tenant_admin',
-  });
-  if (!identityProvider) {
-    return failCreateIdempotency(
-      actorContext.actor,
-      idempotencyKey.key,
-      503,
-      createIdpUnavailableBody(actorContext.actor.requestId)
-    );
-  }
-
-  try {
-    const result = await executeCreateUser({
-      actor: {
-        ...actorContext.actor,
-        actorRoles: ctx.user.roles,
-      },
-      actorSubject: actorContext.actorSubject,
-      identityProvider,
-      payload: parsed.data,
-    });
-    const responseBody = asApiItem(result.responseData, actorContext.actor.requestId);
-    await completeIdempotency({
-      instanceId: actorContext.actor.instanceId,
-      actorAccountId: actorContext.actor.actorAccountId,
-      endpoint: CREATE_USER_ENDPOINT,
-      idempotencyKey: idempotencyKey.key,
-      status: 'COMPLETED',
-      responseStatus: 201,
-      responseBody,
-    });
-    iamUserOperationsCounter.add(1, { action: 'create_user', result: 'success' });
-    return jsonResponse(201, responseBody);
-  } catch {
-    iamUserOperationsCounter.add(1, { action: 'create_user', result: 'failure' });
-    return failCreateIdempotency(actorContext.actor, idempotencyKey.key, 500, {
-      error: {
-        code: 'internal_error',
-        message: 'Nutzer konnte nicht erstellt werden.',
-      },
-      ...(actorContext.actor.requestId ? { requestId: actorContext.actor.requestId } : {}),
-    });
-  }
-};
+export const createUserInternal = createCreateUserHandlerInternal({
+  asApiItem,
+  completeIdempotency,
+  createApiError,
+  createIdpUnavailableBody,
+  executeCreateUser,
+  iamUserOperationsCounter,
+  jsonResponse,
+  parseCreateUserBody: (request) => parseRequestBody(request, createUserSchema),
+  requireIdempotencyKey,
+  reserveIdempotency,
+  resolveCreateUserActorContext,
+  resolveIdentityProviderForInstance,
+  toPayloadHash,
+});

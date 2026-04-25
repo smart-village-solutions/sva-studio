@@ -35,9 +35,9 @@
 
 ## 5. Fachpackage Migration
 
-- [ ] 5.1 Login, Logout, OIDC, Cookies, Session und Middleware in `@sva/auth-runtime` bündeln
-  - Fortschritt: Auth-/Session-Typen, Scope-Helfer, Runtime-Session-Fehler, Token-Fehler-Guards, Mock-Auth, Token-Verschlüsselung, Redis-Client, Request-Host-Auflösung, Tenant-Host-Middleware-Prüfung, Runtime-Secrets, Auth-Config inklusive Tenant-Auth-Resolution, Return-To-Sanitizing, Audit-Events inklusive DB-Sink, Legal-Text-Compliance und JIT-Provisioning liegen in `@sva/auth-runtime`; OIDC-, Login-, Callback-, Logout-, Session-, Cookie- und Route-Handler-Code nutzt diese Runtime-Verträge lokal.
-  - Offen: `@sva/auth-runtime` importiert noch serverseitige Implementierung aus `@sva/auth/server` für Mainserver-Credentials und Kompatibilitäts-Routen.
+- [x] 5.1 Login, Logout, OIDC, Cookies, Session und Middleware in `@sva/auth-runtime` bündeln
+  - Abgeschlossen: Auth-/Session-Typen, Scope-Helfer, Runtime-Session-Fehler, Token-Fehler-Guards, Mock-Auth, Token-Verschlüsselung, Redis-Client, Request-Host-Auflösung, Tenant-Host-Middleware-Prüfung, Runtime-Secrets, Auth-Config inklusive Tenant-Auth-Resolution, Return-To-Sanitizing, Audit-Events inklusive DB-Sink, Legal-Text-Compliance, JIT-Provisioning, Mainserver-Credentials und Runtime-Health liegen in `@sva/auth-runtime`; OIDC-, Login-, Callback-, Logout-, Session-, Cookie-, Health- und Middleware-Code nutzt diese Runtime-Verträge lokal.
+  - Hinweis: `runtime-routes.ts` enthält weiterhin ein bewusstes Legacy-Kompatibilitäts-Barrel auf `@sva/auth/server`; dessen Entfernung ist Teil von 7.5, nicht von 5.1.
 - [ ] 5.2 Benutzer, Rollen, Gruppen, Organisationen und Reconcile in `@sva/iam-admin` verschieben
   - Offen: Handler, Orchestrierung und Teile der Persistenz liegen noch unter `packages/auth/src/iam-account-management`, `packages/auth/src/iam-groups` und `packages/auth/src/iam-organizations`.
 - [x] 5.3 DSR, Legal Texts und Audit-nahe Governance-Flows in `@sva/iam-governance` verschieben
@@ -61,6 +61,7 @@
 - [ ] 7.3 Routing-Imports auf neutrale Contracts umstellen
 - [ ] 7.4 Tests, Mocks und Fixtures auf neue Package-Grenzen umstellen
 - [ ] 7.5 Alte Re-Exports und Sammel-Barrels löschen
+  - Offen: `@sva/auth-runtime/runtime-routes` re-exportiert noch Legacy-Admin-/Governance-/Registry-Handler aus `@sva/auth/server`, bis die Consumer vollständig auf Zielpackages migriert sind.
 
 ## 8. Documentation
 

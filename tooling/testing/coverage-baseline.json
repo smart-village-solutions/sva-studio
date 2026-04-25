@@ -13,10 +13,10 @@
       "branches": 77.1
     },
     "auth-runtime": {
-      "lines": 53.44,
-      "statements": 52.95,
-      "functions": 46.83,
-      "branches": 40.18
+      "lines": 55.46,
+      "statements": 54.98,
+      "functions": 48.94,
+      "branches": 43.98
     },
     "core": {
       "lines": 94.21,

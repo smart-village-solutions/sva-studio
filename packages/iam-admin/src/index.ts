@@ -66,6 +66,14 @@ export {
 } from './managed-role-sync.js';
 
 export {
+  ensureActorCanManageTarget,
+  ensureRoleAssignmentWithinActorLevel,
+  isSystemAdminAccount,
+  resolveActorMaxRoleLevel,
+  resolveSystemAdminCount,
+} from './actor-authorization.js';
+
+export {
   resolveGroupsByIds,
   resolveRoleIdsForGroups,
   resolveRolesByExternalNames,

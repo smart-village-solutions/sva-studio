@@ -177,66 +177,6 @@ export default [
     },
   },
   {
-    files: ['apps/sva-studio-react/**/*.{ts,tsx,js,jsx}'],
-    rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          paths: [
-            {
-              name: '@sva/auth',
-              message: 'Die App nutzt Auth nur über @sva/auth-runtime.',
-            },
-            {
-              name: '@sva/auth/server',
-              message: 'Die App nutzt Auth-Server-Funktionen nur über @sva/auth-runtime/server.',
-            },
-            {
-              name: '@sva/data',
-              message: 'Die App nutzt Datenzugriffe über Zielpackages statt @sva/data.',
-            },
-            {
-              name: '@sva/sdk',
-              message: 'Die App nutzt Core, Monitoring, Plugin-SDK oder Server-Runtime statt @sva/sdk.',
-            },
-          ],
-          patterns: [
-            {
-              group: ['@sva/sdk/*'],
-              message: 'Die App nutzt Zielpackages statt @sva/sdk-Subpaths.',
-            },
-          ],
-        },
-      ],
-    },
-  },
-  {
-    files: ['packages/auth/**/*.{ts,tsx,js,jsx}'],
-    rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          paths: [
-            {
-              name: '@sva/data',
-              message: 'Auth nutzt Datenzugriffe über @sva/data-repositories oder @sva/data-client.',
-            },
-            {
-              name: '@sva/sdk',
-              message: 'Auth nutzt Core oder Server-Runtime statt @sva/sdk.',
-            },
-          ],
-          patterns: [
-            {
-              group: ['@sva/sdk/*'],
-              message: 'Auth nutzt Zielpackages statt @sva/sdk-Subpaths.',
-            },
-          ],
-        },
-      ],
-    },
-  },
-  {
     files: ['packages/routing/**/*.{ts,tsx,js,jsx}'],
     rules: {
       'no-restricted-imports': [
@@ -436,8 +376,16 @@ export default [
         {
           paths: [
             {
+              name: '@sva/data',
+              message: 'Auth nutzt Datenzugriffe über @sva/data-repositories oder @sva/data-client.',
+            },
+            {
               name: '@sva/data/server',
               message: 'Auth verwendet Repository-Zugriffe über @sva/data-repositories/server.',
+            },
+            {
+              name: '@sva/sdk',
+              message: 'Auth nutzt Core oder Server-Runtime statt @sva/sdk.',
             },
             {
               name: '@sva/sdk/server',
@@ -448,6 +396,10 @@ export default [
             {
               group: ['@sva/data/*'],
               message: 'Auth verwendet Zielpackages statt @sva/data-Subpaths.',
+            },
+            {
+              group: ['@sva/sdk/*'],
+              message: 'Auth nutzt Zielpackages statt @sva/sdk-Subpaths.',
             },
             {
               group: ['@sva/sdk/server/*'],
@@ -488,8 +440,20 @@ export default [
         {
           paths: [
             {
+              name: '@sva/auth',
+              message: 'Die App nutzt Auth nur über @sva/auth-runtime.',
+            },
+            {
               name: '@sva/auth/server',
               message: 'Die App verwendet Auth-Server-Verträge über @sva/auth-runtime/server.',
+            },
+            {
+              name: '@sva/data',
+              message: 'Die App nutzt Datenzugriffe über Zielpackages statt @sva/data.',
+            },
+            {
+              name: '@sva/sdk',
+              message: 'Die App nutzt Core, Monitoring, Plugin-SDK oder Server-Runtime statt @sva/sdk.',
             },
             {
               name: '@sva/sdk/admin-resources',
@@ -498,6 +462,12 @@ export default [
             {
               name: '@sva/sdk/server',
               message: 'Die App verwendet Server-Helfer über @sva/server-runtime.',
+            },
+          ],
+          patterns: [
+            {
+              group: ['@sva/sdk/*'],
+              message: 'Die App nutzt Zielpackages statt @sva/sdk-Subpaths.',
             },
           ],
         },

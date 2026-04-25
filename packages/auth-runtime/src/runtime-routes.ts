@@ -57,7 +57,6 @@ export {
   listContentsHandler,
   updateContentHandler,
 } from './iam-contents/core.js';
-
 export {
   bulkDeactivateUsersHandler,
   createRoleHandler,
@@ -67,7 +66,6 @@ export {
   getMyProfileHandler,
   getUserHandler,
   getUserTimelineHandler,
-  instanceRegistryHandlers,
   listPermissionsHandler,
   listRolesHandler,
   listUsersHandler,
@@ -76,4 +74,8 @@ export {
   updateMyProfileHandler,
   updateRoleHandler,
   updateUserHandler,
+} from './iam-account-management/core.js';
+
+export {
+  instanceRegistryHandlers,
 } from '@sva/auth/server';

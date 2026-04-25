@@ -38,6 +38,10 @@
       "types": "./dist/governance-workflow-policy.d.ts",
       "default": "./dist/governance-workflow-policy.js"
     },
+    "./governance-workflow-executor": {
+      "types": "./dist/governance-workflow-executor.d.ts",
+      "default": "./dist/governance-workflow-executor.js"
+    },
     "./legal-text-repository-shared": {
       "types": "./dist/legal-text-repository-shared.d.ts",
       "default": "./dist/legal-text-repository-shared.js"

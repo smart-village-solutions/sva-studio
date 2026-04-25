@@ -51,6 +51,13 @@ export {
   validateGovernanceTicketState,
   type GovernanceOperation,
 } from './governance-workflow-policy.js';
+export {
+  createGovernanceWorkflowExecutor,
+  type GovernanceActor,
+  type GovernanceWorkflowExecutorDeps,
+  type GovernanceWorkflowRequest,
+  type GovernanceWorkflowResponse,
+} from './governance-workflow-executor.js';
 export { hashLegalTextHtml, sanitizeLegalTextHtml } from './legal-text-html.js';
 export {
   consumeLegalConsentExportRateLimit,

@@ -186,6 +186,12 @@ export {
 } from './organization-schemas.js';
 
 export {
+  createOrganizationReadHandlers,
+  type OrganizationReadAuthenticatedRequestContext,
+  type OrganizationReadHandlerDeps,
+} from './organization-read-handlers.js';
+
+export {
   buildDirectPermissionRowsSql,
   buildPermissionRowsSql,
   buildPermissionTraceRowsSql,

@@ -7,6 +7,7 @@ import type {
   IamOrganizationListItem,
   IamOrganizationType,
 } from '@sva/core';
+import { createOrganizationReadHandlers } from '@sva/iam-admin';
 import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 
 import type { AuthenticatedRequestContext } from '../middleware.server.js';
@@ -280,6 +281,32 @@ ORDER BY membership.is_default_context DESC, organization.depth ASC, organizatio
   return result.rows.map(mapContextOption);
 };
 
+const organizationReadHandlers = createOrganizationReadHandlers({
+  asApiItem,
+  asApiList,
+  chooseActiveOrganizationId,
+  consumeRateLimit,
+  createApiError,
+  ensureFeature,
+  getFeatureFlags,
+  getSession,
+  getWorkspaceContext,
+  isUuid,
+  jsonResponse,
+  loadContextOptions,
+  loadOrganizationDetail,
+  loadOrganizationList,
+  readOrganizationTypeFilter,
+  readPage,
+  readPathSegment,
+  readStatusFilter,
+  readString,
+  requireRoles,
+  resolveActorInfo,
+  updateSession,
+  withInstanceScopedDb,
+});
+
 const resolveHierarchyFields = async (
   client: QueryClient,
   input: { instanceId: string; organizationId?: string; parentOrganizationId?: string | null }
@@ -360,113 +387,7 @@ WHERE organization.instance_id = organization_tree.instance_id
   );
 };
 
-const listOrganizationsInternal = async (
-  request: Request,
-  ctx: AuthenticatedRequestContext
-): Promise<Response> => {
-  const requestContext = getWorkspaceContext();
-  const featureCheck = ensureFeature(getFeatureFlags(), 'iam_admin', requestContext.requestId);
-  if (featureCheck) {
-    return featureCheck;
-  }
-  const roleCheck = requireRoles(ctx, ADMIN_ROLES, requestContext.requestId);
-  if (roleCheck) {
-    return roleCheck;
-  }
-
-  const actorResolution = await resolveActorInfo(request, ctx, { requireActorMembership: true });
-  if ('error' in actorResolution) {
-    return actorResolution.error;
-  }
-
-  const rateLimit = consumeRateLimit({
-    instanceId: actorResolution.actor.instanceId,
-    actorKeycloakSubject: ctx.user.id,
-    scope: 'read',
-    requestId: actorResolution.actor.requestId,
-  });
-  if (rateLimit) {
-    return rateLimit;
-  }
-
-  const { page, pageSize } = readPage(request);
-  const url = new URL(request.url);
-  const search = readString(url.searchParams.get('search'));
-  const organizationType = readOrganizationTypeFilter(request);
-  if (organizationType === 'invalid') {
-    return createApiError(400, 'invalid_request', 'Ungültiger organizationType-Filter.', actorResolution.actor.requestId);
-  }
-  const isActive = readStatusFilter(request);
-
-  try {
-    const organizations = await withInstanceScopedDb(actorResolution.actor.instanceId, (client) =>
-      loadOrganizationList(client, {
-        instanceId: actorResolution.actor.instanceId,
-        page,
-        pageSize,
-        search,
-        organizationType,
-        isActive,
-      })
-    );
-
-    return jsonResponse(
-      200,
-      asApiList(organizations.items, { page, pageSize, total: organizations.total }, actorResolution.actor.requestId)
-    );
-  } catch {
-    return createApiError(503, 'database_unavailable', 'IAM-Datenbank ist nicht erreichbar.', actorResolution.actor.requestId);
-  }
-};
-
-const getOrganizationInternal = async (
-  request: Request,
-  ctx: AuthenticatedRequestContext
-): Promise<Response> => {
-  const requestContext = getWorkspaceContext();
-  const featureCheck = ensureFeature(getFeatureFlags(), 'iam_admin', requestContext.requestId);
-  if (featureCheck) {
-    return featureCheck;
-  }
-  const roleCheck = requireRoles(ctx, ADMIN_ROLES, requestContext.requestId);
-  if (roleCheck) {
-    return roleCheck;
-  }
-
-  const actorResolution = await resolveActorInfo(request, ctx, { requireActorMembership: true });
-  if ('error' in actorResolution) {
-    return actorResolution.error;
-  }
-
-  const rateLimit = consumeRateLimit({
-    instanceId: actorResolution.actor.instanceId,
-    actorKeycloakSubject: ctx.user.id,
-    scope: 'read',
-    requestId: actorResolution.actor.requestId,
-  });
-  if (rateLimit) {
-    return rateLimit;
-  }
-
-  const organizationId = readPathSegment(request, 4);
-  if (!organizationId || !isUuid(organizationId)) {
-    return createApiError(400, 'invalid_organization_id', 'Ungültige organizationId.', actorResolution.actor.requestId);
-  }
-
-  try {
-    const organization = await withInstanceScopedDb(actorResolution.actor.instanceId, (client) =>
-      loadOrganizationDetail(client, { instanceId: actorResolution.actor.instanceId, organizationId })
-    );
-
-    if (!organization) {
-      return createApiError(404, 'not_found', 'Organisation nicht gefunden.', actorResolution.actor.requestId);
-    }
-
-    return jsonResponse(200, asApiItem(organization, actorResolution.actor.requestId));
-  } catch {
-    return createApiError(503, 'database_unavailable', 'IAM-Datenbank ist nicht erreichbar.', actorResolution.actor.requestId);
-  }
-};
+const { getOrganizationInternal, listOrganizationsInternal } = organizationReadHandlers;
 
 const createOrganizationInternal = async (
   request: Request,
@@ -1254,52 +1175,7 @@ WHERE membership.instance_id = $1
   }
 };
 
-const getMyOrganizationContextInternal = async (
-  request: Request,
-  ctx: AuthenticatedRequestContext
-): Promise<Response> => {
-  const requestContext = getWorkspaceContext();
-  const featureCheck = ensureFeature(getFeatureFlags(), 'iam_ui', requestContext.requestId);
-  if (featureCheck) {
-    return featureCheck;
-  }
-
-  const actorResolution = await resolveActorInfo(request, ctx, { requireActorMembership: true });
-  if ('error' in actorResolution) {
-    return actorResolution.error;
-  }
-  if (!actorResolution.actor.actorAccountId) {
-    return createApiError(403, 'forbidden', 'Akteur-Account nicht gefunden.', actorResolution.actor.requestId);
-  }
-  const actorAccountId = actorResolution.actor.actorAccountId;
-
-  try {
-    const organizations = await withInstanceScopedDb(actorResolution.actor.instanceId, (client) =>
-      loadContextOptions(client, {
-        instanceId: actorResolution.actor.instanceId,
-        accountId: actorAccountId,
-      })
-    );
-    const session = await getSession(ctx.sessionId);
-    const activeOrganizationId = chooseActiveOrganizationId({
-      storedActiveOrganizationId: session?.activeOrganizationId,
-      organizations,
-    });
-
-    if (session && session.activeOrganizationId !== activeOrganizationId) {
-      await updateSession(ctx.sessionId, { activeOrganizationId });
-    }
-
-    const response: IamOrganizationContext = {
-      activeOrganizationId,
-      organizations,
-    };
-
-    return jsonResponse(200, asApiItem(response, actorResolution.actor.requestId));
-  } catch {
-    return createApiError(503, 'database_unavailable', 'IAM-Datenbank ist nicht erreichbar.', actorResolution.actor.requestId);
-  }
-};
+const { getMyOrganizationContextInternal } = organizationReadHandlers;
 
 const updateMyOrganizationContextInternal = async (
   request: Request,

@@ -36,7 +36,7 @@
 ## 5. Fachpackage Migration
 
 - [ ] 5.1 Login, Logout, OIDC, Cookies, Session und Middleware in `@sva/auth-runtime` bündeln
-  - Fortschritt: Auth-/Session-Typen, Scope-Helfer, Runtime-Session-Fehler und Token-Fehler-Guards liegen in `@sva/auth-runtime`; OIDC-, Login-, Callback-, Session-, Cookie- und Middleware-Code nutzt diese Runtime-Verträge lokal.
+  - Fortschritt: Auth-/Session-Typen, Scope-Helfer, Runtime-Session-Fehler, Token-Fehler-Guards und Mock-Auth liegen in `@sva/auth-runtime`; OIDC-, Login-, Callback-, Session-, Cookie- und Middleware-Code nutzt diese Runtime-Verträge lokal.
   - Offen: `@sva/auth-runtime` importiert noch serverseitige Implementierung aus `@sva/auth/server` für Config, Redis, Tenant-Host-Prüfung, Legal-Text-Compliance, JIT und Kompatibilitäts-Routen.
 - [ ] 5.2 Benutzer, Rollen, Gruppen, Organisationen und Reconcile in `@sva/iam-admin` verschieben
   - Offen: Handler, Orchestrierung und Teile der Persistenz liegen noch unter `packages/auth/src/iam-account-management`, `packages/auth/src/iam-groups` und `packages/auth/src/iam-organizations`.

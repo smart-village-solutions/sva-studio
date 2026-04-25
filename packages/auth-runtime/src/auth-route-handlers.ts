@@ -11,10 +11,8 @@ import {
   TenantAuthResolutionError,
   buildLogContext,
   buildRequestOriginFromHeaders,
-  createMockSessionUser,
   emitAuthAuditEvent,
   getAuthConfig,
-  isMockAuthEnabled,
   sanitizeAuthReturnTo,
   resolveAuthConfigForRequest,
   resolveEffectiveRequestHost,
@@ -33,6 +31,7 @@ import {
   getWorkspaceIdForScope,
 } from './scope.js';
 import { isTokenErrorLike } from './error-guards.js';
+import { createMockSessionUser, isMockAuthEnabled } from './mock-auth.js';
 import { SessionStoreUnavailableError, TenantScopeConflictError } from './runtime-errors.js';
 
 const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });

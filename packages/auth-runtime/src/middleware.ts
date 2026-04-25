@@ -5,15 +5,14 @@ import {
   SessionUserHydrationError,
   buildLogContext,
   createApiError,
-  createMockSessionUser,
   getAuthConfig,
-  isMockAuthEnabled,
   resolveSessionUser,
   shouldEnforceLegalTextCompliance,
   validateTenantHost,
   withLegalTextCompliance,
 } from '@sva/auth/server';
 import { getSessionUser } from './auth-server/session.js';
+import { createMockSessionUser, isMockAuthEnabled } from './mock-auth.js';
 import { SessionStoreUnavailableError } from './runtime-errors.js';
 import type { SessionUser } from './types.js';
 

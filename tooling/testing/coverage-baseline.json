@@ -61,10 +61,10 @@
       "branches": 42.4
     },
     "instance-registry": {
-      "lines": 59.93,
-      "statements": 60.14,
-      "functions": 58.87,
-      "branches": 43.19
+      "lines": 72.83,
+      "statements": 72.75,
+      "functions": 77.48,
+      "branches": 52.46
     },
     "monitoring-client": {
       "lines": 81.56,

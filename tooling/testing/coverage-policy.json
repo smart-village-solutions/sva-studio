@@ -69,10 +69,10 @@
       "branches": 40
     },
     "instance-registry": {
-      "lines": 55,
-      "statements": 55,
-      "functions": 55,
-      "branches": 40
+      "lines": 70,
+      "statements": 70,
+      "functions": 75,
+      "branches": 50
     },
     "monitoring-client": {
       "lines": 70,

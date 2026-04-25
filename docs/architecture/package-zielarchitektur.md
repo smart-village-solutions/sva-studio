@@ -14,6 +14,8 @@ Das Ziel ist nicht, sofort alle bestehenden Packages aufzuteilen. Das Ziel ist, 
 - Plugins konsumieren Host-Verträge nur über das SDK und nicht direkt über interne Core- oder App-Module.
 - Autorisierung, Routing, Datenzugriff, Runtime-Kontext und UI-Komposition bleiben getrennte Änderungsachsen.
 - Große IAM- und Instanz-Funktionalität wächst nicht weiter unkontrolliert in `@sva/auth`.
+- PII-Datenflüsse werden bei Package-Schnitten explizit klassifiziert; nur autorisierte Fachmodule dürfen personenbezogene Daten im Klartext verarbeiten (siehe [PII-Datenfluss-Regel](#pii-datenfluss-regel)).
+- `@sva/iam-core` ist der einzige Ort für zentrale Autorisierungsentscheidungen (`authorize()`); Fachmodule konsumieren diesen Vertrag, duplizieren ihn nicht (Fail-closed bei fehlendem Autorisierungskontext).
 
 ## Aktuelle Ausgangslage
 
@@ -39,6 +41,7 @@ flowchart TB
   Routing[@sva/routing]
   PluginSdk[@sva/plugin-sdk / @sva/sdk]
   AuthRuntime[@sva/auth-runtime]
+  IamCore[@sva/iam-core]
   IamAdmin[@sva/iam-admin]
   IamGovernance[@sva/iam-governance]
   InstanceRegistry[@sva/instance-registry]
@@ -54,24 +57,29 @@ flowchart TB
   App --> AuthRuntime
   App --> Integrations
   App --> DataClient
+  App -.->|über Server-Funktionen| IamAdmin
+  App -.->|über Server-Funktionen| IamGovernance
+  App -.->|über Server-Funktionen| InstanceRegistry
   Plugins --> PluginSdk
   Routing --> Core
   Routing --> PluginSdk
-  AuthRuntime --> Core
+  AuthRuntime --> IamCore
   AuthRuntime --> ServerRuntime
   AuthRuntime --> DataRepos
-  IamAdmin --> Core
+  IamCore --> Core
+  IamCore --> ServerRuntime
+  IamAdmin --> IamCore
   IamAdmin --> ServerRuntime
   IamAdmin --> DataRepos
-  IamGovernance --> Core
+  IamGovernance --> IamCore
   IamGovernance --> ServerRuntime
   IamGovernance --> DataRepos
-  InstanceRegistry --> Core
+  InstanceRegistry --> IamCore
   InstanceRegistry --> ServerRuntime
   InstanceRegistry --> DataRepos
   Integrations --> Core
   Integrations --> ServerRuntime
-  Integrations --> AuthRuntime
+  Integrations -.->|nur Credential-Vertrag| AuthRuntime
   Integrations --> DataRepos
   DataRepos --> Core
   DataRepos --> ServerRuntime
@@ -109,9 +117,15 @@ Die Zielrichtung ist eine gerichtete Schichtung:
 
 1. App und Plugins konsumieren öffentliche Verträge.
 2. Routing konsumiert Core- und SDK-Verträge, aber keine Auth-Runtime-Implementierung.
-3. Fachmodule konsumieren Core, Server-Runtime und serverseitige Repositories.
-4. Repositories konsumieren Core und Server-Runtime, aber keine Fachmodule.
-5. Core bleibt ohne Workspace-Abhängigkeiten.
+3. Fachmodule konsumieren `@sva/iam-core`, Server-Runtime und serverseitige Repositories.
+4. `@sva/iam-core` konsumiert Core und Server-Runtime, aber keine Fachmodule.
+5. Repositories konsumieren Core und Server-Runtime, aber keine Fachmodule.
+6. Core bleibt ohne Workspace-Abhängigkeiten.
+
+Ergänzende Regeln:
+
+- App greift auf IAM-Fachmodule (`iam-admin`, `iam-governance`, `instance-registry`) **ausschließlich über Server-Funktionen** zu, nicht über direkte Package-Imports im Browser-Bundle.
+- Integrations-Packages (`@sva/*-integration`) dürfen Auth-Runtime **nur für den Credential-Vertrag** konsumieren (z. B. `getPerUserCredentials()`), nicht für Session- oder Middleware-Zugriff.
 
 Nicht zulässig im Zielbild:
 
@@ -120,6 +134,36 @@ Nicht zulässig im Zielbild:
 - App-Komponenten modellieren IAM-, Instanz- oder Integrationsregeln selbst.
 - `@sva/sdk` nimmt fachliche IAM-, Daten- oder Routing-Entscheidungen auf.
 - Fachmodule greifen direkt auf fremde Fachmodul-Interna zu, statt über öffentliche Verträge zu gehen.
+
+## PII-Datenfluss-Regel
+
+Bei der Package-Aufteilung gelten folgende PII-Klassifikationsgrenzen (vgl. `./iam-datenklassifizierung.md`, ADR-010):
+
+| Zielpackage | PII-Verarbeitungsrecht | Begründung |
+| --- | --- | --- |
+| `@sva/iam-core` | Definiert Verschlüsselungsvertrag und Autorisierungs-Invariante | Zentraler Entscheidungspunkt |
+| `@sva/iam-admin` | Darf PII entschlüsseln und im Klartext verarbeiten | Verwaltung von Benutzerkonten, Profilen, Rollen |
+| `@sva/iam-governance` | Darf PII entschlüsseln und im Klartext verarbeiten | DSR, Löschanfragen, Audit erfordern Klartextzugriff |
+| `@sva/auth-runtime` | Darf Session- und Token-Claims verarbeiten (Name, E-Mail aus OIDC) | Authentifizierungsflow |
+| `@sva/instance-registry` | Kein PII im Klartext | Registry-Daten sind mandantenbezogen, nicht personenbezogen |
+| `@sva/routing` | Kein PII im Klartext | Routing ist fachfrei |
+| `@sva/plugin-sdk` | Kein PII im Klartext | Plugins erhalten PII nur über Host-Verträge, nie direkt |
+| `@sva/data-repositories` | Stellt nur verschlüsselte Felder bereit | Entschlüsselung geschieht in der Fachschicht (`iam-admin`, `iam-governance`) |
+| `@sva/data-client` | Kein PII im Klartext | Browser-/Universal-Zugriff ohne Entschlüsselungsfähigkeit |
+
+Neue Packages, die PII verarbeiten, müssen dies in ihrer `project.json` mit einem `pii:yes`-Tag kennzeichnen und den Verschlüsselungsvertrag aus `@sva/iam-core` konsumieren.
+
+## Autorisierungs-Invariante
+
+`@sva/iam-core` ist der **einzige** Ort für `authorize()`-Entscheidungen:
+
+- Fachmodule (`iam-admin`, `iam-governance`, `instance-registry`) **konsumieren** diesen Vertrag.
+- Keine Fachmodul-internen Berechtigungsprüfungen gegen IAM-Tabellen.
+- Fail-closed bei fehlendem Autorisierungskontext (vgl. `./08-cross-cutting-concepts.md`).
+- Keycloak-Admin-Zugriffe laufen über einen singulären IdP-Port (vgl. ADR-016):
+  - `@sva/iam-admin` nutzt den **Tenant-Admin-Client**.
+  - `@sva/instance-registry` nutzt den **Platform-Admin-Client**.
+  - Beide konsumieren denselben Port, halten aber keine eigenen Keycloak-Credentials.
 
 ## Zielbild für aktuelle Hotspots
 
@@ -182,6 +226,8 @@ Die Zielarchitektur wird inkrementell umgesetzt.
 - Boundary-Disables werden inventarisiert und mit Abbaupfad versehen.
 - `@sva/routing -> @sva/auth` wird als zu entfernende Abhängigkeit markiert.
 
+**Exit-Kriterium:** Alle bestehenden Boundary-Disables sind inventarisiert, `pnpm lint` ist grün, keine neue IAM-Fachlogik ohne Zielbaustein-Zuordnung.
+
 ### Phase 2: Verträge herausziehen
 
 - Auth-Routenpfade und route-nahe Contracts in einen neutralen Baustein verschieben.
@@ -189,18 +235,31 @@ Die Zielarchitektur wird inkrementell umgesetzt.
 - DataClient- und Repository-Exports klarer trennen.
 - SDK-Subpaths für Plugin- und Server-Runtime-Verträge dokumentieren.
 
+**Security-Gate:** Contract-Tests müssen Autorisierungs-Invarianten und PII-Grenzen abdecken.
+**Exit-Kriterium:** Alle öffentlichen Verträge der Zielbausteine sind stabilisiert und getestet.
+
 ### Phase 3: Packages schneiden
 
 - `@sva/instance-registry` als erstes neues Fachpackage herauslösen, wenn weitere Instanzfunktionen anstehen.
 - Danach `@sva/iam-governance` oder `@sva/iam-admin` anhand des nächsten größeren Feature-Drucks herauslösen.
 - Erst nach stabilen Verträgen `@sva/sdk` in `plugin-sdk` und `server-runtime` trennen.
+- Pro neuem Package: `project.json` mit Scope-Tag, Nx-Targets (`build`, `lint`, `test:unit`, `test:types`, `check:runtime`) und Pipeline-Validierung.
+
+**Security-Gate:** Herausgelöste Packages bestehen sofort `check:server-runtime` und alle bestehenden Security-Tests.
+**Rollback-Strategie:** Deprecated-Re-Exports am alten Pfad als Übergangslösung; alter und neuer Import-Pfad parallel nutzbar.
+**Observability-Übergang:** `createSdkLogger({ component: '...' })`-Komponentennamen für neue Packages vorab festlegen. Bestehende Dashboard-Queries und Alerts parallel um neue Bezeichner erweitern, bevor alte entfernt werden.
+**Exit-Kriterium:** Neues Package ist in Nx-Graph, CI/CD und `depConstraints` vollständig integriert; bestehende Tests grün.
 
 ### Phase 4: Grenzen erzwingen
 
-- Nx-`depConstraints` an die Zielstruktur anpassen.
+- Nx-`depConstraints` an die Zielstruktur anpassen (neue Scope-Tags: `scope:iam-core`, `scope:iam-admin`, `scope:iam-governance`, `scope:instance-registry`, `scope:auth-runtime` etc.).
+- PII- und Credential-Grenzen über `depConstraints` durchsetzen.
 - Tests auf Package-Contracts ausrichten.
 - Veraltete Importpfade deprecaten und entfernen.
 - Architektur- und OpenSpec-Dokumentation nachziehen.
+
+**Security-Gate:** Nx-`depConstraints` erzwingen die PII- und Credential-Grenzen aus der PII-Datenfluss-Regel.
+**Exit-Kriterium:** Alle Boundary-Disables entfernt, `pnpm lint` erzwingt Zielarchitektur.
 
 ## Entscheidungsregeln für neue Funktionalität
 
@@ -247,13 +306,32 @@ Wenn mehr als zwei Zielbausteine betroffen sind, benötigt die Änderung ein Ope
 
 ## Verweise
 
+### Arc42-Abschnitte
+
 - `./04-solution-strategy.md`
 - `./05-building-block-view.md`
 - `./08-cross-cutting-concepts.md`
+- `./09-architecture-decisions.md`
 - `./11-risks-and-technical-debt.md`
 - `./iam-service-architektur.md`
+- `./iam-datenklassifizierung.md`
+
+### Relevante ADRs
+
+- ADR-010 — Verschlüsselung IAM Core Data Layer (PII-Datenfluss)
+- ADR-016 — IAM-IdP-Abstraktion für Keycloak-Admin-Pfade (Keycloak-Port-Zuordnung)
+- ADR-017 — Modulare IAM-Server-Bausteine (Fassade-plus-Kernmodul-Strategie)
+- ADR-030 — Registry-basierte Instance-Freigabe und Provisioning (Instance-Registry)
+- ADR-034 — Plugin-SDK-Vertrag v1 (Plugin-Isolation)
+- ADR-036 — Kanonischer IAM-Projektions- und Reconcile-Vertrag (IAM-Admin)
+
+### Entwicklungsdokumentation
+
 - `../development/iam-server-modularization.md`
 - `../development/server-package-runtime-guards.md`
+
+### OpenSpec-Specs
+
 - `../../openspec/specs/monorepo-structure/spec.md`
 - `../../openspec/specs/iam-server-modularization/spec.md`
 - `../../openspec/specs/plugin-actions/spec.md`

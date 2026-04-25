@@ -79,6 +79,21 @@ export type KeycloakProvisioningClient = {
 
 export type KeycloakProvisioningClientFactory = (realm?: string) => KeycloakProvisioningClient;
 
+export type KeycloakProvisioningClientConfigResolver<TConfig> = (realm?: string) => TConfig;
+
+export const createKeycloakProvisioningClientFactory =
+  <TConfig>(
+    resolveConfig: KeycloakProvisioningClientConfigResolver<TConfig>,
+    createClient: (config: TConfig) => KeycloakProvisioningClient
+  ): KeycloakProvisioningClientFactory =>
+  (realm?: string) =>
+    createClient(resolveConfig(realm));
+
+export const createKeycloakProvisioningAdapters = (createClient: KeycloakProvisioningClientFactory) => ({
+  readKeycloakState: createReadKeycloakState(createClient),
+  provisionInstanceAuthArtifacts: createProvisionInstanceAuthArtifacts(createClient),
+});
+
 type TenantAdminInput = {
   instanceId: string;
   username: string;

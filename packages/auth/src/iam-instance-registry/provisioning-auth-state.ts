@@ -1,7 +1,6 @@
 import {
-  createProvisionInstanceAuthArtifacts,
-  createReadKeycloakState,
-  type KeycloakProvisioningClientFactory,
+  createKeycloakProvisioningAdapters,
+  createKeycloakProvisioningClientFactory,
 } from '@sva/instance-registry/provisioning-auth-state';
 
 import {
@@ -10,15 +9,7 @@ import {
   KeycloakAdminUnavailableError,
   getKeycloakAdminClientConfigFromEnv,
   getKeycloakProvisionerClientConfigFromEnv,
-  type KeycloakAdminClientConfig,
 } from '../keycloak-admin-client.js';
-
-type KeycloakClientConfigResolver = (realm?: string) => KeycloakAdminClientConfig;
-
-const createKeycloakClientFactory =
-  (resolveConfig: KeycloakClientConfigResolver): KeycloakProvisioningClientFactory =>
-  (realm?: string) =>
-    new KeycloakAdminClient(resolveConfig(realm));
 
 export const readKeycloakAccessError = (error: unknown): string => {
   if (error instanceof KeycloakAdminUnavailableError) {
@@ -30,18 +21,18 @@ export const readKeycloakAccessError = (error: unknown): string => {
   return error instanceof Error ? error.message : String(error);
 };
 
-export const readKeycloakState = createReadKeycloakState(
-  createKeycloakClientFactory(getKeycloakAdminClientConfigFromEnv)
+const createAuthKeycloakClientFactory = (resolveConfig: typeof getKeycloakAdminClientConfigFromEnv) =>
+  createKeycloakProvisioningClientFactory(resolveConfig, (config) => new KeycloakAdminClient(config));
+
+const adminAdapters = createKeycloakProvisioningAdapters(
+  createAuthKeycloakClientFactory(getKeycloakAdminClientConfigFromEnv)
 );
 
-export const readKeycloakStateViaProvisioner = createReadKeycloakState(
-  createKeycloakClientFactory(getKeycloakProvisionerClientConfigFromEnv)
+const provisionerAdapters = createKeycloakProvisioningAdapters(
+  createAuthKeycloakClientFactory(getKeycloakProvisionerClientConfigFromEnv)
 );
 
-export const provisionInstanceAuthArtifacts = createProvisionInstanceAuthArtifacts(
-  createKeycloakClientFactory(getKeycloakAdminClientConfigFromEnv)
-);
-
-export const provisionInstanceAuthArtifactsViaProvisioner = createProvisionInstanceAuthArtifacts(
-  createKeycloakClientFactory(getKeycloakProvisionerClientConfigFromEnv)
-);
+export const readKeycloakState = adminAdapters.readKeycloakState;
+export const readKeycloakStateViaProvisioner = provisionerAdapters.readKeycloakState;
+export const provisionInstanceAuthArtifacts = adminAdapters.provisionInstanceAuthArtifacts;
+export const provisionInstanceAuthArtifactsViaProvisioner = provisionerAdapters.provisionInstanceAuthArtifacts;

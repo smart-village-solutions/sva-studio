@@ -73,8 +73,11 @@ export {
   type ReadKeycloakState,
 } from './provisioning-auth.js';
 export {
+  createKeycloakProvisioningAdapters,
+  createKeycloakProvisioningClientFactory,
   createProvisionInstanceAuthArtifacts,
   createReadKeycloakState,
+  type KeycloakProvisioningClientConfigResolver,
   type KeycloakProvisioningClient,
   type KeycloakProvisioningClientFactory,
 } from './provisioning-auth-state.js';

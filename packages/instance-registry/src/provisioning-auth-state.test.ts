@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  createKeycloakProvisioningAdapters,
+  createKeycloakProvisioningClientFactory,
   createProvisionInstanceAuthArtifacts,
   createReadKeycloakState,
   type KeycloakProvisioningClient,
@@ -91,5 +93,26 @@ describe('provisioning-auth-state', () => {
     );
     expect(client.createUser).toHaveBeenCalledWith(expect.objectContaining({ username: 'tenant-admin' }));
     expect(client.setUserPassword).toHaveBeenCalledWith('user-1', 'tmp-password', true);
+  });
+
+  it('builds provisioning adapters from an injected config resolver and client constructor', async () => {
+    const client = createClient();
+    const resolveConfig = vi.fn((realm?: string) => ({ realm: realm ?? 'master' }));
+    const createClientFromConfig = vi.fn(() => client);
+    const factory = createKeycloakProvisioningClientFactory(resolveConfig, createClientFromConfig);
+    const adapters = createKeycloakProvisioningAdapters(factory);
+
+    await adapters.readKeycloakState({
+      instanceId: 'demo',
+      primaryHostname: 'demo.example.org',
+      realmMode: 'existing',
+      authRealm: 'demo',
+      authClientId: 'sva-studio',
+      authClientSecretConfigured: false,
+    });
+
+    expect(resolveConfig).toHaveBeenCalledWith('demo');
+    expect(createClientFromConfig).toHaveBeenCalledWith({ realm: 'demo' });
+    expect(typeof adapters.provisionInstanceAuthArtifacts).toBe('function');
   });
 });

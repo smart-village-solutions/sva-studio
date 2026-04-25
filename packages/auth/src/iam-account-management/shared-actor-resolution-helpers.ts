@@ -1,4 +1,7 @@
 import type { ApiErrorCode } from '@sva/core';
+import {
+  resolveMissingActorDiagnosticReason as resolveMissingActorDiagnosticReasonWithClient,
+} from '@sva/iam-admin';
 
 import { jitProvisionAccountWithClient } from '../jit-provisioning.server.js';
 
@@ -64,33 +67,12 @@ export const createInstanceLookupError = (
 
 export const resolveMissingActorDiagnosticReason = async (instanceId: string, keycloakSubject: string) => {
   try {
-    const diagnosticRow = await withInstanceScopedDb(instanceId, async (client) => {
-      const result = await client.query<{
-        account_exists: boolean;
-        membership_exists: boolean;
-      }>(
-        `
-SELECT
-  EXISTS(SELECT 1 FROM iam.accounts WHERE keycloak_subject = $1) AS account_exists,
-  EXISTS(
-    SELECT 1
-    FROM iam.accounts a
-    JOIN iam.instance_memberships im
-      ON im.account_id = a.id
-     AND im.instance_id = $2
-    WHERE a.keycloak_subject = $1
-  ) AS membership_exists;
-`,
-        [keycloakSubject, instanceId]
-      );
-      return result.rows[0];
-    });
-
-    if (diagnosticRow?.account_exists) {
-      return diagnosticRow.membership_exists
-        ? 'missing_actor_account'
-        : 'missing_instance_membership';
-    }
+    return await withInstanceScopedDb(instanceId, (client) =>
+      resolveMissingActorDiagnosticReasonWithClient(client, {
+        instanceId,
+        keycloakSubject,
+      })
+    );
   } catch {
     // Prefer the original 403 path over masking with an auxiliary diagnostics failure.
   }

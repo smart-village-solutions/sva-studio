@@ -1,7 +1,7 @@
 import { getWorkspaceContext } from '@sva/server-runtime';
+import { resolveActorAccountId } from '@sva/iam-admin';
 
 import type { AuthenticatedRequestContext } from '../middleware.server.js';
-import type { QueryClient } from '../shared/db-helpers.js';
 import { resolveInstanceId } from '../shared/instance-id-resolution.js';
 
 import { createApiError, readInstanceIdFromRequest } from './api-helpers.js';
@@ -17,25 +17,7 @@ import { resolvePool } from './shared-runtime.js';
 import type { ActorInfo, ResolveActorOptions } from './types.js';
 
 export type { ActorInfo } from './types.js';
-
-export const resolveActorAccountId = async (
-  client: QueryClient,
-  input: { instanceId: string; keycloakSubject: string }
-): Promise<string | undefined> => {
-  const row = await client.query<{ account_id: string }>(
-    `
-SELECT a.id AS account_id
-FROM iam.accounts a
-JOIN iam.instance_memberships im
-  ON im.account_id = a.id
- AND im.instance_id = $1
-WHERE a.keycloak_subject = $2
-LIMIT 1;
-`,
-    [input.instanceId, input.keycloakSubject]
-  );
-  return row.rows[0]?.account_id;
-};
+export { resolveActorAccountId } from '@sva/iam-admin';
 
 const resolveActorInstanceId = async (
   request: Request,

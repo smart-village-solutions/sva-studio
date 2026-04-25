@@ -74,6 +74,11 @@ export {
 } from './actor-authorization.js';
 
 export {
+  resolveActorAccountId,
+  resolveMissingActorDiagnosticReason,
+} from './actor-resolution-query.js';
+
+export {
   resolveGroupsByIds,
   resolveRoleIdsForGroups,
   resolveRolesByExternalNames,

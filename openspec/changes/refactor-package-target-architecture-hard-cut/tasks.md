@@ -49,19 +49,21 @@
 ## 6. Enforcement
 
 - [x] 6.1 Nx-Tags für alle Zielpackages und PII-relevanten Packages setzen
-- [ ] 6.2 `depConstraints` für Zielgrenzen, PII-Grenzen, Plugin-Grenzen und Browser-/Server-Grenzen aktivieren
-- [ ] 6.3 Alte Sammelimporte in ESLint verbieten
+- [x] 6.2 `depConstraints` für Zielgrenzen, PII-Grenzen, Plugin-Grenzen und Browser-/Server-Grenzen aktivieren
+- [x] 6.3 Alte Sammelimporte in ESLint verbieten
 - [x] 6.4 Runtime-Import-Regeln und `check:server-runtime` für neue serverseitige Packages sicherstellen
-- [ ] 6.5 Boundary-Disables entfernen oder mit blockierendem Folgeticket dokumentieren
+- [x] 6.5 Boundary-Disables entfernen oder mit blockierendem Folgeticket dokumentieren
+  - Stand: produktiver Code nutzt keine Boundary-Disables; der verbleibende `/* eslint-disable */`-Treffer liegt in der generierten TanStack-RouteTree-Datei.
 
 ## 7. Consumer Migration
 
-- [ ] 7.1 App-Imports auf Server-Funktionen, client-sichere Contracts oder Zielpackages umstellen
-- [ ] 7.2 Plugin-Imports ausschließlich auf Plugin-SDK-Verträge umstellen
-- [ ] 7.3 Routing-Imports auf neutrale Contracts umstellen
-- [ ] 7.4 Tests, Mocks und Fixtures auf neue Package-Grenzen umstellen
+- [x] 7.1 App-Imports auf Server-Funktionen, client-sichere Contracts oder Zielpackages umstellen
+- [x] 7.2 Plugin-Imports ausschließlich auf Plugin-SDK-Verträge umstellen
+- [x] 7.3 Routing-Imports auf neutrale Contracts umstellen
+- [x] 7.4 Tests, Mocks und Fixtures auf neue Package-Grenzen umstellen
+  - Stand: App-, Routing-, Mainserver-, Vitest- und Root-TS-Aliasse zeigen auf Zielpackages; der Restkanten-Scan findet nur noch die dokumentierte `auth-runtime`-zu-`auth/server`-Kante.
 - [ ] 7.5 Alte Re-Exports und Sammel-Barrels löschen
-  - Offen: `@sva/auth-runtime/runtime-routes` re-exportiert noch Legacy-Admin-/Governance-/Registry-Handler aus `@sva/auth/server`, bis die Consumer vollständig auf Zielpackages migriert sind.
+  - Offen: `@sva/auth-runtime/runtime-routes` re-exportiert noch Legacy-Admin-/Governance-/Registry-Handler aus `@sva/auth/server`; Health wird bereits direkt über `@sva/auth-runtime/runtime-health` bedient und nicht mehr über das Legacy-Barrel weitergereicht.
 
 ## 8. Documentation
 

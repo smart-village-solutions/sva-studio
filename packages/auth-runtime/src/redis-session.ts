@@ -1,6 +1,4 @@
-import {
-  emitAuthAuditEvent,
-} from '@sva/auth/server';
+import { emitAuthAuditEvent } from './audit-events.js';
 import { getAuthConfig } from './config.js';
 import { decryptToken, encryptToken } from './crypto.js';
 import { getRedisClient } from './redis.js';

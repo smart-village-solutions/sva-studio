@@ -10,6 +10,15 @@ export {
 } from './config.js';
 export { buildLogContext } from './log-context.js';
 export { buildRequestOriginFromHeaders, resolveEffectiveRequestHost } from './request-hosts.js';
+export { resolveAuthRequestHost, sanitizeAuthReturnTo } from './auth-return-to.js';
+export { emitAuthAuditEvent } from './audit-events.js';
+export type { AuthAuditEvent, AuthAuditEventType, PluginActionAuditPayload } from './audit-events.types.js';
+export {
+  persistAuthAuditEventToDb,
+  persistAuthAuditEventWithClient,
+  type AuditSqlClient,
+  type PersistAuthAuditResult,
+} from './audit-db-sink.js';
 export { withAuthenticatedUser, type AuthenticatedRequestContext } from './middleware.js';
 export { getSessionUser } from './auth-server/session.js';
 export {

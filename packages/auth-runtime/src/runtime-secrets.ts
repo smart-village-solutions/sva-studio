@@ -35,8 +35,43 @@ export const getAuthClientSecret = (): string | undefined =>
 export const getAuthStateSecret = (): string | undefined =>
   readEnvOrSecret(['SVA_AUTH_STATE_SECRET'], 'sva_studio_app_auth_state_secret');
 
+export const getAppDbPassword = (): string | undefined =>
+  readEnvOrSecret(['APP_DB_PASSWORD', 'POSTGRES_PASSWORD'], 'sva_studio_app_db_password');
+
 export const getRedisPassword = (): string | undefined =>
   readEnvOrSecret(['REDIS_PASSWORD'], 'sva_studio_redis_password');
+
+const ensureValidDatabaseUrl = (databaseUrl: string | undefined): string | undefined => {
+  if (!databaseUrl) {
+    return undefined;
+  }
+
+  return new URL(databaseUrl).toString();
+};
+
+const buildDerivedIamDatabaseUrl = (): string | undefined => {
+  const password = getAppDbPassword();
+  if (!password) {
+    return undefined;
+  }
+
+  const user = process.env.APP_DB_USER?.trim() || 'sva_app';
+  const database = process.env.POSTGRES_DB?.trim() || 'sva_studio';
+  return `postgres://${encodeURIComponent(user)}:${encodeURIComponent(password)}@postgres:5432/${encodeURIComponent(database)}`;
+};
+
+export const getIamDatabaseUrl = (): string | undefined => {
+  const databaseUrl = process.env.IAM_DATABASE_URL?.trim();
+  if (databaseUrl) {
+    try {
+      return ensureValidDatabaseUrl(databaseUrl);
+    } catch {
+      // Fall back to the encoded runtime derivation if an explicit URL contains raw special characters.
+    }
+  }
+
+  return buildDerivedIamDatabaseUrl();
+};
 
 export const getRedisUrl = (): string => {
   const redisUrl = process.env.REDIS_URL?.trim();

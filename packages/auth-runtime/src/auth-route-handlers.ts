@@ -7,10 +7,8 @@ import {
   withRequestContext,
 } from '@sva/server-runtime';
 
-import {
-  emitAuthAuditEvent,
-  sanitizeAuthReturnTo,
-} from '@sva/auth/server';
+import { emitAuthAuditEvent } from './audit-events.js';
+import { sanitizeAuthReturnTo } from './auth-return-to.js';
 import { getAuthConfig, resolveAuthConfigForRequest } from './config.js';
 import { handleCallback } from './auth-server/callback.js';
 import { createLoginUrl } from './auth-server/login.js';

@@ -63,3 +63,8 @@ export { appendRunStep, buildFinalRunSteps } from './service-keycloak-run-steps.
 export { failClaimedRun, failRun } from './service-keycloak-execution-failures.js';
 export { createProvisioningArtifacts, provisionInstanceAuth } from './service-provisioning.js';
 export type { InstanceRegistryService, InstanceRegistryServiceDeps } from './service-types.js';
+export {
+  isInstanceTrafficAllowed,
+  resolveRuntimeInstanceFromRequest,
+  type RuntimeInstanceResolutionDeps,
+} from './runtime-resolution.js';

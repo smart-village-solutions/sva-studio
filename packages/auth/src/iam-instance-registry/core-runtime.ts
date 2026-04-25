@@ -1,23 +1,26 @@
 import { createApiError } from '../iam-account-management/api-helpers.js';
 import { getWorkspaceContext } from '@sva/server-runtime';
-import { isTrafficEnabledInstanceStatus, type InstanceStatus } from '@sva/core';
+import {
+  isInstanceTrafficAllowed,
+  resolveRuntimeInstanceFromRequest as resolveInstanceRegistryRuntimeInstanceFromRequest,
+  type ResolveRuntimeInstanceResult,
+  type RuntimeInstanceResolutionDeps,
+} from '@sva/instance-registry';
 
 import { resolveEffectiveRequestHost } from '../request-hosts.js';
 import { withRegistryService } from './repository.js';
 
-import type { ResolveRuntimeInstanceResult } from '@sva/instance-registry';
-
-export const resolveRuntimeInstanceFromRequest = async (request: Request): Promise<ResolveRuntimeInstanceResult> => {
-  const host = resolveEffectiveRequestHost(request);
-  const resolved = await withRegistryService((service) => service.resolveRuntimeInstance(host));
-  return {
-    hostClassification: resolved.hostClassification,
-    instance: resolved.instance,
-  };
+const runtimeInstanceResolutionDeps: RuntimeInstanceResolutionDeps = {
+  resolveEffectiveRequestHost,
+  withRegistryService,
 };
+
+export const resolveRuntimeInstanceFromRequest = async (
+  request: Request
+): Promise<ResolveRuntimeInstanceResult> =>
+  resolveInstanceRegistryRuntimeInstanceFromRequest(request, runtimeInstanceResolutionDeps);
 
 export const createTenantForbiddenResponse = (): Response =>
   createApiError(403, 'forbidden', 'Host ist für diese Operation nicht erlaubt.', getWorkspaceContext().requestId);
 
-export const isInstanceTrafficAllowed = (status: InstanceStatus): boolean =>
-  isTrafficEnabledInstanceStatus(status);
+export { isInstanceTrafficAllowed };

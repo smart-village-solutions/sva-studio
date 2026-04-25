@@ -38,6 +38,10 @@ export {
 } from './tenant-keycloak-user-projection.js';
 
 export {
+  loadMappedUsersBySubject,
+} from './tenant-keycloak-user-query.js';
+
+export {
   buildDirectPermissionRowsSql,
   buildPermissionRowsSql,
   buildPermissionTraceRowsSql,

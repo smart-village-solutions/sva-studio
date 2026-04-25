@@ -325,6 +325,9 @@ importers:
       pg:
         specifier: ^8.20.0
         version: 8.20.0
+      sanitize-html:
+        specifier: ^2.17.3
+        version: 2.17.3
       zod:
         specifier: ^4.3.6
         version: 4.3.6
@@ -332,6 +335,9 @@ importers:
       '@types/pg':
         specifier: ^8.20.0
         version: 8.20.0
+      '@types/sanitize-html':
+        specifier: ^2.16.1
+        version: 2.16.1
       '@vitest/coverage-v8':
         specifier: ^4.1.2
         version: 4.1.4(vitest@4.1.4)

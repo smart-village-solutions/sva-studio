@@ -28,7 +28,8 @@
     "@sva/data-repositories": "workspace:*",
     "@sva/iam-core": "workspace:*",
     "@sva/server-runtime": "workspace:*",
-    "sanitize-html": "^2.17.3"
+    "sanitize-html": "^2.17.3",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/sanitize-html": "^2.16.1",

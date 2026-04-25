@@ -23,3 +23,4 @@ export {
   hasLegalConsentExportPermission,
   loadConsentExportRecords,
 } from './legal-consent-export.js';
+export { createLegalTextSchema, updateLegalTextSchema } from './legal-text-schemas.js';

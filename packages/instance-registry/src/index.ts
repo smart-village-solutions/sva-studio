@@ -27,6 +27,17 @@ export type {
   UpdateInstanceInput,
 } from './mutation-types.js';
 export {
+  buildChangeInstanceStatusInput,
+  buildCreateInstanceProvisioningInput,
+  buildExecuteInstanceKeycloakProvisioningInput,
+  buildReconcileInstanceKeycloakInput,
+  buildUpdateInstanceInput,
+  type CreateInstancePayload,
+  type ExecuteKeycloakProvisioningPayload,
+  type ReconcileKeycloakPayload,
+  type UpdateInstancePayload,
+} from './mutation-input-builders.js';
+export {
   buildKeycloakStatus,
   buildMissingRealmStatus,
   buildPlan,

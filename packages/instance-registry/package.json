@@ -18,6 +18,10 @@
       "types": "./dist/mutation-errors.d.ts",
       "default": "./dist/mutation-errors.js"
     },
+    "./mutation-input-builders": {
+      "types": "./dist/mutation-input-builders.d.ts",
+      "default": "./dist/mutation-input-builders.js"
+    },
     "./provisioning-worker": {
       "types": "./dist/provisioning-worker.d.ts",
       "default": "./dist/provisioning-worker.js"

@@ -4,6 +4,10 @@ import { jsonResponse } from '../shared/db-helpers.js';
 import { buildLogContext } from '../shared/log-context.js';
 import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 import { buildPrimaryHostname, normalizeHost } from '@sva/core';
+import {
+  buildCreateInstanceProvisioningInput,
+  buildUpdateInstanceInput,
+} from '@sva/instance-registry/mutation-input-builders';
 
 import type { AuthenticatedRequestContext } from '../middleware.server.js';
 import { createInstanceSchema, ensurePlatformAccess, listQuerySchema, readDetailInstanceId, requireFreshReauth, updateInstanceSchema } from './http.js';
@@ -81,24 +85,11 @@ export const createInstanceInternal = async (request: Request, ctx: Authenticate
   }
 
   const result = await withRegistryService((service) =>
-    service.createProvisioningRequest({
+    service.createProvisioningRequest(buildCreateInstanceProvisioningInput(payloadResult.data, {
       idempotencyKey: idempotencyResult.key,
-      instanceId: payloadResult.data.instanceId,
-      displayName: payloadResult.data.displayName,
-      parentDomain: payloadResult.data.parentDomain,
-      realmMode: payloadResult.data.realmMode,
-      authRealm: payloadResult.data.authRealm,
-      authClientId: payloadResult.data.authClientId,
-      authIssuerUrl: payloadResult.data.authIssuerUrl,
-      authClientSecret: payloadResult.data.authClientSecret,
-      tenantAdminClient: payloadResult.data.tenantAdminClient,
-      tenantAdminBootstrap: payloadResult.data.tenantAdminBootstrap,
       actorId: ctx.user.id,
       requestId: getWorkspaceContext().requestId,
-      themeKey: payloadResult.data.themeKey,
-      featureFlags: payloadResult.data.featureFlags,
-      mainserverConfigRef: payloadResult.data.mainserverConfigRef,
-    })
+    }))
   );
 
   if (!result.ok) {
@@ -144,23 +135,10 @@ export const updateInstanceInternal = async (request: Request, ctx: Authenticate
 
   try {
     const updated = await withRegistryService((service) =>
-      service.updateInstance({
-        instanceId,
-        displayName: payloadResult.data.displayName,
-        parentDomain: payloadResult.data.parentDomain,
-        realmMode: payloadResult.data.realmMode,
-        authRealm: payloadResult.data.authRealm,
-        authClientId: payloadResult.data.authClientId,
-        authIssuerUrl: payloadResult.data.authIssuerUrl,
-        authClientSecret: payloadResult.data.authClientSecret,
-        tenantAdminClient: payloadResult.data.tenantAdminClient,
-        tenantAdminBootstrap: payloadResult.data.tenantAdminBootstrap,
+      service.updateInstance(buildUpdateInstanceInput(instanceId, payloadResult.data, {
         actorId: ctx.user.id,
         requestId: getWorkspaceContext().requestId,
-        themeKey: payloadResult.data.themeKey,
-        featureFlags: payloadResult.data.featureFlags,
-        mainserverConfigRef: payloadResult.data.mainserverConfigRef,
-      })
+      }))
     );
 
     if (!updated) {

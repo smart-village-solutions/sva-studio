@@ -7,6 +7,11 @@ import {
   classifyInstanceMutationError,
   type InstanceMutationErrorCode,
 } from '@sva/instance-registry/mutation-errors';
+import {
+  buildChangeInstanceStatusInput,
+  buildExecuteInstanceKeycloakProvisioningInput,
+  buildReconcileInstanceKeycloakInput,
+} from '@sva/instance-registry/mutation-input-builders';
 import type { AuthenticatedRequestContext } from '../middleware.server.js';
 import {
   ensurePlatformAccess,
@@ -78,13 +83,10 @@ export const reconcileInstanceKeycloakMutation = async (
 
   try {
     const status = await withRegistryService((service) =>
-      service.reconcileKeycloak({
-        instanceId,
+      service.reconcileKeycloak(buildReconcileInstanceKeycloakInput(instanceId, payloadResult.data, {
         actorId: ctx.user.id,
         requestId: getWorkspaceContext().requestId,
-        tenantAdminTemporaryPassword: payloadResult.data.tenantAdminTemporaryPassword,
-        rotateClientSecret: payloadResult.data.rotateClientSecret,
-      })
+      }))
     );
     if (!status) {
       return createApiError(404, 'not_found', 'Instanz wurde nicht gefunden.', getWorkspaceContext().requestId);
@@ -131,13 +133,10 @@ export const executeInstanceKeycloakProvisioningMutation = async (
 
   try {
     const run = await withRegistryService((service) =>
-      service.executeKeycloakProvisioning({
-        instanceId,
+      service.executeKeycloakProvisioning(buildExecuteInstanceKeycloakProvisioningInput(instanceId, payloadResult.data, {
         actorId: ctx.user.id,
         requestId: getWorkspaceContext().requestId,
-        intent: payloadResult.data.intent,
-        tenantAdminTemporaryPassword: payloadResult.data.tenantAdminTemporaryPassword,
-      })
+      }))
     );
     if (!run) {
       return createApiError(404, 'not_found', 'Instanz wurde nicht gefunden.', getWorkspaceContext().requestId);
@@ -184,13 +183,11 @@ export const mutateInstanceStatus = async (
   }
 
   const result = await withRegistryService((service) =>
-    service.changeStatus({
+    service.changeStatus(buildChangeInstanceStatusInput(instanceId, nextStatus, {
       idempotencyKey: idempotencyResult.key,
-      instanceId,
-      nextStatus,
       actorId: ctx.user.id,
       requestId: getWorkspaceContext().requestId,
-    })
+    }))
   );
 
   if (!result.ok) {

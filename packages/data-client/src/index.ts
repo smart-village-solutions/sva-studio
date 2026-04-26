@@ -54,7 +54,7 @@ const normalizeHeadersForCache = (headers: HeadersInit | undefined): string => {
   const normalizedHeaders = new Headers(headers);
   return [...normalizedHeaders.entries()]
     .map(([name, value]) => `${name.toLowerCase()}:${value}`)
-    .sort((left, right) => left.localeCompare(right))
+    .sort((left, right) => (left < right ? -1 : left > right ? 1 : 0))
     .join('\n');
 };
 

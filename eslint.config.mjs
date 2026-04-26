@@ -16,6 +16,7 @@ export default [
           enforceBuildableLibDependency: true,
           allow: [
             '../../../scripts/ci/check-file-placement.ts',
+            '../../../scripts/ci/check-plugin-ui-boundary.ts',
             '../../../scripts/ci/check-openapi-iam.ts',
             '../../../scripts/ci/check-server-package-runtime.ts',
             '../../../scripts/ci/clean-source-artifacts.ts',

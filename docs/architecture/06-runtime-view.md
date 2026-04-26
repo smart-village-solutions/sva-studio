@@ -81,7 +81,7 @@ Fehlerpfad:
 
 - Importiert ein Plugin App-interne Komponenten, bricht ESLint oder der Plugin-UI-Boundary-Check mit Verweis auf `@sva/studio-ui-react` ab.
 - Definiert ein Plugin eigene wiederverwendbare Basiscontrols für Button, Input, Tabelle, Tabs, Dialog oder Alert, wird der Beitrag als UI-Drift behandelt und muss in einen fachlichen Wrapper um Studio-Primitives geändert werden.
-- Versucht eine Custom-View Shell, Guard, Route-Materialisierung oder Persistenz zu uebernehmen, greift der bestehende Plugin-Guardrail-Pfad fail-fast.
+- Versucht eine Custom-View Shell, Guard, Route-Materialisierung oder Persistenz zu übernehmen, greift der bestehende Plugin-Guardrail-Pfad fail-fast.
 
 ### Szenario 1a: Tenant-Request mit Registry-Lookup
 

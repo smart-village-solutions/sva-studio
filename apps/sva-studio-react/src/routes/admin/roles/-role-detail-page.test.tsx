@@ -60,7 +60,7 @@ describe('RoleDetailPage', () => {
     useRolePermissionsMock.mockReturnValue({
       permissions: [
         { id: 'perm-1', instanceId: 'de-musterhausen', permissionKey: 'content.read', description: 'Lesen' },
-        { id: 'perm-2', instanceId: 'de-musterhausen', permissionKey: 'content.write', description: 'Schreiben' },
+        { id: 'perm-2', instanceId: 'de-musterhausen', permissionKey: 'content.updatePayload', description: 'Schreiben' },
         { id: 'perm-3', instanceId: 'de-musterhausen', permissionKey: 'iam.configure', description: 'Konfigurieren' },
       ],
       isLoading: false,
@@ -127,7 +127,7 @@ describe('RoleDetailPage', () => {
           memberCount: 3,
           syncState: 'failed',
           syncError: { code: 'IDP_UNAVAILABLE' },
-          permissions: [{ id: 'perm-2', permissionKey: 'content.write', description: null }],
+          permissions: [{ id: 'perm-2', permissionKey: 'content.updatePayload', description: null }],
         },
       ],
       isLoading: false,
@@ -177,7 +177,7 @@ describe('RoleDetailPage', () => {
           roleLevel: 20,
           memberCount: 3,
           syncState: 'synced',
-          permissions: [{ id: 'perm-2', permissionKey: 'content.write', description: null }],
+          permissions: [{ id: 'perm-2', permissionKey: 'content.updatePayload', description: null }],
         },
       ],
       isLoading: false,
@@ -221,7 +221,7 @@ describe('RoleDetailPage', () => {
           roleLevel: 20,
           memberCount: 3,
           syncState: 'synced',
-          permissions: [{ id: 'perm-2', permissionKey: 'content.write', description: null }],
+          permissions: [{ id: 'perm-2', permissionKey: 'content.updatePayload', description: null }],
         },
       ],
       isLoading: false,
@@ -250,7 +250,7 @@ describe('RoleDetailPage', () => {
     expect(screen.getByText('Technischer Schlüssel: content.read')).toBeTruthy();
     expect(screen.getAllByText('Fachbereich: Inhalte').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('Aktion: Lesen')).toBeTruthy();
-    expect(screen.getByText('Aktion: Bearbeiten')).toBeTruthy();
+    expect(screen.getByText('Aktion: Payload bearbeiten')).toBeTruthy();
     expect(screen.getByText('Zugeordnet')).toBeTruthy();
     expect(screen.getAllByText('Nicht zugeordnet').length).toBeGreaterThanOrEqual(1);
   });
@@ -307,7 +307,7 @@ describe('RoleDetailPage', () => {
           roleLevel: 20,
           memberCount: 3,
           syncState: 'synced',
-          permissions: [{ id: 'perm-2', permissionKey: 'content.write', description: null }],
+          permissions: [{ id: 'perm-2', permissionKey: 'content.updatePayload', description: null }],
         },
       ],
       isLoading: false,
@@ -388,7 +388,7 @@ describe('RoleDetailPage', () => {
           roleLevel: 20,
           memberCount: 3,
           syncState: 'synced',
-          permissions: [{ id: 'perm-2', permissionKey: 'content.write', description: null }],
+          permissions: [{ id: 'perm-2', permissionKey: 'content.updatePayload', description: null }],
         },
       ],
       isLoading: false,
@@ -437,7 +437,7 @@ describe('RoleDetailPage', () => {
           syncState: 'failed',
           lastSyncedAt: '2026-03-31T10:15:00.000Z',
           syncError: { code: 'IDP_UNAVAILABLE' },
-          permissions: [{ id: 'perm-2', permissionKey: 'content.write', description: null }],
+          permissions: [{ id: 'perm-2', permissionKey: 'content.updatePayload', description: null }],
         },
       ],
       isLoading: false,

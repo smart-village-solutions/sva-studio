@@ -2,7 +2,12 @@ import { createSdkLogger } from '@sva/server-runtime';
 
 import { asApiItem, asApiList, createApiError, readPathSegment } from '../iam-account-management/api-helpers.js';
 import type { AuthenticatedRequestContext } from '../middleware.server.js';
-import { resolveContentAccess, resolveContentActor, withAuthenticatedContentHandler } from './request-context.js';
+import {
+  authorizeContentAction,
+  resolveContentAccess,
+  resolveContentActor,
+  withAuthenticatedContentHandler,
+} from './request-context.js';
 import { createContentResponse, deleteContentResponse, updateContentResponse } from './mutations.js';
 import { loadContentById, loadContentDetail, loadContentHistory, loadContentListItems } from './repository.js';
 
@@ -18,6 +23,11 @@ export const listContentsInternal = async (
   }
 
   try {
+    const authorizationError = await authorizeContentAction(actorResolution.actor, 'content.read');
+    if (authorizationError) {
+      return authorizationError;
+    }
+
     const [items, access] = await Promise.all([
       loadContentListItems(actorResolution.actor.instanceId),
       resolveContentAccess(actorResolution.actor),
@@ -60,6 +70,13 @@ export const getContentInternal = async (
   }
 
   try {
+    const authorizationError = await authorizeContentAction(actorResolution.actor, 'content.read', {
+      contentId,
+    });
+    if (authorizationError) {
+      return authorizationError;
+    }
+
     const [item, access] = await Promise.all([
       loadContentDetail(actorResolution.actor.instanceId, contentId),
       resolveContentAccess(actorResolution.actor),
@@ -106,6 +123,15 @@ export const getContentHistoryInternal = async (
     const item = await loadContentById(actorResolution.actor.instanceId, contentId);
     if (!item) {
       return createApiError(404, 'not_found', 'Inhalt wurde nicht gefunden.', actorResolution.actor.requestId);
+    }
+
+    const authorizationError = await authorizeContentAction(actorResolution.actor, 'content.readHistory', {
+      contentId: item.id,
+      contentType: item.contentType,
+      organizationId: item.organizationId,
+    });
+    if (authorizationError) {
+      return authorizationError;
     }
 
     const history = await loadContentHistory(actorResolution.actor.instanceId, contentId);

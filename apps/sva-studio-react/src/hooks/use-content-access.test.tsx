@@ -98,7 +98,7 @@ describe('useContentAccess', () => {
             provenance: { sourceKinds: ['direct_role'] },
           },
           {
-            action: 'content.update',
+            action: 'content.updatePayload',
             resourceType: 'content',
             effect: 'allow',
             organizationId: 'org-1',

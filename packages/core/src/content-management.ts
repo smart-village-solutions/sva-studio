@@ -1,6 +1,20 @@
 export const GENERIC_CONTENT_TYPE = 'generic' as const;
 
 export const iamContentStatuses = ['draft', 'in_review', 'approved', 'published', 'archived'] as const;
+export const iamContentValidationStates = ['valid', 'invalid', 'pending'] as const;
+export const iamContentPrimitiveActions = [
+  'content.read',
+  'content.create',
+  'content.updateMetadata',
+  'content.updatePayload',
+  'content.changeStatus',
+  'content.publish',
+  'content.archive',
+  'content.restore',
+  'content.readHistory',
+  'content.manageRevisions',
+  'content.delete',
+] as const;
 export const iamContentAccessStates = ['editable', 'read_only', 'blocked', 'server_denied'] as const;
 export const iamContentAccessReasonCodes = [
   'content_read_missing',
@@ -10,6 +24,8 @@ export const iamContentAccessReasonCodes = [
 ] as const;
 
 export type IamContentStatus = (typeof iamContentStatuses)[number];
+export type IamContentValidationState = (typeof iamContentValidationStates)[number];
+export type IamContentPrimitiveAction = (typeof iamContentPrimitiveActions)[number];
 export type IamContentAccessState = (typeof iamContentAccessStates)[number];
 export type IamContentAccessReasonCode = (typeof iamContentAccessReasonCodes)[number];
 
@@ -53,13 +69,24 @@ export type IamContentHistoryEntry = {
 export type IamContentListItem = {
   readonly id: string;
   readonly contentType: string;
+  readonly instanceId: string;
+  readonly organizationId?: string;
+  readonly ownerSubjectId?: string;
   readonly title: string;
   readonly publishedAt?: string;
+  readonly publishFrom?: string;
+  readonly publishUntil?: string;
   readonly createdAt: string;
+  readonly createdBy: string;
   readonly updatedAt: string;
+  readonly updatedBy: string;
   readonly author: string;
   readonly payload: ContentJsonValue;
   readonly status: IamContentStatus;
+  readonly validationState: IamContentValidationState;
+  readonly historyRef: string;
+  readonly currentRevisionRef?: string;
+  readonly lastAuditEventRef?: string;
   readonly access?: IamContentAccessSummary;
 };
 
@@ -69,17 +96,31 @@ export type IamContentDetail = IamContentListItem & {
 
 export type CreateIamContentInput = {
   readonly contentType: string;
+  readonly organizationId?: string;
+  readonly ownerSubjectId?: string;
   readonly title: string;
   readonly publishedAt?: string;
+  readonly publishFrom?: string;
+  readonly publishUntil?: string;
   readonly payload: ContentJsonValue;
   readonly status: IamContentStatus;
+  readonly validationState?: IamContentValidationState;
 };
 
 export type UpdateIamContentInput = Partial<CreateIamContentInput>;
 
 const CONTENT_READ_ACTIONS = new Set(['content.read']);
 const CONTENT_CREATE_ACTIONS = new Set(['content.create']);
-const CONTENT_UPDATE_ACTIONS = new Set(['content.update', 'content.write']);
+const CONTENT_UPDATE_ACTIONS = new Set([
+  'content.updateMetadata',
+  'content.updatePayload',
+  'content.changeStatus',
+  'content.publish',
+  'content.archive',
+  'content.restore',
+  'content.manageRevisions',
+  'content.delete',
+]);
 
 const uniqueSortedStrings = (values: readonly string[]) => [...new Set(values.filter(Boolean))].sort((left, right) => left.localeCompare(right));
 
@@ -171,6 +212,12 @@ const isPlainObject = (value: unknown): value is Record<string, unknown> => {
 
 export const isIamContentStatus = (value: unknown): value is IamContentStatus =>
   typeof value === 'string' && (iamContentStatuses as readonly string[]).includes(value);
+
+export const isIamContentValidationState = (value: unknown): value is IamContentValidationState =>
+  typeof value === 'string' && (iamContentValidationStates as readonly string[]).includes(value);
+
+export const isIamContentPrimitiveAction = (value: unknown): value is IamContentPrimitiveAction =>
+  typeof value === 'string' && (iamContentPrimitiveActions as readonly string[]).includes(value);
 
 export const isContentJsonValue = (value: unknown): value is ContentJsonValue => {
   if (

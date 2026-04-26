@@ -874,11 +874,17 @@ Die Account-UI SHALL CRUD-artige Admin-Ressourcen ueber kanonische Listen-, Erst
 
 Die UI SHALL denselben classification-basierten Diagnosekern in Self-Service- und Admin-Ansichten verwenden und daraus kontextabhängige, aber fachlich konsistente Fehler- und Statusbilder ableiten.
 
-#### Scenario: Self-Service und Admin verarbeiten denselben Fehler unterschiedlich passend
+#### Scenario: Neue Diagnoseklassen werden konsistent angezeigt
 
-- **WHEN** derselbe IAM-Fehler in `/account` und in einer Admin-Ansicht auftritt
-- **THEN** verwenden beide Ansichten dieselbe `classification`, denselben `status` und dieselbe `requestId`
-- **AND** unterscheiden sich nur in Wortwahl, Detailtiefe und empfohlener Folgeaktion
+- **WHEN** IAM-Fehler als `auth_resolution`, `oidc_discovery_or_exchange`, `frontend_state_or_permission_staleness` oder `legacy_workaround_or_regression` klassifiziert werden
+- **THEN** zeigt die UI eine lokalisierte Diagnoseklasse an
+- **AND** bleibt die Anzeige sicher, wenn ein Client eine noch unbekannte Klassifikation erhält
+
+#### Scenario: Recovery wird nicht als gesund dargestellt
+
+- **WHEN** ein Fehler den Status `recovery_laeuft`, `degradiert` oder `manuelle_pruefung_erforderlich` trägt
+- **THEN** zeigt die UI diesen Status nachvollziehbar an
+- **AND** reduziert den Zustand nicht auf eine vollständig gesunde Darstellung
 
 ### Requirement: Handlungsleitende IAM-Fehler- und Statusanzeigen
 
@@ -909,4 +915,55 @@ Die UI SHALL IAM-Fehler und degradierte Zustände so darstellen, dass Benutzer u
 - **WHEN** Self-Service- und Admin-Ansichten denselben IAM-Fehlerklassifikationskern verarbeiten
 - **THEN** verwenden beide Pfade dieselbe Fehlerklasse, denselben handlungsleitenden Status und dieselbe `requestId`
 - **AND** unterscheiden sich nur in Sprache, Detailtiefe und empfohlenen Folgeschritten passend zum jeweiligen Kontext
+
+### Requirement: Admin-Ressourcen werden ueber einen deklarativen Registrierungsvertrag beschrieben
+
+Die Account-UI SHALL CRUD-artige Admin-Flaechen nicht mehr nur als lose Einzelrouten behandeln, sondern ueber einen expliziten Registrierungsvertrag fuer Admin-Ressourcen materialisieren.
+
+#### Scenario: Host materialisiert kanonische Admin-Flaechen aus einer Ressourcendefinition
+
+- **WHEN** eine Workspace-Erweiterung eine Admin-Ressource registriert
+- **THEN** enthaelt der Beitrag mindestens eine Ressourcen-ID, einen Titel-Key, eine Guard-Anforderung und UI-Bindings fuer Liste und Detail
+- **AND** die Account-UI kann daraus die zugehoerigen kanonischen Admin-Flaechen ohne separate Sonderverdrahtung pro Ressource aufbauen
+
+#### Scenario: Erstellungsansicht bleibt Teil derselben registrierten Ressource
+
+- **WHEN** eine Ressourcendefinition einen Create-Beitrag liefert
+- **THEN** materialisiert die Account-UI die Erstellungsansicht als Teil derselben registrierten Admin-Ressource
+- **AND** Liste, Erstellen und Detail bleiben ueber denselben Ressourcenvertrag miteinander verknuepft
+
+### Requirement: Admin-Ressourcen bleiben hostkontrollierte UI-Bausteine
+
+Die Account-UI SHALL Packages fuer Admin-Ressourcen nur deklarative UI-Beitraege erlauben; Guard-Anwendung, Routenform und Shell-Integration bleiben Host-Verantwortung.
+
+#### Scenario: Package liefert nur deklarative Flaechenbeitraege
+
+- **WHEN** ein Package eine Admin-Ressource fuer den Host bereitstellt
+- **THEN** beschreibt es Liste, Detail, Erstellen und optionale Historie ueber deklarative Bindings
+- **AND** es fuehrt keine eigene zweite Admin-Shell oder parallele Top-Level-Navigation ausserhalb des Host-Vertrags ein
+
+#### Scenario: Host erzwingt konsistente Shell-Integration
+
+- **WHEN** mehrere Admin-Ressourcen registriert sind
+- **THEN** integriert die Account-UI diese innerhalb derselben Admin-Shell und derselben Interaktionsmuster
+- **AND** Guard-, Titel- und Navigationsdarstellung folgen den hostseitigen Regeln statt ressourcenspezifischer Sonderlogik
+
+### Requirement: Studio Keycloak Admin UI
+
+The Studio admin UI SHALL allow authorized platform and tenant admins to use Studio as an alternative UI for Keycloak user and role administration.
+
+#### Scenario: Complete user list with edit affordances
+- **WHEN** ein Admin `/admin/users` öffnet
+- **THEN** zeigt die UI alle im aktiven Scope relevanten Keycloak-User mit Such-, Status-, Rollen- und Mapping-Filtern
+- **AND** zeigt pro User, ob Bearbeitung, Deaktivierung und Rollenzuordnung möglich, read-only oder blockiert ist
+
+#### Scenario: Complete role list with edit affordances
+- **WHEN** ein Admin `/admin/roles` öffnet
+- **THEN** zeigt die UI alle im aktiven Scope relevanten Keycloak-Rollen mit Such-, Typ- und Bearbeitbarkeitsfiltern
+- **AND** unterscheidet Built-in-, externe und Studio-managed Rollen sichtbar
+
+#### Scenario: Sync diagnostics are actionable
+- **WHEN** ein Sync oder Reconcile `partial_failure`, `blocked` oder `failed` meldet
+- **THEN** zeigt die UI Zähler, Diagnosecodes und betroffene User/Rollen
+- **AND** bietet nur Aktionen an, die im aktiven Scope und laut Bearbeitbarkeitsmatrix erlaubt sind
 

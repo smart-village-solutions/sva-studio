@@ -30,7 +30,7 @@ const mutableRole: MutableRole = {
 const roleListRow = {
   ...mutableRole,
   member_count: 3,
-  permission_rows: [{ id: 'permission-1', permission_key: 'content.update', description: 'Update content' }],
+  permission_rows: [{ id: 'permission-1', permission_key: 'content.updatePayload', description: 'Update content' }],
 };
 
 const createClient = (queuedRows: readonly (readonly Record<string, unknown>[])[] = []) => {
@@ -81,7 +81,7 @@ describe('role mutation persistence', () => {
     ).resolves.toMatchObject({
       id: roleId,
       roleKey: 'editor',
-      permissions: [{ id: 'permission-1', permissionKey: 'content.update' }],
+      permissions: [{ id: 'permission-1', permissionKey: 'content.updatePayload' }],
     });
 
     expect(queries[0]?.text).toContain('INSERT INTO iam.roles');

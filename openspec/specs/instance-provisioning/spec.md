@@ -160,3 +160,58 @@ Das System SHALL Login-Client und Tenant-Admin-Client im Provisioning und Reconc
 - **THEN** darf der Provisioning-Lauf genau diesen Client idempotent nachziehen
 - **AND** bleibt der Lauf auditierbar und deterministisch wiederholbar
 
+### Requirement: Keycloak-Provisioning-Run-Enqueue ist idempotent
+
+Das System SHALL Keycloak-Reconcile- und Execute-Mutationen end-to-end idempotent verarbeiten, indem der validierte Header `Idempotency-Key` bis zur persistenten Erzeugung von `iam.instance_keycloak_provisioning_runs` verwendet wird. Dieser Header ist der kanonische Name für denselben Idempotenzvertrag, der in älteren IAM-Spezifikationen als `X-Idempotency-Key` beschrieben ist.
+
+#### Scenario: Replay mit gleichem Key und gleicher Payload nutzt den bestehenden Run
+
+- **WHEN** ein berechtigter Client dieselbe Keycloak-Reconcile- oder Execute-Mutation für dieselbe Instanz und denselben `Idempotency-Key` mit fachlich identischer Payload erneut sendet
+- **THEN** erzeugt das System keinen zusätzlichen Keycloak-Provisioning-Run
+- **AND** liefert `reconcileKeycloak` deterministisch die bestehende Status-/Snapshot-Antwort aus dem ursprünglichen Auftrag zurück
+- **AND** liefert `executeKeycloakProvisioning` deterministisch den bereits vorhandenen Keycloak-Provisioning-Run zurück
+
+#### Scenario: Key-Reuse mit abweichender Payload wird abgelehnt
+
+- **WHEN** ein Client denselben `Idempotency-Key` im selben Scope aus Instanz und Mutation wiederverwendet, aber eine fachlich abweichende stabile Request-Payload sendet
+- **THEN** lehnt das System den Request mit einem Konfliktfehler ab
+- **AND** erzeugt es keinen neuen Keycloak-Provisioning-Run
+
+#### Scenario: Parallele Requests mit gleichem Key werden atomar dedupliziert
+
+- **WHEN** zwei nahezu gleichzeitige Keycloak-Reconcile- oder Execute-Requests mit identischer Instanz, Mutation, identischem `Idempotency-Key` und identischem fachlichem Payload-Fingerprint eingehen
+- **THEN** bleibt die persistierte Run-Erzeugung effektiv genau einmalig
+- **AND** referenzieren alle erfolgreichen Execute-Antworten denselben Keycloak-Provisioning-Run
+- **AND** geben alle erfolgreichen Reconcile-Antworten denselben Status-/Snapshot-Zustand des deduplizierten Auftrags wieder
+
+### Requirement: Tenant-Auth-Vertrag priorisiert Host- und Realm-Scope
+Das System SHALL fuer tenant-spezifische Studio-Instanzen den Tenant-Kontext primaer ueber Registry, Hostname und den zugeordneten Realm modellieren.
+
+#### Scenario: Tenant-Realm ist die fuehrende technische Benutzergrenze
+
+- **WHEN** eine aktive Instanz ueber `primaryHostname`, `authRealm` und `authClientId` in der Registry beschrieben ist
+- **THEN** ist ein erfolgreicher Login im zugeordneten Tenant-Realm technisch ausreichend, um den Benutzer dem Tenant-Kontext dieser Instanz zuzuordnen
+- **AND** die Runtime leitet `instanceId` fuer die Session aus diesem tenant-spezifischen Auth-Scope ab
+- **AND** ein zusaetzliches benutzerbezogenes Keycloak-Attribut `instanceId` ist dafuer keine normative Vorbedingung
+
+### Requirement: Keycloak-Artefakte unterscheiden zwischen Login-Vertrag und Interop
+Das System SHALL Keycloak-Artefakte fuer tenant-spezifische Instanzen danach unterscheiden, ob sie fuer den interaktiven Login-Vertrag zwingend oder nur fuer Interoperabilitaet, Diagnose oder Zusatzprozesse relevant sind.
+
+#### Scenario: instanceId-Mapper ist kein hartes Login-Gate mehr
+
+- **WHEN** fuer eine aktive Instanz der OIDC-Client, Realm, Redirect- und Logout-URLs korrekt am Tenant-Host ausgerichtet sind
+- **THEN** bleibt ein fehlender Protocol Mapper `instanceId` ein Diagnose- oder Interop-Befund
+- **AND** er blockiert tenant-spezifische Studio-Logins nicht als eigener Pflichtvertrag
+- **AND** Checklisten, Statusanzeigen und Doku unterscheiden explizit zwischen Login-relevanten Pflichtartefakten und optionalen Zusatzartefakten
+- **AND** ein fehlendes Tenant-Admin-User-Attribut `instanceId` wird analog als Warnung oder Diagnosehinweis behandelt
+
+### Requirement: Instanzdiagnostik korreliert Provisioning- und Runtime-Fehler
+
+Die Instanzdiagnostik SHALL Runtime-IAM-Fehler, Provisioning-Drift, Reconcile-Befunde und Operator-Checks über gemeinsame Klassifikation, sichere Details und `requestId` korrelierbar machen.
+
+#### Scenario: Provisioning- und Legacy-Fallbacks bleiben unterscheidbar
+
+- **WHEN** ein Instanz- oder Tenant-Fehler aus Registry-/Provisioning-Drift entsteht
+- **THEN** verwendet der Diagnosekern `registry_or_provisioning_drift`
+- **AND** Legacy- oder Workaround-Pfade verwenden `legacy_workaround_or_regression`, damit Betrieb und UI die Ursache nicht vermischen
+

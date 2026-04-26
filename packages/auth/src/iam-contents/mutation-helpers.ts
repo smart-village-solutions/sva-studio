@@ -10,7 +10,7 @@ import {
 import { validateCsrf } from '../iam-account-management/csrf.js';
 import { completeIdempotency, reserveIdempotency } from '../iam-account-management/shared.js';
 
-import type { CreateContentInput } from './repository-shared.js';
+import type { CreateContentInput } from './repository-types.js';
 import type { ResolvedContentActor } from './request-context.js';
 import { validateContentTypePayload } from './content-type-registry.js';
 import { createContentSchema } from './schemas.js';
@@ -57,7 +57,19 @@ export const createFailureResponse = async (
 export type ParsedCreateRequest = {
   readonly idempotencyKey: string;
   readonly rawBody: string;
-  readonly parsedData: Pick<CreateContentInput, 'contentType' | 'title' | 'payload' | 'status' | 'publishedAt'>;
+  readonly parsedData: Pick<
+    CreateContentInput,
+    | 'contentType'
+    | 'organizationId'
+    | 'ownerSubjectId'
+    | 'title'
+    | 'payload'
+    | 'status'
+    | 'validationState'
+    | 'publishedAt'
+    | 'publishFrom'
+    | 'publishUntil'
+  >;
   readonly payload: ContentJsonValue;
 };
 

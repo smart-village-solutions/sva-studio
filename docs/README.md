@@ -54,6 +54,7 @@ Die folgenden Dokumente sind die primären Einstiege für übergreifende Governa
 - Testing-Strategie: `./development/testing-strategy.md`
 - Content-Guidelines: `./guides/content-guidelines.md`
 - Accessibility: `./guides/accessibility.md`
+- Studio-Seitenstandard: `./development/studio-uebersichts-und-detailseiten-standard.md`
 
 ## Pflegehinweise
 

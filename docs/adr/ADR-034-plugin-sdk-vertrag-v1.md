@@ -33,7 +33,7 @@ Gleichzeitig war das Ziel ausdrücklich nicht, bereits ein dynamisches Runtime-P
   - Plugin-Navigation
   - Plugin-Content-Typen
   - Plugin-Übersetzungen
-- Guards bleiben Host-Verantwortung. Plugins deklarieren nur fachliche Guard-Metadaten (`content.read`, `content.create`, `content.write`).
+- Guards bleiben Host-Verantwortung. Plugins deklarieren nur fachliche Guard-Metadaten aus den kanonischen Content-Primitiven, z. B. `content.read`, `content.create`, `content.updatePayload` oder `content.delete`.
 - Plugin-i18n wird über einen SDK-seitigen Resolver angebunden; Plugin-UI nutzt `usePluginTranslation(pluginId)` statt App-Interna.
 - Die Registrierung bleibt in v1 bewusst statisch im App-Bundle. Runtime-Loading, externe Plugin-Pakete und Sandbox-Isolation sind nicht Teil dieser Entscheidung.
 

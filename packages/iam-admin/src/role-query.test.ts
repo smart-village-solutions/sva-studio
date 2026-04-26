@@ -27,7 +27,7 @@ describe('role-query', () => {
         sync_state: 'synced',
         last_synced_at: '2026-04-24T12:00:00.000Z',
         last_error_code: null,
-        permission_rows: [{ id: 'perm-1', permission_key: 'content.update', description: null }],
+        permission_rows: [{ id: 'perm-1', permission_key: 'content.updatePayload', description: null }],
       },
     ]);
 
@@ -45,7 +45,7 @@ describe('role-query', () => {
         memberCount: 3,
         syncState: 'synced',
         lastSyncedAt: '2026-04-24T12:00:00.000Z',
-        permissions: [{ id: 'perm-1', permissionKey: 'content.update', description: undefined }],
+        permissions: [{ id: 'perm-1', permissionKey: 'content.updatePayload', description: undefined }],
       },
     ]);
     expect(client.query).toHaveBeenCalledWith(expect.stringContaining('WHERE r.instance_id = $1'), [

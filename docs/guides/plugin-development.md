@@ -47,7 +47,15 @@ Zulässige Guards in v1:
 
 - `content.read`
 - `content.create`
-- `content.write`
+- `content.updateMetadata`
+- `content.updatePayload`
+- `content.changeStatus`
+- `content.publish`
+- `content.archive`
+- `content.restore`
+- `content.readHistory`
+- `content.manageRevisions`
+- `content.delete`
 
 ### `navigation`
 

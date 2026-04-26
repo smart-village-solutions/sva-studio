@@ -62,7 +62,7 @@ test('role create page opens and submits successfully', async ({ page }) => {
       roleLevel: 20,
       memberCount: 3,
       syncState: 'synced',
-      permissions: [{ id: 'perm-1', permissionKey: 'content.write', description: null }],
+      permissions: [{ id: 'perm-1', permissionKey: 'content.updatePayload', description: null }],
     },
   ];
 

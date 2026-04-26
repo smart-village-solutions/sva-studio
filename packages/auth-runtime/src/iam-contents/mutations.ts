@@ -9,6 +9,7 @@ import {
 import { validateCsrf } from '../iam-account-management/csrf.js';
 
 import { validateContentTypePayload } from './content-type-registry.js';
+import { authorizeUpdateContentActions } from './mutation-authorization.js';
 import {
   createFailureResponse,
   jsonResponse,
@@ -18,7 +19,7 @@ import {
   completeCreateIdempotency,
 } from './mutation-helpers.js';
 import type { ResolvedContentActor } from './request-context.js';
-import { resolveContentAccess } from './request-context.js';
+import { authorizeContentAction, resolveContentAccess } from './request-context.js';
 import { createContent, deleteContent, loadContentById, loadContentDetail, updateContent } from './repository.js';
 import { updateContentSchema } from './schemas.js';
 
@@ -31,6 +32,20 @@ export const createContentResponse = async (
   const prepared = await parseCreateRequest(request, actor);
   if (prepared instanceof Response) {
     return prepared;
+  }
+
+  const authorizationError = await authorizeContentAction(actor, 'content.create', {
+    contentType: prepared.parsedData.contentType,
+    organizationId: prepared.parsedData.organizationId,
+  });
+  if (authorizationError) {
+    return createFailureResponse(
+      actor,
+      prepared.idempotencyKey,
+      authorizationError.status,
+      'forbidden',
+      'Keine Berechtigung für diese Inhaltsoperation.'
+    );
   }
 
   const replayOrConflict = await reserveCreateIdempotency(actor, prepared.idempotencyKey, prepared.rawBody);
@@ -112,6 +127,11 @@ export const updateContentResponse = async (
     return createApiError(400, 'invalid_request', payloadValidation.message, actor.requestId);
   }
 
+  const authorizationError = await authorizeUpdateContentActions(actor, contentId, currentContent, parsed.data);
+  if (authorizationError) {
+    return authorizationError;
+  }
+
   try {
     const updatedId = await updateContent({
       instanceId: actor.instanceId,
@@ -168,6 +188,20 @@ export const deleteContentResponse = async (
   }
 
   try {
+    const currentContent = await loadContentById(actor.instanceId, contentId);
+    if (!currentContent) {
+      return createApiError(404, 'not_found', 'Inhalt wurde nicht gefunden.', actor.requestId);
+    }
+
+    const authorizationError = await authorizeContentAction(actor, 'content.delete', {
+      contentId,
+      contentType: currentContent.contentType,
+      organizationId: currentContent.organizationId,
+    });
+    if (authorizationError) {
+      return authorizationError;
+    }
+
     const deletedId = await deleteContent({
       instanceId: actor.instanceId,
       actorAccountId: actor.actorAccountId!,

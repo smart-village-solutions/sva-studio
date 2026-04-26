@@ -57,6 +57,12 @@ vi.mock('@opentelemetry/api', () => ({
   },
 }));
 
+vi.mock('./iam-authorization/redis-permission-snapshot.server.js', async (importOriginal) => ({
+  ...((await importOriginal()) as object),
+  getRedisPermissionSnapshot: vi.fn(async () => ({ hit: false, reason: 'miss' })),
+  setRedisPermissionSnapshot: vi.fn(async () => ({ ok: true, version: 'test-version' })),
+}));
+
 vi.mock('pg', () => ({
   Pool: class MockPool {
     async connect() {
@@ -103,14 +109,51 @@ const resolveActorAccountQuery = (text: string) => text.includes('SELECT a.id AS
 const contentRow = {
   id: '11111111-1111-1111-1111-111111111111',
   content_type: 'generic',
+  instance_id: 'de-musterhausen',
+  organization_id: null,
+  owner_subject_id: null,
   title: 'Startseite',
   published_at: '2026-03-22T09:00:00.000Z',
+  publish_from: null,
+  publish_until: null,
   created_at: '2026-03-22T08:55:00.000Z',
+  created_by: 'account-1',
   updated_at: '2026-03-22T09:30:00.000Z',
+  updated_by: 'account-1',
   author_display_name: 'Admin User',
   payload_json: { body: 'Hallo' },
   status: 'published',
+  validation_state: 'valid',
+  history_ref: 'history-1',
+  current_revision_ref: 'history-1',
+  last_audit_event_ref: null,
 };
+
+const contentPermissionRows = [
+  'content.read',
+  'content.create',
+  'content.updateMetadata',
+  'content.updatePayload',
+  'content.changeStatus',
+  'content.publish',
+  'content.archive',
+  'content.restore',
+  'content.readHistory',
+  'content.delete',
+].map((permission_key) => ({
+  permission_key,
+  action: permission_key,
+  resource_type: 'content',
+  resource_id: null,
+  effect: 'allow',
+  scope: null,
+  account_id: null,
+  role_id: 'role-editor',
+  organization_id: null,
+  group_id: null,
+  group_key: null,
+  source_kind: 'direct_role',
+}));
 
 describe('iam-contents handlers', () => {
   beforeEach(() => {
@@ -131,6 +174,9 @@ describe('iam-contents handlers', () => {
     state.queryHandler = (text) => {
       if (resolveActorAccountQuery(text)) {
         return { rowCount: 1, rows: [{ account_id: 'account-1' }] };
+      }
+      if (text.includes('JOIN iam.role_permissions')) {
+        return { rowCount: contentPermissionRows.length, rows: contentPermissionRows };
       }
       if (text.includes('FROM iam.contents content')) {
         return { rowCount: 1, rows: [contentRow] };
@@ -157,6 +203,9 @@ describe('iam-contents handlers', () => {
       if (resolveActorAccountQuery(text)) {
         return { rowCount: 1, rows: [{ account_id: 'account-1' }] };
       }
+      if (text.includes('JOIN iam.role_permissions')) {
+        return { rowCount: contentPermissionRows.length, rows: contentPermissionRows };
+      }
       if (text.includes('FROM iam.idempotency_keys')) {
         return { rowCount: 0, rows: [] };
       }
@@ -170,7 +219,7 @@ describe('iam-contents handlers', () => {
         return { rowCount: 1, rows: [] };
       }
       if (text.includes('INSERT INTO iam.content_history')) {
-        return { rowCount: 1, rows: [] };
+        return { rowCount: 1, rows: [{ id: 'history-new' }] };
       }
       if (text.includes('FROM iam.content_history history')) {
         return { rowCount: 0, rows: [] };
@@ -231,6 +280,9 @@ describe('iam-contents handlers', () => {
     state.queryHandler = (text) => {
       if (resolveActorAccountQuery(text)) {
         return { rowCount: 1, rows: [{ account_id: 'account-1' }] };
+      }
+      if (text.includes('JOIN iam.role_permissions')) {
+        return { rowCount: contentPermissionRows.length, rows: contentPermissionRows };
       }
       if (text.includes('FROM iam.contents content')) {
         return { rowCount: 1, rows: [contentRow] };

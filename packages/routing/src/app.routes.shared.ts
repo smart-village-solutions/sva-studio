@@ -197,7 +197,15 @@ export const mapPluginGuardToAccountGuard = (
       return 'content';
     case 'content.create':
       return 'contentCreate';
-    case 'content.write':
+    case 'content.updateMetadata':
+    case 'content.updatePayload':
+    case 'content.changeStatus':
+    case 'content.publish':
+    case 'content.archive':
+    case 'content.restore':
+    case 'content.readHistory':
+    case 'content.manageRevisions':
+    case 'content.delete':
       return 'contentDetail';
     default:
       return null;

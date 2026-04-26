@@ -23,6 +23,7 @@ const state = vi.hoisted(() => ({
   ),
   logger: {
     error: vi.fn(),
+    warn: vi.fn(),
   },
 }));
 
@@ -57,6 +58,7 @@ vi.mock('./middleware.server.js', () => ({
 }));
 
 import {
+  authorizeContentAction,
   resolveContentAccess,
   resolveContentActor,
   withAuthenticatedContentHandler,
@@ -75,6 +77,7 @@ describe('iam-contents request-context', () => {
     state.createApiError.mockClear();
     state.toJsonErrorResponse.mockClear();
     state.logger.error.mockClear();
+    state.logger.warn.mockClear();
     state.workspaceContext = { requestId: 'req-content', traceId: 'trace-content' };
   });
 
@@ -303,5 +306,74 @@ describe('iam-contents request-context', () => {
         traceId: 'trace-content',
       },
     });
+  });
+
+  it('authorizes content primitives with resolved instance, resource and organization scope', async () => {
+    state.resolveEffectivePermissions.mockResolvedValueOnce({
+      ok: true,
+      permissions: [
+        {
+          action: 'content.updatePayload',
+          resourceType: 'content',
+          effect: 'allow',
+          organizationId: '44444444-4444-4444-8444-444444444444',
+        },
+      ],
+    });
+
+    await expect(
+      authorizeContentAction(
+        {
+          instanceId: 'de-musterhausen',
+          keycloakSubject: 'user-1',
+          requestId: 'req-content',
+          traceId: 'trace-content',
+          actorDisplayName: 'Editor',
+        },
+        'content.updatePayload',
+        {
+          contentId: 'content-1',
+          contentType: 'news.article',
+          organizationId: '44444444-4444-4444-8444-444444444444',
+        }
+      )
+    ).resolves.toBeNull();
+
+    expect(state.resolveEffectivePermissions).toHaveBeenCalledWith({
+      instanceId: 'de-musterhausen',
+      keycloakSubject: 'user-1',
+      organizationId: '44444444-4444-4444-8444-444444444444',
+    });
+  });
+
+  it('returns forbidden for missing or denied content primitive permissions', async () => {
+    state.resolveEffectivePermissions.mockResolvedValueOnce({
+      ok: true,
+      permissions: [],
+    });
+
+    const missingPermission = await authorizeContentAction(
+      {
+        instanceId: 'de-musterhausen',
+        keycloakSubject: 'user-1',
+        requestId: 'req-content',
+        traceId: 'trace-content',
+        actorDisplayName: 'Editor',
+      },
+      'content.delete',
+      { contentId: 'content-1', contentType: 'news.article' }
+    );
+
+    expect(missingPermission?.status).toBe(403);
+    expect(state.createApiError).toHaveBeenCalledWith(
+      403,
+      'forbidden',
+      'Keine Berechtigung für diese Inhaltsoperation.',
+      'req-content'
+    );
+    expect(state.logger.warn).toHaveBeenCalledWith(
+      'Content authorization denied',
+      expect.objectContaining({ action: 'content.delete', reason: 'permission_missing' })
+    );
   });
 });

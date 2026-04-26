@@ -29,13 +29,23 @@ Das System MUST eine OIDC-basierte Authentifizierung über Keycloak bereitstelle
 ### Requirement: Token Validation & User Identity
 Das System MUST von Keycloak ausgestellte JWT-Tokens validieren und nur die fuer Session- und Autorisierungspfad erforderlichen Identity-Claims extrahieren.
 
-#### Scenario: User context extraction
+#### Scenario: User context extraction on tenant hosts
 
-- **WHEN** ein Token gueltig ist
-- **THEN** extrahiert das System mindestens die Claims `sub` (Benutzer-ID), `instanceId` und Rollen-/Berechtigungsinformationen
+- **WHEN** ein Token fuer einen Request auf einer Tenant-Subdomain gueltig ist
+- **THEN** extrahiert das System mindestens die Claims `sub` und Rollen-/Berechtigungsinformationen
+- **AND** leitet den Tenant-Kontext `instanceId` aus dem bereits aufgeloesten Host-/Registry-/Realm-Scope ab
+- **AND** ein fehlender benutzerbezogener Claim `instanceId` blockiert die Session-Hydration fuer tenant-spezifische Realms nicht
+- **AND** ein vorhandener, aber abweichender Claim `instanceId` wird als `tenant_scope_conflict` fail-closed abgelehnt
 - **AND** `email` oder `name` sind keine Pflichtclaims fuer Session-Hydration oder Autorisierung
 - **AND** zusaetzliche Profildaten werden nur in dedizierten Profil-/Sync-Flows geladen
 - **AND** das System injiziert daraus einen minimalen `UserContext` fuer nachgelagerte Handler
+
+#### Scenario: User context extraction on platform scope
+
+- **WHEN** ein Token fuer einen Request auf dem Root-Host gueltig ist
+- **THEN** extrahiert das System mindestens `sub` und Rollen-/Berechtigungsinformationen
+- **AND** bleibt `instanceId` fuer den Plattform-Scope leer
+- **AND** das System verwendet keine Pseudo-Instanz, um den Plattform-Scope als Tenant darzustellen
 
 ### Requirement: Session Management
 Das System MUST Benutzersitzungen sicher verwalten, einschließlich serverseitiger Token-Erneuerung, einer fachlich führenden Session-Gültigkeit, Redis-basierter Persistenz aktiver App-Sessions und kontrollierter Wiederherstellung nach Session-Ablauf.
@@ -205,59 +215,36 @@ Das bestehende IAM-Schema (`0001_iam_core.sql`) liefert bereits Multi-Tenancy (`
 
 ### Requirement: Keycloak Admin API Integration
 
-Das System MUST über einen dedizierten Service-Account mit der Keycloak Admin REST API kommunizieren, um Benutzer-Accounts und Rollen-Zuweisungen synchron zu halten. Die Kommunikation erfolgt über eine `IdentityProviderPort`-Abstraktionsschicht.
+Das System MUST über dedizierte Service-Accounts mit der Keycloak Admin REST API kommunizieren, um Benutzer, Rollen und Rollenzuordnungen im jeweiligen Platform- oder Tenant-Scope vollständig listen, bearbeiten und synchronisieren zu können. Keycloak bleibt System of Record für Identitäten und Realm-Rollen; Studio stellt eine auditierte Admin-UI und synchronisierte Fachansicht bereit.
 
-#### Scenario: Service-Account-Authentifizierung
+#### Scenario: Studio lists all platform Keycloak users
+- **WHEN** ein Platform-Admin die Root-Userliste öffnet
+- **THEN** lädt das System Platform-Realm-User über Keycloak-Admin-APIs mit serverseitiger Pagination, Suche und Count
+- **AND** jeder zurückgegebene User enthält Keycloak-ID, Status, Profilfelder, Rollenprojektion und Bearbeitbarkeitsstatus
 
-- **WENN** der IAM-Service startet
-- **DANN** authentifiziert er sich bei Keycloak mit dem Service-Account `sva-studio-iam-service`
-- **UND** der Service-Account hat nur die Rollen `manage-users`, `view-users`, `view-realm` und `manage-realm` (Principle of Least Privilege für Benutzer- und Realm-Role-Verwaltung)
-- **UND** das Client-Secret wird über einen Secrets-Manager injiziert (nicht als `.env`-Datei)
-- **UND** das Secret wird alle 90 Tage rotiert (BSI-Grundschutz ORP.4) mit Dual-Secret-Rotation (Overlap-Fenster)
+#### Scenario: Studio lists all tenant-relevant Keycloak users
+- **WHEN** ein Tenant-Admin die Tenant-Userliste öffnet
+- **THEN** lädt das System alle für den Tenant relevanten Keycloak-User
+- **AND** User ohne vollständiges Studio-Mapping werden sichtbar als `unmapped` oder `manual_review` markiert
+- **AND** die Liste bricht nicht wegen einzelner Mapping-Fehler ab
 
-#### Scenario: User-Erstellung (Keycloak-First mit Compensation)
+#### Scenario: Keycloak-first user mutation
+- **WHEN** ein berechtigter Admin einen User im Studio erstellt, deaktiviert oder Profilfelder ändert
+- **THEN** führt das System die Mutation zuerst gegen Keycloak aus
+- **AND** synchronisiert anschließend das Studio-Read-Model
+- **AND** bei nachgelagertem Sync-Fehler bleibt der Keycloak-Zustand sichtbar und wird als Drift gemeldet
 
-- **WENN** ein Administrator einen User über den IAM-Service erstellt
-- **DANN** wird der User zuerst in Keycloak via `POST /admin/realms/{realm}/users` erstellt
-- **UND** anschließend in `iam.accounts` mit dem von Keycloak vergebenen `keycloak_subject` gespeichert
-- **UND** fehlende `iam.instance_memberships` werden für den aktiven Instanzkontext angelegt
-- **UND** Rollen werden erst nach erfolgreicher Persistenz mit Keycloak synchronisiert
-- **UND** der `instance_id`-Scope wird korrekt gesetzt
-- **WENN** der Keycloak-Call fehlschlägt
-- **DANN** wird kein Eintrag in `iam.accounts` erstellt
-- **WENN** der DB-Write fehlschlägt (nach erfolgreichem Keycloak-Call)
-- **DANN** wird der Keycloak-User via `DELETE` entfernt (Compensation)
-- **UND** ein `keycloak.sync_failed`-Audit-Event wird geloggt
+#### Scenario: Studio lists all relevant Keycloak roles
+- **WHEN** ein Admin die Rollenliste öffnet
+- **THEN** lädt das System Realm-Rollen aus dem passenden Keycloak-Scope
+- **AND** Studio zeigt Built-in-, externe und Studio-managed Rollen mit Bearbeitbarkeitsstatus
+- **AND** read-only Rollen dürfen angezeigt und zugeordnet werden, wenn die Rechte-Matrix dies erlaubt
 
-#### Scenario: Benutzer aus Keycloak nach IAM importieren
-
-- **WENN** ein Administrator einen Keycloak-Sync für eine Instanz ausführt
-- **DANN** werden nur Keycloak-Benutzer mit passendem `instanceId`-Attribut importiert oder aktualisiert
-- **UND** Basisdaten wie Benutzername, E-Mail, Vorname, Nachname, Anzeigename und Aktivstatus werden in `iam.accounts` gespiegelt
-- **UND** fehlende `iam.instance_memberships` werden angelegt
-- **UND** bestehende IAM-Benutzer werden nicht dupliziert
-
-#### Scenario: Profil-Update-Sync (mit Compensation)
-
-- **WENN** ein Benutzerprofil im IAM-Service geändert wird
-- **DANN** werden die geänderten Felder zuerst an Keycloak via `PUT /admin/realms/{realm}/users/{id}` gesendet
-- **UND** anschließend die entschlüsselten PII-Daten in den `*_ciphertext`-Spalten in `iam.accounts` aktualisiert
-- **WENN** der DB-Write fehlschlägt (nach erfolgreichem Keycloak-Update)
-- **DANN** wird Keycloak mit den vorherigen Werten zurückgesetzt (Compensation)
-
-#### Scenario: JIT-Provisioning beim Erst-Login
-
-- **WENN** ein Benutzer sich erstmalig per OIDC anmeldet und kein `iam.accounts`-Eintrag existiert
-- **DANN** wird ein Account via `INSERT ... ON CONFLICT (keycloak_subject, instance_id) DO UPDATE SET updated_at = NOW()` erstellt (nur nicht-administrative Felder updaten, keine Rollen/Status überschreiben)
-- **UND** ein `user.jit_provisioned`-Audit-Event wird geloggt
-
-#### Scenario: Circuit-Breaker bei Keycloak-Ausfällen
-
-- **WENN** Keycloak nicht erreichbar ist (5 aufeinanderfolgende Fehler)
-- **DANN** wechselt der Circuit-Breaker in den Open-State (30 Sekunden)
-- **UND** Read-Operationen fallen auf die IAM-DB als Fallback zurück
-- **UND** Write-Operationen geben `503 Service Unavailable` zurück
-- **UND** der Health-Check `/health/ready` meldet Keycloak als `degraded`
+#### Scenario: Keycloak-first role mutation
+- **WHEN** ein berechtigter Admin eine Studio-managed Rolle anlegt, ändert oder löscht
+- **THEN** führt das System die Änderung gegen Keycloak aus
+- **AND** synchronisiert anschließend Studio-Rollen- und Permission-Read-Models
+- **AND** blockiert Mutationen an read-only oder extern gemanagten Rollen mit stabilem Diagnosecode
 
 ### Requirement: Instanz-Registry speichert Auth-Metadaten pro Instanz
 
@@ -1020,3 +1007,78 @@ Das System SHALL für den IAM-Laufzeitpfad eine konsistente, schichtübergreifen
 - **WHEN** ein IAM-Fehler UI- oder API-seitig als diagnosefähiger Fehler ausgegeben wird
 - **THEN** enthält der öffentliche Vertrag mindestens einen stabilen Fehlercode, eine Fehlerklasse, `requestId`, allowlist-basierte `safeDetails`, einen handlungsleitenden Status und eine empfohlene nächste Handlung
 - **AND** diese Felder bleiben über Auth-, IAM- und Provisioning-nahe Laufzeitpfade semantisch kompatibel
+
+### Requirement: Tenant-spezifische Session-Hydration verwendet den Auth-Scope
+Das System MUST fuer tenant-spezifische Requests den Instanzkontext aus dem bereits verifizierten Auth-Scope ableiten und denselben Wert in Session-, Audit- und IAM-Pfaden konsistent weiterfuehren.
+
+#### Scenario: Callback schreibt tenant-spezifische instanceId aus dem Auth-Scope in die Session
+
+- **WHEN** ein Benutzer sich auf einer Tenant-Subdomain erfolgreich ueber den zugeordneten Tenant-Realm authentifiziert
+- **THEN** schreibt das System die zu diesem Login-Flow aufgeloeste `instanceId` aus Host, Registry und Realm in die Session
+- **AND** dieselbe `instanceId` wird fuer Logging, Audit, JIT-Provisioning und nachgelagerte IAM-Aufloesung verwendet
+- **AND** das System fuehrt dafuer keinen zweiten benutzerbezogenen Login-Gate-Abgleich gegen einen optionalen OIDC-Claim `instanceId` aus
+
+#### Scenario: Tenant-spezifische Session bleibt fail-closed bei echtem Scope-Fehler
+
+- **WHEN** Host, Registry oder Realm fuer einen tenant-spezifischen Request nicht eindeutig oder nicht aktiv aufgeloest werden koennen
+- **THEN** wird keine Session aufgebaut oder fortgesetzt
+- **AND** das System antwortet fail-closed mit einer klar klassifizierten Fehlermeldung
+- **AND** der Nutzer landet nicht stillschweigend in einem anonymen oder tenant-losen Zustand
+
+#### Scenario: Tenant-spezifischer Claim-Konflikt wird abgelehnt
+
+- **WHEN** ein Benutzer sich auf einer Tenant-Subdomain erfolgreich im zugeordneten Realm authentifiziert
+- **AND** das Token enthaelt einen `instanceId`-Claim fuer eine andere Instanz
+- **THEN** erstellt das System keine Session
+- **AND** klassifiziert den Fehler als `tenant_scope_conflict`
+- **AND** fuehrt keinen Fallback auf Plattform- oder claim-basierten Tenant-Scope aus
+
+### Requirement: IAM Runtime Diagnostics
+
+Der IAM-Diagnosekern SHALL öffentliche Fehlerklassifikationen, handlungsleitende Statuswerte, empfohlene Aktionen und allowlist-basierte sichere Details zentral in `@sva/core` definieren.
+
+#### Scenario: Auth-Konfigurationsfehler wird klassifiziert
+
+- **WHEN** ein IAM-naher Fehler einen Auth-Konfigurations- oder Auth-Auflösungsgrund meldet
+- **THEN** klassifiziert der Diagnosekern den Fehler als `auth_resolution`
+- **AND** überträgt nur freigegebene Details wie `reason_code` und `requestId`
+
+#### Scenario: OIDC-Exchange-Fehler wird klassifiziert
+
+- **WHEN** ein Login-, Discovery-, Token-Refresh- oder Token-Exchange-Fehler einen OIDC-Grund meldet
+- **THEN** klassifiziert der Diagnosekern den Fehler als `oidc_discovery_or_exchange`
+- **AND** empfiehlt eine erneute Anmeldung oder technische Prüfung passend zur Fehlerklasse
+
+#### Scenario: Legacy-Workaround bleibt sichtbar
+
+- **WHEN** ein Recovery- oder Fallback-Pfad einen Legacy- oder Workaround-Grund meldet
+- **THEN** klassifiziert der Diagnosekern den Fehler als `legacy_workaround_or_regression`
+- **AND** markiert den Zustand nicht als vollständig gesund
+
+### Requirement: IAM Account Management Scope Resolution
+
+IAM Account Management SHALL resolve each authenticated IAM-v1 request as either `platform` or `instance` scope before reading or mutating users, roles, permissions, or sync state.
+
+#### Scenario: Root-host user list uses platform scope
+- **WHEN** an authenticated platform admin without `instanceId` calls `GET /api/v1/iam/users`
+- **THEN** the system returns platform users from the platform identity provider
+- **AND** it does not require or synthesize a tenant `instanceId`
+
+#### Scenario: Tenant user list remains instance-scoped
+- **WHEN** an authenticated tenant admin with `instanceId` calls `GET /api/v1/iam/users`
+- **THEN** the system uses the existing tenant IAM read model for that `instanceId`
+
+### Requirement: Keycloak User Synchronization Scope
+
+The system SHALL run Keycloak user synchronization as a reconciliation flow that explains differences between Keycloak and Studio instead of hiding unmapped or partially failed objects.
+
+#### Scenario: Sync reports unmapped users
+- **WHEN** ein User-Sync Keycloak-User findet, die nicht sauber einem Studio-Kontext zugeordnet werden können
+- **THEN** enthält der Sync-Report die Anzahl und Diagnosecodes dieser User
+- **AND** die betroffenen User bleiben in der Studio-UI sichtbar, sofern der aktive Scope dies erlaubt
+
+#### Scenario: Partial failure remains actionable
+- **WHEN** ein Sync mit `partial_failure` endet
+- **THEN** enthält der Report objektbezogene Ursachen wie `missing_instance_attribute`, `forbidden_role_mapping`, `read_only_federated_field` oder `idp_forbidden`
+- **AND** Admins können daraus Reconcile- oder Runbook-Aktionen ableiten
+

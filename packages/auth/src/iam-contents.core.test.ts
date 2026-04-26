@@ -25,6 +25,7 @@ const state = vi.hoisted(() => ({
   loadContentById: vi.fn(),
   loadContentDetail: vi.fn(),
   loadContentHistory: vi.fn(),
+  authorizeContentAction: vi.fn(),
   resolveContentAccess: vi.fn(),
 }));
 
@@ -47,6 +48,7 @@ vi.mock('./iam-account-management/api-helpers.js', () => ({
 }));
 
 vi.mock('./iam-contents/request-context.js', () => ({
+  authorizeContentAction: (...args: Parameters<typeof state.authorizeContentAction>) => state.authorizeContentAction(...args),
   resolveContentActor: (...args: Parameters<typeof state.resolveContentActor>) => state.resolveContentActor(...args),
   resolveContentAccess: (...args: Parameters<typeof state.resolveContentAccess>) => state.resolveContentAccess(...args),
   withAuthenticatedContentHandler: (...args: Parameters<typeof state.withAuthenticatedContentHandler>) =>
@@ -112,7 +114,9 @@ describe('iam-contents core', () => {
     state.loadContentById.mockReset();
     state.loadContentDetail.mockReset();
     state.loadContentHistory.mockReset();
+    state.authorizeContentAction.mockReset();
     state.resolveContentAccess.mockReset();
+    state.authorizeContentAction.mockResolvedValue(null);
     state.resolveContentAccess.mockResolvedValue({
       state: 'read_only',
       canRead: true,

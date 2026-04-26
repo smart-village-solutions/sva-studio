@@ -1,4 +1,10 @@
-import { summarizeContentAccess, type IamContentAccessSummary } from '@sva/core';
+import {
+  evaluateAuthorizeDecision,
+  summarizeContentAccess,
+  type AuthorizeRequest,
+  type IamContentAccessSummary,
+  type IamContentPrimitiveAction,
+} from '@sva/core';
 import { getWorkspaceContext, toJsonErrorResponse, withRequestContext } from '@sva/server-runtime';
 
 import { createApiError } from '../iam-account-management/api-helpers.js';
@@ -19,6 +25,102 @@ export type ResolvedContentActor = {
     requestId?: string;
     traceId?: string;
   };
+};
+
+type ContentAuthorizationResource = {
+  readonly contentId?: string;
+  readonly contentType?: string;
+  readonly organizationId?: string;
+};
+
+const contentPermissionUnavailable = (requestId?: string): Response =>
+  createApiError(503, 'database_unavailable', 'Berechtigungen konnten nicht geprüft werden.', requestId);
+
+const buildContentAuthorizeRequest = (
+  actor: ResolvedContentActor['actor'],
+  action: IamContentPrimitiveAction,
+  resource: ContentAuthorizationResource
+): AuthorizeRequest => ({
+  instanceId: actor.instanceId,
+  action,
+  resource: {
+    type: 'content',
+    ...(resource.contentId ? { id: resource.contentId } : {}),
+    ...(resource.organizationId ? { organizationId: resource.organizationId } : {}),
+    ...(resource.contentType ? { attributes: { contentType: resource.contentType } } : {}),
+  },
+  context: {
+    ...(resource.organizationId ? { organizationId: resource.organizationId } : {}),
+    ...(actor.requestId ? { requestId: actor.requestId } : {}),
+    ...(actor.traceId ? { traceId: actor.traceId } : {}),
+    ...(resource.contentType ? { attributes: { contentType: resource.contentType } } : {}),
+  },
+});
+
+const logContentAuthorizationDenied = (
+  actor: ResolvedContentActor['actor'],
+  action: IamContentPrimitiveAction,
+  resource: ContentAuthorizationResource,
+  reason: string
+) => {
+  accountLogger.warn('Content authorization denied', {
+    operation: 'content_authorize',
+    instance_id: actor.instanceId,
+    request_id: actor.requestId,
+    trace_id: actor.traceId,
+    action,
+    content_id: resource.contentId,
+    content_type: resource.contentType,
+    organization_id: resource.organizationId,
+    reason,
+  });
+};
+
+export const authorizeContentAction = async (
+  actor: ResolvedContentActor['actor'],
+  action: IamContentPrimitiveAction,
+  resource: ContentAuthorizationResource = {}
+): Promise<Response | null> => {
+  try {
+    const resolved = await resolveEffectivePermissions({
+      instanceId: actor.instanceId,
+      keycloakSubject: actor.keycloakSubject,
+      organizationId: resource.organizationId,
+    });
+
+    if (!resolved.ok) {
+      accountLogger.error('Content authorization resolution failed', {
+        operation: 'content_authorize',
+        instance_id: actor.instanceId,
+        request_id: actor.requestId,
+        trace_id: actor.traceId,
+        action,
+        error: resolved.error,
+      });
+
+      return contentPermissionUnavailable(actor.requestId);
+    }
+
+    const request = buildContentAuthorizeRequest(actor, action, resource);
+    const decision = evaluateAuthorizeDecision(request, resolved.permissions);
+    if (decision.allowed) {
+      return null;
+    }
+
+    logContentAuthorizationDenied(actor, action, resource, decision.reason);
+    return createApiError(403, 'forbidden', 'Keine Berechtigung für diese Inhaltsoperation.', actor.requestId);
+  } catch (error) {
+    accountLogger.error('Content authorization failed', {
+      operation: 'content_authorize',
+      instance_id: actor.instanceId,
+      request_id: actor.requestId,
+      trace_id: actor.traceId,
+      action,
+      error: error instanceof Error ? error.message : String(error),
+    });
+
+    return contentPermissionUnavailable(actor.requestId);
+  }
 };
 
 export const resolveContentAccess = async (

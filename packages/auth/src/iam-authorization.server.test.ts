@@ -38,7 +38,7 @@ describe('evaluateAuthorizeDecision', () => {
   it('denies when action is missing', () => {
     const permissions: EffectivePermission[] = [
       {
-        action: 'content.write',
+        action: 'content.updatePayload',
         resourceType: 'content',
         sourceRoleIds: ['role-1'],
         sourceGroupIds: [],

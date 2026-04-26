@@ -1,70 +1,7 @@
-import type {
-  ContentJsonValue,
-  IamContentHistoryEntry,
-  IamContentListItem,
-  IamContentStatus,
-} from '@sva/core';
+import type { ContentJsonValue, IamContentStatus } from '@sva/core';
 
 import { withInstanceScopedDb } from '../iam-account-management/shared.js';
-
-export type ContentRow = {
-  id: string;
-  content_type: string;
-  title: string;
-  published_at: string | null;
-  created_at: string;
-  updated_at: string;
-  author_display_name: string;
-  payload_json: ContentJsonValue;
-  status: IamContentStatus;
-};
-
-export type ContentHistoryRow = {
-  id: string;
-  content_id: string;
-  action: 'created' | 'updated' | 'status_changed';
-  actor_display_name: string;
-  changed_fields: string[] | null;
-  previous_status: IamContentStatus | null;
-  next_status: IamContentStatus | null;
-  created_at: string;
-  summary: string | null;
-};
-
-export type CreateContentInput = {
-  instanceId: string;
-  actorAccountId: string;
-  actorDisplayName: string;
-  requestId?: string;
-  traceId?: string;
-  contentType: string;
-  title: string;
-  payload: ContentJsonValue;
-  status: IamContentStatus;
-  publishedAt?: string;
-};
-
-export type UpdateContentInput = {
-  instanceId: string;
-  actorAccountId: string;
-  actorDisplayName: string;
-  requestId?: string;
-  traceId?: string;
-  contentId: string;
-  title?: string;
-  payload?: ContentJsonValue;
-  status?: IamContentStatus;
-  publishedAt?: string;
-};
-
-export type DeleteContentInput = {
-  instanceId: string;
-  actorAccountId: string;
-  actorDisplayName: string;
-  requestId?: string;
-  traceId?: string;
-  contentId: string;
-};
+import { CONTENT_SELECT, type ContentRow } from './repository-types.js';
 
 type InstanceScopedClient = Parameters<Parameters<typeof withInstanceScopedDb>[1]>[0];
 
@@ -85,44 +22,6 @@ LIMIT 1;
   return currentResult.rows[0];
 };
 
-export const mapContentListItem = (row: ContentRow): IamContentListItem => ({
-  id: row.id,
-  contentType: row.content_type,
-  title: row.title,
-  ...(row.published_at ? { publishedAt: row.published_at } : {}),
-  createdAt: row.created_at,
-  updatedAt: row.updated_at,
-  author: row.author_display_name,
-  payload: row.payload_json,
-  status: row.status,
-});
-
-export const mapContentHistoryItem = (row: ContentHistoryRow): IamContentHistoryEntry => ({
-  id: row.id,
-  contentId: row.content_id,
-  action: row.action,
-  actor: row.actor_display_name,
-  changedFields: row.changed_fields ?? [],
-  ...(row.previous_status ? { fromStatus: row.previous_status } : {}),
-  ...(row.next_status ? { toStatus: row.next_status } : {}),
-  createdAt: row.created_at,
-  ...(row.summary ? { summary: row.summary } : {}),
-});
-
-export const CONTENT_SELECT = `
-SELECT
-  content.id,
-  content.content_type,
-  content.title,
-  content.published_at::text,
-  content.created_at::text,
-  content.updated_at::text,
-  content.author_display_name,
-  content.payload_json,
-  content.status
-FROM iam.contents content
-`;
-
 export const insertContentHistory = async (
   client: InstanceScopedClient,
   input: {
@@ -137,8 +36,8 @@ export const insertContentHistory = async (
     summary?: string;
     snapshot: ContentJsonValue;
   }
-): Promise<void> => {
-  await client.query(
+): Promise<string> => {
+  const result = await client.query<{ id: string }>(
     `
 INSERT INTO iam.content_history (
   id,
@@ -165,8 +64,9 @@ VALUES (
   $8,
   $9,
   $10::jsonb
-);
-`,
+)
+RETURNING id;
+	`,
     [
       input.instanceId,
       input.contentId,
@@ -180,48 +80,11 @@ VALUES (
       JSON.stringify(input.snapshot),
     ]
   );
-};
-
-export const resolveNextContentState = (
-  current: ContentRow,
-  input: UpdateContentInput
-): {
-  changedFields: string[];
-  nextPayload: ContentJsonValue;
-  nextPublishedAt: string | null;
-  nextStatus: IamContentStatus;
-  nextTitle: string;
-} => {
-  const nextTitle = input.title ?? current.title;
-  const nextPayload = input.payload ?? current.payload_json;
-  const nextStatus = input.status ?? current.status;
-  const nextPublishedAt = input.publishedAt ?? current.published_at ?? null;
-
-  if (nextStatus === 'published' && !nextPublishedAt) {
-    throw new Error('content_published_at_required');
+  const historyId = result.rows[0]?.id;
+  if (!historyId) {
+    throw new Error('content_history_create_failed');
   }
-
-  const changedFields: string[] = [];
-  if (nextTitle !== current.title) {
-    changedFields.push('title');
-  }
-  if (JSON.stringify(nextPayload) !== JSON.stringify(current.payload_json)) {
-    changedFields.push('payload');
-  }
-  if (nextStatus !== current.status) {
-    changedFields.push('status');
-  }
-  if ((nextPublishedAt ?? null) !== current.published_at) {
-    changedFields.push('publishedAt');
-  }
-
-  return {
-    changedFields,
-    nextPayload,
-    nextPublishedAt,
-    nextStatus,
-    nextTitle,
-  };
+  return historyId;
 };
 
 export const resolveContentMutationMetadata = (

@@ -21,7 +21,7 @@ type PluginNavigationItemMock = {
   to: string;
   titleKey: string;
   section: 'dataManagement' | 'applications' | 'system';
-  requiredAction?: 'content.read' | 'content.create' | 'content.write';
+  requiredAction?: 'content.read' | 'content.create' | 'content.updatePayload';
   actionId?: string;
 };
 const studioPluginNavigationMock = vi.hoisted(() => ({
@@ -393,14 +393,14 @@ describe('Sidebar', () => {
     expect(newsLink.getAttribute('aria-current')).toBe('page');
   });
 
-  it('blendet Plugin-Navigation ohne passende content-write-Berechtigung aus', () => {
+  it('blendet Plugin-Navigation ohne passende Payload-Update-Berechtigung aus', () => {
     studioPluginNavigationMock.items = [
       {
         id: 'news.write',
         to: '/plugins/news/review',
         titleKey: 'news.navigation.title',
         section: 'dataManagement',
-        requiredAction: 'content.write',
+        requiredAction: 'content.updatePayload',
       },
     ];
     useAuthMock.mockReturnValue({
@@ -446,7 +446,7 @@ describe('Sidebar', () => {
       actionName: 'publish',
       ownerPluginId: 'news',
       titleKey: 'news.actions.publish',
-      requiredAction: 'content.write',
+      requiredAction: 'content.updatePayload',
     });
     useAuthMock.mockReturnValue({
       ...unauthenticatedAuthState,

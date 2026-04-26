@@ -20,6 +20,7 @@ const state = vi.hoisted(() => ({
   updateContent: vi.fn(),
   loadContentById: vi.fn(),
   loadContentDetail: vi.fn(),
+  authorizeContentAction: vi.fn(),
   resolveContentAccess: vi.fn(),
 }));
 
@@ -58,6 +59,7 @@ vi.mock('./iam-contents/content-type-registry.js', () => ({
 }));
 
 vi.mock('./iam-contents/request-context.js', () => ({
+  authorizeContentAction: (...args: Parameters<typeof state.authorizeContentAction>) => state.authorizeContentAction(...args),
   resolveContentAccess: (...args: Parameters<typeof state.resolveContentAccess>) => state.resolveContentAccess(...args),
 }));
 
@@ -66,6 +68,7 @@ import { createContentResponse, deleteContentResponse, updateContentResponse } f
 
 const actor = {
   instanceId: 'de-musterhausen',
+  keycloakSubject: 'user-1',
   actorAccountId: 'account-1',
   actorDisplayName: 'Editor',
   requestId: 'req-content',
@@ -100,7 +103,9 @@ describe('iam-contents mutations', () => {
     state.updateContent.mockReset();
     state.loadContentById.mockReset();
     state.loadContentDetail.mockReset();
+    state.authorizeContentAction.mockReset();
     state.resolveContentAccess.mockReset();
+    state.authorizeContentAction.mockResolvedValue(null);
     state.loadContentById.mockResolvedValue({
       id: 'content-1',
       contentType: 'generic',
@@ -178,6 +183,11 @@ describe('iam-contents mutations', () => {
 
     const successResponse = await createContentResponse(createRequest(), actor);
     expect(successResponse.status).toBe(201);
+    expect(state.authorizeContentAction).toHaveBeenCalledWith(
+      actor,
+      'content.create',
+      expect.objectContaining({ contentType: 'generic' })
+    );
     expect(await successResponse.json()).toEqual({
       data: {
         id: 'content-1',
@@ -298,6 +308,11 @@ describe('iam-contents mutations', () => {
     state.loadContentDetail.mockResolvedValueOnce({ id: 'content-1', title: 'Neu', history: [] });
     const successResponse = await updateContentResponse(updateRequest(), actor);
     expect(successResponse.status).toBe(200);
+    expect(state.authorizeContentAction).toHaveBeenCalledWith(
+      actor,
+      'content.updateMetadata',
+      expect.objectContaining({ contentId: 'content-1', contentType: 'generic' })
+    );
     expect(await successResponse.json()).toEqual({
       data: {
         id: 'content-1',
@@ -358,6 +373,11 @@ describe('iam-contents mutations', () => {
 
     await updateContentResponse(updateRequest(), actor);
 
+    expect(state.authorizeContentAction).toHaveBeenCalledWith(
+      actor,
+      'content.updatePayload',
+      expect.objectContaining({ contentId: 'content-1', contentType: 'news.article' })
+    );
     expect(state.updateContent).toHaveBeenCalledWith(
       expect.objectContaining({
         payload: { body: '<p>Sanitized</p>' },
@@ -377,18 +397,43 @@ describe('iam-contents mutations', () => {
       .status).toBe(400);
 
     state.readPathSegment.mockReturnValue('content-1');
-    state.deleteContent.mockResolvedValueOnce(undefined);
+    state.loadContentById.mockResolvedValueOnce(undefined);
     expect((await deleteContentResponse(new Request('http://localhost/api/v1/iam/contents/content-1', { method: 'DELETE' }), actor))
       .status).toBe(404);
 
     state.readPathSegment.mockReset();
     state.readPathSegment.mockReturnValue('content-1');
+    state.loadContentById.mockResolvedValueOnce({
+      id: 'content-1',
+      contentType: 'generic',
+      title: 'Alt',
+      payload: {},
+      status: 'draft',
+      author: 'Editor',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    });
     state.deleteContent.mockResolvedValueOnce('content-1');
     expect((await deleteContentResponse(new Request('http://localhost/api/v1/iam/contents/content-1', { method: 'DELETE' }), actor))
       .status).toBe(200);
+    expect(state.authorizeContentAction).toHaveBeenCalledWith(
+      actor,
+      'content.delete',
+      expect.objectContaining({ contentId: 'content-1', contentType: 'generic' })
+    );
 
     state.readPathSegment.mockReset();
     state.readPathSegment.mockReturnValue('content-1');
+    state.loadContentById.mockResolvedValueOnce({
+      id: 'content-1',
+      contentType: 'generic',
+      title: 'Alt',
+      payload: {},
+      status: 'draft',
+      author: 'Editor',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    });
     state.deleteContent.mockRejectedValueOnce(new Error('db down'));
     const failedResponse = await deleteContentResponse(
       new Request('http://localhost/api/v1/iam/contents/content-1', { method: 'DELETE' }),

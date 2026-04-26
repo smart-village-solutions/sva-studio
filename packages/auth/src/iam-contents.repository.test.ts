@@ -35,13 +35,24 @@ import {
 const contentRow = {
   id: '11111111-1111-4111-8111-111111111111',
   content_type: 'generic',
+  instance_id: 'de-musterhausen',
+  organization_id: null,
+  owner_subject_id: 'user-1',
   title: 'Startseite',
   published_at: null,
+  publish_from: null,
+  publish_until: null,
   created_at: '2026-03-22T10:00:00.000Z',
+  created_by: 'account-1',
   updated_at: '2026-03-22T11:00:00.000Z',
+  updated_by: 'account-1',
   author_display_name: 'Editor',
   payload_json: { hero: 'Hallo' },
   status: 'draft',
+  validation_state: 'valid',
+  history_ref: 'history-0',
+  current_revision_ref: 'history-0',
+  last_audit_event_ref: 'audit-0',
 } as const;
 
 describe('iam-contents repository', () => {
@@ -77,24 +88,40 @@ describe('iam-contents repository', () => {
       {
         id: '11111111-1111-4111-8111-111111111111',
         contentType: 'generic',
+        instanceId: 'de-musterhausen',
+        ownerSubjectId: 'user-1',
         title: 'Startseite',
         createdAt: '2026-03-22T10:00:00.000Z',
+        createdBy: 'account-1',
         updatedAt: '2026-03-22T11:00:00.000Z',
+        updatedBy: 'account-1',
         author: 'Editor',
         payload: { hero: 'Hallo' },
         status: 'draft',
+        validationState: 'valid',
+        historyRef: 'history-0',
+        currentRevisionRef: 'history-0',
+        lastAuditEventRef: 'audit-0',
       },
     ]);
 
     expect(await loadContentById('de-musterhausen', '11111111-1111-4111-8111-111111111111')).toEqual({
       id: '11111111-1111-4111-8111-111111111111',
       contentType: 'generic',
+      instanceId: 'de-musterhausen',
+      ownerSubjectId: 'user-1',
       title: 'Startseite',
       createdAt: '2026-03-22T10:00:00.000Z',
+      createdBy: 'account-1',
       updatedAt: '2026-03-22T11:00:00.000Z',
+      updatedBy: 'account-1',
       author: 'Editor',
       payload: { hero: 'Hallo' },
       status: 'draft',
+      validationState: 'valid',
+      historyRef: 'history-0',
+      currentRevisionRef: 'history-0',
+      lastAuditEventRef: 'audit-0',
     });
 
     expect(await loadContentHistory('de-musterhausen', 'content-1')).toEqual([
@@ -136,13 +163,21 @@ describe('iam-contents repository', () => {
     expect(await loadContentDetail('de-musterhausen', 'content-1')).toEqual({
       id: '11111111-1111-4111-8111-111111111111',
       contentType: 'generic',
+      instanceId: 'de-musterhausen',
+      ownerSubjectId: 'user-1',
       title: 'Startseite',
       publishedAt: '2026-03-22T12:00:00.000Z',
       createdAt: '2026-03-22T10:00:00.000Z',
+      createdBy: 'account-1',
       updatedAt: '2026-03-22T11:00:00.000Z',
+      updatedBy: 'account-1',
       author: 'Editor',
       payload: { hero: 'Hallo' },
       status: 'draft',
+      validationState: 'valid',
+      historyRef: 'history-0',
+      currentRevisionRef: 'history-0',
+      lastAuditEventRef: 'audit-0',
       history: [
         {
           id: 'history-1',
@@ -162,6 +197,7 @@ describe('iam-contents repository', () => {
   it('creates content, writes history and activity log, and fails when no id is returned', async () => {
     state.client.query
       .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 'content-1' }] })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 'history-1' }] })
       .mockResolvedValueOnce({ rowCount: 1, rows: [] });
 
     const createdId = await createContent({
@@ -179,7 +215,10 @@ describe('iam-contents repository', () => {
     expect(createdId).toBe('content-1');
     expect(state.emitActivityLog).toHaveBeenCalledWith(
       state.client,
-      expect.objectContaining({ eventType: 'iam.content.created', payload: expect.objectContaining({ content_id: 'content-1' }) })
+      expect.objectContaining({
+        eventType: 'iam.content.created',
+        payload: expect.objectContaining({ action: 'content.create', content_id: 'content-1' }),
+      })
     );
 
     state.client.query.mockReset();
@@ -224,6 +263,7 @@ describe('iam-contents repository', () => {
     state.client.query
       .mockResolvedValueOnce({ rowCount: 1, rows: [contentRow] })
       .mockResolvedValueOnce({ rowCount: 1, rows: [] })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 'history-2' }] })
       .mockResolvedValueOnce({ rowCount: 1, rows: [] });
 
     expect(
@@ -235,19 +275,30 @@ describe('iam-contents repository', () => {
         traceId: 'trace-content',
         contentId: '11111111-1111-4111-8111-111111111111',
         title: 'Neue Startseite',
-        payload: { hero: 'Neu' },
+        payload: { hero: 'Sensitive payload marker' },
       })
     ).toBe('11111111-1111-4111-8111-111111111111');
 
     expect(state.emitActivityLog).toHaveBeenCalledWith(
       state.client,
-      expect.objectContaining({ eventType: 'iam.content.updated' })
+      expect.objectContaining({
+        eventType: 'iam.content.updated',
+        payload: expect.objectContaining({
+          action: 'content.updatePayload',
+          payload_change: 'payload_updated',
+        }),
+      })
     );
+    const updateAuditPayload = state.emitActivityLog.mock.calls.at(-1)?.[1]?.payload as Record<string, unknown>;
+    expect(JSON.stringify(updateAuditPayload)).not.toContain('Sensitive payload marker');
+    expect(updateAuditPayload).not.toHaveProperty('payload');
+    expect(updateAuditPayload).not.toHaveProperty('snapshot');
 
     state.client.query.mockReset();
     state.client.query
       .mockResolvedValueOnce({ rowCount: 1, rows: [contentRow] })
       .mockResolvedValueOnce({ rowCount: 1, rows: [] })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 'history-3' }] })
       .mockResolvedValueOnce({ rowCount: 1, rows: [] });
 
     expect(
@@ -262,7 +313,13 @@ describe('iam-contents repository', () => {
 
     expect(state.emitActivityLog).toHaveBeenCalledWith(
       state.client,
-      expect.objectContaining({ eventType: 'iam.content.status_changed' })
+      expect.objectContaining({
+        eventType: 'iam.content.status_changed',
+        payload: expect.objectContaining({
+          action: 'content.archive',
+          payload_change: 'payload_unchanged',
+        }),
+      })
     );
   });
 

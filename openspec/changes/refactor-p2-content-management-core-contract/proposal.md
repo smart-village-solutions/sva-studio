@@ -6,11 +6,12 @@ Damit das Studio als package-basiertes CMS stabil wächst, muss der Kern des Inh
 
 ## What Changes
 
-- Schärfung des minimalen Core-Vertrags für Inhalte und Statusmodell
-- Abgrenzung zwischen hostseitiger Kernsemantik und pluginseitiger Facherweiterung
-- Klärung, welche Felder und Workflows immer hostgeführt bleiben und welche registrierbar sind
+- Schärfung des minimalen Core-Vertrags für Inhalte: Identität, `contentType`, Mandanten-/Owner-Scope, Status, Validierungszustand, Veröffentlichungsmetadaten, Historienreferenzen und auditrelevante Metadaten
+- Abgrenzung zwischen hostseitiger Kernsemantik und pluginseitiger Facherweiterung für Payload-Schema, Fachfelder, UI-Bindings und zusätzliche Validierung
+- Festlegung, dass Statusübergänge, Persistenz, Autorisierung, Historie, Revisionen und Audit-Emission hostgeführt bleiben
+- Einführung stabiler, fully-qualified Content-Core-Actions als IAM-Primitive, auf die spätere fachliche Capabilities gemappt werden können
+- Definition eines payload-unabhängigen Audit-Metadatenvertrags für Content-Core-Mutationen
 - Vorbereitung einer belastbaren Trennung zwischen Content-Kern, UI-Spezialisierung und Plugin-Metadaten
-- Dokumentation des Zielbilds für ein kleines, stabiles CMS-Rückgrat des Studios
 
 ## Impact
 
@@ -28,3 +29,10 @@ Damit das Studio als package-basiertes CMS stabil wächst, muss der Kern des Inh
   - `docs/architecture/05-building-block-view.md`
   - `docs/architecture/08-cross-cutting-concepts.md`
   - `docs/architecture/11-risks-and-technical-debt.md`
+
+## Non-Goals
+
+- Keine Einführung eines neuen Content-Admin-UI-Vertrags; UI-Spezialisierung bleibt in nachgelagerten Changes abgegrenzt.
+- Keine package-spezifischen Content-Statusmodelle im Core.
+- Keine dynamische Runtime-Registrierung von Content-Typen außerhalb des validierten Build-time-Registry-Snapshots.
+- Keine Migration bestehender Fachpayloads in hosteigene Fachfelder, solange sie nicht für Core-Status, Rechte, Historie oder Audit benötigt werden.

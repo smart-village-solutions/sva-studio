@@ -28,9 +28,10 @@ Fehlerpfad:
 ### Szenario 1c: Plugin-Guardrail-Validierung beim Build-time-Snapshot
 
 1. Die App übergibt statische Plugin-Packages an `createBuildTimeRegistry()`.
-2. Das Plugin-SDK validiert Plugin-, Route-, Navigation-, Action-, Content-Type-, Admin-Resource- und Audit-Event-Beiträge gegen erlaubte Felder.
-3. Erlaubte UI-Komponenten und host-invoked Payload-Validatoren bleiben im Snapshot erhalten.
-4. Verbotene Felder wie eigene Route-Handler, Autorisierungsresolver, Audit-Sinks, Persistenzhandler oder dynamische Registrierung brechen die Initialisierung fail-fast ab.
+2. Das Plugin-SDK führt die bestehende Registry-Erzeugung in festen Phasen aus: Preflight, Content, Admin, Audit, Routing und Publish.
+3. Jede Phase erzeugt die bisherigen `BuildTimeRegistry`-Outputs; bestehende Consumer müssen keinen neuen Snapshot-Typ verwenden.
+4. Erlaubte UI-Komponenten und host-invoked Payload-Validatoren bleiben im Snapshot erhalten.
+5. Verbotene Felder wie eigene Route-Handler, Autorisierungsresolver, Audit-Sinks, Persistenzhandler oder dynamische Registrierung brechen die Initialisierung fail-fast ab.
 
 Fehlerpfad:
 

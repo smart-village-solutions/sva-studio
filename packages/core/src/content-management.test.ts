@@ -3,7 +3,9 @@ import { describe, expect, it } from 'vitest';
 import {
   GENERIC_CONTENT_TYPE,
   isContentJsonValue,
+  isIamContentPrimitiveAction,
   isIamContentStatus,
+  isIamContentValidationState,
   summarizeContentAccess,
   validateCreateIamContentInput,
   withServerDeniedContentAccess,
@@ -14,6 +16,10 @@ describe('content-management core contract', () => {
     expect(isIamContentStatus('draft')).toBe(true);
     expect(isIamContentStatus('published')).toBe(true);
     expect(isIamContentStatus('unknown')).toBe(false);
+    expect(isIamContentValidationState('valid')).toBe(true);
+    expect(isIamContentValidationState('unknown')).toBe(false);
+    expect(isIamContentPrimitiveAction('content.updatePayload')).toBe(true);
+    expect(isIamContentPrimitiveAction('content.write')).toBe(false);
   });
 
   it('accepts only JSON-compatible payload values', () => {
@@ -61,7 +67,7 @@ describe('content-management access helpers', () => {
           provenance: { sourceKinds: ['direct_role'] },
         },
         {
-          action: 'content.update',
+          action: 'content.updatePayload',
           resourceType: 'content',
           effect: 'allow',
           organizationId: 'org-1',

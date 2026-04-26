@@ -267,7 +267,7 @@ describe('app.routes', () => {
             {
               id: 'plugin.write',
               path: '/plugins/plugin-guards/write',
-              guard: 'content.write',
+              guard: 'content.updatePayload',
               component: () => 'write',
             },
           ],
@@ -440,7 +440,7 @@ describe('app.routes', () => {
   it('maps plugin guards onto canonical account-ui guards', () => {
     expect(mapPluginGuardToAccountGuard('content.read')).toBe('content');
     expect(mapPluginGuardToAccountGuard('content.create')).toBe('contentCreate');
-    expect(mapPluginGuardToAccountGuard('content.write')).toBe('contentDetail');
+    expect(mapPluginGuardToAccountGuard('content.updatePayload')).toBe('contentDetail');
     expect(mapPluginGuardToAccountGuard(undefined)).toBeNull();
   });
 

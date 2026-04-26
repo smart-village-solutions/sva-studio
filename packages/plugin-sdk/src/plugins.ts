@@ -1,3 +1,4 @@
+import type { IamContentPrimitiveAction } from '@sva/core';
 import type { AdminResourceDefinition } from './admin-resources.js';
 import type { ContentTypeDefinition } from './content-types.js';
 import {
@@ -11,7 +12,7 @@ import {
   parseNamespacedPluginIdentifier,
 } from './plugin-identifiers.js';
 
-export type PluginRouteGuard = 'content.read' | 'content.create' | 'content.write';
+export type PluginRouteGuard = IamContentPrimitiveAction;
 
 export type PluginNavigationSection = 'dataManagement' | 'applications' | 'system';
 

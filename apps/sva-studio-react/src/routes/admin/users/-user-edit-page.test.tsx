@@ -75,7 +75,7 @@ describe('UserEditPage', () => {
     useRolePermissionsMock.mockReturnValue({
       permissions: [
         { id: 'perm-read', instanceId: 'de-musterhausen', permissionKey: 'content.read', description: 'Inhalte lesen' },
-        { id: 'perm-write', instanceId: 'de-musterhausen', permissionKey: 'content.write', description: 'Inhalte bearbeiten' },
+        { id: 'perm-write', instanceId: 'de-musterhausen', permissionKey: 'content.updatePayload', description: 'Inhalte bearbeiten' },
       ],
       isLoading: false,
       error: null,
@@ -177,7 +177,7 @@ describe('UserEditPage', () => {
     useUserMock.mockReturnValue({
       user: {
         ...baseUser,
-        directPermissions: [{ permissionId: 'perm-1', permissionKey: 'content.write', effect: 'deny' as const }],
+        directPermissions: [{ permissionId: 'perm-1', permissionKey: 'content.updatePayload', effect: 'deny' as const }],
         permissionTrace: [
           {
             permissionKey: 'content.read',
@@ -563,7 +563,7 @@ describe('UserEditPage', () => {
   it('renders direct user permission assignments read-only in the permissions tab', async () => {
     const userWithDirectPermission = {
       ...baseUser,
-      directPermissions: [{ permissionId: 'perm-write', permissionKey: 'content.write', effect: 'deny' as const }],
+      directPermissions: [{ permissionId: 'perm-write', permissionKey: 'content.updatePayload', effect: 'deny' as const }],
     };
     const save = vi.fn().mockResolvedValue({
       ...userWithDirectPermission,
@@ -594,9 +594,9 @@ describe('UserEditPage', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Berechtigungen' }));
 
     expect(screen.getByText('Direkte Zuweisungen')).toBeTruthy();
-    expect(screen.getByText('content.write')).toBeTruthy();
+    expect(screen.getByText('content.updatePayload')).toBeTruthy();
     expect(screen.getByText('deny')).toBeTruthy();
-    expect(screen.queryByLabelText('Direkte Wirkung für content.write')).toBeNull();
+    expect(screen.queryByLabelText('Direkte Wirkung für content.updatePayload')).toBeNull();
     expect(save).not.toHaveBeenCalled();
   });
 

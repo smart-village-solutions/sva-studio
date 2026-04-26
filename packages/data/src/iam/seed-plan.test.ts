@@ -28,7 +28,15 @@ describe('iam seed plan', () => {
 
     assert.equal(editor.roleSlug, 'editor');
     assert.equal(editor.roleLevel, 30);
-    assert.deepEqual(editor.permissionKeys, ['content.read', 'content.create', 'content.update']);
+    assert.deepEqual(editor.permissionKeys, [
+      'content.read',
+      'content.readHistory',
+      'content.create',
+      'content.updateMetadata',
+      'content.updatePayload',
+      'content.changeStatus',
+      'content.delete',
+    ]);
   });
 
   it('includes the global instance registry administrator persona', () => {

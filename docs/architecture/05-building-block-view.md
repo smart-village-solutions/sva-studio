@@ -180,7 +180,8 @@ Nicht erlaubt: `@sva/plugin-*` -> `@sva/core`
 1. `packages/plugin-sdk/src/plugins.ts` + `packages/plugin-sdk/src/plugin-identifiers.ts`
    - definieren die technische Plugin-Identität über `PluginDefinition.id` als führenden Namespace und validieren plugin-beigestellte `contentType`s, Admin-Ressourcen und Audit-Event-Typen gegen `<pluginId>.<name>`
 2. `packages/plugin-sdk/src/build-time-registry.ts`
-   - verdichtet Plugins, hosteigene Admin-Ressourcen und plugin-spezifische Audit-Event-Definitionen in einen gemeinsamen Registry-Snapshot für Host und Routing
+   - verdichtet Plugins, hosteigene Admin-Ressourcen und plugin-spezifische Audit-Event-Definitionen phasenweise in einen gemeinsamen Registry-Snapshot für Host und Routing
+   - hält die bestehende `BuildTimeRegistry`-API stabil; interne Phasen ordnen Preflight, Content, Admin, Audit, Routing und Publish ohne neue Beitragstypen
 3. `packages/routing/src/app.routes.shared.ts`
    - materialisiert deklarative Admin-Ressourcen unter `/admin/<resource>` und hält Legacy-Aliase wie `/content*` nur noch als Redirect-Vertrag
 4. `packages/auth-runtime/src/content/content-type-registry.ts`

@@ -3,9 +3,13 @@ export {
   GENERIC_CONTENT_TYPE,
   iamContentAccessReasonCodes,
   iamContentAccessStates,
+  iamContentPrimitiveActions,
   iamContentStatuses,
+  iamContentValidationStates,
   isContentJsonValue,
+  isIamContentPrimitiveAction,
   isIamContentStatus,
+  isIamContentValidationState,
   summarizeContentAccess,
   validateCreateIamContentInput,
   withServerDeniedContentAccess,
@@ -20,7 +24,9 @@ export type {
   IamContentDetail,
   IamContentHistoryEntry,
   IamContentListItem,
+  IamContentPrimitiveAction,
   IamContentStatus,
+  IamContentValidationState,
   UpdateIamContentInput,
 } from './content-management.js';
 export * from './routing/registry.js';

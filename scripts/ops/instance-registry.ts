@@ -354,6 +354,7 @@ const run = async () => {
 
             const run = await service.executeKeycloakProvisioning({
               actorId: options.actorId,
+              idempotencyKey: `${options.idempotencyKey}:${instance.instanceId}:provision-admin-client`,
               instanceId: instance.instanceId,
               intent: 'provision_admin_client',
               requestId: `cli-${options.idempotencyKey}`,

@@ -70,9 +70,10 @@ describe('mutation-input-builders', () => {
       buildReconcileInstanceKeycloakInput(
         'demo',
         { rotateClientSecret: true, tenantAdminTemporaryPassword: 'tmp-password' },
-        { actorId: 'user-1', requestId: 'req-4' }
+        { idempotencyKey: 'idem-4', actorId: 'user-1', requestId: 'req-4' }
       )
     ).toEqual({
+      idempotencyKey: 'idem-4',
       instanceId: 'demo',
       actorId: 'user-1',
       requestId: 'req-4',
@@ -84,9 +85,10 @@ describe('mutation-input-builders', () => {
       buildExecuteInstanceKeycloakProvisioningInput(
         'demo',
         { intent: 'provision', tenantAdminTemporaryPassword: 'tmp-password' },
-        { actorId: 'user-1', requestId: 'req-5' }
+        { idempotencyKey: 'idem-5', actorId: 'user-1', requestId: 'req-5' }
       )
     ).toEqual({
+      idempotencyKey: 'idem-5',
       instanceId: 'demo',
       actorId: 'user-1',
       requestId: 'req-5',

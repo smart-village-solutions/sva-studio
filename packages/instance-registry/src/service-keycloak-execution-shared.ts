@@ -1,4 +1,5 @@
 import { areAllInstanceKeycloakRequirementsSatisfied } from '@sva/core';
+import { createHash } from 'node:crypto';
 
 import type { ExecuteInstanceKeycloakProvisioningInput } from './mutation-types.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
@@ -10,6 +11,43 @@ const buildAuthClientSecretAad = (instanceId: string): string => `iam.instances.
 const buildTenantAdminClientSecretAad = (instanceId: string): string =>
   `iam.instances.tenant_admin_client_secret:${instanceId}`;
 type SecretReaderDeps = Pick<InstanceRegistryServiceDeps, 'revealSecret'>;
+export type KeycloakProvisioningMutation = 'executeKeycloakProvisioning' | 'reconcileKeycloak';
+
+const normalizeForFingerprint = (value: unknown): unknown => {
+  if (Array.isArray(value)) {
+    return value.map(normalizeForFingerprint);
+  }
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>)
+        .filter(([, entryValue]) => entryValue !== undefined)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([key, entryValue]) => [key, normalizeForFingerprint(entryValue)])
+    );
+  }
+  return value;
+};
+
+export const buildKeycloakProvisioningPayloadFingerprint = (input: {
+  readonly mutation: KeycloakProvisioningMutation;
+  readonly intent?: ExecuteInstanceKeycloakProvisioningInput['intent'];
+  readonly rotateClientSecret?: boolean;
+  readonly tenantAdminTemporaryPassword?: string;
+}): string => {
+  const payload =
+    input.mutation === 'executeKeycloakProvisioning'
+      ? {
+          intent: input.intent,
+          tenantAdminTemporaryPassword: input.tenantAdminTemporaryPassword ?? null,
+        }
+      : {
+          rotateClientSecret: input.rotateClientSecret ?? false,
+          tenantAdminTemporaryPassword: input.tenantAdminTemporaryPassword ?? null,
+        };
+  return createHash('sha256')
+    .update(JSON.stringify(normalizeForFingerprint(payload)))
+    .digest('hex');
+};
 
 export const buildProvisioningInput = (
   loaded: NonNullable<Awaited<ReturnType<typeof loadInstanceWithSecret>>>
@@ -42,11 +80,17 @@ export const readQueuedTemporaryPassword = (
 export const createQueuedRun = async (
   deps: InstanceRegistryServiceDeps,
   loaded: NonNullable<Awaited<ReturnType<typeof loadInstanceWithSecret>>>,
-  input: ExecuteInstanceKeycloakProvisioningInput
+  input: ExecuteInstanceKeycloakProvisioningInput & {
+    readonly mutation: KeycloakProvisioningMutation;
+    readonly rotateClientSecret?: boolean;
+  }
 ) => {
   const provisioningInput = buildProvisioningInput(loaded);
-  const run = await deps.repository.createKeycloakProvisioningRun({
+  const { run, created } = await deps.repository.createKeycloakProvisioningRun({
     instanceId: loaded.instance.instanceId,
+    mutation: input.mutation,
+    idempotencyKey: input.idempotencyKey,
+    payloadFingerprint: buildKeycloakProvisioningPayloadFingerprint(input),
     mode: loaded.instance.realmMode,
     intent: input.intent,
     overallStatus: 'planned',
@@ -55,24 +99,26 @@ export const createQueuedRun = async (
     requestId: input.requestId,
   });
 
-  await appendRunStep(deps, {
-    runId: run.id,
-    stepKey: 'queued',
-    title: 'Provisioning-Auftrag einreihen',
-    status: 'pending',
-    summary: 'Der Auftrag wurde gespeichert und wartet auf die Abarbeitung durch den Provisioning-Worker.',
-    details: {
-      intent: input.intent,
-      mode: loaded.instance.realmMode,
-      authRealm: loaded.instance.authRealm,
-      authClientId: loaded.instance.authClientId,
-      primaryHostname: loaded.instance.primaryHostname,
-      tenantAdminTemporaryPasswordCiphertext: input.tenantAdminTemporaryPassword
-        ? deps.protectSecret?.(input.tenantAdminTemporaryPassword, buildTempPasswordAad(run.id))
-        : undefined,
-    },
-    requestId: input.requestId,
-  });
+  if (created) {
+    await appendRunStep(deps, {
+      runId: run.id,
+      stepKey: 'queued',
+      title: 'Provisioning-Auftrag einreihen',
+      status: 'pending',
+      summary: 'Der Auftrag wurde gespeichert und wartet auf die Abarbeitung durch den Provisioning-Worker.',
+      details: {
+        intent: input.intent,
+        mode: loaded.instance.realmMode,
+        authRealm: loaded.instance.authRealm,
+        authClientId: loaded.instance.authClientId,
+        primaryHostname: loaded.instance.primaryHostname,
+        tenantAdminTemporaryPasswordCiphertext: input.tenantAdminTemporaryPassword
+          ? deps.protectSecret?.(input.tenantAdminTemporaryPassword, buildTempPasswordAad(run.id))
+          : undefined,
+      },
+      requestId: input.requestId,
+    });
+  }
 
   return { provisioningInput, run };
 };

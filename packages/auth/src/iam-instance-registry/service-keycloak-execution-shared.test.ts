@@ -93,7 +93,7 @@ describe('service-keycloak-execution-shared', () => {
 
   it('createQueuedRun writes encrypted temporary password details', async () => {
     const repository = {
-      createKeycloakProvisioningRun: vi.fn().mockResolvedValue({ id: 'run-queued' }),
+      createKeycloakProvisioningRun: vi.fn().mockResolvedValue({ created: true, run: { id: 'run-queued' } }),
       appendKeycloakProvisioningStep: vi.fn().mockResolvedValue(undefined),
     };
 
@@ -105,7 +105,9 @@ describe('service-keycloak-execution-shared', () => {
       } as never,
       loaded as never,
       {
+        idempotencyKey: 'idem-1',
         intent: 'provision',
+        mutation: 'executeKeycloakProvisioning',
         actorId: 'actor-1',
         requestId: 'req-1',
         tenantAdminTemporaryPassword: queuedTemporaryPassword,
@@ -113,6 +115,13 @@ describe('service-keycloak-execution-shared', () => {
     );
 
     expect(result.run.id).toBe('run-queued');
+    expect(repository.createKeycloakProvisioningRun).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mutation: 'executeKeycloakProvisioning',
+        idempotencyKey: 'idem-1',
+        payloadFingerprint: expect.any(String),
+      })
+    );
     expect(repository.appendKeycloakProvisioningStep).toHaveBeenCalledWith(
       expect.objectContaining({
         runId: 'run-queued',
@@ -122,6 +131,34 @@ describe('service-keycloak-execution-shared', () => {
         }),
       })
     );
+  });
+
+  it('createQueuedRun returns replayed runs without appending another queued step', async () => {
+    const repository = {
+      createKeycloakProvisioningRun: vi.fn().mockResolvedValue({
+        created: false,
+        run: { id: 'run-replayed', steps: [{ stepKey: 'queued' }] },
+      }),
+      appendKeycloakProvisioningStep: vi.fn(),
+    };
+
+    const result = await createQueuedRun(
+      {
+        repository: repository as never,
+      } as never,
+      createLoaded() as never,
+      {
+        idempotencyKey: 'idem-replay',
+        intent: 'provision',
+        mutation: 'reconcileKeycloak',
+        actorId: 'actor-1',
+        requestId: 'req-1',
+        rotateClientSecret: false,
+      } as never
+    );
+
+    expect(result.run.id).toBe('run-replayed');
+    expect(repository.appendKeycloakProvisioningStep).not.toHaveBeenCalled();
   });
 
   it('syncProvisionedClientSecretToRegistry skips update when secret already loaded', async () => {

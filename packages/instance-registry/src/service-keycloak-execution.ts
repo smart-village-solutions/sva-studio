@@ -219,7 +219,10 @@ export const createExecuteKeycloakProvisioningHandler =
       return null;
     }
 
-    const { run } = await createQueuedRun(deps, loaded, input);
+    const { run } = await createQueuedRun(deps, loaded, {
+      ...input,
+      mutation: 'executeKeycloakProvisioning',
+    });
     return deps.repository.getKeycloakProvisioningRun(loaded.instance.instanceId, run.id);
   };
 
@@ -266,6 +269,7 @@ export const createReconcileKeycloakHandler =
   (deps: InstanceRegistryServiceDeps) =>
   async (input: {
     instanceId: string;
+    idempotencyKey: string;
     actorId: string;
     requestId: string;
     tenantAdminTemporaryPassword?: string;
@@ -288,16 +292,16 @@ export const createReconcileKeycloakHandler =
       throw new Error('tenant_auth_client_secret_missing');
     }
 
-    const run = await createExecuteKeycloakProvisioningHandler(deps)({
+    const { run } = await createQueuedRun(deps, loaded, {
       instanceId: input.instanceId,
+      idempotencyKey: input.idempotencyKey,
       actorId: input.actorId,
       requestId: input.requestId,
       tenantAdminTemporaryPassword: input.tenantAdminTemporaryPassword,
+      rotateClientSecret: input.rotateClientSecret,
       intent,
+      mutation: 'reconcileKeycloak',
     });
-    if (!run) {
-      return null;
-    }
 
     return createGetKeycloakStatusHandler(deps)(input.instanceId);
   };

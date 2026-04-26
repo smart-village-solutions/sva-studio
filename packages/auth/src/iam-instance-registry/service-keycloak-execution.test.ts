@@ -46,7 +46,7 @@ describe('iam-instance-registry keycloak execution handlers', () => {
     } as never);
 
     await expect(
-      handler({ instanceId: 'missing', actorId: 'admin-1', requestId: 'req-1', intent: 'provision' })
+      handler({ instanceId: 'missing', idempotencyKey: 'idem-1', actorId: 'admin-1', requestId: 'req-1', intent: 'provision' })
     ).resolves.toBeNull();
   }, 15000);
 
@@ -76,7 +76,7 @@ describe('iam-instance-registry keycloak execution handlers', () => {
       repository: repository as never,
     } as never);
 
-    await expect(handler({ instanceId: 'demo', actorId: 'admin-1', requestId: 'req-1' })).rejects.toThrow(
+    await expect(handler({ instanceId: 'demo', idempotencyKey: 'idem-1', actorId: 'admin-1', requestId: 'req-1' })).rejects.toThrow(
       'tenant_auth_client_secret_missing'
     );
     expect(repository.createKeycloakProvisioningRun).not.toHaveBeenCalled();
@@ -95,7 +95,7 @@ describe('iam-instance-registry keycloak execution handlers', () => {
       }),
       getAuthClientSecretCiphertext: vi.fn().mockResolvedValue(null),
       getTenantAdminClientSecretCiphertext: vi.fn().mockResolvedValue(null),
-      createKeycloakProvisioningRun: vi.fn().mockResolvedValue({ id: 'run-admin-1' }),
+      createKeycloakProvisioningRun: vi.fn().mockResolvedValue({ created: true, run: { id: 'run-admin-1' } }),
       appendKeycloakProvisioningStep: vi.fn().mockResolvedValue(undefined),
       getKeycloakProvisioningRun: vi.fn().mockResolvedValue({
         id: 'run-admin-1',
@@ -108,7 +108,7 @@ describe('iam-instance-registry keycloak execution handlers', () => {
       repository: repository as never,
     } as never);
 
-    await expect(handler({ instanceId: 'demo', actorId: 'admin-1', requestId: 'req-1' })).resolves.toBeNull();
+    await expect(handler({ instanceId: 'demo', idempotencyKey: 'idem-1', actorId: 'admin-1', requestId: 'req-1' })).resolves.toBeNull();
     expect(repository.createKeycloakProvisioningRun).toHaveBeenCalledWith(
       expect.objectContaining({
         instanceId: 'demo',
@@ -134,7 +134,7 @@ describe('iam-instance-registry keycloak execution handlers', () => {
       }),
       getAuthClientSecretCiphertext: vi.fn().mockResolvedValue(null),
       getTenantAdminClientSecretCiphertext: vi.fn().mockResolvedValue(null),
-      createKeycloakProvisioningRun: vi.fn().mockResolvedValue({ id: 'run-admin-2' }),
+      createKeycloakProvisioningRun: vi.fn().mockResolvedValue({ created: true, run: { id: 'run-admin-2' } }),
       appendKeycloakProvisioningStep: vi.fn().mockResolvedValue(undefined),
       getKeycloakProvisioningRun: vi.fn().mockResolvedValue({
         id: 'run-admin-2',
@@ -147,7 +147,7 @@ describe('iam-instance-registry keycloak execution handlers', () => {
       repository: repository as never,
     } as never);
 
-    await expect(handler({ instanceId: 'demo', actorId: 'admin-1', requestId: 'req-1' })).resolves.toBeNull();
+    await expect(handler({ instanceId: 'demo', idempotencyKey: 'idem-1', actorId: 'admin-1', requestId: 'req-1' })).resolves.toBeNull();
     expect(repository.createKeycloakProvisioningRun).toHaveBeenCalledWith(
       expect.objectContaining({
         instanceId: 'demo',
@@ -168,7 +168,7 @@ describe('iam-instance-registry keycloak execution handlers', () => {
         authClientSecretConfigured: false,
       }),
       getAuthClientSecretCiphertext: vi.fn().mockResolvedValue(null),
-      createKeycloakProvisioningRun: vi.fn().mockResolvedValue({ id: 'run-new-1' }),
+      createKeycloakProvisioningRun: vi.fn().mockResolvedValue({ created: true, run: { id: 'run-new-1' } }),
       appendKeycloakProvisioningStep: vi.fn().mockResolvedValue(undefined),
       getKeycloakProvisioningRun: vi.fn().mockResolvedValue({
         id: 'run-new-1',
@@ -181,7 +181,7 @@ describe('iam-instance-registry keycloak execution handlers', () => {
       repository: repository as never,
     } as never);
 
-    await expect(handler({ instanceId: 'demo-new', actorId: 'admin-1', requestId: 'req-1' })).resolves.toBeNull();
+    await expect(handler({ instanceId: 'demo-new', idempotencyKey: 'idem-1', actorId: 'admin-1', requestId: 'req-1' })).resolves.toBeNull();
     expect(repository.createKeycloakProvisioningRun).toHaveBeenCalledWith(
       expect.objectContaining({
         instanceId: 'demo-new',
@@ -208,7 +208,7 @@ describe('iam-instance-registry keycloak execution handlers', () => {
     }),
       getAuthClientSecretCiphertext: vi.fn().mockResolvedValue('enc:secret'),
       getTenantAdminClientSecretCiphertext: vi.fn().mockResolvedValue('enc:tenant-admin-secret'),
-      createKeycloakProvisioningRun: vi.fn().mockResolvedValue({ id: 'run-1' }),
+      createKeycloakProvisioningRun: vi.fn().mockResolvedValue({ created: true, run: { id: 'run-1' } }),
       appendKeycloakProvisioningStep: vi.fn().mockResolvedValue(undefined),
       getKeycloakProvisioningRun: vi.fn().mockResolvedValue({
         id: 'run-1',
@@ -239,6 +239,7 @@ describe('iam-instance-registry keycloak execution handlers', () => {
     await expect(
       handler({
         instanceId: 'demo',
+        idempotencyKey: 'idem-1',
         actorId: 'admin-1',
         requestId: 'req-1',
         rotateClientSecret: true,
@@ -688,7 +689,7 @@ describe('iam-instance-registry keycloak execution handlers', () => {
     expect(result).toEqual({ id: 'run-queued-next', overallStatus: 'succeeded' });
   });
 
-  it('returns null in reconcile when enqueue handler cannot load the instance on the second lookup', async () => {
+  it('keeps reconcile enqueue idempotent when the follow-up status lookup no longer finds the instance', async () => {
     const { createReconcileKeycloakHandler } = await import('./service-keycloak-execution.js');
     const repository = {
       getInstanceById: vi
@@ -703,15 +704,20 @@ describe('iam-instance-registry keycloak execution handlers', () => {
         })
         .mockResolvedValueOnce(null),
       getAuthClientSecretCiphertext: vi.fn().mockResolvedValue('enc:secret'),
-      createKeycloakProvisioningRun: vi.fn(),
+      createKeycloakProvisioningRun: vi.fn().mockResolvedValue({ created: true, run: { id: 'run-1' } }),
       appendKeycloakProvisioningStep: vi.fn(),
       getKeycloakProvisioningRun: vi.fn(),
     };
 
     const handler = createReconcileKeycloakHandler({ repository: repository as never } as never);
 
-    await expect(handler({ instanceId: 'demo', actorId: 'admin-1', requestId: 'req-1' })).resolves.toBeNull();
-    expect(repository.createKeycloakProvisioningRun).not.toHaveBeenCalled();
+    await expect(handler({ instanceId: 'demo', idempotencyKey: 'idem-1', actorId: 'admin-1', requestId: 'req-1' })).resolves.toBeNull();
+    expect(repository.createKeycloakProvisioningRun).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mutation: 'reconcileKeycloak',
+        idempotencyKey: 'idem-1',
+      })
+    );
   });
 
   it('fails the claimed run when existing mode has no decrypted tenant secret', async () => {

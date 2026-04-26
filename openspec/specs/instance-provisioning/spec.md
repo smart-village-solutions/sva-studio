@@ -184,3 +184,34 @@ Das System SHALL Keycloak-Reconcile- und Execute-Mutationen end-to-end idempoten
 - **THEN** bleibt die persistierte Run-Erzeugung effektiv genau einmalig
 - **AND** referenzieren alle erfolgreichen Execute-Antworten denselben Keycloak-Provisioning-Run
 - **AND** geben alle erfolgreichen Reconcile-Antworten denselben Status-/Snapshot-Zustand des deduplizierten Auftrags wieder
+
+### Requirement: Tenant-Auth-Vertrag priorisiert Host- und Realm-Scope
+Das System SHALL für tenant-spezifische Studio-Instanzen den Tenant-Kontext primär über Registry, Hostname und den zugeordneten Realm modellieren.
+
+#### Scenario: Tenant-Realm ist die führende technische Benutzergrenze
+
+- **WHEN** eine aktive Instanz über `primaryHostname`, `authRealm` und `authClientId` in der Registry beschrieben ist
+- **THEN** ist ein erfolgreicher Login im zugeordneten Tenant-Realm technisch ausreichend, um den Benutzer dem Tenant-Kontext dieser Instanz zuzuordnen
+- **AND** die Runtime leitet `instanceId` für die Session aus diesem tenant-spezifischen Auth-Scope ab
+- **AND** ein zusätzliches benutzerbezogenes Keycloak-Attribut `instanceId` ist dafür keine normative Vorbedingung
+
+### Requirement: Keycloak-Artefakte unterscheiden zwischen Login-Vertrag und Interop
+Das System SHALL Keycloak-Artefakte für tenant-spezifische Instanzen danach unterscheiden, ob sie für den interaktiven Login-Vertrag zwingend oder nur für Interoperabilität, Diagnose oder Zusatzprozesse relevant sind.
+
+#### Scenario: instanceId-Mapper ist kein hartes Login-Gate mehr
+
+- **WHEN** für eine aktive Instanz der OIDC-Client, Realm, Redirect- und Logout-URLs korrekt am Tenant-Host ausgerichtet sind
+- **THEN** bleibt ein fehlender Protocol Mapper `instanceId` ein Diagnose- oder Interop-Befund
+- **AND** er blockiert tenant-spezifische Studio-Logins nicht als eigener Pflichtvertrag
+- **AND** Checklisten, Statusanzeigen und Doku unterscheiden explizit zwischen Login-relevanten Pflichtartefakten und optionalen Zusatzartefakten
+- **AND** ein fehlendes Tenant-Admin-User-Attribut `instanceId` wird analog als Warnung oder Diagnosehinweis behandelt
+
+### Requirement: Instanzdiagnostik korreliert Provisioning- und Runtime-Fehler
+
+Die Instanzdiagnostik SHALL Runtime-IAM-Fehler, Provisioning-Drift, Reconcile-Befunde und Operator-Checks über gemeinsame Klassifikation, sichere Details und `requestId` korrelierbar machen.
+
+#### Scenario: Provisioning- und Legacy-Fallbacks bleiben unterscheidbar
+
+- **WHEN** ein Instanz- oder Tenant-Fehler aus Registry-/Provisioning-Drift entsteht
+- **THEN** verwendet der Diagnosekern `registry_or_provisioning_drift`
+- **AND** Legacy- oder Workaround-Pfade verwenden `legacy_workaround_or_regression`, damit Betrieb und UI die Ursache nicht vermischen

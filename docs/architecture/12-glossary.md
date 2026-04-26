@@ -24,12 +24,12 @@ Architektur und Betrieb.
 | Plugin-Vertrag | Öffentlicher SDK-Vertrag, über den ein Plugin Routen, Navigation, Content-Typen und Übersetzungen beschreibt | `packages/sdk/src/plugins.ts` |
 | Plugin-Registrierung | Statische Zusammenführung aller `PluginDefinition`-Objekte im Host | `apps/sva-studio-react/src/lib/plugins.ts` |
 | PluginDefinition | Zentrales SDK-Typmodell eines Plugins mit `id`, `routes`, `navigation`, `contentTypes` und `translations` | `packages/sdk/src/plugins.ts` |
-| contentType | Fachlicher Typ eines Core-Inhalts, z. B. `news`; steuert Plugin-UI und serverseitige Payload-Validierung | `packages/auth/src/iam-contents/content-type-registry.ts` |
+| contentType | Fachlicher Typ eines Core-Inhalts, z. B. `news`; steuert Plugin-UI und serverseitige Payload-Validierung | `packages/auth-runtime/src/iam-contents/content-type-registry.ts` |
 | Plugin Route Factory | Historischer Begriff für lose Plugin-Route-Listen; in v1 durch `PluginDefinition.routes` ersetzt | `docs/architecture/routing-architecture.md` |
-| OIDC | OpenID Connect für Authentifizierung gegen externen IdP | `packages/auth/src/oidc.server.ts` |
-| IdP | Identity Provider (OIDC-Provider) für Authentifizierung, extern betrieben | `packages/auth/src/oidc.server.ts` |
-| PKCE | Security-Mechanismus im Authorization Code Flow | `packages/auth/src/auth.server.ts` |
-| Session Cookie | HttpOnly-Cookie mit Session-ID für Auth-Kontext | `packages/auth/src/routes.server.ts` |
+| OIDC | OpenID Connect für Authentifizierung gegen externen IdP | `packages/auth-runtime/src/oidc.ts` |
+| IdP | Identity Provider (OIDC-Provider) für Authentifizierung, extern betrieben | `packages/auth-runtime/src/oidc.ts` |
+| PKCE | Security-Mechanismus im Authorization Code Flow | `packages/auth-runtime/src/auth-server/` |
+| Session Cookie | HttpOnly-Cookie mit Session-ID für Auth-Kontext | `packages/auth-runtime/src/runtime-routes.ts` |
 | AsyncLocalStorage Context | Request-/Workspace-Kontext für Logging und Korrelation | `packages/sdk/src/observability/context.server.ts` |
 | OTEL | OpenTelemetry Standard für Logs/Metriken/Tracing | `packages/monitoring-client/src/otel.server.ts` |
 | OTLP | OpenTelemetry Protocol für Export an Collector | `packages/monitoring-client/src/otel.server.ts` |

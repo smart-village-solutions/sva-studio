@@ -1,5 +1,5 @@
 import type { AdminResourceDefinition, PluginDefinition, PluginRouteGuard, RouteFactory } from '@sva/plugin-sdk';
-import { mergeAdminResourceDefinitions } from '@sva/plugin-sdk';
+import { assertPluginRoutePathAllowed, createPluginGuardrailError, mergeAdminResourceDefinitions } from '@sva/plugin-sdk';
 import { createRoute, type AnyRoute, type RootRoute, type RouteComponent } from '@tanstack/react-router';
 
 import { createAccountUiRouteGuard, type AccountUiRouteGuardKey } from './account-ui.routes.js';
@@ -9,7 +9,6 @@ import {
   createLegacyContentAliasFactories,
 } from './admin-resource-routes.js';
 import {
-  emitRoutingDiagnostic,
   type RoutingDiagnosticsHook,
 } from './diagnostics.js';
 import { normalizeIamTab, normalizeRoleDetailTab } from './route-search.js';
@@ -198,7 +197,15 @@ export const mapPluginGuardToAccountGuard = (
       return 'content';
     case 'content.create':
       return 'contentCreate';
-    case 'content.write':
+    case 'content.updateMetadata':
+    case 'content.updatePayload':
+    case 'content.changeStatus':
+    case 'content.publish':
+    case 'content.archive':
+    case 'content.restore':
+    case 'content.readHistory':
+    case 'content.manageRevisions':
+    case 'content.delete':
       return 'contentDetail';
     default:
       return null;
@@ -218,15 +225,17 @@ export const getPluginRouteFactories = (
       const guardKey = mapPluginGuardToAccountGuard(routeDefinition.guard);
       const guard = guardKey ? createAccountUiRouteGuard(guardKey, diagnostics, routeDefinition.path) : null;
       const unsupportedGuard = !guardKey && routeDefinition.guard ? routeDefinition.guard : null;
+      const pluginNamespace = pluginDefinition.id.trim();
+      const contributionId = routeDefinition.id.trim();
+
+      assertPluginRoutePathAllowed(pluginNamespace, contributionId, routeDefinition.path);
 
       if (unsupportedGuard) {
-        emitRoutingDiagnostic(diagnostics, {
-          level: 'warn',
-          event: 'routing.plugin.guard_unsupported',
-          route: routeDefinition.path,
-          reason: 'unsupported-plugin-guard',
-          plugin: pluginDefinition.id,
-          unsupported_guard: unsupportedGuard,
+        throw createPluginGuardrailError({
+          code: 'plugin_guardrail_unsupported_binding',
+          pluginNamespace,
+          contributionId,
+          fieldOrReason: 'guard',
         });
       }
 

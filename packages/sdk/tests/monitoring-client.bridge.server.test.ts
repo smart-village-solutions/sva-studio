@@ -2,8 +2,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 afterEach(() => {
   vi.resetModules();
-  vi.unmock('@sva/monitoring-client/server');
-  vi.unmock('@sva/monitoring-client/logger-provider.server');
+  vi.doUnmock('@sva/monitoring-client/server');
+  vi.doUnmock('@sva/monitoring-client/logger-provider.server');
 });
 
 describe('monitoring-client bridge', () => {

@@ -19,7 +19,7 @@ Die Routing-Architektur ist auf folgende Ziele ausgelegt:
 Abgedeckt:
 
 - `packages/routing` als kanonische Routing-Library
-- `packages/auth` für Auth-/API-Pfade und Server-Handler
+- `packages/auth-runtime` für Auth-Runtime-Pfade und Server-Handler sowie IAM-Zielpackages für Fachhandler
 - `apps/sva-studio-react` für Root-Shell, Router-Erzeugung und Seiten-Bindings
 - statisch registrierte Plugin-Routen über `PluginDefinition`
 - statisch registrierte Admin-Ressourcen über `AdminResourceDefinition`
@@ -34,7 +34,7 @@ Nicht abgedeckt:
 ## High-Level Architektur
 
 ```text
-packages/auth
+packages/auth-runtime
   -> authRoutePaths
   -> runtime handlers
 
@@ -78,14 +78,14 @@ Exports:
 Warum diese Trennung:
 
 - Client-Bundles sollen keine Node-/Server-Abhängigkeiten laden.
-- Auth-Handler leben serverseitig in `@sva/auth`.
+- Auth-Handler leben serverseitig in `@sva/auth-runtime`.
 - Die App soll Routing konsumieren, nicht selbst zusammensetzen.
 
 ### 2) Auth-Routen: Shared Paths + getrennte Factories
 
 Path-Single-Source:
 
-- `packages/auth/src/routes.shared.ts`
+- `packages/auth-runtime/src/routes.ts`
 - Re-Export über `@sva/routing`
 
 Client-safe Variante:
@@ -96,7 +96,7 @@ Client-safe Variante:
 Server-Variante:
 
 - setzt `server.handlers`
-- resolved Handler lazy aus `@sva/auth/runtime-routes` bzw. `@sva/auth/runtime-health`
+- resolved Handler lazy aus `@sva/auth-runtime/runtime-routes` bzw. `@sva/auth-runtime/runtime-health`
 
 ### 3) App Route Bindings (`apps/sva-studio-react/src/routing/app-route-bindings.tsx`)
 
@@ -148,7 +148,7 @@ Plugins exportieren `PluginDefinition`-Objekte.
 
 ## Request/Response Routing für Auth
 
-Auth-Endpunkte werden als TanStack Server Route Handler registriert und delegieren in `@sva/auth`:
+Auth-Endpunkte werden als TanStack Server Route Handler registriert und delegieren in `@sva/auth-runtime`:
 
 - `/auth/login` -> `loginHandler()`
 - `/auth/callback` -> `callbackHandler(request)`

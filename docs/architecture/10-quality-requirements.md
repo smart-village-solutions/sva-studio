@@ -107,6 +107,10 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - Unbekannte `instanceId` fällt deterministisch auf ein Basis-Theme zurück
 - File-Placement Governance:
   - `pnpm check:file-placement` muss grün sein
+- Plugin-Guardrail-Governance:
+  - `pnpm nx run plugin-sdk:test:unit` muss Bypass-Versuche gegen Route, Autorisierung, Audit, Persistenz und Dynamic Registration abdecken
+  - `pnpm nx run routing:test:unit` muss sicherstellen, dass unbekannte Plugin-Guards und nicht-kanonische Plugin-Pfade fail-fast abgewiesen werden
+  - Plugin-UI-Komponenten und host-invoked Content-Validatoren müssen weiterhin als erlaubte Erweiterungspunkte testbar bleiben
 - Coverage Governance:
   - Gate-Logik und Baselines in `scripts/ci/coverage-gate.ts` und `tooling/testing/*`
 - Complexity Governance:
@@ -206,7 +210,7 @@ Referenzen:
 - Migrationen für `iam.groups`, `iam.group_roles`, `iam.account_groups` und `iam.geo_units` müssen Unique-, FK- und Self-Parent-Constraints reproduzierbar durchsetzen.
 - Unit- und Integrationstests müssen gruppenvermittelte Rechte, aggregierte Provenance und Konfliktfälle `Parent-Allow + Child-Deny` explizit abdecken.
 - Die Admin-UI `/admin/groups`, die Benutzerdetailseite und das Rechte-Cockpit müssen gruppenbasierte Herkunft ohne harte Strings und ohne zusätzliche N+1-Requests rendern.
-- `pnpm nx run auth:test:unit`, `pnpm nx run core:test:unit`, `pnpm nx run routing:test:unit` und `pnpm nx run sva-studio-react:test:unit` bleiben für diesen Change grün.
+- `pnpm nx run auth-runtime:test:unit`, `pnpm nx run core:test:unit`, `pnpm nx run routing:test:unit` und `pnpm nx run sva-studio-react:test:unit` bleiben für diesen Change grün.
 
 ### Ergänzung 2026-03: Qualitätsziele Inhaltsverwaltung
 

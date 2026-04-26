@@ -304,3 +304,66 @@ Das Audit-System MUST Registrierungs- und Ausführungsereignisse von Plugin-Akti
 - **THEN** wird ein Audit-Ereignis mit Ergebnis `denied` erzeugt
 - **AND** das Ereignis enthält die angeforderte vollständig qualifizierte Action-ID
 
+### Requirement: Audit Contributions Register Before Route Publication
+The system SHALL validate existing plugin-provided audit event declarations in an explicit audit phase before the registry snapshot is published.
+
+Plugins MAY declare audit event metadata. Runtime audit emission SHALL remain host-owned. This change SHALL NOT introduce a new action-to-audit-event reference field.
+
+#### Scenario: Audit event declaration is normalized
+- **GIVEN** a plugin declares a namespaced audit event
+- **WHEN** the build-time registry snapshot is created
+- **THEN** the audit phase normalizes and publishes the event in the plugin audit event registry
+
+#### Scenario: Invalid audit event stops snapshot publication
+- **GIVEN** a plugin declares an invalid audit event
+- **WHEN** the audit phase validates plugin contributions
+- **THEN** validation fails before snapshot publication
+
+#### Scenario: Plugin attempts direct audit emission
+- **GIVEN** a plugin declares executable audit emission logic instead of audit metadata
+- **WHEN** the audit phase validates the contribution
+- **THEN** validation fails with `plugin_guardrail_audit_bypass`
+
+### Requirement: Host-Owned Plugin Audit Emission
+The system SHALL emit audit events for plugin-provided actions through host-owned audit pipelines using validated plugin event identifiers and sanitized payloads.
+
+Plugins MAY declare audit event types and metadata schemas. Plugins SHALL NOT write audit records directly or emit security-relevant audit events through plugin-owned pipelines.
+
+#### Scenario: Plugin action is audited
+- **GIVEN** a plugin action is executed through a host route
+- **WHEN** the action completes or fails
+- **THEN** the host emits an audit event with the validated event type, actor, scope, and sanitized metadata
+
+#### Scenario: Plugin attempts direct audit emission
+- **GIVEN** a plugin tries to bypass the host audit pipeline
+- **WHEN** the contribution is validated
+- **THEN** the host rejects the direct emission path before the contribution becomes available
+- **AND** the diagnostics include `plugin_guardrail_audit_bypass` with plugin namespace and contribution identifier
+
+#### Scenario: Plugin declares audit metadata only
+- **GIVEN** a plugin declares a namespaced audit event type and metadata schema
+- **WHEN** the host validates the registry snapshot
+- **THEN** the declaration is accepted
+- **AND** runtime emission remains host-owned
+
+### Requirement: Plugin-Audit-Ereignisse sind namespace-pflichtig
+
+Das IAM-Auditing MUST plugin-beigestellte Audit-Event-Typen in einem fully-qualified Format `<namespace>.<eventName>` behandeln.
+
+#### Scenario: Plugin emittiert namespaced Audit-Ereignis
+
+- **WHEN** ein Plugin mit Namespace `news` ein Audit-Ereignis für eine redaktionelle Aktion registriert oder emittiert
+- **THEN** verwendet der Event-Typ das Format `news.<eventName>`
+- **AND** das Audit-System kann den Owner-Namespace aus dem Event-Typ deterministisch ableiten
+
+#### Scenario: Plugin emittiert unqualifiziertes Audit-Ereignis
+
+- **WHEN** ein Plugin ein Audit-Ereignis wie `published` ohne Namespace registriert oder emittiert
+- **THEN** wird der Beitrag mit einem Validierungsfehler abgewiesen
+- **AND** das Audit-System führt kein implizites Prefix-Mapping durch
+
+#### Scenario: Plugin emittiert Audit-Ereignis in fremdem Namespace
+
+- **WHEN** ein Plugin mit Namespace `news` ein Audit-Ereignis wie `events.published` registriert oder emittiert
+- **THEN** wird der Beitrag mit einem Ownership-Fehler abgewiesen
+- **AND** die Auditspur bleibt dadurch namespace-sicher einem Owner zuordenbar

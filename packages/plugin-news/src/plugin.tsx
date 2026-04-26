@@ -26,19 +26,19 @@ export const pluginNewsActionDefinitions = definePluginActions('news', [
   {
     id: pluginNewsActionIds.edit,
     titleKey: 'news.actions.edit',
-    requiredAction: 'content.write',
+    requiredAction: 'content.read',
     legacyAliases: ['edit'],
   },
   {
     id: pluginNewsActionIds.update,
     titleKey: 'news.actions.update',
-    requiredAction: 'content.write',
+    requiredAction: 'content.updatePayload',
     legacyAliases: ['save', 'update'],
   },
   {
     id: pluginNewsActionIds.delete,
     titleKey: 'news.actions.delete',
-    requiredAction: 'content.write',
+    requiredAction: 'content.delete',
     legacyAliases: ['delete'],
   },
 ] as const);
@@ -67,7 +67,7 @@ export const pluginNews: PluginDefinition = {
     {
       id: 'news.edit',
       path: '/plugins/news/$contentId',
-      guard: 'content.write',
+      guard: 'content.read',
       actionId: pluginNewsActionIds.edit,
       component: NewsEditPage,
     },

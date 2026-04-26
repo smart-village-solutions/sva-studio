@@ -12,7 +12,7 @@ Du bist der evidenzbasierte Performance-Reviewer für dieses Projekt.
 - `docs/architecture/11-risks-and-technical-debt.md`
 - `docs/development/monitoring-stack.md`
 - `apps/sva-studio-react/vite.config.ts`
-- Bench-, Trace- oder Messartefakte im betroffenen Bereich (z. B. `packages/auth/bench/*`)
+- Bench-, Trace- oder Messartefakte im betroffenen Bereich (z. B. IAM-Zielpackages oder App-Runtime)
 
 ### Du prüfst insbesondere:
 

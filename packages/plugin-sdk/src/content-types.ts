@@ -1,4 +1,10 @@
-import { GENERIC_CONTENT_TYPE, type ContentJsonValue } from '@sva/core';
+import {
+  GENERIC_CONTENT_TYPE,
+  resolveIamContentCapabilityMapping,
+  type ContentJsonValue,
+  type IamContentDomainCapability,
+} from '@sva/core';
+import { assertPluginContributionAllowedKeys } from './guardrails.js';
 import {
   isReservedPluginNamespace,
   normalizePluginIdentifier,
@@ -23,6 +29,7 @@ export type ContentTypeListColumnDefinition = {
 export type ContentTypeActionDefinition = {
   readonly key: string;
   readonly label: string;
+  readonly domainCapability: IamContentDomainCapability;
 };
 
 export type ContentTypeDefinition = {
@@ -34,11 +41,50 @@ export type ContentTypeDefinition = {
   readonly validatePayload?: (payload: ContentJsonValue) => readonly string[];
 };
 
+const contentTypeDefinitionAllowedKeys = new Set([
+  'contentType',
+  'displayName',
+  'editorFields',
+  'listColumns',
+  'actions',
+  'validatePayload',
+] as const);
+const contentTypeActionDefinitionAllowedKeys = new Set(['key', 'label', 'domainCapability'] as const);
+
 const normalizeContentTypeDefinition = (definition: ContentTypeDefinition): ContentTypeDefinition => ({
   ...definition,
   contentType: normalizePluginIdentifier(definition.contentType),
   displayName: definition.displayName.trim(),
+  ...(definition.actions
+    ? {
+        actions: definition.actions.map((action) => ({
+          ...action,
+          key: action.key.trim(),
+          label: action.label.trim(),
+        })),
+      }
+    : {}),
 });
+
+const validateContentTypeActions = (definition: ContentTypeDefinition): void => {
+  for (const action of definition.actions ?? []) {
+    assertPluginContributionAllowedKeys(
+      action as unknown as Record<string, unknown>,
+      contentTypeActionDefinitionAllowedKeys,
+      normalizePluginIdentifier(definition.contentType).split('.')[0] ?? 'host',
+      `${normalizePluginIdentifier(definition.contentType)}.${action.key.trim()}`
+    );
+
+    if (action.key.trim().length === 0 || action.label.trim().length === 0) {
+      throw new Error('invalid_content_type_action_definition');
+    }
+
+    const mapping = resolveIamContentCapabilityMapping(action.domainCapability);
+    if (!mapping.ok) {
+      throw new Error(`${mapping.reasonCode}:${definition.contentType}:${action.key.trim()}`);
+    }
+  }
+};
 
 export const genericContentTypeDefinition: ContentTypeDefinition = {
   contentType: GENERIC_CONTENT_TYPE,
@@ -62,6 +108,15 @@ export const definePluginContentTypes = <const TDefinitions extends readonly Con
     throw new Error(`reserved_plugin_namespace:${normalizedNamespace}`);
   }
 
+  for (const definition of definitions) {
+    assertPluginContributionAllowedKeys(
+      definition as unknown as Record<string, unknown>,
+      contentTypeDefinitionAllowedKeys,
+      normalizedNamespace,
+      normalizePluginIdentifier(definition.contentType)
+    );
+  }
+
   const normalizedDefinitions = definitions.map((definition) =>
     normalizeContentTypeDefinition(definition)
   ) as unknown as TDefinitions;
@@ -70,6 +125,7 @@ export const definePluginContentTypes = <const TDefinitions extends readonly Con
     if (definition.contentType.length === 0 || definition.displayName.length === 0) {
       throw new Error('invalid_content_type_definition');
     }
+    validateContentTypeActions(definition);
 
     const parsed = parseNamespacedPluginIdentifier(definition.contentType);
     if (parsed === undefined) {
@@ -91,12 +147,19 @@ export const createContentTypeRegistry = (
   const registry = new Map<string, ContentTypeDefinition>();
 
   for (const definition of definitions) {
+    assertPluginContributionAllowedKeys(
+      definition as unknown as Record<string, unknown>,
+      contentTypeDefinitionAllowedKeys,
+      normalizePluginIdentifier(definition.contentType).split('.')[0] ?? 'host',
+      normalizePluginIdentifier(definition.contentType)
+    );
     const normalizedDefinition = normalizeContentTypeDefinition(definition);
     const normalizedType = normalizedDefinition.contentType;
     const normalizedName = normalizedDefinition.displayName;
     if (normalizedType.length === 0 || normalizedName.length === 0) {
       throw new Error('invalid_content_type_definition');
     }
+    validateContentTypeActions(normalizedDefinition);
     if (registry.has(normalizedType)) {
       throw new Error(`duplicate_content_type:${normalizedType}`);
     }

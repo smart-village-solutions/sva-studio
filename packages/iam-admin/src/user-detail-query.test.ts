@@ -65,7 +65,7 @@ describe('resolveUserDetail', () => {
             direct_permission_rows: [
               {
                 permission_id: 'perm-1',
-                permission_key: 'content.write',
+                permission_key: 'content.updatePayload',
                 effect: 'deny',
                 description: 'Schreiben verweigern',
               },
@@ -152,7 +152,7 @@ describe('resolveUserDetail', () => {
       directPermissions: [
         {
           permissionId: 'perm-1',
-          permissionKey: 'content.write',
+          permissionKey: 'content.updatePayload',
           effect: 'deny',
           description: 'Schreiben verweigern',
         },

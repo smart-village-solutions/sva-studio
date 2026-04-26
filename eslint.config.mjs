@@ -120,18 +120,6 @@ export default [
               ],
             },
             {
-              sourceTag: 'scope:auth',
-              onlyDependOnLibsWithTags: [
-                'scope:core',
-                'scope:data-repositories',
-                'scope:iam-admin',
-                'scope:iam-core',
-                'scope:instance-registry',
-                'scope:server-runtime',
-                'scope:auth',
-              ],
-            },
-            {
               sourceTag: 'scope:integration',
               onlyDependOnLibsWithTags: [
                 'scope:core',
@@ -413,48 +401,6 @@ export default [
             {
               group: ['@sva/sdk/*'],
               message: 'sva-mainserver verwendet Zielpackages statt @sva/sdk-Subpaths.',
-            },
-          ],
-        },
-      ],
-    },
-  },
-  {
-    files: ['packages/auth/**/*.{ts,tsx,js,jsx}'],
-    rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          paths: [
-            {
-              name: '@sva/data',
-              message: 'Auth nutzt Datenzugriffe über @sva/data-repositories oder @sva/data-client.',
-            },
-            {
-              name: '@sva/data/server',
-              message: 'Auth verwendet Repository-Zugriffe über @sva/data-repositories/server.',
-            },
-            {
-              name: '@sva/sdk',
-              message: 'Auth nutzt Core oder Server-Runtime statt @sva/sdk.',
-            },
-            {
-              name: '@sva/sdk/server',
-              message: 'Auth verwendet Server-Helfer über @sva/server-runtime.',
-            },
-          ],
-          patterns: [
-            {
-              group: ['@sva/data/*'],
-              message: 'Auth verwendet Zielpackages statt @sva/data-Subpaths.',
-            },
-            {
-              group: ['@sva/sdk/*'],
-              message: 'Auth nutzt Zielpackages statt @sva/sdk-Subpaths.',
-            },
-            {
-              group: ['@sva/sdk/server/*'],
-              message: 'Auth verwendet Zielpackages statt @sva/sdk/server-Subpaths.',
             },
           ],
         },

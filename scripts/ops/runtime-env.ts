@@ -18,7 +18,7 @@ import {
   evaluateCriticalIamSchemaGuard,
   summarizeSchemaGuardFailures,
   type SchemaGuardReport,
-} from '../../packages/auth/src/iam-account-management/schema-guard.ts';
+} from '../../packages/auth-runtime/src/iam-account-management/schema-guard.ts';
 import {
   assertDeterministicRemoteMutationContext,
   buildAcceptanceReportPaths,

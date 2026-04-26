@@ -1,21 +1,55 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import type { InstanceProvisioningRun, InstanceRegistryRecord } from '@sva/core';
+import type { InstanceRegistryRepository } from '@sva/data-repositories';
+
+import type { CreateInstanceProvisioningInput } from './mutation-types.js';
 import { createProvisioningArtifacts, provisionInstanceAuth } from './service-provisioning.js';
+import type { InstanceRegistryServiceDeps } from './service-types.js';
+
+type ProvisioningRepositoryMock = Pick<
+  InstanceRegistryRepository,
+  'appendAuditEvent' | 'createProvisioningRun' | 'setInstanceStatus'
+>;
+
+const asRepository = (repository: Partial<ProvisioningRepositoryMock>): InstanceRegistryRepository =>
+  repository as InstanceRegistryRepository;
+
+const createRun = (status: InstanceProvisioningRun['status']): InstanceProvisioningRun => ({
+  id: `run-${status}`,
+  instanceId: 'de-test',
+  operation: 'create',
+  status,
+  idempotencyKey: 'idem-1',
+  createdAt: '2026-01-01T00:00:00.000Z',
+  updatedAt: '2026-01-01T00:00:00.000Z',
+});
 
 describe('service-provisioning', () => {
-  const baseInstance = {
+  const baseInstance: InstanceRegistryRecord = {
     instanceId: 'de-test',
+    displayName: 'Test Instance',
     primaryHostname: 'de-test.studio.smart-village.app',
     parentDomain: 'studio.smart-village.app',
-    realmMode: 'new' as const,
+    realmMode: 'new',
     authRealm: 'de-test',
     authClientId: 'sva-studio',
     authIssuerUrl: 'https://de-test.studio.smart-village.app/auth',
-    status: 'requested' as const,
+    authClientSecretConfigured: true,
+    status: 'requested',
+    featureFlags: {},
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
   };
 
-  const baseInput = {
+  const baseInput: CreateInstanceProvisioningInput = {
     idempotencyKey: 'idem-1',
+    instanceId: 'de-test',
+    displayName: 'Test Instance',
+    parentDomain: 'studio.smart-village.app',
+    realmMode: 'new',
+    authRealm: 'de-test',
+    authClientId: 'sva-studio',
     actorId: 'user-1',
     requestId: 'req-1',
     authClientSecret: 'tenant-secret',
@@ -29,11 +63,11 @@ describe('service-provisioning', () => {
 
   it('creates provisioning run and audit event artifacts', async () => {
     const repository = {
-      createProvisioningRun: vi.fn(async () => undefined),
+      createProvisioningRun: vi.fn(async () => createRun('requested')),
       appendAuditEvent: vi.fn(async () => undefined),
-    } as any;
+    } satisfies Partial<ProvisioningRepositoryMock>;
 
-    await createProvisioningArtifacts(repository, baseInstance as any, baseInput as any);
+    await createProvisioningArtifacts(asRepository(repository), baseInstance, baseInput);
 
     expect(repository.createProvisioningRun).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -52,34 +86,39 @@ describe('service-provisioning', () => {
   });
 
   it('returns the input instance when no auth provisioner exists', async () => {
+    const repository = {
+      createProvisioningRun: vi.fn(async () => createRun('requested')),
+      setInstanceStatus: vi.fn(async () => baseInstance),
+    } satisfies Partial<ProvisioningRepositoryMock>;
     const deps = {
-      repository: {
-        createProvisioningRun: vi.fn(async () => undefined),
-        setInstanceStatus: vi.fn(async () => baseInstance),
-      },
+      repository: asRepository(repository),
+      invalidateHost: vi.fn(),
       provisionInstanceAuth: undefined,
-    } as any;
+    } satisfies InstanceRegistryServiceDeps;
 
-    const result = await provisionInstanceAuth(deps, baseInstance as any, baseInput as any);
+    const result = await provisionInstanceAuth(deps, baseInstance, baseInput);
 
     expect(result).toEqual(baseInstance);
-    expect(deps.repository.createProvisioningRun).not.toHaveBeenCalled();
+    expect(repository.createProvisioningRun).not.toHaveBeenCalled();
   });
 
   it('stores provisioning progress and validates instance on success', async () => {
-    const validatedInstance = { ...baseInstance, status: 'validated' };
+    const validatedInstance: InstanceRegistryRecord = { ...baseInstance, status: 'validated' };
+    const repository = {
+      createProvisioningRun: vi.fn(async () => createRun('provisioning')),
+      setInstanceStatus: vi.fn(async () => validatedInstance),
+    } satisfies Partial<ProvisioningRepositoryMock>;
+    const authProvisioner = vi.fn(async () => undefined);
     const deps = {
-      repository: {
-        createProvisioningRun: vi.fn(async () => undefined),
-        setInstanceStatus: vi.fn(async () => validatedInstance),
-      },
-      provisionInstanceAuth: vi.fn(async () => undefined),
-    } as any;
+      repository: asRepository(repository),
+      invalidateHost: vi.fn(),
+      provisionInstanceAuth: authProvisioner,
+    } satisfies InstanceRegistryServiceDeps;
 
-    const result = await provisionInstanceAuth(deps, baseInstance as any, baseInput as any);
+    const result = await provisionInstanceAuth(deps, baseInstance, baseInput);
 
     expect(result).toEqual(validatedInstance);
-    expect(deps.provisionInstanceAuth).toHaveBeenCalledWith(
+    expect(authProvisioner).toHaveBeenCalledWith(
       expect.objectContaining({
         instanceId: 'de-test',
         authClientSecret: 'tenant-secret',
@@ -89,28 +128,30 @@ describe('service-provisioning', () => {
     expect(deps.repository.setInstanceStatus).toHaveBeenCalledWith(
       expect.objectContaining({ instanceId: 'de-test', status: 'validated' })
     );
-    expect(deps.repository.createProvisioningRun).toHaveBeenCalledTimes(2);
+    expect(repository.createProvisioningRun).toHaveBeenCalledTimes(2);
   });
 
   it('stores failed status and error metadata when provisioning throws', async () => {
-    const failedInstance = { ...baseInstance, status: 'failed' };
+    const failedInstance: InstanceRegistryRecord = { ...baseInstance, status: 'failed' };
+    const repository = {
+      createProvisioningRun: vi.fn(async () => createRun('failed')),
+      setInstanceStatus: vi.fn(async () => failedInstance),
+    } satisfies Partial<ProvisioningRepositoryMock>;
     const deps = {
-      repository: {
-        createProvisioningRun: vi.fn(async () => undefined),
-        setInstanceStatus: vi.fn(async () => failedInstance),
-      },
+      repository: asRepository(repository),
+      invalidateHost: vi.fn(),
       provisionInstanceAuth: vi.fn(async () => {
         throw new Error('keycloak down');
       }),
-    } as any;
+    } satisfies InstanceRegistryServiceDeps;
 
-    const result = await provisionInstanceAuth(deps, baseInstance as any, baseInput as any);
+    const result = await provisionInstanceAuth(deps, baseInstance, baseInput);
 
     expect(result).toEqual(failedInstance);
-    expect(deps.repository.setInstanceStatus).toHaveBeenCalledWith(
+    expect(repository.setInstanceStatus).toHaveBeenCalledWith(
       expect.objectContaining({ instanceId: 'de-test', status: 'failed' })
     );
-    expect(deps.repository.createProvisioningRun).toHaveBeenLastCalledWith(
+    expect(repository.createProvisioningRun).toHaveBeenLastCalledWith(
       expect.objectContaining({
         status: 'failed',
         errorCode: 'keycloak_provisioning_failed',

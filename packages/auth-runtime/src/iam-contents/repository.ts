@@ -1,6 +1,13 @@
-import type { IamContentDetail, IamContentHistoryEntry, IamContentListItem } from '@sva/core';
+import type { IamContentDetail, IamContentHistoryEntry, IamContentListItem, IamContentPrimitiveAction } from '@sva/core';
 
-import { emitActivityLog, withInstanceScopedDb } from '../iam-account-management/shared.js';
+import { withInstanceScopedDb } from '../iam-account-management/shared.js';
+import {
+  insertContentHistory,
+  loadCurrentContentRow,
+  resolveContentMutationMetadata,
+} from './repository-shared.js';
+import { mapContentHistoryItem, mapContentListItem } from './repository-mappers.js';
+import { resolveNextContentState } from './repository-state.js';
 import {
   CONTENT_SELECT,
   type ContentHistoryRow,
@@ -8,13 +15,36 @@ import {
   type CreateContentInput,
   type DeleteContentInput,
   type UpdateContentInput,
-  insertContentHistory,
-  loadCurrentContentRow,
-  mapContentHistoryItem,
-  mapContentListItem,
-  resolveContentMutationMetadata,
-  resolveNextContentState,
-} from './repository-shared.js';
+} from './repository-types.js';
+import {
+  emitContentCreatedActivity,
+  emitContentDeletedActivity,
+  emitContentUpdatedActivity,
+  insertContentRow,
+  updateContentRevisionRefs,
+  updateContentRow,
+  validatePublicationWindow,
+} from './repository-write-helpers.js';
+
+const resolveAuditAction = (input: {
+  readonly changedFields: readonly string[];
+  readonly previousStatus: string;
+  readonly nextStatus: string;
+}): IamContentPrimitiveAction => {
+  if (input.previousStatus !== input.nextStatus) {
+    if (input.nextStatus === 'published') {
+      return 'content.publish';
+    }
+    if (input.nextStatus === 'archived') {
+      return 'content.archive';
+    }
+    if (input.previousStatus === 'archived') {
+      return 'content.restore';
+    }
+    return 'content.changeStatus';
+  }
+  return input.changedFields.includes('payload') ? 'content.updatePayload' : 'content.updateMetadata';
+};
 
 export const loadContentListItems = async (instanceId: string): Promise<readonly IamContentListItem[]> =>
   withInstanceScopedDb(instanceId, async (client) => {
@@ -32,17 +62,14 @@ export const loadContentById = async (
   instanceId: string,
   contentId: string
 ): Promise<IamContentListItem | undefined> =>
+  loadContentRowById(instanceId, contentId).then((row) => (row ? mapContentListItem(row) : undefined));
+
+export const loadContentRowById = async (
+  instanceId: string,
+  contentId: string
+): Promise<ContentRow | undefined> =>
   withInstanceScopedDb(instanceId, async (client) => {
-    const result = await client.query<ContentRow>(
-      `${CONTENT_SELECT}
-WHERE content.instance_id = $1
-  AND content.id = $2::uuid
-LIMIT 1;
-      `,
-      [instanceId, contentId]
-    );
-    const row = result.rows[0];
-    return row ? mapContentListItem(row) : undefined;
+    return loadCurrentContentRow(client, instanceId, contentId);
   });
 
 export const loadContentHistory = async (
@@ -87,48 +114,9 @@ export const loadContentDetail = async (
 
 export const createContent = async (input: CreateContentInput): Promise<string> =>
   withInstanceScopedDb(input.instanceId, async (client) => {
-    const insert = await client.query<{ id: string }>(
-      `
-INSERT INTO iam.contents (
-  id,
-  instance_id,
-  content_type,
-  title,
-  published_at,
-  author_account_id,
-  author_display_name,
-  payload_json,
-  status
-)
-VALUES (
-  gen_random_uuid(),
-  $1,
-  $2,
-  $3,
-  COALESCE($4::timestamptz, CASE WHEN $6 = 'published' THEN NOW() ELSE NULL END),
-  $5::uuid,
-  $7,
-  $8::jsonb,
-  $6
-)
-RETURNING id;
-`,
-      [
-        input.instanceId,
-        input.contentType,
-        input.title,
-        input.publishedAt ?? null,
-        input.actorAccountId,
-        input.status,
-        input.actorDisplayName,
-        JSON.stringify(input.payload),
-      ]
-    );
-    const contentId = insert.rows[0]?.id;
-    if (!contentId) {
-      throw new Error('content_create_failed');
-    }
-    await insertContentHistory(client, {
+    validatePublicationWindow(input);
+    const contentId = await insertContentRow(client, input);
+    const historyId = await insertContentHistory(client, {
       instanceId: input.instanceId,
       contentId,
       actorAccountId: input.actorAccountId,
@@ -139,20 +127,8 @@ RETURNING id;
       summary: 'Inhalt erstellt',
       snapshot: input.payload,
     });
-    await emitActivityLog(client, {
-      instanceId: input.instanceId,
-      accountId: input.actorAccountId,
-      eventType: 'iam.content.created',
-      result: 'success',
-      payload: {
-        content_id: contentId,
-        content_type: input.contentType,
-        title: input.title,
-        status: input.status,
-      },
-      requestId: input.requestId,
-      traceId: input.traceId,
-    });
+    await updateContentRevisionRefs(client, input.instanceId, contentId, historyId);
+    await emitContentCreatedActivity(client, input, contentId);
     return contentId;
   });
 
@@ -162,38 +138,34 @@ export const updateContent = async (input: UpdateContentInput): Promise<string |
     if (!current) {
       return undefined;
     }
-    const { changedFields, nextPayload, nextPublishedAt, nextStatus, nextTitle } =
-      resolveNextContentState(current, input);
-    await client.query(
-      `
-UPDATE iam.contents
-SET
-  title = $3,
-  payload_json = $4::jsonb,
-  status = $5,
-  published_at = COALESCE($6::timestamptz, CASE WHEN $5 = 'published' THEN NOW() ELSE NULL END),
-  updated_at = NOW(),
-  author_account_id = $7::uuid,
-  author_display_name = $8
-WHERE instance_id = $1
-  AND id = $2::uuid;
-`,
-      [
-        input.instanceId,
-        input.contentId,
-        nextTitle,
-        JSON.stringify(nextPayload),
-        nextStatus,
-        nextPublishedAt,
-        input.actorAccountId,
-        input.actorDisplayName,
-      ]
-    );
+    const {
+      changedFields,
+      nextOrganizationId,
+      nextOwnerSubjectId,
+      nextPayload,
+      nextPublishedAt,
+      nextPublishFrom,
+      nextPublishUntil,
+      nextStatus,
+      nextTitle,
+      nextValidationState,
+    } = resolveNextContentState(current, input);
+    await updateContentRow(client, input, {
+      organizationId: nextOrganizationId,
+      ownerSubjectId: nextOwnerSubjectId,
+      title: nextTitle,
+      payloadJson: JSON.stringify(nextPayload),
+      status: nextStatus,
+      validationState: nextValidationState,
+      publishedAt: nextPublishedAt,
+      publishFrom: nextPublishFrom,
+      publishUntil: nextPublishUntil,
+    });
     const { activityEventType, historyAction, historySummary } = resolveContentMutationMetadata(
       current.status,
       nextStatus
     );
-    await insertContentHistory(client, {
+    const historyId = await insertContentHistory(client, {
       instanceId: input.instanceId,
       contentId: input.contentId,
       actorAccountId: input.actorAccountId,
@@ -205,44 +177,24 @@ WHERE instance_id = $1
       summary: historySummary,
       snapshot: nextPayload,
     });
-    await emitActivityLog(client, {
-      instanceId: input.instanceId,
-      accountId: input.actorAccountId,
+    await updateContentRevisionRefs(client, input.instanceId, input.contentId, historyId);
+    await emitContentUpdatedActivity(client, input, current, {
       eventType: activityEventType,
-      result: 'success',
-      payload: {
-        content_id: input.contentId,
-        content_type: current.content_type,
-        title: nextTitle,
-        changed_fields: changedFields,
-        previous_status: current.status,
-        next_status: nextStatus,
-      },
-      requestId: input.requestId,
-      traceId: input.traceId,
+      action: resolveAuditAction({ changedFields, previousStatus: current.status, nextStatus }),
+      changedFields,
+      nextStatus,
+      nextTitle,
     });
     return input.contentId;
   });
 
 export const deleteContent = async (input: DeleteContentInput): Promise<string | undefined> =>
   withInstanceScopedDb(input.instanceId, async (client) => {
-    const current = await loadCurrentContentRow(client, input.instanceId, input.contentId);
+    const current = input.currentContent ?? (await loadCurrentContentRow(client, input.instanceId, input.contentId));
     if (!current) {
       return undefined;
     }
-    await emitActivityLog(client, {
-      instanceId: input.instanceId,
-      accountId: input.actorAccountId,
-      eventType: 'iam.content.deleted',
-      result: 'success',
-      payload: {
-        content_id: input.contentId,
-        content_type: current.content_type,
-        title: current.title,
-      },
-      requestId: input.requestId,
-      traceId: input.traceId,
-    });
+    await emitContentDeletedActivity(client, input, current);
     await client.query(
       `
 DELETE FROM iam.contents

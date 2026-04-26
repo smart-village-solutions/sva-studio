@@ -2,8 +2,14 @@ import { describe, expect, it } from 'vitest';
 
 import {
   GENERIC_CONTENT_TYPE,
+  iamContentCapabilityMappings,
   isContentJsonValue,
+  isIamContentDomainCapability,
+  isIamContentPrimitiveAction,
   isIamContentStatus,
+  isIamContentValidationState,
+  resolveIamContentCapabilityMapping,
+  resolveIamContentDomainCapabilityForPrimitiveAction,
   summarizeContentAccess,
   validateCreateIamContentInput,
   withServerDeniedContentAccess,
@@ -14,6 +20,12 @@ describe('content-management core contract', () => {
     expect(isIamContentStatus('draft')).toBe(true);
     expect(isIamContentStatus('published')).toBe(true);
     expect(isIamContentStatus('unknown')).toBe(false);
+    expect(isIamContentValidationState('valid')).toBe(true);
+    expect(isIamContentValidationState('unknown')).toBe(false);
+    expect(isIamContentPrimitiveAction('content.updatePayload')).toBe(true);
+    expect(isIamContentPrimitiveAction('content.write')).toBe(false);
+    expect(isIamContentDomainCapability('content.publish')).toBe(true);
+    expect(isIamContentDomainCapability('content.write')).toBe(false);
   });
 
   it('accepts only JSON-compatible payload values', () => {
@@ -49,6 +61,46 @@ describe('content-management core contract', () => {
   });
 });
 
+describe('content-management capability mapping', () => {
+  it('resolves domain capabilities to primitive content actions', () => {
+    expect(resolveIamContentCapabilityMapping('content.publish')).toEqual({
+      ok: true,
+      domainCapability: 'content.publish',
+      primitiveAction: 'content.publish',
+    });
+    expect(resolveIamContentCapabilityMapping('content.update_payload')).toEqual({
+      ok: true,
+      domainCapability: 'content.update_payload',
+      primitiveAction: 'content.updatePayload',
+    });
+    expect(resolveIamContentDomainCapabilityForPrimitiveAction('content.updatePayload')).toBe('content.update_payload');
+  });
+
+  it('returns deterministic diagnostics for missing and invalid mappings', () => {
+    expect(resolveIamContentCapabilityMapping('content.unknown')).toEqual({
+      ok: false,
+      reasonCode: 'capability_mapping_missing',
+      domainCapability: 'content.unknown',
+    });
+    expect(resolveIamContentCapabilityMapping(null)).toEqual({
+      ok: false,
+      reasonCode: 'capability_mapping_missing',
+    });
+
+    expect(
+      resolveIamContentCapabilityMapping('content.publish', [
+        ...iamContentCapabilityMappings.filter((mapping) => mapping.domainCapability !== 'content.publish'),
+        { domainCapability: 'content.publish', primitiveAction: 'content.write' },
+      ])
+    ).toEqual({
+      ok: false,
+      reasonCode: 'capability_mapping_invalid',
+      domainCapability: 'content.publish',
+      primitiveAction: 'content.write',
+    });
+  });
+});
+
 describe('content-management access helpers', () => {
   it('marks content as editable when read and update permissions are allowed', () => {
     expect(
@@ -61,7 +113,7 @@ describe('content-management access helpers', () => {
           provenance: { sourceKinds: ['direct_role'] },
         },
         {
-          action: 'content.update',
+          action: 'content.updatePayload',
           resourceType: 'content',
           effect: 'allow',
           organizationId: 'org-1',

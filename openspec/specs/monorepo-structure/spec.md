@@ -11,16 +11,23 @@ Das System SHALL eine Nx Integrated Monorepo-Struktur mit getrennten Bereichen f
 - **THEN** existieren mindestens apps/, packages/, tooling/ und scripts/
 
 ### Requirement: Publishable Packages und Plugins
-Das System SHALL Packages als eigenständige npm-Module organisieren, inklusive klarer Namenskonventionen für Core und Plugins. Plugins SHALL dabei ausschließlich über `@sva/plugin-sdk` mit dem Host-System kommunizieren und dürfen keine direkten Abhängigkeiten auf `@sva/core` oder andere interne Packages deklarieren.
+
+Das System SHALL Packages als eigenstaendige npm-Module organisieren, inklusive klarer Namenskonventionen fuer Core und Plugins. Plugins SHALL dabei ausschliesslich ueber `@sva/sdk` mit dem Host-System kommunizieren und duerfen keine direkten Abhaengigkeiten auf `@sva/core` oder andere interne Packages deklarieren. Ein Beispiel-Plugin ist dafuer keine verpflichtende Workspace-Komponente.
 
 #### Scenario: Package-Namensschema
 - **WHEN** ein neues Paket erstellt wird
-- **THEN** verwendet es ein Scope wie @sva/* und Plugins verwenden @sva/plugin-*
+- **THEN** verwendet es ein Scope wie `@sva/*`
+- **AND** Plugins verwenden `@sva/plugin-*`
 
 #### Scenario: Plugin-Dependency-Regel
 - **WHEN** ein Plugin-Package erstellt oder aktualisiert wird
-- **THEN** listet seine `package.json` nur `@sva/plugin-sdk` als Workspace-Dependency
-- **AND** direkte Abhängigkeiten auf `@sva/core` oder andere interne Packages sind nicht vorhanden
+- **THEN** listet seine `package.json` nur `@sva/sdk` als Workspace-Dependency
+- **AND** direkte Abhaengigkeiten auf `@sva/core` oder andere interne Packages sind nicht vorhanden
+
+#### Scenario: Kein Beispiel-Plugin als Workspace-Pflicht
+- **WHEN** der Workspace produktiv konfiguriert wird
+- **THEN** ist kein `plugin-example`-Package als verpflichtender Bestandteil vorausgesetzt
+- **AND** das Monorepo kann produktive Plugins ohne ein mitgefuehrtes Referenz-Plugin betreiben
 
 ### Requirement: App-Stack Definition
 Das System SHALL eine Web-App unter apps/sva-studio-react mit React und TanStack Start bereitstellen.
@@ -324,7 +331,7 @@ berücksichtigen, damit der Container korrekt deployed werden kann.
 
 - **WHEN** das Produktions-Dockerfile ausgeführt wird
 - **THEN** wird `pnpm nx run sva-mainserver:build` als Build-Step ausgeführt
-- **AND** der Step steht in der korrekten Abhängigkeitsreihenfolge (nach `auth:build`, vor `routing:build` und dem App-Build)
+- **AND** der Step steht in der korrekten Abhängigkeitsreihenfolge (nach `auth-runtime:build` und den IAM-Zielpackages, vor `routing:build` und dem App-Build)
 
 ### Requirement: Standardisierter Runtime-Doctor pro Profil
 
@@ -477,3 +484,141 @@ Das System SHALL fuer `studio` einen Root-Skript-Einstieg bereitstellen, der den
 - **THEN** existiert ein dediziertes Root-Skript fuer den lokalen Release-Einstieg
 - **AND** dieses Skript verlangt explizit `image_digest`, `release_mode` und `rollback_hint`
 - **AND** es fuehrt `env:precheck:studio`, `env:deploy:studio`, `env:smoke:studio` und `env:feedback:studio` in fester Reihenfolge aus
+
+### Requirement: Plugin Registration Phases
+The system SHALL define explicit build-time registration phases for workspace plugins so that content, admin, audit, and routing contributions are collected and validated in a deterministic order before the build-time registry snapshot is published.
+
+The canonical phase order SHALL be contribution preflight, content, admin, audit, routing, and snapshot publication. The preflight step SHALL normalize plugin namespaces and guardrail-safe contribution shapes before domain phases run.
+
+The phases SHALL organize the existing `BuildTimeRegistry` outputs instead of introducing a new public plugin system.
+
+#### Scenario: Plugin contributions follow phase order
+- **GIVEN** a plugin declares contributions for multiple phases
+- **WHEN** the build-time registry snapshot is created
+- **THEN** the host processes preflight, content, admin, audit, routing, and snapshot publication in that order
+- **AND** later phases consume only outputs validated by earlier phases
+
+#### Scenario: Plugin declares phase-incompatible contribution
+- **GIVEN** a plugin declares a contribution in a phase that does not support it
+- **WHEN** the registry snapshot is validated
+- **THEN** validation fails with a deterministic `plugin_guardrail_*` diagnostic before the snapshot is published
+
+#### Scenario: Routing consumer receives validated snapshot
+- **GIVEN** the build-time registry snapshot was published successfully
+- **WHEN** the routing package materializes plugin and admin routes
+- **THEN** it can consume validated phase outputs instead of raw plugin definitions
+- **AND** existing direct-plugin-definition callers remain supported while they are still validated fail-fast
+
+#### Scenario: Existing build-time registry API remains compatible
+- **GIVEN** a consumer calls `createBuildTimeRegistry()` and reads existing fields such as `routes`, `contentTypes`, `auditEvents`, `adminResources`, or `pluginActionRegistry`
+- **WHEN** the registry is created through the phased implementation
+- **THEN** those existing fields remain available with the same meaning
+- **AND** no consumer is required to adopt a new public snapshot type for this change
+
+### Requirement: Verbindliche Package-Zielarchitektur
+
+Das System MUST die in `docs/architecture/package-zielarchitektur.md` beschriebenen Zielpackages als verbindliche Workspace-Grenzen umsetzen. Neue fachliche Logik MUST einem Zielpackage zugeordnet werden und darf nicht weiter in historische Sammelpackages wachsen, wenn ein passender Zielbaustein existiert.
+
+#### Scenario: Neues IAM-Feature wird begonnen
+
+- **WHEN** ein neues Feature Benutzerverwaltung, Rollen, Gruppen, Organisationen, Governance, DSR oder Instanzen betrifft
+- **THEN** ordnet der Change die Arbeit einem Zielpackage wie `@sva/iam-admin`, `@sva/iam-governance` oder `@sva/instance-registry` zu
+- **AND** die Implementierung landet nicht in einem historischen Sammelpackage
+
+#### Scenario: Neues Datenfeature wird begonnen
+
+- **WHEN** ein neues Feature Datenzugriff erweitert
+- **THEN** wird zwischen client-sicherem Datenvertrag und serverseitigem Repository unterschieden
+- **AND** Browser- oder Universal-Code importiert keine serverseitigen Repository- oder DB-Hilfen
+
+### Requirement: Hard-Cut-Migration ohne dauerhafte Sammelimporte
+
+Das System MUST alte Sammelimporte aus `@sva/auth`, `@sva/data` und `@sva/sdk` für migrierte Verantwortlichkeiten entfernen. Temporäre Re-Exports MAY nur innerhalb der aktiven Migrationsphase existieren und MUST mit Ablaufbedingung dokumentiert werden.
+
+#### Scenario: Consumer nutzt migrierte Funktionalität
+
+- **WHEN** eine Funktionalität in ein Zielpackage verschoben wurde
+- **THEN** importieren alle produktiven Consumer den Zielpackage-Pfad
+- **AND** der alte Sammelimport ist entfernt oder durch ein blockierendes Migrationsticket mit Ablaufdatum markiert
+
+#### Scenario: Neue API wird veröffentlicht
+
+- **WHEN** eine neue öffentliche API für Plugin-, Server-Runtime-, IAM-, Instanz- oder Datenlogik entsteht
+- **THEN** wird sie direkt im passenden Zielpackage exportiert
+- **AND** sie wird nicht zusätzlich als dauerhafte Kompatibilitäts-API über ein altes Sammelpackage veröffentlicht
+
+### Requirement: Zielpackage-Tags und Boundary-Enforcement
+
+Das System MUST jedes Zielpackage mit eindeutigen Nx-Tags, expliziten Package-Dependencies und standardisierten Targets versehen. ESLint-/Nx-Boundary-Regeln MUST unerlaubte Importkanten zwischen App, Plugins, Routing, Server-Runtime, Daten, IAM und Instanz-Control-Plane verhindern.
+
+#### Scenario: Zielpackage wird angelegt
+
+- **WHEN** ein Zielpackage wie `@sva/iam-admin` oder `@sva/instance-registry` angelegt wird
+- **THEN** besitzt es `project.json`, `package.json`, TypeScript-Konfiguration, Build-, Lint-, Unit-, Type- und erforderliche Runtime-Checks
+- **AND** trägt es Scope-Tags, die in `depConstraints` verwendet werden
+
+#### Scenario: Unerlaubter Import wird eingeführt
+
+- **WHEN** ein Package eine verbotene Importkante einführt, etwa Plugin zu internem Auth-Code oder Browser-Code zu serverseitigem Repository
+- **THEN** schlägt die Boundary-Prüfung fehl
+- **AND** die Fehlermeldung verweist auf den zulässigen öffentlichen Vertrag
+
+### Requirement: PII- und Credential-Grenzen im Monorepo
+
+Das System MUST Packages, die personenbezogene Daten im Klartext oder Credentials verarbeiten, explizit klassifizieren und ihre Importkanten entsprechend begrenzen.
+
+#### Scenario: Package verarbeitet Klartext-PII
+
+- **WHEN** ein Package Klartext-PII entschlüsselt oder verarbeitet
+- **THEN** trägt es einen expliziten PII-Tag
+- **AND** seine Tests decken Autorisierungs- und Datenflussgrenzen ab
+- **AND** nicht autorisierte Packages können die Entschlüsselungsfähigkeit nicht importieren
+
+#### Scenario: Integration benötigt Credentials
+
+- **WHEN** ein Integrationspackage Credentials benötigt
+- **THEN** konsumiert es einen expliziten Credential-Vertrag
+- **AND** es importiert keine Session-, Middleware- oder Auth-Runtime-Interna
+
+### Requirement: Kanonischer Build-time-Registry-Vertrag fuer Package-Beitraege
+
+Das Monorepo SHALL einen gemeinsamen Build-time-Registry-Vertrag bereitstellen, ueber den der Host statische Package-Beitraege fuer Plugins und Admin-Ressourcen deterministisch materialisiert.
+
+#### Scenario: Host erzeugt einen einzigen Registry-Snapshot
+
+- **WHEN** die Host-App ihre statischen Package-Beitraege initialisiert
+- **THEN** verwendet sie einen gemeinsamen Build-time-Registry-Snapshot statt separater Merge-Schritte fuer Routen, Navigation, Content-Typen, Uebersetzungen und Admin-Ressourcen
+- **AND** der Snapshot bleibt build-time und hostkontrolliert
+
+#### Scenario: Registry validiert Konflikte vor der Materialisierung
+
+- **WHEN** statische Package-Beitraege doppelte Plugin-IDs oder kollidierende Admin-Ressourcen deklarieren
+- **THEN** bricht die Registry-Erzeugung deterministisch mit einem Fehler ab
+- **AND** der Host publiziert keinen teilweise inkonsistenten Build-time-Zustand
+
+### Requirement: Plugin-Packages besitzen genau einen kanonischen Namespace
+
+Das Monorepo SHALL fuer jedes Plugin-Package genau eine technische Plugin-Identitaet mit genau einem owning namespace definieren, aus der registrierte Host-Identifier fuer dieses Plugin abgeleitet werden.
+
+#### Scenario: Plugin-Package verwendet einen eindeutigen Namespace
+
+- **WHEN** ein Workspace-Package als Plugin fuer den Host registriert wird
+- **THEN** besitzt es genau einen kanonischen Plugin-Namespace
+- **AND** dieser Namespace wird fuer weitere registrierte Host-Beitraege desselben Plugins wiederverwendet
+- **AND** das Plugin fuehrt keine zweite konkurrierende Namespace-Identitaet fuer dieselben Host-Beitraege ein
+
+#### Scenario: Doppelter Plugin-Namespace wird abgewiesen
+
+- **WHEN** zwei Plugin-Packages denselben kanonischen Namespace beanspruchen
+- **THEN** wird die Host- oder Registry-Initialisierung deterministisch mit einem Konfliktfehler abgebrochen
+- **AND** kein teilweise inkonsistenter Registry-Zustand wird publiziert
+
+### Requirement: Reservierte Core-Namespaces bleiben hostexklusiv
+
+Das Monorepo MUST reservierte Core-Namespaces fuer hosteigene oder explizit definierte Core-Vertraege schuetzen.
+
+#### Scenario: Plugin beansprucht reservierten Core-Namespace
+
+- **WHEN** ein Plugin-Package einen reservierten Core-Namespace wie `iam`, `content` oder `admin` fuer seine technische Plugin-Identitaet nutzen will
+- **THEN** wird die Registrierung abgewiesen
+- **AND** der Namespace bleibt dem Host oder einem explizit definierten Core-Vertrag vorbehalten

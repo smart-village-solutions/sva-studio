@@ -7,6 +7,17 @@ export {
   createBuildTimeRegistry,
 } from './build-time-registry.js';
 export type {
+  PluginGuardrailViolationCode,
+  PluginGuardrailViolationInput,
+} from './guardrails.js';
+export {
+  assertPluginContributionAllowedKeys,
+  assertPluginRoutePathAllowed,
+  createPluginContributionGuardrailError,
+  createPluginGuardrailError,
+  pluginGuardrailViolationCodes,
+} from './guardrails.js';
+export type {
   AdminResourceDefinition,
   AdminResourceGuard,
   AdminResourceViewDefinition,

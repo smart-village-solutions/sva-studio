@@ -83,7 +83,7 @@ describe('RolesPage', () => {
           memberCount: 3,
           syncState: 'failed',
           syncError: { code: 'IDP_UNAVAILABLE' },
-          permissions: [{ id: 'perm-2', permissionKey: 'content.write', description: null }],
+          permissions: [{ id: 'perm-2', permissionKey: 'content.updatePayload', description: null }],
         },
       ],
       isLoading: false,
@@ -106,7 +106,7 @@ describe('RolesPage', () => {
     expect(screen.getAllByText('editor').length).toBeGreaterThan(0);
 
     fireEvent.change(screen.getByPlaceholderText('Nach Rolle oder Berechtigung suchen'), {
-      target: { value: 'write' },
+      target: { value: 'payload' },
     });
 
     expect(screen.queryAllByText('system_admin')).toHaveLength(0);

@@ -10,7 +10,7 @@ const createdDirs: string[] = [];
 function createTempWorkspace(): string {
   const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'complexity-gate-'));
   createdDirs.push(rootDir);
-  fs.mkdirSync(path.join(rootDir, 'packages/auth/src'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'packages/iam-target/src'), { recursive: true });
   fs.mkdirSync(path.join(rootDir, 'tooling/quality'), { recursive: true });
   return rootDir;
 }
@@ -39,7 +39,7 @@ function writePolicy(rootDir: string, overrides: Record<string, unknown> = {}): 
         class: 'kritisch',
         owner: 'team-iam',
         reviewCadence: 'pro-pr',
-        include: ['packages/auth/src/**/*.ts'],
+        include: ['packages/iam-target/src/**/*.ts'],
         exclude: ['**/*.test.ts'],
       },
     ],
@@ -60,7 +60,7 @@ function writePolicy(rootDir: string, overrides: Record<string, unknown> = {}): 
 }
 
 function writeSourceFile(rootDir: string, fileName: string, source: string): string {
-  const filePath = path.join(rootDir, 'packages/auth/src', fileName);
+  const filePath = path.join(rootDir, 'packages/iam-target/src', fileName);
   fs.writeFileSync(filePath, source);
   return filePath;
 }
@@ -89,7 +89,7 @@ describe('complexity gate', () => {
       ].join('\n')
     );
 
-    const metrics = analyzeFile(filePath, 'packages/auth/src/example.ts');
+    const metrics = analyzeFile(filePath, 'packages/iam-target/src/example.ts');
 
     expect(metrics.fileLines).toBe(8);
     expect(metrics.maxFunctionLines).toBe(6);
@@ -107,7 +107,7 @@ describe('complexity gate', () => {
     const rootDir = createTempWorkspace();
     writePolicy(rootDir, {
       trackedFindings: {
-        'iam-server:packages/auth/src/large.ts:fileLines': {
+        'iam-server:packages/iam-target/src/large.ts:fileLines': {
           ticketId: 'QUAL-1',
           ticketSystem: 'backlog',
           status: 'todo',
@@ -149,19 +149,19 @@ describe('complexity gate', () => {
     const rootDir = createTempWorkspace();
     writePolicy(rootDir, {
       trackedFindings: {
-        'iam-server:packages/auth/src/large.ts:fileLines': {
+        'iam-server:packages/iam-target/src/large.ts:fileLines': {
           ticketId: 'QUAL-1',
           ticketSystem: 'backlog',
           status: 'open',
           summary: 'Datei splitten',
         },
-        'iam-server:packages/auth/src/large.ts:functionLines': {
+        'iam-server:packages/iam-target/src/large.ts:functionLines': {
           ticketId: 'QUAL-1',
           ticketSystem: 'backlog',
           status: 'open',
           summary: 'Datei splitten',
         },
-        'iam-server:packages/auth/src/large.ts:cyclomaticComplexity': {
+        'iam-server:packages/iam-target/src/large.ts:cyclomaticComplexity': {
           ticketId: 'QUAL-1',
           ticketSystem: 'backlog',
           status: 'open',
@@ -224,8 +224,8 @@ describe('complexity gate', () => {
       files: Record<string, { fileLines: number; functionLines: number; cyclomaticComplexity: number }>;
     };
 
-    expect(baseline.files['packages/auth/src/baseline.ts'].fileLines).toBe(3);
-    expect(baseline.files['packages/auth/src/baseline.ts'].functionLines).toBe(3);
-    expect(baseline.files['packages/auth/src/baseline.ts'].cyclomaticComplexity).toBe(1);
+    expect(baseline.files['packages/iam-target/src/baseline.ts'].fileLines).toBe(3);
+    expect(baseline.files['packages/iam-target/src/baseline.ts'].functionLines).toBe(3);
+    expect(baseline.files['packages/iam-target/src/baseline.ts'].cyclomaticComplexity).toBe(1);
   });
 });

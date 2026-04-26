@@ -17,7 +17,8 @@ Diese Pfade haben direkten Einfluss auf die Sicherheit, Stabilität oder die Ker
 | --- | --- | --- |
 | `apps/` | Applikationen | Direktes User-Interface, hohe Auswirkung auf UX und Systemintegration. |
 | `packages/core/` | Core Framework | Basislogik für das gesamte System; Breaking Changes wirken sich überall aus. |
-| `packages/auth/` | Security / Auth | Sicherheitskritisch (OIDC, Sessions, Verschlüsselung). |
+| `packages/auth-runtime/` | Security / Auth Runtime | Sicherheitskritisch (OIDC, Sessions, Verschlüsselung). |
+| `packages/iam-admin/`, `packages/iam-governance/`, `packages/instance-registry/` | IAM-Fachlogik | Sicherheitskritische Benutzer-, Governance- und Instanzverwaltung. |
 | `packages/sdk/` | SDK / Logger | Grundlage für Logging, Monitoring und Standard-Interfaces. |
 | `.github/workflows/` | CI/CD | Deployment-Logik, Security-Scans und Automatisierung. |
 | `rules/` | Validierung | Einhaltung von Architektur- und Code-Standards. |
@@ -85,7 +86,10 @@ rules/                                  @sva-studio/core-maintainers
 
 # Core Packages
 /packages/core/                         @sva-studio/core-maintainers
-/packages/auth/                         @sva-studio/security-team @sva-studio/core-maintainers
+/packages/auth-runtime/                 @sva-studio/security-team @sva-studio/core-maintainers
+/packages/iam-admin/                    @sva-studio/security-team @sva-studio/core-maintainers
+/packages/iam-governance/               @sva-studio/security-team @sva-studio/core-maintainers
+/packages/instance-registry/            @sva-studio/security-team @sva-studio/core-maintainers
 /packages/sdk/                          @sva-studio/core-maintainers
 
 # Shared Packages

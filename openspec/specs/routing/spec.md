@@ -206,3 +206,142 @@ Das Routing-System MUST Plugin-Routen und zugehörige UI-Bindings so integrieren
 - **WHEN** eine Plugin-Oberfläche eine Aktion wie `news.create` rendert
 - **THEN** liest sie den Titel- und Guard-Bezug aus der deklarierten Plugin-Action-Definition
 - **AND** es existiert keine separate, ungebundene UI-Konvention für dieselbe Aktion
+
+### Requirement: Routing Materializes After Plugin Contribution Phases
+The system SHALL materialize host routes only after existing content, admin-resource, action, and guard metadata from plugin phases have been validated and published in the registry snapshot.
+
+#### Scenario: Route depends on admin resource metadata
+- **GIVEN** a plugin declares an admin resource in the admin phase
+- **WHEN** route materialization starts
+- **THEN** the route builder uses the validated admin metadata, action metadata, and guard information
+
+#### Scenario: Route references missing action metadata
+- **GIVEN** a plugin route references action metadata that was not registered in an earlier phase
+- **WHEN** the route registry is validated
+- **THEN** the host rejects the route contribution
+
+#### Scenario: Direct route input remains fail-fast
+- **GIVEN** a caller provides plugin route metadata directly instead of through a validated snapshot
+- **WHEN** the App-Host attempts to build the route tree
+- **THEN** route materialization still validates route guardrails before publishing a partial route tree
+- **AND** invalid input fails with the deterministic plugin guardrail diagnostics contract
+
+### Requirement: Host-Enforced Plugin Route Materialization
+The system SHALL materialize plugin-provided routes only through the host routing registry and SHALL reject package-provided runtime route handlers that bypass host-owned guards, path conventions, or search-parameter validation.
+
+Plugin-provided UI components SHALL remain allowed when they are bound to a host-materialized route and do not define independent route handlers, guard functions, or search-parameter parsing outside the registry contract.
+
+#### Scenario: Plugin route is materialized by host
+- **GIVEN** a plugin declares an admin route contribution
+- **WHEN** the host builds the route tree
+- **THEN** the route is created with the host-owned guard, canonical path, and search-parameter schema
+- **AND** the plugin UI is rendered only inside the host-materialized route boundary
+
+#### Scenario: Plugin attempts to bypass host routing
+- **GIVEN** a plugin exposes a runtime route outside the registry contract
+- **WHEN** the host validates plugin contributions
+- **THEN** the contribution is rejected before the route tree is built
+- **AND** the diagnostics include `plugin_guardrail_route_bypass` with plugin namespace and contribution identifier
+
+#### Scenario: Plugin declares UI without owning routing decisions
+- **GIVEN** a plugin declares a route-bound UI component and declarative search-parameter schema
+- **WHEN** the host validates and materializes the route
+- **THEN** the contribution is accepted
+- **AND** search-parameter parsing and route guards remain host-owned
+
+### Requirement: Routing bleibt frei von Auth-Runtime-Implementierung
+
+`@sva/routing` MUST Route-Verträge, Pfade, Search-Params und Guard-Schnittstellen bereitstellen, darf aber keine Auth-Runtime-Implementierung oder IAM-Fachimplementierung importieren. Auth- und IAM-nahe Routen müssen über neutrale Contracts oder App-seitiges Wiring angebunden werden.
+
+#### Scenario: Auth-Route wird registriert
+
+- **WHEN** eine Auth-Route im produktiven Routing verfügbar gemacht wird
+- **THEN** nutzt `@sva/routing` nur neutrale Route- und Handler-Verträge
+- **AND** konkrete Login-, Session- oder OIDC-Implementierung bleibt in `@sva/auth-runtime`
+
+#### Scenario: IAM-Route wird verdrahtet
+
+- **WHEN** eine IAM-Admin-, Governance- oder Instanz-Route eingebunden wird
+- **THEN** bleibt die fachliche Handler-Implementierung im jeweiligen Zielpackage oder in einer App-Server-Funktion
+- **AND** `@sva/routing` importiert keine Fachpackage-Interna
+
+#### Scenario: Boundary-Disable schützt alte Kopplung
+
+- **WHEN** ein Boundary-Disable eine Routing-zu-Auth- oder Routing-zu-IAM-Kopplung erlaubt
+- **THEN** wird diese Ausnahme im Hard-Cut-Inventar erfasst
+- **AND** der Disable wird im Rahmen der Transition entfernt oder mit blockierendem Folgeticket versehen
+
+### Requirement: Produktives Host-Routing ist unabhaengig vom Beispiel-Plugin
+
+Das Routing-System SHALL produktive Plugin-Routen ohne Abhaengigkeit von einem Workspace-Beispiel-Plugin zusammenfuehren.
+
+#### Scenario: Host baut produktiven Plugin-Route-Baum ohne Beispiel-Plugin
+
+- **WHEN** die Host-App ihren produktiven Plugin-Route-Baum erzeugt
+- **THEN** benoetigt sie kein `@sva/plugin-example`, um Routing oder Plugin-Merge erfolgreich aufzubauen
+- **AND** verbleibende Plugin-Referenzen im Host beziehen sich nur auf tatsaechlich unterstuetzte Plugins
+
+### Requirement: Routing konsumiert den Build-time-Registry-Snapshot des Hosts
+
+Das Routing-System SHALL Plugin-Routen und registrierte Admin-Ressourcen aus einem kanonischen Build-time-Registry-Snapshot des Hosts beziehen statt aus voneinander getrennten Listen und Merge-Pfaden.
+
+#### Scenario: Host uebergibt normalisierte Build-time-Beitraege an das Routing
+
+- **WHEN** die Frontend-App ihren Router erzeugt
+- **THEN** uebergibt sie dem Routing die normalisierten Plugin- und Admin-Ressourcen-Beitraege aus einem gemeinsamen Build-time-Registry-Snapshot
+- **AND** das Routing muss diese Beitraege nicht erneut aus mehreren hostseitigen Hilfsregistries zusammensuchen
+
+#### Scenario: Routing materialisiert weiterhin nur hostkontrollierte Routen
+
+- **WHEN** der Build-time-Registry-Snapshot Plugin-Routen und Admin-Ressourcen enthaelt
+- **THEN** materialisiert das Routing daraus nur die vom Host unterstuetzten Pfade und Guards
+- **AND** nicht vom Routing unterstuetzte oder nicht freigegebene Laufzeitbeitraege bleiben weiterhin ausgeschlossen
+
+### Requirement: Registrierte Admin-Ressourcen verwenden namespacete Ressourcen-IDs
+
+Das Routing-System MUST fuer registrierte plugin-beigestellte Admin-Ressourcen eine fully-qualified Ressourcen-ID im Format `<namespace>.<resourceName>` verwenden.
+
+#### Scenario: Plugin registriert namespacete Admin-Ressource
+
+- **WHEN** ein Plugin mit Namespace `news` eine Admin-Ressource registriert
+- **THEN** verwendet die Ressourcen-ID das Format `news.<resourceName>`
+- **AND** die Host-Registrierung kann Ownership und Kollisionen ueber diese ID deterministisch pruefen
+
+#### Scenario: Plugin registriert Admin-Ressource ohne Namespace
+
+- **WHEN** ein Plugin eine Admin-Ressource mit einer ID wie `articles` ohne Namespace registriert
+- **THEN** wird die Registrierung mit einem Validierungsfehler abgewiesen
+- **AND** der Host erzeugt daraus keine implizit namespacete Ressourcen-ID
+
+#### Scenario: Plugin registriert Admin-Ressource in fremdem Namespace
+
+- **WHEN** ein Plugin mit Namespace `news` eine Ressourcen-ID wie `events.articles` registriert
+- **THEN** wird die Registrierung mit einem Ownership-Fehler abgewiesen
+- **AND** der fremde Namespace bleibt fuer das owning Plugin oder den Host reserviert
+
+### Requirement: Admin-Routen werden aus registrierten Admin-Ressourcen materialisiert
+
+Das Routing-System SHALL kanonische Admin-Routen aus einem deklarativen Registrierungsvertrag fuer Admin-Ressourcen ableiten, statt neue CRUD-artige Admin-Flaechen individuell im Host zu verdrahten.
+
+#### Scenario: Listen-, Create- und Detailroute entstehen aus einem Ressourcenvertrag
+
+- **WHEN** der Host eine Admin-Ressource mit Basispfad `<resource>` registriert
+- **THEN** materialisiert das Routing daraus mindestens `/admin/<resource>`, `/admin/<resource>/new` und `/admin/<resource>/$id`
+- **AND** die Route-Bildung folgt fuer alle registrierten CRUD-Ressourcen demselben kanonischen Muster
+
+#### Scenario: Historienroute bleibt optionaler Vertragsteil
+
+- **WHEN** eine Admin-Ressource zusaetzlich einen History-Beitrag deklariert
+- **THEN** kann das Routing eine zugehoerige Historienansicht aus demselben Ressourcenvertrag materialisieren
+- **AND** das Fehlen eines History-Beitrags verhindert nicht die Registrierung der Basisrouten
+
+### Requirement: Der Host erzwingt Konfliktfreiheit bei Admin-Ressourcen
+
+Das Routing-System MUST Konflikte zwischen registrierten Admin-Ressourcen deterministisch erkennen und fail-fast behandeln.
+
+#### Scenario: Doppelte Ressourcen-ID oder kollidierender Basispfad
+
+- **WHEN** zwei Ressourcendefinitionen dieselbe Ressourcen-ID oder denselben kanonischen Basispfad beanspruchen
+- **THEN** bricht die Registrierungsphase deterministisch mit einem Konfliktfehler ab
+- **AND** es wird kein teilweise inkonsistenter Admin-Route-Baum veroeffentlicht
+

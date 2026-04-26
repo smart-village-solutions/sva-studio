@@ -1,6 +1,11 @@
 {
   "version": 1,
-  "metrics": ["lines", "statements", "functions", "branches"],
+  "metrics": [
+    "lines",
+    "statements",
+    "functions",
+    "branches"
+  ],
   "globalFloors": {
     "lines": 85,
     "statements": 85,
@@ -21,40 +26,34 @@
   ],
   "perProjectFloors": {
     "core": {
-      "lines": 75,
-      "statements": 75,
-      "functions": 85,
-      "branches": 65
-    },
-    "auth": {
-      "lines": 45,
-      "statements": 45,
-      "functions": 55,
-      "branches": 35
+      "lines": 94,
+      "statements": 94,
+      "functions": 98,
+      "branches": 86
     },
     "auth-runtime": {
-      "lines": 55,
-      "statements": 54,
-      "functions": 48,
+      "lines": 61,
+      "statements": 61,
+      "functions": 59,
       "branches": 43
     },
     "data": {
-      "lines": 70,
-      "statements": 70,
-      "functions": 55,
-      "branches": 50
+      "lines": 73,
+      "statements": 72,
+      "functions": 61,
+      "branches": 52
     },
     "data-client": {
-      "lines": 70,
-      "statements": 70,
-      "functions": 60,
-      "branches": 50
+      "lines": 81,
+      "statements": 81,
+      "functions": 83,
+      "branches": 57
     },
     "data-repositories": {
-      "lines": 85,
-      "statements": 85,
-      "functions": 85,
-      "branches": 80
+      "lines": 88,
+      "statements": 88,
+      "functions": 88,
+      "branches": 84
     },
     "iam-admin": {
       "lines": 70,
@@ -63,119 +62,73 @@
       "branches": 53
     },
     "iam-governance": {
-      "lines": 72,
-      "statements": 72,
-      "functions": 80,
-      "branches": 60
+      "lines": 74,
+      "statements": 74,
+      "functions": 81,
+      "branches": 61
     },
     "instance-registry": {
-      "lines": 70,
-      "statements": 70,
-      "functions": 75,
-      "branches": 50
+      "lines": 74,
+      "statements": 74,
+      "functions": 79,
+      "branches": 53
     },
     "monitoring-client": {
-      "lines": 70,
-      "statements": 70,
-      "functions": 55,
-      "branches": 65
+      "lines": 81,
+      "statements": 80,
+      "functions": 82,
+      "branches": 66
     },
     "routing": {
-      "lines": 35,
-      "statements": 35,
-      "functions": 25,
-      "branches": 55
+      "lines": 99,
+      "statements": 99,
+      "functions": 99,
+      "branches": 97
     },
     "sdk": {
-      "lines": 40,
-      "statements": 40,
-      "functions": 55,
-      "branches": 40
+      "lines": 98,
+      "statements": 97,
+      "functions": 99,
+      "branches": 87
     },
     "plugin-news": {
-      "lines": 70,
-      "statements": 70,
-      "functions": 60,
-      "branches": 50
+      "lines": 90,
+      "statements": 89,
+      "functions": 81,
+      "branches": 80
     },
     "plugin-sdk": {
-      "lines": 85,
-      "statements": 85,
-      "functions": 90,
-      "branches": 70
+      "lines": 92,
+      "statements": 91,
+      "functions": 95,
+      "branches": 78
     },
     "sva-mainserver": {
-      "lines": 85,
-      "statements": 85,
+      "lines": 91,
+      "statements": 91,
+      "functions": 90,
+      "branches": 81
+    },
+    "sva-studio-react": {
+      "lines": 87,
+      "statements": 87,
       "functions": 85,
       "branches": 75
     },
-    "sva-studio-react": {
-      "lines": 45,
-      "statements": 45,
-      "functions": 35,
-      "branches": 35
-    },
     "server-runtime": {
-      "lines": 82,
-      "statements": 82,
-      "functions": 85,
-      "branches": 70
+      "lines": 85,
+      "statements": 85,
+      "functions": 88,
+      "branches": 72
     }
   },
   "criticalProjects": {
-    "auth": {
-      "minimumFloors": {
-        "lines": 45,
-        "statements": 45,
-        "functions": 50,
-        "branches": 30
-      },
-      "hotspotFloors": [
-        {
-          "path": "packages/auth/src/iam-account-management.server.ts",
-          "reason": "Sehr große IAM-Server-Datei mit zentraler Rollen- und Keycloak-Logik",
-          "metrics": {
-            "lines": 60,
-            "functions": 70,
-            "branches": 50
-          }
-        },
-        {
-          "path": "packages/auth/src/iam-governance.server.ts",
-          "reason": "Governance- und Approval-Workflow mit hoher Sicherheitsrelevanz",
-          "metrics": {
-            "lines": 55,
-            "functions": 80,
-            "branches": 45
-          }
-        },
-        {
-          "path": "packages/auth/src/auth-server/session.ts",
-          "reason": "Session-Hydration und Token-Refresh als kritische Auth-Lebenszykluslogik",
-          "metrics": {
-            "lines": 85,
-            "functions": 95,
-            "branches": 65
-          }
-        },
-        {
-          "path": "packages/auth/src/auth-server/shared.ts",
-          "reason": "Shared Auth-Session-Helfer mit Claim- und Ablaufzeit-Entscheidungen",
-          "metrics": {
-            "lines": 95,
-            "functions": 95,
-            "branches": 75
-          }
-        }
-      ]
-    },
     "routing": {
       "minimumFloors": {
-        "lines": 35,
-        "statements": 35,
-        "functions": 25,
-        "branches": 50
+        "lines": 99,
+        "statements": 99,
+        "functions": 99,
+        "branches": 97
       },
       "hotspotFloors": [
         {
@@ -191,10 +144,10 @@
     },
     "core": {
       "minimumFloors": {
-        "lines": 70,
-        "statements": 70,
-        "functions": 80,
-        "branches": 60
+        "lines": 94,
+        "statements": 94,
+        "functions": 98,
+        "branches": 86
       },
       "hotspotFloors": [
         {
@@ -219,10 +172,10 @@
     },
     "sdk": {
       "minimumFloors": {
-        "lines": 40,
-        "statements": 40,
-        "functions": 50,
-        "branches": 35
+        "lines": 98,
+        "statements": 97,
+        "functions": 99,
+        "branches": 87
       },
       "hotspotFloors": [
         {
@@ -247,10 +200,10 @@
     },
     "sva-studio-react": {
       "minimumFloors": {
-        "lines": 45,
-        "statements": 45,
-        "functions": 35,
-        "branches": 35
+        "lines": 87,
+        "statements": 87,
+        "functions": 85,
+        "branches": 75
       },
       "hotspotFloors": [
         {

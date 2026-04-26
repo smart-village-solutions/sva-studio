@@ -4,7 +4,7 @@
 
 Dieses Dokument beschreibt die umgesetzte Zielstruktur für die Package-Struktur des SVA Studio. Es ergänzt die Bausteinsicht in `./05-building-block-view.md` und dient als verbindliche Leitplanke für funktionales Wachstum, Refactorings und OpenSpec-Changes mit Architekturwirkung.
 
-Der harte Package-Schnitt ist durch den OpenSpec-Change `refactor-package-target-architecture-hard-cut` umgesetzt: neue fachliche Arbeit nutzt die Zielpackages direkt. Die früheren Sammelpackages `@sva/auth`, `@sva/data` und `@sva/sdk` bleiben nur noch als Kompatibilitäts- oder Altpfade für ausdrücklich migrierte Stellen relevant.
+Der harte Package-Schnitt ist durch den OpenSpec-Change `refactor-package-target-architecture-hard-cut` umgesetzt: neue fachliche Arbeit nutzt die Zielpackages direkt. Das frühere Sammelpackage `@sva/auth` ist aus dem aktiven Workspace entfernt; `@sva/data` und `@sva/sdk` behalten nur ausdrücklich dokumentierte Altpfade.
 
 ## Architekturziele
 
@@ -13,7 +13,7 @@ Der harte Package-Schnitt ist durch den OpenSpec-Change `refactor-package-target
 - Serverseitig von Node geladene Packages bleiben ESM-strikt und verwenden explizite Runtime-Endungen.
 - Plugins konsumieren Host-Verträge nur über `@sva/plugin-sdk` und nicht direkt über interne Core- oder App-Module.
 - Autorisierung, Routing, Datenzugriff, Runtime-Kontext und UI-Komposition bleiben getrennte Änderungsachsen.
-- Große IAM- und Instanz-Funktionalität wächst nicht mehr in `@sva/auth`; sie liegt in den fachlichen Zielpackages.
+- Große IAM- und Instanz-Funktionalität liegt in den fachlichen Zielpackages und wächst nicht mehr in historischen Sammelpackages.
 - PII-Datenflüsse werden bei Package-Schnitten explizit klassifiziert; nur autorisierte Fachmodule dürfen personenbezogene Daten im Klartext verarbeiten (siehe [PII-Datenfluss-Regel](#pii-datenfluss-regel)).
 - `@sva/iam-core` ist der einzige Ort für zentrale Autorisierungsentscheidungen (`authorize()`); Fachmodule konsumieren diesen Vertrag, duplizieren ihn nicht (Fail-closed bei fehlendem Autorisierungskontext).
 
@@ -36,7 +36,7 @@ Die aktuelle Struktur trennt die vorherigen Sammelrollen in eigenständige Paket
 - `@sva/plugin-news` zeigt das Zielmuster für fachliche Plugins.
 - `apps/sva-studio-react` enthält UI, TanStack-Start-Runtime, Router-Wiring und App-nahe Server-Funktionen.
 
-Die größte frühere strukturelle Last in `@sva/auth` ist fachlich aufgelöst. `@sva/auth` ist kein Zielort für neue Runtime-, IAM-, Governance- oder Registry-Fachlogik.
+Die größte frühere strukturelle Last aus `@sva/auth` ist fachlich aufgelöst. Das Package ist kein aktiver Workspace-Baustein mehr.
 
 ## Ziel-Layer
 
@@ -114,7 +114,7 @@ Die Zielrollen sind als Workspace-Packages vorhanden und werden über Nx-, ESLin
 | `@sva/instance-registry` | Instanzmodell, Host-Klassifikation, Registry, Provisioning, Keycloak-Tenant-Control-Plane | `packages/instance-registry` | Instanzverwaltung ist eine eigene Control-Plane, nicht eine Unterfunktion von Auth. |
 | `@sva/routing` | Route-Verträge, Search-Param-Normalisierung, Route-Factories, Guard-Schnittstellen | `packages/routing` | Routing kennt Verträge und verdrahtet Runtime-Routen über `@sva/auth-runtime`. |
 | `@sva/*-integration` | Downstream-Integrationen mit getrennten client-sicheren Typen und serverseitigen Adaptern | `packages/sva-mainserver` | Integrationspakete kapseln OAuth2, GraphQL, Secret-Lookups und Fehlerabbildung. |
-| `@sva/plugin-*` | Fachliche Erweiterungen über Plugin-SDK-Verträge | `packages/plugin-news` | Keine Direktimporte aus `@sva/core`, `@sva/auth`, `@sva/data` oder App-Modulen. |
+| `@sva/plugin-*` | Fachliche Erweiterungen über Plugin-SDK-Verträge | `packages/plugin-news` | Keine Direktimporte aus `@sva/core`, `@sva/auth-runtime`, `@sva/iam-*`, `@sva/instance-registry`, `@sva/data` oder App-Modulen. |
 | `apps/sva-studio-react` | UI, TanStack Start, Router-Wiring, App-Shell, Server-Funktionen als Adapter | `apps/sva-studio-react` | Keine dauerhafte Domänenlogik, keine rohen DB-/Keycloak-/GraphQL-Zugriffe im Browser-Bundle. |
 
 ## Erlaubte Abhängigkeitsrichtung
@@ -135,8 +135,8 @@ Ergänzende Regeln:
 
 Nicht zulässig im Zielbild:
 
-- `@sva/routing` importiert `@sva/auth` für Pfade oder Runtime-Handler.
-- Plugins importieren `@sva/core`, `@sva/auth`, `@sva/data` oder App-Code direkt.
+- `@sva/routing` importiert historische Auth-Sammelpackages für Pfade oder Runtime-Handler.
+- Plugins importieren `@sva/core`, `@sva/auth-runtime`, `@sva/iam-*`, `@sva/instance-registry`, `@sva/data` oder App-Code direkt.
 - App-Komponenten modellieren IAM-, Instanz- oder Integrationsregeln selbst.
 - `@sva/sdk` nimmt fachliche IAM-, Daten- oder Routing-Entscheidungen auf.
 - Fachmodule greifen direkt auf fremde Fachmodul-Interna zu, statt über öffentliche Verträge zu gehen.
@@ -175,16 +175,16 @@ Neue Packages, die PII verarbeiten, müssen dies in ihrer `project.json` mit ein
 
 ### Auth und IAM
 
-`@sva/auth` ist nicht mehr der fachliche Sammelort. Die Rollen sind getrennt:
+Das frühere Sammelpackage `@sva/auth` ist nicht mehr der fachliche Sammelort. Die Rollen sind getrennt:
 
 - Auth-Runtime: Login, Session, OIDC, Cookies, Middleware, Runtime-Routes.
 - IAM-Fachmodule: Administration, Autorisierung, Governance, DSR, Instanzen.
 
-Neue Endpunkte im IAM-Umfeld werden nicht in `packages/auth/src` ergänzt. Sie werden einem fachlichen Zielpackage zugeordnet; `@sva/auth` bleibt nur dort im Spiel, wo ein bestehender Kompatibilitätsadapter ausdrücklich erhalten ist.
+Neue Endpunkte im IAM-Umfeld werden einem fachlichen Zielpackage zugeordnet. Kompatibilitätsadapter über `@sva/auth` sind nicht mehr Teil des aktiven Workspace-Vertrags.
 
 ### Routing
 
-`@sva/routing` bezieht Auth-Pfade und Runtime-Handler über `@sva/auth-runtime`. Eine direkte Kante auf `@sva/auth` ist nicht zulässig.
+`@sva/routing` bezieht Auth-Pfade und Runtime-Handler über `@sva/auth-runtime`.
 
 Boundary-Disables für `@nx/enforce-module-boundaries` in produktiven Routing-Dateien sind nicht zulässig; bekannte Ausnahmen müssen blockierend dokumentiert werden.
 
@@ -221,7 +221,7 @@ Die Zielarchitektur ist durch den harten OpenSpec-Schnitt umgesetzt. Für laufen
 
 - Neue Fachlogik wird direkt im fachlichen Zielpackage umgesetzt.
 - Alte Sammelimporte werden nicht für neue Consumer verwendet.
-- Kompatibilitätsadapter in `@sva/auth`, `@sva/data` und `@sva/sdk` dürfen keine neue Ownership begründen.
+- Kompatibilitätsadapter in `@sva/data` und `@sva/sdk` dürfen keine neue Ownership begründen; `@sva/auth` ist kein aktiver Kompatibilitätspfad mehr.
 - Pro neuem oder geändertem serverseitigem Package bleiben `build`, `lint`, `test:unit`, `test:types` und `check:runtime` Teil des lokalen Gates.
 - Nx-`depConstraints`, `no-restricted-imports` und `check:server-runtime` sind die durchsetzenden Grenzen.
 - Architektur- und OpenSpec-Dokumentation werden im selben Change aktualisiert, wenn sich Package-Grenzen ändern.

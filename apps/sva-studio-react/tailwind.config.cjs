@@ -3,11 +3,7 @@ module.exports = {
   darkMode: ['class'],
   content: [
     './src/**/*.{ts,tsx}',
-    '../../packages/auth/src/**/*.{ts,tsx}',
-    '../../packages/core/src/**/*.{ts,tsx}',
-    '../../packages/routing/src/**/*.{ts,tsx}',
-    '../../packages/sdk/src/**/*.{ts,tsx}',
-    '../../packages/monitoring-client/src/**/*.{ts,tsx}',
+    '../../packages/*/src/**/*.{ts,tsx}',
   ],
   theme: {
     extend: {

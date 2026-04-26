@@ -20,7 +20,7 @@ Benötigt wird deshalb eine eigenständige hostseitige Capability für Medienman
 - Affected code:
   - `packages/media/*` oder alternativ `packages/core/src/media/*` für den kanonischen Medienvertrag
   - `packages/data/*` für Persistenz, Repositories und Migrationen
-  - `packages/auth/*` für serverseitige Rechte-, Upload- und Auslieferungspfade
+  - `packages/auth-runtime/*` und IAM-Zielpackages für serverseitige Rechte-, Upload- und Auslieferungspfade
   - `apps/sva-studio-react/src/routes/media/*` und zugehörige UI-Bausteine
   - optional Worker-/Processing-Bausteine für Metadaten-Extraktion und Variantengenerierung
 - Affected arc42 sections:

@@ -10,11 +10,17 @@ import {
 
 describe('content type registry', () => {
   it('registers and resolves content types', () => {
-    const registry = createContentTypeRegistry([genericContentTypeDefinition]);
+    const registry = createContentTypeRegistry([
+      {
+        ...genericContentTypeDefinition,
+        actions: [{ key: 'publish', label: 'Publish', domainCapability: 'content.publish' }],
+      },
+    ]);
 
     expect(getContentTypeDefinition(registry, GENERIC_CONTENT_TYPE)).toMatchObject({
       contentType: GENERIC_CONTENT_TYPE,
       displayName: 'Generischer Inhalt',
+      actions: [{ key: 'publish', label: 'Publish', domainCapability: 'content.publish' }],
     });
   });
 
@@ -29,6 +35,15 @@ describe('content type registry', () => {
     expect(() =>
       createContentTypeRegistry([{ ...genericContentTypeDefinition, contentType: '   ' }])
     ).toThrow('invalid_content_type_definition');
+
+    expect(() =>
+      createContentTypeRegistry([
+        {
+          ...genericContentTypeDefinition,
+          actions: [{ key: 'publish', label: 'Publish' }],
+        },
+      ])
+    ).toThrow('capability_mapping_missing:generic:publish');
   });
 
   it('enforces namespace ownership for plugin content types', () => {

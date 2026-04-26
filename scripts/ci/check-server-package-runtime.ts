@@ -250,25 +250,36 @@ export const collectDistRuntimeEntryPoints = (packageDir: string): string[] => {
 
 export const runDistRuntimeSmokeCheck = async (rootDir: string, packageDir: string): Promise<RuntimeViolation[]> => {
   const violations: RuntimeViolation[] = [];
+  const previousEnableOtel = process.env.ENABLE_OTEL;
 
-  for (const relativeEntryPoint of collectDistRuntimeEntryPoints(packageDir)) {
-    const absoluteEntryPoint = path.join(packageDir, relativeEntryPoint);
-    const relativePath = path.relative(rootDir, absoluteEntryPoint);
-    if (!fs.existsSync(absoluteEntryPoint)) {
-      violations.push({
-        filePath: relativePath,
-        message: 'dist entry point is missing; run the package build before the smoke check',
-      });
-      continue;
+  if (previousEnableOtel === undefined) {
+    process.env.ENABLE_OTEL = 'false';
+  }
+
+  try {
+    for (const relativeEntryPoint of collectDistRuntimeEntryPoints(packageDir)) {
+      const absoluteEntryPoint = path.join(packageDir, relativeEntryPoint);
+      const relativePath = path.relative(rootDir, absoluteEntryPoint);
+      if (!fs.existsSync(absoluteEntryPoint)) {
+        violations.push({
+          filePath: relativePath,
+          message: 'dist entry point is missing; run the package build before the smoke check',
+        });
+        continue;
+      }
+
+      try {
+        await import(`${pathToFileURL(absoluteEntryPoint).href}?runtime-guard=${Date.now()}`);
+      } catch (error) {
+        violations.push({
+          filePath: relativePath,
+          message: `dist runtime import failed: ${error instanceof Error ? error.message : String(error)}`,
+        });
+      }
     }
-
-    try {
-      await import(`${pathToFileURL(absoluteEntryPoint).href}?runtime-guard=${Date.now()}`);
-    } catch (error) {
-      violations.push({
-        filePath: relativePath,
-        message: `dist runtime import failed: ${error instanceof Error ? error.message : String(error)}`,
-      });
+  } finally {
+    if (previousEnableOtel === undefined) {
+      delete process.env.ENABLE_OTEL;
     }
   }
 

@@ -170,7 +170,7 @@ Nicht erlaubt: `@sva/plugin-*` -> `@sva/core`
    - definiert `PluginDefinition` und Merge-Helfer für Plugin-Routen, Navigation, Content-Typen und Übersetzungen
 2. `apps/sva-studio-react/src/lib/plugins.ts`
    - registriert `pluginNews` statisch im Host und materialisiert daraus Route-, Navigations-, Admin-Ressourcen-, Audit- und i18n-Metadaten
-3. `packages/auth-runtime/src/content/content-type-registry.ts`
+3. `packages/auth-runtime/src/iam-contents/content-type-registry.ts`
    - erweitert den generischen Content-Write-Pfad um contentType-spezifische Payload-Validierung und Sanitisierung
 4. `packages/plugin-news/src/*`
    - kapselt News-Liste, Editor, Delete-Flow und plugin-eigene Übersetzungen unter der SDK-Boundary
@@ -180,11 +180,22 @@ Nicht erlaubt: `@sva/plugin-*` -> `@sva/core`
 1. `packages/plugin-sdk/src/plugins.ts` + `packages/plugin-sdk/src/plugin-identifiers.ts`
    - definieren die technische Plugin-Identität über `PluginDefinition.id` als führenden Namespace und validieren plugin-beigestellte `contentType`s, Admin-Ressourcen und Audit-Event-Typen gegen `<pluginId>.<name>`
 2. `packages/plugin-sdk/src/build-time-registry.ts`
-   - verdichtet Plugins, hosteigene Admin-Ressourcen und plugin-spezifische Audit-Event-Definitionen in einen gemeinsamen Registry-Snapshot für Host und Routing
+   - verdichtet Plugins, hosteigene Admin-Ressourcen und plugin-spezifische Audit-Event-Definitionen phasenweise in einen gemeinsamen Registry-Snapshot für Host und Routing
+   - hält die bestehende `BuildTimeRegistry`-API stabil; interne Phasen ordnen Preflight, Content, Admin, Audit, Routing und Publish ohne neue Beitragstypen
 3. `packages/routing/src/app.routes.shared.ts`
    - materialisiert deklarative Admin-Ressourcen unter `/admin/<resource>` und hält Legacy-Aliase wie `/content*` nur noch als Redirect-Vertrag
-4. `packages/auth-runtime/src/content/content-type-registry.ts`
+4. `packages/auth-runtime/src/iam-contents/content-type-registry.ts`
    - führt `news.article` als kanonischen plugin-beigestellten `contentType` im serverseitigen Validierungsvertrag
+
+### Erweiterung 2026-04: Host-seitige Plugin-Guardrails
+
+1. `packages/plugin-sdk/src/guardrails.ts`
+   - definiert deterministische Guardrail-Fehlercodes für Routing-, Autorisierungs-, Audit-, Persistenz- und Dynamic-Registration-Bypässe
+2. `packages/plugin-sdk/src/plugins.ts`
+   - validiert Plugin-Contributions gegen Runtime-Allowlists, bevor der Build-time-Registry-Snapshot veröffentlicht wird
+3. `packages/routing/src/app.routes.shared.ts`
+   - materialisiert Plugin-Routen nur unter `/plugins/<pluginNamespace>` und bricht unbekannte Plugin-Guards fail-fast ab
+4. Plugin-UI-Komponenten bleiben erlaubt, solange Route, Guard, Search-Parameter, Persistenz und Audit-Pfad host-owned bleiben
 
 ### Schichtdefinition `scope:integration`
 
@@ -353,7 +364,7 @@ Neu hinzugekommene Bausteine im Change `add-iam-organization-management-hierarch
    - Auf dem Root-Host führt derselbe Endpunkt einen Platform-Sync über den Plattform-Realm aus und meldet `executionMode=platform_admin`, ohne eine Pseudo-Instanz anzulegen.
 2. `packages/iam-admin/src/identity-provider-port.ts`
    - Erweitert die IdP-Abstraktion um typisierte User-Listing-Operationen für administrative Import- und Reconcile-Flows.
-3. `packages/routing/src/auth.routes.server.ts` und `packages/auth-runtime/src/routes.shared.ts`
+3. `packages/routing/src/auth.routes.server.ts` und `packages/auth-runtime/src/routes.ts`
    - Registrieren den mutierenden IAM-Endpunkt `POST /api/v1/iam/users/sync-keycloak` typsicher im zentralen Auth-/IAM-Router und prüfen das Mapping beim Modulstart auf Drift.
 4. `packages/core/src/iam/account-management-contract.ts`
    - Definiert den gemeinsamen Sync-Report (`importedCount`, `updatedCount`, `skippedCount`, `totalKeycloakUsers`) für Server und Frontend.

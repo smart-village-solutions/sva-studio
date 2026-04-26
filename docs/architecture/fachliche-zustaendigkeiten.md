@@ -9,7 +9,8 @@ flowchart TB
     A["apps/sva-studio-react\nUI, Seiten, SSR, Server Functions"]
 
     B["@sva/routing\nRouting-Bruecke\nRoute-Factories\nServer-Route-Mapping"]
-    C["@sva/auth\nIdentitaet, Session,\nBerechtigung, IAM-Workflows"]
+    C["@sva/auth-runtime\nIdentitaet, Session,\nRuntime-Routen"]
+    C2["@sva/iam-admin\n@sva/iam-governance\n@sva/instance-registry\nIAM-Fachlogik"]
     D["@sva/data\nPersistenz,\nPostgres-Zugriff,\ninstanzgebundene Daten"]
     E["@sva/sva-mainserver\nIntegrationslogik fuer\nexternen Mainserver"]
     F["@sva/sdk\nLogging, Request-Kontext,\nFehlerantworten,\nObservability"]
@@ -22,6 +23,7 @@ flowchart TB
 
     A --> B
     A --> C
+    A --> C2
     A --> E
     A --> F
     A --> G
@@ -35,10 +37,16 @@ flowchart TB
     C --> I
     C --> J
 
+    C2 --> G
+    C2 --> F
+    C2 --> D
+    C2 --> J
+
     D --> G
     D --> H
 
     E --> C
+    E --> C2
     E --> D
     E --> F
     E --> G
@@ -53,7 +61,7 @@ flowchart TB
     classDef external fill:#f4f4f5,stroke:#6b7280,color:#111827
 
     class A app
-    class B,C,D,E,F,G foundation
+    class B,C,C2,D,E,F,G foundation
     class H,I,J,K external
 ```
 
@@ -61,7 +69,8 @@ flowchart TB
 
 - `@sva/core` ist der fachliche Kern und liefert die gemeinsamen Regeln, Typen und Kernabstraktionen.
 - `@sva/sdk` stellt querschnittliche Infrastruktur bereit, vor allem Logging, Kontext und Observability.
-- `@sva/auth` verantwortet Identität, Session und IAM-nahe Fachlogik.
+- `@sva/auth-runtime` verantwortet Identität, Session, OIDC und Runtime-Routen.
+- `@sva/iam-admin`, `@sva/iam-governance` und `@sva/instance-registry` verantworten IAM-nahe Fachverwaltung, Governance und Instanzlogik.
 - `@sva/data` kapselt Persistenz und Datenbankzugriff.
 - `@sva/sva-mainserver` ist ein spezialisiertes Integrationspaket fuer einen externen Downstream.
 - `@sva/routing` verbindet den fachlichen Kern mit der konkreten Routing- und Server-Route-Integration.

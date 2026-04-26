@@ -147,5 +147,5 @@ Diese Anleitung beschreibt die aktuell stabilen IAM-v1-Endpunkte, Response-Envel
 
 - `docs/api/iam-v1.yaml`
 - `packages/core/src/iam/account-management-contract.ts`
-- `packages/auth/src/iam-account-management.server.ts`
-- `packages/auth/src/iam-account-management/groups-handlers.ts`
+- `packages/auth-runtime/src/iam-account-management/platform-handlers.ts`
+- `packages/iam-admin/src/group-mutation-handlers.ts`

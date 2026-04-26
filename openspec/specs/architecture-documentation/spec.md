@@ -150,3 +150,55 @@ Die Architektur- und Betriebsdokumentation SHALL den finalen Runtime-Vertrag fue
 - **AND** ordnen sie `.nitro/vite/services/ssr/**` als Diagnosematerial ein
 - **AND** beschreiben sie den Entrypoint-Patch als Legacy-Recovery-Pfad mit explizitem Flag statt als Standardbetrieb
 
+### Requirement: Package-Zielarchitektur als verbindlicher Architekturvertrag
+
+Die Architekturdokumentation MUST die Package-Zielarchitektur als verbindlichen Architekturvertrag führen. OpenSpec-Changes mit Package-, IAM-, Daten-, Plugin-, Routing- oder Runtime-Wirkung MUST erklären, welche Zielpackages betroffen sind und ob der Change mit den Zielgrenzen vereinbar ist.
+
+#### Scenario: Architekturwirksamer Change wird erstellt
+
+- **WHEN** ein Change Package-Grenzen, Importkanten, IAM, Datenzugriff, Plugins, Routing oder Server-Runtime betrifft
+- **THEN** referenziert er `docs/architecture/package-zielarchitektur.md`
+- **AND** benennt die betroffenen Zielpackages
+- **AND** dokumentiert Abweichungen als explizite technische Schuld mit Abbaupfad
+
+#### Scenario: Zielpackage wird implementiert
+
+- **WHEN** ein Zielpackage neu angelegt oder aus einem Sammelpackage herausgelöst wird
+- **THEN** werden die betroffenen arc42-Abschnitte aktualisiert
+- **AND** `package-zielarchitektur.md` bleibt konsistent mit Package-Exports, Nx-Tags und `depConstraints`
+
+### Requirement: Hard-Cut-Fortschritt bleibt nachvollziehbar
+
+Die Architektur- und Entwicklungsdokumentation MUST den Fortschritt der harten Package-Transition nachvollziehbar machen, inklusive alter Importpfade, entfernter Re-Exports, noch offener Boundary-Disables und verbleibender Risiken.
+
+#### Scenario: Migrationsphase wird abgeschlossen
+
+- **WHEN** eine Migrationsphase abgeschlossen wird
+- **THEN** dokumentiert der PR entfernte alte Importpfade und aktivierte Enforcement-Regeln
+- **AND** verbleibende Abweichungen sind mit Ticket, Risiko und geplantem Abbau dokumentiert
+
+#### Scenario: Alter Sammelpfad bleibt vorübergehend bestehen
+
+- **WHEN** ein alter Importpfad aus `@sva/auth`, `@sva/data` oder `@sva/sdk` vorübergehend bestehen bleibt
+- **THEN** nennt die Dokumentation den Grund, die betroffenen Consumer und die Entfernungsvoraussetzung
+- **AND** der Pfad wird nicht als stabiler öffentlicher Vertrag beschrieben
+
+### Requirement: Architektur- und Entwicklerdokumentation entfernt veraltete Beispiel-Plugin-Referenzen
+
+Die Architektur- und Entwicklerdokumentation SHALL das entfernte Beispiel-Plugin nicht weiter als aktiven Bestandteil des Studios fuehren.
+
+#### Scenario: Dokumentation nach Paketentfernung bereinigt
+
+- **WHEN** `plugin-example` aus Workspace und Host entfernt wurde
+- **THEN** beschreiben Architektur- und Entwicklerdokumente das Beispiel-Plugin nicht mehr als aktives Paket oder aktiven Host-Bestandteil
+- **AND** verbleibende Hinweise auf historische oder optionale Beispiele sind klar als nicht-produktiv markiert
+
+### Requirement: arc42 documentation reflects implemented architecture
+
+Die arc42-Dokumentation SHALL Studio als alternative Keycloak-Admin-UI, Keycloak-first Mutationen und die Scope-Trennung zwischen Platform und Tenant beschreiben.
+
+#### Scenario: Architecture docs cover Keycloak-first IAM
+- **WHEN** der Change umgesetzt wird
+- **THEN** dokumentieren die betroffenen arc42-Abschnitte System-of-Record, Read-Models, Sync-/Reconcile-Flows, Bearbeitbarkeitsmatrix und Audit-Verhalten
+- **AND** die Doku nennt die Grenzen gegenüber vollständiger Keycloak-Realm-/Client-Administration
+

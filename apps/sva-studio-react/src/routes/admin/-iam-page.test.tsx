@@ -312,7 +312,7 @@ describe('IamViewerPage', () => {
                 sourceGroupIds: ['group-editor'],
               },
               {
-                action: 'content.write',
+                action: 'content.updatePayload',
                 resourceType: 'article',
                 resourceId: null,
                 organizationId: null,
@@ -347,7 +347,7 @@ describe('IamViewerPage', () => {
 
     await waitFor(() => {
       expect(screen.getByText('content.read')).toBeTruthy();
-      expect(screen.getByText('content.write')).toBeTruthy();
+      expect(screen.getByText('content.updatePayload')).toBeTruthy();
       expect(screen.getByText('Impersonation durch user-2')).toBeTruthy();
       expect(screen.getAllByText('org-1').length).toBeGreaterThan(0);
       expect(screen.getByText('locale: de')).toBeTruthy();

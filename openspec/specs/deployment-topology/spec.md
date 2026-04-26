@@ -427,12 +427,17 @@ Das System SHALL den Rollout fuer das Runtime-Profil `studio` ueber feste diagno
 
 Das System SHALL fuer `studio` den finalen Node-Output unter `apps/sva-studio-react/.output/server/**` als einzigen technischen Freigabegegenstand vor dem Image-Build behandeln.
 
-#### Scenario: Finales Runtime-Artefakt wird vor dem Image-Build verifiziert
+#### Scenario: Release-Gate bündelt Runtime- und PR-Prüfungen
 
-- **WHEN** der kanonische `studio`-Releasepfad ein neues Image bauen will
-- **THEN** prueft der CI-Pfad zuerst den finalen Node-Output `apps/sva-studio-react/.output/server/index.mjs`
-- **AND** der Check validiert mindestens den Server-Entry-Vertrag, `/health/live`, `/health/ready` und `/`
-- **AND** Intermediate-Artefakte unter `.nitro/vite/services/ssr/**` gelten nur als Diagnosematerial
+- **WHEN** ein Operator oder CI-Pfad eine produktionsnahe Studio-Freigabe vorbereitet
+- **THEN** steht ein Script `test:release:studio` zur Verfügung
+- **AND** dieses Script führt `test:pr` und anschließend `verify:runtime-artifact` aus
+
+#### Scenario: Lokaler Studio-Precheck dokumentiert Image-Verify-Evidenz
+
+- **WHEN** `env:precheck:studio` mit einem Image-Digest ausgeführt wird
+- **THEN** dokumentiert der Precheck den Digest und die passende Studio-Image-Verify-Evidenz, sofern sie im Artefaktverzeichnis vorhanden ist
+- **AND** fehlende Evidenz wird als Warnung oder Blocker sichtbar, nicht still ignoriert
 
 ### Requirement: Recovery-Patching bleibt expliziter Ausnahmeweg
 
@@ -444,4 +449,16 @@ Das System SHALL Laufzeit-Patching des finalen Nitro-Entrys nicht mehr als Stand
 - **THEN** schreibt `deploy/portainer/entrypoint.sh` das Build-Artefakt nicht still um
 - **AND** ein Recovery-Patch ist nur mit explizitem Flag `SVA_ENABLE_RUNTIME_RECOVERY_PATCH=1` zulaessig
 - **AND** fehlende Startfaehigkeit ohne dieses Flag blockiert den Releasepfad
+
+### Requirement: Root and Tenant Host Smoke Separation
+
+Deployment verification SHALL test the root platform host separately from tenant hosts.
+
+#### Scenario: Root smoke validates platform IAM
+- **WHEN** post-deploy smoke tests run against `studio.smart-village.app`
+- **THEN** they validate platform login, instance management, platform users, platform roles, account page, and platform user sync
+
+#### Scenario: Tenant smoke validates tenant IAM
+- **WHEN** post-deploy smoke tests run against tenant hosts
+- **THEN** they validate tenant login, tenant user sync, tenant role reconcile, content access, and no browser crash
 

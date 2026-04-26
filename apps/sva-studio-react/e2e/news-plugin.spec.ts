@@ -35,7 +35,7 @@ const permissionPayload = {
   permissions: [
     { action: 'content.read', resourceType: 'content' },
     { action: 'content.create', resourceType: 'content' },
-    { action: 'content.write', resourceType: 'content' },
+    { action: 'content.updatePayload', resourceType: 'content' },
   ],
   subject: {
     actorUserId: 'kc-editor-1',

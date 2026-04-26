@@ -29,7 +29,7 @@ Hinweis zur aktuellen Repository-Situation: `.github/workflows/app-e2e.yml` verw
 ## Review-Anforderungen
 
 - Mindestanzahl Reviews fuer jeden PR nach `main`: **1** Approve (numerisch, hartes Minimum).
-- Fuer kritische Pfade (`.github/workflows/**`, `packages/core/**`, `packages/auth/**`): Zielmodell **2** Approvals; verbindlich spaetestens ab verfuegbarer unabhaengiger Reviewer-Struktur und aktivierter Enforcement-Phase.
+- Fuer kritische Pfade (`.github/workflows/**`, `packages/core/**`, `packages/auth-runtime/**`, `packages/iam-admin/**`, `packages/iam-governance/**`, `packages/instance-registry/**`): Zielmodell **2** Approvals; verbindlich spaetestens ab verfuegbarer unabhaengiger Reviewer-Struktur und aktivierter Enforcement-Phase.
 - Self-Approval zaehlt nicht.
 - Stale-Approval wird bei neuem Commit invalidiert; ein neuer Approve ist erforderlich.
 - Bis zur vollen organisatorischen Trennung gilt fuer kritische Pfade mindestens ein dokumentierter fachlicher Review durch die zustaendige Verantwortungsgruppe.
@@ -49,7 +49,7 @@ Hinweis zur aktuellen Repository-Situation: `.github/workflows/app-e2e.yml` verw
 Merge Queue ist fuer PRs nach `main` aktiv, wenn mindestens **eines** der folgenden Aktivierungskriterien zutrifft:
 
 1. Mindestens **2** PRs sind gleichzeitig `ready for merge`.
-2. Ein PR beruehrt einen kritischen Pfad (`.github/workflows/**`, `packages/core/**`, `packages/auth/**`).
+2. Ein PR beruehrt einen kritischen Pfad (`.github/workflows/**`, `packages/core/**`, `packages/auth-runtime/**`, `packages/iam-admin/**`, `packages/iam-governance/**`, `packages/instance-registry/**`).
 3. Summe der geaenderten Dateien im PR ist **> 30**.
 
 Queue-Verhalten:

@@ -98,7 +98,7 @@ Internal packages use `workspace:*` protocol. Dependency direction: `core` → t
 
 **Plugins**: Self-contained packages with their own routes, components, and translations. `plugin-news` is the current productive plugin package.
 
-**Module boundaries**: Enforced by `@nx/enforce-module-boundaries` via scope tags in `project.json`. Scope hierarchy: `core` → `data/sdk/monitoring` → `auth` → `routing/plugin` → `app`.
+**Module boundaries**: Enforced by `@nx/enforce-module-boundaries` via scope tags in `project.json`. Scope hierarchy: `core` → `data/sdk/monitoring` → `auth-runtime`/`iam-*`/`instance-registry` → `routing/plugin` → `app`.
 
 ---
 

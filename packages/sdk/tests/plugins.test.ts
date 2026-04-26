@@ -30,7 +30,7 @@ describe('plugin registry', () => {
       {
         id: 'news.publish',
         titleKey: 'news.actions.publish',
-        requiredAction: 'content.write',
+        requiredAction: 'content.publish',
       },
     ]),
     contentTypes: definePluginContentTypes('news', [{ contentType: 'news.article', displayName: 'News' }]),
@@ -55,7 +55,7 @@ describe('plugin registry', () => {
           {
             id: 'news.create.route',
             path: '/plugins/news/new',
-            guard: 'content.write',
+            guard: 'content.publish',
             actionId: 'news.publish',
             component: (() => null) as never,
           },
@@ -68,7 +68,7 @@ describe('plugin registry', () => {
             titleKey: 'news.actions.publish',
             section: 'dataManagement' as const,
             actionId: 'news.publish',
-            requiredAction: 'content.write',
+            requiredAction: 'content.publish',
           },
         ],
       },
@@ -241,7 +241,7 @@ describe('plugin registry', () => {
       {
         id: 'news-override',
         displayName: 'News Override',
-        routes: [{ id: 'news.override', path: '/plugins/news/override', component: (() => null) as never }],
+        routes: [{ id: 'news-override.override', path: '/plugins/news-override/override', component: (() => null) as never }],
         translations: {
           de: {
             news: {
@@ -345,7 +345,7 @@ describe('plugin registry', () => {
       actionName: 'publish',
       ownerPluginId: 'news',
       titleKey: 'news.actions.publish',
-      requiredAction: 'content.write',
+      requiredAction: 'content.publish',
     });
 
     expect(() =>

@@ -278,12 +278,12 @@ Governance Source: T5 - codeowners-strategy.md
 Tool: `bash`
 Command:
 ```bash
-grep -E "(/packages/core/|/packages/auth/|\.github/workflows/).+@sva-studio/" docs/governance/codeowners-strategy.md
+grep -E "(/packages/core/|/packages/auth-runtime/|/packages/iam-admin/|/packages/iam-governance/|/packages/instance-registry/|\.github/workflows/).+@sva-studio/" docs/governance/codeowners-strategy.md
 ```
 Expected:
 ```
 /packages/core/                         @sva-studio/core-maintainers
-/packages/auth/                         @sva-studio/security-team @sva-studio/core-maintainers
+/packages/auth-runtime/                 @sva-studio/security-team @sva-studio/core-maintainers
 .github/workflows/                      @sva-studio/infrastructure @sva-studio/security-team
 ```
 Failure:

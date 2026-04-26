@@ -176,11 +176,17 @@ VALUES
   ('40111111-1111-1111-1111-111111111116', 'de-musterhausen', 'iam.org.write', 'iam.org.write', 'iam', NULL, 'allow', '{}'::jsonb, 'Modify organization data'),
   ('40111111-1111-1111-1111-111111111117', 'de-musterhausen', 'content.read', 'content.read', 'content', NULL, 'allow', '{}'::jsonb, 'Read content'),
   ('40111111-1111-1111-1111-111111111118', 'de-musterhausen', 'content.create', 'content.create', 'content', NULL, 'allow', '{}'::jsonb, 'Create content'),
-  ('40111111-1111-1111-1111-111111111119', 'de-musterhausen', 'content.update', 'content.update', 'content', NULL, 'allow', '{}'::jsonb, 'Update content'),
+  ('40111111-1111-1111-1111-111111111119', 'de-musterhausen', 'content.updateMetadata', 'content.updateMetadata', 'content', NULL, 'allow', '{}'::jsonb, 'Update content metadata'),
   ('40111111-1111-1111-1111-111111111120', 'de-musterhausen', 'content.publish', 'content.publish', 'content', NULL, 'allow', '{}'::jsonb, 'Publish content'),
-  ('40111111-1111-1111-1111-111111111121', 'de-musterhausen', 'content.moderate', 'content.moderate', 'content', NULL, 'allow', '{}'::jsonb, 'Moderate content'),
+  ('40111111-1111-1111-1111-111111111121', 'de-musterhausen', 'content.manageRevisions', 'content.manageRevisions', 'content', NULL, 'allow', '{}'::jsonb, 'Manage content revisions'),
   ('40111111-1111-1111-1111-111111111122', 'de-musterhausen', 'integration.manage', 'integration.manage', 'integration', NULL, 'allow', '{}'::jsonb, 'Manage integrations'),
-  ('40111111-1111-1111-1111-111111111123', 'de-musterhausen', 'feature.toggle', 'feature.toggle', 'feature', NULL, 'allow', '{}'::jsonb, 'Toggle feature flags')
+  ('40111111-1111-1111-1111-111111111123', 'de-musterhausen', 'feature.toggle', 'feature.toggle', 'feature', NULL, 'allow', '{}'::jsonb, 'Toggle feature flags'),
+  ('40111111-1111-1111-1111-111111111124', 'de-musterhausen', 'content.updatePayload', 'content.updatePayload', 'content', NULL, 'allow', '{}'::jsonb, 'Update content payload'),
+  ('40111111-1111-1111-1111-111111111125', 'de-musterhausen', 'content.changeStatus', 'content.changeStatus', 'content', NULL, 'allow', '{}'::jsonb, 'Change content status'),
+  ('40111111-1111-1111-1111-111111111126', 'de-musterhausen', 'content.archive', 'content.archive', 'content', NULL, 'allow', '{}'::jsonb, 'Archive content'),
+  ('40111111-1111-1111-1111-111111111127', 'de-musterhausen', 'content.restore', 'content.restore', 'content', NULL, 'allow', '{}'::jsonb, 'Restore content'),
+  ('40111111-1111-1111-1111-111111111128', 'de-musterhausen', 'content.readHistory', 'content.readHistory', 'content', NULL, 'allow', '{}'::jsonb, 'Read content history'),
+  ('40111111-1111-1111-1111-111111111129', 'de-musterhausen', 'content.delete', 'content.delete', 'content', NULL, 'allow', '{}'::jsonb, 'Delete content')
 ON CONFLICT (instance_id, permission_key) DO UPDATE
 SET
   action = EXCLUDED.action,
@@ -269,32 +275,53 @@ VALUES
   ('de-musterhausen', '30111111-1111-1111-1111-111111111111', '40111111-1111-1111-1111-111111111121'),
   ('de-musterhausen', '30111111-1111-1111-1111-111111111111', '40111111-1111-1111-1111-111111111122'),
   ('de-musterhausen', '30111111-1111-1111-1111-111111111111', '40111111-1111-1111-1111-111111111123'),
+  ('de-musterhausen', '30111111-1111-1111-1111-111111111111', '40111111-1111-1111-1111-111111111124'),
+  ('de-musterhausen', '30111111-1111-1111-1111-111111111111', '40111111-1111-1111-1111-111111111125'),
+  ('de-musterhausen', '30111111-1111-1111-1111-111111111111', '40111111-1111-1111-1111-111111111126'),
+  ('de-musterhausen', '30111111-1111-1111-1111-111111111111', '40111111-1111-1111-1111-111111111127'),
+  ('de-musterhausen', '30111111-1111-1111-1111-111111111111', '40111111-1111-1111-1111-111111111128'),
+  ('de-musterhausen', '30111111-1111-1111-1111-111111111111', '40111111-1111-1111-1111-111111111129'),
   -- app-manager
   ('de-musterhausen', '30222222-2222-2222-2222-222222222222', '40111111-1111-1111-1111-111111111111'),
   ('de-musterhausen', '30222222-2222-2222-2222-222222222222', '40111111-1111-1111-1111-111111111112'),
   ('de-musterhausen', '30222222-2222-2222-2222-222222222222', '40111111-1111-1111-1111-111111111115'),
   ('de-musterhausen', '30222222-2222-2222-2222-222222222222', '40111111-1111-1111-1111-111111111116'),
   ('de-musterhausen', '30222222-2222-2222-2222-222222222222', '40111111-1111-1111-1111-111111111117'),
+  ('de-musterhausen', '30222222-2222-2222-2222-222222222222', '40111111-1111-1111-1111-111111111128'),
   ('de-musterhausen', '30222222-2222-2222-2222-222222222222', '40111111-1111-1111-1111-111111111123'),
   -- feature-manager
   ('de-musterhausen', '30333333-3333-3333-3333-333333333333', '40111111-1111-1111-1111-111111111117'),
   ('de-musterhausen', '30333333-3333-3333-3333-333333333333', '40111111-1111-1111-1111-111111111119'),
+  ('de-musterhausen', '30333333-3333-3333-3333-333333333333', '40111111-1111-1111-1111-111111111124'),
+  ('de-musterhausen', '30333333-3333-3333-3333-333333333333', '40111111-1111-1111-1111-111111111125'),
+  ('de-musterhausen', '30333333-3333-3333-3333-333333333333', '40111111-1111-1111-1111-111111111128'),
   ('de-musterhausen', '30333333-3333-3333-3333-333333333333', '40111111-1111-1111-1111-111111111123'),
   -- interface-manager
   ('de-musterhausen', '30444444-4444-4444-4444-444444444444', '40111111-1111-1111-1111-111111111115'),
   ('de-musterhausen', '30444444-4444-4444-4444-444444444444', '40111111-1111-1111-1111-111111111117'),
+  ('de-musterhausen', '30444444-4444-4444-4444-444444444444', '40111111-1111-1111-1111-111111111128'),
   ('de-musterhausen', '30444444-4444-4444-4444-444444444444', '40111111-1111-1111-1111-111111111122'),
   -- designer
   ('de-musterhausen', '30555555-5555-5555-5555-555555555555', '40111111-1111-1111-1111-111111111117'),
   ('de-musterhausen', '30555555-5555-5555-5555-555555555555', '40111111-1111-1111-1111-111111111119'),
+  ('de-musterhausen', '30555555-5555-5555-5555-555555555555', '40111111-1111-1111-1111-111111111124'),
+  ('de-musterhausen', '30555555-5555-5555-5555-555555555555', '40111111-1111-1111-1111-111111111128'),
   -- editor
   ('de-musterhausen', '30666666-6666-6666-6666-666666666666', '40111111-1111-1111-1111-111111111117'),
   ('de-musterhausen', '30666666-6666-6666-6666-666666666666', '40111111-1111-1111-1111-111111111118'),
   ('de-musterhausen', '30666666-6666-6666-6666-666666666666', '40111111-1111-1111-1111-111111111119'),
+  ('de-musterhausen', '30666666-6666-6666-6666-666666666666', '40111111-1111-1111-1111-111111111124'),
+  ('de-musterhausen', '30666666-6666-6666-6666-666666666666', '40111111-1111-1111-1111-111111111125'),
+  ('de-musterhausen', '30666666-6666-6666-6666-666666666666', '40111111-1111-1111-1111-111111111128'),
+  ('de-musterhausen', '30666666-6666-6666-6666-666666666666', '40111111-1111-1111-1111-111111111129'),
   -- moderator
   ('de-musterhausen', '30777777-7777-7777-7777-777777777777', '40111111-1111-1111-1111-111111111117'),
   ('de-musterhausen', '30777777-7777-7777-7777-777777777777', '40111111-1111-1111-1111-111111111120'),
-  ('de-musterhausen', '30777777-7777-7777-7777-777777777777', '40111111-1111-1111-1111-111111111121')
+  ('de-musterhausen', '30777777-7777-7777-7777-777777777777', '40111111-1111-1111-1111-111111111121'),
+  ('de-musterhausen', '30777777-7777-7777-7777-777777777777', '40111111-1111-1111-1111-111111111125'),
+  ('de-musterhausen', '30777777-7777-7777-7777-777777777777', '40111111-1111-1111-1111-111111111126'),
+  ('de-musterhausen', '30777777-7777-7777-7777-777777777777', '40111111-1111-1111-1111-111111111127'),
+  ('de-musterhausen', '30777777-7777-7777-7777-777777777777', '40111111-1111-1111-1111-111111111128')
 ON CONFLICT (instance_id, role_id, permission_id) DO NOTHING;
 
 COMMIT;

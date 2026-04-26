@@ -55,7 +55,7 @@ test('filterHotspots narrows by component substring', () => {
   const filtered = filterHotspots(
     [
       { key: '1', component: 'smart-village-app_sva-studio:apps/sva-studio-react/src/components/Sidebar.tsx', project: 'p' },
-      { key: '2', component: 'smart-village-app_sva-studio:packages/auth/src/index.ts', project: 'p' },
+      { key: '2', component: 'smart-village-app_sva-studio:packages/auth-runtime/src/index.ts', project: 'p' },
     ],
     { filePathIncludes: 'apps/sva-studio-react' }
   );

@@ -66,17 +66,17 @@ Das System SHALL eine zentrale Autorisierungsschnittstelle bereitstellen, die pr
 - **AND** interne Rohdaten, Stacktraces oder nicht spezifizierte Diagnosefelder werden nicht ausgegeben
 - **AND** diese Diagnoseinformationen sind stabil genug, um in einer Admin-Oberfläche verständlich dargestellt zu werden
 
-#### Scenario: Keine `any`-Casts in Auth-Infrastruktur
+#### Scenario: Keine `any`-Casts in IAM- und Auth-Runtime-Infrastruktur
 
 - **WHEN** Auth-Server-Code kompiliert wird
-- **THEN** enthält kein Modul in `packages/auth/src/` einen `any`-Cast ohne dokumentierten TODO-Kommentar mit Begründung und Scope
+- **THEN** enthalten die Zielpackages `packages/auth-runtime/src/`, `packages/iam-admin/src/`, `packages/iam-governance/src/` und `packages/instance-registry/src/` keinen `any`-Cast ohne dokumentierten TODO-Kommentar mit Begründung und Scope
 - **AND** Redis-Optionen werden über typisierte Interfaces konfiguriert
 
 #### Scenario: Duplizierte Validierungs-Helfer konsolidiert
 
 - **WHEN** Input-Validierung in IAM-Endpoints benötigt wird
-- **THEN** werden zentrale Utilities aus `packages/auth/src/shared/` verwendet
-- **AND** keine Dateien in `packages/auth/src/` definieren lokale Duplikate von `readString`, `isUuid`, `buildLogContext` oder `isTokenErrorLike`
+- **THEN** werden zentrale Utilities aus dem zuständigen Zielpackage verwendet
+- **AND** keine Dateien in den IAM- und Auth-Runtime-Zielpackages definieren lokale Duplikate von `readString`, `isUuid`, `buildLogContext` oder `isTokenErrorLike`
 
 ### Requirement: Instanzzentriertes Scoping in RBAC v1
 
@@ -1047,3 +1047,61 @@ Das System SHALL Login-Pfad, Tenant-Admin-Pfad und Plattformpfad in Diagnosen un
 - **THEN** ist dieser Modus technisch und auditierbar als `break_glass` oder `platform_admin` gekennzeichnet
 - **AND** wird nicht als Normalpfad für Tenant-Admin-Screens verwendet
 
+### Requirement: Host-Enforced Plugin Authorization
+The system SHALL evaluate authorization for plugin contributions through host-owned IAM checks and SHALL NOT allow plugins to provide executable authorization decisions.
+
+Plugins MAY declare required fully-qualified actions, UI affordance metadata, and action bindings. Plugins SHALL NOT provide guard functions, permission resolvers, role mapping logic, or executable allow/deny decisions.
+
+#### Scenario: Host evaluates plugin action permission
+- **GIVEN** a plugin declares a guarded contribution with required actions
+- **WHEN** a user opens or executes that contribution
+- **THEN** the host evaluates the required fully-qualified actions before access is granted
+- **AND** the plugin receives only the host decision result needed to render or execute the contribution
+
+#### Scenario: Plugin provides executable authorization logic
+- **GIVEN** a plugin contribution includes custom authorization code
+- **WHEN** the contribution is registered
+- **THEN** the host rejects the contribution as an invalid guardrail violation
+- **AND** the diagnostics include `plugin_guardrail_authorization_bypass` with plugin namespace and contribution identifier
+
+#### Scenario: Plugin declares action requirements without authorization logic
+- **GIVEN** a plugin declares a UI action requiring `news.publish`
+- **WHEN** the contribution is registered
+- **THEN** the host accepts the declarative action requirement
+- **AND** IAM evaluates the action through the host authorization path at use time
+
+### Requirement: Platform and Tenant Admin Permissions
+
+The system SHALL authorize Studio-based Keycloak administration separately for platform and tenant scopes and SHALL never use broader credentials as an implicit fallback for a narrower tenant operation.
+
+#### Scenario: Platform admin edits platform identities
+- **WHEN** ein Platform-Admin einen Platform-User oder eine Platform-Rolle im Root-Host bearbeitet
+- **THEN** prüft das System Platform-Admin-Rechte
+- **AND** verwendet ausschließlich den Platform-Admin-Keycloak-Client
+- **AND** schreibt ein Audit-Event mit Actor, Scope, Zielobjekt und Ergebnis
+
+#### Scenario: Tenant admin edits tenant identities
+- **WHEN** ein Tenant-Admin User, Rollen oder Rollenzuordnungen auf einem Tenant-Host bearbeitet
+- **THEN** prüft das System Tenant-Admin-Rechte für die aktive `instanceId`
+- **AND** verwendet ausschließlich den Tenant-Admin-Keycloak-Client
+- **AND** blockiert Cross-Tenant-Zugriffe
+
+#### Scenario: Tenant Keycloak rights are insufficient
+- **WHEN** Keycloak eine Tenant-Operation mit `IDP_FORBIDDEN` verweigert
+- **THEN** gibt das System einen stabilen Diagnosecode zurück
+- **AND** erklärt, welche Keycloak-Rechte oder Realm-/Client-Konfiguration fehlen
+- **AND** wiederholt die Operation nicht mit Platform- oder globalen Admin-Rechten
+
+### Requirement: Bearbeitbarkeitsmatrix für Keycloak-Objekte
+
+Das System SHALL für Keycloak-User, Rollen und Rollenzuordnungen vor jeder Mutation eine Bearbeitbarkeitsentscheidung berechnen.
+
+#### Scenario: Read-only object is visible but protected
+- **WHEN** ein Keycloak-Objekt sichtbar, aber nicht Studio-bearbeitbar ist
+- **THEN** zeigt die UI das Objekt mit `read_only`-Status
+- **AND** Server-Mutationen werden mit einem stabilen Diagnosecode blockiert
+
+#### Scenario: Federated user field is protected
+- **WHEN** ein User-Feld durch Föderation oder Keycloak-Policy nicht bearbeitbar ist
+- **THEN** deaktiviert die UI das Feld
+- **AND** der Server validiert denselben Zustand vor der Mutation

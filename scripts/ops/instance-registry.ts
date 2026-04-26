@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 
 import { isInstanceStatus, type InstanceRealmMode, type InstanceStatus } from '../../packages/core/src/instances/registry.js';
-import { createInstanceRegistryService } from '../../packages/auth/src/iam-instance-registry/service.js';
+import { createInstanceRegistryService } from '../../packages/auth-runtime/src/iam-instance-registry/service.js';
 import { createInstanceRegistryRepository } from '../../packages/data/src/instance-registry/index.js';
 import { invalidateInstanceRegistryHost } from '../../packages/data/src/instance-registry/server.js';
 import { createSdkLogger } from '../../packages/sdk/src/logger/index.server.js';

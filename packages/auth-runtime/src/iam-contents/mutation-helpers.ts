@@ -1,6 +1,7 @@
 import type { ContentJsonValue } from '@sva/core';
 import { createSdkLogger } from '@sva/server-runtime';
 
+import { jsonResponse } from '../db.js';
 import {
   createApiError,
   parseRequestBody,
@@ -9,16 +10,43 @@ import {
 } from '../iam-account-management/api-helpers.js';
 import { validateCsrf } from '../iam-account-management/csrf.js';
 import { completeIdempotency, reserveIdempotency } from '../iam-account-management/shared.js';
-import { jsonResponse } from '../db.js';
 
-import type { CreateContentInput } from './repository-shared.js';
+import type { CreateContentInput } from './repository-types.js';
 import type { ResolvedContentActor } from './request-context.js';
 import { validateContentTypePayload } from './content-type-registry.js';
 import { createContentSchema } from './schemas.js';
 
 const logger = createSdkLogger({ component: 'iam-contents', level: 'info' });
 
-export { jsonResponse };
+const isAllowedErrorBody = (value: unknown): value is Record<string, unknown> => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return false;
+  }
+
+  const body = value as Record<string, unknown>;
+  const allowedTopLevelKeys = new Set(['error', 'requestId']);
+
+  if (!Object.keys(body).every((key) => allowedTopLevelKeys.has(key))) {
+    return false;
+  }
+
+  if (body.requestId !== undefined && typeof body.requestId !== 'string') {
+    return false;
+  }
+
+  if (!body.error || typeof body.error !== 'object' || Array.isArray(body.error)) {
+    return false;
+  }
+
+  const error = body.error as Record<string, unknown>;
+  const allowedErrorKeys = new Set(['code', 'message']);
+
+  return (
+    Object.keys(error).every((key) => allowedErrorKeys.has(key)) &&
+    typeof error.code === 'string' &&
+    typeof error.message === 'string'
+  );
+};
 
 export const completeCreateIdempotency = async (
   actor: ResolvedContentActor['actor'],
@@ -51,10 +79,44 @@ export const createFailureResponse = async (
   return jsonResponse(status, responseBody);
 };
 
+export const createFailureResponseFromResponse = async (
+  actor: ResolvedContentActor['actor'],
+  idempotencyKey: string,
+  response: Response
+) => {
+  const fallbackBody = {
+    error: {
+      code: response.status === 403 ? 'forbidden' : 'authorization_failed',
+      message: 'Keine Berechtigung für diese Inhaltsoperation.',
+    },
+    ...(actor.requestId ? { requestId: actor.requestId } : {}),
+  };
+  const responseBody = await response
+    .clone()
+    .json()
+    .then((body: unknown) => (isAllowedErrorBody(body) ? body : fallbackBody))
+    .catch(() => fallbackBody);
+
+  await completeCreateIdempotency(actor, idempotencyKey, response.status, responseBody);
+  return jsonResponse(response.status, responseBody);
+};
+
 export type ParsedCreateRequest = {
   readonly idempotencyKey: string;
   readonly rawBody: string;
-  readonly parsedData: Pick<CreateContentInput, 'contentType' | 'title' | 'payload' | 'status' | 'publishedAt'>;
+  readonly parsedData: Pick<
+    CreateContentInput,
+    | 'contentType'
+    | 'organizationId'
+    | 'ownerSubjectId'
+    | 'title'
+    | 'payload'
+    | 'status'
+    | 'validationState'
+    | 'publishedAt'
+    | 'publishFrom'
+    | 'publishUntil'
+  >;
   readonly payload: ContentJsonValue;
 };
 

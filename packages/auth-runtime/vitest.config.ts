@@ -71,7 +71,6 @@ export default defineConfig({
         replacement: resolve(currentDir, '../iam-governance/src/governance-workflow-policy.ts'),
       },
       { find: /^@sva\/iam-governance$/, replacement: resolve(currentDir, '../iam-governance/src/index.ts') },
-      { find: /^@sva\/auth$/, replacement: resolve(currentDir, '../auth/src/index.ts') },
       { find: /^@sva\/core$/, replacement: resolve(currentDir, '../core/src/index.ts') },
       {
         find: /^@sva\/instance-registry\/http-contracts$/,

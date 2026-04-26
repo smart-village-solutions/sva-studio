@@ -9,7 +9,7 @@ flowchart TD
 
     C -->|Server Function aus UI| G["ServerFn in sva-studio-react"]
     G --> H["@sva/sdk\nRequest-Kontext / Logging"]
-    H --> I["@sva/auth\nSession / Rollen / Guards"]
+    H --> I["@sva/auth-runtime\nSession / Guards"]
     I --> J{"Fachlogik"}
 
     J -->|DB-basierte Seite| K["@sva/data"]
@@ -27,7 +27,7 @@ flowchart TD
     Q --> R["UI-Update im Browser"]
 
     C -->|Direkter Auth-/IAM-Endpunkt| S["@sva/routing/server"]
-    S --> T["@sva/auth runtime-routes"]
+    S --> T["@sva/auth-runtime\nruntime-routes"]
     T --> H
     T --> K
     T --> N

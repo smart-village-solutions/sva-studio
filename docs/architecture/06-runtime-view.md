@@ -23,6 +23,20 @@ Dieser Abschnitt beschreibt kritische Laufzeitszenarien und Interaktionen.
 Fehlerpfad:
 
 - Fehlerhafte Route-Factory oder server-only Import im Client kann Build/Runtime brechen.
+- Plugin-Routen außerhalb `/plugins/<pluginNamespace>` oder mit unbekanntem Guard werden vor Veröffentlichung des Route-Trees mit deterministischem Guardrail-Code abgewiesen.
+
+### Szenario 1c: Plugin-Guardrail-Validierung beim Build-time-Snapshot
+
+1. Die App übergibt statische Plugin-Packages an `createBuildTimeRegistry()`.
+2. Das Plugin-SDK führt die bestehende Registry-Erzeugung in festen Phasen aus: Preflight, Content, Admin, Audit, Routing und Publish.
+3. Jede Phase erzeugt die bisherigen `BuildTimeRegistry`-Outputs; bestehende Consumer müssen keinen neuen Snapshot-Typ verwenden.
+4. Erlaubte UI-Komponenten und host-invoked Payload-Validatoren bleiben im Snapshot erhalten.
+5. Verbotene Felder wie eigene Route-Handler, Autorisierungsresolver, Audit-Sinks, Persistenzhandler oder dynamische Registrierung brechen die Initialisierung fail-fast ab.
+
+Fehlerpfad:
+
+- Der Host veröffentlicht keinen teilweise materialisierten Plugin-Snapshot.
+- Die Fehlermeldung folgt `<guardrailCode>:<pluginNamespace>:<contributionId>:<fieldOrReason>`.
 
 ### Szenario 1b: Materialisierung registrierter Admin-Ressourcen
 
@@ -44,13 +58,14 @@ Fehlerpfad:
 4. Die News-Liste lädt die generische Content-Liste und filtert clientseitig auf `contentType = news.article`.
 5. Der Editor sendet Create- oder Update-Requests an die bestehende IAM-Content-API.
 6. `packages/auth-runtime` validiert zuerst den generischen Content-Envelope und danach das registrierte News-Payload-Schema für `news.article`.
-7. Vor Persistenz sanitisiert der Server `body` allowlist-basiert und normalisiert `teaser` auf Plain Text.
-8. Repository, Historie und Audit-Logging bleiben unverändert Teil des generischen Content-Pfads.
-9. Nach erfolgreichem Speichern oder Löschen zeigt das Plugin Statusfeedback und navigiert zurück zur News-Liste.
+7. Vor jeder mutierenden Persistenz löst `packages/auth-runtime` die fachliche Content-Capability auf eine primitive `content.*`-Action auf und autorisiert diese über die zentrale Permission Engine.
+8. Vor Persistenz sanitisiert der Server `body` allowlist-basiert und normalisiert `teaser` auf Plain Text.
+9. Repository, Historie und Audit-Logging bleiben Teil des generischen Content-Pfads und führen Capability sowie primitive Action in den Audit-Payloads mit.
+10. Nach erfolgreichem Speichern oder Löschen zeigt das Plugin Statusfeedback und navigiert zurück zur News-Liste.
 
 Fehlerpfad:
 
-- fehlt die Berechtigung, blockiert der Host die Plugin-Route vor dem Rendern.
+- fehlt die Berechtigung, blockiert der Host die Plugin-Route vor dem Rendern oder verweigert die serverseitige Mutation mit `capability_authorization_denied` im Diagnosekontext.
 - ist der News-Payload ungültig, antwortet die Content-API mit HTTP `400`.
 - schlägt ein API-Call fehl, zeigt das Plugin eine verständliche Fehlermeldung und behält den Formzustand.
 

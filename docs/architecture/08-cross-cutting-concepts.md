@@ -42,6 +42,9 @@ gleichzeitig beeinflussen.
 - Inhaltstypen dürfen über das SDK zusätzliche Validierung, UI-Sektionen und Listenmetadaten registrieren, aber keine Core-Semantik oder das Statusmodell überschreiben
 - Plugin-Vertrag v1 bleibt statisch und bundlegebunden: Plugins deklarieren Metadaten über `PluginDefinition`, aber weder Runtime-Loading noch Plugin-eigene Sicherheits- oder Routing-Bypässe sind erlaubt
 - Plugin-Guards werden grundsätzlich hostseitig angewendet; ein Plugin deklariert nur die fachliche Guard-Anforderung und darf keine eigene Autorisierungsschicht am Host vorbei etablieren
+- Plugin-Contributions werden beim Build-time-Snapshot phasenweise gegen Runtime-Allowlists geprüft; eigene Route-Handler, Autorisierungsresolver, Audit-Sinks, Persistenzhandler und dynamische Nachregistrierung werden mit `plugin_guardrail_*`-Codes fail-fast abgewiesen
+- Die phasenweise Registry-Erzeugung ordnet bestehende Outputs für Content, Admin, Audit und Routing, führt aber keine neuen Plugin-Beitragstypen oder Breaking-API ein
+- Plugin-UI und fachliche Client-Interaktion bleiben zulässig, wenn sie in host-materialisierten Routen laufen und hostkontrollierte Actions, Validierung, Persistenz und Auditierung verwenden
 - News-Payloads werden serverseitig contentType-spezifisch validiert; HTML-Inhalte durchlaufen eine Allowlist-Sanitisierung, bevor sie persistiert werden
 - DataClient unterstützt optionale Runtime-Schema-Validierung (`get(path, schema)`) für API-Responses
 - IAM-Server-Fassaden bleiben bewusst dünn; fachliche Erweiterungen gehören in Unterordner und nicht zurück in Monolith-Dateien
@@ -78,6 +81,7 @@ gleichzeitig beeinflussen.
 - Idempotency-Schlüssel für mutierende IAM-Endpoints sind mandantenspezifisch gescoped: (`instance_id`, `actor_account_id`, `endpoint`, `idempotency_key`)
 - Keycloak-Provisioning-Runs nutzen denselben kanonischen Header `Idempotency-Key`, aber einen plattformweiten Run-Scope aus (`instance_id`, `mutation`, `idempotency_key`); der gespeicherte Payload-Fingerprint basiert nur auf stabilen Request-Eingaben, nicht auf aus aktuellem Instanzzustand abgeleiteten Reconcile-Intents.
 - Inhalts-Schreibpfade folgen denselben Guardrails: CSRF-Header, Idempotency-Key bei Create, permission-basierte Freigabe (`content.read|create|update`) und revisionssichere History-Events
+- Mutierende Inhaltsaktionen deklarieren eine fachliche `domainCapability`; `@sva/auth-runtime` löst sie serverseitig auf bestehende primitive `content.*`-Actions auf und prüft ausschließlich diese primitive Action über die zentrale Permission Engine.
 - Globale Instanzmutationen verwenden die dedizierte Plattformrolle `instance_registry_admin`
 - Instanzverwaltung ist nur auf dem Root-Host zulässig; Tenant-Hosts rendern keine globale Control Plane
 - Normale Tenant-Administration nutzt ausschließlich einen tenantlokalen Keycloak-Adminpfad; Plattform-/Root-Credentials sind dafür kein zulässiger Fallback
@@ -140,7 +144,7 @@ gleichzeitig beeinflussen.
 - Mainserver-Logs enthalten nur `instanceId`/`workspace_id`, `operation_name`, `request_id`, `trace_id`, Status und abstrahierte Fehlercodes; API-Key, Secret, Token und unredactete Variablen werden nie geloggt
 - IAM-Request-Spans tragen konsistente Diagnoseattribute wie `iam.endpoint`, `iam.instance_id`, `iam.actor_resolution`, `iam.reason_code`, `iam.feature_flags`, `db.schema_guard_result`, `dependency.redis.status` und `dependency.keycloak.status`
 - Der Runtime-Doctor- und Migrationspfad emittiert eigene OTEL-Ereignisse für Schema-Guard, Actor-Diagnose und verifizierte Migrationsläufe, damit Betriebsfehler mit `request_id` und `trace_id` korrelierbar bleiben
-- Inhalts-Historie nutzt ein eigenes Read-Modell statt Roh-Logs; jede Erstellung, Aktualisierung und jeder Statuswechsel erzeugt zusätzlich Audit-Ereignisse im bestehenden IAM-Auditpfad
+- Inhalts-Historie nutzt ein eigenes Read-Modell statt Roh-Logs; jede Erstellung, Aktualisierung und jeder Statuswechsel erzeugt zusätzlich Audit-Ereignisse im bestehenden IAM-Auditpfad. Audit-Payloads für Content-Aktionen enthalten additiv fachliche Capability, primitive Action, Ergebnis, Reason-Code und Korrelationsfelder, ohne bestehende Exportformate zu migrieren.
 - Studio-Deploys erzeugen zusätzlich strukturierte Release-Evidenz unter `artifacts/runtime/deployments/`; enthalten sind Release-Modus, Actor, Workflow, Image-Referenz, Schrittstatus und Stack-Zusammenfassung, jedoch keine Secrets oder PII
 - Produktionsnahe Releases erzeugen zusätzlich eigenständige Artefakte für Release-Manifest, Phasenstatus, Migration, Bootstrap, Migrationsjob, Bootstrap-Job, interne Probes und externe Probes; diese Artefakte bleiben bewusst ohne Secrets oder PII
 - Remote-Prechecks für `studio` vergleichen zusätzlich die Live-Service-Spec der App mit dem gerenderten Sollzustand aus dem Deploy-Compose; dabei sind Netzwerke und ingressrelevante Labels eigene Drift-Signale

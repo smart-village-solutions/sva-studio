@@ -83,7 +83,7 @@ Policy-Dateien:
 Regeln:
 
 - Gates werden pro Projekt und global ausgewertet
-- Initiale Floors sind konservativ, danach Ratcheting
+- Floors werden an der zuletzt stabil gemessenen Coverage ausgerichtet und danach per Ratcheting nachgezogen
 - Abfälle gegen Baseline über der erlaubten Schwelle schlagen fehl
 - Exempt-Projekte sind in der Policy explizit dokumentiert
 - Kritische Projekte können strengere `minimumFloors` erhalten als normale Projekt-Floors
@@ -98,7 +98,7 @@ Kritische Coverage-Regeln liegen in `criticalProjects` der Policy.
 
 Beispiele:
 
-- `auth`: projektweite Mindest-Floors plus Hotspots für `iam-account-management.server.ts` und `iam-governance.server.ts`
+- IAM-Zielpackages: projektweite Mindest-Floors liegen direkt auf `auth-runtime`, `iam-admin`, `iam-governance` und `instance-registry`; historische `auth`-Hotspots sind entfernt.
 - `routing`: Hotspot-Floor für `auth.routes.server.ts`
 - `core`: Security- und IAM-Hotspots für `field-encryption.ts` und `authorization-engine.ts`
 - `sdk`: Hotspots für `request-context.server.ts` und `monitoring-client.bridge.server.ts`
@@ -209,28 +209,27 @@ Wichtig:
 
 Aktuell als coverage-exempt markiert:
 
-- `core`
-- `data`
+- keine Projekte
 
-Diese Liste wird schrittweise reduziert, sobald echte Unit-Tests vorhanden sind.
+Neue Exemptions sind nur in begründeten Ausnahmefällen zulässig und müssen in `tooling/testing/coverage-policy.json` dokumentiert werden.
 
 ### Reviewer-Workflow für Exemptions
 
 - Prüfen, ob Änderungen ein exemptes Projekt betreffen.
 - Prüfen, ob mindestens `lint` im betroffenen Projekt erfolgreich war.
-- Prüfen, ob angrenzende nicht-exempte Projekte (z. B. `auth`, `sdk`, `monitoring-client`) grüne `test:unit`-Runs haben.
+- Prüfen, ob angrenzende nicht-exempte Projekte (z. B. `auth-runtime`, `sdk`, `monitoring-client`) grüne `test:unit`-Runs haben.
 - Bei funktionalen Änderungen in exempten Projekten: expliziten Test-Nachweis im PR verlangen (mindestens Smoke/Contract-Run), bis die Exemption entfernt ist.
 
 ### Aktueller Status nicht-exempter Unit-Targets
 
-- `auth`: echter `test:unit`-Run via Vitest
+- `auth-runtime`: echter `test:unit`-Run via Vitest
 - `sdk`: echter `test:unit`-Run via Vitest
 - `monitoring-client`: echter `test:unit`-Run via Vitest
 - `sva-studio-react`: echter `test:unit`-Run via Vitest (`--passWithNoTests`)
 
 ### Aktueller Status nicht-exempter Coverage-Targets
 
-- `auth`: `test:coverage` via Vitest (`--coverage`)
+- `auth-runtime`: `test:coverage` via Vitest (`--coverage`)
 - `routing`: `test:coverage` via Vitest (`--coverage`)
 - `sdk`: `test:coverage` via Vitest (`--coverage`)
 - `monitoring-client`: `test:coverage` via Vitest (`--coverage`)

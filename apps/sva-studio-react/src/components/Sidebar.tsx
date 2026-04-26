@@ -139,8 +139,21 @@ const logSidebarDebug = (eventName: string, meta: Record<string, unknown>) => {
   logBrowserOperationStart(sidebarLogger, eventName, meta);
 };
 
+type ContentRequiredAction =
+  | 'content.read'
+  | 'content.create'
+  | 'content.updateMetadata'
+  | 'content.updatePayload'
+  | 'content.changeStatus'
+  | 'content.publish'
+  | 'content.archive'
+  | 'content.restore'
+  | 'content.readHistory'
+  | 'content.manageRevisions'
+  | 'content.delete';
+
 const hasRequiredContentAccess = (
-  requiredAction: 'content.read' | 'content.create' | 'content.write' | undefined,
+  requiredAction: ContentRequiredAction | undefined,
   access: { readonly canRead?: boolean; readonly canCreate?: boolean; readonly canUpdate?: boolean } | null | undefined,
   isLoading: boolean
 ) => {
@@ -161,8 +174,16 @@ const hasRequiredContentAccess = (
       return access.canRead === true;
     case 'content.create':
       return access.canCreate === true;
-    case 'content.write':
-      return access.canUpdate === true;
+    case 'content.updateMetadata':
+    case 'content.updatePayload':
+    case 'content.changeStatus':
+    case 'content.publish':
+    case 'content.archive':
+    case 'content.restore':
+    case 'content.readHistory':
+    case 'content.manageRevisions':
+    case 'content.delete':
+      return false;
     default:
       return false;
   }

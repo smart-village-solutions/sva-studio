@@ -75,8 +75,8 @@ zuordnen.
 
 Die CPD-Ausnahmen in `sonar-project.properties` sind auf generierte Artefakte, Übersetzungsressourcen und
 dokumentierte Migrationsspiegel beschränkt. Aktuell betrifft das die Data-Repository-Extraktion
-(`packages/data-repositories/src/**`) und die Studio-UI-Extraktion (`packages/studio-ui-react/src/**`
-plus die verbleibenden App-Spiegel). Neue fachliche Duplikate sollen weiterhin refaktoriert werden.
+(`packages/data-repositories/src/**`) und die verbleibenden App-Spiegel der Studio-UI-Extraktion.
+Neue fachliche Duplikate sollen weiterhin refaktoriert werden.
 
 ### Baseline aktualisieren
 

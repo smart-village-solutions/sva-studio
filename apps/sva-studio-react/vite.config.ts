@@ -197,6 +197,7 @@ const config = defineConfig({
       '@sva/sva-mainserver/server': resolveAppPath('../../packages/sva-mainserver/src/index.server.ts'),
       '@sva/sva-mainserver': resolveAppPath('../../packages/sva-mainserver/src/index.ts'),
       '@sva/plugin-sdk': resolveAppPath('../../packages/plugin-sdk/src/index.ts'),
+      '@sva/studio-ui-react': resolveAppPath('../../packages/studio-ui-react/src/index.ts'),
       '@sva/server-runtime': resolveAppPath('../../packages/server-runtime/src/index.ts'),
       '@sva/monitoring-client/server': resolveAppPath('../../packages/monitoring-client/src/server.ts'),
       '@sva/monitoring-client/logger-provider.server': resolveAppPath(
@@ -218,6 +219,7 @@ const config = defineConfig({
       '@sva/iam-governance',
       '@sva/instance-registry',
       '@sva/routing',
+      '@sva/studio-ui-react',
       '@sva/sva-mainserver',
       '@sva/core',
       '@sva/monitoring-client',

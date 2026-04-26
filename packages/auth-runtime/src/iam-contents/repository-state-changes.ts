@@ -3,11 +3,15 @@ import type { ContentJsonValue } from '@sva/core';
 import type { ContentRow } from './repository-types.js';
 import type { NextContentStateValues } from './repository-state-values.js';
 
+const isReadonlyContentJsonArray = (
+  value: object
+): value is readonly ContentJsonValue[] => Array.isArray(value);
+
 const canonicalJson = (value: ContentJsonValue): string => {
   if (value === null || typeof value !== 'object') {
     return JSON.stringify(value);
   }
-  if (Array.isArray(value)) {
+  if (isReadonlyContentJsonArray(value)) {
     return `[${value.map(canonicalJson).join(',')}]`;
   }
 

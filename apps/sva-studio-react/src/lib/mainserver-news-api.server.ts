@@ -1,5 +1,10 @@
+import { createHash } from 'node:crypto';
 import {
   authorizeContentPrimitiveForUser,
+  completeIdempotency,
+  reserveIdempotency,
+  resolveActorInfo,
+  validateCsrf,
   withAuthenticatedUser,
   type AuthenticatedRequestContext,
 } from '@sva/auth-runtime/server';
@@ -51,10 +56,18 @@ const matchRoute = (request: Request): RouteMatch | null => {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && Array.isArray(value) === false;
 
-const parseNewsInput = async (request: Request): Promise<SvaMainserverNewsInput | Response> => {
+type ParsedNewsInput = {
+  readonly news: SvaMainserverNewsInput;
+  readonly rawBody: string;
+};
+
+const toPayloadHash = (rawBody: string): string => createHash('sha256').update(rawBody).digest('hex');
+
+const parseNewsInput = async (request: Request): Promise<ParsedNewsInput | Response> => {
+  const rawBody = await request.text();
   let body: unknown;
   try {
-    body = await request.json();
+    body = JSON.parse(rawBody) as unknown;
   } catch {
     return errorJson(400, 'invalid_request', 'Request-Body muss gültiges JSON sein.');
   }
@@ -76,18 +89,58 @@ const parseNewsInput = async (request: Request): Promise<SvaMainserverNewsInput 
   }
 
   return {
-    title: body.title,
-    publishedAt: body.publishedAt,
-    payload: {
-      teaser: payload.teaser,
-      body: payload.body,
-      ...(typeof payload.imageUrl === 'string' && payload.imageUrl.length > 0 ? { imageUrl: payload.imageUrl } : {}),
-      ...(typeof payload.externalUrl === 'string' && payload.externalUrl.length > 0
-        ? { externalUrl: payload.externalUrl }
-        : {}),
-      ...(typeof payload.category === 'string' && payload.category.length > 0 ? { category: payload.category } : {}),
+    rawBody,
+    news: {
+      title: body.title,
+      publishedAt: body.publishedAt,
+      payload: {
+        teaser: payload.teaser,
+        body: payload.body,
+        ...(typeof payload.imageUrl === 'string' && payload.imageUrl.length > 0 ? { imageUrl: payload.imageUrl } : {}),
+        ...(typeof payload.externalUrl === 'string' && payload.externalUrl.length > 0
+          ? { externalUrl: payload.externalUrl }
+          : {}),
+        ...(typeof payload.category === 'string' && payload.category.length > 0 ? { category: payload.category } : {}),
+      },
     },
   };
+};
+
+const validateMutationRequest = (request: Request, requestId?: string): Response | null => {
+  const csrfError = validateCsrf(request, requestId);
+  if (csrfError) {
+    return errorJson(403, 'csrf_validation_failed', 'Sicherheitsprüfung fehlgeschlagen.');
+  }
+  return null;
+};
+
+const readIdempotencyKey = (request: Request): string | Response => {
+  const key = request.headers.get('idempotency-key')?.trim();
+  return key && key.length > 0
+    ? key
+    : errorJson(400, 'idempotency_key_required', 'Header Idempotency-Key ist erforderlich.');
+};
+
+const completeNewsCreateIdempotency = async (input: {
+  readonly actorAccountId: string;
+  readonly instanceId: string;
+  readonly idempotencyKey: string;
+  readonly responseBody: Record<string, unknown>;
+  readonly responseStatus: number;
+}) =>
+  completeIdempotency({
+    actorAccountId: input.actorAccountId,
+    endpoint: 'POST:/api/v1/mainserver/news',
+    idempotencyKey: input.idempotencyKey,
+    instanceId: input.instanceId,
+    responseBody: input.responseBody,
+    responseStatus: input.responseStatus,
+    status: input.responseStatus >= 400 ? 'FAILED' : 'COMPLETED',
+  });
+
+const readResponseBody = async (response: Response, fallback: Record<string, unknown>): Promise<Record<string, unknown>> => {
+  const body = await response.clone().json().catch(() => fallback);
+  return isRecord(body) ? body : fallback;
 };
 
 const toMainserverErrorResponse = (error: unknown): Response => {
@@ -195,20 +248,86 @@ const dispatchAuthenticated = async (request: Request, route: RouteMatch, ctx: A
     }
 
     if (route.kind === 'collection' && request.method === 'POST') {
+      const csrfError = validateMutationRequest(request, workspaceContext.requestId);
+      if (csrfError) {
+        return csrfError;
+      }
+      const idempotencyKey = readIdempotencyKey(request);
+      if (idempotencyKey instanceof Response) {
+        return idempotencyKey;
+      }
       const parsed = await parseNewsInput(request);
       if (parsed instanceof Response) {
         return parsed;
       }
+      const actorInfo = await resolveActorInfo(request, ctx, { requireActorMembership: true });
+      if ('error' in actorInfo) {
+        return actorInfo.error;
+      }
+      const actorAccountId = actorInfo.actor.actorAccountId;
+      if (!actorAccountId) {
+        return errorJson(403, 'forbidden', 'Keine Berechtigung für diese Inhaltsoperation.');
+      }
+      const idempotency = await reserveIdempotency({
+        actorAccountId,
+        endpoint: 'POST:/api/v1/mainserver/news',
+        idempotencyKey,
+        instanceId: actorInfo.actor.instanceId,
+        payloadHash: toPayloadHash(parsed.rawBody),
+      });
+      if (idempotency.status === 'replay') {
+        return json(idempotency.responseBody, idempotency.responseStatus);
+      }
+      if (idempotency.status === 'conflict') {
+        return errorJson(409, 'idempotency_key_reuse', idempotency.message);
+      }
       const actor = await authorizeOrResponse(ctx, 'content.create');
       if (actor instanceof Response) {
+        await completeNewsCreateIdempotency({
+          actorAccountId,
+          instanceId: actorInfo.actor.instanceId,
+          idempotencyKey,
+          responseBody: await readResponseBody(actor, {
+            error: 'forbidden',
+            message: 'Keine Berechtigung für diese Inhaltsoperation.',
+          }),
+          responseStatus: actor.status,
+        });
         return actor;
       }
-      const data = await createSvaMainserverNews({ ...actor, news: parsed });
-      logSuccess('mainserver_news_create', data.id);
-      return json({ data }, 201);
+      try {
+        const data = await createSvaMainserverNews({ ...actor, news: parsed.news });
+        logSuccess('mainserver_news_create', data.id);
+        const responseBody = { data };
+        await completeNewsCreateIdempotency({
+          actorAccountId,
+          instanceId: actorInfo.actor.instanceId,
+          idempotencyKey,
+          responseBody,
+          responseStatus: 201,
+        });
+        return json(responseBody, 201);
+      } catch (error) {
+        const response = toMainserverErrorResponse(error);
+        await completeNewsCreateIdempotency({
+          actorAccountId,
+          instanceId: actorInfo.actor.instanceId,
+          idempotencyKey,
+          responseBody: await readResponseBody(response, {
+            error: 'internal_error',
+            message: 'Mainserver-News-Anfrage ist fehlgeschlagen.',
+          }),
+          responseStatus: response.status,
+        });
+        return response;
+      }
     }
 
     if (route.kind === 'item' && request.method === 'PATCH') {
+      const csrfError = validateMutationRequest(request, workspaceContext.requestId);
+      if (csrfError) {
+        return csrfError;
+      }
       const parsed = await parseNewsInput(request);
       if (parsed instanceof Response) {
         return parsed;
@@ -223,12 +342,16 @@ const dispatchAuthenticated = async (request: Request, route: RouteMatch, ctx: A
         return payloadActor;
       }
 
-      const data = await updateSvaMainserverNews({ ...metadataActor, newsId: route.newsId, news: parsed });
+      const data = await updateSvaMainserverNews({ ...metadataActor, newsId: route.newsId, news: parsed.news });
       logSuccess('mainserver_news_update', route.newsId);
       return json({ data });
     }
 
     if (route.kind === 'item' && request.method === 'DELETE') {
+      const csrfError = validateMutationRequest(request, workspaceContext.requestId);
+      if (csrfError) {
+        return csrfError;
+      }
       const actor = await authorizeOrResponse(ctx, 'content.delete', route.newsId);
       if (actor instanceof Response) {
         return actor;

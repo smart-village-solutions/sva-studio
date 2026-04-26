@@ -309,7 +309,7 @@ describe('createSvaMainserverService', () => {
             newsItems: [
               {
                 id: 'news-1',
-                title: 'Visible',
+                title: null,
                 payload: JSON.stringify({ teaser: 'Kurztext', body: '<p>Body</p>', externalUrl: 'https://example.test' }),
                 publicationDate: publishedAt,
               },
@@ -336,6 +336,7 @@ describe('createSvaMainserverService', () => {
     ).resolves.toEqual([
       expect.objectContaining({
         id: 'news-1',
+        title: '',
         payload: expect.objectContaining({
           teaser: 'Kurztext',
           body: '<p>Body</p>',

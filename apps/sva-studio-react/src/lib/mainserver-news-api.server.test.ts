@@ -3,6 +3,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 const state = vi.hoisted(() => ({
   withAuthenticatedUser: vi.fn(),
   authorizeContentPrimitiveForUser: vi.fn(),
+  completeIdempotency: vi.fn(),
+  reserveIdempotency: vi.fn(),
+  resolveActorInfo: vi.fn(),
+  validateCsrf: vi.fn(),
   listSvaMainserverNews: vi.fn(),
   getSvaMainserverNews: vi.fn(),
   createSvaMainserverNews: vi.fn(),
@@ -13,6 +17,10 @@ const state = vi.hoisted(() => ({
 vi.mock('@sva/auth-runtime/server', () => ({
   withAuthenticatedUser: state.withAuthenticatedUser,
   authorizeContentPrimitiveForUser: state.authorizeContentPrimitiveForUser,
+  completeIdempotency: state.completeIdempotency,
+  reserveIdempotency: state.reserveIdempotency,
+  resolveActorInfo: state.resolveActorInfo,
+  validateCsrf: state.validateCsrf,
 }));
 
 vi.mock('@sva/sva-mainserver/server', async (importOriginal) => {
@@ -51,9 +59,19 @@ const newsInput = {
   },
 };
 
+const createRequest = (url: string, init?: RequestInit): Request =>
+  new Request(url, {
+    ...init,
+    headers: {
+      Origin: 'https://studio.test',
+      'X-Requested-With': 'XMLHttpRequest',
+      ...(init?.headers ?? {}),
+    },
+  });
+
 describe('dispatchMainserverNewsRequest', () => {
   afterEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
   });
 
   it('ignores unrelated routes', async () => {
@@ -83,6 +101,12 @@ describe('dispatchMainserverNewsRequest', () => {
 
   it('creates published news and rejects missing publishedAt before GraphQL', async () => {
     state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    state.validateCsrf.mockReturnValue(null);
+    state.resolveActorInfo.mockResolvedValue({
+      actor: { instanceId: 'de-musterhausen', actorAccountId: '00000000-0000-4000-8000-000000000001' },
+    });
+    state.reserveIdempotency.mockResolvedValue({ status: 'reserved' });
+    state.completeIdempotency.mockResolvedValue(undefined);
     state.authorizeContentPrimitiveForUser.mockResolvedValue({
       ok: true,
       actor: { instanceId: 'de-musterhausen', keycloakSubject: 'subject-1' },
@@ -91,17 +115,27 @@ describe('dispatchMainserverNewsRequest', () => {
     state.createSvaMainserverNews.mockResolvedValue({ id: 'news-1' });
 
     const ok = await dispatchMainserverNewsRequest(
-      new Request('https://studio.test/api/v1/mainserver/news', {
+      createRequest('https://studio.test/api/v1/mainserver/news', {
         method: 'POST',
+        headers: { 'Idempotency-Key': 'idem-1' },
         body: JSON.stringify(newsInput),
       })
     );
     await expect(ok?.json()).resolves.toEqual({ data: { id: 'news-1' } });
     expect(ok?.status).toBe(201);
+    expect(state.reserveIdempotency).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorAccountId: '00000000-0000-4000-8000-000000000001',
+        endpoint: 'POST:/api/v1/mainserver/news',
+        idempotencyKey: 'idem-1',
+      })
+    );
+    expect(state.completeIdempotency).toHaveBeenCalledWith(expect.objectContaining({ responseStatus: 201 }));
 
     const rejected = await dispatchMainserverNewsRequest(
-      new Request('https://studio.test/api/v1/mainserver/news', {
+      createRequest('https://studio.test/api/v1/mainserver/news', {
         method: 'POST',
+        headers: { 'Idempotency-Key': 'idem-2' },
         body: JSON.stringify({ ...newsInput, publishedAt: '' }),
       })
     );
@@ -111,6 +145,7 @@ describe('dispatchMainserverNewsRequest', () => {
 
   it('requires metadata and payload permissions before updating news', async () => {
     state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    state.validateCsrf.mockReturnValue(null);
     state.authorizeContentPrimitiveForUser.mockResolvedValue({
       ok: true,
       actor: { instanceId: 'de-musterhausen', keycloakSubject: 'subject-1' },
@@ -119,7 +154,7 @@ describe('dispatchMainserverNewsRequest', () => {
     state.updateSvaMainserverNews.mockResolvedValue({ id: 'news-1' });
 
     const response = await dispatchMainserverNewsRequest(
-      new Request('https://studio.test/api/v1/mainserver/news/news-1', {
+      createRequest('https://studio.test/api/v1/mainserver/news/news-1', {
         method: 'PATCH',
         body: JSON.stringify(newsInput),
       })
@@ -138,6 +173,7 @@ describe('dispatchMainserverNewsRequest', () => {
 
   it('deletes news via mainserver hard delete', async () => {
     state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    state.validateCsrf.mockReturnValue(null);
     state.authorizeContentPrimitiveForUser.mockResolvedValue({
       ok: true,
       actor: { instanceId: 'de-musterhausen', keycloakSubject: 'subject-1' },
@@ -146,7 +182,7 @@ describe('dispatchMainserverNewsRequest', () => {
     state.deleteSvaMainserverNews.mockResolvedValue({ id: 'news-1' });
 
     const response = await dispatchMainserverNewsRequest(
-      new Request('https://studio.test/api/v1/mainserver/news/news-1', { method: 'DELETE' })
+      createRequest('https://studio.test/api/v1/mainserver/news/news-1', { method: 'DELETE' })
     );
 
     expect(state.authorizeContentPrimitiveForUser).toHaveBeenCalledWith(
@@ -158,6 +194,106 @@ describe('dispatchMainserverNewsRequest', () => {
       newsId: 'news-1',
     });
     await expect(response?.json()).resolves.toEqual({ data: { id: 'news-1' } });
+  });
+
+  it('rejects mutating requests without CSRF and idempotency safeguards', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    state.validateCsrf.mockReturnValueOnce(new Response('csrf', { status: 403 })).mockReturnValue(null);
+
+    const csrf = await dispatchMainserverNewsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/news/news-1', { method: 'DELETE' })
+    );
+    expect(csrf?.status).toBe(403);
+    await expect(csrf?.json()).resolves.toEqual({
+      error: 'csrf_validation_failed',
+      message: 'Sicherheitsprüfung fehlgeschlagen.',
+    });
+
+    const missingIdempotency = await dispatchMainserverNewsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/news', {
+        method: 'POST',
+        body: JSON.stringify(newsInput),
+      })
+    );
+    expect(missingIdempotency?.status).toBe(400);
+    await expect(missingIdempotency?.json()).resolves.toEqual({
+      error: 'idempotency_key_required',
+      message: 'Header Idempotency-Key ist erforderlich.',
+    });
+  });
+
+  it('replays and rejects idempotent news create requests before GraphQL', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    state.validateCsrf.mockReturnValue(null);
+    state.resolveActorInfo.mockResolvedValue({
+      actor: { instanceId: 'de-musterhausen', actorAccountId: '00000000-0000-4000-8000-000000000001' },
+    });
+    state.reserveIdempotency
+      .mockResolvedValueOnce({ status: 'replay', responseStatus: 201, responseBody: { data: { id: 'news-replay' } } })
+      .mockResolvedValueOnce({ status: 'conflict', message: 'Idempotency-Key wurde bereits verwendet.' });
+
+    const replay = await dispatchMainserverNewsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/news', {
+        method: 'POST',
+        headers: { 'Idempotency-Key': 'idem-replay' },
+        body: JSON.stringify(newsInput),
+      })
+    );
+    expect(replay?.status).toBe(201);
+    await expect(replay?.json()).resolves.toEqual({ data: { id: 'news-replay' } });
+
+    const conflict = await dispatchMainserverNewsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/news', {
+        method: 'POST',
+        headers: { 'Idempotency-Key': 'idem-conflict' },
+        body: JSON.stringify(newsInput),
+      })
+    );
+    expect(conflict?.status).toBe(409);
+    await expect(conflict?.json()).resolves.toEqual({
+      error: 'idempotency_key_reuse',
+      message: 'Idempotency-Key wurde bereits verwendet.',
+    });
+    expect(state.createSvaMainserverNews).not.toHaveBeenCalled();
+  });
+
+  it('completes failed create requests for idempotent replay', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    state.validateCsrf.mockReturnValue(null);
+    state.resolveActorInfo.mockResolvedValue({
+      actor: { instanceId: 'de-musterhausen', actorAccountId: '00000000-0000-4000-8000-000000000001' },
+    });
+    state.reserveIdempotency.mockResolvedValue({ status: 'reserved' });
+    state.completeIdempotency.mockResolvedValue(undefined);
+    state.authorizeContentPrimitiveForUser.mockResolvedValue({
+      ok: true,
+      actor: { instanceId: 'de-musterhausen', keycloakSubject: 'subject-1' },
+      permissions: [],
+    });
+    state.createSvaMainserverNews.mockRejectedValue(
+      new SvaMainserverError({ code: 'graphql_error', message: 'GraphQL fehlgeschlagen.', statusCode: 502 })
+    );
+
+    const response = await dispatchMainserverNewsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/news', {
+        method: 'POST',
+        headers: { 'Idempotency-Key': 'idem-failed' },
+        body: JSON.stringify(newsInput),
+      })
+    );
+
+    expect(response?.status).toBe(502);
+    await expect(response?.json()).resolves.toEqual({
+      error: 'graphql_error',
+      message: 'GraphQL fehlgeschlagen.',
+    });
+    expect(state.completeIdempotency).toHaveBeenCalledWith(
+      expect.objectContaining({
+        idempotencyKey: 'idem-failed',
+        responseStatus: 502,
+        status: 'FAILED',
+      })
+    );
   });
 
   it('maps local authorization and upstream errors to stable error responses', async () => {

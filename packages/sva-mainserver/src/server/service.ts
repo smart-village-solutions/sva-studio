@@ -116,7 +116,7 @@ const newsPayloadSchema = z.object({
 
 const newsItemSchema = z.object({
   id: z.string().min(1),
-  title: z.string().default(''),
+  title: z.string().nullish(),
   author: z.string().nullish(),
   payload: z.unknown(),
   publishedAt: z.string().nullish(),
@@ -364,7 +364,7 @@ const mapNewsItem = (item: SvaMainserverNewsItemFragment | null | undefined): Sv
 
   return {
     id: parsed.data.id,
-    title: parsed.data.title,
+    title: parsed.data.title ?? '',
     contentType: 'news.article',
     payload: parseNewsPayload(parsed.data.payload),
     status: 'published',

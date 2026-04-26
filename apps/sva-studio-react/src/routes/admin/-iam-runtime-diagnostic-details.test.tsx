@@ -57,4 +57,60 @@ describe('IamRuntimeDiagnosticDetails', () => {
     expect(screen.queryByText(/^Empfohlene Aktion:/)).toBeNull();
     expect(screen.getByText('Request-ID: req-unknown')).toBeTruthy();
   });
+
+  it('renders new auth, OIDC, frontend and legacy classifications', () => {
+    render(
+      <>
+        <IamRuntimeDiagnosticDetails
+          error={
+            {
+              name: 'IamHttpError',
+              status: 500,
+              code: 'internal_error',
+              message: 'boom',
+              classification: 'auth_resolution',
+            } as never
+          }
+        />
+        <IamRuntimeDiagnosticDetails
+          error={
+            {
+              name: 'IamHttpError',
+              status: 401,
+              code: 'unauthorized',
+              message: 'boom',
+              classification: 'oidc_discovery_or_exchange',
+            } as never
+          }
+        />
+        <IamRuntimeDiagnosticDetails
+          error={
+            {
+              name: 'IamHttpError',
+              status: 409,
+              code: 'conflict',
+              message: 'boom',
+              classification: 'frontend_state_or_permission_staleness',
+            } as never
+          }
+        />
+        <IamRuntimeDiagnosticDetails
+          error={
+            {
+              name: 'IamHttpError',
+              status: 500,
+              code: 'internal_error',
+              message: 'boom',
+              classification: 'legacy_workaround_or_regression',
+            } as never
+          }
+        />
+      </>
+    );
+
+    expect(screen.getByText('Diagnose: Auth-Auflösung')).toBeTruthy();
+    expect(screen.getByText('Diagnose: OIDC-Discovery oder Token-Austausch')).toBeTruthy();
+    expect(screen.getByText('Diagnose: Frontend-State oder Berechtigungsstand veraltet')).toBeTruthy();
+    expect(screen.getByText('Diagnose: Legacy-Workaround oder Regression')).toBeTruthy();
+  });
 });

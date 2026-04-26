@@ -393,7 +393,7 @@ Fehlerpfad:
 
 1. Ein Release-Workflow baut genau ein `linux/amd64`-Image und ermittelt den Manifest-Digest.
 2. `Studio Image Verify` startet exakt dieses Image isoliert im Runner und prüft `/health/live`, `/health/ready` und `/`.
-3. Der lokale Operator-Einstieg `env:release:studio:local` fuehrt danach `env:precheck:studio`, `env:deploy:studio` und `env:smoke:studio` gegen denselben Digest aus.
+3. Der lokale Operator-Einstieg `env:release:studio:local` fuehrt danach `env:precheck:studio`, `env:deploy:studio` und `env:smoke:studio` gegen denselben Digest aus; `env:precheck:studio` dokumentiert zusätzlich, ob ein passendes `Studio Image Verify`-Artefakt fuer diesen Digest vorliegt.
 4. Nach optionaler Migration wird der Stack aktualisiert.
 5. `internal-verify` kombiniert interne HTTP-Probes gegen den App-Service mit `doctor`-Diagnostik.
 6. `external-smoke` prüft öffentliche URL, Health-Pfade, Auth-Entry und IAM-Kontext.
@@ -403,6 +403,7 @@ Fehlerpfad:
 
 - Fehlschlag vor dem Rollout bleibt auf `config`, `image` oder `migration` klassifiziert.
 - Fehlschlag nach erfolgreichem Stack-Update, aber vor öffentlicher Verifikation, bleibt als `health` oder `ingress` sichtbar und wird nicht als erfolgreicher Release bewertet.
+- Fehlende Image-Verify-Evidenz fuer einen expliziten Digest ist mindestens ein Warnsignal im Precheck und darf nicht als stiller Erfolgsfall verschwinden.
 6. Nachgelagerte UI- und Backend-Pfade lesen den aktiven Organisationskontext aus dem kanonischen Sessionzustand.
 
 ### Szenario 14: Admin verwaltet Gruppen und weist Rollenbündel zu

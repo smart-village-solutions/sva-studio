@@ -8,6 +8,8 @@ import { t } from '../i18n';
 import type { IamHttpError } from '../lib/iam-api';
 
 const CLASSIFICATION_LABEL_KEYS: Record<IamRuntimeDiagnosticClassification, string> = {
+  auth_resolution: 'admin.shared.diagnostics.classifications.authResolution',
+  oidc_discovery_or_exchange: 'admin.shared.diagnostics.classifications.oidcDiscoveryOrExchange',
   tenant_host_validation: 'admin.shared.diagnostics.classifications.tenantHostValidation',
   session_store_or_session_hydration: 'admin.shared.diagnostics.classifications.sessionStoreOrSessionHydration',
   actor_resolution_or_membership: 'admin.shared.diagnostics.classifications.actorResolutionOrMembership',
@@ -17,6 +19,8 @@ const CLASSIFICATION_LABEL_KEYS: Record<IamRuntimeDiagnosticClassification, stri
     'admin.shared.diagnostics.classifications.databaseMappingOrMembershipInconsistency',
   registry_or_provisioning_drift: 'admin.shared.diagnostics.classifications.registryOrProvisioningDrift',
   keycloak_reconcile: 'admin.shared.diagnostics.classifications.keycloakReconcile',
+  frontend_state_or_permission_staleness: 'admin.shared.diagnostics.classifications.frontendStateOrPermissionStaleness',
+  legacy_workaround_or_regression: 'admin.shared.diagnostics.classifications.legacyWorkaroundOrRegression',
   unknown: 'admin.shared.diagnostics.classifications.unknown',
 };
 

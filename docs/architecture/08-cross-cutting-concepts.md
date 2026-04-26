@@ -109,6 +109,7 @@ gleichzeitig beeinflussen.
 - Serverseitige JSON-Fehlerantworten für Auth-/IAM-Hotspots nutzen einen strukturierten Fehlervertrag mit `error.code`, `error.message`, optionalen `details`, `classification`, `status`, `recommendedAction` und allowlist-basierten `safeDetails`; `X-Request-Id` bleibt best effort und API-v1-Antworten dürfen zusätzlich `requestId` tragen
 - IAM-v1-Fehlerantworten dürfen additive `details` tragen, enthalten dort aber nur nicht-sensitive Diagnosefelder wie `reason_code`, `dependency`, `schema_object`, `expected_migration`, `actor_resolution` und `instance_id`
 - Für den Zielpfad der IAM-Diagnostik ist derselbe allowlist-basierte Feldsatz die Grundlage für einen classification-basierten öffentlichen Diagnosevertrag; tiefe Rohfehler bleiben weiterhin OTEL- und Serverlog-intern
+- Der öffentliche Diagnosekern umfasst neben IAM-, Keycloak-, Schema- und Provisioning-Klassen auch `auth_resolution`, `oidc_discovery_or_exchange`, `frontend_state_or_permission_staleness` und `legacy_workaround_or_regression`; neue Klassen werden zentral in `@sva/core` ergänzt
 - Tenant-Host-Validierung unterscheidet öffentlich zwischen `tenant_not_found`, `tenant_inactive`, `tenant_lookup_failed` und Session-Hydration-Defekten wie `missing_session_instance_id`; UI und Betrieb erhalten damit denselben sicheren Diagnosekern statt generischer `403`-/`401`-Fälle
 - Widerspricht ein vorhandener OIDC-Claim `instanceId` dem Host-/Realm-Scope, wird der Callback mit `tenant_scope_conflict` fail-closed protokolliert und nicht als tenant-lose Session fortgesetzt.
 - Tenant-Admin-Fehler dürfen zusätzlich `execution_mode`, `auth_realm` und `provider_source` tragen, damit Realm- oder Control-Plane-Drift ohne Rohfehler analysierbar bleibt
@@ -166,6 +167,7 @@ gleichzeitig beeinflussen.
 - Read-only Remote-Diagnostik trennt strikt zwischen Portainer-API als Primaerkanal und `quantum-cli` als Mutations-/Fallback-Kanal
 - Mutierende `studio`-Kommandos laufen regulär über den expliziten lokalen Operator-Kontext `local-operator`; der bisherige CI-/Runner-Deploypfad ist höchstens noch Legacy-Fallback
 - `studio` verwendet einen verbindlichen, fehlertoleranten Deploypfad über `Studio Image Build and Publish`, `Studio Image Verify` und den lokalen Einstieg `env:release:studio:local`; direkte `up`-/`update`-Deploys sind für Serverrollouts gesperrt
+- `pnpm test:release:studio` ist das gebündelte lokale Release-Gate aus `test:pr` und `verify:runtime-artifact`; normale PRs behalten `test:pr` als Standard-Gate
 - Der produktionsnahe Releasevertrag klassifiziert Fehler verbindlich in `config`, `image`, `migration`, `bootstrap`, `startup`, `health`, `ingress` und `dependency`; spätere Phasen dürfen frühere Resultate nicht überschreiben
 - Release-Modus `schema-and-app` arbeitet fail-closed: ohne dokumentiertes Wartungsfenster startet kein orchestrierter Studio-Deploy
 - Release-Modus `schema-and-app` arbeitet zusätzlich fail-closed auf Basis dedizierter Swarm-Jobs: ohne erfolgreichen Exit-Code von `migrate` und `bootstrap`, Post-Migration-Assertions und Schema-Guard startet kein App-Rollout
@@ -175,6 +177,7 @@ gleichzeitig beeinflussen.
 - Temp-Job-Stacks für `migrate` und `bootstrap` sind von Live-Rollouts strikt getrennt. Sie nutzen nur `<stack>_internal`, enthalten keinen `app`-Service und dürfen die Live-Spec von `studio_app` nicht mutieren
 - Deploy-Reports unterscheiden explizit zwischen `migration`, `bootstrap`, `health`, `verify` und `ingress_consistency`; ein Zustand `app 1/1`, aber externer `502` wird als eigener Drift-/Ingress-Fehler ausgewiesen
 - Vor dem Docker-Build prüft `verify:runtime-artifact` den finalen Node-Output `apps/sva-studio-react/.output/server/index.mjs` mit Artefakt-Assertions, temporären Migrationen und Health-Probes. Das Image-Verify prüft danach denselben Vertrag erneut am gepushten Digest.
+- `env:precheck:studio` dokumentiert die passende Image-Verify-Evidenz fuer den Ziel-Digest als eigenen Check `studio-image-verify-evidence`; fehlende Evidenz wird sichtbar als Warnung behandelt
 - Laufzeit-Patching im Container ist kein Normalpfad mehr. Wenn `SVA_ENABLE_RUNTIME_RECOVERY_PATCH` nicht explizit gesetzt ist, muss der Container mit dem unveränderten Build-Output start- und health-fähig sein.
 - IAM-Cache-Invalidierung folgt Event-first (Postgres NOTIFY) mit TTL/Recompute-Fallback
 - Redis-Lookup-, Snapshot-Write- und Recompute-Fehler im Autorisierungspfad enden fail-closed mit HTTP `503` und Fehlercode `database_unavailable`
@@ -198,7 +201,7 @@ gleichzeitig beeinflussen.
 
 - Read-Modelle für Profil, User-Liste und Rollenansicht werden fachlich aus demselben Projektionskern abgeleitet; UI-Hooks dürfen keinen separaten Identitäts- oder Rollenwahrheitskern aufbauen.
 - Ersatzbilder wie leere Rollen, UUID-Anzeigenamen oder `Ausstehend` sind nur zulässig, wenn der kanonische Projektionskern genau diesen Fachzustand liefert.
-- `IamHttpError` bleibt bis in die Browser-Schicht mit `classification`, `requestId` und `safeDetails` erhalten; relevante Klassen sind insbesondere `registry_or_provisioning_drift` und `keycloak_reconcile`.
+- `IamHttpError` bleibt bis in die Browser-Schicht mit `classification`, `requestId` und `safeDetails` erhalten; relevante Klassen sind insbesondere `registry_or_provisioning_drift`, `keycloak_reconcile`, `auth_resolution`, `oidc_discovery_or_exchange`, `frontend_state_or_permission_staleness` und `legacy_workaround_or_regression`.
 - Reconcile- und Sync-Berichte serialisieren deterministische Abschlusszustände und Aggregationen statt impliziter Erfolgssignale.
 - Tenant-Admin-abhängige Mutationen arbeiten fail-closed gegen blockerrelevanten Drift; ein grüner Basis-Health-Status überschreibt diesen Befund nicht.
 

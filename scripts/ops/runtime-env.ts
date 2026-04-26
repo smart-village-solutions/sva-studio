@@ -1,5 +1,5 @@
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -912,6 +912,98 @@ const toDoctorCheck = (
   message,
   ...(details ? { details } : {}),
 });
+
+type StudioImageVerifyEvidence = Readonly<{
+  imageRef?: string;
+  path: string;
+  reportId?: string;
+  status?: string;
+}>;
+
+export const readStudioImageVerifyEvidence = (imageDigest?: string): StudioImageVerifyEvidence | undefined => {
+  if (!imageDigest) {
+    return undefined;
+  }
+
+  const imageVerifyDir = resolve(runtimeArtifactsDir, 'image-verify');
+  if (!existsSync(imageVerifyDir)) {
+    return undefined;
+  }
+
+  const reports = readdirSync(imageVerifyDir)
+    .filter((fileName) => fileName.endsWith('.json'))
+    .map((fileName) => resolve(imageVerifyDir, fileName))
+    .sort()
+    .reverse();
+
+  for (const reportPath of reports) {
+    try {
+      const report = JSON.parse(readFileSync(reportPath, 'utf8')) as {
+        imageRef?: unknown;
+        reportId?: unknown;
+        status?: unknown;
+      };
+      const imageRef = typeof report.imageRef === 'string' ? report.imageRef : undefined;
+      const status = typeof report.status === 'string' ? report.status : undefined;
+      if (status === 'ok' && imageRef?.includes(imageDigest)) {
+        return {
+          imageRef,
+          path: reportPath,
+          reportId: typeof report.reportId === 'string' ? report.reportId : undefined,
+          status,
+        };
+      }
+    } catch {
+      // Ignore unreadable historical verify artifacts; the resulting precheck remains a visible warning.
+    }
+  }
+
+  return undefined;
+};
+
+export const buildStudioImageVerifyEvidenceCheck = (
+  runtimeProfile: RemoteRuntimeProfile,
+  env: NodeJS.ProcessEnv,
+  options?: AcceptanceDeployOptions
+): DoctorCheck => {
+  const imageDigest = options?.imageDigest ?? env.SVA_IMAGE_DIGEST?.trim();
+  if (!imageDigest) {
+    return toDoctorCheck(
+      'studio-image-verify-evidence',
+      'skipped',
+      'image_digest_missing',
+      'Kein Image-Digest fuer die Studio-Image-Verify-Evidenz gesetzt.'
+    );
+  }
+
+  const evidence = readStudioImageVerifyEvidence(imageDigest);
+  if (!evidence) {
+    return toDoctorCheck(
+      'studio-image-verify-evidence',
+      runtimeProfile === 'studio' ? 'warn' : 'skipped',
+      'image_verify_evidence_missing',
+      'Keine passende Studio-Image-Verify-Evidenz fuer den Image-Digest gefunden.',
+      {
+        imageDigest,
+        expectedArtifactDir: 'artifacts/runtime/image-verify',
+      }
+    );
+  }
+
+  return toDoctorCheck(
+    'studio-image-verify-evidence',
+    'ok',
+    'image_verify_evidence_present',
+    'Passende Studio-Image-Verify-Evidenz fuer den Image-Digest gefunden.',
+    {
+      imageDigest,
+      imageRef: evidence.imageRef,
+      reportId: evidence.reportId,
+      reportPath: evidence.path,
+      status: evidence.status,
+    }
+  );
+};
 
 const printDoctorReport = (report: DoctorReport) => {
   if (jsonOutput) {
@@ -2251,6 +2343,7 @@ const precheckAcceptance = async (
   }
 
   checks.push(buildImagePlatformDoctorCheck(env, options));
+  checks.push(buildStudioImageVerifyEvidenceCheck(runtimeProfile, env, options));
   checks.push(await buildAcceptanceServiceCheck(env));
   checks.push(await buildAcceptanceIngressConsistencyCheck(env));
   checks.push(await buildLiveRuntimeEnvCheck(runtimeProfile, env));

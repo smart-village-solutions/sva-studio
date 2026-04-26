@@ -10,6 +10,8 @@ import {
 describe('account-management-contract runtime diagnostics exports', () => {
   it('exports the supported runtime diagnostic classifications in a stable order', () => {
     expect(iamRuntimeDiagnosticClassifications).toEqual([
+      'auth_resolution',
+      'oidc_discovery_or_exchange',
       'tenant_host_validation',
       'session_store_or_session_hydration',
       'actor_resolution_or_membership',
@@ -18,6 +20,8 @@ describe('account-management-contract runtime diagnostics exports', () => {
       'database_mapping_or_membership_inconsistency',
       'registry_or_provisioning_drift',
       'keycloak_reconcile',
+      'frontend_state_or_permission_staleness',
+      'legacy_workaround_or_regression',
       'unknown',
     ]);
   });

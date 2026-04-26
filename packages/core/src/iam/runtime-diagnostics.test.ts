@@ -3,6 +3,76 @@ import { describe, expect, it } from 'vitest';
 import { deriveIamRuntimeDiagnostics } from './runtime-diagnostics.js';
 
 describe('deriveIamRuntimeDiagnostics', () => {
+  it('classifies auth, OIDC, frontend staleness and legacy workaround diagnostics', () => {
+    expect(
+      deriveIamRuntimeDiagnostics({
+        code: 'internal_error',
+        status: 500,
+        details: {
+          reason_code: 'auth_config_missing',
+        },
+      })
+    ).toEqual({
+      classification: 'auth_resolution',
+      recommendedAction: 'erneut_anmelden',
+      safeDetails: {
+        reason_code: 'auth_config_missing',
+      },
+      status: 'degradiert',
+    });
+
+    expect(
+      deriveIamRuntimeDiagnostics({
+        code: 'unauthorized',
+        status: 401,
+        details: {
+          reason_code: 'oidc_exchange_failed',
+        },
+      })
+    ).toEqual({
+      classification: 'oidc_discovery_or_exchange',
+      recommendedAction: 'erneut_anmelden',
+      safeDetails: {
+        reason_code: 'oidc_exchange_failed',
+      },
+      status: 'recovery_laeuft',
+    });
+
+    expect(
+      deriveIamRuntimeDiagnostics({
+        code: 'conflict',
+        status: 409,
+        details: {
+          reason_code: 'permission_snapshot_stale',
+        },
+      })
+    ).toEqual({
+      classification: 'frontend_state_or_permission_staleness',
+      recommendedAction: 'erneut_versuchen',
+      safeDetails: {
+        reason_code: 'permission_snapshot_stale',
+      },
+      status: 'manuelle_pruefung_erforderlich',
+    });
+
+    expect(
+      deriveIamRuntimeDiagnostics({
+        code: 'internal_error',
+        status: 500,
+        details: {
+          reason_code: 'tenant_host_resolution_primary_hostname_fallback',
+        },
+      })
+    ).toEqual({
+      classification: 'legacy_workaround_or_regression',
+      recommendedAction: 'manuell_pruefen',
+      safeDetails: {
+        reason_code: 'tenant_host_resolution_primary_hostname_fallback',
+      },
+      status: 'degradiert',
+    });
+  });
+
   it('classifies tenant host and session diagnostics with safe details fallbacks', () => {
     expect(
       deriveIamRuntimeDiagnostics({

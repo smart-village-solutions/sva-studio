@@ -7,6 +7,13 @@ const state = vi.hoisted(() => ({
   resolveIdentityProvider: vi.fn(),
   isKeycloakIdentityProvider: vi.fn(() => true),
   trackKeycloakCall: vi.fn(async (_operation: string, work: () => Promise<unknown>) => work()),
+  getPermissionCacheHealth: vi.fn(() => ({
+    coldStart: false,
+    consecutiveRedisFailures: 0,
+    lastRedisLatencyMs: 0,
+    recomputePerMinute: 0,
+    status: 'ready' as const,
+  })),
 }));
 
 vi.mock('@sva/server-runtime', () => ({
@@ -34,6 +41,10 @@ vi.mock('./iam-account-management/shared.js', () => ({
   trackKeycloakCall: state.trackKeycloakCall,
 }));
 
+vi.mock('./iam-authorization/shared.js', () => ({
+  getPermissionCacheHealth: state.getPermissionCacheHealth,
+}));
+
 const createReadyPool = () => ({
   connect: vi.fn(async () => ({
     query: vi.fn(async () => ({ rows: [], rowCount: 1 })),
@@ -56,6 +67,13 @@ describe('auth-runtime health handlers', () => {
     state.resolveIdentityProvider.mockReturnValue(createReadyIdentityProvider());
     state.isKeycloakIdentityProvider.mockReturnValue(true);
     state.trackKeycloakCall.mockImplementation(async (_operation: string, work: () => Promise<unknown>) => work());
+    state.getPermissionCacheHealth.mockReturnValue({
+      coldStart: false,
+      consecutiveRedisFailures: 0,
+      lastRedisLatencyMs: 0,
+      recomputePerMinute: 0,
+      status: 'ready',
+    });
   });
 
   it('returns live status without dependency checks', async () => {
@@ -83,8 +101,9 @@ describe('auth-runtime health handlers', () => {
         authorizationCache: {
           coldStart: false,
           consecutiveRedisFailures: 0,
+          lastRedisLatencyMs: 0,
           recomputePerMinute: 0,
-          status: 'empty',
+          status: 'ready',
         },
         auth: {},
         db: true,
@@ -93,8 +112,7 @@ describe('auth-runtime health handlers', () => {
         errors: {},
         services: {
           authorizationCache: {
-            reasonCode: 'authorization_cache_unavailable',
-            status: 'unknown',
+            status: 'ready',
           },
           database: { status: 'ready' },
           keycloak: { status: 'ready' },
@@ -103,6 +121,7 @@ describe('auth-runtime health handlers', () => {
       },
     });
     expect(state.trackKeycloakCall).toHaveBeenCalledWith('readiness_list_roles', expect.any(Function));
+    expect(state.getPermissionCacheHealth).toHaveBeenCalled();
   });
 
   it('returns not_ready when dependencies fail', async () => {
@@ -133,8 +152,7 @@ describe('auth-runtime health handlers', () => {
         },
         services: {
           authorizationCache: {
-            reasonCode: 'authorization_cache_unavailable',
-            status: 'unknown',
+            status: 'ready',
           },
           database: { reasonCode: 'database_not_configured', status: 'not_ready' },
           keycloak: { reasonCode: 'keycloak_admin_not_configured', status: 'not_ready' },
@@ -173,6 +191,78 @@ describe('auth-runtime health handlers', () => {
           database: { status: 'ready' },
           keycloak: { reasonCode: 'keycloak_dependency_failed', status: 'not_ready' },
           redis: { status: 'ready' },
+        },
+      },
+    });
+  });
+
+  it('returns not_ready when authorization cache health has failed', async () => {
+    state.getPermissionCacheHealth.mockReturnValue({
+      coldStart: false,
+      consecutiveRedisFailures: 3,
+      lastRedisLatencyMs: 120,
+      recomputePerMinute: 4,
+      status: 'failed',
+    });
+    const { healthReadyHandler } = await import('./runtime-health.js');
+
+    const response = await healthReadyHandler(new Request('http://localhost/health/ready'));
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toMatchObject({
+      status: 'not_ready',
+      checks: {
+        authorizationCache: {
+          coldStart: false,
+          consecutiveRedisFailures: 3,
+          lastRedisLatencyMs: 120,
+          recomputePerMinute: 4,
+          status: 'failed',
+        },
+        diagnostics: {
+          authorizationCache: { reason_code: 'authorization_cache_failed' },
+        },
+        services: {
+          authorizationCache: {
+            reasonCode: 'authorization_cache_failed',
+            status: 'not_ready',
+          },
+        },
+      },
+    });
+  });
+
+  it('returns degraded service details when authorization cache health is degraded', async () => {
+    state.getPermissionCacheHealth.mockReturnValue({
+      coldStart: true,
+      consecutiveRedisFailures: 1,
+      lastRedisLatencyMs: 70,
+      recomputePerMinute: 21,
+      status: 'degraded',
+    });
+    const { healthReadyHandler } = await import('./runtime-health.js');
+
+    const response = await healthReadyHandler(new Request('http://localhost/health/ready'));
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      status: 'ready',
+      checks: {
+        authorizationCache: {
+          coldStart: true,
+          consecutiveRedisFailures: 1,
+          lastRedisLatencyMs: 70,
+          recomputePerMinute: 21,
+          status: 'degraded',
+        },
+        diagnostics: {
+          authorizationCache: { reason_code: 'authorization_cache_degraded' },
+        },
+        services: {
+          authorizationCache: {
+            reasonCode: 'authorization_cache_degraded',
+            status: 'degraded',
+          },
         },
       },
     });

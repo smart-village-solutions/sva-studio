@@ -7,6 +7,7 @@ import {
   resolveIdentityProvider,
   trackKeycloakCall,
 } from './iam-account-management/shared.js';
+import { getPermissionCacheHealth } from './iam-authorization/shared.js';
 import { getLastRedisError, isRedisAvailable } from './redis.js';
 
 const withHealthRequestContext = <T>(request: Request, work: () => Promise<T>): Promise<T> =>
@@ -21,14 +22,29 @@ type RuntimeDependencyCheck = {
 const toDependencyStatus = (check: RuntimeDependencyCheck): RuntimeDependencyHealth['status'] =>
   check.ready ? 'ready' : 'not_ready';
 
+const toAuthorizationCacheServiceStatus = (
+  status: ReturnType<typeof getPermissionCacheHealth>['status']
+): RuntimeDependencyHealth['status'] => {
+  if (status === 'failed') {
+    return 'not_ready';
+  }
+  return status;
+};
+
 const createRuntimeHealthServices = (
   database: RuntimeDependencyCheck,
   redis: RuntimeDependencyCheck,
-  keycloak: RuntimeDependencyCheck
+  keycloak: RuntimeDependencyCheck,
+  authorizationCache: ReturnType<typeof getPermissionCacheHealth>
 ): RuntimeHealthResponse['checks']['services'] => ({
   authorizationCache: {
-    reasonCode: 'authorization_cache_unavailable',
-    status: 'unknown',
+    reasonCode:
+      authorizationCache.status === 'ready'
+        ? undefined
+        : authorizationCache.status === 'degraded'
+          ? 'authorization_cache_degraded'
+          : 'authorization_cache_failed',
+    status: toAuthorizationCacheServiceStatus(authorizationCache.status),
   },
   database: {
     reasonCode: database.reasonCode,
@@ -116,22 +132,30 @@ export const healthReadyHandler = async (request: Request): Promise<Response> =>
   withHealthRequestContext(request, async () => {
     const requestContext = getWorkspaceContext();
     const [database, redis, keycloak] = await Promise.all([checkDatabase(), checkRedis(), checkKeycloak()]);
-    const ready = database.ready && redis.ready && keycloak.ready;
-    const services = createRuntimeHealthServices(database, redis, keycloak);
+    const authorizationCache = getPermissionCacheHealth();
+    const ready = database.ready && redis.ready && keycloak.ready && authorizationCache.status !== 'failed';
+    const services = createRuntimeHealthServices(database, redis, keycloak, authorizationCache);
     const diagnostics = {
       ...(database.ready ? {} : { db: { reason_code: database.reasonCode } }),
       ...(redis.ready ? {} : { redis: { reason_code: redis.reasonCode } }),
       ...(keycloak.ready ? {} : { keycloak: { reason_code: keycloak.reasonCode } }),
+      ...(authorizationCache.status === 'degraded'
+        ? { authorizationCache: { reason_code: 'authorization_cache_degraded' } }
+        : {}),
+      ...(authorizationCache.status === 'failed'
+        ? { authorizationCache: { reason_code: 'authorization_cache_failed' } }
+        : {}),
     };
 
     return jsonResponse(ready ? 200 : 503, {
       status: ready ? 'ready' : 'not_ready',
       checks: {
         authorizationCache: {
-          coldStart: false,
-          consecutiveRedisFailures: 0,
-          recomputePerMinute: 0,
-          status: 'empty',
+          coldStart: authorizationCache.coldStart,
+          consecutiveRedisFailures: authorizationCache.consecutiveRedisFailures,
+          lastRedisLatencyMs: authorizationCache.lastRedisLatencyMs,
+          recomputePerMinute: authorizationCache.recomputePerMinute,
+          status: authorizationCache.status,
         },
         auth: {},
         db: database.ready,

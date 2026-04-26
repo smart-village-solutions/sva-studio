@@ -8,7 +8,7 @@ import {
 
 import type { UpdateContentSchemaInput } from './schemas.js';
 import type { ResolvedContentActor } from './request-context.js';
-import { authorizeContentAction } from './request-context.js';
+import { authorizeContentAction, resolveContentAuthorizationPermissions } from './request-context.js';
 
 const metadataFields = [
   'title',
@@ -81,6 +81,11 @@ export const authorizeUpdateContentActions = async (
   data: UpdateContentSchemaInput
 ): Promise<Response | null> => {
   const actions = resolveUpdateContentActions(currentContent, data);
+  const sourcePermissions = await resolveContentAuthorizationPermissions(actor, currentContent.organizationId);
+
+  if ('error' in sourcePermissions) {
+    return sourcePermissions.error;
+  }
 
   for (const action of actions) {
     const authorizationError = await authorizeContentAction(actor, action.primitiveAction, {
@@ -88,20 +93,26 @@ export const authorizeUpdateContentActions = async (
       contentType: currentContent.contentType,
       domainCapability: action.domainCapability,
       organizationId: currentContent.organizationId,
-    });
+    }, { permissions: sourcePermissions.permissions });
     if (authorizationError) {
       return authorizationError;
     }
   }
 
   if (data.organizationId && data.organizationId !== currentContent.organizationId) {
+    const destinationPermissions = await resolveContentAuthorizationPermissions(actor, data.organizationId);
+
+    if ('error' in destinationPermissions) {
+      return destinationPermissions.error;
+    }
+
     for (const action of actions) {
       const destinationAuthorizationError = await authorizeContentAction(actor, action.primitiveAction, {
         contentId,
         contentType: currentContent.contentType,
         domainCapability: action.domainCapability,
         organizationId: data.organizationId,
-      });
+      }, { permissions: destinationPermissions.permissions });
       if (destinationAuthorizationError) {
         return destinationAuthorizationError;
       }

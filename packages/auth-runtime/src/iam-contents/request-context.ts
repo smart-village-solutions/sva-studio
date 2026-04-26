@@ -2,6 +2,7 @@ import {
   evaluateAuthorizeDecision,
   summarizeContentAccess,
   type AuthorizeRequest,
+  type EffectivePermission,
   type IamContentAccessSummary,
   type IamContentDomainCapability,
   type IamContentPrimitiveAction,
@@ -35,6 +36,10 @@ type ContentAuthorizationResource = {
   readonly contentType?: string;
   readonly domainCapability?: IamContentDomainCapability;
   readonly organizationId?: string;
+};
+
+type ContentAuthorizationOptions = {
+  readonly permissions?: readonly EffectivePermission[];
 };
 
 const contentPermissionUnavailable = (requestId?: string): Response =>
@@ -85,12 +90,10 @@ const logContentAuthorizationDenied = (
   });
 };
 
-export const authorizeContentAction = async (
+export const resolveContentAuthorizationPermissions = async (
   actor: ResolvedContentActor['actor'],
-  action: IamContentPrimitiveAction,
-  resource: ContentAuthorizationResource = {}
-): Promise<Response | null> => {
-  const organizationId = resource.organizationId ?? actor.activeOrganizationId;
+  organizationId = actor.activeOrganizationId
+): Promise<{ permissions: readonly EffectivePermission[] } | { error: Response }> => {
   try {
     const resolved = await resolveEffectivePermissions({
       instanceId: actor.instanceId,
@@ -104,17 +107,46 @@ export const authorizeContentAction = async (
         instance_id: actor.instanceId,
         request_id: actor.requestId,
         trace_id: actor.traceId,
-        action,
-        domain_capability: resource.domainCapability,
-        primitive_action: action,
+        organization_id: organizationId,
         error: resolved.error,
       });
 
-      return contentPermissionUnavailable(actor.requestId);
+      return { error: contentPermissionUnavailable(actor.requestId) };
+    }
+
+    return { permissions: resolved.permissions };
+  } catch (error) {
+    accountLogger.error('Content authorization failed', {
+      operation: 'content_authorize',
+      instance_id: actor.instanceId,
+      request_id: actor.requestId,
+      trace_id: actor.traceId,
+      organization_id: organizationId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+
+    return { error: contentPermissionUnavailable(actor.requestId) };
+  }
+};
+
+export const authorizeContentAction = async (
+  actor: ResolvedContentActor['actor'],
+  action: IamContentPrimitiveAction,
+  resource: ContentAuthorizationResource = {},
+  options: ContentAuthorizationOptions = {}
+): Promise<Response | null> => {
+  const organizationId = resource.organizationId ?? actor.activeOrganizationId;
+  try {
+    const resolvedPermissions = options.permissions
+      ? { permissions: options.permissions }
+      : await resolveContentAuthorizationPermissions(actor, organizationId);
+
+    if ('error' in resolvedPermissions) {
+      return resolvedPermissions.error;
     }
 
     const request = buildContentAuthorizeRequest(actor, action, resource);
-    const decision = evaluateAuthorizeDecision(request, resolved.permissions);
+    const decision = evaluateAuthorizeDecision(request, resolvedPermissions.permissions);
     if (decision.allowed) {
       return null;
     }

@@ -57,6 +57,7 @@ Abhängigkeiten des aktuellen Systems.
 10. Plugin News (`packages/plugin-news`)
    - produktives Fachplugin für Mainserver-News mit pluginnahem Modell `news.article`
    - eigene Listen- und Editor-Ansichten, Plugin-Navigation und Plugin-Übersetzungen
+   - bildet das vollständige Mainserver-`NewsItem`-Modell über dedizierte Felder ab; `contentBlocks` sind der führende Langinhalt
    - nutzt `@sva/plugin-sdk` für Host-Metadaten und `@sva/studio-ui-react` für gemeinsame UI-Primitives statt App-interner Komponenten
    - persistiert nicht direkt in lokale IAM-Contents, sondern spricht die hostgeführte Mainserver-News-Fassade per HTTP an
 11. Instanz-Registry (`packages/instance-registry`)
@@ -182,6 +183,7 @@ Nicht erlaubt: `@sva/plugin-*` -> `apps/sva-studio-react/src/**`
    - erweitert den generischen Content-Write-Pfad um contentType-spezifische Payload-Validierung und Sanitisierung
 4. `packages/plugin-news/src/*`
    - kapselt News-Liste, Editor, Delete-Flow und plugin-eigene Übersetzungen unter der SDK-Boundary
+   - schreibt News-Fachdaten über die hostgeführte Mainserver-Fassade; Legacy-`payload` ist nur Lesefallback und wird bei Create/Update nicht gesendet
 
 ### Erweiterung 2026-04: Namespacete Plugin-Identität über Build-time-Registries
 

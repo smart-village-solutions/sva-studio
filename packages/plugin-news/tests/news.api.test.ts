@@ -1,18 +1,30 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { NewsApiError, createNews, deleteNews, getNews, listNews, updateNews, type NewsFormInput } from '../src/news.api.js';
+import { NewsApiError, createNews, deleteNews, getNews, listNews, updateNews } from '../src/news.api.js';
+import type { NewsFormInput } from '../src/index.js';
 import { NEWS_CONTENT_TYPE } from '../src/plugin.js';
 
 const sampleInput: NewsFormInput = {
   title: 'Neue News',
+  author: 'Editor',
+  categoryName: 'Allgemein',
   publishedAt: '2026-04-13T09:00:00.000Z',
-  payload: {
-    teaser: 'Kurztext',
-    body: '<p>Inhalt</p>',
-    category: 'Allgemein',
-    imageUrl: 'https://example.org/image.jpg',
-    externalUrl: 'https://example.org/details',
-  },
+  contentBlocks: [{ intro: 'Kurztext', body: '<p>Inhalt</p>' }],
+  sourceUrl: { url: 'https://example.org/details' },
+  pushNotification: true,
+};
+
+const sampleResponse = {
+  id: 'news-1',
+  title: sampleInput.title,
+  contentType: NEWS_CONTENT_TYPE,
+  payload: {},
+  contentBlocks: sampleInput.contentBlocks,
+  status: 'published',
+  author: 'Editor',
+  createdAt: '2026-01-01',
+  updatedAt: '2026-01-02',
+  publishedAt: sampleInput.publishedAt,
 };
 
 describe('news api', () => {
@@ -36,7 +48,8 @@ describe('news api', () => {
             id: 'news-1',
             title: 'News',
             contentType: NEWS_CONTENT_TYPE,
-            payload: sampleInput.payload,
+            payload: {},
+            contentBlocks: sampleInput.contentBlocks,
             status: 'published',
             author: 'Editor',
             createdAt: '2026-01-01',
@@ -55,7 +68,7 @@ describe('news api', () => {
     vi.mocked(fetch).mockResolvedValueOnce({
       ok: true,
       json: async () => ({
-        data: { id: 'news-1', title: sampleInput.title, contentType: NEWS_CONTENT_TYPE, payload: sampleInput.payload, status: 'published', author: 'Editor', createdAt: '2026-01-01', updatedAt: '2026-01-02', publishedAt: sampleInput.publishedAt },
+        data: sampleResponse,
       }),
     } as Response);
 
@@ -75,8 +88,12 @@ describe('news api', () => {
     );
     expect(JSON.parse(vi.mocked(fetch).mock.calls[0]?.[1]?.body as string)).toEqual({
       title: sampleInput.title,
+      author: sampleInput.author,
+      categoryName: sampleInput.categoryName,
       publishedAt: sampleInput.publishedAt,
-      payload: sampleInput.payload,
+      contentBlocks: sampleInput.contentBlocks,
+      sourceUrl: sampleInput.sourceUrl,
+      pushNotification: true,
     });
   });
 
@@ -85,7 +102,7 @@ describe('news api', () => {
       .mockResolvedValueOnce({
         ok: true,
         json: async () => ({
-          data: { id: 'news-1', title: sampleInput.title, contentType: NEWS_CONTENT_TYPE, payload: sampleInput.payload, status: 'published', author: 'Editor', createdAt: '2026-01-01', updatedAt: '2026-01-02', publishedAt: sampleInput.publishedAt },
+          data: sampleResponse,
         }),
       } as Response)
       .mockResolvedValueOnce({
@@ -101,6 +118,7 @@ describe('news api', () => {
       '/api/v1/mainserver/news/news-1',
       expect.objectContaining({ method: 'PATCH' })
     );
+    expect(JSON.parse(vi.mocked(fetch).mock.calls[0]?.[1]?.body as string)).not.toHaveProperty('pushNotification');
     expect(fetch).toHaveBeenNthCalledWith(
       2,
       '/api/v1/mainserver/news/news-1',
@@ -113,7 +131,7 @@ describe('news api', () => {
       .mockResolvedValueOnce({
         ok: true,
         json: async () => ({
-          data: { id: 'news-1', title: sampleInput.title, contentType: NEWS_CONTENT_TYPE, payload: sampleInput.payload, status: 'published', author: 'Editor', createdAt: '2026-01-01', updatedAt: '2026-01-02', publishedAt: sampleInput.publishedAt },
+          data: sampleResponse,
         }),
       } as Response)
       .mockResolvedValueOnce({

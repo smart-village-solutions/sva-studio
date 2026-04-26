@@ -61,9 +61,195 @@ type ParsedNewsInput = {
   readonly rawBody: string;
 };
 
+type ParseOptions = {
+  readonly allowPushNotification: boolean;
+};
+
 const toPayloadHash = (rawBody: string): string => createHash('sha256').update(rawBody).digest('hex');
 
-const parseNewsInput = async (request: Request): Promise<ParsedNewsInput | Response> => {
+const readonlyMutationFields = new Set([
+  'id',
+  'contentType',
+  'status',
+  'payload',
+  'createdAt',
+  'updatedAt',
+  'visible',
+  'dataProvider',
+  'settings',
+  'announcements',
+  'likeCount',
+  'likedByMe',
+  'pushNotificationsSentAt',
+]);
+
+const readString = (value: unknown): string | undefined =>
+  typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
+
+const readBoolean = (value: unknown): boolean | undefined => (typeof value === 'boolean' ? value : undefined);
+
+const readNumber = (value: unknown): number | undefined => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === 'string' && value.trim().length > 0) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+  return undefined;
+};
+
+const isValidDate = (value: string): boolean => Number.isNaN(new Date(value).getTime()) === false;
+
+const isHttpsUrl = (value: string): boolean => {
+  try {
+    return new URL(value).protocol === 'https:';
+  } catch {
+    return false;
+  }
+};
+
+const parseWebUrl = (value: unknown): SvaMainserverNewsInput['sourceUrl'] | undefined | Response => {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+  if (!isRecord(value)) {
+    return errorJson(400, 'invalid_request', 'URL-Angaben müssen als Objekt gesendet werden.');
+  }
+  const url = readString(value.url);
+  if (!url || !isHttpsUrl(url)) {
+    return errorJson(400, 'invalid_request', 'URL-Angaben müssen eine gültige HTTPS-URL enthalten.');
+  }
+  return {
+    url,
+    ...(readString(value.description) ? { description: readString(value.description) } : {}),
+  };
+};
+
+const parseCategories = (value: unknown): SvaMainserverNewsInput['categories'] | undefined | Response => {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+  if (!Array.isArray(value)) {
+    return errorJson(400, 'invalid_request', 'Kategorien müssen als Liste gesendet werden.');
+  }
+
+  const parseCategory = (category: unknown): NonNullable<SvaMainserverNewsInput['categories']>[number] | Response => {
+    if (!isRecord(category)) {
+      return errorJson(400, 'invalid_request', 'Kategorien müssen Objekte sein.');
+    }
+    const name = readString(category.name);
+    if (!name || name.length > 128) {
+      return errorJson(400, 'invalid_request', 'Kategorien benötigen einen Namen mit maximal 128 Zeichen.');
+    }
+    const children = parseCategories(category.children);
+    if (children instanceof Response) {
+      return children;
+    }
+    return {
+      name,
+      ...(isRecord(category.payload) ? { payload: category.payload } : {}),
+      ...(children ? { children } : {}),
+    };
+  };
+
+  const categories = [];
+  for (const item of value) {
+    const category = parseCategory(item);
+    if (category instanceof Response) {
+      return category;
+    }
+    categories.push(category);
+  }
+  return categories;
+};
+
+const parseAddress = (value: unknown): SvaMainserverNewsInput['address'] | undefined | Response => {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+  if (!isRecord(value)) {
+    return errorJson(400, 'invalid_request', 'Adressdaten müssen als Objekt gesendet werden.');
+  }
+
+  let geoLocation: NonNullable<SvaMainserverNewsInput['address']>['geoLocation'] | undefined;
+  if (value.geoLocation !== undefined && value.geoLocation !== null) {
+    if (!isRecord(value.geoLocation)) {
+      return errorJson(400, 'invalid_request', 'Geo-Koordinaten müssen als Objekt gesendet werden.');
+    }
+    const latitude = readNumber(value.geoLocation.latitude);
+    const longitude = readNumber(value.geoLocation.longitude);
+    if (
+      latitude === undefined ||
+      longitude === undefined ||
+      latitude < -90 ||
+      latitude > 90 ||
+      longitude < -180 ||
+      longitude > 180
+    ) {
+      return errorJson(400, 'invalid_request', 'Geo-Koordinaten sind ungültig.');
+    }
+    geoLocation = { latitude, longitude };
+  }
+
+  return {
+    ...(readNumber(value.id) !== undefined ? { id: readNumber(value.id) } : {}),
+    ...(readString(value.addition) ? { addition: readString(value.addition) } : {}),
+    ...(readString(value.street) ? { street: readString(value.street) } : {}),
+    ...(readString(value.zip) ? { zip: readString(value.zip) } : {}),
+    ...(readString(value.city) ? { city: readString(value.city) } : {}),
+    ...(readString(value.kind) ? { kind: readString(value.kind) } : {}),
+    ...(geoLocation ? { geoLocation } : {}),
+  };
+};
+
+const parseContentBlocks = (value: unknown): SvaMainserverNewsInput['contentBlocks'] | undefined | Response => {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+  if (!Array.isArray(value)) {
+    return errorJson(400, 'invalid_request', 'ContentBlocks müssen als Liste gesendet werden.');
+  }
+
+  const blocks = [];
+  for (const block of value) {
+    if (!isRecord(block)) {
+      return errorJson(400, 'invalid_request', 'ContentBlocks müssen Objekte sein.');
+    }
+    const mediaContents = [];
+    if (block.mediaContents !== undefined && block.mediaContents !== null) {
+      if (!Array.isArray(block.mediaContents)) {
+        return errorJson(400, 'invalid_request', 'MediaContent muss als Liste gesendet werden.');
+      }
+      for (const media of block.mediaContents) {
+        if (!isRecord(media)) {
+          return errorJson(400, 'invalid_request', 'MediaContent-Einträge müssen Objekte sein.');
+        }
+        const sourceUrl = parseWebUrl(media.sourceUrl);
+        if (sourceUrl instanceof Response) {
+          return sourceUrl;
+        }
+        mediaContents.push({
+          ...(readString(media.caption) ? { caption: readString(media.caption) } : {}),
+          ...(readString(media.copyright) ? { copyright: readString(media.copyright) } : {}),
+          ...(readString(media.contentType) ? { contentType: readString(media.contentType) } : {}),
+          ...(readNumber(media.height) !== undefined ? { height: readNumber(media.height) } : {}),
+          ...(readNumber(media.width) !== undefined ? { width: readNumber(media.width) } : {}),
+          ...(sourceUrl ? { sourceUrl } : {}),
+        });
+      }
+    }
+    blocks.push({
+      ...(readString(block.title) ? { title: readString(block.title) } : {}),
+      ...(readString(block.intro) ? { intro: readString(block.intro) } : {}),
+      ...(readString(block.body) ? { body: readString(block.body) } : {}),
+      ...(mediaContents.length > 0 ? { mediaContents } : {}),
+    });
+  }
+  return blocks;
+};
+
+const parseNewsInput = async (request: Request, options: ParseOptions): Promise<ParsedNewsInput | Response> => {
   const rawBody = await request.text();
   let body: unknown;
   try {
@@ -72,36 +258,77 @@ const parseNewsInput = async (request: Request): Promise<ParsedNewsInput | Respo
     return errorJson(400, 'invalid_request', 'Request-Body muss gültiges JSON sein.');
   }
 
-  if (!isRecord(body) || !isRecord(body.payload)) {
-    return errorJson(400, 'invalid_request', 'News-Payload ist unvollständig.');
+  if (!isRecord(body)) {
+    return errorJson(400, 'invalid_request', 'News-Daten müssen als Objekt gesendet werden.');
   }
 
-  const payload = body.payload;
+  const readonlyField = Object.keys(body).find((key) => readonlyMutationFields.has(key));
+  if (readonlyField) {
+    return errorJson(400, 'invalid_request', `Das Feld "${readonlyField}" darf nicht geschrieben werden.`);
+  }
+
+  if (!options.allowPushNotification && body.pushNotification !== undefined) {
+    return errorJson(400, 'invalid_request', 'Push-Benachrichtigungen sind nur beim Erstellen erlaubt.');
+  }
+
+  const title = readString(body.title);
+  const publishedAt = readString(body.publishedAt);
+  if (!title || !publishedAt || !isValidDate(publishedAt)) {
+    return errorJson(400, 'invalid_request', 'Titel und Veröffentlichungsdatum sind erforderlich.');
+  }
+
+  const publicationDate = readString(body.publicationDate);
+  if (publicationDate && !isValidDate(publicationDate)) {
+    return errorJson(400, 'invalid_request', 'Das Publikationsdatum ist ungültig.');
+  }
+
+  const charactersToBeShown = readNumber(body.charactersToBeShown);
   if (
-    typeof body.title !== 'string' ||
-    body.title.trim().length === 0 ||
-    typeof body.publishedAt !== 'string' ||
-    body.publishedAt.trim().length === 0 ||
-    typeof payload.teaser !== 'string' ||
-    typeof payload.body !== 'string'
+    body.charactersToBeShown !== undefined &&
+    (charactersToBeShown === undefined || charactersToBeShown < 0 || Number.isInteger(charactersToBeShown) === false)
   ) {
-    return errorJson(400, 'invalid_request', 'Titel, Veröffentlichungsdatum, Teaser und Inhalt sind erforderlich.');
+    return errorJson(400, 'invalid_request', 'Die Zeichenbegrenzung muss eine positive Ganzzahl sein.');
+  }
+
+  const sourceUrl = parseWebUrl(body.sourceUrl);
+  if (sourceUrl instanceof Response) {
+    return sourceUrl;
+  }
+  const categories = parseCategories(body.categories);
+  if (categories instanceof Response) {
+    return categories;
+  }
+  const address = parseAddress(body.address);
+  if (address instanceof Response) {
+    return address;
+  }
+  const contentBlocks = parseContentBlocks(body.contentBlocks);
+  if (contentBlocks instanceof Response) {
+    return contentBlocks;
   }
 
   return {
     rawBody,
     news: {
-      title: body.title,
-      publishedAt: body.publishedAt,
-      payload: {
-        teaser: payload.teaser,
-        body: payload.body,
-        ...(typeof payload.imageUrl === 'string' && payload.imageUrl.length > 0 ? { imageUrl: payload.imageUrl } : {}),
-        ...(typeof payload.externalUrl === 'string' && payload.externalUrl.length > 0
-          ? { externalUrl: payload.externalUrl }
-          : {}),
-        ...(typeof payload.category === 'string' && payload.category.length > 0 ? { category: payload.category } : {}),
-      },
+      title,
+      publishedAt,
+      ...(readString(body.author) ? { author: readString(body.author) } : {}),
+      ...(readString(body.keywords) ? { keywords: readString(body.keywords) } : {}),
+      ...(readString(body.externalId) ? { externalId: readString(body.externalId) } : {}),
+      ...(readBoolean(body.fullVersion) !== undefined ? { fullVersion: readBoolean(body.fullVersion) } : {}),
+      ...(charactersToBeShown !== undefined ? { charactersToBeShown } : {}),
+      ...(readString(body.newsType) ? { newsType: readString(body.newsType) } : {}),
+      ...(publicationDate ? { publicationDate } : {}),
+      ...(readBoolean(body.showPublishDate) !== undefined ? { showPublishDate: readBoolean(body.showPublishDate) } : {}),
+      ...(readString(body.categoryName) ? { categoryName: readString(body.categoryName) } : {}),
+      ...(categories ? { categories } : {}),
+      ...(sourceUrl ? { sourceUrl } : {}),
+      ...(address ? { address } : {}),
+      ...(contentBlocks ? { contentBlocks } : {}),
+      ...(readString(body.pointOfInterestId) ? { pointOfInterestId: readString(body.pointOfInterestId) } : {}),
+      ...(options.allowPushNotification && readBoolean(body.pushNotification) !== undefined
+        ? { pushNotification: readBoolean(body.pushNotification) }
+        : {}),
     },
   };
 };
@@ -256,7 +483,7 @@ const dispatchAuthenticated = async (request: Request, route: RouteMatch, ctx: A
       if (idempotencyKey instanceof Response) {
         return idempotencyKey;
       }
-      const parsed = await parseNewsInput(request);
+      const parsed = await parseNewsInput(request, { allowPushNotification: true });
       if (parsed instanceof Response) {
         return parsed;
       }
@@ -328,7 +555,7 @@ const dispatchAuthenticated = async (request: Request, route: RouteMatch, ctx: A
       if (csrfError) {
         return csrfError;
       }
-      const parsed = await parseNewsInput(request);
+      const parsed = await parseNewsInput(request, { allowPushNotification: false });
       if (parsed instanceof Response) {
         return parsed;
       }

@@ -51,12 +51,39 @@ const ctx = {
 
 const newsInput = {
   title: 'Neue News',
+  author: 'Editor',
+  keywords: 'Rathaus, Termin',
+  externalId: 'ext-1',
+  fullVersion: true,
+  charactersToBeShown: 240,
+  newsType: 'press',
   publishedAt: '2026-04-14T09:30:00.000Z',
-  payload: {
-    teaser: 'Kurztext',
-    body: '<p>Body</p>',
-    category: 'Allgemein',
+  publicationDate: '2026-04-14T09:00:00.000Z',
+  showPublishDate: true,
+  categoryName: 'Allgemein',
+  categories: [{ name: 'Allgemein' }],
+  sourceUrl: { url: 'https://example.invalid/news', description: 'Quelle' },
+  address: {
+    street: 'Markt 1',
+    zip: '12345',
+    city: 'Musterhausen',
+    geoLocation: { latitude: 52.1, longitude: 13.1 },
   },
+  contentBlocks: [
+    {
+      title: 'Abschnitt',
+      intro: 'Kurztext',
+      body: '<p>Body</p>',
+      mediaContents: [{ contentType: 'image', sourceUrl: { url: 'https://example.invalid/image.jpg' } }],
+    },
+  ],
+  pointOfInterestId: 'poi-1',
+  pushNotification: true,
+};
+
+const updateNewsInput = {
+  ...newsInput,
+  pushNotification: undefined,
 };
 
 const createRequest = (url: string, init?: RequestInit): Request =>
@@ -131,6 +158,9 @@ describe('dispatchMainserverNewsRequest', () => {
       })
     );
     expect(state.completeIdempotency).toHaveBeenCalledWith(expect.objectContaining({ responseStatus: 201 }));
+    const createCall = state.createSvaMainserverNews.mock.calls[0]?.[0] as { news?: Record<string, unknown> } | undefined;
+    expect(createCall?.news).toEqual(expect.objectContaining({ contentBlocks: newsInput.contentBlocks, pushNotification: true }));
+    expect(createCall?.news).not.toHaveProperty('payload');
 
     const rejected = await dispatchMainserverNewsRequest(
       createRequest('https://studio.test/api/v1/mainserver/news', {
@@ -156,7 +186,7 @@ describe('dispatchMainserverNewsRequest', () => {
     const response = await dispatchMainserverNewsRequest(
       createRequest('https://studio.test/api/v1/mainserver/news/news-1', {
         method: 'PATCH',
-        body: JSON.stringify(newsInput),
+        body: JSON.stringify(updateNewsInput),
       })
     );
 
@@ -169,6 +199,36 @@ describe('dispatchMainserverNewsRequest', () => {
       expect.objectContaining({ action: 'content.updatePayload' })
     );
     await expect(response?.json()).resolves.toEqual({ data: { id: 'news-1' } });
+  });
+
+  it('rejects legacy payload, read-only fields and update push notifications before GraphQL', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    state.validateCsrf.mockReturnValue(null);
+
+    const legacyPayload = await dispatchMainserverNewsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/news/news-1', {
+        method: 'PATCH',
+        body: JSON.stringify({ ...updateNewsInput, payload: { teaser: 'Alt', body: 'Alt' } }),
+      })
+    );
+    expect(legacyPayload?.status).toBe(400);
+
+    const readOnly = await dispatchMainserverNewsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/news/news-1', {
+        method: 'PATCH',
+        body: JSON.stringify({ ...updateNewsInput, likeCount: 1 }),
+      })
+    );
+    expect(readOnly?.status).toBe(400);
+
+    const pushOnUpdate = await dispatchMainserverNewsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/news/news-1', {
+        method: 'PATCH',
+        body: JSON.stringify(newsInput),
+      })
+    );
+    expect(pushOnUpdate?.status).toBe(400);
+    expect(state.updateSvaMainserverNews).not.toHaveBeenCalled();
   });
 
   it('deletes news via mainserver hard delete', async () => {

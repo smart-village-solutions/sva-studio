@@ -153,7 +153,7 @@ Schulden auf IST-Basis.
 25. Untypisiertes `payload_json` als persistente Core-Struktur
    - Impact: mittel (Schema-Drift oder unvollständige Validierung kann erst im Write-Pfad auffallen)
    - Wahrscheinlichkeit: mittel
-   - Maßnahme: serverseitige contentType-Registry und Zod-Validierung beibehalten, stärkere Persistenztypisierung nur kontrolliert und migrationsgestützt einführen
+   - Maßnahme: serverseitige contentType-Registry und Zod-Validierung beibehalten, stärkere Persistenztypisierung nur kontrolliert und migrationsgestützt einführen; Mainserver-News umgehen diese Altlast im produktiven Schreibpfad über dedizierte `NewsItem`-Felder und `contentBlocks`
 
 26. Statische Bundle-Plugins statt Runtime-Loading
    - Impact: mittel (geringere betriebliche Flexibilität, Host-Rebuild für neue Plugins erforderlich)

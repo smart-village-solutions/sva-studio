@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from '@tanstack/react-router';
 import { translatePluginKey, usePluginTranslation } from '@sva/plugin-sdk';
 import {
   Button,
+  Checkbox,
   Input,
   StudioDetailPageTemplate,
   StudioEmptyState,
@@ -15,10 +16,10 @@ import {
   Textarea,
 } from '@sva/studio-ui-react';
 
-import { NewsApiError, createNews, deleteNews, getNews, listNews, updateNews, type NewsFormInput } from './news.api.js';
+import { NewsApiError, createNews, deleteNews, getNews, listNews, updateNews } from './news.api.js';
 import { getPluginNewsActionDefinition, pluginNewsActionIds } from './plugin.js';
-import type { NewsContentItem, NewsPayload } from './news.types.js';
-import { validateNewsPayload } from './news.validation.js';
+import type { NewsContentBlock, NewsContentItem, NewsFormInput, NewsMediaContent } from './news.types.js';
+import { validateNewsForm } from './news.validation.js';
 
 type StatusMessage = {
   readonly kind: 'success' | 'error';
@@ -27,15 +28,37 @@ type StatusMessage = {
 
 type FlashMessageCode = 'createSuccess' | 'deleteSuccess';
 
-const defaultPayload = (): NewsPayload => ({
-  teaser: '',
+const defaultContentBlock = (): NewsContentBlock => ({
+  title: '',
+  intro: '',
   body: '',
+  mediaContents: [],
+});
+
+const defaultMediaContent = (): NewsMediaContent => ({
+  caption: '',
+  copyright: '',
+  contentType: 'image',
+  sourceUrl: { url: '', description: '' },
 });
 
 const defaultForm = (): NewsFormInput => ({
   title: '',
+  author: '',
+  keywords: '',
+  externalId: '',
+  fullVersion: false,
+  newsType: '',
   publishedAt: '',
-  payload: defaultPayload(),
+  publicationDate: '',
+  showPublishDate: true,
+  categoryName: '',
+  categories: [],
+  sourceUrl: { url: '', description: '' },
+  address: {},
+  contentBlocks: [defaultContentBlock()],
+  pointOfInterestId: '',
+  pushNotification: false,
 });
 
 const newsFlashStorageKey = 'news-plugin-flash-message';
@@ -116,6 +139,8 @@ const formatDate = (value?: string) => {
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
 };
 
+const formatOptionalNumber = (value?: number) => (typeof value === 'number' ? String(value) : '—');
+
 const toDatetimeLocalValue = (value?: string) => {
   if (!value) {
     return '';
@@ -144,6 +169,106 @@ const fromDatetimeLocalValue = (value: string): string => {
   return Number.isNaN(date.getTime()) ? '' : date.toISOString();
 };
 
+const compactString = (value?: string) => {
+  const trimmed = value?.trim();
+  return trimmed && trimmed.length > 0 ? trimmed : undefined;
+};
+
+const compactWebUrl = (value: NewsFormInput['sourceUrl']) => {
+  const url = compactString(value?.url);
+  return url
+    ? {
+        url,
+        ...(compactString(value?.description) ? { description: compactString(value?.description) } : {}),
+      }
+    : undefined;
+};
+
+const compactForm = (form: NewsFormInput, mode: 'create' | 'edit'): NewsFormInput => ({
+  title: form.title.trim(),
+  publishedAt: form.publishedAt,
+  ...(compactString(form.author) ? { author: compactString(form.author) } : {}),
+  ...(compactString(form.keywords) ? { keywords: compactString(form.keywords) } : {}),
+  ...(compactString(form.externalId) ? { externalId: compactString(form.externalId) } : {}),
+  ...(form.fullVersion !== undefined ? { fullVersion: form.fullVersion } : {}),
+  ...(form.charactersToBeShown !== undefined ? { charactersToBeShown: form.charactersToBeShown } : {}),
+  ...(compactString(form.newsType) ? { newsType: compactString(form.newsType) } : {}),
+  ...(compactString(form.publicationDate) ? { publicationDate: form.publicationDate } : {}),
+  ...(form.showPublishDate !== undefined ? { showPublishDate: form.showPublishDate } : {}),
+  ...(compactString(form.categoryName) ? { categoryName: compactString(form.categoryName) } : {}),
+  ...(form.categories && form.categories.length > 0 ? { categories: form.categories } : {}),
+  ...(compactWebUrl(form.sourceUrl) ? { sourceUrl: compactWebUrl(form.sourceUrl) } : {}),
+  ...(form.address &&
+  (compactString(form.address.street) ||
+    compactString(form.address.zip) ||
+    compactString(form.address.city) ||
+    compactString(form.address.addition) ||
+    compactString(form.address.kind) ||
+    form.address.geoLocation)
+    ? { address: form.address }
+    : {}),
+  contentBlocks: (form.contentBlocks ?? []).map((block) => ({
+    ...(compactString(block.title) ? { title: compactString(block.title) } : {}),
+    ...(compactString(block.intro) ? { intro: compactString(block.intro) } : {}),
+    ...(compactString(block.body) ? { body: block.body?.trim() } : {}),
+    ...(block.mediaContents && block.mediaContents.length > 0
+      ? {
+          mediaContents: block.mediaContents
+            .map((media) => ({
+              ...(compactString(media.caption) ? { caption: compactString(media.caption) } : {}),
+              ...(compactString(media.copyright) ? { copyright: compactString(media.copyright) } : {}),
+              ...(compactString(media.contentType) ? { contentType: compactString(media.contentType) } : {}),
+              ...(media.height !== undefined && media.height !== '' ? { height: media.height } : {}),
+              ...(media.width !== undefined && media.width !== '' ? { width: media.width } : {}),
+              ...(compactWebUrl(media.sourceUrl) ? { sourceUrl: compactWebUrl(media.sourceUrl) } : {}),
+            }))
+            .filter((media) => Object.keys(media).length > 0),
+        }
+      : {}),
+  })),
+  ...(compactString(form.pointOfInterestId) ? { pointOfInterestId: compactString(form.pointOfInterestId) } : {}),
+  ...(mode === 'create' && form.pushNotification !== undefined ? { pushNotification: form.pushNotification } : {}),
+});
+
+const itemToForm = (item: NewsContentItem): NewsFormInput => ({
+  ...defaultForm(),
+  title: item.title,
+  author: item.author ?? '',
+  keywords: item.keywords ?? '',
+  externalId: item.externalId ?? '',
+  fullVersion: item.fullVersion ?? false,
+  charactersToBeShown:
+    typeof item.charactersToBeShown === 'number' ? item.charactersToBeShown : Number(item.charactersToBeShown) || undefined,
+  newsType: item.newsType ?? '',
+  publishedAt: item.publishedAt,
+  publicationDate: item.publicationDate ?? '',
+  showPublishDate: item.showPublishDate ?? true,
+  categoryName: item.categoryName ?? item.payload.category ?? '',
+  categories: item.categories ?? [],
+  sourceUrl: item.sourceUrl ?? { url: item.payload.externalUrl ?? '', description: '' },
+  address: item.address ?? {},
+  contentBlocks:
+    item.contentBlocks && item.contentBlocks.length > 0
+      ? item.contentBlocks
+      : [
+          {
+            intro: item.payload.teaser ?? '',
+            body: item.payload.body ?? '',
+            mediaContents: item.payload.imageUrl ? [{ sourceUrl: { url: item.payload.imageUrl } }] : [],
+          },
+        ],
+  pointOfInterestId: item.pointOfInterestId ?? '',
+  pushNotification: false,
+});
+
+const firstBlockSummary = (item: NewsContentItem) => {
+  const firstBlock = item.contentBlocks?.[0];
+  return firstBlock?.intro ?? firstBlock?.body ?? item.payload.teaser ?? '';
+};
+
+const categorySummary = (item: NewsContentItem) =>
+  item.categoryName ?? item.categories?.map((category) => category.name).join(', ') ?? item.payload.category ?? '—';
+
 const NewsForm = ({
   mode,
   contentId,
@@ -163,6 +288,7 @@ const NewsForm = ({
   const [fieldErrors, setFieldErrors] = React.useState<readonly string[]>([]);
   const [statusMessage, setStatusMessage] = React.useState<StatusMessage | null>(null);
   const [deletePending, setDeletePending] = React.useState(false);
+  const [loadedItem, setLoadedItem] = React.useState<NewsContentItem | null>(null);
   const hasFieldError = React.useCallback((field: string) => fieldErrors.includes(field), [fieldErrors]);
 
   React.useEffect(() => {
@@ -180,15 +306,10 @@ const NewsForm = ({
 
     void getNews(contentId)
       .then((item) => {
-        if (!active) {
-          return;
+        if (active) {
+          setForm(itemToForm(item));
+          setLoadedItem(item);
         }
-
-        setForm({
-          title: item.title,
-          publishedAt: item.publishedAt,
-          payload: item.payload,
-        });
       })
       .catch((error: unknown) => {
         if (active) {
@@ -206,9 +327,35 @@ const NewsForm = ({
     };
   }, [contentId, mode]);
 
+  const updateBlock = (index: number, patch: Partial<NewsContentBlock>) => {
+    setForm((current) => ({
+      ...current,
+      contentBlocks: (current.contentBlocks ?? []).map((block, blockIndex) =>
+        blockIndex === index ? { ...block, ...patch } : block
+      ),
+    }));
+  };
+
+  const updateMedia = (blockIndex: number, mediaIndex: number, patch: Partial<NewsMediaContent>) => {
+    setForm((current) => ({
+      ...current,
+      contentBlocks: (current.contentBlocks ?? []).map((block, currentBlockIndex) =>
+        currentBlockIndex === blockIndex
+          ? {
+              ...block,
+              mediaContents: (block.mediaContents ?? []).map((media, currentMediaIndex) =>
+                currentMediaIndex === mediaIndex ? { ...media, ...patch } : media
+              ),
+            }
+          : block
+      ),
+    }));
+  };
+
   const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const validationErrors = [...validateNewsPayload(form.payload), ...(form.publishedAt ? [] : ['publishedAt'])];
+    const compactedForm = compactForm(form, mode);
+    const validationErrors = validateNewsForm(compactedForm);
     setFieldErrors(validationErrors);
 
     if (validationErrors.length > 0) {
@@ -218,14 +365,14 @@ const NewsForm = ({
 
     try {
       if (mode === 'create') {
-        await createNews(form);
+        await createNews(compactedForm);
         persistFlashMessage('createSuccess');
         await navigate({ to: '/plugins/news' });
         return;
       }
 
       if (contentId) {
-        await updateNews(contentId, form);
+        await updateNews(contentId, compactedForm);
         setStatusMessage({ kind: 'success', text: pt('messages.updateSuccess') });
       }
     } catch (error) {
@@ -264,11 +411,9 @@ const NewsForm = ({
       title={mode === 'create' ? pt('editor.createTitle') : pt('editor.editTitle')}
       description={mode === 'create' ? pt('editor.createDescription') : pt('editor.editDescription')}
     >
-      {statusMessage ? (
-        <StudioFormSummary kind={statusMessage.kind}>{statusMessage.text}</StudioFormSummary>
-      ) : null}
+      {statusMessage ? <StudioFormSummary kind={statusMessage.kind}>{statusMessage.text}</StudioFormSummary> : null}
 
-      <form className="space-y-5" onSubmit={onSubmit}>
+      <form className="space-y-6" onSubmit={onSubmit}>
         <StudioField id="news-title" label={pt('fields.title')} required>
           <Input
             id="news-title"
@@ -278,134 +423,373 @@ const NewsForm = ({
           />
         </StudioField>
 
-        <StudioField
-          id="news-teaser"
-          label={pt('fields.teaser')}
-          description={pt('fields.teaserHelp')}
-          descriptionId="news-teaser-help"
-          error={hasFieldError('teaser') ? pt('validation.teaser') : undefined}
-          errorId="news-teaser-error"
-          required
-        >
-          <Textarea
-            id="news-teaser"
-            required
-            aria-describedby={buildDescribedBy('news-teaser-help', hasFieldError('teaser') && 'news-teaser-error')}
-            aria-invalid={hasFieldError('teaser') || undefined}
-            value={form.payload.teaser}
-            onChange={(event) =>
-              setForm((current) => ({
-                ...current,
-                payload: { ...current.payload, teaser: event.target.value },
-              }))
-            }
-          />
-        </StudioField>
-
-        <StudioField
-          id="news-body"
-          label={pt('fields.body')}
-          error={hasFieldError('body') ? pt('validation.body') : undefined}
-          errorId="news-body-error"
-          required
-        >
-          <Textarea
-            id="news-body"
-            className="min-h-48"
-            required
-            aria-describedby={buildDescribedBy(hasFieldError('body') && 'news-body-error')}
-            aria-invalid={hasFieldError('body') || undefined}
-            value={form.payload.body}
-            onChange={(event) =>
-              setForm((current) => ({
-                ...current,
-                payload: { ...current.payload, body: event.target.value },
-              }))
-            }
-          />
-        </StudioField>
-
         <StudioFieldGroup columns={2}>
-          <StudioField
-            id="news-image-url"
-            label={pt('fields.imageUrl')}
-            error={hasFieldError('imageUrl') ? pt('validation.imageUrl') : undefined}
-            errorId="news-image-url-error"
-          >
+          <StudioField id="news-author" label={pt('fields.author')}>
             <Input
-              id="news-image-url"
-              type="url"
-              aria-describedby={buildDescribedBy(hasFieldError('imageUrl') && 'news-image-url-error')}
-              aria-invalid={hasFieldError('imageUrl') || undefined}
-              value={form.payload.imageUrl ?? ''}
-              onChange={(event) =>
-                setForm((current) => ({
-                  ...current,
-                  payload: { ...current.payload, imageUrl: event.target.value || undefined },
-                }))
-              }
+              id="news-author"
+              value={form.author ?? ''}
+              onChange={(event) => setForm((current) => ({ ...current, author: event.target.value }))}
             />
           </StudioField>
-
-          <StudioField
-            id="news-external-url"
-            label={pt('fields.externalUrl')}
-            error={hasFieldError('externalUrl') ? pt('validation.externalUrl') : undefined}
-            errorId="news-external-url-error"
-          >
+          <StudioField id="news-keywords" label={pt('fields.keywords')}>
             <Input
-              id="news-external-url"
-              type="url"
-              aria-describedby={buildDescribedBy(hasFieldError('externalUrl') && 'news-external-url-error')}
-              aria-invalid={hasFieldError('externalUrl') || undefined}
-              value={form.payload.externalUrl ?? ''}
-              onChange={(event) =>
-                setForm((current) => ({
-                  ...current,
-                  payload: { ...current.payload, externalUrl: event.target.value || undefined },
-                }))
-              }
+              id="news-keywords"
+              value={form.keywords ?? ''}
+              onChange={(event) => setForm((current) => ({ ...current, keywords: event.target.value }))}
             />
           </StudioField>
         </StudioFieldGroup>
 
         <StudioFieldGroup columns={2}>
-          <StudioField id="news-category" label={pt('fields.category')}>
+          <StudioField id="news-external-id" label={pt('fields.externalId')}>
             <Input
-              id="news-category"
-              value={form.payload.category ?? ''}
-              onChange={(event) =>
-                setForm((current) => ({
-                  ...current,
-                  payload: { ...current.payload, category: event.target.value || undefined },
-                }))
-              }
+              id="news-external-id"
+              value={form.externalId ?? ''}
+              onChange={(event) => setForm((current) => ({ ...current, externalId: event.target.value }))}
+            />
+          </StudioField>
+          <StudioField id="news-type" label={pt('fields.newsType')}>
+            <Input
+              id="news-type"
+              value={form.newsType ?? ''}
+              onChange={(event) => setForm((current) => ({ ...current, newsType: event.target.value }))}
             />
           </StudioField>
         </StudioFieldGroup>
 
-        <StudioField
-          id="news-published-at"
-          label={pt('fields.publishedAt')}
-          error={hasFieldError('publishedAt') ? pt('validation.publishedAt') : undefined}
-          errorId="news-published-at-error"
-          required
-        >
-          <Input
+        <StudioFieldGroup columns={2}>
+          <StudioField
             id="news-published-at"
-            type="datetime-local"
+            label={pt('fields.publishedAt')}
+            error={hasFieldError('publishedAt') ? pt('validation.publishedAt') : undefined}
+            errorId="news-published-at-error"
             required
-            aria-describedby={buildDescribedBy(hasFieldError('publishedAt') && 'news-published-at-error')}
-            aria-invalid={hasFieldError('publishedAt') || undefined}
-            value={toDatetimeLocalValue(form.publishedAt)}
-            onChange={(event) =>
-              setForm((current) => ({
-                ...current,
-                publishedAt: fromDatetimeLocalValue(event.target.value),
-              }))
-            }
+          >
+            <Input
+              id="news-published-at"
+              type="datetime-local"
+              required
+              aria-describedby={buildDescribedBy(hasFieldError('publishedAt') && 'news-published-at-error')}
+              aria-invalid={hasFieldError('publishedAt') || undefined}
+              value={toDatetimeLocalValue(form.publishedAt)}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, publishedAt: fromDatetimeLocalValue(event.target.value) }))
+              }
+            />
+          </StudioField>
+          <StudioField
+            id="news-publication-date"
+            label={pt('fields.publicationDate')}
+            error={hasFieldError('publicationDate') ? pt('validation.publicationDate') : undefined}
+            errorId="news-publication-date-error"
+          >
+            <Input
+              id="news-publication-date"
+              type="datetime-local"
+              aria-describedby={buildDescribedBy(hasFieldError('publicationDate') && 'news-publication-date-error')}
+              aria-invalid={hasFieldError('publicationDate') || undefined}
+              value={toDatetimeLocalValue(form.publicationDate)}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, publicationDate: fromDatetimeLocalValue(event.target.value) }))
+              }
+            />
+          </StudioField>
+        </StudioFieldGroup>
+
+        <div className="grid gap-4 md:grid-cols-3">
+          <StudioField
+            id="news-characters"
+            label={pt('fields.charactersToBeShown')}
+            error={hasFieldError('charactersToBeShown') ? pt('validation.charactersToBeShown') : undefined}
+            errorId="news-characters-error"
+          >
+            <Input
+              id="news-characters"
+              type="number"
+              min={0}
+              aria-describedby={buildDescribedBy(hasFieldError('charactersToBeShown') && 'news-characters-error')}
+              aria-invalid={hasFieldError('charactersToBeShown') || undefined}
+              value={form.charactersToBeShown ?? ''}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  charactersToBeShown: event.target.value ? Number(event.target.value) : undefined,
+                }))
+              }
+            />
+          </StudioField>
+          <label className="flex items-center gap-2 text-sm font-medium">
+            <Checkbox
+              checked={form.fullVersion ?? false}
+              onChange={(event) => setForm((current) => ({ ...current, fullVersion: event.target.checked }))}
+            />
+            {pt('fields.fullVersion')}
+          </label>
+          <label className="flex items-center gap-2 text-sm font-medium">
+            <Checkbox
+              checked={form.showPublishDate ?? false}
+              onChange={(event) => setForm((current) => ({ ...current, showPublishDate: event.target.checked }))}
+            />
+            {pt('fields.showPublishDate')}
+          </label>
+        </div>
+
+        {mode === 'create' ? (
+          <label className="flex items-center gap-2 text-sm font-medium">
+            <Checkbox
+              checked={form.pushNotification ?? false}
+              onChange={(event) => setForm((current) => ({ ...current, pushNotification: event.target.checked }))}
+            />
+            {pt('fields.pushNotification')}
+          </label>
+        ) : null}
+
+        <StudioFieldGroup columns={2}>
+          <StudioField
+            id="news-category-name"
+            label={pt('fields.categoryName')}
+            error={hasFieldError('categoryName') ? pt('validation.categoryName') : undefined}
+            errorId="news-category-name-error"
+          >
+            <Input
+              id="news-category-name"
+              aria-describedby={buildDescribedBy(hasFieldError('categoryName') && 'news-category-name-error')}
+              aria-invalid={hasFieldError('categoryName') || undefined}
+              value={form.categoryName ?? ''}
+              onChange={(event) => setForm((current) => ({ ...current, categoryName: event.target.value }))}
+            />
+          </StudioField>
+          <StudioField
+            id="news-categories"
+            label={pt('fields.categories')}
+            description={pt('fields.categoriesHelp')}
+            descriptionId="news-categories-help"
+            error={hasFieldError('categories') ? pt('validation.categories') : undefined}
+            errorId="news-categories-error"
+          >
+            <Textarea
+              id="news-categories"
+              aria-describedby={buildDescribedBy('news-categories-help', hasFieldError('categories') && 'news-categories-error')}
+              aria-invalid={hasFieldError('categories') || undefined}
+              value={(form.categories ?? []).map((category) => category.name).join('\n')}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  categories: event.target.value
+                    .split('\n')
+                    .map((name) => name.trim())
+                    .filter(Boolean)
+                    .map((name) => ({ name })),
+                }))
+              }
+            />
+          </StudioField>
+        </StudioFieldGroup>
+
+        <StudioFieldGroup columns={2}>
+          <StudioField
+            id="news-source-url"
+            label={pt('fields.sourceUrl')}
+            error={hasFieldError('sourceUrl') ? pt('validation.sourceUrl') : undefined}
+            errorId="news-source-url-error"
+          >
+            <Input
+              id="news-source-url"
+              type="url"
+              aria-describedby={buildDescribedBy(hasFieldError('sourceUrl') && 'news-source-url-error')}
+              aria-invalid={hasFieldError('sourceUrl') || undefined}
+              value={form.sourceUrl?.url ?? ''}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, sourceUrl: { ...current.sourceUrl, url: event.target.value } }))
+              }
+            />
+          </StudioField>
+          <StudioField id="news-source-description" label={pt('fields.sourceUrlDescription')}>
+            <Input
+              id="news-source-description"
+              value={form.sourceUrl?.description ?? ''}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  sourceUrl: { ...current.sourceUrl, url: current.sourceUrl?.url ?? '', description: event.target.value },
+                }))
+              }
+            />
+          </StudioField>
+        </StudioFieldGroup>
+
+        <div className="grid gap-4 md:grid-cols-3">
+          <StudioField id="news-address-street" label={pt('fields.street')}>
+            <Input
+              id="news-address-street"
+              value={form.address?.street ?? ''}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, address: { ...current.address, street: event.target.value } }))
+              }
+            />
+          </StudioField>
+          <StudioField id="news-address-zip" label={pt('fields.zip')}>
+            <Input
+              id="news-address-zip"
+              value={form.address?.zip ?? ''}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, address: { ...current.address, zip: event.target.value } }))
+              }
+            />
+          </StudioField>
+          <StudioField id="news-address-city" label={pt('fields.city')}>
+            <Input
+              id="news-address-city"
+              value={form.address?.city ?? ''}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, address: { ...current.address, city: event.target.value } }))
+              }
+            />
+          </StudioField>
+        </div>
+
+        <StudioField id="news-poi" label={pt('fields.pointOfInterestId')}>
+          <Input
+            id="news-poi"
+            value={form.pointOfInterestId ?? ''}
+            onChange={(event) => setForm((current) => ({ ...current, pointOfInterestId: event.target.value }))}
           />
         </StudioField>
+
+        <div className="space-y-4">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-base font-semibold">{pt('fields.contentBlocks')}</h2>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() =>
+                setForm((current) => ({
+                  ...current,
+                  contentBlocks: [...(current.contentBlocks ?? []), defaultContentBlock()],
+                }))
+              }
+            >
+              {pt('actions.addContentBlock')}
+            </Button>
+          </div>
+
+          {hasFieldError('contentBlocks') ? (
+            <p id="news-content-blocks-error" className="text-sm text-destructive">
+              {pt('validation.contentBlocks')}
+            </p>
+          ) : null}
+
+          {(form.contentBlocks ?? []).map((block, blockIndex) => (
+            <section key={blockIndex} className="space-y-4 border-t border-border pt-4">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-sm font-semibold">{pt('fields.contentBlock')}</h3>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setForm((current) => ({
+                      ...current,
+                      contentBlocks: (current.contentBlocks ?? []).filter((_, index) => index !== blockIndex),
+                    }))
+                  }
+                >
+                  {pt('actions.remove')}
+                </Button>
+              </div>
+
+              <StudioFieldGroup columns={2}>
+                <StudioField id={`news-block-title-${blockIndex}`} label={pt('fields.blockTitle')}>
+                  <Input
+                    id={`news-block-title-${blockIndex}`}
+                    value={block.title ?? ''}
+                    onChange={(event) => updateBlock(blockIndex, { title: event.target.value })}
+                  />
+                </StudioField>
+                <StudioField id={`news-block-intro-${blockIndex}`} label={pt('fields.blockIntro')}>
+                  <Input
+                    id={`news-block-intro-${blockIndex}`}
+                    value={block.intro ?? ''}
+                    onChange={(event) => updateBlock(blockIndex, { intro: event.target.value })}
+                  />
+                </StudioField>
+              </StudioFieldGroup>
+
+              <StudioField id={`news-block-body-${blockIndex}`} label={pt('fields.blockBody')} required>
+                <Textarea
+                  id={`news-block-body-${blockIndex}`}
+                  className="min-h-48"
+                  aria-describedby={buildDescribedBy(hasFieldError('contentBlocks') && 'news-content-blocks-error')}
+                  aria-invalid={hasFieldError('contentBlocks') || undefined}
+                  value={block.body ?? ''}
+                  onChange={(event) => updateBlock(blockIndex, { body: event.target.value })}
+                />
+              </StudioField>
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <h4 className="text-sm font-medium">{pt('fields.mediaContents')}</h4>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      updateBlock(blockIndex, {
+                        mediaContents: [...(block.mediaContents ?? []), defaultMediaContent()],
+                      })
+                    }
+                  >
+                    {pt('actions.addMedia')}
+                  </Button>
+                </div>
+                {block.mediaContents?.map((media, mediaIndex) => (
+                  <div key={mediaIndex} className="grid gap-3 border-t border-border pt-3 md:grid-cols-2">
+                    <StudioField id={`news-media-url-${blockIndex}-${mediaIndex}`} label={pt('fields.mediaUrl')}>
+                      <Input
+                        id={`news-media-url-${blockIndex}-${mediaIndex}`}
+                        type="url"
+                        value={media.sourceUrl?.url ?? ''}
+                        onChange={(event) =>
+                          updateMedia(blockIndex, mediaIndex, {
+                            sourceUrl: { ...media.sourceUrl, url: event.target.value },
+                          })
+                        }
+                      />
+                    </StudioField>
+                    <StudioField id={`news-media-caption-${blockIndex}-${mediaIndex}`} label={pt('fields.mediaCaption')}>
+                      <Input
+                        id={`news-media-caption-${blockIndex}-${mediaIndex}`}
+                        value={media.caption ?? ''}
+                        onChange={(event) => updateMedia(blockIndex, mediaIndex, { caption: event.target.value })}
+                      />
+                    </StudioField>
+                    <StudioField id={`news-media-type-${blockIndex}-${mediaIndex}`} label={pt('fields.mediaContentType')}>
+                      <Input
+                        id={`news-media-type-${blockIndex}-${mediaIndex}`}
+                        value={media.contentType ?? ''}
+                        onChange={(event) => updateMedia(blockIndex, mediaIndex, { contentType: event.target.value })}
+                      />
+                    </StudioField>
+                    <div className="flex items-end justify-end">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          updateBlock(blockIndex, {
+                            mediaContents: (block.mediaContents ?? []).filter((_, index) => index !== mediaIndex),
+                          })
+                        }
+                      >
+                        {pt('actions.remove')}
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
 
         <div className="flex flex-wrap gap-3">
           <Button type="submit">{submitLabel}</Button>
@@ -418,6 +802,48 @@ const NewsForm = ({
             </Button>
           ) : null}
         </div>
+
+        {mode === 'edit' && loadedItem ? (
+          <section className="space-y-3 border-t border-border pt-4">
+            <h2 className="text-base font-semibold">{pt('fields.technicalDetails')}</h2>
+            <dl className="grid gap-3 text-sm md:grid-cols-2">
+              <div>
+                <dt className="font-medium">{pt('fields.dataProvider')}</dt>
+                <dd className="text-muted-foreground">
+                  {loadedItem.dataProvider?.name ?? loadedItem.dataProvider?.id ?? '—'}
+                </dd>
+              </div>
+              <div>
+                <dt className="font-medium">{pt('fields.visible')}</dt>
+                <dd className="text-muted-foreground">
+                  {typeof loadedItem.visible === 'boolean' ? pt(loadedItem.visible ? 'values.yes' : 'values.no') : '—'}
+                </dd>
+              </div>
+              <div>
+                <dt className="font-medium">{pt('fields.likeCount')}</dt>
+                <dd className="text-muted-foreground">{formatOptionalNumber(loadedItem.likeCount)}</dd>
+              </div>
+              <div>
+                <dt className="font-medium">{pt('fields.likedByMe')}</dt>
+                <dd className="text-muted-foreground">
+                  {typeof loadedItem.likedByMe === 'boolean' ? pt(loadedItem.likedByMe ? 'values.yes' : 'values.no') : '—'}
+                </dd>
+              </div>
+              <div>
+                <dt className="font-medium">{pt('fields.pushNotificationsSentAt')}</dt>
+                <dd className="text-muted-foreground">{formatDate(loadedItem.pushNotificationsSentAt)}</dd>
+              </div>
+              <div>
+                <dt className="font-medium">{pt('fields.settings')}</dt>
+                <dd className="text-muted-foreground">{formatOptionalNumber(loadedItem.settings?.length)}</dd>
+              </div>
+              <div>
+                <dt className="font-medium">{pt('fields.announcements')}</dt>
+                <dd className="text-muted-foreground">{formatOptionalNumber(loadedItem.announcements?.length)}</dd>
+              </div>
+            </dl>
+          </section>
+        ) : null}
       </form>
     </StudioDetailPageTemplate>
   );
@@ -479,7 +905,6 @@ export const NewsListPage = () => {
         </Button>
       }
     >
-
       {flashMessage ? (
         <StudioFormSummary kind="success">{pt(flashMessageTranslationKeys[flashMessage])}</StudioFormSummary>
       ) : null}
@@ -496,7 +921,7 @@ export const NewsListPage = () => {
             <thead className="bg-muted/40 text-muted-foreground">
               <tr>
                 <th className="px-4 py-3">{pt('fields.title')}</th>
-                <th className="px-4 py-3">{pt('fields.category')}</th>
+                <th className="px-4 py-3">{pt('fields.categoryName')}</th>
                 <th className="px-4 py-3">{pt('fields.updatedAt')}</th>
                 <th className="px-4 py-3">{pt('fields.actions')}</th>
               </tr>
@@ -506,9 +931,9 @@ export const NewsListPage = () => {
                 <tr key={item.id} className="border-t border-border">
                   <td className="px-4 py-3">
                     <div className="font-medium">{item.title}</div>
-                    <div className="mt-1 text-xs text-muted-foreground">{item.payload.teaser}</div>
+                    <div className="mt-1 line-clamp-2 text-xs text-muted-foreground">{firstBlockSummary(item)}</div>
                   </td>
-                  <td className="px-4 py-3">{item.payload.category ?? '—'}</td>
+                  <td className="px-4 py-3">{categorySummary(item)}</td>
                   <td className="px-4 py-3">{formatDate(item.updatedAt)}</td>
                   <td className="px-4 py-3">
                     <Button asChild variant="outline" size="sm">

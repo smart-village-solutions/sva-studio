@@ -232,7 +232,8 @@ describe('createSvaMainserverService', () => {
     const news = {
       title: item.title,
       publishedAt: item.publishedAt,
-      payload: item.payload,
+      categoryName: 'Allgemein',
+      contentBlocks: [{ intro: 'Kurztext', body: '<p>Body</p>' }],
     };
 
     await expect(service.listNews(connection)).resolves.toEqual([
@@ -378,6 +379,189 @@ describe('createSvaMainserverService', () => {
     ).resolves.toMatchObject({
       id: 'news-1',
       payload: { teaser: '', body: '' },
+    });
+  });
+
+  it('maps full nested news fields and writes full mutation variables without payload', async () => {
+    const publishedAt = '2026-04-14T09:30:00.000Z';
+    const fullItem = {
+      id: 'news-full',
+      title: 'Volle News',
+      author: 'Redaktion',
+      keywords: 'Rathaus',
+      externalId: 'ext-1',
+      fullVersion: true,
+      charactersToBeShown: '240',
+      newsType: 'press',
+      publicationDate: '2026-04-14T08:00:00.000Z',
+      publishedAt,
+      showPublishDate: true,
+      payload: {},
+      sourceUrl: { url: 'https://example.test/news', description: 'Quelle' },
+      address: {
+        id: '7',
+        addition: '2. OG',
+        street: 'Markt 1',
+        zip: '12345',
+        city: 'Musterhausen',
+        kind: 'venue',
+        geoLocation: { latitude: '52.1', longitude: '13.1' },
+      },
+      categories: [{ name: 'Allgemein', children: [{ name: 'Rathaus' }] }],
+      contentBlocks: [
+        {
+          title: 'Abschnitt',
+          intro: 'Kurztext',
+          body: '<p>Body</p>',
+          mediaContents: [
+            {
+              captionText: 'Bild',
+              copyright: 'SVA',
+              contentType: 'image',
+              height: 100,
+              width: 200,
+              sourceUrl: { url: 'https://example.test/image.jpg' },
+            },
+          ],
+        },
+      ],
+      dataProvider: { id: 'provider-1', name: 'Provider' },
+      settings: { alwaysRecreateOnImport: 'false', displayOnlySummary: 'true', onlySummaryLinkText: 'Mehr' },
+      announcements: [{ id: 'shout-1', title: 'Hinweis' }],
+      likeCount: 5,
+      likedByMe: false,
+      pushNotificationsSentAt: '2026-04-14T10:00:00.000Z',
+      visible: true,
+      createdAt: publishedAt,
+      updatedAt: publishedAt,
+    };
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { newsItem: fullItem } }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { createNewsItem: fullItem } }));
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
+      fetchImpl,
+    });
+    const connection = { instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' };
+
+    await expect(service.getNews({ ...connection, newsId: 'news-full' })).resolves.toMatchObject({
+      id: 'news-full',
+      keywords: 'Rathaus',
+      charactersToBeShown: 240,
+      sourceUrl: { url: 'https://example.test/news', description: 'Quelle' },
+      address: expect.objectContaining({ city: 'Musterhausen', geoLocation: { latitude: 52.1, longitude: 13.1 } }),
+      categories: [{ name: 'Allgemein', children: [{ name: 'Rathaus' }] }],
+      contentBlocks: [
+        expect.objectContaining({
+          mediaContents: [expect.objectContaining({ height: 100, width: 200 })],
+        }),
+      ],
+      dataProvider: { id: 'provider-1', name: 'Provider' },
+      settings: { alwaysRecreateOnImport: 'false', displayOnlySummary: 'true', onlySummaryLinkText: 'Mehr' },
+      announcements: [{ id: 'shout-1', title: 'Hinweis' }],
+      likeCount: 5,
+      likedByMe: false,
+      pushNotificationsSentAt: '2026-04-14T10:00:00.000Z',
+    });
+
+    await expect(
+      service.createNews({
+        ...connection,
+        news: {
+          title: fullItem.title,
+          author: fullItem.author,
+          keywords: fullItem.keywords,
+          externalId: fullItem.externalId,
+          fullVersion: fullItem.fullVersion,
+          charactersToBeShown: 240,
+          newsType: fullItem.newsType,
+          publicationDate: fullItem.publicationDate,
+          publishedAt,
+          showPublishDate: true,
+          categoryName: 'Allgemein',
+      categories: [{ name: 'Allgemein', children: [{ name: 'Rathaus' }] }],
+          sourceUrl: { url: 'https://example.test/news', description: 'Quelle' },
+          address: {
+            street: 'Markt 1',
+            zip: '12345',
+            city: 'Musterhausen',
+            geoLocation: { latitude: 52.1, longitude: 13.1 },
+          },
+          contentBlocks: [{ body: '<p>Body</p>', mediaContents: [{ sourceUrl: { url: 'https://example.test/image.jpg' } }] }],
+          pointOfInterestId: 'poi-1',
+          pushNotification: true,
+        },
+      })
+    ).resolves.toMatchObject({ id: 'news-full' });
+
+    const createBody = JSON.parse(fetchImpl.mock.calls[2]?.[1]?.body as string) as { variables: Record<string, unknown> };
+    expect(createBody.variables).toMatchObject({
+      title: 'Volle News',
+      author: 'Redaktion',
+      keywords: 'Rathaus',
+      categoryName: 'Allgemein',
+      pushNotification: true,
+      pointOfInterestId: 'poi-1',
+    });
+    expect(createBody.variables).not.toHaveProperty('payload');
+  });
+
+  it('normalizes sparse nested news fields without rejecting optional data', async () => {
+    const publishedAt = '2026-04-14T09:30:00.000Z';
+    const sparseItem = {
+      id: 'news-sparse',
+      title: 'Sparse',
+      author: null,
+      keywords: null,
+      externalId: null,
+      fullVersion: null,
+      charactersToBeShown: 'abc',
+      newsType: null,
+      publicationDate: null,
+      publishedAt,
+      showPublishDate: null,
+      payload: JSON.stringify({ teaser: 'Alt', body: '<p>Alt</p>', imageUrl: 'https://example.test/legacy.jpg' }),
+      sourceUrl: { url: null, description: 'Ohne URL' },
+      address: {
+        geoLocation: { latitude: Number.POSITIVE_INFINITY, longitude: 'bad' },
+      },
+      categories: [{ name: null }, { name: 'Allgemein', iconName: null, position: null, children: [{ name: null }] }],
+      contentBlocks: [],
+      dataProvider: { id: null, name: null, logo: { url: null }, address: {} },
+      settings: { alwaysRecreateOnImport: null, displayOnlySummary: null, onlySummaryLinkText: null },
+      announcements: [{ id: null, title: null, description: null }],
+      likeCount: null,
+      likedByMe: null,
+      visible: true,
+    };
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { newsItem: sparseItem } }));
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
+      fetchImpl,
+    });
+
+    await expect(
+      service.getNews({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1', newsId: 'news-sparse' })
+    ).resolves.toMatchObject({
+      id: 'news-sparse',
+      categories: [{ name: 'Allgemein', children: [] }],
+      contentBlocks: [
+        expect.objectContaining({
+          intro: 'Alt',
+          body: '<p>Alt</p>',
+          mediaContents: [expect.objectContaining({ sourceUrl: { url: 'https://example.test/legacy.jpg' } })],
+        }),
+      ],
+      announcements: [{}],
+      likeCount: 0,
+      likedByMe: false,
     });
   });
 

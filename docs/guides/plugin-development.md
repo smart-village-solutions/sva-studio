@@ -157,6 +157,8 @@ Das News-Plugin nutzt dieses Muster für Mainserver-News:
 - Datenzugriff läuft über `/api/v1/mainserver/news`.
 - Die App-Fassade prüft Session, Instanzkontext und lokale Content-Primitive.
 - `@sva/sva-mainserver/server` kapselt OAuth2, GraphQL und Mapping.
+- Das News-Modell nutzt dedizierte Mainserver-Felder; `contentBlocks` sind der führende Langinhalt.
+- Legacy-`payload` wird nur beim Lesen alter Datensätze in Editorfelder überführt und bei Create/Update nicht geschrieben.
 - Lokale Altinhalte werden nicht als produktiver Fallback gelesen.
 
 ## i18n

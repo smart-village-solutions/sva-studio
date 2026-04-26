@@ -27,9 +27,17 @@ import type {
   SvaMainserverConnectionStatus,
   SvaMainserverErrorCode,
   SvaMainserverInstanceConfig,
+  SvaMainserverAddress,
+  SvaMainserverAnnouncementSummary,
+  SvaMainserverCategory,
+  SvaMainserverContentBlock,
+  SvaMainserverDataProvider,
+  SvaMainserverMediaContent,
   SvaMainserverNewsInput,
   SvaMainserverNewsItem,
   SvaMainserverNewsPayload,
+  SvaMainserverSetting,
+  SvaMainserverWebUrl,
 } from '../types.js';
 import { loadSvaMainserverInstanceConfig } from './config-store.js';
 import { SvaMainserverError } from './errors.js';
@@ -107,20 +115,129 @@ const graphqlResponseSchema = z.object({
   errors: z.array(z.object({ message: z.string().optional() })).optional(),
 });
 const newsPayloadSchema = z.object({
-  teaser: z.string(),
-  body: z.string(),
+  teaser: z.string().optional(),
+  body: z.string().optional(),
   imageUrl: z.string().optional(),
   externalUrl: z.string().optional(),
   category: z.string().optional(),
+});
+
+const webUrlSchema = z.object({
+  id: z.string().nullish(),
+  url: z.string().nullish(),
+  description: z.string().nullish(),
+});
+
+const geoLocationSchema = z.object({
+  latitude: z.union([z.number(), z.string()]).nullish(),
+  longitude: z.union([z.number(), z.string()]).nullish(),
+});
+
+const addressSchema = z.object({
+  id: z.string().nullish(),
+  addition: z.string().nullish(),
+  street: z.string().nullish(),
+  zip: z.string().nullish(),
+  city: z.string().nullish(),
+  kind: z.string().nullish(),
+  geoLocation: geoLocationSchema.nullish(),
+});
+
+type CategoryLike = {
+  readonly id?: string | null;
+  readonly name?: string | null;
+  readonly iconName?: string | null;
+  readonly position?: number | null;
+  readonly tagList?: string | null;
+  readonly createdAt?: string | null;
+  readonly updatedAt?: string | null;
+  readonly children?: readonly CategoryLike[] | null;
+};
+
+const categorySchema: z.ZodType<CategoryLike> = z.lazy(() =>
+  z.object({
+    id: z.string().nullish(),
+    name: z.string().nullish(),
+    iconName: z.string().nullish(),
+    position: z.number().nullish(),
+    tagList: z.string().nullish(),
+    createdAt: z.string().nullish(),
+    updatedAt: z.string().nullish(),
+    children: z.array(categorySchema).nullish(),
+  })
+);
+
+const mediaContentSchema = z.object({
+  id: z.string().nullish(),
+  captionText: z.string().nullish(),
+  copyright: z.string().nullish(),
+  height: z.number().nullish(),
+  width: z.number().nullish(),
+  contentType: z.string().nullish(),
+  sourceUrl: webUrlSchema.nullish(),
+});
+
+const contentBlockSchema = z.object({
+  id: z.string().nullish(),
+  title: z.string().nullish(),
+  intro: z.string().nullish(),
+  body: z.string().nullish(),
+  mediaContents: z.array(mediaContentSchema).nullish(),
+  createdAt: z.string().nullish(),
+  updatedAt: z.string().nullish(),
+});
+
+const dataProviderSchema = z.object({
+  id: z.string().nullish(),
+  name: z.string().nullish(),
+  dataType: z.string().nullish(),
+  description: z.string().nullish(),
+  notice: z.string().nullish(),
+  logo: webUrlSchema.nullish(),
+  address: addressSchema.nullish(),
+});
+
+const settingSchema = z.object({
+  alwaysRecreateOnImport: z.string().nullish(),
+  displayOnlySummary: z.string().nullish(),
+  onlySummaryLinkText: z.string().nullish(),
+});
+
+const announcementSchema = z.object({
+  id: z.string().nullish(),
+  title: z.string().nullish(),
+  description: z.string().nullish(),
+  dateStart: z.string().nullish(),
+  dateEnd: z.string().nullish(),
+  timeStart: z.string().nullish(),
+  timeEnd: z.string().nullish(),
+  likeCount: z.number().nullish(),
+  likedByMe: z.boolean().nullish(),
 });
 
 const newsItemSchema = z.object({
   id: z.string().min(1),
   title: z.string().nullish(),
   author: z.string().nullish(),
+  keywords: z.string().nullish(),
+  externalId: z.string().nullish(),
+  fullVersion: z.boolean().nullish(),
+  charactersToBeShown: z.string().nullish(),
+  newsType: z.string().nullish(),
   payload: z.unknown(),
   publishedAt: z.string().nullish(),
   publicationDate: z.string().nullish(),
+  showPublishDate: z.boolean().nullish(),
+  sourceUrl: webUrlSchema.nullish(),
+  address: addressSchema.nullish(),
+  categories: z.array(categorySchema).nullish(),
+  contentBlocks: z.array(contentBlockSchema).nullish(),
+  dataProvider: dataProviderSchema.nullish(),
+  settings: settingSchema.nullish(),
+  announcements: z.array(announcementSchema).nullish(),
+  likeCount: z.number().nullish(),
+  likedByMe: z.boolean().nullish(),
+  pushNotificationsSentAt: z.string().nullish(),
   createdAt: z.string().nullish(),
   updatedAt: z.string().nullish(),
   visible: z.boolean().nullish(),
@@ -343,6 +460,178 @@ const parseNewsPayload = (payload: unknown): SvaMainserverNewsPayload => {
   return parsed.data;
 };
 
+const defined = <TValue>(value: TValue | null | undefined): value is TValue => value !== null && value !== undefined;
+
+const optionalString = (value: string | null | undefined): string | undefined =>
+  value && value.length > 0 ? value : undefined;
+
+const optionalNumber = (value: number | null | undefined): number | undefined => (defined(value) ? value : undefined);
+
+const parseCharactersToBeShown = (value: string | null | undefined): number | undefined => {
+  if (!value || value.trim().length === 0) {
+    return undefined;
+  }
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) ? parsed : undefined;
+};
+
+const mapWebUrl = (value: z.infer<typeof webUrlSchema> | null | undefined): SvaMainserverWebUrl | undefined => {
+  if (!value?.url) {
+    return undefined;
+  }
+  return {
+    ...(optionalString(value.id) ? { id: optionalString(value.id) } : {}),
+    url: value.url,
+    ...(optionalString(value.description) ? { description: optionalString(value.description) } : {}),
+  };
+};
+
+const parseGeoCoordinate = (value: number | string | null | undefined): number | undefined => {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : undefined;
+  }
+  if (typeof value === 'string' && value.trim().length > 0) {
+    const parsed = Number.parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+  return undefined;
+};
+
+const mapAddress = (value: z.infer<typeof addressSchema> | null | undefined): SvaMainserverAddress | undefined => {
+  if (!value) {
+    return undefined;
+  }
+  const geoLocation = value.geoLocation
+    ? {
+        ...(defined(parseGeoCoordinate(value.geoLocation.latitude))
+          ? { latitude: parseGeoCoordinate(value.geoLocation.latitude) }
+          : {}),
+        ...(defined(parseGeoCoordinate(value.geoLocation.longitude))
+          ? { longitude: parseGeoCoordinate(value.geoLocation.longitude) }
+          : {}),
+      }
+    : undefined;
+  const address = {
+    ...(optionalString(value.id) ? { id: optionalString(value.id) } : {}),
+    ...(optionalString(value.addition) ? { addition: optionalString(value.addition) } : {}),
+    ...(optionalString(value.street) ? { street: optionalString(value.street) } : {}),
+    ...(optionalString(value.zip) ? { zip: optionalString(value.zip) } : {}),
+    ...(optionalString(value.city) ? { city: optionalString(value.city) } : {}),
+    ...(optionalString(value.kind) ? { kind: optionalString(value.kind) } : {}),
+    ...(geoLocation && (defined(geoLocation.latitude) || defined(geoLocation.longitude)) ? { geoLocation } : {}),
+  };
+  return Object.keys(address).length > 0 ? address : undefined;
+};
+
+const mapCategory = (value: CategoryLike): SvaMainserverCategory | null => {
+  if (!value.name) {
+    return null;
+  }
+  return {
+    ...(optionalString(value.id) ? { id: optionalString(value.id) } : {}),
+    name: value.name,
+    ...(optionalString(value.iconName) ? { iconName: optionalString(value.iconName) } : {}),
+    ...(optionalNumber(value.position) !== undefined ? { position: value.position as number } : {}),
+    ...(optionalString(value.tagList) ? { tagList: optionalString(value.tagList) } : {}),
+    ...(optionalString(value.createdAt) ? { createdAt: optionalString(value.createdAt) } : {}),
+    ...(optionalString(value.updatedAt) ? { updatedAt: optionalString(value.updatedAt) } : {}),
+    children: (value.children ?? []).map(mapCategory).filter(defined),
+  };
+};
+
+const mapMediaContent = (value: z.infer<typeof mediaContentSchema>): SvaMainserverMediaContent => ({
+  ...(optionalString(value.id) ? { id: optionalString(value.id) } : {}),
+  ...(optionalString(value.captionText) ? { captionText: optionalString(value.captionText) } : {}),
+  ...(optionalString(value.copyright) ? { copyright: optionalString(value.copyright) } : {}),
+  ...(optionalNumber(value.height) !== undefined ? { height: value.height as number } : {}),
+  ...(optionalNumber(value.width) !== undefined ? { width: value.width as number } : {}),
+  ...(optionalString(value.contentType) ? { contentType: optionalString(value.contentType) } : {}),
+  ...(mapWebUrl(value.sourceUrl) ? { sourceUrl: mapWebUrl(value.sourceUrl) } : {}),
+});
+
+const buildLegacyContentBlock = (payload: SvaMainserverNewsPayload): SvaMainserverContentBlock | null => {
+  if (!payload.body && !payload.teaser) {
+    return null;
+  }
+  return {
+    ...(payload.teaser ? { intro: payload.teaser } : {}),
+    ...(payload.body ? { body: payload.body } : {}),
+    mediaContents: payload.imageUrl
+      ? [
+          {
+            contentType: 'image',
+            sourceUrl: {
+              url: payload.imageUrl,
+            },
+          },
+        ]
+      : [],
+  };
+};
+
+const mapContentBlocks = (
+  values: readonly z.infer<typeof contentBlockSchema>[] | null | undefined,
+  payload: SvaMainserverNewsPayload
+): readonly SvaMainserverContentBlock[] => {
+  const mapped = (values ?? []).map((value) => ({
+    ...(optionalString(value.id) ? { id: optionalString(value.id) } : {}),
+    ...(optionalString(value.title) ? { title: optionalString(value.title) } : {}),
+    ...(optionalString(value.intro) ? { intro: optionalString(value.intro) } : {}),
+    ...(optionalString(value.body) ? { body: optionalString(value.body) } : {}),
+    mediaContents: (value.mediaContents ?? []).map(mapMediaContent),
+    ...(optionalString(value.createdAt) ? { createdAt: optionalString(value.createdAt) } : {}),
+    ...(optionalString(value.updatedAt) ? { updatedAt: optionalString(value.updatedAt) } : {}),
+  }));
+  const legacyBlock = mapped.length === 0 ? buildLegacyContentBlock(payload) : null;
+  return legacyBlock ? [legacyBlock] : mapped;
+};
+
+const mapDataProvider = (
+  value: z.infer<typeof dataProviderSchema> | null | undefined
+): SvaMainserverDataProvider | undefined => {
+  if (!value) {
+    return undefined;
+  }
+  const dataProvider = {
+    ...(optionalString(value.id) ? { id: optionalString(value.id) } : {}),
+    ...(optionalString(value.name) ? { name: optionalString(value.name) } : {}),
+    ...(optionalString(value.dataType) ? { dataType: optionalString(value.dataType) } : {}),
+    ...(optionalString(value.description) ? { description: optionalString(value.description) } : {}),
+    ...(optionalString(value.notice) ? { notice: optionalString(value.notice) } : {}),
+    ...(mapWebUrl(value.logo) ? { logo: mapWebUrl(value.logo) } : {}),
+    ...(mapAddress(value.address) ? { address: mapAddress(value.address) } : {}),
+  };
+  return Object.keys(dataProvider).length > 0 ? dataProvider : undefined;
+};
+
+const mapSettings = (value: z.infer<typeof settingSchema> | null | undefined): SvaMainserverSetting | undefined => {
+  if (!value) {
+    return undefined;
+  }
+  const settings = {
+    ...(optionalString(value.alwaysRecreateOnImport)
+      ? { alwaysRecreateOnImport: optionalString(value.alwaysRecreateOnImport) }
+      : {}),
+    ...(optionalString(value.displayOnlySummary) ? { displayOnlySummary: optionalString(value.displayOnlySummary) } : {}),
+    ...(optionalString(value.onlySummaryLinkText) ? { onlySummaryLinkText: optionalString(value.onlySummaryLinkText) } : {}),
+  };
+  return Object.keys(settings).length > 0 ? settings : undefined;
+};
+
+const mapAnnouncement = (
+  value: z.infer<typeof announcementSchema>
+): SvaMainserverAnnouncementSummary => ({
+  ...(optionalString(value.id) ? { id: optionalString(value.id) } : {}),
+  ...(optionalString(value.title) ? { title: optionalString(value.title) } : {}),
+  ...(optionalString(value.description) ? { description: optionalString(value.description) } : {}),
+  ...(optionalString(value.dateStart) ? { dateStart: optionalString(value.dateStart) } : {}),
+  ...(optionalString(value.dateEnd) ? { dateEnd: optionalString(value.dateEnd) } : {}),
+  ...(optionalString(value.timeStart) ? { timeStart: optionalString(value.timeStart) } : {}),
+  ...(optionalString(value.timeEnd) ? { timeEnd: optionalString(value.timeEnd) } : {}),
+  likeCount: value.likeCount ?? 0,
+  likedByMe: value.likedByMe ?? false,
+});
+
 const mapNewsItem = (item: SvaMainserverNewsItemFragment | null | undefined): SvaMainserverNewsItem => {
   const parsed = newsItemSchema.safeParse(item);
   if (!parsed.success) {
@@ -362,13 +651,39 @@ const mapNewsItem = (item: SvaMainserverNewsItemFragment | null | undefined): Sv
     });
   }
 
+  const payload = parseNewsPayload(parsed.data.payload);
+  const categories = (parsed.data.categories ?? []).map(mapCategory).filter(defined);
+
   return {
     id: parsed.data.id,
     title: parsed.data.title ?? '',
     contentType: 'news.article',
-    payload: parseNewsPayload(parsed.data.payload),
+    payload,
     status: 'published',
     author: parsed.data.author ?? '',
+    ...(optionalString(parsed.data.keywords) ? { keywords: optionalString(parsed.data.keywords) } : {}),
+    ...(optionalString(parsed.data.externalId) ? { externalId: optionalString(parsed.data.externalId) } : {}),
+    ...(defined(parsed.data.fullVersion) ? { fullVersion: parsed.data.fullVersion } : {}),
+    ...(defined(parseCharactersToBeShown(parsed.data.charactersToBeShown))
+      ? { charactersToBeShown: parseCharactersToBeShown(parsed.data.charactersToBeShown) }
+      : {}),
+    ...(optionalString(parsed.data.newsType) ? { newsType: optionalString(parsed.data.newsType) } : {}),
+    ...(optionalString(parsed.data.publicationDate) ? { publicationDate: optionalString(parsed.data.publicationDate) } : {}),
+    ...(defined(parsed.data.showPublishDate) ? { showPublishDate: parsed.data.showPublishDate } : {}),
+    ...(payload.category ? { categoryName: payload.category } : {}),
+    categories,
+    ...(mapWebUrl(parsed.data.sourceUrl) ? { sourceUrl: mapWebUrl(parsed.data.sourceUrl) } : {}),
+    ...(mapAddress(parsed.data.address) ? { address: mapAddress(parsed.data.address) } : {}),
+    contentBlocks: mapContentBlocks(parsed.data.contentBlocks, payload),
+    ...(mapDataProvider(parsed.data.dataProvider) ? { dataProvider: mapDataProvider(parsed.data.dataProvider) } : {}),
+    ...(mapSettings(parsed.data.settings) ? { settings: mapSettings(parsed.data.settings) } : {}),
+    announcements: (parsed.data.announcements ?? []).map(mapAnnouncement),
+    likeCount: parsed.data.likeCount ?? 0,
+    likedByMe: parsed.data.likedByMe ?? false,
+    ...(optionalString(parsed.data.pushNotificationsSentAt)
+      ? { pushNotificationsSentAt: optionalString(parsed.data.pushNotificationsSentAt) }
+      : {}),
+    visible: parsed.data.visible !== false,
     createdAt: parsed.data.createdAt ?? publishedAt,
     updatedAt: parsed.data.updatedAt ?? parsed.data.createdAt ?? publishedAt,
     publishedAt,
@@ -967,10 +1282,24 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
           ...(input.newsId ? { id: input.newsId } : {}),
           ...(input.forceCreate === undefined ? {} : { forceCreate: input.forceCreate }),
           title: input.news.title,
+          ...(input.newsId ? {} : { pushNotification: input.news.pushNotification ?? false }),
+          ...(input.news.author ? { author: input.news.author } : {}),
+          ...(input.news.keywords ? { keywords: input.news.keywords } : {}),
+          ...(input.news.externalId ? { externalId: input.news.externalId } : {}),
+          ...(input.news.fullVersion === undefined ? {} : { fullVersion: input.news.fullVersion }),
+          ...(input.news.charactersToBeShown === undefined
+            ? {}
+            : { charactersToBeShown: input.news.charactersToBeShown }),
+          ...(input.news.newsType ? { newsType: input.news.newsType } : {}),
           publishedAt: input.news.publishedAt,
-          publicationDate: input.news.publishedAt,
-          ...(input.news.payload.category ? { categoryName: input.news.payload.category } : {}),
-          payload: JSON.stringify(input.news.payload),
+          publicationDate: input.news.publicationDate ?? input.news.publishedAt,
+          ...(input.news.showPublishDate === undefined ? {} : { showPublishDate: input.news.showPublishDate }),
+          ...(input.news.categoryName ? { categoryName: input.news.categoryName } : {}),
+          ...(input.news.categories ? { categories: input.news.categories } : {}),
+          ...(input.news.sourceUrl ? { sourceUrl: input.news.sourceUrl } : {}),
+          ...(input.news.address ? { address: input.news.address } : {}),
+          ...(input.news.contentBlocks ? { contentBlocks: input.news.contentBlocks } : {}),
+          ...(input.news.pointOfInterestId ? { pointOfInterestId: input.news.pointOfInterestId } : {}),
         },
       },
       config

@@ -1,4 +1,4 @@
-import type { NewsContentItem, NewsPayload, NewsStatus } from './news.types.js';
+import type { NewsContentItem, NewsFormInput } from './news.types.js';
 
 type ApiItemResponse<T> = {
   readonly data: T;
@@ -22,12 +22,6 @@ export class NewsApiError extends Error {
     this.name = 'NewsApiError';
   }
 }
-
-export type NewsFormInput = {
-  readonly title: string;
-  readonly publishedAt: string;
-  readonly payload: NewsPayload;
-};
 
 const REQUEST_HEADERS = {
   'Content-Type': 'application/json',
@@ -62,17 +56,15 @@ const requestJson = async <T>(input: string, init?: RequestInit): Promise<T> => 
   return (await response.json()) as T;
 };
 
-const toNewsContent = (item: {
-  id: string;
-  title: string;
-  contentType: string;
-  payload: NewsPayload;
-  status: NewsStatus;
-  author: string;
-  createdAt: string;
-  updatedAt: string;
-  publishedAt: string;
-}): NewsContentItem => item;
+const toNewsContent = (item: NewsContentItem): NewsContentItem => item;
+
+const toMutationBody = (input: NewsFormInput, options: { readonly includePushNotification: boolean }) => {
+  const { pushNotification, ...body } = input;
+  return {
+    ...body,
+    ...(options.includePushNotification && pushNotification !== undefined ? { pushNotification } : {}),
+  };
+};
 
 export const listNews = async (): Promise<readonly NewsContentItem[]> => {
   const response = await requestJson<ApiListResponse<NewsContentItem>>('/api/v1/mainserver/news');
@@ -91,11 +83,7 @@ export const createNews = async (input: NewsFormInput): Promise<NewsContentItem>
       ...REQUEST_HEADERS,
       'Idempotency-Key': createIdempotencyKey(),
     },
-    body: JSON.stringify({
-      title: input.title,
-      publishedAt: input.publishedAt,
-      payload: input.payload,
-    }),
+    body: JSON.stringify(toMutationBody(input, { includePushNotification: true })),
   });
 
   return toNewsContent(response.data);
@@ -105,11 +93,7 @@ export const updateNews = async (contentId: string, input: NewsFormInput): Promi
   const response = await requestJson<ApiItemResponse<NewsContentItem>>(`/api/v1/mainserver/news/${contentId}`, {
     method: 'PATCH',
     headers: REQUEST_HEADERS,
-    body: JSON.stringify({
-      title: input.title,
-      publishedAt: input.publishedAt,
-      payload: input.payload,
-    }),
+    body: JSON.stringify(toMutationBody(input, { includePushNotification: false })),
   });
 
   return toNewsContent(response.data);

@@ -101,20 +101,52 @@ describe('NewsListPage', () => {
         'news.editor.editTitle': 'News-Eintrag bearbeiten',
         'news.editor.editDescription': 'Aktualisieren oder löschen Sie den News-Eintrag.',
         'news.fields.title': 'Titel',
-        'news.fields.teaser': 'Teaser',
-        'news.fields.teaserHelp': 'Kurzbeschreibung mit maximal 500 Zeichen.',
-        'news.fields.body': 'Inhalt (HTML)',
-        'news.fields.imageUrl': 'Bild-URL',
-        'news.fields.externalUrl': 'Externe URL',
-        'news.fields.category': 'Kategorie',
+        'news.fields.author': 'Autor',
+        'news.fields.keywords': 'Schlagwörter',
+        'news.fields.externalId': 'Externe ID',
+        'news.fields.newsType': 'News-Typ',
+        'news.fields.fullVersion': 'Vollversion',
+        'news.fields.charactersToBeShown': 'Zeichenbegrenzung',
         'news.fields.publishedAt': 'Veröffentlichungsdatum',
+        'news.fields.publicationDate': 'Publikationsdatum',
+        'news.fields.showPublishDate': 'Publikationsdatum anzeigen',
+        'news.fields.pushNotification': 'Push-Benachrichtigung senden',
+        'news.fields.categoryName': 'Kategorie',
+        'news.fields.categories': 'Kategorien',
+        'news.fields.categoriesHelp': 'Eine Kategorie pro Zeile.',
+        'news.fields.sourceUrl': 'Quell-URL',
+        'news.fields.sourceUrlDescription': 'Quellbeschreibung',
+        'news.fields.street': 'Straße',
+        'news.fields.zip': 'PLZ',
+        'news.fields.city': 'Ort',
+        'news.fields.pointOfInterestId': 'POI-ID',
+        'news.fields.contentBlocks': 'Inhaltsblöcke',
+        'news.fields.contentBlock': 'Inhaltsblock',
+        'news.fields.blockTitle': 'Blocktitel',
+        'news.fields.blockIntro': 'Einleitung',
+        'news.fields.blockBody': 'Inhalt',
+        'news.fields.mediaContents': 'Medien',
+        'news.fields.mediaUrl': 'Medien-URL',
+        'news.fields.mediaCaption': 'Bildunterschrift',
+        'news.fields.mediaContentType': 'Medientyp',
+        'news.fields.technicalDetails': 'Technische Details',
+        'news.fields.dataProvider': 'Datenanbieter',
+        'news.fields.visible': 'Sichtbar',
+        'news.fields.likeCount': 'Likes',
+        'news.fields.likedByMe': 'Von mir geliked',
+        'news.fields.pushNotificationsSentAt': 'Push gesendet am',
+        'news.fields.settings': 'Einstellungen',
+        'news.fields.announcements': 'Ankündigungen',
         'news.fields.updatedAt': 'Geändert am',
         'news.fields.actions': 'Aktionen',
+        'news.values.yes': 'Ja',
+        'news.values.no': 'Nein',
         'news.actions.edit': 'Bearbeiten',
-        'news.validation.teaser': 'Der Teaser ist erforderlich und darf maximal 500 Zeichen haben.',
-        'news.validation.body': 'Der Inhalt ist erforderlich und darf maximal 50.000 Zeichen haben.',
-        'news.validation.imageUrl': 'Die Bild-URL muss mit https:// beginnen.',
-        'news.validation.externalUrl': 'Die externe URL muss mit https:// beginnen.',
+        'news.actions.addContentBlock': 'Inhaltsblock hinzufügen',
+        'news.actions.addMedia': 'Medium hinzufügen',
+        'news.actions.remove': 'Entfernen',
+        'news.validation.contentBlocks': 'Mindestens ein Inhaltsblock benötigt Inhalt und darf maximal 50.000 Zeichen haben.',
+        'news.validation.sourceUrl': 'Die Quell-URL muss mit https:// beginnen.',
         'news.validation.publishedAt': 'Das Veröffentlichungsdatum ist erforderlich.',
       };
       return labels[key] ?? key;
@@ -206,21 +238,17 @@ describe('NewsListPage', () => {
     render(<NewsCreatePage />);
 
     fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Neue News' } });
-    fireEvent.change(screen.getByLabelText('Teaser'), { target: { value: 'x'.repeat(501) } });
-    fireEvent.change(screen.getByLabelText('Inhalt (HTML)'), { target: { value: ' ' } });
+    fireEvent.change(screen.getByLabelText('Inhalt'), { target: { value: ' ' } });
     fireEvent.change(screen.getByLabelText('Veröffentlichungsdatum'), { target: { value: '2026-04-14T09:30' } });
     fireEvent.click(screen.getByRole('button', { name: 'News anlegen' }));
 
     await waitFor(() => {
       expect(screen.getByText('Bitte korrigieren Sie die markierten Felder.')).toBeTruthy();
-      expect(screen.getByText('Der Teaser ist erforderlich und darf maximal 500 Zeichen haben.')).toBeTruthy();
-      expect(screen.getByText('Der Inhalt ist erforderlich und darf maximal 50.000 Zeichen haben.')).toBeTruthy();
+      expect(screen.getByText('Mindestens ein Inhaltsblock benötigt Inhalt und darf maximal 50.000 Zeichen haben.')).toBeTruthy();
     });
 
-    expect(screen.getByLabelText('Teaser').getAttribute('aria-invalid')).toBe('true');
-    expect(screen.getByLabelText('Teaser').getAttribute('aria-describedby')).toBe('news-teaser-help news-teaser-error');
-    expect(screen.getByLabelText('Inhalt (HTML)').getAttribute('aria-invalid')).toBe('true');
-    expect(screen.getByLabelText('Inhalt (HTML)').getAttribute('aria-describedby')).toBe('news-body-error');
+    expect(screen.getByLabelText('Inhalt').getAttribute('aria-invalid')).toBe('true');
+    expect(screen.getByLabelText('Inhalt').getAttribute('aria-describedby')).toBe('news-content-blocks-error');
 
     expect(createNews).not.toHaveBeenCalled();
   });
@@ -229,13 +257,13 @@ describe('NewsListPage', () => {
     render(<NewsCreatePage />);
 
     fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Neue News' } });
-    fireEvent.change(screen.getByLabelText('Teaser'), { target: { value: 'Kurztext' } });
-    fireEvent.change(screen.getByLabelText('Inhalt (HTML)'), { target: { value: '<p><br></p>' } });
+    fireEvent.change(screen.getByLabelText('Einleitung'), { target: { value: 'Kurztext' } });
+    fireEvent.change(screen.getByLabelText('Inhalt'), { target: { value: '<p><br></p>' } });
     fireEvent.change(screen.getByLabelText('Veröffentlichungsdatum'), { target: { value: '2026-04-14T09:30' } });
     fireEvent.click(screen.getByRole('button', { name: 'News anlegen' }));
 
     await waitFor(() => {
-      expect(screen.getByText('Der Inhalt ist erforderlich und darf maximal 50.000 Zeichen haben.')).toBeTruthy();
+      expect(screen.getByText('Mindestens ein Inhaltsblock benötigt Inhalt und darf maximal 50.000 Zeichen haben.')).toBeTruthy();
     });
 
     expect(createNews).not.toHaveBeenCalled();
@@ -245,8 +273,8 @@ describe('NewsListPage', () => {
     render(<NewsCreatePage />);
 
     fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Neue News' } });
-    fireEvent.change(screen.getByLabelText('Teaser'), { target: { value: 'Kurztext' } });
-    fireEvent.change(screen.getByLabelText('Inhalt (HTML)'), { target: { value: '<p>Body</p>' } });
+    fireEvent.change(screen.getByLabelText('Einleitung'), { target: { value: 'Kurztext' } });
+    fireEvent.change(screen.getByLabelText('Inhalt'), { target: { value: '<p>Body</p>' } });
     fireEvent.submit(screen.getByRole('button', { name: 'News anlegen' }).closest('form') as HTMLFormElement);
 
     await waitFor(() => {
@@ -261,8 +289,8 @@ describe('NewsListPage', () => {
     render(<NewsCreatePage />);
 
     fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Neue News' } });
-    fireEvent.change(screen.getByLabelText('Teaser'), { target: { value: 'Kurztext' } });
-    fireEvent.change(screen.getByLabelText('Inhalt (HTML)'), { target: { value: '<p>Body</p>' } });
+    fireEvent.change(screen.getByLabelText('Einleitung'), { target: { value: 'Kurztext' } });
+    fireEvent.change(screen.getByLabelText('Inhalt'), { target: { value: '<p>Body</p>' } });
     fireEvent.change(screen.getByLabelText('Veröffentlichungsdatum'), { target: { value: '2026-04-14T09:30' } });
     fireEvent.click(screen.getByRole('button', { name: 'News anlegen' }));
 
@@ -270,14 +298,79 @@ describe('NewsListPage', () => {
       expect(createNews).toHaveBeenCalledWith(
         expect.objectContaining({
           title: 'Neue News',
-          payload: expect.objectContaining({
-            teaser: 'Kurztext',
-            body: '<p>Body</p>',
-          }),
+          contentBlocks: [expect.objectContaining({ intro: 'Kurztext', body: '<p>Body</p>' })],
         })
       );
       expect(window.sessionStorage.getItem('news-plugin-flash-message')).toBe('createSuccess');
       expect(navigateMock).toHaveBeenCalledWith({ to: '/plugins/news' });
+    });
+  });
+
+  it('submits the extended Mainserver news model without a legacy payload', async () => {
+    render(<NewsCreatePage />);
+
+    fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Volle News' } });
+    fireEvent.change(screen.getByLabelText('Autor'), { target: { value: 'Redaktion' } });
+    fireEvent.change(screen.getByLabelText('Schlagwörter'), { target: { value: 'Rathaus, Termin' } });
+    fireEvent.change(screen.getByLabelText('Externe ID'), { target: { value: 'ext-42' } });
+    fireEvent.change(screen.getByLabelText('News-Typ'), { target: { value: 'press' } });
+    fireEvent.change(screen.getByLabelText('Zeichenbegrenzung'), { target: { value: '240' } });
+    fireEvent.click(screen.getByLabelText('Vollversion'));
+    fireEvent.click(screen.getByLabelText('Push-Benachrichtigung senden'));
+    fireEvent.change(screen.getByLabelText('Veröffentlichungsdatum'), { target: { value: '2026-04-14T09:30' } });
+    fireEvent.change(screen.getByLabelText('Publikationsdatum'), { target: { value: '2026-04-14T08:00' } });
+    fireEvent.change(screen.getByRole('textbox', { name: 'Kategorie', exact: true }), {
+      target: { value: 'Allgemein' },
+    });
+    fireEvent.change(screen.getByLabelText('Kategorien'), { target: { value: 'Allgemein\nRathaus' } });
+    fireEvent.change(screen.getByLabelText('Quell-URL'), { target: { value: 'https://example.com/news' } });
+    fireEvent.change(screen.getByLabelText('Quellbeschreibung'), { target: { value: 'Quelle' } });
+    fireEvent.change(screen.getByLabelText('Straße'), { target: { value: 'Markt 1' } });
+    fireEvent.change(screen.getByLabelText('PLZ'), { target: { value: '12345' } });
+    fireEvent.change(screen.getByLabelText('Ort'), { target: { value: 'Musterhausen' } });
+    fireEvent.change(screen.getByLabelText('POI-ID'), { target: { value: 'poi-1' } });
+    fireEvent.change(screen.getByLabelText('Blocktitel'), { target: { value: 'Abschnitt' } });
+    fireEvent.change(screen.getByLabelText('Einleitung'), { target: { value: 'Kurztext' } });
+    fireEvent.change(screen.getByLabelText('Inhalt'), { target: { value: '<p>Inhalt</p>' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Medium hinzufügen' }));
+    fireEvent.change(screen.getByLabelText('Medien-URL'), { target: { value: 'https://example.com/image.jpg' } });
+    fireEvent.change(screen.getByLabelText('Bildunterschrift'), { target: { value: 'Bild' } });
+    fireEvent.click(screen.getAllByRole('button', { name: 'Entfernen' })[1] as HTMLElement);
+    fireEvent.click(screen.getByRole('button', { name: 'Medium hinzufügen' }));
+    fireEvent.change(screen.getByLabelText('Medien-URL'), { target: { value: 'https://example.com/image.jpg' } });
+    fireEvent.change(screen.getByLabelText('Bildunterschrift'), { target: { value: 'Bild' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Inhaltsblock hinzufügen' }));
+    const removeButtons = screen.getAllByRole('button', { name: 'Entfernen' });
+    fireEvent.click(removeButtons[removeButtons.length - 1] as HTMLElement);
+    fireEvent.click(screen.getByRole('button', { name: 'News anlegen' }));
+
+    await waitFor(() => {
+      expect(createNews).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Volle News',
+          author: 'Redaktion',
+          keywords: 'Rathaus, Termin',
+          externalId: 'ext-42',
+          fullVersion: true,
+          charactersToBeShown: 240,
+          newsType: 'press',
+          categoryName: 'Allgemein',
+          categories: [{ name: 'Allgemein' }, { name: 'Rathaus' }],
+          sourceUrl: { url: 'https://example.com/news', description: 'Quelle' },
+          address: expect.objectContaining({ street: 'Markt 1', zip: '12345', city: 'Musterhausen' }),
+          pointOfInterestId: 'poi-1',
+          pushNotification: true,
+          contentBlocks: [
+            expect.objectContaining({
+              title: 'Abschnitt',
+              intro: 'Kurztext',
+              body: '<p>Inhalt</p>',
+              mediaContents: [expect.objectContaining({ sourceUrl: { url: 'https://example.com/image.jpg' } })],
+            }),
+          ],
+        })
+      );
+      expect(createNews).not.toHaveBeenCalledWith(expect.objectContaining({ payload: expect.anything() }));
     });
   });
 
@@ -287,8 +380,8 @@ describe('NewsListPage', () => {
     render(<NewsCreatePage />);
 
     fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Neue News' } });
-    fireEvent.change(screen.getByLabelText('Teaser'), { target: { value: 'Kurztext' } });
-    fireEvent.change(screen.getByLabelText('Inhalt (HTML)'), { target: { value: '<p>Body</p>' } });
+    fireEvent.change(screen.getByLabelText('Einleitung'), { target: { value: 'Kurztext' } });
+    fireEvent.change(screen.getByLabelText('Inhalt'), { target: { value: '<p>Body</p>' } });
     fireEvent.change(screen.getByLabelText('Veröffentlichungsdatum'), { target: { value: '2026-04-14T09:30' } });
     fireEvent.click(screen.getByRole('button', { name: 'News anlegen' }));
 
@@ -341,6 +434,108 @@ describe('NewsListPage', () => {
         }),
       );
       expect(screen.getByText('News-Eintrag wurde aktualisiert.')).toBeTruthy();
+    });
+  });
+
+  it('loads and updates a full Mainserver news item without create-only or legacy fields', async () => {
+    vi.mocked(getNews).mockResolvedValueOnce({
+      id: 'news-full',
+      title: 'Bestehende volle News',
+      contentType: NEWS_CONTENT_TYPE,
+      payload: {},
+      status: 'published',
+      author: 'Redaktion',
+      keywords: 'Markt, Kultur',
+      externalId: 'external-7',
+      fullVersion: true,
+      charactersToBeShown: '160',
+      newsType: 'press',
+      publicationDate: '2026-04-14T08:00:00.000Z',
+      showPublishDate: false,
+      categoryName: 'Kultur',
+      categories: [{ name: 'Kultur' }, { name: 'Rathaus' }],
+      sourceUrl: { url: 'https://example.com/source', description: 'Quelle' },
+      address: { street: 'Markt 1', zip: '12345', city: 'Musterhausen' },
+      contentBlocks: [
+        {
+          title: 'Abschnitt',
+          intro: 'Kurztext',
+          body: '<p>Langtext</p>',
+          mediaContents: [
+            {
+              contentType: 'image',
+              captionText: 'Titelbild',
+              sourceUrl: { url: 'https://example.com/image.jpg' },
+            },
+          ],
+        },
+      ],
+      pointOfInterestId: 'poi-7',
+      dataProvider: { id: 'dp-1', name: 'Datenquelle' },
+      settings: { alwaysRecreateOnImport: 'false', displayOnlySummary: 'true', onlySummaryLinkText: 'Mehr' },
+      announcements: [{ id: 'announcement-1', title: 'Hinweis' }],
+      likeCount: 3,
+      likedByMe: false,
+      visible: true,
+      pushNotificationsSentAt: '2026-04-14T10:00:00.000Z',
+      createdAt: '2026-04-13T00:00:00.000Z',
+      updatedAt: '2026-04-14T00:00:00.000Z',
+      publishedAt: '2026-04-14T09:30:00.000Z',
+    });
+
+    render(<NewsEditPage />);
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('Bestehende volle News')).toBeTruthy();
+      expect(screen.getByDisplayValue('160')).toBeTruthy();
+      expect(screen.getByDisplayValue('https://example.com/source')).toBeTruthy();
+      expect(screen.getByDisplayValue('https://example.com/image.jpg')).toBeTruthy();
+      expect(screen.getByText('Technische Details')).toBeTruthy();
+      expect(screen.getByText('Datenquelle')).toBeTruthy();
+      expect(screen.getByText('3')).toBeTruthy();
+    });
+
+    expect(screen.queryByLabelText('Push-Benachrichtigung senden')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Änderungen speichern' }));
+
+    await waitFor(() => {
+      expect(updateNews).toHaveBeenCalledWith(
+        'news-1',
+        expect.objectContaining({
+          title: 'Bestehende volle News',
+          author: 'Redaktion',
+          keywords: 'Markt, Kultur',
+          externalId: 'external-7',
+          fullVersion: true,
+          charactersToBeShown: 160,
+          newsType: 'press',
+          categoryName: 'Kultur',
+          categories: [{ name: 'Kultur' }, { name: 'Rathaus' }],
+          sourceUrl: { url: 'https://example.com/source', description: 'Quelle' },
+          address: expect.objectContaining({ street: 'Markt 1', zip: '12345', city: 'Musterhausen' }),
+          pointOfInterestId: 'poi-7',
+          contentBlocks: [
+            expect.objectContaining({
+              title: 'Abschnitt',
+              intro: 'Kurztext',
+              body: '<p>Langtext</p>',
+              mediaContents: [
+                expect.objectContaining({
+                  contentType: 'image',
+                  captionText: 'Titelbild',
+                  sourceUrl: { url: 'https://example.com/image.jpg' },
+                }),
+              ],
+            }),
+          ],
+        })
+      );
+      expect(updateNews).not.toHaveBeenCalledWith('news-1', expect.objectContaining({ payload: expect.anything() }));
+      expect(updateNews).not.toHaveBeenCalledWith(
+        'news-1',
+        expect.objectContaining({ pushNotification: expect.anything() })
+      );
     });
   });
 

@@ -11,13 +11,19 @@ type NewsRecord = {
   createdAt: string;
   updatedAt: string;
   publishedAt?: string;
+  categoryName?: string;
   payload: {
-    teaser: string;
-    body: string;
+    teaser?: string;
+    body?: string;
     imageUrl?: string;
     externalUrl?: string;
     category?: string;
   };
+  contentBlocks?: readonly {
+    readonly title?: string;
+    readonly intro?: string;
+    readonly body?: string;
+  }[];
 };
 
 const authenticatedUser = {
@@ -142,7 +148,9 @@ const fulfillContentRoute = async (
       contentType: 'news.article',
       status: 'published',
       publishedAt: typeof body.publishedAt === 'string' ? body.publishedAt : '2026-04-13T12:10:00.000Z',
-      payload: body.payload as NewsRecord['payload'],
+      categoryName: typeof body.categoryName === 'string' ? body.categoryName : undefined,
+      payload: {},
+      contentBlocks: Array.isArray(body.contentBlocks) ? (body.contentBlocks as NewsRecord['contentBlocks']) : [],
       author: 'Editor One',
       createdAt: '2026-04-13T12:10:00.000Z',
       updatedAt: '2026-04-13T12:10:00.000Z',
@@ -164,7 +172,8 @@ const fulfillContentRoute = async (
     }
     item.title = String(body.title ?? item.title);
     item.publishedAt = typeof body.publishedAt === 'string' ? body.publishedAt : item.publishedAt;
-    item.payload = (body.payload as NewsRecord['payload']) ?? item.payload;
+    item.categoryName = typeof body.categoryName === 'string' ? body.categoryName : item.categoryName;
+    item.contentBlocks = Array.isArray(body.contentBlocks) ? (body.contentBlocks as NewsRecord['contentBlocks']) : item.contentBlocks;
     item.updatedAt = '2026-04-13T12:20:00.000Z';
     await route.fulfill({
       status: 200,
@@ -229,7 +238,9 @@ test.describe('news plugin', () => {
         contentType: 'news.article',
         status: 'published',
         publishedAt: typeof body.publishedAt === 'string' ? body.publishedAt : '2026-04-13T12:10:00.000Z',
-        payload: body.payload as NewsRecord['payload'],
+        categoryName: typeof body.categoryName === 'string' ? body.categoryName : undefined,
+        payload: {},
+        contentBlocks: Array.isArray(body.contentBlocks) ? (body.contentBlocks as NewsRecord['contentBlocks']) : [],
         author: 'Editor One',
         createdAt: '2026-04-13T12:10:00.000Z',
         updatedAt: '2026-04-13T12:10:00.000Z',
@@ -257,9 +268,9 @@ test.describe('news plugin', () => {
     await expectPluginPageHeading(page, /News-Eintrag anlegen|news\.editor\.createTitle/);
 
     await page.getByLabel(/Titel|news\.fields\.title/).fill('Erste News');
-    await page.getByLabel(/Teaser|news\.fields\.teaser/).fill('Kurztext');
-    await page.getByLabel(/Inhalt \(HTML\)|news\.fields\.body/).fill('<p>Inhalt</p>');
-    await page.getByLabel(/Kategorie|news\.fields\.category/).fill('Allgemein');
+    await page.getByLabel(/Einleitung|news\.fields\.blockIntro/).fill('Kurztext');
+    await page.getByLabel(/Inhalt|news\.fields\.blockBody/).fill('<p>Inhalt</p>');
+    await page.getByRole('textbox', { name: 'Kategorie', exact: true }).fill('Allgemein');
     await page.getByLabel(/Veröffentlichungsdatum|news\.fields\.publishedAt/).fill('2026-04-14T09:30');
     await page.getByRole('button', { name: /News anlegen|news\.actions\.create/ }).click();
 

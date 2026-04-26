@@ -12,7 +12,7 @@
     "nx": "env -u NO_COLOR nx",
     "build": "pnpm clean:generated-source-artifacts && env -u NO_COLOR nx run-many -t build",
     "lint": "env -u NO_COLOR nx run-many -t lint",
-    "test:eslint": "env -u NO_COLOR nx run-many -t lint",
+    "test:eslint": "pnpm check:plugin-ui-boundary && env -u NO_COLOR nx run-many -t lint",
     "test:types": "pnpm clean:generated-source-artifacts && env -u NO_COLOR nx run-many -t build --projects=core,data,data-client,data-repositories,monitoring-client,sdk,plugin-sdk,studio-ui-react,server-runtime,iam-core,auth-runtime,iam-admin,iam-governance,instance-registry,plugin-news,sva-mainserver --parallel=1 && env -u NO_COLOR nx run routing:build && pnpm check:server-runtime && env -u NO_COLOR nx run sva-studio-react:typecheck && pnpm exec tsc -p tsconfig.scripts.json --noEmit",
     "test": "pnpm test:unit",
     "test:unit": "env -u NO_COLOR nx run-many -t test:unit --parallel=1",

@@ -50,6 +50,7 @@ describe('workspace package scripts', () => {
     const packageJson = loadRootPackageJson();
 
     expect(packageJson.scripts?.['check:plugin-ui-boundary']).toBe('tsx scripts/ci/check-plugin-ui-boundary.ts');
+    expect(packageJson.scripts?.['test:eslint']).toContain('pnpm check:plugin-ui-boundary');
     expect(packageJson.scripts?.['test:pr']).toContain('pnpm check:plugin-ui-boundary');
     expect(packageJson.scripts?.['test:ci']).toContain('pnpm check:plugin-ui-boundary');
   });

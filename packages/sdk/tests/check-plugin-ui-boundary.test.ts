@@ -19,7 +19,7 @@ describe('plugin UI boundary check', () => {
     expect(
       checkPluginUiBoundarySource(
         'packages/plugin-news/src/static.tsx',
-        "import { Button } from '../../../apps/sva-studio-react/src/components/ui/button';"
+        "import { Button } from './../../../apps/sva-studio-react/src/components/ui/button';"
       ).hasAppInternalImport
     ).toBe(true);
 
@@ -27,6 +27,22 @@ describe('plugin UI boundary check', () => {
       checkPluginUiBoundarySource(
         'packages/plugin-news/src/lazy.tsx',
         "const view = import('../../../apps/sva-studio-react/src/components/StudioDataTable');"
+      ).hasAppInternalImport
+    ).toBe(true);
+  });
+
+  it('detects re-exports from app-internal sources', () => {
+    expect(
+      checkPluginUiBoundarySource(
+        'packages/plugin-news/src/reexport.tsx',
+        "export { Button } from './../../../apps/sva-studio-react/src/components/ui/button';"
+      ).hasAppInternalImport
+    ).toBe(true);
+
+    expect(
+      checkPluginUiBoundarySource(
+        'packages/plugin-news/src/reexport-all.tsx',
+        "export * from '../../../apps/sva-studio-react/src/components/ui/button';"
       ).hasAppInternalImport
     ).toBe(true);
   });

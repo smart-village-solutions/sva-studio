@@ -5,7 +5,6 @@ import * as ts from 'typescript';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.resolve(SCRIPT_DIR, '../..');
-const PACKAGES_DIR = path.join(PROJECT_ROOT, 'packages');
 const SOURCE_EXTENSIONS = new Set(['.ts', '.tsx']);
 
 const DUPLICATE_BASIS_CONTROL_FILE_NAMES = new Set([
@@ -113,12 +112,14 @@ const hasExportModifier = (node: { readonly modifiers?: ts.NodeArray<ts.Modifier
   node.modifiers?.some((modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword) ?? false;
 
 const isAppInternalModuleSpecifier = (moduleSpecifier: string): boolean => {
-  const normalizedModuleSpecifier = moduleSpecifier.replaceAll('\\', '/');
+  const normalizedModuleSpecifier = path.posix.normalize(moduleSpecifier.replaceAll('\\', '/'));
+  const normalizedWithoutRelativePrefix = normalizedModuleSpecifier.replace(/^(?:(?:\.\.\/)|(?:\.\/))+/, '');
+
   if (normalizedModuleSpecifier.startsWith(APP_INTERNAL_IMPORT_PREFIX)) {
     return true;
   }
 
-  return normalizedModuleSpecifier.replace(/^(?:\.\.\/)+/, '').startsWith(APP_INTERNAL_IMPORT_PREFIX);
+  return normalizedWithoutRelativePrefix.startsWith(APP_INTERNAL_IMPORT_PREFIX);
 };
 
 const getDuplicateExportName = (sourceFile: ts.SourceFile): string | null => {
@@ -173,6 +174,11 @@ const hasAppInternalImport = (sourceFile: ts.SourceFile): boolean => {
     }
 
     if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
+      found = isAppInternalModuleSpecifier(node.moduleSpecifier.text);
+      return;
+    }
+
+    if (ts.isExportDeclaration(node) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) {
       found = isAppInternalModuleSpecifier(node.moduleSpecifier.text);
       return;
     }
@@ -244,7 +250,9 @@ const run = async (): Promise<void> => {
   if (violations.length > 0) {
     console.error('Plugin-UI-Boundary-Check fehlgeschlagen.');
     console.error('\nPlugins muessen gemeinsame Basiscontrols aus @sva/studio-ui-react komponieren.');
-    console.error('Fachspezifische Wrapper sind erlaubt, duerfen aber keine Button/Input/Table/Dialog-Basis neu definieren.\n');
+    console.error(
+      'Fachspezifische Wrapper sind erlaubt, duerfen aber keine Studio-Basiscontrols wie u. a. Button/Input/Table/Dialog neu definieren.\n'
+    );
     for (const violation of violations) {
       console.error(`- ${violation}`);
     }

@@ -1,4 +1,9 @@
-import type { IamContentListItem, IamContentPrimitiveAction } from '@sva/core';
+import {
+  resolveIamContentCapabilityMapping,
+  type IamContentDomainCapability,
+  type IamContentListItem,
+  type IamContentPrimitiveAction,
+} from '@sva/core';
 
 import type { UpdateContentSchemaInput } from './schemas.js';
 import type { ResolvedContentActor } from './request-context.js';
@@ -14,10 +19,28 @@ const metadataFields = [
   'validationState',
 ] as const;
 
-const resolveStatusAction = (
+export type ResolvedContentAuthorizationAction = {
+  readonly domainCapability: IamContentDomainCapability;
+  readonly primitiveAction: IamContentPrimitiveAction;
+};
+
+const resolveContentAuthorizationAction = (
+  domainCapability: IamContentDomainCapability
+): ResolvedContentAuthorizationAction => {
+  const mapping = resolveIamContentCapabilityMapping(domainCapability);
+  if (!mapping.ok) {
+    throw new Error(mapping.reasonCode);
+  }
+  return {
+    domainCapability: mapping.domainCapability,
+    primitiveAction: mapping.primitiveAction,
+  };
+};
+
+const resolveStatusCapability = (
   currentStatus: string,
   nextStatus: string
-): IamContentPrimitiveAction | undefined => {
+): IamContentDomainCapability | undefined => {
   if (currentStatus === nextStatus) {
     return undefined;
   }
@@ -27,27 +50,27 @@ const resolveStatusAction = (
   if (nextStatus === 'archived') {
     return 'content.archive';
   }
-  return currentStatus === 'archived' ? 'content.restore' : 'content.changeStatus';
+  return currentStatus === 'archived' ? 'content.restore' : 'content.change_status';
 };
 
 export const resolveUpdateContentActions = (
   currentContent: IamContentListItem,
   data: UpdateContentSchemaInput
-): readonly IamContentPrimitiveAction[] => {
-  const requiredActions = new Set<IamContentPrimitiveAction>();
+): readonly ResolvedContentAuthorizationAction[] => {
+  const requiredCapabilities = new Set<IamContentDomainCapability>();
   if (metadataFields.some((field) => data[field] !== undefined)) {
-    requiredActions.add('content.updateMetadata');
+    requiredCapabilities.add('content.update_metadata');
   }
   if (data.payload !== undefined) {
-    requiredActions.add('content.updatePayload');
+    requiredCapabilities.add('content.update_payload');
   }
 
-  const statusAction = data.status ? resolveStatusAction(currentContent.status, data.status) : undefined;
-  if (statusAction) {
-    requiredActions.add(statusAction);
+  const statusCapability = data.status ? resolveStatusCapability(currentContent.status, data.status) : undefined;
+  if (statusCapability) {
+    requiredCapabilities.add(statusCapability);
   }
 
-  return [...requiredActions];
+  return [...requiredCapabilities].map(resolveContentAuthorizationAction);
 };
 
 export const authorizeUpdateContentActions = async (
@@ -57,9 +80,10 @@ export const authorizeUpdateContentActions = async (
   data: UpdateContentSchemaInput
 ): Promise<Response | null> => {
   for (const action of resolveUpdateContentActions(currentContent, data)) {
-    const authorizationError = await authorizeContentAction(actor, action, {
+    const authorizationError = await authorizeContentAction(actor, action.primitiveAction, {
       contentId,
       contentType: currentContent.contentType,
+      domainCapability: action.domainCapability,
       organizationId: data.organizationId ?? currentContent.organizationId,
     });
     if (authorizationError) {

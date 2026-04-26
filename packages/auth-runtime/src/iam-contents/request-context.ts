@@ -3,6 +3,7 @@ import {
   summarizeContentAccess,
   type AuthorizeRequest,
   type IamContentAccessSummary,
+  type IamContentDomainCapability,
   type IamContentPrimitiveAction,
 } from '@sva/core';
 import { getWorkspaceContext, toJsonErrorResponse, withRequestContext } from '@sva/server-runtime';
@@ -30,6 +31,7 @@ export type ResolvedContentActor = {
 type ContentAuthorizationResource = {
   readonly contentId?: string;
   readonly contentType?: string;
+  readonly domainCapability?: IamContentDomainCapability;
   readonly organizationId?: string;
 };
 
@@ -69,6 +71,8 @@ const logContentAuthorizationDenied = (
     request_id: actor.requestId,
     trace_id: actor.traceId,
     action,
+    domain_capability: resource.domainCapability,
+    primitive_action: action,
     content_id: resource.contentId,
     content_type: resource.contentType,
     organization_id: resource.organizationId,
@@ -95,6 +99,8 @@ export const authorizeContentAction = async (
         request_id: actor.requestId,
         trace_id: actor.traceId,
         action,
+        domain_capability: resource.domainCapability,
+        primitive_action: action,
         error: resolved.error,
       });
 
@@ -108,7 +114,13 @@ export const authorizeContentAction = async (
     }
 
     logContentAuthorizationDenied(actor, action, resource, decision.reason);
-    return createApiError(403, 'forbidden', 'Keine Berechtigung für diese Inhaltsoperation.', actor.requestId);
+    return createApiError(403, 'forbidden', 'Keine Berechtigung für diese Inhaltsoperation.', actor.requestId, {
+      reason_code: 'capability_authorization_denied',
+      ...(resource.domainCapability ? { domain_capability: resource.domainCapability } : {}),
+      primitive_action: action,
+      resource_type: 'content',
+      ...(resource.contentId ? { resource_id: resource.contentId } : {}),
+    });
   } catch (error) {
     accountLogger.error('Content authorization failed', {
       operation: 'content_authorize',
@@ -116,6 +128,8 @@ export const authorizeContentAction = async (
       request_id: actor.requestId,
       trace_id: actor.traceId,
       action,
+      domain_capability: resource.domainCapability,
+      primitive_action: action,
       error: error instanceof Error ? error.message : String(error),
     });
 

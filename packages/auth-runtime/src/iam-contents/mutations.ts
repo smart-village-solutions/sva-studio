@@ -36,6 +36,7 @@ export const createContentResponse = async (
 
   const authorizationError = await authorizeContentAction(actor, 'content.create', {
     contentType: prepared.parsedData.contentType,
+    domainCapability: 'content.create',
     organizationId: prepared.parsedData.organizationId,
   });
   if (authorizationError) {
@@ -196,6 +197,7 @@ export const deleteContentResponse = async (
     const authorizationError = await authorizeContentAction(actor, 'content.delete', {
       contentId,
       contentType: currentContent.contentType,
+      domainCapability: 'content.delete',
       organizationId: currentContent.organizationId,
     });
     if (authorizationError) {

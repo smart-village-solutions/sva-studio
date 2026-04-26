@@ -1,4 +1,4 @@
-import type { IamContentDetail, IamContentHistoryEntry, IamContentListItem } from '@sva/core';
+import type { IamContentDetail, IamContentHistoryEntry, IamContentListItem, IamContentPrimitiveAction } from '@sva/core';
 
 import { withInstanceScopedDb } from '../iam-account-management/shared.js';
 import {
@@ -30,7 +30,7 @@ const resolveAuditAction = (input: {
   readonly changedFields: readonly string[];
   readonly previousStatus: string;
   readonly nextStatus: string;
-}) => {
+}): IamContentPrimitiveAction => {
   if (input.previousStatus !== input.nextStatus) {
     if (input.nextStatus === 'published') {
       return 'content.publish';

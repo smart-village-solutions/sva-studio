@@ -574,10 +574,19 @@ describe('admin resource registry', () => {
 
 describe('content type registry', () => {
   it('normalizes plugin content types and resolves registered definitions', () => {
-    const definitions = definePluginContentTypes('news', [{ contentType: ' news.article ', displayName: ' Article ' }]);
+    const definitions = definePluginContentTypes('news', [
+      {
+        contentType: ' news.article ',
+        displayName: ' Article ',
+        actions: [{ key: ' publish ', label: ' Publish ', domainCapability: 'content.publish' }],
+      },
+    ]);
     const registry = createContentTypeRegistry(definitions);
 
     expect(registry.get('news.article')?.displayName).toBe('Article');
+    expect(registry.get('news.article')?.actions).toEqual([
+      { key: 'publish', label: 'Publish', domainCapability: 'content.publish' },
+    ]);
     expect(getContentTypeDefinition(registry, ' news.article ')).toBe(registry.get('news.article'));
   });
 
@@ -595,6 +604,24 @@ describe('content type registry', () => {
         { contentType: 'news.article', displayName: 'Duplicate' },
       ])
     ).toThrow('duplicate_content_type:news.article');
+    expect(() =>
+      createContentTypeRegistry([
+        {
+          contentType: 'news.article',
+          displayName: 'Article',
+          actions: [{ key: 'publish', label: 'Publish' }],
+        },
+      ])
+    ).toThrow('capability_mapping_missing:news.article:publish');
+    expect(() =>
+      createContentTypeRegistry([
+        {
+          contentType: 'news.article',
+          displayName: 'Article',
+          actions: [{ key: 'publish', label: 'Publish', domainCapability: 'content.unknown' } as never],
+        },
+      ])
+    ).toThrow('capability_mapping_missing:news.article:publish');
   });
 });
 

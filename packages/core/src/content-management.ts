@@ -15,6 +15,17 @@ export const iamContentPrimitiveActions = [
   'content.manageRevisions',
   'content.delete',
 ] as const;
+export const iamContentDomainCapabilities = [
+  'content.create',
+  'content.update_metadata',
+  'content.update_payload',
+  'content.change_status',
+  'content.publish',
+  'content.archive',
+  'content.restore',
+  'content.manage_revisions',
+  'content.delete',
+] as const;
 export const iamContentAccessStates = ['editable', 'read_only', 'blocked', 'server_denied'] as const;
 export const iamContentAccessReasonCodes = [
   'content_read_missing',
@@ -26,8 +37,34 @@ export const iamContentAccessReasonCodes = [
 export type IamContentStatus = (typeof iamContentStatuses)[number];
 export type IamContentValidationState = (typeof iamContentValidationStates)[number];
 export type IamContentPrimitiveAction = (typeof iamContentPrimitiveActions)[number];
+export type IamContentDomainCapability = (typeof iamContentDomainCapabilities)[number];
+export type IamContentCapabilityMappingDiagnosticCode =
+  | 'capability_mapping_missing'
+  | 'capability_mapping_invalid'
+  | 'capability_authorization_denied';
 export type IamContentAccessState = (typeof iamContentAccessStates)[number];
 export type IamContentAccessReasonCode = (typeof iamContentAccessReasonCodes)[number];
+
+export type IamContentCapabilityMapping = {
+  readonly domainCapability: IamContentDomainCapability;
+  readonly primitiveAction: string;
+};
+
+export type ResolvedIamContentCapabilityMapping =
+  | {
+      readonly ok: true;
+      readonly domainCapability: IamContentDomainCapability;
+      readonly primitiveAction: IamContentPrimitiveAction;
+    }
+  | {
+      readonly ok: false;
+      readonly reasonCode: Extract<
+        IamContentCapabilityMappingDiagnosticCode,
+        'capability_mapping_missing' | 'capability_mapping_invalid'
+      >;
+      readonly domainCapability?: string;
+      readonly primitiveAction?: string;
+    };
 
 export type ContentJsonPrimitive = string | number | boolean | null;
 export type ContentJsonValue =
@@ -218,6 +255,60 @@ export const isIamContentValidationState = (value: unknown): value is IamContent
 
 export const isIamContentPrimitiveAction = (value: unknown): value is IamContentPrimitiveAction =>
   typeof value === 'string' && (iamContentPrimitiveActions as readonly string[]).includes(value);
+
+export const isIamContentDomainCapability = (value: unknown): value is IamContentDomainCapability =>
+  typeof value === 'string' && (iamContentDomainCapabilities as readonly string[]).includes(value);
+
+export const iamContentCapabilityMappings = [
+  { domainCapability: 'content.create', primitiveAction: 'content.create' },
+  { domainCapability: 'content.update_metadata', primitiveAction: 'content.updateMetadata' },
+  { domainCapability: 'content.update_payload', primitiveAction: 'content.updatePayload' },
+  { domainCapability: 'content.change_status', primitiveAction: 'content.changeStatus' },
+  { domainCapability: 'content.publish', primitiveAction: 'content.publish' },
+  { domainCapability: 'content.archive', primitiveAction: 'content.archive' },
+  { domainCapability: 'content.restore', primitiveAction: 'content.restore' },
+  { domainCapability: 'content.manage_revisions', primitiveAction: 'content.manageRevisions' },
+  { domainCapability: 'content.delete', primitiveAction: 'content.delete' },
+] as const satisfies readonly IamContentCapabilityMapping[];
+
+export const resolveIamContentCapabilityMapping = (
+  domainCapability: unknown,
+  mappings: readonly IamContentCapabilityMapping[] = iamContentCapabilityMappings
+): ResolvedIamContentCapabilityMapping => {
+  if (!isIamContentDomainCapability(domainCapability)) {
+    return {
+      ok: false,
+      reasonCode: 'capability_mapping_missing',
+      ...(typeof domainCapability === 'string' ? { domainCapability } : {}),
+    };
+  }
+
+  const mapping = mappings.find((candidate) => candidate.domainCapability === domainCapability);
+  if (!mapping) {
+    return { ok: false, reasonCode: 'capability_mapping_missing', domainCapability };
+  }
+
+  if (!isIamContentPrimitiveAction(mapping.primitiveAction)) {
+    return {
+      ok: false,
+      reasonCode: 'capability_mapping_invalid',
+      domainCapability,
+      primitiveAction: mapping.primitiveAction,
+    };
+  }
+
+  return {
+    ok: true,
+    domainCapability,
+    primitiveAction: mapping.primitiveAction,
+  };
+};
+
+export const resolveIamContentDomainCapabilityForPrimitiveAction = (
+  primitiveAction: IamContentPrimitiveAction,
+  mappings: readonly IamContentCapabilityMapping[] = iamContentCapabilityMappings
+): IamContentDomainCapability | undefined =>
+  mappings.find((mapping) => mapping.primitiveAction === primitiveAction)?.domainCapability;
 
 export const isContentJsonValue = (value: unknown): value is ContentJsonValue => {
   if (

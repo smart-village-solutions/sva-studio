@@ -1,7 +1,14 @@
+import { resolveIamContentDomainCapabilityForPrimitiveAction, type IamContentPrimitiveAction } from '@sva/core';
 import { emitActivityLog, type withInstanceScopedDb } from '../iam-account-management/shared.js';
 import type { ContentRow, CreateContentInput, DeleteContentInput, UpdateContentInput } from './repository-types.js';
 
 type InstanceScopedClient = Parameters<Parameters<typeof withInstanceScopedDb>[1]>[0];
+
+const buildContentActionAuditPayload = (primitiveAction: IamContentPrimitiveAction) => ({
+  action: primitiveAction,
+  domain_capability: resolveIamContentDomainCapabilityForPrimitiveAction(primitiveAction) ?? null,
+  primitive_action: primitiveAction,
+});
 
 export const validatePublicationWindow = (input: { publishFrom?: string; publishUntil?: string }) => {
   if (
@@ -137,7 +144,7 @@ export const emitContentCreatedActivity = (
     payload: {
       content_id: contentId,
       content_type: input.contentType,
-      action: 'content.create',
+      ...buildContentActionAuditPayload('content.create'),
       title: input.title,
       status: input.status,
       payload_change: 'payload_created',
@@ -159,7 +166,7 @@ export const emitContentDeletedActivity = (
     payload: {
       content_id: input.contentId,
       content_type: current.content_type,
-      action: 'content.delete',
+      ...buildContentActionAuditPayload('content.delete'),
       title: current.title,
     },
     requestId: input.requestId,
@@ -172,7 +179,7 @@ export const emitContentUpdatedActivity = (
   current: ContentRow,
   event: {
     readonly eventType: 'iam.content.created' | 'iam.content.status_changed' | 'iam.content.updated';
-    readonly action: string;
+    readonly action: IamContentPrimitiveAction;
     readonly changedFields: readonly string[];
     readonly nextStatus: string;
     readonly nextTitle: string;
@@ -186,7 +193,7 @@ export const emitContentUpdatedActivity = (
     payload: {
       content_id: input.contentId,
       content_type: current.content_type,
-      action: event.action,
+      ...buildContentActionAuditPayload(event.action),
       title: event.nextTitle,
       changed_fields: event.changedFields,
       previous_status: current.status,

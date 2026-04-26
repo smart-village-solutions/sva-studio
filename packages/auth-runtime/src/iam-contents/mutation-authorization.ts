@@ -79,7 +79,9 @@ export const authorizeUpdateContentActions = async (
   currentContent: IamContentListItem,
   data: UpdateContentSchemaInput
 ): Promise<Response | null> => {
-  for (const action of resolveUpdateContentActions(currentContent, data)) {
+  const actions = resolveUpdateContentActions(currentContent, data);
+
+  for (const action of actions) {
     const authorizationError = await authorizeContentAction(actor, action.primitiveAction, {
       contentId,
       contentType: currentContent.contentType,
@@ -92,14 +94,16 @@ export const authorizeUpdateContentActions = async (
   }
 
   if (data.organizationId && data.organizationId !== currentContent.organizationId) {
-    const destinationAuthorizationError = await authorizeContentAction(actor, 'content.updateMetadata', {
-      contentId,
-      contentType: currentContent.contentType,
-      domainCapability: 'content.update_metadata',
-      organizationId: data.organizationId,
-    });
-    if (destinationAuthorizationError) {
-      return destinationAuthorizationError;
+    for (const action of actions) {
+      const destinationAuthorizationError = await authorizeContentAction(actor, action.primitiveAction, {
+        contentId,
+        contentType: currentContent.contentType,
+        domainCapability: action.domainCapability,
+        organizationId: data.organizationId,
+      });
+      if (destinationAuthorizationError) {
+        return destinationAuthorizationError;
+      }
     }
   }
 

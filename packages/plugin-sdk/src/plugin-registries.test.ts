@@ -609,7 +609,7 @@ describe('content type registry', () => {
         {
           contentType: 'news.article',
           displayName: 'Article',
-          actions: [{ key: 'publish', label: 'Publish' }],
+          actions: [{ key: 'publish', label: 'Publish' } as never],
         },
       ])
     ).toThrow('capability_mapping_missing:news.article:publish');

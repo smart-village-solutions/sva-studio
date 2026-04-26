@@ -1,5 +1,6 @@
 import { resolveIamContentDomainCapabilityForPrimitiveAction, type IamContentPrimitiveAction } from '@sva/core';
 import { emitActivityLog, type withInstanceScopedDb } from '../iam-account-management/shared.js';
+import { resolveContentPublicationInvariant } from './content-publication-invariants.js';
 import { ContentStateValidationError } from './repository-state-validation.js';
 import type { ContentRow, CreateContentInput, DeleteContentInput, UpdateContentInput } from './repository-types.js';
 
@@ -13,9 +14,10 @@ const buildContentActionAuditPayload = (primitiveAction: IamContentPrimitiveActi
 
 export const validatePublicationWindow = (input: { publishFrom?: string; publishUntil?: string }) => {
   if (
-    input.publishFrom &&
-    input.publishUntil &&
-    new Date(input.publishFrom).getTime() > new Date(input.publishUntil).getTime()
+    resolveContentPublicationInvariant({
+      publishFrom: input.publishFrom,
+      publishUntil: input.publishUntil,
+    }) === 'content_publication_window_invalid'
   ) {
     throw new ContentStateValidationError('content_publication_window_invalid');
   }

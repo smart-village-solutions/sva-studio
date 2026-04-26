@@ -142,6 +142,73 @@ describe('content mutation authorization', () => {
     );
   });
 
+  it('checks status and payload actions against the destination organization during reassignment', async () => {
+    authorizeContentActionMock.mockResolvedValue(null);
+
+    await expect(
+      authorizeUpdateContentActions(actor, 'content-1', content(), {
+        organizationId: '22222222-2222-4222-8222-222222222222',
+        payload: { body: 'Text' },
+        status: 'published',
+      })
+    ).resolves.toBeNull();
+
+    expect(authorizeContentActionMock).toHaveBeenNthCalledWith(
+      1,
+      actor,
+      'content.updateMetadata',
+      expect.objectContaining({
+        domainCapability: 'content.update_metadata',
+        organizationId: '11111111-1111-4111-8111-111111111111',
+      })
+    );
+    expect(authorizeContentActionMock).toHaveBeenNthCalledWith(
+      2,
+      actor,
+      'content.updatePayload',
+      expect.objectContaining({
+        domainCapability: 'content.update_payload',
+        organizationId: '11111111-1111-4111-8111-111111111111',
+      })
+    );
+    expect(authorizeContentActionMock).toHaveBeenNthCalledWith(
+      3,
+      actor,
+      'content.publish',
+      expect.objectContaining({
+        domainCapability: 'content.publish',
+        organizationId: '11111111-1111-4111-8111-111111111111',
+      })
+    );
+    expect(authorizeContentActionMock).toHaveBeenNthCalledWith(
+      4,
+      actor,
+      'content.updateMetadata',
+      expect.objectContaining({
+        domainCapability: 'content.update_metadata',
+        organizationId: '22222222-2222-4222-8222-222222222222',
+      })
+    );
+    expect(authorizeContentActionMock).toHaveBeenNthCalledWith(
+      5,
+      actor,
+      'content.updatePayload',
+      expect.objectContaining({
+        domainCapability: 'content.update_payload',
+        organizationId: '22222222-2222-4222-8222-222222222222',
+      })
+    );
+    expect(authorizeContentActionMock).toHaveBeenNthCalledWith(
+      6,
+      actor,
+      'content.publish',
+      expect.objectContaining({
+        domainCapability: 'content.publish',
+        organizationId: '22222222-2222-4222-8222-222222222222',
+      })
+    );
+  });
+
   it('stops on authorization denial before later actions are evaluated', async () => {
     const denied = new Response(null, { status: 403 });
     authorizeContentActionMock.mockResolvedValueOnce(denied);

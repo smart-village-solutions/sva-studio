@@ -52,4 +52,24 @@ describe('iam content schemas', () => {
       false
     );
   });
+
+  it('rejects publication windows with identical start and end timestamps', () => {
+    const result = updateContentSchema.safeParse({
+      publishFrom: '2026-04-25T12:00:00.000Z',
+      publishUntil: '2026-04-25T12:00:00.000Z',
+    });
+
+    expect(result.success).toBe(false);
+    if (result.success) {
+      throw new Error('Expected identical publication window bounds to be rejected');
+    }
+    expect(result.error.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          path: ['publishUntil'],
+          message: 'Das Veröffentlichungsende muss nach dem Veröffentlichungsbeginn liegen.',
+        }),
+      ])
+    );
+  });
 });

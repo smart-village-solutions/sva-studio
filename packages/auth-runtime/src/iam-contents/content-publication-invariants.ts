@@ -16,7 +16,7 @@ export const resolveContentPublicationInvariant = (value: {
   if (
     value.publishFrom &&
     value.publishUntil &&
-    new Date(value.publishFrom).getTime() > new Date(value.publishUntil).getTime()
+    new Date(value.publishFrom).getTime() >= new Date(value.publishUntil).getTime()
   ) {
     return 'content_publication_window_invalid';
   }

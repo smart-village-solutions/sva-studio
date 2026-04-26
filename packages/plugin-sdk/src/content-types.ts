@@ -29,7 +29,7 @@ export type ContentTypeListColumnDefinition = {
 export type ContentTypeActionDefinition = {
   readonly key: string;
   readonly label: string;
-  readonly domainCapability?: IamContentDomainCapability;
+  readonly domainCapability: IamContentDomainCapability;
 };
 
 export type ContentTypeDefinition = {

@@ -12,17 +12,19 @@ Das System SHALL eine Nx Integrated Monorepo-Struktur mit getrennten Bereichen f
 
 ### Requirement: Publishable Packages und Plugins
 
-Das System SHALL Packages als eigenstaendige npm-Module organisieren, inklusive klarer Namenskonventionen fuer Core und Plugins. Plugins SHALL dabei ausschliesslich ueber `@sva/sdk` mit dem Host-System kommunizieren und duerfen keine direkten Abhaengigkeiten auf `@sva/core` oder andere interne Packages deklarieren. Ein Beispiel-Plugin ist dafuer keine verpflichtende Workspace-Komponente.
+Das System SHALL Packages als eigenstaendige npm-Module organisieren, inklusive klarer Namenskonventionen fuer Core, UI und Plugins. Plugins SHALL dabei Host-Metadaten ausschliesslich ueber `@sva/plugin-sdk` konsumieren und gemeinsame React-UI ausschliesslich ueber `@sva/studio-ui-react` nutzen. Direkte Abhaengigkeiten auf `@sva/core`, alte Sammelpackages oder App-interne Module sind fuer Plugins nicht zulaessig. Ein Beispiel-Plugin ist dafuer keine verpflichtende Workspace-Komponente.
 
 #### Scenario: Package-Namensschema
 - **WHEN** ein neues Paket erstellt wird
 - **THEN** verwendet es ein Scope wie `@sva/*`
 - **AND** Plugins verwenden `@sva/plugin-*`
+- **AND** die gemeinsame Studio-UI verwendet den Importpfad `@sva/studio-ui-react`
 
 #### Scenario: Plugin-Dependency-Regel
 - **WHEN** ein Plugin-Package erstellt oder aktualisiert wird
-- **THEN** listet seine `package.json` nur `@sva/sdk` als Workspace-Dependency
-- **AND** direkte Abhaengigkeiten auf `@sva/core` oder andere interne Packages sind nicht vorhanden
+- **THEN** listet seine `package.json` fuer Host-Metadaten `@sva/plugin-sdk`
+- **AND** listet seine `package.json` fuer Plugin-Custom-Views optional `@sva/studio-ui-react`
+- **AND** direkte Abhaengigkeiten auf `@sva/core`, alte Sammelpackages oder App-interne Module sind nicht vorhanden
 
 #### Scenario: Kein Beispiel-Plugin als Workspace-Pflicht
 - **WHEN** der Workspace produktiv konfiguriert wird
@@ -111,22 +113,27 @@ Das System SHALL klare, wiederverwendbare Generator-Commands und Workflows dokum
 - **AND** Verlinkung zu Nx-Dokumentation ist enthalten
 
 ### Requirement: Plugin-SDK-Boundary
-Plugins (Packages mit Tag `scope:plugin` oder Namensschema `@sva/plugin-*`) SHALL ausschließlich über `@sva/plugin-sdk` mit dem Host-System interagieren. Direkte Imports aus `@sva/core` oder anderen internen Packages sind für Plugins nicht zulässig.
+Plugins (Packages mit Tag `scope:plugin` oder Namensschema `@sva/plugin-*`) SHALL Host-Metadaten, Registries, Admin-Ressourcen, Actions, Guard-Metadaten und Plugin-i18n ausschliesslich ueber `@sva/plugin-sdk` konsumieren. Gemeinsame React-UI fuer Custom-Views SHALL ueber `@sva/studio-ui-react` konsumiert werden. Direkte Imports aus `@sva/core`, alten Sammelpackages, fachlichen Zielpackages oder App-internen Modulen sind fuer Plugins nicht zulaessig.
 
-#### Scenario: Plugin importiert aus SDK
-- **WHEN** ein Plugin eine Funktion oder einen Typ des Host-Systems benötigt
-- **THEN** importiert es ausschließlich aus `@sva/plugin-sdk` oder dessen Sub-Exports
-- **AND** die `package.json` des Plugins listet nur `@sva/plugin-sdk` als Workspace-Dependency (nicht `@sva/core`)
+#### Scenario: Plugin importiert Host-Metadaten aus Plugin SDK
+- **WHEN** ein Plugin eine Funktion oder einen Typ fuer Host-Registrierung, Actions, i18n, Admin-Ressourcen oder Routing-Metadaten benötigt
+- **THEN** importiert es ausschliesslich aus `@sva/plugin-sdk` oder dessen Sub-Exports
+- **AND** interne Implementierungsdetails von `@sva/core` werden nicht exponiert
+
+#### Scenario: Plugin importiert gemeinsame UI aus Studio UI
+- **WHEN** ein Plugin eine Custom-View mit Studio-Layout, Formularen, Tabellen, Aktionen oder Zuständen rendert
+- **THEN** importiert es diese Bausteine aus `@sva/studio-ui-react`
+- **AND** es importiert keine Komponenten aus `apps/sva-studio-react/src/**`
 
 #### Scenario: Direktimport aus Core wird durch Lint verhindert
 - **WHEN** ein Plugin-Entwickler versucht, direkt aus `@sva/core` zu importieren
 - **THEN** schlägt die ESLint-Boundary-Prüfung fehl
-- **AND** eine aussagekräftige Fehlermeldung verweist auf `@sva/plugin-sdk` als korrekte Schnittstelle
+- **AND** eine aussagekräftige Fehlermeldung verweist auf `@sva/plugin-sdk` als korrekte Metadaten-Schnittstelle
 
-#### Scenario: Plugin-SDK stellt Plugin-relevante Exporte bereit
-- **WHEN** ein Plugin Zugriff auf Routing-Typen, Versions-Info oder andere Host-APIs benötigt
-- **THEN** stellt `@sva/plugin-sdk` die entsprechenden Re-Exports bereit
-- **AND** interne Implementierungsdetails von `@sva/core` werden nicht exponiert
+#### Scenario: Direktimport aus App-UI wird durch Lint verhindert
+- **WHEN** ein Plugin-Entwickler versucht, direkt aus App-internen UI-Pfaden zu importieren
+- **THEN** schlägt die ESLint-Boundary-Prüfung fehl
+- **AND** eine aussagekräftige Fehlermeldung verweist auf `@sva/studio-ui-react` als korrekte UI-Schnittstelle
 
 ### Requirement: Nx Caching für Test-Targets
 Das System SHALL Nx Caching für Test-Targets standardmäßig aktivieren und korrekte Cache-Inputs/-Outputs definieren.
@@ -622,3 +629,36 @@ Das Monorepo MUST reservierte Core-Namespaces fuer hosteigene oder explizit defi
 - **WHEN** ein Plugin-Package einen reservierten Core-Namespace wie `iam`, `content` oder `admin` fuer seine technische Plugin-Identitaet nutzen will
 - **THEN** wird die Registrierung abgewiesen
 - **AND** der Namespace bleibt dem Host oder einem explizit definierten Core-Vertrag vorbehalten
+
+### Requirement: Studio UI React Target Package
+The system SHALL provide `@sva/studio-ui-react` as a dedicated Workspace package for reusable Studio React UI.
+
+#### Scenario: Studio UI React package exists
+- **WHEN** the workspace projects are listed
+- **THEN** `packages/studio-ui-react` exists as an Nx library
+- **AND** it exposes the import path `@sva/studio-ui-react`
+- **AND** it has build, unit-test, type-test, and lint targets consistent with workspace conventions
+
+#### Scenario: Studio UI React package remains UI-only
+- **WHEN** `@sva/studio-ui-react` source imports are checked
+- **THEN** it has no runtime imports from server runtime, data repositories, IAM implementation packages, or app-internal modules
+- **AND** it does not contain domain persistence, route materialization, guard evaluation, or plugin registry logic
+
+### Requirement: Plugin UI Dependency Boundary
+Plugins SHALL consume host metadata through `@sva/plugin-sdk` and shared Studio React UI through `@sva/studio-ui-react`.
+
+#### Scenario: Plugin declares allowed workspace dependencies
+- **WHEN** a plugin package with name `@sva/plugin-*` provides custom views
+- **THEN** its `package.json` may declare `@sva/plugin-sdk` and `@sva/studio-ui-react` as Workspace dependencies
+- **AND** it does not declare app-internal modules or deprecated aggregate packages as dependencies
+
+#### Scenario: Plugin imports app internal UI
+- **WHEN** a plugin imports from `apps/sva-studio-react/src/**`
+- **THEN** the boundary check fails
+- **AND** the violation explains that shared UI must be imported from `@sva/studio-ui-react`
+
+#### Scenario: Plugin defines duplicate reusable basis control
+- **WHEN** a plugin defines reusable controls that duplicate available Studio UI controls such as Button, Input, Select, Tabs, Dialog, Alert, Badge, Table, or DataTable
+- **THEN** lint, CI, or review checks reject the duplicate basis control
+- **AND** the plugin may instead define domain-specific wrappers that compose `@sva/studio-ui-react`
+

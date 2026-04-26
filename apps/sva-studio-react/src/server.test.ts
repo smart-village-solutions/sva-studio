@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 const createStartHandlerMock = vi.fn();
 const createSdkLoggerMock = vi.fn();
 const dispatchAuthRouteRequestMock = vi.fn();
+const dispatchMainserverNewsRequestMock = vi.fn();
 const getWorkspaceContextMock = vi.fn();
 const withRequestContextMock = vi.fn();
 const createServerFunctionRequestDiagnosticsMock = vi.fn();
@@ -28,6 +29,10 @@ vi.mock('@sva/routing/server', () => ({
   dispatchAuthRouteRequest: dispatchAuthRouteRequestMock,
 }));
 
+vi.mock('./lib/mainserver-news-api.server', () => ({
+  dispatchMainserverNewsRequest: dispatchMainserverNewsRequestMock,
+}));
+
 vi.mock('./lib/server-function-request-diagnostics.server', () => ({
   createServerFunctionRequestDiagnostics: createServerFunctionRequestDiagnosticsMock,
   normalizeServerFnBase: vi.fn(() => '/_server'),
@@ -42,6 +47,7 @@ describe('server transport', () => {
     createStartHandlerMock.mockReset();
     createSdkLoggerMock.mockReset();
     dispatchAuthRouteRequestMock.mockReset();
+    dispatchMainserverNewsRequestMock.mockReset();
     getWorkspaceContextMock.mockReset();
     withRequestContextMock.mockReset();
     createServerFunctionRequestDiagnosticsMock.mockReset();
@@ -53,6 +59,7 @@ describe('server transport', () => {
     vi.stubEnv('NODE_ENV', 'production');
 
     const startFetch = vi.fn().mockResolvedValue(new Response('ok', { status: 200 }));
+    dispatchMainserverNewsRequestMock.mockResolvedValue(null);
     dispatchAuthRouteRequestMock.mockResolvedValue(new Response('auth', { status: 200 }));
     createStartHandlerMock.mockReturnValue(startFetch);
 
@@ -64,10 +71,28 @@ describe('server transport', () => {
     await expect(response.text()).resolves.toBe('auth');
   });
 
+  it('bypasses mainserver news requests before auth routing', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+
+    const startFetch = vi.fn().mockResolvedValue(new Response('ok', { status: 200 }));
+    dispatchMainserverNewsRequestMock.mockResolvedValue(new Response('news', { status: 200 }));
+    dispatchAuthRouteRequestMock.mockResolvedValue(null);
+    createStartHandlerMock.mockReturnValue(startFetch);
+
+    const mod = await import('./server');
+    const response = await mod.default.fetch(new Request('http://localhost:3000/api/v1/mainserver/news'));
+
+    expect(dispatchMainserverNewsRequestMock).toHaveBeenCalledTimes(1);
+    expect(dispatchAuthRouteRequestMock).not.toHaveBeenCalled();
+    expect(startFetch).not.toHaveBeenCalled();
+    await expect(response.text()).resolves.toBe('news');
+  });
+
   it('bypasses diagnostics for non server-function requests in development', async () => {
     vi.stubEnv('NODE_ENV', 'development');
 
     const startFetch = vi.fn().mockResolvedValue(new Response('plain', { status: 200 }));
+    dispatchMainserverNewsRequestMock.mockResolvedValue(null);
     dispatchAuthRouteRequestMock.mockResolvedValue(null);
     createStartHandlerMock.mockReturnValue(startFetch);
     withRequestContextMock.mockImplementation(async (_input, callback) => callback());
@@ -97,6 +122,7 @@ describe('server transport', () => {
       }),
     );
     const logger = { info: vi.fn() };
+    dispatchMainserverNewsRequestMock.mockResolvedValue(null);
     dispatchAuthRouteRequestMock.mockResolvedValue(null);
     createStartHandlerMock.mockReturnValue(startFetch);
     createSdkLoggerMock.mockReturnValue(logger);
@@ -136,6 +162,7 @@ describe('server transport', () => {
 
     const startFetch = vi.fn().mockResolvedValue(new Response('prod', { status: 204 }));
     const logger = { info: vi.fn() };
+    dispatchMainserverNewsRequestMock.mockResolvedValue(null);
     dispatchAuthRouteRequestMock.mockResolvedValue(null);
     createStartHandlerMock.mockReturnValue(startFetch);
     createSdkLoggerMock.mockReturnValue(logger);
@@ -170,6 +197,7 @@ describe('server transport', () => {
 
     const startFetch = vi.fn().mockResolvedValue(new Response('plain', { status: 202 }));
     const logger = { info: vi.fn() };
+    dispatchMainserverNewsRequestMock.mockResolvedValue(null);
     dispatchAuthRouteRequestMock.mockResolvedValue(null);
     createStartHandlerMock.mockReturnValue(startFetch);
     withRequestContextMock.mockImplementation(async (_input, callback) => callback());

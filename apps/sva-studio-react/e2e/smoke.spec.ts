@@ -112,7 +112,9 @@ const mockAuthenticatedPluginShell = async (page: Page) => {
         permissions: [
           { action: 'content.read', resourceType: 'content' },
           { action: 'content.create', resourceType: 'content' },
+          { action: 'content.updateMetadata', resourceType: 'content' },
           { action: 'content.updatePayload', resourceType: 'content' },
+          { action: 'content.delete', resourceType: 'content' },
         ],
         subject: {
           actorUserId: 'kc-editor-1',
@@ -153,7 +155,7 @@ const mockAuthenticatedPluginShell = async (page: Page) => {
     });
   });
 
-  await page.route('**/api/v1/iam/contents', async (route) => {
+  await page.route('**/api/v1/mainserver/news', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',

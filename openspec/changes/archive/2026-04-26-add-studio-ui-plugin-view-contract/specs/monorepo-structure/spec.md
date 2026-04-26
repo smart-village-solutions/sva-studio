@@ -34,7 +34,7 @@ Plugins SHALL consume host metadata through `@sva/plugin-sdk` and shared Studio 
 
 ## MODIFIED Requirements
 
-### Requirement: Publishable Packages and Plugins
+### Requirement: Publishable Packages und Plugins
 
 Das System SHALL Packages als eigenstaendige npm-Module organisieren, inklusive klarer Namenskonventionen fuer Core, UI und Plugins. Plugins SHALL dabei Host-Metadaten ausschliesslich ueber `@sva/plugin-sdk` konsumieren und gemeinsame React-UI ausschliesslich ueber `@sva/studio-ui-react` nutzen. Direkte Abhaengigkeiten auf `@sva/core`, alte Sammelpackages oder App-interne Module sind fuer Plugins nicht zulaessig. Ein Beispiel-Plugin ist dafuer keine verpflichtende Workspace-Komponente.
 

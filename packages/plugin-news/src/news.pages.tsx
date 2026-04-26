@@ -4,7 +4,6 @@ import { translatePluginKey, usePluginTranslation } from '@sva/plugin-sdk';
 import {
   Button,
   Input,
-  Select,
   StudioDetailPageTemplate,
   StudioEmptyState,
   StudioErrorState,
@@ -16,9 +15,9 @@ import {
   Textarea,
 } from '@sva/studio-ui-react';
 
-import { createNews, deleteNews, getNews, listNews, updateNews, type NewsFormInput } from './news.api.js';
+import { NewsApiError, createNews, deleteNews, getNews, listNews, updateNews, type NewsFormInput } from './news.api.js';
 import { getPluginNewsActionDefinition, pluginNewsActionIds } from './plugin.js';
-import type { NewsContentItem, NewsPayload, NewsStatus } from './news.types.js';
+import type { NewsContentItem, NewsPayload } from './news.types.js';
 import { validateNewsPayload } from './news.validation.js';
 
 type StatusMessage = {
@@ -35,7 +34,7 @@ const defaultPayload = (): NewsPayload => ({
 
 const defaultForm = (): NewsFormInput => ({
   title: '',
-  status: 'draft',
+  publishedAt: '',
   payload: defaultPayload(),
 });
 
@@ -44,6 +43,17 @@ const newsFlashStorageKey = 'news-plugin-flash-message';
 const flashMessageTranslationKeys: Record<FlashMessageCode, `messages.${FlashMessageCode}`> = {
   createSuccess: 'messages.createSuccess',
   deleteSuccess: 'messages.deleteSuccess',
+};
+
+const errorMessageTranslationKeys: Record<string, string> = {
+  missing_credentials: 'messages.errors.missingCredentials',
+  forbidden: 'messages.errors.forbidden',
+  graphql_error: 'messages.errors.graphqlError',
+  invalid_response: 'messages.errors.invalidResponse',
+  invalid_request: 'messages.errors.invalidRequest',
+  missing_instance: 'messages.errors.missingInstance',
+  network_error: 'messages.errors.networkError',
+  not_found: 'messages.missingContent',
 };
 
 const resolvePluginActionLabel = (
@@ -58,6 +68,16 @@ const resolvePluginActionLabel = (
 
   const localTitleKey = titleKey.startsWith('news.') ? titleKey.slice('news.'.length) : undefined;
   return localTitleKey ? pt(localTitleKey) : translatePluginKey('news', titleKey);
+};
+
+const resolveNewsErrorMessage = (pt: ReturnType<typeof usePluginTranslation>, error: unknown, fallbackKey: string) => {
+  if (error instanceof NewsApiError) {
+    const key = errorMessageTranslationKeys[error.code];
+    if (key) {
+      return pt(key);
+    }
+  }
+  return pt(fallbackKey);
 };
 
 const persistFlashMessage = (code: FlashMessageCode) => {
@@ -112,13 +132,13 @@ const toDatetimeLocalValue = (value?: string) => {
   return `${year}-${month}-${day}T${hours}:${minutes}`;
 };
 
-const fromDatetimeLocalValue = (value: string): string | undefined => {
+const fromDatetimeLocalValue = (value: string): string => {
   if (value.length === 0) {
-    return undefined;
+    return '';
   }
 
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
+  return Number.isNaN(date.getTime()) ? '' : date.toISOString();
 };
 
 const NewsForm = ({
@@ -163,14 +183,13 @@ const NewsForm = ({
 
         setForm({
           title: item.title,
-          status: item.status,
           publishedAt: item.publishedAt,
           payload: item.payload,
         });
       })
-      .catch(() => {
+      .catch((error: unknown) => {
         if (active) {
-          setStatusMessage({ kind: 'error', text: pt('messages.loadError') });
+          setStatusMessage({ kind: 'error', text: resolveNewsErrorMessage(pt, error, 'messages.loadError') });
         }
       })
       .finally(() => {
@@ -186,7 +205,7 @@ const NewsForm = ({
 
   const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const validationErrors = validateNewsPayload(form.payload);
+    const validationErrors = [...validateNewsPayload(form.payload), ...(form.publishedAt ? [] : ['publishedAt'])];
     setFieldErrors(validationErrors);
 
     if (validationErrors.length > 0) {
@@ -206,8 +225,8 @@ const NewsForm = ({
         await updateNews(contentId, form);
         setStatusMessage({ kind: 'success', text: pt('messages.updateSuccess') });
       }
-    } catch {
-      setStatusMessage({ kind: 'error', text: pt('messages.saveError') });
+    } catch (error) {
+      setStatusMessage({ kind: 'error', text: resolveNewsErrorMessage(pt, error, 'messages.saveError') });
     }
   };
 
@@ -226,8 +245,8 @@ const NewsForm = ({
       await deleteNews(contentId);
       persistFlashMessage('deleteSuccess');
       await navigate({ to: '/plugins/news' });
-    } catch {
-      setStatusMessage({ kind: 'error', text: pt('messages.deleteError') });
+    } catch (error) {
+      setStatusMessage({ kind: 'error', text: resolveNewsErrorMessage(pt, error, 'messages.deleteError') });
     } finally {
       setDeletePending(false);
     }
@@ -360,31 +379,21 @@ const NewsForm = ({
               }
             />
           </StudioField>
-
-          <StudioField id="news-status" label={pt('fields.status')}>
-            <Select
-              id="news-status"
-              value={form.status}
-              onChange={(event) =>
-                setForm((current) => ({
-                  ...current,
-                  status: event.target.value as NewsStatus,
-                }))
-              }
-            >
-              <option value="draft">{pt('status.draft')}</option>
-              <option value="in_review">{pt('status.inReview')}</option>
-              <option value="approved">{pt('status.approved')}</option>
-              <option value="published">{pt('status.published')}</option>
-              <option value="archived">{pt('status.archived')}</option>
-            </Select>
-          </StudioField>
         </StudioFieldGroup>
 
-        <StudioField id="news-published-at" label={pt('fields.publishedAt')}>
+        <StudioField
+          id="news-published-at"
+          label={pt('fields.publishedAt')}
+          error={hasFieldError('publishedAt') ? pt('validation.publishedAt') : undefined}
+          errorId="news-published-at-error"
+          required
+        >
           <Input
             id="news-published-at"
             type="datetime-local"
+            required
+            aria-describedby={buildDescribedBy(hasFieldError('publishedAt') && 'news-published-at-error')}
+            aria-invalid={hasFieldError('publishedAt') || undefined}
             value={toDatetimeLocalValue(form.publishedAt)}
             onChange={(event) =>
               setForm((current) => ({
@@ -433,9 +442,9 @@ export const NewsListPage = () => {
           setItems(response);
         }
       })
-      .catch(() => {
+      .catch((error: unknown) => {
         if (active) {
-          setError(translatePluginKey('news', 'messages.loadError'));
+          setError(resolveNewsErrorMessage(pt, error, 'messages.loadError'));
         }
       })
       .finally(() => {
@@ -484,7 +493,6 @@ export const NewsListPage = () => {
             <thead className="bg-muted/40 text-muted-foreground">
               <tr>
                 <th className="px-4 py-3">{pt('fields.title')}</th>
-                <th className="px-4 py-3">{pt('fields.status')}</th>
                 <th className="px-4 py-3">{pt('fields.category')}</th>
                 <th className="px-4 py-3">{pt('fields.updatedAt')}</th>
                 <th className="px-4 py-3">{pt('fields.actions')}</th>
@@ -497,7 +505,6 @@ export const NewsListPage = () => {
                     <div className="font-medium">{item.title}</div>
                     <div className="mt-1 text-xs text-muted-foreground">{item.payload.teaser}</div>
                   </td>
-                  <td className="px-4 py-3">{pt(`status.${item.status === 'in_review' ? 'inReview' : item.status}`)}</td>
                   <td className="px-4 py-3">{item.payload.category ?? '—'}</td>
                   <td className="px-4 py-3">{formatDate(item.updatedAt)}</td>
                   <td className="px-4 py-3">

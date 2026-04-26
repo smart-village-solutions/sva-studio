@@ -55,9 +55,10 @@ Abhängigkeiten des aktuellen Systems.
    - dedizierte Integrationsschicht für OAuth2, GraphQL-Transport, Fehlerabbildung und Fachadapter
    - trennt client-sichere Typen von serverseitigen Delegations- und Diagnostikfunktionen
 10. Plugin News (`packages/plugin-news`)
-   - produktives Fachplugin für `contentType = news.article`
+   - produktives Fachplugin für Mainserver-News mit pluginnahem Modell `news.article`
    - eigene Listen- und Editor-Ansichten, Plugin-Navigation und Plugin-Übersetzungen
    - nutzt `@sva/plugin-sdk` für Host-Metadaten und `@sva/studio-ui-react` für gemeinsame UI-Primitives statt App-interner Komponenten
+   - persistiert nicht direkt in lokale IAM-Contents, sondern spricht die hostgeführte Mainserver-News-Fassade per HTTP an
 11. Instanz-Registry (`packages/instance-registry`)
    - Host-Klassifikation, Vertrags- und Run-Modell fuer Registry, Preflight, Plan und Provisioning-Protokoll
    - Registry-Repositories, persistente Provisioning-Runs und Cache-Zugriffe über injizierte Repository-Verträge

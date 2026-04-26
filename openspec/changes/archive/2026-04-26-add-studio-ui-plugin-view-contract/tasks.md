@@ -50,7 +50,7 @@
 - [x] 7.3 CI-Check gegen lokale Basis-Control-Duplikate in `packages/plugin-*` ergänzen
 - [x] 7.4 Erlaubte fachliche Wrapper dokumentieren und Review-Regeln für statisch schwer erkennbare UI-Duplikate ergänzen
 - [x] 7.5 `pnpm check:file-placement`, `pnpm test:types`, `pnpm test:unit` und `pnpm test:eslint` zielgerichtet ausführen
-- [ ] 7.6 Vor PR nach Möglichkeit `pnpm test:pr` ausführen
+- [x] 7.6 Vor PR nach Möglichkeit `pnpm test:pr` ausführen
 
 ## 8. Documentation
 

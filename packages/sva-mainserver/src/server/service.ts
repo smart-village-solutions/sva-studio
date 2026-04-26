@@ -11,11 +11,25 @@ import {
   type SvaMainserverMutationRootTypenameMutation,
   type SvaMainserverQueryRootTypenameQuery,
 } from '../generated/diagnostics.js';
+import {
+  svaMainserverCreateNewsDocument,
+  svaMainserverDestroyNewsDocument,
+  svaMainserverNewsDetailDocument,
+  svaMainserverNewsListDocument,
+  type SvaMainserverCreateNewsMutation,
+  type SvaMainserverDestroyNewsMutation,
+  type SvaMainserverNewsDetailQuery,
+  type SvaMainserverNewsItemFragment,
+  type SvaMainserverNewsListQuery,
+} from '../generated/news.js';
 import type {
   SvaMainserverConnectionInput,
   SvaMainserverConnectionStatus,
   SvaMainserverErrorCode,
   SvaMainserverInstanceConfig,
+  SvaMainserverNewsInput,
+  SvaMainserverNewsItem,
+  SvaMainserverNewsPayload,
 } from '../types.js';
 import { loadSvaMainserverInstanceConfig } from './config-store.js';
 import { SvaMainserverError } from './errors.js';
@@ -91,6 +105,25 @@ const tokenResponseSchema = z.object({
 const graphqlResponseSchema = z.object({
   data: z.unknown().optional(),
   errors: z.array(z.object({ message: z.string().optional() })).optional(),
+});
+const newsPayloadSchema = z.object({
+  teaser: z.string(),
+  body: z.string(),
+  imageUrl: z.string().optional(),
+  externalUrl: z.string().optional(),
+  category: z.string().optional(),
+});
+
+const newsItemSchema = z.object({
+  id: z.string().min(1),
+  title: z.string().default(''),
+  author: z.string().nullish(),
+  payload: z.unknown(),
+  publishedAt: z.string().nullish(),
+  publicationDate: z.string().nullish(),
+  createdAt: z.string().nullish(),
+  updatedAt: z.string().nullish(),
+  visible: z.boolean().nullish(),
 });
 
 const toSvaMainserverError = (input: {
@@ -280,6 +313,78 @@ const parseGraphqlPayload = <TResult>(payload: unknown): TResult => {
   }
 
   return result.data;
+};
+
+const assertPublishedAt = (publishedAt: string): void => {
+  if (publishedAt.trim().length === 0) {
+    throw toSvaMainserverError({
+      code: 'invalid_response',
+      message: 'Veröffentlichungsdatum ist für Mainserver-News erforderlich.',
+      statusCode: 400,
+    });
+  }
+};
+
+const parseNewsPayload = (payload: unknown): SvaMainserverNewsPayload => {
+  const rawPayload =
+    typeof payload === 'string'
+      ? (() => {
+          try {
+            return JSON.parse(payload) as unknown;
+          } catch {
+            return payload;
+          }
+        })()
+      : payload;
+  const parsed = newsPayloadSchema.safeParse(rawPayload);
+  if (!parsed.success) {
+    return { teaser: '', body: '' };
+  }
+  return parsed.data;
+};
+
+const mapNewsItem = (item: SvaMainserverNewsItemFragment | null | undefined): SvaMainserverNewsItem => {
+  const parsed = newsItemSchema.safeParse(item);
+  if (!parsed.success) {
+    throw toSvaMainserverError({
+      code: 'invalid_response',
+      message: 'Ungültige News-Antwort des SVA-Mainservers.',
+      statusCode: 502,
+    });
+  }
+
+  const publishedAt = parsed.data.publishedAt ?? parsed.data.publicationDate;
+  if (!publishedAt) {
+    throw toSvaMainserverError({
+      code: 'invalid_response',
+      message: 'Mainserver-News ohne Veröffentlichungsdatum erhalten.',
+      statusCode: 502,
+    });
+  }
+
+  return {
+    id: parsed.data.id,
+    title: parsed.data.title,
+    contentType: 'news.article',
+    payload: parseNewsPayload(parsed.data.payload),
+    status: 'published',
+    author: parsed.data.author ?? '',
+    createdAt: parsed.data.createdAt ?? publishedAt,
+    updatedAt: parsed.data.updatedAt ?? parsed.data.createdAt ?? publishedAt,
+    publishedAt,
+  };
+};
+
+const mapOptionalNewsItem = (item: SvaMainserverNewsItemFragment | null | undefined): SvaMainserverNewsItem => {
+  if (!item) {
+    throw toSvaMainserverError({
+      code: 'not_found',
+      message: 'News-Eintrag wurde nicht gefunden.',
+      statusCode: 404,
+    });
+  }
+
+  return mapNewsItem(item);
 };
 
 const sleep = async (ms: number): Promise<void> =>
@@ -690,6 +795,7 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
     input: SvaMainserverConnectionInput & {
       readonly document: string;
       readonly operationName: string;
+      readonly variables?: Record<string, unknown>;
     },
     config: SvaMainserverInstanceConfig
   ): Promise<TResult> => {
@@ -720,6 +826,7 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
               body: JSON.stringify({
                 operationName: input.operationName,
                 query: input.document,
+                ...(input.variables ? { variables: input.variables } : {}),
               }),
             },
           });
@@ -808,6 +915,95 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
       config
     );
 
+  const listNewsWithConfig = async (
+    input: SvaMainserverConnectionInput,
+    config: SvaMainserverInstanceConfig
+  ): Promise<readonly SvaMainserverNewsItem[]> => {
+    const response = await executeGraphqlWithConfig<SvaMainserverNewsListQuery>(
+      {
+        ...input,
+        document: svaMainserverNewsListDocument,
+        operationName: 'SvaMainserverNewsList',
+        variables: { limit: 100, skip: 0, order: 'publishedAt_DESC' },
+      },
+      config
+    );
+
+    return (response.newsItems ?? []).filter((item) => item.visible !== false).map(mapNewsItem);
+  };
+
+  const getNewsWithConfig = async (
+    input: SvaMainserverConnectionInput & { readonly newsId: string },
+    config: SvaMainserverInstanceConfig
+  ): Promise<SvaMainserverNewsItem> => {
+    const response = await executeGraphqlWithConfig<SvaMainserverNewsDetailQuery>(
+      {
+        ...input,
+        document: svaMainserverNewsDetailDocument,
+        operationName: 'SvaMainserverNewsDetail',
+        variables: { id: input.newsId },
+      },
+      config
+    );
+
+    return mapOptionalNewsItem(response.newsItem);
+  };
+
+  const writeNewsWithConfig = async (
+    input: SvaMainserverConnectionInput & {
+      readonly news: SvaMainserverNewsInput;
+      readonly newsId?: string;
+      readonly forceCreate?: boolean;
+    },
+    config: SvaMainserverInstanceConfig
+  ): Promise<SvaMainserverNewsItem> => {
+    assertPublishedAt(input.news.publishedAt);
+    const response = await executeGraphqlWithConfig<SvaMainserverCreateNewsMutation>(
+      {
+        ...input,
+        document: svaMainserverCreateNewsDocument,
+        operationName: 'SvaMainserverCreateNews',
+        variables: {
+          ...(input.newsId ? { id: input.newsId } : {}),
+          ...(input.forceCreate === undefined ? {} : { forceCreate: input.forceCreate }),
+          title: input.news.title,
+          publishedAt: input.news.publishedAt,
+          publicationDate: input.news.publishedAt,
+          ...(input.news.payload.category ? { categoryName: input.news.payload.category } : {}),
+          payload: JSON.stringify(input.news.payload),
+        },
+      },
+      config
+    );
+
+    return mapOptionalNewsItem(response.createNewsItem);
+  };
+
+  const destroyNewsWithConfig = async (
+    input: SvaMainserverConnectionInput & { readonly newsId: string },
+    config: SvaMainserverInstanceConfig
+  ): Promise<{ readonly id: string }> => {
+    const response = await executeGraphqlWithConfig<SvaMainserverDestroyNewsMutation>(
+      {
+        ...input,
+        document: svaMainserverDestroyNewsDocument,
+        operationName: 'SvaMainserverDestroyNews',
+        variables: { id: input.newsId, recordType: 'NewsItem' },
+      },
+      config
+    );
+
+    if (!response.destroyRecord || (response.destroyRecord.statusCode ?? 200) >= 400) {
+      throw toSvaMainserverError({
+        code: 'invalid_response',
+        message: 'SVA-Mainserver konnte den News-Eintrag nicht löschen.',
+        statusCode: 502,
+      });
+    }
+
+    return { id: input.newsId };
+  };
+
   const getQueryRootTypename = async (
     input: SvaMainserverConnectionInput
   ): Promise<SvaMainserverQueryRootTypenameQuery> => {
@@ -820,6 +1016,39 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
   ): Promise<SvaMainserverMutationRootTypenameMutation> => {
     const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
     return getMutationRootTypenameWithConfig(input, config);
+  };
+
+  const listNews = async (input: SvaMainserverConnectionInput): Promise<readonly SvaMainserverNewsItem[]> => {
+    const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
+    return listNewsWithConfig(input, config);
+  };
+
+  const getNews = async (
+    input: SvaMainserverConnectionInput & { readonly newsId: string }
+  ): Promise<SvaMainserverNewsItem> => {
+    const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
+    return getNewsWithConfig(input, config);
+  };
+
+  const createNews = async (
+    input: SvaMainserverConnectionInput & { readonly news: SvaMainserverNewsInput }
+  ): Promise<SvaMainserverNewsItem> => {
+    const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
+    return writeNewsWithConfig(input, config);
+  };
+
+  const updateNews = async (
+    input: SvaMainserverConnectionInput & { readonly newsId: string; readonly news: SvaMainserverNewsInput }
+  ): Promise<SvaMainserverNewsItem> => {
+    const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
+    return writeNewsWithConfig({ ...input, forceCreate: false }, config);
+  };
+
+  const deleteNews = async (
+    input: SvaMainserverConnectionInput & { readonly newsId: string }
+  ): Promise<{ readonly id: string }> => {
+    const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
+    return destroyNewsWithConfig(input, config);
   };
 
   const getConnectionStatus = async (
@@ -875,9 +1104,14 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
   };
 
   return {
+    createNews,
+    deleteNews,
     getConnectionStatus,
     getMutationRootTypename,
+    getNews,
     getQueryRootTypename,
+    listNews,
+    updateNews,
   };
 };
 
@@ -900,3 +1134,19 @@ export const getSvaMainserverQueryRootTypename = (input: SvaMainserverConnection
 
 export const getSvaMainserverMutationRootTypename = (input: SvaMainserverConnectionInput) =>
   getDefaultService().getMutationRootTypename(input);
+
+export const listSvaMainserverNews = (input: SvaMainserverConnectionInput) => getDefaultService().listNews(input);
+
+export const getSvaMainserverNews = (input: SvaMainserverConnectionInput & { readonly newsId: string }) =>
+  getDefaultService().getNews(input);
+
+export const createSvaMainserverNews = (
+  input: SvaMainserverConnectionInput & { readonly news: SvaMainserverNewsInput }
+) => getDefaultService().createNews(input);
+
+export const updateSvaMainserverNews = (
+  input: SvaMainserverConnectionInput & { readonly newsId: string; readonly news: SvaMainserverNewsInput }
+) => getDefaultService().updateNews(input);
+
+export const deleteSvaMainserverNews = (input: SvaMainserverConnectionInput & { readonly newsId: string }) =>
+  getDefaultService().deleteNews(input);

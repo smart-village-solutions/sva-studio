@@ -4,10 +4,15 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { registerPluginTranslationResolver } from '@sva/plugin-sdk';
 
 import { NewsCreatePage, NewsEditPage, NewsListPage } from '../src/news.pages.js';
-import { createNews, deleteNews, getNews, listNews, updateNews } from '../src/news.api.js';
+import { NewsApiError, createNews, deleteNews, getNews, listNews, updateNews } from '../src/news.api.js';
 import { NEWS_CONTENT_TYPE } from '../src/plugin.js';
 
 vi.mock('../src/news.api.js', () => ({
+  NewsApiError: class NewsApiError extends Error {
+    public constructor(public readonly code: string) {
+      super(code);
+    }
+  },
   listNews: vi.fn(async () => []),
   getNews: vi.fn(async () => ({
     id: 'news-1',
@@ -18,10 +23,11 @@ vi.mock('../src/news.api.js', () => ({
       body: '<p>Body</p>',
       category: 'Allgemein',
     },
-    status: 'draft',
+    status: 'published',
     author: 'Editor',
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-02T00:00:00.000Z',
+    publishedAt: '2026-01-02T00:00:00.000Z',
   })),
   createNews: vi.fn(async () => ({
     id: 'news-created',
@@ -74,6 +80,13 @@ describe('NewsListPage', () => {
         'news.messages.updateSuccess': 'News-Eintrag wurde aktualisiert.',
         'news.messages.deleteSuccess': 'News-Eintrag wurde gelöscht.',
         'news.messages.deleteError': 'News-Eintrag konnte nicht gelöscht werden.',
+        'news.messages.errors.forbidden': 'Keine Berechtigung für Mainserver-News.',
+        'news.messages.errors.graphqlError': 'Der Mainserver hat die News-Anfrage abgelehnt.',
+        'news.messages.errors.invalidRequest': 'Die News-Anfrage ist ungültig.',
+        'news.messages.errors.invalidResponse': 'Der Mainserver hat eine ungültige News-Antwort geliefert.',
+        'news.messages.errors.missingCredentials': 'Mainserver-Credentials fehlen.',
+        'news.messages.errors.missingInstance': 'Kein Instanzkontext vorhanden.',
+        'news.messages.errors.networkError': 'Der Mainserver ist nicht erreichbar.',
         'news.empty.title': 'Noch keine News vorhanden',
         'news.empty.description': 'Legen Sie den ersten News-Eintrag an.',
         'news.list.title': 'News',
@@ -94,7 +107,6 @@ describe('NewsListPage', () => {
         'news.fields.imageUrl': 'Bild-URL',
         'news.fields.externalUrl': 'Externe URL',
         'news.fields.category': 'Kategorie',
-        'news.fields.status': 'Status',
         'news.fields.publishedAt': 'Veröffentlichungsdatum',
         'news.fields.updatedAt': 'Geändert am',
         'news.fields.actions': 'Aktionen',
@@ -103,11 +115,7 @@ describe('NewsListPage', () => {
         'news.validation.body': 'Der Inhalt ist erforderlich und darf maximal 50.000 Zeichen haben.',
         'news.validation.imageUrl': 'Die Bild-URL muss mit https:// beginnen.',
         'news.validation.externalUrl': 'Die externe URL muss mit https:// beginnen.',
-        'news.status.draft': 'Entwurf',
-        'news.status.inReview': 'In Prüfung',
-        'news.status.approved': 'Freigegeben',
-        'news.status.published': 'Veröffentlicht',
-        'news.status.archived': 'Archiviert',
+        'news.validation.publishedAt': 'Das Veröffentlichungsdatum ist erforderlich.',
       };
       return labels[key] ?? key;
     });
@@ -144,32 +152,31 @@ describe('NewsListPage', () => {
     await waitFor(() => {
       expect(screen.getByText('Neuigkeit')).toBeTruthy();
       expect(screen.getByText('Kurztext')).toBeTruthy();
-      expect(screen.getByText('Veröffentlicht')).toBeTruthy();
       expect(screen.getByText('Bearbeiten')).toBeTruthy();
     });
   });
 
-  it('renders fallback values for in-review status, missing category and invalid update timestamps', async () => {
+  it('renders fallback values for missing category and invalid update timestamps', async () => {
     vi.mocked(listNews).mockResolvedValueOnce([
       {
         id: 'news-2',
-        title: 'Prüfmeldung',
+        title: 'Meldung',
         contentType: NEWS_CONTENT_TYPE,
         payload: {
-          teaser: 'Wird geprüft',
+          teaser: 'Kurztext',
           body: '<p>Body</p>',
         },
-        status: 'in_review',
+        status: 'published',
         author: 'Editor',
         createdAt: '2026-01-01T00:00:00.000Z',
         updatedAt: 'invalid-date',
+        publishedAt: '2026-01-01T00:00:00.000Z',
       },
     ]);
 
     render(<NewsListPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('In Prüfung')).toBeTruthy();
       expect(screen.getByText('—')).toBeTruthy();
       expect(screen.getByText('invalid-date')).toBeTruthy();
     });
@@ -185,12 +192,23 @@ describe('NewsListPage', () => {
     });
   });
 
+  it('renders typed mainserver load errors with stable translations', async () => {
+    vi.mocked(listNews).mockRejectedValueOnce(new NewsApiError('missing_credentials'));
+
+    render(<NewsListPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Mainserver-Credentials fehlen.')).toBeTruthy();
+    });
+  });
+
   it('shows validation feedback before creating invalid news', async () => {
     render(<NewsCreatePage />);
 
     fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Neue News' } });
     fireEvent.change(screen.getByLabelText('Teaser'), { target: { value: 'x'.repeat(501) } });
     fireEvent.change(screen.getByLabelText('Inhalt (HTML)'), { target: { value: ' ' } });
+    fireEvent.change(screen.getByLabelText('Veröffentlichungsdatum'), { target: { value: '2026-04-14T09:30' } });
     fireEvent.click(screen.getByRole('button', { name: 'News anlegen' }));
 
     await waitFor(() => {
@@ -213,6 +231,7 @@ describe('NewsListPage', () => {
     fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Neue News' } });
     fireEvent.change(screen.getByLabelText('Teaser'), { target: { value: 'Kurztext' } });
     fireEvent.change(screen.getByLabelText('Inhalt (HTML)'), { target: { value: '<p><br></p>' } });
+    fireEvent.change(screen.getByLabelText('Veröffentlichungsdatum'), { target: { value: '2026-04-14T09:30' } });
     fireEvent.click(screen.getByRole('button', { name: 'News anlegen' }));
 
     await waitFor(() => {
@@ -222,12 +241,29 @@ describe('NewsListPage', () => {
     expect(createNews).not.toHaveBeenCalled();
   });
 
+  it('requires a publication date before creating a news entry', async () => {
+    render(<NewsCreatePage />);
+
+    fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Neue News' } });
+    fireEvent.change(screen.getByLabelText('Teaser'), { target: { value: 'Kurztext' } });
+    fireEvent.change(screen.getByLabelText('Inhalt (HTML)'), { target: { value: '<p>Body</p>' } });
+    fireEvent.submit(screen.getByRole('button', { name: 'News anlegen' }).closest('form') as HTMLFormElement);
+
+    await waitFor(() => {
+      expect(screen.getByText('Das Veröffentlichungsdatum ist erforderlich.')).toBeTruthy();
+    });
+
+    expect(screen.getByLabelText('Veröffentlichungsdatum').getAttribute('aria-invalid')).toBe('true');
+    expect(createNews).not.toHaveBeenCalled();
+  });
+
   it('persists a create success flash before navigating back to the list', async () => {
     render(<NewsCreatePage />);
 
     fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Neue News' } });
     fireEvent.change(screen.getByLabelText('Teaser'), { target: { value: 'Kurztext' } });
     fireEvent.change(screen.getByLabelText('Inhalt (HTML)'), { target: { value: '<p>Body</p>' } });
+    fireEvent.change(screen.getByLabelText('Veröffentlichungsdatum'), { target: { value: '2026-04-14T09:30' } });
     fireEvent.click(screen.getByRole('button', { name: 'News anlegen' }));
 
     await waitFor(() => {
@@ -246,17 +282,18 @@ describe('NewsListPage', () => {
   });
 
   it('shows a save error when creating news fails', async () => {
-    vi.mocked(createNews).mockRejectedValueOnce(new Error('create failed'));
+    vi.mocked(createNews).mockRejectedValueOnce(new NewsApiError('forbidden'));
 
     render(<NewsCreatePage />);
 
     fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Neue News' } });
     fireEvent.change(screen.getByLabelText('Teaser'), { target: { value: 'Kurztext' } });
     fireEvent.change(screen.getByLabelText('Inhalt (HTML)'), { target: { value: '<p>Body</p>' } });
+    fireEvent.change(screen.getByLabelText('Veröffentlichungsdatum'), { target: { value: '2026-04-14T09:30' } });
     fireEvent.click(screen.getByRole('button', { name: 'News anlegen' }));
 
     await waitFor(() => {
-      expect(screen.getByText('News konnten nicht gespeichert werden.')).toBeTruthy();
+      expect(screen.getByText('Keine Berechtigung für Mainserver-News.')).toBeTruthy();
     });
 
     expect(navigateMock).not.toHaveBeenCalled();
@@ -308,7 +345,7 @@ describe('NewsListPage', () => {
   });
 
   it('shows a save error when updating an existing news entry fails', async () => {
-    vi.mocked(updateNews).mockRejectedValueOnce(new Error('update failed'));
+    vi.mocked(updateNews).mockRejectedValueOnce(new NewsApiError('graphql_error'));
 
     render(<NewsEditPage />);
 
@@ -319,7 +356,7 @@ describe('NewsListPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Änderungen speichern' }));
 
     await waitFor(() => {
-      expect(screen.getByText('News konnten nicht gespeichert werden.')).toBeTruthy();
+      expect(screen.getByText('Der Mainserver hat die News-Anfrage abgelehnt.')).toBeTruthy();
     });
   });
 
@@ -362,7 +399,7 @@ describe('NewsListPage', () => {
 
   it('shows a delete error when deleting an existing news entry fails', async () => {
     stubConfirm(true);
-    vi.mocked(deleteNews).mockRejectedValueOnce(new Error('delete failed'));
+    vi.mocked(deleteNews).mockRejectedValueOnce(new NewsApiError('network_error'));
 
     render(<NewsEditPage />);
 
@@ -373,7 +410,7 @@ describe('NewsListPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Löschen' }));
 
     await waitFor(() => {
-      expect(screen.getByText('News-Eintrag konnte nicht gelöscht werden.')).toBeTruthy();
+      expect(screen.getByText('Der Mainserver ist nicht erreichbar.')).toBeTruthy();
     });
 
     expect(navigateMock).not.toHaveBeenCalled();
@@ -414,7 +451,7 @@ describe('NewsListPage', () => {
         teaser: 'Kurztext',
         body: '<p>Body</p>',
       },
-      status: 'draft',
+      status: 'published',
       author: 'Editor',
       createdAt: '2026-01-01T00:00:00.000Z',
       updatedAt: '2026-01-02T00:00:00.000Z',

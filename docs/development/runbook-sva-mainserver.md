@@ -28,6 +28,24 @@ Dieses Runbook beschreibt Betrieb, Fehlerdiagnose und Notfallmaßnahmen für die
 | `graphql_error` | GraphQL antwortet mit fachlichem Fehlerarray | Schema-/Resolver-Fehler upstream | Response-Details und Snapshot-Drift prüfen |
 | `invalid_response` | OAuth2- oder GraphQL-Body verletzt den erwarteten Contract | HTML statt JSON, unvollständige Antwort, Schema-Drift | Upstream-Response und Snapshot prüfen |
 
+## News-Operationen
+
+Das News-Plugin nutzt produktiv keine lokalen IAM-Content-Datensätze mehr. Der Browser ruft ausschließlich die hostgeführte Fassade unter `/api/v1/mainserver/news` und `/api/v1/mainserver/news/$newsId` auf; die App prüft Session, Instanzkontext, lokale Content-Primitive und Mainserver-Credentials, bevor ein Upstream-Call erfolgt.
+
+| Studio-Methode | Lokale Primitive | Mainserver-Operation | Hinweis |
+| --- | --- | --- | --- |
+| `GET /api/v1/mainserver/news` | `content.read` | `newsItems` | Nur sichtbare Mainserver-News werden als veröffentlichte Plugin-Items abgebildet. |
+| `GET /api/v1/mainserver/news/$newsId` | `content.read` | `newsItem(id)` | `not_found` wird als stabiler Fehlercode an die Plugin-Fassade zurückgegeben. |
+| `POST /api/v1/mainserver/news` | `content.create` | `createNewsItem` | `publishedAt` ist verpflichtend; Draft-/Review-/Approval-Flows werden in Phase 1 nicht unterstützt. |
+| `PATCH /api/v1/mainserver/news/$newsId` | `content.updateMetadata`, `content.updatePayload` | `createNewsItem(id, forceCreate: false)` | Update-Semantik wurde gegen Staging bestätigt. |
+| `DELETE /api/v1/mainserver/news/$newsId` | `content.delete` | `destroyRecord(id, recordType: "NewsItem")` | Fachlich ein harter Löschpfad; kein lokaler Soft-Delete und kein Dual-Write. |
+
+Lokale Altinhalte mit `contentType = news.article` oder dem Legacy-Typ `news` werden nicht migriert und nicht mehr produktiv angezeigt. Falls solche Datensätze noch in der IAM-Content-Tabelle vorhanden sind, dienen sie nur noch als Altquelle für manuelle Analyse oder einen späteren operatorgeführten Export.
+
+Der Mainserver akzeptiert das News-`payload` in der Mutation stabil als JSON-kodierten String. Die Studio-Fassade hält das Plugin-Modell trotzdem objektbasiert und kodiert/dekodiert ausschließlich im serverseitigen Mainserver-Adapter.
+
+Rollback erfolgt über den Mainserver-Kill-Switch `iam.instance_integrations.enabled = false`. Das Plugin zeigt dann Mainserver-Fehler an, lokale IAM-News werden bewusst nicht als Fallback reaktiviert.
+
 ## Credential-Rotation
 
 1. Betroffenen Benutzer in Keycloak identifizieren.
@@ -137,6 +155,8 @@ FROM (
 ```bash
 pnpm schema-diff:sva-mainserver
 ```
+
+Für lokale Läufe müssen `SVA_MAINSERVER_SCHEMA_GRAPHQL_URL`, `SVA_MAINSERVER_SCHEMA_OAUTH_TOKEN_URL`, `SVA_MAINSERVER_SCHEMA_CLIENT_ID` und `SVA_MAINSERVER_SCHEMA_CLIENT_SECRET` gesetzt sein. Fehlen diese Variablen, ist die lokale Schema-Diff-Prüfung nicht aussagekräftig und muss in CI oder Staging nachgeholt werden.
 
 ## Benchmark vor Produktivbetrieb
 

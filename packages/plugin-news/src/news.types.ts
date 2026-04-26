@@ -6,7 +6,7 @@ export type NewsPayload = {
   readonly category?: string;
 };
 
-export type NewsStatus = 'draft' | 'in_review' | 'approved' | 'published' | 'archived';
+export type NewsStatus = 'published';
 
 export type NewsContentItem = {
   readonly id: string;
@@ -17,5 +17,5 @@ export type NewsContentItem = {
   readonly author: string;
   readonly createdAt: string;
   readonly updatedAt: string;
-  readonly publishedAt?: string;
+  readonly publishedAt: string;
 };

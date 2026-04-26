@@ -38,7 +38,8 @@ const state = vi.hoisted(() => ({
   emitActivityLog: vi.fn(),
 }));
 
-vi.mock('@sva/sdk/server', () => ({
+vi.mock('@sva/server-runtime', () => ({
+  createSdkLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }),
   getWorkspaceContext: () => ({ requestId: 'req-groups' }),
 }));
 

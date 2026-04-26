@@ -1,10 +1,9 @@
-import { getWorkspaceContext } from '@sva/sdk/server';
+import { createRoleReadHandlers } from '@sva/iam-admin';
+import { getWorkspaceContext } from '@sva/server-runtime';
 import type { IamPermission } from '@sva/core';
 
-import type { AuthenticatedRequestContext } from '../middleware.server.js';
 import { jsonResponse, type QueryClient } from '../shared/db-helpers.js';
 
-import { ADMIN_ROLES } from './constants.js';
 import { asApiList, createApiError } from './api-helpers.js';
 import { classifyIamDiagnosticError } from './diagnostics.js';
 import { ensureFeature, getFeatureFlags } from './feature-flags.js';
@@ -45,116 +44,23 @@ ORDER BY p.permission_key ASC;
   }));
 };
 
-export const listRolesInternal = async (
-  request: Request,
-  ctx: AuthenticatedRequestContext
-): Promise<Response> => {
-  const requestContext = getWorkspaceContext();
-  const featureCheck = ensureFeature(getFeatureFlags(), 'iam_admin', requestContext.requestId);
-  if (featureCheck) {
-    return featureCheck;
-  }
-  const roleCheck = requireRoles(ctx, ADMIN_ROLES, requestContext.requestId);
-  if (roleCheck) {
-    return roleCheck;
-  }
-  if (!ctx.user.instanceId) {
-    return listPlatformRolesInternal(ctx, requestContext.requestId, requestContext.traceId);
-  }
-  const actorResolution = await resolveActorInfo(request, ctx, { requireActorMembership: true });
-  if ('error' in actorResolution) {
-    return actorResolution.error;
-  }
+const roleReadHandlers = createRoleReadHandlers({
+  asApiList,
+  classifyIamDiagnosticError,
+  consumeRateLimit,
+  createApiError,
+  ensureFeature,
+  getFeatureFlags,
+  getWorkspaceContext,
+  jsonResponse,
+  listPlatformRolesInternal,
+  loadPermissions: (instanceId) => withInstanceScopedDb(instanceId, (client) => loadPermissions(client, instanceId)),
+  loadRoleListItems: (instanceId) => withInstanceScopedDb(instanceId, (client) => loadRoleListItems(client, instanceId)),
+  requireRoles,
+  resolveActorInfo,
+});
 
-  const rateLimit = consumeRateLimit({
-    instanceId: actorResolution.actor.instanceId,
-    actorKeycloakSubject: ctx.user.id,
-    scope: 'read',
-    requestId: actorResolution.actor.requestId,
-  });
-  if (rateLimit) {
-    return rateLimit;
-  }
-
-  try {
-    const roles = await withInstanceScopedDb(actorResolution.actor.instanceId, (client) =>
-      loadRoleListItems(client, actorResolution.actor.instanceId)
-    );
-    return jsonResponse(
-      200,
-      asApiList(roles, { page: 1, pageSize: roles.length, total: roles.length }, actorResolution.actor.requestId)
-    );
-  } catch (error) {
-    const classified = classifyIamDiagnosticError(
-      error,
-      'IAM-Datenbank ist nicht erreichbar.',
-      actorResolution.actor.requestId
-    );
-    return createApiError(
-      classified.status,
-      classified.code,
-      classified.message,
-      actorResolution.actor.requestId,
-      classified.details
-    );
-  }
-};
-
-export const listPermissionsInternal = async (
-  request: Request,
-  ctx: AuthenticatedRequestContext
-): Promise<Response> => {
-  const requestContext = getWorkspaceContext();
-  const featureCheck = ensureFeature(getFeatureFlags(), 'iam_admin', requestContext.requestId);
-  if (featureCheck) {
-    return featureCheck;
-  }
-  const roleCheck = requireRoles(ctx, ADMIN_ROLES, requestContext.requestId);
-  if (roleCheck) {
-    return roleCheck;
-  }
-  const actorResolution = await resolveActorInfo(request, ctx, { requireActorMembership: true });
-  if ('error' in actorResolution) {
-    return actorResolution.error;
-  }
-
-  const rateLimit = consumeRateLimit({
-    instanceId: actorResolution.actor.instanceId,
-    actorKeycloakSubject: ctx.user.id,
-    scope: 'read',
-    requestId: actorResolution.actor.requestId,
-  });
-  if (rateLimit) {
-    return rateLimit;
-  }
-
-  try {
-    const permissions = await withInstanceScopedDb(actorResolution.actor.instanceId, (client) =>
-      loadPermissions(client, actorResolution.actor.instanceId)
-    );
-    return jsonResponse(
-      200,
-      asApiList(
-        permissions,
-        { page: 1, pageSize: Math.max(1, permissions.length), total: permissions.length },
-        actorResolution.actor.requestId
-      )
-    );
-  } catch (error) {
-    const classified = classifyIamDiagnosticError(
-      error,
-      'IAM-Datenbank ist nicht erreichbar.',
-      actorResolution.actor.requestId
-    );
-    return createApiError(
-      classified.status,
-      classified.code,
-      classified.message,
-      actorResolution.actor.requestId,
-      classified.details
-    );
-  }
-};
+export const { listPermissionsInternal, listRolesInternal } = roleReadHandlers;
 
 export { createRoleInternal } from './roles-handlers.create.js';
 export { deleteRoleInternal } from './roles-handlers.delete.js';

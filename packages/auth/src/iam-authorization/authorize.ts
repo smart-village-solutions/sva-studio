@@ -1,5 +1,5 @@
-import { evaluateAuthorizeDecision } from '@sva/core';
-import { getWorkspaceContext, withRequestContext } from '@sva/sdk/server';
+import { evaluateAuthorizeDecision } from '@sva/iam-core';
+import { getWorkspaceContext, withRequestContext } from '@sva/server-runtime';
 
 import { resolveImpersonationSubject } from '../iam-governance.server.js';
 import { withAuthenticatedUser } from '../middleware.server.js';

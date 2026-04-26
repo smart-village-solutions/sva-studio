@@ -1,0 +1,101 @@
+{
+  "name": "@sva/instance-registry",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "module": "dist/index.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./http-contracts": {
+      "types": "./dist/http-contracts.d.ts",
+      "default": "./dist/http-contracts.js"
+    },
+    "./http-guards": {
+      "types": "./dist/http-guards.d.ts",
+      "default": "./dist/http-guards.js"
+    },
+    "./http-instance-handlers": {
+      "types": "./dist/http-instance-handlers.d.ts",
+      "default": "./dist/http-instance-handlers.js"
+    },
+    "./http-keycloak-handlers": {
+      "types": "./dist/http-keycloak-handlers.d.ts",
+      "default": "./dist/http-keycloak-handlers.js"
+    },
+    "./http-mutation-handlers": {
+      "types": "./dist/http-mutation-handlers.d.ts",
+      "default": "./dist/http-mutation-handlers.js"
+    },
+    "./keycloak-types": {
+      "types": "./dist/keycloak-types.d.ts",
+      "default": "./dist/keycloak-types.js"
+    },
+    "./mutation-errors": {
+      "types": "./dist/mutation-errors.d.ts",
+      "default": "./dist/mutation-errors.js"
+    },
+    "./mutation-input-builders": {
+      "types": "./dist/mutation-input-builders.d.ts",
+      "default": "./dist/mutation-input-builders.js"
+    },
+    "./provisioning-worker": {
+      "types": "./dist/provisioning-worker.d.ts",
+      "default": "./dist/provisioning-worker.js"
+    },
+    "./provisioning-auth": {
+      "types": "./dist/provisioning-auth.d.ts",
+      "default": "./dist/provisioning-auth.js"
+    },
+    "./provisioning-auth-state": {
+      "types": "./dist/provisioning-auth-state.d.ts",
+      "default": "./dist/provisioning-auth-state.js"
+    },
+    "./runtime-resolution": {
+      "types": "./dist/runtime-resolution.d.ts",
+      "default": "./dist/runtime-resolution.js"
+    },
+    "./runtime-wiring": {
+      "types": "./dist/runtime-wiring.d.ts",
+      "default": "./dist/runtime-wiring.js"
+    },
+    "./service": {
+      "types": "./dist/service.d.ts",
+      "default": "./dist/service.js"
+    },
+    "./service-detail": {
+      "types": "./dist/service-detail.d.ts",
+      "default": "./dist/service-detail.js"
+    },
+    "./service-keycloak": {
+      "types": "./dist/service-keycloak.d.ts",
+      "default": "./dist/service-keycloak.js"
+    },
+    "./service-keycloak-execution": {
+      "types": "./dist/service-keycloak-execution.d.ts",
+      "default": "./dist/service-keycloak-execution.js"
+    },
+    "./service-keycloak-execution-shared": {
+      "types": "./dist/service-keycloak-execution-shared.d.ts",
+      "default": "./dist/service-keycloak-execution-shared.js"
+    },
+    "./service-types": {
+      "types": "./dist/service-types.d.ts",
+      "default": "./dist/service-types.js"
+    }
+  },
+  "dependencies": {
+    "@sva/core": "workspace:*",
+    "@sva/data-repositories": "workspace:*",
+    "@sva/iam-core": "workspace:*",
+    "@sva/server-runtime": "workspace:*",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^4.1.2",
+    "vitest": "^4.1.2"
+  }
+}

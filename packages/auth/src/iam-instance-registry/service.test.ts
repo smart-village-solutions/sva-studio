@@ -9,7 +9,7 @@ const loggerState = vi.hoisted(() => ({
   },
 }));
 
-vi.mock('@sva/sdk/server', () => ({
+vi.mock('@sva/server-runtime', () => ({
   createSdkLogger: () => loggerState.logger,
 }));
 
@@ -23,8 +23,8 @@ vi.mock('../iam-account-management/encryption.js', () => ({
 import { createInstanceRegistryService } from './service.js';
 
 import type { IamInstanceKeycloakProvisioningRun } from '@sva/core';
-import type { InstanceRegistryRepository } from '@sva/data';
-import type { InstanceAuditEvent, InstanceProvisioningRun, InstanceRegistryRecord } from '@sva/data';
+import type { InstanceRegistryRepository } from '@sva/data-repositories';
+import type { InstanceAuditEvent, InstanceProvisioningRun, InstanceRegistryRecord } from '@sva/data-repositories';
 
 const now = '2026-01-01T00:00:00.000Z';
 

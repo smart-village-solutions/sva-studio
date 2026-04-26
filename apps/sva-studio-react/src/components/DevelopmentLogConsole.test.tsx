@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { DevelopmentLogEntry } from '@sva/sdk/server';
+import type { DevelopmentLogEntry } from '@sva/server-runtime';
 
 import type { BrowserDevelopmentLogEntry } from '../lib/development-log-store';
 
@@ -54,7 +54,7 @@ vi.mock('../lib/development-log-store', () => ({
   subscribeToBrowserDevelopmentLogs,
 }));
 
-vi.mock('@sva/sdk/logging', () => ({
+vi.mock('@sva/monitoring-client/logging', () => ({
   createBrowserLogger: () => browserLoggerMock,
 }));
 

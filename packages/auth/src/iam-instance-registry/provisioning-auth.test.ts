@@ -88,6 +88,10 @@ vi.mock('../keycloak-admin-client.js', () => ({
     state.configCalls.push(realm);
     return { realm };
   }),
+  getKeycloakProvisionerClientConfigFromEnv: vi.fn((realm: string) => {
+    state.configCalls.push(realm);
+    return { realm };
+  }),
 }));
 
 import {

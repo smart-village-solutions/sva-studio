@@ -1,5 +1,5 @@
 import { summarizeContentAccess, type IamContentAccessSummary } from '@sva/core';
-import { getWorkspaceContext, toJsonErrorResponse, withRequestContext } from '@sva/sdk/server';
+import { getWorkspaceContext, toJsonErrorResponse, withRequestContext } from '@sva/server-runtime';
 
 import { createApiError } from '../iam-account-management/api-helpers.js';
 import { ensureFeature, getFeatureFlags } from '../iam-account-management/feature-flags.js';

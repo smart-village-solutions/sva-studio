@@ -1,4 +1,4 @@
-import { createSdkLogger, getWorkspaceContext } from '@sva/sdk/server';
+import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 
 import { createApiError } from './iam-account-management/api-helpers.js';
 import { withInstanceScopedDb } from './iam-account-management/shared.js';

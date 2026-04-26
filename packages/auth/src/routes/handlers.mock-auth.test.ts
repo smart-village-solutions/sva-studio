@@ -8,7 +8,7 @@ const loggerMock = {
   debug: vi.fn(),
 };
 
-vi.mock('@sva/sdk/server', () => ({
+vi.mock('@sva/server-runtime', () => ({
   createSdkLogger: () => loggerMock,
   initializeOtelSdk: vi.fn(async () => ({ status: 'ready' as const })),
   withRequestContext: requestContextMock,

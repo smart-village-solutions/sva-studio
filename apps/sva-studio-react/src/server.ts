@@ -45,7 +45,7 @@ let sdkPromise: Promise<RequestContextSdk> | null = null;
 const loggerPromises = new Map<ServerTransportComponent, Promise<ServerTransportLogger>>();
 let dispatchAuthRouteRequestPromise: Promise<typeof import('@sva/routing/server')['dispatchAuthRouteRequest']> | null = null;
 const getSdk = async (): Promise<RequestContextSdk> => {
-  sdkPromise ??= import('@sva/sdk/server') as Promise<RequestContextSdk>;
+  sdkPromise ??= import('@sva/server-runtime') as Promise<RequestContextSdk>;
   return sdkPromise;
 };
 

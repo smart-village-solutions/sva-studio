@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 
-// eslint-disable-next-line @nx/enforce-module-boundaries
 import {
   assertComposeServiceIngressLabels,
   assertComposeServiceNetworks,

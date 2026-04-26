@@ -40,7 +40,7 @@ vi.mock('../providers/auth-provider', () => ({
   useAuth: () => authMockValue,
 }));
 
-vi.mock('@sva/sdk/logging', () => ({
+vi.mock('@sva/monitoring-client/logging', () => ({
   createBrowserLogger: () => browserLoggerMock,
 }));
 

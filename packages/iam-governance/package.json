@@ -1,0 +1,83 @@
+{
+  "name": "@sva/iam-governance",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "module": "dist/index.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./read-models-internal": {
+      "types": "./dist/read-models-internal.d.ts",
+      "default": "./dist/read-models-internal.js"
+    },
+    "./dsr-read-models-internal": {
+      "types": "./dist/dsr-read-models-internal.d.ts",
+      "default": "./dist/dsr-read-models-internal.js"
+    },
+    "./dsr-export-payload": {
+      "types": "./dist/dsr-export-payload.d.ts",
+      "default": "./dist/dsr-export-payload.js"
+    },
+    "./dsr-export-flows": {
+      "types": "./dist/dsr-export-flows.d.ts",
+      "default": "./dist/dsr-export-flows.js"
+    },
+    "./dsr-export-status": {
+      "types": "./dist/dsr-export-status.d.ts",
+      "default": "./dist/dsr-export-status.js"
+    },
+    "./dsr-maintenance": {
+      "types": "./dist/dsr-maintenance.d.ts",
+      "default": "./dist/dsr-maintenance.js"
+    },
+    "./governance-workflow-policy": {
+      "types": "./dist/governance-workflow-policy.d.ts",
+      "default": "./dist/governance-workflow-policy.js"
+    },
+    "./governance-workflow-executor": {
+      "types": "./dist/governance-workflow-executor.d.ts",
+      "default": "./dist/governance-workflow-executor.js"
+    },
+    "./governance-compliance-export": {
+      "types": "./dist/governance-compliance-export.d.ts",
+      "default": "./dist/governance-compliance-export.js"
+    },
+    "./legal-text-repository-shared": {
+      "types": "./dist/legal-text-repository-shared.d.ts",
+      "default": "./dist/legal-text-repository-shared.js"
+    },
+    "./legal-text-repository": {
+      "types": "./dist/legal-text-repository.d.ts",
+      "default": "./dist/legal-text-repository.js"
+    },
+    "./legal-text-mutation-handlers": {
+      "types": "./dist/legal-text-mutation-handlers.d.ts",
+      "default": "./dist/legal-text-mutation-handlers.js"
+    },
+    "./legal-text-http-handlers": {
+      "types": "./dist/legal-text-http-handlers.d.ts",
+      "default": "./dist/legal-text-http-handlers.js"
+    },
+    "./legal-text-request-context": {
+      "types": "./dist/legal-text-request-context.d.ts",
+      "default": "./dist/legal-text-request-context.js"
+    }
+  },
+  "dependencies": {
+    "@sva/core": "workspace:*",
+    "@sva/data-repositories": "workspace:*",
+    "@sva/iam-core": "workspace:*",
+    "@sva/server-runtime": "workspace:*",
+    "sanitize-html": "^2.17.3",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/sanitize-html": "^2.16.1",
+    "@vitest/coverage-v8": "^4.1.2",
+    "vitest": "^4.1.2"
+  }
+}

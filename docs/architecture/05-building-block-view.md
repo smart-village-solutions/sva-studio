@@ -33,34 +33,30 @@ Abhängigkeiten des aktuellen Systems.
    - einzige Source of Truth für Auth-Handler-Mapping, Runtime-Guard und JSON-Error-Boundary
    - eigener Observability-Vertrag für Guard-Denials, Plugin-Guard-Anomalien und serverseitige Dispatch-Fehler mit optionalem Diagnostics-Hook
    - der Startup-Guard in `auth.routes.server.ts` prüft ausschließlich das Auth-Route-Mapping gegen `authRoutePaths`; er ist keine allgemeine Plugin- oder Router-Vollständigkeitsprüfung
-4. Auth (`packages/auth`)
-   - OIDC-Flows, Session-Store, auth HTTP-Handler
-   - modulare Server-Fassaden und fachliche Unterordner für IAM- und Auth-Pfade
+4. Auth Runtime (`packages/auth-runtime`)
+   - OIDC-Flows, Session-Store, Cookies, Auth-Middleware, Runtime-Health und Auth-/HTTP-Handler
+   - Runtime-Adapter für fachliche IAM-, Governance-, Content- und Registry-Routen
    - Diagnosebausteine für Session-Hydration/-Refresh, Hostvalidierung, Schema-Guard, Runtime-Health und allowlist-basierte API-Fehlerdetails
-   - kanonischer IAM-Projektionskern für User-, Membership-, Profil- und Rollenauflösung sowie deterministische Reconcile-/Sync-Reports
-5. SDK (`packages/sdk`)
-   - Logger, Context-Propagation, OTEL-Bootstrap
-   - öffentlicher Plugin-Vertrag v1 (`PluginDefinition`, Navigation, Routen-, Content-Type- und Translation-Merge)
-   - Build-time-Registry-Vertrag für Plugins, Admin-Ressourcen und plugin-spezifische Audit-Events
+5. Plugin SDK und Server Runtime (`packages/plugin-sdk`, `packages/server-runtime`)
+   - `@sva/plugin-sdk`: öffentlicher Plugin-Vertrag v1, Build-time-Registry, Admin-Ressourcen, Content-Type- und Translation-Verträge
+   - `@sva/server-runtime`: Logger, Request-Kontext, JSON-Fehlerantworten, Workspace-Kontext und OTEL-Bootstrap
    - Namespacing- und Ownership-Validierung für plugin-beigestellte registrierte Host-Identifier
-   - Instance-Config-Modul (`instance/config.server.ts`): lokaler und migrationsbezogener Fallback für Allowlist-Validierung, Host-Parsing und Mapping auf `instanceId`; produktiver Tenant-Traffic wird registrygeführt validiert
-   - deklarative Registries für erweiterbare Inhalts-Typen und typgebundene UI-/Validierungs-Metadaten
 6. Monitoring Client (`packages/monitoring-client`)
    - OTEL SDK Setup, Exporter, Log-Redaction-Processor
-7. Data (`packages/data`)
-   - HTTP DataClient, IAM-Migrationen/Seeds und DB-Validierungstasks
-   - IAM-Persistenzmodell (`iam`-Schema) mit Multi-Tenant-Struktur
-   - Integrations-Repository für instanzgebundene externe Schnittstellen (`iam.instance_integrations`)
+7. Data Client und Data Repositories (`packages/data-client`, `packages/data-repositories`)
+   - `@sva/data-client`: client-sicherer HTTP-DataClient mit Schema-Validierung
+   - `@sva/data-repositories`: serverseitige Repository-Fassaden und DB-nahe Operationen
+   - IAM-Persistenzmodell (`iam`-Schema) mit Multi-Tenant-Struktur bleibt SQL-first versioniert
 8. SVA Mainserver (`packages/sva-mainserver`)
    - dedizierte Integrationsschicht für OAuth2, GraphQL-Transport, Fehlerabbildung und Fachadapter
    - trennt client-sichere Typen von serverseitigen Delegations- und Diagnostikfunktionen
 9. Plugin News (`packages/plugin-news`)
    - produktives Fachplugin für `contentType = news.article`
    - eigene Listen- und Editor-Ansichten, Plugin-Navigation und Plugin-Übersetzungen
-10. Instanz-Registry (`packages/core`, `packages/data`, `packages/auth`, `apps/sva-studio-react`)
-   - `packages/core`: Host-Klassifikation, Vertrags- und Run-Modell fuer Registry, Preflight, Plan und Provisioning-Protokoll
-   - `packages/data`: Registry-Repositories, Migrationen, persistente Provisioning-Runs und L1-Cache
-   - `packages/auth`: Plattformvertrag, Keycloak-Control-Plane, Provisioning-Fassade und Root-Host-Guard
+10. Instanz-Registry (`packages/instance-registry`)
+   - Host-Klassifikation, Vertrags- und Run-Modell fuer Registry, Preflight, Plan und Provisioning-Protokoll
+   - Registry-Repositories, persistente Provisioning-Runs und Cache-Zugriffe über injizierte Repository-Verträge
+   - Plattformvertrag, Keycloak-Control-Plane, Provisioning-Fassade und Root-Host-Guard
    - `apps/sva-studio-react`: gefuehrte Admin-Control-Plane unter `/admin/instances` mit Preflight, Plan, Ausfuehrung und Protokoll
    - der Instanzvertrag trennt `authClientId` fuer interaktive Logins von `tenantAdminClient.clientId` fuer tenant-lokale Admin-Mutationen und Reconcile
    - blockerrelevanter Drift aus Preflight, Provisioning-Plan oder fehlendem Tenant-Admin-Vertrag wird vor Reconcile-/Sync-Starts fail-closed durchgesetzt
@@ -68,35 +64,35 @@ Abhängigkeiten des aktuellen Systems.
 ### IAM-Bausteine und Package-Zuordnung
 
 - Identity und OIDC-Flow:
-  - `packages/auth` (`routes.server.ts`, `routes/*`, `auth.server.ts`, `auth-server/*`, `oidc.server.ts`)
+  - `packages/auth-runtime` (`routes`, `auth-server`, `oidc`, Session, Cookies, Runtime-Health)
 - Account- und Rollenmanagement inkl. IdP-Synchronisation:
-  - `packages/auth` (`iam-account-management.server.ts`, `iam-account-management/*`, `identity-provider-port.ts`, `keycloak-admin-client.ts`, `keycloak-admin-client/*`)
+  - `packages/iam-admin` (User-, Rollen-, Gruppen-, Organisations-, Actor-, Reconcile- und Keycloak-Admin-Orchestrierung)
   - `user-projection.ts` ist der gemeinsame Projektionskern für Self-Service-Profile und Admin-Reads; spezialisierte UI-Pfade dürfen darauf nur noch darstellerisch aufsetzen
   - `reconcile-core.ts` und `user-import-sync-handler.ts` liefern deterministische Abschlusszustände (`success`, `partial_failure`, `blocked`, `failed`) mit Zählwerten für `checked`, `corrected`, `failed` und `manualReview`
 - Per-User-Credential-Lesen für Downstream-Integrationen:
-  - `packages/auth` (`mainserver-credentials.server.ts`, `identity-provider-port.ts`, `keycloak-admin-client/*`)
+  - `packages/auth-runtime` liest die Mainserver-Credential-Projektion runtime-nah und stellt sie Integrationspaketen bereit.
 - Autorisierung (RBAC/ABAC) und Laufzeitentscheidungen:
-  - `packages/auth` (`iam-authorization.server.ts`, `iam-authorization/*`)
+  - `packages/iam-core` für zentrale Autorisierungsverträge und Entscheidungen; Runtime-Adapter liegen in `packages/auth-runtime`.
 - Organisations- und Mandantenkontext (`instanceId`) inkl. RLS-nahe Datenmodelle:
-  - `packages/data` (IAM-Migrationen, Seeds, SQL-Policies, `iam/repositories/*`)
+  - `packages/iam-admin`, `packages/instance-registry` und `packages/data-repositories` über klar getrennte Fach- und Repository-Verträge
 - Plattformkontext (`platform`) für Root-Host-Control-Plane, Root-Host-Auth und globale Readiness:
-  - `packages/auth` (`scope.ts`, `config-request.ts`, `routes/handlers.ts`, `iam-instance-registry/*`, `iam-account-management/platform-handlers.ts`)
+  - `packages/auth-runtime`, `packages/iam-admin` und `packages/instance-registry`
 - Tenant-Admin-Pfad pro Instanz:
-  - `packages/auth` (`config-tenant-secret.ts`, `iam-account-management/shared-runtime.ts`, `iam-account-management/*-handlers.ts`)
-  - `packages/data` (`instance-registry/*`, Migrationen `0030` und `0031`)
-  - `packages/core` (gemeinsame Registry-, Diagnose- und Health-Vertraege fuer `tenantAdminClient`)
+  - `packages/iam-admin` für Tenant-Admin-Orchestrierung
+  - `packages/instance-registry` für Registry-, Diagnose- und Health-Verträge des `tenantAdminClient`
+  - `packages/data-repositories` für DB-nahe Registry- und IAM-Zugriffe
 - Instanzgebundene Mainserver-Endpunkte:
-  - `packages/data` (`integrations/instance-integrations.ts`, Migration `0013_iam_instance_integrations.sql`)
+  - `packages/data-repositories` für Endpunktkonfiguration, `packages/sva-mainserver` für Integration und Adapter
 - Auditierung und Nachvollziehbarkeit:
-  - `packages/auth` (`audit-db-sink.server.ts`) + `packages/sdk` (`createSdkLogger`)
+  - `packages/auth-runtime` und fachliche Zielpackages für Events, `packages/server-runtime` für Logger und Request-Kontext
   - tenantgebunden: `iam.activity_logs`
   - plattformgebunden: `iam.platform_activity_logs`
 - Governance und DSGVO-Betroffenenrechte:
-  - `packages/auth` (`iam-governance.server.ts`, `iam-governance/*`, `iam-data-subject-rights.server.ts`, `iam-data-subject-rights/*`)
+  - `packages/iam-governance`
 - Inhaltsverwaltung als Core-Element:
   - `packages/core` (`content-management.ts`) für Kernvertrag
-  - `packages/sdk` (`content-types.ts`, `admin-resources.ts`, `build-time-registry.ts`) für Erweiterungspunkte, Registries und Namespace-Verträge
-  - `packages/auth` (`iam-contents.server.ts`, `iam-contents/*`) für serverseitige Read-/Write-Pfade, Historie, Audit und contentType-spezifische Payload-Validierung
+  - `packages/plugin-sdk` für Erweiterungspunkte, Registries und Namespace-Verträge
+  - `packages/auth-runtime` für Runtime-Handler und `packages/iam-governance` für legal-/audit-nahe Fachanteile
   - `apps/sva-studio-react/src/routes/content/*` für Listen- und Editor-UI unter `/admin/content`
   - `packages/plugin-news` für plugin-spezifische News-Ansichten auf Basis derselben Core-Content-API
 - Externe Mainserver-Anbindung:
@@ -105,7 +101,7 @@ Abhängigkeiten des aktuellen Systems.
 ### IAM-Server-Schnittmuster
 
 - Fassade:
-  - stabile Importpfade für Router, Tests und `@sva/auth/server`
+  - stabile Importpfade für Router, Tests und Runtime-Consumer liegen in den Zielpackages, insbesondere `@sva/auth-runtime`
 - Fachmodul:
   - gruppiert Handler und fachnahe Hilfsbausteine pro Domäne
 - Core:
@@ -125,34 +121,35 @@ Abhängigkeiten des aktuellen Systems.
 
 1. `@sva/core`
    - Definiert additive Verträge für `mappingStatus`, `editability`, objektbezogene Diagnosecodes und Sync-/Reconcile-Objektlisten.
-2. `packages/auth/src/identity-provider-port.ts`
+2. `packages/iam-admin/src/identity-provider-port.ts`
    - Kapselt Keycloak-nahe Listen-, Count-, Mutations- und explizite Role-Assignment-Operationen.
-3. `packages/auth/src/keycloak-admin-client`
+3. `packages/iam-admin/src/keycloak-admin-client`
    - Implementiert serverseitige Pagination/Count für Realm-Rollen und User sowie differenzierte Fehlerabbildung für Keycloak-Admin-Aufrufe.
-4. `packages/auth/src/iam-account-management`
+4. `packages/iam-admin/src`
    - Trennt Platform-Admin-Client, Tenant-Admin-Client, Keycloak-first Mutationen, Read-Model-Synchronisation und Drift-/Diagnoseprojektion.
 5. `apps/sva-studio-react/src/routes/admin/users` und `apps/sva-studio-react/src/routes/admin/roles`
    - Rendern Mappingstatus, Bearbeitbarkeit und Diagnosecodes; blockierte oder read-only Aktionen bleiben sichtbar, aber deaktiviert.
 
 ### Fortschreibung 2026-04: Diagnosegrenzen im IAM-Pfad
 
-- `packages/data` liefert tenant- und registrynahe Drift- und Fallback-Signale, insbesondere in der Host-Auflösung.
-- `packages/auth` ist die führende Schicht für Klassifikation von Session-, Actor-, Schema- und Keycloak-nahen Fehlerbildern.
+- `packages/data-repositories` liefert tenant- und registrynahe Drift- und Fallback-Signale, insbesondere in der Host-Auflösung.
+- `packages/auth-runtime`, `packages/iam-admin` und `packages/instance-registry` klassifizieren Session-, Actor-, Schema- und Keycloak-nahe Fehlerbilder entlang ihrer Ownership.
 - `apps/sva-studio-react` transportiert heute bereits `requestId` und Safe-Details teilweise bis in den Browser, verwendet diese Informationen aber noch nicht durchgängig für classification-basierte UI-Zustände.
 - Der aktuelle Zielkonflikt liegt damit nicht zwischen fehlenden Signalen und fehlender Observability, sondern zwischen vorhandenen Einzelsignalen und einem noch unvollständigen öffentlichen Diagnosevertrag.
 
 ### Abhängigkeiten (vereinfacht)
 
-- App -> `@sva/core`, `@sva/routing`, `@sva/auth`, `@sva/sva-mainserver`, `@sva/plugin-news`
-- `@sva/routing` -> `@sva/auth`, `@sva/core`, `@sva/sdk`
-- `@sva/auth` -> `@sva/sdk`
-- `@sva/sva-mainserver` -> `@sva/auth`, `@sva/data`, `@sva/sdk`
-- `@sva/sdk` -> `@sva/core`, `@sva/monitoring-client`
-- `@sva/plugin-*` -> `@sva/sdk` (kein Direktimport aus `@sva/core`)
+- App -> `@sva/core`, `@sva/routing`, `@sva/auth-runtime`, `@sva/plugin-sdk`, `@sva/sva-mainserver`, `@sva/plugin-news`
+- `@sva/routing` -> `@sva/auth-runtime`, `@sva/core`, `@sva/plugin-sdk`, `@sva/server-runtime`
+- `@sva/auth-runtime` -> `@sva/iam-core`, `@sva/iam-admin`, `@sva/iam-governance`, `@sva/instance-registry`, `@sva/data-repositories`, `@sva/server-runtime`
+- `@sva/sva-mainserver` -> `@sva/auth-runtime`, `@sva/data-repositories`, `@sva/server-runtime`
+- `@sva/plugin-sdk` -> `@sva/core`
+- `@sva/server-runtime` -> `@sva/core`, `@sva/monitoring-client`
+- `@sva/plugin-*` -> `@sva/plugin-sdk` (kein Direktimport aus `@sva/core`)
 - `@sva/plugin-news` bleibt absichtlich auf SDK + Peer Dependencies beschränkt; API-Aufrufe laufen über den öffentlichen HTTP-Vertrag statt über App-Module
-- `@sva/monitoring-client` -> OTEL Libraries, `@sva/sdk` Context API
-- `@sva/auth` -> `@sva/core` (IAM-Claims + Feldverschlüsselung), `pg`
-- `apps/sva-studio-react` -> `@sva/core` + `@sva/auth` für Inhaltsliste, Detail, Historie und Statuswechsel
+- `@sva/monitoring-client` -> OTEL Libraries, `@sva/server-runtime` Context API
+- `@sva/iam-core` -> `@sva/core`
+- `apps/sva-studio-react` -> Zielpackages über Server-Funktionen für Inhaltsliste, Detail, Historie und Statuswechsel
 
 ### Schichtregel für Plugins
 
@@ -160,7 +157,7 @@ Erlaubte Richtung für Host-APIs in Plugin-Code:
 
 ```mermaid
 flowchart LR
-  C[@sva/core] --> S[@sva/sdk]
+  C[@sva/core] --> S[@sva/plugin-sdk]
   S --> P[@sva/plugin-*]
 ```
 
@@ -168,38 +165,38 @@ Nicht erlaubt: `@sva/plugin-*` -> `@sva/core`
 
 ### Erweiterung 2026-04: Plugin-SDK-Vertrag v1 und News-Plugin
 
-1. `packages/sdk/src/plugins.ts`
+1. `packages/plugin-sdk/src/plugins.ts`
    - definiert `PluginDefinition` und Merge-Helfer für Plugin-Routen, Navigation, Content-Typen und Übersetzungen
 2. `apps/sva-studio-react/src/lib/plugins.ts`
    - registriert `pluginNews` statisch im Host und materialisiert daraus Route-, Navigations-, Admin-Ressourcen-, Audit- und i18n-Metadaten
-3. `packages/auth/src/iam-contents/content-type-registry.ts`
+3. `packages/auth-runtime/src/content/content-type-registry.ts`
    - erweitert den generischen Content-Write-Pfad um contentType-spezifische Payload-Validierung und Sanitisierung
 4. `packages/plugin-news/src/*`
    - kapselt News-Liste, Editor, Delete-Flow und plugin-eigene Übersetzungen unter der SDK-Boundary
 
 ### Erweiterung 2026-04: Namespacete Plugin-Identität über Build-time-Registries
 
-1. `packages/sdk/src/plugins.ts` + `packages/sdk/src/plugin-identifiers.ts`
+1. `packages/plugin-sdk/src/plugins.ts` + `packages/plugin-sdk/src/plugin-identifiers.ts`
    - definieren die technische Plugin-Identität über `PluginDefinition.id` als führenden Namespace und validieren plugin-beigestellte `contentType`s, Admin-Ressourcen und Audit-Event-Typen gegen `<pluginId>.<name>`
-2. `packages/sdk/src/build-time-registry.ts`
+2. `packages/plugin-sdk/src/build-time-registry.ts`
    - verdichtet Plugins, hosteigene Admin-Ressourcen und plugin-spezifische Audit-Event-Definitionen in einen gemeinsamen Registry-Snapshot für Host und Routing
 3. `packages/routing/src/app.routes.shared.ts`
    - materialisiert deklarative Admin-Ressourcen unter `/admin/<resource>` und hält Legacy-Aliase wie `/content*` nur noch als Redirect-Vertrag
-4. `packages/auth/src/iam-contents/content-type-registry.ts`
+4. `packages/auth-runtime/src/content/content-type-registry.ts`
    - führt `news.article` als kanonischen plugin-beigestellten `contentType` im serverseitigen Validierungsvertrag
 
 ### Schichtdefinition `scope:integration`
 
-- Zweck: `scope:integration` kapselt serverseitige Downstream-Integrationen, die weder reine Identity-Logik (`scope:auth`) noch reine Persistenzlogik (`scope:data`) sind.
-- Erlaubte Abhängigkeiten: `scope:integration` darf auf `scope:auth`, `scope:data`, `scope:sdk` und `scope:core` zugreifen.
+- Zweck: `scope:integration` kapselt serverseitige Downstream-Integrationen, die weder Auth-Runtime noch Persistenzlogik besitzen.
+- Erlaubte Abhängigkeiten: `scope:integration` darf auf `scope:auth-runtime`, `scope:data-repositories`, `scope:server-runtime` und `scope:core` zugreifen.
 - Nicht erlaubt: Fach- oder UI-Code darf nicht direkt OAuth2-/GraphQL-Clients, Secret-Lookups oder Datenbankzugriffe in Integrationspaketen umgehen.
-- Referenzpaket: `packages/sva-mainserver` nutzt `@sva/auth/server` für per-User-Credentials, `@sva/data/server` für instanzgebundene Endpunktkonfiguration und `@sva/sdk/server` für Logging/OTEL.
+- Referenzpaket: `packages/sva-mainserver` nutzt `@sva/auth-runtime/server` für per-User-Credentials, `@sva/data-repositories/server` für instanzgebundene Endpunktkonfiguration und `@sva/server-runtime` für Logging/OTEL.
 - Zielgrenze: Integrationspakete exportieren client-sichere Typen getrennt von serverseitigen Runtime-Adaptern.
 
 ### Boundary Core vs. Framework Binding
 
 - Framework-agnostisch:
-  - `packages/core`, Teile von `packages/data`, SDK Context APIs
+  - `packages/core`, `packages/plugin-sdk`, client-sichere Teile von `packages/data-client`
 - Framework-/Runtime-gebunden:
   - `apps/sva-studio-react`, TanStack-Route-Definitionen, Auth-Handler fuer Start
   - `apps/sva-studio-react/src/server.ts` kapselt Auth-Dispatch, Request-Kontext und env-gesteuerte Server-Entry-Diagnostik vor der Delegation an TanStack Start
@@ -211,13 +208,13 @@ Referenzen:
 
 - `packages/core/src/routing/registry.ts`
 - `packages/routing/src/index.ts`
-- `packages/auth/src/index.server.ts`
-- `packages/auth/src/audit-db-sink.server.ts`
-- `packages/auth/src/mainserver-credentials.server.ts`
+- `packages/auth-runtime/src/index.server.ts`
+- `packages/auth-runtime/src/audit-db-sink.server.ts`
+- `packages/auth-runtime/src/mainserver-credentials.server.ts`
   - liest und kanonisiert die Keycloak-Attribute `mainserverUserApplicationId` und `mainserverUserApplicationSecret`; Legacy-Namen bleiben als Fallback lesbar
-- `packages/sdk/src/server.ts`
-- `packages/data/migrations/0001_iam_core.sql`
-- `packages/data/migrations/0013_iam_instance_integrations.sql`
+- `packages/server-runtime/src/index.ts`
+- `packages/data/migrations/0001_iam_core.sql` (historischer Migrationsort)
+- `packages/data/migrations/0013_iam_instance_integrations.sql` (historischer Migrationsort)
 - `packages/sva-mainserver/src/server/service.ts`
 - `docs/architecture/iam-service-architektur.md`
 - `apps/sva-studio-react/src/components/Header.tsx`
@@ -246,13 +243,13 @@ Neu hinzugekommene Bausteine im Change `add-account-user-management-ui`:
 
 Neu hinzugekommene Bausteine im Change `add-keycloak-role-catalog-sync`:
 
-1. `packages/auth/src/iam-account-management.server.ts` + `packages/auth/src/iam-account-management/*`
+1. `packages/iam-admin/src`
    - Fassade für Users, Rollen, Profile und Plattform-Entry-Points; Kernlogik liegt in `core.ts`.
-2. `packages/auth/src/identity-provider-port.ts`
+2. `packages/iam-admin/src/identity-provider-port.ts`
    - Erweitert die IdP-Abstraktion um Role-Catalog-Operationen (`list`, `get`, `create`, `update`, `delete`).
-3. `packages/auth/src/keycloak-admin-client.ts` + `packages/auth/src/keycloak-admin-client/*`
+3. `packages/iam-admin/src/keycloak-admin-client.ts` + `packages/iam-admin/src/keycloak-admin-client/*`
    - Fassade und Teilmodule für Konfiguration, Fehlertypen, Modelle und Keycloak-Adapter-Core.
-4. `packages/data/migrations/0007_iam_role_catalog_sync.sql`
+4. `packages/data/migrations/0007_iam_role_catalog_sync.sql` (historischer Migrationsort)
    - Erweitert `iam.roles` um Mapping- und Sync-Felder (`role_key`, `external_role_name`, `sync_state`, `last_synced_at`, `last_error_code`).
 5. `apps/sva-studio-react/src/routes/admin/roles/-roles-page.tsx`
    - Zeigt Sync-Status, Retry-Aktion und manuelles Reconcile für `system_admin`.
@@ -261,9 +258,9 @@ Neu hinzugekommene Bausteine im Change `add-keycloak-role-catalog-sync`:
 
 Neu hinzugekommene Bausteine im Change `add-iam-organization-management-hierarchy`:
 
-1. `packages/data/migrations/0009_iam_organization_management.sql`
+1. `packages/data/migrations/0009_iam_organization_management.sql` (historischer Migrationsort)
    - Erweitert `iam.organizations` und `iam.account_organizations` um Hierarchie-, Typ-, Policy- und Kontextfelder.
-2. `packages/auth/src/iam-organizations.server.ts` + `packages/auth/src/iam-organizations/*`
+2. `packages/iam-admin/src/organizations`
    - Fassade und Fachbausteine für Organisationsliste, Detailpflege, Memberships und sessionbasierten Org-Kontext.
 3. `packages/core/src/iam/account-management-contract.ts`
    - Typisierte Contracts für Organisations-Read-Models, Membership-Metadaten und `GET/PUT /api/v1/iam/me/context`.
@@ -276,15 +273,15 @@ Neu hinzugekommene Bausteine im Change `add-iam-organization-management-hierarch
 
 ### Ergänzung 2026-03: Strukturierte Permissions und Hierarchie-Vererbung
 
-1. `packages/data/migrations/0010_iam_structured_permissions.sql`
+1. `packages/data/migrations/0010_iam_structured_permissions.sql` (historischer Migrationsort)
    - Erweitert `iam.permissions` um `action`, `resource_type`, `resource_id`, `effect` und `scope` als strukturiertes Read-/Compute-Modell.
-2. `packages/data/seeds/0001_iam_personas.sql`
+2. `packages/data/seeds/0001_iam_personas.sql` (historischer Seed-Ort)
    - Seedet Basis-Permissions rückwärtskompatibel sowohl mit `permission_key` als auch mit strukturierten Feldern.
 3. `packages/core/src/iam/authorization-engine.ts`
    - Wertet `allow`/`deny`, Resource-Spezifität, Org-Hierarchie und Scope-Daten deterministisch in einer festen Prioritätsreihenfolge aus.
-4. `packages/auth/src/iam-authorization/permission-store.ts`
+4. `packages/iam-core/src/permission-store.ts`
    - Lädt effektive Rollen-Permissions org-kontextbezogen aus Postgres und normalisiert Parent-Mitgliedschaften auf den angefragten Zielkontext.
-5. `packages/auth/src/iam-authorization/shared.ts`
+5. `packages/iam-core/src/shared.ts`
    - Transformiert DB-Permission-Zeilen in deduplizierte effektive Permissions inklusive `effect` und `scope`.
 
 ### Ergänzung 2026-03: IAM-Transparenz-UI
@@ -295,16 +292,16 @@ Neu hinzugekommene Bausteine im Change `add-iam-organization-management-hierarch
    - Self-Service-Datenschutzansicht unter `/account/privacy` ohne eigenen Sidebar-Eintrag.
 3. `packages/core/src/iam/transparency-contract.ts`
    - Getypte Read-Modelle für Governance-Feed, DSR-Feed, Self-Service-Übersicht und User-Timeline.
-4. `packages/auth/src/iam-governance/read-models.ts`, `packages/auth/src/iam-data-subject-rights/read-models.ts`, `packages/auth/src/iam-account-management/user-timeline-query.ts`
+4. `packages/iam-governance/src/read-models.ts`, `packages/iam-governance/src/data-subject-rights/read-models.ts`, `packages/iam-admin/src/user-timeline-query.ts`
    - Serverseitige Normalisierung der Transparenzdaten statt Roh-JSON aus Einzeltabellen.
 
 ### Ergänzung 2026-03: Direkte Nutzerrechte in der Benutzerverwaltung
 
-1. `packages/data/migrations/0024_iam_account_permissions.sql`
+1. `packages/data/migrations/0024_iam_account_permissions.sql` (historischer Migrationsort)
    - Führt `iam.account_permissions` als instanzgebundene Zuordnung `Account -> Permission -> effect` ein.
-2. `packages/auth/src/iam-account-management/users-handlers.ts` und `packages/auth/src/iam-account-management/user-detail-query.ts`
+2. `packages/iam-admin/src/users`
    - Erweitern den User-Update- und Read-Pfad um direkte Nutzerrechte einschließlich Validierung, Persistenz und Invalidation.
-3. `packages/auth/src/iam-authorization/permission-store.ts` und `packages/auth/src/iam-authorization/shared.ts`
+3. `packages/iam-core/src/permission-store.ts` und `packages/iam-core/src/shared.ts`
    - Laden direkte Nutzerrechte zusätzlich zu Rollen- und Gruppenrechten und serialisieren deren Herkunft als `direct_user`.
 4. `packages/core/src/iam/authorization-contract.ts` und `packages/core/src/iam/account-management-contract.ts`
    - Erweitern die gemeinsamen Verträge um direkte Nutzerrechte, zusätzliche Provenance und die Admin-Read-Modelle für den Nutzer-Editor.
@@ -315,14 +312,14 @@ Neu hinzugekommene Bausteine im Change `add-iam-organization-management-hierarch
 
 1. `packages/core/src/iam/account-management-contract.ts`
    - Definiert das gemeinsame Rechtstext-Modell mit UUID, Name, Version, Locale, HTML-Inhalt, Status sowie Erstellungs-, Änderungs- und Veröffentlichungszeitpunkten.
-2. `packages/auth/src/iam-legal-texts/*`
+2. `packages/iam-governance/src/legal-texts/*`
    - Kapselt Request-Validierung, Repository, Statusregeln, serverseitiges HTML-Sanitizing und API-Mapping für `GET/POST/PATCH /api/v1/iam/legal-texts`.
-3. `packages/data/migrations/0020_iam_legal_text_rich_content.sql`
+3. `packages/data/migrations/0020_iam_legal_text_rich_content.sql` (historischer Migrationsort)
    - Erweitert das IAM-Schema um `name`, `content_html`, `status` und `updated_at` für fachlich editierbare Rechtstexte.
 4. `apps/sva-studio-react/src/routes/admin/legal-texts/-legal-texts-page.tsx`
    - Stellt Liste sowie Create/Edit-Dialoge für fachliche Rechtstexte bereit und bindet einen App-spezifischen Rich-Text-Editor an.
 5. `apps/sva-studio-react/src/components/RichTextEditor.tsx`
-   - Bleibt bewusst im App-Layer, damit keine Editor-Abhängigkeiten oder UI-Typen in `packages/core` oder `packages/auth` gelangen.
+   - Bleibt bewusst im App-Layer, damit keine Editor-Abhängigkeiten oder UI-Typen in `packages/core` oder fachliche Zielpackages gelangen.
 
 ### Ergänzung 2026-04: Vereinheitlichte Admin-CRUD-Routen
 
@@ -339,7 +336,7 @@ Neu hinzugekommene Bausteine im Change `add-iam-organization-management-hierarch
 
 ### Ergänzung 2026-04: Admin-Ressourcen-Registry
 
-1. `packages/sdk/src/admin-resources.ts`
+1. `packages/plugin-sdk/src/admin-resources.ts`
    - Definiert `AdminResourceDefinition` sowie fail-fast Registry-/Merge-Logik für Ressourcen-ID, Basispfad und deklarative Listen-/Create-/Detail-/History-Bindings.
 2. `packages/routing/src/app.routes.shared.ts`
    - Materialisiert kanonische Admin-Routen aus registrierten Admin-Ressourcen und hält Legacy-Aliase wie `/content* -> /admin/content*` zentral im Routing-Layer.
@@ -350,12 +347,12 @@ Neu hinzugekommene Bausteine im Change `add-iam-organization-management-hierarch
 
 ### Ergänzung 2026-03: Manueller Keycloak-User-Import
 
-1. `packages/auth/src/iam-account-management/user-import-sync-handler.ts`
+1. `packages/iam-admin/src/user-import-sync-handler.ts`
    - Führt einen expliziten Admin-Sync aus, liest Keycloak-Benutzer seitenweise aus dem aktiven Tenant-Realm, akzeptiert Benutzer ohne `instanceId`-Attribut und spiegelt Basisdaten idempotent nach `iam.accounts`; widersprüchliche Attribute bleiben als Diagnose sichtbar.
    - Auf dem Root-Host führt derselbe Endpunkt einen Platform-Sync über den Plattform-Realm aus und meldet `executionMode=platform_admin`, ohne eine Pseudo-Instanz anzulegen.
-2. `packages/auth/src/identity-provider-port.ts`
+2. `packages/iam-admin/src/identity-provider-port.ts`
    - Erweitert die IdP-Abstraktion um typisierte User-Listing-Operationen für administrative Import- und Reconcile-Flows.
-3. `packages/routing/src/auth.routes.server.ts` und `packages/auth/src/routes.shared.ts`
+3. `packages/routing/src/auth.routes.server.ts` und `packages/auth-runtime/src/routes.shared.ts`
    - Registrieren den mutierenden IAM-Endpunkt `POST /api/v1/iam/users/sync-keycloak` typsicher im zentralen Auth-/IAM-Router und prüfen das Mapping beim Modulstart auf Drift.
 4. `packages/core/src/iam/account-management-contract.ts`
    - Definiert den gemeinsamen Sync-Report (`importedCount`, `updatedCount`, `skippedCount`, `totalKeycloakUsers`) für Server und Frontend.

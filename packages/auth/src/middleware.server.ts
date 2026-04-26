@@ -1,5 +1,5 @@
 import { parse as parseCookie } from 'cookie-es';
-import { createSdkLogger, toJsonErrorResponse } from '@sva/sdk/server';
+import { createSdkLogger, toJsonErrorResponse } from '@sva/server-runtime';
 
 import { getSessionUser } from './auth.server.js';
 import { getAuthConfig } from './config.js';

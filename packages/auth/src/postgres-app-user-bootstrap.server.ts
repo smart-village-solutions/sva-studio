@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { Client } from 'pg';
-import { createSdkLogger } from '@sva/sdk/server';
+import { createSdkLogger } from '@sva/server-runtime';
 
 import { getAppDbPassword } from './runtime-secrets.server.js';
 

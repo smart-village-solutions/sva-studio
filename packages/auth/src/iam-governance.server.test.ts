@@ -25,7 +25,7 @@ vi.mock('./middleware.server', () => ({
   ),
 }));
 
-vi.mock('@sva/sdk/server', () => ({
+vi.mock('@sva/server-runtime', () => ({
   createSdkLogger: () => state.logger,
   getWorkspaceContext: () => ({
     workspaceId: 'de-musterhausen',

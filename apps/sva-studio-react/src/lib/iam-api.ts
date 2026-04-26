@@ -42,7 +42,7 @@ import {
   iamRuntimeDiagnosticStatuses,
   iamRuntimeRecommendedActions,
 } from '@sva/core';
-import { createBrowserLogger } from '@sva/sdk/logging';
+import { createBrowserLogger } from '@sva/monitoring-client/logging';
 
 const IAM_HEADERS = {
   'Content-Type': 'application/json',

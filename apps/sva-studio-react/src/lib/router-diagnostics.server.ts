@@ -26,7 +26,7 @@ const summarizeRoutes = (routes: string[]): string[] => {
 };
 
 const getLogger = async (): Promise<RouterDiagnosticsLogger> => {
-  loggerPromise ??= import('@sva/sdk/server').then(({ createSdkLogger }) =>
+  loggerPromise ??= import('@sva/server-runtime').then(({ createSdkLogger }) =>
     createSdkLogger({
       component: 'router-diagnostics',
       level: 'info',

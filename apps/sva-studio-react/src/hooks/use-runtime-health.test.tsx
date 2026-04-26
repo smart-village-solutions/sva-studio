@@ -16,7 +16,7 @@ vi.mock('../lib/iam-api', () => ({
   getRuntimeHealth: (...args: Parameters<typeof getRuntimeHealthMock>) => getRuntimeHealthMock(...args),
 }));
 
-vi.mock('@sva/sdk/logging', () => ({
+vi.mock('@sva/monitoring-client/logging', () => ({
   createBrowserLogger: () => browserLoggerState,
 }));
 

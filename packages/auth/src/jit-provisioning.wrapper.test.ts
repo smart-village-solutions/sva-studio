@@ -19,7 +19,7 @@ vi.mock('./shared/db-helpers', () => ({
   withInstanceDb: (...args: unknown[]) => state.withInstanceDb(...args),
 }));
 
-vi.mock('@sva/sdk/server', () => ({
+vi.mock('@sva/server-runtime', () => ({
   createSdkLogger: () => ({
     debug: vi.fn(),
     info: state.loggerInfo,

@@ -3,23 +3,18 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const resolvePoolMock = vi.fn();
 const createPoolResolverMock = vi.fn(() => resolvePoolMock);
 const createInstanceRegistryRepositoryMock = vi.fn();
-const createInstanceRegistryServiceMock = vi.fn();
 const invalidateInstanceRegistryHostMock = vi.fn();
 
 vi.mock('../shared/db-helpers.js', () => ({
   createPoolResolver: createPoolResolverMock,
 }));
 
-vi.mock('@sva/data', () => ({
+vi.mock('@sva/data-repositories', () => ({
   createInstanceRegistryRepository: createInstanceRegistryRepositoryMock,
 }));
 
-vi.mock('@sva/data/server', () => ({
+vi.mock('@sva/data-repositories/server', () => ({
   invalidateInstanceRegistryHost: invalidateInstanceRegistryHostMock,
-}));
-
-vi.mock('./service.js', () => ({
-  createInstanceRegistryService: createInstanceRegistryServiceMock,
 }));
 
 describe('iam-instance-registry repository wiring', () => {
@@ -55,44 +50,40 @@ describe('iam-instance-registry repository wiring', () => {
     expect(release).toHaveBeenCalledTimes(1);
   });
 
-  it('wires the app service without direct keycloak admin dependencies', async () => {
+  it('wires the app service through the instance-registry runtime', async () => {
     const release = vi.fn();
     resolvePoolMock.mockReturnValue({
       connect: vi.fn().mockResolvedValue({ query: vi.fn().mockResolvedValue({ rowCount: 0, rows: [] }), release }),
     });
     const repository = { marker: 'repo' };
     createInstanceRegistryRepositoryMock.mockReturnValue(repository);
-    const service = { marker: 'service' };
-    createInstanceRegistryServiceMock.mockReturnValue(service);
 
     const { withRegistryService } = await import('./repository.js');
-    const result = await withRegistryService(async (resolvedService) => resolvedService);
+    const result = await withRegistryService(async (resolvedService) =>
+      resolvedService.isTrafficAllowed('active')
+    );
 
-    expect(result).toBe(service);
-    expect(createInstanceRegistryServiceMock).toHaveBeenCalledWith({
-      repository,
-      invalidateHost: invalidateInstanceRegistryHostMock,
-    });
+    expect(result).toBe(true);
     expect(release).toHaveBeenCalledTimes(1);
   });
 
-  it('wires the provisioning worker service with dedicated keycloak dependencies', async () => {
+  it('wires provisioning worker dependencies with dedicated keycloak callbacks', async () => {
     const release = vi.fn();
     resolvePoolMock.mockReturnValue({
       connect: vi.fn().mockResolvedValue({ query: vi.fn().mockResolvedValue({ rowCount: 0, rows: [] }), release }),
     });
     const repository = { marker: 'repo' };
     createInstanceRegistryRepositoryMock.mockReturnValue(repository);
-    const service = { marker: 'service' };
-    createInstanceRegistryServiceMock.mockReturnValue(service);
 
-    const { withRegistryProvisioningWorkerService } = await import('./repository.js');
-    const result = await withRegistryProvisioningWorkerService(async (resolvedService) => resolvedService);
+    const { withRegistryProvisioningWorkerDeps } = await import('./repository.js');
+    const result = await withRegistryProvisioningWorkerDeps(async (resolvedDeps) => resolvedDeps);
 
-    expect(result).toBe(service);
-    expect(createInstanceRegistryServiceMock).toHaveBeenCalledWith({
+    expect(result).toMatchObject({
       repository,
       invalidateHost: invalidateInstanceRegistryHostMock,
+      protectSecret: expect.any(Function),
+      revealSecret: expect.any(Function),
+      readKeycloakStateViaProvisioner: expect.any(Function),
       provisionInstanceAuth: expect.any(Function),
       getKeycloakPreflight: expect.any(Function),
       planKeycloakProvisioning: expect.any(Function),

@@ -37,7 +37,7 @@ export async function ensureSdkInitialized() {
     return;
   }
   sdkInitializationPromise = (async () => {
-    const sdk = await import('@sva/sdk/server');
+    const sdk = await import('@sva/server-runtime');
     const logger = sdk.createSdkLogger({
       component: 'sdk-init',
       level: 'info',

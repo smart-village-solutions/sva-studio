@@ -20,7 +20,7 @@ const state = vi.hoisted(() => ({
   mapMutationError: vi.fn(() => new Response(JSON.stringify({ code: 'mapped' }), { status: 502 })),
 }));
 
-vi.mock('@sva/sdk/server', () => ({
+vi.mock('@sva/server-runtime', () => ({
   getWorkspaceContext: () => ({ requestId: state.requestId }),
 }));
 
@@ -89,7 +89,7 @@ describe('core-keycloak', () => {
   });
 
   it('returns status payload for getInstanceKeycloakStatusInternal', async () => {
-    const response = await getInstanceKeycloakStatusInternal(new Request('http://localhost'), { user: { id: 'u-1' } } as never);
+    const response = await getInstanceKeycloakStatusInternal(new Request('http://localhost/api/v1/iam/instances/inst-1/keycloak/status'), { user: { id: 'u-1' } } as never);
     const body = await readBody(response);
     expect(response.status).toBe(200);
     expect(body.realmExists).toBe(true);
@@ -98,7 +98,7 @@ describe('core-keycloak', () => {
   it('returns access error before keycloak reads when platform access is denied', async () => {
     state.ensurePlatformAccess.mockReturnValueOnce(new Response('forbidden', { status: 403 }));
 
-    const response = await getInstanceKeycloakStatusInternal(new Request('http://localhost'), { user: { id: 'u-1' } } as never);
+    const response = await getInstanceKeycloakStatusInternal(new Request('http://localhost/api/v1/iam/instances/inst-1/keycloak/status'), { user: { id: 'u-1' } } as never);
 
     expect(response.status).toBe(403);
     expect(state.withRegistryService).not.toHaveBeenCalled();
@@ -109,7 +109,7 @@ describe('core-keycloak', () => {
       work({ getKeycloakPreflight: vi.fn(async () => null) })
     );
 
-    const response = await getInstanceKeycloakPreflightInternal(new Request('http://localhost'), { user: { id: 'u-1' } } as never);
+    const response = await getInstanceKeycloakPreflightInternal(new Request('http://localhost/api/v1/iam/instances/inst-1/keycloak/status'), { user: { id: 'u-1' } } as never);
     const body = await readBody(response);
     expect(response.status).toBe(404);
     expect(body.code).toBe('not_found');
@@ -118,7 +118,7 @@ describe('core-keycloak', () => {
   it('requires mutation guards for plan endpoint', async () => {
     state.validateCsrf.mockReturnValueOnce(new Response('csrf', { status: 403 }));
 
-    const response = await planInstanceKeycloakProvisioningInternal(new Request('http://localhost'), { user: { id: 'u-1' } } as never);
+    const response = await planInstanceKeycloakProvisioningInternal(new Request('http://localhost/api/v1/iam/instances/inst-1/keycloak/status'), { user: { id: 'u-1' } } as never);
     expect(response.status).toBe(403);
     expect(state.withRegistryService).not.toHaveBeenCalled();
   });
@@ -126,7 +126,7 @@ describe('core-keycloak', () => {
   it('requires fresh reauth for plan endpoint after csrf passed', async () => {
     state.requireFreshReauth.mockReturnValueOnce(new Response('reauth', { status: 428 }));
 
-    const response = await planInstanceKeycloakProvisioningInternal(new Request('http://localhost'), { user: { id: 'u-1' } } as never);
+    const response = await planInstanceKeycloakProvisioningInternal(new Request('http://localhost/api/v1/iam/instances/inst-1/keycloak/status'), { user: { id: 'u-1' } } as never);
 
     expect(response.status).toBe(428);
     expect(state.withRegistryService).not.toHaveBeenCalled();
@@ -135,7 +135,7 @@ describe('core-keycloak', () => {
   it('returns 400 when provisioning run id is missing', async () => {
     state.readKeycloakRunId.mockReturnValueOnce(undefined);
 
-    const response = await getInstanceKeycloakProvisioningRunInternal(new Request('http://localhost'), { user: { id: 'u-1' } } as never);
+    const response = await getInstanceKeycloakProvisioningRunInternal(new Request('http://localhost/api/v1/iam/instances/inst-1/keycloak/runs'), { user: { id: 'u-1' } } as never);
     const body = await readBody(response);
     expect(response.status).toBe(400);
     expect(body.code).toBe('invalid_request');
@@ -147,7 +147,7 @@ describe('core-keycloak', () => {
       throw thrown;
     });
 
-    const response = await getInstanceKeycloakProvisioningRunInternal(new Request('http://localhost'), { user: { id: 'u-1' } } as never);
+    const response = await getInstanceKeycloakProvisioningRunInternal(new Request('http://localhost/api/v1/iam/instances/inst-1/keycloak/runs/run-1'), { user: { id: 'u-1' } } as never);
     expect(response.status).toBe(502);
     expect(state.mapMutationError).toHaveBeenCalledWith(thrown);
   });
@@ -157,7 +157,7 @@ describe('core-keycloak', () => {
       work({ getKeycloakProvisioningRun: vi.fn(async () => null) })
     );
 
-    const response = await getInstanceKeycloakProvisioningRunInternal(new Request('http://localhost'), { user: { id: 'u-1' } } as never);
+    const response = await getInstanceKeycloakProvisioningRunInternal(new Request('http://localhost/api/v1/iam/instances/inst-1/keycloak/runs/run-1'), { user: { id: 'u-1' } } as never);
     const body = await readBody(response);
 
     expect(response.status).toBe(404);
@@ -166,11 +166,11 @@ describe('core-keycloak', () => {
 
   it('delegates execute and reconcile internals to mutation handlers', async () => {
     const executeResponse = await executeInstanceKeycloakProvisioningInternal(
-      new Request('http://localhost'),
+      new Request('http://localhost/api/v1/iam/instances/inst-1/keycloak/status'),
       { user: { id: 'u-1' } } as never
     );
     const reconcileResponse = await reconcileInstanceKeycloakInternal(
-      new Request('http://localhost'),
+      new Request('http://localhost/api/v1/iam/instances/inst-1/keycloak/status'),
       { user: { id: 'u-1' } } as never
     );
 

@@ -1,4 +1,9 @@
 import type { ApiErrorCode } from '@sva/core';
+import {
+  createActorResolutionServices,
+  resolveActorAccountId,
+  resolveMissingActorDiagnosticReason as resolveMissingActorDiagnosticReasonWithClient,
+} from '@sva/iam-admin';
 
 import { jitProvisionAccountWithClient } from '../jit-provisioning.server.js';
 
@@ -6,40 +11,15 @@ import { createApiError } from './api-helpers.js';
 import { addActiveSpanEvent, annotateActiveSpan, createActorResolutionDetails } from './diagnostics.js';
 import { logger } from './shared-observability.js';
 import { withInstanceScopedDb } from './shared-runtime.js';
-import type { QueryClient } from '../shared/db-helpers.js';
 
-export const resolveActorAccountIdWithProvision = async (input: {
-  instanceId: string;
-  keycloakSubject: string;
-  requestId?: string;
-  traceId?: string;
-  mayProvisionMissingActorMembership: boolean;
-  resolveActorAccountId: (
-    client: QueryClient,
-    params: { instanceId: string; keycloakSubject: string }
-  ) => Promise<string | undefined>;
-}): Promise<string | undefined> => {
-  const existingAccountId = await withInstanceScopedDb(input.instanceId, (client) =>
-    input.resolveActorAccountId(client, {
-      instanceId: input.instanceId,
-      keycloakSubject: input.keycloakSubject,
-    })
-  );
-  if (existingAccountId || !input.mayProvisionMissingActorMembership) {
-    return existingAccountId;
-  }
+const actorResolutionServices = createActorResolutionServices({
+  jitProvisionAccountWithClient,
+  resolveActorAccountId,
+  resolveMissingActorDiagnosticReason: resolveMissingActorDiagnosticReasonWithClient,
+  withInstanceScopedDb,
+});
 
-  return (
-    await withInstanceScopedDb(input.instanceId, (client) =>
-      jitProvisionAccountWithClient(client, {
-        instanceId: input.instanceId,
-        keycloakSubject: input.keycloakSubject,
-        requestId: input.requestId,
-        traceId: input.traceId,
-      })
-    )
-  ).accountId;
-};
+export const { resolveActorAccountIdWithProvision } = actorResolutionServices;
 
 export const createInstanceLookupError = (
   resolvedInstance: { reason: 'database_unavailable' | 'missing_instance' | 'invalid_instance' },
@@ -63,39 +43,7 @@ export const createInstanceLookupError = (
 });
 
 export const resolveMissingActorDiagnosticReason = async (instanceId: string, keycloakSubject: string) => {
-  try {
-    const diagnosticRow = await withInstanceScopedDb(instanceId, async (client) => {
-      const result = await client.query<{
-        account_exists: boolean;
-        membership_exists: boolean;
-      }>(
-        `
-SELECT
-  EXISTS(SELECT 1 FROM iam.accounts WHERE keycloak_subject = $1) AS account_exists,
-  EXISTS(
-    SELECT 1
-    FROM iam.accounts a
-    JOIN iam.instance_memberships im
-      ON im.account_id = a.id
-     AND im.instance_id = $2
-    WHERE a.keycloak_subject = $1
-  ) AS membership_exists;
-`,
-        [keycloakSubject, instanceId]
-      );
-      return result.rows[0];
-    });
-
-    if (diagnosticRow?.account_exists) {
-      return diagnosticRow.membership_exists
-        ? 'missing_actor_account'
-        : 'missing_instance_membership';
-    }
-  } catch {
-    // Prefer the original 403 path over masking with an auxiliary diagnostics failure.
-  }
-
-  return 'missing_actor_account';
+  return actorResolutionServices.resolveMissingActorDiagnosticReason(instanceId, keycloakSubject);
 };
 
 export const createMissingActorMembershipError = (input: {

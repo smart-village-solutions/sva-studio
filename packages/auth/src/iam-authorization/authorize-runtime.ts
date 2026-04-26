@@ -1,5 +1,5 @@
 import type { AuthorizeResponse } from '@sva/core';
-import { getWorkspaceContext } from '@sva/sdk/server';
+import { getWorkspaceContext } from '@sva/server-runtime';
 
 import { emitAuthAuditEvent } from '../audit-events.server.js';
 import { isUuid, readString } from '../shared/input-readers.js';

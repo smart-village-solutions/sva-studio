@@ -1,6 +1,6 @@
 import { serialize as serializeCookie } from 'cookie-es';
 import { classifyHost, isTrafficEnabledInstanceStatus } from '@sva/core';
-import { loadInstanceByHostname } from '@sva/data/server';
+import { loadInstanceByHostname } from '@sva/data-repositories/server';
 import {
   createSdkLogger,
   getWorkspaceContext,
@@ -9,7 +9,7 @@ import {
   isCanonicalAuthHost,
   toJsonErrorResponse,
   withRequestContext,
-} from '@sva/sdk/server';
+} from '@sva/server-runtime';
 
 import { createLoginUrl, handleCallback, logoutSession } from '../auth.server.js';
 import { emitAuthAuditEvent } from '../audit-events.server.js';

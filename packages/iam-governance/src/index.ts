@@ -1,0 +1,104 @@
+export const iamGovernanceVersion = '0.0.1';
+
+export type IamGovernancePackageRole = 'dsr' | 'legal-texts' | 'audit' | 'governance-cases';
+
+export const iamGovernancePackageRoles = [
+  'dsr',
+  'legal-texts',
+  'audit',
+  'governance-cases',
+] as const satisfies readonly IamGovernancePackageRole[];
+
+export { listGovernanceCases } from './read-models.js';
+export type { GovernanceFilters } from './read-models.types.js';
+export {
+  listAdminDsrCases,
+  loadDsrSelfServiceOverview,
+  toCanonicalDsrStatus,
+} from './dsr-read-models.js';
+export type { DsrFilters } from './dsr-read-models.types.js';
+export {
+  collectDsrExportPayload,
+  serializeDsrExportPayload,
+  type DsrExportAccountSnapshot,
+  type DsrExportFormat,
+  type DsrExportPayload,
+} from './dsr-export-payload.js';
+export {
+  createDsrExportFlows,
+  type DsrAdminExportRequestInput,
+  type DsrExportFlowDeps,
+  type DsrExportRequestInput,
+  type DsrIdempotencyReservation,
+} from './dsr-export-flows.js';
+export {
+  createDsrExportStatusHandlers,
+  type DsrExportStatusDeps,
+} from './dsr-export-status.js';
+export {
+  runDsrMaintenance,
+  type DsrMaintenanceInput,
+  type DsrMaintenanceResult,
+} from './dsr-maintenance.js';
+export {
+  governanceComplianceExportRoles,
+  governanceReadRoles,
+  governanceWorkflowRoles,
+  hasRequiredGovernanceRole,
+  readGovernanceCaseType,
+  readGovernanceOperation,
+  requiresPrivilegedGovernanceWorkflowRole,
+  validateGovernanceTicketState,
+  type GovernanceOperation,
+} from './governance-workflow-policy.js';
+export {
+  createGovernanceWorkflowExecutor,
+  type GovernanceActor,
+  type GovernanceWorkflowExecutorDeps,
+  type GovernanceWorkflowRequest,
+  type GovernanceWorkflowResponse,
+} from './governance-workflow-executor.js';
+export {
+  buildGovernanceComplianceExport,
+  loadGovernanceComplianceRows,
+  serializeGovernanceComplianceCsv,
+  toGovernanceComplianceExportRows,
+  toGovernanceComplianceSiemRows,
+  type GovernanceComplianceExportFormat,
+  type GovernanceComplianceExportResult,
+  type GovernanceComplianceExportRow,
+  type GovernanceComplianceSiemRow,
+} from './governance-compliance-export.js';
+export { hashLegalTextHtml, sanitizeLegalTextHtml } from './legal-text-html.js';
+export {
+  consumeLegalConsentExportRateLimit,
+  hasLegalConsentExportPermission,
+  loadConsentExportRecords,
+} from './legal-consent-export.js';
+export { createLegalTextSchema, updateLegalTextSchema } from './legal-text-schemas.js';
+export {
+  createLegalTextRepository,
+  LegalTextDeleteConflictError,
+  type DeleteLegalTextInput,
+  type LegalTextActivityLogInput,
+  type LegalTextRepositoryDeps,
+} from './legal-text-repository.js';
+export {
+  createLegalTextMutationHandlers,
+  type LegalTextMutationHandlerDeps,
+} from './legal-text-mutation-handlers.js';
+export {
+  createLegalTextHttpHandlers,
+  type LegalTextHttpActor,
+  type LegalTextHttpHandlerDeps,
+  type LegalTextPendingUser,
+} from './legal-text-http-handlers.js';
+export {
+  createLegalTextsAdminActorResolver,
+  createLegalTextsRequestContextHandlers,
+  withLegalTextsRequestContext,
+  type LegalTextsActorInfo,
+  type LegalTextsAdminActorResolverDeps,
+  type LegalTextsRequestContextDeps,
+  type ResolvedLegalTextsActor,
+} from './legal-text-request-context.js';

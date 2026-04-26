@@ -1,4 +1,4 @@
-import type { AdminResourceDefinition } from '@sva/sdk';
+import type { AdminResourceDefinition } from '@sva/plugin-sdk';
 import { createRoute, redirect, type RootRoute } from '@tanstack/react-router';
 
 import { createAccountUiRouteGuard, type AccountUiRouteGuardKey } from './account-ui.routes.js';

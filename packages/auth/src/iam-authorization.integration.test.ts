@@ -21,7 +21,7 @@ vi.mock('./middleware.server.js', () => ({
   ),
 }));
 
-vi.mock('@sva/sdk/server', () => ({
+vi.mock('@sva/server-runtime', () => ({
   createSdkLogger: () => ({
     debug: vi.fn(),
     info: vi.fn(),

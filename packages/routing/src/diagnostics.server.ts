@@ -4,7 +4,7 @@ import {
   extractTraceIdFromHeaders,
   extractWorkspaceIdFromHeaders,
   getHeadersFromRequest,
-} from '@sva/sdk/server';
+} from '@sva/server-runtime';
 
 import { createRoutingDiagnosticsLogger } from './diagnostics.js';
 

@@ -23,7 +23,7 @@ const state = vi.hoisted(() => ({
   resolveContentAccess: vi.fn(),
 }));
 
-vi.mock('@sva/sdk/server', () => ({
+vi.mock('@sva/server-runtime', () => ({
   createSdkLogger: () => state.logger,
 }));
 

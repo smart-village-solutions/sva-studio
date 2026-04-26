@@ -1,0 +1,25 @@
+{
+  "name": "@sva/plugin-sdk",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "module": "dist/index.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./admin-resources": {
+      "types": "./dist/admin-resources.d.ts",
+      "default": "./dist/admin-resources.js"
+    }
+  },
+  "dependencies": {
+    "@sva/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^4.1.2",
+    "vitest": "^4.1.2"
+  }
+}

@@ -35,12 +35,12 @@ vi.mock('@opentelemetry/api', () => ({
   },
 }));
 
-vi.mock('@sva/auth/server', () => ({
+vi.mock('@sva/auth-runtime/server', () => ({
   readSvaMainserverCredentialsWithStatus: state.readSvaMainserverCredentialsWithStatus,
 }));
 
-vi.mock('@sva/sdk/server', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@sva/sdk/server')>();
+vi.mock('@sva/server-runtime', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@sva/server-runtime')>();
 
   return {
     ...actual,

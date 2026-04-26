@@ -1,4 +1,4 @@
-import { getWorkspaceContext } from '@sva/sdk/server';
+import { getWorkspaceContext } from '@sva/server-runtime';
 import type { ApiErrorCode, IamUserDetail, IamUserRoleAssignment } from '@sva/core';
 
 import type { UpdateIdentityUserInput } from '../identity-provider-port.js';

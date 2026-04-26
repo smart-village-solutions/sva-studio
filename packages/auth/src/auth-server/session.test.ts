@@ -76,7 +76,7 @@ vi.mock('../shared/log-context', () => ({
   buildLogContext: (workspaceId?: string) => ({ workspace_id: workspaceId }),
 }));
 
-vi.mock('@sva/sdk/server', () => ({
+vi.mock('@sva/server-runtime', () => ({
   createSdkLogger: () => mocks.loggerMock,
 }));
 

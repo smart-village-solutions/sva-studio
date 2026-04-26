@@ -1,7 +1,7 @@
 import React from 'react';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { registerPluginTranslationResolver } from '@sva/sdk';
+import { registerPluginTranslationResolver } from '@sva/plugin-sdk';
 
 import { NewsCreatePage, NewsEditPage, NewsListPage } from '../src/news.pages.js';
 import { createNews, deleteNews, getNews, listNews, updateNews } from '../src/news.api.js';

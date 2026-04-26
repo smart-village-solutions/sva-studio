@@ -18,7 +18,7 @@ require_env KEYCLOAK_PROVISIONER_CLIENT_ID
 require_env KEYCLOAK_PROVISIONER_CLIENT_SECRET
 
 if [ "$#" -eq 0 ]; then
-  set -- node --import ./otel-bootstrap.mjs node_modules/@sva/auth/dist/iam-instance-registry/worker.js
+  set -- node --import ./otel-bootstrap.mjs node_modules/@sva/auth-runtime/dist/iam-instance-registry/worker.js
 fi
 
 exec "$@"

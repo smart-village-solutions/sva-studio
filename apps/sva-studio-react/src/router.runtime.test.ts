@@ -92,7 +92,8 @@ vi.mock('@sva/routing/server', () => ({
   getServerRouteFactories: routerMocks.getServerRouteFactoriesSpy,
 }));
 
-vi.mock('@sva/sdk', () => ({
+vi.mock('@sva/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sva/core')>()),
   isMockAuthRuntimeProfile: routerMocks.isMockAuthRuntimeProfile,
   parseRuntimeProfile: routerMocks.parseRuntimeProfile,
 }));
@@ -132,7 +133,7 @@ vi.mock('@tanstack/react-start/server', () => ({
   getRequest: routerMocks.getRequestSpy,
 }));
 
-vi.mock('@sva/auth/server', () => ({
+vi.mock('@sva/auth-runtime/server', () => ({
   withAuthenticatedUser: routerMocks.withAuthenticatedUserSpy,
 }));
 
@@ -175,7 +176,7 @@ describe('router runtime helpers', () => {
   });
 
   it('enables mock auth from explicit env flags and runtime profile helpers', async () => {
-    const { getSdkRuntimeProfileHelpers, isMockAuthEnabled } = await import('./router');
+    const { isMockAuthEnabled } = await import('./router');
 
     vi.stubEnv('VITE_MOCK_AUTH', 'true');
     expect(await isMockAuthEnabled()).toBe(true);
@@ -188,11 +189,6 @@ describe('router runtime helpers', () => {
 
     vi.stubEnv('VITE_SVA_RUNTIME_PROFILE', 'default-profile');
     expect(await isMockAuthEnabled()).toBe(false);
-
-    const firstHelpers = await getSdkRuntimeProfileHelpers();
-    const secondHelpers = await getSdkRuntimeProfileHelpers();
-    expect(firstHelpers).toBe(secondHelpers);
-    expect(firstHelpers.parseRuntimeProfile).toBe(routerMocks.parseRuntimeProfile);
   });
 
   it('builds the runtime router from routing factories and exposes the Playwright hook when enabled', async () => {

@@ -37,6 +37,7 @@ Alle Architekturinformationen werden arc42-konform in den Abschnitten 1-12 gepfl
 - Session-Analyse: `./session-management-analysis.md`
 - IAM-Service-Architektur: `./iam-service-architektur.md`
 - IAM-Datenklassifizierung: `./iam-datenklassifizierung.md`
+- Package-Zielarchitektur: `./package-zielarchitektur.md`
 - Übersicht typischer Request-Flüsse: `./request-flow-szenarien.md`
 - Übersicht fachlicher Zuständigkeiten: `./fachliche-zustaendigkeiten.md`
 - ADRs: `../adr/README.md`

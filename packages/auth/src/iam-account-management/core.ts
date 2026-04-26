@@ -1,4 +1,4 @@
-import { createSdkLogger, toJsonErrorResponse, withRequestContext } from '@sva/sdk/server';
+import { createSdkLogger, toJsonErrorResponse, withRequestContext } from '@sva/server-runtime';
 
 import {
   withAuthenticatedUser,

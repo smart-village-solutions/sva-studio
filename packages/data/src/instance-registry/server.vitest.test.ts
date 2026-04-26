@@ -103,7 +103,7 @@ vi.mock('./index', () => ({
   createInstanceRegistryRepository: createInstanceRegistryRepositoryMock,
 }));
 
-vi.mock('@sva/sdk/server', () => ({
+vi.mock('@sva/server-runtime', () => ({
   createSdkLogger: vi.fn(() => ({
     debug: vi.fn(),
     info: vi.fn(),

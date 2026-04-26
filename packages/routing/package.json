@@ -28,9 +28,10 @@
     }
   },
   "dependencies": {
-    "@sva/auth": "workspace:*",
+    "@sva/auth-runtime": "workspace:*",
     "@sva/core": "workspace:*",
-    "@sva/sdk": "workspace:*",
+    "@sva/plugin-sdk": "workspace:*",
+    "@sva/server-runtime": "workspace:*",
     "@tanstack/react-router": "^1.168.23"
   },
   "devDependencies": {

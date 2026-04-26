@@ -63,3 +63,19 @@ export type {
 } from './instances/registry.js';
 export type { InstanceKeycloakRequirement, InstanceKeycloakRequirementKey } from './instances/keycloak-checklist.js';
 export { maskEmailAddresses } from './security/email-redaction.js';
+export type {
+  RuntimeProfile,
+  RuntimeProfileAuthMode,
+  RuntimeProfileDefinition,
+  RuntimeProfileEnvValidationResult,
+} from './runtime-profile.js';
+export {
+  RUNTIME_PROFILES,
+  getRuntimeProfileDerivedEnvKeys,
+  getRuntimeProfileDefinition,
+  getRuntimeProfileFromEnv,
+  getRuntimeProfileRequiredEnvKeys,
+  isMockAuthRuntimeProfile,
+  parseRuntimeProfile,
+  validateRuntimeProfileEnv,
+} from './runtime-profile.js';

@@ -104,21 +104,27 @@ importers:
       '@radix-ui/react-tabs':
         specifier: ^1.1.13
         version: 1.1.13(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
-      '@sva/auth':
+      '@sva/auth-runtime':
         specifier: workspace:*
-        version: link:../../packages/auth
+        version: link:../../packages/auth-runtime
       '@sva/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@sva/monitoring-client':
+        specifier: workspace:*
+        version: link:../../packages/monitoring-client
       '@sva/plugin-news':
         specifier: workspace:*
         version: link:../../packages/plugin-news
+      '@sva/plugin-sdk':
+        specifier: workspace:*
+        version: link:../../packages/plugin-sdk
       '@sva/routing':
         specifier: workspace:*
         version: link:../../packages/routing
-      '@sva/sdk':
+      '@sva/server-runtime':
         specifier: workspace:*
-        version: link:../../packages/sdk
+        version: link:../../packages/server-runtime
       '@sva/sva-mainserver':
         specifier: workspace:*
         version: link:../../packages/sva-mainserver
@@ -231,12 +237,24 @@ importers:
       '@sva/core':
         specifier: workspace:*
         version: link:../core
-      '@sva/data':
+      '@sva/data-repositories':
         specifier: workspace:*
-        version: link:../data
-      '@sva/sdk':
+        version: link:../data-repositories
+      '@sva/iam-admin':
         specifier: workspace:*
-        version: link:../sdk
+        version: link:../iam-admin
+      '@sva/iam-core':
+        specifier: workspace:*
+        version: link:../iam-core
+      '@sva/iam-governance':
+        specifier: workspace:*
+        version: link:../iam-governance
+      '@sva/instance-registry':
+        specifier: workspace:*
+        version: link:../instance-registry
+      '@sva/server-runtime':
+        specifier: workspace:*
+        version: link:../server-runtime
       '@types/sanitize-html':
         specifier: ^2.16.1
         version: 2.16.1
@@ -269,6 +287,64 @@ importers:
         specifier: ^4.1.2
         version: 4.1.4(@opentelemetry/api@1.9.1)(@types/node@25.6.0)(@vitest/coverage-v8@4.1.4)(happy-dom@20.8.9)(jsdom@29.0.2)(vite@8.0.8(@types/node@25.6.0)(esbuild@0.27.7)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.3))
 
+  packages/auth-runtime:
+    dependencies:
+      '@opentelemetry/api':
+        specifier: ^1.9.0
+        version: 1.9.1
+      '@sva/core':
+        specifier: workspace:*
+        version: link:../core
+      '@sva/data-repositories':
+        specifier: workspace:*
+        version: link:../data-repositories
+      '@sva/iam-admin':
+        specifier: workspace:*
+        version: link:../iam-admin
+      '@sva/iam-core':
+        specifier: workspace:*
+        version: link:../iam-core
+      '@sva/iam-governance':
+        specifier: workspace:*
+        version: link:../iam-governance
+      '@sva/instance-registry':
+        specifier: workspace:*
+        version: link:../instance-registry
+      '@sva/server-runtime':
+        specifier: workspace:*
+        version: link:../server-runtime
+      cookie-es:
+        specifier: ^2.0.0
+        version: 2.0.1
+      ioredis:
+        specifier: ^5.10.1
+        version: 5.10.1
+      openid-client:
+        specifier: ^6.4.0
+        version: 6.8.3
+      pg:
+        specifier: ^8.20.0
+        version: 8.20.0
+      sanitize-html:
+        specifier: ^2.17.3
+        version: 2.17.3
+      zod:
+        specifier: ^4.3.6
+        version: 4.3.6
+    devDependencies:
+      '@types/pg':
+        specifier: ^8.20.0
+        version: 8.20.0
+      '@types/sanitize-html':
+        specifier: ^2.16.1
+        version: 2.16.1
+      '@vitest/coverage-v8':
+        specifier: ^4.1.2
+        version: 4.1.4(vitest@4.1.4)
+      vitest:
+        specifier: ^4.1.2
+        version: 4.1.4(@opentelemetry/api@1.9.1)(@types/node@25.6.0)(@vitest/coverage-v8@4.1.4)(happy-dom@20.8.9)(jsdom@29.0.2)(vite@8.0.8(@types/node@25.6.0)(esbuild@0.27.7)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.3))
+
   packages/core:
     devDependencies:
       vitest:
@@ -280,9 +356,15 @@ importers:
       '@sva/core':
         specifier: workspace:*
         version: link:../core
-      '@sva/sdk':
+      '@sva/data-client':
         specifier: workspace:*
-        version: link:../sdk
+        version: link:../data-client
+      '@sva/data-repositories':
+        specifier: workspace:*
+        version: link:../data-repositories
+      '@sva/server-runtime':
+        specifier: workspace:*
+        version: link:../server-runtime
       pg:
         specifier: ^8.20.0
         version: 8.20.0
@@ -293,6 +375,138 @@ importers:
       '@types/pg':
         specifier: ^8.20.0
         version: 8.20.0
+      '@vitest/coverage-v8':
+        specifier: ^4.1.2
+        version: 4.1.4(vitest@4.1.4)
+      vitest:
+        specifier: ^4.1.2
+        version: 4.1.4(@opentelemetry/api@1.9.1)(@types/node@25.6.0)(@vitest/coverage-v8@4.1.4)(happy-dom@20.8.9)(jsdom@29.0.2)(vite@8.0.8(@types/node@25.6.0)(esbuild@0.27.7)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.3))
+
+  packages/data-client:
+    dependencies:
+      '@sva/core':
+        specifier: workspace:*
+        version: link:../core
+      zod:
+        specifier: ^4.3.6
+        version: 4.3.6
+    devDependencies:
+      '@vitest/coverage-v8':
+        specifier: ^4.1.2
+        version: 4.1.4(vitest@4.1.4)
+      vitest:
+        specifier: ^4.1.2
+        version: 4.1.4(@opentelemetry/api@1.9.1)(@types/node@25.6.0)(@vitest/coverage-v8@4.1.4)(happy-dom@20.8.9)(jsdom@29.0.2)(vite@8.0.8(@types/node@25.6.0)(esbuild@0.27.7)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.3))
+
+  packages/data-repositories:
+    dependencies:
+      '@sva/core':
+        specifier: workspace:*
+        version: link:../core
+      '@sva/server-runtime':
+        specifier: workspace:*
+        version: link:../server-runtime
+      pg:
+        specifier: ^8.20.0
+        version: 8.20.0
+    devDependencies:
+      '@types/pg':
+        specifier: ^8.20.0
+        version: 8.20.0
+      '@vitest/coverage-v8':
+        specifier: ^4.1.2
+        version: 4.1.4(vitest@4.1.4)
+      vitest:
+        specifier: ^4.1.2
+        version: 4.1.4(@opentelemetry/api@1.9.1)(@types/node@25.6.0)(@vitest/coverage-v8@4.1.4)(happy-dom@20.8.9)(jsdom@29.0.2)(vite@8.0.8(@types/node@25.6.0)(esbuild@0.27.7)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.3))
+
+  packages/iam-admin:
+    dependencies:
+      '@sva/core':
+        specifier: workspace:*
+        version: link:../core
+      '@sva/data-repositories':
+        specifier: workspace:*
+        version: link:../data-repositories
+      '@sva/iam-core':
+        specifier: workspace:*
+        version: link:../iam-core
+      '@sva/server-runtime':
+        specifier: workspace:*
+        version: link:../server-runtime
+      zod:
+        specifier: ^4.3.6
+        version: 4.3.6
+    devDependencies:
+      '@vitest/coverage-v8':
+        specifier: ^4.1.2
+        version: 4.1.4(vitest@4.1.4)
+      vitest:
+        specifier: ^4.1.2
+        version: 4.1.4(@opentelemetry/api@1.9.1)(@types/node@25.6.0)(@vitest/coverage-v8@4.1.4)(happy-dom@20.8.9)(jsdom@29.0.2)(vite@8.0.8(@types/node@25.6.0)(esbuild@0.27.7)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.3))
+
+  packages/iam-core:
+    dependencies:
+      '@sva/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      '@vitest/coverage-v8':
+        specifier: ^4.1.2
+        version: 4.1.4(vitest@4.1.4)
+      vitest:
+        specifier: ^4.1.2
+        version: 4.1.4(@opentelemetry/api@1.9.1)(@types/node@25.6.0)(@vitest/coverage-v8@4.1.4)(happy-dom@20.8.9)(jsdom@29.0.2)(vite@8.0.8(@types/node@25.6.0)(esbuild@0.27.7)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.3))
+
+  packages/iam-governance:
+    dependencies:
+      '@sva/core':
+        specifier: workspace:*
+        version: link:../core
+      '@sva/data-repositories':
+        specifier: workspace:*
+        version: link:../data-repositories
+      '@sva/iam-core':
+        specifier: workspace:*
+        version: link:../iam-core
+      '@sva/server-runtime':
+        specifier: workspace:*
+        version: link:../server-runtime
+      sanitize-html:
+        specifier: ^2.17.3
+        version: 2.17.3
+      zod:
+        specifier: ^4.3.6
+        version: 4.3.6
+    devDependencies:
+      '@types/sanitize-html':
+        specifier: ^2.16.1
+        version: 2.16.1
+      '@vitest/coverage-v8':
+        specifier: ^4.1.2
+        version: 4.1.4(vitest@4.1.4)
+      vitest:
+        specifier: ^4.1.2
+        version: 4.1.4(@opentelemetry/api@1.9.1)(@types/node@25.6.0)(@vitest/coverage-v8@4.1.4)(happy-dom@20.8.9)(jsdom@29.0.2)(vite@8.0.8(@types/node@25.6.0)(esbuild@0.27.7)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.3))
+
+  packages/instance-registry:
+    dependencies:
+      '@sva/core':
+        specifier: workspace:*
+        version: link:../core
+      '@sva/data-repositories':
+        specifier: workspace:*
+        version: link:../data-repositories
+      '@sva/iam-core':
+        specifier: workspace:*
+        version: link:../iam-core
+      '@sva/server-runtime':
+        specifier: workspace:*
+        version: link:../server-runtime
+      zod:
+        specifier: ^4.3.6
+        version: 4.3.6
+    devDependencies:
       '@vitest/coverage-v8':
         specifier: ^4.1.2
         version: 4.1.4(vitest@4.1.4)
@@ -345,9 +559,9 @@ importers:
 
   packages/plugin-news:
     dependencies:
-      '@sva/sdk':
+      '@sva/plugin-sdk':
         specifier: workspace:*
-        version: link:../sdk
+        version: link:../plugin-sdk
       '@tanstack/react-router':
         specifier: 1.168.21
         version: 1.168.21(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
@@ -377,17 +591,33 @@ importers:
         specifier: ^4.1.2
         version: 4.1.4(@opentelemetry/api@1.9.1)(@types/node@25.6.0)(@vitest/coverage-v8@4.1.4)(happy-dom@20.8.9)(jsdom@29.0.2)(vite@8.0.8(@types/node@25.6.0)(esbuild@0.27.7)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.3))
 
-  packages/routing:
+  packages/plugin-sdk:
     dependencies:
-      '@sva/auth':
-        specifier: workspace:*
-        version: link:../auth
       '@sva/core':
         specifier: workspace:*
         version: link:../core
-      '@sva/sdk':
+    devDependencies:
+      '@vitest/coverage-v8':
+        specifier: ^4.1.2
+        version: 4.1.4(vitest@4.1.4)
+      vitest:
+        specifier: ^4.1.2
+        version: 4.1.4(@opentelemetry/api@1.9.1)(@types/node@25.6.0)(@vitest/coverage-v8@4.1.4)(happy-dom@20.8.9)(jsdom@29.0.2)(vite@8.0.8(@types/node@25.6.0)(esbuild@0.27.7)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.3))
+
+  packages/routing:
+    dependencies:
+      '@sva/auth-runtime':
         specifier: workspace:*
-        version: link:../sdk
+        version: link:../auth-runtime
+      '@sva/core':
+        specifier: workspace:*
+        version: link:../core
+      '@sva/plugin-sdk':
+        specifier: workspace:*
+        version: link:../plugin-sdk
+      '@sva/server-runtime':
+        specifier: workspace:*
+        version: link:../server-runtime
       '@tanstack/react-router':
         specifier: 1.168.21
         version: 1.168.21(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
@@ -403,6 +633,40 @@ importers:
         version: 4.1.4(@opentelemetry/api@1.9.1)(@types/node@25.6.0)(@vitest/coverage-v8@4.1.4)(happy-dom@20.8.9)(jsdom@29.0.2)(vite@8.0.8(@types/node@25.6.0)(esbuild@0.27.7)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.3))
 
   packages/sdk:
+    dependencies:
+      '@opentelemetry/api':
+        specifier: ^1.9.0
+        version: 1.9.1
+      '@opentelemetry/sdk-node':
+        specifier: ^0.215.0
+        version: 0.215.0(@opentelemetry/api@1.9.1)
+      '@sva/core':
+        specifier: workspace:*
+        version: link:../core
+      '@sva/monitoring-client':
+        specifier: workspace:*
+        version: link:../monitoring-client
+      '@sva/plugin-sdk':
+        specifier: workspace:*
+        version: link:../plugin-sdk
+      '@sva/server-runtime':
+        specifier: workspace:*
+        version: link:../server-runtime
+      winston:
+        specifier: ^3.19.0
+        version: 3.19.0
+      winston-transport:
+        specifier: ^4.9.0
+        version: 4.9.0
+    devDependencies:
+      '@vitest/coverage-v8':
+        specifier: ^4.1.2
+        version: 4.1.4(vitest@4.1.4)
+      vitest:
+        specifier: ^4.1.2
+        version: 4.1.4(@opentelemetry/api@1.9.1)(@types/node@25.6.0)(@vitest/coverage-v8@4.1.4)(happy-dom@20.8.9)(jsdom@29.0.2)(vite@8.0.8(@types/node@25.6.0)(esbuild@0.27.7)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.3))
+
+  packages/server-runtime:
     dependencies:
       '@opentelemetry/api':
         specifier: ^1.9.0
@@ -435,15 +699,15 @@ importers:
       '@opentelemetry/api':
         specifier: ^1.9.0
         version: 1.9.1
-      '@sva/auth':
+      '@sva/auth-runtime':
         specifier: workspace:*
-        version: link:../auth
-      '@sva/data':
+        version: link:../auth-runtime
+      '@sva/data-repositories':
         specifier: workspace:*
-        version: link:../data
-      '@sva/sdk':
+        version: link:../data-repositories
+      '@sva/server-runtime':
         specifier: workspace:*
-        version: link:../sdk
+        version: link:../server-runtime
       zod:
         specifier: ^4.3.6
         version: 4.3.6

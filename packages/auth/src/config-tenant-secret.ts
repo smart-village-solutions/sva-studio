@@ -1,5 +1,5 @@
-import { loadInstanceAuthClientSecretCiphertext, loadTenantAdminClientSecretCiphertext } from '@sva/data/server';
-import { createSdkLogger } from '@sva/sdk/server';
+import { loadInstanceAuthClientSecretCiphertext, loadTenantAdminClientSecretCiphertext } from '@sva/data-repositories/server';
+import { createSdkLogger } from '@sva/server-runtime';
 import { revealField } from './iam-account-management/encryption.js';
 import { getAuthClientSecret } from './runtime-secrets.server.js';
 

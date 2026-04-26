@@ -1,112 +1,13 @@
-import { GENERIC_CONTENT_TYPE, type ContentJsonValue } from '@sva/core';
-import {
-  isReservedPluginNamespace,
-  normalizePluginIdentifier,
-  normalizePluginNamespace,
-  parseNamespacedPluginIdentifier,
-} from './plugin-identifiers.js';
-
-export type ContentTypeEditorFieldKind = 'json' | 'text' | 'textarea' | 'datetime';
-
-export type ContentTypeEditorFieldDefinition = {
-  readonly key: string;
-  readonly label: string;
-  readonly kind: ContentTypeEditorFieldKind;
-  readonly description?: string;
-};
-
-export type ContentTypeListColumnDefinition = {
-  readonly key: string;
-  readonly label: string;
-};
-
-export type ContentTypeActionDefinition = {
-  readonly key: string;
-  readonly label: string;
-};
-
-export type ContentTypeDefinition = {
-  readonly contentType: string;
-  readonly displayName: string;
-  readonly editorFields?: readonly ContentTypeEditorFieldDefinition[];
-  readonly listColumns?: readonly ContentTypeListColumnDefinition[];
-  readonly actions?: readonly ContentTypeActionDefinition[];
-  readonly validatePayload?: (payload: ContentJsonValue) => readonly string[];
-};
-
-const normalizeContentTypeDefinition = (definition: ContentTypeDefinition): ContentTypeDefinition => ({
-  ...definition,
-  contentType: normalizePluginIdentifier(definition.contentType),
-  displayName: definition.displayName.trim(),
-});
-
-export const genericContentTypeDefinition: ContentTypeDefinition = {
-  contentType: GENERIC_CONTENT_TYPE,
-  displayName: 'Generischer Inhalt',
-  editorFields: [
-    {
-      key: 'payload',
-      label: 'Payload',
-      kind: 'json',
-      description: 'Rohes JSON-Feld für generische Inhalte.',
-    },
-  ],
-};
-
-export const definePluginContentTypes = <const TDefinitions extends readonly ContentTypeDefinition[]>(
-  namespace: string,
-  definitions: TDefinitions
-): TDefinitions => {
-  const normalizedNamespace = normalizePluginNamespace(namespace);
-  if (isReservedPluginNamespace(normalizedNamespace)) {
-    throw new Error(`reserved_plugin_namespace:${normalizedNamespace}`);
-  }
-
-  const normalizedDefinitions = definitions.map((definition) =>
-    normalizeContentTypeDefinition(definition)
-  ) as unknown as TDefinitions;
-
-  for (const definition of normalizedDefinitions) {
-    if (definition.contentType.length === 0 || definition.displayName.length === 0) {
-      throw new Error('invalid_content_type_definition');
-    }
-
-    const parsed = parseNamespacedPluginIdentifier(definition.contentType);
-    if (parsed === undefined) {
-      throw new Error(`invalid_plugin_content_type:${definition.contentType}`);
-    }
-    if (parsed.namespace !== normalizedNamespace) {
-      throw new Error(
-        `plugin_content_type_namespace_mismatch:${normalizedNamespace}:${parsed.namespace}:${definition.contentType}`
-      );
-    }
-  }
-
-  return normalizedDefinitions;
-};
-
-export const createContentTypeRegistry = (
-  definitions: readonly ContentTypeDefinition[]
-): ReadonlyMap<string, ContentTypeDefinition> => {
-  const registry = new Map<string, ContentTypeDefinition>();
-
-  for (const definition of definitions) {
-    const normalizedDefinition = normalizeContentTypeDefinition(definition);
-    const normalizedType = normalizedDefinition.contentType;
-    const normalizedName = normalizedDefinition.displayName;
-    if (normalizedType.length === 0 || normalizedName.length === 0) {
-      throw new Error('invalid_content_type_definition');
-    }
-    if (registry.has(normalizedType)) {
-      throw new Error(`duplicate_content_type:${normalizedType}`);
-    }
-    registry.set(normalizedType, normalizedDefinition);
-  }
-
-  return registry;
-};
-
-export const getContentTypeDefinition = (
-  registry: ReadonlyMap<string, ContentTypeDefinition>,
-  contentType: string
-): ContentTypeDefinition | undefined => registry.get(contentType.trim());
+export type {
+  ContentTypeActionDefinition,
+  ContentTypeDefinition,
+  ContentTypeEditorFieldDefinition,
+  ContentTypeEditorFieldKind,
+  ContentTypeListColumnDefinition,
+} from '@sva/plugin-sdk';
+export {
+  createContentTypeRegistry,
+  definePluginContentTypes,
+  genericContentTypeDefinition,
+  getContentTypeDefinition,
+} from '@sva/plugin-sdk';

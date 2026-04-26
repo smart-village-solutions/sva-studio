@@ -32,7 +32,7 @@ const state: {
   instanceAuthClientSecretCiphertext: null,
 };
 
-vi.mock('@sva/data/server', () => ({
+vi.mock('@sva/data-repositories/server', () => ({
   loadInstanceById: vi.fn(async () => state.instanceById),
   loadInstanceByHostname: vi.fn(async () => {
     if (state.loadInstanceByHostnameError) {
@@ -43,7 +43,7 @@ vi.mock('@sva/data/server', () => ({
   loadInstanceAuthClientSecretCiphertext: vi.fn(async () => state.instanceAuthClientSecretCiphertext),
 }));
 
-vi.mock('@sva/sdk/server', () => ({
+vi.mock('@sva/server-runtime', () => ({
   createSdkLogger: vi.fn(() => ({
     debug: vi.fn(),
     info: vi.fn(),

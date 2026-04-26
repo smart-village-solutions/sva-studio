@@ -1,0 +1,19 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "declaration": true,
+    "declarationMap": true,
+    "outDir": "dist",
+    "rootDir": "src",
+    "types": ["node"],
+    "paths": {
+      "@sva/core": ["packages/core/dist/index.d.ts"],
+      "@sva/monitoring-client": ["packages/monitoring-client/dist/index.d.ts"],
+      "@sva/monitoring-client/server": ["packages/monitoring-client/dist/server.d.ts"],
+      "@sva/monitoring-client/logger-provider.server": ["packages/monitoring-client/dist/logger-provider.server.d.ts"]
+    }
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["src/**/*.test.ts"]
+}

@@ -21,7 +21,7 @@ vi.mock('../middleware.server', () => ({
   ),
 }));
 
-vi.mock('@sva/sdk/server', () => ({
+vi.mock('@sva/server-runtime', () => ({
   createSdkLogger: () => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }),
   getWorkspaceContext: () => ({ requestId: 'req-x', traceId: 'trace-x', workspaceId: 'ws-x' }),
   withRequestContext: async (_opts: unknown, fn: () => Promise<unknown>) => fn(),

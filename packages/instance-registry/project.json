@@ -1,0 +1,50 @@
+{
+  "name": "instance-registry",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/instance-registry/src",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["^build"],
+      "outputs": ["{projectRoot}/dist"],
+      "options": {
+        "command": "tsc -p packages/instance-registry/tsconfig.lib.json"
+      }
+    },
+    "check:runtime": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["build"],
+      "options": {
+        "command": "pnpm exec node --import tsx scripts/ci/check-server-package-runtime.ts --package instance-registry"
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "options": {
+        "lintFilePatterns": ["packages/instance-registry/src/**/*.{ts,tsx,js,jsx}"]
+      }
+    },
+    "test:unit": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "packages/instance-registry",
+        "command": "pnpm exec vitest run --reporter=verbose --config vitest.config.ts --passWithNoTests"
+      }
+    },
+    "test:types": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tsc -p packages/instance-registry/tsconfig.lib.json --noEmit"
+      }
+    },
+    "test:coverage": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "packages/instance-registry",
+        "command": "pnpm exec vitest run --coverage --reporter=verbose --config vitest.config.ts --passWithNoTests"
+      }
+    }
+  },
+  "tags": ["scope:instance-registry", "type:lib", "credentials:yes"]
+}

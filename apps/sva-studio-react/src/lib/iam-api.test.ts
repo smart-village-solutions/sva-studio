@@ -7,7 +7,7 @@ const browserLoggerMock = vi.hoisted(() => ({
   error: vi.fn(),
 }));
 
-vi.mock('@sva/sdk/logging', () => ({
+vi.mock('@sva/monitoring-client/logging', () => ({
   createBrowserLogger: () => browserLoggerMock,
 }));
 

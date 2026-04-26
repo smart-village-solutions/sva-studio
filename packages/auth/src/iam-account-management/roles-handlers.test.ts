@@ -24,7 +24,7 @@ const state = vi.hoisted(() => ({
   completeIdempotency: vi.fn(),
 }));
 
-vi.mock('@sva/sdk/server', () => ({
+vi.mock('@sva/server-runtime', () => ({
   createSdkLogger: () => ({
     debug: vi.fn(),
     info: vi.fn(),

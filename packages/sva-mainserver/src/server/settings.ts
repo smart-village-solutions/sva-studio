@@ -1,4 +1,4 @@
-import { loadInstanceIntegrationRecord, saveInstanceIntegrationRecord } from '@sva/data/server';
+import { loadInstanceIntegrationRecord, saveInstanceIntegrationRecord } from '@sva/data-repositories/server';
 
 import type { SvaMainserverInstanceConfig } from '../types.js';
 import { normalizeSvaMainserverUpstreamUrl } from './upstream-url-validation.js';

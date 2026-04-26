@@ -1,4 +1,5 @@
-import { getWorkspaceContext } from '@sva/sdk/server';
+import { getWorkspaceContext } from '@sva/server-runtime';
+import { createReconcileHandlerInternal } from '@sva/iam-admin';
 
 import type { AuthenticatedRequestContext } from '../middleware.server.js';
 import { jsonResponse } from '../shared/db-helpers.js';
@@ -13,72 +14,22 @@ import { logger, requireRoles, resolveActorInfo } from './shared.js';
 import { validateCsrf } from './csrf.js';
 import { mapRoleSyncErrorCode, sanitizeRoleErrorMessage } from './role-audit.js';
 
-export const reconcilePlaceholderInternal = async (
-  request: Request,
-  ctx: AuthenticatedRequestContext
-): Promise<Response> => {
-  const requestContext = getWorkspaceContext();
-  const featureCheck = ensureFeature(getFeatureFlags(), 'iam_admin', requestContext.requestId);
-  if (featureCheck) {
-    return featureCheck;
-  }
-  const roleCheck = requireRoles(ctx, SYSTEM_ADMIN_ROLES, requestContext.requestId);
-  if (roleCheck) {
-    return roleCheck;
-  }
-  if (!ctx.user.instanceId) {
-    return reconcilePlatformRolesInternal(request, ctx, requestContext.requestId, requestContext.traceId);
-  }
-  const actorResolution = await resolveActorInfo(request, ctx, { requireActorMembership: true });
-  if ('error' in actorResolution) {
-    return actorResolution.error;
-  }
-
-  const csrfError = validateCsrf(request, actorResolution.actor.requestId);
-  if (csrfError) {
-    return csrfError;
-  }
-
-  const rateLimit = consumeRateLimit({
-    instanceId: actorResolution.actor.instanceId,
-    actorKeycloakSubject: ctx.user.id,
-    scope: 'write',
-    requestId: actorResolution.actor.requestId,
-  });
-  if (rateLimit) {
-    return rateLimit;
-  }
-
-  try {
-    const report = await runRoleCatalogReconciliation({
-      instanceId: actorResolution.actor.instanceId,
-      actorAccountId: actorResolution.actor.actorAccountId,
-      requestId: actorResolution.actor.requestId,
-      traceId: actorResolution.actor.traceId,
-      includeDiagnostics:
-        process.env.IAM_DEBUG_PROFILE_ERRORS === 'true' || request.headers.get('x-debug-reconcile') === '1',
-    });
-    return jsonResponse(200, asApiItem(report, actorResolution.actor.requestId));
-  } catch (error) {
-    logger.error('Role reconciliation failed', {
-      operation: 'reconcile_roles',
-      instance_id: actorResolution.actor.instanceId,
-      request_id: actorResolution.actor.requestId,
-      trace_id: actorResolution.actor.traceId,
-      error: sanitizeRoleErrorMessage(error),
-    });
-    return createApiError(
-      503,
-      'keycloak_unavailable',
-      'Rollen-Reconciliation konnte nicht ausgeführt werden.',
-      actorResolution.actor.requestId,
-      {
-        syncState: 'failed',
-        syncError: { code: mapRoleSyncErrorCode(error) },
-      }
-    );
-  }
-};
+export const reconcilePlaceholderInternal = createReconcileHandlerInternal({
+  asApiItem,
+  consumeRateLimit,
+  createApiError,
+  ensureIamAdminFeature: (requestId) => ensureFeature(getFeatureFlags(), 'iam_admin', requestId),
+  getRequestContext: getWorkspaceContext,
+  jsonResponse,
+  logger,
+  mapRoleSyncErrorCode,
+  reconcilePlatformRoles: reconcilePlatformRolesInternal,
+  requireSystemAdminRole: (ctx, requestId) => requireRoles(ctx, SYSTEM_ADMIN_ROLES, requestId),
+  resolveActorInfo,
+  runRoleCatalogReconciliation,
+  sanitizeRoleErrorMessage,
+  validateCsrf,
+});
 
 let roleCatalogSchedulerStarted = false;
 const roleCatalogSchedulerInFlight = new Set<string>();

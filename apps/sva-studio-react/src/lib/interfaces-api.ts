@@ -234,9 +234,9 @@ const getOverviewFallbackStatus = (
 export const loadInterfacesOverview = createServerFn().handler(async (): Promise<InterfacesOverviewModel> => {
   try {
     const { getRequest } = await import('@tanstack/react-start/server');
-    const { withAuthenticatedUser } = await import('@sva/auth/server');
+    const { withAuthenticatedUser } = await import('@sva/auth-runtime/server');
     const { getSvaMainserverConnectionStatus, loadSvaMainserverSettings } = await import('@sva/sva-mainserver/server');
-    const { createSdkLogger } = await import('@sva/sdk/server');
+    const { createSdkLogger } = await import('@sva/server-runtime');
     const logger = createSdkLogger({ component: COMPONENT });
     const request = getRequest();
 
@@ -337,7 +337,7 @@ export const loadInterfacesOverview = createServerFn().handler(async (): Promise
       status: getOverviewFallbackStatus(response, isErrorPayload(payload) ? payload : null),
     };
   } catch (error) {
-    const { createSdkLogger } = await import('@sva/sdk/server');
+    const { createSdkLogger } = await import('@sva/server-runtime');
     const logger = createSdkLogger({ component: COMPONENT });
     logger.error('Unexpected error loading interfaces overview', {
       operation: 'load_interfaces_overview',
@@ -356,9 +356,9 @@ export const saveSvaMainserverInterfaceSettings = createServerFn({ method: 'POST
   .handler(async ({ data }): Promise<SvaMainserverInstanceConfig> => {
     try {
       const { getRequest } = await import('@tanstack/react-start/server');
-      const { withAuthenticatedUser } = await import('@sva/auth/server');
+      const { withAuthenticatedUser } = await import('@sva/auth-runtime/server');
       const { saveSvaMainserverSettings } = await import('@sva/sva-mainserver/server');
-      const { createSdkLogger } = await import('@sva/sdk/server');
+      const { createSdkLogger } = await import('@sva/server-runtime');
       const logger = createSdkLogger({ component: COMPONENT });
       const request = getRequest();
       const payloadData = (data ?? {}) as SaveInterfacesPayload;
@@ -438,7 +438,7 @@ export const saveSvaMainserverInterfaceSettings = createServerFn({ method: 'POST
         `Schnittstellen-Einstellungen konnten nicht gespeichert werden (HTTP ${response.status}).`
       );
     } catch (error) {
-      const { createSdkLogger } = await import('@sva/sdk/server');
+      const { createSdkLogger } = await import('@sva/server-runtime');
       const logger = createSdkLogger({ component: COMPONENT });
       const payload = error instanceof Error && isRecord(error.cause) && isErrorPayload(error.cause) ? error.cause : null;
       const message =

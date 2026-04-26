@@ -16,7 +16,7 @@ import {
   updateSession as updateInMemorySession,
 } from './session.js';
 import type { LoginState, Session, SessionControlState } from './types.js';
-import { createSdkLogger } from '@sva/sdk/server';
+import { createSdkLogger } from '@sva/server-runtime';
 
 const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
 const meter = metrics.getMeter('sva.auth.sessions');

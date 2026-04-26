@@ -1,4 +1,4 @@
-import { getWorkspaceContext } from '@sva/sdk/server';
+import { getWorkspaceContext } from '@sva/server-runtime';
 import type { RuntimeScopeRef } from '../types.js';
 import { DEFAULT_WORKSPACE_ID, PLATFORM_WORKSPACE_ID, getWorkspaceIdForScope } from '../scope.js';
 

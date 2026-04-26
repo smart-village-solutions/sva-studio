@@ -58,11 +58,16 @@ pnpm nx show projects
 apps/
   sva-studio-react/     # TanStack Start app (main frontend + SSR)
 packages/
-  auth/                 # @sva/auth  — OIDC login, Redis session management
+  auth-runtime/         # @sva/auth-runtime — OIDC login, Redis session management
+  iam-admin/            # @sva/iam-admin — users, roles, groups, organizations
+  iam-governance/       # @sva/iam-governance — governance, DSR, legal texts
+  instance-registry/    # @sva/instance-registry — tenants, hosts, provisioning
   core/                 # @sva/core  — framework-agnostic core logic
-  data/                 # @sva/data  — data loading, state management
+  data-client/          # @sva/data-client — client-safe data access
+  data-repositories/    # @sva/data-repositories — server-side repositories
   routing/              # @sva/routing — type-safe route factories (core + plugin routes)
-  sdk/                  # @sva/sdk   — createSdkLogger, OpenTelemetry pipeline
+  plugin-sdk/           # @sva/plugin-sdk — plugin contracts
+  server-runtime/       # @sva/server-runtime — createSdkLogger, OpenTelemetry pipeline
   monitoring-client/    # @sva/monitoring-client
   plugin-news/          # news plugin
 tooling/
@@ -75,7 +80,7 @@ openspec/               # OpenSpec change proposals
 docs/                   # arc42 architecture docs, ADRs, guides (German)
 ```
 
-Internal packages use `workspace:*` protocol. Dependency direction: `core` → `routing/auth/sdk` → `sva-studio-react`.
+Internal packages use `workspace:*` protocol. Dependency direction: `core` → target packages → `routing`/integrations → `sva-studio-react`.
 
 ---
 
@@ -83,9 +88,9 @@ Internal packages use `workspace:*` protocol. Dependency direction: `core` → `
 
 **Routing**: TanStack Router with two layers — framework route factories in `@sva/core` and plugin-contributed routes in `@sva/routing`. Plugins extend routing dynamically at runtime without modifying core app files.
 
-**Auth**: OIDC-based login via `@sva/auth`. Sessions stored in Redis (TLS in production). Generate local certs with `./dev/generate-tls-certs.sh` before running Redis locally.
+**Auth**: OIDC-based login via `@sva/auth-runtime`. Sessions stored in Redis (TLS in production). Generate local certs with `./dev/generate-tls-certs.sh` before running Redis locally.
 
-**Observability**: `@sva/sdk` wraps the OpenTelemetry pipeline. Server code must use `createSdkLogger({ component: '...' })` — never `console.*`. See `docs/development/monitoring-stack.md` for local stack setup.
+**Observability**: `@sva/server-runtime` wraps the server logger and OpenTelemetry pipeline. Server code must use `createSdkLogger({ component: '...' })` — never `console.*`. See `docs/development/monitoring-stack.md` for local stack setup.
 
 **i18n**: All UI text goes through `t('key')` (react-i18next). Keys must exist in both `de` and `en`. Build fails (`check:i18n`) if keys are missing.
 
@@ -117,7 +122,7 @@ See `docs/development/postgres-setup.md` and `docs/development/monitoring-stack.
 ## Non-Negotiable Rules
 
 1. **No hardcoded strings** — always `t('key')`, both `de` and `en` must be defined
-2. **No `console.*` in server code** — use `createSdkLogger` from `@sva/sdk`
+2. **No `console.*` in server code** — use `createSdkLogger` from `@sva/server-runtime`
 3. **No inline styles** for static values — use design system tokens
 4. **Tests required** for all new behavior — coverage gate enforced in CI
 5. **File placement** enforced by CI — new markdown only in `docs/` subdirs (not root)

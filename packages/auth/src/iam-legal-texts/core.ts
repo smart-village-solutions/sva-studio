@@ -1,4 +1,5 @@
-import { createSdkLogger, getWorkspaceContext } from '@sva/sdk/server';
+import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
+import { createLegalTextHttpHandlers } from '@sva/iam-governance/legal-text-http-handlers';
 
 import { asApiList, createApiError } from '../iam-account-management/api-helpers.js';
 import type { AuthenticatedRequestContext } from '../middleware.server.js';
@@ -13,92 +14,53 @@ import {
 
 const logger = createSdkLogger({ component: 'iam-legal-texts', level: 'info' });
 
+const jsonResponse = (status: number, body: unknown) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
+
+const legalTextHttpHandlers = createLegalTextHttpHandlers<AuthenticatedRequestContext>({
+  resolveAdminActor: resolveLegalTextsAdminActor,
+  getRequestId: () => getWorkspaceContext().requestId,
+  asApiList,
+  createApiError: (status, code, message, requestId) =>
+    createApiError(status, code as Parameters<typeof createApiError>[1], message, requestId),
+  jsonResponse,
+  loadLegalTextListItems,
+  loadPendingLegalTexts,
+  createLegalTextResponse,
+  updateLegalTextResponse,
+  deleteLegalTextResponse,
+  logError: (message, fields) => logger.error(message, fields),
+});
+
 export const listLegalTextsInternal = async (
   request: Request,
   ctx: AuthenticatedRequestContext
-): Promise<Response> => {
-  const actorResolution = await resolveLegalTextsAdminActor(request, ctx);
-  if ('error' in actorResolution) {
-    return actorResolution.error;
-  }
-
-  try {
-    const items = await loadLegalTextListItems(actorResolution.actor.instanceId);
-    const pageSize = Math.max(1, items.length);
-    return new Response(
-      JSON.stringify(asApiList(items, { page: 1, pageSize, total: items.length }, actorResolution.actor.requestId)),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
-    );
-  } catch (error) {
-    logger.error('Legal text list query failed', {
-      operation: 'legal_texts_list',
-      instance_id: actorResolution.actor.instanceId,
-      request_id: actorResolution.actor.requestId,
-      trace_id: actorResolution.actor.traceId,
-      error: error instanceof Error ? error.message : String(error),
-    });
-    return createApiError(
-      503,
-      'database_unavailable',
-      'Rechtstexte konnten nicht geladen werden.',
-      actorResolution.actor.requestId
-    );
-  }
-};
+): Promise<Response> => legalTextHttpHandlers.listLegalTexts(request, ctx);
 
 export const createLegalTextInternal = async (
   request: Request,
   ctx: AuthenticatedRequestContext
-): Promise<Response> => {
-  const actorResolution = await resolveLegalTextsAdminActor(request, ctx, { requireActorAccountId: true });
-  return 'error' in actorResolution ? actorResolution.error : createLegalTextResponse(request, actorResolution.actor);
-};
+): Promise<Response> => legalTextHttpHandlers.createLegalText(request, ctx);
 
 export const updateLegalTextInternal = async (
   request: Request,
   ctx: AuthenticatedRequestContext
-): Promise<Response> => {
-  const actorResolution = await resolveLegalTextsAdminActor(request, ctx, { requireActorAccountId: true });
-  return 'error' in actorResolution ? actorResolution.error : updateLegalTextResponse(request, actorResolution.actor);
-};
+): Promise<Response> => legalTextHttpHandlers.updateLegalText(request, ctx);
 
 export const deleteLegalTextInternal = async (
   request: Request,
   ctx: AuthenticatedRequestContext
-): Promise<Response> => {
-  const actorResolution = await resolveLegalTextsAdminActor(request, ctx, { requireActorAccountId: true });
-  return 'error' in actorResolution ? actorResolution.error : deleteLegalTextResponse(request, actorResolution.actor);
-};
+): Promise<Response> => legalTextHttpHandlers.deleteLegalText(request, ctx);
 
 export const listLegalTextsHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedLegalTextsHandler(request, listLegalTextsInternal);
 
 export const listPendingLegalTextsHandler = async (request: Request): Promise<Response> =>
   withLegalTextsRequestContext(request, async () =>
-    withAuthenticatedUser(request, async ({ user }) => {
-      const requestId = getWorkspaceContext().requestId;
-
-      if (!user.instanceId) {
-        return createApiError(401, 'unauthorized', 'Instanzkontext fehlt.', requestId);
-      }
-
-      try {
-        const items = await loadPendingLegalTexts(user.instanceId, user.id);
-        const pageSize = Math.max(1, items.length);
-        return new Response(JSON.stringify(asApiList(items, { page: 1, pageSize, total: items.length }, requestId)), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        });
-      } catch (error) {
-        logger.error('Pending legal text query failed', {
-          operation: 'legal_texts_pending',
-          instance_id: user.instanceId,
-          user_id: user.id,
-          error: error instanceof Error ? error.message : String(error),
-        });
-        return createApiError(503, 'database_unavailable', 'Offene Rechtstexte konnten nicht geladen werden.', requestId);
-      }
-    })
+    withAuthenticatedUser(request, async ({ user }) => legalTextHttpHandlers.listPendingLegalTexts(user))
   );
 
 export const createLegalTextHandler = async (request: Request): Promise<Response> =>

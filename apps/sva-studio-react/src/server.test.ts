@@ -18,7 +18,7 @@ vi.mock('@tanstack/react-start/server-entry', () => ({
   createServerEntry: vi.fn((entry) => entry),
 }));
 
-vi.mock('@sva/sdk/server', () => ({
+vi.mock('@sva/server-runtime', () => ({
   createSdkLogger: createSdkLoggerMock,
   getWorkspaceContext: getWorkspaceContextMock,
   withRequestContext: withRequestContextMock,

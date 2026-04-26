@@ -29,7 +29,7 @@ const state = vi.hoisted(() => ({
 // ---------------------------------------------------------------------------
 // Mocks
 // ---------------------------------------------------------------------------
-vi.mock('@sva/sdk/server', () => ({
+vi.mock('@sva/server-runtime', () => ({
   createSdkLogger: () => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }),
   getWorkspaceContext: () => ({ requestId: 'req-1', traceId: 'trace-1', workspaceId: 'inst-g' }),
   withRequestContext: async (_opts: unknown, fn: () => Promise<unknown>) => fn(),

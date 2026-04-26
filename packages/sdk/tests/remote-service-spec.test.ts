@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
 
-// eslint-disable-next-line @nx/enforce-module-boundaries
 import { inspectRemoteServiceContract } from '../../../scripts/ops/runtime/remote-service-spec.ts';
 
 describe('remote-service-spec runtime helpers', () => {

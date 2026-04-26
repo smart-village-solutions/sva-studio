@@ -12,7 +12,7 @@ const state = vi.hoisted(() => ({
   queryImpl: null as null | ((text: string, values?: readonly unknown[]) => Promise<{ rowCount: number; rows: unknown[] }>),
 }));
 
-vi.mock('@sva/sdk/server', () => ({
+vi.mock('@sva/server-runtime', () => ({
   createSdkLogger: () => state.logger,
   getWorkspaceContext: () => ({
     requestId: 'req-shared-listener',

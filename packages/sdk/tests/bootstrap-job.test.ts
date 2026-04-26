@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 
-// eslint-disable-next-line @nx/enforce-module-boundaries
 import { buildBootstrapJobComposeDocument } from '../../../scripts/ops/runtime/bootstrap-job.ts';
 
 describe('bootstrap-job runtime helpers', () => {

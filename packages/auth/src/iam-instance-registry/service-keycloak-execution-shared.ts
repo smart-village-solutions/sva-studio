@@ -1,263 +1,42 @@
-import { areAllInstanceKeycloakRequirementsSatisfied } from '@sva/core';
+import {
+  buildProvisioningInput,
+  completeRun as completeTargetRun,
+  createQueuedRun as createTargetQueuedRun,
+  readQueuedTemporaryPassword as readTargetQueuedTemporaryPassword,
+  syncProvisionedClientSecretToRegistry as syncTargetProvisionedClientSecretToRegistry,
+  syncRotatedClientSecretToRegistry as syncTargetRotatedClientSecretToRegistry,
+} from '@sva/instance-registry/service-keycloak-execution-shared';
+import type { InstanceRegistryServiceDeps } from '@sva/instance-registry/service-types';
 
-import type { ExecuteInstanceKeycloakProvisioningInput } from './mutation-types.js';
-import type { InstanceRegistryServiceDeps } from './service-types.js';
-import { loadInstanceWithSecret } from './service-keycloak.js';
-import { appendRunStep, buildFinalRunSteps } from './service-keycloak-run-steps.js';
-import { protectField, revealField } from '../iam-account-management/encryption.js';
-import { readKeycloakStateViaProvisioner } from './provisioning-auth-state.js';
+import { withAuthInstanceRegistryDeps } from './instance-registry-deps.js';
 
-const buildTempPasswordAad = (runId: string): string => `iam.instances.keycloak_run_temp_password:${runId}`;
-const buildAuthClientSecretAad = (instanceId: string): string => `iam.instances.auth_client_secret:${instanceId}`;
-const buildTenantAdminClientSecretAad = (instanceId: string): string =>
-  `iam.instances.tenant_admin_client_secret:${instanceId}`;
+export { buildProvisioningInput };
 
-export const buildProvisioningInput = (
-  loaded: NonNullable<Awaited<ReturnType<typeof loadInstanceWithSecret>>>
-) => ({
-  instanceId: loaded.instance.instanceId,
-  primaryHostname: loaded.instance.primaryHostname,
-  realmMode: loaded.instance.realmMode,
-  authRealm: loaded.instance.authRealm,
-  authClientId: loaded.instance.authClientId,
-  authIssuerUrl: loaded.instance.authIssuerUrl,
-  authClientSecretConfigured: loaded.instance.authClientSecretConfigured,
-  authClientSecret: loaded.authClientSecret,
-  tenantAdminClient: loaded.instance.tenantAdminClient,
-  tenantAdminClientSecret: loaded.tenantAdminClientSecret,
-  tenantAdminBootstrap: loaded.instance.tenantAdminBootstrap,
-});
+const authSecretDeps = () => withAuthInstanceRegistryDeps({}) as InstanceRegistryServiceDeps;
 
 export const readQueuedTemporaryPassword = (
   runId: string,
   details: Readonly<Record<string, unknown>> | undefined
-): string | undefined => {
-  const ciphertext =
-    typeof details?.tenantAdminTemporaryPasswordCiphertext === 'string'
-      ? details.tenantAdminTemporaryPasswordCiphertext
-      : undefined;
-  return revealField(ciphertext, buildTempPasswordAad(runId));
-};
+): string | undefined => readTargetQueuedTemporaryPassword(authSecretDeps(), runId, details);
 
-export const createQueuedRun = async (
+export const createQueuedRun = (
   deps: InstanceRegistryServiceDeps,
-  loaded: NonNullable<Awaited<ReturnType<typeof loadInstanceWithSecret>>>,
-  input: ExecuteInstanceKeycloakProvisioningInput
-) => {
-  const provisioningInput = buildProvisioningInput(loaded);
-  const run = await deps.repository.createKeycloakProvisioningRun({
-    instanceId: loaded.instance.instanceId,
-    mode: loaded.instance.realmMode,
-    intent: input.intent,
-    overallStatus: 'planned',
-    driftSummary: 'Provisioning-Auftrag erstellt und für den Worker vorgemerkt.',
-    actorId: input.actorId,
-    requestId: input.requestId,
-  });
+  ...args: Tail<Parameters<typeof createTargetQueuedRun>>
+) => createTargetQueuedRun(withAuthInstanceRegistryDeps(deps), ...args);
 
-  await appendRunStep(deps, {
-    runId: run.id,
-    stepKey: 'queued',
-    title: 'Provisioning-Auftrag einreihen',
-    status: 'pending',
-    summary: 'Der Auftrag wurde gespeichert und wartet auf die Abarbeitung durch den Provisioning-Worker.',
-    details: {
-      intent: input.intent,
-      mode: loaded.instance.realmMode,
-      authRealm: loaded.instance.authRealm,
-      authClientId: loaded.instance.authClientId,
-      primaryHostname: loaded.instance.primaryHostname,
-      tenantAdminTemporaryPasswordCiphertext: input.tenantAdminTemporaryPassword
-        ? protectField(input.tenantAdminTemporaryPassword, buildTempPasswordAad(run.id))
-        : undefined,
-    },
-    requestId: input.requestId,
-  });
-
-  return { provisioningInput, run };
-};
-
-const encryptAuthClientSecret = (instanceId: string, secret: string | undefined): string | undefined => {
-  const normalizedSecret = secret?.trim();
-  if (!normalizedSecret) {
-    return undefined;
-  }
-  return protectField(normalizedSecret, buildAuthClientSecretAad(instanceId)) ?? undefined;
-};
-
-const encryptTenantAdminClientSecret = (instanceId: string, secret: string | undefined): string | undefined => {
-  const normalizedSecret = secret?.trim();
-  if (!normalizedSecret) {
-    return undefined;
-  }
-  return protectField(normalizedSecret, buildTenantAdminClientSecretAad(instanceId)) ?? undefined;
-};
-
-export const syncRotatedClientSecretToRegistry = async (
+export const syncRotatedClientSecretToRegistry = (
   deps: InstanceRegistryServiceDeps,
-  input: {
-    loaded: NonNullable<Awaited<ReturnType<typeof loadInstanceWithSecret>>>;
-    requestId?: string;
-    actorId?: string;
-  }
-) => {
-  const state = await readKeycloakStateViaProvisioner(buildProvisioningInput(input.loaded));
-  const rotatedSecret = state.keycloakClientSecret;
-  if (!rotatedSecret) {
-    throw new Error('tenant_auth_client_secret_missing_after_rotation');
-  }
+  input: Parameters<typeof syncTargetRotatedClientSecretToRegistry>[1]
+) => syncTargetRotatedClientSecretToRegistry(withAuthInstanceRegistryDeps(deps), input);
 
-  await deps.repository.updateInstance({
-    instanceId: input.loaded.instance.instanceId,
-    displayName: input.loaded.instance.displayName,
-    parentDomain: input.loaded.instance.parentDomain,
-    primaryHostname: input.loaded.instance.primaryHostname,
-    realmMode: input.loaded.instance.realmMode,
-    authRealm: input.loaded.instance.authRealm,
-    authClientId: input.loaded.instance.authClientId,
-    authIssuerUrl: input.loaded.instance.authIssuerUrl,
-    authClientSecretCiphertext: encryptAuthClientSecret(input.loaded.instance.instanceId, rotatedSecret),
-    keepExistingAuthClientSecret: false,
-    tenantAdminClient: input.loaded.instance.tenantAdminClient
-      ? {
-          clientId: input.loaded.instance.tenantAdminClient.clientId,
-          secretCiphertext: encryptTenantAdminClientSecret(
-            input.loaded.instance.instanceId,
-            state.tenantAdminClientSecret ?? input.loaded.tenantAdminClientSecret
-          ),
-        }
-      : undefined,
-    keepExistingTenantAdminClientSecret: !state.tenantAdminClientSecret && !input.loaded.tenantAdminClientSecret,
-    tenantAdminBootstrap: input.loaded.instance.tenantAdminBootstrap,
-    actorId: input.actorId,
-    requestId: input.requestId,
-    themeKey: input.loaded.instance.themeKey,
-    featureFlags: input.loaded.instance.featureFlags,
-    mainserverConfigRef: input.loaded.instance.mainserverConfigRef,
-  });
-
-  input.loaded.authClientSecret = rotatedSecret;
-  input.loaded.tenantAdminClientSecret = state.tenantAdminClientSecret ?? input.loaded.tenantAdminClientSecret;
-};
-
-export const syncProvisionedClientSecretToRegistry = async (
+export const syncProvisionedClientSecretToRegistry = (
   deps: InstanceRegistryServiceDeps,
-  input: {
-    loaded: NonNullable<Awaited<ReturnType<typeof loadInstanceWithSecret>>>;
-    requestId?: string;
-    actorId?: string;
-  }
-) => {
-  if (input.loaded.authClientSecret) {
-    return;
-  }
+  input: Parameters<typeof syncTargetProvisionedClientSecretToRegistry>[1]
+) => syncTargetProvisionedClientSecretToRegistry(withAuthInstanceRegistryDeps(deps), input);
 
-  const state = await readKeycloakStateViaProvisioner(buildProvisioningInput(input.loaded));
-  const provisionedSecret = state.keycloakClientSecret;
-  const provisionedTenantAdminSecret = state.tenantAdminClientSecret;
-  if (!provisionedSecret && !provisionedTenantAdminSecret) {
-    return;
-  }
-
-  await deps.repository.updateInstance({
-    instanceId: input.loaded.instance.instanceId,
-    displayName: input.loaded.instance.displayName,
-    parentDomain: input.loaded.instance.parentDomain,
-    primaryHostname: input.loaded.instance.primaryHostname,
-    realmMode: input.loaded.instance.realmMode,
-    authRealm: input.loaded.instance.authRealm,
-    authClientId: input.loaded.instance.authClientId,
-    authIssuerUrl: input.loaded.instance.authIssuerUrl,
-    authClientSecretCiphertext: encryptAuthClientSecret(input.loaded.instance.instanceId, provisionedSecret ?? undefined),
-    keepExistingAuthClientSecret: false,
-    tenantAdminClient: input.loaded.instance.tenantAdminClient
-      ? {
-          clientId: input.loaded.instance.tenantAdminClient.clientId,
-          secretCiphertext: encryptTenantAdminClientSecret(
-            input.loaded.instance.instanceId,
-            provisionedTenantAdminSecret ?? undefined
-          ),
-        }
-      : undefined,
-    keepExistingTenantAdminClientSecret: !provisionedTenantAdminSecret,
-    tenantAdminBootstrap: input.loaded.instance.tenantAdminBootstrap,
-    actorId: input.actorId,
-    requestId: input.requestId,
-    themeKey: input.loaded.instance.themeKey,
-    featureFlags: input.loaded.instance.featureFlags,
-    mainserverConfigRef: input.loaded.instance.mainserverConfigRef,
-  });
-
-  input.loaded.authClientSecret = provisionedSecret ?? undefined;
-  input.loaded.tenantAdminClientSecret = provisionedTenantAdminSecret ?? undefined;
-};
-
-export const completeRun = async (
+export const completeRun = (
   deps: InstanceRegistryServiceDeps,
-  input: {
-    loaded: NonNullable<Awaited<ReturnType<typeof loadInstanceWithSecret>>>;
-    runId: string;
-    requestId?: string;
-    actorId?: string;
-    intent: ExecuteInstanceKeycloakProvisioningInput['intent'];
-    tenantAdminTemporaryPassword?: string;
-  }
-) => {
-  const getKeycloakStatus = deps.getKeycloakStatus;
-  if (!getKeycloakStatus) {
-    throw new Error('dependency_missing_getKeycloakStatus');
-  }
-  const status = await getKeycloakStatus(buildProvisioningInput(input.loaded));
+  input: Parameters<typeof completeTargetRun>[1]
+) => completeTargetRun(withAuthInstanceRegistryDeps(deps), input);
 
-  await appendRunStep(deps, {
-    runId: input.runId,
-    stepKey: 'status_snapshot',
-    title: 'Keycloak-Status aufnehmen',
-    status: 'done',
-    summary: 'Der Worker hat den Keycloak-Istzustand nach dem Lauf gespeichert.',
-    details: { status },
-    requestId: input.requestId,
-  });
-
-  const completionSteps = buildFinalRunSteps({
-    status,
-    intent: input.intent,
-    usedTemporaryPassword: Boolean(input.tenantAdminTemporaryPassword),
-  });
-
-  for (const step of completionSteps) {
-    await appendRunStep(deps, {
-      runId: input.runId,
-      stepKey: step.stepKey,
-      title: step.title,
-      status: step.ok ? 'done' : 'failed',
-      summary: step.summary,
-      details: step.details,
-      requestId: input.requestId,
-    });
-  }
-
-  const finalRunStatus =
-    completionSteps.every((step) => step.ok) && areAllInstanceKeycloakRequirementsSatisfied(status)
-      ? 'succeeded'
-      : 'failed';
-
-  if (finalRunStatus === 'succeeded' && input.loaded.instance.status !== 'active') {
-    await deps.repository.setInstanceStatus({
-      instanceId: input.loaded.instance.instanceId,
-      status: 'provisioning',
-      actorId: input.actorId,
-      requestId: input.requestId,
-    });
-  }
-
-  await deps.repository.updateKeycloakProvisioningRun({
-    runId: input.runId,
-    overallStatus: finalRunStatus,
-    driftSummary:
-      finalRunStatus === 'succeeded'
-        ? 'Provisioning erfolgreich abgeschlossen.'
-        : 'Provisioning abgeschlossen, aber einzelne Sollzustände weichen weiterhin ab.',
-  });
-  return finalRunStatus;
-};
+type Tail<T extends readonly unknown[]> = T extends readonly [unknown, ...infer TRest] ? TRest : never;

@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const getLoggingRuntimeConfig = vi.fn();
 const readDevelopmentLogEntries = vi.fn();
 
-vi.mock('@sva/sdk/server', () => ({
+vi.mock('@sva/server-runtime', () => ({
   getLoggingRuntimeConfig,
   readDevelopmentLogEntries,
 }));

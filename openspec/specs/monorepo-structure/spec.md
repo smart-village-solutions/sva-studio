@@ -11,7 +11,7 @@ Das System SHALL eine Nx Integrated Monorepo-Struktur mit getrennten Bereichen f
 - **THEN** existieren mindestens apps/, packages/, tooling/ und scripts/
 
 ### Requirement: Publishable Packages und Plugins
-Das System SHALL Packages als eigenständige npm-Module organisieren, inklusive klarer Namenskonventionen für Core und Plugins. Plugins SHALL dabei ausschließlich über `@sva/sdk` mit dem Host-System kommunizieren und dürfen keine direkten Abhängigkeiten auf `@sva/core` oder andere interne Packages deklarieren.
+Das System SHALL Packages als eigenständige npm-Module organisieren, inklusive klarer Namenskonventionen für Core und Plugins. Plugins SHALL dabei ausschließlich über `@sva/plugin-sdk` mit dem Host-System kommunizieren und dürfen keine direkten Abhängigkeiten auf `@sva/core` oder andere interne Packages deklarieren.
 
 #### Scenario: Package-Namensschema
 - **WHEN** ein neues Paket erstellt wird
@@ -19,7 +19,7 @@ Das System SHALL Packages als eigenständige npm-Module organisieren, inklusive 
 
 #### Scenario: Plugin-Dependency-Regel
 - **WHEN** ein Plugin-Package erstellt oder aktualisiert wird
-- **THEN** listet seine `package.json` nur `@sva/sdk` als Workspace-Dependency
+- **THEN** listet seine `package.json` nur `@sva/plugin-sdk` als Workspace-Dependency
 - **AND** direkte Abhängigkeiten auf `@sva/core` oder andere interne Packages sind nicht vorhanden
 
 ### Requirement: App-Stack Definition
@@ -104,21 +104,21 @@ Das System SHALL klare, wiederverwendbare Generator-Commands und Workflows dokum
 - **AND** Verlinkung zu Nx-Dokumentation ist enthalten
 
 ### Requirement: Plugin-SDK-Boundary
-Plugins (Packages mit Tag `scope:plugin` oder Namensschema `@sva/plugin-*`) SHALL ausschließlich über `@sva/sdk` mit dem Host-System interagieren. Direkte Imports aus `@sva/core` oder anderen internen Packages sind für Plugins nicht zulässig.
+Plugins (Packages mit Tag `scope:plugin` oder Namensschema `@sva/plugin-*`) SHALL ausschließlich über `@sva/plugin-sdk` mit dem Host-System interagieren. Direkte Imports aus `@sva/core` oder anderen internen Packages sind für Plugins nicht zulässig.
 
 #### Scenario: Plugin importiert aus SDK
 - **WHEN** ein Plugin eine Funktion oder einen Typ des Host-Systems benötigt
-- **THEN** importiert es ausschließlich aus `@sva/sdk` oder dessen Sub-Exports
-- **AND** die `package.json` des Plugins listet nur `@sva/sdk` als Workspace-Dependency (nicht `@sva/core`)
+- **THEN** importiert es ausschließlich aus `@sva/plugin-sdk` oder dessen Sub-Exports
+- **AND** die `package.json` des Plugins listet nur `@sva/plugin-sdk` als Workspace-Dependency (nicht `@sva/core`)
 
 #### Scenario: Direktimport aus Core wird durch Lint verhindert
 - **WHEN** ein Plugin-Entwickler versucht, direkt aus `@sva/core` zu importieren
 - **THEN** schlägt die ESLint-Boundary-Prüfung fehl
-- **AND** eine aussagekräftige Fehlermeldung verweist auf `@sva/sdk` als korrekte Schnittstelle
+- **AND** eine aussagekräftige Fehlermeldung verweist auf `@sva/plugin-sdk` als korrekte Schnittstelle
 
-#### Scenario: SDK stellt Plugin-relevante Exporte bereit
+#### Scenario: Plugin-SDK stellt Plugin-relevante Exporte bereit
 - **WHEN** ein Plugin Zugriff auf Routing-Typen, Versions-Info oder andere Host-APIs benötigt
-- **THEN** stellt `@sva/sdk` die entsprechenden Re-Exports bereit
+- **THEN** stellt `@sva/plugin-sdk` die entsprechenden Re-Exports bereit
 - **AND** interne Implementierungsdetails von `@sva/core` werden nicht exponiert
 
 ### Requirement: Nx Caching für Test-Targets
@@ -198,7 +198,7 @@ Das System SHALL eine konsistente Nx-Workspace-Konfiguration über alle Packages
 - **AND** IDE-Auflösung und Build funktionieren ohne zusätzliche Konfiguration
 
 #### Scenario: Sub-Path-Exports gemappt
-- **WHEN** ein Package Sub-Path-Exports in `package.json` definiert (z. B. `@sva/sdk/server`)
+- **WHEN** ein Package Sub-Path-Exports in `package.json` definiert (z. B. `@sva/auth-runtime/server`)
 - **THEN** existieren korrespondierende Path-Einträge in `tsconfig.base.json`
 - **AND** die Sub-Path-Imports werden von IDE und Build korrekt aufgelöst
 
@@ -292,17 +292,17 @@ typsicher auflösen.
 - **THEN** existieren korrespondierende Einträge in `tsconfig.base.json`
 - **AND** Build, Type-Check und IDE-Auflösung funktionieren ohne lokale Sonderkonfiguration
 
-### Requirement: Datenbankzugriff ausschließlich über `@sva/data`-Repository
+### Requirement: Datenbankzugriff ausschließlich über `@sva/data-repositories`
 
 Das System SHALL alle Datenbankzugriffe des Mainserver-Pakets über das
-bestehende Repository in `@sva/data` abwickeln. Das Paket `@sva/sva-mainserver`
+bestehende Repository in `@sva/data-repositories` abwickeln. Das Paket `@sva/sva-mainserver`
 führt keine eigene `pg`-Dependency und keinen eigenen Connection-Pool.
 
 #### Scenario: Keine direkte pg-Dependency im Mainserver-Paket
 
 - **WHEN** die `package.json` von `@sva/sva-mainserver` geprüft wird
 - **THEN** enthält sie `pg` weder in `dependencies` noch in `peerDependencies`
-- **AND** Zugriffe auf `iam.instance_integrations` laufen über das Repository in `@sva/data`
+- **AND** Zugriffe auf `iam.instance_integrations` laufen über das Repository in `@sva/data-repositories`
 
 ### Requirement: Coverage-Baseline für Mainserver-Paket
 
@@ -438,7 +438,7 @@ Plugin-Packages SHALL ihre Action-Definitionen ausschließlich über SDK-Contrac
 #### Scenario: Host-App baut Registry aus Plugin-Definitionen
 - **WHEN** die Host-App Plugin-Metadaten zusammenführt
 - **THEN** entsteht die Plugin-Action-Registry aus den exportierten Plugin-Definitionen
-- **AND** Plugins benötigen dafür keine direkte Host-Abhängigkeit außerhalb von `@sva/sdk`
+- **AND** Plugins benötigen dafür keine direkte Host-Abhängigkeit außerhalb von `@sva/plugin-sdk`
 
 ### Requirement: Final-Artifact-Verify als offizieller App-Target
 

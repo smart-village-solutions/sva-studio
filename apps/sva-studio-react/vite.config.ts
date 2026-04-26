@@ -96,25 +96,113 @@ const config = defineConfig({
       '@sva/routing/server': resolveAppPath('../../packages/routing/src/index.server.ts'),
       '@sva/routing/auth': resolveAppPath('../../packages/routing/src/auth.routes.ts'),
       '@sva/routing': resolveAppPath('../../packages/routing/src/index.ts'),
-      '@sva/auth/runtime-routes': resolveAppPath('../../packages/auth/src/runtime-routes.server.ts'),
-      '@sva/auth/runtime-health': resolveAppPath('../../packages/auth/src/runtime-health.server.ts'),
-      '@sva/auth/server': resolveAppPath('../../packages/auth/src/index.server.ts'),
-      '@sva/auth': resolveAppPath('../../packages/auth/src/index.ts'),
-      '@sva/data/server': resolveAppPath('../../packages/data/src/server.ts'),
-      '@sva/data': resolveAppPath('../../packages/data/src/index.ts'),
+      '@sva/auth-runtime/server': resolveAppPath('../../packages/auth-runtime/src/server.ts'),
+      '@sva/auth-runtime/routes': resolveAppPath('../../packages/auth-runtime/src/routes.ts'),
+      '@sva/auth-runtime/runtime-routes': resolveAppPath('../../packages/auth-runtime/src/runtime-routes.ts'),
+      '@sva/auth-runtime/runtime-health': resolveAppPath('../../packages/auth-runtime/src/runtime-health.ts'),
+      '@sva/auth-runtime': resolveAppPath('../../packages/auth-runtime/src/index.ts'),
+      '@sva/data-repositories/server': resolveAppPath('../../packages/data-repositories/src/server.ts'),
+      '@sva/data-repositories': resolveAppPath('../../packages/data-repositories/src/index.ts'),
+      '@sva/iam-admin': resolveAppPath('../../packages/iam-admin/src/index.ts'),
+      '@sva/iam-core': resolveAppPath('../../packages/iam-core/src/index.ts'),
+      '@sva/iam-governance/read-models-internal': resolveAppPath(
+        '../../packages/iam-governance/src/read-models-internal.ts'
+      ),
+      '@sva/iam-governance/dsr-read-models-internal': resolveAppPath(
+        '../../packages/iam-governance/src/dsr-read-models-internal.ts'
+      ),
+      '@sva/iam-governance/dsr-export-flows': resolveAppPath(
+        '../../packages/iam-governance/src/dsr-export-flows.ts'
+      ),
+      '@sva/iam-governance/dsr-export-payload': resolveAppPath(
+        '../../packages/iam-governance/src/dsr-export-payload.ts'
+      ),
+      '@sva/iam-governance/dsr-export-status': resolveAppPath(
+        '../../packages/iam-governance/src/dsr-export-status.ts'
+      ),
+      '@sva/iam-governance/dsr-maintenance': resolveAppPath('../../packages/iam-governance/src/dsr-maintenance.ts'),
+      '@sva/iam-governance/legal-text-repository-shared': resolveAppPath(
+        '../../packages/iam-governance/src/legal-text-repository-shared.ts'
+      ),
+      '@sva/iam-governance/legal-text-repository': resolveAppPath(
+        '../../packages/iam-governance/src/legal-text-repository.ts'
+      ),
+      '@sva/iam-governance/legal-text-mutation-handlers': resolveAppPath(
+        '../../packages/iam-governance/src/legal-text-mutation-handlers.ts'
+      ),
+      '@sva/iam-governance/legal-text-http-handlers': resolveAppPath(
+        '../../packages/iam-governance/src/legal-text-http-handlers.ts'
+      ),
+      '@sva/iam-governance/legal-text-request-context': resolveAppPath(
+        '../../packages/iam-governance/src/legal-text-request-context.ts'
+      ),
+      '@sva/iam-governance/governance-compliance-export': resolveAppPath(
+        '../../packages/iam-governance/src/governance-compliance-export.ts'
+      ),
+      '@sva/iam-governance/governance-workflow-executor': resolveAppPath(
+        '../../packages/iam-governance/src/governance-workflow-executor.ts'
+      ),
+      '@sva/iam-governance/governance-workflow-policy': resolveAppPath(
+        '../../packages/iam-governance/src/governance-workflow-policy.ts'
+      ),
+      '@sva/iam-governance': resolveAppPath('../../packages/iam-governance/src/index.ts'),
+      '@sva/instance-registry/http-contracts': resolveAppPath(
+        '../../packages/instance-registry/src/http-contracts.ts'
+      ),
+      '@sva/instance-registry/http-guards': resolveAppPath('../../packages/instance-registry/src/http-guards.ts'),
+      '@sva/instance-registry/http-instance-handlers': resolveAppPath(
+        '../../packages/instance-registry/src/http-instance-handlers.ts'
+      ),
+      '@sva/instance-registry/http-keycloak-handlers': resolveAppPath(
+        '../../packages/instance-registry/src/http-keycloak-handlers.ts'
+      ),
+      '@sva/instance-registry/http-mutation-handlers': resolveAppPath(
+        '../../packages/instance-registry/src/http-mutation-handlers.ts'
+      ),
+      '@sva/instance-registry/keycloak-types': resolveAppPath(
+        '../../packages/instance-registry/src/keycloak-types.ts'
+      ),
+      '@sva/instance-registry/provisioning-auth': resolveAppPath(
+        '../../packages/instance-registry/src/provisioning-auth.ts'
+      ),
+      '@sva/instance-registry/provisioning-auth-state': resolveAppPath(
+        '../../packages/instance-registry/src/provisioning-auth-state.ts'
+      ),
+      '@sva/instance-registry/provisioning-worker': resolveAppPath(
+        '../../packages/instance-registry/src/provisioning-worker.ts'
+      ),
+      '@sva/instance-registry/runtime-resolution': resolveAppPath(
+        '../../packages/instance-registry/src/runtime-resolution.ts'
+      ),
+      '@sva/instance-registry/runtime-wiring': resolveAppPath(
+        '../../packages/instance-registry/src/runtime-wiring.ts'
+      ),
+      '@sva/instance-registry/service': resolveAppPath('../../packages/instance-registry/src/service.ts'),
+      '@sva/instance-registry/service-detail': resolveAppPath(
+        '../../packages/instance-registry/src/service-detail.ts'
+      ),
+      '@sva/instance-registry/service-keycloak': resolveAppPath(
+        '../../packages/instance-registry/src/service-keycloak.ts'
+      ),
+      '@sva/instance-registry/service-keycloak-execution': resolveAppPath(
+        '../../packages/instance-registry/src/service-keycloak-execution.ts'
+      ),
+      '@sva/instance-registry/service-keycloak-execution-shared': resolveAppPath(
+        '../../packages/instance-registry/src/service-keycloak-execution-shared.ts'
+      ),
+      '@sva/instance-registry/service-types': resolveAppPath(
+        '../../packages/instance-registry/src/service-types.ts'
+      ),
+      '@sva/instance-registry': resolveAppPath('../../packages/instance-registry/src/index.ts'),
       '@sva/sva-mainserver/server': resolveAppPath('../../packages/sva-mainserver/src/index.server.ts'),
       '@sva/sva-mainserver': resolveAppPath('../../packages/sva-mainserver/src/index.ts'),
-      '@sva/sdk/admin-resources': resolveAppPath('../../packages/sdk/src/admin-resources.ts'),
-      '@sva/sdk/logging': resolveAppPath('../../packages/sdk/src/logging.ts'),
-      '@sva/sdk/server': resolveAppPath('../../packages/sdk/src/server.ts'),
-      '@sva/sdk/logger/index.server': resolveAppPath('../../packages/sdk/src/logger/index.server.ts'),
-      '@sva/sdk/middleware/request-context.server': resolveAppPath('../../packages/sdk/src/middleware/request-context.server.ts'),
-      '@sva/sdk/observability/context.server': resolveAppPath('../../packages/sdk/src/observability/context.server.ts'),
-      '@sva/sdk': resolveAppPath('../../packages/sdk/src/index.ts'),
+      '@sva/plugin-sdk': resolveAppPath('../../packages/plugin-sdk/src/index.ts'),
+      '@sva/server-runtime': resolveAppPath('../../packages/server-runtime/src/index.ts'),
       '@sva/monitoring-client/server': resolveAppPath('../../packages/monitoring-client/src/server.ts'),
       '@sva/monitoring-client/logger-provider.server': resolveAppPath(
         '../../packages/monitoring-client/src/logger-provider.server.ts'
       ),
+      '@sva/monitoring-client/logging': resolveAppPath('../../packages/monitoring-client/src/logging.ts'),
       '@sva/monitoring-client': resolveAppPath('../../packages/monitoring-client/src/index.ts'),
       '@sva/core/security': resolveAppPath('../../packages/core/src/security/index.ts'),
       '@sva/core': resolveAppPath('../../packages/core/src/index.ts'),
@@ -123,13 +211,17 @@ const config = defineConfig({
   ssr: {
     // Workspace packages müssen in Dev-SSR transpiliert werden, weil Vite package.json exports nicht korrekt auflöst
     noExternal: [
-      '@sva/auth',
-      '@sva/data',
+      '@sva/auth-runtime',
+      '@sva/data-repositories',
+      '@sva/iam-admin',
+      '@sva/iam-core',
+      '@sva/iam-governance',
+      '@sva/instance-registry',
       '@sva/routing',
       '@sva/sva-mainserver',
       '@sva/core',
-      '@sva/sdk',
       '@sva/monitoring-client',
+      '@sva/server-runtime',
     ],
   },
   build: {

@@ -1,6 +1,6 @@
 import { classifyHost, isTrafficEnabledInstanceStatus } from '@sva/core';
-import { loadInstanceByHostname } from '@sva/data/server';
-import { createSdkLogger, getInstanceConfig, getWorkspaceContext } from '@sva/sdk/server';
+import { loadInstanceByHostname } from '@sva/data-repositories/server';
+import { createSdkLogger, getInstanceConfig, getWorkspaceContext } from '@sva/server-runtime';
 
 import { buildLogContext } from './shared/log-context.js';
 import { resolveEffectiveRequestHost } from './request-hosts.js';

@@ -28,7 +28,7 @@ const state = vi.hoisted(() => ({
   resolveContentAccess: vi.fn(),
 }));
 
-vi.mock('@sva/sdk/server', () => ({
+vi.mock('@sva/server-runtime', () => ({
   createSdkLogger: () => state.logger,
   getWorkspaceContext: () => ({ requestId: 'req-content', traceId: 'trace-content' }),
   withRequestContext: async (_options: unknown, work: () => Promise<unknown>) => work(),

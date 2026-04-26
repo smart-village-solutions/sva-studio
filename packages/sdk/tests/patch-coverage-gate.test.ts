@@ -158,7 +158,10 @@ describe('patch coverage gate', () => {
 
     writeSourceFile(rootDir, 'packages/sdk/src/index.ts', 'export function sdkValue(): number {\n  return 2;\n}\n');
     writeSourceFile(rootDir, 'packages/data/src/query.ts', 'export function dataValue(): number {\n  return 2;\n}\n');
-    writeLcov(rootDir, 'packages/sdk', 'src/index.ts', [[2, 1]]);
+    writeLcov(rootDir, 'packages/sdk', 'src/index.ts', [
+      [1, 0],
+      [2, 1],
+    ]);
     commitAll(rootDir, 'change');
 
     const result = runPatchCoverageGate({
@@ -196,6 +199,67 @@ describe('patch coverage gate', () => {
     expect(result.coveragePct).toBe(0);
     expect(result.missedLines).toBe(1);
     expect(result.uncoveredFiles[0]?.path).toBe('packages/sdk/src/index.ts');
+  }, 20_000);
+
+  it('counts repeated executable added lines as changed patch lines', async () => {
+    const runPatchCoverageGate = await loadRunPatchCoverageGate();
+    const rootDir = createTempWorkspace();
+    initGitRepo(rootDir);
+    writePolicy(rootDir);
+    writeSourceFile(
+      rootDir,
+      'packages/sdk/src/index.ts',
+      'export function existing(): string {\n  return "shared-value";\n}\n'
+    );
+    commitAll(rootDir, 'base');
+    runGit(rootDir, ['checkout', '-b', 'feature/test']);
+
+    writeSourceFile(
+      rootDir,
+      'packages/sdk/src/index.ts',
+      'export function existing(): string {\n  return "shared-value";\n}\n\nexport function added(): string {\n  return "shared-value";\n}\n'
+    );
+    commitAll(rootDir, 'change');
+
+    const result = runPatchCoverageGate({
+      rootDir,
+      baseRef: 'main',
+      headRef: 'HEAD',
+      targetPct: 85,
+    });
+
+    expect(result.passed).toBe(false);
+    expect(result.missedLines).toBe(2);
+    expect(result.uncoveredFiles[0]?.path).toBe('packages/sdk/src/index.ts');
+  }, 20_000);
+
+  it('does not advance changed line numbers for no-newline diff metadata', async () => {
+    const runPatchCoverageGate = await loadRunPatchCoverageGate();
+    const rootDir = createTempWorkspace();
+    initGitRepo(rootDir);
+    writePolicy(rootDir);
+    writeSourceFile(rootDir, 'packages/sdk/src/index.ts', 'export const one = 1;');
+    commitAll(rootDir, 'base');
+    runGit(rootDir, ['checkout', '-b', 'feature/test']);
+
+    writeSourceFile(rootDir, 'packages/sdk/src/index.ts', 'export const one = 2;\nexport const two = 2;\n');
+    writeLcov(rootDir, 'packages/sdk', 'src/index.ts', [
+      [1, 0],
+      [2, 1],
+    ]);
+    commitAll(rootDir, 'change');
+
+    const result = runPatchCoverageGate({
+      rootDir,
+      baseRef: 'main',
+      headRef: 'HEAD',
+      targetPct: 85,
+    });
+
+    expect(result.passed).toBe(false);
+    expect(result.coveredLines).toBe(1);
+    expect(result.missedLines).toBe(1);
+    expect(result.coveragePct).toBe(50);
   }, 20_000);
 
   it('ignores generated route tree artifacts without lcov data', async () => {

@@ -22,7 +22,7 @@ vi.mock('@tanstack/react-start/server', () => ({
   getRequest: () => state.request,
 }));
 
-vi.mock('@sva/auth/server', () => ({
+vi.mock('@sva/auth-runtime/server', () => ({
   withAuthenticatedUser: state.withAuthenticatedUser,
 }));
 
@@ -30,7 +30,7 @@ vi.mock('@sva/sva-mainserver/server', () => ({
   getSvaMainserverConnectionStatus: state.getSvaMainserverConnectionStatus,
 }));
 
-vi.mock('@sva/sdk/server', () => ({
+vi.mock('@sva/server-runtime', () => ({
   createSdkLogger: () => state.logger,
 }));
 

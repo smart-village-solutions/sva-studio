@@ -26,7 +26,7 @@ vi.mock('../lib/iam-api', async () => {
   };
 });
 
-vi.mock('@sva/sdk/logging', () => ({
+vi.mock('@sva/monitoring-client/logging', () => ({
   createBrowserLogger: () => browserLoggerMock,
 }));
 

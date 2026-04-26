@@ -132,7 +132,7 @@ vi.mock('./middleware.server', () => ({
   ),
 }));
 
-vi.mock('@sva/data/server', () => ({
+vi.mock('@sva/data-repositories/server', () => ({
   loadInstanceById: vi.fn(async (instanceId: string) => roleSyncIntegrationState.instanceById.get(instanceId) ?? null),
 }));
 
@@ -151,8 +151,8 @@ vi.mock('./config-tenant-secret.js', () => ({
   })),
 }));
 
-vi.mock('@sva/sdk/server', async () => {
-  const actual = await vi.importActual<typeof import('@sva/sdk/server')>('@sva/sdk/server');
+vi.mock('@sva/server-runtime', async () => {
+  const actual = await vi.importActual<typeof import('@sva/server-runtime')>('@sva/server-runtime');
   return {
     ...actual,
     createSdkLogger: () => ({

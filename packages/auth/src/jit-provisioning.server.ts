@@ -1,4 +1,4 @@
-import { createSdkLogger, getWorkspaceContext } from '@sva/sdk/server';
+import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 
 import { createPoolResolver, type QueryClient, withInstanceDb } from './shared/db-helpers.js';
 import { getIamDatabaseUrl } from './runtime-secrets.server.js';

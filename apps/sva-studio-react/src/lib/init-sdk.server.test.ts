@@ -9,7 +9,7 @@ const createSdkLogger = vi.fn(() => logger);
 const getInstanceConfig = vi.fn();
 const initializeOtelSdk = vi.fn();
 
-vi.mock('@sva/sdk/server', () => ({
+vi.mock('@sva/server-runtime', () => ({
   createSdkLogger,
   getInstanceConfig,
   initializeOtelSdk,

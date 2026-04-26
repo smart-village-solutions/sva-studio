@@ -1,4 +1,4 @@
-import { withRequestContext } from '@sva/sdk/server';
+import { withRequestContext } from '@sva/server-runtime';
 
 import type { AuthenticatedRequestContext } from '../middleware.server.js';
 import { withAuthenticatedUser } from '../middleware.server.js';

@@ -17,19 +17,19 @@ const state = vi.hoisted(() => ({
     | { status: 'conflict'; message: string },
   contextOptions: [
     {
-      organizationId: 'org-1',
-      organizationKey: 'alpha',
-      displayName: 'Alpha',
-      organizationType: 'municipality',
-      isActive: true,
-      isDefaultContext: true,
+      organization_id: 'org-1',
+      organization_key: 'alpha',
+      display_name: 'Alpha',
+      organization_type: 'municipality',
+      is_active: true,
+      is_default_context: true,
     },
   ],
   session: undefined as undefined | { activeOrganizationId?: string },
   updateSession: vi.fn(),
 }));
 
-vi.mock('@sva/sdk/server', () => ({
+vi.mock('@sva/server-runtime', () => ({
   createSdkLogger: () => ({ info: vi.fn() }),
   getWorkspaceContext: () => ({ requestId: 'req-org' }),
 }));
@@ -115,21 +115,6 @@ vi.mock('../iam-account-management/csrf.js', () => ({
   validateCsrf: vi.fn(() => null),
 }));
 
-vi.mock('./handlers.helpers.js', () => ({
-  chooseActiveOrganizationId: vi.fn(({ storedActiveOrganizationId, organizations }) =>
-    storedActiveOrganizationId ?? organizations[0]?.organizationId
-  ),
-  escapeIlikePattern: vi.fn((value: string) => value),
-  isHierarchyError: vi.fn(
-    (value: unknown) => Boolean(value && typeof value === 'object' && 'ok' in (value as Record<string, unknown>) && (value as Record<string, unknown>).ok === false)
-  ),
-  mapContextOption: vi.fn((row: Record<string, unknown>) => row),
-  mapMembershipRow: vi.fn(),
-  mapOrganizationListItem: vi.fn((row: Record<string, unknown>) => row),
-  readOrganizationTypeFilter: vi.fn((request: Request) => new URL(request.url).searchParams.get('organizationType') ?? undefined),
-  readStatusFilter: vi.fn(() => undefined),
-}));
-
 import {
   createOrganizationInternal,
   getMyOrganizationContextInternal,
@@ -161,12 +146,12 @@ describe('iam-organizations handler internals', () => {
     state.session = undefined;
     state.contextOptions = [
       {
-        organizationId: 'org-1',
-        organizationKey: 'alpha',
-        displayName: 'Alpha',
-        organizationType: 'municipality',
-        isActive: true,
-        isDefaultContext: true,
+        organization_id: 'org-1',
+        organization_key: 'alpha',
+        display_name: 'Alpha',
+        organization_type: 'municipality',
+        is_active: true,
+        is_default_context: true,
       },
     ];
   });
@@ -242,7 +227,8 @@ describe('iam-organizations handler internals', () => {
       ctx
     );
     expect(getResponse.status).toBe(200);
-    expect(state.updateSession).not.toHaveBeenCalled();
+    expect(state.updateSession).toHaveBeenCalledWith('session-1', { activeOrganizationId: 'org-1' });
+    state.updateSession.mockClear();
 
     const updateResponse = await updateMyOrganizationContextInternal(
       new Request('http://localhost/api/v1/iam/me/context', { method: 'PUT' }),

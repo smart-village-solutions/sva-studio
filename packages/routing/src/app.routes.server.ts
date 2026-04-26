@@ -1,4 +1,4 @@
-import type { AdminResourceDefinition, PluginDefinition } from '@sva/sdk';
+import type { AdminResourceDefinition, PluginDefinition } from '@sva/plugin-sdk';
 
 import { authServerRouteFactories } from './auth.routes.server.js';
 import {

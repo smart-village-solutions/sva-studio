@@ -15,7 +15,7 @@ const state = vi.hoisted(() => ({
   reserve: { status: 'reserved' as const },
 }));
 
-vi.mock('@sva/sdk/server', () => ({
+vi.mock('@sva/server-runtime', () => ({
   createSdkLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }),
   getWorkspaceContext: () => ({ requestId: 'req-users' }),
 }));
@@ -29,6 +29,11 @@ vi.mock('../shared/db-helpers.js', () => ({
 
 vi.mock('./api-helpers.js', () => ({
   asApiItem: (data: unknown, requestId?: string) => ({ data, ...(requestId ? { requestId } : {}) }),
+  asApiList: (data: readonly unknown[], pagination: unknown, requestId?: string) => ({
+    data,
+    pagination,
+    ...(requestId ? { requestId } : {}),
+  }),
   createApiError: (status: number, code: string, message: string, requestId?: string) =>
     new Response(JSON.stringify({ error: { code, message }, ...(requestId ? { requestId } : {}) }), {
       status,
@@ -40,6 +45,7 @@ vi.mock('./api-helpers.js', () => ({
     (request: Request, index: number) =>
       new URL(request.url).pathname.split('/').filter((segment) => segment.length > 0)[index]
   ),
+  readPage: vi.fn(() => ({ page: 1, pageSize: 20 })),
   requireIdempotencyKey: vi.fn(() => ({ key: 'idem-1' })),
   toPayloadHash: vi.fn(() => 'hash-1'),
 }));
@@ -107,7 +113,9 @@ vi.mock('./shared-observability.js', () => ({
 
 vi.mock('./shared-activity.js', () => ({
   emitActivityLog: vi.fn(),
+  emitRoleAuditEvent: vi.fn(),
   notifyPermissionInvalidation: vi.fn(),
+  setRoleSyncState: vi.fn(),
 }));
 
 vi.mock('./shared-actor-authorization.js', () => ({

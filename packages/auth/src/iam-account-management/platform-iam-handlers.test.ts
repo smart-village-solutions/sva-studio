@@ -23,7 +23,7 @@ const state = vi.hoisted(() => ({
   platformReconcileError: null as Error | null,
 }));
 
-vi.mock('@sva/sdk/server', () => ({
+vi.mock('@sva/server-runtime', () => ({
   getWorkspaceContext: () => ({ requestId: 'req-platform', traceId: 'trace-platform' }),
 }));
 

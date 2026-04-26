@@ -1,4 +1,4 @@
-import { createBrowserLogger, type BrowserLogLevel, type BrowserLogger } from '@sva/sdk/logging';
+import { createBrowserLogger, type BrowserLogLevel, type BrowserLogger } from '@sva/monitoring-client/logging';
 
 export type BrowserOperationLogMeta = Readonly<{
   operation?: string;

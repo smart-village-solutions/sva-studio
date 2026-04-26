@@ -1,6 +1,6 @@
 import { Link, useRouter } from '@tanstack/react-router';
 import type { ErrorComponentProps } from '@tanstack/react-router';
-import { createBrowserLogger } from '@sva/sdk/logging';
+import { createBrowserLogger } from '@sva/monitoring-client/logging';
 
 import { t } from '../i18n';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';

@@ -1,5 +1,5 @@
 import type { ApiErrorResponse } from '@sva/core';
-import { getWorkspaceContext } from '@sva/sdk/server';
+import { getWorkspaceContext } from '@sva/server-runtime';
 import { z } from 'zod';
 
 import type { AuthenticatedRequestContext } from '../middleware.server.js';

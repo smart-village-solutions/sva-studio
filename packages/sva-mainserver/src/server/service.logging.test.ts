@@ -36,8 +36,8 @@ const state = vi.hoisted(() => ({
   },
 }));
 
-vi.mock('@sva/sdk/server', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@sva/sdk/server')>();
+vi.mock('@sva/server-runtime', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@sva/server-runtime')>();
 
   return {
     ...actual,

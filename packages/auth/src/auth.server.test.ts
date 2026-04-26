@@ -85,7 +85,7 @@ vi.mock('./shared/db-helpers', () => ({
   createPoolResolver: () => () => null,
 }));
 
-vi.mock('@sva/data/server', () => ({
+vi.mock('@sva/data-repositories/server', () => ({
   loadInstanceById: loadInstanceByIdMock,
 }));
 

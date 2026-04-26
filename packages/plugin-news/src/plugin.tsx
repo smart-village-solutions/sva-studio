@@ -3,7 +3,7 @@ import {
   definePluginAuditEvents,
   definePluginContentTypes,
   type PluginDefinition,
-} from '@sva/sdk';
+} from '@sva/plugin-sdk';
 
 import { NEWS_CONTENT_TYPE } from './news.constants.js';
 import { NewsCreatePage, NewsEditPage, NewsListPage } from './news.pages.js';

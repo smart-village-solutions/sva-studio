@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
 
-// eslint-disable-next-line @nx/enforce-module-boundaries
 import { formatRemoteStackSnapshot, inspectRemoteStack } from '../../../scripts/ops/runtime/remote-stack-state.ts';
 
 describe('remote-stack-state runtime helpers', () => {

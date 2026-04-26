@@ -2,175 +2,67 @@ import { asApiItem, asApiList, createApiError, parseRequestBody, requireIdempote
 import { validateCsrf } from '../iam-account-management/csrf.js';
 import { jsonResponse } from '../shared/db-helpers.js';
 import { buildLogContext } from '../shared/log-context.js';
-import { createSdkLogger, getWorkspaceContext } from '@sva/sdk/server';
-import { buildPrimaryHostname, normalizeHost } from '@sva/core';
+import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
+import { createInstanceRegistryHttpHandlers } from '@sva/instance-registry/http-instance-handlers';
 
 import type { AuthenticatedRequestContext } from '../middleware.server.js';
-import { createInstanceSchema, ensurePlatformAccess, listQuerySchema, readDetailInstanceId, requireFreshReauth, updateInstanceSchema } from './http.js';
+import { ensurePlatformAccess, requireFreshReauth } from './http.js';
 import { mapInstanceMutationError, mutateInstanceStatus } from './core-mutations.js';
 import { withRegistryService } from './repository.js';
 
 const logger = createSdkLogger({ component: 'iam-instance-registry', level: 'info' });
 
+const parseRegistryRequestBody = async <T>(
+  request: Request,
+  schema: unknown
+): Promise<{ ok: true; data: T } | { ok: false; message: string }> => {
+  const result = await parseRequestBody(request, schema as Parameters<typeof parseRequestBody>[1]);
+  if (!result.ok) {
+    return { ok: false, message: result.message };
+  }
+  return { ok: true, data: result.data as T };
+};
+
+const instanceHttpHandlers = createInstanceRegistryHttpHandlers<AuthenticatedRequestContext>({
+  getRequestId: () => getWorkspaceContext().requestId,
+  getActor: (ctx) => ({ id: ctx.user.id }),
+  createApiError: (status, code, message, requestId, details) =>
+    createApiError(status, code as Parameters<typeof createApiError>[1], message, requestId, details),
+  jsonResponse,
+  asApiItem,
+  asApiList,
+  parseRequestBody: parseRegistryRequestBody,
+  requireIdempotencyKey,
+  mapMutationError: mapInstanceMutationError,
+  ensurePlatformAccess,
+  validateCsrf,
+  requireFreshReauth,
+  withRegistryService,
+  onInstanceProvisioningRequested: ({ instanceId, primaryHostname, actorId }) => {
+    logger.info('Instance provisioning requested', {
+      operation: 'instance_create',
+      instance_id: instanceId,
+      primary_hostname: primaryHostname,
+      actor_id: actorId,
+      ...buildLogContext('platform', { includeTraceId: true }),
+    });
+  },
+});
+
 export const listInstancesInternal = async (request: Request, ctx: AuthenticatedRequestContext): Promise<Response> => {
-  const accessError = ensurePlatformAccess(request, ctx);
-  if (accessError) {
-    return accessError;
-  }
-
-  const url = new URL(request.url);
-  const parsed = listQuerySchema.safeParse({
-    search: url.searchParams.get('search') ?? undefined,
-    status: url.searchParams.get('status') ?? undefined,
-  });
-
-  if (!parsed.success) {
-    return createApiError(400, 'invalid_request', 'Ungültige Filter für die Instanzverwaltung.', getWorkspaceContext().requestId);
-  }
-
-  const enriched = await withRegistryService((service) => service.listInstances(parsed.data));
-  return jsonResponse(
-    200,
-    asApiList(enriched, { page: 1, pageSize: enriched.length, total: enriched.length }, getWorkspaceContext().requestId)
-  );
+  return instanceHttpHandlers.listInstances(request, ctx);
 };
 
 export const getInstanceInternal = async (request: Request, ctx: AuthenticatedRequestContext): Promise<Response> => {
-  const accessError = ensurePlatformAccess(request, ctx);
-  if (accessError) {
-    return accessError;
-  }
-
-  const instanceId = readDetailInstanceId(request);
-  if (!instanceId) {
-    return createApiError(400, 'invalid_instance_id', 'Instanz-ID fehlt.', getWorkspaceContext().requestId);
-  }
-
-  const instance = await withRegistryService((service) => service.getInstanceDetail(instanceId));
-  if (!instance) {
-    return createApiError(404, 'not_found', 'Instanz wurde nicht gefunden.', getWorkspaceContext().requestId);
-  }
-
-  return jsonResponse(200, asApiItem(instance, getWorkspaceContext().requestId));
+  return instanceHttpHandlers.getInstance(request, ctx);
 };
 
 export const createInstanceInternal = async (request: Request, ctx: AuthenticatedRequestContext): Promise<Response> => {
-  const accessError = ensurePlatformAccess(request, ctx);
-  if (accessError) {
-    return accessError;
-  }
-
-  const csrfError = validateCsrf(request, getWorkspaceContext().requestId);
-  if (csrfError) {
-    return csrfError;
-  }
-
-  const reauthError = requireFreshReauth(request);
-  if (reauthError) {
-    return reauthError;
-  }
-
-  const idempotencyResult = requireIdempotencyKey(request, getWorkspaceContext().requestId);
-  if ('error' in idempotencyResult) {
-    return idempotencyResult.error;
-  }
-
-  const payloadResult = await parseRequestBody(request, createInstanceSchema);
-  if (!payloadResult.ok) {
-    return createApiError(400, 'invalid_request', payloadResult.message, getWorkspaceContext().requestId);
-  }
-
-  const result = await withRegistryService((service) =>
-    service.createProvisioningRequest({
-      idempotencyKey: idempotencyResult.key,
-      instanceId: payloadResult.data.instanceId,
-      displayName: payloadResult.data.displayName,
-      parentDomain: payloadResult.data.parentDomain,
-      realmMode: payloadResult.data.realmMode,
-      authRealm: payloadResult.data.authRealm,
-      authClientId: payloadResult.data.authClientId,
-      authIssuerUrl: payloadResult.data.authIssuerUrl,
-      authClientSecret: payloadResult.data.authClientSecret,
-      tenantAdminClient: payloadResult.data.tenantAdminClient,
-      tenantAdminBootstrap: payloadResult.data.tenantAdminBootstrap,
-      actorId: ctx.user.id,
-      requestId: getWorkspaceContext().requestId,
-      themeKey: payloadResult.data.themeKey,
-      featureFlags: payloadResult.data.featureFlags,
-      mainserverConfigRef: payloadResult.data.mainserverConfigRef,
-    })
-  );
-
-  if (!result.ok) {
-    return createApiError(409, 'conflict', 'Instanz-ID ist bereits vergeben.', getWorkspaceContext().requestId);
-  }
-
-  logger.info('Instance provisioning requested', {
-    operation: 'instance_create',
-    instance_id: result.instance.instanceId,
-    primary_hostname: buildPrimaryHostname(result.instance.instanceId, normalizeHost(payloadResult.data.parentDomain)),
-    actor_id: ctx.user.id,
-    ...buildLogContext('platform', { includeTraceId: true }),
-  });
-
-  return jsonResponse(201, asApiItem(result.instance, getWorkspaceContext().requestId));
+  return instanceHttpHandlers.createInstance(request, ctx);
 };
 
 export const updateInstanceInternal = async (request: Request, ctx: AuthenticatedRequestContext): Promise<Response> => {
-  const accessError = ensurePlatformAccess(request, ctx);
-  if (accessError) {
-    return accessError;
-  }
-
-  const csrfError = validateCsrf(request, getWorkspaceContext().requestId);
-  if (csrfError) {
-    return csrfError;
-  }
-
-  const reauthError = requireFreshReauth(request);
-  if (reauthError) {
-    return reauthError;
-  }
-
-  const instanceId = readDetailInstanceId(request);
-  if (!instanceId) {
-    return createApiError(400, 'invalid_instance_id', 'Instanz-ID fehlt.', getWorkspaceContext().requestId);
-  }
-
-  const payloadResult = await parseRequestBody(request, updateInstanceSchema);
-  if (!payloadResult.ok) {
-    return createApiError(400, 'invalid_request', payloadResult.message, getWorkspaceContext().requestId);
-  }
-
-  try {
-    const updated = await withRegistryService((service) =>
-      service.updateInstance({
-        instanceId,
-        displayName: payloadResult.data.displayName,
-        parentDomain: payloadResult.data.parentDomain,
-        realmMode: payloadResult.data.realmMode,
-        authRealm: payloadResult.data.authRealm,
-        authClientId: payloadResult.data.authClientId,
-        authIssuerUrl: payloadResult.data.authIssuerUrl,
-        authClientSecret: payloadResult.data.authClientSecret,
-        tenantAdminClient: payloadResult.data.tenantAdminClient,
-        tenantAdminBootstrap: payloadResult.data.tenantAdminBootstrap,
-        actorId: ctx.user.id,
-        requestId: getWorkspaceContext().requestId,
-        themeKey: payloadResult.data.themeKey,
-        featureFlags: payloadResult.data.featureFlags,
-        mainserverConfigRef: payloadResult.data.mainserverConfigRef,
-      })
-    );
-
-    if (!updated) {
-      return createApiError(404, 'not_found', 'Instanz wurde nicht gefunden.', getWorkspaceContext().requestId);
-    }
-
-    return jsonResponse(200, asApiItem(updated, getWorkspaceContext().requestId));
-  } catch (error) {
-    return mapInstanceMutationError(error);
-  }
+  return instanceHttpHandlers.updateInstance(request, ctx);
 };
 
 export const activateInstanceInternal = async (request: Request, ctx: AuthenticatedRequestContext): Promise<Response> =>

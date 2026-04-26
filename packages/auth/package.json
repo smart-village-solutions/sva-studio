@@ -13,21 +13,17 @@
     "./server": {
       "types": "./dist/index.server.d.ts",
       "default": "./dist/index.server.js"
-    },
-    "./runtime-routes": {
-      "types": "./dist/runtime-routes.server.d.ts",
-      "default": "./dist/runtime-routes.server.js"
-    },
-    "./runtime-health": {
-      "types": "./dist/runtime-health.server.d.ts",
-      "default": "./dist/runtime-health.server.js"
     }
   },
   "dependencies": {
     "@opentelemetry/api": "^1.9.0",
     "@sva/core": "workspace:*",
-    "@sva/data": "workspace:*",
-    "@sva/sdk": "workspace:*",
+    "@sva/data-repositories": "workspace:*",
+    "@sva/iam-admin": "workspace:*",
+    "@sva/iam-core": "workspace:*",
+    "@sva/iam-governance": "workspace:*",
+    "@sva/instance-registry": "workspace:*",
+    "@sva/server-runtime": "workspace:*",
     "@types/sanitize-html": "^2.16.1",
     "cookie-es": "^2.0.0",
     "ioredis": "^5.10.1",

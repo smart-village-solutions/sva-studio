@@ -1,5 +1,5 @@
 import type { RuntimeScopeRef, Session, SessionUser } from '../types.js';
-import { createSdkLogger } from '@sva/sdk/server';
+import { createSdkLogger } from '@sva/server-runtime';
 
 import { getAuthConfig, resolveAuthConfigFromSessionAuth } from '../config.js';
 import { client, getOidcConfig } from '../oidc.server.js';

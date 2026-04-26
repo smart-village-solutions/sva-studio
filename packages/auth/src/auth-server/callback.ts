@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { createSdkLogger } from '@sva/sdk/server';
+import { createSdkLogger } from '@sva/server-runtime';
 import { z } from 'zod';
 
 import { getAuthConfig } from '../config.js';

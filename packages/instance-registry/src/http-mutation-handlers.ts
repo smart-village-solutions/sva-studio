@@ -61,6 +61,8 @@ const mutationErrorMessages: Record<InstanceMutationErrorCode, string> = {
     'Für diese Instanz ist noch kein Tenant-Admin-Client-Secret hinterlegt.',
   tenant_auth_client_secret_missing:
     'Für diese Instanz ist noch kein Tenant-Client-Secret hinterlegt.',
+  idempotency_key_reuse:
+    'Idempotency-Key wurde bereits mit anderem Payload verwendet.',
   encryption_not_configured:
     'Die Feldverschlüsselung für Tenant-Secrets ist nicht konfiguriert.',
   keycloak_unavailable:
@@ -142,6 +144,7 @@ export const createInstanceRegistryMutationHttpHandlers = <TContext>(
       try {
         const status = await deps.withRegistryService((service) =>
           service.reconcileKeycloak(buildReconcileInstanceKeycloakInput(instanceId, payloadResult.data, {
+            idempotencyKey,
             actorId: deps.getActor(ctx).id,
             requestId: deps.getRequestId(),
           }))
@@ -182,6 +185,7 @@ export const createInstanceRegistryMutationHttpHandlers = <TContext>(
       try {
         const run = await deps.withRegistryService((service) =>
           service.executeKeycloakProvisioning(buildExecuteInstanceKeycloakProvisioningInput(instanceId, payloadResult.data, {
+            idempotencyKey,
             actorId: deps.getActor(ctx).id,
             requestId: deps.getRequestId(),
           }))

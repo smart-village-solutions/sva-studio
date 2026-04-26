@@ -65,6 +65,9 @@ type AuditRow = {
 type KeycloakProvisioningRunRow = {
   id: string;
   instance_id: string;
+  mutation: InstanceKeycloakProvisioningRun['mutation'] | null;
+  idempotency_key: string | null;
+  payload_fingerprint: string | null;
   mode: InstanceRealmMode;
   intent: InstanceKeycloakProvisioningRun['intent'];
   overall_status: InstanceKeycloakProvisioningRun['overallStatus'];
@@ -73,6 +76,10 @@ type KeycloakProvisioningRunRow = {
   actor_id: string | null;
   created_at: string;
   updated_at: string;
+};
+
+type CreatedKeycloakProvisioningRunRow = KeycloakProvisioningRunRow & {
+  created: boolean;
 };
 
 type KeycloakProvisioningStepRow = {
@@ -165,6 +172,9 @@ const mapKeycloakProvisioningRun = (
 ): InstanceKeycloakProvisioningRun => ({
   id: row.id,
   instanceId: row.instance_id,
+  ...(row.mutation ? { mutation: row.mutation } : {}),
+  ...(row.idempotency_key ? { idempotencyKey: row.idempotency_key } : {}),
+  ...(row.payload_fingerprint ? { payloadFingerprint: row.payload_fingerprint } : {}),
   mode: row.mode,
   intent: row.intent,
   overallStatus: row.overall_status,
@@ -175,6 +185,11 @@ const mapKeycloakProvisioningRun = (
   updatedAt: row.updated_at,
   steps: steps.map(mapKeycloakProvisioningRunStep),
 });
+
+export type CreateKeycloakProvisioningRunResult = {
+  readonly run: InstanceKeycloakProvisioningRun;
+  readonly created: boolean;
+};
 
 export type InstanceRegistryRepository = {
   listInstances(input?: { search?: string; status?: InstanceStatus }): Promise<readonly InstanceRegistryRecord[]>;
@@ -272,13 +287,16 @@ export type InstanceRegistryRepository = {
   }): Promise<void>;
   createKeycloakProvisioningRun(input: {
     instanceId: string;
+    mutation: NonNullable<InstanceKeycloakProvisioningRun['mutation']>;
+    idempotencyKey: string;
+    payloadFingerprint: string;
     mode: InstanceRealmMode;
     intent: InstanceKeycloakProvisioningRun['intent'];
     overallStatus: InstanceKeycloakProvisioningRun['overallStatus'];
     driftSummary: string;
     actorId?: string;
     requestId?: string;
-  }): Promise<InstanceKeycloakProvisioningRun>;
+  }): Promise<CreateKeycloakProvisioningRunResult>;
   updateKeycloakProvisioningRun(input: {
     runId: string;
     overallStatus: InstanceKeycloakProvisioningRun['overallStatus'];
@@ -637,6 +655,9 @@ ORDER BY created_at DESC, id DESC;
 SELECT
   id::text,
   instance_id,
+  mutation,
+  idempotency_key,
+  payload_fingerprint,
   mode,
   intent,
   overall_status,
@@ -667,6 +688,9 @@ ORDER BY created_at DESC, id DESC;
 SELECT
   id::text,
   instance_id,
+  mutation,
+  idempotency_key,
+  payload_fingerprint,
   mode,
   intent,
   overall_status,
@@ -713,6 +737,9 @@ WHERE runs.id = next_run.id
 RETURNING
   runs.id::text AS id,
   runs.instance_id,
+  runs.mutation,
+  runs.idempotency_key,
+  runs.payload_fingerprint,
   runs.mode,
   runs.intent,
   runs.overall_status,
@@ -1064,12 +1091,15 @@ VALUES ($1, $2, $3, $4, $5::jsonb);
   },
 
   async createKeycloakProvisioningRun(input) {
-    const rows = await queryRows<KeycloakProvisioningRunRow>(
+    const rows = await queryRows<CreatedKeycloakProvisioningRunRow>(
       executor,
       statement(
         `
 INSERT INTO iam.instance_keycloak_provisioning_runs (
   instance_id,
+  mutation,
+  idempotency_key,
+  payload_fingerprint,
   mode,
   intent,
   overall_status,
@@ -1077,10 +1107,17 @@ INSERT INTO iam.instance_keycloak_provisioning_runs (
   request_id,
   actor_id
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+ON CONFLICT (instance_id, mutation, idempotency_key)
+  WHERE idempotency_key IS NOT NULL
+DO UPDATE SET updated_at = iam.instance_keycloak_provisioning_runs.updated_at
+WHERE iam.instance_keycloak_provisioning_runs.payload_fingerprint = EXCLUDED.payload_fingerprint
 RETURNING
   id::text,
   instance_id,
+  mutation,
+  idempotency_key,
+  payload_fingerprint,
   mode,
   intent,
   overall_status,
@@ -1088,10 +1125,14 @@ RETURNING
   request_id,
   actor_id,
   created_at::text,
-  updated_at::text;
+  updated_at::text,
+  (xmax = 0) AS created;
 `,
         [
           input.instanceId,
+          input.mutation,
+          input.idempotencyKey,
+          input.payloadFingerprint,
           input.mode,
           input.intent,
           input.overallStatus,
@@ -1101,7 +1142,45 @@ RETURNING
         ]
       )
     );
-    return mapKeycloakProvisioningRun(rows[0], []);
+    const row = rows[0];
+    if (!row) {
+      const conflictingRows = await queryRows<KeycloakProvisioningRunRow>(
+        executor,
+        statement(
+          `
+SELECT
+  id::text,
+  instance_id,
+  mutation,
+  idempotency_key,
+  payload_fingerprint,
+  mode,
+  intent,
+  overall_status,
+  drift_summary,
+  request_id,
+  actor_id,
+  created_at::text,
+  updated_at::text
+FROM iam.instance_keycloak_provisioning_runs
+WHERE instance_id = $1
+  AND mutation = $2
+  AND idempotency_key = $3
+LIMIT 1;
+`,
+          [input.instanceId, input.mutation, input.idempotencyKey]
+        )
+      );
+      if (conflictingRows[0]) {
+        throw new Error('idempotency_key_reuse');
+      }
+      throw new Error('keycloak_provisioning_run_idempotency_conflict');
+    }
+    const stepsByRunId = row.created ? {} : await listKeycloakProvisioningStepRows(executor, [row.id]);
+    return {
+      run: mapKeycloakProvisioningRun(row, stepsByRunId[row.id] ?? []),
+      created: row.created,
+    };
   },
 
   async updateKeycloakProvisioningRun(input) {
@@ -1118,6 +1197,9 @@ WHERE id = $1::uuid
 RETURNING
   id::text,
   instance_id,
+  mutation,
+  idempotency_key,
+  payload_fingerprint,
   mode,
   intent,
   overall_status,

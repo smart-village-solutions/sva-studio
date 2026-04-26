@@ -116,8 +116,9 @@ export const buildChangeInstanceStatusInput = (
 export const buildReconcileInstanceKeycloakInput = (
   instanceId: string,
   payload: ReconcileKeycloakPayload,
-  context: InstanceMutationContext
+  context: IdempotentInstanceMutationContext
 ): ReconcileInstanceKeycloakInput => ({
+  idempotencyKey: context.idempotencyKey,
   instanceId,
   actorId: context.actorId,
   requestId: context.requestId,
@@ -128,8 +129,9 @@ export const buildReconcileInstanceKeycloakInput = (
 export const buildExecuteInstanceKeycloakProvisioningInput = (
   instanceId: string,
   payload: ExecuteKeycloakProvisioningPayload,
-  context: InstanceMutationContext
+  context: IdempotentInstanceMutationContext
 ): ExecuteInstanceKeycloakProvisioningInput => ({
+  idempotencyKey: context.idempotencyKey,
   instanceId,
   actorId: context.actorId,
   requestId: context.requestId,

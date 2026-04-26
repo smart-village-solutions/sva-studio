@@ -5,6 +5,7 @@ export type BlockedDriftErrorCode =
 
 export type InstanceMutationErrorCode =
   | BlockedDriftErrorCode
+  | 'idempotency_key_reuse'
   | 'encryption_not_configured'
   | 'keycloak_unavailable';
 
@@ -47,6 +48,12 @@ export const classifyInstanceMutationError = (error: unknown): InstanceMutationE
         reason_code: 'registry_or_provisioning_drift_blocked',
         drift_summary: driftSummary || undefined,
       },
+    };
+  }
+  if (message.includes('idempotency_key_reuse')) {
+    return {
+      status: 409,
+      code: 'idempotency_key_reuse',
     };
   }
   if (message.includes('tenant_admin_client_not_configured')) {

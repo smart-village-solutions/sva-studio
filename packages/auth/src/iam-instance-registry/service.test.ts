@@ -186,6 +186,9 @@ const createRepository = (): InstanceRegistryRepository => {
       const run: IamInstanceKeycloakProvisioningRun = {
         id: `${input.instanceId}-${input.intent}-${input.overallStatus}`,
         instanceId: input.instanceId,
+        mutation: input.mutation,
+        idempotencyKey: input.idempotencyKey,
+        payloadFingerprint: input.payloadFingerprint,
         mode: input.mode,
         intent: input.intent,
         overallStatus: input.overallStatus,
@@ -197,7 +200,7 @@ const createRepository = (): InstanceRegistryRepository => {
         steps: [],
       };
       keycloakProvisioningRuns.set(input.instanceId, [run, ...(keycloakProvisioningRuns.get(input.instanceId) ?? [])]);
-      return run;
+      return { run, created: true };
     },
     async updateKeycloakProvisioningRun(input) {
       for (const [instanceId, runs] of keycloakProvisioningRuns.entries()) {
@@ -681,6 +684,7 @@ describe('iam-instance-registry service', () => {
 
     const status = await service.reconcileKeycloak({
       instanceId: 'demo',
+      idempotencyKey: 'idem-reconcile-1',
       actorId: 'actor-2',
       requestId: 'req-2',
       rotateClientSecret: true,
@@ -777,6 +781,7 @@ describe('iam-instance-registry service', () => {
     await expect(
       service.reconcileKeycloak({
         instanceId: 'demo',
+        idempotencyKey: 'idem-reconcile-2',
         actorId: 'actor-2',
         requestId: 'req-2',
       })

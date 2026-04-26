@@ -133,6 +133,9 @@ export type InstanceKeycloakProvisioningRunStep = {
 export type InstanceKeycloakProvisioningRun = {
   readonly id: string;
   readonly instanceId: string;
+  readonly mutation?: 'executeKeycloakProvisioning' | 'reconcileKeycloak';
+  readonly idempotencyKey?: string;
+  readonly payloadFingerprint?: string;
   readonly mode: InstanceRealmMode;
   readonly intent: InstanceKeycloakProvisioningIntent;
   readonly overallStatus: InstanceKeycloakProvisioningRunStatus;

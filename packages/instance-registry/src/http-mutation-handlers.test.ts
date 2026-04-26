@@ -95,6 +95,30 @@ describe('http mutation handlers', () => {
     expect(body.code).toBe('not_found');
   });
 
+  it('passes the validated idempotency key into keycloak service mutations', async () => {
+    const reconcileKeycloak = vi.fn(async () => ({ realmExists: true }));
+    const executeKeycloakProvisioning = vi.fn(async () => ({ id: 'run-1' }));
+    vi.mocked(deps.requireIdempotencyKey).mockReturnValue({ key: 'idem-keycloak-1' });
+    vi.mocked(deps.withRegistryService)
+      .mockImplementationOnce(async (work) => work({ reconcileKeycloak } as never))
+      .mockImplementationOnce(async (work) => work({ executeKeycloakProvisioning } as never));
+    const handlers = createInstanceRegistryMutationHttpHandlers(deps);
+
+    await handlers.reconcileInstanceKeycloak(
+      new Request('http://localhost/api/instances/inst-1/keycloak/reconcile'),
+      { userId: 'u-1' }
+    );
+    await handlers.executeInstanceKeycloakProvisioning(
+      new Request('http://localhost/api/instances/inst-1/keycloak/runs'),
+      { userId: 'u-1' }
+    );
+
+    expect(reconcileKeycloak).toHaveBeenCalledWith(expect.objectContaining({ idempotencyKey: 'idem-keycloak-1' }));
+    expect(executeKeycloakProvisioning).toHaveBeenCalledWith(
+      expect.objectContaining({ idempotencyKey: 'idem-keycloak-1' })
+    );
+  });
+
   it('executeInstanceKeycloakProvisioning maps thrown registry errors', async () => {
     vi.mocked(deps.withRegistryService).mockImplementationOnce(async () => {
       throw new Error('tenant_admin_client_secret_missing');

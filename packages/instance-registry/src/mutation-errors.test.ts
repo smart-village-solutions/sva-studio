@@ -39,6 +39,13 @@ describe('mutation-errors', () => {
     });
   });
 
+  it('classifies idempotency payload reuse as conflict', () => {
+    expect(classifyInstanceMutationError(new Error('idempotency_key_reuse'))).toEqual({
+      status: 409,
+      code: 'idempotency_key_reuse',
+    });
+  });
+
   it('classifies unknown failures as keycloak dependency failures', () => {
     expect(classifyInstanceMutationError(new Error('boom'))).toEqual({
       status: 502,

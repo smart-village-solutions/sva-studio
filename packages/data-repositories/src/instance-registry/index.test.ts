@@ -47,6 +47,9 @@ const provisioningRow = {
 const keycloakRunRow = {
   id: 'kc-run-1',
   instance_id: 'tenant-a',
+  mutation: 'executeKeycloakProvisioning',
+  idempotency_key: 'idem-kc-1',
+  payload_fingerprint: 'fingerprint-1',
   mode: 'shared',
   intent: 'reconcile',
   overall_status: 'planned',
@@ -55,6 +58,7 @@ const keycloakRunRow = {
   actor_id: 'actor-1',
   created_at: '2026-01-01T00:00:00.000Z',
   updated_at: '2026-01-01T00:00:01.000Z',
+  created: true,
 };
 
 const stepRow = {
@@ -258,12 +262,15 @@ describe('instance registry repository', () => {
     await expect(
       repository.createKeycloakProvisioningRun({
         instanceId: 'tenant-a',
+        mutation: 'executeKeycloakProvisioning',
+        idempotencyKey: 'idem-kc-1',
+        payloadFingerprint: 'fingerprint-1',
         mode: 'shared',
         intent: 'reconcile',
         overallStatus: 'planned',
         driftSummary: 'No drift',
       })
-    ).resolves.toMatchObject({ id: 'kc-run-1', steps: [] });
+    ).resolves.toMatchObject({ created: true, run: { id: 'kc-run-1', steps: [] } });
     await expect(repository.updateKeycloakProvisioningRun({ runId: 'missing', overallStatus: 'failed' })).resolves.toBeNull();
     await expect(
       repository.updateKeycloakProvisioningRun({ runId: 'kc-run-1', overallStatus: 'success', driftSummary: 'Clean' })
@@ -285,5 +292,72 @@ describe('instance registry repository', () => {
       details: {},
       requestId: 'request-1',
     });
+  });
+
+  it('deduplicates keycloak provisioning run creates by idempotency scope and detects payload reuse', async () => {
+    const replayRow = {
+      ...keycloakRunRow,
+      created: false,
+    };
+    const { executor, statements } = createQueuedExecutor([
+      [replayRow],
+      [stepRow],
+      [],
+      [keycloakRunRow],
+    ]);
+    const repository = createInstanceRegistryRepository(executor);
+
+    await expect(
+      repository.createKeycloakProvisioningRun({
+        instanceId: 'tenant-a',
+        mutation: 'reconcileKeycloak',
+        idempotencyKey: 'idem-kc-1',
+        payloadFingerprint: 'fingerprint-1',
+        mode: 'shared',
+        intent: 'reconcile',
+        overallStatus: 'planned',
+        driftSummary: 'No drift',
+      })
+    ).resolves.toMatchObject({
+      created: false,
+      run: {
+        id: 'kc-run-1',
+        steps: [{ stepKey: 'realm' }],
+      },
+    });
+
+    await expect(
+      repository.createKeycloakProvisioningRun({
+        instanceId: 'tenant-a',
+        mutation: 'reconcileKeycloak',
+        idempotencyKey: 'idem-kc-1',
+        payloadFingerprint: 'different-fingerprint',
+        mode: 'shared',
+        intent: 'reconcile',
+        overallStatus: 'planned',
+        driftSummary: 'No drift',
+      })
+    ).rejects.toThrow('idempotency_key_reuse');
+
+    expect(statements[0]?.text).toContain('ON CONFLICT (instance_id, mutation, idempotency_key)');
+    expect(statements[0]?.text).toContain('payload_fingerprint = EXCLUDED.payload_fingerprint');
+  });
+
+  it('reports a keycloak provisioning idempotency conflict when the conflicting row cannot be reloaded', async () => {
+    const { executor } = createQueuedExecutor([[], []]);
+    const repository = createInstanceRegistryRepository(executor);
+
+    await expect(
+      repository.createKeycloakProvisioningRun({
+        instanceId: 'tenant-a',
+        mutation: 'reconcileKeycloak',
+        idempotencyKey: 'idem-kc-1',
+        payloadFingerprint: 'fingerprint-1',
+        mode: 'shared',
+        intent: 'reconcile',
+        overallStatus: 'planned',
+        driftSummary: 'No drift',
+      })
+    ).rejects.toThrow('keycloak_provisioning_run_idempotency_conflict');
   });
 });

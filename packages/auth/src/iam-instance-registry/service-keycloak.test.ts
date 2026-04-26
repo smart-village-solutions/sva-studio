@@ -195,7 +195,8 @@ describe('iam-instance-registry service-keycloak helpers', () => {
       }),
       getAuthClientSecretCiphertext: vi.fn().mockResolvedValue('enc:value'),
       createKeycloakProvisioningRun: vi.fn().mockResolvedValue({
-        id: 'run-1',
+        created: true,
+        run: { id: 'run-1' },
       }),
       appendKeycloakProvisioningStep: vi.fn().mockResolvedValue(undefined),
       getKeycloakProvisioningRun: vi.fn().mockResolvedValue({
@@ -213,6 +214,7 @@ describe('iam-instance-registry service-keycloak helpers', () => {
     await expect(
       reconcile({
         instanceId: 'bb-guben',
+        idempotencyKey: 'idem-1',
         actorId: 'actor-1',
         requestId: 'req-1',
         rotateClientSecret: true,

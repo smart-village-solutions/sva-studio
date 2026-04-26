@@ -91,7 +91,7 @@ Fehlerpfad:
 2. UI lädt `GET /iam/instances`.
 3. Das Detail lädt zusaetzlich Preflight, Plan, Status und vorhandene Provisioning-Runs.
 4. `Instanzdaten speichern` sendet CSRF-Header, Idempotency-Key und Reauth-Bestaetigung und schreibt nur Registry-Daten.
-5. `Provisioning ausfuehren` startet einen expliziten Run mit Realm-Modus `new` oder `existing`.
+5. `Provisioning ausfuehren` oder `Reconcile` startet einen expliziten Run mit Realm-Modus `new` oder `existing`; der validierte `Idempotency-Key` wird zusammen mit Mutation und stabilem Payload-Fingerprint persistent dedupliziert.
 6. `packages/auth-runtime` delegiert an die gemeinsame Provisioning-Fassade in `packages/instance-registry`.
 7. Die Fassade provisioniert getrennt Login-Client (`authClientId`) und Tenant-Admin-Client (`tenantAdminClient.clientId`) inklusive separater Secret-Aufloesung.
 8. Die Fassade persistiert Run, Schritte und Audit-Event und invalidiert anschliessend betroffene Host-Caches.
@@ -101,6 +101,7 @@ Fehlerpfad:
 - Tenant-Host statt Root-Host -> `403 forbidden`.
 - fehlende Re-Authentisierung -> `403 reauth_required`.
 - blockierter Preflight oder Plan -> kein Keycloak-Mutationslauf.
+- wiederholter Keycloak-Request mit identischem `Idempotency-Key` und identischer stabiler Payload -> kein zweiter Run; abweichende Payload im selben Scope -> `409 idempotency_key_reuse`.
 - fehlt nur der Tenant-Admin-Client, darf Reconcile gezielt `provision_admin_client` nachziehen, ohne den Login-Pfad zu veraendern.
 
 ### Szenario 2a: Silent Session-Recovery nach `401`

@@ -9,9 +9,12 @@ Dieses Dokument beschreibt die aktuelle Organisation des Nx-/pnpm-Workspaces, di
 | Projekt | Typ | Pfad | Zweck |
 | --- | --- | --- | --- |
 | `sva-studio-react` | App | `apps/sva-studio-react/` | TanStack-Start-Frontend |
-| `auth` | Library | `packages/auth/` | Authentifizierung, Session- und IAM-Serverlogik |
+| `auth-runtime` | Library | `packages/auth-runtime/` | Authentifizierung, Session, OIDC, Runtime-Routen und Auth-Middleware |
 | `core` | Library | `packages/core/` | Framework-agnostische Kernlogik |
 | `data` | Library | `packages/data/` | Datenzugriff, Migrationen, Seeds |
+| `iam-admin` | Library | `packages/iam-admin/` | Benutzer-, Rollen-, Gruppen- und Organisationsverwaltung |
+| `iam-governance` | Library | `packages/iam-governance/` | Governance, Rechtstexte und Data-Subject-Rights |
+| `instance-registry` | Library | `packages/instance-registry/` | Instanzverwaltung und Keycloak-Provisioning |
 | `monitoring-client` | Library | `packages/monitoring-client/` | Logging, Metriken, OTel-Anbindung |
 | `plugin-news` | Library | `packages/plugin-news/` | Produktives News-Plugin für CMS-Erweiterungspunkte |
 | `routing` | Library | `packages/routing/` | Typsichere Routing-Factories und Route-Definitionen |
@@ -42,7 +45,7 @@ Konvention:
 - Breaking Changes nur mit Doku- und Migrationshinweis
 
 ### 2) Domain Packages (fachlich)
-Beispiele: `@sva/data`, `@sva/auth`
+Beispiele: `@sva/data`, `@sva/auth-runtime`, `@sva/iam-admin`, `@sva/iam-governance`, `@sva/instance-registry`
 
 Kriterien:
 - kapseln wiederverwendbare Fachlogik oder Datenzugriff

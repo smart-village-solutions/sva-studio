@@ -275,7 +275,7 @@ In `dev/monitoring/promtail/promtail-config.yml`:
 - SDK/Monitoring-Tests unter:
   - `packages/sdk/tests/`
   - `packages/monitoring-client/tests/`
-  - `packages/auth/src/auth.server.test.ts` (session-bezogen)
+  - `packages/auth-runtime/src/session.test.ts` (session-bezogen)
 
 ### Lokal
 

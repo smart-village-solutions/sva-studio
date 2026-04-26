@@ -3,7 +3,10 @@ module.exports = {
   darkMode: ['class'],
   content: [
     './src/**/*.{ts,tsx}',
-    '../../packages/auth/src/**/*.{ts,tsx}',
+    '../../packages/auth-runtime/src/**/*.{ts,tsx}',
+    '../../packages/iam-admin/src/**/*.{ts,tsx}',
+    '../../packages/iam-governance/src/**/*.{ts,tsx}',
+    '../../packages/instance-registry/src/**/*.{ts,tsx}',
     '../../packages/core/src/**/*.{ts,tsx}',
     '../../packages/routing/src/**/*.{ts,tsx}',
     '../../packages/sdk/src/**/*.{ts,tsx}',

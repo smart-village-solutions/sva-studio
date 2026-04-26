@@ -210,7 +210,7 @@ Referenzen:
 - Migrationen für `iam.groups`, `iam.group_roles`, `iam.account_groups` und `iam.geo_units` müssen Unique-, FK- und Self-Parent-Constraints reproduzierbar durchsetzen.
 - Unit- und Integrationstests müssen gruppenvermittelte Rechte, aggregierte Provenance und Konfliktfälle `Parent-Allow + Child-Deny` explizit abdecken.
 - Die Admin-UI `/admin/groups`, die Benutzerdetailseite und das Rechte-Cockpit müssen gruppenbasierte Herkunft ohne harte Strings und ohne zusätzliche N+1-Requests rendern.
-- `pnpm nx run auth:test:unit`, `pnpm nx run core:test:unit`, `pnpm nx run routing:test:unit` und `pnpm nx run sva-studio-react:test:unit` bleiben für diesen Change grün.
+- `pnpm nx run auth-runtime:test:unit`, `pnpm nx run core:test:unit`, `pnpm nx run routing:test:unit` und `pnpm nx run sva-studio-react:test:unit` bleiben für diesen Change grün.
 
 ### Ergänzung 2026-03: Qualitätsziele Inhaltsverwaltung
 

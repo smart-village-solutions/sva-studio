@@ -16,7 +16,7 @@ flowchart TD
 
     C -->|Server Function aus UI| G["ServerFn in sva-studio-react"]
     G --> H["@sva/sdk\nRequest-Kontext / Logging"]
-    H --> I["@sva/auth\nSession / Rollen / Guards"]
+    H --> I["@sva/auth-runtime\nSession / Guards"]
     I --> J{"Fachlogik"}
 
     J -->|DB-basierte Seite| K["@sva/data"]
@@ -34,7 +34,7 @@ flowchart TD
     Q --> R["UI-Update im Browser"]
 
     C -->|Direkter Auth-/IAM-Endpunkt| S["@sva/routing/server"]
-    S --> T["@sva/auth runtime-routes"]
+    S --> T["@sva/auth-runtime\nruntime-routes"]
     T --> H
     T --> K
     T --> N
@@ -60,24 +60,25 @@ flowchart TD
 
 - Die Seite wird zunächst normal gerendert.
 - Für Datenladen oder Mutationen ruft die React-Komponente eine TanStack-Server-Function auf.
-- Diese nutzt typischerweise `@sva/sdk` für Kontext und Logging, `@sva/auth` für Session- und Rollenprüfung und anschließend fachliche Packages wie `@sva/data` oder `@sva/sva-mainserver`.
+- Diese nutzt typischerweise `@sva/sdk` für Kontext und Logging, `@sva/auth-runtime` für Session- und Guard-Prüfung und anschließend fachliche Packages wie `@sva/data`, `@sva/iam-*`, `@sva/instance-registry` oder `@sva/sva-mainserver`.
 
 ### Direkter Auth- oder IAM-Endpunkt
 
 - Requests auf Pfade wie `/auth/*`, `/iam/*` oder `/api/v1/iam/*` werden früh von `@sva/routing/server` abgefangen.
-- Die eigentliche Bearbeitung liegt dann in `@sva/auth`.
-- `@sva/auth` spricht je nach Use Case mit Redis, Postgres, Keycloak und der Autorisierungslogik aus `@sva/core`.
+- Die eigentliche Bearbeitung liegt dann in `@sva/auth-runtime` und den IAM-Zielpackages.
+- `@sva/auth-runtime` spricht je nach Use Case mit Redis, Postgres, Keycloak und der Autorisierungslogik aus `@sva/core`.
 
 ### Integrationsszenario mit externem Downstream
 
 - Für Integrationen wie den SVA-Mainserver kapselt `@sva/sva-mainserver` die serverseitige Ablaufkette.
-- Das Paket kombiniert instanzgebundene Konfiguration aus `@sva/data`, nutzerbezogene Credentials aus `@sva/auth` beziehungsweise Keycloak und die externen OAuth2- und GraphQL-Aufrufe.
+- Das Paket kombiniert instanzgebundene Konfiguration aus `@sva/data`, nutzerbezogene Credentials aus `@sva/auth-runtime` beziehungsweise Keycloak und die externen OAuth2- und GraphQL-Aufrufe.
 
 ## Rollen der zentralen Packages
 
 - `apps/sva-studio-react`: Einstiegspunkt für Browser-Requests, Seiten, SSR und Server Functions
 - `@sva/routing`: Verteilung zwischen normalem App-Routing und serverseitigen Auth-/IAM-Routen
-- `@sva/auth`: Session, Identität, Berechtigung, IAM-Handler und BFF-Logik
+- `@sva/auth-runtime`: Session, Identität, Runtime-Routen und Auth-Middleware
+- `@sva/iam-admin`, `@sva/iam-governance`, `@sva/instance-registry`: IAM-Fachverwaltung, Governance und Instanzlogik
 - `@sva/data`: Persistenzzugriff auf Postgres
 - `@sva/sva-mainserver`: serverseitige Integrationslogik für den externen Mainserver
 - `@sva/sdk`: Logging, Request-Kontext, Fehlerantworten und Observability-Helfer

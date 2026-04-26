@@ -54,8 +54,8 @@ Konzept-Referenz (Kontext): `concepts/konzeption-cms-v2/01_Einleitung/Einleitung
 
 Referenzen:
 
-- `packages/auth/src/oidc.server.ts`
-- `packages/auth/src/redis.server.ts`
+- `packages/auth-runtime/src/oidc.ts`
+- `packages/auth-runtime/src/redis.ts`
 - `packages/sva-mainserver/src/server/service.ts`
 - `packages/data/src/integrations/instance-integrations.ts`
 - `docker-compose.yml`

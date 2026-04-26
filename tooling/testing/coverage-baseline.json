@@ -6,12 +6,6 @@
       "functions": 85.54,
       "branches": 75.62
     },
-    "auth": {
-      "lines": 90.72,
-      "statements": 90.68,
-      "functions": 92.68,
-      "branches": 77.1
-    },
     "auth-runtime": {
       "lines": 55.46,
       "statements": 54.98,

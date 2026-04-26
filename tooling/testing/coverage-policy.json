@@ -1,6 +1,11 @@
 {
   "version": 1,
-  "metrics": ["lines", "statements", "functions", "branches"],
+  "metrics": [
+    "lines",
+    "statements",
+    "functions",
+    "branches"
+  ],
   "globalFloors": {
     "lines": 85,
     "statements": 85,
@@ -25,12 +30,6 @@
       "statements": 75,
       "functions": 85,
       "branches": 65
-    },
-    "auth": {
-      "lines": 45,
-      "statements": 45,
-      "functions": 55,
-      "branches": 35
     },
     "auth-runtime": {
       "lines": 55,
@@ -124,52 +123,6 @@
     }
   },
   "criticalProjects": {
-    "auth": {
-      "minimumFloors": {
-        "lines": 45,
-        "statements": 45,
-        "functions": 50,
-        "branches": 30
-      },
-      "hotspotFloors": [
-        {
-          "path": "packages/auth/src/iam-account-management.server.ts",
-          "reason": "Sehr große IAM-Server-Datei mit zentraler Rollen- und Keycloak-Logik",
-          "metrics": {
-            "lines": 60,
-            "functions": 70,
-            "branches": 50
-          }
-        },
-        {
-          "path": "packages/auth/src/iam-governance.server.ts",
-          "reason": "Governance- und Approval-Workflow mit hoher Sicherheitsrelevanz",
-          "metrics": {
-            "lines": 55,
-            "functions": 80,
-            "branches": 45
-          }
-        },
-        {
-          "path": "packages/auth/src/auth-server/session.ts",
-          "reason": "Session-Hydration und Token-Refresh als kritische Auth-Lebenszykluslogik",
-          "metrics": {
-            "lines": 85,
-            "functions": 95,
-            "branches": 65
-          }
-        },
-        {
-          "path": "packages/auth/src/auth-server/shared.ts",
-          "reason": "Shared Auth-Session-Helfer mit Claim- und Ablaufzeit-Entscheidungen",
-          "metrics": {
-            "lines": 95,
-            "functions": 95,
-            "branches": 75
-          }
-        }
-      ]
-    },
     "routing": {
       "minimumFloors": {
         "lines": 35,

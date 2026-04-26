@@ -331,7 +331,7 @@ berücksichtigen, damit der Container korrekt deployed werden kann.
 
 - **WHEN** das Produktions-Dockerfile ausgeführt wird
 - **THEN** wird `pnpm nx run sva-mainserver:build` als Build-Step ausgeführt
-- **AND** der Step steht in der korrekten Abhängigkeitsreihenfolge (nach `auth:build`, vor `routing:build` und dem App-Build)
+- **AND** der Step steht in der korrekten Abhängigkeitsreihenfolge (nach `auth-runtime:build` und den IAM-Zielpackages, vor `routing:build` und dem App-Build)
 
 ### Requirement: Standardisierter Runtime-Doctor pro Profil
 
@@ -523,7 +523,7 @@ Das System MUST die in `docs/architecture/package-zielarchitektur.md` beschriebe
 
 - **WHEN** ein neues Feature Benutzerverwaltung, Rollen, Gruppen, Organisationen, Governance, DSR oder Instanzen betrifft
 - **THEN** ordnet der Change die Arbeit einem Zielpackage wie `@sva/iam-admin`, `@sva/iam-governance` oder `@sva/instance-registry` zu
-- **AND** die Implementierung landet nicht pauschal in `@sva/auth`
+- **AND** die Implementierung landet nicht in einem historischen Sammelpackage
 
 #### Scenario: Neues Datenfeature wird begonnen
 
@@ -622,4 +622,3 @@ Das Monorepo MUST reservierte Core-Namespaces fuer hosteigene oder explizit defi
 - **WHEN** ein Plugin-Package einen reservierten Core-Namespace wie `iam`, `content` oder `admin` fuer seine technische Plugin-Identitaet nutzen will
 - **THEN** wird die Registrierung abgewiesen
 - **AND** der Namespace bleibt dem Host oder einem explizit definierten Core-Vertrag vorbehalten
-

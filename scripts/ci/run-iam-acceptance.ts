@@ -2,11 +2,11 @@ import { createRequire } from 'node:module';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import type { IdentityListedUser } from '../../packages/auth/src/identity-provider-port.ts';
+import type { IdentityListedUser } from '../../packages/auth-runtime/src/identity-provider-port.ts';
 import {
   KeycloakAdminClient,
   type KeycloakAdminClientConfig,
-} from '../../packages/auth/src/keycloak-admin-client/core.ts';
+} from '../../packages/auth-runtime/src/keycloak-admin-client/core.ts';
 import {
   buildAcceptanceReport,
   createAcceptanceReportFileBase,
@@ -141,10 +141,10 @@ type MembershipRow = {
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const rootDir = resolve(scriptDir, '../..');
 const appRequire = createRequire(resolve(rootDir, 'apps/sva-studio-react/package.json'));
-const authRequire = createRequire(resolve(rootDir, 'packages/auth/package.json'));
+const authRuntimeRequire = createRequire(resolve(rootDir, 'packages/auth-runtime/package.json'));
 
 const { chromium } = appRequire('@playwright/test') as BrowserModule;
-const { Pool } = authRequire('pg') as PgModule;
+const { Pool } = authRuntimeRequire('pg') as PgModule;
 
 const JSON_HEADERS = {
   'Content-Type': 'application/json',

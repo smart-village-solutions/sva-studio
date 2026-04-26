@@ -71,6 +71,6 @@ Alle Fehler müssen serverseitig sicher deny-by-default behandelt werden. Die UI
 
 Der Mapping-Vertrag gehört in framework-agnostische Kern- oder IAM-nahe Pakete. React-Bindings und SDK-Hilfen dürfen daraus lesen, aber keine eigene Mapping- oder Autorisierungslogik duplizieren.
 
-`@sva/auth-runtime` ist für diesen Change der maßgebliche Runtime-Pfad: App, Routing und Mainserver konsumieren stabile `@sva/auth-runtime`-Fassaden. Das ältere `@sva/auth`-Package bleibt in diesem P2-Schnitt unberührt und wird nicht synchron mitimplementiert; eine spätere Legacy-Bereinigung muss separat entscheiden, ob Code dort entfernt, archiviert oder gezielt nachgezogen wird.
+`@sva/auth-runtime` ist für diesen Change der maßgebliche Runtime-Pfad: App, Routing und Mainserver konsumieren stabile `@sva/auth-runtime`-Fassaden. Das frühere `@sva/auth`-Sammelpackage ist kein aktiver Workspace-Baustein mehr und darf für diesen P2-Schnitt nicht als Implementierungs- oder Kompatibilitätspfad eingeplant werden.
 
 Serverseitig von Node geladene Workspace-Packages müssen ESM-strikte Runtime-Imports mit `.js`-Endungen verwenden. Runtime-Imports auf andere Workspace-Packages müssen im jeweiligen `package.json` unter `dependencies` stehen.

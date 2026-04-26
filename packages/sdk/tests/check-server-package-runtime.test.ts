@@ -181,8 +181,8 @@ describe('check-server-package-runtime', () => {
     ).resolves.toEqual([]);
 
     createWorkspacePackage(rootDir, {
-      dirName: 'auth',
-      name: '@sva/auth',
+      dirName: 'runtime-fixture',
+      name: '@sva/runtime-fixture',
       srcFiles: {
         'src/index.ts': "export * from './missing.js';\n",
       },
@@ -194,12 +194,12 @@ describe('check-server-package-runtime', () => {
     await expect(
       checkServerPackageRuntime({
         rootDir,
-        packageSelector: 'auth',
+        packageSelector: 'runtime-fixture',
         mode: 'smoke',
       })
     ).resolves.toEqual([
       expect.objectContaining({
-        filePath: 'packages/auth/dist/index.js',
+        filePath: 'packages/runtime-fixture/dist/index.js',
         message: expect.stringContaining('dist runtime import failed'),
       }),
     ]);

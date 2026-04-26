@@ -162,7 +162,7 @@ Der Workspace Context wird automatisch injiziert und sollte immer vorhanden sein
 ### Automatic Injection (via Middleware)
 
 ```typescript
-// packages/auth/routes.server.ts
+// packages/auth-runtime/runtime-routes.ts
 import { createWorkspaceContextMiddleware } from '@sva/sdk';
 
 app.use(createWorkspaceContextMiddleware({

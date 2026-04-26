@@ -22,7 +22,7 @@ Damit das Studio als package-basiertes CMS stabil wächst, muss der Kern des Inh
 - Affected code:
   - `packages/core`
   - `packages/sdk`
-  - `packages/auth`
+  - `packages/auth-runtime`
   - `packages/plugin-news`
 - Affected arc42 sections:
   - `docs/architecture/04-solution-strategy.md`

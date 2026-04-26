@@ -5,8 +5,8 @@
       "path": "."
     },
     {
-      "name": "auth",
-      "path": "../../packages/auth"
+      "name": "auth-runtime",
+      "path": "../../packages/auth-runtime"
     },
     {
       "name": "core",

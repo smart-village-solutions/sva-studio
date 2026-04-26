@@ -14,7 +14,7 @@ Studio-Plugins sind eigenständige Workspace-Packages mit `scope:plugin`. Sie h�
 - Nx-Tags: mindestens `scope:plugin`, `type:lib`
 - Workspace-Abhängigkeiten: nur öffentliche Verträge, primär `@sva/sdk`
 - React und Router bleiben Peer Dependencies
-- Keine Direktimporte aus `apps/*`, `@sva/auth`, `@sva/routing` oder anderen nicht öffentlichen Host-Interna
+- Keine Direktimporte aus `apps/*`, `@sva/auth-runtime`, `@sva/iam-*`, `@sva/instance-registry`, `@sva/routing` oder anderen nicht öffentlichen Host-Interna
 
 ## Pflicht-Export
 

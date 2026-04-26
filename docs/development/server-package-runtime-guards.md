@@ -87,7 +87,10 @@ Der Guard ist aktuell für diese serverseitig relevanten Workspace-Packages verb
 - `packages/data`
 - `packages/monitoring-client`
 - `packages/sdk`
-- `packages/auth`
+- `packages/auth-runtime`
+- `packages/iam-admin`
+- `packages/iam-governance`
+- `packages/instance-registry`
 - `packages/routing`
 - `packages/sva-mainserver`
 

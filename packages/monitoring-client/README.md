@@ -15,7 +15,7 @@ OpenTelemetry-Integrations-Paket für SVA Studio. Kapselt den vollständigen OTE
   ↑
 @sva/sdk ← Bridge via Lazy-Import
   ↑
-@sva/auth, App
+@sva/auth-runtime, App
 ```
 
 **Abhängigkeiten (extern):**

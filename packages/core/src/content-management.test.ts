@@ -82,6 +82,10 @@ describe('content-management capability mapping', () => {
       reasonCode: 'capability_mapping_missing',
       domainCapability: 'content.unknown',
     });
+    expect(resolveIamContentCapabilityMapping(null)).toEqual({
+      ok: false,
+      reasonCode: 'capability_mapping_missing',
+    });
 
     expect(
       resolveIamContentCapabilityMapping('content.publish', [

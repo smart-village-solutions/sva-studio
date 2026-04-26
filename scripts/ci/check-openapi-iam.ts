@@ -1,13 +1,18 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { authRoutePaths } from '../../packages/auth/src/routes.shared.ts';
+import { authRoutePaths } from '../../packages/auth-runtime/src/routes.ts';
 
 const normalizeRoutePath = (routePath: string): string =>
   routePath.replaceAll(/\/\$([A-Za-z0-9_]+)/g, '/{$1}');
 
+const openApiRouteExclusions = ['/api/v1/iam/instances'] as const;
+
+const isDocumentedOpenApiRoute = (routePath: string): boolean =>
+  !routePath.startsWith('/auth/') && !openApiRouteExclusions.some((prefix) => routePath.startsWith(prefix));
+
 export const requiredPaths = authRoutePaths
-  .filter((routePath) => !routePath.startsWith('/auth/'))
+  .filter(isDocumentedOpenApiRoute)
   .map(normalizeRoutePath);
 
 export const requiredOperations = {

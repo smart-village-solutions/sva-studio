@@ -66,17 +66,17 @@ Das System SHALL eine zentrale Autorisierungsschnittstelle bereitstellen, die pr
 - **AND** interne Rohdaten, Stacktraces oder nicht spezifizierte Diagnosefelder werden nicht ausgegeben
 - **AND** diese Diagnoseinformationen sind stabil genug, um in einer Admin-Oberfläche verständlich dargestellt zu werden
 
-#### Scenario: Keine `any`-Casts in Auth-Infrastruktur
+#### Scenario: Keine `any`-Casts in IAM- und Auth-Runtime-Infrastruktur
 
 - **WHEN** Auth-Server-Code kompiliert wird
-- **THEN** enthält kein Modul in `packages/auth/src/` einen `any`-Cast ohne dokumentierten TODO-Kommentar mit Begründung und Scope
+- **THEN** enthalten die Zielpackages `packages/auth-runtime/src/`, `packages/iam-admin/src/`, `packages/iam-governance/src/` und `packages/instance-registry/src/` keinen `any`-Cast ohne dokumentierten TODO-Kommentar mit Begründung und Scope
 - **AND** Redis-Optionen werden über typisierte Interfaces konfiguriert
 
 #### Scenario: Duplizierte Validierungs-Helfer konsolidiert
 
 - **WHEN** Input-Validierung in IAM-Endpoints benötigt wird
-- **THEN** werden zentrale Utilities aus `packages/auth/src/shared/` verwendet
-- **AND** keine Dateien in `packages/auth/src/` definieren lokale Duplikate von `readString`, `isUuid`, `buildLogContext` oder `isTokenErrorLike`
+- **THEN** werden zentrale Utilities aus dem zuständigen Zielpackage verwendet
+- **AND** keine Dateien in den IAM- und Auth-Runtime-Zielpackages definieren lokale Duplikate von `readString`, `isUuid`, `buildLogContext` oder `isTokenErrorLike`
 
 ### Requirement: Instanzzentriertes Scoping in RBAC v1
 
@@ -1105,4 +1105,3 @@ Das System SHALL für Keycloak-User, Rollen und Rollenzuordnungen vor jeder Muta
 - **WHEN** ein User-Feld durch Föderation oder Keycloak-Policy nicht bearbeitbar ist
 - **THEN** deaktiviert die UI das Feld
 - **AND** der Server validiert denselben Zustand vor der Mutation
-

@@ -8,7 +8,11 @@ on:
   pull_request:
     paths:
       - 'apps/sva-studio-react/**'
-      - 'packages/auth/**'
+      - 'packages/auth-runtime/**'
+      - 'packages/iam-admin/**'
+      - 'packages/iam-core/**'
+      - 'packages/iam-governance/**'
+      - 'packages/instance-registry/**'
       - 'packages/routing/**'
       - 'packages/plugin-example/**'
       - 'docker-compose.yml'

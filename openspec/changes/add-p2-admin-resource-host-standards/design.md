@@ -5,7 +5,7 @@ Der aktuelle Admin-Backbone hat bereits mehrere Bausteine, die in Richtung eines
 - `packages/plugin-sdk/src/admin-resources.ts` definiert `AdminResourceDefinition` mit `resourceId`, `basePath`, `titleKey`, `guard` und `views`.
 - `packages/routing/src/admin-resource-routes.ts` erzeugt daraus Admin-Routen für Liste, Create, Detail und optional History.
 - `apps/sva-studio-react/src/components/StudioDataTable.tsx` bietet Tabellenlayout, Sortierung, Auswahl und Bulk-Action-Slots.
-- `packages/auth` enthält Activity-Logs, Content-History und IAM-Bulk-Mutationspfade.
+- Die IAM-Zielpackages enthalten Activity-Logs, Content-History und IAM-Bulk-Mutationspfade.
 
 Die fehlende Schicht ist ein deklarativer Vertrag, der beschreibt, welche Host-Standards eine Admin-Ressource nutzt und wie diese Standards mit Routing, UI, Datenabfrage und Audit verbunden werden.
 

@@ -37,7 +37,7 @@ Die Umsetzung bleibt schichtentreu:
 
 - `packages/media`: Domänenvertrag und framework-agnostische Logik
 - `packages/data`: Persistenz, Migrationen, Repositories, Such- und Nutzungsabfragen
-- `packages/auth`: serverseitige Rechte-, Upload-, Download- und Auditpfade
+- IAM-Zielpackages (`packages/auth-runtime`, `packages/iam-core`, `packages/iam-admin`, `packages/iam-governance`, `packages/instance-registry`): serverseitige Rechte-, Upload-, Download- und Auditpfade
 - `apps/sva-studio-react`: Bibliothek, Picker, Metadatenpflege, Verwendungsnachweis
 - optional dedizierter Worker oder Job-Pfad für asynchrone Verarbeitung
 

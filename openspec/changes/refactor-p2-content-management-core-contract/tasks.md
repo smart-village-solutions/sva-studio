@@ -12,8 +12,8 @@
 
 - [x] 2.1 Ist-Zustand der Content-Core-Typen in `packages/core/src/content-management.ts` erfassen und Zielfeldliste dagegen mappen
 - [x] 2.2 Ist-Zustand der DB-Felder in `packages/data/migrations/*content*` erfassen und fehlende Core-Felder als Migration Gap notieren
-- [x] 2.3 Ist-Zustand der Content-Mutationspfade in `packages/auth/src/iam-contents/` erfassen: create, update, delete, history read
-- [x] 2.4 Ist-Zustand der Plugin-Content-Registrierung in `packages/plugin-sdk` und `packages/auth/src/iam-contents/content-type-registry.ts` erfassen
+- [x] 2.3 Ist-Zustand der Content-Mutationspfade in `packages/auth-runtime/src/iam-contents/` erfassen: create, update, delete, history read
+- [x] 2.4 Ist-Zustand der Plugin-Content-Registrierung in `packages/plugin-sdk` und `packages/auth-runtime/src/iam-contents/content-type-registry.ts` erfassen
 - [x] 2.5 Ist-Zustand der Content-Permissions in Seeds, Tests, Plugin-Guards und UI-Mocks erfassen (`content.read`, `content.create`, `content.write`, `content.update`, `content.publish`)
 - [x] 2.6 Vor Implementierung die aktuelle betroffene Testsuite ausfuehren und roten Ausgangszustand klaeren: `pnpm nx affected --target=test:unit --base=origin/main`
 
@@ -22,7 +22,7 @@
 - [x] 3.1 `IamContentListItem`, `IamContentDetail`, Create-/Update-Inputs und History-Typen auf die host-owned Core-Felder ausrichten
 - [x] 3.2 DB-Migration fuer fehlende Core-Metadaten entwerfen: Scope, Owner, Validation State, History-/Revision-/Audit-Referenzen, sofern nicht bewusst out of scope
 - [x] 3.3 Up-/Down-Migrationen ergaenzen und bestehende Inhalte deterministisch befuellen oder als nicht migrierbar melden
-- [x] 3.4 Repository-Mapping in `packages/auth/src/iam-contents/repository*.ts` auf die neuen Core-Felder erweitern
+- [x] 3.4 Repository-Mapping in `packages/auth-runtime/src/iam-contents/repository*.ts` auf die neuen Core-Felder erweitern
 - [x] 3.5 Hostseitige Validierung fuer reservierte Core-Feldnamen und Core-Semantik ergaenzen
 - [x] 3.6 Nach diesem Block ausfuehren: `pnpm check:server-runtime`
 - [x] 3.7 Nach diesem Block ausfuehren: `pnpm nx run core:test:unit` und betroffene Auth-/Data-Unit-Tests
@@ -35,7 +35,7 @@
 - [x] 4.4 Plugin-SDK-Guards von grobem `content.write` auf passende Core-Primitive vorbereiten oder bewusst ueber Compatibility Layer weiterfuehren
 - [x] 4.5 Konfliktvalidierung ergaenzen: Plugins duerfen keine host-owned `content.*`-Primitive als eigene Plugin-Actions deklarieren oder shadowen
 - [x] 4.6 Tests fuer Alias-/Migrationsverhalten, fehlende Permissions, deny-Effekte und Plugin-Action-Konflikte ergaenzen
-- [x] 4.7 Nach diesem Block ausfuehren: `pnpm nx run auth:test:unit` und `pnpm nx run plugin-sdk:test:unit`
+- [x] 4.7 Nach diesem Block ausfuehren: `pnpm nx run auth-runtime:test:unit` und `pnpm nx run plugin-sdk:test:unit`
 
 ## 5. Content Operation Authorization
 
@@ -48,7 +48,7 @@
 - [x] 5.7 Delete entweder auf `content.delete` pruefen oder bewusst als Soft-/Archive-Flow abgrenzen
 - [x] 5.8 Operationen ohne deterministisch aufgeloesten Scope vor Persistenz verweigern
 - [x] 5.9 Tests fuer jede Operation ergaenzen: allowed, missing permission, deny permission, missing scope, instance mismatch
-- [x] 5.10 Nach diesem Block ausfuehren: `pnpm nx run auth:test:unit`
+- [x] 5.10 Nach diesem Block ausfuehren: `pnpm nx run auth-runtime:test:unit`
 
 ## 6. Plugin Content Boundary
 
@@ -68,7 +68,7 @@
 - [x] 7.5 Denials fuer Validation/Authorization mit Primitive Action, Scope soweit bekannt und deterministischem Reason Code auditierbar machen
 - [x] 7.6 Revision-/Restore-Audit vorbereiten oder bewusst als Abhaengigkeit zu Admin-Standards markieren
 - [x] 7.7 Tests ergaenzen, die sicherstellen, dass Plugin-Payload-Inhalte nicht im Audit-Record landen
-- [x] 7.8 Nach diesem Block ausfuehren: `pnpm nx run auth:test:unit`
+- [x] 7.8 Nach diesem Block ausfuehren: `pnpm nx run auth-runtime:test:unit`
 
 ## 8. UI and E2E Compatibility
 

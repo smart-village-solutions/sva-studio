@@ -10,10 +10,10 @@
 
 ### 1.1 Ist-Zustand
 
-Die aktuelle Auth-Implementierung (`packages/auth`) nutzt **In-Memory-Session-Storage**:
+Die damalige Auth-Implementierung (`packages/auth`, historisch) nutzte **In-Memory-Session-Storage**:
 
 ```typescript
-// packages/auth/src/session.ts
+// packages/auth-runtime/src/session.ts
 const sessions = new Map<string, Session>();
 const loginStates = new Map<string, LoginState>();
 ```
@@ -186,7 +186,7 @@ Für **spätere Phasen** relevant, wenn:
 
 #### Phase 1: Redis-Integration (Milestone 1)
 ```typescript
-// packages/auth/src/session.redis.ts
+// packages/auth-runtime/src/redis-session.ts
 import { createClient } from 'redis';
 
 const redis = createClient({
@@ -372,7 +372,7 @@ services:
 ```
 
 **Code-Änderungen:**
-1. `pnpm add redis` in `packages/auth`
+1. Historischer Schritt: `redis` im damaligen Auth-Package ergänzen; heute liegt die Umsetzung in `packages/auth-runtime`
 2. `session.ts` → `session.redis.ts` mit async Funktionen
 3. `auth.server.ts`: Alle Session-Calls `await`
 4. `.env.local`: `REDIS_URL=redis://localhost:6379`
@@ -490,7 +490,7 @@ const client = createClient({
 ### 8.2 Action Items
 
 - [ ] Redis-Setup in `docker-compose.yml` für lokale Dev
-- [ ] `packages/auth/src/session.redis.ts` implementieren
+- [ ] Historischer Punkt: Redis-Session-Storage ist heute in `packages/auth-runtime/src/redis-session.ts` umgesetzt.
 - [ ] Integration-Tests mit Testcontainers
 - [ ] Staging-Deployment mit Redis Cloud (Free Tier)
 - [ ] Performance-Benchmarks (Session-Lookup < 10 ms)

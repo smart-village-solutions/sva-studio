@@ -56,7 +56,7 @@ Heute ist die Trennung unscharf: Ressourcen deklarieren Views und Guards, aber L
   - `packages/routing/src/admin-resource-routes.ts`
   - `packages/routing/src/route-search.ts`
   - `packages/sdk`
-  - `packages/auth`
+  - `packages/auth-runtime`, `packages/iam-admin`, `packages/iam-governance` und `packages/instance-registry`
   - `packages/plugin-news`
 - Affected arc42 sections:
   - `docs/architecture/05-building-block-view.md`

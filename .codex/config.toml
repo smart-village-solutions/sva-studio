@@ -61,6 +61,10 @@ config_file = ".codex/agents/rollout-operator.toml"
 description = "Prüft Security-, Datenschutz- und BSI/DSGVO-Anforderungen."
 config_file = ".codex/agents/security-privacy.toml"
 
+[agents.studio-test-operator]
+description = "Testet das SVA Studio end-to-end mit Chrome MCP und verifiziert Observability über Grafana MCP."
+config_file = ".codex/agents/studio-test-operator.toml"
+
 [agents.test-quality]
 description = "Prüft Teststrategie, Coverage-Risiken, Nx-Test-Targeting und Verifikationslücken."
 config_file = ".codex/agents/test-quality.toml"

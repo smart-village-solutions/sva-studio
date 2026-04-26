@@ -59,6 +59,7 @@ import {
   updateGroup,
   updateOrganization,
   LEGAL_ACCEPTANCE_REQUIRED_EVENT,
+  normalizeRuntimeHealthResponse,
 } from './iam-api';
 
 describe('iam-api organization helpers', () => {
@@ -99,6 +100,34 @@ describe('iam-api organization helpers', () => {
         credentials: 'include',
       })
     );
+  });
+
+  it('normalizes legacy runtime health responses', () => {
+    const health = normalizeRuntimeHealthResponse({
+      checks: {
+        db: true,
+        errors: {},
+        keycloak: false,
+        redis: true,
+      },
+      path: '/api/v1/iam/health/ready',
+      status: 'not_ready',
+      timestamp: '2026-04-26T06:12:54.026Z',
+    } as never);
+
+    expect(health.checks.services).toEqual({
+      authorizationCache: { status: 'unknown' },
+      database: { status: 'ready' },
+      keycloak: { status: 'not_ready' },
+      redis: { status: 'ready' },
+    });
+    expect(health.checks.auth).toEqual({});
+    expect(health.checks.authorizationCache).toEqual({
+      coldStart: false,
+      consecutiveRedisFailures: 0,
+      recomputePerMinute: 0,
+      status: 'empty',
+    });
   });
 
   it('sends JSON headers for organization mutations', async () => {

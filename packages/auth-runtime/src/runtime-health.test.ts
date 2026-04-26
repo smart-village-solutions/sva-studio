@@ -80,10 +80,26 @@ describe('auth-runtime health handlers', () => {
     await expect(response.json()).resolves.toMatchObject({
       status: 'ready',
       checks: {
+        authorizationCache: {
+          coldStart: false,
+          consecutiveRedisFailures: 0,
+          recomputePerMinute: 0,
+          status: 'empty',
+        },
+        auth: {},
         db: true,
         redis: true,
         keycloak: true,
         errors: {},
+        services: {
+          authorizationCache: {
+            reasonCode: 'authorization_cache_unavailable',
+            status: 'unknown',
+          },
+          database: { status: 'ready' },
+          keycloak: { status: 'ready' },
+          redis: { status: 'ready' },
+        },
       },
     });
     expect(state.trackKeycloakCall).toHaveBeenCalledWith('readiness_list_roles', expect.any(Function));
@@ -105,10 +121,24 @@ describe('auth-runtime health handlers', () => {
         db: false,
         redis: false,
         keycloak: false,
+        diagnostics: {
+          db: { reason_code: 'database_not_configured' },
+          redis: { reason_code: 'redis_ping_failed' },
+          keycloak: { reason_code: 'keycloak_admin_not_configured' },
+        },
         errors: {
           db: 'IAM database not configured',
           redis: 'redis down',
           keycloak: 'Keycloak admin client not configured',
+        },
+        services: {
+          authorizationCache: {
+            reasonCode: 'authorization_cache_unavailable',
+            status: 'unknown',
+          },
+          database: { reasonCode: 'database_not_configured', status: 'not_ready' },
+          keycloak: { reasonCode: 'keycloak_admin_not_configured', status: 'not_ready' },
+          redis: { reasonCode: 'redis_ping_failed', status: 'not_ready' },
         },
       },
     });
@@ -133,8 +163,16 @@ describe('auth-runtime health handlers', () => {
         db: true,
         redis: true,
         keycloak: false,
+        diagnostics: {
+          keycloak: { reason_code: 'keycloak_dependency_failed' },
+        },
         errors: {
           keycloak: 'keycloak down',
+        },
+        services: {
+          database: { status: 'ready' },
+          keycloak: { reasonCode: 'keycloak_dependency_failed', status: 'not_ready' },
+          redis: { status: 'ready' },
         },
       },
     });

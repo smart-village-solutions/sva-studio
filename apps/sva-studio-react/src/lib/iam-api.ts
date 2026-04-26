@@ -34,6 +34,7 @@ import type {
   IamRuntimeDiagnosticStatus,
   IamRuntimeRecommendedAction,
   IamRuntimeSafeDetails,
+  RuntimeDependencyHealth,
   UpdateIamContentInput,
 } from '@sva/core';
 import {
@@ -965,12 +966,61 @@ export const getInstanceKeycloakProvisioningRun = async (
   );
 
 export const getRuntimeHealth = async (options: IamRequestOptions = {}): Promise<RuntimeHealthResponse> =>
-  requestJson<RuntimeHealthResponse>('/api/v1/iam/health/ready', {
-    signal: options.signal,
-  }, {
-    signal: options.signal,
-    timeoutMs: options.timeoutMs ?? HEALTH_REQUEST_TIMEOUT_MS,
-  });
+  normalizeRuntimeHealthResponse(
+    await requestJson<RuntimeHealthResponse>(
+      '/api/v1/iam/health/ready',
+      {
+        signal: options.signal,
+      },
+      {
+        signal: options.signal,
+        timeoutMs: options.timeoutMs ?? HEALTH_REQUEST_TIMEOUT_MS,
+      }
+    )
+  );
+
+const toRuntimeDependencyStatus = (ready: boolean | undefined): RuntimeDependencyHealth['status'] => {
+  if (ready === true) {
+    return 'ready';
+  }
+  if (ready === false) {
+    return 'not_ready';
+  }
+  return 'unknown';
+};
+
+const createFallbackRuntimeServices = (
+  checks: Partial<RuntimeHealthResponse['checks']>
+): RuntimeHealthResponse['checks']['services'] => ({
+  authorizationCache: checks.services?.authorizationCache ?? { status: 'unknown' },
+  database: checks.services?.database ?? { status: toRuntimeDependencyStatus(checks.db) },
+  keycloak: checks.services?.keycloak ?? { status: toRuntimeDependencyStatus(checks.keycloak) },
+  redis: checks.services?.redis ?? { status: toRuntimeDependencyStatus(checks.redis) },
+});
+
+export const normalizeRuntimeHealthResponse = (health: RuntimeHealthResponse): RuntimeHealthResponse => {
+  const checks: Partial<RuntimeHealthResponse['checks']> = health.checks ?? {};
+
+  return {
+    ...health,
+    checks: {
+      ...checks,
+      db: checks.db ?? false,
+      keycloak: checks.keycloak ?? false,
+      redis: checks.redis ?? false,
+      authorizationCache: checks.authorizationCache ?? {
+        coldStart: false,
+        consecutiveRedisFailures: 0,
+        recomputePerMinute: 0,
+        status: 'empty',
+      },
+      auth: checks.auth ?? {},
+      diagnostics: checks.diagnostics ?? {},
+      errors: checks.errors ?? {},
+      services: createFallbackRuntimeServices(checks),
+    },
+  };
+};
 
 export const reconcileInstanceKeycloak = async (
   instanceId: string,

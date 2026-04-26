@@ -83,7 +83,7 @@ Policy-Dateien:
 Regeln:
 
 - Gates werden pro Projekt und global ausgewertet
-- Initiale Floors sind konservativ, danach Ratcheting
+- Floors werden an der zuletzt stabil gemessenen Coverage ausgerichtet und danach per Ratcheting nachgezogen
 - Abfälle gegen Baseline über der erlaubten Schwelle schlagen fehl
 - Exempt-Projekte sind in der Policy explizit dokumentiert
 - Kritische Projekte können strengere `minimumFloors` erhalten als normale Projekt-Floors
@@ -209,10 +209,9 @@ Wichtig:
 
 Aktuell als coverage-exempt markiert:
 
-- `core`
-- `data`
+- keine Projekte
 
-Diese Liste wird schrittweise reduziert, sobald echte Unit-Tests vorhanden sind.
+Neue Exemptions sind nur in begründeten Ausnahmefällen zulässig und müssen in `tooling/testing/coverage-policy.json` dokumentiert werden.
 
 ### Reviewer-Workflow für Exemptions
 

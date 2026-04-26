@@ -11,9 +11,10 @@ const canonicalJson = (value: ContentJsonValue): string => {
     return `[${value.map(canonicalJson).join(',')}]`;
   }
 
-  return `{${Object.keys(value)
+  const objectValue: Readonly<Record<string, ContentJsonValue>> = value;
+  return `{${Object.keys(objectValue)
     .sort()
-    .map((key) => `${JSON.stringify(key)}:${canonicalJson(value[key] as ContentJsonValue)}`)
+    .map((key) => `${JSON.stringify(key)}:${canonicalJson(objectValue[key] ?? null)}`)
     .join(',')}}`;
 };
 

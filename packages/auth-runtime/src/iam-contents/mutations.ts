@@ -6,13 +6,13 @@ import {
   parseRequestBody,
   readPathSegment,
 } from '../iam-account-management/api-helpers.js';
+import { jsonResponse } from '../db.js';
 import { validateCsrf } from '../iam-account-management/csrf.js';
 
 import { validateContentTypePayload } from './content-type-registry.js';
 import { authorizeUpdateContentActions } from './mutation-authorization.js';
 import {
   createFailureResponse,
-  jsonResponse,
   logCreateFailure,
   parseCreateRequest,
   reserveCreateIdempotency,

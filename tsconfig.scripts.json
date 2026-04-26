@@ -12,6 +12,7 @@
     "scripts/ci/check-openapi-iam.ts",
     "scripts/ci/iam-acceptance.ts",
     "scripts/ci/iam-acceptance.test.ts",
+    "scripts/ci/prepare-sonar-lcov.ts",
     "scripts/ci/run-iam-acceptance.ts",
     "scripts/ci/sonar-hotspots.ts",
     "scripts/ci/sonar-hotspots.test.ts",

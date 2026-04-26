@@ -65,6 +65,19 @@ Das Kommando bildet den blockierenden GitHub-PR-Workflow für lokale Vorprüfung
 
 Nicht Bestandteil von `pnpm test:pr` sind externe Plattform-Auswertungen wie SonarCloud, Codecov oder CodeQL. Die lokale New-Code-/Patch-Coverage wird aber jetzt bereits vor dem Push geprüft, sodass die häufigste Abweichung zwischen lokalem PR-Gate und Sonar früher sichtbar wird.
 
+### SonarCloud-Coverage
+
+Der GitHub-Workflow erzeugt vor dem SonarCloud-Scan mit `pnpm sonar:prepare-lcov` einen zusammengefassten
+Report unter `artifacts/sonar/lcov.info`. Das Skript schreibt alle `SF:`-Einträge repo-relativ um, weil
+Vitest in Workspace-Packages projektlokale Pfade wie `src/index.ts` ausgibt. Ohne diese Normalisierung
+kann SonarCloud LCOV-Pfade aus mehreren Packages nicht zuverlässig dem Quellcode am Repository-Root
+zuordnen.
+
+Die CPD-Ausnahmen in `sonar-project.properties` sind auf generierte Artefakte, Übersetzungsressourcen und
+dokumentierte Migrationsspiegel beschränkt. Aktuell betrifft das die Data-Repository-Extraktion
+(`packages/data-repositories/src/**`) und die Studio-UI-Extraktion (`packages/studio-ui-react/src/**`
+plus die verbleibenden App-Spiegel). Neue fachliche Duplikate sollen weiterhin refaktoriert werden.
+
 ### Baseline aktualisieren
 
 Nur nach bewusstem Team-Entscheid:

@@ -31,6 +31,7 @@
     "coverage-gate": "tsx scripts/ci/coverage-gate.ts",
     "patch-coverage-gate": "tsx scripts/ci/patch-coverage-gate.ts",
     "sonar-new-code-gate": "tsx scripts/ci/sonar-new-code-gate.ts",
+    "sonar:prepare-lcov": "tsx scripts/ci/prepare-sonar-lcov.ts",
     "complexity-gate": "tsx scripts/ci/complexity-gate.ts",
     "clean:generated-source-artifacts": "tsx scripts/ci/clean-generated-source-artifacts.ts",
     "clean:source-artifacts": "pnpm clean:generated-source-artifacts",

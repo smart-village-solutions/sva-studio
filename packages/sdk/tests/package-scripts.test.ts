@@ -62,6 +62,12 @@ describe('workspace package scripts', () => {
     expect(testCoveragePrScript).toContain('pnpm sonar-new-code-gate --base=origin/main');
   });
 
+  it('exposes the Sonar LCOV preparation command', () => {
+    const packageJson = loadRootPackageJson();
+
+    expect(packageJson.scripts?.['sonar:prepare-lcov']).toBe('tsx scripts/ci/prepare-sonar-lcov.ts');
+  });
+
   it('keeps global coverage floors at the project baseline', () => {
     const policy = loadCoveragePolicy();
 

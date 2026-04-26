@@ -21,6 +21,7 @@ export default [
             '../../../scripts/ci/clean-source-artifacts.ts',
             '../../../scripts/ci/complexity-gate.ts',
             '../../../scripts/ci/coverage-gate.ts',
+            '../../../scripts/ci/prepare-sonar-lcov.ts',
             '../../../scripts/ops/deploy-feedback-loop.ts',
             '../../../scripts/ops/runtime/bootstrap-job.ts',
             '../../../scripts/ops/runtime/deploy-project.ts',

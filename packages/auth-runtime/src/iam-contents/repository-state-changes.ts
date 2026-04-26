@@ -17,7 +17,7 @@ const canonicalJson = (value: ContentJsonValue): string => {
 
   const objectValue: Readonly<Record<string, ContentJsonValue>> = value;
   return `{${Object.keys(objectValue)
-    .sort()
+    .sort((left, right) => left.localeCompare(right))
     .map((key) => `${JSON.stringify(key)}:${canonicalJson(objectValue[key] ?? null)}`)
     .join(',')}}`;
 };

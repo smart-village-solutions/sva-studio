@@ -12,6 +12,7 @@ Der harte Package-Schnitt ist durch den OpenSpec-Change `refactor-package-target
 - Framework-agnostische Kernlogik bleibt von React-, TanStack- und Node-Runtime-Bindings getrennt.
 - Serverseitig von Node geladene Packages bleiben ESM-strikt und verwenden explizite Runtime-Endungen.
 - Plugins konsumieren Host-Verträge nur über `@sva/plugin-sdk` und nicht direkt über interne Core- oder App-Module.
+- Host- und Plugin-Custom-Views konsumieren wiederverwendbare React-UI über `@sva/studio-ui-react` statt über App-interne Komponentenpfade.
 - Autorisierung, Routing, Datenzugriff, Runtime-Kontext und UI-Komposition bleiben getrennte Änderungsachsen.
 - Große IAM- und Instanz-Funktionalität liegt in den fachlichen Zielpackages und wächst nicht mehr in historischen Sammelpackages.
 - PII-Datenflüsse werden bei Package-Schnitten explizit klassifiziert; nur autorisierte Fachmodule dürfen personenbezogene Daten im Klartext verarbeiten (siehe [PII-Datenfluss-Regel](#pii-datenfluss-regel)).
@@ -32,6 +33,7 @@ Die aktuelle Struktur trennt die vorherigen Sammelrollen in eigenständige Paket
 - `@sva/iam-governance` enthält Governance, Legal Texts, DSR und audit-nahe IAM-Fachfälle.
 - `@sva/instance-registry` enthält Instanzmodell, Host-Klassifikation, Registry, Provisioning und Tenant-Keycloak-Control-Plane.
 - `@sva/routing` stellt Route-Factories, Pfade, Guards und serverseitiges Auth-Routing bereit.
+- `@sva/studio-ui-react` stellt die öffentliche React/UI-Basis für Host-Seiten und Plugin-Custom-Views bereit.
 - `@sva/sva-mainserver` kapselt die externe Mainserver-Integration.
 - `@sva/plugin-news` zeigt das Zielmuster für fachliche Plugins.
 - `apps/sva-studio-react` enthält UI, TanStack-Start-Runtime, Router-Wiring und App-nahe Server-Funktionen.
@@ -46,6 +48,7 @@ flowchart TB
   Plugins[@sva/plugin-*]
   Routing[@sva/routing]
   PluginSdk[@sva/plugin-sdk]
+  StudioUi[@sva/studio-ui-react]
   AuthRuntime[@sva/auth-runtime]
   IamCore[@sva/iam-core]
   IamAdmin[@sva/iam-admin]
@@ -67,6 +70,8 @@ flowchart TB
   App -.->|über Server-Funktionen| IamGovernance
   App -.->|über Server-Funktionen| InstanceRegistry
   Plugins --> PluginSdk
+  Plugins --> StudioUi
+  App --> StudioUi
   Routing --> Core
   Routing --> PluginSdk
   AuthRuntime --> IamCore
@@ -113,8 +118,9 @@ Die Zielrollen sind als Workspace-Packages vorhanden und werden über Nx-, ESLin
 | `@sva/iam-governance` | Governance-Cases, DSR, Legal Texts, Audit-nahe IAM-Fachfälle | `packages/iam-governance` | Compliance-nahe Fachlogik hat eigene Ownership und eigene Tests. |
 | `@sva/instance-registry` | Instanzmodell, Host-Klassifikation, Registry, Provisioning, Keycloak-Tenant-Control-Plane | `packages/instance-registry` | Instanzverwaltung ist eine eigene Control-Plane, nicht eine Unterfunktion von Auth. |
 | `@sva/routing` | Route-Verträge, Search-Param-Normalisierung, Route-Factories, Guard-Schnittstellen | `packages/routing` | Routing kennt Verträge und verdrahtet Runtime-Routen über `@sva/auth-runtime`. |
+| `@sva/studio-ui-react` | React-basierte Studio-UI-Bausteine für Host-Seiten und Plugin-Custom-Views | `packages/studio-ui-react` | UI-only Package; keine Plugin-Registry-, Routing-, IAM-, DB- oder Server-Runtime-Verantwortung. |
 | `@sva/*-integration` | Downstream-Integrationen mit getrennten client-sicheren Typen und serverseitigen Adaptern | `packages/sva-mainserver` | Integrationspakete kapseln OAuth2, GraphQL, Secret-Lookups und Fehlerabbildung. |
-| `@sva/plugin-*` | Fachliche Erweiterungen über Plugin-SDK-Verträge | `packages/plugin-news` | Keine Direktimporte aus `@sva/core`, `@sva/auth-runtime`, `@sva/iam-*`, `@sva/instance-registry`, `@sva/data` oder App-Modulen. |
+| `@sva/plugin-*` | Fachliche Erweiterungen über Plugin-SDK-Verträge und gemeinsame Studio-UI | `packages/plugin-news` | Keine Direktimporte aus `@sva/core`, `@sva/auth-runtime`, `@sva/iam-*`, `@sva/instance-registry`, `@sva/data` oder App-Modulen; Custom-Views nutzen `@sva/studio-ui-react`. |
 | `apps/sva-studio-react` | UI, TanStack Start, Router-Wiring, App-Shell, Server-Funktionen als Adapter | `apps/sva-studio-react` | Keine dauerhafte Domänenlogik, keine rohen DB-/Keycloak-/GraphQL-Zugriffe im Browser-Bundle. |
 
 ## Erlaubte Abhängigkeitsrichtung
@@ -137,6 +143,7 @@ Nicht zulässig im Zielbild:
 
 - `@sva/routing` importiert historische Auth-Sammelpackages für Pfade oder Runtime-Handler.
 - Plugins importieren `@sva/core`, `@sva/auth-runtime`, `@sva/iam-*`, `@sva/instance-registry`, `@sva/data` oder App-Code direkt.
+- Plugins importieren wiederverwendbare UI aus `apps/sva-studio-react/src/**` oder definieren eigene Basis-Control-Systeme für Buttons, Inputs, Dialoge, Tabs oder Tabellen.
 - App-Komponenten modellieren IAM-, Instanz- oder Integrationsregeln selbst.
 - `@sva/sdk` nimmt fachliche IAM-, Daten- oder Routing-Entscheidungen auf.
 - Fachmodule greifen direkt auf fremde Fachmodul-Interna zu, statt über öffentliche Verträge zu gehen.
@@ -153,6 +160,7 @@ Bei der Package-Aufteilung gelten folgende PII-Klassifikationsgrenzen (vgl. `./i
 | `@sva/auth-runtime` | Darf Session- und Token-Claims verarbeiten (Name, E-Mail aus OIDC) | Authentifizierungsflow |
 | `@sva/instance-registry` | Kein PII im Klartext | Registry-Daten sind mandantenbezogen, nicht personenbezogen |
 | `@sva/routing` | Kein PII im Klartext | Routing ist fachfrei |
+| `@sva/studio-ui-react` | Kein PII im Klartext | UI-only; erhält Inhalte nur als Props |
 | `@sva/plugin-sdk` | Kein PII im Klartext | Plugins erhalten PII nur über Host-Verträge, nie direkt |
 | `@sva/data-repositories` | Stellt nur verschlüsselte Felder bereit | Entschlüsselung geschieht in der Fachschicht (`iam-admin`, `iam-governance`) |
 | `@sva/data-client` | Kein PII im Klartext | Browser-/Universal-Zugriff ohne Entschlüsselungsfähigkeit |
@@ -237,6 +245,7 @@ Vor jeder funktionalen Erweiterung ist zu klären:
 | Betrifft sie DSR, Legal, Governance oder Audit-Fachfälle? | Zielbaustein `iam-governance`. |
 | Betrifft sie Instanzen, Hosts, Provisioning oder Tenant-Keycloak? | Zielbaustein `instance-registry`. |
 | Betrifft sie Plugin-Erweiterungen, Content-Type-Definitionen oder Admin-Ressourcen? | Zielbaustein `plugin-sdk`; Fachlogik in Plugin oder Fachmodul. |
+| Betrifft sie wiederverwendbare React-UI für Host oder Plugin-Custom-Views? | Zielbaustein `studio-ui-react`; App-Shell und Host-Bindings bleiben in der App. |
 | Betrifft sie Downstream-Systeme wie den SVA-Mainserver? | Eigenes Integrationspackage. |
 | Betrifft sie nur UI-Zustand und Darstellung? | App-Layer; Domänenentscheidungen bleiben außerhalb. |
 

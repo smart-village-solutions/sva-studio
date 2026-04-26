@@ -75,6 +75,18 @@ Der erste öffentliche Umfang umfasst:
 
 Spezialcontrols wie Rich-Text, Upload, Medienauswahl, Farbauswahl, Icon-Auswahl und Geo-Auswahl werden erst aufgenommen, wenn sie mindestens pluginübergreifend oder host/plugin-übergreifend benötigt werden.
 
+## MVP Cut
+
+Für den ersten Implementierungs-PR ist nicht der gesamte Public-API-Katalog verpflichtend. Der MVP muss die Boundary beweisen und einen realen Verbraucher migrieren:
+
+- Package-Setup mit `@sva/studio-ui-react`, Nx-Targets, Path-Mapping, Package-Exports und Peer-Dependency-Grenzen.
+- Basiscontrols: `Button`, `Input`, `Textarea`, `Select`, `Checkbox`, `Badge`, `Alert`, `Dialog`, `Tabs`.
+- Struktur und States: `StudioPageHeader`, `StudioOverviewPageTemplate`, `StudioDetailPageTemplate`, `StudioField`, `StudioFieldGroup`, `StudioFormSummary`, `StudioStateBlock`, `StudioLoadingState`, `StudioEmptyState`, `StudioErrorState`.
+- Eine Referenzmigration, bevorzugt `packages/plugin-news`, weil dort frühe lokale Button-/Input-/Layout-Drift sichtbar ist. Falls `plugin-news` durch parallele PRs blockiert ist, wird eine kleine Host-Übersichts- oder Detailfläche als Referenz genutzt.
+- Boundary-Check gegen App-Internal-Imports aus Plugins.
+
+Nicht im MVP enthalten sind vollständige Tabellenmigration, Bulk-Action-Kompositionen, Spezialcontrols, Storybook-/Showcase-Ausbau und flächendeckende Host-Migration. Diese folgen als separate Tasks oder Folgechanges.
+
 ## Host-Rendered Default
 
 CRUD-artige Admin-Ressourcen bleiben bevorzugt host-rendered. Plugins deklarieren über `AdminResourceDefinition`, welche Views und Capabilities sie bereitstellen. Der Host rendert Navigation, Toolbar, Listenrahmen, Detailrahmen, Zustände und Aktionen aus den validierten Metadaten.
@@ -103,14 +115,28 @@ Der Change führt Boundary-Regeln ein:
 - App-interne shadcn/ui-Komponenten werden entweder nach `@sva/studio-ui-react` migriert oder nur noch als Übergangsadapter genutzt.
 - `tsconfig.base.json`, Nx-Tags und ESLint-Dep-Constraints bilden die erlaubten Importkanten ab.
 
+### Basis-Control-Duplikate
+
+Verboten sind lokale, wiederverwendbare visuelle Basiscontrols in Plugins, wenn sie denselben Zweck wie freigegebene Studio-UI-Komponenten erfüllen. Dazu zählen insbesondere exportierte oder mehrfach verwendete Plugin-Komponenten mit Namen oder Rolle wie `Button`, `Input`, `Select`, `Textarea`, `Checkbox`, `Tabs`, `Dialog`, `Alert`, `Badge`, `Table` oder `DataTable`.
+
+Erlaubt bleiben fachliche Wrapper und domänenspezifische Kompositionen, wenn sie `@sva/studio-ui-react` intern verwenden und keine parallelen Tokens, Focus-/ARIA-Regeln oder Button-/Formular-Stile etablieren. Beispiele:
+
+- erlaubt: `NewsStatusField`, das `StudioField`, `Select` und fachliche Optionen komponiert.
+- erlaubt: `NewsPublishAction`, das `Button` und fachliche Mutation/Feedback-Logik kapselt.
+- verboten: ein eigenes Plugin-`Button` mit abweichenden Varianten, Focus-Ring, Größen oder Farbsemantik.
+- verboten: eine eigene Plugin-`DataTable`, solange die benötigte Listenstruktur mit `StudioDataTable` oder den freigegebenen Tabellenprimitives abbildbar ist.
+
+Enforcement darf anfangs statisch über Importverbote, Nx-Dep-Constraints und gezielte `rg`-/ESLint-basierte Checks erfolgen. Review-Regeln decken Fälle ab, die statisch nicht zuverlässig erkennbar sind.
+
 ## Migration Strategy
 
 1. `@sva/studio-ui-react` mit Nx-Generator als Library anlegen.
-2. Bestehende shadcn/ui-Source-Komponenten und Studio-Wrapper schrittweise in das Package verschieben oder dort neu exportieren.
-3. `apps/sva-studio-react` auf `@sva/studio-ui-react` umstellen.
-4. `@sva/plugin-news` als Referenzplugin auf `@sva/studio-ui-react` migrieren.
-5. Boundary-Regeln zunächst warnend prüfen, danach verbindlich machen.
-6. Weitere Plugins nur noch mit `@sva/studio-ui-react`-Custom-Views zulassen.
+2. MVP-Controls und Studio-Primitives bereitstellen.
+3. Einen Referenzverbraucher migrieren und daraus fehlende Props/Accessibility-Anforderungen ableiten.
+4. Boundary-Regel gegen Plugin-Imports aus `apps/sva-studio-react/src/**` verbindlich machen.
+5. App-interne shadcn/ui-Source-Komponenten schrittweise in das Package verschieben oder dort neu exportieren.
+6. Tabellen-, Toolbar-, Bulk-Action- und Spezialeditor-Primitives nur aufnehmen, wenn Host oder mindestens ein Plugin sie konkret benötigt.
+7. Weitere Plugins nur noch mit `@sva/studio-ui-react`-Custom-Views zulassen.
 
 ## Risks
 

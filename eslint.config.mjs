@@ -135,7 +135,11 @@ export default [
             },
             {
               sourceTag: 'scope:plugin',
-              onlyDependOnLibsWithTags: ['scope:plugin-sdk', 'scope:plugin'],
+              onlyDependOnLibsWithTags: ['scope:plugin-sdk', 'scope:studio-ui-react', 'scope:plugin'],
+            },
+            {
+              sourceTag: 'scope:studio-ui-react',
+              onlyDependOnLibsWithTags: ['scope:studio-ui-react'],
             },
             {
               sourceTag: 'scope:routing',
@@ -155,6 +159,7 @@ export default [
                 'scope:plugin-sdk',
                 'scope:server-runtime',
                 'scope:plugin',
+                'scope:studio-ui-react',
                 'scope:routing',
                 'scope:auth-runtime',
                 'scope:integration',
@@ -488,6 +493,10 @@ export default [
             },
           ],
           patterns: [
+            {
+              group: ['apps/sva-studio-react/src/**', '../../apps/sva-studio-react/src/**', '../../../apps/sva-studio-react/src/**'],
+              message: 'Plugins müssen gemeinsame UI über @sva/studio-ui-react statt App-internen Komponenten importieren.',
+            },
             {
               group: ['@sva/core/*'],
               message: 'Plugins müssen über @sva/plugin-sdk auf Host-APIs zugreifen.',

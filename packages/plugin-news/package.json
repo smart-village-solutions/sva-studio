@@ -12,7 +12,8 @@
     }
   },
   "dependencies": {
-    "@sva/plugin-sdk": "workspace:*"
+    "@sva/plugin-sdk": "workspace:*",
+    "@sva/studio-ui-react": "workspace:*"
   },
   "peerDependencies": {
     "@tanstack/react-router": "^1.168.10",

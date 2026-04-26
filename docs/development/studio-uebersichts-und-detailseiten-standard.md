@@ -71,15 +71,17 @@ Der Ausnahmefall ist eine Plugin-Custom-View. Sie ist zulässig, wenn die Fachob
 
 ### Mindestumfang von `@sva/studio-ui-react`
 
-Das Package startet mit einem bewusst kleinen, aber verbindlichen Umfang:
+Das Package startet mit einem bewusst kleinen, aber verbindlichen Umfang. Der erste umgesetzte MVP enthält die UI-Boundary, Basiscontrols, Page-/Form-/State-Primitives und `plugin-news` als Referenzverbraucher.
 
-- Seiten-Templates für Übersicht, Detail und formularbasierte Editierflächen
-- Page-Header, Ressourcen-Header, Tabs, Sektionen und Aktionsmenüs
-- Formularfeld-Wrapper mit Label, Pflichtkennzeichen, Hilfetext und Fehlerzustand
-- shadcn-basierte Controls für Input, Textarea, Select, Checkbox, Button, Badge, Dialog, Alert und Tabs
-- Zustandskomponenten für Loading, Empty, Error, Forbidden, Not Found und Read-only
-- Tabellen-/Listenbausteine für Standard-Admin-Übersichten
-- Spezialcontrol-Wrapper für Rich-Text, Upload, Medienauswahl, Farbwahl, Icon-Auswahl und Geo-Auswahl, sobald sie mehrfach oder pluginübergreifend benötigt werden
+- umgesetzt im MVP: `Button`, `Input`, `Textarea`, `Select`, `Checkbox`, `Badge`, `Alert`, `Dialog`, `AlertDialog`, `Tabs`
+- umgesetzt im MVP: `StudioPageHeader`, `StudioOverviewPageTemplate`, `StudioDetailPageTemplate`
+- umgesetzt im MVP: `StudioField`, `StudioFieldGroup`, `StudioFormSummary`
+- umgesetzt im MVP: `StudioStateBlock`, `StudioLoadingState`, `StudioEmptyState`, `StudioErrorState`
+- Folgeumfang: Ressourcen-Header, Detail-Tabs, Sektionen, Editierflächen und Aktionsmenüs nach konkretem Host- oder Plugin-Bedarf
+- Folgeumfang: Tabellen-/Listenbausteine und Bulk-Action-Kompositionen in Abstimmung mit dem Admin-Resource-Host-Standard
+- Folgeumfang: Spezialcontrol-Wrapper für Rich-Text, Upload, Medienauswahl, Farbwahl, Icon-Auswahl und Geo-Auswahl, sobald sie mehrfach oder pluginübergreifend benötigt werden
+
+Plugin-spezifische Wrapper sind erlaubt, wenn sie diese Bausteine komponieren und keine eigenen Varianten, Focus-/ARIA-Regeln oder Design-Tokens etablieren.
 
 ## Anforderungen an Übersichtsseiten
 

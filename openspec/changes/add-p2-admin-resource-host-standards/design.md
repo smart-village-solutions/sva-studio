@@ -46,6 +46,41 @@ type AdminResourceDefinition = {
 
 Definitionsfelder müssen serialisierbar oder über bestehende Binding-Keys referenzierbar bleiben. Plugins sollen keine beliebigen React-Komponenten in Capability-Deklarationen einschleusen; Rendering und Interaktionsmuster bleiben Host-Verantwortung.
 
+## Minimum Capability Contract
+
+Die erste Implementierungsstufe soll bewusst klein bleiben und nur Felder aufnehmen, die der Host deterministisch normalisieren, rendern, testen und auditieren kann.
+
+- `search`: `param`, `placeholderKey`, `fields`, optional `minLength`, optional `debounceMs`. Der Host normalisiert leere oder zu kurze Suchwerte auf `undefined`.
+- `filters`: stabile `id`, `param`, `labelKey`, `type`, `defaultValue` und erlaubte Werte oder Referenz auf einen Host-Binding-Key. Erlaubte Basistypen sind `singleSelect`, `multiSelect`, `boolean`, `dateRange` und `text`.
+- `sorting`: erlaubte `fields`, `default`, optionale `directions`. Sortierfelder sind stabile Feld-IDs und keine frei formulierten Query-Fragmente.
+- `pagination`: `paramPrefix`, `defaultPageSize`, `allowedPageSizes` und `maxPageSize`. Page-Werte kleiner 1 und Page-Size-Werte außerhalb der erlaubten Liste werden normalisiert.
+- `bulkActions`: stabile fully-qualified `actionId`, `labelKey`, optionale `descriptionKey`, erforderlicher `confirmation`-Modus, `selectionScope` und Referenz auf Mutation-/Action-Binding.
+- `history`: Binding-Key für History-Daten, `titleKey` und erlaubte Detail-Affordances.
+- `revisions`: Binding-Key für Revision-Daten, Restore-Action-ID und Restore-Confirmation.
+
+Alle IDs, Params und Binding-Keys müssen innerhalb einer Resource eindeutig sein. User-sichtbare Texte werden ausschließlich als i18n-Keys deklariert.
+
+## Canonical Search Params
+
+Der Host erzeugt je Resource einen kanonischen Search-Param-Vertrag. Die erste Stufe verwendet stabile, vorhersehbare Parameter:
+
+- `q` für Suche, sofern die Resource keinen abweichenden Search-Param deklariert.
+- `sort` und `dir` für Sortierung.
+- `page` und `pageSize` für Pagination.
+- Filter verwenden ihren deklarierten `param`; Multi-Select-Werte werden als wiederholbare oder kanonisch sortierte Werte normalisiert.
+
+Ungültige Search-Params werden nicht ungeprüft an Datenadapter weitergereicht. Der Host normalisiert sie auf Defaultwerte, entfernt unbekannte Resource-Params aus dem normalisierten State und stellt Tests für URL-Rehydration, Defaulting und Deep-Link-Verhalten bereit.
+
+## Bulk-Action Semantics
+
+Bulk-Actions müssen vor der Ausführung eine explizite Auswahlsemantik haben:
+
+- `explicitIds`: nur sicht- oder explizit ausgewählte Datensätze.
+- `currentPage`: alle Treffer der aktuellen Seite nach normalisiertem Query-State.
+- `allMatchingQuery`: alle Treffer des aktuellen Query-State; nur zulässig, wenn der Datenadapter diese Operation serverseitig begrenzen und auditieren kann.
+
+Der Host besitzt Auswahl-State, Confirmation-UI, Disabled-State und Übergabe des normalisierten Query-/Selection-Inputs. Packages besitzen fachliche Mutation, Autorisierung, serverseitige Limits und Validierung. Self-Protection, Privilege-Escalation-Schutz oder domänenspezifische Ausschlüsse bleiben Package-/Server-Verantwortung, müssen aber in der Action-Antwort für Host-Feedback abbildbar sein.
+
 ## Host Responsibilities
 
 - Erzeugen und Validieren kanonischer Search-Params je Resource.
@@ -75,9 +110,10 @@ Search-, Filter-, Sortier- und Pagination-State muss route-addressable sein. Fü
 
 Hostgeführte Operationen mit Sicherheits- oder Compliance-Relevanz müssen bestehende Audit-/Activity-Mechanismen nutzen:
 
-- Bulk-Actions erfassen Resource-ID, Action-ID, Actor, Scope und Anzahl betroffener Records.
-- Revision-Restores verknüpfen aktuellen Record und wiederhergestellte Revision.
+- Bulk-Actions erfassen Resource-ID, fully-qualified Action-ID, Actor, Scope, normalisierte Query-/Selection-Metadaten und Anzahl akzeptierter, übersprungener und fehlgeschlagener Records.
+- Revision-Restores verknüpfen Resource-ID, Record-ID, aktuelle Revision, wiederhergestellte Revision und Restore-Action-ID.
 - History-sensitive Operationen verwenden vorhandene Activity-Log- oder Audit-Event-Pfade, statt parallele Audit-Infrastruktur einzuführen.
+- Audit-Payloads dürfen keine ungefilterten Suchtexte, Freitextfilter oder PII-Felder enthalten; der Host standardisiert nur Metadaten, IDs, Counts und sichere Scope-Informationen.
 
 ## Migration Plan
 

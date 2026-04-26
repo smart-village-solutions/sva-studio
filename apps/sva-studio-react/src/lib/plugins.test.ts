@@ -72,6 +72,48 @@ describe('plugin action alias lookup', () => {
     expect(studioAdminResources[0]).toMatchObject({
       resourceId: 'content',
       basePath: 'content',
+      capabilities: {
+        list: {
+          search: {
+            param: 'q',
+            fields: ['title', 'author', 'contentType', 'payload'],
+          },
+          filters: [
+            {
+              id: 'status',
+              param: 'status',
+              defaultValue: 'all',
+            },
+          ],
+          sorting: {
+            defaultField: 'updatedAt',
+            defaultDirection: 'desc',
+          },
+          pagination: {
+            defaultPageSize: 25,
+          },
+          bulkActions: [
+            {
+              id: 'archive',
+              actionId: 'content.archive',
+              selectionModes: ['explicitIds', 'currentPage', 'allMatchingQuery'],
+            },
+            {
+              id: 'delete',
+              actionId: 'content.delete',
+              selectionModes: ['explicitIds'],
+            },
+          ],
+        },
+        detail: {
+          history: {
+            bindingKey: 'content.history',
+          },
+          revisions: {
+            restoreActionId: 'content.restore',
+          },
+        },
+      },
     });
   });
 });

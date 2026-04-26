@@ -11,7 +11,17 @@ export const pluginSdkPackageRoles = [
 
 export type {
   AdminResourceDefinition,
+  AdminResourceBulkActionSelectionMode,
+  AdminResourceCapabilities,
+  AdminResourceDetailCapabilities,
   AdminResourceGuard,
+  AdminResourceListBulkActionCapability,
+  AdminResourceListCapabilities,
+  AdminResourceListFilterCapability,
+  AdminResourceListFilterOption,
+  AdminResourceListPaginationCapability,
+  AdminResourceListSearchCapability,
+  AdminResourceListSortingCapability,
   AdminResourceViewDefinition,
   AdminResourceViews,
   BuildTimeRegistry,

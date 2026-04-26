@@ -224,7 +224,7 @@ const getOverviewFallbackStatus = (
     return createErrorStatus('forbidden');
   }
 
-  if (isSvaMainserverErrorCode(payload?.error)) {
+  if (payload && isSvaMainserverErrorCode(payload.error)) {
     return createErrorStatus(payload.error);
   }
 

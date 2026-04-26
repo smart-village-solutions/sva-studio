@@ -15,6 +15,12 @@ The system SHALL provide `@sva/studio-ui-react` as the shared React UI package f
 - **THEN** it uses `@sva/studio-ui-react` components
 - **AND** it does not define a parallel basis control system for buttons, inputs, tables, tabs, dialogs, or alerts
 
+#### Scenario: Plugin uses domain wrapper around shared UI
+- **GIVEN** a plugin needs a domain-specific field, action, or status component
+- **WHEN** the component is implemented
+- **THEN** it composes primitives from `@sva/studio-ui-react`
+- **AND** it does not redefine shared visual variants, focus behavior, ARIA semantics, or design tokens
+
 ### Requirement: Studio UI React Overview and Detail Templates
 The system SHALL provide reusable overview and detail templates that encode the Studio page standards for headings, resource identity, actions, navigation, work surfaces, and state handling.
 
@@ -60,3 +66,8 @@ The system SHALL allow plugin custom views only when they preserve Studio shell,
 - **WHEN** lint, boundary, or CI checks run
 - **THEN** the check fails with a message that directs the plugin to `@sva/studio-ui-react`
 
+#### Scenario: Plugin defines duplicate basis control
+- **GIVEN** a plugin defines or exports a reusable basis control that duplicates an available Studio UI component
+- **WHEN** lint, CI, or review checks run
+- **THEN** the contribution is rejected or changed to compose `@sva/studio-ui-react`
+- **AND** domain-specific wrappers remain allowed when they preserve shared Studio UI semantics

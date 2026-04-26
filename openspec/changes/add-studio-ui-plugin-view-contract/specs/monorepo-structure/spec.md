@@ -27,6 +27,11 @@ Plugins SHALL consume host metadata through `@sva/plugin-sdk` and shared Studio 
 - **THEN** the boundary check fails
 - **AND** the violation explains that shared UI must be imported from `@sva/studio-ui-react`
 
+#### Scenario: Plugin defines duplicate reusable basis control
+- **WHEN** a plugin defines reusable controls that duplicate available Studio UI controls such as Button, Input, Select, Tabs, Dialog, Alert, Badge, Table, or DataTable
+- **THEN** lint, CI, or review checks reject the duplicate basis control
+- **AND** the plugin may instead define domain-specific wrappers that compose `@sva/studio-ui-react`
+
 ## MODIFIED Requirements
 
 ### Requirement: Publishable Packages and Plugins
@@ -72,4 +77,3 @@ Plugins (Packages mit Tag `scope:plugin` oder Namensschema `@sva/plugin-*`) SHAL
 - **WHEN** ein Plugin-Entwickler versucht, direkt aus App-internen UI-Pfaden zu importieren
 - **THEN** schlägt die ESLint-Boundary-Prüfung fehl
 - **AND** eine aussagekräftige Fehlermeldung verweist auf `@sva/studio-ui-react` als korrekte UI-Schnittstelle
-

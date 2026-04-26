@@ -1,6 +1,20 @@
 import React from 'react';
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
 import { translatePluginKey, usePluginTranslation } from '@sva/plugin-sdk';
+import {
+  Button,
+  Input,
+  Select,
+  StudioDetailPageTemplate,
+  StudioEmptyState,
+  StudioErrorState,
+  StudioField,
+  StudioFieldGroup,
+  StudioFormSummary,
+  StudioLoadingState,
+  StudioOverviewPageTemplate,
+  Textarea,
+} from '@sva/studio-ui-react';
 
 import { createNews, deleteNews, getNews, listNews, updateNews, type NewsFormInput } from './news.api.js';
 import { getPluginNewsActionDefinition, pluginNewsActionIds } from './plugin.js';
@@ -24,15 +38,6 @@ const defaultForm = (): NewsFormInput => ({
   status: 'draft',
   payload: defaultPayload(),
 });
-
-const inputClassName =
-  'mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground';
-
-const buttonClassName =
-  'inline-flex rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background disabled:opacity-50';
-
-const secondaryButtonClassName =
-  'inline-flex rounded-md border border-border px-4 py-2 text-sm font-medium text-foreground';
 
 const newsFlashStorageKey = 'news-plugin-flash-message';
 
@@ -229,47 +234,39 @@ const NewsForm = ({
   };
 
   if (isLoading) {
-    return <p role="status">{pt('messages.loading')}</p>;
+    return <StudioLoadingState>{pt('messages.loading')}</StudioLoadingState>;
   }
 
   return (
-    <section className="space-y-6">
-      <header className="space-y-2">
-        <h1 className="text-3xl font-semibold">
-          {mode === 'create' ? pt('editor.createTitle') : pt('editor.editTitle')}
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          {mode === 'create' ? pt('editor.createDescription') : pt('editor.editDescription')}
-        </p>
-      </header>
-
+    <StudioDetailPageTemplate
+      title={mode === 'create' ? pt('editor.createTitle') : pt('editor.editTitle')}
+      description={mode === 'create' ? pt('editor.createDescription') : pt('editor.editDescription')}
+    >
       {statusMessage ? (
-        <p role="status" aria-live="polite" className={statusMessage.kind === 'error' ? 'text-destructive' : 'text-primary'}>
-          {statusMessage.text}
-        </p>
+        <StudioFormSummary kind={statusMessage.kind}>{statusMessage.text}</StudioFormSummary>
       ) : null}
 
       <form className="space-y-5" onSubmit={onSubmit}>
-        <div>
-          <label htmlFor="news-title" className="text-sm font-medium">
-            {pt('fields.title')}
-          </label>
-          <input
+        <StudioField id="news-title" label={pt('fields.title')} required>
+          <Input
             id="news-title"
-            className={inputClassName}
             required
             value={form.title}
             onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))}
           />
-        </div>
+        </StudioField>
 
-        <div>
-          <label htmlFor="news-teaser" className="text-sm font-medium">
-            {pt('fields.teaser')}
-          </label>
-          <textarea
+        <StudioField
+          id="news-teaser"
+          label={pt('fields.teaser')}
+          description={pt('fields.teaserHelp')}
+          descriptionId="news-teaser-help"
+          error={hasFieldError('teaser') ? pt('validation.teaser') : undefined}
+          errorId="news-teaser-error"
+          required
+        >
+          <Textarea
             id="news-teaser"
-            className={inputClassName}
             required
             aria-describedby={buildDescribedBy('news-teaser-help', hasFieldError('teaser') && 'news-teaser-error')}
             aria-invalid={hasFieldError('teaser') || undefined}
@@ -281,23 +278,18 @@ const NewsForm = ({
               }))
             }
           />
-          <p id="news-teaser-help" className="mt-1 text-xs text-muted-foreground">
-            {pt('fields.teaserHelp')}
-          </p>
-          {hasFieldError('teaser') ? (
-            <p id="news-teaser-error" className="mt-1 text-xs text-destructive">
-              {pt('validation.teaser')}
-            </p>
-          ) : null}
-        </div>
+        </StudioField>
 
-        <div>
-          <label htmlFor="news-body" className="text-sm font-medium">
-            {pt('fields.body')}
-          </label>
-          <textarea
+        <StudioField
+          id="news-body"
+          label={pt('fields.body')}
+          error={hasFieldError('body') ? pt('validation.body') : undefined}
+          errorId="news-body-error"
+          required
+        >
+          <Textarea
             id="news-body"
-            className={`${inputClassName} min-h-48`}
+            className="min-h-48"
             required
             aria-describedby={buildDescribedBy(hasFieldError('body') && 'news-body-error')}
             aria-invalid={hasFieldError('body') || undefined}
@@ -309,21 +301,17 @@ const NewsForm = ({
               }))
             }
           />
-          {hasFieldError('body') ? (
-            <p id="news-body-error" className="mt-1 text-xs text-destructive">
-              {pt('validation.body')}
-            </p>
-          ) : null}
-        </div>
+        </StudioField>
 
-        <div className="grid gap-4 md:grid-cols-2">
-          <div>
-            <label htmlFor="news-image-url" className="text-sm font-medium">
-              {pt('fields.imageUrl')}
-            </label>
-            <input
+        <StudioFieldGroup columns={2}>
+          <StudioField
+            id="news-image-url"
+            label={pt('fields.imageUrl')}
+            error={hasFieldError('imageUrl') ? pt('validation.imageUrl') : undefined}
+            errorId="news-image-url-error"
+          >
+            <Input
               id="news-image-url"
-              className={inputClassName}
               type="url"
               aria-describedby={buildDescribedBy(hasFieldError('imageUrl') && 'news-image-url-error')}
               aria-invalid={hasFieldError('imageUrl') || undefined}
@@ -335,20 +323,16 @@ const NewsForm = ({
                 }))
               }
             />
-            {hasFieldError('imageUrl') ? (
-              <p id="news-image-url-error" className="mt-1 text-xs text-destructive">
-                {pt('validation.imageUrl')}
-              </p>
-            ) : null}
-          </div>
+          </StudioField>
 
-          <div>
-            <label htmlFor="news-external-url" className="text-sm font-medium">
-              {pt('fields.externalUrl')}
-            </label>
-            <input
+          <StudioField
+            id="news-external-url"
+            label={pt('fields.externalUrl')}
+            error={hasFieldError('externalUrl') ? pt('validation.externalUrl') : undefined}
+            errorId="news-external-url-error"
+          >
+            <Input
               id="news-external-url"
-              className={inputClassName}
               type="url"
               aria-describedby={buildDescribedBy(hasFieldError('externalUrl') && 'news-external-url-error')}
               aria-invalid={hasFieldError('externalUrl') || undefined}
@@ -360,22 +344,13 @@ const NewsForm = ({
                 }))
               }
             />
-            {hasFieldError('externalUrl') ? (
-              <p id="news-external-url-error" className="mt-1 text-xs text-destructive">
-                {pt('validation.externalUrl')}
-              </p>
-            ) : null}
-          </div>
-        </div>
+          </StudioField>
+        </StudioFieldGroup>
 
-        <div className="grid gap-4 md:grid-cols-2">
-          <div>
-            <label htmlFor="news-category" className="text-sm font-medium">
-              {pt('fields.category')}
-            </label>
-            <input
+        <StudioFieldGroup columns={2}>
+          <StudioField id="news-category" label={pt('fields.category')}>
+            <Input
               id="news-category"
-              className={inputClassName}
               value={form.payload.category ?? ''}
               onChange={(event) =>
                 setForm((current) => ({
@@ -384,15 +359,11 @@ const NewsForm = ({
                 }))
               }
             />
-          </div>
+          </StudioField>
 
-          <div>
-            <label htmlFor="news-status" className="text-sm font-medium">
-              {pt('fields.status')}
-            </label>
-            <select
+          <StudioField id="news-status" label={pt('fields.status')}>
+            <Select
               id="news-status"
-              className={inputClassName}
               value={form.status}
               onChange={(event) =>
                 setForm((current) => ({
@@ -406,17 +377,13 @@ const NewsForm = ({
               <option value="approved">{pt('status.approved')}</option>
               <option value="published">{pt('status.published')}</option>
               <option value="archived">{pt('status.archived')}</option>
-            </select>
-          </div>
-        </div>
+            </Select>
+          </StudioField>
+        </StudioFieldGroup>
 
-        <div>
-          <label htmlFor="news-published-at" className="text-sm font-medium">
-            {pt('fields.publishedAt')}
-          </label>
-          <input
+        <StudioField id="news-published-at" label={pt('fields.publishedAt')}>
+          <Input
             id="news-published-at"
-            className={inputClassName}
             type="datetime-local"
             value={toDatetimeLocalValue(form.publishedAt)}
             onChange={(event) =>
@@ -426,23 +393,21 @@ const NewsForm = ({
               }))
             }
           />
-        </div>
+        </StudioField>
 
         <div className="flex flex-wrap gap-3">
-          <button className={buttonClassName} type="submit">
-            {submitLabel}
-          </button>
-          <Link to="/plugins/news" className={secondaryButtonClassName}>
-            {pt('actions.back')}
-          </Link>
+          <Button type="submit">{submitLabel}</Button>
+          <Button asChild type="button" variant="outline">
+            <Link to="/plugins/news">{pt('actions.back')}</Link>
+          </Button>
           {mode === 'edit' ? (
-            <button className={secondaryButtonClassName} type="button" onClick={onDelete} disabled={deletePending}>
+            <Button variant="destructive" type="button" onClick={onDelete} disabled={deletePending}>
               {deleteLabel}
-            </button>
+            </Button>
           ) : null}
         </div>
       </form>
-    </section>
+    </StudioDetailPageTemplate>
   );
 };
 
@@ -485,36 +450,33 @@ export const NewsListPage = () => {
   }, []);
 
   if (isLoading) {
-    return <p role="status">{pt('messages.loading')}</p>;
+    return <StudioLoadingState>{pt('messages.loading')}</StudioLoadingState>;
   }
 
   if (error) {
-    return <p role="status" aria-live="polite" className="text-destructive">{error}</p>;
+    return <StudioErrorState>{error}</StudioErrorState>;
   }
 
   return (
-    <section className="space-y-6">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-3xl font-semibold">{pt('list.title')}</h1>
-          <p className="text-sm text-muted-foreground">{pt('list.description')}</p>
-        </div>
-        <Link to="/plugins/news/new" className={buttonClassName}>
-          {createLabel}
-        </Link>
-      </header>
+    <StudioOverviewPageTemplate
+      title={pt('list.title')}
+      description={pt('list.description')}
+      primaryAction={
+        <Button asChild>
+          <Link to="/plugins/news/new">{createLabel}</Link>
+        </Button>
+      }
+    >
 
       {flashMessage ? (
-        <p role="status" aria-live="polite" className="text-primary">
-          {pt(flashMessageTranslationKeys[flashMessage])}
-        </p>
+        <StudioFormSummary kind="success">{pt(flashMessageTranslationKeys[flashMessage])}</StudioFormSummary>
       ) : null}
 
       {items.length === 0 ? (
-        <div role="status" aria-live="polite" className="rounded-lg border border-border bg-card p-6">
+        <StudioEmptyState>
           <h2 className="text-lg font-medium">{pt('empty.title')}</h2>
           <p className="mt-2 text-sm text-muted-foreground">{pt('empty.description')}</p>
-        </div>
+        </StudioEmptyState>
       ) : (
         <div className="overflow-hidden rounded-lg border border-border bg-card">
           <table className="min-w-full text-left text-sm">
@@ -539,9 +501,11 @@ export const NewsListPage = () => {
                   <td className="px-4 py-3">{item.payload.category ?? '—'}</td>
                   <td className="px-4 py-3">{formatDate(item.updatedAt)}</td>
                   <td className="px-4 py-3">
-                    <Link to="/plugins/news/$contentId" params={{ contentId: item.id }} className={secondaryButtonClassName}>
-                      {editLabel}
-                    </Link>
+                    <Button asChild variant="outline" size="sm">
+                      <Link to="/plugins/news/$contentId" params={{ contentId: item.id }}>
+                        {editLabel}
+                      </Link>
+                    </Button>
                   </td>
                 </tr>
               ))}
@@ -549,7 +513,7 @@ export const NewsListPage = () => {
           </table>
         </div>
       )}
-    </section>
+    </StudioOverviewPageTemplate>
   );
 };
 

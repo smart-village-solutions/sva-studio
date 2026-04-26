@@ -1,4 +1,5 @@
 import { buildPrimaryHostname, normalizeHost, type InstanceStatus } from '@sva/core';
+import type { z } from 'zod';
 
 import {
   createInstanceSchema,
@@ -31,7 +32,7 @@ type AsApiList = <T>(
 ) => unknown;
 type ParseRequestBody = <T>(
   request: Request,
-  schema: unknown
+  schema: z.ZodSchema<T>
 ) => Promise<{ ok: true; data: T } | { ok: false; message: string }>;
 type RequireIdempotencyKey = (
   request: Request,

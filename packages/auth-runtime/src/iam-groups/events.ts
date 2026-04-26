@@ -8,6 +8,7 @@ import type { QueryClient } from '../db.js';
 // ---------------------------------------------------------------------------
 
 const INVALIDATION_CHANNEL = 'iam_permission_snapshot_invalidation';
+const PG_NOTIFY_SAFE_PAYLOAD_BYTES = 7_500;
 
 type RolePermissionChangedEvent = {
   event: 'RolePermissionChanged';
@@ -43,33 +44,68 @@ type GroupDeletedEvent = {
 
 export type GroupEvent = RolePermissionChangedEvent | GroupMembershipChangedEvent | GroupDeletedEvent;
 
+const buildGroupDeletedPayload = (
+  event: GroupDeletedEvent,
+  eventId: string
+): Record<string, unknown> => ({
+  eventId,
+  event: event.event,
+  instanceId: event.instanceId,
+  trigger: 'pg_notify',
+  groupId: event.groupId,
+  affectedAccountIds: event.affectedAccountIds,
+  ...(event.affectedKeycloakSubjects ? { affectedKeycloakSubjects: event.affectedKeycloakSubjects } : {}),
+  ...(event.requestId ? { requestId: event.requestId } : {}),
+  ...(event.traceId ? { traceId: event.traceId } : {}),
+});
+
+const buildCompactGroupDeletedPayload = (
+  event: GroupDeletedEvent,
+  eventId: string
+): Record<string, unknown> => ({
+  eventId,
+  event: event.event,
+  instanceId: event.instanceId,
+  trigger: 'pg_notify',
+  groupId: event.groupId,
+  affectedAccountIds: [],
+  affectedAccountCount: event.affectedAccountIds.length,
+  affectedKeycloakSubjectCount: event.affectedKeycloakSubjects?.length ?? 0,
+  compacted: true,
+  ...(event.requestId ? { requestId: event.requestId } : {}),
+  ...(event.traceId ? { traceId: event.traceId } : {}),
+});
+
+const buildNotificationPayload = (event: GroupEvent, eventId: string): Record<string, unknown> => {
+  if (event.event === 'GroupDeleted') {
+    const payload = buildGroupDeletedPayload(event, eventId);
+    return Buffer.byteLength(JSON.stringify(payload), 'utf8') <= PG_NOTIFY_SAFE_PAYLOAD_BYTES
+      ? payload
+      : buildCompactGroupDeletedPayload(event, eventId);
+  }
+
+  return {
+    eventId,
+    event: event.event,
+    instanceId: event.instanceId,
+    trigger: 'pg_notify',
+    ...(event.event === 'GroupMembershipChanged'
+      ? {
+          groupId: event.groupId,
+          accountId: event.accountId,
+          ...(event.keycloakSubject ? { keycloakSubject: event.keycloakSubject } : {}),
+          changeType: event.changeType,
+        }
+      : { roleId: event.roleId }),
+    ...(event.requestId ? { requestId: event.requestId } : {}),
+    ...(event.traceId ? { traceId: event.traceId } : {}),
+  };
+};
+
 export const publishGroupEvent = async (client: QueryClient, event: GroupEvent): Promise<void> => {
   const eventId = event.eventId ?? randomUUID();
   await client.query('SELECT pg_notify($1, $2);', [
     INVALIDATION_CHANNEL,
-    JSON.stringify({
-      eventId,
-      event: event.event,
-      instanceId: event.instanceId,
-      trigger: 'pg_notify',
-      ...(event.event === 'GroupMembershipChanged'
-        ? {
-            groupId: event.groupId,
-            accountId: event.accountId,
-            ...(event.keycloakSubject ? { keycloakSubject: event.keycloakSubject } : {}),
-            changeType: event.changeType,
-          }
-        : event.event === 'GroupDeleted'
-          ? {
-              groupId: event.groupId,
-              affectedAccountIds: event.affectedAccountIds,
-              ...(event.affectedKeycloakSubjects
-                ? { affectedKeycloakSubjects: event.affectedKeycloakSubjects }
-                : {}),
-            }
-          : { roleId: event.roleId }),
-      ...(event.requestId ? { requestId: event.requestId } : {}),
-      ...(event.traceId ? { traceId: event.traceId } : {}),
-    }),
+    JSON.stringify(buildNotificationPayload(event, eventId)),
   ]);
 };

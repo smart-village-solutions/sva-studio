@@ -24,16 +24,18 @@ const isTrustedAbsoluteReturnTo = async (target: URL): Promise<boolean> => {
     return false;
   }
 
-  if (isCanonicalAuthHost(target.host)) {
+  const normalizedHostname = target.hostname.toLowerCase();
+
+  if (isCanonicalAuthHost(normalizedHostname)) {
     return true;
   }
 
-  const classification = classifyHost(target.host, config.parentDomain);
+  const classification = classifyHost(normalizedHostname, config.parentDomain);
   if (classification.kind !== 'tenant') {
     return false;
   }
 
-  const registryEntry = await loadInstanceByHostname(target.host).catch(() => null);
+  const registryEntry = await loadInstanceByHostname(normalizedHostname).catch(() => null);
   return registryEntry ? isTrafficEnabledInstanceStatus(registryEntry.status) : false;
 };
 

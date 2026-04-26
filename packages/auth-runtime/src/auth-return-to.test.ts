@@ -78,6 +78,36 @@ describe('auth return-to handling', () => {
     ).resolves.toBe('/');
   });
 
+  it('normalizes hostnames without ports for trust checks', async () => {
+    mocks.getInstanceConfig.mockReturnValue({
+      parentDomain: 'example.test',
+      canonicalAuthHost: 'auth.example.test',
+    });
+    mocks.isCanonicalAuthHost.mockImplementation((host: string) => host === 'auth.example.test');
+    mocks.loadInstanceByHostname.mockResolvedValue({
+      instanceId: 'tenant-a',
+      status: 'active',
+    });
+
+    await expect(
+      sanitizeAuthReturnTo(request(), 'https://tenant.example.test:8443/dashboard', { defaultPath: '/' })
+    ).resolves.toBe('https://tenant.example.test:8443/dashboard');
+    expect(mocks.loadInstanceByHostname).toHaveBeenCalledWith('tenant.example.test');
+  });
+
+  it('allows canonical auth hosts with ports after hostname normalization', async () => {
+    mocks.getInstanceConfig.mockReturnValue({
+      parentDomain: 'example.test',
+      canonicalAuthHost: 'auth.example.test',
+    });
+    mocks.isCanonicalAuthHost.mockImplementation((host: string) => host === 'auth.example.test');
+
+    await expect(
+      sanitizeAuthReturnTo(request(), 'https://auth.example.test:9443/account', { defaultPath: '/' })
+    ).resolves.toBe('https://auth.example.test:9443/account');
+    expect(mocks.isCanonicalAuthHost).toHaveBeenCalledWith('auth.example.test');
+  });
+
   it('resolves the effective request host through the shared host parser', () => {
     vi.stubEnv('NODE_ENV', 'production');
 

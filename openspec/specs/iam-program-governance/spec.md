@@ -117,17 +117,17 @@ Alle IAM-Server-Module SHALL den Server-Runtime-Logger (`@sva/server-runtime`, `
 
 ### Requirement: Dual-Write für sicherheitsrelevante Audit-Events
 
-Sicherheitsrelevante IAM-Events SHALL sowohl in die DB (`iam.activity_logs`) als auch über den SDK Logger in die OTEL-Pipeline emittiert werden.
+Sicherheitsrelevante IAM-Events SHALL sowohl in die DB (`iam.activity_logs`) als auch über den Server-Runtime-Logger (`@sva/server-runtime`) in die OTEL-Pipeline emittiert werden.
 
 #### Scenario: Audit-Event mit Dual-Write
 
 - **WHEN** ein sicherheitsrelevantes IAM-Event auftritt (z.B. Login, Login-Fehler, Rollenänderung, Impersonation)
 - **THEN** wird ein Eintrag in `iam.activity_logs` geschrieben (Compliance-Nachweis)
-- **AND** ein strukturierter Log-Eintrag über den SDK Logger emittiert (Echtzeit-Monitoring)
+- **AND** ein strukturierter Log-Eintrag über den Server-Runtime-Logger emittiert (Echtzeit-Monitoring)
 - **AND** beide Einträge referenzieren denselben `request_id`/`trace_id`
 
 #### Scenario: Echtzeit-Alerting für Security-Anomalien
 
 - **WHEN** mehr als 10 fehlgeschlagene Login-Versuche pro Account innerhalb einer Minute auftreten
-- **THEN** erzeugt der SDK Logger einen `warn`-Level-Eintrag mit `{ operation: 'login_anomaly', count: N }`
+- **THEN** erzeugt der Server-Runtime-Logger einen `warn`-Level-Eintrag mit `{ operation: 'login_anomaly', count: N }`
 - **AND** dieser Eintrag ist über die OTEL-Pipeline für Grafana-Alerts nutzbar

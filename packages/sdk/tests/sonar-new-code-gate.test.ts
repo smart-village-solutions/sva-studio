@@ -207,6 +207,37 @@ describe('sonar new code gate', () => {
     expect(result.missedUnits).toBe(0);
   }, 20_000);
 
+  it('does not advance changed line numbers for no-newline diff metadata', async () => {
+    const runSonarNewCodeGate = await loadRunSonarNewCodeGate();
+    const rootDir = createTempWorkspace();
+    initGitRepo(rootDir);
+    writePolicy(rootDir);
+    writeSourceFile(rootDir, 'packages/sdk/src/index.ts', 'export const one = 1;');
+    commitAll(rootDir, 'base');
+    runGit(rootDir, ['checkout', '-b', 'feature/test']);
+
+    writeSourceFile(rootDir, 'packages/sdk/src/index.ts', 'export const one = 2;\nexport const two = 2;\n');
+    writeLcov(rootDir, 'packages/sdk', 'src/index.ts', {
+      da: [
+        [1, 0],
+        [2, 1],
+      ],
+    });
+    commitAll(rootDir, 'change');
+
+    const result = runSonarNewCodeGate({
+      rootDir,
+      baseRef: 'main',
+      headRef: 'HEAD',
+      targetPct: 85,
+    });
+
+    expect(result.passed).toBe(false);
+    expect(result.coveredLines).toBe(1);
+    expect(result.missedLines).toBe(1);
+    expect(result.coveragePct).toBe(50);
+  }, 20_000);
+
   it('ignores type-only changes without lcov data', async () => {
     const runSonarNewCodeGate = await loadRunSonarNewCodeGate();
     const rootDir = createTempWorkspace();

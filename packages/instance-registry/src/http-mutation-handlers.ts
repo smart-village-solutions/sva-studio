@@ -1,4 +1,5 @@
 import type { InstanceStatus } from '@sva/core';
+import type { z } from 'zod';
 
 import {
   executeKeycloakProvisioningSchema,
@@ -28,7 +29,7 @@ type JsonResponse = (status: number, payload: unknown) => Response;
 type AsApiItem = <T>(value: T, requestId?: string) => unknown;
 type ParseRequestBody = <T>(
   request: Request,
-  schema: unknown
+  schema: z.ZodSchema<T>
 ) => Promise<{ ok: true; data: T } | { ok: false; message: string }>;
 type RequireIdempotencyKey = (
   request: Request,

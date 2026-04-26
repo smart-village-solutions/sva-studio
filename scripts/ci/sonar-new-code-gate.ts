@@ -195,7 +195,7 @@ function listChangedFiles(rootDir: string, baseRef: string, headRef: string, pro
       continue;
     }
 
-    if (line.startsWith(' ') || line.startsWith('\\')) {
+    if (line.startsWith(' ')) {
       nextNewLineNumber += 1;
     }
   }

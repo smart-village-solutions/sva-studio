@@ -13,6 +13,7 @@ import { validateContentTypePayload } from './content-type-registry.js';
 import { authorizeUpdateContentActions } from './mutation-authorization.js';
 import {
   createFailureResponse,
+  createFailureResponseFromResponse,
   logCreateFailure,
   parseCreateRequest,
   reserveCreateIdempotency,
@@ -72,13 +73,7 @@ export const createContentResponse = async (
     organizationId: parsedData.organizationId,
   });
   if (authorizationError) {
-    return createFailureResponse(
-      actor,
-      prepared.idempotencyKey,
-      authorizationError.status,
-      'forbidden',
-      'Keine Berechtigung für diese Inhaltsoperation.'
-    );
+    return createFailureResponseFromResponse(actor, prepared.idempotencyKey, authorizationError);
   }
 
   const replayOrConflict = await reserveCreateIdempotency(actor, prepared.idempotencyKey, prepared.rawBody);

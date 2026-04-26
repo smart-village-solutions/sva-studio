@@ -2,7 +2,9 @@ import type { ContentJsonValue } from '@sva/core';
 import { iamContentStatuses, iamContentValidationStates } from '@sva/core';
 import { z } from 'zod';
 
-const isoDateTimePattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?(?:Z|[+-]\d{2}:\d{2})$/;
+import { resolveContentPublicationInvariant } from './content-publication-invariants.js';
+
+const isoDateTimePattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$/;
 
 const isoDateTimeString = z
   .string()
@@ -34,18 +36,15 @@ const validatePublishedAtForStatus = (
   },
   ctx: z.RefinementCtx
 ) => {
-  if (value.status === 'published' && !value.publishedAt) {
+  const invariant = resolveContentPublicationInvariant(value);
+  if (invariant === 'content_published_at_required') {
     ctx.addIssue({
       code: 'custom',
       path: ['publishedAt'],
       message: 'Veröffentlichungsdatum ist für veröffentlichte Inhalte erforderlich.',
     });
   }
-  if (
-    value.publishFrom &&
-    value.publishUntil &&
-    new Date(value.publishFrom).getTime() > new Date(value.publishUntil).getTime()
-  ) {
+  if (invariant === 'content_publication_window_invalid') {
     ctx.addIssue({
       code: 'custom',
       path: ['publishUntil'],

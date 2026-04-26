@@ -49,6 +49,28 @@ export const createFailureResponse = async (
   return jsonResponse(status, responseBody);
 };
 
+export const createFailureResponseFromResponse = async (
+  actor: ResolvedContentActor['actor'],
+  idempotencyKey: string,
+  response: Response
+) => {
+  const fallbackBody = {
+    error: {
+      code: response.status === 403 ? 'forbidden' : 'authorization_failed',
+      message: 'Keine Berechtigung für diese Inhaltsoperation.',
+    },
+    ...(actor.requestId ? { requestId: actor.requestId } : {}),
+  };
+  const responseBody = await response
+    .clone()
+    .json()
+    .then((body: unknown) => (body && typeof body === 'object' ? (body as Record<string, unknown>) : fallbackBody))
+    .catch(() => fallbackBody);
+
+  await completeCreateIdempotency(actor, idempotencyKey, response.status, responseBody);
+  return jsonResponse(response.status, responseBody);
+};
+
 export type ParsedCreateRequest = {
   readonly idempotencyKey: string;
   readonly rawBody: string;

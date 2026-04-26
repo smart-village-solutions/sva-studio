@@ -1,8 +1,10 @@
 import type { NextContentStateValues } from './repository-state-values.js';
+import {
+  resolveContentPublicationInvariant,
+  type ContentPublicationInvariantCode,
+} from './content-publication-invariants.js';
 
-export type ContentStateValidationErrorCode =
-  | 'content_published_at_required'
-  | 'content_publication_window_invalid';
+export type ContentStateValidationErrorCode = ContentPublicationInvariantCode;
 
 export class ContentStateValidationError extends Error {
   public readonly code: ContentStateValidationErrorCode;
@@ -18,14 +20,13 @@ export const isContentStateValidationError = (error: unknown): error is ContentS
   error instanceof ContentStateValidationError;
 
 export const validateNextContentState = (next: NextContentStateValues): void => {
-  if (next.nextStatus === 'published' && !next.nextPublishedAt) {
-    throw new ContentStateValidationError('content_published_at_required');
-  }
-  if (
-    next.nextPublishFrom &&
-    next.nextPublishUntil &&
-    new Date(next.nextPublishFrom).getTime() > new Date(next.nextPublishUntil).getTime()
-  ) {
-    throw new ContentStateValidationError('content_publication_window_invalid');
+  const invariant = resolveContentPublicationInvariant({
+    status: next.nextStatus,
+    publishedAt: next.nextPublishedAt,
+    publishFrom: next.nextPublishFrom,
+    publishUntil: next.nextPublishUntil,
+  });
+  if (invariant) {
+    throw new ContentStateValidationError(invariant);
   }
 };

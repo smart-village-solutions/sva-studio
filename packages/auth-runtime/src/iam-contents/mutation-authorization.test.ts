@@ -12,11 +12,15 @@ vi.mock('./request-context.js', () => ({
 
 const { authorizeUpdateContentActions, resolveUpdateContentActions } = await import('./mutation-authorization.js');
 
-const content = (status: IamContentListItem['status'] = 'draft'): IamContentListItem =>
+const content = (
+  status: IamContentListItem['status'] = 'draft',
+  organizationId = '11111111-1111-4111-8111-111111111111'
+): IamContentListItem =>
   ({
     id: 'content-1',
     instanceId: 'instance-1',
     contentType: 'generic',
+    organizationId,
     title: 'Content',
     createdAt: '2026-04-26T10:00:00.000Z',
     createdBy: 'actor-1',
@@ -93,13 +97,48 @@ describe('content mutation authorization', () => {
       1,
       actor,
       'content.updateMetadata',
-      expect.objectContaining({ domainCapability: 'content.update_metadata' })
+      expect.objectContaining({
+        domainCapability: 'content.update_metadata',
+        organizationId: '11111111-1111-4111-8111-111111111111',
+      })
     );
     expect(authorizeContentActionMock).toHaveBeenNthCalledWith(
       2,
       actor,
       'content.updatePayload',
-      expect.objectContaining({ domainCapability: 'content.update_payload' })
+      expect.objectContaining({
+        domainCapability: 'content.update_payload',
+        organizationId: '11111111-1111-4111-8111-111111111111',
+      })
+    );
+  });
+
+  it('uses persisted source organization for update checks and checks destination on reassignment', async () => {
+    authorizeContentActionMock.mockResolvedValue(null);
+
+    await expect(
+      authorizeUpdateContentActions(actor, 'content-1', content(), {
+        organizationId: '22222222-2222-4222-8222-222222222222',
+      })
+    ).resolves.toBeNull();
+
+    expect(authorizeContentActionMock).toHaveBeenNthCalledWith(
+      1,
+      actor,
+      'content.updateMetadata',
+      expect.objectContaining({
+        domainCapability: 'content.update_metadata',
+        organizationId: '11111111-1111-4111-8111-111111111111',
+      })
+    );
+    expect(authorizeContentActionMock).toHaveBeenNthCalledWith(
+      2,
+      actor,
+      'content.updateMetadata',
+      expect.objectContaining({
+        domainCapability: 'content.update_metadata',
+        organizationId: '22222222-2222-4222-8222-222222222222',
+      })
     );
   });
 

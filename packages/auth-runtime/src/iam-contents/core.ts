@@ -6,12 +6,29 @@ import {
   authorizeContentAction,
   resolveContentAccess,
   resolveContentActor,
+  type ResolvedContentActor,
   withAuthenticatedContentHandler,
 } from './request-context.js';
 import { createContentResponse, deleteContentResponse, updateContentResponse } from './mutations.js';
 import { loadContentById, loadContentDetail, loadContentHistory, loadContentListItems } from './repository.js';
 
 const logger = createSdkLogger({ component: 'iam-contents', level: 'info' });
+
+const isServerAuthorizationError = (response: Response): boolean => response.status >= 500;
+
+const authorizeReadableContentItem = (
+  actor: ResolvedContentActor['actor'],
+  item: {
+    readonly id: string;
+    readonly contentType: string;
+    readonly organizationId?: string;
+  }
+) =>
+  authorizeContentAction(actor, 'content.read', {
+    contentId: item.id,
+    contentType: item.contentType,
+    organizationId: item.organizationId,
+  });
 
 export const listContentsInternal = async (
   request: Request,
@@ -23,19 +40,27 @@ export const listContentsInternal = async (
   }
 
   try {
-    const authorizationError = await authorizeContentAction(actorResolution.actor, 'content.read');
-    if (authorizationError) {
-      return authorizationError;
-    }
-
     const [items, access] = await Promise.all([
       loadContentListItems(actorResolution.actor.instanceId),
       resolveContentAccess(actorResolution.actor),
     ]);
-    const itemsWithAccess = items.map((item) => ({ ...item, access }));
-    const pageSize = Math.max(1, items.length);
+    const authorizedItems = [];
+    for (const item of items) {
+      const authorizationError = await authorizeReadableContentItem(actorResolution.actor, item);
+      if (authorizationError) {
+        if (isServerAuthorizationError(authorizationError)) {
+          return authorizationError;
+        }
+        continue;
+      }
+      authorizedItems.push(item);
+    }
+    const itemsWithAccess = authorizedItems.map((item) => ({ ...item, access }));
+    const pageSize = Math.max(1, authorizedItems.length);
     return new Response(
-      JSON.stringify(asApiList(itemsWithAccess, { page: 1, pageSize, total: items.length }, actorResolution.actor.requestId)),
+      JSON.stringify(
+        asApiList(itemsWithAccess, { page: 1, pageSize, total: authorizedItems.length }, actorResolution.actor.requestId)
+      ),
       { status: 200, headers: { 'Content-Type': 'application/json' } }
     );
   } catch (error) {
@@ -70,19 +95,22 @@ export const getContentInternal = async (
   }
 
   try {
-    const authorizationError = await authorizeContentAction(actorResolution.actor, 'content.read', {
-      contentId,
-    });
+    const item = await loadContentById(actorResolution.actor.instanceId, contentId);
+    if (!item) {
+      return createApiError(404, 'not_found', 'Inhalt wurde nicht gefunden.', actorResolution.actor.requestId);
+    }
+
+    const authorizationError = await authorizeReadableContentItem(actorResolution.actor, item);
     if (authorizationError) {
       return authorizationError;
     }
 
-    const [item, access] = await Promise.all([
+    const [detail, access] = await Promise.all([
       loadContentDetail(actorResolution.actor.instanceId, contentId),
       resolveContentAccess(actorResolution.actor),
     ]);
-    return item
-      ? new Response(JSON.stringify(asApiItem({ ...item, access }, actorResolution.actor.requestId)), {
+    return detail
+      ? new Response(JSON.stringify(asApiItem({ ...detail, access }, actorResolution.actor.requestId)), {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
         })

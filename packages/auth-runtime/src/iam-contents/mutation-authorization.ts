@@ -84,10 +84,22 @@ export const authorizeUpdateContentActions = async (
       contentId,
       contentType: currentContent.contentType,
       domainCapability: action.domainCapability,
-      organizationId: data.organizationId ?? currentContent.organizationId,
+      organizationId: currentContent.organizationId,
     });
     if (authorizationError) {
       return authorizationError;
+    }
+  }
+
+  if (data.organizationId && data.organizationId !== currentContent.organizationId) {
+    const destinationAuthorizationError = await authorizeContentAction(actor, 'content.updateMetadata', {
+      contentId,
+      contentType: currentContent.contentType,
+      domainCapability: 'content.update_metadata',
+      organizationId: data.organizationId,
+    });
+    if (destinationAuthorizationError) {
+      return destinationAuthorizationError;
     }
   }
 

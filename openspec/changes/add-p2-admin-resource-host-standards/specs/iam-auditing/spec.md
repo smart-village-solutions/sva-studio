@@ -13,3 +13,7 @@ The system SHALL audit host-standard admin interactions that mutate multiple rec
 - **WHEN** the restore operation completes
 - **THEN** the host emits an audit event linking the current record and restored revision
 
+#### Scenario: History-sensitive operation is audited
+- **GIVEN** a user opens or executes a host-standard history-sensitive admin operation
+- **WHEN** the operation is accepted by the host
+- **THEN** the host emits or reuses the appropriate activity-log or audit-event mechanism with resource identifier, actor, scope, and operation metadata

@@ -67,6 +67,11 @@ export const createContentResponse = async (
     organizationId: prepared.parsedData.organizationId ?? actor.activeOrganizationId,
   };
 
+  const replayOrConflict = await reserveCreateIdempotency(actor, prepared.idempotencyKey, prepared.rawBody);
+  if (replayOrConflict) {
+    return replayOrConflict;
+  }
+
   const authorizationError = await authorizeContentAction(actor, 'content.create', {
     contentType: parsedData.contentType,
     domainCapability: 'content.create',
@@ -74,11 +79,6 @@ export const createContentResponse = async (
   });
   if (authorizationError) {
     return createFailureResponseFromResponse(actor, prepared.idempotencyKey, authorizationError);
-  }
-
-  const replayOrConflict = await reserveCreateIdempotency(actor, prepared.idempotencyKey, prepared.rawBody);
-  if (replayOrConflict) {
-    return replayOrConflict;
   }
 
   try {

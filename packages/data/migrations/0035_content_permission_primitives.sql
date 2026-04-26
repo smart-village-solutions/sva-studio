@@ -84,6 +84,54 @@ JOIN iam.permissions new_permission
 WHERE old_permission.permission_key = 'content.moderate'
 ON CONFLICT (instance_id, role_id, permission_id) DO NOTHING;
 
+INSERT INTO iam.account_permissions (instance_id, account_id, permission_id, effect, assigned_by_account_id)
+SELECT DISTINCT old_assignment.instance_id, old_assignment.account_id, new_permission.id, old_assignment.effect, old_assignment.assigned_by_account_id
+FROM iam.account_permissions old_assignment
+JOIN iam.permissions old_permission
+  ON old_permission.instance_id = old_assignment.instance_id
+ AND old_permission.id = old_assignment.permission_id
+JOIN iam.permissions new_permission
+  ON new_permission.instance_id = old_assignment.instance_id
+ AND new_permission.permission_key IN ('content.updateMetadata', 'content.updatePayload', 'content.changeStatus')
+WHERE old_permission.permission_key = 'content.update'
+ON CONFLICT (instance_id, account_id, permission_id) DO UPDATE
+SET
+  effect = EXCLUDED.effect,
+  assigned_by_account_id = EXCLUDED.assigned_by_account_id,
+  updated_at = NOW();
+
+INSERT INTO iam.account_permissions (instance_id, account_id, permission_id, effect, assigned_by_account_id)
+SELECT DISTINCT old_assignment.instance_id, old_assignment.account_id, new_permission.id, old_assignment.effect, old_assignment.assigned_by_account_id
+FROM iam.account_permissions old_assignment
+JOIN iam.permissions old_permission
+  ON old_permission.instance_id = old_assignment.instance_id
+ AND old_permission.id = old_assignment.permission_id
+JOIN iam.permissions new_permission
+  ON new_permission.instance_id = old_assignment.instance_id
+ AND new_permission.permission_key = 'content.readHistory'
+WHERE old_permission.permission_key = 'content.read'
+ON CONFLICT (instance_id, account_id, permission_id) DO UPDATE
+SET
+  effect = EXCLUDED.effect,
+  assigned_by_account_id = EXCLUDED.assigned_by_account_id,
+  updated_at = NOW();
+
+INSERT INTO iam.account_permissions (instance_id, account_id, permission_id, effect, assigned_by_account_id)
+SELECT DISTINCT old_assignment.instance_id, old_assignment.account_id, new_permission.id, old_assignment.effect, old_assignment.assigned_by_account_id
+FROM iam.account_permissions old_assignment
+JOIN iam.permissions old_permission
+  ON old_permission.instance_id = old_assignment.instance_id
+ AND old_permission.id = old_assignment.permission_id
+JOIN iam.permissions new_permission
+  ON new_permission.instance_id = old_assignment.instance_id
+ AND new_permission.permission_key IN ('content.manageRevisions', 'content.archive', 'content.restore')
+WHERE old_permission.permission_key = 'content.moderate'
+ON CONFLICT (instance_id, account_id, permission_id) DO UPDATE
+SET
+  effect = EXCLUDED.effect,
+  assigned_by_account_id = EXCLUDED.assigned_by_account_id,
+  updated_at = NOW();
+
 DELETE FROM iam.permissions
 WHERE permission_key IN ('content.update', 'content.moderate');
 -- +goose StatementEnd
@@ -155,6 +203,38 @@ JOIN iam.permissions legacy_permission
  AND legacy_permission.permission_key = 'content.moderate'
 WHERE new_permission.permission_key IN ('content.manageRevisions', 'content.archive', 'content.restore')
 ON CONFLICT (instance_id, role_id, permission_id) DO NOTHING;
+
+INSERT INTO iam.account_permissions (instance_id, account_id, permission_id, effect, assigned_by_account_id)
+SELECT DISTINCT new_assignment.instance_id, new_assignment.account_id, legacy_permission.id, new_assignment.effect, new_assignment.assigned_by_account_id
+FROM iam.account_permissions new_assignment
+JOIN iam.permissions new_permission
+  ON new_permission.instance_id = new_assignment.instance_id
+ AND new_permission.id = new_assignment.permission_id
+JOIN iam.permissions legacy_permission
+  ON legacy_permission.instance_id = new_assignment.instance_id
+ AND legacy_permission.permission_key = 'content.update'
+WHERE new_permission.permission_key IN ('content.updateMetadata', 'content.updatePayload', 'content.changeStatus')
+ON CONFLICT (instance_id, account_id, permission_id) DO UPDATE
+SET
+  effect = EXCLUDED.effect,
+  assigned_by_account_id = EXCLUDED.assigned_by_account_id,
+  updated_at = NOW();
+
+INSERT INTO iam.account_permissions (instance_id, account_id, permission_id, effect, assigned_by_account_id)
+SELECT DISTINCT new_assignment.instance_id, new_assignment.account_id, legacy_permission.id, new_assignment.effect, new_assignment.assigned_by_account_id
+FROM iam.account_permissions new_assignment
+JOIN iam.permissions new_permission
+  ON new_permission.instance_id = new_assignment.instance_id
+ AND new_permission.id = new_assignment.permission_id
+JOIN iam.permissions legacy_permission
+  ON legacy_permission.instance_id = new_assignment.instance_id
+ AND legacy_permission.permission_key = 'content.moderate'
+WHERE new_permission.permission_key IN ('content.manageRevisions', 'content.archive', 'content.restore')
+ON CONFLICT (instance_id, account_id, permission_id) DO UPDATE
+SET
+  effect = EXCLUDED.effect,
+  assigned_by_account_id = EXCLUDED.assigned_by_account_id,
+  updated_at = NOW();
 
 DELETE FROM iam.permissions
 WHERE permission_key IN (

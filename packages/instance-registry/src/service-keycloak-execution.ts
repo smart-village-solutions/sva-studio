@@ -292,7 +292,7 @@ export const createReconcileKeycloakHandler =
       throw new Error('tenant_auth_client_secret_missing');
     }
 
-    const { run } = await createQueuedRun(deps, loaded, {
+    await createQueuedRun(deps, loaded, {
       instanceId: input.instanceId,
       idempotencyKey: input.idempotencyKey,
       actorId: input.actorId,

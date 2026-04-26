@@ -897,4 +897,76 @@ describe('instance registry repository (vitest)', () => {
     expect(statements[1]?.values[3]).toBe(null);
     expect(statements[1]?.values[4]).toBe('{}');
   });
+
+  it('rejects keycloak provisioning idempotency payload reuse', async () => {
+    const execute = createSequencedExecutor([
+      {
+        rowCount: 0,
+        rows: [],
+      },
+      {
+        rowCount: 1,
+        rows: [
+          {
+            id: 'run-created',
+            instance_id: 'hb',
+            mutation: 'executeKeycloakProvisioning',
+            idempotency_key: 'idem-kc-1',
+            payload_fingerprint: 'fingerprint-1',
+            mode: 'existing',
+            intent: 'provision_admin_client',
+            overall_status: 'planned',
+            drift_summary: 'Plan created.',
+            request_id: null,
+            actor_id: null,
+            created_at: '2026-01-03T00:00:00.000Z',
+            updated_at: '2026-01-03T00:00:00.000Z',
+          },
+        ],
+      },
+    ]);
+
+    const repository = createInstanceRegistryRepository({ execute });
+
+    await expect(
+      repository.createKeycloakProvisioningRun({
+        instanceId: 'hb',
+        mutation: 'executeKeycloakProvisioning',
+        idempotencyKey: 'idem-kc-1',
+        payloadFingerprint: 'different-fingerprint',
+        mode: 'existing',
+        intent: 'provision_admin_client',
+        overallStatus: 'planned',
+        driftSummary: 'Plan created.',
+      })
+    ).rejects.toThrow('idempotency_key_reuse');
+  });
+
+  it('reports a keycloak provisioning idempotency conflict when the conflicting row cannot be reloaded', async () => {
+    const execute = createSequencedExecutor([
+      {
+        rowCount: 0,
+        rows: [],
+      },
+      {
+        rowCount: 0,
+        rows: [],
+      },
+    ]);
+
+    const repository = createInstanceRegistryRepository({ execute });
+
+    await expect(
+      repository.createKeycloakProvisioningRun({
+        instanceId: 'hb',
+        mutation: 'executeKeycloakProvisioning',
+        idempotencyKey: 'idem-kc-1',
+        payloadFingerprint: 'fingerprint-1',
+        mode: 'existing',
+        intent: 'provision_admin_client',
+        overallStatus: 'planned',
+        driftSummary: 'Plan created.',
+      })
+    ).rejects.toThrow('keycloak_provisioning_run_idempotency_conflict');
+  });
 });

@@ -34,15 +34,16 @@ export const buildKeycloakProvisioningPayloadFingerprint = (input: {
   readonly rotateClientSecret?: boolean;
   readonly tenantAdminTemporaryPassword?: string;
 }): string => {
+  const tenantAdminTemporaryPasswordProvided = Boolean(input.tenantAdminTemporaryPassword);
   const payload =
     input.mutation === 'executeKeycloakProvisioning'
       ? {
           intent: input.intent,
-          tenantAdminTemporaryPassword: input.tenantAdminTemporaryPassword ?? null,
+          tenantAdminTemporaryPasswordProvided,
         }
       : {
           rotateClientSecret: input.rotateClientSecret ?? false,
-          tenantAdminTemporaryPassword: input.tenantAdminTemporaryPassword ?? null,
+          tenantAdminTemporaryPasswordProvided,
         };
   return createHash('sha256')
     .update(JSON.stringify(normalizeForFingerprint(payload)))

@@ -342,4 +342,22 @@ describe('instance registry repository', () => {
     expect(statements[0]?.text).toContain('ON CONFLICT (instance_id, mutation, idempotency_key)');
     expect(statements[0]?.text).toContain('payload_fingerprint = EXCLUDED.payload_fingerprint');
   });
+
+  it('reports a keycloak provisioning idempotency conflict when the conflicting row cannot be reloaded', async () => {
+    const { executor } = createQueuedExecutor([[], []]);
+    const repository = createInstanceRegistryRepository(executor);
+
+    await expect(
+      repository.createKeycloakProvisioningRun({
+        instanceId: 'tenant-a',
+        mutation: 'reconcileKeycloak',
+        idempotencyKey: 'idem-kc-1',
+        payloadFingerprint: 'fingerprint-1',
+        mode: 'shared',
+        intent: 'reconcile',
+        overallStatus: 'planned',
+        driftSummary: 'No drift',
+      })
+    ).rejects.toThrow('keycloak_provisioning_run_idempotency_conflict');
+  });
 });

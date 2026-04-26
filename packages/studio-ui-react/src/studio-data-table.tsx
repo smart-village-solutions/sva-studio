@@ -91,11 +91,7 @@ const renderSelectionHeader = <TData,>(
     aria-label={labels.selectAllRows(ariaLabel)}
     checked={table.getIsAllRowsSelected()}
     aria-checked={table.getIsSomeRowsSelected() && !table.getIsAllRowsSelected() ? 'mixed' : table.getIsAllRowsSelected()}
-    ref={(element) => {
-      if (element) {
-        element.indeterminate = table.getIsSomeRowsSelected() && !table.getIsAllRowsSelected();
-      }
-    }}
+    indeterminate={table.getIsSomeRowsSelected() && !table.getIsAllRowsSelected()}
     onChange={(event) => table.toggleAllRowsSelected(event.target.checked)}
   />
 );

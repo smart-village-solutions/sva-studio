@@ -65,7 +65,7 @@ Alle IDs, Params und Binding-Keys müssen innerhalb einer Resource eindeutig sei
 Der Host erzeugt je Resource einen kanonischen Search-Param-Vertrag. Die erste Stufe verwendet stabile, vorhersehbare Parameter:
 
 - `q` für Suche, sofern die Resource keinen abweichenden Search-Param deklariert.
-- `sort` und `dir` für Sortierung.
+- `sort` für Sortierung. Aufsteigend wird als Feld-ID serialisiert, absteigend mit vorangestelltem `-` (z. B. `sort=-updatedAt`).
 - `page` und `pageSize` für Pagination.
 - Filter verwenden ihren deklarierten `param`; Multi-Select-Werte werden als wiederholbare oder kanonisch sortierte Werte normalisiert.
 

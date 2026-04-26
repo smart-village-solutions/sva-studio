@@ -606,7 +606,7 @@ describe('admin resource registry', () => {
               {
                 id: 'archive',
                 labelKey: 'news.reports.bulk.archive',
-                actionId: 'news.archive',
+                actionId: 'content.changeStatus',
                 bindingKey: 'news.reports.bulk.archive',
                 selectionModes: ['explicitIds', 'allMatchingQuery'],
               },
@@ -619,7 +619,7 @@ describe('admin resource registry', () => {
             },
             revisions: {
               bindingKey: 'news.reports.revisions',
-              restoreActionId: 'news.restore',
+              restoreActionId: 'content.readHistory',
               titleKey: 'news.reports.revisions.title',
             },
           },
@@ -657,7 +657,7 @@ describe('admin resource registry', () => {
         bulkActions: [
           {
             id: 'archive',
-            actionId: 'news.archive',
+            actionId: 'content.changeStatus',
             selectionModes: ['explicitIds', 'allMatchingQuery'],
           },
         ],
@@ -667,7 +667,7 @@ describe('admin resource registry', () => {
           bindingKey: 'news.reports.history',
         },
         revisions: {
-          restoreActionId: 'news.restore',
+          restoreActionId: 'content.readHistory',
         },
       },
     });

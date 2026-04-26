@@ -226,6 +226,7 @@ describe('studio-ui-react primitives', () => {
     );
 
     fireEvent.click(screen.getByLabelText('News a auswählen'));
+    expect((screen.getByLabelText('Alle News auswählen') as HTMLInputElement).indeterminate).toBe(true);
     fireEvent.click(screen.getByRole('button', { name: 'Archivieren' }));
 
     expect(screen.getAllByText('Alpha')).toHaveLength(2);

@@ -127,6 +127,7 @@ const adminResourceHistoryCapabilityAllowedKeys = new Set(['bindingKey', 'titleK
 const adminResourceRevisionsCapabilityAllowedKeys = new Set(['bindingKey', 'restoreActionId', 'titleKey'] as const);
 
 const ADMIN_RESOURCE_PARAM_PATTERN = /^[a-z][a-zA-Z0-9]*$/;
+const ADMIN_RESOURCE_ACTION_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*\.[a-z][A-Za-z0-9-]*$/;
 const ADMIN_RESOURCE_BULK_SELECTION_MODES = new Set<AdminResourceBulkActionSelectionMode>([
   'explicitIds',
   'currentPage',
@@ -238,7 +239,7 @@ const assertUniqueValues = (
 
 const normalizeActionId = (resourceId: string, fieldName: string, value: string): string => {
   const normalized = normalizePluginIdentifier(value);
-  if (parseNamespacedPluginIdentifier(normalized) === undefined) {
+  if (ADMIN_RESOURCE_ACTION_ID_PATTERN.test(normalized) === false) {
     throw new Error(`invalid_admin_resource_action_id:${resourceId}:${fieldName}:${normalized}`);
   }
   return normalized;

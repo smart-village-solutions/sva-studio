@@ -82,7 +82,7 @@ describe('service-keycloak-execution-shared', () => {
     });
 
     expect(fingerprintWithSecret).toBe(fingerprintWithDifferentSecret);
-    expect(fingerprintWithSecret).not.toBe(fingerprintWithoutSecret);
+    expect(fingerprintWithSecret).toBe(fingerprintWithoutSecret);
     expect(fingerprintWithSecret).not.toBe(fingerprintForDifferentIntent);
     expect(reconcileWithoutRotation).not.toBe(reconcileWithRotation);
   });

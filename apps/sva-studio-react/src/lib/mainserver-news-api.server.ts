@@ -248,12 +248,14 @@ const parseContentBlocks = (value: unknown): SvaMainserverNewsInput['contentBloc
     return errorJson(400, 'invalid_request', 'ContentBlocks müssen als Liste gesendet werden.');
   }
 
-  const blocks: NonNullable<SvaMainserverNewsInput['contentBlocks']> = [];
+  const blocks: Array<NonNullable<SvaMainserverNewsInput['contentBlocks']>[number]> = [];
   for (const block of value) {
     if (!isRecord(block)) {
       return errorJson(400, 'invalid_request', 'ContentBlocks müssen Objekte sein.');
     }
-    const mediaContents: NonNullable<NonNullable<SvaMainserverNewsInput['contentBlocks']>[number]['mediaContents']> = [];
+    const mediaContents: Array<
+      NonNullable<NonNullable<SvaMainserverNewsInput['contentBlocks']>[number]['mediaContents']>[number]
+    > = [];
     if (block.mediaContents !== undefined && block.mediaContents !== null) {
       if (!Array.isArray(block.mediaContents)) {
         return errorJson(400, 'invalid_request', 'MediaContent muss als Liste gesendet werden.');

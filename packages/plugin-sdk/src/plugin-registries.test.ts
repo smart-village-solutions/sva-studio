@@ -6,6 +6,7 @@ import {
   createContentTypeRegistry,
   createPluginActionRegistry,
   createPluginAuditEventRegistry,
+  createPluginGuardrailError,
   createPluginRegistry,
   definePluginActions,
   definePluginAdminResources,
@@ -165,6 +166,17 @@ describe('plugin registries', () => {
     expect(registry.adminResourceRegistry.has('host.reports')).toBe(true);
   });
 
+  it('creates deterministic plugin guardrail errors', () => {
+    expect(
+      createPluginGuardrailError({
+        code: 'plugin_guardrail_route_bypass',
+        pluginNamespace: 'news',
+        contributionId: 'news.list',
+        fieldOrReason: 'beforeLoad',
+      }).message
+    ).toBe('plugin_guardrail_route_bypass:news:news.list:beforeLoad');
+  });
+
   it('rejects invalid plugin action definitions', () => {
     expect(() => definePluginActions('', [])).toThrow('invalid_plugin_action_namespace');
     expect(() => definePluginActions('core', [])).toThrow('reserved_plugin_action_namespace:core');
@@ -195,7 +207,7 @@ describe('plugin registries', () => {
       createPluginRegistry([
         {
           ...newsPlugin,
-          routes: [{ id: 'bad-route', path: '/bad', actionId: 'other.read', component }],
+          routes: [{ id: 'bad-route', path: '/plugins/news/bad', actionId: 'other.read', component }],
         },
       ])
     ).toThrow('plugin_route_action_owner_mismatch:news:bad-route:other.read');
@@ -223,6 +235,122 @@ describe('plugin registries', () => {
         },
       ])
     ).toThrow('plugin_content_type_namespace_mismatch:news:other:other.article');
+  });
+
+  it('rejects plugin route guardrail bypass fields and non-canonical paths', () => {
+    expect(() =>
+      createPluginRegistry([
+        {
+          ...newsPlugin,
+          routes: [
+            {
+              id: 'news.bypass',
+              path: '/plugins/news',
+              component,
+              beforeLoad: () => undefined,
+            } as never,
+          ],
+        },
+      ])
+    ).toThrow('plugin_guardrail_route_bypass:news:news.bypass:beforeLoad');
+
+    expect(() =>
+      createPluginRegistry([
+        {
+          ...newsPlugin,
+          routes: [
+            {
+              id: 'news.loader',
+              path: '/plugins/news',
+              component,
+              loader: () => undefined,
+            } as never,
+          ],
+        },
+      ])
+    ).toThrow('plugin_guardrail_route_bypass:news:news.loader:loader');
+
+    expect(() =>
+      createPluginRegistry([
+        {
+          ...newsPlugin,
+          routes: [
+            {
+              id: 'news.foreign',
+              path: '/admin/news',
+              component,
+            },
+          ],
+        },
+      ])
+    ).toThrow('plugin_guardrail_route_bypass:news:news.foreign:path');
+  });
+
+  it('rejects plugin authorization, audit, persistence and dynamic-registration bypass fields', () => {
+    expect(() =>
+      createBuildTimeRegistry({
+        plugins: [
+          {
+            ...newsPlugin,
+            actions: [{ id: 'news.approve', titleKey: 'news.actions.approve', authorize: () => true } as never],
+          },
+        ],
+      })
+    ).toThrow('plugin_guardrail_authorization_bypass:news:news.approve:authorize');
+
+    expect(() =>
+      createBuildTimeRegistry({
+        plugins: [
+          {
+            ...newsPlugin,
+            auditEvents: [{ eventType: 'news.created', emitAudit: () => undefined } as never],
+          },
+        ],
+      })
+    ).toThrow('plugin_guardrail_audit_bypass:news:news.created:emitAudit');
+
+    expect(() =>
+      createBuildTimeRegistry({
+        plugins: [
+          {
+            ...newsPlugin,
+            contentTypes: [{ contentType: 'news.article', displayName: 'Article', repository: {} } as never],
+          },
+        ],
+      })
+    ).toThrow('plugin_guardrail_persistence_bypass:news:news.article:repository');
+
+    expect(() =>
+      createBuildTimeRegistry({
+        plugins: [
+          {
+            ...newsPlugin,
+            registerContentType: () => undefined,
+          } as never,
+        ],
+      })
+    ).toThrow('plugin_guardrail_dynamic_registration:news:news:registerContentType');
+  });
+
+  it('keeps plugin UI components and host-invoked content validation hooks allowed', () => {
+    const validatePayload = () => [] as const;
+    const registry = createBuildTimeRegistry({
+      plugins: [
+        {
+          ...newsPlugin,
+          contentTypes: [
+            {
+              contentType: 'news.article',
+              displayName: 'Article',
+              validatePayload,
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(registry.routes[0]?.component).toBe(component);
+    expect(registry.contentTypes[0]?.validatePayload).toBe(validatePayload);
   });
 });
 

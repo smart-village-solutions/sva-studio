@@ -1,4 +1,8 @@
 import {
+  assertPluginContributionAllowedKeys,
+  createPluginContributionGuardrailError,
+} from './guardrails.js';
+import {
   isReservedPluginNamespace,
   normalizePluginIdentifier,
   normalizePluginNamespace,
@@ -33,6 +37,9 @@ export type AdminResourceDefinition = {
   readonly views: AdminResourceViews;
 };
 
+const adminResourceDefinitionAllowedKeys = new Set(['resourceId', 'basePath', 'titleKey', 'guard', 'views'] as const);
+const adminResourceViewAllowedKeys = new Set(['bindingKey'] as const);
+
 const normalizeBasePath = (value: string): string => {
   const trimmed = value.trim();
   let start = 0;
@@ -64,6 +71,15 @@ const validateViewDefinition = (
   viewName: keyof AdminResourceViews,
   view: AdminResourceViewDefinition | undefined
 ): AdminResourceViewDefinition => {
+  if (view) {
+    assertPluginContributionAllowedKeys(
+      view as unknown as Record<string, unknown>,
+      adminResourceViewAllowedKeys,
+      normalizePluginIdentifier(resourceId).split('.')[0] ?? 'host',
+      `${resourceId}.${String(viewName)}`
+    );
+  }
+
   const bindingKey = normalizePluginIdentifier(view?.bindingKey ?? '');
   if (bindingKey.length === 0) {
     throw new Error(`invalid_admin_resource_view:${resourceId}:${viewName}`);
@@ -74,6 +90,23 @@ const validateViewDefinition = (
 
 const normalizeAdminResourceDefinition = (resource: AdminResourceDefinition): AdminResourceDefinition => {
   const resourceId = normalizePluginIdentifier(resource.resourceId);
+  assertPluginContributionAllowedKeys(
+    resource as unknown as Record<string, unknown>,
+    adminResourceDefinitionAllowedKeys,
+    resourceId.split('.')[0] ?? 'host',
+    resourceId
+  );
+
+  const views = resource.views as unknown as Record<string, unknown>;
+  for (const viewName of Object.keys(views)) {
+    if (!['list', 'create', 'detail', 'history'].includes(viewName)) {
+      throw createPluginContributionGuardrailError(
+        resourceId.split('.')[0] ?? 'host',
+        resourceId,
+        `views.${viewName}`
+      );
+    }
+  }
 
   return {
     ...resource,

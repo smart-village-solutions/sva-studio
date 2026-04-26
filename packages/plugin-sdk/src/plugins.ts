@@ -1,6 +1,10 @@
 import type { AdminResourceDefinition } from './admin-resources.js';
 import type { ContentTypeDefinition } from './content-types.js';
 import {
+  assertPluginContributionAllowedKeys,
+  assertPluginRoutePathAllowed,
+} from './guardrails.js';
+import {
   isReservedPluginNamespace,
   normalizePluginIdentifier,
   normalizePluginNamespace,
@@ -65,6 +69,38 @@ export type PluginDefinition = {
 };
 
 const LEGACY_ACTION_ALIAS_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+const pluginDefinitionAllowedKeys = new Set([
+  'id',
+  'displayName',
+  'routes',
+  'navigation',
+  'actions',
+  'contentTypes',
+  'adminResources',
+  'auditEvents',
+  'translations',
+] as const);
+
+const routeDefinitionAllowedKeys = new Set(['id', 'path', 'guard', 'actionId', 'component'] as const);
+const navigationItemAllowedKeys = new Set(['id', 'to', 'titleKey', 'section', 'actionId', 'requiredAction'] as const);
+const actionDefinitionAllowedKeys = new Set([
+  'id',
+  'titleKey',
+  'requiredAction',
+  'featureFlag',
+  'legacyAliases',
+] as const);
+const contentTypeDefinitionAllowedKeys = new Set([
+  'contentType',
+  'displayName',
+  'editorFields',
+  'listColumns',
+  'actions',
+  'validatePayload',
+] as const);
+const adminResourceDefinitionAllowedKeys = new Set(['resourceId', 'basePath', 'titleKey', 'guard', 'views'] as const);
+const auditEventDefinitionAllowedKeys = new Set(['eventType', 'titleKey'] as const);
 
 export type PluginActionRegistryEntry = {
   readonly actionId: string;
@@ -150,6 +186,15 @@ export const definePluginActions = <const TActions extends readonly PluginAction
     throw new Error(`reserved_plugin_action_namespace:${normalizedNamespace}`);
   }
 
+  for (const action of actions) {
+    assertPluginContributionAllowedKeys(
+      action as unknown as Record<string, unknown>,
+      actionDefinitionAllowedKeys,
+      normalizedNamespace,
+      normalizePluginIdentifier(action.id)
+    );
+  }
+
   const normalizedActions = actions.map((action) =>
     normalizePluginActionDefinition(action)
   ) as unknown as TActions;
@@ -179,6 +224,15 @@ export const definePluginAuditEvents = <const TEvents extends readonly PluginAud
     throw new Error(`reserved_plugin_namespace:${normalizedNamespace}`);
   }
 
+  for (const event of events) {
+    assertPluginContributionAllowedKeys(
+      event as unknown as Record<string, unknown>,
+      auditEventDefinitionAllowedKeys,
+      normalizedNamespace,
+      normalizePluginIdentifier(event.eventType)
+    );
+  }
+
   const normalizedEvents = events.map((event) => normalizePluginAuditEventDefinition(event)) as unknown as TEvents;
 
   for (const event of normalizedEvents) {
@@ -202,6 +256,13 @@ export const createPluginRegistry = (
   const registry = new Map<string, PluginDefinition>();
 
   for (const plugin of plugins) {
+    assertPluginContributionAllowedKeys(
+      plugin as unknown as Record<string, unknown>,
+      pluginDefinitionAllowedKeys,
+      normalizePluginIdentifier(plugin.id),
+      normalizePluginIdentifier(plugin.id)
+    );
+
     const trimmedId = plugin.id.trim();
     if (trimmedId.length === 0) {
       throw new Error('invalid_plugin_definition');
@@ -220,7 +281,24 @@ export const createPluginRegistry = (
       throw new Error(`duplicate_plugin:${id}`);
     }
 
+    for (const action of plugin.actions ?? []) {
+      assertPluginContributionAllowedKeys(
+        action as unknown as Record<string, unknown>,
+        actionDefinitionAllowedKeys,
+        id,
+        normalizePluginIdentifier(action.id)
+      );
+    }
+
     for (const route of plugin.routes) {
+      assertPluginContributionAllowedKeys(
+        route as unknown as Record<string, unknown>,
+        routeDefinitionAllowedKeys,
+        id,
+        normalizePluginIdentifier(route.id)
+      );
+      assertPluginRoutePathAllowed(id, normalizePluginIdentifier(route.id), route.path);
+
       const routeActionId = normalizePluginIdentifier(route.actionId ?? '');
       if (!routeActionId) {
         continue;
@@ -244,6 +322,13 @@ export const createPluginRegistry = (
     }
 
     for (const navigationItem of plugin.navigation ?? []) {
+      assertPluginContributionAllowedKeys(
+        navigationItem as unknown as Record<string, unknown>,
+        navigationItemAllowedKeys,
+        id,
+        normalizePluginIdentifier(navigationItem.id)
+      );
+
       const navigationActionId = normalizePluginIdentifier(navigationItem.actionId ?? '');
       if (!navigationActionId) {
         continue;
@@ -271,6 +356,13 @@ export const createPluginRegistry = (
     }
 
     for (const contentTypeDefinition of plugin.contentTypes ?? []) {
+      const contributionId = normalizePluginIdentifier(contentTypeDefinition.contentType);
+      assertPluginContributionAllowedKeys(
+        contentTypeDefinition as unknown as Record<string, unknown>,
+        contentTypeDefinitionAllowedKeys,
+        id,
+        contributionId
+      );
       const normalizedContentType = normalizePluginIdentifier(contentTypeDefinition.contentType);
       const parsed = parseNamespacedPluginIdentifier(normalizedContentType);
       if (parsed === undefined) {
@@ -282,6 +374,13 @@ export const createPluginRegistry = (
     }
 
     for (const adminResource of plugin.adminResources ?? []) {
+      const contributionId = normalizePluginIdentifier(adminResource.resourceId);
+      assertPluginContributionAllowedKeys(
+        adminResource as unknown as Record<string, unknown>,
+        adminResourceDefinitionAllowedKeys,
+        id,
+        contributionId
+      );
       const normalizedResourceId = normalizePluginIdentifier(adminResource.resourceId);
       const parsed = parseNamespacedPluginIdentifier(normalizedResourceId);
       if (parsed === undefined) {
@@ -293,6 +392,13 @@ export const createPluginRegistry = (
     }
 
     for (const eventDefinition of plugin.auditEvents ?? []) {
+      const contributionId = normalizePluginIdentifier(eventDefinition.eventType);
+      assertPluginContributionAllowedKeys(
+        eventDefinition as unknown as Record<string, unknown>,
+        auditEventDefinitionAllowedKeys,
+        id,
+        contributionId
+      );
       const normalizedEventType = normalizePluginIdentifier(eventDefinition.eventType);
       const parsed = parseNamespacedPluginIdentifier(normalizedEventType);
       if (parsed === undefined) {
@@ -359,6 +465,12 @@ export const createPluginActionRegistry = (
     pluginNamespaces.add(pluginNamespace);
 
     for (const action of plugin.actions ?? []) {
+      assertPluginContributionAllowedKeys(
+        action as unknown as Record<string, unknown>,
+        actionDefinitionAllowedKeys,
+        pluginNamespace,
+        normalizePluginIdentifier(action.id)
+      );
       const normalizedAction = normalizePluginActionDefinition(action);
       const actionId = normalizedAction.id;
       const actionTitleKey = normalizedAction.titleKey;
@@ -427,6 +539,12 @@ export const createPluginAuditEventRegistry = (
     }
 
     for (const eventDefinition of plugin.auditEvents ?? []) {
+      assertPluginContributionAllowedKeys(
+        eventDefinition as unknown as Record<string, unknown>,
+        auditEventDefinitionAllowedKeys,
+        pluginNamespace,
+        normalizePluginIdentifier(eventDefinition.eventType)
+      );
       const normalizedEvent = normalizePluginAuditEventDefinition(eventDefinition);
       const parsed = parseNamespacedPluginIdentifier(normalizedEvent.eventType);
       if (parsed === undefined) {

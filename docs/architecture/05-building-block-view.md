@@ -186,6 +186,16 @@ Nicht erlaubt: `@sva/plugin-*` -> `@sva/core`
 4. `packages/auth-runtime/src/content/content-type-registry.ts`
    - führt `news.article` als kanonischen plugin-beigestellten `contentType` im serverseitigen Validierungsvertrag
 
+### Erweiterung 2026-04: Host-seitige Plugin-Guardrails
+
+1. `packages/plugin-sdk/src/guardrails.ts`
+   - definiert deterministische Guardrail-Fehlercodes für Routing-, Autorisierungs-, Audit-, Persistenz- und Dynamic-Registration-Bypässe
+2. `packages/plugin-sdk/src/plugins.ts`
+   - validiert Plugin-Contributions gegen Runtime-Allowlists, bevor der Build-time-Registry-Snapshot veröffentlicht wird
+3. `packages/routing/src/app.routes.shared.ts`
+   - materialisiert Plugin-Routen nur unter `/plugins/<pluginNamespace>` und bricht unbekannte Plugin-Guards fail-fast ab
+4. Plugin-UI-Komponenten bleiben erlaubt, solange Route, Guard, Search-Parameter, Persistenz und Audit-Pfad host-owned bleiben
+
 ### Schichtdefinition `scope:integration`
 
 - Zweck: `scope:integration` kapselt serverseitige Downstream-Integrationen, die weder Auth-Runtime noch Persistenzlogik besitzen.

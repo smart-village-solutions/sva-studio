@@ -23,6 +23,19 @@ Dieser Abschnitt beschreibt kritische Laufzeitszenarien und Interaktionen.
 Fehlerpfad:
 
 - Fehlerhafte Route-Factory oder server-only Import im Client kann Build/Runtime brechen.
+- Plugin-Routen außerhalb `/plugins/<pluginNamespace>` oder mit unbekanntem Guard werden vor Veröffentlichung des Route-Trees mit deterministischem Guardrail-Code abgewiesen.
+
+### Szenario 1c: Plugin-Guardrail-Validierung beim Build-time-Snapshot
+
+1. Die App übergibt statische Plugin-Packages an `createBuildTimeRegistry()`.
+2. Das Plugin-SDK validiert Plugin-, Route-, Navigation-, Action-, Content-Type-, Admin-Resource- und Audit-Event-Beiträge gegen erlaubte Felder.
+3. Erlaubte UI-Komponenten und host-invoked Payload-Validatoren bleiben im Snapshot erhalten.
+4. Verbotene Felder wie eigene Route-Handler, Autorisierungsresolver, Audit-Sinks, Persistenzhandler oder dynamische Registrierung brechen die Initialisierung fail-fast ab.
+
+Fehlerpfad:
+
+- Der Host veröffentlicht keinen teilweise materialisierten Plugin-Snapshot.
+- Die Fehlermeldung folgt `<guardrailCode>:<pluginNamespace>:<contributionId>:<fieldOrReason>`.
 
 ### Szenario 1b: Materialisierung registrierter Admin-Ressourcen
 

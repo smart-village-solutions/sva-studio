@@ -1,4 +1,5 @@
 import { GENERIC_CONTENT_TYPE, type ContentJsonValue } from '@sva/core';
+import { assertPluginContributionAllowedKeys } from './guardrails.js';
 import {
   isReservedPluginNamespace,
   normalizePluginIdentifier,
@@ -34,6 +35,15 @@ export type ContentTypeDefinition = {
   readonly validatePayload?: (payload: ContentJsonValue) => readonly string[];
 };
 
+const contentTypeDefinitionAllowedKeys = new Set([
+  'contentType',
+  'displayName',
+  'editorFields',
+  'listColumns',
+  'actions',
+  'validatePayload',
+] as const);
+
 const normalizeContentTypeDefinition = (definition: ContentTypeDefinition): ContentTypeDefinition => ({
   ...definition,
   contentType: normalizePluginIdentifier(definition.contentType),
@@ -60,6 +70,15 @@ export const definePluginContentTypes = <const TDefinitions extends readonly Con
   const normalizedNamespace = normalizePluginNamespace(namespace);
   if (isReservedPluginNamespace(normalizedNamespace)) {
     throw new Error(`reserved_plugin_namespace:${normalizedNamespace}`);
+  }
+
+  for (const definition of definitions) {
+    assertPluginContributionAllowedKeys(
+      definition as unknown as Record<string, unknown>,
+      contentTypeDefinitionAllowedKeys,
+      normalizedNamespace,
+      normalizePluginIdentifier(definition.contentType)
+    );
   }
 
   const normalizedDefinitions = definitions.map((definition) =>
@@ -91,6 +110,12 @@ export const createContentTypeRegistry = (
   const registry = new Map<string, ContentTypeDefinition>();
 
   for (const definition of definitions) {
+    assertPluginContributionAllowedKeys(
+      definition as unknown as Record<string, unknown>,
+      contentTypeDefinitionAllowedKeys,
+      normalizePluginIdentifier(definition.contentType).split('.')[0] ?? 'host',
+      normalizePluginIdentifier(definition.contentType)
+    );
     const normalizedDefinition = normalizeContentTypeDefinition(definition);
     const normalizedType = normalizedDefinition.contentType;
     const normalizedName = normalizedDefinition.displayName;

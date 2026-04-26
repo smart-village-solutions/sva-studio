@@ -58,13 +58,14 @@ Fehlerpfad:
 4. Die News-Liste lädt die generische Content-Liste und filtert clientseitig auf `contentType = news.article`.
 5. Der Editor sendet Create- oder Update-Requests an die bestehende IAM-Content-API.
 6. `packages/auth-runtime` validiert zuerst den generischen Content-Envelope und danach das registrierte News-Payload-Schema für `news.article`.
-7. Vor Persistenz sanitisiert der Server `body` allowlist-basiert und normalisiert `teaser` auf Plain Text.
-8. Repository, Historie und Audit-Logging bleiben unverändert Teil des generischen Content-Pfads.
-9. Nach erfolgreichem Speichern oder Löschen zeigt das Plugin Statusfeedback und navigiert zurück zur News-Liste.
+7. Vor jeder mutierenden Persistenz löst `packages/auth-runtime` die fachliche Content-Capability auf eine primitive `content.*`-Action auf und autorisiert diese über die zentrale Permission Engine.
+8. Vor Persistenz sanitisiert der Server `body` allowlist-basiert und normalisiert `teaser` auf Plain Text.
+9. Repository, Historie und Audit-Logging bleiben Teil des generischen Content-Pfads und führen Capability sowie primitive Action in den Audit-Payloads mit.
+10. Nach erfolgreichem Speichern oder Löschen zeigt das Plugin Statusfeedback und navigiert zurück zur News-Liste.
 
 Fehlerpfad:
 
-- fehlt die Berechtigung, blockiert der Host die Plugin-Route vor dem Rendern.
+- fehlt die Berechtigung, blockiert der Host die Plugin-Route vor dem Rendern oder verweigert die serverseitige Mutation mit `capability_authorization_denied` im Diagnosekontext.
 - ist der News-Payload ungültig, antwortet die Content-API mit HTTP `400`.
 - schlägt ein API-Call fehl, zeigt das Plugin eine verständliche Fehlermeldung und behält den Formzustand.
 

@@ -48,6 +48,10 @@ describe('iam content schemas', () => {
     expect(updateContentSchema.safeParse({ publishedAt: 'not-a-date' }).success).toBe(false);
     expect(updateContentSchema.safeParse({ publishedAt: '2026-04-25' }).success).toBe(false);
     expect(updateContentSchema.safeParse({ publishedAt: '2026-04-25T12:00:00' }).success).toBe(false);
+    expect(updateContentSchema.safeParse({ publishedAt: '2026-02-31T12:00:00Z' }).success).toBe(false);
+    expect(updateContentSchema.safeParse({ publishedAt: '2025-02-29T12:00:00Z' }).success).toBe(false);
+    expect(updateContentSchema.safeParse({ publishedAt: '2026-04-31T12:00:00+02:00' }).success).toBe(false);
+    expect(updateContentSchema.safeParse({ publishedAt: '2026-04-25T24:00:00Z' }).success).toBe(false);
     expect(updateContentSchema.safeParse({ publishedAt: '2026-04-25T12:00:00.1234567890Z' }).success).toBe(
       false
     );

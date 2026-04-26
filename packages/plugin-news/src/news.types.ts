@@ -35,7 +35,7 @@ export type NewsCategory = {
 };
 
 export type NewsMediaContent = {
-  readonly caption?: string;
+  readonly captionText?: string;
   readonly copyright?: string;
   readonly contentType?: string;
   readonly height?: number | string;
@@ -56,9 +56,9 @@ export type NewsDataProvider = {
 };
 
 export type NewsSetting = {
-  readonly id?: string;
-  readonly name?: string;
-  readonly value?: string | number | boolean | null;
+  readonly alwaysRecreateOnImport?: string;
+  readonly displayOnlySummary?: string;
+  readonly onlySummaryLinkText?: string;
 };
 
 export type NewsAnnouncementSummary = {
@@ -107,7 +107,7 @@ export type NewsContentItem = {
   readonly contentBlocks?: readonly NewsContentBlock[];
   readonly pointOfInterestId?: string;
   readonly dataProvider?: NewsDataProvider;
-  readonly settings?: readonly NewsSetting[];
+  readonly settings?: NewsSetting;
   readonly announcements?: readonly NewsAnnouncementSummary[];
   readonly likeCount?: number;
   readonly likedByMe?: boolean;

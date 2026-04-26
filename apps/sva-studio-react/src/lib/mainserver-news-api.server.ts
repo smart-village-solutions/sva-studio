@@ -101,6 +101,43 @@ const readNumber = (value: unknown): number | undefined => {
 
 const isValidDate = (value: string): boolean => Number.isNaN(new Date(value).getTime()) === false;
 
+const getVisibleTextLength = (value: string): number => {
+  let inTag = false;
+  let previousWasWhitespace = true;
+  let visibleLength = 0;
+
+  for (const character of value) {
+    if (character === '<') {
+      inTag = true;
+      continue;
+    }
+
+    if (character === '>' && inTag) {
+      inTag = false;
+      previousWasWhitespace = true;
+      continue;
+    }
+
+    if (inTag) {
+      continue;
+    }
+
+    if (/\s/u.test(character)) {
+      previousWasWhitespace = true;
+      continue;
+    }
+
+    if (previousWasWhitespace && visibleLength > 0) {
+      visibleLength += 1;
+    }
+
+    visibleLength += 1;
+    previousWasWhitespace = false;
+  }
+
+  return visibleLength;
+};
+
 const isHttpsUrl = (value: string): boolean => {
   try {
     return new URL(value).protocol === 'https:';
@@ -205,18 +242,18 @@ const parseAddress = (value: unknown): SvaMainserverNewsInput['address'] | undef
 
 const parseContentBlocks = (value: unknown): SvaMainserverNewsInput['contentBlocks'] | undefined | Response => {
   if (value === undefined || value === null) {
-    return undefined;
+    return errorJson(400, 'invalid_request', 'Mindestens ein Inhaltsblock benötigt Inhalt und darf maximal 50.000 Zeichen haben.');
   }
   if (!Array.isArray(value)) {
     return errorJson(400, 'invalid_request', 'ContentBlocks müssen als Liste gesendet werden.');
   }
 
-  const blocks = [];
+  const blocks: NonNullable<SvaMainserverNewsInput['contentBlocks']> = [];
   for (const block of value) {
     if (!isRecord(block)) {
       return errorJson(400, 'invalid_request', 'ContentBlocks müssen Objekte sein.');
     }
-    const mediaContents = [];
+    const mediaContents: NonNullable<NonNullable<SvaMainserverNewsInput['contentBlocks']>[number]['mediaContents']> = [];
     if (block.mediaContents !== undefined && block.mediaContents !== null) {
       if (!Array.isArray(block.mediaContents)) {
         return errorJson(400, 'invalid_request', 'MediaContent muss als Liste gesendet werden.');
@@ -230,7 +267,7 @@ const parseContentBlocks = (value: unknown): SvaMainserverNewsInput['contentBloc
           return sourceUrl;
         }
         mediaContents.push({
-          ...(readString(media.caption) ? { caption: readString(media.caption) } : {}),
+          ...(readString(media.captionText) ? { captionText: readString(media.captionText) } : {}),
           ...(readString(media.copyright) ? { copyright: readString(media.copyright) } : {}),
           ...(readString(media.contentType) ? { contentType: readString(media.contentType) } : {}),
           ...(readNumber(media.height) !== undefined ? { height: readNumber(media.height) } : {}),
@@ -245,6 +282,13 @@ const parseContentBlocks = (value: unknown): SvaMainserverNewsInput['contentBloc
       ...(readString(block.body) ? { body: readString(block.body) } : {}),
       ...(mediaContents.length > 0 ? { mediaContents } : {}),
     });
+  }
+  if (
+    blocks.length === 0 ||
+    blocks.some((block) => (block.body?.length ?? 0) > 50_000) ||
+    blocks.some((block) => block.body && getVisibleTextLength(block.body) > 0) === false
+  ) {
+    return errorJson(400, 'invalid_request', 'Mindestens ein Inhaltsblock benötigt Inhalt und darf maximal 50.000 Zeichen haben.');
   }
   return blocks;
 };
@@ -287,7 +331,7 @@ const parseNewsInput = async (request: Request, options: ParseOptions): Promise<
     body.charactersToBeShown !== undefined &&
     (charactersToBeShown === undefined || charactersToBeShown < 0 || Number.isInteger(charactersToBeShown) === false)
   ) {
-    return errorJson(400, 'invalid_request', 'Die Zeichenbegrenzung muss eine positive Ganzzahl sein.');
+    return errorJson(400, 'invalid_request', 'Die Zeichenbegrenzung muss eine nicht-negative Ganzzahl sein.');
   }
 
   const sourceUrl = parseWebUrl(body.sourceUrl);

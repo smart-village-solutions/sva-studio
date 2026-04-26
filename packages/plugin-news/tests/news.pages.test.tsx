@@ -464,7 +464,7 @@ describe('NewsListPage', () => {
           mediaContents: [
             {
               contentType: 'image',
-              caption: 'Titelbild',
+              captionText: 'Titelbild',
               sourceUrl: { url: 'https://example.com/image.jpg' },
             },
           ],
@@ -472,7 +472,7 @@ describe('NewsListPage', () => {
       ],
       pointOfInterestId: 'poi-7',
       dataProvider: { id: 'dp-1', name: 'Datenquelle' },
-      settings: [{ id: 'setting-1', name: 'Import', value: true }],
+      settings: { alwaysRecreateOnImport: 'false', displayOnlySummary: 'true', onlySummaryLinkText: 'Mehr' },
       announcements: [{ id: 'announcement-1', title: 'Hinweis' }],
       likeCount: 3,
       likedByMe: false,
@@ -523,7 +523,7 @@ describe('NewsListPage', () => {
               mediaContents: [
                 expect.objectContaining({
                   contentType: 'image',
-                  caption: 'Titelbild',
+                  captionText: 'Titelbild',
                   sourceUrl: { url: 'https://example.com/image.jpg' },
                 }),
               ],

@@ -36,7 +36,7 @@ const defaultContentBlock = (): NewsContentBlock => ({
 });
 
 const defaultMediaContent = (): NewsMediaContent => ({
-  caption: '',
+  captionText: '',
   copyright: '',
   contentType: 'image',
   sourceUrl: { url: '', description: '' },
@@ -141,6 +141,18 @@ const formatDate = (value?: string) => {
 
 const formatOptionalNumber = (value?: number) => (typeof value === 'number' ? String(value) : '—');
 
+const formatSettings = (value: NewsContentItem['settings']) => {
+  if (!value) {
+    return '—';
+  }
+  const labels = [
+    value.alwaysRecreateOnImport ? `alwaysRecreateOnImport: ${value.alwaysRecreateOnImport}` : undefined,
+    value.displayOnlySummary ? `displayOnlySummary: ${value.displayOnlySummary}` : undefined,
+    value.onlySummaryLinkText ? `onlySummaryLinkText: ${value.onlySummaryLinkText}` : undefined,
+  ].filter(Boolean);
+  return labels.length > 0 ? labels.join(', ') : '—';
+};
+
 const toDatetimeLocalValue = (value?: string) => {
   if (!value) {
     return '';
@@ -172,6 +184,17 @@ const fromDatetimeLocalValue = (value: string): string => {
 const compactString = (value?: string) => {
   const trimmed = value?.trim();
   return trimmed && trimmed.length > 0 ? trimmed : undefined;
+};
+
+const normalizeOptionalNumber = (value: number | string | undefined): number | undefined => {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : undefined;
+  }
+  if (typeof value === 'string' && value.trim().length > 0) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+  return undefined;
 };
 
 const compactWebUrl = (value: NewsFormInput['sourceUrl']) => {
@@ -215,7 +238,7 @@ const compactForm = (form: NewsFormInput, mode: 'create' | 'edit'): NewsFormInpu
       ? {
           mediaContents: block.mediaContents
             .map((media) => ({
-              ...(compactString(media.caption) ? { caption: compactString(media.caption) } : {}),
+              ...(compactString(media.captionText) ? { captionText: compactString(media.captionText) } : {}),
               ...(compactString(media.copyright) ? { copyright: compactString(media.copyright) } : {}),
               ...(compactString(media.contentType) ? { contentType: compactString(media.contentType) } : {}),
               ...(media.height !== undefined && media.height !== '' ? { height: media.height } : {}),
@@ -237,8 +260,7 @@ const itemToForm = (item: NewsContentItem): NewsFormInput => ({
   keywords: item.keywords ?? '',
   externalId: item.externalId ?? '',
   fullVersion: item.fullVersion ?? false,
-  charactersToBeShown:
-    typeof item.charactersToBeShown === 'number' ? item.charactersToBeShown : Number(item.charactersToBeShown) || undefined,
+  charactersToBeShown: normalizeOptionalNumber(item.charactersToBeShown),
   newsType: item.newsType ?? '',
   publishedAt: item.publishedAt,
   publicationDate: item.publicationDate ?? '',
@@ -759,8 +781,8 @@ const NewsForm = ({
                     <StudioField id={`news-media-caption-${blockIndex}-${mediaIndex}`} label={pt('fields.mediaCaption')}>
                       <Input
                         id={`news-media-caption-${blockIndex}-${mediaIndex}`}
-                        value={media.caption ?? ''}
-                        onChange={(event) => updateMedia(blockIndex, mediaIndex, { caption: event.target.value })}
+                        value={media.captionText ?? ''}
+                        onChange={(event) => updateMedia(blockIndex, mediaIndex, { captionText: event.target.value })}
                       />
                     </StudioField>
                     <StudioField id={`news-media-type-${blockIndex}-${mediaIndex}`} label={pt('fields.mediaContentType')}>
@@ -835,7 +857,7 @@ const NewsForm = ({
               </div>
               <div>
                 <dt className="font-medium">{pt('fields.settings')}</dt>
-                <dd className="text-muted-foreground">{formatOptionalNumber(loadedItem.settings?.length)}</dd>
+                <dd className="text-muted-foreground">{formatSettings(loadedItem.settings)}</dd>
               </div>
               <div>
                 <dt className="font-medium">{pt('fields.announcements')}</dt>

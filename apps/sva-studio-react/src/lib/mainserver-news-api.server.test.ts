@@ -201,6 +201,140 @@ describe('dispatchMainserverNewsRequest', () => {
     await expect(response?.json()).resolves.toEqual({ data: { id: 'news-1' } });
   });
 
+  it('normalizes nested optional news input before updating', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    state.validateCsrf.mockReturnValue(null);
+    state.authorizeContentPrimitiveForUser.mockResolvedValue({
+      ok: true,
+      actor: { instanceId: 'de-musterhausen', keycloakSubject: 'subject-1' },
+      permissions: [],
+    });
+    state.updateSvaMainserverNews.mockResolvedValue({ id: 'news-1' });
+
+    const response = await dispatchMainserverNewsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/news/news-1', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          title: ' Verschachtelte News ',
+          publishedAt: '2026-04-14T09:30:00.000Z',
+          charactersToBeShown: '120',
+          showPublishDate: false,
+          sourceUrl: null,
+          categories: [
+            {
+              name: ' Verwaltung ',
+              payload: { color: 'blue' },
+              children: [{ name: ' Rathaus ' }],
+            },
+          ],
+          address: {
+            id: '42',
+            addition: ' Eingang B ',
+            street: ' Markt 1 ',
+            zip: ' 12345 ',
+            city: ' Musterhausen ',
+            kind: ' venue ',
+            geoLocation: { latitude: '52.1', longitude: '13.1' },
+          },
+          contentBlocks: [
+            {
+              title: ' Block ',
+              intro: ' Intro ',
+              body: ' Inhalt ',
+              mediaContents: [
+                {
+                  captionText: ' Bild ',
+                  copyright: ' Redaktion ',
+                  contentType: ' image ',
+                  height: '720',
+                  width: '1280',
+                  sourceUrl: null,
+                },
+              ],
+            },
+          ],
+        }),
+      })
+    );
+
+    expect(response?.status).toBe(200);
+    expect(state.updateSvaMainserverNews).toHaveBeenCalledWith(
+      expect.objectContaining({
+        news: expect.objectContaining({
+          title: 'Verschachtelte News',
+          charactersToBeShown: 120,
+          showPublishDate: false,
+          categories: [{ name: 'Verwaltung', payload: { color: 'blue' }, children: [{ name: 'Rathaus' }] }],
+          address: expect.objectContaining({
+            id: 42,
+            addition: 'Eingang B',
+            street: 'Markt 1',
+            zip: '12345',
+            city: 'Musterhausen',
+            kind: 'venue',
+            geoLocation: { latitude: 52.1, longitude: 13.1 },
+          }),
+          contentBlocks: [
+            expect.objectContaining({
+              title: 'Block',
+              intro: 'Intro',
+              body: 'Inhalt',
+              mediaContents: [
+                {
+                  captionText: 'Bild',
+                  copyright: 'Redaktion',
+                  contentType: 'image',
+                  height: 720,
+                  width: 1280,
+                },
+              ],
+            }),
+          ],
+        }),
+      })
+    );
+  });
+
+  it('rejects invalid full-model shapes before GraphQL', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    state.validateCsrf.mockReturnValue(null);
+
+    const invalidBodies: readonly unknown[] = [
+      [],
+      { ...updateNewsInput, publicationDate: 'invalid-date' },
+      { ...updateNewsInput, charactersToBeShown: 'not-a-number' },
+      { ...updateNewsInput, charactersToBeShown: 1.5 },
+      { ...updateNewsInput, sourceUrl: 'https://example.invalid/news' },
+      { ...updateNewsInput, sourceUrl: { url: 'http://example.invalid/news' } },
+      { ...updateNewsInput, categories: 'Allgemein' },
+      { ...updateNewsInput, categories: [null] },
+      { ...updateNewsInput, categories: [{ name: '' }] },
+      { ...updateNewsInput, categories: [{ name: 'Allgemein', children: 'Rathaus' }] },
+      { ...updateNewsInput, address: 'Markt 1' },
+      { ...updateNewsInput, address: { geoLocation: '52,13' } },
+      { ...updateNewsInput, address: { geoLocation: { latitude: 100, longitude: 13 } } },
+      { ...updateNewsInput, contentBlocks: 'Body' },
+      { ...updateNewsInput, contentBlocks: [null] },
+      { ...updateNewsInput, contentBlocks: [{ mediaContents: 'Bild' }] },
+      { ...updateNewsInput, contentBlocks: [{ mediaContents: [null] }] },
+      { ...updateNewsInput, contentBlocks: [{ mediaContents: [{ sourceUrl: { url: 'ftp://example.invalid/image.jpg' } }] }] },
+    ];
+
+    for (const body of invalidBodies) {
+      const response = await dispatchMainserverNewsRequest(
+        createRequest('https://studio.test/api/v1/mainserver/news/news-1', {
+          method: 'PATCH',
+          body: JSON.stringify(body),
+        })
+      );
+
+      expect(response?.status).toBe(400);
+      await expect(response?.json()).resolves.toEqual(expect.objectContaining({ error: 'invalid_request' }));
+    }
+
+    expect(state.updateSvaMainserverNews).not.toHaveBeenCalled();
+  });
+
   it('rejects legacy payload, read-only fields and update push notifications before GraphQL', async () => {
     state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
     state.validateCsrf.mockReturnValue(null);

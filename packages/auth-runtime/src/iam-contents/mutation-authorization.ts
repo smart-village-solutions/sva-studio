@@ -3,6 +3,7 @@ import {
   type IamContentDomainCapability,
   type IamContentListItem,
   type IamContentPrimitiveAction,
+  type IamContentStatus,
 } from '@sva/core';
 
 import type { UpdateContentSchemaInput } from './schemas.js';
@@ -38,8 +39,8 @@ const resolveContentAuthorizationAction = (
 };
 
 const resolveStatusCapability = (
-  currentStatus: string,
-  nextStatus: string
+  currentStatus: IamContentStatus,
+  nextStatus: IamContentStatus
 ): IamContentDomainCapability | undefined => {
   if (currentStatus === nextStatus) {
     return undefined;

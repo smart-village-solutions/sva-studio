@@ -44,17 +44,22 @@ export const listContentsInternal = async (
       loadContentListItems(actorResolution.actor.instanceId),
       resolveContentAccess(actorResolution.actor),
     ]);
-    const authorizedItems = [];
-    for (const item of items) {
-      const authorizationError = await authorizeReadableContentItem(actorResolution.actor, item);
-      if (authorizationError) {
-        if (isServerAuthorizationError(authorizationError)) {
-          return authorizationError;
-        }
-        continue;
-      }
-      authorizedItems.push(item);
+    const authorizationResults = await Promise.all(
+      items.map(async (item) => ({
+        item,
+        authorizationError: await authorizeReadableContentItem(actorResolution.actor, item),
+      }))
+    );
+    const serverAuthorizationError = authorizationResults.find(
+      ({ authorizationError }) => authorizationError && isServerAuthorizationError(authorizationError)
+    )?.authorizationError;
+    if (serverAuthorizationError) {
+      return serverAuthorizationError;
     }
+
+    const authorizedItems = authorizationResults
+      .filter(({ authorizationError }) => !authorizationError)
+      .map(({ item }) => item);
     const itemsWithAccess = authorizedItems.map((item) => ({ ...item, access }));
     const pageSize = Math.max(1, authorizedItems.length);
     return new Response(

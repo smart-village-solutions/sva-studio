@@ -18,6 +18,36 @@ import { createContentSchema } from './schemas.js';
 
 const logger = createSdkLogger({ component: 'iam-contents', level: 'info' });
 
+const isAllowedErrorBody = (value: unknown): value is Record<string, unknown> => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return false;
+  }
+
+  const body = value as Record<string, unknown>;
+  const allowedTopLevelKeys = new Set(['error', 'requestId']);
+
+  if (!Object.keys(body).every((key) => allowedTopLevelKeys.has(key))) {
+    return false;
+  }
+
+  if (body.requestId !== undefined && typeof body.requestId !== 'string') {
+    return false;
+  }
+
+  if (!body.error || typeof body.error !== 'object' || Array.isArray(body.error)) {
+    return false;
+  }
+
+  const error = body.error as Record<string, unknown>;
+  const allowedErrorKeys = new Set(['code', 'message']);
+
+  return (
+    Object.keys(error).every((key) => allowedErrorKeys.has(key)) &&
+    typeof error.code === 'string' &&
+    typeof error.message === 'string'
+  );
+};
+
 export const completeCreateIdempotency = async (
   actor: ResolvedContentActor['actor'],
   idempotencyKey: string,
@@ -64,7 +94,7 @@ export const createFailureResponseFromResponse = async (
   const responseBody = await response
     .clone()
     .json()
-    .then((body: unknown) => (body && typeof body === 'object' ? (body as Record<string, unknown>) : fallbackBody))
+    .then((body: unknown) => (isAllowedErrorBody(body) ? body : fallbackBody))
     .catch(() => fallbackBody);
 
   await completeCreateIdempotency(actor, idempotencyKey, response.status, responseBody);

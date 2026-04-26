@@ -128,6 +128,19 @@ describe('content core authorization', () => {
     });
   });
 
+  it('returns server authorization errors from list reads even when other items are readable', async () => {
+    const first = item('content-1', '11111111-1111-4111-8111-111111111111');
+    const second = item('content-2', '22222222-2222-4222-8222-222222222222');
+    loadContentListItemsMock.mockResolvedValue([first, second]);
+    authorizeContentActionMock
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(new Response(null, { status: 503 }));
+
+    const response = await listContentsInternal(new Request('https://studio.test/api/v1/iam/contents'), ctx);
+
+    expect(response.status).toBe(503);
+  });
+
   it('loads content metadata before authorizing detail reads', async () => {
     const content = item('content-1', '11111111-1111-4111-8111-111111111111');
     loadContentByIdMock.mockResolvedValue(content);

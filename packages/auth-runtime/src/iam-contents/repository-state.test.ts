@@ -82,6 +82,34 @@ describe('iam content repository state helpers', () => {
         nextStatus: 'draft',
         nextValidationState: 'valid',
         nextPublishedAt: null,
+        nextPublishFrom: '2026-04-26T10:00:00.123456790Z',
+        nextPublishUntil: '2026-04-26T10:00:00.123456789Z',
+      })
+    ).toThrow(new ContentStateValidationError('content_publication_window_invalid'));
+
+    expect(() =>
+      validateNextContentState({
+        nextOrganizationId: null,
+        nextOwnerSubjectId: null,
+        nextTitle: 'Titel',
+        nextPayload: {},
+        nextStatus: 'draft',
+        nextValidationState: 'valid',
+        nextPublishedAt: null,
+        nextPublishFrom: '2026-04-26T10:00:00.123456789Z',
+        nextPublishUntil: '2026-04-26T10:00:00.123456790Z',
+      })
+    ).not.toThrow();
+
+    expect(() =>
+      validateNextContentState({
+        nextOrganizationId: null,
+        nextOwnerSubjectId: null,
+        nextTitle: 'Titel',
+        nextPayload: {},
+        nextStatus: 'draft',
+        nextValidationState: 'valid',
+        nextPublishedAt: null,
         nextPublishFrom: '2026-04-26T10:00:00.000Z',
         nextPublishUntil: '2026-04-26T10:00:00.000Z',
       })

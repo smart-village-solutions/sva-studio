@@ -183,7 +183,7 @@ const hasRequiredContentAccess = (
     case 'content.readHistory':
     case 'content.manageRevisions':
     case 'content.delete':
-      return access.canUpdate === true;
+      return false;
     default:
       return false;
   }

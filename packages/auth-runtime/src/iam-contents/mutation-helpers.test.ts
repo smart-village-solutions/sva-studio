@@ -128,6 +128,25 @@ describe('content mutation helpers', () => {
     });
   });
 
+  it('falls back when a json authorization response contains unexpected fields', async () => {
+    const authorizationResponse = new Response(
+      JSON.stringify({
+        error: { code: 'database_unavailable', message: 'Berechtigungen konnten nicht geprüft werden.' },
+        requestId: 'request-1',
+        debug: { stack: 'internal' },
+      }),
+      { status: 503, headers: { 'Content-Type': 'application/json' } }
+    );
+
+    const response = await createFailureResponseFromResponse(actor, 'idem-1', authorizationResponse);
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toEqual({
+      error: { code: 'authorization_failed', message: 'Keine Berechtigung für diese Inhaltsoperation.' },
+      requestId: 'request-1',
+    });
+  });
+
   it('parses valid create requests and returns the normalized payload', async () => {
     const result = await parseCreateRequest(new Request('https://studio.test/api/v1/iam/contents'), actor);
 

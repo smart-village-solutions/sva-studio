@@ -17,6 +17,8 @@ Verwaltungsseiten im Studio sollen dieselbe Grundstruktur nutzen:
 
 Neue wiederverwendbare Listen- und Seitenbausteine werden über `@sva/studio-ui-react` bereitgestellt, sobald sie Host- und Plugin-Custom-Views gemeinsam nutzen sollen. App-interne Komponenten bleiben nur Übergangsadapter oder Shell-nahe Implementierungsdetails.
 
+Plugin-Listen dürfen fachliche Wrapper aufbauen, müssen dabei aber `@sva/studio-ui-react` komponieren. Lokale Basis-Tabellen, eigene Button-/Input-Systeme oder App-interne UI-Imports werden über `pnpm check:plugin-ui-boundary` und ESLint blockiert.
+
 ### `StudioListPageTemplate`
 
 Verantwortlich für:

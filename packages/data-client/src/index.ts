@@ -11,6 +11,8 @@ export const dataClientPackageRoles = [
   'browser-cache',
 ] as const satisfies readonly DataClientPackageRole[];
 
+const CACHE_KEY_COLLATOR = new Intl.Collator('en-US', { sensitivity: 'variant', usage: 'sort' });
+
 type CacheEntry<T> = {
   value: T;
   expiresAt: number;
@@ -54,7 +56,7 @@ const normalizeHeadersForCache = (headers: HeadersInit | undefined): string => {
   const normalizedHeaders = new Headers(headers);
   return [...normalizedHeaders.entries()]
     .map(([name, value]) => `${name.toLowerCase()}:${value}`)
-    .sort()
+    .sort(CACHE_KEY_COLLATOR.compare)
     .join('\n');
 };
 

@@ -41,19 +41,24 @@ Abhängigkeiten des aktuellen Systems.
    - `@sva/plugin-sdk`: öffentlicher Plugin-Vertrag v1, Build-time-Registry, Admin-Ressourcen, Content-Type- und Translation-Verträge
    - `@sva/server-runtime`: Logger, Request-Kontext, JSON-Fehlerantworten, Workspace-Kontext und OTEL-Bootstrap
    - Namespacing- und Ownership-Validierung für plugin-beigestellte registrierte Host-Identifier
-6. Monitoring Client (`packages/monitoring-client`)
+6. Studio UI React (`packages/studio-ui-react`)
+   - öffentliche React/UI-Basis `@sva/studio-ui-react` für Host-Seiten und Plugin-Custom-Views
+   - kapselt shadcn-/Radix-Primitives, Studio-Templates, Formularfelder, Zustandsbausteine, Tabellen- und Aktionsmuster
+   - bleibt UI-only: keine Plugin-Registry, keine Route-Materialisierung, keine Persistenz, keine IAM- oder Server-Runtime-Logik
+7. Monitoring Client (`packages/monitoring-client`)
    - OTEL SDK Setup, Exporter, Log-Redaction-Processor
-7. Data Client und Data Repositories (`packages/data-client`, `packages/data-repositories`)
+8. Data Client und Data Repositories (`packages/data-client`, `packages/data-repositories`)
    - `@sva/data-client`: client-sicherer HTTP-DataClient mit Schema-Validierung
    - `@sva/data-repositories`: serverseitige Repository-Fassaden und DB-nahe Operationen
    - IAM-Persistenzmodell (`iam`-Schema) mit Multi-Tenant-Struktur bleibt SQL-first versioniert
-8. SVA Mainserver (`packages/sva-mainserver`)
+9. SVA Mainserver (`packages/sva-mainserver`)
    - dedizierte Integrationsschicht für OAuth2, GraphQL-Transport, Fehlerabbildung und Fachadapter
    - trennt client-sichere Typen von serverseitigen Delegations- und Diagnostikfunktionen
-9. Plugin News (`packages/plugin-news`)
+10. Plugin News (`packages/plugin-news`)
    - produktives Fachplugin für `contentType = news.article`
    - eigene Listen- und Editor-Ansichten, Plugin-Navigation und Plugin-Übersetzungen
-10. Instanz-Registry (`packages/instance-registry`)
+   - nutzt `@sva/plugin-sdk` für Host-Metadaten und `@sva/studio-ui-react` für gemeinsame UI-Primitives statt App-interner Komponenten
+11. Instanz-Registry (`packages/instance-registry`)
    - Host-Klassifikation, Vertrags- und Run-Modell fuer Registry, Preflight, Plan und Provisioning-Protokoll
    - Registry-Repositories, persistente Provisioning-Runs und Cache-Zugriffe über injizierte Repository-Verträge
    - Plattformvertrag, Keycloak-Control-Plane, Provisioning-Fassade und Root-Host-Guard
@@ -140,14 +145,14 @@ Abhängigkeiten des aktuellen Systems.
 
 ### Abhängigkeiten (vereinfacht)
 
-- App -> `@sva/core`, `@sva/routing`, `@sva/auth-runtime`, `@sva/plugin-sdk`, `@sva/sva-mainserver`, `@sva/plugin-news`
+- App -> `@sva/core`, `@sva/routing`, `@sva/auth-runtime`, `@sva/plugin-sdk`, `@sva/studio-ui-react`, `@sva/sva-mainserver`, `@sva/plugin-news`
 - `@sva/routing` -> `@sva/auth-runtime`, `@sva/core`, `@sva/plugin-sdk`, `@sva/server-runtime`
 - `@sva/auth-runtime` -> `@sva/iam-core`, `@sva/iam-admin`, `@sva/iam-governance`, `@sva/instance-registry`, `@sva/data-repositories`, `@sva/server-runtime`
 - `@sva/sva-mainserver` -> `@sva/auth-runtime`, `@sva/data-repositories`, `@sva/server-runtime`
 - `@sva/plugin-sdk` -> `@sva/core`
 - `@sva/server-runtime` -> `@sva/core`, `@sva/monitoring-client`
-- `@sva/plugin-*` -> `@sva/plugin-sdk` (kein Direktimport aus `@sva/core`)
-- `@sva/plugin-news` bleibt absichtlich auf SDK + Peer Dependencies beschränkt; API-Aufrufe laufen über den öffentlichen HTTP-Vertrag statt über App-Module
+- `@sva/plugin-*` -> `@sva/plugin-sdk`, optional `@sva/studio-ui-react` für Custom-Views (kein Direktimport aus `@sva/core` oder App-internen Komponenten)
+- `@sva/plugin-news` bleibt absichtlich auf SDK, Studio-UI und Peer Dependencies beschränkt; API-Aufrufe laufen über den öffentlichen HTTP-Vertrag statt über App-Module
 - `@sva/monitoring-client` -> OTEL Libraries, `@sva/server-runtime` Context API
 - `@sva/iam-core` -> `@sva/core`
 - `apps/sva-studio-react` -> Zielpackages über Server-Funktionen für Inhaltsliste, Detail, Historie und Statuswechsel
@@ -160,9 +165,11 @@ Erlaubte Richtung für Host-APIs in Plugin-Code:
 flowchart LR
   C[@sva/core] --> S[@sva/plugin-sdk]
   S --> P[@sva/plugin-*]
+  U[@sva/studio-ui-react] --> P
 ```
 
 Nicht erlaubt: `@sva/plugin-*` -> `@sva/core`
+Nicht erlaubt: `@sva/plugin-*` -> `apps/sva-studio-react/src/**`
 
 ### Erweiterung 2026-04: Plugin-SDK-Vertrag v1 und News-Plugin
 

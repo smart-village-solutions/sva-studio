@@ -111,6 +111,11 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - `pnpm nx run plugin-sdk:test:unit` muss Bypass-Versuche gegen Route, Autorisierung, Audit, Persistenz und Dynamic Registration abdecken
   - `pnpm nx run routing:test:unit` muss sicherstellen, dass unbekannte Plugin-Guards und nicht-kanonische Plugin-Pfade fail-fast abgewiesen werden
   - Plugin-UI-Komponenten und host-invoked Content-Validatoren müssen weiterhin als erlaubte Erweiterungspunkte testbar bleiben
+- Plugin-UI-Boundary:
+  - `pnpm check:plugin-ui-boundary` muss für Plugin-Packages grün sein
+  - Plugin-Custom-Views importieren gemeinsame UI aus `@sva/studio-ui-react` und keine App-internen Komponentenpfade
+  - lokale Basis-Control-Duplikate für Button, Input, Select, Tabs, Dialog, Alert, Badge, Table oder DataTable in `packages/plugin-*` sind unzulässig
+  - fachliche Wrapper bleiben zulässig, wenn sie Studio-Primitives komponieren und Accessibility-/Design-Token-Semantik erhalten
 - Coverage Governance:
   - Gate-Logik und Baselines in `scripts/ci/coverage-gate.ts` und `tooling/testing/*`
 - Complexity Governance:

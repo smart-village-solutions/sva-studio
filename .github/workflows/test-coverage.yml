@@ -116,6 +116,10 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
+      - name: Prepare SonarCloud coverage report
+        if: always() && github.event_name != 'pull_request' && env.SONAR_TOKEN != ''
+        run: pnpm sonar:prepare-lcov
+
       - name: Ensure full git history for SonarCloud
         if: always() && github.event_name != 'pull_request'
         run: |

@@ -46,12 +46,27 @@ describe('workspace package scripts', () => {
     expect(releaseScript).toBe('pnpm test:pr && pnpm verify:runtime-artifact');
   });
 
+  it('keeps plugin UI boundary enforcement in PR and CI gates', () => {
+    const packageJson = loadRootPackageJson();
+
+    expect(packageJson.scripts?.['check:plugin-ui-boundary']).toBe('tsx scripts/ci/check-plugin-ui-boundary.ts');
+    expect(packageJson.scripts?.['test:eslint']).toContain('pnpm check:plugin-ui-boundary');
+    expect(packageJson.scripts?.['test:pr']).toContain('pnpm check:plugin-ui-boundary');
+    expect(packageJson.scripts?.['test:ci']).toContain('pnpm check:plugin-ui-boundary');
+  });
+
   it('keeps the dedicated PR coverage command aligned with the patch gate', () => {
     const packageJson = loadRootPackageJson();
     const testCoveragePrScript = packageJson.scripts?.['test:coverage:pr'];
 
     expect(testCoveragePrScript).toContain('pnpm patch-coverage-gate --base=origin/main');
     expect(testCoveragePrScript).toContain('pnpm sonar-new-code-gate --base=origin/main');
+  });
+
+  it('exposes the Sonar LCOV preparation command', () => {
+    const packageJson = loadRootPackageJson();
+
+    expect(packageJson.scripts?.['sonar:prepare-lcov']).toBe('tsx scripts/ci/prepare-sonar-lcov.ts');
   });
 
   it('keeps global coverage floors at the project baseline', () => {

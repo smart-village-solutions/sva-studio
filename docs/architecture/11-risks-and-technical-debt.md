@@ -190,6 +190,11 @@ Schulden auf IST-Basis.
    - Wahrscheinlichkeit: mittel
    - Maßnahme: Nx-`depConstraints`, ESLint-Importverbote, `check:server-runtime` und Review-Gates als harte Package-Grenze behandeln
 
+33. UI-Drift zwischen Host-Seiten und Plugin-Custom-Views
+   - Impact: mittel bis hoch (Plugins könnten eigene Basiscontrols, Fokusmuster oder visuelle Varianten etablieren und damit Accessibility, Design-System und Review-Aufwand verschlechtern)
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: gemeinsame UI-Basis `@sva/studio-ui-react`, ESLint-App-Importverbote, `pnpm check:plugin-ui-boundary` und Review-Regel für fachliche Wrapper statt paralleler Basis-Control-Systeme
+
 ### Technische Schulden (Auswahl)
 
 - Teilweise No-Op Testtargets in Libraries

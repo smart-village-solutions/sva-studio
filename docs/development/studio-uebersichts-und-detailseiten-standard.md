@@ -67,6 +67,7 @@ Der Ausnahmefall ist eine Plugin-Custom-View. Sie ist zulässig, wenn die Fachob
 - Neue wiederverwendbare UI-Muster entstehen zuerst in `@sva/studio-ui-react` oder werden dort nachgezogen.
 - shadcn/ui-Primitives werden in `@sva/studio-ui-react` gekapselt oder gezielt re-exportiert, damit Plugins nicht an App-Pfade gebunden sind.
 - Nx-Boundaries und ESLint-Regeln müssen verbotene App-Imports und lokale Basis-Control-Duplikate in Plugins verhindern.
+- Der statische Check `pnpm check:plugin-ui-boundary` blockiert App-interne UI-Imports und lokale Basis-Control-Dateien oder -Exports in `packages/plugin-*`.
 - Abweichungen von `@sva/studio-ui-react` brauchen eine dokumentierte Architekturentscheidung.
 
 ### Mindestumfang von `@sva/studio-ui-react`

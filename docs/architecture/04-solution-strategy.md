@@ -35,6 +35,7 @@ Architekturprinzipien auf IST-Basis.
 - HTTP-spezifische Fehlerantworten werden nicht im Core modelliert, sondern serverseitig über gemeinsame Utilities in `@sva/server-runtime`
 - Doku-getriebene Architekturpflege (arc42 + OpenSpec + ADR)
 - UI-Shell folgt semantischen Design-Tokens statt direkter Farbcodes und bleibt kompatibel zu Tailwind-/shadcn-Primitives
+- Wiederverwendbare Studio-UI für Host-Seiten und Plugin-Custom-Views liegt in `@sva/studio-ui-react`; App-interne Komponenten bleiben Shell- oder Host-Bindings und sind keine öffentliche Plugin-API
 - Theming wird instanzfähig gedacht: `instanceId` kann Theme-Varianten bestimmen, Light/Dark-Mode bleibt dabei ein orthogonaler Modus
 
 ### Architekturtreiber
@@ -111,6 +112,13 @@ Referenzen:
 - Authentifizierung und Runtime-Routen liegen in `@sva/auth-runtime`; Benutzer-/Rollen-/Gruppen-/Organisationsverwaltung liegt in `@sva/iam-admin`; Governance, Legal Texts und DSR liegen in `@sva/iam-governance`; Instanzverwaltung und Provisioning liegen in `@sva/instance-registry`.
 - Plugin-Verträge laufen über `@sva/plugin-sdk`, serverseitige Hilfen über `@sva/server-runtime`, Browser-Datenzugriff über `@sva/data-client` und DB-Repositories über `@sva/data-repositories`.
 - Die Package-Grenzen werden durch Nx-`depConstraints`, ESLint-Importverbote und serverseitige Runtime-Checks abgesichert.
+
+### Fortschreibung 2026-04: Studio-UI-Boundary für Host und Plugins
+
+- `@sva/studio-ui-react` ist die gemeinsame React/shadcn-basierte UI-Basis für wiederverwendbare Seiten-, Formular-, Tabellen-, Aktions- und Zustandsbausteine.
+- Plugin-Custom-Views bleiben zulässig, wenn sie hostmaterialisierte Routen, Guards und Shell respektieren und gemeinsame UI aus `@sva/studio-ui-react` komponieren.
+- Plugins dürfen keine App-internen Komponenten aus `apps/sva-studio-react/src/**` importieren und keine parallelen Basiscontrols für Buttons, Inputs, Tabellen, Tabs, Dialoge oder Alerts einführen.
+- Spezialisierte Fach-Controls wie Rich-Text, Upload, Medienauswahl, Farbe, Icon oder Geo-Auswahl werden erst bei pluginübergreifendem Bedarf in `@sva/studio-ui-react` aufgenommen; bis dahin bleiben nur fachspezifische Wrapper erlaubt, die Studio-Primitives erhalten.
 
 ### Fortschreibung 2026-04: IAM-Diagnostik vor Refactoring
 

@@ -45,6 +45,7 @@ gleichzeitig beeinflussen.
 - Plugin-Contributions werden beim Build-time-Snapshot phasenweise gegen Runtime-Allowlists geprüft; eigene Route-Handler, Autorisierungsresolver, Audit-Sinks, Persistenzhandler und dynamische Nachregistrierung werden mit `plugin_guardrail_*`-Codes fail-fast abgewiesen
 - Die phasenweise Registry-Erzeugung ordnet bestehende Outputs für Content, Admin, Audit und Routing, führt aber keine neuen Plugin-Beitragstypen oder Breaking-API ein
 - Plugin-UI und fachliche Client-Interaktion bleiben zulässig, wenn sie in host-materialisierten Routen laufen und hostkontrollierte Actions, Validierung, Persistenz und Auditierung verwenden
+- Plugin-Custom-Views müssen gemeinsame Seitenstruktur, Controls, Tabellen, Aktionen und Zustandsdarstellung aus `@sva/studio-ui-react` verwenden; App-interne Komponentenpfade und parallele Basis-Control-Systeme in Plugins sind nicht zulässig
 - News-Payloads werden serverseitig contentType-spezifisch validiert; HTML-Inhalte durchlaufen eine Allowlist-Sanitisierung, bevor sie persistiert werden
 - DataClient unterstützt optionale Runtime-Schema-Validierung (`get(path, schema)`) für API-Responses
 - IAM-Server-Fassaden bleiben bewusst dünn; fachliche Erweiterungen gehören in Unterordner und nicht zurück in Monolith-Dateien
@@ -218,6 +219,14 @@ gleichzeitig beeinflussen.
 - Environment-Einflüsse mit Build-/Serve-/E2E-Relevanz (`CODECOV_TOKEN`, `TSS_DEV_SERVER`, `CI`) werden explizit in die Nx-Hash-Bildung aufgenommen
 - Pre-Build-Checks für i18n und Account-UI-Foundation bleiben als separate Nx-Targets vor dem App-Build erzwungen
 - Die App-Unit-Tests erzwingen wegen Node-25-/`jsdom`-Instabilitäten einen einzelnen Vitest-Worker im Thread-Pool
+
+### Studio-UI-Boundary und Design-System-Kapselung
+
+- `@sva/studio-ui-react` ist der gemeinsame Kapselungspunkt für shadcn-/Radix-Primitives, semantische Design-Tokens und wiederverwendbare Studio-Komponenten.
+- Host-Seiten und Plugin-Custom-Views verwenden dieselben Page-, Form-, State-, Table- und Action-Primitives, damit Accessibility, Fokusverhalten, Fehlermeldungen und visuelle Varianten nicht pro Fachpaket auseinanderlaufen.
+- Fachplugins dürfen Domain-Wrapper bauen, wenn diese Studio-Primitives komponieren und keine eigenen visuellen Varianten, ARIA-Semantik oder Token-Schicht neu definieren.
+- Spezialcontrols wie Rich-Text, Upload, Medienauswahl, Farbe, Icon und Geo-Auswahl werden erst bei nachgewiesenem pluginübergreifendem Bedarf in die gemeinsame UI-Basis aufgenommen; vorher bleiben sie bewusst fachnah und schmal.
+- Enforcement erfolgt über Nx-`depConstraints`, ESLint-Importverbote und den CI-Check `pnpm check:plugin-ui-boundary`.
 - Das IAM-Acceptance-Gate ist bewusst ein separates Nx-Target ohne PR-CI-Zwang, weil es reale Laufzeitabhängigkeiten gegen eine dedizierte Testumgebung prüft
 
 ### TypeScript-, Bundler- und Node-ESM-Vertrag

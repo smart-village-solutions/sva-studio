@@ -69,6 +69,20 @@ Fehlerpfad:
 - ist der News-Payload ungültig, antwortet die Content-API mit HTTP `400`.
 - schlägt ein API-Call fehl, zeigt das Plugin eine verständliche Fehlermeldung und behält den Formzustand.
 
+### Szenario 4b: Plugin-Custom-View mit gemeinsamer Studio-UI
+
+1. Die App lädt das statisch registrierte Plugin und validiert dessen Routen, Admin-Ressourcen und Guard-Metadaten über `@sva/plugin-sdk`.
+2. Der Host materialisiert die Plugin-Route unter `/plugins/<pluginNamespace>` und bettet sie in die normale App-Shell ein.
+3. Die Plugin-Komponente rendert ihre fachliche Oberfläche mit `@sva/studio-ui-react`-Bausteinen für Seitenstruktur, Formularfelder, Aktionen, Tabellen und Lade-/Fehlerzustände.
+4. Fachliche Datenzugriffe laufen über hostkontrollierte HTTP- oder Server-Funktionsverträge; die Custom-View erhält keine eigenen Host-Handler, Audit-Sinks oder Persistenzpfade.
+5. Die App- und Plugin-Lint-/Boundary-Checks verhindern App-interne UI-Imports und lokale Basis-Control-Duplikate in Plugin-Packages.
+
+Fehlerpfad:
+
+- Importiert ein Plugin App-interne Komponenten, bricht ESLint oder der Plugin-UI-Boundary-Check mit Verweis auf `@sva/studio-ui-react` ab.
+- Definiert ein Plugin eigene wiederverwendbare Basiscontrols für Button, Input, Tabelle, Tabs, Dialog oder Alert, wird der Beitrag als UI-Drift behandelt und muss in einen fachlichen Wrapper um Studio-Primitives geändert werden.
+- Versucht eine Custom-View Shell, Guard, Route-Materialisierung oder Persistenz zu uebernehmen, greift der bestehende Plugin-Guardrail-Pfad fail-fast.
+
 ### Szenario 1a: Tenant-Request mit Registry-Lookup
 
 1. Request trifft mit Host-Header auf die Runtime.

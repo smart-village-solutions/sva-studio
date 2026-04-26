@@ -46,6 +46,14 @@ describe('workspace package scripts', () => {
     expect(releaseScript).toBe('pnpm test:pr && pnpm verify:runtime-artifact');
   });
 
+  it('keeps plugin UI boundary enforcement in PR and CI gates', () => {
+    const packageJson = loadRootPackageJson();
+
+    expect(packageJson.scripts?.['check:plugin-ui-boundary']).toBe('tsx scripts/ci/check-plugin-ui-boundary.ts');
+    expect(packageJson.scripts?.['test:pr']).toContain('pnpm check:plugin-ui-boundary');
+    expect(packageJson.scripts?.['test:ci']).toContain('pnpm check:plugin-ui-boundary');
+  });
+
   it('keeps the dedicated PR coverage command aligned with the patch gate', () => {
     const packageJson = loadRootPackageJson();
     const testCoveragePrScript = packageJson.scripts?.['test:coverage:pr'];

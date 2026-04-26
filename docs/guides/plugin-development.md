@@ -6,22 +6,23 @@ Er beschreibt die verpflichtenden Regeln für Studio-Plugins. Eine ergänzende S
 
 ## Zielbild
 
-Studio-Plugins sind eigenständige Workspace-Packages mit `scope:plugin`. Sie hängen fachlich nur vom öffentlichen SDK-Vertrag ab und werden statisch im App-Bundle registriert.
+Studio-Plugins sind eigenständige Workspace-Packages mit `scope:plugin`. Sie hängen fachlich vom öffentlichen Plugin-SDK-Vertrag ab und können gemeinsame React-UI aus `@sva/studio-ui-react` nutzen. Plugins werden statisch im App-Bundle registriert.
 
 ## Package-Regeln
 
 - Package-Name: `@sva/plugin-<feature>`
 - Nx-Tags: mindestens `scope:plugin`, `type:lib`
-- Workspace-Abhängigkeiten: nur öffentliche Verträge, primär `@sva/sdk`
+- Workspace-Abhängigkeiten: nur öffentliche Verträge, primär `@sva/plugin-sdk` und bei Custom-Views `@sva/studio-ui-react`
 - React und Router bleiben Peer Dependencies
 - Keine Direktimporte aus `apps/*`, `@sva/auth-runtime`, `@sva/iam-*`, `@sva/instance-registry`, `@sva/routing` oder anderen nicht öffentlichen Host-Interna
+- Keine lokalen Basis-Control-Systeme für Button, Input, Select, Tabs, Dialog, Alert, Badge, Table oder DataTable
 
 ## Pflicht-Export
 
 Jedes Plugin exportiert genau ein `PluginDefinition`-Objekt.
 
 ```ts
-import type { PluginDefinition } from '@sva/sdk';
+import type { PluginDefinition } from '@sva/plugin-sdk';
 
 export const pluginNews: PluginDefinition = {
   id: 'news',
@@ -34,6 +35,32 @@ export const pluginNews: PluginDefinition = {
   translations: {},
 };
 ```
+
+## UI-Boundary
+
+Plugin-Custom-Views sind zulässig, wenn sie die Host-Shell, hostseitige Guards und den Routing-Vertrag respektieren. Wiederverwendbare Studio-UI kommt ausschließlich aus `@sva/studio-ui-react`.
+
+Erlaubt:
+
+```tsx
+import {
+  Button,
+  Input,
+  StudioDetailPageTemplate,
+  StudioField,
+  StudioFormSummary,
+} from '@sva/studio-ui-react';
+```
+
+Nicht erlaubt:
+
+```tsx
+import { Button } from '../../../apps/sva-studio-react/src/components/ui/button';
+```
+
+Fachspezifische Wrapper sind erlaubt, wenn sie Studio-Primitives komponieren und keine eigene visuelle Sprache, keine eigenen Basisvarianten und keine abweichende ARIA-Semantik einführen. Beispiele sind `NewsStatusBadge`, `NewsPublicationField` oder später ein fachlich eingegrenzter `MediaReferencePicker`.
+
+Spezialcontrols wie Rich-Text, Upload, Medienauswahl, Farbe, Icon und Geo-Auswahl werden erst in `@sva/studio-ui-react` aufgenommen, wenn mindestens ein pluginübergreifender Bedarf besteht. Bis dahin bleiben sie schmale fachliche Wrapper.
 
 ## Vertragselemente
 
@@ -158,6 +185,7 @@ Mindestumfang für neue Plugins:
 Zusätzlich gilt:
 
 - `pnpm nx run <plugin>:test:unit`
+- `pnpm check:plugin-ui-boundary`
 - `pnpm test:types`
 - `pnpm lint`
 
@@ -169,5 +197,6 @@ Vor einem Push bevorzugt:
 
 - [arc42 Bausteinsicht](../architecture/05-building-block-view.md)
 - [arc42 Laufzeitsicht](../architecture/06-runtime-view.md)
+- [Studio-Übersichts- und Detailseiten-Standard](../development/studio-uebersichts-und-detailseiten-standard.md)
 - [Migration auf namespaced Plugin-Action-IDs](./plugin-action-migration.md)
 - [ADR-034: Plugin-SDK-Vertrag v1](../adr/ADR-034-plugin-sdk-vertrag-v1.md)

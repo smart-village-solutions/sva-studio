@@ -12,7 +12,8 @@ export type SvaMainserverErrorCode =
   | 'forbidden'
   | 'network_error'
   | 'graphql_error'
-  | 'invalid_response';
+  | 'invalid_response'
+  | 'not_found';
 
 export type SvaMainserverInstanceConfig = {
   readonly instanceId: string;
@@ -37,4 +38,30 @@ export type SvaMainserverConnectionStatus = {
 export type SvaMainserverConnectionInput = {
   readonly instanceId: string;
   readonly keycloakSubject: string;
+};
+
+export type SvaMainserverNewsPayload = {
+  readonly teaser: string;
+  readonly body: string;
+  readonly imageUrl?: string;
+  readonly externalUrl?: string;
+  readonly category?: string;
+};
+
+export type SvaMainserverNewsItem = {
+  readonly id: string;
+  readonly title: string;
+  readonly contentType: 'news.article';
+  readonly payload: SvaMainserverNewsPayload;
+  readonly status: 'published';
+  readonly author: string;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+  readonly publishedAt: string;
+};
+
+export type SvaMainserverNewsInput = {
+  readonly title: string;
+  readonly publishedAt: string;
+  readonly payload: SvaMainserverNewsPayload;
 };

@@ -25,6 +25,14 @@ export {
   type PersistAuthAuditResult,
 } from './audit-db-sink.js';
 export { withAuthenticatedUser, type AuthenticatedRequestContext } from './middleware.js';
+export {
+  authorizeContentPrimitiveForUser,
+  type ContentPrimitiveAuthorizationResource,
+  type ContentPrimitiveAuthorizationResult,
+} from './iam-contents/server-authorization.js';
+export { validateCsrf } from './shared/request-security.js';
+export { completeIdempotency, reserveIdempotency } from './iam-account-management/shared.js';
+export { resolveActorInfo, type ActorInfo } from './iam-account-management/shared.js';
 export { getSessionUser } from './auth-server/session.js';
 export {
   DEFAULT_WORKSPACE_ID,

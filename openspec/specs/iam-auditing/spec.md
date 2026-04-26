@@ -367,3 +367,57 @@ Das IAM-Auditing MUST plugin-beigestellte Audit-Event-Typen in einem fully-quali
 - **WHEN** ein Plugin mit Namespace `news` ein Audit-Ereignis wie `events.published` registriert oder emittiert
 - **THEN** wird der Beitrag mit einem Ownership-Fehler abgewiesen
 - **AND** die Auditspur bleibt dadurch namespace-sicher einem Owner zuordenbar
+
+### Requirement: Content Core Audit Metadata
+The system SHALL emit audit events for host-owned content core state changes using stable metadata independent of plugin-specific payload shape.
+
+Content core audit events SHALL include at least `event_id`, `timestamp`, `instance_id`, optional `organization_id`, `content_id`, `content_type`, `action`, `actor_subject_id`, `result`, `request_id`, `trace_id`, previous and next host-owned lifecycle values where applicable, and a payload-change classification that does not store plugin payload contents in the audit record.
+
+#### Scenario: Content status changes
+- **GIVEN** a content item status changes
+- **WHEN** the mutation is committed
+- **THEN** the audit event records the content identifier, content type, previous status, next status, actor, result, request identifier, trace identifier, and scope
+
+#### Scenario: Plugin payload changes only
+- **GIVEN** a mutation changes only plugin-specific payload fields
+- **WHEN** the mutation is committed
+- **THEN** the audit event still references the stable host content core identity and scope
+- **AND** the audit event records a payload-change classification without storing plugin payload contents
+
+#### Scenario: Content mutation is denied
+- **GIVEN** a content core mutation is denied by validation or authorization
+- **WHEN** the denial is returned
+- **THEN** the audit path can record the attempted primitive action, result, actor, content scope if known, and deterministic reason code
+- **AND** missing or invalid plugin payload data is not copied into the audit record
+
+#### Scenario: Revision restore is committed
+- **GIVEN** a user restores a content item from a previous revision
+- **WHEN** the restore operation commits
+- **THEN** the audit event links the content identifier, restored revision reference, previous revision reference, actor, primitive action, result, and scope
+
+### Requirement: Capability-Mapped Audit Classification
+The system SHALL include the domain capability and resolved primitive action in audit events for mapped content actions.
+
+#### Scenario: Mapped action is audited
+- **GIVEN** a user executes a mapped content action
+- **WHEN** the action completes or fails
+- **THEN** the audit event records both the domain capability and the resolved primitive action
+- **AND** the audit event records actor, scope, resource type, target identifier when available, result, request id, and trace id
+
+#### Scenario: Authorization denies mapped action
+- **GIVEN** a user lacks the primitive action required by a domain capability
+- **WHEN** the host denies the operation
+- **THEN** the denial can be audited with the capability, primitive action, actor, and scope
+- **AND** the denial reason is `capability_authorization_denied`
+
+#### Scenario: Missing mapping is audited
+- **GIVEN** a mutating action references no supported capability mapping
+- **WHEN** the host rejects registration or denies execution
+- **THEN** the audit or diagnostic path can record `capability_mapping_missing` with action identifier, owning namespace when available, resource type, and scope
+- **AND** no sensitive payload or cleartext PII is written into the audit event
+
+#### Scenario: Audit records remain explainable
+- **GIVEN** stored audit events include mapped content action events
+- **WHEN** an auditor reviews a denied or successful mapped action
+- **THEN** the stored audit record exposes the fachliche capability, resolved primitive action, result, reason code, actor reference, and scope consistently
+

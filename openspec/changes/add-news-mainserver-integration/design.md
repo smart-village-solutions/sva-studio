@@ -2,15 +2,31 @@
 
 ## Context
 
-`@sva/sva-mainserver` stellt bereits die serverseitige Delegationskette bereit: Instanzkonfiguration, Keycloak-Credentials, OAuth2-Token, GraphQL-Transport, Caches, Timeouts, Retry, Logging und OTEL. Bisher nutzt diese Schicht nur Diagnoseoperationen (`__typename`).
+`@sva/sva-mainserver` stellt bereits die serverseitige Delegationskette bereit: Instanzkonfiguration aus `iam.instance_integrations`, Keycloak-Credentials pro User, OAuth2-Token, GraphQL-Transport, Caches, Timeouts, Retry, Logging und OTEL. Der aktuelle Public-Server-Vertrag beschränkt sich auf Diagnoseoperationen (`getSvaMainserverConnectionStatus`, `getSvaMainserverQueryRootTypename`, `getSvaMainserverMutationRootTypename`).
 
-`@sva/plugin-news` ist dagegen bereits eine fachliche Studio-Oberfläche mit Liste, Formular, Validierung und CRUD-Aktionen. Die API-Fassade ruft aktuell `/api/v1/iam/contents` im Browser auf und speichert `news.article` als lokalen Studio-Content. Für den Zielzustand "Studio als GUI für den SVA Mainserver" muss diese Fassade auf eine hostseitige Mainserver-Anbindung umgestellt werden.
+`@sva/plugin-news` ist bereits eine fachliche Studio-Oberfläche mit Liste, Formular, Validierung, CRUD-Aktionen und `@sva/studio-ui-react`. Die API-Fassade ruft aktuell `/api/v1/iam/contents` im Browser auf und speichert `news.article` als lokalen Studio-Content. `plugin-news` darf aus Boundary-Gründen keine App-, Auth-Runtime- oder Mainserver-Servermodule importieren.
+
+## Current Schema Snapshot
+
+Der eingecheckte Snapshot `packages/sva-mainserver/src/generated/schema.snapshot.json` enthält für News:
+
+- Query `newsItems(ids, externalIds, dataProvider, dataProviderId, dataProviderIds, excludeDataProviderIds, excludeMowasRegionalKeys, categoryId, categoryIds, dateRange, excludeFilter, search, limit, skip, order): [NewsItem!]`
+- Query `newsItem(id: ID!): NewsItem`
+- Mutation `createNewsItem(...) : NewsItem`
+- Mutation `createNewsItems(newsItems: [NewsItemInput!]!): CreateNewsItemsPayload`
+- Mutation `changeVisibility(id: ID!, recordType: String!, visible: Boolean!): Status`
+- Mutation `destroyRecord(id: ID, recordType: String!, externalId: String): Destroy`
+- Object `NewsItem` mit u. a. `id`, `title`, `author`, `payload`, `publicationDate`, `publishedAt`, `visible`, `categories`, `sourceUrl`, `contentBlocks`, `createdAt`, `updatedAt`
+- Input `NewsItemInput` mit u. a. `id`, `forceCreate`, `pushNotification`, `author`, `title`, `externalId`, `publicationDate`, `publishedAt`, `categoryName`, `payload`, `categories`, `sourceUrl`, `contentBlocks`
+- Enum `NewsItemsOrder` mit `createdAt_*`, `updatedAt_*`, `publishedAt_*`, `id_*`
+
+Es gibt keine dedizierten `updateNewsItem`- oder `deleteNewsItem`-Mutationen. Update wird deshalb als validierter Upsert über `createNewsItem` mit `id` und dokumentierter `forceCreate`-Semantik geprüft. Delete/Archive wird als bewusst gewählter Pfad über `changeVisibility(..., visible: false)`, `destroyRecord(recordType: ...)` oder einen dokumentierten harten Schnitt behandelt.
 
 ## Goals
 
 - News ist der erste fachliche Mainserver-Content-Flow im Studio.
 - Browser und Plugin-Code sehen keine Mainserver-URLs, Tokens oder Secrets.
-- GraphQL-Dokumente und DTO-Mapping sind typisiert und fachlich begrenzt.
+- GraphQL-Dokumente, Variablen und DTO-Mapping sind typisiert und fachlich begrenzt.
 - Mainserver-Fehler werden in stabile Studio-/Plugin-Fehler übersetzt.
 - Die bestehende News-UI bleibt nutzbar und wird nicht durch eine generische GraphQL-Konsole ersetzt.
 - Lokale Legacy-Inhalte werden bewusst behandelt, nicht nebenbei mit Mainserver-Daten vermischt.
@@ -24,68 +40,86 @@
 
 ## Decisions
 
-### Typisierte Mainserver-News-Adapter
+### Mainserver-Service
 
-`@sva/sva-mainserver/server` erhält fachliche Funktionen wie:
+`createSvaMainserverService` erhält intern eine generische, aber nicht öffentlich exportierte GraphQL-Ausführungsfunktion mit Variablenunterstützung. Der öffentliche Server-Export bleibt fachlich: Diagnosefunktionen plus News-spezifische Adapter.
+
+Die News-Adapter führen `instanceId`, `keycloakSubject`, `operationName`, typisierte Inputs und typisierte Outputs. Sie verwenden dieselben Hops und dieselbe Fehlerklassifikation wie die vorhandene Diagnose:
 
 - `listSvaMainserverNews`
 - `getSvaMainserverNews`
 - `createSvaMainserverNews`
-- `updateSvaMainserverNews`
-- `deleteOrArchiveSvaMainserverNews`
+- `updateSvaMainserverNews` als verifizierter `createNewsItem`-Upsert mit `id`
+- `archiveSvaMainserverNews` oder `deleteSvaMainserverNews` abhängig von der Staging-verifizierten Mainserver-Semantik
 
-Die konkreten Namen sind Implementierungsdetail, müssen aber pro Operation typisierte Inputs/Outputs, `instanceId`, `keycloakSubject` und Operation-Namen für Logging/Tracing führen. Sie verwenden den bestehenden internen GraphQL-Transport, ohne ihn allgemein zu exportieren.
+### Host-Owned Plugin Data Source
 
-### Hostseitige News-Server-Funktionen
+Wegen der aktuellen Plugin-Boundary ruft `@sva/plugin-news` keine Server-Funktionen aus `apps/sva-studio-react` und keine Server-Subpfade aus Workspace-Packages direkt auf.
 
-Die App stellt Server-Funktionen oder vergleichbare serverseitige Handler für das Plugin bereit. Diese Handler:
+Der bevorzugte Umsetzungspfad ist ein host-owned HTTP-Vertrag für News, der im App-/Routing-Server registriert wird und nur pluginnahe DTOs zurückgibt, z. B. `/api/v1/mainserver/news` und `/api/v1/mainserver/news/$newsId`. Eine host-injizierte Data-Source ist zulässig, wenn sie dieselbe Boundary erfüllt und keine App-Imports in `plugin-news` erzeugt.
 
-- authentifizieren die aktuelle Session,
-- prüfen lokale Content-/Plugin-Berechtigungen,
-- lösen `instanceId` und `keycloakSubject` auf,
-- rufen die News-Adapter in `@sva/sva-mainserver/server` auf,
-- geben nur das pluginnahe News-Modell an die UI zurück.
+Die bestehende `news.api.ts`-Fassade bleibt die Plugin-Grenze, wechselt aber von `/api/v1/iam/contents` auf die host-owned Mainserver-News-Fassade.
 
-`@sva/plugin-news` importiert keine Server-Runtime- oder Mainserver-Pakete. Die API-Fassade im Plugin wird entweder gegen diese Host-Funktionen abstrahiert oder in eine host-injizierte Data-Source umgebaut.
+### Local Authorization
 
-### Status- und Payload-Mapping
+Vor jedem Mainserver-Aufruf prüft der Host:
 
-Das Plugin-Modell muss auf den Mainserver-Vertrag gemappt werden. Dafür wird vor Implementierung anhand des eingecheckten Schema-Snapshots und optional eines aktuellen Staging-Diffs entschieden:
+- authentifizierte Session
+- vorhandenen `instanceId`
+- lokale Content-Primitive (`content.read`, `content.create`, `content.updatePayload`, `content.updateMetadata`, `content.publish`, `content.archive`, `content.delete` je Operation)
+- aktive Scope-/Organisationsinformation, soweit für Content-Autorisierung nötig
+- per-User Mainserver-Credentials
 
-- welche Mainserver-Felder `title`, `teaser`, `body`, `imageUrl`, `externalUrl`, `category` und `publishedAt` abbilden,
-- ob `draft`, `in_review`, `approved`, `published`, `archived` direkt unterstützt oder übersetzt werden,
-- ob Löschen technisch ein Delete, Archive oder Statuswechsel ist.
+Mainserver-Denials bleiben maßgeblich. Studio darf bei Upstream-`401`/`403` nicht mit gemeinsamen oder erhöhten Credentials wiederholen.
 
-Abweichungen werden in `docs/development/runbook-sva-mainserver.md` oder einer dedizierten Entwicklungsdoku dokumentiert.
+### Mapping
 
-### Legacy-Content
+Das Plugin-Modell wird explizit auf den Snapshot-Vertrag gemappt:
 
-Bestehende lokale `news.article`-Datensätze dürfen nicht still mit Mainserver-Daten zusammengeführt werden. Der Change verlangt eine bewusste Entscheidung:
+- `NewsContentItem.id` <- `NewsItem.id`
+- `title` <- `NewsItem.title`
+- `payload.teaser` <- `NewsItem.payload.teaser`
+- `payload.body` <- `NewsItem.payload.body`
+- `payload.imageUrl` <- `NewsItem.payload.imageUrl`; Medienmanagement ist nicht Teil dieses Changes
+- `payload.externalUrl` <- `payload.externalUrl`; `sourceUrl` bleibt in Phase 1 ungenutzt
+- `payload.category` <- `payload.category`; zusätzlich wird `categoryName` an `createNewsItem` gesendet
 
-- expliziter Migrationsjob mit Report,
-- oder Legacy-Read-only-Anzeige mit klarer Kennzeichnung,
-- oder harter Schnitt mit dokumentierter manueller Nachpflege.
+Staging-Verifikation hat gezeigt, dass der Mainserver `payload` in `createNewsItem` als JSON-kodierten String stabil akzeptiert, während ein direktes JSON-Objekt mit HTTP `500` beantwortet wird. Der serverseitige Adapter kodiert deshalb ausgehend mit `JSON.stringify(...)` und dekodiert eingehende `NewsItem.payload`-Werte tolerant aus Objekt oder String.
+- `publishedAt` <- `NewsItem.publishedAt` und/oder `publicationDate`
+- `updatedAt` <- `NewsItem.updatedAt`
+- `author` <- `NewsItem.author`
+- `status` <- deterministische Ableitung aus `visible`, `publishedAt`/`publicationDate` und optionalem Payload-Feld
 
-Der produktive Schreibpfad nach Umsetzung ist Mainserver-only.
+Da der Mainserver-Snapshot kein natives `draft | in_review | approved | archived`-Enum für News zeigt, darf Phase 1 den Plugin-Statusumfang einschränken oder nicht unterstützte Statuswerte als lokale Formularzustände ohne Mainserver-Workflow-Garantie behandeln. Das muss in UI, Tests und Runbook sichtbar sein.
+
+### Legacy Content
+
+Lokale `news.article`- und alte `news`-Records bleiben nicht die produktive News-Quelle. Vor Umschaltung des Schreibpfads wird entschieden:
+
+- expliziter Migrationsjob mit Dry-Run, Report und Idempotenz,
+- oder dokumentierter harter Schnitt mit optionalem Legacy-Hinweis im UI/Runbook.
+
+Ein Read-Fallback von Mainserver auf lokale IAM-Contents ist nicht zulässig, weil er die Source-of-Truth-Grenze verwischt.
 
 ## Risks / Trade-offs
 
-- Das Mainserver-Schema kann von den Annahmen des Plugin-Formulars abweichen. Mitigation: Schema-Snapshot prüfen, GraphQL-Dokumente gezielt generieren, Schema-Diff-Gate verwenden.
-- Per-User-Credentials können in Keycloak fehlen oder andere Rechte als lokale Studio-Rechte haben. Mitigation: lokale Checks vorab, Mainserver-Fehler sichtbar und deterministisch mappen.
-- Die bestehende Plugin-API ist browserseitig. Mitigation: Host-Server-Funktionen als Data-Source-Grenze einführen, bevor `news.api.ts` fachlich auf Mainserver umgestellt wird.
-- Lokale Inhalte könnten nach Umstellung nicht mehr sichtbar sein. Mitigation: expliziter Legacy-/Migrationsplan mit Operator-Report.
+- `createNewsItem`-Upsert mit bestehender `id` und `forceCreate: false` sowie `destroyRecord(id, recordType: "NewsItem")` wurden gegen Staging mit einem kurzlebigen Testdatensatz verifiziert.
+- Das Plugin-Statusmodell ist reicher als der sichtbare Mainserver-News-Vertrag. Phase 1 muss Statuswerte reduzieren oder sauber in Mainserver-Felder/Payload mappen.
+- Die aktuelle Plugin-API ist browserseitig. Der neue host-owned HTTP-/Data-Source-Vertrag ist deshalb Voraussetzung, bevor `news.api.ts` fachlich auf Mainserver umgestellt wird.
+- Lokale Inhalte könnten nach Umstellung nicht mehr sichtbar sein. Das ist zulässig, wenn der Legacy-Entscheid dokumentiert und für Operatoren nachvollziehbar ist.
 
 ## Migration Plan
 
-1. Mainserver-Schema für News-Querys und Mutations aus dem Snapshot ableiten und gegen Staging validieren.
-2. Typisierte GraphQL-Dokumente und Mapper in `@sva/sva-mainserver` ergänzen.
-3. Hostseitige News-Server-Funktionen mit Auth, Rollenprüfung und Error-Mapping bereitstellen.
-4. Plugin-News-API-Fassade auf die Host-Server-Funktionen umstellen.
-5. Legacy-Content-Entscheidung implementieren oder dokumentiert blockieren.
-6. Tests, Schema-Diff, Server-Runtime-Check und relevante App-/Plugin-Tests ausführen.
+1. Staging-Schema gegen Snapshot validieren und die konkrete Update-/Archive-Semantik entscheiden.
+2. Interne GraphQL-Ausführung in `@sva/sva-mainserver/server` variablenfähig machen.
+3. News-Dokumente, DTOs und Mapper in `@sva/sva-mainserver` ergänzen.
+4. Host-owned News-Fassade mit Auth, lokalen Content-Rechten, Error-Mapping und Logging bereitstellen.
+5. `packages/plugin-news/src/news.api.ts` auf die neue Fassade umstellen.
+6. Legacy-Content-Entscheidung implementieren oder dokumentiert blockieren.
+7. Tests, Schema-Diff, Server-Runtime-Check und relevante App-/Plugin-Tests ausführen.
 
 ## Open Questions
 
-- Welche konkreten Mainserver-Mutationsnamen sind kanonisch für News-Create, Update und Delete/Archive?
-- Unterstützt der Mainserver den aktuellen Plugin-Statusumfang vollständig oder ist ein Mapping auf weniger Status nötig?
+- Eine spätere Phase muss entscheiden, ob neben hartem Löschen ein fachliches Archivieren über `changeVisibility` eingeführt werden soll.
+- Soll der Plugin-Statusumfang in Phase 1 auf Mainserver-sichere Zustände reduziert werden?
 - Sollen bestehende lokale `news.article`-Inhalte migriert werden, und falls ja: einmalig operatorgeführt oder als wiederholbarer Job?

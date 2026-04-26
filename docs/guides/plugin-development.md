@@ -149,6 +149,16 @@ Wenn ein Plugin einen spezialisierten `contentType` nutzt:
 
 Das News-Plugin ist die Referenz dafür und verwendet dafür den kanonischen Typ `news.article`.
 
+Fachplugins dürfen ihre UI und clientseitige Validierung im Plugin halten, Persistenzgrenzen bleiben aber hostgeführt. Wenn ein Plugin Daten aus einem externen Fachdienst benötigt, stellt der Host eine schmale HTTP- oder SDK-Fassade bereit. Das Plugin importiert dabei keine App-Module, keine serverseitigen Auth-Runtime-Module und keine serverseitigen Fachadapter.
+
+Das News-Plugin nutzt dieses Muster für Mainserver-News:
+
+- UI, Routen, Aktionen und Übersetzungen liegen in `@sva/plugin-news`.
+- Datenzugriff läuft über `/api/v1/mainserver/news`.
+- Die App-Fassade prüft Session, Instanzkontext und lokale Content-Primitive.
+- `@sva/sva-mainserver/server` kapselt OAuth2, GraphQL und Mapping.
+- Lokale Altinhalte werden nicht als produktiver Fallback gelesen.
+
 ## i18n
 
 - Keine harten UI-Strings

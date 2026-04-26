@@ -22,4 +22,4 @@
 - [x] 3.1 Betroffene Unit-Tests ueber Nx ausfuehren
 - [x] 3.2 Betroffene Type-Tests ueber Nx ausfuehren
 - [x] 3.3 Bei serverseitigen Package-Aenderungen `pnpm check:server-runtime` gezielt ausfuehren
-- [ ] 3.4 Vor PR-Erstellung nach Moeglichkeit `pnpm test:pr` ausfuehren
+- [x] 3.4 Vor PR-Erstellung nach Moeglichkeit `pnpm test:pr` ausfuehren

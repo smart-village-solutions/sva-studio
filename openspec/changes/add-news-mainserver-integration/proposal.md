@@ -2,19 +2,33 @@
 
 ## Why
 
-Das News-Plugin besitzt bereits spezialisierte Listen-, Erstellungs- und Bearbeitungsoberflächen, nutzt aktuell aber die lokale Studio-IAM-Content-API. Damit Studio als GUI für die GraphQL-API des SVA-Mainservers dienen kann, muss News als erster fachlicher Content-Flow über die vorhandene serverseitige Mainserver-Delegation laufen.
+Das News-Plugin ist bereits ein produktives Fachplugin mit spezialisierter React-UI, Studio-UI-Bausteinen, Plugin-Actions und dem kanonischen Content-Type `news.article`. Die Datenfassade `packages/plugin-news/src/news.api.ts` spricht aktuell jedoch browserseitig die lokale Studio-IAM-Content-API `/api/v1/iam/contents` an.
 
-Ohne diese Anbindung entstehen zwei konkurrierende Content-Quellen: lokale Studio-Inhalte für das Plugin und Mainserver-Inhalte für die eigentliche App-Auslieferung.
+Damit Studio als GUI für die GraphQL-API des SVA-Mainservers dienen kann, muss News als erster fachlicher Mainserver-Content-Flow über die vorhandene serverseitige Mainserver-Delegation laufen. Ohne diese Umstellung entstehen zwei konkurrierende Quellen: lokale Studio-Contents für das Plugin und Mainserver-News für die App-Auslieferung.
+
+## Current State
+
+- `@sva/plugin-news` hängt nur von `@sva/plugin-sdk` und `@sva/studio-ui-react` ab; es darf keine App-, Auth-Runtime- oder Mainserver-Servermodule importieren.
+- `news.api.ts` nutzt `fetch` gegen `/api/v1/iam/contents`, filtert `news.article` und zeigt während der Umstellung zusätzlich Legacy-`news`-Records.
+- `@sva/sva-mainserver/server` kapselt Instanzkonfiguration, Keycloak-Credentials, OAuth2, GraphQL-Transport, Retry, Cache, Logging und OTEL, exportiert aktuell aber nur Diagnoseoperationen (`__typename`).
+- Der eingecheckte Mainserver-Snapshot enthält konkrete News-Verträge: Query `newsItems`, Query `newsItem`, Mutation `createNewsItem`, Batch-Mutation `createNewsItems`, Mutation `changeVisibility` und generische Mutation `destroyRecord`.
+- Es gibt im Snapshot keine dedizierten Mutationen `updateNewsItem` oder `deleteNewsItem`; Update/Delete/Archive müssen deshalb bewusst auf den vorhandenen Mainserver-Vertrag gemappt und gegen Staging validiert werden.
+- Die Vorarbeiten `refactor-p2-content-management-core-contract`, `refactor-p2-iam-capability-mapping-for-content-actions` und `add-studio-ui-plugin-view-contract` sind archiviert und in die aktiven Specs übernommen.
 
 ## What Changes
 
-- Einführung typisierter News-Query- und Mutation-Adapter in `@sva/sva-mainserver/server` für Listen, Detail, Erstellen, Aktualisieren und Löschen bzw. Archivieren von News-Einträgen.
-- Nutzung des vorhandenen per-User Delegationsmodells: Instanzkonfiguration aus `iam.instance_integrations`, Credentials aus Keycloak, OAuth2-Token serverseitig, GraphQL-Aufruf ausschließlich serverseitig.
-- Umstellung der News-Plugin-Datenzugriffe von `/api/v1/iam/contents` auf hostseitige Server-Funktionen, die intern die Mainserver-News-Adapter nutzen.
-- Mapping zwischen Plugin-Formmodell (`NewsFormInput`, `NewsPayload`, Status, Publikationsdatum) und Mainserver-GraphQL-Schema mit deterministischer Validierung und Fehlerabbildung.
-- Beibehaltung der Plugin-Routen und spezialisierten News-UI, aber ohne Browser-Zugriff auf Mainserver-Endpunkte, Tokens oder Secrets.
-- Migration/Kompatibilitätsentscheidung für bestehende lokale `news.article`-Inhalte: kein stiller Dual-Write; vorhandene lokale Inhalte werden entweder explizit migriert oder als Legacy-Quelle nur lesend abgegrenzt.
-- Dokumentation des News-Mainserver-Flows, der Betriebsgrenzen und der Schema-Drift-Abhängigkeit.
+- Einführung typisierter News-Query- und Mutation-Adapter in `@sva/sva-mainserver/server` für `newsItems`, `newsItem`, `createNewsItem`/`createNewsItems` und den gewählten Archive/Delete-Pfad.
+- Erweiterung des internen Mainserver-GraphQL-Transports um typisierte Variablen, ohne einen generischen Executor als Public API zu exportieren.
+- Einführung eines host-owned News-Datenvertrags für das Plugin. Aufgrund der aktuellen Plugin-Grenze erfolgt die Anbindung bevorzugt über Studio-eigene HTTP-Endpunkte oder eine explizit host-injizierte Data-Source, nicht durch direkte Plugin-Imports aus App- oder Serverpackages.
+- Umstellung von `packages/plugin-news/src/news.api.ts` weg von `/api/v1/iam/contents` auf diese host-owned Mainserver-News-Fassade.
+- Explizites Mapping zwischen `NewsFormInput`/`NewsPayload` und dem Mainserver-GraphQL-Vertrag:
+  - `title` -> `NewsItem.title`
+  - `payload.teaser`, `payload.body`, `payload.imageUrl`, `payload.externalUrl`, `payload.category` -> `NewsItem.payload` bzw. vorhandene Mainserver-Felder, soweit verifiziert
+  - `publishedAt` -> `NewsItem.publishedAt` und/oder `publicationDate`
+  - Plugin-Status -> Mainserver-Sichtbarkeit/Publikationszustand, ohne ein stilles zweites Mainserver-Statusmodell einzuführen
+- Beibehaltung der spezialisierten News-Routen und UI, inklusive `@sva/studio-ui-react`.
+- Explizite Entscheidung für lokale `news.article`-/`news`-Altbestände: kein Dual-Write; lokale Records werden entweder operatorgeführt migriert oder als nicht-produktive Legacy-Quelle dokumentiert.
+- Dokumentation des News-Mainserver-Flows, der Fehlerdiagnose, des Rollbacks und der Schema-Drift-Abhängigkeit.
 
 ## Impact
 
@@ -24,12 +38,13 @@ Ohne diese Anbindung entstehen zwei konkurrierende Content-Quellen: lokale Studi
 - Affected code:
   - `packages/sva-mainserver/src/generated/*`
   - `packages/sva-mainserver/src/server/*`
+  - `packages/sva-mainserver/src/types.ts`
   - `packages/plugin-news/src/news.api.ts`
   - `packages/plugin-news/src/news.pages.tsx`
   - `packages/plugin-news/src/news.types.ts`
   - `apps/sva-studio-react/src/lib/*`
-  - `apps/sva-studio-react/src/routing/*`
-  - `packages/auth-runtime` und IAM-Content-Permissions, sofern neue Host-Server-Funktionen zusätzliche Claims oder Scope-Checks benötigen
+  - `apps/sva-studio-react/src/server.ts` und/oder `packages/routing/src/*`, falls ein host-owned HTTP-Endpunkt eingeführt wird
+  - `packages/auth-runtime`, sofern bestehende Content-Primitive nicht ausreichen oder ein wiederverwendbarer serverseitiger Permission-Helper ausgelagert wird
 - Affected docs:
   - `docs/development/runbook-sva-mainserver.md`
   - `docs/architecture/04-solution-strategy.md`
@@ -47,7 +62,8 @@ Ohne diese Anbindung entstehen zwei konkurrierende Content-Quellen: lokale Studi
 ## Non-Goals
 
 - Kein generischer GraphQL-Proxy aus dem Browser oder aus Plugin-Code.
-- Keine direkte Abhängigkeit von `@sva/plugin-news` auf `@sva/sva-mainserver/server`.
-- Keine Einführung eines zweiten News-Statusmodells neben dem Mainserver-Vertrag.
-- Keine automatische, implizite Migration lokaler `news.article`-Inhalte ohne expliziten Operator-Schritt und Report.
+- Keine direkte Abhängigkeit von `@sva/plugin-news` auf `@sva/sva-mainserver/server`, `@sva/auth-runtime/server` oder App-interne Module.
+- Keine Einführung eines zweiten News-Statusmodells neben dem Mainserver-Vertrag; nicht direkt unterstützte Plugin-Statuswerte werden explizit gemappt, eingeschränkt oder dokumentiert.
+- Keine automatische, implizite Migration lokaler `news.article`-Inhalte ohne Operator-Schritt und Report.
+- Kein Dual-Write in lokale IAM-Contents und Mainserver.
 - Keine Änderung an der mobilen App; sie konsumiert weiterhin den bestehenden Mainserver.

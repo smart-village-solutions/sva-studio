@@ -1,7 +1,4 @@
 import type { NewsContentItem, NewsPayload, NewsStatus } from './news.types.js';
-import { NEWS_CONTENT_TYPE } from './news.constants.js';
-
-const LEGACY_NEWS_CONTENT_TYPES = ['news'] as const;
 
 type ApiItemResponse<T> = {
   readonly data: T;
@@ -11,14 +8,28 @@ type ApiListResponse<T> = {
   readonly data: readonly T[];
 };
 
+type ApiErrorResponse = {
+  readonly error?: string;
+  readonly message?: string;
+};
+
+export class NewsApiError extends Error {
+  public constructor(
+    public readonly code: string,
+    message = code
+  ) {
+    super(message);
+    this.name = 'NewsApiError';
+  }
+}
+
 export type NewsFormInput = {
   readonly title: string;
-  readonly status: NewsStatus;
-  readonly publishedAt?: string;
+  readonly publishedAt: string;
   readonly payload: NewsPayload;
 };
 
-const IAM_HEADERS = {
+const REQUEST_HEADERS = {
   'Content-Type': 'application/json',
   'X-Requested-With': 'XMLHttpRequest',
 } as const;
@@ -36,7 +47,16 @@ const requestJson = async <T>(input: string, init?: RequestInit): Promise<T> => 
   });
 
   if (!response.ok) {
-    throw new Error(`http_${response.status}`);
+    let errorCode = `http_${response.status}`;
+    let message = errorCode;
+    try {
+      const body = (await response.json()) as ApiErrorResponse;
+      errorCode = typeof body.error === 'string' && body.error.length > 0 ? body.error : errorCode;
+      message = typeof body.message === 'string' && body.message.length > 0 ? body.message : errorCode;
+    } catch {
+      // Keep the deterministic HTTP fallback when the server returns no JSON error envelope.
+    }
+    throw new NewsApiError(errorCode, message);
   }
 
   return (await response.json()) as T;
@@ -51,32 +71,28 @@ const toNewsContent = (item: {
   author: string;
   createdAt: string;
   updatedAt: string;
-  publishedAt?: string;
+  publishedAt: string;
 }): NewsContentItem => item;
 
 export const listNews = async (): Promise<readonly NewsContentItem[]> => {
-  const response = await requestJson<ApiListResponse<NewsContentItem>>('/api/v1/iam/contents');
-  return response.data
-    .filter((item) => item.contentType === NEWS_CONTENT_TYPE || LEGACY_NEWS_CONTENT_TYPES.includes(item.contentType as 'news'))
-    .map(toNewsContent);
+  const response = await requestJson<ApiListResponse<NewsContentItem>>('/api/v1/mainserver/news');
+  return response.data.map(toNewsContent);
 };
 
 export const getNews = async (contentId: string): Promise<NewsContentItem> => {
-  const response = await requestJson<ApiItemResponse<NewsContentItem>>(`/api/v1/iam/contents/${contentId}`);
+  const response = await requestJson<ApiItemResponse<NewsContentItem>>(`/api/v1/mainserver/news/${contentId}`);
   return toNewsContent(response.data);
 };
 
 export const createNews = async (input: NewsFormInput): Promise<NewsContentItem> => {
-  const response = await requestJson<ApiItemResponse<NewsContentItem>>('/api/v1/iam/contents', {
+  const response = await requestJson<ApiItemResponse<NewsContentItem>>('/api/v1/mainserver/news', {
     method: 'POST',
     headers: {
-      ...IAM_HEADERS,
+      ...REQUEST_HEADERS,
       'Idempotency-Key': createIdempotencyKey(),
     },
     body: JSON.stringify({
       title: input.title,
-      contentType: NEWS_CONTENT_TYPE,
-      status: input.status,
       publishedAt: input.publishedAt,
       payload: input.payload,
     }),
@@ -86,12 +102,11 @@ export const createNews = async (input: NewsFormInput): Promise<NewsContentItem>
 };
 
 export const updateNews = async (contentId: string, input: NewsFormInput): Promise<NewsContentItem> => {
-  const response = await requestJson<ApiItemResponse<NewsContentItem>>(`/api/v1/iam/contents/${contentId}`, {
+  const response = await requestJson<ApiItemResponse<NewsContentItem>>(`/api/v1/mainserver/news/${contentId}`, {
     method: 'PATCH',
-    headers: IAM_HEADERS,
+    headers: REQUEST_HEADERS,
     body: JSON.stringify({
       title: input.title,
-      status: input.status,
       publishedAt: input.publishedAt,
       payload: input.payload,
     }),
@@ -101,8 +116,8 @@ export const updateNews = async (contentId: string, input: NewsFormInput): Promi
 };
 
 export const deleteNews = async (contentId: string): Promise<void> => {
-  await requestJson<ApiItemResponse<{ id: string }>>(`/api/v1/iam/contents/${contentId}`, {
+  await requestJson<ApiItemResponse<{ id: string }>>(`/api/v1/mainserver/news/${contentId}`, {
     method: 'DELETE',
-    headers: IAM_HEADERS,
+    headers: REQUEST_HEADERS,
   });
 };

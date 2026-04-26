@@ -374,7 +374,6 @@ export class KeycloakAdminClient implements IdentityProviderPort {
   private readonly fetchImpl: FetchLike;
   private readonly now: () => number;
   private readonly sleep: (ms: number) => Promise<void>;
-  private readonly readFallback?: ReadFallback;
 
   private cachedToken?: CachedToken;
   private tokenRefreshPromise?: Promise<string>;
@@ -396,7 +395,6 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     this.fetchImpl = config.fetchImpl ?? fetch;
     this.now = config.now ?? (() => Date.now());
     this.sleep = config.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
-    this.readFallback = config.readFallback;
   }
 
   async createUser(input: CreateIdentityUserInput): Promise<IdentityUser> {
@@ -537,7 +535,7 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     const availableRoles = await this.listRoles();
     const availableByName = new Map(availableRoles.map((role) => [role.externalName, role]));
     const roleMappings = uniqueRoleNames.map((roleName) => availableByName.get(roleName));
-    const missingRoles = uniqueRoleNames.filter((roleName, index) => !roleMappings[index]);
+    const missingRoles = uniqueRoleNames.filter((_roleName, index) => !roleMappings[index]);
     if (missingRoles.length > 0) {
       throw new KeycloakAdminRequestError({
         message: `Unknown Keycloak roles: ${missingRoles.join(', ')}`,

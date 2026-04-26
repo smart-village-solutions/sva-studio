@@ -6,7 +6,7 @@ type NewsRecord = {
   id: string;
   title: string;
   contentType: 'news.article';
-  status: 'draft' | 'in_review' | 'approved' | 'published' | 'archived';
+  status: 'published';
   author: string;
   createdAt: string;
   updatedAt: string;
@@ -35,7 +35,9 @@ const permissionPayload = {
   permissions: [
     { action: 'content.read', resourceType: 'content' },
     { action: 'content.create', resourceType: 'content' },
+    { action: 'content.updateMetadata', resourceType: 'content' },
     { action: 'content.updatePayload', resourceType: 'content' },
+    { action: 'content.delete', resourceType: 'content' },
   ],
   subject: {
     actorUserId: 'kc-editor-1',
@@ -100,7 +102,7 @@ const fulfillContentRoute = async (
   const url = new URL(request.url());
   const path = url.pathname;
 
-  if (method === 'GET' && path === '/api/v1/iam/contents') {
+  if (method === 'GET' && path === '/api/v1/mainserver/news') {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -109,7 +111,7 @@ const fulfillContentRoute = async (
     return;
   }
 
-  const detailMatch = path.match(/^\/api\/v1\/iam\/contents\/([^/]+)$/);
+  const detailMatch = path.match(/^\/api\/v1\/mainserver\/news\/([^/]+)$/);
   if (!detailMatch) {
     await route.fallback();
     return;
@@ -138,8 +140,8 @@ const fulfillContentRoute = async (
       id: createdId,
       title: String(body.title),
       contentType: 'news.article',
-      status: body.status as NewsRecord['status'],
-      publishedAt: typeof body.publishedAt === 'string' ? body.publishedAt : undefined,
+      status: 'published',
+      publishedAt: typeof body.publishedAt === 'string' ? body.publishedAt : '2026-04-13T12:10:00.000Z',
       payload: body.payload as NewsRecord['payload'],
       author: 'Editor One',
       createdAt: '2026-04-13T12:10:00.000Z',
@@ -161,7 +163,6 @@ const fulfillContentRoute = async (
       return;
     }
     item.title = String(body.title ?? item.title);
-    item.status = (body.status as NewsRecord['status']) ?? item.status;
     item.publishedAt = typeof body.publishedAt === 'string' ? body.publishedAt : item.publishedAt;
     item.payload = (body.payload as NewsRecord['payload']) ?? item.payload;
     item.updatedAt = '2026-04-13T12:20:00.000Z';
@@ -210,7 +211,7 @@ test.describe('news plugin', () => {
       });
     });
 
-    await page.route('**/api/v1/iam/contents', async (route) => {
+    await page.route('**/api/v1/mainserver/news', async (route) => {
       const request = route.request();
       if (request.method() === 'GET') {
         await route.fulfill({
@@ -226,8 +227,8 @@ test.describe('news plugin', () => {
         id: 'news-1',
         title: String(body.title),
         contentType: 'news.article',
-        status: body.status as NewsRecord['status'],
-        publishedAt: typeof body.publishedAt === 'string' ? body.publishedAt : undefined,
+        status: 'published',
+        publishedAt: typeof body.publishedAt === 'string' ? body.publishedAt : '2026-04-13T12:10:00.000Z',
         payload: body.payload as NewsRecord['payload'],
         author: 'Editor One',
         createdAt: '2026-04-13T12:10:00.000Z',
@@ -240,7 +241,7 @@ test.describe('news plugin', () => {
       });
     });
 
-    await page.route('**/api/v1/iam/contents/*', async (route) => {
+    await page.route('**/api/v1/mainserver/news/*', async (route) => {
       await fulfillContentRoute(route, newsItems);
     });
 
@@ -259,6 +260,7 @@ test.describe('news plugin', () => {
     await page.getByLabel(/Teaser|news\.fields\.teaser/).fill('Kurztext');
     await page.getByLabel(/Inhalt \(HTML\)|news\.fields\.body/).fill('<p>Inhalt</p>');
     await page.getByLabel(/Kategorie|news\.fields\.category/).fill('Allgemein');
+    await page.getByLabel(/Veröffentlichungsdatum|news\.fields\.publishedAt/).fill('2026-04-14T09:30');
     await page.getByRole('button', { name: /News anlegen|news\.actions\.create/ }).click();
 
     await expect(page).toHaveURL(/\/plugins\/news$/);
@@ -297,7 +299,7 @@ test.describe('news plugin', () => {
       });
     });
 
-    await page.route('**/api/v1/iam/contents', async (route) => {
+    await page.route('**/api/v1/mainserver/news', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -364,7 +366,7 @@ test.describe('news plugin', () => {
       });
     });
 
-    await page.route('**/api/v1/iam/contents', async (route) => {
+    await page.route('**/api/v1/mainserver/news', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -372,7 +374,7 @@ test.describe('news plugin', () => {
       });
     });
 
-    await page.route('**/api/v1/iam/contents/*', async (route) => {
+    await page.route('**/api/v1/mainserver/news/*', async (route) => {
       await fulfillContentRoute(route, newsItems);
     });
 

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
+  loadSvaMainserverInstanceConfig: vi.fn(),
   readSvaMainserverCredentialsWithStatus: vi.fn(),
   logger: {
     debug: vi.fn(),
@@ -39,6 +40,10 @@ vi.mock('@sva/auth-runtime/server', () => ({
   readSvaMainserverCredentialsWithStatus: state.readSvaMainserverCredentialsWithStatus,
 }));
 
+vi.mock('./config-store.js', () => ({
+  loadSvaMainserverInstanceConfig: state.loadSvaMainserverInstanceConfig,
+}));
+
 vi.mock('@sva/server-runtime', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@sva/server-runtime')>();
 
@@ -54,7 +59,15 @@ vi.mock('@sva/server-runtime', async (importOriginal) => {
   };
 });
 
-import { createSvaMainserverService, resetSvaMainserverServiceState } from './service';
+import {
+  createSvaMainserverNews,
+  createSvaMainserverService,
+  deleteSvaMainserverNews,
+  getSvaMainserverNews,
+  listSvaMainserverNews,
+  resetSvaMainserverServiceState,
+  updateSvaMainserverNews,
+} from './service';
 import { SvaMainserverError } from './errors';
 
 const baseConfig = {
@@ -87,6 +100,8 @@ const createDeferred = <TValue>() => {
 
 describe('createSvaMainserverService', () => {
   afterEach(() => {
+    vi.unstubAllGlobals();
+    state.loadSvaMainserverInstanceConfig.mockReset();
     state.readSvaMainserverCredentialsWithStatus.mockReset();
     state.logger.debug.mockReset();
     state.logger.info.mockReset();
@@ -186,6 +201,249 @@ describe('createSvaMainserverService', () => {
       status: 'connected',
       queryRootTypename: 'Query',
       mutationRootTypename: 'Mutation',
+    });
+  });
+
+  it('lists, creates, updates and deletes news with typed GraphQL variables', async () => {
+    const item = {
+      id: 'news-1',
+      title: 'News',
+      author: 'Editor',
+      payload: { teaser: 'Kurztext', body: '<p>Body</p>', category: 'Allgemein' },
+      publishedAt: '2026-04-14T09:30:00.000Z',
+      createdAt: '2026-04-14T09:00:00.000Z',
+      updatedAt: '2026-04-14T09:30:00.000Z',
+      visible: true,
+    };
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { newsItems: [item] } }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { createNewsItem: item } }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { createNewsItem: item } }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { destroyRecord: { id: 1, status: 'ok', statusCode: 200 } } }));
+
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
+      fetchImpl,
+    });
+    const connection = { instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' };
+    const news = {
+      title: item.title,
+      publishedAt: item.publishedAt,
+      payload: item.payload,
+    };
+
+    await expect(service.listNews(connection)).resolves.toEqual([
+      expect.objectContaining({ id: 'news-1', status: 'published', contentType: 'news.article' }),
+    ]);
+    await expect(service.createNews({ ...connection, news })).resolves.toEqual(expect.objectContaining({ id: 'news-1' }));
+    await expect(service.updateNews({ ...connection, newsId: 'news-1', news })).resolves.toEqual(
+      expect.objectContaining({ id: 'news-1' })
+    );
+    await expect(service.deleteNews({ ...connection, newsId: 'news-1' })).resolves.toEqual({ id: 'news-1' });
+
+    const requestBodies = fetchImpl.mock.calls
+      .slice(1)
+      .map(([, init]) => JSON.parse(init?.body as string) as { operationName: string; variables?: Record<string, unknown> });
+    expect(requestBodies[0]).toMatchObject({
+      operationName: 'SvaMainserverNewsList',
+      variables: { limit: 100, skip: 0, order: 'publishedAt_DESC' },
+    });
+    expect(requestBodies[2]).toMatchObject({
+      operationName: 'SvaMainserverCreateNews',
+      variables: { id: 'news-1', forceCreate: false, categoryName: 'Allgemein' },
+    });
+    expect(requestBodies[3]).toMatchObject({
+      operationName: 'SvaMainserverDestroyNews',
+      variables: { id: 'news-1', recordType: 'NewsItem' },
+    });
+  });
+
+  it('routes default news helpers through the default service', async () => {
+    const item = {
+      id: 'news-1',
+      title: 'News',
+      payload: { teaser: 'Kurztext', body: '<p>Body</p>' },
+      publishedAt: '2026-04-14T09:30:00.000Z',
+    };
+    state.loadSvaMainserverInstanceConfig.mockResolvedValue(baseConfig);
+    state.readSvaMainserverCredentialsWithStatus.mockResolvedValue({
+      status: 'ok',
+      credentials: { apiKey: 'key-1', apiSecret: 'secret-1' },
+    });
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { newsItems: [item] } }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { newsItem: item } }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { createNewsItem: item } }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { createNewsItem: item } }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { destroyRecord: { id: 1, statusCode: 200 } } }));
+    vi.stubGlobal('fetch', fetchImpl);
+    const connection = { instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' };
+    const news = {
+      title: item.title,
+      publishedAt: item.publishedAt,
+      payload: item.payload,
+    };
+
+    await expect(listSvaMainserverNews(connection)).resolves.toHaveLength(1);
+    await expect(getSvaMainserverNews({ ...connection, newsId: 'news-1' })).resolves.toMatchObject({ id: 'news-1' });
+    await expect(createSvaMainserverNews({ ...connection, news })).resolves.toMatchObject({ id: 'news-1' });
+    await expect(updateSvaMainserverNews({ ...connection, newsId: 'news-1', news })).resolves.toMatchObject({
+      id: 'news-1',
+    });
+    await expect(deleteSvaMainserverNews({ ...connection, newsId: 'news-1' })).resolves.toEqual({ id: 'news-1' });
+  });
+
+  it('maps news payload strings and hides invisible upstream news', async () => {
+    const publishedAt = '2026-04-14T09:30:00.000Z';
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          data: {
+            newsItems: [
+              {
+                id: 'news-1',
+                title: null,
+                payload: JSON.stringify({ teaser: 'Kurztext', body: '<p>Body</p>', externalUrl: 'https://example.test' }),
+                publicationDate: publishedAt,
+              },
+              {
+                id: 'news-2',
+                title: 'Hidden',
+                payload: '{invalid',
+                publishedAt,
+                visible: false,
+              },
+            ],
+          },
+        })
+      );
+
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
+      fetchImpl,
+    });
+
+    await expect(
+      service.listNews({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' })
+    ).resolves.toEqual([
+      expect.objectContaining({
+        id: 'news-1',
+        title: '',
+        payload: expect.objectContaining({
+          teaser: 'Kurztext',
+          body: '<p>Body</p>',
+          externalUrl: 'https://example.test',
+        }),
+        createdAt: publishedAt,
+        updatedAt: publishedAt,
+        publishedAt,
+      }),
+    ]);
+  });
+
+  it('maps invalid news payloads to an empty payload fallback', async () => {
+    const publishedAt = '2026-04-14T09:30:00.000Z';
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          data: {
+            newsItem: {
+              id: 'news-1',
+              title: 'Broken payload',
+              payload: '{invalid',
+              publishedAt,
+            },
+          },
+        })
+      );
+
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
+      fetchImpl,
+    });
+
+    await expect(
+      service.getNews({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1', newsId: 'news-1' })
+    ).resolves.toMatchObject({
+      id: 'news-1',
+      payload: { teaser: '', body: '' },
+    });
+  });
+
+  it('rejects invalid news responses and missing update publication dates', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { newsItem: null } }));
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
+      fetchImpl,
+    });
+    const connection = { instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' };
+
+    await expect(service.getNews({ ...connection, newsId: 'news-missing' })).rejects.toMatchObject({
+      code: 'not_found',
+      statusCode: 404,
+    });
+    await expect(
+      service.createNews({
+        ...connection,
+        news: {
+          title: 'No date',
+          publishedAt: '  ',
+          payload: { teaser: 'Kurztext', body: '<p>Body</p>' },
+        },
+      })
+    ).rejects.toMatchObject({
+      code: 'invalid_response',
+      statusCode: 400,
+    });
+  });
+
+  it('rejects news items without publication dates and failed destroy responses', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          data: {
+            newsItems: [
+              {
+                id: 'news-1',
+                title: 'No date',
+                payload: { teaser: 'Kurztext', body: '<p>Body</p>' },
+              },
+            ],
+          },
+        })
+      )
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { destroyRecord: { id: 1, statusCode: 500 } } }));
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
+      fetchImpl,
+    });
+    const connection = { instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' };
+
+    await expect(service.listNews(connection)).rejects.toMatchObject({
+      code: 'invalid_response',
+      statusCode: 502,
+    });
+    await expect(service.deleteNews({ ...connection, newsId: 'news-1' })).rejects.toMatchObject({
+      code: 'invalid_response',
+      statusCode: 502,
     });
   });
 

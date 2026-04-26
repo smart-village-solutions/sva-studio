@@ -968,17 +968,17 @@ Das System SHALL die Inhaltsverwaltung über die zentrale IAM-Autorisierung absi
 - **THEN** kann er Liste, Detailansicht und freigegebene Historie lesen
 - **AND** Erstellungs-, Bearbeitungs- und Statuswechselaktionen bleiben gesperrt
 
-#### Scenario: Statuswechsel erfordert passende Fachberechtigung
+#### Scenario: Statuswechsel erfordert gemappte Fachberechtigung
 
 - **WHEN** ein Benutzer den Status eines Inhalts ändern will
-- **THEN** prüft das System die dazu passende Inhaltsberechtigung wie `content.submit_review`, `content.approve`, `content.publish` oder `content.archive`
-- **AND** ein unzulässiger Statuswechsel wird serverseitig abgewiesen
+- **THEN** löst das System die fachliche Statuswechsel-Capability auf eine primitive Studio-Action wie `content.submit_review`, `content.approve`, `content.publish` oder `content.archive` auf
+- **AND** die zentrale Permission Engine prüft ausschließlich die aufgelöste primitive Action im aktiven Scope
+- **AND** ein unzulässiger oder nicht gemappter Statuswechsel wird serverseitig abgewiesen
 
 #### Scenario: Inhaltsrechte werden im aktiven Scope ausgewertet
 
 - **WHEN** eine Berechtigungsprüfung für Inhaltsverwaltung erfolgt
 - **THEN** wertet das System die Rechte im aktiven `instanceId`- und Organisationskontext aus
-- **AND** Rechte aus fremden Instanzen oder unzulässigen Organisationskontexten bleiben wirkungslos
 
 ### Requirement: Einheitliches Zielformat für autorisierbare Action-IDs
 Das IAM-System MUST autorisierbare Action-IDs langfristig in einem einheitlichen fully-qualified Format `<namespace>.<actionName>` behandeln, unabhängig davon, ob die Action aus dem Core oder aus einem Plugin stammt.
@@ -1105,3 +1105,74 @@ Das System SHALL für Keycloak-User, Rollen und Rollenzuordnungen vor jeder Muta
 - **WHEN** ein User-Feld durch Föderation oder Keycloak-Policy nicht bearbeitbar ist
 - **THEN** deaktiviert die UI das Feld
 - **AND** der Server validiert denselben Zustand vor der Mutation
+
+### Requirement: Content Core Authorization Primitives
+The system SHALL authorize content core operations through host-owned, fully-qualified primitive actions that remain stable across plugin-specific content types.
+
+The primitive action namespace SHALL be `content`. The initial primitive action set SHALL include `content.read`, `content.create`, `content.updateMetadata`, `content.updatePayload`, `content.changeStatus`, `content.publish`, `content.archive`, `content.restore`, `content.readHistory`, `content.manageRevisions`, and `content.delete`.
+
+Authorization requests for content core operations SHALL include the resolved `instanceId`, `contentType`, optional `contentId`, optional `organizationId`, requested primitive action, actor subject, and any host-known ownership scope. Plugins MAY declare domain capabilities that map to these primitives in separate capability-mapping contracts, but plugins SHALL NOT replace or shadow the primitive action names.
+
+#### Scenario: User edits content core metadata
+- **GIVEN** a user requests a core content mutation
+- **WHEN** the host evaluates authorization
+- **THEN** the decision uses the stable primitive action for that mutation and the resolved content scope
+- **AND** the decision is evaluated through the central IAM authorization path
+
+#### Scenario: Plugin declares custom core permission
+- **GIVEN** a plugin declares a permission that replaces a host-owned core content permission
+- **WHEN** the contribution is validated
+- **THEN** the host rejects the conflicting permission declaration
+
+#### Scenario: Payload update uses primitive action
+- **GIVEN** a user updates plugin-specific payload fields for a content item
+- **WHEN** the host evaluates authorization
+- **THEN** the host checks `content.updatePayload` with the resolved content scope
+- **AND** plugin-specific field names are not used as primitive IAM actions
+
+#### Scenario: History access is scoped
+- **GIVEN** a user requests the history of a content item
+- **WHEN** the host evaluates authorization
+- **THEN** the host checks `content.readHistory` for the item's `instanceId`, content type, content identifier, and ownership scope
+
+#### Scenario: Authorization lacks resolved content scope
+- **GIVEN** a content core mutation cannot resolve `instanceId` or ownership scope deterministically
+- **WHEN** the host prepares the authorization request
+- **THEN** the operation is denied before persistence
+- **AND** diagnostics identify the missing scope input without exposing plugin payload data
+
+### Requirement: Content Capability Mapping
+The system SHALL map domain-level content capabilities such as publish, archive, restore, bulk edit, and manage revisions to stable primitive Studio actions before authorization is evaluated.
+
+The mapping SHALL be host-owned, declarative, and framework-agnostic. Plugins, content types, and UI bindings MAY reference supported capabilities, but SHALL NOT provide executable authorization logic, permission resolvers, or fallback allow/deny decisions.
+
+#### Scenario: Domain capability maps to primitive action
+- **GIVEN** a user requests a content publish operation
+- **WHEN** the host evaluates authorization
+- **THEN** the publish capability is resolved to the configured primitive Studio action and checked through the central permission engine
+- **AND** the authorization request uses the resolved primitive action, resource type, actor, and active scope
+
+#### Scenario: Capability has no mapping
+- **GIVEN** a content action has no registered capability mapping
+- **WHEN** the host evaluates authorization
+- **THEN** access is denied with the deterministic diagnostic `capability_mapping_missing`
+- **AND** no persistence, status transition, or side effect is executed
+
+#### Scenario: Capability maps to invalid primitive action
+- **GIVEN** a capability mapping references an unknown or non-fully-qualified primitive action
+- **WHEN** the host validates the mapping or evaluates an action using it
+- **THEN** access is denied with the deterministic diagnostic `capability_mapping_invalid`
+- **AND** the host does not infer a namespace or substitute another primitive action
+
+#### Scenario: Server remains authoritative
+- **GIVEN** the UI rendered a content action as available from the mapping read model
+- **WHEN** the user executes the action
+- **THEN** the server resolves the capability again and evaluates the primitive action through the central permission engine
+- **AND** a stale or manipulated UI state cannot bypass authorization
+
+#### Scenario: Admin action remains out of scope
+- **GIVEN** an admin action uses an existing direct primitive Studio action
+- **WHEN** the host evaluates authorization for this P2 change
+- **THEN** the admin action continues to use the existing authorization contract
+- **AND** no admin-specific capability mapping is required by this change
+

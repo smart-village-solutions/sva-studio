@@ -1,11 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { createNews, deleteNews, getNews, listNews, updateNews, type NewsFormInput } from '../src/news.api.js';
+import { NewsApiError, createNews, deleteNews, getNews, listNews, updateNews, type NewsFormInput } from '../src/news.api.js';
 import { NEWS_CONTENT_TYPE } from '../src/plugin.js';
 
 const sampleInput: NewsFormInput = {
   title: 'Neue News',
-  status: 'draft',
   publishedAt: '2026-04-13T09:00:00.000Z',
   payload: {
     teaser: 'Kurztext',
@@ -28,7 +27,7 @@ describe('news api', () => {
     vi.unstubAllGlobals();
   });
 
-  it('filters non-news items from the list response', async () => {
+  it('loads news from the mainserver facade', async () => {
     vi.mocked(fetch).mockResolvedValueOnce({
       ok: true,
       json: async () => ({
@@ -38,57 +37,32 @@ describe('news api', () => {
             title: 'News',
             contentType: NEWS_CONTENT_TYPE,
             payload: sampleInput.payload,
-            status: 'draft',
+            status: 'published',
             author: 'Editor',
             createdAt: '2026-01-01',
             updatedAt: '2026-01-02',
-          },
-          { id: 'page-1', title: 'Page', contentType: 'generic', payload: sampleInput.payload, status: 'draft', author: 'Editor', createdAt: '2026-01-01', updatedAt: '2026-01-02' },
-        ],
-      }),
-    } as Response);
-
-    await expect(listNews()).resolves.toEqual([
-      expect.objectContaining({ id: 'news-1', contentType: NEWS_CONTENT_TYPE }),
-    ]);
-  });
-
-  it('keeps legacy news records visible during the canonical content type rename', async () => {
-    vi.mocked(fetch).mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        data: [
-          {
-            id: 'news-legacy',
-            title: 'Legacy News',
-            contentType: 'news',
-            payload: sampleInput.payload,
-            status: 'draft',
-            author: 'Editor',
-            createdAt: '2026-01-01',
-            updatedAt: '2026-01-02',
+            publishedAt: sampleInput.publishedAt,
           },
         ],
       }),
     } as Response);
 
-    await expect(listNews()).resolves.toEqual([
-      expect.objectContaining({ id: 'news-legacy', contentType: 'news' }),
-    ]);
+    await expect(listNews()).resolves.toEqual([expect.objectContaining({ id: 'news-1' })]);
+    expect(fetch).toHaveBeenCalledWith('/api/v1/mainserver/news', expect.any(Object));
   });
 
-  it('creates news with idempotency header and the news content type', async () => {
+  it('creates news with idempotency header through the mainserver facade', async () => {
     vi.mocked(fetch).mockResolvedValueOnce({
       ok: true,
       json: async () => ({
-        data: { id: 'news-1', title: sampleInput.title, contentType: NEWS_CONTENT_TYPE, payload: sampleInput.payload, status: sampleInput.status, author: 'Editor', createdAt: '2026-01-01', updatedAt: '2026-01-02' },
+        data: { id: 'news-1', title: sampleInput.title, contentType: NEWS_CONTENT_TYPE, payload: sampleInput.payload, status: 'published', author: 'Editor', createdAt: '2026-01-01', updatedAt: '2026-01-02', publishedAt: sampleInput.publishedAt },
       }),
     } as Response);
 
     await createNews(sampleInput);
 
     expect(fetch).toHaveBeenCalledWith(
-      '/api/v1/iam/contents',
+      '/api/v1/mainserver/news',
       expect.objectContaining({
         method: 'POST',
         credentials: 'include',
@@ -101,8 +75,6 @@ describe('news api', () => {
     );
     expect(JSON.parse(vi.mocked(fetch).mock.calls[0]?.[1]?.body as string)).toEqual({
       title: sampleInput.title,
-      contentType: NEWS_CONTENT_TYPE,
-      status: sampleInput.status,
       publishedAt: sampleInput.publishedAt,
       payload: sampleInput.payload,
     });
@@ -113,7 +85,7 @@ describe('news api', () => {
       .mockResolvedValueOnce({
         ok: true,
         json: async () => ({
-          data: { id: 'news-1', title: sampleInput.title, contentType: NEWS_CONTENT_TYPE, payload: sampleInput.payload, status: sampleInput.status, author: 'Editor', createdAt: '2026-01-01', updatedAt: '2026-01-02' },
+          data: { id: 'news-1', title: sampleInput.title, contentType: NEWS_CONTENT_TYPE, payload: sampleInput.payload, status: 'published', author: 'Editor', createdAt: '2026-01-01', updatedAt: '2026-01-02', publishedAt: sampleInput.publishedAt },
         }),
       } as Response)
       .mockResolvedValueOnce({
@@ -126,12 +98,12 @@ describe('news api', () => {
 
     expect(fetch).toHaveBeenNthCalledWith(
       1,
-      '/api/v1/iam/contents/news-1',
+      '/api/v1/mainserver/news/news-1',
       expect.objectContaining({ method: 'PATCH' })
     );
     expect(fetch).toHaveBeenNthCalledWith(
       2,
-      '/api/v1/iam/contents/news-1',
+      '/api/v1/mainserver/news/news-1',
       expect.objectContaining({ method: 'DELETE' })
     );
   });
@@ -141,7 +113,7 @@ describe('news api', () => {
       .mockResolvedValueOnce({
         ok: true,
         json: async () => ({
-          data: { id: 'news-1', title: sampleInput.title, contentType: NEWS_CONTENT_TYPE, payload: sampleInput.payload, status: sampleInput.status, author: 'Editor', createdAt: '2026-01-01', updatedAt: '2026-01-02' },
+          data: { id: 'news-1', title: sampleInput.title, contentType: NEWS_CONTENT_TYPE, payload: sampleInput.payload, status: 'published', author: 'Editor', createdAt: '2026-01-01', updatedAt: '2026-01-02', publishedAt: sampleInput.publishedAt },
         }),
       } as Response)
       .mockResolvedValueOnce({
@@ -151,5 +123,31 @@ describe('news api', () => {
 
     await expect(getNews('news-1')).resolves.toEqual(expect.objectContaining({ id: 'news-1' }));
     await expect(listNews()).rejects.toThrow('http_503');
+  });
+
+  it('uses stable server error envelopes and HTTP fallbacks for failed responses', async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        json: async () => ({ error: 'forbidden', message: 'Keine Berechtigung.' }),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 502,
+        json: async () => {
+          throw new Error('not json');
+        },
+      } as Response);
+
+    await expect(getNews('news-1')).rejects.toMatchObject({
+      name: 'NewsApiError',
+      code: 'forbidden',
+      message: 'Keine Berechtigung.',
+    } satisfies Partial<NewsApiError>);
+    await expect(listNews()).rejects.toMatchObject({
+      code: 'http_502',
+      message: 'http_502',
+    } satisfies Partial<NewsApiError>);
   });
 });

@@ -44,6 +44,9 @@ type RequestContextSdk = {
 let sdkPromise: Promise<RequestContextSdk> | null = null;
 const loggerPromises = new Map<ServerTransportComponent, Promise<ServerTransportLogger>>();
 let dispatchAuthRouteRequestPromise: Promise<typeof import('@sva/routing/server')['dispatchAuthRouteRequest']> | null = null;
+let dispatchMainserverNewsRequestPromise:
+  | Promise<typeof import('./lib/mainserver-news-api.server')['dispatchMainserverNewsRequest']>
+  | null = null;
 const getSdk = async (): Promise<RequestContextSdk> => {
   sdkPromise ??= import('@sva/server-runtime') as Promise<RequestContextSdk>;
   return sdkPromise;
@@ -52,6 +55,13 @@ const getSdk = async (): Promise<RequestContextSdk> => {
 const getDispatchAuthRouteRequest = async () => {
   dispatchAuthRouteRequestPromise ??= import('@sva/routing/server').then((mod) => mod.dispatchAuthRouteRequest);
   return dispatchAuthRouteRequestPromise;
+};
+
+const getDispatchMainserverNewsRequest = async () => {
+  dispatchMainserverNewsRequestPromise ??= import('./lib/mainserver-news-api.server').then(
+    (mod) => mod.dispatchMainserverNewsRequest
+  );
+  return dispatchMainserverNewsRequestPromise;
 };
 
 const getLogger = async (component: ServerTransportComponent): Promise<ServerTransportLogger> => {
@@ -88,6 +98,16 @@ const instrumentedFetch: RequestHandler<Register> = async (...args) => {
   };
 
   await logServerEntryDebug('Server entry request received', {});
+  const dispatchMainserverNewsRequest = await getDispatchMainserverNewsRequest();
+  const mainserverNewsResponse = await dispatchMainserverNewsRequest(request);
+
+  if (mainserverNewsResponse) {
+    await logServerEntryDebug('Server entry mainserver news route dispatched', {
+      status: mainserverNewsResponse.status,
+    });
+    return mainserverNewsResponse;
+  }
+
   const dispatchAuthRouteRequest = await getDispatchAuthRouteRequest();
   const authResponse = await dispatchAuthRouteRequest(request);
 

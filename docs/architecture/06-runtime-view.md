@@ -55,18 +55,18 @@ Fehlerpfad:
 1. Die App initialisiert `studioPlugins` und merged Plugin-Übersetzungen in die i18n-Ressourcen.
 2. Der Router materialisiert die Plugin-Routen `/plugins/news`, `/plugins/news/new` und `/plugins/news/$contentId`.
 3. Beim Aufruf der Route wendet der Host den passenden Content-Guard an.
-4. Die News-Liste lädt die generische Content-Liste und filtert clientseitig auf `contentType = news.article`.
-5. Der Editor sendet Create- oder Update-Requests an die bestehende IAM-Content-API.
-6. `packages/auth-runtime` validiert zuerst den generischen Content-Envelope und danach das registrierte News-Payload-Schema für `news.article`.
-7. Vor jeder mutierenden Persistenz löst `packages/auth-runtime` die fachliche Content-Capability auf eine primitive `content.*`-Action auf und autorisiert diese über die zentrale Permission Engine.
-8. Vor Persistenz sanitisiert der Server `body` allowlist-basiert und normalisiert `teaser` auf Plain Text.
-9. Repository, Historie und Audit-Logging bleiben Teil des generischen Content-Pfads und führen Capability sowie primitive Action in den Audit-Payloads mit.
+4. Die News-Liste ruft `/api/v1/mainserver/news` auf; lokale IAM-Contents mit `news.article` oder `news` werden nicht mehr produktiv gelesen.
+5. Der Editor sendet Create-, Update- und Delete-Requests an `/api/v1/mainserver/news` beziehungsweise `/api/v1/mainserver/news/$contentId`.
+6. Die App-Fassade prüft Session, `instanceId`, lokale Content-Primitive und Mainserver-Credentials serverseitig.
+7. `@sva/sva-mainserver/server` führt die typisierten GraphQL-Operationen `newsItems`, `newsItem`, `createNewsItem` und `destroyRecord` mit Benutzer-Credentials aus.
+8. Phase 1 kennt nur veröffentlichte News; `publishedAt` ist für Create und Update verpflichtend.
+9. Es gibt keinen Dual-Write und keine Legacy-Migration in lokale IAM-Contents.
 10. Nach erfolgreichem Speichern oder Löschen zeigt das Plugin Statusfeedback und navigiert zurück zur News-Liste.
 
 Fehlerpfad:
 
 - fehlt die Berechtigung, blockiert der Host die Plugin-Route vor dem Rendern oder verweigert die serverseitige Mutation mit `capability_authorization_denied` im Diagnosekontext.
-- ist der News-Payload ungültig, antwortet die Content-API mit HTTP `400`.
+- ist der News-Payload ungültig oder fehlt `publishedAt`, antwortet die Mainserver-News-Fassade mit HTTP `400`.
 - schlägt ein API-Call fehl, zeigt das Plugin eine verständliche Fehlermeldung und behält den Formzustand.
 
 ### Szenario 4b: Plugin-Custom-View mit gemeinsamer Studio-UI

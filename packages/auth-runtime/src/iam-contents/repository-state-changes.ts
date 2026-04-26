@@ -3,6 +3,8 @@ import type { ContentJsonValue } from '@sva/core';
 import type { ContentRow } from './repository-types.js';
 import type { NextContentStateValues } from './repository-state-values.js';
 
+const CANONICAL_JSON_COLLATOR = new Intl.Collator('en-US', { sensitivity: 'variant', usage: 'sort' });
+
 const isReadonlyContentJsonArray = (
   value: object
 ): value is readonly ContentJsonValue[] => Array.isArray(value);
@@ -17,7 +19,7 @@ const canonicalJson = (value: ContentJsonValue): string => {
 
   const objectValue: Readonly<Record<string, ContentJsonValue>> = value;
   return `{${Object.keys(objectValue)
-    .sort((left, right) => (left < right ? -1 : left > right ? 1 : 0))
+    .sort(CANONICAL_JSON_COLLATOR.compare)
     .map((key) => `${JSON.stringify(key)}:${canonicalJson(objectValue[key] ?? null)}`)
     .join(',')}}`;
 };

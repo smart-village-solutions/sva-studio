@@ -114,6 +114,14 @@ Updates, archives, and deletes SHALL be mapped explicitly to the available Mains
 - **THEN** it uses the documented operation selected for this rollout, such as `changeVisibility` or `destroyRecord`
 - **AND** the chosen `recordType` and expected result shape are covered by tests or Staging verification
 
+#### Scenario: Phase 1 delete uses hard destroy path
+
+- **GIVEN** the user deletes an Event or POI in Studio
+- **WHEN** the host prepares the Mainserver mutation for this rollout
+- **THEN** Event delete uses `destroyRecord(id, recordType: "EventRecord")`
+- **AND** POI delete uses `destroyRecord(id, recordType: "PointOfInterest")`
+- **AND** the host does not silently switch to `changeVisibility(false)` unless Staging verification invalidates the destroy path
+
 ### Requirement: Event And POI Mutations Preserve Per-User Delegation
 
 The system SHALL execute Event and POI create, update, archive, and delete mutations with the current user's Mainserver credentials rather than shared instance credentials.
@@ -140,3 +148,30 @@ The system SHALL execute Event and POI create, update, archive, and delete mutat
 - **WHEN** the mutation response indicates unauthorized or forbidden
 - **THEN** Studio surfaces a deterministic authorization error
 - **AND** Studio does not retry with shared or elevated credentials
+
+### Requirement: Migration Runtime Diagnostics Preserve Failure Evidence
+
+The migration runtime SHALL retain actionable diagnostics for failed Swarm migration jobs without requiring operators to manually inspect Portainer first.
+
+#### Scenario: Failed migration job includes remote logs
+
+- **GIVEN** a Swarm migration job reaches a failed terminal state
+- **WHEN** Studio builds the migration failure error
+- **THEN** it attempts to read the failed task container logs via the Portainer Docker API
+- **AND** it falls back to service logs if container logs are unavailable
+- **AND** the error text includes `containerLogs` and the normalized `taskSnapshot`
+
+#### Scenario: Failed migration job stack can be kept for diagnosis
+
+- **GIVEN** a Swarm migration job fails
+- **AND** `SVA_MIGRATION_JOB_KEEP_FAILED_STACK` is truthy
+- **WHEN** cleanup would normally remove the migration job stack
+- **THEN** the failed job stack is retained for operator diagnosis
+- **AND** cleanup continues to remove the stack when the flag is absent or false
+
+#### Scenario: Migration entrypoint reports final Goose status
+
+- **GIVEN** the migration entrypoint runs inside the one-off migration service
+- **WHEN** `goose up` completes or fails
+- **THEN** the final Goose status remains part of the migration output
+- **AND** a separate status check before `up` is not required as a blocking prerequisite

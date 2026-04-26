@@ -195,6 +195,11 @@ Schulden auf IST-Basis.
    - Wahrscheinlichkeit: mittel
    - Maßnahme: gemeinsame UI-Basis `@sva/studio-ui-react`, ESLint-App-Importverbote, `pnpm check:plugin-ui-boundary` und Review-Regel für fachliche Wrapper statt paralleler Basis-Control-Systeme
 
+34. Event-/POI-Schema-Drift im Mainserver
+   - Impact: hoch (verschachtelte Event- und POI-Felder können trotz grünem Build zur Laufzeit von Staging abweichen)
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: Event-/POI-Adapter eng am Snapshot halten, Delete-Record-Types in Staging verifizieren, `openspec validate`, `pnpm check:server-runtime` und Mainserver-Adaptertests vor Rollout ausführen
+
 ### Technische Schulden (Auswahl)
 
 - Teilweise No-Op Testtargets in Libraries

@@ -23,6 +23,24 @@ vi.mock('@sva/plugin-news', () => ({
   },
 }));
 
+vi.mock('@sva/plugin-events', () => ({
+  pluginEvents: {
+    id: 'events',
+    displayName: 'Events',
+    routes: [{ id: 'events.list', path: '/plugins/events', component: (() => null) as never }],
+    actions: [],
+  },
+}));
+
+vi.mock('@sva/plugin-poi', () => ({
+  pluginPoi: {
+    id: 'poi',
+    displayName: 'POI',
+    routes: [{ id: 'poi.list', path: '/plugins/poi', component: (() => null) as never }],
+    actions: [],
+  },
+}));
+
 vi.mock('@sva/monitoring-client/logging', () => {
   return {
     createBrowserLogger: () => browserLoggerMock,
@@ -66,8 +84,8 @@ describe('plugin action alias lookup', () => {
       owner_plugin_id: 'news',
     });
 
-    expect(studioBuildTimeRegistry.plugins).toHaveLength(1);
-    expect(studioBuildTimeRegistry.routes).toHaveLength(1);
+    expect(studioBuildTimeRegistry.plugins).toHaveLength(3);
+    expect(studioBuildTimeRegistry.routes).toHaveLength(3);
     expect(studioBuildTimeRegistry.adminResources).toEqual(studioAdminResources);
     expect(studioAdminResources[0]).toMatchObject({
       resourceId: 'content',

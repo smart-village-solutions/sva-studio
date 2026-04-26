@@ -26,11 +26,13 @@
       "@sva/instance-registry/http-contracts": ["packages/instance-registry/src/http-contracts.ts"],
       "@sva/instance-registry": ["packages/instance-registry/src/index.ts"],
       "@sva/plugin-sdk": ["packages/plugin-sdk/src/index.ts"],
+      "@sva/plugin-events": ["packages/plugin-events/src/index.ts"],
       "@sva/studio-ui-react": ["packages/studio-ui-react/src/index.ts"],
       "@sva/server-runtime": ["packages/server-runtime/src/index.ts"],
       "@sva/routing": ["packages/routing/src/index.ts"],
       "@sva/sva-mainserver": ["packages/sva-mainserver/src/index.ts"],
       "@sva/sva-mainserver/server": ["packages/sva-mainserver/src/index.server.ts"],
+      "@sva/plugin-poi": ["packages/plugin-poi/src/index.ts"],
       "@sva/monitoring-client": ["packages/monitoring-client/src/index.ts"],
       "@sva/monitoring-client/server": ["packages/monitoring-client/src/server.ts"],
       "@sva/monitoring-client/logger-provider.server": ["packages/monitoring-client/src/logger-provider.server.ts"]

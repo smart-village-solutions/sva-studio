@@ -60,13 +60,23 @@ vi.mock('@sva/server-runtime', async (importOriginal) => {
 });
 
 import {
+  createSvaMainserverEvent,
   createSvaMainserverNews,
+  createSvaMainserverPoi,
   createSvaMainserverService,
+  deleteSvaMainserverEvent,
   deleteSvaMainserverNews,
+  deleteSvaMainserverPoi,
+  getSvaMainserverEvent,
   getSvaMainserverNews,
+  getSvaMainserverPoi,
+  listSvaMainserverEvents,
   listSvaMainserverNews,
+  listSvaMainserverPoi,
   resetSvaMainserverServiceState,
+  updateSvaMainserverEvent,
   updateSvaMainserverNews,
+  updateSvaMainserverPoi,
 } from './service';
 import { SvaMainserverError } from './errors';
 
@@ -297,6 +307,249 @@ describe('createSvaMainserverService', () => {
       id: 'news-1',
     });
     await expect(deleteSvaMainserverNews({ ...connection, newsId: 'news-1' })).resolves.toEqual({ id: 'news-1' });
+  });
+
+  it('lists, reads, writes and deletes events and POI with typed GraphQL variables', async () => {
+    const eventItem = {
+      id: 'event-1',
+      title: 'Sommerfest',
+      description: 'Fest im Park',
+      externalId: 'event-ext-1',
+      keywords: 'festival',
+      parentId: 12,
+      dates: [
+        {
+          dateStart: '2026-06-01T10:00:00.000Z',
+          dateEnd: '2026-06-01T18:00:00.000Z',
+          timeStart: '10:00',
+          timeEnd: '18:00',
+        },
+      ],
+      listDate: '2026-06-01T10:00:00.000Z',
+      sortDate: '2026-06-01T10:00:00.000Z',
+      repeat: true,
+      repeatDuration: { startDate: '2026-06-01', endDate: '2026-06-14', everyYear: false },
+      recurring: true,
+      recurringType: 1,
+      recurringInterval: 2,
+      recurringWeekdays: [1, 5],
+      category: { id: 'cat-1', name: 'Kultur' },
+      categories: [{ name: 'Kultur', children: [{ name: 'Open Air' }] }],
+      addresses: [{ street: 'Parkweg 1', zip: '12345', city: 'Musterhausen', geoLocation: { latitude: '52.1', longitude: '13.1' } }],
+      location: { name: 'Stadtpark', geoLocation: { latitude: '52.2', longitude: '13.2' } },
+      contacts: [{ firstName: 'Ada', lastName: 'Lovelace', phone: '+491234', email: 'ada@example.test' }],
+      urls: [{ url: 'https://example.test/event', description: 'Tickets' }],
+      mediaContents: [{ captionText: 'Buehne', sourceUrl: { url: 'https://example.test/event.jpg' } }],
+      organizer: { name: 'Kulturamt', email: 'kultur@example.test' },
+      priceInformations: [{ name: 'Regulaer', amount: 12.5, groupPrice: false }],
+      accessibilityInformation: { description: 'Barrierearm', types: 'wheelchair' },
+      tagList: ['sommer'],
+      createdAt: '2026-05-01T10:00:00.000Z',
+      updatedAt: '2026-05-02T10:00:00.000Z',
+      visible: true,
+    };
+    const poiItem = {
+      id: 'poi-1',
+      name: 'Stadtpark',
+      description: 'Gruene Mitte',
+      mobileDescription: 'Park',
+      externalId: 'poi-ext-1',
+      keywords: 'park',
+      active: true,
+      category: { id: 'cat-2', name: 'Freizeit' },
+      categories: [{ name: 'Freizeit' }],
+      payload: { source: 'mainserver' },
+      addresses: [{ street: 'Parkweg 1', zip: '12345', city: 'Musterhausen' }],
+      contact: { phone: '+491234', email: 'park@example.test' },
+      openingHours: [{ weekday: 'MO', timeFrom: '08:00', timeTo: '20:00', open: true }],
+      operatingCompany: { name: 'Stadt Musterhausen', email: 'stadt@example.test' },
+      webUrls: [{ url: 'https://example.test/poi', description: 'Info' }],
+      mediaContents: [{ captionText: 'Park', sourceUrl: { url: 'https://example.test/poi.jpg' } }],
+      location: { name: 'Stadtpark', geoLocation: { latitude: '52.3', longitude: '13.3' } },
+      priceInformations: [{ name: 'Eintritt', amount: 0 }],
+      certificates: [{ id: 'cert-1', name: 'Familienfreundlich' }],
+      accessibilityInformation: { description: 'Stufenlos', types: 'wheelchair' },
+      tagList: ['park'],
+      createdAt: '2026-05-03T10:00:00.000Z',
+      updatedAt: '2026-05-04T10:00:00.000Z',
+      visible: true,
+    };
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { eventRecords: [eventItem, { ...eventItem, id: 'event-hidden', visible: false }] } }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { eventRecord: eventItem } }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { createEventRecord: eventItem } }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { createEventRecord: eventItem } }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { destroyRecord: { id: 1, statusCode: 200 } } }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { pointsOfInterest: [poiItem, { ...poiItem, id: 'poi-hidden', visible: false }] } }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { pointOfInterest: poiItem } }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { createPointOfInterest: poiItem } }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { createPointOfInterest: poiItem } }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { destroyRecord: { id: 2, statusCode: 200 } } }));
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
+      fetchImpl,
+    });
+    const connection = { instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' };
+
+    await expect(service.listEvents(connection)).resolves.toEqual([
+      expect.objectContaining({
+        id: 'event-1',
+        contentType: 'events.event-record',
+        categoryName: 'Kultur',
+        contacts: [expect.objectContaining({ email: 'ada@example.test' })],
+        repeatDuration: { startDate: '2026-06-01', endDate: '2026-06-14', everyYear: false },
+      }),
+    ]);
+    await expect(service.getEvent({ ...connection, eventId: 'event-1' })).resolves.toMatchObject({ id: 'event-1' });
+    await expect(
+      service.createEvent({
+        ...connection,
+        event: {
+          title: 'Sommerfest',
+          description: eventItem.description,
+          externalId: eventItem.externalId,
+          keywords: eventItem.keywords,
+          parentId: eventItem.parentId,
+          dates: eventItem.dates,
+          repeat: eventItem.repeat,
+          repeatDuration: eventItem.repeatDuration,
+          categoryName: 'Kultur',
+          categories: eventItem.categories,
+          addresses: eventItem.addresses,
+          location: { name: 'Stadtpark', geoLocation: { latitude: 52.2, longitude: 13.2 } },
+          contacts: eventItem.contacts,
+          urls: eventItem.urls,
+          mediaContents: eventItem.mediaContents,
+          organizer: eventItem.organizer,
+          priceInformations: eventItem.priceInformations,
+          accessibilityInformation: eventItem.accessibilityInformation,
+          tags: eventItem.tagList,
+          recurring: 'true',
+          recurringType: '1',
+          recurringInterval: '2',
+          recurringWeekdays: ['MO', 'FR'],
+          pointOfInterestId: 'poi-1',
+          pushNotification: true,
+        },
+      })
+    ).resolves.toMatchObject({ id: 'event-1' });
+    await expect(service.updateEvent({ ...connection, eventId: 'event-1', event: { title: 'Sommerfest', repeat: true, recurring: 'true', recurringType: '1', recurringInterval: '2', recurringWeekdays: ['MO'] } })).resolves.toMatchObject({ id: 'event-1' });
+    await expect(service.deleteEvent({ ...connection, eventId: 'event-1' })).resolves.toEqual({ id: 'event-1' });
+
+    await expect(service.listPoi(connection)).resolves.toEqual([
+      expect.objectContaining({
+        id: 'poi-1',
+        contentType: 'poi.point-of-interest',
+        categoryName: 'Freizeit',
+        contact: expect.objectContaining({ email: 'park@example.test' }),
+        certificates: [{ id: 'cert-1', name: 'Familienfreundlich' }],
+      }),
+    ]);
+    await expect(service.getPoi({ ...connection, poiId: 'poi-1' })).resolves.toMatchObject({ id: 'poi-1' });
+    await expect(
+      service.createPoi({
+        ...connection,
+        poi: {
+          name: 'Stadtpark',
+          description: poiItem.description,
+          mobileDescription: poiItem.mobileDescription,
+          externalId: poiItem.externalId,
+          keywords: poiItem.keywords,
+          active: true,
+          categoryName: 'Freizeit',
+          payload: { source: 'mainserver' },
+          categories: poiItem.categories,
+          addresses: poiItem.addresses,
+          contact: poiItem.contact,
+          priceInformations: poiItem.priceInformations,
+          openingHours: poiItem.openingHours,
+          operatingCompany: poiItem.operatingCompany,
+          webUrls: poiItem.webUrls,
+          mediaContents: poiItem.mediaContents,
+          location: { name: 'Stadtpark', geoLocation: { latitude: 52.3, longitude: 13.3 } },
+          certificates: poiItem.certificates,
+          accessibilityInformation: poiItem.accessibilityInformation,
+          tags: poiItem.tagList,
+        },
+      })
+    ).resolves.toMatchObject({ id: 'poi-1' });
+    await expect(service.updatePoi({ ...connection, poiId: 'poi-1', poi: { name: 'Stadtpark', active: false, openingHours: poiItem.openingHours } })).resolves.toMatchObject({ id: 'poi-1' });
+    await expect(service.deletePoi({ ...connection, poiId: 'poi-1' })).resolves.toEqual({ id: 'poi-1' });
+
+    const requestBodies = fetchImpl.mock.calls
+      .slice(1)
+      .map(([, init]) => JSON.parse(init?.body as string) as { operationName: string; variables?: Record<string, unknown> });
+    expect(requestBodies.map((body) => body.operationName)).toEqual([
+      'SvaMainserverEventList',
+      'SvaMainserverEventDetail',
+      'SvaMainserverCreateEvent',
+      'SvaMainserverCreateEvent',
+      'SvaMainserverDestroyRecord',
+      'SvaMainserverPoiList',
+      'SvaMainserverPoiDetail',
+      'SvaMainserverCreatePoi',
+      'SvaMainserverCreatePoi',
+      'SvaMainserverDestroyRecord',
+    ]);
+    expect(requestBodies[3]?.variables).toMatchObject({ id: 'event-1', forceCreate: false, repeat: true });
+    expect(requestBodies[4]?.variables).toEqual({ id: 'event-1', recordType: 'EventRecord' });
+    expect(requestBodies[8]?.variables).toMatchObject({ id: 'poi-1', forceCreate: false, active: false });
+    expect(requestBodies[9]?.variables).toEqual({ id: 'poi-1', recordType: 'PointOfInterest' });
+  });
+
+  it('routes default event and POI helpers through the default service', async () => {
+    const eventItem = {
+      id: 'event-1',
+      title: 'Event',
+      visible: true,
+      recurringWeekdays: [1],
+    };
+    const poiItem = {
+      id: 'poi-1',
+      name: 'POI',
+      payload: {},
+      visible: true,
+    };
+    state.loadSvaMainserverInstanceConfig.mockResolvedValue(baseConfig);
+    state.readSvaMainserverCredentialsWithStatus.mockResolvedValue({
+      status: 'ok',
+      credentials: { apiKey: 'key-1', apiSecret: 'secret-1' },
+    });
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { eventRecords: [eventItem] } }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { eventRecord: eventItem } }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { createEventRecord: eventItem } }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { createEventRecord: eventItem } }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { destroyRecord: { id: 1, statusCode: 200 } } }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { pointsOfInterest: [poiItem] } }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { pointOfInterest: poiItem } }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { createPointOfInterest: poiItem } }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { createPointOfInterest: poiItem } }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { destroyRecord: { id: 2, statusCode: 200 } } }));
+    vi.stubGlobal('fetch', fetchImpl);
+    const connection = { instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' };
+
+    await expect(listSvaMainserverEvents(connection)).resolves.toHaveLength(1);
+    await expect(getSvaMainserverEvent({ ...connection, eventId: 'event-1' })).resolves.toMatchObject({ id: 'event-1' });
+    await expect(createSvaMainserverEvent({ ...connection, event: { title: 'Event' } })).resolves.toMatchObject({
+      id: 'event-1',
+    });
+    await expect(updateSvaMainserverEvent({ ...connection, eventId: 'event-1', event: { title: 'Event' } })).resolves.toMatchObject({
+      id: 'event-1',
+    });
+    await expect(deleteSvaMainserverEvent({ ...connection, eventId: 'event-1' })).resolves.toEqual({ id: 'event-1' });
+    await expect(listSvaMainserverPoi(connection)).resolves.toHaveLength(1);
+    await expect(getSvaMainserverPoi({ ...connection, poiId: 'poi-1' })).resolves.toMatchObject({ id: 'poi-1' });
+    await expect(createSvaMainserverPoi({ ...connection, poi: { name: 'POI' } })).resolves.toMatchObject({ id: 'poi-1' });
+    await expect(updateSvaMainserverPoi({ ...connection, poiId: 'poi-1', poi: { name: 'POI' } })).resolves.toMatchObject({
+      id: 'poi-1',
+    });
+    await expect(deleteSvaMainserverPoi({ ...connection, poiId: 'poi-1' })).resolves.toEqual({ id: 'poi-1' });
   });
 
   it('maps news payload strings and hides invisible upstream news', async () => {

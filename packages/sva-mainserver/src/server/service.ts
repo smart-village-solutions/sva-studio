@@ -22,20 +22,50 @@ import {
   type SvaMainserverNewsItemFragment,
   type SvaMainserverNewsListQuery,
 } from '../generated/news.js';
+import {
+  svaMainserverCreateEventDocument,
+  svaMainserverCreatePoiDocument,
+  svaMainserverDestroyRecordDocument,
+  svaMainserverEventDetailDocument,
+  type SvaMainserverCreateEventMutation,
+  type SvaMainserverCreatePoiMutation,
+  type SvaMainserverDestroyRecordMutation,
+  type SvaMainserverEventDetailQuery,
+  type SvaMainserverEventFragment,
+  type SvaMainserverEventListQuery,
+  svaMainserverEventListDocument,
+  svaMainserverPoiDetailDocument,
+  type SvaMainserverPoiDetailQuery,
+  type SvaMainserverPoiFragment,
+  type SvaMainserverPoiListQuery,
+  svaMainserverPoiListDocument,
+} from '../generated/events-poi.js';
 import type {
   SvaMainserverConnectionInput,
   SvaMainserverConnectionStatus,
   SvaMainserverErrorCode,
   SvaMainserverInstanceConfig,
+  SvaMainserverAccessibilityInformation,
   SvaMainserverAddress,
   SvaMainserverAnnouncementSummary,
   SvaMainserverCategory,
+  SvaMainserverContact,
   SvaMainserverContentBlock,
   SvaMainserverDataProvider,
+  SvaMainserverDate,
+  SvaMainserverEventInput,
+  SvaMainserverEventItem,
+  SvaMainserverLocation,
   SvaMainserverMediaContent,
   SvaMainserverNewsInput,
   SvaMainserverNewsItem,
   SvaMainserverNewsPayload,
+  SvaMainserverOperatingCompany,
+  SvaMainserverOpeningHour,
+  SvaMainserverPoiInput,
+  SvaMainserverPoiItem,
+  SvaMainserverPrice,
+  SvaMainserverRepeatDuration,
   SvaMainserverSetting,
   SvaMainserverWebUrl,
 } from '../types.js';
@@ -215,6 +245,91 @@ const announcementSchema = z.object({
   likedByMe: z.boolean().nullish(),
 });
 
+const dateSchema = z.object({
+  id: z.string().nullish(),
+  weekday: z.string().nullish(),
+  dateStart: z.string().nullish(),
+  dateEnd: z.string().nullish(),
+  timeStart: z.string().nullish(),
+  timeEnd: z.string().nullish(),
+  timeDescription: z.string().nullish(),
+  useOnlyTimeDescription: z.string().nullish(),
+});
+
+const contactSchema = z.object({
+  id: z.string().nullish(),
+  firstName: z.string().nullish(),
+  lastName: z.string().nullish(),
+  phone: z.string().nullish(),
+  fax: z.string().nullish(),
+  email: z.string().nullish(),
+  webUrls: z.array(webUrlSchema).nullish(),
+});
+
+const locationSchema = z.object({
+  id: z.string().nullish(),
+  name: z.string().nullish(),
+  department: z.string().nullish(),
+  district: z.string().nullish(),
+  regionName: z.string().nullish(),
+  state: z.string().nullish(),
+  geoLocation: geoLocationSchema.nullish(),
+});
+
+const operatingCompanySchema = z.object({
+  id: z.string().nullish(),
+  name: z.string().nullish(),
+  address: addressSchema.nullish(),
+  contact: contactSchema.nullish(),
+});
+
+const priceSchema = z.object({
+  id: z.string().nullish(),
+  name: z.string().nullish(),
+  amount: z.number().nullish(),
+  groupPrice: z.boolean().nullish(),
+  ageFrom: z.number().nullish(),
+  ageTo: z.number().nullish(),
+  minAdultCount: z.number().nullish(),
+  maxAdultCount: z.number().nullish(),
+  minChildrenCount: z.number().nullish(),
+  maxChildrenCount: z.number().nullish(),
+  description: z.string().nullish(),
+  category: z.string().nullish(),
+});
+
+const accessibilityInformationSchema = z.object({
+  id: z.string().nullish(),
+  description: z.string().nullish(),
+  types: z.string().nullish(),
+  urls: z.array(webUrlSchema).nullish(),
+});
+
+const repeatDurationSchema = z.object({
+  id: z.string().nullish(),
+  startDate: z.string().nullish(),
+  endDate: z.string().nullish(),
+  everyYear: z.boolean().nullish(),
+});
+
+const openingHourSchema = z.object({
+  id: z.string().nullish(),
+  weekday: z.string().nullish(),
+  dateFrom: z.string().nullish(),
+  dateTo: z.string().nullish(),
+  timeFrom: z.string().nullish(),
+  timeTo: z.string().nullish(),
+  sortNumber: z.number().nullish(),
+  open: z.boolean().nullish(),
+  useYear: z.boolean().nullish(),
+  description: z.string().nullish(),
+});
+
+const certificateSchema = z.object({
+  id: z.string().nullish(),
+  name: z.string().nullish(),
+});
+
 const newsItemSchema = z.object({
   id: z.string().min(1),
   title: z.string().nullish(),
@@ -238,6 +353,65 @@ const newsItemSchema = z.object({
   likeCount: z.number().nullish(),
   likedByMe: z.boolean().nullish(),
   pushNotificationsSentAt: z.string().nullish(),
+  createdAt: z.string().nullish(),
+  updatedAt: z.string().nullish(),
+  visible: z.boolean().nullish(),
+});
+
+const eventItemSchema = z.object({
+  id: z.string().min(1),
+  title: z.string().nullish(),
+  description: z.string().nullish(),
+  externalId: z.string().nullish(),
+  keywords: z.string().nullish(),
+  parentId: z.number().nullish(),
+  dates: z.array(dateSchema).nullish(),
+  listDate: z.string().nullish(),
+  sortDate: z.string().nullish(),
+  repeat: z.boolean().nullish(),
+  repeatDuration: repeatDurationSchema.nullish(),
+  recurring: z.boolean().nullish(),
+  recurringType: z.number().nullish(),
+  recurringInterval: z.number().nullish(),
+  recurringWeekdays: z.array(z.number()).nullish(),
+  category: categorySchema.nullish(),
+  categories: z.array(categorySchema).nullish(),
+  addresses: z.array(addressSchema).nullish(),
+  location: locationSchema.nullish(),
+  contacts: z.array(contactSchema).nullish(),
+  urls: z.array(webUrlSchema).nullish(),
+  mediaContents: z.array(mediaContentSchema).nullish(),
+  organizer: operatingCompanySchema.nullish(),
+  priceInformations: z.array(priceSchema).nullish(),
+  accessibilityInformation: accessibilityInformationSchema.nullish(),
+  tagList: z.array(z.string()).nullish(),
+  createdAt: z.string().nullish(),
+  updatedAt: z.string().nullish(),
+  visible: z.boolean().nullish(),
+});
+
+const poiItemSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().nullish(),
+  description: z.string().nullish(),
+  mobileDescription: z.string().nullish(),
+  externalId: z.string().nullish(),
+  keywords: z.string().nullish(),
+  active: z.boolean().nullish(),
+  payload: z.unknown(),
+  category: categorySchema.nullish(),
+  categories: z.array(categorySchema).nullish(),
+  addresses: z.array(addressSchema).nullish(),
+  contact: contactSchema.nullish(),
+  priceInformations: z.array(priceSchema).nullish(),
+  openingHours: z.array(openingHourSchema).nullish(),
+  operatingCompany: operatingCompanySchema.nullish(),
+  webUrls: z.array(webUrlSchema).nullish(),
+  mediaContents: z.array(mediaContentSchema).nullish(),
+  location: locationSchema.nullish(),
+  certificates: z.array(certificateSchema).nullish(),
+  accessibilityInformation: accessibilityInformationSchema.nullish(),
+  tagList: z.array(z.string()).nullish(),
   createdAt: z.string().nullish(),
   updatedAt: z.string().nullish(),
   visible: z.boolean().nullish(),
@@ -700,6 +874,256 @@ const mapOptionalNewsItem = (item: SvaMainserverNewsItemFragment | null | undefi
   }
 
   return mapNewsItem(item);
+};
+
+const mapDate = (value: z.infer<typeof dateSchema>): SvaMainserverDate => ({
+  ...(optionalString(value.id) ? { id: optionalString(value.id) } : {}),
+  ...(optionalString(value.weekday) ? { weekday: optionalString(value.weekday) } : {}),
+  ...(optionalString(value.dateStart) ? { dateStart: optionalString(value.dateStart) } : {}),
+  ...(optionalString(value.dateEnd) ? { dateEnd: optionalString(value.dateEnd) } : {}),
+  ...(optionalString(value.timeStart) ? { timeStart: optionalString(value.timeStart) } : {}),
+  ...(optionalString(value.timeEnd) ? { timeEnd: optionalString(value.timeEnd) } : {}),
+  ...(optionalString(value.timeDescription) ? { timeDescription: optionalString(value.timeDescription) } : {}),
+  ...(optionalString(value.useOnlyTimeDescription)
+    ? { useOnlyTimeDescription: optionalString(value.useOnlyTimeDescription) }
+    : {}),
+});
+
+const mapContact = (value: z.infer<typeof contactSchema> | null | undefined): SvaMainserverContact | undefined => {
+  if (!value) {
+    return undefined;
+  }
+  const contact = {
+    ...(optionalString(value.id) ? { id: optionalString(value.id) } : {}),
+    ...(optionalString(value.firstName) ? { firstName: optionalString(value.firstName) } : {}),
+    ...(optionalString(value.lastName) ? { lastName: optionalString(value.lastName) } : {}),
+    ...(optionalString(value.phone) ? { phone: optionalString(value.phone) } : {}),
+    ...(optionalString(value.fax) ? { fax: optionalString(value.fax) } : {}),
+    ...(optionalString(value.email) ? { email: optionalString(value.email) } : {}),
+    webUrls: (value.webUrls ?? []).map(mapWebUrl).filter(defined),
+  };
+  return Object.keys(contact).length > 1 || contact.webUrls.length > 0 ? contact : undefined;
+};
+
+const mapLocation = (value: z.infer<typeof locationSchema> | null | undefined): SvaMainserverLocation | undefined => {
+  if (!value) {
+    return undefined;
+  }
+  const geoLocation = value.geoLocation
+    ? {
+        ...(defined(parseGeoCoordinate(value.geoLocation.latitude))
+          ? { latitude: parseGeoCoordinate(value.geoLocation.latitude) }
+          : {}),
+        ...(defined(parseGeoCoordinate(value.geoLocation.longitude))
+          ? { longitude: parseGeoCoordinate(value.geoLocation.longitude) }
+          : {}),
+      }
+    : undefined;
+  const location = {
+    ...(optionalString(value.id) ? { id: optionalString(value.id) } : {}),
+    ...(optionalString(value.name) ? { name: optionalString(value.name) } : {}),
+    ...(optionalString(value.department) ? { department: optionalString(value.department) } : {}),
+    ...(optionalString(value.district) ? { district: optionalString(value.district) } : {}),
+    ...(optionalString(value.regionName) ? { regionName: optionalString(value.regionName) } : {}),
+    ...(optionalString(value.state) ? { state: optionalString(value.state) } : {}),
+    ...(geoLocation && (defined(geoLocation.latitude) || defined(geoLocation.longitude)) ? { geoLocation } : {}),
+  };
+  return Object.keys(location).length > 0 ? location : undefined;
+};
+
+const mapOperatingCompany = (
+  value: z.infer<typeof operatingCompanySchema> | null | undefined
+): SvaMainserverOperatingCompany | undefined => {
+  if (!value) {
+    return undefined;
+  }
+  const company = {
+    ...(optionalString(value.id) ? { id: optionalString(value.id) } : {}),
+    ...(optionalString(value.name) ? { name: optionalString(value.name) } : {}),
+    ...(mapAddress(value.address) ? { address: mapAddress(value.address) } : {}),
+    ...(mapContact(value.contact) ? { contact: mapContact(value.contact) } : {}),
+  };
+  return Object.keys(company).length > 0 ? company : undefined;
+};
+
+const mapPrice = (value: z.infer<typeof priceSchema>): SvaMainserverPrice => ({
+  ...(optionalString(value.id) ? { id: optionalString(value.id) } : {}),
+  ...(optionalString(value.name) ? { name: optionalString(value.name) } : {}),
+  ...(optionalNumber(value.amount) !== undefined ? { amount: value.amount as number } : {}),
+  ...(defined(value.groupPrice) ? { groupPrice: value.groupPrice } : {}),
+  ...(optionalNumber(value.ageFrom) !== undefined ? { ageFrom: value.ageFrom as number } : {}),
+  ...(optionalNumber(value.ageTo) !== undefined ? { ageTo: value.ageTo as number } : {}),
+  ...(optionalNumber(value.minAdultCount) !== undefined ? { minAdultCount: value.minAdultCount as number } : {}),
+  ...(optionalNumber(value.maxAdultCount) !== undefined ? { maxAdultCount: value.maxAdultCount as number } : {}),
+  ...(optionalNumber(value.minChildrenCount) !== undefined ? { minChildrenCount: value.minChildrenCount as number } : {}),
+  ...(optionalNumber(value.maxChildrenCount) !== undefined ? { maxChildrenCount: value.maxChildrenCount as number } : {}),
+  ...(optionalString(value.description) ? { description: optionalString(value.description) } : {}),
+  ...(optionalString(value.category) ? { category: optionalString(value.category) } : {}),
+});
+
+const mapAccessibilityInformation = (
+  value: z.infer<typeof accessibilityInformationSchema> | null | undefined
+): SvaMainserverAccessibilityInformation | undefined => {
+  if (!value) {
+    return undefined;
+  }
+  const information = {
+    ...(optionalString(value.id) ? { id: optionalString(value.id) } : {}),
+    ...(optionalString(value.description) ? { description: optionalString(value.description) } : {}),
+    ...(optionalString(value.types) ? { types: optionalString(value.types) } : {}),
+    urls: (value.urls ?? []).map(mapWebUrl).filter(defined),
+  };
+  return Object.keys(information).length > 1 || information.urls.length > 0 ? information : undefined;
+};
+
+const mapRepeatDuration = (
+  value: z.infer<typeof repeatDurationSchema> | null | undefined
+): SvaMainserverRepeatDuration | undefined => {
+  if (!value) {
+    return undefined;
+  }
+  const repeatDuration = {
+    ...(optionalString(value.id) ? { id: optionalString(value.id) } : {}),
+    ...(optionalString(value.startDate) ? { startDate: optionalString(value.startDate) } : {}),
+    ...(optionalString(value.endDate) ? { endDate: optionalString(value.endDate) } : {}),
+    ...(defined(value.everyYear) ? { everyYear: value.everyYear } : {}),
+  };
+  return Object.keys(repeatDuration).length > 0 ? repeatDuration : undefined;
+};
+
+const mapOpeningHour = (value: z.infer<typeof openingHourSchema>): SvaMainserverOpeningHour => ({
+  ...(optionalString(value.id) ? { id: optionalString(value.id) } : {}),
+  ...(optionalString(value.weekday) ? { weekday: optionalString(value.weekday) } : {}),
+  ...(optionalString(value.dateFrom) ? { dateFrom: optionalString(value.dateFrom) } : {}),
+  ...(optionalString(value.dateTo) ? { dateTo: optionalString(value.dateTo) } : {}),
+  ...(optionalString(value.timeFrom) ? { timeFrom: optionalString(value.timeFrom) } : {}),
+  ...(optionalString(value.timeTo) ? { timeTo: optionalString(value.timeTo) } : {}),
+  ...(optionalNumber(value.sortNumber) !== undefined ? { sortNumber: value.sortNumber as number } : {}),
+  ...(defined(value.open) ? { open: value.open } : {}),
+  ...(defined(value.useYear) ? { useYear: value.useYear } : {}),
+  ...(optionalString(value.description) ? { description: optionalString(value.description) } : {}),
+});
+
+const mapEventItem = (item: SvaMainserverEventFragment | null | undefined): SvaMainserverEventItem => {
+  const parsed = eventItemSchema.safeParse(item);
+  if (!parsed.success) {
+    throw toSvaMainserverError({
+      code: 'invalid_response',
+      message: 'Ungültige Event-Antwort des SVA-Mainservers.',
+      statusCode: 502,
+    });
+  }
+
+  const categories = (parsed.data.categories ?? []).map(mapCategory).filter(defined);
+  const category = mapCategory(parsed.data.category ?? {});
+  const createdAt = parsed.data.createdAt ?? parsed.data.listDate ?? new Date(0).toISOString();
+
+  return {
+    id: parsed.data.id,
+    title: parsed.data.title ?? '',
+    contentType: 'events.event-record',
+    status: 'published',
+    ...(optionalString(parsed.data.description) ? { description: optionalString(parsed.data.description) } : {}),
+    ...(optionalString(parsed.data.externalId) ? { externalId: optionalString(parsed.data.externalId) } : {}),
+    ...(optionalString(parsed.data.keywords) ? { keywords: optionalString(parsed.data.keywords) } : {}),
+    ...(optionalNumber(parsed.data.parentId) !== undefined ? { parentId: parsed.data.parentId as number } : {}),
+    dates: (parsed.data.dates ?? []).map(mapDate),
+    ...(optionalString(parsed.data.listDate) ? { listDate: optionalString(parsed.data.listDate) } : {}),
+    ...(optionalString(parsed.data.sortDate) ? { sortDate: optionalString(parsed.data.sortDate) } : {}),
+    ...(defined(parsed.data.repeat) ? { repeat: parsed.data.repeat } : {}),
+    ...(mapRepeatDuration(parsed.data.repeatDuration) ? { repeatDuration: mapRepeatDuration(parsed.data.repeatDuration) } : {}),
+    ...(defined(parsed.data.recurring) ? { recurring: parsed.data.recurring } : {}),
+    ...(optionalNumber(parsed.data.recurringType) !== undefined ? { recurringType: parsed.data.recurringType as number } : {}),
+    ...(optionalNumber(parsed.data.recurringInterval) !== undefined
+      ? { recurringInterval: parsed.data.recurringInterval as number }
+      : {}),
+    recurringWeekdays: parsed.data.recurringWeekdays ?? [],
+    ...(category ? { categoryName: category.name } : {}),
+    categories,
+    addresses: (parsed.data.addresses ?? []).map(mapAddress).filter(defined),
+    ...(mapLocation(parsed.data.location) ? { location: mapLocation(parsed.data.location) } : {}),
+    contacts: (parsed.data.contacts ?? []).map(mapContact).filter(defined),
+    urls: (parsed.data.urls ?? []).map(mapWebUrl).filter(defined),
+    mediaContents: (parsed.data.mediaContents ?? []).map(mapMediaContent),
+    ...(mapOperatingCompany(parsed.data.organizer) ? { organizer: mapOperatingCompany(parsed.data.organizer) } : {}),
+    priceInformations: (parsed.data.priceInformations ?? []).map(mapPrice),
+    ...(mapAccessibilityInformation(parsed.data.accessibilityInformation)
+      ? { accessibilityInformation: mapAccessibilityInformation(parsed.data.accessibilityInformation) }
+      : {}),
+    tags: parsed.data.tagList ?? [],
+    visible: parsed.data.visible !== false,
+    createdAt,
+    updatedAt: parsed.data.updatedAt ?? createdAt,
+  };
+};
+
+const mapOptionalEventItem = (item: SvaMainserverEventFragment | null | undefined): SvaMainserverEventItem => {
+  if (!item) {
+    throw toSvaMainserverError({ code: 'not_found', message: 'Event wurde nicht gefunden.', statusCode: 404 });
+  }
+  return mapEventItem(item);
+};
+
+const mapPoiItem = (item: SvaMainserverPoiFragment | null | undefined): SvaMainserverPoiItem => {
+  const parsed = poiItemSchema.safeParse(item);
+  if (!parsed.success) {
+    throw toSvaMainserverError({
+      code: 'invalid_response',
+      message: 'Ungültige POI-Antwort des SVA-Mainservers.',
+      statusCode: 502,
+    });
+  }
+
+  const categories = (parsed.data.categories ?? []).map(mapCategory).filter(defined);
+  const category = mapCategory(parsed.data.category ?? {});
+  const createdAt = parsed.data.createdAt ?? new Date(0).toISOString();
+
+  return {
+    id: parsed.data.id,
+    name: parsed.data.name ?? '',
+    contentType: 'poi.point-of-interest',
+    status: 'published',
+    ...(optionalString(parsed.data.description) ? { description: optionalString(parsed.data.description) } : {}),
+    ...(optionalString(parsed.data.mobileDescription)
+      ? { mobileDescription: optionalString(parsed.data.mobileDescription) }
+      : {}),
+    ...(optionalString(parsed.data.externalId) ? { externalId: optionalString(parsed.data.externalId) } : {}),
+    ...(optionalString(parsed.data.keywords) ? { keywords: optionalString(parsed.data.keywords) } : {}),
+    active: parsed.data.active !== false,
+    ...(category ? { categoryName: category.name } : {}),
+    ...(parsed.data.payload !== undefined && parsed.data.payload !== null ? { payload: parsed.data.payload } : {}),
+    categories,
+    addresses: (parsed.data.addresses ?? []).map(mapAddress).filter(defined),
+    ...(mapContact(parsed.data.contact) ? { contact: mapContact(parsed.data.contact) } : {}),
+    priceInformations: (parsed.data.priceInformations ?? []).map(mapPrice),
+    openingHours: (parsed.data.openingHours ?? []).map(mapOpeningHour),
+    ...(mapOperatingCompany(parsed.data.operatingCompany)
+      ? { operatingCompany: mapOperatingCompany(parsed.data.operatingCompany) }
+      : {}),
+    webUrls: (parsed.data.webUrls ?? []).map(mapWebUrl).filter(defined),
+    mediaContents: (parsed.data.mediaContents ?? []).map(mapMediaContent),
+    ...(mapLocation(parsed.data.location) ? { location: mapLocation(parsed.data.location) } : {}),
+    certificates: (parsed.data.certificates ?? [])
+      .filter((certificate) => certificate.name)
+      .map((certificate) => ({
+        ...(optionalString(certificate.id) ? { id: optionalString(certificate.id) } : {}),
+        name: certificate.name as string,
+      })),
+    ...(mapAccessibilityInformation(parsed.data.accessibilityInformation)
+      ? { accessibilityInformation: mapAccessibilityInformation(parsed.data.accessibilityInformation) }
+      : {}),
+    tags: parsed.data.tagList ?? [],
+    visible: parsed.data.visible !== false,
+    createdAt,
+    updatedAt: parsed.data.updatedAt ?? createdAt,
+  };
+};
+
+const mapOptionalPoiItem = (item: SvaMainserverPoiFragment | null | undefined): SvaMainserverPoiItem => {
+  if (!item) {
+    throw toSvaMainserverError({ code: 'not_found', message: 'POI wurde nicht gefunden.', statusCode: 404 });
+  }
+  return mapPoiItem(item);
 };
 
 const sleep = async (ms: number): Promise<void> =>
@@ -1333,6 +1757,196 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
     return { id: input.newsId };
   };
 
+  const listEventsWithConfig = async (
+    input: SvaMainserverConnectionInput,
+    config: SvaMainserverInstanceConfig
+  ): Promise<readonly SvaMainserverEventItem[]> => {
+    const response = await executeGraphqlWithConfig<SvaMainserverEventListQuery>(
+      {
+        ...input,
+        document: svaMainserverEventListDocument,
+        operationName: 'SvaMainserverEventList',
+        variables: { limit: 100, skip: 0, order: 'updatedAt_DESC' },
+      },
+      config
+    );
+
+    return (response.eventRecords ?? []).filter((item) => item.visible !== false).map(mapEventItem);
+  };
+
+  const getEventWithConfig = async (
+    input: SvaMainserverConnectionInput & { readonly eventId: string },
+    config: SvaMainserverInstanceConfig
+  ): Promise<SvaMainserverEventItem> => {
+    const response = await executeGraphqlWithConfig<SvaMainserverEventDetailQuery>(
+      {
+        ...input,
+        document: svaMainserverEventDetailDocument,
+        operationName: 'SvaMainserverEventDetail',
+        variables: { id: input.eventId },
+      },
+      config
+    );
+
+    return mapOptionalEventItem(response.eventRecord);
+  };
+
+  const writeEventWithConfig = async (
+    input: SvaMainserverConnectionInput & {
+      readonly event: SvaMainserverEventInput;
+      readonly eventId?: string;
+      readonly forceCreate?: boolean;
+    },
+    config: SvaMainserverInstanceConfig
+  ): Promise<SvaMainserverEventItem> => {
+    const response = await executeGraphqlWithConfig<SvaMainserverCreateEventMutation>(
+      {
+        ...input,
+        document: svaMainserverCreateEventDocument,
+        operationName: 'SvaMainserverCreateEvent',
+        variables: {
+          ...(input.eventId ? { id: input.eventId } : {}),
+          ...(input.forceCreate === undefined ? {} : { forceCreate: input.forceCreate }),
+          title: input.event.title,
+          ...(input.eventId ? {} : { pushNotification: input.event.pushNotification ?? false }),
+          ...(input.event.parentId === undefined ? {} : { parentId: input.event.parentId }),
+          ...(input.event.keywords ? { keywords: input.event.keywords } : {}),
+          ...(input.event.description ? { description: input.event.description } : {}),
+          ...(input.event.externalId ? { externalId: input.event.externalId } : {}),
+          ...(input.event.dates ? { dates: input.event.dates } : {}),
+          ...(input.event.repeat === undefined ? {} : { repeat: input.event.repeat }),
+          ...(input.event.repeatDuration ? { repeatDuration: input.event.repeatDuration } : {}),
+          ...(input.event.categoryName ? { categoryName: input.event.categoryName } : {}),
+          ...(input.event.categories ? { categories: input.event.categories } : {}),
+          ...(input.event.addresses ? { addresses: input.event.addresses } : {}),
+          ...(input.event.location ? { location: input.event.location } : {}),
+          ...(input.event.contacts ? { contacts: input.event.contacts } : {}),
+          ...(input.event.urls ? { urls: input.event.urls } : {}),
+          ...(input.event.mediaContents ? { mediaContents: input.event.mediaContents } : {}),
+          ...(input.event.organizer ? { organizer: input.event.organizer } : {}),
+          ...(input.event.priceInformations ? { priceInformations: input.event.priceInformations } : {}),
+          ...(input.event.accessibilityInformation
+            ? { accessibilityInformation: input.event.accessibilityInformation }
+            : {}),
+          ...(input.event.tags ? { tags: input.event.tags } : {}),
+          ...(input.event.recurring ? { recurring: input.event.recurring } : {}),
+          ...(input.event.recurringWeekdays ? { recurringWeekdays: input.event.recurringWeekdays } : {}),
+          ...(input.event.recurringType ? { recurringType: input.event.recurringType } : {}),
+          ...(input.event.recurringInterval ? { recurringInterval: input.event.recurringInterval } : {}),
+          ...(input.event.pointOfInterestId ? { pointOfInterestId: input.event.pointOfInterestId } : {}),
+        },
+      },
+      config
+    );
+
+    return mapOptionalEventItem(response.createEventRecord);
+  };
+
+  const destroyRecordWithConfig = async (
+    input: SvaMainserverConnectionInput & { readonly recordId: string; readonly recordType: string; readonly label: string },
+    config: SvaMainserverInstanceConfig
+  ): Promise<{ readonly id: string }> => {
+    const response = await executeGraphqlWithConfig<SvaMainserverDestroyRecordMutation>(
+      {
+        ...input,
+        document: svaMainserverDestroyRecordDocument,
+        operationName: 'SvaMainserverDestroyRecord',
+        variables: { id: input.recordId, recordType: input.recordType },
+      },
+      config
+    );
+
+    if (!response.destroyRecord || (response.destroyRecord.statusCode ?? 200) >= 400) {
+      throw toSvaMainserverError({
+        code: 'invalid_response',
+        message: `SVA-Mainserver konnte ${input.label} nicht löschen.`,
+        statusCode: 502,
+      });
+    }
+
+    return { id: input.recordId };
+  };
+
+  const listPoiWithConfig = async (
+    input: SvaMainserverConnectionInput,
+    config: SvaMainserverInstanceConfig
+  ): Promise<readonly SvaMainserverPoiItem[]> => {
+    const response = await executeGraphqlWithConfig<SvaMainserverPoiListQuery>(
+      {
+        ...input,
+        document: svaMainserverPoiListDocument,
+        operationName: 'SvaMainserverPoiList',
+        variables: { limit: 100, skip: 0, order: 'updatedAt_DESC' },
+      },
+      config
+    );
+
+    return (response.pointsOfInterest ?? []).filter((item) => item.visible !== false).map(mapPoiItem);
+  };
+
+  const getPoiWithConfig = async (
+    input: SvaMainserverConnectionInput & { readonly poiId: string },
+    config: SvaMainserverInstanceConfig
+  ): Promise<SvaMainserverPoiItem> => {
+    const response = await executeGraphqlWithConfig<SvaMainserverPoiDetailQuery>(
+      {
+        ...input,
+        document: svaMainserverPoiDetailDocument,
+        operationName: 'SvaMainserverPoiDetail',
+        variables: { id: input.poiId },
+      },
+      config
+    );
+
+    return mapOptionalPoiItem(response.pointOfInterest);
+  };
+
+  const writePoiWithConfig = async (
+    input: SvaMainserverConnectionInput & {
+      readonly poi: SvaMainserverPoiInput;
+      readonly poiId?: string;
+      readonly forceCreate?: boolean;
+    },
+    config: SvaMainserverInstanceConfig
+  ): Promise<SvaMainserverPoiItem> => {
+    const response = await executeGraphqlWithConfig<SvaMainserverCreatePoiMutation>(
+      {
+        ...input,
+        document: svaMainserverCreatePoiDocument,
+        operationName: 'SvaMainserverCreatePoi',
+        variables: {
+          ...(input.poiId ? { id: input.poiId } : {}),
+          ...(input.forceCreate === undefined ? {} : { forceCreate: input.forceCreate }),
+          name: input.poi.name,
+          ...(input.poi.externalId ? { externalId: input.poi.externalId } : {}),
+          ...(input.poi.description ? { description: input.poi.description } : {}),
+          ...(input.poi.keywords ? { keywords: input.poi.keywords } : {}),
+          ...(input.poi.mobileDescription ? { mobileDescription: input.poi.mobileDescription } : {}),
+          ...(input.poi.active === undefined ? {} : { active: input.poi.active }),
+          ...(input.poi.categoryName ? { categoryName: input.poi.categoryName } : {}),
+          ...(input.poi.payload === undefined ? {} : { payload: input.poi.payload }),
+          ...(input.poi.categories ? { categories: input.poi.categories } : {}),
+          ...(input.poi.addresses ? { addresses: input.poi.addresses } : {}),
+          ...(input.poi.contact ? { contact: input.poi.contact } : {}),
+          ...(input.poi.priceInformations ? { priceInformations: input.poi.priceInformations } : {}),
+          ...(input.poi.openingHours ? { openingHours: input.poi.openingHours } : {}),
+          ...(input.poi.operatingCompany ? { operatingCompany: input.poi.operatingCompany } : {}),
+          ...(input.poi.webUrls ? { webUrls: input.poi.webUrls } : {}),
+          ...(input.poi.mediaContents ? { mediaContents: input.poi.mediaContents } : {}),
+          ...(input.poi.location ? { location: input.poi.location } : {}),
+          ...(input.poi.certificates ? { certificates: input.poi.certificates } : {}),
+          ...(input.poi.accessibilityInformation
+            ? { accessibilityInformation: input.poi.accessibilityInformation }
+            : {}),
+          ...(input.poi.tags ? { tags: input.poi.tags } : {}),
+        },
+      },
+      config
+    );
+
+    return mapOptionalPoiItem(response.createPointOfInterest);
+  };
+
   const getQueryRootTypename = async (
     input: SvaMainserverConnectionInput
   ): Promise<SvaMainserverQueryRootTypenameQuery> => {
@@ -1378,6 +1992,78 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
   ): Promise<{ readonly id: string }> => {
     const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
     return destroyNewsWithConfig(input, config);
+  };
+
+  const listEvents = async (input: SvaMainserverConnectionInput): Promise<readonly SvaMainserverEventItem[]> => {
+    const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
+    return listEventsWithConfig(input, config);
+  };
+
+  const getEvent = async (
+    input: SvaMainserverConnectionInput & { readonly eventId: string }
+  ): Promise<SvaMainserverEventItem> => {
+    const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
+    return getEventWithConfig(input, config);
+  };
+
+  const createEvent = async (
+    input: SvaMainserverConnectionInput & { readonly event: SvaMainserverEventInput }
+  ): Promise<SvaMainserverEventItem> => {
+    const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
+    return writeEventWithConfig(input, config);
+  };
+
+  const updateEvent = async (
+    input: SvaMainserverConnectionInput & { readonly eventId: string; readonly event: SvaMainserverEventInput }
+  ): Promise<SvaMainserverEventItem> => {
+    const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
+    return writeEventWithConfig({ ...input, forceCreate: false }, config);
+  };
+
+  const deleteEvent = async (
+    input: SvaMainserverConnectionInput & { readonly eventId: string }
+  ): Promise<{ readonly id: string }> => {
+    const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
+    return destroyRecordWithConfig(
+      { ...input, recordId: input.eventId, recordType: 'EventRecord', label: 'das Event' },
+      config
+    );
+  };
+
+  const listPoi = async (input: SvaMainserverConnectionInput): Promise<readonly SvaMainserverPoiItem[]> => {
+    const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
+    return listPoiWithConfig(input, config);
+  };
+
+  const getPoi = async (
+    input: SvaMainserverConnectionInput & { readonly poiId: string }
+  ): Promise<SvaMainserverPoiItem> => {
+    const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
+    return getPoiWithConfig(input, config);
+  };
+
+  const createPoi = async (
+    input: SvaMainserverConnectionInput & { readonly poi: SvaMainserverPoiInput }
+  ): Promise<SvaMainserverPoiItem> => {
+    const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
+    return writePoiWithConfig(input, config);
+  };
+
+  const updatePoi = async (
+    input: SvaMainserverConnectionInput & { readonly poiId: string; readonly poi: SvaMainserverPoiInput }
+  ): Promise<SvaMainserverPoiItem> => {
+    const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
+    return writePoiWithConfig({ ...input, forceCreate: false }, config);
+  };
+
+  const deletePoi = async (
+    input: SvaMainserverConnectionInput & { readonly poiId: string }
+  ): Promise<{ readonly id: string }> => {
+    const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
+    return destroyRecordWithConfig(
+      { ...input, recordId: input.poiId, recordType: 'PointOfInterest', label: 'den POI' },
+      config
+    );
   };
 
   const getConnectionStatus = async (
@@ -1433,14 +2119,24 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
   };
 
   return {
+    createEvent,
     createNews,
+    createPoi,
+    deleteEvent,
     deleteNews,
+    deletePoi,
     getConnectionStatus,
+    getEvent,
     getMutationRootTypename,
     getNews,
+    getPoi,
     getQueryRootTypename,
+    listEvents,
     listNews,
+    listPoi,
+    updateEvent,
     updateNews,
+    updatePoi,
   };
 };
 
@@ -1479,3 +2175,35 @@ export const updateSvaMainserverNews = (
 
 export const deleteSvaMainserverNews = (input: SvaMainserverConnectionInput & { readonly newsId: string }) =>
   getDefaultService().deleteNews(input);
+
+export const listSvaMainserverEvents = (input: SvaMainserverConnectionInput) => getDefaultService().listEvents(input);
+
+export const getSvaMainserverEvent = (input: SvaMainserverConnectionInput & { readonly eventId: string }) =>
+  getDefaultService().getEvent(input);
+
+export const createSvaMainserverEvent = (
+  input: SvaMainserverConnectionInput & { readonly event: SvaMainserverEventInput }
+) => getDefaultService().createEvent(input);
+
+export const updateSvaMainserverEvent = (
+  input: SvaMainserverConnectionInput & { readonly eventId: string; readonly event: SvaMainserverEventInput }
+) => getDefaultService().updateEvent(input);
+
+export const deleteSvaMainserverEvent = (input: SvaMainserverConnectionInput & { readonly eventId: string }) =>
+  getDefaultService().deleteEvent(input);
+
+export const listSvaMainserverPoi = (input: SvaMainserverConnectionInput) => getDefaultService().listPoi(input);
+
+export const getSvaMainserverPoi = (input: SvaMainserverConnectionInput & { readonly poiId: string }) =>
+  getDefaultService().getPoi(input);
+
+export const createSvaMainserverPoi = (
+  input: SvaMainserverConnectionInput & { readonly poi: SvaMainserverPoiInput }
+) => getDefaultService().createPoi(input);
+
+export const updateSvaMainserverPoi = (
+  input: SvaMainserverConnectionInput & { readonly poiId: string; readonly poi: SvaMainserverPoiInput }
+) => getDefaultService().updatePoi(input);
+
+export const deleteSvaMainserverPoi = (input: SvaMainserverConnectionInput & { readonly poiId: string }) =>
+  getDefaultService().deletePoi(input);

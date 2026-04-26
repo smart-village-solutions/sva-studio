@@ -203,6 +203,7 @@ test.describe('news plugin', () => {
 
   test('supports news CRUD including delete', async ({ page }) => {
     const newsItems: NewsRecord[] = [];
+    let createdBody: Record<string, unknown> | undefined;
 
     await page.route('**/auth/me', async (route) => {
       await route.fulfill({
@@ -232,6 +233,7 @@ test.describe('news plugin', () => {
       }
 
       const body = request.postDataJSON() as Record<string, unknown>;
+      createdBody = body;
       newsItems.push({
         id: 'news-1',
         title: String(body.title),
@@ -268,14 +270,54 @@ test.describe('news plugin', () => {
     await expectPluginPageHeading(page, /News-Eintrag anlegen|news\.editor\.createTitle/);
 
     await page.getByLabel(/Titel|news\.fields\.title/).fill('Erste News');
+    await page.locator('#news-author').fill('Redaktion Musterhausen');
+    await page.locator('#news-keywords').fill('stadt, kultur');
+    await page.locator('#news-external-id').fill('cms-42');
+    await page.locator('#news-type').fill('press_release');
     await page.getByLabel(/Einleitung|news\.fields\.blockIntro/).fill('Kurztext');
     await page.getByLabel(/Inhalt|news\.fields\.blockBody/).fill('<p>Inhalt</p>');
     await page.getByRole('textbox', { name: 'Kategorie', exact: true }).fill('Allgemein');
+    await page.locator('#news-categories').fill('Allgemein\nKultur');
+    await page.locator('#news-source-url').fill('https://example.com/news/source');
+    await page.locator('#news-source-description').fill('Quellseite');
+    await page.locator('#news-address-street').fill('Marktplatz 1');
+    await page.locator('#news-address-zip').fill('12345');
+    await page.locator('#news-address-city').fill('Musterhausen');
+    await page.locator('#news-poi').fill('poi-1');
     await page.getByLabel(/Veröffentlichungsdatum|news\.fields\.publishedAt/).fill('2026-04-14T09:30');
+    await page.locator('#news-publication-date').fill('2026-04-14T08:30');
+    await page.getByRole('button', { name: /Medium hinzufügen|news\.actions\.addMedia/ }).click();
+    await page.locator('#news-media-url-0-0').fill('https://example.com/news/image.jpg');
+    await page.locator('#news-media-caption-0-0').fill('Titelbild');
     await page.getByRole('button', { name: /News anlegen|news\.actions\.create/ }).click();
 
     await expect(page).toHaveURL(/\/plugins\/news$/);
     await expect(page.getByText('Erste News')).toBeVisible();
+    expect(createdBody).toMatchObject({
+      title: 'Erste News',
+      author: 'Redaktion Musterhausen',
+      keywords: 'stadt, kultur',
+      externalId: 'cms-42',
+      newsType: 'press_release',
+      categoryName: 'Allgemein',
+      sourceUrl: { url: 'https://example.com/news/source', description: 'Quellseite' },
+      address: { street: 'Marktplatz 1', zip: '12345', city: 'Musterhausen' },
+      pointOfInterestId: 'poi-1',
+    });
+    expect(createdBody?.categories).toEqual([{ name: 'Allgemein' }, { name: 'Kultur' }]);
+    expect(createdBody?.contentBlocks).toEqual([
+      {
+        intro: 'Kurztext',
+        body: '<p>Inhalt</p>',
+        mediaContents: [
+          {
+            captionText: 'Titelbild',
+            contentType: 'image',
+            sourceUrl: { url: 'https://example.com/news/image.jpg' },
+          },
+        ],
+      },
+    ]);
 
     await page.getByRole('link', { name: /Bearbeiten|news\.actions\.edit/ }).click();
     await expectPluginPageHeading(page, /News-Eintrag bearbeiten|news\.editor\.editTitle/);

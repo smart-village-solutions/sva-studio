@@ -382,6 +382,7 @@ Referenzen:
 
 - Die Mainserver-Integration ist eine reine Server-Side-Integration; es gibt keinen generischen Browser-Proxy auf den externen GraphQL-Endpunkt.
 - Fachadapter wie News stellen getypte, eng zugeschnittene Fassaden bereit; Browser-Plugins sprechen nur hosteigene HTTP-Endpunkte und importieren keine Mainserver-Servermodule.
+- Events und POI folgen demselben Host-Fassadenmuster. Der Event-Editor bezieht POI-Auswahldaten über `/api/v1/mainserver/poi`, nicht über einen direkten Import von `@sva/plugin-poi`.
 - Per-User-Credentials liegen ausschließlich in Keycloak-User-Attributen (`mainserverUserApplicationId`, `mainserverUserApplicationSecret`) und werden serverseitig on demand gelesen; die bisherigen Namen `sva_mainserver_api_key` und `sva_mainserver_api_secret` bleiben nur als Legacy-Fallback lesbar.
 - Die Studio-Datenbank hält nur instanzbezogene Endpunktkonfiguration (`graphql_base_url`, `oauth_token_url`, Prüfstatus) in `iam.instance_integrations`.
 - Credential-Caching bleibt kurzlebig im Prozessspeicher; Access-Tokens werden ebenfalls nur in-memory und vor Ablauf mit Skew erneuert.

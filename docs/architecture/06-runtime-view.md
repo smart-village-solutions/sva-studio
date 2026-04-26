@@ -50,16 +50,16 @@ Fehlerpfad:
 - Doppelte Ressourcen-IDs oder kollidierende Basispfade brechen die Registrierungsphase fail-fast ab.
 - Ohne gültige Ressourcendefinition wird kein teilweise inkonsistenter Admin-Route-Baum veröffentlicht.
 
-### Szenario 4a: Plugin-Registrierung und News-CRUD
+### Szenario 4a: Plugin-Registrierung und Mainserver-Content-CRUD
 
 1. Die App initialisiert `studioPlugins` und merged Plugin-Übersetzungen in die i18n-Ressourcen.
-2. Der Router materialisiert die Plugin-Routen `/plugins/news`, `/plugins/news/new` und `/plugins/news/$contentId`.
+2. Der Router materialisiert die Plugin-Routen für News, Events und POI, zum Beispiel `/plugins/news`, `/plugins/events` und `/plugins/poi`.
 3. Beim Aufruf der Route wendet der Host den passenden Content-Guard an.
-4. Die News-Liste ruft `/api/v1/mainserver/news` auf; lokale IAM-Contents mit `news.article` oder `news` werden nicht mehr produktiv gelesen.
-5. Der Editor sendet Create-, Update- und Delete-Requests an `/api/v1/mainserver/news` beziehungsweise `/api/v1/mainserver/news/$contentId`.
+4. Die Fachlisten rufen ihre Host-Fassaden auf: `/api/v1/mainserver/news`, `/api/v1/mainserver/events` oder `/api/v1/mainserver/poi`; lokale IAM-Contents werden nicht mehr produktiv gelesen.
+5. Die Editoren senden Create-, Update- und Delete-Requests an die jeweilige Fassade und Detailroute.
 6. Die App-Fassade prüft Session, `instanceId`, lokale Content-Primitive und Mainserver-Credentials serverseitig.
-7. `@sva/sva-mainserver/server` führt die typisierten GraphQL-Operationen `newsItems`, `newsItem`, `createNewsItem` und `destroyRecord` mit Benutzer-Credentials aus.
-8. News nutzt das vollständige Mainserver-Modell mit dedizierten Feldern; `contentBlocks` sind der führende Inhalt und Legacy-`payload` wird nicht geschrieben.
+7. `@sva/sva-mainserver/server` führt typisierte GraphQL-Operationen für News, Events und POI mit Benutzer-Credentials aus.
+8. News nutzt das vollständige Mainserver-Modell mit dedizierten Feldern; Events und POI nutzen eigene Mapping-Adapter für Termine, Adressen, Kontakte, URLs, Medien, Preise, Barrierefreiheit, Tags und POI-Bezug.
 9. Es gibt keinen Dual-Write und keine Legacy-Migration in lokale IAM-Contents.
 10. Nach erfolgreichem Speichern oder Löschen zeigt das Plugin Statusfeedback und navigiert zurück zur News-Liste.
 

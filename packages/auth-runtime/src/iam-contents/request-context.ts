@@ -14,6 +14,7 @@ import { resolveEffectivePermissions } from '../iam-authorization/permission-sto
 import { logger as accountLogger, requireRoles, resolveActorInfo } from '../iam-account-management/shared.js';
 import type { AuthenticatedRequestContext } from '../middleware.js';
 import { withAuthenticatedUser } from '../middleware.js';
+import { getSession } from '../redis-session.js';
 
 const CONTENT_ROLES = new Set(['system_admin', 'app_manager', 'editor']);
 
@@ -25,6 +26,7 @@ export type ResolvedContentActor = {
     actorDisplayName: string;
     requestId?: string;
     traceId?: string;
+    activeOrganizationId?: string;
   };
 };
 
@@ -42,22 +44,25 @@ const buildContentAuthorizeRequest = (
   actor: ResolvedContentActor['actor'],
   action: IamContentPrimitiveAction,
   resource: ContentAuthorizationResource
-): AuthorizeRequest => ({
-  instanceId: actor.instanceId,
-  action,
-  resource: {
-    type: 'content',
-    ...(resource.contentId ? { id: resource.contentId } : {}),
-    ...(resource.organizationId ? { organizationId: resource.organizationId } : {}),
-    ...(resource.contentType ? { attributes: { contentType: resource.contentType } } : {}),
-  },
-  context: {
-    ...(resource.organizationId ? { organizationId: resource.organizationId } : {}),
-    ...(actor.requestId ? { requestId: actor.requestId } : {}),
-    ...(actor.traceId ? { traceId: actor.traceId } : {}),
-    ...(resource.contentType ? { attributes: { contentType: resource.contentType } } : {}),
-  },
-});
+): AuthorizeRequest => {
+  const organizationId = resource.organizationId ?? actor.activeOrganizationId;
+  return {
+    instanceId: actor.instanceId,
+    action,
+    resource: {
+      type: 'content',
+      ...(resource.contentId ? { id: resource.contentId } : {}),
+      ...(organizationId ? { organizationId } : {}),
+      ...(resource.contentType ? { attributes: { contentType: resource.contentType } } : {}),
+    },
+    context: {
+      ...(organizationId ? { organizationId } : {}),
+      ...(actor.requestId ? { requestId: actor.requestId } : {}),
+      ...(actor.traceId ? { traceId: actor.traceId } : {}),
+      ...(resource.contentType ? { attributes: { contentType: resource.contentType } } : {}),
+    },
+  };
+};
 
 const logContentAuthorizationDenied = (
   actor: ResolvedContentActor['actor'],
@@ -85,11 +90,12 @@ export const authorizeContentAction = async (
   action: IamContentPrimitiveAction,
   resource: ContentAuthorizationResource = {}
 ): Promise<Response | null> => {
+  const organizationId = resource.organizationId ?? actor.activeOrganizationId;
   try {
     const resolved = await resolveEffectivePermissions({
       instanceId: actor.instanceId,
       keycloakSubject: actor.keycloakSubject,
-      organizationId: resource.organizationId,
+      organizationId,
     });
 
     if (!resolved.ok) {
@@ -144,6 +150,7 @@ export const resolveContentAccess = async (
     const resolved = await resolveEffectivePermissions({
       instanceId: actor.instanceId,
       keycloakSubject: actor.keycloakSubject,
+      organizationId: actor.activeOrganizationId,
     });
 
     if (!resolved.ok) {
@@ -242,6 +249,8 @@ export const resolveContentActor = async (
     };
   }
 
+  const session = await getSession(ctx.sessionId);
+
   return {
     actor: {
       instanceId: actorResolution.actor.instanceId,
@@ -250,6 +259,7 @@ export const resolveContentActor = async (
       actorDisplayName: ctx.user.id,
       requestId: actorResolution.actor.requestId,
       traceId: actorResolution.actor.traceId,
+      activeOrganizationId: session?.activeOrganizationId,
     },
   };
 };

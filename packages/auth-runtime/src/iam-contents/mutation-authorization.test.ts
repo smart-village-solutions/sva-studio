@@ -43,6 +43,9 @@ describe('content mutation authorization', () => {
   });
 
   it('resolves update capabilities to primitive actions', () => {
+    expect(resolveUpdateContentActions(content(), { title: 'Updated' })).toEqual([
+      { domainCapability: 'content.update_metadata', primitiveAction: 'content.updateMetadata' },
+    ]);
     expect(resolveUpdateContentActions(content(), { payload: { body: 'Text' } })).toEqual([
       { domainCapability: 'content.update_payload', primitiveAction: 'content.updatePayload' },
     ]);
@@ -57,6 +60,22 @@ describe('content mutation authorization', () => {
     ]);
     expect(resolveUpdateContentActions(content('draft'), { status: 'in_review' })).toEqual([
       { domainCapability: 'content.change_status', primitiveAction: 'content.changeStatus' },
+    ]);
+    expect(resolveUpdateContentActions(content(), {})).toEqual([]);
+  });
+
+  it('deduplicates combined capability requirements in deterministic order', () => {
+    expect(
+      resolveUpdateContentActions(content(), {
+        title: 'Updated',
+        validationState: 'pending',
+        payload: { body: 'Text' },
+        status: 'published',
+      })
+    ).toEqual([
+      { domainCapability: 'content.update_metadata', primitiveAction: 'content.updateMetadata' },
+      { domainCapability: 'content.update_payload', primitiveAction: 'content.updatePayload' },
+      { domainCapability: 'content.publish', primitiveAction: 'content.publish' },
     ]);
   });
 

@@ -82,6 +82,7 @@ export type DeleteContentInput = {
   requestId?: string;
   traceId?: string;
   contentId: string;
+  currentContent?: ContentRow;
 };
 
 export const CONTENT_SELECT = `
@@ -96,9 +97,9 @@ SELECT
   content.publish_from::text,
   content.publish_until::text,
   content.created_at::text,
-  content.author_account_id::text AS created_by,
+  content.creator_account_id::text AS created_by,
   content.updated_at::text,
-  content.author_account_id::text AS updated_by,
+  content.updater_account_id::text AS updated_by,
   content.author_display_name,
   content.payload_json,
   content.status,

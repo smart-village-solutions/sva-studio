@@ -1,6 +1,7 @@
 import type { ContentJsonValue } from '@sva/core';
 import { createSdkLogger } from '@sva/server-runtime';
 
+import { jsonResponse } from '../db.js';
 import {
   createApiError,
   parseRequestBody,
@@ -16,12 +17,6 @@ import { validateContentTypePayload } from './content-type-registry.js';
 import { createContentSchema } from './schemas.js';
 
 const logger = createSdkLogger({ component: 'iam-contents', level: 'info' });
-
-export const jsonResponse = (status: number, body: unknown) =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: { 'Content-Type': 'application/json' },
-  });
 
 export const completeCreateIdempotency = async (
   actor: ResolvedContentActor['actor'],

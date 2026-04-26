@@ -20,10 +20,38 @@ import {
 } from './mutation-helpers.js';
 import type { ResolvedContentActor } from './request-context.js';
 import { authorizeContentAction, resolveContentAccess } from './request-context.js';
-import { createContent, deleteContent, loadContentById, loadContentDetail, updateContent } from './repository.js';
+import { createContent, deleteContent, loadContentById, loadContentDetail, loadContentRowById, updateContent } from './repository.js';
+import { mapContentListItem } from './repository-mappers.js';
+import { isContentStateValidationError } from './repository-state-validation.js';
 import { updateContentSchema } from './schemas.js';
 
 const logger = createSdkLogger({ component: 'iam-contents', level: 'info' });
+
+const createContentStateValidationResponse = (
+  error: unknown,
+  requestId?: string
+): Response | null => {
+  if (!isContentStateValidationError(error)) {
+    return null;
+  }
+  if (error.code === 'content_published_at_required') {
+    return createApiError(
+      400,
+      'invalid_request',
+      'Veröffentlichungsdatum ist für veröffentlichte Inhalte erforderlich.',
+      requestId,
+      { reason_code: error.code }
+    );
+  }
+
+  return createApiError(
+    400,
+    'invalid_request',
+    'Das Veröffentlichungsfenster ist ungültig.',
+    requestId,
+    { reason_code: error.code }
+  );
+};
 
 export const createContentResponse = async (
   request: Request,
@@ -33,11 +61,15 @@ export const createContentResponse = async (
   if (prepared instanceof Response) {
     return prepared;
   }
+  const parsedData = {
+    ...prepared.parsedData,
+    organizationId: prepared.parsedData.organizationId ?? actor.activeOrganizationId,
+  };
 
   const authorizationError = await authorizeContentAction(actor, 'content.create', {
-    contentType: prepared.parsedData.contentType,
+    contentType: parsedData.contentType,
     domainCapability: 'content.create',
-    organizationId: prepared.parsedData.organizationId,
+    organizationId: parsedData.organizationId,
   });
   if (authorizationError) {
     return createFailureResponse(
@@ -61,7 +93,7 @@ export const createContentResponse = async (
       actorDisplayName: actor.actorDisplayName,
       requestId: actor.requestId,
       traceId: actor.traceId,
-      ...prepared.parsedData,
+      ...parsedData,
       payload: prepared.payload,
     });
     const item = await loadContentDetail(actor.instanceId, createdId);
@@ -74,13 +106,16 @@ export const createContentResponse = async (
     await completeCreateIdempotency(actor, prepared.idempotencyKey, 201, responseBody);
     return jsonResponse(201, responseBody);
   } catch (error) {
-    if (error instanceof Error && error.message === 'content_published_at_required') {
+    const validationResponse = createContentStateValidationResponse(error, actor.requestId);
+    if (validationResponse) {
       return createFailureResponse(
         actor,
         prepared.idempotencyKey,
-        400,
+        validationResponse.status,
         'invalid_request',
-        'Veröffentlichungsdatum ist für veröffentlichte Inhalte erforderlich.'
+        isContentStateValidationError(error) && error.code === 'content_publication_window_invalid'
+          ? 'Das Veröffentlichungsfenster ist ungültig.'
+          : 'Veröffentlichungsdatum ist für veröffentlichte Inhalte erforderlich.'
       );
     }
     logCreateFailure(actor, error);
@@ -154,13 +189,9 @@ export const updateContentResponse = async (
       ? jsonResponse(200, asApiItem({ ...item, access }, actor.requestId))
       : createApiError(404, 'not_found', 'Inhalt wurde nicht gefunden.', actor.requestId);
   } catch (error) {
-    if (error instanceof Error && error.message === 'content_published_at_required') {
-      return createApiError(
-        400,
-        'invalid_request',
-        'Veröffentlichungsdatum ist für veröffentlichte Inhalte erforderlich.',
-        actor.requestId
-      );
+    const validationResponse = createContentStateValidationResponse(error, actor.requestId);
+    if (validationResponse) {
+      return validationResponse;
     }
     logger.error('Content update failed', {
       operation: 'content_update',
@@ -189,10 +220,11 @@ export const deleteContentResponse = async (
   }
 
   try {
-    const currentContent = await loadContentById(actor.instanceId, contentId);
-    if (!currentContent) {
+    const currentRow = await loadContentRowById(actor.instanceId, contentId);
+    if (!currentRow) {
       return createApiError(404, 'not_found', 'Inhalt wurde nicht gefunden.', actor.requestId);
     }
+    const currentContent = mapContentListItem(currentRow);
 
     const authorizationError = await authorizeContentAction(actor, 'content.delete', {
       contentId,
@@ -211,6 +243,7 @@ export const deleteContentResponse = async (
       requestId: actor.requestId,
       traceId: actor.traceId,
       contentId,
+      currentContent: currentRow,
     });
 
     return deletedId

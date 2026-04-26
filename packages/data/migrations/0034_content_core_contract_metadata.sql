@@ -6,9 +6,18 @@ ALTER TABLE iam.contents
   ADD COLUMN IF NOT EXISTS validation_state TEXT NOT NULL DEFAULT 'valid',
   ADD COLUMN IF NOT EXISTS publish_from TIMESTAMPTZ NULL,
   ADD COLUMN IF NOT EXISTS publish_until TIMESTAMPTZ NULL,
+  ADD COLUMN IF NOT EXISTS creator_account_id UUID NULL REFERENCES iam.accounts(id),
+  ADD COLUMN IF NOT EXISTS updater_account_id UUID NULL REFERENCES iam.accounts(id),
   ADD COLUMN IF NOT EXISTS history_ref TEXT NULL,
   ADD COLUMN IF NOT EXISTS current_revision_ref TEXT NULL,
   ADD COLUMN IF NOT EXISTS last_audit_event_ref TEXT NULL;
+
+UPDATE iam.contents content
+SET
+  creator_account_id = COALESCE(content.creator_account_id, content.author_account_id),
+  updater_account_id = COALESCE(content.updater_account_id, content.author_account_id)
+WHERE content.creator_account_id IS NULL
+   OR content.updater_account_id IS NULL;
 
 UPDATE iam.contents content
 SET
@@ -48,6 +57,8 @@ BEGIN
 END $$;
 
 ALTER TABLE iam.contents
+  ALTER COLUMN creator_account_id SET NOT NULL,
+  ALTER COLUMN updater_account_id SET NOT NULL,
   ALTER COLUMN history_ref SET NOT NULL;
 
 CREATE INDEX IF NOT EXISTS iam_contents_instance_org_updated_idx
@@ -75,6 +86,8 @@ ALTER TABLE iam.contents
   DROP COLUMN IF EXISTS last_audit_event_ref,
   DROP COLUMN IF EXISTS current_revision_ref,
   DROP COLUMN IF EXISTS history_ref,
+  DROP COLUMN IF EXISTS updater_account_id,
+  DROP COLUMN IF EXISTS creator_account_id,
   DROP COLUMN IF EXISTS publish_until,
   DROP COLUMN IF EXISTS publish_from,
   DROP COLUMN IF EXISTS validation_state,

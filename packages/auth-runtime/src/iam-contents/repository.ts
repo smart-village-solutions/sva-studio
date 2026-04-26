@@ -62,17 +62,14 @@ export const loadContentById = async (
   instanceId: string,
   contentId: string
 ): Promise<IamContentListItem | undefined> =>
+  loadContentRowById(instanceId, contentId).then((row) => (row ? mapContentListItem(row) : undefined));
+
+export const loadContentRowById = async (
+  instanceId: string,
+  contentId: string
+): Promise<ContentRow | undefined> =>
   withInstanceScopedDb(instanceId, async (client) => {
-    const result = await client.query<ContentRow>(
-      `${CONTENT_SELECT}
-WHERE content.instance_id = $1
-  AND content.id = $2::uuid
-LIMIT 1;
-      `,
-      [instanceId, contentId]
-    );
-    const row = result.rows[0];
-    return row ? mapContentListItem(row) : undefined;
+    return loadCurrentContentRow(client, instanceId, contentId);
   });
 
 export const loadContentHistory = async (
@@ -193,7 +190,7 @@ export const updateContent = async (input: UpdateContentInput): Promise<string |
 
 export const deleteContent = async (input: DeleteContentInput): Promise<string | undefined> =>
   withInstanceScopedDb(input.instanceId, async (client) => {
-    const current = await loadCurrentContentRow(client, input.instanceId, input.contentId);
+    const current = input.currentContent ?? (await loadCurrentContentRow(client, input.instanceId, input.contentId));
     if (!current) {
       return undefined;
     }

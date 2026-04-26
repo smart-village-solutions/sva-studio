@@ -1,5 +1,6 @@
 import { resolveIamContentDomainCapabilityForPrimitiveAction, type IamContentPrimitiveAction } from '@sva/core';
 import { emitActivityLog, type withInstanceScopedDb } from '../iam-account-management/shared.js';
+import { ContentStateValidationError } from './repository-state-validation.js';
 import type { ContentRow, CreateContentInput, DeleteContentInput, UpdateContentInput } from './repository-types.js';
 
 type InstanceScopedClient = Parameters<Parameters<typeof withInstanceScopedDb>[1]>[0];
@@ -16,7 +17,7 @@ export const validatePublicationWindow = (input: { publishFrom?: string; publish
     input.publishUntil &&
     new Date(input.publishFrom).getTime() > new Date(input.publishUntil).getTime()
   ) {
-    throw new Error('content_publication_window_invalid');
+    throw new ContentStateValidationError('content_publication_window_invalid');
   }
 };
 
@@ -29,12 +30,13 @@ export const insertContentRow = async (
 INSERT INTO iam.contents (
   id, instance_id, content_type, organization_id, owner_subject_id, title,
   published_at, publish_from, publish_until, author_account_id, author_display_name,
+  creator_account_id, updater_account_id,
   payload_json, status, validation_state, history_ref
 )
 VALUES (
   gen_random_uuid(), $1, $2, $3::uuid, $4, $5,
   COALESCE($6::timestamptz, CASE WHEN $10 = 'published' THEN NOW() ELSE NULL END),
-  $7::timestamptz, $8::timestamptz, $9::uuid, $11, $12::jsonb, $10, $13,
+  $7::timestamptz, $8::timestamptz, $9::uuid, $11, $9::uuid, $9::uuid, $12::jsonb, $10, $13,
   gen_random_uuid()::text
 )
 RETURNING id;
@@ -92,6 +94,7 @@ SET
   publish_until = $11::timestamptz,
   updated_at = NOW(),
   author_account_id = $12::uuid,
+  updater_account_id = $12::uuid,
   author_display_name = $13
 WHERE instance_id = $1
   AND id = $2::uuid;

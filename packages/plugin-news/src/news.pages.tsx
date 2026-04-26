@@ -397,7 +397,7 @@ const NewsForm = ({
 
         <div className="flex flex-wrap gap-3">
           <Button type="submit">{submitLabel}</Button>
-          <Button asChild type="button" variant="outline">
+          <Button asChild variant="outline">
             <Link to="/plugins/news">{pt('actions.back')}</Link>
           </Button>
           {mode === 'edit' ? (

@@ -157,8 +157,10 @@ export function StudioStateBlock({
   role = 'status',
   className,
 }: StudioStateBlockProps) {
+  const ariaLive = role === 'alert' ? 'assertive' : role === 'status' ? 'polite' : undefined;
+
   return (
-    <div role={role} aria-live="polite" className={cn('rounded-lg border border-border bg-card p-6', className)}>
+    <div role={role} aria-live={ariaLive} className={cn('rounded-lg border border-border bg-card p-6', className)}>
       {title ? <h2 className="text-lg font-medium text-foreground">{title}</h2> : null}
       {description ? <p className="mt-2 text-sm text-muted-foreground">{description}</p> : null}
       {children ? <div className="mt-4">{children}</div> : null}

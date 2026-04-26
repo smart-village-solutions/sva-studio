@@ -137,6 +137,12 @@ describe('studio-ui-react primitives', () => {
     expect(screen.getByText('Kaputt')).toBeTruthy();
   });
 
+  it('uses assertive live semantics for alert state blocks', () => {
+    render(<StudioStateBlock role="alert" title="Fehler" />);
+
+    expect(screen.getByRole('alert').getAttribute('aria-live')).toBe('assertive');
+  });
+
   it('renders resource headers with status, metadata and actions', () => {
     render(
       <StudioResourceHeader

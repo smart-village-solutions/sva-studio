@@ -23,13 +23,13 @@ RUN pnpm install --frozen-lockfile
 # deployable artifact under production runtime semantics.
 ENV NODE_ENV=production
 
-# Build workspace libraries in dependency order (Nx graph: core -> monitoring-client,sdk -> auth,routing -> app)
+# Build workspace libraries in dependency order for the deployed runtime packages.
 # --skip-nx-cache ensures builds are never skipped due to a stale cache
 RUN pnpm nx run core:build --skip-nx-cache
 RUN pnpm nx run monitoring-client:build --skip-nx-cache
 RUN pnpm nx run sdk:build --skip-nx-cache
 RUN pnpm nx run data:build --skip-nx-cache
-RUN pnpm nx run auth:build --skip-nx-cache
+RUN pnpm nx run auth-runtime:build --skip-nx-cache
 RUN pnpm nx run sva-mainserver:build --skip-nx-cache
 RUN pnpm nx run routing:build --skip-nx-cache
 # Fix ESM relative imports/exports: add .js extensions to extensionless local paths.

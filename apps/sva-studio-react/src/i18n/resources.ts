@@ -530,6 +530,8 @@ export const i18nResources = {
           syncErrorCode: 'Sync-Fehlercode: {{code}}',
           requestId: 'Request-ID: {{requestId}}',
           classifications: {
+            authResolution: 'Auth-Auflösung',
+            oidcDiscoveryOrExchange: 'OIDC-Discovery oder Token-Austausch',
             tenantHostValidation: 'Tenant-Host-Validierung',
             sessionStoreOrSessionHydration: 'Session-Store oder Session-Hydration',
             actorResolutionOrMembership: 'Akteur-Auflösung oder Mitgliedschaft',
@@ -538,6 +540,8 @@ export const i18nResources = {
             databaseMappingOrMembershipInconsistency: 'Datenbank-Mapping oder Mitgliedschaft inkonsistent',
             registryOrProvisioningDrift: 'Registry- oder Provisioning-Drift',
             keycloakReconcile: 'Keycloak-Reconcile',
+            frontendStateOrPermissionStaleness: 'Frontend-State oder Berechtigungsstand veraltet',
+            legacyWorkaroundOrRegression: 'Legacy-Workaround oder Regression',
             unknown: 'Unbekannte Laufzeitdiagnose',
           },
           actions: {
@@ -2457,6 +2461,8 @@ export const i18nResources = {
           syncErrorCode: 'Sync error code: {{code}}',
           requestId: 'Request ID: {{requestId}}',
           classifications: {
+            authResolution: 'Auth resolution',
+            oidcDiscoveryOrExchange: 'OIDC discovery or token exchange',
             tenantHostValidation: 'Tenant host validation',
             sessionStoreOrSessionHydration: 'Session store or session hydration',
             actorResolutionOrMembership: 'Actor resolution or membership',
@@ -2465,6 +2471,8 @@ export const i18nResources = {
             databaseMappingOrMembershipInconsistency: 'Database mapping or membership inconsistency',
             registryOrProvisioningDrift: 'Registry or provisioning drift',
             keycloakReconcile: 'Keycloak reconcile',
+            frontendStateOrPermissionStaleness: 'Frontend state or permission staleness',
+            legacyWorkaroundOrRegression: 'Legacy workaround or regression',
             unknown: 'Unknown runtime diagnosis',
           },
           actions: {

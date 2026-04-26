@@ -1,6 +1,11 @@
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  buildStudioImageVerifyEvidenceCheck,
+  readStudioImageVerifyEvidence,
   resolveTenantRuntimeTargets,
   runExternalSmokeWithWarmup,
   shouldRetryExternalSmoke,
@@ -196,5 +201,63 @@ describe('resolveTenantRuntimeTargets', () => {
         instanceId: 'hb-meinquartier',
       },
     ]);
+  });
+});
+
+describe('studio image verify evidence', () => {
+  const evidenceDir = resolve(process.cwd(), 'artifacts/runtime/image-verify');
+  const evidencePath = resolve(evidenceDir, 'studio-image-verify-unit-test.json');
+
+  it('finds matching image verify reports by digest and reports missing evidence as a studio warning', () => {
+    mkdirSync(evidenceDir, { recursive: true });
+    writeFileSync(
+      evidencePath,
+      JSON.stringify({
+        imageRef: 'ghcr.io/smart-village-app/sva-studio@sha256:test-digest',
+        reportId: 'studio-image-verify-unit-test',
+        status: 'ok',
+      })
+    );
+
+    try {
+      expect(readStudioImageVerifyEvidence('sha256:test-digest')).toMatchObject({
+        imageRef: 'ghcr.io/smart-village-app/sva-studio@sha256:test-digest',
+        reportId: 'studio-image-verify-unit-test',
+        status: 'ok',
+      });
+
+      expect(
+        buildStudioImageVerifyEvidenceCheck(
+          'studio',
+          {},
+          {
+            actor: 'tester',
+            imageDigest: 'sha256:test-digest',
+            imageRef: 'ghcr.io/smart-village-app/sva-studio@sha256:test-digest',
+            imageRepository: 'sva-studio',
+            releaseMode: 'app-only',
+            reportSlug: 'studio-deploy-local',
+            rollbackHint: 'Redeploy previous digest',
+            workflow: 'unit-test',
+          }
+        )
+      ).toMatchObject({
+        code: 'image_verify_evidence_present',
+        name: 'studio-image-verify-evidence',
+        status: 'ok',
+      });
+    } finally {
+      rmSync(evidencePath, { force: true });
+    }
+
+    expect(
+      buildStudioImageVerifyEvidenceCheck('studio', {
+        SVA_IMAGE_DIGEST: 'sha256:missing-digest',
+      })
+    ).toMatchObject({
+      code: 'image_verify_evidence_missing',
+      name: 'studio-image-verify-evidence',
+      status: 'warn',
+    });
   });
 });

@@ -6,9 +6,26 @@ import { useOrganizationContext } from './use-organization-context';
 const getMyOrganizationContextMock = vi.fn();
 const updateMyOrganizationContextMock = vi.fn();
 const asIamErrorMock = vi.fn();
-const authMockValue = {
+
+type AuthMockValue = {
+  user: {
+    id: string;
+    instanceId?: string;
+    name: string;
+    roles: string[];
+  };
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  error: Error | null;
+  refetch: ReturnType<typeof vi.fn>;
+  logout: ReturnType<typeof vi.fn>;
+  invalidatePermissions: ReturnType<typeof vi.fn>;
+};
+
+const authMockValue: AuthMockValue = {
   user: {
     id: 'admin-1',
+    instanceId: 'instance-1',
     name: 'Admin',
     roles: ['system_admin'],
   },
@@ -44,6 +61,7 @@ describe('useOrganizationContext', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     authMockValue.isAuthenticated = true;
+    authMockValue.user.instanceId = 'instance-1';
   });
 
   it('loads the active organization context for authenticated users', async () => {
@@ -82,6 +100,26 @@ describe('useOrganizationContext', () => {
     });
 
     expect(getMyOrganizationContextMock).not.toHaveBeenCalled();
+  });
+
+  it('does not request organization context for authenticated root users without instance context', async () => {
+    authMockValue.user.instanceId = undefined;
+
+    const { result } = renderHook(() => useOrganizationContext());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.context).toBeNull();
+      expect(result.current.error).toBeNull();
+    });
+
+    await act(async () => {
+      const switched = await result.current.switchOrganization('org-2');
+      expect(switched).toBe(false);
+    });
+
+    expect(getMyOrganizationContextMock).not.toHaveBeenCalled();
+    expect(updateMyOrganizationContextMock).not.toHaveBeenCalled();
   });
 
   it('switches the organization and invalidates permissions on success', async () => {

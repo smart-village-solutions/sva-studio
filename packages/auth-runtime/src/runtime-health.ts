@@ -1,3 +1,4 @@
+import type { RuntimeDependencyHealth, RuntimeHealthResponse } from '@sva/core';
 import { getWorkspaceContext, withRequestContext } from '@sva/server-runtime';
 
 import { jsonResponse, resolvePool } from './db.js';
@@ -6,15 +7,63 @@ import {
   resolveIdentityProvider,
   trackKeycloakCall,
 } from './iam-account-management/shared.js';
+import { getPermissionCacheHealth } from './iam-authorization/shared.js';
 import { getLastRedisError, isRedisAvailable } from './redis.js';
 
 const withHealthRequestContext = <T>(request: Request, work: () => Promise<T>): Promise<T> =>
   withRequestContext({ request, fallbackWorkspaceId: 'default' }, work);
 
-const checkDatabase = async (): Promise<{ ready: boolean; error?: string }> => {
+type RuntimeDependencyCheck = {
+  readonly ready: boolean;
+  readonly error?: string;
+  readonly reasonCode?: string;
+};
+
+const toDependencyStatus = (check: RuntimeDependencyCheck): RuntimeDependencyHealth['status'] =>
+  check.ready ? 'ready' : 'not_ready';
+
+const toAuthorizationCacheServiceStatus = (
+  status: ReturnType<typeof getPermissionCacheHealth>['status']
+): RuntimeDependencyHealth['status'] => {
+  if (status === 'failed') {
+    return 'not_ready';
+  }
+  return status;
+};
+
+const createRuntimeHealthServices = (
+  database: RuntimeDependencyCheck,
+  redis: RuntimeDependencyCheck,
+  keycloak: RuntimeDependencyCheck,
+  authorizationCache: ReturnType<typeof getPermissionCacheHealth>
+): RuntimeHealthResponse['checks']['services'] => ({
+  authorizationCache: {
+    reasonCode:
+      authorizationCache.status === 'ready'
+        ? undefined
+        : authorizationCache.status === 'degraded'
+          ? 'authorization_cache_degraded'
+          : 'authorization_cache_failed',
+    status: toAuthorizationCacheServiceStatus(authorizationCache.status),
+  },
+  database: {
+    reasonCode: database.reasonCode,
+    status: toDependencyStatus(database),
+  },
+  keycloak: {
+    reasonCode: keycloak.reasonCode,
+    status: toDependencyStatus(keycloak),
+  },
+  redis: {
+    reasonCode: redis.reasonCode,
+    status: toDependencyStatus(redis),
+  },
+});
+
+const checkDatabase = async (): Promise<RuntimeDependencyCheck> => {
   const pool = resolvePool();
   if (!pool) {
-    return { ready: false, error: 'IAM database not configured' };
+    return { ready: false, error: 'IAM database not configured', reasonCode: 'database_not_configured' };
   }
 
   try {
@@ -29,11 +78,12 @@ const checkDatabase = async (): Promise<{ ready: boolean; error?: string }> => {
     return {
       ready: false,
       error: error instanceof Error ? error.message : String(error),
+      reasonCode: 'database_connection_failed',
     };
   }
 };
 
-const checkRedis = async (): Promise<{ ready: boolean; error?: string }> => {
+const checkRedis = async (): Promise<RuntimeDependencyCheck> => {
   try {
     const ready = await isRedisAvailable();
     return ready
@@ -41,19 +91,25 @@ const checkRedis = async (): Promise<{ ready: boolean; error?: string }> => {
       : {
           ready: false,
           error: getLastRedisError() ?? 'Redis ping failed',
+          reasonCode: 'redis_ping_failed',
         };
   } catch (error) {
     return {
       ready: false,
       error: error instanceof Error ? error.message : String(error),
+      reasonCode: 'redis_ping_failed',
     };
   }
 };
 
-const checkKeycloak = async (): Promise<{ ready: boolean; error?: string }> => {
+const checkKeycloak = async (): Promise<RuntimeDependencyCheck> => {
   const idp = resolveIdentityProvider();
   if (!idp) {
-    return { ready: false, error: 'Keycloak admin client not configured' };
+    return {
+      ready: false,
+      error: 'Keycloak admin client not configured',
+      reasonCode: 'keycloak_admin_not_configured',
+    };
   }
 
   if (!isKeycloakIdentityProvider(idp.provider)) {
@@ -67,6 +123,7 @@ const checkKeycloak = async (): Promise<{ ready: boolean; error?: string }> => {
     return {
       ready: false,
       error: error instanceof Error ? error.message : String(error),
+      reasonCode: 'keycloak_dependency_failed',
     };
   }
 };
@@ -75,19 +132,42 @@ export const healthReadyHandler = async (request: Request): Promise<Response> =>
   withHealthRequestContext(request, async () => {
     const requestContext = getWorkspaceContext();
     const [database, redis, keycloak] = await Promise.all([checkDatabase(), checkRedis(), checkKeycloak()]);
-    const ready = database.ready && redis.ready && keycloak.ready;
+    const authorizationCache = getPermissionCacheHealth();
+    const ready = database.ready && redis.ready && keycloak.ready && authorizationCache.status !== 'failed';
+    const services = createRuntimeHealthServices(database, redis, keycloak, authorizationCache);
+    const diagnostics = {
+      ...(database.ready ? {} : { db: { reason_code: database.reasonCode } }),
+      ...(redis.ready ? {} : { redis: { reason_code: redis.reasonCode } }),
+      ...(keycloak.ready ? {} : { keycloak: { reason_code: keycloak.reasonCode } }),
+      ...(authorizationCache.status === 'degraded'
+        ? { authorizationCache: { reason_code: 'authorization_cache_degraded' } }
+        : {}),
+      ...(authorizationCache.status === 'failed'
+        ? { authorizationCache: { reason_code: 'authorization_cache_failed' } }
+        : {}),
+    };
 
     return jsonResponse(ready ? 200 : 503, {
       status: ready ? 'ready' : 'not_ready',
       checks: {
+        authorizationCache: {
+          coldStart: authorizationCache.coldStart,
+          consecutiveRedisFailures: authorizationCache.consecutiveRedisFailures,
+          lastRedisLatencyMs: authorizationCache.lastRedisLatencyMs,
+          recomputePerMinute: authorizationCache.recomputePerMinute,
+          status: authorizationCache.status,
+        },
+        auth: {},
         db: database.ready,
         redis: redis.ready,
         keycloak: keycloak.ready,
+        diagnostics,
         errors: {
           ...(database.ready ? {} : { db: database.error }),
           ...(redis.ready ? {} : { redis: redis.error }),
           ...(keycloak.ready ? {} : { keycloak: keycloak.error }),
         },
+        services,
       },
       ...(requestContext.requestId ? { requestId: requestContext.requestId } : {}),
       timestamp: new Date().toISOString(),

@@ -15,6 +15,7 @@ Dieses Dokument beschreibt die Review-Governance für Proposal- und PR-Reviews m
 | `documentation.agent.md` | Doku-Abdeckung, Konsistenz, arc42 | jede PR / jedes Proposal |
 | `test-quality.agent.md` | Tests, Coverage, Verifikationsstrategie | Verhaltensänderungen, Test-/Coverage-Themen |
 | `security-privacy.agent.md` | Security, Privacy, Secrets, PII | Auth, Rollen, Tokens, Daten |
+| `studio-test-operator.agent.md` | End-to-End-Studio-Tests mit Chrome MCP und Grafana MCP | manuelle Smoke-/Regressionstests, Staging-Abnahmen |
 | `ux-accessibility.agent.md` | WCAG/BITV, Tastatur, Screenreader | UI und Navigation |
 | `i18n-content.agent.md` | harte Strings, Key-Konventionen, Textklarheit | user-facing Texte |
 | `user-journey-usability.agent.md` | Nutzersicht, Friktion, Flow-Verständlichkeit | UI-Flows, Formschritte |

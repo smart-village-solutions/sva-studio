@@ -38,6 +38,14 @@ describe('workspace package scripts', () => {
     expect(testPrScript).toContain('pnpm sonar-new-code-gate --base=origin/main');
   });
 
+  it('keeps studio release verification outside the standard PR gate', () => {
+    const packageJson = loadRootPackageJson();
+    const releaseScript = packageJson.scripts?.['test:release:studio'];
+
+    expect(packageJson.scripts?.['test:pr']).not.toContain('pnpm verify:runtime-artifact');
+    expect(releaseScript).toBe('pnpm test:pr && pnpm verify:runtime-artifact');
+  });
+
   it('keeps the dedicated PR coverage command aligned with the patch gate', () => {
     const packageJson = loadRootPackageJson();
     const testCoveragePrScript = packageJson.scripts?.['test:coverage:pr'];

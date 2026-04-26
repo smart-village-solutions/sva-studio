@@ -28,6 +28,8 @@ export type ApiErrorCode =
   | 'internal_error';
 
 export const iamRuntimeDiagnosticClassifications = [
+  'auth_resolution',
+  'oidc_discovery_or_exchange',
   'tenant_host_validation',
   'session_store_or_session_hydration',
   'actor_resolution_or_membership',
@@ -36,6 +38,8 @@ export const iamRuntimeDiagnosticClassifications = [
   'database_mapping_or_membership_inconsistency',
   'registry_or_provisioning_drift',
   'keycloak_reconcile',
+  'frontend_state_or_permission_staleness',
+  'legacy_workaround_or_regression',
   'unknown',
 ] as const;
 

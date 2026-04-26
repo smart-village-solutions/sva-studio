@@ -49,6 +49,42 @@ const classify = ({ input, safeDetails }: RuntimeDiagnosticSafeDetails): IamRunt
   const reasonCode = safeDetails?.reason_code;
   const syncErrorCode = safeDetails?.sync_error_code;
 
+  if (
+    reasonCode === 'auth_resolution_failed' ||
+    reasonCode === 'auth_config_missing' ||
+    reasonCode === 'tenant_auth_resolution_failed' ||
+    reasonCode === 'tenant_auth_client_secret_unreadable'
+  ) {
+    return 'auth_resolution';
+  }
+
+  if (
+    reasonCode === 'oidc_discovery_failed' ||
+    reasonCode === 'oidc_exchange_failed' ||
+    reasonCode === 'oidc_callback_failed' ||
+    reasonCode === 'token_exchange_failed'
+  ) {
+    return 'oidc_discovery_or_exchange';
+  }
+
+  if (
+    reasonCode === 'frontend_state_stale' ||
+    reasonCode === 'permission_snapshot_stale' ||
+    reasonCode === 'permission_refetch_failed'
+  ) {
+    return 'frontend_state_or_permission_staleness';
+  }
+
+  if (
+    reasonCode === 'legacy_workaround' ||
+    reasonCode === 'legacy_session_payload' ||
+    reasonCode === 'legacy_allowlist_fallback' ||
+    reasonCode === 'return_encrypted' ||
+    reasonCode === 'tenant_host_resolution_primary_hostname_fallback'
+  ) {
+    return 'legacy_workaround_or_regression';
+  }
+
   if (reasonCode === 'registry_or_provisioning_drift_blocked') {
     return 'registry_or_provisioning_drift';
   }
@@ -162,6 +198,9 @@ const resolveRecommendedAction = (
   }
 
   switch (classification) {
+    case 'auth_resolution':
+    case 'oidc_discovery_or_exchange':
+      return 'erneut_anmelden';
     case 'keycloak_dependency':
       return 'keycloak_pruefen';
     case 'database_or_schema_drift':
@@ -172,7 +211,10 @@ const resolveRecommendedAction = (
       return 'rollenabgleich_pruefen';
     case 'actor_resolution_or_membership':
     case 'database_mapping_or_membership_inconsistency':
+    case 'legacy_workaround_or_regression':
       return 'manuell_pruefen';
+    case 'frontend_state_or_permission_staleness':
+      return 'erneut_versuchen';
     case 'unknown':
       return input.status >= 500 ? 'support_kontaktieren' : 'erneut_versuchen';
     default:

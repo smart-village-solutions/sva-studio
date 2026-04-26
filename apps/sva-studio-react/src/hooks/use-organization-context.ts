@@ -22,14 +22,14 @@ type UseOrganizationContextResult = {
 const organizationContextLogger = createOperationLogger('organization-context-hook', 'debug');
 
 export const useOrganizationContext = (): UseOrganizationContextResult => {
-  const { isAuthenticated, invalidatePermissions } = useAuth();
+  const { isAuthenticated, invalidatePermissions, user } = useAuth();
   const [context, setContext] = React.useState<IamOrganizationContext | null>(null);
   const [isLoading, setIsLoading] = React.useState(false);
   const [isUpdating, setIsUpdating] = React.useState(false);
   const [error, setError] = React.useState<IamHttpError | null>(null);
 
   const loadContext = React.useCallback(async () => {
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !user?.instanceId) {
       setContext(null);
       setError(null);
       setIsLoading(false);
@@ -66,7 +66,7 @@ export const useOrganizationContext = (): UseOrganizationContextResult => {
     } finally {
       setIsLoading(false);
     }
-  }, [invalidatePermissions, isAuthenticated]);
+  }, [invalidatePermissions, isAuthenticated, user?.instanceId]);
 
   React.useEffect(() => {
     void loadContext();
@@ -79,6 +79,13 @@ export const useOrganizationContext = (): UseOrganizationContextResult => {
     error,
     refetch: loadContext,
     switchOrganization: async (organizationId) => {
+      if (!user?.instanceId) {
+        setContext(null);
+        setError(null);
+        setIsUpdating(false);
+        return false;
+      }
+
       logBrowserOperationStart(organizationContextLogger, 'organization_context_switch_started', {
         operation: 'update_my_organization_context',
         organization_id: organizationId,

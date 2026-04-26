@@ -28,7 +28,11 @@ describe('@sva/routing public API', () => {
   });
 
   it('moves plugin helpers onto the dedicated plugins subpath', () => {
-    expect(Object.keys(pluginsApi).sort()).toEqual(['getPluginRouteFactories', 'mapPluginGuardToAccountGuard']);
+    expect(Object.keys(pluginsApi).sort()).toEqual([
+      'getPluginRouteFactories',
+      'mapPluginGuardToAccountGuard',
+      'normalizeAdminResourceListSearch',
+    ]);
   });
 
   it('keeps the server entry focused on server route composition and request dispatch', () => {

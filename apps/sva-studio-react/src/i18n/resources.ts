@@ -176,6 +176,8 @@ export const i18nResources = {
         save: 'Änderungen speichern',
         cancel: 'Abbrechen',
         back: 'Zur Übersicht',
+        archive: 'Archivieren',
+        delete: 'Löschen',
       },
       fields: {
         title: 'Titel',
@@ -253,6 +255,9 @@ export const i18nResources = {
           updated: 'Inhalt aktualisiert',
           statusChanged: 'Status geändert',
         },
+      },
+      revisions: {
+        title: 'Revisionen',
       },
       empty: {
         title: 'Noch keine Inhalte vorhanden',
@@ -2115,6 +2120,8 @@ export const i18nResources = {
         save: 'Save changes',
         cancel: 'Cancel',
         back: 'Back to overview',
+        archive: 'Archive',
+        delete: 'Delete',
       },
       fields: {
         title: 'Title',
@@ -2192,6 +2199,9 @@ export const i18nResources = {
           updated: 'Content updated',
           statusChanged: 'Status changed',
         },
+      },
+      revisions: {
+        title: 'Revisions',
       },
       empty: {
         title: 'No content yet',

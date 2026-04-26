@@ -570,6 +570,419 @@ describe('admin resource registry', () => {
       createAdminResourceRegistry([{ ...reports, views: { ...reports.views, detail: { bindingKey: '' } } }])
     ).toThrow('invalid_admin_resource_view:news.reports:detail');
   });
+
+  it('normalizes host-managed list and detail capabilities', () => {
+    const registry = createAdminResourceRegistry([
+      {
+        ...reports,
+        capabilities: {
+          list: {
+            search: {
+              placeholderKey: 'news.reports.search.placeholder',
+              fields: [' title ', 'summary'],
+            },
+            filters: [
+              {
+                id: ' status ',
+                labelKey: 'news.reports.filters.status',
+                bindingKey: ' news.reports.filters.status ',
+                options: [
+                  { value: ' draft ', labelKey: 'news.reports.status.draft' },
+                  { value: 'published', labelKey: 'news.reports.status.published' },
+                ],
+                defaultValue: 'draft',
+              },
+            ],
+            sorting: {
+              defaultField: 'updatedAt',
+              defaultDirection: 'desc',
+              fields: [{ id: 'updatedAt', labelKey: 'news.reports.sort.updatedAt', bindingKey: 'news.reports.updatedAt' }],
+            },
+            pagination: {
+              defaultPageSize: 25,
+              pageSizeOptions: [10, 25, 50],
+            },
+            bulkActions: [
+              {
+                id: 'archive',
+                labelKey: 'news.reports.bulk.archive',
+                actionId: 'content.changeStatus',
+                bindingKey: 'news.reports.bulk.archive',
+                selectionModes: ['explicitIds', 'allMatchingQuery'],
+              },
+            ],
+          },
+          detail: {
+            history: {
+              bindingKey: 'news.reports.history',
+              titleKey: 'news.reports.history.title',
+            },
+            revisions: {
+              bindingKey: 'news.reports.revisions',
+              restoreActionId: 'content.readHistory',
+              titleKey: 'news.reports.revisions.title',
+            },
+          },
+        },
+      },
+    ]);
+
+    expect(registry.get('news.reports')?.capabilities).toMatchObject({
+      list: {
+        search: {
+          param: 'q',
+          placeholderKey: 'news.reports.search.placeholder',
+          fields: ['title', 'summary'],
+        },
+        filters: [
+          {
+            id: 'status',
+            param: 'status',
+            defaultValue: 'draft',
+            options: [
+              { value: 'draft', labelKey: 'news.reports.status.draft' },
+              { value: 'published', labelKey: 'news.reports.status.published' },
+            ],
+          },
+        ],
+        sorting: {
+          param: 'sort',
+          defaultField: 'updatedAt',
+          defaultDirection: 'desc',
+        },
+        pagination: {
+          pageParam: 'page',
+          pageSizeParam: 'pageSize',
+        },
+        bulkActions: [
+          {
+            id: 'archive',
+            actionId: 'content.changeStatus',
+            selectionModes: ['explicitIds', 'allMatchingQuery'],
+          },
+        ],
+      },
+      detail: {
+        history: {
+          bindingKey: 'news.reports.history',
+        },
+        revisions: {
+          restoreActionId: 'content.readHistory',
+        },
+      },
+    });
+  });
+
+  it('rejects unsupported or conflicting admin resource capabilities', () => {
+    expect(() =>
+      createAdminResourceRegistry([
+        {
+          ...reports,
+          capabilities: {
+            list: {
+              search: { placeholderKey: 'news.search', fields: ['title'], custom: true },
+            },
+          },
+        } as never,
+      ])
+    ).toThrow('plugin_guardrail_unsupported_binding:news:news.reports.capabilities.list.search:custom');
+
+    expect(() =>
+      createAdminResourceRegistry([
+        {
+          ...reports,
+          capabilities: {
+            list: {
+              search: { param: 'status', placeholderKey: 'news.search', fields: ['title'] },
+              filters: [
+                {
+                  id: 'status',
+                  labelKey: 'news.status',
+                  bindingKey: 'news.status',
+                  options: [{ value: 'draft', labelKey: 'news.draft' }],
+                },
+              ],
+            },
+          },
+        },
+      ])
+    ).toThrow('duplicate_admin_resource_search_param:news.reports:status');
+
+    expect(() =>
+      createAdminResourceRegistry([
+        {
+          ...reports,
+          capabilities: {
+            list: {
+              bulkActions: [
+                {
+                  id: 'archive',
+                  labelKey: 'news.archive',
+                  actionId: 'archive',
+                  bindingKey: 'news.archive',
+                  selectionModes: ['explicitIds'],
+                },
+              ],
+            },
+          },
+        },
+      ])
+    ).toThrow('invalid_admin_resource_action_id:news.reports:capabilities.list.bulkActions.archive.actionId:archive');
+  });
+
+  it('rejects invalid admin resource list capability branches', () => {
+    expect(() =>
+      createAdminResourceRegistry([
+        {
+          ...reports,
+          capabilities: {
+            list: {
+              search: { placeholderKey: 'news.search', fields: [] },
+            },
+          },
+        },
+      ])
+    ).toThrow('invalid_admin_resource_capability:news.reports:capabilities.list.search.fields');
+
+    expect(() =>
+      createAdminResourceRegistry([
+        {
+          ...reports,
+          capabilities: {
+            list: {
+              filters: [
+                {
+                  id: 'status',
+                  labelKey: 'news.status',
+                  bindingKey: 'news.status',
+                  options: [],
+                },
+              ],
+            },
+          },
+        },
+      ])
+    ).toThrow('invalid_admin_resource_capability:news.reports:capabilities.list.filters.status.options');
+
+    expect(() =>
+      createAdminResourceRegistry([
+        {
+          ...reports,
+          capabilities: {
+            list: {
+              filters: [
+                {
+                  id: 'status',
+                  labelKey: 'news.status',
+                  bindingKey: 'news.status',
+                  defaultValue: 'archived',
+                  options: [{ value: 'draft', labelKey: 'news.draft' }],
+                },
+              ],
+            },
+          },
+        },
+      ])
+    ).toThrow('invalid_admin_resource_filter_default:news.reports:status:archived');
+
+    expect(() =>
+      createAdminResourceRegistry([
+        {
+          ...reports,
+          capabilities: {
+            list: {
+              filters: [
+                {
+                  id: 'status',
+                  labelKey: 'news.status',
+                  bindingKey: 'news.status',
+                  options: [{ value: 'draft', labelKey: 'news.draft' }],
+                },
+                {
+                  id: 'status',
+                  labelKey: 'news.status.duplicate',
+                  bindingKey: 'news.status.duplicate',
+                  options: [{ value: 'published', labelKey: 'news.published' }],
+                },
+              ],
+            },
+          },
+        },
+      ])
+    ).toThrow('duplicate_admin_resource_filter:news.reports:status');
+
+    expect(() =>
+      createAdminResourceRegistry([
+        {
+          ...reports,
+          capabilities: {
+            list: {
+              sorting: {
+                defaultField: 'title',
+                defaultDirection: 'asc',
+                fields: [],
+              },
+            },
+          },
+        },
+      ])
+    ).toThrow('invalid_admin_resource_capability:news.reports:capabilities.list.sorting.fields');
+
+    expect(() =>
+      createAdminResourceRegistry([
+        {
+          ...reports,
+          capabilities: {
+            list: {
+              sorting: {
+                defaultField: 'missing',
+                defaultDirection: 'asc',
+                fields: [{ id: 'title', labelKey: 'news.title', bindingKey: 'news.title' }],
+              },
+            },
+          },
+        },
+      ])
+    ).toThrow('invalid_admin_resource_sort_default:news.reports:missing');
+
+    expect(() =>
+      createAdminResourceRegistry([
+        {
+          ...reports,
+          capabilities: {
+            list: {
+              sorting: {
+                defaultField: 'title',
+                defaultDirection: 'sideways' as never,
+                fields: [{ id: 'title', labelKey: 'news.title', bindingKey: 'news.title' }],
+              },
+            },
+          },
+        },
+      ])
+    ).toThrow('invalid_admin_resource_sort_direction:news.reports:sideways');
+  });
+
+  it('rejects invalid admin resource pagination and bulk action branches', () => {
+    expect(() =>
+      createAdminResourceRegistry([
+        {
+          ...reports,
+          capabilities: {
+            list: {
+              pagination: {
+                defaultPageSize: 0,
+                pageSizeOptions: [25],
+              },
+            },
+          },
+        },
+      ])
+    ).toThrow('invalid_admin_resource_pagination:news.reports');
+
+    expect(() =>
+      createAdminResourceRegistry([
+        {
+          ...reports,
+          capabilities: {
+            list: {
+              pagination: {
+                defaultPageSize: 25,
+                pageSizeOptions: [25, 25],
+              },
+            },
+          },
+        },
+      ])
+    ).toThrow('duplicate_admin_resource_page_size:news.reports:25');
+
+    expect(() =>
+      createAdminResourceRegistry([
+        {
+          ...reports,
+          capabilities: {
+            list: {
+              pagination: {
+                defaultPageSize: 50,
+                pageSizeOptions: [25],
+              },
+            },
+          },
+        },
+      ])
+    ).toThrow('invalid_admin_resource_pagination_default:news.reports:50');
+
+    expect(() =>
+      createAdminResourceRegistry([
+        {
+          ...reports,
+          capabilities: {
+            list: {
+              bulkActions: [
+                {
+                  id: 'archive',
+                  labelKey: 'news.archive',
+                  actionId: 'news.archive',
+                  bindingKey: 'news.archive',
+                  selectionModes: [],
+                },
+              ],
+            },
+          },
+        },
+      ])
+    ).toThrow('invalid_admin_resource_bulk_action_selection:news.reports:archive');
+
+    expect(() =>
+      createAdminResourceRegistry([
+        {
+          ...reports,
+          capabilities: {
+            list: {
+              bulkActions: [
+                {
+                  id: 'archive',
+                  labelKey: 'news.archive',
+                  actionId: 'news.archive',
+                  bindingKey: 'news.archive',
+                  selectionModes: ['explicitIds'],
+                },
+                {
+                  id: 'archive',
+                  labelKey: 'news.archive.duplicate',
+                  actionId: 'news.archive',
+                  bindingKey: 'news.archive.duplicate',
+                  selectionModes: ['currentPage'],
+                },
+              ],
+            },
+          },
+        },
+      ])
+    ).toThrow('duplicate_admin_resource_bulk_action:news.reports:archive');
+  });
+
+  it('normalizes sparse admin resource capabilities and rejects invalid resource identifiers', () => {
+    const registry = createAdminResourceRegistry([
+      {
+        ...reports,
+        capabilities: {
+          detail: {},
+        },
+      },
+    ]);
+
+    expect(registry.get('news.reports')?.capabilities).toEqual({
+      list: undefined,
+      detail: { history: undefined, revisions: undefined },
+    });
+    expect(() => definePluginAdminResources('news', [{ ...reports, resourceId: 'reports' }])).toThrow(
+      'invalid_plugin_admin_resource:reports'
+    );
+    expect(() => createAdminResourceRegistry([{ ...reports, titleKey: ' ' }])).toThrow(
+      'invalid_admin_resource_definition'
+    );
+  });
 });
 
 describe('content type registry', () => {

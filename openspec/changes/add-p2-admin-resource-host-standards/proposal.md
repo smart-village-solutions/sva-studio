@@ -18,6 +18,15 @@ Heute ist die Trennung unscharf: Ressourcen deklarieren Views und Guards, aber L
 - Standardisierte Diagnostik für unzulässige oder vom Host nicht unterstützte Capability-Deklarationen
 - Auditing-Erwartungen für hostgeführte Bulk-Actions, History-Zugriffe und Revision-Restores
 
+## Sequencing
+
+Dieser Change baut auf dem aktuellen Plugin-/Guardrail-Backbone auf und soll vor den P3-Changes zu Content-UI-Spezialisierung und Extension-Tiers umgesetzt werden.
+
+1. `add-studio-ui-plugin-view-contract` stellt die gemeinsame React-UI-Basis und Import-Boundary bereit.
+2. `add-p2-admin-resource-host-standards` definiert danach den host-rendered Standard für deklarative Admin-Ressourcen.
+3. `refactor-p3-content-ui-specialization-boundaries` nutzt diese Standards für fachliche Spezial-Views, ohne Host-Suche, Bulk-Actions, History oder Shell-Verantwortung zu ersetzen.
+4. `add-p3-plugin-extension-tier-governance` entscheidet anschließend, welche Package-Tiers diese Host-Capabilities und Custom-View-Contributions deklarieren dürfen.
+
 ## Host vs. Package Boundary
 
 - Der Host besitzt Rendering, Search-Param-Normalisierung, Pagination-State, Auswahl-State, Bulk-Action-Orchestrierung, History/Revision-Affordances, Diagnostik und Audit-Hooks.
@@ -45,6 +54,7 @@ Heute ist die Trennung unscharf: Ressourcen deklarieren Views und Guards, aber L
   - `account-ui`
   - `content-management`
   - `iam-auditing`
+  - `routing`
 - Affected code:
   - `packages/plugin-sdk/src/admin-resources.ts`
   - `packages/plugin-sdk/src/plugins.ts`

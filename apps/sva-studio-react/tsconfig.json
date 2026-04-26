@@ -30,8 +30,11 @@
       "@sva/auth-runtime/routes": ["../../packages/auth-runtime/src/routes.ts"],
       "@sva/auth-runtime/server": ["../../packages/auth-runtime/src/server.ts"],
       "@sva/plugin-sdk": ["../../packages/plugin-sdk/src/index.ts"],
+      "@sva/studio-ui-react": ["../../packages/studio-ui-react/src/index.ts"],
       "@sva/monitoring-client/logging": ["../../packages/monitoring-client/src/logging.ts"],
       "@sva/server-runtime": ["../../packages/server-runtime/src/index.ts"],
+      "@sva/sva-mainserver": ["../../packages/sva-mainserver/src/index.ts"],
+      "@sva/sva-mainserver/server": ["../../packages/sva-mainserver/src/index.server.ts"],
       "@sva/plugin-news": ["../../packages/plugin-news/src/index.ts"]
     }
   }

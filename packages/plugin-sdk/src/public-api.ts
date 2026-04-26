@@ -19,7 +19,17 @@ export {
 } from './guardrails.js';
 export type {
   AdminResourceDefinition,
+  AdminResourceBulkActionSelectionMode,
+  AdminResourceCapabilities,
+  AdminResourceDetailCapabilities,
   AdminResourceGuard,
+  AdminResourceListBulkActionCapability,
+  AdminResourceListCapabilities,
+  AdminResourceListFilterCapability,
+  AdminResourceListFilterOption,
+  AdminResourceListPaginationCapability,
+  AdminResourceListSearchCapability,
+  AdminResourceListSortingCapability,
   AdminResourceViewDefinition,
   AdminResourceViews,
 } from './admin-resources.js';

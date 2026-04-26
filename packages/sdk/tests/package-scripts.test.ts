@@ -54,7 +54,7 @@ describe('workspace package scripts', () => {
     expect(testCoveragePrScript).toContain('pnpm sonar-new-code-gate --base=origin/main');
   });
 
-  it('requires 85 percent global coverage across all tracked metrics', () => {
+  it('keeps global coverage floors at the project baseline', () => {
     const policy = loadCoveragePolicy();
 
     expect(policy.globalFloors).toEqual({

@@ -15,6 +15,27 @@ Das Studio wird kurzfristig mehrere Plugins mit eigenen Views erhalten. Ohne gem
 - Einführung von Boundary-Regeln, die Plugin-Imports aus `apps/sva-studio-react/src/components/**` und lokale Basis-Control-Duplikate verhindern.
 - Dokumentation einheitlicher Übersichts-, Detail-, Formular- und State-Muster für Core- und Plugin-UI.
 
+## Sequencing
+
+Dieser Change ist die technische Vorstufe für die hostseitigen Admin-Resource-Standards und für spätere spezialisierte Fach-Views.
+
+1. `add-studio-ui-plugin-view-contract` wird zuerst umgesetzt, mindestens mit Package, Basiscontrols, Page-/State-/Form-Primitives und Import-Boundary.
+2. `add-p2-admin-resource-host-standards` nutzt danach `@sva/studio-ui-react` als UI-Basis für host-rendered Admin-Listen, Aktionen und Detail-Affordances.
+3. `refactor-p3-content-ui-specialization-boundaries` darf Custom-Views und spezialisierte Editor-Sektionen nur innerhalb dieser UI- und Shell-Boundary modellieren.
+4. `add-p3-plugin-extension-tier-governance` ergänzt später, welche Package-Tiers `@sva/studio-ui-react` nutzen oder Custom-Views deklarieren dürfen.
+
+## MVP Scope
+
+Die erste Umsetzung soll keinen vollständigen Design-System-Umzug erzwingen. Der minimale PR-fähige Umfang ist:
+
+- `packages/studio-ui-react` als Nx-Library mit Importpfad, Targets, Path-Mapping und sauberer Dependency-Grenze.
+- Re-Export oder Wrapper der wichtigsten shadcn-basierten Controls: `Button`, `Input`, `Textarea`, `Select`, `Checkbox`, `Badge`, `Alert`, `Dialog`, `Tabs`.
+- Erste Studio-Primitives für Page-Struktur, Formularfelder und Zustände: `StudioPageHeader`, `StudioOverviewPageTemplate`, `StudioDetailPageTemplate`, `StudioField`, `StudioFieldGroup`, `StudioFormSummary`, `StudioStateBlock`, `StudioLoadingState`, `StudioEmptyState`, `StudioErrorState`.
+- Migration genau eines Referenzpfads in Host oder `plugin-news`, damit Import-Boundary, i18n, Accessibility und Styling real geprüft werden.
+- Lint-/Boundary-Check gegen Plugin-Imports aus `apps/sva-studio-react/src/**`.
+
+Weitere Tabellen-, Toolbar-, Bulk-Action-, Spezialeditor- und vollständige Host-Migrationen folgen inkrementell.
+
 ## Impact
 
 - Affected specs:

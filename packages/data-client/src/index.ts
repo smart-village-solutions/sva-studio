@@ -37,6 +37,39 @@ export type DataClientOptions = {
 const isZodSchema = <T>(value: unknown): value is z.ZodType<T> =>
   !!value && typeof value === 'object' && typeof (value as { parse?: unknown }).parse === 'function';
 
+const hashForLog = (value: string): string => {
+  let hash = 0x811c9dc5;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return (hash >>> 0).toString(16).padStart(8, '0');
+};
+
+const normalizeHeadersForCache = (headers: HeadersInit | undefined): string => {
+  if (!headers) {
+    return '';
+  }
+
+  const normalizedHeaders = new Headers(headers);
+  return [...normalizedHeaders.entries()]
+    .map(([name, value]) => `${name.toLowerCase()}:${value}`)
+    .sort()
+    .join('\n');
+};
+
+const buildGetCacheKeys = (input: {
+  headers: HeadersInit;
+  requestUrl: string;
+}): { internal: string; log: string } => {
+  const scope = normalizeHeadersForCache(input.headers);
+  const internal = `GET:${input.requestUrl}:${scope}`;
+  return {
+    internal,
+    log: `GET:${input.requestUrl}:scope:${hashForLog(scope)}`,
+  };
+};
+
 const resolveGetArguments = <T>(
   schemaOrInit?: z.ZodType<T> | RequestInit,
   maybeInit?: RequestInit
@@ -104,18 +137,26 @@ export const createDataClient = (options: DataClientOptions) => {
       emitMissingSchemaWarning(path);
     }
 
-    const cacheKey = `GET:${path}`;
-    const cached = inMemoryCache.get(cacheKey);
+    const requestHeaders = new Headers(init?.headers);
+    if (!requestHeaders.has('accept')) {
+      requestHeaders.set('accept', 'application/json');
+    }
+    const requestUrl = `${options.baseUrl}${path}`;
+    const cacheKey = buildGetCacheKeys({
+      headers: requestHeaders,
+      requestUrl,
+    });
+    const cached = inMemoryCache.get(cacheKey.internal);
 
     if (cached && cached.expiresAt > Date.now()) {
       logger.debug('cache_hit', {
         operation: 'get',
         path,
-        cache_key: cacheKey,
+        cache_key: cacheKey.log,
       });
       try {
         return parsePayload({
-          cacheKey,
+          cacheKey: cacheKey.log,
           logger,
           path,
           rawPayload: cached.value,
@@ -123,7 +164,7 @@ export const createDataClient = (options: DataClientOptions) => {
           source: 'cache',
         });
       } catch (error) {
-        inMemoryCache.delete(cacheKey);
+        inMemoryCache.delete(cacheKey.internal);
         throw error;
       }
     }
@@ -131,7 +172,7 @@ export const createDataClient = (options: DataClientOptions) => {
     logger.debug('cache_miss', {
       operation: 'get',
       path,
-      cache_key: cacheKey,
+      cache_key: cacheKey.log,
     });
     logger.debug('request_started', {
       operation: 'get',
@@ -139,12 +180,9 @@ export const createDataClient = (options: DataClientOptions) => {
       base_url: options.baseUrl,
     });
 
-    const response = await fetch(`${options.baseUrl}${path}`, {
+    const response = await fetch(requestUrl, {
       ...init,
-      headers: {
-        Accept: 'application/json',
-        ...init?.headers,
-      },
+      headers: requestHeaders,
     });
 
     if (!response.ok) {
@@ -164,7 +202,7 @@ export const createDataClient = (options: DataClientOptions) => {
       schema,
       source: 'network',
     });
-    inMemoryCache.set(cacheKey, {
+    inMemoryCache.set(cacheKey.internal, {
       value: payload,
       expiresAt: Date.now() + cacheTtlMs,
     });

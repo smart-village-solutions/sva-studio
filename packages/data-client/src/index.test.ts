@@ -49,6 +49,49 @@ describe('@sva/data-client package scaffold', () => {
     );
   });
 
+  it('scopes cached responses by base URL and request headers', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ tenant: 'a' }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ tenant: 'b' }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ tenant: 'c' }),
+      });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const firstClient = createDataClient({ baseUrl: 'https://tenant-a.example.invalid', cacheTtlMs: 10_000 });
+    const secondClient = createDataClient({ baseUrl: 'https://tenant-b.example.invalid', cacheTtlMs: 10_000 });
+    const schema = z.object({ tenant: z.string() });
+
+    await expect(firstClient.get('/users/me', schema, { headers: { Authorization: 'Bearer token-a' } })).resolves.toEqual({
+      tenant: 'a',
+    });
+    await expect(firstClient.get('/users/me', schema, { headers: { Authorization: 'Bearer token-b' } })).resolves.toEqual({
+      tenant: 'b',
+    });
+    await expect(secondClient.get('/users/me', schema, { headers: { Authorization: 'Bearer token-a' } })).resolves.toEqual({
+      tenant: 'c',
+    });
+
+    await expect(firstClient.get('/users/me', schema, { headers: { Authorization: 'Bearer token-a' } })).resolves.toEqual({
+      tenant: 'a',
+    });
+    await expect(firstClient.get('/users/me', schema, { headers: { Authorization: 'Bearer token-b' } })).resolves.toEqual({
+      tenant: 'b',
+    });
+    await expect(secondClient.get('/users/me', schema, { headers: { Authorization: 'Bearer token-a' } })).resolves.toEqual({
+      tenant: 'c',
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
   it('logs schema validation failures for network payloads', async () => {
     vi.stubGlobal(
       'fetch',

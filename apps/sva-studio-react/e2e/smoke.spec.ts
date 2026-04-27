@@ -98,11 +98,24 @@ const mockAuthenticatedPluginShell = async (page: Page) => {
           email: 'editor@example.com',
           instanceId: 'de-musterhausen',
           roles: ['editor'],
+          permissionActions: [
+            'news.read',
+            'news.create',
+            'news.update',
+            'news.delete',
+            'events.read',
+            'events.create',
+            'events.update',
+            'events.delete',
+            'poi.read',
+            'poi.create',
+            'poi.update',
+            'poi.delete',
+          ],
         },
       }),
     });
   });
-
   await page.route('**/iam/me/permissions?**', async (route) => {
     await route.fulfill({
       status: 200,

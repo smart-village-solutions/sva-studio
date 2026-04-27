@@ -3,13 +3,13 @@ import { assertPluginRoutePathAllowed, createPluginGuardrailError, mergeAdminRes
 import { createRoute, type AnyRoute, type RootRoute, type RouteComponent } from '@tanstack/react-router';
 
 import { createAccountUiRouteGuard, type AccountUiRouteGuardKey } from './account-ui.routes.js';
-import { createProtectedRoute } from './protected.routes.js';
 import {
   adminDetailParamNameByBinding,
   createAdminResourceRouteFactories,
   createLegacyContentAliasFactories,
 } from './admin-resource-routes.js';
 import { type RoutingDiagnosticsHook } from './diagnostics.js';
+import { resolvePluginRouteGuard } from './plugin-route-guards.js';
 import { normalizeIamTab, normalizeRoleDetailTab } from './route-search.js';
 import { uiRoutePaths } from './route-paths.js';
 
@@ -204,41 +204,6 @@ export const mapPluginGuardToAccountGuard = (
     default:
       return null;
   }
-};
-
-const isPluginPermissionGuard = (guard: string): boolean =>
-  /^[a-z][a-z0-9-]{1,30}\.[a-z0-9]+(?:-[a-z0-9]+)*$/.test(guard) && guard.startsWith('content.') === false;
-
-const hasRegisteredPluginPermissionGuard = (pluginDefinition: PluginDefinition, guard: string): boolean =>
-  pluginDefinition.permissions?.some((permission) => permission.id.trim() === guard) === true;
-
-const resolvePluginRouteGuard = (
-  pluginDefinition: PluginDefinition,
-  routeDefinition: PluginDefinition['routes'][number],
-  diagnostics: RoutingDiagnosticsHook | undefined
-) => {
-  const normalizedGuard = routeDefinition.guard?.trim();
-  const guardKey = mapPluginGuardToAccountGuard(normalizedGuard);
-  if (guardKey) {
-    return createAccountUiRouteGuard(guardKey, diagnostics, routeDefinition.path);
-  }
-
-  const pluginPermissionGuard = normalizedGuard;
-  if (!pluginPermissionGuard) {
-    return null;
-  }
-  if (!isPluginPermissionGuard(pluginPermissionGuard)) {
-    return null;
-  }
-  if (!hasRegisteredPluginPermissionGuard(pluginDefinition, pluginPermissionGuard)) {
-    return null;
-  }
-
-  return createProtectedRoute({
-    diagnostics,
-    route: routeDefinition.path,
-    requiredPermissions: [pluginPermissionGuard],
-  });
 };
 
 export const getPluginRouteFactories = (

@@ -44,9 +44,18 @@ const authenticatedUser = {
     email: 'editor@example.com',
     instanceId: 'de-musterhausen',
     roles: ['editor'],
+    permissionActions: [
+      'events.read',
+      'events.create',
+      'events.update',
+      'events.delete',
+      'poi.read',
+      'poi.create',
+      'poi.update',
+      'poi.delete',
+    ],
   },
 };
-
 const permissionPayload = {
   instanceId: 'de-musterhausen',
   permissions: [

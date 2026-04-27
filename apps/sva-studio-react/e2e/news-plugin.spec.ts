@@ -33,9 +33,9 @@ const authenticatedUser = {
     email: 'editor@example.com',
     instanceId: 'de-musterhausen',
     roles: ['editor'],
+    permissionActions: ['news.read', 'news.create', 'news.update', 'news.delete'],
   },
 };
-
 const permissionPayload = {
   instanceId: 'de-musterhausen',
   permissions: [

@@ -362,6 +362,15 @@ Referenzen:
 - Scope-Daten für Geo, Acting-As und Restriktionen werden in effektive Permissions übernommen und im Snapshot mitgeführt.
 - Der Kompatibilitätspfad liest fehlende strukturierte Felder deterministisch aus `permission_key`, bis alle relevanten Alt-Daten migriert sind.
 
+### Ergänzung 2026-04: Plugin-spezifische Permissions
+
+- Produktive Fachplugins deklarieren eigene Rechtefamilien über `PluginDefinition.permissions`; die Permission-ID folgt `<pluginId>.<actionName>`.
+- `content.*` bleibt ein Core-/Legacy-Content-Vertrag und darf nicht mehr als produktiver Guard für Fachplugins verwendet werden.
+- Build-time-Validierung verhindert reservierte Plugin-Namespaces, doppelte Permission-IDs, fremde Namespace-Referenzen und nicht registrierte Guards.
+- IAM speichert Plugin-Rechte als normale strukturierte Permissions mit `action` und `resourceType` aus dem Plugin-Namespace, zum Beispiel `news.update` und `news`.
+- Navigation, Routing und Server-Fassaden prüfen dieselbe plugin-spezifische Permission; UI-Gates sind Komfort- und Transparenzschicht, die serverseitige Autorisierung bleibt maßgeblich.
+- Die Rollenverwaltung gruppiert Plugin-Rechte fachlich, nutzt aber weiterhin den bestehenden Rollen-Permission-Vertrag.
+
 ### Ergänzung 2026-03: Gruppen und Geo-Provenance im IAM
 
 - `EffectivePermission` erweitert die bisherige Rollentransparenz um `sourceGroupIds`; Clients erhalten damit direkte und gruppenvermittelte Herkunft ohne Zusatz-Queries.

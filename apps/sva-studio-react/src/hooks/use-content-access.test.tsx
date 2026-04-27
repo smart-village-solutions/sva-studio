@@ -79,6 +79,7 @@ describe('useContentAccess', () => {
 
     expect(result.current).toEqual({
       access: null,
+      permissionActions: [],
       isLoading: false,
       error: null,
     });
@@ -104,6 +105,11 @@ describe('useContentAccess', () => {
             organizationId: 'org-1',
             provenance: { sourceKinds: ['group_role'] },
           },
+          {
+            action: 'news.read',
+            resourceType: 'news',
+            effect: 'allow',
+          },
         ],
       }),
     });
@@ -121,6 +127,7 @@ describe('useContentAccess', () => {
         organizationIds: ['org-1'],
         sourceKinds: ['direct_role', 'group_role'],
       });
+      expect(result.current.permissionActions).toEqual(['content.read', 'content.updatePayload', 'news.read']);
       expect(result.current.error).toBeNull();
     });
 

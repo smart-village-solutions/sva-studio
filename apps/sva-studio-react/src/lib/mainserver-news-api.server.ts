@@ -8,7 +8,6 @@ import {
   withAuthenticatedUser,
   type AuthenticatedRequestContext,
 } from '@sva/auth-runtime/server';
-import type { IamContentPrimitiveAction } from '@sva/core';
 import {
   createSvaMainserverNews,
   deleteSvaMainserverNews,
@@ -444,7 +443,7 @@ const toMainserverErrorResponse = (error: unknown): Response => {
 
 const authorize = async (
   ctx: AuthenticatedRequestContext,
-  action: IamContentPrimitiveAction,
+  action: string,
   newsId?: string
 ): Promise<ReturnType<typeof authorizeContentPrimitiveForUser>> =>
   authorizeContentPrimitiveForUser({
@@ -458,7 +457,7 @@ const authorize = async (
 
 const authorizeOrResponse = async (
   ctx: AuthenticatedRequestContext,
-  action: IamContentPrimitiveAction,
+  action: string,
   newsId?: string
 ): Promise<{ readonly instanceId: string; readonly keycloakSubject: string } | Response> => {
   const result = await authorize(ctx, action, newsId);
@@ -501,7 +500,7 @@ const dispatchAuthenticated = async (request: Request, route: RouteMatch, ctx: A
 
   try {
     if (route.kind === 'collection' && request.method === 'GET') {
-      const actor = await authorizeOrResponse(ctx, 'content.read');
+      const actor = await authorizeOrResponse(ctx, 'news.read');
       if (actor instanceof Response) {
         return actor;
       }
@@ -511,7 +510,7 @@ const dispatchAuthenticated = async (request: Request, route: RouteMatch, ctx: A
     }
 
     if (route.kind === 'item' && request.method === 'GET') {
-      const actor = await authorizeOrResponse(ctx, 'content.read', route.newsId);
+      const actor = await authorizeOrResponse(ctx, 'news.read', route.newsId);
       if (actor instanceof Response) {
         return actor;
       }
@@ -554,7 +553,7 @@ const dispatchAuthenticated = async (request: Request, route: RouteMatch, ctx: A
       if (idempotency.status === 'conflict') {
         return errorJson(409, 'idempotency_key_reuse', idempotency.message);
       }
-      const actor = await authorizeOrResponse(ctx, 'content.create');
+      const actor = await authorizeOrResponse(ctx, 'news.create');
       if (actor instanceof Response) {
         await completeNewsCreateIdempotency({
           actorAccountId,
@@ -606,16 +605,12 @@ const dispatchAuthenticated = async (request: Request, route: RouteMatch, ctx: A
         return parsed;
       }
 
-      const metadataActor = await authorizeOrResponse(ctx, 'content.updateMetadata', route.newsId);
-      if (metadataActor instanceof Response) {
-        return metadataActor;
-      }
-      const payloadActor = await authorizeOrResponse(ctx, 'content.updatePayload', route.newsId);
-      if (payloadActor instanceof Response) {
-        return payloadActor;
+      const updateActor = await authorizeOrResponse(ctx, 'news.update', route.newsId);
+      if (updateActor instanceof Response) {
+        return updateActor;
       }
 
-      const data = await updateSvaMainserverNews({ ...metadataActor, newsId: route.newsId, news: parsed.news });
+      const data = await updateSvaMainserverNews({ ...updateActor, newsId: route.newsId, news: parsed.news });
       logSuccess('mainserver_news_update', route.newsId);
       return json({ data });
     }
@@ -625,7 +620,7 @@ const dispatchAuthenticated = async (request: Request, route: RouteMatch, ctx: A
       if (csrfError) {
         return csrfError;
       }
-      const actor = await authorizeOrResponse(ctx, 'content.delete', route.newsId);
+      const actor = await authorizeOrResponse(ctx, 'news.delete', route.newsId);
       if (actor instanceof Response) {
         return actor;
       }

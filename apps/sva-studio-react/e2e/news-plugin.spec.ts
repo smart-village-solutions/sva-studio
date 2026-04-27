@@ -39,11 +39,10 @@ const authenticatedUser = {
 const permissionPayload = {
   instanceId: 'de-musterhausen',
   permissions: [
-    { action: 'content.read', resourceType: 'content' },
-    { action: 'content.create', resourceType: 'content' },
-    { action: 'content.updateMetadata', resourceType: 'content' },
-    { action: 'content.updatePayload', resourceType: 'content' },
-    { action: 'content.delete', resourceType: 'content' },
+    { action: 'news.read', resourceType: 'news' },
+    { action: 'news.create', resourceType: 'news' },
+    { action: 'news.update', resourceType: 'news' },
+    { action: 'news.delete', resourceType: 'news' },
   ],
   subject: {
     actorUserId: 'kc-editor-1',

@@ -3,6 +3,7 @@ import { assertPluginRoutePathAllowed, createPluginGuardrailError, mergeAdminRes
 import { createRoute, type AnyRoute, type RootRoute, type RouteComponent } from '@tanstack/react-router';
 
 import { createAccountUiRouteGuard, type AccountUiRouteGuardKey } from './account-ui.routes.js';
+import { createProtectedRoute } from './protected.routes.js';
 import {
   adminDetailParamNameByBinding,
   createAdminResourceRouteFactories,
@@ -212,6 +213,12 @@ export const mapPluginGuardToAccountGuard = (
   }
 };
 
+const isPluginPermissionGuard = (guard: string): boolean =>
+  /^[a-z][a-z0-9-]{1,30}\.[a-z0-9]+(?:-[a-z0-9]+)*$/.test(guard) && guard.startsWith('content.') === false;
+
+const hasRegisteredPluginPermissionGuard = (pluginDefinition: PluginDefinition, guard: string): boolean =>
+  pluginDefinition.permissions?.some((permission) => permission.id.trim() === guard) === true;
+
 export const getPluginRouteFactories = (
   pluginDefinitions: readonly PluginDefinition[] = [],
   options: {
@@ -223,8 +230,14 @@ export const getPluginRouteFactories = (
   return pluginDefinitions.flatMap((pluginDefinition) =>
     pluginDefinition.routes.map((routeDefinition) => {
       const guardKey = mapPluginGuardToAccountGuard(routeDefinition.guard);
-      const guard = guardKey ? createAccountUiRouteGuard(guardKey, diagnostics, routeDefinition.path) : null;
-      const unsupportedGuard = !guardKey && routeDefinition.guard ? routeDefinition.guard : null;
+      const guard = guardKey
+        ? createAccountUiRouteGuard(guardKey, diagnostics, routeDefinition.path)
+        : routeDefinition.guard &&
+            isPluginPermissionGuard(routeDefinition.guard) &&
+            hasRegisteredPluginPermissionGuard(pluginDefinition, routeDefinition.guard)
+          ? createProtectedRoute({ diagnostics, route: routeDefinition.path })
+          : null;
+      const unsupportedGuard = !guard && routeDefinition.guard ? routeDefinition.guard : null;
       const pluginNamespace = pluginDefinition.id.trim();
       const contributionId = routeDefinition.id.trim();
 

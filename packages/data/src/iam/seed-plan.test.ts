@@ -36,6 +36,18 @@ describe('iam seed plan', () => {
       'content.updatePayload',
       'content.changeStatus',
       'content.delete',
+      'news.read',
+      'events.read',
+      'poi.read',
+      'news.create',
+      'news.update',
+      'news.delete',
+      'events.create',
+      'events.update',
+      'events.delete',
+      'poi.create',
+      'poi.update',
+      'poi.delete',
     ]);
   });
 
@@ -62,6 +74,7 @@ describe('iam seed plan', () => {
       iamSeedPlan.permissions.find((permission) => permission.key === 'content.publish')?.resourceType,
       'content'
     );
+    assert.equal(iamSeedPlan.permissions.find((permission) => permission.key === 'news.update')?.resourceType, 'news');
   });
 
   it('throws for unknown persona keys', () => {

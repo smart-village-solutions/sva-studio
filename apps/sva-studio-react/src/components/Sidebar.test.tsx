@@ -21,7 +21,7 @@ type PluginNavigationItemMock = {
   to: string;
   titleKey: string;
   section: 'dataManagement' | 'applications' | 'system';
-  requiredAction?: 'content.read' | 'content.create' | 'content.updatePayload';
+  requiredAction?: string;
   actionId?: string;
 };
 const studioPluginNavigationMock = vi.hoisted(() => ({
@@ -31,7 +31,7 @@ const studioPluginNavigationMock = vi.hoisted(() => ({
       to: '/plugins/news',
       titleKey: 'news.navigation.title',
       section: 'dataManagement',
-      requiredAction: 'content.read',
+      requiredAction: 'news.read',
     },
   ] as PluginNavigationItemMock[],
 }));
@@ -96,6 +96,7 @@ beforeEach(() => {
   useRouterStateMock.mockReturnValue('/');
   useContentAccessMock.mockReturnValue({
     access: null,
+    permissionActions: ['news.read'],
     isLoading: false,
     error: null,
   });
@@ -105,7 +106,7 @@ beforeEach(() => {
       to: '/plugins/news',
       titleKey: 'news.navigation.title',
       section: 'dataManagement',
-      requiredAction: 'content.read',
+      requiredAction: 'news.read',
     },
   ];
   studioPluginActionLookupMock.get.mockReset();
@@ -162,6 +163,7 @@ describe('Sidebar', () => {
         organizationIds: [],
         sourceKinds: ['direct_role'],
       },
+      permissionActions: ['news.read'],
       isLoading: false,
       error: null,
     });
@@ -250,6 +252,7 @@ describe('Sidebar', () => {
         organizationIds: [],
         sourceKinds: ['direct_role'],
       },
+      permissionActions: ['news.read'],
       isLoading: false,
       error: null,
     });
@@ -286,6 +289,7 @@ describe('Sidebar', () => {
         organizationIds: [],
         sourceKinds: ['direct_role'],
       },
+      permissionActions: ['news.read'],
       isLoading: false,
       error: null,
     });
@@ -380,6 +384,7 @@ describe('Sidebar', () => {
         organizationIds: [],
         sourceKinds: ['direct_role'],
       },
+      permissionActions: ['news.read'],
       isLoading: false,
       error: null,
     });
@@ -446,7 +451,7 @@ describe('Sidebar', () => {
       actionName: 'publish',
       ownerPluginId: 'news',
       titleKey: 'news.actions.publish',
-      requiredAction: 'content.read',
+      requiredAction: 'news.read',
     });
     useAuthMock.mockReturnValue({
       ...unauthenticatedAuthState,
@@ -466,6 +471,7 @@ describe('Sidebar', () => {
         organizationIds: [],
         sourceKinds: ['direct_role'],
       },
+      permissionActions: ['news.read'],
       isLoading: false,
       error: null,
     });

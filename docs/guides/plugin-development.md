@@ -29,6 +29,7 @@ export const pluginNews: PluginDefinition = {
   displayName: 'News',
   routes: [],
   navigation: [],
+  permissions: [],
   contentTypes: [],
   adminResources: [],
   auditEvents: [],
@@ -69,20 +70,40 @@ Spezialcontrols wie Rich-Text, Upload, Medienauswahl, Farbe, Icon und Geo-Auswah
 - Enthält die plugin-eigenen Seiten
 - Der Host übernimmt die tatsächliche Guard-Anwendung
 - Plugins deklarieren nur die fachliche Anforderung über `guard`
+- Produktive Fachplugins verwenden plugin-spezifische Guards aus `permissions`, zum Beispiel `news.read`
 
-Zulässige Guards in v1:
+Legacy-Guards aus dem generischen Content-Vertrag sind nur noch für hosteigene oder historische Core-Content-Pfade zulässig. Produktive Fachplugins dürfen keine `content.*`-Guards mehr deklarieren.
 
-- `content.read`
-- `content.create`
-- `content.updateMetadata`
-- `content.updatePayload`
-- `content.changeStatus`
-- `content.publish`
-- `content.archive`
-- `content.restore`
-- `content.readHistory`
-- `content.manageRevisions`
-- `content.delete`
+### `permissions`
+
+- Beschreibt die autorisierbaren Rechte, die ein Plugin fachlich bereitstellt
+- Permission-IDs verwenden das Format `<pluginId>.<actionName>`
+- Der Namespace muss exakt der `PluginDefinition.id` entsprechen
+- Reservierte Namespaces wie `content`, `iam`, `admin`, `core`, `system` und `platform` sind für Plugins gesperrt
+- Routen, Navigation und Actions dürfen nur eigene, registrierte Permission-IDs referenzieren
+- `requiredAction` bleibt der kanonische Mapping-Pfad; Action-ID und Permission-ID dürfen identisch sein
+
+Beispiel:
+
+```ts
+import { definePluginPermissions, type PluginDefinition } from '@sva/plugin-sdk';
+
+const newsPermissions = definePluginPermissions('news', [
+  { id: 'news.read', titleKey: 'news.permissions.read' },
+  { id: 'news.create', titleKey: 'news.permissions.create' },
+  { id: 'news.update', titleKey: 'news.permissions.update' },
+  { id: 'news.delete', titleKey: 'news.permissions.delete' },
+]);
+
+export const pluginNews: PluginDefinition = {
+  id: 'news',
+  displayName: 'News',
+  permissions: newsPermissions,
+  routes: [{ id: 'news.list', path: '/plugins/news', guard: 'news.read', component: NewsListPage }],
+  navigation: [{ id: 'news.navigation', path: '/plugins/news', titleKey: 'news.navigation.title', requiredAction: 'news.read' }],
+  translations: {},
+};
+```
 
 ### `navigation`
 

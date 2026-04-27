@@ -16,10 +16,11 @@ vi.mock('@sva/plugin-news', () => ({
       {
         id: 'news.create',
         titleKey: 'news.actions.create',
-        requiredAction: 'content.create',
+        requiredAction: 'news.create',
         legacyAliases: ['create'],
       },
     ],
+    permissions: [{ id: 'news.create', titleKey: 'news.permissions.create' }],
   },
 }));
 

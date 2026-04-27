@@ -430,6 +430,35 @@ describe('app.routes', () => {
     ).toThrow('plugin_guardrail_route_bypass:default-logged-plugin:default.logged:path');
   });
 
+  it('materializes registered plugin permission guards as protected routes', async () => {
+    const routeFactories = getPluginRouteFactories([
+      {
+        id: 'news',
+        displayName: 'News',
+        permissions: [{ id: 'news.read', titleKey: 'news.permissions.read' }],
+        routes: [
+          {
+            id: 'news.list',
+            path: '/plugins/news',
+            guard: 'news.read',
+            component: () => 'news',
+          },
+        ],
+      },
+    ]);
+    const rootRoute = { id: 'root' };
+    const [route] = routeFactories.map((factory) => factory(rootRoute as never));
+
+    expect(readRouteOptions(route).path).toBe('/plugins/news');
+    await expect(
+      readRouteOptions(route).beforeLoad?.({
+        context: { auth: { getUser: () => ({ roles: ['editor'] }) } },
+        location: { href: '/plugins/news' },
+      })
+    ).resolves.toBeUndefined();
+    expect(createAccountUiRouteGuardMock).not.toHaveBeenCalledWith('content', expect.anything(), '/plugins/news');
+  });
+
   it('builds server route factories without requiring app-local route composition', () => {
     const routeFactories = getServerRouteFactories({ bindings, adminResources, diagnostics: vi.fn() });
 

@@ -15,6 +15,7 @@ const contentAccessLogger = createOperationLogger('use-content-access', 'debug')
 
 type UseContentAccessResult = {
   readonly access: IamContentAccessSummary | null;
+  readonly permissionActions: readonly string[];
   readonly isLoading: boolean;
   readonly error: IamHttpError | null;
 };
@@ -24,12 +25,14 @@ const buildPermissionsPath = (instanceId: string) => `/iam/me/permissions?${new 
 export const useContentAccess = (): UseContentAccessResult => {
   const { user, invalidatePermissions } = useAuth();
   const [access, setAccess] = React.useState<IamContentAccessSummary | null>(null);
+  const [permissionActions, setPermissionActions] = React.useState<readonly string[]>([]);
   const [isLoading, setIsLoading] = React.useState(false);
   const [error, setError] = React.useState<IamHttpError | null>(null);
 
   React.useEffect(() => {
     if (!user?.instanceId) {
       setAccess(null);
+      setPermissionActions([]);
       setError(null);
       setIsLoading(false);
       return;
@@ -59,6 +62,11 @@ export const useContentAccess = (): UseContentAccessResult => {
         const payload = (await response.json()) as MePermissionsResponse;
         if (!controller.signal.aborted) {
           setAccess(summarizeContentAccess(payload.permissions));
+          setPermissionActions(
+            [...new Set(payload.permissions.filter((permission) => permission.effect !== 'deny').map((permission) => permission.action))]
+              .filter(Boolean)
+              .sort((left, right) => left.localeCompare(right))
+          );
           logBrowserOperationSuccess(contentAccessLogger, 'content_access_load_succeeded', {
             operation: 'load_content_access',
             instance_id: user.instanceId,
@@ -85,6 +93,7 @@ export const useContentAccess = (): UseContentAccessResult => {
             error_code: resolvedError.code,
           }, 'debug');
           setAccess(withServerDeniedContentAccess(undefined));
+          setPermissionActions([]);
         }
         logBrowserOperationFailure(contentAccessLogger, 'content_access_load_failed', resolvedError, {
           operation: 'load_content_access',
@@ -107,6 +116,7 @@ export const useContentAccess = (): UseContentAccessResult => {
 
   return {
     access,
+    permissionActions,
     isLoading,
     error,
   };

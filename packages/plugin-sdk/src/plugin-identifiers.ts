@@ -1,7 +1,7 @@
 const NAMESPACED_IDENTIFIER_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*\.[a-z0-9]+(?:-[a-z0-9]+)*$/;
-const PLUGIN_NAMESPACE_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const PLUGIN_NAMESPACE_PATTERN = /^[a-z][a-z0-9-]{1,30}$/;
 
-export const RESERVED_PLUGIN_NAMESPACES = ['content', 'iam', 'admin', 'core'] as const;
+export const RESERVED_PLUGIN_NAMESPACES = ['content', 'iam', 'admin', 'core', 'system', 'platform'] as const;
 
 export const normalizePluginIdentifier = (value: string): string => value.trim();
 

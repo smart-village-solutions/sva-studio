@@ -139,22 +139,14 @@ const logSidebarDebug = (eventName: string, meta: Record<string, unknown>) => {
   logBrowserOperationStart(sidebarLogger, eventName, meta);
 };
 
-type ContentRequiredAction =
-  | 'content.read'
-  | 'content.create'
-  | 'content.updateMetadata'
-  | 'content.updatePayload'
-  | 'content.changeStatus'
-  | 'content.publish'
-  | 'content.archive'
-  | 'content.restore'
-  | 'content.readHistory'
-  | 'content.manageRevisions'
-  | 'content.delete';
-
 const hasRequiredContentAccess = (
-  requiredAction: ContentRequiredAction | undefined,
-  access: { readonly canRead?: boolean; readonly canCreate?: boolean; readonly canUpdate?: boolean } | null | undefined,
+  requiredAction: string | undefined,
+  access: {
+    readonly canRead?: boolean;
+    readonly canCreate?: boolean;
+    readonly canUpdate?: boolean;
+    readonly permissionActions?: readonly string[];
+  } | null | undefined,
   isLoading: boolean
 ) => {
   if (!requiredAction) {
@@ -167,6 +159,10 @@ const hasRequiredContentAccess = (
 
   if (!access) {
     return false;
+  }
+
+  if (!requiredAction.startsWith('content.')) {
+    return access.permissionActions?.includes(requiredAction) === true;
   }
 
   switch (requiredAction) {
@@ -726,7 +722,13 @@ export default function Sidebar({ isLoading = false, isMobileOpen = false, onMob
         };
       })
       .filter(({ resolvedRequiredAction }) =>
-        hasRequiredContentAccess(resolvedRequiredAction, contentAccessApi.access, contentAccessApi.isLoading)
+        hasRequiredContentAccess(
+          resolvedRequiredAction,
+          contentAccessApi.access
+            ? { ...contentAccessApi.access, permissionActions: contentAccessApi.permissionActions }
+            : null,
+          contentAccessApi.isLoading
+        )
       )
       .map(({ item, resolvedTitleKey }) => ({
         kind: 'link' as const,

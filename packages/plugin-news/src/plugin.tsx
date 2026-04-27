@@ -2,6 +2,7 @@ import {
   definePluginActions,
   definePluginAuditEvents,
   definePluginContentTypes,
+  definePluginPermissions,
   type PluginDefinition,
 } from '@sva/plugin-sdk';
 
@@ -16,29 +17,36 @@ export const pluginNewsActionIds = {
   delete: 'news.delete',
 } as const;
 
+export const pluginNewsPermissionDefinitions = definePluginPermissions('news', [
+  { id: 'news.read', titleKey: 'news.permissions.read' },
+  { id: 'news.create', titleKey: 'news.permissions.create' },
+  { id: 'news.update', titleKey: 'news.permissions.update' },
+  { id: 'news.delete', titleKey: 'news.permissions.delete' },
+] as const);
+
 export const pluginNewsActionDefinitions = definePluginActions('news', [
   {
     id: pluginNewsActionIds.create,
     titleKey: 'news.actions.create',
-    requiredAction: 'content.create',
+    requiredAction: 'news.create',
     legacyAliases: ['create'],
   },
   {
     id: pluginNewsActionIds.edit,
     titleKey: 'news.actions.edit',
-    requiredAction: 'content.read',
+    requiredAction: 'news.read',
     legacyAliases: ['edit'],
   },
   {
     id: pluginNewsActionIds.update,
     titleKey: 'news.actions.update',
-    requiredAction: 'content.updatePayload',
+    requiredAction: 'news.update',
     legacyAliases: ['save', 'update'],
   },
   {
     id: pluginNewsActionIds.delete,
     titleKey: 'news.actions.delete',
-    requiredAction: 'content.delete',
+    requiredAction: 'news.delete',
     legacyAliases: ['delete'],
   },
 ] as const);
@@ -54,20 +62,20 @@ export const pluginNews: PluginDefinition = {
     {
       id: 'news.list',
       path: '/plugins/news',
-      guard: 'content.read',
+      guard: 'news.read',
       component: NewsListPage,
     },
     {
       id: 'news.create',
       path: '/plugins/news/new',
-      guard: 'content.create',
+      guard: 'news.create',
       actionId: pluginNewsActionIds.create,
       component: NewsCreatePage,
     },
     {
       id: 'news.edit',
       path: '/plugins/news/$contentId',
-      guard: 'content.read',
+      guard: 'news.read',
       actionId: pluginNewsActionIds.edit,
       component: NewsEditPage,
     },
@@ -78,10 +86,11 @@ export const pluginNews: PluginDefinition = {
       to: '/plugins/news',
       titleKey: 'news.navigation.title',
       section: 'dataManagement',
-      requiredAction: 'content.read',
+      requiredAction: 'news.read',
     },
   ],
   actions: pluginNewsActionDefinitions,
+  permissions: pluginNewsPermissionDefinitions,
   contentTypes: definePluginContentTypes('news', [
     {
       contentType: NEWS_CONTENT_TYPE,

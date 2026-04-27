@@ -56,6 +56,9 @@ const ROLE_PERMISSION_RESOURCE_LABELS = {
   organization: 'admin.roles.permissionResources.organizations',
   legal: 'admin.roles.permissionResources.legal',
   interfaces: 'admin.roles.permissionResources.interfaces',
+  news: 'admin.roles.permissionResources.news',
+  events: 'admin.roles.permissionResources.events',
+  poi: 'admin.roles.permissionResources.poi',
 } as const;
 
 const ROLE_TAB_LABELS: Record<RoleDetailTab, TranslationKey> = {

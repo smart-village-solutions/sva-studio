@@ -1443,6 +1443,9 @@ export const i18nResources = {
           organizations: 'Organisationen',
           legal: 'Rechtstexte',
           interfaces: 'Schnittstellen',
+          news: 'News',
+          events: 'Events',
+          poi: 'POI',
         },
         createDialog: {
           title: 'Neue Rolle erstellen',
@@ -3392,6 +3395,9 @@ export const i18nResources = {
           organizations: 'Organizations',
           legal: 'Legal texts',
           interfaces: 'Interfaces',
+          news: 'News',
+          events: 'Events',
+          poi: 'POI',
         },
         createDialog: {
           title: 'Create role',

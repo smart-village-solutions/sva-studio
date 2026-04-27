@@ -2,6 +2,7 @@ import {
   definePluginActions,
   definePluginAuditEvents,
   definePluginContentTypes,
+  definePluginPermissions,
   type PluginDefinition,
 } from '@sva/plugin-sdk';
 
@@ -15,29 +16,36 @@ export const pluginPoiActionIds = {
   delete: 'poi.delete',
 } as const;
 
+export const pluginPoiPermissionDefinitions = definePluginPermissions('poi', [
+  { id: 'poi.read', titleKey: 'poi.permissions.read' },
+  { id: 'poi.create', titleKey: 'poi.permissions.create' },
+  { id: 'poi.update', titleKey: 'poi.permissions.update' },
+  { id: 'poi.delete', titleKey: 'poi.permissions.delete' },
+] as const);
+
 export const pluginPoiActionDefinitions = definePluginActions('poi', [
-  { id: pluginPoiActionIds.create, titleKey: 'poi.actions.create', requiredAction: 'content.create' },
-  { id: pluginPoiActionIds.edit, titleKey: 'poi.actions.edit', requiredAction: 'content.read' },
-  { id: pluginPoiActionIds.update, titleKey: 'poi.actions.update', requiredAction: 'content.updatePayload' },
-  { id: pluginPoiActionIds.delete, titleKey: 'poi.actions.delete', requiredAction: 'content.delete' },
+  { id: pluginPoiActionIds.create, titleKey: 'poi.actions.create', requiredAction: 'poi.create' },
+  { id: pluginPoiActionIds.edit, titleKey: 'poi.actions.edit', requiredAction: 'poi.read' },
+  { id: pluginPoiActionIds.update, titleKey: 'poi.actions.update', requiredAction: 'poi.update' },
+  { id: pluginPoiActionIds.delete, titleKey: 'poi.actions.delete', requiredAction: 'poi.delete' },
 ] as const);
 
 export const pluginPoi: PluginDefinition = {
   id: 'poi',
   displayName: 'POI',
   routes: [
-    { id: 'poi.list', path: '/plugins/poi', guard: 'content.read', component: PoiListPage },
+    { id: 'poi.list', path: '/plugins/poi', guard: 'poi.read', component: PoiListPage },
     {
       id: 'poi.create',
       path: '/plugins/poi/new',
-      guard: 'content.create',
+      guard: 'poi.create',
       actionId: pluginPoiActionIds.create,
       component: PoiCreatePage,
     },
     {
       id: 'poi.edit',
       path: '/plugins/poi/$contentId',
-      guard: 'content.read',
+      guard: 'poi.read',
       actionId: pluginPoiActionIds.edit,
       component: PoiEditPage,
     },
@@ -48,10 +56,11 @@ export const pluginPoi: PluginDefinition = {
       to: '/plugins/poi',
       titleKey: 'poi.navigation.title',
       section: 'dataManagement',
-      requiredAction: 'content.read',
+      requiredAction: 'poi.read',
     },
   ],
   actions: pluginPoiActionDefinitions,
+  permissions: pluginPoiPermissionDefinitions,
   contentTypes: definePluginContentTypes('poi', [{ contentType: POI_CONTENT_TYPE, displayName: 'POI' }]),
   auditEvents: definePluginAuditEvents('poi', []),
   translations: {

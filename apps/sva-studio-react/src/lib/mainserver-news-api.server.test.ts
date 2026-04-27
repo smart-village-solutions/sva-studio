@@ -117,7 +117,7 @@ describe('dispatchMainserverNewsRequest', () => {
     const response = await dispatchMainserverNewsRequest(new Request('https://studio.test/api/v1/mainserver/news'));
 
     expect(state.authorizeContentPrimitiveForUser).toHaveBeenCalledWith(
-      expect.objectContaining({ action: 'content.read' })
+      expect.objectContaining({ action: 'news.read' })
     );
     expect(state.listSvaMainserverNews).toHaveBeenCalledWith({
       instanceId: 'de-musterhausen',
@@ -173,7 +173,7 @@ describe('dispatchMainserverNewsRequest', () => {
     expect(state.createSvaMainserverNews).toHaveBeenCalledTimes(1);
   });
 
-  it('requires metadata and payload permissions before updating news', async () => {
+  it('requires the news update permission before updating news', async () => {
     state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
     state.validateCsrf.mockReturnValue(null);
     state.authorizeContentPrimitiveForUser.mockResolvedValue({
@@ -190,13 +190,9 @@ describe('dispatchMainserverNewsRequest', () => {
       })
     );
 
-    expect(state.authorizeContentPrimitiveForUser).toHaveBeenNthCalledWith(
-      1,
-      expect.objectContaining({ action: 'content.updateMetadata' })
-    );
-    expect(state.authorizeContentPrimitiveForUser).toHaveBeenNthCalledWith(
-      2,
-      expect.objectContaining({ action: 'content.updatePayload' })
+    expect(state.authorizeContentPrimitiveForUser).toHaveBeenCalledTimes(1);
+    expect(state.authorizeContentPrimitiveForUser).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'news.update' })
     );
     await expect(response?.json()).resolves.toEqual({ data: { id: 'news-1' } });
   });
@@ -384,7 +380,7 @@ describe('dispatchMainserverNewsRequest', () => {
     );
 
     expect(state.authorizeContentPrimitiveForUser).toHaveBeenCalledWith(
-      expect.objectContaining({ action: 'content.delete' })
+      expect.objectContaining({ action: 'news.delete' })
     );
     expect(state.deleteSvaMainserverNews).toHaveBeenCalledWith({
       instanceId: 'de-musterhausen',

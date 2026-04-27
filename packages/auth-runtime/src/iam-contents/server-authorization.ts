@@ -2,7 +2,6 @@ import {
   evaluateAuthorizeDecision,
   type AuthorizeRequest,
   type EffectivePermission,
-  type IamContentPrimitiveAction,
 } from '@sva/core';
 import { getWorkspaceContext } from '@sva/server-runtime';
 
@@ -36,7 +35,7 @@ export type ContentPrimitiveAuthorizationResult =
 const buildAuthorizeRequest = (input: {
   readonly instanceId: string;
   readonly keycloakSubject: string;
-  readonly action: IamContentPrimitiveAction;
+  readonly action: string;
   readonly resource: ContentPrimitiveAuthorizationResource;
   readonly requestId?: string;
   readonly traceId?: string;
@@ -44,7 +43,7 @@ const buildAuthorizeRequest = (input: {
   instanceId: input.instanceId,
   action: input.action,
   resource: {
-    type: 'content',
+    type: input.action.split('.')[0] ?? 'content',
     ...(input.resource.contentId ? { id: input.resource.contentId } : {}),
     ...(input.resource.organizationId ? { organizationId: input.resource.organizationId } : {}),
     ...(input.resource.contentType ? { attributes: { contentType: input.resource.contentType } } : {}),
@@ -59,7 +58,7 @@ const buildAuthorizeRequest = (input: {
 
 export const authorizeContentPrimitiveForUser = async (input: {
   readonly ctx: AuthenticatedRequestContext;
-  readonly action: IamContentPrimitiveAction;
+  readonly action: string;
   readonly resource?: ContentPrimitiveAuthorizationResource;
   readonly permissions?: readonly EffectivePermission[];
 }): Promise<ContentPrimitiveAuthorizationResult> => {

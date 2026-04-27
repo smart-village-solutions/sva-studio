@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   definePluginActions,
+  definePluginPermissions,
   pluginSdkPackageRoles,
   pluginSdkVersion,
   registerPluginTranslationResolver,
@@ -19,17 +20,19 @@ describe('@sva/plugin-sdk package scaffold', () => {
       {
         id: 'news.create',
         titleKey: 'news.actions.create',
-        requiredAction: 'content.create',
+        requiredAction: 'news.create',
       },
     ]);
+    const permissions = definePluginPermissions('news', [{ id: 'news.create', titleKey: 'news.permissions.create' }]);
 
     expect(actions).toEqual([
       {
         id: 'news.create',
         titleKey: 'news.actions.create',
-        requiredAction: 'content.create',
+        requiredAction: 'news.create',
       },
     ]);
+    expect(permissions).toEqual([{ id: 'news.create', titleKey: 'news.permissions.create' }]);
   });
 
   it('exposes plugin translation helpers through the target package edge', () => {

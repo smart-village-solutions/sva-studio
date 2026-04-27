@@ -6,7 +6,7 @@ const Alert = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivEleme
   <div
     ref={ref}
     role="alert"
-    className={cn('relative w-full rounded-xl border p-4 text-sm [&>svg~*]:pl-7', className)}
+    className={cn('animate-toast-slide relative w-full rounded-xl border p-4 text-sm [&>svg~*]:pl-7', className)}
     {...props}
   />
 ));

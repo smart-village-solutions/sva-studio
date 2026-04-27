@@ -230,18 +230,19 @@
       }
     }
 
+    /* 9. Breadcrumb-Slide: Sanfte Transition für Navigation */
+    @keyframes breadcrumb-slide {
+      from {
+        opacity: 0.8;
+        transform: translateX(-2px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
     /* 7. Pagination-Bounce: Mini Bounce auf active */
-        /* 9. Breadcrumb-Slide: Sanfte Transition für Navigation */
-        @keyframes breadcrumb-slide {
-          from {
-            opacity: 0.8;
-            transform: translateX(-2px);
-          }
-          to {
-            opacity: 1;
-            transform: translateX(0);
-          }
-        }
     @keyframes pagination-bounce {
       0% {
         transform: scale(1);
@@ -305,25 +306,22 @@
       animation: collapse-icon-rotate 200ms ease-out forwards;
     }
 
-    .animate-pagination-active {
-          /* Collapse-Icon animiert auf Button-Hover (Parent-Selektor) */
-          button:has(.animate-collapse-icon):hover .animate-collapse-icon {
-            animation: collapse-icon-rotate 200ms ease-out forwards;
-          }
+    button:has(.animate-collapse-icon):hover .animate-collapse-icon {
+      animation: collapse-icon-rotate 200ms ease-out forwards;
+    }
 
-          .animate-pagination-active {
+    .animate-pagination-active {
       animation: pagination-bounce 400ms cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
     }
-  }
 
     .animate-breadcrumb-slide:hover {
       animation: breadcrumb-slide 200ms ease-out forwards;
     }
 
-    /* Label-Float auf Input-Focus (Parent-Container muss Input enthalten) */
-    :has(input:focus-visible) .animate-label-float {
+    .field-group:has(input:focus-visible, textarea:focus-visible, [role='combobox']:focus-visible) .animate-label-float {
       animation: label-float 150ms ease-out forwards;
     }
+  }
 
   /* Fallback für prefers-reduced-motion: nur transition, kein animation */
   @media (prefers-reduced-motion: reduce) {

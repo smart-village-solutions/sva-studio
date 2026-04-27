@@ -21,7 +21,7 @@ export function AppBreadcrumbs({ pathname }: AppBreadcrumbsProps) {
             <li key={`${item.label}-${index}`} className="flex items-center gap-2">
               {index > 0 ? <ChevronRight className="h-4 w-4" aria-hidden="true" /> : null}
               {item.href && !isLast ? (
-                <Link to={item.href} className="transition-all duration-200 hover:text-foreground">
+                <Link to={item.href} className="animate-breadcrumb-slide transition-all duration-200 hover:text-foreground">
                   {item.label}
                 </Link>
               ) : (

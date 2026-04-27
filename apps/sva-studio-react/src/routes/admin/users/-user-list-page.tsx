@@ -404,7 +404,7 @@ export const UserListPage = () => {
       ) : null}
 
       <footer className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
-        <p>
+        <p key={usersApi.page} className="animate-pagination-active" aria-live="polite">
           {t('admin.users.pagination.pageLabel', { page: usersApi.page, totalPages: pageCount })}
         </p>
         <div className="flex items-center gap-2">

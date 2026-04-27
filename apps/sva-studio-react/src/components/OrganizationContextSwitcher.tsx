@@ -39,7 +39,7 @@ export const OrganizationContextSwitcher = () => {
 
   return (
     <div className="flex max-w-full flex-col items-start gap-1 text-xs text-muted-foreground">
-      <div className="flex items-center gap-2">
+      <div className="field-group flex items-center gap-2">
         <Label htmlFor="organization-context-switcher">{t('shell.header.organizationContext')}</Label>
         <Select
           id="organization-context-switcher"

@@ -5,15 +5,15 @@ import { resolvePluginRouteGuard } from './plugin-route-guards.js';
 describe('resolvePluginRouteGuard', () => {
   const plugin: PluginDefinition = {
     id: 'test',
-    titleKey: 'test.title',
+    displayName: 'Test Plugin',
     permissions: [
-      { id: 'test.read', labelKey: 'test.read.label' },
-      { id: 'test.write', labelKey: 'test.write.label' },
+      { id: 'test.read', titleKey: 'test.read.label' },
+      { id: 'test.write', titleKey: 'test.write.label' },
     ],
     routes: [],
   };
 
-  const route = { path: '/test', titleKey: 'test.page' };
+  const route = { id: 'test-route', path: '/test', component: () => null as unknown };
 
   // Content guard mappings (legacy support)
   it('maps content guards to account UI guards', () => {
@@ -81,7 +81,7 @@ describe('resolvePluginRouteGuard', () => {
   it('matches permission with whitespace in id', () => {
     const whitespacePerms: PluginDefinition = {
       ...plugin,
-      permissions: [{ id: ' test.read ', labelKey: 'label' }],
+      permissions: [{ id: ' test.read ', titleKey: 'label' }],
     };
     const result = resolvePluginRouteGuard(
       whitespacePerms,
@@ -95,7 +95,7 @@ describe('resolvePluginRouteGuard', () => {
   it('accepts hyphenated permission names', () => {
     const hyphenated: PluginDefinition = {
       ...plugin,
-      permissions: [{ id: 'my-plugin.read', labelKey: 'label' }],
+      permissions: [{ id: 'my-plugin.read', titleKey: 'label' }],
     };
     const result = resolvePluginRouteGuard(
       hyphenated,

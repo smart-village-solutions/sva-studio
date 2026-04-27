@@ -241,11 +241,11 @@ const newsItemFields = `
     dateEnd
     timeStart
     timeEnd
-    likeCount
-    likedByMe
+    likeCount(likeType: "Shout")
+    likedByMe(likeType: "Shout")
   }
-  likeCount
-  likedByMe
+  likeCount(likeType: "NewsItem")
+  likedByMe(likeType: "NewsItem")
   pushNotificationsSentAt
   createdAt
   updatedAt

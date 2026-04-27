@@ -53,7 +53,7 @@ const buildAuthorizeRequest = (input: {
   instanceId: input.instanceId,
   action: input.action,
   resource: {
-    type: input.action.split('.')[0] ?? 'content',
+    type: input.action.split('.')[0] || 'content',
     ...(input.resource.contentId ? { id: input.resource.contentId } : {}),
     ...(input.resource.organizationId ? { organizationId: input.resource.organizationId } : {}),
     ...(input.resource.contentType ? { attributes: { contentType: input.resource.contentType } } : {}),

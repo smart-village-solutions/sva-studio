@@ -58,14 +58,14 @@ const createAuthMeHeaders = (): HeadersInit => ({
 
 const collectEffectivePermissionActions = (
   permissions: readonly {
-    action: string;
-    effect: string;
+    action?: string;
+    effect?: string;
   }[]
 ): string[] => {
   const byAction = new Map<string, 'allow' | 'deny'>();
 
   for (const permission of permissions) {
-    const action = permission.action.trim();
+    const action = typeof permission.action === 'string' ? permission.action.trim() : '';
     if (action.length === 0) {
       continue;
     }

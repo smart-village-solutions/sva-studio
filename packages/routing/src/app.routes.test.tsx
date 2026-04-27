@@ -468,6 +468,33 @@ describe('app.routes', () => {
     });
   });
 
+  it('normalizes surrounding whitespace for registered plugin permission guards', async () => {
+    const routeFactories = getPluginRouteFactories([
+      {
+        id: 'news',
+        displayName: 'News',
+        permissions: [{ id: 'news.read', titleKey: 'news.permissions.read' }],
+        routes: [
+          {
+            id: 'news.list',
+            path: '/plugins/news',
+            guard: ' news.read ',
+            component: () => 'news',
+          },
+        ],
+      },
+    ]);
+    const rootRoute = { id: 'root' };
+    const [route] = routeFactories.map((factory) => factory(rootRoute as never));
+
+    await expect(
+      readRouteOptions(route).beforeLoad?.({
+        context: { auth: { getUser: () => ({ roles: ['editor'], permissionActions: ['news.read'] }) } },
+        location: { href: '/plugins/news' },
+      })
+    ).resolves.toBeUndefined();
+  });
+
   it('builds server route factories without requiring app-local route composition', () => {
     const routeFactories = getServerRouteFactories({ bindings, adminResources, diagnostics: vi.fn() });
 

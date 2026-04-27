@@ -1,7 +1,7 @@
 # sva-mainserver-integration Specification
 
 ## Purpose
-TBD - created by archiving change add-news-mainserver-integration. Update Purpose after archive.
+This specification defines the host-owned, typed SVA Mainserver integration contract for News, Events, and POI so fachplugins consume Mainserver data and mutations without bypassing package boundaries, per-user delegation, or deterministic validation and error handling.
 ## Requirements
 ### Requirement: Typed News GraphQL Adapters
 

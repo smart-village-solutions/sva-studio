@@ -100,7 +100,7 @@ export const pluginNews: PluginDefinition = {
   displayName: 'News',
   permissions: newsPermissions,
   routes: [{ id: 'news.list', path: '/plugins/news', guard: 'news.read', component: NewsListPage }],
-  navigation: [{ id: 'news.navigation', path: '/plugins/news', titleKey: 'news.navigation.title', requiredAction: 'news.read' }],
+  navigation: [{ id: 'news.navigation', to: '/plugins/news', titleKey: 'news.navigation.title', requiredAction: 'news.read' }],
   translations: {},
 };
 ```

@@ -217,12 +217,13 @@ const resolvePluginRouteGuard = (
   routeDefinition: PluginDefinition['routes'][number],
   diagnostics: RoutingDiagnosticsHook | undefined
 ) => {
-  const guardKey = mapPluginGuardToAccountGuard(routeDefinition.guard);
+  const normalizedGuard = routeDefinition.guard?.trim();
+  const guardKey = mapPluginGuardToAccountGuard(normalizedGuard);
   if (guardKey) {
     return createAccountUiRouteGuard(guardKey, diagnostics, routeDefinition.path);
   }
 
-  const pluginPermissionGuard = routeDefinition.guard;
+  const pluginPermissionGuard = normalizedGuard;
   if (!pluginPermissionGuard) {
     return null;
   }
@@ -250,7 +251,8 @@ export const getPluginRouteFactories = (
   return pluginDefinitions.flatMap((pluginDefinition) =>
     pluginDefinition.routes.map((routeDefinition) => {
       const guard = resolvePluginRouteGuard(pluginDefinition, routeDefinition, diagnostics);
-      const unsupportedGuard = !guard && routeDefinition.guard ? routeDefinition.guard : null;
+      const normalizedGuard = routeDefinition.guard?.trim();
+      const unsupportedGuard = !guard && normalizedGuard ? normalizedGuard : null;
       const pluginNamespace = pluginDefinition.id.trim();
       const contributionId = routeDefinition.id.trim();
 

@@ -3,8 +3,8 @@
 **Status:** Accepted
 **Entscheidungsdatum:** 2026-04-27
 **Entschieden durch:** Studio/Architektur Team
-**GitHub Issue:** TBD
-**GitHub PR:** TBD
+**GitHub Issue:** Nicht vorhanden
+**GitHub PR:** #335
 
 ## Kontext
 

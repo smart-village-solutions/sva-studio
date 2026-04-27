@@ -146,8 +146,8 @@ const parseCategories = (value: unknown): readonly SvaMainserverCategoryInput[] 
   if (!Array.isArray(value)) {
     return errorJson(400, 'invalid_request', 'Kategorien müssen als Liste gesendet werden.');
   }
-  const categories: SvaMainserverCategoryInput[] = [];
-  for (const item of value) {
+
+  const parseCategory = (item: unknown): SvaMainserverCategoryInput | Response => {
     if (!isRecord(item)) {
       return errorJson(400, 'invalid_request', 'Kategorien müssen Objekte sein.');
     }
@@ -155,7 +155,24 @@ const parseCategories = (value: unknown): readonly SvaMainserverCategoryInput[] 
     if (!name || name.length > 128) {
       return errorJson(400, 'invalid_request', 'Kategorien benötigen einen Namen mit maximal 128 Zeichen.');
     }
-    categories.push({ name, ...(isRecord(item.payload) ? { payload: item.payload } : {}) });
+    const children = parseCategories(item.children);
+    if (children instanceof Response) {
+      return children;
+    }
+    return {
+      name,
+      ...(isRecord(item.payload) ? { payload: item.payload } : {}),
+      ...(children ? { children } : {}),
+    };
+  };
+
+  const categories: SvaMainserverCategoryInput[] = [];
+  for (const item of value) {
+    const category = parseCategory(item);
+    if (category instanceof Response) {
+      return category;
+    }
+    categories.push(category);
   }
   return categories;
 };

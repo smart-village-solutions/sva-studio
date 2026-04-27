@@ -7,6 +7,10 @@ describe('validatePoiForm', () => {
     expect(validatePoiForm({ name: 'Rathaus' })).toEqual([]);
   });
 
+  it('ignores empty optional URL placeholders', () => {
+    expect(validatePoiForm({ name: 'Rathaus', webUrls: [{ url: '' }, { url: '   ' }] })).toEqual([]);
+  });
+
   it('requires a name and https urls', () => {
     expect(validatePoiForm({ name: '', webUrls: [{ url: 'http://example.test' }] })).toEqual(['name', 'webUrls']);
   });

@@ -21,7 +21,7 @@ export const validateEventForm = (input: EventFormInput): readonly string[] => {
     errors.push('dates');
   }
 
-  if ((input.urls ?? []).some((url) => isHttpsUrl(url.url) === false)) {
+  if ((input.urls ?? []).some((url) => url.url.trim().length > 0 && isHttpsUrl(url.url) === false)) {
     errors.push('urls');
   }
 

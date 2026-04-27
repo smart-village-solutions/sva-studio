@@ -19,7 +19,7 @@ export const validatePoiForm = (input: PoiFormInput): readonly string[] => {
     errors.push('categoryName');
   }
 
-  if ((input.webUrls ?? []).some((url) => isHttpsUrl(url.url) === false)) {
+  if ((input.webUrls ?? []).some((url) => url.url.trim().length > 0 && isHttpsUrl(url.url) === false)) {
     errors.push('webUrls');
   }
 

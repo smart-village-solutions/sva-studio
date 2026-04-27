@@ -32,6 +32,16 @@ export type ContentPrimitiveAuthorizationResult =
       readonly message: string;
     };
 
+const ACTION_PATTERN = /^[a-z][a-z0-9-]{1,30}\.[A-Za-z][A-Za-z0-9-]*$/;
+
+const normalizeAuthorizationAction = (action: string): string | null => {
+  const normalized = action.trim();
+  if (!ACTION_PATTERN.test(normalized)) {
+    return null;
+  }
+  return normalized;
+};
+
 const buildAuthorizeRequest = (input: {
   readonly instanceId: string;
   readonly keycloakSubject: string;
@@ -69,6 +79,16 @@ export const authorizeContentPrimitiveForUser = async (input: {
       status: 400,
       error: 'missing_instance',
       message: 'Kein Instanzkontext für diese Inhaltsoperation vorhanden.',
+    };
+  }
+
+  const action = normalizeAuthorizationAction(input.action);
+  if (!action) {
+    return {
+      ok: false,
+      status: 400,
+      error: 'invalid_action',
+      message: 'Ungültige Action für diese Inhaltsoperation.',
     };
   }
 
@@ -131,7 +151,7 @@ export const authorizeContentPrimitiveForUser = async (input: {
   const request = buildAuthorizeRequest({
     instanceId,
     keycloakSubject: input.ctx.user.id,
-    action: input.action,
+    action,
     resource,
     requestId: workspaceContext.requestId,
     traceId: workspaceContext.traceId,
@@ -143,7 +163,7 @@ export const authorizeContentPrimitiveForUser = async (input: {
       instance_id: instanceId,
       request_id: workspaceContext.requestId,
       trace_id: workspaceContext.traceId,
-      action: input.action,
+      action,
       content_id: resource.contentId,
       content_type: resource.contentType,
       organization_id: organizationId,

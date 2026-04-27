@@ -20,6 +20,23 @@ type UseContentAccessResult = {
   readonly error: IamHttpError | null;
 };
 
+const collectEffectivePermissionActions = (permissions: MePermissionsResponse['permissions']): readonly string[] => {
+  const deniedActions = new Set(
+    permissions
+      .filter((permission) => permission.effect === 'deny')
+      .map((permission) => permission.action)
+      .filter((action): action is string => typeof action === 'string' && action.length > 0)
+  );
+
+  return [...new Set(
+    permissions
+      .filter((permission) => permission.effect !== 'deny')
+      .map((permission) => permission.action)
+      .filter((action): action is string => typeof action === 'string' && action.length > 0)
+      .filter((action) => !deniedActions.has(action))
+  )].sort((left, right) => left.localeCompare(right));
+};
+
 const buildPermissionsPath = (instanceId: string) => `/iam/me/permissions?${new URLSearchParams({ instanceId }).toString()}`;
 
 export const useContentAccess = (): UseContentAccessResult => {
@@ -62,11 +79,7 @@ export const useContentAccess = (): UseContentAccessResult => {
         const payload = (await response.json()) as MePermissionsResponse;
         if (!controller.signal.aborted) {
           setAccess(summarizeContentAccess(payload.permissions));
-          setPermissionActions(
-            [...new Set(payload.permissions.filter((permission) => permission.effect !== 'deny').map((permission) => permission.action))]
-              .filter(Boolean)
-              .sort((left, right) => left.localeCompare(right))
-          );
+          setPermissionActions(collectEffectivePermissionActions(payload.permissions));
           logBrowserOperationSuccess(contentAccessLogger, 'content_access_load_succeeded', {
             operation: 'load_content_access',
             instance_id: user.instanceId,

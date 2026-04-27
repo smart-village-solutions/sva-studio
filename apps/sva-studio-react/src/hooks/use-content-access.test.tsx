@@ -145,6 +145,40 @@ describe('useContentAccess', () => {
     );
   });
 
+  it('treats deny actions as dominant when permission actions are aggregated', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        permissions: [
+          {
+            action: 'news.read',
+            resourceType: 'news',
+            effect: 'allow',
+          },
+          {
+            action: 'news.read',
+            resourceType: 'news',
+            effect: 'deny',
+          },
+          {
+            action: 'events.read',
+            resourceType: 'events',
+            effect: 'allow',
+          },
+        ],
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { result } = renderHook(() => useContentAccess());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.permissionActions).toEqual(['events.read']);
+      expect(result.current.error).toBeNull();
+    });
+  });
+
   it('invalidates permissions and exposes a server denied access state on 403', async () => {
     const forbiddenError = { status: 403, code: 'forbidden', message: 'Forbidden' };
     const fetchMock = vi.fn().mockResolvedValue({ ok: false, status: 403 });

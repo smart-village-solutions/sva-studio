@@ -387,4 +387,3 @@ Updates SHALL continue to use `createNewsItem` with the existing `id` and `force
 - **WHEN** the host writes the delete to Mainserver
 - **THEN** the request uses `destroyRecord(id, recordType: "NewsItem")`
 - **AND** no local IAM fallback, soft delete, or dual-write is performed
-

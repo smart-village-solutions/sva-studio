@@ -1,4 +1,6 @@
+import { pluginEvents } from '@sva/plugin-events';
 import { pluginNews } from '@sva/plugin-news';
+import { pluginPoi } from '@sva/plugin-poi';
 import {
   createBuildTimeRegistry,
   registerPluginTranslationResolver,
@@ -16,7 +18,7 @@ const pluginLogger = createBrowserLogger({
 const warnedDeprecatedPluginActionAliases = new Set<string>();
 
 export const studioBuildTimeRegistry = createBuildTimeRegistry({
-  plugins: [pluginNews],
+  plugins: [pluginNews, pluginEvents, pluginPoi],
   adminResources: appAdminResources,
 });
 

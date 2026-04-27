@@ -46,6 +46,27 @@ Das News-`payload` ist nur noch Legacy-Lesefallback. Neue und aktualisierte News
 
 Rollback erfolgt über den Mainserver-Kill-Switch `iam.instance_integrations.enabled = false`. Das Plugin zeigt dann Mainserver-Fehler an, lokale IAM-News werden bewusst nicht als Fallback reaktiviert.
 
+## Events- und POI-Operationen
+
+Events und POI folgen demselben Boundary-Muster wie News: Browser-Plugins sprechen nur hostgeführte Fassaden, während Session, `instanceId`, lokale Content-Primitive, Mainserver-Credentials, Error-Mapping und Logging serverseitig bleiben.
+
+| Studio-Methode | Lokale Primitive | Mainserver-Operation | Hinweis |
+| --- | --- | --- | --- |
+| `GET /api/v1/mainserver/events` | `content.read` | `eventRecords` | Liefert veröffentlichte Event-Items mit Mainserver-Feldern für Titel, Beschreibung, Termine, Kategorie, Adresse, Kontakte, URLs, Medien, Veranstalter, Preise, Barrierefreiheit, Tags und optionalen POI-Bezug. |
+| `GET /api/v1/mainserver/events/$eventId` | `content.read` | `eventRecord(id)` | Fehlende Events werden als stabiler Fehlercode an das Plugin zurückgegeben. |
+| `POST /api/v1/mainserver/events` | `content.create` | `createEventRecord` | Neue Events werden nicht parallel als lokale IAM-Contents geschrieben. |
+| `PATCH /api/v1/mainserver/events/$eventId` | `content.updateMetadata`, `content.updatePayload` | `createEventRecord(id, forceCreate: false)` | Update nutzt die bestätigte Upsert-Semantik; Wiederholungen bleiben auf Snapshot-Felder wie `repeat`, `repeatDuration` und `recurring*` begrenzt. |
+| `DELETE /api/v1/mainserver/events/$eventId` | `content.delete` | `destroyRecord(id, recordType: "EventRecord")` | Phase 1 nutzt einen harten Löschpfad. Falls Staging diesen Record-Type widerlegt, wird nur dieser Pfad auf `changeVisibility(false)` umgestellt. |
+| `GET /api/v1/mainserver/poi` | `content.read` | `pointsOfInterest` | Dient der POI-Liste und der POI-Auswahl im Event-Editor. |
+| `GET /api/v1/mainserver/poi/$poiId` | `content.read` | `pointOfInterest(id)` | Liefert POI-Felder für Name, Beschreibungen, Aktivstatus, Kategorie, Adresse, Kontakt, Öffnungszeiten, Betreiber, URLs, Medien, Preise, Zertifikate, Barrierefreiheit, Tags und `payload`. |
+| `POST /api/v1/mainserver/poi` | `content.create` | `createPointOfInterest` | Keine Media-Uploads; Medien werden nur als URL-/Referenzmodell übertragen. |
+| `PATCH /api/v1/mainserver/poi/$poiId` | `content.updateMetadata`, `content.updatePayload` | `createPointOfInterest(id, forceCreate: false)` | `active` und Mainserver-Sichtbarkeit bleiben getrennte Fachfelder. |
+| `DELETE /api/v1/mainserver/poi/$poiId` | `content.delete` | `destroyRecord(id, recordType: "PointOfInterest")` | Phase 1 nutzt einen harten Löschpfad. |
+
+Der Event-Editor importiert das POI-Plugin nicht direkt. Die Auswahl nutzt ausschließlich `/api/v1/mainserver/poi`; dadurch bleiben Rechteprüfung, Downstream-Credentials und Fehlerklassifikation im Host.
+
+Rollback erfolgt wie bei News über `iam.instance_integrations.enabled = false`. Events und POI fallen dann nicht auf lokale IAM-Contents zurück.
+
 ## Credential-Rotation
 
 1. Betroffenen Benutzer in Keycloak identifizieren.
@@ -157,6 +178,18 @@ pnpm schema-diff:sva-mainserver
 ```
 
 Für lokale Läufe müssen `SVA_MAINSERVER_SCHEMA_GRAPHQL_URL`, `SVA_MAINSERVER_SCHEMA_OAUTH_TOKEN_URL`, `SVA_MAINSERVER_SCHEMA_CLIENT_ID` und `SVA_MAINSERVER_SCHEMA_CLIENT_SECRET` gesetzt sein. Fehlen diese Variablen, ist die lokale Schema-Diff-Prüfung nicht aussagekräftig und muss in CI oder Staging nachgeholt werden.
+
+## Migration-Runtime-Diagnose
+
+Fehlgeschlagene Swarm-Migrationsjobs liefern jetzt Diagnosematerial im Fehlertext:
+
+- `containerLogs`: zuerst per Portainer Docker API vom fehlgeschlagenen Task-Container gelesen.
+- Service-Log-Fallback: wenn der Container-Log-Tail nicht verfügbar ist.
+- `taskSnapshot`: normalisierte Taskdaten mit Status, Exit-Code, Message, Zeitstempeln und Container-ID.
+
+`fetchPortainerDockerText` benötigt `PORTAINER_ENDPOINT_ID` und `QUANTUM_API_KEY`; HTTP-Fehler der Portainer API werden mit Statuscode und Ressourcenpfad gemeldet. Wenn `SVA_MIGRATION_JOB_KEEP_FAILED_STACK` truthy gesetzt ist, bleibt der fehlgeschlagene Migrationsjob-Stack für manuelle Diagnose bestehen. Ohne diese Variable wird der Job-Stack weiterhin automatisch entfernt.
+
+Das Entrypoint-Skript führt `goose up` direkt aus und gibt danach den finalen Goose-Status aus. Ein vorangestellter Statuscheck ist kein Pflichtschritt mehr und darf einen ansonsten lauffähigen Migrationslauf nicht blockieren.
 
 ## Benchmark vor Produktivbetrieb
 

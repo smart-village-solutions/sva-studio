@@ -161,6 +161,14 @@ Das News-Plugin nutzt dieses Muster für Mainserver-News:
 - Legacy-`payload` wird nur beim Lesen alter Datensätze in Editorfelder überführt und bei Create/Update nicht geschrieben.
 - Lokale Altinhalte werden nicht als produktiver Fallback gelesen.
 
+Events und POI verwenden dasselbe Muster als getrennte Fachplugins:
+
+- `@sva/plugin-events` registriert Namespace `events`, Routen unter `/plugins/events` und den Content-Type `events.event-record`.
+- `@sva/plugin-poi` registriert Namespace `poi`, Routen unter `/plugins/poi` und den Content-Type `poi.point-of-interest`.
+- Events sprechen `/api/v1/mainserver/events`; POI sprechen `/api/v1/mainserver/poi`.
+- Eine Event-zu-POI-Auswahl läuft über die POI-Fassade des Hosts. Das Events-Plugin importiert das POI-Plugin nicht.
+- Delete nutzt in Phase 1 `destroyRecord` mit den Mainserver-Record-Types `EventRecord` und `PointOfInterest`.
+
 ## i18n
 
 - Keine harten UI-Strings

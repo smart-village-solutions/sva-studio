@@ -1,0 +1,31 @@
+{
+  "name": "@sva/plugin-poi",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "module": "src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "dependencies": {
+    "@sva/plugin-sdk": "workspace:*",
+    "@sva/studio-ui-react": "workspace:*"
+  },
+  "peerDependencies": {
+    "@tanstack/react-router": "^1.168.10",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@testing-library/react": "^16.2.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitest/coverage-v8": "^4.1.2",
+    "jsdom": "^29.0.1",
+    "vitest": "^4.1.2"
+  }
+}

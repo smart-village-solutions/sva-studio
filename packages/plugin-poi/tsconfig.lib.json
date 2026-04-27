@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "declaration": true,
+    "declarationMap": true,
+    "outDir": "dist",
+    "rootDir": "src",
+    "types": ["react", "react-dom"],
+    "paths": {
+      "@sva/core": ["packages/core/dist/index.d.ts"],
+      "@sva/plugin-sdk": ["packages/plugin-sdk/dist/index.d.ts"],
+      "@sva/studio-ui-react": ["packages/studio-ui-react/dist/index.d.ts"]
+    }
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx"]
+}

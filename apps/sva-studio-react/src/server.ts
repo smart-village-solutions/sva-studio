@@ -47,6 +47,9 @@ let dispatchAuthRouteRequestPromise: Promise<typeof import('@sva/routing/server'
 let dispatchMainserverNewsRequestPromise:
   | Promise<typeof import('./lib/mainserver-news-api.server')['dispatchMainserverNewsRequest']>
   | null = null;
+let dispatchMainserverEventsPoiRequestPromise:
+  | Promise<typeof import('./lib/mainserver-events-poi-api.server')['dispatchMainserverEventsPoiRequest']>
+  | null = null;
 const getSdk = async (): Promise<RequestContextSdk> => {
   sdkPromise ??= import('@sva/server-runtime') as Promise<RequestContextSdk>;
   return sdkPromise;
@@ -62,6 +65,13 @@ const getDispatchMainserverNewsRequest = async () => {
     (mod) => mod.dispatchMainserverNewsRequest
   );
   return dispatchMainserverNewsRequestPromise;
+};
+
+const getDispatchMainserverEventsPoiRequest = async () => {
+  dispatchMainserverEventsPoiRequestPromise ??= import('./lib/mainserver-events-poi-api.server').then(
+    (mod) => mod.dispatchMainserverEventsPoiRequest
+  );
+  return dispatchMainserverEventsPoiRequestPromise;
 };
 
 const getLogger = async (component: ServerTransportComponent): Promise<ServerTransportLogger> => {
@@ -106,6 +116,16 @@ const instrumentedFetch: RequestHandler<Register> = async (...args) => {
       status: mainserverNewsResponse.status,
     });
     return mainserverNewsResponse;
+  }
+
+  const dispatchMainserverEventsPoiRequest = await getDispatchMainserverEventsPoiRequest();
+  const mainserverEventsPoiResponse = await dispatchMainserverEventsPoiRequest(request);
+
+  if (mainserverEventsPoiResponse) {
+    await logServerEntryDebug('Server entry mainserver events/poi route dispatched', {
+      status: mainserverEventsPoiResponse.status,
+    });
+    return mainserverEventsPoiResponse;
   }
 
   const dispatchAuthRouteRequest = await getDispatchAuthRouteRequest();

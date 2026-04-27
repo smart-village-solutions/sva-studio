@@ -25,7 +25,7 @@ Der Snapshot enthält für POI:
 - Mutation `destroyRecord(id: ID, recordType: String!, externalId: String): Destroy`
 - Object `PointOfInterest` mit u. a. `id`, `name`, `description`, `mobileDescription`, `active`, `payload`, `addresses`, `location`, `contact`, `openingHours`, `operatingCompany`, `webUrls`, `mediaContents`, `priceInformations`, `certificates`, `accessibilityInformation`, `tagList`, `createdAt`, `updatedAt`, `visible`
 
-Es gibt keine dedizierten Update- oder Delete-Mutationen. Update wird nur nach Staging-Verifikation als Upsert über `createEventRecord` bzw. `createPointOfInterest` mit bestehender `id` und dokumentierter `forceCreate`-Semantik umgesetzt. Archive/Delete wird je Fachdomäne explizit über `changeVisibility` oder `destroyRecord` entschieden.
+Es gibt keine dedizierten Update- oder Delete-Mutationen. Update wird als Upsert über `createEventRecord(id, forceCreate: false)` bzw. `createPointOfInterest(id, forceCreate: false)` umgesetzt. Delete wird in Phase 1 als harter Mainserver-Löschpfad über `destroyRecord` mit `recordType: "EventRecord"` bzw. `recordType: "PointOfInterest"` umgesetzt.
 
 ## Decisions
 
@@ -87,6 +87,10 @@ Events starten mit einem bewusst fokussierten Formularmodell:
 - optionaler POI-Bezug <- Mutation `pointOfInterestId`
 - `status` <- Ableitung aus `visible`, Datum und optionalem Pluginzustand
 
+Der Event-Editor lädt auswählbare POI über die host-owned POI-Fassade. `@sva/plugin-events` importiert `@sva/plugin-poi` nicht und kennt nur das stabile Auswahl-DTO der Fassade.
+
+Wiederholungen werden im ersten Schritt nur über Snapshot-Felder wie `repeat`, `repeatDuration` und `recurring*` abgebildet, soweit sie vom Staging-Vertrag bestätigt sind. Nicht stabil bestätigte Wiederholungsdetails bleiben im Formular eingeschränkt.
+
 POI starten mit einem fokussierten Formularmodell:
 
 - `name` <- `PointOfInterest.name`
@@ -107,9 +111,19 @@ Komplexe verschachtelte Eingaben werden vor GraphQL-Ausführung validiert. Nicht
 ## Risks / Trade-offs
 
 - Events und POI haben deutlich tiefere verschachtelte Mainserver-Typen als News. Der erste Implementierungsschritt muss den Formularumfang begrenzen, statt ungetestet alle Snapshot-Felder beschreibbar zu machen.
-- Update-Semantik über `createEventRecord` und `createPointOfInterest` muss gegen Staging validiert werden.
+- Update-Semantik über `createEventRecord(id, forceCreate: false)` und `createPointOfInterest(id, forceCreate: false)` bleibt im Runbook als Staging-abhängiger Vertrag dokumentiert.
 - POI und Events können fachlich gekoppelt sein. Der optionale `pointOfInterestId` bei Events darf keine harte Implementierungsabhängigkeit des Events-Plugins auf das POI-Plugin erzwingen.
 - Separate Plugins erzeugen etwas Duplikation, halten aber Navigation, Rechte, Tests und spätere Rollouts klar getrennt.
+
+## Migration Runtime Diagnostics
+
+Die Migration-Runtime-Diagnostik wird in denselben Change aufgenommen, weil sie denselben Mainserver-Rolloutpfad absichert:
+
+- Bei fehlgeschlagenen Swarm-Migrationsjobs wird zuerst der Container-Log-Tail über die Portainer Docker API gelesen.
+- Wenn Container-Logs nicht verfügbar sind, fällt die Diagnose auf Service-Logs zurück.
+- Fehlertexte enthalten `containerLogs` und den normalisierten `taskSnapshot`, damit Operatoren den Goose-/Task-Fehler ohne manuelle Nachsuche sehen.
+- `SVA_MIGRATION_JOB_KEEP_FAILED_STACK` verhindert das Cleanup des fehlgeschlagenen Migrationsjob-Stacks, wenn der Stack für Diagnose erhalten bleiben soll.
+- `migrate-entrypoint.sh` führt `goose up` direkt aus und prüft den finalen Goose-Status danach; der vorherige Statuscheck ist kein vorgelagerter Pflichtschritt mehr.
 
 ## Migration Plan
 
@@ -119,11 +133,5 @@ Komplexe verschachtelte Eingaben werden vor GraphQL-Ausführung validiert. Nicht
 4. Host-owned Data-Source-Fassaden inklusive Auth, Permission-Gates, Error-Mapping und Logging bereitstellen.
 5. Plugin-Listen, Detail-/Editor-Seiten, Validierung und Actions implementieren.
 6. Host-Registry, Navigation, Routen und E2E-Smoke-Coverage erweitern.
-7. Runbook und arc42-Dokumentation aktualisieren.
-
-## Open Questions
-
-- Soll Event-Delete in Phase 1 als hartes `destroyRecord(recordType: "EventRecord")` oder als Sichtbarkeitswechsel umgesetzt werden?
-- Soll POI-Delete in Phase 1 als hartes `destroyRecord(recordType: "PointOfInterest")` oder als Sichtbarkeitswechsel umgesetzt werden?
-- Welche Event-Wiederholungsfelder sind im ersten bearbeitbaren Formular Pflichtumfang?
-- Soll der Event-Editor vorhandene POI aus dem POI-Plugin auswählen können, oder startet `pointOfInterestId` als manuelles/optionales Feld?
+7. Migration-Runtime-Diagnostik und Tests ergänzen.
+8. Runbook und arc42-Dokumentation aktualisieren.

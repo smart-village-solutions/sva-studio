@@ -174,7 +174,7 @@ Bestehende Phase-1-News bleiben lesbar. Fehlende optionale Felder werden nicht a
 
 Die Erweiterung ist API-erweiternd für das Plugin-Modell, aber sie ändert die Form des HTTP-Fassadenvertrags. Tests müssen sicherstellen, dass bestehende einfache Create-/Update-Payloads weiterhin funktionieren.
 
-## Open Questions
+## Resolved Questions
 
-- Welche Werte sind für `newsType` fachlich erlaubt, oder bleibt es vorerst Freitext?
-- Wie streng sollen Konflikte zwischen `payload.category`, `categoryName` und `categories` behandelt werden?
+- `newsType` bleibt in diesem Change ein getrimmter Freitextwert. Eine fachliche Allow-List wird erst eingeführt, wenn der Mainserver ein stabiles Enum oder eine verbindliche Werteliste bereitstellt.
+- `payload.category` ist nur Legacy-Lesefallback und wird nicht geschrieben. `categoryName` bleibt der einfache Kompatibilitätspfad, `categories` die strukturierte Liste. Konflikte zwischen `categoryName` und `categories` werden in Phase 1 nicht abgelehnt; die Fassade validiert Form und Feldgrenzen, sendet beide expliziten Felder aber unverändert an den Mainserver.

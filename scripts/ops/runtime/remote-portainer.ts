@@ -110,3 +110,33 @@ export const fetchPortainerDockerJson = async <T>(
 
   return (await response.json()) as T;
 };
+
+export const fetchPortainerDockerText = async (
+  deps: RemotePortainerDeps,
+  env: NodeJS.ProcessEnv,
+  input: {
+    quantumEndpoint: string;
+    resourcePath: string;
+  },
+): Promise<string> => {
+  const operatorEnv = resolveQuantumOperatorEnv(env);
+  const endpointId = resolveRemoteDockerEndpointId(deps, operatorEnv, input.quantumEndpoint);
+  const apiKey = operatorEnv.QUANTUM_API_KEY?.trim();
+  if (!apiKey) {
+    throw new Error('QUANTUM_API_KEY fehlt fuer den Portainer-Read-only-Pfad.');
+  }
+
+  const host = operatorEnv.QUANTUM_HOST?.trim() || 'https://console.planetary-quantum.com';
+  const response = await fetch(`${host}/api/endpoints/${String(endpointId)}/docker/${input.resourcePath}`, {
+    headers: {
+      'X-API-Key': apiKey,
+    },
+    signal: AbortSignal.timeout(20_000),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Portainer-API fuer ${input.resourcePath} antwortet mit ${response.status}.`);
+  }
+
+  return response.text();
+};

@@ -3,6 +3,9 @@ import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 
 import { filterRemoteOutputLines, spawnBackground, summarizeProcessOutput, wait, withoutDebugEnv } from './process.ts';
+import { fetchPortainerDockerText } from './remote-portainer.ts';
+
+export { fetchPortainerDockerText } from './remote-portainer.ts';
 
 type RunCapture = (rootDir: string, commandName: string, args: readonly string[], env?: NodeJS.ProcessEnv) => string;
 type RunCaptureDetailed = (
@@ -451,6 +454,57 @@ const removeQuantumStack = (
   );
 };
 
+const isTruthyEnvValue = (value: string | undefined) => ['1', 'true', 'yes', 'on'].includes(value?.trim().toLowerCase() ?? '');
+
+export const readRemoteJobLogTail = async (
+  deps: Pick<MigrationJobDeps, 'commandExists' | 'rootDir' | 'runCapture'>,
+  env: NodeJS.ProcessEnv,
+  input: {
+    containerId: string | undefined;
+    quantumEndpoint: string;
+    serviceId: string | undefined;
+  },
+) => {
+  const portainerDeps = {
+    commandExists: (commandName: string) => deps.commandExists(deps.rootDir, commandName),
+    runCapture: (commandName: string, args: readonly string[], requestEnv?: NodeJS.ProcessEnv) =>
+      deps.runCapture(deps.rootDir, commandName, args, requestEnv),
+  };
+  const errors: string[] = [];
+
+  if (input.containerId) {
+    try {
+      const output = await fetchPortainerDockerText(portainerDeps, env, {
+        quantumEndpoint: input.quantumEndpoint,
+        resourcePath: `containers/${input.containerId}/logs?stdout=1&stderr=1&tail=200`,
+      });
+      const summary = summarizeProcessOutput(output, 80);
+      if (summary) {
+        return summary;
+      }
+    } catch (error) {
+      errors.push(`Container-Logs: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  if (input.serviceId) {
+    try {
+      const output = await fetchPortainerDockerText(portainerDeps, env, {
+        quantumEndpoint: input.quantumEndpoint,
+        resourcePath: `services/${input.serviceId}/logs?stdout=1&stderr=1&tail=200`,
+      });
+      const summary = summarizeProcessOutput(output, 80);
+      if (summary) {
+        return summary;
+      }
+    } catch (error) {
+      errors.push(`Service-Logs: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  return errors.length > 0 ? `Remote-Logs konnten nicht ueber Portainer gelesen werden: ${errors.join('; ')}` : '';
+};
+
 export const runMigrationJobAgainstAcceptance = async (
   deps: MigrationJobDeps,
   env: NodeJS.ProcessEnv,
@@ -511,13 +565,19 @@ export const runMigrationJobAgainstAcceptance = async (
       }
 
       if (terminalState === 'failed') {
+        const containerLogTail = await readRemoteJobLogTail(deps, env, {
+          containerId: task?.containerId,
+          quantumEndpoint: input.quantumEndpoint,
+          serviceId: task?.serviceId,
+        });
         throw new Error(
           [
             `Swarm-Migrationsjob ${quantumProject.jobStackName}/${jobServiceName} ist fehlgeschlagen.`,
             task?.state ? `state=${task.state}` : null,
             typeof task?.exitCode === 'number' ? `exitCode=${String(task.exitCode)}` : null,
             task?.message ? `message=${task.message}` : null,
-            logTail ? `details:\n${logTail}` : null,
+            containerLogTail ? `containerLogs:\n${containerLogTail}` : null,
+            logTail ? `taskSnapshot:\n${logTail}` : null,
           ]
             .filter((entry): entry is string => Boolean(entry))
             .join('\n'),
@@ -540,10 +600,12 @@ export const runMigrationJobAgainstAcceptance = async (
       await deps.wait(pollIntervalMs);
     }
   } catch (error) {
-    try {
-      removeQuantumStack(deps, env, input.quantumEndpoint, quantumProject.jobStackName);
-    } catch {
-      // Best-effort cleanup; primary error should remain visible.
+    if (!isTruthyEnvValue(env.SVA_MIGRATION_JOB_KEEP_FAILED_STACK)) {
+      try {
+        removeQuantumStack(deps, env, input.quantumEndpoint, quantumProject.jobStackName);
+      } catch {
+        // Best-effort cleanup; primary error should remain visible.
+      }
     }
     quantumProject.cleanup();
     throw error;

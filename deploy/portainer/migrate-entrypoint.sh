@@ -41,9 +41,6 @@ export PGPASSWORD="${POSTGRES_PASSWORD}"
 goose_version="$(node -e "const fs=require('fs'); const cfg=JSON.parse(fs.readFileSync(process.argv[1],'utf8')); process.stdout.write(cfg.version);" "${GOOSE_CONFIG_PATH}")"
 log "Starte Goose-Migrationsjob mit ${goose_version} gegen ${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}"
 
-log "Prüfe aktuellen Goose-Status"
-"${GOOSE_WRAPPER}" -dir "${MIGRATIONS_DIR}" postgres "${db_string}" status
-
 log "Wende Migrationen an"
 "${GOOSE_WRAPPER}" -dir "${MIGRATIONS_DIR}" postgres "${db_string}" up
 

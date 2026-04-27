@@ -117,8 +117,8 @@
   },
   "pnpm": {
     "overrides": {
-      "@tanstack/react-router": "1.168.21",
-      "@tanstack/router-core": "1.168.15",
+      "@tanstack/react-router": "1.168.24",
+      "@tanstack/router-core": "1.168.16",
       "h3": "2.0.1-rc.20",
       "minimatch": "10.2.3",
       "axios": "1.15.2",

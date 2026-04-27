@@ -505,6 +505,7 @@ describe('app.routes', () => {
   it('maps plugin guards onto canonical account-ui guards', () => {
     expect(mapPluginGuardToAccountGuard('content.read')).toBe('content');
     expect(mapPluginGuardToAccountGuard('content.create')).toBe('contentCreate');
+    expect(mapPluginGuardToAccountGuard('content.updateMetadata')).toBe('contentDetail');
     expect(mapPluginGuardToAccountGuard('content.updatePayload')).toBe('contentDetail');
     expect(mapPluginGuardToAccountGuard(undefined)).toBeNull();
   });
@@ -572,5 +573,28 @@ describe('app.routes', () => {
     getServerRouteFactories({ bindings });
 
     expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('account', expect.any(Function), '/account');
+  });
+
+  it('registers the history route path when an admin resource declares a history view', () => {
+    const resourceWithHistory = {
+      resourceId: 'custom.reports',
+      basePath: 'reports',
+      titleKey: 'reports.title',
+      guard: 'adminRoles',
+      views: {
+        list: { bindingKey: 'adminRoles' },
+        create: { bindingKey: 'adminRoleCreate' },
+        detail: { bindingKey: 'adminRoleDetail' },
+        history: { bindingKey: 'adminRoles' },
+      },
+    } as const;
+
+    const routeFactories = createUiRouteFactories(bindings as never, {
+      adminResources: [resourceWithHistory],
+    });
+    const rootRoute = { id: 'root' };
+    const paths = routeFactories.map((factory) => String(readRouteOptions(factory(rootRoute as never)).path));
+
+    expect(paths).toContain('/admin/reports/$roleId/history');
   });
 });

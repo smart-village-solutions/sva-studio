@@ -34,7 +34,6 @@ const permissions = [
   ['40111111-1111-1111-1111-111111111141', 'poi.update', 'Update POI plugin content'],
   ['40111111-1111-1111-1111-111111111142', 'poi.delete', 'Delete POI plugin content'],
 ] as const satisfies readonly [string, PermissionKey, string][];
-
 const pluginReadPermissions = ['news.read', 'events.read', 'poi.read'] as const;
 const pluginWritePermissions = [
   'news.create',
@@ -48,7 +47,6 @@ const pluginWritePermissions = [
   'poi.delete',
 ] as const;
 const pluginManagePermissions = [...pluginReadPermissions, ...pluginWritePermissions] as const;
-
 const personas: readonly PersonaSeed[] = [
   {
     personaKey: 'system_admin',
@@ -236,10 +234,7 @@ export const iamSeedPlan: IamSeedPlan = {
       displayName: 'Seed District',
       organizationType: 'district',
       parentOrganizationId: '22333333-3333-3333-3333-333333333333',
-      hierarchyPath: [
-        '22222222-2222-2222-2222-222222222222',
-        '22333333-3333-3333-3333-333333333333',
-      ],
+      hierarchyPath: ['22222222-2222-2222-2222-222222222222', '22333333-3333-3333-3333-333333333333'],
       depth: 2,
       contentAuthorPolicy: 'org_only',
       isActive: true,
@@ -257,13 +252,8 @@ export const iamSeedPlan: IamSeedPlan = {
     description,
   })),
 };
-
 export const getPersonaSeed = (personaKey: PersonaSeed['personaKey']): PersonaSeed => {
   const persona = iamSeedPlan.personas.find((entry) => entry.personaKey === personaKey);
-
-  if (!persona) {
-    throw new Error(`Unknown persona key: ${personaKey}`);
-  }
-
+  if (!persona) throw new Error(`Unknown persona key: ${personaKey}`);
   return persona;
 };

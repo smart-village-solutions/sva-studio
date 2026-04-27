@@ -9,9 +9,7 @@ import {
   createAdminResourceRouteFactories,
   createLegacyContentAliasFactories,
 } from './admin-resource-routes.js';
-import {
-  type RoutingDiagnosticsHook,
-} from './diagnostics.js';
+import { type RoutingDiagnosticsHook } from './diagnostics.js';
 import { normalizeIamTab, normalizeRoleDetailTab } from './route-search.js';
 import { uiRoutePaths } from './route-paths.js';
 
@@ -118,7 +116,6 @@ export const getAdminDetailRoutePath = (basePath: string, bindingKey: string): s
   const detailParamName =
     adminDetailParamNameByBinding[bindingKey as keyof typeof adminDetailParamNameByBinding] ??
     adminDetailParamNameByBinding.contentDetail;
-
   return `${basePath}/$${detailParamName}`;
 };
 
@@ -128,7 +125,6 @@ const collectAdminResourceRoutePaths = (resources: readonly AdminResourceDefinit
   for (const resource of resources) {
     const basePath = `/admin/${resource.basePath}`;
     const detailPath = getAdminDetailRoutePath(basePath, resource.views.detail.bindingKey);
-
     paths.set(basePath, resource.resourceId);
     paths.set(`${basePath}/new`, resource.resourceId);
     paths.set(detailPath, resource.resourceId);
@@ -161,12 +157,10 @@ export const createUiRouteFactories = (
   const adminResourcePaths = collectAdminResourceRoutePaths(adminResources);
   assertNoStaticAdminRouteShadowing(adminResourcePaths);
   const routeDefinitions = uiRouteDefinitions.filter((definition) => !adminResourcePaths.has(definition.path));
-
   return [
     ...routeDefinitions.map((definition) => {
       if (definition.guard) {
         const guard = createAccountUiRouteGuard(definition.guard, diagnostics, definition.path);
-
         return (rootRoute: RootRoute) =>
           createRoute({
             getParentRoute: () => rootRoute,
@@ -226,7 +220,6 @@ export const getPluginRouteFactories = (
   } = {}
 ): readonly AppRouteFactory[] => {
   const diagnostics = options.diagnostics;
-
   return pluginDefinitions.flatMap((pluginDefinition) =>
     pluginDefinition.routes.map((routeDefinition) => {
       const guardKey = mapPluginGuardToAccountGuard(routeDefinition.guard);

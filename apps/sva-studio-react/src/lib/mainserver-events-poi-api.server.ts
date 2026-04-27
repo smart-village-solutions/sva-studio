@@ -51,6 +51,14 @@ const json = (body: unknown, status = 200): Response =>
 
 const errorJson = (status: number, error: string, message: string): Response => json({ error, message }, status);
 
+const decodePathSegment = (value: string): string | null => {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return null;
+  }
+};
+
 const matchCollectionOrItem = (pathname: string, collectionPath: string, contentKind: ContentKind): RouteMatch | null => {
   if (pathname === collectionPath) {
     return { kind: 'collection', contentKind };
@@ -58,8 +66,8 @@ const matchCollectionOrItem = (pathname: string, collectionPath: string, content
 
   const prefix = `${collectionPath}/`;
   if (pathname.startsWith(prefix)) {
-    const itemId = decodeURIComponent(pathname.slice(prefix.length));
-    if (itemId.length > 0 && itemId.includes('/') === false) {
+    const itemId = decodePathSegment(pathname.slice(prefix.length));
+    if (itemId !== null && itemId.length > 0 && itemId.includes('/') === false) {
       return { kind: 'item', contentKind, itemId };
     }
   }

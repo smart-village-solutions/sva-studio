@@ -98,6 +98,15 @@ describe('dispatchMainserverEventsPoiRequest', () => {
     expect(state.withAuthenticatedUser).not.toHaveBeenCalled();
   });
 
+  it('ignores item routes with invalid percent encoding', async () => {
+    const response = await dispatchMainserverEventsPoiRequest(
+      createRequest('https://studio.test/api/v1/mainserver/events/%E0%A4%A')
+    );
+
+    expect(response).toBeNull();
+    expect(state.withAuthenticatedUser).not.toHaveBeenCalled();
+  });
+
   it('lists events and POI after read authorization', async () => {
     mockAuthorizedMutation();
     state.listSvaMainserverEvents.mockResolvedValue([{ id: 'event-1' }]);

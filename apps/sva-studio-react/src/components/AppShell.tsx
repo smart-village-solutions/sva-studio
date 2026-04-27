@@ -41,6 +41,13 @@ const LazyLegalTextAcceptanceDialog = React.lazy(async () => {
   };
 });
 
+const LazyPermissionsDegradedBanner = React.lazy(async () => {
+  const module = await import('./PermissionsDegradedBanner');
+  return {
+    default: module.PermissionsDegradedBanner,
+  };
+});
+
 const runtimeHealthIndicatorEnabled = import.meta.env.VITE_PLAYWRIGHT_TEST !== 'true';
 
 /**
@@ -100,16 +107,19 @@ export default function AppShell({
               <span role="status" aria-live="polite" className="sr-only">
                 {t('shell.content.loadingStatus')}
               </span>
-              <span aria-hidden="true" className="block h-8 w-48 animate-pulse rounded-md bg-muted" />
-              <span aria-hidden="true" className="block h-24 w-full animate-pulse rounded-lg bg-card shadow-shell" />
+              <span aria-hidden="true" className="block h-8 w-48 animate-skeleton rounded-md" />
+              <span aria-hidden="true" className="block h-24 w-full animate-skeleton rounded-lg shadow-shell" />
               <div className="grid gap-4 md:grid-cols-2">
-                <span aria-hidden="true" className="block h-24 w-full animate-pulse rounded-lg bg-card shadow-shell" />
-                <span aria-hidden="true" className="block h-24 w-full animate-pulse rounded-lg bg-card shadow-shell" />
+                <span aria-hidden="true" className="block h-24 w-full animate-skeleton rounded-lg shadow-shell" />
+                <span aria-hidden="true" className="block h-24 w-full animate-skeleton rounded-lg shadow-shell" />
               </div>
             </section>
           ) : (
             <div className="space-y-6">
               {showBreadcrumbs ? <AppBreadcrumbs pathname={currentPathname} /> : null}
+              <React.Suspense fallback={null}>
+                <LazyPermissionsDegradedBanner />
+              </React.Suspense>
               {children}
               {runtimeHealthIndicatorEnabled ? (
                 <React.Suspense fallback={null}>

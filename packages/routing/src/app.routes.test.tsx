@@ -452,11 +452,20 @@ describe('app.routes', () => {
     expect(readRouteOptions(route).path).toBe('/plugins/news');
     await expect(
       readRouteOptions(route).beforeLoad?.({
-        context: { auth: { getUser: () => ({ roles: ['editor'] }) } },
+        context: { auth: { getUser: () => ({ roles: ['editor'], permissionActions: ['news.read'] }) } },
         location: { href: '/plugins/news' },
       })
     ).resolves.toBeUndefined();
     expect(createAccountUiRouteGuardMock).not.toHaveBeenCalledWith('content', expect.anything(), '/plugins/news');
+
+    await expect(
+      readRouteOptions(route).beforeLoad?.({
+        context: { auth: { getUser: () => ({ roles: ['editor'], permissionActions: [] }) } },
+        location: { href: '/plugins/news' },
+      })
+    ).rejects.toMatchObject({
+      href: '/?error=auth.insufficientRole',
+    });
   });
 
   it('builds server route factories without requiring app-local route composition', () => {

@@ -485,7 +485,7 @@ const SidebarNavItem = ({
             <IconComponent className="h-5 w-5 shrink-0" />
             <span className="truncate">{item.label}</span>
             <span className="ml-auto inline-flex h-5 w-5 items-center justify-center text-muted-foreground">
-              {isExpanded ? <IconChevronDown className="h-4 w-4" /> : <IconChevronRight className="h-4 w-4" />}
+              {isExpanded ? <IconChevronDown className="h-4 w-4" /> : <IconChevronRight className="h-4 w-4 animate-collapse-icon" />}
             </span>
           </CollapsibleTrigger>
           <SidebarGroupContent item={item} pathname={pathname} onNavigate={onNavigate} />
@@ -613,7 +613,7 @@ const SidebarPanel = ({
                 <li key={key}>
                   <span
                     aria-hidden="true"
-                    className={`block animate-pulse rounded-xl border border-sidebar-border bg-muted ${
+                    className={`block animate-skeleton rounded-xl border border-sidebar-border ${
                       isCollapsed ? 'mx-auto h-11 w-11' : 'h-11 w-full'
                     }`}
                   />

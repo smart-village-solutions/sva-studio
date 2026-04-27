@@ -1,6 +1,7 @@
 export type RoutingDenyReason =
   | 'unauthenticated'
   | 'insufficient-role'
+  | 'insufficient-permission'
   | 'unsupported-plugin-guard'
   | 'method-not-allowed';
 
@@ -15,9 +16,10 @@ export type RoutingDiagnosticEvent =
   | (RoutingDiagnosticBase & {
       readonly level: 'info';
       readonly event: 'routing.guard.access_denied';
-      readonly reason: 'unauthenticated' | 'insufficient-role';
+      readonly reason: 'unauthenticated' | 'insufficient-role' | 'insufficient-permission';
       readonly redirect_target: string;
       readonly required_roles?: readonly string[];
+      readonly required_permissions?: readonly string[];
     })
   | (RoutingDiagnosticBase & {
       readonly level: 'warn';
@@ -105,6 +107,7 @@ const getRoutingDiagnosticMeta = (event: RoutingDiagnosticEvent): Record<string,
   workspace_id: event.workspace_id,
   redirect_target: 'redirect_target' in event ? event.redirect_target : undefined,
   required_roles: 'required_roles' in event ? event.required_roles : undefined,
+  required_permissions: 'required_permissions' in event ? event.required_permissions : undefined,
   plugin: 'plugin' in event ? event.plugin : undefined,
   unsupported_guard: 'unsupported_guard' in event ? event.unsupported_guard : undefined,
   method: 'method' in event ? event.method : undefined,

@@ -55,9 +55,8 @@ export type AppRouteBindings = {
 
 export type AppRouteBindingKey = keyof AppRouteBindings;
 
-type BindingKey = AppRouteBindingKey;
 type UiRouteDefinition = {
-  readonly binding: BindingKey;
+  readonly binding: AppRouteBindingKey;
   readonly guard?: AccountUiRouteGuardKey;
   readonly path: string;
   readonly validateSearch?: (search: Record<string, unknown>) => unknown;
@@ -213,6 +212,34 @@ const isPluginPermissionGuard = (guard: string): boolean =>
 const hasRegisteredPluginPermissionGuard = (pluginDefinition: PluginDefinition, guard: string): boolean =>
   pluginDefinition.permissions?.some((permission) => permission.id.trim() === guard) === true;
 
+const resolvePluginRouteGuard = (
+  pluginDefinition: PluginDefinition,
+  routeDefinition: PluginDefinition['routes'][number],
+  diagnostics: RoutingDiagnosticsHook | undefined
+) => {
+  const guardKey = mapPluginGuardToAccountGuard(routeDefinition.guard);
+  if (guardKey) {
+    return createAccountUiRouteGuard(guardKey, diagnostics, routeDefinition.path);
+  }
+
+  const pluginPermissionGuard = routeDefinition.guard;
+  if (!pluginPermissionGuard) {
+    return null;
+  }
+  if (!isPluginPermissionGuard(pluginPermissionGuard)) {
+    return null;
+  }
+  if (!hasRegisteredPluginPermissionGuard(pluginDefinition, pluginPermissionGuard)) {
+    return null;
+  }
+
+  return createProtectedRoute({
+    diagnostics,
+    route: routeDefinition.path,
+    requiredPermissions: [pluginPermissionGuard],
+  });
+};
+
 export const getPluginRouteFactories = (
   pluginDefinitions: readonly PluginDefinition[] = [],
   options: {
@@ -222,14 +249,7 @@ export const getPluginRouteFactories = (
   const diagnostics = options.diagnostics;
   return pluginDefinitions.flatMap((pluginDefinition) =>
     pluginDefinition.routes.map((routeDefinition) => {
-      const guardKey = mapPluginGuardToAccountGuard(routeDefinition.guard);
-      const guard = guardKey
-        ? createAccountUiRouteGuard(guardKey, diagnostics, routeDefinition.path)
-        : routeDefinition.guard &&
-            isPluginPermissionGuard(routeDefinition.guard) &&
-            hasRegisteredPluginPermissionGuard(pluginDefinition, routeDefinition.guard)
-          ? createProtectedRoute({ diagnostics, route: routeDefinition.path })
-          : null;
+      const guard = resolvePluginRouteGuard(pluginDefinition, routeDefinition, diagnostics);
       const unsupportedGuard = !guard && routeDefinition.guard ? routeDefinition.guard : null;
       const pluginNamespace = pluginDefinition.id.trim();
       const contributionId = routeDefinition.id.trim();
@@ -249,7 +269,7 @@ export const getPluginRouteFactories = (
         createRoute({
           getParentRoute: () => rootRoute,
           path: routeDefinition.path,
-          beforeLoad: guard ? (options) => guard(options) : undefined,
+          beforeLoad: guard ?? undefined,
           component: routeDefinition.component as RouteComponent,
         });
     })

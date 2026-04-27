@@ -71,13 +71,13 @@ export const ModalDialog = ({
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay
           data-slot="dialog-overlay"
-          className="fixed inset-0 z-50 bg-black/50 backdrop-blur-[1px]"
+          className="fixed inset-0 z-50 bg-black/50 backdrop-blur-[1px] animate-modal-overlay"
           onClick={requestClose}
         />
         <DialogPrimitive.Content
           role={role}
           className={cn(
-            'fixed left-1/2 top-1/2 z-50 w-full max-w-2xl -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-card p-6 shadow-2xl focus-visible:outline-none'
+            'fixed left-1/2 top-1/2 z-50 w-full max-w-2xl -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-card p-6 shadow-2xl focus-visible:outline-none animate-modal-content'
           )}
           onCloseAutoFocus={handleCloseAutoFocus}
         >

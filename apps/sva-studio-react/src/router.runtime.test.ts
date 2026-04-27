@@ -32,7 +32,6 @@ const routerMocks = vi.hoisted(() => {
   const getServerRouteFactoriesSpy = vi.fn(() => [routeFactorySpy]);
   const parseRuntimeProfile = vi.fn((value: unknown) => (typeof value === 'string' ? value : null));
   const isMockAuthRuntimeProfile = vi.fn((value: unknown) => value === 'mock-profile');
-  const withAuthenticatedUserSpy = vi.fn();
 
   return {
     createRouterSpy,
@@ -45,7 +44,6 @@ const routerMocks = vi.hoisted(() => {
     parseRuntimeProfile,
     rootRoute,
     routeFactorySpy,
-    withAuthenticatedUserSpy,
   };
 });
 
@@ -133,10 +131,6 @@ vi.mock('@tanstack/react-start/server', () => ({
   getRequest: routerMocks.getRequestSpy,
 }));
 
-vi.mock('@sva/auth-runtime/server', () => ({
-  withAuthenticatedUser: routerMocks.withAuthenticatedUserSpy,
-}));
-
 describe('router runtime helpers', () => {
   beforeEach(() => {
     vi.unstubAllEnvs();
@@ -150,7 +144,6 @@ describe('router runtime helpers', () => {
     routerMocks.rootRoute.addChildren.mockClear();
     routerMocks.parseRuntimeProfile.mockClear();
     routerMocks.isMockAuthRuntimeProfile.mockClear();
-    routerMocks.withAuthenticatedUserSpy.mockReset();
     delete (window as typeof window & { __SVA_PLAYWRIGHT_ROUTER__?: unknown }).__SVA_PLAYWRIGHT_ROUTER__;
   });
 
@@ -171,6 +164,22 @@ describe('router runtime helpers', () => {
         'interface_manager',
         'app_manager',
         'editor',
+      ],
+      permissionActions: [
+        'content.read',
+        'content.create',
+        'content.updateMetadata',
+        'content.updatePayload',
+        'content.changeStatus',
+        'content.publish',
+        'content.archive',
+        'content.restore',
+        'content.readHistory',
+        'content.manageRevisions',
+        'content.delete',
+        'news.read',
+        'events.read',
+        'poi.read',
       ],
     });
   });
@@ -239,12 +248,24 @@ describe('router runtime helpers', () => {
     const getUser = readRouteGuardGetUser(router);
 
     routerMocks.fetchWithRequestTimeoutSpy.mockResolvedValueOnce(
-      new Response(JSON.stringify({ user: { roles: ['editor', 7, 'system_admin'] } }), {
+      new Response(
+        JSON.stringify({
+          user: {
+            roles: ['editor', 7, 'system_admin'],
+            permissionActions: ['news.read', 42, 'events.read'],
+          },
+        }),
+        {
         status: 200,
         headers: { 'content-type': 'application/json' },
-      })
+        }
+      )
     );
-    expect(await getUser()).toEqual({ roles: ['editor', 'system_admin'] });
+    expect(await getUser()).toEqual({
+      roles: ['editor', 'system_admin'],
+      permissionActions: ['news.read', 'events.read'],
+      permissionStatus: 'ok',
+    });
     expect(routerMocks.fetchWithRequestTimeoutSpy).toHaveBeenCalledWith(
       'http://localhost:3000/auth/me',
       undefined,
@@ -269,6 +290,22 @@ describe('router runtime helpers', () => {
         'app_manager',
         'editor',
       ],
+      permissionActions: [
+        'content.read',
+        'content.create',
+        'content.updateMetadata',
+        'content.updatePayload',
+        'content.changeStatus',
+        'content.publish',
+        'content.archive',
+        'content.restore',
+        'content.readHistory',
+        'content.manageRevisions',
+        'content.delete',
+        'news.read',
+        'events.read',
+        'poi.read',
+      ],
     });
   });
 
@@ -279,17 +316,27 @@ describe('router runtime helpers', () => {
     const getUser = readRouteGuardGetUser(router);
 
     routerMocks.executionMode.current = 'server';
-    routerMocks.withAuthenticatedUserSpy.mockImplementationOnce(
-      async (_request: Request, handler: ({ user }: { user: { roles: string[] } }) => Response) =>
-        handler({ user: { roles: ['app_manager', 'editor'] } })
+    routerMocks.fetchWithRequestTimeoutSpy.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({ user: { roles: ['app_manager', 'editor'], permissionActions: ['news.read'] } }),
+        {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }
+      )
     );
-    expect(await getUser()).toEqual({ roles: ['app_manager', 'editor'] });
+    expect(await getUser()).toEqual({ roles: ['app_manager', 'editor'], permissionActions: ['news.read'], permissionStatus: 'ok' });
     expect(routerMocks.getRequestSpy).toHaveBeenCalled();
+    expect(routerMocks.fetchWithRequestTimeoutSpy).toHaveBeenCalledWith(
+      'https://studio.example.org/auth/me',
+      undefined,
+      { timeoutMs: 5_000 }
+    );
 
-    routerMocks.withAuthenticatedUserSpy.mockResolvedValueOnce(new Response(null, { status: 401 }));
+    routerMocks.fetchWithRequestTimeoutSpy.mockResolvedValueOnce(new Response(null, { status: 401 }));
     expect(await getUser()).toBeNull();
 
-    routerMocks.withAuthenticatedUserSpy.mockRejectedValueOnce(new Error('auth failed'));
+    routerMocks.fetchWithRequestTimeoutSpy.mockRejectedValueOnce(new Error('auth failed'));
     expect(await getUser()).toBeNull();
 
     vi.stubEnv('VITE_MOCK_AUTH', 'true');
@@ -303,6 +350,22 @@ describe('router runtime helpers', () => {
         'interface_manager',
         'app_manager',
         'editor',
+      ],
+      permissionActions: [
+        'content.read',
+        'content.create',
+        'content.updateMetadata',
+        'content.updatePayload',
+        'content.changeStatus',
+        'content.publish',
+        'content.archive',
+        'content.restore',
+        'content.readHistory',
+        'content.manageRevisions',
+        'content.delete',
+        'news.read',
+        'events.read',
+        'poi.read',
       ],
     });
   });

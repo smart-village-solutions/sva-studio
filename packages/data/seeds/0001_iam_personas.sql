@@ -186,7 +186,19 @@ VALUES
   ('40111111-1111-1111-1111-111111111126', 'de-musterhausen', 'content.archive', 'content.archive', 'content', NULL, 'allow', '{}'::jsonb, 'Archive content'),
   ('40111111-1111-1111-1111-111111111127', 'de-musterhausen', 'content.restore', 'content.restore', 'content', NULL, 'allow', '{}'::jsonb, 'Restore content'),
   ('40111111-1111-1111-1111-111111111128', 'de-musterhausen', 'content.readHistory', 'content.readHistory', 'content', NULL, 'allow', '{}'::jsonb, 'Read content history'),
-  ('40111111-1111-1111-1111-111111111129', 'de-musterhausen', 'content.delete', 'content.delete', 'content', NULL, 'allow', '{}'::jsonb, 'Delete content')
+  ('40111111-1111-1111-1111-111111111129', 'de-musterhausen', 'content.delete', 'content.delete', 'content', NULL, 'allow', '{}'::jsonb, 'Delete content'),
+  ('40111111-1111-1111-1111-111111111131', 'de-musterhausen', 'news.read', 'news.read', 'news', NULL, 'allow', '{}'::jsonb, 'Read news plugin content'),
+  ('40111111-1111-1111-1111-111111111132', 'de-musterhausen', 'news.create', 'news.create', 'news', NULL, 'allow', '{}'::jsonb, 'Create news plugin content'),
+  ('40111111-1111-1111-1111-111111111133', 'de-musterhausen', 'news.update', 'news.update', 'news', NULL, 'allow', '{}'::jsonb, 'Update news plugin content'),
+  ('40111111-1111-1111-1111-111111111134', 'de-musterhausen', 'news.delete', 'news.delete', 'news', NULL, 'allow', '{}'::jsonb, 'Delete news plugin content'),
+  ('40111111-1111-1111-1111-111111111135', 'de-musterhausen', 'events.read', 'events.read', 'events', NULL, 'allow', '{}'::jsonb, 'Read events plugin content'),
+  ('40111111-1111-1111-1111-111111111136', 'de-musterhausen', 'events.create', 'events.create', 'events', NULL, 'allow', '{}'::jsonb, 'Create events plugin content'),
+  ('40111111-1111-1111-1111-111111111137', 'de-musterhausen', 'events.update', 'events.update', 'events', NULL, 'allow', '{}'::jsonb, 'Update events plugin content'),
+  ('40111111-1111-1111-1111-111111111138', 'de-musterhausen', 'events.delete', 'events.delete', 'events', NULL, 'allow', '{}'::jsonb, 'Delete events plugin content'),
+  ('40111111-1111-1111-1111-111111111139', 'de-musterhausen', 'poi.read', 'poi.read', 'poi', NULL, 'allow', '{}'::jsonb, 'Read POI plugin content'),
+  ('40111111-1111-1111-1111-111111111140', 'de-musterhausen', 'poi.create', 'poi.create', 'poi', NULL, 'allow', '{}'::jsonb, 'Create POI plugin content'),
+  ('40111111-1111-1111-1111-111111111141', 'de-musterhausen', 'poi.update', 'poi.update', 'poi', NULL, 'allow', '{}'::jsonb, 'Update POI plugin content'),
+  ('40111111-1111-1111-1111-111111111142', 'de-musterhausen', 'poi.delete', 'poi.delete', 'poi', NULL, 'allow', '{}'::jsonb, 'Delete POI plugin content')
 ON CONFLICT (instance_id, permission_key) DO UPDATE
 SET
   action = EXCLUDED.action,
@@ -322,6 +334,32 @@ VALUES
   ('de-musterhausen', '30777777-7777-7777-7777-777777777777', '40111111-1111-1111-1111-111111111126'),
   ('de-musterhausen', '30777777-7777-7777-7777-777777777777', '40111111-1111-1111-1111-111111111127'),
   ('de-musterhausen', '30777777-7777-7777-7777-777777777777', '40111111-1111-1111-1111-111111111128')
+ON CONFLICT (instance_id, role_id, permission_id) DO NOTHING;
+
+INSERT INTO iam.role_permissions (instance_id, role_id, permission_id)
+SELECT 'de-musterhausen', roles.id, permissions.id
+FROM (
+  VALUES
+    ('system_admin', 'news.read'), ('system_admin', 'news.create'), ('system_admin', 'news.update'), ('system_admin', 'news.delete'),
+    ('system_admin', 'events.read'), ('system_admin', 'events.create'), ('system_admin', 'events.update'), ('system_admin', 'events.delete'),
+    ('system_admin', 'poi.read'), ('system_admin', 'poi.create'), ('system_admin', 'poi.update'), ('system_admin', 'poi.delete'),
+    ('app_manager', 'news.read'), ('app_manager', 'events.read'), ('app_manager', 'poi.read'),
+    ('feature-manager', 'news.read'), ('feature-manager', 'news.create'), ('feature-manager', 'news.update'), ('feature-manager', 'news.delete'),
+    ('feature-manager', 'events.read'), ('feature-manager', 'events.create'), ('feature-manager', 'events.update'), ('feature-manager', 'events.delete'),
+    ('feature-manager', 'poi.read'), ('feature-manager', 'poi.create'), ('feature-manager', 'poi.update'), ('feature-manager', 'poi.delete'),
+    ('interface-manager', 'news.read'), ('interface-manager', 'events.read'), ('interface-manager', 'poi.read'),
+    ('designer', 'news.read'), ('designer', 'news.update'), ('designer', 'events.read'), ('designer', 'events.update'), ('designer', 'poi.read'), ('designer', 'poi.update'),
+    ('editor', 'news.read'), ('editor', 'news.create'), ('editor', 'news.update'), ('editor', 'news.delete'),
+    ('editor', 'events.read'), ('editor', 'events.create'), ('editor', 'events.update'), ('editor', 'events.delete'),
+    ('editor', 'poi.read'), ('editor', 'poi.create'), ('editor', 'poi.update'), ('editor', 'poi.delete'),
+    ('moderator', 'news.read'), ('moderator', 'events.read'), ('moderator', 'poi.read')
+) AS assignments(role_key, permission_key)
+JOIN iam.roles roles
+  ON roles.instance_id = 'de-musterhausen'
+ AND roles.role_key = assignments.role_key
+JOIN iam.permissions permissions
+  ON permissions.instance_id = 'de-musterhausen'
+ AND permissions.permission_key = assignments.permission_key
 ON CONFLICT (instance_id, role_id, permission_id) DO NOTHING;
 
 COMMIT;

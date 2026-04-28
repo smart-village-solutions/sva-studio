@@ -188,14 +188,28 @@ Nicht erlaubt: `@sva/plugin-*` -> `apps/sva-studio-react/src/**`
 ### Erweiterung 2026-04: Namespacete Plugin-Identität über Build-time-Registries
 
 1. `packages/plugin-sdk/src/plugins.ts` + `packages/plugin-sdk/src/plugin-identifiers.ts`
-   - definieren die technische Plugin-Identität über `PluginDefinition.id` als führenden Namespace und validieren plugin-beigestellte `contentType`s, Admin-Ressourcen und Audit-Event-Typen gegen `<pluginId>.<name>`
+   - definieren die technische Plugin-Identität über `PluginDefinition.id` als führenden Namespace und validieren plugin-beigestellte `contentType`s, Admin-Ressourcen, Audit-Event-Typen und Permissions gegen `<pluginId>.<name>`
 2. `packages/plugin-sdk/src/build-time-registry.ts`
-   - verdichtet Plugins, hosteigene Admin-Ressourcen und plugin-spezifische Audit-Event-Definitionen phasenweise in einen gemeinsamen Registry-Snapshot für Host und Routing
-   - hält die bestehende `BuildTimeRegistry`-API stabil; interne Phasen ordnen Preflight, Content, Admin, Audit, Routing und Publish ohne neue Beitragstypen
+   - verdichtet Plugins, hosteigene Admin-Ressourcen, plugin-spezifische Permissions und Audit-Event-Definitionen phasenweise in einen gemeinsamen Registry-Snapshot für Host und Routing
+   - hält die bestehende `BuildTimeRegistry`-API stabil; interne Phasen ordnen Preflight, Content, Admin, Audit, Permissions, Routing und Publish
 3. `packages/routing/src/app.routes.shared.ts`
    - materialisiert deklarative Admin-Ressourcen unter `/admin/<resource>` und hält Legacy-Aliase wie `/content*` nur noch als Redirect-Vertrag
 4. `packages/auth-runtime/src/iam-contents/content-type-registry.ts`
    - führt `news.article` als kanonischen plugin-beigestellten `contentType` im serverseitigen Validierungsvertrag
+
+### Erweiterung 2026-04: Plugin-spezifische IAM-Rechte
+
+1. `packages/plugin-sdk/src/plugins.ts`
+   - ergänzt `PluginDefinition.permissions` und `definePluginPermissions()` als generischen SDK-Vertrag für plugin-deklarierte Rechtefamilien
+   - weist `content.*`-Guards, fremde Plugin-Namespaces, reservierte Namespaces, Duplikate und nicht registrierte Permission-Referenzen fail-fast ab
+2. `packages/plugin-news`, `packages/plugin-events`, `packages/plugin-poi`
+   - deklarieren eigene Rechtefamilien `news.*`, `events.*` und `poi.*`
+   - nutzen diese Rechte für Actions, Routen und Navigation ohne produktiven `content.*`-Fallback
+3. `packages/data/src/iam/seed-plan.ts`
+   - seeded plugin-spezifische Permissions als normale IAM-Permissions mit `resourceType` `news`, `events` oder `poi`
+   - weist Personas Rechte namespace-isoliert zu, sodass ein News-Recht keine Events- oder POI-Freigabe impliziert
+4. `apps/sva-studio-react/src/routes/admin/roles`
+   - zeigt Plugin-Permissions in der Rollenverwaltung als fachliche Ressourcengruppen und speichert sie über den bestehenden Rollen-Permission-Vertrag
 
 ### Erweiterung 2026-04: Host-seitige Plugin-Guardrails
 

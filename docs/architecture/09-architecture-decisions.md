@@ -287,14 +287,19 @@ Zuordnung:
   - bündelt Routen, Navigation, Content-Typen und Übersetzungen in `PluginDefinition`
   - hält die Registrierung in v1 bewusst statisch im App-Bundle und ordnet Guards dem Host zu
 
+- `ADR-037-plugin-spezifische-iam-rechte.md`
+  - erweitert den Plugin-SDK-Vertrag um plugin-deklarierte IAM-Rechtefamilien
+  - legt `news.*`, `events.*` und `poi.*` als erste produktive Rechtefamilien fest
+  - entfernt `content.*` als produktiven Guard-Vertrag für Fachplugins und belässt ihn für Core-/Legacy-Content-Pfade
+
 Zuordnung:
 
-- Abschnitt 04 (Strategie): ADR-033
-- Abschnitt 05 (Bausteine): ADR-033
-- Abschnitt 06 (Laufzeit): ADR-033
-- Abschnitt 08 (Querschnitt): ADR-033
-- Abschnitt 09 (Entscheidungen): ADR-033
-- Abschnitt 10/11 (Qualität/Risiken): ADR-033
+- Abschnitt 04 (Strategie): ADR-033, ADR-034, ADR-037
+- Abschnitt 05 (Bausteine): ADR-033, ADR-034, ADR-037
+- Abschnitt 06 (Laufzeit): ADR-033, ADR-034, ADR-037
+- Abschnitt 08 (Querschnitt): ADR-033, ADR-034, ADR-037
+- Abschnitt 09 (Entscheidungen): ADR-033, ADR-034, ADR-037
+- Abschnitt 10/11 (Qualität/Risiken): ADR-033, ADR-034, ADR-037
 
 ### Fortschreibung 2026-03: Direkte Nutzerrechte ohne neue ADR
 

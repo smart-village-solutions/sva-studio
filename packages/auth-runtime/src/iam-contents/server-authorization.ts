@@ -2,7 +2,6 @@ import {
   evaluateAuthorizeDecision,
   type AuthorizeRequest,
   type EffectivePermission,
-  type IamContentPrimitiveAction,
 } from '@sva/core';
 import { getWorkspaceContext } from '@sva/server-runtime';
 
@@ -33,10 +32,20 @@ export type ContentPrimitiveAuthorizationResult =
       readonly message: string;
     };
 
+const ACTION_PATTERN = /^[a-z][a-z0-9-]{1,30}\.[A-Za-z][A-Za-z0-9-]*$/;
+
+const normalizeAuthorizationAction = (action: string): string | null => {
+  const normalized = action.trim();
+  if (!ACTION_PATTERN.test(normalized)) {
+    return null;
+  }
+  return normalized;
+};
+
 const buildAuthorizeRequest = (input: {
   readonly instanceId: string;
   readonly keycloakSubject: string;
-  readonly action: IamContentPrimitiveAction;
+  readonly action: string;
   readonly resource: ContentPrimitiveAuthorizationResource;
   readonly requestId?: string;
   readonly traceId?: string;
@@ -44,7 +53,7 @@ const buildAuthorizeRequest = (input: {
   instanceId: input.instanceId,
   action: input.action,
   resource: {
-    type: 'content',
+    type: input.action.split('.')[0] || 'content',
     ...(input.resource.contentId ? { id: input.resource.contentId } : {}),
     ...(input.resource.organizationId ? { organizationId: input.resource.organizationId } : {}),
     ...(input.resource.contentType ? { attributes: { contentType: input.resource.contentType } } : {}),
@@ -59,7 +68,7 @@ const buildAuthorizeRequest = (input: {
 
 export const authorizeContentPrimitiveForUser = async (input: {
   readonly ctx: AuthenticatedRequestContext;
-  readonly action: IamContentPrimitiveAction;
+  readonly action: string;
   readonly resource?: ContentPrimitiveAuthorizationResource;
   readonly permissions?: readonly EffectivePermission[];
 }): Promise<ContentPrimitiveAuthorizationResult> => {
@@ -70,6 +79,16 @@ export const authorizeContentPrimitiveForUser = async (input: {
       status: 400,
       error: 'missing_instance',
       message: 'Kein Instanzkontext für diese Inhaltsoperation vorhanden.',
+    };
+  }
+
+  const action = normalizeAuthorizationAction(input.action);
+  if (!action) {
+    return {
+      ok: false,
+      status: 400,
+      error: 'invalid_action',
+      message: 'Ungültige Action für diese Inhaltsoperation.',
     };
   }
 
@@ -132,7 +151,7 @@ export const authorizeContentPrimitiveForUser = async (input: {
   const request = buildAuthorizeRequest({
     instanceId,
     keycloakSubject: input.ctx.user.id,
-    action: input.action,
+    action,
     resource,
     requestId: workspaceContext.requestId,
     traceId: workspaceContext.traceId,
@@ -144,7 +163,7 @@ export const authorizeContentPrimitiveForUser = async (input: {
       instance_id: instanceId,
       request_id: workspaceContext.requestId,
       trace_id: workspaceContext.traceId,
-      action: input.action,
+      action,
       content_id: resource.contentId,
       content_type: resource.contentType,
       organization_id: organizationId,

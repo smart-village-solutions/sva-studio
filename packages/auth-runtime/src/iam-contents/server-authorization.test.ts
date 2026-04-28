@@ -42,16 +42,17 @@ const permission: EffectivePermission = {
   effect: 'allow',
 };
 
-const createCtx = (instanceId?: string): AuthenticatedRequestContext =>
-  ({
+const createCtx = (instanceId: string = 'instance-1'): AuthenticatedRequestContext => {
+  return {
     user: {
       id: 'subject-1',
       email: 'editor@example.test',
       name: 'Editor',
       roles: [],
-      ...(instanceId === undefined ? { instanceId: 'instance-1' } : instanceId ? { instanceId } : {}),
+      ...(instanceId ? { instanceId } : {}),
     },
-  }) as AuthenticatedRequestContext;
+  } as AuthenticatedRequestContext;
+};
 
 describe('authorizeContentPrimitiveForUser', () => {
   beforeEach(() => {
@@ -81,6 +82,40 @@ describe('authorizeContentPrimitiveForUser', () => {
 
     expect(resolveEffectivePermissionsMock).not.toHaveBeenCalled();
     expect(evaluateAuthorizeDecisionMock).not.toHaveBeenCalled();
+  });
+
+  it('rejects malformed actions before permissions are loaded', async () => {
+    await expect(
+      authorizeContentPrimitiveForUser({
+        ctx: createCtx(),
+        action: 'invalid-action-without-namespace',
+      })
+    ).resolves.toEqual({
+      ok: false,
+      status: 400,
+      error: 'invalid_action',
+      message: 'Ungültige Action für diese Inhaltsoperation.',
+    });
+
+    expect(resolveEffectivePermissionsMock).not.toHaveBeenCalled();
+    expect(evaluateAuthorizeDecisionMock).not.toHaveBeenCalled();
+  });
+
+  it('normalizes surrounding whitespace for valid action identifiers', async () => {
+    await expect(
+      authorizeContentPrimitiveForUser({
+        ctx: createCtx(),
+        action: '  content.read  ',
+      })
+    ).resolves.toMatchObject({
+      ok: true,
+      permissions: [permission],
+    });
+
+    expect(evaluateAuthorizeDecisionMock).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'content.read' }),
+      [permission]
+    );
   });
 
   it('resolves local permissions and returns the authorized actor', async () => {

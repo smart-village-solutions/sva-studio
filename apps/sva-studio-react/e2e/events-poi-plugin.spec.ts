@@ -44,17 +44,29 @@ const authenticatedUser = {
     email: 'editor@example.com',
     instanceId: 'de-musterhausen',
     roles: ['editor'],
+    permissionActions: [
+      'events.read',
+      'events.create',
+      'events.update',
+      'events.delete',
+      'poi.read',
+      'poi.create',
+      'poi.update',
+      'poi.delete',
+    ],
   },
 };
-
 const permissionPayload = {
   instanceId: 'de-musterhausen',
   permissions: [
-    { action: 'content.read', resourceType: 'content' },
-    { action: 'content.create', resourceType: 'content' },
-    { action: 'content.updateMetadata', resourceType: 'content' },
-    { action: 'content.updatePayload', resourceType: 'content' },
-    { action: 'content.delete', resourceType: 'content' },
+    { action: 'events.read', resourceType: 'events' },
+    { action: 'events.create', resourceType: 'events' },
+    { action: 'events.update', resourceType: 'events' },
+    { action: 'events.delete', resourceType: 'events' },
+    { action: 'poi.read', resourceType: 'poi' },
+    { action: 'poi.create', resourceType: 'poi' },
+    { action: 'poi.update', resourceType: 'poi' },
+    { action: 'poi.delete', resourceType: 'poi' },
   ],
   subject: {
     actorUserId: 'kc-editor-1',

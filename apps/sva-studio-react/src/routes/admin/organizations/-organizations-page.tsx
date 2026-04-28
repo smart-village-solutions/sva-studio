@@ -213,7 +213,7 @@ export const OrganizationsPage = () => {
       ) : null}
 
       <nav aria-label={t('admin.organizations.pagination.ariaLabel')} className="flex items-center justify-between text-sm text-muted-foreground">
-        <p aria-live="polite">{t('admin.organizations.pagination.pageLabel', { page: organizationsApi.page, totalPages: pageCount })}</p>
+        <p key={organizationsApi.page} className="animate-pagination-active" aria-live="polite">{t('admin.organizations.pagination.pageLabel', { page: organizationsApi.page, totalPages: pageCount })}</p>
         <div className="flex gap-2">
           <Button
             type="button"

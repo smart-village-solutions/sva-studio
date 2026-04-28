@@ -98,11 +98,24 @@ const mockAuthenticatedPluginShell = async (page: Page) => {
           email: 'editor@example.com',
           instanceId: 'de-musterhausen',
           roles: ['editor'],
+          permissionActions: [
+            'news.read',
+            'news.create',
+            'news.update',
+            'news.delete',
+            'events.read',
+            'events.create',
+            'events.update',
+            'events.delete',
+            'poi.read',
+            'poi.create',
+            'poi.update',
+            'poi.delete',
+          ],
         },
       }),
     });
   });
-
   await page.route('**/iam/me/permissions?**', async (route) => {
     await route.fulfill({
       status: 200,
@@ -110,11 +123,18 @@ const mockAuthenticatedPluginShell = async (page: Page) => {
       body: JSON.stringify({
         instanceId: 'de-musterhausen',
         permissions: [
-          { action: 'content.read', resourceType: 'content' },
-          { action: 'content.create', resourceType: 'content' },
-          { action: 'content.updateMetadata', resourceType: 'content' },
-          { action: 'content.updatePayload', resourceType: 'content' },
-          { action: 'content.delete', resourceType: 'content' },
+          { action: 'news.read', resourceType: 'news' },
+          { action: 'news.create', resourceType: 'news' },
+          { action: 'news.update', resourceType: 'news' },
+          { action: 'news.delete', resourceType: 'news' },
+          { action: 'events.read', resourceType: 'events' },
+          { action: 'events.create', resourceType: 'events' },
+          { action: 'events.update', resourceType: 'events' },
+          { action: 'events.delete', resourceType: 'events' },
+          { action: 'poi.read', resourceType: 'poi' },
+          { action: 'poi.create', resourceType: 'poi' },
+          { action: 'poi.update', resourceType: 'poi' },
+          { action: 'poi.delete', resourceType: 'poi' },
         ],
         subject: {
           actorUserId: 'kc-editor-1',

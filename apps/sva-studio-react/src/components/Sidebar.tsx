@@ -139,22 +139,14 @@ const logSidebarDebug = (eventName: string, meta: Record<string, unknown>) => {
   logBrowserOperationStart(sidebarLogger, eventName, meta);
 };
 
-type ContentRequiredAction =
-  | 'content.read'
-  | 'content.create'
-  | 'content.updateMetadata'
-  | 'content.updatePayload'
-  | 'content.changeStatus'
-  | 'content.publish'
-  | 'content.archive'
-  | 'content.restore'
-  | 'content.readHistory'
-  | 'content.manageRevisions'
-  | 'content.delete';
-
 const hasRequiredContentAccess = (
-  requiredAction: ContentRequiredAction | undefined,
-  access: { readonly canRead?: boolean; readonly canCreate?: boolean; readonly canUpdate?: boolean } | null | undefined,
+  requiredAction: string | undefined,
+  access: {
+    readonly canRead?: boolean;
+    readonly canCreate?: boolean;
+    readonly canUpdate?: boolean;
+    readonly permissionActions?: readonly string[];
+  } | null | undefined,
   isLoading: boolean
 ) => {
   if (!requiredAction) {
@@ -167,6 +159,10 @@ const hasRequiredContentAccess = (
 
   if (!access) {
     return false;
+  }
+
+  if (!requiredAction.startsWith('content.')) {
+    return access.permissionActions?.includes(requiredAction) === true;
   }
 
   switch (requiredAction) {
@@ -489,7 +485,7 @@ const SidebarNavItem = ({
             <IconComponent className="h-5 w-5 shrink-0" />
             <span className="truncate">{item.label}</span>
             <span className="ml-auto inline-flex h-5 w-5 items-center justify-center text-muted-foreground">
-              {isExpanded ? <IconChevronDown className="h-4 w-4" /> : <IconChevronRight className="h-4 w-4" />}
+              {isExpanded ? <IconChevronDown className="h-4 w-4" /> : <IconChevronRight className="h-4 w-4 animate-collapse-icon" />}
             </span>
           </CollapsibleTrigger>
           <SidebarGroupContent item={item} pathname={pathname} onNavigate={onNavigate} />
@@ -617,7 +613,7 @@ const SidebarPanel = ({
                 <li key={key}>
                   <span
                     aria-hidden="true"
-                    className={`block animate-pulse rounded-xl border border-sidebar-border bg-muted ${
+                    className={`block animate-skeleton rounded-xl border border-sidebar-border ${
                       isCollapsed ? 'mx-auto h-11 w-11' : 'h-11 w-full'
                     }`}
                   />
@@ -726,7 +722,13 @@ export default function Sidebar({ isLoading = false, isMobileOpen = false, onMob
         };
       })
       .filter(({ resolvedRequiredAction }) =>
-        hasRequiredContentAccess(resolvedRequiredAction, contentAccessApi.access, contentAccessApi.isLoading)
+        hasRequiredContentAccess(
+          resolvedRequiredAction,
+          contentAccessApi.access
+            ? { ...contentAccessApi.access, permissionActions: contentAccessApi.permissionActions }
+            : null,
+          contentAccessApi.isLoading
+        )
       )
       .map(({ item, resolvedTitleKey }) => ({
         kind: 'link' as const,

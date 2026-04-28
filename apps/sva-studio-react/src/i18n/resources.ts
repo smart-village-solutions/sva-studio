@@ -7,6 +7,11 @@ export const i18nResources = {
         loadingLabel: 'Inhalt lädt',
         loadingStatus: 'Inhalt wird geladen.',
       },
+      permissionsDegraded: {
+        message: 'Berechtigungen konnten nicht vollständig geladen werden. Einige Bereiche sind vorübergehend nicht erreichbar.',
+        retry: 'Neu laden',
+        dismiss: 'Schließen',
+      },
       runtimeHealth: {
         ariaLabel: 'Systemstatus der Studio-Abhängigkeiten',
         title: 'Systemstatus',
@@ -1443,6 +1448,9 @@ export const i18nResources = {
           organizations: 'Organisationen',
           legal: 'Rechtstexte',
           interfaces: 'Schnittstellen',
+          news: 'News',
+          events: 'Events',
+          poi: 'POI',
         },
         createDialog: {
           title: 'Neue Rolle erstellen',
@@ -1950,6 +1958,11 @@ export const i18nResources = {
       content: {
         loadingLabel: 'Loading content',
         loadingStatus: 'Content is loading.',
+      },
+      permissionsDegraded: {
+        message: 'Permissions could not be fully loaded. Some areas may be temporarily unavailable.',
+        retry: 'Retry',
+        dismiss: 'Dismiss',
       },
       runtimeHealth: {
         ariaLabel: 'Runtime health of Studio dependencies',
@@ -3392,6 +3405,9 @@ export const i18nResources = {
           organizations: 'Organizations',
           legal: 'Legal texts',
           interfaces: 'Interfaces',
+          news: 'News',
+          events: 'Events',
+          poi: 'POI',
         },
         createDialog: {
           title: 'Create role',

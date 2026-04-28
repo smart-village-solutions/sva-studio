@@ -62,6 +62,7 @@ describe('RoleDetailPage', () => {
         { id: 'perm-1', instanceId: 'de-musterhausen', permissionKey: 'content.read', description: 'Lesen' },
         { id: 'perm-2', instanceId: 'de-musterhausen', permissionKey: 'content.updatePayload', description: 'Schreiben' },
         { id: 'perm-3', instanceId: 'de-musterhausen', permissionKey: 'iam.configure', description: 'Konfigurieren' },
+        { id: 'perm-4', instanceId: 'de-musterhausen', permissionKey: 'news.read', description: 'News lesen' },
       ],
       isLoading: false,
       error: null,
@@ -197,7 +198,7 @@ describe('RoleDetailPage', () => {
 
     expect(screen.getByRole('tab', { name: 'Berechtigungen' }).getAttribute('aria-selected')).toBe('true');
 
-    fireEvent.click(screen.getByLabelText(/Lesen/));
+    fireEvent.click(screen.getAllByLabelText(/Lesen/)[0]!);
     fireEvent.click(screen.getByRole('button', { name: 'Rechte speichern' }));
 
     await waitFor(() => {
@@ -249,7 +250,8 @@ describe('RoleDetailPage', () => {
 
     expect(screen.getByText('Technischer Schlüssel: content.read')).toBeTruthy();
     expect(screen.getAllByText('Fachbereich: Inhalte').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText('Aktion: Lesen')).toBeTruthy();
+    expect(screen.getByText('Fachbereich: News')).toBeTruthy();
+    expect(screen.getAllByText('Aktion: Lesen').length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText('Aktion: Payload bearbeiten')).toBeTruthy();
     expect(screen.getByText('Zugeordnet')).toBeTruthy();
     expect(screen.getAllByText('Nicht zugeordnet').length).toBeGreaterThanOrEqual(1);

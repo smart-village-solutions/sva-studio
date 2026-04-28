@@ -8,9 +8,8 @@ import {
   createAdminResourceRouteFactories,
   createLegacyContentAliasFactories,
 } from './admin-resource-routes.js';
-import {
-  type RoutingDiagnosticsHook,
-} from './diagnostics.js';
+import { type RoutingDiagnosticsHook } from './diagnostics.js';
+import { resolvePluginRouteGuard } from './plugin-route-guards.js';
 import { normalizeIamTab, normalizeRoleDetailTab } from './route-search.js';
 import { uiRoutePaths } from './route-paths.js';
 
@@ -56,9 +55,8 @@ export type AppRouteBindings = {
 
 export type AppRouteBindingKey = keyof AppRouteBindings;
 
-type BindingKey = AppRouteBindingKey;
 type UiRouteDefinition = {
-  readonly binding: BindingKey;
+  readonly binding: AppRouteBindingKey;
   readonly guard?: AccountUiRouteGuardKey;
   readonly path: string;
   readonly validateSearch?: (search: Record<string, unknown>) => unknown;
@@ -117,7 +115,6 @@ export const getAdminDetailRoutePath = (basePath: string, bindingKey: string): s
   const detailParamName =
     adminDetailParamNameByBinding[bindingKey as keyof typeof adminDetailParamNameByBinding] ??
     adminDetailParamNameByBinding.contentDetail;
-
   return `${basePath}/$${detailParamName}`;
 };
 
@@ -127,7 +124,6 @@ const collectAdminResourceRoutePaths = (resources: readonly AdminResourceDefinit
   for (const resource of resources) {
     const basePath = `/admin/${resource.basePath}`;
     const detailPath = getAdminDetailRoutePath(basePath, resource.views.detail.bindingKey);
-
     paths.set(basePath, resource.resourceId);
     paths.set(`${basePath}/new`, resource.resourceId);
     paths.set(detailPath, resource.resourceId);
@@ -160,12 +156,10 @@ export const createUiRouteFactories = (
   const adminResourcePaths = collectAdminResourceRoutePaths(adminResources);
   assertNoStaticAdminRouteShadowing(adminResourcePaths);
   const routeDefinitions = uiRouteDefinitions.filter((definition) => !adminResourcePaths.has(definition.path));
-
   return [
     ...routeDefinitions.map((definition) => {
       if (definition.guard) {
         const guard = createAccountUiRouteGuard(definition.guard, diagnostics, definition.path);
-
         return (rootRoute: RootRoute) =>
           createRoute({
             getParentRoute: () => rootRoute,
@@ -219,12 +213,11 @@ export const getPluginRouteFactories = (
   } = {}
 ): readonly AppRouteFactory[] => {
   const diagnostics = options.diagnostics;
-
   return pluginDefinitions.flatMap((pluginDefinition) =>
     pluginDefinition.routes.map((routeDefinition) => {
-      const guardKey = mapPluginGuardToAccountGuard(routeDefinition.guard);
-      const guard = guardKey ? createAccountUiRouteGuard(guardKey, diagnostics, routeDefinition.path) : null;
-      const unsupportedGuard = !guardKey && routeDefinition.guard ? routeDefinition.guard : null;
+      const guard = resolvePluginRouteGuard(pluginDefinition, routeDefinition, diagnostics);
+      const normalizedGuard = routeDefinition.guard?.trim();
+      const unsupportedGuard = !guard && normalizedGuard ? normalizedGuard : null;
       const pluginNamespace = pluginDefinition.id.trim();
       const contributionId = routeDefinition.id.trim();
 
@@ -243,7 +236,7 @@ export const getPluginRouteFactories = (
         createRoute({
           getParentRoute: () => rootRoute,
           path: routeDefinition.path,
-          beforeLoad: guard ? (options) => guard(options) : undefined,
+          beforeLoad: guard ?? undefined,
           component: routeDefinition.component as RouteComponent,
         });
     })

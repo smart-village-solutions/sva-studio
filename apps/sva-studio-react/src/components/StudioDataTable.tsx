@@ -298,7 +298,7 @@ export function StudioDataTable<TData>({
           </thead>
           <tbody>
             {table.getRowModel().rows.map((row) => (
-              <tr key={row.id} className="border-t border-border text-sm text-foreground">
+              <tr key={row.id} className="border-t border-border text-sm text-foreground transition-all duration-150 animate-row-hover">
                 {row.getVisibleCells().map((cell) => {
                   const meta = cell.column.columnDef.meta as
                     | { className?: string }
@@ -317,7 +317,7 @@ export function StudioDataTable<TData>({
 
       <div className="space-y-3 p-3 md:hidden">
         {table.getRowModel().rows.map((row) => (
-          <article key={row.id} className="rounded-lg border border-border bg-card p-3 text-sm text-foreground shadow-shell">
+          <article key={row.id} className="rounded-lg border border-border bg-card p-3 text-sm text-foreground shadow-shell transition-all duration-150 animate-row-hover">
             {selectionMode === 'multiple' ? (
               <div className="mb-3 flex justify-end">
                 <Checkbox

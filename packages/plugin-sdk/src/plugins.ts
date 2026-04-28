@@ -1,4 +1,3 @@
-import type { IamContentPrimitiveAction } from '@sva/core';
 import type { AdminResourceDefinition } from './admin-resources.js';
 import type { ContentTypeDefinition } from './content-types.js';
 import {
@@ -12,7 +11,7 @@ import {
   parseNamespacedPluginIdentifier,
 } from './plugin-identifiers.js';
 
-export type PluginRouteGuard = IamContentPrimitiveAction;
+export type PluginRouteGuard = string;
 
 export type PluginNavigationSection = 'dataManagement' | 'applications' | 'system';
 
@@ -48,6 +47,12 @@ export type PluginActionDefinition = {
   readonly legacyAliases?: readonly string[];
 };
 
+export type PluginPermissionDefinition = {
+  readonly id: string;
+  readonly titleKey: string;
+  readonly descriptionKey?: string;
+};
+
 export type PluginAuditEventDefinition = {
   readonly eventType: string;
   readonly titleKey?: string;
@@ -63,6 +68,7 @@ export type PluginDefinition = {
   readonly routes: readonly PluginRouteDefinition[];
   readonly navigation?: readonly PluginNavigationItem[];
   readonly actions?: readonly PluginActionDefinition[];
+  readonly permissions?: readonly PluginPermissionDefinition[];
   readonly contentTypes?: readonly ContentTypeDefinition[];
   readonly adminResources?: readonly PluginAdminResourceDefinition[];
   readonly auditEvents?: readonly PluginAuditEventDefinition[];
@@ -77,6 +83,7 @@ const pluginDefinitionAllowedKeys = new Set([
   'routes',
   'navigation',
   'actions',
+  'permissions',
   'contentTypes',
   'adminResources',
   'auditEvents',
@@ -92,6 +99,7 @@ const actionDefinitionAllowedKeys = new Set([
   'featureFlag',
   'legacyAliases',
 ] as const);
+const permissionDefinitionAllowedKeys = new Set(['id', 'titleKey', 'descriptionKey'] as const);
 const contentTypeDefinitionAllowedKeys = new Set([
   'contentType',
   'displayName',
@@ -121,6 +129,15 @@ export type PluginAuditEventRegistryEntry = {
   readonly eventName: string;
   readonly ownerPluginId: string;
   readonly titleKey?: string;
+};
+
+export type PluginPermissionRegistryEntry = {
+  readonly permissionId: string;
+  readonly namespace: string;
+  readonly permissionName: string;
+  readonly ownerPluginId: string;
+  readonly titleKey: string;
+  readonly descriptionKey?: string;
 };
 
 const normalizeLegacyAliases = (
@@ -161,6 +178,13 @@ const normalizePluginActionDefinition = (action: PluginActionDefinition): Plugin
   };
 };
 
+const normalizePluginPermissionDefinition = (permission: PluginPermissionDefinition): PluginPermissionDefinition => ({
+  ...permission,
+  id: normalizePluginIdentifier(permission.id),
+  titleKey: normalizePluginIdentifier(permission.titleKey),
+  descriptionKey: normalizePluginIdentifier(permission.descriptionKey ?? '') || undefined,
+});
+
 const normalizePluginAuditEventDefinition = (event: PluginAuditEventDefinition): PluginAuditEventDefinition => ({
   ...event,
   eventType: normalizePluginIdentifier(event.eventType),
@@ -172,6 +196,41 @@ const resolvePluginActionDefinition = (
   actionId: string
 ): PluginActionDefinition | undefined =>
   plugin.actions?.find((action) => normalizePluginIdentifier(action.id) === actionId);
+
+const resolvePluginPermissionDefinition = (
+  plugin: PluginDefinition,
+  permissionId: string
+): PluginPermissionDefinition | undefined =>
+  plugin.permissions?.find((permission) => normalizePluginIdentifier(permission.id) === permissionId);
+
+const assertPluginPermissionReference = (
+  plugin: PluginDefinition,
+  pluginNamespace: string,
+  source: string,
+  permissionId: string | undefined
+): void => {
+  const normalizedPermissionId = normalizePluginIdentifier(permissionId ?? '');
+  if (!normalizedPermissionId) {
+    return;
+  }
+
+  if (normalizedPermissionId.startsWith('content.')) {
+    throw new Error(`legacy_content_plugin_permission_guard:${pluginNamespace}:${source}:${normalizedPermissionId}`);
+  }
+
+  const parsed = parseNamespacedPluginIdentifier(normalizedPermissionId);
+  if (parsed === undefined) {
+    throw new Error(`invalid_plugin_permission_reference:${pluginNamespace}:${source}:${normalizedPermissionId}`);
+  }
+  if (parsed.namespace !== pluginNamespace) {
+    throw new Error(
+      `plugin_permission_reference_namespace_mismatch:${pluginNamespace}:${source}:${parsed.namespace}:${normalizedPermissionId}`
+    );
+  }
+  if (!resolvePluginPermissionDefinition(plugin, normalizedPermissionId)) {
+    throw new Error(`plugin_permission_reference_missing:${pluginNamespace}:${source}:${normalizedPermissionId}`);
+  }
+};
 
 export const definePluginActions = <const TActions extends readonly PluginActionDefinition[]>(
   namespace: string,
@@ -214,6 +273,51 @@ export const definePluginActions = <const TActions extends readonly PluginAction
   }
 
   return normalizedActions;
+};
+
+export const definePluginPermissions = <const TPermissions extends readonly PluginPermissionDefinition[]>(
+  namespace: string,
+  permissions: TPermissions
+): TPermissions => {
+  const normalizedNamespace = normalizePluginNamespace(namespace);
+  if (isReservedPluginNamespace(normalizedNamespace)) {
+    throw new Error(`reserved_plugin_permission_namespace:${normalizedNamespace}`);
+  }
+
+  for (const permission of permissions) {
+    assertPluginContributionAllowedKeys(
+      permission as unknown as Record<string, unknown>,
+      permissionDefinitionAllowedKeys,
+      normalizedNamespace,
+      normalizePluginIdentifier(permission.id)
+    );
+  }
+
+  const normalizedPermissions = permissions.map((permission) =>
+    normalizePluginPermissionDefinition(permission)
+  ) as unknown as TPermissions;
+  const seen = new Set<string>();
+
+  for (const permission of normalizedPermissions) {
+    const parsed = parseNamespacedPluginIdentifier(permission.id);
+    if (parsed === undefined) {
+      throw new Error(`invalid_plugin_permission_id:${permission.id}`);
+    }
+    if (permission.titleKey.length === 0) {
+      throw new Error(`invalid_plugin_permission_definition:${permission.id}`);
+    }
+    if (parsed.namespace !== normalizedNamespace) {
+      throw new Error(
+        `plugin_permission_namespace_mismatch:${normalizedNamespace}:${parsed.namespace}:${permission.id}`
+      );
+    }
+    if (seen.has(permission.id)) {
+      throw new Error(`duplicate_plugin_permission:${permission.id}`);
+    }
+    seen.add(permission.id);
+  }
+
+  return normalizedPermissions;
 };
 
 export const definePluginAuditEvents = <const TEvents extends readonly PluginAuditEventDefinition[]>(
@@ -289,6 +393,7 @@ export const createPluginRegistry = (
         id,
         normalizePluginIdentifier(action.id)
       );
+      assertPluginPermissionReference(plugin, id, action.id, action.requiredAction);
     }
 
     for (const route of plugin.routes) {
@@ -299,6 +404,7 @@ export const createPluginRegistry = (
         normalizePluginIdentifier(route.id)
       );
       assertPluginRoutePathAllowed(id, normalizePluginIdentifier(route.id), route.path);
+      assertPluginPermissionReference(plugin, id, route.id, route.guard);
 
       const routeActionId = normalizePluginIdentifier(route.actionId ?? '');
       if (!routeActionId) {
@@ -329,6 +435,7 @@ export const createPluginRegistry = (
         id,
         normalizePluginIdentifier(navigationItem.id)
       );
+      assertPluginPermissionReference(plugin, id, navigationItem.id, navigationItem.requiredAction);
 
       const navigationActionId = normalizePluginIdentifier(navigationItem.actionId ?? '');
       if (!navigationActionId) {
@@ -353,6 +460,23 @@ export const createPluginRegistry = (
         navigationItem.requiredAction !== action.requiredAction
       ) {
         throw new Error(`plugin_navigation_action_guard_mismatch:${id}:${navigationItem.id}:${navigationActionId}`);
+      }
+    }
+
+    for (const permission of plugin.permissions ?? []) {
+      assertPluginContributionAllowedKeys(
+        permission as unknown as Record<string, unknown>,
+        permissionDefinitionAllowedKeys,
+        id,
+        normalizePluginIdentifier(permission.id)
+      );
+      const normalizedPermission = normalizePluginPermissionDefinition(permission);
+      const parsed = parseNamespacedPluginIdentifier(normalizedPermission.id);
+      if (parsed === undefined) {
+        throw new Error(`invalid_plugin_permission_id:${normalizedPermission.id}`);
+      }
+      if (parsed.namespace !== id) {
+        throw new Error(`plugin_permission_namespace_mismatch:${id}:${parsed.namespace}:${normalizedPermission.id}`);
       }
     }
 
@@ -431,6 +555,10 @@ export const mergePluginNavigationItems = (
 export const mergePluginActions = (
   plugins: readonly PluginDefinition[]
 ): readonly PluginActionDefinition[] => plugins.flatMap((plugin) => plugin.actions ?? []);
+
+export const mergePluginPermissions = (
+  plugins: readonly PluginDefinition[]
+): readonly PluginPermissionDefinition[] => plugins.flatMap((plugin) => plugin.permissions ?? []);
 
 export const mergePluginContentTypes = (
   plugins: readonly PluginDefinition[]
@@ -519,6 +647,57 @@ export const createPluginActionRegistry = (
           deprecatedAlias: legacyAlias,
         });
       }
+    }
+  }
+
+  return registry;
+};
+
+export const createPluginPermissionRegistry = (
+  plugins: readonly PluginDefinition[]
+): ReadonlyMap<string, PluginPermissionRegistryEntry> => {
+  const registry = new Map<string, PluginPermissionRegistryEntry>();
+  const pluginNamespaces = new Set<string>();
+
+  for (const plugin of plugins) {
+    const pluginNamespace = normalizePluginNamespace(plugin.id);
+    if (isReservedPluginNamespace(pluginNamespace)) {
+      throw new Error(`reserved_plugin_permission_namespace:${pluginNamespace}`);
+    }
+    if (pluginNamespaces.has(pluginNamespace)) {
+      throw new Error(`duplicate_plugin:${pluginNamespace}`);
+    }
+    pluginNamespaces.add(pluginNamespace);
+
+    for (const permission of plugin.permissions ?? []) {
+      assertPluginContributionAllowedKeys(
+        permission as unknown as Record<string, unknown>,
+        permissionDefinitionAllowedKeys,
+        pluginNamespace,
+        normalizePluginIdentifier(permission.id)
+      );
+      const normalizedPermission = normalizePluginPermissionDefinition(permission);
+      const parsed = parseNamespacedPluginIdentifier(normalizedPermission.id);
+      if (parsed === undefined) {
+        throw new Error(`invalid_plugin_permission_id:${normalizedPermission.id}`);
+      }
+      if (parsed.namespace !== pluginNamespace) {
+        throw new Error(
+          `plugin_permission_namespace_mismatch:${pluginNamespace}:${parsed.namespace}:${normalizedPermission.id}`
+        );
+      }
+      if (registry.has(normalizedPermission.id)) {
+        throw new Error(`duplicate_plugin_permission:${normalizedPermission.id}`);
+      }
+
+      registry.set(normalizedPermission.id, {
+        permissionId: normalizedPermission.id,
+        namespace: parsed.namespace,
+        permissionName: parsed.name,
+        ownerPluginId: pluginNamespace,
+        titleKey: normalizedPermission.titleKey,
+        descriptionKey: normalizedPermission.descriptionKey,
+      });
     }
   }
 

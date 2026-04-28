@@ -7,6 +7,8 @@ import {
 
 export type RouteGuardUser = {
   readonly roles: readonly string[];
+  readonly permissionActions?: readonly string[];
+  readonly permissionStatus?: 'ok' | 'degraded';
 };
 
 export type RouteGuardContext = {
@@ -29,6 +31,7 @@ export type ProtectedRouteOptions = {
   readonly insufficientRoleKey?: string;
   readonly diagnostics?: RoutingDiagnosticsHook;
   readonly route?: string;
+  readonly requiredPermissions?: readonly string[];
 };
 
 const DEFAULT_LOGIN_PATH = '/auth/login';
@@ -82,6 +85,7 @@ export const createProtectedRoute = <TContext extends RouteGuardContext = RouteG
     fallbackPath = DEFAULT_FALLBACK_PATH,
     insufficientRoleKey = DEFAULT_INSUFFICIENT_ROLE_KEY,
     diagnostics,
+    requiredPermissions = [],
   } = options;
   const diagnosticsRoute = 'route' in options && typeof options.route === 'string' ? options.route : null;
 
@@ -101,6 +105,25 @@ export const createProtectedRoute = <TContext extends RouteGuardContext = RouteG
       throw redirect({ href: buildLoginHref(loginPath, location.href) });
     }
 
+    if (requiredPermissions.length > 0) {
+      const grantedPermissions = new Set(user.permissionActions ?? []);
+      const missingPermissions = requiredPermissions.filter((permission) => !grantedPermissions.has(permission));
+      if (missingPermissions.length > 0) {
+        if (diagnosticsRoute) {
+          emitRoutingDiagnostic(diagnostics, {
+            level: 'info',
+            event: 'routing.guard.access_denied',
+            route: diagnosticsRoute,
+            reason: 'insufficient-permission',
+            redirect_target: sanitizePathForDiagnostics(fallbackPath, DEFAULT_FALLBACK_PATH),
+            required_permissions: requiredPermissions,
+          });
+        }
+        throw redirect({
+          href: buildInsufficientRoleHref(fallbackPath, insufficientRoleKey),
+        });
+      }
+    }
     if (requiredRoles.length > 0 && !hasAnyRole(user, requiredRoles)) {
       if (diagnosticsRoute) {
         emitRoutingDiagnostic(diagnostics, {

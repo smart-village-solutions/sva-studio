@@ -10,11 +10,13 @@ import {
   definePluginActions,
   definePluginAuditEvents,
   definePluginContentTypes,
+  definePluginPermissions,
   mergePluginActions,
   mergeAdminResourceDefinitions,
   mergePluginAuditEventDefinitions,
   mergePluginContentTypes,
   mergePluginNavigationItems,
+  mergePluginPermissions,
   mergePluginRouteDefinitions,
   mergePluginTranslations,
   type PluginDefinition,
@@ -30,8 +32,12 @@ describe('plugin registry', () => {
       {
         id: 'news.publish',
         titleKey: 'news.actions.publish',
-        requiredAction: 'content.publish',
+        requiredAction: 'news.publish',
       },
+    ]),
+    permissions: definePluginPermissions('news', [
+      { id: 'news.read', titleKey: 'news.permissions.read' },
+      { id: 'news.publish', titleKey: 'news.permissions.publish' },
     ]),
     contentTypes: definePluginContentTypes('news', [{ contentType: 'news.article', displayName: 'News' }]),
     auditEvents: definePluginAuditEvents('news', [{ eventType: 'news.published', titleKey: 'news.audit.published' }]),
@@ -55,7 +61,7 @@ describe('plugin registry', () => {
           {
             id: 'news.create.route',
             path: '/plugins/news/new',
-            guard: 'content.publish',
+            guard: 'news.publish',
             actionId: 'news.publish',
             component: (() => null) as never,
           },
@@ -68,7 +74,7 @@ describe('plugin registry', () => {
             titleKey: 'news.actions.publish',
             section: 'dataManagement' as const,
             actionId: 'news.publish',
-            requiredAction: 'content.publish',
+            requiredAction: 'news.publish',
           },
         ],
       },
@@ -127,7 +133,7 @@ describe('plugin registry', () => {
             {
               id: 'news.invalid-route',
               path: '/plugins/news/invalid',
-              guard: 'content.read',
+              guard: 'news.publish',
               actionId: 'events.publish',
               component: (() => null) as never,
             },
@@ -176,7 +182,7 @@ describe('plugin registry', () => {
             {
               id: 'news.mismatched-route-guard',
               path: '/plugins/news/mismatch',
-              guard: 'content.read',
+              guard: 'news.read',
               actionId: 'news.publish',
               component: (() => null) as never,
             },
@@ -213,7 +219,7 @@ describe('plugin registry', () => {
               titleKey: 'news.navigation.title',
               section: 'dataManagement' as const,
               actionId: 'news.publish',
-              requiredAction: 'content.read',
+              requiredAction: 'news.read',
             },
           ],
         },
@@ -225,6 +231,7 @@ describe('plugin registry', () => {
     expect(mergePluginRouteDefinitions([pluginA])).toHaveLength(1);
     expect(mergePluginNavigationItems([pluginA])).toHaveLength(1);
     expect(mergePluginActions([pluginA])).toHaveLength(1);
+    expect(mergePluginPermissions([pluginA])).toHaveLength(2);
     expect(mergePluginContentTypes([pluginA])).toHaveLength(1);
     expect(mergePluginAuditEventDefinitions([pluginA])).toHaveLength(1);
     expect(mergePluginTranslations([pluginA])).toEqual(pluginA.translations);
@@ -257,6 +264,7 @@ describe('plugin registry', () => {
     expect(Array.from(registry.keys())).toEqual(['news', 'calendar', 'news-override']);
     expect(mergePluginNavigationItems(Array.from(registry.values()))).toHaveLength(1);
     expect(mergePluginActions(Array.from(registry.values()))).toHaveLength(1);
+    expect(mergePluginPermissions(Array.from(registry.values()))).toHaveLength(2);
     expect(mergePluginContentTypes(Array.from(registry.values()))).toHaveLength(1);
     expect(mergePluginAuditEventDefinitions(Array.from(registry.values()))).toHaveLength(1);
     expect(mergePluginTranslations(Array.from(registry.values()))).toEqual({
@@ -273,7 +281,7 @@ describe('plugin registry', () => {
 
   it('exposes a typed public plugin contract', () => {
     expectTypeOf(pluginA).toMatchTypeOf<PluginDefinition>();
-    expectTypeOf<(typeof pluginA.routes)[number]['guard']>().toEqualTypeOf<'content.read' | undefined>();
+    expectTypeOf<(typeof pluginA.routes)[number]['guard']>().toEqualTypeOf<undefined>();
     expectTypeOf<(typeof pluginA.navigation)[number]['section']>().toEqualTypeOf<'dataManagement'>();
   });
 
@@ -345,7 +353,7 @@ describe('plugin registry', () => {
       actionName: 'publish',
       ownerPluginId: 'news',
       titleKey: 'news.actions.publish',
-      requiredAction: 'content.publish',
+      requiredAction: 'news.publish',
     });
 
     expect(() =>

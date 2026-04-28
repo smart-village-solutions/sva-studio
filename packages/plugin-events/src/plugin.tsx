@@ -2,6 +2,7 @@ import {
   definePluginActions,
   definePluginAuditEvents,
   definePluginContentTypes,
+  definePluginPermissions,
   type PluginDefinition,
 } from '@sva/plugin-sdk';
 
@@ -15,29 +16,36 @@ export const pluginEventsActionIds = {
   delete: 'events.delete',
 } as const;
 
+export const pluginEventsPermissionDefinitions = definePluginPermissions('events', [
+  { id: 'events.read', titleKey: 'events.permissions.read' },
+  { id: 'events.create', titleKey: 'events.permissions.create' },
+  { id: 'events.update', titleKey: 'events.permissions.update' },
+  { id: 'events.delete', titleKey: 'events.permissions.delete' },
+] as const);
+
 export const pluginEventsActionDefinitions = definePluginActions('events', [
-  { id: pluginEventsActionIds.create, titleKey: 'events.actions.create', requiredAction: 'content.create' },
-  { id: pluginEventsActionIds.edit, titleKey: 'events.actions.edit', requiredAction: 'content.read' },
-  { id: pluginEventsActionIds.update, titleKey: 'events.actions.update', requiredAction: 'content.updatePayload' },
-  { id: pluginEventsActionIds.delete, titleKey: 'events.actions.delete', requiredAction: 'content.delete' },
+  { id: pluginEventsActionIds.create, titleKey: 'events.actions.create', requiredAction: 'events.create' },
+  { id: pluginEventsActionIds.edit, titleKey: 'events.actions.edit', requiredAction: 'events.read' },
+  { id: pluginEventsActionIds.update, titleKey: 'events.actions.update', requiredAction: 'events.update' },
+  { id: pluginEventsActionIds.delete, titleKey: 'events.actions.delete', requiredAction: 'events.delete' },
 ] as const);
 
 export const pluginEvents: PluginDefinition = {
   id: 'events',
   displayName: 'Events',
   routes: [
-    { id: 'events.list', path: '/plugins/events', guard: 'content.read', component: EventsListPage },
+    { id: 'events.list', path: '/plugins/events', guard: 'events.read', component: EventsListPage },
     {
       id: 'events.create',
       path: '/plugins/events/new',
-      guard: 'content.create',
+      guard: 'events.create',
       actionId: pluginEventsActionIds.create,
       component: EventsCreatePage,
     },
     {
       id: 'events.edit',
       path: '/plugins/events/$contentId',
-      guard: 'content.read',
+      guard: 'events.read',
       actionId: pluginEventsActionIds.edit,
       component: EventsEditPage,
     },
@@ -48,10 +56,11 @@ export const pluginEvents: PluginDefinition = {
       to: '/plugins/events',
       titleKey: 'events.navigation.title',
       section: 'dataManagement',
-      requiredAction: 'content.read',
+      requiredAction: 'events.read',
     },
   ],
   actions: pluginEventsActionDefinitions,
+  permissions: pluginEventsPermissionDefinitions,
   contentTypes: definePluginContentTypes('events', [{ contentType: EVENTS_CONTENT_TYPE, displayName: 'Events' }]),
   auditEvents: definePluginAuditEvents('events', []),
   translations: {

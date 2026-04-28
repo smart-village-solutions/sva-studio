@@ -15,6 +15,7 @@ import { createLoginUrl } from './auth-server/login.js';
 import { logoutSession } from './auth-server/logout.js';
 import { withAuthenticatedUser } from './middleware.js';
 import { getSession } from './redis-session.js';
+import { resolveEffectivePermissions } from './iam-authorization/permission-store.js';
 import { appendSetCookie, deleteCookieHeader, readCookieFromRequest } from './cookies.js';
 import { decodeLoginStateCookie, encodeLoginStateCookie, type LoginStateCookiePayload } from './login-state-cookie.js';
 import { buildLogContext } from './log-context.js';
@@ -48,6 +49,49 @@ const createRedirectResponse = (location: string) =>
     status: 302,
     headers: { Location: location },
   });
+
+const createAuthMeHeaders = (): HeadersInit => ({
+  'Content-Type': 'application/json',
+  'Cache-Control': 'no-store',
+  Pragma: 'no-cache',
+});
+
+const collectEffectivePermissionActions = (
+  permissions: readonly {
+    action?: string;
+    effect?: string;
+  }[]
+): string[] => {
+  const byAction = new Map<string, 'allow' | 'deny'>();
+
+  for (const permission of permissions) {
+    const action = typeof permission.action === 'string' ? permission.action.trim() : '';
+    if (action.length === 0) {
+      continue;
+    }
+    let normalizedEffect: 'allow' | 'deny' | null = null;
+    if (permission.effect === 'deny') {
+      normalizedEffect = 'deny';
+    } else if (permission.effect === 'allow') {
+      normalizedEffect = 'allow';
+    }
+    if (!normalizedEffect) {
+      continue;
+    }
+    if (normalizedEffect === 'deny') {
+      byAction.set(action, 'deny');
+      continue;
+    }
+    if (byAction.get(action) !== 'deny') {
+      byAction.set(action, 'allow');
+    }
+  }
+
+  return [...byAction.entries()]
+    .filter(([, effect]) => effect === 'allow')
+    .map(([action]) => action)
+    .sort((left, right) => left.localeCompare(right));
+};
 
 const summarizeRequestUrl = (request: Request): { endpoint_path: string; has_sensitive_query: boolean } => {
   const url = new URL(request.url);
@@ -657,7 +701,7 @@ export const meHandler = async (request: Request): Promise<Response> => {
     if (isMockAuthEnabled()) {
       return new Response(JSON.stringify({ user: createMockSessionUser() }), {
         status: 200,
-        headers: { 'Content-Type': 'application/json' },
+        headers: createAuthMeHeaders(),
       });
     }
 
@@ -669,18 +713,53 @@ export const meHandler = async (request: Request): Promise<Response> => {
       ...buildLogContext(),
     });
 
-    return withAuthenticatedUser(request, ({ user }) => {
+    return withAuthenticatedUser(request, async ({ user }) => {
+      let permissionActions: string[] = [];
+      let permissionStatus: 'ok' | 'degraded' = 'ok';
+
+      if (user.instanceId) {
+        try {
+          const resolvedPermissions = await resolveEffectivePermissions({
+            instanceId: user.instanceId,
+            keycloakSubject: user.id,
+          });
+
+          if (resolvedPermissions.ok) {
+            permissionActions = collectEffectivePermissionActions(resolvedPermissions.permissions);
+          } else {
+            permissionStatus = 'degraded';
+            logger.warn('Auth me resolved user but permission snapshot failed', {
+              endpoint: '/auth/me',
+              operation: 'get_current_user',
+              reason_code: 'permission_snapshot_unavailable',
+              ...buildLogContext({ kind: 'instance', instanceId: user.instanceId }),
+            });
+          }
+        } catch (error) {
+          permissionStatus = 'degraded';
+          logger.error('Auth me permission action lookup failed', {
+            endpoint: '/auth/me',
+            operation: 'get_current_user',
+            error_type: error instanceof Error ? error.name : typeof error,
+            reason_code: 'permission_action_lookup_failed',
+            ...buildLogContext({ kind: 'instance', instanceId: user.instanceId }),
+          });
+        }
+      }
+
       logger.debug('Auth check successful', {
         endpoint: '/auth/me',
         auth_state: 'authenticated',
         operation: 'get_current_user',
         roles_count: user.roles?.length ?? 0,
+        permission_actions_count: permissionActions.length,
+        permission_status: permissionStatus,
         ...buildLogContext(user.instanceId ? { kind: 'instance', instanceId: user.instanceId } : undefined),
       });
 
-      return new Response(JSON.stringify({ user }), {
+      return new Response(JSON.stringify({ user: { ...user, permissionActions, permissionStatus } }), {
         status: 200,
-        headers: { 'Content-Type': 'application/json' },
+        headers: createAuthMeHeaders(),
       });
     });
   });

@@ -28,7 +28,7 @@ Fehlerpfad:
 ### Szenario 1c: Plugin-Guardrail-Validierung beim Build-time-Snapshot
 
 1. Die App übergibt statische Plugin-Packages an `createBuildTimeRegistry()`.
-2. Das Plugin-SDK führt die bestehende Registry-Erzeugung in festen Phasen aus: Preflight, Content, Admin, Audit, Routing und Publish.
+2. Das Plugin-SDK führt die bestehende Registry-Erzeugung in festen Phasen aus: Preflight, Content, Admin, Audit, Permissions, Routing und Publish.
 3. Jede Phase erzeugt die bisherigen `BuildTimeRegistry`-Outputs; bestehende Consumer müssen keinen neuen Snapshot-Typ verwenden.
 4. Erlaubte UI-Komponenten und host-invoked Payload-Validatoren bleiben im Snapshot erhalten.
 5. Verbotene Felder wie eigene Route-Handler, Autorisierungsresolver, Audit-Sinks, Persistenzhandler oder dynamische Registrierung brechen die Initialisierung fail-fast ab.
@@ -37,6 +37,7 @@ Fehlerpfad:
 
 - Der Host veröffentlicht keinen teilweise materialisierten Plugin-Snapshot.
 - Die Fehlermeldung folgt `<guardrailCode>:<pluginNamespace>:<contributionId>:<fieldOrReason>`.
+- Plugin-Routen, Navigation oder Actions mit produktiven `content.*`-Guards, fremden Namespaces oder nicht registrierten Permission-IDs brechen den Snapshot vor der Route-Materialisierung ab.
 
 ### Szenario 1b: Materialisierung registrierter Admin-Ressourcen
 
@@ -54,10 +55,10 @@ Fehlerpfad:
 
 1. Die App initialisiert `studioPlugins` und merged Plugin-Übersetzungen in die i18n-Ressourcen.
 2. Der Router materialisiert die Plugin-Routen für News, Events und POI, zum Beispiel `/plugins/news`, `/plugins/events` und `/plugins/poi`.
-3. Beim Aufruf der Route wendet der Host den passenden Content-Guard an.
+3. Beim Aufruf der Route wendet der Host den registrierten Plugin-Guard an, zum Beispiel `news.read`, `events.read` oder `poi.read`.
 4. Die Fachlisten rufen ihre Host-Fassaden auf: `/api/v1/mainserver/news`, `/api/v1/mainserver/events` oder `/api/v1/mainserver/poi`; lokale IAM-Contents werden nicht mehr produktiv gelesen.
 5. Die Editoren senden Create-, Update- und Delete-Requests an die jeweilige Fassade und Detailroute.
-6. Die App-Fassade prüft Session, `instanceId`, lokale Content-Primitive und Mainserver-Credentials serverseitig.
+6. Die App-Fassade prüft Session, `instanceId`, plugin-spezifische IAM-Permission und Mainserver-Credentials serverseitig.
 7. `@sva/sva-mainserver/server` führt typisierte GraphQL-Operationen für News, Events und POI mit Benutzer-Credentials aus.
 8. News nutzt das vollständige Mainserver-Modell mit dedizierten Feldern; Events und POI nutzen eigene Mapping-Adapter für Termine, Adressen, Kontakte, URLs, Medien, Preise, Barrierefreiheit, Tags und POI-Bezug.
 9. Es gibt keinen Dual-Write und keine Legacy-Migration in lokale IAM-Contents.
@@ -65,7 +66,7 @@ Fehlerpfad:
 
 Fehlerpfad:
 
-- fehlt die Berechtigung, blockiert der Host die Plugin-Route vor dem Rendern oder verweigert die serverseitige Mutation mit `capability_authorization_denied` im Diagnosekontext.
+- fehlt die Berechtigung, blendet die Shell Plugin-Navigation fail-closed aus, blockiert der Host die Plugin-Route vor dem Rendern oder verweigert die serverseitige Mutation mit `capability_authorization_denied` im Diagnosekontext.
 - ist das News-Input-Modell ungültig, enthält schreibgeschützte Felder oder fehlt `publishedAt`, antwortet die Mainserver-News-Fassade mit HTTP `400`.
 - schlägt ein API-Call fehl, zeigt das Plugin eine verständliche Fehlermeldung und behält den Formzustand.
 

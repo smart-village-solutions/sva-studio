@@ -5,7 +5,7 @@ import { createAdminRoute, createProtectedRoute } from './protected.routes';
 
 const invokeGuard = async (
   guard: ReturnType<typeof createProtectedRoute>,
-  user: { roles: readonly string[] } | null,
+  user: { roles: readonly string[]; permissionActions?: readonly string[] } | null,
   href: string
 ) =>
   guard({
@@ -75,6 +75,42 @@ describe('protected routes', () => {
 
     await expect(invokeGuard(guard, { roles: ['system_admin'] }, '/admin/users')).resolves.toBeUndefined();
     expect(diagnostics).not.toHaveBeenCalled();
+  });
+
+  it('redirects authenticated users without required permission', async () => {
+    const diagnostics = vi.fn();
+    const guard = createProtectedRoute({
+      diagnostics,
+      route: '/plugins/news',
+      requiredPermissions: ['news.read'],
+    });
+
+    try {
+      await invokeGuard(guard, { roles: ['editor'], permissionActions: ['events.read'] }, '/plugins/news');
+      expect.fail('Expected redirect');
+    } catch (error) {
+      expect(isRedirect(error)).toBe(true);
+      if (isRedirect(error)) {
+        expect(error.options.href).toBe('/?error=auth.insufficientRole');
+      }
+    }
+
+    expect(diagnostics).toHaveBeenCalledWith({
+      level: 'info',
+      event: 'routing.guard.access_denied',
+      route: '/plugins/news',
+      reason: 'insufficient-permission',
+      redirect_target: '/',
+      required_permissions: ['news.read'],
+    });
+  });
+
+  it('allows authenticated users with required permission', async () => {
+    const guard = createProtectedRoute({ route: '/plugins/news', requiredPermissions: ['news.read'] });
+
+    await expect(
+      invokeGuard(guard, { roles: ['editor'], permissionActions: ['news.read', 'events.read'] }, '/plugins/news')
+    ).resolves.toBeUndefined();
   });
 
   it('uses default admin roles in createAdminRoute', async () => {

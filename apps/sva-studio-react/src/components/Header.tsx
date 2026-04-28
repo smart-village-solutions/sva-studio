@@ -53,7 +53,7 @@ export default function Header({
         <span role="status" aria-live="polite" className="sr-only">
           {t('shell.header.authLoading')}
         </span>
-        <span aria-hidden="true" className="ml-2 h-8 w-20 animate-pulse rounded-md bg-muted" />
+        <span aria-hidden="true" className="ml-2 h-8 w-20 animate-skeleton rounded-md" />
       </>
     );
   } else if (!isAuthenticated) {

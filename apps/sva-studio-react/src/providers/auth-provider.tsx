@@ -7,11 +7,13 @@ import {
 } from '../lib/browser-operation-logging';
 import { createLoginHref, createSessionExpiredHref, resolveCurrentReturnTo } from '../lib/auth-navigation';
 import { fetchWithRequestTimeout } from '../lib/iam-api';
+import { fetchAuthMeSingleFlight } from '../lib/auth-me-singleflight';
 
 type SessionUser = {
   id: string;
   instanceId?: string;
   roles: string[];
+  permissionStatus?: 'ok' | 'degraded';
 };
 
 type AuthState = {
@@ -22,6 +24,7 @@ type AuthState = {
   readonly hasResolvedSession: boolean;
   readonly isRecoveringSession: boolean;
   readonly sessionRecoveryFailed: boolean;
+  readonly permissionsDegraded: boolean;
 };
 
 type AuthContextValue = AuthState & {
@@ -209,14 +212,16 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         silent,
         pathname: globalThis.location?.pathname ?? null,
       });
-      let response = await fetchWithRequestTimeout(AUTH_ME_ENDPOINT, undefined, { timeoutMs: 5_000 });
+      let result = await fetchAuthMeSingleFlight(() =>
+        fetchWithRequestTimeout(AUTH_ME_ENDPOINT, undefined, { timeoutMs: 5_000 })
+      );
       logAuthDebug('auth_session_load_response', {
         silent,
-        status: response.status,
-        ok: response.ok,
+        status: result.status,
+        ok: result.ok,
       });
 
-      if (!response.ok && response.status === 401) {
+      if (!result.ok && result.status === 401) {
         const hadKnownSession = readHadKnownSession();
 
         if (!silent && isMountedRef.current) {
@@ -242,15 +247,17 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         }
 
         if (recovered) {
-          response = await fetchWithRequestTimeout(AUTH_ME_ENDPOINT, undefined, { timeoutMs: 5_000 });
+          result = await fetchAuthMeSingleFlight(() =>
+            fetchWithRequestTimeout(AUTH_ME_ENDPOINT, undefined, { timeoutMs: 5_000 })
+          );
           logAuthDebug('auth_session_load_response_after_recovery', {
-            status: response.status,
-            ok: response.ok,
+            status: result.status,
+            ok: result.ok,
           });
         }
       }
 
-      if (!response.ok) {
+      if (!result.ok) {
         if (isMountedRef.current) {
           setUser(null);
           setHasResolvedSession(true);
@@ -258,12 +265,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         authLogger.info('auth_session_unauthenticated', {
           operation: silent ? 'invalidate_permissions' : 'load_session',
           silent,
-          status: response.status,
+          status: result.status,
         });
         return;
       }
 
-      const payload = parseAuthUser(await response.json());
+      const payload = parseAuthUser(result.payload);
       if (isMountedRef.current) {
         setUser(payload);
         setHasResolvedSession(true);
@@ -352,6 +359,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       hasResolvedSession,
       isRecoveringSession,
       sessionRecoveryFailed,
+      permissionsDegraded: user?.permissionStatus === 'degraded',
       refetch,
       logout,
       invalidatePermissions,

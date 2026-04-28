@@ -79,6 +79,7 @@ describe('useContentAccess', () => {
 
     expect(result.current).toEqual({
       access: null,
+      permissionActions: [],
       isLoading: false,
       error: null,
     });
@@ -104,6 +105,11 @@ describe('useContentAccess', () => {
             organizationId: 'org-1',
             provenance: { sourceKinds: ['group_role'] },
           },
+          {
+            action: 'news.read',
+            resourceType: 'news',
+            effect: 'allow',
+          },
         ],
       }),
     });
@@ -121,6 +127,7 @@ describe('useContentAccess', () => {
         organizationIds: ['org-1'],
         sourceKinds: ['direct_role', 'group_role'],
       });
+      expect(result.current.permissionActions).toEqual(['content.read', 'content.updatePayload', 'news.read']);
       expect(result.current.error).toBeNull();
     });
 
@@ -136,6 +143,40 @@ describe('useContentAccess', () => {
       'content_access_load_succeeded',
       expect.objectContaining({ operation: 'load_content_access', instance_id: 'de-musterhausen' })
     );
+  });
+
+  it('treats deny actions as dominant when permission actions are aggregated', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        permissions: [
+          {
+            action: 'news.read',
+            resourceType: 'news',
+            effect: 'allow',
+          },
+          {
+            action: 'news.read',
+            resourceType: 'news',
+            effect: 'deny',
+          },
+          {
+            action: 'events.read',
+            resourceType: 'events',
+            effect: 'allow',
+          },
+        ],
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { result } = renderHook(() => useContentAccess());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.permissionActions).toEqual(['events.read']);
+      expect(result.current.error).toBeNull();
+    });
   });
 
   it('invalidates permissions and exposes a server denied access state on 403', async () => {

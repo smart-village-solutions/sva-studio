@@ -126,3 +126,209 @@
     outline-offset: 2px;
   }
 }
+
+/* Microanimations – professionelle Interaktionsfeedbacks */
+@layer components {
+  @media (prefers-reduced-motion: no-preference) {
+    /* 1. Button-Scale-Lift: Hover mit Scale + Shadow-Erhöhung */
+    @keyframes button-scale-lift {
+      from {
+        transform: scale(1);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+      }
+      to {
+        transform: scale(1.02);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+      }
+    }
+
+    /* 2. Input-Glow: Subtiler ausfahrender Ring */
+    @keyframes input-glow {
+      from {
+        box-shadow: 0 0 0 0 rgba(78, 188, 65, 0.15);
+      }
+      to {
+        box-shadow: 0 0 0 3px rgba(78, 188, 65, 0.1);
+      }
+    }
+
+    /* 3. Table-Row-Lift: Y-Axis Scale + Shadow */
+    @keyframes table-row-lift {
+      from {
+        transform: scaleY(1);
+        box-shadow: none;
+      }
+      to {
+        transform: scaleY(1.01);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      }
+    }
+
+    /* 5. Skeleton-Shimmer: Gradient-Animation von links nach rechts */
+    @keyframes skeleton-shimmer {
+      0% {
+        background-position: -1000px 0;
+      }
+      100% {
+        background-position: 1000px 0;
+      }
+    }
+
+    /* 10. Modal-Slide-Up: Content slideUp + fadeIn */
+    @keyframes modal-slide-up {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* 10. Modal-Backdrop-Fade: Backdrop fadeIn */
+    @keyframes modal-backdrop-fade {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+
+    /* 6. Toast-Slide-In: Notification slideIn von rechts */
+    @keyframes toast-slide-in {
+      from {
+        opacity: 0;
+        transform: translateX(100%);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    /* 8. Label-Float: Label schwebt nach oben */
+    @keyframes label-float {
+      from {
+        transform: translateY(0);
+        opacity: 0.7;
+      }
+      to {
+        transform: translateY(-4px);
+        opacity: 1;
+      }
+    }
+
+    /* 4. Collapse-Icon-Rotate: Icon rotiert smoothly */
+    @keyframes collapse-icon-rotate {
+      from {
+        transform: rotate(0deg);
+      }
+      to {
+        transform: rotate(90deg);
+      }
+    }
+
+    /* 9. Breadcrumb-Slide: Sanfte Transition für Navigation */
+    @keyframes breadcrumb-slide {
+      from {
+        opacity: 0.8;
+        transform: translateX(-2px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    /* 7. Pagination-Bounce: Mini Bounce auf active */
+    @keyframes pagination-bounce {
+      0% {
+        transform: scale(1);
+      }
+      50% {
+        transform: scale(1.1);
+      }
+      100% {
+        transform: scale(1);
+      }
+    }
+  }
+
+  /* Utility-Klassen für Animationen */
+  @media (prefers-reduced-motion: no-preference) {
+    .animate-button-hover {
+      @apply transition-all duration-150 ease-out;
+    }
+
+    .animate-button-hover:hover {
+      animation: button-scale-lift 150ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    .animate-input-glow:focus-visible {
+      animation: input-glow 200ms ease-out forwards;
+    }
+
+    .animate-row-hover:hover {
+      animation: table-row-lift 150ms ease-out forwards;
+    }
+
+    .animate-skeleton {
+      background: linear-gradient(
+        90deg,
+        rgb(var(--muted)) 0%,
+        rgba(255, 255, 255, 0.1) 50%,
+        rgb(var(--muted)) 100%
+      );
+      background-size: 1000px 100%;
+      animation: skeleton-shimmer 2s infinite;
+    }
+
+    .animate-modal-overlay {
+      animation: modal-backdrop-fade 200ms ease-out forwards;
+    }
+
+    .animate-modal-content {
+      animation: modal-slide-up 250ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      animation-delay: 50ms;
+    }
+
+    .animate-toast-slide {
+      animation: toast-slide-in 300ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    .animate-label-float {
+      animation: label-float 150ms ease-out forwards;
+    }
+
+    .animate-collapse-icon:hover {
+      animation: collapse-icon-rotate 200ms ease-out forwards;
+    }
+
+    button:has(.animate-collapse-icon):hover .animate-collapse-icon {
+      animation: collapse-icon-rotate 200ms ease-out forwards;
+    }
+
+    .animate-pagination-active {
+      animation: pagination-bounce 400ms cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
+    }
+
+    .animate-breadcrumb-slide:hover {
+      animation: breadcrumb-slide 200ms ease-out forwards;
+    }
+
+    .field-group:has(input:focus-visible, textarea:focus-visible, [role='combobox']:focus-visible) .animate-label-float {
+      animation: label-float 150ms ease-out forwards;
+    }
+  }
+
+  /* Fallback für prefers-reduced-motion: nur transition, kein animation */
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}

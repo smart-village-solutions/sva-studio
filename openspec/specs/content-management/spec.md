@@ -331,3 +331,353 @@ Read-only navigation MAY continue to use existing read permissions directly. Any
 - **THEN** the same declared domain capability is resolved once per authorization context
 - **AND** every affected item remains within the authorized scope before the bulk mutation is executed
 
+### Requirement: News Plugin Uses Mainserver As Source Of Truth
+
+The News plugin SHALL use the SVA Mainserver GraphQL API as the source of truth for News list, detail, create, update, and archive-or-delete operations.
+
+The plugin SHALL keep its specialized News UI, validation, routes, Studio UI components, and action metadata, but its productive persistence path SHALL be host-owned and Mainserver-backed.
+
+#### Scenario: News list renders Mainserver data
+
+- **GIVEN** the SVA Mainserver integration is configured for the current instance
+- **AND** the user has local permission to read News content
+- **WHEN** the user opens `/plugins/news`
+- **THEN** the News plugin loads items from the host-owned Mainserver-backed data source
+- **AND** local IAM content records are not used as the productive News source
+
+#### Scenario: News create writes to Mainserver
+
+- **GIVEN** the user has local permission and valid Mainserver credentials
+- **WHEN** the user creates a News entry through `/plugins/news/new`
+- **THEN** the host writes the News entry through a typed Mainserver GraphQL mutation
+- **AND** no local IAM content record is created as a parallel productive copy
+
+#### Scenario: Mainserver integration is unavailable
+
+- **GIVEN** the current instance has no valid Mainserver configuration or the integration is disabled
+- **WHEN** the user opens the News plugin
+- **THEN** the UI shows a deterministic configuration or integration-disabled state
+- **AND** the UI does not silently fall back to local IAM content writes
+
+### Requirement: News Plugin Uses Host-Owned Data Boundary
+
+The News plugin SHALL receive Mainserver-backed data through a host-owned HTTP or injected data-source contract that preserves plugin package boundaries.
+
+`@sva/plugin-news` SHALL NOT import App modules, Auth-Runtime server modules, or `@sva/sva-mainserver/server`.
+
+#### Scenario: Plugin data facade calls host-owned contract
+
+- **GIVEN** `packages/plugin-news/src/news.api.ts` loads or mutates News data
+- **WHEN** the productive Mainserver-backed implementation is active
+- **THEN** it calls a host-owned News data contract instead of `/api/v1/iam/contents`
+- **AND** the plugin package keeps only allowed Workspace dependencies such as `@sva/plugin-sdk` and `@sva/studio-ui-react`
+
+#### Scenario: Plugin imports server package directly
+
+- **GIVEN** plugin code attempts to import `@sva/sva-mainserver/server`, `@sva/auth-runtime/server`, or `apps/sva-studio-react/src/**`
+- **WHEN** dependency boundaries are checked
+- **THEN** the build, lint, CI, or review gate rejects the import
+
+### Requirement: News Plugin Model Maps To Mainserver News Contract
+
+The News plugin SHALL maintain an explicit mapping between its form/content model and the SVA Mainserver News GraphQL contract.
+
+The mapping SHALL define title, teaser, body, media URL, external URL, category or tags, publication timestamp, identifiers, author/display metadata, update timestamps, and status/sichtbarkeit where supported by the Mainserver schema.
+
+#### Scenario: Mainserver item is displayed in plugin model
+
+- **GIVEN** the Mainserver returns a `NewsItem`
+- **WHEN** the host maps it for the plugin
+- **THEN** the plugin receives a `NewsContentItem`-compatible model
+- **AND** unsupported or missing optional fields are handled deterministically
+
+#### Scenario: User submits invalid mapped payload
+
+- **GIVEN** the user submits a News form value that cannot be mapped to the Mainserver News contract
+- **WHEN** the host validates the mutation input
+- **THEN** the mutation is rejected before the GraphQL call
+- **AND** the UI receives field-level or operation-level validation errors
+
+#### Scenario: Plugin status is not natively supported by Mainserver
+
+- **GIVEN** the plugin has a status value such as `in_review` or `approved`
+- **WHEN** the Mainserver contract does not expose an equivalent News workflow state
+- **THEN** the host maps, restricts, or rejects that status deterministically
+- **AND** the UI and runbook document the supported status behavior for this rollout
+
+### Requirement: Local News Legacy Content Is Explicitly Handled
+
+The system SHALL handle existing local `news.article` or legacy `news` content records through an explicit migration or legacy-read decision before switching the productive News plugin write path to Mainserver-only.
+
+#### Scenario: Legacy content migration is selected
+
+- **GIVEN** existing local News content records must remain available after the Mainserver switch
+- **WHEN** the migration path is implemented
+- **THEN** it provides a dry-run mode, an operator-readable report, idempotent execution, and deterministic failure records
+- **AND** migrated records are not written twice on repeated runs
+
+#### Scenario: Legacy content is not migrated
+
+- **GIVEN** existing local News content records are intentionally not migrated
+- **WHEN** the News plugin is switched to Mainserver-backed mode
+- **THEN** the behavior is documented
+- **AND** the UI or runbook explains that local legacy records are no longer the productive News source
+
+#### Scenario: Dual-write is attempted
+
+- **GIVEN** a News create or update operation succeeds against the Mainserver
+- **WHEN** the operation completes
+- **THEN** the host does not also write a productive local IAM content copy
+- **AND** any optional migration or audit record is clearly separated from the content source of truth
+
+### Requirement: Events Plugin Uses Mainserver As Source Of Truth
+
+The Events plugin SHALL use the SVA Mainserver GraphQL API as the source of truth for Event list, detail, create, update, and archive-or-delete operations.
+
+The plugin SHALL keep a specialized Events UI, validation, routes, Studio UI components, and action metadata, but its productive persistence path SHALL be host-owned and Mainserver-backed.
+
+#### Scenario: Events list renders Mainserver data
+
+- **GIVEN** the SVA Mainserver integration is configured for the current instance
+- **AND** the user has local permission to read Event content
+- **WHEN** the user opens `/plugins/events`
+- **THEN** the Events plugin loads items from the host-owned Mainserver-backed data source
+- **AND** local IAM content records are not used as the productive Events source
+
+#### Scenario: Event create writes to Mainserver
+
+- **GIVEN** the user has local permission and valid Mainserver credentials
+- **WHEN** the user creates an Event through `/plugins/events/new`
+- **THEN** the host writes the Event through a typed Mainserver GraphQL mutation
+- **AND** no local IAM content record is created as a parallel productive copy
+
+#### Scenario: Mainserver integration is unavailable for Events
+
+- **GIVEN** the current instance has no valid Mainserver configuration or the integration is disabled
+- **WHEN** the user opens the Events plugin
+- **THEN** the UI shows a deterministic configuration or integration-disabled state
+- **AND** the UI does not silently fall back to local IAM content writes
+
+### Requirement: POI Plugin Uses Mainserver As Source Of Truth
+
+The POI plugin SHALL use the SVA Mainserver GraphQL API as the source of truth for Point-of-Interest list, detail, create, update, and archive-or-delete operations.
+
+The plugin SHALL keep a specialized POI UI, validation, routes, Studio UI components, and action metadata, but its productive persistence path SHALL be host-owned and Mainserver-backed.
+
+#### Scenario: POI list renders Mainserver data
+
+- **GIVEN** the SVA Mainserver integration is configured for the current instance
+- **AND** the user has local permission to read POI content
+- **WHEN** the user opens `/plugins/poi`
+- **THEN** the POI plugin loads items from the host-owned Mainserver-backed data source
+- **AND** local IAM content records are not used as the productive POI source
+
+#### Scenario: POI create writes to Mainserver
+
+- **GIVEN** the user has local permission and valid Mainserver credentials
+- **WHEN** the user creates a POI through `/plugins/poi/new`
+- **THEN** the host writes the POI through a typed Mainserver GraphQL mutation
+- **AND** no local IAM content record is created as a parallel productive copy
+
+#### Scenario: Mainserver integration is unavailable for POI
+
+- **GIVEN** the current instance has no valid Mainserver configuration or the integration is disabled
+- **WHEN** the user opens the POI plugin
+- **THEN** the UI shows a deterministic configuration or integration-disabled state
+- **AND** the UI does not silently fall back to local IAM content writes
+
+### Requirement: Events And POI Use Host-Owned Data Boundaries
+
+Events and POI plugins SHALL receive Mainserver-backed data through host-owned HTTP or injected data-source contracts that preserve plugin package boundaries.
+
+`@sva/plugin-events` and `@sva/plugin-poi` SHALL NOT import App modules, Auth-Runtime server modules, or `@sva/sva-mainserver/server`.
+
+#### Scenario: Events plugin data facade calls host-owned contract
+
+- **GIVEN** `packages/plugin-events` loads or mutates Events data
+- **WHEN** the productive Mainserver-backed implementation is active
+- **THEN** it calls a host-owned Events data contract instead of `/api/v1/iam/contents`
+- **AND** the plugin package keeps only allowed Workspace dependencies such as `@sva/plugin-sdk` and `@sva/studio-ui-react`
+
+#### Scenario: POI plugin data facade calls host-owned contract
+
+- **GIVEN** `packages/plugin-poi` loads or mutates POI data
+- **WHEN** the productive Mainserver-backed implementation is active
+- **THEN** it calls a host-owned POI data contract instead of `/api/v1/iam/contents`
+- **AND** the plugin package keeps only allowed Workspace dependencies such as `@sva/plugin-sdk` and `@sva/studio-ui-react`
+
+#### Scenario: Fachplugin imports server package directly
+
+- **GIVEN** Events or POI plugin code attempts to import `@sva/sva-mainserver/server`, `@sva/auth-runtime/server`, or `apps/sva-studio-react/src/**`
+- **WHEN** dependency boundaries are checked
+- **THEN** the build, lint, CI, or review gate rejects the import
+
+### Requirement: Events Plugin Model Maps To Mainserver Event Contract
+
+The Events plugin SHALL maintain an explicit mapping between its form/content model and the SVA Mainserver Event GraphQL contract.
+
+The mapping SHALL define title, description, date model, recurrence fields where supported, category, address/location, contacts, URLs, media, organizer, prices, accessibility information, tags, optional POI reference, identifiers, update timestamps, and status/sichtbarkeit where supported by the Mainserver schema.
+
+#### Scenario: Mainserver Event is displayed in plugin model
+
+- **GIVEN** the Mainserver returns an `EventRecord`
+- **WHEN** the host maps it for the plugin
+- **THEN** the plugin receives an Events editor-compatible model
+- **AND** unsupported or missing optional fields are handled deterministically
+
+#### Scenario: User submits invalid Event payload
+
+- **GIVEN** the user submits an Event form value that cannot be mapped to the Mainserver Event contract
+- **WHEN** the host validates the mutation input
+- **THEN** the mutation is rejected before the GraphQL call
+- **AND** the UI receives field-level or operation-level validation errors
+
+#### Scenario: Event status is not natively supported by Mainserver
+
+- **GIVEN** the plugin has a status value beyond Mainserver visibility support
+- **WHEN** the Mainserver contract does not expose an equivalent Event workflow state
+- **THEN** the host maps, restricts, or rejects that status deterministically
+- **AND** the UI and runbook document the supported status behavior for this rollout
+
+### Requirement: POI Plugin Model Maps To Mainserver POI Contract
+
+The POI plugin SHALL maintain an explicit mapping between its form/content model and the SVA Mainserver Point-of-Interest GraphQL contract.
+
+The mapping SHALL define name, description, mobile description, active state, category, address/location, contact, opening hours, operating company, web URLs, media, prices, certificates, accessibility information, tags, payload, identifiers, update timestamps, and status/sichtbarkeit where supported by the Mainserver schema.
+
+#### Scenario: Mainserver POI is displayed in plugin model
+
+- **GIVEN** the Mainserver returns a `PointOfInterest`
+- **WHEN** the host maps it for the plugin
+- **THEN** the plugin receives a POI editor-compatible model
+- **AND** unsupported or missing optional fields are handled deterministically
+
+#### Scenario: User submits invalid POI payload
+
+- **GIVEN** the user submits a POI form value that cannot be mapped to the Mainserver POI contract
+- **WHEN** the host validates the mutation input
+- **THEN** the mutation is rejected before the GraphQL call
+- **AND** the UI receives field-level or operation-level validation errors
+
+#### Scenario: POI visibility and active state diverge
+
+- **GIVEN** the POI form contains both publication visibility and active state
+- **WHEN** the host maps the form to the Mainserver contract
+- **THEN** `visible` and `active` behavior is documented and tested separately
+- **AND** unsupported combinations are rejected or normalized deterministically
+
+### Requirement: News Plugin Uses Complete Mainserver News Model
+
+The News plugin SHALL use a plugin-owned model that covers the complete SVA Mainserver News data model available through the host-owned News facade.
+
+The editable model SHALL include scalar mutation fields, nested mutation fields, operation options, and the existing News payload. The detail/list model SHALL additionally include read-only and derived Mainserver fields.
+
+#### Scenario: Existing Phase-1 News item is edited
+
+- **GIVEN** an existing Mainserver News item only contains the Phase-1 fields `title`, `publishedAt`, and `payload`
+- **WHEN** the editor loads it after the full model expansion
+- **THEN** the editor renders valid defaults for all newly supported optional fields
+- **AND** saving the item preserves compatibility with the existing Mainserver update path
+
+#### Scenario: Full News item is edited
+
+- **GIVEN** a Mainserver News item includes scalar fields, categories, source URL, address, content blocks, media references, and read-only metadata
+- **WHEN** the editor loads the item
+- **THEN** all editable fields are represented in form state
+- **AND** read-only metadata is available without becoming mutable input
+
+### Requirement: News Editor Covers Snapshot-backed Mutation Fields
+
+The News editor SHALL provide user-facing controls for all approved editable `createNewsItem` fields.
+
+Editable fields SHALL include `title`, `author`, `keywords`, `externalId`, `fullVersion`, `charactersToBeShown`, `newsType`, `publicationDate`, `publishedAt`, `showPublishDate`, `categoryName`, `categories`, `sourceUrl`, `address`, `contentBlocks`, `pointOfInterestId`, and the operation option `pushNotification`.
+
+#### Scenario: User creates a full News item
+
+- **GIVEN** the user has permission to create News
+- **WHEN** the user completes the full News form and submits it
+- **THEN** the plugin sends the complete editable model to the host-owned News facade
+- **AND** the host writes only validated snapshot-backed fields to Mainserver
+- **AND** the UI shows success feedback after the Mainserver response is mapped back
+
+#### Scenario: User submits invalid full News form
+
+- **GIVEN** the user submits invalid URLs, invalid dates, invalid `charactersToBeShown`, or invalid nested list values
+- **WHEN** the form or host validates the input
+- **THEN** the request is rejected before GraphQL execution
+- **AND** the UI shows localized validation feedback
+
+### Requirement: News Payload Does Not Hide Dedicated Mainserver Fields
+
+The News plugin SHALL NOT store Mainserver fields with dedicated GraphQL arguments inside generic `payload`.
+
+`payload` SHALL be treated as a legacy read fallback only. The plugin SHALL NOT send `payload` during create or update. `author`, `keywords`, `externalId`, `newsType`, `sourceUrl`, `address`, `categories`, `contentBlocks`, `pointOfInterestId`, and publication controls are represented as first-class fields.
+
+#### Scenario: Plugin saves News with source URL and address
+
+- **GIVEN** the user fills `sourceUrl` and `address`
+- **WHEN** the News item is saved
+- **THEN** those values are sent as `sourceUrl` and `address` mutation variables
+- **AND** `payload` is not sent with the mutation
+
+#### Scenario: Legacy payload contains overlapping values
+
+- **GIVEN** an old News payload contains keys that overlap with dedicated Mainserver fields
+- **WHEN** the item is loaded
+- **THEN** the plugin normalizes legacy payload content into first-class editor fields such as `contentBlocks`
+- **AND** save behavior follows the dedicated Mainserver fields without writing `payload`
+
+### Requirement: News ContentBlocks Are The Leading Content Model
+
+The News plugin SHALL treat `contentBlocks` as the leading News content model.
+
+Existing payload-only News SHALL remain readable by mapping legacy payload values into a virtual content block on load. Saves SHALL write `contentBlocks` and SHALL NOT write payload.
+
+#### Scenario: Legacy payload-only News is loaded
+
+- **GIVEN** an existing Mainserver News item has no `contentBlocks` but contains legacy payload body data
+- **WHEN** the editor loads the item
+- **THEN** the editor shows a content block derived from the legacy payload
+- **AND** the next save writes the block through `contentBlocks`
+- **AND** the next save does not write payload
+
+#### Scenario: User edits multiple content blocks
+
+- **GIVEN** the user edits multiple content blocks with media URL references
+- **WHEN** the item is saved
+- **THEN** the host sends the complete `contentBlocks` list as the new Mainserver state
+- **AND** individual block IDs are not required because `ContentBlockInput` does not expose IDs
+
+### Requirement: News Read-only Metadata Is Visible Or Documented
+
+The News plugin SHALL either display or explicitly document read-only Mainserver News metadata returned by the host facade.
+
+Read-only metadata includes `id`, `createdAt`, `updatedAt`, `visible`, `dataProvider`, `settings`, `announcements`, `likeCount`, `likedByMe`, and `pushNotificationsSentAt`.
+
+#### Scenario: News has Mainserver metadata
+
+- **GIVEN** the Mainserver returns read-only metadata for a News item
+- **WHEN** the editor/detail view is rendered
+- **THEN** the metadata is available to the user or documented as intentionally hidden
+- **AND** it is not sent back as mutable input
+
+### Requirement: News Facade Keeps Security Gates For Full Model Mutations
+
+The host-owned News facade SHALL apply the same security gates to full-model News mutations as to the Phase-1 News mutations.
+
+The facade SHALL validate session, instance context, local content primitives, CSRF, idempotency for create, Mainserver credentials, request shape, and plugin-facing error mapping before executing Mainserver writes.
+
+#### Scenario: Full News create is retried
+
+- **GIVEN** a user submits a full News create request with an `Idempotency-Key`
+- **WHEN** the request is retried with the same payload
+- **THEN** the host returns the idempotent replay response
+- **AND** no duplicate Mainserver News item is created
+
+#### Scenario: Full News mutation fails upstream
+
+- **GIVEN** Mainserver rejects or fails a full News create request after idempotency reservation
+- **WHEN** the host maps the error
+- **THEN** the idempotency record is completed as failed
+- **AND** the UI receives a stable plugin-facing error response
+

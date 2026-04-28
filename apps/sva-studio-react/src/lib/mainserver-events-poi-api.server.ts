@@ -4,7 +4,6 @@ import {
   withAuthenticatedUser,
   type AuthenticatedRequestContext,
 } from '@sva/auth-runtime/server';
-import type { IamContentPrimitiveAction } from '@sva/core';
 import {
   createSvaMainserverEvent,
   createSvaMainserverPoi,
@@ -408,11 +407,15 @@ const validateMutationRequest = (request: Request, requestId?: string): Response
 };
 
 const contentTypeFor = (contentKind: ContentKind) => (contentKind === 'events' ? EVENTS_CONTENT_TYPE : POI_CONTENT_TYPE);
+const pluginActionFor = (
+  contentKind: ContentKind,
+  actionName: 'read' | 'create' | 'update' | 'delete'
+) => `${contentKind}.${actionName}`;
 
 const authorizeOrResponse = async (
   ctx: AuthenticatedRequestContext,
   contentKind: ContentKind,
-  action: IamContentPrimitiveAction,
+  action: string,
   contentId?: string
 ): Promise<{ readonly instanceId: string; readonly keycloakSubject: string } | Response> => {
   const result = await authorizeContentPrimitiveForUser({
@@ -461,7 +464,7 @@ const dispatchAuthenticated = async (request: Request, route: RouteMatch, ctx: A
 
   try {
     if (route.kind === 'collection' && request.method === 'GET') {
-      const actor = await authorizeOrResponse(ctx, route.contentKind, 'content.read');
+      const actor = await authorizeOrResponse(ctx, route.contentKind, pluginActionFor(route.contentKind, 'read'));
       if (actor instanceof Response) {
         return actor;
       }
@@ -471,7 +474,7 @@ const dispatchAuthenticated = async (request: Request, route: RouteMatch, ctx: A
     }
 
     if (route.kind === 'item' && request.method === 'GET') {
-      const actor = await authorizeOrResponse(ctx, route.contentKind, 'content.read', route.itemId);
+      const actor = await authorizeOrResponse(ctx, route.contentKind, pluginActionFor(route.contentKind, 'read'), route.itemId);
       if (actor instanceof Response) {
         return actor;
       }
@@ -488,7 +491,7 @@ const dispatchAuthenticated = async (request: Request, route: RouteMatch, ctx: A
       if (csrfError) {
         return csrfError;
       }
-      const actor = await authorizeOrResponse(ctx, route.contentKind, 'content.create');
+      const actor = await authorizeOrResponse(ctx, route.contentKind, pluginActionFor(route.contentKind, 'create'));
       if (actor instanceof Response) {
         return actor;
       }
@@ -515,20 +518,21 @@ const dispatchAuthenticated = async (request: Request, route: RouteMatch, ctx: A
       if (csrfError) {
         return csrfError;
       }
-      const metadataActor = await authorizeOrResponse(ctx, route.contentKind, 'content.updateMetadata', route.itemId);
-      if (metadataActor instanceof Response) {
-        return metadataActor;
-      }
-      const payloadActor = await authorizeOrResponse(ctx, route.contentKind, 'content.updatePayload', route.itemId);
-      if (payloadActor instanceof Response) {
-        return payloadActor;
+      const updateActor = await authorizeOrResponse(
+        ctx,
+        route.contentKind,
+        pluginActionFor(route.contentKind, 'update'),
+        route.itemId
+      );
+      if (updateActor instanceof Response) {
+        return updateActor;
       }
       if (route.contentKind === 'events') {
         const parsed = await parseEventInput(request);
         if (parsed instanceof Response) {
           return parsed;
         }
-        const data = await updateSvaMainserverEvent({ ...metadataActor, eventId: route.itemId, event: parsed });
+        const data = await updateSvaMainserverEvent({ ...updateActor, eventId: route.itemId, event: parsed });
         logSuccess('mainserver_events_update', route.itemId);
         return json({ data });
       }
@@ -536,7 +540,7 @@ const dispatchAuthenticated = async (request: Request, route: RouteMatch, ctx: A
       if (parsed instanceof Response) {
         return parsed;
       }
-      const data = await updateSvaMainserverPoi({ ...metadataActor, poiId: route.itemId, poi: parsed });
+      const data = await updateSvaMainserverPoi({ ...updateActor, poiId: route.itemId, poi: parsed });
       logSuccess('mainserver_poi_update', route.itemId);
       return json({ data });
     }
@@ -546,7 +550,7 @@ const dispatchAuthenticated = async (request: Request, route: RouteMatch, ctx: A
       if (csrfError) {
         return csrfError;
       }
-      const actor = await authorizeOrResponse(ctx, route.contentKind, 'content.delete', route.itemId);
+      const actor = await authorizeOrResponse(ctx, route.contentKind, pluginActionFor(route.contentKind, 'delete'), route.itemId);
       if (actor instanceof Response) {
         return actor;
       }

@@ -59,8 +59,10 @@ Pflichtfelder im Zielbild:
 - `byteSize`
 - technische Metadaten wie Breite, Höhe, Dauer oder Seitenzahl soweit anwendbar
 - redaktionelle Metadaten wie Titel, Beschreibung, Alt-Text, Copyright, Lizenz
+- bildspezifische Bearbeitungsmetadaten wie Fokuspunkt und optionaler redaktioneller Zuschnitt
 - `visibility`
 - `processingStatus`
+- `uploadStatus`
 
 ### MediaVariant
 
@@ -96,6 +98,8 @@ Inhalte und andere Module referenzieren Medien nie über rohe URLs oder Dateipfa
 
 Die Auswahl der konkreten technischen Variante erfolgt zentral über Presets und Ausgabeanforderungen. Dadurch bleiben Inhalte stabil, auch wenn Breitenstufen, Formate oder CDN-Regeln später angepasst werden.
 
+Plugins binden Medien über einen hostseitigen Media-Picker an. Plugins deklarieren zulässige Rollen, Medientypen und optionale Preset-Anforderungen, erhalten aber keine direkte Storage-Schnittstelle und keine MinIO-Artefakte.
+
 ## Variantenstrategie
 
 Die Spezifikation soll keinen einzelnen Bild- oder Processing-Stack erzwingen, aber den Vertrag festlegen:
@@ -104,21 +108,47 @@ Die Spezifikation soll keinen einzelnen Bild- oder Processing-Stack erzwingen, a
 - Varianten sind ableitbar und ersetzbar
 - Presets werden zentral verwaltet
 - Breitenstufen unterstützen responsive Auslieferung
+- Fokuspunkt und redaktioneller Zuschnitt werden als strukturierte Asset- bzw. Rollenmetadaten gespeichert und bei der Variantengenerierung berücksichtigt
+- übergroße Bilder werden gemäß zentraler Maximalabmessungen verkleinert, ohne das unveränderte Original als führendes Asset zu verlieren
 - häufige Varianten dürfen eager erzeugt werden
 - seltene Varianten dürfen lazy erzeugt werden
 
 Empfohlen ist ein hybrider Ansatz aus eager und lazy generation, weil beim Upload die spätere Nutzung oft noch unbekannt ist.
 
+### Bildbearbeitungsfunktionen im MVP
+
+Der erste Bild-MVP umfasst keine freie Bildbearbeitung, aber drei verbindliche Funktionen:
+
+- Fokuspunkt setzen, damit automatische Crops den relevanten Bildbereich erhalten
+- Zuschnitt setzen, um für definierte Rollen oder Presets einen redaktionell kontrollierten Ausschnitt zu verwenden
+- große Bilder beim Processing auf konfigurierte Maximalabmessungen verkleinern, damit Storage, Auslieferung und UI nicht von Originalgrößen abhängig werden
+
+Diese Bearbeitungsinformationen gehören nicht in fachliche Content-Objekte. Sie werden am Medien-Asset oder an der rollenbezogenen Medienreferenz gespeichert und vom zentralen Processing-Pfad in Varianten übersetzt.
+
 ## Storage- und Auslieferungsvertrag
 
-Die Spezifikation benennt S3-kompatiblen Objektspeicher als Zielbild, ohne einen einzelnen Anbieter hart festzuschreiben. Wichtig ist der Vertrag:
+Die Spezifikation benennt MinIO als konkret zu unterstützenden S3-kompatiblen Objektspeicher. Der Code soll MinIO nicht in das fachliche Medienmodell hineinziehen, aber alle hostseitigen Storage-, Upload- und Auslieferungsschnittstellen müssen mit MinIO-kompatiblen Semantiken entworfen und getestet werden. Wichtig ist der Vertrag:
 
 - Assets und Varianten werden mandantenfähig abgelegt
+- Bucket, Object-Key, ETag, Content-Type, Content-Length und objektbezogene Metadaten werden als explizite technische Storage-Felder modelliert, nicht aus fachlichen Referenzen abgeleitet
+- Upload-Pfade unterstützen MinIO-kompatible direkte Uploads über kontrolliert ausgestellte, kurzlebige signierte URLs oder einen gleichwertigen serverseitig geprüften Proxy-Pfad
 - öffentliche und geschützte Medien sind unterscheidbar
 - öffentliche URLs bleiben stabil genug für CDN und Caching
 - geschützte Medien laufen über signierte oder anderweitig kontrollierte Zugriffspfade
 
-Die Storage-Schicht ist keine Plugin-Verantwortung. Sie liegt beim Host und muss in Deployment-, Security- und Observability-Dokumentation mitgeführt werden.
+Die Storage-Schicht ist keine Plugin-Verantwortung. Sie liegt beim Host und muss in Deployment-, Security- und Observability-Dokumentation mitgeführt werden. Implementierungscode außerhalb der Storage-Adapter darf keine direkten MinIO-Client-Aufrufe, Bucket-Namen oder Object-Keys als fachliche Kopplung verwenden; er spricht über den hostseitigen Medienvertrag und dedizierte Storage-Ports.
+
+### Adapter-Entscheidung
+
+Der MinIO-Storage-Adapter wird als eigener hostseitiger Adapter gegen einen internen Port implementiert; das S3-Protokoll selbst wird nicht selbst implementiert. Der Adapter soll ein etabliertes S3-kompatibles SDK nutzen, bevorzugt AWS SDK v3 (`@aws-sdk/client-s3` und `@aws-sdk/s3-request-presigner`) mit MinIO-Konfiguration (`endpoint`, `forcePathStyle`, Bucket, Credentials, Region). Dadurch bleibt MinIO als Runtime-Ziel explizit unterstützt, ohne das fachliche Medienmodell oder Content-/Plugin-Code an MinIO-spezifische Client-Typen zu koppeln.
+
+Der interne Port umfasst mindestens:
+
+- Upload-URL oder Upload-Proxy vorbereiten
+- Objektmetadaten über `HEAD`/Stat lesen
+- Objektstream für kontrollierte Auslieferung lesen
+- Objekte und Varianten löschen
+- technische Fehler in fachliche, auditierbare Fehlercodes übersetzen
 
 ## IAM und Audit
 
@@ -133,6 +163,12 @@ Medienoperationen werden als eigene Fachrechte modelliert, mindestens für:
 
 Löschungen müssen gegen aktive Referenzen, rechtliche Haltefristen oder geschützte Betriebszustände fail-closed sein. Alle sicherheits- und fachrelevanten Medienereignisse erzeugen Audit-Events.
 
+## MVP-Abgrenzung und Folgeumfang
+
+Das MVP konzentriert sich auf den tragfähigen Kern: Medienvertrag, MinIO-Storage-Adapter, Varianten, Fokuspunkt/Zuschnitt, Upload-Status, referenzbasierte Nutzung, Usage-Impact, Löschschutz, IAM und Audit.
+
+Erweiterte Governance- und Betriebsfunktionen werden bewusst in `extend-media-management-governance` verschoben. Dazu gehören Pflichtfeld-Konfiguration je Instanz/Medientyp, mehrsprachige Metadaten, Ordner, Tags, Kategorien, Duplikaterkennung, Upload-Replace mit Referenzerhalt, Malware-Scan, rollenbezogene Rate-Limits und Quota-Warnungen.
+
 ## Laufzeit- und Betriebswirkung
 
 Die Capability erzeugt neue Laufzeitpfade:
@@ -141,7 +177,9 @@ Die Capability erzeugt neue Laufzeitpfade:
 - Objekt hochladen
 - Metadaten extrahieren
 - Varianten generieren
+- Upload-Status und Fehlerdetails aktualisieren
 - Referenzen anlegen oder entfernen
+- Usage-Impact vor kritischen Änderungen berechnen
 - Asset ausliefern
 - Verwendung nachweisen
 
@@ -154,7 +192,11 @@ Für die erste Iteration:
 - Bilder zuerst
 - zentrale Bibliothek
 - Metadatenpflege
+- Fokuspunkt und einfacher Zuschnitt für Bilder
+- automatische Verkleinerung übergroßer Bilder nach zentraler Konfiguration
+- Upload-Status und Usage-Impact
 - referenzbasierte Nutzung in `content-management`
+- Media-Picker für Plugins
 - Breitenstufen und wenige zentrale Presets
 - Verwendungsnachweis
 - einfache geschützte vs. öffentliche Sichtbarkeit

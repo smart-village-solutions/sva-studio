@@ -163,6 +163,7 @@ describe('role mutation persistence', () => {
     expect(queries[0]?.text).toContain('UPDATE iam.roles');
     expect(queries[1]?.text).toContain('DELETE FROM iam.role_permissions');
     expect(queries[2]?.text).toContain('INSERT INTO iam.role_permissions');
+    expect(queries[2]?.text).not.toContain('$1::uuid');
     expect(deps.notifyPermissionInvalidation).toHaveBeenCalledWith(
       client,
       expect.objectContaining({ trigger: 'role_updated' })

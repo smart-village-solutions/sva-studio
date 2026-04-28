@@ -182,6 +182,30 @@ LIMIT 1;
   return result.rows[0]?.id;
 };
 
+const readErrorMessage = (error: unknown): string => (error instanceof Error ? error.message : String(error));
+
+const mapGroupMutationError = (
+  deps: GroupMutationHandlerDeps,
+  error: unknown,
+  requestId?: string
+): Response | undefined => {
+  const message = readErrorMessage(error);
+
+  if (message.includes('groups_instance_key_uniq')) {
+    return deps.createApiError(409, 'conflict', 'Eine Gruppe mit diesem Schlüssel existiert bereits.', requestId);
+  }
+
+  if (message.includes('groups_type_chk')) {
+    return deps.createApiError(400, 'invalid_request', 'Ungültiger Gruppentyp.', requestId, {
+      classification: 'database_or_schema_drift',
+      schema_object: 'iam.groups.group_type',
+      reason_code: 'groups_type_constraint_violation',
+    });
+  }
+
+  return undefined;
+};
+
 const createGroupInternal = (deps: GroupMutationHandlerDeps) =>
   async (request: Request, ctx: GroupMutationAuthenticatedRequestContext): Promise<Response> => {
     const resolved = await resolveGroupMutationActor(deps, request, ctx);
@@ -236,18 +260,14 @@ VALUES ($1::uuid, $2, $3, $4, $5, $6, $7);
 
       return deps.jsonResponse(201, deps.asApiItem({ id: groupId }, actor.requestId));
     } catch (error) {
-      if (error instanceof Error && error.message.includes('groups_instance_key_uniq')) {
-        return deps.createApiError(
-          409,
-          'invalid_request',
-          'Eine Gruppe mit diesem Schlüssel existiert bereits.',
-          actor.requestId
-        );
+      const mappedError = mapGroupMutationError(deps, error, actor.requestId);
+      if (mappedError) {
+        return mappedError;
       }
       deps.logger.error('Group creation failed', {
         operation: 'group_create',
         workspace_id: actor.instanceId,
-        error: error instanceof Error ? error.message : String(error),
+        error: readErrorMessage(error),
         request_id: actor.requestId,
         trace_id: actor.traceId,
       });

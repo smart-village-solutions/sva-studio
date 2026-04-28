@@ -70,6 +70,35 @@ Das System SHALL häufige Varianten direkt und seltene Varianten bei Bedarf gene
 - **THEN** darf das System diese Variante bedarfsgesteuert erzeugen
 - **AND** der ursprüngliche Asset-Vertrag bleibt unverändert
 
+### Requirement: Bild-Fokuspunkt und Zuschnitt
+
+Das System SHALL für Bilder einen Fokuspunkt und definierte Zuschnitte speichern und bei der Variantengenerierung berücksichtigen können.
+
+#### Scenario: Redaktion setzt einen Fokuspunkt
+
+- **WHEN** ein Redakteur für ein Bild einen Fokuspunkt setzt
+- **THEN** speichert das System den Fokuspunkt als strukturierte Bildmetadaten
+- **AND** automatische Zuschnitte und responsive Varianten berücksichtigen diesen Fokuspunkt
+- **AND** Inhalte speichern weiterhin nur Medienreferenzen und keine technischen Crop-Koordinaten als führenden Vertrag
+
+#### Scenario: Redaktion setzt einen Zuschnitt für eine Nutzung
+
+- **WHEN** ein Redakteur für eine Bildnutzung einen Zuschnitt festlegt
+- **THEN** speichert das System den Zuschnitt als strukturierte Bearbeitungsmetadaten am Asset oder an der rollenbezogenen Medienreferenz
+- **AND** daraus generierte Varianten verwenden diesen Zuschnitt
+- **AND** das unveränderte Originalmedium bleibt erhalten
+
+### Requirement: Automatische Verkleinerung übergroßer Bilder
+
+Das System SHALL übergroße Bilder beim Processing gemäß zentral konfigurierter Maximalabmessungen verkleinern können.
+
+#### Scenario: Upload überschreitet maximale Processing-Abmessungen
+
+- **WHEN** ein hochgeladenes Bild die konfigurierte maximale Breite oder Höhe für auslieferbare Varianten überschreitet
+- **THEN** erzeugt das System verkleinerte Varianten innerhalb der erlaubten Maximalabmessungen
+- **AND** das unveränderte Original bleibt als führendes Asset erhalten, solange es die Upload- und Speicherregeln erfüllt
+- **AND** ausgelieferte Standardvarianten verwenden nicht ungeprüft das übergroße Original
+
 ### Requirement: Redaktionelle und technische Metadaten
 
 Das System SHALL technische und redaktionelle Metadaten getrennt, aber gemeinsam verwaltbar halten.
@@ -77,8 +106,19 @@ Das System SHALL technische und redaktionelle Metadaten getrennt, aber gemeinsam
 #### Scenario: Redaktion pflegt Metadaten
 
 - **WHEN** ein Redakteur ein Medium im Studio bearbeitet
-- **THEN** kann er mindestens Titel, Beschreibung, Alt-Text, Copyright, Lizenz und Tags pflegen
+- **THEN** kann er mindestens Titel, Beschreibung, Alt-Text, Copyright und Lizenz pflegen
 - **AND** technische Metadaten wie MIME-Type, Größe oder Abmessungen bleiben systemseitig nachvollziehbar
+
+### Requirement: Upload-Status mit Fehlerdetails
+
+Das System SHALL den Upload- und Processing-Status eines Assets mit redigierten Fehlerdetails abbilden.
+
+#### Scenario: Upload durchläuft Verarbeitung
+
+- **WHEN** ein Upload validiert, verarbeitet, abgelehnt oder blockiert wird
+- **THEN** aktualisiert das System einen Status wie `validated`, `processed`, `failed` oder `blocked`
+- **AND** Fehlerdetails sind für berechtigte Benutzer nachvollziehbar
+- **AND** technische Secrets, Storage-Artefakte und PII werden in Fehlerdetails nicht offengelegt
 
 ### Requirement: Nutzungstransparenz vor Löschung
 
@@ -86,13 +126,19 @@ Das System SHALL vor potenziell destruktiven Medienoperationen die aktuelle Verw
 
 #### Scenario: Löschentscheidung prüft aktive Referenzen
 
-- **WHEN** ein Benutzer ein Asset löschen oder ersetzen will
+- **WHEN** ein Benutzer ein Asset löschen oder archivieren will
 - **THEN** zeigt das System, in welchen Objekten und Rollen das Asset aktuell verwendet wird
 - **AND** eine Löschung mit aktiven, nicht explizit aufgelösten Referenzen wird fail-closed behandelt oder kontrolliert blockiert
 
+#### Scenario: Usage-Impact wird vor Änderung angezeigt
+
+- **WHEN** ein Benutzer Metadaten, Sichtbarkeit, Zuschnitt, Archivierung oder Löschung eines Assets vorbereitet
+- **THEN** zeigt das System die betroffenen Inhalte, Fachobjekte, Rollen und Anzahl der Nutzungen an
+- **AND** sicherheitsrelevante oder instanzfremde Nutzungen werden nur entsprechend der Berechtigungen offengelegt
+
 ### Requirement: Mandantenfähige Storage- und Auslieferungsgrenze
 
-Das System SHALL Medien mandantenfähig speichern und öffentliche von geschützten Auslieferungspfaden trennen.
+Das System SHALL Medien mandantenfähig in MinIO als S3-kompatiblem Objektspeicher speichern und öffentliche von geschützten Auslieferungspfaden trennen.
 
 #### Scenario: Geschütztes Medium wird nicht wie ein öffentliches Asset ausgeliefert
 
@@ -105,6 +151,26 @@ Das System SHALL Medien mandantenfähig speichern und öffentliche von geschütz
 - **WHEN** Medien verschiedener Instanzen gespeichert oder abgefragt werden
 - **THEN** erzwingt das System eine Mandantentrennung im Speicher- und Metadatenmodell
 - **AND** organisations- oder instanzfremde Medien werden nicht offengelegt
+
+#### Scenario: MinIO-Speicherartefakte bleiben technische Details
+
+- **WHEN** ein Asset oder eine Variante fachlich referenziert wird
+- **THEN** verwenden Fachobjekte stabile Medienreferenzen statt MinIO-Bucket-Namen, Object-Keys oder presigned URLs
+- **AND** technische MinIO-Artefakte wie Bucket, Object-Key, ETag, Content-Type und Content-Length bleiben im hostseitigen Storage- und Metadatenmodell gekapselt
+
+#### Scenario: Upload-Schnittstelle ist MinIO-kompatibel
+
+- **WHEN** ein Client einen Upload initialisiert
+- **THEN** stellt das System einen kontrollierten MinIO-kompatiblen Upload-Pfad bereit, z. B. über eine kurzlebige signierte URL oder einen serverseitig validierenden Proxy
+- **AND** der Upload-Pfad bindet die erwartete Instanz, erlaubte Medienklasse, maximale Größe und erlaubten Content-Type serverseitig
+- **AND** der Abschluss des Uploads verifiziert Objektmetadaten aus MinIO, bevor ein `MediaAsset` als nutzbar markiert wird
+
+#### Scenario: Storage-Adapter kapselt das S3-kompatible SDK
+
+- **WHEN** der Host mit MinIO kommuniziert
+- **THEN** erfolgt die Kommunikation über einen eigenen Storage-Adapter mit internem Port
+- **AND** der Adapter nutzt ein etabliertes S3-kompatibles SDK statt selbst implementierter S3-Protokollsignierung
+- **AND** Fachlogik, Content-Modelle, Plugins und UI importieren keine MinIO- oder S3-SDK-Typen
 
 ### Requirement: Erweiterbarer Medientypenpfad
 

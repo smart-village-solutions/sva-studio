@@ -223,6 +223,7 @@ describe('studio image verify evidence', () => {
       expect(readStudioImageVerifyEvidence('sha256:test-digest')).toMatchObject({
         imageRef: 'ghcr.io/smart-village-app/sva-studio@sha256:test-digest',
         reportId: 'studio-image-verify-unit-test',
+        source: 'local-artifact',
         status: 'ok',
       });
 
@@ -243,6 +244,9 @@ describe('studio image verify evidence', () => {
         )
       ).toMatchObject({
         code: 'image_verify_evidence_present',
+        details: {
+          evidenceSource: 'local-artifact',
+        },
         name: 'studio-image-verify-evidence',
         status: 'ok',
       });
@@ -256,6 +260,9 @@ describe('studio image verify evidence', () => {
       })
     ).toMatchObject({
       code: 'image_verify_evidence_missing',
+      details: {
+        acceptedSources: ['artifacts/runtime/image-verify', 'GitHub Actions artifact "Studio Image Verify"'],
+      },
       name: 'studio-image-verify-evidence',
       status: 'warn',
     });

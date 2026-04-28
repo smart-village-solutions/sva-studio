@@ -26,3 +26,10 @@ Das System MUST `Inhalt` als kanonisches Core-Element modellieren, das über def
 - **WENN** ein Inhalt ein Bild, Download oder anderes Medium benötigt
 - **DANN** referenziert der Inhalt Medien über die zentrale Medien-Capability und fachliche Rollen
 - **UND** der Inhalt speichert keine rohen Storage-Keys oder auslieferungsrelevanten Dateipfade als führenden Vertrag
+
+#### Scenario: Plugin nutzt hostseitigen Media-Picker
+
+- **WENN** ein Plugin ein Medium für einen Inhalt oder ein Fachobjekt auswählen lässt
+- **DANN** verwendet es den hostseitigen Media-Picker oder dessen SDK-Vertrag
+- **UND** das Plugin deklariert erlaubte Medienrollen, Medientypen und optionale Preset-Anforderungen
+- **UND** es erhält keine direkte Storage-Schnittstelle und speichert keine MinIO-Bucket-Namen, Object-Keys oder presigned URLs als führenden Vertrag

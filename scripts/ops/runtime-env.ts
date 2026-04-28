@@ -917,10 +917,18 @@ type StudioImageVerifyEvidence = Readonly<{
   imageRef?: string;
   path: string;
   reportId?: string;
+  source: 'github-artifact' | 'local-artifact';
   status?: string;
 }>;
 
-export const readStudioImageVerifyEvidence = (imageDigest?: string): StudioImageVerifyEvidence | undefined => {
+const sanitizeVerifyArtifactSuffix = (value: string) =>
+  value
+    .replace(/[^A-Za-z0-9._ -]+/g, '-')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
+const readLocalStudioImageVerifyEvidence = (imageDigest?: string): StudioImageVerifyEvidence | undefined => {
   if (!imageDigest) {
     return undefined;
   }
@@ -950,6 +958,7 @@ export const readStudioImageVerifyEvidence = (imageDigest?: string): StudioImage
           imageRef,
           path: reportPath,
           reportId: typeof report.reportId === 'string' ? report.reportId : undefined,
+          source: 'local-artifact',
           status,
         };
       }
@@ -960,6 +969,91 @@ export const readStudioImageVerifyEvidence = (imageDigest?: string): StudioImage
 
   return undefined;
 };
+
+const tryReadGithubStudioImageVerifyEvidence = (
+  imageDigest?: string,
+  imageTag?: string,
+  runCaptureImpl: typeof runCapture = runCapture,
+): StudioImageVerifyEvidence | undefined => {
+  if (!imageDigest || !commandExists('gh')) {
+    return undefined;
+  }
+
+  try {
+    const remoteOriginUrl = runCaptureImpl('git', ['config', '--get', 'remote.origin.url']).trim();
+    const remoteOriginMatch = remoteOriginUrl.match(/github\.com[:/](?<owner>[^/]+)\/(?<repo>[^/.]+?)(?:\.git)?$/);
+    const owner = remoteOriginMatch?.groups?.owner;
+    const repo = remoteOriginMatch?.groups?.repo;
+    if (!owner || !repo) {
+      return undefined;
+    }
+
+    const digestShort = imageDigest.replace(/^sha256:/, '').slice(0, 12);
+    const artifactPrefixes = new Set([`studio-image-verify-${digestShort}`]);
+    const sanitizedImageTag = imageTag ? sanitizeVerifyArtifactSuffix(imageTag) : '';
+    if (sanitizedImageTag) {
+      artifactPrefixes.add(`studio-image-verify-${sanitizedImageTag}`);
+    }
+
+    const artifactOutput = runCaptureImpl('gh', ['api', `repos/${owner}/${repo}/actions/artifacts?per_page=100`]);
+    const artifactPayload = JSON.parse(artifactOutput) as {
+      artifacts?: Array<{
+        expired?: boolean;
+        name?: string;
+        workflow_run?: {
+          id?: number;
+        };
+      }>;
+    };
+    const matchingArtifact = artifactPayload.artifacts?.find((artifact) => {
+      if (artifact.expired || typeof artifact.name !== 'string') {
+        return false;
+      }
+
+      for (const prefix of artifactPrefixes) {
+        if (artifact.name.startsWith(`${prefix}-`)) {
+          return true;
+        }
+      }
+
+      return false;
+    });
+
+    const runId = matchingArtifact?.workflow_run?.id;
+    if (!runId) {
+      return undefined;
+    }
+
+    const runOutput = runCaptureImpl('gh', ['run', 'view', String(runId), '--json', 'conclusion,url,workflowName']);
+    const runPayload = JSON.parse(runOutput) as {
+      conclusion?: string;
+      url?: string;
+      workflowName?: string;
+    };
+    if (runPayload.conclusion !== 'success' || runPayload.workflowName !== 'Studio Image Verify') {
+      return undefined;
+    }
+
+    return {
+      imageRef: `ghcr.io/smart-village-solutions/sva-studio@${imageDigest}`,
+      path: runPayload.url ?? `https://github.com/${owner}/${repo}/actions/runs/${runId}`,
+      reportId: matchingArtifact?.name,
+      source: 'github-artifact',
+      status: 'ok',
+    };
+  } catch {
+    return undefined;
+  }
+};
+
+export const readStudioImageVerifyEvidence = (
+  imageDigest?: string,
+  options?: {
+    readonly imageTag?: string;
+  }
+): StudioImageVerifyEvidence | undefined =>
+  readLocalStudioImageVerifyEvidence(imageDigest) ??
+  tryReadGithubStudioImageVerifyEvidence(imageDigest, options?.imageTag);
 
 export const buildStudioImageVerifyEvidenceCheck = (
   runtimeProfile: RemoteRuntimeProfile,
@@ -976,7 +1070,9 @@ export const buildStudioImageVerifyEvidenceCheck = (
     );
   }
 
-  const evidence = readStudioImageVerifyEvidence(imageDigest);
+  const evidence = readStudioImageVerifyEvidence(imageDigest, {
+    imageTag: options?.imageTag ?? env.SVA_IMAGE_TAG?.trim(),
+  });
   if (!evidence) {
     return toDoctorCheck(
       'studio-image-verify-evidence',
@@ -984,6 +1080,7 @@ export const buildStudioImageVerifyEvidenceCheck = (
       'image_verify_evidence_missing',
       'Keine passende Studio-Image-Verify-Evidenz fuer den Image-Digest gefunden.',
       {
+        acceptedSources: ['artifacts/runtime/image-verify', 'GitHub Actions artifact "Studio Image Verify"'],
         imageDigest,
         expectedArtifactDir: 'artifacts/runtime/image-verify',
       }
@@ -996,6 +1093,7 @@ export const buildStudioImageVerifyEvidenceCheck = (
     'image_verify_evidence_present',
     'Passende Studio-Image-Verify-Evidenz fuer den Image-Digest gefunden.',
     {
+      evidenceSource: evidence.source,
       imageDigest,
       imageRef: evidence.imageRef,
       reportId: evidence.reportId,
@@ -3916,8 +4014,10 @@ const runInternalVerify = async (runtimeProfile: RemoteRuntimeProfile, env: Node
   doctorReport: DoctorReport;
   probes: readonly AcceptanceProbeResult[];
 }> => {
-  const maxAttempts = Number(env.SVA_INTERNAL_VERIFY_MAX_ATTEMPTS ?? '6');
   const retryDelayMs = Number(env.SVA_INTERNAL_VERIFY_RETRY_DELAY_MS ?? '5000');
+  const warmupWindowMs = Number(env.SVA_INTERNAL_VERIFY_WARMUP_WINDOW_MS ?? '90000');
+  const derivedMaxAttempts = Math.max(1, Math.floor(warmupWindowMs / Math.max(retryDelayMs, 1)) + 1);
+  const maxAttempts = Number(env.SVA_INTERNAL_VERIFY_MAX_ATTEMPTS ?? String(derivedMaxAttempts));
   const retryableWarmupChecks = new Set([
     'health-live',
     'health-ready',

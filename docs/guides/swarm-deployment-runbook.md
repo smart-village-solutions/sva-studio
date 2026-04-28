@@ -283,6 +283,8 @@ Interpretationshilfe:
 
 - wenn der Deploy-Report rot ist, aber Service-Spec, laufende Tasks und externe Smokes gruen sind, liegt wahrscheinlich ein False-Negative im Verify-/Transportpfad vor
 - in diesem Fall zuerst Live-Service und Smokes als Wahrheitsebene pruefen, dann den Reportpfad debuggen
+- wenn `migrate` gruen ist, `bootstrap` aber rot, zuerst den Bootstrap-SQL-Vertrag gegen die zuletzt eingezogenen Schema-Pflichtfelder pruefen; ein pauschaler Retry des Gesamtdeploys hilft dann meist nicht
+- wenn der Cutover technisch durch ist, aber die ersten externen Health-/Tenant-Probes kurz `404` liefern, ist das zuerst als moegliche Post-Cutover-Settling-Phase zu behandeln und nicht sofort als belastbare Regression
 8. Schreiben eines Deploy-Reports unter `artifacts/runtime/deployments/`
 
 Read-only Betriebsregel:
@@ -299,6 +301,7 @@ Fuer das produktionsnahe Profil `studio` gilt derselbe Netzwerk-/Ingress-Vertrag
 - `env:migrate:studio` und `schema-and-app` duerfen nur die Temp-Job-Stacks `migrate` und `bootstrap` bewegen; Seiteneffekte auf `studio_app` ausserhalb des expliziten Deploy-Schritts sind kein akzeptierter Zustand
 - `precheck` und `doctor` muessen `app-db-principal` fuer `APP_DB_USER` als gesund bestaetigen; Superuser-only-Sicht ist kein Freigabenachweis
 - wenn das Ziel-Digest bereits auf `studio_app` laeuft, darf `image-smoke` die Live-Paritaet nur wiederverwenden, wenn Ingress-Konsistenz, `app-db-principal`, Tenant-Auth-Proof und Runtime-Flags fuer genau dieses Digest gruen sind
+- eine erfolgreich gelaufene GitHub-Image-Verifikation fuer dasselbe Digest ist operativ massgeblich; lokale Operator-Warnungen wegen fehlender lokaler Verify-Artefakte sind nachrangig, bis der Artefakt-Lookup vereinheitlicht ist
 
 ## Schritt 3a: Neue Instanz im Registry-Modell anlegen
 

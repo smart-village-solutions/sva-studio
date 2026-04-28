@@ -39,6 +39,7 @@ const authConfigBase = {
   loginStateCookieName: 'login_state',
   loginStateSecret: 'test-secret-32-chars-xxxxxxxxxxxxxxxxx',
   silentSsoSuppressCookieName: 'silent_sso',
+  silentSsoSuppressAfterLogoutMs: 60_000,
   postLogoutRedirectUri: 'http://localhost',
   issuer: 'http://localhost/realms/test',
   authRealm: 'test',
@@ -376,6 +377,30 @@ describe('loginHandler (full auth path)', () => {
     expect(response.headers.get('Location')).toContain('openid-connect/auth');
   });
 
+  it('attaches debug auth headers when debug headers are enabled', async () => {
+    const { loginHandler } = await import('./auth-route-handlers.js');
+    const { resolveAuthConfigForRequest } = await import('./config.js');
+
+    vi.stubEnv('SVA_AUTH_DEBUG_HEADERS', 'true');
+    vi.mocked(resolveAuthConfigForRequest).mockResolvedValueOnce({
+      ...authConfigBase,
+      kind: 'instance',
+      instanceId: 'de-test',
+    } as never);
+
+    try {
+      const response = await loginHandler(new Request('https://studio.example.org/auth/login?returnTo=%2Fplugins%2Fnews'));
+
+      expect(response.status).toBe(302);
+      expect(response.headers.get('x-sva-debug-auth-scope-kind')).toBe('instance');
+      expect(response.headers.get('x-sva-debug-auth-instance-id')).toBe('de-test');
+      expect(response.headers.get('x-sva-debug-auth-client-id')).toBe('sva-studio-client');
+      expect(response.headers.get('x-sva-debug-request-host')).toBe('studio.example.org');
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it('logs and returns 500 when login URL creation fails', async () => {
     const { loginHandler } = await import('./auth-route-handlers.js');
     const { createLoginUrl } = await import('./auth-server/login.js');
@@ -445,6 +470,35 @@ describe('logoutHandler', () => {
       expect.objectContaining({ reason_code: 'missing_logout_intent' })
     );
   });
+
+  it('accepts explicit form logout intent and redirects even without an active session', async () => {
+    const { logoutHandler } = await import('./auth-route-handlers.js');
+    const { resolveAuthConfigForRequest } = await import('./config.js');
+
+    vi.mocked(resolveAuthConfigForRequest).mockResolvedValueOnce(authConfigBase as never);
+    mocks.readCookieFromRequest.mockImplementation((request: Request, cookieName: string) =>
+      cookieName === 'sva_session' ? null : 'unused-cookie'
+    );
+
+    const response = await logoutHandler(
+      new Request('http://localhost/auth/logout', {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: 'logoutIntent=user',
+      })
+    );
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get('Location')).toBe('http://localhost');
+    expect(mocks.logger.debug).toHaveBeenCalledWith(
+      'Logout without session',
+      expect.objectContaining({ session_exists: false })
+    );
+    expect(mocks.logger.info).toHaveBeenCalledWith(
+      'Logout cookies prepared',
+      expect.objectContaining({ operation: 'logout_cookie_cleanup' })
+    );
+  });
 });
 
 describe('callbackHandler', () => {
@@ -462,5 +516,27 @@ describe('callbackHandler', () => {
 
     expect(response.status).toBe(302);
     expect(response.headers.get('Location')).toBe('/?auth=mock-callback');
+  });
+
+  it('redirects to /?auth=error and emits cleanup logging when the callback contains an error', async () => {
+    const { callbackHandler } = await import('./auth-route-handlers.js');
+    const { resolveAuthConfigForRequest } = await import('./config.js');
+
+    vi.mocked(resolveAuthConfigForRequest).mockResolvedValueOnce(authConfigBase as never);
+    mocks.getAuthConfig.mockReturnValue(authConfigBase);
+    mocks.readCookieFromRequest.mockImplementation((request: Request, cookieName: string) =>
+      cookieName === 'sva_session' ? 'session-1' : null
+    );
+
+    const response = await callbackHandler(
+      new Request('http://localhost/auth/callback?error=access_denied&state=state-abc123def456')
+    );
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get('Location')).toBe('/?auth=error');
+    expect(mocks.logger.info).toHaveBeenCalledWith(
+      'Callback cookie cleanup prepared',
+      expect.objectContaining({ had_session_cookie_on_callback: true })
+    );
   });
 });

@@ -43,7 +43,7 @@ describe('createGroupSchema', () => {
   const valid = {
     groupKey: 'test-group',
     displayName: 'Test Gruppe',
-    groupType: 'custom' as const,
+    groupType: 'role_bundle' as const,
     isActive: true,
   };
 
@@ -51,16 +51,16 @@ describe('createGroupSchema', () => {
     const result = createGroupSchema.safeParse(valid);
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data.groupType).toBe('custom');
+      expect(result.data.groupType).toBe('role_bundle');
       expect(result.data.isActive).toBe(true);
     }
   });
 
-  it('setzt Defaults (groupType=custom, isActive=true)', () => {
+  it('setzt Defaults (groupType=role_bundle, isActive=true)', () => {
     const result = createGroupSchema.safeParse({ groupKey: 'my-key', displayName: 'Mein Name' });
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data.groupType).toBe('custom');
+      expect(result.data.groupType).toBe('role_bundle');
       expect(result.data.isActive).toBe(true);
     }
   });
@@ -81,9 +81,10 @@ describe('createGroupSchema', () => {
     expect(createGroupSchema.safeParse({ ...valid, groupType: 'unknown' }).success).toBe(false);
   });
 
-  it('akzeptiert alle gültigen groupTypes', () => {
+  it('akzeptiert nur role_bundle als gültigen groupType', () => {
+    expect(createGroupSchema.safeParse({ ...valid, groupType: 'role_bundle' }).success).toBe(true);
     for (const t of ['custom', 'system', 'geo', 'org'] as const) {
-      expect(createGroupSchema.safeParse({ ...valid, groupType: t }).success).toBe(true);
+      expect(createGroupSchema.safeParse({ ...valid, groupType: t }).success).toBe(false);
     }
   });
 });

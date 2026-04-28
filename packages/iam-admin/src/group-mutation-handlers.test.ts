@@ -55,7 +55,7 @@ const createDeps = (
       data: {
         groupKey: 'admins',
         displayName: 'Admins',
-        groupType: 'custom' as const,
+        groupType: 'role_bundle' as const,
         isActive: true,
         roleId: groupId,
         keycloakSubject: 'kc-user-1',
@@ -95,6 +95,25 @@ describe('createGroupMutationHandlers', () => {
         payload: { group_id: groupId, group_key: 'admins' },
       })
     );
+  });
+
+  it('maps groups_type_chk violations to invalid_request', async () => {
+    const deps = createDeps([], {
+      withInstanceScopedDb: vi.fn(async () => {
+        throw new Error('new row for relation "groups" violates check constraint "groups_type_chk"');
+      }),
+    });
+    const handlers = createGroupMutationHandlers(deps);
+
+    const response = await handlers.createGroupInternal(
+      new Request('http://localhost/api/v1/iam/inst-g/groups', { method: 'POST', body: '{}' }),
+      ctx
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      error: { code: 'invalid_request', message: 'Ungültiger Gruppentyp.' },
+    });
   });
 
   it('returns 400 when an update contains no changes', async () => {

@@ -92,12 +92,12 @@ describe('GroupCreatePage', () => {
   it('renders mutation errors', () => {
     useGroupsMock.mockReturnValue(
       createGroupsState({
-        mutationError: { status: 409, code: 'conflict', message: 'group exists' },
+        mutationError: { status: 400, code: 'invalid_request', message: 'invalid group type' },
       })
     );
 
     render(<GroupCreatePage />);
 
-    expect(screen.getByRole('alert').textContent).toContain('Die Gruppenänderung steht in Konflikt mit dem aktuellen Zustand.');
+    expect(screen.getByRole('alert').textContent).toContain('Die Gruppenänderung enthält ungültige Daten.');
   });
 });

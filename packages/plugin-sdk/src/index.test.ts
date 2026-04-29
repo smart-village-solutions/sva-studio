@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   definePluginActions,
+  definePluginModuleIamContract,
   definePluginPermissions,
   pluginSdkPackageRoles,
   pluginSdkVersion,
@@ -33,6 +34,20 @@ describe('@sva/plugin-sdk package scaffold', () => {
       },
     ]);
     expect(permissions).toEqual([{ id: 'news.create', titleKey: 'news.permissions.create' }]);
+  });
+
+  it('exposes plugin module IAM contracts through the target package edge', () => {
+    const contract = definePluginModuleIamContract('news', {
+      moduleId: ' news ',
+      permissionIds: [' news.create '],
+      systemRoles: [{ roleName: ' editor ', permissionIds: [' news.create '] }],
+    });
+
+    expect(contract).toEqual({
+      moduleId: 'news',
+      permissionIds: ['news.create'],
+      systemRoles: [{ roleName: 'editor', permissionIds: ['news.create'] }],
+    });
   });
 
   it('exposes plugin translation helpers through the target package edge', () => {

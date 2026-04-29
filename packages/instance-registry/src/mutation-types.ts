@@ -1,4 +1,10 @@
-import type { InstanceRealmMode, InstanceStatus, IamInstanceKeycloakProvisioningRun, IamInstanceListItem } from '@sva/core';
+import type {
+  InstanceRealmMode,
+  InstanceStatus,
+  IamInstanceDetail,
+  IamInstanceKeycloakProvisioningRun,
+  IamInstanceListItem,
+} from '@sva/core';
 
 export type InstanceRegistryMutationActor = {
   readonly actorId?: string;
@@ -75,6 +81,24 @@ export type ProbeTenantIamAccessInput = InstanceRegistryMutationActor & {
   readonly instanceId: string;
 };
 
+export type AssignInstanceModuleInput = InstanceRegistryMutationActor & {
+  readonly idempotencyKey: string;
+  readonly instanceId: string;
+  readonly moduleId: string;
+};
+
+export type RevokeInstanceModuleInput = InstanceRegistryMutationActor & {
+  readonly idempotencyKey: string;
+  readonly instanceId: string;
+  readonly moduleId: string;
+  readonly confirmation: 'REVOKE';
+};
+
+export type SeedInstanceIamBaselineInput = InstanceRegistryMutationActor & {
+  readonly idempotencyKey: string;
+  readonly instanceId: string;
+};
+
 export type CreateInstanceProvisioningResult =
   | { readonly ok: true; readonly instance: IamInstanceListItem }
   | { readonly ok: false; readonly reason: 'already_exists' };
@@ -82,3 +106,7 @@ export type CreateInstanceProvisioningResult =
 export type ChangeInstanceStatusResult =
   | { readonly ok: true; readonly instance: IamInstanceListItem }
   | { readonly ok: false; readonly reason: 'not_found' | 'invalid_transition'; readonly currentStatus?: InstanceStatus };
+
+export type InstanceModuleMutationResult =
+  | { readonly ok: true; readonly instance: IamInstanceDetail }
+  | { readonly ok: false; readonly reason: 'not_found' | 'unknown_module' | 'conflict' };

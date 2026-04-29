@@ -4,6 +4,7 @@ type SessionUser = {
   id: string;
   instanceId?: string;
   roles: string[];
+  assignedModules?: string[];
 };
 
 type EffectivePermission = {
@@ -24,6 +25,7 @@ const mocks = vi.hoisted(() => {
     withRequestContext: vi.fn(async (_input: unknown, handler: () => Promise<Response>) => handler()),
     withAuthenticatedUser: vi.fn(),
     resolveEffectivePermissions: vi.fn(),
+    withRegistryRepository: vi.fn(),
     isMockAuthEnabled: vi.fn(),
     createMockSessionUser: vi.fn(),
     getAuthConfig: vi.fn(() => ({ sessionCookieName: 'sva_session' })),
@@ -72,6 +74,10 @@ vi.mock('./middleware.js', () => ({
 
 vi.mock('./iam-authorization/permission-store.js', () => ({
   resolveEffectivePermissions: mocks.resolveEffectivePermissions,
+}));
+
+vi.mock('./iam-instance-registry/repository.js', () => ({
+  withRegistryRepository: mocks.withRegistryRepository,
 }));
 
 vi.mock('./mock-auth.js', () => ({
@@ -145,6 +151,11 @@ describe('meHandler', () => {
       cacheStatus: 'hit',
       snapshotVersion: 'snap-1',
     });
+    mocks.withRegistryRepository.mockImplementation(async (handler: (repository: { listAssignedModules: (instanceId: string) => Promise<string[]> }) => Promise<unknown>) =>
+      handler({
+        listAssignedModules: async () => ['news'],
+      })
+    );
   });
 
   it('uses keycloakSubject for permission resolution and omits stale userId contract', async () => {
@@ -172,12 +183,31 @@ describe('meHandler', () => {
     const payload = (await response.json()) as {
       user: {
         id: string;
+        assignedModules: string[];
         permissionActions: string[];
       };
     };
 
     expect(payload.user.id).toBe('kc-user-1');
+    expect(payload.user.assignedModules).toEqual(['news']);
     expect(payload.user.permissionActions).toEqual(['events.read']);
+  });
+
+  it('returns fail-closed empty assignedModules when module lookup fails', async () => {
+    const { meHandler } = await import('./auth-route-handlers.js');
+
+    mocks.withRegistryRepository.mockRejectedValueOnce(new Error('db unavailable'));
+
+    const response = await meHandler(new Request('http://localhost/auth/me', { headers: { cookie: 'sva_session=session-1' } }));
+
+    expect(response.status).toBe(200);
+    expect(mocks.logger.error).toHaveBeenCalledWith(
+      'Auth me assigned module lookup failed',
+      expect.objectContaining({ reason_code: 'assigned_module_lookup_failed', error_type: 'Error' })
+    );
+
+    const payload = (await response.json()) as { user: { assignedModules: string[] } };
+    expect(payload.user.assignedModules).toEqual([]);
   });
 
   it('returns hardened headers in mock-auth mode without permission lookup', async () => {

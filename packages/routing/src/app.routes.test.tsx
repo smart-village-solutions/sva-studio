@@ -190,13 +190,13 @@ describe('app.routes', () => {
 
     expect(guardSpies.account).toHaveBeenCalledWith({ href: '/account' });
     expect(guardSpies.adminUsers).toHaveBeenCalledWith({ href: '/admin/users' });
-    expect(guardSpies.adminRoles).toHaveBeenCalledWith({ href: '/modules' });
+    expect(guardSpies.adminInstances).toHaveBeenCalledWith({ href: '/modules' });
     expect(guardSpies.adminRoles).toHaveBeenCalledWith({ href: '/monitoring' });
     expect(guardSpies.content).toHaveBeenCalledWith({ href: '/plugins/news' });
     expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('account', undefined, '/account');
     expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('content', undefined, '/admin/content');
     expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('adminUsers', undefined, '/admin/users');
-    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('adminRoles', undefined, '/modules');
+    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('adminInstances', undefined, '/modules');
     expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('adminRoles', undefined, '/monitoring');
     expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('content', undefined, '/plugins/news');
 
@@ -490,6 +490,49 @@ describe('app.routes', () => {
     await expect(
       readRouteOptions(route).beforeLoad?.({
         context: { auth: { getUser: () => ({ roles: ['editor'], permissionActions: ['news.read'] }) } },
+        location: { href: '/plugins/news' },
+      })
+    ).resolves.toBeUndefined();
+  });
+
+  it('blocks plugin routes fail-closed when the active instance lacks the assigned module', async () => {
+    const routeFactories = getPluginRouteFactories([
+      {
+        id: 'news',
+        displayName: 'News',
+        moduleIam: {
+          moduleId: 'news',
+          permissionIds: ['news.read'],
+          systemRoles: [{ roleName: 'editor', permissionIds: ['news.read'] }],
+        },
+        permissions: [{ id: 'news.read', titleKey: 'news.permissions.read' }],
+        routes: [
+          {
+            id: 'news.list',
+            path: '/plugins/news',
+            guard: 'news.read',
+            component: () => 'news',
+          },
+        ],
+      },
+    ]);
+    const rootRoute = { id: 'root' };
+    const [route] = routeFactories.map((factory) => factory(rootRoute as never));
+
+    await expect(
+      readRouteOptions(route).beforeLoad?.({
+        context: { auth: { getUser: () => ({ roles: ['editor'], permissionActions: ['news.read'], assignedModules: [] }) } },
+        location: { href: '/plugins/news' },
+      })
+    ).rejects.toMatchObject({
+      href: '/?error=auth.insufficientRole',
+    });
+
+    await expect(
+      readRouteOptions(route).beforeLoad?.({
+        context: {
+          auth: { getUser: () => ({ roles: ['editor'], permissionActions: ['news.read'], assignedModules: ['news'] }) },
+        },
         location: { href: '/plugins/news' },
       })
     ).resolves.toBeUndefined();

@@ -74,6 +74,133 @@ const createListInstances =
     return instances.map((instance) => toListItem(instance, latestProvisioningRuns[instance.instanceId]));
   };
 
+const requireModuleIamRegistry = (deps: InstanceRegistryServiceDeps) => deps.moduleIamRegistry ?? new Map();
+
+const resolveAssignedModuleContracts = (
+  deps: InstanceRegistryServiceDeps,
+  assignedModuleIds: readonly string[]
+) => {
+  const registry = requireModuleIamRegistry(deps);
+
+  return assignedModuleIds.map((moduleId) => {
+    const contract = registry.get(moduleId);
+    if (!contract) {
+      throw new Error(`unknown_module_contract:${moduleId}`);
+    }
+    return contract;
+  });
+};
+
+const createAssignModuleHandler =
+  (deps: InstanceRegistryServiceDeps): InstanceRegistryService['assignModule'] =>
+  async (input) => {
+    const instance = await deps.repository.getInstanceById(input.instanceId);
+    if (!instance) {
+      return { ok: false, reason: 'not_found' };
+    }
+
+    const registry = requireModuleIamRegistry(deps);
+    if (!registry.has(input.moduleId)) {
+      return { ok: false, reason: 'unknown_module' };
+    }
+
+    const inserted = await deps.repository.assignModule(input.instanceId, input.moduleId);
+    if (!inserted) {
+      return { ok: false, reason: 'conflict' };
+    }
+
+    const assignedModuleIds = await deps.repository.listAssignedModules(input.instanceId);
+    await deps.repository.syncAssignedModuleIam({
+      instanceId: input.instanceId,
+      managedModuleIds: [...registry.keys()],
+      contracts: resolveAssignedModuleContracts(deps, assignedModuleIds),
+    });
+    await deps.repository.appendAuditEvent({
+      instanceId: input.instanceId,
+      eventType: 'instance_module_assigned',
+      actorId: input.actorId,
+      requestId: input.requestId,
+      details: {
+        moduleId: input.moduleId,
+        assignedModules: assignedModuleIds,
+        outcome: 'assigned',
+      },
+    });
+
+    const detail = await createGetInstanceDetail(deps)(input.instanceId);
+    return detail ? { ok: true, instance: detail } : { ok: false, reason: 'not_found' };
+  };
+
+const createRevokeModuleHandler =
+  (deps: InstanceRegistryServiceDeps): InstanceRegistryService['revokeModule'] =>
+  async (input) => {
+    const instance = await deps.repository.getInstanceById(input.instanceId);
+    if (!instance) {
+      return { ok: false, reason: 'not_found' };
+    }
+
+    const registry = requireModuleIamRegistry(deps);
+    if (!registry.has(input.moduleId)) {
+      return { ok: false, reason: 'unknown_module' };
+    }
+
+    const removed = await deps.repository.revokeModule(input.instanceId, input.moduleId);
+    if (!removed) {
+      return { ok: false, reason: 'conflict' };
+    }
+
+    const assignedModuleIds = await deps.repository.listAssignedModules(input.instanceId);
+    await deps.repository.syncAssignedModuleIam({
+      instanceId: input.instanceId,
+      managedModuleIds: [...registry.keys()],
+      contracts: resolveAssignedModuleContracts(deps, assignedModuleIds),
+    });
+    await deps.repository.appendAuditEvent({
+      instanceId: input.instanceId,
+      eventType: 'instance_module_revoked',
+      actorId: input.actorId,
+      requestId: input.requestId,
+      details: {
+        moduleId: input.moduleId,
+        assignedModules: assignedModuleIds,
+        outcome: 'revoked',
+      },
+    });
+
+    const detail = await createGetInstanceDetail(deps)(input.instanceId);
+    return detail ? { ok: true, instance: detail } : { ok: false, reason: 'not_found' };
+  };
+
+const createSeedIamBaselineHandler =
+  (deps: InstanceRegistryServiceDeps): InstanceRegistryService['seedIamBaseline'] =>
+  async (input) => {
+    const instance = await deps.repository.getInstanceById(input.instanceId);
+    if (!instance) {
+      return { ok: false, reason: 'not_found' };
+    }
+
+    const registry = requireModuleIamRegistry(deps);
+    const assignedModuleIds = await deps.repository.listAssignedModules(input.instanceId);
+    await deps.repository.syncAssignedModuleIam({
+      instanceId: input.instanceId,
+      managedModuleIds: [...registry.keys()],
+      contracts: resolveAssignedModuleContracts(deps, assignedModuleIds),
+    });
+    await deps.repository.appendAuditEvent({
+      instanceId: input.instanceId,
+      eventType: 'instance_module_iam_seeded',
+      actorId: input.actorId,
+      requestId: input.requestId,
+      details: {
+        assignedModules: assignedModuleIds,
+        outcome: 'seeded',
+      },
+    });
+
+    const detail = await createGetInstanceDetail(deps)(input.instanceId);
+    return detail ? { ok: true, instance: detail } : { ok: false, reason: 'not_found' };
+  };
+
 const createProvisioningRequestHandler =
   (deps: InstanceRegistryServiceDeps): InstanceRegistryService['createProvisioningRequest'] =>
   async (input: CreateInstanceProvisioningInput) => {
@@ -291,6 +418,9 @@ export const createInstanceRegistryService = (deps: InstanceRegistryServiceDeps)
   getKeycloakPreflight: createGetKeycloakPreflightHandler(deps),
   planKeycloakProvisioning: createPlanKeycloakProvisioningHandler(deps),
   executeKeycloakProvisioning: createExecuteKeycloakProvisioningHandler(deps),
+  assignModule: createAssignModuleHandler(deps),
+  revokeModule: createRevokeModuleHandler(deps),
+  seedIamBaseline: createSeedIamBaselineHandler(deps),
   probeTenantIamAccess: createProbeTenantIamAccessHandler(deps),
   getKeycloakProvisioningRun: createGetKeycloakProvisioningRunHandler(deps),
   getKeycloakStatus: createGetKeycloakStatusHandler(deps),

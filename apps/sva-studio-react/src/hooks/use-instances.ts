@@ -3,6 +3,7 @@ import React from 'react';
 
 import {
   activateInstance,
+  assignInstanceModule,
   archiveInstance,
   asIamError,
   createInstance,
@@ -16,6 +17,8 @@ import {
   planInstanceKeycloakProvisioning,
   probeTenantIamAccess,
   reconcileInstanceKeycloak,
+  revokeInstanceModule,
+  seedInstanceIamBaseline,
   suspendInstance,
   updateInstance,
   type CreateInstancePayload,
@@ -444,6 +447,36 @@ export const useInstances = () => {
         },
         instanceId,
         'reconcile_instance_keycloak'
+      ),
+    assignModule: async (instanceId: string, moduleId: string) =>
+      mutate(
+        async () => {
+          const response = await assignInstanceModule(instanceId, moduleId);
+          setSelectedInstance(response.data);
+          return response;
+        },
+        instanceId,
+        'assign_instance_module'
+      ),
+    revokeModule: async (instanceId: string, moduleId: string) =>
+      mutate(
+        async () => {
+          const response = await revokeInstanceModule(instanceId, moduleId);
+          setSelectedInstance(response.data);
+          return response;
+        },
+        instanceId,
+        'revoke_instance_module'
+      ),
+    seedIamBaseline: async (instanceId: string) =>
+      mutate(
+        async () => {
+          const response = await seedInstanceIamBaseline(instanceId);
+          setSelectedInstance(response.data);
+          return response;
+        },
+        instanceId,
+        'seed_instance_iam_baseline'
       ),
     activateInstance: async (instanceId: string) => mutate(() => activateInstance(instanceId), instanceId, 'activate_instance'),
     suspendInstance: async (instanceId: string) => mutate(() => suspendInstance(instanceId), instanceId, 'suspend_instance'),

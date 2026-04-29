@@ -17,23 +17,32 @@ export type {
   ResolveRuntimeInstanceResult,
 } from './keycloak-types.js';
 export type {
+  AssignInstanceModuleInput,
   ChangeInstanceStatusInput,
   ChangeInstanceStatusResult,
   CreateInstanceProvisioningInput,
   CreateInstanceProvisioningResult,
   ExecuteInstanceKeycloakProvisioningInput,
+  InstanceModuleMutationResult,
   InstanceRegistryMutationActor,
+  RevokeInstanceModuleInput,
   ReconcileInstanceKeycloakInput,
+  SeedInstanceIamBaselineInput,
   UpdateInstanceInput,
 } from './mutation-types.js';
 export {
+  buildAssignInstanceModuleInput,
   buildChangeInstanceStatusInput,
   buildCreateInstanceProvisioningInput,
   buildExecuteInstanceKeycloakProvisioningInput,
+  buildRevokeInstanceModuleInput,
   buildReconcileInstanceKeycloakInput,
+  buildSeedInstanceIamBaselineInput,
   buildUpdateInstanceInput,
+  type AssignInstanceModulePayload,
   type CreateInstancePayload,
   type ExecuteKeycloakProvisioningPayload,
+  type RevokeInstanceModulePayload,
   type ReconcileKeycloakPayload,
   type UpdateInstancePayload,
 } from './mutation-input-builders.js';

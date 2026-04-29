@@ -452,6 +452,7 @@ export type IamInstanceListItem = {
     readonly lastName?: string;
   };
   readonly themeKey?: string;
+  readonly assignedModules: readonly string[];
   readonly featureFlags: Readonly<Record<string, boolean>>;
   readonly mainserverConfigRef?: string;
   readonly createdAt: string;
@@ -560,6 +561,26 @@ export type IamTenantIamStatus = {
   readonly overall: IamTenantIamAxis;
 };
 
+export type IamInstanceAssignedModule = {
+  readonly moduleId: string;
+  readonly permissionIds: readonly string[];
+  readonly systemRoleNames: readonly string[];
+};
+
+export type IamInstanceModuleIamModuleStatus = {
+  readonly moduleId: string;
+  readonly status: IamTenantIamAxisStatus;
+  readonly summary: string;
+  readonly source: IamTenantIamSource;
+  readonly permissionIds: readonly string[];
+  readonly systemRoleNames: readonly string[];
+};
+
+export type IamInstanceModuleIamStatus = {
+  readonly overall: IamTenantIamAxis;
+  readonly modules: readonly IamInstanceModuleIamModuleStatus[];
+};
+
 export type IamInstanceDetail = IamInstanceListItem & {
   readonly hostnames: readonly {
     readonly hostname: string;
@@ -574,6 +595,7 @@ export type IamInstanceDetail = IamInstanceListItem & {
   readonly latestKeycloakProvisioningRun?: IamInstanceKeycloakProvisioningRun;
   readonly keycloakProvisioningRuns: readonly IamInstanceKeycloakProvisioningRun[];
   readonly tenantIamStatus?: IamTenantIamStatus;
+  readonly moduleIamStatus?: IamInstanceModuleIamStatus;
 };
 
 export type IamOrganizationChildItem = {

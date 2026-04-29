@@ -195,6 +195,21 @@ Fehlerpfad:
 - `IDP_FORBIDDEN` bleibt als Berechtigungsfehler sichtbar; temporäre Erreichbarkeitsstörungen werden als `IDP_UNAVAILABLE` eingeordnet.
 - ohne bisherige Probe-Evidenz bleibt `access` explizit `unknown`; die Detailseite erzeugt daraus keinen künstlichen Erfolgszustand.
 
+### Szenario 2h: Fail-closed Modulaktivierung zur Laufzeit
+
+1. Ein Instanzbenutzer ruft `/auth/me` auf.
+2. `packages/auth-runtime` lädt effektive Permissions und die kanonische Liste `assignedModules` aus der Registry.
+3. Die Client-Shell speichert diese Modulliste im Session-Kontext.
+4. Beim Aufruf einer Plugin-Route prüft `@sva/routing` zuerst den deklarativen Guard und danach die Modulzuweisung.
+5. Die Sidebar blendet Plugin-Navigation aus, wenn das Modul der aktiven Instanz nicht zugewiesen ist.
+6. Bei Modulzuweisung oder Entzug rekonstruiert `packages/instance-registry` die IAM-Basis und invalidiert betroffene Registry-Caches.
+
+Fehlerpfad:
+
+- fällt der Modul-Lookup im Session-Pfad aus, wird `assignedModules` fail-closed als leer behandelt.
+- fehlt die Zuweisung, blockiert das Routing die Plugin-Route vor dem Rendern.
+- direkte API-Aufrufe bleiben zusätzlich durch fehlende modulbezogene Permissions abgesichert.
+
 ### Szenario 2f: Keycloak-first User- und Rollenverwaltung
 
 1. `/admin/users` und `/admin/roles` laden Listen über den aktiven Keycloak-Admin-Pfad.

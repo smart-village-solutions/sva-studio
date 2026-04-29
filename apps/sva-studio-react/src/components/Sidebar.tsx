@@ -31,7 +31,7 @@ import React from 'react';
 
 import { t } from '../i18n';
 import { useContentAccess } from '../hooks/use-content-access';
-import { getStudioPluginAction, studioPluginNavigation } from '../lib/plugins';
+import { getStudioPluginAction, getStudioPluginNavigationModuleId, studioPluginNavigation } from '../lib/plugins';
 import {
   hasIamAdminRole,
   hasInstanceRegistryAdminRole,
@@ -65,6 +65,7 @@ type SidebarLeafItem = {
   readonly icon: Icon;
   readonly exact?: boolean;
   readonly section?: 'dataManagement' | 'applications' | 'system';
+  readonly moduleId?: string | null;
 };
 
 type SidebarGroupItem = {
@@ -195,6 +196,14 @@ const isLeafActive = (pathname: string, item: SidebarLeafItem) => {
   }
 
   return pathname === item.to || pathname.startsWith(`${item.to}/`);
+};
+
+const isModuleAssignedToUser = (moduleId: string | null | undefined, user: { assignedModules?: readonly string[] } | null | undefined) => {
+  if (!moduleId) {
+    return true;
+  }
+
+  return user?.assignedModules?.includes(moduleId) === true;
 };
 
 const isGroupActive = (pathname: string, item: SidebarGroupItem) =>
@@ -737,7 +746,9 @@ export default function Sidebar({ isLoading = false, isMobileOpen = false, onMob
         label: t(resolvedTitleKey),
         icon: pluginIconBySection[item.section],
         section: item.section,
-      }));
+        moduleId: getStudioPluginNavigationModuleId(item),
+      }))
+      .filter((item) => isModuleAssignedToUser(item.moduleId, user));
     const pluginDataManagementItems = pluginNavigationItems.filter((item) => item.section === 'dataManagement');
     const pluginApplicationItems = pluginNavigationItems.filter((item) => item.section === 'applications');
     const pluginSystemItems = pluginNavigationItems.filter((item) => item.section === 'system');

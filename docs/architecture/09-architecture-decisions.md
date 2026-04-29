@@ -42,6 +42,7 @@ mit Bezug auf die arc42-Abschnitte.
 - `ADR-034-plugin-sdk-vertrag-v1.md`
 - `ADR-035-routing-observability-diagnostics-hook.md`
 - `ADR-036-kanonischer-iam-projektions-und-reconcile-vertrag.md`
+- `ADR-038-instanz-modul-zuordnung-und-fail-closed-modulaktivierung.md`
 
 ### Zuordnung zu arc42-Abschnitten
 
@@ -61,6 +62,7 @@ mit Bezug auf die arc42-Abschnitte.
 - Abschnitt 04/05/06/08/09/11/12 (Strategie/Bausteine/Laufzeit/Querschnitt/Entscheidungen/Risiken/Glossar): ADR-034
 - Abschnitt 04/05/06/08/09/10/11 (Strategie/Bausteine/Laufzeit/Querschnitt/Entscheidungen/Qualität/Risiken): ADR-035
 - Abschnitt 04/05/06/08/09/10/11 (Strategie/Bausteine/Laufzeit/Querschnitt/Entscheidungen/Qualität/Risiken): ADR-036
+- Abschnitt 04/05/06/08/09/10/11/12 (Strategie/Bausteine/Laufzeit/Querschnitt/Entscheidungen/Qualität/Risiken/Glossar): ADR-038
 - Abschnitt 03/04/05/06/08 (Kontext/Strategie/Bausteine/Laufzeit/Querschnitt): ADR-021
 
 ### Zuordnung Swarm-Deployment-ADRs
@@ -95,6 +97,7 @@ mit Bezug auf die arc42-Abschnitte.
 - ADR-034 trägt weiterhin auch die technische Plugin-Identität als führenden Namespace; die Namespacing-Regeln für plugin-beigestellte `contentType`s, Admin-Ressourcen-IDs und Audit-Event-Typen wurden als Fortschreibung dieses Vertrags umgesetzt, ohne eine separate ADR-Serie zu eröffnen.
 - ADR-035: Routing-Observability über Diagnostics-Hook, Safe-Event-Vertrag und Browser-/Server-Split (Abschnitt 04, 05, 06, 08, 09, 10, 11)
 - ADR-036: Kanonischer IAM-Projektionskern, deterministischer Reconcile-/Sync-Vertrag und fail-closed Drift-Blocker (Abschnitt 04, 05, 06, 08, 09, 10, 11)
+- ADR-038: Kanonische Instanz-Modul-Zuordnung, hartes Rechte-Entziehen und fail-closed Modulaktivierung (Abschnitt 04, 05, 06, 08, 09, 10, 11, 12)
 
 ### Pflege-Regel
 

@@ -80,6 +80,7 @@ vi.mock('../lib/plugins', () => ({
     return studioPluginNavigationMock.items;
   },
   getStudioPluginAction: (actionId: string) => studioPluginActionLookupMock.get(actionId),
+  getStudioPluginNavigationModuleId: (item: PluginNavigationItemMock) => item.id.split('.')[0] ?? null,
 }));
 
 const unauthenticatedAuthState = {
@@ -372,6 +373,7 @@ describe('Sidebar', () => {
         id: 'user-1',
         name: 'Editor',
         roles: ['editor'],
+        assignedModules: ['news'],
       },
       isAuthenticated: true,
     });
@@ -396,6 +398,36 @@ describe('Sidebar', () => {
 
     expect(newsLink.getAttribute('href')).toBe('/plugins/news');
     expect(newsLink.getAttribute('aria-current')).toBe('page');
+  });
+
+  it('blendet Plugin-Navigation fail-closed aus, wenn das Modul der aktiven Instanz nicht zugewiesen ist', () => {
+    useAuthMock.mockReturnValue({
+      ...unauthenticatedAuthState,
+      user: {
+        id: 'user-1',
+        name: 'Editor',
+        roles: ['editor'],
+        assignedModules: [],
+      },
+      isAuthenticated: true,
+    });
+    useContentAccessMock.mockReturnValue({
+      access: {
+        state: 'editable',
+        canRead: true,
+        canCreate: true,
+        canUpdate: true,
+        organizationIds: [],
+        sourceKinds: ['direct_role'],
+      },
+      permissionActions: ['news.read'],
+      isLoading: false,
+      error: null,
+    });
+
+    render(<Sidebar />);
+
+    expect(screen.queryByRole('link', { name: 'News' })).toBeNull();
   });
 
   it('blendet Plugin-Navigation ohne passende Payload-Update-Berechtigung aus', () => {
@@ -459,6 +491,7 @@ describe('Sidebar', () => {
         id: 'user-1',
         name: 'Editor',
         roles: ['editor'],
+        assignedModules: ['news'],
       },
       isAuthenticated: true,
     });

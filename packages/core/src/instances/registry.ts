@@ -39,6 +39,7 @@ export type InstanceRegistryRecord = {
     readonly lastName?: string;
   };
   readonly themeKey?: string;
+  readonly assignedModules: readonly string[];
   readonly featureFlags: Readonly<Record<string, boolean>>;
   readonly mainserverConfigRef?: string;
   readonly createdAt: string;
@@ -74,7 +75,10 @@ export type InstanceAuditEvent = {
     | 'instance_suspended'
     | 'instance_archived'
     | 'instance_reconfigured'
-    | 'tenant_iam_access_probed';
+    | 'tenant_iam_access_probed'
+    | 'instance_module_assigned'
+    | 'instance_module_revoked'
+    | 'instance_module_iam_seeded';
   readonly actorId?: string;
   readonly requestId?: string;
   readonly details: Readonly<Record<string, unknown>>;

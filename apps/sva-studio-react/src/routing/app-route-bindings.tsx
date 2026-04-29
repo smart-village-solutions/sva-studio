@@ -14,6 +14,7 @@ import { InstancesPage } from '../routes/admin/instances/-instances-page';
 import { LegalTextCreatePage } from '../routes/admin/legal-texts/-legal-text-create-page';
 import { LegalTextDetailPage } from '../routes/admin/legal-texts/-legal-text-detail-page';
 import { LegalTextsPage } from '../routes/admin/legal-texts/-legal-texts-page';
+import { ModulesPage } from '../routes/admin/modules/-modules-page';
 import { OrganizationCreatePage } from '../routes/admin/organizations/-organization-create-page';
 import { RoleCreatePage } from '../routes/admin/roles/-role-create-page';
 import { RoleDetailPage } from '../routes/admin/roles/-role-detail-page';
@@ -46,13 +47,6 @@ const AppPlaceholderRoutePage = () => (
   <PlaceholderPage
     section={t('shell.sidebar.sections.applications')}
     title={t('shell.sidebar.app')}
-  />
-);
-
-const ModulesPlaceholderRoutePage = () => (
-  <PlaceholderPage
-    section={t('shell.sidebar.sections.system')}
-    title={t('shell.sidebar.modules')}
   />
 );
 
@@ -222,7 +216,7 @@ export const appRouteBindings: AppRouteBindings = {
   adminLegalTextCreate: LegalTextCreatePage,
   adminLegalTextDetail: LegalTextDetailRoutePage,
   adminIam: IamRoutePage,
-  modules: ModulesPlaceholderRoutePage,
+  modules: ModulesPage,
   monitoring: MonitoringPlaceholderRoutePage,
   adminApiPhase1Test: Phase1TestPage,
 };

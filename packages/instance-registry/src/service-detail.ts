@@ -5,7 +5,7 @@ import {
   createGetKeycloakStatusHandler,
   createPlanKeycloakProvisioningHandler,
 } from './service-keycloak.js';
-import { buildInstanceDetail, buildTenantIamStatus } from './service-helpers.js';
+import { buildInstanceDetail, buildModuleIamStatus, buildTenantIamStatus } from './service-helpers.js';
 
 import type { InstanceRegistryRepository } from '@sva/data-repositories';
 import type { InstanceRegistryService, InstanceRegistryServiceDeps } from './service-types.js';
@@ -83,6 +83,7 @@ export const loadKeycloakDetailArtifacts = async (
         }
       : undefined,
   });
+  const moduleIamStatus = buildModuleIamStatus(instance.assignedModules, deps.moduleIamRegistry ?? new Map());
 
   return buildInstanceDetail(
     instance,
@@ -92,7 +93,8 @@ export const loadKeycloakDetailArtifacts = async (
     keycloakPreflight,
     keycloakPlan,
     keycloakProvisioningRuns,
-    tenantIamStatus
+    tenantIamStatus,
+    moduleIamStatus
   );
 };
 

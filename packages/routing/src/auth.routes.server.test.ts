@@ -121,6 +121,9 @@ const authServerMocks = vi.hoisted(() => {
       getInstanceKeycloakProvisioningRun: vi.fn(async () => response('getInstanceKeycloakProvisioningRunHandler')),
       reconcileInstanceKeycloak: vi.fn(async () => response('reconcileInstanceKeycloakHandler')),
       probeTenantIamAccess: vi.fn(async () => response('probeTenantIamAccessHandler')),
+      assignInstanceModule: vi.fn(async () => response('assignInstanceModuleHandler')),
+      revokeInstanceModule: vi.fn(async () => response('revokeInstanceModuleHandler')),
+      seedInstanceIamBaseline: vi.fn(async () => response('seedInstanceIamBaselineHandler')),
       activateInstance: vi.fn(async () => response('activateInstanceHandler')),
       suspendInstance: vi.fn(async () => response('suspendInstanceHandler')),
       archiveInstance: vi.fn(async () => response('archiveInstanceHandler')),
@@ -277,6 +280,9 @@ describe('auth.routes.server', () => {
     expect(authServerMocks.instanceRegistryHandlers.getInstanceKeycloakProvisioningRun).toHaveBeenCalled();
     expect(authServerMocks.instanceRegistryHandlers.reconcileInstanceKeycloak).toHaveBeenCalled();
     expect(authServerMocks.instanceRegistryHandlers.probeTenantIamAccess).toHaveBeenCalled();
+    expect(authServerMocks.instanceRegistryHandlers.assignInstanceModule).toHaveBeenCalled();
+    expect(authServerMocks.instanceRegistryHandlers.revokeInstanceModule).toHaveBeenCalled();
+    expect(authServerMocks.instanceRegistryHandlers.seedInstanceIamBaseline).toHaveBeenCalled();
     expect(authServerMocks.listLegalTextsHandler).toHaveBeenCalled();
     expect(authServerMocks.createLegalTextHandler).toHaveBeenCalled();
     expect(authServerMocks.updateLegalTextHandler).toHaveBeenCalled();

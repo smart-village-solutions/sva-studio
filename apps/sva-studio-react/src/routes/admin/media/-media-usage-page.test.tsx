@@ -76,4 +76,78 @@ describe('MediaUsagePage', () => {
     expect(screen.getByText('Headerbild')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Zur Mediendetailansicht' }).getAttribute('href')).toBe('/admin/media/asset-1');
   });
+
+  it('renders the loading state before usage data is available', () => {
+    useMediaDetailMock.mockReturnValue({
+      asset: null,
+      usage: null,
+      delivery: null,
+      isLoading: true,
+      error: null,
+      mutationError: null,
+      refetch: vi.fn(),
+      clearMutationError: vi.fn(),
+      updateMedia: vi.fn(),
+      resolveDelivery: vi.fn(),
+    });
+
+    render(<MediaUsagePage />);
+
+    expect(screen.getByText('Medien werden geladen ...')).toBeTruthy();
+  });
+
+  it('renders the error state for missing assets', () => {
+    useMediaDetailMock.mockReturnValue({
+      asset: null,
+      usage: null,
+      delivery: null,
+      isLoading: false,
+      error: { code: 'not_found' },
+      mutationError: null,
+      refetch: vi.fn(),
+      clearMutationError: vi.fn(),
+      updateMedia: vi.fn(),
+      resolveDelivery: vi.fn(),
+    });
+
+    render(<MediaUsagePage />);
+
+    expect(screen.getByText('Das angeforderte Medium wurde nicht gefunden.')).toBeTruthy();
+  });
+
+  it('renders the empty usage state and falls back to the asset id when no title exists', () => {
+    useMediaDetailMock.mockReturnValue({
+      asset: {
+        id: 'asset-2',
+        instanceId: 'instance-1',
+        storageKey: 'media/asset-2',
+        mediaType: 'image',
+        mimeType: 'image/png',
+        byteSize: 2048,
+        visibility: 'public',
+        uploadStatus: 'processed',
+        processingStatus: 'ready',
+        metadata: {},
+        technical: {},
+      },
+      usage: {
+        assetId: 'asset-2',
+        totalReferences: 0,
+        references: [],
+      },
+      delivery: null,
+      isLoading: false,
+      error: null,
+      mutationError: null,
+      refetch: vi.fn(),
+      clearMutationError: vi.fn(),
+      updateMedia: vi.fn(),
+      resolveDelivery: vi.fn(),
+    });
+
+    render(<MediaUsagePage />);
+
+    expect(screen.getByText('asset-2')).toBeTruthy();
+    expect(screen.getByText('Dieses Medium ist aktuell nicht referenziert.')).toBeTruthy();
+  });
 });

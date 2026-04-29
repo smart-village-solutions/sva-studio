@@ -142,6 +142,41 @@ describe('media repository', () => {
     expect(statements[1]?.values).toEqual(['tenant-a', '%rathaus%', 'public', 10, 20]);
   });
 
+  it('uses default asset list filters and normalizes nullable asset metadata fail-closed', async () => {
+    const { executor, statements } = createQueuedExecutor([
+      [
+        {
+          ...assetRow,
+          metadata: null,
+          technical: null,
+          created_at: null,
+          updated_at: null,
+        },
+      ],
+    ]);
+    const repository = createMediaRepository(executor);
+
+    await expect(repository.listAssets({ instanceId: 'tenant-a', search: '   ', visibility: '   ' })).resolves.toEqual([
+      {
+        id: 'asset-1',
+        instanceId: 'tenant-a',
+        storageKey: 'tenant-a/originals/asset-1.jpg',
+        mediaType: 'image',
+        mimeType: 'image/jpeg',
+        byteSize: 1024,
+        visibility: 'public',
+        uploadStatus: 'processed',
+        processingStatus: 'ready',
+        metadata: {},
+        technical: {},
+        createdAt: undefined,
+        updatedAt: undefined,
+      },
+    ]);
+
+    expect(statements[0]?.values).toEqual(['tenant-a', 25, 0]);
+  });
+
   it('keeps asset lookup fail-closed across instances', async () => {
     const { executor, statements } = createQueuedExecutor([[]]);
     const repository = createMediaRepository(executor);
@@ -290,6 +325,76 @@ describe('media repository', () => {
     });
   });
 
+  it('normalizes nullable variant, upload session, and reference fields', async () => {
+    const { executor } = createQueuedExecutor([
+      [
+        {
+          ...variantRow,
+          height: null,
+          created_at: null,
+          updated_at: null,
+        },
+      ],
+      [
+        {
+          ...uploadSessionRow,
+          expires_at: null,
+          created_at: null,
+          updated_at: null,
+        },
+      ],
+      [
+        {
+          ...referenceRow,
+          sort_order: null,
+          created_at: null,
+        },
+      ],
+    ]);
+    const repository = createMediaRepository(executor);
+
+    await expect(repository.listVariantsByAssetId('tenant-a', 'asset-1')).resolves.toEqual([
+      {
+        id: 'variant-1',
+        assetId: 'asset-1',
+        variantKey: 'teaser-landscape',
+        presetKey: 'news-teaser',
+        format: 'webp',
+        width: 640,
+        height: undefined,
+        storageKey: 'tenant-a/variants/asset-1/teaser-landscape.webp',
+        generationStatus: 'ready',
+        createdAt: undefined,
+        updatedAt: undefined,
+      },
+    ]);
+
+    await expect(repository.getUploadSessionById('tenant-a', 'upload-1')).resolves.toEqual({
+      id: 'upload-1',
+      instanceId: 'tenant-a',
+      assetId: 'asset-1',
+      storageKey: 'tenant-a/uploads/upload-1.bin',
+      mimeType: 'image/jpeg',
+      byteSize: 2048,
+      status: 'validated',
+      expiresAt: undefined,
+      createdAt: undefined,
+      updatedAt: undefined,
+    });
+
+    await expect(repository.listReferencesByAssetId('tenant-a', 'asset-1')).resolves.toEqual([
+      {
+        id: 'ref-1',
+        assetId: 'asset-1',
+        targetType: 'news',
+        targetId: 'news-1',
+        role: 'teaser_image',
+        sortOrder: undefined,
+        createdAt: undefined,
+      },
+    ]);
+  });
+
   it('persists storage quotas and evaluates hard quota violations against current usage', async () => {
     const { executor, statements } = createQueuedExecutor([[], [storageQuotaRow], [storageQuotaRow], [storageUsageRow]]);
     const repository = createMediaRepository(executor);
@@ -314,6 +419,31 @@ describe('media repository', () => {
       additionalBytes: 5000,
       maxBytes: 8192,
       wouldExceed: true,
+    });
+  });
+
+  it('handles missing quotas, missing usage rows, and empty reference replacements', async () => {
+    const { executor, statements } = createQueuedExecutor([[], [], [], []]);
+    const repository = createMediaRepository(executor);
+
+    await repository.replaceReferences({
+      instanceId: 'tenant-a',
+      targetType: 'poi',
+      targetId: 'poi-1',
+      references: [],
+    });
+
+    expect(statements[0]?.text.includes('DELETE FROM iam.media_references')).toBe(true);
+    expect(statements).toHaveLength(1);
+
+    await expect(repository.getStorageUsage('tenant-a')).resolves.toBeNull();
+    await expect(repository.getStorageQuota('tenant-a')).resolves.toBeNull();
+    await expect(repository.wouldExceedStorageQuota('tenant-a', 512)).resolves.toEqual({
+      instanceId: 'tenant-a',
+      currentBytes: 0,
+      additionalBytes: 512,
+      maxBytes: null,
+      wouldExceed: false,
     });
   });
 

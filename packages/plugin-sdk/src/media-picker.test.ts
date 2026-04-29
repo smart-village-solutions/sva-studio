@@ -83,4 +83,32 @@ describe('defineMediaPickerDefinition', () => {
       })
     ).toThrow('invalid_media_picker_media_types');
   });
+
+  it('rejects blank roles and invalid media types while preserving explicit selection modes', () => {
+    expect(() =>
+      defineMediaPickerDefinition({
+        roles: ['   '],
+        allowedMediaTypes: ['image'],
+      })
+    ).toThrow('invalid_media_picker_roles');
+
+    expect(() =>
+      defineMediaPickerDefinition({
+        roles: ['gallery_item'],
+        allowedMediaTypes: ['image', '   '],
+      })
+    ).toThrow('invalid_media_picker_media_types');
+
+    expect(
+      defineMediaPickerDefinition({
+        roles: ['gallery_item'],
+        allowedMediaTypes: ['image'],
+        selectionMode: 'multiple',
+      })
+    ).toEqual({
+      roles: ['gallery_item'],
+      allowedMediaTypes: ['image'],
+      selectionMode: 'multiple',
+    });
+  });
 });

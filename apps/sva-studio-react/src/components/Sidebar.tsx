@@ -774,9 +774,10 @@ export default function Sidebar({ isLoading = false, isMobileOpen = false, onMob
             {
               kind: 'link' as const,
               id: 'media',
-              to: '/media',
+              to: '/admin/media',
               label: t('shell.sidebar.media'),
               icon: IconPhoto,
+              moduleId: 'media',
             },
             {
               kind: 'link' as const,

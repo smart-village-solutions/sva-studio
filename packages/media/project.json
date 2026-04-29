@@ -1,0 +1,49 @@
+{
+  "name": "media",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/media/src",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "outputs": ["{projectRoot}/dist"],
+      "options": {
+        "command": "tsc -p packages/media/tsconfig.lib.json"
+      }
+    },
+    "check:runtime": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["build"],
+      "options": {
+        "command": "pnpm exec node --import tsx scripts/ci/check-server-package-runtime.ts --package media"
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "options": {
+        "lintFilePatterns": ["packages/media/src/**/*.{ts,tsx,js,jsx}"]
+      }
+    },
+    "test:unit": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "packages/media",
+        "command": "pnpm exec vitest run --reporter=verbose --config vitest.config.ts --passWithNoTests"
+      }
+    },
+    "test:coverage": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "packages/media",
+        "command": "pnpm exec vitest run --coverage --reporter=verbose --config vitest.config.ts --passWithNoTests"
+      }
+    },
+    "test:integration": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node -e \"console.log('integration tests not configured for @sva/media (coverage-exempt)')\""
+      }
+    }
+  },
+  "tags": ["scope:core", "type:lib"]
+}

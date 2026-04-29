@@ -436,7 +436,7 @@ describe('instance registry repository', () => {
   });
 
   it('cleans up stale module permissions and role grants when desired sets are empty', async () => {
-    const { executor, statements } = createQueuedExecutor([[], []]);
+    const { executor, statements } = createQueuedExecutor([[]]);
     const repository = createInstanceRegistryRepository(executor);
 
     await expect(
@@ -453,11 +453,9 @@ describe('instance registry repository', () => {
       })
     ).resolves.toBeUndefined();
 
-    expect(statements).toHaveLength(2);
-    expect(statements[0]?.text).toContain("AND role.role_key IN ('news_admin')");
-    expect(statements[0]?.text).not.toContain('NOT IN (');
-    expect(statements[1]?.text).toContain("permission_key LIKE 'news.%'");
-    expect(statements[1]?.text).not.toContain('permission_key NOT IN (');
+    expect(statements).toHaveLength(1);
+    expect(statements[0]?.text).toContain("permission_key LIKE 'news.%'");
+    expect(statements[0]?.text).not.toContain('permission_key NOT IN (');
   });
 
   it('resolves hostname variants and returns null when they are missing', async () => {

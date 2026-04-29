@@ -309,7 +309,7 @@ describe('admin resource routes', () => {
         },
         capabilities: {
           list: {
-            pagination: { defaultPageSize: 25, allowedPageSizes: [10, 25, 50] },
+            pagination: { defaultPageSize: 25, pageSizeOptions: [10, 25, 50] },
             search: { param: 'q' },
           },
         },

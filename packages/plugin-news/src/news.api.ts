@@ -1,11 +1,7 @@
-import type { NewsContentItem, NewsFormInput } from './news.types.js';
+import type { NewsContentItem, NewsFormInput, NewsListQuery, NewsListResult } from './news.types.js';
 
 type ApiItemResponse<T> = {
   readonly data: T;
-};
-
-type ApiListResponse<T> = {
-  readonly data: readonly T[];
 };
 
 type ApiErrorResponse = {
@@ -66,9 +62,15 @@ const toMutationBody = (input: NewsFormInput, options: { readonly includePushNot
   };
 };
 
-export const listNews = async (): Promise<readonly NewsContentItem[]> => {
-  const response = await requestJson<ApiListResponse<NewsContentItem>>('/api/v1/mainserver/news');
-  return response.data.map(toNewsContent);
+const buildListUrl = (query: NewsListQuery): string =>
+  `/api/v1/mainserver/news?page=${encodeURIComponent(String(query.page))}&pageSize=${encodeURIComponent(String(query.pageSize))}`;
+
+export const listNews = async (query: NewsListQuery): Promise<NewsListResult> => {
+  const response = await requestJson<NewsListResult>(buildListUrl(query));
+  return {
+    data: response.data.map(toNewsContent),
+    pagination: response.pagination,
+  };
 };
 
 export const getNews = async (contentId: string): Promise<NewsContentItem> => {

@@ -109,8 +109,14 @@ describe('dispatchMainserverEventsPoiRequest', () => {
 
   it('lists events and POI after read authorization', async () => {
     mockAuthorizedMutation();
-    state.listSvaMainserverEvents.mockResolvedValue([{ id: 'event-1' }]);
-    state.listSvaMainserverPoi.mockResolvedValue([{ id: 'poi-1' }]);
+    state.listSvaMainserverEvents.mockResolvedValue({
+      data: [{ id: 'event-1' }],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false },
+    });
+    state.listSvaMainserverPoi.mockResolvedValue({
+      data: [{ id: 'poi-1' }],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false },
+    });
 
     const eventsResponse = await dispatchMainserverEventsPoiRequest(
       createRequest('https://studio.test/api/v1/mainserver/events')
@@ -118,16 +124,58 @@ describe('dispatchMainserverEventsPoiRequest', () => {
     const poiResponse = await dispatchMainserverEventsPoiRequest(createRequest('https://studio.test/api/v1/mainserver/poi'));
 
     expect(eventsResponse?.status).toBe(200);
-    await expect(eventsResponse?.json()).resolves.toEqual({ data: [{ id: 'event-1' }] });
+    await expect(eventsResponse?.json()).resolves.toEqual({
+      data: [{ id: 'event-1' }],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false },
+    });
     expect(poiResponse?.status).toBe(200);
-    await expect(poiResponse?.json()).resolves.toEqual({ data: [{ id: 'poi-1' }] });
+    await expect(poiResponse?.json()).resolves.toEqual({
+      data: [{ id: 'poi-1' }],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false },
+    });
     expect(state.listSvaMainserverEvents).toHaveBeenCalledWith({
       instanceId: 'de-musterhausen',
       keycloakSubject: 'subject-1',
+      page: 1,
+      pageSize: 25,
     });
     expect(state.listSvaMainserverPoi).toHaveBeenCalledWith({
       instanceId: 'de-musterhausen',
       keycloakSubject: 'subject-1',
+      page: 1,
+      pageSize: 25,
+    });
+  });
+
+  it('normalizes invalid pagination query parameters for event and poi lists', async () => {
+    mockAuthorizedMutation();
+    state.listSvaMainserverEvents.mockResolvedValue({
+      data: [],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false },
+    });
+    state.listSvaMainserverPoi.mockResolvedValue({
+      data: [],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false },
+    });
+
+    await dispatchMainserverEventsPoiRequest(
+      createRequest('https://studio.test/api/v1/mainserver/events?page=-2&pageSize=13')
+    );
+    await dispatchMainserverEventsPoiRequest(
+      createRequest('https://studio.test/api/v1/mainserver/poi?page=abc&pageSize=101')
+    );
+
+    expect(state.listSvaMainserverEvents).toHaveBeenCalledWith({
+      instanceId: 'de-musterhausen',
+      keycloakSubject: 'subject-1',
+      page: 1,
+      pageSize: 25,
+    });
+    expect(state.listSvaMainserverPoi).toHaveBeenCalledWith({
+      instanceId: 'de-musterhausen',
+      keycloakSubject: 'subject-1',
+      page: 1,
+      pageSize: 25,
     });
   });
 

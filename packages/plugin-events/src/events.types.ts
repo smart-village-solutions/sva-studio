@@ -24,6 +24,23 @@ export type EventWebUrl = {
   readonly description?: string;
 };
 
+export type EventListQuery = {
+  readonly page: number;
+  readonly pageSize: number;
+};
+
+export type EventPagination = {
+  readonly page: number;
+  readonly pageSize: number;
+  readonly hasNextPage: boolean;
+  readonly total?: number;
+};
+
+export type EventListResult = {
+  readonly data: readonly EventContentItem[];
+  readonly pagination: EventPagination;
+};
+
 export type EventFormInput = {
   readonly title: string;
   readonly description?: string;

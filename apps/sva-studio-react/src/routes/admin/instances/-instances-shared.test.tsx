@@ -1,4 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { cleanup, render, screen } from '@testing-library/react';
+import React from 'react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import * as instancesShared from './-instances-shared';
 import {
@@ -7,13 +9,20 @@ import {
   getCreateReadinessChecks,
   getErrorMessage,
   getCreateStepValidationMessages,
+  getEffectiveTenantIamStatus,
   getKeycloakStatusEntries,
   getPostCreateGuidance,
   getSetupWorkflowSteps,
   getStatusGuidance,
+  readSuggestedParentDomain,
 } from './-instances-shared';
 
 describe('instances shared helpers', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    cleanup();
+  });
+
   it('returns step validation messages for missing create inputs', () => {
     const formValues = createEmptyCreateForm('');
 
@@ -36,6 +45,46 @@ describe('instances shared helpers', () => {
         message: 'Unauthorized',
       })
     ).toBe('Die Sitzung ist nicht mehr gültig. Bitte erneut anmelden.');
+  });
+
+  it('maps diagnostic and fallback error variants to localized messages', () => {
+    expect(
+      getErrorMessage({
+        name: 'IamHttpError',
+        status: 500,
+        code: 'internal_error',
+        message: 'Recovery',
+        diagnosticStatus: 'recovery_laeuft',
+      } as never)
+    ).toContain('wiederhergestellt');
+    expect(
+      getErrorMessage({
+        name: 'IamHttpError',
+        status: 409,
+        code: 'conflict',
+        message: 'drift',
+        classification: 'database_or_schema_drift',
+      } as never)
+    ).toContain('Datenbank');
+    expect(
+      getErrorMessage({
+        name: 'IamHttpError',
+        status: 419,
+        code: 'csrf_validation_failed',
+        message: 'csrf',
+      } as never)
+    ).toContain('Sicherheitsprüfung');
+    expect(getErrorMessage({ name: 'IamHttpError', status: 500, code: 'unknown', message: 'boom' } as never)).toContain(
+      'Instanz'
+    );
+  });
+
+  it('reads the suggested parent domain from window and falls back safely for invalid urls', () => {
+    vi.stubGlobal('window', { location: { href: 'https://demo.studio.example.org/admin/instances' } });
+    expect(readSuggestedParentDomain()).toBe('demo.studio.example.org');
+
+    vi.stubGlobal('window', { location: { href: 'not a url' } });
+    expect(readSuggestedParentDomain()).toBe('');
   });
 
   it('maps readiness and post-create guidance for a requested instance', () => {
@@ -673,5 +722,187 @@ describe('instances shared helpers', () => {
     expect(model.overallStatus).toBe('ready');
     expect(model.overallSummary).toBe('Tenant-IAM ist betriebsbereit.');
     expect(model.anomalyQueue).toHaveLength(0);
+  });
+
+  it('derives effective tenant IAM status from current keycloak facts and preserves snapshot metadata', () => {
+    expect(
+      getEffectiveTenantIamStatus({
+        tenantIamStatus: undefined,
+      } as never)
+    ).toBeUndefined();
+
+    const status = getEffectiveTenantIamStatus({
+      keycloakStatus: {
+        realmExists: true,
+        clientExists: true,
+        tenantAdminClientExists: true,
+        instanceIdMapperExists: true,
+        tenantAdminExists: true,
+        tenantAdminHasSystemAdmin: true,
+        tenantAdminHasInstanceRegistryAdmin: true,
+        tenantAdminInstanceIdMatches: true,
+        redirectUrisMatch: true,
+        logoutUrisMatch: true,
+        webOriginsMatch: true,
+        clientSecretConfigured: true,
+        tenantClientSecretReadable: true,
+        clientSecretAligned: true,
+        tenantAdminClientSecretConfigured: true,
+        tenantAdminClientSecretReadable: true,
+        tenantAdminClientSecretAligned: true,
+        runtimeSecretSource: 'tenant',
+      },
+      tenantIamStatus: {
+        configuration: {
+          status: 'blocked',
+          summary: 'veraltet',
+          source: 'registry',
+          checkedAt: '2026-01-01T00:00:00.000Z',
+          requestId: 'req-config-1',
+        },
+        access: {
+          status: 'ready',
+          summary: 'ok',
+          source: 'access_probe',
+        },
+        reconcile: {
+          status: 'unknown',
+          summary: 'offen',
+          source: 'role_reconcile',
+        },
+        overall: {
+          status: 'blocked',
+          summary: 'alt',
+          source: 'registry',
+        },
+      },
+    } as never);
+
+    expect(status).toEqual(
+      expect.objectContaining({
+        configuration: expect.objectContaining({
+          status: 'degraded',
+          source: 'keycloak_status_snapshot',
+          checkedAt: '2026-01-01T00:00:00.000Z',
+          requestId: 'req-config-1',
+        }),
+        overall: expect.objectContaining({
+          status: 'degraded',
+          source: 'keycloak_status_snapshot',
+        }),
+      })
+    );
+  });
+
+  it('returns localized status guidance for all remaining lifecycle states', () => {
+    for (const lifecycleStatus of ['validated', 'provisioning', 'active', 'failed', 'suspended', 'archived'] as const) {
+      expect(getStatusGuidance({ status: lifecycleStatus } as never)).toEqual({
+        title: expect.any(String),
+        body: expect.any(String),
+      });
+    }
+  });
+
+  it('maps the remaining IAM error codes to dedicated localized messages', () => {
+    const cases = [
+      ['reauth_required', 'Re-Authentisierung'],
+      ['conflict', 'Konflikt'],
+      ['database_unavailable', 'Datenbank'],
+      ['tenant_auth_client_secret_missing', 'Tenant-Client-Secret'],
+      ['tenant_admin_client_not_configured', 'Tenant-Admin-Client'],
+      ['tenant_admin_client_secret_missing', 'Tenant-Admin-Client-Secret'],
+      ['keycloak_unavailable', 'Keycloak'],
+      ['encryption_not_configured', 'verschlüsselung'],
+    ] as const;
+
+    for (const [code, expectedFragment] of cases) {
+      expect(
+        getErrorMessage({
+          name: 'IamHttpError',
+          status: 500,
+          code,
+          message: code,
+        } as never)
+      ).toContain(expectedFragment);
+    }
+  });
+
+  it('surfaces failed provisioning runs as cockpit anomalies with provisioning source labels', () => {
+    const buildInstanceDetailCockpitModel = (instancesShared as Record<string, unknown>)
+      .buildInstanceDetailCockpitModel;
+
+    expect(buildInstanceDetailCockpitModel).toBeTypeOf('function');
+    if (typeof buildInstanceDetailCockpitModel !== 'function') {
+      return;
+    }
+
+    const model = buildInstanceDetailCockpitModel(
+      {
+        instanceId: 'demo',
+        displayName: 'Demo',
+        status: 'validated',
+        featureFlags: {},
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+        parentDomain: 'studio.example.org',
+        primaryHostname: 'demo.studio.example.org',
+        realmMode: 'existing',
+        authRealm: 'demo',
+        authClientId: 'sva-studio',
+        authClientSecretConfigured: true,
+        hostnames: [],
+        provisioningRuns: [],
+        auditEvents: [],
+        keycloakPreflight: undefined,
+        keycloakPlan: undefined,
+        tenantIamStatus: undefined,
+        keycloakStatus: undefined,
+        keycloakProvisioningRuns: [
+          {
+            id: 'run-failed-1',
+            intent: 'provision',
+            mode: 'existing',
+            overallStatus: 'failed',
+            driftSummary: 'Provisioning fehlgeschlagen.',
+            requestId: 'req-failed-1',
+            finishedAt: '2026-01-03T10:15:00.000Z',
+            steps: [],
+          },
+        ],
+        latestKeycloakProvisioningRun: {
+          id: 'run-failed-1',
+          intent: 'provision',
+          mode: 'existing',
+          overallStatus: 'failed',
+          driftSummary: 'Provisioning fehlgeschlagen.',
+          requestId: 'req-failed-1',
+          finishedAt: '2026-01-03T10:15:00.000Z',
+          steps: [],
+        },
+      },
+      null
+    );
+
+    expect(model.anomalyQueue).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: 'latest-run',
+          status: 'blocked',
+          sourceLabel: 'Quelle: Keycloak-Provisioning-Lauf',
+        }),
+      ])
+    );
+  });
+
+  it('renders provisioning step badges with ready and non-ready variants', () => {
+    render(
+      <div>
+        <instancesShared.ProvisioningStepBadge status="skipped" />
+        <instancesShared.ProvisioningStepBadge status="failed" />
+      </div>
+    );
+
+    expect(screen.getByText('skipped')).toBeTruthy();
+    expect(screen.getByText('failed')).toBeTruthy();
   });
 });

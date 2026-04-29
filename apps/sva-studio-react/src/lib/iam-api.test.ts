@@ -14,6 +14,7 @@ vi.mock('@sva/monitoring-client/logging', () => ({
 import {
   asIamError,
   activateInstance,
+  assignInstanceModule,
   assignGroupMembership,
   assignGroupRole,
   archiveInstance,
@@ -52,6 +53,8 @@ import {
   removeGroupMembership,
   removeGroupRole,
   requestDataExport,
+  revokeInstanceModule,
+  seedInstanceIamBaseline,
   syncUsersFromKeycloak,
   removeOrganizationMembership,
   suspendInstance,
@@ -99,6 +102,46 @@ describe('iam-api organization helpers', () => {
       '/api/v1/iam/organizations?page=2&pageSize=10&search=alpha&organizationType=municipality&status=active',
       expect.objectContaining({
         credentials: 'include',
+      })
+    );
+  });
+
+  it('sends module assignment, revoke, and baseline seed mutations to the instance IAM endpoints', async () => {
+    const fetchMock = vi.fn().mockImplementation(async () =>
+      new Response(JSON.stringify({ data: { instanceId: 'demo' } }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      })
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    vi.stubGlobal('crypto', { randomUUID: () => 'uuid-test-2' });
+
+    await assignInstanceModule('demo', 'news');
+    await revokeInstanceModule('demo', 'news');
+    await seedInstanceIamBaseline('demo');
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      '/api/v1/iam/instances/demo/modules/assign',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ moduleId: 'news' }),
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      '/api/v1/iam/instances/demo/modules/revoke',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ moduleId: 'news', confirmation: 'REVOKE' }),
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
+      '/api/v1/iam/instances/demo/modules/seed-iam-baseline',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({}),
       })
     );
   });

@@ -1,16 +1,16 @@
 ## 1. Spezifikation
-- [ ] 1.1 Neue Capability `media-management` für Assets, Varianten, Referenzen, Metadaten, Nutzungstransparenz und Auslieferung spezifizieren
-- [ ] 1.2 `content-management` um referenzbasierte Mediennutzung statt direkter Dateikopplung ergänzen
-- [ ] 1.3 `iam-access-control` um Medienrechte für Upload, Pflege, Referenzierung, Löschung und geschützte Auslieferung ergänzen
-- [ ] 1.4 `iam-auditing` um revisionssichere Auditspur für Medienereignisse ergänzen
-- [ ] 1.5 Technische Entscheidungen zu Package-Zuschnitt, MinIO-basiertem Storage-Vertrag, Variantenstrategie, Referenzmodell und Worker-Schnitt in `design.md` dokumentieren; ADR-037 für Package-Zuschnitt und Storage-/Processing-Vertrag als Entwurf in `docs/adr/` anlegen (Querverweis zu ADR-034 herstellen) – **vor** Umsetzung in Abschnitt 2
-- [ ] 1.5a Host-Integrationsentscheidung dokumentieren: `media` als hosteigene Admin-Ressource mit kanonischem Einstieg `/admin/media` und optionalen spezialisierten Unterrouten unter `/admin/media/...`; Abgrenzung zu pluginbasierten `contentUi`-Ressourcen explizit festhalten
-- [ ] 1.5b Bridge- und Migrationspfad für bestehende URL-basierte Medienfelder in News, Events und POI spezifizieren, inklusive Zielbild für die Umstellung auf `MediaReference`
-- [ ] 1.6 Architekturwirkung und betroffene arc42-Abschnitte im Change explizit referenzieren; dabei arc42-03 (MinIO als S3-kompatibler Objektspeicher im Kontextdiagramm) und arc42-04 (Medienmanagement als hostseitige Querschnittsstrategie) prüfen und ggf. ergänzen
+- [x] 1.1 Neue Capability `media-management` für Assets, Varianten, Referenzen, Metadaten, Nutzungstransparenz und Auslieferung spezifizieren
+- [x] 1.2 `content-management` um referenzbasierte Mediennutzung statt direkter Dateikopplung ergänzen
+- [x] 1.3 `iam-access-control` um Medienrechte für Upload, Pflege, Referenzierung, Löschung und geschützte Auslieferung ergänzen
+- [x] 1.4 `iam-auditing` um revisionssichere Auditspur für Medienereignisse ergänzen
+- [x] 1.5 Technische Entscheidungen zu Package-Zuschnitt, MinIO-basiertem Storage-Vertrag, Variantenstrategie, Referenzmodell und Worker-Schnitt in `design.md` dokumentieren; ADR-039 für Package-Zuschnitt und Storage-/Processing-Vertrag als Entwurf in `docs/adr/` anlegen (Querverweis zu ADR-034 herstellen; Nummer ersetzt das bereits belegte ADR-037) – **vor** Umsetzung in Abschnitt 2
+- [x] 1.5a Host-Integrationsentscheidung dokumentieren: `media` als hosteigene Admin-Ressource mit kanonischem Einstieg `/admin/media` und optionalen spezialisierten Unterrouten unter `/admin/media/...`; Abgrenzung zu pluginbasierten `contentUi`-Ressourcen explizit festhalten
+- [x] 1.5b Bridge- und Migrationspfad für bestehende URL-basierte Medienfelder in News, Events und POI spezifizieren, inklusive Zielbild für die Umstellung auf `MediaReference`
+- [x] 1.6 Architekturwirkung und betroffene arc42-Abschnitte im Change explizit referenzieren; dabei arc42-03 (MinIO als S3-kompatibler Objektspeicher im Kontextdiagramm) und arc42-04 (Medienmanagement als hostseitige Querschnittsstrategie) prüfen und ggf. ergänzen
 
 ## 2. Umsetzung
-- [ ] 2.1 Kanonischen Medienvertrag in einem hostseitigen Package modellieren (`packages/media` oder begründete Alternative im Core); `project.json` mit Scope-Tag `scope:core` versehen und `nx.json`-Modulgrenzen um `media`-Package erweitern – **kein Nachholen**, muss im selben PR erfolgen
-- [ ] 2.2 Persistenzmodell für Assets, Varianten, Referenzen, Nutzungsauswertung, Upload-Status und Speicherkontingente mit versionierten Migrationen implementieren
+- [x] 2.1 Kanonischen Medienvertrag in einem hostseitigen Package modellieren (`packages/media` oder begründete Alternative im Core); `project.json` mit Scope-Tag `scope:core` versehen und `nx.json`-Modulgrenzen um `media`-Package erweitern – **kein Nachholen**, muss im selben PR erfolgen
+- [x] 2.2 Persistenzmodell für Assets, Varianten, Referenzen, Nutzungsauswertung, Upload-Status und Speicherkontingente mit versionierten Migrationen implementieren
 - [ ] 2.3 Serverseitige Endpunkte für Upload-Initialisierung, Metadatenpflege, Referenzverwaltung, Verwendungsnachweis und kontrollierte Auslieferung implementieren; Upload- und Download-Schnittstellen gegen MinIO-kompatible Bucket/Object-Key-, ETag-, Content-Type- und signierte-URL-Semantik schneiden
 - [ ] 2.3a Hostseitigen MinIO-Storage-Adapter mit klaren Ports implementieren; dafür ein etabliertes S3-kompatibles SDK verwenden (bevorzugt AWS SDK v3 mit `@aws-sdk/client-s3` und `@aws-sdk/s3-request-presigner`) statt S3-Protokollcode selbst zu bauen. Restlicher Code darf nicht direkt gegen den MinIO-/S3-Client koppeln und darf Bucket-/Object-Keys nicht als fachliche Referenzen speichern.
 - [ ] 2.4 Rollen- und Rechteprüfung für Medienoperationen serverseitig und in der UI integrieren
@@ -37,5 +37,5 @@
   - **Legacy-Bridge:** Tests für den Übergang von URL-basierten News-/Events-/POI-Medienfeldern auf hostseitige Medienreferenzen ohne Datenverlust
   - **E2E-MVP-Scope:** Upload-Flow (Bild hochladen, Metadaten pflegen, Fokuspunkt setzen, Zuschnitt speichern) + Lösch-Blockierungs-Flow
 - [ ] 3.2 Relevante Dokumentation unter `docs/` sowie die betroffenen arc42-Abschnitte (03–11) aktualisieren; folgende Guides als Stubs anlegen: `docs/guides/media-management.md` (Zielgruppe: Redakteure – Upload, Rollen, Nutzungstransparenz) und bestehenden `docs/guides/plugin-development.md` um Medien-Extension-Points und verbotene Direktzugriffe ergänzen
-- [ ] 3.3 ADR-037 für Package-Zuschnitt `packages/media` und MinIO-basierten Storage-/Processing-Vertrag finalisieren (Entwurf aus Task 1.5); in `docs/architecture/09-architecture-decisions.md` verlinken; Querverweis zu ADR-034 (Plugin-SDK-Vertrag) sicherstellen
+- [ ] 3.3 ADR-039 für Package-Zuschnitt `packages/media` und MinIO-basierten Storage-/Processing-Vertrag finalisieren (Entwurf aus Task 1.5); in `docs/architecture/09-architecture-decisions.md` verlinken; Querverweis zu ADR-034 (Plugin-SDK-Vertrag) sicherstellen
 - [ ] 3.4 `openspec validate add-media-management --strict` ausführen

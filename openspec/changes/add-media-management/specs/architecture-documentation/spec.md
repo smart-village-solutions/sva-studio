@@ -30,5 +30,5 @@ Das System SHALL die Architekturwirkung des Medienmanagements in den betroffenen
 #### Scenario: ADR für Package- und Storage-Entscheidungen ist verlinkt
 
 - **WHEN** die Umsetzung startet
-- **THEN** dokumentiert ADR-037 Package-Zuschnitt, Storage-/Processing-Vertrag und Bezug zum Plugin-SDK-Vertrag aus ADR-034
+- **THEN** dokumentiert ADR-039 Package-Zuschnitt, Storage-/Processing-Vertrag und Bezug zum Plugin-SDK-Vertrag aus ADR-034
 - **AND** `docs/architecture/09-architecture-decisions.md` referenziert diese Entscheidung

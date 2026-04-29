@@ -12,9 +12,11 @@ export {
   createIamSeedRepository,
   createInstanceIntegrationRepository,
   createInstanceRegistryRepository,
+  createMediaRepository,
   iamSeedPlan,
   iamSeedStatements,
   instanceIntegrationStatements,
+  mediaStatements,
 } from './public-api.js';
 
 export type {
@@ -26,6 +28,16 @@ export type {
   InstanceIntegrationRepository,
   InstanceRegistryRepository,
   IntegrationProviderKey,
+  MediaAssetListFilter,
+  MediaAssetRecord,
+  MediaReferenceRecord,
+  MediaRepository,
+  MediaStorageUsageRecord,
+  MediaStorageQuotaCheck,
+  MediaStorageQuotaRecord,
+  MediaUploadSessionRecord,
+  MediaUsageImpact,
+  MediaVariantRecord,
   PermissionKey,
   PersonaSeed,
   SqlExecutionResult,

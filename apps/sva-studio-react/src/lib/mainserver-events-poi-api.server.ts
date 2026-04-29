@@ -28,6 +28,8 @@ import type {
 } from '@sva/sva-mainserver';
 import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 
+import { parseMainserverListQuery } from './mainserver-list-pagination.js';
+
 const EVENTS_CONTENT_TYPE = 'events.event-record';
 const POI_CONTENT_TYPE = 'poi.point-of-interest';
 const EVENTS_COLLECTION_PATH = '/api/v1/mainserver/events';
@@ -468,9 +470,13 @@ const dispatchAuthenticated = async (request: Request, route: RouteMatch, ctx: A
       if (actor instanceof Response) {
         return actor;
       }
-      const data = route.contentKind === 'events' ? await listSvaMainserverEvents(actor) : await listSvaMainserverPoi(actor);
+      const listQuery = parseMainserverListQuery(request);
+      const data =
+        route.contentKind === 'events'
+          ? await listSvaMainserverEvents({ ...actor, ...listQuery })
+          : await listSvaMainserverPoi({ ...actor, ...listQuery });
       logSuccess(`mainserver_${route.contentKind}_list`);
-      return json({ data });
+      return json(data);
     }
 
     if (route.kind === 'item' && request.method === 'GET') {

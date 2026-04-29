@@ -45,6 +45,8 @@ import type {
   SvaMainserverConnectionStatus,
   SvaMainserverErrorCode,
   SvaMainserverInstanceConfig,
+  SvaMainserverListQuery,
+  SvaMainserverListResult,
   SvaMainserverAccessibilityInformation,
   SvaMainserverAddress,
   SvaMainserverAnnouncementSummary,
@@ -134,6 +136,7 @@ const DEFAULT_UPSTREAM_TIMEOUT_MS = 10_000;
 const DEFAULT_CACHE_MAX_SIZE = 256;
 const DEFAULT_RETRY_BASE_DELAY_MS = 150;
 const RETRYABLE_STATUS_CODES = new Set([503]);
+const MAX_MAINSERVER_PAGE_SIZE = 100;
 
 const tokenResponseSchema = z.object({
   access_token: z.string().min(1),
@@ -516,6 +519,21 @@ const writeCacheValue = <TValue>(
   });
   pruneCache(cache, nowMs, maxSize);
 };
+
+type SvaMainserverListInput = SvaMainserverConnectionInput & SvaMainserverListQuery;
+
+const toListResult = <TItem>(
+  input: SvaMainserverListInput,
+  data: readonly TItem[],
+  hasNextPage: boolean
+): SvaMainserverListResult<TItem> => ({
+  data,
+  pagination: {
+    page: input.page,
+    pageSize: input.pageSize,
+    hasNextPage,
+  },
+});
 
 const buildForwardHeaders = (): Record<string, string> => {
   const context = getWorkspaceContext();
@@ -1654,22 +1672,79 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
       config
     );
 
+  const listVisibleRecordsWithConfig = async <TQueryResult, TUpstreamItem, TItem>(
+    input: SvaMainserverListInput,
+    config: SvaMainserverInstanceConfig,
+    options: {
+      readonly document: string;
+      readonly operationName: string;
+      readonly order: string;
+      readonly readItems: (response: TQueryResult) => readonly TUpstreamItem[];
+      readonly isVisible: (item: TUpstreamItem) => boolean;
+      readonly mapItem: (item: TUpstreamItem) => TItem;
+    }
+  ): Promise<SvaMainserverListResult<TItem>> => {
+    const startIndex = (input.page - 1) * input.pageSize;
+    const endIndex = startIndex + input.pageSize;
+    const targetVisibleCount = endIndex + 1;
+    const batchSize = Math.min(MAX_MAINSERVER_PAGE_SIZE, input.pageSize + 1);
+    const collectedVisibleItems: TItem[] = [];
+    let skip = 0;
+    let exhausted = false;
+
+    while (collectedVisibleItems.length < targetVisibleCount && exhausted === false) {
+      const response = await executeGraphqlWithConfig<TQueryResult>(
+        {
+          ...input,
+          document: options.document,
+          operationName: options.operationName,
+          variables: { limit: batchSize, skip, order: options.order },
+        },
+        config
+      );
+
+      const upstreamItems = options.readItems(response);
+      exhausted = upstreamItems.length < batchSize;
+      skip += upstreamItems.length;
+
+      for (const item of upstreamItems) {
+        if (options.isVisible(item) === false) {
+          continue;
+        }
+        collectedVisibleItems.push(options.mapItem(item));
+        if (collectedVisibleItems.length >= targetVisibleCount) {
+          break;
+        }
+      }
+
+      if (upstreamItems.length === 0) {
+        break;
+      }
+    }
+
+    return toListResult(
+      input,
+      collectedVisibleItems.slice(startIndex, endIndex),
+      collectedVisibleItems.length > endIndex
+    );
+  };
+
   const listNewsWithConfig = async (
-    input: SvaMainserverConnectionInput,
+    input: SvaMainserverListInput,
     config: SvaMainserverInstanceConfig
-  ): Promise<readonly SvaMainserverNewsItem[]> => {
-    const response = await executeGraphqlWithConfig<SvaMainserverNewsListQuery>(
+  ): Promise<SvaMainserverListResult<SvaMainserverNewsItem>> =>
+    listVisibleRecordsWithConfig<SvaMainserverNewsListQuery, SvaMainserverNewsItemFragment, SvaMainserverNewsItem>(
+      input,
+      config,
       {
-        ...input,
         document: svaMainserverNewsListDocument,
         operationName: 'SvaMainserverNewsList',
-        variables: { limit: 100, skip: 0, order: 'publishedAt_DESC' },
-      },
-      config
+        order: 'publishedAt_DESC',
+        readItems: (response) => response.newsItems ?? [],
+        isVisible: (item) => item.visible !== false,
+        mapItem: mapNewsItem,
+      }
     );
-
-    return (response.newsItems ?? []).filter((item) => item.visible !== false).map(mapNewsItem);
-  };
 
   const getNewsWithConfig = async (
     input: SvaMainserverConnectionInput & { readonly newsId: string },
@@ -1758,21 +1833,21 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
   };
 
   const listEventsWithConfig = async (
-    input: SvaMainserverConnectionInput,
+    input: SvaMainserverListInput,
     config: SvaMainserverInstanceConfig
-  ): Promise<readonly SvaMainserverEventItem[]> => {
-    const response = await executeGraphqlWithConfig<SvaMainserverEventListQuery>(
+  ): Promise<SvaMainserverListResult<SvaMainserverEventItem>> =>
+    listVisibleRecordsWithConfig<SvaMainserverEventListQuery, SvaMainserverEventFragment, SvaMainserverEventItem>(
+      input,
+      config,
       {
-        ...input,
         document: svaMainserverEventListDocument,
         operationName: 'SvaMainserverEventList',
-        variables: { limit: 100, skip: 0, order: 'updatedAt_DESC' },
-      },
-      config
+        order: 'updatedAt_DESC',
+        readItems: (response) => response.eventRecords ?? [],
+        isVisible: (item) => item.visible !== false,
+        mapItem: mapEventItem,
+      }
     );
-
-    return (response.eventRecords ?? []).filter((item) => item.visible !== false).map(mapEventItem);
-  };
 
   const getEventWithConfig = async (
     input: SvaMainserverConnectionInput & { readonly eventId: string },
@@ -1868,21 +1943,21 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
   };
 
   const listPoiWithConfig = async (
-    input: SvaMainserverConnectionInput,
+    input: SvaMainserverListInput,
     config: SvaMainserverInstanceConfig
-  ): Promise<readonly SvaMainserverPoiItem[]> => {
-    const response = await executeGraphqlWithConfig<SvaMainserverPoiListQuery>(
+  ): Promise<SvaMainserverListResult<SvaMainserverPoiItem>> =>
+    listVisibleRecordsWithConfig<SvaMainserverPoiListQuery, SvaMainserverPoiFragment, SvaMainserverPoiItem>(
+      input,
+      config,
       {
-        ...input,
         document: svaMainserverPoiListDocument,
         operationName: 'SvaMainserverPoiList',
-        variables: { limit: 100, skip: 0, order: 'updatedAt_DESC' },
-      },
-      config
+        order: 'updatedAt_DESC',
+        readItems: (response) => response.pointsOfInterest ?? [],
+        isVisible: (item) => item.visible !== false,
+        mapItem: mapPoiItem,
+      }
     );
-
-    return (response.pointsOfInterest ?? []).filter((item) => item.visible !== false).map(mapPoiItem);
-  };
 
   const getPoiWithConfig = async (
     input: SvaMainserverConnectionInput & { readonly poiId: string },
@@ -1961,7 +2036,7 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
     return getMutationRootTypenameWithConfig(input, config);
   };
 
-  const listNews = async (input: SvaMainserverConnectionInput): Promise<readonly SvaMainserverNewsItem[]> => {
+  const listNews = async (input: SvaMainserverListInput): Promise<SvaMainserverListResult<SvaMainserverNewsItem>> => {
     const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
     return listNewsWithConfig(input, config);
   };
@@ -1994,7 +2069,9 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
     return destroyNewsWithConfig(input, config);
   };
 
-  const listEvents = async (input: SvaMainserverConnectionInput): Promise<readonly SvaMainserverEventItem[]> => {
+  const listEvents = async (
+    input: SvaMainserverListInput
+  ): Promise<SvaMainserverListResult<SvaMainserverEventItem>> => {
     const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
     return listEventsWithConfig(input, config);
   };
@@ -2030,7 +2107,7 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
     );
   };
 
-  const listPoi = async (input: SvaMainserverConnectionInput): Promise<readonly SvaMainserverPoiItem[]> => {
+  const listPoi = async (input: SvaMainserverListInput): Promise<SvaMainserverListResult<SvaMainserverPoiItem>> => {
     const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
     return listPoiWithConfig(input, config);
   };
@@ -2160,7 +2237,8 @@ export const getSvaMainserverQueryRootTypename = (input: SvaMainserverConnection
 export const getSvaMainserverMutationRootTypename = (input: SvaMainserverConnectionInput) =>
   getDefaultService().getMutationRootTypename(input);
 
-export const listSvaMainserverNews = (input: SvaMainserverConnectionInput) => getDefaultService().listNews(input);
+export const listSvaMainserverNews = (input: SvaMainserverConnectionInput & SvaMainserverListQuery) =>
+  getDefaultService().listNews(input);
 
 export const getSvaMainserverNews = (input: SvaMainserverConnectionInput & { readonly newsId: string }) =>
   getDefaultService().getNews(input);
@@ -2176,7 +2254,8 @@ export const updateSvaMainserverNews = (
 export const deleteSvaMainserverNews = (input: SvaMainserverConnectionInput & { readonly newsId: string }) =>
   getDefaultService().deleteNews(input);
 
-export const listSvaMainserverEvents = (input: SvaMainserverConnectionInput) => getDefaultService().listEvents(input);
+export const listSvaMainserverEvents = (input: SvaMainserverConnectionInput & SvaMainserverListQuery) =>
+  getDefaultService().listEvents(input);
 
 export const getSvaMainserverEvent = (input: SvaMainserverConnectionInput & { readonly eventId: string }) =>
   getDefaultService().getEvent(input);
@@ -2192,7 +2271,8 @@ export const updateSvaMainserverEvent = (
 export const deleteSvaMainserverEvent = (input: SvaMainserverConnectionInput & { readonly eventId: string }) =>
   getDefaultService().deleteEvent(input);
 
-export const listSvaMainserverPoi = (input: SvaMainserverConnectionInput) => getDefaultService().listPoi(input);
+export const listSvaMainserverPoi = (input: SvaMainserverConnectionInput & SvaMainserverListQuery) =>
+  getDefaultService().listPoi(input);
 
 export const getSvaMainserverPoi = (input: SvaMainserverConnectionInput & { readonly poiId: string }) =>
   getDefaultService().getPoi(input);

@@ -246,9 +246,10 @@ describe('createSvaMainserverService', () => {
       contentBlocks: [{ intro: 'Kurztext', body: '<p>Body</p>' }],
     };
 
-    await expect(service.listNews(connection)).resolves.toEqual([
-      expect.objectContaining({ id: 'news-1', status: 'published', contentType: 'news.article' }),
-    ]);
+    await expect(service.listNews({ ...connection, page: 1, pageSize: 25 })).resolves.toEqual({
+      data: [expect.objectContaining({ id: 'news-1', status: 'published', contentType: 'news.article' })],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false },
+    });
     await expect(service.createNews({ ...connection, news })).resolves.toEqual(expect.objectContaining({ id: 'news-1' }));
     await expect(service.updateNews({ ...connection, newsId: 'news-1', news })).resolves.toEqual(
       expect.objectContaining({ id: 'news-1' })
@@ -260,7 +261,7 @@ describe('createSvaMainserverService', () => {
       .map(([, init]) => JSON.parse(init?.body as string) as { operationName: string; variables?: Record<string, unknown> });
     expect(requestBodies[0]).toMatchObject({
       operationName: 'SvaMainserverNewsList',
-      variables: { limit: 100, skip: 0, order: 'publishedAt_DESC' },
+      variables: { limit: 26, skip: 0, order: 'publishedAt_DESC' },
     });
     expect(requestBodies[2]).toMatchObject({
       operationName: 'SvaMainserverCreateNews',
@@ -300,7 +301,10 @@ describe('createSvaMainserverService', () => {
       payload: item.payload,
     };
 
-    await expect(listSvaMainserverNews(connection)).resolves.toHaveLength(1);
+    await expect(listSvaMainserverNews({ ...connection, page: 1, pageSize: 25 })).resolves.toMatchObject({
+      data: [expect.objectContaining({ id: 'news-1' })],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false },
+    });
     await expect(getSvaMainserverNews({ ...connection, newsId: 'news-1' })).resolves.toMatchObject({ id: 'news-1' });
     await expect(createSvaMainserverNews({ ...connection, news })).resolves.toMatchObject({ id: 'news-1' });
     await expect(updateSvaMainserverNews({ ...connection, newsId: 'news-1', news })).resolves.toMatchObject({
@@ -394,15 +398,18 @@ describe('createSvaMainserverService', () => {
     });
     const connection = { instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' };
 
-    await expect(service.listEvents(connection)).resolves.toEqual([
-      expect.objectContaining({
-        id: 'event-1',
-        contentType: 'events.event-record',
-        categoryName: 'Kultur',
-        contacts: [expect.objectContaining({ email: 'ada@example.test' })],
-        repeatDuration: { startDate: '2026-06-01', endDate: '2026-06-14', everyYear: false },
-      }),
-    ]);
+    await expect(service.listEvents({ ...connection, page: 1, pageSize: 25 })).resolves.toEqual({
+      data: [
+        expect.objectContaining({
+          id: 'event-1',
+          contentType: 'events.event-record',
+          categoryName: 'Kultur',
+          contacts: [expect.objectContaining({ email: 'ada@example.test' })],
+          repeatDuration: { startDate: '2026-06-01', endDate: '2026-06-14', everyYear: false },
+        }),
+      ],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false },
+    });
     await expect(service.getEvent({ ...connection, eventId: 'event-1' })).resolves.toMatchObject({ id: 'event-1' });
     await expect(
       service.createEvent({
@@ -439,15 +446,18 @@ describe('createSvaMainserverService', () => {
     await expect(service.updateEvent({ ...connection, eventId: 'event-1', event: { title: 'Sommerfest', repeat: true, recurring: 'true', recurringType: '1', recurringInterval: '2', recurringWeekdays: ['MO'] } })).resolves.toMatchObject({ id: 'event-1' });
     await expect(service.deleteEvent({ ...connection, eventId: 'event-1' })).resolves.toEqual({ id: 'event-1' });
 
-    await expect(service.listPoi(connection)).resolves.toEqual([
-      expect.objectContaining({
-        id: 'poi-1',
-        contentType: 'poi.point-of-interest',
-        categoryName: 'Freizeit',
-        contact: expect.objectContaining({ email: 'park@example.test' }),
-        certificates: [{ id: 'cert-1', name: 'Familienfreundlich' }],
-      }),
-    ]);
+    await expect(service.listPoi({ ...connection, page: 1, pageSize: 25 })).resolves.toEqual({
+      data: [
+        expect.objectContaining({
+          id: 'poi-1',
+          contentType: 'poi.point-of-interest',
+          categoryName: 'Freizeit',
+          contact: expect.objectContaining({ email: 'park@example.test' }),
+          certificates: [{ id: 'cert-1', name: 'Familienfreundlich' }],
+        }),
+      ],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false },
+    });
     await expect(service.getPoi({ ...connection, poiId: 'poi-1' })).resolves.toMatchObject({ id: 'poi-1' });
     await expect(
       service.createPoi({
@@ -534,7 +544,10 @@ describe('createSvaMainserverService', () => {
     vi.stubGlobal('fetch', fetchImpl);
     const connection = { instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' };
 
-    await expect(listSvaMainserverEvents(connection)).resolves.toHaveLength(1);
+    await expect(listSvaMainserverEvents({ ...connection, page: 1, pageSize: 25 })).resolves.toMatchObject({
+      data: [expect.objectContaining({ id: 'event-1' })],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false },
+    });
     await expect(getSvaMainserverEvent({ ...connection, eventId: 'event-1' })).resolves.toMatchObject({ id: 'event-1' });
     await expect(createSvaMainserverEvent({ ...connection, event: { title: 'Event' } })).resolves.toMatchObject({
       id: 'event-1',
@@ -543,7 +556,10 @@ describe('createSvaMainserverService', () => {
       id: 'event-1',
     });
     await expect(deleteSvaMainserverEvent({ ...connection, eventId: 'event-1' })).resolves.toEqual({ id: 'event-1' });
-    await expect(listSvaMainserverPoi(connection)).resolves.toHaveLength(1);
+    await expect(listSvaMainserverPoi({ ...connection, page: 1, pageSize: 25 })).resolves.toMatchObject({
+      data: [expect.objectContaining({ id: 'poi-1' })],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false },
+    });
     await expect(getSvaMainserverPoi({ ...connection, poiId: 'poi-1' })).resolves.toMatchObject({ id: 'poi-1' });
     await expect(createSvaMainserverPoi({ ...connection, poi: { name: 'POI' } })).resolves.toMatchObject({ id: 'poi-1' });
     await expect(updateSvaMainserverPoi({ ...connection, poiId: 'poi-1', poi: { name: 'POI' } })).resolves.toMatchObject({
@@ -586,21 +602,24 @@ describe('createSvaMainserverService', () => {
     });
 
     await expect(
-      service.listNews({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' })
-    ).resolves.toEqual([
-      expect.objectContaining({
-        id: 'news-1',
-        title: '',
-        payload: expect.objectContaining({
-          teaser: 'Kurztext',
-          body: '<p>Body</p>',
-          externalUrl: 'https://example.test',
+      service.listNews({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1', page: 1, pageSize: 25 })
+    ).resolves.toEqual({
+      data: [
+        expect.objectContaining({
+          id: 'news-1',
+          title: '',
+          payload: expect.objectContaining({
+            teaser: 'Kurztext',
+            body: '<p>Body</p>',
+            externalUrl: 'https://example.test',
+          }),
+          createdAt: publishedAt,
+          updatedAt: publishedAt,
+          publishedAt,
         }),
-        createdAt: publishedAt,
-        updatedAt: publishedAt,
-        publishedAt,
-      }),
-    ]);
+      ],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false },
+    });
   });
 
   it('maps invalid news payloads to an empty payload fallback', async () => {
@@ -874,7 +893,7 @@ describe('createSvaMainserverService', () => {
     });
     const connection = { instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' };
 
-    await expect(service.listNews(connection)).rejects.toMatchObject({
+    await expect(service.listNews({ ...connection, page: 1, pageSize: 25 })).rejects.toMatchObject({
       code: 'invalid_response',
       statusCode: 502,
     });

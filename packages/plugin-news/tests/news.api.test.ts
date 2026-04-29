@@ -57,11 +57,19 @@ describe('news api', () => {
             publishedAt: sampleInput.publishedAt,
           },
         ],
+        pagination: {
+          page: 2,
+          pageSize: 50,
+          hasNextPage: true,
+        },
       }),
     } as Response);
 
-    await expect(listNews()).resolves.toEqual([expect.objectContaining({ id: 'news-1' })]);
-    expect(fetch).toHaveBeenCalledWith('/api/v1/mainserver/news', expect.any(Object));
+    await expect(listNews({ page: 2, pageSize: 50 })).resolves.toEqual({
+      data: [expect.objectContaining({ id: 'news-1' })],
+      pagination: { page: 2, pageSize: 50, hasNextPage: true },
+    });
+    expect(fetch).toHaveBeenCalledWith('/api/v1/mainserver/news?page=2&pageSize=50', expect.any(Object));
   });
 
   it('creates news with idempotency header through the mainserver facade', async () => {
@@ -140,7 +148,7 @@ describe('news api', () => {
       } as Response);
 
     await expect(getNews('news-1')).resolves.toEqual(expect.objectContaining({ id: 'news-1' }));
-    await expect(listNews()).rejects.toThrow('http_503');
+    await expect(listNews({ page: 1, pageSize: 25 })).rejects.toThrow('http_503');
   });
 
   it('uses stable server error envelopes and HTTP fallbacks for failed responses', async () => {
@@ -163,7 +171,7 @@ describe('news api', () => {
       code: 'forbidden',
       message: 'Keine Berechtigung.',
     } satisfies Partial<NewsApiError>);
-    await expect(listNews()).rejects.toMatchObject({
+    await expect(listNews({ page: 1, pageSize: 25 })).rejects.toMatchObject({
       code: 'http_502',
       message: 'http_502',
     } satisfies Partial<NewsApiError>);

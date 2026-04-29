@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, useNavigate, useParams } from '@tanstack/react-router';
+import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import {
   Button,
@@ -13,11 +13,12 @@ import {
   StudioFormSummary,
   StudioLoadingState,
   StudioOverviewPageTemplate,
+  StudioDataTable,
   Textarea,
 } from '@sva/studio-ui-react';
 
 import { createPoi, deletePoi, getPoi, listPoi, PoiApiError, updatePoi } from './poi.api.js';
-import type { PoiContentItem, PoiFormInput } from './poi.types.js';
+import type { PoiContentItem, PoiFormInput, PoiListResult } from './poi.types.js';
 import { validatePoiForm } from './poi.validation.js';
 
 type StatusMessage = {
@@ -103,16 +104,24 @@ const errorMessage = (pt: ReturnType<typeof usePluginTranslation>, error: unknow
 
 export function PoiListPage() {
   const pt = usePluginTranslation('poi');
-  const [items, setItems] = React.useState<readonly PoiContentItem[]>([]);
+  const navigate = useNavigate();
+  const search = useSearch({ strict: false }) as { readonly page?: number; readonly pageSize?: number };
+  const page = typeof search.page === 'number' ? search.page : 1;
+  const pageSize = typeof search.pageSize === 'number' ? search.pageSize : 25;
+  const [result, setResult] = React.useState<PoiListResult>({
+    data: [],
+    pagination: { page, pageSize, hasNextPage: false },
+  });
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     let active = true;
-    listPoi()
+    setLoading(true);
+    listPoi({ page, pageSize })
       .then((data) => {
         if (active) {
-          setItems(data);
+          setResult(data);
           setError(null);
         }
       })
@@ -129,7 +138,7 @@ export function PoiListPage() {
     return () => {
       active = false;
     };
-  }, [pt]);
+  }, [page, pageSize]);
 
   return (
     <StudioOverviewPageTemplate
@@ -137,41 +146,84 @@ export function PoiListPage() {
       description={pt('list.description')}
       primaryAction={
         <Button asChild>
-          <Link to="/plugins/poi/new">{pt('actions.create')}</Link>
+          <Link to="/admin/poi/new">{pt('actions.create')}</Link>
         </Button>
       }
     >
       {loading ? <StudioLoadingState>{pt('messages.loading')}</StudioLoadingState> : null}
       {error ? <StudioErrorState>{error}</StudioErrorState> : null}
-      {!loading && !error && items.length === 0 ? <StudioEmptyState>{pt('empty.title')}</StudioEmptyState> : null}
-      {!loading && !error && items.length > 0 ? (
-        <div className="overflow-hidden rounded-md border border-border">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/60 text-left">
-              <tr>
-                <th className="px-4 py-3 font-medium">{pt('fields.name')}</th>
-                <th className="px-4 py-3 font-medium">{pt('fields.categoryName')}</th>
-                <th className="px-4 py-3 font-medium">{pt('fields.active')}</th>
-                <th className="px-4 py-3 text-right font-medium">{pt('fields.actions')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((item) => (
-                <tr key={item.id} className="border-t border-border">
-                  <td className="px-4 py-3 font-medium">{item.name}</td>
-                  <td className="px-4 py-3">{item.categoryName ?? '—'}</td>
-                  <td className="px-4 py-3">{item.active === false ? '—' : '✓'}</td>
-                  <td className="px-4 py-3 text-right">
-                    <Button asChild variant="outline" size="sm">
-                      <Link to="/plugins/poi/$contentId" params={{ contentId: item.id }}>
-                        {pt('actions.edit')}
-                      </Link>
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {!loading && !error && result.data.length === 0 ? <StudioEmptyState>{pt('empty.title')}</StudioEmptyState> : null}
+      {!loading && !error && result.data.length > 0 ? (
+        <div className="space-y-4">
+          <StudioDataTable
+            ariaLabel={pt('list.title')}
+            labels={{
+              selectionColumn: pt('fields.actions'),
+              actionsColumn: pt('fields.actions'),
+              loading: pt('messages.loading'),
+              selectAllRows: (label) => label,
+              selectRow: ({ label }) => label,
+            }}
+            data={result.data}
+            columns={[
+              { id: 'name', header: pt('fields.name'), cell: (item: PoiContentItem) => item.name },
+              { id: 'categoryName', header: pt('fields.categoryName'), cell: (item: PoiContentItem) => item.categoryName ?? '—' },
+              { id: 'active', header: pt('fields.active'), cell: (item: PoiContentItem) => (item.active === false ? '—' : '✓') },
+            ]}
+            rowActions={(item) => (
+              <Button asChild variant="outline" size="sm">
+                <Link to="/admin/poi/$id" params={{ id: item.id }}>
+                  {pt('actions.edit')}
+                </Link>
+              </Button>
+            )}
+            emptyState={null}
+            getRowId={(item) => item.id}
+            selectionMode="none"
+          />
+          <nav aria-label={pt('pagination.ariaLabel')} className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
+            <p key={result.pagination.page} aria-live="polite" className="animate-pagination-active">
+              {pt('pagination.pageLabel', { page: result.pagination.page })}
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={result.pagination.page <= 1}
+                onClick={() =>
+                  void navigate({
+                    to: '/admin/poi',
+                    search: (current: Record<string, unknown>) => ({
+                      ...current,
+                      page: Math.max(1, result.pagination.page - 1),
+                      pageSize: result.pagination.pageSize,
+                    }),
+                  })
+                }
+              >
+                {pt('pagination.previous')}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={!result.pagination.hasNextPage}
+                onClick={() =>
+                  void navigate({
+                    to: '/admin/poi',
+                    search: (current: Record<string, unknown>) => ({
+                      ...current,
+                      page: result.pagination.page + 1,
+                      pageSize: result.pagination.pageSize,
+                    }),
+                  })
+                }
+              >
+                {pt('pagination.next')}
+              </Button>
+            </div>
+          </nav>
         </div>
       ) : null}
     </StudioOverviewPageTemplate>
@@ -181,8 +233,8 @@ export function PoiListPage() {
 function PoiEditor({ mode }: { readonly mode: 'create' | 'edit' }) {
   const pt = usePluginTranslation('poi');
   const navigate = useNavigate();
-  const params = useParams({ strict: false }) as { readonly contentId?: string };
-  const contentId = params.contentId;
+  const params = useParams({ strict: false }) as { readonly contentId?: string; readonly id?: string };
+  const contentId = params.contentId ?? params.id;
   const [form, setForm] = React.useState<PoiFormInput>(defaultForm);
   const [payloadText, setPayloadText] = React.useState('{}');
   const [loading, setLoading] = React.useState(mode === 'edit');
@@ -255,7 +307,7 @@ function PoiEditor({ mode }: { readonly mode: 'create' | 'edit' }) {
       const saved = mode === 'create' ? await createPoi(compacted) : await updatePoi(contentId as string, compacted);
       setStatus({ kind: 'success', text: mode === 'create' ? pt('messages.createSuccess') : pt('messages.updateSuccess') });
       if (mode === 'create') {
-        await navigate({ to: '/plugins/poi/$contentId', params: { contentId: saved.id } });
+        await navigate({ to: '/admin/poi/$id', params: { id: saved.id } });
       }
     } catch (saveError) {
       setStatus({ kind: 'error', text: errorMessage(pt, saveError, 'messages.saveError') });
@@ -268,7 +320,7 @@ function PoiEditor({ mode }: { readonly mode: 'create' | 'edit' }) {
     }
     try {
       await deletePoi(contentId);
-      await navigate({ to: '/plugins/poi' });
+      await navigate({ to: '/admin/poi' });
     } catch (deleteError) {
       setStatus({ kind: 'error', text: errorMessage(pt, deleteError, 'messages.deleteError') });
     }
@@ -284,7 +336,7 @@ function PoiEditor({ mode }: { readonly mode: 'create' | 'edit' }) {
       description={mode === 'create' ? pt('editor.createDescription') : pt('editor.editDescription')}
       actions={
         <Button asChild variant="outline">
-          <Link to="/plugins/poi">{pt('actions.back')}</Link>
+          <Link to="/admin/poi">{pt('actions.back')}</Link>
         </Button>
       }
     >

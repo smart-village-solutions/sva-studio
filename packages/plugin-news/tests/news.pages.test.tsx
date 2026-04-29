@@ -13,7 +13,10 @@ vi.mock('../src/news.api.js', () => ({
       super(code);
     }
   },
-  listNews: vi.fn(async () => []),
+  listNews: vi.fn(async () => ({
+    data: [],
+    pagination: { page: 1, pageSize: 25, hasNextPage: false },
+  })),
   getNews: vi.fn(async () => ({
     id: 'news-1',
     title: 'Bestehende News',
@@ -40,6 +43,7 @@ vi.mock('../src/news.api.js', () => ({
 
 const navigateMock = vi.fn();
 const paramsMock = vi.fn(() => ({ contentId: 'news-1' }));
+const searchMock = vi.fn(() => ({ page: 1, pageSize: 25 }));
 
 const stubConfirm = (result: boolean) => {
   const confirmMock = vi.fn(() => result);
@@ -55,6 +59,7 @@ vi.mock('@tanstack/react-router', () => ({
   Link: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
   useNavigate: () => navigateMock,
   useParams: () => paramsMock(),
+  useSearch: () => searchMock(),
 }));
 
 describe('NewsListPage', () => {
@@ -67,7 +72,9 @@ describe('NewsListPage', () => {
     vi.clearAllMocks();
     navigateMock.mockReset();
     paramsMock.mockReset();
+    searchMock.mockReset();
     paramsMock.mockReturnValue({ contentId: 'news-1' });
+    searchMock.mockReturnValue({ page: 1, pageSize: 25 });
     window.sessionStorage.clear();
     registerPluginTranslationResolver((key) => {
       const labels: Record<string, string> = {
@@ -89,6 +96,10 @@ describe('NewsListPage', () => {
         'news.messages.errors.networkError': 'Der Mainserver ist nicht erreichbar.',
         'news.empty.title': 'Noch keine News vorhanden',
         'news.empty.description': 'Legen Sie den ersten News-Eintrag an.',
+        'news.pagination.ariaLabel': 'News-Pagination',
+        'news.pagination.previous': 'Zurück',
+        'news.pagination.next': 'Weiter',
+        'news.pagination.pageLabel': 'Seite {{page}}',
         'news.list.title': 'News',
         'news.list.description': 'Verwalten Sie News-Einträge über das Plugin.',
         'news.actions.create': 'News anlegen',
@@ -162,55 +173,61 @@ describe('NewsListPage', () => {
   });
 
   it('renders fetched news rows', async () => {
-    vi.mocked(listNews).mockResolvedValueOnce([
-      {
-        id: 'news-1',
-        title: 'Neuigkeit',
-        contentType: NEWS_CONTENT_TYPE,
-        payload: {
-          teaser: 'Kurztext',
-          body: '<p>Body</p>',
-          category: 'Allgemein',
+    vi.mocked(listNews).mockResolvedValueOnce({
+      data: [
+        {
+          id: 'news-1',
+          title: 'Neuigkeit',
+          contentType: NEWS_CONTENT_TYPE,
+          payload: {
+            teaser: 'Kurztext',
+            body: '<p>Body</p>',
+            category: 'Allgemein',
+          },
+          status: 'published',
+          author: 'Editor',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-02T00:00:00.000Z',
         },
-        status: 'published',
-        author: 'Editor',
-        createdAt: '2026-01-01T00:00:00.000Z',
-        updatedAt: '2026-01-02T00:00:00.000Z',
-      },
-    ]);
+      ],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false },
+    });
 
     render(<NewsListPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('Neuigkeit')).toBeTruthy();
-      expect(screen.getByText('Kurztext')).toBeTruthy();
-      expect(screen.getByText('Bearbeiten')).toBeTruthy();
+      expect(screen.getAllByText('Neuigkeit').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('Kurztext').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('Bearbeiten').length).toBeGreaterThan(0);
     });
   });
 
   it('renders fallback values for missing category and invalid update timestamps', async () => {
-    vi.mocked(listNews).mockResolvedValueOnce([
-      {
-        id: 'news-2',
-        title: 'Meldung',
-        contentType: NEWS_CONTENT_TYPE,
-        payload: {
-          teaser: 'Kurztext',
-          body: '<p>Body</p>',
+    vi.mocked(listNews).mockResolvedValueOnce({
+      data: [
+        {
+          id: 'news-2',
+          title: 'Meldung',
+          contentType: NEWS_CONTENT_TYPE,
+          payload: {
+            teaser: 'Kurztext',
+            body: '<p>Body</p>',
+          },
+          status: 'published',
+          author: 'Editor',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: 'invalid-date',
+          publishedAt: '2026-01-01T00:00:00.000Z',
         },
-        status: 'published',
-        author: 'Editor',
-        createdAt: '2026-01-01T00:00:00.000Z',
-        updatedAt: 'invalid-date',
-        publishedAt: '2026-01-01T00:00:00.000Z',
-      },
-    ]);
+      ],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false },
+    });
 
     render(<NewsListPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('—')).toBeTruthy();
-      expect(screen.getByText('invalid-date')).toBeTruthy();
+      expect(screen.getAllByText('—').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('invalid-date').length).toBeGreaterThan(0);
     });
   });
 

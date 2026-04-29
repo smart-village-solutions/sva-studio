@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, useNavigate, useParams } from '@tanstack/react-router';
+import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import { translatePluginKey, usePluginTranslation } from '@sva/plugin-sdk';
 import {
   Button,
@@ -13,12 +13,13 @@ import {
   StudioFormSummary,
   StudioLoadingState,
   StudioOverviewPageTemplate,
+  StudioDataTable,
   Textarea,
 } from '@sva/studio-ui-react';
 
 import { NewsApiError, createNews, deleteNews, getNews, listNews, updateNews } from './news.api.js';
 import { getPluginNewsActionDefinition, pluginNewsActionIds } from './plugin.js';
-import type { NewsContentBlock, NewsContentItem, NewsFormInput, NewsMediaContent } from './news.types.js';
+import type { NewsContentBlock, NewsContentItem, NewsFormInput, NewsListResult, NewsMediaContent } from './news.types.js';
 import { validateNewsForm } from './news.validation.js';
 
 type StatusMessage = {
@@ -389,7 +390,7 @@ const NewsForm = ({
       if (mode === 'create') {
         await createNews(compactedForm);
         persistFlashMessage('createSuccess');
-        await navigate({ to: '/plugins/news' });
+        await navigate({ to: '/admin/news' });
         return;
       }
 
@@ -416,7 +417,7 @@ const NewsForm = ({
     try {
       await deleteNews(contentId);
       persistFlashMessage('deleteSuccess');
-      await navigate({ to: '/plugins/news' });
+      await navigate({ to: '/admin/news' });
     } catch (error) {
       setStatusMessage({ kind: 'error', text: resolveNewsErrorMessage(pt, error, 'messages.deleteError') });
     } finally {
@@ -816,7 +817,7 @@ const NewsForm = ({
         <div className="flex flex-wrap gap-3">
           <Button type="submit">{submitLabel}</Button>
           <Button asChild variant="outline">
-            <Link to="/plugins/news">{pt('actions.back')}</Link>
+            <Link to="/admin/news">{pt('actions.back')}</Link>
           </Button>
           {mode === 'edit' ? (
             <Button variant="destructive" type="button" onClick={onDelete} disabled={deletePending}>
@@ -873,9 +874,16 @@ const NewsForm = ({
 
 export const NewsListPage = () => {
   const pt = usePluginTranslation('news');
+  const navigate = useNavigate();
+  const search = useSearch({ strict: false }) as { readonly page?: number; readonly pageSize?: number };
   const createLabel = resolvePluginActionLabel(pt, pluginNewsActionIds.create);
   const editLabel = resolvePluginActionLabel(pt, pluginNewsActionIds.edit);
-  const [items, setItems] = React.useState<readonly NewsContentItem[]>([]);
+  const page = typeof search.page === 'number' ? search.page : 1;
+  const pageSize = typeof search.pageSize === 'number' ? search.pageSize : 25;
+  const [result, setResult] = React.useState<NewsListResult>({
+    data: [],
+    pagination: { page, pageSize, hasNextPage: false },
+  });
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [flashMessage, setFlashMessage] = React.useState<FlashMessageCode | null>(null);
@@ -887,10 +895,12 @@ export const NewsListPage = () => {
   React.useEffect(() => {
     let active = true;
 
-    void listNews()
-      .then((response) => {
+    setIsLoading(true);
+    void listNews({ page, pageSize })
+      .then((nextResult) => {
         if (active) {
-          setItems(response);
+          setResult(nextResult);
+          setError(null);
         }
       })
       .catch((error: unknown) => {
@@ -907,7 +917,7 @@ export const NewsListPage = () => {
     return () => {
       active = false;
     };
-  }, []);
+  }, [page, pageSize]);
 
   if (isLoading) {
     return <StudioLoadingState>{pt('messages.loading')}</StudioLoadingState>;
@@ -923,7 +933,7 @@ export const NewsListPage = () => {
       description={pt('list.description')}
       primaryAction={
         <Button asChild>
-          <Link to="/plugins/news/new">{createLabel}</Link>
+          <Link to="/admin/news/new">{createLabel}</Link>
         </Button>
       }
     >
@@ -931,43 +941,103 @@ export const NewsListPage = () => {
         <StudioFormSummary kind="success">{pt(flashMessageTranslationKeys[flashMessage])}</StudioFormSummary>
       ) : null}
 
-      {items.length === 0 ? (
+      {result.data.length === 0 ? (
         <StudioEmptyState>
           <h2 className="text-lg font-medium">{pt('empty.title')}</h2>
           <p className="mt-2 text-sm text-muted-foreground">{pt('empty.description')}</p>
         </StudioEmptyState>
       ) : (
-        <div className="overflow-hidden rounded-lg border border-border bg-card">
-          <table className="min-w-full text-left text-sm">
-            <caption className="sr-only">{pt('list.title')}</caption>
-            <thead className="bg-muted/40 text-muted-foreground">
-              <tr>
-                <th className="px-4 py-3">{pt('fields.title')}</th>
-                <th className="px-4 py-3">{pt('fields.categoryName')}</th>
-                <th className="px-4 py-3">{pt('fields.updatedAt')}</th>
-                <th className="px-4 py-3">{pt('fields.actions')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((item) => (
-                <tr key={item.id} className="border-t border-border">
-                  <td className="px-4 py-3">
+        <div className="space-y-4">
+          <StudioDataTable
+            ariaLabel={pt('list.title')}
+            labels={{
+              selectionColumn: pt('fields.actions'),
+              actionsColumn: pt('fields.actions'),
+              loading: pt('messages.loading'),
+              selectAllRows: (label) => label,
+              selectRow: ({ label }) => label,
+            }}
+            data={result.data}
+            columns={[
+              {
+                id: 'title',
+                header: pt('fields.title'),
+                cell: (item: NewsContentItem) => (
+                  <div>
                     <div className="font-medium">{item.title}</div>
                     <div className="mt-1 line-clamp-2 text-xs text-muted-foreground">{firstBlockSummary(item)}</div>
-                  </td>
-                  <td className="px-4 py-3">{categorySummary(item)}</td>
-                  <td className="px-4 py-3">{formatDate(item.updatedAt)}</td>
-                  <td className="px-4 py-3">
-                    <Button asChild variant="outline" size="sm">
-                      <Link to="/plugins/news/$contentId" params={{ contentId: item.id }}>
-                        {editLabel}
-                      </Link>
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </div>
+                ),
+              },
+              {
+                id: 'categoryName',
+                header: pt('fields.categoryName'),
+                cell: categorySummary,
+              },
+              {
+                id: 'updatedAt',
+                header: pt('fields.updatedAt'),
+                cell: (item: NewsContentItem) => formatDate(item.updatedAt),
+              },
+            ]}
+            rowActions={(item) => (
+              <Button asChild variant="outline" size="sm">
+                <Link to="/admin/news/$id" params={{ id: item.id }}>
+                  {editLabel}
+                </Link>
+              </Button>
+            )}
+            emptyState={null}
+            getRowId={(item) => item.id}
+            selectionMode="none"
+          />
+
+          <nav
+            aria-label={pt('pagination.ariaLabel')}
+            className="flex items-center justify-between gap-3 text-sm text-muted-foreground"
+          >
+            <p key={result.pagination.page} aria-live="polite" className="animate-pagination-active">
+              {pt('pagination.pageLabel', { page: result.pagination.page })}
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={result.pagination.page <= 1}
+                onClick={() =>
+                  void navigate({
+                    to: '/admin/news',
+                    search: (current: Record<string, unknown>) => ({
+                      ...current,
+                      page: Math.max(1, result.pagination.page - 1),
+                      pageSize: result.pagination.pageSize,
+                    }),
+                  })
+                }
+              >
+                {pt('pagination.previous')}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={!result.pagination.hasNextPage}
+                onClick={() =>
+                  void navigate({
+                    to: '/admin/news',
+                    search: (current: Record<string, unknown>) => ({
+                      ...current,
+                      page: result.pagination.page + 1,
+                      pageSize: result.pagination.pageSize,
+                    }),
+                  })
+                }
+              >
+                {pt('pagination.next')}
+              </Button>
+            </div>
+          </nav>
         </div>
       )}
     </StudioOverviewPageTemplate>
@@ -977,8 +1047,8 @@ export const NewsListPage = () => {
 export const NewsCreatePage = () => <NewsForm mode="create" />;
 
 export const NewsEditPage = () => {
-  const params = useParams({ strict: false });
-  const contentId = typeof params.contentId === 'string' ? params.contentId : undefined;
+  const params = useParams({ strict: false }) as { readonly contentId?: string; readonly id?: string };
+  const contentId = typeof params.contentId === 'string' ? params.contentId : typeof params.id === 'string' ? params.id : undefined;
 
   return <NewsForm mode="edit" contentId={contentId} />;
 };

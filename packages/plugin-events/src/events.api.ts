@@ -1,11 +1,7 @@
-import type { EventContentItem, EventFormInput, PoiSelectItem } from './events.types.js';
+import type { EventContentItem, EventFormInput, EventListQuery, EventListResult, PoiSelectItem } from './events.types.js';
 
 type ApiItemResponse<T> = {
   readonly data: T;
-};
-
-type ApiListResponse<T> = {
-  readonly data: readonly T[];
 };
 
 type ApiErrorResponse = {
@@ -54,9 +50,11 @@ const requestJson = async <T>(input: string, init?: RequestInit): Promise<T> => 
   return (await response.json()) as T;
 };
 
-export const listEvents = async (): Promise<readonly EventContentItem[]> => {
-  const response = await requestJson<ApiListResponse<EventContentItem>>('/api/v1/mainserver/events');
-  return response.data;
+const buildListUrl = (basePath: string, query: EventListQuery): string =>
+  `${basePath}?page=${encodeURIComponent(String(query.page))}&pageSize=${encodeURIComponent(String(query.pageSize))}`;
+
+export const listEvents = async (query: EventListQuery): Promise<EventListResult> => {
+  return requestJson<EventListResult>(buildListUrl('/api/v1/mainserver/events', query));
 };
 
 export const getEvent = async (contentId: string): Promise<EventContentItem> => {
@@ -90,6 +88,19 @@ export const deleteEvent = async (contentId: string): Promise<void> => {
 };
 
 export const listPoiForEventSelection = async (): Promise<readonly PoiSelectItem[]> => {
-  const response = await requestJson<ApiListResponse<PoiSelectItem>>('/api/v1/mainserver/poi');
-  return response.data.map((item) => ({ id: item.id, name: item.name }));
+  const items: PoiSelectItem[] = [];
+  let page = 1;
+  let hasNextPage = true;
+
+  while (hasNextPage) {
+    const response = await requestJson<{
+      readonly data: readonly PoiSelectItem[];
+      readonly pagination: EventListResult['pagination'];
+    }>(buildListUrl('/api/v1/mainserver/poi', { page, pageSize: 100 }));
+    items.push(...response.data.map((item) => ({ id: item.id, name: item.name })));
+    hasNextPage = response.pagination.hasNextPage;
+    page += 1;
+  }
+
+  return items;
 };

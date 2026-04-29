@@ -1,4 +1,11 @@
-import type { InstanceRealmMode, InstanceStatus, IamInstanceDetail, IamInstanceListItem } from '@sva/core';
+import type {
+  InstanceRealmMode,
+  InstanceStatus,
+  IamInstanceDetail,
+  IamInstanceListItem,
+  IamTenantIamAxis,
+  IamTenantIamStatus,
+} from '@sva/core';
 import type { InstanceRegistryRepository } from '@sva/data-repositories';
 import type {
   ChangeInstanceStatusInput,
@@ -45,6 +52,12 @@ export type InstanceRegistryService = {
   getKeycloakPreflight(instanceId: string): Promise<KeycloakTenantPreflight | null>;
   planKeycloakProvisioning(instanceId: string): Promise<KeycloakTenantPlan | null>;
   executeKeycloakProvisioning(input: ExecuteInstanceKeycloakProvisioningInput): Promise<KeycloakTenantProvisioningRun | null>;
+  probeTenantIamAccess(input: {
+    instanceId: string;
+    idempotencyKey: string;
+    actorId?: string;
+    requestId?: string;
+  }): Promise<IamTenantIamStatus | null>;
   getKeycloakProvisioningRun(instanceId: string, runId: string): Promise<KeycloakTenantProvisioningRun | null>;
   reconcileKeycloak(input: ReconcileInstanceKeycloakInput): Promise<KeycloakTenantStatus | null>;
   resolveRuntimeInstance(host: string): Promise<ResolveRuntimeInstanceResult>;
@@ -77,4 +90,9 @@ export type InstanceRegistryServiceDeps = {
   readonly getKeycloakPreflight?: (input: KeycloakProvisioningContext) => Promise<KeycloakTenantPreflight>;
   readonly planKeycloakProvisioning?: (input: KeycloakProvisioningContext) => Promise<KeycloakTenantPlan>;
   readonly getKeycloakStatus?: (input: KeycloakProvisioningContext) => Promise<KeycloakTenantStatus>;
+  readonly probeTenantIamAccess?: (input: {
+    instanceId: string;
+    actorId?: string;
+    requestId?: string;
+  }) => Promise<IamTenantIamAxis>;
 };

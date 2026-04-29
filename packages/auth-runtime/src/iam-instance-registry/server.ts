@@ -18,6 +18,7 @@ import {
   getInstanceKeycloakProvisioningRunInternal,
   getInstanceKeycloakStatusInternal,
   planInstanceKeycloakProvisioningInternal,
+  probeTenantIamAccessInternal,
   reconcileInstanceKeycloakInternal,
 } from './core-keycloak.js';
 
@@ -67,6 +68,8 @@ export const instanceRegistryHandlers = {
     withAuthenticatedRegistryHandler(request, executeInstanceKeycloakProvisioningInternal),
   getInstanceKeycloakProvisioningRun: async (request: Request): Promise<Response> =>
     withAuthenticatedRegistryHandler(request, getInstanceKeycloakProvisioningRunInternal),
+  probeTenantIamAccess: async (request: Request): Promise<Response> =>
+    withAuthenticatedRegistryHandler(request, probeTenantIamAccessInternal),
   reconcileInstanceKeycloak: async (request: Request): Promise<Response> =>
     withAuthenticatedRegistryHandler(request, reconcileInstanceKeycloakInternal),
   activateInstance: async (request: Request): Promise<Response> =>

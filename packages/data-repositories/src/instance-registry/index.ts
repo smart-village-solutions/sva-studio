@@ -203,6 +203,20 @@ export type InstanceRegistryRepository = {
     instanceIds: readonly string[]
   ): Promise<Readonly<Record<string, InstanceProvisioningRun | undefined>>>;
   listAuditEvents(instanceId: string): Promise<readonly InstanceAuditEvent[]>;
+  getLatestTenantIamAccessProbe(instanceId: string): Promise<{
+    checkedAt: string;
+    status: 'ready' | 'degraded' | 'blocked' | 'unknown';
+    summary: string;
+    errorCode?: string;
+    requestId?: string;
+  } | null>;
+  getRoleReconcileSummary(instanceId: string): Promise<{
+    status: 'ready' | 'degraded' | 'blocked' | 'unknown';
+    summary: string;
+    checkedAt?: string;
+    errorCode?: string;
+    requestId?: string;
+  } | null>;
   listKeycloakProvisioningRuns(instanceId: string): Promise<readonly InstanceKeycloakProvisioningRun[]>;
   getKeycloakProvisioningRun(instanceId: string, runId: string): Promise<InstanceKeycloakProvisioningRun | null>;
   claimNextKeycloakProvisioningRun(): Promise<InstanceKeycloakProvisioningRun | null>;
@@ -645,6 +659,117 @@ ORDER BY created_at DESC, id DESC;
       )
     );
     return rows.map(mapAuditEvent);
+  },
+
+  async getLatestTenantIamAccessProbe(instanceId) {
+    const rows = await queryRows<{
+      checked_at: string;
+      status: 'ready' | 'degraded' | 'blocked' | 'unknown';
+      summary: string;
+      error_code: string | null;
+      request_id: string | null;
+    }>(
+      executor,
+      statement(
+        `
+SELECT
+  created_at::text AS checked_at,
+  COALESCE(details->>'status', 'unknown') AS status,
+  COALESCE(details->>'summary', 'Keine Rechteprobe vorhanden.') AS summary,
+  details->>'errorCode' AS error_code,
+  COALESCE(details->>'requestId', request_id) AS request_id
+FROM iam.instance_audit_events
+WHERE instance_id = $1
+  AND event_type = 'tenant_iam_access_probed'
+ORDER BY created_at DESC, id DESC
+LIMIT 1;
+`,
+        [instanceId]
+      )
+    );
+    const row = rows[0];
+    if (!row) {
+      return null;
+    }
+    return {
+      checkedAt: row.checked_at,
+      status: row.status,
+      summary: row.summary,
+      ...(row.error_code ? { errorCode: row.error_code } : {}),
+      ...(row.request_id ? { requestId: row.request_id } : {}),
+    };
+  },
+
+  async getRoleReconcileSummary(instanceId) {
+    const aggregateRows = await queryRows<{
+      sync_state: 'synced' | 'pending' | 'failed' | null;
+      role_count: number;
+      failed_count: number;
+      pending_count: number;
+      last_synced_at: string | null;
+      last_error_code: string | null;
+    }>(
+      executor,
+      statement(
+        `
+SELECT
+  CASE
+    WHEN COUNT(*) = 0 THEN NULL
+    WHEN COUNT(*) FILTER (WHERE sync_state = 'failed') > 0 THEN 'failed'
+    WHEN COUNT(*) FILTER (WHERE sync_state = 'pending') > 0 THEN 'pending'
+    ELSE 'synced'
+  END AS sync_state,
+  COUNT(*)::int AS role_count,
+  COUNT(*) FILTER (WHERE sync_state = 'failed')::int AS failed_count,
+  COUNT(*) FILTER (WHERE sync_state = 'pending')::int AS pending_count,
+  MAX(last_synced_at)::text AS last_synced_at,
+  MAX(last_error_code) FILTER (WHERE last_error_code IS NOT NULL) AS last_error_code
+FROM iam.roles
+WHERE instance_id = $1;
+`,
+        [instanceId]
+      )
+    );
+    const aggregate = aggregateRows[0];
+    if (!aggregate?.sync_state || aggregate.role_count === 0) {
+      return null;
+    }
+
+    const correlationRows = await queryRows<{ request_id: string | null; created_at: string }>(
+      executor,
+      statement(
+        `
+SELECT
+  request_id,
+  created_at::text
+FROM iam.activity_logs
+WHERE instance_id = $1
+  AND event_type = 'role.reconciled'
+ORDER BY created_at DESC, id DESC
+LIMIT 1;
+`,
+        [instanceId]
+      )
+    );
+    const correlation = correlationRows[0];
+    const status =
+      aggregate.sync_state === 'failed' ? 'degraded' : aggregate.sync_state === 'pending' ? 'degraded' : 'ready';
+    const summary =
+      aggregate.failed_count > 0 && aggregate.pending_count > 0
+        ? `${aggregate.failed_count} Rollen mit Fehler, ${aggregate.pending_count} Rollen im Backlog.`
+        : aggregate.failed_count > 0
+          ? `${aggregate.failed_count} Rollen mit Fehler.`
+          : aggregate.pending_count > 0
+            ? `${aggregate.pending_count} Rollen im Backlog.`
+            : 'Letzter Rollenabgleich ist synchron.';
+
+    return {
+      status,
+      summary,
+      ...(aggregate.last_synced_at ? { checkedAt: aggregate.last_synced_at } : {}),
+      ...(aggregate.last_error_code ? { errorCode: aggregate.last_error_code } : {}),
+      ...(correlation?.request_id ? { requestId: correlation.request_id } : {}),
+    };
   },
 
   async listKeycloakProvisioningRuns(instanceId) {

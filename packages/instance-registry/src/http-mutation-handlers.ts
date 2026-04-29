@@ -3,6 +3,7 @@ import type { z } from 'zod';
 
 import {
   executeKeycloakProvisioningSchema,
+  probeTenantIamAccessSchema,
   readDetailInstanceId,
   reconcileKeycloakSchema,
   statusMutationSchema,
@@ -11,8 +12,10 @@ import { classifyInstanceMutationError, type InstanceMutationErrorCode } from '.
 import {
   buildChangeInstanceStatusInput,
   buildExecuteInstanceKeycloakProvisioningInput,
+  buildProbeTenantIamAccessInput,
   buildReconcileInstanceKeycloakInput,
   type ExecuteKeycloakProvisioningPayload,
+  type ProbeTenantIamAccessPayload,
   type ReconcileKeycloakPayload,
 } from './mutation-input-builders.js';
 import type { InstanceRegistryService } from './service-types.js';
@@ -194,6 +197,46 @@ export const createInstanceRegistryMutationHttpHandlers = <TContext>(
           return deps.createApiError(404, 'not_found', 'Instanz wurde nicht gefunden.', deps.getRequestId());
         }
         return deps.jsonResponse(200, deps.asApiItem(run, deps.getRequestId()));
+      } catch (error) {
+        return mapMutationError(error);
+      }
+    },
+
+    probeTenantIamAccess: async (request: Request, ctx: TContext): Promise<Response> => {
+      const guardError = requireMutationGuards(deps, request, ctx);
+      if (guardError) {
+        return guardError;
+      }
+
+      const idempotencyKey = requireIdempotencyKeyOrError(deps, request);
+      if (idempotencyKey instanceof Response) {
+        return idempotencyKey;
+      }
+
+      const instanceId = readInstanceIdOrError(deps, request);
+      if (instanceId instanceof Response) {
+        return instanceId;
+      }
+
+      const payloadResult = await deps.parseRequestBody<ProbeTenantIamAccessPayload>(request, probeTenantIamAccessSchema);
+      if (!payloadResult.ok) {
+        return deps.createApiError(400, 'invalid_request', payloadResult.message, deps.getRequestId());
+      }
+
+      try {
+        const status = await deps.withRegistryService((service) =>
+          service.probeTenantIamAccess(
+            buildProbeTenantIamAccessInput(instanceId, {
+              idempotencyKey,
+              actorId: deps.getActor(ctx).id,
+              requestId: deps.getRequestId(),
+            })
+          )
+        );
+        if (!status) {
+          return deps.createApiError(404, 'not_found', 'Instanz wurde nicht gefunden.', deps.getRequestId());
+        }
+        return deps.jsonResponse(200, deps.asApiItem(status, deps.getRequestId()));
       } catch (error) {
         return mapMutationError(error);
       }

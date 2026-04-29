@@ -98,6 +98,12 @@ const createSelectedInstance = (overrides: Record<string, unknown> = {}) => ({
     requestId: 'req-1',
     steps: [],
   },
+  tenantIamStatus: {
+    configuration: { status: 'ready', summary: 'Konfiguration ok', source: 'registry' },
+    access: { status: 'unknown', summary: 'Noch keine Probe', source: 'access_probe' },
+    reconcile: { status: 'degraded', summary: 'Backlog vorhanden', source: 'role_reconcile' },
+    overall: { status: 'degraded', summary: 'Eingeschränkt', source: 'role_reconcile' },
+  },
   ...overrides,
 });
 
@@ -126,6 +132,7 @@ const createInstancesApiState = (overrides: Record<string, unknown> = {}) => ({
   executeKeycloakProvisioning: vi.fn().mockResolvedValue(true),
   loadKeycloakProvisioningRun: vi.fn().mockResolvedValue(true),
   refreshKeycloakStatus: vi.fn().mockResolvedValue(true),
+  probeTenantIamAccess: vi.fn().mockResolvedValue(true),
   reconcileKeycloak: vi.fn().mockResolvedValue(true),
   activateInstance: vi.fn().mockResolvedValue(true),
   suspendInstance: vi.fn().mockResolvedValue(true),
@@ -148,6 +155,7 @@ describe('InstanceDetailPage', () => {
     const refreshKeycloakPreflight = vi.fn().mockResolvedValue(true);
     const planKeycloakProvisioning = vi.fn().mockResolvedValue(true);
     const refreshKeycloakStatus = vi.fn().mockResolvedValue(true);
+    const probeTenantIamAccess = vi.fn().mockResolvedValue(true);
     const executeKeycloakProvisioning = vi.fn().mockResolvedValue(true);
     const activateInstance = vi.fn().mockResolvedValue(true);
 
@@ -158,6 +166,7 @@ describe('InstanceDetailPage', () => {
         refreshKeycloakPreflight,
         planKeycloakProvisioning,
         refreshKeycloakStatus,
+        probeTenantIamAccess,
         executeKeycloakProvisioning,
         activateInstance,
       })
@@ -255,12 +264,14 @@ describe('InstanceDetailPage', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Tenant-Admin-Client bereitstellen' }).at(-1)!);
     fireEvent.click(screen.getAllByRole('button', { name: 'Tenant-Admin neu setzen' }).at(-1)!);
     fireEvent.click(screen.getAllByRole('button', { name: 'Client-Secret rotieren' }).at(-1)!);
+    fireEvent.click(screen.getByRole('button', { name: 'Tenant-IAM-Rechte probeweise prüfen' }));
     fireEvent.click(screen.getByRole('button', { name: 'Aktivieren' }));
 
     expect(refreshKeycloakPreflight).toHaveBeenCalledWith('demo');
     expect(planKeycloakProvisioning).toHaveBeenCalledWith('demo');
     expect(refreshKeycloakStatus).toHaveBeenCalledWith('demo');
     expect(activateInstance).toHaveBeenCalledWith('demo');
+    expect(probeTenantIamAccess).toHaveBeenCalledWith('demo');
     await waitFor(() => {
       expect(executeKeycloakProvisioning.mock.calls).toEqual(
         expect.arrayContaining([
@@ -326,6 +337,27 @@ describe('InstanceDetailPage', () => {
     await waitFor(() => {
       expect(refreshKeycloakPreflight).toHaveBeenCalledWith('demo');
     });
+  });
+
+  it('renders a separate tenant IAM operations block', async () => {
+    useInstancesMock.mockReturnValue(
+      createInstancesApiState({
+        selectedInstance: createSelectedInstance({
+          tenantIamStatus: {
+            configuration: { status: 'ready', summary: 'Konfiguration ok', source: 'registry' },
+            access: { status: 'unknown', summary: 'Noch keine Probe', source: 'access_probe' },
+            reconcile: { status: 'degraded', summary: 'Backlog vorhanden', source: 'role_reconcile' },
+            overall: { status: 'degraded', summary: 'Eingeschränkt', source: 'role_reconcile' },
+          },
+        }),
+      })
+    );
+
+    render(<InstanceDetailPage instanceId="demo" />);
+
+    expect(screen.getByText('Tenant-IAM-Betrieb')).toBeTruthy();
+    expect(screen.getByText('Noch keine Probe')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Tenant-IAM-Rechte probeweise prüfen' })).toBeTruthy();
   });
 
   it('keeps the tenant secret field read-only for new realms and marks generation as pending', () => {

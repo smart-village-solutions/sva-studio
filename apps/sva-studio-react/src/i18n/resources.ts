@@ -664,6 +664,7 @@ export const i18nResources = {
           planProvisioning: 'Provisioning-Vorschau laden',
           executeProvisioning: 'Provisioning ausführen',
           provisionAdminClient: 'Tenant-Admin-Client bereitstellen',
+          probeTenantIamAccess: 'Tenant-IAM-Rechte probeweise prüfen',
           reconcileKeycloak: 'Realm anwenden',
           resetTenantAdmin: 'Tenant-Admin neu setzen',
           rotateClientSecret: 'Client-Secret rotieren',
@@ -676,6 +677,16 @@ export const i18nResources = {
           passwordHint: 'Das Passwort wird nur für diesen Bootstrap verwendet und nicht in Studio gespeichert.',
           rotateClientSecret: 'Tenant-Client-Secret beim Reconcile erneut in Keycloak setzen',
           empty: 'Es liegen noch keine Keycloak-Statusdaten für diese Instanz vor.',
+        },
+        tenantIam: {
+          title: 'Tenant-IAM-Betrieb',
+          subtitle: 'Getrennte Sicht auf Konfiguration, Rechteprobe und Rollenabgleich der Instanz.',
+          requestId: 'Request-ID: {{value}}',
+          axes: {
+            configuration: 'Konfiguration',
+            access: 'Rechteprobe',
+            reconcile: 'Reconcile',
+          },
         },
         wizard: {
           steps: {
@@ -2618,6 +2629,7 @@ export const i18nResources = {
           planProvisioning: 'Load provisioning preview',
           executeProvisioning: 'Execute provisioning',
           provisionAdminClient: 'Provision tenant admin client',
+          probeTenantIamAccess: 'Probe tenant IAM access',
           reconcileKeycloak: 'Apply realm',
           resetTenantAdmin: 'Reset tenant admin',
           rotateClientSecret: 'Rotate client secret',
@@ -2630,6 +2642,16 @@ export const i18nResources = {
           passwordHint: 'The password is used only for this bootstrap and is not stored in Studio.',
           rotateClientSecret: 'Push the tenant client secret to Keycloak again during reconcile',
           empty: 'No Keycloak status data is available for this instance yet.',
+        },
+        tenantIam: {
+          title: 'Tenant IAM operations',
+          subtitle: 'Separate view of configuration, access probe, and reconciliation for this instance.',
+          requestId: 'Request id: {{value}}',
+          axes: {
+            configuration: 'Configuration',
+            access: 'Access probe',
+            reconcile: 'Reconcile',
+          },
         },
         wizard: {
           steps: {

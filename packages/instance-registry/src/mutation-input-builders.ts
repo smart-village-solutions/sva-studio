@@ -4,6 +4,7 @@ import type {
   ChangeInstanceStatusInput,
   CreateInstanceProvisioningInput,
   ExecuteInstanceKeycloakProvisioningInput,
+  ProbeTenantIamAccessInput,
   ReconcileInstanceKeycloakInput,
   UpdateInstanceInput,
 } from './mutation-types.js';
@@ -56,6 +57,8 @@ export type ExecuteKeycloakProvisioningPayload = {
   readonly intent: IamInstanceKeycloakProvisioningRun['intent'];
   readonly tenantAdminTemporaryPassword?: string;
 };
+
+export type ProbeTenantIamAccessPayload = Record<string, never>;
 
 export const buildCreateInstanceProvisioningInput = (
   payload: CreateInstancePayload,
@@ -137,4 +140,14 @@ export const buildExecuteInstanceKeycloakProvisioningInput = (
   requestId: context.requestId,
   intent: payload.intent,
   tenantAdminTemporaryPassword: payload.tenantAdminTemporaryPassword,
+});
+
+export const buildProbeTenantIamAccessInput = (
+  instanceId: string,
+  context: IdempotentInstanceMutationContext
+): ProbeTenantIamAccessInput => ({
+  idempotencyKey: context.idempotencyKey,
+  instanceId,
+  actorId: context.actorId,
+  requestId: context.requestId,
 });

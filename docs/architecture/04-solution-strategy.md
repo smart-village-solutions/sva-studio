@@ -143,6 +143,13 @@ Referenzen:
 - `manual_review` bleibt bewusst ein fachlicher Restzustand für nicht deterministisch behebbaren Abgleich; technische Fehler wie `IDP_UNAVAILABLE` und `IDP_FORBIDDEN` bleiben getrennt sichtbar.
 - Browser- und UI-Verträge behalten `classification`, `requestId` und `safeDetails` vollständig, damit Diagnose, Operator-Handlung und Fachzustand nicht auseinanderlaufen.
 
+### Fortschreibung 2026-04: Tenant-IAM-Betriebsstatus auf der Instanz-Detailseite
+
+- Die Instanz-Detailseite bleibt der führende Root-Host-Bedienpunkt für tenantbezogene IAM-Betriebsdiagnostik; sie ergänzt den bestehenden Registry- und Provisioning-Blick um den separaten Fachvertrag `tenantIamStatus`.
+- `tenantIamStatus` trennt bewusst zwischen Struktur-/Konfigurationssicht (`configuration`) und operativer Rechte- und Reconcile-Sicht (`access`, `reconcile`), damit ein grüner Provisioning-Befund keinen operativen Tenant-IAM-Fehler überdeckt.
+- Tenant-IAM-Diagnostik bleibt on-demand und fail-closed: die Detailseite löst keine automatische Rechteprobe aus, erlaubt aber eine explizite read-only Access-Probe gegen den tenantlokalen Admin-Client.
+- Normale Tenant-Reconcile-Läufe verwenden strategisch keinen Plattform- oder Root-Fallback mehr; fehlende Tenant-Admin-Rechte oder Konfigurationsdrift bleiben als eigener Tenant-IAM-Befund sichtbar.
+
 ### Fortschreibung 2026-04: Registrierungsvertrag für Admin-Ressourcen
 
 - CRUD-artige Admin-Flächen werden strategisch nicht mehr als lose Einzelrouten im Host verdrahtet, sondern über einen deklarativen Admin-Ressourcenvertrag aus Workspace-Packages beschrieben.

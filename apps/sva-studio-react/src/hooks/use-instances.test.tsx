@@ -17,6 +17,7 @@ const getInstanceKeycloakPreflightMock = vi.fn();
 const getInstanceKeycloakProvisioningRunMock = vi.fn();
 const planInstanceKeycloakProvisioningMock = vi.fn();
 const executeInstanceKeycloakProvisioningMock = vi.fn();
+const probeTenantIamAccessMock = vi.fn();
 const createInstanceMock = vi.fn();
 const updateInstanceMock = vi.fn();
 const reconcileInstanceKeycloakMock = vi.fn();
@@ -55,6 +56,7 @@ vi.mock('../lib/iam-api', () => ({
   getInstanceKeycloakProvisioningRun: (...args: unknown[]) => getInstanceKeycloakProvisioningRunMock(...args),
   planInstanceKeycloakProvisioning: (...args: unknown[]) => planInstanceKeycloakProvisioningMock(...args),
   executeInstanceKeycloakProvisioning: (...args: unknown[]) => executeInstanceKeycloakProvisioningMock(...args),
+  probeTenantIamAccess: (...args: unknown[]) => probeTenantIamAccessMock(...args),
   createInstance: (...args: unknown[]) => createInstanceMock(...args),
   updateInstance: (...args: unknown[]) => updateInstanceMock(...args),
   reconcileInstanceKeycloak: (...args: unknown[]) => reconcileInstanceKeycloakMock(...args),
@@ -121,6 +123,14 @@ describe('useInstances', () => {
     });
     executeInstanceKeycloakProvisioningMock.mockResolvedValue({
       data: null,
+    });
+    probeTenantIamAccessMock.mockResolvedValue({
+      data: {
+        configuration: { status: 'ready', summary: 'ok', source: 'registry' },
+        access: { status: 'blocked', summary: 'forbidden', source: 'access_probe', requestId: 'req-probe-1' },
+        reconcile: { status: 'unknown', summary: 'unknown', source: 'role_reconcile' },
+        overall: { status: 'blocked', summary: 'blocked', source: 'access_probe', requestId: 'req-probe-1' },
+      },
     });
     createInstanceMock.mockResolvedValue({
       data: {
@@ -218,6 +228,7 @@ describe('useInstances', () => {
         authRealm: 'demo',
         authClientId: 'sva-studio',
       });
+      await result.current.probeTenantIamAccess('demo');
       await result.current.reconcileKeycloak('demo', { rotateClientSecret: true });
       await result.current.activateInstance('demo');
       await result.current.suspendInstance('demo');
@@ -226,6 +237,7 @@ describe('useInstances', () => {
 
     expect(createInstanceMock).toHaveBeenCalledTimes(1);
     expect(updateInstanceMock).toHaveBeenCalledTimes(1);
+    expect(probeTenantIamAccessMock).toHaveBeenCalledTimes(1);
     expect(reconcileInstanceKeycloakMock).toHaveBeenCalledTimes(1);
     expect(activateInstanceMock).toHaveBeenCalledTimes(1);
     expect(suspendInstanceMock).toHaveBeenCalledTimes(1);
@@ -236,6 +248,39 @@ describe('useInstances', () => {
       expect.objectContaining({
         operation: 'archive_instance',
         instance_id: 'demo',
+      })
+    );
+  });
+
+  it('merges tenant IAM status from explicit access probes into the selected instance', async () => {
+    const { result } = renderHook(() => useInstances());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    await act(async () => {
+      await result.current.loadInstance('demo');
+    });
+
+    await act(async () => {
+      const status = await result.current.probeTenantIamAccess('demo');
+      expect(status).toEqual(
+        expect.objectContaining({
+          access: expect.objectContaining({
+            status: 'blocked',
+            requestId: 'req-probe-1',
+          }),
+        })
+      );
+    });
+
+    expect(result.current.selectedInstance?.tenantIamStatus).toEqual(
+      expect.objectContaining({
+        access: expect.objectContaining({
+          status: 'blocked',
+          requestId: 'req-probe-1',
+        }),
       })
     );
   });

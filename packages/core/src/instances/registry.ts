@@ -73,7 +73,8 @@ export type InstanceAuditEvent = {
     | 'instance_activated'
     | 'instance_suspended'
     | 'instance_archived'
-    | 'instance_reconfigured';
+    | 'instance_reconfigured'
+    | 'tenant_iam_access_probed';
   readonly actorId?: string;
   readonly requestId?: string;
   readonly details: Readonly<Record<string, unknown>>;

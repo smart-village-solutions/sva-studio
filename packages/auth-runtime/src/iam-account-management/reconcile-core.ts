@@ -6,7 +6,7 @@ import {
 
 import {
   emitRoleAuditEvent,
-  resolveIdentityProvider,
+  resolveIdentityProviderForInstance,
   setRoleDriftBacklog,
   setRoleSyncState,
   trackKeycloakCall,
@@ -15,7 +15,7 @@ import {
 
 const roleCatalogReconciliationDeps: RoleCatalogReconciliationDeps = {
   emitRoleAuditEvent,
-  resolveIdentityProvider,
+  resolveIdentityProviderForInstance,
   setRoleDriftBacklog,
   setRoleSyncState,
   trackKeycloakCall,

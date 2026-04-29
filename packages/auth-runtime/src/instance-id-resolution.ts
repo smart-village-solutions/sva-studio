@@ -1,6 +1,9 @@
 import type { Pool, PoolClient } from 'pg';
+import { createSdkLogger } from '@sva/server-runtime';
 
 import type { QueryClient } from './db.js';
+
+const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
 
 const readString = (value: unknown): string | undefined => {
   if (typeof value !== 'string') {
@@ -78,7 +81,12 @@ RETURNING id;
       return { ok: false, reason: 'invalid_instance' };
     }
     return { ok: true, instanceId: createdId, fromInstanceKey: false, created: true };
-  } catch {
+  } catch (error) {
+    logger.warn('Instance ID resolution failed', {
+      candidate: rawValue,
+      reason_code: 'instance_id_resolution_failed',
+      error_type: error instanceof Error ? error.constructor.name : typeof error,
+    });
     return { ok: false, reason: 'database_unavailable' };
   } finally {
     client.release();

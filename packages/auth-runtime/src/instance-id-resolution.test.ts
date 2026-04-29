@@ -1,5 +1,15 @@
 import { describe, expect, it, vi } from 'vitest';
 
+const mocks = vi.hoisted(() => ({
+  logger: {
+    warn: vi.fn(),
+  },
+}));
+
+vi.mock('@sva/server-runtime', () => ({
+  createSdkLogger: () => mocks.logger,
+}));
+
 import { resolveInstanceId } from './instance-id-resolution.js';
 
 const createPool = (query: ReturnType<typeof vi.fn>) => {
@@ -14,6 +24,25 @@ const createPool = (query: ReturnType<typeof vi.fn>) => {
 };
 
 describe('instance id resolution', () => {
+  it('logs database failures before returning database_unavailable', async () => {
+    const failingPool = createPool(vi.fn().mockRejectedValueOnce(new Error('database down')));
+
+    await expect(resolveInstanceId({ resolvePool: () => failingPool, candidate: 'tenant-a' })).resolves.toEqual({
+      ok: false,
+      reason: 'database_unavailable',
+    });
+
+    expect(mocks.logger.warn).toHaveBeenCalledWith(
+      'Instance ID resolution failed',
+      expect.objectContaining({
+        candidate: 'tenant-a',
+        reason_code: 'instance_id_resolution_failed',
+        error_type: 'Error',
+      })
+    );
+    expect(failingPool.release).toHaveBeenCalledWith();
+  });
+
   it('rejects missing or blank instance candidates before touching the database', async () => {
     const resolvePool = vi.fn(() => null);
 

@@ -1,5 +1,15 @@
 import { describe, expect, it, vi } from 'vitest';
 
+const state = vi.hoisted(() => ({
+  fallbackLogger: {
+    error: vi.fn(),
+  },
+}));
+
+vi.mock('@sva/server-runtime', () => ({
+  createSdkLogger: () => state.fallbackLogger,
+}));
+
 import {
   createRoutingDiagnosticsLogger,
   emitRoutingDiagnostic,
@@ -25,6 +35,16 @@ describe('emitRoutingDiagnostic', () => {
         throw new Error('diagnostics failed');
       }, testEvent)
     ).not.toThrow();
+
+    expect(state.fallbackLogger.error).toHaveBeenCalledWith(
+      'Routing diagnostics hook failed',
+      expect.objectContaining({
+        event: 'routing.guard.access_denied',
+        route: '/account',
+        error_type: 'Error',
+        error_message: 'diagnostics failed',
+      })
+    );
   });
 
   it('supports synchronous diagnostics hooks without promise handling', () => {
@@ -40,6 +60,16 @@ describe('emitRoutingDiagnostic', () => {
     ).not.toThrow();
 
     await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(state.fallbackLogger.error).toHaveBeenCalledWith(
+      'Routing diagnostics hook failed',
+      expect.objectContaining({
+        event: 'routing.guard.access_denied',
+        route: '/account',
+        error_type: 'Error',
+        error_message: 'diagnostics failed',
+      })
+    );
   });
 });
 

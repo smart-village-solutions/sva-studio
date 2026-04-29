@@ -4,12 +4,17 @@ const mocks = vi.hoisted(() => ({
   getInstanceConfig: vi.fn(),
   isCanonicalAuthHost: vi.fn(),
   loadInstanceByHostname: vi.fn(),
+  logger: {
+    debug: vi.fn(),
+    warn: vi.fn(),
+  },
 }));
 
 vi.mock('@sva/server-runtime', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@sva/server-runtime')>();
   return {
     ...actual,
+    createSdkLogger: () => mocks.logger,
     getInstanceConfig: mocks.getInstanceConfig,
     isCanonicalAuthHost: mocks.isCanonicalAuthHost,
   };
@@ -106,6 +111,41 @@ describe('auth return-to handling', () => {
       sanitizeAuthReturnTo(request(), 'https://auth.example.test:9443/account', { defaultPath: '/' })
     ).resolves.toBe('https://auth.example.test:9443/account');
     expect(mocks.isCanonicalAuthHost).toHaveBeenCalledWith('auth.example.test');
+  });
+
+  it('falls back and logs when tenant registry validation fails for an absolute return target', async () => {
+    mocks.getInstanceConfig.mockReturnValue({
+      parentDomain: 'example.test',
+      canonicalAuthHost: 'auth.example.test',
+    });
+    mocks.isCanonicalAuthHost.mockReturnValue(false);
+    mocks.loadInstanceByHostname.mockRejectedValueOnce(new Error('db down'));
+
+    await expect(
+      sanitizeAuthReturnTo(request(), 'https://tenant.example.test/dashboard', { defaultPath: '/home' })
+    ).resolves.toBe('/home');
+
+    expect(mocks.logger.warn).toHaveBeenCalledWith(
+      'Tenant absolute return target validation failed',
+      expect.objectContaining({
+        hostname: 'tenant.example.test',
+        reason_code: 'tenant_return_to_lookup_failed',
+        error_type: 'Error',
+      })
+    );
+  });
+
+  it('falls back and logs when the absolute return target is not a valid URL', async () => {
+    await expect(sanitizeAuthReturnTo(request(), 'https://tenant example.test/dashboard', { defaultPath: '/home' })).resolves.toBe(
+      '/home'
+    );
+
+    expect(mocks.logger.debug).toHaveBeenCalledWith(
+      'Absolute return target URL is invalid',
+      expect.objectContaining({
+        reason_code: 'invalid_return_to_url',
+      })
+    );
   });
 
   it('resolves the effective request host through the shared host parser', () => {

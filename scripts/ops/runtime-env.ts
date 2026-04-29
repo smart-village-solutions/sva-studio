@@ -2597,7 +2597,7 @@ const doctorRuntime = async (runtimeProfile: RuntimeProfile, env: NodeJS.Process
   return finalizeDoctorReport(runtimeProfile, checks);
 };
 
-const assertLoginFlow = async (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => {
+export const assertLoginFlow = async (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => {
   const loginUrl = new URL('/auth/login', env.SVA_PUBLIC_BASE_URL ?? 'http://localhost:3000').toString();
   const response = await fetch(loginUrl, { redirect: 'manual' });
   const location = response.headers.get('location') ?? '';
@@ -2611,7 +2611,7 @@ const assertLoginFlow = async (runtimeProfile: RuntimeProfile, env: NodeJS.Proce
   }
 
   if (response.status !== 302 || !isExpectedOidcRedirect(location, env)) {
-    throw new Error(`OIDC-Login redirect stimmt nicht. Erhalten ${location}`);
+    throw new Error(`OIDC-Login redirect stimmt nicht. Erhalten Status ${response.status} mit Location ${location}`);
   }
 };
 

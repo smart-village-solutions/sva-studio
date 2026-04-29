@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  assertLoginFlow,
   buildStudioImageVerifyEvidenceCheck,
   readStudioImageVerifyEvidence,
   resolveTenantRuntimeTargets,
@@ -104,6 +105,30 @@ describe('shouldRetryInternalVerify', () => {
     });
 
     expect(shouldRetry).toBe(false);
+  });
+});
+
+describe('assertLoginFlow', () => {
+  it('includes the HTTP status when login warmup returns a non-redirect response', async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response('<html><body><h1>404 Not Found</h1></body></html>', {
+        status: 404,
+        headers: {
+          'content-type': 'text/html',
+        },
+      }),
+    );
+
+    try {
+      await expect(
+        assertLoginFlow('studio', {
+          SVA_PUBLIC_BASE_URL: 'https://studio.smart-village.app',
+        }),
+      ).rejects.toThrow('Status 404');
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 });
 

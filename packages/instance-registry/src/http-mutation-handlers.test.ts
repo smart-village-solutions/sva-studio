@@ -162,6 +162,7 @@ describe('http mutation handlers', () => {
     );
 
     expect(response.status).toBe(200);
+    expect(deps.requireFreshReauth).not.toHaveBeenCalled();
     expect(probeTenantIamAccess).toHaveBeenCalledWith(
       expect.objectContaining({
         instanceId: 'inst-1',
@@ -173,6 +174,19 @@ describe('http mutation handlers', () => {
       access: { status: 'blocked', requestId: 'req-probe-1' },
       overall: { status: 'blocked', requestId: 'req-probe-1' },
     });
+  });
+
+  it('keeps fresh reauth enforcement for reconcile mutations', async () => {
+    vi.mocked(deps.requireFreshReauth).mockReturnValueOnce(new Response('reauth', { status: 403 }));
+    const handlers = createInstanceRegistryMutationHttpHandlers(deps);
+
+    const response = await handlers.reconcileInstanceKeycloak(
+      new Request('http://localhost/api/instances/inst-1/keycloak/reconcile'),
+      { userId: 'u-1' }
+    );
+
+    expect(response.status).toBe(403);
+    expect(deps.parseRequestBody).not.toHaveBeenCalled();
   });
 
   it('mutateInstanceStatus rejects mismatched status payloads', async () => {

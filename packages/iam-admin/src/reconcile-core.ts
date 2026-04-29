@@ -120,6 +120,7 @@ const ROLE_RECONCILE_ALIASES: Readonly<Record<string, RoleReconcileAlias>> = {
 };
 
 const BUILTIN_REALM_ROLE_NAMES = new Set(['offline_access', 'uma_authorization']);
+const NON_TENANT_CATALOG_REALM_ROLE_NAMES = new Set(['instance_registry_admin', 'realm_account_admin']);
 
 const readRoleAttribute = (
   attributes: Readonly<Record<string, readonly string[]>> | undefined,
@@ -168,6 +169,12 @@ const isPotentialStudioManagedRealmRole = (role: IdentityRole): boolean => {
   }
 
   if (BUILTIN_REALM_ROLE_NAMES.has(role.externalName)) {
+    return false;
+  }
+
+  // Some realm roles may exist in tenant realms for platform or Keycloak-native
+  // authorization, but they are not part of the tenant role catalog.
+  if (NON_TENANT_CATALOG_REALM_ROLE_NAMES.has(role.externalName)) {
     return false;
   }
 
@@ -509,8 +516,8 @@ const reconcileManagedIdentityRoles = async (input: {
   managedIdpRoles: readonly IdentityRole[];
   dbByExternalName: ReadonlyMap<string, ManagedRoleRow>;
   dbByRoleKey: ReadonlyMap<string, ManagedRoleRow>;
-  matchedIdentityExternalNames: ReadonlySet<string>;
-  matchedIdentityRoleKeys: ReadonlySet<string>;
+  matchedIdentityExternalNames: Set<string>;
+  matchedIdentityRoleKeys: Set<string>;
   entries: ReconcileRoleEntry[];
   importFailures: Array<{
     roleKey?: string;
@@ -628,6 +635,8 @@ RETURNING id;
 
         return { roleId };
       });
+      input.matchedIdentityExternalNames.add(identityRole.externalName);
+      input.matchedIdentityRoleKeys.add(importableMetadata.roleKey);
       appendReconcileEntry(input.entries, {
         roleId: importedRole.roleId,
         roleKey: importableMetadata.roleKey,

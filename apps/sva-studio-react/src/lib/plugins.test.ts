@@ -50,6 +50,12 @@ vi.mock('@sva/plugin-news', () => ({
         legacyAliases: ['create'],
       },
     ],
+    contentTypes: [
+      {
+        contentType: 'news.article',
+        displayName: 'News',
+      },
+    ],
     permissions: [
       { id: 'news.read', titleKey: 'news.permissions.read' },
       { id: 'news.create', titleKey: 'news.permissions.create' },
@@ -63,6 +69,12 @@ vi.mock('@sva/plugin-events', () => ({
     displayName: 'Events',
     routes: [],
     actions: [],
+    contentTypes: [
+      {
+        contentType: 'events.event-record',
+        displayName: 'Events',
+      },
+    ],
     adminResources: [
       {
         resourceId: 'events.content',
@@ -93,6 +105,12 @@ vi.mock('@sva/plugin-poi', () => ({
     displayName: 'POI',
     routes: [],
     actions: [],
+    contentTypes: [
+      {
+        contentType: 'poi.point-of-interest',
+        displayName: 'POI',
+      },
+    ],
     adminResources: [
       {
         resourceId: 'poi.content',

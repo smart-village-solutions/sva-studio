@@ -2,7 +2,6 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { t } from '../../../i18n';
 import { InstanceDetailPage } from './-instance-detail-page';
 
 const useInstancesMock = vi.fn();
@@ -178,20 +177,15 @@ describe('InstanceDetailPage', () => {
       expect(loadInstance).toHaveBeenCalledWith('demo');
     });
 
-    expect(screen.getByText(t('admin.instances.configuration.title'))).toBeTruthy();
-    expect(screen.getByText(t('admin.instances.configuration.summary.complete.title'))).toBeTruthy();
-    expect(
-      screen.getByText(
-        t('admin.instances.configuration.labels.requirementsValue', {
-          satisfied: 13,
-          total: 13,
-        })
-      )
-    ).toBeTruthy();
-    expect(screen.getByText('Instanz gespeichert, aber noch nicht betriebsbereit')).toBeTruthy();
-    expect(screen.getByText('Was ist noch offen?')).toBeTruthy();
-    expect(screen.getByText('Provisioning ist erfolgreich. Die Instanz kann jetzt aktiviert werden.')).toBeTruthy();
-    expect(screen.getByText('Runtime nutzt Tenant-Secret')).toBeTruthy();
+    expect(screen.getByText('Operativer Überblick')).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'Konfiguration' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'Betrieb' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'Historie' })).toBeTruthy();
+    expect(screen.getByText('Dominante Evidenz')).toBeTruthy();
+    expect(screen.getByText('Nächste empfohlene Aktion')).toBeTruthy();
+    expect(screen.getAllByRole('button', { name: 'Aktivieren' }).length).toBeGreaterThan(0);
+    expect(screen.getByText('Tenant-IAM-Zugriff')).toBeTruthy();
+    expect(screen.getByText('Tenant-IAM-Reconcile')).toBeTruthy();
 
     fireEvent.change(screen.getByLabelText('Anzeigename', { selector: '#detail-display-name' }), {
       target: { value: ' Demo Updated ' },
@@ -220,9 +214,14 @@ describe('InstanceDetailPage', () => {
     fireEvent.change(screen.getByLabelText('Admin-Benutzername', { selector: '#detail-admin-username' }), {
       target: { value: ' updated-admin ' },
     });
+    fireEvent.click(screen.getByRole('tab', { name: 'Betrieb' }));
+    await waitFor(() => {
+      expect(screen.getByLabelText('Temporäres Admin-Passwort')).toBeTruthy();
+    });
     fireEvent.change(screen.getByLabelText('Temporäres Admin-Passwort'), {
       target: { value: ' test-temp-password ' },
     });
+    fireEvent.click(screen.getByRole('tab', { name: 'Konfiguration' }));
     fireEvent.click(screen.getByRole('button', { name: 'Instanz speichern' }));
 
     await waitFor(() => {
@@ -257,6 +256,7 @@ describe('InstanceDetailPage', () => {
       ).toBe('');
     });
 
+    fireEvent.click(screen.getByRole('tab', { name: 'Betrieb' }));
     fireEvent.click(screen.getAllByRole('button', { name: 'Vorbedingungen prüfen' })[0]);
     fireEvent.click(screen.getAllByRole('button', { name: 'Keycloak-Status prüfen' })[0]);
     fireEvent.click(screen.getAllByRole('button', { name: 'Provisioning-Vorschau laden' })[0]);
@@ -265,7 +265,7 @@ describe('InstanceDetailPage', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Tenant-Admin neu setzen' }).at(-1)!);
     fireEvent.click(screen.getAllByRole('button', { name: 'Client-Secret rotieren' }).at(-1)!);
     fireEvent.click(screen.getByRole('button', { name: 'Tenant-IAM-Rechte probeweise prüfen' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Aktivieren' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Aktivieren' })[0]);
 
     expect(refreshKeycloakPreflight).toHaveBeenCalledWith('demo');
     expect(planKeycloakProvisioning).toHaveBeenCalledWith('demo');
@@ -312,6 +312,61 @@ describe('InstanceDetailPage', () => {
     });
   });
 
+  it('renders overview first and keeps historical runs behind the history tab', async () => {
+    useInstancesMock.mockReturnValue(
+      createInstancesApiState({
+        selectedInstance: createSelectedInstance({
+          status: 'active',
+          provisioningRuns: [
+            {
+              id: 'registry-run-1',
+              operation: 'provision',
+              status: 'failed',
+            },
+          ],
+          keycloakProvisioningRuns: [
+            {
+              id: 'run-older',
+              intent: 'provision',
+              mode: 'existing',
+              overallStatus: 'failed',
+              driftSummary: 'Älterer Run fehlgeschlagen.',
+              requestId: 'req-older',
+              steps: [],
+            },
+          ],
+          latestKeycloakProvisioningRun: {
+            id: 'run-current',
+            intent: 'provision',
+            mode: 'existing',
+            overallStatus: 'succeeded',
+            driftSummary: 'Aktueller Run erfolgreich.',
+            requestId: 'req-current',
+            steps: [],
+          },
+          tenantIamStatus: {
+            configuration: { status: 'ready', summary: 'Konfiguration ok', source: 'registry' },
+            access: { status: 'ready', summary: 'Rechte vorhanden', source: 'access_probe', checkedAt: '2026-01-01T00:00:00.000Z' },
+            reconcile: { status: 'ready', summary: 'Kein Backlog', source: 'role_reconcile', checkedAt: '2026-01-01T00:00:00.000Z' },
+            overall: { status: 'ready', summary: 'Betriebsbereit', source: 'access_probe', checkedAt: '2026-01-01T00:00:00.000Z' },
+          },
+        }),
+      })
+    );
+
+    render(<InstanceDetailPage instanceId="demo" />);
+
+    expect(screen.getAllByText('Betriebsbereit').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Älterer Run fehlgeschlagen.')).toBeNull();
+
+    const historyTab = screen.getByRole('tab', { name: 'Historie' });
+    fireEvent.pointerDown(historyTab);
+    fireEvent.click(historyTab);
+    await waitFor(() => {
+      expect(screen.getByText('Älterer Run fehlgeschlagen.')).toBeTruthy();
+    });
+  });
+
   it('keeps the detail page usable when keycloak is unavailable', async () => {
     const refreshKeycloakPreflight = vi.fn().mockResolvedValue(true);
     useInstancesMock.mockReturnValue(
@@ -329,8 +384,9 @@ describe('InstanceDetailPage', () => {
     render(<InstanceDetailPage instanceId="demo" />);
 
     expect(screen.getByText('Die Detailseite bleibt bedienbar, aber Keycloak-Aktionen und Prüfungen sind aktuell blockiert. Prüfen Sie Erreichbarkeit und Credentials.')).toBeTruthy();
+    fireEvent.click(screen.getByRole('tab', { name: 'Betrieb' }));
     expect(screen.getByText('Technischer Keycloak-Zugriff')).toBeTruthy();
-    expect(screen.queryByText('Keycloak konnte nicht erreicht oder nicht abgeglichen werden.')).toBeNull();
+    expect(screen.getByText('Keycloak konnte nicht erreicht oder nicht abgeglichen werden.')).toBeTruthy();
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Vorbedingungen prüfen' })[0]);
 
@@ -355,8 +411,9 @@ describe('InstanceDetailPage', () => {
 
     render(<InstanceDetailPage instanceId="demo" />);
 
-    expect(screen.getByText('Tenant-IAM-Betrieb')).toBeTruthy();
-    expect(screen.getByText('Noch keine Probe')).toBeTruthy();
+    fireEvent.click(screen.getByRole('tab', { name: 'Betrieb' }));
+    expect(screen.getAllByText('Tenant-IAM-Betrieb').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Noch keine Probe').length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: 'Tenant-IAM-Rechte probeweise prüfen' })).toBeTruthy();
   });
 
@@ -439,7 +496,7 @@ describe('InstanceDetailPage', () => {
 
     render(<InstanceDetailPage instanceId="demo" />);
 
-    expect(screen.getByText('Konfiguration unvollständig')).toBeTruthy();
+    expect(screen.getAllByText('Konfiguration unvollständig').length).toBeGreaterThan(0);
     expect(screen.getByText('Konkrete Blocker')).toBeTruthy();
     expect(screen.getByText('Tenant-Admin-Client vorhanden')).toBeTruthy();
     expect(screen.getByText('Tenant-Admin-Client-Secret mit Keycloak abgeglichen')).toBeTruthy();
@@ -466,7 +523,7 @@ describe('InstanceDetailPage', () => {
     );
     expect(screen.getByText('Diagnose: Registry- oder Provisioning-Drift')).toBeTruthy();
     expect(screen.getByText('Empfohlene Aktion: Provisioning prüfen')).toBeTruthy();
-    expect(screen.getByText('Request-ID: req-instance-9')).toBeTruthy();
+    expect(screen.getAllByText('Request-ID: req-instance-9').length).toBeGreaterThan(0);
     expect(screen.getByText(/Vorbedingungen zuletzt geprüft: Status ready/i)).toBeTruthy();
     expect(screen.getByText('Letzte Provisioning-Vorschau: Kein Drift.')).toBeTruthy();
     expect(screen.getByText('Letzter Keycloak-Run: Request-ID req-1, Status succeeded')).toBeTruthy();

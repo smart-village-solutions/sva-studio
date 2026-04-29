@@ -88,7 +88,8 @@ export const createInstanceMutationErrorMapper = (
 const requireMutationGuards = <TContext>(
   deps: InstanceRegistryMutationHttpDeps<TContext>,
   request: Request,
-  ctx: TContext
+  ctx: TContext,
+  options?: { readonly requireFreshReauth?: boolean }
 ): Response | null => {
   const accessError = deps.ensurePlatformAccess(request, ctx);
   if (accessError) {
@@ -97,6 +98,9 @@ const requireMutationGuards = <TContext>(
   const csrfError = deps.validateCsrf(request, deps.getRequestId());
   if (csrfError) {
     return csrfError;
+  }
+  if (options?.requireFreshReauth === false) {
+    return null;
   }
   return deps.requireFreshReauth(request);
 };
@@ -203,7 +207,7 @@ export const createInstanceRegistryMutationHttpHandlers = <TContext>(
     },
 
     probeTenantIamAccess: async (request: Request, ctx: TContext): Promise<Response> => {
-      const guardError = requireMutationGuards(deps, request, ctx);
+      const guardError = requireMutationGuards(deps, request, ctx, { requireFreshReauth: false });
       if (guardError) {
         return guardError;
       }

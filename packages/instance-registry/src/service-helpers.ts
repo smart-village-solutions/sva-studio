@@ -1,3 +1,7 @@
+import {
+  areAllInstanceKeycloakRequirementsSatisfied,
+} from '@sva/core';
+
 import type {
   InstanceStatus,
   IamInstanceDetail,
@@ -32,26 +36,7 @@ const createTenantIamAxis = (input: TenantIamEvidence): IamTenantIamAxis => ({
 
 const isConfigurationReady = (
   keycloakStatus: NonNullable<IamInstanceDetail['keycloakStatus']> | undefined
-): boolean =>
-  Boolean(
-    keycloakStatus?.realmExists &&
-      keycloakStatus.clientExists &&
-      keycloakStatus.tenantAdminClientExists &&
-      keycloakStatus.instanceIdMapperExists &&
-      keycloakStatus.tenantAdminExists &&
-      keycloakStatus.tenantAdminHasSystemAdmin &&
-      keycloakStatus.tenantAdminHasInstanceRegistryAdmin &&
-      keycloakStatus.tenantAdminInstanceIdMatches &&
-      keycloakStatus.redirectUrisMatch &&
-      keycloakStatus.logoutUrisMatch &&
-      keycloakStatus.webOriginsMatch &&
-      keycloakStatus.clientSecretConfigured &&
-      keycloakStatus.tenantClientSecretReadable &&
-      keycloakStatus.clientSecretAligned &&
-      keycloakStatus.tenantAdminClientSecretConfigured &&
-      keycloakStatus.tenantAdminClientSecretReadable &&
-      keycloakStatus.tenantAdminClientSecretAligned
-  );
+): boolean => Boolean(keycloakStatus && areAllInstanceKeycloakRequirementsSatisfied(keycloakStatus));
 
 const tenantIamPrecedence: ReadonlyArray<IamTenantIamAxis['status']> = ['blocked', 'degraded', 'unknown', 'ready'];
 

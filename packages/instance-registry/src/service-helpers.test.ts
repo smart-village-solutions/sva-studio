@@ -109,7 +109,7 @@ describe('service-helpers', () => {
           instanceIdMapperExists: true,
           tenantAdminExists: true,
           tenantAdminHasSystemAdmin: true,
-          tenantAdminHasInstanceRegistryAdmin: true,
+          tenantAdminHasInstanceRegistryAdmin: false,
           tenantAdminInstanceIdMatches: true,
           redirectUrisMatch: true,
           logoutUrisMatch: true,

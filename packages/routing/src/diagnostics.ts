@@ -1,3 +1,5 @@
+import { createSdkLogger } from '@sva/server-runtime';
+
 export type RoutingDenyReason =
   | 'unauthenticated'
   | 'insufficient-role'
@@ -76,6 +78,8 @@ export interface RoutingDiagnosticsLogger {
   error: (message: string, meta: Record<string, unknown>) => void;
 }
 
+const fallbackLogger = createSdkLogger({ component: 'routing', level: 'info' });
+
 const isPromiseLike = (value: unknown): value is PromiseLike<unknown> =>
   typeof value === 'object' && value !== null && typeof Reflect.get(value, 'then') === 'function';
 
@@ -138,6 +142,18 @@ export const createRoutingDiagnosticsLogger = (logger: RoutingDiagnosticsLogger)
   };
 };
 
+const logRoutingDiagnosticFailure = (event: RoutingDiagnosticEvent, error: unknown): void => {
+  fallbackLogger.error('Routing diagnostics hook failed', {
+    event: event.event,
+    route: event.route,
+    request_id: event.request_id,
+    trace_id: event.trace_id,
+    workspace_id: event.workspace_id,
+    error_type: error instanceof Error ? error.constructor.name : typeof error,
+    error_message: error instanceof Error ? error.message : String(error),
+  });
+};
+
 export const emitRoutingDiagnostic = (
   diagnostics: RoutingDiagnosticsHook | undefined,
   event: RoutingDiagnosticEvent
@@ -149,11 +165,13 @@ export const emitRoutingDiagnostic = (
   try {
     const maybePromise = diagnostics(event) as void | PromiseLike<unknown>;
     if (isPromiseLike(maybePromise)) {
-      void Promise.resolve(maybePromise).catch(() => {
+      void Promise.resolve(maybePromise).catch((error) => {
+        logRoutingDiagnosticFailure(event, error);
         // Diagnostics hooks must never change routing behavior.
       });
     }
-  } catch {
+  } catch (error) {
+    logRoutingDiagnosticFailure(event, error);
     // Diagnostics hooks must never change routing behavior.
   }
 };

@@ -41,6 +41,6 @@ Nicht Bestandteil dieses MVP sind erweiterte Governance- und Betriebsfunktionen 
   - `docs/architecture/06-runtime-view.md`
   - `docs/architecture/07-deployment-view.md`
   - `docs/architecture/08-cross-cutting-concepts.md`
-  - `docs/architecture/09-architecture-decisions.md` (ADR-037 eintragen)
+  - `docs/architecture/09-architecture-decisions.md` (ADR-039 eintragen; ADR-037 ist bereits belegt)
   - `docs/architecture/10-quality-requirements.md`
   - `docs/architecture/11-risks-and-technical-debt.md` (Async-Variantenpfad als bekannte technische Schuld, CDN/PII-Risiko)

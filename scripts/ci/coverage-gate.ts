@@ -34,6 +34,14 @@ export interface CoverageSummary {
     functions?: { pct?: number };
     branches?: { pct?: number };
   };
+  [filePath: string]:
+    | {
+        lines?: { total?: number; covered?: number; pct?: number };
+        statements?: { total?: number; covered?: number; pct?: number };
+        functions?: { total?: number; covered?: number; pct?: number };
+        branches?: { total?: number; covered?: number; pct?: number };
+      }
+    | undefined;
 }
 
 interface GateError {
@@ -308,7 +316,47 @@ export function projectFromCoveragePath(coverageSummaryPath: string): string | n
   return path.basename(projectRoot);
 }
 
-export function toMetricValues(summary: CoverageSummary): MetricFloors {
+export function toMetricValues(summary: CoverageSummary, projectRoot?: string): MetricFloors {
+  if (projectRoot) {
+    const normalizedProjectRoot = `${path.resolve(projectRoot)}${path.sep}`;
+    const counters = Object.entries(summary).reduce<
+      Record<CoverageMetric, { total: number; covered: number }>
+    >(
+      (acc, [filePath, metrics]) => {
+        if (
+          filePath === 'total' ||
+          !path.resolve(filePath).startsWith(normalizedProjectRoot) ||
+          !metrics
+        ) {
+          return acc;
+        }
+
+        for (const metric of ['lines', 'statements', 'functions', 'branches'] as const) {
+          acc[metric].total += Number(metrics[metric]?.total ?? 0);
+          acc[metric].covered += Number(metrics[metric]?.covered ?? 0);
+        }
+
+        return acc;
+      },
+      {
+        lines: { total: 0, covered: 0 },
+        statements: { total: 0, covered: 0 },
+        functions: { total: 0, covered: 0 },
+        branches: { total: 0, covered: 0 },
+      }
+    );
+
+    const hasScopedEntries = Object.values(counters).some(({ total }) => total > 0);
+    if (hasScopedEntries) {
+      return {
+        lines: toPct(counters.lines.covered, counters.lines.total),
+        statements: toPct(counters.statements.covered, counters.statements.total),
+        functions: toPct(counters.functions.covered, counters.functions.total),
+        branches: toPct(counters.branches.covered, counters.branches.total),
+      };
+    }
+  }
+
   const total = summary.total ?? {};
   return {
     lines: Number(total.lines?.pct ?? 0),
@@ -380,7 +428,8 @@ function loadCoverageData(rootDir: string): LoadedCoverageData {
       return acc;
     }
 
-    acc[projectName] = toMetricValues(readJson<CoverageSummary>(summaryPath));
+    const projectRoot = path.dirname(path.dirname(summaryPath));
+    acc[projectName] = toMetricValues(readJson<CoverageSummary>(summaryPath), projectRoot);
     return acc;
   }, {});
 

@@ -688,4 +688,27 @@ describe('NewsListPage', () => {
       );
     });
   });
+
+  it('clears invalid publication timestamps during edit loading', async () => {
+    vi.mocked(getNews).mockResolvedValueOnce({
+      id: 'news-4',
+      title: 'Termin',
+      contentType: NEWS_CONTENT_TYPE,
+      payload: {
+        teaser: 'Kurztext',
+        body: '<p>Body</p>',
+      },
+      status: 'published',
+      author: 'Editor',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-02T00:00:00.000Z',
+      publishedAt: 'invalid-date',
+    });
+
+    render(<NewsEditPage />);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Veröffentlichungsdatum').getAttribute('value')).toBe('');
+    });
+  });
 });

@@ -24,6 +24,7 @@ export type PrepareMediaUploadInput = Readonly<{
 export type ResolveMediaDeliveryInput = Readonly<{
   instanceId: string;
   assetId: string;
+  storageKey: string;
   visibility: string;
 }>;
 

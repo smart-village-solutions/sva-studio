@@ -134,6 +134,13 @@ const authServerMocks = vi.hoisted(() => {
     updateContentHandler: vi.fn(async () => response('updateContentHandler')),
     deleteContentHandler: vi.fn(async () => response('deleteContentHandler')),
     getContentHistoryHandler: vi.fn(async () => response('getContentHistoryHandler')),
+    listMediaHandler: vi.fn(async () => response('listMediaHandler')),
+    initializeMediaUploadHandler: vi.fn(async () => response('initializeMediaUploadHandler')),
+    getMediaHandler: vi.fn(async () => response('getMediaHandler')),
+    updateMediaHandler: vi.fn(async () => response('updateMediaHandler')),
+    getMediaUsageHandler: vi.fn(async () => response('getMediaUsageHandler')),
+    getMediaDeliveryHandler: vi.fn(async () => response('getMediaDeliveryHandler')),
+    replaceMediaReferencesHandler: vi.fn(async () => response('replaceMediaReferencesHandler')),
     listOrganizationsHandler: vi.fn(async () => response('listOrganizationsHandler')),
     createOrganizationHandler: vi.fn(async () => response('createOrganizationHandler')),
     getOrganizationHandler: vi.fn(async () => response('getOrganizationHandler')),
@@ -272,6 +279,13 @@ describe('auth.routes.server', () => {
     expect(authServerMocks.updateContentHandler).toHaveBeenCalled();
     expect(authServerMocks.deleteContentHandler).toHaveBeenCalled();
     expect(authServerMocks.getContentHistoryHandler).toHaveBeenCalled();
+    expect(authServerMocks.listMediaHandler).toHaveBeenCalled();
+    expect(authServerMocks.initializeMediaUploadHandler).toHaveBeenCalled();
+    expect(authServerMocks.getMediaHandler).toHaveBeenCalled();
+    expect(authServerMocks.updateMediaHandler).toHaveBeenCalled();
+    expect(authServerMocks.getMediaUsageHandler).toHaveBeenCalled();
+    expect(authServerMocks.getMediaDeliveryHandler).toHaveBeenCalled();
+    expect(authServerMocks.replaceMediaReferencesHandler).toHaveBeenCalled();
     expect(authServerMocks.instanceRegistryHandlers.updateInstance).toHaveBeenCalled();
     expect(authServerMocks.instanceRegistryHandlers.getInstanceKeycloakStatus).toHaveBeenCalled();
     expect(authServerMocks.instanceRegistryHandlers.getInstanceKeycloakPreflight).toHaveBeenCalled();

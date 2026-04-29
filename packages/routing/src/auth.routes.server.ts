@@ -510,6 +510,39 @@ const authHandlerMap = {
       return authRuntimeRoutes.getContentHistoryHandler(request);
     },
   },
+  '/api/v1/iam/media': {
+    GET: async ({ request }) => {
+      return authRuntimeRoutes.listMediaHandler(request);
+    },
+  },
+  '/api/v1/iam/media/references': {
+    PUT: async ({ request }) => {
+      return authRuntimeRoutes.replaceMediaReferencesHandler(request);
+    },
+  },
+  '/api/v1/iam/media/upload-sessions': {
+    POST: async ({ request }) => {
+      return authRuntimeRoutes.initializeMediaUploadHandler(request);
+    },
+  },
+  '/api/v1/iam/media/$assetId': {
+    GET: async ({ request }) => {
+      return authRuntimeRoutes.getMediaHandler(request);
+    },
+    PATCH: async ({ request }) => {
+      return authRuntimeRoutes.updateMediaHandler(request);
+    },
+  },
+  '/api/v1/iam/media/$assetId/usage': {
+    GET: async ({ request }) => {
+      return authRuntimeRoutes.getMediaUsageHandler(request);
+    },
+  },
+  '/api/v1/iam/media/$assetId/delivery': {
+    GET: async ({ request }) => {
+      return authRuntimeRoutes.getMediaDeliveryHandler(request);
+    },
+  },
   '/api/v1/iam/legal-texts': {
     GET: async ({ request }) => {
       return authRuntimeRoutes.listLegalTextsHandler(request);

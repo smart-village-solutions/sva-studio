@@ -40,6 +40,31 @@ describe('media picker client', () => {
     );
   });
 
+  it('supports empty media list queries, visibility filters, and deterministic http errors', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === '/api/v1/iam/media') {
+        return new Response(JSON.stringify({ data: [] }), { status: 200 });
+      }
+      if (url === '/api/v1/iam/media?visibility=protected') {
+        return new Response(JSON.stringify({ data: [{ id: 'asset-2', visibility: 'protected' }] }), { status: 200 });
+      }
+      return new Response(JSON.stringify({ error: 'forbidden' }), { status: 403 });
+    });
+
+    await expect(listHostMediaAssets({ fetch: fetchMock as never })).resolves.toEqual([]);
+    await expect(listHostMediaAssets({ fetch: fetchMock as never, visibility: 'protected' })).resolves.toEqual([
+      { id: 'asset-2', visibility: 'protected' },
+    ]);
+    await expect(
+      listHostMediaReferencesByTarget({
+        fetch: fetchMock as never,
+        targetType: 'poi',
+        targetId: 'poi-1',
+      })
+    ).rejects.toThrow('media_picker_http_403');
+  });
+
   it('replaces host media references with role-based selections only', async () => {
     const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
       return new Response(init?.body as string, { status: 200 });

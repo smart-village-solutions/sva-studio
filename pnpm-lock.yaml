@@ -264,6 +264,9 @@ importers:
       '@sva/instance-registry':
         specifier: workspace:*
         version: link:../instance-registry
+      '@sva/media':
+        specifier: workspace:*
+        version: link:../media
       '@sva/server-runtime':
         specifier: workspace:*
         version: link:../server-runtime

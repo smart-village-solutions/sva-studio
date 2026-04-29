@@ -571,6 +571,31 @@ describe('app.routes', () => {
     });
   });
 
+  it('allows static media usage routes when module assignment and media.read are both present', async () => {
+    const routeFactories = createUiRouteFactories(bindings, { adminResources });
+    const rootRoute = { id: 'root' };
+    const route = routeFactories
+      .map((factory) => factory(rootRoute as never))
+      .find((candidate) => readRouteOptions(candidate).path === '/admin/media/$mediaId/usage');
+
+    expect(route).toBeDefined();
+
+    await expect(
+      readRouteOptions(route!).beforeLoad?.({
+        context: {
+          auth: {
+            getUser: () => ({
+              roles: ['app_manager'],
+              permissionActions: ['media.read', 'media.update'],
+              assignedModules: ['media'],
+            }),
+          },
+        },
+        location: { href: '/admin/media/asset-1/usage' },
+      })
+    ).resolves.toBeUndefined();
+  });
+
   it('builds server route factories without requiring app-local route composition', () => {
     const routeFactories = getServerRouteFactories({ bindings, adminResources, diagnostics: vi.fn() });
 

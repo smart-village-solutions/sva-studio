@@ -1,6 +1,21 @@
 import type { AdminResourceDefinition } from '@sva/plugin-sdk';
 import { createRoute, redirect, type RootRoute } from '@tanstack/react-router';
 
+import {
+  coreContentAdminResource,
+  LEGACY_CONTENT_ALIAS_PREFIX,
+  normalizeLegacyContentHref,
+  readBeforeLoadHref,
+  resolveCanonicalContentAdminRoutePath,
+  withCoreContentAdminResource,
+} from './admin-resource-route-aliases.js';
+import {
+  adminDetailParamNameByBinding,
+  getAdminDetailRoutePath,
+  toAdminCreateRoutePath,
+  toAdminHistoryRoutePath,
+  toAdminRoutePath,
+} from './admin-resource-route-paths.js';
 import { createAccountUiRouteGuard, type AccountUiRouteGuardKey } from './account-ui.routes.js';
 import { normalizeAdminResourceListSearch } from './admin-resource-search-params.js';
 import type { AppRouteBindings, AppRouteFactory } from './app.routes.shared.js';
@@ -18,18 +33,6 @@ type UiRouteDefinition = {
 type AdminResourceBindingResolver = { readonly list: BindingKey; readonly create: BindingKey; readonly detail: BindingKey; readonly history?: BindingKey };
 type AdminResourceRouteKind = 'list' | 'create' | 'detail' | 'history';
 type AdminResourceViewKind = keyof AdminResourceDefinition['views'];
-type DetailBindingKey = Extract<
-  BindingKey,
-  'contentDetail' | 'adminUserDetail' | 'adminOrganizationDetail' | 'adminInstanceDetail' | 'adminRoleDetail' | 'adminGroupDetail' | 'adminLegalTextDetail'
->;
-
-const LEGACY_CONTENT_ALIAS_PREFIX = '/content';
-const coreContentAdminResource = { resourceId: 'content', basePath: 'content', titleKey: 'content.page.title', guard: 'content', views: { list: { bindingKey: 'content' }, create: { bindingKey: 'contentCreate' }, detail: { bindingKey: 'contentDetail' } } } as const satisfies AdminResourceDefinition;
-
-const toAdminRoutePath = (basePath: string) => `/admin/${basePath}` as const;
-const toAdminCreateRoutePath = (basePath: string) => `${basePath}/new`;
-const toAdminHistoryRoutePath = (detailPath: string) => `${detailPath}/history`;
-export const adminDetailParamNameByBinding = { contentDetail: 'id', adminUserDetail: 'userId', adminOrganizationDetail: 'organizationId', adminInstanceDetail: 'instanceId', adminRoleDetail: 'roleId', adminGroupDetail: 'groupId', adminLegalTextDetail: 'legalTextVersionId', media: 'mediaId' } as const satisfies Record<DetailBindingKey | 'media', string>;
 
 const hasBindingKey = (bindings: AppRouteBindings, bindingKey: string): bindingKey is BindingKey =>
   Object.prototype.hasOwnProperty.call(bindings, bindingKey);
@@ -80,25 +83,12 @@ const getAdminResourceBindings = (bindings: AppRouteBindings, resource: AdminRes
   };
 };
 
-const getDetailParamName = (bindingKey: BindingKey): string => {
+const assertSupportedAdminDetailBinding = (bindingKey: BindingKey): void => {
   if (!Object.prototype.hasOwnProperty.call(adminDetailParamNameByBinding, bindingKey)) {
     throw new Error(`unsupported_admin_resource_detail_binding:${bindingKey}`);
   }
-  return adminDetailParamNameByBinding[bindingKey as DetailBindingKey | 'media'];
 };
 
-const withCoreContentAdminResource = (resources: readonly AdminResourceDefinition[]): readonly AdminResourceDefinition[] => {
-  const containsCoreContent = resources.some((resource) => resource.resourceId === coreContentAdminResource.resourceId || resource.basePath === coreContentAdminResource.basePath);
-  if (containsCoreContent) {
-    return resources;
-  }
-  return [coreContentAdminResource, ...resources];
-};
-
-const resolveCanonicalContentAdminRoutePath = (resources: readonly AdminResourceDefinition[]): string => {
-  const contentResource = withCoreContentAdminResource(resources).find((resource) => resource.resourceId === coreContentAdminResource.resourceId);
-  return toAdminRoutePath(contentResource?.basePath ?? coreContentAdminResource.basePath);
-};
 const adminResourceGuardMap = {
   content: { list: 'content', create: 'contentCreate', detail: 'contentDetail', history: 'content' },
   adminUsers: { list: 'adminUsers', create: 'adminUserCreate', detail: 'adminUserDetail', history: 'adminUsers' },
@@ -163,8 +153,8 @@ const createAdminResourceRouteDefinitions = (
     const resolvedBindings = getAdminResourceBindings(bindings, resource);
     const basePath = toAdminRoutePath(resource.basePath);
     const detailBindingKey = resolveBindingKey(bindings, resource, 'detail', resource.views.detail.bindingKey);
-    const detailParamName = getDetailParamName(detailBindingKey);
-    const detailPath = `${basePath}/$${detailParamName}`;
+    assertSupportedAdminDetailBinding(detailBindingKey);
+    const detailPath = getAdminDetailRoutePath(basePath, detailBindingKey);
 
     return [
       {
@@ -204,36 +194,6 @@ const createAdminResourceRouteDefinitions = (
         : []),
     ] as const;
   });
-
-const readBeforeLoadHref = (options: unknown): string => {
-  const candidate = options as {
-    href?: unknown;
-    location?: { href?: unknown };
-  };
-
-  if (typeof candidate.location?.href === 'string' && candidate.location.href.length > 0) {
-    return candidate.location.href;
-  }
-  if (typeof candidate.href === 'string' && candidate.href.length > 0) {
-    return candidate.href;
-  }
-
-  return LEGACY_CONTENT_ALIAS_PREFIX;
-};
-
-const normalizeLegacyContentHref = (href: string, canonicalContentPath: string): string => {
-  if (href === LEGACY_CONTENT_ALIAS_PREFIX || href.startsWith(`${LEGACY_CONTENT_ALIAS_PREFIX}?`)) {
-    return href.replace(LEGACY_CONTENT_ALIAS_PREFIX, canonicalContentPath);
-  }
-  if (href === `${LEGACY_CONTENT_ALIAS_PREFIX}/new` || href.startsWith(`${LEGACY_CONTENT_ALIAS_PREFIX}/new?`)) {
-    return href.replace(`${LEGACY_CONTENT_ALIAS_PREFIX}/new`, `${canonicalContentPath}/new`);
-  }
-  if (href.startsWith(`${LEGACY_CONTENT_ALIAS_PREFIX}/`)) {
-    return href.replace(`${LEGACY_CONTENT_ALIAS_PREFIX}/`, `${canonicalContentPath}/`);
-  }
-
-  return canonicalContentPath;
-};
 
 export const createAdminResourceRouteFactories = (
   bindings: AppRouteBindings,

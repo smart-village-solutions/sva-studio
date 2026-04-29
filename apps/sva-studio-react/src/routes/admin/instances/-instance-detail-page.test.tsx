@@ -417,6 +417,50 @@ describe('InstanceDetailPage', () => {
     expect(screen.getByRole('button', { name: 'Tenant-IAM-Rechte probeweise prüfen' })).toBeTruthy();
   });
 
+  it('prefers the current keycloak structure over stale tenant IAM configuration in the overview', async () => {
+    useInstancesMock.mockReturnValue(
+      createInstancesApiState({
+        selectedInstance: createSelectedInstance({
+          status: 'active',
+          tenantIamStatus: {
+            configuration: {
+              status: 'degraded',
+              summary: 'Tenant-IAM-Struktur ist unvollständig oder driftet.',
+              source: 'keycloak_status_snapshot',
+            },
+            access: {
+              status: 'ready',
+              summary: 'Tenant-Admin-Client kann Realm-Rollen lesen.',
+              source: 'access_probe',
+              requestId: 'req-access-1',
+            },
+            reconcile: {
+              status: 'ready',
+              summary: 'Letzter Rollenabgleich ist synchron.',
+              source: 'role_reconcile',
+              requestId: 'req-reconcile-1',
+            },
+            overall: {
+              status: 'degraded',
+              summary: 'Tenant-IAM ist eingeschränkt.',
+              source: 'keycloak_status_snapshot',
+            },
+          },
+        }),
+      })
+    );
+
+    render(<InstanceDetailPage instanceId="demo" />);
+
+    expect(screen.getByText('Betriebsbereit')).toBeTruthy();
+    expect(screen.getByText('Die Instanz ist betriebsbereit. Nutzen Sie die Seite weiterhin für Drift-Prüfungen, Secret-Rotation und Admin-Resets.')).toBeTruthy();
+    expect(screen.getByText('Keine dominanten Abweichungen. Die Instanz zeigt aktuell keinen priorisierten Befund.')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Betrieb' }));
+    expect(screen.getAllByText('ready').length).toBeGreaterThan(0);
+    expect(screen.getByText('Tenant-IAM-Struktur ist vollständig vorhanden.')).toBeTruthy();
+  });
+
   it('keeps the tenant secret field read-only for new realms and marks generation as pending', () => {
     useInstancesMock.mockReturnValue(
       createInstancesApiState({

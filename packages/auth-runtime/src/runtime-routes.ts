@@ -82,4 +82,6 @@ export {
   getMediaUsageHandler,
   initializeMediaUploadHandler,
   listMediaHandler,
+  replaceMediaReferencesHandler,
+  updateMediaHandler,
 } from './iam-media/core.js';

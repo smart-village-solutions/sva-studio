@@ -7,6 +7,8 @@ import { withAuthenticatedUser, type AuthenticatedRequestContext } from '../midd
 import { createUnavailableMediaStoragePort, MediaStorageUnavailableError, type MediaStoragePort } from './storage-port.js';
 import { withMediaService } from './repository.js';
 import type { MediaService } from './service.js';
+import { createConfiguredMediaStoragePort } from './storage-s3.js';
+import { authorizeMediaPrimitiveForUser, type MediaPrimitiveAuthorizationResult } from './server-authorization.js';
 import { z } from 'zod';
 
 const uploadInitializationSchema = z.object({
@@ -15,6 +17,49 @@ const uploadInitializationSchema = z.object({
   mimeType: z.string().trim().min(1),
   byteSize: z.number().int().positive(),
   visibility: z.enum(['public', 'protected']).default('public'),
+});
+
+const metadataUpdateSchema = z.object({
+  instanceId: z.string().trim().min(1).optional(),
+  visibility: z.enum(['public', 'protected']).optional(),
+  metadata: z
+    .object({
+      title: z.string().trim().min(1).max(512).optional(),
+      description: z.string().trim().min(1).max(5000).optional(),
+      altText: z.string().trim().min(1).max(512).optional(),
+      copyright: z.string().trim().min(1).max(512).optional(),
+      license: z.string().trim().min(1).max(512).optional(),
+      focusPoint: z
+        .object({
+          x: z.number().min(0).max(1),
+          y: z.number().min(0).max(1),
+        })
+        .optional(),
+      crop: z
+        .object({
+          x: z.number().min(0),
+          y: z.number().min(0),
+          width: z.number().positive(),
+          height: z.number().positive(),
+        })
+        .optional(),
+    })
+    .partial()
+    .refine((value) => Object.keys(value).length > 0, 'metadata: Mindestens ein Metadatenfeld ist erforderlich.'),
+});
+
+const replaceReferencesSchema = z.object({
+  instanceId: z.string().trim().min(1).optional(),
+  targetType: z.string().trim().min(1),
+  targetId: z.string().trim().min(1),
+  references: z.array(
+    z.object({
+      id: z.string().trim().min(1).optional(),
+      assetId: z.string().trim().min(1),
+      role: z.string().trim().min(1),
+      sortOrder: z.number().int().nonnegative().optional(),
+    })
+  ),
 });
 
 const resolveScopedInstanceId = (request: Request, userInstanceId?: string): string | Response => {
@@ -38,8 +83,29 @@ const getRequestId = (): string | undefined => getWorkspaceContext().requestId;
 type MediaHttpHandlerDeps = {
   readonly withMediaService: <T>(instanceId: string, work: (service: MediaService) => Promise<T>) => Promise<T>;
   readonly storagePort: MediaStoragePort;
+  readonly authorizeAction: (input: {
+    ctx: AuthenticatedRequestContext;
+    action: string;
+    resource?: {
+      assetId?: string;
+      targetType?: string;
+      targetId?: string;
+      visibility?: string;
+    };
+  }) => Promise<MediaPrimitiveAuthorizationResult>;
   readonly createId: () => string;
   readonly now: () => string;
+};
+
+const mapAuthorizationFailure = (result: Exclude<MediaPrimitiveAuthorizationResult, { ok: true }>): Response => {
+  const code =
+    result.error === 'missing_instance'
+      ? 'invalid_instance_id'
+      : result.error === 'invalid_action'
+        ? 'invalid_request'
+        : result.error;
+
+  return createApiError(result.status, code, result.message, getRequestId());
 };
 
 export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
@@ -47,6 +113,10 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
     const instanceId = resolveScopedInstanceId(request, ctx.user.instanceId);
     if (instanceId instanceof Response) {
       return instanceId;
+    }
+    const authorization = await deps.authorizeAction({ ctx, action: 'media.read' });
+    if (!authorization.ok) {
+      return mapAuthorizationFailure(authorization);
     }
 
     const { page, pageSize } = readPage(request);
@@ -76,6 +146,10 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
     if (assetId instanceof Response) {
       return assetId;
     }
+    const authorization = await deps.authorizeAction({ ctx, action: 'media.read', resource: { assetId } });
+    if (!authorization.ok) {
+      return mapAuthorizationFailure(authorization);
+    }
 
     const asset = await deps.withMediaService(instanceId, (service) => service.getAssetById(instanceId, assetId));
     if (!asset) {
@@ -94,6 +168,10 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
     if (assetId instanceof Response) {
       return assetId;
     }
+    const authorization = await deps.authorizeAction({ ctx, action: 'media.read', resource: { assetId } });
+    if (!authorization.ok) {
+      return mapAuthorizationFailure(authorization);
+    }
 
     const usage = await deps.withMediaService(instanceId, (service) => service.getUsageImpact(instanceId, assetId));
     return jsonResponse(200, asApiItem(usage, getRequestId()));
@@ -111,6 +189,10 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
     }
     if (ctx.user.instanceId && instanceId !== ctx.user.instanceId) {
       return createApiError(403, 'forbidden', 'Instanzkontext stimmt nicht mit der Sitzung überein.', getRequestId());
+    }
+    const authorization = await deps.authorizeAction({ ctx, action: 'media.create' });
+    if (!authorization.ok) {
+      return mapAuthorizationFailure(authorization);
     }
 
     const quotaCheck = await deps.withMediaService(instanceId, (service) =>
@@ -186,6 +268,129 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
     }
   },
 
+  async updateMedia(request: Request, ctx: AuthenticatedRequestContext): Promise<Response> {
+    const parsed = await parseRequestBody(request, metadataUpdateSchema);
+    if (!parsed.ok) {
+      return createApiError(400, 'invalid_request', parsed.message, getRequestId());
+    }
+
+    const instanceId = parsed.data.instanceId ?? ctx.user.instanceId;
+    if (!instanceId) {
+      return createApiError(400, 'invalid_instance_id', 'Instanz-ID fehlt.', getRequestId());
+    }
+    if (ctx.user.instanceId && instanceId !== ctx.user.instanceId) {
+      return createApiError(403, 'forbidden', 'Instanzkontext stimmt nicht mit der Sitzung überein.', getRequestId());
+    }
+
+    const assetId = readAssetId(request);
+    if (assetId instanceof Response) {
+      return assetId;
+    }
+
+    const authorization = await deps.authorizeAction({ ctx, action: 'media.update', resource: { assetId } });
+    if (!authorization.ok) {
+      return mapAuthorizationFailure(authorization);
+    }
+
+    const asset = await deps.withMediaService(instanceId, (service) => service.getAssetById(instanceId, assetId));
+    if (!asset) {
+      return createApiError(404, 'not_found', 'Medienobjekt nicht gefunden.', getRequestId());
+    }
+
+    const updatedAsset = {
+      ...asset,
+      visibility: parsed.data.visibility ?? asset.visibility,
+      metadata: {
+        ...asset.metadata,
+        ...parsed.data.metadata,
+      },
+    };
+
+    await deps.withMediaService(instanceId, async (service) => {
+      await service.upsertAsset(updatedAsset);
+    });
+
+    return jsonResponse(200, asApiItem(updatedAsset, getRequestId()));
+  },
+
+  async replaceReferences(request: Request, ctx: AuthenticatedRequestContext): Promise<Response> {
+    const parsed = await parseRequestBody(request, replaceReferencesSchema);
+    if (!parsed.ok) {
+      return createApiError(400, 'invalid_request', parsed.message, getRequestId());
+    }
+
+    const instanceId = parsed.data.instanceId ?? ctx.user.instanceId;
+    if (!instanceId) {
+      return createApiError(400, 'invalid_instance_id', 'Instanz-ID fehlt.', getRequestId());
+    }
+    if (ctx.user.instanceId && instanceId !== ctx.user.instanceId) {
+      return createApiError(403, 'forbidden', 'Instanzkontext stimmt nicht mit der Sitzung überein.', getRequestId());
+    }
+
+    const authorization = await deps.authorizeAction({
+      ctx,
+      action: 'media.reference.manage',
+      resource: {
+        targetType: parsed.data.targetType,
+        targetId: parsed.data.targetId,
+      },
+    });
+    if (!authorization.ok) {
+      return mapAuthorizationFailure(authorization);
+    }
+
+    const missingAssetIds: string[] = [];
+    await deps.withMediaService(instanceId, async (service) => {
+      for (const reference of parsed.data.references) {
+        const asset = await service.getAssetById(instanceId, reference.assetId);
+        if (!asset) {
+          missingAssetIds.push(reference.assetId);
+        }
+      }
+    });
+
+    if (missingAssetIds.length > 0) {
+      return createApiError(
+        404,
+        'not_found',
+        'Mindestens ein referenziertes Medienobjekt wurde nicht gefunden.',
+        getRequestId(),
+        { missingAssetIds }
+      );
+    }
+
+    const references = parsed.data.references.map((reference) => ({
+      id: reference.id ?? deps.createId(),
+      assetId: reference.assetId,
+      targetType: parsed.data.targetType,
+      targetId: parsed.data.targetId,
+      role: reference.role,
+      sortOrder: reference.sortOrder,
+    }));
+
+    await deps.withMediaService(instanceId, async (service) => {
+      await service.replaceReferences({
+        instanceId,
+        targetType: parsed.data.targetType,
+        targetId: parsed.data.targetId,
+        references,
+      });
+    });
+
+    return jsonResponse(
+      200,
+      asApiItem(
+        {
+          instanceId,
+          targetType: parsed.data.targetType,
+          targetId: parsed.data.targetId,
+          references,
+        },
+        getRequestId()
+      )
+    );
+  },
+
   async getMediaDelivery(request: Request, ctx: AuthenticatedRequestContext): Promise<Response> {
     const instanceId = resolveScopedInstanceId(request, ctx.user.instanceId);
     if (instanceId instanceof Response) {
@@ -201,10 +406,22 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
       if (!asset) {
         return createApiError(404, 'not_found', 'Medienobjekt nicht gefunden.', getRequestId());
       }
+      const authorization = await deps.authorizeAction({
+        ctx,
+        action: asset.visibility === 'protected' ? 'media.deliver.protected' : 'media.read',
+        resource: {
+          assetId,
+          visibility: asset.visibility,
+        },
+      });
+      if (!authorization.ok) {
+        return mapAuthorizationFailure(authorization);
+      }
 
       const delivery = await deps.storagePort.resolveDelivery({
         instanceId,
         assetId,
+        storageKey: asset.storageKey,
         visibility: asset.visibility,
       });
 
@@ -220,7 +437,14 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
 
 const mediaHttpHandlers = createMediaHttpHandlers({
   withMediaService,
-  storagePort: createUnavailableMediaStoragePort(),
+  storagePort: (() => {
+    try {
+      return createConfiguredMediaStoragePort();
+    } catch {
+      return createUnavailableMediaStoragePort();
+    }
+  })(),
+  authorizeAction: authorizeMediaPrimitiveForUser,
   createId: () => randomUUID(),
   now: () => new Date().toISOString(),
 });
@@ -241,6 +465,12 @@ export const getMediaUsageHandler = async (request: Request): Promise<Response> 
 
 export const initializeMediaUploadHandler = async (request: Request): Promise<Response> =>
   withMediaRequest(request, mediaHttpHandlers.initializeUpload);
+
+export const updateMediaHandler = async (request: Request): Promise<Response> =>
+  withMediaRequest(request, mediaHttpHandlers.updateMedia);
+
+export const replaceMediaReferencesHandler = async (request: Request): Promise<Response> =>
+  withMediaRequest(request, mediaHttpHandlers.replaceReferences);
 
 export const getMediaDeliveryHandler = async (request: Request): Promise<Response> =>
   withMediaRequest(request, mediaHttpHandlers.getMediaDelivery);

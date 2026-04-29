@@ -53,6 +53,41 @@ export const getAppDbPassword = (): string | undefined =>
 export const getRedisPassword = (): string | undefined =>
   readEnvOrSecret(['REDIS_PASSWORD'], 'sva_studio_redis_password');
 
+export const getMediaStorageEndpoint = (): string | undefined =>
+  readEnvOrSecret(['MEDIA_STORAGE_ENDPOINT', 'S3_ENDPOINT'], 'sva_studio_media_storage_endpoint');
+
+export const getMediaStorageRegion = (): string =>
+  readFirstEnv('MEDIA_STORAGE_REGION', 'AWS_REGION', 'AWS_DEFAULT_REGION') ?? 'eu-central-1';
+
+export const getMediaStorageBucket = (): string | undefined =>
+  readEnvOrSecret(['MEDIA_STORAGE_BUCKET', 'S3_BUCKET'], 'sva_studio_media_storage_bucket');
+
+export const getMediaStorageAccessKeyId = (): string | undefined =>
+  readEnvOrSecret(['MEDIA_STORAGE_ACCESS_KEY_ID', 'AWS_ACCESS_KEY_ID'], 'sva_studio_media_storage_access_key_id');
+
+export const getMediaStorageSecretAccessKey = (): string | undefined =>
+  readEnvOrSecret(
+    ['MEDIA_STORAGE_SECRET_ACCESS_KEY', 'AWS_SECRET_ACCESS_KEY'],
+    'sva_studio_media_storage_secret_access_key'
+  );
+
+export const getMediaStoragePublicBaseUrl = (): string | undefined => {
+  const value = readFirstEnv('MEDIA_STORAGE_PUBLIC_BASE_URL');
+  if (!value) {
+    return undefined;
+  }
+  return new URL(value).toString().replace(/\/$/, '');
+};
+
+export const getMediaStorageSignedUrlTtlSeconds = (): number => {
+  const raw = readFirstEnv('MEDIA_STORAGE_SIGNED_URL_TTL_SECONDS');
+  const parsed = raw ? Number(raw) : NaN;
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return 900;
+  }
+  return Math.min(Math.floor(parsed), 3600);
+};
+
 const ensureValidDatabaseUrl = (databaseUrl: string | undefined): string | undefined => {
   if (!databaseUrl) {
     return undefined;

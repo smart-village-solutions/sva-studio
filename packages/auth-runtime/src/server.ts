@@ -27,6 +27,11 @@ export {
 export { withAuthenticatedUser, type AuthenticatedRequestContext } from './middleware.js';
 export { withMediaRepository, withMediaService } from './iam-media/index.js';
 export {
+  authorizeMediaPrimitiveForUser,
+  type MediaPrimitiveAuthorizationResource,
+  type MediaPrimitiveAuthorizationResult,
+} from './iam-media/server-authorization.js';
+export {
   authorizeContentPrimitiveForUser,
   type ContentPrimitiveAuthorizationResource,
   type ContentPrimitiveAuthorizationResult,

@@ -11,6 +11,12 @@ export type {
   AdminResourceGuard,
   AdminResourceViewDefinition,
   AdminResourceViews,
+  HostMediaAssetListItem,
+  HostMediaFieldOption,
+  HostMediaReferenceSelection,
+  MainserverCrudClientOptions,
+  MainserverErrorFactory,
+  MainserverListQuery,
 } from '@sva/plugin-sdk';
 export type {
   PluginActionDefinition,
@@ -25,6 +31,11 @@ export type {
   PluginPermissionRegistryEntry,
   PluginRouteDefinition,
   PluginRouteGuard,
+  StandardContentAdminResourceOptions,
+  StandardContentPluginActionIds,
+  StandardContentPluginActionName,
+  StandardContentPluginActionOptions,
+  StandardContentPluginContributionOptions,
   PluginTranslations,
 } from '@sva/plugin-sdk';
 export type {
@@ -45,10 +56,18 @@ export {
 } from '@sva/plugin-sdk';
 export {
   createAdminResourceRegistry,
+  compactOptionalString,
   definePluginAdminResources,
+  findHostMediaReferenceAssetId,
+  fromDatetimeLocalValue,
   mergeAdminResourceDefinitions,
+  toDatetimeLocalValue,
+  toHostMediaFieldOptions,
 } from '@sva/plugin-sdk';
 export {
+  buildMainserverListUrl,
+  createMainserverCrudClient,
+  createMainserverJsonRequestHeaders,
   createPluginActionRegistry,
   createPluginAuditEventRegistry,
   createPluginPermissionRegistry,
@@ -64,12 +83,25 @@ export {
   mergePluginPermissions,
   mergePluginRouteDefinitions,
   mergePluginTranslations,
+  listHostMediaAssets,
+  listHostMediaReferencesByTarget,
+  MainserverApiError,
+  replaceHostMediaReferences,
+  requestMainserverJson,
 } from '@sva/plugin-sdk';
 export type {
   PluginTranslationResolver,
   PluginTranslationVariables,
 } from '@sva/plugin-sdk';
 export {
+  createStandardContentAdminResource,
+  createStandardContentModuleIamContract,
+  createStandardContentPluginActionIds,
+  createStandardContentPluginActions,
+  createStandardContentPluginContribution,
+  createStandardContentPluginPermissions,
+  createStandardContentPluginSystemRoles,
+  createStandardContentTypeDefinition,
   registerPluginTranslationResolver,
   translatePluginKey,
   usePluginTranslation,

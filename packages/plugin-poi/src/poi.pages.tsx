@@ -1,10 +1,18 @@
 import React from 'react';
 import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router';
-import { usePluginTranslation } from '@sva/plugin-sdk';
+import {
+  findHostMediaReferenceAssetId,
+  listHostMediaAssets,
+  listHostMediaReferencesByTarget,
+  replaceHostMediaReferences,
+  toHostMediaFieldOptions,
+  usePluginTranslation,
+} from '@sva/plugin-sdk';
 import {
   Button,
   Checkbox,
   Input,
+  MediaReferenceField,
   StudioDetailPageTemplate,
   StudioEmptyState,
   StudioErrorState,
@@ -18,6 +26,7 @@ import {
 } from '@sva/studio-ui-react';
 
 import { createPoi, deletePoi, getPoi, listPoi, PoiApiError, updatePoi } from './poi.api.js';
+import { pluginPoiMediaPickers } from './plugin.js';
 import type { PoiContentItem, PoiFormInput, PoiListResult } from './poi.types.js';
 import { validatePoiForm } from './poi.validation.js';
 
@@ -237,9 +246,18 @@ function PoiEditor({ mode }: { readonly mode: 'create' | 'edit' }) {
   const contentId = params.contentId ?? params.id;
   const [form, setForm] = React.useState<PoiFormInput>(defaultForm);
   const [payloadText, setPayloadText] = React.useState('{}');
+  const [mediaOptions, setMediaOptions] = React.useState<readonly { assetId: string; label: string }[]>([]);
+  const [teaserImageAssetId, setTeaserImageAssetId] = React.useState<string | null>(null);
+  const [existingMediaReferenceCount, setExistingMediaReferenceCount] = React.useState(0);
   const [loading, setLoading] = React.useState(mode === 'edit');
   const [status, setStatus] = React.useState<StatusMessage | null>(null);
   const [payloadError, setPayloadError] = React.useState(false);
+
+  React.useEffect(() => {
+    void listHostMediaAssets({ fetch: globalThis.fetch.bind(globalThis) })
+      .then((assets) => setMediaOptions(toHostMediaFieldOptions(assets)))
+      .catch(() => setMediaOptions([]));
+  }, []);
 
   React.useEffect(() => {
     if (mode !== 'edit' || !contentId) {
@@ -252,6 +270,21 @@ function PoiEditor({ mode }: { readonly mode: 'create' | 'edit' }) {
           const nextForm = itemToForm(item);
           setForm(nextForm);
           setPayloadText(JSON.stringify(nextForm.payload ?? {}, null, 2));
+          void listHostMediaReferencesByTarget({
+            fetch: globalThis.fetch.bind(globalThis),
+            targetType: 'poi',
+            targetId: item.id,
+          })
+            .then((references) => {
+              setExistingMediaReferenceCount(references.length);
+              setTeaserImageAssetId(
+                findHostMediaReferenceAssetId(references, pluginPoiMediaPickers.teaserImage.roles[0])
+              );
+            })
+            .catch(() => {
+              setExistingMediaReferenceCount(0);
+              setTeaserImageAssetId(null);
+            });
         }
       })
       .catch((loadError: unknown) => {
@@ -305,6 +338,23 @@ function PoiEditor({ mode }: { readonly mode: 'create' | 'edit' }) {
     }
     try {
       const saved = mode === 'create' ? await createPoi(compacted) : await updatePoi(contentId as string, compacted);
+      const mediaReferences = teaserImageAssetId
+        ? [
+            {
+              assetId: teaserImageAssetId,
+              role: pluginPoiMediaPickers.teaserImage.roles[0],
+              sortOrder: 0,
+            },
+          ]
+        : [];
+      if (mediaReferences.length > 0 || existingMediaReferenceCount > 0) {
+        await replaceHostMediaReferences({
+          fetch: globalThis.fetch.bind(globalThis),
+          targetType: 'poi',
+          targetId: saved.id,
+          references: mediaReferences,
+        });
+      }
       setStatus({ kind: 'success', text: mode === 'create' ? pt('messages.createSuccess') : pt('messages.updateSuccess') });
       if (mode === 'create') {
         await navigate({ to: '/admin/poi/$id', params: { id: saved.id } });
@@ -356,6 +406,15 @@ function PoiEditor({ mode }: { readonly mode: 'create' | 'edit' }) {
         <StudioField id="poi-mobile-description" label={pt('fields.mobileDescription')}>
           <Textarea id="poi-mobile-description" value={form.mobileDescription ?? ''} onChange={(event) => setField('mobileDescription', event.target.value)} rows={4} />
         </StudioField>
+        <MediaReferenceField
+          id="poi-teaser-image"
+          label={pt('fields.teaserImage')}
+          value={teaserImageAssetId}
+          options={mediaOptions}
+          onChange={setTeaserImageAssetId}
+          placeholder={pt('fields.mediaPlaceholder')}
+          clearLabel={pt('actions.clearMedia')}
+        />
         <StudioField id="poi-active" label={pt('fields.active')}>
           <Checkbox id="poi-active" checked={form.active !== false} onChange={(event) => setField('active', event.target.checked)} />
         </StudioField>

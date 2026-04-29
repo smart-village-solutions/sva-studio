@@ -1,56 +1,50 @@
 import {
-  definePluginActions,
-  definePluginAdminResources,
   definePluginAuditEvents,
-  definePluginContentTypes,
-  definePluginModuleIamContract,
-  definePluginPermissions,
+  defineMediaPickerDefinition,
+  createStandardContentPluginActionIds,
+  createStandardContentPluginContribution,
   type PluginDefinition,
 } from '@sva/plugin-sdk';
 
 import { NEWS_CONTENT_TYPE } from './news.constants.js';
 export { NEWS_CONTENT_TYPE } from './news.constants.js';
 
-export const pluginNewsActionIds = {
-  create: 'news.create',
-  edit: 'news.edit',
-  update: 'news.update',
-  delete: 'news.delete',
+export const pluginNewsActionIds = createStandardContentPluginActionIds('news');
+
+const standardNewsContribution = createStandardContentPluginContribution({
+  pluginId: 'news',
+  displayName: 'News',
+  contentType: NEWS_CONTENT_TYPE,
+  titleKey: 'news.navigation.title',
+  listBindingKey: 'newsList',
+  detailBindingKey: 'newsDetail',
+  editorBindingKey: 'newsEditor',
+  actionOptions: {
+    legacyAliases: {
+      create: ['create'],
+      edit: ['edit'],
+      update: ['save', 'update'],
+      delete: ['delete'],
+    },
+  },
+});
+
+export const pluginNewsPermissionDefinitions = standardNewsContribution.permissions;
+
+export const pluginNewsActionDefinitions = standardNewsContribution.actions;
+
+export const pluginNewsMediaPickers = {
+  teaserImage: defineMediaPickerDefinition({
+    roles: ['teaser_image'],
+    allowedMediaTypes: ['image'],
+    presetKey: 'teaser',
+  }),
+  headerImage: defineMediaPickerDefinition({
+    roles: ['header_image'],
+    allowedMediaTypes: ['image'],
+    presetKey: 'hero',
+  }),
 } as const;
-
-export const pluginNewsPermissionDefinitions = definePluginPermissions('news', [
-  { id: 'news.read', titleKey: 'news.permissions.read' },
-  { id: 'news.create', titleKey: 'news.permissions.create' },
-  { id: 'news.update', titleKey: 'news.permissions.update' },
-  { id: 'news.delete', titleKey: 'news.permissions.delete' },
-] as const);
-
-export const pluginNewsActionDefinitions = definePluginActions('news', [
-  {
-    id: pluginNewsActionIds.create,
-    titleKey: 'news.actions.create',
-    requiredAction: 'news.create',
-    legacyAliases: ['create'],
-  },
-  {
-    id: pluginNewsActionIds.edit,
-    titleKey: 'news.actions.edit',
-    requiredAction: 'news.read',
-    legacyAliases: ['edit'],
-  },
-  {
-    id: pluginNewsActionIds.update,
-    titleKey: 'news.actions.update',
-    requiredAction: 'news.update',
-    legacyAliases: ['save', 'update'],
-  },
-  {
-    id: pluginNewsActionIds.delete,
-    titleKey: 'news.actions.delete',
-    requiredAction: 'news.delete',
-    legacyAliases: ['delete'],
-  },
-] as const);
 
 export const getPluginNewsActionDefinition = (
   actionId: (typeof pluginNewsActionIds)[keyof typeof pluginNewsActionIds]
@@ -60,67 +54,12 @@ export const pluginNews: PluginDefinition = {
   id: 'news',
   displayName: 'News',
   routes: [],
-  navigation: [
-    {
-      id: 'news.navigation',
-      to: '/admin/news',
-      titleKey: 'news.navigation.title',
-      section: 'dataManagement',
-      requiredAction: 'news.read',
-    },
-  ],
+  navigation: standardNewsContribution.navigation,
   actions: pluginNewsActionDefinitions,
   permissions: pluginNewsPermissionDefinitions,
-  moduleIam: definePluginModuleIamContract('news', {
-    moduleId: 'news',
-    permissionIds: ['news.read', 'news.create', 'news.update', 'news.delete'],
-    systemRoles: [
-      { roleName: 'system_admin', permissionIds: ['news.read', 'news.create', 'news.update', 'news.delete'] },
-      { roleName: 'app_manager', permissionIds: ['news.read'] },
-      { roleName: 'feature-manager', permissionIds: ['news.read', 'news.create', 'news.update', 'news.delete'] },
-      { roleName: 'interface-manager', permissionIds: ['news.read'] },
-      { roleName: 'designer', permissionIds: ['news.read', 'news.update'] },
-      { roleName: 'editor', permissionIds: ['news.read', 'news.create', 'news.update', 'news.delete'] },
-      { roleName: 'moderator', permissionIds: ['news.read'] },
-    ],
-  }),
-  contentTypes: definePluginContentTypes('news', [
-    {
-      contentType: NEWS_CONTENT_TYPE,
-      displayName: 'News',
-    },
-  ]),
-  adminResources: definePluginAdminResources('news', [
-    {
-      resourceId: 'news.content',
-      basePath: 'news',
-      titleKey: 'news.navigation.title',
-      guard: 'content',
-      views: {
-        list: { bindingKey: 'content' },
-        create: { bindingKey: 'contentCreate' },
-        detail: { bindingKey: 'contentDetail' },
-      },
-      capabilities: {
-        list: {
-          pagination: {
-            pageParam: 'page',
-            pageSizeParam: 'pageSize',
-            defaultPageSize: 25,
-            pageSizeOptions: [25, 50, 100],
-          },
-        },
-      },
-      contentUi: {
-        contentType: NEWS_CONTENT_TYPE,
-        bindings: {
-          list: { bindingKey: 'newsList' },
-          detail: { bindingKey: 'newsDetail' },
-          editor: { bindingKey: 'newsEditor' },
-        },
-      },
-    },
-  ]),
+  moduleIam: standardNewsContribution.moduleIam,
+  contentTypes: standardNewsContribution.contentTypes,
+  adminResources: standardNewsContribution.adminResources,
   auditEvents: definePluginAuditEvents('news', []),
   translations: {
     de: {
@@ -148,6 +87,8 @@ export const pluginNews: PluginDefinition = {
           charactersToBeShown: 'Zeichenbegrenzung',
           publishedAt: 'Veröffentlichungsdatum',
           publicationDate: 'Publikationsdatum',
+          teaserImage: 'Teaserbild',
+          headerImage: 'Headerbild',
           showPublishDate: 'Publikationsdatum anzeigen',
           pushNotification: 'Push-Benachrichtigung senden',
           categoryName: 'Kategorie',
@@ -155,6 +96,7 @@ export const pluginNews: PluginDefinition = {
           categoriesHelp: 'Eine Kategorie pro Zeile.',
           sourceUrl: 'Quell-URL',
           sourceUrlDescription: 'Quellbeschreibung',
+          mediaPlaceholder: 'Medium auswählen',
           street: 'Straße',
           zip: 'PLZ',
           city: 'Ort',
@@ -192,6 +134,7 @@ export const pluginNews: PluginDefinition = {
           addContentBlock: 'Inhaltsblock hinzufügen',
           addMedia: 'Medium hinzufügen',
           remove: 'Entfernen',
+          clearMedia: 'Medium entfernen',
           deleteConfirm: 'Soll dieser News-Eintrag wirklich gelöscht werden?',
         },
         empty: {
@@ -265,6 +208,8 @@ export const pluginNews: PluginDefinition = {
           charactersToBeShown: 'Character limit',
           publishedAt: 'Published at',
           publicationDate: 'Publication date',
+          teaserImage: 'Teaser image',
+          headerImage: 'Header image',
           showPublishDate: 'Show publication date',
           pushNotification: 'Send push notification',
           categoryName: 'Category',
@@ -272,6 +217,7 @@ export const pluginNews: PluginDefinition = {
           categoriesHelp: 'One category per line.',
           sourceUrl: 'Source URL',
           sourceUrlDescription: 'Source description',
+          mediaPlaceholder: 'Select media',
           street: 'Street',
           zip: 'ZIP',
           city: 'City',
@@ -309,6 +255,7 @@ export const pluginNews: PluginDefinition = {
           addContentBlock: 'Add content block',
           addMedia: 'Add media',
           remove: 'Remove',
+          clearMedia: 'Clear media',
           deleteConfirm: 'Do you really want to delete this news entry?',
         },
         empty: {

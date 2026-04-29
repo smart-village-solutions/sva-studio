@@ -1,10 +1,20 @@
 import React from 'react';
 import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router';
-import { usePluginTranslation } from '@sva/plugin-sdk';
+import {
+  findHostMediaReferenceAssetId,
+  fromDatetimeLocalValue,
+  listHostMediaAssets,
+  listHostMediaReferencesByTarget,
+  replaceHostMediaReferences,
+  toDatetimeLocalValue,
+  toHostMediaFieldOptions,
+  usePluginTranslation,
+} from '@sva/plugin-sdk';
 import {
   Button,
   Checkbox,
   Input,
+  MediaReferenceField,
   Select,
   StudioDetailPageTemplate,
   StudioEmptyState,
@@ -28,6 +38,7 @@ import {
   updateEvent,
 } from './events.api.js';
 import { normalizeListSearch } from './list-pagination.js';
+import { pluginEventsMediaPickers } from './plugin.js';
 import type { EventContentItem, EventFormInput, EventListResult, PoiSelectItem } from './events.types.js';
 import { validateEventForm } from './events.validation.js';
 
@@ -56,25 +67,6 @@ const defaultForm = (): EventFormInput => ({
 const compactString = (value?: string) => {
   const trimmed = value?.trim();
   return trimmed && trimmed.length > 0 ? trimmed : undefined;
-};
-
-const toDatetimeLocalValue = (value?: string) => {
-  if (!value) {
-    return '';
-  }
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return '';
-  }
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}T${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
-};
-
-const fromDatetimeLocalValue = (value: string) => {
-  if (value.length === 0) {
-    return '';
-  }
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? '' : date.toISOString();
 };
 
 const itemToForm = (item: EventContentItem): EventFormInput => ({
@@ -158,7 +150,7 @@ export function EventsListPage() {
     }
 
     void navigate({
-      to: '/plugins/events',
+      to: '/admin/events',
       replace: true,
       search: (current: Record<string, unknown>) => ({
         ...current,
@@ -176,6 +168,7 @@ export function EventsListPage() {
       .then((data) => {
         if (active) {
           setResult(data);
+          setError(null);
         }
       })
       .catch((loadError: unknown) => {
@@ -295,11 +288,17 @@ function EventsEditor({ mode }: { readonly mode: 'create' | 'edit' }) {
   const contentId = params.contentId ?? params.id;
   const [form, setForm] = React.useState<EventFormInput>(defaultForm);
   const [pois, setPois] = React.useState<readonly PoiSelectItem[]>([]);
+  const [mediaOptions, setMediaOptions] = React.useState<readonly { assetId: string; label: string }[]>([]);
+  const [headerImageAssetId, setHeaderImageAssetId] = React.useState<string | null>(null);
+  const [existingMediaReferenceCount, setExistingMediaReferenceCount] = React.useState(0);
   const [loading, setLoading] = React.useState(mode === 'edit');
   const [status, setStatus] = React.useState<StatusMessage | null>(null);
 
   React.useEffect(() => {
     void listPoiForEventSelection().then(setPois).catch(() => setPois([]));
+    void listHostMediaAssets({ fetch: globalThis.fetch.bind(globalThis) })
+      .then((assets) => setMediaOptions(toHostMediaFieldOptions(assets)))
+      .catch(() => setMediaOptions([]));
   }, []);
 
   React.useEffect(() => {
@@ -311,6 +310,21 @@ function EventsEditor({ mode }: { readonly mode: 'create' | 'edit' }) {
       .then((item) => {
         if (active) {
           setForm(itemToForm(item));
+          void listHostMediaReferencesByTarget({
+            fetch: globalThis.fetch.bind(globalThis),
+            targetType: 'events',
+            targetId: item.id,
+          })
+            .then((references) => {
+              setExistingMediaReferenceCount(references.length);
+              setHeaderImageAssetId(
+                findHostMediaReferenceAssetId(references, pluginEventsMediaPickers.headerImage.roles[0])
+              );
+            })
+            .catch(() => {
+              setExistingMediaReferenceCount(0);
+              setHeaderImageAssetId(null);
+            });
         }
       })
       .catch((loadError: unknown) => {
@@ -347,6 +361,23 @@ function EventsEditor({ mode }: { readonly mode: 'create' | 'edit' }) {
     try {
       const saved =
         mode === 'create' ? await createEvent(compacted) : await updateEvent(contentId as string, compacted);
+      const mediaReferences = headerImageAssetId
+        ? [
+            {
+              assetId: headerImageAssetId,
+              role: pluginEventsMediaPickers.headerImage.roles[0],
+              sortOrder: 0,
+            },
+          ]
+        : [];
+      if (mediaReferences.length > 0 || existingMediaReferenceCount > 0) {
+        await replaceHostMediaReferences({
+          fetch: globalThis.fetch.bind(globalThis),
+          targetType: 'events',
+          targetId: saved.id,
+          references: mediaReferences,
+        });
+      }
       setStatus({ kind: 'success', text: mode === 'create' ? pt('messages.createSuccess') : pt('messages.updateSuccess') });
       if (mode === 'create') {
         await navigate({ to: '/admin/events/$id', params: { id: saved.id } });
@@ -395,6 +426,15 @@ function EventsEditor({ mode }: { readonly mode: 'create' | 'edit' }) {
         <StudioField id="event-description" label={pt('fields.description')}>
           <Textarea id="event-description" value={form.description ?? ''} onChange={(event) => setField('description', event.target.value)} rows={7} />
         </StudioField>
+        <MediaReferenceField
+          id="event-header-image"
+          label={pt('fields.headerImage')}
+          value={headerImageAssetId}
+          options={mediaOptions}
+          onChange={setHeaderImageAssetId}
+          placeholder={pt('fields.mediaPlaceholder')}
+          clearLabel={pt('actions.clearMedia')}
+        />
         <StudioFieldGroup columns={2}>
           <StudioField id="event-date-start" label={pt('fields.dateStart')} error={errors.includes('dates') ? pt('validation.dates') : undefined}>
             <Input id="event-date-start" type="datetime-local" value={toDatetimeLocalValue(firstDate.dateStart)} onChange={(event) => setField('dates', [{ ...firstDate, dateStart: fromDatetimeLocalValue(event.target.value) }])} />

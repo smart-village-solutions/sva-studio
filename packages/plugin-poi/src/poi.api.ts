@@ -1,7 +1,6 @@
-import type { PoiContentItem, PoiFormInput, PoiListQuery, PoiListResult } from './poi.types.js';
+import { createMainserverCrudClient } from '@sva/plugin-sdk';
 
-type ApiItemResponse<T> = { readonly data: T };
-type ApiErrorResponse = { readonly error?: string; readonly message?: string };
+import type { PoiContentItem, PoiFormInput, PoiListQuery, PoiListResult } from './poi.types.js';
 
 export class PoiApiError extends Error {
   public constructor(
@@ -13,67 +12,19 @@ export class PoiApiError extends Error {
   }
 }
 
-const REQUEST_HEADERS = {
-  'Content-Type': 'application/json',
-  'X-Requested-With': 'XMLHttpRequest',
-} as const;
+const poiClient = createMainserverCrudClient<PoiContentItem, PoiFormInput, PoiListResult, PoiListResult, PoiApiError>({
+  basePath: '/api/v1/mainserver/poi',
+  errorFactory: (code, message) => new PoiApiError(code, message),
+  mapListResponse: (response) => response,
+});
 
-const requestJson = async <T>(input: string, init?: RequestInit): Promise<T> => {
-  const response = await fetch(input, {
-    credentials: 'include',
-    ...init,
-    headers: { Accept: 'application/json', ...(init?.headers ?? {}) },
-  });
+export const listPoi = async (query: PoiListQuery): Promise<PoiListResult> => poiClient.list(query);
 
-  if (!response.ok) {
-    let errorCode = `http_${response.status}`;
-    let message = errorCode;
-    try {
-      const body = (await response.json()) as ApiErrorResponse;
-      errorCode = typeof body.error === 'string' && body.error.length > 0 ? body.error : errorCode;
-      message = typeof body.message === 'string' && body.message.length > 0 ? body.message : errorCode;
-    } catch {
-      // Keep HTTP fallback.
-    }
-    throw new PoiApiError(errorCode, message);
-  }
+export const getPoi = async (contentId: string): Promise<PoiContentItem> => poiClient.get(contentId);
 
-  return (await response.json()) as T;
-};
+export const createPoi = async (input: PoiFormInput): Promise<PoiContentItem> => poiClient.create(input);
 
-const buildListUrl = (query: PoiListQuery): string =>
-  `/api/v1/mainserver/poi?page=${encodeURIComponent(String(query.page))}&pageSize=${encodeURIComponent(String(query.pageSize))}`;
+export const updatePoi = async (contentId: string, input: PoiFormInput): Promise<PoiContentItem> =>
+  poiClient.update(contentId, input);
 
-export const listPoi = async (query: PoiListQuery): Promise<PoiListResult> => {
-  return requestJson<PoiListResult>(buildListUrl(query));
-};
-
-export const getPoi = async (contentId: string): Promise<PoiContentItem> => {
-  const response = await requestJson<ApiItemResponse<PoiContentItem>>(`/api/v1/mainserver/poi/${contentId}`);
-  return response.data;
-};
-
-export const createPoi = async (input: PoiFormInput): Promise<PoiContentItem> => {
-  const response = await requestJson<ApiItemResponse<PoiContentItem>>('/api/v1/mainserver/poi', {
-    method: 'POST',
-    headers: REQUEST_HEADERS,
-    body: JSON.stringify(input),
-  });
-  return response.data;
-};
-
-export const updatePoi = async (contentId: string, input: PoiFormInput): Promise<PoiContentItem> => {
-  const response = await requestJson<ApiItemResponse<PoiContentItem>>(`/api/v1/mainserver/poi/${contentId}`, {
-    method: 'PATCH',
-    headers: REQUEST_HEADERS,
-    body: JSON.stringify(input),
-  });
-  return response.data;
-};
-
-export const deletePoi = async (contentId: string): Promise<void> => {
-  await requestJson<ApiItemResponse<{ id: string }>>(`/api/v1/mainserver/poi/${contentId}`, {
-    method: 'DELETE',
-    headers: REQUEST_HEADERS,
-  });
-};
+export const deletePoi = async (contentId: string): Promise<void> => poiClient.remove(contentId);

@@ -1,85 +1,46 @@
 import {
-  definePluginActions,
-  definePluginAdminResources,
   definePluginAuditEvents,
-  definePluginContentTypes,
-  definePluginModuleIamContract,
-  definePluginPermissions,
+  defineMediaPickerDefinition,
+  createStandardContentPluginActionIds,
+  createStandardContentPluginContribution,
   type PluginDefinition,
 } from '@sva/plugin-sdk';
 
 import { POI_CONTENT_TYPE } from './poi.constants.js';
 
-export const pluginPoiActionIds = {
-  create: 'poi.create',
-  edit: 'poi.edit',
-  update: 'poi.update',
-  delete: 'poi.delete',
+export const pluginPoiActionIds = createStandardContentPluginActionIds('poi');
+
+const standardPoiContribution = createStandardContentPluginContribution({
+  pluginId: 'poi',
+  displayName: 'POI',
+  contentType: POI_CONTENT_TYPE,
+  titleKey: 'poi.navigation.title',
+  listBindingKey: 'poiList',
+  detailBindingKey: 'poiDetail',
+  editorBindingKey: 'poiEditor',
+});
+
+export const pluginPoiPermissionDefinitions = standardPoiContribution.permissions;
+
+export const pluginPoiActionDefinitions = standardPoiContribution.actions;
+
+export const pluginPoiMediaPickers = {
+  teaserImage: defineMediaPickerDefinition({
+    roles: ['teaser_image'],
+    allowedMediaTypes: ['image'],
+    presetKey: 'teaser',
+  }),
 } as const;
-
-export const pluginPoiPermissionDefinitions = definePluginPermissions('poi', [
-  { id: 'poi.read', titleKey: 'poi.permissions.read' },
-  { id: 'poi.create', titleKey: 'poi.permissions.create' },
-  { id: 'poi.update', titleKey: 'poi.permissions.update' },
-  { id: 'poi.delete', titleKey: 'poi.permissions.delete' },
-] as const);
-
-export const pluginPoiActionDefinitions = definePluginActions('poi', [
-  { id: pluginPoiActionIds.create, titleKey: 'poi.actions.create', requiredAction: 'poi.create' },
-  { id: pluginPoiActionIds.edit, titleKey: 'poi.actions.edit', requiredAction: 'poi.read' },
-  { id: pluginPoiActionIds.update, titleKey: 'poi.actions.update', requiredAction: 'poi.update' },
-  { id: pluginPoiActionIds.delete, titleKey: 'poi.actions.delete', requiredAction: 'poi.delete' },
-] as const);
-
-const pluginPoiModulePermissionIds = pluginPoiPermissionDefinitions.map((permission) => permission.id);
-
 export const pluginPoi: PluginDefinition = {
   id: 'poi',
   displayName: 'POI',
   routes: [],
-  navigation: [
-    {
-      id: 'poi.navigation',
-      to: '/admin/poi',
-      titleKey: 'poi.navigation.title',
-      section: 'dataManagement',
-      requiredAction: 'poi.read',
-    },
-  ],
+  navigation: standardPoiContribution.navigation,
   actions: pluginPoiActionDefinitions,
   permissions: pluginPoiPermissionDefinitions,
-  moduleIam: definePluginModuleIamContract('poi', {
-    moduleId: 'poi',
-    permissionIds: pluginPoiModulePermissionIds,
-    systemRoles: [
-      {
-        roleName: 'poi_admin',
-        permissionIds: pluginPoiModulePermissionIds,
-      },
-    ],
-  }),
-  contentTypes: definePluginContentTypes('poi', [{ contentType: POI_CONTENT_TYPE, displayName: 'POI' }]),
-  adminResources: definePluginAdminResources('poi', [
-    {
-      resourceId: 'poi.content',
-      basePath: 'poi',
-      titleKey: 'poi.navigation.title',
-      guard: 'content',
-      views: {
-        list: { bindingKey: 'content' },
-        create: { bindingKey: 'contentCreate' },
-        detail: { bindingKey: 'contentDetail' },
-      },
-      contentUi: {
-        contentType: POI_CONTENT_TYPE,
-        bindings: {
-          list: { bindingKey: 'poiList' },
-          detail: { bindingKey: 'poiDetail' },
-          editor: { bindingKey: 'poiEditor' },
-        },
-      },
-    },
-  ]),
+  moduleIam: standardPoiContribution.moduleIam,
+  contentTypes: standardPoiContribution.contentTypes,
+  adminResources: standardPoiContribution.adminResources,
   auditEvents: definePluginAuditEvents('poi', []),
   translations: {
     de: {
@@ -96,6 +57,7 @@ export const pluginPoi: PluginDefinition = {
           name: 'Name',
           description: 'Beschreibung',
           mobileDescription: 'Mobile Beschreibung',
+          teaserImage: 'Teaserbild',
           active: 'Aktiv',
           categoryName: 'Kategorie',
           street: 'Straße',
@@ -105,6 +67,7 @@ export const pluginPoi: PluginDefinition = {
           phone: 'Telefon',
           email: 'E-Mail',
           url: 'Web-URL',
+          mediaPlaceholder: 'Medium auswählen',
           weekday: 'Wochentag',
           timeFrom: 'Öffnet',
           timeTo: 'Schließt',
@@ -119,6 +82,7 @@ export const pluginPoi: PluginDefinition = {
           delete: 'Löschen',
           back: 'Zurück zur Liste',
           deleteConfirm: 'Soll dieser POI wirklich gelöscht werden?',
+          clearMedia: 'Medium entfernen',
         },
         messages: {
           loading: 'POI werden geladen.',
@@ -137,6 +101,12 @@ export const pluginPoi: PluginDefinition = {
           next: 'Weiter',
         },
         empty: { title: 'Noch keine POI vorhanden', description: 'Legen Sie den ersten POI an.' },
+        pagination: {
+          ariaLabel: 'POI-Pagination',
+          previous: 'Zurück',
+          next: 'Weiter',
+          pageLabel: 'Seite {{page}}',
+        },
         validation: {
           name: 'Der Name ist erforderlich.',
           webUrls: 'URLs müssen mit https:// beginnen.',
@@ -159,6 +129,7 @@ export const pluginPoi: PluginDefinition = {
           name: 'Name',
           description: 'Description',
           mobileDescription: 'Mobile description',
+          teaserImage: 'Teaser image',
           active: 'Active',
           categoryName: 'Category',
           street: 'Street',
@@ -168,6 +139,7 @@ export const pluginPoi: PluginDefinition = {
           phone: 'Phone',
           email: 'Email',
           url: 'Web URL',
+          mediaPlaceholder: 'Select media',
           weekday: 'Weekday',
           timeFrom: 'Opens',
           timeTo: 'Closes',
@@ -182,6 +154,7 @@ export const pluginPoi: PluginDefinition = {
           delete: 'Delete',
           back: 'Back to list',
           deleteConfirm: 'Delete this POI?',
+          clearMedia: 'Clear media',
         },
         messages: {
           loading: 'Loading POI.',
@@ -200,6 +173,12 @@ export const pluginPoi: PluginDefinition = {
           next: 'Next',
         },
         empty: { title: 'No POI yet', description: 'Create the first POI.' },
+        pagination: {
+          ariaLabel: 'POI pagination',
+          previous: 'Previous',
+          next: 'Next',
+          pageLabel: 'Page {{page}}',
+        },
         validation: {
           name: 'Name is required.',
           webUrls: 'URLs must start with https://.',

@@ -9,6 +9,8 @@ Medienmanagement ist im Studio kein isoliertes Fachfeature, sondern eine hostsei
 
 Die bestehende Plugin-Architektur ist dafür nicht der richtige Ort. Plugins dürfen heute fachliche Erweiterungen auf Basis des SDK liefern, aber keine hostseitigen Storage-, Sicherheits- oder Routing-Bypässe etablieren. Medienmanagement muss deshalb als Capability des Hosts modelliert werden, mit optionalen Extension Points für Fachmodule.
 
+Der inzwischen etablierte Host-Zuschnitt mit Build-time-Registry, `adminResources`, `contentUi`-Spezialisierungen und modulgebundener Navigation bestätigt diese Richtung: Medienmanagement darf nicht als viertes Fachplugin mit eigener CRUD-Strecke entstehen, sondern muss an dieselben Host-Verträge anschließen, über die News, Events und POI bereits materialisiert werden.
+
 ## Ziele
 
 - Medien als zentrale Assets mit stabiler Identität modellieren
@@ -42,6 +44,27 @@ Die Umsetzung bleibt schichtentreu:
 - optional dedizierter Worker oder Job-Pfad für asynchrone Verarbeitung
 
 Falls das Team kein neues Package einführen will, ist `packages/core/src/media/*` die zweitbeste Variante. Nicht empfohlen ist ein monolithisches `packages/media`, das gleichzeitig Domain, Persistenz, API und UI enthält.
+
+## Host-Integration: Admin-Ressource plus spezialisierte Unterrouten
+
+Der kanonische Einstieg für Medienmanagement wird als hosteigene Admin-Capability unter `/admin/media` modelliert. Dieser Einstieg bildet Bibliothek, Suche, Filter, Pagination, Detailwechsel, Rechteprüfung und Standardaktionen ab. Für Medien-spezifische Interaktionen, die nicht sinnvoll in eine reine Listen-/Detail-Metapher passen, darf der Host ergänzende Unterrouten materialisieren, etwa für:
+
+- Fokuspunkt- und Crop-Bearbeitung
+- Nutzungsanalyse und Usage-Impact
+- geschützte Auslieferungs- oder Varianten-Detailansichten
+
+Empfohlen ist ein Hybrid-Zuschnitt:
+
+- hosteigene Admin-Ressource `media` für den kanonischen Einstieg
+- hosteigene Spezialrouten unter `/admin/media/...` für nicht-tabellarische Workflows
+
+Dadurch bleibt der Einstieg konsistent zur heutigen Admin-Resource-Architektur, ohne Medien-UX in das Muster der inhaltstypgebundenen Plugins zu zwängen.
+
+### Admin-Resource-Vertrag
+
+Medienmanagement nutzt den bestehenden hostseitigen Build-time-Registry- und Admin-Resource-Vertrag als führenden Integrationspunkt. Es entsteht keine zweite, konkurrierende Registrierungslogik für Navigation, Guards oder Search-Params.
+
+Anders als News, Events und POI ist Medienmanagement keine `contentUi`-Spezialisierung auf einer Content-Ressource. Die Capability ist eine eigenständige hostseitige Ressource mit eigener Listen- und Detaillogik. Falls der bestehende `AdminResourceDefinition`-Vertrag dafür Ergänzungen braucht, werden diese hostseitig und generisch vorgenommen; es wird kein Medien-Sonderfall außerhalb des Vertrags eingeführt.
 
 ## Domänenmodell
 
@@ -99,6 +122,21 @@ Inhalte und andere Module referenzieren Medien nie über rohe URLs oder Dateipfa
 Die Auswahl der konkreten technischen Variante erfolgt zentral über Presets und Ausgabeanforderungen. Dadurch bleiben Inhalte stabil, auch wenn Breitenstufen, Formate oder CDN-Regeln später angepasst werden.
 
 Plugins binden Medien über einen hostseitigen Media-Picker an. Plugins deklarieren zulässige Rollen, Medientypen und optionale Preset-Anforderungen, erhalten aber keine direkte Storage-Schnittstelle und keine MinIO-Artefakte.
+
+### Migrations- und Bridge-Pfad für bestehende Plugins
+
+Der aktuelle Codebestand besitzt bereits URL-basierte Medienfelder in den Mainserver-nahen Plugins, insbesondere `sourceUrl`, `imageUrl` und `mediaContents`. Diese Realität wird vom Zielbild nicht ignoriert, sondern explizit überführt:
+
+- News, Events und POI bleiben während der Migration funktionsfähig
+- bestehende URL-basierte Felder werden nicht dauerhaft zum Zielvertrag erklärt
+- der Host führt einen kontrollierten Bridge-Pfad ein, über den bestehende Inhalte schrittweise in `MediaAsset`- und `MediaReference`-Beziehungen überführt werden können
+
+Der MVP muss nicht alle Altbestände sofort vollständig migrieren, aber er muss den Zielpfad spezifizieren:
+
+- wie bestehende URL-basierte Eingaben im Übergang akzeptiert oder abgewiesen werden
+- wie daraus hostseitige Medienreferenzen entstehen
+- wie Plugins vom URL-Formular auf den hostseitigen Media-Picker wechseln
+- wie Legacy-Felder später entfernt werden, ohne fachliche Inhalte zu verlieren
 
 ## Variantenstrategie
 
@@ -161,6 +199,14 @@ Medienoperationen werden als eigene Fachrechte modelliert, mindestens für:
 - Löschen oder Archivieren
 - geschützte Auslieferung freigeben
 
+Zusätzlich muss die Capability an das inzwischen etablierte Modul- und Sichtbarkeitsmodell des Hosts anschließen. Das bedeutet:
+
+- die UI-Sichtbarkeit von `/admin/media` und Medien-Unterseiten wird über denselben hostseitigen Guard- und Modulpfad gesteuert wie andere Admin-Capabilities
+- falls Medienmanagement als zuweisbares Modul behandelt wird, erfolgt dies über denselben `moduleIam`-/Modulzuweisungsmechanismus wie bei pluginbasierten Fachmodulen
+- falls Medienmanagement als immer vorhandene Core-Capability behandelt wird, bleibt trotzdem die feingranulare Autorisierung über `media.*`-Rechte serverseitig verbindlich
+
+Die konkrete Entscheidung ist in der Umsetzung explizit festzuhalten; eine implizite Sonderbehandlung außerhalb des aktuellen Guard-Modells ist nicht zulässig.
+
 Löschungen müssen gegen aktive Referenzen, rechtliche Haltefristen oder geschützte Betriebszustände fail-closed sein. Alle sicherheits- und fachrelevanten Medienereignisse erzeugen Audit-Events.
 
 ## MVP-Abgrenzung und Folgeumfang
@@ -173,6 +219,8 @@ Erweiterte Governance- und Betriebsfunktionen werden bewusst in `extend-media-ma
 
 Die Capability erzeugt neue Laufzeitpfade:
 
+- `/admin/media` als kanonischer Host-Einstieg
+- spezialisierte Medien-Unterseiten unter `/admin/media/...`
 - Upload initialisieren
 - Objekt hochladen
 - Metadaten extrahieren
@@ -190,13 +238,13 @@ Damit sind mindestens Bausteinsicht, Laufzeitsicht, Verteilungssicht, Querschnit
 Für die erste Iteration:
 
 - Bilder zuerst
-- zentrale Bibliothek
+- zentrale Bibliothek unter `/admin/media`
 - Metadatenpflege
 - Fokuspunkt und einfacher Zuschnitt für Bilder
 - automatische Verkleinerung übergroßer Bilder nach zentraler Konfiguration
 - Upload-Status und Usage-Impact
 - referenzbasierte Nutzung in `content-management`
-- Media-Picker für Plugins
+- Media-Picker für Plugins und Migrationspfad für bestehende URL-basierte News-/Events-/POI-Medienfelder
 - Breitenstufen und wenige zentrale Presets
 - Verwendungsnachweis
 - einfache geschützte vs. öffentliche Sichtbarkeit

@@ -33,3 +33,10 @@ Das System MUST `Inhalt` als kanonisches Core-Element modellieren, das über def
 - **DANN** verwendet es den hostseitigen Media-Picker oder dessen SDK-Vertrag
 - **UND** das Plugin deklariert erlaubte Medienrollen, Medientypen und optionale Preset-Anforderungen
 - **UND** es erhält keine direkte Storage-Schnittstelle und speichert keine MinIO-Bucket-Namen, Object-Keys oder presigned URLs als führenden Vertrag
+
+#### Scenario: Bestehender URL-basierter Inhaltspfad wird migriert
+
+- **WENN** ein bestehender Inhaltstyp Medien noch über URL-basierte Felder wie `imageUrl`, `sourceUrl` oder eingebettete Medien-URLs speichert
+- **DANN** definiert das System einen kontrollierten Übergangspfad zur referenzbasierten Mediennutzung
+- **UND** neue Host-Integrationen bevorzugen den Media-Picker und Medienreferenzen
+- **UND** Legacy-URL-Felder bleiben nur übergangsweise zulässig

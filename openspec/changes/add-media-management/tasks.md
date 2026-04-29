@@ -4,6 +4,8 @@
 - [ ] 1.3 `iam-access-control` um Medienrechte für Upload, Pflege, Referenzierung, Löschung und geschützte Auslieferung ergänzen
 - [ ] 1.4 `iam-auditing` um revisionssichere Auditspur für Medienereignisse ergänzen
 - [ ] 1.5 Technische Entscheidungen zu Package-Zuschnitt, MinIO-basiertem Storage-Vertrag, Variantenstrategie, Referenzmodell und Worker-Schnitt in `design.md` dokumentieren; ADR-037 für Package-Zuschnitt und Storage-/Processing-Vertrag als Entwurf in `docs/adr/` anlegen (Querverweis zu ADR-034 herstellen) – **vor** Umsetzung in Abschnitt 2
+- [ ] 1.5a Host-Integrationsentscheidung dokumentieren: `media` als hosteigene Admin-Ressource mit kanonischem Einstieg `/admin/media` und optionalen spezialisierten Unterrouten unter `/admin/media/...`; Abgrenzung zu pluginbasierten `contentUi`-Ressourcen explizit festhalten
+- [ ] 1.5b Bridge- und Migrationspfad für bestehende URL-basierte Medienfelder in News, Events und POI spezifizieren, inklusive Zielbild für die Umstellung auf `MediaReference`
 - [ ] 1.6 Architekturwirkung und betroffene arc42-Abschnitte im Change explizit referenzieren; dabei arc42-03 (MinIO als S3-kompatibler Objektspeicher im Kontextdiagramm) und arc42-04 (Medienmanagement als hostseitige Querschnittsstrategie) prüfen und ggf. ergänzen
 
 ## 2. Umsetzung
@@ -12,10 +14,13 @@
 - [ ] 2.3 Serverseitige Endpunkte für Upload-Initialisierung, Metadatenpflege, Referenzverwaltung, Verwendungsnachweis und kontrollierte Auslieferung implementieren; Upload- und Download-Schnittstellen gegen MinIO-kompatible Bucket/Object-Key-, ETag-, Content-Type- und signierte-URL-Semantik schneiden
 - [ ] 2.3a Hostseitigen MinIO-Storage-Adapter mit klaren Ports implementieren; dafür ein etabliertes S3-kompatibles SDK verwenden (bevorzugt AWS SDK v3 mit `@aws-sdk/client-s3` und `@aws-sdk/s3-request-presigner`) statt S3-Protokollcode selbst zu bauen. Restlicher Code darf nicht direkt gegen den MinIO-/S3-Client koppeln und darf Bucket-/Object-Keys nicht als fachliche Referenzen speichern.
 - [ ] 2.4 Rollen- und Rechteprüfung für Medienoperationen serverseitig und in der UI integrieren
-- [ ] 2.5 Studio-UI für Medienbibliothek, Media-Picker, Metadatenpflege und Nutzungsanzeige implementieren
+- [ ] 2.4a Entscheidung zum Modulanschluss umsetzen: Medienmanagement entweder als zuweisbares Host-Modul im bestehenden Modul-IAM-Pfad oder als explizite Core-Capability mit denselben Guard- und Sichtbarkeitsmechanismen integrieren; keine Sonderverdrahtung außerhalb des aktuellen Host-Modells
+- [ ] 2.5 Studio-UI für Medienbibliothek, Media-Picker, Metadatenpflege und Nutzungsanzeige implementieren; kanonischen Einstieg als hosteigene Admin-Ressource `/admin/media` materialisieren
+- [ ] 2.5a Falls für Crop, Fokuspunkt, Varianten- oder Usage-Impact-Workflows nötig, spezialisierte Unterseiten unter `/admin/media/...` hostseitig materialisieren, ohne einen parallelen Medien-Router außerhalb des Admin-Resource-Pfads einzuführen
 - [ ] 2.6 **MVP-Scope (Phase 1):** Metadaten-Extraktion und definierte häufige Varianten synchron im Upload-Handler erzeugen; Fokuspunkt, einfachen Zuschnitt und automatische Verkleinerung übergroßer Bilder in den Bild-Processing-Pfad aufnehmen; Upload-Status mit redigierten Fehlerdetails pflegen; seltene Varianten lazy on-demand ohne Job-Queue-Infrastruktur generieren; kein dedizierter async Worker in Phase 1. Async-Verarbeitungspfad als eigenständiger Folge-Change `add-media-async-processing` spezifizieren und als technische Schuld in `docs/architecture/11-risks-and-technical-debt.md` eintragen.
 - [ ] 2.7 Anbindung an `content-management` und mindestens ein Fachmodul über referenzbasierte Medienrollen herstellen
 - [ ] 2.7a Hostseitigen Media-Picker-SDK-Vertrag für Plugins implementieren; Plugins deklarieren Rollen/Medientypen/Preset-Anforderungen und erhalten keine Storage-Artefakte
+- [ ] 2.7c Migrations- und Bridge-Pfad für News, Events und POI implementieren oder vorbereiten: bestehende `sourceUrl`-/`imageUrl`-/`mediaContents`-Pfade kontrolliert auf hostseitige Medienreferenzen überführen, ohne Fachmodule im Übergang unbenutzbar zu machen
 - [ ] 2.7b Usage-Impact vor Metadatenänderung, Sichtbarkeitsänderung, Archivierung und Löschung implementieren
 - [ ] 2.8 Audit- und Historienpfad für Medienereignisse implementieren, inklusive Upload-Status, Usage-Impact, Bildbearbeitung und Metadatenänderungen
 - [ ] 2.9 i18n-Keys für Medienbibliothek-UI, Media-Picker, Metadatenfelder, Übersetzungen für Medienrollen (Rollen-IDs z. B. `teaser_image`, `header_image`; i18n-Keys gemäß Repo-Konvention in Dot-Notation, z. B. `media.roles.teaser_image`) und Fehlerzustände in `de` und `en` definieren; `check:i18n`-Gate muss grün bleiben
@@ -29,6 +34,7 @@
   - **Bildbearbeitung:** Unit-/Integrationstests für Fokuspunkt-Persistenz, Crop-Transformation und Verkleinerung übergroßer Bilder
   - **Upload-Status:** Unit-/Integrationstests für Upload-Status und redigierte Fehlerdetails
   - **Plugin-Picker:** UI-/Integrationstests für Media-Picker-Rechte, deklarierte Rollen/Medientypen und fehlende Storage-Artefakte im Plugin-Vertrag
+  - **Legacy-Bridge:** Tests für den Übergang von URL-basierten News-/Events-/POI-Medienfeldern auf hostseitige Medienreferenzen ohne Datenverlust
   - **E2E-MVP-Scope:** Upload-Flow (Bild hochladen, Metadaten pflegen, Fokuspunkt setzen, Zuschnitt speichern) + Lösch-Blockierungs-Flow
 - [ ] 3.2 Relevante Dokumentation unter `docs/` sowie die betroffenen arc42-Abschnitte (03–11) aktualisieren; folgende Guides als Stubs anlegen: `docs/guides/media-management.md` (Zielgruppe: Redakteure – Upload, Rollen, Nutzungstransparenz) und bestehenden `docs/guides/plugin-development.md` um Medien-Extension-Points und verbotene Direktzugriffe ergänzen
 - [ ] 3.3 ADR-037 für Package-Zuschnitt `packages/media` und MinIO-basierten Storage-/Processing-Vertrag finalisieren (Entwurf aus Task 1.5); in `docs/architecture/09-architecture-decisions.md` verlinken; Querverweis zu ADR-034 (Plugin-SDK-Vertrag) sicherstellen

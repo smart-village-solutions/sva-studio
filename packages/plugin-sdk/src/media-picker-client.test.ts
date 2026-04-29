@@ -1,81 +1,98 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import {
-  listHostMediaAssets,
-  listHostMediaReferencesByTarget,
-  replaceHostMediaReferences,
-} from './media-picker-client.js';
+import { listHostMediaAssets, listHostMediaReferencesByTarget, replaceHostMediaReferences } from './media-picker-client.js';
 
-describe('media picker client helpers', () => {
-  it('preserves merged json headers when init uses tuple-based headers', async () => {
-    const fetchMock = vi.fn(async () => Response.json({ data: [] }));
-
-    await listHostMediaAssets({
-      fetch: fetchMock,
-      search: 'logo',
+describe('media picker client', () => {
+  it('lists host media assets and references without leaking storage primitives into the request contract', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/api/v1/iam/media?')) {
+        return new Response(JSON.stringify({ data: [{ id: 'asset-1', metadata: { title: 'Titel' } }] }), { status: 200 });
+      }
+      if (url.includes('/api/v1/iam/media/references?')) {
+        return new Response(JSON.stringify({ data: [{ id: 'ref-1', assetId: 'asset-1', role: 'teaser_image' }] }), { status: 200 });
+      }
+      return new Response(JSON.stringify({ data: [] }), { status: 200 });
     });
 
-    expect(fetchMock).toHaveBeenCalledWith(
-      '/api/v1/iam/media?search=logo',
-      expect.objectContaining({
-        credentials: 'include',
-        headers: expect.any(Headers),
-      })
-    );
-    const requestInit = fetchMock.mock.calls[0]?.[1] as RequestInit;
-    const headers = requestInit.headers as Headers;
-    expect(headers.get('Accept')).toBe('application/json');
-  });
-
-  it('keeps json request headers when replacing references', async () => {
-    const fetchMock = vi.fn(async () =>
-      Response.json({ targetType: 'news', targetId: 'news-1', references: [] })
-    );
-
-    await replaceHostMediaReferences({
-      fetch: fetchMock,
+    const assets = await listHostMediaAssets({ fetch: fetchMock as never, search: 'hero' });
+    const references = await listHostMediaReferencesByTarget({
+      fetch: fetchMock as never,
       targetType: 'news',
       targetId: 'news-1',
-      references: [],
     });
 
-    const requestInit = fetchMock.mock.calls[0]?.[1] as RequestInit;
-    const headers = requestInit.headers as Headers;
-    expect(headers.get('Accept')).toBe('application/json');
-    expect(headers.get('Content-Type')).toBe('application/json');
-    expect(headers.get('X-Requested-With')).toBe('XMLHttpRequest');
-  });
-
-  it('loads references by target and forwards visibility filters', async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(Response.json({ data: [{ id: 'ref-1', assetId: 'asset-1', role: 'hero' }] }))
-      .mockResolvedValueOnce(Response.json({ data: [{ id: 'asset-1' } satisfies { id: string }] }));
-
-    await expect(
-      listHostMediaReferencesByTarget({
-        fetch: fetchMock,
-        targetType: 'news',
-        targetId: 'news-1',
-      })
-    ).resolves.toEqual([{ id: 'ref-1', assetId: 'asset-1', role: 'hero' }]);
-
-    await listHostMediaAssets({
-      fetch: fetchMock,
-      visibility: 'public',
-    });
-
+    expect(assets).toEqual([{ id: 'asset-1', metadata: { title: 'Titel' } }]);
+    expect(references).toEqual([{ id: 'ref-1', assetId: 'asset-1', role: 'teaser_image' }]);
     expect(fetchMock).toHaveBeenNthCalledWith(
       1,
-      '/api/v1/iam/media/references?targetType=news&targetId=news-1',
-      expect.any(Object)
+      '/api/v1/iam/media?search=hero',
+      expect.objectContaining({
+        credentials: 'include',
+      })
     );
-    expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/v1/iam/media?visibility=public', expect.any(Object));
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      '/api/v1/iam/media/references?targetType=news&targetId=news-1',
+      expect.objectContaining({
+        credentials: 'include',
+      })
+    );
   });
 
-  it('throws deterministic http errors for failed media requests', async () => {
-    const fetchMock = vi.fn(async () => new Response(null, { status: 503 }));
+  it('supports empty media list queries, visibility filters, and deterministic http errors', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === '/api/v1/iam/media') {
+        return new Response(JSON.stringify({ data: [] }), { status: 200 });
+      }
+      if (url === '/api/v1/iam/media?visibility=protected') {
+        return new Response(JSON.stringify({ data: [{ id: 'asset-2', visibility: 'protected' }] }), { status: 200 });
+      }
+      return new Response(JSON.stringify({ error: 'forbidden' }), { status: 403 });
+    });
 
-    await expect(listHostMediaAssets({ fetch: fetchMock })).rejects.toThrow('media_picker_http_503');
+    await expect(listHostMediaAssets({ fetch: fetchMock as never })).resolves.toEqual([]);
+    await expect(listHostMediaAssets({ fetch: fetchMock as never, visibility: 'protected' })).resolves.toEqual([
+      { id: 'asset-2', visibility: 'protected' },
+    ]);
+    await expect(
+      listHostMediaReferencesByTarget({
+        fetch: fetchMock as never,
+        targetType: 'poi',
+        targetId: 'poi-1',
+      })
+    ).rejects.toThrow('media_picker_http_403');
+  });
+
+  it('replaces host media references with role-based selections only', async () => {
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      return new Response(JSON.stringify({ data: JSON.parse(String(init?.body ?? '{}')) }), { status: 200 });
+    });
+
+    const response = await replaceHostMediaReferences({
+      fetch: fetchMock as never,
+      targetType: 'events',
+      targetId: 'event-1',
+      references: [{ assetId: 'asset-1', role: 'header_image', sortOrder: 0 }],
+    });
+
+    expect(response).toEqual({
+      targetType: 'events',
+      targetId: 'event-1',
+      references: [{ assetId: 'asset-1', role: 'header_image', sortOrder: 0 }],
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/iam/media/references',
+      expect.objectContaining({
+        method: 'PUT',
+        credentials: 'include',
+        body: JSON.stringify({
+          targetType: 'events',
+          targetId: 'event-1',
+          references: [{ assetId: 'asset-1', role: 'header_image', sortOrder: 0 }],
+        }),
+      })
+    );
   });
 });

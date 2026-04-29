@@ -88,3 +88,4 @@ export type {
 } from './types.js';
 export { createMediaService, withMediaRepository, withMediaService } from './iam-media/index.js';
 export type { MediaService } from './iam-media/index.js';
+export { completeMediaUploadHandler } from './iam-media/core.js';

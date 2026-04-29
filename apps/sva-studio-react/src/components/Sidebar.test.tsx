@@ -365,6 +365,66 @@ describe('Sidebar', () => {
     expect(screen.queryByRole('link', { name: 'Inhalte' })).toBeNull();
   });
 
+  it('versteckt den Medien-Link ohne media.read-Berechtigung oder ohne Modulzuweisung', () => {
+    useAuthMock.mockReturnValue({
+      ...unauthenticatedAuthState,
+      user: {
+        id: 'user-2',
+        name: 'Editor',
+        roles: ['editor'],
+        assignedModules: ['news'],
+      },
+      isAuthenticated: true,
+    });
+    useContentAccessMock.mockReturnValue({
+      access: {
+        state: 'editable',
+        canRead: true,
+        canCreate: true,
+        canUpdate: true,
+        organizationIds: [],
+        sourceKinds: ['direct_role'],
+      },
+      permissionActions: ['news.read'],
+      isLoading: false,
+      error: null,
+    });
+
+    render(<Sidebar />);
+
+    expect(screen.queryByRole('link', { name: 'Medien' })).toBeNull();
+  });
+
+  it('zeigt den Medien-Link nur bei zugewiesenem Modul und media.read-Berechtigung', () => {
+    useAuthMock.mockReturnValue({
+      ...unauthenticatedAuthState,
+      user: {
+        id: 'user-2',
+        name: 'Editor',
+        roles: ['editor'],
+        assignedModules: ['media'],
+      },
+      isAuthenticated: true,
+    });
+    useContentAccessMock.mockReturnValue({
+      access: {
+        state: 'editable',
+        canRead: true,
+        canCreate: true,
+        canUpdate: true,
+        organizationIds: [],
+        sourceKinds: ['direct_role'],
+      },
+      permissionActions: ['media.read'],
+      isLoading: false,
+      error: null,
+    });
+
+    render(<Sidebar />);
+
+    expect(screen.getByRole('link', { name: 'Medien' }).getAttribute('href')).toBe('/admin/media');
+  });
+
   it('rendert den News-Plugin-Navigationspunkt innerhalb der Datenverwaltung und markiert ihn als aktiv', () => {
     useRouterStateMock.mockReturnValue('/admin/news');
     useAuthMock.mockReturnValue({

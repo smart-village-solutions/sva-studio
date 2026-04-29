@@ -39,6 +39,7 @@ Im aktuellen Repo-Ist-Stand sind davon primär die technischen Grundlagen umgese
 
 - OIDC Provider (per `openid-client`)
 - SVA-Mainserver mit OAuth2-Token-Endpunkt und GraphQL-API
+- MinIO als S3-kompatibler Objektspeicher für hostseitige Medienoriginale und Varianten
 - Redis (lokal/extern)
 - OTEL Collector, Loki, Prometheus, Grafana, Alertmanager
 
@@ -49,6 +50,7 @@ Konzept-Referenz (Kontext): `concepts/konzeption-cms-v2/01_Einleitung/Einleitung
 - Repo verantwortet App-, Routing-, Auth-, SDK- und Doku-Logik
 - Repo verantwortet die serverseitige Delegation an den externen SVA-Mainserver, aber nicht dessen Betrieb, Schema oder Berechtigungsmodell
 - Browser, React-Hooks und UI-Komponenten sprechen nie direkt mit dem externen Mainserver; alle Aufrufe laufen über serverseitige Studio-Bausteine
+- Browser, Plugins und Fachmodule sprechen nie direkt mit MinIO oder S3-kompatiblen Clients; Medienzugriffe laufen über hostseitige Media-Endpunkte und interne Storage-Ports
 - Keycloak bleibt autoritative Quelle für per-User hinterlegte Mainserver-Credentials; die Studio-DB hält nur instanzbezogene Endpunktkonfiguration
 - Externe Dienste werden angebunden, aber nicht hier implementiert
 

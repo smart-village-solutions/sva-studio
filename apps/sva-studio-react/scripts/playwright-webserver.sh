@@ -11,11 +11,13 @@ BASE_URL="http://127.0.0.1:${PORT}"
 
 : "${SVA_PARENT_DOMAIN:=studio.lvh.me}"
 : "${SVA_PUBLIC_BASE_URL:=http://studio.lvh.me:${PORT}}"
+: "${SVA_MOCK_AUTH:=true}"
 : "${PLAYWRIGHT_TEST:=true}"
 : "${VITE_PLAYWRIGHT_TEST:=true}"
 
 export SVA_PARENT_DOMAIN
 export SVA_PUBLIC_BASE_URL
+export SVA_MOCK_AUTH
 export PLAYWRIGHT_TEST
 export VITE_PLAYWRIGHT_TEST
 

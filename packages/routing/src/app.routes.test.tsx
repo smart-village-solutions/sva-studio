@@ -6,6 +6,7 @@ const guardSpies = vi.hoisted(() => ({
   content: vi.fn(async () => undefined),
   contentCreate: vi.fn(async () => undefined),
   contentDetail: vi.fn(async () => undefined),
+  media: vi.fn(async () => undefined),
   adminUsers: vi.fn(async () => undefined),
   adminUserCreate: vi.fn(async () => undefined),
   adminUserDetail: vi.fn(async () => undefined),
@@ -75,6 +76,7 @@ const bindingKeys = [
   'content',
   'contentCreate',
   'contentDetail',
+  'mediaUsage',
   'media',
   'categories',
   'app',
@@ -534,6 +536,63 @@ describe('app.routes', () => {
           auth: { getUser: () => ({ roles: ['editor'], permissionActions: ['news.read'], assignedModules: ['news'] }) },
         },
         location: { href: '/plugins/news' },
+      })
+    ).resolves.toBeUndefined();
+  });
+
+  it('blocks static media usage routes when module assignment or media.read is missing', async () => {
+    const routeFactories = createUiRouteFactories(bindings, { adminResources });
+    const rootRoute = { id: 'root' };
+    const route = routeFactories
+      .map((factory) => factory(rootRoute as never))
+      .find((candidate) => readRouteOptions(candidate).path === '/admin/media/$mediaId/usage');
+
+    expect(route).toBeDefined();
+
+    await expect(
+      readRouteOptions(route!).beforeLoad?.({
+        context: {
+          auth: { getUser: () => ({ roles: ['app_manager'], permissionActions: ['media.read'], assignedModules: [] }) },
+        },
+        location: { href: '/admin/media/asset-1/usage' },
+      })
+    ).rejects.toMatchObject({
+      href: '/?error=auth.insufficientRole',
+    });
+
+    await expect(
+      readRouteOptions(route!).beforeLoad?.({
+        context: {
+          auth: { getUser: () => ({ roles: ['app_manager'], permissionActions: [], assignedModules: ['media'] }) },
+        },
+        location: { href: '/admin/media/asset-1/usage' },
+      })
+    ).rejects.toMatchObject({
+      href: '/?error=auth.insufficientRole',
+    });
+  });
+
+  it('allows static media usage routes when module assignment and media.read are both present', async () => {
+    const routeFactories = createUiRouteFactories(bindings, { adminResources });
+    const rootRoute = { id: 'root' };
+    const route = routeFactories
+      .map((factory) => factory(rootRoute as never))
+      .find((candidate) => readRouteOptions(candidate).path === '/admin/media/$mediaId/usage');
+
+    expect(route).toBeDefined();
+
+    await expect(
+      readRouteOptions(route!).beforeLoad?.({
+        context: {
+          auth: {
+            getUser: () => ({
+              roles: ['app_manager'],
+              permissionActions: ['media.read', 'media.update'],
+              assignedModules: ['media'],
+            }),
+          },
+        },
+        location: { href: '/admin/media/asset-1/usage' },
       })
     ).resolves.toBeUndefined();
   });

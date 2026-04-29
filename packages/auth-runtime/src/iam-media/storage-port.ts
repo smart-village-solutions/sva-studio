@@ -28,9 +28,31 @@ export type ResolveMediaDeliveryInput = Readonly<{
   visibility: string;
 }>;
 
+export type ReadMediaObjectInput = Readonly<{
+  instanceId: string;
+  storageKey: string;
+}>;
+
+export type WriteMediaObjectInput = Readonly<{
+  instanceId: string;
+  storageKey: string;
+  body: Uint8Array;
+  contentType: string;
+}>;
+
 export type MediaStoragePort = {
   prepareUpload(input: PrepareMediaUploadInput): Promise<MediaUploadPreparation>;
   resolveDelivery(input: ResolveMediaDeliveryInput): Promise<MediaDeliveryResolution>;
+  readObject(input: ReadMediaObjectInput): Promise<{
+    body: Uint8Array;
+    byteSize: number;
+    contentType?: string;
+    etag?: string;
+  }>;
+  writeObject(input: WriteMediaObjectInput): Promise<{
+    byteSize: number;
+    etag?: string;
+  }>;
 };
 
 export class MediaStorageUnavailableError extends Error {
@@ -45,6 +67,12 @@ export const createUnavailableMediaStoragePort = (): MediaStoragePort => ({
     throw new MediaStorageUnavailableError();
   },
   async resolveDelivery() {
+    throw new MediaStorageUnavailableError();
+  },
+  async readObject() {
+    throw new MediaStorageUnavailableError();
+  },
+  async writeObject() {
     throw new MediaStorageUnavailableError();
   },
 });

@@ -14,12 +14,13 @@ import { InstancesPage } from '../routes/admin/instances/-instances-page';
 import { LegalTextCreatePage } from '../routes/admin/legal-texts/-legal-text-create-page';
 import { LegalTextDetailPage } from '../routes/admin/legal-texts/-legal-text-detail-page';
 import { LegalTextsPage } from '../routes/admin/legal-texts/-legal-texts-page';
-import { ModulesPage } from '../routes/admin/modules/-modules-page';
 import { OrganizationCreatePage } from '../routes/admin/organizations/-organization-create-page';
 import { RoleCreatePage } from '../routes/admin/roles/-role-create-page';
 import { RoleDetailPage } from '../routes/admin/roles/-role-detail-page';
 import { UserCreatePage } from '../routes/admin/users/-user-create-page';
 import { UserListPage } from '../routes/admin/users/-user-list-page';
+import { MediaPage } from '../routes/admin/media/-media-page';
+import { MediaUsagePage } from '../routes/admin/media/-media-usage-page';
 import { ContentEditorPage } from '../routes/content/-content-editor-page';
 import { ContentListPage } from '../routes/content/-content-list-page';
 import { HomePage } from '../routes/-home-page';
@@ -28,13 +29,6 @@ import { PlaceholderPage } from '../routes/-placeholder-page';
 const readStringParam = (value: unknown, fallback = ''): string => {
   return typeof value === 'string' ? value : fallback;
 };
-
-const MediaPlaceholderRoutePage = () => (
-  <PlaceholderPage
-    section={t('shell.sidebar.sections.dataManagement')}
-    title={t('shell.sidebar.media')}
-  />
-);
 
 const CategoriesPlaceholderRoutePage = () => (
   <PlaceholderPage
@@ -47,6 +41,20 @@ const AppPlaceholderRoutePage = () => (
   <PlaceholderPage
     section={t('shell.sidebar.sections.applications')}
     title={t('shell.sidebar.app')}
+  />
+);
+
+const MediaPlaceholderRoutePage = () => (
+  <PlaceholderPage
+    section={t('shell.sidebar.sections.dataManagement')}
+    title={t('shell.sidebar.media')}
+  />
+);
+
+const ModulesPlaceholderRoutePage = () => (
+  <PlaceholderPage
+    section={t('shell.sidebar.sections.system')}
+    title={t('shell.sidebar.modules')}
   />
 );
 
@@ -253,6 +261,7 @@ export const appRouteBindings: BaseAppRouteBindings = {
   content: ContentListPage,
   contentCreate: () => <ContentEditorPage mode="create" />,
   contentDetail: ContentDetailRoutePage,
+  mediaUsage: MediaUsagePage,
   newsList: NewsListRoutePage,
   newsDetail: NewsEditRoutePage,
   newsEditor: NewsCreateRoutePage,
@@ -263,6 +272,7 @@ export const appRouteBindings: BaseAppRouteBindings = {
   poiDetail: PoiEditRoutePage,
   poiEditor: PoiCreateRoutePage,
   media: MediaPlaceholderRoutePage,
+  adminMedia: MediaPage,
   categories: CategoriesPlaceholderRoutePage,
   app: AppPlaceholderRoutePage,
   interfaces: InterfacesRoutePage,
@@ -288,7 +298,7 @@ export const appRouteBindings: BaseAppRouteBindings = {
   adminLegalTextCreate: LegalTextCreatePage,
   adminLegalTextDetail: LegalTextDetailRoutePage,
   adminIam: IamRoutePage,
-  modules: ModulesPage,
+  modules: ModulesPlaceholderRoutePage,
   monitoring: MonitoringPlaceholderRoutePage,
   adminApiPhase1Test: Phase1TestPage,
 };

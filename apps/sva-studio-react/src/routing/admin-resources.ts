@@ -7,6 +7,11 @@ export const appAdminResources = [
     titleKey: 'shell.sidebar.media',
     guard: 'adminInstances',
     moduleId: 'media',
+    permissions: {
+      list: ['media.read'],
+      create: ['media.create'],
+      detail: ['media.read'],
+    },
     views: {
       list: { bindingKey: 'media' },
       create: { bindingKey: 'media' },

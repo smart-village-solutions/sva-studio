@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { createMediaHttpHandlers } from './core.js';
 
 const allowAuthorization = vi.fn(async () => ({ ok: true } as const));
+const emitAuditEvent = vi.fn(async () => undefined);
 
 const createContext = (instanceId = 'tenant-a') =>
   ({
@@ -37,6 +38,25 @@ const createService = () => ({
     totalReferences: 1,
     references: [],
   })),
+  getUploadSessionById: vi.fn(async (_instanceId: string, uploadSessionId: string) => ({
+    id: uploadSessionId,
+    instanceId: 'tenant-a',
+    assetId: 'asset-1',
+    storageKey: 'tenant-a/originals/asset-1.jpg',
+    mimeType: 'image/jpeg',
+    byteSize: 1234,
+    status: 'pending',
+  })),
+  getStorageUsage: vi.fn(async () => null),
+  listReferencesByTarget: vi.fn(async () => [
+    {
+      id: 'reference-1',
+      assetId: 'asset-1',
+      targetType: 'news',
+      targetId: 'news-1',
+      role: 'teaser_image',
+    },
+  ]),
   wouldExceedStorageQuota: vi.fn(async () => ({
     instanceId: 'tenant-a',
     currentBytes: 100,
@@ -46,6 +66,9 @@ const createService = () => ({
   })),
   upsertAsset: vi.fn(async () => undefined),
   upsertUploadSession: vi.fn(async () => undefined),
+  upsertVariant: vi.fn(async () => undefined),
+  upsertStorageUsage: vi.fn(async () => undefined),
+  deleteAsset: vi.fn(async () => undefined),
   replaceReferences: vi.fn(async () => undefined),
 });
 
@@ -58,6 +81,7 @@ describe('media http handlers', () => {
       authorizeAction: allowAuthorization,
       createId: () => 'id-1',
       now: () => '2026-04-29T19:00:00.000Z',
+      emitAuditEvent,
     });
 
     const response = await handlers.listMedia(
@@ -92,6 +116,7 @@ describe('media http handlers', () => {
       authorizeAction: allowAuthorization,
       createId: vi.fn().mockReturnValueOnce('asset-1').mockReturnValueOnce('upload-1'),
       now: () => '2026-04-29T19:00:00.000Z',
+      emitAuditEvent,
     });
 
     const response = await handlers.initializeUpload(
@@ -138,6 +163,7 @@ describe('media http handlers', () => {
       authorizeAction: allowAuthorization,
       createId: () => 'id-1',
       now: () => '2026-04-29T19:00:00.000Z',
+      emitAuditEvent,
     });
 
     const response = await handlers.initializeUpload(
@@ -172,6 +198,7 @@ describe('media http handlers', () => {
       authorizeAction: allowAuthorization,
       createId: () => 'id-1',
       now: () => '2026-04-29T19:00:00.000Z',
+      emitAuditEvent,
     });
 
     const usageResponse = await handlers.getMediaUsage(
@@ -201,6 +228,7 @@ describe('media http handlers', () => {
       authorizeAction: allowAuthorization,
       createId: () => 'id-1',
       now: () => '2026-04-29T19:00:00.000Z',
+      emitAuditEvent,
     });
 
     const response = await handlers.updateMedia(
@@ -249,6 +277,7 @@ describe('media http handlers', () => {
       authorizeAction,
       createId: () => 'reference-1',
       now: () => '2026-04-29T19:00:00.000Z',
+      emitAuditEvent,
     });
 
     const denied = await handlers.replaceReferences(
@@ -295,5 +324,80 @@ describe('media http handlers', () => {
         },
       ],
     });
+  });
+
+  it('completes an uploaded media session through the processing service', async () => {
+    const service = createService();
+    const storagePort = {
+      prepareUpload: vi.fn(),
+      resolveDelivery: vi.fn(),
+      readObject: vi.fn(async () => ({
+        body: await import('sharp').then((module) =>
+          module.default({
+            create: {
+              width: 1200,
+              height: 800,
+              channels: 3,
+              background: { r: 20, g: 20, b: 20 },
+            },
+          })
+            .jpeg()
+            .toBuffer()
+        ),
+        byteSize: 1024,
+        contentType: 'image/jpeg',
+      })),
+      writeObject: vi.fn(async ({ body }: { body: Uint8Array }) => ({
+        byteSize: body.byteLength,
+      })),
+    };
+    const handlers = createMediaHttpHandlers({
+      withMediaService: async (_instanceId, work) => work(service as never),
+      storagePort: storagePort as never,
+      authorizeAction: allowAuthorization,
+      createId: () => 'id-1',
+      now: () => '2026-04-29T19:00:00.000Z',
+      emitAuditEvent,
+    });
+
+    const response = await handlers.completeUpload(
+      new Request('http://localhost/api/v1/iam/media/upload-sessions/upload-1/complete?instanceId=tenant-a', {
+        method: 'POST',
+      }),
+      createContext()
+    );
+
+    expect(response.status).toBe(200);
+  });
+
+  it('blocks deletion when an asset still has active references', async () => {
+    const service = createService();
+    service.listReferencesByAssetId = vi.fn(async () => [
+      {
+        id: 'reference-1',
+        assetId: 'asset-1',
+        targetType: 'news',
+        targetId: 'news-1',
+        role: 'teaser_image',
+      },
+    ]);
+    const handlers = createMediaHttpHandlers({
+      withMediaService: async (_instanceId, work) => work(service as never),
+      storagePort: { prepareUpload: vi.fn(), resolveDelivery: vi.fn() } as never,
+      authorizeAction: allowAuthorization,
+      createId: () => 'id-1',
+      now: () => '2026-04-29T19:00:00.000Z',
+      emitAuditEvent,
+    });
+
+    const response = await handlers.deleteMedia(
+      new Request('http://localhost/api/v1/iam/media/asset-1?instanceId=tenant-a', {
+        method: 'DELETE',
+      }),
+      createContext()
+    );
+
+    expect(response.status).toBe(409);
+    expect(service.deleteAsset).not.toHaveBeenCalled();
   });
 });

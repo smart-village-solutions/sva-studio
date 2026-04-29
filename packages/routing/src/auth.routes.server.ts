@@ -516,6 +516,9 @@ const authHandlerMap = {
     },
   },
   '/api/v1/iam/media/references': {
+    GET: async ({ request }) => {
+      return authRuntimeRoutes.listMediaReferencesHandler(request);
+    },
     PUT: async ({ request }) => {
       return authRuntimeRoutes.replaceMediaReferencesHandler(request);
     },
@@ -525,12 +528,20 @@ const authHandlerMap = {
       return authRuntimeRoutes.initializeMediaUploadHandler(request);
     },
   },
+  '/api/v1/iam/media/upload-sessions/$uploadSessionId/complete': {
+    POST: async ({ request }) => {
+      return authRuntimeRoutes.completeMediaUploadHandler(request);
+    },
+  },
   '/api/v1/iam/media/$assetId': {
     GET: async ({ request }) => {
       return authRuntimeRoutes.getMediaHandler(request);
     },
     PATCH: async ({ request }) => {
       return authRuntimeRoutes.updateMediaHandler(request);
+    },
+    DELETE: async ({ request }) => {
+      return authRuntimeRoutes.deleteMediaHandler(request);
     },
   },
   '/api/v1/iam/media/$assetId/usage': {

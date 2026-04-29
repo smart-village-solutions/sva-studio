@@ -50,6 +50,7 @@ export type AuthRoutePath =
   | '/api/v1/iam/media'
   | '/api/v1/iam/media/references'
   | '/api/v1/iam/media/upload-sessions'
+  | '/api/v1/iam/media/upload-sessions/$uploadSessionId/complete'
   | '/api/v1/iam/media/$assetId'
   | '/api/v1/iam/media/$assetId/usage'
   | '/api/v1/iam/media/$assetId/delivery'
@@ -122,6 +123,7 @@ export const authRoutePaths = [
   '/api/v1/iam/media',
   '/api/v1/iam/media/references',
   '/api/v1/iam/media/upload-sessions',
+  '/api/v1/iam/media/upload-sessions/$uploadSessionId/complete',
   '/api/v1/iam/media/$assetId',
   '/api/v1/iam/media/$assetId/usage',
   '/api/v1/iam/media/$assetId/delivery',

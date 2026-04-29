@@ -63,15 +63,34 @@ describe('authorizeMediaPrimitiveForUser', () => {
 
   it('returns forbidden when the permission decision denies the media action', async () => {
     await expect(
-      authorizeMediaPrimitiveForUser({
-        ctx: createContext(),
-        action: 'media.delete',
-      })
-    ).resolves.toEqual({
-      ok: false,
-      status: 403,
-      error: 'forbidden',
-      message: 'Keine Berechtigung für diese Medienoperation.',
-    });
+      Promise.all(
+        ['media.read', 'media.create', 'media.delete'].map((action) =>
+          authorizeMediaPrimitiveForUser({
+            ctx: createContext(),
+            action,
+            permissions: [],
+          })
+        )
+      )
+    ).resolves.toEqual([
+      {
+        ok: false,
+        status: 403,
+        error: 'forbidden',
+        message: 'Keine Berechtigung für diese Medienoperation.',
+      },
+      {
+        ok: false,
+        status: 403,
+        error: 'forbidden',
+        message: 'Keine Berechtigung für diese Medienoperation.',
+      },
+      {
+        ok: false,
+        status: 403,
+        error: 'forbidden',
+        message: 'Keine Berechtigung für diese Medienoperation.',
+      },
+    ]);
   });
 });

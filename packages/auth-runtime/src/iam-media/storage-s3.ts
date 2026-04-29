@@ -148,9 +148,48 @@ export const createS3MediaStoragePort = (
     };
   };
 
+  const readObject = async (input: { instanceId: string; storageKey: string }) => {
+    const response = await client.send(
+      new GetObjectCommand({
+        Bucket: config.bucket,
+        Key: input.storageKey,
+      })
+    );
+    const body = response.Body ? new Uint8Array(await response.Body.transformToByteArray()) : new Uint8Array();
+    return {
+      body,
+      byteSize: body.byteLength,
+      contentType: response.ContentType,
+      etag: response.ETag,
+    };
+  };
+
+  const writeObject = async (input: {
+    instanceId: string;
+    storageKey: string;
+    body: Uint8Array;
+    contentType: string;
+  }) => {
+    const response = await client.send(
+      new PutObjectCommand({
+        Bucket: config.bucket,
+        Key: input.storageKey,
+        Body: input.body,
+        ContentType: input.contentType,
+      })
+    );
+
+    return {
+      byteSize: input.body.byteLength,
+      etag: response.ETag,
+    };
+  };
+
   return {
     prepareUpload,
     resolveDelivery,
+    readObject,
+    writeObject,
   };
 };
 

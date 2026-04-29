@@ -11,6 +11,7 @@ const routeState = vi.hoisted(() => ({
 vi.mock('@tanstack/react-router', () => ({
   useParams: () => routeState.params,
   useSearch: () => routeState.search,
+  useLocation: () => ({ pathname: '/admin/media' }),
 }));
 
 vi.mock('@sva/routing', () => ({
@@ -98,6 +99,14 @@ vi.mock('../routes/admin/legal-texts/-legal-texts-page', () => ({
 
 vi.mock('../routes/admin/modules/-modules-page', () => ({
   ModulesPage: () => <div data-testid="placeholder-page">{'System|Modules'}</div>,
+}));
+
+vi.mock('../routes/admin/media/-media-page', () => ({
+  MediaPage: () => <div data-testid="media-page" />,
+}));
+
+vi.mock('../routes/admin/media/-media-usage-page', () => ({
+  MediaUsagePage: () => <div data-testid="media-usage-page" />,
 }));
 
 vi.mock('../routes/admin/organizations/-organization-create-page', () => ({
@@ -361,6 +370,14 @@ describe('appRouteBindings', () => {
 
     render(<appRouteBindings.content />);
     expect(screen.getByTestId('content-list-page')).toBeTruthy();
+    cleanup();
+
+    render(<appRouteBindings.adminMedia />);
+    expect(screen.getByTestId('media-page')).toBeTruthy();
+    cleanup();
+
+    render(<appRouteBindings.mediaUsage />);
+    expect(screen.getByTestId('media-usage-page')).toBeTruthy();
     cleanup();
 
     render(<appRouteBindings.adminUsers />);

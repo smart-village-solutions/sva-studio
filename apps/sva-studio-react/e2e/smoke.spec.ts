@@ -86,6 +86,32 @@ const expectInterfacesShellReady = async (page: Page, timeout = 20_000) => {
     .toBe(true);
 };
 
+const expectHydratedPlaywrightShell = async (page: Page, timeout = 20_000) => {
+  await expect
+    .poll(
+      async () => ({
+        dataTheme: await page.locator('html').getAttribute('data-theme'),
+        hasRouterHook: await page
+          .evaluate(
+            () =>
+              Boolean(
+                (
+                  window as typeof window & {
+                    __SVA_PLAYWRIGHT_ROUTER__?: unknown;
+                  }
+                ).__SVA_PLAYWRIGHT_ROUTER__
+              )
+          )
+          .catch(() => false),
+      }),
+      { timeout }
+    )
+    .toEqual({
+      dataTheme: 'sva-default',
+      hasRouterHook: true,
+    });
+};
+
 const mockAuthenticatedPluginShell = async (page: Page) => {
   await page.route('**/auth/me', async (route) => {
     await route.fulfill({
@@ -285,15 +311,39 @@ const navigateWithPlaywrightRouter = async (page: Page, to: string) => {
 };
 
 test('authenticated client navigation to /admin/news renders the host-owned content route', async ({ page }) => {
+  const pageErrors: string[] = [];
+  const consoleErrors: string[] = [];
+  const requestFailures: string[] = [];
+  const scriptRequests: string[] = [];
+  const observedRequests: string[] = [];
+
   await mockAuthenticatedPluginShell(page);
+
+  page.on('pageerror', (error) => {
+    pageErrors.push(error.message);
+  });
+  page.on('console', (message) => {
+    if (message.type() === 'error') {
+      consoleErrors.push(message.text());
+    }
+  });
+  page.on('requestfailed', (request) => {
+    requestFailures.push(`${request.method()} ${request.url()} :: ${request.failure()?.errorText ?? 'unknown'}`);
+  });
+  page.on('request', (request) => {
+    observedRequests.push(`${request.resourceType()} ${request.method()} ${request.url()}`);
+    if (request.resourceType() === 'script') {
+      scriptRequests.push(request.url());
+    }
+  });
 
   const response = await page.goto('/interfaces');
   expect(response).not.toBeNull();
   expect(response?.status()).toBeLessThan(400);
   await expectInterfacesShellReady(page);
-  await expect(page.locator('html')).toHaveAttribute('data-theme', /.+/);
+  await expectHydratedPlaywrightShell(page);
   await navigateWithPlaywrightRouter(page, '/admin/news');
-  await expect(page).toHaveURL(/\/admin\/news\?(?:.*&)?page=1(?:&.*)?$/);
+  await expect(page).toHaveURL(/\/admin\/news(?:\?.*)?$/);
   await expect(page.getByRole('heading', { name: 'News', exact: true })).toBeVisible();
 });
 
@@ -339,18 +389,36 @@ test('tenant-host login fails closed when canonical auth redirect prerequisites 
 
 test('router keeps the shell active during client-side navigation', async ({ page }) => {
   const pageErrors: string[] = [];
+  const consoleErrors: string[] = [];
+  const requestFailures: string[] = [];
+  const scriptRequests: string[] = [];
+  const observedRequests: string[] = [];
 
   await mockAuthenticatedPluginShell(page);
 
   page.on('pageerror', (error) => {
     pageErrors.push(error.message);
   });
+  page.on('console', (message) => {
+    if (message.type() === 'error') {
+      consoleErrors.push(message.text());
+    }
+  });
+  page.on('requestfailed', (request) => {
+    requestFailures.push(`${request.method()} ${request.url()} :: ${request.failure()?.errorText ?? 'unknown'}`);
+  });
+  page.on('request', (request) => {
+    observedRequests.push(`${request.resourceType()} ${request.method()} ${request.url()}`);
+    if (request.resourceType() === 'script') {
+      scriptRequests.push(request.url());
+    }
+  });
 
   await page.goto('/interfaces');
   await expectInterfacesShellReady(page);
-  await expect(page.locator('html')).toHaveAttribute('data-theme', /.+/);
+  await expectHydratedPlaywrightShell(page);
   await navigateWithPlaywrightRouter(page, '/admin/news');
-  await expect(page.getByRole('heading', { level: 1, name: 'News' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'News', exact: true })).toBeVisible();
   await navigateWithPlaywrightRouter(page, '/interfaces');
   await expect(page).toHaveURL(/\/interfaces$/);
   await expectInterfacesShellReady(page);

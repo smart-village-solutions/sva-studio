@@ -205,6 +205,11 @@ Schulden auf IST-Basis.
    - Wahrscheinlichkeit: mittel
    - Maßnahme: `assignedModules` als kanonischen Session- und Routing-Kontext verwenden, Plugin-Navigation fail-closed ausblenden und Modul-IAM-Baseline nach jeder Mutation neu herstellen
 
+36. Synchrone Medienverarbeitung im MVP-Upload-Pfad
+   - Impact: mittel bis hoch (größere Bilder oder zusätzliche Presets erhöhen Latenz und koppeln Verarbeitungsfehler direkt an Request-Antworten)
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: Folge-Change `openspec/changes/add-media-async-processing/` für Queue-/Worker-Pfad, Retry-Strategie und entkoppelte Variantenverarbeitung umsetzen
+
 ### Technische Schulden (Auswahl)
 
 - Teilweise No-Op Testtargets in Libraries
@@ -224,6 +229,7 @@ Schulden auf IST-Basis.
 - Die Live-Paritäts-Wiederverwendung für identische Digests reduziert Drift-Risiko, ersetzt aber keinen späteren echten Off-Cluster-Paritäts-Pfad für neue Digests
 - Plugin-Registrierung ist jetzt metadatenbasiert, aber noch nicht runtime-dynamisch
 - Content-Payloads bleiben in Postgres generisch als JSON abgelegt; Typsicherheit wird aktuell im Serververtrag und nicht in der Datenbank erzwungen
+- Medienvarianten werden im MVP synchron beim Upload-Abschluss erzeugt; ein entkoppelter Async-Worker ist als Folgearbeit unter `openspec/changes/add-media-async-processing/` vorgesehen
 
 ### Nachverfolgung
 

@@ -107,7 +107,7 @@
     "eslint": "^10.2.1",
     "happy-dom": "^20.8.9",
     "nx": "^22.7.0",
-    "postcss": "8.5.10",
+    "postcss": "8.5.11",
     "tailwindcss": "4.2.4",
     "tsx": "^4.21.0",
     "typescript": "^6.0.3",

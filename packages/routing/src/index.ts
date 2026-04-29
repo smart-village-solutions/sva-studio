@@ -7,9 +7,8 @@
  */
 export {
   getClientRouteFactories,
-  type AppRouteBindings,
-  type AppRouteFactory,
 } from './app.routes.js';
+export type { AppRouteBindings, AppRouteFactory } from './app.routes.shared.js';
 export { normalizeIamTab, normalizeRoleDetailTab } from './route-search.js';
 export { routePaths, uiRoutePaths, type UiRoutePathKey } from './route-paths.js';
 export type { RouteGuardUser } from './protected.routes.js';

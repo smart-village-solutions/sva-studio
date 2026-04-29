@@ -160,6 +160,24 @@ vi.mock('../routes/interfaces/-interfaces-page', () => ({
   InterfacesPage: () => <div data-testid="interfaces-page" />,
 }));
 
+vi.mock('@sva/plugin-news', () => ({
+  NewsCreatePage: () => <div data-testid="news-create-page" />,
+  NewsEditPage: () => <div data-testid="news-edit-page" />,
+  NewsListPage: () => <div data-testid="news-list-page" />,
+}));
+
+vi.mock('@sva/plugin-events', () => ({
+  EventsCreatePage: () => <div data-testid="events-create-page" />,
+  EventsEditPage: () => <div data-testid="events-edit-page" />,
+  EventsListPage: () => <div data-testid="events-list-page" />,
+}));
+
+vi.mock('@sva/plugin-poi', () => ({
+  PoiCreatePage: () => <div data-testid="poi-create-page" />,
+  PoiEditPage: () => <div data-testid="poi-edit-page" />,
+  PoiListPage: () => <div data-testid="poi-list-page" />,
+}));
+
 describe('appRouteBindings', () => {
   beforeEach(() => {
     routeState.params = {};
@@ -263,6 +281,18 @@ describe('appRouteBindings', () => {
     render(<appRouteBindings.adminIam />);
     expect(routeState.normalizeIamTab).toHaveBeenCalledWith('members');
     expect(screen.getByTestId('iam-viewer-page').textContent).toBe('iam:members');
+    cleanup();
+
+    render(<appRouteBindings.newsList />);
+    expect(screen.getByTestId('news-list-page')).toBeTruthy();
+    cleanup();
+
+    render(<appRouteBindings.newsEditor />);
+    expect(screen.getByTestId('news-create-page')).toBeTruthy();
+    cleanup();
+
+    render(<appRouteBindings.newsDetail />);
+    expect(screen.getByTestId('news-edit-page')).toBeTruthy();
   });
 
   it('falls back to empty string route params when router params are not strings', async () => {
@@ -367,5 +397,29 @@ describe('appRouteBindings', () => {
 
     render(<appRouteBindings.adminApiPhase1Test />);
     expect(screen.getByTestId('phase1-test-page')).toBeTruthy();
+    cleanup();
+
+    render(<appRouteBindings.eventsList />);
+    expect(screen.getByTestId('events-list-page')).toBeTruthy();
+    cleanup();
+
+    render(<appRouteBindings.eventsEditor />);
+    expect(screen.getByTestId('events-create-page')).toBeTruthy();
+    cleanup();
+
+    render(<appRouteBindings.eventsDetail />);
+    expect(screen.getByTestId('events-edit-page')).toBeTruthy();
+    cleanup();
+
+    render(<appRouteBindings.poiList />);
+    expect(screen.getByTestId('poi-list-page')).toBeTruthy();
+    cleanup();
+
+    render(<appRouteBindings.poiEditor />);
+    expect(screen.getByTestId('poi-create-page')).toBeTruthy();
+    cleanup();
+
+    render(<appRouteBindings.poiDetail />);
+    expect(screen.getByTestId('poi-edit-page')).toBeTruthy();
   });
 });

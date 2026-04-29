@@ -102,6 +102,21 @@ export type AdminResourceCapabilities = {
   readonly detail?: AdminResourceDetailCapabilities;
 };
 
+export type ContentResourceViewBindingDefinition = {
+  readonly bindingKey: string;
+};
+
+export type AdminResourceContentUiBindings = {
+  readonly list?: ContentResourceViewBindingDefinition;
+  readonly detail?: ContentResourceViewBindingDefinition;
+  readonly editor?: ContentResourceViewBindingDefinition;
+};
+
+export type AdminResourceContentUiDefinition = {
+  readonly contentType: string;
+  readonly bindings?: AdminResourceContentUiBindings;
+};
+
 export type AdminResourceDefinition = {
   readonly resourceId: string;
   readonly basePath: string;
@@ -109,9 +124,10 @@ export type AdminResourceDefinition = {
   readonly guard: AdminResourceGuard;
   readonly views: AdminResourceViews;
   readonly capabilities?: AdminResourceCapabilities;
+  readonly contentUi?: AdminResourceContentUiDefinition;
 };
 
-const adminResourceDefinitionAllowedKeys = new Set(['resourceId', 'basePath', 'titleKey', 'guard', 'views', 'capabilities'] as const);
+const adminResourceDefinitionAllowedKeys = new Set(['resourceId', 'basePath', 'titleKey', 'guard', 'views', 'capabilities', 'contentUi'] as const);
 const adminResourceViewAllowedKeys = new Set(['bindingKey'] as const);
 const adminResourceCapabilitiesAllowedKeys = new Set(['list', 'detail'] as const);
 const adminResourceListCapabilitiesAllowedKeys = new Set(['search', 'filters', 'sorting', 'pagination', 'bulkActions'] as const);
@@ -125,6 +141,8 @@ const adminResourceBulkActionCapabilityAllowedKeys = new Set(['id', 'labelKey', 
 const adminResourceDetailCapabilitiesAllowedKeys = new Set(['history', 'revisions'] as const);
 const adminResourceHistoryCapabilityAllowedKeys = new Set(['bindingKey', 'titleKey'] as const);
 const adminResourceRevisionsCapabilityAllowedKeys = new Set(['bindingKey', 'restoreActionId', 'titleKey'] as const);
+const adminResourceContentUiAllowedKeys = new Set(['contentType', 'bindings'] as const);
+const adminResourceContentUiBindingsAllowedKeys = new Set(['list', 'detail', 'editor'] as const);
 
 const ADMIN_RESOURCE_PARAM_PATTERN = /^[a-z][a-zA-Z0-9]*$/;
 const ADMIN_RESOURCE_ACTION_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*\.[a-z][A-Za-z0-9-]*$/;
@@ -177,6 +195,30 @@ const validateViewDefinition = (
   const bindingKey = normalizePluginIdentifier(view?.bindingKey ?? '');
   if (bindingKey.length === 0) {
     throw new Error(`invalid_admin_resource_view:${resourceId}:${viewName}`);
+  }
+
+  return { bindingKey };
+};
+
+const validateContentResourceBindingDefinition = (
+  resourceId: string,
+  viewName: keyof AdminResourceContentUiBindings,
+  view: ContentResourceViewBindingDefinition | undefined
+): ContentResourceViewBindingDefinition | undefined => {
+  if (!view) {
+    return undefined;
+  }
+
+  assertPluginContributionAllowedKeys(
+    view as unknown as Record<string, unknown>,
+    adminResourceViewAllowedKeys,
+    normalizePluginIdentifier(resourceId).split('.')[0] ?? 'host',
+    `${resourceId}.contentUi.bindings.${String(viewName)}`
+  );
+
+  const bindingKey = normalizePluginIdentifier(view.bindingKey);
+  if (bindingKey.length === 0) {
+    throw new Error(`invalid_admin_resource_view:${resourceId}:contentUi.${viewName}`);
   }
 
   return { bindingKey };
@@ -517,6 +559,54 @@ const normalizeAdminResourceCapabilities = (
   };
 };
 
+const normalizeAdminResourceContentUi = (
+  resourceId: string,
+  guard: AdminResourceGuard,
+  contentUi: AdminResourceContentUiDefinition | undefined
+): AdminResourceContentUiDefinition | undefined => {
+  if (!contentUi) {
+    return undefined;
+  }
+
+  if (guard !== 'content') {
+    throw new Error(`invalid_admin_resource_content_ui_guard:${resourceId}:${guard}`);
+  }
+
+  assertAllowedCapabilityKeys(
+    resourceId,
+    `${resourceId}.contentUi`,
+    contentUi as unknown as Record<string, unknown>,
+    adminResourceContentUiAllowedKeys
+  );
+
+  const normalizedContentType = normalizePluginIdentifier(contentUi.contentType);
+  if (normalizedContentType.length === 0) {
+    throw new Error(`invalid_admin_resource_content_type:${resourceId}`);
+  }
+
+  const bindings = contentUi.bindings
+    ? (() => {
+        assertAllowedCapabilityKeys(
+          resourceId,
+          `${resourceId}.contentUi.bindings`,
+          contentUi.bindings as unknown as Record<string, unknown>,
+          adminResourceContentUiBindingsAllowedKeys
+        );
+
+        return {
+          list: validateContentResourceBindingDefinition(resourceId, 'list', contentUi.bindings.list),
+          detail: validateContentResourceBindingDefinition(resourceId, 'detail', contentUi.bindings.detail),
+          editor: validateContentResourceBindingDefinition(resourceId, 'editor', contentUi.bindings.editor),
+        };
+      })()
+    : undefined;
+
+  return {
+    contentType: normalizedContentType,
+    bindings,
+  };
+};
+
 const normalizeAdminResourceDefinition = (resource: AdminResourceDefinition): AdminResourceDefinition => {
   const resourceId = normalizePluginIdentifier(resource.resourceId);
   assertPluginContributionAllowedKeys(
@@ -551,6 +641,7 @@ const normalizeAdminResourceDefinition = (resource: AdminResourceDefinition): Ad
         : undefined,
     },
     capabilities: normalizeAdminResourceCapabilities(resourceId, resource.capabilities),
+    contentUi: normalizeAdminResourceContentUi(resourceId, resource.guard, resource.contentUi),
   };
 };
 
@@ -576,6 +667,18 @@ export const definePluginAdminResources = <const TResources extends readonly Adm
       throw new Error(
         `plugin_admin_resource_namespace_mismatch:${normalizedNamespace}:${parsed.namespace}:${resource.resourceId}`
       );
+    }
+    if (resource.contentUi) {
+      const contentType = normalizePluginIdentifier(resource.contentUi.contentType);
+      const parsedContentType = parseNamespacedPluginIdentifier(contentType);
+      if (parsedContentType === undefined) {
+        throw new Error(`invalid_admin_resource_content_type:${resource.resourceId}`);
+      }
+      if (parsedContentType.namespace !== normalizedNamespace) {
+        throw new Error(
+          `plugin_admin_resource_content_type_namespace_mismatch:${normalizedNamespace}:${parsedContentType.namespace}:${contentType}`
+        );
+      }
     }
   }
 

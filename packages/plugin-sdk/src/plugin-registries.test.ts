@@ -202,6 +202,39 @@ describe('plugin registries', () => {
     expect(registry.adminResourceRegistry.has('host.reports')).toBe(true);
   });
 
+  it('rejects admin resources whose specialized content type is not registered in the build-time snapshot', () => {
+    expect(() =>
+      createBuildTimeRegistry({
+        plugins: [
+          {
+            ...newsPlugin,
+            routes: [],
+            adminResources: definePluginAdminResources('news', [
+              {
+                resourceId: 'news.content',
+                basePath: 'news',
+                titleKey: 'news.nav',
+                guard: 'content',
+                views: {
+                  list: { bindingKey: 'content' },
+                  create: { bindingKey: 'contentCreate' },
+                  detail: { bindingKey: 'contentDetail' },
+                },
+                contentUi: {
+                  contentType: 'news.missing',
+                  bindings: {
+                    list: { bindingKey: 'news.list' },
+                    editor: { bindingKey: 'news.editor' },
+                  },
+                },
+              },
+            ]),
+          },
+        ],
+      })
+    ).toThrow('unknown_admin_resource_content_type:news.content:news.missing');
+  });
+
   it('creates deterministic plugin guardrail errors', () => {
     expect(
       createPluginGuardrailError({
@@ -437,6 +470,41 @@ describe('plugin registries', () => {
         },
       ])
     ).toThrow('plugin_guardrail_route_bypass:news:news.foreign:path');
+
+    expect(() =>
+      createPluginRegistry([
+        {
+          ...newsPlugin,
+          routes: [
+            {
+              id: 'news.list',
+              path: '/plugins/news',
+              guard: 'news.read',
+              component,
+            },
+          ],
+          adminResources: definePluginAdminResources('news', [
+            {
+              resourceId: 'news.content',
+              basePath: 'news',
+              titleKey: 'news.navigation.title',
+              guard: 'content',
+              views: {
+                list: { bindingKey: 'content' },
+                create: { bindingKey: 'contentCreate' },
+                detail: { bindingKey: 'contentDetail' },
+              },
+              contentUi: {
+                contentType: 'news.article',
+                bindings: {
+                  list: { bindingKey: 'news.list' },
+                },
+              },
+            },
+          ]),
+        },
+      ])
+    ).toThrow('plugin_guardrail_route_bypass:news:news.list:path');
   });
 
   it('rejects plugin authorization, audit, persistence and dynamic-registration bypass fields', () => {
@@ -576,6 +644,26 @@ describe('admin resource registry', () => {
     },
   };
 
+  const specializedContentResource = {
+    resourceId: 'news.content',
+    basePath: 'news',
+    titleKey: 'news.navigation.title',
+    guard: 'content' as const,
+    views: {
+      list: { bindingKey: 'content' },
+      create: { bindingKey: 'contentCreate' },
+      detail: { bindingKey: 'contentDetail' },
+    },
+    contentUi: {
+      contentType: 'news.article',
+      bindings: {
+        list: { bindingKey: 'news.list' },
+        detail: { bindingKey: 'news.detail' },
+        editor: { bindingKey: 'news.editor' },
+      },
+    },
+  };
+
   it('normalizes resources and rejects duplicate ids or paths', () => {
     const registry = createAdminResourceRegistry([reports]);
 
@@ -588,6 +676,19 @@ describe('admin resource registry', () => {
         { ...reports, resourceId: 'news.reports-b' },
       ])
     ).toThrow('admin_resource_base_path_conflict:news.reports-a:news.reports-b:reports');
+  });
+
+  it('normalizes specialized content ui bindings for content resources', () => {
+    const registry = createAdminResourceRegistry([specializedContentResource]);
+
+    expect(registry.get('news.content')?.contentUi).toEqual({
+      contentType: 'news.article',
+      bindings: {
+        list: { bindingKey: 'news.list' },
+        detail: { bindingKey: 'news.detail' },
+        editor: { bindingKey: 'news.editor' },
+      },
+    });
   });
 
   it('validates namespace, base path and required views', () => {
@@ -615,6 +716,37 @@ describe('admin resource registry', () => {
     expect(() =>
       createAdminResourceRegistry([{ ...reports, views: { ...reports.views, detail: { bindingKey: '' } } }])
     ).toThrow('invalid_admin_resource_view:news.reports:detail');
+    expect(() =>
+      createAdminResourceRegistry([
+        {
+          ...specializedContentResource,
+          contentUi: {
+            contentType: 'news.article',
+            bindings: {
+              list: { bindingKey: 'news.list', unsupported: true } as never,
+            },
+          },
+        },
+      ])
+    ).toThrow('plugin_guardrail_unsupported_binding:news:news.content.contentUi.bindings.list:unsupported');
+    expect(() =>
+      createAdminResourceRegistry([
+        {
+          ...specializedContentResource,
+          guard: 'adminUsers' as const,
+        },
+      ])
+    ).toThrow('invalid_admin_resource_content_ui_guard:news.content:adminUsers');
+    expect(() =>
+      definePluginAdminResources('news', [
+        {
+          ...specializedContentResource,
+          contentUi: {
+            contentType: 'events.article',
+          },
+        },
+      ])
+    ).toThrow('plugin_admin_resource_content_type_namespace_mismatch:news:events:events.article');
   });
 
   it('normalizes host-managed list and detail capabilities', () => {
@@ -1028,6 +1160,22 @@ describe('admin resource registry', () => {
     expect(() => createAdminResourceRegistry([{ ...reports, titleKey: ' ' }])).toThrow(
       'invalid_admin_resource_definition'
     );
+  });
+
+  it('rejects content ui contributions without a content type', () => {
+    expect(() =>
+      createAdminResourceRegistry([
+        {
+          ...specializedContentResource,
+          contentUi: {
+            contentType: '   ',
+            bindings: {
+              editor: { bindingKey: 'news.editor' },
+            },
+          },
+        },
+      ])
+    ).toThrow('invalid_admin_resource_content_type:news.content');
   });
 });
 

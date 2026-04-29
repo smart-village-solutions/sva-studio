@@ -77,6 +77,24 @@ type PermissionPhaseOutput = {
   readonly pluginPermissionRegistry: ReadonlyMap<string, PluginPermissionRegistryEntry>;
 };
 
+const validateAdminResourceContentTypes = (
+  adminResources: readonly AdminResourceDefinition[],
+  contentTypes: readonly ContentTypeDefinition[]
+): void => {
+  const registeredContentTypes = new Set(contentTypes.map((definition) => definition.contentType));
+
+  for (const resource of adminResources) {
+    const contentType = resource.contentUi?.contentType;
+    if (!contentType) {
+      continue;
+    }
+
+    if (!registeredContentTypes.has(contentType)) {
+      throw new Error(`unknown_admin_resource_content_type:${resource.resourceId}:${contentType}`);
+    }
+  }
+};
+
 const runPreflightPhase = (plugins: readonly PluginDefinition[]): PreflightPhaseOutput => {
   const pluginRegistry = createPluginRegistry(plugins);
 
@@ -158,6 +176,7 @@ export const createBuildTimeRegistry = ({
   const preflight = runPreflightPhase(plugins);
   const content = runContentPhase(preflight.plugins);
   const admin = runAdminPhase(preflight.plugins, adminResources);
+  validateAdminResourceContentTypes(admin.adminResources, content.contentTypes);
   const audit = runAuditPhase(preflight.plugins);
   const permissions = runPermissionPhase(preflight.plugins);
   const routing = runRoutingPhase(preflight.plugins);

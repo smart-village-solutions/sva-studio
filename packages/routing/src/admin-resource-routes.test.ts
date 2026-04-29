@@ -92,6 +92,13 @@ const bindings: AppRouteBindings = {
   adminApiPhase1Test: () => 'adminApiPhase1Test',
 };
 
+const specializedBindings = {
+  ...bindings,
+  newsList: () => 'newsList',
+  newsDetail: () => 'newsDetail',
+  newsEditor: () => 'newsEditor',
+} as AppRouteBindings & Record<'newsList' | 'newsDetail' | 'newsEditor', () => string>;
+
 const readRouteOptions = (route: unknown): RouteOptionsUnderTest =>
   (route as { options: RouteOptionsUnderTest }).options;
 
@@ -218,6 +225,74 @@ describe('admin resource routes', () => {
     for (const guardKey of expectedGuards) {
       expect(guardSpies[guardKey]).toHaveBeenCalledWith({ href: expect.any(String) });
     }
+  });
+
+  it('materializes specialized content ui bindings inside host-owned admin routes', () => {
+    const routeFactories = createAdminResourceRouteFactories(specializedBindings, [
+      {
+        resourceId: 'news.content',
+        basePath: 'news',
+        titleKey: 'news.navigation.title',
+        guard: 'content',
+        views: {
+          list: { bindingKey: 'content' },
+          create: { bindingKey: 'contentCreate' },
+          detail: { bindingKey: 'contentDetail' },
+        },
+        contentUi: {
+          contentType: 'news.article',
+          bindings: {
+            list: { bindingKey: 'newsList' },
+            detail: { bindingKey: 'newsDetail' },
+            editor: { bindingKey: 'newsEditor' },
+          },
+        },
+      } as never,
+    ]);
+    const rootRoute = { id: 'root' };
+    const routeMap = new Map(
+      routeFactories
+        .map((factory) => factory(rootRoute as never))
+        .map((route) => readRouteOptions(route))
+        .map((route) => [String(route.path), route])
+    );
+
+    expect(routeMap.get('/admin/news')?.component?.()).toBe('newsList');
+    expect(routeMap.get('/admin/news/new')?.component?.()).toBe('newsEditor');
+    expect(routeMap.get('/admin/news/$id')?.component?.()).toBe('newsDetail');
+  });
+
+  it('falls back to host-owned content bindings when specialized content ui bindings are omitted', () => {
+    const routeFactories = createAdminResourceRouteFactories(specializedBindings, [
+      {
+        resourceId: 'news.content',
+        basePath: 'news',
+        titleKey: 'news.navigation.title',
+        guard: 'content',
+        views: {
+          list: { bindingKey: 'content' },
+          create: { bindingKey: 'contentCreate' },
+          detail: { bindingKey: 'contentDetail' },
+        },
+        contentUi: {
+          contentType: 'news.article',
+          bindings: {
+            list: { bindingKey: 'newsList' },
+          },
+        },
+      } as never,
+    ]);
+    const rootRoute = { id: 'root' };
+    const routeMap = new Map(
+      routeFactories
+        .map((factory) => factory(rootRoute as never))
+        .map((route) => readRouteOptions(route))
+        .map((route) => [String(route.path), route])
+    );
+
+    expect(routeMap.get('/admin/news')?.component?.()).toBe('newsList');
+    expect(routeMap.get('/admin/news/new')?.component?.()).toBe('contentCreate');
+    expect(routeMap.get('/admin/news/$id')?.component?.()).toBe('contentDetail');
   });
 
   it('redirects legacy content aliases using href and location.href fallbacks', () => {

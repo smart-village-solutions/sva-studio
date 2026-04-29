@@ -3,6 +3,7 @@ import type { ContentTypeDefinition } from './content-types.js';
 import {
   assertPluginContributionAllowedKeys,
   assertPluginRoutePathAllowed,
+  createPluginGuardrailError,
 } from './guardrails.js';
 import {
   isReservedPluginNamespace,
@@ -108,7 +109,7 @@ const contentTypeDefinitionAllowedKeys = new Set([
   'actions',
   'validatePayload',
 ] as const);
-const adminResourceDefinitionAllowedKeys = new Set(['resourceId', 'basePath', 'titleKey', 'guard', 'views', 'capabilities'] as const);
+const adminResourceDefinitionAllowedKeys = new Set(['resourceId', 'basePath', 'titleKey', 'guard', 'views', 'capabilities', 'contentUi'] as const);
 const auditEventDefinitionAllowedKeys = new Set(['eventType', 'titleKey'] as const);
 
 export type PluginActionRegistryEntry = {
@@ -231,6 +232,21 @@ const assertPluginPermissionReference = (
     throw new Error(`plugin_permission_reference_missing:${pluginNamespace}:${source}:${normalizedPermissionId}`);
   }
 };
+
+const isStandardCrudPluginRoute = (pluginNamespace: string, path: string): boolean => {
+  const normalizedPath = path.trim();
+  const pluginRoot = `/plugins/${pluginNamespace}`;
+
+  if (normalizedPath === pluginRoot || normalizedPath === `${pluginRoot}/new`) {
+    return true;
+  }
+
+  const detailPattern = new RegExp(`^${pluginRoot.replace('/', '\\/')}/\\$[a-zA-Z][a-zA-Z0-9]*$`);
+  return detailPattern.test(normalizedPath);
+};
+
+const pluginUsesStandardContentAdminResource = (plugin: PluginDefinition): boolean =>
+  (plugin.adminResources ?? []).some((resource) => resource.guard === 'content' && resource.contentUi);
 
 export const definePluginActions = <const TActions extends readonly PluginActionDefinition[]>(
   namespace: string,
@@ -425,6 +441,19 @@ export const createPluginRegistry = (
       }
       if (route.guard !== action.requiredAction) {
         throw new Error(`plugin_route_action_guard_mismatch:${id}:${route.id}:${routeActionId}`);
+      }
+    }
+
+    if (pluginUsesStandardContentAdminResource(plugin)) {
+      for (const route of plugin.routes) {
+        if (isStandardCrudPluginRoute(id, route.path)) {
+          throw createPluginGuardrailError({
+            code: 'plugin_guardrail_route_bypass',
+            pluginNamespace: id,
+            contributionId: normalizePluginIdentifier(route.id),
+            fieldOrReason: 'path',
+          });
+        }
       }
     }
 

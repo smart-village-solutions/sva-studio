@@ -276,7 +276,7 @@ const navigateWithPlaywrightRouter = async (page: Page, to: string) => {
   }, to);
 };
 
-test('authenticated client navigation to /plugins/news renders the plugin route', async ({ page }) => {
+test('authenticated client navigation to /admin/news renders the host-owned content route', async ({ page }) => {
   await mockAuthenticatedPluginShell(page);
 
   const response = await page.goto('/interfaces');
@@ -284,8 +284,8 @@ test('authenticated client navigation to /plugins/news renders the plugin route'
   expect(response?.status()).toBeLessThan(400);
   await expectInterfacesShellReady(page);
   await expect(page.locator('html')).toHaveAttribute('data-theme', /.+/);
-  await navigateWithPlaywrightRouter(page, '/plugins/news');
-  await expect(page).toHaveURL(/\/plugins\/news$/);
+  await navigateWithPlaywrightRouter(page, '/admin/news');
+  await expect(page).toHaveURL(/\/admin\/news$/);
   await expect(page.getByRole('heading', { name: 'News', exact: true })).toBeVisible();
 });
 
@@ -341,7 +341,7 @@ test('router keeps the shell active during client-side navigation', async ({ pag
   await page.goto('/interfaces');
   await expectInterfacesShellReady(page);
   await expect(page.locator('html')).toHaveAttribute('data-theme', /.+/);
-  await navigateWithPlaywrightRouter(page, '/plugins/news');
+  await navigateWithPlaywrightRouter(page, '/admin/news');
   await expect(page.getByRole('heading', { name: 'News', exact: true })).toBeVisible();
   await navigateWithPlaywrightRouter(page, '/interfaces');
   await expect(page).toHaveURL(/\/interfaces$/);

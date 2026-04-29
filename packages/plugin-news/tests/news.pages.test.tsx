@@ -302,7 +302,7 @@ describe('NewsListPage', () => {
         })
       );
       expect(window.sessionStorage.getItem('news-plugin-flash-message')).toBe('createSuccess');
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/plugins/news' });
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/admin/news' });
     });
   });
 
@@ -569,7 +569,7 @@ describe('NewsListPage', () => {
     await waitFor(() => {
       expect(deleteNews).toHaveBeenCalledWith('news-1');
       expect(window.sessionStorage.getItem('news-plugin-flash-message')).toBe('deleteSuccess');
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/plugins/news' });
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/admin/news' });
     });
   });
 

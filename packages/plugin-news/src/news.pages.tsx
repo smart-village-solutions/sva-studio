@@ -389,7 +389,7 @@ const NewsForm = ({
       if (mode === 'create') {
         await createNews(compactedForm);
         persistFlashMessage('createSuccess');
-        await navigate({ to: '/plugins/news' });
+        await navigate({ to: '/admin/news' });
         return;
       }
 
@@ -416,7 +416,7 @@ const NewsForm = ({
     try {
       await deleteNews(contentId);
       persistFlashMessage('deleteSuccess');
-      await navigate({ to: '/plugins/news' });
+      await navigate({ to: '/admin/news' });
     } catch (error) {
       setStatusMessage({ kind: 'error', text: resolveNewsErrorMessage(pt, error, 'messages.deleteError') });
     } finally {
@@ -816,7 +816,7 @@ const NewsForm = ({
         <div className="flex flex-wrap gap-3">
           <Button type="submit">{submitLabel}</Button>
           <Button asChild variant="outline">
-            <Link to="/plugins/news">{pt('actions.back')}</Link>
+            <Link to="/admin/news">{pt('actions.back')}</Link>
           </Button>
           {mode === 'edit' ? (
             <Button variant="destructive" type="button" onClick={onDelete} disabled={deletePending}>
@@ -923,7 +923,7 @@ export const NewsListPage = () => {
       description={pt('list.description')}
       primaryAction={
         <Button asChild>
-          <Link to="/plugins/news/new">{createLabel}</Link>
+          <Link to="/admin/news/new">{createLabel}</Link>
         </Button>
       }
     >
@@ -959,7 +959,7 @@ export const NewsListPage = () => {
                   <td className="px-4 py-3">{formatDate(item.updatedAt)}</td>
                   <td className="px-4 py-3">
                     <Button asChild variant="outline" size="sm">
-                      <Link to="/plugins/news/$contentId" params={{ contentId: item.id }}>
+                      <Link to="/admin/news/$id" params={{ id: item.id }}>
                         {editLabel}
                       </Link>
                     </Button>
@@ -977,8 +977,8 @@ export const NewsListPage = () => {
 export const NewsCreatePage = () => <NewsForm mode="create" />;
 
 export const NewsEditPage = () => {
-  const params = useParams({ strict: false });
-  const contentId = typeof params.contentId === 'string' ? params.contentId : undefined;
+  const params = useParams({ strict: false }) as { readonly contentId?: string; readonly id?: string };
+  const contentId = typeof params.contentId === 'string' ? params.contentId : typeof params.id === 'string' ? params.id : undefined;
 
   return <NewsForm mode="edit" contentId={contentId} />;
 };

@@ -77,9 +77,32 @@ const permissionPayload = {
 };
 
 const navigateClientSide = async (page: Page, targetPath: string) => {
-  await page.evaluate((path) => {
-    window.history.pushState({}, '', path);
-    window.dispatchEvent(new PopStateEvent('popstate'));
+  await page.waitForFunction(() => {
+    return Boolean(
+      (
+        window as typeof window & {
+          __SVA_PLAYWRIGHT_ROUTER__?: {
+            navigate: (options: { to: string }) => Promise<void> | void;
+          };
+        }
+      ).__SVA_PLAYWRIGHT_ROUTER__
+    );
+  });
+
+  await page.evaluate(async (path) => {
+    const router = (
+      window as typeof window & {
+        __SVA_PLAYWRIGHT_ROUTER__?: {
+          navigate: (options: { to: string }) => Promise<void> | void;
+        };
+      }
+    ).__SVA_PLAYWRIGHT_ROUTER__;
+
+    if (!router) {
+      throw new Error('Playwright router hook fehlt.');
+    }
+
+    await router.navigate({ to: path });
   }, targetPath);
 };
 
@@ -279,12 +302,12 @@ test.describe('events and POI plugins', () => {
     });
 
     await page.goto('/');
-    await page.locator('a[href="/plugins/poi"]').click();
-    await expect(page).toHaveURL(/\/plugins\/poi$/);
+    await page.locator('a[href="/admin/poi"]').click();
+    await expect(page).toHaveURL(/\/admin\/poi$/);
     await expectPluginPageHeading(page, /POI|poi\.list\.title/);
 
-    await page.locator('a[href="/plugins/poi/new"]').click();
-    await expect(page).toHaveURL(/\/plugins\/poi\/new$/);
+    await page.locator('a[href="/admin/poi/new"]').click();
+    await expect(page).toHaveURL(/\/admin\/poi\/new$/);
     await expectPluginPageHeading(page, /POI anlegen|poi\.editor\.createTitle/);
 
     await page.locator('#poi-name').fill('Rathaus');
@@ -300,7 +323,7 @@ test.describe('events and POI plugins', () => {
     await page.locator('#poi-payload').fill('{"source":"e2e"}');
     await page.getByRole('button', { name: /POI anlegen|poi\.actions\.create/ }).click();
 
-    await expect(page).toHaveURL(/\/plugins\/poi\/poi-1$/);
+    await expect(page).toHaveURL(/\/admin\/poi\/poi-1$/);
     await expectPluginPageHeading(page, /POI bearbeiten|poi\.editor\.editTitle/);
 
     await page.locator('#poi-name').fill('Rathaus aktualisiert');
@@ -310,7 +333,7 @@ test.describe('events and POI plugins', () => {
     page.once('dialog', (dialog) => dialog.accept());
     await page.getByRole('button', { name: /Löschen|poi\.actions\.delete/ }).click();
 
-    await expect(page).toHaveURL(/\/plugins\/poi$/);
+    await expect(page).toHaveURL(/\/admin\/poi$/);
     await expect(page.getByText(/Noch keine POI vorhanden|poi\.empty\.title/)).toBeVisible();
   });
 
@@ -336,12 +359,12 @@ test.describe('events and POI plugins', () => {
     });
 
     await page.goto('/');
-    await page.locator('a[href="/plugins/events"]').click();
-    await expect(page).toHaveURL(/\/plugins\/events$/);
+    await page.locator('a[href="/admin/events"]').click();
+    await expect(page).toHaveURL(/\/admin\/events$/);
     await expectPluginPageHeading(page, /Events|events\.list\.title/);
 
-    await page.locator('a[href="/plugins/events/new"]').click();
-    await expect(page).toHaveURL(/\/plugins\/events\/new$/);
+    await page.locator('a[href="/admin/events/new"]').click();
+    await expect(page).toHaveURL(/\/admin\/events\/new$/);
     await expectPluginPageHeading(page, /Event anlegen|events\.editor\.createTitle/);
 
     await page.locator('#event-title').fill('Stadtfest');
@@ -355,7 +378,7 @@ test.describe('events and POI plugins', () => {
     await page.locator('#event-poi').selectOption('poi-1');
     await page.getByRole('button', { name: /Event anlegen|events\.actions\.create/ }).click();
 
-    await expect(page).toHaveURL(/\/plugins\/events\/event-1$/);
+    await expect(page).toHaveURL(/\/admin\/events\/event-1$/);
     await expectPluginPageHeading(page, /Event bearbeiten|events\.editor\.editTitle/);
 
     await page.locator('#event-title').fill('Stadtfest aktualisiert');
@@ -365,7 +388,7 @@ test.describe('events and POI plugins', () => {
     page.once('dialog', (dialog) => dialog.accept());
     await page.getByRole('button', { name: /Löschen|events\.actions\.delete/ }).click();
 
-    await expect(page).toHaveURL(/\/plugins\/events$/);
+    await expect(page).toHaveURL(/\/admin\/events$/);
     await expect(page.getByText(/Noch keine Events vorhanden|events\.empty\.title/)).toBeVisible();
   });
 
@@ -376,12 +399,12 @@ test.describe('events and POI plugins', () => {
     });
 
     await page.goto('/');
-    await navigateClientSide(page, '/plugins/events');
-    await expect(page).toHaveURL(/\/auth\/login\?returnTo=%2Fplugins%2Fevents/);
+    await navigateClientSide(page, '/admin/events');
+    await expect(page).toHaveURL(/\/auth\/login\?returnTo=%2Fadmin%2Fevents/);
 
     await page.goto('/');
-    await navigateClientSide(page, '/plugins/poi');
-    await expect(page).toHaveURL(/\/auth\/login\?returnTo=%2Fplugins%2Fpoi/);
+    await navigateClientSide(page, '/admin/poi');
+    await expect(page).toHaveURL(/\/auth\/login\?returnTo=%2Fadmin%2Fpoi/);
   });
 
   test('keeps central event and POI views free of serious accessibility violations', async ({ page }) => {
@@ -418,10 +441,10 @@ test.describe('events and POI plugins', () => {
     await page.goto('/');
 
     for (const [path, selector] of [
-      ['/plugins/events', 'main table'],
-      ['/plugins/events/new', 'main form'],
-      ['/plugins/poi', 'main table'],
-      ['/plugins/poi/new', 'main form'],
+      ['/admin/events', 'main table'],
+      ['/admin/events/new', 'main form'],
+      ['/admin/poi', 'main table'],
+      ['/admin/poi/new', 'main form'],
     ] as const) {
       await navigateClientSide(page, path);
       await expect(page.locator('main h1')).toBeVisible();

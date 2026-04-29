@@ -58,14 +58,38 @@ const resolveBindingKey = (bindings: AppRouteBindings, resource: AdminResourceDe
   return bindingKey;
 };
 
-const getAdminResourceBindings = (bindings: AppRouteBindings, resource: AdminResourceDefinition): AdminResourceBindingResolver => ({
-  list: resolveBindingKey(bindings, resource, 'list', resource.views.list.bindingKey),
-  create: resolveBindingKey(bindings, resource, 'create', resource.views.create.bindingKey),
-  detail: resolveBindingKey(bindings, resource, 'detail', resource.views.detail.bindingKey),
-  history: resource.views.history
-    ? resolveBindingKey(bindings, resource, 'history', resource.views.history.bindingKey)
-    : undefined,
-});
+const resolveOptionalContentUiBindingKey = (
+  bindings: AppRouteBindings,
+  resource: AdminResourceDefinition,
+  viewName: 'list' | 'detail' | 'editor'
+): BindingKey | undefined => {
+  const bindingKey = resource.contentUi?.bindings?.[viewName]?.bindingKey;
+  if (bindingKey === undefined) {
+    return undefined;
+  }
+  if (!hasBindingKey(bindings, bindingKey)) {
+    throw new Error(`unknown_admin_resource_binding_key:${resource.resourceId}:contentUi.${viewName}:${bindingKey}`);
+  }
+  return bindingKey;
+};
+
+const getAdminResourceBindings = (bindings: AppRouteBindings, resource: AdminResourceDefinition): AdminResourceBindingResolver => {
+  const defaultList = resolveBindingKey(bindings, resource, 'list', resource.views.list.bindingKey);
+  const defaultCreate = resolveBindingKey(bindings, resource, 'create', resource.views.create.bindingKey);
+  const defaultDetail = resolveBindingKey(bindings, resource, 'detail', resource.views.detail.bindingKey);
+  const specializedList = resolveOptionalContentUiBindingKey(bindings, resource, 'list');
+  const specializedDetail = resolveOptionalContentUiBindingKey(bindings, resource, 'detail');
+  const specializedEditor = resolveOptionalContentUiBindingKey(bindings, resource, 'editor');
+
+  return {
+    list: specializedList ?? defaultList,
+    create: specializedEditor ?? defaultCreate,
+    detail: specializedDetail ?? specializedEditor ?? defaultDetail,
+    history: resource.views.history
+      ? resolveBindingKey(bindings, resource, 'history', resource.views.history.bindingKey)
+      : undefined,
+  };
+};
 
 const getDetailParamName = (bindingKey: BindingKey): string => {
   if (!Object.prototype.hasOwnProperty.call(adminDetailParamNameByBinding, bindingKey)) {
@@ -151,7 +175,8 @@ const createAdminResourceRouteDefinitions = (
   withCoreContentAdminResource(resources).flatMap((resource) => {
     const resolvedBindings = getAdminResourceBindings(bindings, resource);
     const basePath = toAdminRoutePath(resource.basePath);
-    const detailParamName = getDetailParamName(resolvedBindings.detail);
+    const detailBindingKey = resolveBindingKey(bindings, resource, 'detail', resource.views.detail.bindingKey);
+    const detailParamName = getDetailParamName(detailBindingKey);
     const detailPath = `${basePath}/$${detailParamName}`;
 
     return [

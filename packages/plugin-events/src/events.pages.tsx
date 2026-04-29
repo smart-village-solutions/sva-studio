@@ -174,7 +174,7 @@ export function EventsListPage() {
       description={pt('list.description')}
       primaryAction={
         <Button asChild>
-          <Link to="/plugins/events/new">{pt('actions.create')}</Link>
+          <Link to="/admin/events/new">{pt('actions.create')}</Link>
         </Button>
       }
     >
@@ -200,7 +200,7 @@ export function EventsListPage() {
                   <td className="px-4 py-3">{item.dates?.[0]?.dateStart ? new Date(item.dates[0].dateStart).toLocaleString() : '—'}</td>
                   <td className="px-4 py-3 text-right">
                     <Button asChild variant="outline" size="sm">
-                      <Link to="/plugins/events/$contentId" params={{ contentId: item.id }}>
+                      <Link to="/admin/events/$id" params={{ id: item.id }}>
                         {pt('actions.edit')}
                       </Link>
                     </Button>
@@ -218,8 +218,8 @@ export function EventsListPage() {
 function EventsEditor({ mode }: { readonly mode: 'create' | 'edit' }) {
   const pt = usePluginTranslation('events');
   const navigate = useNavigate();
-  const params = useParams({ strict: false }) as { readonly contentId?: string };
-  const contentId = params.contentId;
+  const params = useParams({ strict: false }) as { readonly contentId?: string; readonly id?: string };
+  const contentId = params.contentId ?? params.id;
   const [form, setForm] = React.useState<EventFormInput>(defaultForm);
   const [pois, setPois] = React.useState<readonly PoiSelectItem[]>([]);
   const [loading, setLoading] = React.useState(mode === 'edit');
@@ -276,7 +276,7 @@ function EventsEditor({ mode }: { readonly mode: 'create' | 'edit' }) {
         mode === 'create' ? await createEvent(compacted) : await updateEvent(contentId as string, compacted);
       setStatus({ kind: 'success', text: mode === 'create' ? pt('messages.createSuccess') : pt('messages.updateSuccess') });
       if (mode === 'create') {
-        await navigate({ to: '/plugins/events/$contentId', params: { contentId: saved.id } });
+        await navigate({ to: '/admin/events/$id', params: { id: saved.id } });
       }
     } catch (saveError) {
       setStatus({ kind: 'error', text: errorMessage(pt, saveError, 'messages.saveError') });
@@ -289,7 +289,7 @@ function EventsEditor({ mode }: { readonly mode: 'create' | 'edit' }) {
     }
     try {
       await deleteEvent(contentId);
-      await navigate({ to: '/plugins/events' });
+      await navigate({ to: '/admin/events' });
     } catch (deleteError) {
       setStatus({ kind: 'error', text: errorMessage(pt, deleteError, 'messages.deleteError') });
     }
@@ -305,7 +305,7 @@ function EventsEditor({ mode }: { readonly mode: 'create' | 'edit' }) {
       description={mode === 'create' ? pt('editor.createDescription') : pt('editor.editDescription')}
       actions={
         <Button asChild variant="outline">
-          <Link to="/plugins/events">{pt('actions.back')}</Link>
+          <Link to="/admin/events">{pt('actions.back')}</Link>
         </Button>
       }
     >

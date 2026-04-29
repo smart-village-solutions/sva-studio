@@ -91,7 +91,10 @@ const createRepository = (overrides: Partial<InstanceRegistryRepository> = {}): 
     ...overrides,
   }) as InstanceRegistryRepository;
 
-const createDeps = (repository = createRepository()): InstanceRegistryServiceDeps => ({
+const createDeps = (
+  repository = createRepository(),
+  overrides: Partial<InstanceRegistryServiceDeps> = {}
+): InstanceRegistryServiceDeps => ({
   repository,
   invalidateHost: vi.fn(),
   protectSecret: vi.fn((value, aad) => (value ? `protected:${aad}:${value}` : null)),
@@ -119,6 +122,7 @@ const createDeps = (repository = createRepository()): InstanceRegistryServiceDep
       },
     ],
   ]),
+  ...overrides,
 });
 
 describe('instance registry service facade', () => {
@@ -514,6 +518,55 @@ describe('instance registry service facade', () => {
           moduleId: 'events',
           outcome: 'assigned',
         }),
+      })
+    );
+  });
+
+  it('assigns the host-owned media module when it is present in the module registry', async () => {
+    const repository = createRepository({
+      assignModule: vi.fn(async () => true),
+      listAssignedModules: vi.fn(async () => ['media']),
+      getInstanceById: vi
+        .fn()
+        .mockResolvedValueOnce(baseInstance)
+        .mockResolvedValueOnce({ ...baseInstance, assignedModules: ['media'] }),
+    });
+    const service = createInstanceRegistryService(
+      createDeps(repository, {
+        moduleIamRegistry: new Map([
+          [
+            'media',
+            {
+              moduleId: 'media',
+              permissionIds: ['media.read', 'media.create'],
+              systemRoles: [{ roleName: 'editor', permissionIds: ['media.read', 'media.create'] }],
+            },
+          ],
+        ]),
+      })
+    );
+
+    await expect(
+      service.assignModule({
+        instanceId: 'demo',
+        moduleId: 'media',
+        idempotencyKey: 'idem-module-media-1',
+        actorId: 'actor-1',
+        requestId: 'req-module-media-1',
+      })
+    ).resolves.toEqual({
+      ok: true,
+      instance: expect.objectContaining({
+        assignedModules: ['media'],
+      }),
+    });
+
+    expect(repository.assignModule).toHaveBeenCalledWith('demo', 'media');
+    expect(repository.syncAssignedModuleIam).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'demo',
+        managedModuleIds: ['media'],
+        contracts: [expect.objectContaining({ moduleId: 'media' })],
       })
     );
   });

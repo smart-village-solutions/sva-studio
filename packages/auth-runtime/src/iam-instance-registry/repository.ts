@@ -112,6 +112,45 @@ const pluginModuleIamRegistry = new Map([
       ],
     },
   ],
+  [
+    'media',
+    {
+      moduleId: 'media',
+      permissionIds: [
+        'media.read',
+        'media.create',
+        'media.update',
+        'media.reference.manage',
+        'media.delete',
+        'media.deliver.protected',
+      ],
+      systemRoles: [
+        {
+          roleName: 'system_admin',
+          permissionIds: [
+            'media.read',
+            'media.create',
+            'media.update',
+            'media.reference.manage',
+            'media.delete',
+            'media.deliver.protected',
+          ],
+        },
+        { roleName: 'app_manager', permissionIds: ['media.read'] },
+        {
+          roleName: 'feature-manager',
+          permissionIds: ['media.read', 'media.create', 'media.update', 'media.reference.manage', 'media.delete'],
+        },
+        { roleName: 'interface-manager', permissionIds: ['media.read'] },
+        { roleName: 'designer', permissionIds: ['media.read', 'media.update'] },
+        {
+          roleName: 'editor',
+          permissionIds: ['media.read', 'media.create', 'media.update', 'media.reference.manage'],
+        },
+        { roleName: 'moderator', permissionIds: ['media.read'] },
+      ],
+    },
+  ],
 ]);
 
 const registryRuntime = createInstanceRegistryRuntime({

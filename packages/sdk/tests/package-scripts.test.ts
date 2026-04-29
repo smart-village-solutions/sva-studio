@@ -29,6 +29,11 @@ function loadCoveragePolicy(): CoveragePolicy {
   ) as CoveragePolicy;
 }
 
+function loadStudioArtifactVerifyWorkflow(): string {
+  const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
+  return fs.readFileSync(path.join(rootDir, '.github/workflows/studio-artifact-verify.yml'), 'utf8');
+}
+
 describe('workspace package scripts', () => {
   it('keeps patch coverage enforcement in the standard PR gate', () => {
     const packageJson = loadRootPackageJson();
@@ -84,5 +89,14 @@ describe('workspace package scripts', () => {
     const packageJson = loadRootPackageJson();
 
     expect(packageJson.scripts?.['env:release:studio:local']).toBe('tsx scripts/ops/studio-release-local.ts');
+  });
+
+  it('keeps studio image verify tag sanitizing portable on GitHub runners', () => {
+    const workflow = loadStudioArtifactVerifyWorkflow();
+
+    expect(workflow).toContain(
+      "safe_tag=\"$(printf '%s' \"${IMAGE_TAG}\" | sed -E 's/[^[:alnum:]. _-]+/-/g; s/[[:space:]]+/-/g; s/-+/-/g; s/^-+//; s/-+$//')\""
+    );
+    expect(workflow).not.toContain("tr -cs '[:alnum:]._- ' '-'");
   });
 });

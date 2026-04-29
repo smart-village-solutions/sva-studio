@@ -21,6 +21,7 @@ describe('MediaReferenceField', () => {
           { assetId: 'asset-2', label: 'Headerbild' },
         ]}
         onChange={onChange}
+        placeholder="Medium auswählen"
       />
     );
 
@@ -43,6 +44,7 @@ describe('MediaReferenceField', () => {
         value="asset-1"
         options={[{ assetId: 'asset-1', label: 'Hero Bild' }]}
         onChange={onChange}
+        placeholder="Medium auswählen"
         clearLabel="Auswahl entfernen"
       />
     );

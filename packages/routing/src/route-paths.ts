@@ -7,6 +7,7 @@ export const uiRoutePaths = {
   content: '/admin/content',
   contentCreate: '/admin/content/new',
   contentDetail: '/admin/content/$id',
+  mediaUsage: '/admin/media/$mediaId/usage',
   media: '/media',
   categories: '/categories',
   app: '/app',

@@ -1,5 +1,3 @@
-import { createSdkLogger } from '@sva/server-runtime';
-
 export type RoutingDenyReason =
   | 'unauthenticated'
   | 'insufficient-role'
@@ -78,7 +76,23 @@ export interface RoutingDiagnosticsLogger {
   error: (message: string, meta: Record<string, unknown>) => void;
 }
 
-const fallbackLogger = createSdkLogger({ component: 'routing', level: 'info' });
+type RoutingFallbackLogger = Pick<RoutingDiagnosticsLogger, 'error'>;
+
+let serverFallbackLoggerPromise: Promise<RoutingFallbackLogger | null> | null = null;
+
+const isBrowserRuntime = () => typeof globalThis.window !== 'undefined';
+
+const getServerFallbackLogger = (): Promise<RoutingFallbackLogger | null> => {
+  if (isBrowserRuntime()) {
+    return Promise.resolve(null);
+  }
+
+  serverFallbackLoggerPromise ??= import('@sva/server-runtime')
+    .then(({ createSdkLogger }) => createSdkLogger({ component: 'routing', level: 'info' }))
+    .catch(() => null);
+
+  return serverFallbackLoggerPromise;
+};
 
 const isPromiseLike = (value: unknown): value is PromiseLike<unknown> =>
   typeof value === 'object' && value !== null && typeof Reflect.get(value, 'then') === 'function';
@@ -143,7 +157,8 @@ export const createRoutingDiagnosticsLogger = (logger: RoutingDiagnosticsLogger)
 };
 
 const logRoutingDiagnosticFailure = (event: RoutingDiagnosticEvent, error: unknown): void => {
-  fallbackLogger.error('Routing diagnostics hook failed', {
+  const message = 'Routing diagnostics hook failed';
+  const meta = {
     event: event.event,
     route: event.route,
     request_id: event.request_id,
@@ -151,6 +166,20 @@ const logRoutingDiagnosticFailure = (event: RoutingDiagnosticEvent, error: unkno
     workspace_id: event.workspace_id,
     error_type: error instanceof Error ? error.constructor.name : typeof error,
     error_message: error instanceof Error ? error.message : String(error),
+  };
+
+  if (isBrowserRuntime()) {
+    console.error(message, meta);
+    return;
+  }
+
+  void getServerFallbackLogger().then((logger) => {
+    if (logger) {
+      logger.error(message, meta);
+      return;
+    }
+
+    console.error(message, meta);
   });
 };
 

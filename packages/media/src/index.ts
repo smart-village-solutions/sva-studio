@@ -72,6 +72,7 @@ export type MediaReference = Readonly<{
 export type MediaPreset = Readonly<{
   key: 'thumbnail' | 'teaser' | 'hero';
   width: number;
+  height?: number;
   format: MediaFormat;
 }>;
 
@@ -84,16 +85,19 @@ export const defaultMediaPresets = [
   {
     key: 'thumbnail',
     width: 320,
+    height: 320,
     format: 'webp',
   },
   {
     key: 'teaser',
     width: 800,
+    height: 450,
     format: 'webp',
   },
   {
     key: 'hero',
     width: 1600,
+    height: 900,
     format: 'webp',
   },
 ] as const satisfies readonly MediaPreset[];

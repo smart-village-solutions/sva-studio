@@ -13,6 +13,14 @@ gleichzeitig beeinflussen.
 
 ## Aktueller Stand
 
+### Medienmanagement
+
+- Medienzugriffe bleiben mandantengetrennt und hostgeführt.
+- Plugins erhalten ausschließlich rollenbasierte Referenzverträge, keine MinIO-/S3-Artefakte.
+- Upload, Metadatenänderung, Bildbearbeitung, Delivery und Löschblockierung werden auditierbar verarbeitet.
+- Löschungen bleiben fail-closed bei aktiven Referenzen oder unvollständigem Upload-/Processing-Zustand.
+- i18n für Medienrollen und Fehlerzustände folgt denselben Dot-Notation-Regeln wie übrige Host- und Plugin-Oberflächen.
+
 ### Security und Privacy
 
 - OIDC Authorization Code Flow mit PKCE

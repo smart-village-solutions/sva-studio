@@ -7,7 +7,14 @@ import type { AppRouteBindings, AppRouteFactory } from './app.routes.shared.js';
 import type { RoutingDiagnosticsHook } from './diagnostics.js';
 
 type BindingKey = keyof AppRouteBindings;
-type UiRouteDefinition = { readonly binding: BindingKey; readonly guard: AccountUiRouteGuardKey; readonly path: string; readonly validateSearch?: (search: Record<string, unknown>) => unknown };
+type UiRouteDefinition = {
+  readonly binding: BindingKey;
+  readonly guard: AccountUiRouteGuardKey;
+  readonly path: string;
+  readonly routeKind: AdminResourceRouteKind;
+  readonly resource: AdminResourceDefinition;
+  readonly validateSearch?: (search: Record<string, unknown>) => unknown;
+};
 type AdminResourceBindingResolver = { readonly list: BindingKey; readonly create: BindingKey; readonly detail: BindingKey; readonly history?: BindingKey };
 type AdminResourceRouteKind = 'list' | 'create' | 'detail' | 'history';
 type AdminResourceViewKind = keyof AdminResourceDefinition['views'];
@@ -125,6 +132,29 @@ const ensureAssignedModule = async (
   }
 };
 
+const ensureRequiredPermissions = async (
+  resource: AdminResourceDefinition,
+  routeKind: AdminResourceRouteKind,
+  beforeLoadOptions: {
+    readonly context?: {
+      readonly auth?: {
+        readonly getUser?: () => Promise<{ permissionActions?: readonly string[] } | null | undefined>;
+      };
+    };
+  }
+): Promise<void> => {
+  const requiredPermissions = resource.permissions?.[routeKind];
+  if (!requiredPermissions || requiredPermissions.length === 0) {
+    return;
+  }
+
+  const user = await beforeLoadOptions.context?.auth?.getUser?.();
+  const grantedPermissions = new Set(user?.permissionActions ?? []);
+  if (requiredPermissions.some((permission) => !grantedPermissions.has(permission))) {
+    throw redirect({ href: '/?error=auth.insufficientRole' });
+  }
+};
+
 const createAdminResourceRouteDefinitions = (
   bindings: AppRouteBindings,
   resources: readonly AdminResourceDefinition[]
@@ -139,28 +169,36 @@ const createAdminResourceRouteDefinitions = (
     return [
       {
         binding: resolvedBindings.list,
+        resource,
         guard: resolveAdminResourceGuard(resource, 'list'),
         path: basePath,
+        routeKind: 'list',
         validateSearch: resource.capabilities?.list
           ? (search: Record<string, unknown>) => normalizeAdminResourceListSearch(resource, search)
           : undefined,
       },
       {
         binding: resolvedBindings.create,
+        resource,
         guard: resolveAdminResourceGuard(resource, 'create'),
         path: toAdminCreateRoutePath(basePath),
+        routeKind: 'create',
       },
       {
         binding: resolvedBindings.detail,
+        resource,
         guard: resolveAdminResourceGuard(resource, 'detail'),
         path: detailPath,
+        routeKind: 'detail',
       },
       ...(resolvedBindings.history
         ? [
             {
               binding: resolvedBindings.history,
+              resource,
               guard: resolveAdminResourceGuard(resource, 'history'),
               path: toAdminHistoryRoutePath(detailPath),
+              routeKind: 'history',
             } satisfies UiRouteDefinition,
           ]
         : []),
@@ -206,18 +244,14 @@ export const createAdminResourceRouteFactories = (
     (definition) =>
       (rootRoute: RootRoute) => {
         const guard = createAccountUiRouteGuard(definition.guard, diagnostics, definition.path);
-        const matchedResource = withCoreContentAdminResource(resources).find(
-          (resource) => definition.path === `/admin/${resource.basePath}` || definition.path.startsWith(`/admin/${resource.basePath}/`)
-        );
 
         return createRoute({
           getParentRoute: () => rootRoute,
           path: definition.path,
           beforeLoad: async (beforeLoadOptions) => {
             await guard(beforeLoadOptions);
-            if (matchedResource) {
-              await ensureAssignedModule(matchedResource, beforeLoadOptions);
-            }
+            await ensureAssignedModule(definition.resource, beforeLoadOptions);
+            await ensureRequiredPermissions(definition.resource, definition.routeKind, beforeLoadOptions);
           },
           validateSearch: definition.validateSearch,
           component: bindings[definition.binding],

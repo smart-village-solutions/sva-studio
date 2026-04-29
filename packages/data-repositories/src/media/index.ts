@@ -92,6 +92,7 @@ export type MediaRepository = {
   upsertAsset(input: MediaAssetRecord): Promise<void>;
   getAssetById(instanceId: string, assetId: string): Promise<MediaAssetRecord | null>;
   listAssets(filter: MediaAssetListFilter): Promise<readonly MediaAssetRecord[]>;
+  deleteAsset(instanceId: string, assetId: string): Promise<void>;
   upsertVariant(instanceId: string, input: MediaVariantRecord): Promise<void>;
   listVariantsByAssetId(instanceId: string, assetId: string): Promise<readonly MediaVariantRecord[]>;
   upsertUploadSession(input: MediaUploadSessionRecord): Promise<void>;
@@ -108,6 +109,7 @@ export type MediaRepository = {
     readonly references: readonly MediaReferenceRecord[];
   }): Promise<void>;
   listReferencesByAssetId(instanceId: string, assetId: string): Promise<readonly MediaReferenceRecord[]>;
+  listReferencesByTarget(instanceId: string, targetType: string, targetId: string): Promise<readonly MediaReferenceRecord[]>;
   getUsageImpact(instanceId: string, assetId: string): Promise<MediaUsageImpact>;
 };
 
@@ -306,6 +308,15 @@ FROM iam.media_assets
 WHERE instance_id = $1
   AND id = $2
 LIMIT 1;
+`,
+  values: [instanceId, assetId],
+});
+
+const deleteAssetStatement = (instanceId: string, assetId: string): SqlStatement => ({
+  text: `
+DELETE FROM iam.media_assets
+WHERE instance_id = $1
+  AND id = $2;
 `,
   values: [instanceId, assetId],
 });
@@ -585,6 +596,25 @@ ORDER BY created_at DESC, sort_order ASC NULLS LAST;
   values: [instanceId, assetId],
 });
 
+const listReferencesByTargetStatement = (instanceId: string, targetType: string, targetId: string): SqlStatement => ({
+  text: `
+SELECT
+  id,
+  asset_id,
+  target_type,
+  target_id,
+  role,
+  sort_order,
+  created_at
+FROM iam.media_references
+WHERE instance_id = $1
+  AND target_type = $2
+  AND target_id = $3
+ORDER BY created_at DESC, sort_order ASC NULLS LAST;
+`,
+  values: [instanceId, targetType, targetId],
+});
+
 export const createMediaRepository = (executor: SqlExecutor): MediaRepository => ({
   async upsertAsset(input) {
     await executor.execute(upsertAssetStatement(input));
@@ -596,6 +626,9 @@ export const createMediaRepository = (executor: SqlExecutor): MediaRepository =>
   async listAssets(filter) {
     const result = await executor.execute<MediaAssetRow>(listAssetsStatement(filter));
     return result.rows.map(mapAssetRow);
+  },
+  async deleteAsset(instanceId, assetId) {
+    await executor.execute(deleteAssetStatement(instanceId, assetId));
   },
   async upsertVariant(instanceId, input) {
     await executor.execute(upsertVariantStatement(instanceId, input));
@@ -647,6 +680,10 @@ export const createMediaRepository = (executor: SqlExecutor): MediaRepository =>
     const result = await executor.execute<MediaReferenceRow>(listReferencesByAssetIdStatement(instanceId, assetId));
     return result.rows.map(mapReferenceRow);
   },
+  async listReferencesByTarget(instanceId, targetType, targetId) {
+    const result = await executor.execute<MediaReferenceRow>(listReferencesByTargetStatement(instanceId, targetType, targetId));
+    return result.rows.map(mapReferenceRow);
+  },
   async getUsageImpact(instanceId, assetId) {
     const references = await this.listReferencesByAssetId(instanceId, assetId);
     return {
@@ -661,6 +698,7 @@ export const mediaStatements = {
   upsertAsset: upsertAssetStatement,
   getAssetById: getAssetByIdStatement,
   listAssets: listAssetsStatement,
+  deleteAsset: deleteAssetStatement,
   upsertVariant: upsertVariantStatement,
   listVariantsByAssetId: listVariantsByAssetIdStatement,
   upsertUploadSession: upsertUploadSessionStatement,
@@ -672,6 +710,7 @@ export const mediaStatements = {
   deleteReferencesForTarget: deleteReferencesForTargetStatement,
   insertReference: insertReferenceStatement,
   listReferencesByAssetId: listReferencesByAssetIdStatement,
+  listReferencesByTarget: listReferencesByTargetStatement,
 } as const;
 
 export type { SqlExecutionResult } from '../iam/repositories/types.js';

@@ -10,6 +10,7 @@ import {
 } from './admin-resource-routes.js';
 import { type RoutingDiagnosticsHook } from './diagnostics.js';
 import { resolvePluginRouteGuard } from './plugin-route-guards.js';
+import type { RouteGuardContext } from './protected.routes.js';
 import { normalizeIamTab, normalizeRoleDetailTab } from './route-search.js';
 import { uiRoutePaths } from './route-paths.js';
 
@@ -21,6 +22,7 @@ export type AppRouteBindings = {
   readonly content: RouteComponent;
   readonly contentCreate: RouteComponent;
   readonly contentDetail: RouteComponent;
+  readonly mediaUsage: RouteComponent;
   readonly newsList: RouteComponent;
   readonly newsDetail: RouteComponent;
   readonly newsEditor: RouteComponent;
@@ -62,12 +64,26 @@ export type AppRouteBindings = {
 };
 
 export type AppRouteBindingKey = keyof AppRouteBindings;
-type UiRouteDefinition = { readonly binding: AppRouteBindingKey; readonly guard?: AccountUiRouteGuardKey; readonly path: string; readonly validateSearch?: (search: Record<string, unknown>) => unknown };
+type UiRouteDefinition = {
+  readonly binding: AppRouteBindingKey;
+  readonly guard?: AccountUiRouteGuardKey;
+  readonly path: string;
+  readonly validateSearch?: (search: Record<string, unknown>) => unknown;
+  readonly requiredModuleId?: string;
+  readonly requiredPermissions?: readonly string[];
+};
 
 const uiRouteDefinitions: readonly UiRouteDefinition[] = [
   { binding: 'home', path: uiRoutePaths.home },
   { binding: 'account', path: uiRoutePaths.account, guard: 'account' },
   { binding: 'accountPrivacy', path: uiRoutePaths.accountPrivacy, guard: 'accountPrivacy' },
+  {
+    binding: 'mediaUsage',
+    path: uiRoutePaths.mediaUsage,
+    guard: 'adminInstances',
+    requiredModuleId: 'media',
+    requiredPermissions: ['media.read'],
+  },
   { binding: 'media', path: uiRoutePaths.media, guard: 'account' },
   { binding: 'categories', path: uiRoutePaths.categories, guard: 'account' },
   { binding: 'app', path: uiRoutePaths.app, guard: 'account' },
@@ -164,7 +180,25 @@ export const createUiRouteFactories = (
           createRoute({
             getParentRoute: () => rootRoute,
             path: definition.path,
-            beforeLoad: (beforeLoadOptions) => guard(beforeLoadOptions),
+            beforeLoad: async (beforeLoadOptions) => {
+              await guard(beforeLoadOptions);
+
+              if (definition.requiredModuleId || definition.requiredPermissions?.length) {
+                const routeGuardContext = beforeLoadOptions.context as RouteGuardContext;
+                const user = await routeGuardContext.auth?.getUser();
+
+                if (definition.requiredModuleId && !user?.assignedModules?.includes(definition.requiredModuleId)) {
+                  throw redirect({ href: '/?error=auth.insufficientRole' });
+                }
+
+                if (definition.requiredPermissions?.length) {
+                  const grantedPermissions = new Set(user?.permissionActions ?? []);
+                  if (definition.requiredPermissions.some((permission) => !grantedPermissions.has(permission))) {
+                    throw redirect({ href: '/?error=auth.insufficientRole' });
+                  }
+                }
+              }
+            },
             validateSearch: definition.validateSearch,
             component: bindings[definition.binding],
           });

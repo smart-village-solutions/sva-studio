@@ -235,6 +235,9 @@ describe('admin resource routes', () => {
         titleKey: 'media.title',
         guard: 'adminInstances',
         moduleId: 'media',
+        permissions: {
+          list: ['media.read'],
+        },
         views: {
           list: { bindingKey: 'media' },
           create: { bindingKey: 'media' },
@@ -255,7 +258,47 @@ describe('admin resource routes', () => {
         href: '/admin/media',
         context: {
           auth: {
-            getUser: async () => ({ assignedModules: ['news'] }),
+            getUser: async () => ({ assignedModules: ['news'], permissionActions: ['media.read'] }),
+          },
+        },
+      })
+    ).rejects.toMatchObject({ href: '/?error=auth.insufficientRole', __redirect: true });
+  });
+
+  it('redirects to insufficient-role when a host admin resource requires a missing permission', async () => {
+    const factory = createAdminResourceRouteFactories(bindings, [
+      {
+        resourceId: 'host.media',
+        basePath: 'media',
+        titleKey: 'media.title',
+        guard: 'adminInstances',
+        moduleId: 'media',
+        permissions: {
+          list: ['media.read'],
+          create: ['media.create'],
+          detail: ['media.read'],
+        },
+        views: {
+          list: { bindingKey: 'media' },
+          create: { bindingKey: 'media' },
+          detail: { bindingKey: 'media' },
+        },
+      },
+    ]).find((candidate) => {
+      const route = candidate({ id: 'root' } as never);
+      return readRouteOptions(route).path === '/admin/media/new';
+    });
+
+    expect(factory).toBeDefined();
+    const route = factory!({ id: 'root' } as never);
+    const beforeLoad = readRouteOptions(route).beforeLoad;
+
+    await expect(
+      beforeLoad?.({
+        href: '/admin/media/new',
+        context: {
+          auth: {
+            getUser: async () => ({ assignedModules: ['media'], permissionActions: ['media.read'] }),
           },
         },
       })

@@ -409,6 +409,90 @@ export type CreateContentPayload = CreateIamContentInput;
 
 export type UpdateContentPayload = UpdateIamContentInput;
 
+export type MediaVisibility = 'public' | 'protected';
+export type MediaUploadStatus = 'pending' | 'validated' | 'processed' | 'failed' | 'blocked';
+export type MediaProcessingStatus = 'pending' | 'ready' | 'failed';
+
+export type MediaMetadata = Readonly<{
+  title?: string;
+  description?: string;
+  altText?: string;
+  copyright?: string;
+  license?: string;
+  focusPoint?: Readonly<{
+    x: number;
+    y: number;
+  }>;
+  crop?: Readonly<{
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  }>;
+}>;
+
+export type IamMediaAsset = Readonly<{
+  id: string;
+  instanceId: string;
+  storageKey: string;
+  mediaType: 'image';
+  mimeType: string;
+  byteSize: number;
+  visibility: MediaVisibility;
+  uploadStatus: MediaUploadStatus;
+  processingStatus: MediaProcessingStatus;
+  metadata: MediaMetadata;
+  technical: Readonly<Record<string, unknown>>;
+  createdAt?: string;
+  updatedAt?: string;
+}>;
+
+export type IamMediaUsageReference = Readonly<{
+  id: string;
+  assetId: string;
+  targetType: string;
+  targetId: string;
+  role: string;
+  sortOrder?: number;
+  createdAt?: string;
+}>;
+
+export type IamMediaUsageImpact = Readonly<{
+  assetId: string;
+  totalReferences: number;
+  references: readonly IamMediaUsageReference[];
+}>;
+
+export type InitializeMediaUploadPayload = Readonly<{
+  mediaType?: 'image';
+  mimeType: string;
+  byteSize: number;
+  visibility?: MediaVisibility;
+}>;
+
+export type InitializeMediaUploadResponse = Readonly<{
+  assetId: string;
+  uploadSessionId: string;
+  uploadUrl: string;
+  method: string;
+  headers: Readonly<Record<string, string>>;
+  expiresAt: string;
+  status: string;
+  initializedAt: string;
+}>;
+
+export type UpdateMediaPayload = Readonly<{
+  visibility?: MediaVisibility;
+  metadata: Partial<MediaMetadata>;
+}>;
+
+export type IamMediaDelivery = Readonly<{
+  assetId: string;
+  visibility: MediaVisibility;
+  deliveryUrl: string;
+  expiresAt?: string;
+}>;
+
 export type OrganizationsQuery = {
   readonly page: number;
   readonly pageSize: number;
@@ -873,6 +957,53 @@ export const updateContent = async (
 
 export const deleteContent = async (contentId: string): Promise<ApiItemResponse<{ id: string }>> =>
   requestJson<ApiItemResponse<{ id: string }>>(`/api/v1/iam/contents/${contentId}`, {
+    method: 'DELETE',
+    headers: IAM_HEADERS,
+  });
+
+export const listMedia = async (query: {
+  readonly search?: string;
+  readonly visibility?: MediaVisibility | 'all';
+} = {}): Promise<ApiListResponse<IamMediaAsset>> => {
+  const params = new URLSearchParams();
+
+  if (query.search) {
+    params.set('search', query.search);
+  }
+  if (query.visibility && query.visibility !== 'all') {
+    params.set('visibility', query.visibility);
+  }
+
+  const suffix = params.toString();
+  return requestJson<ApiListResponse<IamMediaAsset>>(`/api/v1/iam/media${suffix ? `?${suffix}` : ''}`);
+};
+
+export const getMedia = async (assetId: string): Promise<ApiItemResponse<IamMediaAsset>> =>
+  requestJson<ApiItemResponse<IamMediaAsset>>(`/api/v1/iam/media/${assetId}`);
+
+export const getMediaUsage = async (assetId: string): Promise<ApiItemResponse<IamMediaUsageImpact>> =>
+  requestJson<ApiItemResponse<IamMediaUsageImpact>>(`/api/v1/iam/media/${assetId}/usage`);
+
+export const initializeMediaUpload = async (
+  payload: InitializeMediaUploadPayload
+): Promise<ApiItemResponse<InitializeMediaUploadResponse>> =>
+  postJson<ApiItemResponse<InitializeMediaUploadResponse>, InitializeMediaUploadPayload>(
+    '/api/v1/iam/media/upload-sessions',
+    payload,
+    true
+  );
+
+export const updateMedia = async (
+  assetId: string,
+  payload: UpdateMediaPayload
+): Promise<ApiItemResponse<IamMediaAsset>> =>
+  patchJson<ApiItemResponse<IamMediaAsset>, UpdateMediaPayload>(`/api/v1/iam/media/${assetId}`, payload);
+
+export const getMediaDelivery = async (assetId: string): Promise<ApiItemResponse<IamMediaDelivery>> =>
+  requestJson<ApiItemResponse<IamMediaDelivery>>(`/api/v1/iam/media/${assetId}/delivery`);
+
+export const deleteMedia = async (assetId: string): Promise<ApiItemResponse<{ id: string }>> =>
+  requestJson<ApiItemResponse<{ id: string }>>(`/api/v1/iam/media/${assetId}`, {
     method: 'DELETE',
     headers: IAM_HEADERS,
   });

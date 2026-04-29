@@ -155,6 +155,7 @@ describe('router runtime helpers', () => {
     const { createMockRouteGuardUser } = await import('./router');
 
     expect(createMockRouteGuardUser()).toEqual({
+      assignedModules: ['news', 'events', 'poi', 'media'],
       roles: [
         'system_admin',
         'iam_admin',
@@ -177,6 +178,12 @@ describe('router runtime helpers', () => {
         'content.readHistory',
         'content.manageRevisions',
         'content.delete',
+        'media.read',
+        'media.create',
+        'media.update',
+        'media.reference.manage',
+        'media.delete',
+        'media.deliver.protected',
         'news.read',
         'events.read',
         'poi.read',
@@ -253,6 +260,7 @@ describe('router runtime helpers', () => {
           user: {
             roles: ['editor', 7, 'system_admin'],
             permissionActions: ['news.read', 42, 'events.read'],
+            assignedModules: ['media', 7, 'news'],
           },
         }),
         {
@@ -265,6 +273,7 @@ describe('router runtime helpers', () => {
       roles: ['editor', 'system_admin'],
       permissionActions: ['news.read', 'events.read'],
       permissionStatus: 'ok',
+      assignedModules: ['media', 'news'],
     });
     expect(routerMocks.fetchWithRequestTimeoutSpy).toHaveBeenCalledWith(
       'http://localhost:3000/auth/me',
@@ -280,6 +289,7 @@ describe('router runtime helpers', () => {
 
     vi.stubEnv('VITE_MOCK_AUTH', 'true');
     expect(await getUser()).toEqual({
+      assignedModules: ['news', 'events', 'poi', 'media'],
       roles: [
         'system_admin',
         'iam_admin',
@@ -302,6 +312,12 @@ describe('router runtime helpers', () => {
         'content.readHistory',
         'content.manageRevisions',
         'content.delete',
+        'media.read',
+        'media.create',
+        'media.update',
+        'media.reference.manage',
+        'media.delete',
+        'media.deliver.protected',
         'news.read',
         'events.read',
         'poi.read',
@@ -318,14 +334,19 @@ describe('router runtime helpers', () => {
     routerMocks.executionMode.current = 'server';
     routerMocks.fetchWithRequestTimeoutSpy.mockResolvedValueOnce(
       new Response(
-        JSON.stringify({ user: { roles: ['app_manager', 'editor'], permissionActions: ['news.read'] } }),
+        JSON.stringify({ user: { roles: ['app_manager', 'editor'], permissionActions: ['news.read'], assignedModules: ['media'] } }),
         {
           status: 200,
           headers: { 'content-type': 'application/json' },
         }
       )
     );
-    expect(await getUser()).toEqual({ roles: ['app_manager', 'editor'], permissionActions: ['news.read'], permissionStatus: 'ok' });
+    expect(await getUser()).toEqual({
+      roles: ['app_manager', 'editor'],
+      permissionActions: ['news.read'],
+      permissionStatus: 'ok',
+      assignedModules: ['media'],
+    });
     expect(routerMocks.getRequestSpy).toHaveBeenCalled();
     expect(routerMocks.fetchWithRequestTimeoutSpy).toHaveBeenCalledWith(
       'https://studio.example.org/auth/me',
@@ -341,6 +362,7 @@ describe('router runtime helpers', () => {
 
     vi.stubEnv('VITE_MOCK_AUTH', 'true');
     expect(await getUser()).toEqual({
+      assignedModules: ['news', 'events', 'poi', 'media'],
       roles: [
         'system_admin',
         'iam_admin',
@@ -363,6 +385,12 @@ describe('router runtime helpers', () => {
         'content.readHistory',
         'content.manageRevisions',
         'content.delete',
+        'media.read',
+        'media.create',
+        'media.update',
+        'media.reference.manage',
+        'media.delete',
+        'media.deliver.protected',
         'news.read',
         'events.read',
         'poi.read',

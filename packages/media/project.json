@@ -31,6 +31,12 @@
         "command": "pnpm exec vitest run --reporter=verbose --config vitest.config.ts --passWithNoTests"
       }
     },
+    "test:types": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tsc -p packages/media/tsconfig.lib.json --noEmit"
+      }
+    },
     "test:coverage": {
       "executor": "nx:run-commands",
       "options": {

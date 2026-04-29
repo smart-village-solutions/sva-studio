@@ -16,6 +16,12 @@ export type MediaPrimitiveAuthorizationResource = Readonly<{
   visibility?: string;
 }>;
 
+type MediaPrimitiveAuthorizationErrorCode =
+  | 'missing_instance'
+  | 'invalid_action'
+  | 'database_unavailable'
+  | 'forbidden';
+
 export type MediaPrimitiveAuthorizationResult =
   | Readonly<{
       ok: true;
@@ -28,7 +34,7 @@ export type MediaPrimitiveAuthorizationResult =
   | Readonly<{
       ok: false;
       status: number;
-      error: string;
+      error: MediaPrimitiveAuthorizationErrorCode;
       message: string;
     }>;
 

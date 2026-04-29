@@ -13,7 +13,7 @@ export type MediaReferenceFieldProps = Readonly<{
   value: string | null;
   options: readonly MediaReferenceFieldOption[];
   onChange: (assetId: string | null) => void;
-  placeholder?: string;
+  placeholder: string;
   clearLabel?: string;
 }>;
 
@@ -23,7 +23,7 @@ export const MediaReferenceField = ({
   value,
   options,
   onChange,
-  placeholder = 'Medium auswählen',
+  placeholder,
   clearLabel,
 }: MediaReferenceFieldProps) => {
   return (

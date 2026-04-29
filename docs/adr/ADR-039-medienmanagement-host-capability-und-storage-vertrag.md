@@ -1,10 +1,10 @@
 # ADR-039: Medienmanagement als Host-Capability mit Storage- und Processing-Vertrag
 
-**Status:** Entwurf
+**Status:** Akzeptiert
 **Entscheidungsdatum:** 2026-04-29
 **Entschieden durch:** Studio/Architektur Team
-**GitHub Issue:** TBD
-**GitHub PR:** TBD
+**GitHub Issue:** n/a
+**GitHub PR:** n/a
 
 ## Kontext
 
@@ -44,7 +44,7 @@ Zusätzlich muss die Entscheidung mit dem Plugin-SDK-Vertrag aus ADR-034 kompati
 - Der MVP enthält noch keinen dedizierten Async-Processing-Worker für aufwendige Bild- oder Folgemedientyp-Verarbeitung.
 - Bestehende URL-basierte Felder in News, Events und POI benötigen einen Bridge- und Migrationspfad statt eines harten Schnitts.
 
-## Verworfenene Alternativen
+## Verworfene Alternativen
 
 ### 1. Medienmanagement als eigenes Plugin
 
@@ -70,6 +70,19 @@ Verworfen, weil der erste produktive Schnitt damit unnötig Worker-, Queue- und 
 - News, Events und POI migrieren schrittweise von URL-basierten Medienfeldern auf hostseitige Medienreferenzen.
 - Die Architektur- und Betriebsdokumentation muss Medienmanagement in arc42 03 bis 11 nachziehen.
 - Ein Folge-Change `add-media-async-processing` beschreibt den dedizierten Worker-/Queue-Pfad.
+
+## Umsetzungsstand im MVP
+
+Zum angenommenen Entscheidungsstand gehören bereits:
+
+- `packages/media` als kanonischer Domänenvertrag
+- Persistenzmodell für Assets, Varianten, Referenzen, Upload-Sessions und Storage-Usage
+- hostseitige Runtime-Pfade für Upload-Initialisierung, Upload-Abschluss, Referenzverwaltung, Usage-Impact, Delivery und Löschschutz
+- hostseitiger S3-/MinIO-Adapter hinter einem internen Storage-Port
+- Host-UI unter `/admin/media`
+- Plugin-SDK- und UI-Verträge für hostseitige Media-Picker
+
+Nicht Bestandteil dieses ADR-Abschlusses sind weitergehende Governance- und Betriebsfunktionen aus `extend-media-management-governance` sowie der dedizierte Async-Worker aus `add-media-async-processing`.
 
 ## Verwandte ADRs
 

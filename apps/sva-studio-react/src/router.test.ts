@@ -59,11 +59,22 @@ describe('createRuntimeRouteTree', () => {
         user: {
           roles: ['iam_admin', 1, null, 'editor'],
           permissionActions: ['news.read', false, 'events.read'],
+          assignedModules: ['news', false, 'media'],
         },
       }),
-    ).toEqual({ roles: ['iam_admin', 'editor'], permissionActions: ['news.read', 'events.read'], permissionStatus: 'ok' });
+    ).toEqual({
+      roles: ['iam_admin', 'editor'],
+      permissionActions: ['news.read', 'events.read'],
+      permissionStatus: 'ok',
+      assignedModules: ['news', 'media'],
+    });
 
-    expect(readRouteGuardUser({ user: { roles: 'not-an-array' } })).toEqual({ roles: [], permissionActions: [], permissionStatus: 'ok' });
+    expect(readRouteGuardUser({ user: { roles: 'not-an-array' } })).toEqual({
+      roles: [],
+      permissionActions: [],
+      permissionStatus: 'ok',
+      assignedModules: [],
+    });
   });
 
   it('resolves the runtime base url from window, env, and localhost fallback', () => {

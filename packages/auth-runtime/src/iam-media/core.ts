@@ -1,14 +1,17 @@
 import { randomUUID } from 'node:crypto';
 
 import { getWorkspaceContext } from '@sva/server-runtime';
+import { canDeleteMediaAsset, type MediaAsset, type MediaProcessingStatus, type MediaReference, type MediaRole, type MediaUploadStatus, type MediaVisibility } from '@sva/media';
 import { asApiItem, asApiList, createApiError, parseRequestBody, readInstanceIdFromRequest, readPage, readPathSegment } from '../shared/request-helpers.js';
 import { jsonResponse } from '../db.js';
 import { withAuthenticatedUser, type AuthenticatedRequestContext } from '../middleware.js';
+import { emitAuthAuditEvent } from '../audit-events.js';
 import { createUnavailableMediaStoragePort, MediaStorageUnavailableError, type MediaStoragePort } from './storage-port.js';
 import { withMediaService } from './repository.js';
 import type { MediaService } from './service.js';
 import { createConfiguredMediaStoragePort } from './storage-s3.js';
 import { authorizeMediaPrimitiveForUser, type MediaPrimitiveAuthorizationResult } from './server-authorization.js';
+import { createMediaUploadProcessingService } from './processing.js';
 import { z } from 'zod';
 
 const uploadInitializationSchema = z.object({
@@ -78,6 +81,11 @@ const readAssetId = (request: Request): string | Response => {
   return assetId ? assetId : createApiError(400, 'invalid_request', 'Asset-ID fehlt im Pfad.');
 };
 
+const readUploadSessionId = (request: Request): string | Response => {
+  const uploadSessionId = readPathSegment(request, 5);
+  return uploadSessionId ? uploadSessionId : createApiError(400, 'invalid_request', 'Upload-Session-ID fehlt im Pfad.');
+};
+
 const getRequestId = (): string | undefined => getWorkspaceContext().requestId;
 
 type MediaHttpHandlerDeps = {
@@ -95,10 +103,84 @@ type MediaHttpHandlerDeps = {
   }) => Promise<MediaPrimitiveAuthorizationResult>;
   readonly createId: () => string;
   readonly now: () => string;
+  readonly emitAuditEvent: typeof emitAuthAuditEvent;
+};
+
+type MediaAuditResult = 'success' | 'failure' | 'denied';
+
+const MEDIA_VISIBILITIES = new Set<MediaVisibility>(['public', 'protected']);
+const MEDIA_UPLOAD_STATUSES = new Set<MediaUploadStatus>(['pending', 'validated', 'processed', 'failed', 'blocked']);
+const MEDIA_PROCESSING_STATUSES = new Set<MediaProcessingStatus>(['pending', 'ready', 'failed']);
+const MEDIA_ROLES = new Set<MediaRole>(['thumbnail', 'teaser_image', 'header_image', 'gallery_item', 'download', 'hero_image']);
+
+const asMediaVisibility = (value: string): MediaVisibility => (MEDIA_VISIBILITIES.has(value as MediaVisibility) ? (value as MediaVisibility) : 'public');
+
+const asMediaUploadStatus = (value: string): MediaUploadStatus =>
+  MEDIA_UPLOAD_STATUSES.has(value as MediaUploadStatus) ? (value as MediaUploadStatus) : 'failed';
+
+const asMediaProcessingStatus = (value: string): MediaProcessingStatus =>
+  MEDIA_PROCESSING_STATUSES.has(value as MediaProcessingStatus) ? (value as MediaProcessingStatus) : 'failed';
+
+const asMediaRole = (value: string): MediaRole => (MEDIA_ROLES.has(value as MediaRole) ? (value as MediaRole) : 'download');
+
+const asMediaAsset = (asset: Awaited<ReturnType<MediaService['getAssetById']>>): MediaAsset | null => {
+  if (!asset) {
+    return null;
+  }
+  return {
+    ...asset,
+    mediaType: 'image',
+    visibility: asMediaVisibility(asset.visibility),
+    uploadStatus: asMediaUploadStatus(asset.uploadStatus),
+    processingStatus: asMediaProcessingStatus(asset.processingStatus),
+  };
+};
+
+const asMediaReferences = (references: readonly Awaited<ReturnType<MediaService['listReferencesByAssetId']>>[number][]): readonly MediaReference[] =>
+  references.map((reference) => ({
+    ...reference,
+    role: asMediaRole(reference.role),
+  }));
+
+const emitMediaAuditEvent = async (input: {
+  readonly deps: Pick<MediaHttpHandlerDeps, 'emitAuditEvent'>;
+  readonly ctx: AuthenticatedRequestContext;
+  readonly instanceId: string;
+  readonly actionId: string;
+  readonly result: MediaAuditResult;
+  readonly reasonCode?: string;
+  readonly resourceType?: string;
+  readonly resourceId?: string;
+}) => {
+  await input.deps.emitAuditEvent({
+    eventType:
+      input.result === 'success'
+        ? 'plugin_action_authorized'
+        : input.result === 'denied'
+          ? 'plugin_action_denied'
+          : 'plugin_action_failed',
+    actorUserId: input.ctx.user.id,
+    actorEmail: input.ctx.user.email,
+    actorDisplayName: input.ctx.user.displayName,
+    scope: { kind: 'instance', instanceId: input.instanceId },
+    workspaceId: input.instanceId,
+    outcome: input.result,
+    requestId: getWorkspaceContext().requestId,
+    traceId: getWorkspaceContext().traceId,
+    pluginAction: {
+      actionId: input.actionId,
+      actionNamespace: 'media',
+      actionOwner: 'host',
+      result: input.result,
+      reasonCode: input.reasonCode,
+      resourceType: input.resourceType,
+      resourceId: input.resourceId,
+    },
+  });
 };
 
 const mapAuthorizationFailure = (result: Exclude<MediaPrimitiveAuthorizationResult, { ok: true }>): Response => {
-  const code =
+  const code: 'invalid_instance_id' | 'invalid_request' | 'database_unavailable' | 'forbidden' =
     result.error === 'missing_instance'
       ? 'invalid_instance_id'
       : result.error === 'invalid_action'
@@ -116,6 +198,15 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
     }
     const authorization = await deps.authorizeAction({ ctx, action: 'media.read' });
     if (!authorization.ok) {
+      await emitMediaAuditEvent({
+        deps,
+        ctx,
+        instanceId,
+        actionId: 'media.read',
+        result: 'denied',
+        reasonCode: authorization.error,
+        resourceType: 'media_library',
+      });
       return mapAuthorizationFailure(authorization);
     }
 
@@ -134,6 +225,15 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
       })
     );
 
+    await emitMediaAuditEvent({
+      deps,
+      ctx,
+      instanceId,
+      actionId: 'media.read',
+      result: 'success',
+      resourceType: 'media_library',
+    });
+
     return jsonResponse(200, asApiList(assets, { page, pageSize, total: assets.length }, getRequestId()));
   },
 
@@ -148,13 +248,43 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
     }
     const authorization = await deps.authorizeAction({ ctx, action: 'media.read', resource: { assetId } });
     if (!authorization.ok) {
+      await emitMediaAuditEvent({
+        deps,
+        ctx,
+        instanceId,
+        actionId: 'media.read',
+        result: 'denied',
+        reasonCode: authorization.error,
+        resourceType: 'media_asset',
+        resourceId: assetId,
+      });
       return mapAuthorizationFailure(authorization);
     }
 
     const asset = await deps.withMediaService(instanceId, (service) => service.getAssetById(instanceId, assetId));
     if (!asset) {
+      await emitMediaAuditEvent({
+        deps,
+        ctx,
+        instanceId,
+        actionId: 'media.read',
+        result: 'failure',
+        reasonCode: 'asset_not_found',
+        resourceType: 'media_asset',
+        resourceId: assetId,
+      });
       return createApiError(404, 'not_found', 'Medienobjekt nicht gefunden.', getRequestId());
     }
+
+    await emitMediaAuditEvent({
+      deps,
+      ctx,
+      instanceId,
+      actionId: 'media.read',
+      result: 'success',
+      resourceType: 'media_asset',
+      resourceId: assetId,
+    });
 
     return jsonResponse(200, asApiItem(asset, getRequestId()));
   },
@@ -170,10 +300,30 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
     }
     const authorization = await deps.authorizeAction({ ctx, action: 'media.read', resource: { assetId } });
     if (!authorization.ok) {
+      await emitMediaAuditEvent({
+        deps,
+        ctx,
+        instanceId,
+        actionId: 'media.readUsage',
+        result: 'denied',
+        reasonCode: authorization.error,
+        resourceType: 'media_asset',
+        resourceId: assetId,
+      });
       return mapAuthorizationFailure(authorization);
     }
 
     const usage = await deps.withMediaService(instanceId, (service) => service.getUsageImpact(instanceId, assetId));
+    await emitMediaAuditEvent({
+      deps,
+      ctx,
+      instanceId,
+      actionId: 'media.readUsage',
+      result: 'success',
+      reasonCode: usage.totalReferences > 0 ? 'active_references' : undefined,
+      resourceType: 'media_asset',
+      resourceId: assetId,
+    });
     return jsonResponse(200, asApiItem(usage, getRequestId()));
   },
 
@@ -192,6 +342,15 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
     }
     const authorization = await deps.authorizeAction({ ctx, action: 'media.create' });
     if (!authorization.ok) {
+      await emitMediaAuditEvent({
+        deps,
+        ctx,
+        instanceId,
+        actionId: 'media.uploadInitialize',
+        result: 'denied',
+        reasonCode: authorization.error,
+        resourceType: 'media_asset',
+      });
       return mapAuthorizationFailure(authorization);
     }
 
@@ -200,6 +359,15 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
     );
 
     if (quotaCheck.wouldExceed) {
+      await emitMediaAuditEvent({
+        deps,
+        ctx,
+        instanceId,
+        actionId: 'media.uploadInitialize',
+        result: 'failure',
+        reasonCode: 'storage_quota_exceeded',
+        resourceType: 'media_asset',
+      });
       return createApiError(409, 'conflict', 'Speicherkontingent der Instanz würde überschritten.', getRequestId(), {
         reason: 'storage_quota_exceeded',
         maxBytes: quotaCheck.maxBytes,
@@ -244,6 +412,16 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
         });
       });
 
+      await emitMediaAuditEvent({
+        deps,
+        ctx,
+        instanceId,
+        actionId: 'media.uploadInitialize',
+        result: 'success',
+        resourceType: 'media_asset',
+        resourceId: assetId,
+      });
+
       return jsonResponse(
         201,
         asApiItem(
@@ -262,6 +440,15 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
       );
     } catch (error) {
       if (error instanceof MediaStorageUnavailableError) {
+        await emitMediaAuditEvent({
+          deps,
+          ctx,
+          instanceId,
+          actionId: 'media.uploadInitialize',
+          result: 'failure',
+          reasonCode: 'media_storage_unavailable',
+          resourceType: 'media_asset',
+        });
         return createApiError(503, 'internal_error', 'Medien-Storage ist momentan nicht verfügbar.', getRequestId());
       }
       throw error;
@@ -289,13 +476,35 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
 
     const authorization = await deps.authorizeAction({ ctx, action: 'media.update', resource: { assetId } });
     if (!authorization.ok) {
+      await emitMediaAuditEvent({
+        deps,
+        ctx,
+        instanceId,
+        actionId: 'media.metadataUpdate',
+        result: 'denied',
+        reasonCode: authorization.error,
+        resourceType: 'media_asset',
+        resourceId: assetId,
+      });
       return mapAuthorizationFailure(authorization);
     }
 
     const asset = await deps.withMediaService(instanceId, (service) => service.getAssetById(instanceId, assetId));
     if (!asset) {
+      await emitMediaAuditEvent({
+        deps,
+        ctx,
+        instanceId,
+        actionId: 'media.metadataUpdate',
+        result: 'failure',
+        reasonCode: 'asset_not_found',
+        resourceType: 'media_asset',
+        resourceId: assetId,
+      });
       return createApiError(404, 'not_found', 'Medienobjekt nicht gefunden.', getRequestId());
     }
+
+    const usageImpact = await deps.withMediaService(instanceId, (service) => service.getUsageImpact(instanceId, assetId));
 
     const updatedAsset = {
       ...asset,
@@ -310,7 +519,130 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
       await service.upsertAsset(updatedAsset);
     });
 
-    return jsonResponse(200, asApiItem(updatedAsset, getRequestId()));
+    await emitMediaAuditEvent({
+      deps,
+      ctx,
+      instanceId,
+      actionId: 'media.metadataUpdate',
+      result: 'success',
+      reasonCode:
+        parsed.data.metadata.crop || parsed.data.metadata.focusPoint
+          ? 'image_edit_applied'
+          : usageImpact.totalReferences > 0
+            ? 'referenced_asset_updated'
+            : undefined,
+      resourceType: 'media_asset',
+      resourceId: assetId,
+    });
+
+    return jsonResponse(200, asApiItem({ ...updatedAsset, usageImpact }, getRequestId()));
+  },
+
+  async completeUpload(request: Request, ctx: AuthenticatedRequestContext): Promise<Response> {
+    const instanceId = resolveScopedInstanceId(request, ctx.user.instanceId);
+    if (instanceId instanceof Response) {
+      return instanceId;
+    }
+    const uploadSessionId = readUploadSessionId(request);
+    if (uploadSessionId instanceof Response) {
+      return uploadSessionId;
+    }
+
+    const authorization = await deps.authorizeAction({ ctx, action: 'media.create' });
+    if (!authorization.ok) {
+      await emitMediaAuditEvent({
+        deps,
+        ctx,
+        instanceId,
+        actionId: 'media.uploadComplete',
+        result: 'denied',
+        reasonCode: authorization.error,
+        resourceType: 'media_upload_session',
+        resourceId: uploadSessionId,
+      });
+      return mapAuthorizationFailure(authorization);
+    }
+
+    try {
+      const result = await deps.withMediaService(instanceId, async (service) =>
+        createMediaUploadProcessingService({
+          service,
+          storagePort: deps.storagePort,
+          createId: deps.createId,
+        }).completeUpload({
+          instanceId,
+          uploadSessionId,
+        })
+      );
+
+      if (!result.ok) {
+        await emitMediaAuditEvent({
+          deps,
+          ctx,
+          instanceId,
+          actionId: 'media.uploadComplete',
+          result: 'failure',
+          reasonCode: result.errorCode,
+          resourceType: 'media_upload_session',
+          resourceId: uploadSessionId,
+        });
+        const errorCode =
+          result.errorCode === 'upload_session_not_found' || result.errorCode === 'asset_not_found'
+            ? 'not_found'
+            : result.errorCode === 'upload_size_exceeded'
+              ? 'conflict'
+              : 'invalid_request';
+        const message =
+          result.errorCode === 'upload_size_exceeded'
+            ? 'Das hochgeladene Medium überschreitet die erlaubte Größe.'
+            : result.errorCode === 'invalid_media_content'
+              ? 'Das hochgeladene Medium konnte nicht validiert werden.'
+              : result.errorCode === 'upload_session_not_found'
+                ? 'Upload-Session wurde nicht gefunden.'
+                : 'Medienobjekt wurde nicht gefunden.';
+        return createApiError(result.status, errorCode, message, getRequestId(), {
+          reason: result.errorCode,
+        });
+      }
+
+      await emitMediaAuditEvent({
+        deps,
+        ctx,
+        instanceId,
+        actionId: 'media.uploadComplete',
+        result: 'success',
+        reasonCode: 'variants_generated',
+        resourceType: 'media_asset',
+        resourceId: String(result.asset.id),
+      });
+
+      return jsonResponse(
+        200,
+        asApiItem(
+          {
+            assetId: result.asset.id,
+            uploadSessionId: result.uploadSessionId,
+            status: 'processed',
+          },
+          getRequestId()
+        )
+      );
+    } catch (error) {
+      if (error instanceof MediaStorageUnavailableError) {
+        await emitMediaAuditEvent({
+          deps,
+          ctx,
+          instanceId,
+          actionId: 'media.uploadComplete',
+          result: 'failure',
+          reasonCode: 'media_storage_unavailable',
+          resourceType: 'media_upload_session',
+          resourceId: uploadSessionId,
+        });
+        return createApiError(503, 'internal_error', 'Medien-Storage ist momentan nicht verfügbar.', getRequestId());
+      }
+      throw error;
+    }
   },
 
   async replaceReferences(request: Request, ctx: AuthenticatedRequestContext): Promise<Response> {
@@ -336,6 +668,16 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
       },
     });
     if (!authorization.ok) {
+      await emitMediaAuditEvent({
+        deps,
+        ctx,
+        instanceId,
+        actionId: 'media.referenceManage',
+        result: 'denied',
+        reasonCode: authorization.error,
+        resourceType: parsed.data.targetType,
+        resourceId: parsed.data.targetId,
+      });
       return mapAuthorizationFailure(authorization);
     }
 
@@ -350,6 +692,16 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
     });
 
     if (missingAssetIds.length > 0) {
+      await emitMediaAuditEvent({
+        deps,
+        ctx,
+        instanceId,
+        actionId: 'media.referenceManage',
+        result: 'failure',
+        reasonCode: 'asset_not_found',
+        resourceType: parsed.data.targetType,
+        resourceId: parsed.data.targetId,
+      });
       return createApiError(
         404,
         'not_found',
@@ -377,6 +729,17 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
       });
     });
 
+    await emitMediaAuditEvent({
+      deps,
+      ctx,
+      instanceId,
+      actionId: 'media.referenceManage',
+      result: 'success',
+      reasonCode: references.length > 0 ? 'references_replaced' : 'references_cleared',
+      resourceType: parsed.data.targetType,
+      resourceId: parsed.data.targetId,
+    });
+
     return jsonResponse(
       200,
       asApiItem(
@@ -389,6 +752,54 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
         getRequestId()
       )
     );
+  },
+
+  async listReferences(request: Request, ctx: AuthenticatedRequestContext): Promise<Response> {
+    const instanceId = resolveScopedInstanceId(request, ctx.user.instanceId);
+    if (instanceId instanceof Response) {
+      return instanceId;
+    }
+    const url = new URL(request.url);
+    const targetType = url.searchParams.get('targetType')?.trim();
+    const targetId = url.searchParams.get('targetId')?.trim();
+    if (!targetType || !targetId) {
+      return createApiError(400, 'invalid_request', 'Zieltyp und Ziel-ID sind erforderlich.', getRequestId());
+    }
+
+    const authorization = await deps.authorizeAction({
+      ctx,
+      action: 'media.reference.manage',
+      resource: {
+        targetType,
+        targetId,
+      },
+    });
+    if (!authorization.ok) {
+      await emitMediaAuditEvent({
+        deps,
+        ctx,
+        instanceId,
+        actionId: 'media.referenceList',
+        result: 'denied',
+        reasonCode: authorization.error,
+        resourceType: targetType,
+        resourceId: targetId,
+      });
+      return mapAuthorizationFailure(authorization);
+    }
+
+    const references = await deps.withMediaService(instanceId, (service) => service.listReferencesByTarget(instanceId, targetType, targetId));
+    await emitMediaAuditEvent({
+      deps,
+      ctx,
+      instanceId,
+      actionId: 'media.referenceList',
+      result: 'success',
+      reasonCode: references.length > 0 ? 'active_references' : undefined,
+      resourceType: targetType,
+      resourceId: targetId,
+    });
+    return jsonResponse(200, asApiItem(references, getRequestId()));
   },
 
   async getMediaDelivery(request: Request, ctx: AuthenticatedRequestContext): Promise<Response> {
@@ -404,6 +815,16 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
     try {
       const asset = await deps.withMediaService(instanceId, (service) => service.getAssetById(instanceId, assetId));
       if (!asset) {
+        await emitMediaAuditEvent({
+          deps,
+          ctx,
+          instanceId,
+          actionId: 'media.deliveryResolve',
+          result: 'failure',
+          reasonCode: 'asset_not_found',
+          resourceType: 'media_asset',
+          resourceId: assetId,
+        });
         return createApiError(404, 'not_found', 'Medienobjekt nicht gefunden.', getRequestId());
       }
       const authorization = await deps.authorizeAction({
@@ -415,6 +836,16 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
         },
       });
       if (!authorization.ok) {
+        await emitMediaAuditEvent({
+          deps,
+          ctx,
+          instanceId,
+          actionId: 'media.deliveryResolve',
+          result: 'denied',
+          reasonCode: authorization.error,
+          resourceType: 'media_asset',
+          resourceId: assetId,
+        });
         return mapAuthorizationFailure(authorization);
       }
 
@@ -425,13 +856,112 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
         visibility: asset.visibility,
       });
 
+      await emitMediaAuditEvent({
+        deps,
+        ctx,
+        instanceId,
+        actionId: 'media.deliveryResolve',
+        result: 'success',
+        reasonCode: asset.visibility === 'protected' ? 'protected_delivery' : 'public_delivery',
+        resourceType: 'media_asset',
+        resourceId: assetId,
+      });
+
       return jsonResponse(200, asApiItem(delivery, getRequestId()));
     } catch (error) {
       if (error instanceof MediaStorageUnavailableError) {
+        await emitMediaAuditEvent({
+          deps,
+          ctx,
+          instanceId,
+          actionId: 'media.deliveryResolve',
+          result: 'failure',
+          reasonCode: 'media_storage_unavailable',
+          resourceType: 'media_asset',
+          resourceId: assetId,
+        });
         return createApiError(503, 'internal_error', 'Medien-Storage ist momentan nicht verfügbar.', getRequestId());
       }
       throw error;
     }
+  },
+
+  async deleteMedia(request: Request, ctx: AuthenticatedRequestContext): Promise<Response> {
+    const instanceId = resolveScopedInstanceId(request, ctx.user.instanceId);
+    if (instanceId instanceof Response) {
+      return instanceId;
+    }
+    const assetId = readAssetId(request);
+    if (assetId instanceof Response) {
+      return assetId;
+    }
+
+    const authorization = await deps.authorizeAction({ ctx, action: 'media.delete', resource: { assetId } });
+    if (!authorization.ok) {
+      await emitMediaAuditEvent({
+        deps,
+        ctx,
+        instanceId,
+        actionId: 'media.delete',
+        result: 'denied',
+        reasonCode: authorization.error,
+        resourceType: 'media_asset',
+        resourceId: assetId,
+      });
+      return mapAuthorizationFailure(authorization);
+    }
+
+    const asset = await deps.withMediaService(instanceId, (service) => service.getAssetById(instanceId, assetId));
+    if (!asset) {
+      await emitMediaAuditEvent({
+        deps,
+        ctx,
+        instanceId,
+        actionId: 'media.delete',
+        result: 'failure',
+        reasonCode: 'asset_not_found',
+        resourceType: 'media_asset',
+        resourceId: assetId,
+      });
+      return createApiError(404, 'not_found', 'Medienobjekt nicht gefunden.', getRequestId());
+    }
+
+    const references = await deps.withMediaService(instanceId, (service) => service.listReferencesByAssetId(instanceId, assetId));
+    const deletionDecision = canDeleteMediaAsset({
+      asset: asMediaAsset(asset)!,
+      references: asMediaReferences(references),
+    });
+    if (!deletionDecision.allowed) {
+      await emitMediaAuditEvent({
+        deps,
+        ctx,
+        instanceId,
+        actionId: 'media.delete',
+        result: 'failure',
+        reasonCode: deletionDecision.reason ?? 'delete_blocked',
+        resourceType: 'media_asset',
+        resourceId: assetId,
+      });
+      return createApiError(409, 'conflict', 'Das Medienobjekt kann derzeit nicht gelöscht werden.', getRequestId(), {
+        reason: deletionDecision.reason,
+        usage: {
+          assetId,
+          totalReferences: references.length,
+        },
+      });
+    }
+
+    await deps.withMediaService(instanceId, (service) => service.deleteAsset(instanceId, assetId));
+    await emitMediaAuditEvent({
+      deps,
+      ctx,
+      instanceId,
+      actionId: 'media.delete',
+      result: 'success',
+      resourceType: 'media_asset',
+      resourceId: assetId,
+    });
+    return jsonResponse(200, asApiItem({ assetId, deleted: true }, getRequestId()));
   },
 });
 
@@ -447,6 +977,7 @@ const mediaHttpHandlers = createMediaHttpHandlers({
   authorizeAction: authorizeMediaPrimitiveForUser,
   createId: () => randomUUID(),
   now: () => new Date().toISOString(),
+  emitAuditEvent: emitAuthAuditEvent,
 });
 
 const withMediaRequest = async (
@@ -469,8 +1000,17 @@ export const initializeMediaUploadHandler = async (request: Request): Promise<Re
 export const updateMediaHandler = async (request: Request): Promise<Response> =>
   withMediaRequest(request, mediaHttpHandlers.updateMedia);
 
+export const completeMediaUploadHandler = async (request: Request): Promise<Response> =>
+  withMediaRequest(request, mediaHttpHandlers.completeUpload);
+
 export const replaceMediaReferencesHandler = async (request: Request): Promise<Response> =>
   withMediaRequest(request, mediaHttpHandlers.replaceReferences);
 
+export const listMediaReferencesHandler = async (request: Request): Promise<Response> =>
+  withMediaRequest(request, mediaHttpHandlers.listReferences);
+
 export const getMediaDeliveryHandler = async (request: Request): Promise<Response> =>
   withMediaRequest(request, mediaHttpHandlers.getMediaDelivery);
+
+export const deleteMediaHandler = async (request: Request): Promise<Response> =>
+  withMediaRequest(request, mediaHttpHandlers.deleteMedia);

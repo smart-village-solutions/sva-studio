@@ -37,7 +37,8 @@
       "@sva/sva-mainserver": ["../../packages/sva-mainserver/src/index.ts"],
       "@sva/sva-mainserver/server": ["../../packages/sva-mainserver/src/index.server.ts"],
       "@sva/plugin-news": ["../../packages/plugin-news/src/index.ts"],
-      "@sva/plugin-poi": ["../../packages/plugin-poi/src/index.ts"]
+      "@sva/plugin-poi": ["../../packages/plugin-poi/src/index.ts"],
+      "@sva/media": ["../../packages/media/src/index.ts"]
     }
   }
 }

@@ -12,6 +12,15 @@ Dieser Abschnitt beschreibt kritische Laufzeitszenarien und Interaktionen.
 
 ## Aktueller Stand
 
+### Medien-Upload und Referenzierung
+
+1. Host-UI unter `/admin/media` initialisiert einen Upload.
+2. `@sva/auth-runtime` prüft Instanzkontext, IAM-Rechte und Speicherkontingent.
+3. Der interne Storage-Port erzeugt eine signierte Upload-Möglichkeit gegen den S3-/MinIO-kompatiblen Objektspeicher.
+4. Nach Upload-Abschluss validiert der Host den Inhalt, extrahiert Metadaten und erzeugt häufige Varianten synchron.
+5. Asset-, Varianten-, Session- und Usage-Daten werden über `@sva/data-repositories` persistiert.
+6. Fachmodule wie News, Events und POI speichern nur hostseitige Medienreferenzen und keine Storage-Artefakte.
+
 ### Szenario 1: App-Start + Route-Komposition
 
 1. App lädt `getRouter()` in `apps/sva-studio-react/src/router.tsx`

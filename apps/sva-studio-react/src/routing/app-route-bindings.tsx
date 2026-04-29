@@ -23,6 +23,8 @@ import { RoleCreatePage } from '../routes/admin/roles/-role-create-page';
 import { RoleDetailPage } from '../routes/admin/roles/-role-detail-page';
 import { UserCreatePage } from '../routes/admin/users/-user-create-page';
 import { UserListPage } from '../routes/admin/users/-user-list-page';
+import { MediaPage } from '../routes/admin/media/-media-page';
+import { MediaUsagePage } from '../routes/admin/media/-media-usage-page';
 import { ContentEditorPage } from '../routes/content/-content-editor-page';
 import { ContentListPage } from '../routes/content/-content-list-page';
 import { HomePage } from '../routes/-home-page';
@@ -31,13 +33,6 @@ import { PlaceholderPage } from '../routes/-placeholder-page';
 const readStringParam = (value: unknown, fallback = ''): string => {
   return typeof value === 'string' ? value : fallback;
 };
-
-const MediaPlaceholderRoutePage = () => (
-  <PlaceholderPage
-    section={t('shell.sidebar.sections.dataManagement')}
-    title={t('shell.sidebar.media')}
-  />
-);
 
 const CategoriesPlaceholderRoutePage = () => (
   <PlaceholderPage
@@ -86,6 +81,7 @@ type RenderableRouteComponent<TProps extends object> =
   | React.LazyExoticComponent<React.ComponentType<TProps>>;
 
 type StudioAppRouteBindings = BaseAppRouteBindings & {
+  readonly mediaUsage: React.ComponentType;
   readonly newsList: React.ComponentType;
   readonly newsDetail: React.ComponentType;
   readonly newsEditor: React.ComponentType;
@@ -205,6 +201,7 @@ export const appRouteBindings: StudioAppRouteBindings = {
   content: ContentListPage,
   contentCreate: () => <ContentEditorPage mode="create" />,
   contentDetail: ContentDetailRoutePage,
+  mediaUsage: MediaUsagePage,
   newsList: NewsListPage,
   newsDetail: NewsEditPage,
   newsEditor: NewsCreatePage,
@@ -214,7 +211,7 @@ export const appRouteBindings: StudioAppRouteBindings = {
   poiList: PoiListPage,
   poiDetail: PoiEditPage,
   poiEditor: PoiCreatePage,
-  media: MediaPlaceholderRoutePage,
+  media: MediaPage,
   categories: CategoriesPlaceholderRoutePage,
   app: AppPlaceholderRoutePage,
   interfaces: InterfacesRoutePage,

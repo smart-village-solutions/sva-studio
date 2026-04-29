@@ -101,6 +101,7 @@
         "packages/instance-registry/dist/service-types.d.ts"
       ],
       "@sva/instance-registry": ["packages/instance-registry/dist/index.d.ts"],
+      "@sva/media": ["packages/media/dist/index.d.ts"],
       "@sva/server-runtime": ["packages/server-runtime/dist/index.d.ts"]
     }
   },

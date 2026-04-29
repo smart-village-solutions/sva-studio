@@ -142,8 +142,16 @@ describe('media repository', () => {
     expect(statements[1]?.values).toEqual(['tenant-a', '%rathaus%', 'public', 10, 20]);
   });
 
+  it('keeps asset lookup fail-closed across instances', async () => {
+    const { executor, statements } = createQueuedExecutor([[]]);
+    const repository = createMediaRepository(executor);
+
+    await expect(repository.getAssetById('tenant-b', 'asset-1')).resolves.toBeNull();
+    expect(statements[0]?.values).toEqual(['tenant-b', 'asset-1']);
+  });
+
   it('replaces target references and exposes usage impact', async () => {
-    const { executor, statements } = createQueuedExecutor([[], [], [], [referenceRow]]);
+    const { executor, statements } = createQueuedExecutor([[], [], [], [referenceRow], [referenceRow]]);
     const repository = createMediaRepository(executor);
 
     await repository.replaceReferences({
@@ -189,6 +197,18 @@ describe('media repository', () => {
         },
       ],
     });
+
+    await expect(repository.listReferencesByTarget('tenant-a', 'news', 'news-1')).resolves.toEqual([
+      {
+        id: 'ref-1',
+        assetId: 'asset-1',
+        targetType: 'news',
+        targetId: 'news-1',
+        role: 'teaser_image',
+        sortOrder: 0,
+        createdAt: '2026-04-29T10:06:00.000Z',
+      },
+    ]);
   });
 
   it('persists variants and upload sessions and reads storage usage', async () => {
@@ -295,5 +315,15 @@ describe('media repository', () => {
       maxBytes: 8192,
       wouldExceed: true,
     });
+  });
+
+  it('deletes assets in an instance-scoped way', async () => {
+    const { executor, statements } = createQueuedExecutor([[]]);
+    const repository = createMediaRepository(executor);
+
+    await repository.deleteAsset('tenant-a', 'asset-1');
+
+    expect(statements[0]?.text.includes('DELETE FROM iam.media_assets')).toBe(true);
+    expect(statements[0]?.values).toEqual(['tenant-a', 'asset-1']);
   });
 });

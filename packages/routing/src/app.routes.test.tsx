@@ -75,6 +75,7 @@ const bindingKeys = [
   'content',
   'contentCreate',
   'contentDetail',
+  'mediaUsage',
   'media',
   'categories',
   'app',
@@ -536,6 +537,38 @@ describe('app.routes', () => {
         location: { href: '/plugins/news' },
       })
     ).resolves.toBeUndefined();
+  });
+
+  it('blocks static media usage routes when module assignment or media.read is missing', async () => {
+    const routeFactories = createUiRouteFactories(bindings, { adminResources });
+    const rootRoute = { id: 'root' };
+    const route = routeFactories
+      .map((factory) => factory(rootRoute as never))
+      .find((candidate) => readRouteOptions(candidate).path === '/admin/media/$mediaId/usage');
+
+    expect(route).toBeDefined();
+
+    await expect(
+      readRouteOptions(route!).beforeLoad?.({
+        context: {
+          auth: { getUser: () => ({ roles: ['app_manager'], permissionActions: ['media.read'], assignedModules: [] }) },
+        },
+        location: { href: '/admin/media/asset-1/usage' },
+      })
+    ).rejects.toMatchObject({
+      href: '/?error=auth.insufficientRole',
+    });
+
+    await expect(
+      readRouteOptions(route!).beforeLoad?.({
+        context: {
+          auth: { getUser: () => ({ roles: ['app_manager'], permissionActions: [], assignedModules: ['media'] }) },
+        },
+        location: { href: '/admin/media/asset-1/usage' },
+      })
+    ).rejects.toMatchObject({
+      href: '/?error=auth.insufficientRole',
+    });
   });
 
   it('builds server route factories without requiring app-local route composition', () => {

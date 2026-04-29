@@ -18,6 +18,7 @@ export default defineConfig({
       { find: '@sva/auth-runtime/runtime-health', replacement: resolve(__dirname, '../auth-runtime/src/runtime-health.ts') },
       { find: /^@sva\/data-repositories\/server$/, replacement: resolve(__dirname, '../data-repositories/src/server.ts') },
       { find: /^@sva\/data-repositories$/, replacement: resolve(__dirname, '../data-repositories/src/index.ts') },
+      { find: /^@sva\/media$/, replacement: resolve(__dirname, '../media/src/index.ts') },
       { find: /^@sva\/auth-runtime$/, replacement: resolve(__dirname, '../auth-runtime/src/index.ts') },
       { find: /^@sva\/iam-core$/, replacement: resolve(__dirname, '../iam-core/src/index.ts') },
       { find: /^@sva\/iam-admin$/, replacement: resolve(__dirname, '../iam-admin/src/index.ts') },

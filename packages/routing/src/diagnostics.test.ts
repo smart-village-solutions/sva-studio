@@ -29,12 +29,14 @@ describe('emitRoutingDiagnostic', () => {
     expect(() => emitRoutingDiagnostic(undefined, testEvent)).not.toThrow();
   });
 
-  it('swallows synchronous diagnostics hook failures', () => {
+  it('swallows synchronous diagnostics hook failures', async () => {
     expect(() =>
       emitRoutingDiagnostic(() => {
         throw new Error('diagnostics failed');
       }, testEvent)
     ).not.toThrow();
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(state.fallbackLogger.error).toHaveBeenCalledWith(
       'Routing diagnostics hook failed',

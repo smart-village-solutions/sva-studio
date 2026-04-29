@@ -26,6 +26,7 @@ export {
 } from './audit-db-sink.js';
 export { withAuthenticatedUser, type AuthenticatedRequestContext } from './middleware.js';
 export { withMediaRepository, withMediaService } from './iam-media/index.js';
+export { completeMediaUploadHandler } from './iam-media/core.js';
 export {
   authorizeMediaPrimitiveForUser,
   type MediaPrimitiveAuthorizationResource,

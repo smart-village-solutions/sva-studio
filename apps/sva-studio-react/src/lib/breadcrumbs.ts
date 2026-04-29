@@ -134,6 +134,34 @@ const breadcrumbRoutes: ReadonlyArray<
     build: () => [overviewBreadcrumb(), { label: t('shell.sidebar.adminApiTest') }],
   },
   {
+    pattern: /^\/admin\/media\/[^/]+\/usage$/,
+    build: () => [
+      overviewBreadcrumb(),
+      { href: '/admin/media', label: t('media.page.title') },
+      { label: t('media.usage.pageTitle') },
+    ],
+  },
+  {
+    pattern: /^\/admin\/media\/new$/,
+    build: () => [
+      overviewBreadcrumb(),
+      { href: '/admin/media', label: t('media.page.title') },
+      { label: t('media.editor.createTitle') },
+    ],
+  },
+  {
+    pattern: /^\/admin\/media\/[^/]+$/,
+    build: () => [
+      overviewBreadcrumb(),
+      { href: '/admin/media', label: t('media.page.title') },
+      { label: t('media.editor.detailTitle') },
+    ],
+  },
+  {
+    pattern: /^\/admin\/media$/,
+    build: () => [overviewBreadcrumb(), { label: t('media.page.title') }],
+  },
+  {
     pattern: /^\/media$/,
     build: () => [overviewBreadcrumb(), { label: t('shell.sidebar.media') }],
   },

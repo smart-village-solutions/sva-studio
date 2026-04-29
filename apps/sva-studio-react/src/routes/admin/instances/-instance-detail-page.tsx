@@ -17,6 +17,7 @@ import {
   createDetailForm,
   type DetailWorkflowAction,
   evaluateInstanceConfiguration,
+  getEffectiveTenantIamStatus,
   getErrorMessage,
   getKeycloakStatusEntries,
   getSetupWorkflowSteps,
@@ -153,6 +154,7 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
   }, [instanceId]);
 
   const selectedInstance = instancesApi.selectedInstance?.instanceId === instanceId ? instancesApi.selectedInstance : null;
+  const effectiveTenantIamStatus = selectedInstance ? getEffectiveTenantIamStatus(selectedInstance) : undefined;
   const tenantSecretUserInputRequired = selectedInstance ? isTenantSecretUserInputRequired(selectedInstance.realmMode) : true;
   const configurationAssessment = selectedInstance ? evaluateInstanceConfiguration(selectedInstance, instancesApi.mutationError) : null;
 
@@ -851,18 +853,18 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
             </TabsContent>
 
             <TabsContent value="operations" forceMount className="space-y-5 data-[state=inactive]:hidden">
-              {selectedInstance.tenantIamStatus ? (
+              {effectiveTenantIamStatus ? (
                 <Card className="space-y-3 p-4">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="space-y-1">
                       <div className="font-medium text-foreground">{t('admin.instances.tenantIam.title')}</div>
                       <p className="text-sm text-muted-foreground">{t('admin.instances.tenantIam.subtitle')}</p>
                     </div>
-                    <TenantIamStatusBadge status={selectedInstance.tenantIamStatus.overall.status} />
+                    <TenantIamStatusBadge status={effectiveTenantIamStatus.overall.status} />
                   </div>
                   <div className="grid gap-3 md:grid-cols-3">
                     {(['configuration', 'access', 'reconcile'] as const).map((axisKey) => {
-                      const axis = selectedInstance.tenantIamStatus?.[axisKey];
+                      const axis = effectiveTenantIamStatus[axisKey];
                       return (
                         <div key={axisKey} className="rounded-md border border-border bg-muted/20 p-3">
                           <div className="flex items-center justify-between gap-2">

@@ -573,4 +573,105 @@ describe('instances shared helpers', () => {
     expect(model.anomalyQueue.every((item: { status: string }) => item.status !== 'ready')).toBe(true);
     expect(model.primaryAction.action).toBe('probeTenantIamAccess');
   });
+
+  it('prefers the current keycloak structure over stale tenant IAM configuration evidence', () => {
+    const buildInstanceDetailCockpitModel = (instancesShared as Record<string, unknown>)
+      .buildInstanceDetailCockpitModel;
+
+    expect(buildInstanceDetailCockpitModel).toBeTypeOf('function');
+    if (typeof buildInstanceDetailCockpitModel !== 'function') {
+      return;
+    }
+
+    const model = buildInstanceDetailCockpitModel(
+      {
+        instanceId: 'demo',
+        displayName: 'Demo',
+        status: 'active',
+        featureFlags: {},
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+        parentDomain: 'studio.example.org',
+        primaryHostname: 'demo.studio.example.org',
+        realmMode: 'existing',
+        authRealm: 'demo',
+        authClientId: 'sva-studio',
+        authClientSecretConfigured: true,
+        hostnames: [],
+        provisioningRuns: [],
+        auditEvents: [],
+        keycloakPreflight: undefined,
+        keycloakPlan: undefined,
+        keycloakProvisioningRuns: [
+          {
+            id: 'run-1',
+            intent: 'provision',
+            mode: 'existing',
+            overallStatus: 'succeeded',
+            driftSummary: 'Kein Drift.',
+            requestId: 'req-1',
+            steps: [],
+          },
+        ],
+        latestKeycloakProvisioningRun: {
+          id: 'run-1',
+          intent: 'provision',
+          mode: 'existing',
+          overallStatus: 'succeeded',
+          driftSummary: 'Kein Drift.',
+          requestId: 'req-1',
+          steps: [],
+        },
+        tenantIamStatus: {
+          configuration: {
+            status: 'degraded',
+            summary: 'Tenant-IAM-Struktur ist unvollständig oder driftet.',
+            source: 'keycloak_status_snapshot',
+          },
+          access: {
+            status: 'ready',
+            summary: 'Tenant-Admin-Client kann Realm-Rollen lesen.',
+            source: 'access_probe',
+            requestId: 'req-access-1',
+          },
+          reconcile: {
+            status: 'ready',
+            summary: 'Letzter Rollenabgleich ist synchron.',
+            source: 'role_reconcile',
+            requestId: 'req-reconcile-1',
+          },
+          overall: {
+            status: 'degraded',
+            summary: 'Tenant-IAM ist eingeschränkt.',
+            source: 'keycloak_status_snapshot',
+          },
+        },
+        keycloakStatus: {
+          realmExists: true,
+          clientExists: true,
+          tenantAdminClientExists: true,
+          instanceIdMapperExists: true,
+          tenantAdminExists: true,
+          tenantAdminHasSystemAdmin: true,
+          tenantAdminHasInstanceRegistryAdmin: false,
+          tenantAdminInstanceIdMatches: true,
+          redirectUrisMatch: true,
+          logoutUrisMatch: true,
+          webOriginsMatch: true,
+          clientSecretConfigured: true,
+          tenantClientSecretReadable: true,
+          clientSecretAligned: true,
+          tenantAdminClientSecretConfigured: true,
+          tenantAdminClientSecretReadable: true,
+          tenantAdminClientSecretAligned: true,
+          runtimeSecretSource: 'tenant',
+        },
+      },
+      null
+    );
+
+    expect(model.overallStatus).toBe('ready');
+    expect(model.overallSummary).toBe('Tenant-IAM ist betriebsbereit.');
+    expect(model.anomalyQueue).toHaveLength(0);
+  });
 });

@@ -739,6 +739,14 @@ export const i18nResources = {
             access: 'Rechteprobe',
             reconcile: 'Reconcile',
           },
+          summaries: {
+            configurationReady: 'Tenant-IAM-Struktur ist vollständig vorhanden.',
+            configurationDegraded: 'Tenant-IAM-Struktur ist unvollständig oder driftet.',
+            overallReady: 'Tenant-IAM ist betriebsbereit.',
+            overallBlocked: 'Tenant-IAM ist blockiert.',
+            overallDegraded: 'Tenant-IAM ist eingeschränkt.',
+            overallUnknown: 'Tenant-IAM-Befund ist unvollständig.',
+          },
         },
         wizard: {
           steps: {
@@ -2755,6 +2763,14 @@ export const i18nResources = {
             configuration: 'Configuration',
             access: 'Access probe',
             reconcile: 'Reconcile',
+          },
+          summaries: {
+            configurationReady: 'Tenant IAM structure is fully present.',
+            configurationDegraded: 'Tenant IAM structure is incomplete or drifting.',
+            overallReady: 'Tenant IAM is operational.',
+            overallBlocked: 'Tenant IAM is blocked.',
+            overallDegraded: 'Tenant IAM is degraded.',
+            overallUnknown: 'Tenant IAM evidence is incomplete.',
           },
         },
         wizard: {

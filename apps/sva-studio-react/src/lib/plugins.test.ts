@@ -11,7 +11,37 @@ vi.mock('@sva/plugin-news', () => ({
   pluginNews: {
     id: 'news',
     displayName: 'News',
-    routes: [{ id: 'news.list', path: '/plugins/news', component: (() => null) as never }],
+    routes: [],
+    navigation: [
+      {
+        id: 'news.navigation',
+        to: '/admin/news',
+        titleKey: 'news.navigation.title',
+        section: 'dataManagement',
+        requiredAction: 'news.read',
+      },
+    ],
+    adminResources: [
+      {
+        resourceId: 'news.content',
+        basePath: 'news',
+        titleKey: 'news.navigation.title',
+        guard: 'content',
+        views: {
+          list: { bindingKey: 'content' },
+          create: { bindingKey: 'contentCreate' },
+          detail: { bindingKey: 'contentDetail' },
+        },
+        contentUi: {
+          contentType: 'news.article',
+          bindings: {
+            list: { bindingKey: 'newsList' },
+            detail: { bindingKey: 'newsDetail' },
+            editor: { bindingKey: 'newsEditor' },
+          },
+        },
+      },
+    ],
     actions: [
       {
         id: 'news.create',
@@ -20,7 +50,10 @@ vi.mock('@sva/plugin-news', () => ({
         legacyAliases: ['create'],
       },
     ],
-    permissions: [{ id: 'news.create', titleKey: 'news.permissions.create' }],
+    permissions: [
+      { id: 'news.read', titleKey: 'news.permissions.read' },
+      { id: 'news.create', titleKey: 'news.permissions.create' },
+    ],
   },
 }));
 
@@ -28,8 +61,29 @@ vi.mock('@sva/plugin-events', () => ({
   pluginEvents: {
     id: 'events',
     displayName: 'Events',
-    routes: [{ id: 'events.list', path: '/plugins/events', component: (() => null) as never }],
+    routes: [],
     actions: [],
+    adminResources: [
+      {
+        resourceId: 'events.content',
+        basePath: 'events',
+        titleKey: 'events.navigation.title',
+        guard: 'content',
+        views: {
+          list: { bindingKey: 'content' },
+          create: { bindingKey: 'contentCreate' },
+          detail: { bindingKey: 'contentDetail' },
+        },
+        contentUi: {
+          contentType: 'events.event-record',
+          bindings: {
+            list: { bindingKey: 'eventsList' },
+            detail: { bindingKey: 'eventsDetail' },
+            editor: { bindingKey: 'eventsEditor' },
+          },
+        },
+      },
+    ],
   },
 }));
 
@@ -37,8 +91,29 @@ vi.mock('@sva/plugin-poi', () => ({
   pluginPoi: {
     id: 'poi',
     displayName: 'POI',
-    routes: [{ id: 'poi.list', path: '/plugins/poi', component: (() => null) as never }],
+    routes: [],
     actions: [],
+    adminResources: [
+      {
+        resourceId: 'poi.content',
+        basePath: 'poi',
+        titleKey: 'poi.navigation.title',
+        guard: 'content',
+        views: {
+          list: { bindingKey: 'content' },
+          create: { bindingKey: 'contentCreate' },
+          detail: { bindingKey: 'contentDetail' },
+        },
+        contentUi: {
+          contentType: 'poi.point-of-interest',
+          bindings: {
+            list: { bindingKey: 'poiList' },
+            detail: { bindingKey: 'poiDetail' },
+            editor: { bindingKey: 'poiEditor' },
+          },
+        },
+      },
+    ],
   },
 }));
 
@@ -86,9 +161,9 @@ describe('plugin action alias lookup', () => {
     });
 
     expect(studioBuildTimeRegistry.plugins).toHaveLength(3);
-    expect(studioBuildTimeRegistry.routes).toHaveLength(3);
+    expect(studioBuildTimeRegistry.routes).toHaveLength(0);
     expect(studioBuildTimeRegistry.adminResources).toEqual(studioAdminResources);
-    expect(studioAdminResources[0]).toMatchObject({
+    expect(studioAdminResources.find((resource) => resource.resourceId === 'content')).toMatchObject({
       resourceId: 'content',
       basePath: 'content',
       capabilities: {
@@ -134,5 +209,6 @@ describe('plugin action alias lookup', () => {
         },
       },
     });
+    expect(studioAdminResources.map((resource) => resource.basePath)).toEqual(['news', 'events', 'poi', 'content']);
   });
 });

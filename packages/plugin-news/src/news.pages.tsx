@@ -391,7 +391,7 @@ const NewsForm = ({
       if (mode === 'create') {
         await createNews(compactedForm);
         persistFlashMessage('createSuccess');
-        await navigate({ to: '/plugins/news' });
+        await navigate({ to: '/admin/news' });
         return;
       }
 
@@ -418,7 +418,7 @@ const NewsForm = ({
     try {
       await deleteNews(contentId);
       persistFlashMessage('deleteSuccess');
-      await navigate({ to: '/plugins/news' });
+      await navigate({ to: '/admin/news' });
     } catch (error) {
       setStatusMessage({ kind: 'error', text: resolveNewsErrorMessage(pt, error, 'messages.deleteError') });
     } finally {
@@ -818,7 +818,7 @@ const NewsForm = ({
         <div className="flex flex-wrap gap-3">
           <Button type="submit">{submitLabel}</Button>
           <Button asChild variant="outline">
-            <Link to="/plugins/news">{pt('actions.back')}</Link>
+            <Link to="/admin/news">{pt('actions.back')}</Link>
           </Button>
           {mode === 'edit' ? (
             <Button variant="destructive" type="button" onClick={onDelete} disabled={deletePending}>
@@ -950,7 +950,7 @@ export const NewsListPage = () => {
       description={pt('list.description')}
       primaryAction={
         <Button asChild>
-          <Link to="/plugins/news/new">{createLabel}</Link>
+          <Link to="/admin/news/new">{createLabel}</Link>
         </Button>
       }
     >
@@ -999,7 +999,7 @@ export const NewsListPage = () => {
             ]}
             rowActions={(item) => (
               <Button asChild variant="outline" size="sm">
-                <Link to="/plugins/news/$contentId" params={{ contentId: item.id }}>
+                <Link to="/admin/news/$id" params={{ id: item.id }}>
                   {editLabel}
                 </Link>
               </Button>
@@ -1024,7 +1024,7 @@ export const NewsListPage = () => {
                 disabled={result.pagination.page <= 1}
                 onClick={() =>
                   void navigate({
-                    to: '/plugins/news',
+                    to: '/admin/news',
                     search: (current: Record<string, unknown>) => ({
                       ...current,
                       page: Math.max(1, result.pagination.page - 1),
@@ -1042,7 +1042,7 @@ export const NewsListPage = () => {
                 disabled={!result.pagination.hasNextPage}
                 onClick={() =>
                   void navigate({
-                    to: '/plugins/news',
+                    to: '/admin/news',
                     search: (current: Record<string, unknown>) => ({
                       ...current,
                       page: result.pagination.page + 1,

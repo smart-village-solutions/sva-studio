@@ -1,5 +1,6 @@
 import {
   definePluginActions,
+  definePluginAdminResources,
   definePluginAuditEvents,
   definePluginContentTypes,
   definePluginModuleIamContract,
@@ -8,7 +9,6 @@ import {
 } from '@sva/plugin-sdk';
 
 import { NEWS_CONTENT_TYPE } from './news.constants.js';
-import { NewsCreatePage, NewsEditPage, NewsListPage } from './news.pages.js';
 export { NEWS_CONTENT_TYPE } from './news.constants.js';
 
 export const pluginNewsActionIds = {
@@ -61,32 +61,11 @@ export const getPluginNewsActionDefinition = (
 export const pluginNews: PluginDefinition = {
   id: 'news',
   displayName: 'News',
-  routes: [
-    {
-      id: 'news.list',
-      path: '/plugins/news',
-      guard: 'news.read',
-      component: NewsListPage,
-    },
-    {
-      id: 'news.create',
-      path: '/plugins/news/new',
-      guard: 'news.create',
-      actionId: pluginNewsActionIds.create,
-      component: NewsCreatePage,
-    },
-    {
-      id: 'news.edit',
-      path: '/plugins/news/$contentId',
-      guard: 'news.read',
-      actionId: pluginNewsActionIds.edit,
-      component: NewsEditPage,
-    },
-  ],
+  routes: [],
   navigation: [
     {
       id: 'news.navigation',
-      to: '/plugins/news',
+      to: '/admin/news',
       titleKey: 'news.navigation.title',
       section: 'dataManagement',
       requiredAction: 'news.read',
@@ -108,6 +87,27 @@ export const pluginNews: PluginDefinition = {
     {
       contentType: NEWS_CONTENT_TYPE,
       displayName: 'News',
+    },
+  ]),
+  adminResources: definePluginAdminResources('news', [
+    {
+      resourceId: 'news.content',
+      basePath: 'news',
+      titleKey: 'news.navigation.title',
+      guard: 'content',
+      views: {
+        list: { bindingKey: 'content' },
+        create: { bindingKey: 'contentCreate' },
+        detail: { bindingKey: 'contentDetail' },
+      },
+      contentUi: {
+        contentType: NEWS_CONTENT_TYPE,
+        bindings: {
+          list: { bindingKey: 'newsList' },
+          detail: { bindingKey: 'newsDetail' },
+          editor: { bindingKey: 'newsEditor' },
+        },
+      },
     },
   ]),
   auditEvents: definePluginAuditEvents('news', []),

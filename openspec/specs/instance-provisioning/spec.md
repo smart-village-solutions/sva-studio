@@ -276,4 +276,3 @@ Das System SHALL Tenant-IAM-Reconcile, tenantlokale Rechteprobe und bestehende P
 - **WHEN** vorhandene Registry-, Provisioning- und Reconcile-Evidenz ausreicht, um den Tenant-IAM-Befund nachvollziehbar abzuleiten
 - **THEN** darf der Instanz-Detailvertrag diese Evidenz direkt aggregieren
 - **AND** ist eine zusätzliche Persistenz für Probe-Snapshots oder Diagnosehistorie in diesem Change nicht verpflichtend
-

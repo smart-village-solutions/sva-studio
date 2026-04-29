@@ -123,7 +123,7 @@ describe('root route document', () => {
       select({
         status: 'idle',
         isLoading: false,
-        location: { pathname: '/plugins/news' },
+        location: { pathname: '/admin/news' },
       }),
     );
 

@@ -1,4 +1,7 @@
-import { normalizeIamTab, normalizeRoleDetailTab, type AppRouteBindings } from '@sva/routing';
+import { normalizeIamTab, normalizeRoleDetailTab, type AppRouteBindings as BaseAppRouteBindings } from '@sva/routing';
+import { EventsCreatePage, EventsEditPage, EventsListPage } from '@sva/plugin-events';
+import { NewsCreatePage, NewsEditPage, NewsListPage } from '@sva/plugin-news';
+import { PoiCreatePage, PoiEditPage, PoiListPage } from '@sva/plugin-poi';
 import { useParams, useSearch } from '@tanstack/react-router';
 import React from 'react';
 
@@ -81,6 +84,18 @@ const LicensePlaceholderRoutePage = () => (
 type RenderableRouteComponent<TProps extends object> =
   | React.ComponentType<TProps>
   | React.LazyExoticComponent<React.ComponentType<TProps>>;
+
+type StudioAppRouteBindings = BaseAppRouteBindings & {
+  readonly newsList: React.ComponentType;
+  readonly newsDetail: React.ComponentType;
+  readonly newsEditor: React.ComponentType;
+  readonly eventsList: React.ComponentType;
+  readonly eventsDetail: React.ComponentType;
+  readonly eventsEditor: React.ComponentType;
+  readonly poiList: React.ComponentType;
+  readonly poiDetail: React.ComponentType;
+  readonly poiEditor: React.ComponentType;
+};
 
 const renderLazyPage = <TProps extends object>(
   Component: RenderableRouteComponent<TProps>,
@@ -183,13 +198,22 @@ const IamRoutePage = () => {
   return <IamViewerPage activeTab={normalizeIamTab(search.tab)} />;
 };
 
-export const appRouteBindings: AppRouteBindings = {
+export const appRouteBindings: StudioAppRouteBindings = {
   home: HomePage,
   account: AccountProfilePage,
   accountPrivacy: AccountPrivacyPage,
   content: ContentListPage,
   contentCreate: () => <ContentEditorPage mode="create" />,
   contentDetail: ContentDetailRoutePage,
+  newsList: NewsListPage,
+  newsDetail: NewsEditPage,
+  newsEditor: NewsCreatePage,
+  eventsList: EventsListPage,
+  eventsDetail: EventsEditPage,
+  eventsEditor: EventsCreatePage,
+  poiList: PoiListPage,
+  poiDetail: PoiEditPage,
+  poiEditor: PoiCreatePage,
   media: MediaPlaceholderRoutePage,
   categories: CategoriesPlaceholderRoutePage,
   app: AppPlaceholderRoutePage,

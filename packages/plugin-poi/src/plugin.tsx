@@ -1,5 +1,6 @@
 import {
   definePluginActions,
+  definePluginAdminResources,
   definePluginAuditEvents,
   definePluginContentTypes,
   definePluginModuleIamContract,
@@ -8,7 +9,6 @@ import {
 } from '@sva/plugin-sdk';
 
 import { POI_CONTENT_TYPE } from './poi.constants.js';
-import { PoiCreatePage, PoiEditPage, PoiListPage } from './poi.pages.js';
 
 export const pluginPoiActionIds = {
   create: 'poi.create',
@@ -36,27 +36,11 @@ const pluginPoiModulePermissionIds = pluginPoiPermissionDefinitions.map((permiss
 export const pluginPoi: PluginDefinition = {
   id: 'poi',
   displayName: 'POI',
-  routes: [
-    { id: 'poi.list', path: '/plugins/poi', guard: 'poi.read', component: PoiListPage },
-    {
-      id: 'poi.create',
-      path: '/plugins/poi/new',
-      guard: 'poi.create',
-      actionId: pluginPoiActionIds.create,
-      component: PoiCreatePage,
-    },
-    {
-      id: 'poi.edit',
-      path: '/plugins/poi/$contentId',
-      guard: 'poi.read',
-      actionId: pluginPoiActionIds.edit,
-      component: PoiEditPage,
-    },
-  ],
+  routes: [],
   navigation: [
     {
       id: 'poi.navigation',
-      to: '/plugins/poi',
+      to: '/admin/poi',
       titleKey: 'poi.navigation.title',
       section: 'dataManagement',
       requiredAction: 'poi.read',
@@ -75,6 +59,27 @@ export const pluginPoi: PluginDefinition = {
     ],
   }),
   contentTypes: definePluginContentTypes('poi', [{ contentType: POI_CONTENT_TYPE, displayName: 'POI' }]),
+  adminResources: definePluginAdminResources('poi', [
+    {
+      resourceId: 'poi.content',
+      basePath: 'poi',
+      titleKey: 'poi.navigation.title',
+      guard: 'content',
+      views: {
+        list: { bindingKey: 'content' },
+        create: { bindingKey: 'contentCreate' },
+        detail: { bindingKey: 'contentDetail' },
+      },
+      contentUi: {
+        contentType: POI_CONTENT_TYPE,
+        bindings: {
+          list: { bindingKey: 'poiList' },
+          detail: { bindingKey: 'poiDetail' },
+          editor: { bindingKey: 'poiEditor' },
+        },
+      },
+    },
+  ]),
   auditEvents: definePluginAuditEvents('poi', []),
   translations: {
     de: {

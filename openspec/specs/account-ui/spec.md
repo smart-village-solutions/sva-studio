@@ -1144,4 +1144,3 @@ Das System MUST die Instanz-Detailseite unter `/admin/instances/:instanceId` so 
 - **WENN** die Detailseite Animationen fuer laufende Prozesse, Statuswechsel oder Hover-Zustaende einsetzt
 - **DANN** sind diese kurz, ruhig und fachlich begruendet
 - **UND** respektieren sie bestehende Accessibility-Anforderungen wie reduzierte Bewegung oder gleichwertige statische Rueckmeldung
-

@@ -22,6 +22,15 @@ export type AppRouteBindings = {
   readonly content: RouteComponent;
   readonly contentCreate: RouteComponent;
   readonly contentDetail: RouteComponent;
+  readonly newsList: RouteComponent;
+  readonly newsDetail: RouteComponent;
+  readonly newsEditor: RouteComponent;
+  readonly eventsList: RouteComponent;
+  readonly eventsDetail: RouteComponent;
+  readonly eventsEditor: RouteComponent;
+  readonly poiList: RouteComponent;
+  readonly poiDetail: RouteComponent;
+  readonly poiEditor: RouteComponent;
   readonly media: RouteComponent;
   readonly categories: RouteComponent;
   readonly app: RouteComponent;

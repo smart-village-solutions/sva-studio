@@ -28,7 +28,7 @@ const studioPluginNavigationMock = vi.hoisted(() => ({
   items: [
     {
       id: 'news.navigation',
-      to: '/plugins/news',
+      to: '/admin/news',
       titleKey: 'news.navigation.title',
       section: 'dataManagement',
       requiredAction: 'news.read',
@@ -104,7 +104,7 @@ beforeEach(() => {
   studioPluginNavigationMock.items = [
     {
       id: 'news.navigation',
-      to: '/plugins/news',
+      to: '/admin/news',
       titleKey: 'news.navigation.title',
       section: 'dataManagement',
       requiredAction: 'news.read',
@@ -366,7 +366,7 @@ describe('Sidebar', () => {
   });
 
   it('rendert den News-Plugin-Navigationspunkt innerhalb der Datenverwaltung und markiert ihn als aktiv', () => {
-    useRouterStateMock.mockReturnValue('/plugins/news');
+    useRouterStateMock.mockReturnValue('/admin/news');
     useAuthMock.mockReturnValue({
       ...unauthenticatedAuthState,
       user: {
@@ -396,7 +396,7 @@ describe('Sidebar', () => {
     const navigation = screen.getByRole('navigation', { name: 'Bereichsnavigation' });
     const newsLink = within(navigation).getByRole('link', { name: 'News' });
 
-    expect(newsLink.getAttribute('href')).toBe('/plugins/news');
+    expect(newsLink.getAttribute('href')).toBe('/admin/news');
     expect(newsLink.getAttribute('aria-current')).toBe('page');
   });
 

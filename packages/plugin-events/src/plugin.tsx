@@ -1,5 +1,6 @@
 import {
   definePluginActions,
+  definePluginAdminResources,
   definePluginAuditEvents,
   definePluginContentTypes,
   definePluginModuleIamContract,
@@ -8,7 +9,6 @@ import {
 } from '@sva/plugin-sdk';
 
 import { EVENTS_CONTENT_TYPE } from './events.constants.js';
-import { EventsCreatePage, EventsEditPage, EventsListPage } from './events.pages.js';
 
 export const pluginEventsActionIds = {
   create: 'events.create',
@@ -36,27 +36,11 @@ const pluginEventsModulePermissionIds = pluginEventsPermissionDefinitions.map((p
 export const pluginEvents: PluginDefinition = {
   id: 'events',
   displayName: 'Events',
-  routes: [
-    { id: 'events.list', path: '/plugins/events', guard: 'events.read', component: EventsListPage },
-    {
-      id: 'events.create',
-      path: '/plugins/events/new',
-      guard: 'events.create',
-      actionId: pluginEventsActionIds.create,
-      component: EventsCreatePage,
-    },
-    {
-      id: 'events.edit',
-      path: '/plugins/events/$contentId',
-      guard: 'events.read',
-      actionId: pluginEventsActionIds.edit,
-      component: EventsEditPage,
-    },
-  ],
+  routes: [],
   navigation: [
     {
       id: 'events.navigation',
-      to: '/plugins/events',
+      to: '/admin/events',
       titleKey: 'events.navigation.title',
       section: 'dataManagement',
       requiredAction: 'events.read',
@@ -75,6 +59,27 @@ export const pluginEvents: PluginDefinition = {
     ],
   }),
   contentTypes: definePluginContentTypes('events', [{ contentType: EVENTS_CONTENT_TYPE, displayName: 'Events' }]),
+  adminResources: definePluginAdminResources('events', [
+    {
+      resourceId: 'events.content',
+      basePath: 'events',
+      titleKey: 'events.navigation.title',
+      guard: 'content',
+      views: {
+        list: { bindingKey: 'content' },
+        create: { bindingKey: 'contentCreate' },
+        detail: { bindingKey: 'contentDetail' },
+      },
+      contentUi: {
+        contentType: EVENTS_CONTENT_TYPE,
+        bindings: {
+          list: { bindingKey: 'eventsList' },
+          detail: { bindingKey: 'eventsDetail' },
+          editor: { bindingKey: 'eventsEditor' },
+        },
+      },
+    },
+  ]),
   auditEvents: definePluginAuditEvents('events', []),
   translations: {
     de: {

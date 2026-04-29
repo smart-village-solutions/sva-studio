@@ -122,12 +122,13 @@ export type AdminResourceDefinition = {
   readonly basePath: string;
   readonly titleKey: string;
   readonly guard: AdminResourceGuard;
+  readonly moduleId?: string;
   readonly views: AdminResourceViews;
   readonly capabilities?: AdminResourceCapabilities;
   readonly contentUi?: AdminResourceContentUiDefinition;
 };
 
-const adminResourceDefinitionAllowedKeys = new Set(['resourceId', 'basePath', 'titleKey', 'guard', 'views', 'capabilities', 'contentUi'] as const);
+const adminResourceDefinitionAllowedKeys = new Set(['resourceId', 'basePath', 'titleKey', 'guard', 'moduleId', 'views', 'capabilities', 'contentUi'] as const);
 const adminResourceViewAllowedKeys = new Set(['bindingKey'] as const);
 const adminResourceCapabilitiesAllowedKeys = new Set(['list', 'detail'] as const);
 const adminResourceListCapabilitiesAllowedKeys = new Set(['search', 'filters', 'sorting', 'pagination', 'bulkActions'] as const);
@@ -237,6 +238,19 @@ const normalizeBindingKey = (resourceId: string, fieldName: string, value: strin
   if (normalized.length === 0) {
     throw new Error(`invalid_admin_resource_capability:${resourceId}:${fieldName}`);
   }
+  return normalized;
+};
+
+const normalizeModuleId = (resourceId: string, value: string | undefined): string | undefined => {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  const normalized = value.trim();
+  if (/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(normalized) === false) {
+    throw new Error(`invalid_admin_resource_module_id:${resourceId}:${normalized}`);
+  }
+
   return normalized;
 };
 
@@ -632,6 +646,7 @@ const normalizeAdminResourceDefinition = (resource: AdminResourceDefinition): Ad
     resourceId,
     basePath: normalizeBasePath(resource.basePath),
     titleKey: normalizePluginIdentifier(resource.titleKey),
+    ...(resource.moduleId ? { moduleId: normalizeModuleId(resourceId, resource.moduleId) } : {}),
     views: {
       list: validateViewDefinition(resourceId, 'list', resource.views.list),
       create: validateViewDefinition(resourceId, 'create', resource.views.create),

@@ -227,6 +227,41 @@ describe('admin resource routes', () => {
     }
   });
 
+  it('redirects to insufficient-role when a host admin resource requires an unassigned module', async () => {
+    const factory = createAdminResourceRouteFactories(bindings, [
+      {
+        resourceId: 'host.media',
+        basePath: 'media',
+        titleKey: 'media.title',
+        guard: 'adminInstances',
+        moduleId: 'media',
+        views: {
+          list: { bindingKey: 'media' },
+          create: { bindingKey: 'media' },
+          detail: { bindingKey: 'media' },
+        },
+      },
+    ]).find((candidate) => {
+      const route = candidate({ id: 'root' } as never);
+      return readRouteOptions(route).path === '/admin/media';
+    });
+
+    expect(factory).toBeDefined();
+    const route = factory({ id: 'root' } as never);
+    const beforeLoad = readRouteOptions(route).beforeLoad;
+
+    await expect(
+      beforeLoad?.({
+        href: '/admin/media',
+        context: {
+          auth: {
+            getUser: async () => ({ assignedModules: ['news'] }),
+          },
+        },
+      })
+    ).rejects.toMatchObject({ href: '/?error=auth.insufficientRole', __redirect: true });
+  });
+
   it('materializes specialized content ui bindings inside host-owned admin routes', () => {
     const routeFactories = createAdminResourceRouteFactories(specializedBindings, [
       {

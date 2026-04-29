@@ -5,7 +5,7 @@ import { Button } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
 import { useInstances } from '../../../hooks/use-instances';
 import { t } from '../../../i18n';
-import { studioPluginModuleIamContracts } from '../../../lib/plugins';
+import { studioModuleIamContracts } from '../../../lib/plugins';
 import { getErrorMessage } from '../instances/-instances-shared';
 
 const formatRoleNames = (roleNames: readonly string[]) => roleNames.join(', ');
@@ -31,8 +31,8 @@ export const ModulesPage = () => {
   const selectedInstance =
     instancesApi.selectedInstance?.instanceId === selectedInstanceId ? instancesApi.selectedInstance : null;
   const assignedModuleIds = new Set(selectedInstance?.assignedModules ?? []);
-  const assignedModules = studioPluginModuleIamContracts.filter((module) => assignedModuleIds.has(module.moduleId));
-  const availableModules = studioPluginModuleIamContracts.filter((module) => !assignedModuleIds.has(module.moduleId));
+  const assignedModules = studioModuleIamContracts.filter((module) => assignedModuleIds.has(module.moduleId));
+  const availableModules = studioModuleIamContracts.filter((module) => !assignedModuleIds.has(module.moduleId));
 
   return (
     <section className="space-y-5" aria-busy={instancesApi.isLoading || instancesApi.detailLoading || instancesApi.statusLoading}>

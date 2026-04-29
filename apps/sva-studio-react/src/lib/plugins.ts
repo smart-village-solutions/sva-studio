@@ -33,6 +33,39 @@ export const studioPluginRoutes = studioBuildTimeRegistry.routes;
 export const studioPluginNavigation = studioBuildTimeRegistry.navigation;
 export const studioPluginContentTypes = studioBuildTimeRegistry.contentTypes;
 export const studioAdminResources = studioBuildTimeRegistry.adminResources;
+export const studioHostModuleIamContracts = [
+  {
+    moduleId: 'media',
+    namespace: 'media',
+    ownerPluginId: 'host',
+    permissionIds: [
+      'media.read',
+      'media.create',
+      'media.update',
+      'media.reference.manage',
+      'media.delete',
+      'media.deliver.protected',
+    ],
+    systemRoles: [
+      {
+        roleName: 'system_admin',
+        permissionIds: [
+          'media.read',
+          'media.create',
+          'media.update',
+          'media.reference.manage',
+          'media.delete',
+          'media.deliver.protected',
+        ],
+      },
+      {
+        roleName: 'editor',
+        permissionIds: ['media.read', 'media.create', 'media.update', 'media.reference.manage'],
+      },
+    ],
+  },
+] as const;
+export const studioModuleIamContracts = [...studioPluginModuleIamContracts, ...studioHostModuleIamContracts] as const;
 const studioPluginNavigationOwners = new Map(
   studioPlugins.flatMap((plugin) =>
     (plugin.navigation ?? []).map((item) => [item.id, plugin.id] as const)

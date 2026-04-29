@@ -38,6 +38,8 @@ export {
   definePluginAdminResources,
   mergeAdminResourceDefinitions,
 } from './admin-resources.js';
+export type { MediaPickerDefinition, MediaPickerSelectionMode } from './media-picker.js';
+export { defineMediaPickerDefinition } from './media-picker.js';
 export type {
   ContentTypeActionDefinition,
   ContentTypeDefinition,

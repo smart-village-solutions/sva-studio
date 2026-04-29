@@ -52,6 +52,8 @@ export type {
   PluginTranslationResolver,
   PluginTranslationVariables,
   RouteFactory,
+  MediaPickerDefinition,
+  MediaPickerSelectionMode,
 } from './public-api.js';
 
 export {
@@ -70,6 +72,7 @@ export {
   definePluginActions,
   definePluginAdminResources,
   definePluginAuditEvents,
+  defineMediaPickerDefinition,
   definePluginModuleIamContract,
   definePluginPermissions,
   definePluginContentTypes,

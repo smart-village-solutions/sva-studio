@@ -22,7 +22,7 @@ const coreContentAdminResource = { resourceId: 'content', basePath: 'content', t
 const toAdminRoutePath = (basePath: string) => `/admin/${basePath}` as const;
 const toAdminCreateRoutePath = (basePath: string) => `${basePath}/new`;
 const toAdminHistoryRoutePath = (detailPath: string) => `${detailPath}/history`;
-export const adminDetailParamNameByBinding = { contentDetail: 'id', adminUserDetail: 'userId', adminOrganizationDetail: 'organizationId', adminInstanceDetail: 'instanceId', adminRoleDetail: 'roleId', adminGroupDetail: 'groupId', adminLegalTextDetail: 'legalTextVersionId' } as const satisfies Record<DetailBindingKey, string>;
+export const adminDetailParamNameByBinding = { contentDetail: 'id', adminUserDetail: 'userId', adminOrganizationDetail: 'organizationId', adminInstanceDetail: 'instanceId', adminRoleDetail: 'roleId', adminGroupDetail: 'groupId', adminLegalTextDetail: 'legalTextVersionId', media: 'mediaId' } as const satisfies Record<DetailBindingKey | 'media', string>;
 
 const hasBindingKey = (bindings: AppRouteBindings, bindingKey: string): bindingKey is BindingKey =>
   Object.prototype.hasOwnProperty.call(bindings, bindingKey);
@@ -77,7 +77,7 @@ const getDetailParamName = (bindingKey: BindingKey): string => {
   if (!Object.prototype.hasOwnProperty.call(adminDetailParamNameByBinding, bindingKey)) {
     throw new Error(`unsupported_admin_resource_detail_binding:${bindingKey}`);
   }
-  return adminDetailParamNameByBinding[bindingKey as DetailBindingKey];
+  return adminDetailParamNameByBinding[bindingKey as DetailBindingKey | 'media'];
 };
 
 const withCoreContentAdminResource = (resources: readonly AdminResourceDefinition[]): readonly AdminResourceDefinition[] => {
@@ -104,6 +104,26 @@ const adminResourceGuardMap = {
 
 const resolveAdminResourceGuard = (resource: AdminResourceDefinition, routeKind: AdminResourceRouteKind): AccountUiRouteGuardKey =>
   adminResourceGuardMap[resource.guard][routeKind];
+
+const ensureAssignedModule = async (
+  resource: AdminResourceDefinition,
+  beforeLoadOptions: {
+    readonly context?: {
+      readonly auth?: {
+        readonly getUser?: () => Promise<{ assignedModules?: readonly string[] } | null | undefined>;
+      };
+    };
+  }
+): Promise<void> => {
+  if (!resource.moduleId) {
+    return;
+  }
+
+  const user = await beforeLoadOptions.context?.auth?.getUser?.();
+  if (!user?.assignedModules?.includes(resource.moduleId)) {
+    throw redirect({ href: '/?error=auth.insufficientRole' });
+  }
+};
 
 const createAdminResourceRouteDefinitions = (
   bindings: AppRouteBindings,
@@ -186,11 +206,19 @@ export const createAdminResourceRouteFactories = (
     (definition) =>
       (rootRoute: RootRoute) => {
         const guard = createAccountUiRouteGuard(definition.guard, diagnostics, definition.path);
+        const matchedResource = withCoreContentAdminResource(resources).find(
+          (resource) => definition.path === `/admin/${resource.basePath}` || definition.path.startsWith(`/admin/${resource.basePath}/`)
+        );
 
         return createRoute({
           getParentRoute: () => rootRoute,
           path: definition.path,
-          beforeLoad: (beforeLoadOptions) => guard(beforeLoadOptions),
+          beforeLoad: async (beforeLoadOptions) => {
+            await guard(beforeLoadOptions);
+            if (matchedResource) {
+              await ensureAssignedModule(matchedResource, beforeLoadOptions);
+            }
+          },
           validateSearch: definition.validateSearch,
           component: bindings[definition.binding],
         });

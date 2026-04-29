@@ -530,6 +530,36 @@ export type IamInstanceKeycloakProvisioningRun = {
   }[];
 };
 
+export const iamTenantIamAxisStatuses = ['ready', 'degraded', 'blocked', 'unknown'] as const;
+
+export type IamTenantIamAxisStatus = (typeof iamTenantIamAxisStatuses)[number];
+
+export const iamTenantIamSources = [
+  'registry',
+  'keycloak_status_snapshot',
+  'keycloak_provisioning_run',
+  'role_reconcile',
+  'access_probe',
+] as const;
+
+export type IamTenantIamSource = (typeof iamTenantIamSources)[number];
+
+export type IamTenantIamAxis = {
+  readonly status: IamTenantIamAxisStatus;
+  readonly summary: string;
+  readonly source: IamTenantIamSource;
+  readonly checkedAt?: string;
+  readonly errorCode?: string;
+  readonly requestId?: string;
+};
+
+export type IamTenantIamStatus = {
+  readonly configuration: IamTenantIamAxis;
+  readonly access: IamTenantIamAxis;
+  readonly reconcile: IamTenantIamAxis;
+  readonly overall: IamTenantIamAxis;
+};
+
 export type IamInstanceDetail = IamInstanceListItem & {
   readonly hostnames: readonly {
     readonly hostname: string;
@@ -543,6 +573,7 @@ export type IamInstanceDetail = IamInstanceListItem & {
   readonly keycloakPlan?: IamInstanceKeycloakPlan;
   readonly latestKeycloakProvisioningRun?: IamInstanceKeycloakProvisioningRun;
   readonly keycloakProvisioningRuns: readonly IamInstanceKeycloakProvisioningRun[];
+  readonly tenantIamStatus?: IamTenantIamStatus;
 };
 
 export type IamOrganizationChildItem = {

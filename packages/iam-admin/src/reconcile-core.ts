@@ -80,7 +80,7 @@ type RoleReconcileOperation = 'reconcile_create' | 'reconcile_update' | 'reconci
 type RoleReconcileResult = 'success' | 'failure';
 
 export type RoleCatalogReconciliationDeps = {
-  resolveIdentityProvider(): { provider: IdentityProviderPort } | null;
+  resolveIdentityProviderForInstance(instanceId: string): Promise<{ provider: IdentityProviderPort } | null>;
   withInstanceScopedDb<T>(instanceId: string, work: (client: QueryClient) => Promise<T>): Promise<T>;
   setRoleSyncState(
     client: QueryClient,
@@ -688,7 +688,7 @@ export const runRoleCatalogReconciliation = async (input: {
   includeDiagnostics?: boolean;
 }): Promise<ReconcileReport> => {
   const deps = input.deps;
-  const identityProvider = deps.resolveIdentityProvider();
+  const identityProvider = await deps.resolveIdentityProviderForInstance(input.instanceId);
   if (!identityProvider) {
     throw new Error('identity_provider_unavailable');
   }

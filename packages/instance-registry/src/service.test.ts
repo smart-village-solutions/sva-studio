@@ -51,6 +51,8 @@ const createRepository = (overrides: Partial<InstanceRegistryRepository> = {}): 
     listProvisioningRuns: vi.fn(async () => [latestRun]),
     listLatestProvisioningRuns: vi.fn(async () => ({ demo: latestRun })),
     listAuditEvents: vi.fn(async () => []),
+    getLatestTenantIamAccessProbe: vi.fn(async () => null),
+    getRoleReconcileSummary: vi.fn(async () => null),
     listKeycloakProvisioningRuns: vi.fn(async () => []),
     getKeycloakProvisioningRun: vi.fn(async () => null),
     claimNextKeycloakProvisioningRun: vi.fn(async () => null),
@@ -313,5 +315,120 @@ describe('instance registry service facade', () => {
       })
     ).resolves.toBeNull();
     expect(repository.updateInstance).not.toHaveBeenCalled();
+  });
+
+  it('builds tenant IAM status into instance detail projections from repository evidence', async () => {
+    const repository = createRepository({
+      listAuditEvents: vi.fn(async () => []),
+      listKeycloakProvisioningRuns: vi.fn(async () => []),
+      getLatestTenantIamAccessProbe: vi.fn(async () => ({
+        checkedAt: '2026-04-29T10:01:00.000Z',
+        status: 'blocked',
+        summary: 'Tenant-Admin-Client darf Rollen nicht lesen.',
+        errorCode: 'IDP_FORBIDDEN',
+        requestId: 'req-probe-1',
+      })),
+      getRoleReconcileSummary: vi.fn(async () => ({
+        checkedAt: '2026-04-29T10:00:00.000Z',
+        status: 'degraded',
+        summary: 'Ein Rollenabgleich ist mit Drift beendet worden.',
+        errorCode: 'IDP_CONFLICT',
+        requestId: 'req-reconcile-1',
+      })),
+    });
+    const deps = createDeps(repository);
+    const service = createInstanceRegistryService({
+      ...deps,
+      getKeycloakStatus: vi.fn(async () => ({
+        realmExists: true,
+        clientExists: true,
+        tenantAdminClientExists: true,
+        instanceIdMapperExists: true,
+        tenantAdminExists: true,
+        tenantAdminHasSystemAdmin: true,
+        tenantAdminHasInstanceRegistryAdmin: true,
+        tenantAdminInstanceIdMatches: true,
+        redirectUrisMatch: true,
+        logoutUrisMatch: true,
+        webOriginsMatch: true,
+        clientSecretConfigured: true,
+        tenantClientSecretReadable: true,
+        clientSecretAligned: true,
+        tenantAdminClientSecretConfigured: true,
+        tenantAdminClientSecretReadable: true,
+        tenantAdminClientSecretAligned: true,
+        runtimeSecretSource: 'tenant',
+      })),
+    });
+
+    await expect(service.getInstanceDetail('demo')).resolves.toEqual(
+      expect.objectContaining({
+        tenantIamStatus: expect.objectContaining({
+          access: expect.objectContaining({
+            status: 'blocked',
+            requestId: 'req-probe-1',
+          }),
+          reconcile: expect.objectContaining({
+            status: 'degraded',
+            requestId: 'req-reconcile-1',
+          }),
+          overall: expect.objectContaining({
+            status: 'blocked',
+            requestId: 'req-probe-1',
+          }),
+        }),
+      })
+    );
+  });
+
+  it('probes tenant IAM access, persists audit evidence and returns the updated status', async () => {
+    const repository = createRepository({
+      appendAuditEvent: vi.fn(async () => undefined),
+      getLatestTenantIamAccessProbe: vi.fn(async () => null),
+      getRoleReconcileSummary: vi.fn(async () => null),
+    });
+    const deps = createDeps(repository);
+    const service = createInstanceRegistryService({
+      ...deps,
+      probeTenantIamAccess: vi.fn(async () => ({
+        status: 'ready',
+        summary: 'Tenant-Admin-Client kann Realm-Rollen lesen.',
+        checkedAt: '2026-04-29T10:15:00.000Z',
+        source: 'access_probe',
+        requestId: 'req-probe-1',
+      })),
+    });
+
+    await expect(
+      service.probeTenantIamAccess({
+        instanceId: 'demo',
+        actorId: 'actor-1',
+        requestId: 'req-probe-1',
+      })
+    ).resolves.toEqual(
+      expect.objectContaining({
+        access: expect.objectContaining({
+          status: 'ready',
+          requestId: 'req-probe-1',
+        }),
+        overall: expect.objectContaining({
+          status: 'unknown',
+        }),
+      })
+    );
+
+    expect(repository.appendAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'demo',
+        eventType: 'tenant_iam_access_probed',
+        actorId: 'actor-1',
+        requestId: 'req-probe-1',
+        details: expect.objectContaining({
+          status: 'ready',
+          summary: 'Tenant-Admin-Client kann Realm-Rollen lesen.',
+          requestId: 'req-probe-1',
+        }),
+      })
+    );
   });
 });

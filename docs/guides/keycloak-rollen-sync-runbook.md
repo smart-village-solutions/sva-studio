@@ -65,12 +65,18 @@ Häufige Fehlercodes:
 
 1. Prüfen, ob der Incident tatsächlich nur eine einzelne `instance_id` betrifft.
 2. Alarm- und Audit-Kontext sammeln: `request_id`, `trace_id`, `role_key`, `external_role_name`, `error_code`.
-3. `POST /api/v1/iam/admin/reconcile` als `system_admin` ausführen (wirkt auf die `instanceId` des authentifizierten Actors).
-4. Ergebnis bewerten:
+3. Auf der Root-Host-Detailseite `/admin/instances/$instanceId` den Block `Tenant-IAM` prüfen:
+   - `configuration`: Registry-, Realm- und Tenant-Admin-Vertrag grundsätzlich vorhanden
+   - `access`: letzte explizite Rechteprobe gegen den tenantlokalen Admin-Client
+   - `reconcile`: letzter aggregierter Rollenabgleich aus `iam.roles` und `iam.activity_logs`
+   - `overall`: verdichteter Operator-Befund mit Präzedenz `blocked` vor `degraded` vor `unknown` vor `ready`
+4. Falls `access = unknown`, zuerst die Aktion `Tenant-IAM-Zugriff prüfen` auslösen, bevor ein erneuter Reconcile-Lauf bewertet wird.
+5. `POST /api/v1/iam/admin/reconcile` als `system_admin` ausführen (wirkt auf die `instanceId` des authentifizierten Actors).
+6. Ergebnis bewerten:
    - `corrected`: Drift wurde behoben.
    - `failed`: Korrekturversuch ist fehlgeschlagen; Ursache im Keycloak-/DB-Pfad analysieren.
    - `requires_manual_action`: meist orphaned Keycloak-Rolle, manuelle Freigabe erforderlich.
-5. Bei orphaned Rollen vor einer Löschung immer Freigabe und Nutzungsprüfung dokumentieren.
+7. Bei orphaned Rollen vor einer Löschung immer Freigabe und Nutzungsprüfung dokumentieren.
 
 ## Triage bei Alerts
 
@@ -85,6 +91,14 @@ Häufige Fehlercodes:
 5. Bei Tenant-`IDP_FORBIDDEN` keinen Fallback auf globale Plattform-Credentials verwenden; stattdessen Tenant-Admin-Client über die Instanzverwaltung neu provisionieren, Secret rotieren oder den Tenant-Admin zurücksetzen.
 6. Die Rollenmatrix des betroffenen Service-Accounts gegen `docs/guides/keycloak-service-account-setup-iam.md` prüfen.
 7. Bei `DB_WRITE_FAILED` Postgres-Verfügbarkeit und Migration `0007_iam_role_catalog_sync.sql` verifizieren.
+
+### Tenant-IAM-Access-Probe schlägt fehl
+
+1. `request_id`, `instance_id`, `errorCode`, `checkedAt` und den angezeigten Achsenstatus aus `/admin/instances/$instanceId` sichern.
+2. Bei `tenant_admin_client_not_configured` oder `tenant_admin_client_secret_missing` den Tenant-Admin-Vertrag in der Instanzverwaltung korrigieren oder gezielt neu provisionieren.
+3. Bei `IDP_FORBIDDEN` die Tenant-Admin-Service-Account-Rollen im Ziel-Realm prüfen; globale Plattform-Credentials sind keine zulässige Zwischenlösung.
+4. Bei `IDP_UNAVAILABLE` zuerst Keycloak-Erreichbarkeit, Token-Realm und Netzwerkpfad prüfen; danach die Probe erneut auslösen.
+5. Erst nach grünem `access`-Befund einen fachlichen Reconcile-Fehler isoliert als Rollen-/Datenproblem weitertriagieren.
 
 ### Tenant-User-Sync liefert `partial_failure`
 

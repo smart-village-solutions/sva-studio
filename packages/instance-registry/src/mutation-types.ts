@@ -70,6 +70,11 @@ export type ExecuteInstanceKeycloakProvisioningInput = InstanceRegistryMutationA
   readonly tenantAdminTemporaryPassword?: string;
 };
 
+export type ProbeTenantIamAccessInput = InstanceRegistryMutationActor & {
+  readonly idempotencyKey: string;
+  readonly instanceId: string;
+};
+
 export type CreateInstanceProvisioningResult =
   | { readonly ok: true; readonly instance: IamInstanceListItem }
   | { readonly ok: false; readonly reason: 'already_exists' };

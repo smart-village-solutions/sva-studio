@@ -190,6 +190,54 @@ describe('instance registry repository', () => {
     expect(statements.some((statement) => statement.text.includes('WHERE run_id IN ($1)'))).toBe(true);
   });
 
+  it('reads tenant IAM access probe and reconcile summary evidence', async () => {
+    const { executor, statements } = createQueuedExecutor([
+      [
+        {
+          checked_at: '2026-04-29T10:00:00.000Z',
+          status: 'blocked',
+          summary: 'Tenant-Admin-Client darf Rollen nicht lesen.',
+          error_code: 'IDP_FORBIDDEN',
+          request_id: 'req-probe-1',
+        },
+      ],
+      [
+        {
+          sync_state: 'failed',
+          role_count: 3,
+          failed_count: 1,
+          pending_count: 1,
+          last_synced_at: '2026-04-29T09:55:00.000Z',
+          last_error_code: 'IDP_CONFLICT',
+        },
+      ],
+      [
+        {
+          request_id: 'req-reconcile-1',
+          created_at: '2026-04-29T09:56:00.000Z',
+        },
+      ],
+    ]);
+    const repository = createInstanceRegistryRepository(executor);
+
+    await expect(repository.getLatestTenantIamAccessProbe('tenant-a')).resolves.toEqual({
+      checkedAt: '2026-04-29T10:00:00.000Z',
+      status: 'blocked',
+      summary: 'Tenant-Admin-Client darf Rollen nicht lesen.',
+      errorCode: 'IDP_FORBIDDEN',
+      requestId: 'req-probe-1',
+    });
+    await expect(repository.getRoleReconcileSummary('tenant-a')).resolves.toEqual({
+      status: 'degraded',
+      summary: '1 Rollen mit Fehler, 1 Rollen im Backlog.',
+      checkedAt: '2026-04-29T09:55:00.000Z',
+      errorCode: 'IDP_CONFLICT',
+      requestId: 'req-reconcile-1',
+    });
+    expect(statements[0]?.text.includes('tenant_iam_access_probed')).toBe(true);
+    expect(statements[1]?.text.includes('FROM iam.roles')).toBe(true);
+  });
+
   it('creates and updates instances with hostname side effects', async () => {
     const { executor, statements } = createQueuedExecutor([[instanceRow], [], [instanceRow], []]);
     const repository = createInstanceRegistryRepository(executor);

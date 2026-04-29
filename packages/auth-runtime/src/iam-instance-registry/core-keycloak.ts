@@ -6,7 +6,12 @@ import { createInstanceRegistryKeycloakHttpHandlers } from '@sva/instance-regist
 
 import type { AuthenticatedRequestContext } from '../middleware.js';
 import { ensurePlatformAccess, requireFreshReauth } from './http.js';
-import { executeInstanceKeycloakProvisioningMutation, mapInstanceMutationError, reconcileInstanceKeycloakMutation } from './core-mutations.js';
+import {
+  executeInstanceKeycloakProvisioningMutation,
+  mapInstanceMutationError,
+  probeTenantIamAccessMutation,
+  reconcileInstanceKeycloakMutation,
+} from './core-mutations.js';
 import { withRegistryService } from './repository.js';
 
 const keycloakHttpHandlers = createInstanceRegistryKeycloakHttpHandlers<AuthenticatedRequestContext>({
@@ -51,3 +56,8 @@ export const reconcileInstanceKeycloakInternal = async (
   request: Request,
   ctx: AuthenticatedRequestContext
 ): Promise<Response> => reconcileInstanceKeycloakMutation(request, ctx);
+
+export const probeTenantIamAccessInternal = async (
+  request: Request,
+  ctx: AuthenticatedRequestContext
+): Promise<Response> => probeTenantIamAccessMutation(request, ctx);

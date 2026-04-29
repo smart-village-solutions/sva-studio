@@ -1032,6 +1032,15 @@ export const reconcileInstanceKeycloak = async (
     true
   );
 
+export const probeTenantIamAccess = async (
+  instanceId: string
+): Promise<ApiItemResponse<IamInstanceDetail['tenantIamStatus']>> =>
+  postJsonWithReauth<ApiItemResponse<IamInstanceDetail['tenantIamStatus']>, Record<string, never>>(
+    `/api/v1/iam/instances/${instanceId}/tenant-iam/access-probe`,
+    {},
+    true
+  );
+
 export const activateInstance = async (instanceId: string): Promise<ApiItemResponse<IamInstanceListItem>> =>
   postJsonWithReauth<ApiItemResponse<IamInstanceListItem>, { status: 'active' }>(
     `/api/v1/iam/instances/${instanceId}/activate`,

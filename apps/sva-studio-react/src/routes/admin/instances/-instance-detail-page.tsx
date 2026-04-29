@@ -57,6 +57,19 @@ const FormLabelWithHelp = ({
   );
 };
 
+const TenantIamStatusBadge = ({ status }: { status?: 'ready' | 'degraded' | 'blocked' | 'unknown' }) => {
+  const tone =
+    status === 'ready'
+      ? 'bg-emerald-100 text-emerald-800'
+      : status === 'blocked'
+        ? 'bg-red-100 text-red-800'
+        : status === 'degraded'
+          ? 'bg-amber-100 text-amber-900'
+          : 'bg-muted text-muted-foreground';
+
+  return <span className={`rounded-full px-2 py-1 text-xs font-medium ${tone}`}>{status ?? 'unknown'}</span>;
+};
+
 const InstanceRuntimeEvidence = ({
   classification,
   instance,
@@ -230,6 +243,13 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
     }
   };
 
+  const probeTenantIamAccess = async () => {
+    if (!selectedInstance) {
+      return;
+    }
+    await instancesApi.probeTenantIamAccess(selectedInstance.instanceId);
+  };
+
   return (
     <section className="space-y-5" aria-busy={instancesApi.isLoading || instancesApi.detailLoading}>
       <header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -331,6 +351,51 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
                 <Alert>
                   <AlertDescription>{t('admin.instances.guidance.keycloakUnavailable')}</AlertDescription>
                 </Alert>
+              ) : null}
+              {selectedInstance.tenantIamStatus ? (
+                <div className="rounded-lg border border-border p-3">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="space-y-1">
+                      <div className="font-medium text-foreground">{t('admin.instances.tenantIam.title')}</div>
+                      <p className="text-sm text-muted-foreground">{t('admin.instances.tenantIam.subtitle')}</p>
+                    </div>
+                    <TenantIamStatusBadge status={selectedInstance.tenantIamStatus.overall.status} />
+                  </div>
+                  <div className="mt-3 grid gap-3 md:grid-cols-3">
+                    {(['configuration', 'access', 'reconcile'] as const).map((axisKey) => {
+                      const axis = selectedInstance.tenantIamStatus?.[axisKey];
+                      return (
+                        <div key={axisKey} className="rounded-md border border-border bg-muted/20 p-3">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                              {t(`admin.instances.tenantIam.axes.${axisKey}`)}
+                            </div>
+                            <TenantIamStatusBadge status={axis?.status} />
+                          </div>
+                          <p className="mt-2 text-sm text-muted-foreground">{axis?.summary}</p>
+                          {axis?.requestId ? (
+                            <p className="mt-2 text-xs text-muted-foreground">
+                              {t('admin.instances.tenantIam.requestId', { value: axis.requestId })}
+                            </p>
+                          ) : null}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Button type="button" variant="outline" size="sm" onClick={() => void probeTenantIamAccess()}>
+                      {t('admin.instances.actions.probeTenantIamAccess')}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => void instancesApi.reconcileKeycloak(selectedInstance.instanceId, {})}
+                    >
+                      {t('admin.instances.actions.reconcileKeycloak')}
+                    </Button>
+                  </div>
+                </div>
               ) : null}
             </Card>
 

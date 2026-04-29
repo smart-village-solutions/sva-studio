@@ -451,6 +451,11 @@ const authHandlerMap = {
       return authRuntimeRoutes.instanceRegistryHandlers.reconcileInstanceKeycloak(ctx.request);
     },
   },
+  '/api/v1/iam/instances/$instanceId/tenant-iam/access-probe': {
+    POST: async (ctx: { request: Request }) => {
+      return authRuntimeRoutes.instanceRegistryHandlers.probeTenantIamAccess(ctx.request);
+    },
+  },
   '/api/v1/iam/instances/$instanceId/activate': {
     POST: async (ctx: { request: Request }) => {
       return authRuntimeRoutes.instanceRegistryHandlers.activateInstance(ctx.request);

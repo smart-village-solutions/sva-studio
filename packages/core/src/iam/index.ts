@@ -28,6 +28,10 @@ export type {
   IamInstanceListItem,
   IamInstanceProvisioningOperation,
   IamInstanceProvisioningRun,
+  IamTenantIamAxis,
+  IamTenantIamAxisStatus,
+  IamTenantIamSource,
+  IamTenantIamStatus,
   IamLegalTextListItem,
   IamPendingLegalTextItem,
   IamOrganizationChildItem,
@@ -114,5 +118,7 @@ export {
   iamRuntimeDiagnosticClassifications,
   iamRuntimeDiagnosticStatuses,
   iamRuntimeRecommendedActions,
+  iamTenantIamAxisStatuses,
+  iamTenantIamSources,
 } from './account-management-contract.js';
 export { allowReasonCodes, denyReasonCodes, iamApiErrorCodes } from './authorization-contract.js';

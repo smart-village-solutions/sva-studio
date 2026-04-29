@@ -5,6 +5,8 @@ import type {
   IamInstanceKeycloakPreflight,
   IamInstanceKeycloakProvisioningRun,
   IamInstanceListItem,
+  IamTenantIamAxis,
+  IamTenantIamStatus,
 } from '@sva/core';
 
 import type { InstanceRegistryRepository } from '@sva/data-repositories';
@@ -14,6 +16,117 @@ import type { ChangeInstanceStatusInput } from './mutation-types.js';
 type InstanceRecord = Awaited<ReturnType<InstanceRegistryRepository['listInstances']>>[number];
 type ProvisioningRun = Awaited<ReturnType<InstanceRegistryRepository['listProvisioningRuns']>>[number];
 type AuditEvent = Awaited<ReturnType<InstanceRegistryRepository['listAuditEvents']>>[number];
+
+type TenantIamEvidence = Omit<IamTenantIamAxis, 'source'> & {
+  readonly source: IamTenantIamAxis['source'];
+};
+
+const createTenantIamAxis = (input: TenantIamEvidence): IamTenantIamAxis => ({
+  status: input.status,
+  summary: input.summary,
+  source: input.source,
+  ...(input.checkedAt ? { checkedAt: input.checkedAt } : {}),
+  ...(input.errorCode ? { errorCode: input.errorCode } : {}),
+  ...(input.requestId ? { requestId: input.requestId } : {}),
+});
+
+const isConfigurationReady = (
+  keycloakStatus: NonNullable<IamInstanceDetail['keycloakStatus']> | undefined
+): boolean =>
+  Boolean(
+    keycloakStatus?.realmExists &&
+      keycloakStatus.clientExists &&
+      keycloakStatus.tenantAdminClientExists &&
+      keycloakStatus.instanceIdMapperExists &&
+      keycloakStatus.tenantAdminExists &&
+      keycloakStatus.tenantAdminHasSystemAdmin &&
+      keycloakStatus.tenantAdminHasInstanceRegistryAdmin &&
+      keycloakStatus.tenantAdminInstanceIdMatches &&
+      keycloakStatus.redirectUrisMatch &&
+      keycloakStatus.logoutUrisMatch &&
+      keycloakStatus.webOriginsMatch &&
+      keycloakStatus.clientSecretConfigured &&
+      keycloakStatus.tenantClientSecretReadable &&
+      keycloakStatus.clientSecretAligned &&
+      keycloakStatus.tenantAdminClientSecretConfigured &&
+      keycloakStatus.tenantAdminClientSecretReadable &&
+      keycloakStatus.tenantAdminClientSecretAligned
+  );
+
+const tenantIamPrecedence: ReadonlyArray<IamTenantIamAxis['status']> = ['blocked', 'degraded', 'unknown', 'ready'];
+
+export const buildTenantIamStatus = (input: {
+  keycloakStatus?: IamInstanceDetail['keycloakStatus'];
+  accessEvidence?: TenantIamEvidence;
+  reconcileEvidence?: TenantIamEvidence;
+}): IamTenantIamStatus => {
+  const configuration = input.keycloakStatus
+    ? createTenantIamAxis({
+        status: isConfigurationReady(input.keycloakStatus) ? 'ready' : 'degraded',
+        summary: isConfigurationReady(input.keycloakStatus)
+          ? 'Tenant-IAM-Struktur ist vollständig vorhanden.'
+          : 'Tenant-IAM-Struktur ist unvollständig oder driftet.',
+        source: 'keycloak_status_snapshot',
+      })
+    : createTenantIamAxis({
+        status: 'unknown',
+        summary: 'Noch kein Strukturstatus für Tenant-IAM vorhanden.',
+        source: 'registry',
+      });
+
+  const access = input.accessEvidence
+    ? createTenantIamAxis(input.accessEvidence)
+    : createTenantIamAxis({
+        status: 'unknown',
+        summary: 'Noch keine tenantlokale Rechteprobe vorhanden.',
+        source: 'access_probe',
+      });
+
+  const reconcile = input.reconcileEvidence
+    ? createTenantIamAxis(input.reconcileEvidence)
+    : createTenantIamAxis({
+        status: 'unknown',
+        summary: 'Noch kein Rollenabgleich ausgeführt.',
+        source: 'role_reconcile',
+      });
+
+  const overallStatus =
+    tenantIamPrecedence.find((candidate) =>
+      [configuration.status, access.status, reconcile.status].includes(candidate)
+    ) ?? 'unknown';
+
+  const dominantAxis =
+    overallStatus === configuration.status
+      ? configuration
+      : overallStatus === access.status
+        ? access
+        : overallStatus === reconcile.status
+          ? reconcile
+          : configuration;
+
+  const overallSummary =
+    overallStatus === 'ready'
+      ? 'Tenant-IAM ist betriebsbereit.'
+      : overallStatus === 'blocked'
+        ? 'Tenant-IAM ist blockiert.'
+        : overallStatus === 'degraded'
+          ? 'Tenant-IAM ist eingeschränkt.'
+          : 'Tenant-IAM-Befund ist unvollständig.';
+
+  return {
+    configuration,
+    access,
+    reconcile,
+    overall: createTenantIamAxis({
+      status: overallStatus,
+      summary: overallSummary,
+      source: overallStatus === 'unknown' ? 'registry' : dominantAxis.source,
+      checkedAt: dominantAxis.checkedAt,
+      errorCode: dominantAxis.errorCode,
+      requestId: dominantAxis.requestId,
+    }),
+  };
+};
 
 export const toListItem = (
   item: InstanceRecord,
@@ -46,7 +159,8 @@ export const buildInstanceDetail = (
   keycloakStatus?: KeycloakTenantStatus,
   keycloakPreflight?: IamInstanceKeycloakPreflight,
   keycloakPlan?: IamInstanceKeycloakPlan,
-  keycloakProvisioningRuns: readonly IamInstanceKeycloakProvisioningRun[] = []
+  keycloakProvisioningRuns: readonly IamInstanceKeycloakProvisioningRun[] = [],
+  tenantIamStatus?: IamTenantIamStatus
 ): IamInstanceDetail => ({
   ...toListItem(instance, provisioningRuns[0]),
   hostnames: [
@@ -63,6 +177,7 @@ export const buildInstanceDetail = (
   keycloakPlan,
   latestKeycloakProvisioningRun: keycloakProvisioningRuns[0],
   keycloakProvisioningRuns,
+  tenantIamStatus,
 });
 
 export const createAuditDetails = (

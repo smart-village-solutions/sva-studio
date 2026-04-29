@@ -41,6 +41,12 @@ const createDeps = (): InstanceRegistryMutationHttpDeps<TestContext> => ({
     work({
       reconcileKeycloak: vi.fn(async () => ({ realmExists: true })),
       executeKeycloakProvisioning: vi.fn(async () => ({ id: 'run-1' })),
+      probeTenantIamAccess: vi.fn(async () => ({
+        access: { status: 'ready', summary: 'ok', source: 'access_probe' },
+        overall: { status: 'unknown', summary: 'unknown', source: 'registry' },
+        configuration: { status: 'unknown', summary: 'unknown', source: 'registry' },
+        reconcile: { status: 'unknown', summary: 'unknown', source: 'role_reconcile' },
+      })),
       changeStatus: vi.fn(async () => ({ ok: true, instance: { instanceId: 'inst-1', status: 'active' } })),
     } as never)
   ),
@@ -133,6 +139,40 @@ describe('http mutation handlers', () => {
 
     expect(response.status).toBe(409);
     expect(body.code).toBe('tenant_admin_client_secret_missing');
+  });
+
+  it('probeTenantIamAccess returns the updated tenant IAM status', async () => {
+    const probeTenantIamAccess = vi.fn(async () => ({
+      access: { status: 'blocked', summary: '403', source: 'access_probe', requestId: 'req-probe-1' },
+      overall: { status: 'blocked', summary: 'blocked', source: 'access_probe', requestId: 'req-probe-1' },
+      configuration: { status: 'ready', summary: 'ok', source: 'registry' },
+      reconcile: { status: 'unknown', summary: 'unknown', source: 'role_reconcile' },
+    }));
+    vi.mocked(deps.withRegistryService).mockImplementationOnce(async (work) =>
+      work({
+        probeTenantIamAccess,
+      } as never)
+    );
+    vi.mocked(deps.parseRequestBody).mockResolvedValueOnce({ ok: true, data: {} });
+    const handlers = createInstanceRegistryMutationHttpHandlers(deps);
+
+    const response = await handlers.probeTenantIamAccess(
+      new Request('http://localhost/api/instances/inst-1/tenant-iam/access-probe', { method: 'POST' }),
+      { userId: 'u-1' }
+    );
+
+    expect(response.status).toBe(200);
+    expect(probeTenantIamAccess).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'inst-1',
+        actorId: 'u-1',
+        idempotencyKey: 'idem-1',
+      })
+    );
+    await expect(readBody(response)).resolves.toMatchObject({
+      access: { status: 'blocked', requestId: 'req-probe-1' },
+      overall: { status: 'blocked', requestId: 'req-probe-1' },
+    });
   });
 
   it('mutateInstanceStatus rejects mismatched status payloads', async () => {

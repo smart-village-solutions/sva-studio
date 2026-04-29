@@ -14,6 +14,7 @@ import {
   IamHttpError,
   listInstances,
   planInstanceKeycloakProvisioning,
+  probeTenantIamAccess,
   reconcileInstanceKeycloak,
   suspendInstance,
   updateInstance,
@@ -377,6 +378,39 @@ export const useInstances = () => {
         instanceId,
         'execute_instance_keycloak_provisioning'
       ),
+    probeTenantIamAccess: async (instanceId: string) => {
+      setStatusLoading(true);
+      setMutationError(null);
+      logBrowserOperationStart(instancesLogger, 'tenant_iam_access_probe_started', {
+        operation: 'probe_tenant_iam_access',
+        instance_id: instanceId,
+      });
+      try {
+        const response = await probeTenantIamAccess(instanceId);
+        updateSelectedForInstance(instanceId, (current) => ({
+          ...current,
+          tenantIamStatus: response.data,
+        }));
+        logBrowserOperationSuccess(instancesLogger, 'tenant_iam_access_probe_succeeded', {
+          operation: 'probe_tenant_iam_access',
+          instance_id: instanceId,
+        });
+        return response.data;
+      } catch (cause) {
+        const resolvedError = asIamError(cause);
+        if (resolvedError.status === 403) {
+          await invalidatePermissions();
+        }
+        setMutationError(resolvedError);
+        logBrowserOperationFailure(instancesLogger, 'tenant_iam_access_probe_failed', resolvedError, {
+          operation: 'probe_tenant_iam_access',
+          instance_id: instanceId,
+        });
+        return null;
+      } finally {
+        setStatusLoading(false);
+      }
+    },
     loadKeycloakProvisioningRun: async (instanceId: string, runId: string) => {
       setStatusLoading(true);
       setMutationError(null);

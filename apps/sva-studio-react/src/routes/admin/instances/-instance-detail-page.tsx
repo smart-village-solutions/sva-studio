@@ -70,6 +70,12 @@ const TenantIamStatusBadge = ({ status }: { status?: 'ready' | 'degraded' | 'blo
   return <span className={`rounded-full px-2 py-1 text-xs font-medium ${tone}`}>{status ?? 'unknown'}</span>;
 };
 
+const TENANT_IAM_AXIS_TITLE_KEYS = {
+  configuration: 'admin.instances.tenantIam.axes.configuration',
+  access: 'admin.instances.tenantIam.axes.access',
+  reconcile: 'admin.instances.tenantIam.axes.reconcile',
+} as const;
+
 const InstanceRuntimeEvidence = ({
   classification,
   instance,
@@ -368,7 +374,7 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
                         <div key={axisKey} className="rounded-md border border-border bg-muted/20 p-3">
                           <div className="flex items-center justify-between gap-2">
                             <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                              {t(`admin.instances.tenantIam.axes.${axisKey}`)}
+                              {t(TENANT_IAM_AXIS_TITLE_KEYS[axisKey])}
                             </div>
                             <TenantIamStatusBadge status={axis?.status} />
                           </div>

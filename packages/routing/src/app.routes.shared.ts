@@ -1,6 +1,6 @@
 import type { AdminResourceDefinition, PluginDefinition, PluginRouteGuard, RouteFactory } from '@sva/plugin-sdk';
 import { assertPluginRoutePathAllowed, createPluginGuardrailError, mergeAdminResourceDefinitions } from '@sva/plugin-sdk';
-import { createRoute, type AnyRoute, type RootRoute, type RouteComponent } from '@tanstack/react-router';
+import { createRoute, redirect, type AnyRoute, type RootRoute, type RouteComponent } from '@tanstack/react-router';
 
 import { createAccountUiRouteGuard, type AccountUiRouteGuardKey } from './account-ui.routes.js';
 import {
@@ -115,7 +115,7 @@ const uiRouteDefinitions: readonly UiRouteDefinition[] = [
       tab: normalizeIamTab(search.tab),
     }),
   },
-  { binding: 'modules', path: uiRoutePaths.modules, guard: 'adminRoles' },
+  { binding: 'modules', path: uiRoutePaths.modules, guard: 'adminInstances' },
   { binding: 'monitoring', path: uiRoutePaths.monitoring, guard: 'adminRoles' },
   { binding: 'adminApiPhase1Test', path: uiRoutePaths.adminApiPhase1Test },
 ] as const;
@@ -229,6 +229,7 @@ export const getPluginRouteFactories = (
       const unsupportedGuard = !guard && normalizedGuard ? normalizedGuard : null;
       const pluginNamespace = pluginDefinition.id.trim();
       const contributionId = routeDefinition.id.trim();
+      const requiredModuleId = pluginDefinition.moduleIam?.moduleId?.trim() || null;
 
       assertPluginRoutePathAllowed(pluginNamespace, contributionId, routeDefinition.path);
 
@@ -245,7 +246,18 @@ export const getPluginRouteFactories = (
         createRoute({
           getParentRoute: () => rootRoute,
           path: routeDefinition.path,
-          beforeLoad: guard ?? undefined,
+          beforeLoad: async (beforeLoadOptions) => {
+            await guard?.(beforeLoadOptions);
+
+            if (!requiredModuleId) {
+              return;
+            }
+
+            const user = await beforeLoadOptions.context.auth?.getUser();
+            if (!user?.assignedModules?.includes(requiredModuleId)) {
+              throw redirect({ href: '/?error=auth.insufficientRole' });
+            }
+          },
           component: routeDefinition.component as RouteComponent,
         });
     })

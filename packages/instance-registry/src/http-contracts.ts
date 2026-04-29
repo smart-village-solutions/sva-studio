@@ -74,6 +74,17 @@ export const executeKeycloakProvisioningSchema = z.object({
 
 export const probeTenantIamAccessSchema = z.object({});
 
+export const assignModuleSchema = z.object({
+  moduleId: z.string().trim().min(1),
+});
+
+export const revokeModuleSchema = z.object({
+  moduleId: z.string().trim().min(1),
+  confirmation: z.literal('REVOKE'),
+});
+
+export const seedIamBaselineSchema = z.object({});
+
 export const readDetailInstanceId = (request: Request): string | undefined => {
   const segments = new URL(request.url).pathname.split('/').filter(Boolean);
   const instanceIndex = segments.findIndex((segment) => segment === 'instances');

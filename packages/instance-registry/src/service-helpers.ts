@@ -4,6 +4,7 @@ import {
 
 import type {
   InstanceStatus,
+  IamInstanceAssignedModule,
   IamInstanceDetail,
   IamInstanceKeycloakPlan,
   IamInstanceKeycloakPreflight,
@@ -131,11 +132,78 @@ export const toListItem = (
   tenantAdminBootstrap: item.tenantAdminBootstrap,
   themeKey: item.themeKey,
   featureFlags: item.featureFlags,
+  assignedModules: item.assignedModules,
   mainserverConfigRef: item.mainserverConfigRef,
   createdAt: item.createdAt,
   updatedAt: item.updatedAt,
   latestProvisioningRun,
 });
+
+export const buildAssignedModules = (
+  assignedModules: readonly string[],
+  contracts: ReadonlyMap<string, { permissionIds: readonly string[]; systemRoles: readonly { roleName: string }[] }>
+): readonly IamInstanceAssignedModule[] =>
+  assignedModules.map((moduleId) => {
+    const contract = contracts.get(moduleId);
+    return {
+      moduleId,
+      permissionIds: contract?.permissionIds ?? [],
+      systemRoleNames: contract?.systemRoles.map((role) => role.roleName) ?? [],
+    };
+  });
+
+export const buildModuleIamStatus = (
+  assignedModules: readonly string[],
+  contracts: ReadonlyMap<string, { permissionIds: readonly string[]; systemRoles: readonly { roleName: string }[] }>
+): IamInstanceDetail['moduleIamStatus'] => {
+  if (assignedModules.length === 0) {
+    return {
+      overall: {
+        status: 'unknown',
+        summary: 'Noch keine Module für diese Instanz zugewiesen.',
+        source: 'registry',
+      },
+      modules: [],
+    };
+  }
+
+  const modules = assignedModules.map((moduleId) => {
+    const contract = contracts.get(moduleId);
+    if (!contract) {
+      return {
+        moduleId,
+        status: 'blocked' as const,
+        summary: 'Für dieses Modul fehlt der deklarative IAM-Vertrag.',
+        source: 'registry' as const,
+        permissionIds: [],
+        systemRoleNames: [],
+      };
+    }
+
+    return {
+      moduleId,
+      status: 'ready' as const,
+      summary: 'IAM-Basis des Moduls ist deklarativ registriert.',
+      source: 'registry' as const,
+      permissionIds: contract.permissionIds,
+      systemRoleNames: contract.systemRoles.map((role) => role.roleName),
+    };
+  });
+
+  const overallStatus = modules.some((module) => module.status === 'blocked') ? 'blocked' : 'ready';
+
+  return {
+    overall: {
+      status: overallStatus,
+      summary:
+        overallStatus === 'ready'
+          ? 'IAM-Basis der zugewiesenen Module ist vollständig registriert.'
+          : 'Mindestens ein zugewiesenes Modul hat keinen vollständigen IAM-Vertrag.',
+      source: 'registry',
+    },
+    modules,
+  };
+};
 
 export const buildInstanceDetail = (
   instance: Exclude<Awaited<ReturnType<InstanceRegistryRepository['getInstanceById']>>, null>,
@@ -145,7 +213,8 @@ export const buildInstanceDetail = (
   keycloakPreflight?: IamInstanceKeycloakPreflight,
   keycloakPlan?: IamInstanceKeycloakPlan,
   keycloakProvisioningRuns: readonly IamInstanceKeycloakProvisioningRun[] = [],
-  tenantIamStatus?: IamTenantIamStatus
+  tenantIamStatus?: IamTenantIamStatus,
+  moduleIamStatus?: IamInstanceDetail['moduleIamStatus']
 ): IamInstanceDetail => ({
   ...toListItem(instance, provisioningRuns[0]),
   hostnames: [
@@ -163,6 +232,7 @@ export const buildInstanceDetail = (
   latestKeycloakProvisioningRun: keycloakProvisioningRuns[0],
   keycloakProvisioningRuns,
   tenantIamStatus,
+  moduleIamStatus,
 });
 
 export const createAuditDetails = (

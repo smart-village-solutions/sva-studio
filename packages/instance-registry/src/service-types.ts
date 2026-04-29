@@ -8,12 +8,16 @@ import type {
 } from '@sva/core';
 import type { InstanceRegistryRepository } from '@sva/data-repositories';
 import type {
+  AssignInstanceModuleInput,
   ChangeInstanceStatusInput,
   ChangeInstanceStatusResult,
   CreateInstanceProvisioningInput,
   CreateInstanceProvisioningResult,
   ExecuteInstanceKeycloakProvisioningInput,
+  InstanceModuleMutationResult,
   ReconcileInstanceKeycloakInput,
+  RevokeInstanceModuleInput,
+  SeedInstanceIamBaselineInput,
   UpdateInstanceInput,
 } from './mutation-types.js';
 import type {
@@ -24,6 +28,15 @@ import type {
   ResolveRuntimeInstanceResult,
 } from './keycloak-types.js';
 import type { KeycloakProvisioningInput, KeycloakReadState, TenantAdminBootstrap } from './provisioning-auth-types.js';
+
+export type InstanceModuleIamRegistryEntry = {
+  readonly moduleId: string;
+  readonly permissionIds: readonly string[];
+  readonly systemRoles: readonly {
+    readonly roleName: string;
+    readonly permissionIds: readonly string[];
+  }[];
+};
 
 type KeycloakProvisioningContext = {
   instanceId: string;
@@ -52,6 +65,9 @@ export type InstanceRegistryService = {
   getKeycloakPreflight(instanceId: string): Promise<KeycloakTenantPreflight | null>;
   planKeycloakProvisioning(instanceId: string): Promise<KeycloakTenantPlan | null>;
   executeKeycloakProvisioning(input: ExecuteInstanceKeycloakProvisioningInput): Promise<KeycloakTenantProvisioningRun | null>;
+  assignModule(input: AssignInstanceModuleInput): Promise<InstanceModuleMutationResult>;
+  revokeModule(input: RevokeInstanceModuleInput): Promise<InstanceModuleMutationResult>;
+  seedIamBaseline(input: SeedInstanceIamBaselineInput): Promise<InstanceModuleMutationResult>;
   probeTenantIamAccess(input: {
     instanceId: string;
     idempotencyKey: string;
@@ -90,6 +106,7 @@ export type InstanceRegistryServiceDeps = {
   readonly getKeycloakPreflight?: (input: KeycloakProvisioningContext) => Promise<KeycloakTenantPreflight>;
   readonly planKeycloakProvisioning?: (input: KeycloakProvisioningContext) => Promise<KeycloakTenantPlan>;
   readonly getKeycloakStatus?: (input: KeycloakProvisioningContext) => Promise<KeycloakTenantStatus>;
+  readonly moduleIamRegistry?: ReadonlyMap<string, InstanceModuleIamRegistryEntry>;
   readonly probeTenantIamAccess?: (input: {
     instanceId: string;
     actorId?: string;

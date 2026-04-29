@@ -2,20 +2,28 @@ import type { InstanceStatus } from '@sva/core';
 import type { z } from 'zod';
 
 import {
+  assignModuleSchema,
   executeKeycloakProvisioningSchema,
   probeTenantIamAccessSchema,
   readDetailInstanceId,
   reconcileKeycloakSchema,
+  revokeModuleSchema,
+  seedIamBaselineSchema,
   statusMutationSchema,
 } from './http-contracts.js';
 import { classifyInstanceMutationError, type InstanceMutationErrorCode } from './mutation-errors.js';
 import {
+  buildAssignInstanceModuleInput,
   buildChangeInstanceStatusInput,
   buildExecuteInstanceKeycloakProvisioningInput,
   buildProbeTenantIamAccessInput,
+  buildRevokeInstanceModuleInput,
   buildReconcileInstanceKeycloakInput,
+  buildSeedInstanceIamBaselineInput,
+  type AssignInstanceModulePayload,
   type ExecuteKeycloakProvisioningPayload,
   type ProbeTenantIamAccessPayload,
+  type RevokeInstanceModulePayload,
   type ReconcileKeycloakPayload,
 } from './mutation-input-builders.js';
 import type { InstanceRegistryService } from './service-types.js';
@@ -244,6 +252,132 @@ export const createInstanceRegistryMutationHttpHandlers = <TContext>(
       } catch (error) {
         return mapMutationError(error);
       }
+    },
+
+    assignModule: async (request: Request, ctx: TContext): Promise<Response> => {
+      const guardError = requireMutationGuards(deps, request, ctx);
+      if (guardError) {
+        return guardError;
+      }
+
+      const idempotencyKey = requireIdempotencyKeyOrError(deps, request);
+      if (idempotencyKey instanceof Response) {
+        return idempotencyKey;
+      }
+
+      const instanceId = readInstanceIdOrError(deps, request);
+      if (instanceId instanceof Response) {
+        return instanceId;
+      }
+
+      const payloadResult = await deps.parseRequestBody<AssignInstanceModulePayload>(request, assignModuleSchema);
+      if (!payloadResult.ok) {
+        return deps.createApiError(400, 'invalid_request', payloadResult.message, deps.getRequestId());
+      }
+
+      const result = await deps.withRegistryService((service) =>
+        service.assignModule(
+          buildAssignInstanceModuleInput(instanceId, payloadResult.data, {
+            idempotencyKey,
+            actorId: deps.getActor(ctx).id,
+            requestId: deps.getRequestId(),
+          })
+        )
+      );
+
+      if (!result.ok) {
+        if (result.reason === 'not_found') {
+          return deps.createApiError(404, 'not_found', 'Instanz wurde nicht gefunden.', deps.getRequestId());
+        }
+        if (result.reason === 'unknown_module') {
+          return deps.createApiError(400, 'invalid_request', 'Unbekanntes Modul.', deps.getRequestId());
+        }
+        return deps.createApiError(409, 'conflict', 'Modul konnte nicht zugewiesen werden.', deps.getRequestId());
+      }
+
+      return deps.jsonResponse(200, deps.asApiItem(result.instance, deps.getRequestId()));
+    },
+
+    revokeModule: async (request: Request, ctx: TContext): Promise<Response> => {
+      const guardError = requireMutationGuards(deps, request, ctx);
+      if (guardError) {
+        return guardError;
+      }
+
+      const idempotencyKey = requireIdempotencyKeyOrError(deps, request);
+      if (idempotencyKey instanceof Response) {
+        return idempotencyKey;
+      }
+
+      const instanceId = readInstanceIdOrError(deps, request);
+      if (instanceId instanceof Response) {
+        return instanceId;
+      }
+
+      const payloadResult = await deps.parseRequestBody<RevokeInstanceModulePayload>(request, revokeModuleSchema);
+      if (!payloadResult.ok) {
+        return deps.createApiError(400, 'invalid_request', payloadResult.message, deps.getRequestId());
+      }
+
+      const result = await deps.withRegistryService((service) =>
+        service.revokeModule(
+          buildRevokeInstanceModuleInput(instanceId, payloadResult.data, {
+            idempotencyKey,
+            actorId: deps.getActor(ctx).id,
+            requestId: deps.getRequestId(),
+          })
+        )
+      );
+
+      if (!result.ok) {
+        if (result.reason === 'not_found') {
+          return deps.createApiError(404, 'not_found', 'Instanz wurde nicht gefunden.', deps.getRequestId());
+        }
+        if (result.reason === 'unknown_module') {
+          return deps.createApiError(400, 'invalid_request', 'Unbekanntes Modul.', deps.getRequestId());
+        }
+        return deps.createApiError(409, 'conflict', 'Modul konnte nicht entzogen werden.', deps.getRequestId());
+      }
+
+      return deps.jsonResponse(200, deps.asApiItem(result.instance, deps.getRequestId()));
+    },
+
+    seedIamBaseline: async (request: Request, ctx: TContext): Promise<Response> => {
+      const guardError = requireMutationGuards(deps, request, ctx);
+      if (guardError) {
+        return guardError;
+      }
+
+      const idempotencyKey = requireIdempotencyKeyOrError(deps, request);
+      if (idempotencyKey instanceof Response) {
+        return idempotencyKey;
+      }
+
+      const instanceId = readInstanceIdOrError(deps, request);
+      if (instanceId instanceof Response) {
+        return instanceId;
+      }
+
+      const payloadResult = await deps.parseRequestBody<Record<string, never>>(request, seedIamBaselineSchema);
+      if (!payloadResult.ok) {
+        return deps.createApiError(400, 'invalid_request', payloadResult.message, deps.getRequestId());
+      }
+
+      const result = await deps.withRegistryService((service) =>
+        service.seedIamBaseline(
+          buildSeedInstanceIamBaselineInput(instanceId, {
+            idempotencyKey,
+            actorId: deps.getActor(ctx).id,
+            requestId: deps.getRequestId(),
+          })
+        )
+      );
+
+      if (!result.ok) {
+        return deps.createApiError(404, 'not_found', 'Instanz wurde nicht gefunden.', deps.getRequestId());
+      }
+
+      return deps.jsonResponse(200, deps.asApiItem(result.instance, deps.getRequestId()));
     },
 
     mutateInstanceStatus: async (

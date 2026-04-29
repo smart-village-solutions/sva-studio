@@ -456,6 +456,21 @@ const authHandlerMap = {
       return authRuntimeRoutes.instanceRegistryHandlers.probeTenantIamAccess(ctx.request);
     },
   },
+  '/api/v1/iam/instances/$instanceId/modules/assign': {
+    POST: async (ctx: { request: Request }) => {
+      return authRuntimeRoutes.instanceRegistryHandlers.assignInstanceModule(ctx.request);
+    },
+  },
+  '/api/v1/iam/instances/$instanceId/modules/revoke': {
+    POST: async (ctx: { request: Request }) => {
+      return authRuntimeRoutes.instanceRegistryHandlers.revokeInstanceModule(ctx.request);
+    },
+  },
+  '/api/v1/iam/instances/$instanceId/modules/seed-iam-baseline': {
+    POST: async (ctx: { request: Request }) => {
+      return authRuntimeRoutes.instanceRegistryHandlers.seedInstanceIamBaseline(ctx.request);
+    },
+  },
   '/api/v1/iam/instances/$instanceId/activate': {
     POST: async (ctx: { request: Request }) => {
       return authRuntimeRoutes.instanceRegistryHandlers.activateInstance(ctx.request);

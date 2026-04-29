@@ -24,6 +24,7 @@ const baseInstance = {
     email: 'tenant-admin@example.invalid',
   },
   themeKey: 'default',
+  assignedModules: ['news'],
   featureFlags: { beta: true },
   mainserverConfigRef: 'mainserver',
   createdAt: '2026-01-01T00:00:00.000Z',
@@ -44,6 +45,10 @@ const createRepository = (overrides: Partial<InstanceRegistryRepository> = {}): 
   ({
     listInstances: vi.fn(async () => [baseInstance]),
     getInstanceById: vi.fn(async () => baseInstance),
+    listAssignedModules: vi.fn(async () => baseInstance.assignedModules),
+    assignModule: vi.fn(async () => true),
+    revokeModule: vi.fn(async () => true),
+    syncAssignedModuleIam: vi.fn(async () => undefined),
     getAuthClientSecretCiphertext: vi.fn(async () => 'auth-cipher'),
     getTenantAdminClientSecretCiphertext: vi.fn(async () => 'tenant-admin-cipher'),
     resolveHostname: vi.fn(async () => baseInstance),
@@ -91,6 +96,29 @@ const createDeps = (repository = createRepository()): InstanceRegistryServiceDep
   invalidateHost: vi.fn(),
   protectSecret: vi.fn((value, aad) => (value ? `protected:${aad}:${value}` : null)),
   revealSecret: vi.fn((value) => (value ? `revealed:${value}` : undefined)),
+  moduleIamRegistry: new Map([
+    [
+      'news',
+      {
+        moduleId: 'news',
+        ownerPluginId: 'news',
+        permissionIds: ['news.read', 'news.create', 'news.update', 'news.delete'],
+        systemRoles: [
+          { roleName: 'system_admin', permissionIds: ['news.read', 'news.create', 'news.update', 'news.delete'] },
+          { roleName: 'editor', permissionIds: ['news.read', 'news.create', 'news.update', 'news.delete'] },
+        ],
+      },
+    ],
+    [
+      'events',
+      {
+        moduleId: 'events',
+        ownerPluginId: 'events',
+        permissionIds: ['events.read'],
+        systemRoles: [{ roleName: 'system_admin', permissionIds: ['events.read'] }],
+      },
+    ],
+  ]),
 });
 
 describe('instance registry service facade', () => {
@@ -363,6 +391,16 @@ describe('instance registry service facade', () => {
 
     await expect(service.getInstanceDetail('demo')).resolves.toEqual(
       expect.objectContaining({
+        assignedModules: ['news'],
+        moduleIamStatus: expect.objectContaining({
+          overall: expect.objectContaining({ status: 'ready' }),
+          modules: [
+            expect.objectContaining({
+              moduleId: 'news',
+              status: 'ready',
+            }),
+          ],
+        }),
         tenantIamStatus: expect.objectContaining({
           access: expect.objectContaining({
             status: 'blocked',
@@ -427,6 +465,93 @@ describe('instance registry service facade', () => {
           status: 'ready',
           summary: 'Tenant-Admin-Client kann Realm-Rollen lesen.',
           requestId: 'req-probe-1',
+        }),
+      })
+    );
+  });
+
+  it('assigns a module, syncs IAM baseline and returns the refreshed detail', async () => {
+    const repository = createRepository({
+      assignModule: vi.fn(async () => true),
+      listAssignedModules: vi.fn(async () => ['news', 'events']),
+      getInstanceById: vi
+        .fn()
+        .mockResolvedValueOnce(baseInstance)
+        .mockResolvedValueOnce({ ...baseInstance, assignedModules: ['news', 'events'] }),
+    });
+    const service = createInstanceRegistryService(createDeps(repository));
+
+    await expect(
+      service.assignModule({
+        instanceId: 'demo',
+        moduleId: 'events',
+        idempotencyKey: 'idem-module-1',
+        actorId: 'actor-1',
+        requestId: 'req-module-1',
+      })
+    ).resolves.toEqual({
+      ok: true,
+      instance: expect.objectContaining({
+        assignedModules: ['news', 'events'],
+      }),
+    });
+
+    expect(repository.assignModule).toHaveBeenCalledWith('demo', 'events');
+    expect(repository.syncAssignedModuleIam).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'demo',
+        managedModuleIds: ['news', 'events'],
+        contracts: expect.arrayContaining([
+          expect.objectContaining({ moduleId: 'news' }),
+          expect.objectContaining({ moduleId: 'events' }),
+        ]),
+      })
+    );
+    expect(repository.appendAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: 'instance_module_assigned',
+        details: expect.objectContaining({
+          moduleId: 'events',
+          outcome: 'assigned',
+        }),
+      })
+    );
+  });
+
+  it('revokes a module and reseeds the remaining module IAM baseline', async () => {
+    const repository = createRepository({
+      revokeModule: vi.fn(async () => true),
+      listAssignedModules: vi.fn(async () => []),
+      getInstanceById: vi
+        .fn()
+        .mockResolvedValueOnce({ ...baseInstance, assignedModules: ['news'] })
+        .mockResolvedValueOnce({ ...baseInstance, assignedModules: [] }),
+    });
+    const service = createInstanceRegistryService(createDeps(repository));
+
+    await expect(
+      service.revokeModule({
+        instanceId: 'demo',
+        moduleId: 'news',
+        confirmation: 'REVOKE',
+        idempotencyKey: 'idem-module-2',
+        actorId: 'actor-1',
+        requestId: 'req-module-2',
+      })
+    ).resolves.toEqual({
+      ok: true,
+      instance: expect.objectContaining({
+        assignedModules: [],
+      }),
+    });
+
+    expect(repository.revokeModule).toHaveBeenCalledWith('demo', 'news');
+    expect(repository.appendAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: 'instance_module_revoked',
+        details: expect.objectContaining({
+          moduleId: 'news',
+          outcome: 'revoked',
         }),
       })
     );

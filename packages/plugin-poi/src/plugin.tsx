@@ -3,6 +3,7 @@ import {
   definePluginAdminResources,
   definePluginAuditEvents,
   definePluginContentTypes,
+  definePluginModuleIamContract,
   definePluginPermissions,
   type PluginDefinition,
 } from '@sva/plugin-sdk';
@@ -45,6 +46,19 @@ export const pluginPoi: PluginDefinition = {
   ],
   actions: pluginPoiActionDefinitions,
   permissions: pluginPoiPermissionDefinitions,
+  moduleIam: definePluginModuleIamContract('poi', {
+    moduleId: 'poi',
+    permissionIds: ['poi.read', 'poi.create', 'poi.update', 'poi.delete'],
+    systemRoles: [
+      { roleName: 'system_admin', permissionIds: ['poi.read', 'poi.create', 'poi.update', 'poi.delete'] },
+      { roleName: 'app_manager', permissionIds: ['poi.read'] },
+      { roleName: 'feature-manager', permissionIds: ['poi.read', 'poi.create', 'poi.update', 'poi.delete'] },
+      { roleName: 'interface-manager', permissionIds: ['poi.read'] },
+      { roleName: 'designer', permissionIds: ['poi.read', 'poi.update'] },
+      { roleName: 'editor', permissionIds: ['poi.read', 'poi.create', 'poi.update', 'poi.delete'] },
+      { roleName: 'moderator', permissionIds: ['poi.read'] },
+    ],
+  }),
   contentTypes: definePluginContentTypes('poi', [{ contentType: POI_CONTENT_TYPE, displayName: 'POI' }]),
   adminResources: definePluginAdminResources('poi', [
     {
@@ -56,6 +70,16 @@ export const pluginPoi: PluginDefinition = {
         list: { bindingKey: 'content' },
         create: { bindingKey: 'contentCreate' },
         detail: { bindingKey: 'contentDetail' },
+      },
+      capabilities: {
+        list: {
+          pagination: {
+            pageParam: 'page',
+            pageSizeParam: 'pageSize',
+            defaultPageSize: 25,
+            pageSizeOptions: [25, 50, 100],
+          },
+        },
       },
       contentUi: {
         contentType: POI_CONTENT_TYPE,
@@ -118,6 +142,12 @@ export const pluginPoi: PluginDefinition = {
           validationError: 'Bitte korrigieren Sie die markierten Felder.',
         },
         empty: { title: 'Noch keine POI vorhanden', description: 'Legen Sie den ersten POI an.' },
+        pagination: {
+          ariaLabel: 'POI-Pagination',
+          previous: 'Zurück',
+          next: 'Weiter',
+          pageLabel: 'Seite {{page}}',
+        },
         validation: {
           name: 'Der Name ist erforderlich.',
           webUrls: 'URLs müssen mit https:// beginnen.',
@@ -175,6 +205,12 @@ export const pluginPoi: PluginDefinition = {
           validationError: 'Please correct the highlighted fields.',
         },
         empty: { title: 'No POI yet', description: 'Create the first POI.' },
+        pagination: {
+          ariaLabel: 'POI pagination',
+          previous: 'Previous',
+          next: 'Next',
+          pageLabel: 'Page {{page}}',
+        },
         validation: {
           name: 'Name is required.',
           webUrls: 'URLs must start with https://.',

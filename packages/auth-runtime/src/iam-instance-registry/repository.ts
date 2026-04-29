@@ -63,12 +63,63 @@ const probeTenantIamAccess = async (input: { instanceId: string; requestId?: str
 };
 
 const resolvePool = createPoolResolver(getIamDatabaseUrl);
+const pluginModuleIamRegistry = new Map([
+  [
+    'news',
+    {
+      moduleId: 'news',
+      permissionIds: ['news.read', 'news.create', 'news.update', 'news.delete'],
+      systemRoles: [
+        { roleName: 'system_admin', permissionIds: ['news.read', 'news.create', 'news.update', 'news.delete'] },
+        { roleName: 'app_manager', permissionIds: ['news.read'] },
+        { roleName: 'feature-manager', permissionIds: ['news.read', 'news.create', 'news.update', 'news.delete'] },
+        { roleName: 'interface-manager', permissionIds: ['news.read'] },
+        { roleName: 'designer', permissionIds: ['news.read', 'news.update'] },
+        { roleName: 'editor', permissionIds: ['news.read', 'news.create', 'news.update', 'news.delete'] },
+        { roleName: 'moderator', permissionIds: ['news.read'] },
+      ],
+    },
+  ],
+  [
+    'events',
+    {
+      moduleId: 'events',
+      permissionIds: ['events.read', 'events.create', 'events.update', 'events.delete'],
+      systemRoles: [
+        { roleName: 'system_admin', permissionIds: ['events.read', 'events.create', 'events.update', 'events.delete'] },
+        { roleName: 'app_manager', permissionIds: ['events.read'] },
+        { roleName: 'feature-manager', permissionIds: ['events.read', 'events.create', 'events.update', 'events.delete'] },
+        { roleName: 'interface-manager', permissionIds: ['events.read'] },
+        { roleName: 'designer', permissionIds: ['events.read', 'events.update'] },
+        { roleName: 'editor', permissionIds: ['events.read', 'events.create', 'events.update', 'events.delete'] },
+        { roleName: 'moderator', permissionIds: ['events.read'] },
+      ],
+    },
+  ],
+  [
+    'poi',
+    {
+      moduleId: 'poi',
+      permissionIds: ['poi.read', 'poi.create', 'poi.update', 'poi.delete'],
+      systemRoles: [
+        { roleName: 'system_admin', permissionIds: ['poi.read', 'poi.create', 'poi.update', 'poi.delete'] },
+        { roleName: 'app_manager', permissionIds: ['poi.read'] },
+        { roleName: 'feature-manager', permissionIds: ['poi.read', 'poi.create', 'poi.update', 'poi.delete'] },
+        { roleName: 'interface-manager', permissionIds: ['poi.read'] },
+        { roleName: 'designer', permissionIds: ['poi.read', 'poi.update'] },
+        { roleName: 'editor', permissionIds: ['poi.read', 'poi.create', 'poi.update', 'poi.delete'] },
+        { roleName: 'moderator', permissionIds: ['poi.read'] },
+      ],
+    },
+  ],
+]);
 
 const registryRuntime = createInstanceRegistryRuntime({
   resolvePool,
   createRepository: createInstanceRegistryRepository,
   serviceDeps: {
     invalidateHost: invalidateInstanceRegistryHost,
+    moduleIamRegistry: pluginModuleIamRegistry,
     protectSecret: protectField,
     revealSecret: revealField,
     readKeycloakStateViaProvisioner,
@@ -76,6 +127,7 @@ const registryRuntime = createInstanceRegistryRuntime({
   },
   provisioningWorkerServiceDeps: {
     invalidateHost: invalidateInstanceRegistryHost,
+    moduleIamRegistry: pluginModuleIamRegistry,
     protectSecret: protectField,
     revealSecret: revealField,
     readKeycloakStateViaProvisioner,

@@ -16,6 +16,7 @@ import { logoutSession } from './auth-server/logout.js';
 import { withAuthenticatedUser } from './middleware.js';
 import { getSession } from './redis-session.js';
 import { resolveEffectivePermissions } from './iam-authorization/permission-store.js';
+import { withRegistryRepository } from './iam-instance-registry/repository.js';
 import { appendSetCookie, deleteCookieHeader, readCookieFromRequest } from './cookies.js';
 import { decodeLoginStateCookie, encodeLoginStateCookie, type LoginStateCookiePayload } from './login-state-cookie.js';
 import { buildLogContext } from './log-context.js';
@@ -716,6 +717,7 @@ export const meHandler = async (request: Request): Promise<Response> => {
     return withAuthenticatedUser(request, async ({ user }) => {
       let permissionActions: string[] = [];
       let permissionStatus: 'ok' | 'degraded' = 'ok';
+      let assignedModules: string[] = [];
 
       if (user.instanceId) {
         try {
@@ -745,6 +747,21 @@ export const meHandler = async (request: Request): Promise<Response> => {
             ...buildLogContext({ kind: 'instance', instanceId: user.instanceId }),
           });
         }
+
+        try {
+          assignedModules = Array.from(
+            await withRegistryRepository((repository) => repository.listAssignedModules(user.instanceId!)),
+          );
+        } catch (error) {
+          assignedModules = [];
+          logger.error('Auth me assigned module lookup failed', {
+            endpoint: '/auth/me',
+            operation: 'get_current_user',
+            error_type: error instanceof Error ? error.name : typeof error,
+            reason_code: 'assigned_module_lookup_failed',
+            ...buildLogContext({ kind: 'instance', instanceId: user.instanceId }),
+          });
+        }
       }
 
       logger.debug('Auth check successful', {
@@ -757,7 +774,7 @@ export const meHandler = async (request: Request): Promise<Response> => {
         ...buildLogContext(user.instanceId ? { kind: 'instance', instanceId: user.instanceId } : undefined),
       });
 
-      return new Response(JSON.stringify({ user: { ...user, permissionActions, permissionStatus } }), {
+      return new Response(JSON.stringify({ user: { ...user, assignedModules, permissionActions, permissionStatus } }), {
         status: 200,
         headers: createAuthMeHeaders(),
       });

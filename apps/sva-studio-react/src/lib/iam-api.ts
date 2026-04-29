@@ -1041,6 +1041,33 @@ export const probeTenantIamAccess = async (
     true
   );
 
+export const assignInstanceModule = async (
+  instanceId: string,
+  moduleId: string
+): Promise<ApiItemResponse<IamInstanceDetail>> =>
+  postJsonWithReauth<ApiItemResponse<IamInstanceDetail>, { moduleId: string }>(
+    `/api/v1/iam/instances/${instanceId}/modules/assign`,
+    { moduleId },
+    true
+  );
+
+export const revokeInstanceModule = async (
+  instanceId: string,
+  moduleId: string
+): Promise<ApiItemResponse<IamInstanceDetail>> =>
+  postJsonWithReauth<ApiItemResponse<IamInstanceDetail>, { moduleId: string; confirmation: 'REVOKE' }>(
+    `/api/v1/iam/instances/${instanceId}/modules/revoke`,
+    { moduleId, confirmation: 'REVOKE' },
+    true
+  );
+
+export const seedInstanceIamBaseline = async (instanceId: string): Promise<ApiItemResponse<IamInstanceDetail>> =>
+  postJsonWithReauth<ApiItemResponse<IamInstanceDetail>, Record<string, never>>(
+    `/api/v1/iam/instances/${instanceId}/modules/seed-iam-baseline`,
+    {},
+    true
+  );
+
 export const activateInstance = async (instanceId: string): Promise<ApiItemResponse<IamInstanceListItem>> =>
   postJsonWithReauth<ApiItemResponse<IamInstanceListItem>, { status: 'active' }>(
     `/api/v1/iam/instances/${instanceId}/activate`,

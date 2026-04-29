@@ -3,6 +3,7 @@ import {
   definePluginAdminResources,
   definePluginAuditEvents,
   definePluginContentTypes,
+  definePluginModuleIamContract,
   definePluginPermissions,
   type PluginDefinition,
 } from '@sva/plugin-sdk';
@@ -70,6 +71,19 @@ export const pluginNews: PluginDefinition = {
   ],
   actions: pluginNewsActionDefinitions,
   permissions: pluginNewsPermissionDefinitions,
+  moduleIam: definePluginModuleIamContract('news', {
+    moduleId: 'news',
+    permissionIds: ['news.read', 'news.create', 'news.update', 'news.delete'],
+    systemRoles: [
+      { roleName: 'system_admin', permissionIds: ['news.read', 'news.create', 'news.update', 'news.delete'] },
+      { roleName: 'app_manager', permissionIds: ['news.read'] },
+      { roleName: 'feature-manager', permissionIds: ['news.read', 'news.create', 'news.update', 'news.delete'] },
+      { roleName: 'interface-manager', permissionIds: ['news.read'] },
+      { roleName: 'designer', permissionIds: ['news.read', 'news.update'] },
+      { roleName: 'editor', permissionIds: ['news.read', 'news.create', 'news.update', 'news.delete'] },
+      { roleName: 'moderator', permissionIds: ['news.read'] },
+    ],
+  }),
   contentTypes: definePluginContentTypes('news', [
     {
       contentType: NEWS_CONTENT_TYPE,
@@ -86,6 +100,16 @@ export const pluginNews: PluginDefinition = {
         list: { bindingKey: 'content' },
         create: { bindingKey: 'contentCreate' },
         detail: { bindingKey: 'contentDetail' },
+      },
+      capabilities: {
+        list: {
+          pagination: {
+            pageParam: 'page',
+            pageSizeParam: 'pageSize',
+            defaultPageSize: 25,
+            pageSizeOptions: [25, 50, 100],
+          },
+        },
       },
       contentUi: {
         contentType: NEWS_CONTENT_TYPE,
@@ -173,6 +197,12 @@ export const pluginNews: PluginDefinition = {
         empty: {
           title: 'Noch keine News vorhanden',
           description: 'Legen Sie den ersten News-Eintrag an.',
+        },
+        pagination: {
+          ariaLabel: 'News-Pagination',
+          previous: 'Zurück',
+          next: 'Weiter',
+          pageLabel: 'Seite {{page}}',
         },
         messages: {
           loading: 'News werden geladen.',
@@ -284,6 +314,12 @@ export const pluginNews: PluginDefinition = {
         empty: {
           title: 'No news entries yet',
           description: 'Create the first news entry.',
+        },
+        pagination: {
+          ariaLabel: 'News pagination',
+          previous: 'Previous',
+          next: 'Next',
+          pageLabel: 'Page {{page}}',
         },
         messages: {
           loading: 'Loading news.',

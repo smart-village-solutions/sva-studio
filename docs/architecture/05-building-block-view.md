@@ -162,6 +162,21 @@ Abhängigkeiten des aktuellen Systems.
    - strukturiert dieselbe Detailseite als `Control Tower + Workbench`: fester Überblick für Gesamtstatus, Evidenzfrische, priorisierte Befunde und genau eine Primäraktion; nachgelagerte Arbeitsbereiche für `Konfiguration`, `Betrieb` und `Historie`.
    - leitet dafür in der React-Schicht ein kanonisches Cockpit-Modell aus bestehenden Datenquellen wie `tenantIamStatus`, Keycloak-Preflight, Provisioning-Vorschau, letztem Run und Mutationsdiagnostik ab, ohne den Backend-Vertrag zu ändern.
 
+### Fortschreibung 2026-04: Instanz-Modulaktivierung
+
+1. `packages/core`
+   - erweitert Instanz-Read-Modelle um `assignedModules` und einen Modul-IAM-Befund.
+2. `packages/data` und `packages/data-repositories`
+   - persistieren die kanonische Instanz-Modul-Zuordnung in `iam.instance_modules`.
+3. `packages/plugin-sdk`
+   - definiert den deklarativen Modul-IAM-Vertrag pro Plugin.
+4. `packages/instance-registry`
+   - ist führender Fachbaustein für `assignModule`, `revokeModule` und `seedIamBaseline`.
+5. `packages/auth-runtime`
+   - reichert `/auth/me` für Instanz-Sessions mit `assignedModules` an.
+6. `packages/routing` und `apps/sva-studio-react`
+   - sperren Plugin-Routen und Plugin-Navigation fail-closed gegen den aktiven Modulsatz der Instanz.
+
 ### Abhängigkeiten (vereinfacht)
 
 - App -> `@sva/core`, `@sva/routing`, `@sva/auth-runtime`, `@sva/plugin-sdk`, `@sva/studio-ui-react`, `@sva/sva-mainserver`, `@sva/plugin-news`, `@sva/plugin-events`, `@sva/plugin-poi`

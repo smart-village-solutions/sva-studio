@@ -3,6 +3,7 @@ import {
   definePluginAdminResources,
   definePluginAuditEvents,
   definePluginContentTypes,
+  definePluginModuleIamContract,
   definePluginPermissions,
   type PluginDefinition,
 } from '@sva/plugin-sdk';
@@ -45,6 +46,19 @@ export const pluginEvents: PluginDefinition = {
   ],
   actions: pluginEventsActionDefinitions,
   permissions: pluginEventsPermissionDefinitions,
+  moduleIam: definePluginModuleIamContract('events', {
+    moduleId: 'events',
+    permissionIds: ['events.read', 'events.create', 'events.update', 'events.delete'],
+    systemRoles: [
+      { roleName: 'system_admin', permissionIds: ['events.read', 'events.create', 'events.update', 'events.delete'] },
+      { roleName: 'app_manager', permissionIds: ['events.read'] },
+      { roleName: 'feature-manager', permissionIds: ['events.read', 'events.create', 'events.update', 'events.delete'] },
+      { roleName: 'interface-manager', permissionIds: ['events.read'] },
+      { roleName: 'designer', permissionIds: ['events.read', 'events.update'] },
+      { roleName: 'editor', permissionIds: ['events.read', 'events.create', 'events.update', 'events.delete'] },
+      { roleName: 'moderator', permissionIds: ['events.read'] },
+    ],
+  }),
   contentTypes: definePluginContentTypes('events', [{ contentType: EVENTS_CONTENT_TYPE, displayName: 'Events' }]),
   adminResources: definePluginAdminResources('events', [
     {
@@ -56,6 +70,16 @@ export const pluginEvents: PluginDefinition = {
         list: { bindingKey: 'content' },
         create: { bindingKey: 'contentCreate' },
         detail: { bindingKey: 'contentDetail' },
+      },
+      capabilities: {
+        list: {
+          pagination: {
+            pageParam: 'page',
+            pageSizeParam: 'pageSize',
+            defaultPageSize: 25,
+            pageSizeOptions: [25, 50, 100],
+          },
+        },
       },
       contentUi: {
         contentType: EVENTS_CONTENT_TYPE,
@@ -119,6 +143,12 @@ export const pluginEvents: PluginDefinition = {
           validationError: 'Bitte korrigieren Sie die markierten Felder.',
         },
         empty: { title: 'Noch keine Events vorhanden', description: 'Legen Sie das erste Event an.' },
+        pagination: {
+          ariaLabel: 'Events-Pagination',
+          previous: 'Zurück',
+          next: 'Weiter',
+          pageLabel: 'Seite {{page}}',
+        },
         validation: {
           title: 'Der Titel ist erforderlich.',
           dates: 'Datumswerte müssen gültig sein.',
@@ -177,6 +207,12 @@ export const pluginEvents: PluginDefinition = {
           validationError: 'Please correct the highlighted fields.',
         },
         empty: { title: 'No events yet', description: 'Create the first event.' },
+        pagination: {
+          ariaLabel: 'Events pagination',
+          previous: 'Previous',
+          next: 'Next',
+          pageLabel: 'Page {{page}}',
+        },
         validation: {
           title: 'Title is required.',
           dates: 'Dates must be valid.',

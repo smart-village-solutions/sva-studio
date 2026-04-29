@@ -21,6 +21,7 @@ const instanceRow = {
   tenant_admin_first_name: 'Ada',
   tenant_admin_last_name: null,
   theme_key: null,
+  assigned_module_ids: ['news', 'events'],
   feature_flags: null,
   mainserver_config_ref: null,
   created_at: '2026-01-01T00:00:00.000Z',
@@ -117,6 +118,7 @@ describe('instance registry repository', () => {
           username: 'admin',
           firstName: 'Ada',
         },
+        assignedModules: ['news', 'events'],
         featureFlags: {},
         createdAt: '2026-01-01T00:00:00.000Z',
         updatedAt: '2026-01-02T00:00:00.000Z',
@@ -137,6 +139,13 @@ describe('instance registry repository', () => {
     await expect(repository.getInstanceById('missing')).resolves.toBeNull();
     await expect(repository.getAuthClientSecretCiphertext('tenant-a')).resolves.toBe('auth-cipher');
     await expect(repository.getTenantAdminClientSecretCiphertext('tenant-a')).resolves.toBeNull();
+  });
+
+  it('lists assigned modules for an instance', async () => {
+    const { executor } = createQueuedExecutor([[{ module_id: 'news' }, { module_id: 'poi' }]]);
+    const repository = createInstanceRegistryRepository(executor);
+
+    await expect(repository.listAssignedModules('tenant-a')).resolves.toEqual(['news', 'poi']);
   });
 
   it('maps provisioning, audit and keycloak run projections', async () => {

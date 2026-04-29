@@ -748,6 +748,39 @@ export const i18nResources = {
             overallUnknown: 'Tenant-IAM-Befund ist unvollständig.',
           },
         },
+        instanceModules: {
+          title: 'Instanzmodule',
+          subtitle: 'Module pro Instanz zuweisen, entziehen und die zugehörige IAM-Basis neu aufbauen.',
+          empty: 'Wählen Sie eine Instanz aus, um Modulzuweisungen zu verwalten.',
+          instanceSelect: {
+            label: 'Instanz auswählen',
+            hint: 'Die Modulverwaltung arbeitet immer auf einer konkreten Instanz.',
+            placeholder: 'Bitte Instanz wählen',
+          },
+          assigned: {
+            title: 'Zugewiesene Module',
+            subtitle: 'Diese Module sind für die gewählte Instanz aktiv.',
+            empty: 'Der Instanz sind aktuell keine Module zugewiesen.',
+          },
+          available: {
+            title: 'Verfügbare Module',
+            subtitle: 'Diese Module können der gewählten Instanz zusätzlich zugewiesen werden.',
+            empty: 'Alle bekannten Module sind dieser Instanz bereits zugewiesen.',
+          },
+          detail: {
+            title: 'IAM-Basis der Module',
+            subtitle: 'Deklarierter Modulvertrag und registrierter Befund der aktuell zugewiesenen Module.',
+          },
+          module: {
+            permissions: 'Berechtigungen: {{value}}',
+            roles: 'Systemrollen: {{value}}',
+          },
+          actions: {
+            assign: 'Modul zuweisen',
+            revoke: 'Modul entziehen',
+            seedIamBaseline: 'IAM-Basis neu aufbauen',
+          },
+        },
         wizard: {
           steps: {
             basics: {
@@ -2771,6 +2804,39 @@ export const i18nResources = {
             overallBlocked: 'Tenant IAM is blocked.',
             overallDegraded: 'Tenant IAM is degraded.',
             overallUnknown: 'Tenant IAM evidence is incomplete.',
+          },
+        },
+        instanceModules: {
+          title: 'Instance modules',
+          subtitle: 'Assign and revoke modules per instance and rebuild the matching IAM baseline.',
+          empty: 'Select an instance to manage module assignments.',
+          instanceSelect: {
+            label: 'Select instance',
+            hint: 'Module management always operates on one concrete instance.',
+            placeholder: 'Select an instance',
+          },
+          assigned: {
+            title: 'Assigned modules',
+            subtitle: 'These modules are currently active for the selected instance.',
+            empty: 'No modules are currently assigned to this instance.',
+          },
+          available: {
+            title: 'Available modules',
+            subtitle: 'These modules can be assigned to the selected instance.',
+            empty: 'All known modules are already assigned to this instance.',
+          },
+          detail: {
+            title: 'Module IAM baseline',
+            subtitle: 'Declared module contract and registry status for the currently assigned modules.',
+          },
+          module: {
+            permissions: 'Permissions: {{value}}',
+            roles: 'System roles: {{value}}',
+          },
+          actions: {
+            assign: 'Assign module',
+            revoke: 'Revoke module',
+            seedIamBaseline: 'Rebuild IAM baseline',
           },
         },
         wizard: {

@@ -88,6 +88,9 @@ gleichzeitig beeinflussen.
 - Mutierende Inhaltsaktionen deklarieren eine fachliche `domainCapability`; `@sva/auth-runtime` löst sie serverseitig auf bestehende primitive `content.*`-Actions auf und prüft ausschließlich diese primitive Action über die zentrale Permission Engine.
 - Globale Instanzmutationen verwenden die dedizierte Plattformrolle `instance_registry_admin`
 - Instanzverwaltung ist nur auf dem Root-Host zulässig; Tenant-Hosts rendern keine globale Control Plane
+- Die fachliche Modulfreigabe einer Instanz ist kanonisch in `iam.instance_modules` modelliert; Build-time-Plugin-Registrierung, `featureFlags` und Integrationsdaten sind keine alternative Aktivierungsquelle
+- `auth/me` liefert für tenantgebundene Sessions die fail-closed behandelte Liste `assignedModules`; Client-Routing und Plugin-Navigation dürfen modulbezogene Einstiege nur bei expliziter Zuweisung materialisieren
+- Modulentzug entfernt modulbezogene Permissions und `role_permissions` hart; zurückbleibende Restrechte gelten als Drift
 - Normale Tenant-Administration nutzt ausschließlich einen tenantlokalen Keycloak-Adminpfad; Plattform-/Root-Credentials sind dafür kein zulässiger Fallback
 - Tenant-IAM-Betriebsdiagnostik auf der Instanz-Detailseite hält `configuration`, `access`, `reconcile` und `overall` getrennt; `overall` folgt strikt der Präzedenz `blocked` vor `degraded` vor `unknown` vor `ready`
 - Explizite Tenant-IAM-Access-Probes sind read-only, werden manuell ausgelöst und als korrelierbare Audit-Evidenz mit `requestId`, `errorCode`, `checkedAt` und stabiler Quelle `access_probe` persistiert
@@ -225,6 +228,7 @@ gleichzeitig beeinflussen.
 - Die Instanz-Detailseite veröffentlicht für Tenant-IAM nur einen sicheren, kuratierten Diagnosekern; tiefe IdP- oder Laufzeitfehler bleiben im OTEL- und Serverlog-Pfad.
 - Access-Probe- und Reconcile-Befunde nutzen stabile Fehlercodes wie `tenant_admin_client_not_configured`, `tenant_admin_client_secret_missing`, `IDP_FORBIDDEN` und `IDP_UNAVAILABLE`, damit UI, Runbook und Audit auf demselben Vokabular arbeiten.
 - Die Access-Probe wird nie automatisch beim Seitenladen ausgeführt, um unnötige IdP-Last, irreführende Zeitpunktevidenz und verdeckte Schreibnebenwirkungen zu vermeiden.
+- `seedIamBaseline` rekonstruiert ausschließlich `Core + zugewiesene Module` und erzeugt keine Rollenmitgliedschaften für den ausführenden Benutzer.
 
 ### Build-, Test- und Cache-Konzept der Frontend-App
 

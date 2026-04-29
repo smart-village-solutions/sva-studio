@@ -295,6 +295,39 @@ describe('admin resource routes', () => {
     expect(routeMap.get('/admin/news/$id')?.component?.()).toBe('contentDetail');
   });
 
+  it('normalizes declared list search params for admin resources with list capabilities', () => {
+    const routeFactories = createAdminResourceRouteFactories(bindings, [
+      {
+        resourceId: 'news.content',
+        basePath: 'news',
+        titleKey: 'news.navigation.title',
+        guard: 'content',
+        views: {
+          list: { bindingKey: 'content' },
+          create: { bindingKey: 'contentCreate' },
+          detail: { bindingKey: 'contentDetail' },
+        },
+        capabilities: {
+          list: {
+            pagination: { defaultPageSize: 25, allowedPageSizes: [10, 25, 50] },
+            search: { param: 'q' },
+          },
+        },
+      } as never,
+    ]);
+    const rootRoute = { id: 'root' };
+    const listRoute = routeFactories
+      .map((factory) => factory(rootRoute as never))
+      .map((route) => readRouteOptions(route))
+      .find((route) => route.path === '/admin/news');
+
+    expect(listRoute?.validateSearch?.({ q: 'news', page: '2', pageSize: '50' })).toEqual({
+      page: 2,
+      pageSize: 50,
+      search: 'news',
+    });
+  });
+
   it('redirects legacy content aliases using href and location.href fallbacks', () => {
     const routeFactories = createLegacyContentAliasFactories();
     const rootRoute = { id: 'root' };
@@ -333,6 +366,30 @@ describe('admin resource routes', () => {
         },
       ])
     ).toThrow('unknown_admin_resource_binding_key:news.entries:list:unknownListBinding');
+  });
+
+  it('rejects unknown specialized content ui binding keys before route creation', () => {
+    expect(() =>
+      createAdminResourceRouteFactories(bindings, [
+        {
+          resourceId: 'news.entries',
+          basePath: 'news',
+          titleKey: 'news.title',
+          guard: 'content',
+          views: {
+            list: { bindingKey: 'content' },
+            create: { bindingKey: 'contentCreate' },
+            detail: { bindingKey: 'contentDetail' },
+          },
+          contentUi: {
+            contentType: 'news.article',
+            bindings: {
+              list: { bindingKey: 'unknownListBinding' as never },
+            },
+          },
+        },
+      ])
+    ).toThrow('unknown_admin_resource_binding_key:news.entries:contentUi.list:unknownListBinding');
   });
 
   it('rejects prototype property binding keys before route creation', () => {

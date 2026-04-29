@@ -251,6 +251,16 @@ describe('NewsListPage', () => {
     });
   });
 
+  it('falls back to the generic load error for unknown typed mainserver errors', async () => {
+    vi.mocked(listNews).mockRejectedValueOnce(new NewsApiError('unexpected_code'));
+
+    render(<NewsListPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('News konnten nicht geladen werden.')).toBeTruthy();
+    });
+  });
+
   it('shows validation feedback before creating invalid news', async () => {
     render(<NewsCreatePage />);
 

@@ -322,9 +322,11 @@ describe('admin resource routes', () => {
       .find((route) => route.path === '/admin/news');
 
     expect(listRoute?.validateSearch?.({ q: 'news', page: '2', pageSize: '50' })).toEqual({
+      filters: {},
       page: 2,
       pageSize: 50,
       search: 'news',
+      sort: undefined,
     });
   });
 

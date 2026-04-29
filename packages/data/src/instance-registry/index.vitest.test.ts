@@ -144,6 +144,57 @@ describe('instance registry repository (vitest)', () => {
     ]);
   });
 
+  it('maps partial tenant admin bootstrap fields while preserving undefined optional values', async () => {
+    const execute = createExecute({
+      rowCount: 1,
+      rows: [
+        {
+          instance_id: 'partial',
+          display_name: 'Partial',
+          status: 'active',
+          parent_domain: 'studio.example.org',
+          primary_hostname: 'partial.studio.example.org',
+          realm_mode: 'existing',
+          auth_realm: 'partial',
+          auth_client_id: 'sva-studio',
+          auth_issuer_url: null,
+          auth_client_secret_ciphertext: null,
+          tenant_admin_client_id: 'tenant-admin-client',
+          tenant_admin_client_secret_ciphertext: null,
+          tenant_admin_username: 'tenant-admin',
+          tenant_admin_email: null,
+          tenant_admin_first_name: null,
+          tenant_admin_last_name: null,
+          theme_key: null,
+          feature_flags: null,
+          mainserver_config_ref: null,
+          created_at: '2026-01-01T00:00:00.000Z',
+          created_by: null,
+          updated_at: '2026-01-01T00:00:00.000Z',
+          updated_by: null,
+        },
+      ],
+    });
+
+    const repository = createInstanceRegistryRepository({ execute });
+
+    await expect(repository.listInstances()).resolves.toEqual([
+      expect.objectContaining({
+        instanceId: 'partial',
+        tenantAdminClient: {
+          clientId: 'tenant-admin-client',
+          secretConfigured: false,
+        },
+        tenantAdminBootstrap: {
+          username: 'tenant-admin',
+          email: undefined,
+          firstName: undefined,
+          lastName: undefined,
+        },
+      }),
+    ]);
+  });
+
   it('returns null when lookups have no rows', async () => {
     const execute = createExecute({
       rowCount: 0,
@@ -204,6 +255,44 @@ describe('instance registry repository (vitest)', () => {
     expect(statements[0]?.text).toContain('WHERE primary_hostname = $1');
   });
 
+  it('resolves instances through registered hostnames', async () => {
+    const execute = createExecute({
+      rowCount: 1,
+      rows: [
+        {
+          instance_id: 'bb-guben',
+          display_name: 'BB Guben',
+          status: 'active',
+          parent_domain: 'studio.smart-village.app',
+          primary_hostname: 'bb-guben.studio.smart-village.app',
+          realm_mode: 'existing',
+          auth_realm: 'bb-guben',
+          auth_client_id: 'sva-studio',
+          auth_issuer_url: null,
+          auth_client_secret_ciphertext: null,
+          tenant_admin_username: null,
+          tenant_admin_email: null,
+          tenant_admin_first_name: null,
+          tenant_admin_last_name: null,
+          theme_key: null,
+          feature_flags: null,
+          mainserver_config_ref: null,
+          created_at: '2026-01-01T00:00:00.000Z',
+          created_by: null,
+          updated_at: '2026-01-01T00:00:00.000Z',
+          updated_by: null,
+        },
+      ],
+    });
+
+    const repository = createInstanceRegistryRepository({ execute });
+
+    await expect(repository.resolveHostname('bb-guben.studio.smart-village.app')).resolves.toMatchObject({
+      instanceId: 'bb-guben',
+      primaryHostname: 'bb-guben.studio.smart-village.app',
+    });
+  });
+
   it('loads stored tenant client secret ciphertext by instance id', async () => {
     const execute = createExecute({
       rowCount: 1,
@@ -224,6 +313,18 @@ describe('instance registry repository (vitest)', () => {
     const repository = createInstanceRegistryRepository({ execute });
 
     await expect(repository.getTenantAdminClientSecretCiphertext('bb-guben')).resolves.toBe('enc:tenant-admin-secret');
+  });
+
+  it('returns null for missing stored client secret ciphertext lookups', async () => {
+    const execute = createSequencedExecutor([
+      { rowCount: 0, rows: [] },
+      { rowCount: 0, rows: [] },
+    ]);
+
+    const repository = createInstanceRegistryRepository({ execute });
+
+    await expect(repository.getAuthClientSecretCiphertext('missing')).resolves.toBeNull();
+    await expect(repository.getTenantAdminClientSecretCiphertext('missing')).resolves.toBeNull();
   });
 
   it('lists, assigns, revokes, and synchronizes managed module IAM records', async () => {
@@ -613,6 +714,23 @@ describe('instance registry repository (vitest)', () => {
     expect(statements[0]?.values[9]).toBeNull();
     expect(statements[0]?.values[13]).toBe('tenant-admin');
     expect(statements[1]?.values[0]).toBe('bb-guben.studio.smart-village.app');
+  });
+
+  it('returns null when updating an unknown instance', async () => {
+    const execute = createSequencedExecutor([{ rowCount: 0, rows: [] }]);
+    const repository = createInstanceRegistryRepository({ execute });
+
+    await expect(
+      repository.updateInstance({
+        instanceId: 'missing',
+        displayName: 'Missing',
+        realmMode: 'existing',
+        parentDomain: 'studio.smart-village.app',
+        primaryHostname: 'missing.studio.smart-village.app',
+        authRealm: 'missing',
+        authClientId: 'sva-studio',
+      })
+    ).resolves.toBeNull();
   });
 
   it('lists keycloak provisioning runs with mapped steps', async () => {

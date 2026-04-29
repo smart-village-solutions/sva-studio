@@ -7,7 +7,11 @@ export default defineConfig({
     include: ['src/**/*.vitest.test.ts'],
     exclude: ['dist/**', 'coverage/**', 'node_modules/**'],
     environment: 'node',
-    coverage: sharedCoverageConfig,
+    coverage: {
+      ...sharedCoverageConfig,
+      include: ['src/**/*.ts'],
+      exclude: ['src/**/*.test.ts', 'src/**/*.vitest.test.ts'],
+    },
   },
   resolve: {
     alias: {

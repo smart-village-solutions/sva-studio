@@ -1,5 +1,4 @@
 import { cleanup, render, screen } from '@testing-library/react';
-import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import * as instancesShared from './-instances-shared';
@@ -153,6 +152,7 @@ describe('instances shared helpers', () => {
         updatedAt: '2026-01-01T00:00:00.000Z',
         parentDomain: 'studio.example.org',
         primaryHostname: 'demo.studio.example.org',
+        assignedModules: [],
         realmMode: 'new',
         authRealm: 'demo',
         authClientId: 'sva-studio',
@@ -186,6 +186,7 @@ describe('instances shared helpers', () => {
       updatedAt: '2026-01-01T00:00:00.000Z',
       parentDomain: 'studio.example.org',
       primaryHostname: 'demo.studio.example.org',
+      assignedModules: [],
       realmMode: 'existing',
       authRealm: 'demo',
       authClientId: 'sva-studio',
@@ -287,6 +288,7 @@ describe('instances shared helpers', () => {
         updatedAt: '2026-01-01T00:00:00.000Z',
         parentDomain: 'studio.example.org',
         primaryHostname: 'demo.studio.example.org',
+        assignedModules: [],
         realmMode: 'existing',
         authRealm: 'demo',
         authClientId: 'sva-studio',
@@ -344,6 +346,7 @@ describe('instances shared helpers', () => {
         updatedAt: '2026-01-01T00:00:00.000Z',
         parentDomain: 'studio.example.org',
         primaryHostname: 'demo.studio.example.org',
+        assignedModules: [],
         realmMode: 'existing',
         authRealm: 'demo',
         authClientId: 'sva-studio',
@@ -412,6 +415,7 @@ describe('instances shared helpers', () => {
         updatedAt: '2026-01-01T00:00:00.000Z',
         parentDomain: 'studio.example.org',
         primaryHostname: 'demo.studio.example.org',
+        assignedModules: [],
         realmMode: 'existing',
         authRealm: 'demo',
         authClientId: 'sva-studio',
@@ -532,6 +536,7 @@ describe('instances shared helpers', () => {
         updatedAt: '2026-01-01T00:00:00.000Z',
         parentDomain: 'studio.example.org',
         primaryHostname: 'demo.studio.example.org',
+        assignedModules: [],
         realmMode: 'existing',
         authRealm: 'demo',
         authClientId: 'sva-studio',
@@ -642,6 +647,7 @@ describe('instances shared helpers', () => {
         updatedAt: '2026-01-01T00:00:00.000Z',
         parentDomain: 'studio.example.org',
         primaryHostname: 'demo.studio.example.org',
+        assignedModules: [],
         realmMode: 'existing',
         authRealm: 'demo',
         authClientId: 'sva-studio',
@@ -846,6 +852,7 @@ describe('instances shared helpers', () => {
         updatedAt: '2026-01-01T00:00:00.000Z',
         parentDomain: 'studio.example.org',
         primaryHostname: 'demo.studio.example.org',
+        assignedModules: [],
         realmMode: 'existing',
         authRealm: 'demo',
         authClientId: 'sva-studio',

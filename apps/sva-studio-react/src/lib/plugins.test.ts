@@ -227,6 +227,6 @@ describe('plugin action alias lookup', () => {
         },
       },
     });
-    expect(studioAdminResources.map((resource) => resource.basePath)).toEqual(['news', 'events', 'poi', 'content']);
+    expect(studioAdminResources.map((resource) => resource.basePath)).toEqual(['news', 'events', 'poi', 'media', 'content']);
   });
 });

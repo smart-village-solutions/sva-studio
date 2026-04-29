@@ -1,5 +1,4 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ModulesPage } from './-modules-page';
@@ -11,7 +10,7 @@ vi.mock('../../../hooks/use-instances', () => ({
 }));
 
 vi.mock('../../../lib/plugins', () => ({
-  studioPluginModuleIamContracts: [
+  studioModuleIamContracts: [
     {
       moduleId: 'news',
       permissionIds: ['news.read', 'news.write'],
@@ -21,6 +20,11 @@ vi.mock('../../../lib/plugins', () => ({
       moduleId: 'events',
       permissionIds: ['events.read'],
       systemRoles: [{ roleName: 'events_admin', permissionIds: ['events.read'] }],
+    },
+    {
+      moduleId: 'media',
+      permissionIds: ['media.read', 'media.create'],
+      systemRoles: [{ roleName: 'editor', permissionIds: ['media.read', 'media.create'] }],
     },
   ],
 }));
@@ -86,10 +90,11 @@ describe('ModulesPage', () => {
     expect(screen.getByDisplayValue('Demo (demo)')).toBeTruthy();
     expect(screen.getByText('news')).toBeTruthy();
     expect(screen.getByText('events')).toBeTruthy();
+    expect(screen.getByText('media')).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'IAM-Basis neu aufbauen' }));
     fireEvent.click(screen.getByRole('button', { name: 'Modul entziehen' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Modul zuweisen' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Modul zuweisen' })[0]!);
 
     expect(seedIamBaseline).toHaveBeenCalledWith('demo');
     expect(revokeModule).toHaveBeenCalledWith('demo', 'news');

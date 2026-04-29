@@ -28,6 +28,11 @@ export {
   DialogTrigger,
 } from './dialog.js';
 export { Input } from './input.js';
+export {
+  MediaReferenceField,
+  type MediaReferenceFieldOption,
+  type MediaReferenceFieldProps,
+} from './media-reference-field.js';
 export { Select } from './select.js';
 export {
   StudioDataTable,

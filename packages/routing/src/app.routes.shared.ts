@@ -14,7 +14,6 @@ import { normalizeIamTab, normalizeRoleDetailTab } from './route-search.js';
 import { uiRoutePaths } from './route-paths.js';
 
 export type AppRouteFactory = RouteFactory<RootRoute, AnyRoute>;
-
 export type AppRouteBindings = {
   readonly home: RouteComponent;
   readonly account: RouteComponent;
@@ -63,13 +62,7 @@ export type AppRouteBindings = {
 };
 
 export type AppRouteBindingKey = keyof AppRouteBindings;
-
-type UiRouteDefinition = {
-  readonly binding: AppRouteBindingKey;
-  readonly guard?: AccountUiRouteGuardKey;
-  readonly path: string;
-  readonly validateSearch?: (search: Record<string, unknown>) => unknown;
-};
+type UiRouteDefinition = { readonly binding: AppRouteBindingKey; readonly guard?: AccountUiRouteGuardKey; readonly path: string; readonly validateSearch?: (search: Record<string, unknown>) => unknown };
 
 const uiRouteDefinitions: readonly UiRouteDefinition[] = [
   { binding: 'home', path: uiRoutePaths.home },
@@ -126,7 +119,6 @@ export const getAdminDetailRoutePath = (basePath: string, bindingKey: string): s
     adminDetailParamNameByBinding.contentDetail;
   return `${basePath}/$${detailParamName}`;
 };
-
 const collectAdminResourceRoutePaths = (resources: readonly AdminResourceDefinition[]): ReadonlyMap<string, string> => {
   const paths = new Map<string, string>();
 
@@ -143,7 +135,6 @@ const collectAdminResourceRoutePaths = (resources: readonly AdminResourceDefinit
 
   return paths;
 };
-
 const assertNoStaticAdminRouteShadowing = (adminResourcePaths: ReadonlyMap<string, string>): void => {
   for (const definition of uiRouteDefinitions) {
     const resourceId = adminResourcePaths.get(definition.path);

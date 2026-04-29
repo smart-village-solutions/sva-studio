@@ -14,45 +14,31 @@ type UiRouteDefinition = {
   readonly path: string;
   readonly validateSearch?: (search: Record<string, unknown>) => unknown;
 };
-
 type AdminResourceBindingResolver = { readonly list: BindingKey; readonly create: BindingKey; readonly detail: BindingKey; readonly history?: BindingKey };
-
 type AdminResourceRouteKind = 'list' | 'create' | 'detail' | 'history';
 type AdminResourceViewKind = keyof AdminResourceDefinition['views'];
-type DetailBindingKey = Extract<BindingKey, 'contentDetail' | 'adminUserDetail' | 'adminOrganizationDetail' | 'adminInstanceDetail' | 'adminRoleDetail' | 'adminGroupDetail' | 'adminLegalTextDetail'>;
+type DetailBindingKey = Extract<
+  BindingKey,
+  'contentDetail' | 'adminUserDetail' | 'adminOrganizationDetail' | 'adminInstanceDetail' | 'adminRoleDetail' | 'adminGroupDetail' | 'adminLegalTextDetail'
+>;
 
 const LEGACY_CONTENT_ALIAS_PREFIX = '/content';
-
-const coreContentAdminResource = {
-  resourceId: 'content',
-  basePath: 'content',
-  titleKey: 'content.page.title',
-  guard: 'content',
-  views: {
-    list: { bindingKey: 'content' },
-    create: { bindingKey: 'contentCreate' },
-    detail: { bindingKey: 'contentDetail' },
-  },
-} as const satisfies AdminResourceDefinition;
+const coreContentAdminResource = { resourceId: 'content', basePath: 'content', titleKey: 'content.page.title', guard: 'content', views: { list: { bindingKey: 'content' }, create: { bindingKey: 'contentCreate' }, detail: { bindingKey: 'contentDetail' } } } as const satisfies AdminResourceDefinition;
 
 const toAdminRoutePath = (basePath: string) => `/admin/${basePath}` as const;
 const toAdminCreateRoutePath = (basePath: string) => `${basePath}/new`;
 const toAdminHistoryRoutePath = (detailPath: string) => `${detailPath}/history`;
-
-export const adminDetailParamNameByBinding = {
-  contentDetail: 'id',
-  adminUserDetail: 'userId',
-  adminOrganizationDetail: 'organizationId',
-  adminInstanceDetail: 'instanceId',
-  adminRoleDetail: 'roleId',
-  adminGroupDetail: 'groupId',
-  adminLegalTextDetail: 'legalTextVersionId',
-} as const satisfies Record<DetailBindingKey, string>;
+export const adminDetailParamNameByBinding = { contentDetail: 'id', adminUserDetail: 'userId', adminOrganizationDetail: 'organizationId', adminInstanceDetail: 'instanceId', adminRoleDetail: 'roleId', adminGroupDetail: 'groupId', adminLegalTextDetail: 'legalTextVersionId' } as const satisfies Record<DetailBindingKey, string>;
 
 const hasBindingKey = (bindings: AppRouteBindings, bindingKey: string): bindingKey is BindingKey =>
   Object.prototype.hasOwnProperty.call(bindings, bindingKey);
 
-const resolveBindingKey = (bindings: AppRouteBindings, resource: AdminResourceDefinition, viewName: AdminResourceViewKind, bindingKey: string | undefined): BindingKey => {
+const resolveBindingKey = (
+  bindings: AppRouteBindings,
+  resource: AdminResourceDefinition,
+  viewName: AdminResourceViewKind,
+  bindingKey: string | undefined
+): BindingKey => {
   if (typeof bindingKey !== 'string' || !hasBindingKey(bindings, bindingKey)) {
     throw new Error(`unknown_admin_resource_binding_key:${resource.resourceId}:${viewName}:${bindingKey ?? ''}`);
   }
@@ -101,10 +87,7 @@ const getDetailParamName = (bindingKey: BindingKey): string => {
 };
 
 const withCoreContentAdminResource = (resources: readonly AdminResourceDefinition[]): readonly AdminResourceDefinition[] => {
-  const containsCoreContent = resources.some(
-    (resource) =>
-      resource.resourceId === coreContentAdminResource.resourceId || resource.basePath === coreContentAdminResource.basePath
-  );
+  const containsCoreContent = resources.some((resource) => resource.resourceId === coreContentAdminResource.resourceId || resource.basePath === coreContentAdminResource.basePath);
   if (containsCoreContent) {
     return resources;
   }
@@ -113,62 +96,20 @@ const withCoreContentAdminResource = (resources: readonly AdminResourceDefinitio
 
 const resolveCanonicalContentAdminRoutePath = (resources: readonly AdminResourceDefinition[]): string => {
   const contentResource = withCoreContentAdminResource(resources).find((resource) => resource.resourceId === coreContentAdminResource.resourceId);
-
   return toAdminRoutePath(contentResource?.basePath ?? coreContentAdminResource.basePath);
 };
-
 const adminResourceGuardMap = {
-  content: {
-    list: 'content',
-    create: 'contentCreate',
-    detail: 'contentDetail',
-    history: 'content',
-  },
-  adminUsers: {
-    list: 'adminUsers',
-    create: 'adminUserCreate',
-    detail: 'adminUserDetail',
-    history: 'adminUsers',
-  },
-  adminOrganizations: {
-    list: 'adminOrganizations',
-    create: 'adminOrganizationCreate',
-    detail: 'adminOrganizationDetail',
-    history: 'adminOrganizations',
-  },
-  adminInstances: {
-    list: 'adminInstances',
-    create: 'adminInstances',
-    detail: 'adminInstances',
-    history: 'adminInstances',
-  },
-  adminRoles: {
-    list: 'adminRoles',
-    create: 'adminRoles',
-    detail: 'adminRoleDetail',
-    history: 'adminRoles',
-  },
-  adminGroups: {
-    list: 'adminGroups',
-    create: 'adminGroupCreate',
-    detail: 'adminGroupDetail',
-    history: 'adminGroups',
-  },
-  adminLegalTexts: {
-    list: 'adminLegalTexts',
-    create: 'adminLegalTextCreate',
-    detail: 'adminLegalTextDetail',
-    history: 'adminLegalTexts',
-  },
-} as const satisfies Record<
-  AdminResourceDefinition['guard'],
-  Record<AdminResourceRouteKind, AccountUiRouteGuardKey>
->;
+  content: { list: 'content', create: 'contentCreate', detail: 'contentDetail', history: 'content' },
+  adminUsers: { list: 'adminUsers', create: 'adminUserCreate', detail: 'adminUserDetail', history: 'adminUsers' },
+  adminOrganizations: { list: 'adminOrganizations', create: 'adminOrganizationCreate', detail: 'adminOrganizationDetail', history: 'adminOrganizations' },
+  adminInstances: { list: 'adminInstances', create: 'adminInstances', detail: 'adminInstances', history: 'adminInstances' },
+  adminRoles: { list: 'adminRoles', create: 'adminRoles', detail: 'adminRoleDetail', history: 'adminRoles' },
+  adminGroups: { list: 'adminGroups', create: 'adminGroupCreate', detail: 'adminGroupDetail', history: 'adminGroups' },
+  adminLegalTexts: { list: 'adminLegalTexts', create: 'adminLegalTextCreate', detail: 'adminLegalTextDetail', history: 'adminLegalTexts' },
+} as const satisfies Record<AdminResourceDefinition['guard'], Record<AdminResourceRouteKind, AccountUiRouteGuardKey>>;
 
-const resolveAdminResourceGuard = (
-  resource: AdminResourceDefinition,
-  routeKind: AdminResourceRouteKind
-): AccountUiRouteGuardKey => adminResourceGuardMap[resource.guard][routeKind];
+const resolveAdminResourceGuard = (resource: AdminResourceDefinition, routeKind: AdminResourceRouteKind): AccountUiRouteGuardKey =>
+  adminResourceGuardMap[resource.guard][routeKind];
 
 const createAdminResourceRouteDefinitions = (
   bindings: AppRouteBindings,
@@ -268,16 +209,13 @@ export const createLegacyContentAliasFactories = (
   const aliasPaths = [LEGACY_CONTENT_ALIAS_PREFIX, toAdminCreateRoutePath(LEGACY_CONTENT_ALIAS_PREFIX), '/content/$contentId'] as const;
   const canonicalContentPath = resolveCanonicalContentAdminRoutePath(resources);
 
-  return aliasPaths.map(
-    (path) =>
-      (rootRoute: RootRoute) =>
-        createRoute({
-          getParentRoute: () => rootRoute,
-          path,
-          beforeLoad: (options) => {
-            throw redirect({ href: normalizeLegacyContentHref(readBeforeLoadHref(options), canonicalContentPath) });
-          },
-          component: () => null,
-        })
-  );
+  return aliasPaths.map((path) => (rootRoute: RootRoute) =>
+    createRoute({
+      getParentRoute: () => rootRoute,
+      path,
+      beforeLoad: (options) => {
+        throw redirect({ href: normalizeLegacyContentHref(readBeforeLoadHref(options), canonicalContentPath) });
+      },
+      component: () => null,
+    }));
 };

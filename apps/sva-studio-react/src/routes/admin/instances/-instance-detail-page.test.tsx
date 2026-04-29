@@ -572,4 +572,78 @@ describe('InstanceDetailPage', () => {
     expect(screen.getByText('Letzte Provisioning-Vorschau: Kein Drift.')).toBeTruthy();
     expect(screen.getByText('Letzter Keycloak-Run: Request-ID req-1, Status succeeded')).toBeTruthy();
   });
+
+  it('renders module IAM details, empty preflight and preview states, and loads historical runs on demand', async () => {
+    const seedIamBaseline = vi.fn().mockResolvedValue(true);
+    const loadKeycloakProvisioningRun = vi.fn().mockResolvedValue(true);
+    useInstancesMock.mockReturnValue(
+      createInstancesApiState({
+        seedIamBaseline,
+        loadKeycloakProvisioningRun,
+        selectedInstance: createSelectedInstance({
+          keycloakPreflight: {
+            overallStatus: 'ready',
+            generatedAt: '2026-01-01T00:00:00.000Z',
+            checks: [],
+          },
+          keycloakPlan: {
+            mode: 'existing',
+            overallStatus: 'ready',
+            generatedAt: '2026-01-01T00:00:00.000Z',
+            driftSummary: 'Kein Drift.',
+            steps: [],
+          },
+          moduleIamStatus: {
+            overall: { status: 'degraded', summary: 'IAM-Basis unvollständig', source: 'registry' },
+            modules: [
+              {
+                moduleId: 'news',
+                status: 'blocked',
+                summary: 'Berechtigungen fehlen',
+                permissionIds: [],
+              },
+            ],
+          },
+          keycloakProvisioningRuns: [
+            {
+              id: 'run-history-1',
+              intent: 'reset_tenant_admin',
+              mode: 'existing',
+              overallStatus: 'failed',
+              driftSummary: 'Historischer Fehler',
+              requestId: null,
+              steps: [
+                {
+                  stepKey: 'cleanup',
+                  title: 'Aufräumen',
+                  status: 'failed',
+                  summary: 'Abgebrochen',
+                },
+              ],
+            },
+          ],
+        }),
+      })
+    );
+
+    render(<InstanceDetailPage instanceId="demo" />);
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Betrieb' }));
+    expect(screen.getByText('Berechtigungen fehlen')).toBeTruthy();
+    expect(screen.getByText('Berechtigungen: —')).toBeTruthy();
+    expect(screen.getAllByRole('button', { name: 'Vorbedingungen prüfen' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('button', { name: 'Provisioning-Vorschau laden' }).length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByRole('button', { name: 'IAM-Basis neu aufbauen' }));
+    expect(seedIamBaseline).toHaveBeenCalledWith('demo');
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Historie' }));
+    expect(screen.getByText('Historischer Fehler')).toBeTruthy();
+    expect(screen.getByText('Aufräumen')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Run laden' }));
+
+    await waitFor(() => {
+      expect(loadKeycloakProvisioningRun).toHaveBeenCalledWith('demo', 'run-history-1');
+    });
+  });
 });

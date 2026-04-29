@@ -226,6 +226,68 @@ describe('instance registry repository (vitest)', () => {
     await expect(repository.getTenantAdminClientSecretCiphertext('bb-guben')).resolves.toBe('enc:tenant-admin-secret');
   });
 
+  it('lists, assigns, revokes, and synchronizes managed module IAM records', async () => {
+    const statements: SqlStatement[] = [];
+    const execute = createSequencedExecutor(
+      [
+        {
+          rowCount: 2,
+          rows: [{ module_id: 'events' }, { module_id: 'news' }],
+        },
+        {
+          rowCount: 1,
+          rows: [],
+        },
+        {
+          rowCount: 1,
+          rows: [],
+        },
+        { rowCount: 1, rows: [] },
+        { rowCount: 1, rows: [] },
+        { rowCount: 1, rows: [] },
+        { rowCount: 1, rows: [] },
+        { rowCount: 1, rows: [] },
+        { rowCount: 1, rows: [] },
+        { rowCount: 1, rows: [] },
+      ],
+      statements
+    );
+
+    const repository = createInstanceRegistryRepository({ execute });
+
+    await expect(repository.listAssignedModules('demo')).resolves.toEqual(['events', 'news']);
+    await expect(repository.assignModule('demo', 'news')).resolves.toBe(true);
+    await expect(repository.revokeModule('demo', 'news')).resolves.toBe(true);
+
+    await expect(
+      repository.syncAssignedModuleIam({
+        instanceId: 'demo',
+        managedModuleIds: ['news'],
+        contracts: [
+          {
+            moduleId: 'news',
+            permissionIds: ['news.read', 'news.write'],
+            systemRoles: [
+              {
+                roleName: 'news_admin',
+                permissionIds: ['news.read', 'news.write'],
+              },
+            ],
+          },
+        ],
+      })
+    ).resolves.toBeUndefined();
+
+    expect(statements[0]?.text).toContain('FROM iam.instance_modules');
+    expect(statements[1]?.text).toContain('INSERT INTO iam.instance_modules');
+    expect(statements[2]?.text).toContain('DELETE FROM iam.instance_modules');
+    expect(statements.slice(3).some((statement) => statement.text.includes('INSERT INTO iam.permissions'))).toBe(true);
+    expect(statements.slice(3).some((statement) => statement.text.includes('INSERT INTO iam.roles'))).toBe(true);
+    expect(statements.slice(3).some((statement) => statement.text.includes('INSERT INTO iam.role_permissions'))).toBe(true);
+    expect(statements.slice(3).some((statement) => statement.text.includes('DELETE FROM iam.role_permissions'))).toBe(true);
+    expect(statements.slice(3).some((statement) => statement.text.includes('DELETE FROM iam.permissions'))).toBe(true);
+  });
+
   it('maps provisioning runs and audit events including optional fields', async () => {
     const execute = createSequencedExecutor([
       {

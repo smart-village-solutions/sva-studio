@@ -4010,6 +4010,20 @@ const buildSwarmServicePresenceProbe = (env: NodeJS.ProcessEnv): AcceptanceProbe
   });
 };
 
+export const waitForPostDeployStabilization = async (
+  env: NodeJS.ProcessEnv,
+  waitFn: (ms: number) => Promise<unknown> = wait,
+) => {
+  const stabilizationDelayMs = Number(env.SVA_POST_DEPLOY_STABILIZATION_DELAY_MS ?? '5000');
+
+  if (!Number.isFinite(stabilizationDelayMs) || stabilizationDelayMs <= 0) {
+    return 0;
+  }
+
+  await waitFn(stabilizationDelayMs);
+  return stabilizationDelayMs;
+};
+
 const runInternalVerify = async (runtimeProfile: RemoteRuntimeProfile, env: NodeJS.ProcessEnv): Promise<{
   doctorReport: DoctorReport;
   probes: readonly AcceptanceProbeResult[];
@@ -4509,6 +4523,8 @@ const runAcceptanceDeploy = async (runtimeProfile: RemoteRuntimeProfile, env: No
       };
       throw { category: 'startup' as const, report };
     }
+
+    await waitForPostDeployStabilization(env);
 
     const internalVerifyStartedAt = Date.now();
     const internalVerify = await runInternalVerify(runtimeProfile, env);

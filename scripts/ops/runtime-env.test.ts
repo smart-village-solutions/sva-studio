@@ -10,6 +10,7 @@ import {
   runExternalSmokeWithWarmup,
   shouldRetryExternalSmoke,
   shouldRetryInternalVerify,
+  waitForPostDeployStabilization,
 } from './runtime-env.ts';
 import type { AcceptanceProbeResult } from './runtime-env.shared.ts';
 
@@ -103,6 +104,31 @@ describe('shouldRetryInternalVerify', () => {
     });
 
     expect(shouldRetry).toBe(false);
+  });
+});
+
+describe('waitForPostDeployStabilization', () => {
+  it('waits for the default stabilization delay after deploy', async () => {
+    const waitFn = vi.fn<(ms: number) => Promise<void>>().mockResolvedValue();
+
+    const delayMs = await waitForPostDeployStabilization({}, waitFn);
+
+    expect(delayMs).toBe(5000);
+    expect(waitFn).toHaveBeenCalledWith(5000);
+  });
+
+  it('skips the delay when it is disabled explicitly', async () => {
+    const waitFn = vi.fn<(ms: number) => Promise<void>>().mockResolvedValue();
+
+    const delayMs = await waitForPostDeployStabilization(
+      {
+        SVA_POST_DEPLOY_STABILIZATION_DELAY_MS: '0',
+      },
+      waitFn,
+    );
+
+    expect(delayMs).toBe(0);
+    expect(waitFn).not.toHaveBeenCalled();
   });
 });
 

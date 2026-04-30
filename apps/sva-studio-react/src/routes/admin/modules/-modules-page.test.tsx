@@ -101,6 +101,28 @@ describe('ModulesPage', () => {
     expect(assignModule).toHaveBeenCalledWith('demo', 'events');
   });
 
+  it('does not reload the selected instance on rerender when loadInstance is stable', async () => {
+    const loadInstance = vi.fn().mockResolvedValue(true);
+    useInstancesMock.mockImplementation(() =>
+      createInstancesApiState({
+        loadInstance,
+      })
+    );
+
+    const { rerender } = render(<ModulesPage />);
+
+    await waitFor(() => {
+      expect(loadInstance).toHaveBeenCalledTimes(1);
+      expect(loadInstance).toHaveBeenCalledWith('demo');
+    });
+
+    rerender(<ModulesPage />);
+
+    await waitFor(() => {
+      expect(loadInstance).toHaveBeenCalledTimes(1);
+    });
+  });
+
   it('renders mutation errors and the empty fallback when no selected instance detail is available', () => {
     useInstancesMock.mockReturnValue(
       createInstancesApiState({

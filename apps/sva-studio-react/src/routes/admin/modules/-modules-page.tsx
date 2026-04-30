@@ -12,6 +12,7 @@ const formatRoleNames = (roleNames: readonly string[]) => roleNames.join(', ');
 
 export const ModulesPage = () => {
   const instancesApi = useInstances();
+  const { loadInstance } = instancesApi;
   const [selectedInstanceId, setSelectedInstanceId] = React.useState('');
 
   React.useEffect(() => {
@@ -25,8 +26,8 @@ export const ModulesPage = () => {
       return;
     }
 
-    void instancesApi.loadInstance(selectedInstanceId);
-  }, [instancesApi, selectedInstanceId]);
+    void loadInstance(selectedInstanceId);
+  }, [loadInstance, selectedInstanceId]);
 
   const selectedInstance =
     instancesApi.selectedInstance?.instanceId === selectedInstanceId ? instancesApi.selectedInstance : null;

@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router';
-import type { IamOrganizationType } from '@sva/core';
+import type { IamOrganizationType, IamUserListItem } from '@sva/core';
 import React from 'react';
 
 import { ConfirmDialog } from '../../../components/ConfirmDialog';
@@ -12,9 +12,8 @@ import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
 import { Select } from '../../../components/ui/select';
 import { useOrganizations } from '../../../hooks/use-organizations';
-import { useUsers } from '../../../hooks/use-users';
 import { t, type TranslationKey } from '../../../i18n';
-import type { IamHttpError } from '../../../lib/iam-api';
+import { asIamError, listUsers, type IamHttpError } from '../../../lib/iam-api';
 
 const ORGANIZATION_TYPE_KEYS = {
   county: 'admin.organizations.types.county',
@@ -26,6 +25,23 @@ const ORGANIZATION_TYPE_KEYS = {
 } satisfies Record<IamOrganizationType, TranslationKey>;
 
 const typeOptions = Object.keys(ORGANIZATION_TYPE_KEYS) as IamOrganizationType[];
+const MEMBERSHIP_USER_PAGE_SIZE = 100;
+
+const normalizeMembershipSearchValue = (value: string) => value.trim().toLocaleLowerCase();
+
+const formatMembershipUserLabel = (user: IamUserListItem) =>
+  user.email ? `${user.displayName} <${user.email}>` : `${user.displayName} <${user.keycloakSubject}>`;
+
+const matchesMembershipSearch = (user: IamUserListItem, search: string) => {
+  const normalizedSearch = normalizeMembershipSearchValue(search);
+  if (!normalizedSearch) {
+    return true;
+  }
+
+  return [user.displayName, user.email, user.keycloakSubject, user.position, user.department]
+    .filter((value): value is string => Boolean(value))
+    .some((value) => value.toLocaleLowerCase().includes(normalizedSearch));
+};
 
 const organizationErrorMessage = (error: IamHttpError | null): string => {
   if (!error) {
@@ -58,12 +74,16 @@ type OrganizationDetailPageProps = {
 
 export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPageProps) => {
   const organizationsApi = useOrganizations();
-  const usersApi = useUsers({ pageSize: 100 });
+  const { loadOrganization } = organizationsApi;
   const [membershipForm, setMembershipForm] = React.useState({
     accountId: '',
     visibility: 'internal' as 'internal' | 'external',
     isDefaultContext: false,
   });
+  const [membershipSearch, setMembershipSearch] = React.useState('');
+  const [membershipUsers, setMembershipUsers] = React.useState<readonly IamUserListItem[]>([]);
+  const [membershipUsersLoading, setMembershipUsersLoading] = React.useState(true);
+  const [membershipUsersError, setMembershipUsersError] = React.useState<IamHttpError | null>(null);
   const [deactivateConfirmOpen, setDeactivateConfirmOpen] = React.useState(false);
   const [formValues, setFormValues] = React.useState({
     organizationKey: '',
@@ -74,8 +94,8 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
   });
 
   React.useEffect(() => {
-    void organizationsApi.loadOrganization(organizationId);
-  }, [organizationId, organizationsApi]);
+    void loadOrganization(organizationId);
+  }, [loadOrganization, organizationId]);
 
   React.useEffect(() => {
     const detail = organizationsApi.selectedOrganization;
@@ -94,6 +114,71 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
 
   const selectedOrganization =
     organizationsApi.selectedOrganization?.id === organizationId ? organizationsApi.selectedOrganization : null;
+
+  React.useEffect(() => {
+    let active = true;
+
+    const loadMembershipUsers = async () => {
+      setMembershipUsersLoading(true);
+      setMembershipUsersError(null);
+
+      try {
+        const collectedUsers = new Map<string, IamUserListItem>();
+        let page = 1;
+        let total = 0;
+
+        do {
+          const response = await listUsers({
+            page,
+            pageSize: MEMBERSHIP_USER_PAGE_SIZE,
+            status: 'active',
+          });
+          total = response.pagination.total;
+          for (const user of response.data) {
+            collectedUsers.set(user.id, user);
+          }
+          page += 1;
+        } while (collectedUsers.size < total);
+
+        if (!active) {
+          return;
+        }
+
+        setMembershipUsers(
+          [...collectedUsers.values()].sort((left, right) => formatMembershipUserLabel(left).localeCompare(formatMembershipUserLabel(right)))
+        );
+      } catch (cause) {
+        if (!active) {
+          return;
+        }
+        setMembershipUsers([]);
+        setMembershipUsersError(asIamError(cause));
+      } finally {
+        if (active) {
+          setMembershipUsersLoading(false);
+        }
+      }
+    };
+
+    void loadMembershipUsers();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const assignedMembershipAccountIds = React.useMemo(
+    () => new Set(selectedOrganization?.memberships.map((membership) => membership.accountId) ?? []),
+    [selectedOrganization?.memberships]
+  );
+  const availableMembershipUsers = React.useMemo(
+    () => membershipUsers.filter((user) => !assignedMembershipAccountIds.has(user.id)),
+    [assignedMembershipAccountIds, membershipUsers]
+  );
+  const filteredMembershipUsers = React.useMemo(
+    () => availableMembershipUsers.filter((user) => matchesMembershipSearch(user, membershipSearch)),
+    [availableMembershipUsers, membershipSearch]
+  );
 
   const onSubmitOrganization = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -122,6 +207,7 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
     }
 
     setMembershipForm({ accountId: '', visibility: 'internal', isDefaultContext: false });
+    setMembershipSearch('');
   };
 
   const onConfirmDeactivate = async () => {
@@ -267,19 +353,44 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
             </Card>
             <form className="grid gap-3" onSubmit={(event) => void onAssignMembership(event)}>
               <div className="grid gap-1 text-sm text-foreground">
+                <Label htmlFor="membership-account-search">{t('admin.organizations.membershipsDialog.searchLabel')}</Label>
+                <Input
+                  id="membership-account-search"
+                  value={membershipSearch}
+                  onChange={(event) => setMembershipSearch(event.target.value)}
+                  placeholder={t('admin.organizations.membershipsDialog.searchPlaceholder')}
+                />
+              </div>
+              <div className="grid gap-1 text-sm text-foreground">
                 <Label htmlFor="membership-account">{t('admin.organizations.membershipsDialog.accountLabel')}</Label>
                 <Select
                   id="membership-account"
                   value={membershipForm.accountId}
                   onChange={(event) => setMembershipForm((current) => ({ ...current, accountId: event.target.value }))}
+                  disabled={membershipUsersLoading || filteredMembershipUsers.length === 0}
                 >
                   <option value="">{t('admin.organizations.membershipsDialog.accountPlaceholder')}</option>
-                  {usersApi.users.map((user) => (
+                  {filteredMembershipUsers.map((user) => (
                     <option key={user.id} value={user.id}>
-                      {user.displayName}
+                      {formatMembershipUserLabel(user)}
                     </option>
                   ))}
                 </Select>
+                {membershipUsersLoading ? (
+                  <p className="text-xs text-muted-foreground">{t('admin.organizations.membershipsDialog.loading')}</p>
+                ) : null}
+                {membershipUsersError ? (
+                  <p className="text-xs text-destructive">{organizationErrorMessage(membershipUsersError)}</p>
+                ) : null}
+                {!membershipUsersLoading && !membershipUsersError ? (
+                  <p className="text-xs text-muted-foreground">
+                    {filteredMembershipUsers.length > 0
+                      ? t('admin.organizations.membershipsDialog.availableCount', {
+                          count: String(filteredMembershipUsers.length),
+                        })
+                      : t('admin.organizations.membershipsDialog.emptySelection')}
+                  </p>
+                ) : null}
               </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="grid gap-1 text-sm text-foreground">

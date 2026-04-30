@@ -180,6 +180,7 @@ export {
   createLegacyGroupReadHandlers,
   type LegacyGroupReadAuthenticatedRequestContext,
   type LegacyGroupReadHandlerDeps,
+  type LegacyGroupReadLogger,
 } from './legacy-group-read-handlers.js';
 
 export {

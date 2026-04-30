@@ -17,6 +17,10 @@ export type LegacyGroupReadActor = {
   readonly requestId?: string;
 };
 
+export type LegacyGroupReadLogger = {
+  readonly error: (message: string, meta: Readonly<Record<string, unknown>>) => void;
+};
+
 export type LegacyGroupReadHandlerDeps<TFeatureFlags = unknown> = {
   readonly asApiItem: (data: unknown, requestId?: string) => unknown;
   readonly asApiList: (
@@ -46,6 +50,7 @@ export type LegacyGroupReadHandlerDeps<TFeatureFlags = unknown> = {
   readonly getWorkspaceContext: () => { readonly requestId?: string };
   readonly isUuid: (value: string) => boolean;
   readonly jsonResponse: (status: number, payload: unknown) => Response;
+  readonly logger: LegacyGroupReadLogger;
   readonly readPathSegment: (request: Request, index: number) => string | null | undefined;
   readonly requireRoles: (
     ctx: LegacyGroupReadAuthenticatedRequestContext,
@@ -139,7 +144,13 @@ export const createLegacyGroupReadHandlers = <TFeatureFlags>(
         200,
         deps.asApiList(groups, { page: 1, pageSize: groups.length, total: groups.length }, actorResolution.actor.requestId)
       );
-    } catch {
+    } catch (error) {
+      deps.logger.error('Legacy group list query failed', {
+        operation: 'legacy_group_list',
+        workspace_id: actorResolution.actor.instanceId,
+        request_id: actorResolution.actor.requestId,
+        error: error instanceof Error ? error.message : String(error),
+      });
       return createDatabaseUnavailableError(deps, actorResolution.actor.requestId);
     }
   };
@@ -166,7 +177,14 @@ export const createLegacyGroupReadHandlers = <TFeatureFlags>(
         return deps.createApiError(404, 'not_found', 'Gruppe nicht gefunden.', actorResolution.actor.requestId);
       }
       return deps.jsonResponse(200, deps.asApiItem(group, actorResolution.actor.requestId));
-    } catch {
+    } catch (error) {
+      deps.logger.error('Legacy group detail query failed', {
+        operation: 'legacy_group_detail',
+        workspace_id: actorResolution.actor.instanceId,
+        group_id: groupId.groupId,
+        request_id: actorResolution.actor.requestId,
+        error: error instanceof Error ? error.message : String(error),
+      });
       return createDatabaseUnavailableError(deps, actorResolution.actor.requestId);
     }
   };

@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { OrganizationDetailPage } from './-organization-detail-page';
 
 const useOrganizationsMock = vi.fn();
-const useUsersMock = vi.fn();
+const listUsersMock = vi.fn();
 
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ to, children, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { to: string }) => (
@@ -19,9 +19,13 @@ vi.mock('../../../hooks/use-organizations', () => ({
   useOrganizations: () => useOrganizationsMock(),
 }));
 
-vi.mock('../../../hooks/use-users', () => ({
-  useUsers: () => useUsersMock(),
-}));
+vi.mock('../../../lib/iam-api', async () => {
+  const actual = await vi.importActual('../../../lib/iam-api');
+  return {
+    ...actual,
+    listUsers: (...args: unknown[]) => listUsersMock(...args),
+  };
+});
 
 const organizationFixture = {
   id: 'org-1',
@@ -97,29 +101,7 @@ describe('OrganizationDetailPage', () => {
 
   beforeEach(() => {
     useOrganizationsMock.mockReset();
-    useUsersMock.mockReset();
-    useUsersMock.mockReturnValue({
-      users: [
-        { id: 'user-1', displayName: 'Anna Admin' },
-        { id: 'user-2', displayName: 'Erik Editor' },
-      ],
-      total: 2,
-      page: 1,
-      pageSize: 100,
-      isLoading: false,
-      error: null,
-      mutationError: null,
-      selectedUser: null,
-      detailLoading: false,
-      filters: {},
-      setSearch: vi.fn(),
-      setStatus: vi.fn(),
-      setPage: vi.fn(),
-      refetch: vi.fn(),
-      loadUser: vi.fn(),
-      clearSelectedUser: vi.fn(),
-      clearMutationError: vi.fn(),
-    });
+    listUsersMock.mockReset();
   });
 
   it('loads detail state, saves changes, manages memberships, and deactivates', async () => {
@@ -137,11 +119,39 @@ describe('OrganizationDetailPage', () => {
         deactivateOrganization,
       })
     );
+    const firstPageUsers = Array.from({ length: 100 }, (_, index) => ({
+      id: `user-${index + 1}`,
+      keycloakSubject: `kc-user-${index + 1}`,
+      displayName: index === 0 ? 'Anna Admin' : `User ${index + 1}`,
+      email: index === 0 ? 'anna@example.org' : `user${index + 1}@example.org`,
+      status: 'active' as const,
+      roles: [],
+    }));
+    const secondPageUser = {
+      id: 'user-101',
+      keycloakSubject: 'kc-user-101',
+      displayName: 'Zoe Zebra',
+      email: 'zoe@example.org',
+      status: 'active' as const,
+      roles: [],
+    };
+    listUsersMock
+      .mockResolvedValueOnce({
+        data: firstPageUsers,
+        pagination: { page: 1, pageSize: 100, total: 101 },
+      })
+      .mockResolvedValueOnce({
+        data: [secondPageUser],
+        pagination: { page: 2, pageSize: 100, total: 101 },
+      });
 
     render(<OrganizationDetailPage organizationId="org-1" />);
 
     await waitFor(() => {
       expect(loadOrganization).toHaveBeenCalledWith('org-1');
+    });
+    await waitFor(() => {
+      expect(listUsersMock).toHaveBeenCalledTimes(2);
     });
 
     fireEvent.change(screen.getByLabelText('Technischer Schlüssel', { selector: '#organization-key' }), {
@@ -171,8 +181,14 @@ describe('OrganizationDetailPage', () => {
       });
     });
 
+    expect(screen.queryByRole('option', { name: 'Anna Admin <anna@example.org>' })).toBeNull();
+    fireEvent.change(screen.getByLabelText('Mitglieder suchen', { selector: '#membership-account-search' }), {
+      target: { value: 'zoe' },
+    });
+    expect(screen.getByRole('option', { name: 'Zoe Zebra <zoe@example.org>' })).toBeTruthy();
+
     fireEvent.change(document.getElementById('membership-account') as HTMLSelectElement, {
-      target: { value: 'user-2' },
+      target: { value: 'user-101' },
     });
     fireEvent.change(screen.getByLabelText('Sichtbarkeit', { selector: '#membership-visibility' }), {
       target: { value: 'external' },
@@ -182,7 +198,7 @@ describe('OrganizationDetailPage', () => {
 
     await waitFor(() => {
       expect(assignMembership).toHaveBeenCalledWith('org-1', {
-        accountId: 'user-2',
+        accountId: 'user-101',
         visibility: 'external',
         isDefaultContext: true,
       });
@@ -198,6 +214,28 @@ describe('OrganizationDetailPage', () => {
 
     await waitFor(() => {
       expect(deactivateOrganization).toHaveBeenCalledWith('org-1');
+    });
+  });
+
+  it('does not reload organization detail on rerender when the load callback is stable', async () => {
+    const loadOrganization = vi.fn().mockResolvedValue(organizationFixture);
+    useOrganizationsMock.mockImplementation(() =>
+      createState({
+        loadOrganization,
+      })
+    );
+
+    const { rerender } = render(<OrganizationDetailPage organizationId="org-1" />);
+
+    await waitFor(() => {
+      expect(loadOrganization).toHaveBeenCalledTimes(1);
+      expect(loadOrganization).toHaveBeenCalledWith('org-1');
+    });
+
+    rerender(<OrganizationDetailPage organizationId="org-1" />);
+
+    await waitFor(() => {
+      expect(loadOrganization).toHaveBeenCalledTimes(1);
     });
   });
 

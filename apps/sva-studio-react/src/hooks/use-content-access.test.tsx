@@ -40,6 +40,14 @@ vi.mock('../providers/auth-provider', () => ({
   useAuth: () => authMockValue,
 }));
 
+const organizationContextMockValue = {
+  context: null as { activeOrganizationId?: string | null } | null,
+};
+
+vi.mock('./use-organization-context', () => ({
+  useOrganizationContext: () => organizationContextMockValue,
+}));
+
 vi.mock('@sva/monitoring-client/logging', () => ({
   createBrowserLogger: () => browserLoggerMock,
 }));
@@ -53,6 +61,7 @@ describe('useContentAccess', () => {
       instanceId: 'de-musterhausen',
     };
     authMockValue.invalidatePermissions.mockReset();
+    organizationContextMockValue.context = null;
     asIamErrorMock.mockReset();
     asIamErrorMock.mockImplementation((error: unknown) => error);
     browserLoggerMock.debug.mockReset();
@@ -142,6 +151,48 @@ describe('useContentAccess', () => {
     expect(browserLoggerMock.debug).toHaveBeenCalledWith(
       'content_access_load_succeeded',
       expect.objectContaining({ operation: 'load_content_access', instance_id: 'de-musterhausen' })
+    );
+  });
+
+  it('includes the active organization context in the permissions request', async () => {
+    organizationContextMockValue.context = {
+      activeOrganizationId: '11111111-1111-4111-8111-111111111111',
+    };
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        permissions: [
+          {
+            action: 'content.read',
+            resourceType: 'content',
+            effect: 'allow',
+            organizationId: '11111111-1111-4111-8111-111111111111',
+          },
+          {
+            action: 'content.create',
+            resourceType: 'content',
+            effect: 'allow',
+            organizationId: '11111111-1111-4111-8111-111111111111',
+          },
+        ],
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { result } = renderHook(() => useContentAccess());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.access?.canCreate).toBe(true);
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/iam/me/permissions?instanceId=de-musterhausen&organizationId=11111111-1111-4111-8111-111111111111',
+      undefined,
+      {
+        signal: expect.any(AbortSignal),
+        timeoutMs: 10_000,
+      }
     );
   });
 

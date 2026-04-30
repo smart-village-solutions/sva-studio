@@ -94,6 +94,7 @@ const createRepository = (overrides: Partial<InstanceRegistryRepository> = {}): 
 const createDeps = (repository = createRepository()): InstanceRegistryServiceDeps => ({
   repository,
   invalidateHost: vi.fn(),
+  invalidatePermissionSnapshots: vi.fn(async () => undefined),
   protectSecret: vi.fn((value, aad) => (value ? `protected:${aad}:${value}` : null)),
   revealSecret: vi.fn((value) => (value ? `revealed:${value}` : undefined)),
   moduleIamRegistry: new Map([
@@ -518,6 +519,110 @@ describe('instance registry service facade', () => {
     );
   });
 
+<<<<<<< HEAD
+=======
+  it('invalidates instance permission snapshots after module IAM changes', async () => {
+    const repository = createRepository({
+      assignModule: vi.fn(async () => true),
+      revokeModule: vi.fn(async () => true),
+      getInstanceById: vi.fn(async () => baseInstance),
+      listAssignedModules: vi
+        .fn()
+        .mockResolvedValueOnce(['news', 'events'])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce(['news']),
+    });
+    const deps = createDeps(repository);
+    const service = createInstanceRegistryService(deps);
+
+    await service.assignModule({
+      instanceId: 'demo',
+      moduleId: 'events',
+      idempotencyKey: 'idem-module-1',
+      actorId: 'actor-1',
+      requestId: 'req-module-1',
+    });
+
+    await service.revokeModule({
+      instanceId: 'demo',
+      moduleId: 'news',
+      confirmation: 'REVOKE',
+      idempotencyKey: 'idem-module-2',
+      actorId: 'actor-1',
+      requestId: 'req-module-2',
+    });
+
+    await service.seedIamBaseline({
+      instanceId: 'demo',
+      idempotencyKey: 'idem-module-3',
+      actorId: 'actor-1',
+      requestId: 'req-module-3',
+    });
+
+    expect(deps.invalidatePermissionSnapshots).toHaveBeenNthCalledWith(1, {
+      instanceId: 'demo',
+      trigger: 'instance_module_assigned',
+    });
+    expect(deps.invalidatePermissionSnapshots).toHaveBeenNthCalledWith(2, {
+      instanceId: 'demo',
+      trigger: 'instance_module_revoked',
+    });
+    expect(deps.invalidatePermissionSnapshots).toHaveBeenNthCalledWith(3, {
+      instanceId: 'demo',
+      trigger: 'instance_module_iam_seeded',
+    });
+  });
+
+  it('assigns the host-owned media module when it is present in the module registry', async () => {
+    const repository = createRepository({
+      assignModule: vi.fn(async () => true),
+      listAssignedModules: vi.fn(async () => ['media']),
+      getInstanceById: vi
+        .fn()
+        .mockResolvedValueOnce(baseInstance)
+        .mockResolvedValueOnce({ ...baseInstance, assignedModules: ['media'] }),
+    });
+    const service = createInstanceRegistryService(
+      createDeps(repository, {
+        moduleIamRegistry: new Map([
+          [
+            'media',
+            {
+              moduleId: 'media',
+              permissionIds: ['media.read', 'media.create'],
+              systemRoles: [{ roleName: 'editor', permissionIds: ['media.read', 'media.create'] }],
+            },
+          ],
+        ]),
+      })
+    );
+
+    await expect(
+      service.assignModule({
+        instanceId: 'demo',
+        moduleId: 'media',
+        idempotencyKey: 'idem-module-media-1',
+        actorId: 'actor-1',
+        requestId: 'req-module-media-1',
+      })
+    ).resolves.toEqual({
+      ok: true,
+      instance: expect.objectContaining({
+        assignedModules: ['media'],
+      }),
+    });
+
+    expect(repository.assignModule).toHaveBeenCalledWith('demo', 'media');
+    expect(repository.syncAssignedModuleIam).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'demo',
+        managedModuleIds: ['media'],
+        contracts: [expect.objectContaining({ moduleId: 'media' })],
+      })
+    );
+  });
+
+>>>>>>> aa3408eb (feat(instance-registry): implement permission snapshot invalidation on module changes)
   it('revokes a module and reseeds the remaining module IAM baseline', async () => {
     const repository = createRepository({
       revokeModule: vi.fn(async () => true),

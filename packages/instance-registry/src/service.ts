@@ -91,6 +91,14 @@ const resolveAssignedModuleContracts = (
   });
 };
 
+const invalidateInstancePermissionSnapshots = async (
+  deps: InstanceRegistryServiceDeps,
+  instanceId: string,
+  trigger: string
+): Promise<void> => {
+  await deps.invalidatePermissionSnapshots?.({ instanceId, trigger });
+};
+
 const createAssignModuleHandler =
   (deps: InstanceRegistryServiceDeps): InstanceRegistryService['assignModule'] =>
   async (input) => {
@@ -115,6 +123,7 @@ const createAssignModuleHandler =
       managedModuleIds: [...registry.keys()],
       contracts: resolveAssignedModuleContracts(deps, assignedModuleIds),
     });
+    await invalidateInstancePermissionSnapshots(deps, input.instanceId, 'instance_module_assigned');
     await deps.repository.appendAuditEvent({
       instanceId: input.instanceId,
       eventType: 'instance_module_assigned',
@@ -155,6 +164,7 @@ const createRevokeModuleHandler =
       managedModuleIds: [...registry.keys()],
       contracts: resolveAssignedModuleContracts(deps, assignedModuleIds),
     });
+    await invalidateInstancePermissionSnapshots(deps, input.instanceId, 'instance_module_revoked');
     await deps.repository.appendAuditEvent({
       instanceId: input.instanceId,
       eventType: 'instance_module_revoked',
@@ -186,6 +196,7 @@ const createSeedIamBaselineHandler =
       managedModuleIds: [...registry.keys()],
       contracts: resolveAssignedModuleContracts(deps, assignedModuleIds),
     });
+    await invalidateInstancePermissionSnapshots(deps, input.instanceId, 'instance_module_iam_seeded');
     await deps.repository.appendAuditEvent({
       instanceId: input.instanceId,
       eventType: 'instance_module_iam_seeded',

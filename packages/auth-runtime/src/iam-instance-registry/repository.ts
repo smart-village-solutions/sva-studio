@@ -4,6 +4,7 @@ import { invalidateInstanceRegistryHost } from '@sva/data-repositories/server';
 import { createInstanceRegistryRuntime } from '@sva/instance-registry/runtime-wiring';
 
 import { getIamDatabaseUrl } from '../runtime-secrets.js';
+import { notifyPermissionInvalidation } from '../iam-account-management/shared-activity.js';
 import {
   getInstanceKeycloakPlanViaProvisioner,
   getInstanceKeycloakPreflightViaProvisioner,
@@ -63,6 +64,24 @@ const probeTenantIamAccess = async (input: { instanceId: string; requestId?: str
 };
 
 const resolvePool = createPoolResolver(getIamDatabaseUrl);
+
+const invalidateInstancePermissionSnapshots = async (input: { instanceId: string; trigger: string }) => {
+  const pool = resolvePool();
+  if (!pool) {
+    throw new Error('IAM database not configured');
+  }
+
+  const client = await pool.connect();
+  try {
+    await notifyPermissionInvalidation(client, {
+      instanceId: input.instanceId,
+      trigger: input.trigger,
+    });
+  } finally {
+    client.release();
+  }
+};
+
 const pluginModuleIamRegistry = new Map([
   [
     'news',
@@ -158,6 +177,7 @@ const registryRuntime = createInstanceRegistryRuntime({
   createRepository: createInstanceRegistryRepository,
   serviceDeps: {
     invalidateHost: invalidateInstanceRegistryHost,
+    invalidatePermissionSnapshots: invalidateInstancePermissionSnapshots,
     moduleIamRegistry: pluginModuleIamRegistry,
     protectSecret: protectField,
     revealSecret: revealField,
@@ -166,6 +186,7 @@ const registryRuntime = createInstanceRegistryRuntime({
   },
   provisioningWorkerServiceDeps: {
     invalidateHost: invalidateInstanceRegistryHost,
+    invalidatePermissionSnapshots: invalidateInstancePermissionSnapshots,
     moduleIamRegistry: pluginModuleIamRegistry,
     protectSecret: protectField,
     revealSecret: revealField,

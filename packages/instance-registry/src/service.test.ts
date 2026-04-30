@@ -97,6 +97,7 @@ const createDeps = (
 ): InstanceRegistryServiceDeps => ({
   repository,
   invalidateHost: vi.fn(),
+  invalidatePermissionSnapshots: vi.fn(async () => undefined),
   protectSecret: vi.fn((value, aad) => (value ? `protected:${aad}:${value}` : null)),
   revealSecret: vi.fn((value) => (value ? `revealed:${value}` : undefined)),
   moduleIamRegistry: new Map([
@@ -520,6 +521,58 @@ describe('instance registry service facade', () => {
         }),
       })
     );
+  });
+
+  it('invalidates instance permission snapshots after module IAM changes', async () => {
+    const repository = createRepository({
+      assignModule: vi.fn(async () => true),
+      revokeModule: vi.fn(async () => true),
+      getInstanceById: vi.fn(async () => baseInstance),
+      listAssignedModules: vi
+        .fn()
+        .mockResolvedValueOnce(['news', 'events'])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce(['news']),
+    });
+    const deps = createDeps(repository);
+    const service = createInstanceRegistryService(deps);
+
+    await service.assignModule({
+      instanceId: 'demo',
+      moduleId: 'events',
+      idempotencyKey: 'idem-module-1',
+      actorId: 'actor-1',
+      requestId: 'req-module-1',
+    });
+
+    await service.revokeModule({
+      instanceId: 'demo',
+      moduleId: 'news',
+      confirmation: 'REVOKE',
+      idempotencyKey: 'idem-module-2',
+      actorId: 'actor-1',
+      requestId: 'req-module-2',
+    });
+
+    await service.seedIamBaseline({
+      instanceId: 'demo',
+      idempotencyKey: 'idem-module-3',
+      actorId: 'actor-1',
+      requestId: 'req-module-3',
+    });
+
+    expect(deps.invalidatePermissionSnapshots).toHaveBeenNthCalledWith(1, {
+      instanceId: 'demo',
+      trigger: 'instance_module_assigned',
+    });
+    expect(deps.invalidatePermissionSnapshots).toHaveBeenNthCalledWith(2, {
+      instanceId: 'demo',
+      trigger: 'instance_module_revoked',
+    });
+    expect(deps.invalidatePermissionSnapshots).toHaveBeenNthCalledWith(3, {
+      instanceId: 'demo',
+      trigger: 'instance_module_iam_seeded',
+    });
   });
 
   it('assigns the host-owned media module when it is present in the module registry', async () => {

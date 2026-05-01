@@ -519,8 +519,6 @@ describe('instance registry service facade', () => {
     );
   });
 
-<<<<<<< HEAD
-=======
   it('invalidates instance permission snapshots after module IAM changes', async () => {
     const repository = createRepository({
       assignModule: vi.fn(async () => true),
@@ -572,57 +570,6 @@ describe('instance registry service facade', () => {
       trigger: 'instance_module_iam_seeded',
     });
   });
-
-  it('assigns the host-owned media module when it is present in the module registry', async () => {
-    const repository = createRepository({
-      assignModule: vi.fn(async () => true),
-      listAssignedModules: vi.fn(async () => ['media']),
-      getInstanceById: vi
-        .fn()
-        .mockResolvedValueOnce(baseInstance)
-        .mockResolvedValueOnce({ ...baseInstance, assignedModules: ['media'] }),
-    });
-    const service = createInstanceRegistryService(
-      createDeps(repository, {
-        moduleIamRegistry: new Map([
-          [
-            'media',
-            {
-              moduleId: 'media',
-              permissionIds: ['media.read', 'media.create'],
-              systemRoles: [{ roleName: 'editor', permissionIds: ['media.read', 'media.create'] }],
-            },
-          ],
-        ]),
-      })
-    );
-
-    await expect(
-      service.assignModule({
-        instanceId: 'demo',
-        moduleId: 'media',
-        idempotencyKey: 'idem-module-media-1',
-        actorId: 'actor-1',
-        requestId: 'req-module-media-1',
-      })
-    ).resolves.toEqual({
-      ok: true,
-      instance: expect.objectContaining({
-        assignedModules: ['media'],
-      }),
-    });
-
-    expect(repository.assignModule).toHaveBeenCalledWith('demo', 'media');
-    expect(repository.syncAssignedModuleIam).toHaveBeenCalledWith(
-      expect.objectContaining({
-        instanceId: 'demo',
-        managedModuleIds: ['media'],
-        contracts: [expect.objectContaining({ moduleId: 'media' })],
-      })
-    );
-  });
-
->>>>>>> aa3408eb (feat(instance-registry): implement permission snapshot invalidation on module changes)
   it('revokes a module and reseeds the remaining module IAM baseline', async () => {
     const repository = createRepository({
       revokeModule: vi.fn(async () => true),

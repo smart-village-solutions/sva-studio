@@ -569,4 +569,35 @@ describe('callbackHandler', () => {
       expect.objectContaining({ had_session_cookie_on_callback: true })
     );
   });
+
+  it('redirects to /?auth=state-expired and emits cleanup logging for expired login state', async () => {
+    const { callbackHandler } = await import('./auth-route-handlers.js');
+    const { resolveAuthConfigForRequest } = await import('./config.js');
+    const { decodeLoginStateCookie } = await import('./login-state-cookie.js');
+
+    vi.mocked(resolveAuthConfigForRequest).mockResolvedValueOnce(authConfigBase as never);
+    vi.mocked(decodeLoginStateCookie).mockReturnValueOnce({
+      state: 'state-abc123def456',
+      codeVerifier: 'code-verifier',
+      nonce: 'nonce-xyz789',
+      createdAt: Date.now() - 11 * 60 * 1000,
+      returnTo: '/',
+      silent: false,
+      kind: 'platform',
+    } as never);
+    mocks.readCookieFromRequest.mockImplementation((_request: Request, cookieName: string) =>
+      cookieName === 'sva_session' ? 'session-1' : 'encoded-login-state'
+    );
+
+    const response = await callbackHandler(
+      new Request('http://localhost/auth/callback?code=abc&state=state-abc123def456')
+    );
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get('Location')).toBe('/?auth=state-expired');
+    expect(mocks.logger.info).toHaveBeenCalledWith(
+      'Expired callback cookie cleanup prepared',
+      expect.objectContaining({ had_session_cookie_on_callback: true })
+    );
+  });
 });

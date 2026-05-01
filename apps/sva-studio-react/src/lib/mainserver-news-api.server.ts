@@ -66,6 +66,13 @@ type ParseOptions = {
   readonly allowPushNotification: boolean;
 };
 
+type ContentActor = {
+  readonly instanceId: string;
+  readonly keycloakSubject: string;
+};
+
+type ParsedValue<T> = T | Response;
+
 const toPayloadHash = (rawBody: string): string => createHash('sha256').update(rawBody).digest('hex');
 
 const readonlyMutationFields = new Set([
@@ -241,6 +248,78 @@ const parseAddress = (value: unknown): SvaMainserverNewsInput['address'] | undef
   };
 };
 
+const isResponse = <T>(value: ParsedValue<T>): value is Response => value instanceof Response;
+
+const parseMediaContent = (
+  media: unknown
+): NonNullable<NonNullable<SvaMainserverNewsInput['contentBlocks']>[number]['mediaContents']>[number] | Response => {
+  if (!isRecord(media)) {
+    return errorJson(400, 'invalid_request', 'MediaContent-Einträge müssen Objekte sein.');
+  }
+
+  const sourceUrl = parseWebUrl(media.sourceUrl);
+  if (isResponse(sourceUrl)) {
+    return sourceUrl;
+  }
+
+  return {
+    ...(readString(media.captionText) ? { captionText: readString(media.captionText) } : {}),
+    ...(readString(media.copyright) ? { copyright: readString(media.copyright) } : {}),
+    ...(readString(media.contentType) ? { contentType: readString(media.contentType) } : {}),
+    ...(readNumber(media.height) !== undefined ? { height: readNumber(media.height) } : {}),
+    ...(readNumber(media.width) !== undefined ? { width: readNumber(media.width) } : {}),
+    ...(sourceUrl ? { sourceUrl } : {}),
+  };
+};
+
+const parseMediaContents = (
+  value: unknown
+): NonNullable<NonNullable<SvaMainserverNewsInput['contentBlocks']>[number]['mediaContents']> | Response | undefined => {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+  if (!Array.isArray(value)) {
+    return errorJson(400, 'invalid_request', 'MediaContent muss als Liste gesendet werden.');
+  }
+
+  const mediaContents: Array<
+    NonNullable<NonNullable<SvaMainserverNewsInput['contentBlocks']>[number]['mediaContents']>[number]
+  > = [];
+  for (const media of value) {
+    const parsed = parseMediaContent(media);
+    if (isResponse(parsed)) {
+      return parsed;
+    }
+    mediaContents.push(parsed);
+  }
+
+  return mediaContents;
+};
+
+const parseContentBlock = (block: unknown): NonNullable<SvaMainserverNewsInput['contentBlocks']>[number] | Response => {
+  if (!isRecord(block)) {
+    return errorJson(400, 'invalid_request', 'ContentBlocks müssen Objekte sein.');
+  }
+
+  const mediaContents = parseMediaContents(block.mediaContents);
+  if (isResponse(mediaContents)) {
+    return mediaContents;
+  }
+
+  return {
+    ...(readString(block.title) ? { title: readString(block.title) } : {}),
+    ...(readString(block.intro) ? { intro: readString(block.intro) } : {}),
+    ...(readString(block.body) ? { body: readString(block.body) } : {}),
+    ...(mediaContents && mediaContents.length > 0 ? { mediaContents } : {}),
+  };
+};
+
+const hasValidContentBlocks = (blocks: NonNullable<SvaMainserverNewsInput['contentBlocks']>): boolean =>
+  blocks.length > 0 &&
+  blocks.some((block) => (block.body?.length ?? 0) <= 50_000) &&
+  blocks.some((block) => block.body && getVisibleTextLength(block.body) > 0) &&
+  blocks.every((block) => (block.body?.length ?? 0) <= 50_000);
+
 const parseContentBlocks = (value: unknown): SvaMainserverNewsInput['contentBlocks'] | undefined | Response => {
   if (value === undefined || value === null) {
     return errorJson(400, 'invalid_request', 'Mindestens ein Inhaltsblock benötigt Inhalt und darf maximal 50.000 Zeichen haben.');
@@ -251,53 +330,20 @@ const parseContentBlocks = (value: unknown): SvaMainserverNewsInput['contentBloc
 
   const blocks: Array<NonNullable<SvaMainserverNewsInput['contentBlocks']>[number]> = [];
   for (const block of value) {
-    if (!isRecord(block)) {
-      return errorJson(400, 'invalid_request', 'ContentBlocks müssen Objekte sein.');
+    const parsedBlock = parseContentBlock(block);
+    if (isResponse(parsedBlock)) {
+      return parsedBlock;
     }
-    const mediaContents: Array<
-      NonNullable<NonNullable<SvaMainserverNewsInput['contentBlocks']>[number]['mediaContents']>[number]
-    > = [];
-    if (block.mediaContents !== undefined && block.mediaContents !== null) {
-      if (!Array.isArray(block.mediaContents)) {
-        return errorJson(400, 'invalid_request', 'MediaContent muss als Liste gesendet werden.');
-      }
-      for (const media of block.mediaContents) {
-        if (!isRecord(media)) {
-          return errorJson(400, 'invalid_request', 'MediaContent-Einträge müssen Objekte sein.');
-        }
-        const sourceUrl = parseWebUrl(media.sourceUrl);
-        if (sourceUrl instanceof Response) {
-          return sourceUrl;
-        }
-        mediaContents.push({
-          ...(readString(media.captionText) ? { captionText: readString(media.captionText) } : {}),
-          ...(readString(media.copyright) ? { copyright: readString(media.copyright) } : {}),
-          ...(readString(media.contentType) ? { contentType: readString(media.contentType) } : {}),
-          ...(readNumber(media.height) !== undefined ? { height: readNumber(media.height) } : {}),
-          ...(readNumber(media.width) !== undefined ? { width: readNumber(media.width) } : {}),
-          ...(sourceUrl ? { sourceUrl } : {}),
-        });
-      }
-    }
-    blocks.push({
-      ...(readString(block.title) ? { title: readString(block.title) } : {}),
-      ...(readString(block.intro) ? { intro: readString(block.intro) } : {}),
-      ...(readString(block.body) ? { body: readString(block.body) } : {}),
-      ...(mediaContents.length > 0 ? { mediaContents } : {}),
-    });
+    blocks.push(parsedBlock);
   }
-  if (
-    blocks.length === 0 ||
-    blocks.some((block) => (block.body?.length ?? 0) > 50_000) ||
-    blocks.some((block) => block.body && getVisibleTextLength(block.body) > 0) === false
-  ) {
+
+  if (!hasValidContentBlocks(blocks)) {
     return errorJson(400, 'invalid_request', 'Mindestens ein Inhaltsblock benötigt Inhalt und darf maximal 50.000 Zeichen haben.');
   }
   return blocks;
 };
 
-const parseNewsInput = async (request: Request, options: ParseOptions): Promise<ParsedNewsInput | Response> => {
-  const rawBody = await request.text();
+const parseJsonBody = (rawBody: string): Record<string, unknown> | Response => {
   let body: unknown;
   try {
     body = JSON.parse(rawBody) as unknown;
@@ -305,19 +351,29 @@ const parseNewsInput = async (request: Request, options: ParseOptions): Promise<
     return errorJson(400, 'invalid_request', 'Request-Body muss gültiges JSON sein.');
   }
 
-  if (!isRecord(body)) {
-    return errorJson(400, 'invalid_request', 'News-Daten müssen als Objekt gesendet werden.');
-  }
+  return isRecord(body) ? body : errorJson(400, 'invalid_request', 'News-Daten müssen als Objekt gesendet werden.');
+};
 
+const validateReadonlyMutationFields = (body: Record<string, unknown>): Response | null => {
   const readonlyField = Object.keys(body).find((key) => readonlyMutationFields.has(key));
-  if (readonlyField) {
-    return errorJson(400, 'invalid_request', `Das Feld "${readonlyField}" darf nicht geschrieben werden.`);
-  }
+  return readonlyField
+    ? errorJson(400, 'invalid_request', `Das Feld "${readonlyField}" darf nicht geschrieben werden.`)
+    : null;
+};
 
-  if (!options.allowPushNotification && body.pushNotification !== undefined) {
-    return errorJson(400, 'invalid_request', 'Push-Benachrichtigungen sind nur beim Erstellen erlaubt.');
-  }
+const validatePushNotificationInput = (body: Record<string, unknown>, options: ParseOptions): Response | null =>
+  !options.allowPushNotification && body.pushNotification !== undefined
+    ? errorJson(400, 'invalid_request', 'Push-Benachrichtigungen sind nur beim Erstellen erlaubt.')
+    : null;
 
+const validateRequiredNewsFields = (
+  body: Record<string, unknown>
+): ParsedValue<{
+  readonly title: string;
+  readonly publishedAt: string;
+  readonly publicationDate: string | undefined;
+  readonly charactersToBeShown: number | undefined;
+}> => {
   const title = readString(body.title);
   const publishedAt = readString(body.publishedAt);
   if (!title || !publishedAt || !isValidDate(publishedAt)) {
@@ -337,46 +393,117 @@ const parseNewsInput = async (request: Request, options: ParseOptions): Promise<
     return errorJson(400, 'invalid_request', 'Die Zeichenbegrenzung muss eine nicht-negative Ganzzahl sein.');
   }
 
+  return {
+    title,
+    publishedAt,
+    publicationDate,
+    charactersToBeShown,
+  };
+};
+
+const parseNewsRelations = (
+  body: Record<string, unknown>
+): ParsedValue<{
+  readonly sourceUrl: SvaMainserverNewsInput['sourceUrl'];
+  readonly categories: SvaMainserverNewsInput['categories'];
+  readonly address: SvaMainserverNewsInput['address'];
+  readonly contentBlocks: SvaMainserverNewsInput['contentBlocks'];
+}> => {
   const sourceUrl = parseWebUrl(body.sourceUrl);
-  if (sourceUrl instanceof Response) {
+  if (isResponse(sourceUrl)) {
     return sourceUrl;
   }
+
   const categories = parseCategories(body.categories);
-  if (categories instanceof Response) {
+  if (isResponse(categories)) {
     return categories;
   }
+
   const address = parseAddress(body.address);
-  if (address instanceof Response) {
+  if (isResponse(address)) {
     return address;
   }
+
   const contentBlocks = parseContentBlocks(body.contentBlocks);
-  if (contentBlocks instanceof Response) {
+  if (isResponse(contentBlocks)) {
     return contentBlocks;
   }
 
   return {
+    sourceUrl,
+    categories,
+    address,
+    contentBlocks,
+  };
+};
+
+const buildNewsInput = (
+  body: Record<string, unknown>,
+  options: ParseOptions,
+  fields: {
+    readonly title: string;
+    readonly publishedAt: string;
+    readonly publicationDate: string | undefined;
+    readonly charactersToBeShown: number | undefined;
+  },
+  relations: {
+    readonly sourceUrl: SvaMainserverNewsInput['sourceUrl'];
+    readonly categories: SvaMainserverNewsInput['categories'];
+    readonly address: SvaMainserverNewsInput['address'];
+    readonly contentBlocks: SvaMainserverNewsInput['contentBlocks'];
+  }
+): SvaMainserverNewsInput => ({
+  title: fields.title,
+  publishedAt: fields.publishedAt,
+  ...(readString(body.author) ? { author: readString(body.author) } : {}),
+  ...(readString(body.keywords) ? { keywords: readString(body.keywords) } : {}),
+  ...(readString(body.externalId) ? { externalId: readString(body.externalId) } : {}),
+  ...(readBoolean(body.fullVersion) !== undefined ? { fullVersion: readBoolean(body.fullVersion) } : {}),
+  ...(fields.charactersToBeShown !== undefined ? { charactersToBeShown: fields.charactersToBeShown } : {}),
+  ...(readString(body.newsType) ? { newsType: readString(body.newsType) } : {}),
+  ...(fields.publicationDate ? { publicationDate: fields.publicationDate } : {}),
+  ...(readBoolean(body.showPublishDate) !== undefined ? { showPublishDate: readBoolean(body.showPublishDate) } : {}),
+  ...(readString(body.categoryName) ? { categoryName: readString(body.categoryName) } : {}),
+  ...(relations.categories ? { categories: relations.categories } : {}),
+  ...(relations.sourceUrl ? { sourceUrl: relations.sourceUrl } : {}),
+  ...(relations.address ? { address: relations.address } : {}),
+  ...(relations.contentBlocks ? { contentBlocks: relations.contentBlocks } : {}),
+  ...(readString(body.pointOfInterestId) ? { pointOfInterestId: readString(body.pointOfInterestId) } : {}),
+  ...(options.allowPushNotification && readBoolean(body.pushNotification) !== undefined
+    ? { pushNotification: readBoolean(body.pushNotification) }
+    : {}),
+});
+
+const parseNewsInput = async (request: Request, options: ParseOptions): Promise<ParsedNewsInput | Response> => {
+  const rawBody = await request.text();
+  const body = parseJsonBody(rawBody);
+  if (isResponse(body)) {
+    return body;
+  }
+
+  const readonlyFieldError = validateReadonlyMutationFields(body);
+  if (readonlyFieldError) {
+    return readonlyFieldError;
+  }
+
+  const pushNotificationError = validatePushNotificationInput(body, options);
+  if (pushNotificationError) {
+    return pushNotificationError;
+  }
+
+  const fields = validateRequiredNewsFields(body);
+  if (isResponse(fields)) {
+    return fields;
+  }
+
+  const relations = parseNewsRelations(body);
+  if (isResponse(relations)) {
+    return relations;
+  }
+
+  return {
     rawBody,
-    news: {
-      title,
-      publishedAt,
-      ...(readString(body.author) ? { author: readString(body.author) } : {}),
-      ...(readString(body.keywords) ? { keywords: readString(body.keywords) } : {}),
-      ...(readString(body.externalId) ? { externalId: readString(body.externalId) } : {}),
-      ...(readBoolean(body.fullVersion) !== undefined ? { fullVersion: readBoolean(body.fullVersion) } : {}),
-      ...(charactersToBeShown !== undefined ? { charactersToBeShown } : {}),
-      ...(readString(body.newsType) ? { newsType: readString(body.newsType) } : {}),
-      ...(publicationDate ? { publicationDate } : {}),
-      ...(readBoolean(body.showPublishDate) !== undefined ? { showPublishDate: readBoolean(body.showPublishDate) } : {}),
-      ...(readString(body.categoryName) ? { categoryName: readString(body.categoryName) } : {}),
-      ...(categories ? { categories } : {}),
-      ...(sourceUrl ? { sourceUrl } : {}),
-      ...(address ? { address } : {}),
-      ...(contentBlocks ? { contentBlocks } : {}),
-      ...(readString(body.pointOfInterestId) ? { pointOfInterestId: readString(body.pointOfInterestId) } : {}),
-      ...(options.allowPushNotification && readBoolean(body.pushNotification) !== undefined
-        ? { pushNotification: readBoolean(body.pushNotification) }
-        : {}),
-    },
+    news: buildNewsInput(body, options, fields, relations),
   };
 };
 
@@ -485,150 +612,237 @@ const authorizeOrResponse = async (
   };
 };
 
+const logRouteSuccess = (
+  ctx: AuthenticatedRequestContext,
+  requestMethod: string,
+  operation: string,
+  newsId?: string
+) => {
+  const workspaceContext = getWorkspaceContext();
+  logger.info('Mainserver News route succeeded', {
+    operation,
+    request_id: workspaceContext.requestId,
+    trace_id: workspaceContext.traceId,
+    actor_id: ctx.user.id,
+    instance_id: ctx.user.instanceId,
+    content_type: NEWS_CONTENT_TYPE,
+    content_id: newsId,
+    method: requestMethod,
+  });
+};
+
+const authorizeMutation = async (
+  request: Request,
+  ctx: AuthenticatedRequestContext,
+  action: 'news.create' | 'news.update' | 'news.delete',
+  requestId?: string,
+  newsId?: string
+): Promise<Response | ContentActor> => {
+  const csrfError = validateMutationRequest(request, requestId);
+  if (csrfError) {
+    return csrfError;
+  }
+
+  return authorizeOrResponse(ctx, action, newsId);
+};
+
+const handleCollectionRead = async (request: Request, ctx: AuthenticatedRequestContext) => {
+  const actor = await authorizeOrResponse(ctx, 'news.read');
+  if (isResponse(actor)) {
+    return actor;
+  }
+
+  const data = await listSvaMainserverNews({ ...actor, ...parseMainserverListQuery(request) });
+  logRouteSuccess(ctx, request.method, 'mainserver_news_list');
+  return json(data);
+};
+
+const handleItemRead = async (route: Extract<RouteMatch, { readonly kind: 'item' }>, request: Request, ctx: AuthenticatedRequestContext) => {
+  const actor = await authorizeOrResponse(ctx, 'news.read', route.newsId);
+  if (isResponse(actor)) {
+    return actor;
+  }
+
+  const data = await getSvaMainserverNews({ ...actor, newsId: route.newsId });
+  logRouteSuccess(ctx, request.method, 'mainserver_news_detail', route.newsId);
+  return json({ data });
+};
+
+const completeDeniedCreateIdempotency = async (input: {
+  readonly actorAccountId: string;
+  readonly instanceId: string;
+  readonly idempotencyKey: string;
+  readonly deniedResponse: Response;
+}) => {
+  await completeNewsCreateIdempotency({
+    actorAccountId: input.actorAccountId,
+    instanceId: input.instanceId,
+    idempotencyKey: input.idempotencyKey,
+    responseBody: await readResponseBody(input.deniedResponse, {
+      error: 'forbidden',
+      message: 'Keine Berechtigung für diese Inhaltsoperation.',
+    }),
+    responseStatus: input.deniedResponse.status,
+  });
+};
+
+const completeCreateFailureIdempotency = async (input: {
+  readonly actorAccountId: string;
+  readonly instanceId: string;
+  readonly idempotencyKey: string;
+  readonly response: Response;
+}) => {
+  await completeNewsCreateIdempotency({
+    actorAccountId: input.actorAccountId,
+    instanceId: input.instanceId,
+    idempotencyKey: input.idempotencyKey,
+    responseBody: await readResponseBody(input.response, {
+      error: 'internal_error',
+      message: 'Mainserver-News-Anfrage ist fehlgeschlagen.',
+    }),
+    responseStatus: input.response.status,
+  });
+};
+
+const handleCollectionCreate = async (request: Request, ctx: AuthenticatedRequestContext, requestId?: string) => {
+  const csrfError = validateMutationRequest(request, requestId);
+  if (csrfError) {
+    return csrfError;
+  }
+
+  const idempotencyKey = readIdempotencyKey(request);
+  if (isResponse(idempotencyKey)) {
+    return idempotencyKey;
+  }
+
+  const parsed = await parseNewsInput(request, { allowPushNotification: true });
+  if (isResponse(parsed)) {
+    return parsed;
+  }
+
+  const actorInfo = await resolveActorInfo(request, ctx, { requireActorMembership: true });
+  if ('error' in actorInfo) {
+    return actorInfo.error;
+  }
+
+  const actorAccountId = actorInfo.actor.actorAccountId;
+  if (!actorAccountId) {
+    return errorJson(403, 'forbidden', 'Keine Berechtigung für diese Inhaltsoperation.');
+  }
+
+  const idempotency = await reserveIdempotency({
+    actorAccountId,
+    endpoint: 'POST:/api/v1/mainserver/news',
+    idempotencyKey,
+    instanceId: actorInfo.actor.instanceId,
+    payloadHash: toPayloadHash(parsed.rawBody),
+  });
+  if (idempotency.status === 'replay') {
+    return json(idempotency.responseBody, idempotency.responseStatus);
+  }
+  if (idempotency.status === 'conflict') {
+    return errorJson(409, 'idempotency_key_reuse', idempotency.message);
+  }
+
+  const actor = await authorizeOrResponse(ctx, 'news.create');
+  if (isResponse(actor)) {
+    await completeDeniedCreateIdempotency({
+      actorAccountId,
+      instanceId: actorInfo.actor.instanceId,
+      idempotencyKey,
+      deniedResponse: actor,
+    });
+    return actor;
+  }
+
+  try {
+    const data = await createSvaMainserverNews({ ...actor, news: parsed.news });
+    logRouteSuccess(ctx, request.method, 'mainserver_news_create', data.id);
+    const responseBody = { data };
+    await completeNewsCreateIdempotency({
+      actorAccountId,
+      instanceId: actorInfo.actor.instanceId,
+      idempotencyKey,
+      responseBody,
+      responseStatus: 201,
+    });
+    return json(responseBody, 201);
+  } catch (error) {
+    const response = toMainserverErrorResponse(error);
+    await completeCreateFailureIdempotency({
+      actorAccountId,
+      instanceId: actorInfo.actor.instanceId,
+      idempotencyKey,
+      response,
+    });
+    return response;
+  }
+};
+
+const handleItemUpdate = async (
+  request: Request,
+  route: Extract<RouteMatch, { readonly kind: 'item' }>,
+  ctx: AuthenticatedRequestContext,
+  requestId?: string
+) => {
+  const csrfError = validateMutationRequest(request, requestId);
+  if (csrfError) {
+    return csrfError;
+  }
+
+  const parsed = await parseNewsInput(request, { allowPushNotification: false });
+  if (isResponse(parsed)) {
+    return parsed;
+  }
+
+  const actor = await authorizeOrResponse(ctx, 'news.update', route.newsId);
+  if (isResponse(actor)) {
+    return actor;
+  }
+
+  const data = await updateSvaMainserverNews({ ...actor, newsId: route.newsId, news: parsed.news });
+  logRouteSuccess(ctx, request.method, 'mainserver_news_update', route.newsId);
+  return json({ data });
+};
+
+const handleItemDelete = async (
+  request: Request,
+  route: Extract<RouteMatch, { readonly kind: 'item' }>,
+  ctx: AuthenticatedRequestContext,
+  requestId?: string
+) => {
+  const actor = await authorizeMutation(request, ctx, 'news.delete', requestId, route.newsId);
+  if (isResponse(actor)) {
+    return actor;
+  }
+
+  const data = await deleteSvaMainserverNews({ ...actor, newsId: route.newsId });
+  logRouteSuccess(ctx, request.method, 'mainserver_news_delete', route.newsId);
+  return json({ data });
+};
+
 const dispatchAuthenticated = async (request: Request, route: RouteMatch, ctx: AuthenticatedRequestContext) => {
   const workspaceContext = getWorkspaceContext();
-  const logSuccess = (operation: string, newsId?: string) => {
-    logger.info('Mainserver News route succeeded', {
-      operation,
-      request_id: workspaceContext.requestId,
-      trace_id: workspaceContext.traceId,
-      actor_id: ctx.user.id,
-      instance_id: ctx.user.instanceId,
-      content_type: NEWS_CONTENT_TYPE,
-      content_id: newsId,
-      method: request.method,
-    });
-  };
 
   try {
     if (route.kind === 'collection' && request.method === 'GET') {
-      const actor = await authorizeOrResponse(ctx, 'news.read');
-      if (actor instanceof Response) {
-        return actor;
-      }
-      const data = await listSvaMainserverNews({ ...actor, ...parseMainserverListQuery(request) });
-      logSuccess('mainserver_news_list');
-      return json(data);
+      return await handleCollectionRead(request, ctx);
     }
 
     if (route.kind === 'item' && request.method === 'GET') {
-      const actor = await authorizeOrResponse(ctx, 'news.read', route.newsId);
-      if (actor instanceof Response) {
-        return actor;
-      }
-      const data = await getSvaMainserverNews({ ...actor, newsId: route.newsId });
-      logSuccess('mainserver_news_detail', route.newsId);
-      return json({ data });
+      return await handleItemRead(route, request, ctx);
     }
 
     if (route.kind === 'collection' && request.method === 'POST') {
-      const csrfError = validateMutationRequest(request, workspaceContext.requestId);
-      if (csrfError) {
-        return csrfError;
-      }
-      const idempotencyKey = readIdempotencyKey(request);
-      if (idempotencyKey instanceof Response) {
-        return idempotencyKey;
-      }
-      const parsed = await parseNewsInput(request, { allowPushNotification: true });
-      if (parsed instanceof Response) {
-        return parsed;
-      }
-      const actorInfo = await resolveActorInfo(request, ctx, { requireActorMembership: true });
-      if ('error' in actorInfo) {
-        return actorInfo.error;
-      }
-      const actorAccountId = actorInfo.actor.actorAccountId;
-      if (!actorAccountId) {
-        return errorJson(403, 'forbidden', 'Keine Berechtigung für diese Inhaltsoperation.');
-      }
-      const idempotency = await reserveIdempotency({
-        actorAccountId,
-        endpoint: 'POST:/api/v1/mainserver/news',
-        idempotencyKey,
-        instanceId: actorInfo.actor.instanceId,
-        payloadHash: toPayloadHash(parsed.rawBody),
-      });
-      if (idempotency.status === 'replay') {
-        return json(idempotency.responseBody, idempotency.responseStatus);
-      }
-      if (idempotency.status === 'conflict') {
-        return errorJson(409, 'idempotency_key_reuse', idempotency.message);
-      }
-      const actor = await authorizeOrResponse(ctx, 'news.create');
-      if (actor instanceof Response) {
-        await completeNewsCreateIdempotency({
-          actorAccountId,
-          instanceId: actorInfo.actor.instanceId,
-          idempotencyKey,
-          responseBody: await readResponseBody(actor, {
-            error: 'forbidden',
-            message: 'Keine Berechtigung für diese Inhaltsoperation.',
-          }),
-          responseStatus: actor.status,
-        });
-        return actor;
-      }
-      try {
-        const data = await createSvaMainserverNews({ ...actor, news: parsed.news });
-        logSuccess('mainserver_news_create', data.id);
-        const responseBody = { data };
-        await completeNewsCreateIdempotency({
-          actorAccountId,
-          instanceId: actorInfo.actor.instanceId,
-          idempotencyKey,
-          responseBody,
-          responseStatus: 201,
-        });
-        return json(responseBody, 201);
-      } catch (error) {
-        const response = toMainserverErrorResponse(error);
-        await completeNewsCreateIdempotency({
-          actorAccountId,
-          instanceId: actorInfo.actor.instanceId,
-          idempotencyKey,
-          responseBody: await readResponseBody(response, {
-            error: 'internal_error',
-            message: 'Mainserver-News-Anfrage ist fehlgeschlagen.',
-          }),
-          responseStatus: response.status,
-        });
-        return response;
-      }
+      return await handleCollectionCreate(request, ctx, workspaceContext.requestId);
     }
 
     if (route.kind === 'item' && request.method === 'PATCH') {
-      const csrfError = validateMutationRequest(request, workspaceContext.requestId);
-      if (csrfError) {
-        return csrfError;
-      }
-      const parsed = await parseNewsInput(request, { allowPushNotification: false });
-      if (parsed instanceof Response) {
-        return parsed;
-      }
-
-      const updateActor = await authorizeOrResponse(ctx, 'news.update', route.newsId);
-      if (updateActor instanceof Response) {
-        return updateActor;
-      }
-
-      const data = await updateSvaMainserverNews({ ...updateActor, newsId: route.newsId, news: parsed.news });
-      logSuccess('mainserver_news_update', route.newsId);
-      return json({ data });
+      return await handleItemUpdate(request, route, ctx, workspaceContext.requestId);
     }
 
     if (route.kind === 'item' && request.method === 'DELETE') {
-      const csrfError = validateMutationRequest(request, workspaceContext.requestId);
-      if (csrfError) {
-        return csrfError;
-      }
-      const actor = await authorizeOrResponse(ctx, 'news.delete', route.newsId);
-      if (actor instanceof Response) {
-        return actor;
-      }
-      const data = await deleteSvaMainserverNews({ ...actor, newsId: route.newsId });
-      logSuccess('mainserver_news_delete', route.newsId);
-      return json({ data });
+      return await handleItemDelete(request, route, ctx, workspaceContext.requestId);
     }
 
     return errorJson(405, 'method_not_allowed', 'Methode wird für Mainserver-News nicht unterstützt.');

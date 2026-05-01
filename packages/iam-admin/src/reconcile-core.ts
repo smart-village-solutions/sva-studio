@@ -286,6 +286,327 @@ const appendReconcileEntry = (
   entries.push(entry);
 };
 
+const resolveMatchingIdentityRole = (input: {
+  role: ManagedRoleRow;
+  idpByExternalName: ReadonlyMap<string, IdentityRole>;
+  idpByRoleKey: ReadonlyMap<string, IdentityRole>;
+}) => {
+  const externalRoleName = getRoleExternalName(input.role);
+  const alias = readRoleReconcileAlias(input.role.role_key);
+  const matchingIdentityRole =
+    input.idpByExternalName.get(externalRoleName) ??
+    input.idpByRoleKey.get(input.role.role_key) ??
+    (alias ? input.idpByExternalName.get(alias.externalRoleName) : undefined) ??
+    (alias?.identityRoleKey ? input.idpByRoleKey.get(alias.identityRoleKey) : undefined);
+
+  return {
+    externalRoleName,
+    alias,
+    matchingIdentityRole,
+  };
+};
+
+const describeMatchedIdentityRole = (input: {
+  role: ManagedRoleRow;
+  externalRoleName: string;
+  alias: RoleReconcileAlias | undefined;
+  matchingIdentityRole: IdentityRole;
+}) => {
+  const expectedDisplayName = getRoleDisplayName(input.role);
+  const identityDisplayName = readRoleAttribute(input.matchingIdentityRole.attributes, 'display_name');
+  const identityRoleKey = readRoleAttribute(input.matchingIdentityRole.attributes, 'role_key');
+  const canonicalExternalRoleName = input.matchingIdentityRole.externalName ?? input.externalRoleName;
+  const matchedByAlias =
+    Boolean(input.alias) &&
+    identityRoleKey === input.alias?.identityRoleKey &&
+    (input.matchingIdentityRole.externalName === input.alias?.externalRoleName ||
+      input.matchingIdentityRole.externalName === canonicalExternalRoleName) &&
+    input.alias?.identityRoleKey !== input.role.role_key;
+  const aliasSatisfiedByCanonicalRole = matchedByAlias && identityRoleKey === input.alias?.identityRoleKey;
+  const reportedExternalRoleName = matchedByAlias ? canonicalExternalRoleName : input.externalRoleName;
+
+  return {
+    expectedDisplayName,
+    identityDisplayName,
+    identityRoleKey,
+    canonicalExternalRoleName,
+    matchedByAlias,
+    aliasSatisfiedByCanonicalRole,
+    reportedExternalRoleName,
+  };
+};
+
+const markMatchedIdentityRole = (
+  matchedIdentityExternalNames: Set<string>,
+  matchedIdentityRoleKeys: Set<string>,
+  identityRole: IdentityRole
+) => {
+  matchedIdentityExternalNames.add(identityRole.externalName);
+  const identityRoleKey = readRoleAttribute(identityRole.attributes, 'role_key');
+  if (identityRoleKey) {
+    matchedIdentityRoleKeys.add(identityRoleKey);
+  }
+};
+
+const persistSuccessfulReconcile = async (input: {
+  deps: RoleCatalogReconciliationDeps;
+  instanceId: string;
+  role: ManagedRoleRow;
+  actorAccountId?: string;
+  requestId?: string;
+  traceId?: string;
+  externalRoleName: string;
+  operation: RoleReconcileOperation;
+}) =>
+  persistRoleReconcileState({
+    deps: input.deps,
+    instanceId: input.instanceId,
+    roleId: input.role.id,
+    actorAccountId: input.actorAccountId,
+    requestId: input.requestId,
+    traceId: input.traceId,
+    roleKey: input.role.role_key,
+    externalRoleName: input.externalRoleName,
+    operation: input.operation,
+    result: 'success',
+    syncState: 'synced',
+    syncedAt: true,
+  });
+
+const persistFailedReconcile = async (input: {
+  deps: RoleCatalogReconciliationDeps;
+  instanceId: string;
+  role: ManagedRoleRow;
+  actorAccountId?: string;
+  requestId?: string;
+  traceId?: string;
+  externalRoleName: string;
+  operation: RoleReconcileOperation;
+  errorCode: string;
+}) =>
+  persistRoleReconcileState({
+    deps: input.deps,
+    instanceId: input.instanceId,
+    roleId: input.role.id,
+    actorAccountId: input.actorAccountId,
+    requestId: input.requestId,
+    traceId: input.traceId,
+    roleKey: input.role.role_key,
+    externalRoleName: input.externalRoleName,
+    operation: input.operation,
+    result: 'failure',
+    errorCode: input.errorCode,
+    syncState: 'failed',
+  });
+
+const appendDatabaseRoleResult = (
+  entries: ReconcileRoleEntry[],
+  input: {
+    readonly role: ManagedRoleRow;
+    readonly externalRoleName: string;
+    readonly action: ReconcileRoleEntry['action'];
+    readonly status: ReconcileRoleEntry['status'];
+    readonly errorCode?: string;
+  }
+) =>
+  appendReconcileEntry(entries, {
+    roleId: input.role.id,
+    roleKey: input.role.role_key,
+    externalRoleName: input.externalRoleName,
+    action: input.action,
+    status: input.status,
+    ...(input.errorCode ? { errorCode: input.errorCode } : {}),
+  });
+
+const createMissingIdentityRole = async (input: {
+  deps: RoleCatalogReconciliationDeps;
+  identityProvider: { provider: IdentityProviderPort };
+  role: ManagedRoleRow;
+  instanceId: string;
+  actorAccountId?: string;
+  requestId?: string;
+  traceId?: string;
+  entries: ReconcileRoleEntry[];
+  externalRoleName: string;
+}) => {
+  const expectedDisplayName = getRoleDisplayName(input.role);
+
+  try {
+    await input.deps.trackKeycloakCall('reconcile_create_role', () =>
+      input.identityProvider.provider.createRole({
+        externalName: input.externalRoleName,
+        description: input.role.description ?? undefined,
+        attributes: {
+          managedBy: 'studio',
+          instanceId: input.instanceId,
+          roleKey: input.role.role_key,
+          displayName: expectedDisplayName,
+        },
+      })
+    );
+    await persistSuccessfulReconcile({
+      deps: input.deps,
+      instanceId: input.instanceId,
+      role: input.role,
+      actorAccountId: input.actorAccountId,
+      requestId: input.requestId,
+      traceId: input.traceId,
+      externalRoleName: input.externalRoleName,
+      operation: 'reconcile_create',
+    });
+    appendDatabaseRoleResult(input.entries, {
+      role: input.role,
+      externalRoleName: input.externalRoleName,
+      action: 'create',
+      status: 'corrected',
+    });
+  } catch (error) {
+    const errorCode = mapRoleSyncErrorCode(error);
+    await persistFailedReconcile({
+      deps: input.deps,
+      instanceId: input.instanceId,
+      role: input.role,
+      actorAccountId: input.actorAccountId,
+      requestId: input.requestId,
+      traceId: input.traceId,
+      externalRoleName: input.externalRoleName,
+      operation: 'reconcile_create',
+      errorCode,
+    });
+    appendDatabaseRoleResult(input.entries, {
+      role: input.role,
+      externalRoleName: input.externalRoleName,
+      action: 'create',
+      status: 'failed',
+      errorCode,
+    });
+  }
+};
+
+const updateMatchedIdentityRole = async (input: {
+  deps: RoleCatalogReconciliationDeps;
+  identityProvider: { provider: IdentityProviderPort };
+  role: ManagedRoleRow;
+  instanceId: string;
+  actorAccountId?: string;
+  requestId?: string;
+  traceId?: string;
+  entries: ReconcileRoleEntry[];
+  expectedDisplayName: string;
+  canonicalExternalRoleName: string;
+  reportedExternalRoleName: string;
+  shouldUpdateIdentityRole: boolean;
+}) => {
+  try {
+    if (input.shouldUpdateIdentityRole) {
+      await input.deps.trackKeycloakCall('reconcile_update_role', () =>
+        input.identityProvider.provider.updateRole(input.canonicalExternalRoleName, {
+          description: input.role.description ?? undefined,
+          attributes: {
+            managedBy: 'studio',
+            instanceId: input.instanceId,
+            roleKey: input.role.role_key,
+            displayName: input.expectedDisplayName,
+          },
+        })
+      );
+    }
+
+    await persistSuccessfulReconcile({
+      deps: input.deps,
+      instanceId: input.instanceId,
+      role: input.role,
+      actorAccountId: input.actorAccountId,
+      requestId: input.requestId,
+      traceId: input.traceId,
+      externalRoleName: input.reportedExternalRoleName,
+      operation: 'reconcile_update',
+    });
+    appendDatabaseRoleResult(input.entries, {
+      role: input.role,
+      externalRoleName: input.reportedExternalRoleName,
+      action: input.shouldUpdateIdentityRole ? 'update' : 'noop',
+      status: 'corrected',
+    });
+  } catch (error) {
+    const errorCode = mapRoleSyncErrorCode(error);
+    await persistFailedReconcile({
+      deps: input.deps,
+      instanceId: input.instanceId,
+      role: input.role,
+      actorAccountId: input.actorAccountId,
+      requestId: input.requestId,
+      traceId: input.traceId,
+      externalRoleName: input.reportedExternalRoleName,
+      operation: 'reconcile_update',
+      errorCode,
+    });
+    appendDatabaseRoleResult(input.entries, {
+      role: input.role,
+      externalRoleName: input.reportedExternalRoleName,
+      action: input.shouldUpdateIdentityRole ? 'update' : 'noop',
+      status: 'failed',
+      errorCode,
+    });
+  }
+};
+
+const shouldSkipManagedIdentityRole = (input: {
+  identityRole: IdentityRole;
+  dbByExternalName: ReadonlyMap<string, ManagedRoleRow>;
+  dbByRoleKey: ReadonlyMap<string, ManagedRoleRow>;
+  matchedIdentityExternalNames: Set<string>;
+  matchedIdentityRoleKeys: Set<string>;
+}): boolean => {
+  const identityRoleKey = readRoleAttribute(input.identityRole.attributes, 'role_key');
+  return (
+    input.matchedIdentityExternalNames.has(input.identityRole.externalName) ||
+    Boolean(identityRoleKey && input.matchedIdentityRoleKeys.has(identityRoleKey)) ||
+    input.dbByExternalName.has(input.identityRole.externalName) ||
+    Boolean(identityRoleKey && input.dbByRoleKey.has(identityRoleKey))
+  );
+};
+
+const appendManualActionEntry = (entries: ReconcileRoleEntry[], identityRole: IdentityRole) => {
+  appendReconcileEntry(entries, {
+    externalRoleName: identityRole.externalName,
+    roleKey: readRoleAttribute(identityRole.attributes, 'role_key'),
+    action: 'report',
+    status: 'requires_manual_action',
+    errorCode: 'REQUIRES_MANUAL_ACTION',
+  });
+};
+
+const appendImportedRoleEntry = (
+  entries: ReconcileRoleEntry[],
+  importedRole: { roleId: string },
+  importableMetadata: { roleKey: string },
+  identityRole: IdentityRole
+) => {
+  appendReconcileEntry(entries, {
+    roleId: importedRole.roleId,
+    roleKey: importableMetadata.roleKey,
+    externalRoleName: identityRole.externalName,
+    action: 'create',
+    status: 'corrected',
+  });
+};
+
+const appendFailedImportedRoleEntry = (
+  entries: ReconcileRoleEntry[],
+  importableMetadata: { roleKey: string },
+  identityRole: IdentityRole,
+  error: unknown
+) => {
+  appendReconcileEntry(entries, {
+    roleKey: importableMetadata.roleKey,
+    externalRoleName: identityRole.externalName,
+    action: 'create',
+    status: 'failed',
+    errorCode: mapRoleSyncErrorCode(error),
+  });
+};
+
 const persistRoleReconcileState = async (input: {
   deps: RoleCatalogReconciliationDeps;
   instanceId: string;
@@ -342,94 +663,42 @@ const reconcileDatabaseRoles = async (input: {
 }) => {
   const { deps } = input;
   for (const role of input.dbRoles) {
-    const externalRoleName = getRoleExternalName(role);
-    const alias = readRoleReconcileAlias(role.role_key);
-    const matchingIdentityRole =
-      input.idpByExternalName.get(externalRoleName) ??
-      input.idpByRoleKey.get(role.role_key) ??
-      (alias ? input.idpByExternalName.get(alias.externalRoleName) : undefined) ??
-      (alias?.identityRoleKey ? input.idpByRoleKey.get(alias.identityRoleKey) : undefined);
-    const expectedDisplayName = getRoleDisplayName(role);
-    const identityDisplayName = readRoleAttribute(matchingIdentityRole?.attributes, 'display_name');
-    const identityRoleKey = readRoleAttribute(matchingIdentityRole?.attributes, 'role_key');
-    const canonicalExternalRoleName = matchingIdentityRole?.externalName ?? externalRoleName;
-    const matchedByAlias =
-      Boolean(alias) &&
-      identityRoleKey === alias?.identityRoleKey &&
-      (matchingIdentityRole?.externalName === alias?.externalRoleName ||
-        matchingIdentityRole?.externalName === input.idpByRoleKey.get(alias?.identityRoleKey ?? '')?.externalName) &&
-      alias?.identityRoleKey !== role.role_key;
-    const aliasSatisfiedByCanonicalRole = matchedByAlias && identityRoleKey === alias?.identityRoleKey;
-    const reportedExternalRoleName = matchedByAlias ? canonicalExternalRoleName : externalRoleName;
+    const { externalRoleName, alias, matchingIdentityRole } = resolveMatchingIdentityRole({
+      role,
+      idpByExternalName: input.idpByExternalName,
+      idpByRoleKey: input.idpByRoleKey,
+    });
 
     if (!matchingIdentityRole) {
-      try {
-        await deps.trackKeycloakCall('reconcile_create_role', () =>
-          input.identityProvider.provider.createRole({
-            externalName: externalRoleName,
-            description: role.description ?? undefined,
-            attributes: {
-              managedBy: 'studio',
-              instanceId: input.instanceId,
-              roleKey: role.role_key,
-              displayName: expectedDisplayName,
-            },
-          })
-        );
-        await persistRoleReconcileState({
-          deps,
-          instanceId: input.instanceId,
-          roleId: role.id,
-          actorAccountId: input.actorAccountId,
-          requestId: input.requestId,
-          traceId: input.traceId,
-          roleKey: role.role_key,
-          externalRoleName,
-          operation: 'reconcile_create',
-          result: 'success',
-          syncState: 'synced',
-          syncedAt: true,
-        });
-        appendReconcileEntry(input.entries, {
-          roleId: role.id,
-          roleKey: role.role_key,
-          externalRoleName,
-          action: 'create',
-          status: 'corrected',
-        });
-      } catch (error) {
-        const errorCode = mapRoleSyncErrorCode(error);
-        await persistRoleReconcileState({
-          deps,
-          instanceId: input.instanceId,
-          roleId: role.id,
-          actorAccountId: input.actorAccountId,
-          requestId: input.requestId,
-          traceId: input.traceId,
-          roleKey: role.role_key,
-          externalRoleName,
-          operation: 'reconcile_create',
-          result: 'failure',
-          errorCode,
-          syncState: 'failed',
-        });
-        appendReconcileEntry(input.entries, {
-          roleId: role.id,
-          roleKey: role.role_key,
-          externalRoleName,
-          action: 'create',
-          status: 'failed',
-          errorCode,
-        });
-      }
+      await createMissingIdentityRole({
+        deps,
+        identityProvider: input.identityProvider,
+        role,
+        instanceId: input.instanceId,
+        actorAccountId: input.actorAccountId,
+        requestId: input.requestId,
+        traceId: input.traceId,
+        entries: input.entries,
+        externalRoleName,
+      });
       continue;
     }
 
-    input.matchedIdentityExternalNames.add(matchingIdentityRole.externalName);
-    if (identityRoleKey) {
-      input.matchedIdentityRoleKeys.add(identityRoleKey);
-    }
+    markMatchedIdentityRole(input.matchedIdentityExternalNames, input.matchedIdentityRoleKeys, matchingIdentityRole);
 
+    const {
+      expectedDisplayName,
+      identityDisplayName,
+      identityRoleKey,
+      canonicalExternalRoleName,
+      aliasSatisfiedByCanonicalRole,
+      reportedExternalRoleName,
+    } = describeMatchedIdentityRole({
+      role,
+      externalRoleName,
+      alias,
+      matchingIdentityRole,
+    });
     const descriptionChanged = (matchingIdentityRole.description ?? undefined) !== (role.description ?? undefined);
     const displayNameChanged = identityDisplayName !== expectedDisplayName;
     const roleKeyChanged = !isAcceptedIdentityRoleKey(role.role_key, identityRoleKey);
@@ -438,72 +707,25 @@ const reconcileDatabaseRoles = async (input: {
     const shouldResyncDbState = role.sync_state !== 'synced';
 
     if (shouldUpdateIdentityRole || shouldResyncDbState) {
-      try {
-        if (shouldUpdateIdentityRole) {
-          await deps.trackKeycloakCall('reconcile_update_role', () =>
-            input.identityProvider.provider.updateRole(canonicalExternalRoleName, {
-              description: role.description ?? undefined,
-              attributes: {
-                managedBy: 'studio',
-                instanceId: input.instanceId,
-                roleKey: role.role_key,
-                displayName: expectedDisplayName,
-              },
-            })
-          );
-        }
-        await persistRoleReconcileState({
-          deps,
-          instanceId: input.instanceId,
-          roleId: role.id,
-          actorAccountId: input.actorAccountId,
-          requestId: input.requestId,
-          traceId: input.traceId,
-          roleKey: role.role_key,
-          externalRoleName,
-          operation: 'reconcile_update',
-          result: 'success',
-          syncState: 'synced',
-          syncedAt: true,
-        });
-        appendReconcileEntry(input.entries, {
-          roleId: role.id,
-          roleKey: role.role_key,
-          externalRoleName: reportedExternalRoleName,
-          action: shouldUpdateIdentityRole ? 'update' : 'noop',
-          status: 'corrected',
-        });
-      } catch (error) {
-        const errorCode = mapRoleSyncErrorCode(error);
-        await persistRoleReconcileState({
-          deps,
-          instanceId: input.instanceId,
-          roleId: role.id,
-          actorAccountId: input.actorAccountId,
-          requestId: input.requestId,
-          traceId: input.traceId,
-          roleKey: role.role_key,
-          externalRoleName,
-          operation: 'reconcile_update',
-          result: 'failure',
-          errorCode,
-          syncState: 'failed',
-        });
-        appendReconcileEntry(input.entries, {
-          roleId: role.id,
-          roleKey: role.role_key,
-          externalRoleName: reportedExternalRoleName,
-          action: shouldUpdateIdentityRole ? 'update' : 'noop',
-          status: 'failed',
-          errorCode,
-        });
-      }
+      await updateMatchedIdentityRole({
+        deps,
+        identityProvider: input.identityProvider,
+        role,
+        instanceId: input.instanceId,
+        actorAccountId: input.actorAccountId,
+        requestId: input.requestId,
+        traceId: input.traceId,
+        entries: input.entries,
+        expectedDisplayName,
+        canonicalExternalRoleName,
+        reportedExternalRoleName,
+        shouldUpdateIdentityRole,
+      });
       continue;
     }
 
-    input.entries.push({
-      roleId: role.id,
-      roleKey: role.role_key,
+    appendDatabaseRoleResult(input.entries, {
+      role,
       externalRoleName: reportedExternalRoleName,
       action: 'noop',
       status: 'synced',
@@ -534,26 +756,21 @@ const reconcileManagedIdentityRoles = async (input: {
 }) => {
   const { deps } = input;
   for (const identityRole of input.managedIdpRoles) {
-    const identityRoleKey = readRoleAttribute(identityRole.attributes, 'role_key');
-    if (input.matchedIdentityExternalNames.has(identityRole.externalName)) {
-      continue;
-    }
-    if (identityRoleKey && input.matchedIdentityRoleKeys.has(identityRoleKey)) {
-      continue;
-    }
-    if (input.dbByExternalName.has(identityRole.externalName) || (identityRoleKey && input.dbByRoleKey.has(identityRoleKey))) {
+    if (
+      shouldSkipManagedIdentityRole({
+        identityRole,
+        dbByExternalName: input.dbByExternalName,
+        dbByRoleKey: input.dbByRoleKey,
+        matchedIdentityExternalNames: input.matchedIdentityExternalNames,
+        matchedIdentityRoleKeys: input.matchedIdentityRoleKeys,
+      })
+    ) {
       continue;
     }
 
     const importableMetadata = readImportableRoleMetadata(identityRole);
     if (!importableMetadata) {
-      appendReconcileEntry(input.entries, {
-        externalRoleName: identityRole.externalName,
-        roleKey: readRoleAttribute(identityRole.attributes, 'role_key'),
-        action: 'report',
-        status: 'requires_manual_action',
-        errorCode: 'REQUIRES_MANUAL_ACTION',
-      });
+      appendManualActionEntry(input.entries, identityRole);
       continue;
     }
 
@@ -637,13 +854,7 @@ RETURNING id;
       });
       input.matchedIdentityExternalNames.add(identityRole.externalName);
       input.matchedIdentityRoleKeys.add(importableMetadata.roleKey);
-      appendReconcileEntry(input.entries, {
-        roleId: importedRole.roleId,
-        roleKey: importableMetadata.roleKey,
-        externalRoleName: identityRole.externalName,
-        action: 'create',
-        status: 'corrected',
-      });
+      appendImportedRoleEntry(input.entries, importedRole, importableMetadata, identityRole);
     } catch (error) {
       input.importFailures.push({
         roleKey: importableMetadata.roleKey,
@@ -652,13 +863,7 @@ RETURNING id;
         errorMessage: sanitizeRoleErrorMessage(error),
         dbContext: importDbContext,
       });
-      appendReconcileEntry(input.entries, {
-        roleKey: importableMetadata.roleKey,
-        externalRoleName: identityRole.externalName,
-        action: 'create',
-        status: 'failed',
-        errorCode: mapRoleSyncErrorCode(error),
-      });
+      appendFailedImportedRoleEntry(input.entries, importableMetadata, identityRole, error);
     }
   }
 };

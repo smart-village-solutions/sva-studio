@@ -384,6 +384,32 @@ describe('interfaces.server', () => {
     expect(state.saveSvaMainserverSettings).not.toHaveBeenCalled();
   });
 
+  it('rejects save requests when the instance context is missing', async () => {
+    state.withAuthenticatedUser.mockImplementation(
+      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<Response>) =>
+        handler({
+          user: {
+            id: 'subject-1',
+            roles: ['system_admin'],
+          },
+        })
+    );
+
+    const { saveSvaMainserverInterfaceSettings } = await import('./interfaces-api');
+
+    await expect(
+      saveSvaMainserverInterfaceSettings({
+        data: {
+          graphqlBaseUrl: 'https://mainserver.example/graphql',
+          oauthTokenUrl: 'https://mainserver.example/oauth/token',
+          enabled: true,
+        },
+      })
+    ).rejects.toThrow('invalid_config');
+
+    expect(state.saveSvaMainserverSettings).not.toHaveBeenCalled();
+  });
+
   it('preserves invalid_config errors from settings validation with their affected field', async () => {
     state.withAuthenticatedUser.mockImplementation(
       async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<Response>) =>

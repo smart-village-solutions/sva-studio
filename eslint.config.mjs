@@ -1,4 +1,5 @@
 import nxPlugin from '@nx/eslint-plugin'
+import noEffectApiObjectDepsForLoadersRule from './config/eslint/no-effect-api-object-deps-for-loaders.mjs'
 
 export default [
   ...nxPlugin.configs['flat/base'],
@@ -438,7 +439,15 @@ export default [
   },
   {
     files: ['apps/sva-studio-react/**/*.{ts,tsx,js,jsx}'],
+    plugins: {
+      local: {
+        rules: {
+          'no-effect-api-object-deps-for-loaders': noEffectApiObjectDepsForLoadersRule,
+        },
+      },
+    },
     rules: {
+      'local/no-effect-api-object-deps-for-loaders': 'error',
       'no-restricted-imports': [
         'error',
         {

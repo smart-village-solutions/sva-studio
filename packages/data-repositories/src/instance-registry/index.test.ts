@@ -148,6 +148,14 @@ describe('instance registry repository', () => {
     await expect(repository.listAssignedModules('tenant-a')).resolves.toEqual(['news', 'poi']);
   });
 
+  it('returns false for idempotent module assignment and revocation writes', async () => {
+    const { executor } = createQueuedExecutor([[], []]);
+    const repository = createInstanceRegistryRepository(executor);
+
+    await expect(repository.assignModule('tenant-a', 'news')).resolves.toBe(false);
+    await expect(repository.revokeModule('tenant-a', 'news')).resolves.toBe(false);
+  });
+
   it('maps provisioning, audit and keycloak run projections', async () => {
     const { executor, statements } = createQueuedExecutor([
       [provisioningRow],
@@ -245,6 +253,67 @@ describe('instance registry repository', () => {
     });
     expect(statements[0]?.text.includes('tenant_iam_access_probed')).toBe(true);
     expect(statements[1]?.text.includes('FROM iam.roles')).toBe(true);
+  });
+
+  it('returns null when tenant IAM probe and role reconcile evidence are missing', async () => {
+    const { executor } = createQueuedExecutor([[], [{ sync_state: null, role_count: 0, failed_count: 0, pending_count: 0, last_synced_at: null, last_error_code: null }]]);
+    const repository = createInstanceRegistryRepository(executor);
+
+    await expect(repository.getLatestTenantIamAccessProbe('tenant-a')).resolves.toBeNull();
+    await expect(repository.getRoleReconcileSummary('tenant-a')).resolves.toBeNull();
+  });
+
+  it('maps tenant IAM probe defaults and ready or pending reconcile summaries', async () => {
+    const { executor } = createQueuedExecutor([
+      [
+        {
+          checked_at: '2026-04-29T10:01:00.000Z',
+          status: 'unknown',
+          summary: 'Keine Rechteprobe vorhanden.',
+          error_code: null,
+          request_id: null,
+        },
+      ],
+      [
+        {
+          sync_state: 'synced',
+          role_count: 2,
+          failed_count: 0,
+          pending_count: 0,
+          last_synced_at: '2026-04-29T10:02:00.000Z',
+          last_error_code: null,
+        },
+      ],
+      [{ request_id: null, created_at: '2026-04-29T10:02:00.000Z' }],
+      [
+        {
+          sync_state: 'pending',
+          role_count: 3,
+          failed_count: 0,
+          pending_count: 2,
+          last_synced_at: null,
+          last_error_code: null,
+        },
+      ],
+      [{ request_id: 'req-pending-1', created_at: '2026-04-29T10:03:00.000Z' }],
+    ]);
+    const repository = createInstanceRegistryRepository(executor);
+
+    await expect(repository.getLatestTenantIamAccessProbe('tenant-a')).resolves.toEqual({
+      checkedAt: '2026-04-29T10:01:00.000Z',
+      status: 'unknown',
+      summary: 'Keine Rechteprobe vorhanden.',
+    });
+    await expect(repository.getRoleReconcileSummary('tenant-a')).resolves.toEqual({
+      status: 'ready',
+      summary: 'Letzter Rollenabgleich ist synchron.',
+      checkedAt: '2026-04-29T10:02:00.000Z',
+    });
+    await expect(repository.getRoleReconcileSummary('tenant-a')).resolves.toEqual({
+      status: 'degraded',
+      summary: '2 Rollen im Backlog.',
+      requestId: 'req-pending-1',
+    });
   });
 
   it('creates and updates instances with hostname side effects', async () => {
@@ -347,6 +416,140 @@ describe('instance registry repository', () => {
       finishedAt: '2026-01-01T00:00:02.000Z',
       summary: 'Done',
       details: {},
+      requestId: 'request-1',
+    });
+  });
+
+  it('skips IAM cleanup work when no managed modules or role pairs are present', async () => {
+    const { executor, statements } = createQueuedExecutor([]);
+    const repository = createInstanceRegistryRepository(executor);
+
+    await expect(
+      repository.syncAssignedModuleIam({
+        instanceId: 'tenant-a',
+        managedModuleIds: [],
+        contracts: [],
+      })
+    ).resolves.toBeUndefined();
+
+    expect(statements).toEqual([]);
+  });
+
+  it('cleans up stale module permissions and role grants when desired sets are empty', async () => {
+    const { executor, statements } = createQueuedExecutor([[], []]);
+    const repository = createInstanceRegistryRepository(executor);
+
+    await expect(
+      repository.syncAssignedModuleIam({
+        instanceId: 'tenant-a',
+        managedModuleIds: ['news'],
+        contracts: [
+          {
+            moduleId: 'news',
+            permissionIds: [],
+            systemRoles: [{ roleName: 'news_admin', permissionIds: [] }],
+          },
+        ],
+      })
+    ).resolves.toBeUndefined();
+
+    expect(statements).toHaveLength(2);
+    expect(statements[0]?.text).toContain("AND role.role_key IN ('news_admin')");
+    expect(statements[0]?.text).not.toContain('NOT IN (');
+    expect(statements[1]?.text).toContain("permission_key LIKE 'news.%'");
+    expect(statements[1]?.text).not.toContain('permission_key NOT IN (');
+  });
+
+  it('resolves hostname variants and returns null when they are missing', async () => {
+    const { executor } = createQueuedExecutor([[instanceRow], [], [instanceRow], []]);
+    const repository = createInstanceRegistryRepository(executor);
+
+    await expect(repository.resolveHostname('tenant-a.example.test')).resolves.toMatchObject({
+      instanceId: 'tenant-a',
+      primaryHostname: 'tenant-a.example.test',
+    });
+    await expect(repository.resolveHostname('missing.example.test')).resolves.toBeNull();
+    await expect(repository.resolvePrimaryHostname('tenant-a.example.test')).resolves.toMatchObject({
+      instanceId: 'tenant-a',
+      primaryHostname: 'tenant-a.example.test',
+    });
+    await expect(repository.resolvePrimaryHostname('missing.example.test')).resolves.toBeNull();
+  });
+
+  it('loads an existing keycloak provisioning run by id with mapped steps', async () => {
+    const { executor } = createQueuedExecutor([[keycloakRunRow], [stepRow]]);
+    const repository = createInstanceRegistryRepository(executor);
+
+    await expect(repository.getKeycloakProvisioningRun('tenant-a', 'kc-run-1')).resolves.toEqual({
+      id: 'kc-run-1',
+      instanceId: 'tenant-a',
+      mutation: 'executeKeycloakProvisioning',
+      idempotencyKey: 'idem-kc-1',
+      payloadFingerprint: 'fingerprint-1',
+      mode: 'shared',
+      intent: 'reconcile',
+      overallStatus: 'planned',
+      driftSummary: 'No drift',
+      requestId: undefined,
+      actorId: 'actor-1',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:01.000Z',
+      steps: [
+        {
+          stepKey: 'realm',
+          title: 'Realm',
+          status: 'success',
+          startedAt: undefined,
+          finishedAt: '2026-01-01T00:00:02.000Z',
+          summary: 'Done',
+          details: {},
+          requestId: 'request-1',
+        },
+      ],
+    });
+  });
+
+  it('returns empty projections for missing provisioning step lookups and null run updates', async () => {
+    const { executor } = createQueuedExecutor([
+      [],
+      [{ ...keycloakRunRow, mutation: null, idempotency_key: null, payload_fingerprint: null }],
+      [],
+      [],
+      [provisioningRow],
+    ]);
+    const repository = createInstanceRegistryRepository(executor);
+
+    await expect(repository.listKeycloakProvisioningRuns('tenant-a')).resolves.toEqual([]);
+    await expect(repository.claimNextKeycloakProvisioningRun()).resolves.toEqual({
+      id: 'kc-run-1',
+      instanceId: 'tenant-a',
+      mode: 'shared',
+      intent: 'reconcile',
+      overallStatus: 'planned',
+      driftSummary: 'No drift',
+      requestId: undefined,
+      actorId: 'actor-1',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:01.000Z',
+      steps: [],
+    });
+    await expect(repository.updateKeycloakProvisioningRun({ runId: 'missing', overallStatus: 'failed' })).resolves.toBeNull();
+    await expect(
+      repository.createProvisioningRun({
+        instanceId: 'tenant-a',
+        operation: 'create',
+        status: 'pending',
+        idempotencyKey: 'idem-2',
+        stepKey: 'bootstrap',
+        errorCode: 'oops',
+        errorMessage: 'boom',
+        requestId: 'req-2',
+        actorId: 'actor-2',
+      })
+    ).resolves.toMatchObject({
+      stepKey: undefined,
+      errorCode: undefined,
+      errorMessage: undefined,
       requestId: 'request-1',
     });
   });

@@ -697,6 +697,79 @@ describe('instance registry repository (vitest)', () => {
     await expect(repository.getKeycloakProvisioningRun('hb', 'run-missing')).resolves.toBeNull();
   });
 
+  it('loads an existing keycloak provisioning run with its steps', async () => {
+    const execute = createSequencedExecutor([
+      {
+        rowCount: 1,
+        rows: [
+          {
+            id: 'run-1',
+            instance_id: 'hb',
+            mutation: 'executeKeycloakProvisioning',
+            idempotency_key: 'idem-kc-1',
+            payload_fingerprint: 'fingerprint-1',
+            mode: 'existing',
+            intent: 'provision_admin_client',
+            overall_status: 'running',
+            drift_summary: 'Tenant admin client missing.',
+            request_id: 'req-1',
+            actor_id: 'actor-1',
+            created_at: '2026-01-01T00:00:00.000Z',
+            updated_at: '2026-01-01T00:01:00.000Z',
+          },
+        ],
+      },
+      {
+        rowCount: 1,
+        rows: [
+          {
+            id: 'step-1',
+            run_id: 'run-1',
+            step_key: 'tenant_admin_client',
+            title: 'Tenant admin client anlegen',
+            status: 'running',
+            started_at: '2026-01-01T00:00:30.000Z',
+            finished_at: null,
+            summary: 'Client wird angelegt.',
+            details: { phase: 'create' },
+            request_id: 'req-1',
+            created_at: '2026-01-01T00:00:30.000Z',
+          },
+        ],
+      },
+    ]);
+
+    const repository = createInstanceRegistryRepository({ execute });
+
+    await expect(repository.getKeycloakProvisioningRun('hb', 'run-1')).resolves.toEqual({
+      id: 'run-1',
+      instanceId: 'hb',
+      mutation: 'executeKeycloakProvisioning',
+      idempotencyKey: 'idem-kc-1',
+      payloadFingerprint: 'fingerprint-1',
+      mode: 'existing',
+      intent: 'provision_admin_client',
+      overallStatus: 'running',
+      driftSummary: 'Tenant admin client missing.',
+      requestId: 'req-1',
+      actorId: 'actor-1',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:01:00.000Z',
+      steps: [
+        {
+          stepKey: 'tenant_admin_client',
+          title: 'Tenant admin client anlegen',
+          status: 'running',
+          startedAt: '2026-01-01T00:00:30.000Z',
+          finishedAt: undefined,
+          summary: 'Client wird angelegt.',
+          details: { phase: 'create' },
+          requestId: 'req-1',
+        },
+      ],
+    });
+  });
+
   it('claims the next keycloak provisioning run and returns null when none is queued', async () => {
     const execute = createSequencedExecutor([
       {
@@ -889,12 +962,75 @@ describe('instance registry repository (vitest)', () => {
     ).resolves.toEqual({
       stepKey: 'finalize',
       title: 'Abschluss',
-        status: 'done',
+      status: 'done',
       startedAt: undefined,
       finishedAt: '2026-01-03T00:02:00.000Z',
       summary: 'Provisioning abgeschlossen.',
       details: {},
       requestId: undefined,
+    });
+  });
+
+  it('replays an existing keycloak provisioning run when idempotency matches', async () => {
+    const execute = createSequencedExecutor([
+      {
+        rowCount: 1,
+        rows: [
+          {
+            id: 'run-replayed',
+            instance_id: 'hb',
+            mutation: 'executeKeycloakProvisioning',
+            idempotency_key: 'idem-kc-1',
+            payload_fingerprint: 'fingerprint-1',
+            mode: 'existing',
+            intent: 'provision_admin_client',
+            overall_status: 'planned',
+            drift_summary: 'Plan created.',
+            request_id: null,
+            actor_id: null,
+            created_at: '2026-01-03T00:00:00.000Z',
+            updated_at: '2026-01-03T00:00:00.000Z',
+            created: false,
+          },
+        ],
+      },
+      {
+        rowCount: 0,
+        rows: [],
+      },
+    ]);
+
+    const repository = createInstanceRegistryRepository({ execute });
+
+    await expect(
+      repository.createKeycloakProvisioningRun({
+        instanceId: 'hb',
+        mutation: 'executeKeycloakProvisioning',
+        idempotencyKey: 'idem-kc-1',
+        payloadFingerprint: 'fingerprint-1',
+        mode: 'existing',
+        intent: 'provision_admin_client',
+        overallStatus: 'planned',
+        driftSummary: 'Plan created.',
+      })
+    ).resolves.toEqual({
+      created: false,
+      run: {
+        id: 'run-replayed',
+        instanceId: 'hb',
+        mutation: 'executeKeycloakProvisioning',
+        idempotencyKey: 'idem-kc-1',
+        payloadFingerprint: 'fingerprint-1',
+        mode: 'existing',
+        intent: 'provision_admin_client',
+        overallStatus: 'planned',
+        driftSummary: 'Plan created.',
+        requestId: undefined,
+        actorId: undefined,
+        createdAt: '2026-01-03T00:00:00.000Z',
+        updatedAt: '2026-01-03T00:00:00.000Z',
+        steps: [],
+      },
     });
   });
 

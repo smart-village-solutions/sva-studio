@@ -1,20 +1,16 @@
 import { describe, expect, it, vi } from 'vitest';
 
-const state = vi.hoisted(() => ({
-  fallbackLogger: {
-    error: vi.fn(),
-  },
-}));
-
-vi.mock('@sva/server-runtime', () => ({
-  createSdkLogger: () => state.fallbackLogger,
-}));
-
 import {
   createRoutingDiagnosticsLogger,
   emitRoutingDiagnostic,
+  registerServerFallbackLogger,
+  resetServerFallbackLogger,
   type RoutingDiagnosticEvent,
 } from './diagnostics';
+
+const fallbackLogger = {
+  error: vi.fn(),
+};
 
 const testEvent: RoutingDiagnosticEvent = {
   level: 'info',
@@ -25,18 +21,18 @@ const testEvent: RoutingDiagnosticEvent = {
 };
 
 describe('emitRoutingDiagnostic', () => {
-  it('returns early when no diagnostics hook is configured', () => {
-    expect(() => emitRoutingDiagnostic(undefined, testEvent)).not.toThrow();
-  });
+  it('uses the registered server fallback logger for server-side hook failures', async () => {
+    registerServerFallbackLogger(fallbackLogger);
 
-  it('swallows synchronous diagnostics hook failures', () => {
     expect(() =>
       emitRoutingDiagnostic(() => {
         throw new Error('diagnostics failed');
       }, testEvent)
     ).not.toThrow();
 
-    expect(state.fallbackLogger.error).toHaveBeenCalledWith(
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(fallbackLogger.error).toHaveBeenCalledWith(
       'Routing diagnostics hook failed',
       expect.objectContaining({
         event: 'routing.guard.access_denied',
@@ -45,6 +41,13 @@ describe('emitRoutingDiagnostic', () => {
         error_message: 'diagnostics failed',
       })
     );
+
+    resetServerFallbackLogger();
+    fallbackLogger.error.mockReset();
+  });
+
+  it('returns early when no diagnostics hook is configured', () => {
+    expect(() => emitRoutingDiagnostic(undefined, testEvent)).not.toThrow();
   });
 
   it('supports synchronous diagnostics hooks without promise handling', () => {
@@ -55,13 +58,15 @@ describe('emitRoutingDiagnostic', () => {
   });
 
   it('swallows rejected promises from async diagnostics hooks', async () => {
+    registerServerFallbackLogger(fallbackLogger);
+
     expect(() =>
       emitRoutingDiagnostic((() => Promise.reject(new Error('diagnostics failed'))) as never, testEvent)
     ).not.toThrow();
 
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    expect(state.fallbackLogger.error).toHaveBeenCalledWith(
+    expect(fallbackLogger.error).toHaveBeenCalledWith(
       'Routing diagnostics hook failed',
       expect.objectContaining({
         event: 'routing.guard.access_denied',
@@ -70,6 +75,90 @@ describe('emitRoutingDiagnostic', () => {
         error_message: 'diagnostics failed',
       })
     );
+
+    resetServerFallbackLogger();
+    fallbackLogger.error.mockReset();
+  });
+
+  it('normalizes non-Error diagnostics hook failures deterministically', async () => {
+    registerServerFallbackLogger(fallbackLogger);
+
+    expect(() =>
+      emitRoutingDiagnostic(() => {
+        throw 'plain diagnostics failure';
+      }, testEvent)
+    ).not.toThrow();
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(fallbackLogger.error).toHaveBeenCalledWith(
+      'Routing diagnostics hook failed',
+      expect.objectContaining({
+        event: 'routing.guard.access_denied',
+        route: '/account',
+        error_type: 'string',
+        error_message: 'plain diagnostics failure',
+      })
+    );
+
+    resetServerFallbackLogger();
+    fallbackLogger.error.mockReset();
+  });
+
+  it('logs browser-side diagnostics hook failures directly to console.error', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    vi.stubGlobal('window', {});
+
+    expect(() =>
+      emitRoutingDiagnostic(() => {
+        throw new Error('browser diagnostics failed');
+      }, testEvent)
+    ).not.toThrow();
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(consoleError).toHaveBeenCalledWith(
+      'Routing diagnostics hook failed',
+      expect.objectContaining({
+        event: 'routing.guard.access_denied',
+        route: '/account',
+        error_type: 'Error',
+        error_message: 'browser diagnostics failed',
+      })
+    );
+    expect(fallbackLogger.error).not.toHaveBeenCalledWith(
+      'Routing diagnostics hook failed',
+      expect.objectContaining({
+        error_message: 'browser diagnostics failed',
+      })
+    );
+
+    vi.unstubAllGlobals();
+    consoleError.mockRestore();
+  });
+
+  it('falls back to console.error when the server fallback logger cannot be created', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    expect(() =>
+      emitRoutingDiagnostic(() => {
+        throw new Error('diagnostics failed without fallback logger');
+      }, testEvent)
+    ).not.toThrow();
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(consoleError).toHaveBeenCalledWith(
+      'Routing diagnostics hook failed',
+      expect.objectContaining({
+        event: 'routing.guard.access_denied',
+        route: '/account',
+        error_type: 'Error',
+        error_message: 'diagnostics failed without fallback logger',
+      })
+    );
+
+    consoleError.mockRestore();
   });
 });
 
@@ -235,6 +324,34 @@ describe('createRoutingDiagnosticsLogger', () => {
         error_type: 'Error',
         error_message: 'logger down',
         handler_name: 'meHandler',
+      })
+    );
+  });
+
+  it('includes required permission metadata for permission-based access denials', () => {
+    const logger = {
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+    };
+    const diagnostics = createRoutingDiagnosticsLogger(logger);
+
+    diagnostics({
+      level: 'info',
+      event: 'routing.guard.access_denied',
+      route: '/admin/media',
+      reason: 'insufficient-permission',
+      redirect_target: '/',
+      required_permissions: ['media.read', 'media.update'],
+    });
+
+    expect(logger.info).toHaveBeenCalledWith(
+      'Routing guard denied access',
+      expect.objectContaining({
+        event: 'routing.guard.access_denied',
+        route: '/admin/media',
+        reason: 'insufficient-permission',
+        required_permissions: ['media.read', 'media.update'],
       })
     );
   });

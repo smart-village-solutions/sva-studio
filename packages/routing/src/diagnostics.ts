@@ -1,5 +1,3 @@
-import { createSdkLogger } from '@sva/server-runtime';
-
 export type RoutingDenyReason =
   | 'unauthenticated'
   | 'insufficient-role'
@@ -78,7 +76,19 @@ export interface RoutingDiagnosticsLogger {
   error: (message: string, meta: Record<string, unknown>) => void;
 }
 
-const fallbackLogger = createSdkLogger({ component: 'routing', level: 'info' });
+type RoutingFallbackLogger = Pick<RoutingDiagnosticsLogger, 'error'>;
+
+let serverFallbackLogger: RoutingFallbackLogger | null = null;
+
+const isBrowserRuntime = () => typeof globalThis.window !== 'undefined';
+
+export const registerServerFallbackLogger = (logger: RoutingFallbackLogger): void => {
+  serverFallbackLogger = logger;
+};
+
+export const resetServerFallbackLogger = (): void => {
+  serverFallbackLogger = null;
+};
 
 const isPromiseLike = (value: unknown): value is PromiseLike<unknown> =>
   typeof value === 'object' && value !== null && typeof Reflect.get(value, 'then') === 'function';
@@ -143,7 +153,8 @@ export const createRoutingDiagnosticsLogger = (logger: RoutingDiagnosticsLogger)
 };
 
 const logRoutingDiagnosticFailure = (event: RoutingDiagnosticEvent, error: unknown): void => {
-  fallbackLogger.error('Routing diagnostics hook failed', {
+  const message = 'Routing diagnostics hook failed';
+  const meta = {
     event: event.event,
     route: event.route,
     request_id: event.request_id,
@@ -151,7 +162,19 @@ const logRoutingDiagnosticFailure = (event: RoutingDiagnosticEvent, error: unkno
     workspace_id: event.workspace_id,
     error_type: error instanceof Error ? error.constructor.name : typeof error,
     error_message: error instanceof Error ? error.message : String(error),
-  });
+  };
+
+  if (isBrowserRuntime()) {
+    console.error(message, meta);
+    return;
+  }
+
+  if (serverFallbackLogger) {
+    serverFallbackLogger.error(message, meta);
+    return;
+  }
+
+  console.error(message, meta);
 };
 
 export const emitRoutingDiagnostic = (

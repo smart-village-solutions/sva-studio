@@ -34,6 +34,7 @@ const authenticatedUser = {
     instanceId: 'de-musterhausen',
     assignedModules: ['news'],
     roles: ['editor'],
+    assignedModules: ['news'],
     permissionActions: ['news.read', 'news.create', 'news.update', 'news.delete'],
   },
 };
@@ -87,6 +88,10 @@ const expectPluginPageHeading = async (page: Page, pattern: RegExp) => {
   await expect(page.locator('main h1').filter({ hasText: pattern })).toBeVisible();
 };
 
+const expectNewsListUrl = async (page: Page) => {
+  await expect(page).toHaveURL(/\/admin\/news\?(?:.*&)?page=1(?:&.*)?$/);
+};
+
 const mockSharedShellRequests = async (page: Page) => {
   await page.route('**/iam/authorize', async (route) => {
     await route.fulfill({
@@ -121,6 +126,13 @@ const mockSharedShellRequests = async (page: Page) => {
   });
 };
 
+const createPagination = (total: number) => ({
+  page: 1,
+  pageSize: 25,
+  hasNextPage: false,
+  total,
+});
+
 const fulfillContentRoute = async (
   route: Route,
   newsItems: NewsRecord[],
@@ -135,10 +147,7 @@ const fulfillContentRoute = async (
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({
-        data: newsItems,
-        pagination: { page: 1, pageSize: 25, hasNextPage: false },
-      }),
+      body: JSON.stringify({ data: newsItems, pagination: createPagination(newsItems.length) }),
     });
     return;
   }
@@ -253,10 +262,7 @@ test.describe('news plugin', () => {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify({
-            data: newsItems,
-            pagination: { page: 1, pageSize: 25, hasNextPage: false },
-          }),
+          body: JSON.stringify({ data: newsItems, pagination: createPagination(newsItems.length) }),
         });
         return;
       }
@@ -291,7 +297,7 @@ test.describe('news plugin', () => {
     await expect(page.getByRole('heading', { name: 'SVA Studio' })).toBeVisible();
 
     await page.getByRole('link', { name: 'News' }).click();
-    await expect(page).toHaveURL(/\/admin\/news(?:\?page=1&pageSize=25)?$/);
+    await expectNewsListUrl(page);
     await expectPluginPageHeading(page, /News|news\.list\.title/);
 
     await page.locator('a[href="/admin/news/new"]').click();
@@ -320,8 +326,8 @@ test.describe('news plugin', () => {
     await page.locator('#news-media-caption-0-0').fill('Titelbild');
     await page.getByRole('button', { name: /News anlegen|news\.actions\.create/ }).click();
 
-    await expect(page).toHaveURL(/\/admin\/news(?:\?page=1&pageSize=25)?$/);
-    await expect(page.getByText('Erste News').first()).toBeVisible();
+    await expectNewsListUrl(page);
+    await expect(page.locator('main table').getByText('Erste News')).toBeVisible();
     expect(createdBody).toMatchObject({
       title: 'Erste News',
       author: 'Redaktion Musterhausen',
@@ -358,7 +364,7 @@ test.describe('news plugin', () => {
     page.once('dialog', (dialog) => dialog.accept());
     await page.getByRole('button', { name: /Löschen|news\.actions\.delete/ }).click();
 
-    await expect(page).toHaveURL(/\/admin\/news$/);
+    await expectNewsListUrl(page);
     await expect(page.getByText(/Noch keine News vorhanden|news\.empty\.title/)).toBeVisible();
   });
 
@@ -385,10 +391,7 @@ test.describe('news plugin', () => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({
-          data: newsItems,
-          pagination: { page: 1, pageSize: 25, hasNextPage: false },
-        }),
+        body: JSON.stringify({ data: newsItems, pagination: createPagination(newsItems.length) }),
       });
     });
 
@@ -398,7 +401,7 @@ test.describe('news plugin', () => {
     await page.locator('a[href="/admin/news"]').focus();
     await page.keyboard.press('Enter');
 
-    await expect(page).toHaveURL(/\/admin\/news$/);
+    await expectNewsListUrl(page);
     await expectPluginPageHeading(page, /News|news\.list\.title/);
   });
 
@@ -455,10 +458,7 @@ test.describe('news plugin', () => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({
-          data: newsItems,
-          pagination: { page: 1, pageSize: 25, hasNextPage: false },
-        }),
+        body: JSON.stringify({ data: newsItems, pagination: createPagination(newsItems.length) }),
       });
     });
 

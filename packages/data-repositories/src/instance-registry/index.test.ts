@@ -453,11 +453,11 @@ describe('instance registry repository', () => {
       })
     ).resolves.toBeUndefined();
 
-    expect(statements).toHaveLength(2);
-    expect(statements[0]?.text).toContain("AND role.role_key IN ('news_admin')");
-    expect(statements[0]?.text).not.toContain('NOT IN (');
-    expect(statements[1]?.text).toContain("permission_key LIKE 'news.%'");
-    expect(statements[1]?.text).not.toContain('permission_key NOT IN (');
+    expect(statements).toHaveLength(3);
+    expect(statements[1]?.text).toContain("AND role.role_key IN ('news_admin')");
+    expect(statements[1]?.text).not.toContain('NOT IN (');
+    expect(statements[2]?.text).toContain("permission_key LIKE 'news.%'");
+    expect(statements[2]?.text).not.toContain('permission_key NOT IN (');
   });
 
   it('resolves hostname variants and returns null when they are missing', async () => {

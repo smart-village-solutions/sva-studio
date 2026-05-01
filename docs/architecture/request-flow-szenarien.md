@@ -15,7 +15,7 @@ flowchart TD
     E --> F["HTML an Browser"]
 
     C -->|Server Function aus UI| G["ServerFn in sva-studio-react"]
-    G --> H["@sva/sdk\nRequest-Kontext / Logging"]
+    G --> H["@sva/server-runtime\nRequest-Kontext / Logging"]
     H --> I["@sva/auth-runtime\nSession / Guards"]
     I --> J{"Fachlogik"}
 
@@ -60,7 +60,7 @@ flowchart TD
 
 - Die Seite wird zunächst normal gerendert.
 - Für Datenladen oder Mutationen ruft die React-Komponente eine TanStack-Server-Function auf.
-- Diese nutzt typischerweise `@sva/sdk` für Kontext und Logging, `@sva/auth-runtime` für Session- und Guard-Prüfung und anschließend fachliche Packages wie `@sva/data`, `@sva/iam-*`, `@sva/instance-registry` oder `@sva/sva-mainserver`.
+- Diese nutzt typischerweise `@sva/server-runtime` für Kontext und Logging, `@sva/auth-runtime` für Session- und Guard-Prüfung und anschließend fachliche Packages wie `@sva/data`, `@sva/iam-*`, `@sva/instance-registry` oder `@sva/sva-mainserver`.
 
 ### Direkter Auth- oder IAM-Endpunkt
 
@@ -81,5 +81,5 @@ flowchart TD
 - `@sva/iam-admin`, `@sva/iam-governance`, `@sva/instance-registry`: IAM-Fachverwaltung, Governance und Instanzlogik
 - `@sva/data`: Persistenzzugriff auf Postgres
 - `@sva/sva-mainserver`: serverseitige Integrationslogik für den externen Mainserver
-- `@sva/sdk`: Logging, Request-Kontext, Fehlerantworten und Observability-Helfer
+- `@sva/server-runtime`: Logging, Request-Kontext, Fehlerantworten und Observability-Helfer
 - `@sva/core`: framework-agnostische Typen und fachliche Kernlogik

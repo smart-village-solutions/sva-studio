@@ -12,7 +12,7 @@
 Die Observability-Implementierung wird in **drei klar getrennte Schichten** aufgeteilt:
 
 1. **packages/core/** bleibt **observability-neutral** und enthält keine OTEL-, Logger- oder Monitoring-Abhängigkeiten.
-2. **packages/sdk/** stellt **framework-agnostische Logger- und Context-Utilities** bereit (z. B. strukturierter Logger, Request-Context, PII-Redaction Hooks).
+2. **packages/server-runtime/** stellt **framework-agnostische Logger- und Context-Utilities** bereit (z. B. strukturierter Logger, Request-Context, PII-Redaction Hooks).
 3. **packages/monitoring-client/** bündelt die **OpenTelemetry SDK-Konfiguration**, Exporter, Collector-Endpoints und Entwicklungs-Dashboards.
 
 Damit bleibt die Kernlogik minimal und stabil, während Observability als **optional, austauschbar und erweiterbar** umgesetzt wird.
@@ -68,7 +68,7 @@ Die Entscheidung muss sicherstellen, dass Observability **leicht aktivierbar**, 
 
 ## Implementierung / Ausblick
 
-- [ ] `packages/sdk/src/logger/` erstellt einen strukturierten Logger mit PII-Redaction-Hooks.
+- [ ] `packages/server-runtime/src/logger/` erstellt einen strukturierten Logger mit PII-Redaction-Hooks.
 - [ ] `packages/monitoring-client/src/otel.ts` enthält OTEL SDK Setup (Exporter, Resource, Instrumentation).
 - [ ] `packages/monitoring-client/` enthält Dev-Dashboards und Collector-Konfiguration.
 - [ ] Apps aktivieren Observability via explizitem Import (kein implicit side-effect in Core).

@@ -28,7 +28,7 @@ gleichzeitig beeinflussen.
 - Application-Level Column Encryption für IAM-PII-Felder (`email_ciphertext`, `display_name_ciphertext`)
 - Schlüsselverwaltung über `IAM_PII_ACTIVE_KEY_ID` + `IAM_PII_KEYRING_JSON` (außerhalb der DB)
 - Fehlertexte der Feldverschlüsselung enthalten keine internen Key-IDs; technische Key-Kontexte werden nur als strukturierter Fehlerkontext geführt
-- Redaction sensibler Logfelder im SDK und im OTEL Processor
+- Redaction sensibler Logfelder in `@sva/server-runtime` und im OTEL Processor
 - Governance-Gates: Ticketpflicht, Vier-Augen-Prinzip, keine Self-Approvals
 - Harte Laufzeitgrenzen: Impersonation max. 120 Minuten, Delegation max. 30 Tage
 - `support_admin`-Impersonation benötigt zusätzlichen Security-Approver
@@ -74,8 +74,8 @@ gleichzeitig beeinflussen.
 - Permission-Snapshots sind reine Laufzeitoptimierung und keine fachliche Source of Truth
 - Änderungen an direkten Nutzerrechten invalidieren dieselben Snapshot-Pfade wie Rollen- und Gruppenänderungen; Cache-Konsistenz ist damit für `me/permissions` und `authorize` identisch abgesichert
 - Audit-Logging für IAM-Ereignisse folgt Dual-Write:
-  - Tenant-Scope: `iam.activity_logs` + OTEL via SDK Logger
-  - Plattform-Scope: `iam.platform_activity_logs` + OTEL via SDK Logger
+  - Tenant-Scope: `iam.activity_logs` + OTEL via Server-Runtime-Logger
+  - Plattform-Scope: `iam.platform_activity_logs` + OTEL via Server-Runtime-Logger
 - Audit-Daten enthalten korrelierbare IDs (`request_id`, `trace_id`) und pseudonymisierte Actor-Referenzen
 - Der Root-Host ist ein expliziter Plattform-Scope und keine Pseudo-Instanz in `iam.instances`
 - Studio-verwaltete Rollen werden über `managed_by = 'studio'` und `instance_id` gegen fremdverwaltete Keycloak-Rollen abgegrenzt
@@ -306,7 +306,7 @@ gleichzeitig beeinflussen.
 ### Package-Boundaries und Runtime-Imports
 
 - Neue Fachlogik wird direkt im Zielpackage umgesetzt: `@sva/auth-runtime`, `@sva/iam-core`, `@sva/iam-admin`, `@sva/iam-governance`, `@sva/instance-registry`, `@sva/data-client`, `@sva/data-repositories`, `@sva/plugin-sdk` oder `@sva/server-runtime`.
-- Alte Sammelpackages bleiben nur Kompatibilitätsbereiche; sie dürfen keine neue fachliche Ownership begründen.
+- Alte Sammelpackages begruenden keine neue fachliche Ownership; die fruehere Sammelfassade `@sva/sdk` ist aus dem aktiven Workspace entfernt.
 - Nx-`depConstraints` und ESLint-Importverbote verhindern Rückfälle auf alte Sammelimporte in produktiven Consumer-Pfaden.
 - Serverseitig von Node geladene Workspace-Packages verwenden explizite `.js`-Endungen für relative Runtime-Imports und bestehen `check:runtime`.
 - Runtime-Imports auf andere Workspace-Packages stehen im lokalen `package.json` unter `dependencies`.

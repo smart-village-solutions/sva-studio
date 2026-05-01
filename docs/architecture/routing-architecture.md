@@ -10,7 +10,7 @@ Die Routing-Architektur ist auf folgende Ziele ausgelegt:
 2. **Eine öffentliche Routing-Schnittstelle** über `@sva/routing`.
 3. **Code-basierte produktive Seitenrouten** ohne app-lokale Parallel-Registrierung.
 4. **Saubere Server/Client-Grenze**, damit server-only Module nicht in den Client-Bundle gelangen.
-5. **Erweiterbarkeit** durch statisch registrierte SDK-Plugins und einen kanonischen Build-time-Registry-Vertrag.
+5. **Erweiterbarkeit** durch statisch registrierte Plugins ueber `@sva/plugin-sdk` und einen kanonischen Build-time-Registry-Vertrag.
 6. **Gezielte Routing-Observability** für Guard-Denials, Plugin-Anomalien und serverseitige Dispatch-Fehler ohne Browser-Noise.
 7. **Deklarative Admin-Ressourcen** für CRUD-artige Host-Flächen statt verteilter Einzelverdrahtung.
 
@@ -53,7 +53,7 @@ apps/sva-studio-react
 packages/plugin-news
   -> PluginDefinition
 
-@sva/sdk
+@sva/plugin-sdk
   -> createBuildTimeRegistry()
 
 Result:
@@ -134,7 +134,7 @@ Damit bleibt die Route-Komposition zentralisiert, während die App weiterhin die
 
 - erstellt `createRootRoute(...)`
 - definiert Shell, Head, Error- und NotFound-Verhalten
-- initialisiert serverseitig benötigte SDK-Bausteine nur im SSR-Kontext
+- initialisiert serverseitig benötigte Runtime-Bausteine nur im SSR-Kontext
 
 ## Plugin-Routing
 
@@ -161,11 +161,11 @@ Die eigentliche Business-Logik verbleibt im Auth-Package; das Routing-Package bl
 
 `@sva/routing` besitzt einen expliziten, optional injizierten Diagnostics-Hook für routing-relevante Entscheidungen und Anomalien.
 
-- Client-shared Routing-Dateien bleiben frei von SDK-Runtime-Imports.
+- Client-shared Routing-Dateien bleiben frei von Runtime-Imports aus `@sva/server-runtime`.
 - Ohne Hook bleibt Browser-Routing standardmäßig still.
 - Guard-Denials emittieren `routing.guard.access_denied`.
 - Unbekannte Plugin-Guard-Mappings emittieren `routing.plugin.guard_unsupported`.
-- `auth.routes.server.ts` bindet serverseitige Ereignisse an den SDK-Logger und harmonisiert Fehler und `405`-Fälle auf:
+- `auth.routes.server.ts` bindet serverseitige Ereignisse an den Logger aus `@sva/server-runtime` und harmonisiert Fehler und `405`-Fälle auf:
   - `routing.handler.error_caught`
   - `routing.handler.method_not_allowed`
   - `routing.logger.fallback_activated`

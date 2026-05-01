@@ -245,7 +245,7 @@ Fehlerpfad:
 
 ### Szenario 3: Logging/Observability bei Server-Requests
 
-1. Server-Code loggt via `createSdkLogger(...)`
+1. Server-Code loggt via `createSdkLogger(...)` aus `@sva/server-runtime`
 2. Context (workspace/request) wird über AsyncLocalStorage injiziert
 3. In Development schreiben Console- und Dev-UI-Transport die redaktierten Logs sofort lokal aus
 4. Sobald OTEL bereit ist, werden bestehende Logger um den Direct-OTEL-Transport erweitert

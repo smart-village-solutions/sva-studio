@@ -84,12 +84,6 @@
       "functions": 100,
       "branches": 97.46
     },
-    "sdk": {
-      "lines": 98.54,
-      "statements": 97.9,
-      "functions": 100,
-      "branches": 87.17
-    },
     "server-runtime": {
       "lines": 82.82,
       "statements": 82.58,

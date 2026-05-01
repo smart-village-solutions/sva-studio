@@ -19,7 +19,7 @@ Erhöhung der Review-Sicherheit auf `develop` durch ausführbare Qualitäts-Targ
   - `@sva/core`
   - `@sva/data`
   - `@sva/monitoring-client`
-  - `@sva/sdk`
+  - `@sva/server-runtime`
 - `@sva/monitoring-client:test:unit` führt echte Vitest-Tests aus.
 - Root-Skripte ergänzt:
   - `pnpm test:eslint`

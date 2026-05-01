@@ -71,7 +71,7 @@ Goldene Regel: Niemals Code committen, den man nicht selbst erklären kann.
 KI-Instruktionen: Wir geben der KI unsere Team-Standards (Stil, Patterns, Do’s & Don’ts) explizit mit.
 
 ### Server-Packages explizit nennen
-Wenn eine KI an `packages/core`, `packages/data`, `packages/monitoring-client`, `packages/sdk`, `packages/auth-runtime`, `packages/iam-admin`, `packages/iam-governance`, `packages/instance-registry`, `packages/routing` oder `packages/sva-mainserver` arbeitet, muss explizit kommuniziert werden:
+Wenn eine KI an `packages/core`, `packages/data`, `packages/monitoring-client`, `packages/plugin-sdk`, `packages/server-runtime`, `packages/auth-runtime`, `packages/iam-admin`, `packages/iam-governance`, `packages/instance-registry`, `packages/routing` oder `packages/sva-mainserver` arbeitet, muss explizit kommuniziert werden:
 
 - relative Runtime-Imports und Re-Exports immer mit `.js`
 - Workspace-Runtime-Imports brauchen einen passenden `dependencies`-Eintrag

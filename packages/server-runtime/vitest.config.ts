@@ -13,7 +13,7 @@ export default defineConfig({
     ],
   },
   test: {
-    include: ['src/**/*.test.ts'],
+    include: ['src/**/*.test.ts', 'tests/**/*.test.ts'],
     exclude: ['dist/**', 'coverage/**', 'node_modules/**'],
     environment: 'node',
     coverage: sharedCoverageConfig,

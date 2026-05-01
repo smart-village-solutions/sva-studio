@@ -230,13 +230,13 @@ Neue Exemptions sind nur in begründeten Ausnahmefällen zulässig und müssen i
 
 - Prüfen, ob Änderungen ein exemptes Projekt betreffen.
 - Prüfen, ob mindestens `lint` im betroffenen Projekt erfolgreich war.
-- Prüfen, ob angrenzende nicht-exempte Projekte (z. B. `auth-runtime`, `sdk`, `monitoring-client`) grüne `test:unit`-Runs haben.
+- Prüfen, ob angrenzende nicht-exempte Projekte (z. B. `auth-runtime`, `server-runtime`, `monitoring-client`) grüne `test:unit`-Runs haben.
 - Bei funktionalen Änderungen in exempten Projekten: expliziten Test-Nachweis im PR verlangen (mindestens Smoke/Contract-Run), bis die Exemption entfernt ist.
 
 ### Aktueller Status nicht-exempter Unit-Targets
 
 - `auth-runtime`: echter `test:unit`-Run via Vitest
-- `sdk`: echter `test:unit`-Run via Vitest
+- `server-runtime`: echter `test:unit`-Run via Vitest
 - `monitoring-client`: echter `test:unit`-Run via Vitest
 - `sva-studio-react`: echter `test:unit`-Run via Vitest (`--passWithNoTests`)
 
@@ -244,7 +244,7 @@ Neue Exemptions sind nur in begründeten Ausnahmefällen zulässig und müssen i
 
 - `auth-runtime`: `test:coverage` via Vitest (`--coverage`)
 - `routing`: `test:coverage` via Vitest (`--coverage`)
-- `sdk`: `test:coverage` via Vitest (`--coverage`)
+- `server-runtime`: `test:coverage` via Vitest (`--coverage`)
 - `monitoring-client`: `test:coverage` via Vitest (`--coverage`)
 - `sva-studio-react`: `test:coverage` via Vitest (`--coverage`)
 

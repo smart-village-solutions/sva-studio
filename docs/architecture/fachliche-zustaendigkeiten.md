@@ -13,7 +13,7 @@ flowchart TB
     C2["@sva/iam-admin\n@sva/iam-governance\n@sva/instance-registry\nIAM-Fachlogik"]
     D["@sva/data\nPersistenz,\nPostgres-Zugriff,\ninstanzgebundene Daten"]
     E["@sva/sva-mainserver\nIntegrationslogik fuer\nexternen Mainserver"]
-    F["@sva/sdk\nLogging, Request-Kontext,\nFehlerantworten,\nObservability"]
+    F["@sva/server-runtime\nLogging, Request-Kontext,\nFehlerantworten,\nObservability"]
     G["@sva/core\nFachlicher Kern\nTypen, Regeln,\nRouting-Registry,\nAuthorization-Engine,\nSecurity-Helfer"]
 
     H["Postgres"]
@@ -68,7 +68,8 @@ flowchart TB
 ## Kurzlesart
 
 - `@sva/core` ist der fachliche Kern und liefert die gemeinsamen Regeln, Typen und Kernabstraktionen.
-- `@sva/sdk` stellt querschnittliche Infrastruktur bereit, vor allem Logging, Kontext und Observability.
+- `@sva/server-runtime` stellt querschnittliche Infrastruktur bereit, vor allem Logging, Kontext und Observability.
+- Die fruehere Sammelfassade `@sva/sdk` ist aus dem aktiven Workspace entfernt.
 - `@sva/auth-runtime` verantwortet Identität, Session, OIDC und Runtime-Routen.
 - `@sva/iam-admin`, `@sva/iam-governance` und `@sva/instance-registry` verantworten IAM-nahe Fachverwaltung, Governance und Instanzlogik.
 - `@sva/data` kapselt Persistenz und Datenbankzugriff.

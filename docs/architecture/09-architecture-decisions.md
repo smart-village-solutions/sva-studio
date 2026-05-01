@@ -93,7 +93,7 @@ mit Bezug auf die arc42-Abschnitte.
 - ADR-030: Registry-basierte Instance-Freigabe und gemeinsamer Provisioning-Vertrag (Abschnitt 04, 05, 06, 07, 08, 09, 10, 11)
 - ADR-033: Getrennter Tenant-Login-Client und Tenant-Admin-Client als kanonischer Instanzvertrag (Abschnitt 04, 05, 06, 08, 09, 10, 11)
 - ADR-032: Plattform-Scope vs. tenantgebundene Instanz als kanonische Runtime- und Audit-Trennung (Abschnitt 04, 05, 06, 08, 09, 11)
-- ADR-034: Statischer Plugin-SDK-Vertrag v1 für Routing, Navigation, Content-Typen und Übersetzungen (Abschnitt 04, 05, 06, 08, 09, 11, 12)
+- ADR-034: Statischer Plugin-SDK-Vertrag v1 für Routing, Navigation, Content-Typen und Übersetzungen; nach dem Hard-Cut liegt dieser Vertrag kanonisch in `@sva/plugin-sdk`, waehrend Server-Helfer ueber `@sva/server-runtime` laufen (Abschnitt 04, 05, 06, 08, 09, 11, 12)
 - ADR-034 trägt weiterhin auch die technische Plugin-Identität als führenden Namespace; die Namespacing-Regeln für plugin-beigestellte `contentType`s, Admin-Ressourcen-IDs und Audit-Event-Typen wurden als Fortschreibung dieses Vertrags umgesetzt, ohne eine separate ADR-Serie zu eröffnen.
 - ADR-035: Routing-Observability über Diagnostics-Hook, Safe-Event-Vertrag und Browser-/Server-Split (Abschnitt 04, 05, 06, 08, 09, 10, 11)
 - ADR-036: Kanonischer IAM-Projektionskern, deterministischer Reconcile-/Sync-Vertrag und fail-closed Drift-Blocker (Abschnitt 04, 05, 06, 08, 09, 10, 11)
@@ -289,6 +289,7 @@ Zuordnung:
   - definiert den Plugin-SDK-Vertrag, der nach dem Hard-Cut in `@sva/plugin-sdk` liegt
   - bündelt Routen, Navigation, Content-Typen und Übersetzungen in `PluginDefinition`
   - hält die Registrierung in v1 bewusst statisch im App-Bundle und ordnet Guards dem Host zu
+  - dokumentiert den spaeteren Hard-Cut auf `@sva/plugin-sdk` und `@sva/server-runtime`; `@sva/sdk` ist kein aktives Zielpackage mehr
 
 - `ADR-037-plugin-spezifische-iam-rechte.md`
   - erweitert den Plugin-SDK-Vertrag um plugin-deklarierte IAM-Rechtefamilien

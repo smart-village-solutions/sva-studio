@@ -6,7 +6,7 @@ import { isInstanceStatus, type InstanceRealmMode, type InstanceStatus } from '.
 import { createInstanceRegistryService } from '../../packages/auth-runtime/src/iam-instance-registry/service.js';
 import { createInstanceRegistryRepository } from '../../packages/data/src/instance-registry/index.js';
 import { invalidateInstanceRegistryHost } from '../../packages/data/src/instance-registry/server.js';
-import { createSdkLogger } from '../../packages/sdk/src/logger/index.server.js';
+import { createSdkLogger } from '../../packages/server-runtime/src/logger/index.server.js';
 
 import type { SqlExecutor, SqlStatement } from '../../packages/data/src/iam/repositories/types.js';
 import type { InstanceRegistryRepository } from '../../packages/data-repositories/src/instance-registry/index.js';

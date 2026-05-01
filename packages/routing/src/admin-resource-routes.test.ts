@@ -370,6 +370,30 @@ describe('admin resource routes', () => {
     ).toThrow('unknown_admin_resource_binding_key:news.entries:list:unknownListBinding');
   });
 
+  it('rejects unknown specialized content ui binding keys before route creation', () => {
+    expect(() =>
+      createAdminResourceRouteFactories(bindings, [
+        {
+          resourceId: 'news.entries',
+          basePath: 'news',
+          titleKey: 'news.title',
+          guard: 'content',
+          views: {
+            list: { bindingKey: 'content' },
+            create: { bindingKey: 'contentCreate' },
+            detail: { bindingKey: 'contentDetail' },
+          },
+          contentUi: {
+            contentType: 'news.article',
+            bindings: {
+              list: { bindingKey: 'unknownListBinding' as never },
+            },
+          },
+        },
+      ])
+    ).toThrow('unknown_admin_resource_binding_key:news.entries:contentUi.list:unknownListBinding');
+  });
+
   it('rejects prototype property binding keys before route creation', () => {
     expect(() =>
       createAdminResourceRouteFactories(bindings, [

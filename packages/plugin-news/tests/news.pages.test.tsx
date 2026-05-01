@@ -1,7 +1,7 @@
 import React from 'react';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { listHostMediaAssets, listHostMediaReferencesByTarget, registerPluginTranslationResolver, replaceHostMediaReferences } from '@sva/plugin-sdk';
+import { registerPluginTranslationResolver } from '@sva/plugin-sdk';
 
 import { NewsCreatePage, NewsEditPage, NewsListPage } from '../src/news.pages.js';
 import { NewsApiError, createNews, deleteNews, getNews, listNews, updateNews } from '../src/news.api.js';
@@ -70,9 +70,6 @@ vi.mock('@sva/plugin-sdk', async () => {
   const actual = await vi.importActual<typeof import('@sva/plugin-sdk')>('@sva/plugin-sdk');
   return {
     ...actual,
-    listHostMediaAssets: vi.fn(async () => []),
-    listHostMediaReferencesByTarget: vi.fn(async () => []),
-    replaceHostMediaReferences: vi.fn(async (input: unknown) => input),
   };
 });
 
@@ -174,25 +171,11 @@ describe('NewsListPage', () => {
         'news.actions.addContentBlock': 'Inhaltsblock hinzufügen',
         'news.actions.addMedia': 'Medium hinzufügen',
         'news.actions.remove': 'Entfernen',
-        'news.actions.clearMedia': 'Medium entfernen',
         'news.validation.contentBlocks': 'Mindestens ein Inhaltsblock benötigt Inhalt und darf maximal 50.000 Zeichen haben.',
         'news.validation.sourceUrl': 'Die Quell-URL muss mit https:// beginnen.',
         'news.validation.publishedAt': 'Das Veröffentlichungsdatum ist erforderlich.',
-        'news.fields.teaserImage': 'Teaserbild',
-        'news.fields.headerImage': 'Headerbild',
-        'news.fields.mediaPlaceholder': 'Medium auswählen',
       };
       return labels[key] ?? key;
-    });
-    vi.mocked(listHostMediaAssets).mockResolvedValue([
-      { id: 'asset-hero', metadata: { title: 'Hero Asset' } },
-      { id: 'asset-header', metadata: { title: 'Header Asset' } },
-    ]);
-    vi.mocked(listHostMediaReferencesByTarget).mockResolvedValue([]);
-    vi.mocked(replaceHostMediaReferences).mockResolvedValue({
-      targetType: 'news',
-      targetId: 'news-1',
-      references: [],
     });
   });
 
@@ -490,42 +473,6 @@ describe('NewsListPage', () => {
     });
   });
 
-  it('creates host media references alongside the legacy news payload without leaking storage artifacts', async () => {
-    render(<NewsCreatePage />);
-
-    await waitFor(() => {
-      expect(listHostMediaAssets).toHaveBeenCalled();
-    });
-
-    fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Neue News' } });
-    fireEvent.change(screen.getByLabelText('Einleitung'), { target: { value: 'Kurztext' } });
-    fireEvent.change(screen.getByLabelText('Inhalt'), { target: { value: '<p>Body</p>' } });
-    fireEvent.change(screen.getByLabelText('Quell-URL'), { target: { value: 'https://example.com/news' } });
-    fireEvent.change(screen.getByLabelText('Veröffentlichungsdatum'), { target: { value: '2026-04-14T09:30' } });
-    fireEvent.change(screen.getByLabelText('Teaserbild'), { target: { value: 'asset-hero' } });
-    fireEvent.change(screen.getByLabelText('Headerbild'), { target: { value: 'asset-header' } });
-    fireEvent.click(screen.getByRole('button', { name: 'News anlegen' }));
-
-    await waitFor(() => {
-      expect(createNews).toHaveBeenCalledWith(
-        expect.objectContaining({
-          title: 'Neue News',
-          sourceUrl: { url: 'https://example.com/news' },
-          contentBlocks: [expect.objectContaining({ intro: 'Kurztext', body: '<p>Body</p>' })],
-        })
-      );
-      expect(replaceHostMediaReferences).toHaveBeenCalledWith({
-        fetch: expect.any(Function),
-        targetType: 'news',
-        targetId: 'news-created',
-        references: [
-          { assetId: 'asset-hero', role: 'teaser_image', sortOrder: 0 },
-          { assetId: 'asset-header', role: 'header_image', sortOrder: 1 },
-        ],
-      });
-    });
-  });
-
   it('submits the extended Mainserver news model without a legacy payload', async () => {
     render(<NewsCreatePage />);
 
@@ -654,40 +601,6 @@ describe('NewsListPage', () => {
         }),
       );
       expect(screen.getByText('News-Eintrag wurde aktualisiert.')).toBeTruthy();
-    });
-  });
-
-  it('loads existing host media references on edit and can clear them without losing legacy fields', async () => {
-    vi.mocked(listHostMediaReferencesByTarget).mockResolvedValueOnce([
-      { id: 'ref-1', assetId: 'asset-hero', role: 'teaser_image', sortOrder: 0 },
-      { id: 'ref-2', assetId: 'asset-header', role: 'header_image', sortOrder: 1 },
-    ]);
-
-    render(<NewsEditPage />);
-
-    await waitFor(() => {
-      expect((screen.getByLabelText('Teaserbild') as HTMLSelectElement).value).toBe('asset-hero');
-      expect((screen.getByLabelText('Headerbild') as HTMLSelectElement).value).toBe('asset-header');
-    });
-
-    fireEvent.click(screen.getAllByRole('button', { name: 'Medium entfernen' })[0] as HTMLElement);
-    fireEvent.click(screen.getAllByRole('button', { name: 'Medium entfernen' })[1] as HTMLElement);
-    fireEvent.click(screen.getByRole('button', { name: 'Änderungen speichern' }));
-
-    await waitFor(() => {
-      expect(updateNews).toHaveBeenCalledWith(
-        'news-1',
-        expect.objectContaining({
-          title: 'Bestehende News',
-          contentBlocks: [expect.objectContaining({ intro: 'Kurztext', body: '<p>Body</p>' })],
-        })
-      );
-      expect(replaceHostMediaReferences).toHaveBeenCalledWith({
-        fetch: expect.any(Function),
-        targetType: 'news',
-        targetId: 'news-1',
-        references: [],
-      });
     });
   });
 

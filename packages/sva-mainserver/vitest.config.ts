@@ -23,6 +23,7 @@ export default defineConfig({
       '@sva/data-repositories': resolve(__dirname, '../data-repositories/src/index.ts'),
       '@sva/instance-registry/http-contracts': resolve(__dirname, '../instance-registry/src/http-contracts.ts'),
       '@sva/instance-registry': resolve(__dirname, '../instance-registry/src/index.ts'),
+      '@sva/media': resolve(__dirname, '../media/src/index.ts'),
       '@sva/monitoring-client/logger-provider.server': resolve(
         __dirname,
         '../monitoring-client/src/logger-provider.server.ts',

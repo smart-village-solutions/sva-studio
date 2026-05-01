@@ -198,6 +198,14 @@ const hasPermissionAction = (
   return permissionActions?.includes(requiredAction) === true;
 };
 
+const isModuleAssignedToUser = (moduleId: string | null | undefined, user: { assignedModules?: readonly string[] } | null | undefined) => {
+  if (!moduleId) {
+    return true;
+  }
+
+  return user?.assignedModules?.includes(moduleId) === true;
+};
+
 const isLeafActive = (pathname: string, item: SidebarLeafItem) => {
   if (!item.to) {
     return false;

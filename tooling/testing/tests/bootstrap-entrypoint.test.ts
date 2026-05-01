@@ -65,15 +65,15 @@ cp "$sql_file" "$OUTPUT_SQL_PATH"
 };
 
 describe('bootstrap-entrypoint', () => {
-  it('backfills tenant_admin_client_id in bootstrap instance reconciliation SQL', () => {
+  it('seeds canonical auth realm and client identifiers in bootstrap instance reconciliation SQL', () => {
     const sql = renderBootstrapSql();
 
     expect(sql).toContain(
-      'INSERT INTO iam.instances (id, display_name, status, parent_domain, primary_hostname, auth_realm, auth_client_id, tenant_admin_client_id)',
+      'INSERT INTO iam.instances (id, display_name, status, parent_domain, primary_hostname, auth_realm, auth_client_id)',
     );
-    expect(sql).toContain("'sva-studio-admin'");
+    expect(sql).toContain("'bb-guben', 'bb-guben', 'active', 'studio.smart-village.app', 'bb-guben.studio.smart-village.app', 'bb-guben', 'sva-studio'");
     expect(sql).toContain(
-      "tenant_admin_client_id = COALESCE(NULLIF(iam.instances.tenant_admin_client_id, ''), EXCLUDED.tenant_admin_client_id)",
+      'auth_client_id = EXCLUDED.auth_client_id',
     );
   });
 });

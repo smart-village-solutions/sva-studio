@@ -44,6 +44,7 @@ const authenticatedUser = {
     email: 'editor@example.com',
     instanceId: 'de-musterhausen',
     roles: ['editor'],
+    assignedModules: ['events', 'poi'],
     permissionActions: [
       'events.read',
       'events.create',
@@ -110,6 +111,10 @@ const expectPluginPageHeading = async (page: Page, pattern: RegExp) => {
   await expect(page.locator('main h1').filter({ hasText: pattern })).toBeVisible();
 };
 
+const expectAdminListUrl = async (page: Page, basePath: '/admin/events' | '/admin/poi') => {
+  await expect(page).toHaveURL(new RegExp(`${basePath.replace('/', '\\/')}\\?(?:.*&)??page=1(?:&.*)?$`));
+};
+
 const mockSharedShellRequests = async (page: Page) => {
   await page.route('**/auth/me', async (route) => {
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(authenticatedUser) });
@@ -145,6 +150,12 @@ const mockSharedShellRequests = async (page: Page) => {
 };
 
 const createdAt = '2026-04-13T12:10:00.000Z';
+const createPagination = (total: number) => ({
+  page: 1,
+  pageSize: 25,
+  hasNextPage: false,
+  total,
+});
 
 const routeEvents = async (route: Route, events: EventRecord[]) => {
   const request = route.request();
@@ -153,7 +164,11 @@ const routeEvents = async (route: Route, events: EventRecord[]) => {
 
   if (path === '/api/v1/mainserver/events') {
     if (method === 'GET') {
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: events }) });
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: events, pagination: createPagination(events.length) }),
+      });
       return;
     }
     if (method === 'POST') {
@@ -224,7 +239,11 @@ const routePoi = async (route: Route, pois: PoiRecord[]) => {
 
   if (path === '/api/v1/mainserver/poi') {
     if (method === 'GET') {
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: pois }) });
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: pois, pagination: createPagination(pois.length) }),
+      });
       return;
     }
     if (method === 'POST') {
@@ -303,7 +322,7 @@ test.describe('events and POI plugins', () => {
 
     await page.goto('/');
     await page.locator('a[href="/admin/poi"]').click();
-    await expect(page).toHaveURL(/\/admin\/poi$/);
+    await expectAdminListUrl(page, '/admin/poi');
     await expectPluginPageHeading(page, /POI|poi\.list\.title/);
 
     await page.locator('a[href="/admin/poi/new"]').click();
@@ -333,7 +352,7 @@ test.describe('events and POI plugins', () => {
     page.once('dialog', (dialog) => dialog.accept());
     await page.getByRole('button', { name: /Löschen|poi\.actions\.delete/ }).click();
 
-    await expect(page).toHaveURL(/\/admin\/poi$/);
+    await expectAdminListUrl(page, '/admin/poi');
     await expect(page.getByText(/Noch keine POI vorhanden|poi\.empty\.title/)).toBeVisible();
   });
 
@@ -360,7 +379,7 @@ test.describe('events and POI plugins', () => {
 
     await page.goto('/');
     await page.locator('a[href="/admin/events"]').click();
-    await expect(page).toHaveURL(/\/admin\/events$/);
+    await expectAdminListUrl(page, '/admin/events');
     await expectPluginPageHeading(page, /Events|events\.list\.title/);
 
     await page.locator('a[href="/admin/events/new"]').click();
@@ -388,7 +407,7 @@ test.describe('events and POI plugins', () => {
     page.once('dialog', (dialog) => dialog.accept());
     await page.getByRole('button', { name: /Löschen|events\.actions\.delete/ }).click();
 
-    await expect(page).toHaveURL(/\/admin\/events$/);
+    await expectAdminListUrl(page, '/admin/events');
     await expect(page.getByText(/Noch keine Events vorhanden|events\.empty\.title/)).toBeVisible();
   });
 

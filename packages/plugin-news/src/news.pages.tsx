@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router';
+import { Link, useNavigate, useParams } from '@tanstack/react-router';
 import {
   findHostMediaReferenceAssetId,
   fromDatetimeLocalValue,
@@ -168,6 +168,16 @@ const formatSettings = (value: NewsContentItem['settings']) => {
 const compactString = (value?: string) => {
   const trimmed = value?.trim();
   return trimmed && trimmed.length > 0 ? trimmed : undefined;
+};
+
+const readPaginationValue = (key: 'page' | 'pageSize', fallback: number) => {
+  const search = typeof globalThis.window === 'undefined' ? '' : globalThis.window.location.search;
+  const rawValue = new URLSearchParams(search).get(key);
+  if (!rawValue) {
+    return fallback;
+  }
+  const parsedValue = Number(rawValue);
+  return Number.isInteger(parsedValue) && parsedValue > 0 ? parsedValue : fallback;
 };
 
 const normalizeOptionalNumber = (value: number | string | undefined): number | undefined => {
@@ -928,11 +938,10 @@ const NewsForm = ({
 export const NewsListPage = () => {
   const pt = usePluginTranslation('news');
   const navigate = useNavigate();
-  const search = useSearch({ strict: false }) as { readonly page?: number; readonly pageSize?: number };
   const createLabel = resolvePluginActionLabel(pt, pluginNewsActionIds.create);
   const editLabel = resolvePluginActionLabel(pt, pluginNewsActionIds.edit);
-  const page = typeof search.page === 'number' ? search.page : 1;
-  const pageSize = typeof search.pageSize === 'number' ? search.pageSize : 25;
+  const page = readPaginationValue('page', 1);
+  const pageSize = readPaginationValue('pageSize', 25);
   const [result, setResult] = React.useState<NewsListResult>({
     data: [],
     pagination: { page, pageSize, hasNextPage: false },

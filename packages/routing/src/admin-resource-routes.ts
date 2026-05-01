@@ -2,7 +2,6 @@ import type { AdminResourceDefinition } from '@sva/plugin-sdk';
 import { createRoute, redirect, type RootRoute } from '@tanstack/react-router';
 
 import {
-  coreContentAdminResource,
   LEGACY_CONTENT_ALIAS_PREFIX,
   normalizeLegacyContentHref,
   readBeforeLoadHref,

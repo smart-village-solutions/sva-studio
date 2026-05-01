@@ -226,6 +226,26 @@ describe('NewsListPage', () => {
     });
   });
 
+  it('reads pagination values from the browser query string', async () => {
+    window.history.pushState({}, '', '/admin/news?page=3&pageSize=10');
+
+    render(<NewsListPage />);
+
+    await waitFor(() => {
+      expect(listNews).toHaveBeenCalledWith({ page: 3, pageSize: 10 });
+    });
+  });
+
+  it('falls back to default pagination for invalid browser query values', async () => {
+    window.history.pushState({}, '', '/admin/news?page=0&pageSize=invalid');
+
+    render(<NewsListPage />);
+
+    await waitFor(() => {
+      expect(listNews).toHaveBeenCalledWith({ page: 1, pageSize: 25 });
+    });
+  });
+
   it('renders fallback values for missing category and invalid update timestamps', async () => {
     vi.mocked(listNews).mockResolvedValueOnce({
       data: [

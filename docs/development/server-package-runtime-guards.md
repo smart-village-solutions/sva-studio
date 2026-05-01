@@ -47,17 +47,17 @@ Typische Fehlmuster:
 // falsch
 export * from './server';
 import { config } from '../config';
-import { sdkThing } from '@sva/sdk';
+import { toJsonErrorResponse } from '@sva/server-runtime';
 ```
 
-Wenn `@sva/sdk` hier zur Laufzeit gebraucht wird, muss zusätzlich das lokale `package.json` diese Dependency deklarieren.
+Wenn `@sva/server-runtime` hier zur Laufzeit gebraucht wird, muss zusätzlich das lokale `package.json` diese Dependency deklarieren.
 
 Korrektes Muster:
 
 ```ts
 export * from './server.js';
 import { config } from '../config.js';
-import { sdkThing } from '@sva/sdk';
+import { toJsonErrorResponse } from '@sva/server-runtime';
 ```
 
 und im `package.json`:
@@ -65,10 +65,12 @@ und im `package.json`:
 ```json
 {
   "dependencies": {
-    "@sva/sdk": "workspace:*"
+    "@sva/server-runtime": "workspace:*"
   }
 }
 ```
+
+`@sva/sdk` ist aus dem aktiven Workspace entfernt; bestehende Runtime-Vertraege verwenden direkt `@sva/server-runtime`, `@sva/core` oder `@sva/monitoring-client`.
 
 ## Warum diese Guards nötig sind
 
@@ -86,7 +88,6 @@ Der Guard ist aktuell für diese serverseitig relevanten Workspace-Packages verb
 - `packages/core`
 - `packages/data`
 - `packages/monitoring-client`
-- `packages/sdk`
 - `packages/auth-runtime`
 - `packages/iam-admin`
 - `packages/iam-governance`

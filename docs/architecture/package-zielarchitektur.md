@@ -4,7 +4,7 @@
 
 Dieses Dokument beschreibt die umgesetzte Zielstruktur für die Package-Struktur des SVA Studio. Es ergänzt die Bausteinsicht in `./05-building-block-view.md` und dient als verbindliche Leitplanke für funktionales Wachstum, Refactorings und OpenSpec-Changes mit Architekturwirkung.
 
-Der harte Package-Schnitt ist durch den OpenSpec-Change `refactor-package-target-architecture-hard-cut` umgesetzt: neue fachliche Arbeit nutzt die Zielpackages direkt. Das frühere Sammelpackage `@sva/auth` ist aus dem aktiven Workspace entfernt; `@sva/data` und `@sva/sdk` behalten nur ausdrücklich dokumentierte Altpfade.
+Der harte Package-Schnitt ist durch den OpenSpec-Change `refactor-package-target-architecture-hard-cut` umgesetzt: neue fachliche Arbeit nutzt die Zielpackages direkt. Die frueheren Sammelpackages `@sva/auth` und `@sva/sdk` sind aus dem aktiven Workspace entfernt; `@sva/data` fuehrt nur noch ausdruecklich dokumentierte Altpfade.
 
 ## Architekturziele
 
@@ -145,7 +145,6 @@ Nicht zulässig im Zielbild:
 - Plugins importieren `@sva/core`, `@sva/auth-runtime`, `@sva/iam-*`, `@sva/instance-registry`, `@sva/data` oder App-Code direkt.
 - Plugins importieren wiederverwendbare UI aus `apps/sva-studio-react/src/**` oder definieren eigene Basis-Control-Systeme für Buttons, Inputs, Dialoge, Tabs oder Tabellen.
 - App-Komponenten modellieren IAM-, Instanz- oder Integrationsregeln selbst.
-- `@sva/sdk` nimmt fachliche IAM-, Daten- oder Routing-Entscheidungen auf.
 - Fachmodule greifen direkt auf fremde Fachmodul-Interna zu, statt über öffentliche Verträge zu gehen.
 
 ## PII-Datenfluss-Regel
@@ -196,12 +195,16 @@ Neue Endpunkte im IAM-Umfeld werden einem fachlichen Zielpackage zugeordnet. Kom
 
 Boundary-Disables für `@nx/enforce-module-boundaries` in produktiven Routing-Dateien sind nicht zulässig; bekannte Ausnahmen müssen blockierend dokumentiert werden.
 
-### SDK
+### Entfernte SDK-Sammelfassade
 
-`@sva/sdk` ist nicht mehr Zielort für neue Plugin- oder Server-Runtime-Verträge. Die Zielrollen sind getrennt:
+Die fruehere Sammelfassade `@sva/sdk` ist entfernt. Die Zielrollen sind getrennt:
 
-- `@sva/plugin-sdk` für Plugin- und Host-Erweiterungsverträge
-- `@sva/server-runtime` für Logging, Request-Kontext, OTEL und Fehlerantworten
+- `@sva/plugin-sdk` fuer Plugin- und Host-Erweiterungsvertraege
+- `@sva/server-runtime` fuer Logging, Request-Kontext, OTEL und Fehlerantworten
+- `@sva/core` fuer `runtime-profile`
+- `@sva/monitoring-client/logging` fuer browsernahes Logging
+
+Neue Consumer importieren die Zielrolle direkt; ein Compatibility-Layer im Workspace existiert dafuer nicht mehr.
 
 ### Data
 
@@ -229,7 +232,7 @@ Die Zielarchitektur ist durch den harten OpenSpec-Schnitt umgesetzt. Für laufen
 
 - Neue Fachlogik wird direkt im fachlichen Zielpackage umgesetzt.
 - Alte Sammelimporte werden nicht für neue Consumer verwendet.
-- Kompatibilitätsadapter in `@sva/data` und `@sva/sdk` dürfen keine neue Ownership begründen; `@sva/auth` ist kein aktiver Kompatibilitätspfad mehr.
+- Kompatibilitaetsadapter in `@sva/data` duerfen keine neue Ownership begruenden; `@sva/auth` und `@sva/sdk` sind keine aktiven Kompatibilitaetspfade mehr.
 - Pro neuem oder geändertem serverseitigem Package bleiben `build`, `lint`, `test:unit`, `test:types` und `check:runtime` Teil des lokalen Gates.
 - Nx-`depConstraints`, `no-restricted-imports` und `check:server-runtime` sind die durchsetzenden Grenzen.
 - Architektur- und OpenSpec-Dokumentation werden im selben Change aktualisiert, wenn sich Package-Grenzen ändern.

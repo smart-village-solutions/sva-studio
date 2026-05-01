@@ -11,7 +11,7 @@ import {
   getRuntimeProfileRequiredEnvKeys,
   type RuntimeProfile,
   validateRuntimeProfileEnv,
-} from '../../packages/sdk/src/runtime-profile.ts';
+} from '../../packages/core/src/runtime-profile.ts';
 import {
   CRITICAL_IAM_SCHEMA_GUARD_SQL,
   CRITICAL_IAM_SCHEMA_GUARD_FIELDS,

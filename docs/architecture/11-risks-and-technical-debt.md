@@ -221,6 +221,7 @@ Schulden auf IST-Basis.
 - Risiko von Scope-Bleeding bei schnellen IAM-Iterationen ohne harte Gate-Disziplin
 - Mehrere historische IAM-Hotspots sind bewusst als tracked findings mit Refactoring-Backlog dokumentiert
 - Nach dem Package-Hard-Cut verbleibt Restkomplexität gezielt in fachlichen Zielpackages wie `auth-runtime`, `iam-admin`, `iam-governance`, `instance-registry` und `data-repositories`; alte Sammelpackages sind dafür kein neuer Zielort.
+- `@sva/sdk` ist aus dem aktiven Workspace entfernt; verbleibende Restschuld betrifft nur noch historische Reports und archivierte Referenzen ausserhalb aktiver Normquellen.
 - Einige Tests und historische Berichte referenzieren weiterhin alte Pfadnamen; neue fachliche Tests sollen im Zielpackage entstehen und nur dort am Altpfad bleiben, wo Kompatibilität explizit geprüft wird.
 - Route-Komponenten außerhalb der Shell verwenden noch teilweise direkte `slate-*`-/`emerald-*`-Farben und sind nicht vollständig tokenisiert
 - Gruppen sind im ersten Schnitt reine Rollenbündel; direkte Gruppen-Permissions und ein separates Gruppen-Gültigkeitsmanagement pro UI-Flow bleiben Folgearbeit

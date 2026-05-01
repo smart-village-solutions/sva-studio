@@ -34,7 +34,7 @@ Du bist verantwortlich fuer die Qualitaet der Logging-Implementierung und ihre D
 
 **Backend (Server-Code):**
 ```typescript
-import { createSdkLogger } from '@sva/sdk';
+import { createSdkLogger } from '@sva/server-runtime';
 
 const logger = createSdkLogger({
   component: 'auth-redis',  // Eindeutig pro Modul

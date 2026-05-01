@@ -12,14 +12,23 @@ Dieses Dokument beschreibt die aktuelle Organisation des Nx-/pnpm-Workspaces, di
 | `auth-runtime` | Library | `packages/auth-runtime/` | Authentifizierung, Session, OIDC, Runtime-Routen und Auth-Middleware |
 | `core` | Library | `packages/core/` | Framework-agnostische Kernlogik |
 | `data` | Library | `packages/data/` | Datenzugriff, Migrationen, Seeds |
+| `data-client` | Library | `packages/data-client/` | Client-sicherer HTTP-/Schema-Client |
+| `data-repositories` | Library | `packages/data-repositories/` | Serverseitige Repositories und DB-nahe Operationen |
 | `iam-admin` | Library | `packages/iam-admin/` | Benutzer-, Rollen-, Gruppen- und Organisationsverwaltung |
+| `iam-core` | Library | `packages/iam-core/` | Zentrale Autorisierungsverträge und Permission-Entscheidungen |
 | `iam-governance` | Library | `packages/iam-governance/` | Governance, Rechtstexte und Data-Subject-Rights |
 | `instance-registry` | Library | `packages/instance-registry/` | Instanzverwaltung und Keycloak-Provisioning |
+| `media` | Library | `packages/media/` | Hostseitiger Medienvertrag und Referenz-Capability |
 | `monitoring-client` | Library | `packages/monitoring-client/` | Logging, Metriken, OTel-Anbindung |
+| `plugin-events` | Library | `packages/plugin-events/` | Produktives Events-Plugin für CMS-Erweiterungspunkte |
 | `plugin-news` | Library | `packages/plugin-news/` | Produktives News-Plugin für CMS-Erweiterungspunkte |
+| `plugin-poi` | Library | `packages/plugin-poi/` | Produktives POI-Plugin für CMS-Erweiterungspunkte |
+| `plugin-sdk` | Library | `packages/plugin-sdk/` | Kanonische Plugin-/Host-Boundary für Metadaten, Registries und Admin-Ressourcen |
 | `routing` | Library | `packages/routing/` | Typsichere Routing-Factories und Route-Definitionen |
-| `sdk` | Library | `packages/sdk/` | Server-/Observability-Bausteine für interne Konsument:innen |
+| `server-runtime` | Library | `packages/server-runtime/` | Kanonische Server-Runtime-Boundary für Logging, Kontext und Fehlerantworten |
+| `studio-ui-react` | Library | `packages/studio-ui-react/` | Öffentliche React/UI-Basis für Host-Seiten und Plugin-Custom-Views |
 | `sva-mainserver` | Library | `packages/sva-mainserver/` | Serverseitige Integration des externen SVA-Mainservers |
+| `tooling-testing` | Library | `tooling/testing/` | Interne Test-Huelle fuer CI-, Coverage- und Ops-nahe Skriptpruefungen |
 
 ## Ordner
 - apps/: laufende Anwendungen (z. B. sva-studio-react)
@@ -31,7 +40,7 @@ Dieses Dokument beschreibt die aktuelle Organisation des Nx-/pnpm-Workspaces, di
 Wir unterscheiden Packages nach Rolle und Wiederverwendbarkeit.
 
 ### 1) Platform Packages (strategisch)
-Beispiele: `@sva/core`, `@sva/sdk`
+Beispiele: `@sva/core`, `@sva/plugin-sdk`, `@sva/server-runtime`
 
 Kriterien:
 - werden von mehreren Projekten genutzt
@@ -40,9 +49,13 @@ Kriterien:
 - haben klare Ownership und verbindliche Tests
 
 Konvention:
-- `tags`: `scope:core` oder `scope:sdk`, plus `type:lib`
+- `tags`: `scope:core`, `scope:plugin-sdk` oder `scope:server-runtime`, plus `type:lib`
 - keine app-spezifische UI-/Route-Logik
 - Breaking Changes nur mit Doku- und Migrationshinweis
+
+Historischer Hinweis:
+
+- `@sva/sdk` ist aus dem aktiven Workspace entfernt; alte Importpfade werden direkt auf `@sva/plugin-sdk`, `@sva/server-runtime`, `@sva/core` oder `@sva/monitoring-client/logging` migriert.
 
 ### 2) Domain Packages (fachlich)
 Beispiele: `@sva/data`, `@sva/auth-runtime`, `@sva/iam-admin`, `@sva/iam-governance`, `@sva/instance-registry`
@@ -67,7 +80,7 @@ Kriterien:
 Konvention:
 - Name: `@sva/plugin-<name>`
 - `tags`: `scope:plugin`, plus `type:lib`
-- Host-APIs nur über `@sva/sdk` importieren; direkte Imports aus `@sva/core` sind verboten
+- Host-APIs nur über `@sva/plugin-sdk` importieren; gemeinsame React-UI nur über `@sva/studio-ui-react`; direkte Imports aus `@sva/core` oder App-Code sind verboten
 
 ### 4) App-lokaler Code (kein eigenes Package)
 Code bleibt in `apps/<app>/src`, wenn:
@@ -233,9 +246,10 @@ Zur langfristigen Architektur-Governance erzwingen wir Import-Grenzen mit
 ### Aktive Scope-Regeln
 - `scope:core` darf nur von `scope:core` abhängen
 - `scope:data` darf von `scope:core`, `scope:data` abhängen
-- `scope:sdk` darf von `scope:core`, `scope:data`, `scope:sdk` abhängen
-- `scope:plugin` darf von `scope:sdk`, `scope:plugin` abhängen
-- `scope:app` darf von `scope:core`, `scope:data`, `scope:sdk`, `scope:plugin` abhängen
+- `scope:plugin-sdk` darf nur von `scope:core`, `scope:plugin-sdk` abhängen
+- `scope:server-runtime` darf nur von `scope:core`, `scope:monitoring`, `scope:server-runtime` abhängen
+- `scope:plugin` darf von `scope:plugin-sdk`, `scope:studio-ui-react`, `scope:plugin` abhängen
+- `scope:app` darf von Zielpackages wie `scope:core`, `scope:data`, `scope:plugin-sdk`, `scope:server-runtime`, `scope:plugin` abhängen
 
 ### Wo sind die Regeln hinterlegt?
 - Lint-Regel: `eslint.config.mjs`

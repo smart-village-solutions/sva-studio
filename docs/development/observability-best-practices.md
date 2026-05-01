@@ -8,17 +8,17 @@ Architektur-Referenz: [Logging Architecture](../architecture/logging-architectur
 
 ### Grundprinzipien
 
-- **Nutze immer den SDK Logger**, nicht `console.log`
+- **Nutze immer den Server-Runtime-Logger**, nicht `console.log`
 - **Strukturiertes Logging**: Key-Value Pairs statt Textkonkatenation
 - **Workspace Context**: Jedes Log sollte `workspace_id` beinhalten
 - **PII-Sicherheit**: Sensible Daten gehören in Message Body, nicht in Labels
 - **Keine Token-URLs**: Redirect- oder Logout-URLs mit `id_token_hint`, `code` oder anderen Geheimnissen werden nie als Rohwert geloggt
 - **Development-Modell**: Console und Dev-Konsole sind lokal aktiv; OTEL ist in Development ein zusätzlicher Exportpfad nur bei erfolgreicher Initialisierung
 
-### ✅ DO: Strukturiertes Logging mit SDK Logger
+### ✅ DO: Strukturiertes Logging mit Server-Runtime-Logger
 
 ```typescript
-import { createSdkLogger } from '@sva/sdk';
+import { createSdkLogger } from '@sva/server-runtime';
 
 const logger = createSdkLogger({ component: 'auth-service' });
 
@@ -163,7 +163,7 @@ Der Workspace Context wird automatisch injiziert und sollte immer vorhanden sein
 
 ```typescript
 // packages/auth-runtime/runtime-routes.ts
-import { createWorkspaceContextMiddleware } from '@sva/sdk';
+import { createWorkspaceContextMiddleware } from '@sva/server-runtime';
 
 app.use(createWorkspaceContextMiddleware({
   headerNames: ['x-workspace-id', 'x-sva-workspace-id'],
@@ -176,7 +176,7 @@ app.use(createWorkspaceContextMiddleware({
 ### Manual Usage in Business Logic
 
 ```typescript
-import { getWorkspaceContext, setWorkspaceContext } from '@sva/sdk';
+import { getWorkspaceContext, setWorkspaceContext } from '@sva/server-runtime';
 
 export const deleteUserAccount = async (userId: string) => {
   const { workspaceId } = getWorkspaceContext();
@@ -271,8 +271,8 @@ Unit Tests sollten auch die Observability testen:
 ### ✅ DO: Test PII-Redaction
 
 ```typescript
-// packages/monitoring-client/scripts/pii-redaction-test.ts
-import { getSessionFromRedis, createSessionInRedis } from '@sva/sdk';
+// packages/server-runtime/src/logger/index.server.test.ts
+import { createSdkLogger } from '@sva/server-runtime';
 
 describe('PII Redaction', () => {
   it('redacts email addresses in logs', async () => {
@@ -305,6 +305,11 @@ describe('Workspace Context', () => {
   });
 });
 ```
+
+Wichtig fuer neue Consumer:
+
+- Logging, Request-Kontext und JSON-Fehlerantworten werden direkt ueber `@sva/server-runtime` importiert.
+- Die fruehere Sammelfassade `@sva/sdk` ist aus dem aktiven Workspace entfernt; neue Observability- oder Runtime-Helfer werden direkt ueber `@sva/server-runtime` oder `@sva/monitoring-client` konsumiert.
 
 ## Monitoring Stack URLs
 

@@ -19,7 +19,7 @@ Diese Pfade haben direkten Einfluss auf die Sicherheit, Stabilität oder die Ker
 | `packages/core/` | Core Framework | Basislogik für das gesamte System; Breaking Changes wirken sich überall aus. |
 | `packages/auth-runtime/` | Security / Auth Runtime | Sicherheitskritisch (OIDC, Sessions, Verschlüsselung). |
 | `packages/iam-admin/`, `packages/iam-governance/`, `packages/instance-registry/` | IAM-Fachlogik | Sicherheitskritische Benutzer-, Governance- und Instanzverwaltung. |
-| `packages/sdk/` | SDK / Logger | Grundlage für Logging, Monitoring und Standard-Interfaces. |
+| `packages/plugin-sdk/`, `packages/server-runtime/` | Plugin-SDK / Server-Runtime | Grundlage fuer Plugin-Vertraege sowie Logging-, Monitoring- und Runtime-Standards. |
 | `.github/workflows/` | CI/CD | Deployment-Logik, Security-Scans und Automatisierung. |
 | `rules/` | Validierung | Einhaltung von Architektur- und Code-Standards. |
 | `nx.json`, `package.json`, `pnpm-*.yaml` | Infrastruktur | Workspace-Konfiguration und Abhängigkeitsmanagement. |
@@ -90,7 +90,8 @@ rules/                                  @sva-studio/core-maintainers
 /packages/iam-admin/                    @sva-studio/security-team @sva-studio/core-maintainers
 /packages/iam-governance/               @sva-studio/security-team @sva-studio/core-maintainers
 /packages/instance-registry/            @sva-studio/security-team @sva-studio/core-maintainers
-/packages/sdk/                          @sva-studio/core-maintainers
+/packages/plugin-sdk/                   @sva-studio/core-maintainers
+/packages/server-runtime/               @sva-studio/core-maintainers
 
 # Shared Packages
 /packages/data/                         @sva-studio/data-team

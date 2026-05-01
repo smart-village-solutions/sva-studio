@@ -203,7 +203,7 @@ Referenzen:
 - `docs/development/postgres-setup.md`
 - `docs/guides/swarm-deployment-runbook.md`
 - `docs/guides/instance-registry-local-development.md`
-- `packages/sdk/src/server/bootstrap.server.ts`
+- `packages/server-runtime/src/server/bootstrap.server.ts`
 
 ### Ergänzung 2026-03: IAM-Admin-Integration
 

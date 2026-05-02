@@ -6,7 +6,7 @@ import {
   getHeadersFromRequest,
 } from '@sva/server-runtime';
 
-import { createRoutingDiagnosticsLogger, registerServerFallbackLogger } from './diagnostics.js';
+import { createRoutingDiagnosticsLogger, setRoutingDiagnosticsFailureLogger } from './diagnostics.js';
 
 export type RoutingRequestDiagnosticsContext = {
   readonly request_id?: string;
@@ -15,7 +15,7 @@ export type RoutingRequestDiagnosticsContext = {
 };
 
 const routingServerLogger = createSdkLogger({ component: 'routing', level: 'info' });
-registerServerFallbackLogger(routingServerLogger);
+setRoutingDiagnosticsFailureLogger(routingServerLogger);
 
 export const defaultServerRoutingDiagnostics = createRoutingDiagnosticsLogger(routingServerLogger);
 

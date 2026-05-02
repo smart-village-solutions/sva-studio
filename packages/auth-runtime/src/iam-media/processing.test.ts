@@ -71,6 +71,7 @@ describe('media upload processing service', () => {
         byteSize: body.byteLength,
         etag: 'etag-variant',
       })),
+      deleteObject: vi.fn(async () => undefined),
     };
 
     const processor = createMediaUploadProcessingService({
@@ -171,6 +172,7 @@ describe('media upload processing service', () => {
           etag: `etag-${storageKey}`,
         };
       }),
+      deleteObject: vi.fn(async () => undefined),
     };
 
     const processor = createMediaUploadProcessingService({
@@ -279,6 +281,7 @@ describe('media upload processing service', () => {
           etag: `etag-${storageKey}`,
         };
       }),
+      deleteObject: vi.fn(async () => undefined),
     };
 
     const processor = createMediaUploadProcessingService({
@@ -325,6 +328,7 @@ describe('media upload processing service', () => {
     const storagePort = {
       readObject: vi.fn(),
       writeObject: vi.fn(),
+      deleteObject: vi.fn(async () => undefined),
     };
 
     const processor = createMediaUploadProcessingService({
@@ -352,6 +356,59 @@ describe('media upload processing service', () => {
     expect(service.upsertStorageUsage).not.toHaveBeenCalled();
   });
 
+  it('repairs upload sessions that stayed pending after the asset was already processed', async () => {
+    const service = {
+      getUploadSessionById: vi.fn(async () => createUploadSession({ status: 'pending' })),
+      getAssetById: vi.fn(async () =>
+        createAsset({
+          uploadStatus: 'processed',
+          processingStatus: 'ready',
+        })
+      ),
+      upsertAsset: vi.fn(async () => undefined),
+      upsertUploadSession: vi.fn(async () => undefined),
+      upsertVariant: vi.fn(async () => undefined),
+      listVariantsByAssetId: vi.fn(async () => []),
+      getStorageUsage: vi.fn(async () => null),
+      upsertStorageUsage: vi.fn(async () => undefined),
+    };
+    const storagePort = {
+      readObject: vi.fn(),
+      writeObject: vi.fn(),
+      deleteObject: vi.fn(async () => undefined),
+    };
+
+    const processor = createMediaUploadProcessingService({
+      service: service as never,
+      storagePort: storagePort as never,
+      createId: () => 'variant-1',
+    });
+
+    const result = await processor.completeUpload({
+      instanceId: 'tenant-a',
+      uploadSessionId: 'upload-1',
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      asset: expect.objectContaining({
+        id: 'asset-1',
+        uploadStatus: 'processed',
+        processingStatus: 'ready',
+      }),
+      uploadSessionId: 'upload-1',
+    });
+    expect(service.upsertUploadSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'upload-1',
+        status: 'validated',
+      })
+    );
+    expect(storagePort.readObject).not.toHaveBeenCalled();
+    expect(service.upsertAsset).not.toHaveBeenCalled();
+    expect(service.upsertStorageUsage).not.toHaveBeenCalled();
+  });
+
   it('fails closed with redacted error details when the uploaded content is invalid', async () => {
     const service = {
       getUploadSessionById: vi.fn(async () => createUploadSession()),
@@ -371,6 +428,7 @@ describe('media upload processing service', () => {
         contentType: 'image/png',
       })),
       writeObject: vi.fn(),
+      deleteObject: vi.fn(async () => undefined),
     };
 
     const processor = createMediaUploadProcessingService({
@@ -408,5 +466,9 @@ describe('media upload processing service', () => {
       })
     );
     expect(storagePort.writeObject).not.toHaveBeenCalled();
+    expect(storagePort.deleteObject).toHaveBeenCalledWith({
+      instanceId: 'tenant-a',
+      storageKey: 'tenant-a/originals/asset-1.png',
+    });
   });
 });

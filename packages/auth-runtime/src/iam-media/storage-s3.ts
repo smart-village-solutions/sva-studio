@@ -1,4 +1,4 @@
-import { GetObjectCommand, PutObjectCommand, S3Client, type S3ClientConfig } from '@aws-sdk/client-s3';
+import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client, type S3ClientConfig } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 import {
@@ -185,11 +185,21 @@ export const createS3MediaStoragePort = (
     };
   };
 
+  const deleteObject = async (input: { instanceId: string; storageKey: string }) => {
+    await client.send(
+      new DeleteObjectCommand({
+        Bucket: config.bucket,
+        Key: input.storageKey,
+      })
+    );
+  };
+
   return {
     prepareUpload,
     resolveDelivery,
     readObject,
     writeObject,
+    deleteObject,
   };
 };
 

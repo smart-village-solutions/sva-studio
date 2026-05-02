@@ -140,6 +140,12 @@ const createVariantBuffer = async (input: {
 const markProcessingFailure = async (input: {
   readonly deps: {
     readonly service: Pick<MediaService, 'upsertAsset' | 'upsertUploadSession'>;
+    readonly storagePort: Pick<
+      {
+        deleteObject: (input: { instanceId: string; storageKey: string }) => Promise<void>;
+      },
+      'deleteObject'
+    >;
   };
   readonly asset: Awaited<ReturnType<MediaService['getAssetById']>>;
   readonly uploadSession: Awaited<ReturnType<MediaService['getUploadSessionById']>>;
@@ -147,6 +153,13 @@ const markProcessingFailure = async (input: {
 }): Promise<Extract<MediaUploadProcessingResult, { ok: false }>> => {
   if (!input.asset || !input.uploadSession) {
     return asErrorResult(404, 'asset_not_found');
+  }
+
+  if (input.errorCode === 'invalid_media_content') {
+    await input.deps.storagePort.deleteObject({
+      instanceId: String(input.asset.instanceId),
+      storageKey: String(input.uploadSession.storageKey),
+    });
   }
 
   await input.deps.service.upsertAsset({
@@ -189,6 +202,10 @@ export const createMediaUploadProcessingService = (deps: {
       byteSize: number;
       etag?: string;
     }>;
+    deleteObject: (input: {
+      readonly instanceId: string;
+      readonly storageKey: string;
+    }) => Promise<void>;
   };
   readonly createId: () => string;
 }) => ({
@@ -202,7 +219,13 @@ export const createMediaUploadProcessingService = (deps: {
     if (!asset) {
       return asErrorResult(404, 'asset_not_found');
     }
-    if (uploadSession.status === 'validated' && asset.uploadStatus === 'processed' && asset.processingStatus === 'ready') {
+    if (asset.uploadStatus === 'processed' && asset.processingStatus === 'ready') {
+      if (uploadSession.status !== 'validated') {
+        await deps.service.upsertUploadSession({
+          ...uploadSession,
+          status: 'validated',
+        });
+      }
       return {
         ok: true,
         asset,
@@ -291,7 +314,7 @@ export const createMediaUploadProcessingService = (deps: {
         status: 'validated',
       });
 
-const currentUsage = await deps.service.getStorageUsage(input.instanceId);
+      const currentUsage = await deps.service.getStorageUsage(input.instanceId);
       await deps.service.upsertStorageUsage({
         instanceId: input.instanceId,
         totalBytes: (currentUsage?.totalBytes ?? 0) + object.byteSize + variantBytes,

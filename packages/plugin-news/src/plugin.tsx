@@ -45,6 +45,7 @@ export const pluginNewsMediaPickers = {
     presetKey: 'hero',
   }),
 } as const;
+
 export const getPluginNewsActionDefinition = (
   actionId: (typeof pluginNewsActionIds)[keyof typeof pluginNewsActionIds]
 ) => pluginNewsActionDefinitions.find((action) => action.id === actionId);
@@ -86,8 +87,6 @@ export const pluginNews: PluginDefinition = {
           charactersToBeShown: 'Zeichenbegrenzung',
           publishedAt: 'Veröffentlichungsdatum',
           publicationDate: 'Publikationsdatum',
-          teaserImage: 'Teaserbild',
-          headerImage: 'Headerbild',
           showPublishDate: 'Publikationsdatum anzeigen',
           pushNotification: 'Push-Benachrichtigung senden',
           categoryName: 'Kategorie',
@@ -95,7 +94,6 @@ export const pluginNews: PluginDefinition = {
           categoriesHelp: 'Eine Kategorie pro Zeile.',
           sourceUrl: 'Quell-URL',
           sourceUrlDescription: 'Quellbeschreibung',
-          mediaPlaceholder: 'Medium auswählen',
           street: 'Straße',
           zip: 'PLZ',
           city: 'Ort',
@@ -133,18 +131,11 @@ export const pluginNews: PluginDefinition = {
           addContentBlock: 'Inhaltsblock hinzufügen',
           addMedia: 'Medium hinzufügen',
           remove: 'Entfernen',
-          clearMedia: 'Medium entfernen',
           deleteConfirm: 'Soll dieser News-Eintrag wirklich gelöscht werden?',
         },
         empty: {
           title: 'Noch keine News vorhanden',
           description: 'Legen Sie den ersten News-Eintrag an.',
-        },
-        pagination: {
-          ariaLabel: 'News-Seiten',
-          pageLabel: 'Seite {{page}}',
-          previous: 'Zurück',
-          next: 'Weiter',
         },
         messages: {
           loading: 'News werden geladen.',
@@ -207,8 +198,6 @@ export const pluginNews: PluginDefinition = {
           charactersToBeShown: 'Character limit',
           publishedAt: 'Published at',
           publicationDate: 'Publication date',
-          teaserImage: 'Teaser image',
-          headerImage: 'Header image',
           showPublishDate: 'Show publication date',
           pushNotification: 'Send push notification',
           categoryName: 'Category',
@@ -216,7 +205,6 @@ export const pluginNews: PluginDefinition = {
           categoriesHelp: 'One category per line.',
           sourceUrl: 'Source URL',
           sourceUrlDescription: 'Source description',
-          mediaPlaceholder: 'Select media',
           street: 'Street',
           zip: 'ZIP',
           city: 'City',
@@ -254,18 +242,11 @@ export const pluginNews: PluginDefinition = {
           addContentBlock: 'Add content block',
           addMedia: 'Add media',
           remove: 'Remove',
-          clearMedia: 'Clear media',
           deleteConfirm: 'Do you really want to delete this news entry?',
         },
         empty: {
           title: 'No news entries yet',
           description: 'Create the first news entry.',
-        },
-        pagination: {
-          ariaLabel: 'News pagination',
-          previous: 'Previous',
-          next: 'Next',
-          pageLabel: 'Page {{page}}',
         },
         messages: {
           loading: 'Loading news.',

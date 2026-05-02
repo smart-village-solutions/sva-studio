@@ -40,6 +40,11 @@ export type WriteMediaObjectInput = Readonly<{
   contentType: string;
 }>;
 
+export type DeleteMediaObjectInput = Readonly<{
+  instanceId: string;
+  storageKey: string;
+}>;
+
 export type MediaStoragePort = {
   prepareUpload(input: PrepareMediaUploadInput): Promise<MediaUploadPreparation>;
   resolveDelivery(input: ResolveMediaDeliveryInput): Promise<MediaDeliveryResolution>;
@@ -53,6 +58,7 @@ export type MediaStoragePort = {
     byteSize: number;
     etag?: string;
   }>;
+  deleteObject(input: DeleteMediaObjectInput): Promise<void>;
 };
 
 export class MediaStorageUnavailableError extends Error {
@@ -73,6 +79,9 @@ export const createUnavailableMediaStoragePort = (): MediaStoragePort => ({
     throw new MediaStorageUnavailableError();
   },
   async writeObject() {
+    throw new MediaStorageUnavailableError();
+  },
+  async deleteObject() {
     throw new MediaStorageUnavailableError();
   },
 });

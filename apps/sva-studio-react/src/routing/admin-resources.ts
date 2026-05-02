@@ -5,7 +5,7 @@ export const appAdminResources = [
     resourceId: 'host.media',
     basePath: 'media',
     titleKey: 'shell.sidebar.media',
-    guard: 'adminInstances',
+    guard: 'media',
     moduleId: 'media',
     permissions: {
       list: ['media.read'],
@@ -13,9 +13,9 @@ export const appAdminResources = [
       detail: ['media.read'],
     },
     views: {
-      list: { bindingKey: 'media' },
-      create: { bindingKey: 'media' },
-      detail: { bindingKey: 'media' },
+      list: { bindingKey: 'adminMedia' },
+      create: { bindingKey: 'adminMedia' },
+      detail: { bindingKey: 'adminMedia' },
     },
     capabilities: {
       list: {

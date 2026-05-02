@@ -279,62 +279,16 @@ const assertPluginPermissionReference = (
   }
 };
 
-const normalizePluginRoutePathForGuardrails = (path: string): string => {
-  const normalizedPath = path.trim();
-  if (normalizedPath.length <= 1) {
-    return normalizedPath;
-  }
-
-  let end = normalizedPath.length;
-  while (end > 1 && normalizedPath.charCodeAt(end - 1) === 47) {
-    end -= 1;
-  }
-
-  return normalizedPath.slice(0, end);
-};
-
-const isAsciiLetter = (character: string): boolean => {
-  const code = character.charCodeAt(0);
-  return (code >= 65 && code <= 90) || (code >= 97 && code <= 122);
-};
-
-const isAsciiLetterOrDigit = (character: string): boolean => {
-  const code = character.charCodeAt(0);
-  return isAsciiLetter(character) || (code >= 48 && code <= 57);
-};
-
-const isPluginDetailParamSegment = (segment: string): boolean => {
-  if (!segment.startsWith('$')) {
-    return false;
-  }
-
-  const paramName = segment.slice(1);
-  if (paramName.length === 0) {
-    return false;
-  }
-
-  const [firstCharacter, ...restCharacters] = paramName;
-  if (firstCharacter === undefined || isAsciiLetter(firstCharacter) === false) {
-    return false;
-  }
-
-  return restCharacters.every((character) => isAsciiLetterOrDigit(character));
-};
-
 const isStandardCrudPluginRoute = (pluginNamespace: string, path: string): boolean => {
-  const normalizedPath = normalizePluginRoutePathForGuardrails(path);
+  const normalizedPath = path.trim();
   const pluginRoot = `/plugins/${pluginNamespace}`;
 
   if (normalizedPath === pluginRoot || normalizedPath === `${pluginRoot}/new`) {
     return true;
   }
 
-  if (normalizedPath.startsWith(`${pluginRoot}/`) === false) {
-    return false;
-  }
-
-  const suffix = normalizedPath.slice(pluginRoot.length + 1);
-  return isPluginDetailParamSegment(suffix);
+  const detailPattern = new RegExp(`^${pluginRoot.replace('/', '\\/')}/\\$[a-zA-Z][a-zA-Z0-9]*$`);
+  return detailPattern.test(normalizedPath);
 };
 
 const pluginUsesStandardContentAdminResource = (plugin: PluginDefinition): boolean =>
@@ -463,9 +417,7 @@ export const definePluginAuditEvents = <const TEvents extends readonly PluginAud
   return normalizedEvents;
 };
 
-export const definePluginModuleIamContract = <
-  const TContract extends PluginModuleIamContract,
->(
+export const definePluginModuleIamContract = <const TContract extends PluginModuleIamContract>(
   namespace: string,
   contract: TContract
 ): TContract => {

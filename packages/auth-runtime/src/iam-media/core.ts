@@ -514,12 +514,13 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
 
     const usageImpact = await deps.withMediaService(instanceId, (service) => service.getUsageImpact(instanceId, assetId));
 
+    const metadataUpdate = parsed.data.metadata ?? {};
     const updatedAsset = {
       ...asset,
       visibility: parsed.data.visibility ?? asset.visibility,
       metadata: {
         ...asset.metadata,
-        ...parsed.data.metadata,
+        ...metadataUpdate,
       },
     };
 
@@ -534,7 +535,7 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
       actionId: 'media.metadataUpdate',
       result: 'success',
       reasonCode:
-        parsed.data.metadata.crop || parsed.data.metadata.focusPoint
+        metadataUpdate.crop || metadataUpdate.focusPoint
           ? 'image_edit_applied'
           : usageImpact.totalReferences > 0
             ? 'referenced_asset_updated'
@@ -936,7 +937,13 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
 
     const references = await deps.withMediaService(instanceId, (service) => service.listReferencesByAssetId(instanceId, assetId));
     const deletionDecision = canDeleteMediaAsset({
-      asset,
+      asset: {
+        ...asset,
+        mediaType: 'image',
+        visibility: asMediaVisibility(asset.visibility),
+        uploadStatus: asMediaUploadStatus(asset.uploadStatus),
+        processingStatus: asMediaProcessingStatus(asset.processingStatus),
+      },
       references: asMediaReferences(references),
     });
     if (!deletionDecision.allowed) {

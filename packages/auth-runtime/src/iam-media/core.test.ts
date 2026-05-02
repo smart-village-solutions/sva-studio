@@ -304,6 +304,43 @@ describe('media http handlers', () => {
     });
   });
 
+  it('allows visibility-only media updates without requiring a metadata payload', async () => {
+    const service = createService();
+    const handlers = createMediaHttpHandlers({
+      withMediaService: async (_instanceId, work) => work(service as never),
+      storagePort: { prepareUpload: vi.fn(), resolveDelivery: vi.fn() } as never,
+      authorizeAction: allowAuthorization,
+      createId: () => 'id-1',
+      now: () => '2026-04-29T19:00:00.000Z',
+      emitAuditEvent,
+    });
+
+    const response = await handlers.updateMedia(
+      new Request('http://localhost/api/v1/iam/media/asset-1?instanceId=tenant-a', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          visibility: 'public',
+        }),
+      }),
+      createContext()
+    );
+
+    expect(response.status).toBe(200);
+    expect(service.upsertAsset).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'asset-1',
+        visibility: 'public',
+        metadata: {},
+      })
+    );
+    await expect(response.json()).resolves.toEqual({
+      data: expect.objectContaining({
+        id: 'asset-1',
+        visibility: 'public',
+      }),
+    });
+  });
+
   it('replaces references for a target and rejects missing media permissions', async () => {
     const service = createService();
     const authorizeAction = vi

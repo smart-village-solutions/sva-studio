@@ -27,6 +27,7 @@ import {
   listPoiForEventSelection,
   updateEvent,
 } from './events.api.js';
+import { normalizeListSearch } from './list-pagination.js';
 import type { EventContentItem, EventFormInput, EventListResult, PoiSelectItem } from './events.types.js';
 import { validateEventForm } from './events.validation.js';
 
@@ -143,14 +144,29 @@ export function EventsListPage() {
   const pt = usePluginTranslation('events');
   const navigate = useNavigate();
   const search = useSearch({ strict: false }) as { readonly page?: number; readonly pageSize?: number };
-  const page = typeof search.page === 'number' ? search.page : 1;
-  const pageSize = typeof search.pageSize === 'number' ? search.pageSize : 25;
+  const { page, pageSize } = normalizeListSearch(search);
   const [result, setResult] = React.useState<EventListResult>({
     data: [],
     pagination: { page, pageSize, hasNextPage: false },
   });
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (search.page === page && search.pageSize === pageSize) {
+      return;
+    }
+
+    void navigate({
+      to: '/plugins/events',
+      replace: true,
+      search: (current: Record<string, unknown>) => ({
+        ...current,
+        page,
+        pageSize,
+      }),
+    });
+  }, [navigate, page, pageSize, search.page, search.pageSize]);
 
   React.useEffect(() => {
     let active = true;

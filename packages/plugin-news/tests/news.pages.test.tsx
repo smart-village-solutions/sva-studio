@@ -203,22 +203,38 @@ describe('NewsListPage', () => {
   });
 
   it('reads pagination values from the browser query string', async () => {
-    searchMock.mockReturnValueOnce({ page: 3, pageSize: 10 });
+    searchMock.mockReturnValueOnce({ page: 3, pageSize: 50 });
 
     render(<NewsListPage />);
 
     await waitFor(() => {
-      expect(listNews).toHaveBeenCalledWith({ page: 3, pageSize: 10 });
+      expect(listNews).toHaveBeenCalledWith({ page: 3, pageSize: 50 });
     });
   });
 
-  it('falls back to default pagination for invalid browser query values', async () => {
-    searchMock.mockReturnValueOnce({ page: 1, pageSize: 25 });
+  it('normalizes invalid browser query values before loading news', async () => {
+    searchMock.mockReturnValueOnce({ page: 9999, pageSize: 13 });
 
     render(<NewsListPage />);
 
     await waitFor(() => {
-      expect(listNews).toHaveBeenCalledWith({ page: 1, pageSize: 25 });
+      expect(listNews).toHaveBeenCalledWith({ page: 401, pageSize: 25 });
+    });
+
+    expect(navigateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: '/plugins/news',
+        replace: true,
+        search: expect.any(Function),
+      })
+    );
+    const navigateCall = navigateMock.mock.calls[0]?.[0] as {
+      search?: (current: Record<string, unknown>) => Record<string, unknown>;
+    };
+    expect(navigateCall.search?.({ keep: 'value' })).toEqual({
+      keep: 'value',
+      page: 401,
+      pageSize: 25,
     });
   });
 
@@ -268,6 +284,31 @@ describe('NewsListPage', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Mainserver-Credentials fehlen.')).toBeTruthy();
+    });
+  });
+
+  it('clears a stale load error before refetching with updated pagination', async () => {
+    vi.mocked(listNews)
+      .mockRejectedValueOnce(new Error('boom'))
+      .mockResolvedValueOnce({
+        data: [],
+        pagination: { page: 2, pageSize: 50, hasNextPage: false },
+      });
+
+    const { rerender } = render(<NewsListPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('News konnten nicht geladen werden.')).toBeTruthy();
+    });
+
+    searchMock.mockReturnValue({ page: 2, pageSize: 50 });
+    rerender(<NewsListPage />);
+
+    expect(screen.queryByText('News konnten nicht geladen werden.')).toBeNull();
+
+    await waitFor(() => {
+      expect(listNews).toHaveBeenLastCalledWith({ page: 2, pageSize: 50 });
+      expect(screen.getByText('Noch keine News vorhanden')).toBeTruthy();
     });
   });
 

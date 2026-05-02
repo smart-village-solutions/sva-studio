@@ -127,7 +127,7 @@ export const pluginPoi: PluginDefinition = {
         },
         pagination: {
           ariaLabel: 'POI-Seiten',
-          pageLabel: 'Seite {page}',
+          pageLabel: 'Seite {{page}}',
           previous: 'Zurück',
           next: 'Weiter',
         },
@@ -190,7 +190,7 @@ export const pluginPoi: PluginDefinition = {
         },
         pagination: {
           ariaLabel: 'POI pages',
-          pageLabel: 'Page {page}',
+          pageLabel: 'Page {{page}}',
           previous: 'Previous',
           next: 'Next',
         },

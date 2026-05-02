@@ -21,7 +21,7 @@ Das System MUST die Inhaltsverwaltung mit den bestehenden `shadcn/ui`-Patterns u
 
 - **WENN** die Listenansichten der produktiven Mainserver-Plugins `news`, `events` oder `poi` gerendert werden
 - **DANN** verwenden sie `StudioDataTable` als gemeinsame Tabellenbasis
-- **UND** sie fuehren keine pluginlokalen parallelen Tabellen-Implementierungen fuer dieselbe Listenfunktionalitaet fort
+- **UND** sie führen keine pluginlokalen parallelen Tabellen-Implementierungen für dieselbe Listenfunktionalität fort
 - **UND** Aktionsspalten, Loading-State, Empty-State und semantische Tabellenstruktur folgen demselben Host-Muster
 
 ## ADDED Requirements
@@ -32,29 +32,29 @@ Das System SHALL die Listenansichten der produktiven Mainserver-Plugins `news`, 
 
 #### Scenario: Plugin-Liste lädt nur die aktuelle Seite
 
-- **GIVEN** ein Redakteur oeffnet die Listenansicht fuer News, Events oder POI
+- **GIVEN** ein Redakteur öffnet die Listenansicht für News, Events oder POI
 - **WHEN** die erste Seite gerendert wird
-- **THEN** fordert die UI nur die konfigurierte Seitengroesse fuer die aktuelle Seite an
-- **AND** sie laedt nicht mehr standardmaessig den gesamten Bestand
+- **THEN** fordert die UI nur die konfigurierte Seitengröße für die aktuelle Seite an
+- **AND** sie lädt nicht mehr standardmäßig den gesamten Bestand
 
-#### Scenario: Benutzer navigiert zur naechsten Seite
+#### Scenario: Benutzer navigiert zur nächsten Seite
 
 - **GIVEN** die aktuelle Plugin-Liste signalisiert weitere Ergebnisse
-- **WHEN** der Benutzer die Aktion fuer die naechste Seite ausloest
-- **THEN** sendet die UI eine neue List-Anfrage fuer die Zielseite
+- **WHEN** der Benutzer die Aktion für die nächste Seite auslöst
+- **THEN** sendet die UI eine neue List-Anfrage für die Zielseite
 - **AND** die Tabelle aktualisiert ihren Lade- und Ergebniszustand ohne Vollabfrage des gesamten Bestands
-- **AND** die aktuelle Seite bleibt ueber typsichere Search-Params in der URL abbildbar
+- **AND** die aktuelle Seite bleibt über typsichere Search-Params in der URL abbildbar
 
-#### Scenario: Upstream liefert keinen exakten Gesamtzaehler
+#### Scenario: Upstream liefert keinen exakten Gesamtzähler
 
-- **GIVEN** der Host kann fuer die angeforderte Plugin-Liste keinen belastbaren Gesamtzaehler aus dem Mainserver-Vertrag ableiten
+- **GIVEN** der Host kann für die angeforderte Plugin-Liste keinen belastbaren Gesamtzähler aus dem Mainserver-Vertrag ableiten
 - **WHEN** die Pagination-UI gerendert wird
-- **THEN** zeigt sie eine ehrliche Vor/Zurueck-Navigation mit aktueller Seite
+- **THEN** zeigt sie eine ehrliche Vor/Zurück-Navigation mit aktueller Seite
 - **AND** sie zeigt keine erfundene Gesamtseitenzahl oder ein fingiertes `total`
 
 #### Scenario: Browser-Navigation bleibt mit Listenstate konsistent
 
-- **GIVEN** ein Benutzer oeffnet eine Mainserver-Plugin-Liste auf einer spaeteren Seite
-- **WHEN** er die Search-Params fuer `page` oder `pageSize` aendert oder Browser-Zurueck/Vorwaerts verwendet
+- **GIVEN** ein Benutzer öffnet eine Mainserver-Plugin-Liste auf einer späteren Seite
+- **WHEN** er die Search-Params für `page` oder `pageSize` ändert oder Browser-Zurück/Vorwärts verwendet
 - **THEN** spiegeln URL und Tabelle denselben Listenstate
 - **AND** die Listenansicht bleibt per Deep-Link reproduzierbar

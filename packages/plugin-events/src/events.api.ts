@@ -3,7 +3,6 @@ import type {
   EventFormInput,
   EventListQuery,
   EventListResult,
-  EventPagination,
   PoiSelectItem,
 } from './events.types.js';
 
@@ -14,6 +13,16 @@ type ApiItemResponse<T> = {
 type ApiErrorResponse = {
   readonly error?: string;
   readonly message?: string;
+};
+
+type PaginatedResponse<TItem> = {
+  readonly data: readonly TItem[];
+  readonly pagination: {
+    readonly page: number;
+    readonly pageSize: number;
+    readonly hasNextPage: boolean;
+    readonly total?: number;
+  };
 };
 
 export class EventsApiError extends Error {
@@ -30,6 +39,7 @@ const REQUEST_HEADERS = {
   'Content-Type': 'application/json',
   'X-Requested-With': 'XMLHttpRequest',
 } as const;
+const MAX_POI_SELECTION_PAGES = 101;
 
 const requestJson = async <T>(input: string, init?: RequestInit): Promise<T> => {
   const response = await fetch(input, {
@@ -98,20 +108,19 @@ export const listPoiForEventSelection = async (): Promise<readonly PoiSelectItem
   const items: PoiSelectItem[] = [];
   let page = 1;
   let hasNextPage = true;
-  let safetyPageCount = 0;
 
   while (hasNextPage) {
-    const response = await requestJson<{
-      readonly data: readonly PoiSelectItem[];
-      readonly pagination: EventPagination;
-    }>(buildListUrl('/api/v1/mainserver/poi', { page, pageSize: 100 }));
+    if (page > MAX_POI_SELECTION_PAGES) {
+      throw new EventsApiError(
+        'poi_selection_page_limit_exceeded',
+        'Die POI-Auswahl überschreitet das erlaubte Pagination-Limit.'
+      );
+    }
+
+    const response = await requestJson<PaginatedResponse<PoiSelectItem>>(buildListUrl('/api/v1/mainserver/poi', { page, pageSize: 100 }));
     items.push(...response.data.map((item) => ({ id: item.id, name: item.name })));
     hasNextPage = response.pagination.hasNextPage && response.data.length > 0;
     page += 1;
-    safetyPageCount += 1;
-    if (safetyPageCount >= 100) {
-      break;
-    }
   }
 
   return items;

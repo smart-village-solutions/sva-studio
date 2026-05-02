@@ -189,7 +189,7 @@ export const pluginNews: PluginDefinition = {
         },
         pagination: {
           ariaLabel: 'News-Seiten',
-          pageLabel: 'Seite {page}',
+          pageLabel: 'Seite {{page}}',
           previous: 'Zurück',
           next: 'Weiter',
         },
@@ -240,7 +240,7 @@ export const pluginNews: PluginDefinition = {
         },
         pagination: {
           ariaLabel: 'News pages',
-          pageLabel: 'Page {page}',
+          pageLabel: 'Page {{page}}',
           previous: 'Previous',
           next: 'Next',
         },

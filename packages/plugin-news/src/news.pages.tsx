@@ -29,6 +29,9 @@ type StatusMessage = {
 
 type FlashMessageCode = 'createSuccess' | 'deleteSuccess';
 
+const allowedListPageSizes = [25, 50, 100] as const;
+const maxListOffset = 10_000;
+
 const defaultContentBlock = (): NewsContentBlock => ({
   title: '',
   intro: '',
@@ -129,6 +132,17 @@ const consumeFlashMessage = (): FlashMessageCode | null => {
 const buildDescribedBy = (...ids: readonly (string | undefined | false)[]) => {
   const describedBy = ids.filter(Boolean).join(' ');
   return describedBy.length > 0 ? describedBy : undefined;
+};
+
+const normalizeListSearch = (search: { readonly page?: number; readonly pageSize?: number }) => {
+  const pageSize = allowedListPageSizes.includes(search.pageSize as (typeof allowedListPageSizes)[number])
+    ? search.pageSize
+    : 25;
+  const maxPage = Math.floor(maxListOffset / pageSize) + 1;
+  const page =
+    typeof search.page === 'number' && Number.isInteger(search.page) && search.page > 0 ? Math.min(search.page, maxPage) : 1;
+
+  return { page, pageSize };
 };
 
 const formatDate = (value?: string) => {
@@ -878,8 +892,7 @@ export const NewsListPage = () => {
   const search = useSearch({ strict: false }) as { readonly page?: number; readonly pageSize?: number };
   const createLabel = resolvePluginActionLabel(pt, pluginNewsActionIds.create);
   const editLabel = resolvePluginActionLabel(pt, pluginNewsActionIds.edit);
-  const page = typeof search.page === 'number' ? search.page : 1;
-  const pageSize = typeof search.pageSize === 'number' ? search.pageSize : 25;
+  const { page, pageSize } = normalizeListSearch(search);
   const [result, setResult] = React.useState<NewsListResult>({
     data: [],
     pagination: { page, pageSize, hasNextPage: false },
@@ -889,6 +902,22 @@ export const NewsListPage = () => {
   const [flashMessage, setFlashMessage] = React.useState<FlashMessageCode | null>(null);
 
   React.useEffect(() => {
+    if (search.page === page && search.pageSize === pageSize) {
+      return;
+    }
+
+    void navigate({
+      to: '/plugins/news',
+      replace: true,
+      search: (current: Record<string, unknown>) => ({
+        ...current,
+        page,
+        pageSize,
+      }),
+    });
+  }, [navigate, page, pageSize, search.page, search.pageSize]);
+
+  React.useEffect(() => {
     setFlashMessage(consumeFlashMessage());
   }, []);
 
@@ -896,6 +925,7 @@ export const NewsListPage = () => {
     let active = true;
 
     setIsLoading(true);
+    setError(null);
     void listNews({ page, pageSize })
       .then((nextResult) => {
         if (active) {

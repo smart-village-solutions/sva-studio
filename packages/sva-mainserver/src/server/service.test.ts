@@ -652,29 +652,20 @@ describe('createSvaMainserverService', () => {
 
   it('keeps paginated news slices stable when invisible upstream items span multiple fetches', async () => {
     const publishedAt = '2026-04-14T09:30:00.000Z';
-    const firstPage = Array.from({ length: 25 }, (_, index) => ({
+    const firstPage = Array.from({ length: 26 }, (_, index) => ({
       id: `hidden-${index + 1}`,
       title: `Hidden ${index + 1}`,
       payload: {},
       publishedAt,
       visible: false,
     }));
-    const secondPage = [
-      {
-        id: 'news-26',
-        title: 'Visible 26',
-        payload: { teaser: 'Kurztext 26', body: '<p>Body</p>' },
-        publishedAt,
-        visible: true,
-      },
-      {
-        id: 'news-27',
-        title: 'Visible 27',
-        payload: { teaser: 'Kurztext 27', body: '<p>Body</p>' },
-        publishedAt,
-        visible: true,
-      },
-    ];
+    const secondPage = Array.from({ length: 26 }, (_, index) => ({
+      id: `news-${index + 27}`,
+      title: `Visible ${index + 27}`,
+      payload: { teaser: `Kurztext ${index + 27}`, body: '<p>Body</p>' },
+      publishedAt,
+      visible: true,
+    }));
     const fetchImpl = vi
       .fn()
       .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
@@ -688,10 +679,10 @@ describe('createSvaMainserverService', () => {
     });
 
     await expect(
-      service.listNews({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1', page: 1, pageSize: 1 })
+      service.listNews({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1', page: 1, pageSize: 25 })
     ).resolves.toEqual({
-      data: [expect.objectContaining({ id: 'news-26' })],
-      pagination: { page: 1, pageSize: 1, hasNextPage: true },
+      data: Array.from({ length: 25 }, (_, index) => expect.objectContaining({ id: `news-${index + 27}` })),
+      pagination: { page: 1, pageSize: 25, hasNextPage: true },
     });
   });
 
@@ -747,15 +738,78 @@ describe('createSvaMainserverService', () => {
 
     await expect(
       service.listNews({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1', page: 0, pageSize: 0 })
-    ).resolves.toEqual({
-      data: [expect.objectContaining({ id: 'news-1' })],
-      pagination: { page: 1, pageSize: 1, hasNextPage: true },
+    ).resolves.toMatchObject({
+      data: [expect.objectContaining({ id: 'news-1' }), expect.objectContaining({ id: 'news-2' })],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false },
     });
 
     const listRequestBody = JSON.parse(fetchImpl.mock.calls[1]?.[1]?.body as string) as {
       variables: { limit: number; skip: number };
     };
-    expect(listRequestBody.variables).toMatchObject({ limit: 2, skip: 0 });
+    expect(listRequestBody.variables).toMatchObject({ limit: 26, skip: 0 });
+  });
+
+  it('normalizes unsupported page sizes to the default allowed page size', async () => {
+    const publishedAt = '2026-04-14T09:30:00.000Z';
+    const visibleNewsItems = Array.from({ length: 3 }, (_, index) => ({
+      id: `news-${index + 1}`,
+      title: `News ${index + 1}`,
+      payload: { teaser: `Kurztext ${index + 1}`, body: '<p>Body</p>' },
+      publishedAt,
+      visible: true,
+    }));
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { newsItems: visibleNewsItems } }));
+
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
+      fetchImpl,
+    });
+
+    await expect(
+      service.listNews({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1', page: 1, pageSize: 13 })
+    ).resolves.toMatchObject({
+      pagination: { page: 1, pageSize: 25, hasNextPage: false },
+    });
+  });
+
+  it('fails deterministically when too many upstream records are required to resolve visible pagination', async () => {
+    const publishedAt = '2026-04-14T09:30:00.000Z';
+    const invisibleBatch = Array.from({ length: 100 }, (_, index) => ({
+      id: `hidden-${index + 1}`,
+      title: `Hidden ${index + 1}`,
+      payload: {},
+      publishedAt,
+      visible: false,
+    }));
+    const fetchImpl = vi.fn(async (_input?: RequestInfo | URL, init?: RequestInit) => {
+      const requestBody =
+        typeof init?.body === 'string' && init.body.trim().startsWith('{')
+          ? (JSON.parse(init.body) as { operationName?: string })
+          : undefined;
+
+      if (requestBody?.operationName === 'SvaMainserverNewsList') {
+        return createJsonResponse(200, { data: { newsItems: invisibleBatch } });
+      }
+
+      return createJsonResponse(200, { access_token: 'token-1', expires_in: 120 });
+    });
+
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
+      fetchImpl,
+    });
+
+    await expect(
+      service.listNews({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1', page: 1, pageSize: 25 })
+    ).rejects.toMatchObject<SvaMainserverError>({
+      code: 'invalid_response',
+      statusCode: 502,
+    });
   });
 
   it('maps invalid news payloads to an empty payload fallback', async () => {

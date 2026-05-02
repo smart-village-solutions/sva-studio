@@ -4,7 +4,7 @@
 
 **Goal:** Die Listenansichten von News, Events und POI auf serverseitige Pagination und `StudioDataTable` harmonisieren.
 
-**Architecture:** Ein gemeinsamer Host-Vertrag fuehrt `page`, `pageSize` und ehrliche Pagination-Metadaten durch `@sva/sva-mainserver`, Host-Routen, Plugin-API-Wrapper und Plugin-Pages. Die UI zeigt Prev/Next auf Basis von `hasNextPage` und verzichtet ohne belastbaren Upstream-Count auf fingierte Totalseiten.
+**Architecture:** Ein gemeinsamer Host-Vertrag führt `page`, `pageSize` und ehrliche Pagination-Metadaten durch `@sva/sva-mainserver`, Host-Routen, Plugin-API-Wrapper und Plugin-Pages. Die UI zeigt Prev/Next auf Basis von `hasNextPage` und verzichtet ohne belastbaren Upstream-Count auf fingierte Totalseiten.
 
 **Tech Stack:** TypeScript strict mode, React, TanStack Router, Nx, Vitest, Playwright, `StudioDataTable`
 
@@ -19,11 +19,11 @@
 - `apps/sva-studio-react/src/lib/mainserver-events-poi-api.server.ts`
   - Query-Normalisierung und paginierte Events-/POI-Routen
 - `packages/plugin-news/src/news.api.ts`
-  - paginierter Browser-Client fuer News
+  - paginierter Browser-Client für News
 - `packages/plugin-events/src/events.api.ts`
-  - paginierter Browser-Client fuer Events
+  - paginierter Browser-Client für Events
 - `packages/plugin-poi/src/poi.api.ts`
-  - paginierter Browser-Client fuer POI
+  - paginierter Browser-Client für POI
 - `packages/plugin-news/src/news.pages.tsx`
   - `StudioDataTable`-basierte News-Liste
 - `packages/plugin-events/src/events.pages.tsx`
@@ -31,12 +31,12 @@
 - `packages/plugin-poi/src/poi.pages.tsx`
   - `StudioDataTable`-basierte POI-Liste
 - `packages/studio-ui-react/src/studio-data-table.tsx`
-  - generische Tabellen-Erweiterungen, falls fuer die Harmonisierung noetig
+  - generische Tabellen-Erweiterungen, falls für die Harmonisierung nötig
 
-## Umsetzungsbloecke
+## Umsetzungsblöcke
 
-- [ ] Test- und Typ-Basis fuer paginierte List-Contracts zuerst ergaenzen
-- [ ] Mainserver- und Host-Vertrag anschliessend umstellen
+- [ ] Test- und Typ-Basis für paginierte List-Contracts zuerst ergänzen
+- [ ] Mainserver- und Host-Vertrag anschließend umstellen
 - [ ] Plugin-API-Wrapper migrieren
 - [ ] Plugin-Pages auf `StudioDataTable` + Prev/Next umstellen
 - [ ] Unit-, Typ- und E2E-Gates grün ziehen

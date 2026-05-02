@@ -136,8 +136,10 @@ const DEFAULT_UPSTREAM_TIMEOUT_MS = 10_000;
 const DEFAULT_CACHE_MAX_SIZE = 256;
 const DEFAULT_RETRY_BASE_DELAY_MS = 150;
 const RETRYABLE_STATUS_CODES = new Set([503]);
+const ALLOWED_MAINSERVER_PAGE_SIZES = [25, 50, 100] as const;
 const MAX_MAINSERVER_PAGE_SIZE = 100;
 const MAX_MAINSERVER_VISIBLE_OFFSET = 10_000;
+const MAX_MAINSERVER_UPSTREAM_SCAN_RECORDS = MAX_MAINSERVER_VISIBLE_OFFSET + MAX_MAINSERVER_PAGE_SIZE;
 
 const tokenResponseSchema = z.object({
   access_token: z.string().min(1),
@@ -537,7 +539,10 @@ const toListResult = <TItem>(
 });
 
 const normalizeListInput = (input: SvaMainserverListInput): SvaMainserverListInput => {
-  const pageSize = Math.min(MAX_MAINSERVER_PAGE_SIZE, Math.max(1, Math.trunc(input.pageSize) || 1));
+  const requestedPageSize = Math.trunc(input.pageSize) || 0;
+  const pageSize = ALLOWED_MAINSERVER_PAGE_SIZES.includes(requestedPageSize as (typeof ALLOWED_MAINSERVER_PAGE_SIZES)[number])
+    ? requestedPageSize
+    : 25;
   const maxPage = Math.floor(MAX_MAINSERVER_VISIBLE_OFFSET / pageSize) + 1;
   const page = Math.min(Math.max(1, Math.trunc(input.page) || 1), maxPage);
 
@@ -1708,6 +1713,14 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
     let hasNextPage = false;
 
     while (collectedVisibleItems.length < targetVisibleCount && exhausted === false && hasNextPage === false) {
+      if (skip >= MAX_MAINSERVER_UPSTREAM_SCAN_RECORDS) {
+        throw toSvaMainserverError({
+          code: 'invalid_response',
+          message: 'Mainserver-Pagination erfordert zu viele Upstream-Datensätze für sichtbare Ergebnisse.',
+          statusCode: 502,
+        });
+      }
+
       const response = await executeGraphqlWithConfig<TQueryResult>(
         {
           ...normalizedInput,

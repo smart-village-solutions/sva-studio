@@ -184,7 +184,7 @@ const mockAuthenticatedPluginShell = async (page: Page) => {
         data: [],
         pagination: {
           page: 1,
-          pageSize: 20,
+          pageSize: 25,
           hasNextPage: false,
         },
       }),

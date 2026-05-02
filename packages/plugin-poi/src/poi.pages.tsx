@@ -18,6 +18,7 @@ import {
 } from '@sva/studio-ui-react';
 
 import { createPoi, deletePoi, getPoi, listPoi, PoiApiError, updatePoi } from './poi.api.js';
+import { normalizeListSearch } from './list-pagination.js';
 import type { PoiContentItem, PoiFormInput, PoiListResult } from './poi.types.js';
 import { validatePoiForm } from './poi.validation.js';
 
@@ -106,14 +107,29 @@ export function PoiListPage() {
   const pt = usePluginTranslation('poi');
   const navigate = useNavigate();
   const search = useSearch({ strict: false }) as { readonly page?: number; readonly pageSize?: number };
-  const page = typeof search.page === 'number' ? search.page : 1;
-  const pageSize = typeof search.pageSize === 'number' ? search.pageSize : 25;
+  const { page, pageSize } = normalizeListSearch(search);
   const [result, setResult] = React.useState<PoiListResult>({
     data: [],
     pagination: { page, pageSize, hasNextPage: false },
   });
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (search.page === page && search.pageSize === pageSize) {
+      return;
+    }
+
+    void navigate({
+      to: '/plugins/poi',
+      replace: true,
+      search: (current: Record<string, unknown>) => ({
+        ...current,
+        page,
+        pageSize,
+      }),
+    });
+  }, [navigate, page, pageSize, search.page, search.pageSize]);
 
   React.useEffect(() => {
     let active = true;

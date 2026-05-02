@@ -128,7 +128,7 @@ export const pluginEvents: PluginDefinition = {
         },
         pagination: {
           ariaLabel: 'Event-Seiten',
-          pageLabel: 'Seite {page}',
+          pageLabel: 'Seite {{page}}',
           previous: 'Zurück',
           next: 'Weiter',
         },
@@ -192,7 +192,7 @@ export const pluginEvents: PluginDefinition = {
         },
         pagination: {
           ariaLabel: 'Event pages',
-          pageLabel: 'Page {page}',
+          pageLabel: 'Page {{page}}',
           previous: 'Previous',
           next: 'Next',
         },

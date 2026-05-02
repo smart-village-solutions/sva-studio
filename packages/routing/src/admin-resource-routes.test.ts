@@ -61,6 +61,15 @@ const bindings: AppRouteBindings = {
   content: () => 'content',
   contentCreate: () => 'contentCreate',
   contentDetail: () => 'contentDetail',
+  newsList: () => 'newsList',
+  newsDetail: () => 'newsDetail',
+  newsEditor: () => 'newsEditor',
+  eventsList: () => 'eventsList',
+  eventsDetail: () => 'eventsDetail',
+  eventsEditor: () => 'eventsEditor',
+  poiList: () => 'poiList',
+  poiDetail: () => 'poiDetail',
+  poiEditor: () => 'poiEditor',
   media: () => 'media',
   categories: () => 'categories',
   app: () => 'app',
@@ -90,13 +99,6 @@ const bindings: AppRouteBindings = {
   modules: () => 'modules',
   monitoring: () => 'monitoring',
   adminApiPhase1Test: () => 'adminApiPhase1Test',
-};
-
-const specializedBindings: AppRouteBindings & Record<'newsList' | 'newsDetail' | 'newsEditor', () => string> = {
-  ...bindings,
-  newsList: () => 'newsList',
-  newsDetail: () => 'newsDetail',
-  newsEditor: () => 'newsEditor',
 };
 
 const readRouteOptions = (route: unknown): RouteOptionsUnderTest =>
@@ -263,7 +265,7 @@ describe('admin resource routes', () => {
   });
 
   it('materializes specialized content ui bindings inside host-owned admin routes', () => {
-    const routeFactories = createAdminResourceRouteFactories(specializedBindings, [
+    const routeFactories = createAdminResourceRouteFactories(bindings, [
       {
         resourceId: 'news.content',
         basePath: 'news',
@@ -298,7 +300,7 @@ describe('admin resource routes', () => {
   });
 
   it('falls back to host-owned content bindings when specialized content ui bindings are omitted', () => {
-    const routeFactories = createAdminResourceRouteFactories(specializedBindings, [
+    const routeFactories = createAdminResourceRouteFactories(bindings, [
       {
         resourceId: 'news.content',
         basePath: 'news',

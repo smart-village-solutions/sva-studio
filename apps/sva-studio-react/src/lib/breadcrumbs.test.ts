@@ -44,6 +44,23 @@ describe('resolveBreadcrumbItems', () => {
     ]);
   });
 
+  it('keeps breadcrumb aliases for legacy plugin news paths', () => {
+    expect(resolveBreadcrumbItems('/plugins/news')).toEqual([
+      { href: '/', label: 'Übersicht' },
+      { label: 'News' },
+    ]);
+    expect(resolveBreadcrumbItems('/plugins/news/new')).toEqual([
+      { href: '/', label: 'Übersicht' },
+      { href: '/admin/news', label: 'News' },
+      { label: 'News-Eintrag anlegen' },
+    ]);
+    expect(resolveBreadcrumbItems('/plugins/news/content-1')).toEqual([
+      { href: '/', label: 'Übersicht' },
+      { href: '/admin/news', label: 'News' },
+      { label: 'News-Eintrag bearbeiten' },
+    ]);
+  });
+
   it('falls back to overview for unknown paths', () => {
     expect(resolveBreadcrumbItems('/unbekannt')).toEqual([{ label: 'Übersicht' }]);
   });

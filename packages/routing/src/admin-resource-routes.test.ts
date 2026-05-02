@@ -755,5 +755,8 @@ describe('admin resource routes', () => {
     expect(
       () => readRouteOptions(routeMap.get('/plugins/news/$contentId')).beforeLoad?.({ href: '/plugins/news/news-7' })
     ).toThrow(expect.objectContaining({ href: '/admin/news/news-7', __redirect: true }));
+    expect(
+      () => readRouteOptions(routeMap.get('/plugins/news')).beforeLoad?.({ href: '/plugins/news/archive/2026?tab=seo' })
+    ).toThrow(expect.objectContaining({ href: '/admin/news/archive/2026?tab=seo', __redirect: true }));
   });
 });

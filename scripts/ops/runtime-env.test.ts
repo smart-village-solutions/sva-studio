@@ -9,7 +9,9 @@ import {
   resolveTenantRuntimeTargets,
   runExternalSmokeWithWarmup,
   shouldRetryExternalSmoke,
+  shouldRetryInternalProbeFailure,
   shouldRetryInternalVerify,
+  tryReadGithubStudioImageVerifyEvidence,
 } from './runtime-env.ts';
 import type { AcceptanceProbeResult } from './runtime-env.shared.ts';
 
@@ -103,6 +105,43 @@ describe('shouldRetryInternalVerify', () => {
     });
 
     expect(shouldRetry).toBe(false);
+  });
+});
+
+describe('shouldRetryInternalProbeFailure', () => {
+  it('retries warmup-like swarm app task states', () => {
+    expect(
+      shouldRetryInternalProbeFailure(
+        createProbe({
+          details: {
+            desiredState: 'running',
+            state: 'preparing',
+          },
+          message: 'Swarm-App-Task ist nicht stabil running (preparing).',
+          name: 'swarm-app-task',
+          scope: 'internal',
+          status: 'error',
+          target: 'studio/app',
+        }),
+      ),
+    ).toBe(true);
+  });
+
+  it('does not retry non-warmup swarm app task failures', () => {
+    expect(
+      shouldRetryInternalProbeFailure(
+        createProbe({
+          details: {
+            currentState: 'failed 2 seconds ago',
+          },
+          message: 'Task failed with exit code 1.',
+          name: 'swarm-app-task',
+          scope: 'internal',
+          status: 'error',
+          target: 'studio/app',
+        }),
+      ),
+    ).toBe(false);
   });
 });
 
@@ -266,5 +305,93 @@ describe('studio image verify evidence', () => {
       name: 'studio-image-verify-evidence',
       status: 'warn',
     });
+  });
+
+  it('accepts only digest-matching GitHub artifacts and scans until a successful verify run is found', () => {
+    const runCapture = vi.fn<(command: string, args: readonly string[]) => string>();
+
+    runCapture.mockImplementation((command, args) => {
+      if (command === 'git') {
+        return 'git@github.com:smart-village-solutions/sva-studio.git\n';
+      }
+
+      if (command === 'gh' && args[0] === 'api') {
+        return JSON.stringify({
+          artifacts: [
+            {
+              expired: false,
+              name: 'studio-image-verify-deadbeefcafe-20260502T090000Z',
+              workflow_run: { id: 1001 },
+            },
+            {
+              expired: false,
+              name: 'studio-image-verify-v1.2.3-20260502T091000Z',
+              workflow_run: { id: 1002 },
+            },
+            {
+              expired: false,
+              name: 'studio-image-verify-deadbeefcafe-20260502T092000Z',
+              workflow_run: { id: 1003 },
+            },
+          ],
+        });
+      }
+
+      if (command === 'gh' && args[0] === 'run' && args[2] === '1001') {
+        return JSON.stringify({
+          conclusion: 'failure',
+          url: 'https://github.com/smart-village-solutions/sva-studio/actions/runs/1001',
+          workflowName: 'Studio Image Verify',
+        });
+      }
+
+      if (command === 'gh' && args[0] === 'run' && args[2] === '1003') {
+        return JSON.stringify({
+          conclusion: 'success',
+          url: 'https://github.com/smart-village-solutions/sva-studio/actions/runs/1003',
+          workflowName: 'Studio Image Verify',
+        });
+      }
+
+      throw new Error(`Unexpected command: ${command} ${args.join(' ')}`);
+    });
+
+    expect(tryReadGithubStudioImageVerifyEvidence('sha256:deadbeefcafebabefeedface', runCapture)).toMatchObject({
+      imageRef: 'ghcr.io/smart-village-solutions/sva-studio@sha256:deadbeefcafebabefeedface',
+      path: 'https://github.com/smart-village-solutions/sva-studio/actions/runs/1003',
+      reportId: 'studio-image-verify-deadbeefcafe-20260502T092000Z',
+      source: 'github-artifact',
+      status: 'ok',
+    });
+
+    expect(runCapture).toHaveBeenCalledTimes(4);
+    expect(runCapture.mock.calls.some(([, args]) => args.includes('1002'))).toBe(false);
+  });
+
+  it('ignores tag-based GitHub artifacts when no digest artifact exists', () => {
+    const runCapture = vi.fn<(command: string, args: readonly string[]) => string>();
+
+    runCapture.mockImplementation((command, args) => {
+      if (command === 'git') {
+        return 'git@github.com:smart-village-solutions/sva-studio.git\n';
+      }
+
+      if (command === 'gh' && args[0] === 'api') {
+        return JSON.stringify({
+          artifacts: [
+            {
+              expired: false,
+              name: 'studio-image-verify-v1.2.3-20260502T091000Z',
+              workflow_run: { id: 1002 },
+            },
+          ],
+        });
+      }
+
+      throw new Error(`Unexpected command: ${command} ${args.join(' ')}`);
+    });
+
+    expect(tryReadGithubStudioImageVerifyEvidence('sha256:deadbeefcafebabefeedface', runCapture)).toBeUndefined();
+    expect(runCapture).toHaveBeenCalledTimes(2);
   });
 });

@@ -921,13 +921,6 @@ type StudioImageVerifyEvidence = Readonly<{
   status?: string;
 }>;
 
-const sanitizeVerifyArtifactSuffix = (value: string) =>
-  value
-    .replace(/[^A-Za-z0-9._ -]+/g, '-')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-+|-+$/g, '');
-
 const readLocalStudioImageVerifyEvidence = (imageDigest?: string): StudioImageVerifyEvidence | undefined => {
   if (!imageDigest) {
     return undefined;
@@ -970,9 +963,8 @@ const readLocalStudioImageVerifyEvidence = (imageDigest?: string): StudioImageVe
   return undefined;
 };
 
-const tryReadGithubStudioImageVerifyEvidence = (
+export const tryReadGithubStudioImageVerifyEvidence = (
   imageDigest?: string,
-  imageTag?: string,
   runCaptureImpl: typeof runCapture = runCapture,
 ): StudioImageVerifyEvidence | undefined => {
   if (!imageDigest || !commandExists('gh')) {
@@ -989,12 +981,6 @@ const tryReadGithubStudioImageVerifyEvidence = (
     }
 
     const digestShort = imageDigest.replace(/^sha256:/, '').slice(0, 12);
-    const artifactPrefixes = new Set([`studio-image-verify-${digestShort}`]);
-    const sanitizedImageTag = imageTag ? sanitizeVerifyArtifactSuffix(imageTag) : '';
-    if (sanitizedImageTag) {
-      artifactPrefixes.add(`studio-image-verify-${sanitizedImageTag}`);
-    }
-
     const artifactOutput = runCaptureImpl('gh', ['api', `repos/${owner}/${repo}/actions/artifacts?per_page=100`]);
     const artifactPayload = JSON.parse(artifactOutput) as {
       artifacts?: Array<{
@@ -1005,55 +991,48 @@ const tryReadGithubStudioImageVerifyEvidence = (
         };
       }>;
     };
-    const matchingArtifact = artifactPayload.artifacts?.find((artifact) => {
-      if (artifact.expired || typeof artifact.name !== 'string') {
-        return false;
-      }
-
-      for (const prefix of artifactPrefixes) {
-        if (artifact.name.startsWith(`${prefix}-`)) {
-          return true;
+    const matchingArtifacts =
+      artifactPayload.artifacts?.filter((artifact) => {
+        if (artifact.expired || typeof artifact.name !== 'string' || !artifact.workflow_run?.id) {
+          return false;
         }
+
+        return artifact.name.startsWith(`studio-image-verify-${digestShort}-`);
+      }) ?? [];
+
+    for (const matchingArtifact of matchingArtifacts) {
+      const runId = matchingArtifact.workflow_run?.id;
+      if (!runId) {
+        continue;
       }
 
-      return false;
-    });
+      const runOutput = runCaptureImpl('gh', ['run', 'view', String(runId), '--json', 'conclusion,url,workflowName']);
+      const runPayload = JSON.parse(runOutput) as {
+        conclusion?: string;
+        url?: string;
+        workflowName?: string;
+      };
+      if (runPayload.conclusion !== 'success' || runPayload.workflowName !== 'Studio Image Verify') {
+        continue;
+      }
 
-    const runId = matchingArtifact?.workflow_run?.id;
-    if (!runId) {
-      return undefined;
+      return {
+        imageRef: `ghcr.io/smart-village-solutions/sva-studio@${imageDigest}`,
+        path: runPayload.url ?? `https://github.com/${owner}/${repo}/actions/runs/${runId}`,
+        reportId: matchingArtifact.name,
+        source: 'github-artifact',
+        status: 'ok',
+      };
     }
-
-    const runOutput = runCaptureImpl('gh', ['run', 'view', String(runId), '--json', 'conclusion,url,workflowName']);
-    const runPayload = JSON.parse(runOutput) as {
-      conclusion?: string;
-      url?: string;
-      workflowName?: string;
-    };
-    if (runPayload.conclusion !== 'success' || runPayload.workflowName !== 'Studio Image Verify') {
-      return undefined;
-    }
-
-    return {
-      imageRef: `ghcr.io/smart-village-solutions/sva-studio@${imageDigest}`,
-      path: runPayload.url ?? `https://github.com/${owner}/${repo}/actions/runs/${runId}`,
-      reportId: matchingArtifact?.name,
-      source: 'github-artifact',
-      status: 'ok',
-    };
   } catch {
     return undefined;
   }
+
+  return undefined;
 };
 
-export const readStudioImageVerifyEvidence = (
-  imageDigest?: string,
-  options?: {
-    readonly imageTag?: string;
-  }
-): StudioImageVerifyEvidence | undefined =>
-  readLocalStudioImageVerifyEvidence(imageDigest) ??
-  tryReadGithubStudioImageVerifyEvidence(imageDigest, options?.imageTag);
+export const readStudioImageVerifyEvidence = (imageDigest?: string): StudioImageVerifyEvidence | undefined =>
+  readLocalStudioImageVerifyEvidence(imageDigest) ?? tryReadGithubStudioImageVerifyEvidence(imageDigest);
 
 export const buildStudioImageVerifyEvidenceCheck = (
   runtimeProfile: RemoteRuntimeProfile,
@@ -1070,9 +1049,7 @@ export const buildStudioImageVerifyEvidenceCheck = (
     );
   }
 
-  const evidence = readStudioImageVerifyEvidence(imageDigest, {
-    imageTag: options?.imageTag ?? env.SVA_IMAGE_TAG?.trim(),
-  });
+  const evidence = readStudioImageVerifyEvidence(imageDigest);
   if (!evidence) {
     return toDoctorCheck(
       'studio-image-verify-evidence',
@@ -4042,7 +4019,10 @@ const runInternalVerify = async (runtimeProfile: RemoteRuntimeProfile, env: Node
       retryableWarmupChecks,
       retryableWarmupSignals,
     );
-    const probesFailed = probes.some((probe) => probe.status === 'error');
+    const failingProbes = probes.filter((probe) => probe.status === 'error');
+    const hasRetryableWarmupOnlyProbeFailures =
+      failingProbes.length > 0 && failingProbes.every((probe) => shouldRetryInternalProbeFailure(probe));
+    const probesFailed = failingProbes.length > 0;
     const doctorFailed = doctorReport.status === 'error';
 
     if (!doctorFailed && !probesFailed) {
@@ -4052,7 +4032,7 @@ const runInternalVerify = async (runtimeProfile: RemoteRuntimeProfile, env: Node
       };
     }
 
-    if (attempt < maxAttempts && (hasRetryableWarmupOnlyErrors || probesFailed)) {
+    if (attempt < maxAttempts && (hasRetryableWarmupOnlyErrors || hasRetryableWarmupOnlyProbeFailures)) {
       await wait(retryDelayMs);
       continue;
     }
@@ -4113,6 +4093,33 @@ export const shouldRetryInternalVerify = (
 
     return checkContainsRetryableWarmupSignal(check, retryableWarmupSignals);
   });
+};
+
+export const shouldRetryInternalProbeFailure = (probe: AcceptanceProbeResult) => {
+  if (probe.status !== 'error' || probe.name !== 'swarm-app-task') {
+    return false;
+  }
+
+  const retryableWarmupStates = ['pending', 'preparing', 'starting', 'assigned', 'accepted', 'new', 'shutdown'];
+  const lowerCaseMessage = probe.message.toLowerCase();
+  if (retryableWarmupStates.some((state) => lowerCaseMessage.includes(state))) {
+    return true;
+  }
+
+  const details = probe.details;
+  if (!details || typeof details !== 'object') {
+    return false;
+  }
+
+  const state = 'state' in details && typeof details.state === 'string' ? details.state.toLowerCase() : undefined;
+  const currentState =
+    'currentState' in details && typeof details.currentState === 'string' ? details.currentState.toLowerCase() : undefined;
+  const desiredState =
+    'desiredState' in details && typeof details.desiredState === 'string' ? details.desiredState.toLowerCase() : undefined;
+
+  return [state, currentState, desiredState].some(
+    (value) => typeof value === 'string' && retryableWarmupStates.some((warmupState) => value.includes(warmupState)),
+  );
 };
 
 const runExternalSmoke = async (

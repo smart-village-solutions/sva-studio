@@ -350,7 +350,7 @@ test('router keeps the shell active during client-side navigation', async ({ pag
   await expectInterfacesShellReady(page);
   await expect(page.locator('html')).toHaveAttribute('data-theme', /.+/);
   await navigateWithPlaywrightRouter(page, '/admin/news');
-  await expect(page.getByRole('heading', { name: 'News', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'News' })).toBeVisible();
   await navigateWithPlaywrightRouter(page, '/interfaces');
   await expect(page).toHaveURL(/\/interfaces$/);
   await expectInterfacesShellReady(page);

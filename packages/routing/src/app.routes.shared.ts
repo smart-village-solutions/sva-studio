@@ -4,10 +4,10 @@ import { createRoute, redirect, type AnyRoute, type RootRoute, type RouteCompone
 
 import { createAccountUiRouteGuard, type AccountUiRouteGuardKey } from './account-ui.routes.js';
 import {
-  adminDetailParamNameByBinding,
   createAdminResourceRouteFactories,
   createLegacyContentAliasFactories,
 } from './admin-resource-routes.js';
+import { adminDetailParamNameByBinding } from './admin-resource-route-paths.js';
 import { type RoutingDiagnosticsHook } from './diagnostics.js';
 import { resolvePluginRouteGuard } from './plugin-route-guards.js';
 import { normalizeIamTab, normalizeRoleDetailTab } from './route-search.js';

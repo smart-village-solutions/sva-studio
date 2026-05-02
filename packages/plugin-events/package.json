@@ -12,6 +12,7 @@
     }
   },
   "dependencies": {
+    "@sva/core": "workspace:*",
     "@sva/plugin-sdk": "workspace:*",
     "@sva/studio-ui-react": "workspace:*"
   },

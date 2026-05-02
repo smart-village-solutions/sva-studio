@@ -188,9 +188,7 @@ export const createUiRouteFactories = (
   ];
 };
 
-export const mapPluginGuardToAccountGuard = (
-  guard?: PluginRouteGuard
-): 'content' | 'contentCreate' | 'contentDetail' | null => {
+export const mapPluginGuardToAccountGuard = (guard?: PluginRouteGuard): 'content' | 'contentCreate' | 'contentDetail' | null => {
   switch (guard) {
     case 'content.read':
       return 'content';

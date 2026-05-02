@@ -47,18 +47,21 @@ vi.mock('@tanstack/react-router', () => ({
   Link: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
   useNavigate: () => navigateMock,
   useParams: () => paramsMock(),
-  useSearch: () => ({ page: 1, pageSize: 25 }),
+  useSearch: () => searchMock(),
 }));
 
 const navigateMock = vi.fn();
 const paramsMock = vi.fn(() => ({ id: 'poi-1' }));
+const searchMock = vi.fn(() => ({ page: 1, pageSize: 25 }));
 
 describe('PoiListPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     navigateMock.mockReset();
     paramsMock.mockReset();
+    searchMock.mockReset();
     paramsMock.mockReturnValue({ id: 'poi-1' });
+    searchMock.mockReturnValue({ page: 1, pageSize: 25 });
     registerPluginTranslationResolver((key) => {
       const labels: Record<string, string> = {
         'poi.list.title': 'POI',
@@ -132,6 +135,72 @@ describe('PoiListPage', () => {
 
     await waitFor(() => {
       expect(screen.getByText('POI konnten nicht geladen werden.')).toBeTruthy();
+    });
+  });
+
+  it('navigates through paginated list results', async () => {
+    vi.mocked(listPoi).mockResolvedValueOnce({
+      data: [
+        {
+          id: 'poi-1',
+          name: 'Rathaus',
+          categoryName: 'Verwaltung',
+          active: true,
+        },
+      ],
+      pagination: { page: 2, pageSize: 25, hasNextPage: true },
+    });
+
+    render(<PoiListPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Seite {{page}}')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Zurück' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+
+    expect(navigateMock).toHaveBeenCalledTimes(2);
+
+    const previousTarget = navigateMock.mock.calls[0]?.[0] as {
+      search: (current: Record<string, unknown>) => Record<string, unknown>;
+    };
+    const nextTarget = navigateMock.mock.calls[1]?.[0] as {
+      search: (current: Record<string, unknown>) => Record<string, unknown>;
+    };
+
+    expect(previousTarget.search({ filter: 'open' })).toEqual({
+      filter: 'open',
+      page: 1,
+      pageSize: 25,
+    });
+    expect(nextTarget.search({ filter: 'open' })).toEqual({
+      filter: 'open',
+      page: 3,
+      pageSize: 25,
+    });
+  });
+
+  it('reads pagination values from search params and falls back for invalid values', async () => {
+    searchMock.mockReturnValueOnce({ page: 3, pageSize: 50 });
+
+    render(<PoiListPage />);
+
+    await waitFor(() => {
+      expect(listPoi).toHaveBeenCalledWith({ page: 3, pageSize: 50 });
+    });
+
+    cleanup();
+    searchMock.mockReturnValueOnce({ page: undefined, pageSize: 0 });
+    vi.mocked(listPoi).mockResolvedValueOnce({
+      data: [],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false },
+    });
+
+    render(<PoiListPage />);
+
+    await waitFor(() => {
+      expect(listPoi).toHaveBeenCalledWith({ page: 1, pageSize: 25 });
     });
   });
 

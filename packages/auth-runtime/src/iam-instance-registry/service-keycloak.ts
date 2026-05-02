@@ -20,43 +20,49 @@ import { withAuthInstanceRegistryDeps } from './instance-registry-deps.js';
 export { createGetKeycloakProvisioningRunHandler, createRuntimeResolver };
 
 const authSecretDeps = () => withAuthInstanceRegistryDeps({});
+const bindRegistryServiceDeps = <T>(factory: (deps: InstanceRegistryServiceDeps) => T) => (deps: InstanceRegistryServiceDeps): T =>
+  factory(withAuthInstanceRegistryDeps(deps));
+
+const decryptSecret = (
+  decryptor: typeof decryptTargetAuthClientSecret,
+  instanceId: string,
+  ciphertext: string | null | undefined
+): string | undefined => decryptor(authSecretDeps(), instanceId, ciphertext);
+
+const loadRepositorySecret = async (
+  loader: typeof loadTargetRepositoryAuthClientSecret,
+  repository: InstanceRegistryRepository,
+  instanceId: string
+): Promise<string | undefined> => loader(authSecretDeps(), repository, instanceId);
 
 export const decryptAuthClientSecret = (
   instanceId: string,
   ciphertext: string | null | undefined
-): string | undefined => decryptTargetAuthClientSecret(authSecretDeps(), instanceId, ciphertext);
+): string | undefined => decryptSecret(decryptTargetAuthClientSecret, instanceId, ciphertext);
 
 export const decryptTenantAdminClientSecret = (
   instanceId: string,
   ciphertext: string | null | undefined
-): string | undefined => decryptTargetTenantAdminClientSecret(authSecretDeps(), instanceId, ciphertext);
+): string | undefined => decryptSecret(decryptTargetTenantAdminClientSecret, instanceId, ciphertext);
 
 export const loadRepositoryAuthClientSecret = async (
   repository: InstanceRegistryRepository,
   instanceId: string
-): Promise<string | undefined> =>
-  loadTargetRepositoryAuthClientSecret(authSecretDeps(), repository, instanceId);
+): Promise<string | undefined> => loadRepositorySecret(loadTargetRepositoryAuthClientSecret, repository, instanceId);
 
 export const loadRepositoryTenantAdminClientSecret = async (
   repository: InstanceRegistryRepository,
   instanceId: string
 ): Promise<string | undefined> =>
-  loadTargetRepositoryTenantAdminClientSecret(authSecretDeps(), repository, instanceId);
+  loadRepositorySecret(loadTargetRepositoryTenantAdminClientSecret, repository, instanceId);
 
 export const loadInstanceWithSecret = (deps: InstanceRegistryServiceDeps, instanceId: string) =>
   loadTargetInstanceWithSecret(withAuthInstanceRegistryDeps(deps), instanceId);
 
-export const createGetKeycloakStatusHandler = (deps: InstanceRegistryServiceDeps) =>
-  createTargetGetKeycloakStatusHandler(withAuthInstanceRegistryDeps(deps));
-
-export const createGetKeycloakPreflightHandler = (deps: InstanceRegistryServiceDeps) =>
-  createTargetGetKeycloakPreflightHandler(withAuthInstanceRegistryDeps(deps));
-
-export const createPlanKeycloakProvisioningHandler = (deps: InstanceRegistryServiceDeps) =>
-  createTargetPlanKeycloakProvisioningHandler(withAuthInstanceRegistryDeps(deps));
-
-export const createExecuteKeycloakProvisioningHandler = (deps: InstanceRegistryServiceDeps) =>
-  createTargetExecuteKeycloakProvisioningHandler(withAuthInstanceRegistryDeps(deps));
-
-export const createReconcileKeycloakHandler = (deps: InstanceRegistryServiceDeps) =>
-  createTargetReconcileKeycloakHandler(withAuthInstanceRegistryDeps(deps));
+export const createGetKeycloakStatusHandler = bindRegistryServiceDeps(createTargetGetKeycloakStatusHandler);
+export const createGetKeycloakPreflightHandler = bindRegistryServiceDeps(createTargetGetKeycloakPreflightHandler);
+export const createPlanKeycloakProvisioningHandler = bindRegistryServiceDeps(createTargetPlanKeycloakProvisioningHandler);
+export const createExecuteKeycloakProvisioningHandler = bindRegistryServiceDeps(
+  createTargetExecuteKeycloakProvisioningHandler
+);
+export const createReconcileKeycloakHandler = bindRegistryServiceDeps(createTargetReconcileKeycloakHandler);

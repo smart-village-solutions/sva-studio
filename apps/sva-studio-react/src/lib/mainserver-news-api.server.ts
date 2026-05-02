@@ -241,6 +241,78 @@ const parseAddress = (value: unknown): SvaMainserverNewsInput['address'] | undef
   };
 };
 
+const parseContentBlockMediaContents = (
+  value: unknown
+): Array<NonNullable<NonNullable<SvaMainserverNewsInput['contentBlocks']>[number]['mediaContents']>[number]> | Response => {
+  const mediaContents: Array<
+    NonNullable<NonNullable<SvaMainserverNewsInput['contentBlocks']>[number]['mediaContents']>[number]
+  > = [];
+
+  if (value === undefined || value === null) {
+    return mediaContents;
+  }
+  if (!Array.isArray(value)) {
+    return errorJson(400, 'invalid_request', 'MediaContent muss als Liste gesendet werden.');
+  }
+
+  for (const media of value) {
+    if (!isRecord(media)) {
+      return errorJson(400, 'invalid_request', 'MediaContent-Einträge müssen Objekte sein.');
+    }
+    const sourceUrl = parseWebUrl(media.sourceUrl);
+    if (sourceUrl instanceof Response) {
+      return sourceUrl;
+    }
+    mediaContents.push({
+      ...(readString(media.captionText) ? { captionText: readString(media.captionText) } : {}),
+      ...(readString(media.copyright) ? { copyright: readString(media.copyright) } : {}),
+      ...(readString(media.contentType) ? { contentType: readString(media.contentType) } : {}),
+      ...(readNumber(media.height) !== undefined ? { height: readNumber(media.height) } : {}),
+      ...(readNumber(media.width) !== undefined ? { width: readNumber(media.width) } : {}),
+      ...(sourceUrl ? { sourceUrl } : {}),
+    });
+  }
+
+  return mediaContents;
+};
+
+const hasValidContentBlocks = (blocks: readonly NonNullable<SvaMainserverNewsInput['contentBlocks']>[number][]) =>
+  blocks.length > 0 &&
+  blocks.some((block) => block.body && getVisibleTextLength(block.body) > 0) &&
+  blocks.every((block) => (block.body?.length ?? 0) <= 50_000);
+
+const buildNewsInput = (input: {
+  body: Record<string, unknown>;
+  publishedAt: string;
+  publicationDate?: string;
+  charactersToBeShown?: number;
+  categories: SvaMainserverNewsInput['categories'] | undefined;
+  sourceUrl: SvaMainserverNewsInput['sourceUrl'] | undefined;
+  address: SvaMainserverNewsInput['address'] | undefined;
+  contentBlocks: SvaMainserverNewsInput['contentBlocks'] | undefined;
+  allowPushNotification: boolean;
+}): SvaMainserverNewsInput => ({
+  title: readString(input.body.title) as string,
+  publishedAt: input.publishedAt,
+  ...(readString(input.body.author) ? { author: readString(input.body.author) } : {}),
+  ...(readString(input.body.keywords) ? { keywords: readString(input.body.keywords) } : {}),
+  ...(readString(input.body.externalId) ? { externalId: readString(input.body.externalId) } : {}),
+  ...(readBoolean(input.body.fullVersion) !== undefined ? { fullVersion: readBoolean(input.body.fullVersion) } : {}),
+  ...(input.charactersToBeShown !== undefined ? { charactersToBeShown: input.charactersToBeShown } : {}),
+  ...(readString(input.body.newsType) ? { newsType: readString(input.body.newsType) } : {}),
+  ...(input.publicationDate ? { publicationDate: input.publicationDate } : {}),
+  ...(readBoolean(input.body.showPublishDate) !== undefined ? { showPublishDate: readBoolean(input.body.showPublishDate) } : {}),
+  ...(readString(input.body.categoryName) ? { categoryName: readString(input.body.categoryName) } : {}),
+  ...(input.categories ? { categories: input.categories } : {}),
+  ...(input.sourceUrl ? { sourceUrl: input.sourceUrl } : {}),
+  ...(input.address ? { address: input.address } : {}),
+  ...(input.contentBlocks ? { contentBlocks: input.contentBlocks } : {}),
+  ...(readString(input.body.pointOfInterestId) ? { pointOfInterestId: readString(input.body.pointOfInterestId) } : {}),
+  ...(input.allowPushNotification && readBoolean(input.body.pushNotification) !== undefined
+    ? { pushNotification: readBoolean(input.body.pushNotification) }
+    : {}),
+});
+
 const parseContentBlocks = (value: unknown): SvaMainserverNewsInput['contentBlocks'] | undefined | Response => {
   if (value === undefined || value === null) {
     return errorJson(400, 'invalid_request', 'Mindestens ein Inhaltsblock benötigt Inhalt und darf maximal 50.000 Zeichen haben.');
@@ -254,30 +326,9 @@ const parseContentBlocks = (value: unknown): SvaMainserverNewsInput['contentBloc
     if (!isRecord(block)) {
       return errorJson(400, 'invalid_request', 'ContentBlocks müssen Objekte sein.');
     }
-    const mediaContents: Array<
-      NonNullable<NonNullable<SvaMainserverNewsInput['contentBlocks']>[number]['mediaContents']>[number]
-    > = [];
-    if (block.mediaContents !== undefined && block.mediaContents !== null) {
-      if (!Array.isArray(block.mediaContents)) {
-        return errorJson(400, 'invalid_request', 'MediaContent muss als Liste gesendet werden.');
-      }
-      for (const media of block.mediaContents) {
-        if (!isRecord(media)) {
-          return errorJson(400, 'invalid_request', 'MediaContent-Einträge müssen Objekte sein.');
-        }
-        const sourceUrl = parseWebUrl(media.sourceUrl);
-        if (sourceUrl instanceof Response) {
-          return sourceUrl;
-        }
-        mediaContents.push({
-          ...(readString(media.captionText) ? { captionText: readString(media.captionText) } : {}),
-          ...(readString(media.copyright) ? { copyright: readString(media.copyright) } : {}),
-          ...(readString(media.contentType) ? { contentType: readString(media.contentType) } : {}),
-          ...(readNumber(media.height) !== undefined ? { height: readNumber(media.height) } : {}),
-          ...(readNumber(media.width) !== undefined ? { width: readNumber(media.width) } : {}),
-          ...(sourceUrl ? { sourceUrl } : {}),
-        });
-      }
+    const mediaContents = parseContentBlockMediaContents(block.mediaContents);
+    if (mediaContents instanceof Response) {
+      return mediaContents;
     }
     blocks.push({
       ...(readString(block.title) ? { title: readString(block.title) } : {}),
@@ -286,11 +337,7 @@ const parseContentBlocks = (value: unknown): SvaMainserverNewsInput['contentBloc
       ...(mediaContents.length > 0 ? { mediaContents } : {}),
     });
   }
-  if (
-    blocks.length === 0 ||
-    blocks.some((block) => (block.body?.length ?? 0) > 50_000) ||
-    blocks.some((block) => block.body && getVisibleTextLength(block.body) > 0) === false
-  ) {
+  if (!hasValidContentBlocks(blocks)) {
     return errorJson(400, 'invalid_request', 'Mindestens ein Inhaltsblock benötigt Inhalt und darf maximal 50.000 Zeichen haben.');
   }
   return blocks;
@@ -356,27 +403,17 @@ const parseNewsInput = async (request: Request, options: ParseOptions): Promise<
 
   return {
     rawBody,
-    news: {
-      title,
+    news: buildNewsInput({
+      body,
       publishedAt,
-      ...(readString(body.author) ? { author: readString(body.author) } : {}),
-      ...(readString(body.keywords) ? { keywords: readString(body.keywords) } : {}),
-      ...(readString(body.externalId) ? { externalId: readString(body.externalId) } : {}),
-      ...(readBoolean(body.fullVersion) !== undefined ? { fullVersion: readBoolean(body.fullVersion) } : {}),
-      ...(charactersToBeShown !== undefined ? { charactersToBeShown } : {}),
-      ...(readString(body.newsType) ? { newsType: readString(body.newsType) } : {}),
-      ...(publicationDate ? { publicationDate } : {}),
-      ...(readBoolean(body.showPublishDate) !== undefined ? { showPublishDate: readBoolean(body.showPublishDate) } : {}),
-      ...(readString(body.categoryName) ? { categoryName: readString(body.categoryName) } : {}),
-      ...(categories ? { categories } : {}),
-      ...(sourceUrl ? { sourceUrl } : {}),
-      ...(address ? { address } : {}),
-      ...(contentBlocks ? { contentBlocks } : {}),
-      ...(readString(body.pointOfInterestId) ? { pointOfInterestId: readString(body.pointOfInterestId) } : {}),
-      ...(options.allowPushNotification && readBoolean(body.pushNotification) !== undefined
-        ? { pushNotification: readBoolean(body.pushNotification) }
-        : {}),
-    },
+      publicationDate,
+      charactersToBeShown,
+      categories,
+      sourceUrl,
+      address,
+      contentBlocks,
+      allowPushNotification: options.allowPushNotification,
+    }),
   };
 };
 
@@ -485,6 +522,33 @@ const authorizeOrResponse = async (
   };
 };
 
+const listNewsForRequest = async (
+  request: Request,
+  actor: { readonly instanceId: string; readonly keycloakSubject: string }
+) => listSvaMainserverNews({ ...actor, ...parseMainserverListQuery(request) });
+
+const getNewsForRoute = async (
+  route: Extract<RouteMatch, { kind: 'item' }>,
+  actor: { readonly instanceId: string; readonly keycloakSubject: string }
+) => getSvaMainserverNews({ ...actor, newsId: route.newsId });
+
+const updateNewsForRoute = async (
+  route: Extract<RouteMatch, { kind: 'item' }>,
+  actor: { readonly instanceId: string; readonly keycloakSubject: string },
+  news: SvaMainserverNewsInput
+) => {
+  const data = await updateSvaMainserverNews({ ...actor, newsId: route.newsId, news });
+  return json({ data });
+};
+
+const deleteNewsForRoute = async (
+  route: Extract<RouteMatch, { kind: 'item' }>,
+  actor: { readonly instanceId: string; readonly keycloakSubject: string }
+) => {
+  const data = await deleteSvaMainserverNews({ ...actor, newsId: route.newsId });
+  return json({ data });
+};
+
 const dispatchAuthenticated = async (request: Request, route: RouteMatch, ctx: AuthenticatedRequestContext) => {
   const workspaceContext = getWorkspaceContext();
   const logSuccess = (operation: string, newsId?: string) => {
@@ -506,7 +570,7 @@ const dispatchAuthenticated = async (request: Request, route: RouteMatch, ctx: A
       if (actor instanceof Response) {
         return actor;
       }
-      const data = await listSvaMainserverNews({ ...actor, ...parseMainserverListQuery(request) });
+      const data = await listNewsForRequest(request, actor);
       logSuccess('mainserver_news_list');
       return json(data);
     }
@@ -516,7 +580,7 @@ const dispatchAuthenticated = async (request: Request, route: RouteMatch, ctx: A
       if (actor instanceof Response) {
         return actor;
       }
-      const data = await getSvaMainserverNews({ ...actor, newsId: route.newsId });
+      const data = await getNewsForRoute(route, actor);
       logSuccess('mainserver_news_detail', route.newsId);
       return json({ data });
     }
@@ -606,15 +670,14 @@ const dispatchAuthenticated = async (request: Request, route: RouteMatch, ctx: A
       if (parsed instanceof Response) {
         return parsed;
       }
-
       const updateActor = await authorizeOrResponse(ctx, 'news.update', route.newsId);
       if (updateActor instanceof Response) {
         return updateActor;
       }
 
-      const data = await updateSvaMainserverNews({ ...updateActor, newsId: route.newsId, news: parsed.news });
+      const response = await updateNewsForRoute(route, updateActor, parsed.news);
       logSuccess('mainserver_news_update', route.newsId);
-      return json({ data });
+      return response;
     }
 
     if (route.kind === 'item' && request.method === 'DELETE') {
@@ -626,9 +689,9 @@ const dispatchAuthenticated = async (request: Request, route: RouteMatch, ctx: A
       if (actor instanceof Response) {
         return actor;
       }
-      const data = await deleteSvaMainserverNews({ ...actor, newsId: route.newsId });
+      const response = await deleteNewsForRoute(route, actor);
       logSuccess('mainserver_news_delete', route.newsId);
-      return json({ data });
+      return response;
     }
 
     return errorJson(405, 'method_not_allowed', 'Methode wird für Mainserver-News nicht unterstützt.');

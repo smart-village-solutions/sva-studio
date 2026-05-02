@@ -45,18 +45,21 @@ vi.mock('@tanstack/react-router', () => ({
   Link: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
   useNavigate: () => navigateMock,
   useParams: () => paramsMock(),
-  useSearch: () => ({ page: 1, pageSize: 25 }),
+  useSearch: () => searchMock(),
 }));
 
 const navigateMock = vi.fn();
 const paramsMock = vi.fn(() => ({ id: 'event-1' }));
+const searchMock = vi.fn(() => ({ page: 1, pageSize: 25 }));
 
 describe('EventsListPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     navigateMock.mockReset();
     paramsMock.mockReset();
+    searchMock.mockReset();
     paramsMock.mockReturnValue({ id: 'event-1' });
+    searchMock.mockReturnValue({ page: 1, pageSize: 25 });
     registerPluginTranslationResolver((key) => {
       const labels: Record<string, string> = {
         'events.list.title': 'Events',
@@ -129,6 +132,72 @@ describe('EventsListPage', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Events konnten nicht geladen werden.')).toBeTruthy();
+    });
+  });
+
+  it('navigates through paginated list results', async () => {
+    vi.mocked(listEvents).mockResolvedValueOnce({
+      data: [
+        {
+          id: 'event-1',
+          title: 'Stadtfest',
+          categoryName: 'Kultur',
+          dates: [{ dateStart: '2026-04-14T09:30:00.000Z' }],
+        },
+      ],
+      pagination: { page: 2, pageSize: 25, hasNextPage: true },
+    });
+
+    render(<EventsListPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Seite {{page}}')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Zurück' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+
+    expect(navigateMock).toHaveBeenCalledTimes(2);
+
+    const previousTarget = navigateMock.mock.calls[0]?.[0] as {
+      search: (current: Record<string, unknown>) => Record<string, unknown>;
+    };
+    const nextTarget = navigateMock.mock.calls[1]?.[0] as {
+      search: (current: Record<string, unknown>) => Record<string, unknown>;
+    };
+
+    expect(previousTarget.search({ filter: 'open' })).toEqual({
+      filter: 'open',
+      page: 1,
+      pageSize: 25,
+    });
+    expect(nextTarget.search({ filter: 'open' })).toEqual({
+      filter: 'open',
+      page: 3,
+      pageSize: 25,
+    });
+  });
+
+  it('reads pagination values from search params and falls back for invalid values', async () => {
+    searchMock.mockReturnValueOnce({ page: 3, pageSize: 50 });
+
+    render(<EventsListPage />);
+
+    await waitFor(() => {
+      expect(listEvents).toHaveBeenCalledWith({ page: 3, pageSize: 50 });
+    });
+
+    cleanup();
+    searchMock.mockReturnValueOnce({ page: undefined, pageSize: 0 });
+    vi.mocked(listEvents).mockResolvedValueOnce({
+      data: [],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false },
+    });
+
+    render(<EventsListPage />);
+
+    await waitFor(() => {
+      expect(listEvents).toHaveBeenCalledWith({ page: 1, pageSize: 25 });
     });
   });
 

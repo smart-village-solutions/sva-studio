@@ -311,6 +311,188 @@ const normalizeActionId = (resourceId: string, fieldName: string, value: string)
   return normalized;
 };
 
+const normalizeSearchCapability = (
+  resourceId: string,
+  search: AdminResourceListSearchCapability
+): AdminResourceListSearchCapability => {
+  assertAllowedCapabilityKeys(
+    resourceId,
+    `${resourceId}.capabilities.list.search`,
+    search as unknown as Record<string, unknown>,
+    adminResourceSearchCapabilityAllowedKeys
+  );
+
+  const fields = search.fields.map((field) => normalizeCapabilityId(resourceId, 'capabilities.list.search.fields', field));
+  if (fields.length === 0) {
+    throw new Error(`invalid_admin_resource_capability:${resourceId}:capabilities.list.search.fields`);
+  }
+
+  assertUniqueValues(resourceId, 'duplicate_admin_resource_search_field', fields);
+
+  return {
+    param: normalizeSearchParamName(resourceId, 'capabilities.list.search.param', search.param ?? 'q'),
+    placeholderKey: normalizeLabelKey(resourceId, 'capabilities.list.search.placeholderKey', search.placeholderKey),
+    fields,
+  };
+};
+
+const normalizeFilterCapability = (
+  resourceId: string,
+  filter: AdminResourceListFilterCapability
+): AdminResourceListFilterCapability => {
+  assertAllowedCapabilityKeys(
+    resourceId,
+    `${resourceId}.capabilities.list.filters`,
+    filter as unknown as Record<string, unknown>,
+    adminResourceFilterCapabilityAllowedKeys
+  );
+
+  const id = normalizeCapabilityId(resourceId, 'capabilities.list.filters.id', filter.id);
+  const options = filter.options.map((option) => {
+    assertAllowedCapabilityKeys(
+      resourceId,
+      `${resourceId}.capabilities.list.filters.${id}.options`,
+      option as unknown as Record<string, unknown>,
+      adminResourceFilterOptionAllowedKeys
+    );
+    return {
+      value: normalizeCapabilityId(resourceId, `capabilities.list.filters.${id}.options.value`, option.value),
+      labelKey: normalizeLabelKey(resourceId, `capabilities.list.filters.${id}.options.labelKey`, option.labelKey),
+    };
+  });
+
+  if (options.length === 0) {
+    throw new Error(`invalid_admin_resource_capability:${resourceId}:capabilities.list.filters.${id}.options`);
+  }
+
+  assertUniqueValues(resourceId, 'duplicate_admin_resource_filter_option', options.map((option) => option.value));
+
+  const defaultValue = filter.defaultValue
+    ? normalizeCapabilityId(resourceId, `capabilities.list.filters.${id}.defaultValue`, filter.defaultValue)
+    : undefined;
+  if (defaultValue && options.some((option) => option.value === defaultValue) === false) {
+    throw new Error(`invalid_admin_resource_filter_default:${resourceId}:${id}:${defaultValue}`);
+  }
+
+  return {
+    id,
+    param: normalizeSearchParamName(resourceId, `capabilities.list.filters.${id}.param`, filter.param ?? id),
+    labelKey: normalizeLabelKey(resourceId, `capabilities.list.filters.${id}.labelKey`, filter.labelKey),
+    bindingKey: normalizeBindingKey(resourceId, `capabilities.list.filters.${id}.bindingKey`, filter.bindingKey),
+    options,
+    defaultValue,
+  };
+};
+
+const normalizeSortingCapability = (
+  resourceId: string,
+  sorting: AdminResourceListSortingCapability
+): AdminResourceListSortingCapability => {
+  assertAllowedCapabilityKeys(
+    resourceId,
+    `${resourceId}.capabilities.list.sorting`,
+    sorting as unknown as Record<string, unknown>,
+    adminResourceSortingCapabilityAllowedKeys
+  );
+
+  const fields = sorting.fields.map((field) => {
+    assertAllowedCapabilityKeys(
+      resourceId,
+      `${resourceId}.capabilities.list.sorting.fields`,
+      field as unknown as Record<string, unknown>,
+      adminResourceSortingFieldAllowedKeys
+    );
+    return {
+      id: normalizeCapabilityId(resourceId, 'capabilities.list.sorting.fields.id', field.id),
+      labelKey: normalizeLabelKey(resourceId, 'capabilities.list.sorting.fields.labelKey', field.labelKey),
+      bindingKey: normalizeBindingKey(resourceId, 'capabilities.list.sorting.fields.bindingKey', field.bindingKey),
+    };
+  });
+
+  if (fields.length === 0) {
+    throw new Error(`invalid_admin_resource_capability:${resourceId}:capabilities.list.sorting.fields`);
+  }
+
+  assertUniqueValues(resourceId, 'duplicate_admin_resource_sort_field', fields.map((field) => field.id));
+
+  const defaultField = normalizeCapabilityId(resourceId, 'capabilities.list.sorting.defaultField', sorting.defaultField);
+  if (fields.some((field) => field.id === defaultField) === false) {
+    throw new Error(`invalid_admin_resource_sort_default:${resourceId}:${defaultField}`);
+  }
+  if (sorting.defaultDirection !== 'asc' && sorting.defaultDirection !== 'desc') {
+    throw new Error(`invalid_admin_resource_sort_direction:${resourceId}:${sorting.defaultDirection}`);
+  }
+
+  return {
+    param: normalizeSearchParamName(resourceId, 'capabilities.list.sorting.param', sorting.param ?? 'sort'),
+    defaultField,
+    defaultDirection: sorting.defaultDirection,
+    fields,
+  };
+};
+
+const normalizePaginationCapability = (
+  resourceId: string,
+  pagination: AdminResourceListPaginationCapability
+): AdminResourceListPaginationCapability => {
+  assertAllowedCapabilityKeys(
+    resourceId,
+    `${resourceId}.capabilities.list.pagination`,
+    pagination as unknown as Record<string, unknown>,
+    adminResourcePaginationCapabilityAllowedKeys
+  );
+
+  const pageSizeOptions = [...pagination.pageSizeOptions];
+  if (
+    pagination.defaultPageSize < 1 ||
+    pageSizeOptions.length === 0 ||
+    pageSizeOptions.some((option) => option < 1 || Number.isInteger(option) === false)
+  ) {
+    throw new Error(`invalid_admin_resource_pagination:${resourceId}`);
+  }
+
+  assertUniqueValues(resourceId, 'duplicate_admin_resource_page_size', pageSizeOptions.map(String));
+  if (!pageSizeOptions.includes(pagination.defaultPageSize)) {
+    throw new Error(`invalid_admin_resource_pagination_default:${resourceId}:${pagination.defaultPageSize}`);
+  }
+
+  return {
+    pageParam: normalizeSearchParamName(resourceId, 'capabilities.list.pagination.pageParam', pagination.pageParam ?? 'page'),
+    pageSizeParam: normalizeSearchParamName(
+      resourceId,
+      'capabilities.list.pagination.pageSizeParam',
+      pagination.pageSizeParam ?? 'pageSize'
+    ),
+    defaultPageSize: pagination.defaultPageSize,
+    pageSizeOptions,
+  };
+};
+
+const normalizeBulkActionCapability = (
+  resourceId: string,
+  action: AdminResourceListBulkActionCapability
+): AdminResourceListBulkActionCapability => {
+  assertAllowedCapabilityKeys(
+    resourceId,
+    `${resourceId}.capabilities.list.bulkActions`,
+    action as unknown as Record<string, unknown>,
+    adminResourceBulkActionCapabilityAllowedKeys
+  );
+
+  const id = normalizeCapabilityId(resourceId, 'capabilities.list.bulkActions.id', action.id);
+  if (action.selectionModes.length === 0 || action.selectionModes.some((mode) => !ADMIN_RESOURCE_BULK_SELECTION_MODES.has(mode))) {
+    throw new Error(`invalid_admin_resource_bulk_action_selection:${resourceId}:${id}`);
+  }
+
+  return {
+    id,
+    labelKey: normalizeLabelKey(resourceId, `capabilities.list.bulkActions.${id}.labelKey`, action.labelKey),
+    actionId: normalizeActionId(resourceId, `capabilities.list.bulkActions.${id}.actionId`, action.actionId),
+    bindingKey: normalizeBindingKey(resourceId, `capabilities.list.bulkActions.${id}.bindingKey`, action.bindingKey),
+    selectionModes: [...action.selectionModes],
+  };
+};
+
 const normalizeListCapabilities = (
   resourceId: string,
   capabilities: AdminResourceListCapabilities | undefined
@@ -326,167 +508,16 @@ const normalizeListCapabilities = (
     adminResourceListCapabilitiesAllowedKeys
   );
 
-  const search = capabilities.search
-    ? (() => {
-        assertAllowedCapabilityKeys(
-          resourceId,
-          `${resourceId}.capabilities.list.search`,
-          capabilities.search as unknown as Record<string, unknown>,
-          adminResourceSearchCapabilityAllowedKeys
-        );
-        const fields = capabilities.search.fields.map((field) =>
-          normalizeCapabilityId(resourceId, 'capabilities.list.search.fields', field)
-        );
-        if (fields.length === 0) {
-          throw new Error(`invalid_admin_resource_capability:${resourceId}:capabilities.list.search.fields`);
-        }
-        assertUniqueValues(resourceId, 'duplicate_admin_resource_search_field', fields);
-        return {
-          param: normalizeSearchParamName(resourceId, 'capabilities.list.search.param', capabilities.search.param ?? 'q'),
-          placeholderKey: normalizeLabelKey(resourceId, 'capabilities.list.search.placeholderKey', capabilities.search.placeholderKey),
-          fields,
-        };
-      })()
-    : undefined;
-
-  const filters = capabilities.filters?.map((filter) => {
-    assertAllowedCapabilityKeys(
-      resourceId,
-      `${resourceId}.capabilities.list.filters`,
-      filter as unknown as Record<string, unknown>,
-      adminResourceFilterCapabilityAllowedKeys
-    );
-    const id = normalizeCapabilityId(resourceId, 'capabilities.list.filters.id', filter.id);
-    const options = filter.options.map((option) => {
-      assertAllowedCapabilityKeys(
-        resourceId,
-        `${resourceId}.capabilities.list.filters.${id}.options`,
-        option as unknown as Record<string, unknown>,
-        adminResourceFilterOptionAllowedKeys
-      );
-      return {
-        value: normalizeCapabilityId(resourceId, `capabilities.list.filters.${id}.options.value`, option.value),
-        labelKey: normalizeLabelKey(resourceId, `capabilities.list.filters.${id}.options.labelKey`, option.labelKey),
-      };
-    });
-    if (options.length === 0) {
-      throw new Error(`invalid_admin_resource_capability:${resourceId}:capabilities.list.filters.${id}.options`);
-    }
-    assertUniqueValues(resourceId, 'duplicate_admin_resource_filter_option', options.map((option) => option.value));
-    const defaultValue = filter.defaultValue
-      ? normalizeCapabilityId(resourceId, `capabilities.list.filters.${id}.defaultValue`, filter.defaultValue)
-      : undefined;
-    if (defaultValue && options.some((option) => option.value === defaultValue) === false) {
-      throw new Error(`invalid_admin_resource_filter_default:${resourceId}:${id}:${defaultValue}`);
-    }
-    return {
-      id,
-      param: normalizeSearchParamName(resourceId, `capabilities.list.filters.${id}.param`, filter.param ?? id),
-      labelKey: normalizeLabelKey(resourceId, `capabilities.list.filters.${id}.labelKey`, filter.labelKey),
-      bindingKey: normalizeBindingKey(resourceId, `capabilities.list.filters.${id}.bindingKey`, filter.bindingKey),
-      options,
-      defaultValue,
-    };
-  });
+  const search = capabilities.search ? normalizeSearchCapability(resourceId, capabilities.search) : undefined;
+  const filters = capabilities.filters?.map((filter) => normalizeFilterCapability(resourceId, filter));
 
   if (filters) {
     assertUniqueValues(resourceId, 'duplicate_admin_resource_filter', filters.map((filter) => filter.id));
   }
 
-  const sorting = capabilities.sorting
-    ? (() => {
-        assertAllowedCapabilityKeys(
-          resourceId,
-          `${resourceId}.capabilities.list.sorting`,
-          capabilities.sorting as unknown as Record<string, unknown>,
-          adminResourceSortingCapabilityAllowedKeys
-        );
-        const fields = capabilities.sorting.fields.map((field) => {
-          assertAllowedCapabilityKeys(
-            resourceId,
-            `${resourceId}.capabilities.list.sorting.fields`,
-            field as unknown as Record<string, unknown>,
-            adminResourceSortingFieldAllowedKeys
-          );
-          return {
-            id: normalizeCapabilityId(resourceId, 'capabilities.list.sorting.fields.id', field.id),
-            labelKey: normalizeLabelKey(resourceId, 'capabilities.list.sorting.fields.labelKey', field.labelKey),
-            bindingKey: normalizeBindingKey(resourceId, 'capabilities.list.sorting.fields.bindingKey', field.bindingKey),
-          };
-        });
-        if (fields.length === 0) {
-          throw new Error(`invalid_admin_resource_capability:${resourceId}:capabilities.list.sorting.fields`);
-        }
-        assertUniqueValues(resourceId, 'duplicate_admin_resource_sort_field', fields.map((field) => field.id));
-        const defaultField = normalizeCapabilityId(resourceId, 'capabilities.list.sorting.defaultField', capabilities.sorting.defaultField);
-        if (fields.some((field) => field.id === defaultField) === false) {
-          throw new Error(`invalid_admin_resource_sort_default:${resourceId}:${defaultField}`);
-        }
-        return {
-          param: normalizeSearchParamName(resourceId, 'capabilities.list.sorting.param', capabilities.sorting.param ?? 'sort'),
-          defaultField,
-          defaultDirection: capabilities.sorting.defaultDirection,
-          fields,
-        };
-      })()
-    : undefined;
-
-  if (sorting && sorting.defaultDirection !== 'asc' && sorting.defaultDirection !== 'desc') {
-    throw new Error(`invalid_admin_resource_sort_direction:${resourceId}:${sorting.defaultDirection}`);
-  }
-
-  const pagination = capabilities.pagination
-    ? (() => {
-        assertAllowedCapabilityKeys(
-          resourceId,
-          `${resourceId}.capabilities.list.pagination`,
-          capabilities.pagination as unknown as Record<string, unknown>,
-          adminResourcePaginationCapabilityAllowedKeys
-        );
-        const pageSizeOptions = [...capabilities.pagination.pageSizeOptions];
-        if (
-          capabilities.pagination.defaultPageSize < 1 ||
-          pageSizeOptions.length === 0 ||
-          pageSizeOptions.some((option) => option < 1 || Number.isInteger(option) === false)
-        ) {
-          throw new Error(`invalid_admin_resource_pagination:${resourceId}`);
-        }
-        assertUniqueValues(resourceId, 'duplicate_admin_resource_page_size', pageSizeOptions.map(String));
-        if (!pageSizeOptions.includes(capabilities.pagination.defaultPageSize)) {
-          throw new Error(`invalid_admin_resource_pagination_default:${resourceId}:${capabilities.pagination.defaultPageSize}`);
-        }
-        return {
-          pageParam: normalizeSearchParamName(resourceId, 'capabilities.list.pagination.pageParam', capabilities.pagination.pageParam ?? 'page'),
-          pageSizeParam: normalizeSearchParamName(
-            resourceId,
-            'capabilities.list.pagination.pageSizeParam',
-            capabilities.pagination.pageSizeParam ?? 'pageSize'
-          ),
-          defaultPageSize: capabilities.pagination.defaultPageSize,
-          pageSizeOptions,
-        };
-      })()
-    : undefined;
-
-  const bulkActions = capabilities.bulkActions?.map((action) => {
-    assertAllowedCapabilityKeys(
-      resourceId,
-      `${resourceId}.capabilities.list.bulkActions`,
-      action as unknown as Record<string, unknown>,
-      adminResourceBulkActionCapabilityAllowedKeys
-    );
-    const id = normalizeCapabilityId(resourceId, 'capabilities.list.bulkActions.id', action.id);
-    if (action.selectionModes.length === 0 || action.selectionModes.some((mode) => !ADMIN_RESOURCE_BULK_SELECTION_MODES.has(mode))) {
-      throw new Error(`invalid_admin_resource_bulk_action_selection:${resourceId}:${id}`);
-    }
-    return {
-      id,
-      labelKey: normalizeLabelKey(resourceId, `capabilities.list.bulkActions.${id}.labelKey`, action.labelKey),
-      actionId: normalizeActionId(resourceId, `capabilities.list.bulkActions.${id}.actionId`, action.actionId),
-      bindingKey: normalizeBindingKey(resourceId, `capabilities.list.bulkActions.${id}.bindingKey`, action.bindingKey),
-      selectionModes: [...action.selectionModes],
-    };
-  });
+  const sorting = capabilities.sorting ? normalizeSortingCapability(resourceId, capabilities.sorting) : undefined;
+  const pagination = capabilities.pagination ? normalizePaginationCapability(resourceId, capabilities.pagination) : undefined;
+  const bulkActions = capabilities.bulkActions?.map((action) => normalizeBulkActionCapability(resourceId, action));
 
   if (bulkActions) {
     assertUniqueValues(resourceId, 'duplicate_admin_resource_bulk_action', bulkActions.map((action) => action.id));
@@ -497,7 +528,7 @@ const normalizeListCapabilities = (
     ...(filters?.map((filter) => filter.param) ?? []),
     ...(sorting ? [sorting.param] : []),
     ...(pagination ? [pagination.pageParam, pagination.pageSizeParam] : []),
-  ];
+  ].filter((value): value is string => typeof value === 'string');
   assertUniqueValues(resourceId, 'duplicate_admin_resource_search_param', searchParams);
 
   return {
@@ -698,6 +729,9 @@ const normalizeAdminResourceDefinition = (resource: AdminResourceDefinition): Ad
     }
   }
 
+  const normalizedPermissions = normalizeAdminResourcePermissions(resourceId, resource.permissions);
+  const normalizedCapabilities = normalizeAdminResourceCapabilities(resourceId, resource.capabilities);
+
   return {
     ...resource,
     resourceId,
@@ -712,10 +746,8 @@ const normalizeAdminResourceDefinition = (resource: AdminResourceDefinition): Ad
         ? validateViewDefinition(resourceId, 'history', resource.views.history)
         : undefined,
     },
-    ...(normalizeAdminResourcePermissions(resourceId, resource.permissions)
-      ? { permissions: normalizeAdminResourcePermissions(resourceId, resource.permissions) }
-      : {}),
-    capabilities: normalizeAdminResourceCapabilities(resourceId, resource.capabilities),
+    ...(normalizedPermissions ? { permissions: normalizedPermissions } : {}),
+    capabilities: normalizedCapabilities,
     contentUi: normalizeAdminResourceContentUi(resourceId, resource.guard, resource.contentUi),
   };
 };

@@ -132,11 +132,93 @@ const compactForm = (form: EventFormInput): EventFormInput => ({
 const errorMessage = (pt: ReturnType<typeof usePluginTranslation>, error: unknown, fallbackKey: string) =>
   error instanceof EventsApiError ? error.message : pt(fallbackKey);
 
+type ListSearchState = Record<string, unknown>;
+
+type ListPaginationState = Readonly<{
+  page: number;
+  pageSize: number;
+  hasNextPage: boolean;
+}>;
+
+type ListPaginationNavProps = Readonly<{
+  ariaLabel: string;
+  pageLabel: string;
+  previousLabel: string;
+  nextLabel: string;
+  pagination: ListPaginationState;
+  onPageChange: (page: number) => void;
+}>;
+
+const updateListSearchPage = (
+  current: ListSearchState,
+  page: number,
+  pageSize: number
+): ListSearchState => ({
+  ...current,
+  page,
+  pageSize,
+});
+
+const EventListEditAction = ({ id, label }: Readonly<{ id: string; label: string }>) => (
+  <Button asChild variant="outline" size="sm">
+    <Link to="/admin/events/$id" params={{ id }}>
+      {label}
+    </Link>
+  </Button>
+);
+
+const EventsPaginationNav = ({
+  ariaLabel,
+  pageLabel,
+  previousLabel,
+  nextLabel,
+  pagination,
+  onPageChange,
+}: ListPaginationNavProps) => (
+  <nav aria-label={ariaLabel} className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
+    <p key={pagination.page} aria-live="polite" className="animate-pagination-active">
+      {pageLabel}
+    </p>
+    <div className="flex items-center gap-2">
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        disabled={pagination.page <= 1}
+        onClick={() => onPageChange(Math.max(1, pagination.page - 1))}
+      >
+        {previousLabel}
+      </Button>
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        disabled={!pagination.hasNextPage}
+        onClick={() => onPageChange(pagination.page + 1)}
+      >
+        {nextLabel}
+      </Button>
+    </div>
+  </nav>
+);
+
+const createEventsListColumns = (pt: ReturnType<typeof usePluginTranslation>) => [
+  { id: 'title', header: pt('fields.title'), cell: (item: EventContentItem) => item.title },
+  { id: 'categoryName', header: pt('fields.categoryName'), cell: (item: EventContentItem) => item.categoryName ?? '—' },
+  {
+    id: 'dateStart',
+    header: pt('fields.dateStart'),
+    cell: (item: EventContentItem) =>
+      item.dates?.[0]?.dateStart ? new Date(item.dates[0].dateStart).toLocaleString() : '—',
+  },
+];
+
 export function EventsListPage() {
   const pt = usePluginTranslation('events');
   const navigate = useNavigate();
   const search = useSearch({ strict: false }) as { readonly page?: number; readonly pageSize?: number };
   const { page, pageSize } = normalizeListSearch(search);
+  const editLabel = pt('actions.edit');
   const [result, setResult] = React.useState<EventListResult>({
     data: [],
     pagination: { page, pageSize, hasNextPage: false },
@@ -144,20 +226,30 @@ export function EventsListPage() {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
+  const handlePageChange = React.useCallback(
+    (nextPage: number) => {
+      Promise.resolve(
+        navigate({
+          to: '/admin/events',
+          search: (current: ListSearchState) => updateListSearchPage(current, nextPage, result.pagination.pageSize),
+        })
+      ).catch(() => undefined);
+    },
+    [navigate, result.pagination.pageSize]
+  );
+
   React.useEffect(() => {
     if (search.page === page && search.pageSize === pageSize) {
       return;
     }
 
-    void navigate({
-      to: '/admin/events',
-      replace: true,
-      search: (current: Record<string, unknown>) => ({
-        ...current,
-        page,
-        pageSize,
-      }),
-    });
+    Promise.resolve(
+      navigate({
+        to: '/admin/events',
+        replace: true,
+        search: (current: ListSearchState) => updateListSearchPage(current, page, pageSize),
+      })
+    ).catch(() => undefined);
   }, [navigate, page, pageSize, search.page, search.pageSize]);
 
   React.useEffect(() => {
@@ -211,70 +303,20 @@ export function EventsListPage() {
               selectRow: ({ label }) => label,
             }}
             data={result.data}
-            columns={[
-              { id: 'title', header: pt('fields.title'), cell: (item: EventContentItem) => item.title },
-              { id: 'categoryName', header: pt('fields.categoryName'), cell: (item: EventContentItem) => item.categoryName ?? '—' },
-              {
-                id: 'dateStart',
-                header: pt('fields.dateStart'),
-                cell: (item: EventContentItem) =>
-                  item.dates?.[0]?.dateStart ? new Date(item.dates[0].dateStart).toLocaleString() : '—',
-              },
-            ]}
-            rowActions={(item) => (
-              <Button asChild variant="outline" size="sm">
-                <Link to="/admin/events/$id" params={{ id: item.id }}>
-                  {pt('actions.edit')}
-                </Link>
-              </Button>
-            )}
+            columns={createEventsListColumns(pt)}
+            rowActions={(item) => <EventListEditAction id={item.id} label={editLabel} />}
             emptyState={null}
             getRowId={(item) => item.id}
             selectionMode="none"
           />
-          <nav aria-label={pt('pagination.ariaLabel')} className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
-            <p key={result.pagination.page} aria-live="polite" className="animate-pagination-active">
-              {pt('pagination.pageLabel', { page: result.pagination.page })}
-            </p>
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                disabled={result.pagination.page <= 1}
-                onClick={() =>
-                  void navigate({
-                    to: '/admin/events',
-                    search: (current: Record<string, unknown>) => ({
-                      ...current,
-                      page: Math.max(1, result.pagination.page - 1),
-                      pageSize: result.pagination.pageSize,
-                    }),
-                  })
-                }
-              >
-                {pt('pagination.previous')}
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                disabled={!result.pagination.hasNextPage}
-                onClick={() =>
-                  void navigate({
-                    to: '/admin/events',
-                    search: (current: Record<string, unknown>) => ({
-                      ...current,
-                      page: result.pagination.page + 1,
-                      pageSize: result.pagination.pageSize,
-                    }),
-                  })
-                }
-              >
-                {pt('pagination.next')}
-              </Button>
-            </div>
-          </nav>
+          <EventsPaginationNav
+            ariaLabel={pt('pagination.ariaLabel')}
+            pageLabel={pt('pagination.pageLabel', { page: result.pagination.page })}
+            previousLabel={pt('pagination.previous')}
+            nextLabel={pt('pagination.next')}
+            pagination={result.pagination}
+            onPageChange={handlePageChange}
+          />
         </div>
       ) : null}
     </StudioOverviewPageTemplate>

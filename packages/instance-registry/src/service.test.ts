@@ -24,6 +24,7 @@ const baseInstance = {
     email: 'tenant-admin@example.invalid',
   },
   themeKey: 'default',
+  assignedModules: ['news'],
   featureFlags: { beta: true },
   mainserverConfigRef: 'mainserver',
   createdAt: '2026-01-01T00:00:00.000Z',
@@ -44,6 +45,10 @@ const createRepository = (overrides: Partial<InstanceRegistryRepository> = {}): 
   ({
     listInstances: vi.fn(async () => [baseInstance]),
     getInstanceById: vi.fn(async () => baseInstance),
+    listAssignedModules: vi.fn(async () => baseInstance.assignedModules),
+    assignModule: vi.fn(async () => true),
+    revokeModule: vi.fn(async () => true),
+    syncAssignedModuleIam: vi.fn(async () => undefined),
     getAuthClientSecretCiphertext: vi.fn(async () => 'auth-cipher'),
     getTenantAdminClientSecretCiphertext: vi.fn(async () => 'tenant-admin-cipher'),
     resolveHostname: vi.fn(async () => baseInstance),
@@ -51,6 +56,8 @@ const createRepository = (overrides: Partial<InstanceRegistryRepository> = {}): 
     listProvisioningRuns: vi.fn(async () => [latestRun]),
     listLatestProvisioningRuns: vi.fn(async () => ({ demo: latestRun })),
     listAuditEvents: vi.fn(async () => []),
+    getLatestTenantIamAccessProbe: vi.fn(async () => null),
+    getRoleReconcileSummary: vi.fn(async () => null),
     listKeycloakProvisioningRuns: vi.fn(async () => []),
     getKeycloakProvisioningRun: vi.fn(async () => null),
     claimNextKeycloakProvisioningRun: vi.fn(async () => null),
@@ -84,11 +91,39 @@ const createRepository = (overrides: Partial<InstanceRegistryRepository> = {}): 
     ...overrides,
   }) as InstanceRegistryRepository;
 
-const createDeps = (repository = createRepository()): InstanceRegistryServiceDeps => ({
+const createDeps = (
+  repository = createRepository(),
+  overrides: Partial<InstanceRegistryServiceDeps> = {}
+): InstanceRegistryServiceDeps => ({
   repository,
   invalidateHost: vi.fn(),
+  invalidatePermissionSnapshots: vi.fn(async () => undefined),
   protectSecret: vi.fn((value, aad) => (value ? `protected:${aad}:${value}` : null)),
   revealSecret: vi.fn((value) => (value ? `revealed:${value}` : undefined)),
+  moduleIamRegistry: new Map([
+    [
+      'news',
+      {
+        moduleId: 'news',
+        ownerPluginId: 'news',
+        permissionIds: ['news.read', 'news.create', 'news.update', 'news.delete'],
+        systemRoles: [
+          { roleName: 'system_admin', permissionIds: ['news.read', 'news.create', 'news.update', 'news.delete'] },
+          { roleName: 'editor', permissionIds: ['news.read', 'news.create', 'news.update', 'news.delete'] },
+        ],
+      },
+    ],
+    [
+      'events',
+      {
+        moduleId: 'events',
+        ownerPluginId: 'events',
+        permissionIds: ['events.read'],
+        systemRoles: [{ roleName: 'system_admin', permissionIds: ['events.read'] }],
+      },
+    ],
+  ]),
+  ...overrides,
 });
 
 describe('instance registry service facade', () => {

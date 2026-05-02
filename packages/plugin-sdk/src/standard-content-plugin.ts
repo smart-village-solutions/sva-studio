@@ -140,7 +140,7 @@ export const createStandardContentAdminResource = (
   permissions: {
     list: [`${options.pluginId}.read`],
     create: [`${options.pluginId}.create`],
-    detail: [`${options.pluginId}.read`, `${options.pluginId}.update`],
+    detail: [`${options.pluginId}.read`],
   },
   capabilities: {
     list: {

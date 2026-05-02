@@ -77,7 +77,9 @@ describe('news api', () => {
     expect(fetch).toHaveBeenCalledWith('/api/v1/mainserver/news?page=2&pageSize=50', expect.any(Object));
   });
 
-  it('falls back to default pagination when the mainserver omits it', async () => {
+  it('falls back to the requested pagination when the mainserver omits it', async () => {
+    const requestedQuery = { page: 3, pageSize: 50 } as const;
+
     vi.mocked(fetch).mockResolvedValueOnce({
       ok: true,
       json: async () => ({
@@ -98,9 +100,9 @@ describe('news api', () => {
       }),
     } as Response);
 
-    await expect(listNews(defaultListQuery)).resolves.toEqual({
+    await expect(listNews(requestedQuery)).resolves.toEqual({
       data: [expect.objectContaining({ id: 'news-1' })],
-      pagination: { page: 1, pageSize: 25, hasNextPage: false },
+      pagination: { page: 3, pageSize: 50, hasNextPage: false },
     });
   });
 

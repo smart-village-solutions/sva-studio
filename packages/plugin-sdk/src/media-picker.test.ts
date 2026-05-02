@@ -30,6 +30,19 @@ describe('defineMediaPickerDefinition', () => {
     });
   });
 
+  it('returns normalized roles and media types', () => {
+    expect(
+      defineMediaPickerDefinition({
+        roles: [' hero_image '],
+        allowedMediaTypes: [' image '],
+      })
+    ).toEqual({
+      roles: ['hero_image'],
+      allowedMediaTypes: ['image'],
+      selectionMode: 'single',
+    });
+  });
+
   it('rejects empty or blank roles', () => {
     expect(() =>
       defineMediaPickerDefinition({

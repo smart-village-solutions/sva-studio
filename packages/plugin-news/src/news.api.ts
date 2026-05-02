@@ -17,11 +17,6 @@ export class NewsApiError extends Error {
 
 const createIdempotencyKey = () => crypto.randomUUID();
 const DEFAULT_LIST_QUERY: NewsListQuery = { page: 1, pageSize: 25 };
-const DEFAULT_LIST_PAGINATION: NewsListResult['pagination'] = {
-  page: DEFAULT_LIST_QUERY.page,
-  pageSize: DEFAULT_LIST_QUERY.pageSize,
-  hasNextPage: false,
-};
 
 const toNewsContent = (item: NewsContentItem): NewsContentItem => item;
 
@@ -43,9 +38,13 @@ const newsClient = createMainserverCrudClient<
   basePath: '/api/v1/mainserver/news',
   errorFactory: (code, message) => new NewsApiError(code, message),
   mapItem: toNewsContent,
-  mapListResponse: (response, mapItem) => ({
+  mapListResponse: (response, mapItem, query) => ({
     data: response.data.map(mapItem),
-    pagination: response.pagination ?? DEFAULT_LIST_PAGINATION,
+    pagination: response.pagination ?? {
+      page: query.page,
+      pageSize: query.pageSize,
+      hasNextPage: false,
+    },
   }),
   createBody: (input) => toMutationBody(input, { includePushNotification: true }),
   updateBody: (input) => toMutationBody(input, { includePushNotification: false }),

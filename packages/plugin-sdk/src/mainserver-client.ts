@@ -16,7 +16,11 @@ export type MainserverCrudClientOptions<
   errorFactory: MainserverErrorFactory<TError>;
   fetch?: typeof fetch;
   mapItem?: (item: TItem) => TItem;
-  mapListResponse: (response: TListResponse, mapItem: (item: TItem) => TItem) => TListResult;
+  mapListResponse: (
+    response: TListResponse,
+    mapItem: (item: TItem) => TItem,
+    query: MainserverListQuery
+  ) => TListResult;
   createBody?: (input: TMutationInput) => unknown;
   updateBody?: (input: TMutationInput) => unknown;
   createHeaders?: () => HeadersInit;
@@ -122,7 +126,7 @@ export const createMainserverCrudClient = <
         fetch: options.fetch,
         errorFactory: options.errorFactory,
       });
-      return options.mapListResponse(response, mapItem);
+      return options.mapListResponse(response, mapItem, query);
     },
     get: async (contentId: string): Promise<TItem> => {
       const response = await requestMainserverJson<ApiItemResponse<TItem>, TError>({

@@ -31,6 +31,21 @@ describe('poi api', () => {
     );
   });
 
+  it('falls back to the requested pagination when the host omits it', async () => {
+    const requestedQuery = { page: 4, pageSize: 50 } as const;
+    const fetchMock = vi.fn(async () =>
+      Response.json({
+        data: [{ id: 'poi-1', name: 'Rathaus' }],
+      })
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(listPoi(requestedQuery)).resolves.toEqual({
+      data: [{ id: 'poi-1', name: 'Rathaus' }],
+      pagination: { page: 4, pageSize: 50, hasNextPage: false },
+    });
+  });
+
   it('creates POI via POST', async () => {
     const fetchMock = vi.fn(async () => Response.json({ data: { id: 'poi-1', name: 'Rathaus' } }));
     vi.stubGlobal('fetch', fetchMock);

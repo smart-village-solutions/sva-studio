@@ -13,18 +13,17 @@ export class PoiApiError extends Error {
 }
 
 const DEFAULT_LIST_QUERY: PoiListQuery = { page: 1, pageSize: 25 };
-const DEFAULT_LIST_PAGINATION: PoiListResult['pagination'] = {
-  page: DEFAULT_LIST_QUERY.page,
-  pageSize: DEFAULT_LIST_QUERY.pageSize,
-  hasNextPage: false,
-};
 
 const poiClient = createMainserverCrudClient<PoiContentItem, PoiFormInput, PoiListResult, PoiListResult, PoiApiError>({
   basePath: '/api/v1/mainserver/poi',
   errorFactory: (code, message) => new PoiApiError(code, message),
-  mapListResponse: (response) => ({
+  mapListResponse: (response, _mapItem, query) => ({
     data: response.data,
-    pagination: response.pagination ?? DEFAULT_LIST_PAGINATION,
+    pagination: response.pagination ?? {
+      page: query.page,
+      pageSize: query.pageSize,
+      hasNextPage: false,
+    },
   }),
 });
 

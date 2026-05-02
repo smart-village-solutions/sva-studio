@@ -7,11 +7,6 @@ import {
 import type { EventContentItem, EventFormInput, EventListQuery, EventListResult, PoiSelectItem } from './events.types.js';
 
 const DEFAULT_LIST_QUERY: EventListQuery = { page: 1, pageSize: 25 };
-const DEFAULT_LIST_PAGINATION: EventListResult['pagination'] = {
-  page: DEFAULT_LIST_QUERY.page,
-  pageSize: DEFAULT_LIST_QUERY.pageSize,
-  hasNextPage: false,
-};
 const MAX_POI_SELECTION_PAGES = 101;
 
 export class EventsApiError extends Error {
@@ -33,9 +28,13 @@ const eventsClient = createMainserverCrudClient<
 >({
   basePath: '/api/v1/mainserver/events',
   errorFactory: (code, message) => new EventsApiError(code, message),
-  mapListResponse: (response) => ({
+  mapListResponse: (response, _mapItem, query) => ({
     data: response.data,
-    pagination: response.pagination ?? DEFAULT_LIST_PAGINATION,
+    pagination: response.pagination ?? {
+      page: query.page,
+      pageSize: query.pageSize,
+      hasNextPage: false,
+    },
   }),
 });
 

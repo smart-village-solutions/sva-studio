@@ -15,7 +15,7 @@ export const defineMediaPickerDefinition = <const TDefinition extends MediaPicke
   }
 
   const seenRoles = new Set<string>();
-  for (const role of definition.roles) {
+  const normalizedRoles = definition.roles.map((role) => {
     const normalizedRole = role.trim();
     if (!normalizedRole) {
       throw new Error('invalid_media_picker_roles');
@@ -24,17 +24,18 @@ export const defineMediaPickerDefinition = <const TDefinition extends MediaPicke
       throw new Error(`duplicate_media_picker_role:${normalizedRole}`);
     }
     seenRoles.add(normalizedRole);
-  }
+    return normalizedRole;
+  });
 
-  if (
-    definition.allowedMediaTypes.length === 0 ||
-    definition.allowedMediaTypes.some((entry) => entry.trim().length === 0)
-  ) {
+  const normalizedAllowedMediaTypes = definition.allowedMediaTypes.map((entry) => entry.trim());
+  if (normalizedAllowedMediaTypes.length === 0 || normalizedAllowedMediaTypes.some((entry) => entry.length === 0)) {
     throw new Error('invalid_media_picker_media_types');
   }
 
   return {
     ...definition,
+    roles: normalizedRoles,
+    allowedMediaTypes: normalizedAllowedMediaTypes,
     selectionMode: definition.selectionMode ?? 'single',
   };
 };

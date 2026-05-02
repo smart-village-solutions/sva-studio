@@ -31,6 +31,21 @@ describe('events api', () => {
     );
   });
 
+  it('falls back to the requested pagination when the host omits it', async () => {
+    const requestedQuery = { page: 2, pageSize: 50 } as const;
+    const fetchMock = vi.fn(async () =>
+      Response.json({
+        data: [{ id: 'event-1', title: 'Stadtfest' }],
+      })
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(listEvents(requestedQuery)).resolves.toEqual({
+      data: [{ id: 'event-1', title: 'Stadtfest' }],
+      pagination: { page: 2, pageSize: 50, hasNextPage: false },
+    });
+  });
+
   it('creates events via POST', async () => {
     const fetchMock = vi.fn(async () => Response.json({ data: { id: 'event-1', title: 'Stadtfest' } }));
     vi.stubGlobal('fetch', fetchMock);

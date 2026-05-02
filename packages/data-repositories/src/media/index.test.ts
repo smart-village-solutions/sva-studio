@@ -110,8 +110,8 @@ describe('media repository', () => {
     expect(statements[0]?.values[9]).toBe(JSON.stringify({ title: 'Rathaus' }));
   });
 
-  it('maps asset lookups and filtered asset listings', async () => {
-    const { executor, statements } = createQueuedExecutor([[assetRow], [assetRow]]);
+  it('maps asset lookups, filtered asset listings, and matching totals', async () => {
+    const { executor, statements } = createQueuedExecutor([[assetRow], [assetRow], [{ total: 7 }]]);
     const repository = createMediaRepository(executor);
 
     await expect(repository.getAssetById('tenant-a', 'asset-1')).resolves.toEqual({
@@ -139,7 +139,9 @@ describe('media repository', () => {
         offset: 20,
       })
     ).resolves.toHaveLength(1);
+    await expect(repository.countAssets({ instanceId: 'tenant-a', search: ' Rathaus ', visibility: 'public' })).resolves.toBe(7);
     expect(statements[1]?.values).toEqual(['tenant-a', '%rathaus%', 'public', 10, 20]);
+    expect(statements[2]?.values).toEqual(['tenant-a', '%rathaus%', 'public']);
   });
 
   it('uses default asset list filters and normalizes nullable asset metadata fail-closed', async () => {
@@ -324,6 +326,33 @@ describe('media repository', () => {
       assetCount: 3,
       updatedAt: '2026-04-29T10:09:00.000Z',
     });
+
+    const { executor: adjustExecutor, statements: adjustStatements } = createQueuedExecutor([
+      [
+        {
+          instance_id: 'tenant-a',
+          total_bytes: 2541,
+          asset_count: 2,
+          updated_at: '2026-04-29T10:11:00.000Z',
+        },
+      ],
+    ]);
+    const adjustRepository = createMediaRepository(adjustExecutor);
+
+    await expect(
+      adjustRepository.adjustStorageUsage({
+        instanceId: 'tenant-a',
+        totalBytesDelta: -1555,
+        assetCountDelta: -1,
+      })
+    ).resolves.toEqual({
+      instanceId: 'tenant-a',
+      totalBytes: 2541,
+      assetCount: 2,
+      updatedAt: '2026-04-29T10:11:00.000Z',
+    });
+    expect(adjustStatements[0]?.text.includes('RETURNING')).toBe(true);
+    expect(adjustStatements[0]?.values).toEqual(['tenant-a', -1555, -1]);
   });
 
   it('normalizes nullable variant, upload session, and reference fields', async () => {

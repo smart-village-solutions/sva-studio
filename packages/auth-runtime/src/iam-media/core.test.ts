@@ -30,6 +30,7 @@ const createService = () => ({
       technical: {},
     },
   ]),
+  countAssets: vi.fn(async () => 1),
   getAssetById: vi.fn(async (_instanceId: string, assetId: string) =>
     assetId === 'missing'
       ? null
@@ -83,6 +84,11 @@ const createService = () => ({
   upsertUploadSession: vi.fn(async () => undefined),
   upsertVariant: vi.fn(async () => undefined),
   upsertStorageUsage: vi.fn(async () => undefined),
+  adjustStorageUsage: vi.fn(async () => ({
+    instanceId: 'tenant-a',
+    totalBytes: 4096,
+    assetCount: 3,
+  })),
   deleteAsset: vi.fn(async () => undefined),
   replaceReferences: vi.fn(async () => undefined),
 });
@@ -133,6 +139,32 @@ describe('media http handlers', () => {
         total: 1,
       },
     });
+  });
+
+  it('returns the real total count for paginated media lists', async () => {
+    const service = createService();
+    service.countAssets = vi.fn(async () => 42);
+    const handlers = createMediaHttpHandlers({
+      withMediaService: async (_instanceId, work) => work(service as never),
+      storagePort: { prepareUpload: vi.fn(), resolveDelivery: vi.fn() } as never,
+      authorizeAction: allowAuthorization,
+      createId: () => 'id-1',
+      now: () => '2026-04-29T19:00:00.000Z',
+      emitAuditEvent,
+    });
+
+    const response = await handlers.listMedia(
+      new Request('http://localhost/api/v1/iam/media?instanceId=tenant-a&page=1&pageSize=10'),
+      createContext()
+    );
+
+    await expect(response.json()).resolves.toEqual(
+      expect.objectContaining({
+        pagination: expect.objectContaining({
+          total: 42,
+        }),
+      })
+    );
   });
 
   it('initializes uploads through the storage port after quota validation', async () => {
@@ -606,11 +638,6 @@ describe('media http handlers', () => {
         generationStatus: 'ready',
       },
     ]);
-    service.getStorageUsage = vi.fn(async () => ({
-      instanceId: 'tenant-a',
-      totalBytes: 4096,
-      assetCount: 2,
-    }));
     service.getAssetById = vi.fn(async () => ({
       id: 'asset-1',
       instanceId: 'tenant-a',
@@ -647,10 +674,10 @@ describe('media http handlers', () => {
 
     expect(response.status).toBe(200);
     expect(service.deleteAsset).toHaveBeenCalledWith('tenant-a', 'asset-1');
-    expect(service.upsertStorageUsage).toHaveBeenCalledWith({
+    expect(service.adjustStorageUsage).toHaveBeenCalledWith({
       instanceId: 'tenant-a',
-      totalBytes: 2541,
-      assetCount: 1,
+      totalBytesDelta: -1555,
+      assetCountDelta: -1,
     });
     expect(storagePort.deleteObject).toHaveBeenNthCalledWith(1, {
       instanceId: 'tenant-a',

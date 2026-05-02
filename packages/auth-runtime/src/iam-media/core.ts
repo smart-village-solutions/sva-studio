@@ -257,16 +257,25 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
     const search = url.searchParams.get('search')?.trim() || undefined;
     const visibility = url.searchParams.get('visibility')?.trim() || undefined;
 
-    const assets = await deps.withMediaService(instanceId, (service) =>
-      service.listAssets({
-        instanceId,
-        search,
-        visibility,
-        limit: pageSize,
-        offset: (page - 1) * pageSize,
-      })
+    const [assets, total] = await deps.withMediaService(instanceId, (service) =>
+      Promise.all([
+        service.listAssets({
+          instanceId,
+          search,
+          visibility,
+          limit: pageSize,
+          offset: (page - 1) * pageSize,
+        }),
+        service.countAssets({
+          instanceId,
+          search,
+          visibility,
+        }),
+      ])
     );
-    const browserAssets = assets.map((asset) => asMediaAsset(asset)).filter((asset): asset is BrowserMediaAsset => asset !== null);
+    const browserAssets = assets
+      .map((asset: Awaited<ReturnType<MediaService['listAssets']>>[number]) => asMediaAsset(asset))
+      .filter((asset: BrowserMediaAsset | null): asset is BrowserMediaAsset => asset !== null);
 
     await emitMediaAuditEvent({
       deps,
@@ -277,7 +286,7 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
       resourceType: 'media_library',
     });
 
-    return jsonResponse(200, asApiList(browserAssets, { page, pageSize, total: browserAssets.length }, getRequestId()));
+    return jsonResponse(200, asApiList(browserAssets, { page, pageSize, total }, getRequestId()));
   },
 
   async getMedia(request: Request, ctx: AuthenticatedRequestContext): Promise<Response> {
@@ -1000,9 +1009,7 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
       });
     }
 
-    const [currentUsage, variants] = await deps.withMediaService(instanceId, async (service) =>
-      Promise.all([service.getStorageUsage(instanceId), service.listVariantsByAssetId(instanceId, assetId)])
-    );
+    const variants = await deps.withMediaService(instanceId, async (service) => service.listVariantsByAssetId(instanceId, assetId));
     const releasedBytes =
       Math.max(0, Number(asset.byteSize) || 0)
       + Math.max(0, Number((asset.technical as { variantTotalBytes?: unknown } | undefined)?.variantTotalBytes) || 0);
@@ -1016,13 +1023,11 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
     );
     await deps.withMediaService(instanceId, async (service) => {
       await service.deleteAsset(instanceId, assetId);
-      if (currentUsage) {
-        await service.upsertStorageUsage({
-          instanceId,
-          totalBytes: Math.max(0, currentUsage.totalBytes - releasedBytes),
-          assetCount: Math.max(0, currentUsage.assetCount - 1),
-        });
-      }
+      await service.adjustStorageUsage({
+        instanceId,
+        totalBytesDelta: -releasedBytes,
+        assetCountDelta: -1,
+      });
     });
     await emitMediaAuditEvent({
       deps,

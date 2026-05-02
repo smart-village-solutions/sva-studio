@@ -59,6 +59,7 @@ describe('media upload processing service', () => {
       listVariantsByAssetId: vi.fn(async () => []),
       getStorageUsage: vi.fn(async () => null),
       upsertStorageUsage: vi.fn(async () => undefined),
+      adjustStorageUsage: vi.fn(async () => undefined),
     };
 
     const storagePort = {
@@ -119,10 +120,11 @@ describe('media upload processing service', () => {
         status: 'validated',
       })
     );
-    expect(service.upsertStorageUsage).toHaveBeenCalledWith(
+    expect(service.adjustStorageUsage).toHaveBeenCalledWith(
       expect.objectContaining({
         instanceId: 'tenant-a',
-        assetCount: 1,
+        totalBytesDelta: expect.any(Number),
+        assetCountDelta: 1,
       })
     );
   });
@@ -157,6 +159,7 @@ describe('media upload processing service', () => {
       listVariantsByAssetId: vi.fn(async () => []),
       getStorageUsage: vi.fn(async () => null),
       upsertStorageUsage: vi.fn(async () => undefined),
+      adjustStorageUsage: vi.fn(async () => undefined),
     };
 
     const storagePort = {
@@ -267,6 +270,7 @@ describe('media upload processing service', () => {
       listVariantsByAssetId: vi.fn(async () => []),
       getStorageUsage: vi.fn(async () => null),
       upsertStorageUsage: vi.fn(async () => undefined),
+      adjustStorageUsage: vi.fn(async () => undefined),
     };
     const storagePort = {
       readObject: vi.fn(async () => ({
@@ -325,6 +329,7 @@ describe('media upload processing service', () => {
       listVariantsByAssetId: vi.fn(async () => []),
       getStorageUsage: vi.fn(async () => null),
       upsertStorageUsage: vi.fn(async () => undefined),
+      adjustStorageUsage: vi.fn(async () => undefined),
     };
     const storagePort = {
       readObject: vi.fn(),
@@ -372,6 +377,7 @@ describe('media upload processing service', () => {
       listVariantsByAssetId: vi.fn(async () => []),
       getStorageUsage: vi.fn(async () => null),
       upsertStorageUsage: vi.fn(async () => undefined),
+      adjustStorageUsage: vi.fn(async () => undefined),
     };
     const storagePort = {
       readObject: vi.fn(),
@@ -420,6 +426,7 @@ describe('media upload processing service', () => {
       listVariantsByAssetId: vi.fn(async () => []),
       getStorageUsage: vi.fn(async () => null),
       upsertStorageUsage: vi.fn(async () => undefined),
+      adjustStorageUsage: vi.fn(async () => undefined),
     };
 
     const storagePort = {
@@ -485,6 +492,7 @@ describe('media upload processing service', () => {
       listVariantsByAssetId: vi.fn(async () => []),
       getStorageUsage: vi.fn(async () => null),
       upsertStorageUsage: vi.fn(async () => undefined),
+      adjustStorageUsage: vi.fn(async () => undefined),
     };
 
     const storagePort = {
@@ -540,6 +548,7 @@ describe('media upload processing service', () => {
       listVariantsByAssetId: vi.fn(async () => []),
       getStorageUsage: vi.fn(async () => null),
       upsertStorageUsage: vi.fn(async () => undefined),
+      adjustStorageUsage: vi.fn(async () => undefined),
     };
 
     const storagePort = {

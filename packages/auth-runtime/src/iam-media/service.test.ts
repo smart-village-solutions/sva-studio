@@ -4,6 +4,7 @@ import { createMediaService } from './service.js';
 
 const createRepository = () => ({
   listAssets: vi.fn(async () => [{ id: 'asset-1' }]),
+  countAssets: vi.fn(async () => 1),
   getAssetById: vi.fn(async () => ({ id: 'asset-1' })),
   listVariantsByAssetId: vi.fn(async () => [{ id: 'variant-1' }]),
   getUsageImpact: vi.fn(async () => ({ assetId: 'asset-1', totalReferences: 1, references: [] })),
@@ -21,6 +22,7 @@ const createRepository = () => ({
   upsertUploadSession: vi.fn(async () => undefined),
   getUploadSessionById: vi.fn(async () => ({ id: 'upload-1' })),
   upsertStorageUsage: vi.fn(async () => undefined),
+  adjustStorageUsage: vi.fn(async () => ({ instanceId: 'tenant-a', totalBytes: 1024, assetCount: 1 })),
   upsertStorageQuota: vi.fn(async () => undefined),
   replaceReferences: vi.fn(async () => undefined),
   listReferencesByAssetId: vi.fn(async () => []),
@@ -32,6 +34,7 @@ describe('media auth runtime service', () => {
     const service = createMediaService(repository);
 
     await expect(service.listAssets({ instanceId: 'tenant-a' })).resolves.toEqual([{ id: 'asset-1' }]);
+    await expect(service.countAssets({ instanceId: 'tenant-a' })).resolves.toBe(1);
     await expect(service.getAssetById('tenant-a', 'asset-1')).resolves.toEqual({ id: 'asset-1' });
     await expect(service.listVariantsByAssetId('tenant-a', 'asset-1')).resolves.toEqual([{ id: 'variant-1' }]);
     await expect(service.getUsageImpact('tenant-a', 'asset-1')).resolves.toEqual({
@@ -41,6 +44,7 @@ describe('media auth runtime service', () => {
     });
 
     expect(repository.listAssets).toHaveBeenCalledWith({ instanceId: 'tenant-a' });
+    expect(repository.countAssets).toHaveBeenCalledWith({ instanceId: 'tenant-a' });
     expect(repository.getAssetById).toHaveBeenCalledWith('tenant-a', 'asset-1');
   });
 
@@ -49,6 +53,7 @@ describe('media auth runtime service', () => {
     const service = createMediaService(repository);
 
     await service.upsertStorageQuota({ instanceId: 'tenant-a', maxBytes: 2048 });
+    await service.adjustStorageUsage({ instanceId: 'tenant-a', totalBytesDelta: 512, assetCountDelta: 1 });
     await service.wouldExceedStorageQuota('tenant-a', 2000);
     await service.replaceReferences({
       instanceId: 'tenant-a',
@@ -58,6 +63,11 @@ describe('media auth runtime service', () => {
     });
 
     expect(repository.upsertStorageQuota).toHaveBeenCalledWith({ instanceId: 'tenant-a', maxBytes: 2048 });
+    expect(repository.adjustStorageUsage).toHaveBeenCalledWith({
+      instanceId: 'tenant-a',
+      totalBytesDelta: 512,
+      assetCountDelta: 1,
+    });
     expect(repository.wouldExceedStorageQuota).toHaveBeenCalledWith('tenant-a', 2000);
     expect(repository.replaceReferences).toHaveBeenCalledWith({
       instanceId: 'tenant-a',

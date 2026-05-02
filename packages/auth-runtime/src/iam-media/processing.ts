@@ -335,12 +335,10 @@ export const createMediaUploadProcessingService = (deps: {
         ...uploadSession,
         status: 'validated',
       });
-
-      const currentUsage = await deps.service.getStorageUsage(input.instanceId);
-      await deps.service.upsertStorageUsage({
+      await deps.service.adjustStorageUsage({
         instanceId: input.instanceId,
-        totalBytes: (currentUsage?.totalBytes ?? 0) + object.byteSize + variantBytes,
-        assetCount: (currentUsage?.assetCount ?? 0) + 1,
+        totalBytesDelta: object.byteSize + variantBytes,
+        assetCountDelta: 1,
       });
 
       return {

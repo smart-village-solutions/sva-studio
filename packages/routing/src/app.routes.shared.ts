@@ -7,7 +7,7 @@ import {
   createAdminResourceRouteFactories,
   createLegacyContentAliasFactories,
 } from './admin-resource-routes.js';
-import { adminDetailParamNameByBinding } from './admin-resource-route-paths.js';
+import { getAdminDetailRoutePath as resolveAdminDetailRoutePath } from './admin-resource-route-paths.js';
 import { type RoutingDiagnosticsHook } from './diagnostics.js';
 import { resolvePluginRouteGuard } from './plugin-route-guards.js';
 import { normalizeIamTab, normalizeRoleDetailTab } from './route-search.js';
@@ -118,18 +118,14 @@ const uiRouteDefinitions: readonly UiRouteDefinition[] = [
   { binding: 'adminApiPhase1Test', path: uiRoutePaths.adminApiPhase1Test },
 ] as const;
 
-export const getAdminDetailRoutePath = (basePath: string, bindingKey: string): string => {
-  const detailParamName =
-    adminDetailParamNameByBinding[bindingKey as keyof typeof adminDetailParamNameByBinding] ??
-    adminDetailParamNameByBinding.contentDetail;
-  return `${basePath}/$${detailParamName}`;
-};
+export const getAdminDetailRoutePath = resolveAdminDetailRoutePath;
+
 const collectAdminResourceRoutePaths = (resources: readonly AdminResourceDefinition[]): ReadonlyMap<string, string> => {
   const paths = new Map<string, string>();
 
   for (const resource of resources) {
     const basePath = `/admin/${resource.basePath}`;
-    const detailPath = getAdminDetailRoutePath(basePath, resource.views.detail.bindingKey);
+    const detailPath = resolveAdminDetailRoutePath(basePath, resource.views.detail.bindingKey);
     paths.set(basePath, resource.resourceId);
     paths.set(`${basePath}/new`, resource.resourceId);
     paths.set(detailPath, resource.resourceId);

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   createRoutingDiagnosticsLogger,
@@ -21,6 +21,11 @@ const testEvent: RoutingDiagnosticEvent = {
 };
 
 describe('emitRoutingDiagnostic', () => {
+  afterEach(() => {
+    resetServerFallbackLogger();
+    fallbackLogger.error.mockReset();
+  });
+
   it('uses the registered server fallback logger for server-side hook failures', async () => {
     registerServerFallbackLogger(fallbackLogger);
 
@@ -41,9 +46,6 @@ describe('emitRoutingDiagnostic', () => {
         error_message: 'diagnostics failed',
       })
     );
-
-    resetServerFallbackLogger();
-    fallbackLogger.error.mockReset();
   });
 
   it('returns early when no diagnostics hook is configured', () => {
@@ -75,9 +77,6 @@ describe('emitRoutingDiagnostic', () => {
         error_message: 'diagnostics failed',
       })
     );
-
-    resetServerFallbackLogger();
-    fallbackLogger.error.mockReset();
   });
 
   it('normalizes non-Error diagnostics hook failures deterministically', async () => {
@@ -100,9 +99,6 @@ describe('emitRoutingDiagnostic', () => {
         error_message: 'plain diagnostics failure',
       })
     );
-
-    resetServerFallbackLogger();
-    fallbackLogger.error.mockReset();
   });
 
   it('logs browser-side diagnostics hook failures directly to console.error', async () => {

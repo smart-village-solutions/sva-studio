@@ -255,6 +255,8 @@ export const createMediaUploadProcessingService = (deps: {
       };
     }
 
+    const writtenVariantStorageKeys: string[] = [];
+
     try {
       const object = await deps.storagePort.readObject({
         instanceId: input.instanceId,
@@ -304,6 +306,7 @@ export const createMediaUploadProcessingService = (deps: {
           body: variantBuffer,
           contentType: resolvePresetContentType(preset.format),
         });
+        writtenVariantStorageKeys.push(storageKey);
         variantBytes += writeResult.byteSize;
         const variantMetadata = await sharp(variantBuffer).metadata();
         await deps.service.upsertVariant(input.instanceId, {
@@ -347,6 +350,18 @@ export const createMediaUploadProcessingService = (deps: {
         uploadSessionId: String(uploadSession.id),
       };
     } catch (error) {
+      if (writtenVariantStorageKeys.length > 0) {
+        await Promise.allSettled(
+          writtenVariantStorageKeys.map((storageKey) =>
+            deps.storagePort.deleteObject({
+              instanceId: input.instanceId,
+              storageKey,
+            })
+          )
+        );
+        await deps.service.deleteVariantsByAssetId(input.instanceId, String(asset.id));
+      }
+
       if (error instanceof MediaStorageUnavailableError) {
         throw error;
       }

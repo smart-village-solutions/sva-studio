@@ -546,6 +546,7 @@ describe('media upload processing service', () => {
       upsertUploadSession: vi.fn(async () => undefined),
       upsertVariant: vi.fn(async () => undefined),
       listVariantsByAssetId: vi.fn(async () => []),
+      deleteVariantsByAssetId: vi.fn(async () => undefined),
       getStorageUsage: vi.fn(async () => null),
       upsertStorageUsage: vi.fn(async () => undefined),
       adjustStorageUsage: vi.fn(async () => undefined),
@@ -578,5 +579,72 @@ describe('media upload processing service', () => {
     expect(service.upsertAsset).not.toHaveBeenCalled();
     expect(service.upsertUploadSession).not.toHaveBeenCalled();
     expect(storagePort.deleteObject).not.toHaveBeenCalled();
+  });
+
+  it('cleans up partially written variants before returning a failed result', async () => {
+    const originalBuffer = await sharp({
+      create: {
+        width: 1600,
+        height: 900,
+        channels: 3,
+        background: { r: 40, g: 50, b: 60 },
+      },
+    })
+      .png()
+      .toBuffer();
+
+    const service = {
+      getUploadSessionById: vi.fn(async () => createUploadSession({ byteSize: originalBuffer.byteLength })),
+      getAssetById: vi.fn(async () => createAsset({ byteSize: originalBuffer.byteLength })),
+      upsertAsset: vi.fn(async () => undefined),
+      upsertUploadSession: vi.fn(async () => undefined),
+      upsertVariant: vi.fn(async () => undefined),
+      listVariantsByAssetId: vi.fn(async () => []),
+      deleteVariantsByAssetId: vi.fn(async () => undefined),
+      getStorageUsage: vi.fn(async () => null),
+      upsertStorageUsage: vi.fn(async () => undefined),
+      adjustStorageUsage: vi.fn(async () => undefined),
+    };
+
+    const storagePort = {
+      readObject: vi.fn(async () => ({
+        body: originalBuffer,
+        byteSize: originalBuffer.byteLength,
+        contentType: 'image/png',
+      })),
+      writeObject: vi
+        .fn()
+        .mockImplementationOnce(async ({ body }: { body: Uint8Array }) => ({ byteSize: body.byteLength }))
+        .mockImplementationOnce(async () => {
+          throw new Error('upload_size_mismatch');
+        }),
+      deleteObject: vi.fn(async () => undefined),
+    };
+
+    const processor = createMediaUploadProcessingService({
+      service: service as never,
+      storagePort: storagePort as never,
+      createId: vi
+        .fn()
+        .mockReturnValueOnce('variant-1')
+        .mockReturnValueOnce('variant-2')
+        .mockReturnValueOnce('variant-3'),
+    });
+
+    const result = await processor.completeUpload({
+      instanceId: 'tenant-a',
+      uploadSessionId: 'upload-1',
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      errorCode: 'upload_size_exceeded',
+      status: 413,
+    });
+    expect(service.deleteVariantsByAssetId).toHaveBeenCalledWith('tenant-a', 'asset-1');
+    expect(storagePort.deleteObject).toHaveBeenCalledWith({
+      instanceId: 'tenant-a',
+      storageKey: 'tenant-a/variants/asset-1/thumbnail.webp',
+    });
   });
 });

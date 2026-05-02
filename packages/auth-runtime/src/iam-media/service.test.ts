@@ -7,6 +7,7 @@ const createRepository = () => ({
   countAssets: vi.fn(async () => 1),
   getAssetById: vi.fn(async () => ({ id: 'asset-1' })),
   listVariantsByAssetId: vi.fn(async () => [{ id: 'variant-1' }]),
+  deleteVariantsByAssetId: vi.fn(async () => undefined),
   getUsageImpact: vi.fn(async () => ({ assetId: 'asset-1', totalReferences: 1, references: [] })),
   getStorageUsage: vi.fn(async () => ({ instanceId: 'tenant-a', totalBytes: 1024, assetCount: 1 })),
   getStorageQuota: vi.fn(async () => ({ instanceId: 'tenant-a', maxBytes: 2048 })),
@@ -54,6 +55,7 @@ describe('media auth runtime service', () => {
 
     await service.upsertStorageQuota({ instanceId: 'tenant-a', maxBytes: 2048 });
     await service.adjustStorageUsage({ instanceId: 'tenant-a', totalBytesDelta: 512, assetCountDelta: 1 });
+    await service.deleteVariantsByAssetId('tenant-a', 'asset-1');
     await service.wouldExceedStorageQuota('tenant-a', 2000);
     await service.replaceReferences({
       instanceId: 'tenant-a',
@@ -68,6 +70,7 @@ describe('media auth runtime service', () => {
       totalBytesDelta: 512,
       assetCountDelta: 1,
     });
+    expect(repository.deleteVariantsByAssetId).toHaveBeenCalledWith('tenant-a', 'asset-1');
     expect(repository.wouldExceedStorageQuota).toHaveBeenCalledWith('tenant-a', 2000);
     expect(repository.replaceReferences).toHaveBeenCalledWith({
       instanceId: 'tenant-a',

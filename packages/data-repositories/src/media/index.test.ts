@@ -249,7 +249,7 @@ describe('media repository', () => {
   });
 
   it('persists variants and upload sessions and reads storage usage', async () => {
-    const { executor, statements } = createQueuedExecutor([[], [variantRow], [], [uploadSessionRow], [], [storageUsageRow]]);
+    const { executor, statements } = createQueuedExecutor([[], [variantRow], [], [], [uploadSessionRow], [], [storageUsageRow]]);
     const repository = createMediaRepository(executor);
 
     await repository.upsertVariant('tenant-a', {
@@ -284,6 +284,10 @@ describe('media repository', () => {
       },
     ]);
 
+    await repository.deleteVariantsByAssetId('tenant-a', 'asset-1');
+    expect(statements[2]?.text.includes('DELETE FROM iam.media_variants')).toBe(true);
+    expect(statements[2]?.values).toEqual(['tenant-a', 'asset-1']);
+
     await repository.upsertUploadSession({
       id: 'upload-1',
       instanceId: 'tenant-a',
@@ -295,8 +299,8 @@ describe('media repository', () => {
       expiresAt: '2026-04-29T11:00:00.000Z',
     });
 
-    expect(statements[2]?.text.includes('INSERT INTO iam.media_upload_sessions')).toBe(true);
-    expect(statements[2]?.values.slice(0, 4)).toEqual(['upload-1', 'tenant-a', 'asset-1', 'tenant-a/uploads/upload-1.bin']);
+    expect(statements[3]?.text.includes('INSERT INTO iam.media_upload_sessions')).toBe(true);
+    expect(statements[3]?.values.slice(0, 4)).toEqual(['upload-1', 'tenant-a', 'asset-1', 'tenant-a/uploads/upload-1.bin']);
 
     await expect(repository.getUploadSessionById('tenant-a', 'upload-1')).resolves.toEqual({
       id: 'upload-1',
@@ -317,8 +321,8 @@ describe('media repository', () => {
       assetCount: 3,
     });
 
-    expect(statements[4]?.text.includes('INSERT INTO iam.media_storage_usage')).toBe(true);
-    expect(statements[4]?.values).toEqual(['tenant-a', 4096, 3]);
+    expect(statements[5]?.text.includes('INSERT INTO iam.media_storage_usage')).toBe(true);
+    expect(statements[5]?.values).toEqual(['tenant-a', 4096, 3]);
 
     await expect(repository.getStorageUsage('tenant-a')).resolves.toEqual({
       instanceId: 'tenant-a',

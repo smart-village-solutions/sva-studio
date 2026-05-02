@@ -107,6 +107,18 @@ vi.mock('./auth-server/login.js', () => ({
   createLoginUrl: vi.fn(),
 }));
 
+vi.mock('./auth-server/callback.js', () => ({
+  handleCallback: vi.fn(),
+}));
+
+vi.mock('./auth-server/logout.js', () => ({
+  logoutSession: vi.fn(),
+}));
+
+vi.mock('./redis-session.js', () => ({
+  getSession: vi.fn(),
+}));
+
 vi.mock('./login-state-cookie.js', () => ({
   encodeLoginStateCookie: vi.fn(() => 'encoded-login-state-cookie'),
   decodeLoginStateCookie: vi.fn(() => null),
@@ -468,6 +480,41 @@ describe('loginHandler (full auth path)', () => {
     expect(response.status).toBe(302);
     expect(response.headers.get('Location')).toContain('openid-connect/auth');
   });
+
+  it('returns a silent failure page when silent SSO is currently suppressed', async () => {
+    const { loginHandler } = await import('./auth-route-handlers.js');
+
+    mocks.readCookieFromRequest.mockImplementation((_request: Request, cookieName: string) =>
+      cookieName === 'silent_sso' ? String(Date.now() + 60_000) : null
+    );
+
+    const response = await loginHandler(new Request('http://localhost/auth/login?silent=1'));
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('Content-Type')).toContain('text/html');
+    await expect(response.text()).resolves.toContain("status: 'failure'");
+  });
+
+  it('maps tenant auth resolution errors to a dependency response', async () => {
+    const { loginHandler } = await import('./auth-route-handlers.js');
+    const { resolveAuthConfigForRequest } = await import('./config.js');
+    const { TenantAuthResolutionError } = await import('./runtime-errors.js');
+
+    vi.mocked(resolveAuthConfigForRequest).mockRejectedValueOnce(
+      new TenantAuthResolutionError({
+        host: 'studio.example.org',
+        reason: 'tenant_inactive',
+      })
+    );
+
+    const response = await loginHandler(new Request('https://studio.example.org/auth/login'));
+
+    expect(response.status).toBe(503);
+    expect(mocks.logger.error).toHaveBeenCalledWith(
+      'Auth route failed during tenant auth resolution',
+      expect.objectContaining({ reason_code: 'scope_resolution_failed', tenant_host: 'studio.example.org' })
+    );
+  });
 });
 
 describe('logoutHandler', () => {
@@ -529,6 +576,71 @@ describe('logoutHandler', () => {
       expect.objectContaining({ operation: 'logout_cookie_cleanup' })
     );
   });
+
+  it('logs out an active session and emits a logout audit event', async () => {
+    const { logoutHandler } = await import('./auth-route-handlers.js');
+    const { resolveAuthConfigForRequest } = await import('./config.js');
+    const { getSession } = await import('./redis-session.js');
+    const { logoutSession } = await import('./auth-server/logout.js');
+    const { emitAuthAuditEvent } = await import('./audit-events.js');
+
+    vi.mocked(resolveAuthConfigForRequest).mockResolvedValueOnce({
+      ...authConfigBase,
+      kind: 'instance',
+      instanceId: 'de-test',
+    } as never);
+    mocks.readCookieFromRequest.mockImplementation((_request: Request, cookieName: string) =>
+      cookieName === 'sva_session' ? 'session-1' : 'unused-cookie'
+    );
+    vi.mocked(getSession).mockResolvedValueOnce({
+      user: { id: 'kc-user-1', instanceId: 'de-test' },
+    } as never);
+    vi.mocked(logoutSession).mockResolvedValueOnce('http://localhost/signed-out');
+
+    const response = await logoutHandler(
+      new Request('http://localhost/auth/logout', {
+        method: 'POST',
+        headers: { 'x-sva-logout-intent': 'user' },
+      })
+    );
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get('Location')).toBe('http://localhost/signed-out');
+    expect(emitAuthAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: 'logout',
+        actorUserId: 'kc-user-1',
+        outcome: 'success',
+        workspaceId: 'de-test',
+      })
+    );
+  });
+
+  it('returns a dependency error when the session store is unavailable during logout', async () => {
+    const { logoutHandler } = await import('./auth-route-handlers.js');
+    const { resolveAuthConfigForRequest } = await import('./config.js');
+    const { getSession } = await import('./redis-session.js');
+    const { SessionStoreUnavailableError } = await import('./runtime-errors.js');
+
+    vi.mocked(resolveAuthConfigForRequest).mockResolvedValueOnce(authConfigBase as never);
+    mocks.readCookieFromRequest.mockImplementation((_request: Request, cookieName: string) =>
+      cookieName === 'sva_session' ? 'session-1' : 'unused-cookie'
+    );
+    vi.mocked(getSession).mockRejectedValueOnce(new SessionStoreUnavailableError('logout'));
+
+    const response = await logoutHandler(
+      new Request('http://localhost/auth/logout', {
+        method: 'POST',
+        headers: { 'x-sva-logout-intent': 'user' },
+      })
+    );
+
+    expect(response.status).toBe(503);
+    expect(mocks.logger.error).toHaveBeenCalledWith(
+      'Auth route failed because session storage is unavailable',
+      expect.objectContaining({ reason_code: 'session_store_unavailable' })
+    );
+  });
 });
 
 describe('callbackHandler', () => {
@@ -567,6 +679,80 @@ describe('callbackHandler', () => {
     expect(mocks.logger.info).toHaveBeenCalledWith(
       'Callback cookie cleanup prepared',
       expect.objectContaining({ had_session_cookie_on_callback: true })
+    );
+  });
+
+  it('redirects back to /auth/login when callback parameters are incomplete', async () => {
+    const { callbackHandler } = await import('./auth-route-handlers.js');
+    const { resolveAuthConfigForRequest } = await import('./config.js');
+
+    vi.mocked(resolveAuthConfigForRequest).mockResolvedValueOnce(authConfigBase as never);
+
+    const response = await callbackHandler(new Request('http://localhost/auth/callback?state=state-abc123def456'));
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get('Location')).toBe('/auth/login');
+  });
+
+  it('redirects to state-expired when the login state cookie is stale', async () => {
+    const { callbackHandler } = await import('./auth-route-handlers.js');
+    const { resolveAuthConfigForRequest } = await import('./config.js');
+    const { decodeLoginStateCookie } = await import('./login-state-cookie.js');
+
+    vi.mocked(resolveAuthConfigForRequest).mockResolvedValueOnce(authConfigBase as never);
+    vi.mocked(decodeLoginStateCookie).mockReturnValueOnce({
+      state: 'state-abc123def456',
+      codeVerifier: 'verifier',
+      nonce: 'nonce',
+      createdAt: Date.now() - 11 * 60 * 1000,
+      returnTo: '/admin',
+      silent: false,
+      kind: 'platform',
+    } as never);
+
+    const response = await callbackHandler(
+      new Request('http://localhost/auth/callback?code=abc&state=state-abc123def456')
+    );
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get('Location')).toBe('/?auth=state-expired');
+    expect(mocks.logger.info).toHaveBeenCalledWith(
+      'Expired callback cookie cleanup prepared',
+      expect.objectContaining({ operation: 'login_callback_cookie_cleanup' })
+    );
+  });
+
+  it('returns an error redirect when token validation fails during callback', async () => {
+    const { callbackHandler } = await import('./auth-route-handlers.js');
+    const { resolveAuthConfigForRequest } = await import('./config.js');
+    const { handleCallback } = await import('./auth-server/callback.js');
+    const { decodeLoginStateCookie } = await import('./login-state-cookie.js');
+
+    vi.mocked(resolveAuthConfigForRequest).mockResolvedValueOnce(authConfigBase as never);
+    vi.mocked(decodeLoginStateCookie).mockReturnValueOnce({
+      state: 'state-abc123def456',
+      codeVerifier: 'verifier',
+      nonce: 'nonce',
+      createdAt: Date.now(),
+      returnTo: '/admin',
+      silent: false,
+      kind: 'platform',
+    } as never);
+    vi.mocked(handleCallback).mockRejectedValueOnce({
+      error: 'invalid_grant',
+      error_description: 'Code verifier mismatch',
+      response: { status: 401 },
+    });
+
+    const response = await callbackHandler(
+      new Request('http://localhost/auth/callback?code=abc&state=state-abc123def456')
+    );
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get('Location')).toBe('/?auth=error');
+    expect(mocks.logger.warn).toHaveBeenCalledWith(
+      'Token validation failed in callback',
+      expect.objectContaining({ reason_code: 'token_validate_failed', oauth_error: 'invalid_grant' })
     );
   });
 });

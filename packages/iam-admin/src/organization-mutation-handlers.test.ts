@@ -237,6 +237,58 @@ describe('organization mutation handlers', () => {
     });
   });
 
+  it('returns the feature-gate response before resolving the actor', async () => {
+    const deps = buildDeps();
+    deps.ensureFeature = vi.fn(() => new Response('disabled', { status: 451 }));
+    const handlers = createOrganizationMutationHandlers(deps);
+
+    const response = await handlers.createOrganizationInternal(
+      new Request('http://localhost/api/v1/iam/organizations', { method: 'POST' }),
+      ctx
+    );
+
+    expect(response.status).toBe(451);
+    expect(deps.resolveActorInfo).not.toHaveBeenCalled();
+  });
+
+  it('replays an existing idempotent organization create result', async () => {
+    const deps = buildDeps();
+    deps.reserveIdempotency = vi.fn(async () => ({
+      status: 'replay',
+      responseStatus: 202,
+      responseBody: { data: { organizationKey: 'alpha' }, replayed: true },
+    }));
+    const handlers = createOrganizationMutationHandlers(deps);
+
+    const response = await handlers.createOrganizationInternal(
+      new Request('http://localhost/api/v1/iam/organizations', { method: 'POST' }),
+      ctx
+    );
+
+    expect(response.status).toBe(202);
+    await expect(json(response)).resolves.toMatchObject({ replayed: true });
+    expect(deps.withInstanceScopedDb).not.toHaveBeenCalled();
+  });
+
+  it('returns a conflict for reused idempotency keys with a different payload', async () => {
+    const deps = buildDeps();
+    deps.reserveIdempotency = vi.fn(async () => ({
+      status: 'conflict',
+      message: 'payload mismatch',
+    }));
+    const handlers = createOrganizationMutationHandlers(deps);
+
+    const response = await handlers.createOrganizationInternal(
+      new Request('http://localhost/api/v1/iam/organizations', { method: 'POST' }),
+      ctx
+    );
+
+    expect(response.status).toBe(409);
+    await expect(json(response)).resolves.toMatchObject({
+      error: { code: 'idempotency_key_reuse', message: 'payload mismatch' },
+    });
+  });
+
   it('switches the active organization context and invalidates permissions', async () => {
     const handlers = createOrganizationMutationHandlers(buildDeps());
 
@@ -253,5 +305,25 @@ describe('organization mutation handlers', () => {
       expect.anything(),
       expect.objectContaining({ trigger: 'organization_context_switched' })
     );
+  });
+
+  it('returns invalid_organization_id when the requested organization is outside the actor context', async () => {
+    const deps = buildDeps();
+    state.parseResult = {
+      ok: true,
+      data: { organizationId: '22222222-2222-2222-8222-222222222222' },
+      rawBody: '{}',
+    };
+    const handlers = createOrganizationMutationHandlers(deps);
+
+    const response = await handlers.updateMyOrganizationContextInternal(
+      new Request('http://localhost/api/v1/iam/me/organization-context', { method: 'PATCH' }),
+      ctx
+    );
+
+    expect(response.status).toBe(400);
+    await expect(json(response)).resolves.toMatchObject({
+      error: { code: 'invalid_organization_id' },
+    });
   });
 });

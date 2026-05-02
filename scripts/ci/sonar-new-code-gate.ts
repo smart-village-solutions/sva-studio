@@ -6,6 +6,7 @@ import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 
 import { assertCoveragePolicy, findCoverageArtifacts, readJson, type CoveragePolicy } from './coverage-gate.ts';
+import { isSonarCoverageExcludedPath, readSonarCoverageExclusions } from './sonar-paths.ts';
 
 interface RunSonarNewCodeGateOptions {
   rootDir?: string;
@@ -420,8 +421,11 @@ export function runSonarNewCodeGate(options: RunSonarNewCodeGateOptions = {}): R
   const headRef = options.headRef ?? 'HEAD';
   const targetPct = options.targetPct ?? defaultTargetPct;
   const policy = loadPolicy(rootDir);
+  const sonarCoverageExclusions = readSonarCoverageExclusions(rootDir);
   const projectRoots = resolveProjectRoots(rootDir, policy);
-  const changedFiles = listChangedFiles(rootDir, baseRef, headRef, projectRoots);
+  const changedFiles = listChangedFiles(rootDir, baseRef, headRef, projectRoots).filter(
+    (changedFile) => !isSonarCoverageExcludedPath(changedFile.path, sonarCoverageExclusions)
+  );
   const coverageByFile = parseLcovCoverage(rootDir);
 
   let coveredLines = 0;

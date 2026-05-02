@@ -116,6 +116,40 @@ describe('createGroupMutationHandlers', () => {
     });
   });
 
+  it('returns the role check response before touching the database', async () => {
+    const deps = createDeps([], {
+      requireRoles: vi.fn(() => createJsonResponse(403, { error: { code: 'forbidden' } })),
+    });
+    const handlers = createGroupMutationHandlers(deps);
+
+    const response = await handlers.createGroupInternal(
+      new Request('http://localhost/api/v1/iam/inst-g/groups', { method: 'POST', body: '{}' }),
+      ctx
+    );
+
+    expect(response.status).toBe(403);
+    expect(deps.withInstanceScopedDb).not.toHaveBeenCalled();
+  });
+
+  it('maps duplicate group keys to a conflict response', async () => {
+    const deps = createDeps([], {
+      withInstanceScopedDb: vi.fn(async () => {
+        throw new Error('duplicate key value violates unique constraint "groups_instance_key_uniq"');
+      }),
+    });
+    const handlers = createGroupMutationHandlers(deps);
+
+    const response = await handlers.createGroupInternal(
+      new Request('http://localhost/api/v1/iam/inst-g/groups', { method: 'POST', body: '{}' }),
+      ctx
+    );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toMatchObject({
+      error: { code: 'conflict', message: 'Eine Gruppe mit diesem Schlüssel existiert bereits.' },
+    });
+  });
+
   it('returns 400 when an update contains no changes', async () => {
     const deps = createDeps([], {
       parseRequestBody: vi.fn(async () => ({ ok: true as const, data: {} })),
@@ -129,6 +163,49 @@ describe('createGroupMutationHandlers', () => {
 
     expect(response.status).toBe(400);
     expect(deps.withInstanceScopedDb).not.toHaveBeenCalled();
+  });
+
+  it('returns invalid_request for malformed group ids on update', async () => {
+    const deps = createDeps([], {
+      readPathSegment: vi.fn(() => 'not-a-uuid'),
+      isUuid: vi.fn(() => false),
+    });
+    const handlers = createGroupMutationHandlers(deps);
+
+    const response = await handlers.updateGroupInternal(
+      new Request('http://localhost/api/v1/iam/inst-g/groups/not-a-uuid', { method: 'PATCH', body: '{}' }),
+      ctx
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      error: { code: 'invalid_request', message: 'Ungültige Gruppen-ID' },
+    });
+  });
+
+  it('returns not found when the target group does not exist during update', async () => {
+    const deps = createDeps([], {
+      parseRequestBody: vi.fn(async () => ({
+        ok: true as const,
+        data: { displayName: 'Renamed' },
+      })),
+      withInstanceScopedDb: vi.fn(async (_instanceId, work) =>
+        work({
+          query: vi.fn(async () => ({ rowCount: 0, rows: [] })),
+        } as never)
+      ),
+    });
+    const handlers = createGroupMutationHandlers(deps);
+
+    const response = await handlers.updateGroupInternal(
+      new Request(`http://localhost/api/v1/iam/inst-g/groups/${groupId}`, { method: 'PATCH', body: '{}' }),
+      ctx
+    );
+
+    expect(response.status).toBe(404);
+    await expect(response.json()).resolves.toMatchObject({
+      error: { code: 'invalid_request', message: 'Gruppe nicht gefunden' },
+    });
   });
 
   it('deletes groups and publishes affected membership invalidations', async () => {

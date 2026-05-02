@@ -379,6 +379,180 @@ describe('admin resource routes', () => {
     expect(getUser).toHaveBeenCalledTimes(1);
   });
 
+  it('redirects when the required module assignment is missing', async () => {
+    const getUser = vi.fn(async () => ({
+      assignedModules: ['events'],
+      permissionActions: ['news.read'],
+    }));
+    const routeFactories = createAdminResourceRouteFactories(bindings, [
+      {
+        resourceId: 'news.content',
+        basePath: 'news',
+        titleKey: 'news.navigation.title',
+        guard: 'content',
+        moduleId: 'news',
+        views: {
+          list: { bindingKey: 'content' },
+          create: { bindingKey: 'contentCreate' },
+          detail: { bindingKey: 'contentDetail' },
+        },
+      },
+    ]);
+    const rootRoute = { id: 'root' };
+    const routeMap = new Map(
+      routeFactories
+        .map((factory) => factory(rootRoute as never))
+        .map((route) => readRouteOptions(route))
+        .map((route) => [String(route.path), route])
+    );
+
+    await expect(
+      routeMap.get('/admin/news')?.beforeLoad?.({
+        context: {
+          auth: {
+            getUser,
+          },
+        },
+        href: '/admin/news',
+        location: { href: '/admin/news' },
+      })
+    ).rejects.toMatchObject({ href: '/?error=auth.insufficientRole', __redirect: true });
+  });
+
+  it('allows routes with an empty permission requirement list', async () => {
+    const getUser = vi.fn(async () => ({
+      assignedModules: ['news'],
+    }));
+    const routeFactories = createAdminResourceRouteFactories(bindings, [
+      {
+        resourceId: 'news.content',
+        basePath: 'news',
+        titleKey: 'news.navigation.title',
+        guard: 'content',
+        moduleId: 'news',
+        permissions: {
+          list: [],
+        },
+        views: {
+          list: { bindingKey: 'content' },
+          create: { bindingKey: 'contentCreate' },
+          detail: { bindingKey: 'contentDetail' },
+        },
+      },
+    ]);
+    const rootRoute = { id: 'root' };
+    const routeMap = new Map(
+      routeFactories
+        .map((factory) => factory(rootRoute as never))
+        .map((route) => readRouteOptions(route))
+        .map((route) => [String(route.path), route])
+    );
+
+    await expect(
+      routeMap.get('/admin/news')?.beforeLoad?.({
+        context: {
+          auth: {
+            getUser,
+          },
+        },
+        href: '/admin/news',
+        location: { href: '/admin/news' },
+      })
+    ).resolves.toBeUndefined();
+  });
+
+  it('redirects when the required permission is missing', async () => {
+    const getUser = vi.fn(async () => ({
+      assignedModules: ['news'],
+      permissionActions: ['events.read'],
+    }));
+    const routeFactories = createAdminResourceRouteFactories(bindings, [
+      {
+        resourceId: 'news.content',
+        basePath: 'news',
+        titleKey: 'news.navigation.title',
+        guard: 'content',
+        moduleId: 'news',
+        permissions: {
+          list: ['news.read'],
+        },
+        views: {
+          list: { bindingKey: 'content' },
+          create: { bindingKey: 'contentCreate' },
+          detail: { bindingKey: 'contentDetail' },
+        },
+      },
+    ]);
+    const rootRoute = { id: 'root' };
+    const routeMap = new Map(
+      routeFactories
+        .map((factory) => factory(rootRoute as never))
+        .map((route) => readRouteOptions(route))
+        .map((route) => [String(route.path), route])
+    );
+
+    await expect(
+      routeMap.get('/admin/news')?.beforeLoad?.({
+        context: {
+          auth: {
+            getUser,
+          },
+        },
+        href: '/admin/news',
+        location: { href: '/admin/news' },
+      })
+    ).rejects.toMatchObject({ href: '/?error=auth.insufficientRole', __redirect: true });
+  });
+
+  it('attaches validateSearch for list-capable resources', () => {
+    const routeFactories = createAdminResourceRouteFactories(bindings, [
+      {
+        resourceId: 'news.content',
+        basePath: 'news',
+        titleKey: 'news.navigation.title',
+        guard: 'content',
+        views: {
+          list: { bindingKey: 'content' },
+          create: { bindingKey: 'contentCreate' },
+          detail: { bindingKey: 'contentDetail' },
+        },
+        capabilities: {
+          list: {
+            filters: [
+              {
+                id: 'status',
+                labelKey: 'news.navigation.filters.status',
+                bindingKey: 'newsFilterStatus',
+                options: [{ value: 'published', labelKey: 'news.navigation.filters.status.published' }],
+              },
+            ],
+            pagination: {
+              defaultPageSize: 25,
+              pageSizeOptions: [10, 25, 50],
+            },
+          },
+        },
+      } as never,
+    ]);
+    const rootRoute = { id: 'root' };
+    const routeMap = new Map(
+      routeFactories
+        .map((factory) => factory(rootRoute as never))
+        .map((route) => readRouteOptions(route))
+        .map((route) => [String(route.path), route])
+    );
+    const validateSearch = routeMap.get('/admin/news')?.validateSearch;
+
+    expect(validateSearch).toBeTypeOf('function');
+    expect(validateSearch?.({ page: '2', pageSize: '10', status: 'published' })).toEqual({
+      search: undefined,
+      filters: { status: 'published' },
+      sort: undefined,
+      page: 2,
+      pageSize: 10,
+    });
+  });
+
   it('redirects legacy content aliases using href and location.href fallbacks', () => {
     const routeFactories = createLegacyContentAliasFactories();
     const rootRoute = { id: 'root' };

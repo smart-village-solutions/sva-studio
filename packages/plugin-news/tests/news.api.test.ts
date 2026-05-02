@@ -77,6 +77,33 @@ describe('news api', () => {
     expect(fetch).toHaveBeenCalledWith('/api/v1/mainserver/news?page=2&pageSize=50', expect.any(Object));
   });
 
+  it('falls back to default pagination when the mainserver omits it', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        data: [
+          {
+            id: 'news-1',
+            title: 'News',
+            contentType: NEWS_CONTENT_TYPE,
+            payload: {},
+            contentBlocks: sampleInput.contentBlocks,
+            status: 'published',
+            author: 'Editor',
+            createdAt: '2026-01-01',
+            updatedAt: '2026-01-02',
+            publishedAt: sampleInput.publishedAt,
+          },
+        ],
+      }),
+    } as Response);
+
+    await expect(listNews(defaultListQuery)).resolves.toEqual({
+      data: [expect.objectContaining({ id: 'news-1' })],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false },
+    });
+  });
+
   it('creates news with idempotency header through the mainserver facade', async () => {
     vi.mocked(fetch).mockResolvedValueOnce({
       ok: true,

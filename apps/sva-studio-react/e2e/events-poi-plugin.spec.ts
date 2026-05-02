@@ -131,7 +131,14 @@ const routeEvents = async (route: Route, events: EventRecord[]) => {
 
   if (path === '/api/v1/mainserver/events') {
     if (method === 'GET') {
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: events }) });
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: events,
+          pagination: { page: 1, pageSize: 25, hasNextPage: false },
+        }),
+      });
       return;
     }
     if (method === 'POST') {
@@ -202,7 +209,14 @@ const routePoi = async (route: Route, pois: PoiRecord[]) => {
 
   if (path === '/api/v1/mainserver/poi') {
     if (method === 'GET') {
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: pois }) });
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: pois,
+          pagination: { page: 1, pageSize: 100, hasNextPage: false },
+        }),
+      });
       return;
     }
     if (method === 'POST') {
@@ -281,7 +295,7 @@ test.describe('events and POI plugins', () => {
 
     await page.goto('/');
     await page.locator('a[href="/plugins/poi"]').click();
-    await expect(page).toHaveURL(/\/plugins\/poi$/);
+    await expect(page).toHaveURL(/\/plugins\/poi(?:\?page=1&pageSize=25)?$/);
     await expectPluginPageHeading(page, /POI|poi\.list\.title/);
 
     await page.locator('a[href="/plugins/poi/new"]').click();
@@ -311,7 +325,7 @@ test.describe('events and POI plugins', () => {
     page.once('dialog', (dialog) => dialog.accept());
     await page.getByRole('button', { name: /Löschen|poi\.actions\.delete/ }).click();
 
-    await expect(page).toHaveURL(/\/plugins\/poi$/);
+    await expect(page).toHaveURL(/\/plugins\/poi(?:\?page=1&pageSize=25)?$/);
     await expect(page.getByText(/Noch keine POI vorhanden|poi\.empty\.title/)).toBeVisible();
   });
 
@@ -338,7 +352,7 @@ test.describe('events and POI plugins', () => {
 
     await page.goto('/');
     await page.locator('a[href="/plugins/events"]').click();
-    await expect(page).toHaveURL(/\/plugins\/events$/);
+    await expect(page).toHaveURL(/\/plugins\/events(?:\?page=1&pageSize=25)?$/);
     await expectPluginPageHeading(page, /Events|events\.list\.title/);
 
     await page.locator('a[href="/plugins/events/new"]').click();
@@ -366,7 +380,7 @@ test.describe('events and POI plugins', () => {
     page.once('dialog', (dialog) => dialog.accept());
     await page.getByRole('button', { name: /Löschen|events\.actions\.delete/ }).click();
 
-    await expect(page).toHaveURL(/\/plugins\/events$/);
+    await expect(page).toHaveURL(/\/plugins\/events(?:\?page=1&pageSize=25)?$/);
     await expect(page.getByText(/Noch keine Events vorhanden|events\.empty\.title/)).toBeVisible();
   });
 

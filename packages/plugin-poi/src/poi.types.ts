@@ -16,6 +16,23 @@ export type PoiWebUrl = {
   readonly description?: string;
 };
 
+export type PoiListQuery = {
+  readonly page: number;
+  readonly pageSize: number;
+};
+
+export type PoiPagination = {
+  readonly page: number;
+  readonly pageSize: number;
+  readonly hasNextPage: boolean;
+  readonly total?: number;
+};
+
+export type PoiListResult = {
+  readonly data: readonly PoiContentItem[];
+  readonly pagination: PoiPagination;
+};
+
 export type PoiOpeningHour = {
   readonly weekday?: string;
   readonly timeFrom?: string;

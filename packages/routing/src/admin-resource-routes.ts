@@ -2,6 +2,7 @@ import type { AdminResourceDefinition } from '@sva/plugin-sdk';
 import { createRoute, redirect, type RootRoute } from '@tanstack/react-router';
 
 import { createAccountUiRouteGuard, type AccountUiRouteGuardKey } from './account-ui.routes.js';
+import { normalizeAdminResourceListSearch } from './admin-resource-search-params.js';
 import type { AppRouteBindings, AppRouteFactory } from './app.routes.shared.js';
 import type { RoutingDiagnosticsHook } from './diagnostics.js';
 
@@ -11,6 +12,7 @@ type UiRouteDefinition = {
   readonly binding: BindingKey;
   readonly guard: AccountUiRouteGuardKey;
   readonly path: string;
+  readonly validateSearch?: (search: Record<string, unknown>) => unknown;
 };
 
 type AdminResourceBindingResolver = { readonly list: BindingKey; readonly create: BindingKey; readonly detail: BindingKey; readonly history?: BindingKey };
@@ -159,6 +161,9 @@ const createAdminResourceRouteDefinitions = (
         binding: resolvedBindings.list,
         guard: resolveAdminResourceGuard(resource, 'list'),
         path: basePath,
+        validateSearch: resource.capabilities?.list
+          ? (search: Record<string, unknown>) => normalizeAdminResourceListSearch(resource, search)
+          : undefined,
       },
       {
         binding: resolvedBindings.create,
@@ -226,6 +231,7 @@ export const createAdminResourceRouteFactories = (
           getParentRoute: () => rootRoute,
           path: definition.path,
           beforeLoad: (beforeLoadOptions) => guard(beforeLoadOptions),
+          validateSearch: definition.validateSearch,
           component: bindings[definition.binding],
         });
       }

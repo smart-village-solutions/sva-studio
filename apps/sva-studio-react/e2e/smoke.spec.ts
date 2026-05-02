@@ -176,11 +176,18 @@ const mockAuthenticatedPluginShell = async (page: Page) => {
     });
   });
 
-  await page.route('**/api/v1/mainserver/news', async (route) => {
+  await page.route('**/api/v1/mainserver/news**', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ data: [] }),
+      body: JSON.stringify({
+        data: [],
+        pagination: {
+          page: 1,
+          pageSize: 25,
+          hasNextPage: false,
+        },
+      }),
     });
   });
 };
@@ -286,7 +293,7 @@ test('authenticated client navigation to /plugins/news renders the plugin route'
   await expectInterfacesShellReady(page);
   await expect(page.locator('html')).toHaveAttribute('data-theme', /.+/);
   await navigateWithPlaywrightRouter(page, '/plugins/news');
-  await expect(page).toHaveURL(/\/plugins\/news$/);
+  await expect(page).toHaveURL(/\/plugins\/news(?:\?page=1&pageSize=25)?$/);
   await expect(page.getByRole('heading', { name: 'News', exact: true })).toBeVisible();
 });
 

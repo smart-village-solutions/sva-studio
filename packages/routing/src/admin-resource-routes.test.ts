@@ -220,6 +220,41 @@ describe('admin resource routes', () => {
     }
   });
 
+  it('normalizes declared list search params for admin resources with list capabilities', () => {
+    const routeFactories = createAdminResourceRouteFactories(bindings, [
+      {
+        resourceId: 'news.content',
+        basePath: 'news',
+        titleKey: 'news.navigation.title',
+        guard: 'content',
+        views: {
+          list: { bindingKey: 'content' },
+          create: { bindingKey: 'contentCreate' },
+          detail: { bindingKey: 'contentDetail' },
+        },
+        capabilities: {
+          list: {
+            pagination: { defaultPageSize: 25, pageSizeOptions: [10, 25, 50] },
+            search: { param: 'q' },
+          },
+        },
+      } as never,
+    ]);
+    const rootRoute = { id: 'root' };
+    const listRoute = routeFactories
+      .map((factory) => factory(rootRoute as never))
+      .map((route) => readRouteOptions(route))
+      .find((route) => route.path === '/admin/news');
+
+    expect(listRoute?.validateSearch?.({ q: 'news', page: '2', pageSize: '50' })).toEqual({
+      filters: {},
+      page: 2,
+      pageSize: 50,
+      search: 'news',
+      sort: undefined,
+    });
+  });
+
   it('redirects legacy content aliases using href and location.href fallbacks', () => {
     const routeFactories = createLegacyContentAliasFactories();
     const rootRoute = { id: 'root' };

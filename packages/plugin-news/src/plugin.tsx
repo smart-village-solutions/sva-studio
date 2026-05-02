@@ -187,6 +187,12 @@ export const pluginNews: PluginDefinition = {
           title: 'Noch keine News vorhanden',
           description: 'Legen Sie den ersten News-Eintrag an.',
         },
+        pagination: {
+          ariaLabel: 'News-Seiten',
+          pageLabel: 'Seite {{page}}',
+          previous: 'Zurück',
+          next: 'Weiter',
+        },
         messages: {
           loading: 'News werden geladen.',
           loadError: 'News konnten nicht geladen werden.',
@@ -231,6 +237,12 @@ export const pluginNews: PluginDefinition = {
         list: {
           title: 'News',
           description: 'Manage news entries through the plugin.',
+        },
+        pagination: {
+          ariaLabel: 'News pages',
+          pageLabel: 'Page {{page}}',
+          previous: 'Previous',
+          next: 'Next',
         },
         editor: {
           createTitle: 'Create news entry',

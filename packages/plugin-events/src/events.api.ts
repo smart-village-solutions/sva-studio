@@ -1,16 +1,28 @@
-import type { EventContentItem, EventFormInput, PoiSelectItem } from './events.types.js';
+import type {
+  EventContentItem,
+  EventFormInput,
+  EventListQuery,
+  EventListResult,
+  PoiSelectItem,
+} from './events.types.js';
 
 type ApiItemResponse<T> = {
   readonly data: T;
 };
 
-type ApiListResponse<T> = {
-  readonly data: readonly T[];
-};
-
 type ApiErrorResponse = {
   readonly error?: string;
   readonly message?: string;
+};
+
+type PaginatedResponse<TItem> = {
+  readonly data: readonly TItem[];
+  readonly pagination: {
+    readonly page: number;
+    readonly pageSize: number;
+    readonly hasNextPage: boolean;
+    readonly total?: number;
+  };
 };
 
 export class EventsApiError extends Error {
@@ -27,6 +39,7 @@ const REQUEST_HEADERS = {
   'Content-Type': 'application/json',
   'X-Requested-With': 'XMLHttpRequest',
 } as const;
+const MAX_POI_SELECTION_PAGES = 101;
 
 const requestJson = async <T>(input: string, init?: RequestInit): Promise<T> => {
   const response = await fetch(input, {
@@ -54,9 +67,11 @@ const requestJson = async <T>(input: string, init?: RequestInit): Promise<T> => 
   return (await response.json()) as T;
 };
 
-export const listEvents = async (): Promise<readonly EventContentItem[]> => {
-  const response = await requestJson<ApiListResponse<EventContentItem>>('/api/v1/mainserver/events');
-  return response.data;
+const buildListUrl = (basePath: string, query: EventListQuery): string =>
+  `${basePath}?page=${encodeURIComponent(String(query.page))}&pageSize=${encodeURIComponent(String(query.pageSize))}`;
+
+export const listEvents = async (query: EventListQuery): Promise<EventListResult> => {
+  return requestJson<EventListResult>(buildListUrl('/api/v1/mainserver/events', query));
 };
 
 export const getEvent = async (contentId: string): Promise<EventContentItem> => {
@@ -90,6 +105,23 @@ export const deleteEvent = async (contentId: string): Promise<void> => {
 };
 
 export const listPoiForEventSelection = async (): Promise<readonly PoiSelectItem[]> => {
-  const response = await requestJson<ApiListResponse<PoiSelectItem>>('/api/v1/mainserver/poi');
-  return response.data.map((item) => ({ id: item.id, name: item.name }));
+  const items: PoiSelectItem[] = [];
+  let page = 1;
+  let hasNextPage = true;
+
+  while (hasNextPage) {
+    if (page > MAX_POI_SELECTION_PAGES) {
+      throw new EventsApiError(
+        'poi_selection_page_limit_exceeded',
+        'Die POI-Auswahl überschreitet das erlaubte Pagination-Limit.'
+      );
+    }
+
+    const response = await requestJson<PaginatedResponse<PoiSelectItem>>(buildListUrl('/api/v1/mainserver/poi', { page, pageSize: 100 }));
+    items.push(...response.data.map((item) => ({ id: item.id, name: item.name })));
+    hasNextPage = response.pagination.hasNextPage && response.data.length > 0;
+    page += 1;
+  }
+
+  return items;
 };

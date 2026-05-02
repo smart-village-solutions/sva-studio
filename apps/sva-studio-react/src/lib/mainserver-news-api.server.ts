@@ -19,6 +19,8 @@ import {
 import type { SvaMainserverNewsInput } from '@sva/sva-mainserver';
 import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 
+import { parseMainserverListQuery } from './mainserver-list-pagination.js';
+
 const NEWS_CONTENT_TYPE = 'news.article';
 const NEWS_COLLECTION_PATH = '/api/v1/mainserver/news';
 const NEWS_ITEM_PATH_PREFIX = `${NEWS_COLLECTION_PATH}/`;
@@ -504,9 +506,9 @@ const dispatchAuthenticated = async (request: Request, route: RouteMatch, ctx: A
       if (actor instanceof Response) {
         return actor;
       }
-      const data = await listSvaMainserverNews(actor);
+      const data = await listSvaMainserverNews({ ...actor, ...parseMainserverListQuery(request) });
       logSuccess('mainserver_news_list');
-      return json({ data });
+      return json(data);
     }
 
     if (route.kind === 'item' && request.method === 'GET') {

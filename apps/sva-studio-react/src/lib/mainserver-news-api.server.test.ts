@@ -112,7 +112,10 @@ describe('dispatchMainserverNewsRequest', () => {
       actor: { instanceId: 'de-musterhausen', keycloakSubject: 'subject-1' },
       permissions: [],
     });
-    state.listSvaMainserverNews.mockResolvedValue([{ id: 'news-1' }]);
+    state.listSvaMainserverNews.mockResolvedValue({
+      data: [{ id: 'news-1' }],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false },
+    });
 
     const response = await dispatchMainserverNewsRequest(new Request('https://studio.test/api/v1/mainserver/news'));
 
@@ -122,8 +125,37 @@ describe('dispatchMainserverNewsRequest', () => {
     expect(state.listSvaMainserverNews).toHaveBeenCalledWith({
       instanceId: 'de-musterhausen',
       keycloakSubject: 'subject-1',
+      page: 1,
+      pageSize: 25,
     });
-    await expect(response?.json()).resolves.toEqual({ data: [{ id: 'news-1' }] });
+    await expect(response?.json()).resolves.toEqual({
+      data: [{ id: 'news-1' }],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false },
+    });
+  });
+
+  it('normalizes invalid pagination query parameters for news lists', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    state.authorizeContentPrimitiveForUser.mockResolvedValue({
+      ok: true,
+      actor: { instanceId: 'de-musterhausen', keycloakSubject: 'subject-1' },
+      permissions: [],
+    });
+    state.listSvaMainserverNews.mockResolvedValue({
+      data: [],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false },
+    });
+
+    await dispatchMainserverNewsRequest(
+      new Request('https://studio.test/api/v1/mainserver/news?page=0&pageSize=999')
+    );
+
+    expect(state.listSvaMainserverNews).toHaveBeenCalledWith({
+      instanceId: 'de-musterhausen',
+      keycloakSubject: 'subject-1',
+      page: 1,
+      pageSize: 25,
+    });
   });
 
   it('creates published news and rejects missing publishedAt before GraphQL', async () => {

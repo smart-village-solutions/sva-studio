@@ -126,6 +126,12 @@ export const pluginEvents: PluginDefinition = {
           deleteSuccess: 'Event wurde gelöscht.',
           validationError: 'Bitte korrigieren Sie die markierten Felder.',
         },
+        pagination: {
+          ariaLabel: 'Event-Seiten',
+          pageLabel: 'Seite {{page}}',
+          previous: 'Zurück',
+          next: 'Weiter',
+        },
         empty: { title: 'Noch keine Events vorhanden', description: 'Legen Sie das erste Event an.' },
         validation: {
           title: 'Der Titel ist erforderlich.',
@@ -183,6 +189,12 @@ export const pluginEvents: PluginDefinition = {
           updateSuccess: 'Event was updated.',
           deleteSuccess: 'Event was deleted.',
           validationError: 'Please correct the highlighted fields.',
+        },
+        pagination: {
+          ariaLabel: 'Event pages',
+          pageLabel: 'Page {{page}}',
+          previous: 'Previous',
+          next: 'Next',
         },
         empty: { title: 'No events yet', description: 'Create the first event.' },
         validation: {

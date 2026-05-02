@@ -1,7 +1,6 @@
-import type { PoiContentItem, PoiFormInput } from './poi.types.js';
+import type { PoiContentItem, PoiFormInput, PoiListQuery, PoiListResult } from './poi.types.js';
 
 type ApiItemResponse<T> = { readonly data: T };
-type ApiListResponse<T> = { readonly data: readonly T[] };
 type ApiErrorResponse = { readonly error?: string; readonly message?: string };
 
 export class PoiApiError extends Error {
@@ -42,9 +41,11 @@ const requestJson = async <T>(input: string, init?: RequestInit): Promise<T> => 
   return (await response.json()) as T;
 };
 
-export const listPoi = async (): Promise<readonly PoiContentItem[]> => {
-  const response = await requestJson<ApiListResponse<PoiContentItem>>('/api/v1/mainserver/poi');
-  return response.data;
+const buildListUrl = (query: PoiListQuery): string =>
+  `/api/v1/mainserver/poi?page=${encodeURIComponent(String(query.page))}&pageSize=${encodeURIComponent(String(query.pageSize))}`;
+
+export const listPoi = async (query: PoiListQuery): Promise<PoiListResult> => {
+  return requestJson<PoiListResult>(buildListUrl(query));
 };
 
 export const getPoi = async (contentId: string): Promise<PoiContentItem> => {

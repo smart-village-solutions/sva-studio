@@ -31,6 +31,7 @@ export const pluginEventsMediaPickers = {
     presetKey: 'hero',
   }),
 } as const;
+
 export const pluginEvents: PluginDefinition = {
   id: 'events',
   displayName: 'Events',
@@ -56,7 +57,6 @@ export const pluginEvents: PluginDefinition = {
         fields: {
           title: 'Titel',
           description: 'Beschreibung',
-          headerImage: 'Headerbild',
           categoryName: 'Kategorie',
           dateStart: 'Startdatum',
           dateEnd: 'Enddatum',
@@ -69,7 +69,6 @@ export const pluginEvents: PluginDefinition = {
           phone: 'Telefon',
           email: 'E-Mail',
           url: 'Web-URL',
-          mediaPlaceholder: 'Medium auswählen',
           tags: 'Tags',
           pointOfInterestId: 'Zugehöriger POI',
           repeat: 'Wiederholung',
@@ -82,7 +81,6 @@ export const pluginEvents: PluginDefinition = {
           delete: 'Löschen',
           back: 'Zurück zur Liste',
           deleteConfirm: 'Soll dieses Event wirklich gelöscht werden?',
-          clearMedia: 'Medium entfernen',
         },
         messages: {
           loading: 'Events werden geladen.',
@@ -94,12 +92,6 @@ export const pluginEvents: PluginDefinition = {
           updateSuccess: 'Event wurde aktualisiert.',
           deleteSuccess: 'Event wurde gelöscht.',
           validationError: 'Bitte korrigieren Sie die markierten Felder.',
-        },
-        pagination: {
-          ariaLabel: 'Event-Seiten',
-          pageLabel: 'Seite {{page}}',
-          previous: 'Zurück',
-          next: 'Weiter',
         },
         empty: { title: 'Noch keine Events vorhanden', description: 'Legen Sie das erste Event an.' },
         validation: {
@@ -123,7 +115,6 @@ export const pluginEvents: PluginDefinition = {
         fields: {
           title: 'Title',
           description: 'Description',
-          headerImage: 'Header image',
           categoryName: 'Category',
           dateStart: 'Start date',
           dateEnd: 'End date',
@@ -136,7 +127,6 @@ export const pluginEvents: PluginDefinition = {
           phone: 'Phone',
           email: 'Email',
           url: 'Web URL',
-          mediaPlaceholder: 'Select media',
           tags: 'Tags',
           pointOfInterestId: 'Related POI',
           repeat: 'Repeating',
@@ -149,7 +139,6 @@ export const pluginEvents: PluginDefinition = {
           delete: 'Delete',
           back: 'Back to list',
           deleteConfirm: 'Delete this event?',
-          clearMedia: 'Clear media',
         },
         messages: {
           loading: 'Loading events.',
@@ -161,12 +150,6 @@ export const pluginEvents: PluginDefinition = {
           updateSuccess: 'Event was updated.',
           deleteSuccess: 'Event was deleted.',
           validationError: 'Please correct the highlighted fields.',
-        },
-        pagination: {
-          ariaLabel: 'Event pages',
-          pageLabel: 'Page {{page}}',
-          previous: 'Previous',
-          next: 'Next',
         },
         empty: { title: 'No events yet', description: 'Create the first event.' },
         validation: {

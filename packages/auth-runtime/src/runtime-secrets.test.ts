@@ -7,6 +7,13 @@ import {
   getIamDatabaseUrl,
   getKeycloakAdminClientSecret,
   getKeycloakProvisionerClientSecret,
+  getMediaStorageAccessKeyId,
+  getMediaStorageBucket,
+  getMediaStorageEndpoint,
+  getMediaStoragePublicBaseUrl,
+  getMediaStorageRegion,
+  getMediaStorageSecretAccessKey,
+  getMediaStorageSignedUrlTtlSeconds,
   getRedisPassword,
   getRedisUrl,
 } from './runtime-secrets.js';
@@ -57,5 +64,26 @@ describe('auth runtime secrets', () => {
 
     vi.stubEnv('SVA_RUNTIME_PROFILE', 'production');
     expect(getRedisUrl()).toBe('redis://redis:6379');
+  });
+
+  it('reads media storage configuration and clamps signed-url ttl values', () => {
+    vi.stubEnv('MEDIA_STORAGE_ENDPOINT', ' https://minio.example.test ');
+    vi.stubEnv('MEDIA_STORAGE_BUCKET', ' media-bucket ');
+    vi.stubEnv('MEDIA_STORAGE_ACCESS_KEY_ID', ' access-key ');
+    vi.stubEnv('MEDIA_STORAGE_SECRET_ACCESS_KEY', ' secret-key ');
+    vi.stubEnv('MEDIA_STORAGE_PUBLIC_BASE_URL', 'https://cdn.example.test/media/');
+    vi.stubEnv('MEDIA_STORAGE_SIGNED_URL_TTL_SECONDS', '7200');
+    vi.stubEnv('MEDIA_STORAGE_REGION', 'eu-west-1');
+
+    expect(getMediaStorageEndpoint()).toBe('https://minio.example.test');
+    expect(getMediaStorageBucket()).toBe('media-bucket');
+    expect(getMediaStorageAccessKeyId()).toBe('access-key');
+    expect(getMediaStorageSecretAccessKey()).toBe('secret-key');
+    expect(getMediaStoragePublicBaseUrl()).toBe('https://cdn.example.test/media');
+    expect(getMediaStorageSignedUrlTtlSeconds()).toBe(3600);
+    expect(getMediaStorageRegion()).toBe('eu-west-1');
+
+    vi.stubEnv('MEDIA_STORAGE_SIGNED_URL_TTL_SECONDS', '-10');
+    expect(getMediaStorageSignedUrlTtlSeconds()).toBe(900);
   });
 });

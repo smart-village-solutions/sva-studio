@@ -1,10 +1,9 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   createRoutingDiagnosticsLogger,
   emitRoutingDiagnostic,
-  registerServerFallbackLogger,
-  resetServerFallbackLogger,
+  setRoutingDiagnosticsFailureLogger,
   type RoutingDiagnosticEvent,
 } from './diagnostics';
 
@@ -20,15 +19,18 @@ const testEvent: RoutingDiagnosticEvent = {
   redirect_target: '/auth/login',
 };
 
+beforeEach(() => {
+  fallbackLogger.error.mockReset();
+  setRoutingDiagnosticsFailureLogger(fallbackLogger);
+  vi.unstubAllGlobals();
+});
+
 describe('emitRoutingDiagnostic', () => {
-  afterEach(() => {
-    resetServerFallbackLogger();
-    fallbackLogger.error.mockReset();
+  it('returns early when no diagnostics hook is configured', () => {
+    expect(() => emitRoutingDiagnostic(undefined, testEvent)).not.toThrow();
   });
 
-  it('uses the registered server fallback logger for server-side hook failures', async () => {
-    registerServerFallbackLogger(fallbackLogger);
-
+  it('swallows synchronous diagnostics hook failures', async () => {
     expect(() =>
       emitRoutingDiagnostic(() => {
         throw new Error('diagnostics failed');
@@ -48,10 +50,6 @@ describe('emitRoutingDiagnostic', () => {
     );
   });
 
-  it('returns early when no diagnostics hook is configured', () => {
-    expect(() => emitRoutingDiagnostic(undefined, testEvent)).not.toThrow();
-  });
-
   it('supports synchronous diagnostics hooks without promise handling', () => {
     const diagnostics = vi.fn();
 
@@ -60,8 +58,6 @@ describe('emitRoutingDiagnostic', () => {
   });
 
   it('swallows rejected promises from async diagnostics hooks', async () => {
-    registerServerFallbackLogger(fallbackLogger);
-
     expect(() =>
       emitRoutingDiagnostic((() => Promise.reject(new Error('diagnostics failed'))) as never, testEvent)
     ).not.toThrow();
@@ -80,8 +76,6 @@ describe('emitRoutingDiagnostic', () => {
   });
 
   it('normalizes non-Error diagnostics hook failures deterministically', async () => {
-    registerServerFallbackLogger(fallbackLogger);
-
     expect(() =>
       emitRoutingDiagnostic(() => {
         throw 'plain diagnostics failure';
@@ -133,8 +127,9 @@ describe('emitRoutingDiagnostic', () => {
     consoleError.mockRestore();
   });
 
-  it('stays silent on the server when no fallback logger is registered', async () => {
+  it('falls back to console.error when the server fallback logger cannot be created', async () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    setRoutingDiagnosticsFailureLogger(null);
 
     expect(() =>
       emitRoutingDiagnostic(() => {
@@ -143,8 +138,17 @@ describe('emitRoutingDiagnostic', () => {
     ).not.toThrow();
 
     await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
-    expect(consoleError).not.toHaveBeenCalled();
+    expect(consoleError).toHaveBeenCalledWith(
+      'Routing diagnostics hook failed',
+      expect.objectContaining({
+        event: 'routing.guard.access_denied',
+        route: '/account',
+        error_type: 'Error',
+        error_message: 'diagnostics failed without fallback logger',
+      })
+    );
 
     consoleError.mockRestore();
   });

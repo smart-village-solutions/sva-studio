@@ -31,6 +31,7 @@ export const pluginPoiMediaPickers = {
     presetKey: 'teaser',
   }),
 } as const;
+
 export const pluginPoi: PluginDefinition = {
   id: 'poi',
   displayName: 'POI',
@@ -57,7 +58,6 @@ export const pluginPoi: PluginDefinition = {
           name: 'Name',
           description: 'Beschreibung',
           mobileDescription: 'Mobile Beschreibung',
-          teaserImage: 'Teaserbild',
           active: 'Aktiv',
           categoryName: 'Kategorie',
           street: 'Straße',
@@ -67,7 +67,6 @@ export const pluginPoi: PluginDefinition = {
           phone: 'Telefon',
           email: 'E-Mail',
           url: 'Web-URL',
-          mediaPlaceholder: 'Medium auswählen',
           weekday: 'Wochentag',
           timeFrom: 'Öffnet',
           timeTo: 'Schließt',
@@ -82,7 +81,6 @@ export const pluginPoi: PluginDefinition = {
           delete: 'Löschen',
           back: 'Zurück zur Liste',
           deleteConfirm: 'Soll dieser POI wirklich gelöscht werden?',
-          clearMedia: 'Medium entfernen',
         },
         messages: {
           loading: 'POI werden geladen.',
@@ -93,12 +91,6 @@ export const pluginPoi: PluginDefinition = {
           createSuccess: 'POI wurde erstellt.',
           updateSuccess: 'POI wurde aktualisiert.',
           validationError: 'Bitte korrigieren Sie die markierten Felder.',
-        },
-        pagination: {
-          ariaLabel: 'POI-Seiten',
-          pageLabel: 'Seite {{page}}',
-          previous: 'Zurück',
-          next: 'Weiter',
         },
         empty: { title: 'Noch keine POI vorhanden', description: 'Legen Sie den ersten POI an.' },
         validation: {
@@ -123,7 +115,6 @@ export const pluginPoi: PluginDefinition = {
           name: 'Name',
           description: 'Description',
           mobileDescription: 'Mobile description',
-          teaserImage: 'Teaser image',
           active: 'Active',
           categoryName: 'Category',
           street: 'Street',
@@ -133,7 +124,6 @@ export const pluginPoi: PluginDefinition = {
           phone: 'Phone',
           email: 'Email',
           url: 'Web URL',
-          mediaPlaceholder: 'Select media',
           weekday: 'Weekday',
           timeFrom: 'Opens',
           timeTo: 'Closes',
@@ -148,7 +138,6 @@ export const pluginPoi: PluginDefinition = {
           delete: 'Delete',
           back: 'Back to list',
           deleteConfirm: 'Delete this POI?',
-          clearMedia: 'Clear media',
         },
         messages: {
           loading: 'Loading POI.',
@@ -159,12 +148,6 @@ export const pluginPoi: PluginDefinition = {
           createSuccess: 'POI was created.',
           updateSuccess: 'POI was updated.',
           validationError: 'Please correct the highlighted fields.',
-        },
-        pagination: {
-          ariaLabel: 'POI pages',
-          pageLabel: 'Page {{page}}',
-          previous: 'Previous',
-          next: 'Next',
         },
         empty: { title: 'No POI yet', description: 'Create the first POI.' },
         validation: {

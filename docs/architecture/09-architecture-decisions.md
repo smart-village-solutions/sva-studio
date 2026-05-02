@@ -43,6 +43,7 @@ mit Bezug auf die arc42-Abschnitte.
 - `ADR-035-routing-observability-diagnostics-hook.md`
 - `ADR-036-kanonischer-iam-projektions-und-reconcile-vertrag.md`
 - `ADR-038-instanz-modul-zuordnung-und-fail-closed-modulaktivierung.md`
+- `ADR-039-medienmanagement-host-capability-und-storage-vertrag.md`
 
 ### Zuordnung zu arc42-Abschnitten
 
@@ -63,6 +64,7 @@ mit Bezug auf die arc42-Abschnitte.
 - Abschnitt 04/05/06/08/09/10/11 (Strategie/Bausteine/Laufzeit/Querschnitt/Entscheidungen/Qualität/Risiken): ADR-035
 - Abschnitt 04/05/06/08/09/10/11 (Strategie/Bausteine/Laufzeit/Querschnitt/Entscheidungen/Qualität/Risiken): ADR-036
 - Abschnitt 04/05/06/08/09/10/11/12 (Strategie/Bausteine/Laufzeit/Querschnitt/Entscheidungen/Qualität/Risiken/Glossar): ADR-038
+- Abschnitt 03/04/05/06/07/08/09/10/11 (Kontext/Strategie/Bausteine/Laufzeit/Deployment/Querschnitt/Entscheidungen/Qualität/Risiken): ADR-039
 - Abschnitt 03/04/05/06/08 (Kontext/Strategie/Bausteine/Laufzeit/Querschnitt): ADR-021
 
 ### Zuordnung Swarm-Deployment-ADRs
@@ -98,6 +100,7 @@ mit Bezug auf die arc42-Abschnitte.
 - ADR-035: Routing-Observability über Diagnostics-Hook, Safe-Event-Vertrag und Browser-/Server-Split (Abschnitt 04, 05, 06, 08, 09, 10, 11)
 - ADR-036: Kanonischer IAM-Projektionskern, deterministischer Reconcile-/Sync-Vertrag und fail-closed Drift-Blocker (Abschnitt 04, 05, 06, 08, 09, 10, 11)
 - ADR-038: Kanonische Instanz-Modul-Zuordnung, hartes Rechte-Entziehen und fail-closed Modulaktivierung (Abschnitt 04, 05, 06, 08, 09, 10, 11, 12)
+- ADR-039: Medienmanagement als Host-Capability mit eigenem Domänenpackage, internem Storage-Port und Plugin-SDK-kompatibler Referenzgrenze (Abschnitt 03, 04, 05, 06, 07, 08, 09, 10, 11)
 
 ### Pflege-Regel
 
@@ -311,6 +314,19 @@ Zuordnung:
   - Die Konfliktregel bleibt vollständig innerhalb der bestehenden Leitplanken aus ADR-025.
   - Die Erweiterung führt kein neues IdP- oder Sync-Pattern ein, sondern ergänzt die bestehende Studio-IAM-Persistenz um eine zusätzliche Herkunft `direct_user`.
 - Die maßgeblichen Architekturentscheidungen bleiben daher:
+
+### Fortschreibung 2026-04: Medienmanagement als Host-Capability
+
+- `ADR-039-medienmanagement-host-capability-und-storage-vertrag.md`
+  - definiert Medienmanagement als hostseitige Querschnitts-Capability statt als Plugin
+  - verankert `packages/media` als kanonischen Domänenvertrag
+  - kapselt MinIO über einen internen S3-kompatiblen Storage-Port
+  - hält Plugins auf rollenbasierte Picker- und Referenzverträge ohne Storage-Artefakte
+
+Zuordnung:
+
+- Abschnitt 03/04/05/06/07/08/09/10/11: ADR-039
+- Querverweis: ADR-034 für Plugin-SDK- und UI-Verträge
   - ADR-025 für `deny vor allow` und konservative Konfliktauflösung
   - ADR-017 für die modulare Erweiterung der Auth-/IAM-Serverbausteine
   - ADR-016 bleibt unverändert, weil direkte Nutzerrechte bewusst nicht in Keycloak gespiegelt werden

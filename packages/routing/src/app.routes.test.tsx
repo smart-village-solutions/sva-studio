@@ -6,6 +6,7 @@ const guardSpies = vi.hoisted(() => ({
   content: vi.fn(async () => undefined),
   contentCreate: vi.fn(async () => undefined),
   contentDetail: vi.fn(async () => undefined),
+  media: vi.fn(async () => undefined),
   adminUsers: vi.fn(async () => undefined),
   adminUserCreate: vi.fn(async () => undefined),
   adminUserDetail: vi.fn(async () => undefined),
@@ -75,6 +76,7 @@ const bindingKeys = [
   'content',
   'contentCreate',
   'contentDetail',
+  'mediaUsage',
   'media',
   'categories',
   'app',
@@ -171,6 +173,7 @@ describe('app.routes', () => {
 
     expect(routeMap.has('/')).toBe(true);
     expect(routeMap.has('/admin/content')).toBe(true);
+    expect(routeMap.has('/admin/media/$mediaId/usage')).toBe(true);
     expect(routeMap.has('/content')).toBe(true);
     expect(routeMap.has('/admin/users')).toBe(true);
     expect(routeMap.has('/admin/roles/$roleId')).toBe(true);
@@ -182,6 +185,17 @@ describe('app.routes', () => {
     expect(readRouteOptions(routeMap.get('/account')).getParentRoute?.()).toBe(rootRoute);
 
     await readRouteOptions(routeMap.get('/account')).beforeLoad?.({ href: '/account' });
+    await readRouteOptions(routeMap.get('/admin/media/$mediaId/usage')).beforeLoad?.({
+      href: '/admin/media/asset-1/usage',
+      context: {
+        auth: {
+          getUser: async () => ({
+            assignedModules: ['media'],
+            permissionActions: ['media.read'],
+          }),
+        },
+      },
+    });
     await readRouteOptions(routeMap.get('/admin/users')).beforeLoad?.({ href: '/admin/users' });
     await readRouteOptions(routeMap.get('/modules')).beforeLoad?.({ href: '/modules' });
     await readRouteOptions(routeMap.get('/monitoring')).beforeLoad?.({ href: '/monitoring' });
@@ -189,11 +203,15 @@ describe('app.routes', () => {
     await readRouteOptions(routeMap.get('/plugins/news')).beforeLoad?.({ href: '/plugins/news' });
 
     expect(guardSpies.account).toHaveBeenCalledWith({ href: '/account' });
+    expect(guardSpies.media).toHaveBeenCalledWith(
+      expect.objectContaining({ href: '/admin/media/asset-1/usage' })
+    );
     expect(guardSpies.adminUsers).toHaveBeenCalledWith({ href: '/admin/users' });
     expect(guardSpies.adminInstances).toHaveBeenCalledWith({ href: '/modules' });
     expect(guardSpies.adminRoles).toHaveBeenCalledWith({ href: '/monitoring' });
     expect(guardSpies.content).toHaveBeenCalledWith({ href: '/plugins/news' });
     expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('account', undefined, '/account');
+    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('media', undefined, '/admin/media/$mediaId/usage');
     expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('content', undefined, '/admin/content');
     expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('adminUsers', undefined, '/admin/users');
     expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('adminInstances', undefined, '/modules');
@@ -534,6 +552,63 @@ describe('app.routes', () => {
           auth: { getUser: () => ({ roles: ['editor'], permissionActions: ['news.read'], assignedModules: ['news'] }) },
         },
         location: { href: '/plugins/news' },
+      })
+    ).resolves.toBeUndefined();
+  });
+
+  it('blocks static media usage routes when module assignment or media.read is missing', async () => {
+    const routeFactories = createUiRouteFactories(bindings, { adminResources });
+    const rootRoute = { id: 'root' };
+    const route = routeFactories
+      .map((factory) => factory(rootRoute as never))
+      .find((candidate) => readRouteOptions(candidate).path === '/admin/media/$mediaId/usage');
+
+    expect(route).toBeDefined();
+
+    await expect(
+      readRouteOptions(route!).beforeLoad?.({
+        context: {
+          auth: { getUser: () => ({ roles: ['app_manager'], permissionActions: ['media.read'], assignedModules: [] }) },
+        },
+        location: { href: '/admin/media/asset-1/usage' },
+      })
+    ).rejects.toMatchObject({
+      href: '/?error=auth.insufficientRole',
+    });
+
+    await expect(
+      readRouteOptions(route!).beforeLoad?.({
+        context: {
+          auth: { getUser: () => ({ roles: ['app_manager'], permissionActions: [], assignedModules: ['media'] }) },
+        },
+        location: { href: '/admin/media/asset-1/usage' },
+      })
+    ).rejects.toMatchObject({
+      href: '/?error=auth.insufficientRole',
+    });
+  });
+
+  it('allows static media usage routes when module assignment and media.read are both present', async () => {
+    const routeFactories = createUiRouteFactories(bindings, { adminResources });
+    const rootRoute = { id: 'root' };
+    const route = routeFactories
+      .map((factory) => factory(rootRoute as never))
+      .find((candidate) => readRouteOptions(candidate).path === '/admin/media/$mediaId/usage');
+
+    expect(route).toBeDefined();
+
+    await expect(
+      readRouteOptions(route!).beforeLoad?.({
+        context: {
+          auth: {
+            getUser: () => ({
+              roles: ['app_manager'],
+              permissionActions: ['media.read', 'media.update'],
+              assignedModules: ['media'],
+            }),
+          },
+        },
+        location: { href: '/admin/media/asset-1/usage' },
       })
     ).resolves.toBeUndefined();
   });

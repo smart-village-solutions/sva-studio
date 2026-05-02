@@ -13,7 +13,13 @@ Das System SHALL die Architekturwirkung des Medienmanagements in den betroffenen
 
 - **WHEN** die Medien-Capability umgesetzt wird
 - **THEN** dokumentiert die arc42-Bausteinsicht die hostseitigen Medienbausteine, Schnittstellen und Abhängigkeiten zu Content, IAM und Audit
-- **AND** die Laufzeitsicht beschreibt Upload, Variantenableitung, Verwendungsnachweis und kontrollierte Auslieferung auf Architektur-Ebene
+- **AND** die Laufzeitsicht beschreibt `/admin/media` als kanonischen Host-Einstieg sowie Upload, Variantenableitung, Verwendungsnachweis und kontrollierte Auslieferung auf Architektur-Ebene
+
+#### Scenario: Host-Integration und Migrationspfad sind architektonisch beschrieben
+
+- **WHEN** die Medien-Capability an das bestehende Plugin-, Admin-Resource- und Modulmodell angeschlossen wird
+- **THEN** beschreibt die Architektur die Rolle des hostseitigen Admin-Einstiegs `/admin/media`, optionaler Unterrouten und des Bridge-Pfads für bestehende URL-basierte Plugin-Medienfelder
+- **AND** sie grenzt Medienmanagement klar gegen plugin-eigene CRUD-, Storage- oder Routing-Pfade ab
 
 #### Scenario: Querschnittliche Medienregeln referenzieren die fachlichen Specs
 
@@ -24,5 +30,5 @@ Das System SHALL die Architekturwirkung des Medienmanagements in den betroffenen
 #### Scenario: ADR für Package- und Storage-Entscheidungen ist verlinkt
 
 - **WHEN** die Umsetzung startet
-- **THEN** dokumentiert ADR-037 Package-Zuschnitt, Storage-/Processing-Vertrag und Bezug zum Plugin-SDK-Vertrag aus ADR-034
+- **THEN** dokumentiert ADR-039 Package-Zuschnitt, Storage-/Processing-Vertrag und Bezug zum Plugin-SDK-Vertrag aus ADR-034
 - **AND** `docs/architecture/09-architecture-decisions.md` referenziert diese Entscheidung

@@ -10,6 +10,12 @@ Das System SHALL Medienmanagement über die zentrale IAM-Autorisierung absichern
 - **THEN** verweigert das System den Zugriff
 - **AND** es werden keine Medienmetadaten oder Vorschaudaten offengelegt
 
+#### Scenario: Hostseitiger Admin-Einstieg respektiert Modul- und Guard-Modell
+
+- **WHEN** ein Benutzer `/admin/media` oder eine spezialisierte Medien-Unterseite aufruft
+- **THEN** erfolgt die Zugriffskontrolle über denselben hostseitigen Guard- und Sichtbarkeitsvertrag wie bei anderen Admin-Capabilities
+- **AND** Medienmanagement entsteht nicht als Sonderpfad außerhalb des aktuellen Modul- oder Guard-Modells
+
 #### Scenario: Upload erfordert eigene Medienberechtigung
 
 - **WHEN** ein Benutzer ein neues Medium hochladen oder einen Upload initialisieren will

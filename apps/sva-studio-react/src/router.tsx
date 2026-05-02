@@ -45,6 +45,7 @@ export const isMockAuthEnabled = async () => {
 };
 
 export const createMockRouteGuardUser = (): RouteGuardUser => ({
+  assignedModules: ['news', 'events', 'poi', 'media'],
   roles: [
     'system_admin',
     'iam_admin',
@@ -67,11 +68,16 @@ export const createMockRouteGuardUser = (): RouteGuardUser => ({
     'content.readHistory',
     'content.manageRevisions',
     'content.delete',
+    'media.read',
+    'media.create',
+    'media.update',
+    'media.referenceManage',
+    'media.delete',
+    'media.deliverProtected',
     'news.read',
     'events.read',
     'poi.read',
   ],
-  assignedModules: ['news', 'events', 'poi'],
 });
 
 export const readRouteGuardUser = (payload: unknown): RouteGuardUser => {
@@ -79,8 +85,8 @@ export const readRouteGuardUser = (payload: unknown): RouteGuardUser => {
     user?: {
       roles?: unknown;
       permissionActions?: unknown;
-      assignedModules?: unknown;
       permissionStatus?: unknown;
+      assignedModules?: unknown;
     };
   };
 
@@ -91,6 +97,7 @@ export const readRouteGuardUser = (payload: unknown): RouteGuardUser => {
   const permissionActions = Array.isArray(parsedPayload.user?.permissionActions)
     ? parsedPayload.user.permissionActions.filter((entry): entry is string => typeof entry === 'string')
     : [];
+
   const assignedModules = Array.isArray(parsedPayload.user?.assignedModules)
     ? parsedPayload.user.assignedModules.filter((entry): entry is string => typeof entry === 'string')
     : [];
@@ -98,7 +105,7 @@ export const readRouteGuardUser = (payload: unknown): RouteGuardUser => {
   const rawStatus = parsedPayload.user?.permissionStatus;
   const permissionStatus: 'ok' | 'degraded' = rawStatus === 'degraded' ? 'degraded' : 'ok';
 
-  return { roles, permissionActions, assignedModules, permissionStatus };
+  return { roles, permissionActions, permissionStatus, assignedModules };
 };
 
 const loadRouteGuardUserFromAuthMe = async (url: string, init?: RequestInit): Promise<RouteGuardUser | null> => {

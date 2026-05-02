@@ -186,6 +186,18 @@ const hasRequiredContentAccess = (
   }
 };
 
+const hasPermissionAction = (
+  requiredAction: string,
+  permissionActions: readonly string[] | undefined,
+  isLoading: boolean
+) => {
+  if (isLoading) {
+    return true;
+  }
+
+  return permissionActions?.includes(requiredAction) === true;
+};
+
 const isLeafActive = (pathname: string, item: SidebarLeafItem) => {
   if (!item.to) {
     return false;
@@ -694,6 +706,10 @@ export default function Sidebar({ isLoading = false, isMobileOpen = false, onMob
   const canAccessWorkspace = isAuthenticated && isIamUiEnabled();
   const canAccessContent =
     canAccessWorkspace && (contentAccessApi.isLoading || contentAccessApi.access?.canRead === true);
+  const canAccessMedia =
+    canAccessWorkspace &&
+    isModuleAssignedToUser('media', user) &&
+    hasPermissionAction('media.read', contentAccessApi.permissionActions, contentAccessApi.isLoading);
   const canAccessAdminUsers = isAuthenticated && isIamAdminEnabled() && hasIamAdminRole(user);
   const canAccessAdminOrganizations = canAccessAdminUsers;
   const canAccessAdminInstances = isAuthenticated && isIamAdminEnabled() && hasInstanceRegistryAdminRole(user);
@@ -771,13 +787,17 @@ export default function Sidebar({ isLoading = false, isMobileOpen = false, onMob
               label: t('shell.sidebar.content'),
               icon: IconArticle,
             },
-            {
-              kind: 'link' as const,
-              id: 'media',
-              to: '/media',
-              label: t('shell.sidebar.media'),
-              icon: IconPhoto,
-            },
+            ...(canAccessMedia
+              ? [
+                  {
+                    kind: 'link' as const,
+                    id: 'media',
+                    to: '/admin/media',
+                    label: t('shell.sidebar.media'),
+                    icon: IconPhoto,
+                  },
+                ]
+              : []),
             {
               kind: 'link' as const,
               id: 'categories',
@@ -958,6 +978,7 @@ export default function Sidebar({ isLoading = false, isMobileOpen = false, onMob
     canAccessAdminRoles,
     canAccessAdminUsers,
     canAccessInterfaces,
+    canAccessMedia,
     canAccessSystemTools,
     canAccessWorkspace,
     canAccessContent,

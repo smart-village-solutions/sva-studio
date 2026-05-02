@@ -44,10 +44,11 @@ describe('createRuntimeRouteTree', () => {
         '/account',
         '/admin/users',
         '/admin/content',
-        '/content',
+        '/admin/media',
         '/admin/news',
         '/admin/news/new',
         '/admin/news/$id',
+        '/content',
         '/auth/login',
       ]),
     );
@@ -59,21 +60,21 @@ describe('createRuntimeRouteTree', () => {
         user: {
           roles: ['iam_admin', 1, null, 'editor'],
           permissionActions: ['news.read', false, 'events.read'],
-          assignedModules: ['news', null, 'events'],
+          assignedModules: ['news', false, 'media'],
         },
       }),
     ).toEqual({
       roles: ['iam_admin', 'editor'],
       permissionActions: ['news.read', 'events.read'],
-      assignedModules: ['news', 'events'],
       permissionStatus: 'ok',
+      assignedModules: ['news', 'media'],
     });
 
     expect(readRouteGuardUser({ user: { roles: 'not-an-array' } })).toEqual({
       roles: [],
       permissionActions: [],
-      assignedModules: [],
       permissionStatus: 'ok',
+      assignedModules: [],
     });
   });
 

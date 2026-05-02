@@ -11,6 +11,7 @@ const routeState = vi.hoisted(() => ({
 vi.mock('@tanstack/react-router', () => ({
   useParams: () => routeState.params,
   useSearch: () => routeState.search,
+  useLocation: () => ({ pathname: '/admin/media' }),
 }));
 
 vi.mock('@sva/routing', () => ({
@@ -97,7 +98,15 @@ vi.mock('../routes/admin/legal-texts/-legal-texts-page', () => ({
 }));
 
 vi.mock('../routes/admin/modules/-modules-page', () => ({
-  ModulesPage: () => <div data-testid="placeholder-page">{'System|Modules'}</div>,
+  ModulesPage: () => <div data-testid="modules-page">{'modules'}</div>,
+}));
+
+vi.mock('../routes/admin/media/-media-page', () => ({
+  MediaPage: () => <div data-testid="media-page" />,
+}));
+
+vi.mock('../routes/admin/media/-media-usage-page', () => ({
+  MediaUsagePage: () => <div data-testid="media-usage-page" />,
 }));
 
 vi.mock('../routes/admin/organizations/-organization-create-page', () => ({
@@ -201,7 +210,6 @@ describe('appRouteBindings', () => {
       ['media', 'Data management|Media'],
       ['categories', 'Data management|Categories'],
       ['app', 'Applications|App'],
-      ['modules', 'System|Modules'],
       ['monitoring', 'System|Monitoring'],
       ['help', 'Help|Help'],
       ['support', 'Support|Support'],
@@ -214,6 +222,14 @@ describe('appRouteBindings', () => {
       expect(screen.getByTestId('placeholder-page').textContent).toBe(expectedText);
       cleanup();
     }
+  });
+
+  it('renders the concrete modules binding instead of the system placeholder', async () => {
+    const { appRouteBindings } = await import('./app-route-bindings');
+
+    render(<appRouteBindings.modules />);
+
+    expect(screen.getByTestId('modules-page').textContent).toBe('modules');
   });
 
   it('renders lazy bindings and route-param based bindings with normalized params and search values', async () => {
@@ -361,6 +377,14 @@ describe('appRouteBindings', () => {
 
     render(<appRouteBindings.content />);
     expect(screen.getByTestId('content-list-page')).toBeTruthy();
+    cleanup();
+
+    render(<appRouteBindings.adminMedia />);
+    expect(screen.getByTestId('media-page')).toBeTruthy();
+    cleanup();
+
+    render(<appRouteBindings.mediaUsage />);
+    expect(screen.getByTestId('media-usage-page')).toBeTruthy();
     cleanup();
 
     render(<appRouteBindings.adminUsers />);

@@ -2,16 +2,17 @@ import type { AdminResourceDefinition, PluginDefinition, PluginRouteGuard, Route
 import { assertPluginRoutePathAllowed, createPluginGuardrailError, mergeAdminResourceDefinitions } from '@sva/plugin-sdk';
 import { createRoute, redirect, type AnyRoute, type RootRoute, type RouteComponent } from '@tanstack/react-router';
 
+import { assertNoStaticAdminRouteShadowing, collectAdminResourceRoutePaths } from './admin-resource-route-conflicts.js';
 import { createAccountUiRouteGuard, type AccountUiRouteGuardKey } from './account-ui.routes.js';
-import {
-  createAdminResourceRouteFactories,
-  createLegacyContentAliasFactories,
-} from './admin-resource-routes.js';
-import { getAdminDetailRoutePath as resolveAdminDetailRoutePath } from './admin-resource-route-paths.js';
+import { createAdminResourceRouteFactories, createLegacyContentAliasFactories } from './admin-resource-routes.js';
 import { type RoutingDiagnosticsHook } from './diagnostics.js';
 import { resolvePluginRouteGuard } from './plugin-route-guards.js';
+import type { RouteGuardContext } from './protected.routes.js';
 import { normalizeIamTab, normalizeRoleDetailTab } from './route-search.js';
 import { uiRoutePaths } from './route-paths.js';
+import { enforceUiRouteAccessRequirements } from './ui-route-access.js';
+
+export { getAdminDetailRoutePath } from './admin-resource-route-paths.js';
 
 export type AppRouteFactory = RouteFactory<RootRoute, AnyRoute>;
 export type AppRouteBindings = {
@@ -21,6 +22,7 @@ export type AppRouteBindings = {
   readonly content: RouteComponent;
   readonly contentCreate: RouteComponent;
   readonly contentDetail: RouteComponent;
+  readonly mediaUsage: RouteComponent;
   readonly newsList: RouteComponent;
   readonly newsDetail: RouteComponent;
   readonly newsEditor: RouteComponent;
@@ -31,6 +33,7 @@ export type AppRouteBindings = {
   readonly poiDetail: RouteComponent;
   readonly poiEditor: RouteComponent;
   readonly media: RouteComponent;
+  readonly adminMedia: RouteComponent;
   readonly categories: RouteComponent;
   readonly app: RouteComponent;
   readonly interfaces: RouteComponent;
@@ -67,12 +70,21 @@ type UiRouteDefinition = {
   readonly guard?: AccountUiRouteGuardKey;
   readonly path: string;
   readonly validateSearch?: (search: Record<string, unknown>) => unknown;
+  readonly requiredModuleId?: string;
+  readonly requiredPermissions?: readonly string[];
 };
 
 const uiRouteDefinitions: readonly UiRouteDefinition[] = [
   { binding: 'home', path: uiRoutePaths.home },
   { binding: 'account', path: uiRoutePaths.account, guard: 'account' },
   { binding: 'accountPrivacy', path: uiRoutePaths.accountPrivacy, guard: 'accountPrivacy' },
+  {
+    binding: 'mediaUsage',
+    path: uiRoutePaths.mediaUsage,
+    guard: 'media',
+    requiredModuleId: 'media',
+    requiredPermissions: ['media.read'],
+  },
   { binding: 'media', path: uiRoutePaths.media, guard: 'account' },
   { binding: 'categories', path: uiRoutePaths.categories, guard: 'account' },
   { binding: 'app', path: uiRoutePaths.app, guard: 'account' },
@@ -118,33 +130,6 @@ const uiRouteDefinitions: readonly UiRouteDefinition[] = [
   { binding: 'adminApiPhase1Test', path: uiRoutePaths.adminApiPhase1Test },
 ] as const;
 
-export const getAdminDetailRoutePath = resolveAdminDetailRoutePath;
-
-const collectAdminResourceRoutePaths = (resources: readonly AdminResourceDefinition[]): ReadonlyMap<string, string> => {
-  const paths = new Map<string, string>();
-
-  for (const resource of resources) {
-    const basePath = `/admin/${resource.basePath}`;
-    const detailPath = resolveAdminDetailRoutePath(basePath, resource.views.detail.bindingKey);
-    paths.set(basePath, resource.resourceId);
-    paths.set(`${basePath}/new`, resource.resourceId);
-    paths.set(detailPath, resource.resourceId);
-    if (resource.views.history) {
-      paths.set(`${detailPath}/history`, resource.resourceId);
-    }
-  }
-
-  return paths;
-};
-const assertNoStaticAdminRouteShadowing = (adminResourcePaths: ReadonlyMap<string, string>): void => {
-  for (const definition of uiRouteDefinitions) {
-    const resourceId = adminResourcePaths.get(definition.path);
-    if (resourceId && definition.path.startsWith('/admin/')) {
-      throw new Error(`admin_resource_static_route_conflict:${resourceId}:${definition.path}`);
-    }
-  }
-};
-
 export const createUiRouteFactories = (
   bindings: AppRouteBindings,
   options: {
@@ -155,7 +140,10 @@ export const createUiRouteFactories = (
   const diagnostics = options.diagnostics;
   const adminResources = mergeAdminResourceDefinitions(options.adminResources ?? []);
   const adminResourcePaths = collectAdminResourceRoutePaths(adminResources);
-  assertNoStaticAdminRouteShadowing(adminResourcePaths);
+  assertNoStaticAdminRouteShadowing(
+    adminResourcePaths,
+    uiRouteDefinitions.map((definition) => definition.path)
+  );
   const routeDefinitions = uiRouteDefinitions.filter((definition) => !adminResourcePaths.has(definition.path));
   return [
     ...routeDefinitions.map((definition) => {
@@ -165,7 +153,12 @@ export const createUiRouteFactories = (
           createRoute({
             getParentRoute: () => rootRoute,
             path: definition.path,
-            beforeLoad: (beforeLoadOptions) => guard(beforeLoadOptions),
+            beforeLoad: async (beforeLoadOptions) => {
+              await guard(beforeLoadOptions);
+              await enforceUiRouteAccessRequirements(definition, {
+                context: beforeLoadOptions.context as RouteGuardContext,
+              });
+            },
             validateSearch: definition.validateSearch,
             component: bindings[definition.binding],
           });
@@ -184,7 +177,9 @@ export const createUiRouteFactories = (
   ];
 };
 
-export const mapPluginGuardToAccountGuard = (guard?: PluginRouteGuard): 'content' | 'contentCreate' | 'contentDetail' | null => {
+export const mapPluginGuardToAccountGuard = (
+  guard?: PluginRouteGuard
+): 'content' | 'contentCreate' | 'contentDetail' | null => {
   switch (guard) {
     case 'content.read':
       return 'content';

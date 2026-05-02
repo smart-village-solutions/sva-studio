@@ -11,6 +11,7 @@ import {
 
 export type AdminResourceGuard =
   | 'content'
+  | 'media'
   | 'adminUsers'
   | 'adminOrganizations'
   | 'adminInstances'
@@ -136,17 +137,7 @@ export type AdminResourceDefinition = {
   readonly contentUi?: AdminResourceContentUiDefinition;
 };
 
-const adminResourceDefinitionAllowedKeys = new Set([
-  'resourceId',
-  'basePath',
-  'titleKey',
-  'guard',
-  'moduleId',
-  'views',
-  'permissions',
-  'capabilities',
-  'contentUi',
-] as const);
+const adminResourceDefinitionAllowedKeys = new Set(['resourceId', 'basePath', 'titleKey', 'guard', 'moduleId', 'views', 'permissions', 'capabilities', 'contentUi'] as const);
 const adminResourceViewAllowedKeys = new Set(['bindingKey'] as const);
 const adminResourcePermissionsAllowedKeys = new Set(['list', 'create', 'detail', 'history'] as const);
 const adminResourceCapabilitiesAllowedKeys = new Set(['list', 'detail'] as const);

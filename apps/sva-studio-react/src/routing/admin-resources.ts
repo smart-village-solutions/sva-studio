@@ -2,6 +2,38 @@ import type { AdminResourceDefinition } from '@sva/plugin-sdk';
 
 export const appAdminResources = [
   {
+    resourceId: 'host.media',
+    basePath: 'media',
+    titleKey: 'shell.sidebar.media',
+    guard: 'media',
+    moduleId: 'media',
+    permissions: {
+      list: ['media.read'],
+      create: ['media.create'],
+      detail: ['media.read'],
+    },
+    views: {
+      list: { bindingKey: 'adminMedia' },
+      create: { bindingKey: 'adminMedia' },
+      detail: { bindingKey: 'adminMedia' },
+    },
+    capabilities: {
+      list: {
+        search: {
+          param: 'q',
+          placeholderKey: 'shell.sidebar.media',
+          fields: ['title', 'altText', 'copyright', 'mimeType'],
+        },
+        pagination: {
+          pageParam: 'page',
+          pageSizeParam: 'pageSize',
+          defaultPageSize: 25,
+          pageSizeOptions: [25, 50, 100],
+        },
+      },
+    },
+  },
+  {
     resourceId: 'content',
     basePath: 'content',
     titleKey: 'content.page.title',

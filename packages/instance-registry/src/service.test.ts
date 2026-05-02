@@ -91,7 +91,10 @@ const createRepository = (overrides: Partial<InstanceRegistryRepository> = {}): 
     ...overrides,
   }) as InstanceRegistryRepository;
 
-const createDeps = (repository = createRepository()): InstanceRegistryServiceDeps => ({
+const createDeps = (
+  repository = createRepository(),
+  overrides: Partial<InstanceRegistryServiceDeps> = {}
+): InstanceRegistryServiceDeps => ({
   repository,
   invalidateHost: vi.fn(),
   invalidatePermissionSnapshots: vi.fn(async () => undefined),
@@ -120,6 +123,7 @@ const createDeps = (repository = createRepository()): InstanceRegistryServiceDep
       },
     ],
   ]),
+  ...overrides,
 });
 
 describe('instance registry service facade', () => {
@@ -599,6 +603,7 @@ describe('instance registry service facade', () => {
       trigger: 'instance_module_iam_seeded',
     });
   });
+
   it('revokes a module and reseeds the remaining module IAM baseline', async () => {
     const repository = createRepository({
       revokeModule: vi.fn(async () => true),

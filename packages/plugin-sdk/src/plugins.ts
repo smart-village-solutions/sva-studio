@@ -463,9 +463,7 @@ export const definePluginAuditEvents = <const TEvents extends readonly PluginAud
   return normalizedEvents;
 };
 
-export const definePluginModuleIamContract = <
-  const TContract extends PluginModuleIamContract,
->(
+export const definePluginModuleIamContract = <const TContract extends PluginModuleIamContract>(
   namespace: string,
   contract: TContract
 ): TContract => {

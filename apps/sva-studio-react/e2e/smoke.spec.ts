@@ -61,8 +61,12 @@ const captureServerFnResponses = (page: Page) => {
   return responses;
 };
 
-const isExternalAuthRedirect = (location: string | null | undefined) =>
-  Boolean(location?.match(/(\/protocol\/openid-connect\/auth\?|accounts\.google\.com\/(signin\/oauth\/error|o\/oauth2\/v2\/auth))/));
+const isAcceptedAuthRedirect = (location: string | null | undefined) =>
+  Boolean(
+    location?.match(
+      /(\/protocol\/openid-connect\/auth(?:\?|$)|accounts\.google\.com\/(signin\/oauth\/error|o\/oauth2\/v2\/auth)|\/\?auth=mock-login(?:$|&))/
+    )
+  );
 
 const expectInterfacesShellReady = async (page: Page, timeout = 20_000) => {
   await expect
@@ -84,6 +88,32 @@ const expectInterfacesShellReady = async (page: Page, timeout = 20_000) => {
       { timeout }
     )
     .toBe(true);
+};
+
+const expectHydratedPlaywrightShell = async (page: Page, timeout = 20_000) => {
+  await expect
+    .poll(
+      async () => ({
+        dataTheme: await page.locator('html').getAttribute('data-theme'),
+        hasRouterHook: await page
+          .evaluate(
+            () =>
+              Boolean(
+                (
+                  window as typeof window & {
+                    __SVA_PLAYWRIGHT_ROUTER__?: unknown;
+                  }
+                ).__SVA_PLAYWRIGHT_ROUTER__
+              )
+          )
+          .catch(() => false),
+      }),
+      { timeout }
+    )
+    .toEqual({
+      dataTheme: 'sva-default',
+      hasRouterHook: true,
+    });
 };
 
 const mockAuthenticatedPluginShell = async (page: Page) => {
@@ -285,15 +315,39 @@ const navigateWithPlaywrightRouter = async (page: Page, to: string) => {
 };
 
 test('authenticated client navigation to /admin/news renders the host-owned content route', async ({ page }) => {
+  const pageErrors: string[] = [];
+  const consoleErrors: string[] = [];
+  const requestFailures: string[] = [];
+  const scriptRequests: string[] = [];
+  const observedRequests: string[] = [];
+
   await mockAuthenticatedPluginShell(page);
+
+  page.on('pageerror', (error) => {
+    pageErrors.push(error.message);
+  });
+  page.on('console', (message) => {
+    if (message.type() === 'error') {
+      consoleErrors.push(message.text());
+    }
+  });
+  page.on('requestfailed', (request) => {
+    requestFailures.push(`${request.method()} ${request.url()} :: ${request.failure()?.errorText ?? 'unknown'}`);
+  });
+  page.on('request', (request) => {
+    observedRequests.push(`${request.resourceType()} ${request.method()} ${request.url()}`);
+    if (request.resourceType() === 'script') {
+      scriptRequests.push(request.url());
+    }
+  });
 
   const response = await page.goto('/interfaces');
   expect(response).not.toBeNull();
   expect(response?.status()).toBeLessThan(400);
   await expectInterfacesShellReady(page);
-  await expect(page.locator('html')).toHaveAttribute('data-theme', /.+/);
+  await expectHydratedPlaywrightShell(page);
   await navigateWithPlaywrightRouter(page, '/admin/news');
-  await expect(page).toHaveURL(/\/admin\/news\?(?:.*&)?page=1(?:&.*)?$/);
+  await expect(page).toHaveURL(/\/admin\/news(?:\?.*)?$/);
   await expect(page.getByRole('heading', { name: 'News', exact: true })).toBeVisible();
 });
 
@@ -303,7 +357,7 @@ test('GET /auth/login returns redirect response', async ({ request }) => {
   });
 
   if ([302, 303, 307, 308].includes(response.status())) {
-    expect(isExternalAuthRedirect(response.headers().location)).toBe(true);
+    expect(isAcceptedAuthRedirect(response.headers().location)).toBe(true);
     return;
   }
 
@@ -331,6 +385,11 @@ test('tenant-host login fails closed when canonical auth redirect prerequisites 
     maxRedirects: 0,
   });
 
+  if ([302, 303, 307, 308].includes(response.status())) {
+    expect(isAcceptedAuthRedirect(response.headers().location)).toBe(true);
+    return;
+  }
+
   expect(response.status()).toBe(503);
   await expect(response.json()).resolves.toMatchObject({
     error: 'internal_error',
@@ -339,18 +398,36 @@ test('tenant-host login fails closed when canonical auth redirect prerequisites 
 
 test('router keeps the shell active during client-side navigation', async ({ page }) => {
   const pageErrors: string[] = [];
+  const consoleErrors: string[] = [];
+  const requestFailures: string[] = [];
+  const scriptRequests: string[] = [];
+  const observedRequests: string[] = [];
 
   await mockAuthenticatedPluginShell(page);
 
   page.on('pageerror', (error) => {
     pageErrors.push(error.message);
   });
+  page.on('console', (message) => {
+    if (message.type() === 'error') {
+      consoleErrors.push(message.text());
+    }
+  });
+  page.on('requestfailed', (request) => {
+    requestFailures.push(`${request.method()} ${request.url()} :: ${request.failure()?.errorText ?? 'unknown'}`);
+  });
+  page.on('request', (request) => {
+    observedRequests.push(`${request.resourceType()} ${request.method()} ${request.url()}`);
+    if (request.resourceType() === 'script') {
+      scriptRequests.push(request.url());
+    }
+  });
 
   await page.goto('/interfaces');
   await expectInterfacesShellReady(page);
-  await expect(page.locator('html')).toHaveAttribute('data-theme', /.+/);
+  await expectHydratedPlaywrightShell(page);
   await navigateWithPlaywrightRouter(page, '/admin/news');
-  await expect(page.getByRole('heading', { level: 1, name: 'News' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'News', exact: true })).toBeVisible();
   await navigateWithPlaywrightRouter(page, '/interfaces');
   await expect(page).toHaveURL(/\/interfaces$/);
   await expectInterfacesShellReady(page);

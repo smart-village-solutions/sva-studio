@@ -10,6 +10,24 @@ Das System SHALL Medienmanagement als zentrale hostseitige Capability und nicht 
 - **AND** Fachmodule konsumieren diese Capability über definierte Referenzen oder Extension Points
 - **AND** es entsteht keine konkurrierende Plugin-Eigenimplementierung für Storage, Varianten oder Sicherheitsgrenzen
 
+### Requirement: Hostseitiger Admin-Einstieg für Medienmanagement
+
+Das System SHALL Medienmanagement mit einem kanonischen hostseitigen Einstieg unter `/admin/media` materialisieren und bei Bedarf spezialisierte Medien-Workflows unterhalb dieses Bereichs bereitstellen.
+
+#### Scenario: Medienbibliothek wird über hosteigene Admin-Route geöffnet
+
+- **WHEN** ein berechtigter Benutzer die Medienbibliothek öffnet
+- **THEN** erfolgt der Einstieg über eine hostmaterialisierte Route `/admin/media`
+- **AND** Navigation, Guards, Search-Params und Standardaktionen folgen dem hostseitigen Admin-Ressourcenvertrag
+- **AND** es entsteht kein separater, konkurrierender Medien-Haupteinstieg außerhalb des Admin-Bereichs
+
+#### Scenario: Spezialisierter Medien-Workflow benötigt eigene Oberfläche
+
+- **WHEN** Fokuspunkt-Bearbeitung, Zuschnitt, Variantenanalyse oder Usage-Impact eine spezialisierte Oberfläche benötigen
+- **THEN** darf das System dafür hosteigene Unterrouten unter `/admin/media/...` bereitstellen
+- **AND** diese Unterrouten bleiben an denselben Host-, Guard- und Berechtigungsvertrag gebunden
+- **AND** sie umgehen nicht die zentrale Medien-Capability
+
 ### Requirement: Trennung von Originalmedium, Varianten und Nutzung
 
 Das System SHALL Originalmedium, technische Varianten und fachliche Nutzung getrennt modellieren.
@@ -42,6 +60,24 @@ Das System SHALL Medien über fachliche Rollen statt über rohe Dateipfade anbin
 - **THEN** speichert das System eine Referenz auf ein `MediaAsset`
 - **AND** die Referenz enthält eine fachliche Rolle wie `teaser_image` oder `header_image`
 - **AND** die konkrete technische Ausprägung wird nicht im Content-Modell fest verdrahtet
+
+### Requirement: Migrationspfad für bestehende URL-basierte Medienfelder
+
+Das System SHALL für bestehende URL-basierte Medienfelder in Host-Plugins einen expliziten Bridge- und Migrationspfad auf hostseitige Medienreferenzen bereitstellen.
+
+#### Scenario: Bestehendes Fachmodul nutzt noch URL-basierte Medienfelder
+
+- **WHEN** ein bestehendes Modul wie News, Events oder POI Medien noch über `sourceUrl`, `imageUrl` oder analoge URL-Felder verwaltet
+- **THEN** definiert das System einen kontrollierten Übergangspfad zur hostseitigen `MediaAsset`-/`MediaReference`-Nutzung
+- **AND** der Altbestand bleibt während der Migration funktional
+- **AND** URL-basierte Felder gelten nicht als langfristiger Zielvertrag
+
+#### Scenario: Plugin wechselt vom URL-Feld auf den Media-Picker
+
+- **WHEN** ein Plugin oder Host-Modul auf den hostseitigen Media-Picker umgestellt wird
+- **THEN** werden neue oder geänderte Medienbeziehungen über hostseitige Medienreferenzen gespeichert
+- **AND** der Plugin-Vertrag erhält keine direkten Storage-Artefakte
+- **AND** bestehende Inhalte können kontrolliert übernommen oder migriert werden
 
 ### Requirement: Zentrale Preset- und Variantensteuerung
 

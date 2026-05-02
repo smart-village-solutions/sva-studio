@@ -66,6 +66,13 @@ vi.mock('@tanstack/react-router', () => ({
   useSearch: () => searchMock(),
 }));
 
+vi.mock('@sva/plugin-sdk', async () => {
+  const actual = await vi.importActual<typeof import('@sva/plugin-sdk')>('@sva/plugin-sdk');
+  return {
+    ...actual,
+  };
+});
+
 describe('NewsListPage', () => {
   afterEach(() => {
     cleanup();

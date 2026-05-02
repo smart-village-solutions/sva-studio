@@ -116,6 +116,11 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - Plugin-Custom-Views importieren gemeinsame UI aus `@sva/studio-ui-react` und keine App-internen Komponentenpfade
   - lokale Basis-Control-Duplikate für Button, Input, Select, Tabs, Dialog, Alert, Badge, Table oder DataTable in `packages/plugin-*` sind unzulässig
   - fachliche Wrapper bleiben zulässig, wenn sie Studio-Primitives komponieren und Accessibility-/Design-Token-Semantik erhalten
+- Medienmanagement:
+  - `openspec validate add-media-management --strict` muss grün sein
+  - `@sva/media` bleibt typstabil über `test:types`
+  - Löschblockierung, Mandantentrennung, Upload-Status und Media-Picker-Verträge werden explizit per Unit- und Integrationstests abgesichert
+  - `sva-studio-react:check:i18n` deckt Rollen- und Fehlerübersetzungen der Medienoberflächen ab
 - Coverage Governance:
   - Gate-Logik und Baselines in `scripts/ci/coverage-gate.ts` und `tooling/testing/*`
 - Complexity Governance:

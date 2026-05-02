@@ -55,16 +55,27 @@ export const readBeforeLoadHref = (options: unknown): string => {
   return LEGACY_CONTENT_ALIAS_PREFIX;
 };
 
-export const normalizeLegacyContentHref = (href: string, canonicalContentPath: string): string => {
-  if (href === LEGACY_CONTENT_ALIAS_PREFIX || href.startsWith(`${LEGACY_CONTENT_ALIAS_PREFIX}?`)) {
-    return href.replace(LEGACY_CONTENT_ALIAS_PREFIX, canonicalContentPath);
+export const normalizeLegacyAdminResourceHref = (input: {
+  readonly href: string;
+  readonly aliasPrefix: string;
+  readonly canonicalPath: string;
+}): string => {
+  if (input.href === input.aliasPrefix || input.href.startsWith(`${input.aliasPrefix}?`)) {
+    return input.href.replace(input.aliasPrefix, input.canonicalPath);
   }
-  if (href === `${LEGACY_CONTENT_ALIAS_PREFIX}/new` || href.startsWith(`${LEGACY_CONTENT_ALIAS_PREFIX}/new?`)) {
-    return href.replace(`${LEGACY_CONTENT_ALIAS_PREFIX}/new`, `${canonicalContentPath}/new`);
+  if (input.href === `${input.aliasPrefix}/new` || input.href.startsWith(`${input.aliasPrefix}/new?`)) {
+    return input.href.replace(`${input.aliasPrefix}/new`, `${input.canonicalPath}/new`);
   }
-  if (href.startsWith(`${LEGACY_CONTENT_ALIAS_PREFIX}/`)) {
-    return href.replace(`${LEGACY_CONTENT_ALIAS_PREFIX}/`, `${canonicalContentPath}/`);
+  if (input.href.startsWith(`${input.aliasPrefix}/`)) {
+    return input.href.replace(`${input.aliasPrefix}/`, `${input.canonicalPath}/`);
   }
 
-  return canonicalContentPath;
+  return input.canonicalPath;
 };
+
+export const normalizeLegacyContentHref = (href: string, canonicalContentPath: string): string =>
+  normalizeLegacyAdminResourceHref({
+    href,
+    aliasPrefix: LEGACY_CONTENT_ALIAS_PREFIX,
+    canonicalPath: canonicalContentPath,
+  });

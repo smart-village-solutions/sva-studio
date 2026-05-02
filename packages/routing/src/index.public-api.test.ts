@@ -1,11 +1,8 @@
 import { describe, expect, it } from 'vitest';
-
-const [clientApi, guardsApi, pluginsApi, serverApi] = await Promise.all([
-  import('./index'),
-  import('./guards'),
-  import('./plugins'),
-  import('./index.server'),
-]);
+import * as clientApi from './index';
+import * as guardsApi from './guards';
+import * as pluginsApi from './plugins';
+import * as serverApi from './index.server';
 
 describe('@sva/routing public API', () => {
   it('keeps the root client entry focused on app wiring, paths and search helpers', () => {

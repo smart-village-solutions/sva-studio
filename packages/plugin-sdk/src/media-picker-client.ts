@@ -14,23 +14,22 @@ export type HostMediaReferenceSelection = Readonly<{
 
 type FetchLike = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 
-const createRequestHeaders = (headers?: HeadersInit): Headers => {
-  const requestHeaders = new Headers(headers);
-  if (!requestHeaders.has('Accept')) {
-    requestHeaders.set('Accept', 'application/json');
-  }
-  return requestHeaders;
-};
+const createHeaders = (headers?: HeadersInit): Headers => new Headers(headers);
 
 const requestJson = async <T>(input: {
   readonly fetch: FetchLike;
   readonly url: string;
   readonly init?: RequestInit;
 }): Promise<T> => {
+  const headers = createHeaders(input.init?.headers);
+  if (!headers.has('Accept')) {
+    headers.set('Accept', 'application/json');
+  }
+
   const response = await input.fetch(input.url, {
     credentials: 'include',
     ...input.init,
-    headers: createRequestHeaders(input.init?.headers),
+    headers,
   });
   if (!response.ok) {
     throw new Error(`media_picker_http_${response.status}`);
@@ -84,17 +83,21 @@ export const replaceHostMediaReferences = async (input: {
   readonly targetId: string;
   readonly references: readonly HostMediaReferenceSelection[];
 }> => {
-  const headers = createRequestHeaders({
-    'Content-Type': 'application/json',
-    'X-Requested-With': 'XMLHttpRequest',
-  });
-
-  return requestJson({
+  const response = await requestJson<{
+    data: {
+      readonly targetType: string;
+      readonly targetId: string;
+      readonly references: readonly HostMediaReferenceSelection[];
+    };
+  }>({
     fetch: input.fetch,
     url: '/api/v1/iam/media/references',
     init: {
       method: 'PUT',
-      headers,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+      },
       body: JSON.stringify({
         targetType: input.targetType,
         targetId: input.targetId,
@@ -102,4 +105,5 @@ export const replaceHostMediaReferences = async (input: {
       }),
     },
   });
+  return response.data;
 };

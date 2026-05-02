@@ -50,9 +50,9 @@ const authenticatedUser = {
       'media.read',
       'media.create',
       'media.update',
-      'media.reference.manage',
+      'media.referenceManage',
       'media.delete',
-      'media.deliver.protected',
+      'media.deliverProtected',
     ],
   },
 };
@@ -63,9 +63,9 @@ const permissionPayload = {
     { action: 'media.read', resourceType: 'media' },
     { action: 'media.create', resourceType: 'media' },
     { action: 'media.update', resourceType: 'media' },
-    { action: 'media.reference.manage', resourceType: 'media' },
+    { action: 'media.referenceManage', resourceType: 'media' },
     { action: 'media.delete', resourceType: 'media' },
-    { action: 'media.deliver.protected', resourceType: 'media' },
+    { action: 'media.deliverProtected', resourceType: 'media' },
   ],
   subject: {
     actorUserId: 'kc-editor-1',

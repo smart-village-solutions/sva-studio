@@ -308,7 +308,7 @@ describe('media http handlers', () => {
     const service = createService();
     const authorizeAction = vi
       .fn(async ({ action }: { action: string }) =>
-        action === 'media.reference.manage'
+        action === 'media.referenceManage'
           ? ({
               ok: false,
               status: 403,

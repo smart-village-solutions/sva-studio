@@ -48,8 +48,11 @@ const metadataUpdateSchema = z.object({
         .optional(),
     })
     .partial()
-    .refine((value) => Object.keys(value).length > 0, 'metadata: Mindestens ein Metadatenfeld ist erforderlich.'),
-});
+    .optional(),
+}).refine(
+  (value) => value.visibility !== undefined || Object.keys(value.metadata ?? {}).length > 0,
+  'metadata: Mindestens ein Metadatenfeld oder eine Sichtbarkeitsänderung ist erforderlich.',
+);
 
 const replaceReferencesSchema = z.object({
   instanceId: z.string().trim().min(1).optional(),
@@ -666,7 +669,7 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
 
     const authorization = await deps.authorizeAction({
       ctx,
-      action: 'media.reference.manage',
+      action: 'media.referenceManage',
       resource: {
         targetType: parsed.data.targetType,
         targetId: parsed.data.targetId,
@@ -773,7 +776,7 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
 
     const authorization = await deps.authorizeAction({
       ctx,
-      action: 'media.reference.manage',
+      action: 'media.referenceManage',
       resource: {
         targetType,
         targetId,
@@ -834,7 +837,7 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
       }
       const authorization = await deps.authorizeAction({
         ctx,
-        action: asset.visibility === 'protected' ? 'media.deliver.protected' : 'media.read',
+        action: asset.visibility === 'protected' ? 'media.deliverProtected' : 'media.read',
         resource: {
           assetId,
           visibility: asset.visibility,
@@ -933,7 +936,7 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
 
     const references = await deps.withMediaService(instanceId, (service) => service.listReferencesByAssetId(instanceId, assetId));
     const deletionDecision = canDeleteMediaAsset({
-      asset: asMediaAsset(asset)!,
+      asset,
       references: asMediaReferences(references),
     });
     if (!deletionDecision.allowed) {

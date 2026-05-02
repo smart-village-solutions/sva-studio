@@ -53,4 +53,14 @@ describe('sonar-paths', () => {
     ).toBe(true);
     expect(isSonarCoverageExcludedPath('apps/sva-studio-react/src/routes/home.tsx', exclusions)).toBe(false);
   });
+
+  it('matches sonar-style double-star globs with zero directory segments', () => {
+    const exclusions = ['**/routeTree.gen.ts', 'apps/**/home.tsx'];
+
+    expect(isSonarCoverageExcludedPath('routeTree.gen.ts', exclusions)).toBe(true);
+    expect(isSonarCoverageExcludedPath('apps/home.tsx', exclusions)).toBe(true);
+    expect(isSonarCoverageExcludedPath('apps/sva-studio-react/home.tsx', exclusions)).toBe(true);
+    expect(isSonarCoverageExcludedPath('apps/sva-studio-react/src/home.tsx', exclusions)).toBe(true);
+    expect(isSonarCoverageExcludedPath('routeTree.generated.ts', exclusions)).toBe(false);
+  });
 });

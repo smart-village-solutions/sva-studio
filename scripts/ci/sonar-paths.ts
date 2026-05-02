@@ -15,6 +15,12 @@ const toGlobRegExp = (pattern: string): RegExp => {
     const char = pattern[index];
     if (char === '*') {
       if (pattern[index + 1] === '*') {
+        if (pattern[index + 2] === '/') {
+          source += '(?:.*/)?';
+          index += 3;
+          continue;
+        }
+
         source += '.*';
         index += 2;
         continue;

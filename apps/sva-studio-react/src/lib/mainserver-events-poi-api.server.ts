@@ -564,6 +564,13 @@ const dispatchAuthenticated = async (request: Request, route: RouteMatch, ctx: A
       method: request.method,
     });
   };
+  const logSuccessIfOk = async (response: Response, operation: string, contentId?: string) => {
+    if (!response.ok) {
+      return response;
+    }
+    logSuccess(operation, contentId);
+    return response;
+  };
 
   try {
     if (route.kind === 'collection' && request.method === 'GET') {
@@ -597,10 +604,7 @@ const dispatchAuthenticated = async (request: Request, route: RouteMatch, ctx: A
       }
       const response = await createContentForRoute(route, actor, request);
       const responseBody = (await response.clone().json().catch(() => null)) as { data?: { id?: string } } | null;
-      if (response.ok) {
-        logSuccess(`mainserver_${route.contentKind}_create`, responseBody?.data?.id);
-      }
-      return response;
+      return logSuccessIfOk(response, `mainserver_${route.contentKind}_create`, responseBody?.data?.id);
     }
 
     if (route.kind === 'item' && request.method === 'PATCH') {
@@ -618,10 +622,7 @@ const dispatchAuthenticated = async (request: Request, route: RouteMatch, ctx: A
         return updateActor;
       }
       const response = await updateContentForRoute(route, updateActor, request);
-      if (response.ok) {
-        logSuccess(`mainserver_${route.contentKind}_update`, route.itemId);
-      }
-      return response;
+      return logSuccessIfOk(response, `mainserver_${route.contentKind}_update`, route.itemId);
     }
 
     if (route.kind === 'item' && request.method === 'DELETE') {

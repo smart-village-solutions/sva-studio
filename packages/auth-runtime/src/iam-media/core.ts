@@ -123,12 +123,15 @@ const asMediaProcessingStatus = (value: string): MediaProcessingStatus =>
 
 const asMediaRole = (value: string): MediaRole => (MEDIA_ROLES.has(value as MediaRole) ? (value as MediaRole) : 'download');
 
-const asMediaAsset = (asset: Awaited<ReturnType<MediaService['getAssetById']>>): MediaAsset | null => {
+type BrowserMediaAsset = Omit<MediaAsset, 'storageKey'>;
+
+const asMediaAsset = (asset: Awaited<ReturnType<MediaService['getAssetById']>>): BrowserMediaAsset | null => {
   if (!asset) {
     return null;
   }
+  const { storageKey: _storageKey, ...rest } = asset;
   return {
-    ...asset,
+    ...rest,
     mediaType: 'image',
     visibility: asMediaVisibility(asset.visibility),
     uploadStatus: asMediaUploadStatus(asset.uploadStatus),
@@ -224,6 +227,7 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
         offset: (page - 1) * pageSize,
       })
     );
+    const browserAssets = assets.map((asset) => asMediaAsset(asset)).filter((asset): asset is BrowserMediaAsset => asset !== null);
 
     await emitMediaAuditEvent({
       deps,
@@ -234,7 +238,7 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
       resourceType: 'media_library',
     });
 
-    return jsonResponse(200, asApiList(assets, { page, pageSize, total: assets.length }, getRequestId()));
+    return jsonResponse(200, asApiList(browserAssets, { page, pageSize, total: browserAssets.length }, getRequestId()));
   },
 
   async getMedia(request: Request, ctx: AuthenticatedRequestContext): Promise<Response> {
@@ -262,7 +266,8 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
     }
 
     const asset = await deps.withMediaService(instanceId, (service) => service.getAssetById(instanceId, assetId));
-    if (!asset) {
+    const browserAsset = asMediaAsset(asset);
+    if (!asset || !browserAsset) {
       await emitMediaAuditEvent({
         deps,
         ctx,
@@ -286,7 +291,7 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
       resourceId: assetId,
     });
 
-    return jsonResponse(200, asApiItem(asset, getRequestId()));
+    return jsonResponse(200, asApiItem(browserAsset, getRequestId()));
   },
 
   async getMediaUsage(request: Request, ctx: AuthenticatedRequestContext): Promise<Response> {
@@ -535,7 +540,7 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
       resourceId: assetId,
     });
 
-    return jsonResponse(200, asApiItem({ ...updatedAsset, usageImpact }, getRequestId()));
+    return jsonResponse(200, asApiItem({ ...asMediaAsset(updatedAsset), usageImpact }, getRequestId()));
   },
 
   async completeUpload(request: Request, ctx: AuthenticatedRequestContext): Promise<Response> {
@@ -951,7 +956,20 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
       });
     }
 
-    await deps.withMediaService(instanceId, (service) => service.deleteAsset(instanceId, assetId));
+    const currentUsage = await deps.withMediaService(instanceId, (service) => service.getStorageUsage(instanceId));
+    const releasedBytes =
+      Math.max(0, Number(asset.byteSize) || 0)
+      + Math.max(0, Number((asset.technical as { variantTotalBytes?: unknown } | undefined)?.variantTotalBytes) || 0);
+    await deps.withMediaService(instanceId, async (service) => {
+      await service.deleteAsset(instanceId, assetId);
+      if (currentUsage) {
+        await service.upsertStorageUsage({
+          instanceId,
+          totalBytes: Math.max(0, currentUsage.totalBytes - releasedBytes),
+          assetCount: Math.max(0, currentUsage.assetCount - 1),
+        });
+      }
+    });
     await emitMediaAuditEvent({
       deps,
       ctx,

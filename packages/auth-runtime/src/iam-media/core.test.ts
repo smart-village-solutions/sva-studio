@@ -15,7 +15,21 @@ const createContext = (instanceId = 'tenant-a') =>
   }) as never;
 
 const createService = () => ({
-  listAssets: vi.fn(async () => [{ id: 'asset-1' }]),
+  listAssets: vi.fn(async () => [
+    {
+      id: 'asset-1',
+      instanceId: 'tenant-a',
+      storageKey: 'tenant-a/originals/asset-1.jpg',
+      mediaType: 'image',
+      mimeType: 'image/jpeg',
+      byteSize: 1234,
+      visibility: 'protected',
+      uploadStatus: 'processed',
+      processingStatus: 'ready',
+      metadata: {},
+      technical: {},
+    },
+  ]),
   getAssetById: vi.fn(async (_instanceId: string, assetId: string) =>
     assetId === 'missing'
       ? null
@@ -96,6 +110,27 @@ describe('media http handlers', () => {
       visibility: undefined,
       limit: 10,
       offset: 10,
+    });
+    await expect(response.json()).resolves.toEqual({
+      data: [
+        {
+          id: 'asset-1',
+          instanceId: 'tenant-a',
+          mediaType: 'image',
+          mimeType: 'image/jpeg',
+          byteSize: 1234,
+          visibility: 'protected',
+          uploadStatus: 'processed',
+          processingStatus: 'ready',
+          metadata: {},
+          technical: {},
+        },
+      ],
+      pagination: {
+        page: 2,
+        pageSize: 10,
+        total: 1,
+      },
     });
   });
 
@@ -256,6 +291,17 @@ describe('media http handlers', () => {
         },
       })
     );
+    await expect(response.json()).resolves.toEqual({
+      data: expect.objectContaining({
+        id: 'asset-1',
+        visibility: 'public',
+        usageImpact: {
+          assetId: 'asset-1',
+          totalReferences: 1,
+          references: [],
+        },
+      }),
+    });
   });
 
   it('replaces references for a target and rejects missing media permissions', async () => {
@@ -399,5 +445,51 @@ describe('media http handlers', () => {
 
     expect(response.status).toBe(409);
     expect(service.deleteAsset).not.toHaveBeenCalled();
+  });
+
+  it('reduces storage usage when deleting a processed asset', async () => {
+    const service = createService();
+    service.listReferencesByAssetId = vi.fn(async () => []);
+    service.getStorageUsage = vi.fn(async () => ({
+      instanceId: 'tenant-a',
+      totalBytes: 4096,
+      assetCount: 2,
+    }));
+    service.getAssetById = vi.fn(async () => ({
+      id: 'asset-1',
+      instanceId: 'tenant-a',
+      storageKey: 'tenant-a/originals/asset-1.jpg',
+      mediaType: 'image',
+      mimeType: 'image/jpeg',
+      byteSize: 1234,
+      visibility: 'protected',
+      uploadStatus: 'processed',
+      processingStatus: 'ready',
+      metadata: {},
+      technical: { variantTotalBytes: 321 },
+    }));
+    const handlers = createMediaHttpHandlers({
+      withMediaService: async (_instanceId, work) => work(service as never),
+      storagePort: { prepareUpload: vi.fn(), resolveDelivery: vi.fn() } as never,
+      authorizeAction: allowAuthorization,
+      createId: () => 'id-1',
+      now: () => '2026-04-29T19:00:00.000Z',
+      emitAuditEvent,
+    });
+
+    const response = await handlers.deleteMedia(
+      new Request('http://localhost/api/v1/iam/media/asset-1?instanceId=tenant-a', {
+        method: 'DELETE',
+      }),
+      createContext()
+    );
+
+    expect(response.status).toBe(200);
+    expect(service.deleteAsset).toHaveBeenCalledWith('tenant-a', 'asset-1');
+    expect(service.upsertStorageUsage).toHaveBeenCalledWith({
+      instanceId: 'tenant-a',
+      totalBytes: 2541,
+      assetCount: 1,
+    });
   });
 });

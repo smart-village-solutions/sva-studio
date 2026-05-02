@@ -434,7 +434,6 @@ export type MediaMetadata = Readonly<{
 export type IamMediaAsset = Readonly<{
   id: string;
   instanceId: string;
-  storageKey: string;
   mediaType: 'image';
   mimeType: string;
   byteSize: number;

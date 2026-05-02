@@ -78,6 +78,7 @@ const createVariantBuffer = async (input: {
   readonly focusPoint?: MediaFocusPoint;
 }): Promise<Buffer> => {
   const image = sharp(input.buffer, { failOn: 'error' }).rotate();
+  const metadata = await image.metadata();
   if (input.crop) {
     image.extract({
       left: Math.max(0, Math.round(input.crop.x)),
@@ -85,6 +86,33 @@ const createVariantBuffer = async (input: {
       width: Math.max(1, Math.round(input.crop.width)),
       height: Math.max(1, Math.round(input.crop.height)),
     });
+  } else if (input.focusPoint && input.preset.height && metadata.width && metadata.height) {
+    const targetAspectRatio = input.preset.width / input.preset.height;
+    const sourceAspectRatio = metadata.width / metadata.height;
+
+    if (Math.abs(sourceAspectRatio - targetAspectRatio) > 0.001) {
+      if (sourceAspectRatio > targetAspectRatio) {
+        const cropWidth = Math.max(1, Math.round(metadata.height * targetAspectRatio));
+        const focusX = Math.round(input.focusPoint.x * metadata.width);
+        const left = Math.min(Math.max(0, focusX - Math.round(cropWidth / 2)), metadata.width - cropWidth);
+        image.extract({
+          left,
+          top: 0,
+          width: cropWidth,
+          height: metadata.height,
+        });
+      } else {
+        const cropHeight = Math.max(1, Math.round(metadata.width / targetAspectRatio));
+        const focusY = Math.round(input.focusPoint.y * metadata.height);
+        const top = Math.min(Math.max(0, focusY - Math.round(cropHeight / 2)), metadata.height - cropHeight);
+        image.extract({
+          left: 0,
+          top,
+          width: metadata.width,
+          height: cropHeight,
+        });
+      }
+    }
   }
 
   const resized = image.resize({
@@ -174,6 +202,13 @@ export const createMediaUploadProcessingService = (deps: {
     if (!asset) {
       return asErrorResult(404, 'asset_not_found');
     }
+    if (uploadSession.status === 'validated' && asset.uploadStatus === 'processed' && asset.processingStatus === 'ready') {
+      return {
+        ok: true,
+        asset,
+        uploadSessionId: String(uploadSession.id),
+      };
+    }
 
     try {
       const object = await deps.storagePort.readObject({
@@ -244,7 +279,10 @@ export const createMediaUploadProcessingService = (deps: {
         mimeType: detectedMimeType,
         uploadStatus: 'processed',
         processingStatus: 'ready',
-        technical,
+        technical: {
+          ...technical,
+          variantTotalBytes: variantBytes,
+        },
       };
 
       await deps.service.upsertAsset(nextAsset);
@@ -253,7 +291,7 @@ export const createMediaUploadProcessingService = (deps: {
         status: 'validated',
       });
 
-      const currentUsage = await deps.service.getStorageUsage(input.instanceId);
+const currentUsage = await deps.service.getStorageUsage(input.instanceId);
       await deps.service.upsertStorageUsage({
         instanceId: input.instanceId,
         totalBytes: (currentUsage?.totalBytes ?? 0) + object.byteSize + variantBytes,

@@ -263,6 +263,7 @@ describe('media repository', () => {
     });
 
     expect(statements[0]?.text.includes('INSERT INTO iam.media_variants')).toBe(true);
+    expect(statements[0]?.text.includes('ON CONFLICT (asset_id, variant_key) DO UPDATE')).toBe(true);
     expect(statements[0]?.values.slice(0, 4)).toEqual(['variant-1', 'tenant-a', 'asset-1', 'teaser-landscape']);
 
     await expect(repository.listVariantsByAssetId('tenant-a', 'asset-1')).resolves.toEqual([

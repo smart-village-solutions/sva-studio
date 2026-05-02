@@ -385,7 +385,7 @@ INSERT INTO iam.media_variants (
   generation_status
 )
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-ON CONFLICT (id) DO UPDATE
+ON CONFLICT (asset_id, variant_key) DO UPDATE
 SET asset_id = EXCLUDED.asset_id,
     variant_key = EXCLUDED.variant_key,
     preset_key = EXCLUDED.preset_key,

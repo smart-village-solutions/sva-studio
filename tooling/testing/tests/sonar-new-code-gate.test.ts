@@ -108,6 +108,12 @@ function writePolicy(rootDir: string, overrides: Record<string, unknown> = {}): 
   );
 }
 
+function writeSonarProjectProperties(rootDir: string, coverageExclusions: readonly string[] = []): void {
+  const contents =
+    coverageExclusions.length > 0 ? `sonar.coverage.exclusions=${coverageExclusions.join(',')}\n` : '\n';
+  fs.writeFileSync(path.join(rootDir, 'sonar-project.properties'), contents);
+}
+
 function writeSourceFile(rootDir: string, relativePath: string, contents: string): void {
   const absolutePath = path.join(rootDir, relativePath);
   fs.mkdirSync(path.dirname(absolutePath), { recursive: true });
@@ -175,6 +181,48 @@ describe('sonar new code gate', () => {
     expect(result.missedBranches).toBe(1);
     expect(result.coveragePct).toBe(66.67);
   }, 20_000);
+
+  it('ignores files excluded from sonar coverage', async () => {
+    const runSonarNewCodeGate = await loadRunSonarNewCodeGate();
+    const rootDir = createTempWorkspace();
+    initGitRepo(rootDir);
+    writePolicy(rootDir, {
+      perProjectFloors: {
+        'sva-studio-react': {
+          lines: 0,
+          statements: 0,
+          functions: 0,
+          branches: 0,
+        },
+      },
+    });
+    writeSonarProjectProperties(rootDir, ['apps/sva-studio-react/src/routes/__debug/phase1-test/**']);
+    writeSourceFile(
+      rootDir,
+      'apps/sva-studio-react/src/routes/__debug/phase1-test/-index.ts',
+      'export const route = () => new Response("debug");\n'
+    );
+    commitAll(rootDir, 'base');
+    runGit(rootDir, ['checkout', '-b', 'feature/test']);
+
+    writeSourceFile(
+      rootDir,
+      'apps/sva-studio-react/src/routes/__debug/phase1-test/-index.ts',
+      'export const route = () => new Response("debug-2");\n'
+    );
+    commitAll(rootDir, 'change');
+
+    const result = runSonarNewCodeGate({
+      rootDir,
+      baseRef: 'main',
+      headRef: 'HEAD',
+      targetPct: 85,
+    });
+
+    expect(result.passed).toBe(true);
+    expect(result.consideredFiles).toBe(0);
+    expect(result.ignoredFiles).toBe(0);
+  });
 
   it('passes when changed lines and branches are fully covered', async () => {
     const runSonarNewCodeGate = await loadRunSonarNewCodeGate();

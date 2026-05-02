@@ -316,6 +316,29 @@ describe('instance registry repository', () => {
     });
   });
 
+  it('maps failed-only reconcile summaries without checkedAt or request correlation', async () => {
+    const { executor } = createQueuedExecutor([
+      [
+        {
+          sync_state: 'failed',
+          role_count: 2,
+          failed_count: 2,
+          pending_count: 0,
+          last_synced_at: null,
+          last_error_code: 'IDP_TIMEOUT',
+        },
+      ],
+      [{ request_id: null, created_at: '2026-04-29T10:04:00.000Z' }],
+    ]);
+    const repository = createInstanceRegistryRepository(executor);
+
+    await expect(repository.getRoleReconcileSummary('tenant-a')).resolves.toEqual({
+      status: 'degraded',
+      summary: '2 Rollen mit Fehler.',
+      errorCode: 'IDP_TIMEOUT',
+    });
+  });
+
   it('creates and updates instances with hostname side effects', async () => {
     const { executor, statements } = createQueuedExecutor([[instanceRow], [], [instanceRow], []]);
     const repository = createInstanceRegistryRepository(executor);
@@ -458,6 +481,88 @@ describe('instance registry repository', () => {
     expect(statements[1]?.text).not.toContain('NOT IN (');
     expect(statements[2]?.text).toContain("permission_key LIKE 'news.%'");
     expect(statements[2]?.text).not.toContain('permission_key NOT IN (');
+  });
+
+  it('sorts managed permission keys and role names alphabetically before writing IAM rows', async () => {
+    const { executor, statements } = createQueuedExecutor([[], [], [], [], [], [], [], [], []]);
+    const repository = createInstanceRegistryRepository(executor);
+
+    await expect(
+      repository.syncAssignedModuleIam({
+        instanceId: 'tenant-a',
+        managedModuleIds: ['news'],
+        contracts: [
+          {
+            moduleId: 'news',
+            permissionIds: ['news.write', 'news.read'],
+            systemRoles: [
+              { roleName: 'news_editor', permissionIds: ['news.write'] },
+              { roleName: 'news_admin', permissionIds: ['news.read'] },
+            ],
+          },
+        ],
+      })
+    ).resolves.toBeUndefined();
+
+    const insertedPermissionKeys = statements
+      .filter((entry) => entry.text.includes('INSERT INTO iam.permissions'))
+      .map((entry) => entry.values[1]);
+    const insertedRoleNames = statements
+      .filter((entry) => entry.text.includes('INSERT INTO iam.roles'))
+      .map((entry) => entry.values[1]);
+
+    expect(insertedPermissionKeys).toEqual(['news.read', 'news.write']);
+    expect(insertedRoleNames).toEqual(['news_admin', 'news_editor']);
+  });
+
+  it('skips managed-prefix permission cleanup when managed module ids are empty but still reconciles roles', async () => {
+    const { executor, statements } = createQueuedExecutor([[], [], [], []]);
+    const repository = createInstanceRegistryRepository(executor);
+
+    await expect(
+      repository.syncAssignedModuleIam({
+        instanceId: 'tenant-a',
+        managedModuleIds: [],
+        contracts: [
+          {
+            moduleId: 'news',
+            permissionIds: ['news.write'],
+            systemRoles: [{ roleName: 'news_editor', permissionIds: ['news.write'] }],
+          },
+        ],
+      })
+    ).resolves.toBeUndefined();
+
+    expect(statements).toHaveLength(4);
+    expect(statements.some((statement) => statement.text.includes('DELETE FROM iam.permissions'))).toBe(false);
+    expect(statements[3]?.text).toContain('DELETE FROM iam.role_permissions');
+    expect(statements[3]?.text).toContain("NOT IN (('news_editor', 'news.write'))");
+  });
+
+  it('filters stale permissions only within managed prefixes and preserves desired keys in sorted order', async () => {
+    const { executor, statements } = createQueuedExecutor([[], [], [], [], [], [], []]);
+    const repository = createInstanceRegistryRepository(executor);
+
+    await expect(
+      repository.syncAssignedModuleIam({
+        instanceId: 'tenant-a',
+        managedModuleIds: ['events', 'news'],
+        contracts: [
+          {
+            moduleId: 'news',
+            permissionIds: ['news.write', 'news.read'],
+            systemRoles: [{ roleName: 'news_admin', permissionIds: [] }],
+          },
+        ],
+      })
+    ).resolves.toBeUndefined();
+
+    const permissionCleanup = statements.find((statement) => statement.text.includes('DELETE FROM iam.permissions'));
+
+    expect(permissionCleanup?.text).toContain("permission_key NOT IN ('news.read', 'news.write')");
+    expect(permissionCleanup?.text).toContain("permission_key LIKE 'events.%'");
+    expect(permissionCleanup?.text).toContain("permission_key LIKE 'news.%'");
+    expect(permissionCleanup?.text).not.toContain("permission_key LIKE 'poi.%'");
   });
 
   it('resolves hostname variants and returns null when they are missing', async () => {

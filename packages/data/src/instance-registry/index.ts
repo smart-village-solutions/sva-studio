@@ -79,6 +79,8 @@ type KeycloakProvisioningRunRow = {
   updated_at: string;
 };
 
+const compareAlphabetically = (left: string, right: string): number => left.localeCompare(right);
+
 type CreatedKeycloakProvisioningRunRow = KeycloakProvisioningRunRow & {
   created: boolean;
 };
@@ -538,7 +540,9 @@ WHERE instance_id = $1
   },
 
   async syncAssignedModuleIam({ instanceId, managedModuleIds, contracts }) {
-    const permissionKeys = Array.from(new Set(contracts.flatMap((contract) => contract.permissionIds))).sort();
+    const permissionKeys = Array.from(new Set(contracts.flatMap((contract) => contract.permissionIds))).sort(
+      compareAlphabetically
+    );
     const rolePermissionPairs = contracts.flatMap((contract) =>
       contract.systemRoles.flatMap((role) =>
         role.permissionIds.map((permissionId) => ({
@@ -547,7 +551,9 @@ WHERE instance_id = $1
         }))
       )
     );
-    const managedRoleNames = Array.from(new Set(rolePermissionPairs.map((pair) => pair.roleName))).sort();
+    const managedRoleNames = Array.from(new Set(rolePermissionPairs.map((pair) => pair.roleName))).sort(
+      compareAlphabetically
+    );
 
     for (const permissionKey of permissionKeys) {
       await executor.execute(

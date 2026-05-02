@@ -357,4 +357,124 @@ describe('KeycloakAdminClient', () => {
     now = 20_000;
     await expect(client.listUsers()).rejects.toBeInstanceOf(KeycloakAdminRequestError);
   });
+
+  it('fails user creation when Keycloak omits the location header', async () => {
+    const fetchImpl = vi.fn(async (input: string | URL, init?: RequestInit): Promise<Response> => {
+      const url = new URL(String(input));
+      if (url.pathname.endsWith('/protocol/openid-connect/token')) {
+        return jsonResponse({ access_token: 'token-a', expires_in: 300 });
+      }
+      if (init?.method === 'POST' && url.pathname === '/admin/realms/tenant/users') {
+        return new Response(null, { status: 201 });
+      }
+      return jsonResponse({ errorMessage: 'Unhandled request' }, { status: 500 });
+    });
+    const client = createClient(fetchImpl);
+
+    await expect(
+      client.createUser({
+        email: 'created@example.test',
+      })
+    ).rejects.toMatchObject({
+      statusCode: 502,
+      code: 'missing_location_header',
+    });
+  });
+
+  it('maps object-shaped role count responses and missing realms correctly', async () => {
+    const fetchImpl = vi.fn(async (input: string | URL): Promise<Response> => {
+      const path = new URL(String(input)).pathname;
+      if (path.endsWith('/protocol/openid-connect/token')) {
+        return jsonResponse({ access_token: 'token-a', expires_in: 300 });
+      }
+      if (path === '/admin/realms/tenant/roles/count') {
+        return jsonResponse({ count: 9 });
+      }
+      if (path === '/admin/realms/tenant') {
+        return jsonResponse({ error: 'not_found' }, { status: 404 });
+      }
+      return jsonResponse({ errorMessage: 'Unhandled request' }, { status: 500 });
+    });
+    const client = createClient(fetchImpl);
+
+    await expect(client.countRoles()).resolves.toBe(9);
+    await expect(client.getRealm()).resolves.toBeNull();
+  });
+
+  it('creates a protocol mapper when none exists yet', async () => {
+    const requests: RecordedRequest[] = [];
+    const fetchImpl = vi.fn(async (input: string | URL, init?: RequestInit): Promise<Response> => {
+      const url = new URL(String(input));
+      const method = init?.method ?? 'GET';
+      const path = `${url.pathname}${url.search}`;
+      requests.push({
+        method,
+        path,
+        body: typeof init?.body === 'string' ? init.body : undefined,
+      });
+
+      if (path === '/realms/master/protocol/openid-connect/token') {
+        return jsonResponse({ access_token: 'token-a', expires_in: 300 });
+      }
+      if (method === 'GET' && path === '/admin/realms/tenant/clients?clientId=studio') {
+        return jsonResponse([
+          {
+            id: 'client-1',
+            clientId: 'studio',
+          },
+        ]);
+      }
+      if (
+        method === 'GET' &&
+        path === '/admin/realms/tenant/clients/client-1/protocol-mappers/models'
+      ) {
+        return jsonResponse([]);
+      }
+      if (method === 'POST') {
+        return noContentResponse();
+      }
+      return jsonResponse({ errorMessage: `Unhandled ${method} ${path}` }, { status: 500 });
+    });
+    const client = createClient(fetchImpl);
+
+    await expect(
+      client.ensureUserAttributeProtocolMapper({
+        clientId: 'studio',
+        name: 'instanceId',
+        userAttribute: 'instanceId',
+        claimName: 'instanceId',
+      })
+    ).resolves.toBeUndefined();
+
+    expect(
+      requests.some(
+        (request) =>
+          request.method === 'POST' &&
+          request.path === '/admin/realms/tenant/clients/client-1/protocol-mappers/models' &&
+          request.body?.includes('"claim.name":"instanceId"')
+      )
+    ).toBe(true);
+  });
+
+  it('returns null for missing client secrets and ignores realm conflicts', async () => {
+    const fetchImpl = vi.fn(async (input: string | URL, init?: RequestInit): Promise<Response> => {
+      const url = new URL(String(input));
+      const method = init?.method ?? 'GET';
+      const path = `${url.pathname}${url.search}`;
+      if (path === '/realms/master/protocol/openid-connect/token') {
+        return jsonResponse({ access_token: 'token-a', expires_in: 300 });
+      }
+      if (method === 'POST' && path === '/admin/realms') {
+        return jsonResponse({ errorMessage: 'already exists' }, { status: 409 });
+      }
+      if (method === 'GET' && path === '/admin/realms/tenant/clients?clientId=missing-client') {
+        return jsonResponse([]);
+      }
+      return jsonResponse({ errorMessage: `Unhandled ${method} ${path}` }, { status: 500 });
+    });
+    const client = createClient(fetchImpl);
+
+    await expect(client.ensureRealm({ displayName: 'Tenant' })).resolves.toBeUndefined();
+    await expect(client.getOidcClientSecretValue('missing-client')).resolves.toBeNull();
+  });
 });

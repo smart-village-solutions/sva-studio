@@ -16,16 +16,6 @@
   "exemptProjects": [
     "tooling-testing"
   ],
-  "newCodeExemptProjects": [
-    "auth-runtime",
-    "data-client",
-    "data-repositories",
-    "iam-admin",
-    "iam-governance",
-    "instance-registry",
-    "plugin-sdk",
-    "server-runtime"
-  ],
   "perProjectFloors": {
     "core": {
       "lines": 94,

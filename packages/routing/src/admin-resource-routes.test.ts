@@ -464,6 +464,29 @@ describe('admin resource routes', () => {
     });
   });
 
+  it('does not attach list search normalization when no list capabilities are declared', () => {
+    const routeFactories = createAdminResourceRouteFactories(bindings, [
+      {
+        resourceId: 'news.content',
+        basePath: 'news',
+        titleKey: 'news.navigation.title',
+        guard: 'content',
+        views: {
+          list: { bindingKey: 'content' },
+          create: { bindingKey: 'contentCreate' },
+          detail: { bindingKey: 'contentDetail' },
+        },
+      } as never,
+    ]);
+    const rootRoute = { id: 'root' };
+    const listRoute = routeFactories
+      .map((factory) => factory(rootRoute as never))
+      .map((route) => readRouteOptions(route))
+      .find((route) => route.path === '/admin/news');
+
+    expect(listRoute?.validateSearch).toBeUndefined();
+  });
+
   it('redirects legacy content aliases using href and location.href fallbacks', () => {
     const routeFactories = createLegacyContentAliasFactories();
     const rootRoute = { id: 'root' };

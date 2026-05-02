@@ -186,4 +186,40 @@ describe('admin resources', () => {
       ])
     ).toThrow('invalid_admin_resource_view:news.articles:detail');
   });
+
+  it('rejects duplicate normalized search params across list capabilities', () => {
+    expect(() =>
+      createAdminResourceRegistry([
+        {
+          resourceId: 'news.articles',
+          basePath: 'news',
+          titleKey: 'news.articles.title',
+          guard: 'content',
+          views: {
+            list: { bindingKey: 'content' },
+            create: { bindingKey: 'contentCreate' },
+            detail: { bindingKey: 'contentDetail' },
+          },
+          capabilities: {
+            list: {
+              search: {
+                param: 'q',
+                placeholderKey: 'news.search.placeholder',
+                fields: ['title'],
+              },
+              filters: [
+                {
+                  id: 'status',
+                  param: 'q',
+                  labelKey: 'news.filters.status',
+                  bindingKey: 'news.filters.status',
+                  options: [{ value: 'draft', labelKey: 'news.filters.status.draft' }],
+                },
+              ],
+            },
+          },
+        },
+      ])
+    ).toThrow('duplicate_admin_resource_search_param:news.articles:q');
+  });
 });

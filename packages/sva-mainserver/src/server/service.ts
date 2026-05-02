@@ -538,11 +538,15 @@ const toListResult = <TItem>(
   },
 });
 
-const normalizeListInput = (input: SvaMainserverListInput): SvaMainserverListInput => {
-  const requestedPageSize = Math.trunc(input.pageSize) || 0;
-  const pageSize = ALLOWED_MAINSERVER_PAGE_SIZES.includes(requestedPageSize as (typeof ALLOWED_MAINSERVER_PAGE_SIZES)[number])
-    ? requestedPageSize
+const normalizeAllowedPageSize = (pageSize: number): (typeof ALLOWED_MAINSERVER_PAGE_SIZES)[number] => {
+  const requestedPageSize = Math.trunc(pageSize) || 0;
+  return ALLOWED_MAINSERVER_PAGE_SIZES.includes(requestedPageSize as (typeof ALLOWED_MAINSERVER_PAGE_SIZES)[number])
+    ? (requestedPageSize as (typeof ALLOWED_MAINSERVER_PAGE_SIZES)[number])
     : 25;
+};
+
+const normalizeListInput = (input: SvaMainserverListInput): SvaMainserverListInput => {
+  const pageSize = normalizeAllowedPageSize(input.pageSize);
   const maxPage = Math.floor(MAX_MAINSERVER_VISIBLE_OFFSET / pageSize) + 1;
   const page = Math.min(Math.max(1, Math.trunc(input.page) || 1), maxPage);
 
@@ -611,6 +615,63 @@ const resolveGraphqlStatusErrorCode = (status: number): SvaMainserverErrorCode =
     return 'forbidden';
   }
   return 'network_error';
+};
+
+type VisibleListCollectionState<TItem> = {
+  readonly collectedVisibleItems: TItem[];
+  visibleIndex: number;
+  skip: number;
+  exhausted: boolean;
+  hasNextPage: boolean;
+};
+
+const createVisibleListCollectionState = <TItem>(): VisibleListCollectionState<TItem> => ({
+  collectedVisibleItems: [],
+  visibleIndex: 0,
+  skip: 0,
+  exhausted: false,
+  hasNextPage: false,
+});
+
+const assertUpstreamScanLimit = (skip: number) => {
+  if (skip > MAX_MAINSERVER_UPSTREAM_SCAN_RECORDS) {
+    throw toSvaMainserverError({
+      code: 'invalid_response',
+      message: 'Mainserver-Pagination erfordert zu viele Upstream-Datensätze für sichtbare Ergebnisse.',
+      statusCode: 502,
+    });
+  }
+};
+
+const updateVisibleListCollectionState = <TUpstreamItem, TItem>(
+  state: VisibleListCollectionState<TItem>,
+  input: {
+    readonly upstreamItems: readonly TUpstreamItem[];
+    readonly startIndex: number;
+    readonly targetVisibleCount: number;
+    readonly isVisible: (item: TUpstreamItem) => boolean;
+    readonly mapItem: (item: TUpstreamItem) => TItem;
+  }
+) => {
+  for (const item of input.upstreamItems) {
+    if (input.isVisible(item) === false) {
+      continue;
+    }
+
+    if (state.visibleIndex >= input.startIndex) {
+      state.collectedVisibleItems.push(input.mapItem(item));
+      if (state.collectedVisibleItems.length >= input.targetVisibleCount) {
+        state.hasNextPage = true;
+        break;
+      }
+    }
+
+    state.visibleIndex += 1;
+    if (state.visibleIndex >= input.startIndex + input.targetVisibleCount) {
+      state.hasNextPage = true;
+      break;
+    }
+  }
 };
 
 const parseGraphqlPayload = <TResult>(payload: unknown): TResult => {
@@ -1706,65 +1767,43 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
     const startIndex = (normalizedInput.page - 1) * normalizedInput.pageSize;
     const targetVisibleCount = normalizedInput.pageSize + 1;
     const batchSize = Math.min(MAX_MAINSERVER_PAGE_SIZE, normalizedInput.pageSize + 1);
-    const collectedVisibleItems: TItem[] = [];
-    let visibleIndex = 0;
-    let skip = 0;
-    let exhausted = false;
-    let hasNextPage = false;
+    const state = createVisibleListCollectionState<TItem>();
 
-    while (collectedVisibleItems.length < targetVisibleCount && exhausted === false && hasNextPage === false) {
-      if (skip > MAX_MAINSERVER_UPSTREAM_SCAN_RECORDS) {
-        throw toSvaMainserverError({
-          code: 'invalid_response',
-          message: 'Mainserver-Pagination erfordert zu viele Upstream-Datensätze für sichtbare Ergebnisse.',
-          statusCode: 502,
-        });
-      }
+    while (
+      state.collectedVisibleItems.length < targetVisibleCount &&
+      state.exhausted === false &&
+      state.hasNextPage === false
+    ) {
+      assertUpstreamScanLimit(state.skip);
 
       const response = await executeGraphqlWithConfig<TQueryResult>(
         {
           ...normalizedInput,
           document: options.document,
           operationName: options.operationName,
-          variables: { limit: batchSize, skip, order: options.order },
+          variables: { limit: batchSize, skip: state.skip, order: options.order },
         },
         config
       );
 
       const upstreamItems = options.readItems(response);
-      exhausted = upstreamItems.length < batchSize;
-      skip += upstreamItems.length;
+      state.exhausted = upstreamItems.length < batchSize;
+      state.skip += upstreamItems.length;
 
-      for (const item of upstreamItems) {
-        if (options.isVisible(item) === false) {
-          continue;
-        }
-
-        if (visibleIndex >= startIndex) {
-          collectedVisibleItems.push(options.mapItem(item));
-          if (collectedVisibleItems.length >= targetVisibleCount) {
-            hasNextPage = true;
-            break;
-          }
-        }
-
-        visibleIndex += 1;
-        if (visibleIndex >= startIndex + targetVisibleCount) {
-          hasNextPage = true;
-          break;
-        }
-      }
+      updateVisibleListCollectionState(state, {
+        upstreamItems,
+        startIndex,
+        targetVisibleCount,
+        isVisible: options.isVisible,
+        mapItem: options.mapItem,
+      });
 
       if (upstreamItems.length === 0) {
         break;
       }
     }
 
-    return toListResult(
-      normalizedInput,
-      collectedVisibleItems.slice(0, normalizedInput.pageSize),
-      hasNextPage
-    );
+    return toListResult(normalizedInput, state.collectedVisibleItems.slice(0, normalizedInput.pageSize), state.hasNextPage);
   };
 
   const listNewsWithConfig = async (

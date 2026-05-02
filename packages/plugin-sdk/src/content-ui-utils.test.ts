@@ -13,7 +13,7 @@ describe('content ui utils', () => {
     expect(compactOptionalString('  ')).toBeUndefined();
     expect(compactOptionalString('  value  ')).toBe('value');
     expect(toDatetimeLocalValue('2026-05-01T10:15:00.000Z')).toMatch(/^2026-05-01T/);
-    expect(fromDatetimeLocalValue('2026-05-01T12:30')).toBe('2026-05-01T10:30:00.000Z');
+    expect(fromDatetimeLocalValue('2026-05-01T12:30')).toBe(new Date('2026-05-01T12:30').toISOString());
   });
 
   it('maps host media responses to field options and resolves role-based selections', () => {

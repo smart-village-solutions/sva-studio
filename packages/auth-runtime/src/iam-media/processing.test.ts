@@ -2,6 +2,7 @@ import sharp from 'sharp';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createMediaUploadProcessingService } from './processing.js';
+import { MediaStorageUnavailableError } from './storage-port.js';
 
 const createAsset = (overrides: Record<string, unknown> = {}) => ({
   id: 'asset-1',
@@ -470,5 +471,57 @@ describe('media upload processing service', () => {
       instanceId: 'tenant-a',
       storageKey: 'tenant-a/originals/asset-1.png',
     });
+  });
+
+  it('preserves storage/runtime failures instead of coercing them into invalid media', async () => {
+    const originalBuffer = await sharp({
+      create: {
+        width: 1200,
+        height: 800,
+        channels: 3,
+        background: { r: 10, g: 20, b: 30 },
+      },
+    })
+      .png()
+      .toBuffer();
+
+    const service = {
+      getUploadSessionById: vi.fn(async () => createUploadSession({ byteSize: originalBuffer.byteLength })),
+      getAssetById: vi.fn(async () => createAsset({ byteSize: originalBuffer.byteLength })),
+      upsertAsset: vi.fn(async () => undefined),
+      upsertUploadSession: vi.fn(async () => undefined),
+      upsertVariant: vi.fn(async () => undefined),
+      listVariantsByAssetId: vi.fn(async () => []),
+      getStorageUsage: vi.fn(async () => null),
+      upsertStorageUsage: vi.fn(async () => undefined),
+    };
+
+    const storagePort = {
+      readObject: vi.fn(async () => ({
+        body: originalBuffer,
+        byteSize: originalBuffer.byteLength,
+        contentType: 'image/png',
+      })),
+      writeObject: vi.fn(async () => {
+        throw new MediaStorageUnavailableError();
+      }),
+      deleteObject: vi.fn(async () => undefined),
+    };
+
+    const processor = createMediaUploadProcessingService({
+      service: service as never,
+      storagePort: storagePort as never,
+      createId: () => 'variant-1',
+    });
+
+    await expect(
+      processor.completeUpload({
+        instanceId: 'tenant-a',
+        uploadSessionId: 'upload-1',
+      })
+    ).rejects.toThrow(MediaStorageUnavailableError);
+    expect(service.upsertAsset).not.toHaveBeenCalled();
+    expect(service.upsertUploadSession).not.toHaveBeenCalled();
+    expect(storagePort.deleteObject).not.toHaveBeenCalled();
   });
 });

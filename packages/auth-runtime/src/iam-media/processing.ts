@@ -1,6 +1,7 @@
 import sharp from 'sharp';
 import { fileTypeFromBuffer } from 'file-type';
 import { defaultMediaPresets, type MediaCrop, type MediaFocusPoint, type MediaPreset } from '@sva/media';
+import { MediaStorageUnavailableError } from './storage-port.js';
 import type { MediaService } from './service.js';
 
 const ALLOWED_IMAGE_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
@@ -69,6 +70,24 @@ const resolvePresetContentType = (format: MediaPreset['format']): string => {
     default:
       return 'image/webp';
   }
+};
+
+const isRecoverableValidationError = (error: unknown): error is Error => {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  if (error.message === 'upload_size_mismatch') {
+    return true;
+  }
+
+  // Sharp uses these messages for malformed or unsupported image payloads.
+  return (
+    error.message.includes('unsupported image format')
+    || error.message.includes('Input buffer')
+    || error.message.includes('Vips')
+    || error.message.includes('corrupt')
+  );
 };
 
 const createVariantBuffer = async (input: {
@@ -327,6 +346,13 @@ export const createMediaUploadProcessingService = (deps: {
         uploadSessionId: String(uploadSession.id),
       };
     } catch (error) {
+      if (error instanceof MediaStorageUnavailableError) {
+        throw error;
+      }
+      if (!isRecoverableValidationError(error)) {
+        throw error;
+      }
+
       return markProcessingFailure({
         deps,
         asset,

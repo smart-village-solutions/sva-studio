@@ -54,6 +54,32 @@ const metadataUpdateSchema = z.object({
   'metadata: Mindestens ein Metadatenfeld oder eine Sichtbarkeitsänderung ist erforderlich.',
 );
 
+const editableMetadataKeys = ['title', 'description', 'altText', 'copyright', 'license', 'focusPoint', 'crop'] as const;
+type EditableMetadataKey = (typeof editableMetadataKeys)[number];
+
+const applyEditableMetadataUpdate = (
+  currentMetadata: Record<string, unknown> | undefined,
+  metadataUpdate: Partial<Record<EditableMetadataKey, unknown>> | undefined
+): Record<string, unknown> => {
+  const nextMetadata = { ...(currentMetadata ?? {}) };
+
+  if (!metadataUpdate) {
+    return nextMetadata;
+  }
+
+  for (const key of editableMetadataKeys) {
+    delete nextMetadata[key];
+  }
+
+  for (const [key, value] of Object.entries(metadataUpdate) as Array<[EditableMetadataKey, unknown]>) {
+    if (value !== undefined) {
+      nextMetadata[key] = value;
+    }
+  }
+
+  return nextMetadata;
+};
+
 const replaceReferencesSchema = z.object({
   instanceId: z.string().trim().min(1).optional(),
   targetType: z.string().trim().min(1),
@@ -518,10 +544,7 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
     const updatedAsset = {
       ...asset,
       visibility: parsed.data.visibility ?? asset.visibility,
-      metadata: {
-        ...asset.metadata,
-        ...metadataUpdate,
-      },
+      metadata: applyEditableMetadataUpdate(asset.metadata, metadataUpdate),
     };
 
     await deps.withMediaService(instanceId, async (service) => {

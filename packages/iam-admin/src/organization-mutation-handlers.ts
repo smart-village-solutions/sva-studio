@@ -125,6 +125,7 @@ export type OrganizationMutationHandlerDeps<TFeatureFlags = unknown> = {
   ) => Promise<unknown | undefined>;
   readonly logger: {
     readonly info: (message: string, meta: Readonly<Record<string, unknown>>) => void;
+    readonly error: (message: string, meta: Readonly<Record<string, unknown>>) => void;
   };
   readonly notifyPermissionInvalidation: (
     client: QueryClient,
@@ -339,7 +340,7 @@ INSERT INTO iam.organizations (
   depth,
   is_active
 )
-VALUES ($1::uuid, $2::uuid, $3, $4, $5::jsonb, $6, $7, $8::uuid, $9::uuid[], $10::int, true)
+VALUES ($1::uuid, $2, $3, $4, $5::jsonb, $6, $7, $8::uuid, $9::uuid[], $10::int, true)
 RETURNING id;
 `,
           [
@@ -420,6 +421,17 @@ RETURNING id;
       }
 
       const message = error instanceof Error ? error.message : String(error);
+      deps.logger.error('IAM organization creation failed', {
+        workspace_id: actor.instanceId,
+        context: {
+          operation: 'create_organization',
+          instance_id: actor.instanceId,
+          request_id: actor.requestId,
+          trace_id: actor.traceId,
+          actor_account_id: actor.actorAccountId,
+          error: message,
+        },
+      });
       const status = message.includes('organizations_instance_key_uniq') ? 409 : 503;
       const responseBody = {
         error: {

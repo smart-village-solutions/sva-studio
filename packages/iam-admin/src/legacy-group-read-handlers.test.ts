@@ -62,6 +62,9 @@ const createDeps = (
     getWorkspaceContext: vi.fn(() => ({ requestId: 'req-workspace' })),
     isUuid: vi.fn(() => true),
     jsonResponse: vi.fn(createJsonResponse),
+    logger: {
+      error: vi.fn(),
+    },
     readPathSegment: vi.fn(() => groupId),
     requireRoles: vi.fn(() => null),
     resolveActorInfo: vi.fn(async () => ({ actor })),
@@ -142,6 +145,29 @@ describe('createLegacyGroupReadHandlers', () => {
     const response = await handlers.getGroupInternal(new Request(`http://localhost/api/v1/iam/groups/${groupId}`), ctx);
 
     expect(response.status).toBe(404);
+  });
+
+  it('logs structured diagnostics when loading a legacy group detail fails', async () => {
+    const deps = createDeps([], {
+      withInstanceScopedDb: vi.fn(async () => {
+        throw new Error('relation "iam.groups" does not exist');
+      }),
+    });
+    const handlers = createLegacyGroupReadHandlers(deps);
+
+    const response = await handlers.getGroupInternal(new Request(`http://localhost/api/v1/iam/groups/${groupId}`), ctx);
+
+    expect(response.status).toBe(503);
+    expect(deps.logger.error).toHaveBeenCalledWith(
+      'Legacy group detail query failed',
+      expect.objectContaining({
+        operation: 'legacy_group_detail',
+        workspace_id: 'inst-g',
+        group_id: groupId,
+        request_id: 'req-legacy-groups',
+        error: 'relation "iam.groups" does not exist',
+      })
+    );
   });
 
   it('returns early when the feature gate rejects the request', async () => {

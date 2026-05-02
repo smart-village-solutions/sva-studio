@@ -5,6 +5,7 @@ import type {
   PluginAuditEventDefinition,
   PluginAuditEventRegistryEntry,
   PluginDefinition,
+  PluginModuleIamRegistryEntry,
   PluginNavigationItem,
   PluginPermissionDefinition,
   PluginPermissionRegistryEntry,
@@ -14,11 +15,13 @@ import type {
 import {
   createPluginActionRegistry,
   createPluginAuditEventRegistry,
+  createPluginModuleIamRegistry,
   createPluginPermissionRegistry,
   createPluginRegistry,
   mergePluginAdminResourceDefinitions,
   mergePluginAuditEventDefinitions,
   mergePluginContentTypes,
+  mergePluginModuleIamContracts,
   mergePluginNavigationItems,
   mergePluginPermissions,
   mergePluginRouteDefinitions,
@@ -37,7 +40,9 @@ export type BuildTimeRegistry = {
   readonly pluginActionRegistry: ReadonlyMap<string, PluginActionRegistryEntry>;
   readonly pluginAuditEventRegistry: ReadonlyMap<string, PluginAuditEventRegistryEntry>;
   readonly pluginPermissionRegistry: ReadonlyMap<string, PluginPermissionRegistryEntry>;
+  readonly pluginModuleIamRegistry: ReadonlyMap<string, PluginModuleIamRegistryEntry>;
   readonly pluginPermissions: readonly PluginPermissionDefinition[];
+  readonly pluginModuleIamContracts: readonly PluginModuleIamRegistryEntry[];
   readonly routes: readonly PluginRouteDefinition[];
   readonly navigation: readonly PluginNavigationItem[];
   readonly contentTypes: readonly ContentTypeDefinition[];
@@ -75,6 +80,8 @@ type RoutingPhaseOutput = {
 type PermissionPhaseOutput = {
   readonly pluginPermissions: readonly PluginPermissionDefinition[];
   readonly pluginPermissionRegistry: ReadonlyMap<string, PluginPermissionRegistryEntry>;
+  readonly pluginModuleIamContracts: readonly PluginModuleIamRegistryEntry[];
+  readonly pluginModuleIamRegistry: ReadonlyMap<string, PluginModuleIamRegistryEntry>;
 };
 
 const runPreflightPhase = (plugins: readonly PluginDefinition[]): PreflightPhaseOutput => {
@@ -113,6 +120,8 @@ const runAuditPhase = (plugins: readonly PluginDefinition[]): AuditPhaseOutput =
 const runPermissionPhase = (plugins: readonly PluginDefinition[]): PermissionPhaseOutput => ({
   pluginPermissions: mergePluginPermissions(plugins),
   pluginPermissionRegistry: createPluginPermissionRegistry(plugins),
+  pluginModuleIamContracts: mergePluginModuleIamContracts(plugins),
+  pluginModuleIamRegistry: createPluginModuleIamRegistry(plugins),
 });
 
 const runRoutingPhase = (plugins: readonly PluginDefinition[]): RoutingPhaseOutput => ({
@@ -141,7 +150,9 @@ const publishBuildTimeRegistry = ({
   pluginActionRegistry: routing.pluginActionRegistry,
   pluginAuditEventRegistry: audit.pluginAuditEventRegistry,
   pluginPermissionRegistry: permissions.pluginPermissionRegistry,
+  pluginModuleIamRegistry: permissions.pluginModuleIamRegistry,
   pluginPermissions: permissions.pluginPermissions,
+  pluginModuleIamContracts: permissions.pluginModuleIamContracts,
   routes: routing.routes,
   navigation: routing.navigation,
   contentTypes: content.contentTypes,

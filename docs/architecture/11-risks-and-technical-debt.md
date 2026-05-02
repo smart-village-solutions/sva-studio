@@ -200,6 +200,11 @@ Schulden auf IST-Basis.
    - Wahrscheinlichkeit: mittel
    - Maßnahme: Event-/POI-Adapter eng am Snapshot halten, Delete-Record-Types in Staging verifizieren, `openspec validate`, `pnpm check:server-runtime` und Mainserver-Adaptertests vor Rollout ausführen
 
+35. Divergenz zwischen global registrierten Plugins und instanzbezogener Modulfreigabe
+   - Impact: hoch (UI oder Routing könnten Module rendern, die fachlich nicht freigegeben sind)
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: `assignedModules` als kanonischen Session- und Routing-Kontext verwenden, Plugin-Navigation fail-closed ausblenden und Modul-IAM-Baseline nach jeder Mutation neu herstellen
+
 ### Technische Schulden (Auswahl)
 
 - Teilweise No-Op Testtargets in Libraries

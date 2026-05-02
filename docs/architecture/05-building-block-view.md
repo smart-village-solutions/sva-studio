@@ -65,6 +65,8 @@ Abhängigkeiten des aktuellen Systems.
    - Registry-Repositories, persistente Provisioning-Runs und Cache-Zugriffe über injizierte Repository-Verträge
    - Plattformvertrag, Keycloak-Control-Plane, Provisioning-Fassade und Root-Host-Guard
    - Keycloak-Reconcile- und Execute-Mutationen führen `Idempotency-Key`, API-Mutation und stabilen Payload-Fingerprint bis in `iam.instance_keycloak_provisioning_runs`, damit Retries denselben fachlichen Run wiederverwenden
+   - aggregiert für `GET /api/v1/iam/instances/:instanceId` zusätzlich `tenantIamStatus` aus Registry-/Provisioning-, Access-Probe- und Reconcile-Evidenz
+   - persistiert die letzte explizite Tenant-IAM-Access-Probe als Audit-Evidenz in `iam.instance_audit_events` und stellt sie der Detailseite korrelierbar mit `requestId`, `errorCode` und Zeitstempel bereit
    - `apps/sva-studio-react`: gefuehrte Admin-Control-Plane unter `/admin/instances` mit Preflight, Plan, Ausfuehrung und Protokoll
    - der Instanzvertrag trennt `authClientId` fuer interaktive Logins von `tenantAdminClient.clientId` fuer tenant-lokale Admin-Mutationen und Reconcile
    - blockerrelevanter Drift aus Preflight, Provisioning-Plan oder fehlendem Tenant-Admin-Vertrag wird vor Reconcile-/Sync-Starts fail-closed durchgesetzt
@@ -87,7 +89,7 @@ Abhängigkeiten des aktuellen Systems.
   - `packages/auth-runtime`, `packages/iam-admin` und `packages/instance-registry`
 - Tenant-Admin-Pfad pro Instanz:
   - `packages/iam-admin` für Tenant-Admin-Orchestrierung
-  - `packages/instance-registry` für Registry-, Diagnose- und Health-Verträge des `tenantAdminClient`
+  - `packages/instance-registry` für Registry-, Diagnose-, Access-Probe- und Health-Verträge des `tenantAdminClient`
   - `packages/data-repositories` für DB-nahe Registry- und IAM-Zugriffe
 - Instanzgebundene Mainserver-Endpunkte:
   - `packages/data-repositories` für Endpunktkonfiguration, `packages/sva-mainserver` für Integration und Adapter
@@ -144,6 +146,36 @@ Abhängigkeiten des aktuellen Systems.
 - `packages/auth-runtime`, `packages/iam-admin` und `packages/instance-registry` klassifizieren Session-, Actor-, Schema- und Keycloak-nahe Fehlerbilder entlang ihrer Ownership.
 - `apps/sva-studio-react` transportiert heute bereits `requestId` und Safe-Details teilweise bis in den Browser, verwendet diese Informationen aber noch nicht durchgängig für classification-basierte UI-Zustände.
 - Der aktuelle Zielkonflikt liegt damit nicht zwischen fehlenden Signalen und fehlender Observability, sondern zwischen vorhandenen Einzelsignalen und einem noch unvollständigen öffentlichen Diagnosevertrag.
+
+### Fortschreibung 2026-04: Tenant-IAM-Operations im Instanz-Detail
+
+1. `packages/core`
+   - erweitert den Instanz-Detailvertrag um `tenantIamStatus` mit den Achsen `configuration`, `access`, `reconcile` und `overall`.
+2. `packages/data-repositories`
+   - liest letzte Access-Probe-Evidenz aus `iam.instance_audit_events` und Reconcile-Zusammenfassungen aus `iam.roles` plus `iam.activity_logs`.
+3. `packages/instance-registry`
+   - baut daraus den aggregierten Tenant-IAM-Betriebsstatus und bietet die Mutation `POST /api/v1/iam/instances/:instanceId/tenant-iam/access-probe`.
+4. `packages/auth-runtime`
+   - erzwingt für die Access-Probe und tenantlokale Reconcile-Pfade den Execution-Mode `tenant_admin` ohne Plattform-Fallback.
+5. `apps/sva-studio-react`
+   - rendert auf `/admin/instances/$instanceId` einen separaten Tenant-IAM-Bereich mit Statusachsen, Korrelation und kontextbezogenen Aktionen.
+   - strukturiert dieselbe Detailseite als `Control Tower + Workbench`: fester Überblick für Gesamtstatus, Evidenzfrische, priorisierte Befunde und genau eine Primäraktion; nachgelagerte Arbeitsbereiche für `Konfiguration`, `Betrieb` und `Historie`.
+   - leitet dafür in der React-Schicht ein kanonisches Cockpit-Modell aus bestehenden Datenquellen wie `tenantIamStatus`, Keycloak-Preflight, Provisioning-Vorschau, letztem Run und Mutationsdiagnostik ab, ohne den Backend-Vertrag zu ändern.
+
+### Fortschreibung 2026-04: Instanz-Modulaktivierung
+
+1. `packages/core`
+   - erweitert Instanz-Read-Modelle um `assignedModules` und einen Modul-IAM-Befund.
+2. `packages/data` und `packages/data-repositories`
+   - persistieren die kanonische Instanz-Modul-Zuordnung in `iam.instance_modules`.
+3. `packages/plugin-sdk`
+   - definiert den deklarativen Modul-IAM-Vertrag pro Plugin.
+4. `packages/instance-registry`
+   - ist führender Fachbaustein für `assignModule`, `revokeModule` und `seedIamBaseline`.
+5. `packages/auth-runtime`
+   - reichert `/auth/me` für Instanz-Sessions mit `assignedModules` an.
+6. `packages/routing` und `apps/sva-studio-react`
+   - sperren Plugin-Routen und Plugin-Navigation fail-closed gegen den aktiven Modulsatz der Instanz.
 
 ### Abhängigkeiten (vereinfacht)
 

@@ -12,6 +12,7 @@ import { fetchAuthMeSingleFlight } from '../lib/auth-me-singleflight';
 type SessionUser = {
   id: string;
   instanceId?: string;
+  assignedModules?: string[];
   roles: string[];
   permissionStatus?: 'ok' | 'degraded';
 };

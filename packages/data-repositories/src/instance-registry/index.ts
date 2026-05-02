@@ -29,6 +29,7 @@ type InstanceListRow = {
   tenant_admin_first_name: string | null;
   tenant_admin_last_name: string | null;
   theme_key: string | null;
+  assigned_module_ids: readonly string[] | null;
   feature_flags: Record<string, boolean> | null;
   mainserver_config_ref: string | null;
   created_at: string;
@@ -122,6 +123,7 @@ const mapInstance = (row: InstanceListRow): InstanceRegistryRecord => ({
       }
     : undefined,
   themeKey: row.theme_key ?? undefined,
+  assignedModules: row.assigned_module_ids ?? [],
   featureFlags: row.feature_flags ?? {},
   mainserverConfigRef: row.mainserver_config_ref ?? undefined,
   createdAt: row.created_at,
@@ -191,9 +193,26 @@ export type CreateKeycloakProvisioningRunResult = {
   readonly created: boolean;
 };
 
+export type InstanceModuleIamContractRecord = {
+  readonly moduleId: string;
+  readonly permissionIds: readonly string[];
+  readonly systemRoles: readonly {
+    readonly roleName: string;
+    readonly permissionIds: readonly string[];
+  }[];
+};
+
 export type InstanceRegistryRepository = {
   listInstances(input?: { search?: string; status?: InstanceStatus }): Promise<readonly InstanceRegistryRecord[]>;
   getInstanceById(instanceId: string): Promise<InstanceRegistryRecord | null>;
+  listAssignedModules(instanceId: string): Promise<readonly string[]>;
+  assignModule(instanceId: string, moduleId: string): Promise<boolean>;
+  revokeModule(instanceId: string, moduleId: string): Promise<boolean>;
+  syncAssignedModuleIam(input: {
+    instanceId: string;
+    managedModuleIds: readonly string[];
+    contracts: readonly InstanceModuleIamContractRecord[];
+  }): Promise<void>;
   getAuthClientSecretCiphertext(instanceId: string): Promise<string | null>;
   getTenantAdminClientSecretCiphertext(instanceId: string): Promise<string | null>;
   resolveHostname(hostname: string): Promise<InstanceRegistryRecord | null>;
@@ -203,6 +222,20 @@ export type InstanceRegistryRepository = {
     instanceIds: readonly string[]
   ): Promise<Readonly<Record<string, InstanceProvisioningRun | undefined>>>;
   listAuditEvents(instanceId: string): Promise<readonly InstanceAuditEvent[]>;
+  getLatestTenantIamAccessProbe(instanceId: string): Promise<{
+    checkedAt: string;
+    status: 'ready' | 'degraded' | 'blocked' | 'unknown';
+    summary: string;
+    errorCode?: string;
+    requestId?: string;
+  } | null>;
+  getRoleReconcileSummary(instanceId: string): Promise<{
+    status: 'ready' | 'degraded' | 'blocked' | 'unknown';
+    summary: string;
+    checkedAt?: string;
+    errorCode?: string;
+    requestId?: string;
+  } | null>;
   listKeycloakProvisioningRuns(instanceId: string): Promise<readonly InstanceKeycloakProvisioningRun[]>;
   getKeycloakProvisioningRun(instanceId: string, runId: string): Promise<InstanceKeycloakProvisioningRun | null>;
   claimNextKeycloakProvisioningRun(): Promise<InstanceKeycloakProvisioningRun | null>;
@@ -322,6 +355,10 @@ const queryRows = async <TRow>(executor: SqlExecutor, sql: SqlStatement): Promis
   return result.rows;
 };
 
+const quoteSqlLiteral = (value: string): string => `'${value.split("'").join("''")}'`;
+
+const createTextList = (values: readonly string[]): string => values.map(quoteSqlLiteral).join(', ');
+
 const listKeycloakProvisioningStepRows = async (
   executor: SqlExecutor,
   runIds: readonly string[]
@@ -388,6 +425,11 @@ SELECT
   tenant_admin_first_name,
   tenant_admin_last_name,
   theme_key,
+  (
+    SELECT COALESCE(array_agg(module_id ORDER BY module_id), ARRAY[]::text[])
+    FROM iam.instance_modules
+    WHERE instance_id = id
+  ) AS assigned_module_ids,
   feature_flags,
   mainserver_config_ref,
   created_at,
@@ -428,6 +470,11 @@ SELECT
   tenant_admin_first_name,
   tenant_admin_last_name,
   theme_key,
+  (
+    SELECT COALESCE(array_agg(module_id ORDER BY module_id), ARRAY[]::text[])
+    FROM iam.instance_modules
+    WHERE instance_id = id
+  ) AS assigned_module_ids,
   feature_flags,
   mainserver_config_ref,
   created_at,
@@ -442,6 +489,226 @@ LIMIT 1;
       )
     );
     return rows[0] ? mapInstance(rows[0]) : null;
+  },
+
+  async listAssignedModules(instanceId) {
+    const rows = await queryRows<{ module_id: string }>(
+      executor,
+      statement(
+        `
+SELECT module_id
+FROM iam.instance_modules
+WHERE instance_id = $1
+ORDER BY module_id ASC;
+`,
+        [instanceId]
+      )
+    );
+    return rows.map((row) => row.module_id);
+  },
+
+  async assignModule(instanceId, moduleId) {
+    const result = await executor.execute(
+      statement(
+        `
+INSERT INTO iam.instance_modules (instance_id, module_id)
+VALUES ($1, $2)
+ON CONFLICT (instance_id, module_id) DO NOTHING;
+`,
+        [instanceId, moduleId]
+      )
+    );
+    return result.rowCount > 0;
+  },
+
+  async revokeModule(instanceId, moduleId) {
+    const result = await executor.execute(
+      statement(
+        `
+DELETE FROM iam.instance_modules
+WHERE instance_id = $1
+  AND module_id = $2;
+`,
+        [instanceId, moduleId]
+      )
+    );
+    return result.rowCount > 0;
+  },
+
+  async syncAssignedModuleIam({ instanceId, managedModuleIds, contracts }) {
+    const permissionKeys = Array.from(new Set(contracts.flatMap((contract) => contract.permissionIds))).sort();
+    const managedRoleNames = Array.from(
+      new Set(contracts.flatMap((contract) => contract.systemRoles.map((role) => role.roleName)))
+    ).sort();
+    const rolePermissionPairs = contracts.flatMap((contract) =>
+      contract.systemRoles.flatMap((role) =>
+        role.permissionIds.map((permissionId) => ({
+          roleName: role.roleName,
+          permissionId,
+        }))
+      )
+    );
+
+    for (const permissionKey of permissionKeys) {
+      await executor.execute(
+        statement(
+          `
+INSERT INTO iam.permissions (
+  id,
+  instance_id,
+  permission_key,
+  action,
+  resource_type,
+  resource_id,
+  effect,
+  scope,
+  description
+)
+VALUES (
+  gen_random_uuid(),
+  $1,
+  $2,
+  $2,
+  split_part($2, '.', 1),
+  NULL,
+  'allow',
+  '{}'::jsonb,
+  $3
+)
+ON CONFLICT (instance_id, permission_key) DO UPDATE
+SET
+  action = EXCLUDED.action,
+  resource_type = EXCLUDED.resource_type,
+  resource_id = EXCLUDED.resource_id,
+  effect = EXCLUDED.effect,
+  scope = EXCLUDED.scope,
+  description = EXCLUDED.description,
+  updated_at = NOW();
+`,
+          [instanceId, permissionKey, `Modulberechtigung ${permissionKey}`]
+        )
+      );
+    }
+
+    for (const roleName of managedRoleNames) {
+      await executor.execute(
+        statement(
+          `
+INSERT INTO iam.roles (
+  id,
+  instance_id,
+  role_key,
+  role_name,
+  display_name,
+  external_role_name,
+  description,
+  is_system_role,
+  role_level,
+  managed_by,
+  sync_state,
+  last_synced_at,
+  last_error_code
+)
+VALUES (
+  gen_random_uuid(),
+  $1,
+  $2,
+  $2,
+  $2,
+  $2,
+  $3,
+  TRUE,
+  0,
+  'studio',
+  'pending',
+  NOW(),
+  NULL
+)
+ON CONFLICT (instance_id, role_key) DO UPDATE
+SET
+  role_name = EXCLUDED.role_name,
+  display_name = EXCLUDED.display_name,
+  external_role_name = EXCLUDED.external_role_name,
+  description = EXCLUDED.description,
+  is_system_role = TRUE,
+  updated_at = NOW();
+`,
+          [instanceId, roleName, `Systemrolle fuer Modulzuweisungen (${roleName})`]
+        )
+      );
+    }
+
+    for (const pair of rolePermissionPairs) {
+      await executor.execute(
+        statement(
+          `
+INSERT INTO iam.role_permissions (instance_id, role_id, permission_id)
+SELECT
+  $1,
+  role.id,
+  permission.id
+FROM iam.roles role
+JOIN iam.permissions permission
+  ON permission.instance_id = role.instance_id
+WHERE role.instance_id = $1
+  AND role.role_key = $2
+  AND permission.permission_key = $3
+ON CONFLICT (instance_id, role_id, permission_id) DO NOTHING;
+`,
+          [instanceId, pair.roleName, pair.permissionId]
+        )
+      );
+    }
+
+    if (managedRoleNames.length > 0) {
+      const desiredPairSql =
+        rolePermissionPairs.length > 0
+          ? rolePermissionPairs
+              .map((pair) => `(${quoteSqlLiteral(pair.roleName)}, ${quoteSqlLiteral(pair.permissionId)})`)
+              .join(', ')
+          : null;
+
+      await executor.execute(
+        statement(
+          `
+DELETE FROM iam.role_permissions role_permission
+USING iam.roles role, iam.permissions permission
+WHERE role_permission.instance_id = $1
+  AND role.instance_id = role_permission.instance_id
+  AND role.id = role_permission.role_id
+  AND permission.instance_id = role_permission.instance_id
+  AND permission.id = role_permission.permission_id
+  AND role.role_key IN (${createTextList(managedRoleNames)})
+  ${
+    desiredPairSql
+      ? `AND (role.role_key, permission.permission_key) NOT IN (${desiredPairSql})`
+      : ''
+  };
+`,
+          [instanceId]
+        )
+      );
+    }
+
+    if (managedModuleIds.length > 0) {
+      const managedPrefixConditions = managedModuleIds
+        .map((moduleId) => `permission_key LIKE ${quoteSqlLiteral(`${moduleId}.%`)}`)
+        .join(' OR ');
+      const desiredPermissionFilter =
+        permissionKeys.length > 0 ? `AND permission_key NOT IN (${createTextList(permissionKeys)})` : '';
+
+      await executor.execute(
+        statement(
+          `
+DELETE FROM iam.permissions
+WHERE instance_id = $1
+  ${desiredPermissionFilter}
+  AND (${managedPrefixConditions});
+`,
+          [instanceId]
+        )
+      );
+    }
   },
 
   async getAuthClientSecretCiphertext(instanceId) {
@@ -499,6 +766,11 @@ SELECT
   instance.tenant_admin_first_name,
   instance.tenant_admin_last_name,
   instance.theme_key,
+  (
+    SELECT COALESCE(array_agg(module_id ORDER BY module_id), ARRAY[]::text[])
+    FROM iam.instance_modules
+    WHERE instance_id = instance.id
+  ) AS assigned_module_ids,
   instance.feature_flags,
   instance.mainserver_config_ref,
   instance.created_at,
@@ -540,6 +812,11 @@ SELECT
   tenant_admin_first_name,
   tenant_admin_last_name,
   theme_key,
+  (
+    SELECT COALESCE(array_agg(module_id ORDER BY module_id), ARRAY[]::text[])
+    FROM iam.instance_modules
+    WHERE instance_id = id
+  ) AS assigned_module_ids,
   feature_flags,
   mainserver_config_ref,
   created_at,
@@ -645,6 +922,117 @@ ORDER BY created_at DESC, id DESC;
       )
     );
     return rows.map(mapAuditEvent);
+  },
+
+  async getLatestTenantIamAccessProbe(instanceId) {
+    const rows = await queryRows<{
+      checked_at: string;
+      status: 'ready' | 'degraded' | 'blocked' | 'unknown';
+      summary: string;
+      error_code: string | null;
+      request_id: string | null;
+    }>(
+      executor,
+      statement(
+        `
+SELECT
+  created_at::text AS checked_at,
+  COALESCE(details->>'status', 'unknown') AS status,
+  COALESCE(details->>'summary', 'Keine Rechteprobe vorhanden.') AS summary,
+  details->>'errorCode' AS error_code,
+  COALESCE(details->>'requestId', request_id) AS request_id
+FROM iam.instance_audit_events
+WHERE instance_id = $1
+  AND event_type = 'tenant_iam_access_probed'
+ORDER BY created_at DESC, id DESC
+LIMIT 1;
+`,
+        [instanceId]
+      )
+    );
+    const row = rows[0];
+    if (!row) {
+      return null;
+    }
+    return {
+      checkedAt: row.checked_at,
+      status: row.status,
+      summary: row.summary,
+      ...(row.error_code ? { errorCode: row.error_code } : {}),
+      ...(row.request_id ? { requestId: row.request_id } : {}),
+    };
+  },
+
+  async getRoleReconcileSummary(instanceId) {
+    const aggregateRows = await queryRows<{
+      sync_state: 'synced' | 'pending' | 'failed' | null;
+      role_count: number;
+      failed_count: number;
+      pending_count: number;
+      last_synced_at: string | null;
+      last_error_code: string | null;
+    }>(
+      executor,
+      statement(
+        `
+SELECT
+  CASE
+    WHEN COUNT(*) = 0 THEN NULL
+    WHEN COUNT(*) FILTER (WHERE sync_state = 'failed') > 0 THEN 'failed'
+    WHEN COUNT(*) FILTER (WHERE sync_state = 'pending') > 0 THEN 'pending'
+    ELSE 'synced'
+  END AS sync_state,
+  COUNT(*)::int AS role_count,
+  COUNT(*) FILTER (WHERE sync_state = 'failed')::int AS failed_count,
+  COUNT(*) FILTER (WHERE sync_state = 'pending')::int AS pending_count,
+  MAX(last_synced_at)::text AS last_synced_at,
+  MAX(last_error_code) FILTER (WHERE last_error_code IS NOT NULL) AS last_error_code
+FROM iam.roles
+WHERE instance_id = $1;
+`,
+        [instanceId]
+      )
+    );
+    const aggregate = aggregateRows[0];
+    if (!aggregate?.sync_state || aggregate.role_count === 0) {
+      return null;
+    }
+
+    const correlationRows = await queryRows<{ request_id: string | null; created_at: string }>(
+      executor,
+      statement(
+        `
+SELECT
+  request_id,
+  created_at::text
+FROM iam.activity_logs
+WHERE instance_id = $1
+  AND event_type = 'role.reconciled'
+ORDER BY created_at DESC, id DESC
+LIMIT 1;
+`,
+        [instanceId]
+      )
+    );
+    const correlation = correlationRows[0];
+    const status =
+      aggregate.sync_state === 'failed' ? 'degraded' : aggregate.sync_state === 'pending' ? 'degraded' : 'ready';
+    const summary =
+      aggregate.failed_count > 0 && aggregate.pending_count > 0
+        ? `${aggregate.failed_count} Rollen mit Fehler, ${aggregate.pending_count} Rollen im Backlog.`
+        : aggregate.failed_count > 0
+          ? `${aggregate.failed_count} Rollen mit Fehler.`
+          : aggregate.pending_count > 0
+            ? `${aggregate.pending_count} Rollen im Backlog.`
+            : 'Letzter Rollenabgleich ist synchron.';
+
+    return {
+      status,
+      summary,
+      ...(aggregate.last_synced_at ? { checkedAt: aggregate.last_synced_at } : {}),
+      ...(aggregate.last_error_code ? { errorCode: aggregate.last_error_code } : {}),
+      ...(correlation?.request_id ? { requestId: correlation.request_id } : {}),
+    };
   },
 
   async listKeycloakProvisioningRuns(instanceId) {

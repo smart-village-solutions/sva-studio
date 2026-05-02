@@ -215,3 +215,65 @@ Die Instanzdiagnostik SHALL Runtime-IAM-Fehler, Provisioning-Drift, Reconcile-Be
 - **WHEN** ein Instanz- oder Tenant-Fehler aus Registry-/Provisioning-Drift entsteht
 - **THEN** verwendet der Diagnosekern `registry_or_provisioning_drift`
 - **AND** Legacy- oder Workaround-Pfade verwenden `legacy_workaround_or_regression`, damit Betrieb und UI die Ursache nicht vermischen
+
+### Requirement: Instanz-Detailseite zeigt Tenant-IAM-Betriebszustand getrennt von Provisioning-Readiness
+
+Das System SHALL in der Instanz-Detailansicht den Tenant-IAM-Betriebszustand getrennt von der bestehenden Provisioning- und Keycloak-Struktur-Readiness ausweisen und diese Befunde so gruppieren, dass aktuelle Betriebsbewertung und historische Diagnose nicht verwechselt werden.
+
+#### Scenario: Strukturstatus und Tenant-IAM-Status werden nicht vermischt
+
+- **WHEN** eine Instanzdetailansicht geladen wird
+- **THEN** bleiben `keycloakStatus`, `keycloakPreflight`, `keycloakPlan` und Provisioning-Runs fuer Struktur- und Provisioning-Fragen erhalten
+- **AND** wird ein separater `tenantIamStatus` fuer die laufende Tenant-IAM-Betriebsfaehigkeit angezeigt
+- **AND** kann eine formal gruene Strukturansicht gleichzeitig einen degradierten Tenant-IAM-Befund tragen
+- **AND** erzwingt die UI nicht, dass Operatoren alle diese Ebenen im selben Erstblick gleichrangig interpretieren muessen
+
+#### Scenario: Aktueller Strukturzustand dominiert gegenueber alter Run-Historie
+
+- **WHEN** aktuelle Struktur-Evidenz und Historien-Evidenz unterschiedliche Signale liefern
+- **THEN** priorisiert die Detailansicht fuer den Erstblick den aktuellen Strukturzustand
+- **AND** bleibt alte Provisioning-Historie diagnostisch verfuegbar
+- **AND** darf historische Fehl-Evidenz nicht den Primaerstatus der Seite bestimmen, solange aktuelle Evidenz etwas anderes belegt
+
+#### Scenario: Bestandsaktionen werden tenant-iam-bezogen zugeordnet
+
+- **WHEN** die Instanzdetailansicht fuer einen Tenant-IAM-Befund Handlungsmoeglichkeiten anbietet
+- **THEN** ordnet die UI nur fachlich sinnvolle Bestandsaktionen wie bestehende Provisioning-/Reset-Pfade oder den Rollen-Reconcile dem Befund zu
+- **AND** schlaegt sie keine unspezifische globale Reparaturaktion vor
+
+#### Scenario: Historische Provisioning-Evidenz bleibt nachgeordnet verfuegbar
+
+- **WHEN** aktuelle Struktur-Checks und der letzte erfolgreiche Provisioning-Zustand gruene oder betriebsbereite Signale liefern
+- **THEN** bleiben aeltere Run-Eintraege mit fehlgeschlagenen Schritten weiterhin verfuegbar
+- **AND** werden diese in der Detailansicht als historische Evidenz und nicht als aktueller Primärstatus dargestellt
+- **AND** bleibt fuer Operatoren klar erkennbar, welcher Befund aktuell und welcher nur rueckblickend relevant ist
+
+#### Scenario: Befunde zeigen Status, Frische und Herkunft
+
+- **WHEN** die Detailansicht einen hervorgehobenen Struktur- oder Tenant-IAM-Befund anzeigt
+- **THEN** zeigt die UI fuer diesen Befund nach Moeglichkeit nicht nur den Status, sondern auch letzte belastbare Evidenzzeit oder gleichwertige Frischeinformation
+- **AND** macht sie sichtbar, ob der Befund aus Preflight, Access-Probe, Reconcile oder Provisioning-Evidenz abgeleitet wurde
+
+### Requirement: Instanzdiagnostik korreliert Tenant-IAM-Reconcile und Access-Probe
+
+Das System SHALL Tenant-IAM-Reconcile, tenantlokale Rechteprobe und bestehende Provisioning-Evidenz in der Instanzdetailansicht korrelierbar zusammenführen.
+
+#### Scenario: Reconcile-Befund verweist auf Tenant-IAM-Evidenz
+
+- **WHEN** der Rollen- oder User-Abgleich einer Instanz fehlgeschlagen oder degradiert ist
+- **THEN** kann die Instanzdetailansicht den Reconcile-Zustand mit Fehlercode, letztem Lauf und `requestId` darstellen
+- **AND** bleibt sichtbar, ob zusätzlich die tenantlokale Rechteprobe oder die Strukturkonfiguration betroffen ist
+- **AND** stammt dieser Befund aus vorhandener Reconcile-Evidenz statt aus einer neu erfundenen parallelen Statusquelle
+
+#### Scenario: Access-Probe und Provisioning bleiben unterscheidbar
+
+- **WHEN** Realm, Clients und Secrets strukturell vorhanden sind, der tenantlokale Admin-Client aber operativ keine ausreichenden Rechte hat
+- **THEN** bleibt `configuration` im `tenantIamStatus` unabhängig von `access` oder `reconcile` auswertbar
+- **AND** wird der Befund nicht als bloßes Fehlen eines Registry-Felds fehlklassifiziert
+
+#### Scenario: Detailvertrag erzwingt keine neue Persistenzschicht
+
+- **WHEN** vorhandene Registry-, Provisioning- und Reconcile-Evidenz ausreicht, um den Tenant-IAM-Befund nachvollziehbar abzuleiten
+- **THEN** darf der Instanz-Detailvertrag diese Evidenz direkt aggregieren
+- **AND** ist eine zusätzliche Persistenz für Probe-Snapshots oder Diagnosehistorie in diesem Change nicht verpflichtend
+

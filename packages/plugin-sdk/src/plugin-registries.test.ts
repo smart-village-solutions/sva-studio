@@ -6,12 +6,14 @@ import {
   createContentTypeRegistry,
   createPluginActionRegistry,
   createPluginAuditEventRegistry,
+  createPluginModuleIamRegistry,
   createPluginGuardrailError,
   createPluginPermissionRegistry,
   createPluginRegistry,
   definePluginActions,
   definePluginAdminResources,
   definePluginAuditEvents,
+  definePluginModuleIamContract,
   definePluginContentTypes,
   definePluginPermissions,
   getContentTypeDefinition,
@@ -20,6 +22,7 @@ import {
   mergePluginAdminResourceDefinitions,
   mergePluginAuditEventDefinitions,
   mergePluginContentTypes,
+  mergePluginModuleIamContracts,
   mergePluginNavigationItems,
   mergePluginPermissions,
   mergePluginRouteDefinitions,
@@ -91,6 +94,14 @@ const newsPlugin: PluginDefinition = {
     },
   ],
   auditEvents: [{ eventType: 'news.created', titleKey: 'news.audit.created' }],
+  moduleIam: definePluginModuleIamContract('news', {
+    moduleId: 'news',
+    permissionIds: ['news.read', 'news.create'],
+    systemRoles: [
+      { roleName: 'app_manager', permissionIds: ['news.read'] },
+      { roleName: 'editor', permissionIds: ['news.read', 'news.create'] },
+    ],
+  }),
   translations: {
     de: {
       news: {
@@ -114,6 +125,7 @@ describe('plugin registries', () => {
     expect(mergePluginContentTypes([...registry.values()])).toHaveLength(1);
     expect(mergePluginAdminResourceDefinitions([...registry.values()])).toHaveLength(1);
     expect(mergePluginAuditEventDefinitions([...registry.values()])).toHaveLength(1);
+    expect(mergePluginModuleIamContracts([...registry.values()])).toHaveLength(1);
     expect(mergePluginTranslations([...registry.values()]).de).toEqual({
       news: {
         nav: 'Nachrichten',
@@ -125,6 +137,7 @@ describe('plugin registries', () => {
   it('builds action and audit registries including legacy aliases', () => {
     const actions = createPluginActionRegistry([newsPlugin]);
     const permissions = createPluginPermissionRegistry([newsPlugin]);
+    const modules = createPluginModuleIamRegistry([newsPlugin]);
     const readAction = actions.get('news.read');
     const legacyAction = actions.get('news-read');
     const auditEvents = createPluginAuditEventRegistry([newsPlugin]);
@@ -151,6 +164,15 @@ describe('plugin registries', () => {
       namespace: 'news',
       permissionName: 'read',
       ownerPluginId: 'news',
+    });
+    expect(modules.get('news')).toMatchObject({
+      moduleId: 'news',
+      ownerPluginId: 'news',
+      permissionIds: ['news.read', 'news.create'],
+      systemRoles: [
+        { roleName: 'app_manager', permissionIds: ['news.read'] },
+        { roleName: 'editor', permissionIds: ['news.read', 'news.create'] },
+      ],
     });
   });
 
@@ -185,6 +207,16 @@ describe('plugin registries', () => {
       permissionId: 'news.read',
       ownerPluginId: 'news',
     });
+    expect(registry.pluginModuleIamRegistry.get('news')).toMatchObject({
+      moduleId: 'news',
+      ownerPluginId: 'news',
+    });
+    expect(registry.pluginModuleIamContracts).toEqual([
+      expect.objectContaining({
+        moduleId: 'news',
+        ownerPluginId: 'news',
+      }),
+    ]);
     expect(registry.contentTypes).toHaveLength(1);
     expect(registry.auditEvents).toHaveLength(1);
     expect(registry.pluginAuditEventRegistry.get('news.created')).toMatchObject({
@@ -234,6 +266,24 @@ describe('plugin registries', () => {
     expect(() =>
       definePluginActions('news', [{ id: 'news.read', titleKey: 'news.read', legacyAliases: ['bad.alias'] }])
     ).toThrow('invalid_plugin_action_alias:news.read');
+  });
+
+  it('rejects invalid plugin module IAM contracts', () => {
+    expect(() =>
+      definePluginModuleIamContract('news', {
+        moduleId: 'events',
+        permissionIds: ['news.read'],
+        systemRoles: [],
+      })
+    ).toThrow('plugin_module_iam_module_id_mismatch:news:events');
+
+    expect(() =>
+      definePluginModuleIamContract('news', {
+        moduleId: 'news',
+        permissionIds: ['events.read'],
+        systemRoles: [],
+      })
+    ).toThrow('plugin_module_iam_permission_namespace_mismatch:news:events:events.read');
   });
 
   it('rejects invalid plugin permission definitions and references', () => {

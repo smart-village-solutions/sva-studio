@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  assignModuleSchema,
   createInstanceSchema,
+  revokeModuleSchema,
   readDetailInstanceId,
   readKeycloakRunId,
+  seedIamBaselineSchema,
 } from './http-contracts.js';
 
 describe('http-contracts', () => {
@@ -53,5 +56,23 @@ describe('http-contracts', () => {
     const request = new Request('https://studio.example.org/api/v1/iam/instances/de-test/keycloak');
 
     expect(readKeycloakRunId(request)).toBeUndefined();
+  });
+
+  it('validates assign module payloads', () => {
+    const result = assignModuleSchema.safeParse({ moduleId: 'news' });
+
+    expect(result.success).toBe(true);
+  });
+
+  it('requires revoke confirmation', () => {
+    const result = revokeModuleSchema.safeParse({ moduleId: 'news' });
+
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts empty reseed payloads', () => {
+    const result = seedIamBaselineSchema.safeParse({});
+
+    expect(result.success).toBe(true);
   });
 });

@@ -181,6 +181,7 @@ describe('router runtime helpers', () => {
         'events.read',
         'poi.read',
       ],
+      assignedModules: ['news', 'events', 'poi'],
     });
   });
 
@@ -253,6 +254,7 @@ describe('router runtime helpers', () => {
           user: {
             roles: ['editor', 7, 'system_admin'],
             permissionActions: ['news.read', 42, 'events.read'],
+            assignedModules: ['news', false, 'events'],
           },
         }),
         {
@@ -264,6 +266,7 @@ describe('router runtime helpers', () => {
     expect(await getUser()).toEqual({
       roles: ['editor', 'system_admin'],
       permissionActions: ['news.read', 'events.read'],
+      assignedModules: ['news', 'events'],
       permissionStatus: 'ok',
     });
     expect(routerMocks.fetchWithRequestTimeoutSpy).toHaveBeenCalledWith(
@@ -306,6 +309,7 @@ describe('router runtime helpers', () => {
         'events.read',
         'poi.read',
       ],
+      assignedModules: ['news', 'events', 'poi'],
     });
   });
 
@@ -325,7 +329,12 @@ describe('router runtime helpers', () => {
         }
       )
     );
-    expect(await getUser()).toEqual({ roles: ['app_manager', 'editor'], permissionActions: ['news.read'], permissionStatus: 'ok' });
+    expect(await getUser()).toEqual({
+      roles: ['app_manager', 'editor'],
+      permissionActions: ['news.read'],
+      assignedModules: [],
+      permissionStatus: 'ok',
+    });
     expect(routerMocks.getRequestSpy).toHaveBeenCalled();
     expect(routerMocks.fetchWithRequestTimeoutSpy).toHaveBeenCalledWith(
       'https://studio.example.org/auth/me',
@@ -367,6 +376,7 @@ describe('router runtime helpers', () => {
         'events.read',
         'poi.read',
       ],
+      assignedModules: ['news', 'events', 'poi'],
     });
   });
 

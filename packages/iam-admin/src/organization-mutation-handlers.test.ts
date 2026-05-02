@@ -48,6 +48,8 @@ const completeIdempotency = vi.fn();
 const emitActivityLog = vi.fn();
 const notifyPermissionInvalidation = vi.fn();
 const updateSession = vi.fn();
+const loggerInfo = vi.fn();
+const loggerError = vi.fn();
 
 const json = async (response: Response) => response.json() as Promise<Record<string, unknown>>;
 
@@ -82,7 +84,10 @@ const buildDeps = (): OrganizationMutationHandlerDeps => ({
     membership_count: 0,
   })),
   loadOrganizationDetail: vi.fn(async () => state.detail),
-  logger: { info: vi.fn() },
+  logger: {
+    info: loggerInfo,
+    error: loggerError,
+  },
   notifyPermissionInvalidation,
   parseRequestBody: vi.fn(async () => state.parseResult as never),
   randomUUID: vi.fn(() => '11111111-1111-1111-8111-111111111111'),
@@ -160,6 +165,61 @@ describe('organization mutation handlers', () => {
     await expect(json(response)).resolves.toMatchObject({ data: { organizationKey: 'alpha' }, requestId: 'req-org' });
     expect(completeIdempotency).toHaveBeenCalledWith(expect.objectContaining({ status: 'COMPLETED', responseStatus: 201 }));
     expect(emitActivityLog).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ eventType: 'organization.created' }));
+  });
+
+  it('creates organizations for text-scoped instance ids without uuid-casting instance_id', async () => {
+    const deps = buildDeps();
+    const observedQueries: string[] = [];
+    deps.withInstanceScopedDb = vi.fn(async (_instanceId, work) => {
+      const client = {
+        query: vi.fn(async (text: string) => {
+          observedQueries.push(text);
+          if (text.includes('INSERT INTO iam.organizations')) {
+            return { rowCount: 1, rows: [{ id: '11111111-1111-1111-8111-111111111111' }] };
+          }
+          return { rowCount: 1, rows: [{ is_default_context: true }] };
+        }),
+      };
+      return work(client);
+    });
+    const handlers = createOrganizationMutationHandlers(deps);
+
+    const response = await handlers.createOrganizationInternal(
+      new Request('http://localhost/api/v1/iam/organizations', { method: 'POST' }),
+      ctx
+    );
+
+    expect(response.status).toBe(201);
+    expect(observedQueries.find((query) => query.includes('INSERT INTO iam.organizations'))).not.toContain('$2::uuid');
+  });
+
+  it('logs the underlying database error before returning database_unavailable', async () => {
+    const deps = buildDeps();
+    deps.withInstanceScopedDb = vi.fn(async () => {
+      throw new Error('invalid input syntax for type uuid: "de-musterhausen"');
+    });
+    const handlers = createOrganizationMutationHandlers(deps);
+
+    const response = await handlers.createOrganizationInternal(
+      new Request('http://localhost/api/v1/iam/organizations', { method: 'POST' }),
+      ctx
+    );
+
+    expect(response.status).toBe(503);
+    expect(loggerError).toHaveBeenCalledWith(
+      'IAM organization creation failed',
+      expect.objectContaining({
+        workspace_id: 'de-musterhausen',
+        context: expect.objectContaining({
+          operation: 'create_organization',
+          instance_id: 'de-musterhausen',
+          request_id: 'req-org',
+          trace_id: 'trace-org',
+          actor_account_id: 'account-1',
+          error: 'invalid input syntax for type uuid: "de-musterhausen"',
+        }),
+      })
+    );
   });
 
   it('returns forbidden with actor diagnostics when the actor account is missing', async () => {

@@ -22,6 +22,9 @@ Architektur und Betrieb.
 | workspace_id | Identifier zur Kontext-Korrelation (z. B. Tenant/Workspace) in Logs/Telemetry | `docs/architecture/logging-architecture.md` |
 | Core Route Factory | Funktion, die aus `rootRoute` eine Route erzeugt | `packages/core/src/routing/registry.ts` |
 | Plugin-Vertrag | Öffentlicher SDK-Vertrag, über den ein Plugin Routen, Navigation, Content-Typen und Übersetzungen beschreibt | `packages/sdk/src/plugins.ts` |
+| Modulvertrag | Deklarativer Plugin-Vertrag für modulbezogene Permissions und Systemrollen pro Plugin | `packages/plugin-sdk/src/plugins.ts` |
+| IAM-Baseline | Deterministische Rechtebasis einer Instanz aus `Core + zugewiesene Module` | `packages/instance-registry/src/service.ts` |
+| Instanz-Modul-Zuordnung | Kanonische Zuordnung `instanceId -> assignedModules[]` in `iam.instance_modules` | `packages/data/migrations/0036_iam_instance_modules.sql` |
 | Plugin-Registrierung | Statische Zusammenführung aller `PluginDefinition`-Objekte im Host | `apps/sva-studio-react/src/lib/plugins.ts` |
 | PluginDefinition | Zentrales SDK-Typmodell eines Plugins mit `id`, `routes`, `navigation`, `contentTypes` und `translations` | `packages/sdk/src/plugins.ts` |
 | contentType | Fachlicher Typ eines Core-Inhalts, z. B. `news`; steuert Plugin-UI und serverseitige Payload-Validierung | `packages/auth-runtime/src/iam-contents/content-type-registry.ts` |

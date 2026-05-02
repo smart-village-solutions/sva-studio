@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  buildAssignInstanceModuleInput,
   buildChangeInstanceStatusInput,
   buildCreateInstanceProvisioningInput,
   buildExecuteInstanceKeycloakProvisioningInput,
+  buildRevokeInstanceModuleInput,
   buildReconcileInstanceKeycloakInput,
+  buildSeedInstanceIamBaselineInput,
   buildUpdateInstanceInput,
 } from './mutation-input-builders.js';
 
@@ -95,5 +98,42 @@ describe('mutation-input-builders', () => {
       intent: 'provision',
       tenantAdminTemporaryPassword: 'tmp-password',
     });
+
+    expect(
+      buildAssignInstanceModuleInput(
+        'demo',
+        { moduleId: 'news' },
+        { idempotencyKey: 'idem-6', actorId: 'user-1', requestId: 'req-6' }
+      )
+    ).toEqual({
+      idempotencyKey: 'idem-6',
+      instanceId: 'demo',
+      moduleId: 'news',
+      actorId: 'user-1',
+      requestId: 'req-6',
+    });
+
+    expect(
+      buildRevokeInstanceModuleInput(
+        'demo',
+        { moduleId: 'news', confirmation: 'REVOKE' },
+        { idempotencyKey: 'idem-7', actorId: 'user-1', requestId: 'req-7' }
+      )
+    ).toEqual({
+      idempotencyKey: 'idem-7',
+      instanceId: 'demo',
+      moduleId: 'news',
+      confirmation: 'REVOKE',
+      actorId: 'user-1',
+      requestId: 'req-7',
+    });
+
+    expect(buildSeedInstanceIamBaselineInput('demo', { idempotencyKey: 'idem-8', actorId: 'user-1', requestId: 'req-8' }))
+      .toEqual({
+        idempotencyKey: 'idem-8',
+        instanceId: 'demo',
+        actorId: 'user-1',
+        requestId: 'req-8',
+      });
   });
 });

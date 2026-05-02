@@ -7,7 +7,13 @@ import { createInstanceRegistryHttpHandlers } from '@sva/instance-registry/http-
 
 import type { AuthenticatedRequestContext } from '../middleware.js';
 import { ensurePlatformAccess, requireFreshReauth } from './http.js';
-import { mapInstanceMutationError, mutateInstanceStatus } from './core-mutations.js';
+import {
+  assignInstanceModuleMutation,
+  mapInstanceMutationError,
+  mutateInstanceStatus,
+  revokeInstanceModuleMutation,
+  seedInstanceIamBaselineMutation,
+} from './core-mutations.js';
 import { parseRegistryRequestBody } from './request-parsing.js';
 import { withRegistryService } from './repository.js';
 
@@ -63,3 +69,18 @@ export const suspendInstanceInternal = async (request: Request, ctx: Authenticat
 
 export const archiveInstanceInternal = async (request: Request, ctx: AuthenticatedRequestContext): Promise<Response> =>
   mutateInstanceStatus(request, ctx, 'archived');
+
+export const assignInstanceModuleInternal = async (
+  request: Request,
+  ctx: AuthenticatedRequestContext
+): Promise<Response> => assignInstanceModuleMutation(request, ctx);
+
+export const revokeInstanceModuleInternal = async (
+  request: Request,
+  ctx: AuthenticatedRequestContext
+): Promise<Response> => revokeInstanceModuleMutation(request, ctx);
+
+export const seedInstanceIamBaselineInternal = async (
+  request: Request,
+  ctx: AuthenticatedRequestContext
+): Promise<Response> => seedInstanceIamBaselineMutation(request, ctx);

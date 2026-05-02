@@ -85,7 +85,16 @@ gleichzeitig beeinflussen.
 - Mutierende Inhaltsaktionen deklarieren eine fachliche `domainCapability`; `@sva/auth-runtime` löst sie serverseitig auf bestehende primitive `content.*`-Actions auf und prüft ausschließlich diese primitive Action über die zentrale Permission Engine.
 - Globale Instanzmutationen verwenden die dedizierte Plattformrolle `instance_registry_admin`
 - Instanzverwaltung ist nur auf dem Root-Host zulässig; Tenant-Hosts rendern keine globale Control Plane
+- Die fachliche Modulfreigabe einer Instanz ist kanonisch in `iam.instance_modules` modelliert; Build-time-Plugin-Registrierung, `featureFlags` und Integrationsdaten sind keine alternative Aktivierungsquelle
+- `auth/me` liefert für tenantgebundene Sessions die fail-closed behandelte Liste `assignedModules`; Client-Routing und Plugin-Navigation dürfen modulbezogene Einstiege nur bei expliziter Zuweisung materialisieren
+- Modulentzug entfernt modulbezogene Permissions und `role_permissions` hart; zurückbleibende Restrechte gelten als Drift
 - Normale Tenant-Administration nutzt ausschließlich einen tenantlokalen Keycloak-Adminpfad; Plattform-/Root-Credentials sind dafür kein zulässiger Fallback
+- Tenant-IAM-Betriebsdiagnostik auf der Instanz-Detailseite hält `configuration`, `access`, `reconcile` und `overall` getrennt; `overall` folgt strikt der Präzedenz `blocked` vor `degraded` vor `unknown` vor `ready`
+- Explizite Tenant-IAM-Access-Probes sind read-only, werden manuell ausgelöst und als korrelierbare Audit-Evidenz mit `requestId`, `errorCode`, `checkedAt` und stabiler Quelle `access_probe` persistiert
+- Die Instanz-Detailseite priorisiert im Erstblick aktuelle Betriebswahrheit vor historischer Evidenz. Ältere fehlgeschlagene Provisioning-Läufe bleiben diagnostisch sichtbar, dürfen aber nicht denselben Rang wie aktuelle blockierende Befunde erhalten.
+- Hervorgehobene Cockpit-Zustände folgen dem Prinzip `state + freshness + provenance`: sichtbarer Status soll nach Möglichkeit immer mit belastbarer Zeitmarke und ableitbarer Quelle wie Preflight, Access-Probe, Reconcile oder letztem Provisioning-Lauf gekoppelt sein.
+- Aktionshierarchien auf operativen Detailseiten verwenden genau eine Primäraktion im Überblick; Spezial- und Folgeaktionen werden sichtbar nachgeordnet gruppiert, damit Operatoren nicht mehrere gleichgewichtete Handlungsoptionen im Erstblick interpretieren müssen.
+- Dezente Motion auf der Instanz-Detailseite ist nur zulässig, wenn sie Blickführung, Statusfeedback oder Prozesszustände unterstützt; `prefers-reduced-motion`, Fokusindikatoren, Statuskontrast und Incident-Lesbarkeit haben stets Vorrang vor dekorativer Wirkung.
 - Root-/Plattform-Zugriff umfasst Instanz-Lifecycle, Provisioning, Platform-User, Platform-Rollen, Platform-Sync und explizites Break-Glass; tenantlokale Daten bleiben davon getrennt
 - User-, Rollen- und Rollenzuordnungsänderungen folgen einem Keycloak-first-Vertrag. Studio schreibt erst Keycloak, synchronisiert danach die lokalen Read-Models und macht Abweichungen über `mappingStatus`, `editability` und Diagnosecodes sichtbar.
 - Tenant-Userlisten richten sich nach dem Tenant-Realm in Keycloak; ungemappte oder mehrdeutige Benutzer werden als `unmapped` beziehungsweise `manual_review` angezeigt.
@@ -210,6 +219,13 @@ gleichzeitig beeinflussen.
 - `IamHttpError` bleibt bis in die Browser-Schicht mit `classification`, `requestId` und `safeDetails` erhalten; relevante Klassen sind insbesondere `registry_or_provisioning_drift`, `keycloak_reconcile`, `auth_resolution`, `oidc_discovery_or_exchange`, `frontend_state_or_permission_staleness` und `legacy_workaround_or_regression`.
 - Reconcile- und Sync-Berichte serialisieren deterministische Abschlusszustände und Aggregationen statt impliziter Erfolgssignale.
 - Tenant-Admin-abhängige Mutationen arbeiten fail-closed gegen blockerrelevanten Drift; ein grüner Basis-Health-Status überschreibt diesen Befund nicht.
+
+### Fortschreibung 2026-04: Tenant-IAM-Status als öffentlicher Diagnosekern
+
+- Die Instanz-Detailseite veröffentlicht für Tenant-IAM nur einen sicheren, kuratierten Diagnosekern; tiefe IdP- oder Laufzeitfehler bleiben im OTEL- und Serverlog-Pfad.
+- Access-Probe- und Reconcile-Befunde nutzen stabile Fehlercodes wie `tenant_admin_client_not_configured`, `tenant_admin_client_secret_missing`, `IDP_FORBIDDEN` und `IDP_UNAVAILABLE`, damit UI, Runbook und Audit auf demselben Vokabular arbeiten.
+- Die Access-Probe wird nie automatisch beim Seitenladen ausgeführt, um unnötige IdP-Last, irreführende Zeitpunktevidenz und verdeckte Schreibnebenwirkungen zu vermeiden.
+- `seedIamBaseline` rekonstruiert ausschließlich `Core + zugewiesene Module` und erzeugt keine Rollenmitgliedschaften für den ausführenden Benutzer.
 
 ### Build-, Test- und Cache-Konzept der Frontend-App
 

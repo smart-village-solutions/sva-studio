@@ -1,10 +1,14 @@
 import type { IamInstanceKeycloakProvisioningRun, InstanceRealmMode, InstanceStatus } from '@sva/core';
 
 import type {
+  AssignInstanceModuleInput,
   ChangeInstanceStatusInput,
   CreateInstanceProvisioningInput,
   ExecuteInstanceKeycloakProvisioningInput,
+  ProbeTenantIamAccessInput,
+  RevokeInstanceModuleInput,
   ReconcileInstanceKeycloakInput,
+  SeedInstanceIamBaselineInput,
   UpdateInstanceInput,
 } from './mutation-types.js';
 
@@ -55,6 +59,17 @@ export type ReconcileKeycloakPayload = {
 export type ExecuteKeycloakProvisioningPayload = {
   readonly intent: IamInstanceKeycloakProvisioningRun['intent'];
   readonly tenantAdminTemporaryPassword?: string;
+};
+
+export type ProbeTenantIamAccessPayload = Record<string, never>;
+
+export type AssignInstanceModulePayload = {
+  readonly moduleId: string;
+};
+
+export type RevokeInstanceModulePayload = {
+  readonly moduleId: string;
+  readonly confirmation: 'REVOKE';
 };
 
 export const buildCreateInstanceProvisioningInput = (
@@ -137,4 +152,49 @@ export const buildExecuteInstanceKeycloakProvisioningInput = (
   requestId: context.requestId,
   intent: payload.intent,
   tenantAdminTemporaryPassword: payload.tenantAdminTemporaryPassword,
+});
+
+export const buildProbeTenantIamAccessInput = (
+  instanceId: string,
+  context: IdempotentInstanceMutationContext
+): ProbeTenantIamAccessInput => ({
+  idempotencyKey: context.idempotencyKey,
+  instanceId,
+  actorId: context.actorId,
+  requestId: context.requestId,
+});
+
+export const buildAssignInstanceModuleInput = (
+  instanceId: string,
+  payload: AssignInstanceModulePayload,
+  context: IdempotentInstanceMutationContext
+): AssignInstanceModuleInput => ({
+  idempotencyKey: context.idempotencyKey,
+  instanceId,
+  moduleId: payload.moduleId,
+  actorId: context.actorId,
+  requestId: context.requestId,
+});
+
+export const buildRevokeInstanceModuleInput = (
+  instanceId: string,
+  payload: RevokeInstanceModulePayload,
+  context: IdempotentInstanceMutationContext
+): RevokeInstanceModuleInput => ({
+  idempotencyKey: context.idempotencyKey,
+  instanceId,
+  moduleId: payload.moduleId,
+  confirmation: payload.confirmation,
+  actorId: context.actorId,
+  requestId: context.requestId,
+});
+
+export const buildSeedInstanceIamBaselineInput = (
+  instanceId: string,
+  context: IdempotentInstanceMutationContext
+): SeedInstanceIamBaselineInput => ({
+  idempotencyKey: context.idempotencyKey,
+  instanceId,
+  actorId: context.actorId,
+  requestId: context.requestId,
 });

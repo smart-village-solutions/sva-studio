@@ -47,6 +47,12 @@ SET
   is_primary = EXCLUDED.is_primary,
   created_by = EXCLUDED.created_by;
 
+INSERT INTO iam.instance_modules (instance_id, module_id)
+VALUES
+  ('de-musterhausen', 'news'),
+  ('de-musterhausen', 'events')
+ON CONFLICT (instance_id, module_id) DO NOTHING;
+
 INSERT INTO iam.organizations (
   id,
   instance_id,

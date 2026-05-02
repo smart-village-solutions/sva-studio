@@ -175,8 +175,40 @@ Fehlerpfad:
 Fehlerpfad:
 
 - fehlender Tenant-Admin-Client, Secret-Drift oder blockierter Provisioning-Plan verhindern den Start des Laufs vollständig.
+- tenantlokale Reconcile-Läufe verwenden keinen Plattform-Fallback; ein versehentlich funktionsfähiger globaler Admin-Pfad gilt nicht als zulässige Kompensation.
 - `IDP_FORBIDDEN` und `IDP_UNAVAILABLE` bleiben als technische oder Berechtigungsfehler sichtbar und werden nicht als `manual_review` kaschiert.
 - einzelne fachlich mehrdeutige Fälle können in `manual_review` enden, ohne dass der Gesamt-Request hängen bleibt.
+
+### Szenario 2g: Tenant-IAM-Detailansicht mit expliziter Access-Probe
+
+1. Ein Root-Host-Administrator öffnet `/admin/instances/$instanceId`.
+2. Die Detailseite lädt `GET /api/v1/iam/instances/:instanceId` und erhält neben Registry- und Keycloak-Strukturdaten auch `tenantIamStatus`.
+3. `packages/instance-registry` aggregiert `configuration` aus Registry-/Provisioning-Evidenz, `reconcile` aus Rollen- und Activity-Log-Signalen und `access` aus der letzten bekannten Access-Probe.
+4. Die UI rendert diese Achsen getrennt und leitet `overall` strikt aus `blocked` vor `degraded` vor `unknown` vor `ready` ab.
+5. Startet der Operator die Aktion `Tenant-IAM-Zugriff prüfen`, sendet die UI `POST /api/v1/iam/instances/:instanceId/tenant-iam/access-probe`.
+6. `packages/auth-runtime` löst dafür ausschließlich `resolveIdentityProviderForInstance(..., { executionMode: 'tenant_admin' })` auf und führt eine read-only-`listRoles()`-Probe gegen den tenantlokalen Admin-Client aus.
+7. Das Ergebnis wird als Audit-Evidenz persistiert, danach neu aggregiert und unmittelbar als aktualisierter `tenantIamStatus` an die Detailseite zurückgegeben.
+
+Fehlerpfad:
+
+- existiert kein tenantlokaler Admin-Client oder fehlt das Secret, endet die Probe fail-closed mit einem geblockten oder degradierten Access-Befund statt mit einem Plattform-Fallback.
+- `IDP_FORBIDDEN` bleibt als Berechtigungsfehler sichtbar; temporäre Erreichbarkeitsstörungen werden als `IDP_UNAVAILABLE` eingeordnet.
+- ohne bisherige Probe-Evidenz bleibt `access` explizit `unknown`; die Detailseite erzeugt daraus keinen künstlichen Erfolgszustand.
+
+### Szenario 2h: Fail-closed Modulaktivierung zur Laufzeit
+
+1. Ein Instanzbenutzer ruft `/auth/me` auf.
+2. `packages/auth-runtime` lädt effektive Permissions und die kanonische Liste `assignedModules` aus der Registry.
+3. Die Client-Shell speichert diese Modulliste im Session-Kontext.
+4. Beim Aufruf einer Plugin-Route prüft `@sva/routing` zuerst den deklarativen Guard und danach die Modulzuweisung.
+5. Die Sidebar blendet Plugin-Navigation aus, wenn das Modul der aktiven Instanz nicht zugewiesen ist.
+6. Bei Modulzuweisung oder Entzug rekonstruiert `packages/instance-registry` die IAM-Basis und invalidiert betroffene Registry-Caches.
+
+Fehlerpfad:
+
+- fällt der Modul-Lookup im Session-Pfad aus, wird `assignedModules` fail-closed als leer behandelt.
+- fehlt die Zuweisung, blockiert das Routing die Plugin-Route vor dem Rendern.
+- direkte API-Aufrufe bleiben zusätzlich durch fehlende modulbezogene Permissions abgesichert.
 
 ### Szenario 2f: Keycloak-first User- und Rollenverwaltung
 

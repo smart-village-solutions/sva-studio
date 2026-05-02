@@ -58,6 +58,17 @@ export type PluginAuditEventDefinition = {
   readonly titleKey?: string;
 };
 
+export type PluginModuleIamSystemRoleDefinition = {
+  readonly roleName: string;
+  readonly permissionIds: readonly string[];
+};
+
+export type PluginModuleIamContract = {
+  readonly moduleId: string;
+  readonly permissionIds: readonly string[];
+  readonly systemRoles: readonly PluginModuleIamSystemRoleDefinition[];
+};
+
 export type PluginTranslations = Readonly<Record<string, Readonly<Record<string, unknown>>>>;
 
 export type PluginAdminResourceDefinition = AdminResourceDefinition;
@@ -72,6 +83,7 @@ export type PluginDefinition = {
   readonly contentTypes?: readonly ContentTypeDefinition[];
   readonly adminResources?: readonly PluginAdminResourceDefinition[];
   readonly auditEvents?: readonly PluginAuditEventDefinition[];
+  readonly moduleIam?: PluginModuleIamContract;
   readonly translations?: PluginTranslations;
 };
 
@@ -87,6 +99,7 @@ const pluginDefinitionAllowedKeys = new Set([
   'contentTypes',
   'adminResources',
   'auditEvents',
+  'moduleIam',
   'translations',
 ] as const);
 
@@ -110,6 +123,8 @@ const contentTypeDefinitionAllowedKeys = new Set([
 ] as const);
 const adminResourceDefinitionAllowedKeys = new Set(['resourceId', 'basePath', 'titleKey', 'guard', 'views', 'capabilities'] as const);
 const auditEventDefinitionAllowedKeys = new Set(['eventType', 'titleKey'] as const);
+const moduleIamContractAllowedKeys = new Set(['moduleId', 'permissionIds', 'systemRoles'] as const);
+const moduleIamSystemRoleAllowedKeys = new Set(['roleName', 'permissionIds'] as const);
 
 export type PluginActionRegistryEntry = {
   readonly actionId: string;
@@ -138,6 +153,14 @@ export type PluginPermissionRegistryEntry = {
   readonly ownerPluginId: string;
   readonly titleKey: string;
   readonly descriptionKey?: string;
+};
+
+export type PluginModuleIamRegistryEntry = {
+  readonly moduleId: string;
+  readonly namespace: string;
+  readonly ownerPluginId: string;
+  readonly permissionIds: readonly string[];
+  readonly systemRoles: readonly PluginModuleIamSystemRoleDefinition[];
 };
 
 const normalizeLegacyAliases = (
@@ -189,6 +212,19 @@ const normalizePluginAuditEventDefinition = (event: PluginAuditEventDefinition):
   ...event,
   eventType: normalizePluginIdentifier(event.eventType),
   titleKey: normalizePluginIdentifier(event.titleKey ?? '') || undefined,
+});
+
+const normalizePluginModuleIamSystemRoleDefinition = (
+  definition: PluginModuleIamSystemRoleDefinition
+): PluginModuleIamSystemRoleDefinition => ({
+  roleName: normalizePluginIdentifier(definition.roleName),
+  permissionIds: definition.permissionIds.map((permissionId) => normalizePluginIdentifier(permissionId)),
+});
+
+const normalizePluginModuleIamContract = (contract: PluginModuleIamContract): PluginModuleIamContract => ({
+  moduleId: normalizePluginIdentifier(contract.moduleId),
+  permissionIds: contract.permissionIds.map((permissionId) => normalizePluginIdentifier(permissionId)),
+  systemRoles: contract.systemRoles.map(normalizePluginModuleIamSystemRoleDefinition),
 });
 
 const resolvePluginActionDefinition = (
@@ -353,6 +389,69 @@ export const definePluginAuditEvents = <const TEvents extends readonly PluginAud
   }
 
   return normalizedEvents;
+};
+
+export const definePluginModuleIamContract = <
+  const TContract extends PluginModuleIamContract,
+>(
+  namespace: string,
+  contract: TContract
+): TContract => {
+  const normalizedNamespace = normalizePluginNamespace(namespace);
+  if (isReservedPluginNamespace(normalizedNamespace)) {
+    throw new Error(`reserved_plugin_namespace:${normalizedNamespace}`);
+  }
+
+  assertPluginContributionAllowedKeys(
+    contract as unknown as Record<string, unknown>,
+    moduleIamContractAllowedKeys,
+    normalizedNamespace,
+    normalizePluginIdentifier(contract.moduleId)
+  );
+  for (const systemRole of contract.systemRoles) {
+    assertPluginContributionAllowedKeys(
+      systemRole as unknown as Record<string, unknown>,
+      moduleIamSystemRoleAllowedKeys,
+      normalizedNamespace,
+      normalizePluginIdentifier(systemRole.roleName)
+    );
+  }
+
+  const normalizedContract = normalizePluginModuleIamContract(contract) as TContract;
+  if (normalizedContract.moduleId !== normalizedNamespace) {
+    throw new Error(`plugin_module_iam_module_id_mismatch:${normalizedNamespace}:${normalizedContract.moduleId}`);
+  }
+
+  for (const permissionId of normalizedContract.permissionIds) {
+    const parsed = parseNamespacedPluginIdentifier(permissionId);
+    if (parsed === undefined) {
+      throw new Error(`invalid_plugin_module_iam_permission:${permissionId}`);
+    }
+    if (parsed.namespace !== normalizedNamespace) {
+      throw new Error(
+        `plugin_module_iam_permission_namespace_mismatch:${normalizedNamespace}:${parsed.namespace}:${permissionId}`
+      );
+    }
+  }
+
+  for (const systemRole of normalizedContract.systemRoles) {
+    if (!systemRole.roleName) {
+      throw new Error(`invalid_plugin_module_iam_role_name:${normalizedNamespace}`);
+    }
+    for (const permissionId of systemRole.permissionIds) {
+      const parsed = parseNamespacedPluginIdentifier(permissionId);
+      if (parsed === undefined) {
+        throw new Error(`invalid_plugin_module_iam_permission:${permissionId}`);
+      }
+      if (parsed.namespace !== normalizedNamespace) {
+        throw new Error(
+          `plugin_module_iam_permission_namespace_mismatch:${normalizedNamespace}:${parsed.namespace}:${permissionId}`
+        );
+      }
+    }
+  }
+
+  return normalizedContract;
 };
 
 export const createPluginRegistry = (
@@ -534,6 +633,10 @@ export const createPluginRegistry = (
       }
     }
 
+    if (plugin.moduleIam) {
+      definePluginModuleIamContract(id, plugin.moduleIam);
+    }
+
     registry.set(id, {
       ...plugin,
       id,
@@ -571,6 +674,27 @@ export const mergePluginAdminResourceDefinitions = (
 export const mergePluginAuditEventDefinitions = (
   plugins: readonly PluginDefinition[]
 ): readonly PluginAuditEventDefinition[] => plugins.flatMap((plugin) => plugin.auditEvents ?? []);
+
+export const mergePluginModuleIamContracts = (
+  plugins: readonly PluginDefinition[]
+): readonly PluginModuleIamRegistryEntry[] =>
+  plugins.flatMap((plugin) => {
+    if (!plugin.moduleIam) {
+      return [];
+    }
+
+    const normalizedPluginNamespace = normalizePluginNamespace(plugin.id);
+    const normalizedContract = definePluginModuleIamContract(normalizedPluginNamespace, plugin.moduleIam);
+    return [
+      {
+        moduleId: normalizedContract.moduleId,
+        namespace: normalizedPluginNamespace,
+        ownerPluginId: normalizedPluginNamespace,
+        permissionIds: normalizedContract.permissionIds,
+        systemRoles: normalizedContract.systemRoles,
+      },
+    ];
+  });
 
 export const createPluginActionRegistry = (
   plugins: readonly PluginDefinition[]
@@ -747,6 +871,22 @@ export const createPluginAuditEventRegistry = (
         titleKey: normalizedEvent.titleKey,
       });
     }
+  }
+
+  return registry;
+};
+
+export const createPluginModuleIamRegistry = (
+  plugins: readonly PluginDefinition[]
+): ReadonlyMap<string, PluginModuleIamRegistryEntry> => {
+  const registry = new Map<string, PluginModuleIamRegistryEntry>();
+
+  for (const entry of mergePluginModuleIamContracts(plugins)) {
+    if (registry.has(entry.moduleId)) {
+      throw new Error(`duplicate_plugin_module_iam:${entry.moduleId}`);
+    }
+
+    registry.set(entry.moduleId, entry);
   }
 
   return registry;

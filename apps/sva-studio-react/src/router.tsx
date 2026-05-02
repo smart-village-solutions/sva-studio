@@ -71,6 +71,7 @@ export const createMockRouteGuardUser = (): RouteGuardUser => ({
     'events.read',
     'poi.read',
   ],
+  assignedModules: ['news', 'events', 'poi'],
 });
 
 export const readRouteGuardUser = (payload: unknown): RouteGuardUser => {
@@ -78,6 +79,7 @@ export const readRouteGuardUser = (payload: unknown): RouteGuardUser => {
     user?: {
       roles?: unknown;
       permissionActions?: unknown;
+      assignedModules?: unknown;
       permissionStatus?: unknown;
     };
   };
@@ -89,11 +91,14 @@ export const readRouteGuardUser = (payload: unknown): RouteGuardUser => {
   const permissionActions = Array.isArray(parsedPayload.user?.permissionActions)
     ? parsedPayload.user.permissionActions.filter((entry): entry is string => typeof entry === 'string')
     : [];
+  const assignedModules = Array.isArray(parsedPayload.user?.assignedModules)
+    ? parsedPayload.user.assignedModules.filter((entry): entry is string => typeof entry === 'string')
+    : [];
 
   const rawStatus = parsedPayload.user?.permissionStatus;
   const permissionStatus: 'ok' | 'degraded' = rawStatus === 'degraded' ? 'degraded' : 'ok';
 
-  return { roles, permissionActions, permissionStatus };
+  return { roles, permissionActions, assignedModules, permissionStatus };
 };
 
 const loadRouteGuardUserFromAuthMe = async (url: string, init?: RequestInit): Promise<RouteGuardUser | null> => {

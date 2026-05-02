@@ -3,6 +3,8 @@ import {
   isInstanceKeycloakRequirementSatisfied,
   type IamInstanceDetail,
   type IamInstanceKeycloakPreflight,
+  type IamTenantIamStatus,
+  type IamTenantIamAxisStatus,
 } from '@sva/core';
 
 import { Badge } from '../../../components/ui/badge';
@@ -58,6 +60,43 @@ export type SetupWorkflowStep = {
     | 'activate_instance';
 };
 
+export type DetailWorkflowAction =
+  | NonNullable<SetupWorkflowStep['action']>
+  | 'rotate_client_secret'
+  | 'probeTenantIamAccess'
+  | 'reconcileKeycloak';
+
+export type PrimaryDetailAction = {
+  readonly action: DetailWorkflowAction;
+  readonly label: string;
+};
+
+export type CockpitAnomalyItem = {
+  readonly key: string;
+  readonly title: string;
+  readonly summary: string;
+  readonly status: IamTenantIamAxisStatus;
+  readonly sourceLabel: string;
+  readonly checkedAt?: string;
+  readonly requestId?: string;
+};
+
+export type InstanceDetailCockpitModel = {
+  readonly overallStatus: IamTenantIamAxisStatus;
+  readonly overallTitle: string;
+  readonly overallSummary: string;
+  readonly dominantEvidence: {
+    readonly label: string;
+    readonly source: string;
+    readonly sourceLabel: string;
+    readonly checkedAt?: string;
+    readonly requestId?: string;
+  };
+  readonly anomalyQueue: readonly CockpitAnomalyItem[];
+  readonly primaryAction: PrimaryDetailAction;
+  readonly secondaryActions: readonly PrimaryDetailAction[];
+};
+
 export type InstanceConfigurationIssue = {
   readonly key: string;
   readonly label: string;
@@ -85,6 +124,15 @@ const CONFIGURATION_STATUS_LABELS = {
   incomplete: 'admin.instances.configuration.overall.incomplete',
   unknown: 'admin.instances.configuration.overall.unknown',
 } as const satisfies Record<InstanceConfigurationOverallStatus, string>;
+
+const COCKPIT_STATUS_PRECEDENCE = ['blocked', 'degraded', 'unknown', 'ready'] as const satisfies readonly IamTenantIamAxisStatus[];
+const TENANT_IAM_STATUS_PRECEDENCE = ['blocked', 'degraded', 'unknown', 'ready'] as const satisfies readonly IamTenantIamAxisStatus[];
+
+const TENANT_IAM_AXIS_LABELS = {
+  configuration: 'admin.instances.cockpit.anomalies.configuration',
+  access: 'admin.instances.cockpit.anomalies.access',
+  reconcile: 'admin.instances.cockpit.anomalies.reconcile',
+} as const;
 
 const KEYCLOAK_STATUS_LABELS = {
   realmExists: 'admin.instances.keycloakStatus.realmExists',
@@ -416,6 +464,11 @@ export const getPostCreateGuidance = (instance: {
 const findPreflightCheck = (preflight: IamInstanceKeycloakPreflight | undefined, checkKey: string) =>
   preflight?.checks.find((check) => check.checkKey === checkKey);
 
+const readPreflightCheckedAt = (preflight: IamInstanceKeycloakPreflight | undefined) => preflight?.checkedAt;
+
+const readProvisioningRunTimestamp = (run: IamInstanceDetail['latestKeycloakProvisioningRun']) =>
+  run?.updatedAt ?? run?.createdAt;
+
 const createWorkflowStep = (input: SetupWorkflowStep): SetupWorkflowStep => input;
 
 const translateConfigurationStatus = (status: InstanceConfigurationOverallStatus) =>
@@ -703,6 +756,350 @@ export const getSetupWorkflowSteps = (
       action: provisioningSucceeded ? 'activate_instance' : undefined,
     }),
   ];
+};
+
+const mapConfigurationStatusToCockpitStatus = (
+  status: InstanceConfigurationAssessment['overallStatus']
+): IamTenantIamAxisStatus => {
+  switch (status) {
+    case 'complete':
+      return 'ready';
+    case 'degraded':
+      return 'degraded';
+    case 'incomplete':
+      return 'blocked';
+    case 'unknown':
+      return 'unknown';
+  }
+};
+
+const getDetailActionLabel = (action: DetailWorkflowAction) => {
+  switch (action) {
+    case 'check_preflight':
+      return t('admin.instances.actions.checkPreflight');
+    case 'check_keycloak_status':
+      return t('admin.instances.actions.checkKeycloakStatus');
+    case 'plan_provisioning':
+      return t('admin.instances.actions.planProvisioning');
+    case 'execute_provisioning':
+      return t('admin.instances.actions.executeProvisioning');
+    case 'provision_admin_client':
+      return t('admin.instances.actions.provisionAdminClient');
+    case 'reset_tenant_admin':
+      return t('admin.instances.actions.resetTenantAdmin');
+    case 'activate_instance':
+      return t('admin.instances.actions.activate');
+    case 'rotate_client_secret':
+      return t('admin.instances.actions.rotateClientSecret');
+    case 'probeTenantIamAccess':
+      return t('admin.instances.actions.probeTenantIamAccess');
+    case 'reconcileKeycloak':
+      return t('admin.instances.actions.reconcileKeycloak');
+  }
+};
+
+const getCockpitSourceLabel = (source: string) => {
+  switch (source) {
+    case 'access_probe':
+      return t('admin.instances.cockpit.sources.accessProbe');
+    case 'role_reconcile':
+      return t('admin.instances.cockpit.sources.reconcile');
+    case 'keycloak_status_snapshot':
+      return t('admin.instances.cockpit.sources.keycloakStatus');
+    case 'keycloak_provisioning_run':
+      return t('admin.instances.cockpit.sources.provisioningRun');
+    case 'registry':
+      return t('admin.instances.cockpit.sources.registry');
+    default:
+      return source;
+  }
+};
+
+const mapProvisioningRunStatusToCockpitStatus = (
+  run: IamInstanceDetail['latestKeycloakProvisioningRun']
+): IamTenantIamAxisStatus => {
+  if (!run) {
+    return 'unknown';
+  }
+
+  switch (run.overallStatus) {
+    case 'succeeded':
+      return 'ready';
+    case 'failed':
+      return 'blocked';
+    case 'running':
+    case 'planned':
+      return 'degraded';
+    default:
+      return 'unknown';
+  }
+};
+
+const mapInstanceStatusToCockpitStatus = (status: IamInstanceDetail['status']): IamTenantIamAxisStatus => {
+  switch (status) {
+    case 'active':
+      return 'ready';
+    case 'failed':
+    case 'archived':
+      return 'blocked';
+    case 'suspended':
+    case 'provisioning':
+    case 'validated':
+      return 'degraded';
+    case 'requested':
+      return 'unknown';
+  }
+};
+
+const buildMutationAnomaly = (mutationError: IamHttpError | null): CockpitAnomalyItem | null => {
+  if (!mutationError) {
+    return null;
+  }
+
+  const status: IamTenantIamAxisStatus =
+    mutationError.code === 'keycloak_unavailable' || mutationError.code === 'database_unavailable' ? 'degraded' : 'blocked';
+
+  return {
+    key: 'mutation_error',
+    title: t('admin.instances.cockpit.anomalies.diagnostics'),
+    summary: getErrorMessage(mutationError),
+    status,
+    sourceLabel: t('admin.instances.cockpit.sources.diagnostics'),
+    ...(mutationError.requestId ? { requestId: mutationError.requestId } : {}),
+  };
+};
+
+const buildTenantIamAxis = (
+  status: IamTenantIamAxisStatus,
+  summary: string,
+  source: IamTenantIamStatus['overall']['source'],
+  current?: Partial<IamTenantIamStatus['overall']>
+): IamTenantIamStatus['overall'] => ({
+  status,
+  summary,
+  source,
+  ...(current?.checkedAt ? { checkedAt: current.checkedAt } : {}),
+  ...(current?.errorCode ? { errorCode: current.errorCode } : {}),
+  ...(current?.requestId ? { requestId: current.requestId } : {}),
+});
+
+export const getEffectiveTenantIamStatus = (instance: IamInstanceDetail): IamTenantIamStatus | undefined => {
+  const current = instance.tenantIamStatus;
+  if (!current) {
+    return undefined;
+  }
+
+  const configurationStatus = instance.keycloakStatus
+    ? INSTANCE_KEYCLOAK_REQUIREMENTS.every((requirement) =>
+        isInstanceKeycloakRequirementSatisfied(instance.keycloakStatus!, requirement)
+      )
+      ? 'ready'
+      : 'degraded'
+    : current.configuration.status;
+
+  const configuration = instance.keycloakStatus
+    ? buildTenantIamAxis(
+        configurationStatus,
+        configurationStatus === 'ready'
+          ? t('admin.instances.tenantIam.summaries.configurationReady')
+          : t('admin.instances.tenantIam.summaries.configurationDegraded'),
+        'keycloak_status_snapshot',
+        current.configuration
+      )
+    : current.configuration;
+
+  const access = current.access;
+  const reconcile = current.reconcile;
+  const overallStatus =
+    TENANT_IAM_STATUS_PRECEDENCE.find((candidate) =>
+      [configuration.status, access.status, reconcile.status].includes(candidate)
+    ) ?? 'unknown';
+  const dominantAxis =
+    overallStatus === configuration.status
+      ? configuration
+      : overallStatus === access.status
+        ? access
+        : overallStatus === reconcile.status
+          ? reconcile
+          : configuration;
+  const overallSummary =
+    overallStatus === 'ready'
+      ? t('admin.instances.tenantIam.summaries.overallReady')
+      : overallStatus === 'blocked'
+        ? t('admin.instances.tenantIam.summaries.overallBlocked')
+        : overallStatus === 'degraded'
+          ? t('admin.instances.tenantIam.summaries.overallDegraded')
+          : t('admin.instances.tenantIam.summaries.overallUnknown');
+
+  return {
+    configuration,
+    access,
+    reconcile,
+    overall: buildTenantIamAxis(overallStatus, overallSummary, dominantAxis.source, dominantAxis),
+  };
+};
+
+export const buildInstanceDetailCockpitModel = (
+  instance: IamInstanceDetail,
+  mutationError: IamHttpError | null
+): InstanceDetailCockpitModel => {
+  const configurationAssessment = evaluateInstanceConfiguration(instance, mutationError);
+  const workflowSteps = getSetupWorkflowSteps(instance, mutationError);
+  const latestRun = instance.latestKeycloakProvisioningRun ?? instance.keycloakProvisioningRuns[0];
+  const tenantIamStatus = getEffectiveTenantIamStatus(instance);
+
+  const anomalyCandidates: CockpitAnomalyItem[] = [];
+
+  if (tenantIamStatus && tenantIamStatus.access.status !== 'ready') {
+    anomalyCandidates.push({
+      key: 'tenant-iam-access',
+      title: t(TENANT_IAM_AXIS_LABELS.access),
+      summary: tenantIamStatus.access.summary,
+      status: tenantIamStatus.access.status,
+      sourceLabel: getCockpitSourceLabel(tenantIamStatus.access.source),
+      ...(tenantIamStatus.access.checkedAt ? { checkedAt: tenantIamStatus.access.checkedAt } : {}),
+      ...(tenantIamStatus.access.requestId ? { requestId: tenantIamStatus.access.requestId } : {}),
+    });
+  }
+
+  if (tenantIamStatus && tenantIamStatus.reconcile.status !== 'ready') {
+    anomalyCandidates.push({
+      key: 'tenant-iam-reconcile',
+      title: t(TENANT_IAM_AXIS_LABELS.reconcile),
+      summary: tenantIamStatus.reconcile.summary,
+      status: tenantIamStatus.reconcile.status,
+      sourceLabel: getCockpitSourceLabel(tenantIamStatus.reconcile.source),
+      ...(tenantIamStatus.reconcile.checkedAt ? { checkedAt: tenantIamStatus.reconcile.checkedAt } : {}),
+      ...(tenantIamStatus.reconcile.requestId ? { requestId: tenantIamStatus.reconcile.requestId } : {}),
+    });
+  }
+
+  if (configurationAssessment.overallStatus === 'degraded' || configurationAssessment.overallStatus === 'incomplete') {
+    anomalyCandidates.push({
+      key: 'configuration',
+      title: t(TENANT_IAM_AXIS_LABELS.configuration),
+      summary: configurationAssessment.body,
+      status: mapConfigurationStatusToCockpitStatus(configurationAssessment.overallStatus),
+      sourceLabel: getCockpitSourceLabel(instance.keycloakStatus ? 'keycloak_status_snapshot' : 'registry'),
+    });
+  }
+
+  if (latestRun && latestRun.overallStatus !== 'succeeded') {
+    anomalyCandidates.push({
+      key: 'latest-run',
+      title: t('admin.instances.cockpit.anomalies.provisioning'),
+      summary: latestRun.driftSummary,
+      status: mapProvisioningRunStatusToCockpitStatus(latestRun),
+      sourceLabel: getCockpitSourceLabel('keycloak_provisioning_run'),
+      ...(readProvisioningRunTimestamp(latestRun) ? { checkedAt: readProvisioningRunTimestamp(latestRun) } : {}),
+      ...(latestRun.requestId ? { requestId: latestRun.requestId } : {}),
+    });
+  }
+
+  const mutationAnomaly = buildMutationAnomaly(mutationError);
+  if (mutationAnomaly) {
+    anomalyCandidates.push(mutationAnomaly);
+  }
+
+  const anomalyQueue = anomalyCandidates.slice(0, 3);
+  const currentSignals: IamTenantIamAxisStatus[] = [
+    tenantIamStatus?.overall.status ?? 'unknown',
+    mapConfigurationStatusToCockpitStatus(configurationAssessment.overallStatus),
+    mapProvisioningRunStatusToCockpitStatus(latestRun),
+    mapInstanceStatusToCockpitStatus(instance.status),
+    mutationAnomaly?.status ?? 'ready',
+  ];
+  const overallStatus =
+    COCKPIT_STATUS_PRECEDENCE.find((candidate) => currentSignals.includes(candidate)) ?? 'unknown';
+
+  const overallTitle =
+    overallStatus === 'ready'
+      ? t('admin.instances.cockpit.overall.ready')
+      : overallStatus === 'blocked'
+        ? t('admin.instances.cockpit.overall.blocked')
+        : overallStatus === 'degraded'
+          ? t('admin.instances.cockpit.overall.degraded')
+          : t('admin.instances.cockpit.overall.unknown');
+
+  const overallSummary =
+    anomalyQueue[0]?.summary ??
+    tenantIamStatus?.overall.summary ??
+    getStatusGuidance(instance).body;
+
+  const dominantEvidence =
+    tenantIamStatus?.overall.status !== 'ready'
+      ? {
+          label: t('admin.instances.cockpit.evidence.tenantIam'),
+          source: tenantIamStatus?.overall.source ?? 'registry',
+          sourceLabel: getCockpitSourceLabel(tenantIamStatus?.overall.source ?? 'registry'),
+          checkedAt: tenantIamStatus?.overall.checkedAt,
+          requestId: tenantIamStatus?.overall.requestId,
+        }
+      : instance.keycloakPreflight
+        ? {
+            label: t('admin.instances.cockpit.evidence.preflight'),
+            source: 'keycloak_status_snapshot',
+            sourceLabel: getCockpitSourceLabel('keycloak_status_snapshot'),
+            checkedAt: readPreflightCheckedAt(instance.keycloakPreflight),
+            requestId: undefined,
+          }
+        : latestRun
+          ? {
+              label: t('admin.instances.cockpit.evidence.provisioning'),
+              source: 'keycloak_provisioning_run',
+              sourceLabel: getCockpitSourceLabel('keycloak_provisioning_run'),
+              checkedAt: readProvisioningRunTimestamp(latestRun),
+              requestId: latestRun.requestId,
+            }
+          : {
+              label: t('admin.instances.cockpit.evidence.registry'),
+              source: 'registry',
+              sourceLabel: getCockpitSourceLabel('registry'),
+              checkedAt: undefined,
+              requestId: undefined,
+            };
+
+  const primaryActionKey: DetailWorkflowAction =
+    latestRun?.overallStatus === 'succeeded' && instance.status !== 'active'
+      ? 'activate_instance'
+      : tenantIamStatus && tenantIamStatus.access.status !== 'ready'
+        ? 'probeTenantIamAccess'
+        : tenantIamStatus &&
+            (tenantIamStatus.reconcile.status === 'blocked' || tenantIamStatus.reconcile.status === 'degraded')
+          ? 'reconcileKeycloak'
+          : workflowSteps.find((step) => step.status === 'current' && step.action)?.action ??
+            workflowSteps.find((step) => step.status === 'blocked' && step.action)?.action ??
+            'check_preflight';
+
+  const orderedSecondaryActions: readonly DetailWorkflowAction[] = [
+    'probeTenantIamAccess',
+    'reconcileKeycloak',
+    'check_preflight',
+    'check_keycloak_status',
+    'plan_provisioning',
+    'execute_provisioning',
+    'provision_admin_client',
+    'reset_tenant_admin',
+    'rotate_client_secret',
+  ];
+
+  return {
+    overallStatus,
+    overallTitle,
+    overallSummary,
+    dominantEvidence,
+    anomalyQueue,
+    primaryAction: {
+      action: primaryActionKey,
+      label: getDetailActionLabel(primaryActionKey),
+    },
+    secondaryActions: orderedSecondaryActions
+      .filter((action) => action !== primaryActionKey)
+      .map((action) => ({
+        action,
+        label: getDetailActionLabel(action),
+      })),
+  };
 };
 
 export const getStatusGuidance = (instance: IamInstanceDetail) => {

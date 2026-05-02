@@ -10,6 +10,7 @@ import {
   logBrowserOperationSuccess,
 } from '../lib/browser-operation-logging';
 import { useAuth } from '../providers/auth-provider';
+import { useOrganizationContext } from './use-organization-context';
 
 const contentAccessLogger = createOperationLogger('use-content-access', 'debug');
 
@@ -37,10 +38,17 @@ const collectEffectivePermissionActions = (permissions: MePermissionsResponse['p
   )].sort((left, right) => left.localeCompare(right));
 };
 
-const buildPermissionsPath = (instanceId: string) => `/iam/me/permissions?${new URLSearchParams({ instanceId }).toString()}`;
+const buildPermissionsPath = (instanceId: string, organizationId?: string) => {
+  const searchParams = new URLSearchParams({ instanceId });
+  if (organizationId) {
+    searchParams.set('organizationId', organizationId);
+  }
+  return `/iam/me/permissions?${searchParams.toString()}`;
+};
 
 export const useContentAccess = (): UseContentAccessResult => {
   const { user, invalidatePermissions } = useAuth();
+  const organizationContext = useOrganizationContext();
   const [access, setAccess] = React.useState<IamContentAccessSummary | null>(null);
   const [permissionActions, setPermissionActions] = React.useState<readonly string[]>([]);
   const [isLoading, setIsLoading] = React.useState(false);
@@ -63,7 +71,7 @@ export const useContentAccess = (): UseContentAccessResult => {
     setIsLoading(true);
     setError(null);
 
-    void fetchWithRequestTimeout(buildPermissionsPath(user.instanceId), undefined, {
+    void fetchWithRequestTimeout(buildPermissionsPath(user.instanceId, organizationContext.context?.activeOrganizationId ?? undefined), undefined, {
       signal: controller.signal,
       timeoutMs: 10_000,
     })
@@ -125,7 +133,7 @@ export const useContentAccess = (): UseContentAccessResult => {
     return () => {
       controller.abort();
     };
-  }, [invalidatePermissions, user?.instanceId]);
+  }, [invalidatePermissions, organizationContext.context?.activeOrganizationId, user?.instanceId]);
 
   return {
     access,

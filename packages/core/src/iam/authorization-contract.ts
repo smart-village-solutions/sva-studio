@@ -170,7 +170,7 @@ export type MePermissionsResponse = {
 };
 
 // Paket 3: Gruppen-Kontrakt-Typen
-export type IamGroupType = 'custom' | 'system' | 'geo' | 'org';
+export type IamGroupType = 'role_bundle';
 
 export type IamGroupListItem = {
   readonly id: IamUuid;

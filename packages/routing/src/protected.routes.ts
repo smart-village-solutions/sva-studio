@@ -10,7 +10,6 @@ export type RouteGuardUser = {
   readonly permissionActions?: readonly string[];
   readonly assignedModules?: readonly string[];
   readonly permissionStatus?: 'ok' | 'degraded';
-  readonly assignedModules?: readonly string[];
 };
 
 export type RouteGuardContext = {

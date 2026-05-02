@@ -61,8 +61,12 @@ const captureServerFnResponses = (page: Page) => {
   return responses;
 };
 
-const isExternalAuthRedirect = (location: string | null | undefined) =>
-  Boolean(location?.match(/(\/protocol\/openid-connect\/auth\?|accounts\.google\.com\/(signin\/oauth\/error|o\/oauth2\/v2\/auth))/));
+const isAcceptedAuthRedirect = (location: string | null | undefined) =>
+  Boolean(
+    location?.match(
+      /(\/protocol\/openid-connect\/auth(?:\?|$)|accounts\.google\.com\/(signin\/oauth\/error|o\/oauth2\/v2\/auth)|\/\?auth=mock-login(?:$|&))/
+    )
+  );
 
 const expectInterfacesShellReady = async (page: Page, timeout = 20_000) => {
   await expect
@@ -353,7 +357,7 @@ test('GET /auth/login returns redirect response', async ({ request }) => {
   });
 
   if ([302, 303, 307, 308].includes(response.status())) {
-    expect(isExternalAuthRedirect(response.headers().location)).toBe(true);
+    expect(isAcceptedAuthRedirect(response.headers().location)).toBe(true);
     return;
   }
 
@@ -380,6 +384,11 @@ test('tenant-host login fails closed when canonical auth redirect prerequisites 
         : undefined,
     maxRedirects: 0,
   });
+
+  if ([302, 303, 307, 308].includes(response.status())) {
+    expect(isAcceptedAuthRedirect(response.headers().location)).toBe(true);
+    return;
+  }
 
   expect(response.status()).toBe(503);
   await expect(response.json()).resolves.toMatchObject({

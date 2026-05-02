@@ -118,11 +118,11 @@ export function PoiListPage() {
   React.useEffect(() => {
     let active = true;
     setLoading(true);
+    setError(null);
     listPoi({ page, pageSize })
       .then((data) => {
         if (active) {
           setResult(data);
-          setError(null);
         }
       })
       .catch((loadError: unknown) => {
@@ -146,7 +146,7 @@ export function PoiListPage() {
       description={pt('list.description')}
       primaryAction={
         <Button asChild>
-          <Link to="/admin/poi/new">{pt('actions.create')}</Link>
+          <Link to="/plugins/poi/new">{pt('actions.create')}</Link>
         </Button>
       }
     >
@@ -172,7 +172,7 @@ export function PoiListPage() {
             ]}
             rowActions={(item) => (
               <Button asChild variant="outline" size="sm">
-                <Link to="/admin/poi/$id" params={{ id: item.id }}>
+                <Link to="/plugins/poi/$contentId" params={{ contentId: item.id }}>
                   {pt('actions.edit')}
                 </Link>
               </Button>
@@ -193,7 +193,7 @@ export function PoiListPage() {
                 disabled={result.pagination.page <= 1}
                 onClick={() =>
                   void navigate({
-                    to: '/admin/poi',
+                    to: '/plugins/poi',
                     search: (current: Record<string, unknown>) => ({
                       ...current,
                       page: Math.max(1, result.pagination.page - 1),
@@ -211,7 +211,7 @@ export function PoiListPage() {
                 disabled={!result.pagination.hasNextPage}
                 onClick={() =>
                   void navigate({
-                    to: '/admin/poi',
+                    to: '/plugins/poi',
                     search: (current: Record<string, unknown>) => ({
                       ...current,
                       page: result.pagination.page + 1,
@@ -307,7 +307,7 @@ function PoiEditor({ mode }: { readonly mode: 'create' | 'edit' }) {
       const saved = mode === 'create' ? await createPoi(compacted) : await updatePoi(contentId as string, compacted);
       setStatus({ kind: 'success', text: mode === 'create' ? pt('messages.createSuccess') : pt('messages.updateSuccess') });
       if (mode === 'create') {
-        await navigate({ to: '/admin/poi/$id', params: { id: saved.id } });
+        await navigate({ to: '/plugins/poi/$contentId', params: { contentId: saved.id } });
       }
     } catch (saveError) {
       setStatus({ kind: 'error', text: errorMessage(pt, saveError, 'messages.saveError') });
@@ -320,7 +320,7 @@ function PoiEditor({ mode }: { readonly mode: 'create' | 'edit' }) {
     }
     try {
       await deletePoi(contentId);
-      await navigate({ to: '/admin/poi' });
+      await navigate({ to: '/plugins/poi' });
     } catch (deleteError) {
       setStatus({ kind: 'error', text: errorMessage(pt, deleteError, 'messages.deleteError') });
     }
@@ -336,7 +336,7 @@ function PoiEditor({ mode }: { readonly mode: 'create' | 'edit' }) {
       description={mode === 'create' ? pt('editor.createDescription') : pt('editor.editDescription')}
       actions={
         <Button asChild variant="outline">
-          <Link to="/admin/poi">{pt('actions.back')}</Link>
+          <Link to="/plugins/poi">{pt('actions.back')}</Link>
         </Button>
       }
     >

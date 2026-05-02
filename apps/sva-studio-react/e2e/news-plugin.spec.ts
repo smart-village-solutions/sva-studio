@@ -112,7 +112,10 @@ const fulfillContentRoute = async (
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ data: newsItems }),
+      body: JSON.stringify({
+        data: newsItems,
+        pagination: { page: 1, pageSize: 25, hasNextPage: false },
+      }),
     });
     return;
   }
@@ -221,13 +224,16 @@ test.describe('news plugin', () => {
       });
     });
 
-    await page.route('**/api/v1/mainserver/news', async (route) => {
+    await page.route('**/api/v1/mainserver/news**', async (route) => {
       const request = route.request();
       if (request.method() === 'GET') {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify({ data: newsItems }),
+          body: JSON.stringify({
+            data: newsItems,
+            pagination: { page: 1, pageSize: 25, hasNextPage: false },
+          }),
         });
         return;
       }
@@ -292,7 +298,7 @@ test.describe('news plugin', () => {
     await page.getByRole('button', { name: /News anlegen|news\.actions\.create/ }).click();
 
     await expect(page).toHaveURL(/\/plugins\/news$/);
-    await expect(page.getByText('Erste News')).toBeVisible();
+    await expect(page.getByText('Erste News').first()).toBeVisible();
     expect(createdBody).toMatchObject({
       title: 'Erste News',
       author: 'Redaktion Musterhausen',
@@ -352,11 +358,14 @@ test.describe('news plugin', () => {
       });
     });
 
-    await page.route('**/api/v1/mainserver/news', async (route) => {
+    await page.route('**/api/v1/mainserver/news**', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ data: newsItems }),
+        body: JSON.stringify({
+          data: newsItems,
+          pagination: { page: 1, pageSize: 25, hasNextPage: false },
+        }),
       });
     });
 
@@ -419,11 +428,14 @@ test.describe('news plugin', () => {
       });
     });
 
-    await page.route('**/api/v1/mainserver/news', async (route) => {
+    await page.route('**/api/v1/mainserver/news**', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ data: newsItems }),
+        body: JSON.stringify({
+          data: newsItems,
+          pagination: { page: 1, pageSize: 25, hasNextPage: false },
+        }),
       });
     });
 

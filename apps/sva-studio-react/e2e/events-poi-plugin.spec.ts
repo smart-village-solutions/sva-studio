@@ -131,7 +131,14 @@ const routeEvents = async (route: Route, events: EventRecord[]) => {
 
   if (path === '/api/v1/mainserver/events') {
     if (method === 'GET') {
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: events }) });
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: events,
+          pagination: { page: 1, pageSize: 25, hasNextPage: false },
+        }),
+      });
       return;
     }
     if (method === 'POST') {
@@ -202,7 +209,14 @@ const routePoi = async (route: Route, pois: PoiRecord[]) => {
 
   if (path === '/api/v1/mainserver/poi') {
     if (method === 'GET') {
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: pois }) });
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: pois,
+          pagination: { page: 1, pageSize: 100, hasNextPage: false },
+        }),
+      });
       return;
     }
     if (method === 'POST') {

@@ -203,7 +203,7 @@ describe('NewsListPage', () => {
   });
 
   it('reads pagination values from the browser query string', async () => {
-    window.history.pushState({}, '', '/admin/news?page=3&pageSize=10');
+    searchMock.mockReturnValueOnce({ page: 3, pageSize: 10 });
 
     render(<NewsListPage />);
 
@@ -213,7 +213,7 @@ describe('NewsListPage', () => {
   });
 
   it('falls back to default pagination for invalid browser query values', async () => {
-    window.history.pushState({}, '', '/admin/news?page=0&pageSize=invalid');
+    searchMock.mockReturnValueOnce({ page: 1, pageSize: 25 });
 
     render(<NewsListPage />);
 

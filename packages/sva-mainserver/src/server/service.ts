@@ -137,6 +137,7 @@ const DEFAULT_CACHE_MAX_SIZE = 256;
 const DEFAULT_RETRY_BASE_DELAY_MS = 150;
 const RETRYABLE_STATUS_CODES = new Set([503]);
 const MAX_MAINSERVER_PAGE_SIZE = 100;
+const MAX_MAINSERVER_VISIBLE_OFFSET = 10_000;
 
 const tokenResponseSchema = z.object({
   access_token: z.string().min(1),
@@ -534,6 +535,18 @@ const toListResult = <TItem>(
     hasNextPage,
   },
 });
+
+const normalizeListInput = (input: SvaMainserverListInput): SvaMainserverListInput => {
+  const pageSize = Math.min(MAX_MAINSERVER_PAGE_SIZE, Math.max(1, Math.trunc(input.pageSize) || 1));
+  const maxPage = Math.floor(MAX_MAINSERVER_VISIBLE_OFFSET / pageSize) + 1;
+  const page = Math.min(Math.max(1, Math.trunc(input.page) || 1), maxPage);
+
+  return {
+    ...input,
+    page,
+    pageSize,
+  };
+};
 
 const buildForwardHeaders = (): Record<string, string> => {
   const context = getWorkspaceContext();
@@ -1684,18 +1697,20 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
       readonly mapItem: (item: TUpstreamItem) => TItem;
     }
   ): Promise<SvaMainserverListResult<TItem>> => {
-    const startIndex = (input.page - 1) * input.pageSize;
-    const endIndex = startIndex + input.pageSize;
-    const targetVisibleCount = endIndex + 1;
-    const batchSize = Math.min(MAX_MAINSERVER_PAGE_SIZE, input.pageSize + 1);
+    const normalizedInput = normalizeListInput(input);
+    const startIndex = (normalizedInput.page - 1) * normalizedInput.pageSize;
+    const targetVisibleCount = normalizedInput.pageSize + 1;
+    const batchSize = Math.min(MAX_MAINSERVER_PAGE_SIZE, normalizedInput.pageSize + 1);
     const collectedVisibleItems: TItem[] = [];
+    let visibleIndex = 0;
     let skip = 0;
     let exhausted = false;
+    let hasNextPage = false;
 
-    while (collectedVisibleItems.length < targetVisibleCount && exhausted === false) {
+    while (collectedVisibleItems.length < targetVisibleCount && exhausted === false && hasNextPage === false) {
       const response = await executeGraphqlWithConfig<TQueryResult>(
         {
-          ...input,
+          ...normalizedInput,
           document: options.document,
           operationName: options.operationName,
           variables: { limit: batchSize, skip, order: options.order },
@@ -1711,8 +1726,18 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
         if (options.isVisible(item) === false) {
           continue;
         }
-        collectedVisibleItems.push(options.mapItem(item));
-        if (collectedVisibleItems.length >= targetVisibleCount) {
+
+        if (visibleIndex >= startIndex) {
+          collectedVisibleItems.push(options.mapItem(item));
+          if (collectedVisibleItems.length >= targetVisibleCount) {
+            hasNextPage = true;
+            break;
+          }
+        }
+
+        visibleIndex += 1;
+        if (visibleIndex >= startIndex + targetVisibleCount) {
+          hasNextPage = true;
           break;
         }
       }
@@ -1723,9 +1748,9 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
     }
 
     return toListResult(
-      input,
-      collectedVisibleItems.slice(startIndex, endIndex),
-      collectedVisibleItems.length > endIndex
+      normalizedInput,
+      collectedVisibleItems.slice(0, normalizedInput.pageSize),
+      hasNextPage
     );
   };
 

@@ -62,6 +62,28 @@ describe('events api', () => {
     ]);
   });
 
+  it('stops POI selection pagination when the upstream page is empty despite hasNextPage', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          Response.json({
+            data: [{ id: 'poi-1', name: 'Rathaus' }],
+            pagination: { page: 1, pageSize: 100, hasNextPage: true },
+          })
+        )
+        .mockResolvedValueOnce(
+          Response.json({
+            data: [],
+            pagination: { page: 2, pageSize: 100, hasNextPage: true },
+          })
+        )
+    );
+
+    await expect(listPoiForEventSelection()).resolves.toEqual([{ id: 'poi-1', name: 'Rathaus' }]);
+  });
+
   it('throws stable errors', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => Response.json({ error: 'forbidden', message: 'Nope' }, { status: 403 })));
 

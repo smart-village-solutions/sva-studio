@@ -92,12 +92,12 @@ const bindings: AppRouteBindings = {
   adminApiPhase1Test: () => 'adminApiPhase1Test',
 };
 
-const specializedBindings = {
+const specializedBindings: AppRouteBindings & Record<'newsList' | 'newsDetail' | 'newsEditor', () => string> = {
   ...bindings,
   newsList: () => 'newsList',
   newsDetail: () => 'newsDetail',
   newsEditor: () => 'newsEditor',
-} as AppRouteBindings & Record<'newsList' | 'newsDetail' | 'newsEditor', () => string>;
+};
 
 const readRouteOptions = (route: unknown): RouteOptionsUnderTest =>
   (route as { options: RouteOptionsUnderTest }).options;
@@ -328,6 +328,44 @@ describe('admin resource routes', () => {
     expect(routeMap.get('/admin/news')?.component?.()).toBe('newsList');
     expect(routeMap.get('/admin/news/new')?.component?.()).toBe('contentCreate');
     expect(routeMap.get('/admin/news/$id')?.component?.()).toBe('contentDetail');
+  });
+
+  it('reads the current user only once when a resource enforces both module and permission guards', async () => {
+    const getUser = vi.fn(async () => ({
+      assignedModules: ['news'],
+      permissionActions: ['news.read'],
+    }));
+    const routeFactories = createAdminResourceRouteFactories(bindings, [
+      {
+        resourceId: 'news.content',
+        basePath: 'news',
+        titleKey: 'news.navigation.title',
+        guard: 'content',
+        moduleId: 'news',
+        permissions: {
+          list: ['news.read'],
+        },
+        views: {
+          list: { bindingKey: 'content' },
+          create: { bindingKey: 'contentCreate' },
+          detail: { bindingKey: 'contentDetail' },
+        },
+      },
+    ]);
+    const rootRoute = { id: 'root' };
+    const [route] = routeFactories.map((factory) => factory(rootRoute as never));
+
+    await readRouteOptions(route).beforeLoad?.({
+      context: {
+        auth: {
+          getUser,
+        },
+      },
+      href: '/admin/news',
+      location: { href: '/admin/news' },
+    });
+
+    expect(getUser).toHaveBeenCalledTimes(1);
   });
 
   it('redirects legacy content aliases using href and location.href fallbacks', () => {

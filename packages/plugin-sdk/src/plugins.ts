@@ -122,7 +122,17 @@ const contentTypeDefinitionAllowedKeys = new Set([
   'actions',
   'validatePayload',
 ] as const);
-const adminResourceDefinitionAllowedKeys = new Set(['resourceId', 'basePath', 'titleKey', 'guard', 'views', 'capabilities', 'contentUi'] as const);
+const adminResourceDefinitionAllowedKeys = new Set([
+  'resourceId',
+  'basePath',
+  'titleKey',
+  'guard',
+  'moduleId',
+  'views',
+  'permissions',
+  'capabilities',
+  'contentUi',
+] as const);
 const auditEventDefinitionAllowedKeys = new Set(['eventType', 'titleKey'] as const);
 const moduleIamContractAllowedKeys = new Set(['moduleId', 'permissionIds', 'systemRoles'] as const);
 const moduleIamSystemRoleAllowedKeys = new Set(['roleName', 'permissionIds'] as const);

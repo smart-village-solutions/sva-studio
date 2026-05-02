@@ -4,6 +4,7 @@ import {
   buildMainserverListUrl,
   createMainserverCrudClient,
   createMainserverJsonRequestHeaders,
+  requestMainserverJson,
 } from './index.js';
 
 class TestApiError extends Error {
@@ -32,11 +33,27 @@ describe('mainserver client helpers', () => {
     expect(buildMainserverListUrl('/api/v1/mainserver/news', { page: 2, pageSize: 50 })).toBe(
       '/api/v1/mainserver/news?page=2&pageSize=50'
     );
-    expect(createMainserverJsonRequestHeaders({ 'Idempotency-Key': 'uuid-1' })).toEqual({
-      'Content-Type': 'application/json',
-      'X-Requested-With': 'XMLHttpRequest',
-      'Idempotency-Key': 'uuid-1',
+    expect(Object.fromEntries(createMainserverJsonRequestHeaders({ 'Idempotency-Key': 'uuid-1' }))).toEqual({
+      'content-type': 'application/json',
+      'idempotency-key': 'uuid-1',
+      'x-requested-with': 'XMLHttpRequest',
     });
+  });
+
+  it('normalizes tuple- and Headers-based header inputs without dropping json defaults', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(Response.json({ data: { id: 'news-1' } }));
+
+    await requestMainserverJson<{ readonly data: { readonly id: string } }>({
+      url: '/api/v1/mainserver/news/news-1',
+      init: {
+        headers: new Headers([['X-Correlation-Id', 'trace-1']]),
+      },
+    });
+
+    const requestInit = vi.mocked(fetch).mock.calls[0]?.[1] as RequestInit;
+    const headers = requestInit.headers as Headers;
+    expect(headers.get('Accept')).toBe('application/json');
+    expect(headers.get('X-Correlation-Id')).toBe('trace-1');
   });
 
   it('creates canonical CRUD clients with overridable request behavior', async () => {
@@ -98,10 +115,11 @@ describe('mainserver client helpers', () => {
       '/api/v1/mainserver/news',
       expect.objectContaining({
         method: 'POST',
-        headers: expect.objectContaining({ 'Idempotency-Key': 'uuid-1' }),
         body: JSON.stringify({ title: 'Created', pushNotification: true }),
       })
     );
+    const createRequestInit = vi.mocked(fetch).mock.calls[1]?.[1] as RequestInit;
+    expect((createRequestInit.headers as Headers).get('Idempotency-Key')).toBe('uuid-1');
     expect(fetch).toHaveBeenNthCalledWith(
       3,
       '/api/v1/mainserver/news/news-1',

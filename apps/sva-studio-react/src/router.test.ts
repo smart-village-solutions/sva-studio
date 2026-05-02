@@ -44,10 +44,10 @@ describe('createRuntimeRouteTree', () => {
         '/account',
         '/admin/users',
         '/admin/content',
-        '/admin/news',
-        '/admin/news/new',
-        '/admin/news/$id',
         '/content',
+        '/plugins/news',
+        '/plugins/news/new',
+        '/plugins/news/$contentId',
         '/auth/login',
       ]),
     );

@@ -103,19 +103,12 @@ const resolveAdminResourceGuard = (resource: AdminResourceDefinition, routeKind:
 
 const ensureAssignedModule = async (
   resource: AdminResourceDefinition,
-  beforeLoadOptions: {
-    readonly context?: {
-      readonly auth?: {
-        readonly getUser?: () => Promise<{ assignedModules?: readonly string[] } | null | undefined>;
-      };
-    };
-  }
+  user: { assignedModules?: readonly string[] } | null | undefined
 ): Promise<void> => {
   if (!resource.moduleId) {
     return;
   }
 
-  const user = await beforeLoadOptions.context?.auth?.getUser?.();
   if (!user?.assignedModules?.includes(resource.moduleId)) {
     throw redirect({ href: '/?error=auth.insufficientRole' });
   }
@@ -124,20 +117,13 @@ const ensureAssignedModule = async (
 const ensureRequiredPermissions = async (
   resource: AdminResourceDefinition,
   routeKind: AdminResourceRouteKind,
-  beforeLoadOptions: {
-    readonly context?: {
-      readonly auth?: {
-        readonly getUser?: () => Promise<{ permissionActions?: readonly string[] } | null | undefined>;
-      };
-    };
-  }
+  user: { permissionActions?: readonly string[] } | null | undefined
 ): Promise<void> => {
   const requiredPermissions = resource.permissions?.[routeKind];
   if (!requiredPermissions || requiredPermissions.length === 0) {
     return;
   }
 
-  const user = await beforeLoadOptions.context?.auth?.getUser?.();
   const grantedPermissions = new Set(user?.permissionActions ?? []);
   if (requiredPermissions.some((permission) => !grantedPermissions.has(permission))) {
     throw redirect({ href: '/?error=auth.insufficientRole' });
@@ -208,9 +194,23 @@ export const createAdminResourceRouteFactories = (
           getParentRoute: () => rootRoute,
           path: definition.path,
           beforeLoad: async (beforeLoadOptions) => {
+            let cachedUserPromise: Promise<
+              | {
+                  assignedModules?: readonly string[];
+                  permissionActions?: readonly string[];
+                }
+              | null
+              | undefined
+            > | null = null;
+            const getUser = async () => {
+              cachedUserPromise ??= Promise.resolve(beforeLoadOptions.context?.auth?.getUser?.());
+              return await cachedUserPromise;
+            };
+
             await guard(beforeLoadOptions);
-            await ensureAssignedModule(definition.resource, beforeLoadOptions);
-            await ensureRequiredPermissions(definition.resource, definition.routeKind, beforeLoadOptions);
+            const user = await getUser();
+            await ensureAssignedModule(definition.resource, user);
+            await ensureRequiredPermissions(definition.resource, definition.routeKind, user);
           },
           validateSearch: definition.validateSearch,
           component: bindings[definition.binding],

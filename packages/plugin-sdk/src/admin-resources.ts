@@ -102,6 +102,13 @@ export type AdminResourceCapabilities = {
   readonly detail?: AdminResourceDetailCapabilities;
 };
 
+export type AdminResourceViewPermissions = {
+  readonly list?: readonly string[];
+  readonly create?: readonly string[];
+  readonly detail?: readonly string[];
+  readonly history?: readonly string[];
+};
+
 export type ContentResourceViewBindingDefinition = {
   readonly bindingKey: string;
 };
@@ -122,13 +129,26 @@ export type AdminResourceDefinition = {
   readonly basePath: string;
   readonly titleKey: string;
   readonly guard: AdminResourceGuard;
+  readonly moduleId?: string;
   readonly views: AdminResourceViews;
+  readonly permissions?: AdminResourceViewPermissions;
   readonly capabilities?: AdminResourceCapabilities;
   readonly contentUi?: AdminResourceContentUiDefinition;
 };
 
-const adminResourceDefinitionAllowedKeys = new Set(['resourceId', 'basePath', 'titleKey', 'guard', 'views', 'capabilities', 'contentUi'] as const);
+const adminResourceDefinitionAllowedKeys = new Set([
+  'resourceId',
+  'basePath',
+  'titleKey',
+  'guard',
+  'moduleId',
+  'views',
+  'permissions',
+  'capabilities',
+  'contentUi',
+] as const);
 const adminResourceViewAllowedKeys = new Set(['bindingKey'] as const);
+const adminResourcePermissionsAllowedKeys = new Set(['list', 'create', 'detail', 'history'] as const);
 const adminResourceCapabilitiesAllowedKeys = new Set(['list', 'detail'] as const);
 const adminResourceListCapabilitiesAllowedKeys = new Set(['search', 'filters', 'sorting', 'pagination', 'bulkActions'] as const);
 const adminResourceSearchCapabilityAllowedKeys = new Set(['param', 'placeholderKey', 'fields'] as const);
@@ -237,6 +257,19 @@ const normalizeBindingKey = (resourceId: string, fieldName: string, value: strin
   if (normalized.length === 0) {
     throw new Error(`invalid_admin_resource_capability:${resourceId}:${fieldName}`);
   }
+  return normalized;
+};
+
+const normalizeModuleId = (resourceId: string, value: string | undefined): string | undefined => {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  const normalized = value.trim();
+  if (/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(normalized) === false) {
+    throw new Error(`invalid_admin_resource_module_id:${resourceId}:${normalized}`);
+  }
+
   return normalized;
 };
 
@@ -559,6 +592,53 @@ const normalizeAdminResourceCapabilities = (
   };
 };
 
+const normalizeAdminResourcePermissions = (
+  resourceId: string,
+  permissions: AdminResourceViewPermissions | undefined
+): AdminResourceViewPermissions | undefined => {
+  if (!permissions) {
+    return undefined;
+  }
+
+  assertAllowedCapabilityKeys(
+    resourceId,
+    `${resourceId}.permissions`,
+    permissions as unknown as Record<string, unknown>,
+    adminResourcePermissionsAllowedKeys
+  );
+
+  const normalizePermissionList = (
+    viewName: keyof AdminResourceViewPermissions,
+    values: readonly string[] | undefined
+  ): readonly string[] | undefined => {
+    if (values === undefined) {
+      return undefined;
+    }
+    if (!Array.isArray(values) || values.length === 0) {
+      throw new Error(`invalid_admin_resource_permissions:${resourceId}:${String(viewName)}`);
+    }
+
+    const normalizedValues = values.map((value) => {
+      const normalized = normalizePluginIdentifier(value);
+      if (!ADMIN_RESOURCE_ACTION_ID_PATTERN.test(normalized)) {
+        throw new Error(`invalid_admin_resource_action_id:${resourceId}:permissions.${String(viewName)}:${normalized}`);
+      }
+      return normalized;
+    });
+
+    return [...new Set(normalizedValues)];
+  };
+
+  const normalizedPermissions = {
+    list: normalizePermissionList('list', permissions.list),
+    create: normalizePermissionList('create', permissions.create),
+    detail: normalizePermissionList('detail', permissions.detail),
+    history: normalizePermissionList('history', permissions.history),
+  } as const;
+
+  return Object.values(normalizedPermissions).some((value) => value !== undefined) ? normalizedPermissions : undefined;
+};
+
 const normalizeAdminResourceContentUi = (
   resourceId: string,
   guard: AdminResourceGuard,
@@ -632,6 +712,7 @@ const normalizeAdminResourceDefinition = (resource: AdminResourceDefinition): Ad
     resourceId,
     basePath: normalizeBasePath(resource.basePath),
     titleKey: normalizePluginIdentifier(resource.titleKey),
+    ...(resource.moduleId ? { moduleId: normalizeModuleId(resourceId, resource.moduleId) } : {}),
     views: {
       list: validateViewDefinition(resourceId, 'list', resource.views.list),
       create: validateViewDefinition(resourceId, 'create', resource.views.create),
@@ -640,6 +721,9 @@ const normalizeAdminResourceDefinition = (resource: AdminResourceDefinition): Ad
         ? validateViewDefinition(resourceId, 'history', resource.views.history)
         : undefined,
     },
+    ...(normalizeAdminResourcePermissions(resourceId, resource.permissions)
+      ? { permissions: normalizeAdminResourcePermissions(resourceId, resource.permissions) }
+      : {}),
     capabilities: normalizeAdminResourceCapabilities(resourceId, resource.capabilities),
     contentUi: normalizeAdminResourceContentUi(resourceId, resource.guard, resource.contentUi),
   };

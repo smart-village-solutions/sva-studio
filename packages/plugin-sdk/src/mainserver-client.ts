@@ -50,11 +50,18 @@ const resolveFetch = (fetchOverride?: typeof fetch): typeof fetch => {
   return resolvedFetch;
 };
 
-export const createMainserverJsonRequestHeaders = (headers?: HeadersInit): HeadersInit => ({
-  'Content-Type': 'application/json',
-  'X-Requested-With': 'XMLHttpRequest',
-  ...(headers ?? {}),
-});
+const createHeaders = (headers?: HeadersInit): Headers => new Headers(headers);
+
+export const createMainserverJsonRequestHeaders = (headers?: HeadersInit): Headers => {
+  const requestHeaders = createHeaders(headers);
+  if (!requestHeaders.has('Content-Type')) {
+    requestHeaders.set('Content-Type', 'application/json');
+  }
+  if (!requestHeaders.has('X-Requested-With')) {
+    requestHeaders.set('X-Requested-With', 'XMLHttpRequest');
+  }
+  return requestHeaders;
+};
 
 export const buildMainserverListUrl = (basePath: string, query: MainserverListQuery): string =>
   `${basePath}?page=${encodeURIComponent(String(query.page))}&pageSize=${encodeURIComponent(String(query.pageSize))}`;
@@ -65,13 +72,15 @@ export const requestMainserverJson = async <T, TError extends Error = Mainserver
   readonly fetch?: typeof fetch;
   readonly errorFactory?: MainserverErrorFactory<TError>;
 }): Promise<T> => {
+  const headers = createHeaders(input.init?.headers);
+  if (!headers.has('Accept')) {
+    headers.set('Accept', 'application/json');
+  }
+
   const response = await resolveFetch(input.fetch)(input.url, {
     credentials: 'include',
     ...input.init,
-    headers: {
-      Accept: 'application/json',
-      ...(input.init?.headers ?? {}),
-    },
+    headers,
   });
 
   if (!response.ok) {

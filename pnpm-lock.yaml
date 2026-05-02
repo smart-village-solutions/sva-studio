@@ -507,6 +507,9 @@ importers:
 
   packages/plugin-events:
     dependencies:
+      '@sva/core':
+        specifier: workspace:*
+        version: link:../core
       '@sva/plugin-sdk':
         specifier: workspace:*
         version: link:../plugin-sdk
@@ -544,6 +547,9 @@ importers:
 
   packages/plugin-news:
     dependencies:
+      '@sva/core':
+        specifier: workspace:*
+        version: link:../core
       '@sva/plugin-sdk':
         specifier: workspace:*
         version: link:../plugin-sdk
@@ -581,6 +587,9 @@ importers:
 
   packages/plugin-poi:
     dependencies:
+      '@sva/core':
+        specifier: workspace:*
+        version: link:../core
       '@sva/plugin-sdk':
         specifier: workspace:*
         version: link:../plugin-sdk

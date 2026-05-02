@@ -24,6 +24,7 @@ Abhängigkeiten des aktuellen Systems.
    - Skeleton-Bausteine für Kopfzeile, Seitenleiste und Contentbereich
    - Theme-Bausteine: `ThemeProvider`, semantische CSS-Token und `Sheet`-Primitive für mobile Shell-Navigation
    - Auth- und Diagnose-Bausteine: `AuthProvider` fuer `/auth/me`, Silent-Recovery und den clientseitigen Grundzustand; `iam-api.ts` fuer Browser-Timeouts, `requestId`-Aufnahme und Safe-Detail-Parsing
+   - Host-Standard-Bausteine fuer Admin-Ressourcen: `appAdminResources` als kanonische Capability-Deklaration, route-addressable Listensteuerung in den Admin-/Content-Seiten und `StudioDataTable` als gemeinsame Ausfuehrungsoberflaeche fuer Search, Filter, Pagination und Bulk-Selection
    - Nx-Targets für `build`, `serve`, `lint`, `test:unit`, `test:coverage` und `test:e2e` über Vite-, Vitest- und Playwright-Executor
 2. Core (`packages/core`)
    - generische Route-Registry Utilities (`mergeRouteFactories`, `buildRouteTree`)
@@ -32,6 +33,7 @@ Abhängigkeiten des aktuellen Systems.
    - zentrale Route-Factories (client + server)
    - einzige Source of Truth für Auth-Handler-Mapping, Runtime-Guard und JSON-Error-Boundary
    - eigener Observability-Vertrag für Guard-Denials, Plugin-Guard-Anomalien und serverseitige Dispatch-Fehler mit optionalem Diagnostics-Hook
+   - Search-Param-Normalisierung fuer deklarierte Admin-Ressourcen ueber `normalizeAdminResourceListSearch`, damit Host-Listen zustandsstabil, deep-link-faehig und fail-closed bei ungueltigen Parametern bleiben
    - der Startup-Guard in `auth.routes.server.ts` prüft ausschließlich das Auth-Route-Mapping gegen `authRoutePaths`; er ist keine allgemeine Plugin- oder Router-Vollständigkeitsprüfung
 4. Auth Runtime (`packages/auth-runtime`)
    - OIDC-Flows, Session-Store, Cookies, Auth-Middleware, Runtime-Health und Auth-/HTTP-Handler
@@ -39,6 +41,7 @@ Abhängigkeiten des aktuellen Systems.
    - Diagnosebausteine für Session-Hydration/-Refresh, Hostvalidierung, Schema-Guard, Runtime-Health und allowlist-basierte API-Fehlerdetails
 5. Plugin SDK und Server Runtime (`packages/plugin-sdk`, `packages/server-runtime`)
    - `@sva/plugin-sdk`: öffentlicher Plugin-Vertrag v1, Build-time-Registry, Admin-Ressourcen, Content-Type- und Translation-Verträge
+   - erweitert den Admin-Ressourcenvertrag um hostgeführte Listen- und Detail-Capabilities fuer Search, Filter, Sorting, Pagination, Bulk-Actions, Historie und Revisionen
    - bündelt außerdem wiederverwendbare Helper für standardisierte Content-Plugins, Mainserver-CRUD-Basis und kleine UI-nahe Plugin-Utilities
    - `@sva/server-runtime`: Logger, Request-Kontext, JSON-Fehlerantworten, Workspace-Kontext und OTEL-Bootstrap
    - Namespacing- und Ownership-Validierung für plugin-beigestellte registrierte Host-Identifier

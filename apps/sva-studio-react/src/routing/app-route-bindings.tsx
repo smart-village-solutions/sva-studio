@@ -1,7 +1,4 @@
 import { normalizeIamTab, normalizeRoleDetailTab, type AppRouteBindings as BaseAppRouteBindings } from '@sva/routing';
-import { EventsCreatePage, EventsEditPage, EventsListPage } from '@sva/plugin-events';
-import { NewsCreatePage, NewsEditPage, NewsListPage } from '@sva/plugin-news';
-import { PoiCreatePage, PoiEditPage, PoiListPage } from '@sva/plugin-poi';
 import { useParams, useSearch } from '@tanstack/react-router';
 import React from 'react';
 
@@ -85,18 +82,6 @@ type RenderableRouteComponent<TProps extends object> =
   | React.ComponentType<TProps>
   | React.LazyExoticComponent<React.ComponentType<TProps>>;
 
-type StudioAppRouteBindings = BaseAppRouteBindings & {
-  readonly newsList: React.ComponentType;
-  readonly newsDetail: React.ComponentType;
-  readonly newsEditor: React.ComponentType;
-  readonly eventsList: React.ComponentType;
-  readonly eventsDetail: React.ComponentType;
-  readonly eventsEditor: React.ComponentType;
-  readonly poiList: React.ComponentType;
-  readonly poiDetail: React.ComponentType;
-  readonly poiEditor: React.ComponentType;
-};
-
 const renderLazyPage = <TProps extends object>(
   Component: RenderableRouteComponent<TProps>,
   props?: TProps
@@ -112,6 +97,69 @@ const LazyInterfacesPage = React.lazy(async () => {
 });
 
 const InterfacesRoutePage = () => renderLazyPage(LazyInterfacesPage);
+
+const LazyNewsListPage = React.lazy(async () => {
+  const mod = await import('@sva/plugin-news');
+  return { default: mod.NewsListPage };
+});
+
+const NewsListRoutePage = () => renderLazyPage(LazyNewsListPage);
+
+const LazyNewsCreatePage = React.lazy(async () => {
+  const mod = await import('@sva/plugin-news');
+  return { default: mod.NewsCreatePage };
+});
+
+const NewsCreateRoutePage = () => renderLazyPage(LazyNewsCreatePage);
+
+const LazyNewsEditPage = React.lazy(async () => {
+  const mod = await import('@sva/plugin-news');
+  return { default: mod.NewsEditPage };
+});
+
+const NewsEditRoutePage = () => renderLazyPage(LazyNewsEditPage);
+
+const LazyEventsListPage = React.lazy(async () => {
+  const mod = await import('@sva/plugin-events');
+  return { default: mod.EventsListPage };
+});
+
+const EventsListRoutePage = () => renderLazyPage(LazyEventsListPage);
+
+const LazyEventsCreatePage = React.lazy(async () => {
+  const mod = await import('@sva/plugin-events');
+  return { default: mod.EventsCreatePage };
+});
+
+const EventsCreateRoutePage = () => renderLazyPage(LazyEventsCreatePage);
+
+const LazyEventsEditPage = React.lazy(async () => {
+  const mod = await import('@sva/plugin-events');
+  return { default: mod.EventsEditPage };
+});
+
+const EventsEditRoutePage = () => renderLazyPage(LazyEventsEditPage);
+
+const LazyPoiListPage = React.lazy(async () => {
+  const mod = await import('@sva/plugin-poi');
+  return { default: mod.PoiListPage };
+});
+
+const PoiListRoutePage = () => renderLazyPage(LazyPoiListPage);
+
+const LazyPoiCreatePage = React.lazy(async () => {
+  const mod = await import('@sva/plugin-poi');
+  return { default: mod.PoiCreatePage };
+});
+
+const PoiCreateRoutePage = () => renderLazyPage(LazyPoiCreatePage);
+
+const LazyPoiEditPage = React.lazy(async () => {
+  const mod = await import('@sva/plugin-poi');
+  return { default: mod.PoiEditPage };
+});
+
+const PoiEditRoutePage = () => renderLazyPage(LazyPoiEditPage);
 
 const LazyGroupsPage = React.lazy(async () => {
   const mod = await import('../routes/admin/groups/-groups-page');
@@ -198,22 +246,22 @@ const IamRoutePage = () => {
   return <IamViewerPage activeTab={normalizeIamTab(search.tab)} />;
 };
 
-export const appRouteBindings: StudioAppRouteBindings = {
+export const appRouteBindings: BaseAppRouteBindings = {
   home: HomePage,
   account: AccountProfilePage,
   accountPrivacy: AccountPrivacyPage,
   content: ContentListPage,
   contentCreate: () => <ContentEditorPage mode="create" />,
   contentDetail: ContentDetailRoutePage,
-  newsList: NewsListPage,
-  newsDetail: NewsEditPage,
-  newsEditor: NewsCreatePage,
-  eventsList: EventsListPage,
-  eventsDetail: EventsEditPage,
-  eventsEditor: EventsCreatePage,
-  poiList: PoiListPage,
-  poiDetail: PoiEditPage,
-  poiEditor: PoiCreatePage,
+  newsList: NewsListRoutePage,
+  newsDetail: NewsEditRoutePage,
+  newsEditor: NewsCreateRoutePage,
+  eventsList: EventsListRoutePage,
+  eventsDetail: EventsEditRoutePage,
+  eventsEditor: EventsCreateRoutePage,
+  poiList: PoiListRoutePage,
+  poiDetail: PoiEditRoutePage,
+  poiEditor: PoiCreateRoutePage,
   media: MediaPlaceholderRoutePage,
   categories: CategoriesPlaceholderRoutePage,
   app: AppPlaceholderRoutePage,

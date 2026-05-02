@@ -29,7 +29,12 @@ type UiRouteDefinition = {
   readonly resource: AdminResourceDefinition;
   readonly validateSearch?: (search: Record<string, unknown>) => unknown;
 };
-type AdminResourceBindingResolver = { readonly list: BindingKey; readonly create: BindingKey; readonly detail: BindingKey; readonly history?: BindingKey };
+type AdminResourceBindingResolver = {
+  readonly list: BindingKey;
+  readonly create: BindingKey;
+  readonly detail: BindingKey;
+  readonly history?: BindingKey;
+};
 type AdminResourceRouteKind = 'list' | 'create' | 'detail' | 'history';
 type AdminResourceViewKind = keyof AdminResourceDefinition['views'];
 
@@ -206,8 +211,22 @@ export const createAdminResourceRouteFactories = (
               cachedUserPromise ??= Promise.resolve(beforeLoadOptions.context?.auth?.getUser?.());
               return await cachedUserPromise;
             };
+            const memoizedBeforeLoadOptions = {
+              ...beforeLoadOptions,
+              context: {
+                ...beforeLoadOptions.context,
+                auth: beforeLoadOptions.context?.auth
+                  ? {
+                      ...beforeLoadOptions.context.auth,
+                      getUser,
+                    }
+                  : {
+                      getUser,
+                    },
+              },
+            };
 
-            await guard(beforeLoadOptions);
+            await guard(memoizedBeforeLoadOptions);
             const user = await getUser();
             await ensureAssignedModule(definition.resource, user);
             await ensureRequiredPermissions(definition.resource, definition.routeKind, user);

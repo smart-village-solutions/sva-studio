@@ -225,7 +225,16 @@ describe('admin resource routes', () => {
     }
 
     for (const guardKey of expectedGuards) {
-      expect(guardSpies[guardKey]).toHaveBeenCalledWith({ href: expect.any(String) });
+      expect(guardSpies[guardKey]).toHaveBeenCalledWith(
+        expect.objectContaining({
+          href: expect.any(String),
+          context: expect.objectContaining({
+            auth: expect.objectContaining({
+              getUser: expect.any(Function),
+            }),
+          }),
+        })
+      );
     }
   });
 

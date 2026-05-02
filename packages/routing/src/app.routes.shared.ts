@@ -62,7 +62,12 @@ export type AppRouteBindings = {
 };
 
 export type AppRouteBindingKey = keyof AppRouteBindings;
-type UiRouteDefinition = { readonly binding: AppRouteBindingKey; readonly guard?: AccountUiRouteGuardKey; readonly path: string; readonly validateSearch?: (search: Record<string, unknown>) => unknown };
+type UiRouteDefinition = {
+  readonly binding: AppRouteBindingKey;
+  readonly guard?: AccountUiRouteGuardKey;
+  readonly path: string;
+  readonly validateSearch?: (search: Record<string, unknown>) => unknown;
+};
 
 const uiRouteDefinitions: readonly UiRouteDefinition[] = [
   { binding: 'home', path: uiRoutePaths.home },

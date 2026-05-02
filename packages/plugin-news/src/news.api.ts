@@ -16,6 +16,12 @@ export class NewsApiError extends Error {
 }
 
 const createIdempotencyKey = () => crypto.randomUUID();
+const DEFAULT_LIST_QUERY: NewsListQuery = { page: 1, pageSize: 25 };
+const DEFAULT_LIST_PAGINATION: NewsListResult['pagination'] = {
+  page: DEFAULT_LIST_QUERY.page,
+  pageSize: DEFAULT_LIST_QUERY.pageSize,
+  hasNextPage: false,
+};
 
 const toNewsContent = (item: NewsContentItem): NewsContentItem => item;
 
@@ -27,13 +33,19 @@ const toMutationBody = (input: NewsFormInput, options: { readonly includePushNot
   };
 };
 
-const newsClient = createMainserverCrudClient<NewsContentItem, NewsFormInput, NewsListResult, NewsListResult, NewsApiError>({
+const newsClient = createMainserverCrudClient<
+  NewsContentItem,
+  NewsFormInput,
+  Readonly<{ data: readonly NewsContentItem[]; pagination?: NewsListResult['pagination'] }>,
+  NewsListResult,
+  NewsApiError
+>({
   basePath: '/api/v1/mainserver/news',
   errorFactory: (code, message) => new NewsApiError(code, message),
   mapItem: toNewsContent,
   mapListResponse: (response, mapItem) => ({
     data: response.data.map(mapItem),
-    pagination: response.pagination,
+    pagination: response.pagination ?? DEFAULT_LIST_PAGINATION,
   }),
   createBody: (input) => toMutationBody(input, { includePushNotification: true }),
   updateBody: (input) => toMutationBody(input, { includePushNotification: false }),
@@ -43,7 +55,7 @@ const newsClient = createMainserverCrudClient<NewsContentItem, NewsFormInput, Ne
     }),
 });
 
-export const listNews = async (query: NewsListQuery): Promise<NewsListResult> => newsClient.list(query);
+export const listNews = async (query: NewsListQuery = DEFAULT_LIST_QUERY): Promise<NewsListResult> => newsClient.list(query);
 
 export const getNews = async (contentId: string): Promise<NewsContentItem> => newsClient.get(contentId);
 

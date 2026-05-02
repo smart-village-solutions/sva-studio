@@ -131,10 +131,16 @@ export const createStandardContentAdminResource = (
   basePath: options.basePath ?? options.pluginId,
   titleKey: options.titleKey,
   guard: 'content',
+  moduleId: options.pluginId,
   views: {
     list: { bindingKey: 'content' },
     create: { bindingKey: 'contentCreate' },
     detail: { bindingKey: 'contentDetail' },
+  },
+  permissions: {
+    list: [`${options.pluginId}.read`],
+    create: [`${options.pluginId}.create`],
+    detail: [`${options.pluginId}.read`, `${options.pluginId}.update`],
   },
   capabilities: {
     list: {

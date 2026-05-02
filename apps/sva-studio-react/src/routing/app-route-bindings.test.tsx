@@ -288,15 +288,15 @@ describe('appRouteBindings', () => {
     cleanup();
 
     render(<appRouteBindings.newsList />);
-    expect(screen.getByTestId('news-list-page')).toBeTruthy();
+    await waitFor(() => expect(screen.getByTestId('news-list-page')).toBeTruthy());
     cleanup();
 
     render(<appRouteBindings.newsEditor />);
-    expect(screen.getByTestId('news-create-page')).toBeTruthy();
+    await waitFor(() => expect(screen.getByTestId('news-create-page')).toBeTruthy());
     cleanup();
 
     render(<appRouteBindings.newsDetail />);
-    expect(screen.getByTestId('news-edit-page')).toBeTruthy();
+    await waitFor(() => expect(screen.getByTestId('news-edit-page')).toBeTruthy());
   });
 
   it('falls back to empty string route params when router params are not strings', async () => {
@@ -404,26 +404,26 @@ describe('appRouteBindings', () => {
     cleanup();
 
     render(<appRouteBindings.eventsList />);
-    expect(screen.getByTestId('events-list-page')).toBeTruthy();
+    await waitFor(() => expect(screen.getByTestId('events-list-page')).toBeTruthy());
     cleanup();
 
     render(<appRouteBindings.eventsEditor />);
-    expect(screen.getByTestId('events-create-page')).toBeTruthy();
+    await waitFor(() => expect(screen.getByTestId('events-create-page')).toBeTruthy());
     cleanup();
 
     render(<appRouteBindings.eventsDetail />);
-    expect(screen.getByTestId('events-edit-page')).toBeTruthy();
+    await waitFor(() => expect(screen.getByTestId('events-edit-page')).toBeTruthy());
     cleanup();
 
     render(<appRouteBindings.poiList />);
-    expect(screen.getByTestId('poi-list-page')).toBeTruthy();
+    await waitFor(() => expect(screen.getByTestId('poi-list-page')).toBeTruthy());
     cleanup();
 
     render(<appRouteBindings.poiEditor />);
-    expect(screen.getByTestId('poi-create-page')).toBeTruthy();
+    await waitFor(() => expect(screen.getByTestId('poi-create-page')).toBeTruthy());
     cleanup();
 
     render(<appRouteBindings.poiDetail />);
-    expect(screen.getByTestId('poi-edit-page')).toBeTruthy();
+    await waitFor(() => expect(screen.getByTestId('poi-edit-page')).toBeTruthy());
   });
 });

@@ -4110,13 +4110,24 @@ const buildSwarmServicePresenceProbe = (env: NodeJS.ProcessEnv): AcceptanceProbe
   });
 };
 
+export const deriveInternalVerifyMaxAttempts = ({
+  retryDelayMs,
+  warmupWindowMs,
+}: {
+  retryDelayMs: number;
+  warmupWindowMs: number;
+}) => {
+  const safeRetryDelayMs = retryDelayMs > 0 ? retryDelayMs : 1_000;
+  return Math.max(1, Math.floor(warmupWindowMs / safeRetryDelayMs) + 1);
+};
+
 const runInternalVerify = async (runtimeProfile: RemoteRuntimeProfile, env: NodeJS.ProcessEnv): Promise<{
   doctorReport: DoctorReport;
   probes: readonly AcceptanceProbeResult[];
 }> => {
   const retryDelayMs = Number(env.SVA_INTERNAL_VERIFY_RETRY_DELAY_MS ?? '5000');
   const warmupWindowMs = Number(env.SVA_INTERNAL_VERIFY_WARMUP_WINDOW_MS ?? '90000');
-  const derivedMaxAttempts = Math.max(1, Math.floor(warmupWindowMs / Math.max(retryDelayMs, 1)) + 1);
+  const derivedMaxAttempts = deriveInternalVerifyMaxAttempts({ retryDelayMs, warmupWindowMs });
   const maxAttempts = Number(env.SVA_INTERNAL_VERIFY_MAX_ATTEMPTS ?? String(derivedMaxAttempts));
   const retryableWarmupChecks = new Set([
     'health-live',
@@ -4255,7 +4266,7 @@ export const shouldRetryInternalProbeFailure = (probe: AcceptanceProbeResult) =>
     return false;
   }
 
-  const retryableWarmupStates = ['pending', 'preparing', 'starting', 'assigned', 'accepted', 'new', 'shutdown'];
+  const retryableWarmupStates = ['pending', 'preparing', 'starting', 'assigned', 'accepted', 'new', 'ready', 'shutdown'];
   const lowerCaseMessage = probe.message.toLowerCase();
   if (retryableWarmupStates.some((state) => lowerCaseMessage.includes(state))) {
     return true;

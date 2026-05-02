@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   buildStudioImageVerifyEvidenceCheck,
+  deriveInternalVerifyMaxAttempts,
   readStudioImageVerifyEvidence,
   resolveTenantRuntimeTargets,
   runExternalSmokeWithWarmup,
@@ -160,6 +161,23 @@ describe('shouldRetryInternalProbeFailure', () => {
     ).toBe(true);
   });
 
+  it('retries swarm app task failures in ready state during warmup', () => {
+    expect(
+      shouldRetryInternalProbeFailure(
+        createProbe({
+          details: {
+            currentState: 'ready 2 seconds ago',
+          },
+          message: 'Swarm-App-Task ist nicht stabil running (ready).',
+          name: 'swarm-app-task',
+          scope: 'internal',
+          status: 'error',
+          target: 'studio/app',
+        }),
+      ),
+    ).toBe(true);
+  });
+
   it('does not retry non-warmup swarm app task failures', () => {
     expect(
       shouldRetryInternalProbeFailure(
@@ -175,6 +193,13 @@ describe('shouldRetryInternalProbeFailure', () => {
         }),
       ),
     ).toBe(false);
+  });
+});
+
+describe('deriveInternalVerifyMaxAttempts', () => {
+  it('caps derived attempts when retry delay is zero or negative', () => {
+    expect(deriveInternalVerifyMaxAttempts({ retryDelayMs: 0, warmupWindowMs: 90_000 })).toBe(91);
+    expect(deriveInternalVerifyMaxAttempts({ retryDelayMs: -100, warmupWindowMs: 90_000 })).toBe(91);
   });
 });
 

@@ -1,5 +1,4 @@
 import { cleanup, render, screen } from '@testing-library/react';
-import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import * as instancesShared from './-instances-shared';
@@ -157,6 +156,7 @@ describe('instances shared helpers', () => {
         authRealm: 'demo',
         authClientId: 'sva-studio',
         authClientSecretConfigured: false,
+        assignedModules: [],
         hostnames: [],
         provisioningRuns: [],
         auditEvents: [],
@@ -190,6 +190,7 @@ describe('instances shared helpers', () => {
       authRealm: 'demo',
       authClientId: 'sva-studio',
       authClientSecretConfigured: false,
+      assignedModules: [],
       hostnames: [],
       provisioningRuns: [],
       auditEvents: [],
@@ -291,6 +292,7 @@ describe('instances shared helpers', () => {
         authRealm: 'demo',
         authClientId: 'sva-studio',
         authClientSecretConfigured: true,
+        assignedModules: [],
         tenantAdminClient: {
           clientId: 'demo-admin-client',
           secretConfigured: false,
@@ -348,6 +350,7 @@ describe('instances shared helpers', () => {
         authRealm: 'demo',
         authClientId: 'sva-studio',
         authClientSecretConfigured: true,
+        assignedModules: [],
         tenantAdminClient: {
           clientId: 'demo-admin-client',
           secretConfigured: false,

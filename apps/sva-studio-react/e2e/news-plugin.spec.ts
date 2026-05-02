@@ -32,6 +32,7 @@ const authenticatedUser = {
     name: 'Editor One',
     email: 'editor@example.com',
     instanceId: 'de-musterhausen',
+    assignedModules: ['news'],
     roles: ['editor'],
     permissionActions: ['news.read', 'news.create', 'news.update', 'news.delete'],
   },

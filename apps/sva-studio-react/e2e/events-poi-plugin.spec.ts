@@ -43,6 +43,7 @@ const authenticatedUser = {
     name: 'Editor One',
     email: 'editor@example.com',
     instanceId: 'de-musterhausen',
+    assignedModules: ['events', 'poi'],
     roles: ['editor'],
     permissionActions: [
       'events.read',

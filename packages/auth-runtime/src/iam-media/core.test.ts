@@ -62,6 +62,7 @@ const createService = () => ({
     status: 'pending',
   })),
   getStorageUsage: vi.fn(async () => null),
+  listVariantsByAssetId: vi.fn(async () => []),
   listReferencesByTarget: vi.fn(async () => [
     {
       id: 'reference-1',
@@ -169,7 +170,7 @@ describe('media http handlers', () => {
     );
 
     expect(response.status).toBe(201);
-    expect(service.wouldExceedStorageQuota).toHaveBeenCalledWith('tenant-a', 200);
+    expect(service.wouldExceedStorageQuota).toHaveBeenCalledWith('tenant-a', 500);
     expect(storagePort.prepareUpload).toHaveBeenCalledWith({
       instanceId: 'tenant-a',
       assetId: 'asset-1',
@@ -187,7 +188,7 @@ describe('media http handlers', () => {
     service.wouldExceedStorageQuota = vi.fn(async () => ({
       instanceId: 'tenant-a',
       currentBytes: 100,
-      additionalBytes: 2000,
+      additionalBytes: 5000,
       maxBytes: 1000,
       wouldExceed: true,
     }));
@@ -215,6 +216,42 @@ describe('media http handlers', () => {
     );
 
     expect(response.status).toBe(409);
+  });
+
+  it('uses a conservative quota reservation that includes eager media variants', async () => {
+    const service = createService();
+    const storagePort = {
+      prepareUpload: vi.fn(async () => ({
+        uploadUrl: 'https://uploads.example.test/put',
+        method: 'PUT' as const,
+        storageKey: 'tenant-a/originals/asset-1',
+        expiresAt: '2026-04-29T20:00:00.000Z',
+      })),
+      resolveDelivery: vi.fn(),
+    };
+    const handlers = createMediaHttpHandlers({
+      withMediaService: async (_instanceId, work) => work(service as never),
+      storagePort,
+      authorizeAction: allowAuthorization,
+      createId: () => 'id-1',
+      now: () => '2026-04-29T19:00:00.000Z',
+      emitAuditEvent,
+    });
+
+    await handlers.initializeUpload(
+      new Request('http://localhost/api/v1/iam/media/upload-sessions', {
+        method: 'POST',
+        body: JSON.stringify({
+          instanceId: 'tenant-a',
+          mediaType: 'image',
+          mimeType: 'image/jpeg',
+          byteSize: 1024,
+        }),
+      }),
+      createContext()
+    );
+
+    expect(service.wouldExceedStorageQuota).toHaveBeenCalledWith('tenant-a', 2560);
   });
 
   it('resolves usage and controlled delivery for an asset', async () => {
@@ -545,6 +582,30 @@ describe('media http handlers', () => {
   it('reduces storage usage when deleting a processed asset', async () => {
     const service = createService();
     service.listReferencesByAssetId = vi.fn(async () => []);
+    service.listVariantsByAssetId = vi.fn(async () => [
+      {
+        id: 'variant-1',
+        assetId: 'asset-1',
+        variantKey: 'thumbnail',
+        presetKey: 'thumbnail',
+        format: 'webp',
+        width: 320,
+        height: 320,
+        storageKey: 'tenant-a/variants/asset-1/thumbnail.webp',
+        generationStatus: 'ready',
+      },
+      {
+        id: 'variant-2',
+        assetId: 'asset-1',
+        variantKey: 'hero',
+        presetKey: 'hero',
+        format: 'webp',
+        width: 1600,
+        height: 900,
+        storageKey: 'tenant-a/variants/asset-1/hero.webp',
+        generationStatus: 'ready',
+      },
+    ]);
     service.getStorageUsage = vi.fn(async () => ({
       instanceId: 'tenant-a',
       totalBytes: 4096,
@@ -563,9 +624,14 @@ describe('media http handlers', () => {
       metadata: {},
       technical: { variantTotalBytes: 321 },
     }));
+    const storagePort = {
+      prepareUpload: vi.fn(),
+      resolveDelivery: vi.fn(),
+      deleteObject: vi.fn(async () => undefined),
+    };
     const handlers = createMediaHttpHandlers({
       withMediaService: async (_instanceId, work) => work(service as never),
-      storagePort: { prepareUpload: vi.fn(), resolveDelivery: vi.fn() } as never,
+      storagePort: storagePort as never,
       authorizeAction: allowAuthorization,
       createId: () => 'id-1',
       now: () => '2026-04-29T19:00:00.000Z',
@@ -585,6 +651,18 @@ describe('media http handlers', () => {
       instanceId: 'tenant-a',
       totalBytes: 2541,
       assetCount: 1,
+    });
+    expect(storagePort.deleteObject).toHaveBeenNthCalledWith(1, {
+      instanceId: 'tenant-a',
+      storageKey: 'tenant-a/originals/asset-1.jpg',
+    });
+    expect(storagePort.deleteObject).toHaveBeenNthCalledWith(2, {
+      instanceId: 'tenant-a',
+      storageKey: 'tenant-a/variants/asset-1/thumbnail.webp',
+    });
+    expect(storagePort.deleteObject).toHaveBeenNthCalledWith(3, {
+      instanceId: 'tenant-a',
+      storageKey: 'tenant-a/variants/asset-1/hero.webp',
     });
   });
 });

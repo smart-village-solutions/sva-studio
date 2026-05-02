@@ -72,6 +72,9 @@ const resolvePresetContentType = (format: MediaPreset['format']): string => {
   }
 };
 
+const shouldDeleteFailedUploadBlob = (errorCode: MediaUploadProcessingFailureCode): boolean =>
+  errorCode === 'invalid_media_content' || errorCode === 'upload_size_exceeded';
+
 const isRecoverableValidationError = (error: unknown): error is Error => {
   if (!(error instanceof Error)) {
     return false;
@@ -174,7 +177,7 @@ const markProcessingFailure = async (input: {
     return asErrorResult(404, 'asset_not_found');
   }
 
-  if (input.errorCode === 'invalid_media_content') {
+  if (shouldDeleteFailedUploadBlob(input.errorCode)) {
     await input.deps.storagePort.deleteObject({
       instanceId: String(input.asset.instanceId),
       storageKey: String(input.uploadSession.storageKey),

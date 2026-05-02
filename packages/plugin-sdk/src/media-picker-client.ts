@@ -14,18 +14,22 @@ export type HostMediaReferenceSelection = Readonly<{
 
 type FetchLike = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 
+const createHeaders = (headers?: HeadersInit): Headers => new Headers(headers);
+
 const requestJson = async <T>(input: {
   readonly fetch: FetchLike;
   readonly url: string;
   readonly init?: RequestInit;
 }): Promise<T> => {
+  const headers = createHeaders(input.init?.headers);
+  if (!headers.has('Accept')) {
+    headers.set('Accept', 'application/json');
+  }
+
   const response = await input.fetch(input.url, {
     credentials: 'include',
-    headers: {
-      Accept: 'application/json',
-      ...(input.init?.headers ?? {}),
-    },
     ...input.init,
+    headers,
   });
   if (!response.ok) {
     throw new Error(`media_picker_http_${response.status}`);

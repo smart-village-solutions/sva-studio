@@ -95,4 +95,53 @@ describe('media picker client', () => {
       })
     );
   });
+
+  it('preserves custom header inputs while still defaulting Accept', async () => {
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      const headers = new Headers(init?.headers);
+      return new Response(
+        JSON.stringify({
+          data: {
+            accept: headers.get('Accept'),
+            trace: headers.get('X-Trace'),
+          },
+        }),
+        { status: 200 }
+      );
+    });
+
+    await replaceHostMediaReferences({
+      fetch: fetchMock as never,
+      targetType: 'events',
+      targetId: 'event-1',
+      references: [{ assetId: 'asset-1', role: 'header_image' }],
+    });
+
+    const [, replaceInit] = fetchMock.mock.calls[0] ?? [];
+    const replaceHeaders = new Headers(replaceInit?.headers);
+    expect(replaceHeaders.get('Accept')).toBe('application/json');
+    expect(replaceHeaders.get('Content-Type')).toBe('application/json');
+    expect(replaceHeaders.get('X-Requested-With')).toBe('XMLHttpRequest');
+
+    const customHeaderFetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      const headers = new Headers(init?.headers);
+      return new Response(JSON.stringify({ data: [{ id: headers.get('X-Trace') }] }), { status: 200 });
+    });
+
+    await listHostMediaAssets({
+      fetch: ((input: RequestInfo | URL, init?: RequestInit) =>
+        customHeaderFetchMock(input, {
+          ...init,
+          headers: new Headers([
+            ['Accept', 'application/vnd.custom+json'],
+            ['X-Trace', 'trace-1'],
+          ]),
+        })) as never,
+    });
+
+    const [, listInit] = customHeaderFetchMock.mock.calls[0] ?? [];
+    const listHeaders = new Headers(listInit?.headers);
+    expect(listHeaders.get('Accept')).toBe('application/vnd.custom+json');
+    expect(listHeaders.get('X-Trace')).toBe('trace-1');
+  });
 });

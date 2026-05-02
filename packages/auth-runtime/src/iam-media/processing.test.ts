@@ -473,6 +473,52 @@ describe('media upload processing service', () => {
     });
   });
 
+  it('deletes oversized upload blobs before returning upload_size_exceeded', async () => {
+    const declaredByteSize = 512;
+    const actualByteSize = 1024;
+    const service = {
+      getUploadSessionById: vi.fn(async () => createUploadSession({ byteSize: declaredByteSize })),
+      getAssetById: vi.fn(async () => createAsset({ byteSize: declaredByteSize })),
+      upsertAsset: vi.fn(async () => undefined),
+      upsertUploadSession: vi.fn(async () => undefined),
+      upsertVariant: vi.fn(async () => undefined),
+      listVariantsByAssetId: vi.fn(async () => []),
+      getStorageUsage: vi.fn(async () => null),
+      upsertStorageUsage: vi.fn(async () => undefined),
+    };
+
+    const storagePort = {
+      readObject: vi.fn(async () => ({
+        body: new Uint8Array(actualByteSize),
+        byteSize: actualByteSize,
+        contentType: 'image/png',
+      })),
+      writeObject: vi.fn(),
+      deleteObject: vi.fn(async () => undefined),
+    };
+
+    const processor = createMediaUploadProcessingService({
+      service: service as never,
+      storagePort: storagePort as never,
+      createId: () => 'variant-1',
+    });
+
+    const result = await processor.completeUpload({
+      instanceId: 'tenant-a',
+      uploadSessionId: 'upload-1',
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      errorCode: 'upload_size_exceeded',
+      status: 413,
+    });
+    expect(storagePort.deleteObject).toHaveBeenCalledWith({
+      instanceId: 'tenant-a',
+      storageKey: 'tenant-a/originals/asset-1.png',
+    });
+  });
+
   it('preserves storage/runtime failures instead of coercing them into invalid media', async () => {
     const originalBuffer = await sharp({
       create: {

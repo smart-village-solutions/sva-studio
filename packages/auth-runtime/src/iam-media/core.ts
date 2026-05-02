@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { getWorkspaceContext } from '@sva/server-runtime';
-import { canDeleteMediaAsset, type MediaAsset, type MediaProcessingStatus, type MediaReference, type MediaRole, type MediaUploadStatus, type MediaVisibility } from '@sva/media';
+import { canDeleteMediaAsset, defaultMediaPresets, type MediaAsset, type MediaProcessingStatus, type MediaReference, type MediaRole, type MediaUploadStatus, type MediaVisibility } from '@sva/media';
 import { asApiItem, asApiList, createApiError, parseRequestBody, readInstanceIdFromRequest, readPage, readPathSegment } from '../shared/request-helpers.js';
 import { jsonResponse } from '../db.js';
 import { withAuthenticatedUser, type AuthenticatedRequestContext } from '../middleware.js';
@@ -141,6 +141,7 @@ const MEDIA_VISIBILITIES = new Set<MediaVisibility>(['public', 'protected']);
 const MEDIA_UPLOAD_STATUSES = new Set<MediaUploadStatus>(['pending', 'validated', 'processed', 'failed', 'blocked']);
 const MEDIA_PROCESSING_STATUSES = new Set<MediaProcessingStatus>(['pending', 'ready', 'failed']);
 const MEDIA_ROLES = new Set<MediaRole>(['thumbnail', 'teaser_image', 'header_image', 'gallery_item', 'download', 'hero_image']);
+const MEDIA_VARIANT_STORAGE_RESERVATION_RATIO = 0.5;
 
 const asMediaVisibility = (value: string): MediaVisibility => (MEDIA_VISIBILITIES.has(value as MediaVisibility) ? (value as MediaVisibility) : 'public');
 
@@ -151,6 +152,15 @@ const asMediaProcessingStatus = (value: string): MediaProcessingStatus =>
   MEDIA_PROCESSING_STATUSES.has(value as MediaProcessingStatus) ? (value as MediaProcessingStatus) : 'failed';
 
 const asMediaRole = (value: string): MediaRole => (MEDIA_ROLES.has(value as MediaRole) ? (value as MediaRole) : 'download');
+
+const estimateMediaUploadReservationBytes = (byteSize: number): number => {
+  const normalizedByteSize = Math.max(0, Math.trunc(byteSize));
+  const variantReservationBytes = Math.ceil(
+    normalizedByteSize * MEDIA_VARIANT_STORAGE_RESERVATION_RATIO * defaultMediaPresets.length
+  );
+
+  return normalizedByteSize + variantReservationBytes;
+};
 
 type BrowserMediaAsset = Omit<MediaAsset, 'storageKey'>;
 
@@ -388,8 +398,9 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
       return mapAuthorizationFailure(authorization);
     }
 
+    const reservedByteSize = estimateMediaUploadReservationBytes(parsed.data.byteSize);
     const quotaCheck = await deps.withMediaService(instanceId, (service) =>
-      service.wouldExceedStorageQuota(instanceId, parsed.data.byteSize)
+      service.wouldExceedStorageQuota(instanceId, reservedByteSize)
     );
 
     if (quotaCheck.wouldExceed) {
@@ -989,10 +1000,20 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
       });
     }
 
-    const currentUsage = await deps.withMediaService(instanceId, (service) => service.getStorageUsage(instanceId));
+    const [currentUsage, variants] = await deps.withMediaService(instanceId, async (service) =>
+      Promise.all([service.getStorageUsage(instanceId), service.listVariantsByAssetId(instanceId, assetId)])
+    );
     const releasedBytes =
       Math.max(0, Number(asset.byteSize) || 0)
       + Math.max(0, Number((asset.technical as { variantTotalBytes?: unknown } | undefined)?.variantTotalBytes) || 0);
+    await Promise.all(
+      [String(asset.storageKey), ...variants.map((variant) => String(variant.storageKey))].map((storageKey) =>
+        deps.storagePort.deleteObject({
+          instanceId,
+          storageKey,
+        })
+      )
+    );
     await deps.withMediaService(instanceId, async (service) => {
       await service.deleteAsset(instanceId, assetId);
       if (currentUsage) {

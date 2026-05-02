@@ -3,6 +3,7 @@ import { createRoute, redirect, type RootRoute } from '@tanstack/react-router';
 
 import {
   LEGACY_CONTENT_ALIAS_PREFIX,
+  normalizeLegacyAdminResourceHref,
   normalizeLegacyContentHref,
   readBeforeLoadHref,
   resolveCanonicalContentAdminRoutePath,
@@ -222,16 +223,41 @@ export const createAdminResourceRouteFactories = (
 export const createLegacyContentAliasFactories = (
   resources: readonly AdminResourceDefinition[] = []
 ): readonly AppRouteFactory[] => {
-  const aliasPaths = [LEGACY_CONTENT_ALIAS_PREFIX, toAdminCreateRoutePath(LEGACY_CONTENT_ALIAS_PREFIX), '/content/$contentId'] as const;
   const canonicalContentPath = resolveCanonicalContentAdminRoutePath(resources);
+  const legacyAliases = [
+    {
+      aliasPrefix: LEGACY_CONTENT_ALIAS_PREFIX,
+      canonicalPath: canonicalContentPath,
+    },
+    ...resources
+      .filter((resource) => resource.guard === 'content' && resource.basePath !== 'content')
+      .map((resource) => ({
+        aliasPrefix: `/plugins/${resource.basePath}`,
+        canonicalPath: toAdminRoutePath(resource.basePath),
+      })),
+  ];
 
-  return aliasPaths.map((path) => (rootRoute: RootRoute) =>
-    createRoute({
-      getParentRoute: () => rootRoute,
-      path,
-      beforeLoad: (options) => {
-        throw redirect({ href: normalizeLegacyContentHref(readBeforeLoadHref(options), canonicalContentPath) });
-      },
-      component: () => null,
-    }));
+  return legacyAliases.flatMap(({ aliasPrefix, canonicalPath }) =>
+    [aliasPrefix, toAdminCreateRoutePath(aliasPrefix), `${aliasPrefix}/$contentId`].map(
+      (path) => (rootRoute: RootRoute) =>
+        createRoute({
+          getParentRoute: () => rootRoute,
+          path,
+          beforeLoad: (options) => {
+            const href = readBeforeLoadHref(options);
+            throw redirect({
+              href:
+                aliasPrefix === LEGACY_CONTENT_ALIAS_PREFIX
+                  ? normalizeLegacyContentHref(href, canonicalPath)
+                  : normalizeLegacyAdminResourceHref({
+                      href,
+                      aliasPrefix,
+                      canonicalPath,
+                    }),
+            });
+          },
+          component: () => null,
+        })
+    )
+  );
 };

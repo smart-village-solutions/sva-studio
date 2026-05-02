@@ -148,12 +148,12 @@ export const resolveIdentityProviderForInstance = async (
       getCircuitBreakerState: () => client.getCircuitBreakerState(),
     };
   } catch (error) {
-      logger.warn('Instance identity provider resolution failed while loading tenant admin credentials', {
-        instance_id: instanceId,
-        reason_code: 'tenant_admin_resolution_failed',
-        error_type: error instanceof Error ? error.constructor.name : typeof error,
-        execution_mode: executionMode,
-      });
+    logger.warn('Instance identity provider resolution failed while loading tenant admin credentials', {
+      instance_id: instanceId,
+      reason_code: 'tenant_admin_resolution_failed',
+      error_type: error instanceof Error ? error.constructor.name : typeof error,
+      execution_mode: executionMode,
+    });
     return null;
   }
 };

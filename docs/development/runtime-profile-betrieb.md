@@ -26,20 +26,20 @@ Die Runtime-Kommandos setzen daraus konsistent:
 - Redis-/Postgres-/OTEL-Konfiguration
 - Mainserver-Smoke-Konfiguration
 
-Für `studio` gilt zusaetzlich ein pragmatischer Testphasen-Vertrag:
+Für `studio` gilt zusätzlich ein pragmatischer Testphasen-Vertrag:
 
 - der verbindliche lokale Toolchain-Check vor jedem Runtime-Debugging ist `pnpm check:toolchain-consistency`; er bricht bei Drift zwischen `.nvmrc`, `packageManager`, `pnpm-lock.yaml` und installiertem `node_modules` fail-fast ab
 - der verbindliche lokale Build-Nachweis vor jedem Image-Build ist `pnpm nx run sva-studio-react:verify:runtime-artifact`
-- dieser Check bewertet ausschliesslich den finalen Node-Output unter `apps/sva-studio-react/.output/server/**`
-- der finale Build erzeugt zusaetzlich einen generierten `tanstack-server-entry.mjs` direkt unter `.output/server/chunks/build/`; dieser Build-time-Patch ist Teil des kanonischen Artefakts und ersetzt die fruehere Laufzeit-Umschreibung im Entrypoint
+- dieser Check bewertet ausschließlich den finalen Node-Output unter `apps/sva-studio-react/.output/server/**`
+- der finale Build erzeugt zusätzlich einen generierten `tanstack-server-entry.mjs` direkt unter `.output/server/chunks/build/`; dieser Build-time-Patch ist Teil des kanonischen Artefakts und ersetzt die frühere Laufzeit-Umschreibung im Entrypoint
 - `.nitro/vite/services/ssr/**` bleibt Diagnosematerial und ist kein Release-Nachweis
-- kanonischer Pfad nur ueber `precheck -> deploy -> smoke`
+- kanonischer Pfad nur über `precheck -> deploy -> smoke`
 - `SVA_STACK_NAME=studio`, `QUANTUM_ENDPOINT=sva`, `SVA_RUNTIME_PROFILE=studio`
-- `IAM_DATABASE_URL` und `REDIS_URL` duerfen fuer Remote-Profile aus den vorhandenen DB-/Redis-Bausteinen abgeleitet werden
-- lokale Dev-Defaults aus `base.vars` duerfen Remote-Fehlkonfigurationen nicht still kaschieren
+- `IAM_DATABASE_URL` und `REDIS_URL` dürfen für Remote-Profile aus den vorhandenen DB-/Redis-Bausteinen abgeleitet werden
+- lokale Dev-Defaults aus `base.vars` dürfen Remote-Fehlkonfigurationen nicht still kaschieren
 - bei Quantum-Auth-Problemen muss ein lokaler Override durch `QUANTUM_API_KEY` mitgedacht werden; ein funktionierender Benutzerkontext kann lokal durch veraltete Shell-Umgebungen sabotiert werden
-- lokale gruene Unit-, Integrations- oder Docker-Laeufe sind kein Betriebsnachweis fuer `studio`
-- fuer produktionsnahe Freigaben zaehlen nur die Remote-Gates, die laufende App-Readiness und die dokumentierte Deploy-Evidenz
+- lokale grüne Unit-, Integrations- oder Docker-Läufe sind kein Betriebsnachweis für `studio`
+- für produktionsnahe Freigaben zählen nur die Remote-Gates, die laufende App-Readiness und die dokumentierte Deploy-Evidenz
 
 Zusätzlich unterstützt der Diagnosepfad optionale Doctor-Overrides:
 
@@ -49,14 +49,14 @@ Zusätzlich unterstützt der Diagnosepfad optionale Doctor-Overrides:
 
 Damit kann `env:doctor:*` in allen Profilen denselben Actor-/Membership-Pfad prüfen, ohne PII oder Secrets auszugeben.
 
-Fuer `studio` gilt zusaetzlich ein expliziter Observability-Vertrag:
+Für `studio` gilt zusätzlich ein expliziter Observability-Vertrag:
 
-- `ENABLE_OTEL=false` plus `SVA_ENABLE_SERVER_CONSOLE_LOGS=true` bedeutet `console_to_loki` und ist in der fruehen Testphase der bevorzugte Diagnosepfad
-- `SVA_TRUST_FORWARDED_HEADERS=true` aktiviert im Reverse-Proxy-Betrieb die Auswertung von `X-Forwarded-*` und `Forwarded`; ohne dieses Flag faellt die Host-/Proto-Aufloesung strikt auf `request.url` zurueck
+- `ENABLE_OTEL=false` plus `SVA_ENABLE_SERVER_CONSOLE_LOGS=true` bedeutet `console_to_loki` und ist in der frühen Testphase der bevorzugte Diagnosepfad
+- `SVA_TRUST_FORWARDED_HEADERS=true` aktiviert im Reverse-Proxy-Betrieb die Auswertung von `X-Forwarded-*` und `Forwarded`; ohne dieses Flag fällt die Host-/Proto-Auflösung strikt auf `request.url` zurueck
 - `ENABLE_OTEL=true` bedeutet `otel_to_loki`; der Bootstrap muss dann `observability_ready` schreiben
-- Fuer `studio` ist der belastbare Tenant-Auth-Beweis erreicht, wenn nach frischen `/auth/login`-Probes in Loki `tenant_auth_resolution_summary` mit `secret_source="tenant"` und `oidc_cache_key_scope="tenant_secret"` fuer die aktiven Tenants sichtbar ist
-- wenn weder OTEL noch produktive Console-Logs aktiv sind, gilt das Profil als `degraded` und `doctor`/`precheck` muessen daran scheitern
-- `scripts/ops/runtime-env.ts` laedt fuer Remote-Diagnosen zusaetzlich lokale Operator-Overlays aus `~/.config/quantum/env`, z. B. `SVA_GRAFANA_URL`, `SVA_LOKI_URL` und `SVA_GRAFANA_TOKEN`
+- Für `studio` ist der belastbare Tenant-Auth-Beweis erreicht, wenn nach frischen `/auth/login`-Probes in Loki `tenant_auth_resolution_summary` mit `secret_source="tenant"` und `oidc_cache_key_scope="tenant_secret"` für die aktiven Tenants sichtbar ist
+- wenn weder OTEL noch produktive Console-Logs aktiv sind, gilt das Profil als `degraded` und `doctor`/`precheck` müssen daran scheitern
+- `scripts/ops/runtime-env.ts` lädt für Remote-Diagnosen zusätzlich lokale Operator-Overlays aus `~/.config/quantum/env`, z. B. `SVA_GRAFANA_URL`, `SVA_LOKI_URL` und `SVA_GRAFANA_TOKEN`
 
 ### Wichtige Variablen
 
@@ -69,8 +69,8 @@ Gemeinsam:
 - `SVA_MAINSERVER_OAUTH_TOKEN_URL`
 - `SVA_MAINSERVER_CLIENT_ID`
 - `SVA_MAINSERVER_CLIENT_SECRET`
-- optional `SVA_MAINSERVER_REQUIRED=false`, wenn der Mainserver-Smoke in der fruehen Testphase bewusst nicht blockieren darf
-- optional `SVA_MIGRATION_STATUS_REQUIRED=false`, wenn der Remote-Goose-Status in der fruehen Studio-Testphase nur als Zusatzsignal und nicht als blockierendes Gate gewertet werden soll
+- optional `SVA_MAINSERVER_REQUIRED=false`, wenn der Mainserver-Smoke in der frühen Testphase bewusst nicht blockieren darf
+- optional `SVA_MIGRATION_STATUS_REQUIRED=false`, wenn der Remote-Goose-Status in der frühen Studio-Testphase nur als Zusatzsignal und nicht als blockierendes Gate gewertet werden soll
 
 Remote (`studio`) verpflichtend:
 
@@ -83,7 +83,7 @@ Remote (`studio`) verpflichtend:
 - `APP_DB_PASSWORD`
 - `REDIS_PASSWORD`
 
-Ableitbar fuer Remote-Profile:
+Ableitbar für Remote-Profile:
 
 - `IAM_DATABASE_URL`
 - `REDIS_URL`
@@ -157,17 +157,17 @@ pnpm env:migrate:studio
 pnpm env:down:studio
 ```
 
-Der kanonische Pfad fuer `studio` ist jetzt geteilt:
+Der kanonische Pfad für `studio` ist jetzt geteilt:
 
 - GitHub Actions bereiten Digest und Verify vor
-- `pnpm env:release:studio:local` fuehrt lokal `precheck`, `deploy`, `smoke` und `feedback` fuer genau diesen Digest aus
+- `pnpm env:release:studio:local` führt lokal `precheck`, `deploy`, `smoke` und `feedback` für genau diesen Digest aus
 
 Direkte lokale Aufrufe von `env:deploy:studio` bleiben ein Low-Level-Pfad; der dokumentierte produktionsnahe Einstieg ist `env:release:studio:local`.
 
-Der Container-Entrypoint kennt zusaetzlich nur noch einen expliziten Legacy-Recovery-Pfad:
+Der Container-Entrypoint kennt zusätzlich nur noch einen expliziten Legacy-Recovery-Pfad:
 
 - `SVA_ENABLE_RUNTIME_RECOVERY_PATCH=1` erlaubt im Incident-Fall den dokumentierten Runtime-Patch auf dem finalen Nitro-Entry
-- ohne dieses Flag bleibt jede Artefakt-Umschreibung deaktiviert; der Standardbetrieb muss mit dem unveraenderten Build-Output gesund starten
+- ohne dieses Flag bleibt jede Artefakt-Umschreibung deaktiviert; der Standardbetrieb muss mit dem unveränderten Build-Output gesund starten
 
 ### Lokale HB-Produktivsimulation in Docker
 
@@ -202,31 +202,31 @@ Dieser Pfad startet die App als Produktionscontainer lokal gegen `postgres-hb`, 
 
 - lokale Profile geben lokalen App-Status plus `docker compose ps` aus
 - Remote-Profile geben einen zusammengefassten Stack-Status aus der Portainer-API aus
-- `quantum-cli ps` bleibt nur Fallback, wenn der Read-only-API-Pfad nicht verfuegbar ist
+- `quantum-cli ps` bleibt nur Fallback, wenn der Read-only-API-Pfad nicht verfügbar ist
 
 ### `precheck`
 
 - lokal derzeit nicht belegt
 - Remote-Profile prüfen vor einem Release verbindlich:
   - effektive Runtime-Konfiguration und Pflichtvariablen
-  - Remote-Service-Sicht via Portainer-API statt ueber lokalen `quantum-cli`-Status
+  - Remote-Service-Sicht via Portainer-API statt über lokalen `quantum-cli`-Status
   - Ingress-Konsistenz zwischen laufendem App-Service und externem `/health/live`
   - Runtime-Flags aus der Live-Service-Spec des `app`-Service
-  - `app-db-principal` ueber `/health/ready` als Nachweis, dass `db`, `redis` und `keycloak` aus Sicht des laufenden `APP_DB_USER` stabil bereit sind
-  - kritische Schema-, Instanz- und Hostname-Assertions ueber dedizierte Job-Evidenz
+  - `app-db-principal` über `/health/ready` als Nachweis, dass `db`, `redis` und `keycloak` aus Sicht des laufenden `APP_DB_USER` stabil bereit sind
+  - kritische Schema-, Instanz- und Hostname-Assertions über dedizierte Job-Evidenz
   - Soll-/Live-Drift der `app`-Service-Spec inklusive Image-Ref, Secrets/Env, Netzwerken (`internal`, `public`) und ingressrelevanten Traefik-Labels
-- Remote-Postgres wird im Standardpfad nicht mehr ueber `quantum-cli exec` geprueft; dafuer gelten `/health/ready`, laufender Postgres-Service und Bootstrap-/Schema-Evidenz als autoritative Signale
+- Remote-Postgres wird im Standardpfad nicht mehr über `quantum-cli exec` geprüft; dafür gelten `/health/ready`, laufender Postgres-Service und Bootstrap-/Schema-Evidenz als autoritative Signale
 - `pnpm env:precheck:<profil> --json` liefert die Prüfung maschinenlesbar
 
 ### `deploy`
 
 - nur für Remote-Profile (`studio`)
 - ist der kanonische Release-Einstiegspunkt für Serverdeploys
-- Remote-Mutationen sind fuer `studio` entweder im expliziten lokalen Operator-Kontext oder im dokumentierten Legacy-CI-Fallback zulaessig
-- der dokumentierte Standardweg setzt `SVA_REMOTE_OPERATOR_CONTEXT=local-operator` nur ueber `env:release:studio:local`
+- Remote-Mutationen sind für `studio` entweder im expliziten lokalen Operator-Kontext oder im dokumentierten Legacy-CI-Fallback zulässig
+- der dokumentierte Standardweg setzt `SVA_REMOTE_OPERATOR_CONTEXT=local-operator` nur über `env:release:studio:local`
 - Orchestrierung in fixer Reihenfolge:
   1. `environment-precheck` inklusive Soll-/Live-Spec-Drift und Pflichtvariablen
-  2. `image-smoke` gegen das auszurollende Digest-Artefakt mit Root-Host-, Tenant-Host- und OIDC-Paritaet
+  2. `image-smoke` gegen das auszurollende Digest-Artefakt mit Root-Host-, Tenant-Host- und OIDC-Parität
   3. optional `migrate` bei `--release-mode=schema-and-app` als dedizierter Swarm-One-off-Job
   4. optional `bootstrap` bei `--release-mode=schema-and-app` als dedizierter Swarm-One-off-Job für App-User, Grants und Instanz-Seeding
   5. gehärteter Live-Rollout des echten Ziel-Stacks via `quantum-cli stacks update` oder `docker stack deploy`
@@ -248,8 +248,11 @@ Dieser Pfad startet die App als Produktionscontainer lokal gegen `postgres-hb`, 
 - Remote-Releases sind nur mit `--image-digest=sha256:...` gültig; der Tag bleibt rein ergänzende Lesbarkeit
 - `--json` schreibt zusätzlich zur Artefakterzeugung den vollständigen Deploy-Report auf stdout
 - Vor dem eigentlichen Stack-Update validiert der gehärtete Renderpfad, dass `app` weiterhin die Netzwerke `internal` und `public` sowie die ingressrelevanten Traefik-Labels enthält. Fehlende Einträge blockieren den Rollout vor jedem Live-Mutationsschritt.
-- Wenn das Ziel-Digest bereits live auf `app` laeuft, darf das Parity-Gate die Live-Evidenz desselben Digests wiederverwenden. Voraussetzung sind gruene Nachweise fuer Ingress-Konsistenz, `app-db-principal`, Tenant-Auth-Proof und Live-Runtime-Flags.
-- Ein lokaler Kandidatencontainer ersetzt fuer `studio` keinen echten Swarm-/Ingress-/Private-DNS-Nachweis. Kann der Remote-Hostvertrag lokal nicht realistisch abgebildet werden, bleibt nur die dokumentierte Live-Paritaet desselben Digests oder ein echter Remote-Rollout im kanonischen Pfad.
+- Wenn das Ziel-Digest bereits live auf `app` läuft, darf das Parity-Gate die Live-Evidenz desselben Digests wiederverwenden. Voraussetzung sind grüne Nachweise für Ingress-Konsistenz, `app-db-principal`, Tenant-Auth-Proof und Live-Runtime-Flags.
+- Ein lokaler Kandidatencontainer ersetzt für `studio` keinen echten Swarm-/Ingress-/Private-DNS-Nachweis. Kann der Remote-Hostvertrag lokal nicht realistisch abgebildet werden, bleibt nur die dokumentierte Live-Parität desselben Digests oder ein echter Remote-Rollout im kanonischen Pfad.
+- Erkenntnis aus dem Studio-Release vom 28. April 2026: `migrate` und `bootstrap` bleiben harte Freigabegates, weil Schema-Pflichtfelder und Bootstrap-Reconcile gemeinsam betrachtet werden müssen.
+- Erkenntnis aus dem Studio-Release vom 28. April 2026: externe Health- und Tenant-Probes direkt nach dem Stack-Cutover können kurzzeitige `404` liefern, obwohl der neue Task wenige Sekunden später gesund ist; Release-Wrapper sollen diesen Zeitraum mit bounded Retries statt mit einem Sofort-Abbruch behandeln.
+- Erkenntnis aus dem Studio-Release vom 28. April 2026: eine erfolgreich in GitHub gelaufene `Studio Image Verify`-Evidenz ist fachlich gleichwertig zu lokal erzeugten Verify-Artefakten; ein reiner Lookup auf `artifacts/runtime/image-verify` erzeugt sonst Warnrauschen.
 
 ### `smoke`
 
@@ -262,41 +265,42 @@ Alle Profile prüfen mindestens:
 - IAM-Kontext über `/api/v1/iam/me/context`
 - Mainserver-Basisfunktion über OAuth-Token + GraphQL `{ __typename }`
 
-Ausnahme fuer `studio` in der fruehen Testphase:
+Ausnahme für `studio` in der frühen Testphase:
 
 - wenn `SVA_MAINSERVER_REQUIRED=false` gesetzt ist, wird der Mainserver-Smoke in `doctor` und `smoke` als optional markiert und blockiert die Studio-Einrichtung nicht
-- wenn `SVA_MIGRATION_STATUS_REQUIRED=false` gesetzt ist, wird ein nicht verfuegbarer Remote-Goose-Status in `precheck` als optional markiert; der harte Schema-Guard bleibt weiterhin verbindlich
-- die Mainserver-URLs bleiben trotzdem dokumentiert und koennen spaeter ohne Skriptumbau wieder als verbindliches Gate aktiviert werden
+- wenn `SVA_MIGRATION_STATUS_REQUIRED=false` gesetzt ist, wird ein nicht verfügbarer Remote-Goose-Status in `precheck` als optional markiert; der harte Schema-Guard bleibt weiterhin verbindlich
+- die Mainserver-URLs bleiben trotzdem dokumentiert und können später ohne Skriptumbau wieder als verbindliches Gate aktiviert werden
 
 Zusatzprüfungen:
 
 - lokal: OTEL Collector `http://127.0.0.1:13133/healthz`
 - lokal im Multi-Tenant-Pfad: Root-Host `studio.lvh.me`, Tenant-Host `hb.studio.lvh.me` und fail-closed-Fall `blocked.studio.lvh.me`
-- Remote: Service-/Task-Status für `app`, `redis`, `postgres` bevorzugt ueber Portainer-API
+- Remote: Service-/Task-Status für `app`, `redis`, `postgres` bevorzugt über Portainer-API
 - Remote: `otel-collector` nur dann zusätzlich, wenn `ENABLE_OTEL` im Zielprofil aktiviert ist
 - Remote: öffentliche Smoke-Probes gegen Root-Host `/`, `/health/live`, `/health/ready`, `/auth/login`, `/api/v1/iam/me/context`
 - Remote: zusätzlich `/api/v1/iam/instances`
 - Remote: mindestens ein aktiver Tenant-Host und ein negativer Host-Fall gegen dieselbe App-Instanz
-- Remote: `doctor` und `precheck` muessen `app-db-principal` fuer denselben Runtime-User wie die laufende App als `ok` ausweisen
+- Remote: `doctor` und `precheck` müssen `app-db-principal` für denselben Runtime-User wie die laufende App als `ok` ausweisen
+- Remote: wenn die erste externe Probe direkt nach einem `app-only`-Rollout fehlschlägt, ist mindestens ein kurzer Retry-Zeitraum verpflichtend, bevor der gesamte Release als `health`-Fehler gewertet wird
 
-Im Profil `studio` pruefen die externen Smokes zusaetzlich tenant-spezifische OIDC-Redirects. Der Scope kommt bevorzugt aus der Instanz-Registry; `SVA_ALLOWED_INSTANCE_IDS` bleibt nur lokaler oder migrationsbezogener Fallback, und `SVA_TENANT_SCOPE_INSTANCE_IDS` kann den Scope fuer gezielte Operator-Laeufe explizit uebersteuern.
+Im Profil `studio` prüfen die externen Smokes zusätzlich tenant-spezifische OIDC-Redirects. Der Scope kommt bevorzugt aus der Instanz-Registry; `SVA_ALLOWED_INSTANCE_IDS` bleibt nur lokaler oder migrationsbezogener Fallback, und `SVA_TENANT_SCOPE_INSTANCE_IDS` kann den Scope für gezielte Operator-Läufe explizit übersteuern.
 
-Fuer `studio` gilt bei Tenant-Smokes zusaetzlich:
+Für `studio` gilt bei Tenant-Smokes zusätzlich:
 
 - wenn ein externer Tenant-Redirect falsch ist, denselben Request intern im `studio_app`-Container mit explizitem `Host` wiederholen
 - wenn der interne Request bereits falsch ist, liegt das Problem nicht mehr im Ingress
 - `/auth/me` muss nach erfolgreichem Tenant-Login einen `instanceId`-Claim liefern; ein blosses Keycloak-User-Attribut ohne Protocol Mapper reicht nicht
 
-Zusatzvertrag fuer den Root-Host:
+Zusatzvertrag für den Root-Host:
 
-- `/admin/instances` ist die fuehrende Control Plane fuer tenant-spezifische Realm-Basisdaten
-- `/admin/users` und `/admin/roles` laufen auf dem Root-Host im Platform-Scope und lesen Plattform-User bzw. Plattform-Rollen aus dem Plattform-Realm; diese Pfade duerfen keine tenantgebundene `instanceId` voraussetzen
+- `/admin/instances` ist die führende Control Plane für tenant-spezifische Realm-Basisdaten
+- `/admin/users` und `/admin/roles` laufen auf dem Root-Host im Platform-Scope und lesen Plattform-User bzw. Plattform-Rollen aus dem Plattform-Realm; diese Pfade dürfen keine tenantgebundene `instanceId` voraussetzen
 - `POST /api/v1/iam/users/sync-keycloak` nutzt auf dem Root-Host `executionMode=platform_admin`; derselbe Endpunkt nutzt auf Tenant-Hosts weiter `executionMode=tenant_admin`
 - dort werden `authRealm`, `authClientId`, `tenantAdminClient.clientId`, optional `authIssuerUrl`, das tenant-spezifische OIDC-Client-Secret, das Tenant-Admin-Client-Secret und die Tenant-Admin-Stammdaten gepflegt
 - das Client-Secret ist write-only; im UI wird nur angezeigt, ob es bereits konfiguriert ist
-- Realm-/Login-Client-/Tenant-Admin-Client-/Mapper-/Tenant-Admin-Abgleich erfolgt explizit ueber den Keycloak-Reconcile-Pfad der Instanzverwaltung
-- tenant-lokale `system_admin`s duerfen diese globale Root-Host-Verwaltung nicht sehen oder mutieren
-- Tenant-Smokes werden separat gegen echte Tenant-Hosts ausgefuehrt; `partial_failure` beim Tenant-User-Sync ist ein fachlich offener Befund, aber kein Nachweis fuer einen Browser- oder Seitenabsturz
+- Realm-/Login-Client-/Tenant-Admin-Client-/Mapper-/Tenant-Admin-Abgleich erfolgt explizit über den Keycloak-Reconcile-Pfad der Instanzverwaltung
+- tenant-lokale `system_admin`s dürfen diese globale Root-Host-Verwaltung nicht sehen oder mutieren
+- Tenant-Smokes werden separat gegen echte Tenant-Hosts ausgeführt; `partial_failure` beim Tenant-User-Sync ist ein fachlich offener Befund, aber kein Nachweis für einen Browser- oder Seitenabsturz
 
 `smoke` validiert zusätzlich den kritischen IAM-Schema-Stand. Fehlende Tabellen, Indizes oder RLS-Policies gelten als deterministischer Fehler und werden als maschinenlesbarer Drift gemeldet.
 
@@ -315,7 +319,7 @@ Prüfungen in Reihenfolge:
 - IAM-Feature-Flags (`IAM_*`, `VITE_IAM_*`)
 - kritischer IAM-Schema-Guard
 - optional Actor-/Membership-Diagnose über `SVA_DOCTOR_*`
-- Remote zusätzlich: Remote-Service-Zustand bevorzugt via Portainer-API; `quantum-cli` ist nur Fallback fuer Mutationen oder Sonderdiagnosen
+- Remote zusätzlich: Remote-Service-Zustand bevorzugt via Portainer-API; `quantum-cli` ist nur Fallback für Mutationen oder Sonderdiagnosen
 
 Optional:
 
@@ -348,21 +352,21 @@ Beispiele für `details`:
 
 ## Deploy-Reports
 
-Deploy-Reports unter `artifacts/runtime/deployments/` sind die primaere Diagnosequelle fuer `studio`. Sie enthalten mindestens:
+Deploy-Reports unter `artifacts/runtime/deployments/` sind die primäre Diagnosequelle für `studio`. Sie enthalten mindestens:
 
 - Commit-SHA
 - Image-Ref und Digest
 - Runtime-Profil, Stack und Endpoint
-- Pflicht- und ableitbare Runtime-Schluessel
-- Gate-Ergebnisse fuer Precheck, Migration, Deploy, interne Verifikation und externe Smokes
-- explizite Evidenz fuer `app-db-principal`, Ingress-Konsistenz, Tenant-Auth-Proof und gegebenenfalls Live-Paritaets-Reuse bei bereits laufendem Ziel-Digest
-- Drift- und Ingress-Evidenz fuer die `app`-Service-Spec (Image, Netzwerke, Traefik-Labels, fehlende Env-/Secret-Schluessel)
+- Pflicht- und ableitbare Runtime-Schlüssel
+- Gate-Ergebnisse für Precheck, Migration, Deploy, interne Verifikation und externe Smokes
+- explizite Evidenz für `app-db-principal`, Ingress-Konsistenz, Tenant-Auth-Proof und gegebenenfalls Live-Paritäts-Reuse bei bereits laufendem Ziel-Digest
+- Drift- und Ingress-Evidenz für die `app`-Service-Spec (Image, Netzwerke, Traefik-Labels, fehlende Env-/Secret-Schlüssel)
 - Rollback-Hinweis
 
-Wichtig fuer die Interpretation:
+Wichtig für die Interpretation:
 
-- ein roter Report kann in fruehen Testphasen auch durch Verify-/Transport-Flakes entstehen
-- wenn Service-Spec, laufende Tasks und externe Smokes gruen sind, ist der naechste Schritt die gezielte Trennung zwischen echtem Rollout-Fehler und Report-False-Negative
+- ein roter Report kann in frühen Testphasen auch durch Verify-/Transport-Flakes entstehen
+- wenn Service-Spec, laufende Tasks und externe Smokes grün sind, ist der nächste Schritt die gezielte Trennung zwischen echtem Rollout-Fehler und Report-False-Negative
 
 ### `migrate`
 
@@ -382,31 +386,31 @@ Wichtig fuer die Interpretation:
 - Schemaänderungen bleiben ein separater, bewusster Schritt und sind nie Teil von `up`
 - Remote-Deploys laufen nur noch über `pnpm env:deploy:<profil>`
 - vor einem Remote-Release mit `--release-mode=schema-and-app` ist ein dokumentiertes Wartungsfenster Pflicht
-- fuer `studio` gilt in der fruehen Testphase: erst Runtime-/Tenant-/DB-Vertrag stabilisieren, dann weitere Automatisierungsgates verschaerfen
+- für `studio` gilt in der frühen Testphase: erst Runtime-/Tenant-/DB-Vertrag stabilisieren, dann weitere Automatisierungsgates verschärfen
 
 ## Observability und Live-Diagnose
 
-Fuer den produktionsnahen `studio`-Betrieb gilt:
+Für den produktionsnahen `studio`-Betrieb gilt:
 
-- Grafana/Loki-Zugaenge koennen lokal ueber `~/.config/quantum/env` hinterlegt werden (`SVA_GRAFANA_URL`, `SVA_LOKI_URL`, `SVA_GRAFANA_TOKEN`)
+- Grafana/Loki-Zugaenge können lokal über `~/.config/quantum/env` hinterlegt werden (`SVA_GRAFANA_URL`, `SVA_LOKI_URL`, `SVA_GRAFANA_TOKEN`)
 - Read-only Remote-Diagnostik nutzt bevorzugt die Portainer-API mit `QUANTUM_API_KEY` und fester `QUANTUM_ENDPOINT_ID`
 - `quantum-cli` bleibt im Regelbetrieb auf mutierende Rollouts (`stacks update`) sowie dedizierte Job-Stacks (`migrate`, `bootstrap`) begrenzt
-- Logs muessen weiterhin PII- und Secret-arm bleiben; Diagnostik nutzt den SDK-Logger
-- Wenn in Loki keine verwertbaren App-Diagnoselogs erscheinen, zuerst pruefen:
+- Logs müssen weiterhin PII- und Secret-arm bleiben; Diagnostik nutzt den SDK-Logger
+- Wenn in Loki keine verwertbaren App-Diagnoselogs erscheinen, zuerst prüfen:
   - ob die aktuelle App-Version wirklich deployt ist
-  - ob Runtime-Flags fuer Console-/Transport-Verhalten im Live-Service angekommen sind
-  - ob der Log-Stream neue Container-Ausgaben ueberhaupt aufnimmt
+  - ob Runtime-Flags für Console-/Transport-Verhalten im Live-Service angekommen sind
+  - ob der Log-Stream neue Container-Ausgaben überhaupt aufnimmt
 - `schema-and-app` führt Migrationen nur innerhalb des orchestrierten Deploypfads oder bewusst separat über `pnpm env:migrate:<profil>` aus
 - `env:migrate:<profil>` nutzt für Remote-Profile denselben Pfad `migrate-job -> bootstrap-job -> schema-guard` wie `schema-and-app`
 - `env:migrate:<profil>` und `schema-and-app` laufen für Remote-Profile in separaten Temp-Stacks; diese Jobs dürfen den Live-Stack `app`, `postgres` und `redis` nicht reconciliieren
 - jeder Remote-Deploy erzeugt einen maschinenlesbaren und menschenlesbaren Bericht unter `artifacts/runtime/deployments/`
 - jeder Remote-Deploy erzeugt zusätzlich Release-Manifest, Phasenreport, Migrationsreport, interne Probe-Ergebnisse und externe Probe-Ergebnisse als eigene JSON-Artefakte
 - nach jedem `studio`-Deploy folgt `pnpm env:feedback:studio` für den Review- und Feedback-Loop
-- fehlgeschlagene oder manuell stabilisierte Deploys muessen zusaetzlich als Review unter `docs/reports/` festgehalten werden
+- fehlgeschlagene oder manuell stabilisierte Deploys müssen zusätzlich als Review unter `docs/reports/` festgehalten werden
 - vor einer tieferen Fehlersuche immer zuerst `pnpm env:doctor:<profil>` ausführen; manuelles `psql` und Browser-Netzwerk sind nur Fallback
 - bei lokalen Profilwechseln nie zwei Profile parallel auf Port `3000` betreiben
 - für serverseitige Details, Secrets und Portainer-Bedienung bleibt `../guides/swarm-deployment-runbook.md` die Referenz
-- fuer `studio` ist `config/runtime/studio.local.vars` die bewusst freigegebene lokale Operator-Quelle fuer Ziel-Digest und Image-Ref; vor jedem `app-only`- oder `schema-and-app`-Rollout muss dieser Stand mit der beabsichtigten Live-Version konvergieren
+- für `studio` ist `config/runtime/studio.local.vars` die bewusst freigegebene lokale Operator-Quelle für Ziel-Digest und Image-Ref; vor jedem `app-only`- oder `schema-and-app`-Rollout muss dieser Stand mit der beabsichtigten Live-Version konvergieren
 - Der kanonische Recovery-Pfad für `app 1/1`, aber externen `502`, lautet: Render-Compose prüfen, Live-Service-Spec prüfen, kontrollierten `app-only`-Reconcile ausführen, danach `status`, `smoke` und `precheck` wiederholen. Direkte Portainer-API-Eingriffe gelten nur als Incident-Recovery.
 
 ## Typische Fehlerbilder
@@ -424,7 +428,7 @@ Fuer den produktionsnahen `studio`-Betrieb gilt:
 - Remote-Migration findet keinen lokalen `postgres`-Container: erwartbar bei Remote-Swarm; der Befehl startet stattdessen den dedizierten Swarm-Migrationsjob
 - Remote-Bootstrap läuft nicht oder hinterlässt `migrate`/`bootstrap` auf `replicas > 0`: Stack mit `pnpm env:status:<profil>` prüfen; die Job-Services müssen nach Erfolg wieder auf `0` stehen
 - `env:deploy:<profil> --release-mode=schema-and-app` scheitert sofort: Wartungsfenster fehlt oder `quantum-cli`/Stack-Zugriff ist nicht verfügbar
-- `status`, `doctor` oder `precheck` scheitern read-only trotz gesundem Stack: zuerst `QUANTUM_ENDPOINT_ID` und `QUANTUM_API_KEY` fuer den Portainer-Pfad pruefen, erst danach `quantum-cli` als Fallback debuggen
+- `status`, `doctor` oder `precheck` scheitern read-only trotz gesundem Stack: zuerst `QUANTUM_ENDPOINT_ID` und `QUANTUM_API_KEY` für den Portainer-Pfad prüfen, erst danach `quantum-cli` als Fallback debuggen
 - `env:deploy:<profil>` scheitert vor dem Rollout: `SVA_IMAGE_DIGEST` fehlt oder das Digest-Artefakt besteht den `image-smoke` nicht
 Für das frühe `studio`-Profil sind produktive Console-Logs bewusst per `SVA_ENABLE_SERVER_CONSOLE_LOGS=true` erlaubt, damit Loki die Serverdiagnostik auch ohne internen OTEL-Collector erfassen kann. Das Flag ist ein temporärer Testphasen-Hebel und soll in einer späteren Betriebsphase wieder deaktiviert werden, sobald die OTEL-Pipeline im Zielprofil stabil verfügbar ist.
 

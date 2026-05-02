@@ -10,10 +10,15 @@ Benötigt wird deshalb eine eigenständige hostseitige Capability für Medienman
 - Verankert Medien als hostseitige Querschnittsfunktion und grenzt sie explizit gegen Fachplugins ab
 - Definiert ein fachliches Kernmodell mit `MediaAsset`, `MediaVariant`, `MediaReference` und zentral konfigurierbaren Nutzungsklassen bzw. Presets
 - Beschreibt die Trennung zwischen erhaltenem Original, abgeleiteten Varianten und fachlicher Nutzung über Rollen statt über direkte Dateipfade
+- Legt MinIO als konkret zu berücksichtigenden S3-kompatiblen Objektspeicher für Upload-, Storage- und Auslieferungsschnittstellen fest
+- Ergänzt bildspezifische Bearbeitungsfunktionen für Fokuspunkt, redaktionellen Zuschnitt und automatische Verkleinerung übergroßer Bilder
+- Ergänzt Upload-Status, Usage-Impact und Löschschutz als MVP-Sicherheitsnetz für redaktionelle Nutzung
 - Ergänzt `content-management` um die Anforderung, Medien referenzbasiert und rollenbasiert an Inhalte anzubinden
 - Ergänzt `iam-access-control` um rollenbasierte Medienrechte für Upload, Metadatenpflege, Referenzierung, Löschung und geschützte Auslieferung
-- Ergänzt `iam-auditing` um revisionssichere Audit-Events für Upload, Ersatz, Metadatenänderung, Variantenverarbeitung und Löschentscheidungen
+- Ergänzt `iam-auditing` um revisionssichere Audit-Events für Upload, Metadatenänderung, Variantenverarbeitung und Löschentscheidungen
 - Verankert die Architekturwirkung in arc42, insbesondere für Bausteinsicht, Laufzeitsicht, Verteilungssicht, Querschnittskonzepte, Qualitätsanforderungen, Risiken und ADR-Bedarf
+
+Nicht Bestandteil dieses MVP sind erweiterte Governance- und Betriebsfunktionen wie Pflichtfeld-Konfiguration je Instanz/Medientyp, mehrsprachige Metadaten, Ordner, Tags, Kategorien, Duplikaterkennung, Replace mit Referenzerhalt, Malware-Scan, rollenbezogene Rate-Limits und Quota-Warnungen. Diese werden im Folge-Change `extend-media-management-governance` geschnitten.
 
 ## Impact
 - Affected specs: `media-management`, `content-management`, `iam-access-control`, `iam-auditing`, `architecture-documentation`
@@ -24,7 +29,7 @@ Benötigt wird deshalb eine eigenständige hostseitige Capability für Medienman
   - `apps/sva-studio-react/src/routes/media/*` und zugehörige UI-Bausteine
   - optional Worker-/Processing-Bausteine für Metadaten-Extraktion und Variantengenerierung
 - Affected arc42 sections:
-  - `docs/architecture/03-context-and-scope.md` (S3-kompatibler Objektspeicher als neues externes System im Kontextdiagramm)
+  - `docs/architecture/03-context-and-scope.md` (MinIO als S3-kompatibler Objektspeicher und neues externes System im Kontextdiagramm)
   - `docs/architecture/04-solution-strategy.md` (Medienmanagement als hostseitige Querschnittsstrategie, prüfen)
   - `docs/architecture/05-building-block-view.md`
   - `docs/architecture/06-runtime-view.md`

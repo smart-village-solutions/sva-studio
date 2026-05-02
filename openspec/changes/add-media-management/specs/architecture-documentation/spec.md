@@ -5,7 +5,7 @@ Das System SHALL die Architekturwirkung des Medienmanagements in den betroffenen
 
 #### Scenario: Externe Medieninfrastruktur ist im Systemkontext beschrieben
 
-- **WHEN** Medienmanagement einen Objektspeicher, CDN- oder geschützte Auslieferungspfade einführt
+- **WHEN** Medienmanagement MinIO als S3-kompatiblen Objektspeicher, CDN- oder geschützte Auslieferungspfade einführt
 - **THEN** beschreiben die arc42-Abschnitte für Kontext, Deployment und Querschnitt die externen Systeme, Vertrauensgrenzen und Laufzeitverantwortlichkeiten
 - **AND** sie duplizieren keine fachlichen Laufzeitregeln aus den Capability-Spezifikationen
 

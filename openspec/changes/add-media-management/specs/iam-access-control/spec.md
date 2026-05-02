@@ -22,9 +22,15 @@ Das System SHALL Medienmanagement über die zentrale IAM-Autorisierung absichern
 - **THEN** prüft das System dafür passende Fachberechtigungen wie `media.update` und `media.reference.manage`
 - **AND** nicht autorisierte Änderungen werden serverseitig abgewiesen
 
+#### Scenario: Plugin-Picker respektiert Medienrechte
+
+- **WHEN** ein Plugin den Media-Picker für eine fachliche Rolle öffnet
+- **THEN** zeigt das System nur Medien, Rollen und Aktionen an, die im aktiven Berechtigungskontext erlaubt sind
+- **AND** direkte Storage-Artefakte oder geschützte Medienmetadaten werden nicht an das Plugin offengelegt
+
 #### Scenario: Löschen oder Archivieren eines Assets ist gesondert geschützt
 
-- **WHEN** ein Benutzer ein Asset löschen, archivieren oder durch ein anderes Original ersetzen will
+- **WHEN** ein Benutzer ein Asset löschen oder archivieren will
 - **THEN** prüft das System dafür eine dedizierte Berechtigung wie `media.delete`
 - **AND** die Freigabeentscheidung berücksichtigt aktive Referenzen und Scope-Grenzen fail-closed
 

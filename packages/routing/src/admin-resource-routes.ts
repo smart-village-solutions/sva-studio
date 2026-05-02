@@ -33,7 +33,6 @@ type UiRouteDefinition = {
 type AdminResourceBindingResolver = { readonly list: BindingKey; readonly create: BindingKey; readonly detail: BindingKey; readonly history?: BindingKey };
 type AdminResourceRouteKind = 'list' | 'create' | 'detail' | 'history';
 type AdminResourceViewKind = keyof AdminResourceDefinition['views'];
-
 const hasBindingKey = (bindings: AppRouteBindings, bindingKey: string): bindingKey is BindingKey =>
   Object.prototype.hasOwnProperty.call(bindings, bindingKey);
 
@@ -46,7 +45,6 @@ const resolveBindingKey = (
   if (typeof bindingKey !== 'string' || !hasBindingKey(bindings, bindingKey)) {
     throw new Error(`unknown_admin_resource_binding_key:${resource.resourceId}:${viewName}:${bindingKey ?? ''}`);
   }
-
   return bindingKey;
 };
 
@@ -72,7 +70,6 @@ const getAdminResourceBindings = (bindings: AppRouteBindings, resource: AdminRes
   const specializedList = resolveOptionalContentUiBindingKey(bindings, resource, 'list');
   const specializedDetail = resolveOptionalContentUiBindingKey(bindings, resource, 'detail');
   const specializedEditor = resolveOptionalContentUiBindingKey(bindings, resource, 'editor');
-
   return {
     list: specializedList ?? defaultList,
     create: specializedEditor ?? defaultCreate,
@@ -116,7 +113,6 @@ const ensureAssignedModule = async (
   if (!resource.moduleId) {
     return;
   }
-
   const user = await beforeLoadOptions.context?.auth?.getUser?.();
   if (!user?.assignedModules?.includes(resource.moduleId)) {
     throw redirect({ href: '/?error=auth.insufficientRole' });

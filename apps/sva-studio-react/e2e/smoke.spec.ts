@@ -293,7 +293,7 @@ test('authenticated client navigation to /admin/news renders the host-owned cont
   await expectInterfacesShellReady(page);
   await expect(page.locator('html')).toHaveAttribute('data-theme', /.+/);
   await navigateWithPlaywrightRouter(page, '/admin/news');
-  await expect(page).toHaveURL(/\/admin\/news(?:\?page=1&pageSize=25)?$/);
+  await expect(page).toHaveURL(/\/admin\/news\?(?:.*&)?page=1(?:&.*)?$/);
   await expect(page.getByRole('heading', { name: 'News', exact: true })).toBeVisible();
 });
 

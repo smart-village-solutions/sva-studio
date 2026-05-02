@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, useNavigate, useParams } from '@tanstack/react-router';
+import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import {
   findHostMediaReferenceAssetId,
   fromDatetimeLocalValue,

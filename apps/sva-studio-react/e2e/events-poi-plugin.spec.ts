@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
-import type { Page, Route } from '@playwright/test';
+import type { Page, Request as PlaywrightRequest, Route } from '@playwright/test';
 
 type EventRecord = {
   readonly id: string;
@@ -124,7 +124,7 @@ const mockSharedShellRequests = async (page: Page) => {
 
 const createdAt = '2026-04-13T12:10:00.000Z';
 
-const paginateRecords = <T extends { readonly id: string }>(items: readonly T[], request: Request) => {
+const paginateRecords = <T extends { readonly id: string }>(items: readonly T[], request: PlaywrightRequest) => {
   const url = new URL(request.url());
   const page = Math.max(1, Number.parseInt(url.searchParams.get('page') ?? '1', 10) || 1);
   const requestedPageSize = Number.parseInt(url.searchParams.get('pageSize') ?? '25', 10) || 25;

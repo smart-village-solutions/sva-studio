@@ -131,6 +131,9 @@ importers:
       '@sva/server-runtime':
         specifier: workspace:*
         version: link:../../packages/server-runtime
+      '@sva/studio-module-iam':
+        specifier: workspace:*
+        version: link:../../packages/studio-module-iam
       '@sva/sva-mainserver':
         specifier: workspace:*
         version: link:../../packages/sva-mainserver

@@ -99,6 +99,17 @@ const invalidateInstancePermissionSnapshots = async (
   await deps.invalidatePermissionSnapshots?.({ instanceId, trigger });
 };
 
+const withErrorCause = (message: string, cause: unknown): Error => {
+  const error = new Error(message);
+  Object.defineProperty(error, 'cause', {
+    value: cause,
+    configurable: true,
+    enumerable: false,
+    writable: true,
+  });
+  return error;
+};
+
 const createAssignModuleHandler =
   (deps: InstanceRegistryServiceDeps): InstanceRegistryService['assignModule'] =>
   async (input) => {
@@ -128,9 +139,12 @@ const createAssignModuleHandler =
       try {
         await deps.repository.revokeModule(input.instanceId, input.moduleId);
       } catch (rollbackError) {
-        throw new AggregateError(
-          [error, rollbackError],
-          `assign_module_sync_failed_and_rollback_failed:${input.instanceId}:${input.moduleId}`
+        throw withErrorCause(
+          `assign_module_sync_failed_and_rollback_failed:${input.instanceId}:${input.moduleId}`,
+          {
+            syncError: error,
+            rollbackError,
+          }
         );
       }
       throw error;

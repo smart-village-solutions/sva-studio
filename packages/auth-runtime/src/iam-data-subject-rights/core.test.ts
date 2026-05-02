@@ -491,4 +491,184 @@ describe('iam data subject rights handlers', () => {
       requestId: 'req-test',
     });
   });
+
+  it('delegates self export status lookups to the status handler', async () => {
+    const { dataExportStatusHandler } = await import('./core.js');
+
+    mocks.getSelfExportStatus.mockResolvedValueOnce(
+      new Response(JSON.stringify({ status: 'ready' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
+
+    const response = await dataExportStatusHandler(
+      new Request('http://localhost/iam/me/data-export/status?instanceId=de-test&jobId=123e4567-e89b-12d3-a456-426614174000&download=json')
+    );
+
+    expect(mocks.getSelfExportStatus).toHaveBeenCalledWith({
+      client: expect.anything(),
+      instanceId: 'de-test',
+      keycloakSubject: 'kc-user-1',
+      jobId: '123e4567-e89b-12d3-a456-426614174000',
+      downloadFormat: 'json',
+    });
+    expect(response.status).toBe(200);
+    await expect(expectJson(response)).resolves.toEqual({ status: 'ready' });
+  });
+
+  it('returns encryption_not_configured when profile correction cannot encrypt fields', async () => {
+    const { profileCorrectionHandler } = await import('./core.js');
+
+    mocks.parseFieldEncryptionConfigFromEnv.mockReturnValueOnce(null);
+
+    const response = await profileCorrectionHandler(
+      new Request('http://localhost/iam/me/profile-correction', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: 'new@example.test' }),
+      })
+    );
+
+    expect(response.status).toBe(503);
+    await expect(expectJson(response)).resolves.toEqual({ error: 'encryption_not_configured' });
+    expect(mocks.withResolvedInstanceDb).not.toHaveBeenCalled();
+  });
+
+  it('persists profile corrections and returns a completed rectification request', async () => {
+    const { profileCorrectionHandler } = await import('./core.js');
+
+    mocks.withResolvedInstanceDb.mockImplementationOnce(async (_resolver, instanceId, work) =>
+      work(
+        buildDbClient({
+          account: buildAccount({
+            id: 'account-77',
+            keycloak_subject: 'kc-user-1',
+            email_ciphertext: 'old-email',
+            display_name_ciphertext: 'old-display',
+          }),
+          requestIds: ['rectify-1'],
+        })
+      )
+    );
+
+    const response = await profileCorrectionHandler(
+      new Request('http://localhost/iam/me/profile-correction', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: 'new@example.test',
+          displayName: 'New Display Name',
+          reason: 'fix-typo',
+        }),
+      })
+    );
+
+    expect(mocks.encryptFieldValue).toHaveBeenCalledTimes(2);
+    expect(response.status).toBe(200);
+    await expect(expectJson(response)).resolves.toEqual({
+      status: 'ok',
+      requestId: 'rectify-1',
+    });
+  });
+
+  it('creates a legal hold and emits an audit event on success', async () => {
+    const { legalHoldApplyHandler } = await import('./core.js');
+
+    mocks.withAuthenticatedUser.mockImplementationOnce(async (_request, handler) =>
+      handler({ user: { ...baseUser, roles: ['system_admin'] } })
+    );
+    mocks.withResolvedInstanceDb.mockImplementationOnce(async (_resolver, instanceId, work) =>
+      work(
+        buildDbClient({
+          account: buildAccount({ id: 'target-1', keycloak_subject: 'kc-target-1' }),
+          legalHoldInsertId: 'hold-99',
+        })
+      )
+    );
+
+    const response = await legalHoldApplyHandler(
+      new Request('http://localhost/iam/admin/legal-holds/apply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          targetKeycloakSubject: 'kc-target-1',
+          holdReason: 'investigation',
+          holdUntil: '2026-06-01T12:00:00.000Z',
+        }),
+      })
+    );
+
+    expect(response.status).toBe(200);
+    await expect(expectJson(response)).resolves.toEqual({
+      legalHoldId: 'hold-99',
+      status: 'active',
+    });
+  });
+
+  it('returns the released hold count when a legal hold is removed', async () => {
+    const { legalHoldReleaseHandler } = await import('./core.js');
+
+    mocks.withAuthenticatedUser.mockImplementationOnce(async (_request, handler) =>
+      handler({ user: { ...baseUser, roles: ['system_admin'] } })
+    );
+    mocks.withResolvedInstanceDb.mockImplementationOnce(async (_resolver, instanceId, work) =>
+      work(
+        buildDbClient({
+          account: buildAccount({ id: 'target-1', keycloak_subject: 'kc-target-1' }),
+          releaseCount: 2,
+        })
+      )
+    );
+
+    const response = await legalHoldReleaseHandler(
+      new Request('http://localhost/iam/admin/legal-holds/release', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          targetKeycloakSubject: 'kc-target-1',
+          releaseReason: 'resolved',
+        }),
+      })
+    );
+
+    expect(response.status).toBe(200);
+    await expect(expectJson(response)).resolves.toEqual({
+      releasedCount: 2,
+    });
+  });
+
+  it('lists admin DSR cases with normalized paging and filters', async () => {
+    const { listAdminDataSubjectRightsCasesHandler } = await import('./core.js');
+
+    mocks.withAuthenticatedUser.mockImplementationOnce(async (_request, handler) =>
+      handler({ user: { ...baseUser, roles: ['support_admin'] } })
+    );
+    mocks.readPage.mockReturnValueOnce({ page: 2, pageSize: 10 });
+    mocks.listAdminDsrCases.mockResolvedValueOnce({
+      items: [{ id: 'case-1' }, { id: 'case-2' }],
+      total: 2,
+    });
+
+    const response = await listAdminDataSubjectRightsCasesHandler(
+      new Request(
+        'http://localhost/iam/admin/data-subject-rights/cases?instanceId=de-test&type=deletion&status=accepted&search=alice'
+      )
+    );
+
+    expect(mocks.listAdminDsrCases).toHaveBeenCalledWith(expect.anything(), {
+      instanceId: 'de-test',
+      page: 2,
+      pageSize: 10,
+      search: 'alice',
+      type: 'deletion',
+      status: 'accepted',
+    });
+    expect(response.status).toBe(200);
+    await expect(expectJson(response)).resolves.toEqual({
+      data: [{ id: 'case-1' }, { id: 'case-2' }],
+      page: { page: 2, pageSize: 10, total: 2 },
+      requestId: 'req-test',
+    });
+  });
 });

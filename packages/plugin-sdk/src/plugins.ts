@@ -524,206 +524,285 @@ export const definePluginModuleIamContract = <const TContract extends PluginModu
   return normalizedContract;
 };
 
+type PluginRegistryValidationContext = {
+  readonly plugin: PluginDefinition;
+  readonly pluginNamespace: string;
+  readonly displayName: string;
+};
+
+const createPluginRegistryValidationContext = (
+  plugin: PluginDefinition,
+  registry: ReadonlyMap<string, PluginDefinition>
+): PluginRegistryValidationContext => {
+  const contributionId = normalizePluginIdentifier(plugin.id);
+  assertPluginContributionAllowedKeys(
+    plugin as unknown as Record<string, unknown>,
+    pluginDefinitionAllowedKeys,
+    contributionId,
+    contributionId
+  );
+
+  const trimmedId = plugin.id.trim();
+  if (trimmedId.length === 0) {
+    throw new Error('invalid_plugin_definition');
+  }
+
+  const pluginNamespace = normalizePluginNamespace(trimmedId);
+  const displayName = plugin.displayName.trim();
+
+  if (pluginNamespace.length === 0 || displayName.length === 0) {
+    throw new Error('invalid_plugin_definition');
+  }
+  if (isReservedPluginNamespace(pluginNamespace)) {
+    throw new Error(`reserved_plugin_namespace:${pluginNamespace}`);
+  }
+  if (registry.has(pluginNamespace)) {
+    throw new Error(`duplicate_plugin:${pluginNamespace}`);
+  }
+
+  return {
+    plugin,
+    pluginNamespace,
+    displayName,
+  };
+};
+
+const assertPluginRegistryActions = ({ plugin, pluginNamespace }: PluginRegistryValidationContext): void => {
+  for (const action of plugin.actions ?? []) {
+    assertPluginContributionAllowedKeys(
+      action as unknown as Record<string, unknown>,
+      actionDefinitionAllowedKeys,
+      pluginNamespace,
+      normalizePluginIdentifier(action.id)
+    );
+    assertPluginPermissionReference(plugin, pluginNamespace, action.id, action.requiredAction);
+  }
+};
+
+const assertOwnedPluginActionReference = (
+  plugin: PluginDefinition,
+  pluginNamespace: string,
+  actionId: string,
+  invalidError: string,
+  ownerMismatchError: string,
+  missingError: string
+): PluginActionDefinition => {
+  const parsed = parseNamespacedPluginIdentifier(actionId);
+  if (parsed === undefined) {
+    throw new Error(invalidError);
+  }
+  if (parsed.namespace !== pluginNamespace) {
+    throw new Error(ownerMismatchError);
+  }
+
+  const action = resolvePluginActionDefinition(plugin, actionId);
+  if (!action) {
+    throw new Error(missingError);
+  }
+
+  return action;
+};
+
+const assertPluginRegistryRoutes = ({ plugin, pluginNamespace }: PluginRegistryValidationContext): void => {
+  for (const route of plugin.routes) {
+    assertPluginContributionAllowedKeys(
+      route as unknown as Record<string, unknown>,
+      routeDefinitionAllowedKeys,
+      pluginNamespace,
+      normalizePluginIdentifier(route.id)
+    );
+    assertPluginRoutePathAllowed(pluginNamespace, normalizePluginIdentifier(route.id), route.path);
+    assertPluginPermissionReference(plugin, pluginNamespace, route.id, route.guard);
+
+    const routeActionId = normalizePluginIdentifier(route.actionId ?? '');
+    if (!routeActionId) {
+      continue;
+    }
+
+    const action = assertOwnedPluginActionReference(
+      plugin,
+      pluginNamespace,
+      routeActionId,
+      `invalid_plugin_route_action_id:${pluginNamespace}:${route.id}:${routeActionId}`,
+      `plugin_route_action_owner_mismatch:${pluginNamespace}:${route.id}:${routeActionId}`,
+      `plugin_route_action_missing:${pluginNamespace}:${route.id}:${routeActionId}`
+    );
+    if (route.guard !== action.requiredAction) {
+      throw new Error(`plugin_route_action_guard_mismatch:${pluginNamespace}:${route.id}:${routeActionId}`);
+    }
+  }
+};
+
+const assertPluginRegistryStandardContentRouteGuardrails = ({
+  plugin,
+  pluginNamespace,
+}: PluginRegistryValidationContext): void => {
+  if (pluginUsesStandardContentAdminResource(plugin) === false) {
+    return;
+  }
+
+  for (const route of plugin.routes) {
+    if (isStandardCrudPluginRoute(pluginNamespace, route.path)) {
+      throw createPluginGuardrailError({
+        code: 'plugin_guardrail_route_bypass',
+        pluginNamespace,
+        contributionId: normalizePluginIdentifier(route.id),
+        fieldOrReason: 'path',
+      });
+    }
+  }
+};
+
+const assertPluginRegistryNavigation = ({ plugin, pluginNamespace }: PluginRegistryValidationContext): void => {
+  for (const navigationItem of plugin.navigation ?? []) {
+    assertPluginContributionAllowedKeys(
+      navigationItem as unknown as Record<string, unknown>,
+      navigationItemAllowedKeys,
+      pluginNamespace,
+      normalizePluginIdentifier(navigationItem.id)
+    );
+    assertPluginPermissionReference(plugin, pluginNamespace, navigationItem.id, navigationItem.requiredAction);
+
+    const navigationActionId = normalizePluginIdentifier(navigationItem.actionId ?? '');
+    if (!navigationActionId) {
+      continue;
+    }
+
+    const action = assertOwnedPluginActionReference(
+      plugin,
+      pluginNamespace,
+      navigationActionId,
+      `invalid_plugin_navigation_action_id:${pluginNamespace}:${navigationItem.id}:${navigationActionId}`,
+      `plugin_navigation_action_owner_mismatch:${pluginNamespace}:${navigationItem.id}:${navigationActionId}`,
+      `plugin_navigation_action_missing:${pluginNamespace}:${navigationItem.id}:${navigationActionId}`
+    );
+    if (
+      navigationItem.requiredAction &&
+      action.requiredAction &&
+      navigationItem.requiredAction !== action.requiredAction
+    ) {
+      throw new Error(
+        `plugin_navigation_action_guard_mismatch:${pluginNamespace}:${navigationItem.id}:${navigationActionId}`
+      );
+    }
+  }
+};
+
+const assertPluginRegistryPermissions = ({ plugin, pluginNamespace }: PluginRegistryValidationContext): void => {
+  for (const permission of plugin.permissions ?? []) {
+    assertPluginContributionAllowedKeys(
+      permission as unknown as Record<string, unknown>,
+      permissionDefinitionAllowedKeys,
+      pluginNamespace,
+      normalizePluginIdentifier(permission.id)
+    );
+    const normalizedPermission = normalizePluginPermissionDefinition(permission);
+    const parsed = parseNamespacedPluginIdentifier(normalizedPermission.id);
+    if (parsed === undefined) {
+      throw new Error(`invalid_plugin_permission_id:${normalizedPermission.id}`);
+    }
+    if (parsed.namespace !== pluginNamespace) {
+      throw new Error(
+        `plugin_permission_namespace_mismatch:${pluginNamespace}:${parsed.namespace}:${normalizedPermission.id}`
+      );
+    }
+  }
+};
+
+const assertPluginRegistryContentTypes = ({ plugin, pluginNamespace }: PluginRegistryValidationContext): void => {
+  for (const contentTypeDefinition of plugin.contentTypes ?? []) {
+    const contributionId = normalizePluginIdentifier(contentTypeDefinition.contentType);
+    assertPluginContributionAllowedKeys(
+      contentTypeDefinition as unknown as Record<string, unknown>,
+      contentTypeDefinitionAllowedKeys,
+      pluginNamespace,
+      contributionId
+    );
+    const normalizedContentType = normalizePluginIdentifier(contentTypeDefinition.contentType);
+    const parsed = parseNamespacedPluginIdentifier(normalizedContentType);
+    if (parsed === undefined) {
+      throw new Error(`invalid_plugin_content_type:${normalizedContentType}`);
+    }
+    if (parsed.namespace !== pluginNamespace) {
+      throw new Error(
+        `plugin_content_type_namespace_mismatch:${pluginNamespace}:${parsed.namespace}:${normalizedContentType}`
+      );
+    }
+  }
+};
+
+const assertPluginRegistryAdminResources = ({ plugin, pluginNamespace }: PluginRegistryValidationContext): void => {
+  for (const adminResource of plugin.adminResources ?? []) {
+    const contributionId = normalizePluginIdentifier(adminResource.resourceId);
+    assertPluginContributionAllowedKeys(
+      adminResource as unknown as Record<string, unknown>,
+      adminResourceDefinitionAllowedKeys,
+      pluginNamespace,
+      contributionId
+    );
+    const normalizedResourceId = normalizePluginIdentifier(adminResource.resourceId);
+    const parsed = parseNamespacedPluginIdentifier(normalizedResourceId);
+    if (parsed === undefined) {
+      throw new Error(`invalid_plugin_admin_resource:${normalizedResourceId}`);
+    }
+    if (parsed.namespace !== pluginNamespace) {
+      throw new Error(
+        `plugin_admin_resource_namespace_mismatch:${pluginNamespace}:${parsed.namespace}:${normalizedResourceId}`
+      );
+    }
+  }
+};
+
+const assertPluginRegistryAuditEvents = ({ plugin, pluginNamespace }: PluginRegistryValidationContext): void => {
+  for (const eventDefinition of plugin.auditEvents ?? []) {
+    const contributionId = normalizePluginIdentifier(eventDefinition.eventType);
+    assertPluginContributionAllowedKeys(
+      eventDefinition as unknown as Record<string, unknown>,
+      auditEventDefinitionAllowedKeys,
+      pluginNamespace,
+      contributionId
+    );
+    const normalizedEventType = normalizePluginIdentifier(eventDefinition.eventType);
+    const parsed = parseNamespacedPluginIdentifier(normalizedEventType);
+    if (parsed === undefined) {
+      throw new Error(`invalid_plugin_audit_event_type:${normalizedEventType}`);
+    }
+    if (parsed.namespace !== pluginNamespace) {
+      throw new Error(
+        `plugin_audit_event_namespace_mismatch:${pluginNamespace}:${parsed.namespace}:${normalizedEventType}`
+      );
+    }
+  }
+};
+
+const assertPluginRegistryModuleIam = ({ plugin, pluginNamespace }: PluginRegistryValidationContext): void => {
+  if (plugin.moduleIam) {
+    definePluginModuleIamContract(pluginNamespace, plugin.moduleIam);
+  }
+};
+
 export const createPluginRegistry = (
   plugins: readonly PluginDefinition[]
 ): ReadonlyMap<string, PluginDefinition> => {
   const registry = new Map<string, PluginDefinition>();
 
   for (const plugin of plugins) {
-    assertPluginContributionAllowedKeys(
-      plugin as unknown as Record<string, unknown>,
-      pluginDefinitionAllowedKeys,
-      normalizePluginIdentifier(plugin.id),
-      normalizePluginIdentifier(plugin.id)
-    );
+    const context = createPluginRegistryValidationContext(plugin, registry);
 
-    const trimmedId = plugin.id.trim();
-    if (trimmedId.length === 0) {
-      throw new Error('invalid_plugin_definition');
-    }
+    assertPluginRegistryActions(context);
+    assertPluginRegistryRoutes(context);
+    assertPluginRegistryStandardContentRouteGuardrails(context);
+    assertPluginRegistryNavigation(context);
+    assertPluginRegistryPermissions(context);
+    assertPluginRegistryContentTypes(context);
+    assertPluginRegistryAdminResources(context);
+    assertPluginRegistryAuditEvents(context);
+    assertPluginRegistryModuleIam(context);
 
-    const id = normalizePluginNamespace(trimmedId);
-    const displayName = plugin.displayName.trim();
-
-    if (id.length === 0 || displayName.length === 0) {
-      throw new Error('invalid_plugin_definition');
-    }
-    if (isReservedPluginNamespace(id)) {
-      throw new Error(`reserved_plugin_namespace:${id}`);
-    }
-    if (registry.has(id)) {
-      throw new Error(`duplicate_plugin:${id}`);
-    }
-
-    for (const action of plugin.actions ?? []) {
-      assertPluginContributionAllowedKeys(
-        action as unknown as Record<string, unknown>,
-        actionDefinitionAllowedKeys,
-        id,
-        normalizePluginIdentifier(action.id)
-      );
-      assertPluginPermissionReference(plugin, id, action.id, action.requiredAction);
-    }
-
-    for (const route of plugin.routes) {
-      assertPluginContributionAllowedKeys(
-        route as unknown as Record<string, unknown>,
-        routeDefinitionAllowedKeys,
-        id,
-        normalizePluginIdentifier(route.id)
-      );
-      assertPluginRoutePathAllowed(id, normalizePluginIdentifier(route.id), route.path);
-      assertPluginPermissionReference(plugin, id, route.id, route.guard);
-
-      const routeActionId = normalizePluginIdentifier(route.actionId ?? '');
-      if (!routeActionId) {
-        continue;
-      }
-
-      const parsed = parseNamespacedPluginIdentifier(routeActionId);
-      if (parsed === undefined) {
-        throw new Error(`invalid_plugin_route_action_id:${id}:${route.id}:${routeActionId}`);
-      }
-      if (parsed.namespace !== id) {
-        throw new Error(`plugin_route_action_owner_mismatch:${id}:${route.id}:${routeActionId}`);
-      }
-
-      const action = resolvePluginActionDefinition(plugin, routeActionId);
-      if (!action) {
-        throw new Error(`plugin_route_action_missing:${id}:${route.id}:${routeActionId}`);
-      }
-      if (route.guard !== action.requiredAction) {
-        throw new Error(`plugin_route_action_guard_mismatch:${id}:${route.id}:${routeActionId}`);
-      }
-    }
-
-    if (pluginUsesStandardContentAdminResource(plugin)) {
-      for (const route of plugin.routes) {
-        if (isStandardCrudPluginRoute(id, route.path)) {
-          throw createPluginGuardrailError({
-            code: 'plugin_guardrail_route_bypass',
-            pluginNamespace: id,
-            contributionId: normalizePluginIdentifier(route.id),
-            fieldOrReason: 'path',
-          });
-        }
-      }
-    }
-
-    for (const navigationItem of plugin.navigation ?? []) {
-      assertPluginContributionAllowedKeys(
-        navigationItem as unknown as Record<string, unknown>,
-        navigationItemAllowedKeys,
-        id,
-        normalizePluginIdentifier(navigationItem.id)
-      );
-      assertPluginPermissionReference(plugin, id, navigationItem.id, navigationItem.requiredAction);
-
-      const navigationActionId = normalizePluginIdentifier(navigationItem.actionId ?? '');
-      if (!navigationActionId) {
-        continue;
-      }
-
-      const parsed = parseNamespacedPluginIdentifier(navigationActionId);
-      if (parsed === undefined) {
-        throw new Error(`invalid_plugin_navigation_action_id:${id}:${navigationItem.id}:${navigationActionId}`);
-      }
-      if (parsed.namespace !== id) {
-        throw new Error(`plugin_navigation_action_owner_mismatch:${id}:${navigationItem.id}:${navigationActionId}`);
-      }
-
-      const action = resolvePluginActionDefinition(plugin, navigationActionId);
-      if (!action) {
-        throw new Error(`plugin_navigation_action_missing:${id}:${navigationItem.id}:${navigationActionId}`);
-      }
-      if (
-        navigationItem.requiredAction &&
-        action.requiredAction &&
-        navigationItem.requiredAction !== action.requiredAction
-      ) {
-        throw new Error(`plugin_navigation_action_guard_mismatch:${id}:${navigationItem.id}:${navigationActionId}`);
-      }
-    }
-
-    for (const permission of plugin.permissions ?? []) {
-      assertPluginContributionAllowedKeys(
-        permission as unknown as Record<string, unknown>,
-        permissionDefinitionAllowedKeys,
-        id,
-        normalizePluginIdentifier(permission.id)
-      );
-      const normalizedPermission = normalizePluginPermissionDefinition(permission);
-      const parsed = parseNamespacedPluginIdentifier(normalizedPermission.id);
-      if (parsed === undefined) {
-        throw new Error(`invalid_plugin_permission_id:${normalizedPermission.id}`);
-      }
-      if (parsed.namespace !== id) {
-        throw new Error(`plugin_permission_namespace_mismatch:${id}:${parsed.namespace}:${normalizedPermission.id}`);
-      }
-    }
-
-    for (const contentTypeDefinition of plugin.contentTypes ?? []) {
-      const contributionId = normalizePluginIdentifier(contentTypeDefinition.contentType);
-      assertPluginContributionAllowedKeys(
-        contentTypeDefinition as unknown as Record<string, unknown>,
-        contentTypeDefinitionAllowedKeys,
-        id,
-        contributionId
-      );
-      const normalizedContentType = normalizePluginIdentifier(contentTypeDefinition.contentType);
-      const parsed = parseNamespacedPluginIdentifier(normalizedContentType);
-      if (parsed === undefined) {
-        throw new Error(`invalid_plugin_content_type:${normalizedContentType}`);
-      }
-      if (parsed.namespace !== id) {
-        throw new Error(`plugin_content_type_namespace_mismatch:${id}:${parsed.namespace}:${normalizedContentType}`);
-      }
-    }
-
-    for (const adminResource of plugin.adminResources ?? []) {
-      const contributionId = normalizePluginIdentifier(adminResource.resourceId);
-      assertPluginContributionAllowedKeys(
-        adminResource as unknown as Record<string, unknown>,
-        adminResourceDefinitionAllowedKeys,
-        id,
-        contributionId
-      );
-      const normalizedResourceId = normalizePluginIdentifier(adminResource.resourceId);
-      const parsed = parseNamespacedPluginIdentifier(normalizedResourceId);
-      if (parsed === undefined) {
-        throw new Error(`invalid_plugin_admin_resource:${normalizedResourceId}`);
-      }
-      if (parsed.namespace !== id) {
-        throw new Error(`plugin_admin_resource_namespace_mismatch:${id}:${parsed.namespace}:${normalizedResourceId}`);
-      }
-    }
-
-    for (const eventDefinition of plugin.auditEvents ?? []) {
-      const contributionId = normalizePluginIdentifier(eventDefinition.eventType);
-      assertPluginContributionAllowedKeys(
-        eventDefinition as unknown as Record<string, unknown>,
-        auditEventDefinitionAllowedKeys,
-        id,
-        contributionId
-      );
-      const normalizedEventType = normalizePluginIdentifier(eventDefinition.eventType);
-      const parsed = parseNamespacedPluginIdentifier(normalizedEventType);
-      if (parsed === undefined) {
-        throw new Error(`invalid_plugin_audit_event_type:${normalizedEventType}`);
-      }
-      if (parsed.namespace !== id) {
-        throw new Error(`plugin_audit_event_namespace_mismatch:${id}:${parsed.namespace}:${normalizedEventType}`);
-      }
-    }
-
-    if (plugin.moduleIam) {
-      definePluginModuleIamContract(id, plugin.moduleIam);
-    }
-
-    registry.set(id, {
+    registry.set(context.pluginNamespace, {
       ...plugin,
-      id,
-      displayName,
+      id: context.pluginNamespace,
+      displayName: context.displayName,
     });
   }
 

@@ -481,6 +481,25 @@ describe('media repository', () => {
     });
   });
 
+  it('fails closed for missing upload sessions and counts and throws on impossible storage adjustments', async () => {
+    const { executor, statements } = createQueuedExecutor([[], [], []]);
+    const repository = createMediaRepository(executor);
+
+    await expect(repository.countAssets({ instanceId: 'tenant-a' })).resolves.toBe(0);
+    await expect(repository.getUploadSessionById('tenant-a', 'upload-missing')).resolves.toBeNull();
+    await expect(
+      repository.adjustStorageUsage({
+        instanceId: 'tenant-a',
+        totalBytesDelta: 128,
+        assetCountDelta: 1,
+      })
+    ).rejects.toThrowError('media_storage_usage_adjust_failed:tenant-a');
+
+    expect(statements[0]?.values).toEqual(['tenant-a']);
+    expect(statements[1]?.values).toEqual(['tenant-a', 'upload-missing']);
+    expect(statements[2]?.values).toEqual(['tenant-a', 128, 1]);
+  });
+
   it('deletes assets in an instance-scoped way', async () => {
     const { executor, statements } = createQueuedExecutor([[]]);
     const repository = createMediaRepository(executor);

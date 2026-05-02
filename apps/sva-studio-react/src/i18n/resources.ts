@@ -771,6 +771,11 @@ export const i18nResources = {
             title: 'IAM-Basis der Module',
             subtitle: 'Deklarierter Modulvertrag und registrierter Befund der aktuell zugewiesenen Module.',
           },
+          confirm: {
+            revokeTitle: 'Modul wirklich entziehen?',
+            revokeDescription:
+              'Das Modul {{moduleId}} wird der gewählten Instanz entzogen. Anschließend muss die IAM-Basis bei Bedarf neu aufgebaut werden.',
+          },
           module: {
             permissions: 'Berechtigungen: {{value}}',
             roles: 'Systemrollen: {{value}}',
@@ -2833,6 +2838,11 @@ export const i18nResources = {
           detail: {
             title: 'Module IAM baseline',
             subtitle: 'Declared module contract and registry status for the currently assigned modules.',
+          },
+          confirm: {
+            revokeTitle: 'Really revoke module?',
+            revokeDescription:
+              'The module {{moduleId}} will be revoked from the selected instance. Rebuild the IAM baseline afterwards if needed.',
           },
           module: {
             permissions: 'Permissions: {{value}}',

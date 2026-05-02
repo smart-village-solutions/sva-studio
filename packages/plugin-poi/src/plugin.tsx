@@ -2,6 +2,7 @@ import {
   definePluginActions,
   definePluginAuditEvents,
   definePluginContentTypes,
+  definePluginModuleIamContract,
   definePluginPermissions,
   type PluginDefinition,
 } from '@sva/plugin-sdk';
@@ -29,6 +30,8 @@ export const pluginPoiActionDefinitions = definePluginActions('poi', [
   { id: pluginPoiActionIds.update, titleKey: 'poi.actions.update', requiredAction: 'poi.update' },
   { id: pluginPoiActionIds.delete, titleKey: 'poi.actions.delete', requiredAction: 'poi.delete' },
 ] as const);
+
+const pluginPoiModulePermissionIds = pluginPoiPermissionDefinitions.map((permission) => permission.id);
 
 export const pluginPoi: PluginDefinition = {
   id: 'poi',
@@ -61,6 +64,16 @@ export const pluginPoi: PluginDefinition = {
   ],
   actions: pluginPoiActionDefinitions,
   permissions: pluginPoiPermissionDefinitions,
+  moduleIam: definePluginModuleIamContract('poi', {
+    moduleId: 'poi',
+    permissionIds: pluginPoiModulePermissionIds,
+    systemRoles: [
+      {
+        roleName: 'poi_admin',
+        permissionIds: pluginPoiModulePermissionIds,
+      },
+    ],
+  }),
   contentTypes: definePluginContentTypes('poi', [{ contentType: POI_CONTENT_TYPE, displayName: 'POI' }]),
   auditEvents: definePluginAuditEvents('poi', []),
   translations: {

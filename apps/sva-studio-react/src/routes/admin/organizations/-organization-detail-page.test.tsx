@@ -119,7 +119,7 @@ describe('OrganizationDetailPage', () => {
         deactivateOrganization,
       })
     );
-    const firstPageUsers = Array.from({ length: 100 }, (_, index) => ({
+    const firstPageUsers = Array.from({ length: 25 }, (_, index) => ({
       id: `user-${index + 1}`,
       keycloakSubject: `kc-user-${index + 1}`,
       displayName: index === 0 ? 'Anna Admin' : `User ${index + 1}`,
@@ -127,7 +127,7 @@ describe('OrganizationDetailPage', () => {
       status: 'active' as const,
       roles: [],
     }));
-    const secondPageUser = {
+    const searchedUser = {
       id: 'user-101',
       keycloakSubject: 'kc-user-101',
       displayName: 'Zoe Zebra',
@@ -138,11 +138,11 @@ describe('OrganizationDetailPage', () => {
     listUsersMock
       .mockResolvedValueOnce({
         data: firstPageUsers,
-        pagination: { page: 1, pageSize: 100, total: 101 },
+        pagination: { page: 1, pageSize: 25, total: 101 },
       })
       .mockResolvedValueOnce({
-        data: [secondPageUser],
-        pagination: { page: 2, pageSize: 100, total: 101 },
+        data: [searchedUser],
+        pagination: { page: 1, pageSize: 25, total: 1 },
       });
 
     render(<OrganizationDetailPage organizationId="org-1" />);
@@ -151,7 +151,12 @@ describe('OrganizationDetailPage', () => {
       expect(loadOrganization).toHaveBeenCalledWith('org-1');
     });
     await waitFor(() => {
-      expect(listUsersMock).toHaveBeenCalledTimes(2);
+      expect(listUsersMock).toHaveBeenCalledWith({
+        page: 1,
+        pageSize: 25,
+        search: undefined,
+        status: 'active',
+      });
     });
 
     fireEvent.change(screen.getByLabelText('Technischer Schlüssel', { selector: '#organization-key' }), {
@@ -184,6 +189,14 @@ describe('OrganizationDetailPage', () => {
     expect(screen.queryByRole('option', { name: 'Anna Admin <anna@example.org>' })).toBeNull();
     fireEvent.change(screen.getByLabelText('Mitglieder suchen', { selector: '#membership-account-search' }), {
       target: { value: 'zoe' },
+    });
+    await waitFor(() => {
+      expect(listUsersMock).toHaveBeenLastCalledWith({
+        page: 1,
+        pageSize: 25,
+        search: 'zoe',
+        status: 'active',
+      });
     });
     expect(screen.getByRole('option', { name: 'Zoe Zebra <zoe@example.org>' })).toBeTruthy();
 

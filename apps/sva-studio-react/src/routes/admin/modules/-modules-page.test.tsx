@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ModulesPage } from './-modules-page';
@@ -88,11 +88,28 @@ describe('ModulesPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'IAM-Basis neu aufbauen' }));
     fireEvent.click(screen.getByRole('button', { name: 'Modul entziehen' }));
+    const confirmDialog = await screen.findByRole('alertdialog');
+    fireEvent.click(within(confirmDialog).getByRole('button', { name: 'Modul entziehen' }));
     fireEvent.click(screen.getByRole('button', { name: 'Modul zuweisen' }));
 
     expect(seedIamBaseline).toHaveBeenCalledWith('demo');
     expect(revokeModule).toHaveBeenCalledWith('demo', 'news');
     expect(assignModule).toHaveBeenCalledWith('demo', 'events');
+  });
+
+  it('does not revoke a module before the confirmation dialog is confirmed', async () => {
+    const revokeModule = vi.fn().mockResolvedValue(true);
+    useInstancesMock.mockReturnValue(
+      createInstancesApiState({
+        revokeModule,
+      })
+    );
+
+    render(<ModulesPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Modul entziehen' }));
+
+    expect(revokeModule).not.toHaveBeenCalled();
   });
 
   it('does not reload the selected instance on rerender when loadInstance is stable', async () => {

@@ -2,6 +2,7 @@ import {
   definePluginActions,
   definePluginAuditEvents,
   definePluginContentTypes,
+  definePluginModuleIamContract,
   definePluginPermissions,
   type PluginDefinition,
 } from '@sva/plugin-sdk';
@@ -51,6 +52,8 @@ export const pluginNewsActionDefinitions = definePluginActions('news', [
   },
 ] as const);
 
+const pluginNewsModulePermissionIds = pluginNewsPermissionDefinitions.map((permission) => permission.id);
+
 export const getPluginNewsActionDefinition = (
   actionId: (typeof pluginNewsActionIds)[keyof typeof pluginNewsActionIds]
 ) => pluginNewsActionDefinitions.find((action) => action.id === actionId);
@@ -91,6 +94,16 @@ export const pluginNews: PluginDefinition = {
   ],
   actions: pluginNewsActionDefinitions,
   permissions: pluginNewsPermissionDefinitions,
+  moduleIam: definePluginModuleIamContract('news', {
+    moduleId: 'news',
+    permissionIds: pluginNewsModulePermissionIds,
+    systemRoles: [
+      {
+        roleName: 'news_admin',
+        permissionIds: pluginNewsModulePermissionIds,
+      },
+    ],
+  }),
   contentTypes: definePluginContentTypes('news', [
     {
       contentType: NEWS_CONTENT_TYPE,

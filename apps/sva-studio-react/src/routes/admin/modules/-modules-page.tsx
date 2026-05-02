@@ -1,5 +1,6 @@
 import React from 'react';
 
+import { ConfirmDialog } from '../../../components/ConfirmDialog';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Button } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
@@ -14,6 +15,7 @@ export const ModulesPage = () => {
   const instancesApi = useInstances();
   const { loadInstance } = instancesApi;
   const [selectedInstanceId, setSelectedInstanceId] = React.useState('');
+  const [pendingRevokeModuleId, setPendingRevokeModuleId] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (!selectedInstanceId && instancesApi.instances[0]?.instanceId) {
@@ -34,6 +36,18 @@ export const ModulesPage = () => {
   const assignedModuleIds = new Set(selectedInstance?.assignedModules ?? []);
   const assignedModules = studioPluginModuleIamContracts.filter((module) => assignedModuleIds.has(module.moduleId));
   const availableModules = studioPluginModuleIamContracts.filter((module) => !assignedModuleIds.has(module.moduleId));
+  const pendingRevokeModule = assignedModules.find((module) => module.moduleId === pendingRevokeModuleId) ?? null;
+
+  const onConfirmRevokeModule = async () => {
+    if (!selectedInstance || !pendingRevokeModule) {
+      return;
+    }
+
+    const success = await instancesApi.revokeModule(selectedInstance.instanceId, pendingRevokeModule.moduleId);
+    if (success) {
+      setPendingRevokeModuleId(null);
+    }
+  };
 
   return (
     <section className="space-y-5" aria-busy={instancesApi.isLoading || instancesApi.detailLoading || instancesApi.statusLoading}>
@@ -104,7 +118,7 @@ export const ModulesPage = () => {
                       <Button
                         type="button"
                         variant="outline"
-                        onClick={() => void instancesApi.revokeModule(selectedInstance.instanceId, module.moduleId)}
+                        onClick={() => setPendingRevokeModuleId(module.moduleId)}
                         disabled={instancesApi.statusLoading}
                       >
                         {t('admin.instances.instanceModules.actions.revoke')}
@@ -163,6 +177,18 @@ export const ModulesPage = () => {
       ) : (
         <Card className="p-4 text-sm text-muted-foreground">{t('admin.instances.instanceModules.empty')}</Card>
       )}
+
+      <ConfirmDialog
+        open={pendingRevokeModule !== null}
+        title={t('admin.instances.instanceModules.confirm.revokeTitle')}
+        description={t('admin.instances.instanceModules.confirm.revokeDescription', {
+          moduleId: pendingRevokeModule?.moduleId ?? '',
+        })}
+        confirmLabel={t('admin.instances.instanceModules.actions.revoke')}
+        cancelLabel={t('account.actions.cancel')}
+        onConfirm={() => void onConfirmRevokeModule()}
+        onCancel={() => setPendingRevokeModuleId(null)}
+      />
     </section>
   );
 };

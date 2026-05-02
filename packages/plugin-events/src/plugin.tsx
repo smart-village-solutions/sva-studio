@@ -2,6 +2,7 @@ import {
   definePluginActions,
   definePluginAuditEvents,
   definePluginContentTypes,
+  definePluginModuleIamContract,
   definePluginPermissions,
   type PluginDefinition,
 } from '@sva/plugin-sdk';
@@ -29,6 +30,8 @@ export const pluginEventsActionDefinitions = definePluginActions('events', [
   { id: pluginEventsActionIds.update, titleKey: 'events.actions.update', requiredAction: 'events.update' },
   { id: pluginEventsActionIds.delete, titleKey: 'events.actions.delete', requiredAction: 'events.delete' },
 ] as const);
+
+const pluginEventsModulePermissionIds = pluginEventsPermissionDefinitions.map((permission) => permission.id);
 
 export const pluginEvents: PluginDefinition = {
   id: 'events',
@@ -61,6 +64,16 @@ export const pluginEvents: PluginDefinition = {
   ],
   actions: pluginEventsActionDefinitions,
   permissions: pluginEventsPermissionDefinitions,
+  moduleIam: definePluginModuleIamContract('events', {
+    moduleId: 'events',
+    permissionIds: pluginEventsModulePermissionIds,
+    systemRoles: [
+      {
+        roleName: 'events_admin',
+        permissionIds: pluginEventsModulePermissionIds,
+      },
+    ],
+  }),
   contentTypes: definePluginContentTypes('events', [{ contentType: EVENTS_CONTENT_TYPE, displayName: 'Events' }]),
   auditEvents: definePluginAuditEvents('events', []),
   translations: {

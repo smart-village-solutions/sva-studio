@@ -25,7 +25,7 @@ const ORGANIZATION_TYPE_KEYS = {
 } satisfies Record<IamOrganizationType, TranslationKey>;
 
 const typeOptions = Object.keys(ORGANIZATION_TYPE_KEYS) as IamOrganizationType[];
-const MEMBERSHIP_USER_PAGE_SIZE = 100;
+const MEMBERSHIP_USER_PAGE_SIZE = 25;
 
 const normalizeMembershipSearchValue = (value: string) => value.trim().toLocaleLowerCase();
 
@@ -81,6 +81,7 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
     isDefaultContext: false,
   });
   const [membershipSearch, setMembershipSearch] = React.useState('');
+  const [debouncedMembershipSearch, setDebouncedMembershipSearch] = React.useState('');
   const [membershipUsers, setMembershipUsers] = React.useState<readonly IamUserListItem[]>([]);
   const [membershipUsersLoading, setMembershipUsersLoading] = React.useState(true);
   const [membershipUsersError, setMembershipUsersError] = React.useState<IamHttpError | null>(null);
@@ -116,6 +117,16 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
     organizationsApi.selectedOrganization?.id === organizationId ? organizationsApi.selectedOrganization : null;
 
   React.useEffect(() => {
+    const timer = globalThis.setTimeout(() => {
+      setDebouncedMembershipSearch(membershipSearch.trim());
+    }, 300);
+
+    return () => {
+      globalThis.clearTimeout(timer);
+    };
+  }, [membershipSearch]);
+
+  React.useEffect(() => {
     let active = true;
 
     const loadMembershipUsers = async () => {
@@ -123,29 +134,19 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
       setMembershipUsersError(null);
 
       try {
-        const collectedUsers = new Map<string, IamUserListItem>();
-        let page = 1;
-        let total = 0;
-
-        do {
-          const response = await listUsers({
-            page,
-            pageSize: MEMBERSHIP_USER_PAGE_SIZE,
-            status: 'active',
-          });
-          total = response.pagination.total;
-          for (const user of response.data) {
-            collectedUsers.set(user.id, user);
-          }
-          page += 1;
-        } while (collectedUsers.size < total);
+        const response = await listUsers({
+          page: 1,
+          pageSize: MEMBERSHIP_USER_PAGE_SIZE,
+          search: debouncedMembershipSearch || undefined,
+          status: 'active',
+        });
 
         if (!active) {
           return;
         }
 
         setMembershipUsers(
-          [...collectedUsers.values()].sort((left, right) => formatMembershipUserLabel(left).localeCompare(formatMembershipUserLabel(right)))
+          [...response.data].sort((left, right) => formatMembershipUserLabel(left).localeCompare(formatMembershipUserLabel(right)))
         );
       } catch (cause) {
         if (!active) {
@@ -165,7 +166,7 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
     return () => {
       active = false;
     };
-  }, []);
+  }, [debouncedMembershipSearch]);
 
   const assignedMembershipAccountIds = React.useMemo(
     () => new Set(selectedOrganization?.memberships.map((membership) => membership.accountId) ?? []),

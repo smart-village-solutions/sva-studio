@@ -8,6 +8,7 @@ import {
 export type RouteGuardUser = {
   readonly roles: readonly string[];
   readonly permissionActions?: readonly string[];
+  readonly assignedModules?: readonly string[];
   readonly permissionStatus?: 'ok' | 'degraded';
 };
 

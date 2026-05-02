@@ -1,9 +1,9 @@
 import { ESLint } from 'eslint';
 import { describe, expect, it } from 'vitest';
 
-import noEffectApiObjectDepsForLoadersRule from './no-effect-api-object-deps-for-loaders.mjs';
+import noEffectApiObjectDepsForLoadersRule from '../../../config/eslint/no-effect-api-object-deps-for-loaders.mjs';
 
-const lint = async (code) => {
+const lint = async (code: string) => {
   const eslint = new ESLint({
     overrideConfigFile: true,
     overrideConfig: [

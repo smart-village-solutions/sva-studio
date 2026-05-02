@@ -38,6 +38,8 @@ Das Package ist als ESM-Library gebaut und deklariert Laufzeitabhängigkeiten au
 
 ```text
 packages/plugin-sdk/
+|-- tests/
+|   `-- *.test.ts
 |-- src/
 |   |-- index.ts
 |   |-- public-api.ts
@@ -51,7 +53,6 @@ packages/plugin-sdk/
 |   |-- media-picker-client.ts
 |   |-- plugin-translations.ts
 |   |-- guardrails.ts
-|   `-- *.test.ts
 |-- package.json
 |-- project.json
 |-- tsconfig.json

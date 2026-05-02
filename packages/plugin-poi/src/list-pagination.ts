@@ -7,10 +7,13 @@ export type ListSearch = {
   readonly pageSize?: number;
 };
 
-export const normalizeListSearch = (search: ListSearch) => {
-  const pageSize = allowedListPageSizes.includes(search.pageSize as (typeof allowedListPageSizes)[number])
-    ? search.pageSize
-    : defaultListPageSize;
+export const normalizeListSearch = (search: ListSearch): { readonly page: number; readonly pageSize: number } => {
+  const requestedPageSize = search.pageSize;
+  const pageSize =
+    typeof requestedPageSize === 'number' &&
+    allowedListPageSizes.includes(requestedPageSize as (typeof allowedListPageSizes)[number])
+      ? requestedPageSize
+      : defaultListPageSize;
   const maxPage = Math.floor(maxListOffset / pageSize) + 1;
   const page =
     typeof search.page === 'number' && Number.isInteger(search.page) && search.page > 0 ? Math.min(search.page, maxPage) : 1;

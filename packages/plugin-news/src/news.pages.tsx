@@ -134,10 +134,15 @@ const buildDescribedBy = (...ids: readonly (string | undefined | false)[]) => {
   return describedBy.length > 0 ? describedBy : undefined;
 };
 
-const normalizeListSearch = (search: { readonly page?: number; readonly pageSize?: number }) => {
-  const pageSize = allowedListPageSizes.includes(search.pageSize as (typeof allowedListPageSizes)[number])
-    ? search.pageSize
-    : 25;
+const normalizeListSearch = (
+  search: { readonly page?: number; readonly pageSize?: number }
+): { readonly page: number; readonly pageSize: number } => {
+  const requestedPageSize = search.pageSize;
+  const pageSize =
+    typeof requestedPageSize === 'number' &&
+    allowedListPageSizes.includes(requestedPageSize as (typeof allowedListPageSizes)[number])
+      ? requestedPageSize
+      : 25;
   const maxPage = Math.floor(maxListOffset / pageSize) + 1;
   const page =
     typeof search.page === 'number' && Number.isInteger(search.page) && search.page > 0 ? Math.min(search.page, maxPage) : 1;

@@ -56,6 +56,50 @@ describe('mainserver client helpers', () => {
     expect(headers.get('X-Correlation-Id')).toBe('trace-1');
   });
 
+  it('keeps caller-provided accept and content-type headers intact', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(Response.json({ data: { id: 'news-1' } }));
+
+    await requestMainserverJson<{ readonly data: { readonly id: string } }>({
+      url: '/api/v1/mainserver/news/news-1',
+      init: {
+        headers: {
+          Accept: 'application/problem+json',
+          'Content-Type': 'application/merge-patch+json',
+        },
+      },
+    });
+
+    const requestInit = vi.mocked(fetch).mock.calls[0]?.[1] as RequestInit;
+    const headers = requestInit.headers as Headers;
+    expect(headers.get('Accept')).toBe('application/problem+json');
+    expect(createMainserverJsonRequestHeaders(headers).get('Content-Type')).toBe('application/merge-patch+json');
+  });
+
+  it('keeps deterministic http fallback errors when the server returns no json envelope', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(new Response('gateway down', { status: 502 }));
+
+    await expect(
+      requestMainserverJson({
+        url: '/api/v1/mainserver/news/news-1',
+      })
+    ).rejects.toMatchObject({
+      name: 'MainserverApiError',
+      code: 'http_502',
+      message: 'http_502',
+    });
+  });
+
+  it('fails fast when no fetch implementation is available', async () => {
+    vi.stubGlobal('fetch', undefined);
+
+    await expect(
+      requestMainserverJson({
+        url: '/api/v1/mainserver/news/news-1',
+        fetch: undefined,
+      })
+    ).rejects.toThrow('mainserver_fetch_unavailable');
+  });
+
   it('creates canonical CRUD clients with overridable request behavior', async () => {
     const client = createMainserverCrudClient<
       { readonly id: string; readonly title: string; readonly pushNotification?: boolean },
@@ -133,5 +177,24 @@ describe('mainserver client helpers', () => {
       '/api/v1/mainserver/news/news-1',
       expect.objectContaining({ method: 'DELETE' })
     );
+  });
+
+  it('maps get responses through a custom item mapper', async () => {
+    const fetchMock = vi.fn(async () => Response.json({ data: { id: 'news-1', title: 'Mapped' } }));
+    const client = createMainserverCrudClient<
+      { readonly id: string; readonly title: string },
+      { readonly title: string },
+      { readonly data: readonly { readonly id: string; readonly title: string }[] },
+      { readonly data: readonly { readonly id: string; readonly title: string }[] },
+      TestApiError
+    >({
+      basePath: '/api/v1/mainserver/news',
+      fetch: fetchMock as typeof fetch,
+      errorFactory: (code, message) => new TestApiError(code, message),
+      mapItem: (item) => ({ ...item, title: `${item.title}!` }),
+      mapListResponse: (response) => response,
+    });
+
+    await expect(client.get('news-1')).resolves.toEqual({ id: 'news-1', title: 'Mapped!' });
   });
 });

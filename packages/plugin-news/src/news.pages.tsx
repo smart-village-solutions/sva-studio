@@ -18,6 +18,7 @@ import {
 } from '@sva/studio-ui-react';
 
 import { NewsApiError, createNews, deleteNews, getNews, listNews, updateNews } from './news.api.js';
+import { normalizeListSearch } from './list-pagination.js';
 import { getPluginNewsActionDefinition, pluginNewsActionIds } from './plugin.js';
 import type { NewsContentBlock, NewsContentItem, NewsFormInput, NewsListResult, NewsMediaContent } from './news.types.js';
 import { validateNewsForm } from './news.validation.js';
@@ -28,9 +29,6 @@ type StatusMessage = {
 };
 
 type FlashMessageCode = 'createSuccess' | 'deleteSuccess';
-
-const allowedListPageSizes = [25, 50, 100] as const;
-const maxListOffset = 10_000;
 
 const defaultContentBlock = (): NewsContentBlock => ({
   title: '',
@@ -132,22 +130,6 @@ const consumeFlashMessage = (): FlashMessageCode | null => {
 const buildDescribedBy = (...ids: readonly (string | undefined | false)[]) => {
   const describedBy = ids.filter(Boolean).join(' ');
   return describedBy.length > 0 ? describedBy : undefined;
-};
-
-const normalizeListSearch = (
-  search: { readonly page?: number; readonly pageSize?: number }
-): { readonly page: number; readonly pageSize: number } => {
-  const requestedPageSize = search.pageSize;
-  const pageSize =
-    typeof requestedPageSize === 'number' &&
-    allowedListPageSizes.includes(requestedPageSize as (typeof allowedListPageSizes)[number])
-      ? requestedPageSize
-      : 25;
-  const maxPage = Math.floor(maxListOffset / pageSize) + 1;
-  const page =
-    typeof search.page === 'number' && Number.isInteger(search.page) && search.page > 0 ? Math.min(search.page, maxPage) : 1;
-
-  return { page, pageSize };
 };
 
 const formatDate = (value?: string) => {

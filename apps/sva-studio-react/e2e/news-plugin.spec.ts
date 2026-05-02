@@ -268,7 +268,7 @@ test.describe('news plugin', () => {
     await expect(page.getByRole('heading', { name: 'SVA Studio' })).toBeVisible();
 
     await page.getByRole('link', { name: 'News' }).click();
-    await expect(page).toHaveURL(/\/plugins\/news$/);
+    await expect(page).toHaveURL(/\/plugins\/news(?:\?page=1&pageSize=25)?$/);
     await expectPluginPageHeading(page, /News|news\.list\.title/);
 
     await page.locator('a[href="/plugins/news/new"]').click();
@@ -297,7 +297,7 @@ test.describe('news plugin', () => {
     await page.locator('#news-media-caption-0-0').fill('Titelbild');
     await page.getByRole('button', { name: /News anlegen|news\.actions\.create/ }).click();
 
-    await expect(page).toHaveURL(/\/plugins\/news$/);
+    await expect(page).toHaveURL(/\/plugins\/news(?:\?page=1&pageSize=25)?$/);
     await expect(page.getByText('Erste News').first()).toBeVisible();
     expect(createdBody).toMatchObject({
       title: 'Erste News',

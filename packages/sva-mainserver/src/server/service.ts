@@ -1713,7 +1713,7 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
     let hasNextPage = false;
 
     while (collectedVisibleItems.length < targetVisibleCount && exhausted === false && hasNextPage === false) {
-      if (skip >= MAX_MAINSERVER_UPSTREAM_SCAN_RECORDS) {
+      if (skip > MAX_MAINSERVER_UPSTREAM_SCAN_RECORDS) {
         throw toSvaMainserverError({
           code: 'invalid_response',
           message: 'Mainserver-Pagination erfordert zu viele Upstream-Datensätze für sichtbare Ergebnisse.',

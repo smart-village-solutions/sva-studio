@@ -812,6 +812,50 @@ describe('createSvaMainserverService', () => {
     });
   });
 
+  it('returns the last allowed 100-item page without throwing at the upstream scan boundary', async () => {
+    const publishedAt = '2026-04-14T09:30:00.000Z';
+    const fetchImpl = vi.fn(async (_input?: RequestInfo | URL, init?: RequestInit) => {
+      const requestBody =
+        typeof init?.body === 'string' && init.body.trim().startsWith('{')
+          ? (JSON.parse(init.body) as { operationName?: string; variables?: { skip?: number; limit?: number } })
+          : undefined;
+
+      if (requestBody?.operationName === 'SvaMainserverNewsList') {
+        const skip = requestBody.variables?.skip ?? 0;
+        const limit = requestBody.variables?.limit ?? 0;
+        const remaining = Math.max(10_100 - skip, 0);
+        const size = Math.min(limit, remaining);
+        const newsItems = Array.from({ length: size }, (_, index) => {
+          const itemIndex = skip + index + 1;
+          return {
+            id: `news-${itemIndex}`,
+            title: `News ${itemIndex}`,
+            payload: { teaser: `Kurztext ${itemIndex}`, body: '<p>Body</p>' },
+            publishedAt,
+            visible: true,
+          };
+        });
+
+        return createJsonResponse(200, { data: { newsItems } });
+      }
+
+      return createJsonResponse(200, { access_token: 'token-1', expires_in: 120 });
+    });
+
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
+      fetchImpl,
+    });
+
+    await expect(
+      service.listNews({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1', page: 101, pageSize: 100 })
+    ).resolves.toMatchObject({
+      data: Array.from({ length: 100 }, (_, index) => expect.objectContaining({ id: `news-${10_001 + index}` })),
+      pagination: { page: 101, pageSize: 100, hasNextPage: false },
+    });
+  });
+
   it('maps invalid news payloads to an empty payload fallback', async () => {
     const publishedAt = '2026-04-14T09:30:00.000Z';
     const fetchImpl = vi

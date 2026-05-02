@@ -77,6 +77,29 @@ describe('news api', () => {
     expect(fetch).toHaveBeenCalledWith('/api/v1/mainserver/news?page=2&pageSize=50', expect.any(Object));
   });
 
+  it('uses the default list query when no pagination is passed', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        data: [],
+        pagination: {
+          page: defaultListQuery.page,
+          pageSize: defaultListQuery.pageSize,
+          hasNextPage: false,
+        },
+      }),
+    } as Response);
+
+    await expect(listNews()).resolves.toEqual({
+      data: [],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false },
+    });
+    expect(fetch).toHaveBeenCalledWith(
+      `/api/v1/mainserver/news?page=${defaultListQuery.page}&pageSize=${defaultListQuery.pageSize}`,
+      expect.any(Object)
+    );
+  });
+
   it('falls back to the requested pagination when the mainserver omits it', async () => {
     const requestedQuery = { page: 3, pageSize: 50 } as const;
 
@@ -181,7 +204,7 @@ describe('news api', () => {
       } as Response);
 
     await expect(getNews('news-1')).resolves.toEqual(expect.objectContaining({ id: 'news-1' }));
-    await expect(listNews({ page: 1, pageSize: 25 })).rejects.toThrow('http_503');
+    await expect(listNews(defaultListQuery)).rejects.toThrow('http_503');
   });
 
   it('uses stable server error envelopes and HTTP fallbacks for failed responses', async () => {
@@ -204,7 +227,7 @@ describe('news api', () => {
       code: 'forbidden',
       message: 'Keine Berechtigung.',
     } satisfies Partial<NewsApiError>);
-    await expect(listNews({ page: 1, pageSize: 25 })).rejects.toMatchObject({
+    await expect(listNews(defaultListQuery)).rejects.toMatchObject({
       code: 'http_502',
       message: 'http_502',
     } satisfies Partial<NewsApiError>);

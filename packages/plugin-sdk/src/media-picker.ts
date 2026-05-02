@@ -27,7 +27,7 @@ export const defineMediaPickerDefinition = <const TDefinition extends MediaPicke
     return normalizedRole;
   });
 
-  const normalizedAllowedMediaTypes = definition.allowedMediaTypes.map((entry) => entry.trim());
+  const normalizedAllowedMediaTypes = [...new Set(definition.allowedMediaTypes.map((entry) => entry.trim()))];
   if (normalizedAllowedMediaTypes.length === 0 || normalizedAllowedMediaTypes.some((entry) => entry.length === 0)) {
     throw new Error('invalid_media_picker_media_types');
   }

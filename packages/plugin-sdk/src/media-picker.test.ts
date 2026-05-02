@@ -34,7 +34,7 @@ describe('defineMediaPickerDefinition', () => {
     expect(
       defineMediaPickerDefinition({
         roles: [' hero_image '],
-        allowedMediaTypes: [' image '],
+        allowedMediaTypes: [' image ', 'image'],
       })
     ).toEqual({
       roles: ['hero_image'],

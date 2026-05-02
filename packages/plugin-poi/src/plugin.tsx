@@ -125,6 +125,12 @@ export const pluginPoi: PluginDefinition = {
           updateSuccess: 'POI wurde aktualisiert.',
           validationError: 'Bitte korrigieren Sie die markierten Felder.',
         },
+        pagination: {
+          ariaLabel: 'POI-Seiten',
+          pageLabel: 'Seite {page}',
+          previous: 'Zurück',
+          next: 'Weiter',
+        },
         empty: { title: 'Noch keine POI vorhanden', description: 'Legen Sie den ersten POI an.' },
         validation: {
           name: 'Der Name ist erforderlich.',
@@ -181,6 +187,12 @@ export const pluginPoi: PluginDefinition = {
           createSuccess: 'POI was created.',
           updateSuccess: 'POI was updated.',
           validationError: 'Please correct the highlighted fields.',
+        },
+        pagination: {
+          ariaLabel: 'POI pages',
+          pageLabel: 'Page {page}',
+          previous: 'Previous',
+          next: 'Next',
         },
         empty: { title: 'No POI yet', description: 'Create the first POI.' },
         validation: {

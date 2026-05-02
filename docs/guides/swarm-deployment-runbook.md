@@ -132,8 +132,8 @@ Pragmatische Betriebsregeln aus den letzten Rollouts:
 - wenn Runtime-Overrides im Live-Stack fehlen, nicht blind denselben `quantum-cli stacks update` wiederholen, sondern den kanonischen Runtime-Pfad mit vorgerenderter Compose nutzen
 - ein grüner Stack ersetzt nicht die Laufzeitprüfung des App-DB-Users; `sva_app` muss real existieren und sich anmelden können
 - für Tenant-Debugging externe und interne Host-Requests trennen, bevor Ingress-Komponenten verdächtigt werden
-- für `studio` ist ein lokaler Kandidatencontainer nur Hilfssignal; Root-/Tenant-/Ingress-Paritaet bleibt ein Remote-Vertrag
-- wenn das Ziel-Digest bereits live läuft, darf derselbe Digest nur über dokumentierte Live-Paritaet wiederverwendet werden, nicht über eine weaker lokale Ersatzprobe
+- für `studio` ist ein lokaler Kandidatencontainer nur Hilfssignal; Root-/Tenant-/Ingress-Parität bleibt ein Remote-Vertrag
+- wenn das Ziel-Digest bereits live läuft, darf derselbe Digest nur über dokumentierte Live-Parität wiederverwendet werden, nicht über eine weaker lokale Ersatzprobe
 
 ### Adminer für Studio
 
@@ -271,7 +271,7 @@ pnpm env:release:studio:local -- \
 Der Deploypfad führt verbindlich aus:
 
 1. `environment-precheck` inklusive Pflichtvariablen, Schema-Guard und Live-Spec-Drift
-2. `image-smoke` gegen das Digest-Artefakt inklusive Root-Host-, Tenant-Host- und OIDC-Paritaet
+2. `image-smoke` gegen das Digest-Artefakt inklusive Root-Host-, Tenant-Host- und OIDC-Parität
 3. `migrate` bei `schema-and-app`
 4. `bootstrap` bei `schema-and-app`
 5. Stack-Rollout via `quantum-cli stacks update` oder `docker stack deploy`
@@ -300,7 +300,7 @@ Für das produktionsnahe Profil `studio` gilt derselbe Netzwerk-/Ingress-Vertrag
 - ein `app-only`-Reconcile dient als kanonischer, nicht destruktiver Recovery-Pfad für Netz-/Ingress-Drift
 - `env:migrate:studio` und `schema-and-app` dürfen nur die Temp-Job-Stacks `migrate` und `bootstrap` bewegen; Seiteneffekte auf `studio_app` außerhalb des expliziten Deploy-Schritts sind kein akzeptierter Zustand
 - `precheck` und `doctor` müssen `app-db-principal` für `APP_DB_USER` als gesund bestätigen; Superuser-only-Sicht ist kein Freigabenachweis
-- wenn das Ziel-Digest bereits auf `studio_app` läuft, darf `image-smoke` die Live-Paritaet nur wiederverwenden, wenn Ingress-Konsistenz, `app-db-principal`, Tenant-Auth-Proof und Runtime-Flags für genau dieses Digest grün sind
+- wenn das Ziel-Digest bereits auf `studio_app` läuft, darf `image-smoke` die Live-Parität nur wiederverwenden, wenn Ingress-Konsistenz, `app-db-principal`, Tenant-Auth-Proof und Runtime-Flags für genau dieses Digest grün sind
 - eine erfolgreich gelaufene GitHub-Image-Verifikation für dasselbe Digest ist operativ maßgeblich; lokale Operator-Warnungen wegen fehlender lokaler Verify-Artefakte sind nachrangig, bis der Artefakt-Lookup vereinheitlicht ist
 
 ## Schritt 3a: Neue Instanz im Registry-Modell anlegen

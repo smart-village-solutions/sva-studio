@@ -226,7 +226,7 @@ Dieser Pfad startet die App als Produktionscontainer lokal gegen `postgres-hb`, 
 - der dokumentierte Standardweg setzt `SVA_REMOTE_OPERATOR_CONTEXT=local-operator` nur über `env:release:studio:local`
 - Orchestrierung in fixer Reihenfolge:
   1. `environment-precheck` inklusive Soll-/Live-Spec-Drift und Pflichtvariablen
-  2. `image-smoke` gegen das auszurollende Digest-Artefakt mit Root-Host-, Tenant-Host- und OIDC-Paritaet
+  2. `image-smoke` gegen das auszurollende Digest-Artefakt mit Root-Host-, Tenant-Host- und OIDC-Parität
   3. optional `migrate` bei `--release-mode=schema-and-app` als dedizierter Swarm-One-off-Job
   4. optional `bootstrap` bei `--release-mode=schema-and-app` als dedizierter Swarm-One-off-Job für App-User, Grants und Instanz-Seeding
   5. gehärteter Live-Rollout des echten Ziel-Stacks via `quantum-cli stacks update` oder `docker stack deploy`
@@ -249,7 +249,7 @@ Dieser Pfad startet die App als Produktionscontainer lokal gegen `postgres-hb`, 
 - `--json` schreibt zusätzlich zur Artefakterzeugung den vollständigen Deploy-Report auf stdout
 - Vor dem eigentlichen Stack-Update validiert der gehärtete Renderpfad, dass `app` weiterhin die Netzwerke `internal` und `public` sowie die ingressrelevanten Traefik-Labels enthält. Fehlende Einträge blockieren den Rollout vor jedem Live-Mutationsschritt.
 - Wenn das Ziel-Digest bereits live auf `app` läuft, darf das Parity-Gate die Live-Evidenz desselben Digests wiederverwenden. Voraussetzung sind grüne Nachweise für Ingress-Konsistenz, `app-db-principal`, Tenant-Auth-Proof und Live-Runtime-Flags.
-- Ein lokaler Kandidatencontainer ersetzt für `studio` keinen echten Swarm-/Ingress-/Private-DNS-Nachweis. Kann der Remote-Hostvertrag lokal nicht realistisch abgebildet werden, bleibt nur die dokumentierte Live-Paritaet desselben Digests oder ein echter Remote-Rollout im kanonischen Pfad.
+- Ein lokaler Kandidatencontainer ersetzt für `studio` keinen echten Swarm-/Ingress-/Private-DNS-Nachweis. Kann der Remote-Hostvertrag lokal nicht realistisch abgebildet werden, bleibt nur die dokumentierte Live-Parität desselben Digests oder ein echter Remote-Rollout im kanonischen Pfad.
 - Erkenntnis aus dem Studio-Release vom 28. April 2026: `migrate` und `bootstrap` bleiben harte Freigabegates, weil Schema-Pflichtfelder und Bootstrap-Reconcile gemeinsam betrachtet werden müssen.
 - Erkenntnis aus dem Studio-Release vom 28. April 2026: externe Health- und Tenant-Probes direkt nach dem Stack-Cutover können kurzzeitige `404` liefern, obwohl der neue Task wenige Sekunden später gesund ist; Release-Wrapper sollen diesen Zeitraum mit bounded Retries statt mit einem Sofort-Abbruch behandeln.
 - Erkenntnis aus dem Studio-Release vom 28. April 2026: eine erfolgreich in GitHub gelaufene `Studio Image Verify`-Evidenz ist fachlich gleichwertig zu lokal erzeugten Verify-Artefakten; ein reiner Lookup auf `artifacts/runtime/image-verify` erzeugt sonst Warnrauschen.
@@ -359,7 +359,7 @@ Deploy-Reports unter `artifacts/runtime/deployments/` sind die primäre Diagnose
 - Runtime-Profil, Stack und Endpoint
 - Pflicht- und ableitbare Runtime-Schlüssel
 - Gate-Ergebnisse für Precheck, Migration, Deploy, interne Verifikation und externe Smokes
-- explizite Evidenz für `app-db-principal`, Ingress-Konsistenz, Tenant-Auth-Proof und gegebenenfalls Live-Paritaets-Reuse bei bereits laufendem Ziel-Digest
+- explizite Evidenz für `app-db-principal`, Ingress-Konsistenz, Tenant-Auth-Proof und gegebenenfalls Live-Paritäts-Reuse bei bereits laufendem Ziel-Digest
 - Drift- und Ingress-Evidenz für die `app`-Service-Spec (Image, Netzwerke, Traefik-Labels, fehlende Env-/Secret-Schlüssel)
 - Rollback-Hinweis
 

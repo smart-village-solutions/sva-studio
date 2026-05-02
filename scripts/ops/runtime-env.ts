@@ -110,6 +110,35 @@ type TenantRuntimeTargetResolution = Readonly<{
   targets: readonly TenantRuntimeTarget[];
 }>;
 
+type GithubArtifactRecord = Readonly<{
+  expired?: boolean;
+  id?: number;
+  name?: string;
+  workflow_run?: {
+    id?: number;
+  };
+}>;
+
+type GithubVerifyArtifactEvidence = Readonly<{
+  imageRef: string;
+  reportId?: string;
+  status: 'ok';
+}>;
+
+type GithubVerifyEvidenceOptions = Readonly<{
+  commandExistsImpl?: (commandName: string) => boolean;
+  imageTag?: string;
+  readArtifactEvidenceImpl?: (args: {
+    artifactId?: number;
+    artifactName: string;
+    imageDigest: string;
+    owner: string;
+    repo: string;
+    runId: number;
+  }) => GithubVerifyArtifactEvidence | undefined;
+  runCaptureImpl?: typeof runCapture;
+}>;
+
 type LocalState = {
   command?: string;
   launcher?: 'local-dev-server-runner';
@@ -963,11 +992,79 @@ const readLocalStudioImageVerifyEvidence = (imageDigest?: string): StudioImageVe
   return undefined;
 };
 
+const sanitizeVerifyArtifactSuffix = (value: string) =>
+  value.replaceAll(/[^A-Za-z0-9._ -]+/gu, '-').replaceAll(/\s+/gu, '-').replaceAll(/-+/gu, '-').replaceAll(/^-|-$/gu, '');
+
+const collectJsonFilesRecursively = (directory: string): string[] => {
+  const files: string[] = [];
+
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    const entryPath = resolve(directory, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...collectJsonFilesRecursively(entryPath));
+      continue;
+    }
+
+    if (entry.isFile() && entry.name.endsWith('.json')) {
+      files.push(entryPath);
+    }
+  }
+
+  return files;
+};
+
+const readGithubVerifyArtifactEvidence = ({
+  artifactName,
+  imageDigest,
+  runId,
+}: {
+  artifactName: string;
+  imageDigest: string;
+  runId: number;
+}): GithubVerifyArtifactEvidence | undefined => {
+  const downloadDir = mkdtempSync(resolve(tmpdir(), 'sva-studio-image-verify-'));
+
+  try {
+    run('gh', ['run', 'download', String(runId), '--name', artifactName, '--dir', downloadDir]);
+
+    for (const reportPath of collectJsonFilesRecursively(downloadDir)) {
+      try {
+        const report = JSON.parse(readFileSync(reportPath, 'utf8')) as {
+          imageRef?: unknown;
+          reportId?: unknown;
+          status?: unknown;
+        };
+        const imageRef = typeof report.imageRef === 'string' ? report.imageRef : undefined;
+        const status = report.status === 'ok' ? 'ok' : undefined;
+        if (status === 'ok' && imageRef?.includes(imageDigest)) {
+          return {
+            imageRef,
+            reportId: typeof report.reportId === 'string' ? report.reportId : artifactName,
+            status,
+          };
+        }
+      } catch {
+        // Ignore malformed files inside downloaded artifacts and continue scanning.
+      }
+    }
+  } catch {
+    return undefined;
+  } finally {
+    rmSync(downloadDir, { force: true, recursive: true });
+  }
+
+  return undefined;
+};
+
 export const tryReadGithubStudioImageVerifyEvidence = (
   imageDigest?: string,
-  runCaptureImpl: typeof runCapture = runCapture,
+  options: GithubVerifyEvidenceOptions = {},
 ): StudioImageVerifyEvidence | undefined => {
-  if (!imageDigest || !commandExists('gh')) {
+  const commandExistsImpl = options.commandExistsImpl ?? commandExists;
+  const runCaptureImpl = options.runCaptureImpl ?? runCapture;
+  const readArtifactEvidenceImpl = options.readArtifactEvidenceImpl ?? readGithubVerifyArtifactEvidence;
+
+  if (!imageDigest || !commandExistsImpl('gh')) {
     return undefined;
   }
 
@@ -981,48 +1078,66 @@ export const tryReadGithubStudioImageVerifyEvidence = (
     }
 
     const digestShort = imageDigest.replace(/^sha256:/, '').slice(0, 12);
-    const artifactOutput = runCaptureImpl('gh', ['api', `repos/${owner}/${repo}/actions/artifacts?per_page=100`]);
-    const artifactPayload = JSON.parse(artifactOutput) as {
-      artifacts?: Array<{
-        expired?: boolean;
-        name?: string;
-        workflow_run?: {
-          id?: number;
-        };
-      }>;
-    };
-    const matchingArtifacts =
-      artifactPayload.artifacts?.filter((artifact) => {
+    const artifactPrefixes = new Set([`studio-image-verify-${digestShort}-`]);
+    const sanitizedImageTag = options.imageTag ? sanitizeVerifyArtifactSuffix(options.imageTag) : '';
+    if (sanitizedImageTag) {
+      artifactPrefixes.add(`studio-image-verify-${sanitizedImageTag}-`);
+    }
+
+    for (let page = 1; page <= 10; page += 1) {
+      const artifactOutput = runCaptureImpl('gh', ['api', `repos/${owner}/${repo}/actions/artifacts?per_page=100&page=${page}`]);
+      const artifactPayload = JSON.parse(artifactOutput) as {
+        artifacts?: GithubArtifactRecord[];
+      };
+      const artifacts = artifactPayload.artifacts ?? [];
+      const matchingArtifacts = artifacts.filter((artifact) => {
         if (artifact.expired || typeof artifact.name !== 'string' || !artifact.workflow_run?.id) {
           return false;
         }
 
-        return artifact.name.startsWith(`studio-image-verify-${digestShort}-`);
-      }) ?? [];
+        return Array.from(artifactPrefixes).some((prefix) => artifact.name?.startsWith(prefix));
+      });
 
-    for (const matchingArtifact of matchingArtifacts) {
-      const runId = matchingArtifact.workflow_run?.id;
-      if (!runId) {
-        continue;
+      for (const matchingArtifact of matchingArtifacts) {
+        const runId = matchingArtifact.workflow_run?.id;
+        if (!runId || typeof matchingArtifact.name !== 'string') {
+          continue;
+        }
+
+        const runOutput = runCaptureImpl('gh', ['run', 'view', String(runId), '--json', 'conclusion,url,workflowName']);
+        const runPayload = JSON.parse(runOutput) as {
+          conclusion?: string;
+          url?: string;
+          workflowName?: string;
+        };
+        if (runPayload.conclusion !== 'success' || runPayload.workflowName !== 'Studio Image Verify') {
+          continue;
+        }
+
+        const artifactEvidence = readArtifactEvidenceImpl({
+          artifactId: matchingArtifact.id,
+          artifactName: matchingArtifact.name,
+          imageDigest,
+          owner,
+          repo,
+          runId,
+        });
+        if (!artifactEvidence || !artifactEvidence.imageRef.includes(imageDigest)) {
+          continue;
+        }
+
+        return {
+          imageRef: artifactEvidence.imageRef,
+          path: runPayload.url ?? `https://github.com/${owner}/${repo}/actions/runs/${runId}`,
+          reportId: artifactEvidence.reportId ?? matchingArtifact.name,
+          source: 'github-artifact',
+          status: artifactEvidence.status,
+        };
       }
 
-      const runOutput = runCaptureImpl('gh', ['run', 'view', String(runId), '--json', 'conclusion,url,workflowName']);
-      const runPayload = JSON.parse(runOutput) as {
-        conclusion?: string;
-        url?: string;
-        workflowName?: string;
-      };
-      if (runPayload.conclusion !== 'success' || runPayload.workflowName !== 'Studio Image Verify') {
-        continue;
+      if (artifacts.length < 100) {
+        break;
       }
-
-      return {
-        imageRef: `ghcr.io/smart-village-solutions/sva-studio@${imageDigest}`,
-        path: runPayload.url ?? `https://github.com/${owner}/${repo}/actions/runs/${runId}`,
-        reportId: matchingArtifact.name,
-        source: 'github-artifact',
-        status: 'ok',
-      };
     }
   } catch {
     return undefined;
@@ -1031,8 +1146,14 @@ export const tryReadGithubStudioImageVerifyEvidence = (
   return undefined;
 };
 
-export const readStudioImageVerifyEvidence = (imageDigest?: string): StudioImageVerifyEvidence | undefined =>
-  readLocalStudioImageVerifyEvidence(imageDigest) ?? tryReadGithubStudioImageVerifyEvidence(imageDigest);
+export const readStudioImageVerifyEvidence = (
+  imageDigest?: string,
+  options?: {
+    readonly imageTag?: string;
+  },
+): StudioImageVerifyEvidence | undefined =>
+  readLocalStudioImageVerifyEvidence(imageDigest) ??
+  tryReadGithubStudioImageVerifyEvidence(imageDigest, { imageTag: options?.imageTag });
 
 export const buildStudioImageVerifyEvidenceCheck = (
   runtimeProfile: RemoteRuntimeProfile,
@@ -1049,7 +1170,9 @@ export const buildStudioImageVerifyEvidenceCheck = (
     );
   }
 
-  const evidence = readStudioImageVerifyEvidence(imageDigest);
+  const evidence = readStudioImageVerifyEvidence(imageDigest, {
+    imageTag: options?.imageTag ?? env.SVA_IMAGE_TAG?.trim(),
+  });
   if (!evidence) {
     return toDoctorCheck(
       'studio-image-verify-evidence',
@@ -4014,25 +4137,21 @@ const runInternalVerify = async (runtimeProfile: RemoteRuntimeProfile, env: Node
     lastDoctorReport = doctorReport;
     lastProbes = probes;
 
-    const hasRetryableWarmupOnlyErrors = shouldRetryInternalVerify(
+    const shouldRetry = shouldRetryInternalVerifyAttempt({
       doctorReport,
+      probes,
       retryableWarmupChecks,
       retryableWarmupSignals,
-    );
-    const failingProbes = probes.filter((probe) => probe.status === 'error');
-    const hasRetryableWarmupOnlyProbeFailures =
-      failingProbes.length > 0 && failingProbes.every((probe) => shouldRetryInternalProbeFailure(probe));
-    const probesFailed = failingProbes.length > 0;
-    const doctorFailed = doctorReport.status === 'error';
+    });
 
-    if (!doctorFailed && !probesFailed) {
+    if (doctorReport.status !== 'error' && probes.every((probe) => probe.status !== 'error')) {
       return {
         doctorReport,
         probes,
       };
     }
 
-    if (attempt < maxAttempts && (hasRetryableWarmupOnlyErrors || hasRetryableWarmupOnlyProbeFailures)) {
+    if (attempt < maxAttempts && shouldRetry) {
       await wait(retryDelayMs);
       continue;
     }
@@ -4093,6 +4212,42 @@ export const shouldRetryInternalVerify = (
 
     return checkContainsRetryableWarmupSignal(check, retryableWarmupSignals);
   });
+};
+
+export const shouldRetryInternalVerifyAttempt = ({
+  doctorReport,
+  probes,
+  retryableWarmupChecks = new Set([
+    'health-live',
+    'health-ready',
+    'auth-login',
+    'auth-me',
+    'tenant-auth-proof',
+    'app-db-principal',
+  ]),
+  retryableWarmupSignals = ['404', '502', '503', '504', 'timeout', 'timed out', 'gateway'],
+}: {
+  doctorReport: DoctorReport;
+  probes: readonly AcceptanceProbeResult[];
+  retryableWarmupChecks?: ReadonlySet<string>;
+  retryableWarmupSignals?: readonly string[];
+}) => {
+  const failingProbes = probes.filter((probe) => probe.status === 'error');
+  const doctorFailed = doctorReport.status === 'error';
+  const probesFailed = failingProbes.length > 0;
+
+  if (!doctorFailed && !probesFailed) {
+    return false;
+  }
+
+  const hasRetryableWarmupOnlyErrors = doctorFailed
+    ? shouldRetryInternalVerify(doctorReport, new Set(retryableWarmupChecks), retryableWarmupSignals)
+    : true;
+  const hasRetryableWarmupOnlyProbeFailures = probesFailed
+    ? failingProbes.every((probe) => shouldRetryInternalProbeFailure(probe))
+    : true;
+
+  return hasRetryableWarmupOnlyErrors && hasRetryableWarmupOnlyProbeFailures;
 };
 
 export const shouldRetryInternalProbeFailure = (probe: AcceptanceProbeResult) => {

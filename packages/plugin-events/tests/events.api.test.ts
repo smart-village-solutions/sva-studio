@@ -2,6 +2,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { createEvent, EventsApiError, listEvents, listPoiForEventSelection } from '../src/events.api.js';
 
+const defaultListQuery = {
+  page: 1,
+  pageSize: 25,
+} as const;
+
 describe('events api', () => {
   afterEach(() => {
     vi.unstubAllGlobals();

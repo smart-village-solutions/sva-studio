@@ -9,8 +9,12 @@ import { NEWS_CONTENT_TYPE } from '../src/plugin.js';
 
 vi.mock('../src/news.api.js', () => ({
   NewsApiError: class NewsApiError extends Error {
-    public constructor(public readonly code: string) {
-      super(code);
+    public constructor(
+      public readonly code: string,
+      message = code
+    ) {
+      super(message);
+      this.name = 'NewsApiError';
     }
   },
   listNews: vi.fn(async () => ({

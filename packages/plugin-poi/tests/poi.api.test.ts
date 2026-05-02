@@ -2,6 +2,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { createPoi, listPoi, PoiApiError } from '../src/poi.api.js';
 
+const defaultListQuery = {
+  page: 1,
+  pageSize: 25,
+} as const;
+
 describe('poi api', () => {
   afterEach(() => {
     vi.unstubAllGlobals();

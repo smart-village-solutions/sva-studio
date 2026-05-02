@@ -285,7 +285,12 @@ const normalizePluginRoutePathForGuardrails = (path: string): string => {
     return normalizedPath;
   }
 
-  return normalizedPath.replace(/\/+$/, '');
+  let end = normalizedPath.length;
+  while (end > 1 && normalizedPath.charCodeAt(end - 1) === 47) {
+    end -= 1;
+  }
+
+  return normalizedPath.slice(0, end);
 };
 
 const isAsciiLetter = (character: string): boolean => {

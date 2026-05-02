@@ -124,6 +124,23 @@ const mockSharedShellRequests = async (page: Page) => {
 
 const createdAt = '2026-04-13T12:10:00.000Z';
 
+const paginateRecords = <T extends { readonly id: string }>(items: readonly T[], request: Request) => {
+  const url = new URL(request.url());
+  const page = Math.max(1, Number.parseInt(url.searchParams.get('page') ?? '1', 10) || 1);
+  const requestedPageSize = Number.parseInt(url.searchParams.get('pageSize') ?? '25', 10) || 25;
+  const pageSize = [25, 50, 100].includes(requestedPageSize) ? requestedPageSize : 25;
+  const start = (page - 1) * pageSize;
+
+  return {
+    data: items.slice(start, start + pageSize),
+    pagination: {
+      page,
+      pageSize,
+      hasNextPage: start + pageSize < items.length,
+    },
+  };
+};
+
 const routeEvents = async (route: Route, events: EventRecord[]) => {
   const request = route.request();
   const method = request.method();
@@ -131,7 +148,11 @@ const routeEvents = async (route: Route, events: EventRecord[]) => {
 
   if (path === '/api/v1/mainserver/events') {
     if (method === 'GET') {
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: events }) });
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(paginateRecords(events, request)),
+      });
       return;
     }
     if (method === 'POST') {
@@ -202,7 +223,11 @@ const routePoi = async (route: Route, pois: PoiRecord[]) => {
 
   if (path === '/api/v1/mainserver/poi') {
     if (method === 'GET') {
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: pois }) });
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(paginateRecords(pois, request)),
+      });
       return;
     }
     if (method === 'POST') {

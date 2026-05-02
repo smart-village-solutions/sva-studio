@@ -5,6 +5,7 @@ import {
   createStandardContentPluginContribution,
   type PluginDefinition,
 } from '@sva/plugin-sdk';
+import { getStudioModuleIamContract } from '@sva/studio-module-iam';
 
 import { POI_CONTENT_TYPE } from './poi.constants.js';
 
@@ -23,6 +24,14 @@ const standardPoiContribution = createStandardContentPluginContribution({
 export const pluginPoiPermissionDefinitions = standardPoiContribution.permissions;
 
 export const pluginPoiActionDefinitions = standardPoiContribution.actions;
+const pluginPoiModuleIam = getStudioModuleIamContract('poi');
+const pluginPoiModuleIamDefinition = pluginPoiModuleIam
+  ? {
+      moduleId: pluginPoiModuleIam.moduleId,
+      permissionIds: pluginPoiModuleIam.permissionIds,
+      systemRoles: pluginPoiModuleIam.systemRoles,
+    }
+  : undefined;
 
 export const pluginPoiMediaPickers = {
   teaserImage: defineMediaPickerDefinition({
@@ -39,7 +48,7 @@ export const pluginPoi: PluginDefinition = {
   navigation: standardPoiContribution.navigation,
   actions: pluginPoiActionDefinitions,
   permissions: pluginPoiPermissionDefinitions,
-  moduleIam: standardPoiContribution.moduleIam,
+  moduleIam: pluginPoiModuleIamDefinition ?? standardPoiContribution.moduleIam,
   contentTypes: standardPoiContribution.contentTypes,
   adminResources: standardPoiContribution.adminResources,
   auditEvents: definePluginAuditEvents('poi', []),

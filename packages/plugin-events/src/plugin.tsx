@@ -5,6 +5,7 @@ import {
   createStandardContentPluginContribution,
   type PluginDefinition,
 } from '@sva/plugin-sdk';
+import { getStudioModuleIamContract } from '@sva/studio-module-iam';
 
 import { EVENTS_CONTENT_TYPE } from './events.constants.js';
 
@@ -23,6 +24,14 @@ const standardEventsContribution = createStandardContentPluginContribution({
 export const pluginEventsPermissionDefinitions = standardEventsContribution.permissions;
 
 export const pluginEventsActionDefinitions = standardEventsContribution.actions;
+const pluginEventsModuleIam = getStudioModuleIamContract('events');
+const pluginEventsModuleIamDefinition = pluginEventsModuleIam
+  ? {
+      moduleId: pluginEventsModuleIam.moduleId,
+      permissionIds: pluginEventsModuleIam.permissionIds,
+      systemRoles: pluginEventsModuleIam.systemRoles,
+    }
+  : undefined;
 
 export const pluginEventsMediaPickers = {
   headerImage: defineMediaPickerDefinition({
@@ -39,7 +48,7 @@ export const pluginEvents: PluginDefinition = {
   navigation: standardEventsContribution.navigation,
   actions: pluginEventsActionDefinitions,
   permissions: pluginEventsPermissionDefinitions,
-  moduleIam: standardEventsContribution.moduleIam,
+  moduleIam: pluginEventsModuleIamDefinition ?? standardEventsContribution.moduleIam,
   contentTypes: standardEventsContribution.contentTypes,
   adminResources: standardEventsContribution.adminResources,
   auditEvents: definePluginAuditEvents('events', []),

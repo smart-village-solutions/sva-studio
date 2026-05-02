@@ -5,6 +5,7 @@ import {
   createStandardContentPluginContribution,
   type PluginDefinition,
 } from '@sva/plugin-sdk';
+import { getStudioModuleIamContract } from '@sva/studio-module-iam';
 
 import { NEWS_CONTENT_TYPE } from './news.constants.js';
 export { NEWS_CONTENT_TYPE } from './news.constants.js';
@@ -32,6 +33,14 @@ const standardNewsContribution = createStandardContentPluginContribution({
 export const pluginNewsPermissionDefinitions = standardNewsContribution.permissions;
 
 export const pluginNewsActionDefinitions = standardNewsContribution.actions;
+const pluginNewsModuleIam = getStudioModuleIamContract('news');
+const pluginNewsModuleIamDefinition = pluginNewsModuleIam
+  ? {
+      moduleId: pluginNewsModuleIam.moduleId,
+      permissionIds: pluginNewsModuleIam.permissionIds,
+      systemRoles: pluginNewsModuleIam.systemRoles,
+    }
+  : undefined;
 
 export const pluginNewsMediaPickers = {
   teaserImage: defineMediaPickerDefinition({
@@ -57,7 +66,7 @@ export const pluginNews: PluginDefinition = {
   navigation: standardNewsContribution.navigation,
   actions: pluginNewsActionDefinitions,
   permissions: pluginNewsPermissionDefinitions,
-  moduleIam: standardNewsContribution.moduleIam,
+  moduleIam: pluginNewsModuleIamDefinition ?? standardNewsContribution.moduleIam,
   contentTypes: standardNewsContribution.contentTypes,
   adminResources: standardNewsContribution.adminResources,
   auditEvents: definePluginAuditEvents('news', []),

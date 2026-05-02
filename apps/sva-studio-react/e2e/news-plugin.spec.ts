@@ -98,6 +98,24 @@ const mockSharedShellRequests = async (page: Page) => {
   });
 };
 
+const paginateRecords = <T extends { readonly id: string }>(items: readonly T[], request: Request) => {
+  const url = new URL(request.url());
+  const page = Math.max(1, Number.parseInt(url.searchParams.get('page') ?? '1', 10) || 1);
+  const requestedPageSize = Number.parseInt(url.searchParams.get('pageSize') ?? '25', 10) || 25;
+  const pageSize = [25, 50, 100].includes(requestedPageSize) ? requestedPageSize : 25;
+  const start = (page - 1) * pageSize;
+  const visibleItems = items.slice(start, start + pageSize);
+
+  return {
+    data: visibleItems,
+    pagination: {
+      page,
+      pageSize,
+      hasNextPage: start + pageSize < items.length,
+    },
+  };
+};
+
 const fulfillContentRoute = async (
   route: Route,
   newsItems: NewsRecord[],
@@ -112,7 +130,7 @@ const fulfillContentRoute = async (
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ data: newsItems }),
+      body: JSON.stringify(paginateRecords(newsItems, request)),
     });
     return;
   }
@@ -227,7 +245,7 @@ test.describe('news plugin', () => {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify({ data: newsItems }),
+          body: JSON.stringify(paginateRecords(newsItems, request)),
         });
         return;
       }
@@ -356,7 +374,7 @@ test.describe('news plugin', () => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ data: newsItems }),
+        body: JSON.stringify(paginateRecords(newsItems, route.request())),
       });
     });
 

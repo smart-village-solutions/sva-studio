@@ -279,8 +279,17 @@ const assertPluginPermissionReference = (
   }
 };
 
-const isStandardCrudPluginRoute = (pluginNamespace: string, path: string): boolean => {
+const normalizePluginRoutePathForGuardrails = (path: string): string => {
   const normalizedPath = path.trim();
+  if (normalizedPath.length <= 1) {
+    return normalizedPath;
+  }
+
+  return normalizedPath.replace(/\/+$/, '');
+};
+
+const isStandardCrudPluginRoute = (pluginNamespace: string, path: string): boolean => {
+  const normalizedPath = normalizePluginRoutePathForGuardrails(path);
   const pluginRoot = `/plugins/${pluginNamespace}`;
 
   if (normalizedPath === pluginRoot || normalizedPath === `${pluginRoot}/new`) {

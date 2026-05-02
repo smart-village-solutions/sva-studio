@@ -719,4 +719,41 @@ describe('admin resource routes', () => {
       () => readRouteOptions(routeMap.get('/content/$contentId')).beforeLoad?.({ href: '/content/content-7' })
     ).toThrow(expect.objectContaining({ href: '/admin/editorial-content/content-7', __redirect: true }));
   });
+
+  it('redirects legacy plugin CRUD aliases to the migrated admin resource routes', () => {
+    const routeFactories = createLegacyContentAliasFactories([
+      {
+        resourceId: 'news.content',
+        basePath: 'news',
+        titleKey: 'news.navigation.title',
+        guard: 'content',
+        views: {
+          list: { bindingKey: 'content' },
+          create: { bindingKey: 'contentCreate' },
+          detail: { bindingKey: 'contentDetail' },
+        },
+        contentUi: {
+          contentType: 'news.article',
+          bindings: {
+            list: { bindingKey: 'newsList' },
+            detail: { bindingKey: 'newsDetail' },
+            editor: { bindingKey: 'newsEditor' },
+          },
+        },
+      } as never,
+    ]);
+    const rootRoute = { id: 'root' };
+    const routes = routeFactories.map((factory) => factory(rootRoute as never));
+    const routeMap = new Map(routes.map((route) => [String(readRouteOptions(route).path), route]));
+
+    expect(() => readRouteOptions(routeMap.get('/plugins/news')).beforeLoad?.({ href: '/plugins/news?page=2' })).toThrow(
+      expect.objectContaining({ href: '/admin/news?page=2', __redirect: true })
+    );
+    expect(
+      () => readRouteOptions(routeMap.get('/plugins/news/new')).beforeLoad?.({ href: '/plugins/news/new?mode=copy' })
+    ).toThrow(expect.objectContaining({ href: '/admin/news/new?mode=copy', __redirect: true }));
+    expect(
+      () => readRouteOptions(routeMap.get('/plugins/news/$contentId')).beforeLoad?.({ href: '/plugins/news/news-7' })
+    ).toThrow(expect.objectContaining({ href: '/admin/news/news-7', __redirect: true }));
+  });
 });

@@ -3,6 +3,7 @@ import { createRoute, redirect, type RootRoute } from '@tanstack/react-router';
 
 import {
   LEGACY_CONTENT_ALIAS_PREFIX,
+  coreContentAdminResource,
   normalizeLegacyContentHref,
   readBeforeLoadHref,
   resolveCanonicalContentAdminRoutePath,
@@ -240,16 +241,52 @@ export const createAdminResourceRouteFactories = (
 export const createLegacyContentAliasFactories = (
   resources: readonly AdminResourceDefinition[] = []
 ): readonly AppRouteFactory[] => {
+  const pluginContentAliasResources = resources.filter(
+    (resource) => resource.guard === 'content' && resource.contentUi && resource.basePath !== coreContentAdminResource.basePath
+  );
   const aliasPaths = [LEGACY_CONTENT_ALIAS_PREFIX, toAdminCreateRoutePath(LEGACY_CONTENT_ALIAS_PREFIX), '/content/$contentId'] as const;
   const canonicalContentPath = resolveCanonicalContentAdminRoutePath(resources);
+  const pluginCrudAliasDefinitions = pluginContentAliasResources.flatMap((resource) => {
+    const pluginAliasPrefix = `/plugins/${resource.basePath}`;
+    const canonicalAdminPath = toAdminRoutePath(resource.basePath);
 
-  return aliasPaths.map((path) => (rootRoute: RootRoute) =>
+    return [
+      { aliasPath: pluginAliasPrefix, canonicalPath: canonicalAdminPath },
+      { aliasPath: `${pluginAliasPrefix}/new`, canonicalPath: `${canonicalAdminPath}/new` },
+      {
+        aliasPath: `${pluginAliasPrefix}/$contentId`,
+        canonicalPath: canonicalAdminPath,
+        dynamicPrefix: `${pluginAliasPrefix}/`,
+      },
+    ] as const;
+  });
+
+  return [
+    ...aliasPaths.map((path) => ({
+      path,
+      resolveHref: (href: string) => normalizeLegacyContentHref(href, canonicalContentPath),
+    })),
+    ...pluginCrudAliasDefinitions.map((definition) => ({
+      path: definition.aliasPath,
+      resolveHref: (href: string) =>
+        href === definition.aliasPath || href.startsWith(`${definition.aliasPath}?`)
+          ? href.replace(definition.aliasPath, definition.canonicalPath)
+          : href === `${definition.aliasPath}/new` || href.startsWith(`${definition.aliasPath}/new?`)
+            ? href.replace(`${definition.aliasPath}/new`, `${definition.canonicalPath}/new`)
+            : 'dynamicPrefix' in definition && href.startsWith(definition.dynamicPrefix)
+              ? href.replace(definition.dynamicPrefix, `${definition.canonicalPath}/`)
+            : href.startsWith(`${definition.aliasPath}/`)
+              ? href.replace(`${definition.aliasPath}/`, `${definition.canonicalPath}/`)
+              : definition.canonicalPath,
+    })),
+  ].map(({ path, resolveHref }) => (rootRoute: RootRoute) =>
     createRoute({
       getParentRoute: () => rootRoute,
       path,
       beforeLoad: (options) => {
-        throw redirect({ href: normalizeLegacyContentHref(readBeforeLoadHref(options), canonicalContentPath) });
+        throw redirect({ href: resolveHref(readBeforeLoadHref(options)) });
       },
       component: () => null,
-    }));
+    })
+  );
 };

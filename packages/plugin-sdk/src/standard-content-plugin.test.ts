@@ -89,7 +89,7 @@ describe('standard content plugin helpers', () => {
       permissions: {
         list: ['events.read'],
         create: ['events.create'],
-        detail: ['events.read', 'events.update'],
+        detail: ['events.read'],
       },
       capabilities: {
         list: {
@@ -110,6 +110,19 @@ describe('standard content plugin helpers', () => {
         },
       },
     });
+  });
+
+  it('keeps detail access readable for read-only roles', () => {
+    expect(
+      createStandardContentAdminResource({
+        pluginId: 'news',
+        titleKey: 'news.navigation.title',
+        contentType: 'news.article',
+        listBindingKey: 'newsList',
+        detailBindingKey: 'newsDetail',
+        editorBindingKey: 'newsEditor',
+      }).permissions?.detail
+    ).toEqual(['news.read']);
   });
 
   it('builds a complete standard plugin contribution without plugin-to-plugin coupling', () => {

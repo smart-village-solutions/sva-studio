@@ -555,6 +555,41 @@ describe('plugin registries', () => {
         },
       ])
     ).toThrow('plugin_guardrail_route_bypass:news:news.list:path');
+
+    expect(() =>
+      createPluginRegistry([
+        {
+          ...newsPlugin,
+          routes: [
+            {
+              id: 'news.trailing-slash',
+              path: '/plugins/news/',
+              guard: 'news.read',
+              component,
+            },
+          ],
+          adminResources: definePluginAdminResources('news', [
+            {
+              resourceId: 'news.content',
+              basePath: 'news',
+              titleKey: 'news.navigation.title',
+              guard: 'content',
+              views: {
+                list: { bindingKey: 'content' },
+                create: { bindingKey: 'contentCreate' },
+                detail: { bindingKey: 'contentDetail' },
+              },
+              contentUi: {
+                contentType: 'news.article',
+                bindings: {
+                  list: { bindingKey: 'news.list' },
+                },
+              },
+            },
+          ]),
+        },
+      ])
+    ).toThrow('plugin_guardrail_route_bypass:news:news.trailing-slash:path');
   });
 
   it('rejects plugin authorization, audit, persistence and dynamic-registration bypass fields', () => {

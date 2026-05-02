@@ -16,6 +16,11 @@ import {
   toAdminHistoryRoutePath,
   toAdminRoutePath,
 } from './admin-resource-route-paths.js';
+import {
+  createMemoizedUserContext,
+  ensureAssignedModule,
+  ensureRequiredPermissions,
+} from './admin-resource-authorization.js';
 import { createAccountUiRouteGuard, type AccountUiRouteGuardKey } from './account-ui.routes.js';
 import { normalizeAdminResourceListSearch } from './admin-resource-search-params.js';
 import type { AppRouteBindings, AppRouteFactory } from './app.routes.shared.js';
@@ -107,35 +112,6 @@ const adminResourceGuardMap = {
 const resolveAdminResourceGuard = (resource: AdminResourceDefinition, routeKind: AdminResourceRouteKind): AccountUiRouteGuardKey =>
   adminResourceGuardMap[resource.guard][routeKind];
 
-const ensureAssignedModule = async (
-  resource: AdminResourceDefinition,
-  user: { assignedModules?: readonly string[] } | null | undefined
-): Promise<void> => {
-  if (!resource.moduleId) {
-    return;
-  }
-
-  if (!user?.assignedModules?.includes(resource.moduleId)) {
-    throw redirect({ href: '/?error=auth.insufficientRole' });
-  }
-};
-
-const ensureRequiredPermissions = async (
-  resource: AdminResourceDefinition,
-  routeKind: AdminResourceRouteKind,
-  user: { permissionActions?: readonly string[] } | null | undefined
-): Promise<void> => {
-  const requiredPermissions = resource.permissions?.[routeKind];
-  if (!requiredPermissions || requiredPermissions.length === 0) {
-    return;
-  }
-
-  const grantedPermissions = new Set(user?.permissionActions ?? []);
-  if (requiredPermissions.some((permission) => !grantedPermissions.has(permission))) {
-    throw redirect({ href: '/?error=auth.insufficientRole' });
-  }
-};
-
 const createAdminResourceRouteDefinitions = (
   bindings: AppRouteBindings,
   resources: readonly AdminResourceDefinition[]
@@ -200,34 +176,8 @@ export const createAdminResourceRouteFactories = (
           getParentRoute: () => rootRoute,
           path: definition.path,
           beforeLoad: async (beforeLoadOptions) => {
-            let cachedUserPromise: Promise<
-              | {
-                  assignedModules?: readonly string[];
-                  permissionActions?: readonly string[];
-                }
-              | null
-              | undefined
-            > | null = null;
-            const getUser = async () => {
-              cachedUserPromise ??= Promise.resolve(beforeLoadOptions.context?.auth?.getUser?.());
-              return await cachedUserPromise;
-            };
-            const memoizedBeforeLoadOptions = {
-              ...beforeLoadOptions,
-              context: {
-                ...beforeLoadOptions.context,
-                auth: beforeLoadOptions.context?.auth
-                  ? {
-                      ...beforeLoadOptions.context.auth,
-                      getUser,
-                    }
-                  : {
-                      getUser,
-                    },
-              },
-            };
-
-            await guard(memoizedBeforeLoadOptions);
+            const { getUser, options } = createMemoizedUserContext(beforeLoadOptions);
+            await guard(options);
             const user = await getUser();
             await ensureAssignedModule(definition.resource, user);
             await ensureRequiredPermissions(definition.resource, definition.routeKind, user);

@@ -101,12 +101,6 @@ export const pluginPoi: PluginDefinition = {
           next: 'Weiter',
         },
         empty: { title: 'Noch keine POI vorhanden', description: 'Legen Sie den ersten POI an.' },
-        pagination: {
-          ariaLabel: 'POI-Pagination',
-          previous: 'Zurück',
-          next: 'Weiter',
-          pageLabel: 'Seite {{page}}',
-        },
         validation: {
           name: 'Der Name ist erforderlich.',
           webUrls: 'URLs müssen mit https:// beginnen.',
@@ -173,12 +167,6 @@ export const pluginPoi: PluginDefinition = {
           next: 'Next',
         },
         empty: { title: 'No POI yet', description: 'Create the first POI.' },
-        pagination: {
-          ariaLabel: 'POI pagination',
-          previous: 'Previous',
-          next: 'Next',
-          pageLabel: 'Page {{page}}',
-        },
         validation: {
           name: 'Name is required.',
           webUrls: 'URLs must start with https://.',

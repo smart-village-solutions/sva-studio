@@ -191,12 +191,6 @@ export const pluginNews: PluginDefinition = {
           title: 'News',
           description: 'Manage news entries through the plugin.',
         },
-        pagination: {
-          ariaLabel: 'News pages',
-          pageLabel: 'Page {{page}}',
-          previous: 'Previous',
-          next: 'Next',
-        },
         editor: {
           createTitle: 'Create news entry',
           createDescription: 'Create a new news entry.',

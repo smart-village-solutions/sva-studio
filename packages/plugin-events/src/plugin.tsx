@@ -102,12 +102,6 @@ export const pluginEvents: PluginDefinition = {
           next: 'Weiter',
         },
         empty: { title: 'Noch keine Events vorhanden', description: 'Legen Sie das erste Event an.' },
-        pagination: {
-          ariaLabel: 'Events-Pagination',
-          previous: 'Zurück',
-          next: 'Weiter',
-          pageLabel: 'Seite {{page}}',
-        },
         validation: {
           title: 'Der Titel ist erforderlich.',
           dates: 'Datumswerte müssen gültig sein.',
@@ -175,12 +169,6 @@ export const pluginEvents: PluginDefinition = {
           next: 'Next',
         },
         empty: { title: 'No events yet', description: 'Create the first event.' },
-        pagination: {
-          ariaLabel: 'Events pagination',
-          previous: 'Previous',
-          next: 'Next',
-          pageLabel: 'Page {{page}}',
-        },
         validation: {
           title: 'Title is required.',
           dates: 'Dates must be valid.',

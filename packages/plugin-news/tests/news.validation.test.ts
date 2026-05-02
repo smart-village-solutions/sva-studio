@@ -26,6 +26,15 @@ describe('validateNewsPayload', () => {
       })
     ).toEqual(['teaser', 'body', 'imageUrl', 'externalUrl', 'category']);
   });
+
+  it('counts visible text across html tags and whitespace', () => {
+    expect(
+      validateNewsPayload({
+        teaser: 'Kurztext',
+        body: '<p>Hallo <strong>Welt</strong></p>',
+      })
+    ).toEqual([]);
+  });
 });
 
 describe('validateNewsForm', () => {
@@ -72,5 +81,24 @@ describe('validateNewsForm', () => {
       'categories',
       'mediaContents',
     ]);
+  });
+
+  it('rejects missing content blocks explicitly', () => {
+    expect(
+      validateNewsForm({
+        title: 'Neue News',
+        publishedAt: '2026-04-13T09:00:00.000Z',
+      })
+    ).toEqual(['contentBlocks']);
+  });
+
+  it('rejects oversized content block bodies', () => {
+    expect(
+      validateNewsForm({
+        title: 'Neue News',
+        publishedAt: '2026-04-13T09:00:00.000Z',
+        contentBlocks: [{ body: `<p>${'x'.repeat(50_001)}</p>` }],
+      })
+    ).toEqual(['contentBlocks']);
   });
 });

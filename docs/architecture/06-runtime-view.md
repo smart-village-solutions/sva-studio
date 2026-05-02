@@ -16,14 +16,15 @@ Dieser Abschnitt beschreibt kritische Laufzeitszenarien und Interaktionen.
 
 1. App lädt `getRouter()` in `apps/sva-studio-react/src/router.tsx`
 2. Core-Route-Factories werden client- oder serverseitig geladen
-3. Der Host liest die statische Plugin-Liste und materialisiert Plugin-Routen aus `PluginDefinition`
-4. Core-/Auth-Runtime-Routen und Plugin-Routen werden zu einem gemeinsamen Route-Tree kombiniert
+3. Der Host liest die statische Plugin-Liste sowie deklarative Admin-Ressourcen und materialisiert daraus Plugin-Sonderrouten und host-owned Admin-Routen
+4. Core-/Auth-Runtime-Routen, host-owned Admin-Routen und verbleibende Plugin-Sonderrouten werden zu einem gemeinsamen Route-Tree kombiniert
 5. Router wird mit RouteTree und SSR-Kontext erstellt
 
 Fehlerpfad:
 
 - Fehlerhafte Route-Factory oder server-only Import im Client kann Build/Runtime brechen.
 - Plugin-Routen außerhalb `/plugins/<pluginNamespace>` oder mit unbekanntem Guard werden vor Veröffentlichung des Route-Trees mit deterministischem Guardrail-Code abgewiesen.
+- Standardisierte Content-Plugins dürfen zusätzlich keine parallelen CRUD-Hauptrouten unter `/plugins/<pluginNamespace>` veröffentlichen; dieser Bypass bricht den Build-time-Snapshot fail-fast.
 
 ### Szenario 1c: Plugin-Guardrail-Validierung beim Build-time-Snapshot
 
@@ -43,37 +44,39 @@ Fehlerpfad:
 
 1. Die App lädt neben Seiten-Bindings auch die statische Liste `appAdminResources`.
 2. `@sva/routing` validiert die Admin-Ressourcen gegen den Plugin-SDK-Vertrag und materialisiert daraus Listen-, Create- und Detailrouten.
-3. Der Host wendet den deklarativ referenzierten Guard auf alle Teilrouten der Ressource an.
-4. Legacy-Pfade wie `/content`, `/content/new` und `/content/$contentId` werden im Routing-Layer auf `/admin/content*` umgeleitet.
+3. Für Content-Ressourcen mit `contentUi` rendert der Host optionale plugin-spezifische `list`-, `detail`- oder `editor`-Bindings innerhalb einer host-owned Shell-Region; ohne Spezialisierung bleibt die generische Host-Ansicht aktiv.
+4. Der Host wendet den deklarativ referenzierten Guard auf alle Teilrouten der Ressource an.
+5. Legacy-Pfade wie `/content`, `/content/new` und `/content/$contentId` werden im Routing-Layer auf `/admin/content*` umgeleitet.
 
 Fehlerpfad:
 
 - Doppelte Ressourcen-IDs oder kollidierende Basispfade brechen die Registrierungsphase fail-fast ab.
+- `contentUi`-Ressourcen ohne registrierten `contentType` brechen den Build-time-Snapshot vor der Routenveröffentlichung fail-fast ab.
 - Ohne gültige Ressourcendefinition wird kein teilweise inkonsistenter Admin-Route-Baum veröffentlicht.
 
 ### Szenario 4a: Plugin-Registrierung und Mainserver-Content-CRUD
 
 1. Die App initialisiert `studioPlugins` und merged Plugin-Übersetzungen in die i18n-Ressourcen.
-2. Der Router materialisiert die Plugin-Routen für News, Events und POI, zum Beispiel `/plugins/news`, `/plugins/events` und `/plugins/poi`.
-3. Beim Aufruf der Route wendet der Host den registrierten Plugin-Guard an, zum Beispiel `news.read`, `events.read` oder `poi.read`.
+2. Der Router materialisiert host-owned Admin-Ressourcen für News, Events und POI unter `/admin/news`, `/admin/events` und `/admin/poi`.
+3. Beim Aufruf der Route wendet der Host den registrierten Plugin-Guard an, zum Beispiel `news.read`, `events.read` oder `poi.read`, und rendert optional die spezialisierte Plugin-Fläche innerhalb der Host-Shell.
 4. Die Fachlisten rufen ihre Host-Fassaden auf: `/api/v1/mainserver/news`, `/api/v1/mainserver/events` oder `/api/v1/mainserver/poi`; lokale IAM-Contents werden nicht mehr produktiv gelesen.
 5. Die Editoren senden Create-, Update- und Delete-Requests an die jeweilige Fassade und Detailroute.
 6. Die App-Fassade prüft Session, `instanceId`, plugin-spezifische IAM-Permission und Mainserver-Credentials serverseitig.
 7. `@sva/sva-mainserver/server` führt typisierte GraphQL-Operationen für News, Events und POI mit Benutzer-Credentials aus.
 8. News nutzt das vollständige Mainserver-Modell mit dedizierten Feldern; Events und POI nutzen eigene Mapping-Adapter für Termine, Adressen, Kontakte, URLs, Medien, Preise, Barrierefreiheit, Tags und POI-Bezug.
 9. Es gibt keinen Dual-Write und keine Legacy-Migration in lokale IAM-Contents.
-10. Nach erfolgreichem Speichern oder Löschen zeigt das Plugin Statusfeedback und navigiert zurück zur News-Liste.
+10. Nach erfolgreichem Speichern oder Löschen zeigt die host-owned Route Statusfeedback und navigiert zurück zur jeweiligen Admin-Liste.
 
 Fehlerpfad:
 
-- fehlt die Berechtigung, blendet die Shell Plugin-Navigation fail-closed aus, blockiert der Host die Plugin-Route vor dem Rendern oder verweigert die serverseitige Mutation mit `capability_authorization_denied` im Diagnosekontext.
+- fehlt die Berechtigung, blendet die Shell die Admin-Navigation fail-closed aus, blockiert der Host die Admin-Route vor dem Rendern oder verweigert die serverseitige Mutation mit `capability_authorization_denied` im Diagnosekontext.
 - ist das News-Input-Modell ungültig, enthält schreibgeschützte Felder oder fehlt `publishedAt`, antwortet die Mainserver-News-Fassade mit HTTP `400`.
 - schlägt ein API-Call fehl, zeigt das Plugin eine verständliche Fehlermeldung und behält den Formzustand.
 
 ### Szenario 4b: Plugin-Custom-View mit gemeinsamer Studio-UI
 
 1. Die App lädt das statisch registrierte Plugin und validiert dessen Routen, Admin-Ressourcen und Guard-Metadaten über `@sva/plugin-sdk`.
-2. Der Host materialisiert die Plugin-Route unter `/plugins/<pluginNamespace>` und bettet sie in die normale App-Shell ein.
+2. Der Host materialisiert entweder eine freie Plugin-Sonderroute unter `/plugins/<pluginNamespace>` oder eine host-owned Admin-Ressource mit spezialisierter Fachfläche und bettet beide Varianten in die normale App-Shell ein.
 3. Die Plugin-Komponente rendert ihre fachliche Oberfläche mit `@sva/studio-ui-react`-Bausteinen für Seitenstruktur, Formularfelder, Aktionen, Tabellen und Lade-/Fehlerzustände.
 4. Fachliche Datenzugriffe laufen über hostkontrollierte HTTP- oder Server-Funktionsverträge; die Custom-View erhält keine eigenen Host-Handler, Audit-Sinks oder Persistenzpfade.
 5. Die App- und Plugin-Lint-/Boundary-Checks verhindern App-interne UI-Imports und lokale Basis-Control-Duplikate in Plugin-Packages.

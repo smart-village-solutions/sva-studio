@@ -1,4 +1,5 @@
 import { metrics } from '@opentelemetry/api';
+import { createSdkLogger } from '@sva/server-runtime';
 import type { IdentityProviderPort } from '../identity-provider-port.js';
 import {
   KeycloakAdminClient,
@@ -10,6 +11,7 @@ import { createPoolResolver, type QueryClient, withResolvedInstanceDb } from '..
 import { resolveTenantAdminClientSecret } from '../config-tenant-secret.js';
 
 export const resolvePool = createPoolResolver(getIamDatabaseUrl);
+const logger = createSdkLogger({ component: 'iam-account-management', level: 'info' });
 
 let identityProviderCache:
   | IdentityProviderResolution
@@ -43,7 +45,11 @@ export const resolveIdentityProvider = () => {
       executionMode: 'platform_admin',
       getCircuitBreakerState: () => client.getCircuitBreakerState(),
     };
-  } catch {
+  } catch (error) {
+    logger.warn('Global identity provider resolution failed', {
+      reason_code: 'identity_provider_resolution_failed',
+      error_type: error instanceof Error ? error.constructor.name : typeof error,
+    });
     identityProviderCache = null;
   }
 
@@ -68,8 +74,21 @@ export const resolveIdentityProviderForInstance = async (
   | null
 > => {
   const executionMode = options.executionMode ?? 'tenant_admin';
-  const instance = await loadInstanceById(instanceId).catch(() => null);
+  const instance = await loadInstanceById(instanceId).catch((error: unknown) => {
+    logger.warn('Instance identity provider resolution failed while loading instance metadata', {
+      instance_id: instanceId,
+      reason_code: 'instance_lookup_failed',
+      error_type: error instanceof Error ? error.constructor.name : typeof error,
+      execution_mode: executionMode,
+    });
+    return null;
+  });
   if (!instance) {
+    logger.warn('Instance identity provider resolution returned no instance metadata', {
+      instance_id: instanceId,
+      reason_code: 'instance_not_found',
+      execution_mode: executionMode,
+    });
     return null;
   }
 
@@ -86,7 +105,13 @@ export const resolveIdentityProviderForInstance = async (
         executionMode,
         getCircuitBreakerState: () => client.getCircuitBreakerState(),
       };
-    } catch {
+    } catch (error) {
+      logger.warn('Instance identity provider resolution failed in break-glass mode', {
+        instance_id: instanceId,
+        reason_code: 'break_glass_resolution_failed',
+        error_type: error instanceof Error ? error.constructor.name : typeof error,
+        execution_mode: executionMode,
+      });
       return null;
     }
   }
@@ -96,6 +121,13 @@ export const resolveIdentityProviderForInstance = async (
     const resolvedSecret = tenantSecret.secret;
     const resolvedClientId = instance.tenantAdminClient?.clientId;
     if (!resolvedSecret || !resolvedClientId) {
+      logger.warn('Instance identity provider resolution returned incomplete tenant admin credentials', {
+        instance_id: instanceId,
+        reason_code: 'tenant_admin_credentials_incomplete',
+        execution_mode: executionMode,
+        has_client_id: Boolean(resolvedClientId),
+        has_client_secret: Boolean(resolvedSecret),
+      });
       return null;
     }
     const config = {
@@ -115,7 +147,13 @@ export const resolveIdentityProviderForInstance = async (
       executionMode,
       getCircuitBreakerState: () => client.getCircuitBreakerState(),
     };
-  } catch {
+  } catch (error) {
+    logger.warn('Instance identity provider resolution failed while loading tenant admin credentials', {
+      instance_id: instanceId,
+      reason_code: 'tenant_admin_resolution_failed',
+      error_type: error instanceof Error ? error.constructor.name : typeof error,
+      execution_mode: executionMode,
+    });
     return null;
   }
 };

@@ -4,17 +4,16 @@ import { createRoute, redirect, type AnyRoute, type RootRoute, type RouteCompone
 
 import { createAccountUiRouteGuard, type AccountUiRouteGuardKey } from './account-ui.routes.js';
 import {
-  adminDetailParamNameByBinding,
   createAdminResourceRouteFactories,
   createLegacyContentAliasFactories,
 } from './admin-resource-routes.js';
+import { getAdminDetailRoutePath as resolveAdminDetailRoutePath } from './admin-resource-route-paths.js';
 import { type RoutingDiagnosticsHook } from './diagnostics.js';
 import { resolvePluginRouteGuard } from './plugin-route-guards.js';
 import { normalizeIamTab, normalizeRoleDetailTab } from './route-search.js';
 import { uiRoutePaths } from './route-paths.js';
 
 export type AppRouteFactory = RouteFactory<RootRoute, AnyRoute>;
-
 export type AppRouteBindings = {
   readonly home: RouteComponent;
   readonly account: RouteComponent;
@@ -22,6 +21,15 @@ export type AppRouteBindings = {
   readonly content: RouteComponent;
   readonly contentCreate: RouteComponent;
   readonly contentDetail: RouteComponent;
+  readonly newsList: RouteComponent;
+  readonly newsDetail: RouteComponent;
+  readonly newsEditor: RouteComponent;
+  readonly eventsList: RouteComponent;
+  readonly eventsDetail: RouteComponent;
+  readonly eventsEditor: RouteComponent;
+  readonly poiList: RouteComponent;
+  readonly poiDetail: RouteComponent;
+  readonly poiEditor: RouteComponent;
   readonly media: RouteComponent;
   readonly categories: RouteComponent;
   readonly app: RouteComponent;
@@ -54,7 +62,6 @@ export type AppRouteBindings = {
 };
 
 export type AppRouteBindingKey = keyof AppRouteBindings;
-
 type UiRouteDefinition = {
   readonly binding: AppRouteBindingKey;
   readonly guard?: AccountUiRouteGuardKey;
@@ -111,19 +118,14 @@ const uiRouteDefinitions: readonly UiRouteDefinition[] = [
   { binding: 'adminApiPhase1Test', path: uiRoutePaths.adminApiPhase1Test },
 ] as const;
 
-export const getAdminDetailRoutePath = (basePath: string, bindingKey: string): string => {
-  const detailParamName =
-    adminDetailParamNameByBinding[bindingKey as keyof typeof adminDetailParamNameByBinding] ??
-    adminDetailParamNameByBinding.contentDetail;
-  return `${basePath}/$${detailParamName}`;
-};
+export const getAdminDetailRoutePath = resolveAdminDetailRoutePath;
 
 const collectAdminResourceRoutePaths = (resources: readonly AdminResourceDefinition[]): ReadonlyMap<string, string> => {
   const paths = new Map<string, string>();
 
   for (const resource of resources) {
     const basePath = `/admin/${resource.basePath}`;
-    const detailPath = getAdminDetailRoutePath(basePath, resource.views.detail.bindingKey);
+    const detailPath = resolveAdminDetailRoutePath(basePath, resource.views.detail.bindingKey);
     paths.set(basePath, resource.resourceId);
     paths.set(`${basePath}/new`, resource.resourceId);
     paths.set(detailPath, resource.resourceId);
@@ -134,7 +136,6 @@ const collectAdminResourceRoutePaths = (resources: readonly AdminResourceDefinit
 
   return paths;
 };
-
 const assertNoStaticAdminRouteShadowing = (adminResourcePaths: ReadonlyMap<string, string>): void => {
   for (const definition of uiRouteDefinitions) {
     const resourceId = adminResourcePaths.get(definition.path);
@@ -183,9 +184,7 @@ export const createUiRouteFactories = (
   ];
 };
 
-export const mapPluginGuardToAccountGuard = (
-  guard?: PluginRouteGuard
-): 'content' | 'contentCreate' | 'contentDetail' | null => {
+export const mapPluginGuardToAccountGuard = (guard?: PluginRouteGuard): 'content' | 'contentCreate' | 'contentDetail' | null => {
   switch (guard) {
     case 'content.read':
       return 'content';

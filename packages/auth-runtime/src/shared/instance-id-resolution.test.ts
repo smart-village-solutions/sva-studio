@@ -1,5 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+const mocks = vi.hoisted(() => ({
+  logger: {
+    warn: vi.fn(),
+  },
+}));
+
+vi.mock('@sva/server-runtime', () => ({
+  createSdkLogger: () => mocks.logger,
+}));
+
 import { resolveInstanceId } from './instance-id-resolution.js';
 
 const createPool = (query: ReturnType<typeof vi.fn>) => {
@@ -91,5 +101,13 @@ describe('shared resolveInstanceId', () => {
         ok: false,
         reason: 'database_unavailable',
       });
+    expect(mocks.logger.warn).toHaveBeenCalledWith(
+      'Shared instance ID resolution failed',
+      expect.objectContaining({
+        candidate: 'instance-1',
+        reason_code: 'instance_id_resolution_failed',
+        error_type: 'Error',
+      })
+    );
   });
 });

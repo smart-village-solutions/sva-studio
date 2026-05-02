@@ -41,7 +41,13 @@ const parseWorkflowRequest = async (request: Request): Promise<GovernanceWorkflo
   let body: unknown;
   try {
     body = await request.json();
-  } catch {
+  } catch (error) {
+    logger.warn('Governance workflow request body could not be parsed', {
+      reason_code: 'invalid_json',
+      request_id: getWorkspaceContext().requestId,
+      trace_id: getWorkspaceContext().traceId,
+      error_type: error instanceof Error ? error.constructor.name : typeof error,
+    });
     return null;
   }
 

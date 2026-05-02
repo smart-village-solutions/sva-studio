@@ -9,8 +9,12 @@ import { NEWS_CONTENT_TYPE } from '../src/plugin.js';
 
 vi.mock('../src/news.api.js', () => ({
   NewsApiError: class NewsApiError extends Error {
-    public constructor(public readonly code: string) {
-      super(code);
+    public constructor(
+      public readonly code: string,
+      message = code
+    ) {
+      super(message);
+      this.name = 'NewsApiError';
     }
   },
   listNews: vi.fn(async () => ({
@@ -152,6 +156,10 @@ describe('NewsListPage', () => {
         'news.fields.actions': 'Aktionen',
         'news.values.yes': 'Ja',
         'news.values.no': 'Nein',
+        'news.pagination.ariaLabel': 'Seitennavigation',
+        'news.pagination.pageLabel': 'Seite {{page}}',
+        'news.pagination.previous': 'Zurück',
+        'news.pagination.next': 'Weiter',
         'news.actions.edit': 'Bearbeiten',
         'news.actions.addContentBlock': 'Inhaltsblock hinzufügen',
         'news.actions.addMedia': 'Medium hinzufügen',
@@ -223,7 +231,7 @@ describe('NewsListPage', () => {
 
     expect(navigateMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        to: '/plugins/news',
+        to: '/admin/news',
         replace: true,
         search: expect.any(Function),
       })
@@ -312,6 +320,80 @@ describe('NewsListPage', () => {
     });
   });
 
+  it('navigates through paginated list results', async () => {
+    vi.mocked(listNews).mockResolvedValueOnce({
+      data: [
+        {
+          id: 'news-3',
+          title: 'Seitentest',
+          contentType: NEWS_CONTENT_TYPE,
+          payload: {
+            teaser: 'Kurztext',
+            body: '<p>Body</p>',
+            category: 'Allgemein',
+          },
+          status: 'published',
+          author: 'Editor',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-02T00:00:00.000Z',
+        },
+      ],
+      pagination: { page: 2, pageSize: 25, hasNextPage: true },
+    });
+
+    render(<NewsListPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Seite {{page}}')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Zurück' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+
+    expect(navigateMock).toHaveBeenCalledTimes(2);
+
+    const previousTarget = navigateMock.mock.calls[0]?.[0] as {
+      search: (current: Record<string, unknown>) => Record<string, unknown>;
+    };
+    const nextTarget = navigateMock.mock.calls[1]?.[0] as {
+      search: (current: Record<string, unknown>) => Record<string, unknown>;
+    };
+
+    expect(previousTarget.search({ filter: 'open' })).toEqual({
+      filter: 'open',
+      page: 1,
+      pageSize: 25,
+    });
+    expect(nextTarget.search({ filter: 'open' })).toEqual({
+      filter: 'open',
+      page: 3,
+      pageSize: 25,
+    });
+  });
+
+  it('reads pagination values from search params and falls back for invalid values', async () => {
+    searchMock.mockReturnValueOnce({ page: 3, pageSize: 50 });
+
+    render(<NewsListPage />);
+
+    await waitFor(() => {
+      expect(listNews).toHaveBeenCalledWith({ page: 3, pageSize: 50 });
+    });
+
+    cleanup();
+    searchMock.mockReturnValueOnce({ page: undefined, pageSize: 0 });
+    vi.mocked(listNews).mockResolvedValueOnce({
+      data: [],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false },
+    });
+
+    render(<NewsListPage />);
+
+    await waitFor(() => {
+      expect(listNews).toHaveBeenCalledWith({ page: 1, pageSize: 25 });
+    });
+  });
+
   it('shows validation feedback before creating invalid news', async () => {
     render(<NewsCreatePage />);
 
@@ -380,7 +462,7 @@ describe('NewsListPage', () => {
         })
       );
       expect(window.sessionStorage.getItem('news-plugin-flash-message')).toBe('createSuccess');
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/plugins/news' });
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/admin/news' });
     });
   });
 
@@ -647,7 +729,7 @@ describe('NewsListPage', () => {
     await waitFor(() => {
       expect(deleteNews).toHaveBeenCalledWith('news-1');
       expect(window.sessionStorage.getItem('news-plugin-flash-message')).toBe('deleteSuccess');
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/plugins/news' });
+      expect(navigateMock).toHaveBeenCalledWith({ to: '/admin/news' });
     });
   });
 

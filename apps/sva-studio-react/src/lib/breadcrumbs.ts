@@ -66,20 +66,40 @@ const breadcrumbRoutes: ReadonlyArray<
     build: () => [overviewBreadcrumb(), { label: t('content.page.title') }],
   },
   {
+    pattern: /^\/admin\/news\/new$/,
+    build: () => [
+      overviewBreadcrumb(),
+      { href: '/admin/news', label: t('news.navigation.title') },
+      { label: t('news.editor.createTitle') },
+    ],
+  },
+  {
     pattern: /^\/plugins\/news\/new$/,
     build: () => [
       overviewBreadcrumb(),
-      { href: '/plugins/news', label: t('news.navigation.title') },
+      { href: '/admin/news', label: t('news.navigation.title') },
       { label: t('news.editor.createTitle') },
+    ],
+  },
+  {
+    pattern: /^\/admin\/news\/[^/]+$/,
+    build: () => [
+      overviewBreadcrumb(),
+      { href: '/admin/news', label: t('news.navigation.title') },
+      { label: t('news.editor.editTitle') },
     ],
   },
   {
     pattern: /^\/plugins\/news\/[^/]+$/,
     build: () => [
       overviewBreadcrumb(),
-      { href: '/plugins/news', label: t('news.navigation.title') },
+      { href: '/admin/news', label: t('news.navigation.title') },
       { label: t('news.editor.editTitle') },
     ],
+  },
+  {
+    pattern: /^\/admin\/news$/,
+    build: () => [overviewBreadcrumb(), { label: t('news.navigation.title') }],
   },
   {
     pattern: /^\/plugins\/news$/,

@@ -1,10 +1,21 @@
 import React from 'react';
 import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router';
-import { translatePluginKey, usePluginTranslation } from '@sva/plugin-sdk';
+import {
+  findHostMediaReferenceAssetId,
+  fromDatetimeLocalValue,
+  listHostMediaAssets,
+  listHostMediaReferencesByTarget,
+  replaceHostMediaReferences,
+  toDatetimeLocalValue,
+  toHostMediaFieldOptions,
+  translatePluginKey,
+  usePluginTranslation,
+} from '@sva/plugin-sdk';
 import {
   Button,
   Checkbox,
   Input,
+  MediaReferenceField,
   StudioDetailPageTemplate,
   StudioEmptyState,
   StudioErrorState,
@@ -19,7 +30,7 @@ import {
 
 import { NewsApiError, createNews, deleteNews, getNews, listNews, updateNews } from './news.api.js';
 import { normalizeListSearch } from './list-pagination.js';
-import { getPluginNewsActionDefinition, pluginNewsActionIds } from './plugin.js';
+import { getPluginNewsActionDefinition, pluginNewsActionIds, pluginNewsMediaPickers } from './plugin.js';
 import type { NewsContentBlock, NewsContentItem, NewsFormInput, NewsListResult, NewsMediaContent } from './news.types.js';
 import { validateNewsForm } from './news.validation.js';
 
@@ -155,34 +166,6 @@ const formatSettings = (value: NewsContentItem['settings']) => {
   return labels.length > 0 ? labels.join(', ') : '—';
 };
 
-const toDatetimeLocalValue = (value?: string) => {
-  if (!value) {
-    return '';
-  }
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return '';
-  }
-
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  const hours = String(date.getHours()).padStart(2, '0');
-  const minutes = String(date.getMinutes()).padStart(2, '0');
-
-  return `${year}-${month}-${day}T${hours}:${minutes}`;
-};
-
-const fromDatetimeLocalValue = (value: string): string => {
-  if (value.length === 0) {
-    return '';
-  }
-
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? '' : date.toISOString();
-};
-
 const compactString = (value?: string) => {
   const trimmed = value?.trim();
   return trimmed && trimmed.length > 0 ? trimmed : undefined;
@@ -313,7 +296,17 @@ const NewsForm = ({
   const [statusMessage, setStatusMessage] = React.useState<StatusMessage | null>(null);
   const [deletePending, setDeletePending] = React.useState(false);
   const [loadedItem, setLoadedItem] = React.useState<NewsContentItem | null>(null);
+  const [mediaOptions, setMediaOptions] = React.useState<readonly { assetId: string; label: string }[]>([]);
+  const [teaserImageAssetId, setTeaserImageAssetId] = React.useState<string | null>(null);
+  const [headerImageAssetId, setHeaderImageAssetId] = React.useState<string | null>(null);
+  const [existingMediaReferenceCount, setExistingMediaReferenceCount] = React.useState(0);
   const hasFieldError = React.useCallback((field: string) => fieldErrors.includes(field), [fieldErrors]);
+
+  React.useEffect(() => {
+    void listHostMediaAssets({ fetch: globalThis.fetch.bind(globalThis) })
+      .then((assets) => setMediaOptions(toHostMediaFieldOptions(assets)))
+      .catch(() => setMediaOptions([]));
+  }, []);
 
   React.useEffect(() => {
     if (mode !== 'edit') {
@@ -333,6 +326,21 @@ const NewsForm = ({
         if (active) {
           setForm(itemToForm(item));
           setLoadedItem(item);
+          void listHostMediaReferencesByTarget({
+            fetch: globalThis.fetch.bind(globalThis),
+            targetType: 'news',
+            targetId: item.id,
+          })
+            .then((references) => {
+              setExistingMediaReferenceCount(references.length);
+              setTeaserImageAssetId(findHostMediaReferenceAssetId(references, pluginNewsMediaPickers.teaserImage.roles[0]));
+              setHeaderImageAssetId(findHostMediaReferenceAssetId(references, pluginNewsMediaPickers.headerImage.roles[0]));
+            })
+            .catch(() => {
+              setExistingMediaReferenceCount(0);
+              setTeaserImageAssetId(null);
+              setHeaderImageAssetId(null);
+            });
         }
       })
       .catch((error: unknown) => {
@@ -388,15 +396,39 @@ const NewsForm = ({
     }
 
     try {
+      const mediaReferences = [
+        ...(teaserImageAssetId
+          ? [{ assetId: teaserImageAssetId, role: pluginNewsMediaPickers.teaserImage.roles[0], sortOrder: 0 }]
+          : []),
+        ...(headerImageAssetId
+          ? [{ assetId: headerImageAssetId, role: pluginNewsMediaPickers.headerImage.roles[0], sortOrder: 1 }]
+          : []),
+      ];
       if (mode === 'create') {
-        await createNews(compactedForm);
+        const saved = await createNews(compactedForm);
+        if (mediaReferences.length > 0 || existingMediaReferenceCount > 0) {
+          await replaceHostMediaReferences({
+            fetch: globalThis.fetch.bind(globalThis),
+            targetType: 'news',
+            targetId: saved.id,
+            references: mediaReferences,
+          });
+        }
         persistFlashMessage('createSuccess');
-        await navigate({ to: '/plugins/news' });
+        await navigate({ to: '/admin/news' });
         return;
       }
 
       if (contentId) {
-        await updateNews(contentId, compactedForm);
+        const saved = await updateNews(contentId, compactedForm);
+        if (mediaReferences.length > 0 || existingMediaReferenceCount > 0) {
+          await replaceHostMediaReferences({
+            fetch: globalThis.fetch.bind(globalThis),
+            targetType: 'news',
+            targetId: saved.id,
+            references: mediaReferences,
+          });
+        }
         setStatusMessage({ kind: 'success', text: pt('messages.updateSuccess') });
       }
     } catch (error) {
@@ -418,7 +450,7 @@ const NewsForm = ({
     try {
       await deleteNews(contentId);
       persistFlashMessage('deleteSuccess');
-      await navigate({ to: '/plugins/news' });
+      await navigate({ to: '/admin/news' });
     } catch (error) {
       setStatusMessage({ kind: 'error', text: resolveNewsErrorMessage(pt, error, 'messages.deleteError') });
     } finally {
@@ -608,6 +640,27 @@ const NewsForm = ({
               }
             />
           </StudioField>
+        </StudioFieldGroup>
+
+        <StudioFieldGroup columns={2}>
+          <MediaReferenceField
+            id="news-teaser-image"
+            label={pt('fields.teaserImage')}
+            value={teaserImageAssetId}
+            options={mediaOptions}
+            onChange={setTeaserImageAssetId}
+            placeholder={pt('fields.mediaPlaceholder')}
+            clearLabel={pt('actions.clearMedia')}
+          />
+          <MediaReferenceField
+            id="news-header-image"
+            label={pt('fields.headerImage')}
+            value={headerImageAssetId}
+            options={mediaOptions}
+            onChange={setHeaderImageAssetId}
+            placeholder={pt('fields.mediaPlaceholder')}
+            clearLabel={pt('actions.clearMedia')}
+          />
         </StudioFieldGroup>
 
         <StudioFieldGroup columns={2}>
@@ -818,7 +871,7 @@ const NewsForm = ({
         <div className="flex flex-wrap gap-3">
           <Button type="submit">{submitLabel}</Button>
           <Button asChild variant="outline">
-            <Link to="/plugins/news">{pt('actions.back')}</Link>
+            <Link to="/admin/news">{pt('actions.back')}</Link>
           </Button>
           {mode === 'edit' ? (
             <Button variant="destructive" type="button" onClick={onDelete} disabled={deletePending}>
@@ -894,7 +947,7 @@ export const NewsListPage = () => {
     }
 
     void navigate({
-      to: '/plugins/news',
+      to: '/admin/news',
       replace: true,
       search: (current: Record<string, unknown>) => ({
         ...current,
@@ -950,7 +1003,7 @@ export const NewsListPage = () => {
       description={pt('list.description')}
       primaryAction={
         <Button asChild>
-          <Link to="/plugins/news/new">{createLabel}</Link>
+          <Link to="/admin/news/new">{createLabel}</Link>
         </Button>
       }
     >
@@ -999,7 +1052,7 @@ export const NewsListPage = () => {
             ]}
             rowActions={(item) => (
               <Button asChild variant="outline" size="sm">
-                <Link to="/plugins/news/$contentId" params={{ contentId: item.id }}>
+                <Link to="/admin/news/$id" params={{ id: item.id }}>
                   {editLabel}
                 </Link>
               </Button>
@@ -1024,7 +1077,7 @@ export const NewsListPage = () => {
                 disabled={result.pagination.page <= 1}
                 onClick={() =>
                   void navigate({
-                    to: '/plugins/news',
+                    to: '/admin/news',
                     search: (current: Record<string, unknown>) => ({
                       ...current,
                       page: Math.max(1, result.pagination.page - 1),
@@ -1042,7 +1095,7 @@ export const NewsListPage = () => {
                 disabled={!result.pagination.hasNextPage}
                 onClick={() =>
                   void navigate({
-                    to: '/plugins/news',
+                    to: '/admin/news',
                     search: (current: Record<string, unknown>) => ({
                       ...current,
                       page: result.pagination.page + 1,

@@ -3,6 +3,7 @@ import type { ContentTypeDefinition } from './content-types.js';
 import {
   assertPluginContributionAllowedKeys,
   assertPluginRoutePathAllowed,
+  createPluginGuardrailError,
 } from './guardrails.js';
 import {
   isReservedPluginNamespace,
@@ -121,7 +122,17 @@ const contentTypeDefinitionAllowedKeys = new Set([
   'actions',
   'validatePayload',
 ] as const);
-const adminResourceDefinitionAllowedKeys = new Set(['resourceId', 'basePath', 'titleKey', 'guard', 'views', 'capabilities'] as const);
+const adminResourceDefinitionAllowedKeys = new Set([
+  'resourceId',
+  'basePath',
+  'titleKey',
+  'guard',
+  'moduleId',
+  'views',
+  'permissions',
+  'capabilities',
+  'contentUi',
+] as const);
 const auditEventDefinitionAllowedKeys = new Set(['eventType', 'titleKey'] as const);
 const moduleIamContractAllowedKeys = new Set(['moduleId', 'permissionIds', 'systemRoles'] as const);
 const moduleIamSystemRoleAllowedKeys = new Set(['roleName', 'permissionIds'] as const);
@@ -267,6 +278,67 @@ const assertPluginPermissionReference = (
     throw new Error(`plugin_permission_reference_missing:${pluginNamespace}:${source}:${normalizedPermissionId}`);
   }
 };
+
+const normalizePluginRoutePathForGuardrails = (path: string): string => {
+  const normalizedPath = path.trim();
+  if (normalizedPath.length <= 1) {
+    return normalizedPath;
+  }
+
+  let end = normalizedPath.length;
+  while (end > 1 && normalizedPath.charCodeAt(end - 1) === 47) {
+    end -= 1;
+  }
+
+  return normalizedPath.slice(0, end);
+};
+
+const isAsciiLetter = (character: string): boolean => {
+  const code = character.charCodeAt(0);
+  return (code >= 65 && code <= 90) || (code >= 97 && code <= 122);
+};
+
+const isAsciiLetterOrDigit = (character: string): boolean => {
+  const code = character.charCodeAt(0);
+  return isAsciiLetter(character) || (code >= 48 && code <= 57);
+};
+
+const isPluginDetailParamSegment = (segment: string): boolean => {
+  if (!segment.startsWith('$')) {
+    return false;
+  }
+
+  const paramName = segment.slice(1);
+  if (paramName.length === 0) {
+    return false;
+  }
+
+  const [firstCharacter, ...restCharacters] = paramName;
+  if (firstCharacter === undefined || isAsciiLetter(firstCharacter) === false) {
+    return false;
+  }
+
+  return restCharacters.every((character) => isAsciiLetterOrDigit(character));
+};
+
+const isStandardCrudPluginRoute = (pluginNamespace: string, path: string): boolean => {
+  const normalizedPath = normalizePluginRoutePathForGuardrails(path);
+  const pluginRoot = `/plugins/${pluginNamespace}`;
+
+  if (normalizedPath === pluginRoot || normalizedPath === `${pluginRoot}/new`) {
+    return true;
+  }
+
+  if (normalizedPath.startsWith(`${pluginRoot}/`) === false) {
+    return false;
+  }
+
+  const suffix = normalizedPath.slice(pluginRoot.length + 1);
+  return isPluginDetailParamSegment(suffix);
+};
+
+const pluginUsesStandardContentAdminResource = (plugin: PluginDefinition): boolean =>
+  (plugin.adminResources ?? []).some((resource) => resource.guard === 'content' && resource.contentUi);
 
 export const definePluginActions = <const TActions extends readonly PluginActionDefinition[]>(
   namespace: string,
@@ -524,6 +596,19 @@ export const createPluginRegistry = (
       }
       if (route.guard !== action.requiredAction) {
         throw new Error(`plugin_route_action_guard_mismatch:${id}:${route.id}:${routeActionId}`);
+      }
+    }
+
+    if (pluginUsesStandardContentAdminResource(plugin)) {
+      for (const route of plugin.routes) {
+        if (isStandardCrudPluginRoute(id, route.path)) {
+          throw createPluginGuardrailError({
+            code: 'plugin_guardrail_route_bypass',
+            pluginNamespace: id,
+            contributionId: normalizePluginIdentifier(route.id),
+            fieldOrReason: 'path',
+          });
+        }
       }
     }
 

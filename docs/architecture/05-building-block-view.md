@@ -39,6 +39,7 @@ Abhängigkeiten des aktuellen Systems.
    - Diagnosebausteine für Session-Hydration/-Refresh, Hostvalidierung, Schema-Guard, Runtime-Health und allowlist-basierte API-Fehlerdetails
 5. Plugin SDK und Server Runtime (`packages/plugin-sdk`, `packages/server-runtime`)
    - `@sva/plugin-sdk`: öffentlicher Plugin-Vertrag v1, Build-time-Registry, Admin-Ressourcen, Content-Type- und Translation-Verträge
+   - bündelt außerdem wiederverwendbare Helper für standardisierte Content-Plugins, Mainserver-CRUD-Basis und kleine UI-nahe Plugin-Utilities
    - `@sva/server-runtime`: Logger, Request-Kontext, JSON-Fehlerantworten, Workspace-Kontext und OTEL-Bootstrap
    - Namespacing- und Ownership-Validierung für plugin-beigestellte registrierte Host-Identifier
 6. Studio UI React (`packages/studio-ui-react`)
@@ -56,7 +57,7 @@ Abhängigkeiten des aktuellen Systems.
    - trennt client-sichere Typen von serverseitigen Delegations- und Diagnostikfunktionen
 10. Plugin News (`packages/plugin-news`)
    - produktives Fachplugin für Mainserver-News mit pluginnahem Modell `news.article`
-   - eigene Listen- und Editor-Ansichten, Plugin-Navigation und Plugin-Übersetzungen
+   - eigene Listen- und Editor-Ansichten, plugin-beigestellte Admin-Ressourcen-Spezialisierungen, Navigation und Übersetzungen
    - bildet das vollständige Mainserver-`NewsItem`-Modell über dedizierte Felder ab; `contentBlocks` sind der führende Langinhalt
    - nutzt `@sva/plugin-sdk` für Host-Metadaten und `@sva/studio-ui-react` für gemeinsame UI-Primitives statt App-interner Komponenten
    - persistiert nicht direkt in lokale IAM-Contents, sondern spricht die hostgeführte Mainserver-News-Fassade per HTTP an
@@ -205,17 +206,20 @@ flowchart LR
 Nicht erlaubt: `@sva/plugin-*` -> `@sva/core`
 Nicht erlaubt: `@sva/plugin-*` -> `apps/sva-studio-react/src/**`
 
-### Erweiterung 2026-04: Plugin-SDK-Vertrag v1 und News-Plugin
+### Erweiterung 2026-04: Plugin-SDK-Vertrag v1 und News-, Events- sowie POI-Plugins
 
 1. `packages/plugin-sdk/src/plugins.ts`
-   - definiert `PluginDefinition` und Merge-Helfer für Plugin-Routen, Navigation, Content-Typen und Übersetzungen
+   - definiert `PluginDefinition` und Merge-Helfer für Plugin-Routen, Navigation, Content-Typen, Admin-Ressourcen und Übersetzungen
 2. `apps/sva-studio-react/src/lib/plugins.ts`
    - registriert `pluginNews` statisch im Host und materialisiert daraus Route-, Navigations-, Admin-Ressourcen-, Audit- und i18n-Metadaten
 3. `packages/auth-runtime/src/iam-contents/content-type-registry.ts`
    - erweitert den generischen Content-Write-Pfad um contentType-spezifische Payload-Validierung und Sanitisierung
-4. `packages/plugin-news/src/*`
-   - kapselt News-Liste, Editor, Delete-Flow und plugin-eigene Übersetzungen unter der SDK-Boundary
-   - schreibt News-Fachdaten über die hostgeführte Mainserver-Fassade; Legacy-`payload` ist nur Lesefallback und wird bei Create/Update nicht gesendet
+4. `packages/plugin-news/src/*`, `packages/plugin-events/src/*`, `packages/plugin-poi/src/*`
+   - kapseln Listen-, Editor-, Detail- und Delete-Flows als fachliche Spezialisierungen unter der SDK-Boundary
+   - registrieren `adminResources` mit `resourceId` `news.content`, `events.content` und `poi.content`, jeweils auf Basis der Host-Views `content`, `contentCreate` und `contentDetail`
+   - liefern über `contentUi` optionale Bindings für `list`, `detail` und `editor`, während Route, Guard, Shell und Persistenz host-owned bleiben
+   - beziehen gemeinsame Standard-Metadaten, Mainserver-CRUD-Basis und kleine Hilfsfunktionen aus `@sva/plugin-sdk`, ohne einander zu importieren
+   - schreiben ihre Fachdaten über hostgeführte Fassaden; Legacy-`payload` bleibt nur dort Lesefallback, wo die jeweilige Fassade ihn noch toleriert
 
 ### Erweiterung 2026-04: Namespacete Plugin-Identität über Build-time-Registries
 
@@ -224,8 +228,10 @@ Nicht erlaubt: `@sva/plugin-*` -> `apps/sva-studio-react/src/**`
 2. `packages/plugin-sdk/src/build-time-registry.ts`
    - verdichtet Plugins, hosteigene Admin-Ressourcen, plugin-spezifische Permissions und Audit-Event-Definitionen phasenweise in einen gemeinsamen Registry-Snapshot für Host und Routing
    - hält die bestehende `BuildTimeRegistry`-API stabil; interne Phasen ordnen Preflight, Content, Admin, Audit, Permissions, Routing und Publish
+   - validiert spezialisierte `contentUi.contentType`-Referenzen gegen den zusammengeführten Content-Type-Snapshot fail-fast vor der Veröffentlichung
 3. `packages/routing/src/app.routes.shared.ts`
-   - materialisiert deklarative Admin-Ressourcen unter `/admin/<resource>` und hält Legacy-Aliase wie `/content*` nur noch als Redirect-Vertrag
+   - materialisiert deklarative Admin-Ressourcen unter `/admin/<resource>`; für News, Events und POI entstehen host-owned CRUD-Pfade unter `/admin/news`, `/admin/events` und `/admin/poi`
+   - verwendet spezialisierte `contentUi`-Bindings nur innerhalb der vorgesehenen Host-Region und hält Legacy-Aliase wie `/content*` nur noch für die generische Inhaltsverwaltung
 4. `packages/auth-runtime/src/iam-contents/content-type-registry.ts`
    - führt `news.article` als kanonischen plugin-beigestellten `contentType` im serverseitigen Validierungsvertrag
 
@@ -251,7 +257,8 @@ Nicht erlaubt: `@sva/plugin-*` -> `apps/sva-studio-react/src/**`
    - validiert Plugin-Contributions gegen Runtime-Allowlists, bevor der Build-time-Registry-Snapshot veröffentlicht wird
 3. `packages/routing/src/app.routes.shared.ts`
    - materialisiert Plugin-Routen nur unter `/plugins/<pluginNamespace>` und bricht unbekannte Plugin-Guards fail-fast ab
-4. Plugin-UI-Komponenten bleiben erlaubt, solange Route, Guard, Search-Parameter, Persistenz und Audit-Pfad host-owned bleiben
+4. Standardisierte Content-Plugins dürfen ihre CRUD-Hauptrouten nicht mehr parallel unter `/plugins/<pluginNamespace>` veröffentlichen; Versuche auf `/plugins/<namespace>`, `/plugins/<namespace>/new` oder `/plugins/<namespace>/$id` werden fail-fast als Bypass des Host-Pfads abgewiesen
+5. Plugin-UI-Komponenten bleiben erlaubt, solange Route, Guard, Search-Parameter, Persistenz und Audit-Pfad host-owned bleiben
 
 ### Schichtdefinition `scope:integration`
 
@@ -426,3 +433,12 @@ Neu hinzugekommene Bausteine im Change `add-iam-organization-management-hierarch
    - Definiert den gemeinsamen Sync-Report (`importedCount`, `updatedCount`, `skippedCount`, `totalKeycloakUsers`) für Server und Frontend.
 5. `apps/sva-studio-react/src/hooks/use-users.ts` und `apps/sva-studio-react/src/routes/admin/users/-user-list-page.tsx`
    - Binden die Aktion „Aus Keycloak synchronisieren“ in `/admin/users` an, zeigen Statusfeedback an und laden die User-Liste nach erfolgreichem Import neu.
+4. Medienvertrag (`packages/media`)
+   - kanonische Typen für `MediaAsset`, `MediaVariant`, `MediaReference`, Rollen, Sichtbarkeit, Upload- und Processing-Status
+   - fail-closed Regeln für Löschbarkeit und Referenzierbarkeit
+5. Datenzugriff (`packages/data-repositories`)
+   - Medien-Repositories für Assets, Varianten, Referenzen, Upload-Sessions, Quota und Usage-Impact
+6. Auth-Runtime (`packages/auth-runtime`)
+   - hostseitige Media-HTTP-Endpunkte
+   - interner Storage-Port und S3-/MinIO-Adapter
+   - Audit, Autorisierung und Upload-Processing für Medien

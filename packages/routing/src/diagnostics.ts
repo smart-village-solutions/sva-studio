@@ -76,6 +76,20 @@ export interface RoutingDiagnosticsLogger {
   error: (message: string, meta: Record<string, unknown>) => void;
 }
 
+type RoutingFallbackLogger = Pick<RoutingDiagnosticsLogger, 'error'>;
+
+let serverFallbackLogger: RoutingFallbackLogger | null = null;
+
+const isBrowserRuntime = () => typeof globalThis.window !== 'undefined';
+
+export const registerServerFallbackLogger = (logger: RoutingFallbackLogger): void => {
+  serverFallbackLogger = logger;
+};
+
+export const resetServerFallbackLogger = (): void => {
+  serverFallbackLogger = null;
+};
+
 const isPromiseLike = (value: unknown): value is PromiseLike<unknown> =>
   typeof value === 'object' && value !== null && typeof Reflect.get(value, 'then') === 'function';
 
@@ -138,6 +152,29 @@ export const createRoutingDiagnosticsLogger = (logger: RoutingDiagnosticsLogger)
   };
 };
 
+const logRoutingDiagnosticFailure = (event: RoutingDiagnosticEvent, error: unknown): void => {
+  const message = 'Routing diagnostics hook failed';
+  const meta = {
+    event: event.event,
+    route: event.route,
+    request_id: event.request_id,
+    trace_id: event.trace_id,
+    workspace_id: event.workspace_id,
+    error_type: error instanceof Error ? error.constructor.name : typeof error,
+    error_message: error instanceof Error ? error.message : String(error),
+  };
+
+  if (isBrowserRuntime()) {
+    console.error(message, meta);
+    return;
+  }
+
+  if (serverFallbackLogger) {
+    serverFallbackLogger.error(message, meta);
+    return;
+  }
+};
+
 export const emitRoutingDiagnostic = (
   diagnostics: RoutingDiagnosticsHook | undefined,
   event: RoutingDiagnosticEvent
@@ -149,11 +186,13 @@ export const emitRoutingDiagnostic = (
   try {
     const maybePromise = diagnostics(event) as void | PromiseLike<unknown>;
     if (isPromiseLike(maybePromise)) {
-      void Promise.resolve(maybePromise).catch(() => {
+      void Promise.resolve(maybePromise).catch((error) => {
+        logRoutingDiagnosticFailure(event, error);
         // Diagnostics hooks must never change routing behavior.
       });
     }
-  } catch {
+  } catch (error) {
+    logRoutingDiagnosticFailure(event, error);
     // Diagnostics hooks must never change routing behavior.
   }
 };

@@ -1,80 +1,46 @@
 import {
-  definePluginActions,
   definePluginAuditEvents,
-  definePluginContentTypes,
-  definePluginModuleIamContract,
-  definePluginPermissions,
+  defineMediaPickerDefinition,
+  createStandardContentPluginActionIds,
+  createStandardContentPluginContribution,
   type PluginDefinition,
 } from '@sva/plugin-sdk';
 
 import { EVENTS_CONTENT_TYPE } from './events.constants.js';
-import { EventsCreatePage, EventsEditPage, EventsListPage } from './events.pages.js';
 
-export const pluginEventsActionIds = {
-  create: 'events.create',
-  edit: 'events.edit',
-  update: 'events.update',
-  delete: 'events.delete',
+export const pluginEventsActionIds = createStandardContentPluginActionIds('events');
+
+const standardEventsContribution = createStandardContentPluginContribution({
+  pluginId: 'events',
+  displayName: 'Events',
+  contentType: EVENTS_CONTENT_TYPE,
+  titleKey: 'events.navigation.title',
+  listBindingKey: 'eventsList',
+  detailBindingKey: 'eventsDetail',
+  editorBindingKey: 'eventsEditor',
+});
+
+export const pluginEventsPermissionDefinitions = standardEventsContribution.permissions;
+
+export const pluginEventsActionDefinitions = standardEventsContribution.actions;
+
+export const pluginEventsMediaPickers = {
+  headerImage: defineMediaPickerDefinition({
+    roles: ['header_image'],
+    allowedMediaTypes: ['image'],
+    presetKey: 'hero',
+  }),
 } as const;
-
-export const pluginEventsPermissionDefinitions = definePluginPermissions('events', [
-  { id: 'events.read', titleKey: 'events.permissions.read' },
-  { id: 'events.create', titleKey: 'events.permissions.create' },
-  { id: 'events.update', titleKey: 'events.permissions.update' },
-  { id: 'events.delete', titleKey: 'events.permissions.delete' },
-] as const);
-
-export const pluginEventsActionDefinitions = definePluginActions('events', [
-  { id: pluginEventsActionIds.create, titleKey: 'events.actions.create', requiredAction: 'events.create' },
-  { id: pluginEventsActionIds.edit, titleKey: 'events.actions.edit', requiredAction: 'events.read' },
-  { id: pluginEventsActionIds.update, titleKey: 'events.actions.update', requiredAction: 'events.update' },
-  { id: pluginEventsActionIds.delete, titleKey: 'events.actions.delete', requiredAction: 'events.delete' },
-] as const);
-
-const pluginEventsModulePermissionIds = pluginEventsPermissionDefinitions.map((permission) => permission.id);
-
 export const pluginEvents: PluginDefinition = {
   id: 'events',
   displayName: 'Events',
-  routes: [
-    { id: 'events.list', path: '/plugins/events', guard: 'events.read', component: EventsListPage },
-    {
-      id: 'events.create',
-      path: '/plugins/events/new',
-      guard: 'events.create',
-      actionId: pluginEventsActionIds.create,
-      component: EventsCreatePage,
-    },
-    {
-      id: 'events.edit',
-      path: '/plugins/events/$contentId',
-      guard: 'events.read',
-      actionId: pluginEventsActionIds.edit,
-      component: EventsEditPage,
-    },
-  ],
-  navigation: [
-    {
-      id: 'events.navigation',
-      to: '/plugins/events',
-      titleKey: 'events.navigation.title',
-      section: 'dataManagement',
-      requiredAction: 'events.read',
-    },
-  ],
+  routes: [],
+  navigation: standardEventsContribution.navigation,
   actions: pluginEventsActionDefinitions,
   permissions: pluginEventsPermissionDefinitions,
-  moduleIam: definePluginModuleIamContract('events', {
-    moduleId: 'events',
-    permissionIds: pluginEventsModulePermissionIds,
-    systemRoles: [
-      {
-        roleName: 'events_admin',
-        permissionIds: pluginEventsModulePermissionIds,
-      },
-    ],
-  }),
-  contentTypes: definePluginContentTypes('events', [{ contentType: EVENTS_CONTENT_TYPE, displayName: 'Events' }]),
+  moduleIam: standardEventsContribution.moduleIam,
+  contentTypes: standardEventsContribution.contentTypes,
+  adminResources: standardEventsContribution.adminResources,
   auditEvents: definePluginAuditEvents('events', []),
   translations: {
     de: {
@@ -90,6 +56,7 @@ export const pluginEvents: PluginDefinition = {
         fields: {
           title: 'Titel',
           description: 'Beschreibung',
+          headerImage: 'Headerbild',
           categoryName: 'Kategorie',
           dateStart: 'Startdatum',
           dateEnd: 'Enddatum',
@@ -102,6 +69,7 @@ export const pluginEvents: PluginDefinition = {
           phone: 'Telefon',
           email: 'E-Mail',
           url: 'Web-URL',
+          mediaPlaceholder: 'Medium auswählen',
           tags: 'Tags',
           pointOfInterestId: 'Zugehöriger POI',
           repeat: 'Wiederholung',
@@ -114,6 +82,7 @@ export const pluginEvents: PluginDefinition = {
           delete: 'Löschen',
           back: 'Zurück zur Liste',
           deleteConfirm: 'Soll dieses Event wirklich gelöscht werden?',
+          clearMedia: 'Medium entfernen',
         },
         messages: {
           loading: 'Events werden geladen.',
@@ -154,6 +123,7 @@ export const pluginEvents: PluginDefinition = {
         fields: {
           title: 'Title',
           description: 'Description',
+          headerImage: 'Header image',
           categoryName: 'Category',
           dateStart: 'Start date',
           dateEnd: 'End date',
@@ -166,6 +136,7 @@ export const pluginEvents: PluginDefinition = {
           phone: 'Phone',
           email: 'Email',
           url: 'Web URL',
+          mediaPlaceholder: 'Select media',
           tags: 'Tags',
           pointOfInterestId: 'Related POI',
           repeat: 'Repeating',
@@ -178,6 +149,7 @@ export const pluginEvents: PluginDefinition = {
           delete: 'Delete',
           back: 'Back to list',
           deleteConfirm: 'Delete this event?',
+          clearMedia: 'Clear media',
         },
         messages: {
           loading: 'Loading events.',

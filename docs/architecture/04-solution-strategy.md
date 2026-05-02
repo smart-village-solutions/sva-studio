@@ -18,7 +18,8 @@ Architekturprinzipien auf IST-Basis.
 - Monorepo mit klaren Paketgrenzen und Workspace-Abhängigkeiten (`workspace:*`)
 - Framework-agnostische Kernlogik in `@sva/core`, Integration in App-Ebene
 - Plugin-SDK-Boundary: Plugins greifen ausschließlich über `@sva/plugin-sdk` auf Host-APIs zu
-- Plugin-Vertrag v1: Routen, Navigation, Content-Typen und Übersetzungen werden als statische SDK-Metadaten beschrieben; Guard-Anwendung und Route-Materialisierung bleiben Host-Verantwortung
+- Standardisierte technische Wiederverwendung zwischen CRUD-Content-Plugins wird im Plugin-SDK zentralisiert; es gibt keine direkten Plugin-zu-Plugin-Abhängigkeiten
+- Plugin-Vertrag v1: Routen, Navigation, Content-Typen, Admin-Ressourcen und Übersetzungen werden als statische SDK-Metadaten beschrieben; Guard-Anwendung und Route-Materialisierung bleiben Host-Verantwortung
 - Plugin-Governance folgt einem einheitlichen Namespace-Modell: plugin-beigestellte registrierte Host-Identifier verwenden `<pluginId>.<name>`, während Core-Identifier bewusst hosteigen und unqualifiziert bleiben dürfen
 - Trennung von client-sicheren und serverseitigen Routen/Handlern
 - Observability über OTEL-Standards statt vendor-spezifischer App-Anbindung
@@ -36,6 +37,8 @@ Architekturprinzipien auf IST-Basis.
 - Doku-getriebene Architekturpflege (arc42 + OpenSpec + ADR)
 - UI-Shell folgt semantischen Design-Tokens statt direkter Farbcodes und bleibt kompatibel zu Tailwind-/shadcn-Primitives
 - Wiederverwendbare Studio-UI für Host-Seiten und Plugin-Custom-Views liegt in `@sva/studio-ui-react`; App-interne Komponenten bleiben Shell- oder Host-Bindings und sind keine öffentliche Plugin-API
+- Medienmanagement ist eine hostseitige Querschnitts-Capability: Domänenvertrag in `@sva/media`, Persistenz in `@sva/data-repositories`, Runtime in `@sva/auth-runtime`, Host-UI unter `/admin/media`, Plugin-Bindings nur über `@sva/plugin-sdk` und `@sva/studio-ui-react`
+- Wiederkehrende Mainserver-HTTP-Basis, Standard-Content-Metadaten und kleine UI-nahe Utilities werden für News, Events und POI im `@sva/plugin-sdk` gebündelt; fachliche Modelle und Editor-Spezialisierungen bleiben in den Plugins
 - Theming wird instanzfähig gedacht: `instanceId` kann Theme-Varianten bestimmen, Light/Dark-Mode bleibt dabei ein orthogonaler Modus
 
 ### Architekturtreiber
@@ -155,6 +158,14 @@ Referenzen:
 - CRUD-artige Admin-Flächen werden strategisch nicht mehr als lose Einzelrouten im Host verdrahtet, sondern über einen deklarativen Admin-Ressourcenvertrag aus Workspace-Packages beschrieben.
 - Der Host bleibt führend für kanonische Routenbildung, Guard-Materialisierung, Konflikterkennung und Shell-Integration.
 - Die erste Referenzmigration nutzt diesen Vertrag für die Inhaltsverwaltung; kanonisch liegt sie unter `/admin/content`, während `/content*` nur noch als Kompatibilitätsalias dient.
+
+### Fortschreibung 2026-04: Registrierte spezialisierte Content-Views für bestehende Content-Plugins
+
+- Standardisierte Content-Plugins mit CRUD-Oberflächen veröffentlichen ihre produktiven Hauptpfade nicht mehr über freie `plugin.routes`, sondern über `adminResources` mit host-owned Materialisierung.
+- Der bestehende Admin-Ressourcenvertrag wird dafür um einen optionalen Spezialisierungsblock `contentUi` erweitert, der einen registrierten plugin-eigenen `contentType` sowie optionale React-Bindings für `list`, `detail` und `editor` beschreibt.
+- Kanonische Produktionspfade für News, Events und POI liegen damit unter `/admin/news`, `/admin/events` und `/admin/poi`; die früheren CRUD-Hauptrouten unter `/plugins/news`, `/plugins/events` und `/plugins/poi` entfallen bewusst ohne Alias.
+- Der Host bleibt führend für Shell, Breadcrumbs, Guards, Lade-/Fehlerzustände, globale Aktionen und Persistenzhoheit; Plugin-Views dürfen nur die fachliche Inhaltsfläche innerhalb dieser host-owned Route spezialisieren.
+- Freie `plugin.routes` bleiben zulässig, aber nur für echte Nicht-CRUD-Sonderfälle außerhalb des standardisierten Content-Hauptpfads.
 
 ### Fortschreibung 2026-04: Namespace-Vertrag für plugin-beigestellte Host-Identifier
 

@@ -2,6 +2,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { createEvent, EventsApiError, listEvents, listPoiForEventSelection } from '../src/events.api.js';
 
+const defaultListQuery = {
+  page: 1,
+  pageSize: 25,
+} as const;
+
 describe('events api', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
@@ -24,6 +29,40 @@ describe('events api', () => {
       '/api/v1/mainserver/events?page=2&pageSize=50',
       expect.objectContaining({ credentials: 'include' })
     );
+  });
+
+  it('uses the default list query when no pagination is passed', async () => {
+    const fetchMock = vi.fn(async () =>
+      Response.json({
+        data: [],
+        pagination: { page: defaultListQuery.page, pageSize: defaultListQuery.pageSize, hasNextPage: false },
+      })
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(listEvents()).resolves.toEqual({
+      data: [],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false },
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      `/api/v1/mainserver/events?page=${defaultListQuery.page}&pageSize=${defaultListQuery.pageSize}`,
+      expect.objectContaining({ credentials: 'include' })
+    );
+  });
+
+  it('falls back to the requested pagination when the host omits it', async () => {
+    const requestedQuery = { page: 2, pageSize: 50 } as const;
+    const fetchMock = vi.fn(async () =>
+      Response.json({
+        data: [{ id: 'event-1', title: 'Stadtfest' }],
+      })
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(listEvents(requestedQuery)).resolves.toEqual({
+      data: [{ id: 'event-1', title: 'Stadtfest' }],
+      pagination: { page: 2, pageSize: 50, hasNextPage: false },
+    });
   });
 
   it('creates events via POST', async () => {
@@ -125,6 +164,6 @@ describe('events api', () => {
   it('throws stable errors', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => Response.json({ error: 'forbidden', message: 'Nope' }, { status: 403 })));
 
-    await expect(listEvents({ page: 1, pageSize: 25 })).rejects.toBeInstanceOf(EventsApiError);
+    await expect(listEvents(defaultListQuery)).rejects.toBeInstanceOf(EventsApiError);
   });
 });

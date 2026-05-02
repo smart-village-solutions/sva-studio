@@ -19,10 +19,6 @@
     {
       "name": "routing",
       "path": "../../packages/routing"
-    },
-    {
-      "name": "sdk",
-      "path": "../../packages/sdk"
     }
   ]
 }

@@ -134,8 +134,8 @@ Mindestens erforderlich:
 Verbindliche Mindestkommandos:
 
 ```bash
-pnpm nx run sdk:test:unit
-pnpm nx run sdk:lint
+pnpm nx run plugin-sdk:test:unit
+pnpm nx run plugin-sdk:lint
 pnpm nx run <plugin>:test:unit
 pnpm nx run sva-studio-react:test:unit
 openspec validate add-plugin-actions-namespace-isolation --strict

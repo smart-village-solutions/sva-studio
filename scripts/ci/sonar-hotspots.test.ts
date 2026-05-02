@@ -115,14 +115,14 @@ test('parseCommand parses bulk-review options', () => {
 
 test('parseCommand parses issues:list options', () => {
   const command = parseCommand(
-    ['issues:list', '--statuses', 'OPEN,CONFIRMED', '--types', 'BUG,VULNERABILITY', '--file-path-includes', 'packages/sdk', '--csv'],
+    ['issues:list', '--statuses', 'OPEN,CONFIRMED', '--types', 'BUG,VULNERABILITY', '--file-path-includes', 'packages/server-runtime', '--csv'],
     { SONAR_TOKEN: 'token' }
   );
 
   assert.equal(command.command, 'issues:list');
   assert.equal(command.statuses, 'OPEN,CONFIRMED');
   assert.equal(command.types, 'BUG,VULNERABILITY');
-  assert.equal(command.filePathIncludes, 'packages/sdk');
+  assert.equal(command.filePathIncludes, 'packages/server-runtime');
   assert.equal(command.output, 'csv');
 });
 
@@ -144,10 +144,10 @@ test('buildIssueSearchParams includes supported filters', () => {
 test('filterIssues narrows by component substring', () => {
   const filtered = filterIssues(
     [
-      { key: 'i1', component: 'smart-village-app_sva-studio:packages/sdk/src/logger/index.server.ts', project: 'p' },
+      { key: 'i1', component: 'smart-village-app_sva-studio:packages/server-runtime/src/logger/index.server.ts', project: 'p' },
       { key: 'i2', component: 'smart-village-app_sva-studio:packages/routing/src/protected.routes.ts', project: 'p' },
     ],
-    { filePathIncludes: 'packages/sdk' }
+    { filePathIncludes: 'packages/server-runtime' }
   );
 
   assert.deepEqual(filtered.map((entry) => entry.key), ['i1']);
@@ -157,7 +157,7 @@ test('formatIssueTable renders a stable tabular output', () => {
   const output = formatIssueTable([
     {
       key: 'issue-1',
-      component: 'smart-village-app_sva-studio:packages/sdk/src/logger/index.server.ts',
+      component: 'smart-village-app_sva-studio:packages/server-runtime/src/logger/index.server.ts',
       line: 44,
       project: 'smart-village-app_sva-studio',
       status: 'OPEN',
@@ -168,14 +168,14 @@ test('formatIssueTable renders a stable tabular output', () => {
   ]);
 
   assert.match(output, /key\tstatus\tseverity\ttype\trule\tlocation/);
-  assert.match(output, /issue-1\tOPEN\tMAJOR\tCODE_SMELL\ttypescript:S112\tsmart-village-app_sva-studio:packages\/sdk\/src\/logger\/index\.server\.ts:44/);
+  assert.match(output, /issue-1\tOPEN\tMAJOR\tCODE_SMELL\ttypescript:S112\tsmart-village-app_sva-studio:packages\/server-runtime\/src\/logger\/index\.server\.ts:44/);
 });
 
 test('formatIssueCsv escapes fields for export', () => {
   const output = formatIssueCsv([
     {
       key: 'issue-1',
-      component: 'smart-village-app_sva-studio:packages/sdk/src/logger/index.server.ts',
+      component: 'smart-village-app_sva-studio:packages/server-runtime/src/logger/index.server.ts',
       line: 44,
       project: 'smart-village-app_sva-studio',
       status: 'OPEN',
@@ -187,5 +187,5 @@ test('formatIssueCsv escapes fields for export', () => {
   ]);
 
   assert.match(output, /key,status,severity,type,rule,component,line,message/);
-  assert.match(output, /issue-1,OPEN,MAJOR,CODE_SMELL,typescript:S112,smart-village-app_sva-studio:packages\/sdk\/src\/logger\/index\.server\.ts,44,"Avoid ""any"""/);
+  assert.match(output, /issue-1,OPEN,MAJOR,CODE_SMELL,typescript:S112,smart-village-app_sva-studio:packages\/server-runtime\/src\/logger\/index\.server\.ts,44,"Avoid ""any"""/);
 });

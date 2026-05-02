@@ -21,7 +21,7 @@ Gleichzeitig darf das Routing-Package keine unkontrollierte Browser-Telemetrie o
   - `RoutingDiagnosticEvent`
   - `RoutingDenyReason`
 - Client-shared Routing-Dateien emittieren Ereignisse ausschließlich über einen optional injizierten Hook. Ohne Hook bleibt Browser-Routing in Produktion still.
-- Die serverseitige Bindung an den SDK-Logger erfolgt nur in `packages/routing/src/auth.routes.server.ts`; client-shared Dateien importieren weiterhin kein `@sva/sdk` oder `@sva/sdk/server`.
+- Die serverseitige Bindung an den Logger aus `@sva/server-runtime` erfolgt nur in `packages/routing/src/auth.routes.server.ts`; client-shared Dateien importieren weiterhin weder `@sva/server-runtime` noch historische Sammelpfade.
 - Routing-Ereignisse nutzen einen festen Safe-Feldsatz mit `event`, `route` und kontextabhängigen Zusatzfeldern wie `reason`, `plugin`, `method`, `allow`, `request_id`, `trace_id`, `workspace_id`, `error_type`, `error_message`.
 - `reason`-Werte bleiben als fester `kebab-case`-Katalog modelliert:
   - `unauthenticated`

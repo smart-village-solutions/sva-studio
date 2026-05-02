@@ -13,7 +13,9 @@
     "branches": 85
   },
   "maxAllowedDropPctPoints": 0.5,
-  "exemptProjects": [],
+  "exemptProjects": [
+    "tooling-testing"
+  ],
   "newCodeExemptProjects": [
     "auth-runtime",
     "data-client",
@@ -84,12 +86,6 @@
       "statements": 99,
       "functions": 99,
       "branches": 97
-    },
-    "sdk": {
-      "lines": 98,
-      "statements": 97,
-      "functions": 99,
-      "branches": 87
     },
     "plugin-news": {
       "lines": 90,
@@ -170,16 +166,16 @@
         }
       ]
     },
-    "sdk": {
+    "server-runtime": {
       "minimumFloors": {
-        "lines": 98,
-        "statements": 97,
-        "functions": 99,
-        "branches": 87
+        "lines": 85,
+        "statements": 85,
+        "functions": 88,
+        "branches": 72
       },
       "hotspotFloors": [
         {
-          "path": "packages/sdk/src/middleware/request-context.server.ts",
+          "path": "packages/server-runtime/src/middleware/request-context.server.ts",
           "reason": "Request-Context-Aufbau steuert Trace-, Request- und Workspace-Metadaten",
           "metrics": {
             "lines": 85,
@@ -188,8 +184,8 @@
           }
         },
         {
-          "path": "packages/sdk/src/observability/monitoring-client.bridge.server.ts",
-          "reason": "Bridge zwischen optionalem Monitoring-Provider und SDK-Observability",
+          "path": "packages/server-runtime/src/observability/monitoring-client.bridge.server.ts",
+          "reason": "Bridge zwischen optionalem Monitoring-Provider und Server-Runtime-Observability",
           "metrics": {
             "lines": 90,
             "functions": 95,

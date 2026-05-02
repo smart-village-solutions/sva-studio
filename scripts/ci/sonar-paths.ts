@@ -4,7 +4,7 @@ import path from 'node:path';
 const SONAR_PROJECT_PROPERTIES = 'sonar-project.properties';
 const COVERAGE_EXCLUSIONS_KEY = 'sonar.coverage.exclusions';
 
-const normalizePath = (value: string): string => value.split(path.sep).join('/');
+const normalizePath = (value: string): string => value.replaceAll('\\', '/').split(path.sep).join('/');
 
 const escapeRegExp = (value: string): string => value.replace(/[|\\{}()[\]^$+?.]/g, '\\$&');
 

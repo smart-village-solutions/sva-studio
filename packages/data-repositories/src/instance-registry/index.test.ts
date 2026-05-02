@@ -460,6 +460,38 @@ describe('instance registry repository', () => {
     expect(statements[2]?.text).not.toContain('permission_key NOT IN (');
   });
 
+  it('sorts managed permission keys and role names alphabetically before writing IAM rows', async () => {
+    const { executor, statements } = createQueuedExecutor([[], [], [], [], [], [], [], [], []]);
+    const repository = createInstanceRegistryRepository(executor);
+
+    await expect(
+      repository.syncAssignedModuleIam({
+        instanceId: 'tenant-a',
+        managedModuleIds: ['news'],
+        contracts: [
+          {
+            moduleId: 'news',
+            permissionIds: ['news.write', 'news.read'],
+            systemRoles: [
+              { roleName: 'news_editor', permissionIds: ['news.write'] },
+              { roleName: 'news_admin', permissionIds: ['news.read'] },
+            ],
+          },
+        ],
+      })
+    ).resolves.toBeUndefined();
+
+    const insertedPermissionKeys = statements
+      .filter((entry) => entry.text.includes('INSERT INTO iam.permissions'))
+      .map((entry) => entry.values[1]);
+    const insertedRoleNames = statements
+      .filter((entry) => entry.text.includes('INSERT INTO iam.roles'))
+      .map((entry) => entry.values[1]);
+
+    expect(insertedPermissionKeys).toEqual(['news.read', 'news.write']);
+    expect(insertedRoleNames).toEqual(['news_admin', 'news_editor']);
+  });
+
   it('resolves hostname variants and returns null when they are missing', async () => {
     const { executor } = createQueuedExecutor([[instanceRow], [], [instanceRow], []]);
     const repository = createInstanceRegistryRepository(executor);

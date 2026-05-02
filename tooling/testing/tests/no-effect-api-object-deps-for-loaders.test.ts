@@ -1,6 +1,7 @@
 import { ESLint } from 'eslint';
 import { describe, expect, it } from 'vitest';
 
+// eslint-disable-next-line @nx/enforce-module-boundaries
 import noEffectApiObjectDepsForLoadersRule from '../../../config/eslint/no-effect-api-object-deps-for-loaders.mjs';
 
 const lint = async (code: string) => {

@@ -21,7 +21,7 @@ export const createMemoizedUserContext = <TBeforeLoadOptions extends GuardBefore
 ) => {
   let cachedUserPromise: Promise<RouteGuardUser | null | undefined> | null = null;
   const getUser = async () => {
-    cachedUserPromise ??= Promise.resolve(beforeLoadOptions.context?.auth?.getUser?.());
+    cachedUserPromise ??= Promise.resolve().then(() => beforeLoadOptions.context?.auth?.getUser?.());
     return await cachedUserPromise;
   };
 

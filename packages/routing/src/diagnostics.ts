@@ -173,8 +173,6 @@ const logRoutingDiagnosticFailure = (event: RoutingDiagnosticEvent, error: unkno
     serverFallbackLogger.error(message, meta);
     return;
   }
-
-  console.error(message, meta);
 };
 
 export const emitRoutingDiagnostic = (

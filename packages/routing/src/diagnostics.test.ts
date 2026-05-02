@@ -133,7 +133,7 @@ describe('emitRoutingDiagnostic', () => {
     consoleError.mockRestore();
   });
 
-  it('falls back to console.error when the server fallback logger cannot be created', async () => {
+  it('stays silent on the server when no fallback logger is registered', async () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
     expect(() =>
@@ -144,15 +144,7 @@ describe('emitRoutingDiagnostic', () => {
 
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    expect(consoleError).toHaveBeenCalledWith(
-      'Routing diagnostics hook failed',
-      expect.objectContaining({
-        event: 'routing.guard.access_denied',
-        route: '/account',
-        error_type: 'Error',
-        error_message: 'diagnostics failed without fallback logger',
-      })
-    );
+    expect(consoleError).not.toHaveBeenCalled();
 
     consoleError.mockRestore();
   });

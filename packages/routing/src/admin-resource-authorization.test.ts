@@ -31,6 +31,24 @@ describe('admin resource authorization helpers', () => {
     expect(originalGetUser).toHaveBeenCalledTimes(1);
   });
 
+  it('normalizes synchronous getUser failures into a memoized rejected promise', async () => {
+    const originalGetUser = vi.fn(() => {
+      throw new Error('sync getUser failed');
+    });
+    const { getUser, options } = createMemoizedUserContext({
+      context: {
+        auth: {
+          getUser: originalGetUser,
+        },
+      },
+      href: '/admin/news',
+    });
+
+    await expect(getUser()).rejects.toThrow('sync getUser failed');
+    await expect(options.context.auth.getUser()).rejects.toThrow('sync getUser failed');
+    expect(originalGetUser).toHaveBeenCalledTimes(1);
+  });
+
   it('skips module enforcement when the resource does not declare a module id', async () => {
     await expect(
       ensureAssignedModule(

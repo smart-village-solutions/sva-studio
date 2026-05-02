@@ -118,11 +118,23 @@ const createAssignModuleHandler =
     }
 
     const assignedModuleIds = await deps.repository.listAssignedModules(input.instanceId);
-    await deps.repository.syncAssignedModuleIam({
-      instanceId: input.instanceId,
-      managedModuleIds: [...registry.keys()],
-      contracts: resolveAssignedModuleContracts(deps, assignedModuleIds),
-    });
+    try {
+      await deps.repository.syncAssignedModuleIam({
+        instanceId: input.instanceId,
+        managedModuleIds: [...registry.keys()],
+        contracts: resolveAssignedModuleContracts(deps, assignedModuleIds),
+      });
+    } catch (error) {
+      try {
+        await deps.repository.revokeModule(input.instanceId, input.moduleId);
+      } catch (rollbackError) {
+        throw new AggregateError(
+          [error, rollbackError],
+          `assign_module_sync_failed_and_rollback_failed:${input.instanceId}:${input.moduleId}`
+        );
+      }
+      throw error;
+    }
     await invalidateInstancePermissionSnapshots(deps, input.instanceId, 'instance_module_assigned');
     await deps.repository.appendAuditEvent({
       instanceId: input.instanceId,

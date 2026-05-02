@@ -97,6 +97,7 @@ const mockAuthenticatedPluginShell = async (page: Page) => {
           name: 'Editor One',
           email: 'editor@example.com',
           instanceId: 'de-musterhausen',
+          assignedModules: ['news', 'events', 'poi'],
           roles: ['editor'],
           permissionActions: [
             'news.read',

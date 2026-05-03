@@ -89,6 +89,8 @@ export const useOrganizations = (initial?: Partial<OrganizationFilters>): UseOrg
   const [detailLoading, setDetailLoading] = React.useState(false);
   const organizationsRef = React.useRef(organizations);
   const totalRef = React.useRef(total);
+  const listRequestIdRef = React.useRef(0);
+  const detailRequestIdRef = React.useRef(0);
 
   organizationsRef.current = organizations;
   totalRef.current = total;
@@ -109,6 +111,7 @@ export const useOrganizations = (initial?: Partial<OrganizationFilters>): UseOrg
   }, [filters.search]);
 
   const loadOrganizations = React.useCallback(async (options?: { preserveStateOnError?: boolean }) => {
+    const requestId = ++listRequestIdRef.current;
     logBrowserOperationStart(organizationsLogger, 'organization_list_refetch_started', {
       operation: 'list_organizations',
       page: filters.page,
@@ -129,6 +132,9 @@ export const useOrganizations = (initial?: Partial<OrganizationFilters>): UseOrg
         organizationType: filters.organizationType === 'all' ? undefined : filters.organizationType,
         status: filters.status === 'all' ? undefined : filters.status,
       });
+      if (requestId !== listRequestIdRef.current) {
+        return true;
+      }
       setOrganizations(response.data);
       setTotal(response.pagination.total);
       logBrowserOperationSuccess(
@@ -152,6 +158,9 @@ export const useOrganizations = (initial?: Partial<OrganizationFilters>): UseOrg
           error_code: resolvedError.code,
         });
       }
+      if (requestId !== listRequestIdRef.current) {
+        return false;
+      }
       if (!options?.preserveStateOnError) {
         setOrganizations([]);
         setTotal(0);
@@ -162,7 +171,9 @@ export const useOrganizations = (initial?: Partial<OrganizationFilters>): UseOrg
       });
       return false;
     } finally {
-      setIsLoading(false);
+      if (requestId === listRequestIdRef.current) {
+        setIsLoading(false);
+      }
     }
   }, [debouncedSearch, filters.organizationType, filters.page, filters.pageSize, filters.status, invalidatePermissions]);
 
@@ -172,6 +183,7 @@ export const useOrganizations = (initial?: Partial<OrganizationFilters>): UseOrg
 
   const loadOrganization = React.useCallback(
     async (organizationId: string) => {
+      const requestId = ++detailRequestIdRef.current;
       logBrowserOperationStart(organizationsLogger, 'organization_detail_load_started', {
         operation: 'get_organization',
         organization_id: organizationId,
@@ -180,6 +192,9 @@ export const useOrganizations = (initial?: Partial<OrganizationFilters>): UseOrg
       setMutationError(null);
       try {
         const response = await getOrganization(organizationId);
+        if (requestId !== detailRequestIdRef.current) {
+          return response.data;
+        }
         setSelectedOrganization(response.data);
         logBrowserOperationSuccess(organizationsLogger, 'organization_detail_load_succeeded', {
           operation: 'get_organization',
@@ -197,6 +212,9 @@ export const useOrganizations = (initial?: Partial<OrganizationFilters>): UseOrg
             organization_id: organizationId,
           });
         }
+        if (requestId !== detailRequestIdRef.current) {
+          return null;
+        }
         setMutationError(resolvedError);
         logBrowserOperationFailure(organizationsLogger, 'organization_detail_load_failed', resolvedError, {
           operation: 'get_organization',
@@ -204,7 +222,9 @@ export const useOrganizations = (initial?: Partial<OrganizationFilters>): UseOrg
         });
         return null;
       } finally {
-        setDetailLoading(false);
+        if (requestId === detailRequestIdRef.current) {
+          setDetailLoading(false);
+        }
       }
     },
     [invalidatePermissions]

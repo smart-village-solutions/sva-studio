@@ -20,6 +20,7 @@
     "test:coverage:affected": "env -u NO_COLOR nx affected --target=test:coverage --base=origin/main",
     "test:coverage:pr": "pnpm test:coverage:affected && pnpm patch-coverage-gate --base=origin/main && pnpm sonar-new-code-gate --base=origin/main",
     "check:toolchain-consistency": "bash scripts/ci/run-workspace-node.sh --import tsx scripts/ci/check-toolchain-consistency.ts",
+    "check:bot-comment-handling": "tsx scripts/ci/check-bot-comment-handling.ts",
     "check:plugin-ui-boundary": "tsx scripts/ci/check-plugin-ui-boundary.ts",
     "verify:runtime-artifact": "env -u NO_COLOR nx run sva-studio-react:verify:runtime-artifact",
     "test:release:studio": "pnpm test:pr && pnpm verify:runtime-artifact",

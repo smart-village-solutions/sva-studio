@@ -105,6 +105,22 @@ describe('events api', () => {
     });
   });
 
+  it('fails fast on empty POI pages that still claim a next page', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        Response.json({
+          data: [],
+          pagination: { page: 1, pageSize: 100, hasNextPage: true },
+        })
+      )
+    );
+
+    await expect(listPoiForEventSelection()).rejects.toMatchObject<EventsApiError>({
+      code: 'poi_selection_invalid_pagination',
+    });
+  });
+
   it('throws stable errors', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => Response.json({ error: 'forbidden', message: 'Nope' }, { status: 403 })));
 

@@ -276,6 +276,58 @@ describe('media http handlers', () => {
     );
   });
 
+  it('allows clearing existing media metadata fields with explicit null values', async () => {
+    const service = createService();
+    service.getAssetById = vi.fn(async () => ({
+      id: 'asset-1',
+      instanceId: 'tenant-a',
+      storageKey: 'tenant-a/originals/asset-1.jpg',
+      mediaType: 'image',
+      mimeType: 'image/jpeg',
+      byteSize: 1234,
+      visibility: 'protected',
+      uploadStatus: 'processed',
+      processingStatus: 'ready',
+      metadata: {
+        title: 'Rathaus',
+        altText: 'Rathaus außen',
+        focusPoint: { x: 0.2, y: 0.8 },
+      },
+      technical: {},
+    }));
+    const handlers = createMediaHttpHandlers({
+      withMediaService: async (_instanceId, work) => work(service as never),
+      storagePort: { prepareUpload: vi.fn(), resolveDelivery: vi.fn() } as never,
+      authorizeAction: allowAuthorization,
+      createId: () => 'id-1',
+      now: () => '2026-04-29T19:00:00.000Z',
+      emitAuditEvent,
+    });
+
+    const response = await handlers.updateMedia(
+      new Request('http://localhost/api/v1/iam/media/asset-1?instanceId=tenant-a', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          metadata: {
+            altText: null,
+            focusPoint: null,
+          },
+        }),
+      }),
+      createContext()
+    );
+
+    expect(response.status).toBe(200);
+    expect(service.upsertAsset).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'asset-1',
+        metadata: {
+          title: 'Rathaus',
+        },
+      })
+    );
+  });
+
   it('replaces references for a target and rejects missing media permissions', async () => {
     const service = createService();
     const authorizeAction = vi

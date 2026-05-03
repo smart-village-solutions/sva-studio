@@ -624,7 +624,7 @@ const assertUpstreamScanLimit = (skip: number) => {
 
 const normalizeVisibleListQuery = (input: SvaMainserverListQuery): SvaMainserverListQuery => {
   const pageSize = Math.min(MAX_MAINSERVER_PAGE_SIZE, Math.max(1, Math.trunc(input.pageSize)));
-  const maxPage = Math.floor(MAX_MAINSERVER_UPSTREAM_SCAN_RECORDS / pageSize) + 1;
+  const maxPage = Math.floor((MAX_MAINSERVER_UPSTREAM_SCAN_RECORDS - 1) / pageSize) + 1;
   return {
     page: Math.min(Math.max(1, Math.trunc(input.page)), maxPage),
     pageSize,
@@ -1765,6 +1765,7 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
     let exhausted = false;
 
     while (collectedVisibleItems.length < targetVisibleCount && exhausted === false) {
+      assertUpstreamScanLimit(skip);
       const response = await executeGraphqlWithConfig<TQueryResult>(
         {
           ...normalizedInput,

@@ -497,9 +497,19 @@ export type InitializeMediaUploadResponse = Readonly<{
   initializedAt: string;
 }>;
 
+export type UpdateMediaMetadataPayload = Readonly<{
+  title?: string | null;
+  description?: string | null;
+  altText?: string | null;
+  copyright?: string | null;
+  license?: string | null;
+  focusPoint?: MediaMetadata['focusPoint'] | null;
+  crop?: MediaMetadata['crop'] | null;
+}>;
+
 export type UpdateMediaPayload = Readonly<{
   visibility?: MediaVisibility;
-  metadata: Partial<MediaMetadata>;
+  metadata: UpdateMediaMetadataPayload;
 }>;
 
 export type IamMediaDelivery = Readonly<{

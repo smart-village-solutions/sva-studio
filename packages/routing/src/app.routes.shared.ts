@@ -81,7 +81,7 @@ const uiRouteDefinitions: readonly UiRouteDefinition[] = [
   {
     binding: 'mediaUsage',
     path: uiRoutePaths.mediaUsage,
-    guard: 'adminInstances',
+    guard: 'media',
     requiredModuleId: 'media',
     requiredPermissions: ['media.read'],
   },

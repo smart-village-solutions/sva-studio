@@ -458,20 +458,27 @@ const MediaDetailPage = ({ assetId }: { assetId: string }) => {
     await mediaApi.updateMedia({
       visibility,
       metadata: {
-        title: title.trim() || undefined,
-        altText: altText.trim() || undefined,
-        description: description.trim() || undefined,
-        copyright: copyright.trim() || undefined,
-        license: license.trim() || undefined,
+        title: title.trim() || null,
+        altText: altText.trim() || null,
+        description: description.trim() || null,
+        copyright: copyright.trim() || null,
+        license: license.trim() || null,
         focusPoint:
-          Number.isFinite(parsedFocusPointX) && Number.isFinite(parsedFocusPointY)
+          focusPointX.trim().length === 0 && focusPointY.trim().length === 0
+            ? null
+            : Number.isFinite(parsedFocusPointX) && Number.isFinite(parsedFocusPointY)
             ? {
                 x: parsedFocusPointX as number,
                 y: parsedFocusPointY as number,
               }
             : undefined,
         crop:
-          Number.isFinite(parsedCropX) &&
+          cropX.trim().length === 0 &&
+          cropY.trim().length === 0 &&
+          cropWidth.trim().length === 0 &&
+          cropHeight.trim().length === 0
+            ? null
+            : Number.isFinite(parsedCropX) &&
           Number.isFinite(parsedCropY) &&
           Number.isFinite(parsedCropWidth) &&
           Number.isFinite(parsedCropHeight) &&

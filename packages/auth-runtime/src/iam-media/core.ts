@@ -39,16 +39,17 @@ const metadataUpdateSchema = z.object({
   visibility: z.enum(['public', 'protected']).optional(),
   metadata: z
     .object({
-      title: z.string().trim().min(1).max(512).optional(),
-      description: z.string().trim().min(1).max(5000).optional(),
-      altText: z.string().trim().min(1).max(512).optional(),
-      copyright: z.string().trim().min(1).max(512).optional(),
-      license: z.string().trim().min(1).max(512).optional(),
+      title: z.string().trim().min(1).max(512).nullable().optional(),
+      description: z.string().trim().min(1).max(5000).nullable().optional(),
+      altText: z.string().trim().min(1).max(512).nullable().optional(),
+      copyright: z.string().trim().min(1).max(512).nullable().optional(),
+      license: z.string().trim().min(1).max(512).nullable().optional(),
       focusPoint: z
         .object({
           x: z.number().min(0).max(1),
           y: z.number().min(0).max(1),
         })
+        .nullable()
         .optional(),
       crop: z
         .object({
@@ -57,11 +58,27 @@ const metadataUpdateSchema = z.object({
           width: z.number().positive(),
           height: z.number().positive(),
         })
+        .nullable()
         .optional(),
     })
     .partial()
     .refine((value) => Object.keys(value).length > 0, 'metadata: Mindestens ein Metadatenfeld ist erforderlich.'),
 });
+
+const mergeMediaMetadata = (
+  current: Record<string, unknown>,
+  patch: Record<string, unknown>
+): Record<string, unknown> => {
+  const next = { ...current };
+  for (const [key, value] of Object.entries(patch)) {
+    if (value === null) {
+      delete next[key];
+      continue;
+    }
+    next[key] = value;
+  }
+  return next;
+};
 
 const replaceReferencesSchema = z.object({
   instanceId: z.string().trim().min(1).optional(),
@@ -528,10 +545,7 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
     const updatedAsset = {
       ...asset,
       visibility: parsed.data.visibility ?? asset.visibility,
-      metadata: {
-        ...asset.metadata,
-        ...parsed.data.metadata,
-      },
+      metadata: mergeMediaMetadata(asset.metadata, parsed.data.metadata),
     };
 
     await deps.withMediaService(instanceId, async (service) => {

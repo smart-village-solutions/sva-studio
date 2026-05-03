@@ -89,6 +89,7 @@ const assertSupportedAdminDetailBinding = (bindingKey: BindingKey): void => {
 
 const adminResourceGuardMap = {
   content: { list: 'content', create: 'contentCreate', detail: 'contentDetail', history: 'content' },
+  media: { list: 'media', create: 'media', detail: 'media', history: 'media' },
   adminUsers: { list: 'adminUsers', create: 'adminUserCreate', detail: 'adminUserDetail', history: 'adminUsers' },
   adminOrganizations: { list: 'adminOrganizations', create: 'adminOrganizationCreate', detail: 'adminOrganizationDetail', history: 'adminOrganizations' },
   adminInstances: { list: 'adminInstances', create: 'adminInstances', detail: 'adminInstances', history: 'adminInstances' },
@@ -220,14 +221,42 @@ export const createLegacyContentAliasFactories = (
   resources: readonly AdminResourceDefinition[] = []
 ): readonly AppRouteFactory[] => {
   const canonicalContentPath = resolveCanonicalContentAdminRoutePath(resources);
+  const aliasMappings = [
+    {
+      sourcePrefix: LEGACY_CONTENT_ALIAS_PREFIX,
+      targetPrefix: canonicalContentPath,
+    },
+    ...resources
+      .filter((resource) => resource.guard === 'content')
+      .map((resource) => ({
+        sourcePrefix: `/plugins/${resource.basePath}`,
+        targetPrefix: toAdminRoutePath(resource.basePath),
+      })),
+  ] as const;
 
-  return aliasPaths.map((path) => (rootRoute: RootRoute) =>
-    createRoute({
-      getParentRoute: () => rootRoute,
-      path,
-      beforeLoad: (options) => {
-        throw redirect({ href: normalizeLegacyContentHref(readBeforeLoadHref(options), canonicalContentPath) });
-      },
-      component: () => null,
-    }));
+  return aliasMappings.flatMap(({ sourcePrefix, targetPrefix }) => {
+    const aliasPaths = [sourcePrefix, `${sourcePrefix}/new`, `${sourcePrefix}/$contentId`] as const;
+
+    return aliasPaths.map((path) => (rootRoute: RootRoute) =>
+      createRoute({
+        getParentRoute: () => rootRoute,
+        path,
+        beforeLoad: (options) => {
+          const href = readBeforeLoadHref(options);
+          const normalizedHref =
+            sourcePrefix === LEGACY_CONTENT_ALIAS_PREFIX
+              ? normalizeLegacyContentHref(href, targetPrefix)
+              : href === sourcePrefix || href.startsWith(`${sourcePrefix}?`)
+                ? href.replace(sourcePrefix, targetPrefix)
+                : href === `${sourcePrefix}/new` || href.startsWith(`${sourcePrefix}/new?`)
+                  ? href.replace(`${sourcePrefix}/new`, `${targetPrefix}/new`)
+                  : href.startsWith(`${sourcePrefix}/`)
+                    ? href.replace(`${sourcePrefix}/`, `${targetPrefix}/`)
+                    : targetPrefix;
+          throw redirect({ href: normalizedHref });
+        },
+        component: () => null,
+      })
+    );
+  });
 };

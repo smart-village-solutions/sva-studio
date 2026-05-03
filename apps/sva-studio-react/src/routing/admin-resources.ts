@@ -5,7 +5,7 @@ export const appAdminResources = [
     resourceId: 'host.media',
     basePath: 'media',
     titleKey: 'shell.sidebar.media',
-    guard: 'adminInstances',
+    guard: 'media',
     moduleId: 'media',
     permissions: {
       list: ['media.read'],

@@ -11,6 +11,7 @@ const adminDetailParamNameByBinding = {
   adminGroupDetail: 'groupId',
   adminLegalTextDetail: 'legalTextVersionId',
   media: 'mediaId',
+  adminMedia: 'mediaId',
 } as const;
 
 const getDetailParamName = (bindingKey: string): string =>

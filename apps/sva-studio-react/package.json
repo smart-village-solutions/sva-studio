@@ -27,6 +27,7 @@
     "@sva/plugin-poi": "workspace:*",
     "@sva/routing": "workspace:*",
     "@sva/server-runtime": "workspace:*",
+    "@sva/studio-module-iam": "workspace:*",
     "@sva/sva-mainserver": "workspace:*",
     "@tabler/icons-react": "^3.41.1",
     "@tanstack/react-devtools": "^0.10.2",

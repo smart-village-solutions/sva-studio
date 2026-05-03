@@ -14,7 +14,9 @@ const state = vi.hoisted(() => ({
   listSvaMainserverPoi: vi.fn(),
   getSvaMainserverPoi: vi.fn(),
   deleteSvaMainserverPoi: vi.fn(),
-  createSdkLogger: vi.fn(() => ({ info: vi.fn(), warn: vi.fn() })),
+  loggerInfo: vi.fn(),
+  loggerWarn: vi.fn(),
+  createSdkLogger: vi.fn(() => ({ info: state.loggerInfo, warn: state.loggerWarn })),
   getWorkspaceContext: vi.fn(() => ({ requestId: 'req-1', traceId: 'trace-1' })),
 }));
 
@@ -469,6 +471,40 @@ describe('dispatchMainserverEventsPoiRequest', () => {
     await expect(response?.json()).resolves.toMatchObject({ error: 'invalid_request' });
     expect(state.createSvaMainserverEvent).not.toHaveBeenCalled();
     expect(state.createSvaMainserverPoi).not.toHaveBeenCalled();
+  });
+
+  it('does not log create success when event payload validation fails', async () => {
+    mockAuthorizedMutation();
+
+    const response = await dispatchMainserverEventsPoiRequest(
+      createRequest('https://studio.test/api/v1/mainserver/events', {
+        method: 'POST',
+        body: JSON.stringify({ description: 'ohne Titel' }),
+      })
+    );
+
+    expect(response?.status).toBe(400);
+    expect(state.loggerInfo).not.toHaveBeenCalledWith(
+      'Mainserver content route succeeded',
+      expect.objectContaining({ operation: 'mainserver_events_create' })
+    );
+  });
+
+  it('does not log update success when poi payload validation fails', async () => {
+    mockAuthorizedMutation();
+
+    const response = await dispatchMainserverEventsPoiRequest(
+      createRequest('https://studio.test/api/v1/mainserver/poi/poi-1', {
+        method: 'PATCH',
+        body: JSON.stringify({ description: 'ohne Name' }),
+      })
+    );
+
+    expect(response?.status).toBe(400);
+    expect(state.loggerInfo).not.toHaveBeenCalledWith(
+      'Mainserver content route succeeded',
+      expect.objectContaining({ operation: 'mainserver_poi_update' })
+    );
   });
 
   it('returns method-not-allowed for unsupported route methods', async () => {

@@ -39,9 +39,10 @@ Abhängigkeiten des aktuellen Systems.
    - OIDC-Flows, Session-Store, Cookies, Auth-Middleware, Runtime-Health und Auth-/HTTP-Handler
    - Runtime-Adapter für fachliche IAM-, Governance-, Content- und Registry-Routen
    - Diagnosebausteine für Session-Hydration/-Refresh, Hostvalidierung, Schema-Guard, Runtime-Health und allowlist-basierte API-Fehlerdetails
-5. Plugin SDK und Server Runtime (`packages/plugin-sdk`, `packages/server-runtime`)
+5. Plugin SDK, Studio Module IAM und Server Runtime (`packages/plugin-sdk`, `packages/studio-module-iam`, `packages/server-runtime`)
    - `@sva/plugin-sdk`: öffentlicher Plugin-Vertrag v1, Build-time-Registry, Admin-Ressourcen, Content-Type- und Translation-Verträge
    - erweitert den Admin-Ressourcenvertrag um hostgeführte Listen- und Detail-Capabilities fuer Search, Filter, Sorting, Pagination, Bulk-Actions, Historie und Revisionen
+   - `@sva/studio-module-iam`: framework-agnostische Vertragsfamilie für modulbezogene Permission- und Systemrollen-Kataloge, konsumierbar durch Host, Plugins, Runtime und Provisioning
    - bündelt außerdem wiederverwendbare Helper für standardisierte Content-Plugins, Mainserver-CRUD-Basis und kleine UI-nahe Plugin-Utilities
    - `@sva/server-runtime`: Logger, Request-Kontext, JSON-Fehlerantworten, Workspace-Kontext und OTEL-Bootstrap
    - Namespacing- und Ownership-Validierung für plugin-beigestellte registrierte Host-Identifier
@@ -174,6 +175,8 @@ Abhängigkeiten des aktuellen Systems.
    - persistieren die kanonische Instanz-Modul-Zuordnung in `iam.instance_modules`.
 3. `packages/plugin-sdk`
    - definiert den deklarativen Modul-IAM-Vertrag pro Plugin.
+   - `packages/studio-module-iam`
+   - leitet daraus den runtime-sicheren, UI-freien Modul-IAM-Katalog für Host, Plugins und `auth-runtime` ab.
 4. `packages/instance-registry`
    - ist führender Fachbaustein für `assignModule`, `revokeModule` und `seedIamBaseline`.
 5. `packages/auth-runtime`
@@ -186,8 +189,10 @@ Abhängigkeiten des aktuellen Systems.
 - App -> `@sva/core`, `@sva/routing`, `@sva/auth-runtime`, `@sva/plugin-sdk`, `@sva/studio-ui-react`, `@sva/sva-mainserver`, `@sva/plugin-news`, `@sva/plugin-events`, `@sva/plugin-poi`
 - `@sva/routing` -> `@sva/auth-runtime`, `@sva/core`, `@sva/plugin-sdk`, `@sva/server-runtime`
 - `@sva/auth-runtime` -> `@sva/iam-core`, `@sva/iam-admin`, `@sva/iam-governance`, `@sva/instance-registry`, `@sva/data-repositories`, `@sva/server-runtime`
+- `@sva/auth-runtime` -> `@sva/studio-module-iam` für den kanonischen Modul-IAM-Katalog
 - `@sva/sva-mainserver` -> `@sva/auth-runtime`, `@sva/data-repositories`, `@sva/server-runtime`
 - `@sva/plugin-sdk` -> `@sva/core`
+- `@sva/studio-module-iam` -> keine React-, Host- oder Plugin-UI-Abhängigkeiten; nur Vertragsdaten und kleine Helper
 - `@sva/server-runtime` -> `@sva/core`, `@sva/monitoring-client`
 - `@sva/plugin-*` -> `@sva/plugin-sdk`, optional `@sva/studio-ui-react` für Custom-Views (kein Direktimport aus `@sva/core` oder App-internen Komponenten)
 - `@sva/plugin-news`, `@sva/plugin-events` und `@sva/plugin-poi` bleiben absichtlich auf SDK, Studio-UI und Peer Dependencies beschränkt; API-Aufrufe laufen über öffentliche Host-Fassaden statt über App-Module
@@ -251,6 +256,18 @@ Nicht erlaubt: `@sva/plugin-*` -> `apps/sva-studio-react/src/**`
    - weist Personas Rechte namespace-isoliert zu, sodass ein News-Recht keine Events- oder POI-Freigabe impliziert
 4. `apps/sva-studio-react/src/routes/admin/roles`
    - zeigt Plugin-Permissions in der Rollenverwaltung als fachliche Ressourcengruppen und speichert sie über den bestehenden Rollen-Permission-Vertrag
+
+### Erweiterung 2026-05: Gemeinsame Runtime-Vertragsquelle für Modul-IAM
+
+1. `packages/studio-module-iam/src`
+   - veröffentlicht den kanonischen Modul-IAM-Katalog für `news`, `events`, `poi` und hosteigene Module wie `media`
+   - kapselt Namespace-, Ownership-, Permission- und Systemrollen-Metadaten in einer runtime-sicheren Vertragsform
+2. `packages/plugin-news/src/plugin.tsx`, `packages/plugin-events/src/plugin.tsx`, `packages/plugin-poi/src/plugin.tsx`
+   - leiten ihre `moduleIam`-Deklarationen aus derselben Vertragsfamilie ab, behalten aber den schmalen Plugin-Vertrag ohne zusätzliche Runtime-Metadaten
+3. `apps/sva-studio-react/src/lib/plugins.ts`
+   - verwendet denselben Katalog für Build-time-Registry-Parität und die hostseitige Modulübersicht
+4. `packages/auth-runtime/src/iam-instance-registry/repository.ts`
+   - nutzt denselben Katalog für Runtime- und Provisioning-Wiring statt lokaler manueller Modul-Maps
 
 ### Erweiterung 2026-04: Host-seitige Plugin-Guardrails
 

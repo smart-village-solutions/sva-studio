@@ -38,6 +38,7 @@
     "@sva/iam-governance": "workspace:*",
     "@sva/instance-registry": "workspace:*",
     "@sva/media": "workspace:*",
+    "@sva/studio-module-iam": "workspace:*",
     "@sva/server-runtime": "workspace:*",
     "cookie-es": "^3.1.1",
     "file-type": "^22.0.1",

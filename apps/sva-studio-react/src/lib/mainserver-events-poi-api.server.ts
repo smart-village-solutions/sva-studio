@@ -291,28 +291,30 @@ const buildEventInput = (input: {
   contact: ReturnType<typeof parseContact> extends Response | infer T | undefined ? T | undefined : never;
   urls: SvaMainserverEventInput['urls'] | undefined;
   tags: readonly string[] | undefined;
-}): SvaMainserverEventInput => ({
-  title: readString(input.body.title) as string,
-  ...(readString(input.body.description) ? { description: readString(input.body.description) } : {}),
-  ...(readString(input.body.externalId) ? { externalId: readString(input.body.externalId) } : {}),
-  ...(readString(input.body.keywords) ? { keywords: readString(input.body.keywords) } : {}),
-  ...(input.dates ? { dates: input.dates } : {}),
-  ...(readBoolean(input.body.repeat) !== undefined ? { repeat: readBoolean(input.body.repeat) } : {}),
-  ...(readString(input.body.categoryName) ? { categoryName: readString(input.body.categoryName) } : {}),
-  ...(input.categories ? { categories: input.categories } : {}),
-  ...(input.addresses ? { addresses: input.addresses } : {}),
-  ...(input.contact ? { contacts: [input.contact] } : {}),
-  ...(input.urls ? { urls: input.urls } : {}),
-  ...(input.tags ? { tags: input.tags } : {}),
-  ...(readString(input.body.recurring) ? { recurring: readString(input.body.recurring) } : {}),
-  ...(readString(input.body.recurringType) ? { recurringType: readString(input.body.recurringType) } : {}),
-  ...(readString(input.body.recurringInterval) ? { recurringInterval: readString(input.body.recurringInterval) } : {}),
-  ...(parseRecurringWeekdays(input.body.recurringWeekdays)
-    ? { recurringWeekdays: parseRecurringWeekdays(input.body.recurringWeekdays) }
-    : {}),
-  ...(readString(input.body.pointOfInterestId) ? { pointOfInterestId: readString(input.body.pointOfInterestId) } : {}),
-  ...(readBoolean(input.body.pushNotification) !== undefined ? { pushNotification: readBoolean(input.body.pushNotification) } : {}),
-});
+}): SvaMainserverEventInput => {
+  const recurringWeekdays = parseRecurringWeekdays(input.body.recurringWeekdays);
+
+  return {
+    title: readString(input.body.title) as string,
+    ...(readString(input.body.description) ? { description: readString(input.body.description) } : {}),
+    ...(readString(input.body.externalId) ? { externalId: readString(input.body.externalId) } : {}),
+    ...(readString(input.body.keywords) ? { keywords: readString(input.body.keywords) } : {}),
+    ...(input.dates ? { dates: input.dates } : {}),
+    ...(readBoolean(input.body.repeat) !== undefined ? { repeat: readBoolean(input.body.repeat) } : {}),
+    ...(readString(input.body.categoryName) ? { categoryName: readString(input.body.categoryName) } : {}),
+    ...(input.categories ? { categories: input.categories } : {}),
+    ...(input.addresses ? { addresses: input.addresses } : {}),
+    ...(input.contact ? { contacts: [input.contact] } : {}),
+    ...(input.urls ? { urls: input.urls } : {}),
+    ...(input.tags ? { tags: input.tags } : {}),
+    ...(readString(input.body.recurring) ? { recurring: readString(input.body.recurring) } : {}),
+    ...(readString(input.body.recurringType) ? { recurringType: readString(input.body.recurringType) } : {}),
+    ...(readString(input.body.recurringInterval) ? { recurringInterval: readString(input.body.recurringInterval) } : {}),
+    ...(recurringWeekdays ? { recurringWeekdays } : {}),
+    ...(readString(input.body.pointOfInterestId) ? { pointOfInterestId: readString(input.body.pointOfInterestId) } : {}),
+    ...(readBoolean(input.body.pushNotification) !== undefined ? { pushNotification: readBoolean(input.body.pushNotification) } : {}),
+  };
+};
 
 const buildPoiInput = (input: {
   body: Record<string, unknown>;
@@ -595,7 +597,9 @@ const dispatchAuthenticated = async (request: Request, route: RouteMatch, ctx: A
       }
       const response = await createContentForRoute(route, actor, request);
       const responseBody = (await response.clone().json().catch(() => null)) as { data?: { id?: string } } | null;
-      logSuccess(`mainserver_${route.contentKind}_create`, responseBody?.data?.id);
+      if (response.ok) {
+        logSuccess(`mainserver_${route.contentKind}_create`, responseBody?.data?.id);
+      }
       return response;
     }
 
@@ -614,7 +618,9 @@ const dispatchAuthenticated = async (request: Request, route: RouteMatch, ctx: A
         return updateActor;
       }
       const response = await updateContentForRoute(route, updateActor, request);
-      logSuccess(`mainserver_${route.contentKind}_update`, route.itemId);
+      if (response.ok) {
+        logSuccess(`mainserver_${route.contentKind}_update`, route.itemId);
+      }
       return response;
     }
 

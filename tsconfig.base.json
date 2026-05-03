@@ -26,6 +26,7 @@
       "@sva/instance-registry/http-contracts": ["packages/instance-registry/src/http-contracts.ts"],
       "@sva/instance-registry": ["packages/instance-registry/src/index.ts"],
       "@sva/plugin-sdk": ["packages/plugin-sdk/src/index.ts"],
+      "@sva/studio-module-iam": ["packages/studio-module-iam/src/index.ts"],
       "@sva/plugin-events": ["packages/plugin-events/src/index.ts"],
       "@sva/studio-ui-react": ["packages/studio-ui-react/src/index.ts"],
       "@sva/server-runtime": ["packages/server-runtime/src/index.ts"],

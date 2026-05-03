@@ -60,6 +60,8 @@ gleichzeitig beeinflussen.
 - Plugin-UI und fachliche Client-Interaktion bleiben zulässig, wenn sie in host-materialisierten Routen laufen und hostkontrollierte Actions, Validierung, Persistenz und Auditierung verwenden
 - Plugin-Custom-Views müssen gemeinsame Seitenstruktur, Controls, Tabellen, Aktionen und Zustandsdarstellung aus `@sva/studio-ui-react` verwenden; App-interne Komponentenpfade und parallele Basis-Control-Systeme in Plugins sind nicht zulässig
 - News laufen produktiv über die hostgeführte Mainserver-News-Fassade; dedizierte Mainserver-Felder und `contentBlocks` sind das Schreibmodell. Legacy-`payload` ist nur Lesefallback, lokale IAM-Content-Validierung ist für News keine Persistenzquelle mehr
+- Modulbezogene IAM-Verträge haben genau eine kanonische Vertragsfamilie: Build-time-Host-Registry, Plugin-Deklaration, Runtime-Seeding und Provisioning leiten ihre Daten aus `@sva/studio-module-iam` ab und pflegen keine separaten Parallelkataloge
+- Mainserver-Listen für News, Events und POI verwenden typsichere Search-Params als kanonischen UI-State; paginierte Host-Antworten serialisieren mindestens `page`, `pageSize` und `hasNextPage`, während `total` optional bleibt
 - DataClient unterstützt optionale Runtime-Schema-Validierung (`get(path, schema)`) für API-Responses
 - IAM-Server-Fassaden bleiben bewusst dünn; fachliche Erweiterungen gehören in Unterordner und nicht zurück in Monolith-Dateien
 - Profil-Synchronisation mit Keycloak bleibt zulässig, erfolgt aber ausschließlich über dedizierte Profil-/Sync-Flows und nicht implizit über Session- oder Logging-Pfade
@@ -214,6 +216,7 @@ gleichzeitig beeinflussen.
 - DSR-Resilienz über asynchrones Export-Statusmodell (`queued|processing|completed|failed`)
 - Restore-Sanitization nach Backup-Restore stellt DSGVO-konforme Nachbereinigung sicher
 - Mainserver-Delegation arbeitet fail-closed: ohne lokalen Rollencheck, Instanzkontext, Konfiguration oder gültige Credentials wird kein Upstream-Call ausgeführt
+- Pagination gegen den Mainserver arbeitet ebenfalls fail-closed: ungültige `page`-/`pageSize`-Eingaben werden auf den kanonischen Vertrag normalisiert, und ohne belastbaren Nachweis für weitere sichtbare Einträge wird `hasNextPage` nicht optimistisch gesetzt
 - Der IAM-Acceptance-Runner arbeitet ebenfalls fail-closed: fehlende Env, fehlende Testbenutzer, nicht bereite Dependencies oder unvollständige Laufzeitnachweise beenden den Lauf mit dokumentierten Fehlercodes
 - Der Gruppen-CRUD arbeitet fail-closed: unbekannte `roleIds`, instanzfremde Gruppen oder fehlerhafte CSRF-/Idempotency-Header erzeugen stabile `invalid_request`-, `forbidden`- oder `csrf_validation_failed`-Antworten
 - Die Rechtstext-Verwaltung arbeitet fail-closed: ungültige Statuswechsel, fehlendes `publishedAt` bei `valid` oder nicht reloadbare Neuanlagen liefern stabile `invalid_request`- bzw. `database_unavailable`-Antworten

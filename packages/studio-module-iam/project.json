@@ -52,5 +52,5 @@
       }
     }
   },
-  "tags": ["scope:core", "type:lib"]
+  "tags": ["scope:core", "scope:plugin-sdk", "type:lib"]
 }

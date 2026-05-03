@@ -131,6 +131,9 @@ importers:
       '@sva/server-runtime':
         specifier: workspace:*
         version: link:../../packages/server-runtime
+      '@sva/studio-module-iam':
+        specifier: workspace:*
+        version: link:../../packages/studio-module-iam
       '@sva/sva-mainserver':
         specifier: workspace:*
         version: link:../../packages/sva-mainserver
@@ -270,6 +273,9 @@ importers:
       '@sva/server-runtime':
         specifier: workspace:*
         version: link:../server-runtime
+      '@sva/studio-module-iam':
+        specifier: workspace:*
+        version: link:../studio-module-iam
       cookie-es:
         specifier: ^3.1.1
         version: 3.1.1
@@ -534,6 +540,9 @@ importers:
       '@sva/plugin-sdk':
         specifier: workspace:*
         version: link:../plugin-sdk
+      '@sva/studio-module-iam':
+        specifier: workspace:*
+        version: link:../studio-module-iam
       '@sva/studio-ui-react':
         specifier: workspace:*
         version: link:../studio-ui-react
@@ -571,6 +580,9 @@ importers:
       '@sva/plugin-sdk':
         specifier: workspace:*
         version: link:../plugin-sdk
+      '@sva/studio-module-iam':
+        specifier: workspace:*
+        version: link:../studio-module-iam
       '@sva/studio-ui-react':
         specifier: workspace:*
         version: link:../studio-ui-react
@@ -608,6 +620,9 @@ importers:
       '@sva/plugin-sdk':
         specifier: workspace:*
         version: link:../plugin-sdk
+      '@sva/studio-module-iam':
+        specifier: workspace:*
+        version: link:../studio-module-iam
       '@sva/studio-ui-react':
         specifier: workspace:*
         version: link:../studio-ui-react
@@ -684,40 +699,6 @@ importers:
         specifier: ^4.1.5
         version: 4.1.5(@opentelemetry/api@1.9.1)(@types/node@25.6.0)(@vitest/coverage-v8@4.1.5)(happy-dom@20.8.9)(jsdom@29.1.0)(vite@8.0.8(@types/node@25.6.0)(esbuild@0.27.7)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.3))
 
-  packages/sdk:
-    dependencies:
-      '@opentelemetry/api':
-        specifier: ^1.9.0
-        version: 1.9.1
-      '@opentelemetry/sdk-node':
-        specifier: ^0.215.0
-        version: 0.215.0(@opentelemetry/api@1.9.1)
-      '@sva/core':
-        specifier: workspace:*
-        version: link:../core
-      '@sva/monitoring-client':
-        specifier: workspace:*
-        version: link:../monitoring-client
-      '@sva/plugin-sdk':
-        specifier: workspace:*
-        version: link:../plugin-sdk
-      '@sva/server-runtime':
-        specifier: workspace:*
-        version: link:../server-runtime
-      winston:
-        specifier: ^3.19.0
-        version: 3.19.0
-      winston-transport:
-        specifier: ^4.9.0
-        version: 4.9.0
-    devDependencies:
-      '@vitest/coverage-v8':
-        specifier: ^4.1.5
-        version: 4.1.5(vitest@4.1.5)
-      vitest:
-        specifier: ^4.1.5
-        version: 4.1.5(@opentelemetry/api@1.9.1)(@types/node@25.6.0)(@vitest/coverage-v8@4.1.5)(happy-dom@20.8.9)(jsdom@29.1.0)(vite@8.0.8(@types/node@25.6.0)(esbuild@0.27.7)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.3))
-
   packages/server-runtime:
     dependencies:
       '@opentelemetry/api':
@@ -738,6 +719,15 @@ importers:
       winston-transport:
         specifier: ^4.9.0
         version: 4.9.0
+    devDependencies:
+      '@vitest/coverage-v8':
+        specifier: ^4.1.5
+        version: 4.1.5(vitest@4.1.5)
+      vitest:
+        specifier: ^4.1.5
+        version: 4.1.5(@opentelemetry/api@1.9.1)(@types/node@25.6.0)(@vitest/coverage-v8@4.1.5)(happy-dom@20.8.9)(jsdom@29.1.0)(vite@8.0.8(@types/node@25.6.0)(esbuild@0.27.7)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.3))
+
+  packages/studio-module-iam:
     devDependencies:
       '@vitest/coverage-v8':
         specifier: ^4.1.5

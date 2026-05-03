@@ -174,6 +174,26 @@ Zuordnung:
 - Abschnitt 04/05/06/08/10/11: OpenSpec-Change `refactor-package-target-architecture-hard-cut`
 - `docs/architecture/package-zielarchitektur.md` ist die verbindliche Zusammenfassung des umgesetzten Schnitts.
 
+### Fortschreibung 2026-05: Gemeinsame Modul-IAM-Vertragsquelle ohne neue ADR
+
+- Für `refactor-runtime-module-iam-contract-source` wurde keine neue ADR angelegt.
+- Maßgeblich bleiben ADR-034 für den deklarativen Plugin-Vertrag, ADR-038 für fail-closed Modulaktivierung und ADR-030 für Provisioning-/Registry-Konsistenz.
+- Die technische Fortschreibung ist das dedizierte Workspace-Package `@sva/studio-module-iam` als UI-freier Vertrags-Edge zwischen Plugin-Deklaration, Host-Registry und Runtime-Wiring.
+
+Zuordnung:
+
+- Abschnitt 04/05/06/08/10/11: OpenSpec-Change `refactor-runtime-module-iam-contract-source`
+
+### Fortschreibung 2026-05: Mainserver-Listen-Pagination ohne neue ADR
+
+- Für `add-mainserver-plugin-list-pagination` wurde ebenfalls keine neue ADR angelegt.
+- Maßgeblich bleiben ADR-021 für die serverseitige Mainserver-Integrationsgrenze und ADR-034 für die hostmaterialisierten Plugin-Listenflächen.
+- Der Change konkretisiert diese Entscheidungen um einen gemeinsamen Pagination-Vertrag, typsichere Search-Params und die Harmonisierung der drei Listen auf `StudioDataTable`.
+
+Zuordnung:
+
+- Abschnitt 04/05/06/08/10/11: OpenSpec-Change `add-mainserver-plugin-list-pagination`
+
 ### Fortschreibung 2026-03: Swarm-Deployment und Multi-Host-Betrieb
 
 - `ADR-019-swarm-traefik-referenz-betriebsprofil.md`

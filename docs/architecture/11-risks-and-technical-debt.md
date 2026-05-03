@@ -210,6 +210,16 @@ Schulden auf IST-Basis.
    - Wahrscheinlichkeit: mittel
    - Maßnahme: Folge-Change `openspec/changes/add-media-async-processing/` für Queue-/Worker-Pfad, Retry-Strategie und entkoppelte Variantenverarbeitung umsetzen
 
+37. Erweiterung des gemeinsamen Modul-IAM-Katalogs bleibt manuell paketgebunden
+   - Impact: mittel (neue Module benötigen weiterhin eine bewusste Erweiterung des gemeinsamen Katalogs und der Paritätstests)
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: `@sva/studio-module-iam` als einzige Ergänzungsstelle behandeln, Plugin-/Host-/Runtime-Paritätstests beim Hinzufügen weiterer Module obligatorisch mitziehen
+
+38. Kein belastbarer globaler Count-Vertrag für Mainserver-Plugin-Listen
+   - Impact: mittel (UI kann keine exakten Totalseiten garantieren und muss sich auf Vor/Zurück sowie `hasNextPage` stützen)
+   - Wahrscheinlichkeit: hoch
+   - Maßnahme: `hasNextPage` streng auf sichtbare Ergebnisse stützen, `total` optional halten und einen späteren Upstream-Count nur kontrolliert als Vertragserweiterung einführen
+
 ### Technische Schulden (Auswahl)
 
 - Teilweise No-Op Testtargets in Libraries

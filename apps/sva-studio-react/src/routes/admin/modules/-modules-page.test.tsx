@@ -10,7 +10,7 @@ vi.mock('../../../hooks/use-instances', () => ({
 }));
 
 vi.mock('../../../lib/plugins', () => ({
-  studioPluginModuleIamContracts: [
+  studioModuleIamContracts: [
     {
       moduleId: 'news',
       permissionIds: ['news.read', 'news.write'],
@@ -20,6 +20,11 @@ vi.mock('../../../lib/plugins', () => ({
       moduleId: 'events',
       permissionIds: ['events.read'],
       systemRoles: [{ roleName: 'events_admin', permissionIds: ['events.read'] }],
+    },
+    {
+      moduleId: 'media',
+      permissionIds: ['media.read'],
+      systemRoles: [{ roleName: 'editor', permissionIds: ['media.read'] }],
     },
   ],
 }));
@@ -85,12 +90,13 @@ describe('ModulesPage', () => {
     expect(screen.getByDisplayValue('Demo (demo)')).toBeTruthy();
     expect(screen.getByText('news')).toBeTruthy();
     expect(screen.getByText('events')).toBeTruthy();
+    expect(screen.getByText('media')).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'IAM-Basis neu aufbauen' }));
     fireEvent.click(screen.getByRole('button', { name: 'Modul entziehen' }));
     const confirmDialog = await screen.findByRole('alertdialog');
     fireEvent.click(within(confirmDialog).getByRole('button', { name: 'Modul entziehen' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Modul zuweisen' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Modul zuweisen' })[0]);
 
     expect(seedIamBaseline).toHaveBeenCalledWith('demo');
     expect(revokeModule).toHaveBeenCalledWith('demo', 'news');

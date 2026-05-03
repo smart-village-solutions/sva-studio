@@ -47,6 +47,23 @@ describe('interfaces app adapter', () => {
     expect(state.loadSvaMainserverInterfacesOverview).toHaveBeenCalledWith(state.request);
   });
 
+  it('exports the overview alias with the same server function binding', async () => {
+    const overview = {
+      instanceId: 'de-musterhausen',
+      config: null,
+      status: {
+        status: 'connected' as const,
+        checkedAt: '2026-05-03T17:00:00.000Z',
+      },
+    };
+    state.loadSvaMainserverInterfacesOverview.mockResolvedValue(overview);
+
+    const { loadInterfacesOverview } = await import('./interfaces-api');
+
+    await expect(loadInterfacesOverview()).resolves.toEqual(overview);
+    expect(state.loadSvaMainserverInterfacesOverview).toHaveBeenCalledWith(state.request);
+  });
+
   it('delegates saving to the package contract with request and payload', async () => {
     const config = {
       instanceId: 'de-musterhausen',

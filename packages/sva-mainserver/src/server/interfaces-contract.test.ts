@@ -143,6 +143,25 @@ describe('interfaces.server', () => {
     });
   });
 
+  it('maps known upstream error payloads to their error code', async () => {
+    state.withAuthenticatedUser.mockResolvedValue(
+      new Response(JSON.stringify({ error: 'integration_disabled' }), {
+        status: 503,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
+
+    const { loadSvaMainserverInterfacesOverview } = await import('./interfaces-contract');
+
+    await expect(loadSvaMainserverInterfacesOverview(new Request('http://localhost'))).resolves.toMatchObject({
+      instanceId: '',
+      status: expect.objectContaining({
+        status: 'error',
+        errorCode: 'integration_disabled',
+      }),
+    });
+  });
+
   it('maps load failures from the data layer to invalid_config', async () => {
     state.withAuthenticatedUser.mockImplementation(
       async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<Response>) =>
@@ -205,6 +224,20 @@ describe('interfaces.server', () => {
         headers: { 'Content-Type': 'application/json' },
       })
     );
+
+    const { loadSvaMainserverInterfacesOverview } = await import('./interfaces-contract');
+
+    await expect(loadSvaMainserverInterfacesOverview(new Request('http://localhost'))).resolves.toMatchObject({
+      instanceId: '',
+      status: expect.objectContaining({
+        status: 'error',
+        errorCode: 'network_error',
+      }),
+    });
+  });
+
+  it('returns a network error when overview loading throws unexpectedly', async () => {
+    state.withAuthenticatedUser.mockRejectedValue(new Error('auth transport failed'));
 
     const { loadSvaMainserverInterfacesOverview } = await import('./interfaces-contract');
 
@@ -347,6 +380,32 @@ describe('interfaces.server', () => {
     ).rejects.toThrow('forbidden');
   });
 
+  it('rejects save requests when the session misses an instance context', async () => {
+    state.withAuthenticatedUser.mockImplementation(
+      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<Response>) =>
+        handler({
+          user: {
+            id: 'subject-1',
+            roles: ['system_admin'],
+          },
+        })
+    );
+
+    const { saveSvaMainserverInterfaceSettings } = await import('./interfaces-contract');
+
+    await expect(
+      saveSvaMainserverInterfaceSettings(new Request('http://localhost'), {
+        data: {
+          graphqlBaseUrl: 'https://mainserver.example/graphql',
+          oauthTokenUrl: 'https://mainserver.example/oauth/token',
+          enabled: true,
+        },
+      })
+    ).rejects.toThrow('invalid_config');
+
+    expect(state.saveSvaMainserverSettings).not.toHaveBeenCalled();
+  });
+
   it('rejects save requests when the enabled flag is missing', async () => {
     state.withAuthenticatedUser.mockImplementation(
       async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<Response>) =>
@@ -401,5 +460,60 @@ describe('interfaces.server', () => {
         },
       })
     ).rejects.toThrow('invalid_config');
+  });
+
+  it('preserves oauth_token_url validation errors from error instances', async () => {
+    state.withAuthenticatedUser.mockImplementation(
+      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<Response>) =>
+        handler({
+          user: {
+            id: 'subject-1',
+            instanceId: 'de-musterhausen',
+            roles: ['system_admin'],
+          },
+        })
+    );
+    const validationError = Object.assign(
+      new Error('Die konfigurierte Upstream-URL oauth_token_url ist ungültig.'),
+      {
+        code: 'invalid_config',
+        statusCode: 400,
+      }
+    );
+    state.saveSvaMainserverSettings.mockRejectedValue(validationError);
+
+    const { saveSvaMainserverInterfaceSettings } = await import('./interfaces-contract');
+
+    await expect(
+      saveSvaMainserverInterfaceSettings(new Request('http://localhost'), {
+        data: {
+          graphqlBaseUrl: 'https://mainserver.example/graphql',
+          oauthTokenUrl: 'https://mainserver.example/oauth/token',
+          enabled: true,
+        },
+      })
+    ).rejects.toThrow('invalid_config');
+  });
+
+  it('wraps non-error save failures as network_error', async () => {
+    state.withAuthenticatedUser.mockRejectedValue({
+      response: {
+        body: {
+          detail: 'gateway timeout while forwarding request',
+        },
+      },
+    });
+
+    const { saveSvaMainserverInterfaceSettings } = await import('./interfaces-contract');
+
+    await expect(
+      saveSvaMainserverInterfaceSettings(new Request('http://localhost'), {
+        data: {
+          graphqlBaseUrl: 'https://mainserver.example/graphql',
+          oauthTokenUrl: 'https://mainserver.example/oauth/token',
+          enabled: true,
+        },
+      })
+    ).rejects.toThrow('network_error');
   });
 });

@@ -1,11 +1,6 @@
 import { expect, test } from '@playwright/test';
 import type { Page, Route } from '@playwright/test';
 
-type ServerFnDescriptor = {
-  readonly export?: string;
-  readonly file?: string;
-};
-
 type MediaAssetRecord = {
   readonly id: string;
   readonly instanceId: string;
@@ -80,28 +75,6 @@ const permissionPayload = {
   evaluatedAt: '2026-04-29T12:00:00.000Z',
 };
 
-const readServerFnDescriptor = (url: string): ServerFnDescriptor | null => {
-  const encodedDescriptor = new URL(url).pathname.split('/_server/')[1];
-  if (!encodedDescriptor) {
-    return null;
-  }
-
-  try {
-    const raw = Buffer.from(encodedDescriptor, 'base64url').toString('utf8');
-    const parsed = JSON.parse(raw) as { export?: unknown; file?: unknown };
-
-    return {
-      export: typeof parsed.export === 'string' ? parsed.export : undefined,
-      file: typeof parsed.file === 'string' ? parsed.file : undefined,
-    };
-  } catch {
-    return null;
-  }
-};
-
-const isInterfacesServerFn = (descriptor: ServerFnDescriptor | null, exportName: string) =>
-  descriptor?.file?.includes('/src/lib/interfaces-api.ts') && descriptor.export?.includes(exportName);
-
 const expectInterfacesShellReady = async (page: Page, timeout = 20_000) => {
   await expect
     .poll(
@@ -170,9 +143,7 @@ const navigateClientSide = async (page: Page, targetPath: string) => {
 
 const mockSharedShellRequests = async (page: Page) => {
   await page.route('**/_server/**', async (route) => {
-    const descriptor = readServerFnDescriptor(route.request().url());
-
-    if (route.request().method() === 'GET' && isInterfacesServerFn(descriptor, 'loadInterfacesOverview')) {
+    if (route.request().method() === 'GET') {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',

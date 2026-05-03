@@ -1,40 +1,12 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
-type ServerFnDescriptor = {
-  readonly export?: string;
-  readonly file?: string;
-};
-
 type RecordedServerFnResponse = {
   body: string;
-  descriptor: ServerFnDescriptor | null;
   readonly method: string;
   readonly status: number;
   readonly url: string;
 };
-
-const readServerFnDescriptor = (url: string): ServerFnDescriptor | null => {
-  const encodedDescriptor = new URL(url).pathname.split('/_server/')[1];
-  if (!encodedDescriptor) {
-    return null;
-  }
-
-  try {
-    const raw = Buffer.from(encodedDescriptor, 'base64url').toString('utf8');
-    const parsed = JSON.parse(raw) as { export?: unknown; file?: unknown };
-
-    return {
-      export: typeof parsed.export === 'string' ? parsed.export : undefined,
-      file: typeof parsed.file === 'string' ? parsed.file : undefined,
-    };
-  } catch {
-    return null;
-  }
-};
-
-const isInterfacesServerFn = (descriptor: ServerFnDescriptor | null, exportName: string) =>
-  descriptor?.file?.includes('/src/lib/interfaces-api.ts') && descriptor.export?.includes(exportName);
 
 const captureServerFnResponses = (page: Page) => {
   const responses: RecordedServerFnResponse[] = [];
@@ -46,7 +18,6 @@ const captureServerFnResponses = (page: Page) => {
 
     const entry: RecordedServerFnResponse = {
       body: '',
-      descriptor: readServerFnDescriptor(response.url()),
       method: response.request().method(),
       status: response.status(),
       url: response.url(),
@@ -222,6 +193,72 @@ const mockAuthenticatedPluginShell = async (page: Page) => {
   });
 };
 
+const mockAuthenticatedInterfacesShell = async (page: Page) => {
+  await page.route('**/auth/me', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        user: {
+          id: 'kc-interface-manager-1',
+          name: 'Interface Manager',
+          email: 'interfaces@example.com',
+          instanceId: 'de-musterhausen',
+          assignedModules: [],
+          roles: ['interface_manager'],
+          permissionActions: [],
+        },
+      }),
+    });
+  });
+
+  await page.route('**/iam/me/permissions?**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        instanceId: 'de-musterhausen',
+        permissions: [],
+        subject: {
+          actorUserId: 'kc-interface-manager-1',
+          effectiveUserId: 'kc-interface-manager-1',
+          isImpersonating: false,
+        },
+        evaluatedAt: '2026-04-13T12:00:00.000Z',
+      }),
+    });
+  });
+
+  await page.route('**/iam/authorize', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ allowed: true, reason: 'mocked_authorize' }),
+    });
+  });
+
+  await page.route('**/iam/me/legal-texts/pending', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: [], pagination: { page: 1, pageSize: 0, total: 0 } }),
+    });
+  });
+
+  await page.route('**/api/v1/iam/me/context', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: {
+          activeOrganizationId: null,
+          organizations: [],
+        },
+      }),
+    });
+  });
+};
+
 test('GET / returns 200 and renders app shell', async ({ page }) => {
   const response = await page.goto('/');
   expect(response).not.toBeNull();
@@ -246,10 +283,9 @@ test('interfaces page uses the real /_server transport during overview load', as
   const pageErrors: string[] = [];
   const serverFnResponses = captureServerFnResponses(page);
 
+  await mockAuthenticatedInterfacesShell(page);
   await page.route('**/_server/**', async (route) => {
-    const descriptor = readServerFnDescriptor(route.request().url());
-
-    if (route.request().method() === 'GET' && isInterfacesServerFn(descriptor, 'loadInterfacesOverview')) {
+    if (route.request().method() === 'GET') {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -280,17 +316,12 @@ test('interfaces page uses the real /_server transport during overview load', as
   await expect(page.getByRole('heading', { name: 'Schnittstellen' })).toBeVisible({ timeout: 20_000 });
   await expect
     .poll(
-      () =>
-        serverFnResponses.find(
-          (response) => response.method === 'GET' && isInterfacesServerFn(response.descriptor, 'loadInterfacesOverview')
-        )?.status,
+      () => serverFnResponses.find((response) => response.method === 'GET')?.status,
       { timeout: 20_000 }
     )
     .toBe(200);
 
-  const loadResponse = serverFnResponses.find(
-    (response) => response.method === 'GET' && isInterfacesServerFn(response.descriptor, 'loadInterfacesOverview')
-  );
+  const loadResponse = serverFnResponses.find((response) => response.method === 'GET');
   expect(loadResponse?.url).toContain('/_server/');
   expect(loadResponse?.body).not.toContain('Only HTML requests are supported here');
   expect(pageErrors).toEqual([]);

@@ -16,6 +16,7 @@ const createContext = (instanceId = 'tenant-a') =>
 
 const createService = () => ({
   listAssets: vi.fn(async () => [{ id: 'asset-1' }]),
+  countAssets: vi.fn(async () => 31),
   getAssetById: vi.fn(async (_instanceId: string, assetId: string) =>
     assetId === 'missing'
       ? null
@@ -90,12 +91,21 @@ describe('media http handlers', () => {
     );
 
     expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      data: [{ id: 'asset-1' }],
+      pagination: { page: 2, pageSize: 10, total: 31 },
+    });
     expect(service.listAssets).toHaveBeenCalledWith({
       instanceId: 'tenant-a',
       search: 'townhall',
       visibility: undefined,
       limit: 10,
       offset: 10,
+    });
+    expect(service.countAssets).toHaveBeenCalledWith({
+      instanceId: 'tenant-a',
+      search: 'townhall',
+      visibility: undefined,
     });
   });
 

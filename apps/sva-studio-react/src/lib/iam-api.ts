@@ -509,6 +509,13 @@ export type IamMediaDelivery = Readonly<{
   expiresAt?: string;
 }>;
 
+export type MediaListQuery = {
+  readonly search?: string;
+  readonly visibility?: MediaVisibility | 'all';
+  readonly page?: number;
+  readonly pageSize?: number;
+};
+
 export type OrganizationsQuery = {
   readonly page: number;
   readonly pageSize: number;
@@ -977,10 +984,7 @@ export const deleteContent = async (contentId: string): Promise<ApiItemResponse<
     headers: IAM_HEADERS,
   });
 
-export const listMedia = async (query: {
-  readonly search?: string;
-  readonly visibility?: MediaVisibility | 'all';
-} = {}): Promise<ApiListResponse<IamMediaAsset>> => {
+export const listMedia = async (query: MediaListQuery = {}): Promise<ApiListResponse<IamMediaAsset>> => {
   const params = new URLSearchParams();
 
   if (query.search) {
@@ -988,6 +992,12 @@ export const listMedia = async (query: {
   }
   if (query.visibility && query.visibility !== 'all') {
     params.set('visibility', query.visibility);
+  }
+  if (typeof query.page === 'number') {
+    params.set('page', String(query.page));
+  }
+  if (typeof query.pageSize === 'number') {
+    params.set('pageSize', String(query.pageSize));
   }
 
   const suffix = params.toString();

@@ -215,15 +215,22 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
     const search = url.searchParams.get('search')?.trim() || undefined;
     const visibility = url.searchParams.get('visibility')?.trim() || undefined;
 
-    const assets = await deps.withMediaService(instanceId, (service) =>
-      service.listAssets({
+    const [assets, total] = await deps.withMediaService(instanceId, async (service) => {
+      const filter = {
         instanceId,
         search,
         visibility,
-        limit: pageSize,
-        offset: (page - 1) * pageSize,
-      })
-    );
+      };
+
+      return Promise.all([
+        service.listAssets({
+          ...filter,
+          limit: pageSize,
+          offset: (page - 1) * pageSize,
+        }),
+        service.countAssets(filter),
+      ]);
+    });
 
     await emitMediaAuditEvent({
       deps,
@@ -234,7 +241,7 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
       resourceType: 'media_library',
     });
 
-    return jsonResponse(200, asApiList(assets, { page, pageSize, total: assets.length }, getRequestId()));
+    return jsonResponse(200, asApiList(assets, { page, pageSize, total }, getRequestId()));
   },
 
   async getMedia(request: Request, ctx: AuthenticatedRequestContext): Promise<Response> {

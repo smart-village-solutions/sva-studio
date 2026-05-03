@@ -2,6 +2,7 @@ import type { MediaRepository } from '@sva/data-repositories';
 
 export const createMediaService = (repository: MediaRepository) => ({
   listAssets: repository.listAssets,
+  countAssets: repository.countAssets,
   getAssetById: repository.getAssetById,
   deleteAsset: repository.deleteAsset,
   upsertAsset: repository.upsertAsset,

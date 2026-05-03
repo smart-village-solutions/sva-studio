@@ -23,7 +23,7 @@ describe('iam-api media helpers', () => {
     browserLoggerMock.warn.mockReset();
   });
 
-  it('builds canonical media list queries and omits the all-visibility filter', async () => {
+  it('builds canonical media list queries including explicit pagination and omits the all-visibility filter', async () => {
     const fetchMock = vi.fn().mockImplementation(async () =>
       new Response(JSON.stringify({ data: [], pagination: { page: 1, pageSize: 25, total: 0 } }), {
         status: 200,
@@ -32,12 +32,12 @@ describe('iam-api media helpers', () => {
     );
     vi.stubGlobal('fetch', fetchMock);
 
-    await listMedia({ search: 'hero', visibility: 'public' });
+    await listMedia({ search: 'hero', visibility: 'public', page: 2, pageSize: 50 } as never);
     await listMedia({ visibility: 'all' });
 
     expect(fetchMock).toHaveBeenNthCalledWith(
       1,
-      '/api/v1/iam/media?search=hero&visibility=public',
+      '/api/v1/iam/media?search=hero&visibility=public&page=2&pageSize=50',
       expect.objectContaining({ credentials: 'include' })
     );
     expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/v1/iam/media', expect.objectContaining({ credentials: 'include' }));

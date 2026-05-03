@@ -1,8 +1,8 @@
+import { StudioDataTable, StudioListPageTemplate, type StudioColumnDef } from '@sva/studio-ui-react';
 import { Link, useLocation, useNavigate, useParams } from '@tanstack/react-router';
 import React from 'react';
 
-import { StudioDataTable, type StudioColumnDef } from '../../../components/StudioDataTable';
-import { StudioListPageTemplate } from '../../../components/StudioListPageTemplate';
+import { createStudioDataTableLabels } from '../../../components/studio-data-table-labels';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
@@ -113,9 +113,13 @@ const formatMediaRole = (role: string): string =>
   role in mediaRoleKeyByValue ? t(mediaRoleKeyByValue[role as keyof typeof mediaRoleKeyByValue]) : role;
 
 const MediaLibraryPage = () => {
+  const studioDataTableLabels = createStudioDataTableLabels();
   const [search, setSearch] = React.useState('');
   const [visibility, setVisibility] = React.useState<MediaLibraryFilter>('all');
-  const mediaApi = useMediaLibrary({ search: search.trim() || undefined, visibility });
+  const [page, setPage] = React.useState(1);
+  const [pageSize, setPageSize] = React.useState(25);
+  const mediaApi = useMediaLibrary({ search: search.trim() || undefined, visibility, page, pageSize });
+  const totalPages = Math.max(1, Math.ceil(mediaApi.total / mediaApi.pageSize));
 
   const columns = React.useMemo<readonly StudioColumnDef<IamMediaAsset>[]>(
     () => [
@@ -206,7 +210,10 @@ const MediaLibraryPage = () => {
             <Input
               id="media-search"
               value={search}
-              onChange={(event) => setSearch(event.target.value)}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setPage(1);
+              }}
               placeholder={t('media.filters.searchPlaceholder')}
             />
           </div>
@@ -215,9 +222,12 @@ const MediaLibraryPage = () => {
             <Select
               id="media-visibility"
               value={visibility}
-              onChange={(event) => setVisibility(event.target.value as MediaLibraryFilter)}
+              onChange={(event) => {
+                setVisibility(event.target.value as MediaLibraryFilter);
+                setPage(1);
+              }}
             >
-                  <option value="all">{t('media.filters.visibilityAll')}</option>
+              <option value="all">{t('media.filters.visibilityAll')}</option>
               <option value="public">{t(mediaVisibilityKeyByValue.public)}</option>
               <option value="protected">{t(mediaVisibilityKeyByValue.protected)}</option>
             </Select>
@@ -228,12 +238,59 @@ const MediaLibraryPage = () => {
 
         <StudioDataTable
           ariaLabel={t('media.table.ariaLabel')}
+          labels={studioDataTableLabels}
           caption={t('media.table.caption')}
           columns={columns}
           data={mediaApi.assets}
           emptyState={<p className="text-sm text-muted-foreground">{t('media.empty.body')}</p>}
+          isLoading={mediaApi.isLoading}
+          loadingState={t('media.messages.loading')}
+          selectionMode="none"
           getRowId={(asset) => asset.id}
         />
+
+        <div className="flex flex-col gap-3 rounded-lg border bg-card p-4 md:flex-row md:items-end md:justify-between">
+          <div className="space-y-2">
+            <Label htmlFor="media-page-size">{t('content.pagination.pageSizeLabel')}</Label>
+            <Select
+              id="media-page-size"
+              value={String(pageSize)}
+              onChange={(event) => {
+                setPageSize(Number(event.target.value));
+                setPage(1);
+              }}
+            >
+              {[25, 50, 100].map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">
+              {t('content.pagination.pageLabel', { page: mediaApi.page, total: totalPages })}
+            </span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={mediaApi.isLoading || mediaApi.page <= 1}
+              onClick={() => setPage((current) => Math.max(1, current - 1))}
+            >
+              {t('content.pagination.previous')}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={mediaApi.isLoading || mediaApi.page >= totalPages}
+              onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+            >
+              {t('content.pagination.next')}
+            </Button>
+          </div>
+        </div>
 
         {!mediaApi.isLoading && mediaApi.assets.length === 0 ? (
           <Alert>

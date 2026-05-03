@@ -15,6 +15,7 @@ import {
   type IamMediaUsageImpact,
   type InitializeMediaUploadPayload,
   type InitializeMediaUploadResponse,
+  type MediaListQuery,
   type UpdateMediaPayload,
 } from '../lib/iam-api';
 import {
@@ -29,6 +30,9 @@ type UseMediaLibraryResult = {
   readonly assets: readonly IamMediaAsset[];
   readonly isLoading: boolean;
   readonly error: IamHttpError | null;
+  readonly page: number;
+  readonly pageSize: number;
+  readonly total: number;
   readonly refetch: () => Promise<void>;
 };
 
@@ -54,11 +58,14 @@ type UseMediaDetailResult = {
 
 const mediaLogger = createOperationLogger('media-hook', 'debug');
 
-export const useMediaLibrary = (query: { readonly search?: string; readonly visibility?: 'all' | 'public' | 'protected' } = {}): UseMediaLibraryResult => {
+export const useMediaLibrary = (query: MediaListQuery = {}): UseMediaLibraryResult => {
   const { invalidatePermissions } = useAuth();
   const [assets, setAssets] = React.useState<readonly IamMediaAsset[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<IamHttpError | null>(null);
+  const [page, setPage] = React.useState(query.page ?? 1);
+  const [pageSize, setPageSize] = React.useState(query.pageSize ?? 25);
+  const [total, setTotal] = React.useState(0);
 
   const refetch = React.useCallback(async () => {
     logBrowserOperationStart(mediaLogger, 'media_library_refetch_started', {
@@ -72,6 +79,9 @@ export const useMediaLibrary = (query: { readonly search?: string; readonly visi
     try {
       const response = await listMedia(query);
       setAssets(response.data);
+      setPage(response.pagination.page);
+      setPageSize(response.pagination.pageSize);
+      setTotal(response.pagination.total);
       logBrowserOperationSuccess(mediaLogger, 'media_library_refetch_succeeded', {
         operation: 'list_media',
         item_count: response.data.length,
@@ -82,6 +92,7 @@ export const useMediaLibrary = (query: { readonly search?: string; readonly visi
         await invalidatePermissions();
       }
       setAssets([]);
+      setTotal(0);
       setError(resolvedError);
       logBrowserOperationFailure(mediaLogger, 'media_library_refetch_failed', resolvedError, {
         operation: 'list_media',
@@ -89,7 +100,7 @@ export const useMediaLibrary = (query: { readonly search?: string; readonly visi
     } finally {
       setIsLoading(false);
     }
-  }, [invalidatePermissions, query.search, query.visibility]);
+  }, [invalidatePermissions, query.page, query.pageSize, query.search, query.visibility]);
 
   React.useEffect(() => {
     void refetch();
@@ -99,6 +110,9 @@ export const useMediaLibrary = (query: { readonly search?: string; readonly visi
     assets,
     isLoading,
     error,
+    page,
+    pageSize,
+    total,
     refetch,
   };
 };

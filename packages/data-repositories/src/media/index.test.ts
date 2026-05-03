@@ -177,6 +177,24 @@ describe('media repository', () => {
     expect(statements[0]?.values).toEqual(['tenant-a', 25, 0]);
   });
 
+  it('counts matching assets without pagination clauses', async () => {
+    const { executor, statements } = createQueuedExecutor([[{ total: 31 }]]);
+    const repository = createMediaRepository(executor);
+
+    await expect(
+      repository.countAssets({
+        instanceId: 'tenant-a',
+        search: ' Rathaus ',
+        visibility: 'public',
+      })
+    ).resolves.toBe(31);
+
+    expect(statements[0]?.text).toContain('SELECT COUNT(*)::int AS total');
+    expect(statements[0]?.text).not.toContain('LIMIT');
+    expect(statements[0]?.text).not.toContain('OFFSET');
+    expect(statements[0]?.values).toEqual(['tenant-a', '%rathaus%', 'public']);
+  });
+
   it('keeps asset lookup fail-closed across instances', async () => {
     const { executor, statements } = createQueuedExecutor([[]]);
     const repository = createMediaRepository(executor);

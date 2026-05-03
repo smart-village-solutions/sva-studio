@@ -4,6 +4,7 @@ import { createMediaService } from './service.js';
 
 const createRepository = () => ({
   listAssets: vi.fn(async () => [{ id: 'asset-1' }]),
+  countAssets: vi.fn(async () => 1),
   getAssetById: vi.fn(async () => ({ id: 'asset-1' })),
   listVariantsByAssetId: vi.fn(async () => [{ id: 'variant-1' }]),
   getUsageImpact: vi.fn(async () => ({ assetId: 'asset-1', totalReferences: 1, references: [] })),
@@ -32,6 +33,7 @@ describe('media auth runtime service', () => {
     const service = createMediaService(repository);
 
     await expect(service.listAssets({ instanceId: 'tenant-a' })).resolves.toEqual([{ id: 'asset-1' }]);
+    await expect(service.countAssets({ instanceId: 'tenant-a' })).resolves.toBe(1);
     await expect(service.getAssetById('tenant-a', 'asset-1')).resolves.toEqual({ id: 'asset-1' });
     await expect(service.listVariantsByAssetId('tenant-a', 'asset-1')).resolves.toEqual([{ id: 'variant-1' }]);
     await expect(service.getUsageImpact('tenant-a', 'asset-1')).resolves.toEqual({
@@ -41,6 +43,7 @@ describe('media auth runtime service', () => {
     });
 
     expect(repository.listAssets).toHaveBeenCalledWith({ instanceId: 'tenant-a' });
+    expect(repository.countAssets).toHaveBeenCalledWith({ instanceId: 'tenant-a' });
     expect(repository.getAssetById).toHaveBeenCalledWith('tenant-a', 'asset-1');
   });
 

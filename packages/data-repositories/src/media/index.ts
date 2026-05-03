@@ -92,6 +92,7 @@ export type MediaRepository = {
   upsertAsset(input: MediaAssetRecord): Promise<void>;
   getAssetById(instanceId: string, assetId: string): Promise<MediaAssetRecord | null>;
   listAssets(filter: MediaAssetListFilter): Promise<readonly MediaAssetRecord[]>;
+  countAssets(filter: Omit<MediaAssetListFilter, 'limit' | 'offset'>): Promise<number>;
   deleteAsset(instanceId: string, assetId: string): Promise<void>;
   upsertVariant(instanceId: string, input: MediaVariantRecord): Promise<void>;
   listVariantsByAssetId(instanceId: string, assetId: string): Promise<readonly MediaVariantRecord[]>;
@@ -321,7 +322,7 @@ WHERE instance_id = $1
   values: [instanceId, assetId],
 });
 
-const listAssetsStatement = (filter: MediaAssetListFilter): SqlStatement => {
+const buildAssetFilterClauses = (filter: Omit<MediaAssetListFilter, 'limit' | 'offset'>) => {
   const clauses = ['instance_id = $1'];
   const values: unknown[] = [filter.instanceId];
 
@@ -338,6 +339,12 @@ const listAssetsStatement = (filter: MediaAssetListFilter): SqlStatement => {
     values.push(filter.visibility.trim());
     clauses.push(`visibility = $${values.length}`);
   }
+
+  return { clauses, values };
+};
+
+const listAssetsStatement = (filter: MediaAssetListFilter): SqlStatement => {
+  const { clauses, values } = buildAssetFilterClauses(filter);
 
   values.push(filter.limit ?? 25);
   const limitPlaceholder = `$${values.length}`;
@@ -365,6 +372,19 @@ WHERE ${clauses.join('\n  AND ')}
 ORDER BY updated_at DESC
 LIMIT ${limitPlaceholder}
 OFFSET ${offsetPlaceholder};
+`,
+    values: values as SqlStatement['values'],
+  };
+};
+
+const countAssetsStatement = (filter: Omit<MediaAssetListFilter, 'limit' | 'offset'>): SqlStatement => {
+  const { clauses, values } = buildAssetFilterClauses(filter);
+
+  return {
+    text: `
+SELECT COUNT(*)::int AS total
+FROM iam.media_assets
+WHERE ${clauses.join('\n  AND ')};
 `,
     values: values as SqlStatement['values'],
   };
@@ -627,6 +647,10 @@ export const createMediaRepository = (executor: SqlExecutor): MediaRepository =>
     const result = await executor.execute<MediaAssetRow>(listAssetsStatement(filter));
     return result.rows.map(mapAssetRow);
   },
+  async countAssets(filter) {
+    const result = await executor.execute<{ readonly total: number }>(countAssetsStatement(filter));
+    return result.rows[0]?.total ?? 0;
+  },
   async deleteAsset(instanceId, assetId) {
     await executor.execute(deleteAssetStatement(instanceId, assetId));
   },
@@ -698,6 +722,7 @@ export const mediaStatements = {
   upsertAsset: upsertAssetStatement,
   getAssetById: getAssetByIdStatement,
   listAssets: listAssetsStatement,
+  countAssets: countAssetsStatement,
   deleteAsset: deleteAssetStatement,
   upsertVariant: upsertVariantStatement,
   listVariantsByAssetId: listVariantsByAssetIdStatement,

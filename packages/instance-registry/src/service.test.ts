@@ -624,6 +624,39 @@ describe('instance registry service facade', () => {
     );
   });
 
+  it('rolls back the persisted module assignment when IAM sync fails', async () => {
+    const repository = createRepository({
+      assignModule: vi.fn(async () => true),
+      revokeModule: vi.fn(async () => true),
+      listAssignedModules: vi.fn(async () => ['news', 'events']),
+      syncAssignedModuleIam: vi.fn(async () => {
+        throw new Error('sync_failed');
+      }),
+      getInstanceById: vi.fn(async () => baseInstance),
+    });
+    const deps = createDeps(repository);
+    const service = createInstanceRegistryService(deps);
+
+    await expect(
+      service.assignModule({
+        instanceId: 'demo',
+        moduleId: 'events',
+        idempotencyKey: 'idem-module-rollback-1',
+        actorId: 'actor-1',
+        requestId: 'req-module-rollback-1',
+      })
+    ).rejects.toThrow('sync_failed');
+
+    expect(repository.assignModule).toHaveBeenCalledWith('demo', 'events');
+    expect(repository.revokeModule).toHaveBeenCalledWith('demo', 'events');
+    expect(repository.appendAuditEvent).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: 'instance_module_assigned',
+      })
+    );
+    expect(deps.invalidatePermissionSnapshots).not.toHaveBeenCalled();
+  });
+
   it('revokes a module and reseeds the remaining module IAM baseline', async () => {
     const repository = createRepository({
       revokeModule: vi.fn(async () => true),

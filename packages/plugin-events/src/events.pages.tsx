@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, useNavigate, useParams } from '@tanstack/react-router';
+import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import {
   findHostMediaReferenceAssetId,
   fromDatetimeLocalValue,
@@ -37,6 +37,7 @@ import {
   listPoiForEventSelection,
   updateEvent,
 } from './events.api.js';
+import { normalizeListSearch } from './list-pagination.js';
 import { pluginEventsMediaPickers } from './plugin.js';
 import type { EventContentItem, EventFormInput, EventListResult, PoiSelectItem } from './events.types.js';
 import { validateEventForm } from './events.validation.js';
@@ -66,16 +67,6 @@ const defaultForm = (): EventFormInput => ({
 const compactString = (value?: string) => {
   const trimmed = value?.trim();
   return trimmed && trimmed.length > 0 ? trimmed : undefined;
-};
-
-const readPaginationValue = (key: 'page' | 'pageSize', fallback: number) => {
-  const search = typeof globalThis.window === 'undefined' ? '' : globalThis.window.location.search;
-  const rawValue = new URLSearchParams(search).get(key);
-  if (!rawValue) {
-    return fallback;
-  }
-  const parsedValue = Number(rawValue);
-  return Number.isInteger(parsedValue) && parsedValue > 0 ? parsedValue : fallback;
 };
 
 const itemToForm = (item: EventContentItem): EventFormInput => ({
@@ -225,8 +216,8 @@ const createEventsListColumns = (pt: ReturnType<typeof usePluginTranslation>) =>
 export function EventsListPage() {
   const pt = usePluginTranslation('events');
   const navigate = useNavigate();
-  const page = readPaginationValue('page', 1);
-  const pageSize = readPaginationValue('pageSize', 25);
+  const search = useSearch({ strict: false }) as { readonly page?: number; readonly pageSize?: number };
+  const { page, pageSize } = normalizeListSearch(search);
   const [result, setResult] = React.useState<EventListResult>({
     data: [],
     pagination: { page, pageSize, hasNextPage: false },

@@ -225,21 +225,6 @@ describe('meHandler', () => {
   });
 
   it('returns hardened headers in mock-auth mode without permission lookup', async () => {
-    const { meHandler } = await import('./auth-route-handlers.js');
-
-    const response = await meHandler(new Request('http://localhost/auth/me', { headers: { cookie: 'sva_session=session-1' } }));
-
-    expect(response.status).toBe(200);
-    expect(mocks.logger.error).toHaveBeenCalledWith(
-      'Auth me assigned module lookup failed',
-      expect.objectContaining({ reason_code: 'assigned_module_lookup_failed', error_type: 'Error' })
-    );
-
-    const payload = (await response.json()) as { user: { assignedModules: string[] } };
-    expect(payload.user.assignedModules).toEqual([]);
-  });
-
-  it('returns hardened headers in mock-auth mode without permission lookup', async () => {
     mocks.isMockAuthEnabled.mockReturnValue(true);
 
     const response = await meHandler(new Request('http://localhost/auth/me'));

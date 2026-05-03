@@ -82,12 +82,16 @@ let serverFallbackLogger: RoutingFallbackLogger | null = null;
 
 const isBrowserRuntime = () => typeof globalThis.window !== 'undefined';
 
-export const registerServerFallbackLogger = (logger: RoutingFallbackLogger): void => {
+export const setRoutingDiagnosticsFailureLogger = (logger: RoutingFallbackLogger | null): void => {
   serverFallbackLogger = logger;
 };
 
+export const registerServerFallbackLogger = (logger: RoutingFallbackLogger): void => {
+  setRoutingDiagnosticsFailureLogger(logger);
+};
+
 export const resetServerFallbackLogger = (): void => {
-  serverFallbackLogger = null;
+  setRoutingDiagnosticsFailureLogger(null);
 };
 
 const isPromiseLike = (value: unknown): value is PromiseLike<unknown> =>

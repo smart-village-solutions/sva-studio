@@ -98,7 +98,7 @@ vi.mock('../routes/admin/legal-texts/-legal-texts-page', () => ({
 }));
 
 vi.mock('../routes/admin/modules/-modules-page', () => ({
-  ModulesPage: () => <div data-testid="placeholder-page">{'System|Modules'}</div>,
+  ModulesPage: () => <div data-testid="modules-page">modules</div>,
 }));
 
 vi.mock('../routes/admin/media/-media-page', () => ({

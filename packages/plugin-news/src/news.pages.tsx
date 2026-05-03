@@ -402,6 +402,7 @@ const NewsForm = ({
   const [teaserImageAssetId, setTeaserImageAssetId] = React.useState<string | null>(null);
   const [headerImageAssetId, setHeaderImageAssetId] = React.useState<string | null>(null);
   const [existingMediaReferenceCount, setExistingMediaReferenceCount] = React.useState(0);
+  const editLoadRequestIdRef = React.useRef(0);
   const hasFieldError = React.useCallback((field: string) => fieldErrors.includes(field), [fieldErrors]);
 
   React.useEffect(() => {
@@ -1055,20 +1056,6 @@ export const NewsListPage = () => {
     },
     [navigate, result.pagination.pageSize]
   );
-
-  React.useEffect(() => {
-    if (search.page === page && search.pageSize === pageSize) {
-      return;
-    }
-
-    Promise.resolve(
-      navigate({
-        to: '/admin/news',
-        replace: true,
-        search: (current: ListSearchState) => updateListSearchPage(current, page, pageSize),
-      })
-    ).catch(() => undefined);
-  }, [navigate, page, pageSize, search.page, search.pageSize]);
 
   React.useEffect(() => {
     setFlashMessage(consumeFlashMessage());

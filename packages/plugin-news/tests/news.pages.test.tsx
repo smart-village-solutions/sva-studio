@@ -76,6 +76,23 @@ vi.mock('@sva/plugin-sdk', async () => {
   };
 });
 
+const createDeferred = <T,>() => {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+};
+
+const actResolve = async <T,>(deferred: { resolve: (value: T) => void; promise: Promise<T> }, value: T) => {
+  await act(async () => {
+    deferred.resolve(value);
+    await deferred.promise;
+  });
+};
+
 describe('NewsListPage', () => {
   afterEach(() => {
     cleanup();
@@ -87,6 +104,28 @@ describe('NewsListPage', () => {
     navigateMock.mockReset();
     paramsMock.mockReset();
     searchMock.mockReset();
+    vi.mocked(listNews).mockResolvedValue({
+      data: [],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false },
+    });
+    vi.mocked(getNews).mockResolvedValue({
+      id: 'news-1',
+      title: 'Bestehende News',
+      contentType: NEWS_CONTENT_TYPE,
+      payload: {
+        teaser: 'Kurztext',
+        body: '<p>Body</p>',
+        category: 'Allgemein',
+      },
+      status: 'published',
+      author: 'Editor',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-02T00:00:00.000Z',
+      publishedAt: '2026-01-02T00:00:00.000Z',
+    });
+    vi.mocked(createNews).mockResolvedValue({ id: 'news-created' });
+    vi.mocked(updateNews).mockResolvedValue({ id: 'news-1' });
+    vi.mocked(deleteNews).mockResolvedValue(undefined);
     paramsMock.mockReturnValue({ contentId: 'news-1' });
     searchMock.mockReturnValue({ page: 1, pageSize: 25 });
     window.sessionStorage.clear();

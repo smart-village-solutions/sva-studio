@@ -161,10 +161,10 @@ describe('mainserver content route contracts', () => {
       pagination: { page: 1, pageSize: 25, hasNextPage: false },
     });
 
-    await dispatchMainserverEventsPoiRequest(
+    await dispatchSvaMainserverEventsRequest(
       createRequest('https://studio.test/api/v1/mainserver/events?page=-2&pageSize=13')
     );
-    await dispatchMainserverEventsPoiRequest(
+    await dispatchSvaMainserverPoiRequest(
       createRequest('https://studio.test/api/v1/mainserver/poi?page=abc&pageSize=101')
     );
 

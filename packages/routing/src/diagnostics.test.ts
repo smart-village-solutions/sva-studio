@@ -5,6 +5,7 @@ import {
   emitRoutingDiagnostic,
   registerServerFallbackLogger,
   resetServerFallbackLogger,
+  setRoutingDiagnosticsFailureLogger,
   type RoutingDiagnosticEvent,
 } from './diagnostics';
 
@@ -145,6 +146,7 @@ describe('emitRoutingDiagnostic', () => {
 
   it('falls back to console.error when the server fallback logger cannot be created', async () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    setRoutingDiagnosticsFailureLogger(null);
 
     expect(() =>
       emitRoutingDiagnostic(() => {

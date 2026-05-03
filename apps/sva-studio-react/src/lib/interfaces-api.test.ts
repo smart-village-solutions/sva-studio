@@ -3,7 +3,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const state = vi.hoisted(() => ({
   request: new Request('http://localhost/interfaces'),
   loadSvaMainserverInterfacesOverview: vi.fn(),
-  saveSvaMainserverInterfaceSettings: vi.fn(),
+  saveSvaMainserverSettings: vi.fn(),
+  withAuthenticatedUser: vi.fn(),
+  logger: {
+    error: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+  },
   serverModuleLoads: 0,
   contractModuleLoads: 0,
 }));
@@ -25,14 +31,26 @@ vi.mock('@tanstack/react-start/server', () => ({
 vi.mock('@sva/sva-mainserver/server', () => ({
   ...(state.contractModuleLoads++, {}),
   loadSvaMainserverInterfacesOverview: state.loadSvaMainserverInterfacesOverview,
-  saveSvaMainserverInterfaceSettings: state.saveSvaMainserverInterfaceSettings,
+  saveSvaMainserverSettings: state.saveSvaMainserverSettings,
+}));
+
+vi.mock('@sva/auth-runtime/server', () => ({
+  withAuthenticatedUser: state.withAuthenticatedUser,
+}));
+
+vi.mock('@sva/server-runtime', () => ({
+  createSdkLogger: () => state.logger,
 }));
 
 describe('interfaces app adapter', () => {
   beforeEach(() => {
     vi.resetModules();
     state.loadSvaMainserverInterfacesOverview.mockReset();
-    state.saveSvaMainserverInterfaceSettings.mockReset();
+    state.saveSvaMainserverSettings.mockReset();
+    state.withAuthenticatedUser.mockReset();
+    state.logger.error.mockReset();
+    state.logger.info.mockReset();
+    state.logger.warn.mockReset();
     state.serverModuleLoads = 0;
     state.contractModuleLoads = 0;
   });
@@ -78,7 +96,7 @@ describe('interfaces app adapter', () => {
     expect(state.loadSvaMainserverInterfacesOverview).toHaveBeenCalledWith(state.request);
   });
 
-  it('delegates saving to the package contract with request and payload', async () => {
+  it('delegates saving to the settings contract with request context and payload', async () => {
     const config = {
       instanceId: 'de-musterhausen',
       providerKey: 'sva_mainserver',
@@ -91,21 +109,28 @@ describe('interfaces app adapter', () => {
       oauthTokenUrl: 'https://mainserver.example/oauth/token',
       enabled: true,
     };
-    state.saveSvaMainserverInterfaceSettings.mockResolvedValue(config);
+    state.withAuthenticatedUser.mockImplementation(
+      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<Response>) =>
+        handler({
+          user: {
+            id: 'subject-1',
+            instanceId: 'de-musterhausen',
+            roles: ['system_admin'],
+          },
+        })
+    );
+    state.saveSvaMainserverSettings.mockResolvedValue(config);
 
     const { saveSvaMainserverInterfaceSettings } = await import('./interfaces-api');
 
     await expect(saveSvaMainserverInterfaceSettings({ data: payload })).resolves.toEqual(config);
-    expect(state.saveSvaMainserverInterfaceSettings).toHaveBeenCalledWith(state.request, {
-      data: payload,
+    expect(state.withAuthenticatedUser).toHaveBeenCalledWith(state.request, expect.any(Function));
+    expect(state.saveSvaMainserverSettings).toHaveBeenCalledWith({
+      instanceId: 'de-musterhausen',
+      graphqlBaseUrl: payload.graphqlBaseUrl,
+      oauthTokenUrl: payload.oauthTokenUrl,
+      enabled: true,
     });
-
-    expect(state.saveSvaMainserverSettings).toHaveBeenCalledWith(
-      expect.objectContaining({
-        instanceId: 'de-musterhausen',
-        enabled: true,
-      })
-    );
   });
 
   it('sanitizes internal save errors before surfacing them to clients', async () => {

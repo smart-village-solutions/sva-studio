@@ -24,8 +24,6 @@ import {
   updateSvaMainserverEvent,
 } from './service.js';
 
-import { parseMainserverListQuery } from './mainserver-list-pagination.js';
-
 const EVENTS_CONTENT_TYPE = 'events.event-record';
 const EVENTS_COLLECTION_PATH = '/api/v1/mainserver/events';
 const logger = createSdkLogger({ component: 'sva-mainserver-events-route', level: 'info' });

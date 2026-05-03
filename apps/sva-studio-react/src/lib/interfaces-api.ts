@@ -2,6 +2,8 @@ import { createServerFn } from '@tanstack/react-start';
 
 import {
   type SaveSvaMainserverInterfaceSettingsInput,
+  type SvaMainserverConnectionStatus,
+  type SvaMainserverInstanceConfig,
   type SvaMainserverInterfacesOverview,
 } from '@sva/sva-mainserver/server';
 
@@ -10,11 +12,7 @@ import { hasInterfacesAccessRole } from './iam-admin-access';
 
 const COMPONENT = 'interfaces-api';
 
-type InterfacesOverviewModel = {
-  readonly instanceId: string;
-  readonly config: SvaMainserverInstanceConfig | null;
-  readonly status: SvaMainserverConnectionStatus;
-};
+type InterfacesOverviewModel = SvaMainserverInterfacesOverview;
 
 type SaveInterfacesPayload = {
   readonly graphqlBaseUrl?: string;
@@ -424,19 +422,26 @@ const saveInterfacesSettingsForUser = async (
   return config instanceof Response ? config : jsonResponse(200, config);
 };
 
-export const loadInterfacesOverview = createServerFn().handler(async (): Promise<InterfacesOverviewModel> => {
+export const loadSvaMainserverInterfacesOverviewServerFn = createServerFn().handler(async (): Promise<InterfacesOverviewModel> => {
   try {
     const { getRequest } = await import('@tanstack/react-start/server');
     const { loadSvaMainserverInterfacesOverview } = await import('@sva/sva-mainserver/server');
 
-    return loadSvaMainserverInterfacesOverview(getRequest());
+    return await loadSvaMainserverInterfacesOverview(getRequest());
+  } catch (error) {
+    const message = readErrorMessage(error, 'Schnittstellenstatus konnte nicht geladen werden.');
+    return {
+      instanceId: '',
+      config: null,
+      status: createErrorStatus('network_error', message),
+    };
   }
-);
+});
 
 export const loadInterfacesOverview = loadSvaMainserverInterfacesOverviewServerFn;
 
 export const saveSvaMainserverInterfaceSettings = createServerFn({ method: 'POST' })
-  .inputValidator((data: SaveInterfacesPayload) => data)
+  .inputValidator((data: SaveSvaMainserverInterfaceSettingsInput['data']) => data)
   .handler(async ({ data }): Promise<SvaMainserverInstanceConfig> => {
     try {
       const { withAuthenticatedUser } = await import('@sva/auth-runtime/server');

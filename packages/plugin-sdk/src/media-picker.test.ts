@@ -6,8 +6,8 @@ describe('defineMediaPickerDefinition', () => {
   it('normalizes a single-role picker contract', () => {
     expect(
       defineMediaPickerDefinition({
-        roles: ['teaser_image'],
-        allowedMediaTypes: ['image'],
+        roles: [' teaser_image '],
+        allowedMediaTypes: [' image '],
       })
     ).toEqual({
       selectionMode: 'single',

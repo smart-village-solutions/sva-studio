@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, useNavigate, useParams } from '@tanstack/react-router';
+import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import {
   findHostMediaReferenceAssetId,
   listHostMediaAssets,
@@ -26,6 +26,7 @@ import {
 } from '@sva/studio-ui-react';
 
 import { createPoi, deletePoi, getPoi, listPoi, PoiApiError, updatePoi } from './poi.api.js';
+import { normalizeListSearch } from './list-pagination.js';
 import { pluginPoiMediaPickers } from './plugin.js';
 import type { PoiContentItem, PoiFormInput, PoiListResult } from './poi.types.js';
 import { validatePoiForm } from './poi.validation.js';
@@ -52,16 +53,6 @@ const defaultForm = (): PoiFormInput => ({
 const compactString = (value?: string) => {
   const trimmed = value?.trim();
   return trimmed && trimmed.length > 0 ? trimmed : undefined;
-};
-
-const readPaginationValue = (key: 'page' | 'pageSize', fallback: number) => {
-  const search = typeof globalThis.window === 'undefined' ? '' : globalThis.window.location.search;
-  const rawValue = new URLSearchParams(search).get(key);
-  if (!rawValue) {
-    return fallback;
-  }
-  const parsedValue = Number(rawValue);
-  return Number.isInteger(parsedValue) && parsedValue > 0 ? parsedValue : fallback;
 };
 
 const itemToForm = (item: PoiContentItem): PoiFormInput => ({
@@ -193,15 +184,25 @@ const PoiPaginationNav = ({
 
 const createPoiListColumns = (pt: ReturnType<typeof usePluginTranslation>) => [
   { id: 'name', header: pt('fields.name'), cell: (item: PoiContentItem) => item.name },
-  { id: 'categoryName', header: pt('fields.categoryName'), cell: (item: PoiContentItem) => item.categoryName ?? '—' },
-  { id: 'active', header: pt('fields.active'), cell: (item: PoiContentItem) => (item.active === false ? '—' : '✓') },
+  {
+    id: 'categoryName',
+    header: pt('fields.categoryName'),
+    cell: (item: PoiContentItem) => item.categoryName ?? pt('values.notAvailable'),
+  },
+  {
+    id: 'active',
+    header: pt('fields.active'),
+    cell: (item: PoiContentItem) => (item.active === false ? pt('values.notAvailable') : pt('values.active')),
+  },
 ];
 
 export function PoiListPage() {
   const pt = usePluginTranslation('poi');
   const navigate = useNavigate();
-  const page = readPaginationValue('page', 1);
-  const pageSize = readPaginationValue('pageSize', 25);
+  const search = useSearch({ strict: false }) as ListSearchState;
+  const normalizedSearch = normalizeListSearch(search);
+  const page = normalizedSearch.page;
+  const pageSize = normalizedSearch.pageSize;
   const [result, setResult] = React.useState<PoiListResult>({
     data: [],
     pagination: { page, pageSize, hasNextPage: false },
@@ -220,20 +221,6 @@ export function PoiListPage() {
     },
     [navigate, result.pagination.pageSize]
   );
-
-  React.useEffect(() => {
-    if (search.page === page && search.pageSize === pageSize) {
-      return;
-    }
-
-    Promise.resolve(
-      navigate({
-        to: '/admin/poi',
-        replace: true,
-        search: (current: ListSearchState) => updateListSearchPage(current, page, pageSize),
-      })
-    ).catch(() => undefined);
-  }, [navigate, page, pageSize, search.page, search.pageSize]);
 
   React.useEffect(() => {
     let active = true;
@@ -285,11 +272,7 @@ export function PoiListPage() {
               selectRow: ({ label }) => label,
             }}
             data={result.data}
-            columns={[
-              { id: 'name', header: pt('fields.name'), cell: (item: PoiContentItem) => item.name },
-              { id: 'categoryName', header: pt('fields.categoryName'), cell: (item: PoiContentItem) => item.categoryName ?? '—' },
-              { id: 'active', header: pt('fields.active'), cell: (item: PoiContentItem) => (item.active === false ? '—' : '✓') },
-            ]}
+            columns={createPoiListColumns(pt)}
             rowActions={(item) => (
               <Button asChild variant="outline" size="sm">
                 <Link to="/admin/poi/$id" params={{ id: item.id }}>

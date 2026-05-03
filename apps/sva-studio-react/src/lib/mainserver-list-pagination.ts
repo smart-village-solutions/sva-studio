@@ -1,5 +1,6 @@
 export const mainserverListDefaultPageSize = 25;
 export const mainserverListAllowedPageSizes = [25, 50, 100] as const;
+export const mainserverListMaxOffset = 10_000;
 
 export type MainserverListQuery = {
   readonly page: number;
@@ -17,12 +18,13 @@ const readPositiveInteger = (value: string | null): number | undefined => {
 
 export const parseMainserverListQuery = (request: Request): MainserverListQuery => {
   const { searchParams } = new URL(request.url);
-  const page = readPositiveInteger(searchParams.get('page')) ?? 1;
   const requestedPageSize = readPositiveInteger(searchParams.get('pageSize'));
   const pageSize =
     requestedPageSize && mainserverListAllowedPageSizes.includes(requestedPageSize as (typeof mainserverListAllowedPageSizes)[number])
       ? requestedPageSize
       : mainserverListDefaultPageSize;
+  const maxPage = Math.floor(mainserverListMaxOffset / pageSize) + 1;
+  const page = Math.min(readPositiveInteger(searchParams.get('page')) ?? 1, maxPage);
 
   return { page, pageSize };
 };

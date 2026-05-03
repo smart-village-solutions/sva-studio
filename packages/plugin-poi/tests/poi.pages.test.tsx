@@ -93,6 +93,8 @@ describe('PoiListPage', () => {
         'poi.pagination.previous': 'Zurück',
         'poi.pagination.next': 'Weiter',
         'poi.pagination.pageLabel': 'Seite {{page}}',
+        'poi.values.notAvailable': 'Nicht verfügbar',
+        'poi.values.active': 'Ja',
         'poi.editor.createTitle': 'POI anlegen',
         'poi.editor.createDescription': 'Erstellen Sie einen neuen Point of Interest.',
         'poi.editor.editTitle': 'POI bearbeiten',

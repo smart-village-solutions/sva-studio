@@ -137,6 +137,7 @@ const DEFAULT_CACHE_MAX_SIZE = 256;
 const DEFAULT_RETRY_BASE_DELAY_MS = 150;
 const RETRYABLE_STATUS_CODES = new Set([503]);
 const MAX_MAINSERVER_PAGE_SIZE = 100;
+const MAX_MAINSERVER_UPSTREAM_SCAN_RECORDS = 10_000;
 
 const tokenResponseSchema = z.object({
   access_token: z.string().min(1),
@@ -619,6 +620,15 @@ const assertUpstreamScanLimit = (skip: number) => {
       statusCode: 502,
     });
   }
+};
+
+const normalizeVisibleListQuery = (input: SvaMainserverListQuery): SvaMainserverListQuery => {
+  const pageSize = Math.min(MAX_MAINSERVER_PAGE_SIZE, Math.max(1, Math.trunc(input.pageSize)));
+  const maxPage = Math.floor(MAX_MAINSERVER_UPSTREAM_SCAN_RECORDS / pageSize) + 1;
+  return {
+    page: Math.min(Math.max(1, Math.trunc(input.page)), maxPage),
+    pageSize,
+  };
 };
 
 const updateVisibleListCollectionState = <TUpstreamItem, TItem>(
@@ -1741,10 +1751,15 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
       readonly mapItem: (item: TUpstreamItem) => TItem;
     }
   ): Promise<SvaMainserverListResult<TItem>> => {
-    const startIndex = (input.page - 1) * input.pageSize;
-    const endIndex = startIndex + input.pageSize;
+    const normalizedQuery = normalizeVisibleListQuery(input);
+    const normalizedInput = {
+      ...input,
+      ...normalizedQuery,
+    };
+    const startIndex = (normalizedInput.page - 1) * normalizedInput.pageSize;
+    const endIndex = startIndex + normalizedInput.pageSize;
     const targetVisibleCount = endIndex + 1;
-    const batchSize = Math.min(MAX_MAINSERVER_PAGE_SIZE, input.pageSize + 1);
+    const batchSize = Math.min(MAX_MAINSERVER_PAGE_SIZE, normalizedInput.pageSize + 1);
     const collectedVisibleItems: TItem[] = [];
     let skip = 0;
     let exhausted = false;
@@ -1752,7 +1767,7 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
     while (collectedVisibleItems.length < targetVisibleCount && exhausted === false) {
       const response = await executeGraphqlWithConfig<TQueryResult>(
         {
-          ...input,
+          ...normalizedInput,
           document: options.document,
           operationName: options.operationName,
           variables: { limit: batchSize, skip, order: options.order },
@@ -1779,11 +1794,7 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
       }
     }
 
-    return toListResult(
-      input,
-      collectedVisibleItems.slice(startIndex, endIndex),
-      collectedVisibleItems.length > endIndex
-    );
+    return toListResult(normalizedInput, collectedVisibleItems.slice(startIndex, endIndex), collectedVisibleItems.length > endIndex);
   };
 
   const listNewsWithConfig = async (

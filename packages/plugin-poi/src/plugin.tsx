@@ -102,6 +102,10 @@ export const pluginPoi: PluginDefinition = {
           next: 'Weiter',
           pageLabel: 'Seite {{page}}',
         },
+        values: {
+          notAvailable: 'Nicht verfügbar',
+          active: 'Ja',
+        },
         validation: {
           name: 'Der Name ist erforderlich.',
           webUrls: 'URLs müssen mit https:// beginnen.',
@@ -167,6 +171,10 @@ export const pluginPoi: PluginDefinition = {
           previous: 'Previous',
           next: 'Next',
           pageLabel: 'Page {{page}}',
+        },
+        values: {
+          notAvailable: 'Not available',
+          active: 'Yes',
         },
         validation: {
           name: 'Name is required.',

@@ -256,6 +256,7 @@ describe('interfaces.server', () => {
   });
 
   it('saves mainserver settings for authorized users', async () => {
+    let capturedResponse: Response | null = null;
     state.withAuthenticatedUser.mockImplementation(
       async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<Response>) =>
         handler({
@@ -264,6 +265,9 @@ describe('interfaces.server', () => {
             instanceId: 'de-musterhausen',
             roles: ['system_admin'],
           },
+        }).then((response) => {
+          capturedResponse = response;
+          return response;
         })
     );
     state.saveSvaMainserverSettings.mockResolvedValue({
@@ -290,6 +294,7 @@ describe('interfaces.server', () => {
         enabled: true,
       })
     );
+    expect(capturedResponse?.headers.get('Cache-Control')).toBe('no-store');
   });
 
   it('allows interface_manager users to save mainserver settings', async () => {

@@ -126,6 +126,24 @@ describe('studio-ui-react primitives', () => {
     expect(screen.getByRole('tablist', { name: 'Inhaltsbereiche' })).toBeTruthy();
   });
 
+  it('links tab lists to the rendered page heading when no explicit tabs aria label is provided', () => {
+    render(
+      <StudioListPageTemplate
+        title={
+          <span>
+            <strong>Abfall</strong> kalender
+          </span>
+        }
+        tabs={[
+          { id: 'pickup', label: 'Abholorte', content: <div>Abholorte-Inhalt</div> },
+          { id: 'dates', label: 'Ausweichtermine', content: <div>Ausweichtermine-Inhalt</div> },
+        ]}
+      />
+    );
+
+    expect(screen.getByRole('tablist', { name: 'Abfall kalender' })).toBeTruthy();
+  });
+
   it('renders detail pages, grouped fields and form summaries', () => {
     render(
       <StudioDetailPageTemplate title="Detail" description="Beschreibung" actions={<Button>Speichern</Button>}>

@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
   logger: {
@@ -65,8 +65,14 @@ vi.mock('./runtime-secrets.js', () => ({
 }));
 
 describe('auth config resolution', () => {
+  let resolveAuthConfigForInstance: typeof import('./config.js').resolveAuthConfigForInstance;
+  let resolveAuthConfigForRequest: typeof import('./config.js').resolveAuthConfigForRequest;
+
+  beforeAll(async () => {
+    ({ resolveAuthConfigForInstance, resolveAuthConfigForRequest } = await import('./config.js'));
+  });
+
   beforeEach(() => {
-    vi.resetModules();
     vi.clearAllMocks();
     vi.stubEnv('SVA_AUTH_CLIENT_SECRET', 'platform-secret');
     vi.stubEnv('SVA_AUTH_ISSUER', 'https://auth.example/realms/platform');
@@ -103,8 +109,6 @@ describe('auth config resolution', () => {
       authIssuerUrl: undefined,
     });
 
-    const { resolveAuthConfigForInstance } = await import('./config.js');
-
     await expect(resolveAuthConfigForInstance('tenant-a')).resolves.toMatchObject({
       kind: 'instance',
       instanceId: 'tenant-a',
@@ -126,8 +130,6 @@ describe('auth config resolution', () => {
     });
     state.isTrafficEnabledInstanceStatus.mockReturnValue(false);
 
-    const { resolveAuthConfigForInstance } = await import('./config.js');
-
     await expect(resolveAuthConfigForInstance('tenant-a')).rejects.toThrow(
       'Active instance auth config not found for tenant-a'
     );
@@ -138,8 +140,6 @@ describe('auth config resolution', () => {
 
   it('falls back to the platform config when no instance config is available', async () => {
     state.getInstanceConfig.mockReturnValue(null);
-
-    const { resolveAuthConfigForRequest } = await import('./config.js');
 
     await expect(resolveAuthConfigForRequest(new Request('https://studio.example/auth/login'))).resolves.toMatchObject({
       kind: 'platform',
@@ -155,8 +155,6 @@ describe('auth config resolution', () => {
     });
     state.isCanonicalAuthHost.mockReturnValueOnce(true).mockReturnValueOnce(false);
     state.classifyHost.mockReturnValueOnce({ kind: 'root' });
-
-    const { resolveAuthConfigForRequest } = await import('./config.js');
 
     await expect(resolveAuthConfigForRequest(new Request('https://auth.example/auth/login'))).resolves.toMatchObject({
       kind: 'platform',
@@ -175,8 +173,6 @@ describe('auth config resolution', () => {
     state.isCanonicalAuthHost.mockReturnValue(false);
     state.classifyHost.mockReturnValueOnce({ kind: 'unknown' }).mockReturnValueOnce({ kind: 'tenant' });
     state.loadRegistryEntryForHost.mockResolvedValueOnce(null);
-
-    const { resolveAuthConfigForRequest } = await import('./config.js');
 
     await expect(resolveAuthConfigForRequest(new Request('https://broken.example/auth/login'))).rejects.toMatchObject({
       reason: 'tenant_host_invalid',
@@ -203,8 +199,6 @@ describe('auth config resolution', () => {
     state.classifyHost.mockReturnValue({ kind: 'tenant' });
     state.buildRequestOriginFromHeaders.mockReturnValue('https://tenant.example.test');
     state.resolveEffectiveRequestHost.mockReturnValue('tenant.example.test');
-
-    const { resolveAuthConfigForRequest } = await import('./config.js');
 
     await expect(resolveAuthConfigForRequest(new Request('https://tenant.example.test/auth/login'))).resolves.toMatchObject({
       kind: 'instance',

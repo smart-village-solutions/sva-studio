@@ -6,16 +6,19 @@ import { cn } from './utils.js';
 
 export type StudioPageHeaderProps = Readonly<{
   title: React.ReactNode;
+  titleId?: string;
   description?: React.ReactNode;
   actions?: React.ReactNode;
   className?: string;
 }>;
 
-export function StudioPageHeader({ title, description, actions, className }: StudioPageHeaderProps) {
+export function StudioPageHeader({ title, titleId, description, actions, className }: StudioPageHeaderProps) {
   return (
     <header className={cn('flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between', className)}>
       <div className="space-y-2">
-        <h1 className="text-3xl font-semibold text-foreground">{title}</h1>
+        <h1 id={titleId} className="text-3xl font-semibold text-foreground">
+          {title}
+        </h1>
         {description ? <p className="max-w-3xl text-sm text-muted-foreground">{description}</p> : null}
       </div>
       {actions ? <div className="flex shrink-0 items-start gap-2">{actions}</div> : null}
@@ -99,18 +102,22 @@ export function StudioListPageTemplate({
 }: StudioListPageTemplateProps) {
   const hasTabs = Boolean(tabs && tabs.length > 0);
   const defaultTab = tabs?.[0]?.id;
+  const titleId = React.useId();
+  const tabListLabel = tabsAriaLabel ?? (typeof title === 'string' ? title : undefined);
+  const tabListLabelledBy = tabListLabel ? undefined : titleId;
 
   return (
     <section className={cn('space-y-5', className)}>
       <StudioPageHeader
         title={title}
+        titleId={titleId}
         description={description}
         actions={primaryAction ? <div className="flex shrink-0 items-start">{renderStudioListPageAction(primaryAction)}</div> : undefined}
       />
 
       {hasTabs && tabs ? (
         <Tabs defaultValue={defaultTab} className="space-y-0">
-          <TabsList aria-label={tabsAriaLabel ?? (typeof title === 'string' ? title : undefined)}>
+          <TabsList aria-label={tabListLabel} aria-labelledby={tabListLabelledBy}>
             {tabs.map((tab) => (
               <TabsTrigger key={tab.id} value={tab.id}>
                 {tab.label}

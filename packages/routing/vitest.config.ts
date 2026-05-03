@@ -149,6 +149,7 @@ export default defineConfig({
         replacement: resolve(__dirname, '../instance-registry/src/service-types.ts'),
       },
       { find: /^@sva\/instance-registry$/, replacement: resolve(__dirname, '../instance-registry/src/index.ts') },
+      { find: /^@sva\/studio-module-iam$/, replacement: resolve(__dirname, '../studio-module-iam/src/index.ts') },
       { find: '@sva/plugin-sdk', replacement: resolve(__dirname, '../plugin-sdk/src/index.ts') },
       { find: '@sva/server-runtime', replacement: resolve(__dirname, '../server-runtime/src/index.ts') },
     ],

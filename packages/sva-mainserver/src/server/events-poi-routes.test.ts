@@ -507,6 +507,29 @@ describe('mainserver content route contracts', () => {
     );
   });
 
+  it('maps logger failures on successful create responses to the route error contract', async () => {
+    mockAuthorizedMutation();
+    state.createSvaMainserverEvent.mockResolvedValue({ id: 'event-1' });
+    state.loggerInfo.mockImplementation(() => {
+      throw new Error('logger transport failed');
+    });
+
+    const response = await dispatchSvaMainserverEventsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/events', {
+        method: 'POST',
+        body: JSON.stringify({
+          title: 'Stadtfest',
+        }),
+      })
+    );
+
+    expect(response?.status).toBe(500);
+    await expect(response?.json()).resolves.toEqual({
+      error: 'internal_error',
+      message: 'Mainserver-Anfrage ist fehlgeschlagen.',
+    });
+  });
+
   it('returns method-not-allowed for unsupported route methods', async () => {
     mockAuthorizedMutation();
 

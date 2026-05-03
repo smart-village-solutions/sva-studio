@@ -473,7 +473,7 @@ const dispatchAuthenticated = async (request: Request, route: RouteMatch, ctx: A
       method: request.method,
     });
   };
-  const logSuccessIfOk = async (response: Response, operation: string, contentId?: string) => {
+  const logSuccessIfOk = (response: Response, operation: string, contentId?: string) => {
     if (!response.ok) {
       return response;
     }

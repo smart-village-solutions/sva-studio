@@ -58,6 +58,8 @@ gleichzeitig beeinflussen.
 - Plugin-UI und fachliche Client-Interaktion bleiben zulässig, wenn sie in host-materialisierten Routen laufen und hostkontrollierte Actions, Validierung, Persistenz und Auditierung verwenden
 - Plugin-Custom-Views müssen gemeinsame Seitenstruktur, Controls, Tabellen, Aktionen und Zustandsdarstellung aus `@sva/studio-ui-react` verwenden; App-interne Komponentenpfade und parallele Basis-Control-Systeme in Plugins sind nicht zulässig
 - News laufen produktiv über die hostgeführte Mainserver-News-Fassade; dedizierte Mainserver-Felder und `contentBlocks` sind das Schreibmodell. Legacy-`payload` ist nur Lesefallback, lokale IAM-Content-Validierung ist für News keine Persistenzquelle mehr
+- Modulbezogene IAM-Verträge haben genau eine kanonische Vertragsfamilie: Build-time-Host-Registry, Plugin-Deklaration, Runtime-Seeding und Provisioning leiten ihre Daten aus `@sva/studio-module-iam` ab und pflegen keine separaten Parallelkataloge
+- Mainserver-Listen für News, Events und POI verwenden typsichere Search-Params als kanonischen UI-State; paginierte Host-Antworten serialisieren mindestens `page`, `pageSize` und `hasNextPage`, während `total` optional bleibt
 - DataClient unterstützt optionale Runtime-Schema-Validierung (`get(path, schema)`) für API-Responses
 - IAM-Server-Fassaden bleiben bewusst dünn; fachliche Erweiterungen gehören in Unterordner und nicht zurück in Monolith-Dateien
 - Profil-Synchronisation mit Keycloak bleibt zulässig, erfolgt aber ausschließlich über dedizierte Profil-/Sync-Flows und nicht implizit über Session- oder Logging-Pfade
@@ -166,6 +168,7 @@ gleichzeitig beeinflussen.
 - IAM-Request-Spans tragen konsistente Diagnoseattribute wie `iam.endpoint`, `iam.instance_id`, `iam.actor_resolution`, `iam.reason_code`, `iam.feature_flags`, `db.schema_guard_result`, `dependency.redis.status` und `dependency.keycloak.status`
 - Der Runtime-Doctor- und Migrationspfad emittiert eigene OTEL-Ereignisse für Schema-Guard, Actor-Diagnose und verifizierte Migrationsläufe, damit Betriebsfehler mit `request_id` und `trace_id` korrelierbar bleiben
 - Inhalts-Historie nutzt ein eigenes Read-Modell statt Roh-Logs; jede Erstellung, Aktualisierung und jeder Statuswechsel erzeugt zusätzlich Audit-Ereignisse im bestehenden IAM-Auditpfad. Audit-Payloads für Content-Aktionen enthalten additiv fachliche Capability, primitive Action, Ergebnis, Reason-Code und Korrelationsfelder, ohne bestehende Exportformate zu migrieren.
+- Hostgeführte Bulk-Actions fuer Content reusen denselben Audit-/Mutation-Backbone: der Host protokolliert nur sichere Metadaten wie Resource-ID, Action-ID, Selection-Mode, Counts und Sort-/Filter-Scope, waehrend die fachliche Mutation und serverseitige Audit-Persistenz in den bestehenden Content-Endpunkten bleibt
 - Studio-Deploys erzeugen zusätzlich strukturierte Release-Evidenz unter `artifacts/runtime/deployments/`; enthalten sind Release-Modus, Actor, Workflow, Image-Referenz, Schrittstatus und Stack-Zusammenfassung, jedoch keine Secrets oder PII
 - Produktionsnahe Releases erzeugen zusätzlich eigenständige Artefakte für Release-Manifest, Phasenstatus, Migration, Bootstrap, Migrationsjob, Bootstrap-Job, interne Probes und externe Probes; diese Artefakte bleiben bewusst ohne Secrets oder PII
 - Remote-Prechecks für `studio` vergleichen zusätzlich die Live-Service-Spec der App mit dem gerenderten Sollzustand aus dem Deploy-Compose; dabei sind Netzwerke und ingressrelevante Labels eigene Drift-Signale
@@ -211,6 +214,7 @@ gleichzeitig beeinflussen.
 - DSR-Resilienz über asynchrones Export-Statusmodell (`queued|processing|completed|failed`)
 - Restore-Sanitization nach Backup-Restore stellt DSGVO-konforme Nachbereinigung sicher
 - Mainserver-Delegation arbeitet fail-closed: ohne lokalen Rollencheck, Instanzkontext, Konfiguration oder gültige Credentials wird kein Upstream-Call ausgeführt
+- Pagination gegen den Mainserver arbeitet ebenfalls fail-closed: ungültige `page`-/`pageSize`-Eingaben werden auf den kanonischen Vertrag normalisiert, und ohne belastbaren Nachweis für weitere sichtbare Einträge wird `hasNextPage` nicht optimistisch gesetzt
 - Der IAM-Acceptance-Runner arbeitet ebenfalls fail-closed: fehlende Env, fehlende Testbenutzer, nicht bereite Dependencies oder unvollständige Laufzeitnachweise beenden den Lauf mit dokumentierten Fehlercodes
 - Der Gruppen-CRUD arbeitet fail-closed: unbekannte `roleIds`, instanzfremde Gruppen oder fehlerhafte CSRF-/Idempotency-Header erzeugen stabile `invalid_request`-, `forbidden`- oder `csrf_validation_failed`-Antworten
 - Die Rechtstext-Verwaltung arbeitet fail-closed: ungültige Statuswechsel, fehlendes `publishedAt` bei `valid` oder nicht reloadbare Neuanlagen liefern stabile `invalid_request`- bzw. `database_unavailable`-Antworten
@@ -300,6 +304,7 @@ gleichzeitig beeinflussen.
 - Proposal-Reviews werden über einen dedizierten Proposal-Orchestrator konsolidiert
 - PR- und Code-Reviews werden über einen separaten PR-Orchestrator konsolidiert
 - Spezialisierte Review-Agents decken ergänzend Testqualität, i18n/Content, User Journey & Usability und Performance ab
+- Relevante Bot-Kommentare von `Copilot` und `chatgpt-codex-connector[bot]` werden zusaetzlich ueber ein eigenes PR-Gate auf Bearbeitungsnachweise geprueft
 - Zentrale und kritische Module werden zusätzlich über ein eigenes Komplexitäts-Gate mit Ticketpflicht überwacht
 - Das Modulregister und die Schwellwerte liegen versioniert unter `tooling/quality/complexity-policy.json`
 - Bekannte Überschreitungen bleiben nur dann zulässig, wenn sie in `trackedFindings` mit Refactoring-Ticket hinterlegt sind
@@ -309,6 +314,7 @@ gleichzeitig beeinflussen.
   - `ux-accessibility.agent.md` für WCAG/BITV, Fokus, Tastatur und Screenreader
   - `user-journey-usability.agent.md` für Friktion, Verständlichkeit und Aufgabenbewältigung
 - i18n/harte Strings werden als eigener Governance-Strang behandelt und nicht nur implizit im Code-Review geprüft
+- Der Bearbeitungsnachweis fuer Bot-Kommentare nutzt standardisierte Marker fuer `accepted`, `rejected` und `resolved`; Diff-Threads muessen zusaetzlich als resolved markiert sein
 - Konflikte zwischen Review-Perspektiven werden auf Orchestrator-Ebene explizit gemacht, die Entscheidung bleibt beim Menschen
 
 ### Package-Boundaries und Runtime-Imports
@@ -419,6 +425,7 @@ Referenzen:
 - Die Mainserver-Integration ist eine reine Server-Side-Integration; es gibt keinen generischen Browser-Proxy auf den externen GraphQL-Endpunkt.
 - Fachadapter wie News stellen getypte, eng zugeschnittene Fassaden bereit; Browser-Plugins sprechen nur hosteigene HTTP-Endpunkte und importieren keine Mainserver-Servermodule.
 - Events und POI folgen demselben Host-Fassadenmuster. Der Event-Editor bezieht POI-Auswahldaten über `/api/v1/mainserver/poi`, nicht über einen direkten Import von `@sva/plugin-poi`.
+- `apps/sva-studio-react` bleibt bewusst Host für TanStack-`createServerFn`-Bindings, Request-Matching und die Dispatch-Reihenfolge im Server-Entry. Diese Transport- und Framework-Bindung ist keine fachliche Package-Ownership.
 - Per-User-Credentials liegen ausschließlich in Keycloak-User-Attributen (`mainserverUserApplicationId`, `mainserverUserApplicationSecret`) und werden serverseitig on demand gelesen; die bisherigen Namen `sva_mainserver_api_key` und `sva_mainserver_api_secret` bleiben nur als Legacy-Fallback lesbar.
 - Die Studio-Datenbank hält nur instanzbezogene Endpunktkonfiguration (`graphql_base_url`, `oauth_token_url`, Prüfstatus) in `iam.instance_integrations`.
 - Credential-Caching bleibt kurzlebig im Prozessspeicher; Access-Tokens werden ebenfalls nur in-memory und vor Ablauf mit Skew erneuert.

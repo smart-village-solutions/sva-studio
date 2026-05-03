@@ -17,7 +17,7 @@ Das System MUST eine Seite `Inhalte` bereitstellen, die vorhandene Inhalte in ei
 
 ### Requirement: Inhalt ist ein erweiterbares Core-Element
 
-Das System MUST `Inhalt` als kanonisches Core-Element modellieren, das über definierte SDK-Erweiterungspunkte für spezielle Datentypen erweitert werden kann.
+Das System MUST `Inhalt` als kanonisches Core-Element modellieren, das über definierte SDK-Erweiterungspunkte für spezielle Datentypen erweitert werden kann und referenzbasierte Mediennutzung unterstützt.
 
 #### Scenario: Core-Inhalt wird mit Basiskern angelegt
 
@@ -36,6 +36,26 @@ Das System MUST `Inhalt` als kanonisches Core-Element modellieren, das über def
 - **WENN** ein Plugin oder SDK-Modul einen speziellen Inhaltstyp registriert
 - **DANN** darf es die Bedeutung oder Pflichtigkeit der Core-Felder nicht brechen
 - **UND** Statusmodell, Historie und Core-Metadaten bleiben systemweit konsistent
+
+#### Scenario: Inhalte binden Medien referenzbasiert an
+
+- **WENN** ein Inhalt ein Bild, Download oder anderes Medium benötigt
+- **DANN** referenziert der Inhalt Medien über die zentrale Medien-Capability und fachliche Rollen
+- **UND** der Inhalt speichert keine rohen Storage-Keys oder auslieferungsrelevanten Dateipfade als führenden Vertrag
+
+#### Scenario: Plugin nutzt hostseitigen Media-Picker
+
+- **WENN** ein Plugin ein Medium für einen Inhalt oder ein Fachobjekt auswählen lässt
+- **DANN** verwendet es den hostseitigen Media-Picker oder dessen SDK-Vertrag
+- **UND** das Plugin deklariert erlaubte Medienrollen, Medientypen und optionale Preset-Anforderungen
+- **UND** es erhält keine direkte Storage-Schnittstelle und speichert keine MinIO-Bucket-Namen, Object-Keys oder presigned URLs als führenden Vertrag
+
+#### Scenario: Bestehender URL-basierter Inhaltspfad wird migriert
+
+- **WENN** ein bestehender Inhaltstyp Medien noch über URL-basierte Felder wie `imageUrl`, `sourceUrl` oder eingebettete Medien-URLs speichert
+- **DANN** definiert das System einen kontrollierten Übergangspfad zur referenzbasierten Mediennutzung
+- **UND** neue Host-Integrationen bevorzugen den Media-Picker und Medienreferenzen
+- **UND** Legacy-URL-Felder bleiben nur übergangsweise zulässig
 
 ### Requirement: Lokaler Migrationspfad für das Inhaltsmodell ist verifiziert
 
@@ -85,6 +105,13 @@ Das System MUST die Inhaltsverwaltung mit den bestehenden `shadcn/ui`-Patterns u
 - **WENN** die Erstellungs- oder Bearbeitungsansicht eines Inhalts angezeigt wird
 - **DANN** basieren Formularfelder, Buttons, Statusanzeigen, Dialoge und Fehlermeldungen auf den bestehenden `shadcn/ui`-Patterns der Anwendung
 - **UND** die Inhaltsverwaltung wirkt visuell und interaktional als Teil derselben Admin-Oberfläche
+
+#### Scenario: Mainserver-Plugin-Listen harmonisieren sich auf StudioDataTable
+
+- **WENN** die Listenansichten der produktiven Mainserver-Plugins `news`, `events` oder `poi` gerendert werden
+- **DANN** verwenden sie `StudioDataTable` als gemeinsame Tabellenbasis
+- **UND** sie führen keine pluginlokalen parallelen Tabellen-Implementierungen für dieselbe Listenfunktionalität fort
+- **UND** Aktionsspalten, Loading-State, Empty-State und semantische Tabellenstruktur folgen demselben Host-Muster
 
 ### Requirement: Erstellungs- und Bearbeitungsansicht für Inhalte
 

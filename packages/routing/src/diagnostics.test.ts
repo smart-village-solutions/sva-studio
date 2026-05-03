@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   createRoutingDiagnosticsLogger,
@@ -19,6 +19,12 @@ const testEvent: RoutingDiagnosticEvent = {
   reason: 'unauthenticated',
   redirect_target: '/auth/login',
 };
+
+beforeEach(() => {
+  fallbackLogger.error.mockReset();
+  setRoutingDiagnosticsFailureLogger(fallbackLogger);
+  vi.unstubAllGlobals();
+});
 
 describe('emitRoutingDiagnostic', () => {
   it('uses the registered server fallback logger for server-side hook failures', async () => {

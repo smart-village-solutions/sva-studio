@@ -45,7 +45,6 @@ const resolveBindingKey = (
   if (typeof bindingKey !== 'string' || !hasBindingKey(bindings, bindingKey)) {
     throw new Error(`unknown_admin_resource_binding_key:${resource.resourceId}:${viewName}:${bindingKey ?? ''}`);
   }
-
   return bindingKey;
 };
 
@@ -203,7 +202,6 @@ export const createAdminResourceRouteFactories = (
     (definition) =>
       (rootRoute: RootRoute) => {
         const guard = createAccountUiRouteGuard(definition.guard, diagnostics, definition.path);
-
         return createRoute({
           getParentRoute: () => rootRoute,
           path: definition.path,
@@ -221,7 +219,6 @@ export const createAdminResourceRouteFactories = (
 export const createLegacyContentAliasFactories = (
   resources: readonly AdminResourceDefinition[] = []
 ): readonly AppRouteFactory[] => {
-  const aliasPaths = [LEGACY_CONTENT_ALIAS_PREFIX, toAdminCreateRoutePath(LEGACY_CONTENT_ALIAS_PREFIX), '/content/$contentId'] as const;
   const canonicalContentPath = resolveCanonicalContentAdminRoutePath(resources);
 
   return aliasPaths.map((path) => (rootRoute: RootRoute) =>

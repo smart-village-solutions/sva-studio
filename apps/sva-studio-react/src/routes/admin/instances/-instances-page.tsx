@@ -1,9 +1,9 @@
 import type { IamInstanceListItem } from '@sva/core';
+import { StudioDataTable, StudioListPageTemplate, type StudioColumnDef } from '@sva/studio-ui-react';
 import { Link } from '@tanstack/react-router';
 import React from 'react';
 
-import { StudioDataTable, type StudioColumnDef } from '../../../components/StudioDataTable';
-import { StudioListPageTemplate } from '../../../components/StudioListPageTemplate';
+import { createStudioDataTableLabels } from '../../../components/studio-data-table-labels';
 import { IamRuntimeDiagnosticDetails } from '../../../components/iam-runtime-diagnostic-details';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Badge } from '../../../components/ui/badge';
@@ -34,6 +34,7 @@ const InstanceStatusCell = ({ instance }: { instance: InstanceRow }) => (
 );
 
 export const InstancesPage = () => {
+  const studioDataTableLabels = createStudioDataTableLabels();
   const instancesApi = useInstances();
 
   const instanceColumns = React.useMemo<readonly StudioColumnDef<InstanceRow>[]>(
@@ -91,6 +92,7 @@ export const InstancesPage = () => {
       >
         <StudioDataTable
           ariaLabel={t('admin.instances.table.ariaLabel')}
+          labels={studioDataTableLabels}
           data={instancesApi.instances}
           columns={instanceColumns}
           getRowId={(instance) => instance.instanceId}

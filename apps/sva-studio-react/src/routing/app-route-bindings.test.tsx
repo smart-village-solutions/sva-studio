@@ -209,7 +209,6 @@ describe('appRouteBindings', () => {
     const cases: Array<[keyof typeof appRouteBindings, string]> = [
       ['categories', 'Data management|Categories'],
       ['app', 'Applications|App'],
-      ['modules', 'System|Modules'],
       ['monitoring', 'System|Monitoring'],
       ['help', 'Help|Help'],
       ['support', 'Support|Support'],
@@ -222,6 +221,14 @@ describe('appRouteBindings', () => {
       expect(screen.getByTestId('placeholder-page').textContent).toBe(expectedText);
       cleanup();
     }
+  });
+
+  it('renders the concrete modules binding instead of the system placeholder', async () => {
+    const { appRouteBindings } = await import('./app-route-bindings');
+
+    render(<appRouteBindings.modules />);
+
+    expect(screen.getByTestId('modules-page').textContent).toBe('modules');
   });
 
   it('renders lazy bindings and route-param based bindings with normalized params and search values', async () => {

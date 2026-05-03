@@ -18,11 +18,13 @@ export default defineConfig({
       '@sva/core': resolve(__dirname, '../core/src/index.ts'),
       '@sva/auth-runtime/server': resolve(__dirname, '../auth-runtime/src/server.ts'),
       '@sva/auth-runtime': resolve(__dirname, '../auth-runtime/src/index.ts'),
+      '@sva/iam-admin/encryption': resolve(__dirname, '../iam-admin/src/encryption.ts'),
       '@sva/iam-admin': resolve(__dirname, '../iam-admin/src/index.ts'),
       '@sva/data-repositories/server': resolve(__dirname, '../data-repositories/src/server.ts'),
       '@sva/data-repositories': resolve(__dirname, '../data-repositories/src/index.ts'),
       '@sva/instance-registry/http-contracts': resolve(__dirname, '../instance-registry/src/http-contracts.ts'),
       '@sva/instance-registry': resolve(__dirname, '../instance-registry/src/index.ts'),
+      '@sva/media': resolve(__dirname, '../media/src/index.ts'),
       '@sva/monitoring-client/logger-provider.server': resolve(
         __dirname,
         '../monitoring-client/src/logger-provider.server.ts',

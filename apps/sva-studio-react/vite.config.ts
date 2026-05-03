@@ -127,6 +127,10 @@ const config = defineConfig({
       '@sva/iam-governance/legal-text-repository': resolveAppPath(
         '../../packages/iam-governance/src/legal-text-repository.ts'
       ),
+      '@sva/iam-governance/legal-text-html': resolveAppPath('../../packages/iam-governance/src/legal-text-html.ts'),
+      '@sva/iam-governance/legal-text-sanitize-html': resolveAppPath(
+        '../../packages/iam-governance/src/legal-text-sanitize-html.ts'
+      ),
       '@sva/iam-governance/legal-text-mutation-handlers': resolveAppPath(
         '../../packages/iam-governance/src/legal-text-mutation-handlers.ts'
       ),
@@ -196,7 +200,9 @@ const config = defineConfig({
       '@sva/instance-registry': resolveAppPath('../../packages/instance-registry/src/index.ts'),
       '@sva/sva-mainserver/server': resolveAppPath('../../packages/sva-mainserver/src/index.server.ts'),
       '@sva/sva-mainserver': resolveAppPath('../../packages/sva-mainserver/src/index.ts'),
+      '@sva/media': resolveAppPath('../../packages/media/src/index.ts'),
       '@sva/plugin-sdk': resolveAppPath('../../packages/plugin-sdk/src/index.ts'),
+      '@sva/studio-module-iam': resolveAppPath('../../packages/studio-module-iam/src/index.ts'),
       '@sva/studio-ui-react': resolveAppPath('../../packages/studio-ui-react/src/index.ts'),
       '@sva/server-runtime': resolveAppPath('../../packages/server-runtime/src/index.ts'),
       '@sva/monitoring-client/server': resolveAppPath('../../packages/monitoring-client/src/server.ts'),
@@ -218,6 +224,8 @@ const config = defineConfig({
       '@sva/iam-core',
       '@sva/iam-governance',
       '@sva/instance-registry',
+      '@sva/media',
+      '@sva/studio-module-iam',
       '@sva/routing',
       '@sva/studio-ui-react',
       '@sva/sva-mainserver',

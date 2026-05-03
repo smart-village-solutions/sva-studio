@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
-import type { Page, Route } from '@playwright/test';
+import type { Page, Request as PlaywrightRequest, Route } from '@playwright/test';
 
 type NewsRecord = {
   id: string;
@@ -32,6 +32,7 @@ const authenticatedUser = {
     name: 'Editor One',
     email: 'editor@example.com',
     instanceId: 'de-musterhausen',
+    assignedModules: ['news'],
     roles: ['editor'],
     assignedModules: ['news'],
     permissionActions: ['news.read', 'news.create', 'news.update', 'news.delete'],
@@ -404,7 +405,7 @@ test.describe('news plugin', () => {
     await expectPluginPageHeading(page, /News|news\.list\.title/);
   });
 
-  test('blocks unauthenticated access to plugin routes', async ({ page }) => {
+  test('blocks unauthenticated access to admin news routes', async ({ page }) => {
     await page.route('**/auth/me', async (route) => {
       await route.fulfill({
         status: 401,

@@ -79,6 +79,8 @@ type KeycloakProvisioningRunRow = {
   updated_at: string;
 };
 
+const compareAlphabetically = (left: string, right: string): number => left.localeCompare(right);
+
 type CreatedKeycloakProvisioningRunRow = KeycloakProvisioningRunRow & {
   created: boolean;
 };

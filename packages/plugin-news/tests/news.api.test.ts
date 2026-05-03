@@ -27,6 +27,11 @@ const sampleResponse = {
   publishedAt: sampleInput.publishedAt,
 };
 
+const defaultListQuery = {
+  page: 1,
+  pageSize: 25,
+} as const;
+
 describe('news api', () => {
   beforeEach(() => {
     vi.stubGlobal('fetch', vi.fn());
@@ -82,19 +87,18 @@ describe('news api', () => {
 
     await createNews(sampleInput);
 
-    expect(fetch).toHaveBeenCalledWith(
-      '/api/v1/mainserver/news',
-      expect.objectContaining({
-        method: 'POST',
-        credentials: 'include',
-        headers: expect.objectContaining({
-          Accept: 'application/json',
-          'Content-Type': 'application/json',
-          'Idempotency-Key': 'uuid-1',
-        }),
-      })
-    );
-    expect(JSON.parse(vi.mocked(fetch).mock.calls[0]?.[1]?.body as string)).toEqual({
+    expect(fetch).toHaveBeenCalledWith('/api/v1/mainserver/news', expect.any(Object));
+
+    const requestInit = vi.mocked(fetch).mock.calls[0]?.[1];
+    const headers = requestInit?.headers;
+    expect(requestInit?.method).toBe('POST');
+    expect(requestInit?.credentials).toBe('include');
+    expect(headers).toBeInstanceOf(Headers);
+    expect((headers as Headers).get('Accept')).toBe('application/json');
+    expect((headers as Headers).get('Content-Type')).toBe('application/json');
+    expect((headers as Headers).get('Idempotency-Key')).toBe('uuid-1');
+
+    expect(JSON.parse(requestInit?.body as string)).toEqual({
       title: sampleInput.title,
       author: sampleInput.author,
       categoryName: sampleInput.categoryName,

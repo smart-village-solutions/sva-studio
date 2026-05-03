@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
-import type { Page, Route } from '@playwright/test';
+import type { Page, Request as PlaywrightRequest, Route } from '@playwright/test';
 
 type EventRecord = {
   readonly id: string;
@@ -43,6 +43,7 @@ const authenticatedUser = {
     name: 'Editor One',
     email: 'editor@example.com',
     instanceId: 'de-musterhausen',
+    assignedModules: ['events', 'poi'],
     roles: ['editor'],
     assignedModules: ['events', 'poi'],
     permissionActions: [
@@ -156,6 +157,23 @@ const createPagination = (total: number) => ({
   hasNextPage: false,
   total,
 });
+
+const paginateRecords = <T extends { readonly id: string }>(items: readonly T[], request: PlaywrightRequest) => {
+  const url = new URL(request.url());
+  const page = Math.max(1, Number.parseInt(url.searchParams.get('page') ?? '1', 10) || 1);
+  const requestedPageSize = Number.parseInt(url.searchParams.get('pageSize') ?? '25', 10) || 25;
+  const pageSize = [25, 50, 100].includes(requestedPageSize) ? requestedPageSize : 25;
+  const start = (page - 1) * pageSize;
+
+  return {
+    data: items.slice(start, start + pageSize),
+    pagination: {
+      page,
+      pageSize,
+      hasNextPage: start + pageSize < items.length,
+    },
+  };
+};
 
 const routeEvents = async (route: Route, events: EventRecord[]) => {
   const request = route.request();
@@ -411,7 +429,7 @@ test.describe('events and POI plugins', () => {
     await expect(page.getByText(/Noch keine Events vorhanden|events\.empty\.title/)).toBeVisible();
   });
 
-  test('redirects unauthenticated plugin access to login', async ({ page }) => {
+  test('redirects unauthenticated admin resource access to login', async ({ page }) => {
     await page.unroute('**/auth/me');
     await page.route('**/auth/me', async (route) => {
       await route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ error: 'unauthorized' }) });

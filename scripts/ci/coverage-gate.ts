@@ -389,6 +389,14 @@ export function mergeGlobal(projectMetricsList: MetricFloors[]): MetricFloors {
   };
 }
 
+function selectProjectsForGlobalFloors(
+  policy: CoveragePolicy,
+  activeProjects: Array<[string, MetricFloors]>
+): Array<[string, MetricFloors]> {
+  const explicitlyFlooredProjects = new Set(Object.keys(policy.perProjectFloors ?? {}));
+  return activeProjects.filter(([projectName]) => !explicitlyFlooredProjects.has(projectName));
+}
+
 function formatPct(value: number): string {
   return `${value.toFixed(2)}%`;
 }
@@ -597,7 +605,8 @@ function evaluateFloors(
   errors.push(...projectFloorErrors);
 
   if (requireSummaries) {
-    const globalCoverage = mergeGlobal(activeProjects.map(([, values]) => values));
+    const globalProjects = selectProjectsForGlobalFloors(policy, activeProjects);
+    const globalCoverage = mergeGlobal(globalProjects.map(([, values]) => values));
     const globalFloorErrors = metrics.flatMap((metric) => {
       const floor = Number(policy.globalFloors?.[metric] ?? 0);
       const current = Number(globalCoverage[metric] ?? 0);
@@ -721,7 +730,10 @@ function generateReport(policy: CoveragePolicy, projects: Record<string, MetricF
   const sortedProjects = Object.entries(projects).sort(([a], [b]) => a.localeCompare(b));
   const exemptProjects = new Set<string>(policy.exemptProjects ?? []);
   const activeProjects = sortedProjects.filter(([name]) => !exemptProjects.has(name));
-  const globalCoverage = mergeGlobal(activeProjects.map(([, values]) => values));
+  const globalProjects = selectProjectsForGlobalFloors(policy, activeProjects);
+  const globalCoverage = mergeGlobal(globalProjects.map(([, values]) => values));
+  const globalLabel =
+    globalProjects.length > 0 ? 'Global coverage (default-floor projects avg)' : 'Global coverage (no default-floor projects)';
 
   const header = ['## Coverage Summary', '', '| Project | Lines | Statements | Functions | Branches |', '| --- | ---: | ---: | ---: | ---: |'];
   const rows = sortedProjects.map(
@@ -730,7 +742,7 @@ function generateReport(policy: CoveragePolicy, projects: Record<string, MetricF
   );
   const footer = [
     '',
-    `Global coverage (avg): lines ${formatPct(globalCoverage.lines)}, statements ${formatPct(globalCoverage.statements)}, functions ${formatPct(globalCoverage.functions)}, branches ${formatPct(globalCoverage.branches)}`,
+    `${globalLabel}: lines ${formatPct(globalCoverage.lines)}, statements ${formatPct(globalCoverage.statements)}, functions ${formatPct(globalCoverage.functions)}, branches ${formatPct(globalCoverage.branches)}`,
   ];
 
   return [...header, ...rows, ...footer].join('\n') + '\n';

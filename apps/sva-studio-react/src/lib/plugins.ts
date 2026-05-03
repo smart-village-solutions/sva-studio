@@ -1,6 +1,7 @@
 import { pluginEvents } from '@sva/plugin-events';
 import { pluginNews } from '@sva/plugin-news';
 import { pluginPoi } from '@sva/plugin-poi';
+import { studioPluginModuleIamContracts } from '@sva/studio-module-iam';
 import {
   createBuildTimeRegistry,
   registerPluginTranslationResolver,
@@ -9,6 +10,13 @@ import { createBrowserLogger } from '@sva/monitoring-client/logging';
 import { appAdminResources } from '../routing/admin-resources';
 
 import { mergeI18nResources, resetTranslatorCache, t } from '../i18n';
+
+export {
+  studioHostModuleIamContracts,
+  studioModuleIamContracts,
+  studioPluginModuleIamContracts,
+  studioModuleIamRegistry,
+} from '@sva/studio-module-iam';
 
 const pluginLogger = createBrowserLogger({
   component: 'plugin-actions',

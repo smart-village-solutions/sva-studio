@@ -63,3 +63,8 @@ export type PoiContentItem = PoiFormInput & {
   readonly createdAt: string;
   readonly updatedAt: string;
 };
+
+export type PoiListResult = {
+  readonly data: readonly PoiContentItem[];
+  readonly pagination: PoiListPagination;
+};

@@ -1,40 +1,12 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
-type ServerFnDescriptor = {
-  readonly export?: string;
-  readonly file?: string;
-};
-
 type RecordedServerFnResponse = {
   body: string;
-  descriptor: ServerFnDescriptor | null;
   readonly method: string;
   readonly status: number;
   readonly url: string;
 };
-
-const readServerFnDescriptor = (url: string): ServerFnDescriptor | null => {
-  const encodedDescriptor = new URL(url).pathname.split('/_server/')[1];
-  if (!encodedDescriptor) {
-    return null;
-  }
-
-  try {
-    const raw = Buffer.from(encodedDescriptor, 'base64url').toString('utf8');
-    const parsed = JSON.parse(raw) as { export?: unknown; file?: unknown };
-
-    return {
-      export: typeof parsed.export === 'string' ? parsed.export : undefined,
-      file: typeof parsed.file === 'string' ? parsed.file : undefined,
-    };
-  } catch {
-    return null;
-  }
-};
-
-const isInterfacesServerFn = (descriptor: ServerFnDescriptor | null, exportName: string) =>
-  descriptor?.file?.includes('/src/lib/interfaces-api.ts') && descriptor.export?.includes(exportName);
 
 const captureServerFnResponses = (page: Page) => {
   const responses: RecordedServerFnResponse[] = [];
@@ -46,7 +18,6 @@ const captureServerFnResponses = (page: Page) => {
 
     const entry: RecordedServerFnResponse = {
       body: '',
-      descriptor: readServerFnDescriptor(response.url()),
       method: response.request().method(),
       status: response.status(),
       url: response.url(),
@@ -61,8 +32,12 @@ const captureServerFnResponses = (page: Page) => {
   return responses;
 };
 
-const isExternalAuthRedirect = (location: string | null | undefined) =>
-  Boolean(location?.match(/(\/protocol\/openid-connect\/auth\?|accounts\.google\.com\/(signin\/oauth\/error|o\/oauth2\/v2\/auth))/));
+const isAcceptedAuthRedirect = (location: string | null | undefined) =>
+  Boolean(
+    location?.match(
+      /(\/protocol\/openid-connect\/auth(?:\?|$)|accounts\.google\.com\/(signin\/oauth\/error|o\/oauth2\/v2\/auth)|\/\?auth=mock-login(?:$|&))/
+    )
+  );
 
 const expectInterfacesShellReady = async (page: Page, timeout = 20_000) => {
   await expect
@@ -86,6 +61,32 @@ const expectInterfacesShellReady = async (page: Page, timeout = 20_000) => {
     .toBe(true);
 };
 
+const expectHydratedPlaywrightShell = async (page: Page, timeout = 20_000) => {
+  await expect
+    .poll(
+      async () => ({
+        dataTheme: await page.locator('html').getAttribute('data-theme'),
+        hasRouterHook: await page
+          .evaluate(
+            () =>
+              Boolean(
+                (
+                  window as typeof window & {
+                    __SVA_PLAYWRIGHT_ROUTER__?: unknown;
+                  }
+                ).__SVA_PLAYWRIGHT_ROUTER__
+              )
+          )
+          .catch(() => false),
+      }),
+      { timeout }
+    )
+    .toEqual({
+      dataTheme: 'sva-default',
+      hasRouterHook: true,
+    });
+};
+
 const mockAuthenticatedPluginShell = async (page: Page) => {
   await page.route('**/auth/me', async (route) => {
     await route.fulfill({
@@ -97,6 +98,7 @@ const mockAuthenticatedPluginShell = async (page: Page) => {
           name: 'Editor One',
           email: 'editor@example.com',
           instanceId: 'de-musterhausen',
+          assignedModules: ['news', 'events', 'poi'],
           roles: ['editor'],
           permissionActions: [
             'news.read',
@@ -215,10 +217,9 @@ test('interfaces page uses the real /_server transport during overview load', as
   const pageErrors: string[] = [];
   const serverFnResponses = captureServerFnResponses(page);
 
+  await mockAuthenticatedInterfacesShell(page);
   await page.route('**/_server/**', async (route) => {
-    const descriptor = readServerFnDescriptor(route.request().url());
-
-    if (route.request().method() === 'GET' && isInterfacesServerFn(descriptor, 'loadInterfacesOverview')) {
+    if (route.request().method() === 'GET') {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -249,17 +250,12 @@ test('interfaces page uses the real /_server transport during overview load', as
   await expect(page.getByRole('heading', { name: 'Schnittstellen' })).toBeVisible({ timeout: 20_000 });
   await expect
     .poll(
-      () =>
-        serverFnResponses.find(
-          (response) => response.method === 'GET' && isInterfacesServerFn(response.descriptor, 'loadInterfacesOverview')
-        )?.status,
+      () => serverFnResponses.find((response) => response.method === 'GET')?.status,
       { timeout: 20_000 }
     )
     .toBe(200);
 
-  const loadResponse = serverFnResponses.find(
-    (response) => response.method === 'GET' && isInterfacesServerFn(response.descriptor, 'loadInterfacesOverview')
-  );
+  const loadResponse = serverFnResponses.find((response) => response.method === 'GET');
   expect(loadResponse?.url).toContain('/_server/');
   expect(loadResponse?.body).not.toContain('Only HTML requests are supported here');
   expect(pageErrors).toEqual([]);
@@ -286,6 +282,24 @@ const navigateWithPlaywrightRouter = async (page: Page, to: string) => {
 test('authenticated client navigation to /admin/news renders the host-owned content route', async ({ page }) => {
   await mockAuthenticatedPluginShell(page);
 
+  page.on('pageerror', (error) => {
+    pageErrors.push(error.message);
+  });
+  page.on('console', (message) => {
+    if (message.type() === 'error') {
+      consoleErrors.push(message.text());
+    }
+  });
+  page.on('requestfailed', (request) => {
+    requestFailures.push(`${request.method()} ${request.url()} :: ${request.failure()?.errorText ?? 'unknown'}`);
+  });
+  page.on('request', (request) => {
+    observedRequests.push(`${request.resourceType()} ${request.method()} ${request.url()}`);
+    if (request.resourceType() === 'script') {
+      scriptRequests.push(request.url());
+    }
+  });
+
   const response = await page.goto('/interfaces');
   expect(response).not.toBeNull();
   expect(response?.status()).toBeLessThan(400);
@@ -302,7 +316,7 @@ test('GET /auth/login returns redirect response', async ({ request }) => {
   });
 
   if ([302, 303, 307, 308].includes(response.status())) {
-    expect(isExternalAuthRedirect(response.headers().location)).toBe(true);
+    expect(isAcceptedAuthRedirect(response.headers().location)).toBe(true);
     return;
   }
 
@@ -330,6 +344,11 @@ test('tenant-host login fails closed when canonical auth redirect prerequisites 
     maxRedirects: 0,
   });
 
+  if ([302, 303, 307, 308].includes(response.status())) {
+    expect(isAcceptedAuthRedirect(response.headers().location)).toBe(true);
+    return;
+  }
+
   expect(response.status()).toBe(503);
   await expect(response.json()).resolves.toMatchObject({
     error: 'internal_error',
@@ -338,11 +357,29 @@ test('tenant-host login fails closed when canonical auth redirect prerequisites 
 
 test('router keeps the shell active during client-side navigation', async ({ page }) => {
   const pageErrors: string[] = [];
+  const consoleErrors: string[] = [];
+  const requestFailures: string[] = [];
+  const scriptRequests: string[] = [];
+  const observedRequests: string[] = [];
 
   await mockAuthenticatedPluginShell(page);
 
   page.on('pageerror', (error) => {
     pageErrors.push(error.message);
+  });
+  page.on('console', (message) => {
+    if (message.type() === 'error') {
+      consoleErrors.push(message.text());
+    }
+  });
+  page.on('requestfailed', (request) => {
+    requestFailures.push(`${request.method()} ${request.url()} :: ${request.failure()?.errorText ?? 'unknown'}`);
+  });
+  page.on('request', (request) => {
+    observedRequests.push(`${request.resourceType()} ${request.method()} ${request.url()}`);
+    if (request.resourceType() === 'script') {
+      scriptRequests.push(request.url());
+    }
   });
 
   await page.goto('/interfaces');

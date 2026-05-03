@@ -1,53 +1,20 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
-  withAuthenticatedUser: vi.fn(),
-  authorizeContentPrimitiveForUser: vi.fn(),
-  completeIdempotency: vi.fn(),
-  reserveIdempotency: vi.fn(),
-  resolveActorInfo: vi.fn(),
-  validateCsrf: vi.fn(),
-  listSvaMainserverNews: vi.fn(),
-  getSvaMainserverNews: vi.fn(),
-  createSvaMainserverNews: vi.fn(),
-  updateSvaMainserverNews: vi.fn(),
-  deleteSvaMainserverNews: vi.fn(),
+  dispatchSvaMainserverNewsRequest: vi.fn(),
 }));
 
-vi.mock('@sva/auth-runtime/server', () => ({
-  withAuthenticatedUser: state.withAuthenticatedUser,
-  authorizeContentPrimitiveForUser: state.authorizeContentPrimitiveForUser,
-  completeIdempotency: state.completeIdempotency,
-  reserveIdempotency: state.reserveIdempotency,
-  resolveActorInfo: state.resolveActorInfo,
-  validateCsrf: state.validateCsrf,
+vi.mock('@sva/sva-mainserver/server', () => ({
+  dispatchSvaMainserverNewsRequest: state.dispatchSvaMainserverNewsRequest,
 }));
-
-vi.mock('@sva/sva-mainserver/server', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@sva/sva-mainserver/server')>();
-  return {
-    ...actual,
-    listSvaMainserverNews: state.listSvaMainserverNews,
-    getSvaMainserverNews: state.getSvaMainserverNews,
-    createSvaMainserverNews: state.createSvaMainserverNews,
-    updateSvaMainserverNews: state.updateSvaMainserverNews,
-    deleteSvaMainserverNews: state.deleteSvaMainserverNews,
-  };
-});
 
 import { dispatchMainserverNewsRequest } from './mainserver-news-api.server';
-import { SvaMainserverError } from '@sva/sva-mainserver/server';
 
-const ctx = {
-  sessionId: 'session-1',
-  user: {
-    id: 'subject-1',
-    email: 'editor@example.invalid',
-    displayName: 'Editor',
-    roles: ['editor'],
-    instanceId: 'de-musterhausen',
-  },
-};
+describe('mainserver news app adapter', () => {
+  it('delegates to the package news route contract', async () => {
+    const response = new Response('news', { status: 200 });
+    const request = new Request('https://studio.test/api/v1/mainserver/news');
+    state.dispatchSvaMainserverNewsRequest.mockResolvedValue(response);
 
 const newsInput = {
   title: 'Neue News',

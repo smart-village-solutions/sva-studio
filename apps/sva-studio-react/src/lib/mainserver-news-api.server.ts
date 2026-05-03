@@ -1,23 +1,4 @@
-import { createHash } from 'node:crypto';
-import {
-  authorizeContentPrimitiveForUser,
-  completeIdempotency,
-  reserveIdempotency,
-  resolveActorInfo,
-  validateCsrf,
-  withAuthenticatedUser,
-  type AuthenticatedRequestContext,
-} from '@sva/auth-runtime/server';
-import {
-  createSvaMainserverNews,
-  deleteSvaMainserverNews,
-  getSvaMainserverNews,
-  listSvaMainserverNews,
-  updateSvaMainserverNews,
-  SvaMainserverError,
-} from '@sva/sva-mainserver/server';
-import type { SvaMainserverNewsInput } from '@sva/sva-mainserver';
-import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
+import { dispatchSvaMainserverNewsRequest } from '@sva/sva-mainserver/server';
 
 import { parseMainserverListQuery } from './mainserver-list-pagination.js';
 

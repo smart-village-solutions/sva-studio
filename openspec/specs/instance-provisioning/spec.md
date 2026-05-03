@@ -33,15 +33,21 @@ Das System SHALL den Lebenszyklus einer Instanz über explizite Statuswerte steu
 
 ### Requirement: Idempotenter Provisioning-Workflow
 
-Das System SHALL neue Instanzen über einen idempotenten Provisioning-Workflow anlegen, der technische Teilaufgaben und Teilfehler kontrolliert behandelt.
+Das System SHALL neue Instanzen ueber einen idempotenten Provisioning-Workflow anlegen, der technische Teilaufgaben und Teilfehler kontrolliert behandelt. Soweit der Workflow modulbezogene IAM-Basisartefakte oder deren Reparatur ableitet, verwendet er dafuer dieselbe gemeinsame Modul-IAM-Vertragsquelle wie Runtime und Diagnose.
 
 #### Scenario: Erfolgreiche Neuanlage einer Instanz
 
-- **WHEN** eine berechtigte Person eine neue Instanz mit gültiger `instanceId` und gültigem Ziel-Hostname anfordert
+- **WHEN** eine berechtigte Person eine neue Instanz mit gueltiger `instanceId` und gueltigem Ziel-Hostname anfordert
 - **THEN** legt das System einen Provisioning-Lauf an
-- **AND** erstellt oder reserviert die benötigten Registry- und Basis-Konfigurationsartefakte
+- **AND** erstellt oder reserviert die benoetigten Registry- und Basis-Konfigurationsartefakte
 - **AND** erzeugt oder validiert getrennt den Login-Client `authClientId` und den Tenant-Admin-Client `tenantAdminClient.clientId`
-- **AND** dokumentiert den Übergang bis zum Status `active`
+- **AND** dokumentiert den Uebergang bis zum Status `active`
+
+#### Scenario: Modulbezogene IAM-Basis wird aus derselben Vertragsquelle repariert
+
+- **WHEN** ein Provisioning-, Repair- oder Reseed-Pfad modulbezogene IAM-Artefakte einer Instanz auf Sollstand bringt
+- **THEN** verwendet dieser Pfad dieselbe gemeinsame Modul-IAM-Vertragsquelle wie Runtime und Access-Control
+- **AND** koennen Plugin-Vertragsaenderungen nicht stillschweigend nur im UI- oder nur im Runtime-Pfad wirksam werden
 
 ### Requirement: Administrativer Steuerungspfad für neue Instanzen
 

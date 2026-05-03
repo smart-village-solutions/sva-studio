@@ -2,6 +2,7 @@ import { createPoolResolver } from '../db.js';
 import { createInstanceRegistryRepository } from '@sva/data-repositories';
 import { invalidateInstanceRegistryHost } from '@sva/data-repositories/server';
 import { createInstanceRegistryRuntime } from '@sva/instance-registry/runtime-wiring';
+import { studioModuleIamRegistry } from '@sva/studio-module-iam';
 
 import { getIamDatabaseUrl } from '../runtime-secrets.js';
 import { notifyPermissionInvalidation } from '../iam-account-management/shared-activity.js';

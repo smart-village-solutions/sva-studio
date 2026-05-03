@@ -6,10 +6,13 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   assertLoginFlow,
   buildStudioImageVerifyEvidenceCheck,
+  deriveInternalVerifyMaxAttempts,
   readStudioImageVerifyEvidence,
   resolveTenantRuntimeTargets,
   runExternalSmokeWithWarmup,
   shouldRetryExternalSmoke,
+  shouldRetryInternalProbeFailure,
+  shouldRetryInternalVerifyAttempt,
   shouldRetryInternalVerify,
   waitForPostDeployStabilization,
 } from './runtime-env.ts';
@@ -105,6 +108,99 @@ describe('shouldRetryInternalVerify', () => {
     });
 
     expect(shouldRetry).toBe(false);
+  });
+
+  it('does not retry when a retryable doctor failure is mixed with a non-retryable probe failure', () => {
+    const shouldRetry = shouldRetryInternalVerifyAttempt({
+      doctorReport: {
+        checks: [
+          {
+            code: 'live_failed',
+            details: {
+              status: 404,
+            },
+            message: 'Live-Endpoint antwortet mit 404.',
+            name: 'health-live',
+            status: 'error',
+          },
+        ],
+        generatedAt: '2026-04-19T17:02:12.142Z',
+        profile: 'studio',
+        status: 'error',
+      },
+      probes: [
+        createProbe({
+          message: 'Dienst studio_app wurde nicht gefunden.',
+          name: 'swarm-services',
+          scope: 'internal',
+          status: 'error',
+          target: 'studio',
+        }),
+      ],
+    });
+
+    expect(shouldRetry).toBe(false);
+  });
+});
+
+describe('shouldRetryInternalProbeFailure', () => {
+  it('retries warmup-like swarm app task states', () => {
+    expect(
+      shouldRetryInternalProbeFailure(
+        createProbe({
+          details: {
+            desiredState: 'running',
+            state: 'preparing',
+          },
+          message: 'Swarm-App-Task ist nicht stabil running (preparing).',
+          name: 'swarm-app-task',
+          scope: 'internal',
+          status: 'error',
+          target: 'studio/app',
+        }),
+      ),
+    ).toBe(true);
+  });
+
+  it('retries swarm app task failures in ready state during warmup', () => {
+    expect(
+      shouldRetryInternalProbeFailure(
+        createProbe({
+          details: {
+            currentState: 'ready 2 seconds ago',
+          },
+          message: 'Swarm-App-Task ist nicht stabil running (ready).',
+          name: 'swarm-app-task',
+          scope: 'internal',
+          status: 'error',
+          target: 'studio/app',
+        }),
+      ),
+    ).toBe(true);
+  });
+
+  it('does not retry non-warmup swarm app task failures', () => {
+    expect(
+      shouldRetryInternalProbeFailure(
+        createProbe({
+          details: {
+            currentState: 'failed 2 seconds ago',
+          },
+          message: 'Task failed with exit code 1.',
+          name: 'swarm-app-task',
+          scope: 'internal',
+          status: 'error',
+          target: 'studio/app',
+        }),
+      ),
+    ).toBe(false);
+  });
+});
+
+describe('deriveInternalVerifyMaxAttempts', () => {
+  it('caps derived attempts when retry delay is zero or negative', () => {
+    expect(deriveInternalVerifyMaxAttempts({ retryDelayMs: 0, warmupWindowMs: 90_000 })).toBe(91);
+    expect(deriveInternalVerifyMaxAttempts({ retryDelayMs: -100, warmupWindowMs: 90_000 })).toBe(91);
   });
 });
 
@@ -305,10 +401,113 @@ describe('studio image verify evidence', () => {
       rmSync(evidencePath, { force: true });
     }
 
+    vi.stubEnv('PATH', '');
+    try {
+      expect(
+        buildStudioImageVerifyEvidenceCheck('studio', {
+          SVA_IMAGE_DIGEST: 'sha256:missing-digest',
+        })
+      ).toMatchObject({
+        code: 'image_verify_evidence_missing',
+        details: {
+          acceptedSources: ['artifacts/runtime/image-verify', 'GitHub Actions artifact "Studio Image Verify"'],
+        },
+        name: 'studio-image-verify-evidence',
+        status: 'warn',
+      });
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it('accepts only digest-matching GitHub artifacts, paginates, and scans until a successful verify run is found', () => {
+    const runCapture = vi.fn<(command: string, args: readonly string[]) => string>();
+    const readArtifactEvidence = vi.fn<
+      (args: { artifactName: string; imageDigest: string; owner: string; repo: string; runId: number }) =>
+        | {
+            imageRef: string;
+            reportId?: string;
+            status: 'ok';
+          }
+        | undefined
+    >();
+
+    runCapture.mockImplementation((command, args) => {
+      if (command === 'git') {
+        return 'git@github.com:smart-village-solutions/sva-studio.git\n';
+      }
+
+      if (command === 'gh' && args[0] === 'api' && /[?&]page=1$/u.test(args[1] ?? '')) {
+        return JSON.stringify({
+          artifacts: [
+            {
+              expired: false,
+              name: 'studio-image-verify-deadbeefcafe-20260502T090000Z',
+              workflow_run: { id: 1001 },
+            },
+            {
+              expired: false,
+              name: 'studio-image-verify-v1.2.3-20260502T091000Z',
+              workflow_run: { id: 1002 },
+            },
+            ...Array.from({ length: 98 }, (_, index) => ({
+              expired: false,
+              name: `unrelated-artifact-${index}`,
+              workflow_run: { id: 2000 + index },
+            })),
+          ],
+        });
+      }
+
+      if (command === 'gh' && args[0] === 'api' && /[?&]page=2$/u.test(args[1] ?? '')) {
+        return JSON.stringify({
+          artifacts: [
+            {
+              expired: false,
+              name: 'studio-image-verify-deadbeefcafe-20260502T092000Z',
+              workflow_run: { id: 1003 },
+            },
+          ],
+        });
+      }
+
+      if (command === 'gh' && args[0] === 'run' && args[2] === '1001') {
+        return JSON.stringify({
+          conclusion: 'failure',
+          url: 'https://github.com/smart-village-solutions/sva-studio/actions/runs/1001',
+          workflowName: 'Studio Image Verify',
+        });
+      }
+
+      if (command === 'gh' && args[0] === 'run' && args[2] === '1003') {
+        return JSON.stringify({
+          conclusion: 'success',
+          url: 'https://github.com/smart-village-solutions/sva-studio/actions/runs/1003',
+          workflowName: 'Studio Image Verify',
+        });
+      }
+
+      throw new Error(`Unexpected command: ${command} ${args.join(' ')}`);
+    });
+
+    readArtifactEvidence.mockImplementation(({ artifactName, imageDigest }) => {
+      if (artifactName !== 'studio-image-verify-deadbeefcafe-20260502T092000Z') {
+        return undefined;
+      }
+
+      return {
+        imageRef: `ghcr.io/smart-village-solutions/sva-studio@${imageDigest}`,
+        reportId: 'studio-image-verify-report',
+        status: 'ok',
+      };
+    });
+
     expect(
-      buildStudioImageVerifyEvidenceCheck('studio', {
-        SVA_IMAGE_DIGEST: 'sha256:missing-digest',
-      })
+      tryReadGithubStudioImageVerifyEvidence('sha256:deadbeefcafebabefeedface', {
+        commandExistsImpl: () => true,
+        readArtifactEvidenceImpl: readArtifactEvidence,
+        runCaptureImpl: runCapture,
+      }),
     ).toMatchObject({
       code: 'image_verify_evidence_missing',
       details: {
@@ -317,5 +516,37 @@ describe('studio image verify evidence', () => {
       name: 'studio-image-verify-evidence',
       status: 'warn',
     });
+  });
+
+  it('ignores tag-based GitHub artifacts when no imageTag is provided', () => {
+    const runCapture = vi.fn<(command: string, args: readonly string[]) => string>();
+
+    runCapture.mockImplementation((command, args) => {
+      if (command === 'git') {
+        return 'git@github.com:smart-village-solutions/sva-studio.git\n';
+      }
+
+      if (command === 'gh' && args[0] === 'api') {
+        return JSON.stringify({
+          artifacts: [
+            {
+              expired: false,
+              name: 'studio-image-verify-v1.2.3-20260502T091000Z',
+              workflow_run: { id: 1002 },
+            },
+          ],
+        });
+      }
+
+      throw new Error(`Unexpected command: ${command} ${args.join(' ')}`);
+    });
+
+    expect(
+      tryReadGithubStudioImageVerifyEvidence('sha256:deadbeefcafebabefeedface', {
+        commandExistsImpl: () => true,
+        runCaptureImpl: runCapture,
+      }),
+    ).toBeUndefined();
+    expect(runCapture).toHaveBeenCalledTimes(2);
   });
 });

@@ -476,17 +476,17 @@ export const createPluginRegistry = (
   const registry = new Map<string, PluginDefinition>();
 
   for (const plugin of plugins) {
-    assertPluginContributionAllowedKeys(
-      plugin as unknown as Record<string, unknown>,
-      pluginDefinitionAllowedKeys,
-      normalizePluginIdentifier(plugin.id),
-      normalizePluginIdentifier(plugin.id)
-    );
+    const context = createPluginRegistryValidationContext(plugin, registry);
 
-    const trimmedId = plugin.id.trim();
-    if (trimmedId.length === 0) {
-      throw new Error('invalid_plugin_definition');
-    }
+    assertPluginRegistryActions(context);
+    assertPluginRegistryRoutes(context);
+    assertPluginRegistryStandardContentRouteGuardrails(context);
+    assertPluginRegistryNavigation(context);
+    assertPluginRegistryPermissions(context);
+    assertPluginRegistryContentTypes(context);
+    assertPluginRegistryAdminResources(context);
+    assertPluginRegistryAuditEvents(context);
+    assertPluginRegistryModuleIam(context);
 
     const id = normalizePluginNamespace(trimmedId);
     const displayName = plugin.displayName.trim();
@@ -668,8 +668,8 @@ export const createPluginRegistry = (
 
     registry.set(id, {
       ...plugin,
-      id,
-      displayName,
+      id: context.pluginNamespace,
+      displayName: context.displayName,
     });
   }
 

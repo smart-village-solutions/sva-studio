@@ -595,6 +595,63 @@ const resolveGraphqlStatusErrorCode = (status: number): SvaMainserverErrorCode =
   return 'network_error';
 };
 
+type VisibleListCollectionState<TItem> = {
+  readonly collectedVisibleItems: TItem[];
+  visibleIndex: number;
+  skip: number;
+  exhausted: boolean;
+  hasNextPage: boolean;
+};
+
+const createVisibleListCollectionState = <TItem>(): VisibleListCollectionState<TItem> => ({
+  collectedVisibleItems: [],
+  visibleIndex: 0,
+  skip: 0,
+  exhausted: false,
+  hasNextPage: false,
+});
+
+const assertUpstreamScanLimit = (skip: number) => {
+  if (skip > MAX_MAINSERVER_UPSTREAM_SCAN_RECORDS) {
+    throw toSvaMainserverError({
+      code: 'invalid_response',
+      message: 'Mainserver-Pagination erfordert zu viele Upstream-Datensätze für sichtbare Ergebnisse.',
+      statusCode: 502,
+    });
+  }
+};
+
+const updateVisibleListCollectionState = <TUpstreamItem, TItem>(
+  state: VisibleListCollectionState<TItem>,
+  input: {
+    readonly upstreamItems: readonly TUpstreamItem[];
+    readonly startIndex: number;
+    readonly targetVisibleCount: number;
+    readonly isVisible: (item: TUpstreamItem) => boolean;
+    readonly mapItem: (item: TUpstreamItem) => TItem;
+  }
+) => {
+  for (const item of input.upstreamItems) {
+    if (input.isVisible(item) === false) {
+      continue;
+    }
+
+    if (state.visibleIndex >= input.startIndex) {
+      state.collectedVisibleItems.push(input.mapItem(item));
+      if (state.collectedVisibleItems.length >= input.targetVisibleCount) {
+        state.hasNextPage = true;
+        break;
+      }
+    }
+
+    state.visibleIndex += 1;
+    if (state.visibleIndex >= input.startIndex + input.targetVisibleCount) {
+      state.hasNextPage = true;
+      break;
+    }
+  }
+};
+
 const parseGraphqlPayload = <TResult>(payload: unknown): TResult => {
   const payloadResult = graphqlResponseSchema.safeParse(payload);
   if (!payloadResult.success) {

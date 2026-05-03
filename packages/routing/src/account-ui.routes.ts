@@ -8,6 +8,7 @@ export type AccountUiRouteGuardKey =
   | 'content'
   | 'contentCreate'
   | 'contentDetail'
+  | 'media'
   | 'adminUsers'
   | 'adminUserCreate'
   | 'adminUserDetail'
@@ -37,6 +38,7 @@ export const accountUiRouteGuardDefinitions: Record<AccountUiRouteGuardKey, Acco
   content: { kind: 'protected', route: uiRoutePaths.content },
   contentCreate: { kind: 'protected', route: uiRoutePaths.contentCreate },
   contentDetail: { kind: 'protected', route: uiRoutePaths.contentDetail },
+  media: { kind: 'protected', route: uiRoutePaths.media },
   adminUsers: { kind: 'admin', route: uiRoutePaths.adminUsers },
   adminUserCreate: { kind: 'admin', route: uiRoutePaths.adminUserCreate },
   adminUserDetail: { kind: 'admin', route: uiRoutePaths.adminUserDetail },
@@ -95,6 +97,7 @@ export const createAccountUiRouteGuards = (diagnostics?: RoutingDiagnosticsHook)
     content: createAccountUiRouteGuard('content', diagnostics),
     contentCreate: createAccountUiRouteGuard('contentCreate', diagnostics),
     contentDetail: createAccountUiRouteGuard('contentDetail', diagnostics),
+    media: createAccountUiRouteGuard('media', diagnostics),
     adminUsers: createAccountUiRouteGuard('adminUsers', diagnostics),
     adminUserCreate: createAccountUiRouteGuard('adminUserCreate', diagnostics),
     adminUserDetail: createAccountUiRouteGuard('adminUserDetail', diagnostics),

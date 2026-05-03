@@ -33,6 +33,7 @@ export type AppRouteBindings = {
   readonly poiDetail: RouteComponent;
   readonly poiEditor: RouteComponent;
   readonly media: RouteComponent;
+  readonly adminMedia: RouteComponent;
   readonly categories: RouteComponent;
   readonly app: RouteComponent;
   readonly interfaces: RouteComponent;

@@ -157,6 +157,7 @@ describe('instances shared helpers', () => {
         authRealm: 'demo',
         authClientId: 'sva-studio',
         authClientSecretConfigured: false,
+        assignedModules: [],
         hostnames: [],
         provisioningRuns: [],
         auditEvents: [],
@@ -191,6 +192,7 @@ describe('instances shared helpers', () => {
       authRealm: 'demo',
       authClientId: 'sva-studio',
       authClientSecretConfigured: false,
+      assignedModules: [],
       hostnames: [],
       provisioningRuns: [],
       auditEvents: [],
@@ -293,6 +295,7 @@ describe('instances shared helpers', () => {
         authRealm: 'demo',
         authClientId: 'sva-studio',
         authClientSecretConfigured: true,
+        assignedModules: [],
         tenantAdminClient: {
           clientId: 'demo-admin-client',
           secretConfigured: false,
@@ -351,6 +354,7 @@ describe('instances shared helpers', () => {
         authRealm: 'demo',
         authClientId: 'sva-studio',
         authClientSecretConfigured: true,
+        assignedModules: [],
         tenantAdminClient: {
           clientId: 'demo-admin-client',
           secretConfigured: false,

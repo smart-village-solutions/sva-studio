@@ -223,6 +223,7 @@ Schulden auf IST-Basis.
 - Nach dem Package-Hard-Cut verbleibt Restkomplexität gezielt in fachlichen Zielpackages wie `auth-runtime`, `iam-admin`, `iam-governance`, `instance-registry` und `data-repositories`; alte Sammelpackages sind dafür kein neuer Zielort.
 - `@sva/sdk` ist aus dem aktiven Workspace entfernt; verbleibende Restschuld betrifft nur noch historische Reports und archivierte Referenzen ausserhalb aktiver Normquellen.
 - Einige Tests und historische Berichte referenzieren weiterhin alte Pfadnamen; neue fachliche Tests sollen im Zielpackage entstehen und nur dort am Altpfad bleiben, wo Kompatibilität explizit geprüft wird.
+- Dünne Host-Bindungen in `apps/sva-studio-react` fuer TanStack-`createServerFn`, Request-Matching und Server-Dispatch bleiben bewusst im App-Layer; Folgearbeit darf diese Transportrolle nicht mit fachlicher Package-Ownership verwechseln.
 - Route-Komponenten außerhalb der Shell verwenden noch teilweise direkte `slate-*`-/`emerald-*`-Farben und sind nicht vollständig tokenisiert
 - Gruppen sind im ersten Schnitt reine Rollenbündel; direkte Gruppen-Permissions und ein separates Gruppen-Gültigkeitsmanagement pro UI-Flow bleiben Folgearbeit
 - Die Geo-Hierarchie ist intern bereits auswertbar, besitzt aber noch keine dedizierte Admin-Oberfläche oder externe Pflegepipeline

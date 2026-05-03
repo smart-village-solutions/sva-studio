@@ -1,5 +1,5 @@
 import React from 'react';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { listHostMediaAssets, listHostMediaReferencesByTarget, registerPluginTranslationResolver, replaceHostMediaReferences } from '@sva/plugin-sdk';
 
@@ -9,8 +9,12 @@ import { NEWS_CONTENT_TYPE } from '../src/plugin.js';
 
 vi.mock('../src/news.api.js', () => ({
   NewsApiError: class NewsApiError extends Error {
-    public constructor(public readonly code: string) {
-      super(code);
+    public constructor(
+      public readonly code: string,
+      message = code
+    ) {
+      super(message);
+      this.name = 'NewsApiError';
     }
   },
   listNews: vi.fn(async () => ({
@@ -521,6 +525,72 @@ describe('NewsListPage', () => {
     });
 
     expect(getNews).not.toHaveBeenCalled();
+  });
+
+  it('keeps the latest edit payload when an older content request resolves later', async () => {
+    const firstNews = createDeferred<Awaited<ReturnType<typeof getNews>>>();
+    const secondNews = createDeferred<Awaited<ReturnType<typeof getNews>>>();
+    const firstRefs = createDeferred<Awaited<ReturnType<typeof listHostMediaReferencesByTarget>>>();
+    const secondRefs = createDeferred<Awaited<ReturnType<typeof listHostMediaReferencesByTarget>>>();
+
+    vi.mocked(getNews).mockImplementation((contentId: string) => {
+      if (contentId === 'news-2') {
+        return secondNews.promise;
+      }
+      return firstNews.promise;
+    });
+    vi.mocked(listHostMediaReferencesByTarget).mockImplementation(({ targetId }: { targetId: string }) => {
+      if (targetId === 'news-2') {
+        return secondRefs.promise;
+      }
+      return firstRefs.promise;
+    });
+
+    const { rerender } = render(<NewsEditPage />);
+
+    paramsMock.mockReturnValue({ contentId: 'news-2' });
+    rerender(<NewsEditPage />);
+
+    await actResolve(secondNews, {
+      id: 'news-2',
+      title: 'Neuere News',
+      contentType: NEWS_CONTENT_TYPE,
+      payload: {
+        teaser: 'Neuer Kurztext',
+        body: '<p>Neu</p>',
+        category: 'Allgemein',
+      },
+      status: 'published',
+      author: 'Editor',
+      createdAt: '2026-01-03T00:00:00.000Z',
+      updatedAt: '2026-01-04T00:00:00.000Z',
+      publishedAt: '2026-01-04T00:00:00.000Z',
+    });
+    await actResolve(secondRefs, [{ id: 'ref-2', assetId: 'asset-2', role: 'teaser_image', targetType: 'news', targetId: 'news-2' }]);
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('Neuere News')).toBeTruthy();
+    });
+
+    await actResolve(firstNews, {
+      id: 'news-1',
+      title: 'Alte News',
+      contentType: NEWS_CONTENT_TYPE,
+      payload: {
+        teaser: 'Alter Kurztext',
+        body: '<p>Alt</p>',
+        category: 'Allgemein',
+      },
+      status: 'published',
+      author: 'Editor',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-02T00:00:00.000Z',
+      publishedAt: '2026-01-02T00:00:00.000Z',
+    });
+    await actResolve(firstRefs, [{ id: 'ref-1', assetId: 'asset-1', role: 'teaser_image', targetType: 'news', targetId: 'news-1' }]);
+
+    expect(screen.getByDisplayValue('Neuere News')).toBeTruthy();
+    expect(screen.queryByDisplayValue('Alte News')).toBeNull();
   });
 
   it('shows an inline success message after updating an existing news entry', async () => {

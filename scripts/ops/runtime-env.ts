@@ -110,6 +110,35 @@ type TenantRuntimeTargetResolution = Readonly<{
   targets: readonly TenantRuntimeTarget[];
 }>;
 
+type GithubArtifactRecord = Readonly<{
+  expired?: boolean;
+  id?: number;
+  name?: string;
+  workflow_run?: {
+    id?: number;
+  };
+}>;
+
+type GithubVerifyArtifactEvidence = Readonly<{
+  imageRef: string;
+  reportId?: string;
+  status: 'ok';
+}>;
+
+type GithubVerifyEvidenceOptions = Readonly<{
+  commandExistsImpl?: (commandName: string) => boolean;
+  imageTag?: string;
+  readArtifactEvidenceImpl?: (args: {
+    artifactId?: number;
+    artifactName: string;
+    imageDigest: string;
+    owner: string;
+    repo: string;
+    runId: number;
+  }) => GithubVerifyArtifactEvidence | undefined;
+  runCaptureImpl?: typeof runCapture;
+}>;
+
 type LocalState = {
   command?: string;
   launcher?: 'local-dev-server-runner';
@@ -4051,22 +4080,21 @@ const runInternalVerify = async (runtimeProfile: RemoteRuntimeProfile, env: Node
     lastDoctorReport = doctorReport;
     lastProbes = probes;
 
-    const hasRetryableWarmupOnlyErrors = shouldRetryInternalVerify(
+    const shouldRetry = shouldRetryInternalVerifyAttempt({
       doctorReport,
+      probes,
       retryableWarmupChecks,
       retryableWarmupSignals,
-    );
-    const probesFailed = probes.some((probe) => probe.status === 'error');
-    const doctorFailed = doctorReport.status === 'error';
+    });
 
-    if (!doctorFailed && !probesFailed) {
+    if (doctorReport.status !== 'error' && probes.every((probe) => probe.status !== 'error')) {
       return {
         doctorReport,
         probes,
       };
     }
 
-    if (attempt < maxAttempts && (hasRetryableWarmupOnlyErrors || probesFailed)) {
+    if (attempt < maxAttempts && shouldRetry) {
       await wait(retryDelayMs);
       continue;
     }
@@ -4127,6 +4155,69 @@ export const shouldRetryInternalVerify = (
 
     return checkContainsRetryableWarmupSignal(check, retryableWarmupSignals);
   });
+};
+
+export const shouldRetryInternalVerifyAttempt = ({
+  doctorReport,
+  probes,
+  retryableWarmupChecks = new Set([
+    'health-live',
+    'health-ready',
+    'auth-login',
+    'auth-me',
+    'tenant-auth-proof',
+    'app-db-principal',
+  ]),
+  retryableWarmupSignals = ['404', '502', '503', '504', 'timeout', 'timed out', 'gateway'],
+}: {
+  doctorReport: DoctorReport;
+  probes: readonly AcceptanceProbeResult[];
+  retryableWarmupChecks?: ReadonlySet<string>;
+  retryableWarmupSignals?: readonly string[];
+}) => {
+  const failingProbes = probes.filter((probe) => probe.status === 'error');
+  const doctorFailed = doctorReport.status === 'error';
+  const probesFailed = failingProbes.length > 0;
+
+  if (!doctorFailed && !probesFailed) {
+    return false;
+  }
+
+  const hasRetryableWarmupOnlyErrors = doctorFailed
+    ? shouldRetryInternalVerify(doctorReport, new Set(retryableWarmupChecks), retryableWarmupSignals)
+    : true;
+  const hasRetryableWarmupOnlyProbeFailures = probesFailed
+    ? failingProbes.every((probe) => shouldRetryInternalProbeFailure(probe))
+    : true;
+
+  return hasRetryableWarmupOnlyErrors && hasRetryableWarmupOnlyProbeFailures;
+};
+
+export const shouldRetryInternalProbeFailure = (probe: AcceptanceProbeResult) => {
+  if (probe.status !== 'error' || probe.name !== 'swarm-app-task') {
+    return false;
+  }
+
+  const retryableWarmupStates = ['pending', 'preparing', 'starting', 'assigned', 'accepted', 'new', 'ready', 'shutdown'];
+  const lowerCaseMessage = probe.message.toLowerCase();
+  if (retryableWarmupStates.some((state) => lowerCaseMessage.includes(state))) {
+    return true;
+  }
+
+  const details = probe.details;
+  if (!details || typeof details !== 'object') {
+    return false;
+  }
+
+  const state = 'state' in details && typeof details.state === 'string' ? details.state.toLowerCase() : undefined;
+  const currentState =
+    'currentState' in details && typeof details.currentState === 'string' ? details.currentState.toLowerCase() : undefined;
+  const desiredState =
+    'desiredState' in details && typeof details.desiredState === 'string' ? details.desiredState.toLowerCase() : undefined;
+
+  return [state, currentState, desiredState].some(
+    (value) => typeof value === 'string' && retryableWarmupStates.some((warmupState) => value.includes(warmupState)),
+  );
 };
 
 const runExternalSmoke = async (

@@ -2,7 +2,7 @@ import {
   loadInstanceAuthClientSecretCiphertext,
   loadTenantAdminClientSecretCiphertext,
 } from '@sva/data-repositories/server';
-import { revealField } from '@sva/iam-admin';
+import { revealField } from '@sva/iam-admin/encryption';
 import { createSdkLogger } from '@sva/server-runtime';
 
 import { getAuthClientSecret } from './runtime-secrets.js';

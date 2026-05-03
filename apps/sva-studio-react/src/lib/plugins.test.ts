@@ -1,11 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
-const browserLoggerMock = vi.hoisted(() => ({
-  debug: vi.fn(),
-  info: vi.fn(),
-  warn: vi.fn(),
-  error: vi.fn(),
-}));
+import { studioBuildTimeRegistry } from './plugins.js';
+import { studioModuleIamContracts, studioPluginModuleIamContracts } from '@sva/studio-module-iam';
 
 vi.mock('@sva/plugin-news', () => ({
   pluginNews: {

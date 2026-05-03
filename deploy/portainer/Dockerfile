@@ -27,7 +27,7 @@ ENV NODE_ENV=production
 # --skip-nx-cache ensures builds are never skipped due to a stale cache
 RUN pnpm nx run core:build --skip-nx-cache
 RUN pnpm nx run monitoring-client:build --skip-nx-cache
-RUN pnpm nx run sdk:build --skip-nx-cache
+RUN pnpm nx run plugin-sdk:build --skip-nx-cache
 RUN pnpm nx run data:build --skip-nx-cache
 RUN pnpm nx run auth-runtime:build --skip-nx-cache
 RUN pnpm nx run sva-mainserver:build --skip-nx-cache

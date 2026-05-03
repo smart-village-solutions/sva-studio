@@ -128,12 +128,12 @@ Für tenant-spezifisches Auth-Routing gilt zusätzlich:
 
 Pragmatische Betriebsregeln aus den letzten Rollouts:
 
-- bei Quantum-`401` immer auch die lokale Shell-Umgebung prüfen; ein veraltetes `QUANTUM_API_KEY` kann den funktionierenden Kontext uebersteuern
+- bei Quantum-`401` immer auch die lokale Shell-Umgebung prüfen; ein veraltetes `QUANTUM_API_KEY` kann den funktionierenden Kontext übersteuern
 - wenn Runtime-Overrides im Live-Stack fehlen, nicht blind denselben `quantum-cli stacks update` wiederholen, sondern den kanonischen Runtime-Pfad mit vorgerenderter Compose nutzen
-- ein gruener Stack ersetzt nicht die Laufzeitpruefung des App-DB-Users; `sva_app` muss real existieren und sich anmelden koennen
-- fuer Tenant-Debugging externe und interne Host-Requests trennen, bevor Ingress-Komponenten verdaechtigt werden
-- fuer `studio` ist ein lokaler Kandidatencontainer nur Hilfssignal; Root-/Tenant-/Ingress-Paritaet bleibt ein Remote-Vertrag
-- wenn das Ziel-Digest bereits live laeuft, darf derselbe Digest nur ueber dokumentierte Live-Paritaet wiederverwendet werden, nicht ueber eine weaker lokale Ersatzprobe
+- ein grüner Stack ersetzt nicht die Laufzeitprüfung des App-DB-Users; `sva_app` muss real existieren und sich anmelden können
+- für Tenant-Debugging externe und interne Host-Requests trennen, bevor Ingress-Komponenten verdächtigt werden
+- für `studio` ist ein lokaler Kandidatencontainer nur Hilfssignal; Root-/Tenant-/Ingress-Parität bleibt ein Remote-Vertrag
+- wenn das Ziel-Digest bereits live läuft, darf derselbe Digest nur über dokumentierte Live-Parität wiederverwendet werden, nicht über eine weaker lokale Ersatzprobe
 
 ### Adminer für Studio
 
@@ -229,9 +229,9 @@ GRANT iam_app TO sva_app;
 
 `<APP_DB_PASSWORD>` muss dem Wert der Stack-Variable `APP_DB_PASSWORD` entsprechen.
 
-Zusatz fuer den Betrieb:
+Zusatz für den Betrieb:
 
-- nach dem Anlegen nicht nur Grants pruefen, sondern den Login des Laufzeit-Users aktiv verifizieren
+- nach dem Anlegen nicht nur Grants prüfen, sondern den Login des Laufzeit-Users aktiv verifizieren
 - wenn `Auth audit DB sink failed` oder `password authentication failed for user "sva_app"` auftaucht, zuerst diesen Pfad reparieren, bevor Auth-/Realm-Fehler an anderer Stelle vermutet werden
 
 ## Schritt 3: Kanonischen Studio-Deploy ausführen
@@ -271,7 +271,7 @@ pnpm env:release:studio:local -- \
 Der Deploypfad führt verbindlich aus:
 
 1. `environment-precheck` inklusive Pflichtvariablen, Schema-Guard und Live-Spec-Drift
-2. `image-smoke` gegen das Digest-Artefakt inklusive Root-Host-, Tenant-Host- und OIDC-Paritaet
+2. `image-smoke` gegen das Digest-Artefakt inklusive Root-Host-, Tenant-Host- und OIDC-Parität
 3. `migrate` bei `schema-and-app`
 4. `bootstrap` bei `schema-and-app`
 5. Stack-Rollout via `quantum-cli stacks update` oder `docker stack deploy`
@@ -290,11 +290,11 @@ Interpretationshilfe:
 Read-only Betriebsregel:
 
 - `status`, `doctor` und `precheck` nutzen bevorzugt die Portainer-API mit `QUANTUM_API_KEY` und `QUANTUM_ENDPOINT_ID`
-- lokales `quantum-cli` ist fuer diese Pfade nicht mehr der primaere Wahrheitskanal
-- `quantum-cli` bleibt fuer Mutationen wie `stacks update` sowie fuer dedizierte Job-Stacks der kanonische Operator-Pfad
-- mutierende Remote-Kommandos fuer `studio` laufen regulaer ueber den expliziten lokalen Operator-Einstieg mit verifiziertem Digest
+- lokales `quantum-cli` ist für diese Pfade nicht mehr der primäre Wahrheitskanal
+- `quantum-cli` bleibt für Mutationen wie `stacks update` sowie für dedizierte Job-Stacks der kanonische Operator-Pfad
+- mutierende Remote-Kommandos für `studio` laufen regulär über den expliziten lokalen Operator-Einstieg mit verifiziertem Digest
 
-Fuer das produktionsnahe Profil `studio` gilt derselbe Netzwerk-/Ingress-Vertrag zusaetzlich gegen `config/runtime/studio.local.vars`:
+Für das produktionsnahe Profil `studio` gilt derselbe Netzwerk-/Ingress-Vertrag zusätzlich gegen `config/runtime/studio.local.vars`:
 
 - `SVA_IMAGE_REF`, `SVA_IMAGE_DIGEST` und `SVA_IMAGE_TAG` in dieser lokalen Operator-Datei muessen den bewusst freigegebenen Zielstand repraesentieren
 - ein `app-only`-Reconcile dient als kanonischer, nicht destruktiver Recovery-Pfad fuer Netz-/Ingress-Drift
@@ -339,7 +339,7 @@ Prüfkriterien:
   - optional `authIssuerUrl`
   - tenant-spezifisches OIDC-Client-Secret
   - initialer Tenant-Admin-Bootstrap
-- Keycloak-Status und Reconcile laufen ueber dieselbe Root-Host-Instanzverwaltung; direkte Keycloak-Handedits sind nur Fallback
+- Keycloak-Status und Reconcile laufen über dieselbe Root-Host-Instanzverwaltung; direkte Keycloak-Handedits sind nur Fallback
 
 ### Fallback über Portainer oder CLI
 
@@ -386,9 +386,9 @@ pnpm env:feedback:studio
 Der Befehl erzeugt:
 
 - `release-feedback-summary.json` und `release-feedback-summary.md` als Verlaufssicht
-- `<reportId>.review.md` als Review-Entwurf fuer den juengsten Deploy
+- `<reportId>.review.md` als Review-Entwurf für den jüngsten Deploy
 
-Wenn der Deploy fehlgeschlagen ist oder nur mit manueller Nacharbeit stabil wurde, wird der Review-Entwurf nach `docs/reports/` uebernommen und dort verbindlich vervollstaendigt.
+Wenn der Deploy fehlgeschlagen ist oder nur mit manueller Nacharbeit stabil wurde, wird der Review-Entwurf nach `docs/reports/` übernommen und dort verbindlich vervollständigt.
 
 `doctor` ergänzt die Betriebsprüfung um:
 
@@ -396,7 +396,7 @@ Wenn der Deploy fehlgeschlagen ist oder nur mit manueller Nacharbeit stabil wurd
 - Actor-/Membership-Diagnose über `SVA_DOCTOR_*`
 - nicht-sensitive `reason_code`s für DB-, Redis-, Keycloak- und IAM-Pfade
 - Remote-Service-Status und Live-Service-Spec bevorzugt via Portainer-API
-- `quantum-cli exec` nur noch als dokumentierter Fallback fuer Sonderdiagnosen
+- `quantum-cli exec` nur noch als dokumentierter Fallback für Sonderdiagnosen
 
 Stabile Diagnosecodes umfassen unter anderem:
 
@@ -435,15 +435,15 @@ Für IAM-Abnahmen zusätzlich:
 Für ein reines App-Update ohne Schemaänderungen:
 
 1. Neues Image mit unveränderlichem Tag oder Digest bereitstellen
-2. `pnpm env:release:studio:local -- --image-digest=<sha256:...> --release-mode=app-only --rollback-hint="<hinweis>"` ausfuehren
+2. `pnpm env:release:studio:local -- --image-digest=<sha256:...> --release-mode=app-only --rollback-hint="<hinweis>"` ausführen
 3. Deploy-Report prüfen und archivieren
 
-Fuer `studio` gilt derselbe Pfad mit dem Unterschied, dass der Ziel-Digest vorab ueber `config/runtime/studio.local.vars` konvergiert und anschliessend mit `pnpm env:status:studio`, `pnpm env:smoke:studio` und `pnpm env:precheck:studio` bestaetigt wird.
+Für `studio` gilt derselbe Pfad mit dem Unterschied, dass der Ziel-Digest vorab über `config/runtime/studio.local.vars` konvergiert und anschließend mit `pnpm env:status:studio`, `pnpm env:smoke:studio` und `pnpm env:precheck:studio` bestätigt wird.
 
 Für Schemaänderungen:
 
 1. Wartungsfenster definieren
-2. `pnpm env:release:studio:local -- --image-digest=<sha256:...> --release-mode=schema-and-app --maintenance-window=... --rollback-hint="<hinweis>"` ausfuehren
+2. `pnpm env:release:studio:local -- --image-digest=<sha256:...> --release-mode=schema-and-app --maintenance-window=... --rollback-hint="<hinweis>"` ausführen
 3. Deploy-Report auf `migrate`, `internal-verify`, `external-smoke` und `release-decision` prüfen
 
 ## Rollback
@@ -466,11 +466,11 @@ Ein Rollback über eine destruktive Migration hinweg erfordert einen DB-Restore 
 
 Wenn `app` in Swarm gesund wirkt (`1/1`), extern aber `502` oder fehlendes Routing beobachtet wird, gilt folgende Reihenfolge:
 
-1. gerendertes Compose und erwartete `app`-Spec pruefen
-2. Live-Service-Spec ueber Portainer-/Swarm-Daten gegen Netzwerke `internal`, `public` und Traefik-Labels vergleichen
-3. kontrollierten `app-only`-Reconcile gegen denselben Digest ausfuehren
+1. gerendertes Compose und erwartete `app`-Spec prüfen
+2. Live-Service-Spec über Portainer-/Swarm-Daten gegen Netzwerke `internal`, `public` und Traefik-Labels vergleichen
+3. kontrollierten `app-only`-Reconcile gegen denselben Digest ausführen
 4. danach `status`, `smoke` und `precheck` erneut laufen lassen
-5. Incident erst schliessen, wenn der kanonische Soll-/Ist-Abgleich wieder gruen ist
+5. Incident erst schließen, wenn der kanonische Soll-/Ist-Abgleich wieder grün ist
 
 Direkte Portainer-Eingriffe bleiben Incident-Recovery und sind nicht der kanonische Standardpfad.
 

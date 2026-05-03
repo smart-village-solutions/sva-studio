@@ -507,7 +507,7 @@ describe('mainserver content route contracts', () => {
     );
   });
 
-  it('maps logger failures on successful create responses to the route error contract', async () => {
+  it('does not let logger failures turn successful creates into route errors', async () => {
     mockAuthorizedMutation();
     state.createSvaMainserverEvent.mockResolvedValue({ id: 'event-1' });
     state.loggerInfo.mockImplementation(() => {
@@ -523,10 +523,11 @@ describe('mainserver content route contracts', () => {
       })
     );
 
-    expect(response?.status).toBe(500);
+    expect(response?.status).toBe(201);
     await expect(response?.json()).resolves.toEqual({
-      error: 'internal_error',
-      message: 'Mainserver-Anfrage ist fehlgeschlagen.',
+      data: {
+        id: 'event-1',
+      },
     });
   });
 

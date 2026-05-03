@@ -1,5 +1,7 @@
 import * as React from 'react';
 
+import { Button, type ButtonProps } from './button.js';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './tabs.js';
 import { cn } from './utils.js';
 
 export type StudioPageHeaderProps = Readonly<{
@@ -43,6 +45,86 @@ export function StudioOverviewPageTemplate({
       <StudioPageHeader title={title} description={description} actions={primaryAction} />
       {toolbar ? <div className="flex flex-wrap items-center gap-3">{toolbar}</div> : null}
       {children}
+    </section>
+  );
+}
+
+export type StudioListPageAction = Readonly<{
+  label: React.ReactNode;
+  disabled?: boolean;
+  icon?: React.ReactNode;
+  onClick?: () => void;
+  render?: React.ReactNode;
+  variant?: ButtonProps['variant'];
+}>;
+
+export type StudioListPageTab = Readonly<{
+  id: string;
+  label: React.ReactNode;
+  description?: React.ReactNode;
+  content: React.ReactNode;
+}>;
+
+export type StudioListPageTemplateProps = Readonly<{
+  title: React.ReactNode;
+  description?: React.ReactNode;
+  primaryAction?: StudioListPageAction;
+  tabs?: readonly StudioListPageTab[];
+  children?: React.ReactNode;
+  className?: string;
+}>;
+
+const renderStudioListPageAction = (action: StudioListPageAction) => {
+  if (action.render) {
+    return action.render;
+  }
+
+  return (
+    <Button type="button" onClick={action.onClick} disabled={action.disabled} variant={action.variant ?? 'default'}>
+      {action.icon}
+      {action.label}
+    </Button>
+  );
+};
+
+export function StudioListPageTemplate({
+  title,
+  description,
+  primaryAction,
+  tabs,
+  children,
+  className,
+}: StudioListPageTemplateProps) {
+  const hasTabs = Boolean(tabs && tabs.length > 0);
+  const defaultTab = tabs?.[0]?.id;
+
+  return (
+    <section className={cn('space-y-5', className)}>
+      <StudioPageHeader
+        title={title}
+        description={description}
+        actions={primaryAction ? <div className="flex shrink-0 items-start">{renderStudioListPageAction(primaryAction)}</div> : undefined}
+      />
+
+      {hasTabs && tabs ? (
+        <Tabs defaultValue={defaultTab} className="space-y-0">
+          <TabsList aria-label={typeof title === 'string' ? title : undefined}>
+            {tabs.map((tab) => (
+              <TabsTrigger key={tab.id} value={tab.id}>
+                {tab.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+          {tabs.map((tab) => (
+            <TabsContent key={tab.id} value={tab.id} className="space-y-3">
+              {tab.description ? <p className="text-sm text-muted-foreground">{tab.description}</p> : null}
+              {tab.content}
+            </TabsContent>
+          ))}
+        </Tabs>
+      ) : (
+        children
+      )}
     </section>
   );
 }

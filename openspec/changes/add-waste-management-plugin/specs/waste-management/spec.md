@@ -145,6 +145,7 @@ Das System SHALL zentrale Studio-Governance-Daten von instanzbezogenen Waste-Fac
 - **WHEN** das Waste-Management technische Hilfsdaten fuer Migrationen, asynchrone Jobs oder vergleichbare plugininterne Betriebsablaeufe benoetigt
 - **THEN** duerfen diese Daten in der externen Waste- oder Supabase-Datenbank der Instanz gespeichert werden
 - **AND** dadurch werden keine zentralen IAM-, Rollen-, Rechte-, Audit- oder Instanz-Governance-Daten des Studios aus dem Studio-Postgres verdraengt
+- **AND** eine spaetere generische Studio-Job-Persistenz im Studio-Postgres bleibt davon unberuehrt und wird dadurch nicht als fuehrender Job-Vertrag ersetzt
 
 #### Scenario: Jede Studio-Instanz besitzt ihre eigene Waste-Fachdatenbank
 

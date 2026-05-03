@@ -4,6 +4,32 @@
 
 Dieses Dokument beschreibt die Review-Governance für Proposal- und PR-Reviews mit spezialisierten Agents.
 
+## Bot-Kommentar-Gate
+
+Fuer Bot-Kommentare von `Copilot` und `chatgpt-codex-connector[bot]` gilt zusaetzlich ein blockierendes PR-Gate.
+
+- Review-Threads auf Diffs gelten nur dann als bearbeitet, wenn ein Maintainer im selben Thread mit einem standardisierten Marker antwortet und der Thread anschliessend als resolved markiert ist.
+- Normale PR-Konversationskommentare gelten nur dann als bearbeitet, wenn spaeter eine Maintainer-Antwort mit standardisiertem Marker und passender `bot-comment-id` existiert.
+- Zulaessige Abschlusszustaende sind `accepted`, `rejected` und `resolved`.
+- `rejected` und `resolved` brauchen eine kurze technische oder fachliche Begruendung; aus Governance-Sicht sollten aber alle Marker-Kommentare eine echte Antwort statt nur des Markers enthalten.
+
+Verbindliche Marker:
+
+- Review-Thread:
+  `<!-- bot-comment-status: accepted -->`
+- Review-Thread:
+  `<!-- bot-comment-status: rejected -->`
+- Review-Thread:
+  `<!-- bot-comment-status: resolved -->`
+- Normaler PR-Kommentar:
+  `<!-- bot-comment-status: accepted; bot-comment-id: 123456789 -->`
+- Normaler PR-Kommentar:
+  `<!-- bot-comment-status: rejected; bot-comment-id: 123456789 -->`
+- Normaler PR-Kommentar:
+  `<!-- bot-comment-status: resolved; bot-comment-id: 123456789 -->`
+
+Die maschinelle Auswertung laeuft ueber `pnpm check:bot-comment-handling` im Workflow `Bot Comment Handling`.
+
 ## Agenten-Inventar
 
 | Agent | Zweck | Primärer Einsatz |
@@ -49,6 +75,7 @@ Dieses Dokument beschreibt die Review-Governance für Proposal- und PR-Reviews m
 - Jede Codeänderung: `Code Quality`
 - Verhaltensänderungen oder Coverage-/Test-Themen: `Test Quality`
 - Wiederholte rote Test-/Coverage-Checks im PR-Verlauf: `Test Quality` mit expliziter Shift-left-Prozessbewertung
+- Relevante Bot-Kommentare von `Copilot` oder `chatgpt-codex-connector[bot]` muessen vor Merge einen gueltigen Bearbeitungsnachweis tragen
 - IAM, Rollen-Sync, ABAC/RBAC, Data-Subject-Rights oder andere architekturrelevante Security-/Domain-Änderungen: zusätzlich `Architecture` und `Security & Privacy`
 - weitere Fachreviewer trigger-basiert analog zu Proposal-Reviews
 

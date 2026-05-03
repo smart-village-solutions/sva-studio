@@ -50,11 +50,27 @@ const resolveFetch = (fetchOverride?: typeof fetch): typeof fetch => {
   return resolvedFetch;
 };
 
-export const createMainserverJsonRequestHeaders = (headers?: HeadersInit): HeadersInit => ({
-  'Content-Type': 'application/json',
-  'X-Requested-With': 'XMLHttpRequest',
-  ...(headers ?? {}),
-});
+const mergeHeaders = (...headersList: Array<HeadersInit | undefined>): Headers => {
+  const merged = new Headers();
+  for (const headers of headersList) {
+    if (!headers) {
+      continue;
+    }
+    for (const [key, value] of new Headers(headers).entries()) {
+      merged.set(key, value);
+    }
+  }
+  return merged;
+};
+
+export const createMainserverJsonRequestHeaders = (headers?: HeadersInit): Headers =>
+  mergeHeaders(
+    {
+      'Content-Type': 'application/json',
+      'X-Requested-With': 'XMLHttpRequest',
+    },
+    headers
+  );
 
 export const buildMainserverListUrl = (basePath: string, query: MainserverListQuery): string =>
   `${basePath}?page=${encodeURIComponent(String(query.page))}&pageSize=${encodeURIComponent(String(query.pageSize))}`;
@@ -68,10 +84,7 @@ export const requestMainserverJson = async <T, TError extends Error = Mainserver
   const response = await resolveFetch(input.fetch)(input.url, {
     credentials: 'include',
     ...input.init,
-    headers: {
-      Accept: 'application/json',
-      ...(input.init?.headers ?? {}),
-    },
+    headers: mergeHeaders({ Accept: 'application/json' }, input.init?.headers),
   });
 
   if (!response.ok) {

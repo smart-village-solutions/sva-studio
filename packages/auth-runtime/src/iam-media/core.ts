@@ -1,7 +1,16 @@
 import { randomUUID } from 'node:crypto';
 
 import { getWorkspaceContext } from '@sva/server-runtime';
-import { canDeleteMediaAsset, type MediaAsset, type MediaProcessingStatus, type MediaReference, type MediaRole, type MediaUploadStatus, type MediaVisibility } from '@sva/media';
+import {
+  canDeleteMediaAsset,
+  defaultMediaPresets,
+  type MediaAsset,
+  type MediaProcessingStatus,
+  type MediaReference,
+  type MediaRole,
+  type MediaUploadStatus,
+  type MediaVisibility,
+} from '@sva/media';
 import { asApiItem, asApiList, createApiError, parseRequestBody, readInstanceIdFromRequest, readPage, readPathSegment } from '../shared/request-helpers.js';
 import { jsonResponse } from '../db.js';
 import { withAuthenticatedUser, type AuthenticatedRequestContext } from '../middleware.js';
@@ -21,6 +30,9 @@ const uploadInitializationSchema = z.object({
   byteSize: z.number().int().positive(),
   visibility: z.enum(['public', 'protected']).default('public'),
 });
+
+const estimateProcessedStorageBytes = (byteSize: number): number =>
+  byteSize * (defaultMediaPresets.length + 1);
 
 const metadataUpdateSchema = z.object({
   instanceId: z.string().trim().min(1).optional(),
@@ -362,7 +374,7 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
     }
 
     const quotaCheck = await deps.withMediaService(instanceId, (service) =>
-      service.wouldExceedStorageQuota(instanceId, parsed.data.byteSize)
+      service.wouldExceedStorageQuota(instanceId, estimateProcessedStorageBytes(parsed.data.byteSize))
     );
 
     if (quotaCheck.wouldExceed) {

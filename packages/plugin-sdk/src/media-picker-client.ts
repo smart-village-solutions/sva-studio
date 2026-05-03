@@ -78,8 +78,14 @@ export const replaceHostMediaReferences = async (input: {
   readonly targetType: string;
   readonly targetId: string;
   readonly references: readonly HostMediaReferenceSelection[];
-}> =>
-  requestJson({
+}> => {
+  const response = await requestJson<{
+    data: {
+      readonly targetType: string;
+      readonly targetId: string;
+      readonly references: readonly HostMediaReferenceSelection[];
+    };
+  }>({
     fetch: input.fetch,
     url: '/api/v1/iam/media/references',
     init: {
@@ -95,3 +101,5 @@ export const replaceHostMediaReferences = async (input: {
       }),
     },
   });
+  return response.data;
+};

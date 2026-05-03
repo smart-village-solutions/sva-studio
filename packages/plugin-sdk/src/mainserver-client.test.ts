@@ -9,14 +9,17 @@ import {
 } from './mainserver-client.js';
 
 describe('mainserver-client', () => {
+  const readHeaders = (headers: HeadersInit | undefined): Record<string, string> =>
+    Object.fromEntries(new Headers(headers).entries());
+
   it('builds canonical list urls and json request headers', () => {
     expect(buildMainserverListUrl('/api/v1/news', { page: 2, pageSize: 50 })).toBe(
       '/api/v1/news?page=2&pageSize=50'
     );
-    expect(createMainserverJsonRequestHeaders({ Authorization: 'Bearer test' })).toEqual({
-      'Content-Type': 'application/json',
-      'X-Requested-With': 'XMLHttpRequest',
-      Authorization: 'Bearer test',
+    expect(readHeaders(createMainserverJsonRequestHeaders({ Authorization: 'Bearer test' }))).toEqual({
+      authorization: 'Bearer test',
+      'content-type': 'application/json',
+      'x-requested-with': 'XMLHttpRequest',
     });
   });
 
@@ -93,23 +96,54 @@ describe('mainserver-client', () => {
       '/list',
       expect.objectContaining({
         method: 'POST',
-        headers: {
-          Accept: 'application/json',
-          'X-Create': 'yes',
-        },
+        headers: expect.any(Headers),
         body: JSON.stringify({ title: 'Zweite', created: true }),
       }),
     ]);
+    expect(readHeaders(fetchMock.mock.calls[2]?.[1]?.headers)).toEqual({
+      accept: 'application/json',
+      'x-create': 'yes',
+    });
     expect(fetchMock.mock.calls[3]).toEqual([
       '/list/news-2',
       expect.objectContaining({
         method: 'PATCH',
-        headers: {
-          Accept: 'application/json',
-          'X-Update': 'yes',
-        },
+        headers: expect.any(Headers),
         body: JSON.stringify({ title: 'Aktualisiert', updated: true }),
       }),
     ]);
+    expect(readHeaders(fetchMock.mock.calls[3]?.[1]?.headers)).toEqual({
+      accept: 'application/json',
+      'x-update': 'yes',
+    });
+  });
+
+  it('preserves tuple and Headers instances when merging request headers', async () => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ data: { id: 'news-1', title: 'Erste' } }), { status: 200 }));
+    const headerClient = createMainserverCrudClient<
+      { id: string; title: string },
+      { title: string },
+      { readonly data: readonly { id: string; title: string }[] },
+      readonly { id: string; title: string }[]
+    >({
+      basePath: '/headers',
+      fetch: fetchMock as typeof fetch,
+      errorFactory: (code, message) => new MainserverApiError(code, message),
+      mapListResponse: (response, mapItem) => response.data.map(mapItem),
+      createHeaders: () => new Headers([['X-From-Headers', 'one']]),
+      updateHeaders: () => [['X-From-Tuples', 'two']],
+    });
+
+    await headerClient.create({ title: 'Neu' });
+    await headerClient.update('news-1', { title: 'Update' });
+
+    expect(readHeaders(fetchMock.mock.calls[0]?.[1]?.headers)).toEqual({
+      accept: 'application/json',
+      'x-from-headers': 'one',
+    });
+    expect(readHeaders(fetchMock.mock.calls[1]?.[1]?.headers)).toEqual({
+      accept: 'application/json',
+      'x-from-tuples': 'two',
+    });
   });
 });

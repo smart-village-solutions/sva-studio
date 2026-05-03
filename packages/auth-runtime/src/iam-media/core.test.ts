@@ -152,7 +152,7 @@ describe('media http handlers', () => {
     );
 
     expect(response.status).toBe(201);
-    expect(service.wouldExceedStorageQuota).toHaveBeenCalledWith('tenant-a', 200);
+    expect(service.wouldExceedStorageQuota).toHaveBeenCalledWith('tenant-a', 800);
     expect(storagePort.prepareUpload).toHaveBeenCalledWith({
       instanceId: 'tenant-a',
       assetId: 'asset-1',

@@ -67,7 +67,7 @@ describe('media picker client', () => {
 
   it('replaces host media references with role-based selections only', async () => {
     const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
-      return new Response(init?.body as string, { status: 200 });
+      return new Response(JSON.stringify({ data: JSON.parse(String(init?.body ?? '{}')) }), { status: 200 });
     });
 
     const response = await replaceHostMediaReferences({

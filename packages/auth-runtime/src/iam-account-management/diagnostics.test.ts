@@ -5,15 +5,6 @@ const state = vi.hoisted(() => ({
     addEvent: vi.fn(),
     setAttributes: vi.fn(),
   },
-}));
-
-vi.mock('@opentelemetry/api', () => ({
-  trace: {
-    getActiveSpan: () => state.activeSpan,
-  },
-}));
-
-vi.mock('@sva/iam-admin', () => ({
   IamSchemaDriftError: class IamSchemaDriftError extends Error {
     readonly cause?: unknown;
     readonly expectedMigration?: string;
@@ -37,6 +28,16 @@ vi.mock('@sva/iam-admin', () => ({
       }
     }
   },
+}));
+
+vi.mock('@opentelemetry/api', () => ({
+  trace: {
+    getActiveSpan: () => state.activeSpan,
+  },
+}));
+
+vi.mock('@sva/iam-admin', () => ({
+  IamSchemaDriftError: state.IamSchemaDriftError,
 }));
 
 describe('IAM diagnostics helpers', () => {
@@ -73,10 +74,9 @@ describe('IAM diagnostics helpers', () => {
 
   it('classifies schema drift and postgres migration errors', async () => {
     const { classifyIamDiagnosticError } = await import('./diagnostics.js');
-    const { IamSchemaDriftError } = await import('@sva/iam-admin');
 
     const drift = classifyIamDiagnosticError(
-      new IamSchemaDriftError({
+      new state.IamSchemaDriftError({
         message: 'missing schema',
         operation: 'load_users',
         schemaObject: 'iam.accounts.username_ciphertext',

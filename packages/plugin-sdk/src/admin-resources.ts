@@ -746,10 +746,8 @@ const normalizeAdminResourceDefinition = (resource: AdminResourceDefinition): Ad
         ? validateViewDefinition(resourceId, 'history', resource.views.history)
         : undefined,
     },
-    ...(normalizeAdminResourcePermissions(resourceId, resource.permissions)
-      ? { permissions: normalizeAdminResourcePermissions(resourceId, resource.permissions) }
-      : {}),
-    capabilities: normalizeAdminResourceCapabilities(resourceId, resource.capabilities),
+    ...(normalizedPermissions ? { permissions: normalizedPermissions } : {}),
+    capabilities: normalizedCapabilities,
     contentUi: normalizeAdminResourceContentUi(resourceId, resource.guard, resource.contentUi),
   };
 };

@@ -138,11 +138,11 @@ describe('OrganizationDetailPage', () => {
     listUsersMock
       .mockResolvedValueOnce({
         data: firstPageUsers,
-        pagination: { page: 1, pageSize: 100, total: 101 },
+        pagination: { page: 1, pageSize: 100, total: 100 },
       })
       .mockResolvedValueOnce({
         data: [secondPageUser],
-        pagination: { page: 2, pageSize: 100, total: 101 },
+        pagination: { page: 1, pageSize: 100, total: 1 },
       });
 
     render(<OrganizationDetailPage organizationId="org-1" />);
@@ -151,7 +151,13 @@ describe('OrganizationDetailPage', () => {
       expect(loadOrganization).toHaveBeenCalledWith('org-1');
     });
     await waitFor(() => {
-      expect(listUsersMock).toHaveBeenCalledTimes(2);
+      expect(listUsersMock).toHaveBeenCalledTimes(1);
+      expect(listUsersMock).toHaveBeenCalledWith({
+        page: 1,
+        pageSize: 100,
+        search: undefined,
+        status: 'active',
+      });
     });
 
     fireEvent.change(screen.getByLabelText('Technischer Schlüssel', { selector: '#organization-key' }), {
@@ -185,7 +191,16 @@ describe('OrganizationDetailPage', () => {
     fireEvent.change(screen.getByLabelText('Mitglieder suchen', { selector: '#membership-account-search' }), {
       target: { value: 'zoe' },
     });
-    expect(screen.getByRole('option', { name: 'Zoe Zebra <zoe@example.org>' })).toBeTruthy();
+    await waitFor(() => {
+      expect(listUsersMock).toHaveBeenCalledTimes(2);
+      expect(listUsersMock).toHaveBeenLastCalledWith({
+        page: 1,
+        pageSize: 100,
+        search: 'zoe',
+        status: 'active',
+      });
+      expect(screen.getByRole('option', { name: 'Zoe Zebra <zoe@example.org>' })).toBeTruthy();
+    });
 
     fireEvent.change(document.getElementById('membership-account') as HTMLSelectElement, {
       target: { value: 'user-101' },

@@ -123,29 +123,19 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
       setMembershipUsersError(null);
 
       try {
-        const collectedUsers = new Map<string, IamUserListItem>();
-        let page = 1;
-        let total = 0;
-
-        do {
-          const response = await listUsers({
-            page,
-            pageSize: MEMBERSHIP_USER_PAGE_SIZE,
-            status: 'active',
-          });
-          total = response.pagination.total;
-          for (const user of response.data) {
-            collectedUsers.set(user.id, user);
-          }
-          page += 1;
-        } while (collectedUsers.size < total);
+        const response = await listUsers({
+          page: 1,
+          pageSize: MEMBERSHIP_USER_PAGE_SIZE,
+          search: membershipSearch.trim() || undefined,
+          status: 'active',
+        });
 
         if (!active) {
           return;
         }
 
         setMembershipUsers(
-          [...collectedUsers.values()].sort((left, right) => formatMembershipUserLabel(left).localeCompare(formatMembershipUserLabel(right)))
+          [...response.data].sort((left, right) => formatMembershipUserLabel(left).localeCompare(formatMembershipUserLabel(right)))
         );
       } catch (cause) {
         if (!active) {
@@ -165,7 +155,7 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
     return () => {
       active = false;
     };
-  }, []);
+  }, [membershipSearch]);
 
   const assignedMembershipAccountIds = React.useMemo(
     () => new Set(selectedOrganization?.memberships.map((membership) => membership.accountId) ?? []),

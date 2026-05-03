@@ -1,10 +1,21 @@
 import React from 'react';
-import { Link, useNavigate, useParams } from '@tanstack/react-router';
-import { translatePluginKey, usePluginTranslation } from '@sva/plugin-sdk';
+import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router';
+import {
+  findHostMediaReferenceAssetId,
+  fromDatetimeLocalValue,
+  listHostMediaAssets,
+  listHostMediaReferencesByTarget,
+  replaceHostMediaReferences,
+  toDatetimeLocalValue,
+  toHostMediaFieldOptions,
+  translatePluginKey,
+  usePluginTranslation,
+} from '@sva/plugin-sdk';
 import {
   Button,
   Checkbox,
   Input,
+  MediaReferenceField,
   StudioDetailPageTemplate,
   StudioEmptyState,
   StudioErrorState,
@@ -13,12 +24,14 @@ import {
   StudioFormSummary,
   StudioLoadingState,
   StudioOverviewPageTemplate,
+  StudioDataTable,
   Textarea,
 } from '@sva/studio-ui-react';
 
 import { NewsApiError, createNews, deleteNews, getNews, listNews, updateNews } from './news.api.js';
-import { getPluginNewsActionDefinition, pluginNewsActionIds } from './plugin.js';
-import type { NewsContentBlock, NewsContentItem, NewsFormInput, NewsMediaContent } from './news.types.js';
+import { normalizeListSearch } from './list-pagination.js';
+import { getPluginNewsActionDefinition, pluginNewsActionIds, pluginNewsMediaPickers } from './plugin.js';
+import type { NewsContentBlock, NewsContentItem, NewsFormInput, NewsListResult, NewsMediaContent } from './news.types.js';
 import { validateNewsForm } from './news.validation.js';
 
 type StatusMessage = {
@@ -106,6 +119,33 @@ const resolveNewsErrorMessage = (pt: ReturnType<typeof usePluginTranslation>, er
   return pt(fallbackKey);
 };
 
+type ListSearchState = Record<string, unknown>;
+
+type ListPaginationState = Readonly<{
+  page: number;
+  pageSize: number;
+  hasNextPage: boolean;
+}>;
+
+type ListPaginationNavProps = Readonly<{
+  ariaLabel: string;
+  pageLabel: string;
+  previousLabel: string;
+  nextLabel: string;
+  pagination: ListPaginationState;
+  onPageChange: (page: number) => void;
+}>;
+
+const updateListSearchPage = (
+  current: ListSearchState,
+  page: number,
+  pageSize: number
+): ListSearchState => ({
+  ...current,
+  page,
+  pageSize,
+});
+
 const persistFlashMessage = (code: FlashMessageCode) => {
   if (typeof globalThis.window === 'undefined') {
     return;
@@ -151,34 +191,6 @@ const formatSettings = (value: NewsContentItem['settings']) => {
     value.onlySummaryLinkText ? `onlySummaryLinkText: ${value.onlySummaryLinkText}` : undefined,
   ].filter(Boolean);
   return labels.length > 0 ? labels.join(', ') : '—';
-};
-
-const toDatetimeLocalValue = (value?: string) => {
-  if (!value) {
-    return '';
-  }
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return '';
-  }
-
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  const hours = String(date.getHours()).padStart(2, '0');
-  const minutes = String(date.getMinutes()).padStart(2, '0');
-
-  return `${year}-${month}-${day}T${hours}:${minutes}`;
-};
-
-const fromDatetimeLocalValue = (value: string): string => {
-  if (value.length === 0) {
-    return '';
-  }
-
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? '' : date.toISOString();
 };
 
 const compactString = (value?: string) => {
@@ -291,6 +303,72 @@ const firstBlockSummary = (item: NewsContentItem) => {
 const categorySummary = (item: NewsContentItem) =>
   item.categoryName ?? item.categories?.map((category) => category.name).join(', ') ?? item.payload.category ?? '—';
 
+const NewsListEditAction = ({ id, label }: Readonly<{ id: string; label: string }>) => (
+  <Button asChild variant="outline" size="sm">
+    <Link to="/admin/news/$id" params={{ id }}>
+      {label}
+    </Link>
+  </Button>
+);
+
+const NewsPaginationNav = ({
+  ariaLabel,
+  pageLabel,
+  previousLabel,
+  nextLabel,
+  pagination,
+  onPageChange,
+}: ListPaginationNavProps) => (
+  <nav aria-label={ariaLabel} className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
+    <p key={pagination.page} aria-live="polite" className="animate-pagination-active">
+      {pageLabel}
+    </p>
+    <div className="flex items-center gap-2">
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        disabled={pagination.page <= 1}
+        onClick={() => onPageChange(Math.max(1, pagination.page - 1))}
+      >
+        {previousLabel}
+      </Button>
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        disabled={!pagination.hasNextPage}
+        onClick={() => onPageChange(pagination.page + 1)}
+      >
+        {nextLabel}
+      </Button>
+    </div>
+  </nav>
+);
+
+const createNewsListColumns = (pt: ReturnType<typeof usePluginTranslation>) => [
+  {
+    id: 'title',
+    header: pt('fields.title'),
+    cell: (item: NewsContentItem) => (
+      <div>
+        <div className="font-medium">{item.title}</div>
+        <div className="mt-1 line-clamp-2 text-xs text-muted-foreground">{firstBlockSummary(item)}</div>
+      </div>
+    ),
+  },
+  {
+    id: 'categoryName',
+    header: pt('fields.categoryName'),
+    cell: categorySummary,
+  },
+  {
+    id: 'updatedAt',
+    header: pt('fields.updatedAt'),
+    cell: (item: NewsContentItem) => formatDate(item.updatedAt),
+  },
+];
+
 const NewsForm = ({
   mode,
   contentId,
@@ -311,7 +389,31 @@ const NewsForm = ({
   const [statusMessage, setStatusMessage] = React.useState<StatusMessage | null>(null);
   const [deletePending, setDeletePending] = React.useState(false);
   const [loadedItem, setLoadedItem] = React.useState<NewsContentItem | null>(null);
+  const [mediaOptions, setMediaOptions] = React.useState<readonly { assetId: string; label: string }[]>([]);
+  const [teaserImageAssetId, setTeaserImageAssetId] = React.useState<string | null>(null);
+  const [headerImageAssetId, setHeaderImageAssetId] = React.useState<string | null>(null);
+  const [existingMediaReferenceCount, setExistingMediaReferenceCount] = React.useState(0);
+  const editLoadRequestIdRef = React.useRef(0);
   const hasFieldError = React.useCallback((field: string) => fieldErrors.includes(field), [fieldErrors]);
+
+  React.useEffect(() => {
+    let active = true;
+    void listHostMediaAssets({ fetch: globalThis.fetch.bind(globalThis) })
+      .then((assets) => {
+        if (active) {
+          setMediaOptions(toHostMediaFieldOptions(assets));
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setMediaOptions([]);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   React.useEffect(() => {
     if (mode !== 'edit') {
@@ -324,22 +426,42 @@ const NewsForm = ({
       return;
     }
 
+    const requestId = ++editLoadRequestIdRef.current;
     let active = true;
 
     void getNews(contentId)
       .then((item) => {
-        if (active) {
+        if (active && requestId === editLoadRequestIdRef.current) {
           setForm(itemToForm(item));
           setLoadedItem(item);
+          void listHostMediaReferencesByTarget({
+            fetch: globalThis.fetch.bind(globalThis),
+            targetType: 'news',
+            targetId: item.id,
+          })
+            .then((references) => {
+              if (active && requestId === editLoadRequestIdRef.current) {
+                setExistingMediaReferenceCount(references.length);
+                setTeaserImageAssetId(findHostMediaReferenceAssetId(references, pluginNewsMediaPickers.teaserImage.roles[0]));
+                setHeaderImageAssetId(findHostMediaReferenceAssetId(references, pluginNewsMediaPickers.headerImage.roles[0]));
+              }
+            })
+            .catch(() => {
+              if (active && requestId === editLoadRequestIdRef.current) {
+                setExistingMediaReferenceCount(0);
+                setTeaserImageAssetId(null);
+                setHeaderImageAssetId(null);
+              }
+            });
         }
       })
       .catch((error: unknown) => {
-        if (active) {
+        if (active && requestId === editLoadRequestIdRef.current) {
           setStatusMessage({ kind: 'error', text: resolveNewsErrorMessage(pt, error, 'messages.loadError') });
         }
       })
       .finally(() => {
-        if (active) {
+        if (active && requestId === editLoadRequestIdRef.current) {
           setIsLoading(false);
         }
       });
@@ -386,15 +508,39 @@ const NewsForm = ({
     }
 
     try {
+      const mediaReferences = [
+        ...(teaserImageAssetId
+          ? [{ assetId: teaserImageAssetId, role: pluginNewsMediaPickers.teaserImage.roles[0], sortOrder: 0 }]
+          : []),
+        ...(headerImageAssetId
+          ? [{ assetId: headerImageAssetId, role: pluginNewsMediaPickers.headerImage.roles[0], sortOrder: 1 }]
+          : []),
+      ];
       if (mode === 'create') {
-        await createNews(compactedForm);
+        const saved = await createNews(compactedForm);
+        if (mediaReferences.length > 0 || existingMediaReferenceCount > 0) {
+          await replaceHostMediaReferences({
+            fetch: globalThis.fetch.bind(globalThis),
+            targetType: 'news',
+            targetId: saved.id,
+            references: mediaReferences,
+          });
+        }
         persistFlashMessage('createSuccess');
-        await navigate({ to: '/plugins/news' });
+        await navigate({ to: '/admin/news' });
         return;
       }
 
       if (contentId) {
-        await updateNews(contentId, compactedForm);
+        const saved = await updateNews(contentId, compactedForm);
+        if (mediaReferences.length > 0 || existingMediaReferenceCount > 0) {
+          await replaceHostMediaReferences({
+            fetch: globalThis.fetch.bind(globalThis),
+            targetType: 'news',
+            targetId: saved.id,
+            references: mediaReferences,
+          });
+        }
         setStatusMessage({ kind: 'success', text: pt('messages.updateSuccess') });
       }
     } catch (error) {
@@ -416,7 +562,7 @@ const NewsForm = ({
     try {
       await deleteNews(contentId);
       persistFlashMessage('deleteSuccess');
-      await navigate({ to: '/plugins/news' });
+      await navigate({ to: '/admin/news' });
     } catch (error) {
       setStatusMessage({ kind: 'error', text: resolveNewsErrorMessage(pt, error, 'messages.deleteError') });
     } finally {
@@ -606,6 +752,27 @@ const NewsForm = ({
               }
             />
           </StudioField>
+        </StudioFieldGroup>
+
+        <StudioFieldGroup columns={2}>
+          <MediaReferenceField
+            id="news-teaser-image"
+            label={pt('fields.teaserImage')}
+            value={teaserImageAssetId}
+            options={mediaOptions}
+            onChange={setTeaserImageAssetId}
+            placeholder={pt('fields.mediaPlaceholder')}
+            clearLabel={pt('actions.clearMedia')}
+          />
+          <MediaReferenceField
+            id="news-header-image"
+            label={pt('fields.headerImage')}
+            value={headerImageAssetId}
+            options={mediaOptions}
+            onChange={setHeaderImageAssetId}
+            placeholder={pt('fields.mediaPlaceholder')}
+            clearLabel={pt('actions.clearMedia')}
+          />
         </StudioFieldGroup>
 
         <StudioFieldGroup columns={2}>
@@ -816,7 +983,7 @@ const NewsForm = ({
         <div className="flex flex-wrap gap-3">
           <Button type="submit">{submitLabel}</Button>
           <Button asChild variant="outline">
-            <Link to="/plugins/news">{pt('actions.back')}</Link>
+            <Link to="/admin/news">{pt('actions.back')}</Link>
           </Button>
           {mode === 'edit' ? (
             <Button variant="destructive" type="button" onClick={onDelete} disabled={deletePending}>
@@ -873,12 +1040,45 @@ const NewsForm = ({
 
 export const NewsListPage = () => {
   const pt = usePluginTranslation('news');
+  const navigate = useNavigate();
+  const search = useSearch({ strict: false }) as { readonly page?: number; readonly pageSize?: number };
   const createLabel = resolvePluginActionLabel(pt, pluginNewsActionIds.create);
   const editLabel = resolvePluginActionLabel(pt, pluginNewsActionIds.edit);
-  const [items, setItems] = React.useState<readonly NewsContentItem[]>([]);
+  const columns = createNewsListColumns(pt);
+  const { page, pageSize } = normalizeListSearch(search);
+  const [result, setResult] = React.useState<NewsListResult>({
+    data: [],
+    pagination: { page, pageSize, hasNextPage: false },
+  });
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [flashMessage, setFlashMessage] = React.useState<FlashMessageCode | null>(null);
+
+  const handlePageChange = React.useCallback(
+    (nextPage: number) => {
+      Promise.resolve(
+        navigate({
+          to: '/admin/news',
+          search: (current: ListSearchState) => updateListSearchPage(current, nextPage, result.pagination.pageSize),
+        })
+      ).catch(() => undefined);
+    },
+    [navigate, result.pagination.pageSize]
+  );
+
+  React.useEffect(() => {
+    if (search.page === page && search.pageSize === pageSize) {
+      return;
+    }
+
+    Promise.resolve(
+      navigate({
+        to: '/admin/news',
+        replace: true,
+        search: (current: ListSearchState) => updateListSearchPage(current, page, pageSize),
+      })
+    ).catch(() => undefined);
+  }, [navigate, page, pageSize, search.page, search.pageSize]);
 
   React.useEffect(() => {
     setFlashMessage(consumeFlashMessage());
@@ -887,10 +1087,13 @@ export const NewsListPage = () => {
   React.useEffect(() => {
     let active = true;
 
-    void listNews()
-      .then((response) => {
+    setIsLoading(true);
+    setError(null);
+    void listNews({ page, pageSize })
+      .then((nextResult) => {
         if (active) {
-          setItems(response);
+          setResult(nextResult);
+          setError(null);
         }
       })
       .catch((error: unknown) => {
@@ -907,7 +1110,7 @@ export const NewsListPage = () => {
     return () => {
       active = false;
     };
-  }, []);
+  }, [page, pageSize]);
 
   if (isLoading) {
     return <StudioLoadingState>{pt('messages.loading')}</StudioLoadingState>;
@@ -923,7 +1126,7 @@ export const NewsListPage = () => {
       description={pt('list.description')}
       primaryAction={
         <Button asChild>
-          <Link to="/plugins/news/new">{createLabel}</Link>
+          <Link to="/admin/news/new">{createLabel}</Link>
         </Button>
       }
     >
@@ -931,43 +1134,38 @@ export const NewsListPage = () => {
         <StudioFormSummary kind="success">{pt(flashMessageTranslationKeys[flashMessage])}</StudioFormSummary>
       ) : null}
 
-      {items.length === 0 ? (
+      {result.data.length === 0 ? (
         <StudioEmptyState>
           <h2 className="text-lg font-medium">{pt('empty.title')}</h2>
           <p className="mt-2 text-sm text-muted-foreground">{pt('empty.description')}</p>
         </StudioEmptyState>
       ) : (
-        <div className="overflow-hidden rounded-lg border border-border bg-card">
-          <table className="min-w-full text-left text-sm">
-            <caption className="sr-only">{pt('list.title')}</caption>
-            <thead className="bg-muted/40 text-muted-foreground">
-              <tr>
-                <th className="px-4 py-3">{pt('fields.title')}</th>
-                <th className="px-4 py-3">{pt('fields.categoryName')}</th>
-                <th className="px-4 py-3">{pt('fields.updatedAt')}</th>
-                <th className="px-4 py-3">{pt('fields.actions')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((item) => (
-                <tr key={item.id} className="border-t border-border">
-                  <td className="px-4 py-3">
-                    <div className="font-medium">{item.title}</div>
-                    <div className="mt-1 line-clamp-2 text-xs text-muted-foreground">{firstBlockSummary(item)}</div>
-                  </td>
-                  <td className="px-4 py-3">{categorySummary(item)}</td>
-                  <td className="px-4 py-3">{formatDate(item.updatedAt)}</td>
-                  <td className="px-4 py-3">
-                    <Button asChild variant="outline" size="sm">
-                      <Link to="/plugins/news/$contentId" params={{ contentId: item.id }}>
-                        {editLabel}
-                      </Link>
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="space-y-4">
+          <StudioDataTable
+            ariaLabel={pt('list.title')}
+            labels={{
+              selectionColumn: pt('fields.actions'),
+              actionsColumn: pt('fields.actions'),
+              loading: pt('messages.loading'),
+              selectAllRows: (label) => label,
+              selectRow: ({ label }) => label,
+            }}
+            data={result.data}
+            columns={columns}
+            rowActions={(item) => <NewsListEditAction id={item.id} label={editLabel} />}
+            emptyState={null}
+            getRowId={(item) => item.id}
+            selectionMode="none"
+          />
+
+          <NewsPaginationNav
+            ariaLabel={pt('pagination.ariaLabel')}
+            pageLabel={pt('pagination.pageLabel', { page: result.pagination.page })}
+            previousLabel={pt('pagination.previous')}
+            nextLabel={pt('pagination.next')}
+            pagination={result.pagination}
+            onPageChange={handlePageChange}
+          />
         </div>
       )}
     </StudioOverviewPageTemplate>
@@ -977,8 +1175,8 @@ export const NewsListPage = () => {
 export const NewsCreatePage = () => <NewsForm mode="create" />;
 
 export const NewsEditPage = () => {
-  const params = useParams({ strict: false });
-  const contentId = typeof params.contentId === 'string' ? params.contentId : undefined;
+  const params = useParams({ strict: false }) as { readonly contentId?: string; readonly id?: string };
+  const contentId = typeof params.contentId === 'string' ? params.contentId : typeof params.id === 'string' ? params.id : undefined;
 
   return <NewsForm mode="edit" contentId={contentId} />;
 };

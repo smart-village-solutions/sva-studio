@@ -32,6 +32,8 @@ const groupErrorMessage = (error: IamHttpError | null, fallbackKey: TranslationK
       return t('admin.groups.errors.rateLimited');
     case 'conflict':
       return t('admin.groups.errors.conflict');
+    case 'invalid_request':
+      return t('admin.groups.errors.invalidRequest');
     case 'database_unavailable':
       return t('admin.groups.errors.databaseUnavailable');
     default:

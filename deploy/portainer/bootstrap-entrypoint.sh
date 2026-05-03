@@ -24,6 +24,7 @@ export SVA_BOOTSTRAP_RECONCILE_APP_ROLE="${SVA_BOOTSTRAP_RECONCILE_APP_ROLE:-tru
 export SVA_BOOTSTRAP_ENABLE_SCHEMA_GUARD="${SVA_BOOTSTRAP_ENABLE_SCHEMA_GUARD:-true}"
 export SVA_BOOTSTRAP_ENABLE_INSTANCE_RECONCILE="${SVA_BOOTSTRAP_ENABLE_INSTANCE_RECONCILE:-true}"
 export SVA_BOOTSTRAP_ENABLE_HOSTNAME_GUARD="${SVA_BOOTSTRAP_ENABLE_HOSTNAME_GUARD:-true}"
+export SVA_BOOTSTRAP_TENANT_ADMIN_CLIENT_ID="${SVA_BOOTSTRAP_TENANT_ADMIN_CLIENT_ID:-sva-studio-admin}"
 
 tmp_sql="$(mktemp /tmp/sva-bootstrap.XXXXXX)"
 cleanup() {
@@ -39,6 +40,7 @@ const instanceIds = (process.env.SVA_ALLOWED_INSTANCE_IDS ?? '')
   .map((entry) => entry.trim())
   .filter((entry) => entry.length > 0);
 const parentDomain = process.env.SVA_PARENT_DOMAIN?.trim() ?? '';
+const tenantAdminClientId = process.env.SVA_BOOTSTRAP_TENANT_ADMIN_CLIENT_ID?.trim() || 'sva-studio-admin';
 const expectedHostnames = instanceIds.map((instanceId) => ({
   hostname: `${instanceId}.${parentDomain}`,
   instanceId,
@@ -242,7 +244,7 @@ if (
   const instanceRows = instanceIds
     .map(
       (instanceId) =>
-        `(${sqlLiteral(instanceId)}, ${sqlLiteral(instanceId)}, 'active', ${sqlLiteral(parentDomain)}, ${sqlLiteral(`${instanceId}.${parentDomain}`)}, ${sqlLiteral(instanceId)}, ${sqlLiteral('sva-studio')})`,
+        `(${sqlLiteral(instanceId)}, ${sqlLiteral(instanceId)}, 'active', ${sqlLiteral(parentDomain)}, ${sqlLiteral(`${instanceId}.${parentDomain}`)}, ${sqlLiteral(instanceId)}, ${sqlLiteral('sva-studio')}, ${sqlLiteral(tenantAdminClientId)})`,
     )
     .join(',\n');
   const hostnameRows = instanceIds
@@ -255,7 +257,7 @@ if (
   const primaryHostnameList = expectedHostnames.map(({ hostname }) => sqlLiteral(hostname)).join(', ');
 
   statements.push(
-    `INSERT INTO iam.instances (id, display_name, status, parent_domain, primary_hostname, auth_realm, auth_client_id)
+    `INSERT INTO iam.instances (id, display_name, status, parent_domain, primary_hostname, auth_realm, auth_client_id, tenant_admin_client_id)
 VALUES
 ${instanceRows}
 ON CONFLICT (id) DO UPDATE
@@ -265,6 +267,7 @@ SET
   primary_hostname = EXCLUDED.primary_hostname,
   auth_realm = EXCLUDED.auth_realm,
   auth_client_id = EXCLUDED.auth_client_id,
+  tenant_admin_client_id = COALESCE(NULLIF(iam.instances.tenant_admin_client_id, ''), EXCLUDED.tenant_admin_client_id),
   updated_at = NOW();`,
   );
   statements.push(

@@ -3,6 +3,7 @@ import React from 'react';
 
 import {
   activateInstance,
+  assignInstanceModule,
   archiveInstance,
   asIamError,
   createInstance,
@@ -14,7 +15,10 @@ import {
   IamHttpError,
   listInstances,
   planInstanceKeycloakProvisioning,
+  probeTenantIamAccess,
   reconcileInstanceKeycloak,
+  revokeInstanceModule,
+  seedInstanceIamBaseline,
   suspendInstance,
   updateInstance,
   type CreateInstancePayload,
@@ -377,6 +381,39 @@ export const useInstances = () => {
         instanceId,
         'execute_instance_keycloak_provisioning'
       ),
+    probeTenantIamAccess: async (instanceId: string) => {
+      setStatusLoading(true);
+      setMutationError(null);
+      logBrowserOperationStart(instancesLogger, 'tenant_iam_access_probe_started', {
+        operation: 'probe_tenant_iam_access',
+        instance_id: instanceId,
+      });
+      try {
+        const response = await probeTenantIamAccess(instanceId);
+        updateSelectedForInstance(instanceId, (current) => ({
+          ...current,
+          tenantIamStatus: response.data,
+        }));
+        logBrowserOperationSuccess(instancesLogger, 'tenant_iam_access_probe_succeeded', {
+          operation: 'probe_tenant_iam_access',
+          instance_id: instanceId,
+        });
+        return response.data;
+      } catch (cause) {
+        const resolvedError = asIamError(cause);
+        if (resolvedError.status === 403) {
+          await invalidatePermissions();
+        }
+        setMutationError(resolvedError);
+        logBrowserOperationFailure(instancesLogger, 'tenant_iam_access_probe_failed', resolvedError, {
+          operation: 'probe_tenant_iam_access',
+          instance_id: instanceId,
+        });
+        return null;
+      } finally {
+        setStatusLoading(false);
+      }
+    },
     loadKeycloakProvisioningRun: async (instanceId: string, runId: string) => {
       setStatusLoading(true);
       setMutationError(null);
@@ -410,6 +447,36 @@ export const useInstances = () => {
         },
         instanceId,
         'reconcile_instance_keycloak'
+      ),
+    assignModule: async (instanceId: string, moduleId: string) =>
+      mutate(
+        async () => {
+          const response = await assignInstanceModule(instanceId, moduleId);
+          setSelectedInstance(response.data);
+          return response;
+        },
+        instanceId,
+        'assign_instance_module'
+      ),
+    revokeModule: async (instanceId: string, moduleId: string) =>
+      mutate(
+        async () => {
+          const response = await revokeInstanceModule(instanceId, moduleId);
+          setSelectedInstance(response.data);
+          return response;
+        },
+        instanceId,
+        'revoke_instance_module'
+      ),
+    seedIamBaseline: async (instanceId: string) =>
+      mutate(
+        async () => {
+          const response = await seedInstanceIamBaseline(instanceId);
+          setSelectedInstance(response.data);
+          return response;
+        },
+        instanceId,
+        'seed_instance_iam_baseline'
       ),
     activateInstance: async (instanceId: string) => mutate(() => activateInstance(instanceId), instanceId, 'activate_instance'),
     suspendInstance: async (instanceId: string) => mutate(() => suspendInstance(instanceId), instanceId, 'suspend_instance'),

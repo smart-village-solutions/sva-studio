@@ -8,7 +8,11 @@ const createContentMock = vi.fn();
 const getContentMock = vi.fn();
 const getContentHistoryMock = vi.fn();
 const updateContentMock = vi.fn();
+const deleteContentMock = vi.fn();
 const asIamErrorMock = vi.fn();
+const logBrowserOperationStartMock = vi.fn();
+const logBrowserOperationSuccessMock = vi.fn();
+const logBrowserOperationFailureMock = vi.fn();
 const authMockValue = {
   user: {
     id: 'editor-1',
@@ -40,7 +44,15 @@ vi.mock('../lib/iam-api', () => ({
   getContent: (...args: unknown[]) => getContentMock(...args),
   getContentHistory: (...args: unknown[]) => getContentHistoryMock(...args),
   updateContent: (...args: unknown[]) => updateContentMock(...args),
+  deleteContent: (...args: unknown[]) => deleteContentMock(...args),
   asIamError: (...args: unknown[]) => asIamErrorMock(...args),
+}));
+
+vi.mock('../lib/browser-operation-logging', () => ({
+  createOperationLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }),
+  logBrowserOperationStart: (...args: unknown[]) => logBrowserOperationStartMock(...args),
+  logBrowserOperationSuccess: (...args: unknown[]) => logBrowserOperationSuccessMock(...args),
+  logBrowserOperationFailure: (...args: unknown[]) => logBrowserOperationFailureMock(...args),
 }));
 
 vi.mock('../providers/auth-provider', () => ({
@@ -54,7 +66,11 @@ describe('useContents', () => {
     getContentMock.mockReset();
     getContentHistoryMock.mockReset();
     updateContentMock.mockReset();
+    deleteContentMock.mockReset();
     asIamErrorMock.mockReset();
+    logBrowserOperationStartMock.mockReset();
+    logBrowserOperationSuccessMock.mockReset();
+    logBrowserOperationFailureMock.mockReset();
     authMockValue.invalidatePermissions.mockReset();
   });
 
@@ -82,6 +98,98 @@ describe('useContents', () => {
       expect(result.current.isLoading).toBe(false);
       expect(result.current.contents).toHaveLength(1);
     });
+  });
+
+  it('runs bulk archive and delete actions with safe audit metadata', async () => {
+    asIamErrorMock.mockImplementation((cause: unknown) => cause);
+    listContentsMock.mockResolvedValue({
+      data: [
+        {
+          id: 'content-1',
+          contentType: 'generic',
+          title: 'Startseite',
+          createdAt: '2026-03-21T10:00:00.000Z',
+          updatedAt: '2026-03-21T11:00:00.000Z',
+          author: 'Editor',
+          payload: { blocks: [] },
+          status: 'draft',
+        },
+        {
+          id: 'content-2',
+          contentType: 'generic',
+          title: 'Archiv',
+          createdAt: '2026-03-21T10:00:00.000Z',
+          updatedAt: '2026-03-21T11:00:00.000Z',
+          author: 'Editor',
+          payload: { blocks: [] },
+          status: 'archived',
+        },
+      ],
+      pagination: { page: 1, pageSize: 2, total: 2 },
+    });
+    updateContentMock.mockResolvedValue({ data: { id: 'content-1' } });
+    deleteContentMock.mockResolvedValue({ data: { id: 'content-1' } });
+
+    const { result } = renderHook(() => useContents());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    await act(async () => {
+      expect(
+        await result.current.archiveContents({
+          actionId: 'content.archive',
+          contentIds: ['content-1', 'content-2'],
+          matchingCount: 2,
+          page: 1,
+          pageSize: 2,
+          selectionMode: 'currentPage',
+          sort: { field: 'updatedAt', direction: 'desc' },
+          statusFilter: 'all',
+        })
+      ).toEqual({
+        acceptedCount: 1,
+        failedCount: 0,
+        skippedCount: 1,
+      });
+    });
+
+    expect(updateContentMock).toHaveBeenCalledWith('content-1', { status: 'archived' });
+    expect(updateContentMock).toHaveBeenCalledTimes(1);
+    expect(logBrowserOperationSuccessMock).toHaveBeenCalledWith(
+      expect.anything(),
+      'content_bulk_action_succeeded',
+      expect.objectContaining({
+        action_id: 'content.archive',
+        selection_mode: 'currentPage',
+        matching_count: 2,
+        accepted_count: 1,
+        skipped_count: 1,
+      }),
+      'info'
+    );
+
+    await act(async () => {
+      expect(
+        await result.current.deleteContents({
+          actionId: 'content.delete',
+          contentIds: ['content-1'],
+          matchingCount: 1,
+          page: 1,
+          pageSize: 2,
+          selectionMode: 'explicitIds',
+          sort: { field: 'updatedAt', direction: 'desc' },
+          statusFilter: 'draft',
+        })
+      ).toEqual({
+        acceptedCount: 1,
+        failedCount: 0,
+        skippedCount: 0,
+      });
+    });
+
+    expect(deleteContentMock).toHaveBeenCalledWith('content-1');
   });
 
   it('creates content and stores create errors', async () => {

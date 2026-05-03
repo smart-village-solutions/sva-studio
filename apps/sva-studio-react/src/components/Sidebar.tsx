@@ -31,7 +31,7 @@ import React from 'react';
 
 import { t } from '../i18n';
 import { useContentAccess } from '../hooks/use-content-access';
-import { getStudioPluginAction, studioPluginNavigation } from '../lib/plugins';
+import { getStudioPluginAction, getStudioPluginNavigationModuleId, studioPluginNavigation } from '../lib/plugins';
 import {
   hasIamAdminRole,
   hasInstanceRegistryAdminRole,
@@ -65,6 +65,7 @@ type SidebarLeafItem = {
   readonly icon: Icon;
   readonly exact?: boolean;
   readonly section?: 'dataManagement' | 'applications' | 'system';
+  readonly moduleId?: string | null;
 };
 
 type SidebarGroupItem = {
@@ -139,22 +140,14 @@ const logSidebarDebug = (eventName: string, meta: Record<string, unknown>) => {
   logBrowserOperationStart(sidebarLogger, eventName, meta);
 };
 
-type ContentRequiredAction =
-  | 'content.read'
-  | 'content.create'
-  | 'content.updateMetadata'
-  | 'content.updatePayload'
-  | 'content.changeStatus'
-  | 'content.publish'
-  | 'content.archive'
-  | 'content.restore'
-  | 'content.readHistory'
-  | 'content.manageRevisions'
-  | 'content.delete';
-
 const hasRequiredContentAccess = (
-  requiredAction: ContentRequiredAction | undefined,
-  access: { readonly canRead?: boolean; readonly canCreate?: boolean; readonly canUpdate?: boolean } | null | undefined,
+  requiredAction: string | undefined,
+  access: {
+    readonly canRead?: boolean;
+    readonly canCreate?: boolean;
+    readonly canUpdate?: boolean;
+    readonly permissionActions?: readonly string[];
+  } | null | undefined,
   isLoading: boolean
 ) => {
   if (!requiredAction) {
@@ -167,6 +160,10 @@ const hasRequiredContentAccess = (
 
   if (!access) {
     return false;
+  }
+
+  if (!requiredAction.startsWith('content.')) {
+    return access.permissionActions?.includes(requiredAction) === true;
   }
 
   switch (requiredAction) {
@@ -189,6 +186,18 @@ const hasRequiredContentAccess = (
   }
 };
 
+const hasPermissionAction = (
+  requiredAction: string,
+  permissionActions: readonly string[] | undefined,
+  isLoading: boolean
+) => {
+  if (isLoading) {
+    return true;
+  }
+
+  return permissionActions?.includes(requiredAction) === true;
+};
+
 const isLeafActive = (pathname: string, item: SidebarLeafItem) => {
   if (!item.to) {
     return false;
@@ -199,6 +208,14 @@ const isLeafActive = (pathname: string, item: SidebarLeafItem) => {
   }
 
   return pathname === item.to || pathname.startsWith(`${item.to}/`);
+};
+
+const isModuleAssignedToUser = (moduleId: string | null | undefined, user: { assignedModules?: readonly string[] } | null | undefined) => {
+  if (!moduleId) {
+    return true;
+  }
+
+  return user?.assignedModules?.includes(moduleId) === true;
 };
 
 const isGroupActive = (pathname: string, item: SidebarGroupItem) =>
@@ -489,7 +506,7 @@ const SidebarNavItem = ({
             <IconComponent className="h-5 w-5 shrink-0" />
             <span className="truncate">{item.label}</span>
             <span className="ml-auto inline-flex h-5 w-5 items-center justify-center text-muted-foreground">
-              {isExpanded ? <IconChevronDown className="h-4 w-4" /> : <IconChevronRight className="h-4 w-4" />}
+              {isExpanded ? <IconChevronDown className="h-4 w-4" /> : <IconChevronRight className="h-4 w-4 animate-collapse-icon" />}
             </span>
           </CollapsibleTrigger>
           <SidebarGroupContent item={item} pathname={pathname} onNavigate={onNavigate} />
@@ -617,7 +634,7 @@ const SidebarPanel = ({
                 <li key={key}>
                   <span
                     aria-hidden="true"
-                    className={`block animate-pulse rounded-xl border border-sidebar-border bg-muted ${
+                    className={`block animate-skeleton rounded-xl border border-sidebar-border ${
                       isCollapsed ? 'mx-auto h-11 w-11' : 'h-11 w-full'
                     }`}
                   />
@@ -689,6 +706,10 @@ export default function Sidebar({ isLoading = false, isMobileOpen = false, onMob
   const canAccessWorkspace = isAuthenticated && isIamUiEnabled();
   const canAccessContent =
     canAccessWorkspace && (contentAccessApi.isLoading || contentAccessApi.access?.canRead === true);
+  const canAccessMedia =
+    canAccessWorkspace &&
+    isModuleAssignedToUser('media', user) &&
+    hasPermissionAction('media.read', contentAccessApi.permissionActions, contentAccessApi.isLoading);
   const canAccessAdminUsers = isAuthenticated && isIamAdminEnabled() && hasIamAdminRole(user);
   const canAccessAdminOrganizations = canAccessAdminUsers;
   const canAccessAdminInstances = isAuthenticated && isIamAdminEnabled() && hasInstanceRegistryAdminRole(user);
@@ -726,7 +747,13 @@ export default function Sidebar({ isLoading = false, isMobileOpen = false, onMob
         };
       })
       .filter(({ resolvedRequiredAction }) =>
-        hasRequiredContentAccess(resolvedRequiredAction, contentAccessApi.access, contentAccessApi.isLoading)
+        hasRequiredContentAccess(
+          resolvedRequiredAction,
+          contentAccessApi.access
+            ? { ...contentAccessApi.access, permissionActions: contentAccessApi.permissionActions }
+            : null,
+          contentAccessApi.isLoading
+        )
       )
       .map(({ item, resolvedTitleKey }) => ({
         kind: 'link' as const,
@@ -735,7 +762,9 @@ export default function Sidebar({ isLoading = false, isMobileOpen = false, onMob
         label: t(resolvedTitleKey),
         icon: pluginIconBySection[item.section],
         section: item.section,
-      }));
+        moduleId: getStudioPluginNavigationModuleId(item),
+      }))
+      .filter((item) => isModuleAssignedToUser(item.moduleId, user));
     const pluginDataManagementItems = pluginNavigationItems.filter((item) => item.section === 'dataManagement');
     const pluginApplicationItems = pluginNavigationItems.filter((item) => item.section === 'applications');
     const pluginSystemItems = pluginNavigationItems.filter((item) => item.section === 'system');
@@ -758,13 +787,17 @@ export default function Sidebar({ isLoading = false, isMobileOpen = false, onMob
               label: t('shell.sidebar.content'),
               icon: IconArticle,
             },
-            {
-              kind: 'link' as const,
-              id: 'media',
-              to: '/media',
-              label: t('shell.sidebar.media'),
-              icon: IconPhoto,
-            },
+            ...(canAccessMedia
+              ? [
+                  {
+                    kind: 'link' as const,
+                    id: 'media',
+                    to: '/admin/media',
+                    label: t('shell.sidebar.media'),
+                    icon: IconPhoto,
+                  },
+                ]
+              : []),
             {
               kind: 'link' as const,
               id: 'categories',
@@ -945,6 +978,7 @@ export default function Sidebar({ isLoading = false, isMobileOpen = false, onMob
     canAccessAdminRoles,
     canAccessAdminUsers,
     canAccessInterfaces,
+    canAccessMedia,
     canAccessSystemTools,
     canAccessWorkspace,
     canAccessContent,

@@ -40,6 +40,14 @@ vi.mock('../providers/auth-provider', () => ({
   useAuth: () => authMockValue,
 }));
 
+const organizationContextMockValue = {
+  context: null as { activeOrganizationId?: string | null } | null,
+};
+
+vi.mock('./use-organization-context', () => ({
+  useOrganizationContext: () => organizationContextMockValue,
+}));
+
 vi.mock('@sva/monitoring-client/logging', () => ({
   createBrowserLogger: () => browserLoggerMock,
 }));
@@ -53,6 +61,7 @@ describe('useContentAccess', () => {
       instanceId: 'de-musterhausen',
     };
     authMockValue.invalidatePermissions.mockReset();
+    organizationContextMockValue.context = null;
     asIamErrorMock.mockReset();
     asIamErrorMock.mockImplementation((error: unknown) => error);
     browserLoggerMock.debug.mockReset();
@@ -79,6 +88,7 @@ describe('useContentAccess', () => {
 
     expect(result.current).toEqual({
       access: null,
+      permissionActions: [],
       isLoading: false,
       error: null,
     });
@@ -104,6 +114,11 @@ describe('useContentAccess', () => {
             organizationId: 'org-1',
             provenance: { sourceKinds: ['group_role'] },
           },
+          {
+            action: 'news.read',
+            resourceType: 'news',
+            effect: 'allow',
+          },
         ],
       }),
     });
@@ -121,6 +136,7 @@ describe('useContentAccess', () => {
         organizationIds: ['org-1'],
         sourceKinds: ['direct_role', 'group_role'],
       });
+      expect(result.current.permissionActions).toEqual(['content.read', 'content.updatePayload', 'news.read']);
       expect(result.current.error).toBeNull();
     });
 
@@ -136,6 +152,82 @@ describe('useContentAccess', () => {
       'content_access_load_succeeded',
       expect.objectContaining({ operation: 'load_content_access', instance_id: 'de-musterhausen' })
     );
+  });
+
+  it('includes the active organization context in the permissions request', async () => {
+    organizationContextMockValue.context = {
+      activeOrganizationId: '11111111-1111-4111-8111-111111111111',
+    };
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        permissions: [
+          {
+            action: 'content.read',
+            resourceType: 'content',
+            effect: 'allow',
+            organizationId: '11111111-1111-4111-8111-111111111111',
+          },
+          {
+            action: 'content.create',
+            resourceType: 'content',
+            effect: 'allow',
+            organizationId: '11111111-1111-4111-8111-111111111111',
+          },
+        ],
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { result } = renderHook(() => useContentAccess());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.access?.canCreate).toBe(true);
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/iam/me/permissions?instanceId=de-musterhausen&organizationId=11111111-1111-4111-8111-111111111111',
+      undefined,
+      {
+        signal: expect.any(AbortSignal),
+        timeoutMs: 10_000,
+      }
+    );
+  });
+
+  it('treats deny actions as dominant when permission actions are aggregated', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        permissions: [
+          {
+            action: 'news.read',
+            resourceType: 'news',
+            effect: 'allow',
+          },
+          {
+            action: 'news.read',
+            resourceType: 'news',
+            effect: 'deny',
+          },
+          {
+            action: 'events.read',
+            resourceType: 'events',
+            effect: 'allow',
+          },
+        ],
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { result } = renderHook(() => useContentAccess());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.permissionActions).toEqual(['events.read']);
+      expect(result.current.error).toBeNull();
+    });
   });
 
   it('invalidates permissions and exposes a server denied access state on 403', async () => {

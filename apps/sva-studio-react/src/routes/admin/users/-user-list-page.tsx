@@ -4,12 +4,12 @@ import type {
   IamKeycloakObjectEditability,
   IamUserImportSyncReport,
 } from '@sva/core';
+import { StudioDataTable, StudioListPageTemplate, type StudioColumnDef } from '@sva/studio-ui-react';
 import { Link } from '@tanstack/react-router';
 import React from 'react';
 
 import { ConfirmDialog } from '../../../components/ConfirmDialog';
-import { StudioDataTable, type StudioColumnDef } from '../../../components/StudioDataTable';
-import { StudioListPageTemplate } from '../../../components/StudioListPageTemplate';
+import { createStudioDataTableLabels } from '../../../components/studio-data-table-labels';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
@@ -71,6 +71,7 @@ const renderDiagnosticCodes = (diagnostics: readonly IamKeycloakObjectDiagnostic
   ) : null;
 
 export const UserListPage = () => {
+  const studioDataTableLabels = createStudioDataTableLabels();
   const usersApi = useUsers();
 
   const [deactivateDialog, setDeactivateDialog] = React.useState<{ mode: 'single' | 'bulk'; userId?: string; userIds?: string[] } | null>(
@@ -211,6 +212,7 @@ export const UserListPage = () => {
       >
         <StudioDataTable
           ariaLabel={t(isPlatformScope ? 'admin.users.table.platformAriaLabel' : 'admin.users.table.ariaLabel')}
+          labels={studioDataTableLabels}
           caption={t(isPlatformScope ? 'admin.users.table.platformCaption' : 'admin.users.table.caption')}
           data={usersApi.users}
           columns={userColumns}
@@ -404,7 +406,7 @@ export const UserListPage = () => {
       ) : null}
 
       <footer className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
-        <p>
+        <p key={usersApi.page} className="animate-pagination-active" aria-live="polite">
           {t('admin.users.pagination.pageLabel', { page: usersApi.page, totalPages: pageCount })}
         </p>
         <div className="flex items-center gap-2">

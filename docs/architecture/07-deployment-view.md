@@ -13,6 +13,12 @@ Laufzeitknoten auf Basis des aktuellen Repos.
 
 ## Aktueller Stand
 
+### Medienmanagement im Betriebsprofil
+
+- Medienoriginale und Varianten liegen in einem S3-kompatiblen Objektspeicher; das Referenzziel im MVP ist MinIO.
+- Die Studio-Runtime hält Bucket- und Zugangsdaten als Betriebsgeheimnisse; diese Informationen werden nicht in Plugin- oder Fachverträge gespiegelt.
+- Geschützte Auslieferung bleibt ein hostseitiger Laufzeitpfad und wird nicht als direkter Storage-Zugriff an Browser oder Plugins delegiert.
+
 ### Lokale Entwicklungsverteilung
 
 - App: `pnpm nx run sva-studio-react:serve` auf `localhost:3000`
@@ -197,7 +203,7 @@ Referenzen:
 - `docs/development/postgres-setup.md`
 - `docs/guides/swarm-deployment-runbook.md`
 - `docs/guides/instance-registry-local-development.md`
-- `packages/sdk/src/server/bootstrap.server.ts`
+- `packages/server-runtime/src/server/bootstrap.server.ts`
 
 ### Ergänzung 2026-03: IAM-Admin-Integration
 

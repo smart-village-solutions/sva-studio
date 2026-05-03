@@ -286,7 +286,7 @@ WHERE instance_id = $1
           await client.query(
             `
 INSERT INTO iam.role_permissions (instance_id, role_id, permission_id)
-SELECT $1::uuid, $2::uuid, permission_id
+SELECT $1, $2::uuid, permission_id
 FROM unnest($3::uuid[]) AS permission_id
 ON CONFLICT (instance_id, role_id, permission_id) DO NOTHING;
 `,

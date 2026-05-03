@@ -29,17 +29,34 @@ describe('resolveBreadcrumbItems', () => {
   });
 
   it('returns create breadcrumbs for the news plugin', () => {
-    expect(resolveBreadcrumbItems('/plugins/news/new')).toEqual([
+    expect(resolveBreadcrumbItems('/admin/news/new')).toEqual([
       { href: '/', label: 'Übersicht' },
-      { href: '/plugins/news', label: 'News' },
+      { href: '/admin/news', label: 'News' },
       { label: 'News-Eintrag anlegen' },
     ]);
   });
 
   it('returns edit breadcrumbs for dynamic news pages', () => {
+    expect(resolveBreadcrumbItems('/admin/news/content-1')).toEqual([
+      { href: '/', label: 'Übersicht' },
+      { href: '/admin/news', label: 'News' },
+      { label: 'News-Eintrag bearbeiten' },
+    ]);
+  });
+
+  it('keeps breadcrumb aliases for legacy plugin news paths', () => {
+    expect(resolveBreadcrumbItems('/plugins/news')).toEqual([
+      { href: '/', label: 'Übersicht' },
+      { label: 'News' },
+    ]);
+    expect(resolveBreadcrumbItems('/plugins/news/new')).toEqual([
+      { href: '/', label: 'Übersicht' },
+      { href: '/admin/news', label: 'News' },
+      { label: 'News-Eintrag anlegen' },
+    ]);
     expect(resolveBreadcrumbItems('/plugins/news/content-1')).toEqual([
       { href: '/', label: 'Übersicht' },
-      { href: '/plugins/news', label: 'News' },
+      { href: '/admin/news', label: 'News' },
       { label: 'News-Eintrag bearbeiten' },
     ]);
   });

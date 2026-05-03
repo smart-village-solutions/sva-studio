@@ -15,7 +15,7 @@ Die Logging-Architektur verfolgt vier Kernziele:
 
 Abgedeckt sind:
 
-- Server-seitiges App-Logging (`@sva/sdk/server`).
+- Server-seitiges App-Logging (`@sva/server-runtime`).
 - Routing-Observability fuer `@sva/routing` inklusive Guard-, Plugin- und Auth-Dispatch-Ereignissen.
 - OTEL-Export von Logs und Metriken (`@sva/monitoring-client/server`).
 - OTEL Collector + Loki + Promtail im lokalen Monitoring-Stack.
@@ -28,7 +28,7 @@ Nicht abgedeckt sind:
 
 ## Komponentenuebersicht
 
-### 1) Application Logger (`packages/sdk/src/logger/index.server.ts`)
+### 1) Application Logger (`packages/server-runtime/src/logger/index.server.ts`)
 
 - Entry Point: `createSdkLogger(...)`
 - Implementierung: Winston Logger mit
@@ -40,21 +40,21 @@ Nicht abgedeckt sind:
   - Laufzeit-Rekonfiguration bereits erzeugter Logger nach erfolgreicher OTEL-Initialisierung.
 
 Wichtig:
-- Server-Code nutzt `@sva/sdk/server`.
+- Server-Code nutzt `@sva/server-runtime`.
 - Keine direkten `console.*` Calls im regulären Server-Code (Ausnahme: zirkulaere Abhaengigkeiten im Context-Middleware-Modul).
 
-### 2) Context Propagation (`packages/sdk/src/observability/context.server.ts`)
+### 2) Context Propagation (`packages/server-runtime/src/observability/context.server.ts`)
 
 - AsyncLocalStorage speichert Request-/Workspace-Kontext.
 - API:
   - `runWithWorkspaceContext`
   - `getWorkspaceContext`
   - `setWorkspaceContext`
-- Extraktion via Request-Helper in `packages/sdk/src/middleware/request-context.server.ts`.
+- Extraktion via Request-Helper in `packages/server-runtime/src/middleware/request-context.server.ts`.
 
 Damit werden Logs in async Workflows automatisch mit Kontext angereichert.
 
-### 3) OTEL Bootstrap (`packages/sdk/src/server/bootstrap.server.ts`)
+### 3) OTEL Bootstrap (`packages/server-runtime/src/server/bootstrap.server.ts`)
 
 - `initializeOtelSdk()` startet OTEL idempotent.
 - Aktivierung:
@@ -69,7 +69,7 @@ Damit werden Logs in async Workflows automatisch mit Kontext angereichert.
 - Nur in der Entwicklungsumgebung gerendert.
 - Zeigt Browser-Logs und redaktierte Server-Logs in einer lokalen Debug-Konsole am Seitenende.
 - Browser-Logs werden clientseitig gesammelt.
-- Server-Logs werden ueber einen redaktierten In-Memory-Buffer im SDK und Polling aus der App bereitgestellt.
+- Server-Logs werden ueber einen redaktierten In-Memory-Buffer in `@sva/server-runtime` und Polling aus der App bereitgestellt.
 - Der zugehoerige Serverpfad liefert ausserhalb von Development keine Eintraege aus.
 
 ### 4) OTEL SDK + Processor (`packages/monitoring-client/src/otel.server.ts`)
@@ -272,8 +272,8 @@ In `dev/monitoring/promtail/promtail-config.yml`:
 
 ### Unit-/Integration-Ebene
 
-- SDK/Monitoring-Tests unter:
-  - `packages/sdk/tests/`
+- Server-Runtime-/Monitoring-Tests unter:
+  - `packages/server-runtime/tests/`
   - `packages/monitoring-client/tests/`
   - `packages/auth-runtime/src/session.test.ts` (session-bezogen)
 
@@ -295,10 +295,10 @@ In `dev/monitoring/promtail/promtail-config.yml`:
 
 ## Referenzen
 
-- `packages/sdk/src/logger/index.server.ts`
-- `packages/sdk/src/middleware/request-context.server.ts`
-- `packages/sdk/src/observability/context.server.ts`
-- `packages/sdk/src/server/bootstrap.server.ts`
+- `packages/server-runtime/src/logger/index.server.ts`
+- `packages/server-runtime/src/middleware/request-context.server.ts`
+- `packages/server-runtime/src/observability/context.server.ts`
+- `packages/server-runtime/src/server/bootstrap.server.ts`
 - `packages/monitoring-client/src/otel.server.ts`
 - `packages/monitoring-client/src/logger-provider.server.ts`
 - `dev/monitoring/otel-collector/otel-collector.yml`

@@ -6,19 +6,25 @@ import {
   createContentTypeRegistry,
   createPluginActionRegistry,
   createPluginAuditEventRegistry,
+  createPluginModuleIamRegistry,
   createPluginGuardrailError,
+  createPluginPermissionRegistry,
   createPluginRegistry,
   definePluginActions,
   definePluginAdminResources,
   definePluginAuditEvents,
+  definePluginModuleIamContract,
   definePluginContentTypes,
+  definePluginPermissions,
   getContentTypeDefinition,
   mergeAdminResourceDefinitions,
   mergePluginActions,
   mergePluginAdminResourceDefinitions,
   mergePluginAuditEventDefinitions,
   mergePluginContentTypes,
+  mergePluginModuleIamContracts,
   mergePluginNavigationItems,
+  mergePluginPermissions,
   mergePluginRouteDefinitions,
   mergePluginTranslations,
   type PluginDefinition,
@@ -33,7 +39,7 @@ const newsPlugin: PluginDefinition = {
     {
       id: 'news-list',
       path: '/plugins/news',
-      guard: 'content.read',
+      guard: 'news.read',
       actionId: 'news.read',
       component,
     },
@@ -45,22 +51,26 @@ const newsPlugin: PluginDefinition = {
       titleKey: 'news.nav',
       section: 'dataManagement',
       actionId: 'news.read',
-      requiredAction: 'content.read',
+      requiredAction: 'news.read',
     },
   ],
   actions: [
     {
       id: 'news.read',
       titleKey: 'news.actions.read',
-      requiredAction: 'content.read',
+      requiredAction: 'news.read',
       featureFlag: ' news-enabled ',
       legacyAliases: ['news-read'],
     },
     {
       id: 'news.create',
       titleKey: 'news.actions.create',
-      requiredAction: 'content.create',
+      requiredAction: 'news.create',
     },
+  ],
+  permissions: [
+    { id: 'news.read', titleKey: 'news.permissions.read' },
+    { id: 'news.create', titleKey: 'news.permissions.create' },
   ],
   contentTypes: [
     {
@@ -84,6 +94,14 @@ const newsPlugin: PluginDefinition = {
     },
   ],
   auditEvents: [{ eventType: 'news.created', titleKey: 'news.audit.created' }],
+  moduleIam: definePluginModuleIamContract('news', {
+    moduleId: 'news',
+    permissionIds: ['news.read', 'news.create'],
+    systemRoles: [
+      { roleName: 'app_manager', permissionIds: ['news.read'] },
+      { roleName: 'editor', permissionIds: ['news.read', 'news.create'] },
+    ],
+  }),
   translations: {
     de: {
       news: {
@@ -103,9 +121,11 @@ describe('plugin registries', () => {
     expect(mergePluginRouteDefinitions([...registry.values()])).toHaveLength(1);
     expect(mergePluginNavigationItems([...registry.values()])).toHaveLength(1);
     expect(mergePluginActions([...registry.values()])).toHaveLength(2);
+    expect(mergePluginPermissions([...registry.values()])).toHaveLength(2);
     expect(mergePluginContentTypes([...registry.values()])).toHaveLength(1);
     expect(mergePluginAdminResourceDefinitions([...registry.values()])).toHaveLength(1);
     expect(mergePluginAuditEventDefinitions([...registry.values()])).toHaveLength(1);
+    expect(mergePluginModuleIamContracts([...registry.values()])).toHaveLength(1);
     expect(mergePluginTranslations([...registry.values()]).de).toEqual({
       news: {
         nav: 'Nachrichten',
@@ -116,6 +136,8 @@ describe('plugin registries', () => {
 
   it('builds action and audit registries including legacy aliases', () => {
     const actions = createPluginActionRegistry([newsPlugin]);
+    const permissions = createPluginPermissionRegistry([newsPlugin]);
+    const modules = createPluginModuleIamRegistry([newsPlugin]);
     const readAction = actions.get('news.read');
     const legacyAction = actions.get('news-read');
     const auditEvents = createPluginAuditEventRegistry([newsPlugin]);
@@ -136,6 +158,21 @@ describe('plugin registries', () => {
       namespace: 'news',
       eventName: 'created',
       ownerPluginId: 'news',
+    });
+    expect(permissions.get('news.read')).toMatchObject({
+      permissionId: 'news.read',
+      namespace: 'news',
+      permissionName: 'read',
+      ownerPluginId: 'news',
+    });
+    expect(modules.get('news')).toMatchObject({
+      moduleId: 'news',
+      ownerPluginId: 'news',
+      permissionIds: ['news.read', 'news.create'],
+      systemRoles: [
+        { roleName: 'app_manager', permissionIds: ['news.read'] },
+        { roleName: 'editor', permissionIds: ['news.read', 'news.create'] },
+      ],
     });
   });
 
@@ -165,6 +202,21 @@ describe('plugin registries', () => {
       actionId: 'news.read',
       ownerPluginId: 'news',
     });
+    expect(registry.pluginPermissions).toHaveLength(2);
+    expect(registry.pluginPermissionRegistry.get('news.read')).toMatchObject({
+      permissionId: 'news.read',
+      ownerPluginId: 'news',
+    });
+    expect(registry.pluginModuleIamRegistry.get('news')).toMatchObject({
+      moduleId: 'news',
+      ownerPluginId: 'news',
+    });
+    expect(registry.pluginModuleIamContracts).toEqual([
+      expect.objectContaining({
+        moduleId: 'news',
+        ownerPluginId: 'news',
+      }),
+    ]);
     expect(registry.contentTypes).toHaveLength(1);
     expect(registry.auditEvents).toHaveLength(1);
     expect(registry.pluginAuditEventRegistry.get('news.created')).toMatchObject({
@@ -180,6 +232,39 @@ describe('plugin registries', () => {
     expect(registry.adminResources.map((resource) => resource.resourceId)).toEqual(['news.sources', 'host.reports']);
     expect(registry.adminResourceRegistry.has('news.sources')).toBe(true);
     expect(registry.adminResourceRegistry.has('host.reports')).toBe(true);
+  });
+
+  it('rejects admin resources whose specialized content type is not registered in the build-time snapshot', () => {
+    expect(() =>
+      createBuildTimeRegistry({
+        plugins: [
+          {
+            ...newsPlugin,
+            routes: [],
+            adminResources: definePluginAdminResources('news', [
+              {
+                resourceId: 'news.content',
+                basePath: 'news',
+                titleKey: 'news.nav',
+                guard: 'content',
+                views: {
+                  list: { bindingKey: 'content' },
+                  create: { bindingKey: 'contentCreate' },
+                  detail: { bindingKey: 'contentDetail' },
+                },
+                contentUi: {
+                  contentType: 'news.missing',
+                  bindings: {
+                    list: { bindingKey: 'news.list' },
+                    editor: { bindingKey: 'news.editor' },
+                  },
+                },
+              },
+            ]),
+          },
+        ],
+      })
+    ).toThrow('unknown_admin_resource_content_type:news.content:news.missing');
   });
 
   it('creates deterministic plugin guardrail errors', () => {
@@ -214,6 +299,50 @@ describe('plugin registries', () => {
     expect(() =>
       definePluginActions('news', [{ id: 'news.read', titleKey: 'news.read', legacyAliases: ['bad.alias'] }])
     ).toThrow('invalid_plugin_action_alias:news.read');
+  });
+
+  it('rejects invalid plugin module IAM contracts', () => {
+    expect(() =>
+      definePluginModuleIamContract('news', {
+        moduleId: 'events',
+        permissionIds: ['news.read'],
+        systemRoles: [],
+      })
+    ).toThrow('plugin_module_iam_module_id_mismatch:news:events');
+
+    expect(() =>
+      definePluginModuleIamContract('news', {
+        moduleId: 'news',
+        permissionIds: ['events.read'],
+        systemRoles: [],
+      })
+    ).toThrow('plugin_module_iam_permission_namespace_mismatch:news:events:events.read');
+  });
+
+  it('rejects invalid plugin permission definitions and references', () => {
+    expect(() => definePluginPermissions('content', [])).toThrow('reserved_plugin_permission_namespace:content');
+    expect(() => definePluginPermissions('n', [])).toThrow('invalid_plugin_namespace:n');
+    expect(() => definePluginPermissions('news', [{ id: 'content.read', titleKey: 'x' }])).toThrow(
+      'plugin_permission_namespace_mismatch:news:content:content.read'
+    );
+    expect(() => definePluginPermissions('news', [{ id: 'news.read', titleKey: '' }])).toThrow(
+      'invalid_plugin_permission_definition:news.read'
+    );
+    expect(() =>
+      definePluginPermissions('news', [
+        { id: 'news.read', titleKey: 'news.permissions.read' },
+        { id: 'news.read', titleKey: 'news.permissions.read' },
+      ])
+    ).toThrow('duplicate_plugin_permission:news.read');
+    expect(() =>
+      createPluginRegistry([{ ...newsPlugin, routes: [{ id: 'news.old', path: '/plugins/news', guard: 'content.read', component }] }])
+    ).toThrow('legacy_content_plugin_permission_guard:news:news.old:content.read');
+    expect(() =>
+      createPluginRegistry([{ ...newsPlugin, routes: [{ id: 'news.foreign', path: '/plugins/news', guard: 'events.read', component }] }])
+    ).toThrow('plugin_permission_reference_namespace_mismatch:news:news.foreign:events:events.read');
+    expect(() =>
+      createPluginRegistry([{ ...newsPlugin, routes: [{ id: 'news.missing', path: '/plugins/news', guard: 'news.export', component }] }])
+    ).toThrow('plugin_permission_reference_missing:news:news.missing:news.export');
   });
 
   it('rejects invalid plugin registry ownership and duplicates', () => {
@@ -274,7 +403,7 @@ describe('plugin registries', () => {
             {
               id: 'news.guard-mismatch',
               path: '/plugins/news/guard-mismatch',
-              guard: 'content.create',
+              guard: 'news.create',
               actionId: 'news.read',
               component,
             },
@@ -325,7 +454,7 @@ describe('plugin registries', () => {
               titleKey: 'news.nav',
               section: 'dataManagement',
               actionId: 'news.read',
-              requiredAction: 'content.create',
+              requiredAction: 'news.create',
             },
           ],
         },
@@ -391,6 +520,76 @@ describe('plugin registries', () => {
         },
       ])
     ).toThrow('plugin_guardrail_route_bypass:news:news.foreign:path');
+
+    expect(() =>
+      createPluginRegistry([
+        {
+          ...newsPlugin,
+          routes: [
+            {
+              id: 'news.list',
+              path: '/plugins/news',
+              guard: 'news.read',
+              component,
+            },
+          ],
+          adminResources: definePluginAdminResources('news', [
+            {
+              resourceId: 'news.content',
+              basePath: 'news',
+              titleKey: 'news.navigation.title',
+              guard: 'content',
+              views: {
+                list: { bindingKey: 'content' },
+                create: { bindingKey: 'contentCreate' },
+                detail: { bindingKey: 'contentDetail' },
+              },
+              contentUi: {
+                contentType: 'news.article',
+                bindings: {
+                  list: { bindingKey: 'news.list' },
+                },
+              },
+            },
+          ]),
+        },
+      ])
+    ).toThrow('plugin_guardrail_route_bypass:news:news.list:path');
+
+    expect(() =>
+      createPluginRegistry([
+        {
+          ...newsPlugin,
+          routes: [
+            {
+              id: 'news.trailing-slash',
+              path: '/plugins/news/',
+              guard: 'news.read',
+              component,
+            },
+          ],
+          adminResources: definePluginAdminResources('news', [
+            {
+              resourceId: 'news.content',
+              basePath: 'news',
+              titleKey: 'news.navigation.title',
+              guard: 'content',
+              views: {
+                list: { bindingKey: 'content' },
+                create: { bindingKey: 'contentCreate' },
+                detail: { bindingKey: 'contentDetail' },
+              },
+              contentUi: {
+                contentType: 'news.article',
+                bindings: {
+                  list: { bindingKey: 'news.list' },
+                },
+              },
+            },
+          ]),
+        },
+      ])
+    ).toThrow('plugin_guardrail_route_bypass:news:news.trailing-slash:path');
   });
 
   it('rejects plugin authorization, audit, persistence and dynamic-registration bypass fields', () => {
@@ -530,6 +729,26 @@ describe('admin resource registry', () => {
     },
   };
 
+  const specializedContentResource = {
+    resourceId: 'news.content',
+    basePath: 'news',
+    titleKey: 'news.navigation.title',
+    guard: 'content' as const,
+    views: {
+      list: { bindingKey: 'content' },
+      create: { bindingKey: 'contentCreate' },
+      detail: { bindingKey: 'contentDetail' },
+    },
+    contentUi: {
+      contentType: 'news.article',
+      bindings: {
+        list: { bindingKey: 'news.list' },
+        detail: { bindingKey: 'news.detail' },
+        editor: { bindingKey: 'news.editor' },
+      },
+    },
+  };
+
   it('normalizes resources and rejects duplicate ids or paths', () => {
     const registry = createAdminResourceRegistry([reports]);
 
@@ -542,6 +761,19 @@ describe('admin resource registry', () => {
         { ...reports, resourceId: 'news.reports-b' },
       ])
     ).toThrow('admin_resource_base_path_conflict:news.reports-a:news.reports-b:reports');
+  });
+
+  it('normalizes specialized content ui bindings for content resources', () => {
+    const registry = createAdminResourceRegistry([specializedContentResource]);
+
+    expect(registry.get('news.content')?.contentUi).toEqual({
+      contentType: 'news.article',
+      bindings: {
+        list: { bindingKey: 'news.list' },
+        detail: { bindingKey: 'news.detail' },
+        editor: { bindingKey: 'news.editor' },
+      },
+    });
   });
 
   it('validates namespace, base path and required views', () => {
@@ -569,6 +801,37 @@ describe('admin resource registry', () => {
     expect(() =>
       createAdminResourceRegistry([{ ...reports, views: { ...reports.views, detail: { bindingKey: '' } } }])
     ).toThrow('invalid_admin_resource_view:news.reports:detail');
+    expect(() =>
+      createAdminResourceRegistry([
+        {
+          ...specializedContentResource,
+          contentUi: {
+            contentType: 'news.article',
+            bindings: {
+              list: { bindingKey: 'news.list', unsupported: true } as never,
+            },
+          },
+        },
+      ])
+    ).toThrow('plugin_guardrail_unsupported_binding:news:news.content.contentUi.bindings.list:unsupported');
+    expect(() =>
+      createAdminResourceRegistry([
+        {
+          ...specializedContentResource,
+          guard: 'adminUsers' as const,
+        },
+      ])
+    ).toThrow('invalid_admin_resource_content_ui_guard:news.content:adminUsers');
+    expect(() =>
+      definePluginAdminResources('news', [
+        {
+          ...specializedContentResource,
+          contentUi: {
+            contentType: 'events.article',
+          },
+        },
+      ])
+    ).toThrow('plugin_admin_resource_content_type_namespace_mismatch:news:events:events.article');
   });
 
   it('normalizes host-managed list and detail capabilities', () => {
@@ -982,6 +1245,22 @@ describe('admin resource registry', () => {
     expect(() => createAdminResourceRegistry([{ ...reports, titleKey: ' ' }])).toThrow(
       'invalid_admin_resource_definition'
     );
+  });
+
+  it('rejects content ui contributions without a content type', () => {
+    expect(() =>
+      createAdminResourceRegistry([
+        {
+          ...specializedContentResource,
+          contentUi: {
+            contentType: '   ',
+            bindings: {
+              editor: { bindingKey: 'news.editor' },
+            },
+          },
+        },
+      ])
+    ).toThrow('invalid_admin_resource_content_type:news.content');
   });
 });
 

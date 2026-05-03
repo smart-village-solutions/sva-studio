@@ -18,7 +18,9 @@ Architekturprinzipien auf IST-Basis.
 - Monorepo mit klaren Paketgrenzen und Workspace-Abhängigkeiten (`workspace:*`)
 - Framework-agnostische Kernlogik in `@sva/core`, Integration in App-Ebene
 - Plugin-SDK-Boundary: Plugins greifen ausschließlich über `@sva/plugin-sdk` auf Host-APIs zu
-- Plugin-Vertrag v1: Routen, Navigation, Content-Typen und Übersetzungen werden als statische SDK-Metadaten beschrieben; Guard-Anwendung und Route-Materialisierung bleiben Host-Verantwortung
+- Modulbezogene IAM-Verträge für Host, Plugins, Runtime und Provisioning werden aus einem framework-agnostischen Workspace-Edge `@sva/studio-module-iam` abgeleitet statt parallel gepflegt
+- Standardisierte technische Wiederverwendung zwischen CRUD-Content-Plugins wird im Plugin-SDK zentralisiert; es gibt keine direkten Plugin-zu-Plugin-Abhängigkeiten
+- Plugin-Vertrag v1: Routen, Navigation, Content-Typen, Admin-Ressourcen und Übersetzungen werden als statische SDK-Metadaten beschrieben; Guard-Anwendung und Route-Materialisierung bleiben Host-Verantwortung
 - Plugin-Governance folgt einem einheitlichen Namespace-Modell: plugin-beigestellte registrierte Host-Identifier verwenden `<pluginId>.<name>`, während Core-Identifier bewusst hosteigen und unqualifiziert bleiben dürfen
 - Trennung von client-sicheren und serverseitigen Routen/Handlern
 - Observability über OTEL-Standards statt vendor-spezifischer App-Anbindung
@@ -36,6 +38,9 @@ Architekturprinzipien auf IST-Basis.
 - Doku-getriebene Architekturpflege (arc42 + OpenSpec + ADR)
 - UI-Shell folgt semantischen Design-Tokens statt direkter Farbcodes und bleibt kompatibel zu Tailwind-/shadcn-Primitives
 - Wiederverwendbare Studio-UI für Host-Seiten und Plugin-Custom-Views liegt in `@sva/studio-ui-react`; App-interne Komponenten bleiben Shell- oder Host-Bindings und sind keine öffentliche Plugin-API
+- Medienmanagement ist eine hostseitige Querschnitts-Capability: Domänenvertrag in `@sva/media`, Persistenz in `@sva/data-repositories`, Runtime in `@sva/auth-runtime`, Host-UI unter `/admin/media`, Plugin-Bindings nur über `@sva/plugin-sdk` und `@sva/studio-ui-react`
+- Wiederkehrende Mainserver-HTTP-Basis, Standard-Content-Metadaten und kleine UI-nahe Utilities werden für News, Events und POI im `@sva/plugin-sdk` gebündelt; fachliche Modelle und Editor-Spezialisierungen bleiben in den Plugins
+- Mainserver-Listen für News, Events und POI folgen einem gemeinsamen serverseitigen Pagination-Vertrag mit typsicheren Search-Params, paginierten Host-Fassaden und harmonisierten `StudioDataTable`-Listen
 - Theming wird instanzfähig gedacht: `instanceId` kann Theme-Varianten bestimmen, Light/Dark-Mode bleibt dabei ein orthogonaler Modus
 
 ### Architekturtreiber
@@ -143,11 +148,38 @@ Referenzen:
 - `manual_review` bleibt bewusst ein fachlicher Restzustand für nicht deterministisch behebbaren Abgleich; technische Fehler wie `IDP_UNAVAILABLE` und `IDP_FORBIDDEN` bleiben getrennt sichtbar.
 - Browser- und UI-Verträge behalten `classification`, `requestId` und `safeDetails` vollständig, damit Diagnose, Operator-Handlung und Fachzustand nicht auseinanderlaufen.
 
+### Fortschreibung 2026-04: Tenant-IAM-Betriebsstatus auf der Instanz-Detailseite
+
+- Die Instanz-Detailseite bleibt der führende Root-Host-Bedienpunkt für tenantbezogene IAM-Betriebsdiagnostik; sie ergänzt den bestehenden Registry- und Provisioning-Blick um den separaten Fachvertrag `tenantIamStatus`.
+- `tenantIamStatus` trennt bewusst zwischen Struktur-/Konfigurationssicht (`configuration`) und operativer Rechte- und Reconcile-Sicht (`access`, `reconcile`), damit ein grüner Provisioning-Befund keinen operativen Tenant-IAM-Fehler überdeckt.
+- Tenant-IAM-Diagnostik bleibt on-demand und fail-closed: die Detailseite löst keine automatische Rechteprobe aus, erlaubt aber eine explizite read-only Access-Probe gegen den tenantlokalen Admin-Client.
+- Normale Tenant-Reconcile-Läufe verwenden strategisch keinen Plattform- oder Root-Fallback mehr; fehlende Tenant-Admin-Rechte oder Konfigurationsdrift bleiben als eigener Tenant-IAM-Befund sichtbar.
+
 ### Fortschreibung 2026-04: Registrierungsvertrag für Admin-Ressourcen
 
 - CRUD-artige Admin-Flächen werden strategisch nicht mehr als lose Einzelrouten im Host verdrahtet, sondern über einen deklarativen Admin-Ressourcenvertrag aus Workspace-Packages beschrieben.
 - Der Host bleibt führend für kanonische Routenbildung, Guard-Materialisierung, Konflikterkennung und Shell-Integration.
 - Die erste Referenzmigration nutzt diesen Vertrag für die Inhaltsverwaltung; kanonisch liegt sie unter `/admin/content`, während `/content*` nur noch als Kompatibilitätsalias dient.
+
+### Fortschreibung 2026-04: Registrierte spezialisierte Content-Views für bestehende Content-Plugins
+
+- Standardisierte Content-Plugins mit CRUD-Oberflächen veröffentlichen ihre produktiven Hauptpfade nicht mehr über freie `plugin.routes`, sondern über `adminResources` mit host-owned Materialisierung.
+- Der bestehende Admin-Ressourcenvertrag wird dafür um einen optionalen Spezialisierungsblock `contentUi` erweitert, der einen registrierten plugin-eigenen `contentType` sowie optionale React-Bindings für `list`, `detail` und `editor` beschreibt.
+- Kanonische Produktionspfade für News, Events und POI liegen damit unter `/admin/news`, `/admin/events` und `/admin/poi`; die früheren CRUD-Hauptrouten unter `/plugins/news`, `/plugins/events` und `/plugins/poi` entfallen bewusst ohne Alias.
+- Der Host bleibt führend für Shell, Breadcrumbs, Guards, Lade-/Fehlerzustände, globale Aktionen und Persistenzhoheit; Plugin-Views dürfen nur die fachliche Inhaltsfläche innerhalb dieser host-owned Route spezialisieren.
+- Freie `plugin.routes` bleiben zulässig, aber nur für echte Nicht-CRUD-Sonderfälle außerhalb des standardisierten Content-Hauptpfads.
+
+### Fortschreibung 2026-05: Gemeinsame Runtime-Quelle für Modul-IAM-Verträge
+
+- Die fachliche Vertragsfamilie für `moduleIam` wird nicht mehr nur build-time im Plugin-SDK interpretiert, sondern zusätzlich über das dedizierte Workspace-Package `@sva/studio-module-iam` runtime-sicher bereitgestellt.
+- `@sva/auth-runtime`, Host-Module-UI und Plugin-Definitionen konsumieren damit denselben kanonischen Modulkatalog statt lokaler Parallel-Maps.
+- Die strategische Grenze bleibt unverändert: Plugins bleiben deklarativ, Runtime und Provisioning konsumieren nur einen UI-freien Vertrags-Edge.
+
+### Fortschreibung 2026-05: Serverseitige Pagination für Mainserver-Plugin-Listen
+
+- News-, Events- und POI-Listen werden strategisch nicht mehr als Vollabfrage mit pluginlokaler Tabellenlogik betrieben.
+- Führend sind jetzt typsichere Search-Params (`page`, `pageSize`), paginierte Host-Fassaden und ein gemeinsamer Listenanker über `StudioDataTable`.
+- `hasNextPage` ist die harte UI-Semantik; ein globaler Count bleibt bewusst optional, solange der Upstream-Vertrag keinen belastbaren Gesamtzähler liefert.
 
 ### Fortschreibung 2026-04: Namespace-Vertrag für plugin-beigestellte Host-Identifier
 

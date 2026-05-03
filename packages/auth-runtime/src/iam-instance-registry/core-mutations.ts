@@ -48,6 +48,26 @@ export const executeInstanceKeycloakProvisioningMutation = (
   ctx: AuthenticatedRequestContext
 ): Promise<Response> => mutationHandlers.executeInstanceKeycloakProvisioning(request, ctx);
 
+export const assignInstanceModuleMutation = (
+  request: Request,
+  ctx: AuthenticatedRequestContext
+): Promise<Response> => mutationHandlers.assignModule(request, ctx);
+
+export const revokeInstanceModuleMutation = (
+  request: Request,
+  ctx: AuthenticatedRequestContext
+): Promise<Response> => mutationHandlers.revokeModule(request, ctx);
+
+export const seedInstanceIamBaselineMutation = (
+  request: Request,
+  ctx: AuthenticatedRequestContext
+): Promise<Response> => mutationHandlers.seedIamBaseline(request, ctx);
+
+export const probeTenantIamAccessMutation = (
+  request: Request,
+  ctx: AuthenticatedRequestContext
+): Promise<Response> => mutationHandlers.probeTenantIamAccess(request, ctx);
+
 export const mutateInstanceStatus = (
   request: Request,
   ctx: AuthenticatedRequestContext,

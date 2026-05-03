@@ -5,18 +5,25 @@ import type {
   PluginAuditEventDefinition,
   PluginAuditEventRegistryEntry,
   PluginDefinition,
+  PluginModuleIamRegistryEntry,
   PluginNavigationItem,
+  PluginPermissionDefinition,
+  PluginPermissionRegistryEntry,
   PluginRouteDefinition,
   PluginTranslations,
 } from './plugins.js';
 import {
   createPluginActionRegistry,
   createPluginAuditEventRegistry,
+  createPluginModuleIamRegistry,
+  createPluginPermissionRegistry,
   createPluginRegistry,
   mergePluginAdminResourceDefinitions,
   mergePluginAuditEventDefinitions,
   mergePluginContentTypes,
+  mergePluginModuleIamContracts,
   mergePluginNavigationItems,
+  mergePluginPermissions,
   mergePluginRouteDefinitions,
   mergePluginTranslations,
 } from './plugins.js';
@@ -32,6 +39,10 @@ export type BuildTimeRegistry = {
   readonly pluginRegistry: ReadonlyMap<string, PluginDefinition>;
   readonly pluginActionRegistry: ReadonlyMap<string, PluginActionRegistryEntry>;
   readonly pluginAuditEventRegistry: ReadonlyMap<string, PluginAuditEventRegistryEntry>;
+  readonly pluginPermissionRegistry: ReadonlyMap<string, PluginPermissionRegistryEntry>;
+  readonly pluginModuleIamRegistry: ReadonlyMap<string, PluginModuleIamRegistryEntry>;
+  readonly pluginPermissions: readonly PluginPermissionDefinition[];
+  readonly pluginModuleIamContracts: readonly PluginModuleIamRegistryEntry[];
   readonly routes: readonly PluginRouteDefinition[];
   readonly navigation: readonly PluginNavigationItem[];
   readonly contentTypes: readonly ContentTypeDefinition[];
@@ -64,6 +75,31 @@ type RoutingPhaseOutput = {
   readonly routes: readonly PluginRouteDefinition[];
   readonly navigation: readonly PluginNavigationItem[];
   readonly pluginActionRegistry: ReadonlyMap<string, PluginActionRegistryEntry>;
+};
+
+type PermissionPhaseOutput = {
+  readonly pluginPermissions: readonly PluginPermissionDefinition[];
+  readonly pluginPermissionRegistry: ReadonlyMap<string, PluginPermissionRegistryEntry>;
+  readonly pluginModuleIamContracts: readonly PluginModuleIamRegistryEntry[];
+  readonly pluginModuleIamRegistry: ReadonlyMap<string, PluginModuleIamRegistryEntry>;
+};
+
+const validateAdminResourceContentTypes = (
+  adminResources: readonly AdminResourceDefinition[],
+  contentTypes: readonly ContentTypeDefinition[]
+): void => {
+  const registeredContentTypes = new Set(contentTypes.map((definition) => definition.contentType));
+
+  for (const resource of adminResources) {
+    const contentType = resource.contentUi?.contentType;
+    if (!contentType) {
+      continue;
+    }
+
+    if (!registeredContentTypes.has(contentType)) {
+      throw new Error(`unknown_admin_resource_content_type:${resource.resourceId}:${contentType}`);
+    }
+  }
 };
 
 const runPreflightPhase = (plugins: readonly PluginDefinition[]): PreflightPhaseOutput => {
@@ -99,6 +135,13 @@ const runAuditPhase = (plugins: readonly PluginDefinition[]): AuditPhaseOutput =
   pluginAuditEventRegistry: createPluginAuditEventRegistry(plugins),
 });
 
+const runPermissionPhase = (plugins: readonly PluginDefinition[]): PermissionPhaseOutput => ({
+  pluginPermissions: mergePluginPermissions(plugins),
+  pluginPermissionRegistry: createPluginPermissionRegistry(plugins),
+  pluginModuleIamContracts: mergePluginModuleIamContracts(plugins),
+  pluginModuleIamRegistry: createPluginModuleIamRegistry(plugins),
+});
+
 const runRoutingPhase = (plugins: readonly PluginDefinition[]): RoutingPhaseOutput => ({
   routes: mergePluginRouteDefinitions(plugins),
   navigation: mergePluginNavigationItems(plugins),
@@ -111,17 +154,23 @@ const publishBuildTimeRegistry = ({
   admin,
   audit,
   routing,
+  permissions,
 }: {
   readonly preflight: PreflightPhaseOutput;
   readonly content: ContentPhaseOutput;
   readonly admin: AdminPhaseOutput;
   readonly audit: AuditPhaseOutput;
   readonly routing: RoutingPhaseOutput;
+  readonly permissions: PermissionPhaseOutput;
 }): BuildTimeRegistry => ({
   plugins: preflight.plugins,
   pluginRegistry: preflight.pluginRegistry,
   pluginActionRegistry: routing.pluginActionRegistry,
   pluginAuditEventRegistry: audit.pluginAuditEventRegistry,
+  pluginPermissionRegistry: permissions.pluginPermissionRegistry,
+  pluginModuleIamRegistry: permissions.pluginModuleIamRegistry,
+  pluginPermissions: permissions.pluginPermissions,
+  pluginModuleIamContracts: permissions.pluginModuleIamContracts,
   routes: routing.routes,
   navigation: routing.navigation,
   contentTypes: content.contentTypes,
@@ -138,8 +187,10 @@ export const createBuildTimeRegistry = ({
   const preflight = runPreflightPhase(plugins);
   const content = runContentPhase(preflight.plugins);
   const admin = runAdminPhase(preflight.plugins, adminResources);
+  validateAdminResourceContentTypes(admin.adminResources, content.contentTypes);
   const audit = runAuditPhase(preflight.plugins);
+  const permissions = runPermissionPhase(preflight.plugins);
   const routing = runRoutingPhase(preflight.plugins);
 
-  return publishBuildTimeRegistry({ preflight, content, admin, audit, routing });
+  return publishBuildTimeRegistry({ preflight, content, admin, audit, routing, permissions });
 };

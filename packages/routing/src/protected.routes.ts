@@ -7,6 +7,9 @@ import {
 
 export type RouteGuardUser = {
   readonly roles: readonly string[];
+  readonly permissionActions?: readonly string[];
+  readonly assignedModules?: readonly string[];
+  readonly permissionStatus?: 'ok' | 'degraded';
 };
 
 export type RouteGuardContext = {
@@ -29,6 +32,7 @@ export type ProtectedRouteOptions = {
   readonly insufficientRoleKey?: string;
   readonly diagnostics?: RoutingDiagnosticsHook;
   readonly route?: string;
+  readonly requiredPermissions?: readonly string[];
 };
 
 const DEFAULT_LOGIN_PATH = '/auth/login';
@@ -45,8 +49,9 @@ const normalizeInternalPath = (value: string, fallbackPath: string): string => {
   return `${url.pathname}${url.search}${url.hash}`;
 };
 
-const buildLoginHref = (loginPath: string, returnTo: string) => {
-  const url = new URL(normalizeInternalPath(loginPath, DEFAULT_LOGIN_PATH), INTERNAL_REDIRECT_BASE);
+const buildLoginHref = (_loginPath: string, returnTo: string) => {
+  const url = new URL(DEFAULT_FALLBACK_PATH, INTERNAL_REDIRECT_BASE);
+  url.searchParams.set('auth', 'login');
   url.searchParams.set('returnTo', normalizeInternalPath(returnTo, DEFAULT_FALLBACK_PATH));
   return `${url.pathname}${url.search}`;
 };
@@ -82,6 +87,7 @@ export const createProtectedRoute = <TContext extends RouteGuardContext = RouteG
     fallbackPath = DEFAULT_FALLBACK_PATH,
     insufficientRoleKey = DEFAULT_INSUFFICIENT_ROLE_KEY,
     diagnostics,
+    requiredPermissions = [],
   } = options;
   const diagnosticsRoute = 'route' in options && typeof options.route === 'string' ? options.route : null;
 
@@ -91,16 +97,35 @@ export const createProtectedRoute = <TContext extends RouteGuardContext = RouteG
     if (!user) {
       if (diagnosticsRoute) {
         emitRoutingDiagnostic(diagnostics, {
-          level: 'info',
-          event: 'routing.guard.access_denied',
-          route: diagnosticsRoute,
-          reason: 'unauthenticated',
-          redirect_target: sanitizePathForDiagnostics(loginPath, DEFAULT_LOGIN_PATH),
+            level: 'info',
+            event: 'routing.guard.access_denied',
+            route: diagnosticsRoute,
+            reason: 'unauthenticated',
+            redirect_target: sanitizePathForDiagnostics(DEFAULT_FALLBACK_PATH, DEFAULT_FALLBACK_PATH),
         });
       }
       throw redirect({ href: buildLoginHref(loginPath, location.href) });
     }
 
+    if (requiredPermissions.length > 0) {
+      const grantedPermissions = new Set(user.permissionActions ?? []);
+      const missingPermissions = requiredPermissions.filter((permission) => !grantedPermissions.has(permission));
+      if (missingPermissions.length > 0) {
+        if (diagnosticsRoute) {
+          emitRoutingDiagnostic(diagnostics, {
+            level: 'info',
+            event: 'routing.guard.access_denied',
+            route: diagnosticsRoute,
+            reason: 'insufficient-permission',
+            redirect_target: sanitizePathForDiagnostics(fallbackPath, DEFAULT_FALLBACK_PATH),
+            required_permissions: requiredPermissions,
+          });
+        }
+        throw redirect({
+          href: buildInsufficientRoleHref(fallbackPath, insufficientRoleKey),
+        });
+      }
+    }
     if (requiredRoles.length > 0 && !hasAnyRole(user, requiredRoles)) {
       if (diagnosticsRoute) {
         emitRoutingDiagnostic(diagnostics, {

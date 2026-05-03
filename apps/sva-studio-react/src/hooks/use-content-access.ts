@@ -10,26 +10,54 @@ import {
   logBrowserOperationSuccess,
 } from '../lib/browser-operation-logging';
 import { useAuth } from '../providers/auth-provider';
+import { useOrganizationContext } from './use-organization-context';
 
 const contentAccessLogger = createOperationLogger('use-content-access', 'debug');
 
 type UseContentAccessResult = {
   readonly access: IamContentAccessSummary | null;
+  readonly permissionActions: readonly string[];
   readonly isLoading: boolean;
   readonly error: IamHttpError | null;
 };
 
-const buildPermissionsPath = (instanceId: string) => `/iam/me/permissions?${new URLSearchParams({ instanceId }).toString()}`;
+const collectEffectivePermissionActions = (permissions: MePermissionsResponse['permissions']): readonly string[] => {
+  const deniedActions = new Set(
+    permissions
+      .filter((permission) => permission.effect === 'deny')
+      .map((permission) => permission.action)
+      .filter((action): action is string => typeof action === 'string' && action.length > 0)
+  );
+
+  return [...new Set(
+    permissions
+      .filter((permission) => permission.effect !== 'deny')
+      .map((permission) => permission.action)
+      .filter((action): action is string => typeof action === 'string' && action.length > 0)
+      .filter((action) => !deniedActions.has(action))
+  )].sort((left, right) => left.localeCompare(right));
+};
+
+const buildPermissionsPath = (instanceId: string, organizationId?: string) => {
+  const searchParams = new URLSearchParams({ instanceId });
+  if (organizationId) {
+    searchParams.set('organizationId', organizationId);
+  }
+  return `/iam/me/permissions?${searchParams.toString()}`;
+};
 
 export const useContentAccess = (): UseContentAccessResult => {
   const { user, invalidatePermissions } = useAuth();
+  const organizationContext = useOrganizationContext();
   const [access, setAccess] = React.useState<IamContentAccessSummary | null>(null);
+  const [permissionActions, setPermissionActions] = React.useState<readonly string[]>([]);
   const [isLoading, setIsLoading] = React.useState(false);
   const [error, setError] = React.useState<IamHttpError | null>(null);
 
   React.useEffect(() => {
     if (!user?.instanceId) {
       setAccess(null);
+      setPermissionActions([]);
       setError(null);
       setIsLoading(false);
       return;
@@ -43,7 +71,7 @@ export const useContentAccess = (): UseContentAccessResult => {
     setIsLoading(true);
     setError(null);
 
-    void fetchWithRequestTimeout(buildPermissionsPath(user.instanceId), undefined, {
+    void fetchWithRequestTimeout(buildPermissionsPath(user.instanceId, organizationContext.context?.activeOrganizationId ?? undefined), undefined, {
       signal: controller.signal,
       timeoutMs: 10_000,
     })
@@ -59,6 +87,7 @@ export const useContentAccess = (): UseContentAccessResult => {
         const payload = (await response.json()) as MePermissionsResponse;
         if (!controller.signal.aborted) {
           setAccess(summarizeContentAccess(payload.permissions));
+          setPermissionActions(collectEffectivePermissionActions(payload.permissions));
           logBrowserOperationSuccess(contentAccessLogger, 'content_access_load_succeeded', {
             operation: 'load_content_access',
             instance_id: user.instanceId,
@@ -85,6 +114,7 @@ export const useContentAccess = (): UseContentAccessResult => {
             error_code: resolvedError.code,
           }, 'debug');
           setAccess(withServerDeniedContentAccess(undefined));
+          setPermissionActions([]);
         }
         logBrowserOperationFailure(contentAccessLogger, 'content_access_load_failed', resolvedError, {
           operation: 'load_content_access',
@@ -103,10 +133,11 @@ export const useContentAccess = (): UseContentAccessResult => {
     return () => {
       controller.abort();
     };
-  }, [invalidatePermissions, user?.instanceId]);
+  }, [invalidatePermissions, organizationContext.context?.activeOrganizationId, user?.instanceId]);
 
   return {
     access,
+    permissionActions,
     isLoading,
     error,
   };

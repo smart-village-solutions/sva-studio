@@ -151,6 +151,37 @@ describe('evaluateAuthorizeDecision', () => {
     expect(deniedResult.reason).toBe('permission_missing');
   });
 
+  it('allows globally scoped permissions without an organization id', () => {
+    const result = evaluateAuthorizeDecision(baseRequest(), [
+      {
+        ...basePermission(),
+        organizationId: undefined,
+      },
+    ]);
+
+    expect(result.allowed).toBe(true);
+    expect(result.reason).toBe('allowed_by_rbac');
+  });
+
+  it('denies organization-scoped permissions when the request has no target organization', () => {
+    const request: AuthorizeRequest = {
+      ...baseRequest(),
+      resource: {
+        ...baseRequest().resource,
+        organizationId: undefined,
+      },
+      context: {
+        ...baseRequest().context,
+        organizationId: undefined,
+      },
+    };
+
+    const result = evaluateAuthorizeDecision(request, [basePermission()]);
+
+    expect(result.allowed).toBe(false);
+    expect(result.reason).toBe('permission_missing');
+  });
+
   it('denies with hierarchy restriction when organization is blocked', () => {
     const request: AuthorizeRequest = {
       ...baseRequest(),

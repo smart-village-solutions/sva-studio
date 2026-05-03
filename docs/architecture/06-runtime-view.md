@@ -12,23 +12,33 @@ Dieser Abschnitt beschreibt kritische Laufzeitszenarien und Interaktionen.
 
 ## Aktueller Stand
 
+### Medien-Upload und Referenzierung
+
+1. Host-UI unter `/admin/media` initialisiert einen Upload.
+2. `@sva/auth-runtime` prüft Instanzkontext, IAM-Rechte und Speicherkontingent.
+3. Der interne Storage-Port erzeugt eine signierte Upload-Möglichkeit gegen den S3-/MinIO-kompatiblen Objektspeicher.
+4. Nach Upload-Abschluss validiert der Host den Inhalt, extrahiert Metadaten und erzeugt häufige Varianten synchron.
+5. Asset-, Varianten-, Session- und Usage-Daten werden über `@sva/data-repositories` persistiert.
+6. Fachmodule wie News, Events und POI speichern nur hostseitige Medienreferenzen und keine Storage-Artefakte.
+
 ### Szenario 1: App-Start + Route-Komposition
 
 1. App lädt `getRouter()` in `apps/sva-studio-react/src/router.tsx`
 2. Core-Route-Factories werden client- oder serverseitig geladen
-3. Der Host liest die statische Plugin-Liste und materialisiert Plugin-Routen aus `PluginDefinition`
-4. Core-/Auth-Runtime-Routen und Plugin-Routen werden zu einem gemeinsamen Route-Tree kombiniert
+3. Der Host liest die statische Plugin-Liste sowie deklarative Admin-Ressourcen und materialisiert daraus Plugin-Sonderrouten und host-owned Admin-Routen
+4. Core-/Auth-Runtime-Routen, host-owned Admin-Routen und verbleibende Plugin-Sonderrouten werden zu einem gemeinsamen Route-Tree kombiniert
 5. Router wird mit RouteTree und SSR-Kontext erstellt
 
 Fehlerpfad:
 
 - Fehlerhafte Route-Factory oder server-only Import im Client kann Build/Runtime brechen.
 - Plugin-Routen außerhalb `/plugins/<pluginNamespace>` oder mit unbekanntem Guard werden vor Veröffentlichung des Route-Trees mit deterministischem Guardrail-Code abgewiesen.
+- Standardisierte Content-Plugins dürfen zusätzlich keine parallelen CRUD-Hauptrouten unter `/plugins/<pluginNamespace>` veröffentlichen; dieser Bypass bricht den Build-time-Snapshot fail-fast.
 
 ### Szenario 1c: Plugin-Guardrail-Validierung beim Build-time-Snapshot
 
 1. Die App übergibt statische Plugin-Packages an `createBuildTimeRegistry()`.
-2. Das Plugin-SDK führt die bestehende Registry-Erzeugung in festen Phasen aus: Preflight, Content, Admin, Audit, Routing und Publish.
+2. Das Plugin-SDK führt die bestehende Registry-Erzeugung in festen Phasen aus: Preflight, Content, Admin, Audit, Permissions, Routing und Publish.
 3. Jede Phase erzeugt die bisherigen `BuildTimeRegistry`-Outputs; bestehende Consumer müssen keinen neuen Snapshot-Typ verwenden.
 4. Erlaubte UI-Komponenten und host-invoked Payload-Validatoren bleiben im Snapshot erhalten.
 5. Verbotene Felder wie eigene Route-Handler, Autorisierungsresolver, Audit-Sinks, Persistenzhandler oder dynamische Registrierung brechen die Initialisierung fail-fast ab.
@@ -37,42 +47,49 @@ Fehlerpfad:
 
 - Der Host veröffentlicht keinen teilweise materialisierten Plugin-Snapshot.
 - Die Fehlermeldung folgt `<guardrailCode>:<pluginNamespace>:<contributionId>:<fieldOrReason>`.
+- Plugin-Routen, Navigation oder Actions mit produktiven `content.*`-Guards, fremden Namespaces oder nicht registrierten Permission-IDs brechen den Snapshot vor der Route-Materialisierung ab.
 
 ### Szenario 1b: Materialisierung registrierter Admin-Ressourcen
 
 1. Die App lädt neben Seiten-Bindings auch die statische Liste `appAdminResources`.
 2. `@sva/routing` validiert die Admin-Ressourcen gegen den Plugin-SDK-Vertrag und materialisiert daraus Listen-, Create- und Detailrouten.
-3. Der Host wendet den deklarativ referenzierten Guard auf alle Teilrouten der Ressource an.
-4. Legacy-Pfade wie `/content`, `/content/new` und `/content/$contentId` werden im Routing-Layer auf `/admin/content*` umgeleitet.
+3. Für Content-Ressourcen mit `contentUi` rendert der Host optionale plugin-spezifische `list`-, `detail`- oder `editor`-Bindings innerhalb einer host-owned Shell-Region; ohne Spezialisierung bleibt die generische Host-Ansicht aktiv.
+4. Der Host wendet den deklarativ referenzierten Guard auf alle Teilrouten der Ressource an.
+5. Legacy-Pfade wie `/content`, `/content/new` und `/content/$contentId` werden im Routing-Layer auf `/admin/content*` umgeleitet.
 
 Fehlerpfad:
 
 - Doppelte Ressourcen-IDs oder kollidierende Basispfade brechen die Registrierungsphase fail-fast ab.
+- `contentUi`-Ressourcen ohne registrierten `contentType` brechen den Build-time-Snapshot vor der Routenveröffentlichung fail-fast ab.
 - Ohne gültige Ressourcendefinition wird kein teilweise inkonsistenter Admin-Route-Baum veröffentlicht.
 
 ### Szenario 4a: Plugin-Registrierung und Mainserver-Content-CRUD
 
 1. Die App initialisiert `studioPlugins` und merged Plugin-Übersetzungen in die i18n-Ressourcen.
-2. Der Router materialisiert die Plugin-Routen für News, Events und POI, zum Beispiel `/plugins/news`, `/plugins/events` und `/plugins/poi`.
-3. Beim Aufruf der Route wendet der Host den passenden Content-Guard an.
-4. Die Fachlisten rufen ihre Host-Fassaden auf: `/api/v1/mainserver/news`, `/api/v1/mainserver/events` oder `/api/v1/mainserver/poi`; lokale IAM-Contents werden nicht mehr produktiv gelesen.
-5. Die Editoren senden Create-, Update- und Delete-Requests an die jeweilige Fassade und Detailroute.
-6. Die App-Fassade prüft Session, `instanceId`, lokale Content-Primitive und Mainserver-Credentials serverseitig.
-7. `@sva/sva-mainserver/server` führt typisierte GraphQL-Operationen für News, Events und POI mit Benutzer-Credentials aus.
-8. News nutzt das vollständige Mainserver-Modell mit dedizierten Feldern; Events und POI nutzen eigene Mapping-Adapter für Termine, Adressen, Kontakte, URLs, Medien, Preise, Barrierefreiheit, Tags und POI-Bezug.
-9. Es gibt keinen Dual-Write und keine Legacy-Migration in lokale IAM-Contents.
-10. Nach erfolgreichem Speichern oder Löschen zeigt das Plugin Statusfeedback und navigiert zurück zur News-Liste.
+2. Der Router materialisiert host-owned Admin-Ressourcen für News, Events und POI unter `/admin/news`, `/admin/events` und `/admin/poi`.
+3. Beim Aufruf der Liste liest die Route typsichere Search-Params wie `page` und `pageSize`, normalisiert sie und hält damit URL, Browser-Historie und Listen-Navigation synchron.
+4. Der Host wendet den registrierten Plugin-Guard an, zum Beispiel `news.read`, `events.read` oder `poi.read`, und rendert optional die spezialisierte Plugin-Fläche innerhalb der Host-Shell.
+5. Die Fachlisten rufen ihre Host-Fassaden auf: `/api/v1/mainserver/news`, `/api/v1/mainserver/events` oder `/api/v1/mainserver/poi`; lokale IAM-Contents werden nicht mehr produktiv gelesen.
+6. Die Host-Fassaden delegieren serverseitig an `@sva/sva-mainserver`, liefern nur die angeforderte Seite und serialisieren `pagination.page`, `pagination.pageSize` sowie `pagination.hasNextPage`.
+7. `apps/sva-studio-react/src/server.ts` bleibt bewusst Owner für Request-Matching, Dispatch-Reihenfolge und TanStack-Start-/Nitro-Transport, während die fachlichen News-, Event-, POI- und Interfaces-Verträge in Packages liegen.
+8. Die Editoren senden Create-, Update- und Delete-Requests an die jeweilige Fassade und Detailroute.
+9. Die App-Fassade prüft Session, `instanceId`, plugin-spezifische IAM-Permission und Mainserver-Credentials serverseitig.
+10. `@sva/sva-mainserver/server` führt typisierte GraphQL-Operationen für News, Events und POI mit Benutzer-Credentials aus.
+11. News nutzt das vollständige Mainserver-Modell mit dedizierten Feldern; Events und POI nutzen eigene Mapping-Adapter für Termine, Adressen, Kontakte, URLs, Medien, Preise, Barrierefreiheit, Tags und POI-Bezug.
+12. Es gibt keinen Dual-Write und keine Legacy-Migration in lokale IAM-Contents.
+13. Nach erfolgreichem Speichern oder Löschen zeigt die host-owned Route Statusfeedback und navigiert zurück zur jeweiligen Admin-Liste.
 
 Fehlerpfad:
 
-- fehlt die Berechtigung, blockiert der Host die Plugin-Route vor dem Rendern oder verweigert die serverseitige Mutation mit `capability_authorization_denied` im Diagnosekontext.
+- fehlt die Berechtigung, blendet die Shell die Admin-Navigation fail-closed aus, blockiert der Host die Admin-Route vor dem Rendern oder verweigert die serverseitige Mutation mit `capability_authorization_denied` im Diagnosekontext.
+- kann der Host keinen belastbaren Gesamtzähler ermitteln, bleibt `pagination.total` leer; die Navigation verlässt sich ausschließlich auf `hasNextPage`.
 - ist das News-Input-Modell ungültig, enthält schreibgeschützte Felder oder fehlt `publishedAt`, antwortet die Mainserver-News-Fassade mit HTTP `400`.
 - schlägt ein API-Call fehl, zeigt das Plugin eine verständliche Fehlermeldung und behält den Formzustand.
 
 ### Szenario 4b: Plugin-Custom-View mit gemeinsamer Studio-UI
 
 1. Die App lädt das statisch registrierte Plugin und validiert dessen Routen, Admin-Ressourcen und Guard-Metadaten über `@sva/plugin-sdk`.
-2. Der Host materialisiert die Plugin-Route unter `/plugins/<pluginNamespace>` und bettet sie in die normale App-Shell ein.
+2. Der Host materialisiert entweder eine freie Plugin-Sonderroute unter `/plugins/<pluginNamespace>` oder eine host-owned Admin-Ressource mit spezialisierter Fachfläche und bettet beide Varianten in die normale App-Shell ein.
 3. Die Plugin-Komponente rendert ihre fachliche Oberfläche mit `@sva/studio-ui-react`-Bausteinen für Seitenstruktur, Formularfelder, Aktionen, Tabellen und Lade-/Fehlerzustände.
 4. Fachliche Datenzugriffe laufen über hostkontrollierte HTTP- oder Server-Funktionsverträge; die Custom-View erhält keine eigenen Host-Handler, Audit-Sinks oder Persistenzpfade.
 5. Die App- und Plugin-Lint-/Boundary-Checks verhindern App-interne UI-Imports und lokale Basis-Control-Duplikate in Plugin-Packages.
@@ -174,8 +191,40 @@ Fehlerpfad:
 Fehlerpfad:
 
 - fehlender Tenant-Admin-Client, Secret-Drift oder blockierter Provisioning-Plan verhindern den Start des Laufs vollständig.
+- tenantlokale Reconcile-Läufe verwenden keinen Plattform-Fallback; ein versehentlich funktionsfähiger globaler Admin-Pfad gilt nicht als zulässige Kompensation.
 - `IDP_FORBIDDEN` und `IDP_UNAVAILABLE` bleiben als technische oder Berechtigungsfehler sichtbar und werden nicht als `manual_review` kaschiert.
 - einzelne fachlich mehrdeutige Fälle können in `manual_review` enden, ohne dass der Gesamt-Request hängen bleibt.
+
+### Szenario 2g: Tenant-IAM-Detailansicht mit expliziter Access-Probe
+
+1. Ein Root-Host-Administrator öffnet `/admin/instances/$instanceId`.
+2. Die Detailseite lädt `GET /api/v1/iam/instances/:instanceId` und erhält neben Registry- und Keycloak-Strukturdaten auch `tenantIamStatus`.
+3. `packages/instance-registry` aggregiert `configuration` aus Registry-/Provisioning-Evidenz, `reconcile` aus Rollen- und Activity-Log-Signalen und `access` aus der letzten bekannten Access-Probe.
+4. Die UI rendert diese Achsen getrennt und leitet `overall` strikt aus `blocked` vor `degraded` vor `unknown` vor `ready` ab.
+5. Startet der Operator die Aktion `Tenant-IAM-Zugriff prüfen`, sendet die UI `POST /api/v1/iam/instances/:instanceId/tenant-iam/access-probe`.
+6. `packages/auth-runtime` löst dafür ausschließlich `resolveIdentityProviderForInstance(..., { executionMode: 'tenant_admin' })` auf und führt eine read-only-`listRoles()`-Probe gegen den tenantlokalen Admin-Client aus.
+7. Das Ergebnis wird als Audit-Evidenz persistiert, danach neu aggregiert und unmittelbar als aktualisierter `tenantIamStatus` an die Detailseite zurückgegeben.
+
+Fehlerpfad:
+
+- existiert kein tenantlokaler Admin-Client oder fehlt das Secret, endet die Probe fail-closed mit einem geblockten oder degradierten Access-Befund statt mit einem Plattform-Fallback.
+- `IDP_FORBIDDEN` bleibt als Berechtigungsfehler sichtbar; temporäre Erreichbarkeitsstörungen werden als `IDP_UNAVAILABLE` eingeordnet.
+- ohne bisherige Probe-Evidenz bleibt `access` explizit `unknown`; die Detailseite erzeugt daraus keinen künstlichen Erfolgszustand.
+
+### Szenario 2h: Fail-closed Modulaktivierung zur Laufzeit
+
+1. Ein Instanzbenutzer ruft `/auth/me` auf.
+2. `packages/auth-runtime` lädt effektive Permissions und die kanonische Liste `assignedModules` aus der Registry; modulbezogene Baseline-Verträge stammen aus `@sva/studio-module-iam`.
+3. Die Client-Shell speichert diese Modulliste im Session-Kontext.
+4. Beim Aufruf einer Plugin-Route prüft `@sva/routing` zuerst den deklarativen Guard und danach die Modulzuweisung.
+5. Die Sidebar blendet Plugin-Navigation aus, wenn das Modul der aktiven Instanz nicht zugewiesen ist.
+6. Bei Modulzuweisung oder Entzug rekonstruiert `packages/instance-registry` die IAM-Basis aus derselben Vertragsfamilie und invalidiert betroffene Registry-Caches.
+
+Fehlerpfad:
+
+- fällt der Modul-Lookup im Session-Pfad aus, wird `assignedModules` fail-closed als leer behandelt.
+- fehlt die Zuweisung, blockiert das Routing die Plugin-Route vor dem Rendern.
+- direkte API-Aufrufe bleiben zusätzlich durch fehlende modulbezogene Permissions abgesichert.
 
 ### Szenario 2f: Keycloak-first User- und Rollenverwaltung
 
@@ -209,7 +258,7 @@ Fehlerpfad:
 
 ### Szenario 3: Logging/Observability bei Server-Requests
 
-1. Server-Code loggt via `createSdkLogger(...)`
+1. Server-Code loggt via `createSdkLogger(...)` aus `@sva/server-runtime`
 2. Context (workspace/request) wird über AsyncLocalStorage injiziert
 3. In Development schreiben Console- und Dev-UI-Transport die redaktierten Logs sofort lokal aus
 4. Sobald OTEL bereit ist, werden bestehende Logger um den Direct-OTEL-Transport erweitert

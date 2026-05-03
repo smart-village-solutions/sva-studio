@@ -11,6 +11,7 @@ const routeState = vi.hoisted(() => ({
 vi.mock('@tanstack/react-router', () => ({
   useParams: () => routeState.params,
   useSearch: () => routeState.search,
+  useLocation: () => ({ pathname: '/admin/media' }),
 }));
 
 vi.mock('@sva/routing', () => ({
@@ -96,6 +97,18 @@ vi.mock('../routes/admin/legal-texts/-legal-texts-page', () => ({
   LegalTextsPage: () => <div data-testid="legal-texts-page" />,
 }));
 
+vi.mock('../routes/admin/modules/-modules-page', () => ({
+  ModulesPage: () => <div data-testid="modules-page">{'modules'}</div>,
+}));
+
+vi.mock('../routes/admin/media/-media-page', () => ({
+  MediaPage: () => <div data-testid="media-page" />,
+}));
+
+vi.mock('../routes/admin/media/-media-usage-page', () => ({
+  MediaUsagePage: () => <div data-testid="media-usage-page" />,
+}));
+
 vi.mock('../routes/admin/organizations/-organization-create-page', () => ({
   OrganizationCreatePage: () => <div data-testid="organization-create-page" />,
 }));
@@ -160,6 +173,24 @@ vi.mock('../routes/interfaces/-interfaces-page', () => ({
   InterfacesPage: () => <div data-testid="interfaces-page" />,
 }));
 
+vi.mock('@sva/plugin-news', () => ({
+  NewsCreatePage: () => <div data-testid="news-create-page" />,
+  NewsEditPage: () => <div data-testid="news-edit-page" />,
+  NewsListPage: () => <div data-testid="news-list-page" />,
+}));
+
+vi.mock('@sva/plugin-events', () => ({
+  EventsCreatePage: () => <div data-testid="events-create-page" />,
+  EventsEditPage: () => <div data-testid="events-edit-page" />,
+  EventsListPage: () => <div data-testid="events-list-page" />,
+}));
+
+vi.mock('@sva/plugin-poi', () => ({
+  PoiCreatePage: () => <div data-testid="poi-create-page" />,
+  PoiEditPage: () => <div data-testid="poi-edit-page" />,
+  PoiListPage: () => <div data-testid="poi-list-page" />,
+}));
+
 describe('appRouteBindings', () => {
   beforeEach(() => {
     routeState.params = {};
@@ -179,7 +210,6 @@ describe('appRouteBindings', () => {
       ['media', 'Data management|Media'],
       ['categories', 'Data management|Categories'],
       ['app', 'Applications|App'],
-      ['modules', 'System|Modules'],
       ['monitoring', 'System|Monitoring'],
       ['help', 'Help|Help'],
       ['support', 'Support|Support'],
@@ -192,6 +222,14 @@ describe('appRouteBindings', () => {
       expect(screen.getByTestId('placeholder-page').textContent).toBe(expectedText);
       cleanup();
     }
+  });
+
+  it('renders the concrete modules binding instead of the system placeholder', async () => {
+    const { appRouteBindings } = await import('./app-route-bindings');
+
+    render(<appRouteBindings.modules />);
+
+    expect(screen.getByTestId('modules-page').textContent).toBe('modules');
   });
 
   it('renders lazy bindings and route-param based bindings with normalized params and search values', async () => {
@@ -263,6 +301,18 @@ describe('appRouteBindings', () => {
     render(<appRouteBindings.adminIam />);
     expect(routeState.normalizeIamTab).toHaveBeenCalledWith('members');
     expect(screen.getByTestId('iam-viewer-page').textContent).toBe('iam:members');
+    cleanup();
+
+    render(<appRouteBindings.newsList />);
+    await waitFor(() => expect(screen.getByTestId('news-list-page')).toBeTruthy());
+    cleanup();
+
+    render(<appRouteBindings.newsEditor />);
+    await waitFor(() => expect(screen.getByTestId('news-create-page')).toBeTruthy());
+    cleanup();
+
+    render(<appRouteBindings.newsDetail />);
+    await waitFor(() => expect(screen.getByTestId('news-edit-page')).toBeTruthy());
   });
 
   it('falls back to empty string route params when router params are not strings', async () => {
@@ -329,6 +379,14 @@ describe('appRouteBindings', () => {
     expect(screen.getByTestId('content-list-page')).toBeTruthy();
     cleanup();
 
+    render(<appRouteBindings.adminMedia />);
+    expect(screen.getByTestId('media-page')).toBeTruthy();
+    cleanup();
+
+    render(<appRouteBindings.mediaUsage />);
+    expect(screen.getByTestId('media-usage-page')).toBeTruthy();
+    cleanup();
+
     render(<appRouteBindings.adminUsers />);
     expect(screen.getByTestId('user-list-page')).toBeTruthy();
     cleanup();
@@ -367,5 +425,29 @@ describe('appRouteBindings', () => {
 
     render(<appRouteBindings.adminApiPhase1Test />);
     expect(screen.getByTestId('phase1-test-page')).toBeTruthy();
+    cleanup();
+
+    render(<appRouteBindings.eventsList />);
+    await waitFor(() => expect(screen.getByTestId('events-list-page')).toBeTruthy());
+    cleanup();
+
+    render(<appRouteBindings.eventsEditor />);
+    await waitFor(() => expect(screen.getByTestId('events-create-page')).toBeTruthy());
+    cleanup();
+
+    render(<appRouteBindings.eventsDetail />);
+    await waitFor(() => expect(screen.getByTestId('events-edit-page')).toBeTruthy());
+    cleanup();
+
+    render(<appRouteBindings.poiList />);
+    await waitFor(() => expect(screen.getByTestId('poi-list-page')).toBeTruthy());
+    cleanup();
+
+    render(<appRouteBindings.poiEditor />);
+    await waitFor(() => expect(screen.getByTestId('poi-create-page')).toBeTruthy());
+    cleanup();
+
+    render(<appRouteBindings.poiDetail />);
+    await waitFor(() => expect(screen.getByTestId('poi-edit-page')).toBeTruthy());
   });
 });

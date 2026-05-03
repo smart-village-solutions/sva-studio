@@ -1,0 +1,491 @@
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { afterEach, describe, expect, it } from 'vitest';
+
+import { runCoverageGate } from '../../../scripts/ci/coverage-gate.ts';
+
+const createdDirs: string[] = [];
+
+function createTempWorkspace(): string {
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'coverage-gate-'));
+  createdDirs.push(rootDir);
+  fs.mkdirSync(path.join(rootDir, 'apps'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'packages'), { recursive: true });
+  fs.mkdirSync(path.join(rootDir, 'tooling/testing'), { recursive: true });
+  return rootDir;
+}
+
+function writePolicy(rootDir: string, overrides: Record<string, unknown> = {}): void {
+  const basePolicy = {
+    version: 1,
+    metrics: ['lines', 'statements', 'functions', 'branches'],
+    globalFloors: {
+      lines: 0,
+      statements: 0,
+      functions: 0,
+      branches: 0,
+    },
+    maxAllowedDropPctPoints: 0.5,
+    exemptProjects: [],
+    perProjectFloors: {
+      'server-runtime': {
+        lines: 0,
+        statements: 0,
+        functions: 0,
+        branches: 0,
+      },
+    },
+    criticalProjects: {},
+  };
+
+  const policy = {
+    ...basePolicy,
+    ...overrides,
+  };
+
+  fs.writeFileSync(
+    path.join(rootDir, 'tooling/testing/coverage-policy.json'),
+    JSON.stringify(policy, null, 2)
+  );
+}
+
+function writeBaseline(rootDir: string, lines = 0, statements = 0, functions = 0, branches = 0): void {
+  const baseline = {
+    projects: {
+      'server-runtime': {
+        lines,
+        statements,
+        functions,
+        branches,
+      },
+    },
+  };
+
+  fs.writeFileSync(
+    path.join(rootDir, 'tooling/testing/coverage-baseline.json'),
+    JSON.stringify(baseline, null, 2)
+  );
+}
+
+function writeCoverageSummary(
+  rootDir: string,
+  lines = 0,
+  statements = 0,
+  functions = 0,
+  branches = 0,
+  projectPath = 'packages/server-runtime'
+): void {
+  const summaryPath = path.join(rootDir, projectPath, 'coverage');
+  fs.mkdirSync(summaryPath, { recursive: true });
+
+  const summary = {
+    total: {
+      lines: { pct: lines },
+      statements: { pct: statements },
+      functions: { pct: functions },
+      branches: { pct: branches },
+    },
+  };
+
+  fs.writeFileSync(path.join(summaryPath, 'coverage-summary.json'), JSON.stringify(summary, null, 2));
+}
+
+function writeLcovSummary(
+  rootDir: string,
+  projectPath = 'packages/server-runtime',
+  sourcePath = 'src/index.ts',
+  metrics: {
+    lf: number;
+    lh: number;
+    fnf: number;
+    fnh: number;
+    brf: number;
+    brh: number;
+  } = {
+    lf: 10,
+    lh: 10,
+    fnf: 4,
+    fnh: 4,
+    brf: 2,
+    brh: 2,
+  }
+): void {
+  const coverageDir = path.join(rootDir, projectPath, 'coverage');
+  fs.mkdirSync(coverageDir, { recursive: true });
+  const lines = [
+    'TN:',
+    `SF:${sourcePath}`,
+    'FN:1,example',
+    `FNF:${metrics.fnf}`,
+    `FNH:${metrics.fnh}`,
+    'FNDA:1,example',
+    `LF:${metrics.lf}`,
+    `LH:${metrics.lh}`,
+    `BRF:${metrics.brf}`,
+    `BRH:${metrics.brh}`,
+    'end_of_record',
+    '',
+  ];
+  fs.writeFileSync(path.join(coverageDir, 'lcov.info'), lines.join('\n'));
+}
+
+afterEach(() => {
+  for (const dir of createdDirs.splice(0, createdDirs.length)) {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+describe('coverage gate', () => {
+  it('fails when policy file is missing', () => {
+    const rootDir = createTempWorkspace();
+
+    expect(() =>
+      runCoverageGate({
+        rootDir,
+        requireSummaries: true,
+      })
+    ).toThrow(/Coverage policy not found/);
+  });
+
+  it('fails when coverage summaries are required but absent', () => {
+    const rootDir = createTempWorkspace();
+    writePolicy(rootDir);
+    writeBaseline(rootDir);
+
+    expect(() =>
+      runCoverageGate({
+        rootDir,
+        requireSummaries: true,
+      })
+    ).toThrow(/No coverage-summary\.json files found/);
+  });
+
+  it('passes in non-strict mode when expected project summaries are missing', () => {
+    const rootDir = createTempWorkspace();
+    writePolicy(rootDir, {
+      perProjectFloors: {
+        'server-runtime': {
+          lines: 0,
+          statements: 0,
+          functions: 0,
+          branches: 0,
+        },
+        'sva-studio-react': {
+          lines: 0,
+          statements: 0,
+          functions: 0,
+          branches: 0,
+        },
+      },
+    });
+    writeBaseline(rootDir);
+    writeCoverageSummary(rootDir, 75, 75, 75, 75, 'apps/sva-studio-react');
+
+    const result = runCoverageGate({
+      rootDir,
+      requireSummaries: false,
+    });
+
+    expect(result.passed).toBe(true);
+    expect(result.errors.some((error) => error.includes('missing coverage-summary.json'))).toBe(false);
+  });
+
+  it('fails in strict mode when an expected project summary is missing', () => {
+    const rootDir = createTempWorkspace();
+    writePolicy(rootDir, {
+      perProjectFloors: {
+        'server-runtime': {
+          lines: 0,
+          statements: 0,
+          functions: 0,
+          branches: 0,
+        },
+        'sva-studio-react': {
+          lines: 0,
+          statements: 0,
+          functions: 0,
+          branches: 0,
+        },
+      },
+    });
+    writeBaseline(rootDir);
+    writeCoverageSummary(rootDir, 75, 75, 75, 75, 'apps/sva-studio-react');
+
+    const result = runCoverageGate({
+      rootDir,
+      requireSummaries: true,
+    });
+
+    expect(result.passed).toBe(false);
+    expect(result.errors.some((error) => error.includes('[server-runtime] missing coverage-summary.json'))).toBe(true);
+  });
+
+  it('does not enforce global floors for partial affected coverage runs', () => {
+    const rootDir = createTempWorkspace();
+    writePolicy(rootDir, {
+      globalFloors: {
+        lines: 85,
+        statements: 85,
+        functions: 85,
+        branches: 85,
+      },
+      perProjectFloors: {
+        'server-runtime': {
+          lines: 0,
+          statements: 0,
+          functions: 0,
+          branches: 0,
+        },
+        'sva-studio-react': {
+          lines: 0,
+          statements: 0,
+          functions: 0,
+          branches: 0,
+        },
+      },
+    });
+    writeBaseline(rootDir);
+    writeCoverageSummary(rootDir, 90, 90, 90, 70);
+
+    const result = runCoverageGate({
+      rootDir,
+      requireSummaries: false,
+    });
+
+    expect(result.passed).toBe(true);
+    expect(result.errors.some((error) => error.includes('[global] branches below floor'))).toBe(false);
+  });
+
+  it('enforces global floors only for projects that inherit the global defaults', () => {
+    const rootDir = createTempWorkspace();
+    writePolicy(rootDir, {
+      globalFloors: {
+        lines: 85,
+        statements: 85,
+        functions: 85,
+        branches: 85,
+      },
+      perProjectFloors: {
+        'server-runtime': {
+          lines: 0,
+          statements: 0,
+          functions: 0,
+          branches: 0,
+        },
+      },
+    });
+    writeBaseline(rootDir);
+    writeCoverageSummary(rootDir, 90, 90, 90, 90, 'apps/sva-studio-react');
+    writeCoverageSummary(rootDir, 95, 95, 95, 10, 'packages/server-runtime');
+
+    const result = runCoverageGate({
+      rootDir,
+      requireSummaries: true,
+    });
+
+    expect(result.passed).toBe(true);
+    expect(result.errors.some((error) => error.includes('[global]'))).toBe(false);
+    expect(result.summaryBody).toContain('Global coverage (default-floor projects avg)');
+  });
+
+  it('fails when per-project floor is not met', () => {
+    const rootDir = createTempWorkspace();
+    writePolicy(rootDir, {
+      perProjectFloors: {
+        'server-runtime': {
+          lines: 70,
+          statements: 70,
+          functions: 70,
+          branches: 70,
+        },
+      },
+    });
+    writeBaseline(rootDir);
+    writeCoverageSummary(rootDir, 10, 10, 10, 10);
+
+    const result = runCoverageGate({ rootDir, requireSummaries: true });
+
+    expect(result.passed).toBe(false);
+    expect(result.errors.some((error) => error.includes('below floor'))).toBe(true);
+  });
+
+  it('fails when baseline drop exceeds configured threshold', () => {
+    const rootDir = createTempWorkspace();
+    writePolicy(rootDir, { maxAllowedDropPctPoints: 0.5 });
+    writeBaseline(rootDir, 90, 90, 90, 90);
+    writeCoverageSummary(rootDir, 80, 80, 80, 80);
+
+    const result = runCoverageGate({ rootDir, requireSummaries: true });
+
+    expect(result.passed).toBe(false);
+    expect(result.errors.some((error) => error.includes('dropped by'))).toBe(true);
+  });
+
+  it('enforces stricter minimum floors for critical projects', () => {
+    const rootDir = createTempWorkspace();
+    writePolicy(rootDir, {
+      perProjectFloors: {
+        'server-runtime': {
+          lines: 0,
+          statements: 0,
+          functions: 0,
+          branches: 0,
+        },
+      },
+      criticalProjects: {
+        'server-runtime': {
+          minimumFloors: {
+            lines: 80,
+            functions: 80,
+            branches: 80,
+          },
+        },
+      },
+    });
+    writeBaseline(rootDir);
+    writeCoverageSummary(rootDir, 70, 70, 70, 70);
+
+    const result = runCoverageGate({ rootDir, requireSummaries: true });
+
+    expect(result.passed).toBe(false);
+    expect(result.errors.some((error) => error.includes('[server-runtime] lines below floor: 70.00 < 80.00'))).toBe(true);
+  });
+
+  it('enforces hotspot floors for critical files via lcov', () => {
+    const rootDir = createTempWorkspace();
+    writePolicy(rootDir, {
+      criticalProjects: {
+        'server-runtime': {
+          hotspotFloors: [
+            {
+              path: 'packages/server-runtime/src/index.ts',
+              reason: 'Komplexer Einstiegspunkt',
+              metrics: {
+                lines: 80,
+                functions: 80,
+                branches: 80,
+              },
+            },
+          ],
+        },
+      },
+    });
+    writeBaseline(rootDir);
+    writeCoverageSummary(rootDir, 90, 90, 90, 90);
+    writeLcovSummary(rootDir, 'packages/server-runtime', 'src/index.ts', {
+      lf: 10,
+      lh: 7,
+      fnf: 5,
+      fnh: 3,
+      brf: 4,
+      brh: 2,
+    });
+
+    const result = runCoverageGate({ rootDir, requireSummaries: true });
+
+    expect(result.passed).toBe(false);
+    expect(
+      result.errors.some((error) => error.includes('hotspot packages/server-runtime/src/index.ts lines below floor'))
+    ).toBe(true);
+    expect(
+      result.errors.some((error) => error.includes('hotspot packages/server-runtime/src/index.ts functions below floor'))
+    ).toBe(true);
+    expect(
+      result.errors.some((error) => error.includes('hotspot packages/server-runtime/src/index.ts branches below floor'))
+    ).toBe(true);
+  });
+
+  it('maps lcov js source entries back to TypeScript hotspots when a source twin exists', () => {
+    const rootDir = createTempWorkspace();
+    fs.mkdirSync(path.join(rootDir, 'packages/server-runtime/src'), { recursive: true });
+    fs.writeFileSync(path.join(rootDir, 'packages/server-runtime/src/index.ts'), 'export const value = 1;\n');
+    writePolicy(rootDir, {
+      criticalProjects: {
+        'server-runtime': {
+          hotspotFloors: [
+            {
+              path: 'packages/server-runtime/src/index.ts',
+              reason: 'TypeScript hotspot',
+              metrics: {
+                lines: 90,
+              },
+            },
+          ],
+        },
+      },
+    });
+    writeBaseline(rootDir);
+    writeCoverageSummary(rootDir, 95, 95, 95, 95);
+    writeLcovSummary(rootDir, 'packages/server-runtime', 'src/index.js', {
+      lf: 10,
+      lh: 8,
+      fnf: 1,
+      fnh: 1,
+      brf: 0,
+      brh: 0,
+    });
+
+    const result = runCoverageGate({ rootDir, requireSummaries: true });
+
+    expect(result.passed).toBe(false);
+    expect(
+      result.errors.some((error) => error.includes('hotspot packages/server-runtime/src/index.ts lines below floor'))
+    ).toBe(true);
+    expect(result.errors.some((error) => error.includes('missing hotspot coverage'))).toBe(false);
+  });
+
+  it('throws for invalid policy structure', () => {
+    const rootDir = createTempWorkspace();
+    writePolicy(rootDir, {
+      metrics: ['invalid-metric'],
+    });
+    writeBaseline(rootDir);
+    writeCoverageSummary(rootDir, 80, 80, 80, 80);
+
+    expect(() => runCoverageGate({ rootDir, requireSummaries: true })).toThrow(/Invalid coverage policy/);
+  });
+
+  it('throws when hotspot floors define no metric', () => {
+    const rootDir = createTempWorkspace();
+    writePolicy(rootDir, {
+      criticalProjects: {
+        'server-runtime': {
+          hotspotFloors: [
+            {
+              path: 'packages/server-runtime/src/index.ts',
+              reason: 'invalid hotspot',
+              metrics: {},
+            },
+          ],
+        },
+      },
+    });
+    writeBaseline(rootDir);
+    writeCoverageSummary(rootDir, 80, 80, 80, 80);
+    writeLcovSummary(rootDir);
+
+    expect(() => runCoverageGate({ rootDir, requireSummaries: true })).toThrow(/Invalid coverage policy/);
+  });
+
+  it('passes and updates baseline with current summaries', () => {
+    const rootDir = createTempWorkspace();
+    writePolicy(rootDir);
+    writeBaseline(rootDir);
+    writeCoverageSummary(rootDir, 33, 44, 55, 66);
+
+    const updateResult = runCoverageGate({ rootDir, updateBaseline: true, requireSummaries: true });
+    expect(updateResult.updatedBaseline).toBe(true);
+
+    const baseline = JSON.parse(
+      fs.readFileSync(path.join(rootDir, 'tooling/testing/coverage-baseline.json'), 'utf8')
+    ) as {
+      projects: { 'server-runtime': { lines: number; statements: number; functions: number; branches: number } };
+    };
+
+    expect(baseline.projects['server-runtime'].lines).toBe(33);
+    expect(baseline.projects['server-runtime'].statements).toBe(44);
+    expect(baseline.projects['server-runtime'].functions).toBe(55);
+    expect(baseline.projects['server-runtime'].branches).toBe(66);
+  });
+});

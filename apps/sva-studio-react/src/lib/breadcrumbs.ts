@@ -66,20 +66,40 @@ const breadcrumbRoutes: ReadonlyArray<
     build: () => [overviewBreadcrumb(), { label: t('content.page.title') }],
   },
   {
+    pattern: /^\/admin\/news\/new$/,
+    build: () => [
+      overviewBreadcrumb(),
+      { href: '/admin/news', label: t('news.navigation.title') },
+      { label: t('news.editor.createTitle') },
+    ],
+  },
+  {
     pattern: /^\/plugins\/news\/new$/,
     build: () => [
       overviewBreadcrumb(),
-      { href: '/plugins/news', label: t('news.navigation.title') },
+      { href: '/admin/news', label: t('news.navigation.title') },
       { label: t('news.editor.createTitle') },
+    ],
+  },
+  {
+    pattern: /^\/admin\/news\/[^/]+$/,
+    build: () => [
+      overviewBreadcrumb(),
+      { href: '/admin/news', label: t('news.navigation.title') },
+      { label: t('news.editor.editTitle') },
     ],
   },
   {
     pattern: /^\/plugins\/news\/[^/]+$/,
     build: () => [
       overviewBreadcrumb(),
-      { href: '/plugins/news', label: t('news.navigation.title') },
+      { href: '/admin/news', label: t('news.navigation.title') },
       { label: t('news.editor.editTitle') },
     ],
+  },
+  {
+    pattern: /^\/admin\/news$/,
+    build: () => [overviewBreadcrumb(), { label: t('news.navigation.title') }],
   },
   {
     pattern: /^\/plugins\/news$/,
@@ -132,6 +152,34 @@ const breadcrumbRoutes: ReadonlyArray<
   {
     pattern: /^\/admin\/api\/phase1-test$/,
     build: () => [overviewBreadcrumb(), { label: t('shell.sidebar.adminApiTest') }],
+  },
+  {
+    pattern: /^\/admin\/media\/[^/]+\/usage$/,
+    build: () => [
+      overviewBreadcrumb(),
+      { href: '/admin/media', label: t('media.page.title') },
+      { label: t('media.usage.pageTitle') },
+    ],
+  },
+  {
+    pattern: /^\/admin\/media\/new$/,
+    build: () => [
+      overviewBreadcrumb(),
+      { href: '/admin/media', label: t('media.page.title') },
+      { label: t('media.editor.createTitle') },
+    ],
+  },
+  {
+    pattern: /^\/admin\/media\/[^/]+$/,
+    build: () => [
+      overviewBreadcrumb(),
+      { href: '/admin/media', label: t('media.page.title') },
+      { label: t('media.editor.detailTitle') },
+    ],
+  },
+  {
+    pattern: /^\/admin\/media$/,
+    build: () => [overviewBreadcrumb(), { label: t('media.page.title') }],
   },
   {
     pattern: /^\/media$/,

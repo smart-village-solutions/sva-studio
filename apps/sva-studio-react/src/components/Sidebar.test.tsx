@@ -21,17 +21,17 @@ type PluginNavigationItemMock = {
   to: string;
   titleKey: string;
   section: 'dataManagement' | 'applications' | 'system';
-  requiredAction?: 'content.read' | 'content.create' | 'content.updatePayload';
+  requiredAction?: string;
   actionId?: string;
 };
 const studioPluginNavigationMock = vi.hoisted(() => ({
   items: [
     {
       id: 'news.navigation',
-      to: '/plugins/news',
+      to: '/admin/news',
       titleKey: 'news.navigation.title',
       section: 'dataManagement',
-      requiredAction: 'content.read',
+      requiredAction: 'news.read',
     },
   ] as PluginNavigationItemMock[],
 }));
@@ -80,6 +80,7 @@ vi.mock('../lib/plugins', () => ({
     return studioPluginNavigationMock.items;
   },
   getStudioPluginAction: (actionId: string) => studioPluginActionLookupMock.get(actionId),
+  getStudioPluginNavigationModuleId: (item: PluginNavigationItemMock) => item.id.split('.')[0] ?? null,
 }));
 
 const unauthenticatedAuthState = {
@@ -96,16 +97,17 @@ beforeEach(() => {
   useRouterStateMock.mockReturnValue('/');
   useContentAccessMock.mockReturnValue({
     access: null,
+    permissionActions: ['news.read'],
     isLoading: false,
     error: null,
   });
   studioPluginNavigationMock.items = [
     {
       id: 'news.navigation',
-      to: '/plugins/news',
+      to: '/admin/news',
       titleKey: 'news.navigation.title',
       section: 'dataManagement',
-      requiredAction: 'content.read',
+      requiredAction: 'news.read',
     },
   ];
   studioPluginActionLookupMock.get.mockReset();
@@ -162,6 +164,7 @@ describe('Sidebar', () => {
         organizationIds: [],
         sourceKinds: ['direct_role'],
       },
+      permissionActions: ['news.read'],
       isLoading: false,
       error: null,
     });
@@ -250,6 +253,7 @@ describe('Sidebar', () => {
         organizationIds: [],
         sourceKinds: ['direct_role'],
       },
+      permissionActions: ['news.read'],
       isLoading: false,
       error: null,
     });
@@ -286,6 +290,7 @@ describe('Sidebar', () => {
         organizationIds: [],
         sourceKinds: ['direct_role'],
       },
+      permissionActions: ['news.read'],
       isLoading: false,
       error: null,
     });
@@ -360,14 +365,14 @@ describe('Sidebar', () => {
     expect(screen.queryByRole('link', { name: 'Inhalte' })).toBeNull();
   });
 
-  it('rendert den News-Plugin-Navigationspunkt innerhalb der Datenverwaltung und markiert ihn als aktiv', () => {
-    useRouterStateMock.mockReturnValue('/plugins/news');
+  it('versteckt den Medien-Link ohne media.read-Berechtigung oder ohne Modulzuweisung', () => {
     useAuthMock.mockReturnValue({
       ...unauthenticatedAuthState,
       user: {
-        id: 'user-1',
+        id: 'user-2',
         name: 'Editor',
         roles: ['editor'],
+        assignedModules: ['news'],
       },
       isAuthenticated: true,
     });
@@ -380,6 +385,68 @@ describe('Sidebar', () => {
         organizationIds: [],
         sourceKinds: ['direct_role'],
       },
+      permissionActions: ['news.read'],
+      isLoading: false,
+      error: null,
+    });
+
+    render(<Sidebar />);
+
+    expect(screen.queryByRole('link', { name: 'Medien' })).toBeNull();
+  });
+
+  it('zeigt den Medien-Link nur bei zugewiesenem Modul und media.read-Berechtigung', () => {
+    useAuthMock.mockReturnValue({
+      ...unauthenticatedAuthState,
+      user: {
+        id: 'user-2',
+        name: 'Editor',
+        roles: ['editor'],
+        assignedModules: ['media'],
+      },
+      isAuthenticated: true,
+    });
+    useContentAccessMock.mockReturnValue({
+      access: {
+        state: 'editable',
+        canRead: true,
+        canCreate: true,
+        canUpdate: true,
+        organizationIds: [],
+        sourceKinds: ['direct_role'],
+      },
+      permissionActions: ['media.read'],
+      isLoading: false,
+      error: null,
+    });
+
+    render(<Sidebar />);
+
+    expect(screen.getByRole('link', { name: 'Medien' }).getAttribute('href')).toBe('/admin/media');
+  });
+
+  it('rendert den News-Plugin-Navigationspunkt innerhalb der Datenverwaltung und markiert ihn als aktiv', () => {
+    useRouterStateMock.mockReturnValue('/admin/news');
+    useAuthMock.mockReturnValue({
+      ...unauthenticatedAuthState,
+      user: {
+        id: 'user-1',
+        name: 'Editor',
+        roles: ['editor'],
+        assignedModules: ['news'],
+      },
+      isAuthenticated: true,
+    });
+    useContentAccessMock.mockReturnValue({
+      access: {
+        state: 'editable',
+        canRead: true,
+        canCreate: true,
+        canUpdate: true,
+        organizationIds: [],
+        sourceKinds: ['direct_role'],
+      },
+      permissionActions: ['news.read'],
       isLoading: false,
       error: null,
     });
@@ -389,8 +456,38 @@ describe('Sidebar', () => {
     const navigation = screen.getByRole('navigation', { name: 'Bereichsnavigation' });
     const newsLink = within(navigation).getByRole('link', { name: 'News' });
 
-    expect(newsLink.getAttribute('href')).toBe('/plugins/news');
+    expect(newsLink.getAttribute('href')).toBe('/admin/news');
     expect(newsLink.getAttribute('aria-current')).toBe('page');
+  });
+
+  it('blendet Plugin-Navigation fail-closed aus, wenn das Modul der aktiven Instanz nicht zugewiesen ist', () => {
+    useAuthMock.mockReturnValue({
+      ...unauthenticatedAuthState,
+      user: {
+        id: 'user-1',
+        name: 'Editor',
+        roles: ['editor'],
+        assignedModules: [],
+      },
+      isAuthenticated: true,
+    });
+    useContentAccessMock.mockReturnValue({
+      access: {
+        state: 'editable',
+        canRead: true,
+        canCreate: true,
+        canUpdate: true,
+        organizationIds: [],
+        sourceKinds: ['direct_role'],
+      },
+      permissionActions: ['news.read'],
+      isLoading: false,
+      error: null,
+    });
+
+    render(<Sidebar />);
+
+    expect(screen.queryByRole('link', { name: 'News' })).toBeNull();
   });
 
   it('blendet Plugin-Navigation ohne passende Payload-Update-Berechtigung aus', () => {
@@ -446,7 +543,7 @@ describe('Sidebar', () => {
       actionName: 'publish',
       ownerPluginId: 'news',
       titleKey: 'news.actions.publish',
-      requiredAction: 'content.read',
+      requiredAction: 'news.read',
     });
     useAuthMock.mockReturnValue({
       ...unauthenticatedAuthState,
@@ -454,6 +551,7 @@ describe('Sidebar', () => {
         id: 'user-1',
         name: 'Editor',
         roles: ['editor'],
+        assignedModules: ['news'],
       },
       isAuthenticated: true,
     });
@@ -466,6 +564,7 @@ describe('Sidebar', () => {
         organizationIds: [],
         sourceKinds: ['direct_role'],
       },
+      permissionActions: ['news.read'],
       isLoading: false,
       error: null,
     });

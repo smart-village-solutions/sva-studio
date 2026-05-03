@@ -1,7 +1,7 @@
 import { resolve } from 'node:path';
 
-import type { RuntimeProfile } from '../../packages/sdk/src/runtime-profile.ts';
-import { getRuntimeProfileDefinition } from '../../packages/sdk/src/runtime-profile.ts';
+import type { RuntimeProfile } from '../../packages/core/src/runtime-profile.ts';
+import { getRuntimeProfileDefinition } from '../../packages/core/src/runtime-profile.ts';
 
 export type RemoteRuntimeProfile = Exclude<RuntimeProfile, 'local-builder' | 'local-keycloak'>;
 

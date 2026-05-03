@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { authRoutePaths, authRuntimePackageRoles, authRuntimeVersion } from './index.js';
-import { withAuthenticatedUser } from './server.js';
+import { withAuthenticatedUser, withMediaRepository } from './server.js';
 
 describe('@sva/auth-runtime package scaffold', () => {
   it('declares the target package role', () => {
@@ -16,5 +16,6 @@ describe('@sva/auth-runtime package scaffold', () => {
 
   it('exposes auth runtime server contracts through the target edge', () => {
     expect(typeof withAuthenticatedUser).toBe('function');
+    expect(typeof withMediaRepository).toBe('function');
   });
 });

@@ -13,6 +13,14 @@ gleichzeitig beeinflussen.
 
 ## Aktueller Stand
 
+### Medienmanagement
+
+- Medienzugriffe bleiben mandantengetrennt und hostgeführt.
+- Plugins erhalten ausschließlich rollenbasierte Referenzverträge, keine MinIO-/S3-Artefakte.
+- Upload, Metadatenänderung, Bildbearbeitung, Delivery und Löschblockierung werden auditierbar verarbeitet.
+- Löschungen bleiben fail-closed bei aktiven Referenzen oder unvollständigem Upload-/Processing-Zustand.
+- i18n für Medienrollen und Fehlerzustände folgt denselben Dot-Notation-Regeln wie übrige Host- und Plugin-Oberflächen.
+
 ### Security und Privacy
 
 - OIDC Authorization Code Flow mit PKCE
@@ -28,7 +36,7 @@ gleichzeitig beeinflussen.
 - Application-Level Column Encryption für IAM-PII-Felder (`email_ciphertext`, `display_name_ciphertext`)
 - Schlüsselverwaltung über `IAM_PII_ACTIVE_KEY_ID` + `IAM_PII_KEYRING_JSON` (außerhalb der DB)
 - Fehlertexte der Feldverschlüsselung enthalten keine internen Key-IDs; technische Key-Kontexte werden nur als strukturierter Fehlerkontext geführt
-- Redaction sensibler Logfelder im SDK und im OTEL Processor
+- Redaction sensibler Logfelder in `@sva/server-runtime` und im OTEL Processor
 - Governance-Gates: Ticketpflicht, Vier-Augen-Prinzip, keine Self-Approvals
 - Harte Laufzeitgrenzen: Impersonation max. 120 Minuten, Delegation max. 30 Tage
 - `support_admin`-Impersonation benötigt zusätzlichen Security-Approver
@@ -44,9 +52,16 @@ gleichzeitig beeinflussen.
 - Plugin-Guards werden grundsätzlich hostseitig angewendet; ein Plugin deklariert nur die fachliche Guard-Anforderung und darf keine eigene Autorisierungsschicht am Host vorbei etablieren
 - Plugin-Contributions werden beim Build-time-Snapshot phasenweise gegen Runtime-Allowlists geprüft; eigene Route-Handler, Autorisierungsresolver, Audit-Sinks, Persistenzhandler und dynamische Nachregistrierung werden mit `plugin_guardrail_*`-Codes fail-fast abgewiesen
 - Die phasenweise Registry-Erzeugung ordnet bestehende Outputs für Content, Admin, Audit und Routing, führt aber keine neuen Plugin-Beitragstypen oder Breaking-API ein
+- Standardisierte Content-Plugins registrieren ihre CRUD-Hauptflächen über `adminResources` mit optionalem `contentUi`-Spezialisierungsblock; `/admin/news`, `/admin/events` und `/admin/poi` sind host-owned Pfade mit pluginseitig beigestellten Fachflächen, nicht plugin-owned Routen
+- Host-Standards fuer Admin-Ressourcen bleiben deklarativ und fail-closed: Search, Filter, Sorting, Pagination, Bulk-Actions sowie History-/Revision-Affordances werden im Host gerendert und nur ueber erlaubte Capability-Felder konfiguriert
+- Route-addressable Listensteuerung verwendet kanonische Search-Params (`q`, `status`, `sort`, `page`, `pageSize`) und darf keine plugin- oder seitenlokalen Parallelvertraege aufmachen
+- Für solche standardisierten Content-Plugins sind produktive CRUD-Hauptrouten unter `/plugins/<namespace>`, `/plugins/<namespace>/new` und `/plugins/<namespace>/$id` ausdrücklich verboten; freie `plugin.routes` bleiben nur für echte Nicht-CRUD-Sonderfälle zulässig
+- `contentUi.contentType` muss einen registrierten plugin-eigenen `contentType` referenzieren; Bindings sind auf `list`, `detail` und `editor` begrenzt und dürfen keine Host-Responsibilities wie Guards, Persistenz oder Shell übernehmen
 - Plugin-UI und fachliche Client-Interaktion bleiben zulässig, wenn sie in host-materialisierten Routen laufen und hostkontrollierte Actions, Validierung, Persistenz und Auditierung verwenden
 - Plugin-Custom-Views müssen gemeinsame Seitenstruktur, Controls, Tabellen, Aktionen und Zustandsdarstellung aus `@sva/studio-ui-react` verwenden; App-interne Komponentenpfade und parallele Basis-Control-Systeme in Plugins sind nicht zulässig
 - News laufen produktiv über die hostgeführte Mainserver-News-Fassade; dedizierte Mainserver-Felder und `contentBlocks` sind das Schreibmodell. Legacy-`payload` ist nur Lesefallback, lokale IAM-Content-Validierung ist für News keine Persistenzquelle mehr
+- Modulbezogene IAM-Verträge haben genau eine kanonische Vertragsfamilie: Build-time-Host-Registry, Plugin-Deklaration, Runtime-Seeding und Provisioning leiten ihre Daten aus `@sva/studio-module-iam` ab und pflegen keine separaten Parallelkataloge
+- Mainserver-Listen für News, Events und POI verwenden typsichere Search-Params als kanonischen UI-State; paginierte Host-Antworten serialisieren mindestens `page`, `pageSize` und `hasNextPage`, während `total` optional bleibt
 - DataClient unterstützt optionale Runtime-Schema-Validierung (`get(path, schema)`) für API-Responses
 - IAM-Server-Fassaden bleiben bewusst dünn; fachliche Erweiterungen gehören in Unterordner und nicht zurück in Monolith-Dateien
 - Profil-Synchronisation mit Keycloak bleibt zulässig, erfolgt aber ausschließlich über dedizierte Profil-/Sync-Flows und nicht implizit über Session- oder Logging-Pfade
@@ -71,8 +86,8 @@ gleichzeitig beeinflussen.
 - Permission-Snapshots sind reine Laufzeitoptimierung und keine fachliche Source of Truth
 - Änderungen an direkten Nutzerrechten invalidieren dieselben Snapshot-Pfade wie Rollen- und Gruppenänderungen; Cache-Konsistenz ist damit für `me/permissions` und `authorize` identisch abgesichert
 - Audit-Logging für IAM-Ereignisse folgt Dual-Write:
-  - Tenant-Scope: `iam.activity_logs` + OTEL via SDK Logger
-  - Plattform-Scope: `iam.platform_activity_logs` + OTEL via SDK Logger
+  - Tenant-Scope: `iam.activity_logs` + OTEL via Server-Runtime-Logger
+  - Plattform-Scope: `iam.platform_activity_logs` + OTEL via Server-Runtime-Logger
 - Audit-Daten enthalten korrelierbare IDs (`request_id`, `trace_id`) und pseudonymisierte Actor-Referenzen
 - Der Root-Host ist ein expliziter Plattform-Scope und keine Pseudo-Instanz in `iam.instances`
 - Studio-verwaltete Rollen werden über `managed_by = 'studio'` und `instance_id` gegen fremdverwaltete Keycloak-Rollen abgegrenzt
@@ -85,7 +100,16 @@ gleichzeitig beeinflussen.
 - Mutierende Inhaltsaktionen deklarieren eine fachliche `domainCapability`; `@sva/auth-runtime` löst sie serverseitig auf bestehende primitive `content.*`-Actions auf und prüft ausschließlich diese primitive Action über die zentrale Permission Engine.
 - Globale Instanzmutationen verwenden die dedizierte Plattformrolle `instance_registry_admin`
 - Instanzverwaltung ist nur auf dem Root-Host zulässig; Tenant-Hosts rendern keine globale Control Plane
+- Die fachliche Modulfreigabe einer Instanz ist kanonisch in `iam.instance_modules` modelliert; Build-time-Plugin-Registrierung, `featureFlags` und Integrationsdaten sind keine alternative Aktivierungsquelle
+- `auth/me` liefert für tenantgebundene Sessions die fail-closed behandelte Liste `assignedModules`; Client-Routing und Plugin-Navigation dürfen modulbezogene Einstiege nur bei expliziter Zuweisung materialisieren
+- Modulentzug entfernt modulbezogene Permissions und `role_permissions` hart; zurückbleibende Restrechte gelten als Drift
 - Normale Tenant-Administration nutzt ausschließlich einen tenantlokalen Keycloak-Adminpfad; Plattform-/Root-Credentials sind dafür kein zulässiger Fallback
+- Tenant-IAM-Betriebsdiagnostik auf der Instanz-Detailseite hält `configuration`, `access`, `reconcile` und `overall` getrennt; `overall` folgt strikt der Präzedenz `blocked` vor `degraded` vor `unknown` vor `ready`
+- Explizite Tenant-IAM-Access-Probes sind read-only, werden manuell ausgelöst und als korrelierbare Audit-Evidenz mit `requestId`, `errorCode`, `checkedAt` und stabiler Quelle `access_probe` persistiert
+- Die Instanz-Detailseite priorisiert im Erstblick aktuelle Betriebswahrheit vor historischer Evidenz. Ältere fehlgeschlagene Provisioning-Läufe bleiben diagnostisch sichtbar, dürfen aber nicht denselben Rang wie aktuelle blockierende Befunde erhalten.
+- Hervorgehobene Cockpit-Zustände folgen dem Prinzip `state + freshness + provenance`: sichtbarer Status soll nach Möglichkeit immer mit belastbarer Zeitmarke und ableitbarer Quelle wie Preflight, Access-Probe, Reconcile oder letztem Provisioning-Lauf gekoppelt sein.
+- Aktionshierarchien auf operativen Detailseiten verwenden genau eine Primäraktion im Überblick; Spezial- und Folgeaktionen werden sichtbar nachgeordnet gruppiert, damit Operatoren nicht mehrere gleichgewichtete Handlungsoptionen im Erstblick interpretieren müssen.
+- Dezente Motion auf der Instanz-Detailseite ist nur zulässig, wenn sie Blickführung, Statusfeedback oder Prozesszustände unterstützt; `prefers-reduced-motion`, Fokusindikatoren, Statuskontrast und Incident-Lesbarkeit haben stets Vorrang vor dekorativer Wirkung.
 - Root-/Plattform-Zugriff umfasst Instanz-Lifecycle, Provisioning, Platform-User, Platform-Rollen, Platform-Sync und explizites Break-Glass; tenantlokale Daten bleiben davon getrennt
 - User-, Rollen- und Rollenzuordnungsänderungen folgen einem Keycloak-first-Vertrag. Studio schreibt erst Keycloak, synchronisiert danach die lokalen Read-Models und macht Abweichungen über `mappingStatus`, `editability` und Diagnosecodes sichtbar.
 - Tenant-Userlisten richten sich nach dem Tenant-Realm in Keycloak; ungemappte oder mehrdeutige Benutzer werden als `unmapped` beziehungsweise `manual_review` angezeigt.
@@ -146,6 +170,7 @@ gleichzeitig beeinflussen.
 - IAM-Request-Spans tragen konsistente Diagnoseattribute wie `iam.endpoint`, `iam.instance_id`, `iam.actor_resolution`, `iam.reason_code`, `iam.feature_flags`, `db.schema_guard_result`, `dependency.redis.status` und `dependency.keycloak.status`
 - Der Runtime-Doctor- und Migrationspfad emittiert eigene OTEL-Ereignisse für Schema-Guard, Actor-Diagnose und verifizierte Migrationsläufe, damit Betriebsfehler mit `request_id` und `trace_id` korrelierbar bleiben
 - Inhalts-Historie nutzt ein eigenes Read-Modell statt Roh-Logs; jede Erstellung, Aktualisierung und jeder Statuswechsel erzeugt zusätzlich Audit-Ereignisse im bestehenden IAM-Auditpfad. Audit-Payloads für Content-Aktionen enthalten additiv fachliche Capability, primitive Action, Ergebnis, Reason-Code und Korrelationsfelder, ohne bestehende Exportformate zu migrieren.
+- Hostgeführte Bulk-Actions fuer Content reusen denselben Audit-/Mutation-Backbone: der Host protokolliert nur sichere Metadaten wie Resource-ID, Action-ID, Selection-Mode, Counts und Sort-/Filter-Scope, waehrend die fachliche Mutation und serverseitige Audit-Persistenz in den bestehenden Content-Endpunkten bleibt
 - Studio-Deploys erzeugen zusätzlich strukturierte Release-Evidenz unter `artifacts/runtime/deployments/`; enthalten sind Release-Modus, Actor, Workflow, Image-Referenz, Schrittstatus und Stack-Zusammenfassung, jedoch keine Secrets oder PII
 - Produktionsnahe Releases erzeugen zusätzlich eigenständige Artefakte für Release-Manifest, Phasenstatus, Migration, Bootstrap, Migrationsjob, Bootstrap-Job, interne Probes und externe Probes; diese Artefakte bleiben bewusst ohne Secrets oder PII
 - Remote-Prechecks für `studio` vergleichen zusätzlich die Live-Service-Spec der App mit dem gerenderten Sollzustand aus dem Deploy-Compose; dabei sind Netzwerke und ingressrelevante Labels eigene Drift-Signale
@@ -191,6 +216,7 @@ gleichzeitig beeinflussen.
 - DSR-Resilienz über asynchrones Export-Statusmodell (`queued|processing|completed|failed`)
 - Restore-Sanitization nach Backup-Restore stellt DSGVO-konforme Nachbereinigung sicher
 - Mainserver-Delegation arbeitet fail-closed: ohne lokalen Rollencheck, Instanzkontext, Konfiguration oder gültige Credentials wird kein Upstream-Call ausgeführt
+- Pagination gegen den Mainserver arbeitet ebenfalls fail-closed: ungültige `page`-/`pageSize`-Eingaben werden auf den kanonischen Vertrag normalisiert, und ohne belastbaren Nachweis für weitere sichtbare Einträge wird `hasNextPage` nicht optimistisch gesetzt
 - Der IAM-Acceptance-Runner arbeitet ebenfalls fail-closed: fehlende Env, fehlende Testbenutzer, nicht bereite Dependencies oder unvollständige Laufzeitnachweise beenden den Lauf mit dokumentierten Fehlercodes
 - Der Gruppen-CRUD arbeitet fail-closed: unbekannte `roleIds`, instanzfremde Gruppen oder fehlerhafte CSRF-/Idempotency-Header erzeugen stabile `invalid_request`-, `forbidden`- oder `csrf_validation_failed`-Antworten
 - Die Rechtstext-Verwaltung arbeitet fail-closed: ungültige Statuswechsel, fehlendes `publishedAt` bei `valid` oder nicht reloadbare Neuanlagen liefern stabile `invalid_request`- bzw. `database_unavailable`-Antworten
@@ -210,6 +236,13 @@ gleichzeitig beeinflussen.
 - `IamHttpError` bleibt bis in die Browser-Schicht mit `classification`, `requestId` und `safeDetails` erhalten; relevante Klassen sind insbesondere `registry_or_provisioning_drift`, `keycloak_reconcile`, `auth_resolution`, `oidc_discovery_or_exchange`, `frontend_state_or_permission_staleness` und `legacy_workaround_or_regression`.
 - Reconcile- und Sync-Berichte serialisieren deterministische Abschlusszustände und Aggregationen statt impliziter Erfolgssignale.
 - Tenant-Admin-abhängige Mutationen arbeiten fail-closed gegen blockerrelevanten Drift; ein grüner Basis-Health-Status überschreibt diesen Befund nicht.
+
+### Fortschreibung 2026-04: Tenant-IAM-Status als öffentlicher Diagnosekern
+
+- Die Instanz-Detailseite veröffentlicht für Tenant-IAM nur einen sicheren, kuratierten Diagnosekern; tiefe IdP- oder Laufzeitfehler bleiben im OTEL- und Serverlog-Pfad.
+- Access-Probe- und Reconcile-Befunde nutzen stabile Fehlercodes wie `tenant_admin_client_not_configured`, `tenant_admin_client_secret_missing`, `IDP_FORBIDDEN` und `IDP_UNAVAILABLE`, damit UI, Runbook und Audit auf demselben Vokabular arbeiten.
+- Die Access-Probe wird nie automatisch beim Seitenladen ausgeführt, um unnötige IdP-Last, irreführende Zeitpunktevidenz und verdeckte Schreibnebenwirkungen zu vermeiden.
+- `seedIamBaseline` rekonstruiert ausschließlich `Core + zugewiesene Module` und erzeugt keine Rollenmitgliedschaften für den ausführenden Benutzer.
 
 ### Build-, Test- und Cache-Konzept der Frontend-App
 
@@ -273,6 +306,7 @@ gleichzeitig beeinflussen.
 - Proposal-Reviews werden über einen dedizierten Proposal-Orchestrator konsolidiert
 - PR- und Code-Reviews werden über einen separaten PR-Orchestrator konsolidiert
 - Spezialisierte Review-Agents decken ergänzend Testqualität, i18n/Content, User Journey & Usability und Performance ab
+- Relevante Bot-Kommentare von `Copilot` und `chatgpt-codex-connector[bot]` werden zusaetzlich ueber ein eigenes PR-Gate auf Bearbeitungsnachweise geprueft
 - Zentrale und kritische Module werden zusätzlich über ein eigenes Komplexitäts-Gate mit Ticketpflicht überwacht
 - Das Modulregister und die Schwellwerte liegen versioniert unter `tooling/quality/complexity-policy.json`
 - Bekannte Überschreitungen bleiben nur dann zulässig, wenn sie in `trackedFindings` mit Refactoring-Ticket hinterlegt sind
@@ -282,12 +316,13 @@ gleichzeitig beeinflussen.
   - `ux-accessibility.agent.md` für WCAG/BITV, Fokus, Tastatur und Screenreader
   - `user-journey-usability.agent.md` für Friktion, Verständlichkeit und Aufgabenbewältigung
 - i18n/harte Strings werden als eigener Governance-Strang behandelt und nicht nur implizit im Code-Review geprüft
+- Der Bearbeitungsnachweis fuer Bot-Kommentare nutzt standardisierte Marker fuer `accepted`, `rejected` und `resolved`; Diff-Threads muessen zusaetzlich als resolved markiert sein
 - Konflikte zwischen Review-Perspektiven werden auf Orchestrator-Ebene explizit gemacht, die Entscheidung bleibt beim Menschen
 
 ### Package-Boundaries und Runtime-Imports
 
 - Neue Fachlogik wird direkt im Zielpackage umgesetzt: `@sva/auth-runtime`, `@sva/iam-core`, `@sva/iam-admin`, `@sva/iam-governance`, `@sva/instance-registry`, `@sva/data-client`, `@sva/data-repositories`, `@sva/plugin-sdk` oder `@sva/server-runtime`.
-- Alte Sammelpackages bleiben nur Kompatibilitätsbereiche; sie dürfen keine neue fachliche Ownership begründen.
+- Alte Sammelpackages begruenden keine neue fachliche Ownership; die fruehere Sammelfassade `@sva/sdk` ist aus dem aktiven Workspace entfernt.
 - Nx-`depConstraints` und ESLint-Importverbote verhindern Rückfälle auf alte Sammelimporte in produktiven Consumer-Pfaden.
 - Serverseitig von Node geladene Workspace-Packages verwenden explizite `.js`-Endungen für relative Runtime-Imports und bestehen `check:runtime`.
 - Runtime-Imports auf andere Workspace-Packages stehen im lokalen `package.json` unter `dependencies`.
@@ -362,6 +397,15 @@ Referenzen:
 - Scope-Daten für Geo, Acting-As und Restriktionen werden in effektive Permissions übernommen und im Snapshot mitgeführt.
 - Der Kompatibilitätspfad liest fehlende strukturierte Felder deterministisch aus `permission_key`, bis alle relevanten Alt-Daten migriert sind.
 
+### Ergänzung 2026-04: Plugin-spezifische Permissions
+
+- Produktive Fachplugins deklarieren eigene Rechtefamilien über `PluginDefinition.permissions`; die Permission-ID folgt `<pluginId>.<actionName>`.
+- `content.*` bleibt ein Core-/Legacy-Content-Vertrag und darf nicht mehr als produktiver Guard für Fachplugins verwendet werden.
+- Build-time-Validierung verhindert reservierte Plugin-Namespaces, doppelte Permission-IDs, fremde Namespace-Referenzen und nicht registrierte Guards.
+- IAM speichert Plugin-Rechte als normale strukturierte Permissions mit `action` und `resourceType` aus dem Plugin-Namespace, zum Beispiel `news.update` und `news`.
+- Navigation, Routing und Server-Fassaden prüfen dieselbe plugin-spezifische Permission; UI-Gates sind Komfort- und Transparenzschicht, die serverseitige Autorisierung bleibt maßgeblich.
+- Die Rollenverwaltung gruppiert Plugin-Rechte fachlich, nutzt aber weiterhin den bestehenden Rollen-Permission-Vertrag.
+
 ### Ergänzung 2026-03: Gruppen und Geo-Provenance im IAM
 
 - `EffectivePermission` erweitert die bisherige Rollentransparenz um `sourceGroupIds`; Clients erhalten damit direkte und gruppenvermittelte Herkunft ohne Zusatz-Queries.
@@ -383,6 +427,7 @@ Referenzen:
 - Die Mainserver-Integration ist eine reine Server-Side-Integration; es gibt keinen generischen Browser-Proxy auf den externen GraphQL-Endpunkt.
 - Fachadapter wie News stellen getypte, eng zugeschnittene Fassaden bereit; Browser-Plugins sprechen nur hosteigene HTTP-Endpunkte und importieren keine Mainserver-Servermodule.
 - Events und POI folgen demselben Host-Fassadenmuster. Der Event-Editor bezieht POI-Auswahldaten über `/api/v1/mainserver/poi`, nicht über einen direkten Import von `@sva/plugin-poi`.
+- `apps/sva-studio-react` bleibt bewusst Host für TanStack-`createServerFn`-Bindings, Request-Matching und die Dispatch-Reihenfolge im Server-Entry. Diese Transport- und Framework-Bindung ist keine fachliche Package-Ownership.
 - Per-User-Credentials liegen ausschließlich in Keycloak-User-Attributen (`mainserverUserApplicationId`, `mainserverUserApplicationSecret`) und werden serverseitig on demand gelesen; die bisherigen Namen `sva_mainserver_api_key` und `sva_mainserver_api_secret` bleiben nur als Legacy-Fallback lesbar.
 - Die Studio-Datenbank hält nur instanzbezogene Endpunktkonfiguration (`graphql_base_url`, `oauth_token_url`, Prüfstatus) in `iam.instance_integrations`.
 - Credential-Caching bleibt kurzlebig im Prozessspeicher; Access-Tokens werden ebenfalls nur in-memory und vor Ablauf mit Skew erneuert.

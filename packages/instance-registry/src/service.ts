@@ -4,7 +4,7 @@ import { createSdkLogger } from '@sva/server-runtime';
 import type { InstanceRegistryRepository } from '@sva/data-repositories';
 import type { CreateInstanceProvisioningInput, UpdateInstanceInput } from './mutation-types.js';
 import type { InstanceRegistryService, InstanceRegistryServiceDeps } from './service-types.js';
-import { createStatusArtifacts, toListItem } from './service-helpers.js';
+import { buildTenantIamStatus, createStatusArtifacts, toListItem } from './service-helpers.js';
 import { createGetInstanceDetail } from './service-detail.js';
 import {
   createExecuteKeycloakProvisioningHandler,
@@ -72,6 +72,170 @@ const createListInstances =
     );
 
     return instances.map((instance) => toListItem(instance, latestProvisioningRuns[instance.instanceId]));
+  };
+
+const requireModuleIamRegistry = (deps: InstanceRegistryServiceDeps) => deps.moduleIamRegistry ?? new Map();
+
+const resolveAssignedModuleContracts = (
+  deps: InstanceRegistryServiceDeps,
+  assignedModuleIds: readonly string[]
+) => {
+  const registry = requireModuleIamRegistry(deps);
+
+  return assignedModuleIds.map((moduleId) => {
+    const contract = registry.get(moduleId);
+    if (!contract) {
+      throw new Error(`unknown_module_contract:${moduleId}`);
+    }
+    return contract;
+  });
+};
+
+const invalidateInstancePermissionSnapshots = async (
+  deps: InstanceRegistryServiceDeps,
+  instanceId: string,
+  trigger: string
+): Promise<void> => {
+  await deps.invalidatePermissionSnapshots?.({ instanceId, trigger });
+};
+
+const withErrorCause = (message: string, cause: unknown): Error => {
+  const error = new Error(message);
+  Object.defineProperty(error, 'cause', {
+    value: cause,
+    configurable: true,
+    enumerable: false,
+    writable: true,
+  });
+  return error;
+};
+
+const createAssignModuleHandler =
+  (deps: InstanceRegistryServiceDeps): InstanceRegistryService['assignModule'] =>
+  async (input) => {
+    const instance = await deps.repository.getInstanceById(input.instanceId);
+    if (!instance) {
+      return { ok: false, reason: 'not_found' };
+    }
+
+    const registry = requireModuleIamRegistry(deps);
+    if (!registry.has(input.moduleId)) {
+      return { ok: false, reason: 'unknown_module' };
+    }
+
+    const inserted = await deps.repository.assignModule(input.instanceId, input.moduleId);
+    if (!inserted) {
+      return { ok: false, reason: 'conflict' };
+    }
+
+    const assignedModuleIds = await deps.repository.listAssignedModules(input.instanceId);
+    try {
+      await deps.repository.syncAssignedModuleIam({
+        instanceId: input.instanceId,
+        managedModuleIds: [...registry.keys()],
+        contracts: resolveAssignedModuleContracts(deps, assignedModuleIds),
+      });
+    } catch (error) {
+      try {
+        await deps.repository.revokeModule(input.instanceId, input.moduleId);
+      } catch (rollbackError) {
+        throw withErrorCause(
+          `assign_module_sync_failed_and_rollback_failed:${input.instanceId}:${input.moduleId}`,
+          {
+            syncError: error,
+            rollbackError,
+          }
+        );
+      }
+      throw error;
+    }
+    await invalidateInstancePermissionSnapshots(deps, input.instanceId, 'instance_module_assigned');
+    await deps.repository.appendAuditEvent({
+      instanceId: input.instanceId,
+      eventType: 'instance_module_assigned',
+      actorId: input.actorId,
+      requestId: input.requestId,
+      details: {
+        moduleId: input.moduleId,
+        assignedModules: assignedModuleIds,
+        outcome: 'assigned',
+      },
+    });
+
+    const detail = await createGetInstanceDetail(deps)(input.instanceId);
+    return detail ? { ok: true, instance: detail } : { ok: false, reason: 'not_found' };
+  };
+
+const createRevokeModuleHandler =
+  (deps: InstanceRegistryServiceDeps): InstanceRegistryService['revokeModule'] =>
+  async (input) => {
+    const instance = await deps.repository.getInstanceById(input.instanceId);
+    if (!instance) {
+      return { ok: false, reason: 'not_found' };
+    }
+
+    const registry = requireModuleIamRegistry(deps);
+    if (!registry.has(input.moduleId)) {
+      return { ok: false, reason: 'unknown_module' };
+    }
+
+    const removed = await deps.repository.revokeModule(input.instanceId, input.moduleId);
+    if (!removed) {
+      return { ok: false, reason: 'conflict' };
+    }
+
+    const assignedModuleIds = await deps.repository.listAssignedModules(input.instanceId);
+    await deps.repository.syncAssignedModuleIam({
+      instanceId: input.instanceId,
+      managedModuleIds: [...registry.keys()],
+      contracts: resolveAssignedModuleContracts(deps, assignedModuleIds),
+    });
+    await invalidateInstancePermissionSnapshots(deps, input.instanceId, 'instance_module_revoked');
+    await deps.repository.appendAuditEvent({
+      instanceId: input.instanceId,
+      eventType: 'instance_module_revoked',
+      actorId: input.actorId,
+      requestId: input.requestId,
+      details: {
+        moduleId: input.moduleId,
+        assignedModules: assignedModuleIds,
+        outcome: 'revoked',
+      },
+    });
+
+    const detail = await createGetInstanceDetail(deps)(input.instanceId);
+    return detail ? { ok: true, instance: detail } : { ok: false, reason: 'not_found' };
+  };
+
+const createSeedIamBaselineHandler =
+  (deps: InstanceRegistryServiceDeps): InstanceRegistryService['seedIamBaseline'] =>
+  async (input) => {
+    const instance = await deps.repository.getInstanceById(input.instanceId);
+    if (!instance) {
+      return { ok: false, reason: 'not_found' };
+    }
+
+    const registry = requireModuleIamRegistry(deps);
+    const assignedModuleIds = await deps.repository.listAssignedModules(input.instanceId);
+    await deps.repository.syncAssignedModuleIam({
+      instanceId: input.instanceId,
+      managedModuleIds: [...registry.keys()],
+      contracts: resolveAssignedModuleContracts(deps, assignedModuleIds),
+    });
+    await invalidateInstancePermissionSnapshots(deps, input.instanceId, 'instance_module_iam_seeded');
+    await deps.repository.appendAuditEvent({
+      instanceId: input.instanceId,
+      eventType: 'instance_module_iam_seeded',
+      actorId: input.actorId,
+      requestId: input.requestId,
+      details: {
+        assignedModules: assignedModuleIds,
+        outcome: 'seeded',
+      },
+    });
+
+    const detail = await createGetInstanceDetail(deps)(input.instanceId);
+    return detail ? { ok: true, instance: detail } : { ok: false, reason: 'not_found' };
   };
 
 const createProvisioningRequestHandler =
@@ -230,6 +394,58 @@ const createUpdateInstanceHandler =
     return createGetInstanceDetail(deps)(updated.instanceId);
   };
 
+const createProbeTenantIamAccessHandler =
+  (deps: InstanceRegistryServiceDeps): InstanceRegistryService['probeTenantIamAccess'] =>
+  async (input) => {
+    const instance = await deps.repository.getInstanceById(input.instanceId);
+    if (!instance) {
+      return null;
+    }
+    if (!deps.probeTenantIamAccess) {
+      throw new Error('dependency_missing_probeTenantIamAccess');
+    }
+
+    const access = await deps.probeTenantIamAccess({
+      instanceId: input.instanceId,
+      actorId: input.actorId,
+      requestId: input.requestId,
+    });
+
+    await deps.repository.appendAuditEvent({
+      instanceId: input.instanceId,
+      eventType: 'tenant_iam_access_probed',
+      actorId: input.actorId,
+      requestId: input.requestId,
+      details: {
+        status: access.status,
+        summary: access.summary,
+        checkedAt: access.checkedAt,
+        errorCode: access.errorCode,
+        requestId: access.requestId ?? input.requestId,
+      },
+    });
+
+    const [keycloakStatus, reconcileEvidence] = await Promise.all([
+      createGetKeycloakStatusHandler(deps)(input.instanceId),
+      deps.repository.getRoleReconcileSummary(input.instanceId),
+    ]);
+
+    return buildTenantIamStatus({
+      keycloakStatus: keycloakStatus ?? undefined,
+      accessEvidence: access,
+      reconcileEvidence: reconcileEvidence
+        ? {
+            status: reconcileEvidence.status,
+            summary: reconcileEvidence.summary,
+            source: 'role_reconcile',
+            checkedAt: reconcileEvidence.checkedAt,
+            errorCode: reconcileEvidence.errorCode,
+            requestId: reconcileEvidence.requestId,
+          }
+        : undefined,
+    });
+  };
+
 export const createInstanceRegistryService = (deps: InstanceRegistryServiceDeps): InstanceRegistryService => ({
   listInstances: createListInstances(deps.repository),
   getInstanceDetail: createGetInstanceDetail(deps),
@@ -239,6 +455,10 @@ export const createInstanceRegistryService = (deps: InstanceRegistryServiceDeps)
   getKeycloakPreflight: createGetKeycloakPreflightHandler(deps),
   planKeycloakProvisioning: createPlanKeycloakProvisioningHandler(deps),
   executeKeycloakProvisioning: createExecuteKeycloakProvisioningHandler(deps),
+  assignModule: createAssignModuleHandler(deps),
+  revokeModule: createRevokeModuleHandler(deps),
+  seedIamBaseline: createSeedIamBaselineHandler(deps),
+  probeTenantIamAccess: createProbeTenantIamAccessHandler(deps),
   getKeycloakProvisioningRun: createGetKeycloakProvisioningRunHandler(deps),
   getKeycloakStatus: createGetKeycloakStatusHandler(deps),
   reconcileKeycloak: createReconcileKeycloakHandler(deps),

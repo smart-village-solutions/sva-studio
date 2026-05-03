@@ -1,6 +1,9 @@
 export type {
   SvaMainserverConnectionInput,
   SvaMainserverConnectionStatus,
+  SvaMainserverListPagination,
+  SvaMainserverListQuery,
+  SvaMainserverListResult,
   SvaMainserverAddressInput,
   SvaMainserverCategoryInput,
   SvaMainserverContactInput,

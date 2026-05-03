@@ -1,7 +1,10 @@
 import type { Pool, PoolClient } from 'pg';
+import { createSdkLogger } from '@sva/server-runtime';
 
 import { type QueryClient } from '../db.js';
 import { readString } from './input-readers.js';
+
+const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
 
 export type InstanceIdResolutionResult =
   | {
@@ -70,7 +73,12 @@ RETURNING id;
       return { ok: false, reason: 'invalid_instance' };
     }
     return { ok: true, instanceId: createdId, fromInstanceKey: false, created: true };
-  } catch {
+  } catch (error) {
+    logger.warn('Shared instance ID resolution failed', {
+      candidate: rawValue,
+      reason_code: 'instance_id_resolution_failed',
+      error_type: error instanceof Error ? error.constructor.name : typeof error,
+    });
     return { ok: false, reason: 'database_unavailable' };
   } finally {
     client.release();

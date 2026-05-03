@@ -25,6 +25,13 @@ export {
   type PersistAuthAuditResult,
 } from './audit-db-sink.js';
 export { withAuthenticatedUser, type AuthenticatedRequestContext } from './middleware.js';
+export { withMediaRepository, withMediaService } from './iam-media/index.js';
+export { completeMediaUploadHandler } from './iam-media/core.js';
+export {
+  authorizeMediaPrimitiveForUser,
+  type MediaPrimitiveAuthorizationResource,
+  type MediaPrimitiveAuthorizationResult,
+} from './iam-media/server-authorization.js';
 export {
   authorizeContentPrimitiveForUser,
   type ContentPrimitiveAuthorizationResource,

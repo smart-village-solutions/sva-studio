@@ -65,6 +65,7 @@ describe('instance registry repository (vitest)', () => {
         tenantAdminClient: undefined,
         tenantAdminBootstrap: undefined,
         themeKey: undefined,
+        assignedModules: [],
         featureFlags: {},
         mainserverConfigRef: undefined,
         createdAt: '2026-01-01T00:00:00.000Z',
@@ -132,6 +133,7 @@ describe('instance registry repository (vitest)', () => {
           lastName: 'Admin',
         },
         themeKey: 'guben',
+        assignedModules: [],
         featureFlags: { provisioning: true },
         mainserverConfigRef: 'mainserver-guben',
         createdAt: '2026-01-01T00:00:00.000Z',
@@ -139,6 +141,57 @@ describe('instance registry repository (vitest)', () => {
         updatedAt: '2026-01-02T00:00:00.000Z',
         updatedBy: 'seed',
       },
+    ]);
+  });
+
+  it('maps partial tenant admin bootstrap fields while preserving undefined optional values', async () => {
+    const execute = createExecute({
+      rowCount: 1,
+      rows: [
+        {
+          instance_id: 'partial',
+          display_name: 'Partial',
+          status: 'active',
+          parent_domain: 'studio.example.org',
+          primary_hostname: 'partial.studio.example.org',
+          realm_mode: 'existing',
+          auth_realm: 'partial',
+          auth_client_id: 'sva-studio',
+          auth_issuer_url: null,
+          auth_client_secret_ciphertext: null,
+          tenant_admin_client_id: 'tenant-admin-client',
+          tenant_admin_client_secret_ciphertext: null,
+          tenant_admin_username: 'tenant-admin',
+          tenant_admin_email: null,
+          tenant_admin_first_name: null,
+          tenant_admin_last_name: null,
+          theme_key: null,
+          feature_flags: null,
+          mainserver_config_ref: null,
+          created_at: '2026-01-01T00:00:00.000Z',
+          created_by: null,
+          updated_at: '2026-01-01T00:00:00.000Z',
+          updated_by: null,
+        },
+      ],
+    });
+
+    const repository = createInstanceRegistryRepository({ execute });
+
+    await expect(repository.listInstances()).resolves.toEqual([
+      expect.objectContaining({
+        instanceId: 'partial',
+        tenantAdminClient: {
+          clientId: 'tenant-admin-client',
+          secretConfigured: false,
+        },
+        tenantAdminBootstrap: {
+          username: 'tenant-admin',
+          email: undefined,
+          firstName: undefined,
+          lastName: undefined,
+        },
+      }),
     ]);
   });
 
@@ -202,6 +255,44 @@ describe('instance registry repository (vitest)', () => {
     expect(statements[0]?.text).toContain('WHERE primary_hostname = $1');
   });
 
+  it('resolves instances through registered hostnames', async () => {
+    const execute = createExecute({
+      rowCount: 1,
+      rows: [
+        {
+          instance_id: 'bb-guben',
+          display_name: 'BB Guben',
+          status: 'active',
+          parent_domain: 'studio.smart-village.app',
+          primary_hostname: 'bb-guben.studio.smart-village.app',
+          realm_mode: 'existing',
+          auth_realm: 'bb-guben',
+          auth_client_id: 'sva-studio',
+          auth_issuer_url: null,
+          auth_client_secret_ciphertext: null,
+          tenant_admin_username: null,
+          tenant_admin_email: null,
+          tenant_admin_first_name: null,
+          tenant_admin_last_name: null,
+          theme_key: null,
+          feature_flags: null,
+          mainserver_config_ref: null,
+          created_at: '2026-01-01T00:00:00.000Z',
+          created_by: null,
+          updated_at: '2026-01-01T00:00:00.000Z',
+          updated_by: null,
+        },
+      ],
+    });
+
+    const repository = createInstanceRegistryRepository({ execute });
+
+    await expect(repository.resolveHostname('bb-guben.studio.smart-village.app')).resolves.toMatchObject({
+      instanceId: 'bb-guben',
+      primaryHostname: 'bb-guben.studio.smart-village.app',
+    });
+  });
+
   it('loads stored tenant client secret ciphertext by instance id', async () => {
     const execute = createExecute({
       rowCount: 1,
@@ -222,6 +313,126 @@ describe('instance registry repository (vitest)', () => {
     const repository = createInstanceRegistryRepository({ execute });
 
     await expect(repository.getTenantAdminClientSecretCiphertext('bb-guben')).resolves.toBe('enc:tenant-admin-secret');
+  });
+
+  it('returns null for missing stored client secret ciphertext lookups', async () => {
+    const execute = createSequencedExecutor([
+      { rowCount: 0, rows: [] },
+      { rowCount: 0, rows: [] },
+    ]);
+
+    const repository = createInstanceRegistryRepository({ execute });
+
+    await expect(repository.getAuthClientSecretCiphertext('missing')).resolves.toBeNull();
+    await expect(repository.getTenantAdminClientSecretCiphertext('missing')).resolves.toBeNull();
+  });
+
+  it('lists, assigns, revokes, and synchronizes managed module IAM records', async () => {
+    const statements: SqlStatement[] = [];
+    const execute = createSequencedExecutor(
+      [
+        {
+          rowCount: 2,
+          rows: [{ module_id: 'events' }, { module_id: 'news' }],
+        },
+        {
+          rowCount: 1,
+          rows: [],
+        },
+        {
+          rowCount: 1,
+          rows: [],
+        },
+        { rowCount: 1, rows: [] },
+        { rowCount: 1, rows: [] },
+        { rowCount: 1, rows: [] },
+        { rowCount: 1, rows: [] },
+        { rowCount: 1, rows: [] },
+        { rowCount: 1, rows: [] },
+        { rowCount: 1, rows: [] },
+      ],
+      statements
+    );
+
+    const repository = createInstanceRegistryRepository({ execute });
+
+    await expect(repository.listAssignedModules('demo')).resolves.toEqual(['events', 'news']);
+    await expect(repository.assignModule('demo', 'news')).resolves.toBe(true);
+    await expect(repository.revokeModule('demo', 'news')).resolves.toBe(true);
+
+    await expect(
+      repository.syncAssignedModuleIam({
+        instanceId: 'demo',
+        managedModuleIds: ['news'],
+        contracts: [
+          {
+            moduleId: 'news',
+            permissionIds: ['news.read', 'news.write'],
+            systemRoles: [
+              {
+                roleName: 'news_admin',
+                permissionIds: ['news.read', 'news.write'],
+              },
+            ],
+          },
+        ],
+      })
+    ).resolves.toBeUndefined();
+
+    expect(statements[0]?.text).toContain('FROM iam.instance_modules');
+    expect(statements[1]?.text).toContain('INSERT INTO iam.instance_modules');
+    expect(statements[2]?.text).toContain('DELETE FROM iam.instance_modules');
+    expect(statements.slice(3).some((statement) => statement.text.includes('INSERT INTO iam.permissions'))).toBe(true);
+    expect(statements.slice(3).some((statement) => statement.text.includes('INSERT INTO iam.roles'))).toBe(true);
+    expect(statements.slice(3).some((statement) => statement.text.includes('INSERT INTO iam.role_permissions'))).toBe(true);
+    expect(statements.slice(3).some((statement) => statement.text.includes('DELETE FROM iam.role_permissions'))).toBe(true);
+    expect(statements.slice(3).some((statement) => statement.text.includes('DELETE FROM iam.permissions'))).toBe(true);
+  });
+
+  it('sorts managed permission keys and role names alphabetically before writing IAM rows', async () => {
+    const statements: SqlStatement[] = [];
+    const execute = createSequencedExecutor(
+      [
+        { rowCount: 1, rows: [] },
+        { rowCount: 1, rows: [] },
+        { rowCount: 1, rows: [] },
+        { rowCount: 1, rows: [] },
+        { rowCount: 1, rows: [] },
+        { rowCount: 1, rows: [] },
+        { rowCount: 1, rows: [] },
+        { rowCount: 1, rows: [] },
+        { rowCount: 1, rows: [] },
+      ],
+      statements
+    );
+    const repository = createInstanceRegistryRepository({ execute });
+
+    await expect(
+      repository.syncAssignedModuleIam({
+        instanceId: 'demo',
+        managedModuleIds: ['news'],
+        contracts: [
+          {
+            moduleId: 'news',
+            permissionIds: ['news.write', 'news.read'],
+            systemRoles: [
+              { roleName: 'news_editor', permissionIds: ['news.write'] },
+              { roleName: 'news_admin', permissionIds: ['news.read'] },
+            ],
+          },
+        ],
+      })
+    ).resolves.toBeUndefined();
+
+    const insertedPermissionKeys = statements
+      .filter((statement) => statement.text.includes('INSERT INTO iam.permissions'))
+      .map((statement) => statement.values[1]);
+    const insertedRoleNames = statements
+      .filter((statement) => statement.text.includes('INSERT INTO iam.roles'))
+      .map((statement) => statement.values[1]);
+
+    expect(insertedPermissionKeys).toEqual(['news.read', 'news.write']);
+    expect(insertedRoleNames).toEqual(['news_admin', 'news_editor']);
   });
 
   it('maps provisioning runs and audit events including optional fields', async () => {
@@ -440,6 +651,7 @@ describe('instance registry repository (vitest)', () => {
       tenantAdminClient: undefined,
       tenantAdminBootstrap: undefined,
       themeKey: undefined,
+      assignedModules: [],
       featureFlags: {},
       mainserverConfigRef: undefined,
       createdAt: '2026-01-03T00:00:00.000Z',
@@ -536,6 +748,7 @@ describe('instance registry repository (vitest)', () => {
         lastName: 'Admin',
       },
       themeKey: 'guben',
+      assignedModules: [],
       featureFlags: { provisioning: true },
       mainserverConfigRef: 'mainserver-guben',
       createdAt: '2026-01-01T00:00:00.000Z',
@@ -547,6 +760,23 @@ describe('instance registry repository (vitest)', () => {
     expect(statements[0]?.values[9]).toBeNull();
     expect(statements[0]?.values[13]).toBe('tenant-admin');
     expect(statements[1]?.values[0]).toBe('bb-guben.studio.smart-village.app');
+  });
+
+  it('returns null when updating an unknown instance', async () => {
+    const execute = createSequencedExecutor([{ rowCount: 0, rows: [] }]);
+    const repository = createInstanceRegistryRepository({ execute });
+
+    await expect(
+      repository.updateInstance({
+        instanceId: 'missing',
+        displayName: 'Missing',
+        realmMode: 'existing',
+        parentDomain: 'studio.smart-village.app',
+        primaryHostname: 'missing.studio.smart-village.app',
+        authRealm: 'missing',
+        authClientId: 'sva-studio',
+      })
+    ).resolves.toBeNull();
   });
 
   it('lists keycloak provisioning runs with mapped steps', async () => {
@@ -629,6 +859,79 @@ describe('instance registry repository (vitest)', () => {
     const repository = createInstanceRegistryRepository({ execute });
 
     await expect(repository.getKeycloakProvisioningRun('hb', 'run-missing')).resolves.toBeNull();
+  });
+
+  it('loads an existing keycloak provisioning run with its steps', async () => {
+    const execute = createSequencedExecutor([
+      {
+        rowCount: 1,
+        rows: [
+          {
+            id: 'run-1',
+            instance_id: 'hb',
+            mutation: 'executeKeycloakProvisioning',
+            idempotency_key: 'idem-kc-1',
+            payload_fingerprint: 'fingerprint-1',
+            mode: 'existing',
+            intent: 'provision_admin_client',
+            overall_status: 'running',
+            drift_summary: 'Tenant admin client missing.',
+            request_id: 'req-1',
+            actor_id: 'actor-1',
+            created_at: '2026-01-01T00:00:00.000Z',
+            updated_at: '2026-01-01T00:01:00.000Z',
+          },
+        ],
+      },
+      {
+        rowCount: 1,
+        rows: [
+          {
+            id: 'step-1',
+            run_id: 'run-1',
+            step_key: 'tenant_admin_client',
+            title: 'Tenant admin client anlegen',
+            status: 'running',
+            started_at: '2026-01-01T00:00:30.000Z',
+            finished_at: null,
+            summary: 'Client wird angelegt.',
+            details: { phase: 'create' },
+            request_id: 'req-1',
+            created_at: '2026-01-01T00:00:30.000Z',
+          },
+        ],
+      },
+    ]);
+
+    const repository = createInstanceRegistryRepository({ execute });
+
+    await expect(repository.getKeycloakProvisioningRun('hb', 'run-1')).resolves.toEqual({
+      id: 'run-1',
+      instanceId: 'hb',
+      mutation: 'executeKeycloakProvisioning',
+      idempotencyKey: 'idem-kc-1',
+      payloadFingerprint: 'fingerprint-1',
+      mode: 'existing',
+      intent: 'provision_admin_client',
+      overallStatus: 'running',
+      driftSummary: 'Tenant admin client missing.',
+      requestId: 'req-1',
+      actorId: 'actor-1',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:01:00.000Z',
+      steps: [
+        {
+          stepKey: 'tenant_admin_client',
+          title: 'Tenant admin client anlegen',
+          status: 'running',
+          startedAt: '2026-01-01T00:00:30.000Z',
+          finishedAt: undefined,
+          summary: 'Client wird angelegt.',
+          details: { phase: 'create' },
+          requestId: 'req-1',
+        },
+      ],
+    });
   });
 
   it('claims the next keycloak provisioning run and returns null when none is queued', async () => {
@@ -823,12 +1126,75 @@ describe('instance registry repository (vitest)', () => {
     ).resolves.toEqual({
       stepKey: 'finalize',
       title: 'Abschluss',
-        status: 'done',
+      status: 'done',
       startedAt: undefined,
       finishedAt: '2026-01-03T00:02:00.000Z',
       summary: 'Provisioning abgeschlossen.',
       details: {},
       requestId: undefined,
+    });
+  });
+
+  it('replays an existing keycloak provisioning run when idempotency matches', async () => {
+    const execute = createSequencedExecutor([
+      {
+        rowCount: 1,
+        rows: [
+          {
+            id: 'run-replayed',
+            instance_id: 'hb',
+            mutation: 'executeKeycloakProvisioning',
+            idempotency_key: 'idem-kc-1',
+            payload_fingerprint: 'fingerprint-1',
+            mode: 'existing',
+            intent: 'provision_admin_client',
+            overall_status: 'planned',
+            drift_summary: 'Plan created.',
+            request_id: null,
+            actor_id: null,
+            created_at: '2026-01-03T00:00:00.000Z',
+            updated_at: '2026-01-03T00:00:00.000Z',
+            created: false,
+          },
+        ],
+      },
+      {
+        rowCount: 0,
+        rows: [],
+      },
+    ]);
+
+    const repository = createInstanceRegistryRepository({ execute });
+
+    await expect(
+      repository.createKeycloakProvisioningRun({
+        instanceId: 'hb',
+        mutation: 'executeKeycloakProvisioning',
+        idempotencyKey: 'idem-kc-1',
+        payloadFingerprint: 'fingerprint-1',
+        mode: 'existing',
+        intent: 'provision_admin_client',
+        overallStatus: 'planned',
+        driftSummary: 'Plan created.',
+      })
+    ).resolves.toEqual({
+      created: false,
+      run: {
+        id: 'run-replayed',
+        instanceId: 'hb',
+        mutation: 'executeKeycloakProvisioning',
+        idempotencyKey: 'idem-kc-1',
+        payloadFingerprint: 'fingerprint-1',
+        mode: 'existing',
+        intent: 'provision_admin_client',
+        overallStatus: 'planned',
+        driftSummary: 'Plan created.',
+        requestId: undefined,
+        actorId: undefined,
+        createdAt: '2026-01-03T00:00:00.000Z',
+        updatedAt: '2026-01-03T00:00:00.000Z',
+        steps: [],
+      },
     });
   });
 

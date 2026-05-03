@@ -194,6 +194,42 @@ describe('HomePage', () => {
     expect(screen.getByText('Login abgebrochen oder abgelaufen. Bitte erneut anmelden.')).toBeTruthy();
   });
 
+  it('starts a full-document login redirect from the home route when auth=login is present', () => {
+    useAuthMock.mockReturnValue({
+      user: null,
+      isAuthenticated: false,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      logout: vi.fn(),
+      invalidatePermissions: vi.fn(),
+      hasResolvedSession: true,
+      isRecoveringSession: false,
+      sessionRecoveryFailed: false,
+    });
+
+    const replaceMock = vi.fn();
+    const originalLocation = window.location;
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: {
+        ...originalLocation,
+        pathname: '/',
+        search: '?auth=login&returnTo=%2Fadmin%2Fusers%3Fpage%3D2',
+        replace: replaceMock,
+      },
+    });
+
+    render(<HomePage />);
+
+    expect(replaceMock).toHaveBeenCalledWith('/auth/login?returnTo=%2Fadmin%2Fusers%3Fpage%3D2');
+
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: originalLocation,
+    });
+  });
+
   it('shows generic auth load error from auth provider state', () => {
     useAuthMock.mockReturnValue({
       user: null,

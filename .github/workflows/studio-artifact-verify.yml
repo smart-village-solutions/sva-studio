@@ -72,7 +72,7 @@ jobs:
           digest_short="$(printf '%s' "${IMAGE_DIGEST}" | cut -d: -f2 | cut -c1-12)"
           artifact_suffix="${digest_short}"
           if [ -n "${IMAGE_TAG}" ]; then
-            safe_tag="$(printf '%s' "${IMAGE_TAG}" | tr -cs '[:alnum:]._- ' '-' | tr ' ' '-' | sed 's/^-*//; s/-*$//')"
+            safe_tag="$(printf '%s' "${IMAGE_TAG}" | sed -E 's/[^[:alnum:]. _-]+/-/g; s/[[:space:]]+/-/g; s/-+/-/g; s/^-+//; s/-+$//')"
             if [ -n "${safe_tag}" ]; then
               artifact_suffix="${safe_tag}"
             fi

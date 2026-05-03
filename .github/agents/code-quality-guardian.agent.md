@@ -37,7 +37,7 @@ Du schuetzt die Codebasis vor Fehlern, Sicherheitsproblemen und Architekturerosi
 
 ### Projektregeln (Non-Negotiable)
 - Keine hardcoded User-Texte; immer i18n-Key (`t('...')`)
-- Server-Logging ueber SDK Logger (`@sva/sdk`), kein `console.*` auf Serverpfaden
+- Server-Logging ueber Server-Runtime-Logger (`@sva/server-runtime`), kein `console.*` auf Serverpfaden
 - Input-Validation fuer externe Daten (API, URL-Params, Storage, Env)
 - Design-System statt Inline-Styles (ausser klar begruendete dynamische Daten)
 - WCAG 2.1 AA einhalten

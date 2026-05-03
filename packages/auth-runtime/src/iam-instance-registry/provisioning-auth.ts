@@ -14,26 +14,28 @@ import {
 
 export { provisionInstanceAuthArtifacts, provisionInstanceAuthArtifactsViaProvisioner };
 
-export const getInstanceKeycloakPreflight = createInstanceKeycloakPreflightReader(
-  readKeycloakState,
-  readKeycloakAccessError
-);
+const createInstanceKeycloakReaders = (
+  readState: typeof readKeycloakState
+): Readonly<{
+  getInstanceKeycloakPreflight: ReturnType<typeof createInstanceKeycloakPreflightReader>;
+  getInstanceKeycloakPlan: ReturnType<typeof createInstanceKeycloakPlanReader>;
+  getInstanceKeycloakStatus: ReturnType<typeof createInstanceKeycloakStatusReader>;
+}> => {
+  const getInstanceKeycloakPreflight = createInstanceKeycloakPreflightReader(readState, readKeycloakAccessError);
 
-export const getInstanceKeycloakPreflightViaProvisioner = createInstanceKeycloakPreflightReader(
-  readKeycloakStateViaProvisioner,
-  readKeycloakAccessError
-);
+  return {
+    getInstanceKeycloakPreflight,
+    getInstanceKeycloakPlan: createInstanceKeycloakPlanReader(readState, getInstanceKeycloakPreflight),
+    getInstanceKeycloakStatus: createInstanceKeycloakStatusReader(readState),
+  };
+};
 
-export const getInstanceKeycloakPlan = createInstanceKeycloakPlanReader(
-  readKeycloakState,
-  getInstanceKeycloakPreflight
-);
+const defaultReaders = createInstanceKeycloakReaders(readKeycloakState);
+const provisionerReaders = createInstanceKeycloakReaders(readKeycloakStateViaProvisioner);
 
-export const getInstanceKeycloakPlanViaProvisioner = createInstanceKeycloakPlanReader(
-  readKeycloakStateViaProvisioner,
-  getInstanceKeycloakPreflightViaProvisioner
-);
-
-export const getInstanceKeycloakStatus = createInstanceKeycloakStatusReader(readKeycloakState);
-
-export const getInstanceKeycloakStatusViaProvisioner = createInstanceKeycloakStatusReader(readKeycloakStateViaProvisioner);
+export const getInstanceKeycloakPreflight = defaultReaders.getInstanceKeycloakPreflight;
+export const getInstanceKeycloakPreflightViaProvisioner = provisionerReaders.getInstanceKeycloakPreflight;
+export const getInstanceKeycloakPlan = defaultReaders.getInstanceKeycloakPlan;
+export const getInstanceKeycloakPlanViaProvisioner = provisionerReaders.getInstanceKeycloakPlan;
+export const getInstanceKeycloakStatus = defaultReaders.getInstanceKeycloakStatus;
+export const getInstanceKeycloakStatusViaProvisioner = provisionerReaders.getInstanceKeycloakStatus;

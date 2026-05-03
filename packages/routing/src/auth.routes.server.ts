@@ -451,6 +451,26 @@ const authHandlerMap = {
       return authRuntimeRoutes.instanceRegistryHandlers.reconcileInstanceKeycloak(ctx.request);
     },
   },
+  '/api/v1/iam/instances/$instanceId/tenant-iam/access-probe': {
+    POST: async (ctx: { request: Request }) => {
+      return authRuntimeRoutes.instanceRegistryHandlers.probeTenantIamAccess(ctx.request);
+    },
+  },
+  '/api/v1/iam/instances/$instanceId/modules/assign': {
+    POST: async (ctx: { request: Request }) => {
+      return authRuntimeRoutes.instanceRegistryHandlers.assignInstanceModule(ctx.request);
+    },
+  },
+  '/api/v1/iam/instances/$instanceId/modules/revoke': {
+    POST: async (ctx: { request: Request }) => {
+      return authRuntimeRoutes.instanceRegistryHandlers.revokeInstanceModule(ctx.request);
+    },
+  },
+  '/api/v1/iam/instances/$instanceId/modules/seed-iam-baseline': {
+    POST: async (ctx: { request: Request }) => {
+      return authRuntimeRoutes.instanceRegistryHandlers.seedInstanceIamBaseline(ctx.request);
+    },
+  },
   '/api/v1/iam/instances/$instanceId/activate': {
     POST: async (ctx: { request: Request }) => {
       return authRuntimeRoutes.instanceRegistryHandlers.activateInstance(ctx.request);
@@ -488,6 +508,50 @@ const authHandlerMap = {
   '/api/v1/iam/contents/$contentId/history': {
     GET: async ({ request }) => {
       return authRuntimeRoutes.getContentHistoryHandler(request);
+    },
+  },
+  '/api/v1/iam/media': {
+    GET: async ({ request }) => {
+      return authRuntimeRoutes.listMediaHandler(request);
+    },
+  },
+  '/api/v1/iam/media/references': {
+    GET: async ({ request }) => {
+      return authRuntimeRoutes.listMediaReferencesHandler(request);
+    },
+    PUT: async ({ request }) => {
+      return authRuntimeRoutes.replaceMediaReferencesHandler(request);
+    },
+  },
+  '/api/v1/iam/media/upload-sessions': {
+    POST: async ({ request }) => {
+      return authRuntimeRoutes.initializeMediaUploadHandler(request);
+    },
+  },
+  '/api/v1/iam/media/upload-sessions/$uploadSessionId/complete': {
+    POST: async ({ request }) => {
+      return authRuntimeRoutes.completeMediaUploadHandler(request);
+    },
+  },
+  '/api/v1/iam/media/$assetId': {
+    GET: async ({ request }) => {
+      return authRuntimeRoutes.getMediaHandler(request);
+    },
+    PATCH: async ({ request }) => {
+      return authRuntimeRoutes.updateMediaHandler(request);
+    },
+    DELETE: async ({ request }) => {
+      return authRuntimeRoutes.deleteMediaHandler(request);
+    },
+  },
+  '/api/v1/iam/media/$assetId/usage': {
+    GET: async ({ request }) => {
+      return authRuntimeRoutes.getMediaUsageHandler(request);
+    },
+  },
+  '/api/v1/iam/media/$assetId/delivery': {
+    GET: async ({ request }) => {
+      return authRuntimeRoutes.getMediaDeliveryHandler(request);
     },
   },
   '/api/v1/iam/legal-texts': {

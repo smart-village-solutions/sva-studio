@@ -1,0 +1,58 @@
+name: Bot Comment Handling
+
+concurrency:
+  group: bot-comment-handling-${{ github.event.pull_request.number || github.event.issue.number || github.run_id }}
+  cancel-in-progress: true
+
+on:
+  pull_request_target:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+  issue_comment:
+    types:
+      - created
+      - edited
+      - deleted
+  pull_request_review:
+    types:
+      - submitted
+      - edited
+      - dismissed
+  pull_request_review_comment:
+    types:
+      - created
+      - edited
+      - deleted
+  pull_request_review_thread:
+    types:
+      - resolved
+      - unresolved
+
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read
+
+jobs:
+  check-bot-comment-handling:
+    name: Bot Comments / handled
+    if: github.event.pull_request != null || github.event.issue.pull_request != null
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          filter: tree:0
+
+      - name: Setup workspace
+        uses: ./.github/actions/setup-pnpm-workspace
+
+      - name: Evaluate bot comment handling
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: pnpm check:bot-comment-handling

@@ -23,7 +23,7 @@ const groupRow = {
   group_key: 'admins',
   display_name: 'Admins',
   description: null,
-  group_type: 'custom',
+  group_type: 'role_bundle',
   is_active: true,
   created_at: '2026-01-01T00:00:00Z',
   updated_at: '2026-01-02T00:00:00Z',

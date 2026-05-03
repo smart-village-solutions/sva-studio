@@ -37,12 +37,23 @@ export type AuthRoutePath =
   | '/api/v1/iam/instances/$instanceId/keycloak/execute'
   | '/api/v1/iam/instances/$instanceId/keycloak/runs/$runId'
   | '/api/v1/iam/instances/$instanceId/keycloak/reconcile'
+  | '/api/v1/iam/instances/$instanceId/tenant-iam/access-probe'
+  | '/api/v1/iam/instances/$instanceId/modules/assign'
+  | '/api/v1/iam/instances/$instanceId/modules/revoke'
+  | '/api/v1/iam/instances/$instanceId/modules/seed-iam-baseline'
   | '/api/v1/iam/instances/$instanceId/activate'
   | '/api/v1/iam/instances/$instanceId/suspend'
   | '/api/v1/iam/instances/$instanceId/archive'
   | '/api/v1/iam/contents'
   | '/api/v1/iam/contents/$contentId'
   | '/api/v1/iam/contents/$contentId/history'
+  | '/api/v1/iam/media'
+  | '/api/v1/iam/media/references'
+  | '/api/v1/iam/media/upload-sessions'
+  | '/api/v1/iam/media/upload-sessions/$uploadSessionId/complete'
+  | '/api/v1/iam/media/$assetId'
+  | '/api/v1/iam/media/$assetId/usage'
+  | '/api/v1/iam/media/$assetId/delivery'
   | '/api/v1/iam/legal-texts'
   | '/api/v1/iam/legal-texts/$legalTextVersionId'
   | '/api/v1/iam/admin/reconcile'
@@ -99,12 +110,23 @@ export const authRoutePaths = [
   '/api/v1/iam/instances/$instanceId/keycloak/execute',
   '/api/v1/iam/instances/$instanceId/keycloak/runs/$runId',
   '/api/v1/iam/instances/$instanceId/keycloak/reconcile',
+  '/api/v1/iam/instances/$instanceId/tenant-iam/access-probe',
+  '/api/v1/iam/instances/$instanceId/modules/assign',
+  '/api/v1/iam/instances/$instanceId/modules/revoke',
+  '/api/v1/iam/instances/$instanceId/modules/seed-iam-baseline',
   '/api/v1/iam/instances/$instanceId/activate',
   '/api/v1/iam/instances/$instanceId/suspend',
   '/api/v1/iam/instances/$instanceId/archive',
   '/api/v1/iam/contents',
   '/api/v1/iam/contents/$contentId',
   '/api/v1/iam/contents/$contentId/history',
+  '/api/v1/iam/media',
+  '/api/v1/iam/media/references',
+  '/api/v1/iam/media/upload-sessions',
+  '/api/v1/iam/media/upload-sessions/$uploadSessionId/complete',
+  '/api/v1/iam/media/$assetId',
+  '/api/v1/iam/media/$assetId/usage',
+  '/api/v1/iam/media/$assetId/delivery',
   '/api/v1/iam/legal-texts',
   '/api/v1/iam/legal-texts/$legalTextVersionId',
   '/api/v1/iam/admin/reconcile',

@@ -9,6 +9,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./encryption": {
+      "types": "./dist/encryption.d.ts",
+      "default": "./dist/encryption.js"
     }
   },
   "dependencies": {

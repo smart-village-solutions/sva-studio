@@ -22,7 +22,10 @@
     "lint": {
       "executor": "@nx/eslint:lint",
       "options": {
-        "lintFilePatterns": ["packages/plugin-sdk/src/**/*.{ts,tsx,js,jsx}"]
+        "lintFilePatterns": [
+          "packages/plugin-sdk/src/**/*.{ts,tsx,js,jsx}",
+          "packages/plugin-sdk/tests/**/*.{ts,tsx,js,jsx}"
+        ]
       }
     },
     "test:unit": {

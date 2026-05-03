@@ -8,7 +8,7 @@ flowchart TD
     E --> F["HTML an Browser"]
 
     C -->|Server Function aus UI| G["ServerFn in sva-studio-react"]
-    G --> H["@sva/sdk\nRequest-Kontext / Logging"]
+    G --> H["@sva/server-runtime\nRequest-Kontext / Logging"]
     H --> I["@sva/auth-runtime\nSession / Guards"]
     I --> J{"Fachlogik"}
 

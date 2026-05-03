@@ -1,10 +1,18 @@
 import React from 'react';
-import { Link, useNavigate, useParams } from '@tanstack/react-router';
-import { usePluginTranslation } from '@sva/plugin-sdk';
+import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router';
+import {
+  findHostMediaReferenceAssetId,
+  listHostMediaAssets,
+  listHostMediaReferencesByTarget,
+  replaceHostMediaReferences,
+  toHostMediaFieldOptions,
+  usePluginTranslation,
+} from '@sva/plugin-sdk';
 import {
   Button,
   Checkbox,
   Input,
+  MediaReferenceField,
   StudioDetailPageTemplate,
   StudioEmptyState,
   StudioErrorState,
@@ -13,11 +21,14 @@ import {
   StudioFormSummary,
   StudioLoadingState,
   StudioOverviewPageTemplate,
+  StudioDataTable,
   Textarea,
 } from '@sva/studio-ui-react';
 
 import { createPoi, deletePoi, getPoi, listPoi, PoiApiError, updatePoi } from './poi.api.js';
-import type { PoiContentItem, PoiFormInput } from './poi.types.js';
+import { normalizeListSearch } from './list-pagination.js';
+import { pluginPoiMediaPickers } from './plugin.js';
+import type { PoiContentItem, PoiFormInput, PoiListResult } from './poi.types.js';
 import { validatePoiForm } from './poi.validation.js';
 
 type StatusMessage = {
@@ -101,18 +112,129 @@ const compactForm = (form: PoiFormInput): PoiFormInput => ({
 const errorMessage = (pt: ReturnType<typeof usePluginTranslation>, error: unknown, fallbackKey: string) =>
   error instanceof PoiApiError ? error.message : pt(fallbackKey);
 
+type ListSearchState = Record<string, unknown>;
+
+type ListPaginationState = Readonly<{
+  page: number;
+  pageSize: number;
+  hasNextPage: boolean;
+}>;
+
+type ListPaginationNavProps = Readonly<{
+  ariaLabel: string;
+  pageLabel: string;
+  previousLabel: string;
+  nextLabel: string;
+  pagination: ListPaginationState;
+  onPageChange: (page: number) => void;
+}>;
+
+const updateListSearchPage = (
+  current: ListSearchState,
+  page: number,
+  pageSize: number
+): ListSearchState => ({
+  ...current,
+  page,
+  pageSize,
+});
+
+const PoiListEditAction = ({ id, label }: Readonly<{ id: string; label: string }>) => (
+  <Button asChild variant="outline" size="sm">
+    <Link to="/admin/poi/$id" params={{ id }}>
+      {label}
+    </Link>
+  </Button>
+);
+
+const PoiPaginationNav = ({
+  ariaLabel,
+  pageLabel,
+  previousLabel,
+  nextLabel,
+  pagination,
+  onPageChange,
+}: ListPaginationNavProps) => (
+  <nav aria-label={ariaLabel} className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
+    <p key={pagination.page} aria-live="polite" className="animate-pagination-active">
+      {pageLabel}
+    </p>
+    <div className="flex items-center gap-2">
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        disabled={pagination.page <= 1}
+        onClick={() => onPageChange(Math.max(1, pagination.page - 1))}
+      >
+        {previousLabel}
+      </Button>
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        disabled={!pagination.hasNextPage}
+        onClick={() => onPageChange(pagination.page + 1)}
+      >
+        {nextLabel}
+      </Button>
+    </div>
+  </nav>
+);
+
+const createPoiListColumns = (pt: ReturnType<typeof usePluginTranslation>) => [
+  { id: 'name', header: pt('fields.name'), cell: (item: PoiContentItem) => item.name },
+  { id: 'categoryName', header: pt('fields.categoryName'), cell: (item: PoiContentItem) => item.categoryName ?? '—' },
+  { id: 'active', header: pt('fields.active'), cell: (item: PoiContentItem) => (item.active === false ? '—' : '✓') },
+];
+
 export function PoiListPage() {
   const pt = usePluginTranslation('poi');
-  const [items, setItems] = React.useState<readonly PoiContentItem[]>([]);
+  const navigate = useNavigate();
+  const search = useSearch({ strict: false }) as { readonly page?: number; readonly pageSize?: number };
+  const { page, pageSize } = normalizeListSearch(search);
+  const editLabel = pt('actions.edit');
+  const [result, setResult] = React.useState<PoiListResult>({
+    data: [],
+    pagination: { page, pageSize, hasNextPage: false },
+  });
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
+  const handlePageChange = React.useCallback(
+    (nextPage: number) => {
+      Promise.resolve(
+        navigate({
+          to: '/admin/poi',
+          search: (current: ListSearchState) => updateListSearchPage(current, nextPage, result.pagination.pageSize),
+        })
+      ).catch(() => undefined);
+    },
+    [navigate, result.pagination.pageSize]
+  );
+
+  React.useEffect(() => {
+    if (search.page === page && search.pageSize === pageSize) {
+      return;
+    }
+
+    Promise.resolve(
+      navigate({
+        to: '/admin/poi',
+        replace: true,
+        search: (current: ListSearchState) => updateListSearchPage(current, page, pageSize),
+      })
+    ).catch(() => undefined);
+  }, [navigate, page, pageSize, search.page, search.pageSize]);
+
   React.useEffect(() => {
     let active = true;
-    listPoi()
+    setLoading(true);
+    setError(null);
+    listPoi({ page, pageSize })
       .then((data) => {
         if (active) {
-          setItems(data);
+          setResult(data);
           setError(null);
         }
       })
@@ -129,7 +251,7 @@ export function PoiListPage() {
     return () => {
       active = false;
     };
-  }, [pt]);
+  }, [page, pageSize]);
 
   return (
     <StudioOverviewPageTemplate
@@ -137,41 +259,39 @@ export function PoiListPage() {
       description={pt('list.description')}
       primaryAction={
         <Button asChild>
-          <Link to="/plugins/poi/new">{pt('actions.create')}</Link>
+          <Link to="/admin/poi/new">{pt('actions.create')}</Link>
         </Button>
       }
     >
       {loading ? <StudioLoadingState>{pt('messages.loading')}</StudioLoadingState> : null}
       {error ? <StudioErrorState>{error}</StudioErrorState> : null}
-      {!loading && !error && items.length === 0 ? <StudioEmptyState>{pt('empty.title')}</StudioEmptyState> : null}
-      {!loading && !error && items.length > 0 ? (
-        <div className="overflow-hidden rounded-md border border-border">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/60 text-left">
-              <tr>
-                <th className="px-4 py-3 font-medium">{pt('fields.name')}</th>
-                <th className="px-4 py-3 font-medium">{pt('fields.categoryName')}</th>
-                <th className="px-4 py-3 font-medium">{pt('fields.active')}</th>
-                <th className="px-4 py-3 text-right font-medium">{pt('fields.actions')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((item) => (
-                <tr key={item.id} className="border-t border-border">
-                  <td className="px-4 py-3 font-medium">{item.name}</td>
-                  <td className="px-4 py-3">{item.categoryName ?? '—'}</td>
-                  <td className="px-4 py-3">{item.active === false ? '—' : '✓'}</td>
-                  <td className="px-4 py-3 text-right">
-                    <Button asChild variant="outline" size="sm">
-                      <Link to="/plugins/poi/$contentId" params={{ contentId: item.id }}>
-                        {pt('actions.edit')}
-                      </Link>
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {!loading && !error && result.data.length === 0 ? <StudioEmptyState>{pt('empty.title')}</StudioEmptyState> : null}
+      {!loading && !error && result.data.length > 0 ? (
+        <div className="space-y-4">
+          <StudioDataTable
+            ariaLabel={pt('list.title')}
+            labels={{
+              selectionColumn: pt('fields.actions'),
+              actionsColumn: pt('fields.actions'),
+              loading: pt('messages.loading'),
+              selectAllRows: (label) => label,
+              selectRow: ({ label }) => label,
+            }}
+            data={result.data}
+            columns={createPoiListColumns(pt)}
+            rowActions={(item) => <PoiListEditAction id={item.id} label={editLabel} />}
+            emptyState={null}
+            getRowId={(item) => item.id}
+            selectionMode="none"
+          />
+          <PoiPaginationNav
+            ariaLabel={pt('pagination.ariaLabel')}
+            pageLabel={pt('pagination.pageLabel', { page: result.pagination.page })}
+            previousLabel={pt('pagination.previous')}
+            nextLabel={pt('pagination.next')}
+            pagination={result.pagination}
+            onPageChange={handlePageChange}
+          />
         </div>
       ) : null}
     </StudioOverviewPageTemplate>
@@ -181,13 +301,22 @@ export function PoiListPage() {
 function PoiEditor({ mode }: { readonly mode: 'create' | 'edit' }) {
   const pt = usePluginTranslation('poi');
   const navigate = useNavigate();
-  const params = useParams({ strict: false }) as { readonly contentId?: string };
-  const contentId = params.contentId;
+  const params = useParams({ strict: false }) as { readonly contentId?: string; readonly id?: string };
+  const contentId = params.contentId ?? params.id;
   const [form, setForm] = React.useState<PoiFormInput>(defaultForm);
   const [payloadText, setPayloadText] = React.useState('{}');
+  const [mediaOptions, setMediaOptions] = React.useState<readonly { assetId: string; label: string }[]>([]);
+  const [teaserImageAssetId, setTeaserImageAssetId] = React.useState<string | null>(null);
+  const [existingMediaReferenceCount, setExistingMediaReferenceCount] = React.useState(0);
   const [loading, setLoading] = React.useState(mode === 'edit');
   const [status, setStatus] = React.useState<StatusMessage | null>(null);
   const [payloadError, setPayloadError] = React.useState(false);
+
+  React.useEffect(() => {
+    void listHostMediaAssets({ fetch: globalThis.fetch.bind(globalThis) })
+      .then((assets) => setMediaOptions(toHostMediaFieldOptions(assets)))
+      .catch(() => setMediaOptions([]));
+  }, []);
 
   React.useEffect(() => {
     if (mode !== 'edit' || !contentId) {
@@ -200,6 +329,21 @@ function PoiEditor({ mode }: { readonly mode: 'create' | 'edit' }) {
           const nextForm = itemToForm(item);
           setForm(nextForm);
           setPayloadText(JSON.stringify(nextForm.payload ?? {}, null, 2));
+          void listHostMediaReferencesByTarget({
+            fetch: globalThis.fetch.bind(globalThis),
+            targetType: 'poi',
+            targetId: item.id,
+          })
+            .then((references) => {
+              setExistingMediaReferenceCount(references.length);
+              setTeaserImageAssetId(
+                findHostMediaReferenceAssetId(references, pluginPoiMediaPickers.teaserImage.roles[0])
+              );
+            })
+            .catch(() => {
+              setExistingMediaReferenceCount(0);
+              setTeaserImageAssetId(null);
+            });
         }
       })
       .catch((loadError: unknown) => {
@@ -253,9 +397,26 @@ function PoiEditor({ mode }: { readonly mode: 'create' | 'edit' }) {
     }
     try {
       const saved = mode === 'create' ? await createPoi(compacted) : await updatePoi(contentId as string, compacted);
+      const mediaReferences = teaserImageAssetId
+        ? [
+            {
+              assetId: teaserImageAssetId,
+              role: pluginPoiMediaPickers.teaserImage.roles[0],
+              sortOrder: 0,
+            },
+          ]
+        : [];
+      if (mediaReferences.length > 0 || existingMediaReferenceCount > 0) {
+        await replaceHostMediaReferences({
+          fetch: globalThis.fetch.bind(globalThis),
+          targetType: 'poi',
+          targetId: saved.id,
+          references: mediaReferences,
+        });
+      }
       setStatus({ kind: 'success', text: mode === 'create' ? pt('messages.createSuccess') : pt('messages.updateSuccess') });
       if (mode === 'create') {
-        await navigate({ to: '/plugins/poi/$contentId', params: { contentId: saved.id } });
+        await navigate({ to: '/admin/poi/$id', params: { id: saved.id } });
       }
     } catch (saveError) {
       setStatus({ kind: 'error', text: errorMessage(pt, saveError, 'messages.saveError') });
@@ -268,7 +429,7 @@ function PoiEditor({ mode }: { readonly mode: 'create' | 'edit' }) {
     }
     try {
       await deletePoi(contentId);
-      await navigate({ to: '/plugins/poi' });
+      await navigate({ to: '/admin/poi' });
     } catch (deleteError) {
       setStatus({ kind: 'error', text: errorMessage(pt, deleteError, 'messages.deleteError') });
     }
@@ -284,7 +445,7 @@ function PoiEditor({ mode }: { readonly mode: 'create' | 'edit' }) {
       description={mode === 'create' ? pt('editor.createDescription') : pt('editor.editDescription')}
       actions={
         <Button asChild variant="outline">
-          <Link to="/plugins/poi">{pt('actions.back')}</Link>
+          <Link to="/admin/poi">{pt('actions.back')}</Link>
         </Button>
       }
     >
@@ -304,6 +465,15 @@ function PoiEditor({ mode }: { readonly mode: 'create' | 'edit' }) {
         <StudioField id="poi-mobile-description" label={pt('fields.mobileDescription')}>
           <Textarea id="poi-mobile-description" value={form.mobileDescription ?? ''} onChange={(event) => setField('mobileDescription', event.target.value)} rows={4} />
         </StudioField>
+        <MediaReferenceField
+          id="poi-teaser-image"
+          label={pt('fields.teaserImage')}
+          value={teaserImageAssetId}
+          options={mediaOptions}
+          onChange={setTeaserImageAssetId}
+          placeholder={pt('fields.mediaPlaceholder')}
+          clearLabel={pt('actions.clearMedia')}
+        />
         <StudioField id="poi-active" label={pt('fields.active')}>
           <Checkbox id="poi-active" checked={form.active !== false} onChange={(event) => setField('active', event.target.checked)} />
         </StudioField>

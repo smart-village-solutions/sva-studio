@@ -1,58 +1,47 @@
 import {
-  definePluginActions,
   definePluginAuditEvents,
-  definePluginContentTypes,
+  defineMediaPickerDefinition,
+  createStandardContentPluginActionIds,
+  createStandardContentPluginContribution,
   type PluginDefinition,
 } from '@sva/plugin-sdk';
 
 import { EVENTS_CONTENT_TYPE } from './events.constants.js';
-import { EventsCreatePage, EventsEditPage, EventsListPage } from './events.pages.js';
 
-export const pluginEventsActionIds = {
-  create: 'events.create',
-  edit: 'events.edit',
-  update: 'events.update',
-  delete: 'events.delete',
+export const pluginEventsActionIds = createStandardContentPluginActionIds('events');
+
+const standardEventsContribution = createStandardContentPluginContribution({
+  pluginId: 'events',
+  displayName: 'Events',
+  contentType: EVENTS_CONTENT_TYPE,
+  titleKey: 'events.navigation.title',
+  listBindingKey: 'eventsList',
+  detailBindingKey: 'eventsDetail',
+  editorBindingKey: 'eventsEditor',
+});
+
+export const pluginEventsPermissionDefinitions = standardEventsContribution.permissions;
+
+export const pluginEventsActionDefinitions = standardEventsContribution.actions;
+
+export const pluginEventsMediaPickers = {
+  headerImage: defineMediaPickerDefinition({
+    roles: ['header_image'],
+    allowedMediaTypes: ['image'],
+    presetKey: 'hero',
+  }),
 } as const;
-
-export const pluginEventsActionDefinitions = definePluginActions('events', [
-  { id: pluginEventsActionIds.create, titleKey: 'events.actions.create', requiredAction: 'content.create' },
-  { id: pluginEventsActionIds.edit, titleKey: 'events.actions.edit', requiredAction: 'content.read' },
-  { id: pluginEventsActionIds.update, titleKey: 'events.actions.update', requiredAction: 'content.updatePayload' },
-  { id: pluginEventsActionIds.delete, titleKey: 'events.actions.delete', requiredAction: 'content.delete' },
-] as const);
 
 export const pluginEvents: PluginDefinition = {
   id: 'events',
   displayName: 'Events',
-  routes: [
-    { id: 'events.list', path: '/plugins/events', guard: 'content.read', component: EventsListPage },
-    {
-      id: 'events.create',
-      path: '/plugins/events/new',
-      guard: 'content.create',
-      actionId: pluginEventsActionIds.create,
-      component: EventsCreatePage,
-    },
-    {
-      id: 'events.edit',
-      path: '/plugins/events/$contentId',
-      guard: 'content.read',
-      actionId: pluginEventsActionIds.edit,
-      component: EventsEditPage,
-    },
-  ],
-  navigation: [
-    {
-      id: 'events.navigation',
-      to: '/plugins/events',
-      titleKey: 'events.navigation.title',
-      section: 'dataManagement',
-      requiredAction: 'content.read',
-    },
-  ],
+  routes: [],
+  navigation: standardEventsContribution.navigation,
   actions: pluginEventsActionDefinitions,
-  contentTypes: definePluginContentTypes('events', [{ contentType: EVENTS_CONTENT_TYPE, displayName: 'Events' }]),
+  permissions: pluginEventsPermissionDefinitions,
+  moduleIam: standardEventsContribution.moduleIam,
+  contentTypes: standardEventsContribution.contentTypes,
+  adminResources: standardEventsContribution.adminResources,
   auditEvents: definePluginAuditEvents('events', []),
   translations: {
     de: {

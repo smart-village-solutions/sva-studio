@@ -16,7 +16,8 @@
     }
   },
   "dependencies": {
-    "@sva/core": "workspace:*"
+    "@sva/core": "workspace:*",
+    "@sva/media": "workspace:*"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^4.1.5",

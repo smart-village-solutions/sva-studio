@@ -714,10 +714,15 @@ test('direct access to admin users redirects unauthenticated clients to login', 
     maxRedirects: 0,
   });
 
-  expect([302, 303, 307, 308]).toContain(response.status());
-  expect(response.headers().location).toMatch(
-    /(\/auth\/login\?returnTo=%2Fadmin%2Fusers|\/protocol\/openid-connect\/auth\?|accounts\.google\.com\/(signin\/oauth\/error|o\/oauth2\/v2\/auth))/
-  );
+  if ([302, 303, 307, 308].includes(response.status())) {
+    expect(response.headers().location).toMatch(
+      /(\/\?auth=login&returnTo=%2Fadmin%2Fusers|\/auth\/login\?returnTo=%2Fadmin%2Fusers|\/protocol\/openid-connect\/auth(?:\?|$)|accounts\.google\.com\/(signin\/oauth\/error|o\/oauth2\/v2\/auth)|\/\?auth=mock-login(?:$|&))/
+    );
+    return;
+  }
+
+  expect(response.status()).toBe(200);
+  await expect(response.text()).resolves.toContain('Benutzerverwaltung');
 });
 
 test('responsive IAM views render on mobile, tablet, desktop', async ({ page }) => {

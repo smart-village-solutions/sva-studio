@@ -38,6 +38,30 @@ export {
   definePluginAdminResources,
   mergeAdminResourceDefinitions,
 } from './admin-resources.js';
+export type { MediaPickerDefinition, MediaPickerSelectionMode } from './media-picker.js';
+export { defineMediaPickerDefinition } from './media-picker.js';
+export type { HostMediaAssetListItem, HostMediaReferenceSelection } from './media-picker-client.js';
+export { listHostMediaAssets, listHostMediaReferencesByTarget, replaceHostMediaReferences } from './media-picker-client.js';
+export type { HostMediaFieldOption } from './content-ui-utils.js';
+export {
+  compactOptionalString,
+  findHostMediaReferenceAssetId,
+  fromDatetimeLocalValue,
+  toDatetimeLocalValue,
+  toHostMediaFieldOptions,
+} from './content-ui-utils.js';
+export type {
+  MainserverCrudClientOptions,
+  MainserverErrorFactory,
+  MainserverListQuery,
+} from './mainserver-client.js';
+export {
+  buildMainserverListUrl,
+  createMainserverCrudClient,
+  createMainserverJsonRequestHeaders,
+  MainserverApiError,
+  requestMainserverJson,
+} from './mainserver-client.js';
 export type {
   ContentTypeActionDefinition,
   ContentTypeDefinition,
@@ -58,8 +82,13 @@ export type {
   PluginAuditEventDefinition,
   PluginAuditEventRegistryEntry,
   PluginDefinition,
+  PluginModuleIamContract,
+  PluginModuleIamRegistryEntry,
+  PluginModuleIamSystemRoleDefinition,
   PluginNavigationItem,
   PluginNavigationSection,
+  PluginPermissionDefinition,
+  PluginPermissionRegistryEntry,
   PluginRouteDefinition,
   PluginRouteGuard,
   PluginTranslations,
@@ -67,17 +96,40 @@ export type {
 export {
   createPluginActionRegistry,
   createPluginAuditEventRegistry,
+  createPluginModuleIamRegistry,
+  createPluginPermissionRegistry,
   createPluginRegistry,
   definePluginActions,
   definePluginAuditEvents,
+  definePluginModuleIamContract,
+  definePluginPermissions,
   mergePluginActions,
   mergePluginAdminResourceDefinitions,
   mergePluginAuditEventDefinitions,
   mergePluginContentTypes,
+  mergePluginModuleIamContracts,
   mergePluginNavigationItems,
+  mergePluginPermissions,
   mergePluginRouteDefinitions,
   mergePluginTranslations,
 } from './plugins.js';
+export type {
+  StandardContentAdminResourceOptions,
+  StandardContentPluginActionIds,
+  StandardContentPluginActionName,
+  StandardContentPluginActionOptions,
+  StandardContentPluginContributionOptions,
+} from './standard-content-plugin.js';
+export {
+  createStandardContentAdminResource,
+  createStandardContentModuleIamContract,
+  createStandardContentPluginActionIds,
+  createStandardContentPluginActions,
+  createStandardContentPluginContribution,
+  createStandardContentPluginPermissions,
+  createStandardContentPluginSystemRoles,
+  createStandardContentTypeDefinition,
+} from './standard-content-plugin.js';
 export type {
   PluginTranslationResolver,
   PluginTranslationVariables,

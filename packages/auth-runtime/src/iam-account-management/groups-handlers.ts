@@ -40,6 +40,7 @@ const legacyGroupReadHandlers = createLegacyGroupReadHandlers({
   getWorkspaceContext,
   isUuid,
   jsonResponse,
+  logger,
   readPathSegment,
   requireRoles,
   resolveActorInfo,

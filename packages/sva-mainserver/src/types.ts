@@ -40,6 +40,23 @@ export type SvaMainserverConnectionInput = {
   readonly keycloakSubject: string;
 };
 
+export type SvaMainserverListQuery = {
+  readonly page: number;
+  readonly pageSize: number;
+};
+
+export type SvaMainserverListPagination = {
+  readonly page: number;
+  readonly pageSize: number;
+  readonly hasNextPage: boolean;
+  readonly total?: number;
+};
+
+export type SvaMainserverListResult<TItem> = {
+  readonly data: readonly TItem[];
+  readonly pagination: SvaMainserverListPagination;
+};
+
 export type SvaMainserverNewsPayload = {
   readonly teaser?: string;
   readonly body?: string;

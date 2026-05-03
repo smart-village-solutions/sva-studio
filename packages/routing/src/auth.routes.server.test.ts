@@ -120,6 +120,10 @@ const authServerMocks = vi.hoisted(() => {
       executeInstanceKeycloakProvisioning: vi.fn(async () => response('executeInstanceKeycloakProvisioningHandler')),
       getInstanceKeycloakProvisioningRun: vi.fn(async () => response('getInstanceKeycloakProvisioningRunHandler')),
       reconcileInstanceKeycloak: vi.fn(async () => response('reconcileInstanceKeycloakHandler')),
+      probeTenantIamAccess: vi.fn(async () => response('probeTenantIamAccessHandler')),
+      assignInstanceModule: vi.fn(async () => response('assignInstanceModuleHandler')),
+      revokeInstanceModule: vi.fn(async () => response('revokeInstanceModuleHandler')),
+      seedInstanceIamBaseline: vi.fn(async () => response('seedInstanceIamBaselineHandler')),
       activateInstance: vi.fn(async () => response('activateInstanceHandler')),
       suspendInstance: vi.fn(async () => response('suspendInstanceHandler')),
       archiveInstance: vi.fn(async () => response('archiveInstanceHandler')),
@@ -130,6 +134,16 @@ const authServerMocks = vi.hoisted(() => {
     updateContentHandler: vi.fn(async () => response('updateContentHandler')),
     deleteContentHandler: vi.fn(async () => response('deleteContentHandler')),
     getContentHistoryHandler: vi.fn(async () => response('getContentHistoryHandler')),
+    listMediaHandler: vi.fn(async () => response('listMediaHandler')),
+    listMediaReferencesHandler: vi.fn(async () => response('listMediaReferencesHandler')),
+    initializeMediaUploadHandler: vi.fn(async () => response('initializeMediaUploadHandler')),
+    completeMediaUploadHandler: vi.fn(async () => response('completeMediaUploadHandler')),
+    getMediaHandler: vi.fn(async () => response('getMediaHandler')),
+    updateMediaHandler: vi.fn(async () => response('updateMediaHandler')),
+    deleteMediaHandler: vi.fn(async () => response('deleteMediaHandler')),
+    getMediaUsageHandler: vi.fn(async () => response('getMediaUsageHandler')),
+    getMediaDeliveryHandler: vi.fn(async () => response('getMediaDeliveryHandler')),
+    replaceMediaReferencesHandler: vi.fn(async () => response('replaceMediaReferencesHandler')),
     listOrganizationsHandler: vi.fn(async () => response('listOrganizationsHandler')),
     createOrganizationHandler: vi.fn(async () => response('createOrganizationHandler')),
     getOrganizationHandler: vi.fn(async () => response('getOrganizationHandler')),
@@ -212,6 +226,22 @@ describe('auth.routes.server', () => {
     expect(authServerMocks.healthLiveHandler).toHaveBeenCalled();
   });
 
+  it('dispatches media upload completion routes to the auth runtime', async () => {
+    const handlers = resolveAuthHandlers('/api/v1/iam/media/upload-sessions/$uploadSessionId/complete');
+    expect(handlers?.POST).toBeDefined();
+
+    const post = handlers?.POST;
+    if (!post) {
+      throw new Error('Expected POST handler to be defined');
+    }
+
+    await post({
+      request: new Request('http://localhost/api/v1/iam/media/upload-sessions/upload-1/complete', { method: 'POST' }),
+    });
+
+    expect(authServerMocks.completeMediaUploadHandler).toHaveBeenCalled();
+  });
+
   it('executes all mapped handlers for all routes', async () => {
     for (const path of authRoutePaths) {
       const handlers = resolveAuthHandlers(path);
@@ -268,6 +298,13 @@ describe('auth.routes.server', () => {
     expect(authServerMocks.updateContentHandler).toHaveBeenCalled();
     expect(authServerMocks.deleteContentHandler).toHaveBeenCalled();
     expect(authServerMocks.getContentHistoryHandler).toHaveBeenCalled();
+    expect(authServerMocks.listMediaHandler).toHaveBeenCalled();
+    expect(authServerMocks.initializeMediaUploadHandler).toHaveBeenCalled();
+    expect(authServerMocks.getMediaHandler).toHaveBeenCalled();
+    expect(authServerMocks.updateMediaHandler).toHaveBeenCalled();
+    expect(authServerMocks.getMediaUsageHandler).toHaveBeenCalled();
+    expect(authServerMocks.getMediaDeliveryHandler).toHaveBeenCalled();
+    expect(authServerMocks.replaceMediaReferencesHandler).toHaveBeenCalled();
     expect(authServerMocks.instanceRegistryHandlers.updateInstance).toHaveBeenCalled();
     expect(authServerMocks.instanceRegistryHandlers.getInstanceKeycloakStatus).toHaveBeenCalled();
     expect(authServerMocks.instanceRegistryHandlers.getInstanceKeycloakPreflight).toHaveBeenCalled();
@@ -275,6 +312,10 @@ describe('auth.routes.server', () => {
     expect(authServerMocks.instanceRegistryHandlers.executeInstanceKeycloakProvisioning).toHaveBeenCalled();
     expect(authServerMocks.instanceRegistryHandlers.getInstanceKeycloakProvisioningRun).toHaveBeenCalled();
     expect(authServerMocks.instanceRegistryHandlers.reconcileInstanceKeycloak).toHaveBeenCalled();
+    expect(authServerMocks.instanceRegistryHandlers.probeTenantIamAccess).toHaveBeenCalled();
+    expect(authServerMocks.instanceRegistryHandlers.assignInstanceModule).toHaveBeenCalled();
+    expect(authServerMocks.instanceRegistryHandlers.revokeInstanceModule).toHaveBeenCalled();
+    expect(authServerMocks.instanceRegistryHandlers.seedInstanceIamBaseline).toHaveBeenCalled();
     expect(authServerMocks.listLegalTextsHandler).toHaveBeenCalled();
     expect(authServerMocks.createLegalTextHandler).toHaveBeenCalled();
     expect(authServerMocks.updateLegalTextHandler).toHaveBeenCalled();

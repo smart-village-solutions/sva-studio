@@ -200,6 +200,26 @@ Schulden auf IST-Basis.
    - Wahrscheinlichkeit: mittel
    - Maßnahme: Event-/POI-Adapter eng am Snapshot halten, Delete-Record-Types in Staging verifizieren, `openspec validate`, `pnpm check:server-runtime` und Mainserver-Adaptertests vor Rollout ausführen
 
+35. Divergenz zwischen global registrierten Plugins und instanzbezogener Modulfreigabe
+   - Impact: hoch (UI oder Routing könnten Module rendern, die fachlich nicht freigegeben sind)
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: `assignedModules` als kanonischen Session- und Routing-Kontext verwenden, Plugin-Navigation fail-closed ausblenden und Modul-IAM-Baseline nach jeder Mutation neu herstellen
+
+36. Synchrone Medienverarbeitung im MVP-Upload-Pfad
+   - Impact: mittel bis hoch (größere Bilder oder zusätzliche Presets erhöhen Latenz und koppeln Verarbeitungsfehler direkt an Request-Antworten)
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: Folge-Change `openspec/changes/add-media-async-processing/` für Queue-/Worker-Pfad, Retry-Strategie und entkoppelte Variantenverarbeitung umsetzen
+
+37. Erweiterung des gemeinsamen Modul-IAM-Katalogs bleibt manuell paketgebunden
+   - Impact: mittel (neue Module benötigen weiterhin eine bewusste Erweiterung des gemeinsamen Katalogs und der Paritätstests)
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: `@sva/studio-module-iam` als einzige Ergänzungsstelle behandeln, Plugin-/Host-/Runtime-Paritätstests beim Hinzufügen weiterer Module obligatorisch mitziehen
+
+38. Kein belastbarer globaler Count-Vertrag für Mainserver-Plugin-Listen
+   - Impact: mittel (UI kann keine exakten Totalseiten garantieren und muss sich auf Vor/Zurück sowie `hasNextPage` stützen)
+   - Wahrscheinlichkeit: hoch
+   - Maßnahme: `hasNextPage` streng auf sichtbare Ergebnisse stützen, `total` optional halten und einen späteren Upstream-Count nur kontrolliert als Vertragserweiterung einführen
+
 ### Technische Schulden (Auswahl)
 
 - Teilweise No-Op Testtargets in Libraries
@@ -211,7 +231,9 @@ Schulden auf IST-Basis.
 - Risiko von Scope-Bleeding bei schnellen IAM-Iterationen ohne harte Gate-Disziplin
 - Mehrere historische IAM-Hotspots sind bewusst als tracked findings mit Refactoring-Backlog dokumentiert
 - Nach dem Package-Hard-Cut verbleibt Restkomplexität gezielt in fachlichen Zielpackages wie `auth-runtime`, `iam-admin`, `iam-governance`, `instance-registry` und `data-repositories`; alte Sammelpackages sind dafür kein neuer Zielort.
+- `@sva/sdk` ist aus dem aktiven Workspace entfernt; verbleibende Restschuld betrifft nur noch historische Reports und archivierte Referenzen ausserhalb aktiver Normquellen.
 - Einige Tests und historische Berichte referenzieren weiterhin alte Pfadnamen; neue fachliche Tests sollen im Zielpackage entstehen und nur dort am Altpfad bleiben, wo Kompatibilität explizit geprüft wird.
+- Dünne Host-Bindungen in `apps/sva-studio-react` fuer TanStack-`createServerFn`, Request-Matching und Server-Dispatch bleiben bewusst im App-Layer; Folgearbeit darf diese Transportrolle nicht mit fachlicher Package-Ownership verwechseln.
 - Route-Komponenten außerhalb der Shell verwenden noch teilweise direkte `slate-*`-/`emerald-*`-Farben und sind nicht vollständig tokenisiert
 - Gruppen sind im ersten Schnitt reine Rollenbündel; direkte Gruppen-Permissions und ein separates Gruppen-Gültigkeitsmanagement pro UI-Flow bleiben Folgearbeit
 - Die Geo-Hierarchie ist intern bereits auswertbar, besitzt aber noch keine dedizierte Admin-Oberfläche oder externe Pflegepipeline
@@ -219,6 +241,7 @@ Schulden auf IST-Basis.
 - Die Live-Paritäts-Wiederverwendung für identische Digests reduziert Drift-Risiko, ersetzt aber keinen späteren echten Off-Cluster-Paritäts-Pfad für neue Digests
 - Plugin-Registrierung ist jetzt metadatenbasiert, aber noch nicht runtime-dynamisch
 - Content-Payloads bleiben in Postgres generisch als JSON abgelegt; Typsicherheit wird aktuell im Serververtrag und nicht in der Datenbank erzwungen
+- Medienvarianten werden im MVP synchron beim Upload-Abschluss erzeugt; ein entkoppelter Async-Worker ist als Folgearbeit unter `openspec/changes/add-media-async-processing/` vorgesehen
 
 ### Nachverfolgung
 

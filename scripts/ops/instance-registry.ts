@@ -6,9 +6,10 @@ import { isInstanceStatus, type InstanceRealmMode, type InstanceStatus } from '.
 import { createInstanceRegistryService } from '../../packages/auth-runtime/src/iam-instance-registry/service.js';
 import { createInstanceRegistryRepository } from '../../packages/data/src/instance-registry/index.js';
 import { invalidateInstanceRegistryHost } from '../../packages/data/src/instance-registry/server.js';
-import { createSdkLogger } from '../../packages/sdk/src/logger/index.server.js';
+import { createSdkLogger } from '../../packages/server-runtime/src/logger/index.server.js';
 
 import type { SqlExecutor, SqlStatement } from '../../packages/data/src/iam/repositories/types.js';
+import type { InstanceRegistryRepository } from '../../packages/data-repositories/src/instance-registry/index.js';
 
 type Command = 'list' | 'create' | 'activate' | 'suspend' | 'archive' | 'backfill-admin-client';
 
@@ -237,11 +238,24 @@ const createExecutor = (pool: Pool): SqlExecutor => ({
   },
 });
 
+const createCliRepository = (executor: SqlExecutor): InstanceRegistryRepository => {
+  const repository = createInstanceRegistryRepository(executor);
+  return {
+    ...repository,
+    async getLatestTenantIamAccessProbe() {
+      return null;
+    },
+    async getRoleReconcileSummary() {
+      return null;
+    },
+  };
+};
+
 const withTransaction = async <T>(pool: Pool, work: (service: ReturnType<typeof createInstanceRegistryService>) => Promise<T>) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    const repository = createInstanceRegistryRepository({
+    const repository = createCliRepository({
       execute: async <TRow = Record<string, unknown>>(statement: SqlStatement) => {
         const result = await client.query(statement.text, [...statement.values]);
         return {
@@ -283,7 +297,7 @@ const run = async () => {
 
   try {
     if (options.command === 'list') {
-      const repository = createInstanceRegistryRepository(createExecutor(pool));
+      const repository = createCliRepository(createExecutor(pool));
       const service = createInstanceRegistryService({
         repository,
         invalidateHost: invalidateInstanceRegistryHost,

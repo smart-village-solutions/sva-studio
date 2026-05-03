@@ -34,6 +34,14 @@ export interface CoverageSummary {
     functions?: { pct?: number };
     branches?: { pct?: number };
   };
+  [filePath: string]:
+    | {
+        lines?: { total?: number; covered?: number; pct?: number };
+        statements?: { total?: number; covered?: number; pct?: number };
+        functions?: { total?: number; covered?: number; pct?: number };
+        branches?: { total?: number; covered?: number; pct?: number };
+      }
+    | undefined;
 }
 
 interface GateError {
@@ -308,7 +316,47 @@ export function projectFromCoveragePath(coverageSummaryPath: string): string | n
   return path.basename(projectRoot);
 }
 
-export function toMetricValues(summary: CoverageSummary): MetricFloors {
+export function toMetricValues(summary: CoverageSummary, projectRoot?: string): MetricFloors {
+  if (projectRoot) {
+    const normalizedProjectRoot = `${path.resolve(projectRoot)}${path.sep}`;
+    const counters = Object.entries(summary).reduce<
+      Record<CoverageMetric, { total: number; covered: number }>
+    >(
+      (acc, [filePath, metrics]) => {
+        if (
+          filePath === 'total' ||
+          !path.resolve(filePath).startsWith(normalizedProjectRoot) ||
+          !metrics
+        ) {
+          return acc;
+        }
+
+        for (const metric of ['lines', 'statements', 'functions', 'branches'] as const) {
+          acc[metric].total += Number(metrics[metric]?.total ?? 0);
+          acc[metric].covered += Number(metrics[metric]?.covered ?? 0);
+        }
+
+        return acc;
+      },
+      {
+        lines: { total: 0, covered: 0 },
+        statements: { total: 0, covered: 0 },
+        functions: { total: 0, covered: 0 },
+        branches: { total: 0, covered: 0 },
+      }
+    );
+
+    const hasScopedEntries = Object.values(counters).some(({ total }) => total > 0);
+    if (hasScopedEntries) {
+      return {
+        lines: toPct(counters.lines.covered, counters.lines.total),
+        statements: toPct(counters.statements.covered, counters.statements.total),
+        functions: toPct(counters.functions.covered, counters.functions.total),
+        branches: toPct(counters.branches.covered, counters.branches.total),
+      };
+    }
+  }
+
   const total = summary.total ?? {};
   return {
     lines: Number(total.lines?.pct ?? 0),
@@ -339,6 +387,14 @@ export function mergeGlobal(projectMetricsList: MetricFloors[]): MetricFloors {
     functions: totals.functions / projectMetricsList.length,
     branches: totals.branches / projectMetricsList.length,
   };
+}
+
+function selectProjectsForGlobalFloors(
+  policy: CoveragePolicy,
+  activeProjects: Array<[string, MetricFloors]>
+): Array<[string, MetricFloors]> {
+  const explicitlyFlooredProjects = new Set(Object.keys(policy.perProjectFloors ?? {}));
+  return activeProjects.filter(([projectName]) => !explicitlyFlooredProjects.has(projectName));
 }
 
 function formatPct(value: number): string {
@@ -380,7 +436,8 @@ function loadCoverageData(rootDir: string): LoadedCoverageData {
       return acc;
     }
 
-    acc[projectName] = toMetricValues(readJson<CoverageSummary>(summaryPath));
+    const projectRoot = path.dirname(path.dirname(summaryPath));
+    acc[projectName] = toMetricValues(readJson<CoverageSummary>(summaryPath), projectRoot);
     return acc;
   }, {});
 
@@ -548,7 +605,8 @@ function evaluateFloors(
   errors.push(...projectFloorErrors);
 
   if (requireSummaries) {
-    const globalCoverage = mergeGlobal(activeProjects.map(([, values]) => values));
+    const globalProjects = selectProjectsForGlobalFloors(policy, activeProjects);
+    const globalCoverage = mergeGlobal(globalProjects.map(([, values]) => values));
     const globalFloorErrors = metrics.flatMap((metric) => {
       const floor = Number(policy.globalFloors?.[metric] ?? 0);
       const current = Number(globalCoverage[metric] ?? 0);
@@ -672,7 +730,10 @@ function generateReport(policy: CoveragePolicy, projects: Record<string, MetricF
   const sortedProjects = Object.entries(projects).sort(([a], [b]) => a.localeCompare(b));
   const exemptProjects = new Set<string>(policy.exemptProjects ?? []);
   const activeProjects = sortedProjects.filter(([name]) => !exemptProjects.has(name));
-  const globalCoverage = mergeGlobal(activeProjects.map(([, values]) => values));
+  const globalProjects = selectProjectsForGlobalFloors(policy, activeProjects);
+  const globalCoverage = mergeGlobal(globalProjects.map(([, values]) => values));
+  const globalLabel =
+    globalProjects.length > 0 ? 'Global coverage (default-floor projects avg)' : 'Global coverage (no default-floor projects)';
 
   const header = ['## Coverage Summary', '', '| Project | Lines | Statements | Functions | Branches |', '| --- | ---: | ---: | ---: | ---: |'];
   const rows = sortedProjects.map(
@@ -681,7 +742,7 @@ function generateReport(policy: CoveragePolicy, projects: Record<string, MetricF
   );
   const footer = [
     '',
-    `Global coverage (avg): lines ${formatPct(globalCoverage.lines)}, statements ${formatPct(globalCoverage.statements)}, functions ${formatPct(globalCoverage.functions)}, branches ${formatPct(globalCoverage.branches)}`,
+    `${globalLabel}: lines ${formatPct(globalCoverage.lines)}, statements ${formatPct(globalCoverage.statements)}, functions ${formatPct(globalCoverage.functions)}, branches ${formatPct(globalCoverage.branches)}`,
   ];
 
   return [...header, ...rows, ...footer].join('\n') + '\n';

@@ -1039,3 +1039,190 @@ The system SHALL allow plugin custom views only when they preserve Studio shell,
 - **THEN** the contribution is rejected or changed to compose `@sva/studio-ui-react`
 - **AND** domain-specific wrappers remain allowed when they preserve shared Studio UI semantics
 
+### Requirement: Tenant-IAM-Betriebsblock auf der Instanz-Detailseite
+
+Das System MUST auf `/admin/instances/:instanceId` einen eigenen Tenant-IAM-Betriebsblock bereitstellen, der Konfiguration, Rechteprobe und Reconcile fuer die gewaehlte Instanz getrennt darstellt und sich in eine progressive Seitenstruktur einordnet.
+
+#### Scenario: Instanz-Detailseite zeigt getrennte Tenant-IAM-Abschnitte
+
+- **WENN** ein berechtigter Operator die Detailseite einer Instanz oeffnet
+- **DANN** zeigt die Seite einen separaten Tenant-IAM-Bereich oder eine gleichwertige drill-down-faehige Tenant-IAM-Sicht
+- **UND** sind dort mindestens `Konfiguration`, `Rechteprobe`, `Reconcile` und ein zusammengefasster Gesamtzustand sichtbar
+- **UND** bleibt dieser Bereich vom bestehenden Keycloak-Setup- und Provisioning-Bereich unterscheidbar
+- **UND** konkurriert er in der Standardansicht nicht gleichrangig mit Konfigurationsformularen, Historie und technischer Schrittliste
+
+#### Scenario: Tenant-IAM-Befund enthaelt Diagnose und Korrelation
+
+- **WENN** die Detailseite einen degradierten oder blockierten Tenant-IAM-Zustand zeigt
+- **DANN** enthaelt die UI verstaendliche Diagnoseinformationen wie Fehlercode, letzten Prueflauf oder `requestId`
+- **UND** kann ein Operator den Befund ohne Wechsel in eine andere Admin-Seite einordnen
+
+#### Scenario: Tenant-IAM erscheint als Betriebsachse statt als konkurrierender Hauptblock
+
+- **WENN** die Standardansicht der Instanz geladen wird
+- **DANN** ist Tenant-IAM als eigenstaendige Betriebsachse sichtbar
+- **UND** bleibt klar unterscheidbar, ob der Befund `Konfiguration`, `Zugriff` oder `Reconcile` betrifft
+- **UND** konkurriert dieser Befund in der Uebersicht nicht gleichrangig mit Formularen, Vollhistorie und technischen Rohlisten
+
+### Requirement: Tenant-IAM-Aktionen bleiben kontextbezogen und begrenzt
+
+Das System MUST auf der Instanz-Detailseite nur fachlich sinnvolle Tenant-IAM-Aktionen anbieten, diese dem sichtbaren Befund zuordnen und sie gegenueber der primaeren Seitenaktion klar als Spezial- oder Folgeaktionen abstufen.
+
+#### Scenario: Detailseite verknuepft bestehende Reparaturpfade gezielt
+
+- **WENN** ein sichtbarer Tenant-IAM-Befund durch eine bestehende Aktion adressierbar ist
+- **DANN** bietet die Detailseite genau diese Aktion kontextbezogen an
+- **UND** kann sie dafuer bestehende Provisioning-, Secret-, Reset- oder Reconcile-Pfade nutzen
+- **UND** werden irrelevante oder nicht wirksame Aktionen nicht vorgeschlagen
+
+#### Scenario: Rechteprobe ist als eigene Operator-Aktion verfuegbar
+
+- **WENN** ein Operator die tenantlokale IAM-Betriebsfaehigkeit gezielt pruefen moechte
+- **DANN** bietet die Detailseite eine explizite Aktion fuer die Tenant-IAM-Rechteprobe an
+- **UND** zeigt nach Abschluss den aktualisierten Access-Zustand im Tenant-IAM-Bereich
+
+#### Scenario: Detailseite bleibt trotz Rechteprobe reaktionsfaehig
+
+- **WENN** ein Operator die Instanz-Detailseite oeffnet, ohne eine Rechteprobe anzustossen
+- **DANN** rendert die Seite den vorhandenen Tenant-IAM-Befund ohne blockierende Zusatzpruefung
+- **UND** zeigt bei Bedarf klar an, dass die Rechteprobe gezielt ausgeloest werden kann
+
+#### Scenario: UI zeigt unbestimmte Access-Lage ehrlich an
+
+- **WENN** fuer `access` noch keine belastbare Rechteprobe oder aequivalente Access-Evidenz vorliegt
+- **DANN** zeigt die Detailseite diesen Teilzustand als `unknown` oder fachlich gleichwertig an
+- **UND** suggeriert nicht, dass aus einer gruenen Strukturpruefung bereits betriebliche Tenant-IAM-Rechte folgen
+
+### Requirement: Progressive Informationsarchitektur auf der Instanz-Detailseite
+
+Das System MUST die Instanz-Detailseite unter `/admin/instances/:instanceId` so strukturieren, dass aktuelle Betriebsbewertung, Konfiguration, technische Diagnose und Historie nicht mehr als gleichrangiger Lang-Scrollbereich konkurrieren.
+
+#### Scenario: Standardansicht priorisiert den aktuellen Operator-Kontext
+
+- **WENN** ein berechtigter Operator die Detailseite einer Instanz oeffnet
+- **DANN** zeigt die Seite zuerst eine kompakte Uebersicht mit aktuellem Gesamtzustand, den wichtigsten offenen Befunden und der naechsten primaeren Aktion
+- **UND** enthaelt diese Uebersicht nicht mehrere gleichrangige Wiederholungen desselben Zustands in verschiedenen Card-Gruppen
+- **UND** muss der Operator nicht zuerst Preflight, Keycloak-Status, Run-Historie und Formulare gleichzeitig interpretieren
+
+#### Scenario: Uebersicht funktioniert wie ein operatives Cockpit
+
+- **WENN** ein berechtigter Operator die Detailseite einer Instanz oeffnet
+- **DANN** zeigt die Uebersicht mindestens Identitaet der Instanz, Gesamtstatus, Frische der dominanten Evidenz und den aktuell wichtigsten Handlungsaufruf
+- **UND** ordnet die Seite Befunde vor Steuerung und Steuerung vor Historie an
+- **UND** folgt der Erstblick dem Prinzip `overview first, anomalies second, controls third, history last`
+
+#### Scenario: Sekundaerbereiche folgen progressiver Offenlegung
+
+- **WENN** ein Operator tiefer in Konfiguration, Diagnose oder Historie einsteigen moechte
+- **DANN** sind diese Informationen in klar getrennten Arbeitsbereichen wie Tabs, Panels oder gleichwertigen Sektionen erreichbar
+- **UND** bleibt der aktuelle Uebersichtsblock visuell von diesen Sekundaerbereichen unterscheidbar
+- **UND** fuehrt die Seite kein zweites konkurrierendes Gesamtlayout fuer dieselbe Instanz ein
+
+#### Scenario: Historische Fehl-Laeufe wirken nicht wie ein aktueller Gesamtblocker
+
+- **WENN** eine Instanz aktuell betriebsbereit oder strukturell gruen ist, aber aeltere fehlgeschlagene Provisioning-Laeufe besitzt
+- **DANN** trennt die Detailseite den aktuellen Zustand klar von der historischen Run-Historie
+- **UND** darf ein aelterer Fehl-Lauf nicht denselben visuellen Rang wie ein aktueller blockierender Befund erhalten
+- **UND** bleibt die Historie fuer Diagnosezwecke explizit oeffenbar
+
+#### Scenario: Aktionen sind hierarchisiert statt gleich laut
+
+- **WENN** die Detailseite mehrere moegliche Bedienhandlungen anbietet
+- **DANN** hebt die Seite genau eine Primaeraktion deutlich hervor
+- **UND** gruppiert Spezial- oder Folgeaktionen sichtbar nachgeordnet
+- **UND** vermeidet in der Standardansicht mehrere gleichgewichtete Aktionsbuttons ohne erkennbare Prioritaet
+
+#### Scenario: Optische Gimmicks steigern Freude ohne Unruhe
+
+- **WENN** die Detailseite visuelle Gimmicks oder Mikrointeraktionen einsetzt
+- **DANN** unterstuetzen diese Blickfuehrung, Statusfeedback oder die wahrgenommene Hochwertigkeit der Bedienung
+- **UND** bleiben sie dezent genug, um Incident- und Betriebsarbeit nicht zu stoeren
+- **UND** uebersteuern sie weder Statusfarben noch Fokusindikatoren noch zentrale Textlesbarkeit
+
+#### Scenario: Motion bleibt ruhig und zugaenglich
+
+- **WENN** die Detailseite Animationen fuer laufende Prozesse, Statuswechsel oder Hover-Zustaende einsetzt
+- **DANN** sind diese kurz, ruhig und fachlich begruendet
+- **UND** respektieren sie bestehende Accessibility-Anforderungen wie reduzierte Bewegung oder gleichwertige statische Rueckmeldung
+
+### Requirement: Host-Standard Admin Resource Interactions
+The system SHALL provide host-standard search, filter, pagination, bulk-action, history, and revision affordances for admin resources where the resource declares the corresponding capability.
+
+#### Scenario: Resource enables host search and filters
+- **GIVEN** an admin resource declares searchable fields and filter definitions
+- **WHEN** a user opens the resource list
+- **THEN** the host renders the standard search and filter controls and encodes their state in typed search parameters
+
+#### Scenario: Resource list search state is route-addressable
+- **GIVEN** an admin resource declares host-managed list state for search, filters, sorting, or pagination
+- **WHEN** the user changes one of those controls
+- **THEN** the host updates canonical TanStack Router search parameters that can be validated, shared, reloaded, and restored
+
+#### Scenario: Resource omits a host capability
+- **GIVEN** an admin resource does not declare bulk actions
+- **WHEN** a user opens the resource list
+- **THEN** the host does not render bulk-action controls for that resource
+
+#### Scenario: Resource declares unsupported host configuration
+- **GIVEN** an admin resource declares a host capability field or option outside the supported contract
+- **WHEN** the resource registry is created
+- **THEN** the host rejects the declaration with diagnostics that identify the resource and unsupported field
+
+### Requirement: Zentraler Admin-Bereich fuer instanzbezogene Modulzuweisung auf Studio-Root-Ebene
+
+Das System SHALL einen zentralen Bereich `Module` auf Studio-Root-Ebene bereitstellen, der ausschliesslich fuer den Studio-Admin zugaenglich ist und ueber den Module Instanzen zugewiesen oder entzogen werden.
+
+#### Scenario: Studio-Admin weist einer Instanz ein Modul zu
+
+- **GIVEN** ein Studio-Admin oeffnet den zentralen Bereich `Module` auf Studio-Root-Ebene
+- **WHEN** er eine konkrete Instanz auswaehlt und ein Modul zuweist
+- **THEN** zeigt die UI verfuegbare und bereits zugewiesene Module getrennt oder gleichwertig filterbar an
+- **AND** bietet sie pro Modul eine explizite Aktion zum Zuweisen oder Entziehen an
+- **AND** ist dieser Bereich von der operativen Instanz-Detailseite getrennt und nur fuer den Studio-Admin erreichbar
+- **AND** haben Instanz-Operatoren keinen Zugriff auf diese Verwaltung
+
+### Requirement: Modulzuweisung zeigt integrierten IAM-Seeding-Effekt
+
+Das System SHALL in der Modulverwaltung klar kommunizieren, dass die Zuweisung eines Moduls zu einer Instanz die noetige IAM-Basis in derselben Operation herstellt.
+
+#### Scenario: Zuweisung zeigt fachliche Folge
+
+- **GIVEN** ein Modul ist einer Instanz noch nicht zugewiesen
+- **WHEN** der Studio-Admin die Zuweisung bestaetigt
+- **THEN** macht die UI sichtbar, dass das Modul fuer die Instanz fachlich freigeschaltet und die zugehoerige IAM-Basis in derselben Operation geseedet wird
+- **AND** zeigt sie nach Abschluss eine verstaendliche Ergebnisrueckmeldung
+
+### Requirement: Modulentzug zeigt Hard-Removal und fordert Bestaetigung
+
+Das System SHALL den Entzug eines Moduls von einer Instanz als harte, fachlich wirksame Entfernung mit Vorschau und expliziter Bestaetigung darstellen.
+
+#### Scenario: Entzug warnt vor Rechteentzug
+
+- **GIVEN** ein Modul ist einer Instanz zugewiesen
+- **WHEN** der Studio-Admin den Entzug ausloest
+- **THEN** zeigt die UI eine Bestaetigung mit Hinweis auf die harte Entfernung modulbezogener Permissions und Rollenbeziehungen
+- **AND** SHALL sie betroffene Systemrollen (Name), Permissions-Anzahl und einen Hinweis auf moegliche Auswirkungen auf aktive Nutzersitzungen in einer Vorschau sichtbar machen
+- **AND** wird der Entzug ohne explizite Bestaetigung des Studio-Admins nicht ausgefuehrt
+
+### Requirement: Instanz-Cockpit zeigt Befund fuer IAM-Basis aktiver Module
+
+Das System SHALL auf der Instanz-Detailseite einen expliziten Befund fuer die IAM-Basis aktiver Module anzeigen und dem Studio-Admin eine direkte Reparaturaktion anbieten.
+
+#### Scenario: Cockpit zeigt Reparaturpfad fuer IAM-Basis-Drift
+
+- **GIVEN** die Instanz hat aktive Module mit unvollstaendiger IAM-Basis
+- **WHEN** der Studio-Admin die Instanz-Detailseite oeffnet
+- **THEN** zeigt das Cockpit einen degradierten Befund fuer die IAM-Basis aktiver Module
+- **AND** enthaelt der Befund eine verstaendliche Klartextzeile (nicht nur das technische Label `IAM-Basis aktiver Module`)
+- **AND** ordnet die Seite diesen Befund als operativen Handlungsbedarf ein
+- **AND** bietet sie eine direkte Aktion zum Neu-Seeden von Berechtigungen und Systemrollen an
+- **AND** ist diese Aktion nur fuer den Studio-Admin sichtbar und ausfuehrbar
+
+#### Scenario: Cockpit zeigt Empty-State fuer Bestandsinstanz ohne zugewiesene Module
+
+- **GIVEN** eine Bestandsinstanz hat nach Einfuehrung des Modulvertrags noch keine zugewiesenen Module
+- **WHEN** der Studio-Admin die Instanz-Detailseite oeffnet
+- **THEN** erklaert das Cockpit, dass fuer diese Instanz noch keine Module zugewiesen wurden
+- **AND** weist es darauf hin, dass die Zuweisung im zentralen Bereich `Module` erfolgt
+- **AND** wertet es den leeren Modulsatz nicht als Fehler, sondern als erwarteten Ausgangszustand
+

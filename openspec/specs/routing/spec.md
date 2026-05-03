@@ -361,3 +361,88 @@ The routing integration SHALL allow plugin custom view components while preservi
 - **THEN** the integration is rejected or documented as an architecture deviation
 - **AND** the plugin is directed to use the host route binding plus `@sva/studio-ui-react`
 
+### Requirement: Specialized Content Bindings Are Materialized By The Host
+The routing integration SHALL materialize registered specialized content bindings through host-owned routes and SHALL NOT allow packages to replace route ownership, shell ownership, or guard ownership.
+
+#### Scenario: Host materializes specialized content binding
+- **GIVEN** a registered content type declares a specialized list, detail, or editor binding
+- **WHEN** the host materializes the corresponding route
+- **THEN** the route, params, guards, shell, and fallback states remain host-owned
+- **AND** the specialized binding is rendered only inside the designated host region
+
+#### Scenario: Binding registration references invalid route ownership
+- **GIVEN** a package attempts to bind a specialized content view by introducing its own top-level shell, route ownership, or guard boundary
+- **WHEN** the host validates or materializes the registration
+- **THEN** the integration is rejected with deterministic diagnostics
+- **AND** the package is directed to the host-owned content binding contract instead
+
+### Requirement: Standard Content Plugins Use Canonical Admin Routes
+The routing integration SHALL place standard CRUD-style content plugins under canonical host-owned admin routes instead of plugin-local top-level CRUD routes.
+
+#### Scenario: News, Events, and POI use canonical admin routes
+- **GIVEN** the existing standard content plugins `news`, `events`, and `poi`
+- **WHEN** the migration is completed
+- **THEN** their productive list, create, and detail routes are materialized under canonical host-owned admin paths
+- **AND** the host no longer treats `/plugins/news`, `/plugins/events`, or `/plugins/poi` as the primary productive CRUD path
+
+#### Scenario: Exception route stays outside canonical admin CRUD path
+- **GIVEN** a plugin declares a documented non-CRUD exception route
+- **WHEN** the host materializes the route tree
+- **THEN** the exception route may remain under the plugin route namespace
+- **AND** it does not replace the canonical admin CRUD routes for that plugin
+
+### Requirement: Missing Specialized Bindings Do Not Break Route Availability
+The routing integration SHALL keep content routes available even when no specialized binding is registered for a content type.
+
+#### Scenario: Host falls back on standard detail route
+- **GIVEN** a content detail route exists for a registered content type
+- **AND** no specialized detail binding is registered
+- **WHEN** the route is rendered
+- **THEN** the host falls back to the standard detail implementation
+- **AND** no duplicate or parallel route tree is introduced for the same content resource
+
+### Requirement: Admin Resource List Search Params
+The routing package SHALL provide canonical, typed search-parameter normalization for admin resource lists that declare host-managed search, filters, sorting, or pagination.
+
+#### Scenario: Resource list state is normalized from URL
+- **GIVEN** an admin resource declares host-managed list capabilities
+- **WHEN** the route is opened with search, filter, sorting, or pagination parameters
+- **THEN** routing normalizes the parameters against the resource declaration
+- **AND** passes only validated list state to the host bindings and data adapter
+
+#### Scenario: Invalid list parameters fall back to defaults
+- **GIVEN** an admin resource declares allowed sort fields, filter values, and page sizes
+- **WHEN** the route is opened with unsupported values
+- **THEN** routing replaces them with declared defaults or removes them from normalized state
+- **AND** the resulting route state remains reloadable and shareable
+
+#### Scenario: Resource omits host-managed list capabilities
+- **GIVEN** an admin resource does not declare host-managed list capabilities
+- **WHEN** the route is materialized
+- **THEN** routing keeps the legacy behavior for that resource
+- **AND** does not require new search-parameter declarations
+
+#### Scenario: Duplicate resource search parameters are rejected
+- **GIVEN** an admin resource declares duplicate search, filter, sorting, or pagination parameter names
+- **WHEN** the registry or route snapshot is validated
+- **THEN** validation fails with diagnostics that identify the resource and conflicting parameters
+
+### Requirement: Instanzbezogenes Routing sperrt nicht zugewiesene Module fail-closed
+
+Das System SHALL modulbezogene Host-Routen und fachliche Einstiege pro Instanz gegen den expliziten zugewiesenen Modulsatz pruefen. Der zugewiesene Modulsatz wird pro Request aus dem instanzbezogenen Modulvertrag geladen; gecachte Werte werden nach jeder Zuweisungsmutation invalidiert.
+
+#### Scenario: Nicht zugewiesenes Modul wird ueber URL aufgerufen
+
+- **GIVEN** ein Modul ist global registriert, aber der Instanz nicht zugewiesen
+- **WHEN** ein Benutzer eine modulbezogene Route dieses Moduls fuer diese Instanz aufruft
+- **THEN** verweigert der Host den Zugriff fail-closed
+- **AND** rendert keine fachliche Modulansicht fuer diese Instanz
+- **AND** behandelt die Runtime das Modul nicht als implizit verfuegbar
+
+#### Scenario: Server-seitiger API-Zugriff auf nicht zugewiesenes Modul wird durch IAM-Layer blockiert
+
+- **GIVEN** ein Modul ist einer Instanz nicht zugewiesen
+- **WHEN** eine Server-Funktion oder API-Route des Moduls direkt aufgerufen wird (Umgehung des Routing-Guards)
+- **THEN** verweigert der IAM-Authorizer den Zugriff fail-closed, unabhaengig vom Routing-Layer
+- **AND** kein fachlicher Datenzugriff findet statt
+

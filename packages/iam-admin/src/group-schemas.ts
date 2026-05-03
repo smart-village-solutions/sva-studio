@@ -13,7 +13,7 @@ export const createGroupSchema = z.object({
   groupKey: groupKeySchema,
   displayName: z.string().min(1).max(128),
   description: z.string().max(512).optional(),
-  groupType: z.enum(['custom', 'system', 'geo', 'org']).default('custom'),
+  groupType: z.literal('role_bundle').default('role_bundle'),
   isActive: z.boolean().default(true),
 });
 

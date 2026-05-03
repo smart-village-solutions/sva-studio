@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { createInstanceRegistryRepository, dataRepositoriesPackageRoles, dataRepositoriesVersion } from './index.js';
+import { createInstanceRegistryRepository, createMediaRepository, dataRepositoriesPackageRoles, dataRepositoriesVersion } from './index.js';
 
 describe('@sva/data-repositories package scaffold', () => {
   it('declares the target package role', () => {
@@ -10,5 +10,6 @@ describe('@sva/data-repositories package scaffold', () => {
 
   it('exposes repository factories through the target package edge', () => {
     expect(typeof createInstanceRegistryRepository).toBe('function');
+    expect(typeof createMediaRepository).toBe('function');
   });
 });

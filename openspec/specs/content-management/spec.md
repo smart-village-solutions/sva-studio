@@ -17,7 +17,7 @@ Das System MUST eine Seite `Inhalte` bereitstellen, die vorhandene Inhalte in ei
 
 ### Requirement: Inhalt ist ein erweiterbares Core-Element
 
-Das System MUST `Inhalt` als kanonisches Core-Element modellieren, das über definierte SDK-Erweiterungspunkte für spezielle Datentypen erweitert werden kann.
+Das System MUST `Inhalt` als kanonisches Core-Element modellieren, das über definierte SDK-Erweiterungspunkte für spezielle Datentypen erweitert werden kann und referenzbasierte Mediennutzung unterstützt.
 
 #### Scenario: Core-Inhalt wird mit Basiskern angelegt
 
@@ -36,6 +36,26 @@ Das System MUST `Inhalt` als kanonisches Core-Element modellieren, das über def
 - **WENN** ein Plugin oder SDK-Modul einen speziellen Inhaltstyp registriert
 - **DANN** darf es die Bedeutung oder Pflichtigkeit der Core-Felder nicht brechen
 - **UND** Statusmodell, Historie und Core-Metadaten bleiben systemweit konsistent
+
+#### Scenario: Inhalte binden Medien referenzbasiert an
+
+- **WENN** ein Inhalt ein Bild, Download oder anderes Medium benötigt
+- **DANN** referenziert der Inhalt Medien über die zentrale Medien-Capability und fachliche Rollen
+- **UND** der Inhalt speichert keine rohen Storage-Keys oder auslieferungsrelevanten Dateipfade als führenden Vertrag
+
+#### Scenario: Plugin nutzt hostseitigen Media-Picker
+
+- **WENN** ein Plugin ein Medium für einen Inhalt oder ein Fachobjekt auswählen lässt
+- **DANN** verwendet es den hostseitigen Media-Picker oder dessen SDK-Vertrag
+- **UND** das Plugin deklariert erlaubte Medienrollen, Medientypen und optionale Preset-Anforderungen
+- **UND** es erhält keine direkte Storage-Schnittstelle und speichert keine MinIO-Bucket-Namen, Object-Keys oder presigned URLs als führenden Vertrag
+
+#### Scenario: Bestehender URL-basierter Inhaltspfad wird migriert
+
+- **WENN** ein bestehender Inhaltstyp Medien noch über URL-basierte Felder wie `imageUrl`, `sourceUrl` oder eingebettete Medien-URLs speichert
+- **DANN** definiert das System einen kontrollierten Übergangspfad zur referenzbasierten Mediennutzung
+- **UND** neue Host-Integrationen bevorzugen den Media-Picker und Medienreferenzen
+- **UND** Legacy-URL-Felder bleiben nur übergangsweise zulässig
 
 ### Requirement: Lokaler Migrationspfad für das Inhaltsmodell ist verifiziert
 
@@ -85,6 +105,13 @@ Das System MUST die Inhaltsverwaltung mit den bestehenden `shadcn/ui`-Patterns u
 - **WENN** die Erstellungs- oder Bearbeitungsansicht eines Inhalts angezeigt wird
 - **DANN** basieren Formularfelder, Buttons, Statusanzeigen, Dialoge und Fehlermeldungen auf den bestehenden `shadcn/ui`-Patterns der Anwendung
 - **UND** die Inhaltsverwaltung wirkt visuell und interaktional als Teil derselben Admin-Oberfläche
+
+#### Scenario: Mainserver-Plugin-Listen harmonisieren sich auf StudioDataTable
+
+- **WENN** die Listenansichten der produktiven Mainserver-Plugins `news`, `events` oder `poi` gerendert werden
+- **DANN** verwenden sie `StudioDataTable` als gemeinsame Tabellenbasis
+- **UND** sie führen keine pluginlokalen parallelen Tabellen-Implementierungen für dieselbe Listenfunktionalität fort
+- **UND** Aktionsspalten, Loading-State, Empty-State und semantische Tabellenstruktur folgen demselben Host-Muster
 
 ### Requirement: Erstellungs- und Bearbeitungsansicht für Inhalte
 
@@ -330,4 +357,498 @@ Read-only navigation MAY continue to use existing read permissions directly. Any
 - **WHEN** the host evaluates the action
 - **THEN** the same declared domain capability is resolved once per authorization context
 - **AND** every affected item remains within the authorized scope before the bulk mutation is executed
+
+### Requirement: News Plugin Uses Mainserver As Source Of Truth
+
+The News plugin SHALL use the SVA Mainserver GraphQL API as the source of truth for News list, detail, create, update, and archive-or-delete operations.
+
+The plugin SHALL keep its specialized News UI, validation, routes, Studio UI components, and action metadata, but its productive persistence path SHALL be host-owned and Mainserver-backed.
+
+#### Scenario: News list renders Mainserver data
+
+- **GIVEN** the SVA Mainserver integration is configured for the current instance
+- **AND** the user has local permission to read News content
+- **WHEN** the user opens `/plugins/news`
+- **THEN** the News plugin loads items from the host-owned Mainserver-backed data source
+- **AND** local IAM content records are not used as the productive News source
+
+#### Scenario: News create writes to Mainserver
+
+- **GIVEN** the user has local permission and valid Mainserver credentials
+- **WHEN** the user creates a News entry through `/plugins/news/new`
+- **THEN** the host writes the News entry through a typed Mainserver GraphQL mutation
+- **AND** no local IAM content record is created as a parallel productive copy
+
+#### Scenario: Mainserver integration is unavailable
+
+- **GIVEN** the current instance has no valid Mainserver configuration or the integration is disabled
+- **WHEN** the user opens the News plugin
+- **THEN** the UI shows a deterministic configuration or integration-disabled state
+- **AND** the UI does not silently fall back to local IAM content writes
+
+### Requirement: News Plugin Uses Host-Owned Data Boundary
+
+The News plugin SHALL receive Mainserver-backed data through a host-owned HTTP or injected data-source contract that preserves plugin package boundaries.
+
+`@sva/plugin-news` SHALL NOT import App modules, Auth-Runtime server modules, or `@sva/sva-mainserver/server`.
+
+#### Scenario: Plugin data facade calls host-owned contract
+
+- **GIVEN** `packages/plugin-news/src/news.api.ts` loads or mutates News data
+- **WHEN** the productive Mainserver-backed implementation is active
+- **THEN** it calls a host-owned News data contract instead of `/api/v1/iam/contents`
+- **AND** the plugin package keeps only allowed Workspace dependencies such as `@sva/plugin-sdk` and `@sva/studio-ui-react`
+
+#### Scenario: Plugin imports server package directly
+
+- **GIVEN** plugin code attempts to import `@sva/sva-mainserver/server`, `@sva/auth-runtime/server`, or `apps/sva-studio-react/src/**`
+- **WHEN** dependency boundaries are checked
+- **THEN** the build, lint, CI, or review gate rejects the import
+
+### Requirement: News Plugin Model Maps To Mainserver News Contract
+
+The News plugin SHALL maintain an explicit mapping between its form/content model and the SVA Mainserver News GraphQL contract.
+
+The mapping SHALL define title, teaser, body, media URL, external URL, category or tags, publication timestamp, identifiers, author/display metadata, update timestamps, and status/sichtbarkeit where supported by the Mainserver schema.
+
+#### Scenario: Mainserver item is displayed in plugin model
+
+- **GIVEN** the Mainserver returns a `NewsItem`
+- **WHEN** the host maps it for the plugin
+- **THEN** the plugin receives a `NewsContentItem`-compatible model
+- **AND** unsupported or missing optional fields are handled deterministically
+
+#### Scenario: User submits invalid mapped payload
+
+- **GIVEN** the user submits a News form value that cannot be mapped to the Mainserver News contract
+- **WHEN** the host validates the mutation input
+- **THEN** the mutation is rejected before the GraphQL call
+- **AND** the UI receives field-level or operation-level validation errors
+
+#### Scenario: Plugin status is not natively supported by Mainserver
+
+- **GIVEN** the plugin has a status value such as `in_review` or `approved`
+- **WHEN** the Mainserver contract does not expose an equivalent News workflow state
+- **THEN** the host maps, restricts, or rejects that status deterministically
+- **AND** the UI and runbook document the supported status behavior for this rollout
+
+### Requirement: Local News Legacy Content Is Explicitly Handled
+
+The system SHALL handle existing local `news.article` or legacy `news` content records through an explicit migration or legacy-read decision before switching the productive News plugin write path to Mainserver-only.
+
+#### Scenario: Legacy content migration is selected
+
+- **GIVEN** existing local News content records must remain available after the Mainserver switch
+- **WHEN** the migration path is implemented
+- **THEN** it provides a dry-run mode, an operator-readable report, idempotent execution, and deterministic failure records
+- **AND** migrated records are not written twice on repeated runs
+
+#### Scenario: Legacy content is not migrated
+
+- **GIVEN** existing local News content records are intentionally not migrated
+- **WHEN** the News plugin is switched to Mainserver-backed mode
+- **THEN** the behavior is documented
+- **AND** the UI or runbook explains that local legacy records are no longer the productive News source
+
+#### Scenario: Dual-write is attempted
+
+- **GIVEN** a News create or update operation succeeds against the Mainserver
+- **WHEN** the operation completes
+- **THEN** the host does not also write a productive local IAM content copy
+- **AND** any optional migration or audit record is clearly separated from the content source of truth
+
+### Requirement: Events Plugin Uses Mainserver As Source Of Truth
+
+The Events plugin SHALL use the SVA Mainserver GraphQL API as the source of truth for Event list, detail, create, update, and archive-or-delete operations.
+
+The plugin SHALL keep a specialized Events UI, validation, routes, Studio UI components, and action metadata, but its productive persistence path SHALL be host-owned and Mainserver-backed.
+
+#### Scenario: Events list renders Mainserver data
+
+- **GIVEN** the SVA Mainserver integration is configured for the current instance
+- **AND** the user has local permission to read Event content
+- **WHEN** the user opens `/plugins/events`
+- **THEN** the Events plugin loads items from the host-owned Mainserver-backed data source
+- **AND** local IAM content records are not used as the productive Events source
+
+#### Scenario: Event create writes to Mainserver
+
+- **GIVEN** the user has local permission and valid Mainserver credentials
+- **WHEN** the user creates an Event through `/plugins/events/new`
+- **THEN** the host writes the Event through a typed Mainserver GraphQL mutation
+- **AND** no local IAM content record is created as a parallel productive copy
+
+#### Scenario: Mainserver integration is unavailable for Events
+
+- **GIVEN** the current instance has no valid Mainserver configuration or the integration is disabled
+- **WHEN** the user opens the Events plugin
+- **THEN** the UI shows a deterministic configuration or integration-disabled state
+- **AND** the UI does not silently fall back to local IAM content writes
+
+### Requirement: POI Plugin Uses Mainserver As Source Of Truth
+
+The POI plugin SHALL use the SVA Mainserver GraphQL API as the source of truth for Point-of-Interest list, detail, create, update, and archive-or-delete operations.
+
+The plugin SHALL keep a specialized POI UI, validation, routes, Studio UI components, and action metadata, but its productive persistence path SHALL be host-owned and Mainserver-backed.
+
+#### Scenario: POI list renders Mainserver data
+
+- **GIVEN** the SVA Mainserver integration is configured for the current instance
+- **AND** the user has local permission to read POI content
+- **WHEN** the user opens `/plugins/poi`
+- **THEN** the POI plugin loads items from the host-owned Mainserver-backed data source
+- **AND** local IAM content records are not used as the productive POI source
+
+#### Scenario: POI create writes to Mainserver
+
+- **GIVEN** the user has local permission and valid Mainserver credentials
+- **WHEN** the user creates a POI through `/plugins/poi/new`
+- **THEN** the host writes the POI through a typed Mainserver GraphQL mutation
+- **AND** no local IAM content record is created as a parallel productive copy
+
+#### Scenario: Mainserver integration is unavailable for POI
+
+- **GIVEN** the current instance has no valid Mainserver configuration or the integration is disabled
+- **WHEN** the user opens the POI plugin
+- **THEN** the UI shows a deterministic configuration or integration-disabled state
+- **AND** the UI does not silently fall back to local IAM content writes
+
+### Requirement: Events And POI Use Host-Owned Data Boundaries
+
+Events and POI plugins SHALL receive Mainserver-backed data through host-owned HTTP or injected data-source contracts that preserve plugin package boundaries.
+
+`@sva/plugin-events` and `@sva/plugin-poi` SHALL NOT import App modules, Auth-Runtime server modules, or `@sva/sva-mainserver/server`.
+
+#### Scenario: Events plugin data facade calls host-owned contract
+
+- **GIVEN** `packages/plugin-events` loads or mutates Events data
+- **WHEN** the productive Mainserver-backed implementation is active
+- **THEN** it calls a host-owned Events data contract instead of `/api/v1/iam/contents`
+- **AND** the plugin package keeps only allowed Workspace dependencies such as `@sva/plugin-sdk` and `@sva/studio-ui-react`
+
+#### Scenario: POI plugin data facade calls host-owned contract
+
+- **GIVEN** `packages/plugin-poi` loads or mutates POI data
+- **WHEN** the productive Mainserver-backed implementation is active
+- **THEN** it calls a host-owned POI data contract instead of `/api/v1/iam/contents`
+- **AND** the plugin package keeps only allowed Workspace dependencies such as `@sva/plugin-sdk` and `@sva/studio-ui-react`
+
+#### Scenario: Fachplugin imports server package directly
+
+- **GIVEN** Events or POI plugin code attempts to import `@sva/sva-mainserver/server`, `@sva/auth-runtime/server`, or `apps/sva-studio-react/src/**`
+- **WHEN** dependency boundaries are checked
+- **THEN** the build, lint, CI, or review gate rejects the import
+
+### Requirement: Events Plugin Model Maps To Mainserver Event Contract
+
+The Events plugin SHALL maintain an explicit mapping between its form/content model and the SVA Mainserver Event GraphQL contract.
+
+The mapping SHALL define title, description, date model, recurrence fields where supported, category, address/location, contacts, URLs, media, organizer, prices, accessibility information, tags, optional POI reference, identifiers, update timestamps, and status/sichtbarkeit where supported by the Mainserver schema.
+
+#### Scenario: Mainserver Event is displayed in plugin model
+
+- **GIVEN** the Mainserver returns an `EventRecord`
+- **WHEN** the host maps it for the plugin
+- **THEN** the plugin receives an Events editor-compatible model
+- **AND** unsupported or missing optional fields are handled deterministically
+
+#### Scenario: User submits invalid Event payload
+
+- **GIVEN** the user submits an Event form value that cannot be mapped to the Mainserver Event contract
+- **WHEN** the host validates the mutation input
+- **THEN** the mutation is rejected before the GraphQL call
+- **AND** the UI receives field-level or operation-level validation errors
+
+#### Scenario: Event status is not natively supported by Mainserver
+
+- **GIVEN** the plugin has a status value beyond Mainserver visibility support
+- **WHEN** the Mainserver contract does not expose an equivalent Event workflow state
+- **THEN** the host maps, restricts, or rejects that status deterministically
+- **AND** the UI and runbook document the supported status behavior for this rollout
+
+### Requirement: POI Plugin Model Maps To Mainserver POI Contract
+
+The POI plugin SHALL maintain an explicit mapping between its form/content model and the SVA Mainserver Point-of-Interest GraphQL contract.
+
+The mapping SHALL define name, description, mobile description, active state, category, address/location, contact, opening hours, operating company, web URLs, media, prices, certificates, accessibility information, tags, payload, identifiers, update timestamps, and status/sichtbarkeit where supported by the Mainserver schema.
+
+#### Scenario: Mainserver POI is displayed in plugin model
+
+- **GIVEN** the Mainserver returns a `PointOfInterest`
+- **WHEN** the host maps it for the plugin
+- **THEN** the plugin receives a POI editor-compatible model
+- **AND** unsupported or missing optional fields are handled deterministically
+
+#### Scenario: User submits invalid POI payload
+
+- **GIVEN** the user submits a POI form value that cannot be mapped to the Mainserver POI contract
+- **WHEN** the host validates the mutation input
+- **THEN** the mutation is rejected before the GraphQL call
+- **AND** the UI receives field-level or operation-level validation errors
+
+#### Scenario: POI visibility and active state diverge
+
+- **GIVEN** the POI form contains both publication visibility and active state
+- **WHEN** the host maps the form to the Mainserver contract
+- **THEN** `visible` and `active` behavior is documented and tested separately
+- **AND** unsupported combinations are rejected or normalized deterministically
+
+### Requirement: News Plugin Uses Complete Mainserver News Model
+
+The News plugin SHALL use a plugin-owned model that covers the complete SVA Mainserver News data model available through the host-owned News facade.
+
+The editable model SHALL include scalar mutation fields, nested mutation fields, operation options, and the existing News payload. The detail/list model SHALL additionally include read-only and derived Mainserver fields.
+
+#### Scenario: Existing Phase-1 News item is edited
+
+- **GIVEN** an existing Mainserver News item only contains the Phase-1 fields `title`, `publishedAt`, and `payload`
+- **WHEN** the editor loads it after the full model expansion
+- **THEN** the editor renders valid defaults for all newly supported optional fields
+- **AND** saving the item preserves compatibility with the existing Mainserver update path
+
+#### Scenario: Full News item is edited
+
+- **GIVEN** a Mainserver News item includes scalar fields, categories, source URL, address, content blocks, media references, and read-only metadata
+- **WHEN** the editor loads the item
+- **THEN** all editable fields are represented in form state
+- **AND** read-only metadata is available without becoming mutable input
+
+### Requirement: News Editor Covers Snapshot-backed Mutation Fields
+
+The News editor SHALL provide user-facing controls for all approved editable `createNewsItem` fields.
+
+Editable fields SHALL include `title`, `author`, `keywords`, `externalId`, `fullVersion`, `charactersToBeShown`, `newsType`, `publicationDate`, `publishedAt`, `showPublishDate`, `categoryName`, `categories`, `sourceUrl`, `address`, `contentBlocks`, `pointOfInterestId`, and the operation option `pushNotification`.
+
+#### Scenario: User creates a full News item
+
+- **GIVEN** the user has permission to create News
+- **WHEN** the user completes the full News form and submits it
+- **THEN** the plugin sends the complete editable model to the host-owned News facade
+- **AND** the host writes only validated snapshot-backed fields to Mainserver
+- **AND** the UI shows success feedback after the Mainserver response is mapped back
+
+#### Scenario: User submits invalid full News form
+
+- **GIVEN** the user submits invalid URLs, invalid dates, invalid `charactersToBeShown`, or invalid nested list values
+- **WHEN** the form or host validates the input
+- **THEN** the request is rejected before GraphQL execution
+- **AND** the UI shows localized validation feedback
+
+### Requirement: News Payload Does Not Hide Dedicated Mainserver Fields
+
+The News plugin SHALL NOT store Mainserver fields with dedicated GraphQL arguments inside generic `payload`.
+
+`payload` SHALL be treated as a legacy read fallback only. The plugin SHALL NOT send `payload` during create or update. `author`, `keywords`, `externalId`, `newsType`, `sourceUrl`, `address`, `categories`, `contentBlocks`, `pointOfInterestId`, and publication controls are represented as first-class fields.
+
+#### Scenario: Plugin saves News with source URL and address
+
+- **GIVEN** the user fills `sourceUrl` and `address`
+- **WHEN** the News item is saved
+- **THEN** those values are sent as `sourceUrl` and `address` mutation variables
+- **AND** `payload` is not sent with the mutation
+
+#### Scenario: Legacy payload contains overlapping values
+
+- **GIVEN** an old News payload contains keys that overlap with dedicated Mainserver fields
+- **WHEN** the item is loaded
+- **THEN** the plugin normalizes legacy payload content into first-class editor fields such as `contentBlocks`
+- **AND** save behavior follows the dedicated Mainserver fields without writing `payload`
+
+### Requirement: News ContentBlocks Are The Leading Content Model
+
+The News plugin SHALL treat `contentBlocks` as the leading News content model.
+
+Existing payload-only News SHALL remain readable by mapping legacy payload values into a virtual content block on load. Saves SHALL write `contentBlocks` and SHALL NOT write payload.
+
+#### Scenario: Legacy payload-only News is loaded
+
+- **GIVEN** an existing Mainserver News item has no `contentBlocks` but contains legacy payload body data
+- **WHEN** the editor loads the item
+- **THEN** the editor shows a content block derived from the legacy payload
+- **AND** the next save writes the block through `contentBlocks`
+- **AND** the next save does not write payload
+
+#### Scenario: User edits multiple content blocks
+
+- **GIVEN** the user edits multiple content blocks with media URL references
+- **WHEN** the item is saved
+- **THEN** the host sends the complete `contentBlocks` list as the new Mainserver state
+- **AND** individual block IDs are not required because `ContentBlockInput` does not expose IDs
+
+### Requirement: News Read-only Metadata Is Visible Or Documented
+
+The News plugin SHALL either display or explicitly document read-only Mainserver News metadata returned by the host facade.
+
+Read-only metadata includes `id`, `createdAt`, `updatedAt`, `visible`, `dataProvider`, `settings`, `announcements`, `likeCount`, `likedByMe`, and `pushNotificationsSentAt`.
+
+#### Scenario: News has Mainserver metadata
+
+- **GIVEN** the Mainserver returns read-only metadata for a News item
+- **WHEN** the editor/detail view is rendered
+- **THEN** the metadata is available to the user or documented as intentionally hidden
+- **AND** it is not sent back as mutable input
+
+### Requirement: News Facade Keeps Security Gates For Full Model Mutations
+
+The host-owned News facade SHALL apply the same security gates to full-model News mutations as to the Phase-1 News mutations.
+
+The facade SHALL validate session, instance context, local content primitives, CSRF, idempotency for create, Mainserver credentials, request shape, and plugin-facing error mapping before executing Mainserver writes.
+
+#### Scenario: Full News create is retried
+
+- **GIVEN** a user submits a full News create request with an `Idempotency-Key`
+- **WHEN** the request is retried with the same payload
+- **THEN** the host returns the idempotent replay response
+- **AND** no duplicate Mainserver News item is created
+
+#### Scenario: Full News mutation fails upstream
+
+- **GIVEN** Mainserver rejects or fails a full News create request after idempotency reservation
+- **WHEN** the host maps the error
+- **THEN** the idempotency record is completed as failed
+- **AND** the UI receives a stable plugin-facing error response
+
+### Requirement: Standard Content Plugins Use A Shared CRUD Registration Path
+The system SHALL treat CRUD-style content plugins as standard plugins that register their productive list, detail, and editor UI through the shared host-owned admin resource path.
+
+Standard plugins SHALL use canonical host routes, host-owned guard evaluation, host-owned save and mutation dispatch, and host-owned global page actions.
+
+#### Scenario: Standard content plugin registers admin resource
+- **GIVEN** a content plugin exposes a normal CRUD workflow
+- **WHEN** it is integrated productively into the Studio host
+- **THEN** it registers through the shared admin resource path instead of relying on plugin-local top-level CRUD routes
+- **AND** the host owns the canonical route tree for list, create, and detail
+
+#### Scenario: Standard plugin tries to keep plugin-local CRUD route as productive path
+- **GIVEN** a CRUD-style content plugin also declares free plugin routes for the same productive list, create, or detail workflow
+- **WHEN** the shared content plugin contract is validated
+- **THEN** the host rejects or flags that setup as an invalid bypass of the standard path
+- **AND** the plugin must move the productive CRUD path to the shared host-owned resource contract
+
+### Requirement: Registered Content View Bindings
+The system SHALL allow standard content plugins to provide specialized content list, detail, and editor bindings only through an explicit content UI registration contract while preserving host-owned content core semantics.
+
+The registration contract SHALL identify the affected admin resource or `contentType`, the binding kind (`list`, `detail`, or `editor`), and the React binding component or host-approved binding reference used for materialization.
+
+#### Scenario: Package registers specialized editor binding
+- **GIVEN** a package registers a specialized editor binding for its namespaced content type
+- **WHEN** the host validates and publishes the content registry snapshot
+- **THEN** the binding is attached to that content type through the content UI registration contract
+- **AND** host-owned validation, permissions, persistence, and save behavior remain unchanged
+
+#### Scenario: Package registers unsupported binding kind
+- **GIVEN** a package attempts to register a binding outside the supported kinds `list`, `detail`, or `editor`
+- **WHEN** the contract is validated
+- **THEN** the registration is rejected with deterministic diagnostics
+
+#### Scenario: Package replaces host-owned content core behavior
+- **GIVEN** a package binding attempts to replace host-owned status, publication, history, or persistence behavior
+- **WHEN** the UI contribution is validated
+- **THEN** the host rejects the contribution as outside the specialization boundary
+
+### Requirement: Existing Content Plugins Are The Reference Migration For The Standard Path
+The system SHALL use the existing content plugins `@sva/plugin-news`, `@sva/plugin-events`, and `@sva/plugin-poi` as the reference migration set for the specialized content binding contract.
+
+#### Scenario: Existing content plugins register specialized bindings
+- **GIVEN** `@sva/plugin-news`, `@sva/plugin-events`, and `@sva/plugin-poi` expose their existing list, detail, or editor pages
+- **WHEN** the migration to the new contract is completed
+- **THEN** those bindings are registered through the shared host-owned admin resource and content UI registration contract
+- **AND** the productive Mainserver-backed data path of each plugin remains unchanged
+
+#### Scenario: Reference migration preserves host-owned responsibilities
+- **GIVEN** one of the existing content plugins uses specialized bindings under the new contract
+- **WHEN** a user loads, edits, saves, or deletes an item in that plugin
+- **THEN** the host continues to own routing, guards, authorization, mutation dispatch, and global page actions
+- **AND** the plugin contributes only the specialized binding surface
+
+#### Scenario: Further content plugin reuses the same contract
+- **GIVEN** a future content plugin is added after the reference migration
+- **WHEN** it needs a specialized list, detail, or editor binding
+- **THEN** it uses the same content UI registration contract
+- **AND** it does not require a plugin-specific host extension path outside the shared mechanism
+
+### Requirement: Exception Path Remains Available For Non-CRUD Plugin Flows
+The system SHALL continue to allow free `plugin.routes` for documented non-CRUD plugin flows that do not fit the shared admin resource model.
+
+#### Scenario: Plugin defines non-CRUD exception route
+- **GIVEN** a plugin needs a wizard, dashboard, or another domain-specific workflow that is not a normal list-create-detail CRUD path
+- **WHEN** it declares such a route through `plugin.routes`
+- **THEN** the route remains allowed as an explicit exception path
+- **AND** the exception does not become the productive CRUD path for the plugin's main content administration
+
+### Requirement: Content Admin Resources Use Host Standards
+The system SHALL expose content-management admin resources through the host admin resource standards for list filtering, search, bulk operations, history, and revisions instead of bespoke per-content implementations.
+
+#### Scenario: Content list uses host filters
+- **GIVEN** a content type declares host-supported filters
+- **WHEN** the content list is opened
+- **THEN** the host applies the standard filter model and passes normalized query input to the content data layer
+
+#### Scenario: Content list replaces local-only filter state
+- **GIVEN** the content admin resource declares host-managed search, status filters, sorting, or pagination
+- **WHEN** the content list renders
+- **THEN** the list derives its visible query state from the host resource standard instead of independent component-local filter state
+
+#### Scenario: Content type requests unsupported list behavior
+- **GIVEN** a content type declares a list behavior outside the host standard
+- **WHEN** the resource is registered
+- **THEN** the host rejects the unsupported declaration or marks it unavailable with diagnostics
+
+### Requirement: Mainserver-Plugin-Listen verwenden serverseitige Pagination
+
+Das System SHALL die Listenansichten der produktiven Mainserver-Plugins `news`, `events` und `poi` serverseitig paginieren, statt beim Seitenaufruf den kompletten Datenbestand vorzuladen.
+
+#### Scenario: Plugin-Liste lädt nur die aktuelle Seite
+
+- **GIVEN** ein Redakteur öffnet die Listenansicht für News, Events oder POI
+- **WHEN** die erste Seite gerendert wird
+- **THEN** fordert die UI nur die konfigurierte Seitengröße für die aktuelle Seite an
+- **AND** sie lädt nicht mehr standardmäßig den gesamten Bestand
+
+#### Scenario: Benutzer navigiert zur nächsten Seite
+
+- **GIVEN** die aktuelle Plugin-Liste signalisiert weitere Ergebnisse
+- **WHEN** der Benutzer die Aktion für die nächste Seite auslöst
+- **THEN** sendet die UI eine neue List-Anfrage für die Zielseite
+- **AND** die Tabelle aktualisiert ihren Lade- und Ergebniszustand ohne Vollabfrage des gesamten Bestands
+- **AND** die aktuelle Seite bleibt über typsichere Search-Params in der URL abbildbar
+
+#### Scenario: Upstream liefert keinen exakten Gesamtzähler
+
+- **GIVEN** der Host kann für die angeforderte Plugin-Liste keinen belastbaren Gesamtzähler aus dem Mainserver-Vertrag ableiten
+- **WHEN** die Pagination-UI gerendert wird
+- **THEN** zeigt sie eine ehrliche Vor/Zurück-Navigation mit aktueller Seite
+- **AND** sie zeigt keine erfundene Gesamtseitenzahl oder ein fingiertes `total`
+
+#### Scenario: Browser-Navigation bleibt mit Listenstate konsistent
+
+- **GIVEN** ein Benutzer öffnet eine Mainserver-Plugin-Liste auf einer späteren Seite
+- **WHEN** er die Search-Params für `page` oder `pageSize` ändert oder Browser-Zurück/Vorwärts verwendet
+- **THEN** spiegeln URL und Tabelle denselben Listenstate
+- **AND** die Listenansicht bleibt per Deep-Link reproduzierbar
+
+### Requirement: Standardisierte Content-Plugins nutzen gemeinsame SDK-Helfer ohne Plugin-Kopplung
+
+Das System SHALL wiederkehrende technische Muster für standardisierte Content-Plugins über `@sva/plugin-sdk` bereitstellen, ohne direkte Abhängigkeiten zwischen einzelnen Fachplugins einzuführen.
+
+#### Scenario: Standard-CRUD-Metadaten kommen aus dem SDK
+
+- **GIVEN** ein standardisiertes Content-Plugin wie News, Events oder POI
+- **WHEN** das Plugin Navigation, Actions, Permissions, Module-IAM und host-owned `adminResources` registriert
+- **THEN** kann es dafür gemeinsame SDK-Helfer verwenden
+- **AND** die erzeugten Beiträge bleiben namespacet und host-kompatibel
+
+#### Scenario: Mainserver-CRUD-Basis bleibt plugin-isoliert
+
+- **GIVEN** mehrere Content-Plugins sprechen unterschiedliche hostgeführte Mainserver-Fassaden an
+- **WHEN** sie gemeinsame HTTP-Basislogik benötigen
+- **THEN** nutzen sie gemeinsame SDK-Helfer für Request-, Fehler- und CRUD-Mechanik
+- **AND** kein Plugin importiert ein anderes Plugin für diesen Zweck
+
+#### Scenario: Fachlogik bleibt im Plugin
+
+- **GIVEN** ein Plugin besitzt eigene Feldmodelle, Validierung oder Editor-Spezialisierungen
+- **WHEN** gemeinsame SDK-Helfer eingesetzt werden
+- **THEN** bleiben fachliche Typen, Validierung, Übersetzungen und Editor-Mappings weiterhin im jeweiligen Plugin
+- **AND** das SDK übernimmt nur technische Wiederverwendung
 

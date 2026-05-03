@@ -66,6 +66,18 @@ export type NewsAnnouncementSummary = {
   readonly title?: string;
 };
 
+export type NewsListQuery = {
+  readonly page: number;
+  readonly pageSize: number;
+};
+
+export type NewsListPagination = {
+  readonly page: number;
+  readonly pageSize: number;
+  readonly hasNextPage: boolean;
+  readonly total?: number;
+};
+
 export type NewsFormInput = {
   readonly title: string;
   readonly author?: string;
@@ -116,4 +128,9 @@ export type NewsContentItem = {
   readonly createdAt: string;
   readonly updatedAt: string;
   readonly publishedAt: string;
+};
+
+export type NewsListResult = {
+  readonly data: readonly NewsContentItem[];
+  readonly pagination: NewsListPagination;
 };

@@ -2,6 +2,7 @@ import { createPoolResolver } from '../db.js';
 import { createInstanceRegistryRepository } from '@sva/data-repositories';
 import { invalidateInstanceRegistryHost } from '@sva/data-repositories/server';
 import { createInstanceRegistryRuntime } from '@sva/instance-registry/runtime-wiring';
+import { studioModuleIamRegistry } from '@sva/studio-module-iam';
 
 import { getIamDatabaseUrl } from '../runtime-secrets.js';
 import {
@@ -12,7 +13,6 @@ import {
 } from './provisioning-auth.js';
 import { readKeycloakStateViaProvisioner } from './provisioning-auth-state.js';
 import { protectField, revealField } from '../iam-account-management/encryption.js';
-
 const getWorkerKeycloakPreflight = async (input: Parameters<typeof getInstanceKeycloakPreflightViaProvisioner>[0]) =>
   getInstanceKeycloakPreflightViaProvisioner(input);
 
@@ -23,18 +23,19 @@ const getWorkerKeycloakStatus = async (input: Parameters<typeof getInstanceKeycl
   getInstanceKeycloakStatusViaProvisioner(input);
 
 const resolvePool = createPoolResolver(getIamDatabaseUrl);
-
 const registryRuntime = createInstanceRegistryRuntime({
   resolvePool,
   createRepository: createInstanceRegistryRepository,
   serviceDeps: {
     invalidateHost: invalidateInstanceRegistryHost,
+    moduleIamRegistry: studioModuleIamRegistry,
     protectSecret: protectField,
     revealSecret: revealField,
     readKeycloakStateViaProvisioner,
   },
   provisioningWorkerServiceDeps: {
     invalidateHost: invalidateInstanceRegistryHost,
+    moduleIamRegistry: studioModuleIamRegistry,
     protectSecret: protectField,
     revealSecret: revealField,
     readKeycloakStateViaProvisioner,

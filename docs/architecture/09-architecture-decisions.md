@@ -42,6 +42,8 @@ mit Bezug auf die arc42-Abschnitte.
 - `ADR-034-plugin-sdk-vertrag-v1.md`
 - `ADR-035-routing-observability-diagnostics-hook.md`
 - `ADR-036-kanonischer-iam-projektions-und-reconcile-vertrag.md`
+- `ADR-038-instanz-modul-zuordnung-und-fail-closed-modulaktivierung.md`
+- `ADR-039-medienmanagement-host-capability-und-storage-vertrag.md`
 
 ### Zuordnung zu arc42-Abschnitten
 
@@ -61,6 +63,8 @@ mit Bezug auf die arc42-Abschnitte.
 - Abschnitt 04/05/06/08/09/11/12 (Strategie/Bausteine/Laufzeit/Querschnitt/Entscheidungen/Risiken/Glossar): ADR-034
 - Abschnitt 04/05/06/08/09/10/11 (Strategie/Bausteine/Laufzeit/Querschnitt/Entscheidungen/Qualität/Risiken): ADR-035
 - Abschnitt 04/05/06/08/09/10/11 (Strategie/Bausteine/Laufzeit/Querschnitt/Entscheidungen/Qualität/Risiken): ADR-036
+- Abschnitt 04/05/06/08/09/10/11/12 (Strategie/Bausteine/Laufzeit/Querschnitt/Entscheidungen/Qualität/Risiken/Glossar): ADR-038
+- Abschnitt 03/04/05/06/07/08/09/10/11 (Kontext/Strategie/Bausteine/Laufzeit/Deployment/Querschnitt/Entscheidungen/Qualität/Risiken): ADR-039
 - Abschnitt 03/04/05/06/08 (Kontext/Strategie/Bausteine/Laufzeit/Querschnitt): ADR-021
 
 ### Zuordnung Swarm-Deployment-ADRs
@@ -91,10 +95,12 @@ mit Bezug auf die arc42-Abschnitte.
 - ADR-030: Registry-basierte Instance-Freigabe und gemeinsamer Provisioning-Vertrag (Abschnitt 04, 05, 06, 07, 08, 09, 10, 11)
 - ADR-033: Getrennter Tenant-Login-Client und Tenant-Admin-Client als kanonischer Instanzvertrag (Abschnitt 04, 05, 06, 08, 09, 10, 11)
 - ADR-032: Plattform-Scope vs. tenantgebundene Instanz als kanonische Runtime- und Audit-Trennung (Abschnitt 04, 05, 06, 08, 09, 11)
-- ADR-034: Statischer Plugin-SDK-Vertrag v1 für Routing, Navigation, Content-Typen und Übersetzungen (Abschnitt 04, 05, 06, 08, 09, 11, 12)
+- ADR-034: Statischer Plugin-SDK-Vertrag v1 für Routing, Navigation, Content-Typen und Übersetzungen; nach dem Hard-Cut liegt dieser Vertrag kanonisch in `@sva/plugin-sdk`, waehrend Server-Helfer ueber `@sva/server-runtime` laufen (Abschnitt 04, 05, 06, 08, 09, 11, 12)
 - ADR-034 trägt weiterhin auch die technische Plugin-Identität als führenden Namespace; die Namespacing-Regeln für plugin-beigestellte `contentType`s, Admin-Ressourcen-IDs und Audit-Event-Typen wurden als Fortschreibung dieses Vertrags umgesetzt, ohne eine separate ADR-Serie zu eröffnen.
 - ADR-035: Routing-Observability über Diagnostics-Hook, Safe-Event-Vertrag und Browser-/Server-Split (Abschnitt 04, 05, 06, 08, 09, 10, 11)
 - ADR-036: Kanonischer IAM-Projektionskern, deterministischer Reconcile-/Sync-Vertrag und fail-closed Drift-Blocker (Abschnitt 04, 05, 06, 08, 09, 10, 11)
+- ADR-038: Kanonische Instanz-Modul-Zuordnung, hartes Rechte-Entziehen und fail-closed Modulaktivierung (Abschnitt 04, 05, 06, 08, 09, 10, 11, 12)
+- ADR-039: Medienmanagement als Host-Capability mit eigenem Domänenpackage, internem Storage-Port und Plugin-SDK-kompatibler Referenzgrenze (Abschnitt 03, 04, 05, 06, 07, 08, 09, 10, 11)
 
 ### Pflege-Regel
 
@@ -167,6 +173,26 @@ Zuordnung:
 
 - Abschnitt 04/05/06/08/10/11: OpenSpec-Change `refactor-package-target-architecture-hard-cut`
 - `docs/architecture/package-zielarchitektur.md` ist die verbindliche Zusammenfassung des umgesetzten Schnitts.
+
+### Fortschreibung 2026-05: Gemeinsame Modul-IAM-Vertragsquelle ohne neue ADR
+
+- Für `refactor-runtime-module-iam-contract-source` wurde keine neue ADR angelegt.
+- Maßgeblich bleiben ADR-034 für den deklarativen Plugin-Vertrag, ADR-038 für fail-closed Modulaktivierung und ADR-030 für Provisioning-/Registry-Konsistenz.
+- Die technische Fortschreibung ist das dedizierte Workspace-Package `@sva/studio-module-iam` als UI-freier Vertrags-Edge zwischen Plugin-Deklaration, Host-Registry und Runtime-Wiring.
+
+Zuordnung:
+
+- Abschnitt 04/05/06/08/10/11: OpenSpec-Change `refactor-runtime-module-iam-contract-source`
+
+### Fortschreibung 2026-05: Mainserver-Listen-Pagination ohne neue ADR
+
+- Für `add-mainserver-plugin-list-pagination` wurde ebenfalls keine neue ADR angelegt.
+- Maßgeblich bleiben ADR-021 für die serverseitige Mainserver-Integrationsgrenze und ADR-034 für die hostmaterialisierten Plugin-Listenflächen.
+- Der Change konkretisiert diese Entscheidungen um einen gemeinsamen Pagination-Vertrag, typsichere Search-Params und die Harmonisierung der drei Listen auf `StudioDataTable`.
+
+Zuordnung:
+
+- Abschnitt 04/05/06/08/10/11: OpenSpec-Change `add-mainserver-plugin-list-pagination`
 
 ### Fortschreibung 2026-03: Swarm-Deployment und Multi-Host-Betrieb
 
@@ -286,15 +312,21 @@ Zuordnung:
   - definiert den Plugin-SDK-Vertrag, der nach dem Hard-Cut in `@sva/plugin-sdk` liegt
   - bündelt Routen, Navigation, Content-Typen und Übersetzungen in `PluginDefinition`
   - hält die Registrierung in v1 bewusst statisch im App-Bundle und ordnet Guards dem Host zu
+  - dokumentiert den spaeteren Hard-Cut auf `@sva/plugin-sdk` und `@sva/server-runtime`; `@sva/sdk` ist kein aktives Zielpackage mehr
+
+- `ADR-037-plugin-spezifische-iam-rechte.md`
+  - erweitert den Plugin-SDK-Vertrag um plugin-deklarierte IAM-Rechtefamilien
+  - legt `news.*`, `events.*` und `poi.*` als erste produktive Rechtefamilien fest
+  - entfernt `content.*` als produktiven Guard-Vertrag für Fachplugins und belässt ihn für Core-/Legacy-Content-Pfade
 
 Zuordnung:
 
-- Abschnitt 04 (Strategie): ADR-033
-- Abschnitt 05 (Bausteine): ADR-033
-- Abschnitt 06 (Laufzeit): ADR-033
-- Abschnitt 08 (Querschnitt): ADR-033
-- Abschnitt 09 (Entscheidungen): ADR-033
-- Abschnitt 10/11 (Qualität/Risiken): ADR-033
+- Abschnitt 04 (Strategie): ADR-033, ADR-034, ADR-037
+- Abschnitt 05 (Bausteine): ADR-033, ADR-034, ADR-037
+- Abschnitt 06 (Laufzeit): ADR-033, ADR-034, ADR-037
+- Abschnitt 08 (Querschnitt): ADR-033, ADR-034, ADR-037
+- Abschnitt 09 (Entscheidungen): ADR-033, ADR-034, ADR-037
+- Abschnitt 10/11 (Qualität/Risiken): ADR-033, ADR-034, ADR-037
 
 ### Fortschreibung 2026-03: Direkte Nutzerrechte ohne neue ADR
 
@@ -302,6 +334,19 @@ Zuordnung:
   - Die Konfliktregel bleibt vollständig innerhalb der bestehenden Leitplanken aus ADR-025.
   - Die Erweiterung führt kein neues IdP- oder Sync-Pattern ein, sondern ergänzt die bestehende Studio-IAM-Persistenz um eine zusätzliche Herkunft `direct_user`.
 - Die maßgeblichen Architekturentscheidungen bleiben daher:
+
+### Fortschreibung 2026-04: Medienmanagement als Host-Capability
+
+- `ADR-039-medienmanagement-host-capability-und-storage-vertrag.md`
+  - definiert Medienmanagement als hostseitige Querschnitts-Capability statt als Plugin
+  - verankert `packages/media` als kanonischen Domänenvertrag
+  - kapselt MinIO über einen internen S3-kompatiblen Storage-Port
+  - hält Plugins auf rollenbasierte Picker- und Referenzverträge ohne Storage-Artefakte
+
+Zuordnung:
+
+- Abschnitt 03/04/05/06/07/08/09/10/11: ADR-039
+- Querverweis: ADR-034 für Plugin-SDK- und UI-Verträge
   - ADR-025 für `deny vor allow` und konservative Konfliktauflösung
   - ADR-017 für die modulare Erweiterung der Auth-/IAM-Serverbausteine
   - ADR-016 bleibt unverändert, weil direkte Nutzerrechte bewusst nicht in Keycloak gespiegelt werden

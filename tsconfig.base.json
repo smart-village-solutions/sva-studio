@@ -17,15 +17,19 @@
       "@sva/data-repositories": ["packages/data-repositories/src/index.ts"],
       "@sva/data-repositories/server": ["packages/data-repositories/src/server.ts"],
       "@sva/iam-admin": ["packages/iam-admin/src/index.ts"],
+      "@sva/iam-admin/encryption": ["packages/iam-admin/src/encryption.ts"],
       "@sva/iam-core": ["packages/iam-core/src/index.ts"],
       "@sva/iam-governance/read-models-internal": ["packages/iam-governance/src/read-models-internal.ts"],
       "@sva/iam-governance/dsr-read-models-internal": ["packages/iam-governance/src/dsr-read-models-internal.ts"],
       "@sva/iam-governance/governance-compliance-export": ["packages/iam-governance/src/governance-compliance-export.ts"],
+      "@sva/iam-governance/legal-text-html": ["packages/iam-governance/src/legal-text-html.ts"],
+      "@sva/iam-governance/legal-text-sanitize-html": ["packages/iam-governance/src/legal-text-sanitize-html.ts"],
       "@sva/iam-governance/legal-text-repository-shared": ["packages/iam-governance/src/legal-text-repository-shared.ts"],
       "@sva/iam-governance": ["packages/iam-governance/src/index.ts"],
       "@sva/instance-registry/http-contracts": ["packages/instance-registry/src/http-contracts.ts"],
       "@sva/instance-registry": ["packages/instance-registry/src/index.ts"],
       "@sva/plugin-sdk": ["packages/plugin-sdk/src/index.ts"],
+      "@sva/studio-module-iam": ["packages/studio-module-iam/src/index.ts"],
       "@sva/plugin-events": ["packages/plugin-events/src/index.ts"],
       "@sva/studio-ui-react": ["packages/studio-ui-react/src/index.ts"],
       "@sva/server-runtime": ["packages/server-runtime/src/index.ts"],
@@ -35,7 +39,8 @@
       "@sva/plugin-poi": ["packages/plugin-poi/src/index.ts"],
       "@sva/monitoring-client": ["packages/monitoring-client/src/index.ts"],
       "@sva/monitoring-client/server": ["packages/monitoring-client/src/server.ts"],
-      "@sva/monitoring-client/logger-provider.server": ["packages/monitoring-client/src/logger-provider.server.ts"]
+      "@sva/monitoring-client/logger-provider.server": ["packages/monitoring-client/src/logger-provider.server.ts"],
+      "@sva/media": ["packages/media/src/index.ts"]
     }
   }
 }

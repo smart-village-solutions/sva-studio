@@ -1,58 +1,47 @@
 import {
-  definePluginActions,
   definePluginAuditEvents,
-  definePluginContentTypes,
+  defineMediaPickerDefinition,
+  createStandardContentPluginActionIds,
+  createStandardContentPluginContribution,
   type PluginDefinition,
 } from '@sva/plugin-sdk';
 
 import { POI_CONTENT_TYPE } from './poi.constants.js';
-import { PoiCreatePage, PoiEditPage, PoiListPage } from './poi.pages.js';
 
-export const pluginPoiActionIds = {
-  create: 'poi.create',
-  edit: 'poi.edit',
-  update: 'poi.update',
-  delete: 'poi.delete',
+export const pluginPoiActionIds = createStandardContentPluginActionIds('poi');
+
+const standardPoiContribution = createStandardContentPluginContribution({
+  pluginId: 'poi',
+  displayName: 'POI',
+  contentType: POI_CONTENT_TYPE,
+  titleKey: 'poi.navigation.title',
+  listBindingKey: 'poiList',
+  detailBindingKey: 'poiDetail',
+  editorBindingKey: 'poiEditor',
+});
+
+export const pluginPoiPermissionDefinitions = standardPoiContribution.permissions;
+
+export const pluginPoiActionDefinitions = standardPoiContribution.actions;
+
+export const pluginPoiMediaPickers = {
+  teaserImage: defineMediaPickerDefinition({
+    roles: ['teaser_image'],
+    allowedMediaTypes: ['image'],
+    presetKey: 'teaser',
+  }),
 } as const;
-
-export const pluginPoiActionDefinitions = definePluginActions('poi', [
-  { id: pluginPoiActionIds.create, titleKey: 'poi.actions.create', requiredAction: 'content.create' },
-  { id: pluginPoiActionIds.edit, titleKey: 'poi.actions.edit', requiredAction: 'content.read' },
-  { id: pluginPoiActionIds.update, titleKey: 'poi.actions.update', requiredAction: 'content.updatePayload' },
-  { id: pluginPoiActionIds.delete, titleKey: 'poi.actions.delete', requiredAction: 'content.delete' },
-] as const);
 
 export const pluginPoi: PluginDefinition = {
   id: 'poi',
   displayName: 'POI',
-  routes: [
-    { id: 'poi.list', path: '/plugins/poi', guard: 'content.read', component: PoiListPage },
-    {
-      id: 'poi.create',
-      path: '/plugins/poi/new',
-      guard: 'content.create',
-      actionId: pluginPoiActionIds.create,
-      component: PoiCreatePage,
-    },
-    {
-      id: 'poi.edit',
-      path: '/plugins/poi/$contentId',
-      guard: 'content.read',
-      actionId: pluginPoiActionIds.edit,
-      component: PoiEditPage,
-    },
-  ],
-  navigation: [
-    {
-      id: 'poi.navigation',
-      to: '/plugins/poi',
-      titleKey: 'poi.navigation.title',
-      section: 'dataManagement',
-      requiredAction: 'content.read',
-    },
-  ],
+  routes: [],
+  navigation: standardPoiContribution.navigation,
   actions: pluginPoiActionDefinitions,
-  contentTypes: definePluginContentTypes('poi', [{ contentType: POI_CONTENT_TYPE, displayName: 'POI' }]),
+  permissions: pluginPoiPermissionDefinitions,
+  moduleIam: standardPoiContribution.moduleIam,
+  contentTypes: standardPoiContribution.contentTypes,
+  adminResources: standardPoiContribution.adminResources,
   auditEvents: definePluginAuditEvents('poi', []),
   translations: {
     de: {

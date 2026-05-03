@@ -1,4 +1,5 @@
 import nxPlugin from '@nx/eslint-plugin'
+import noEffectApiObjectDepsForLoadersRule from './config/eslint/no-effect-api-object-deps-for-loaders.mjs'
 
 export default [
   ...nxPlugin.configs['flat/base'],
@@ -23,6 +24,7 @@ export default [
             '../../../scripts/ci/complexity-gate.ts',
             '../../../scripts/ci/coverage-gate.ts',
             '../../../scripts/ci/prepare-sonar-lcov.ts',
+            '../../../scripts/ci/sonar-paths.ts',
             '../../../scripts/ops/deploy-feedback-loop.ts',
             '../../../scripts/ops/runtime/bootstrap-job.ts',
             '../../../scripts/ops/runtime/deploy-project.ts',
@@ -438,7 +440,15 @@ export default [
   },
   {
     files: ['apps/sva-studio-react/**/*.{ts,tsx,js,jsx}'],
+    plugins: {
+      local: {
+        rules: {
+          'no-effect-api-object-deps-for-loaders': noEffectApiObjectDepsForLoadersRule,
+        },
+      },
+    },
     rules: {
+      'local/no-effect-api-object-deps-for-loaders': 'error',
       'no-restricted-imports': [
         'error',
         {

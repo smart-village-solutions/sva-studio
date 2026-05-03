@@ -2,7 +2,6 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { t } from '../../../i18n';
 import { InstanceDetailPage } from './-instance-detail-page';
 
 const useInstancesMock = vi.fn();
@@ -98,6 +97,12 @@ const createSelectedInstance = (overrides: Record<string, unknown> = {}) => ({
     requestId: 'req-1',
     steps: [],
   },
+  tenantIamStatus: {
+    configuration: { status: 'ready', summary: 'Konfiguration ok', source: 'registry' },
+    access: { status: 'unknown', summary: 'Noch keine Probe', source: 'access_probe' },
+    reconcile: { status: 'degraded', summary: 'Backlog vorhanden', source: 'role_reconcile' },
+    overall: { status: 'degraded', summary: 'Eingeschränkt', source: 'role_reconcile' },
+  },
   ...overrides,
 });
 
@@ -126,6 +131,7 @@ const createInstancesApiState = (overrides: Record<string, unknown> = {}) => ({
   executeKeycloakProvisioning: vi.fn().mockResolvedValue(true),
   loadKeycloakProvisioningRun: vi.fn().mockResolvedValue(true),
   refreshKeycloakStatus: vi.fn().mockResolvedValue(true),
+  probeTenantIamAccess: vi.fn().mockResolvedValue(true),
   reconcileKeycloak: vi.fn().mockResolvedValue(true),
   activateInstance: vi.fn().mockResolvedValue(true),
   suspendInstance: vi.fn().mockResolvedValue(true),
@@ -148,6 +154,7 @@ describe('InstanceDetailPage', () => {
     const refreshKeycloakPreflight = vi.fn().mockResolvedValue(true);
     const planKeycloakProvisioning = vi.fn().mockResolvedValue(true);
     const refreshKeycloakStatus = vi.fn().mockResolvedValue(true);
+    const probeTenantIamAccess = vi.fn().mockResolvedValue(true);
     const executeKeycloakProvisioning = vi.fn().mockResolvedValue(true);
     const activateInstance = vi.fn().mockResolvedValue(true);
 
@@ -158,6 +165,7 @@ describe('InstanceDetailPage', () => {
         refreshKeycloakPreflight,
         planKeycloakProvisioning,
         refreshKeycloakStatus,
+        probeTenantIamAccess,
         executeKeycloakProvisioning,
         activateInstance,
       })
@@ -169,20 +177,15 @@ describe('InstanceDetailPage', () => {
       expect(loadInstance).toHaveBeenCalledWith('demo');
     });
 
-    expect(screen.getByText(t('admin.instances.configuration.title'))).toBeTruthy();
-    expect(screen.getByText(t('admin.instances.configuration.summary.complete.title'))).toBeTruthy();
-    expect(
-      screen.getByText(
-        t('admin.instances.configuration.labels.requirementsValue', {
-          satisfied: 13,
-          total: 13,
-        })
-      )
-    ).toBeTruthy();
-    expect(screen.getByText('Instanz gespeichert, aber noch nicht betriebsbereit')).toBeTruthy();
-    expect(screen.getByText('Was ist noch offen?')).toBeTruthy();
-    expect(screen.getByText('Provisioning ist erfolgreich. Die Instanz kann jetzt aktiviert werden.')).toBeTruthy();
-    expect(screen.getByText('Runtime nutzt Tenant-Secret')).toBeTruthy();
+    expect(screen.getByText('Operativer Überblick')).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'Konfiguration' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'Betrieb' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'Historie' })).toBeTruthy();
+    expect(screen.getByText('Dominante Evidenz')).toBeTruthy();
+    expect(screen.getByText('Nächste empfohlene Aktion')).toBeTruthy();
+    expect(screen.getAllByRole('button', { name: 'Aktivieren' }).length).toBeGreaterThan(0);
+    expect(screen.getByText('Tenant-IAM-Zugriff')).toBeTruthy();
+    expect(screen.getByText('Tenant-IAM-Reconcile')).toBeTruthy();
 
     fireEvent.change(screen.getByLabelText('Anzeigename', { selector: '#detail-display-name' }), {
       target: { value: ' Demo Updated ' },
@@ -211,9 +214,14 @@ describe('InstanceDetailPage', () => {
     fireEvent.change(screen.getByLabelText('Admin-Benutzername', { selector: '#detail-admin-username' }), {
       target: { value: ' updated-admin ' },
     });
+    fireEvent.click(screen.getByRole('tab', { name: 'Betrieb' }));
+    await waitFor(() => {
+      expect(screen.getByLabelText('Temporäres Admin-Passwort')).toBeTruthy();
+    });
     fireEvent.change(screen.getByLabelText('Temporäres Admin-Passwort'), {
       target: { value: ' test-temp-password ' },
     });
+    fireEvent.click(screen.getByRole('tab', { name: 'Konfiguration' }));
     fireEvent.click(screen.getByRole('button', { name: 'Instanz speichern' }));
 
     await waitFor(() => {
@@ -248,6 +256,7 @@ describe('InstanceDetailPage', () => {
       ).toBe('');
     });
 
+    fireEvent.click(screen.getByRole('tab', { name: 'Betrieb' }));
     fireEvent.click(screen.getAllByRole('button', { name: 'Vorbedingungen prüfen' })[0]);
     fireEvent.click(screen.getAllByRole('button', { name: 'Keycloak-Status prüfen' })[0]);
     fireEvent.click(screen.getAllByRole('button', { name: 'Provisioning-Vorschau laden' })[0]);
@@ -255,12 +264,14 @@ describe('InstanceDetailPage', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Tenant-Admin-Client bereitstellen' }).at(-1)!);
     fireEvent.click(screen.getAllByRole('button', { name: 'Tenant-Admin neu setzen' }).at(-1)!);
     fireEvent.click(screen.getAllByRole('button', { name: 'Client-Secret rotieren' }).at(-1)!);
-    fireEvent.click(screen.getByRole('button', { name: 'Aktivieren' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Tenant-IAM-Rechte probeweise prüfen' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Aktivieren' })[0]);
 
     expect(refreshKeycloakPreflight).toHaveBeenCalledWith('demo');
     expect(planKeycloakProvisioning).toHaveBeenCalledWith('demo');
     expect(refreshKeycloakStatus).toHaveBeenCalledWith('demo');
     expect(activateInstance).toHaveBeenCalledWith('demo');
+    expect(probeTenantIamAccess).toHaveBeenCalledWith('demo');
     await waitFor(() => {
       expect(executeKeycloakProvisioning.mock.calls).toEqual(
         expect.arrayContaining([
@@ -301,6 +312,61 @@ describe('InstanceDetailPage', () => {
     });
   });
 
+  it('renders overview first and keeps historical runs behind the history tab', async () => {
+    useInstancesMock.mockReturnValue(
+      createInstancesApiState({
+        selectedInstance: createSelectedInstance({
+          status: 'active',
+          provisioningRuns: [
+            {
+              id: 'registry-run-1',
+              operation: 'provision',
+              status: 'failed',
+            },
+          ],
+          keycloakProvisioningRuns: [
+            {
+              id: 'run-older',
+              intent: 'provision',
+              mode: 'existing',
+              overallStatus: 'failed',
+              driftSummary: 'Älterer Run fehlgeschlagen.',
+              requestId: 'req-older',
+              steps: [],
+            },
+          ],
+          latestKeycloakProvisioningRun: {
+            id: 'run-current',
+            intent: 'provision',
+            mode: 'existing',
+            overallStatus: 'succeeded',
+            driftSummary: 'Aktueller Run erfolgreich.',
+            requestId: 'req-current',
+            steps: [],
+          },
+          tenantIamStatus: {
+            configuration: { status: 'ready', summary: 'Konfiguration ok', source: 'registry' },
+            access: { status: 'ready', summary: 'Rechte vorhanden', source: 'access_probe', checkedAt: '2026-01-01T00:00:00.000Z' },
+            reconcile: { status: 'ready', summary: 'Kein Backlog', source: 'role_reconcile', checkedAt: '2026-01-01T00:00:00.000Z' },
+            overall: { status: 'ready', summary: 'Betriebsbereit', source: 'access_probe', checkedAt: '2026-01-01T00:00:00.000Z' },
+          },
+        }),
+      })
+    );
+
+    render(<InstanceDetailPage instanceId="demo" />);
+
+    expect(screen.getAllByText('Betriebsbereit').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Älterer Run fehlgeschlagen.')).toBeNull();
+
+    const historyTab = screen.getByRole('tab', { name: 'Historie' });
+    fireEvent.pointerDown(historyTab);
+    fireEvent.click(historyTab);
+    await waitFor(() => {
+      expect(screen.getByText('Älterer Run fehlgeschlagen.')).toBeTruthy();
+    });
+  });
+
   it('keeps the detail page usable when keycloak is unavailable', async () => {
     const refreshKeycloakPreflight = vi.fn().mockResolvedValue(true);
     useInstancesMock.mockReturnValue(
@@ -318,14 +384,81 @@ describe('InstanceDetailPage', () => {
     render(<InstanceDetailPage instanceId="demo" />);
 
     expect(screen.getByText('Die Detailseite bleibt bedienbar, aber Keycloak-Aktionen und Prüfungen sind aktuell blockiert. Prüfen Sie Erreichbarkeit und Credentials.')).toBeTruthy();
+    fireEvent.click(screen.getByRole('tab', { name: 'Betrieb' }));
     expect(screen.getByText('Technischer Keycloak-Zugriff')).toBeTruthy();
-    expect(screen.queryByText('Keycloak konnte nicht erreicht oder nicht abgeglichen werden.')).toBeNull();
+    expect(screen.getByText('Keycloak konnte nicht erreicht oder nicht abgeglichen werden.')).toBeTruthy();
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Vorbedingungen prüfen' })[0]);
 
     await waitFor(() => {
       expect(refreshKeycloakPreflight).toHaveBeenCalledWith('demo');
     });
+  });
+
+  it('renders a separate tenant IAM operations block', async () => {
+    useInstancesMock.mockReturnValue(
+      createInstancesApiState({
+        selectedInstance: createSelectedInstance({
+          tenantIamStatus: {
+            configuration: { status: 'ready', summary: 'Konfiguration ok', source: 'registry' },
+            access: { status: 'unknown', summary: 'Noch keine Probe', source: 'access_probe' },
+            reconcile: { status: 'degraded', summary: 'Backlog vorhanden', source: 'role_reconcile' },
+            overall: { status: 'degraded', summary: 'Eingeschränkt', source: 'role_reconcile' },
+          },
+        }),
+      })
+    );
+
+    render(<InstanceDetailPage instanceId="demo" />);
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Betrieb' }));
+    expect(screen.getAllByText('Tenant-IAM-Betrieb').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Noch keine Probe').length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: 'Tenant-IAM-Rechte probeweise prüfen' })).toBeTruthy();
+  });
+
+  it('prefers the current keycloak structure over stale tenant IAM configuration in the overview', async () => {
+    useInstancesMock.mockReturnValue(
+      createInstancesApiState({
+        selectedInstance: createSelectedInstance({
+          status: 'active',
+          tenantIamStatus: {
+            configuration: {
+              status: 'degraded',
+              summary: 'Tenant-IAM-Struktur ist unvollständig oder driftet.',
+              source: 'keycloak_status_snapshot',
+            },
+            access: {
+              status: 'ready',
+              summary: 'Tenant-Admin-Client kann Realm-Rollen lesen.',
+              source: 'access_probe',
+              requestId: 'req-access-1',
+            },
+            reconcile: {
+              status: 'ready',
+              summary: 'Letzter Rollenabgleich ist synchron.',
+              source: 'role_reconcile',
+              requestId: 'req-reconcile-1',
+            },
+            overall: {
+              status: 'degraded',
+              summary: 'Tenant-IAM ist eingeschränkt.',
+              source: 'keycloak_status_snapshot',
+            },
+          },
+        }),
+      })
+    );
+
+    render(<InstanceDetailPage instanceId="demo" />);
+
+    expect(screen.getByText('Betriebsbereit')).toBeTruthy();
+    expect(screen.getByText('Die Instanz ist betriebsbereit. Nutzen Sie die Seite weiterhin für Drift-Prüfungen, Secret-Rotation und Admin-Resets.')).toBeTruthy();
+    expect(screen.getByText('Keine dominanten Abweichungen. Die Instanz zeigt aktuell keinen priorisierten Befund.')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Betrieb' }));
+    expect(screen.getAllByText('ready').length).toBeGreaterThan(0);
+    expect(screen.getByText('Tenant-IAM-Struktur ist vollständig vorhanden.')).toBeTruthy();
   });
 
   it('keeps the tenant secret field read-only for new realms and marks generation as pending', () => {
@@ -407,7 +540,7 @@ describe('InstanceDetailPage', () => {
 
     render(<InstanceDetailPage instanceId="demo" />);
 
-    expect(screen.getByText('Konfiguration unvollständig')).toBeTruthy();
+    expect(screen.getAllByText('Konfiguration unvollständig').length).toBeGreaterThan(0);
     expect(screen.getByText('Konkrete Blocker')).toBeTruthy();
     expect(screen.getByText('Tenant-Admin-Client vorhanden')).toBeTruthy();
     expect(screen.getByText('Tenant-Admin-Client-Secret mit Keycloak abgeglichen')).toBeTruthy();
@@ -434,9 +567,83 @@ describe('InstanceDetailPage', () => {
     );
     expect(screen.getByText('Diagnose: Registry- oder Provisioning-Drift')).toBeTruthy();
     expect(screen.getByText('Empfohlene Aktion: Provisioning prüfen')).toBeTruthy();
-    expect(screen.getByText('Request-ID: req-instance-9')).toBeTruthy();
+    expect(screen.getAllByText('Request-ID: req-instance-9').length).toBeGreaterThan(0);
     expect(screen.getByText(/Vorbedingungen zuletzt geprüft: Status ready/i)).toBeTruthy();
     expect(screen.getByText('Letzte Provisioning-Vorschau: Kein Drift.')).toBeTruthy();
     expect(screen.getByText('Letzter Keycloak-Run: Request-ID req-1, Status succeeded')).toBeTruthy();
+  });
+
+  it('renders module IAM details, empty preflight and preview states, and loads historical runs on demand', async () => {
+    const seedIamBaseline = vi.fn().mockResolvedValue(true);
+    const loadKeycloakProvisioningRun = vi.fn().mockResolvedValue(true);
+    useInstancesMock.mockReturnValue(
+      createInstancesApiState({
+        seedIamBaseline,
+        loadKeycloakProvisioningRun,
+        selectedInstance: createSelectedInstance({
+          keycloakPreflight: {
+            overallStatus: 'ready',
+            generatedAt: '2026-01-01T00:00:00.000Z',
+            checks: [],
+          },
+          keycloakPlan: {
+            mode: 'existing',
+            overallStatus: 'ready',
+            generatedAt: '2026-01-01T00:00:00.000Z',
+            driftSummary: 'Kein Drift.',
+            steps: [],
+          },
+          moduleIamStatus: {
+            overall: { status: 'degraded', summary: 'IAM-Basis unvollständig', source: 'registry' },
+            modules: [
+              {
+                moduleId: 'news',
+                status: 'blocked',
+                summary: 'Berechtigungen fehlen',
+                permissionIds: [],
+              },
+            ],
+          },
+          keycloakProvisioningRuns: [
+            {
+              id: 'run-history-1',
+              intent: 'reset_tenant_admin',
+              mode: 'existing',
+              overallStatus: 'failed',
+              driftSummary: 'Historischer Fehler',
+              requestId: null,
+              steps: [
+                {
+                  stepKey: 'cleanup',
+                  title: 'Aufräumen',
+                  status: 'failed',
+                  summary: 'Abgebrochen',
+                },
+              ],
+            },
+          ],
+        }),
+      })
+    );
+
+    render(<InstanceDetailPage instanceId="demo" />);
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Betrieb' }));
+    expect(screen.getByText('Berechtigungen fehlen')).toBeTruthy();
+    expect(screen.getByText('Berechtigungen: —')).toBeTruthy();
+    expect(screen.getAllByRole('button', { name: 'Vorbedingungen prüfen' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('button', { name: 'Provisioning-Vorschau laden' }).length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByRole('button', { name: 'IAM-Basis neu aufbauen' }));
+    expect(seedIamBaseline).toHaveBeenCalledWith('demo');
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Historie' }));
+    expect(screen.getByText('Historischer Fehler')).toBeTruthy();
+    expect(screen.getByText('Aufräumen')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Run laden' }));
+
+    await waitFor(() => {
+      expect(loadKeycloakProvisioningRun).toHaveBeenCalledWith('demo', 'run-history-1');
+    });
   });
 });

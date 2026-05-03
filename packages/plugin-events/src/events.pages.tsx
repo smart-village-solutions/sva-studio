@@ -1,10 +1,20 @@
 import React from 'react';
-import { Link, useNavigate, useParams } from '@tanstack/react-router';
-import { usePluginTranslation } from '@sva/plugin-sdk';
+import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router';
+import {
+  findHostMediaReferenceAssetId,
+  fromDatetimeLocalValue,
+  listHostMediaAssets,
+  listHostMediaReferencesByTarget,
+  replaceHostMediaReferences,
+  toDatetimeLocalValue,
+  toHostMediaFieldOptions,
+  usePluginTranslation,
+} from '@sva/plugin-sdk';
 import {
   Button,
   Checkbox,
   Input,
+  MediaReferenceField,
   Select,
   StudioDetailPageTemplate,
   StudioEmptyState,
@@ -14,6 +24,7 @@ import {
   StudioFormSummary,
   StudioLoadingState,
   StudioOverviewPageTemplate,
+  StudioDataTable,
   Textarea,
 } from '@sva/studio-ui-react';
 
@@ -26,7 +37,9 @@ import {
   listPoiForEventSelection,
   updateEvent,
 } from './events.api.js';
-import type { EventContentItem, EventFormInput, PoiSelectItem } from './events.types.js';
+import { normalizeListSearch } from './list-pagination.js';
+import { pluginEventsMediaPickers } from './plugin.js';
+import type { EventContentItem, EventFormInput, EventListResult, PoiSelectItem } from './events.types.js';
 import { validateEventForm } from './events.validation.js';
 
 type StatusMessage = {
@@ -54,25 +67,6 @@ const defaultForm = (): EventFormInput => ({
 const compactString = (value?: string) => {
   const trimmed = value?.trim();
   return trimmed && trimmed.length > 0 ? trimmed : undefined;
-};
-
-const toDatetimeLocalValue = (value?: string) => {
-  if (!value) {
-    return '';
-  }
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return '';
-  }
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}T${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
-};
-
-const fromDatetimeLocalValue = (value: string) => {
-  if (value.length === 0) {
-    return '';
-  }
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? '' : date.toISOString();
 };
 
 const itemToForm = (item: EventContentItem): EventFormInput => ({
@@ -138,18 +132,134 @@ const compactForm = (form: EventFormInput): EventFormInput => ({
 const errorMessage = (pt: ReturnType<typeof usePluginTranslation>, error: unknown, fallbackKey: string) =>
   error instanceof EventsApiError ? error.message : pt(fallbackKey);
 
+type ListSearchState = Record<string, unknown>;
+
+type ListPaginationState = Readonly<{
+  page: number;
+  pageSize: number;
+  hasNextPage: boolean;
+}>;
+
+type ListPaginationNavProps = Readonly<{
+  ariaLabel: string;
+  pageLabel: string;
+  previousLabel: string;
+  nextLabel: string;
+  pagination: ListPaginationState;
+  onPageChange: (page: number) => void;
+}>;
+
+const updateListSearchPage = (
+  current: ListSearchState,
+  page: number,
+  pageSize: number
+): ListSearchState => ({
+  ...current,
+  page,
+  pageSize,
+});
+
+const EventListEditAction = ({ id, label }: Readonly<{ id: string; label: string }>) => (
+  <Button asChild variant="outline" size="sm">
+    <Link to="/admin/events/$id" params={{ id }}>
+      {label}
+    </Link>
+  </Button>
+);
+
+const EventsPaginationNav = ({
+  ariaLabel,
+  pageLabel,
+  previousLabel,
+  nextLabel,
+  pagination,
+  onPageChange,
+}: ListPaginationNavProps) => (
+  <nav aria-label={ariaLabel} className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
+    <p key={pagination.page} aria-live="polite" className="animate-pagination-active">
+      {pageLabel}
+    </p>
+    <div className="flex items-center gap-2">
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        disabled={pagination.page <= 1}
+        onClick={() => onPageChange(Math.max(1, pagination.page - 1))}
+      >
+        {previousLabel}
+      </Button>
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        disabled={!pagination.hasNextPage}
+        onClick={() => onPageChange(pagination.page + 1)}
+      >
+        {nextLabel}
+      </Button>
+    </div>
+  </nav>
+);
+
+const createEventsListColumns = (pt: ReturnType<typeof usePluginTranslation>) => [
+  { id: 'title', header: pt('fields.title'), cell: (item: EventContentItem) => item.title },
+  { id: 'categoryName', header: pt('fields.categoryName'), cell: (item: EventContentItem) => item.categoryName ?? '—' },
+  {
+    id: 'dateStart',
+    header: pt('fields.dateStart'),
+    cell: (item: EventContentItem) =>
+      item.dates?.[0]?.dateStart ? new Date(item.dates[0].dateStart).toLocaleString() : '—',
+  },
+];
+
 export function EventsListPage() {
   const pt = usePluginTranslation('events');
-  const [items, setItems] = React.useState<readonly EventContentItem[]>([]);
+  const navigate = useNavigate();
+  const search = useSearch({ strict: false }) as { readonly page?: number; readonly pageSize?: number };
+  const { page, pageSize } = normalizeListSearch(search);
+  const editLabel = pt('actions.edit');
+  const [result, setResult] = React.useState<EventListResult>({
+    data: [],
+    pagination: { page, pageSize, hasNextPage: false },
+  });
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
+  const handlePageChange = React.useCallback(
+    (nextPage: number) => {
+      Promise.resolve(
+        navigate({
+          to: '/admin/events',
+          search: (current: ListSearchState) => updateListSearchPage(current, nextPage, result.pagination.pageSize),
+        })
+      ).catch(() => undefined);
+    },
+    [navigate, result.pagination.pageSize]
+  );
+
+  React.useEffect(() => {
+    if (search.page === page && search.pageSize === pageSize) {
+      return;
+    }
+
+    Promise.resolve(
+      navigate({
+        to: '/admin/events',
+        replace: true,
+        search: (current: ListSearchState) => updateListSearchPage(current, page, pageSize),
+      })
+    ).catch(() => undefined);
+  }, [navigate, page, pageSize, search.page, search.pageSize]);
+
   React.useEffect(() => {
     let active = true;
-    listEvents()
+    setLoading(true);
+    setError(null);
+    listEvents({ page, pageSize })
       .then((data) => {
         if (active) {
-          setItems(data);
+          setResult(data);
           setError(null);
         }
       })
@@ -166,7 +276,7 @@ export function EventsListPage() {
     return () => {
       active = false;
     };
-  }, [pt]);
+  }, [page, pageSize]);
 
   return (
     <StudioOverviewPageTemplate
@@ -174,41 +284,39 @@ export function EventsListPage() {
       description={pt('list.description')}
       primaryAction={
         <Button asChild>
-          <Link to="/plugins/events/new">{pt('actions.create')}</Link>
+          <Link to="/admin/events/new">{pt('actions.create')}</Link>
         </Button>
       }
     >
       {loading ? <StudioLoadingState>{pt('messages.loading')}</StudioLoadingState> : null}
       {error ? <StudioErrorState>{error}</StudioErrorState> : null}
-      {!loading && !error && items.length === 0 ? <StudioEmptyState>{pt('empty.title')}</StudioEmptyState> : null}
-      {!loading && !error && items.length > 0 ? (
-        <div className="overflow-hidden rounded-md border border-border">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/60 text-left">
-              <tr>
-                <th className="px-4 py-3 font-medium">{pt('fields.title')}</th>
-                <th className="px-4 py-3 font-medium">{pt('fields.categoryName')}</th>
-                <th className="px-4 py-3 font-medium">{pt('fields.dateStart')}</th>
-                <th className="px-4 py-3 text-right font-medium">{pt('fields.actions')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((item) => (
-                <tr key={item.id} className="border-t border-border">
-                  <td className="px-4 py-3 font-medium">{item.title}</td>
-                  <td className="px-4 py-3">{item.categoryName ?? '—'}</td>
-                  <td className="px-4 py-3">{item.dates?.[0]?.dateStart ? new Date(item.dates[0].dateStart).toLocaleString() : '—'}</td>
-                  <td className="px-4 py-3 text-right">
-                    <Button asChild variant="outline" size="sm">
-                      <Link to="/plugins/events/$contentId" params={{ contentId: item.id }}>
-                        {pt('actions.edit')}
-                      </Link>
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {!loading && !error && result.data.length === 0 ? <StudioEmptyState>{pt('empty.title')}</StudioEmptyState> : null}
+      {!loading && !error && result.data.length > 0 ? (
+        <div className="space-y-4">
+          <StudioDataTable
+            ariaLabel={pt('list.title')}
+            labels={{
+              selectionColumn: pt('fields.actions'),
+              actionsColumn: pt('fields.actions'),
+              loading: pt('messages.loading'),
+              selectAllRows: (label) => label,
+              selectRow: ({ label }) => label,
+            }}
+            data={result.data}
+            columns={createEventsListColumns(pt)}
+            rowActions={(item) => <EventListEditAction id={item.id} label={editLabel} />}
+            emptyState={null}
+            getRowId={(item) => item.id}
+            selectionMode="none"
+          />
+          <EventsPaginationNav
+            ariaLabel={pt('pagination.ariaLabel')}
+            pageLabel={pt('pagination.pageLabel', { page: result.pagination.page })}
+            previousLabel={pt('pagination.previous')}
+            nextLabel={pt('pagination.next')}
+            pagination={result.pagination}
+            onPageChange={handlePageChange}
+          />
         </div>
       ) : null}
     </StudioOverviewPageTemplate>
@@ -218,15 +326,21 @@ export function EventsListPage() {
 function EventsEditor({ mode }: { readonly mode: 'create' | 'edit' }) {
   const pt = usePluginTranslation('events');
   const navigate = useNavigate();
-  const params = useParams({ strict: false }) as { readonly contentId?: string };
-  const contentId = params.contentId;
+  const params = useParams({ strict: false }) as { readonly contentId?: string; readonly id?: string };
+  const contentId = params.contentId ?? params.id;
   const [form, setForm] = React.useState<EventFormInput>(defaultForm);
   const [pois, setPois] = React.useState<readonly PoiSelectItem[]>([]);
+  const [mediaOptions, setMediaOptions] = React.useState<readonly { assetId: string; label: string }[]>([]);
+  const [headerImageAssetId, setHeaderImageAssetId] = React.useState<string | null>(null);
+  const [existingMediaReferenceCount, setExistingMediaReferenceCount] = React.useState(0);
   const [loading, setLoading] = React.useState(mode === 'edit');
   const [status, setStatus] = React.useState<StatusMessage | null>(null);
 
   React.useEffect(() => {
     void listPoiForEventSelection().then(setPois).catch(() => setPois([]));
+    void listHostMediaAssets({ fetch: globalThis.fetch.bind(globalThis) })
+      .then((assets) => setMediaOptions(toHostMediaFieldOptions(assets)))
+      .catch(() => setMediaOptions([]));
   }, []);
 
   React.useEffect(() => {
@@ -238,6 +352,21 @@ function EventsEditor({ mode }: { readonly mode: 'create' | 'edit' }) {
       .then((item) => {
         if (active) {
           setForm(itemToForm(item));
+          void listHostMediaReferencesByTarget({
+            fetch: globalThis.fetch.bind(globalThis),
+            targetType: 'events',
+            targetId: item.id,
+          })
+            .then((references) => {
+              setExistingMediaReferenceCount(references.length);
+              setHeaderImageAssetId(
+                findHostMediaReferenceAssetId(references, pluginEventsMediaPickers.headerImage.roles[0])
+              );
+            })
+            .catch(() => {
+              setExistingMediaReferenceCount(0);
+              setHeaderImageAssetId(null);
+            });
         }
       })
       .catch((loadError: unknown) => {
@@ -274,9 +403,26 @@ function EventsEditor({ mode }: { readonly mode: 'create' | 'edit' }) {
     try {
       const saved =
         mode === 'create' ? await createEvent(compacted) : await updateEvent(contentId as string, compacted);
+      const mediaReferences = headerImageAssetId
+        ? [
+            {
+              assetId: headerImageAssetId,
+              role: pluginEventsMediaPickers.headerImage.roles[0],
+              sortOrder: 0,
+            },
+          ]
+        : [];
+      if (mediaReferences.length > 0 || existingMediaReferenceCount > 0) {
+        await replaceHostMediaReferences({
+          fetch: globalThis.fetch.bind(globalThis),
+          targetType: 'events',
+          targetId: saved.id,
+          references: mediaReferences,
+        });
+      }
       setStatus({ kind: 'success', text: mode === 'create' ? pt('messages.createSuccess') : pt('messages.updateSuccess') });
       if (mode === 'create') {
-        await navigate({ to: '/plugins/events/$contentId', params: { contentId: saved.id } });
+        await navigate({ to: '/admin/events/$id', params: { id: saved.id } });
       }
     } catch (saveError) {
       setStatus({ kind: 'error', text: errorMessage(pt, saveError, 'messages.saveError') });
@@ -289,7 +435,7 @@ function EventsEditor({ mode }: { readonly mode: 'create' | 'edit' }) {
     }
     try {
       await deleteEvent(contentId);
-      await navigate({ to: '/plugins/events' });
+      await navigate({ to: '/admin/events' });
     } catch (deleteError) {
       setStatus({ kind: 'error', text: errorMessage(pt, deleteError, 'messages.deleteError') });
     }
@@ -305,7 +451,7 @@ function EventsEditor({ mode }: { readonly mode: 'create' | 'edit' }) {
       description={mode === 'create' ? pt('editor.createDescription') : pt('editor.editDescription')}
       actions={
         <Button asChild variant="outline">
-          <Link to="/plugins/events">{pt('actions.back')}</Link>
+          <Link to="/admin/events">{pt('actions.back')}</Link>
         </Button>
       }
     >
@@ -322,6 +468,15 @@ function EventsEditor({ mode }: { readonly mode: 'create' | 'edit' }) {
         <StudioField id="event-description" label={pt('fields.description')}>
           <Textarea id="event-description" value={form.description ?? ''} onChange={(event) => setField('description', event.target.value)} rows={7} />
         </StudioField>
+        <MediaReferenceField
+          id="event-header-image"
+          label={pt('fields.headerImage')}
+          value={headerImageAssetId}
+          options={mediaOptions}
+          onChange={setHeaderImageAssetId}
+          placeholder={pt('fields.mediaPlaceholder')}
+          clearLabel={pt('actions.clearMedia')}
+        />
         <StudioFieldGroup columns={2}>
           <StudioField id="event-date-start" label={pt('fields.dateStart')} error={errors.includes('dates') ? pt('validation.dates') : undefined}>
             <Input id="event-date-start" type="datetime-local" value={toDatetimeLocalValue(firstDate.dateStart)} onChange={(event) => setField('dates', [{ ...firstDate, dateStart: fromDatetimeLocalValue(event.target.value) }])} />

@@ -16,7 +16,7 @@ Referenzen:
 - `apps/sva-studio-react/src/router.tsx`
 - `packages/routing/src/index.ts`
 - `packages/auth-runtime/src/runtime-routes.ts`
-- `packages/sdk/src/logger/index.server.ts`
+- `packages/server-runtime/src/logger/index.server.ts`
 
 ## Mindestinhalte
 

@@ -1,40 +1,48 @@
 # @sva/monitoring-client
 
-OpenTelemetry-Integrations-Paket für SVA Studio. Kapselt den vollständigen OTEL-Stack (Logs, Metriken, Tracing) und stellt Business-Event-Metriken sowie einen PII-redaktierenden Log-Processor bereit.
+OpenTelemetry-Paket für SVA Studio mit clientseitigen Metriken, browserseitigem Logging und serverseitiger OTEL-Initialisierung inklusive PII-Redaktion.
 
 ## Architektur-Rolle
 
-`@sva/monitoring-client` ist das einzige Paket mit direktem Zugriff auf die OpenTelemetry SDKs. Es hat **keine Workspace-Abhängigkeiten** und wird von `@sva/sdk` über eine Bridge konsumiert. Diese Entkopplung ermöglicht:
+`@sva/monitoring-client` bündelt die Monitoring-spezifische Infrastruktur für Logs und Metriken in einem eigenständigen Library-Paket. Das Paket trennt browsernahe Logging-Hilfen, wiederverwendbare Redaktionslogik und serverseitige OpenTelemetry-Initialisierung, damit Fachlogik keine direkten SDK-Details kennen muss.
 
-- Isolierung der OTEL-Komplexität in einem einzigen Paket
-- Austauschbarkeit des Monitoring-Backends ohne Auswirkung auf andere Packages
-- Unabhängige Versionierung der OTEL-Abhängigkeiten
+Die öffentliche Oberfläche ist entlang der Laufzeitkontexte getrennt:
 
-```
-@sva/monitoring-client (keine Workspace-Deps)
-  ↑
-@sva/sdk ← Bridge via Lazy-Import
-  ↑
-@sva/auth-runtime, App
-```
+- `@sva/monitoring-client` für Metriken
+- `@sva/monitoring-client/logging` für Browser-Logging und Redaktionshelfer
+- `@sva/monitoring-client/server` für OTEL-Setup und Workspace-Kontext im Node-Kontext
+- `@sva/monitoring-client/logger-provider.server` für den globalen Logger-Provider-Singleton
 
-**Abhängigkeiten (extern):**
-- `@opentelemetry/sdk-node` – Node.js OTEL SDK
-- `@opentelemetry/api` / `@opentelemetry/api-logs` – OTEL APIs
-- `@opentelemetry/sdk-logs` / `@opentelemetry/sdk-metrics` – Log/Metric SDKs
-- `@opentelemetry/exporter-logs-otlp-http` / `@opentelemetry/exporter-metrics-otlp-http` – OTLP-Exporter
-- `@opentelemetry/auto-instrumentations-node` – Auto-Instrumentierung (HTTP)
-- `@opentelemetry/resources` / `@opentelemetry/semantic-conventions` – Resource-Modell
+## Öffentliche API
 
-## Exports
+Die Root-API exportiert Metrikfunktionen für fachliche Ereignisse und Latenzen:
 
-| Pfad | Beschreibung |
-| --- | --- |
-| `@sva/monitoring-client` | Business-Event-Metriken, IAM-Latenz-Metriken |
-| `@sva/monitoring-client/server` | OTEL SDK Setup, Workspace-Context-Getter |
-| `@sva/monitoring-client/logger-provider.server` | Globaler Logger-Provider Singleton |
+- `recordBusinessEvent(eventName, attributes)` zählt Business-Events über den OTEL-Meter `sva.monitoring`
+- `recordIamAuthorizeDecisionLatency(durationMs, attributes)` misst clientseitige Autorisierungs-Latenzen in Millisekunden
 
-## Metriken
+Die Logging-API unter `@sva/monitoring-client/logging` stellt bereit:
+
+- `createBrowserLogger(...)` für browserseitiges Logging mit konfigurierbarem Log-Level
+- `registerBrowserLogSink(...)` zum Mitschneiden strukturierter Browser-Logs
+- `isBrowserConsoleCaptureSuppressed()` zur Vermeidung rekursiver Sink-Fehler
+- `redactLogString(...)`, `redactLogMeta(...)`, `serializeAndRedactLogValue(...)` und `stringifyNonPlainValue(...)` für PII-sichere Log-Aufbereitung
+
+Die Server-API unter `@sva/monitoring-client/server` ergänzt:
+
+- `createOtelSdk(config)` zum Erzeugen eines `NodeSDK` mit OTLP-Log- und Metrikexport
+- `startOtelSdk(config)` zum Starten des SDKs und Registrieren des globalen Logger-Providers
+- `setWorkspaceContextGetter(getter)` zum Injizieren von `workspace_id` in Log-Records
+- Typen `OtelConfig` und `WorkspaceContext`
+
+Das Modul `@sva/monitoring-client/logger-provider.server` exportiert:
+
+- `setGlobalLoggerProvider(provider)`
+- `getGlobalLoggerProvider()`
+- `hasLoggerProvider()`
+
+## Nutzung und Integration
+
+Für fachliche Metriken wird die Root-API direkt verwendet:
 
 ```ts
 import {
@@ -42,99 +50,79 @@ import {
   recordIamAuthorizeDecisionLatency,
 } from '@sva/monitoring-client';
 
-// Business-Event zählen
 recordBusinessEvent('user_login', {
   workspace_id: 'ws-123',
   auth_method: 'oidc',
 });
 
-// IAM-Autorisierungs-Latenz messen
 recordIamAuthorizeDecisionLatency(12.5, {
   decision: 'allowed',
-  reason: 'allowed_by_rbac',
 });
 ```
 
-## OTEL SDK Setup (Server)
+Browser-Code nutzt den dedizierten Logging-Exportpfad:
 
 ```ts
-import { createOtelSdk, startOtelSdk } from '@sva/monitoring-client/server';
+import { createBrowserLogger } from '@sva/monitoring-client/logging';
 
-// SDK erstellen und starten
-const sdk = createOtelSdk({
+const logger = createBrowserLogger({
+  component: 'auth-login-form',
+  level: 'info',
+});
+
+logger.info('Login gestartet', { workspaceId: 'ws-123' });
+```
+
+Server-Code initialisiert das OTEL-SDK ausschließlich über den Server-Exportpfad:
+
+```ts
+import { startOtelSdk, setWorkspaceContextGetter } from '@sva/monitoring-client/server';
+
+setWorkspaceContextGetter(() => ({
+  workspaceId: 'ws-123',
+}));
+
+await startOtelSdk({
   serviceName: 'sva-studio',
   environment: 'production',
 });
-await startOtelSdk(sdk);
 ```
 
-### RedactingLogProcessor
-
-PII-Redaction auf OTEL-Ebene – als letzte Sicherheitsschicht vor dem Export:
-
-- **Forbidden Label Keys:** Sensible Keys werden aus Log-Attributen entfernt
-- **E-Mail-Maskierung:** `john@example.com` → `j***@example.com`
-- **JWT-/Query-Parameter-Redaction:** `id_token_hint`, `access_token`, `refresh_token`, `code` und JWT-aehnliche Strings werden vor dem Export maskiert
-- Konfigurierbar via Label-Whitelist
-
-### Workspace-Context-Getter
-
-```ts
-import { setWorkspaceContextGetter } from '@sva/monitoring-client/server';
-
-// Wird vom SDK gesetzt, um workspace_id in Logs zu injizieren
-setWorkspaceContextGetter(() => ({
-  workspaceId: 'ws-123',
-  requestId: 'req-456',
-}));
-```
-
-## Logger-Provider (Server)
-
-Globaler Singleton für den OTEL Logger-Provider – wird vom SDK initialisiert und vom Winston-Transport gelesen.
-
-```ts
-import {
-  setGlobalLoggerProvider,
-  getGlobalLoggerProvider,
-  hasLoggerProvider,
-} from '@sva/monitoring-client/logger-provider.server';
-```
-
-## Konfiguration
-
-| Aspekt | Development | Production |
-| --- | --- | --- |
-| OTLP-Endpoint | `localhost:4318` oder per Env überschrieben | Über OTEL-Env-Vars |
-| Batch-Size | Klein (schnelles Flush) | Groß (Performance) |
-| Auto-Instrumentation | HTTP | HTTP |
-| PII-Redaction | Aktiv | Aktiv |
-
-Hinweis:
-
-- In Development bleibt die App auch ohne erfolgreichen OTEL-Start lauffaehig; Console und Dev-Konsole decken den lokalen Diagnosefall ab.
-- In Production bleibt `@sva/monitoring-client` der verpflichtende Exportpfad fuer Server-Logs und Metriken; fehlende OTEL-Readiness ist kein regulaerer Fallback-Fall.
-- Development-Kanaele und OTEL-Export folgen derselben Privacy-Policy; tokenhaltige URLs und decodierbare JWTs sind in keinem Kanal zulaessig.
+Die integrierte Redaktionslogik maskiert E-Mail-Adressen, JWT-ähnliche Tokens sowie sensible Schlüssel wie `authorization`, `access_token`, `session_id` oder `email`, bevor Logs in Konsole, Sinks oder OTEL-Exporter gelangen.
 
 ## Projektstruktur
 
-```
-src/
-├── index.ts                       # Re-Export Metriken
-├── metrics.ts                     # Business Events Counter, IAM Latency Histogram
-├── server.ts                      # Server-only Re-Exports
-├── otel.server.ts                 # OTEL SDK Setup + RedactingLogProcessor
-└── logger-provider.server.ts      # Globaler LoggerProvider Singleton
+```text
+packages/monitoring-client/
+├── src/
+│   ├── index.ts
+│   ├── metrics.ts
+│   ├── logging.ts
+│   ├── logging/
+│   │   ├── browser.ts
+│   │   └── redaction.ts
+│   ├── otel.server.ts
+│   ├── server.ts
+│   └── logger-provider.server.ts
+├── tests/
+├── scripts/
+├── package.json
+├── project.json
+└── vitest.config.ts
 ```
 
 ## Nx-Konfiguration
 
-- **Name:** `monitoring-client`
-- **Tags:** `scope:monitoring`, `type:lib`
-- **Build:** `pnpm nx run monitoring-client:build`
-- **Lint:** `pnpm nx run monitoring-client:lint`
-- **Tests:** `pnpm nx run monitoring-client:test:unit`
-- **Integration:** `pnpm nx run monitoring-client:test:integration` (benötigt laufenden Monitoring-Stack)
+- Projektname: `monitoring-client`
+- Projekttyp: `library`
+- Source-Root: `packages/monitoring-client/src`
+- Tags: `scope:monitoring`, `type:lib`
+- Build: `pnpm nx run monitoring-client:build`
+- Lint: `pnpm nx run monitoring-client:lint`
+- Unit-Tests: `pnpm nx run monitoring-client:test:unit`
+- Coverage: `pnpm nx run monitoring-client:test:coverage`
+- Runtime-Check: `pnpm nx run monitoring-client:check:runtime`
+- Integrationstest gegen den Monitoring-Stack: `pnpm nx run monitoring-client:test:integration`
 
 ## Verwandte Dokumentation
 

@@ -14,6 +14,7 @@ vi.mock('@sva/monitoring-client/logging', () => ({
 import {
   asIamError,
   activateInstance,
+  assignInstanceModule,
   assignGroupMembership,
   assignGroupRole,
   archiveInstance,
@@ -46,11 +47,14 @@ import {
   listInstances,
   listOrganizations,
   planInstanceKeycloakProvisioning,
+  probeTenantIamAccess,
   reconcileRoles,
   reconcileInstanceKeycloak,
   removeGroupMembership,
   removeGroupRole,
   requestDataExport,
+  revokeInstanceModule,
+  seedInstanceIamBaseline,
   syncUsersFromKeycloak,
   removeOrganizationMembership,
   suspendInstance,
@@ -98,6 +102,46 @@ describe('iam-api organization helpers', () => {
       '/api/v1/iam/organizations?page=2&pageSize=10&search=alpha&organizationType=municipality&status=active',
       expect.objectContaining({
         credentials: 'include',
+      })
+    );
+  });
+
+  it('sends module assignment, revoke, and baseline seed mutations to the instance IAM endpoints', async () => {
+    const fetchMock = vi.fn().mockImplementation(async () =>
+      new Response(JSON.stringify({ data: { instanceId: 'demo' } }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      })
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    vi.stubGlobal('crypto', { randomUUID: () => 'uuid-test-2' });
+
+    await assignInstanceModule('demo', 'news');
+    await revokeInstanceModule('demo', 'news');
+    await seedInstanceIamBaseline('demo');
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      '/api/v1/iam/instances/demo/modules/assign',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ moduleId: 'news' }),
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      '/api/v1/iam/instances/demo/modules/revoke',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ moduleId: 'news', confirmation: 'REVOKE' }),
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
+      '/api/v1/iam/instances/demo/modules/seed-iam-baseline',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({}),
       })
     );
   });
@@ -862,6 +906,7 @@ describe('iam-api instance helpers', () => {
       tenantAdminTemporaryPassword: 'test-temp-password',
       rotateClientSecret: true,
     });
+    await probeTenantIamAccess('demo');
     await activateInstance('demo');
     await suspendInstance('demo');
     await archiveInstance('demo');
@@ -950,6 +995,17 @@ describe('iam-api instance helpers', () => {
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
       12,
+      '/api/v1/iam/instances/demo/tenant-iam/access-probe',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          'X-SVA-Reauth-Confirmed': 'true',
+        }),
+        body: JSON.stringify({}),
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      13,
       '/api/v1/iam/instances/demo/activate',
       expect.objectContaining({
         method: 'POST',
@@ -960,7 +1016,7 @@ describe('iam-api instance helpers', () => {
       })
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
-      13,
+      14,
       '/api/v1/iam/instances/demo/suspend',
       expect.objectContaining({
         method: 'POST',
@@ -968,7 +1024,7 @@ describe('iam-api instance helpers', () => {
       })
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
-      14,
+      15,
       '/api/v1/iam/instances/demo/archive',
       expect.objectContaining({
         method: 'POST',

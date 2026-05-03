@@ -28,6 +28,11 @@ export {
   DialogTrigger,
 } from './dialog.js';
 export { Input } from './input.js';
+export {
+  MediaReferenceField,
+  type MediaReferenceFieldOption,
+  type MediaReferenceFieldProps,
+} from './media-reference-field.js';
 export { Select } from './select.js';
 export {
   StudioDataTable,
@@ -37,6 +42,7 @@ export {
   type StudioDataTableProps,
 } from './studio-data-table.js';
 export {
+  StudioListPageTemplate,
   StudioDetailPageTemplate,
   StudioEmptyState,
   StudioErrorState,
@@ -52,6 +58,9 @@ export {
   type StudioFieldGroupProps,
   type StudioFieldProps,
   type StudioFormSummaryProps,
+  type StudioListPageAction,
+  type StudioListPageTemplateProps,
+  type StudioListPageTab,
   type StudioOverviewPageTemplateProps,
   type StudioPageHeaderProps,
   type StudioStateBlockProps,

@@ -1,17 +1,13 @@
-import type { EventContentItem, EventFormInput, PoiSelectItem } from './events.types.js';
+import {
+  buildMainserverListUrl,
+  createMainserverCrudClient,
+  requestMainserverJson,
+} from '@sva/plugin-sdk';
 
-type ApiItemResponse<T> = {
-  readonly data: T;
-};
+import type { EventContentItem, EventFormInput, EventListQuery, EventListResult, PoiSelectItem } from './events.types.js';
 
-type ApiListResponse<T> = {
-  readonly data: readonly T[];
-};
-
-type ApiErrorResponse = {
-  readonly error?: string;
-  readonly message?: string;
-};
+const DEFAULT_LIST_QUERY: EventListQuery = { page: 1, pageSize: 25 };
+const MAX_POI_SELECTION_PAGES = 101;
 
 export class EventsApiError extends Error {
   public constructor(
@@ -23,73 +19,61 @@ export class EventsApiError extends Error {
   }
 }
 
-const REQUEST_HEADERS = {
-  'Content-Type': 'application/json',
-  'X-Requested-With': 'XMLHttpRequest',
-} as const;
-
-const requestJson = async <T>(input: string, init?: RequestInit): Promise<T> => {
-  const response = await fetch(input, {
-    credentials: 'include',
-    ...init,
-    headers: {
-      Accept: 'application/json',
-      ...(init?.headers ?? {}),
+const eventsClient = createMainserverCrudClient<
+  EventContentItem,
+  EventFormInput,
+  Readonly<{ data: readonly EventContentItem[]; pagination?: EventListResult['pagination'] }>,
+  EventListResult,
+  EventsApiError
+>({
+  basePath: '/api/v1/mainserver/events',
+  errorFactory: (code, message) => new EventsApiError(code, message),
+  mapListResponse: (response, _mapItem, query) => ({
+    data: response.data,
+    pagination: response.pagination ?? {
+      page: query.page,
+      pageSize: query.pageSize,
+      hasNextPage: false,
     },
-  });
+  }),
+});
 
-  if (!response.ok) {
-    let errorCode = `http_${response.status}`;
-    let message = errorCode;
-    try {
-      const body = (await response.json()) as ApiErrorResponse;
-      errorCode = typeof body.error === 'string' && body.error.length > 0 ? body.error : errorCode;
-      message = typeof body.message === 'string' && body.message.length > 0 ? body.message : errorCode;
-    } catch {
-      // Deterministic fallback for non-JSON upstream errors.
-    }
-    throw new EventsApiError(errorCode, message);
-  }
+export const listEvents = async (query: EventListQuery = DEFAULT_LIST_QUERY): Promise<EventListResult> => eventsClient.list(query);
 
-  return (await response.json()) as T;
-};
+export const getEvent = async (contentId: string): Promise<EventContentItem> => eventsClient.get(contentId);
 
-export const listEvents = async (): Promise<readonly EventContentItem[]> => {
-  const response = await requestJson<ApiListResponse<EventContentItem>>('/api/v1/mainserver/events');
-  return response.data;
-};
+export const createEvent = async (input: EventFormInput): Promise<EventContentItem> => eventsClient.create(input);
 
-export const getEvent = async (contentId: string): Promise<EventContentItem> => {
-  const response = await requestJson<ApiItemResponse<EventContentItem>>(`/api/v1/mainserver/events/${contentId}`);
-  return response.data;
-};
+export const updateEvent = async (contentId: string, input: EventFormInput): Promise<EventContentItem> =>
+  eventsClient.update(contentId, input);
 
-export const createEvent = async (input: EventFormInput): Promise<EventContentItem> => {
-  const response = await requestJson<ApiItemResponse<EventContentItem>>('/api/v1/mainserver/events', {
-    method: 'POST',
-    headers: REQUEST_HEADERS,
-    body: JSON.stringify(input),
-  });
-  return response.data;
-};
-
-export const updateEvent = async (contentId: string, input: EventFormInput): Promise<EventContentItem> => {
-  const response = await requestJson<ApiItemResponse<EventContentItem>>(`/api/v1/mainserver/events/${contentId}`, {
-    method: 'PATCH',
-    headers: REQUEST_HEADERS,
-    body: JSON.stringify(input),
-  });
-  return response.data;
-};
-
-export const deleteEvent = async (contentId: string): Promise<void> => {
-  await requestJson<ApiItemResponse<{ id: string }>>(`/api/v1/mainserver/events/${contentId}`, {
-    method: 'DELETE',
-    headers: REQUEST_HEADERS,
-  });
-};
+export const deleteEvent = async (contentId: string): Promise<void> => eventsClient.remove(contentId);
 
 export const listPoiForEventSelection = async (): Promise<readonly PoiSelectItem[]> => {
-  const response = await requestJson<ApiListResponse<PoiSelectItem>>('/api/v1/mainserver/poi');
-  return response.data.map((item) => ({ id: item.id, name: item.name }));
+  const items: PoiSelectItem[] = [];
+  let page = 1;
+  let hasNextPage = true;
+
+  while (hasNextPage) {
+    if (page > MAX_POI_SELECTION_PAGES) {
+      throw new EventsApiError(
+        'poi_selection_page_limit_exceeded',
+        'Die POI-Auswahl überschreitet das erlaubte Pagination-Limit.'
+      );
+    }
+
+    const response = await requestMainserverJson<{
+      readonly data: readonly PoiSelectItem[];
+      readonly pagination?: EventListResult['pagination'];
+    }, EventsApiError>({
+      url: buildMainserverListUrl('/api/v1/mainserver/poi', { page, pageSize: 100 }),
+      errorFactory: (code, message) => new EventsApiError(code, message),
+    });
+    const pageItems = response.data.map((item) => ({ id: item.id, name: item.name }));
+    items.push(...pageItems);
+    hasNextPage = response.pagination?.hasNextPage === true && pageItems.length > 0;
+    page += 1;
+  }
+
+  return items;
 };

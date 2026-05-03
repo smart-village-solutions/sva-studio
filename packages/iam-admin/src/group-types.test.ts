@@ -13,7 +13,7 @@ describe('mapGroupListItem', () => {
     group_key: 'admins',
     display_name: 'Administratoren',
     description: null,
-    group_type: 'custom',
+    group_type: 'role_bundle',
     is_active: true,
     member_count: 3,
     role_count: 2,
@@ -27,7 +27,7 @@ describe('mapGroupListItem', () => {
     expect(result.instanceId).toBe('inst-1');
     expect(result.groupKey).toBe('admins');
     expect(result.displayName).toBe('Administratoren');
-    expect(result.groupType).toBe('custom');
+    expect(result.groupType).toBe('role_bundle');
     expect(result.isActive).toBe(true);
     expect(result.memberCount).toBe(3);
     expect(result.roleCount).toBe(2);
@@ -45,11 +45,9 @@ describe('mapGroupListItem', () => {
     expect(result.description).toBe('Eine Beschreibung');
   });
 
-  it('mappt groupType korrekt (alle Werte)', () => {
-    for (const t of ['custom', 'system', 'geo', 'org']) {
-      const result = mapGroupListItem({ ...baseRow, group_type: t });
-      expect(result.groupType).toBe(t);
-    }
+  it('mappt groupType role_bundle korrekt', () => {
+    const result = mapGroupListItem({ ...baseRow, group_type: 'role_bundle' });
+    expect(result.groupType).toBe('role_bundle');
   });
 
   it('mappt isActive: false korrekt', () => {

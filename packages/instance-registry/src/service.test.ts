@@ -24,6 +24,7 @@ const baseInstance = {
     email: 'tenant-admin@example.invalid',
   },
   themeKey: 'default',
+  assignedModules: ['news'],
   featureFlags: { beta: true },
   mainserverConfigRef: 'mainserver',
   createdAt: '2026-01-01T00:00:00.000Z',
@@ -44,6 +45,10 @@ const createRepository = (overrides: Partial<InstanceRegistryRepository> = {}): 
   ({
     listInstances: vi.fn(async () => [baseInstance]),
     getInstanceById: vi.fn(async () => baseInstance),
+    listAssignedModules: vi.fn(async () => baseInstance.assignedModules),
+    assignModule: vi.fn(async () => true),
+    revokeModule: vi.fn(async () => true),
+    syncAssignedModuleIam: vi.fn(async () => undefined),
     getAuthClientSecretCiphertext: vi.fn(async () => 'auth-cipher'),
     getTenantAdminClientSecretCiphertext: vi.fn(async () => 'tenant-admin-cipher'),
     resolveHostname: vi.fn(async () => baseInstance),
@@ -51,6 +56,8 @@ const createRepository = (overrides: Partial<InstanceRegistryRepository> = {}): 
     listProvisioningRuns: vi.fn(async () => [latestRun]),
     listLatestProvisioningRuns: vi.fn(async () => ({ demo: latestRun })),
     listAuditEvents: vi.fn(async () => []),
+    getLatestTenantIamAccessProbe: vi.fn(async () => null),
+    getRoleReconcileSummary: vi.fn(async () => null),
     listKeycloakProvisioningRuns: vi.fn(async () => []),
     getKeycloakProvisioningRun: vi.fn(async () => null),
     claimNextKeycloakProvisioningRun: vi.fn(async () => null),
@@ -84,11 +91,39 @@ const createRepository = (overrides: Partial<InstanceRegistryRepository> = {}): 
     ...overrides,
   }) as InstanceRegistryRepository;
 
-const createDeps = (repository = createRepository()): InstanceRegistryServiceDeps => ({
+const createDeps = (
+  repository = createRepository(),
+  overrides: Partial<InstanceRegistryServiceDeps> = {}
+): InstanceRegistryServiceDeps => ({
   repository,
   invalidateHost: vi.fn(),
+  invalidatePermissionSnapshots: vi.fn(async () => undefined),
   protectSecret: vi.fn((value, aad) => (value ? `protected:${aad}:${value}` : null)),
   revealSecret: vi.fn((value) => (value ? `revealed:${value}` : undefined)),
+  moduleIamRegistry: new Map([
+    [
+      'news',
+      {
+        moduleId: 'news',
+        ownerPluginId: 'news',
+        permissionIds: ['news.read', 'news.create', 'news.update', 'news.delete'],
+        systemRoles: [
+          { roleName: 'system_admin', permissionIds: ['news.read', 'news.create', 'news.update', 'news.delete'] },
+          { roleName: 'editor', permissionIds: ['news.read', 'news.create', 'news.update', 'news.delete'] },
+        ],
+      },
+    ],
+    [
+      'events',
+      {
+        moduleId: 'events',
+        ownerPluginId: 'events',
+        permissionIds: ['events.read'],
+        systemRoles: [{ roleName: 'system_admin', permissionIds: ['events.read'] }],
+      },
+    ],
+  ]),
+  ...overrides,
 });
 
 describe('instance registry service facade', () => {
@@ -313,5 +348,298 @@ describe('instance registry service facade', () => {
       })
     ).resolves.toBeNull();
     expect(repository.updateInstance).not.toHaveBeenCalled();
+  });
+
+  it('builds tenant IAM status into instance detail projections from repository evidence', async () => {
+    const repository = createRepository({
+      listAuditEvents: vi.fn(async () => []),
+      listKeycloakProvisioningRuns: vi.fn(async () => []),
+      getLatestTenantIamAccessProbe: vi.fn(async () => ({
+        checkedAt: '2026-04-29T10:01:00.000Z',
+        status: 'blocked',
+        summary: 'Tenant-Admin-Client darf Rollen nicht lesen.',
+        errorCode: 'IDP_FORBIDDEN',
+        requestId: 'req-probe-1',
+      })),
+      getRoleReconcileSummary: vi.fn(async () => ({
+        checkedAt: '2026-04-29T10:00:00.000Z',
+        status: 'degraded',
+        summary: 'Ein Rollenabgleich ist mit Drift beendet worden.',
+        errorCode: 'IDP_CONFLICT',
+        requestId: 'req-reconcile-1',
+      })),
+    });
+    const deps = createDeps(repository);
+    const service = createInstanceRegistryService({
+      ...deps,
+      getKeycloakStatus: vi.fn(async () => ({
+        realmExists: true,
+        clientExists: true,
+        tenantAdminClientExists: true,
+        instanceIdMapperExists: true,
+        tenantAdminExists: true,
+        tenantAdminHasSystemAdmin: true,
+        tenantAdminHasInstanceRegistryAdmin: true,
+        tenantAdminInstanceIdMatches: true,
+        redirectUrisMatch: true,
+        logoutUrisMatch: true,
+        webOriginsMatch: true,
+        clientSecretConfigured: true,
+        tenantClientSecretReadable: true,
+        clientSecretAligned: true,
+        tenantAdminClientSecretConfigured: true,
+        tenantAdminClientSecretReadable: true,
+        tenantAdminClientSecretAligned: true,
+        runtimeSecretSource: 'tenant',
+      })),
+    });
+
+    await expect(service.getInstanceDetail('demo')).resolves.toEqual(
+      expect.objectContaining({
+        assignedModules: ['news'],
+        moduleIamStatus: expect.objectContaining({
+          overall: expect.objectContaining({ status: 'ready' }),
+          modules: [
+            expect.objectContaining({
+              moduleId: 'news',
+              status: 'ready',
+            }),
+          ],
+        }),
+        tenantIamStatus: expect.objectContaining({
+          access: expect.objectContaining({
+            status: 'blocked',
+            requestId: 'req-probe-1',
+          }),
+          reconcile: expect.objectContaining({
+            status: 'degraded',
+            requestId: 'req-reconcile-1',
+          }),
+          overall: expect.objectContaining({
+            status: 'blocked',
+            requestId: 'req-probe-1',
+          }),
+        }),
+      })
+    );
+  });
+
+  it('probes tenant IAM access, persists audit evidence and returns the updated status', async () => {
+    const repository = createRepository({
+      appendAuditEvent: vi.fn(async () => undefined),
+      getLatestTenantIamAccessProbe: vi.fn(async () => null),
+      getRoleReconcileSummary: vi.fn(async () => null),
+    });
+    const deps = createDeps(repository);
+    const service = createInstanceRegistryService({
+      ...deps,
+      probeTenantIamAccess: vi.fn(async () => ({
+        status: 'ready',
+        summary: 'Tenant-Admin-Client kann Realm-Rollen lesen.',
+        checkedAt: '2026-04-29T10:15:00.000Z',
+        source: 'access_probe',
+        requestId: 'req-probe-1',
+      })),
+    });
+
+    await expect(
+      service.probeTenantIamAccess({
+        instanceId: 'demo',
+        actorId: 'actor-1',
+        requestId: 'req-probe-1',
+      })
+    ).resolves.toEqual(
+      expect.objectContaining({
+        access: expect.objectContaining({
+          status: 'ready',
+          requestId: 'req-probe-1',
+        }),
+        overall: expect.objectContaining({
+          status: 'unknown',
+        }),
+      })
+    );
+
+    expect(repository.appendAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'demo',
+        eventType: 'tenant_iam_access_probed',
+        actorId: 'actor-1',
+        requestId: 'req-probe-1',
+        details: expect.objectContaining({
+          status: 'ready',
+          summary: 'Tenant-Admin-Client kann Realm-Rollen lesen.',
+          requestId: 'req-probe-1',
+        }),
+      })
+    );
+  });
+
+  it('assigns a module, syncs IAM baseline and returns the refreshed detail', async () => {
+    const repository = createRepository({
+      assignModule: vi.fn(async () => true),
+      listAssignedModules: vi.fn(async () => ['news', 'events']),
+      getInstanceById: vi
+        .fn()
+        .mockResolvedValueOnce(baseInstance)
+        .mockResolvedValueOnce({ ...baseInstance, assignedModules: ['news', 'events'] }),
+    });
+    const service = createInstanceRegistryService(createDeps(repository));
+
+    await expect(
+      service.assignModule({
+        instanceId: 'demo',
+        moduleId: 'events',
+        idempotencyKey: 'idem-module-1',
+        actorId: 'actor-1',
+        requestId: 'req-module-1',
+      })
+    ).resolves.toEqual({
+      ok: true,
+      instance: expect.objectContaining({
+        assignedModules: ['news', 'events'],
+      }),
+    });
+
+    expect(repository.assignModule).toHaveBeenCalledWith('demo', 'events');
+    expect(repository.syncAssignedModuleIam).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'demo',
+        managedModuleIds: ['news', 'events'],
+        contracts: expect.arrayContaining([
+          expect.objectContaining({ moduleId: 'news' }),
+          expect.objectContaining({ moduleId: 'events' }),
+        ]),
+      })
+    );
+    expect(repository.appendAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: 'instance_module_assigned',
+        details: expect.objectContaining({
+          moduleId: 'events',
+          outcome: 'assigned',
+        }),
+      })
+    );
+  });
+
+  it('rolls back an assigned module when IAM sync fails', async () => {
+    const repository = createRepository({
+      assignModule: vi.fn(async () => true),
+      revokeModule: vi.fn(async () => true),
+      listAssignedModules: vi.fn(async () => ['news', 'events']),
+      syncAssignedModuleIam: vi.fn(async () => {
+        throw new Error('sync_failed');
+      }),
+      getInstanceById: vi.fn(async () => baseInstance),
+    });
+    const deps = createDeps(repository);
+    const service = createInstanceRegistryService(deps);
+
+    await expect(
+      service.assignModule({
+        instanceId: 'demo',
+        moduleId: 'events',
+        idempotencyKey: 'idem-module-rollback',
+        actorId: 'actor-1',
+        requestId: 'req-module-rollback',
+      })
+    ).rejects.toThrow('sync_failed');
+
+    expect(repository.assignModule).toHaveBeenCalledWith('demo', 'events');
+    expect(repository.revokeModule).toHaveBeenCalledWith('demo', 'events');
+    expect(deps.invalidatePermissionSnapshots).not.toHaveBeenCalled();
+    expect(repository.appendAuditEvent).not.toHaveBeenCalled();
+  });
+
+  it('invalidates instance permission snapshots after module IAM changes', async () => {
+    const repository = createRepository({
+      assignModule: vi.fn(async () => true),
+      revokeModule: vi.fn(async () => true),
+      getInstanceById: vi.fn(async () => baseInstance),
+      listAssignedModules: vi
+        .fn()
+        .mockResolvedValueOnce(['news', 'events'])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce(['news']),
+    });
+    const deps = createDeps(repository);
+    const service = createInstanceRegistryService(deps);
+
+    await service.assignModule({
+      instanceId: 'demo',
+      moduleId: 'events',
+      idempotencyKey: 'idem-module-1',
+      actorId: 'actor-1',
+      requestId: 'req-module-1',
+    });
+
+    await service.revokeModule({
+      instanceId: 'demo',
+      moduleId: 'news',
+      confirmation: 'REVOKE',
+      idempotencyKey: 'idem-module-2',
+      actorId: 'actor-1',
+      requestId: 'req-module-2',
+    });
+
+    await service.seedIamBaseline({
+      instanceId: 'demo',
+      idempotencyKey: 'idem-module-3',
+      actorId: 'actor-1',
+      requestId: 'req-module-3',
+    });
+
+    expect(deps.invalidatePermissionSnapshots).toHaveBeenNthCalledWith(1, {
+      instanceId: 'demo',
+      trigger: 'instance_module_assigned',
+    });
+    expect(deps.invalidatePermissionSnapshots).toHaveBeenNthCalledWith(2, {
+      instanceId: 'demo',
+      trigger: 'instance_module_revoked',
+    });
+    expect(deps.invalidatePermissionSnapshots).toHaveBeenNthCalledWith(3, {
+      instanceId: 'demo',
+      trigger: 'instance_module_iam_seeded',
+    });
+  });
+
+  it('revokes a module and reseeds the remaining module IAM baseline', async () => {
+    const repository = createRepository({
+      revokeModule: vi.fn(async () => true),
+      listAssignedModules: vi.fn(async () => []),
+      getInstanceById: vi
+        .fn()
+        .mockResolvedValueOnce({ ...baseInstance, assignedModules: ['news'] })
+        .mockResolvedValueOnce({ ...baseInstance, assignedModules: [] }),
+    });
+    const service = createInstanceRegistryService(createDeps(repository));
+
+    await expect(
+      service.revokeModule({
+        instanceId: 'demo',
+        moduleId: 'news',
+        confirmation: 'REVOKE',
+        idempotencyKey: 'idem-module-2',
+        actorId: 'actor-1',
+        requestId: 'req-module-2',
+      })
+    ).resolves.toEqual({
+      ok: true,
+      instance: expect.objectContaining({
+        assignedModules: [],
+      }),
+    });
+
+    expect(repository.revokeModule).toHaveBeenCalledWith('demo', 'news');
+    expect(repository.appendAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: 'instance_module_revoked',
+        details: expect.objectContaining({
+          moduleId: 'news',
+          outcome: 'revoked',
+        }),
+      })
+    );
   });
 });

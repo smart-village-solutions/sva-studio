@@ -17,6 +17,22 @@ Studio-Plugins sind eigenständige Workspace-Packages mit `scope:plugin`. Sie h�
 - Keine Direktimporte aus `apps/*`, `@sva/auth-runtime`, `@sva/iam-*`, `@sva/instance-registry`, `@sva/routing` oder anderen nicht öffentlichen Host-Interna
 - Keine lokalen Basis-Control-Systeme für Button, Input, Select, Tabs, Dialog, Alert, Badge, Table oder DataTable
 
+## Standard-Content-Helfer aus dem Plugin-SDK
+
+Standardisierte CRUD-Content-Plugins sollen gemeinsame technische Muster bevorzugt über `@sva/plugin-sdk` beziehen statt sie lokal oder pluginübergreifend zu duplizieren.
+
+Bevorzugt:
+
+- `createStandardContentPluginContribution(...)` für Navigation, Actions, Permissions, `moduleIam`, `contentTypes` und `adminResources`
+- `createMainserverCrudClient(...)` für hostgeführte Mainserver-CRUD-Basis
+- kleine UI-nahe Helfer wie Datetime- oder Media-Mapping aus `@sva/plugin-sdk`
+
+Nicht erlaubt:
+
+- Shared-Code in einem eigenen pluginübergreifenden Workspace-Package nur für News, Events und POI
+- Direktimporte eines Plugins aus einem anderen Plugin
+- generische Editor-Abstraktionen, die fachliche Feldmodelle oder Validierung aus den Plugins herausziehen
+
 ## Pflicht-Export
 
 Jedes Plugin exportiert genau ein `PluginDefinition`-Objekt.
@@ -29,6 +45,7 @@ export const pluginNews: PluginDefinition = {
   displayName: 'News',
   routes: [],
   navigation: [],
+  permissions: [],
   contentTypes: [],
   adminResources: [],
   auditEvents: [],
@@ -62,6 +79,31 @@ Fachspezifische Wrapper sind erlaubt, wenn sie Studio-Primitives komponieren und
 
 Spezialcontrols wie Rich-Text, Upload, Medienauswahl, Farbe, Icon und Geo-Auswahl werden erst in `@sva/studio-ui-react` aufgenommen, wenn mindestens ein pluginübergreifender Bedarf besteht. Bis dahin bleiben sie schmale fachliche Wrapper.
 
+## Medien-Extension-Points
+
+Plugins binden Medien ausschließlich über den hostseitigen Media-Picker-Vertrag an.
+
+Erlaubt:
+
+- deklarative Picker-Definitionen über `@sva/plugin-sdk`
+- UI-Bindings über `@sva/studio-ui-react`, zum Beispiel `MediaReferenceField`
+- hostseitige Referenzverwaltung über die Media-HTTP-Fassade
+
+Nicht erlaubt:
+
+- direkte MinIO-/S3-Clients im Plugin
+- Bucket-Namen, Object-Keys, ETags oder presigned URLs als Plugin-Vertrag
+- direkte Importe aus `@sva/auth-runtime` oder anderen Host-Storage-Interna
+- neue URL-basierte Storage-Artefakte als führendes Persistenzmodell
+
+Plugins deklarieren Rollen, Medientypen und optional Preset-Anforderungen, erhalten aber keine technischen Storage-Details zurück.
+
+Beispielhaft verwendet:
+
+- News: `teaser_image`, `header_image`
+- Events: `header_image`
+- POI: `teaser_image`
+
 ## Vertragselemente
 
 ### `routes`
@@ -69,20 +111,40 @@ Spezialcontrols wie Rich-Text, Upload, Medienauswahl, Farbe, Icon und Geo-Auswah
 - Enthält die plugin-eigenen Seiten
 - Der Host übernimmt die tatsächliche Guard-Anwendung
 - Plugins deklarieren nur die fachliche Anforderung über `guard`
+- Produktive Fachplugins verwenden plugin-spezifische Guards aus `permissions`, zum Beispiel `news.read`
 
-Zulässige Guards in v1:
+Legacy-Guards aus dem generischen Content-Vertrag sind nur noch für hosteigene oder historische Core-Content-Pfade zulässig. Produktive Fachplugins dürfen keine `content.*`-Guards mehr deklarieren.
 
-- `content.read`
-- `content.create`
-- `content.updateMetadata`
-- `content.updatePayload`
-- `content.changeStatus`
-- `content.publish`
-- `content.archive`
-- `content.restore`
-- `content.readHistory`
-- `content.manageRevisions`
-- `content.delete`
+### `permissions`
+
+- Beschreibt die autorisierbaren Rechte, die ein Plugin fachlich bereitstellt
+- Permission-IDs verwenden das Format `<pluginId>.<actionName>`
+- Der Namespace muss exakt der `PluginDefinition.id` entsprechen
+- Reservierte Namespaces wie `content`, `iam`, `admin`, `core`, `system` und `platform` sind für Plugins gesperrt
+- Routen, Navigation und Actions dürfen nur eigene, registrierte Permission-IDs referenzieren
+- `requiredAction` bleibt der kanonische Mapping-Pfad; Action-ID und Permission-ID dürfen identisch sein
+
+Beispiel:
+
+```ts
+import { definePluginPermissions, type PluginDefinition } from '@sva/plugin-sdk';
+
+const newsPermissions = definePluginPermissions('news', [
+  { id: 'news.read', titleKey: 'news.permissions.read' },
+  { id: 'news.create', titleKey: 'news.permissions.create' },
+  { id: 'news.update', titleKey: 'news.permissions.update' },
+  { id: 'news.delete', titleKey: 'news.permissions.delete' },
+]);
+
+export const pluginNews: PluginDefinition = {
+  id: 'news',
+  displayName: 'News',
+  permissions: newsPermissions,
+  routes: [{ id: 'news.list', path: '/plugins/news', guard: 'news.read', component: NewsListPage }],
+  navigation: [{ id: 'news.navigation', to: '/plugins/news', titleKey: 'news.navigation.title', requiredAction: 'news.read' }],
+  translations: {},
+};
+```
 
 ### `navigation`
 
@@ -155,6 +217,7 @@ Das News-Plugin nutzt dieses Muster für Mainserver-News:
 
 - UI, Routen, Aktionen und Übersetzungen liegen in `@sva/plugin-news`.
 - Datenzugriff läuft über `/api/v1/mainserver/news`.
+- Die technische CRUD-Basis kann über `createMainserverCrudClient(...)` aus `@sva/plugin-sdk` bezogen werden.
 - Die App-Fassade prüft Session, Instanzkontext und lokale Content-Primitive.
 - `@sva/sva-mainserver/server` kapselt OAuth2, GraphQL und Mapping.
 - Das News-Modell nutzt dedizierte Mainserver-Felder; `contentBlocks` sind der führende Langinhalt.
@@ -166,6 +229,7 @@ Events und POI verwenden dasselbe Muster als getrennte Fachplugins:
 - `@sva/plugin-events` registriert Namespace `events`, Routen unter `/plugins/events` und den Content-Type `events.event-record`.
 - `@sva/plugin-poi` registriert Namespace `poi`, Routen unter `/plugins/poi` und den Content-Type `poi.point-of-interest`.
 - Events sprechen `/api/v1/mainserver/events`; POI sprechen `/api/v1/mainserver/poi`.
+- Wiederholte Standard-Metadaten und HTTP-Basislogik sollen auch hier über `@sva/plugin-sdk` zentralisiert werden, nicht über Plugin-Querimporte.
 - Eine Event-zu-POI-Auswahl läuft über die POI-Fassade des Hosts. Das Events-Plugin importiert das POI-Plugin nicht.
 - Delete nutzt in Phase 1 `destroyRecord` mit den Mainserver-Record-Types `EventRecord` und `PointOfInterest`.
 
@@ -220,3 +284,4 @@ Vor einem Push bevorzugt:
 - [Studio-Übersichts- und Detailseiten-Standard](../development/studio-uebersichts-und-detailseiten-standard.md)
 - [Migration auf namespaced Plugin-Action-IDs](./plugin-action-migration.md)
 - [ADR-034: Plugin-SDK-Vertrag v1](../adr/ADR-034-plugin-sdk-vertrag-v1.md)
+- [ADR-039: Medienmanagement als Host-Capability](../adr/ADR-039-medienmanagement-host-capability-und-storage-vertrag.md)

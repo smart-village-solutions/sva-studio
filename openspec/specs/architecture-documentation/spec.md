@@ -169,19 +169,13 @@ Die Architekturdokumentation MUST die Package-Zielarchitektur als verbindlichen 
 
 ### Requirement: Hard-Cut-Fortschritt bleibt nachvollziehbar
 
-Die Architektur- und Entwicklungsdokumentation MUST den Fortschritt der harten Package-Transition nachvollziehbar machen, inklusive alter Importpfade, entfernter Re-Exports, noch offener Boundary-Disables und verbleibender Risiken.
+Die Architektur- und Entwicklungsdokumentation MUST den Fortschritt der harten Package-Transition nachvollziehbar machen, inklusive entfernter alter Importpfade, aktivierter Enforcement-Regeln und verbleibender historischer Altlast ausserhalb des aktiven Scopes.
 
-#### Scenario: Migrationsphase wird abgeschlossen
+#### Scenario: Sammelpfad wurde vollstaendig entfernt
 
-- **WHEN** eine Migrationsphase abgeschlossen wird
-- **THEN** dokumentiert der PR entfernte alte Importpfade und aktivierte Enforcement-Regeln
-- **AND** verbleibende Abweichungen sind mit Ticket, Risiko und geplantem Abbau dokumentiert
-
-#### Scenario: Alter Sammelpfad bleibt vorübergehend bestehen
-
-- **WHEN** ein alter Importpfad aus `@sva/auth`, `@sva/data` oder `@sva/sdk` vorübergehend bestehen bleibt
-- **THEN** nennt die Dokumentation den Grund, die betroffenen Consumer und die Entfernungsvoraussetzung
-- **AND** der Pfad wird nicht als stabiler öffentlicher Vertrag beschrieben
+- **WHEN** ein alter Sammelpfad wie `@sva/sdk` aus dem aktiven Workspace entfernt wurde
+- **THEN** beschreiben aktive Architektur-, Entwicklungs- und Governance-Quellen den Pfad nicht mehr als verfuegbaren Vertrag
+- **AND** nennen sie stattdessen die kanonischen Ersatzimporte
 
 ### Requirement: Architektur- und Entwicklerdokumentation entfernt veraltete Beispiel-Plugin-Referenzen
 
@@ -228,4 +222,64 @@ Die Entwicklungsdokumentation SHALL Regeln, Beispiele und Review-Kriterien für 
 #### Scenario: Reviewer prüft UI-Konsistenz
 - **WHEN** ein PR eine neue Host- oder Plugin-View enthält
 - **THEN** kann der Reviewer anhand der Dokumentation prüfen, ob Studio-Templates, Controls, States, i18n und Accessibility-Konventionen eingehalten sind
+
+### Requirement: Normative Architekturquellen widersprechen dem SDK-Hard-Cut nicht
+
+Das System SHALL normative Architekturquellen so pflegen, dass sie den finalen SDK-Hard-Cut widerspruchsfrei beschreiben. Historische Aussagen duerfen erhalten bleiben, muessen aber sichtbar als ueberholt, fortgeschrieben oder supersediert markiert werden.
+
+#### Scenario: Historische ADR nennt noch SDK als Plugin-Boundary
+
+- **WHEN** eine bestehende ADR oder Architekturanmerkung `@sva/sdk` noch als oeffentliche Plugin-Boundary beschreibt
+- **THEN** wird diese Aussage sichtbar fortgeschrieben, supersediert oder historisiert
+- **AND** Reviewer koennen erkennen, welcher Boundary-Vertrag heute gilt
+
+#### Scenario: Arc42 und Entwicklerdoku verwenden denselben Vertragsbegriff
+
+- **WHEN** ein Teammitglied `package-zielarchitektur.md`, Bausteinsicht, Querschnittskonzepte, Plugin-Guide oder Monorepo-Guide liest
+- **THEN** beschreiben diese Quellen denselben kanonischen Vertragszuschnitt fuer `@sva/plugin-sdk`, `@sva/server-runtime` und `@sva/sdk`
+- **AND** widerspruechliche Importempfehlungen sind entfernt
+
+### Requirement: Medienmanagement-Architektur in arc42 dokumentieren
+
+Das System SHALL die Architekturwirkung des Medienmanagements in den betroffenen arc42-Abschnitten nachvollziehbar dokumentieren.
+
+#### Scenario: Externe Medieninfrastruktur ist im Systemkontext beschrieben
+
+- **WHEN** Medienmanagement MinIO als S3-kompatiblen Objektspeicher, CDN- oder geschützte Auslieferungspfade einführt
+- **THEN** beschreiben die arc42-Abschnitte für Kontext, Deployment und Querschnitt die externen Systeme, Vertrauensgrenzen und Laufzeitverantwortlichkeiten
+- **AND** sie duplizieren keine fachlichen Laufzeitregeln aus den Capability-Spezifikationen
+
+#### Scenario: Medienbausteine sind in der Baustein- und Laufzeitsicht verortet
+
+- **WHEN** die Medien-Capability umgesetzt wird
+- **THEN** dokumentiert die arc42-Bausteinsicht die hostseitigen Medienbausteine, Schnittstellen und Abhängigkeiten zu Content, IAM und Audit
+- **AND** die Laufzeitsicht beschreibt `/admin/media` als kanonischen Host-Einstieg sowie Upload, Variantenableitung, Verwendungsnachweis und kontrollierte Auslieferung auf Architektur-Ebene
+
+#### Scenario: Host-Integration und Migrationspfad sind architektonisch beschrieben
+
+- **WHEN** die Medien-Capability an das bestehende Plugin-, Admin-Resource- und Modulmodell angeschlossen wird
+- **THEN** beschreibt die Architektur die Rolle des hostseitigen Admin-Einstiegs `/admin/media`, optionaler Unterrouten und des Bridge-Pfads für bestehende URL-basierte Plugin-Medienfelder
+- **AND** sie grenzt Medienmanagement klar gegen plugin-eigene CRUD-, Storage- oder Routing-Pfade ab
+
+#### Scenario: Querschnittliche Medienregeln referenzieren die fachlichen Specs
+
+- **WHEN** Mandantentrennung, Löschschutz, geschützte Auslieferung oder Audit im Architekturkapitel behandelt werden
+- **THEN** verweisen die Dokumentationsabschnitte auf `media-management`, `content-management`, `iam-access-control` und `iam-auditing`
+- **AND** die Laufzeitregeln bleiben in diesen fachlichen Spezifikationen führend
+
+#### Scenario: ADR für Package- und Storage-Entscheidungen ist verlinkt
+
+- **WHEN** die Umsetzung startet
+- **THEN** dokumentiert ADR-039 Package-Zuschnitt, Storage-/Processing-Vertrag und Bezug zum Plugin-SDK-Vertrag aus ADR-034
+- **AND** `docs/architecture/09-architecture-decisions.md` referenziert diese Entscheidung
+
+### Requirement: Entfernte Sammelpackages bleiben in aktiver Doku nicht referenziert
+
+Die aktive Architektur- und Entwicklerdokumentation SHALL entfernte Sammelpackages nicht weiter als aktuelle Build-, Test-, Import- oder Ownership-Ziele fuehren.
+
+#### Scenario: Teammitglied liest aktive Monorepo- und Architekturquellen nach der Entfernung
+
+- **WHEN** ein Teammitglied `docs/monorepo.md`, `package-zielarchitektur.md`, relevante arc42-Abschnitte oder Governance-Dokumente liest
+- **THEN** findet es keine aktiven Anweisungen mehr zu `packages/sdk`, `sdk:*` oder `@sva/sdk`
+- **AND** die Quellen beschreiben stattdessen `@sva/plugin-sdk`, `@sva/server-runtime`, `@sva/core` und `@sva/monitoring-client/logging` als Zielpfade
 

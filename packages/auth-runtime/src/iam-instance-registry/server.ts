@@ -5,10 +5,13 @@ import { buildLogContext } from '../log-context.js';
 
 import {
   activateInstanceInternal,
+  assignInstanceModuleInternal,
   archiveInstanceInternal,
   createInstanceInternal,
   getInstanceInternal,
   listInstancesInternal,
+  revokeInstanceModuleInternal,
+  seedInstanceIamBaselineInternal,
   suspendInstanceInternal,
   updateInstanceInternal,
 } from './core.js';
@@ -18,6 +21,7 @@ import {
   getInstanceKeycloakProvisioningRunInternal,
   getInstanceKeycloakStatusInternal,
   planInstanceKeycloakProvisioningInternal,
+  probeTenantIamAccessInternal,
   reconcileInstanceKeycloakInternal,
 } from './core-keycloak.js';
 
@@ -67,10 +71,18 @@ export const instanceRegistryHandlers = {
     withAuthenticatedRegistryHandler(request, executeInstanceKeycloakProvisioningInternal),
   getInstanceKeycloakProvisioningRun: async (request: Request): Promise<Response> =>
     withAuthenticatedRegistryHandler(request, getInstanceKeycloakProvisioningRunInternal),
+  probeTenantIamAccess: async (request: Request): Promise<Response> =>
+    withAuthenticatedRegistryHandler(request, probeTenantIamAccessInternal),
   reconcileInstanceKeycloak: async (request: Request): Promise<Response> =>
     withAuthenticatedRegistryHandler(request, reconcileInstanceKeycloakInternal),
   activateInstance: async (request: Request): Promise<Response> =>
     withAuthenticatedRegistryHandler(request, activateInstanceInternal),
+  assignInstanceModule: async (request: Request): Promise<Response> =>
+    withAuthenticatedRegistryHandler(request, assignInstanceModuleInternal),
+  revokeInstanceModule: async (request: Request): Promise<Response> =>
+    withAuthenticatedRegistryHandler(request, revokeInstanceModuleInternal),
+  seedInstanceIamBaseline: async (request: Request): Promise<Response> =>
+    withAuthenticatedRegistryHandler(request, seedInstanceIamBaselineInternal),
   suspendInstance: async (request: Request): Promise<Response> =>
     withAuthenticatedRegistryHandler(request, suspendInstanceInternal),
   archiveInstance: async (request: Request): Promise<Response> =>

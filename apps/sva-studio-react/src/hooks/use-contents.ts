@@ -4,6 +4,7 @@ import type { IamContentDetail, IamContentHistoryEntry, IamContentListItem } fro
 import {
   asIamError,
   createContent,
+  deleteContent,
   getContent,
   getContentHistory,
   IamHttpError,
@@ -28,6 +29,8 @@ type UseContentsResult = {
   readonly mutationError: IamHttpError | null;
   readonly refetch: () => Promise<void>;
   readonly clearMutationError: () => void;
+  readonly archiveContents: (input: ContentBulkMutationInput) => Promise<ContentBulkMutationResult>;
+  readonly deleteContents: (input: ContentBulkMutationInput) => Promise<ContentBulkMutationResult>;
 };
 
 type UseContentDetailResult = {
@@ -47,11 +50,115 @@ type UseCreateContentResult = {
   readonly createContent: (payload: CreateContentPayload) => Promise<boolean>;
 };
 
+export type ContentBulkMutationInput = Readonly<{
+  readonly actionId: 'content.archive' | 'content.delete';
+  readonly contentIds: readonly string[];
+  readonly matchingCount: number;
+  readonly page: number;
+  readonly pageSize: number;
+  readonly selectionMode: 'explicitIds' | 'currentPage' | 'allMatchingQuery';
+  readonly sort?: {
+    readonly field: string;
+    readonly direction: 'asc' | 'desc';
+  };
+  readonly statusFilter?: string;
+}>;
+
+export type ContentBulkMutationResult = Readonly<{
+  readonly acceptedCount: number;
+  readonly failedCount: number;
+  readonly skippedCount: number;
+}>;
+
 const contentsLogger = createOperationLogger('contents-hook', 'debug');
 
 export const useContents = (): UseContentsResult => {
   const { invalidatePermissions } = useAuth();
   const adminList = useIamAdminList(listContents, invalidatePermissions);
+
+  const runBulkMutation = React.useCallback(
+    async (
+      input: ContentBulkMutationInput,
+      mutateOne: (contentId: string, content: IamContentListItem | undefined) => Promise<'accepted' | 'skipped'>
+    ): Promise<ContentBulkMutationResult> => {
+      const byId = new Map(adminList.items.map((content) => [content.id, content] as const));
+      const meta = {
+        action_id: input.actionId,
+        resource_id: 'content',
+        selection_mode: input.selectionMode,
+        requested_count: input.contentIds.length,
+        matching_count: input.matchingCount,
+        page: input.page,
+        page_size: input.pageSize,
+        ...(input.statusFilter ? { status_filter: input.statusFilter } : {}),
+        ...(input.sort ? { sort_field: input.sort.field, sort_direction: input.sort.direction } : {}),
+      } as const;
+
+      logBrowserOperationStart(contentsLogger, 'content_bulk_action_started', meta);
+
+      let acceptedCount = 0;
+      let failedCount = 0;
+      let skippedCount = 0;
+
+      for (const contentId of input.contentIds) {
+        try {
+          const outcome = await mutateOne(contentId, byId.get(contentId));
+          if (outcome === 'accepted') {
+            acceptedCount += 1;
+          } else {
+            skippedCount += 1;
+          }
+        } catch (cause) {
+          failedCount += 1;
+          logBrowserOperationFailure(contentsLogger, 'content_bulk_action_item_failed', cause, {
+            ...meta,
+            content_id: contentId,
+          });
+        }
+      }
+
+      if (acceptedCount > 0) {
+        await adminList.refetch();
+      }
+
+      const result = { acceptedCount, failedCount, skippedCount } as const;
+      logBrowserOperationSuccess(
+        contentsLogger,
+        'content_bulk_action_succeeded',
+        {
+          ...meta,
+          accepted_count: acceptedCount,
+          failed_count: failedCount,
+          skipped_count: skippedCount,
+        },
+        'info'
+      );
+      return result;
+    },
+    [adminList]
+  );
+
+  const archiveContents = React.useCallback(
+    async (input: ContentBulkMutationInput): Promise<ContentBulkMutationResult> =>
+      runBulkMutation(input, async (contentId, content) => {
+        if (content?.status === 'archived') {
+          return 'skipped';
+        }
+
+        await updateContent(contentId, { status: 'archived' });
+        return 'accepted';
+      }),
+    [runBulkMutation]
+  );
+
+  const deleteContents = React.useCallback(
+    async (input: ContentBulkMutationInput): Promise<ContentBulkMutationResult> =>
+      runBulkMutation(input, async (contentId) => {
+        await deleteContent(contentId);
+        return 'accepted';
+      }),
+    [runBulkMutation]
+  );
 
   return {
     contents: adminList.items,
@@ -60,6 +167,8 @@ export const useContents = (): UseContentsResult => {
     mutationError: adminList.mutationError,
     refetch: adminList.refetch,
     clearMutationError: adminList.clearMutationError,
+    archiveContents,
+    deleteContents,
   };
 };
 

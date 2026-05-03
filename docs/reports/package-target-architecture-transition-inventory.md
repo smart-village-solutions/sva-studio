@@ -2,6 +2,8 @@
 
 Stand: 2026-04-24
 
+> Historischer Vorzustandsbericht: Dieses Inventar beschreibt den Stand vor dem Hard-Cut der Zielarchitektur. Seit 2026-05-02 ist `@sva/sdk` aus dem aktiven Workspace entfernt; maßgeblich für den Abschluss ist `./sdk-removal-report.md`.
+
 ## Zweck
 
 Dieser Bericht dokumentiert Phase 0 des OpenSpec-Changes `refactor-package-target-architecture-hard-cut`. Er hält den aktuellen Zuschnitt, die wichtigsten Importkanten, Boundary-Ausnahmen und Sicherheitsgrenzen fest, bevor die Package-Zielarchitektur hart umgesetzt wird.

@@ -1,21 +1,20 @@
 import type { AdminResourceDefinition, PluginDefinition, PluginRouteGuard, RouteFactory } from '@sva/plugin-sdk';
 import { assertPluginRoutePathAllowed, createPluginGuardrailError, mergeAdminResourceDefinitions } from '@sva/plugin-sdk';
-import { createRoute, type AnyRoute, type RootRoute, type RouteComponent } from '@tanstack/react-router';
+import { createRoute, redirect, type AnyRoute, type RootRoute, type RouteComponent } from '@tanstack/react-router';
 
+import { assertNoStaticAdminRouteShadowing, collectAdminResourceRoutePaths } from './admin-resource-route-conflicts.js';
 import { createAccountUiRouteGuard, type AccountUiRouteGuardKey } from './account-ui.routes.js';
-import {
-  adminDetailParamNameByBinding,
-  createAdminResourceRouteFactories,
-  createLegacyContentAliasFactories,
-} from './admin-resource-routes.js';
-import {
-  type RoutingDiagnosticsHook,
-} from './diagnostics.js';
+import { createAdminResourceRouteFactories, createLegacyContentAliasFactories } from './admin-resource-routes.js';
+import { type RoutingDiagnosticsHook } from './diagnostics.js';
+import { resolvePluginRouteGuard } from './plugin-route-guards.js';
+import type { RouteGuardContext } from './protected.routes.js';
 import { normalizeIamTab, normalizeRoleDetailTab } from './route-search.js';
 import { uiRoutePaths } from './route-paths.js';
+import { enforceUiRouteAccessRequirements } from './ui-route-access.js';
+
+export { getAdminDetailRoutePath } from './admin-resource-route-paths.js';
 
 export type AppRouteFactory = RouteFactory<RootRoute, AnyRoute>;
-
 export type AppRouteBindings = {
   readonly home: RouteComponent;
   readonly account: RouteComponent;
@@ -23,7 +22,18 @@ export type AppRouteBindings = {
   readonly content: RouteComponent;
   readonly contentCreate: RouteComponent;
   readonly contentDetail: RouteComponent;
+  readonly mediaUsage: RouteComponent;
+  readonly newsList: RouteComponent;
+  readonly newsDetail: RouteComponent;
+  readonly newsEditor: RouteComponent;
+  readonly eventsList: RouteComponent;
+  readonly eventsDetail: RouteComponent;
+  readonly eventsEditor: RouteComponent;
+  readonly poiList: RouteComponent;
+  readonly poiDetail: RouteComponent;
+  readonly poiEditor: RouteComponent;
   readonly media: RouteComponent;
+  readonly adminMedia: RouteComponent;
   readonly categories: RouteComponent;
   readonly app: RouteComponent;
   readonly interfaces: RouteComponent;
@@ -55,19 +65,26 @@ export type AppRouteBindings = {
 };
 
 export type AppRouteBindingKey = keyof AppRouteBindings;
-
-type BindingKey = AppRouteBindingKey;
 type UiRouteDefinition = {
-  readonly binding: BindingKey;
+  readonly binding: AppRouteBindingKey;
   readonly guard?: AccountUiRouteGuardKey;
   readonly path: string;
   readonly validateSearch?: (search: Record<string, unknown>) => unknown;
+  readonly requiredModuleId?: string;
+  readonly requiredPermissions?: readonly string[];
 };
 
 const uiRouteDefinitions: readonly UiRouteDefinition[] = [
   { binding: 'home', path: uiRoutePaths.home },
   { binding: 'account', path: uiRoutePaths.account, guard: 'account' },
   { binding: 'accountPrivacy', path: uiRoutePaths.accountPrivacy, guard: 'accountPrivacy' },
+  {
+    binding: 'mediaUsage',
+    path: uiRoutePaths.mediaUsage,
+    guard: 'media',
+    requiredModuleId: 'media',
+    requiredPermissions: ['media.read'],
+  },
   { binding: 'media', path: uiRoutePaths.media, guard: 'account' },
   { binding: 'categories', path: uiRoutePaths.categories, guard: 'account' },
   { binding: 'app', path: uiRoutePaths.app, guard: 'account' },
@@ -108,45 +125,10 @@ const uiRouteDefinitions: readonly UiRouteDefinition[] = [
       tab: normalizeIamTab(search.tab),
     }),
   },
-  { binding: 'modules', path: uiRoutePaths.modules, guard: 'adminRoles' },
+  { binding: 'modules', path: uiRoutePaths.modules, guard: 'adminInstances' },
   { binding: 'monitoring', path: uiRoutePaths.monitoring, guard: 'adminRoles' },
   { binding: 'adminApiPhase1Test', path: uiRoutePaths.adminApiPhase1Test },
 ] as const;
-
-export const getAdminDetailRoutePath = (basePath: string, bindingKey: string): string => {
-  const detailParamName =
-    adminDetailParamNameByBinding[bindingKey as keyof typeof adminDetailParamNameByBinding] ??
-    adminDetailParamNameByBinding.contentDetail;
-
-  return `${basePath}/$${detailParamName}`;
-};
-
-const collectAdminResourceRoutePaths = (resources: readonly AdminResourceDefinition[]): ReadonlyMap<string, string> => {
-  const paths = new Map<string, string>();
-
-  for (const resource of resources) {
-    const basePath = `/admin/${resource.basePath}`;
-    const detailPath = getAdminDetailRoutePath(basePath, resource.views.detail.bindingKey);
-
-    paths.set(basePath, resource.resourceId);
-    paths.set(`${basePath}/new`, resource.resourceId);
-    paths.set(detailPath, resource.resourceId);
-    if (resource.views.history) {
-      paths.set(`${detailPath}/history`, resource.resourceId);
-    }
-  }
-
-  return paths;
-};
-
-const assertNoStaticAdminRouteShadowing = (adminResourcePaths: ReadonlyMap<string, string>): void => {
-  for (const definition of uiRouteDefinitions) {
-    const resourceId = adminResourcePaths.get(definition.path);
-    if (resourceId && definition.path.startsWith('/admin/')) {
-      throw new Error(`admin_resource_static_route_conflict:${resourceId}:${definition.path}`);
-    }
-  }
-};
 
 export const createUiRouteFactories = (
   bindings: AppRouteBindings,
@@ -158,19 +140,25 @@ export const createUiRouteFactories = (
   const diagnostics = options.diagnostics;
   const adminResources = mergeAdminResourceDefinitions(options.adminResources ?? []);
   const adminResourcePaths = collectAdminResourceRoutePaths(adminResources);
-  assertNoStaticAdminRouteShadowing(adminResourcePaths);
+  assertNoStaticAdminRouteShadowing(
+    adminResourcePaths,
+    uiRouteDefinitions.map((definition) => definition.path)
+  );
   const routeDefinitions = uiRouteDefinitions.filter((definition) => !adminResourcePaths.has(definition.path));
-
   return [
     ...routeDefinitions.map((definition) => {
       if (definition.guard) {
         const guard = createAccountUiRouteGuard(definition.guard, diagnostics, definition.path);
-
         return (rootRoute: RootRoute) =>
           createRoute({
             getParentRoute: () => rootRoute,
             path: definition.path,
-            beforeLoad: (beforeLoadOptions) => guard(beforeLoadOptions),
+            beforeLoad: async (beforeLoadOptions) => {
+              await guard(beforeLoadOptions);
+              await enforceUiRouteAccessRequirements(definition, {
+                context: beforeLoadOptions.context as RouteGuardContext,
+              });
+            },
             validateSearch: definition.validateSearch,
             component: bindings[definition.binding],
           });
@@ -219,14 +207,14 @@ export const getPluginRouteFactories = (
   } = {}
 ): readonly AppRouteFactory[] => {
   const diagnostics = options.diagnostics;
-
   return pluginDefinitions.flatMap((pluginDefinition) =>
     pluginDefinition.routes.map((routeDefinition) => {
-      const guardKey = mapPluginGuardToAccountGuard(routeDefinition.guard);
-      const guard = guardKey ? createAccountUiRouteGuard(guardKey, diagnostics, routeDefinition.path) : null;
-      const unsupportedGuard = !guardKey && routeDefinition.guard ? routeDefinition.guard : null;
+      const guard = resolvePluginRouteGuard(pluginDefinition, routeDefinition, diagnostics);
+      const normalizedGuard = routeDefinition.guard?.trim();
+      const unsupportedGuard = !guard && normalizedGuard ? normalizedGuard : null;
       const pluginNamespace = pluginDefinition.id.trim();
       const contributionId = routeDefinition.id.trim();
+      const requiredModuleId = pluginDefinition.moduleIam?.moduleId?.trim() || null;
 
       assertPluginRoutePathAllowed(pluginNamespace, contributionId, routeDefinition.path);
 
@@ -243,7 +231,18 @@ export const getPluginRouteFactories = (
         createRoute({
           getParentRoute: () => rootRoute,
           path: routeDefinition.path,
-          beforeLoad: guard ? (options) => guard(options) : undefined,
+          beforeLoad: async (beforeLoadOptions) => {
+            await guard?.(beforeLoadOptions);
+
+            if (!requiredModuleId) {
+              return;
+            }
+
+            const user = await beforeLoadOptions.context.auth?.getUser();
+            if (!user?.assignedModules?.includes(requiredModuleId)) {
+              throw redirect({ href: '/?error=auth.insufficientRole' });
+            }
+          },
           component: routeDefinition.component as RouteComponent,
         });
     })

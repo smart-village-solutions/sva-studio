@@ -5,7 +5,7 @@ import {
   createGetKeycloakStatusHandler,
   createPlanKeycloakProvisioningHandler,
 } from './service-keycloak.js';
-import { buildInstanceDetail } from './service-helpers.js';
+import { buildInstanceDetail, buildModuleIamStatus, buildTenantIamStatus } from './service-helpers.js';
 
 import type { InstanceRegistryRepository } from '@sva/data-repositories';
 import type { InstanceRegistryService, InstanceRegistryServiceDeps } from './service-types.js';
@@ -39,7 +39,16 @@ export const loadKeycloakDetailArtifacts = async (
   const getKeycloakPreflight = createGetKeycloakPreflightHandler(deps);
   const planKeycloakProvisioning = createPlanKeycloakProvisioningHandler(deps);
 
-  const [provisioningRuns, auditEvents, keycloakStatus, keycloakPreflight, keycloakPlan, keycloakProvisioningRuns] =
+  const [
+    provisioningRuns,
+    auditEvents,
+    keycloakStatus,
+    keycloakPreflight,
+    keycloakPlan,
+    keycloakProvisioningRuns,
+    accessEvidence,
+    reconcileEvidence,
+  ] =
     await Promise.all([
       deps.repository.listProvisioningRuns(instance.instanceId),
       deps.repository.listAuditEvents(instance.instanceId),
@@ -47,7 +56,34 @@ export const loadKeycloakDetailArtifacts = async (
       loadOptionalArtifact(instance.instanceId, 'keycloak_preflight', () => getKeycloakPreflight(instance.instanceId)),
       loadOptionalArtifact(instance.instanceId, 'keycloak_plan', () => planKeycloakProvisioning(instance.instanceId)),
       deps.repository.listKeycloakProvisioningRuns(instance.instanceId),
+      deps.repository.getLatestTenantIamAccessProbe(instance.instanceId),
+      deps.repository.getRoleReconcileSummary(instance.instanceId),
     ]);
+
+  const tenantIamStatus = buildTenantIamStatus({
+    keycloakStatus,
+    accessEvidence: accessEvidence
+      ? {
+          status: accessEvidence.status,
+          summary: accessEvidence.summary,
+          source: 'access_probe',
+          checkedAt: accessEvidence.checkedAt,
+          errorCode: accessEvidence.errorCode,
+          requestId: accessEvidence.requestId,
+        }
+      : undefined,
+    reconcileEvidence: reconcileEvidence
+      ? {
+          status: reconcileEvidence.status,
+          summary: reconcileEvidence.summary,
+          source: 'role_reconcile',
+          checkedAt: reconcileEvidence.checkedAt,
+          errorCode: reconcileEvidence.errorCode,
+          requestId: reconcileEvidence.requestId,
+        }
+      : undefined,
+  });
+  const moduleIamStatus = buildModuleIamStatus(instance.assignedModules, deps.moduleIamRegistry ?? new Map());
 
   return buildInstanceDetail(
     instance,
@@ -56,7 +92,9 @@ export const loadKeycloakDetailArtifacts = async (
     keycloakStatus,
     keycloakPreflight,
     keycloakPlan,
-    keycloakProvisioningRuns
+    keycloakProvisioningRuns,
+    tenantIamStatus,
+    moduleIamStatus
   );
 };
 

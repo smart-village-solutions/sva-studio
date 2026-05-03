@@ -5,6 +5,7 @@ import { isMockAuthRuntimeProfile, parseRuntimeProfile } from '@sva/core';
 import type { AppRouteFactory, RouteGuardUser } from '@sva/routing';
 
 import { fetchWithRequestTimeout } from './lib/iam-api';
+import { fetchAuthMeSingleFlight } from './lib/auth-me-singleflight';
 import { appRouteBindings } from './routing/app-route-bindings';
 import { rootRoute } from './routes/__root';
 
@@ -44,6 +45,7 @@ export const isMockAuthEnabled = async () => {
 };
 
 export const createMockRouteGuardUser = (): RouteGuardUser => ({
+  assignedModules: ['news', 'events', 'poi', 'media'],
   roles: [
     'system_admin',
     'iam_admin',
@@ -54,12 +56,37 @@ export const createMockRouteGuardUser = (): RouteGuardUser => ({
     'app_manager',
     'editor',
   ],
+  permissionActions: [
+    'content.read',
+    'content.create',
+    'content.updateMetadata',
+    'content.updatePayload',
+    'content.changeStatus',
+    'content.publish',
+    'content.archive',
+    'content.restore',
+    'content.readHistory',
+    'content.manageRevisions',
+    'content.delete',
+    'media.read',
+    'media.create',
+    'media.update',
+    'media.referenceManage',
+    'media.delete',
+    'media.deliverProtected',
+    'news.read',
+    'events.read',
+    'poi.read',
+  ],
 });
 
 export const readRouteGuardUser = (payload: unknown): RouteGuardUser => {
   const parsedPayload = payload as {
     user?: {
       roles?: unknown;
+      permissionActions?: unknown;
+      permissionStatus?: unknown;
+      assignedModules?: unknown;
     };
   };
 
@@ -67,7 +94,28 @@ export const readRouteGuardUser = (payload: unknown): RouteGuardUser => {
     ? parsedPayload.user.roles.filter((entry): entry is string => typeof entry === 'string')
     : [];
 
-  return { roles };
+  const permissionActions = Array.isArray(parsedPayload.user?.permissionActions)
+    ? parsedPayload.user.permissionActions.filter((entry): entry is string => typeof entry === 'string')
+    : [];
+
+  const assignedModules = Array.isArray(parsedPayload.user?.assignedModules)
+    ? parsedPayload.user.assignedModules.filter((entry): entry is string => typeof entry === 'string')
+    : [];
+
+  const rawStatus = parsedPayload.user?.permissionStatus;
+  const permissionStatus: 'ok' | 'degraded' = rawStatus === 'degraded' ? 'degraded' : 'ok';
+
+  return { roles, permissionActions, permissionStatus, assignedModules };
+};
+
+const loadRouteGuardUserFromAuthMe = async (url: string, init?: RequestInit): Promise<RouteGuardUser | null> => {
+  const response = await fetchWithRequestTimeout(url, init, { timeoutMs: 5_000 });
+
+  if (!response.ok) {
+    return null;
+  }
+
+  return readRouteGuardUser(await response.json());
 };
 
 const getRouteGuardUser = createIsomorphicFn()
@@ -77,19 +125,20 @@ const getRouteGuardUser = createIsomorphicFn()
         return createMockRouteGuardUser();
       }
 
-      const [{ withAuthenticatedUser }, { getRequest }] = await Promise.all([
-        import('@sva/auth-runtime/server'),
-        import('@tanstack/react-start/server'),
-      ]);
+      const { getRequest } = await import('@tanstack/react-start/server');
 
       const request = getRequest();
-      let routeGuardUser: RouteGuardUser | null = null;
-      const response = await withAuthenticatedUser(request, ({ user }) => {
-        routeGuardUser = { roles: user.roles };
-        return new Response(null, { status: 204 });
-      });
+      const authMeUrl = new URL('/auth/me', request.url).toString();
+      const cookie = request.headers.get('cookie');
 
-      return response.ok ? routeGuardUser : null;
+      return await loadRouteGuardUserFromAuthMe(
+        authMeUrl,
+        cookie
+          ? {
+              headers: { cookie },
+            }
+          : undefined
+      );
     } catch {
       return null;
     }
@@ -100,17 +149,11 @@ const getRouteGuardUser = createIsomorphicFn()
         return createMockRouteGuardUser();
       }
 
-      const response = await fetchWithRequestTimeout(
-        new URL('/auth/me', resolveBaseUrl()).toString(),
-        undefined,
-        { timeoutMs: 5_000 }
+      const result = await fetchAuthMeSingleFlight(() =>
+        fetchWithRequestTimeout(new URL('/auth/me', resolveBaseUrl()).toString(), undefined, { timeoutMs: 5_000 })
       );
-
-      if (!response.ok) {
-        return null;
-      }
-
-      return readRouteGuardUser(await response.json());
+      if (!result.ok) return null;
+      return readRouteGuardUser(result.payload);
     } catch {
       return null;
     }

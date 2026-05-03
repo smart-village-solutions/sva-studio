@@ -33,6 +33,7 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - alte Sammelimporte in neuen Consumer-Pfaden werden durch ESLint und Nx-Boundaries blockiert
   - serverseitige Zielpackages bestehen `check:runtime` und verwenden Node-ESM-konforme Runtime-Imports mit expliziter `.js`-Endung
   - `pnpm openspec validate refactor-package-target-architecture-hard-cut --strict` muss für Package-Grenzänderungen grün sein
+  - `@sva/studio-module-iam` bleibt React-frei und besteht `test:types`, `test:unit` sowie `check:runtime` als serverseitig konsumierbarer Vertrags-Edge
 - Unit-Test-Basis:
   - `pnpm test:unit` muss grün sein
 - IAM-Acceptance-Gate:
@@ -105,17 +106,34 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - Shell-Farben werden über semantische Tokens statt direkter Farbcodes bezogen
   - Light- und Dark-Mode bleiben in Header, Sidebar und Content kontraststabil und fokussierbar
   - Unbekannte `instanceId` fällt deterministisch auf ein Basis-Theme zurück
+- Mainserver-Plugin-Listen:
+  - News-, Events- und POI-Listen müssen `page` und `pageSize` typsicher über URL/Search-Params führen
+  - die erste Listenanfrage lädt höchstens eine Seite plus notwendiges Overfetching für sichtbarkeitsbasierte `hasNextPage`-Entscheidungen
+  - `StudioDataTable` bleibt die gemeinsame Tabellenbasis dieser drei Listen
+  - Playwright-Mocks und Unit-Tests müssen paginierte Responses mit `hasNextPage` stabil abdecken
+- Modul-IAM-Parität:
+  - Build-time-Host-Registry, Plugin-Deklaration und Runtime-Wiring müssen denselben Modulkatalog verwenden
+  - Parität wird mindestens über Tests in Host- und Runtime-Pfaden nachgewiesen, bevor Änderungen an `moduleIam` freigegeben werden
 - File-Placement Governance:
   - `pnpm check:file-placement` muss grün sein
 - Plugin-Guardrail-Governance:
   - `pnpm nx run plugin-sdk:test:unit` muss Bypass-Versuche gegen Route, Autorisierung, Audit, Persistenz und Dynamic Registration abdecken
   - `pnpm nx run routing:test:unit` muss sicherstellen, dass unbekannte Plugin-Guards und nicht-kanonische Plugin-Pfade fail-fast abgewiesen werden
   - Plugin-UI-Komponenten und host-invoked Content-Validatoren müssen weiterhin als erlaubte Erweiterungspunkte testbar bleiben
+- Admin-Resource-Host-Standards:
+  - deklarierte Listen-Capabilities muessen ueber Routing, Host-UI und Tests denselben kanonischen Search-State reproduzierbar rehydrieren
+  - Bulk-Actions muessen Selection-Modes (`explicitIds`, `currentPage`, `allMatchingQuery`) deterministisch abbilden und ohne Suchtext-/PII-Leak nur sichere Scope-Metadaten protokollieren
+  - Ressourcen ohne deklarierte Capabilities duerfen keine erzwungenen Search-/Bulk-Vertraege erhalten
 - Plugin-UI-Boundary:
   - `pnpm check:plugin-ui-boundary` muss für Plugin-Packages grün sein
   - Plugin-Custom-Views importieren gemeinsame UI aus `@sva/studio-ui-react` und keine App-internen Komponentenpfade
   - lokale Basis-Control-Duplikate für Button, Input, Select, Tabs, Dialog, Alert, Badge, Table oder DataTable in `packages/plugin-*` sind unzulässig
   - fachliche Wrapper bleiben zulässig, wenn sie Studio-Primitives komponieren und Accessibility-/Design-Token-Semantik erhalten
+- Medienmanagement:
+  - `openspec validate add-media-management --strict` muss grün sein
+  - `@sva/media` bleibt typstabil über `test:types`
+  - Löschblockierung, Mandantentrennung, Upload-Status und Media-Picker-Verträge werden explizit per Unit- und Integrationstests abgesichert
+  - `sva-studio-react:check:i18n` deckt Rollen- und Fehlerübersetzungen der Medienoberflächen ab
 - Coverage Governance:
   - Gate-Logik und Baselines in `scripts/ci/coverage-gate.ts` und `tooling/testing/*`
 - Complexity Governance:
@@ -126,6 +144,7 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
 - Review-Governance:
   - Proposal- und PR-Reviews nutzen spezialisierte Agents mit standardisierten Templates
   - Trigger-Matrix und Abgrenzungen sind in `docs/development/review-agent-governance.md` dokumentiert
+  - relevante Bot-Kommentare von `Copilot` und `chatgpt-codex-connector[bot]` blockieren den Merge, bis ein maschinenlesbarer Bearbeitungsnachweis vorliegt
 
 ### Qualitätsattribute und Review-Zuordnung
 
@@ -170,6 +189,7 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
 - Alertmanager-Receiver, automatisierte Backup-Automation und produktive Digest-Promotion bleiben trotz gehärtetem Releasevertrag externe Folgearbeit
 - Ein lokaler Kandidatencontainer kann fuer `studio` Private-DNS-, Ingress- und Swarm-Vertraege nicht vollstaendig abbilden; prod-nahe Freigaben bleiben deshalb bewusst an Remote-Evidenz gebunden
 - Auch bei starker Repo-Abdeckung bleibt IAM-Diagnostik ohne reale Dev-/Staging-Evidenz für Host-, Cookie-, Keycloak- und Datenzustandsprobleme unvollständig; ein vorbereiteter Live-Triage-Block ist daher Teil des Qualitätsziels
+- Exakte End-to-End-Performancebelege für Mainserver-Listen über echte Upstream-Bestände bleiben trotz der Pagination-Migration Folgearbeit; lokal und in Tests ist zunächst die Vertrags- und Interaktionsstabilität abgesichert
 
 Referenzen:
 

@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
-import type { Page, Route } from '@playwright/test';
+import type { Page, Request as PlaywrightRequest, Route } from '@playwright/test';
 
 type NewsRecord = {
   id: string;
@@ -32,18 +32,18 @@ const authenticatedUser = {
     name: 'Editor One',
     email: 'editor@example.com',
     instanceId: 'de-musterhausen',
+    assignedModules: ['news'],
     roles: ['editor'],
+    permissionActions: ['news.read', 'news.create', 'news.update', 'news.delete'],
   },
 };
-
 const permissionPayload = {
   instanceId: 'de-musterhausen',
   permissions: [
-    { action: 'content.read', resourceType: 'content' },
-    { action: 'content.create', resourceType: 'content' },
-    { action: 'content.updateMetadata', resourceType: 'content' },
-    { action: 'content.updatePayload', resourceType: 'content' },
-    { action: 'content.delete', resourceType: 'content' },
+    { action: 'news.read', resourceType: 'news' },
+    { action: 'news.create', resourceType: 'news' },
+    { action: 'news.update', resourceType: 'news' },
+    { action: 'news.delete', resourceType: 'news' },
   ],
   subject: {
     actorUserId: 'kc-editor-1',
@@ -98,6 +98,24 @@ const mockSharedShellRequests = async (page: Page) => {
   });
 };
 
+const paginateRecords = <T extends { readonly id: string }>(items: readonly T[], request: PlaywrightRequest) => {
+  const url = new URL(request.url());
+  const page = Math.max(1, Number.parseInt(url.searchParams.get('page') ?? '1', 10) || 1);
+  const requestedPageSize = Number.parseInt(url.searchParams.get('pageSize') ?? '25', 10) || 25;
+  const pageSize = [25, 50, 100].includes(requestedPageSize) ? requestedPageSize : 25;
+  const start = (page - 1) * pageSize;
+  const visibleItems = items.slice(start, start + pageSize);
+
+  return {
+    data: visibleItems,
+    pagination: {
+      page,
+      pageSize,
+      hasNextPage: start + pageSize < items.length,
+    },
+  };
+};
+
 const fulfillContentRoute = async (
   route: Route,
   newsItems: NewsRecord[],
@@ -112,7 +130,7 @@ const fulfillContentRoute = async (
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ data: newsItems }),
+      body: JSON.stringify(paginateRecords(newsItems, request)),
     });
     return;
   }
@@ -221,13 +239,13 @@ test.describe('news plugin', () => {
       });
     });
 
-    await page.route('**/api/v1/mainserver/news', async (route) => {
+    await page.route('**/api/v1/mainserver/news**', async (route) => {
       const request = route.request();
       if (request.method() === 'GET') {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify({ data: newsItems }),
+          body: JSON.stringify(paginateRecords(newsItems, request)),
         });
         return;
       }
@@ -262,11 +280,11 @@ test.describe('news plugin', () => {
     await expect(page.getByRole('heading', { name: 'SVA Studio' })).toBeVisible();
 
     await page.getByRole('link', { name: 'News' }).click();
-    await expect(page).toHaveURL(/\/plugins\/news$/);
+    await expect(page).toHaveURL(/\/admin\/news(?:\?.*)?$/);
     await expectPluginPageHeading(page, /News|news\.list\.title/);
 
-    await page.locator('a[href="/plugins/news/new"]').click();
-    await expect(page).toHaveURL(/\/plugins\/news\/new$/);
+    await page.locator('a[href="/admin/news/new"]').click();
+    await expect(page).toHaveURL(/\/admin\/news\/new$/);
     await expectPluginPageHeading(page, /News-Eintrag anlegen|news\.editor\.createTitle/);
 
     await page.getByLabel(/Titel|news\.fields\.title/).fill('Erste News');
@@ -291,8 +309,8 @@ test.describe('news plugin', () => {
     await page.locator('#news-media-caption-0-0').fill('Titelbild');
     await page.getByRole('button', { name: /News anlegen|news\.actions\.create/ }).click();
 
-    await expect(page).toHaveURL(/\/plugins\/news$/);
-    await expect(page.getByText('Erste News')).toBeVisible();
+    await expect(page).toHaveURL(/\/admin\/news(?:\?.*)?$/);
+    await expect(page.locator('main').getByText('Erste News').first()).toBeVisible();
     expect(createdBody).toMatchObject({
       title: 'Erste News',
       author: 'Redaktion Musterhausen',
@@ -329,7 +347,7 @@ test.describe('news plugin', () => {
     page.once('dialog', (dialog) => dialog.accept());
     await page.getByRole('button', { name: /Löschen|news\.actions\.delete/ }).click();
 
-    await expect(page).toHaveURL(/\/plugins\/news$/);
+    await expect(page).toHaveURL(/\/admin\/news(?:\?.*)?$/);
     await expect(page.getByText(/Noch keine News vorhanden|news\.empty\.title/)).toBeVisible();
   });
 
@@ -352,25 +370,25 @@ test.describe('news plugin', () => {
       });
     });
 
-    await page.route('**/api/v1/mainserver/news', async (route) => {
+    await page.route('**/api/v1/mainserver/news**', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ data: newsItems }),
+        body: JSON.stringify(paginateRecords(newsItems, route.request())),
       });
     });
 
     await page.goto('/');
-    await expect(page.locator('a[href="/plugins/news"]')).toBeVisible();
+    await expect(page.locator('a[href="/admin/news"]')).toBeVisible();
 
-    await page.locator('a[href="/plugins/news"]').focus();
+    await page.locator('a[href="/admin/news"]').focus();
     await page.keyboard.press('Enter');
 
-    await expect(page).toHaveURL(/\/plugins\/news$/);
+    await expect(page).toHaveURL(/\/admin\/news(?:\?.*)?$/);
     await expectPluginPageHeading(page, /News|news\.list\.title/);
   });
 
-  test('blocks unauthenticated access to plugin routes', async ({ page }) => {
+  test('blocks unauthenticated access to admin news routes', async ({ page }) => {
     await page.route('**/auth/me', async (route) => {
       await route.fulfill({
         status: 401,
@@ -380,9 +398,9 @@ test.describe('news plugin', () => {
     });
 
     await page.goto('/');
-    await navigateClientSide(page, '/plugins/news');
+    await navigateClientSide(page, '/admin/news');
 
-    await expect(page).toHaveURL(/\/auth\/login\?returnTo=%2Fplugins%2Fnews/);
+    await expect(page).toHaveURL(/\/auth\/login\?returnTo=%2Fadmin%2Fnews/);
   });
 
   test('stays free of serious accessibility violations on news views', async ({ page }) => {
@@ -419,7 +437,7 @@ test.describe('news plugin', () => {
       });
     });
 
-    await page.route('**/api/v1/mainserver/news', async (route) => {
+    await page.route('**/api/v1/mainserver/news**', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -432,17 +450,17 @@ test.describe('news plugin', () => {
     });
 
     await page.goto('/');
-    await navigateClientSide(page, '/plugins/news');
+    await navigateClientSide(page, '/admin/news');
     await expectPluginPageHeading(page, /News|news\.list\.title/);
     const listViolations = await new AxeBuilder({ page }).include('#main-content').analyze();
     expect(listViolations.violations.filter((entry) => ['serious', 'critical'].includes(entry.impact ?? ''))).toEqual([]);
 
-    await navigateClientSide(page, '/plugins/news/new');
+    await navigateClientSide(page, '/admin/news/new');
     await expectPluginPageHeading(page, /News-Eintrag anlegen|news\.editor\.createTitle/);
     const createViolations = await new AxeBuilder({ page }).include('#main-content').analyze();
     expect(createViolations.violations.filter((entry) => ['serious', 'critical'].includes(entry.impact ?? ''))).toEqual([]);
 
-    await navigateClientSide(page, '/plugins/news/news-1');
+    await navigateClientSide(page, '/admin/news/news-1');
     await expectPluginPageHeading(page, /News-Eintrag bearbeiten|news\.editor\.editTitle/);
     const editViolations = await new AxeBuilder({ page }).include('#main-content').analyze();
     expect(editViolations.violations.filter((entry) => ['serious', 'critical'].includes(entry.impact ?? ''))).toEqual([]);

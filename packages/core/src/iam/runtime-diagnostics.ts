@@ -18,7 +18,78 @@ type RuntimeDiagnosticSafeDetails = Readonly<{
   safeDetails?: IamRuntimeSafeDetails;
 }>;
 
+const PRE_SYNC_REASON_CLASSIFICATIONS = new Map<string, IamRuntimeDiagnosticClassification>([
+  ['auth_resolution_failed', 'auth_resolution'],
+  ['auth_config_missing', 'auth_resolution'],
+  ['tenant_auth_resolution_failed', 'auth_resolution'],
+  ['tenant_auth_client_secret_unreadable', 'auth_resolution'],
+  ['oidc_discovery_failed', 'oidc_discovery_or_exchange'],
+  ['oidc_exchange_failed', 'oidc_discovery_or_exchange'],
+  ['oidc_callback_failed', 'oidc_discovery_or_exchange'],
+  ['token_exchange_failed', 'oidc_discovery_or_exchange'],
+  ['frontend_state_stale', 'frontend_state_or_permission_staleness'],
+  ['permission_snapshot_stale', 'frontend_state_or_permission_staleness'],
+  ['permission_refetch_failed', 'frontend_state_or_permission_staleness'],
+  ['legacy_workaround', 'legacy_workaround_or_regression'],
+  ['legacy_session_payload', 'legacy_workaround_or_regression'],
+  ['legacy_allowlist_fallback', 'legacy_workaround_or_regression'],
+  ['return_encrypted', 'legacy_workaround_or_regression'],
+  ['tenant_host_resolution_primary_hostname_fallback', 'legacy_workaround_or_regression'],
+  ['registry_or_provisioning_drift_blocked', 'registry_or_provisioning_drift'],
+]);
+
+const POST_SYNC_REASON_CLASSIFICATIONS = new Map<string, IamRuntimeDiagnosticClassification>([
+  ['tenant_lookup_failed', 'tenant_host_validation'],
+  ['tenant_host_invalid', 'tenant_host_validation'],
+  ['tenant_not_found', 'registry_or_provisioning_drift'],
+  ['tenant_inactive', 'registry_or_provisioning_drift'],
+]);
+
+const SESSION_REASON_CODES = new Set([
+  'token_refresh_failed',
+  'session_user_diagnostics',
+  'session_store_unavailable',
+  'missing_session_instance_id',
+]);
+
+const KEYCLOAK_REASON_CODES = new Set([
+  'keycloak_dependency_failed',
+  'keycloak_admin_not_configured',
+  'keycloak_unavailable',
+]);
+
+const DATABASE_REASON_CODES = new Set([
+  'schema_drift',
+  'missing_table',
+  'missing_column',
+  'database_not_configured',
+]);
+
+const DATABASE_MAPPING_REASON_CODES = new Set([
+  'jit_provision_failed',
+  'foreign_key_violation',
+  'rls_denied',
+]);
+
+const REGISTRY_DRIFT_INPUT_CODES = new Set([
+  'tenant_auth_client_secret_missing',
+  'tenant_admin_client_not_configured',
+  'tenant_admin_client_secret_missing',
+]);
+
+const SESSION_INPUT_CODES = new Set<ApiErrorCode>(['unauthorized', 'reauth_required']);
+const KEYCLOAK_INPUT_CODES = new Set<ApiErrorCode>(['keycloak_unavailable']);
+const DATABASE_INPUT_CODES = new Set<ApiErrorCode>(['database_unavailable']);
+
 const readString = (value: unknown): string | undefined => (typeof value === 'string' ? value : undefined);
+
+const readReasonClassification = (
+  reasonCode: string | undefined,
+  classifications: ReadonlyMap<string, IamRuntimeDiagnosticClassification>
+): IamRuntimeDiagnosticClassification | undefined => (reasonCode ? classifications.get(reasonCode) : undefined);
+
+const matchesReasonCode = (reasonCode: string | undefined, reasonCodes: ReadonlySet<string>): boolean =>
+  reasonCode !== undefined && reasonCodes.has(reasonCode);
 
 const readSafeDetails = (details?: Readonly<Record<string, unknown>>): IamRuntimeSafeDetails | undefined => {
   if (!details) {
@@ -48,45 +119,10 @@ const readSafeDetails = (details?: Readonly<Record<string, unknown>>): IamRuntim
 const classify = ({ input, safeDetails }: RuntimeDiagnosticSafeDetails): IamRuntimeDiagnosticClassification => {
   const reasonCode = safeDetails?.reason_code;
   const syncErrorCode = safeDetails?.sync_error_code;
+  const preSyncClassification = readReasonClassification(reasonCode, PRE_SYNC_REASON_CLASSIFICATIONS);
 
-  if (
-    reasonCode === 'auth_resolution_failed' ||
-    reasonCode === 'auth_config_missing' ||
-    reasonCode === 'tenant_auth_resolution_failed' ||
-    reasonCode === 'tenant_auth_client_secret_unreadable'
-  ) {
-    return 'auth_resolution';
-  }
-
-  if (
-    reasonCode === 'oidc_discovery_failed' ||
-    reasonCode === 'oidc_exchange_failed' ||
-    reasonCode === 'oidc_callback_failed' ||
-    reasonCode === 'token_exchange_failed'
-  ) {
-    return 'oidc_discovery_or_exchange';
-  }
-
-  if (
-    reasonCode === 'frontend_state_stale' ||
-    reasonCode === 'permission_snapshot_stale' ||
-    reasonCode === 'permission_refetch_failed'
-  ) {
-    return 'frontend_state_or_permission_staleness';
-  }
-
-  if (
-    reasonCode === 'legacy_workaround' ||
-    reasonCode === 'legacy_session_payload' ||
-    reasonCode === 'legacy_allowlist_fallback' ||
-    reasonCode === 'return_encrypted' ||
-    reasonCode === 'tenant_host_resolution_primary_hostname_fallback'
-  ) {
-    return 'legacy_workaround_or_regression';
-  }
-
-  if (reasonCode === 'registry_or_provisioning_drift_blocked') {
-    return 'registry_or_provisioning_drift';
+  if (preSyncClassification) {
+    return preSyncClassification;
   }
 
   if (syncErrorCode === 'DB_WRITE_FAILED') {
@@ -97,25 +133,18 @@ const classify = ({ input, safeDetails }: RuntimeDiagnosticSafeDetails): IamRunt
     return 'keycloak_reconcile';
   }
 
-  if (reasonCode === 'tenant_lookup_failed' || reasonCode?.startsWith('tenant_host_resolution_')) {
+  if (reasonCode?.startsWith('tenant_host_resolution_')) {
     return 'tenant_host_validation';
   }
 
-  if (reasonCode === 'tenant_host_invalid') {
-    return 'tenant_host_validation';
-  }
-
-  if (reasonCode === 'tenant_not_found' || reasonCode === 'tenant_inactive') {
-    return 'registry_or_provisioning_drift';
+  const postSyncClassification = readReasonClassification(reasonCode, POST_SYNC_REASON_CLASSIFICATIONS);
+  if (postSyncClassification) {
+    return postSyncClassification;
   }
 
   if (
-    input.code === 'unauthorized' ||
-    input.code === 'reauth_required' ||
-    reasonCode === 'token_refresh_failed' ||
-    reasonCode === 'session_user_diagnostics' ||
-    reasonCode === 'session_store_unavailable' ||
-    reasonCode === 'missing_session_instance_id'
+    SESSION_INPUT_CODES.has(input.code as ApiErrorCode) ||
+    matchesReasonCode(reasonCode, SESSION_REASON_CODES)
   ) {
     return 'session_store_or_session_hydration';
   }
@@ -129,38 +158,19 @@ const classify = ({ input, safeDetails }: RuntimeDiagnosticSafeDetails): IamRunt
     return 'actor_resolution_or_membership';
   }
 
-  if (
-    input.code === 'keycloak_unavailable' ||
-    reasonCode === 'keycloak_dependency_failed' ||
-    reasonCode === 'keycloak_admin_not_configured' ||
-    reasonCode === 'keycloak_unavailable'
-  ) {
+  if (KEYCLOAK_INPUT_CODES.has(input.code as ApiErrorCode) || matchesReasonCode(reasonCode, KEYCLOAK_REASON_CODES)) {
     return 'keycloak_dependency';
   }
 
-  if (
-    input.code === 'database_unavailable' ||
-    reasonCode === 'schema_drift' ||
-    reasonCode === 'missing_table' ||
-    reasonCode === 'missing_column' ||
-    reasonCode === 'database_not_configured'
-  ) {
+  if (DATABASE_INPUT_CODES.has(input.code as ApiErrorCode) || matchesReasonCode(reasonCode, DATABASE_REASON_CODES)) {
     return 'database_or_schema_drift';
   }
 
-  if (
-    reasonCode === 'jit_provision_failed' ||
-    reasonCode === 'foreign_key_violation' ||
-    reasonCode === 'rls_denied'
-  ) {
+  if (matchesReasonCode(reasonCode, DATABASE_MAPPING_REASON_CODES)) {
     return 'database_mapping_or_membership_inconsistency';
   }
 
-  if (
-    input.code === 'tenant_auth_client_secret_missing' ||
-    input.code === 'tenant_admin_client_not_configured' ||
-    input.code === 'tenant_admin_client_secret_missing'
-  ) {
+  if (REGISTRY_DRIFT_INPUT_CODES.has(input.code)) {
     return 'registry_or_provisioning_drift';
   }
 

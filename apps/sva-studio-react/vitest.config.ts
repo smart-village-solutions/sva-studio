@@ -23,10 +23,17 @@ export default defineConfig({
       ),
       '@sva/auth-runtime': fileURLToPath(new URL('../../packages/auth-runtime/src/index.ts', import.meta.url)),
       '@sva/iam-admin': fileURLToPath(new URL('../../packages/iam-admin/src/index.ts', import.meta.url)),
+      '@sva/iam-governance/legal-text-html': fileURLToPath(
+        new URL('../../packages/iam-governance/src/legal-text-html.ts', import.meta.url)
+      ),
+      '@sva/iam-governance/legal-text-sanitize-html': fileURLToPath(
+        new URL('../../packages/iam-governance/src/legal-text-sanitize-html.ts', import.meta.url)
+      ),
       '@sva/sva-mainserver/server': fileURLToPath(new URL('../../packages/sva-mainserver/src/index.server.ts', import.meta.url)),
       '@sva/sva-mainserver': fileURLToPath(new URL('../../packages/sva-mainserver/src/index.ts', import.meta.url)),
       '@sva/instance-registry': fileURLToPath(new URL('../../packages/instance-registry/src/index.ts', import.meta.url)),
       '@sva/plugin-sdk': fileURLToPath(new URL('../../packages/plugin-sdk/src/index.ts', import.meta.url)),
+      '@sva/studio-module-iam': fileURLToPath(new URL('../../packages/studio-module-iam/src/index.ts', import.meta.url)),
       '@sva/studio-ui-react': fileURLToPath(new URL('../../packages/studio-ui-react/src/index.ts', import.meta.url)),
       '@sva/server-runtime': fileURLToPath(new URL('../../packages/server-runtime/src/index.ts', import.meta.url)),
       '@sva/monitoring-client/server': fileURLToPath(new URL('../../packages/monitoring-client/src/server.ts', import.meta.url)),

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  buildTenantIamStatus,
   buildInstanceDetail,
   createAuditDetails,
   createStatusArtifacts,
@@ -95,6 +96,105 @@ describe('service-helpers', () => {
           nextStatus: 'archived',
         },
       }),
+    );
+  });
+
+  it('derives tenant IAM status with explicit precedence and correlation fields', () => {
+    expect(
+      buildTenantIamStatus({
+        keycloakStatus: {
+          realmExists: true,
+          clientExists: true,
+          tenantAdminClientExists: true,
+          instanceIdMapperExists: true,
+          tenantAdminExists: true,
+          tenantAdminHasSystemAdmin: true,
+          tenantAdminHasInstanceRegistryAdmin: false,
+          tenantAdminInstanceIdMatches: true,
+          redirectUrisMatch: true,
+          logoutUrisMatch: true,
+          webOriginsMatch: true,
+          clientSecretConfigured: true,
+          tenantClientSecretReadable: true,
+          clientSecretAligned: true,
+          tenantAdminClientSecretConfigured: true,
+          tenantAdminClientSecretReadable: true,
+          tenantAdminClientSecretAligned: true,
+          runtimeSecretSource: 'tenant',
+        },
+        accessEvidence: {
+          status: 'blocked',
+          summary: 'Tenant-Admin-Client darf Realm-Rollen nicht lesen.',
+          source: 'access_probe',
+          checkedAt: '2026-04-29T10:01:00.000Z',
+          errorCode: 'IDP_FORBIDDEN',
+          requestId: 'req-access-1',
+        },
+        reconcileEvidence: {
+          status: 'degraded',
+          summary: 'Ein Rollenabgleich ist mit Drift beendet worden.',
+          source: 'role_reconcile',
+          checkedAt: '2026-04-29T10:00:00.000Z',
+          errorCode: 'IDP_CONFLICT',
+          requestId: 'req-reconcile-1',
+        },
+      })
+    ).toEqual({
+      configuration: {
+        status: 'ready',
+        summary: 'Tenant-IAM-Struktur ist vollständig vorhanden.',
+        source: 'keycloak_status_snapshot',
+        checkedAt: undefined,
+        errorCode: undefined,
+        requestId: undefined,
+      },
+      access: {
+        status: 'blocked',
+        summary: 'Tenant-Admin-Client darf Realm-Rollen nicht lesen.',
+        source: 'access_probe',
+        checkedAt: '2026-04-29T10:01:00.000Z',
+        errorCode: 'IDP_FORBIDDEN',
+        requestId: 'req-access-1',
+      },
+      reconcile: {
+        status: 'degraded',
+        summary: 'Ein Rollenabgleich ist mit Drift beendet worden.',
+        source: 'role_reconcile',
+        checkedAt: '2026-04-29T10:00:00.000Z',
+        errorCode: 'IDP_CONFLICT',
+        requestId: 'req-reconcile-1',
+      },
+      overall: {
+        status: 'blocked',
+        summary: 'Tenant-IAM ist blockiert.',
+        source: 'access_probe',
+        checkedAt: '2026-04-29T10:01:00.000Z',
+        errorCode: 'IDP_FORBIDDEN',
+        requestId: 'req-access-1',
+      },
+    });
+  });
+
+  it('marks access as unknown without prior evidence', () => {
+    expect(
+      buildTenantIamStatus({
+        keycloakStatus: undefined,
+        accessEvidence: undefined,
+        reconcileEvidence: undefined,
+      })
+    ).toEqual(
+      expect.objectContaining({
+        access: {
+          status: 'unknown',
+          summary: 'Noch keine tenantlokale Rechteprobe vorhanden.',
+          source: 'access_probe',
+        },
+        overall: {
+          status: 'unknown',
+          summary: 'Tenant-IAM-Befund ist unvollständig.',
+          source: 'registry',
+        },
+      })
     );
   });
 });

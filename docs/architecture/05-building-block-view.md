@@ -24,6 +24,7 @@ Abhängigkeiten des aktuellen Systems.
    - Skeleton-Bausteine für Kopfzeile, Seitenleiste und Contentbereich
    - Theme-Bausteine: `ThemeProvider`, semantische CSS-Token und `Sheet`-Primitive für mobile Shell-Navigation
    - Auth- und Diagnose-Bausteine: `AuthProvider` fuer `/auth/me`, Silent-Recovery und den clientseitigen Grundzustand; `iam-api.ts` fuer Browser-Timeouts, `requestId`-Aufnahme und Safe-Detail-Parsing
+  - Host-Standard-Bausteine fuer Admin-Ressourcen: `appAdminResources` als kanonische Capability-Deklaration, route-addressable Listensteuerung in den Admin-/Content-Seiten und duenne Label-/Routing-Bindings fuer `@sva/studio-ui-react` statt app-eigener Tabellen-Owner-Schicht
    - Nx-Targets für `build`, `serve`, `lint`, `test:unit`, `test:coverage` und `test:e2e` über Vite-, Vitest- und Playwright-Executor
 2. Core (`packages/core`)
    - generische Route-Registry Utilities (`mergeRouteFactories`, `buildRouteTree`)
@@ -32,19 +33,24 @@ Abhängigkeiten des aktuellen Systems.
    - zentrale Route-Factories (client + server)
    - einzige Source of Truth für Auth-Handler-Mapping, Runtime-Guard und JSON-Error-Boundary
    - eigener Observability-Vertrag für Guard-Denials, Plugin-Guard-Anomalien und serverseitige Dispatch-Fehler mit optionalem Diagnostics-Hook
+   - Search-Param-Normalisierung fuer deklarierte Admin-Ressourcen ueber `normalizeAdminResourceListSearch`, damit Host-Listen zustandsstabil, deep-link-faehig und fail-closed bei ungueltigen Parametern bleiben
    - der Startup-Guard in `auth.routes.server.ts` prüft ausschließlich das Auth-Route-Mapping gegen `authRoutePaths`; er ist keine allgemeine Plugin- oder Router-Vollständigkeitsprüfung
 4. Auth Runtime (`packages/auth-runtime`)
    - OIDC-Flows, Session-Store, Cookies, Auth-Middleware, Runtime-Health und Auth-/HTTP-Handler
    - Runtime-Adapter für fachliche IAM-, Governance-, Content- und Registry-Routen
    - Diagnosebausteine für Session-Hydration/-Refresh, Hostvalidierung, Schema-Guard, Runtime-Health und allowlist-basierte API-Fehlerdetails
-5. Plugin SDK und Server Runtime (`packages/plugin-sdk`, `packages/server-runtime`)
+5. Plugin SDK, Studio Module IAM und Server Runtime (`packages/plugin-sdk`, `packages/studio-module-iam`, `packages/server-runtime`)
    - `@sva/plugin-sdk`: öffentlicher Plugin-Vertrag v1, Build-time-Registry, Admin-Ressourcen, Content-Type- und Translation-Verträge
+   - erweitert den Admin-Ressourcenvertrag um hostgeführte Listen- und Detail-Capabilities fuer Search, Filter, Sorting, Pagination, Bulk-Actions, Historie und Revisionen
+   - `@sva/studio-module-iam`: framework-agnostische Vertragsfamilie für modulbezogene Permission- und Systemrollen-Kataloge, konsumierbar durch Host, Plugins, Runtime und Provisioning
+   - bündelt außerdem wiederverwendbare Helper für standardisierte Content-Plugins, Mainserver-CRUD-Basis und kleine UI-nahe Plugin-Utilities
    - `@sva/server-runtime`: Logger, Request-Kontext, JSON-Fehlerantworten, Workspace-Kontext und OTEL-Bootstrap
    - Namespacing- und Ownership-Validierung für plugin-beigestellte registrierte Host-Identifier
 6. Studio UI React (`packages/studio-ui-react`)
-   - öffentliche React/UI-Basis `@sva/studio-ui-react` für Host-Seiten und Plugin-Custom-Views
-   - kapselt shadcn-/Radix-Primitives, Studio-Templates, Formularfelder, Zustandsbausteine, Tabellen- und Aktionsmuster
-   - bleibt UI-only: keine Plugin-Registry, keine Route-Materialisierung, keine Persistenz, keine IAM- oder Server-Runtime-Logik
+  - öffentliche React/UI-Basis `@sva/studio-ui-react` für Host-Seiten und Plugin-Custom-Views
+  - kapselt shadcn-/Radix-Primitives, Studio-Templates, Formularfelder, Zustandsbausteine, Tabellen- und Aktionsmuster
+  - ist kanonischer Owner für wiederverwendbare Host-Listen-UI wie `StudioDataTable` und `StudioListPageTemplate`; die App liefert nur noch explizite Labels, Routen und Seitendaten
+  - bleibt UI-only: keine Plugin-Registry, keine Route-Materialisierung, keine Persistenz, keine IAM- oder Server-Runtime-Logik
 7. Monitoring Client (`packages/monitoring-client`)
    - OTEL SDK Setup, Exporter, Log-Redaction-Processor
 8. Data Client und Data Repositories (`packages/data-client`, `packages/data-repositories`)
@@ -52,11 +58,12 @@ Abhängigkeiten des aktuellen Systems.
    - `@sva/data-repositories`: serverseitige Repository-Fassaden und DB-nahe Operationen
    - IAM-Persistenzmodell (`iam`-Schema) mit Multi-Tenant-Struktur bleibt SQL-first versioniert
 9. SVA Mainserver (`packages/sva-mainserver`)
-   - dedizierte Integrationsschicht für OAuth2, GraphQL-Transport, Fehlerabbildung und Fachadapter
-   - trennt client-sichere Typen von serverseitigen Delegations- und Diagnostikfunktionen
+  - dedizierte Integrationsschicht für OAuth2, GraphQL-Transport, Fehlerabbildung und Fachadapter
+  - trennt client-sichere Typen von serverseitigen Delegations- und Diagnostikfunktionen
+  - exportiert die kanonischen serverseitigen Host-Verträge für Mainserver-News, -Events, -POI und die Schnittstellenverwaltung; `apps/sva-studio-react` hält dafür nur dünne Request- und TanStack-Adapter
 10. Plugin News (`packages/plugin-news`)
    - produktives Fachplugin für Mainserver-News mit pluginnahem Modell `news.article`
-   - eigene Listen- und Editor-Ansichten, Plugin-Navigation und Plugin-Übersetzungen
+   - eigene Listen- und Editor-Ansichten, plugin-beigestellte Admin-Ressourcen-Spezialisierungen, Navigation und Übersetzungen
    - bildet das vollständige Mainserver-`NewsItem`-Modell über dedizierte Felder ab; `contentBlocks` sind der führende Langinhalt
    - nutzt `@sva/plugin-sdk` für Host-Metadaten und `@sva/studio-ui-react` für gemeinsame UI-Primitives statt App-interner Komponenten
    - persistiert nicht direkt in lokale IAM-Contents, sondern spricht die hostgeführte Mainserver-News-Fassade per HTTP an
@@ -65,6 +72,8 @@ Abhängigkeiten des aktuellen Systems.
    - Registry-Repositories, persistente Provisioning-Runs und Cache-Zugriffe über injizierte Repository-Verträge
    - Plattformvertrag, Keycloak-Control-Plane, Provisioning-Fassade und Root-Host-Guard
    - Keycloak-Reconcile- und Execute-Mutationen führen `Idempotency-Key`, API-Mutation und stabilen Payload-Fingerprint bis in `iam.instance_keycloak_provisioning_runs`, damit Retries denselben fachlichen Run wiederverwenden
+   - aggregiert für `GET /api/v1/iam/instances/:instanceId` zusätzlich `tenantIamStatus` aus Registry-/Provisioning-, Access-Probe- und Reconcile-Evidenz
+   - persistiert die letzte explizite Tenant-IAM-Access-Probe als Audit-Evidenz in `iam.instance_audit_events` und stellt sie der Detailseite korrelierbar mit `requestId`, `errorCode` und Zeitstempel bereit
    - `apps/sva-studio-react`: gefuehrte Admin-Control-Plane unter `/admin/instances` mit Preflight, Plan, Ausfuehrung und Protokoll
    - der Instanzvertrag trennt `authClientId` fuer interaktive Logins von `tenantAdminClient.clientId` fuer tenant-lokale Admin-Mutationen und Reconcile
    - blockerrelevanter Drift aus Preflight, Provisioning-Plan oder fehlendem Tenant-Admin-Vertrag wird vor Reconcile-/Sync-Starts fail-closed durchgesetzt
@@ -87,7 +96,7 @@ Abhängigkeiten des aktuellen Systems.
   - `packages/auth-runtime`, `packages/iam-admin` und `packages/instance-registry`
 - Tenant-Admin-Pfad pro Instanz:
   - `packages/iam-admin` für Tenant-Admin-Orchestrierung
-  - `packages/instance-registry` für Registry-, Diagnose- und Health-Verträge des `tenantAdminClient`
+  - `packages/instance-registry` für Registry-, Diagnose-, Access-Probe- und Health-Verträge des `tenantAdminClient`
   - `packages/data-repositories` für DB-nahe Registry- und IAM-Zugriffe
 - Instanzgebundene Mainserver-Endpunkte:
   - `packages/data-repositories` für Endpunktkonfiguration, `packages/sva-mainserver` für Integration und Adapter
@@ -97,6 +106,7 @@ Abhängigkeiten des aktuellen Systems.
   - plattformgebunden: `iam.platform_activity_logs`
 - Governance und DSGVO-Betroffenenrechte:
   - `packages/iam-governance`
+  - enthält auch die kanonische Legal-Text-Sanitisierung; React-Consumer importieren keinen app-lokalen HTML-Sanitizer mehr
 - Inhaltsverwaltung als Core-Element:
   - `packages/core` (`content-management.ts`) für Kernvertrag
   - `packages/plugin-sdk` für Erweiterungspunkte, Registries und Namespace-Verträge
@@ -145,13 +155,47 @@ Abhängigkeiten des aktuellen Systems.
 - `apps/sva-studio-react` transportiert heute bereits `requestId` und Safe-Details teilweise bis in den Browser, verwendet diese Informationen aber noch nicht durchgängig für classification-basierte UI-Zustände.
 - Der aktuelle Zielkonflikt liegt damit nicht zwischen fehlenden Signalen und fehlender Observability, sondern zwischen vorhandenen Einzelsignalen und einem noch unvollständigen öffentlichen Diagnosevertrag.
 
+### Fortschreibung 2026-04: Tenant-IAM-Operations im Instanz-Detail
+
+1. `packages/core`
+   - erweitert den Instanz-Detailvertrag um `tenantIamStatus` mit den Achsen `configuration`, `access`, `reconcile` und `overall`.
+2. `packages/data-repositories`
+   - liest letzte Access-Probe-Evidenz aus `iam.instance_audit_events` und Reconcile-Zusammenfassungen aus `iam.roles` plus `iam.activity_logs`.
+3. `packages/instance-registry`
+   - baut daraus den aggregierten Tenant-IAM-Betriebsstatus und bietet die Mutation `POST /api/v1/iam/instances/:instanceId/tenant-iam/access-probe`.
+4. `packages/auth-runtime`
+   - erzwingt für die Access-Probe und tenantlokale Reconcile-Pfade den Execution-Mode `tenant_admin` ohne Plattform-Fallback.
+5. `apps/sva-studio-react`
+   - rendert auf `/admin/instances/$instanceId` einen separaten Tenant-IAM-Bereich mit Statusachsen, Korrelation und kontextbezogenen Aktionen.
+   - strukturiert dieselbe Detailseite als `Control Tower + Workbench`: fester Überblick für Gesamtstatus, Evidenzfrische, priorisierte Befunde und genau eine Primäraktion; nachgelagerte Arbeitsbereiche für `Konfiguration`, `Betrieb` und `Historie`.
+   - leitet dafür in der React-Schicht ein kanonisches Cockpit-Modell aus bestehenden Datenquellen wie `tenantIamStatus`, Keycloak-Preflight, Provisioning-Vorschau, letztem Run und Mutationsdiagnostik ab, ohne den Backend-Vertrag zu ändern.
+
+### Fortschreibung 2026-04: Instanz-Modulaktivierung
+
+1. `packages/core`
+   - erweitert Instanz-Read-Modelle um `assignedModules` und einen Modul-IAM-Befund.
+2. `packages/data` und `packages/data-repositories`
+   - persistieren die kanonische Instanz-Modul-Zuordnung in `iam.instance_modules`.
+3. `packages/plugin-sdk`
+   - definiert den deklarativen Modul-IAM-Vertrag pro Plugin.
+   - `packages/studio-module-iam`
+   - leitet daraus den runtime-sicheren, UI-freien Modul-IAM-Katalog für Host, Plugins und `auth-runtime` ab.
+4. `packages/instance-registry`
+   - ist führender Fachbaustein für `assignModule`, `revokeModule` und `seedIamBaseline`.
+5. `packages/auth-runtime`
+   - reichert `/auth/me` für Instanz-Sessions mit `assignedModules` an.
+6. `packages/routing` und `apps/sva-studio-react`
+   - sperren Plugin-Routen und Plugin-Navigation fail-closed gegen den aktiven Modulsatz der Instanz.
+
 ### Abhängigkeiten (vereinfacht)
 
 - App -> `@sva/core`, `@sva/routing`, `@sva/auth-runtime`, `@sva/plugin-sdk`, `@sva/studio-ui-react`, `@sva/sva-mainserver`, `@sva/plugin-news`, `@sva/plugin-events`, `@sva/plugin-poi`
 - `@sva/routing` -> `@sva/auth-runtime`, `@sva/core`, `@sva/plugin-sdk`, `@sva/server-runtime`
 - `@sva/auth-runtime` -> `@sva/iam-core`, `@sva/iam-admin`, `@sva/iam-governance`, `@sva/instance-registry`, `@sva/data-repositories`, `@sva/server-runtime`
+- `@sva/auth-runtime` -> `@sva/studio-module-iam` für den kanonischen Modul-IAM-Katalog
 - `@sva/sva-mainserver` -> `@sva/auth-runtime`, `@sva/data-repositories`, `@sva/server-runtime`
 - `@sva/plugin-sdk` -> `@sva/core`
+- `@sva/studio-module-iam` -> keine React-, Host- oder Plugin-UI-Abhängigkeiten; nur Vertragsdaten und kleine Helper
 - `@sva/server-runtime` -> `@sva/core`, `@sva/monitoring-client`
 - `@sva/plugin-*` -> `@sva/plugin-sdk`, optional `@sva/studio-ui-react` für Custom-Views (kein Direktimport aus `@sva/core` oder App-internen Komponenten)
 - `@sva/plugin-news`, `@sva/plugin-events` und `@sva/plugin-poi` bleiben absichtlich auf SDK, Studio-UI und Peer Dependencies beschränkt; API-Aufrufe laufen über öffentliche Host-Fassaden statt über App-Module
@@ -173,29 +217,60 @@ flowchart LR
 Nicht erlaubt: `@sva/plugin-*` -> `@sva/core`
 Nicht erlaubt: `@sva/plugin-*` -> `apps/sva-studio-react/src/**`
 
-### Erweiterung 2026-04: Plugin-SDK-Vertrag v1 und News-Plugin
+### Erweiterung 2026-04: Plugin-SDK-Vertrag v1 und News-, Events- sowie POI-Plugins
 
 1. `packages/plugin-sdk/src/plugins.ts`
-   - definiert `PluginDefinition` und Merge-Helfer für Plugin-Routen, Navigation, Content-Typen und Übersetzungen
+   - definiert `PluginDefinition` und Merge-Helfer für Plugin-Routen, Navigation, Content-Typen, Admin-Ressourcen und Übersetzungen
 2. `apps/sva-studio-react/src/lib/plugins.ts`
    - registriert `pluginNews` statisch im Host und materialisiert daraus Route-, Navigations-, Admin-Ressourcen-, Audit- und i18n-Metadaten
 3. `packages/auth-runtime/src/iam-contents/content-type-registry.ts`
    - erweitert den generischen Content-Write-Pfad um contentType-spezifische Payload-Validierung und Sanitisierung
-4. `packages/plugin-news/src/*`
-   - kapselt News-Liste, Editor, Delete-Flow und plugin-eigene Übersetzungen unter der SDK-Boundary
-   - schreibt News-Fachdaten über die hostgeführte Mainserver-Fassade; Legacy-`payload` ist nur Lesefallback und wird bei Create/Update nicht gesendet
+4. `packages/plugin-news/src/*`, `packages/plugin-events/src/*`, `packages/plugin-poi/src/*`
+   - kapseln Listen-, Editor-, Detail- und Delete-Flows als fachliche Spezialisierungen unter der SDK-Boundary
+   - registrieren `adminResources` mit `resourceId` `news.content`, `events.content` und `poi.content`, jeweils auf Basis der Host-Views `content`, `contentCreate` und `contentDetail`
+   - liefern über `contentUi` optionale Bindings für `list`, `detail` und `editor`, während Route, Guard, Shell und Persistenz host-owned bleiben
+   - beziehen gemeinsame Standard-Metadaten, Mainserver-CRUD-Basis und kleine Hilfsfunktionen aus `@sva/plugin-sdk`, ohne einander zu importieren
+   - schreiben ihre Fachdaten über hostgeführte Fassaden; Legacy-`payload` bleibt nur dort Lesefallback, wo die jeweilige Fassade ihn noch toleriert
 
 ### Erweiterung 2026-04: Namespacete Plugin-Identität über Build-time-Registries
 
 1. `packages/plugin-sdk/src/plugins.ts` + `packages/plugin-sdk/src/plugin-identifiers.ts`
-   - definieren die technische Plugin-Identität über `PluginDefinition.id` als führenden Namespace und validieren plugin-beigestellte `contentType`s, Admin-Ressourcen und Audit-Event-Typen gegen `<pluginId>.<name>`
+   - definieren die technische Plugin-Identität über `PluginDefinition.id` als führenden Namespace und validieren plugin-beigestellte `contentType`s, Admin-Ressourcen, Audit-Event-Typen und Permissions gegen `<pluginId>.<name>`
 2. `packages/plugin-sdk/src/build-time-registry.ts`
-   - verdichtet Plugins, hosteigene Admin-Ressourcen und plugin-spezifische Audit-Event-Definitionen phasenweise in einen gemeinsamen Registry-Snapshot für Host und Routing
-   - hält die bestehende `BuildTimeRegistry`-API stabil; interne Phasen ordnen Preflight, Content, Admin, Audit, Routing und Publish ohne neue Beitragstypen
+   - verdichtet Plugins, hosteigene Admin-Ressourcen, plugin-spezifische Permissions und Audit-Event-Definitionen phasenweise in einen gemeinsamen Registry-Snapshot für Host und Routing
+   - hält die bestehende `BuildTimeRegistry`-API stabil; interne Phasen ordnen Preflight, Content, Admin, Audit, Permissions, Routing und Publish
+   - validiert spezialisierte `contentUi.contentType`-Referenzen gegen den zusammengeführten Content-Type-Snapshot fail-fast vor der Veröffentlichung
 3. `packages/routing/src/app.routes.shared.ts`
-   - materialisiert deklarative Admin-Ressourcen unter `/admin/<resource>` und hält Legacy-Aliase wie `/content*` nur noch als Redirect-Vertrag
+   - materialisiert deklarative Admin-Ressourcen unter `/admin/<resource>`; für News, Events und POI entstehen host-owned CRUD-Pfade unter `/admin/news`, `/admin/events` und `/admin/poi`
+   - verwendet spezialisierte `contentUi`-Bindings nur innerhalb der vorgesehenen Host-Region und hält Legacy-Aliase wie `/content*` nur noch für die generische Inhaltsverwaltung
 4. `packages/auth-runtime/src/iam-contents/content-type-registry.ts`
    - führt `news.article` als kanonischen plugin-beigestellten `contentType` im serverseitigen Validierungsvertrag
+
+### Erweiterung 2026-04: Plugin-spezifische IAM-Rechte
+
+1. `packages/plugin-sdk/src/plugins.ts`
+   - ergänzt `PluginDefinition.permissions` und `definePluginPermissions()` als generischen SDK-Vertrag für plugin-deklarierte Rechtefamilien
+   - weist `content.*`-Guards, fremde Plugin-Namespaces, reservierte Namespaces, Duplikate und nicht registrierte Permission-Referenzen fail-fast ab
+2. `packages/plugin-news`, `packages/plugin-events`, `packages/plugin-poi`
+   - deklarieren eigene Rechtefamilien `news.*`, `events.*` und `poi.*`
+   - nutzen diese Rechte für Actions, Routen und Navigation ohne produktiven `content.*`-Fallback
+3. `packages/data/src/iam/seed-plan.ts`
+   - seeded plugin-spezifische Permissions als normale IAM-Permissions mit `resourceType` `news`, `events` oder `poi`
+   - weist Personas Rechte namespace-isoliert zu, sodass ein News-Recht keine Events- oder POI-Freigabe impliziert
+4. `apps/sva-studio-react/src/routes/admin/roles`
+   - zeigt Plugin-Permissions in der Rollenverwaltung als fachliche Ressourcengruppen und speichert sie über den bestehenden Rollen-Permission-Vertrag
+
+### Erweiterung 2026-05: Gemeinsame Runtime-Vertragsquelle für Modul-IAM
+
+1. `packages/studio-module-iam/src`
+   - veröffentlicht den kanonischen Modul-IAM-Katalog für `news`, `events`, `poi` und hosteigene Module wie `media`
+   - kapselt Namespace-, Ownership-, Permission- und Systemrollen-Metadaten in einer runtime-sicheren Vertragsform
+2. `packages/plugin-news/src/plugin.tsx`, `packages/plugin-events/src/plugin.tsx`, `packages/plugin-poi/src/plugin.tsx`
+   - leiten ihre `moduleIam`-Deklarationen aus derselben Vertragsfamilie ab, behalten aber den schmalen Plugin-Vertrag ohne zusätzliche Runtime-Metadaten
+3. `apps/sva-studio-react/src/lib/plugins.ts`
+   - verwendet denselben Katalog für Build-time-Registry-Parität und die hostseitige Modulübersicht
+4. `packages/auth-runtime/src/iam-instance-registry/repository.ts`
+   - nutzt denselben Katalog für Runtime- und Provisioning-Wiring statt lokaler manueller Modul-Maps
 
 ### Erweiterung 2026-04: Host-seitige Plugin-Guardrails
 
@@ -205,7 +280,8 @@ Nicht erlaubt: `@sva/plugin-*` -> `apps/sva-studio-react/src/**`
    - validiert Plugin-Contributions gegen Runtime-Allowlists, bevor der Build-time-Registry-Snapshot veröffentlicht wird
 3. `packages/routing/src/app.routes.shared.ts`
    - materialisiert Plugin-Routen nur unter `/plugins/<pluginNamespace>` und bricht unbekannte Plugin-Guards fail-fast ab
-4. Plugin-UI-Komponenten bleiben erlaubt, solange Route, Guard, Search-Parameter, Persistenz und Audit-Pfad host-owned bleiben
+4. Standardisierte Content-Plugins dürfen ihre CRUD-Hauptrouten nicht mehr parallel unter `/plugins/<pluginNamespace>` veröffentlichen; Versuche auf `/plugins/<namespace>`, `/plugins/<namespace>/new` oder `/plugins/<namespace>/$id` werden fail-fast als Bypass des Host-Pfads abgewiesen
+5. Plugin-UI-Komponenten bleiben erlaubt, solange Route, Guard, Search-Parameter, Persistenz und Audit-Pfad host-owned bleiben
 
 ### Schichtdefinition `scope:integration`
 
@@ -380,3 +456,12 @@ Neu hinzugekommene Bausteine im Change `add-iam-organization-management-hierarch
    - Definiert den gemeinsamen Sync-Report (`importedCount`, `updatedCount`, `skippedCount`, `totalKeycloakUsers`) für Server und Frontend.
 5. `apps/sva-studio-react/src/hooks/use-users.ts` und `apps/sva-studio-react/src/routes/admin/users/-user-list-page.tsx`
    - Binden die Aktion „Aus Keycloak synchronisieren“ in `/admin/users` an, zeigen Statusfeedback an und laden die User-Liste nach erfolgreichem Import neu.
+4. Medienvertrag (`packages/media`)
+   - kanonische Typen für `MediaAsset`, `MediaVariant`, `MediaReference`, Rollen, Sichtbarkeit, Upload- und Processing-Status
+   - fail-closed Regeln für Löschbarkeit und Referenzierbarkeit
+5. Datenzugriff (`packages/data-repositories`)
+   - Medien-Repositories für Assets, Varianten, Referenzen, Upload-Sessions, Quota und Usage-Impact
+6. Auth-Runtime (`packages/auth-runtime`)
+   - hostseitige Media-HTTP-Endpunkte
+   - interner Storage-Port und S3-/MinIO-Adapter
+   - Audit, Autorisierung und Upload-Processing für Medien

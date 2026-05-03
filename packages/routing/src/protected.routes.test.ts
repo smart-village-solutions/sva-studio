@@ -5,7 +5,7 @@ import { createAdminRoute, createProtectedRoute } from './protected.routes';
 
 const invokeGuard = async (
   guard: ReturnType<typeof createProtectedRoute>,
-  user: { roles: readonly string[] } | null,
+  user: { roles: readonly string[]; permissionActions?: readonly string[] } | null,
   href: string
 ) =>
   guard({
@@ -28,7 +28,7 @@ describe('protected routes', () => {
     } catch (error) {
       expect(isRedirect(error)).toBe(true);
       if (isRedirect(error)) {
-        expect(error.options.href).toBe('/auth/login?returnTo=%2Fadmin%2Fusers%3Fpage%3D2');
+        expect(error.options.href).toBe('/?auth=login&returnTo=%2Fadmin%2Fusers%3Fpage%3D2');
       }
     }
 
@@ -37,7 +37,7 @@ describe('protected routes', () => {
       event: 'routing.guard.access_denied',
       route: '/admin/users/$userId',
       reason: 'unauthenticated',
-      redirect_target: '/auth/login',
+      redirect_target: '/',
     });
   });
 
@@ -77,6 +77,42 @@ describe('protected routes', () => {
     expect(diagnostics).not.toHaveBeenCalled();
   });
 
+  it('redirects authenticated users without required permission', async () => {
+    const diagnostics = vi.fn();
+    const guard = createProtectedRoute({
+      diagnostics,
+      route: '/plugins/news',
+      requiredPermissions: ['news.read'],
+    });
+
+    try {
+      await invokeGuard(guard, { roles: ['editor'], permissionActions: ['events.read'] }, '/plugins/news');
+      expect.fail('Expected redirect');
+    } catch (error) {
+      expect(isRedirect(error)).toBe(true);
+      if (isRedirect(error)) {
+        expect(error.options.href).toBe('/?error=auth.insufficientRole');
+      }
+    }
+
+    expect(diagnostics).toHaveBeenCalledWith({
+      level: 'info',
+      event: 'routing.guard.access_denied',
+      route: '/plugins/news',
+      reason: 'insufficient-permission',
+      redirect_target: '/',
+      required_permissions: ['news.read'],
+    });
+  });
+
+  it('allows authenticated users with required permission', async () => {
+    const guard = createProtectedRoute({ route: '/plugins/news', requiredPermissions: ['news.read'] });
+
+    await expect(
+      invokeGuard(guard, { roles: ['editor'], permissionActions: ['news.read', 'events.read'] }, '/plugins/news')
+    ).resolves.toBeUndefined();
+  });
+
   it('uses default admin roles in createAdminRoute', async () => {
     const guard = createAdminRoute({ route: '/admin/users' });
 
@@ -101,7 +137,7 @@ describe('protected routes', () => {
     } catch (error) {
       expect(isRedirect(error)).toBe(true);
       if (isRedirect(error)) {
-        expect(error.options.href).toBe('/auth/login?returnTo=%2F');
+        expect(error.options.href).toBe('/?auth=login&returnTo=%2F');
       }
     }
   });

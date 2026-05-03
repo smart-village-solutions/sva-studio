@@ -76,3 +76,15 @@ export {
   updateUserHandler,
 } from './iam-account-management/core.js';
 export { instanceRegistryHandlers } from './iam-instance-registry/server.js';
+export {
+  completeMediaUploadHandler,
+  deleteMediaHandler,
+  getMediaDeliveryHandler,
+  getMediaHandler,
+  getMediaUsageHandler,
+  initializeMediaUploadHandler,
+  listMediaReferencesHandler,
+  listMediaHandler,
+  replaceMediaReferencesHandler,
+  updateMediaHandler,
+} from './iam-media/core.js';

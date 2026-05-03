@@ -23,6 +23,9 @@ export default defineConfig({
       ),
       '@sva/auth-runtime': fileURLToPath(new URL('../../packages/auth-runtime/src/index.ts', import.meta.url)),
       '@sva/iam-admin': fileURLToPath(new URL('../../packages/iam-admin/src/index.ts', import.meta.url)),
+      '@sva/iam-governance/legal-text-html': fileURLToPath(
+        new URL('../../packages/iam-governance/src/legal-text-html.ts', import.meta.url)
+      ),
       '@sva/sva-mainserver/server': fileURLToPath(new URL('../../packages/sva-mainserver/src/index.server.ts', import.meta.url)),
       '@sva/sva-mainserver': fileURLToPath(new URL('../../packages/sva-mainserver/src/index.ts', import.meta.url)),
       '@sva/instance-registry': fileURLToPath(new URL('../../packages/instance-registry/src/index.ts', import.meta.url)),

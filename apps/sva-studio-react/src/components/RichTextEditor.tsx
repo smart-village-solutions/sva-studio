@@ -1,7 +1,8 @@
 import React from 'react';
 
+import { sanitizeLegalTextHtml } from '@sva/iam-governance/legal-text-html';
+
 import { Button } from './ui/button';
-import { sanitizeLegalTextHtml } from '../lib/legal-text-html';
 
 type RichTextEditorProps = {
   readonly id: string;

@@ -41,9 +41,9 @@ describe('interfaces app adapter', () => {
     };
     state.loadSvaMainserverInterfacesOverview.mockResolvedValue(overview);
 
-    const { loadInterfacesOverview } = await import('./interfaces-api');
+    const { loadSvaMainserverInterfacesOverviewServerFn } = await import('./interfaces-api');
 
-    await expect(loadInterfacesOverview()).resolves.toEqual(overview);
+    await expect(loadSvaMainserverInterfacesOverviewServerFn()).resolves.toEqual(overview);
     expect(state.loadSvaMainserverInterfacesOverview).toHaveBeenCalledWith(state.request);
   });
 

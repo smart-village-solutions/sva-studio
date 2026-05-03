@@ -8,16 +8,18 @@ import { loadSvaMainserverSettings, saveSvaMainserverSettings } from './settings
 const COMPONENT = 'interfaces-api';
 const INTERFACES_ROLES = new Set(['system_admin', 'app_manager', 'interface_manager', 'interface-manager']);
 
-type InterfacesOverviewModel = {
+export type SvaMainserverInterfacesOverview = {
   readonly instanceId: string;
   readonly config: SvaMainserverInstanceConfig | null;
   readonly status: SvaMainserverConnectionStatus;
 };
 
-type SaveInterfacesPayload = {
-  readonly graphqlBaseUrl?: string;
-  readonly oauthTokenUrl?: string;
-  readonly enabled?: boolean;
+export type SaveSvaMainserverInterfaceSettingsInput = {
+  readonly data: {
+    readonly graphqlBaseUrl?: string;
+    readonly oauthTokenUrl?: string;
+    readonly enabled?: boolean;
+  };
 };
 
 type InterfacesErrorField = 'graphql_base_url' | 'oauth_token_url';
@@ -150,7 +152,7 @@ const isSvaMainserverConnectionStatus = (value: unknown): value is SvaMainserver
   return true;
 };
 
-const isInterfacesOverviewModel = (payload: unknown): payload is InterfacesOverviewModel => {
+const isInterfacesOverviewModel = (payload: unknown): payload is SvaMainserverInterfacesOverview => {
   if (!isRecord(payload)) {
     return false;
   }
@@ -306,7 +308,9 @@ const getOverviewFallbackStatus = (
   return createErrorStatus('network_error');
 };
 
-export const loadSvaMainserverInterfacesOverview = async (request: Request): Promise<InterfacesOverviewModel> => {
+export const loadSvaMainserverInterfacesOverview = async (
+  request: Request
+): Promise<SvaMainserverInterfacesOverview> => {
   try {
     const logger = createSdkLogger({ component: COMPONENT });
 
@@ -322,7 +326,7 @@ export const loadSvaMainserverInterfacesOverview = async (request: Request): Pro
           instanceId: '',
           config: null,
           status: createErrorStatus('invalid_config'),
-        } satisfies InterfacesOverviewModel);
+        } satisfies SvaMainserverInterfacesOverview);
       }
 
       if (!hasInterfacesAccessRole(user)) {
@@ -336,7 +340,7 @@ export const loadSvaMainserverInterfacesOverview = async (request: Request): Pro
           instanceId,
           config: null,
           status: createErrorStatus('forbidden', 'Keine Berechtigung zur Schnittstellenverwaltung.'),
-        } satisfies InterfacesOverviewModel);
+        } satisfies SvaMainserverInterfacesOverview);
       }
 
       let config: Awaited<ReturnType<typeof loadSvaMainserverSettings>>;
@@ -357,7 +361,7 @@ export const loadSvaMainserverInterfacesOverview = async (request: Request): Pro
           instanceId,
           config: null,
           status: createErrorStatus('invalid_config'),
-        } satisfies InterfacesOverviewModel);
+        } satisfies SvaMainserverInterfacesOverview);
       }
 
       let status: SvaMainserverConnectionStatus;
@@ -385,10 +389,10 @@ export const loadSvaMainserverInterfacesOverview = async (request: Request): Pro
         instanceId,
         config,
         status,
-      } satisfies InterfacesOverviewModel);
+      } satisfies SvaMainserverInterfacesOverview);
     });
 
-    const payload = await parseJson<InterfacesOverviewModel | ErrorPayload>(response);
+    const payload = await parseJson<SvaMainserverInterfacesOverview | ErrorPayload>(response);
     if (payload && isInterfacesOverviewModel(payload)) {
       return payload;
     }
@@ -422,11 +426,11 @@ export const loadSvaMainserverInterfacesOverview = async (request: Request): Pro
 
 export const saveSvaMainserverInterfaceSettings = async (
   request: Request,
-  { data }: { readonly data: SaveInterfacesPayload }
+  { data }: SaveSvaMainserverInterfaceSettingsInput
 ): Promise<SvaMainserverInstanceConfig> => {
   try {
     const logger = createSdkLogger({ component: COMPONENT });
-    const payloadData = (data ?? {}) as SaveInterfacesPayload;
+    const payloadData = (data ?? {}) as SaveSvaMainserverInterfaceSettingsInput['data'];
 
     const response = await withAuthenticatedUser(request, async ({ user }) => {
       const instanceId = user.instanceId;

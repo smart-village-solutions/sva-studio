@@ -144,6 +144,21 @@ describe('studio-ui-react primitives', () => {
     expect(screen.getByRole('tablist', { name: 'Abfall kalender' })).toBeTruthy();
   });
 
+  it('treats a null custom list page action render as intentionally empty', () => {
+    render(
+      <StudioListPageTemplate
+        title="Abholorte"
+        primaryAction={{ label: 'Neu erstellen', render: null }}
+      >
+        <div>Tabelleninhalt</div>
+      </StudioListPageTemplate>
+    );
+
+    expect(screen.getByRole('heading', { name: 'Abholorte' })).toBeTruthy();
+    expect(screen.getByText('Tabelleninhalt')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Neu erstellen' })).toBeNull();
+  });
+
   it('renders detail pages, grouped fields and form summaries', () => {
     render(
       <StudioDetailPageTemplate title="Detail" description="Beschreibung" actions={<Button>Speichern</Button>}>

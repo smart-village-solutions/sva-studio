@@ -79,7 +79,7 @@ export type StudioListPageTemplateProps = Readonly<{
 }>;
 
 const renderStudioListPageAction = (action: StudioListPageAction) => {
-  if (action.render) {
+  if (action.render !== undefined) {
     return action.render;
   }
 

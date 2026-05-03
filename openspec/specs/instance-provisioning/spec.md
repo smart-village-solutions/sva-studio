@@ -33,15 +33,21 @@ Das System SHALL den Lebenszyklus einer Instanz über explizite Statuswerte steu
 
 ### Requirement: Idempotenter Provisioning-Workflow
 
-Das System SHALL neue Instanzen über einen idempotenten Provisioning-Workflow anlegen, der technische Teilaufgaben und Teilfehler kontrolliert behandelt.
+Das System SHALL neue Instanzen ueber einen idempotenten Provisioning-Workflow anlegen, der technische Teilaufgaben und Teilfehler kontrolliert behandelt. Soweit der Workflow modulbezogene IAM-Basisartefakte oder deren Reparatur ableitet, verwendet er dafuer dieselbe gemeinsame Modul-IAM-Vertragsquelle wie Runtime und Diagnose.
 
 #### Scenario: Erfolgreiche Neuanlage einer Instanz
 
-- **WHEN** eine berechtigte Person eine neue Instanz mit gültiger `instanceId` und gültigem Ziel-Hostname anfordert
+- **WHEN** eine berechtigte Person eine neue Instanz mit gueltiger `instanceId` und gueltigem Ziel-Hostname anfordert
 - **THEN** legt das System einen Provisioning-Lauf an
-- **AND** erstellt oder reserviert die benötigten Registry- und Basis-Konfigurationsartefakte
+- **AND** erstellt oder reserviert die benoetigten Registry- und Basis-Konfigurationsartefakte
 - **AND** erzeugt oder validiert getrennt den Login-Client `authClientId` und den Tenant-Admin-Client `tenantAdminClient.clientId`
-- **AND** dokumentiert den Übergang bis zum Status `active`
+- **AND** dokumentiert den Uebergang bis zum Status `active`
+
+#### Scenario: Modulbezogene IAM-Basis wird aus derselben Vertragsquelle repariert
+
+- **WHEN** ein Provisioning-, Repair- oder Reseed-Pfad modulbezogene IAM-Artefakte einer Instanz auf Sollstand bringt
+- **THEN** verwendet dieser Pfad dieselbe gemeinsame Modul-IAM-Vertragsquelle wie Runtime und Access-Control
+- **AND** koennen Plugin-Vertragsaenderungen nicht stillschweigend nur im UI- oder nur im Runtime-Pfad wirksam werden
 
 ### Requirement: Administrativer Steuerungspfad für neue Instanzen
 
@@ -276,3 +282,95 @@ Das System SHALL Tenant-IAM-Reconcile, tenantlokale Rechteprobe und bestehende P
 - **WHEN** vorhandene Registry-, Provisioning- und Reconcile-Evidenz ausreicht, um den Tenant-IAM-Befund nachvollziehbar abzuleiten
 - **THEN** darf der Instanz-Detailvertrag diese Evidenz direkt aggregieren
 - **AND** ist eine zusätzliche Persistenz für Probe-Snapshots oder Diagnosehistorie in diesem Change nicht verpflichtend
+
+### Requirement: Runtime und Provisioning nutzen eine gemeinsame Modul-IAM-Vertragsquelle
+
+Das System SHALL fuer modulbezogene IAM-Ableitungen in Runtime, Provisioning und Instanzdiagnostik eine gemeinsame, framework-agnostische Vertragsquelle verwenden.
+
+#### Scenario: Runtime-Seeding liest keine manuelle Parallel-Registry mehr
+
+- **WHEN** die Runtime den Sollzustand fuer modulbezogene Permissions und Systemrollen ableitet
+- **THEN** liest sie die benoetigten Modul-IAM-Vertraege aus einer gemeinsamen kanonischen Vertragsquelle
+- **AND** verwendet keine separat in `auth-runtime` gepflegte manuelle Modul-Registry
+
+#### Scenario: Serverseitiger Vertragskonsum bleibt UI-unabhaengig
+
+- **WHEN** ein serverseitiger Pfad Modul-IAM-Vertraege konsumiert
+- **THEN** haengt dieser Pfad nicht von React-Komponenten, Host-Bindings oder UI-spezifischen Plugin-Importen ab
+- **AND** bleibt der Vertrag fuer Node-ESM und Workspace-Runtime sauber konsumierbar
+
+### Requirement: Instanzen fuehren einen expliziten zugewiesenen Modulsatz
+
+Das System SHALL pro Instanz einen expliziten Satz zugewiesener Module persistieren und diesen Satz als kanonische Betriebsquelle fuer modulbezogene Freigaben und IAM-Basis verwenden. Die Zuweisung erfolgt ausschliesslich durch den Studio-Admin.
+
+#### Scenario: Bestehende Instanz startet ohne impliziten Modulsatz
+
+- **GIVEN** eine bestehende Instanz wird nach Einfuehrung des Modulvertrags gelesen
+- **WHEN** fuer diese Instanz noch keine explizite Modulzuordnung durch den Studio-Admin gepflegt wurde
+- **THEN** behandelt das System ihren Modulsatz als leer
+- **AND** aktiviert keine Module implizit aus globaler Plugin-Registrierung, `featureFlags` oder Integrationsdaten
+
+### Requirement: Modulzuweisung seedet die IAM-Basis in derselben Operation
+
+Das System SHALL die Zuweisung eines Moduls zu einer Instanz als Studio-Admin-Mutation behandeln, die die fachliche Freigabe und das IAM-Baseline-Seeding fuer `Core + zugewiesene Module` in derselben Operation ausfuehrt.
+
+#### Scenario: Modul wird einer Instanz zugewiesen
+
+- **GIVEN** ein global bekanntes Modul ist einer Instanz noch nicht zugewiesen
+- **WHEN** der Studio-Admin das Modul der Instanz zuweist
+- **THEN** persistiert das System die Modulzuordnung fuer diese Instanz
+- **AND** legt es fehlende modulbezogene Permissions idempotent an oder aktualisiert sie
+- **AND** bringt es kanonische Systemrollen und `role_permissions` fuer `Core + zugewiesene Module` auf Sollstand
+- **AND** ist das Modul nach erfolgreichem Abschluss fachlich sofort nutzbar
+
+#### Scenario: Zuweisung eines nicht global registrierten Moduls wird abgelehnt
+
+- **GIVEN** eine gueltige Instanz existiert
+- **WHEN** der Studio-Admin ein Modul zuweist, das nicht in der globalen Plugin-Registrierung bekannt ist
+- **THEN** lehnt das System die Operation mit einem Validation-Fehler ab
+- **AND** wird keine Modulzuordnung persistiert
+- **AND** wird kein IAM-Seeding ausgefuehrt
+
+#### Scenario: IAM-Seeding schlaegt waehrend Modulzuweisung fehl
+
+- **GIVEN** ein global bekanntes Modul ist einer Instanz noch nicht zugewiesen
+- **WHEN** der Studio-Admin das Modul zuweist
+- **AND** der IAM-Baseline-Seeding-Schritt schlaegt mit einem Fehler fehl
+- **THEN** rollt das System die Modulzuordnung fuer diese Instanz zurueck
+- **AND** persistiert keine Teilzuordnung
+- **AND** wird der Fehler dem Studio-Admin mit Diagnosekontext zurueckgemeldet
+- **AND** startet ein erneuter Zuweisungsversuch die Operation idempotent von vorn
+
+### Requirement: Modulentzug entfernt modulbezogene IAM-Basis hart
+
+Das System SHALL den Entzug eines Moduls von einer Instanz als Studio-Admin-Mutation behandeln, die modulbezogene Rechte und Rollenzuordnungen hart entfernt. Die Mutation erfordert ein explizites `confirmation`-Feld im Request; der Server lehnt den Entzug ohne dieses Feld mit einem eigenen Fehlercode ab.
+
+#### Scenario: Modul wird einer Instanz entzogen
+
+- **GIVEN** ein Modul ist einer Instanz zugewiesen
+- **WHEN** der Studio-Admin den Entzug mit expliziter Bestaetigung (`confirmation: "REVOKE"`) ausfuehrt
+- **THEN** entfernt das System die Modulzuordnung fuer diese Instanz
+- **AND** entfernt es die modulbezogenen Permissions hart
+- **AND** entfernt es modulbezogene `role_permissions` und systemische Rollenerweiterungen hart
+- **AND** bleibt die Core-IAM-Basis der Instanz unveraendert erhalten
+
+#### Scenario: Gleichzeitige Zuweisung und Entzug desselben Moduls
+
+- **GIVEN** ein Modul ist einer Instanz zugewiesen
+- **WHEN** zwei nebenlaeuifge Operationen gleichzeitig ausgefuehrt werden: Operation A entzieht das Modul, Operation B weist es erneut zu
+- **THEN** laesst das System genau eine Operation atomar gewinnen
+- **AND** der finale Modulsatz der Instanz ist entweder vollstaendig zugewiesen oder vollstaendig entzogen – kein Zwischenzustand wird persistiert
+- **AND** die unterlegene Operation schlaegt mit einem deterministischen Conflict-Fehler fehl
+
+### Requirement: Instanz-Cockpit diagnostiziert IAM-Basis zugewiesener Module
+
+Das System SHALL fuer jede Instanz einen expliziten Betriebsbefund ueber die Vollstaendigkeit der IAM-Basis fuer `Core + zugewiesene Module` ableiten und dem Studio-Admin als direkte Diagnose auf der Instanz-Detailseite verfuegbar machen.
+
+#### Scenario: Zugewiesene Module haben unvollstaendige IAM-Basis
+
+- **GIVEN** eine Instanz hat zugewiesene Module
+- **AND** mindestens eine erwartete Permission, Systemrolle oder `role_permission` fuer `Core + zugewiesene Module` fehlt
+- **WHEN** der Studio-Admin die Instanzdetailansicht laedt
+- **THEN** zeigt das Cockpit einen degradierten Befund fuer die IAM-Basis zugewiesener Module
+- **AND** enthaelt der Befund eine direkte Reparaturaktion zum Neu-Seeden
+

@@ -5,21 +5,8 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 on:
-  pull_request:
-    paths:
-      - 'apps/sva-studio-react/**'
-      - 'packages/auth-runtime/**'
-      - 'packages/iam-admin/**'
-      - 'packages/iam-core/**'
-      - 'packages/iam-governance/**'
-      - 'packages/instance-registry/**'
-      - 'packages/routing/**'
-      - 'packages/plugin-example/**'
-      - 'docker-compose.yml'
-      - '.github/workflows/app-e2e.yml'
-  push:
-    branches:
-      - main
+  schedule:
+    - cron: '0 3 * * *'
   workflow_dispatch:
 
 permissions:

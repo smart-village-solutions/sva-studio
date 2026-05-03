@@ -54,6 +54,25 @@ vi.mock('../providers/auth-provider', () => ({
   useAuth: () => authMockValue,
 }));
 
+const createGroupListItem = (overrides: Record<string, unknown> = {}) => ({
+  id: 'group-1',
+  groupKey: 'admins',
+  displayName: 'Admins',
+  description: 'Administrative Gruppe',
+  groupType: 'role_bundle',
+  isActive: true,
+  memberCount: 2,
+  roleCount: 1,
+  ...overrides,
+});
+
+const createGroupDetail = (overrides: Record<string, unknown> = {}) => ({
+  ...createGroupListItem(),
+  assignedRoleIds: ['role-1'],
+  memberships: [],
+  ...overrides,
+});
+
 describe('useGroups', () => {
   beforeEach(() => {
     listGroupsMock.mockReset();
@@ -69,48 +88,16 @@ describe('useGroups', () => {
     authMockValue.invalidatePermissions.mockReset();
   });
 
-  it('loads groups, group details and all mutations', async () => {
+  it('loads groups on mount', async () => {
     asIamErrorMock.mockImplementation((cause: unknown) => cause);
     listGroupsMock.mockResolvedValue({
-      data: [
-        {
-          id: 'group-1',
-          groupKey: 'admins',
-          displayName: 'Admins',
-          description: 'Administrative Gruppe',
-          groupType: 'role_bundle',
-          isActive: true,
-          memberCount: 2,
-          roleCount: 1,
-        },
-      ],
+      data: [createGroupListItem()],
       pagination: {
         page: 1,
         pageSize: 1,
         total: 1,
       },
     });
-    getGroupMock.mockResolvedValue({
-      data: {
-        id: 'group-1',
-        groupKey: 'admins',
-        displayName: 'Admins',
-        description: 'Administrative Gruppe',
-        groupType: 'role_bundle',
-        isActive: true,
-        memberCount: 2,
-        roleCount: 1,
-        assignedRoleIds: ['role-1'],
-        memberships: [],
-      },
-    });
-    createGroupMock.mockResolvedValue({ data: { id: 'group-2' } });
-    updateGroupMock.mockResolvedValue({ data: { id: 'group-1' } });
-    deleteGroupMock.mockResolvedValue({ data: { id: 'group-1' } });
-    assignGroupRoleMock.mockResolvedValue({ data: { id: 'group-1' } });
-    removeGroupRoleMock.mockResolvedValue({ data: { id: 'group-1' } });
-    assignGroupMembershipMock.mockResolvedValue({ data: { id: 'group-1' } });
-    removeGroupMembershipMock.mockResolvedValue({ data: { id: 'group-1' } });
 
     const { result } = renderHook(() => useGroups());
 
@@ -118,32 +105,34 @@ describe('useGroups', () => {
       expect(result.current.isLoading).toBe(false);
       expect(result.current.groups).toHaveLength(1);
     });
+  });
+
+  it('loads group details', async () => {
+    asIamErrorMock.mockImplementation((cause: unknown) => cause);
+    listGroupsMock.mockResolvedValue({
+      data: [createGroupListItem()],
+      pagination: {
+        page: 1,
+        pageSize: 1,
+        total: 1,
+      },
+    });
+    getGroupMock.mockResolvedValue({ data: createGroupDetail() });
+
+    const { result } = renderHook(() => useGroups());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
 
     await act(async () => {
       await expect(result.current.loadGroupDetail('group-1')).resolves.toMatchObject({
         id: 'group-1',
         assignedRoleIds: ['role-1'],
       });
-      await expect(result.current.createGroup({ groupKey: 'team_editors', displayName: 'Team Editors' })).resolves.toBe(
-        'group-2'
-      );
-      await result.current.updateGroup('group-1', { displayName: 'Editors' });
-      await result.current.assignRole('group-1', 'role-2');
-      await result.current.removeRole('group-1', 'role-1');
-      await result.current.assignMembership('group-1', { keycloakSubject: 'user-123' });
-      await result.current.removeMembership('group-1', 'user-123');
-      await result.current.deleteGroup('group-1');
     });
 
     expect(getGroupMock).toHaveBeenCalledWith('group-1');
-    expect(createGroupMock).toHaveBeenCalledTimes(1);
-    expect(updateGroupMock).toHaveBeenCalledTimes(1);
-    expect(assignGroupRoleMock).toHaveBeenCalledWith('group-1', { roleId: 'role-2' });
-    expect(removeGroupRoleMock).toHaveBeenCalledWith('group-1', 'role-1');
-    expect(assignGroupMembershipMock).toHaveBeenCalledWith('group-1', { keycloakSubject: 'user-123' });
-    expect(removeGroupMembershipMock).toHaveBeenCalledWith('group-1', 'user-123');
-    expect(deleteGroupMock).toHaveBeenCalledTimes(1);
-    expect(listGroupsMock).toHaveBeenCalledTimes(8);
   });
 
   it('normalizes legacy group detail payloads with roles and members', async () => {
@@ -201,6 +190,77 @@ describe('useGroups', () => {
         ],
       });
     });
+  });
+
+  it('returns created group ids and refreshes the list', async () => {
+    asIamErrorMock.mockImplementation((cause: unknown) => cause);
+    listGroupsMock
+      .mockResolvedValueOnce({
+        data: [createGroupListItem()],
+        pagination: {
+          page: 1,
+          pageSize: 1,
+          total: 1,
+        },
+      })
+      .mockResolvedValueOnce({
+        data: [createGroupListItem(), createGroupListItem({ id: 'group-2', groupKey: 'team_editors', displayName: 'Team Editors' })],
+        pagination: {
+          page: 1,
+          pageSize: 2,
+          total: 2,
+        },
+      });
+    createGroupMock.mockResolvedValue({ data: { id: 'group-2' } });
+
+    const { result } = renderHook(() => useGroups());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.groups).toHaveLength(1);
+    });
+
+    await act(async () => {
+      await expect(result.current.createGroup({ groupKey: 'team_editors', displayName: 'Team Editors' })).resolves.toBe(
+        'group-2'
+      );
+    });
+
+    expect(result.current.groups).toHaveLength(2);
+  });
+
+  it('forwards mutation payloads for role and membership updates', async () => {
+    asIamErrorMock.mockImplementation((cause: unknown) => cause);
+    listGroupsMock.mockResolvedValue({
+      data: [createGroupListItem()],
+      pagination: {
+        page: 1,
+        pageSize: 1,
+        total: 1,
+      },
+    });
+    assignGroupRoleMock.mockResolvedValue({ data: { id: 'group-1' } });
+    removeGroupRoleMock.mockResolvedValue({ data: { id: 'group-1' } });
+    assignGroupMembershipMock.mockResolvedValue({ data: { id: 'group-1' } });
+    removeGroupMembershipMock.mockResolvedValue({ data: { id: 'group-1' } });
+
+    const { result } = renderHook(() => useGroups());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    await act(async () => {
+      await expect(result.current.assignRole('group-1', 'role-2')).resolves.toBe(true);
+      await expect(result.current.removeRole('group-1', 'role-1')).resolves.toBe(true);
+      await expect(result.current.assignMembership('group-1', { keycloakSubject: 'user-123' })).resolves.toBe(true);
+      await expect(result.current.removeMembership('group-1', 'user-123')).resolves.toBe(true);
+    });
+
+    expect(assignGroupRoleMock).toHaveBeenCalledWith('group-1', { roleId: 'role-2' });
+    expect(removeGroupRoleMock).toHaveBeenCalledWith('group-1', 'role-1');
+    expect(assignGroupMembershipMock).toHaveBeenCalledWith('group-1', { keycloakSubject: 'user-123' });
+    expect(removeGroupMembershipMock).toHaveBeenCalledWith('group-1', 'user-123');
   });
 
   it('invalidates permissions when initial fetch returns 403', async () => {

@@ -67,18 +67,22 @@ Fehlerpfad:
 
 1. Die App initialisiert `studioPlugins` und merged Plugin-Übersetzungen in die i18n-Ressourcen.
 2. Der Router materialisiert host-owned Admin-Ressourcen für News, Events und POI unter `/admin/news`, `/admin/events` und `/admin/poi`.
-3. Beim Aufruf der Route wendet der Host den registrierten Plugin-Guard an, zum Beispiel `news.read`, `events.read` oder `poi.read`, und rendert optional die spezialisierte Plugin-Fläche innerhalb der Host-Shell.
-4. Die Fachlisten rufen ihre Host-Fassaden auf: `/api/v1/mainserver/news`, `/api/v1/mainserver/events` oder `/api/v1/mainserver/poi`; lokale IAM-Contents werden nicht mehr produktiv gelesen.
-5. Die Editoren senden Create-, Update- und Delete-Requests an die jeweilige Fassade und Detailroute.
-6. Die App-Fassade prüft Session, `instanceId`, plugin-spezifische IAM-Permission und Mainserver-Credentials serverseitig.
-7. `@sva/sva-mainserver/server` führt typisierte GraphQL-Operationen für News, Events und POI mit Benutzer-Credentials aus.
-8. News nutzt das vollständige Mainserver-Modell mit dedizierten Feldern; Events und POI nutzen eigene Mapping-Adapter für Termine, Adressen, Kontakte, URLs, Medien, Preise, Barrierefreiheit, Tags und POI-Bezug.
-9. Es gibt keinen Dual-Write und keine Legacy-Migration in lokale IAM-Contents.
-10. Nach erfolgreichem Speichern oder Löschen zeigt die host-owned Route Statusfeedback und navigiert zurück zur jeweiligen Admin-Liste.
+3. Beim Aufruf der Liste liest die Route typsichere Search-Params wie `page` und `pageSize`, normalisiert sie und hält damit URL, Browser-Historie und Listen-Navigation synchron.
+4. Der Host wendet den registrierten Plugin-Guard an, zum Beispiel `news.read`, `events.read` oder `poi.read`, und rendert optional die spezialisierte Plugin-Fläche innerhalb der Host-Shell.
+5. Die Fachlisten rufen ihre Host-Fassaden auf: `/api/v1/mainserver/news`, `/api/v1/mainserver/events` oder `/api/v1/mainserver/poi`; lokale IAM-Contents werden nicht mehr produktiv gelesen.
+6. Die Host-Fassaden delegieren serverseitig an `@sva/sva-mainserver`, liefern nur die angeforderte Seite und serialisieren `pagination.page`, `pagination.pageSize` sowie `pagination.hasNextPage`.
+7. `apps/sva-studio-react/src/server.ts` bleibt bewusst Owner für Request-Matching, Dispatch-Reihenfolge und TanStack-Start-/Nitro-Transport, während die fachlichen News-, Event-, POI- und Interfaces-Verträge in Packages liegen.
+8. Die Editoren senden Create-, Update- und Delete-Requests an die jeweilige Fassade und Detailroute.
+9. Die App-Fassade prüft Session, `instanceId`, plugin-spezifische IAM-Permission und Mainserver-Credentials serverseitig.
+10. `@sva/sva-mainserver/server` führt typisierte GraphQL-Operationen für News, Events und POI mit Benutzer-Credentials aus.
+11. News nutzt das vollständige Mainserver-Modell mit dedizierten Feldern; Events und POI nutzen eigene Mapping-Adapter für Termine, Adressen, Kontakte, URLs, Medien, Preise, Barrierefreiheit, Tags und POI-Bezug.
+12. Es gibt keinen Dual-Write und keine Legacy-Migration in lokale IAM-Contents.
+13. Nach erfolgreichem Speichern oder Löschen zeigt die host-owned Route Statusfeedback und navigiert zurück zur jeweiligen Admin-Liste.
 
 Fehlerpfad:
 
 - fehlt die Berechtigung, blendet die Shell die Admin-Navigation fail-closed aus, blockiert der Host die Admin-Route vor dem Rendern oder verweigert die serverseitige Mutation mit `capability_authorization_denied` im Diagnosekontext.
+- kann der Host keinen belastbaren Gesamtzähler ermitteln, bleibt `pagination.total` leer; die Navigation verlässt sich ausschließlich auf `hasNextPage`.
 - ist das News-Input-Modell ungültig, enthält schreibgeschützte Felder oder fehlt `publishedAt`, antwortet die Mainserver-News-Fassade mit HTTP `400`.
 - schlägt ein API-Call fehl, zeigt das Plugin eine verständliche Fehlermeldung und behält den Formzustand.
 
@@ -210,11 +214,11 @@ Fehlerpfad:
 ### Szenario 2h: Fail-closed Modulaktivierung zur Laufzeit
 
 1. Ein Instanzbenutzer ruft `/auth/me` auf.
-2. `packages/auth-runtime` lädt effektive Permissions und die kanonische Liste `assignedModules` aus der Registry.
+2. `packages/auth-runtime` lädt effektive Permissions und die kanonische Liste `assignedModules` aus der Registry; modulbezogene Baseline-Verträge stammen aus `@sva/studio-module-iam`.
 3. Die Client-Shell speichert diese Modulliste im Session-Kontext.
 4. Beim Aufruf einer Plugin-Route prüft `@sva/routing` zuerst den deklarativen Guard und danach die Modulzuweisung.
 5. Die Sidebar blendet Plugin-Navigation aus, wenn das Modul der aktiven Instanz nicht zugewiesen ist.
-6. Bei Modulzuweisung oder Entzug rekonstruiert `packages/instance-registry` die IAM-Basis und invalidiert betroffene Registry-Caches.
+6. Bei Modulzuweisung oder Entzug rekonstruiert `packages/instance-registry` die IAM-Basis aus derselben Vertragsfamilie und invalidiert betroffene Registry-Caches.
 
 Fehlerpfad:
 

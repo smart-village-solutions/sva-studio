@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 type SessionUser = {
   id: string;
@@ -133,6 +133,12 @@ vi.mock('./audit-events.js', () => ({
 }));
 
 describe('meHandler', () => {
+  let meHandler: typeof import('./auth-route-handlers.js').meHandler;
+
+  beforeAll(async () => {
+    ({ meHandler } = await import('./auth-route-handlers.js'));
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
 
@@ -171,8 +177,6 @@ describe('meHandler', () => {
   });
 
   it('uses keycloakSubject for permission resolution and omits stale userId contract', async () => {
-    const { meHandler } = await import('./auth-route-handlers.js');
-
     await meHandler(new Request('http://localhost/auth/me', { headers: { cookie: 'sva_session=session-1' } }));
 
     expect(mocks.resolveEffectivePermissions).toHaveBeenCalledTimes(1);
@@ -183,8 +187,6 @@ describe('meHandler', () => {
   });
 
   it('returns no-store auth headers and deny-dominant permissionActions', async () => {
-    const { meHandler } = await import('./auth-route-handlers.js');
-
     const response = await meHandler(new Request('http://localhost/auth/me', { headers: { cookie: 'sva_session=session-1' } }));
 
     expect(response.status).toBe(200);
@@ -206,8 +208,6 @@ describe('meHandler', () => {
   });
 
   it('returns fail-closed empty assignedModules when module lookup fails', async () => {
-    const { meHandler } = await import('./auth-route-handlers.js');
-
     mocks.withRegistryRepository.mockRejectedValueOnce(new Error('db unavailable'));
 
     const response = await meHandler(new Request('http://localhost/auth/me', { headers: { cookie: 'sva_session=session-1' } }));
@@ -223,8 +223,6 @@ describe('meHandler', () => {
   });
 
   it('returns hardened headers in mock-auth mode without permission lookup', async () => {
-    const { meHandler } = await import('./auth-route-handlers.js');
-
     mocks.isMockAuthEnabled.mockReturnValue(true);
 
     const response = await meHandler(new Request('http://localhost/auth/me'));
@@ -243,8 +241,6 @@ describe('meHandler', () => {
   });
 
   it('skips permission lookup and returns empty permissionActions when user has no instanceId', async () => {
-    const { meHandler } = await import('./auth-route-handlers.js');
-
     mocks.withAuthenticatedUser.mockImplementationOnce(
       async (_request: Request, handler: (ctx: { user: Omit<SessionUser, 'instanceId'> }) => Promise<Response>) =>
         handler({ user: { id: 'kc-no-instance', roles: [] } })

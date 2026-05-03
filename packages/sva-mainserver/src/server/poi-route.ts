@@ -4,39 +4,30 @@ import {
   withAuthenticatedUser,
   type AuthenticatedRequestContext,
 } from '@sva/auth-runtime/server';
-import {
-  createSvaMainserverEvent,
-  createSvaMainserverPoi,
-  deleteSvaMainserverEvent,
-  deleteSvaMainserverPoi,
-  getSvaMainserverEvent,
-  getSvaMainserverPoi,
-  listSvaMainserverEvents,
-  listSvaMainserverPoi,
-  SvaMainserverError,
-  updateSvaMainserverEvent,
-  updateSvaMainserverPoi,
-} from '@sva/sva-mainserver/server';
+import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
+
 import type {
   SvaMainserverAddressInput,
   SvaMainserverCategoryInput,
   SvaMainserverContactInput,
-  SvaMainserverDateInput,
-  SvaMainserverEventInput,
   SvaMainserverPoiInput,
   SvaMainserverWebUrlInput,
-} from '@sva/sva-mainserver';
-import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
+} from '../types.js';
+import { SvaMainserverError } from './errors.js';
+import { parseMainserverListQuery } from './list-pagination.js';
+import {
+  createSvaMainserverPoi,
+  deleteSvaMainserverPoi,
+  getSvaMainserverPoi,
+  listSvaMainserverPoi,
+  updateSvaMainserverPoi,
+} from './service.js';
 
-import { parseMainserverListQuery } from './mainserver-list-pagination.js';
-
-const EVENTS_CONTENT_TYPE = 'events.event-record';
 const POI_CONTENT_TYPE = 'poi.point-of-interest';
-const EVENTS_COLLECTION_PATH = '/api/v1/mainserver/events';
 const POI_COLLECTION_PATH = '/api/v1/mainserver/poi';
-const logger = createSdkLogger({ component: 'sva-mainserver-events-poi-route', level: 'info' });
+const logger = createSdkLogger({ component: 'sva-mainserver-poi-route', level: 'info' });
 
-type ContentKind = 'events' | 'poi';
+type ContentKind = 'poi';
 
 type RouteMatch =
   | { readonly kind: 'collection'; readonly contentKind: ContentKind }
@@ -78,10 +69,7 @@ const matchCollectionOrItem = (pathname: string, collectionPath: string, content
 
 const matchRoute = (request: Request): RouteMatch | null => {
   const pathname = new URL(request.url).pathname;
-  return (
-    matchCollectionOrItem(pathname, EVENTS_COLLECTION_PATH, 'events') ??
-    matchCollectionOrItem(pathname, POI_COLLECTION_PATH, 'poi')
-  );
+  return matchCollectionOrItem(pathname, POI_COLLECTION_PATH, 'poi');
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -263,59 +251,6 @@ const parseTags = (value: unknown): readonly string[] | Response | undefined => 
   return value.map(readString).filter((tag): tag is string => Boolean(tag));
 };
 
-const parseEventDates = (value: unknown): readonly SvaMainserverDateInput[] | undefined =>
-  Array.isArray(value)
-    ? value
-        .filter(isRecord)
-        .map((date): SvaMainserverDateInput => ({
-          ...(readString(date.weekday) ? { weekday: readString(date.weekday) } : {}),
-          ...(readString(date.dateStart) ? { dateStart: readString(date.dateStart) } : {}),
-          ...(readString(date.dateEnd) ? { dateEnd: readString(date.dateEnd) } : {}),
-          ...(readString(date.timeStart) ? { timeStart: readString(date.timeStart) } : {}),
-          ...(readString(date.timeEnd) ? { timeEnd: readString(date.timeEnd) } : {}),
-          ...(readString(date.timeDescription) ? { timeDescription: readString(date.timeDescription) } : {}),
-          ...(readBoolean(date.useOnlyTimeDescription) !== undefined
-            ? { useOnlyTimeDescription: readBoolean(date.useOnlyTimeDescription) }
-            : {}),
-        }))
-    : undefined;
-
-const parseRecurringWeekdays = (value: unknown): readonly string[] | undefined =>
-  Array.isArray(value) ? value.map(readString).filter((entry): entry is string => Boolean(entry)) : undefined;
-
-const buildEventInput = (input: {
-  body: Record<string, unknown>;
-  dates: readonly SvaMainserverDateInput[] | undefined;
-  categories: SvaMainserverEventInput['categories'] | undefined;
-  addresses: SvaMainserverEventInput['addresses'] | undefined;
-  contact: ReturnType<typeof parseContact> extends Response | infer T | undefined ? T | undefined : never;
-  urls: SvaMainserverEventInput['urls'] | undefined;
-  tags: readonly string[] | undefined;
-}): SvaMainserverEventInput => {
-  const recurringWeekdays = parseRecurringWeekdays(input.body.recurringWeekdays);
-
-  return {
-    title: readString(input.body.title) as string,
-    ...(readString(input.body.description) ? { description: readString(input.body.description) } : {}),
-    ...(readString(input.body.externalId) ? { externalId: readString(input.body.externalId) } : {}),
-    ...(readString(input.body.keywords) ? { keywords: readString(input.body.keywords) } : {}),
-    ...(input.dates ? { dates: input.dates } : {}),
-    ...(readBoolean(input.body.repeat) !== undefined ? { repeat: readBoolean(input.body.repeat) } : {}),
-    ...(readString(input.body.categoryName) ? { categoryName: readString(input.body.categoryName) } : {}),
-    ...(input.categories ? { categories: input.categories } : {}),
-    ...(input.addresses ? { addresses: input.addresses } : {}),
-    ...(input.contact ? { contacts: [input.contact] } : {}),
-    ...(input.urls ? { urls: input.urls } : {}),
-    ...(input.tags ? { tags: input.tags } : {}),
-    ...(readString(input.body.recurring) ? { recurring: readString(input.body.recurring) } : {}),
-    ...(readString(input.body.recurringType) ? { recurringType: readString(input.body.recurringType) } : {}),
-    ...(readString(input.body.recurringInterval) ? { recurringInterval: readString(input.body.recurringInterval) } : {}),
-    ...(recurringWeekdays ? { recurringWeekdays } : {}),
-    ...(readString(input.body.pointOfInterestId) ? { pointOfInterestId: readString(input.body.pointOfInterestId) } : {}),
-    ...(readBoolean(input.body.pushNotification) !== undefined ? { pushNotification: readBoolean(input.body.pushNotification) } : {}),
-  };
-};
-
 const buildPoiInput = (input: {
   body: Record<string, unknown>;
   categories: SvaMainserverPoiInput['categories'] | undefined;
@@ -338,39 +273,6 @@ const buildPoiInput = (input: {
   ...(input.webUrls ? { webUrls: input.webUrls } : {}),
   ...(input.tags ? { tags: input.tags } : {}),
 });
-
-const parseEventInput = async (request: Request): Promise<SvaMainserverEventInput | Response> => {
-  const body = (await request.json().catch(() => null)) as unknown;
-  if (!isRecord(body)) {
-    return errorJson(400, 'invalid_request', 'Event-Daten müssen als Objekt gesendet werden.');
-  }
-  const title = readString(body.title);
-  if (!title) {
-    return errorJson(400, 'invalid_request', 'Der Event-Titel ist erforderlich.');
-  }
-  const dates = parseEventDates(body.dates);
-  const categories = parseCategories(body.categories);
-  const addresses = parseAddressList(body.addresses);
-  const contact = parseContact(body.contact);
-  const urls = parseWebUrls(body.urls);
-  const tags = parseTags(body.tags);
-  if (categories instanceof Response) {
-    return categories;
-  }
-  if (addresses instanceof Response) {
-    return addresses;
-  }
-  if (contact instanceof Response) {
-    return contact;
-  }
-  if (urls instanceof Response) {
-    return urls;
-  }
-  if (tags instanceof Response) {
-    return tags;
-  }
-  return buildEventInput({ body, dates, categories, addresses, contact, urls, tags });
-};
 
 const parsePoiInput = async (request: Request): Promise<SvaMainserverPoiInput | Response> => {
   const body = (await request.json().catch(() => null)) as unknown;
@@ -435,7 +337,7 @@ const validateMutationRequest = (request: Request, requestId?: string): Response
   return csrfError ? errorJson(403, 'csrf_validation_failed', 'Sicherheitsprüfung fehlgeschlagen.') : null;
 };
 
-const contentTypeFor = (contentKind: ContentKind) => (contentKind === 'events' ? EVENTS_CONTENT_TYPE : POI_CONTENT_TYPE);
+const contentTypeFor = (_contentKind: ContentKind) => POI_CONTENT_TYPE;
 const pluginActionFor = (
   contentKind: ContentKind,
   actionName: 'read' | 'create' | 'update' | 'delete'
@@ -477,38 +379,25 @@ const authorizeOrResponse = async (
 };
 
 const listContentForRoute = async (
-  route: Extract<RouteMatch, { kind: 'collection' }>,
+  _route: Extract<RouteMatch, { kind: 'collection' }>,
   actor: { readonly instanceId: string; readonly keycloakSubject: string },
   request: Request
 ) => {
   const listQuery = parseMainserverListQuery(request);
-  return route.contentKind === 'events'
-    ? listSvaMainserverEvents({ ...actor, ...listQuery })
-    : listSvaMainserverPoi({ ...actor, ...listQuery });
+  return listSvaMainserverPoi({ ...actor, ...listQuery });
 };
 
 const getContentForRoute = async (
   route: Extract<RouteMatch, { kind: 'item' }>,
   actor: { readonly instanceId: string; readonly keycloakSubject: string }
 ) =>
-  route.contentKind === 'events'
-    ? getSvaMainserverEvent({ ...actor, eventId: route.itemId })
-    : getSvaMainserverPoi({ ...actor, poiId: route.itemId });
+  getSvaMainserverPoi({ ...actor, poiId: route.itemId });
 
 const createContentForRoute = async (
-  route: Extract<RouteMatch, { kind: 'collection' }>,
+  _route: Extract<RouteMatch, { kind: 'collection' }>,
   actor: { readonly instanceId: string; readonly keycloakSubject: string },
   request: Request
 ) => {
-  if (route.contentKind === 'events') {
-    const parsed = await parseEventInput(request);
-    if (parsed instanceof Response) {
-      return parsed;
-    }
-    const data = await createSvaMainserverEvent({ ...actor, event: parsed });
-    return json({ data }, 201);
-  }
-
   const parsed = await parsePoiInput(request);
   if (parsed instanceof Response) {
     return parsed;
@@ -518,24 +407,15 @@ const createContentForRoute = async (
 };
 
 const updateContentForRoute = async (
-  route: Extract<RouteMatch, { kind: 'item' }>,
+  _route: Extract<RouteMatch, { kind: 'item' }>,
   actor: { readonly instanceId: string; readonly keycloakSubject: string },
   request: Request
 ) => {
-  if (route.contentKind === 'events') {
-    const parsed = await parseEventInput(request);
-    if (parsed instanceof Response) {
-      return parsed;
-    }
-    const data = await updateSvaMainserverEvent({ ...actor, eventId: route.itemId, event: parsed });
-    return json({ data });
-  }
-
   const parsed = await parsePoiInput(request);
   if (parsed instanceof Response) {
     return parsed;
   }
-  const data = await updateSvaMainserverPoi({ ...actor, poiId: route.itemId, poi: parsed });
+  const data = await updateSvaMainserverPoi({ ...actor, poiId: _route.itemId, poi: parsed });
   return json({ data });
 };
 
@@ -543,10 +423,7 @@ const deleteContentForRoute = async (
   route: Extract<RouteMatch, { kind: 'item' }>,
   actor: { readonly instanceId: string; readonly keycloakSubject: string }
 ) => {
-  const data =
-    route.contentKind === 'events'
-      ? await deleteSvaMainserverEvent({ ...actor, eventId: route.itemId })
-      : await deleteSvaMainserverPoi({ ...actor, poiId: route.itemId });
+  const data = await deleteSvaMainserverPoi({ ...actor, poiId: route.itemId });
   return json({ data });
 };
 
@@ -563,13 +440,6 @@ const dispatchAuthenticated = async (request: Request, route: RouteMatch, ctx: A
       content_id: contentId,
       method: request.method,
     });
-  };
-  const logSuccessIfOk = async (response: Response, operation: string, contentId?: string) => {
-    if (!response.ok) {
-      return response;
-    }
-    logSuccess(operation, contentId);
-    return response;
   };
 
   try {
@@ -604,7 +474,10 @@ const dispatchAuthenticated = async (request: Request, route: RouteMatch, ctx: A
       }
       const response = await createContentForRoute(route, actor, request);
       const responseBody = (await response.clone().json().catch(() => null)) as { data?: { id?: string } } | null;
-      return logSuccessIfOk(response, `mainserver_${route.contentKind}_create`, responseBody?.data?.id);
+      if (response.ok) {
+        logSuccess(`mainserver_${route.contentKind}_create`, responseBody?.data?.id);
+      }
+      return response;
     }
 
     if (route.kind === 'item' && request.method === 'PATCH') {
@@ -622,7 +495,10 @@ const dispatchAuthenticated = async (request: Request, route: RouteMatch, ctx: A
         return updateActor;
       }
       const response = await updateContentForRoute(route, updateActor, request);
-      return logSuccessIfOk(response, `mainserver_${route.contentKind}_update`, route.itemId);
+      if (response.ok) {
+        logSuccess(`mainserver_${route.contentKind}_update`, route.itemId);
+      }
+      return response;
     }
 
     if (route.kind === 'item' && request.method === 'DELETE') {
@@ -656,7 +532,7 @@ const dispatchAuthenticated = async (request: Request, route: RouteMatch, ctx: A
   }
 };
 
-export const dispatchMainserverEventsPoiRequest = async (request: Request): Promise<Response | null> => {
+export const dispatchSvaMainserverPoiRequest = async (request: Request): Promise<Response | null> => {
   const route = matchRoute(request);
   if (!route) {
     return null;

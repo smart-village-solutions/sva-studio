@@ -1,6 +1,7 @@
 import { pluginEvents } from '@sva/plugin-events';
 import { pluginNews } from '@sva/plugin-news';
 import { pluginPoi } from '@sva/plugin-poi';
+import { studioPluginModuleIamContracts } from '@sva/studio-module-iam';
 import {
   createBuildTimeRegistry,
   registerPluginTranslationResolver,
@@ -9,6 +10,13 @@ import { createBrowserLogger } from '@sva/monitoring-client/logging';
 import { appAdminResources } from '../routing/admin-resources';
 
 import { mergeI18nResources, resetTranslatorCache, t } from '../i18n';
+
+export {
+  studioHostModuleIamContracts,
+  studioModuleIamContracts,
+  studioPluginModuleIamContracts,
+  studioModuleIamRegistry,
+} from '@sva/studio-module-iam';
 
 const pluginLogger = createBrowserLogger({
   component: 'plugin-actions',
@@ -27,45 +35,13 @@ mergeI18nResources(studioBuildTimeRegistry.translations);
 export const studioPlugins = studioBuildTimeRegistry.plugins;
 export const studioPluginRegistry = studioBuildTimeRegistry.pluginRegistry;
 export const studioPluginActionRegistry = studioBuildTimeRegistry.pluginActionRegistry;
-export const studioPluginModuleIamRegistry = studioBuildTimeRegistry.pluginModuleIamRegistry ?? new Map();
-export const studioPluginModuleIamContracts = studioBuildTimeRegistry.pluginModuleIamContracts ?? [];
+export const studioPluginModuleIamRegistry = new Map(
+  studioPluginModuleIamContracts.map((contract) => [contract.moduleId, contract] as const)
+);
 export const studioPluginRoutes = studioBuildTimeRegistry.routes;
 export const studioPluginNavigation = studioBuildTimeRegistry.navigation;
 export const studioPluginContentTypes = studioBuildTimeRegistry.contentTypes;
 export const studioAdminResources = studioBuildTimeRegistry.adminResources;
-export const studioHostModuleIamContracts = [
-  {
-    moduleId: 'media',
-    namespace: 'media',
-    ownerPluginId: 'host',
-    permissionIds: [
-      'media.read',
-      'media.create',
-      'media.update',
-      'media.referenceManage',
-      'media.delete',
-      'media.deliverProtected',
-    ],
-    systemRoles: [
-      {
-        roleName: 'system_admin',
-        permissionIds: [
-          'media.read',
-          'media.create',
-          'media.update',
-          'media.referenceManage',
-          'media.delete',
-          'media.deliverProtected',
-        ],
-      },
-      {
-        roleName: 'editor',
-        permissionIds: ['media.read', 'media.create', 'media.update', 'media.referenceManage'],
-      },
-    ],
-  },
-] as const;
-export const studioModuleIamContracts = [...studioPluginModuleIamContracts, ...studioHostModuleIamContracts] as const;
 const studioPluginNavigationOwners = new Map(
   studioPlugins.flatMap((plugin) =>
     (plugin.navigation ?? []).map((item) => [item.id, plugin.id] as const)

@@ -23,6 +23,13 @@ Das System SHALL host-owned Mainserver-Inhaltsrouten fuer News, Events und POI s
 - **THEN** koennen diese Tests gegen package-seitige Servermodule laufen
 - **AND** die App muss fuer diese fachlichen Tests keine kanonische Owner-Schicht bleiben
 
+#### Scenario: Interfaces-Serverfunktionen bleiben im App-Layer duenne Adapter
+
+- **GIVEN** die App benoetigt TanStack-`createServerFn`-Endpunkte fuer Mainserver-Einstellungen oder Verbindungsstatus
+- **WHEN** diese Endpunkte implementiert werden
+- **THEN** liegen Mainserver-spezifische Regeln, Fehlerabbildung und Persistenzdelegation in `@sva/sva-mainserver/server`
+- **AND** `apps/sva-studio-react` behaelt nur den framework-spezifischen Request- und Session-Einstieg
+
 #### Scenario: App-interne Umsortierung ersetzt keine Package-Delegation
 
 - **WHEN** News-, Events- oder POI-Parsing in kleinere Helper innerhalb von `apps/sva-studio-react` zerlegt wird

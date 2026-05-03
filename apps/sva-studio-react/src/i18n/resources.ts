@@ -172,6 +172,20 @@ export const i18nResources = {
         statusLabel: 'Status',
         statusAll: 'Alle Status',
       },
+      pagination: {
+        ariaLabel: 'Inhaltsseiten',
+        previous: 'Zurück',
+        next: 'Weiter',
+        pageLabel: 'Seite {{page}} von {{total}}',
+        pageSizeLabel: 'Seitengröße',
+      },
+      bulk: {
+        scope: {
+          explicitIds: 'Auswahl',
+          currentPage: 'Aktuelle Seite',
+          allMatchingQuery: 'Alle Treffer',
+        },
+      },
       actions: {
         create: 'Neuer Inhalt',
         createNow: 'Inhalt anlegen',
@@ -2371,6 +2385,20 @@ export const i18nResources = {
         searchPlaceholder: 'Search by title, type, author, or payload',
         statusLabel: 'Status',
         statusAll: 'All statuses',
+      },
+      pagination: {
+        ariaLabel: 'Content pages',
+        previous: 'Previous',
+        next: 'Next',
+        pageLabel: 'Page {{page}} of {{total}}',
+        pageSizeLabel: 'Page size',
+      },
+      bulk: {
+        scope: {
+          explicitIds: 'Selection',
+          currentPage: 'Current page',
+          allMatchingQuery: 'All matches',
+        },
       },
       actions: {
         create: 'New content',

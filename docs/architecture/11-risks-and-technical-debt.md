@@ -210,6 +210,16 @@ Schulden auf IST-Basis.
    - Wahrscheinlichkeit: mittel
    - Maßnahme: Folge-Change `openspec/changes/add-media-async-processing/` für Queue-/Worker-Pfad, Retry-Strategie und entkoppelte Variantenverarbeitung umsetzen
 
+37. Erweiterung des gemeinsamen Modul-IAM-Katalogs bleibt manuell paketgebunden
+   - Impact: mittel (neue Module benötigen weiterhin eine bewusste Erweiterung des gemeinsamen Katalogs und der Paritätstests)
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: `@sva/studio-module-iam` als einzige Ergänzungsstelle behandeln, Plugin-/Host-/Runtime-Paritätstests beim Hinzufügen weiterer Module obligatorisch mitziehen
+
+38. Kein belastbarer globaler Count-Vertrag für Mainserver-Plugin-Listen
+   - Impact: mittel (UI kann keine exakten Totalseiten garantieren und muss sich auf Vor/Zurück sowie `hasNextPage` stützen)
+   - Wahrscheinlichkeit: hoch
+   - Maßnahme: `hasNextPage` streng auf sichtbare Ergebnisse stützen, `total` optional halten und einen späteren Upstream-Count nur kontrolliert als Vertragserweiterung einführen
+
 ### Technische Schulden (Auswahl)
 
 - Teilweise No-Op Testtargets in Libraries
@@ -223,6 +233,7 @@ Schulden auf IST-Basis.
 - Nach dem Package-Hard-Cut verbleibt Restkomplexität gezielt in fachlichen Zielpackages wie `auth-runtime`, `iam-admin`, `iam-governance`, `instance-registry` und `data-repositories`; alte Sammelpackages sind dafür kein neuer Zielort.
 - `@sva/sdk` ist aus dem aktiven Workspace entfernt; verbleibende Restschuld betrifft nur noch historische Reports und archivierte Referenzen ausserhalb aktiver Normquellen.
 - Einige Tests und historische Berichte referenzieren weiterhin alte Pfadnamen; neue fachliche Tests sollen im Zielpackage entstehen und nur dort am Altpfad bleiben, wo Kompatibilität explizit geprüft wird.
+- Dünne Host-Bindungen in `apps/sva-studio-react` fuer TanStack-`createServerFn`, Request-Matching und Server-Dispatch bleiben bewusst im App-Layer; Folgearbeit darf diese Transportrolle nicht mit fachlicher Package-Ownership verwechseln.
 - Route-Komponenten außerhalb der Shell verwenden noch teilweise direkte `slate-*`-/`emerald-*`-Farben und sind nicht vollständig tokenisiert
 - Gruppen sind im ersten Schnitt reine Rollenbündel; direkte Gruppen-Permissions und ein separates Gruppen-Gültigkeitsmanagement pro UI-Flow bleiben Folgearbeit
 - Die Geo-Hierarchie ist intern bereits auswertbar, besitzt aber noch keine dedizierte Admin-Oberfläche oder externe Pflegepipeline

@@ -47,8 +47,11 @@ let dispatchAuthRouteRequestPromise: Promise<typeof import('@sva/routing/server'
 let dispatchMainserverNewsRequestPromise:
   | Promise<typeof import('./lib/mainserver-news-api.server')['dispatchMainserverNewsRequest']>
   | null = null;
-let dispatchMainserverEventsPoiRequestPromise:
-  | Promise<typeof import('./lib/mainserver-events-poi-api.server')['dispatchMainserverEventsPoiRequest']>
+let dispatchMainserverEventsRequestPromise:
+  | Promise<typeof import('./lib/mainserver-events-api.server')['dispatchMainserverEventsRequest']>
+  | null = null;
+let dispatchMainserverPoiRequestPromise:
+  | Promise<typeof import('./lib/mainserver-poi-api.server')['dispatchMainserverPoiRequest']>
   | null = null;
 const getSdk = async (): Promise<RequestContextSdk> => {
   sdkPromise ??= import('@sva/server-runtime') as Promise<RequestContextSdk>;
@@ -67,11 +70,18 @@ const getDispatchMainserverNewsRequest = async () => {
   return dispatchMainserverNewsRequestPromise;
 };
 
-const getDispatchMainserverEventsPoiRequest = async () => {
-  dispatchMainserverEventsPoiRequestPromise ??= import('./lib/mainserver-events-poi-api.server').then(
-    (mod) => mod.dispatchMainserverEventsPoiRequest
+const getDispatchMainserverEventsRequest = async () => {
+  dispatchMainserverEventsRequestPromise ??= import('./lib/mainserver-events-api.server').then(
+    (mod) => mod.dispatchMainserverEventsRequest
   );
-  return dispatchMainserverEventsPoiRequestPromise;
+  return dispatchMainserverEventsRequestPromise;
+};
+
+const getDispatchMainserverPoiRequest = async () => {
+  dispatchMainserverPoiRequestPromise ??= import('./lib/mainserver-poi-api.server').then(
+    (mod) => mod.dispatchMainserverPoiRequest
+  );
+  return dispatchMainserverPoiRequestPromise;
 };
 
 const getLogger = async (component: ServerTransportComponent): Promise<ServerTransportLogger> => {
@@ -118,14 +128,24 @@ const instrumentedFetch: RequestHandler<Register> = async (...args) => {
     return mainserverNewsResponse;
   }
 
-  const dispatchMainserverEventsPoiRequest = await getDispatchMainserverEventsPoiRequest();
-  const mainserverEventsPoiResponse = await dispatchMainserverEventsPoiRequest(request);
+  const dispatchMainserverEventsRequest = await getDispatchMainserverEventsRequest();
+  const mainserverEventsResponse = await dispatchMainserverEventsRequest(request);
 
-  if (mainserverEventsPoiResponse) {
-    await logServerEntryDebug('Server entry mainserver events/poi route dispatched', {
-      status: mainserverEventsPoiResponse.status,
+  if (mainserverEventsResponse) {
+    await logServerEntryDebug('Server entry mainserver events route dispatched', {
+      status: mainserverEventsResponse.status,
     });
-    return mainserverEventsPoiResponse;
+    return mainserverEventsResponse;
+  }
+
+  const dispatchMainserverPoiRequest = await getDispatchMainserverPoiRequest();
+  const mainserverPoiResponse = await dispatchMainserverPoiRequest(request);
+
+  if (mainserverPoiResponse) {
+    await logServerEntryDebug('Server entry mainserver poi route dispatched', {
+      status: mainserverPoiResponse.status,
+    });
+    return mainserverPoiResponse;
   }
 
   const dispatchAuthRouteRequest = await getDispatchAuthRouteRequest();

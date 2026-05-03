@@ -265,7 +265,7 @@ describe('media repository', () => {
   });
 
   it('persists variants and upload sessions and reads storage usage', async () => {
-    const { executor, statements } = createQueuedExecutor([[], [variantRow], [], [uploadSessionRow], [], [storageUsageRow]]);
+    const { executor, statements } = createQueuedExecutor([[], [variantRow], [], [uploadSessionRow], [], [], [storageUsageRow]]);
     const repository = createMediaRepository(executor);
 
     await repository.upsertVariant('tenant-a', {
@@ -281,6 +281,7 @@ describe('media repository', () => {
     });
 
     expect(statements[0]?.text.includes('INSERT INTO iam.media_variants')).toBe(true);
+    expect(statements[0]?.text).toContain('ON CONFLICT (asset_id, variant_key) DO UPDATE');
     expect(statements[0]?.values.slice(0, 4)).toEqual(['variant-1', 'tenant-a', 'asset-1', 'teaser-landscape']);
 
     await expect(repository.listVariantsByAssetId('tenant-a', 'asset-1')).resolves.toEqual([
@@ -334,6 +335,15 @@ describe('media repository', () => {
 
     expect(statements[4]?.text.includes('INSERT INTO iam.media_storage_usage')).toBe(true);
     expect(statements[4]?.values).toEqual(['tenant-a', 4096, 3]);
+
+    await repository.applyStorageUsageDelta({
+      instanceId: 'tenant-a',
+      totalBytesDelta: -512,
+      assetCountDelta: -1,
+    });
+
+    expect(statements[5]?.text).toContain('GREATEST(iam.media_storage_usage.total_bytes + EXCLUDED.total_bytes, 0)');
+    expect(statements[5]?.values).toEqual(['tenant-a', -512, -1]);
 
     await expect(repository.getStorageUsage('tenant-a')).resolves.toEqual({
       instanceId: 'tenant-a',

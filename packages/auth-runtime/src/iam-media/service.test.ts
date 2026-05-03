@@ -22,6 +22,7 @@ const createRepository = () => ({
   upsertUploadSession: vi.fn(async () => undefined),
   getUploadSessionById: vi.fn(async () => ({ id: 'upload-1' })),
   upsertStorageUsage: vi.fn(async () => undefined),
+  applyStorageUsageDelta: vi.fn(async () => undefined),
   upsertStorageQuota: vi.fn(async () => undefined),
   replaceReferences: vi.fn(async () => undefined),
   listReferencesByAssetId: vi.fn(async () => []),
@@ -52,6 +53,7 @@ describe('media auth runtime service', () => {
     const service = createMediaService(repository);
 
     await service.upsertStorageQuota({ instanceId: 'tenant-a', maxBytes: 2048 });
+    await service.applyStorageUsageDelta({ instanceId: 'tenant-a', totalBytesDelta: 512, assetCountDelta: 1 });
     await service.wouldExceedStorageQuota('tenant-a', 2000);
     await service.replaceReferences({
       instanceId: 'tenant-a',
@@ -61,6 +63,7 @@ describe('media auth runtime service', () => {
     });
 
     expect(repository.upsertStorageQuota).toHaveBeenCalledWith({ instanceId: 'tenant-a', maxBytes: 2048 });
+    expect(repository.applyStorageUsageDelta).toHaveBeenCalledWith({ instanceId: 'tenant-a', totalBytesDelta: 512, assetCountDelta: 1 });
     expect(repository.wouldExceedStorageQuota).toHaveBeenCalledWith('tenant-a', 2000);
     expect(repository.replaceReferences).toHaveBeenCalledWith({
       instanceId: 'tenant-a',

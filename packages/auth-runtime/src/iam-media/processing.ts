@@ -1,6 +1,7 @@
 import sharp from 'sharp';
 import { fileTypeFromBuffer } from 'file-type';
 import { defaultMediaPresets, type MediaCrop, type MediaFocusPoint, type MediaPreset } from '@sva/media';
+import { MediaStorageUnavailableError } from './storage-port.js';
 import type { MediaService } from './service.js';
 
 const ALLOWED_IMAGE_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
@@ -175,6 +176,8 @@ export const createMediaUploadProcessingService = (deps: {
       return asErrorResult(404, 'asset_not_found');
     }
 
+    let persistenceStarted = false;
+
     try {
       const object = await deps.storagePort.readObject({
         instanceId: input.instanceId,
@@ -204,7 +207,20 @@ export const createMediaUploadProcessingService = (deps: {
         etag: object.etag,
       };
 
-      let variantBytes = 0;
+      const variantsToPersist: Array<{
+        id: string;
+        assetId: string;
+        variantKey: string;
+        presetKey: string;
+        format: string;
+        width: number;
+        height?: number;
+        storageKey: string;
+        generationStatus: 'ready';
+        body: Buffer;
+        contentType: string;
+      }> = [];
+
       for (const preset of defaultMediaPresets) {
         const variantBuffer = await createVariantBuffer({
           buffer: object.body,
@@ -218,15 +234,8 @@ export const createMediaUploadProcessingService = (deps: {
           variantKey: preset.key,
           format: preset.format,
         });
-        const writeResult = await deps.storagePort.writeObject({
-          instanceId: input.instanceId,
-          storageKey,
-          body: variantBuffer,
-          contentType: resolvePresetContentType(preset.format),
-        });
-        variantBytes += writeResult.byteSize;
         const variantMetadata = await sharp(variantBuffer).metadata();
-        await deps.service.upsertVariant(input.instanceId, {
+        variantsToPersist.push({
           id: deps.createId(),
           assetId: asset.id,
           variantKey: preset.key,
@@ -236,6 +245,31 @@ export const createMediaUploadProcessingService = (deps: {
           height: variantMetadata.height,
           storageKey,
           generationStatus: 'ready',
+          body: variantBuffer,
+          contentType: resolvePresetContentType(preset.format),
+        });
+      }
+
+      let variantBytes = 0;
+      persistenceStarted = true;
+      for (const variant of variantsToPersist) {
+        const writeResult = await deps.storagePort.writeObject({
+          instanceId: input.instanceId,
+          storageKey: variant.storageKey,
+          body: variant.body,
+          contentType: variant.contentType,
+        });
+        variantBytes += writeResult.byteSize;
+        await deps.service.upsertVariant(input.instanceId, {
+          id: variant.id,
+          assetId: variant.assetId,
+          variantKey: variant.variantKey,
+          presetKey: variant.presetKey,
+          format: variant.format,
+          width: variant.width,
+          height: variant.height,
+          storageKey: variant.storageKey,
+          generationStatus: variant.generationStatus,
         });
       }
 
@@ -244,7 +278,10 @@ export const createMediaUploadProcessingService = (deps: {
         mimeType: detectedMimeType,
         uploadStatus: 'processed',
         processingStatus: 'ready',
-        technical,
+        technical: {
+          ...technical,
+          variantBytes,
+        },
       };
 
       await deps.service.upsertAsset(nextAsset);
@@ -253,11 +290,10 @@ export const createMediaUploadProcessingService = (deps: {
         status: 'validated',
       });
 
-      const currentUsage = await deps.service.getStorageUsage(input.instanceId);
-      await deps.service.upsertStorageUsage({
+      await deps.service.applyStorageUsageDelta({
         instanceId: input.instanceId,
-        totalBytes: (currentUsage?.totalBytes ?? 0) + object.byteSize + variantBytes,
-        assetCount: (currentUsage?.assetCount ?? 0) + 1,
+        totalBytesDelta: object.byteSize + variantBytes,
+        assetCountDelta: 1,
       });
 
       return {
@@ -266,6 +302,9 @@ export const createMediaUploadProcessingService = (deps: {
         uploadSessionId: String(uploadSession.id),
       };
     } catch (error) {
+      if (error instanceof MediaStorageUnavailableError || persistenceStarted) {
+        throw error;
+      }
       return markProcessingFailure({
         deps,
         asset,

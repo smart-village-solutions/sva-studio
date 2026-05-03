@@ -918,57 +918,99 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
       return mapAuthorizationFailure(authorization);
     }
 
-    const asset = await deps.withMediaService(instanceId, (service) => service.getAssetById(instanceId, assetId));
-    if (!asset) {
+    try {
+      const asset = await deps.withMediaService(instanceId, (service) => service.getAssetById(instanceId, assetId));
+      if (!asset) {
+        await emitMediaAuditEvent({
+          deps,
+          ctx,
+          instanceId,
+          actionId: 'media.delete',
+          result: 'failure',
+          reasonCode: 'asset_not_found',
+          resourceType: 'media_asset',
+          resourceId: assetId,
+        });
+        return createApiError(404, 'not_found', 'Medienobjekt nicht gefunden.', getRequestId());
+      }
+
+      const references = await deps.withMediaService(instanceId, (service) => service.listReferencesByAssetId(instanceId, assetId));
+      const deletionDecision = canDeleteMediaAsset({
+        asset: asMediaAsset(asset)!,
+        references: asMediaReferences(references),
+      });
+      if (!deletionDecision.allowed) {
+        await emitMediaAuditEvent({
+          deps,
+          ctx,
+          instanceId,
+          actionId: 'media.delete',
+          result: 'failure',
+          reasonCode: deletionDecision.reason ?? 'delete_blocked',
+          resourceType: 'media_asset',
+          resourceId: assetId,
+        });
+        return createApiError(409, 'conflict', 'Das Medienobjekt kann derzeit nicht gelöscht werden.', getRequestId(), {
+          reason: deletionDecision.reason,
+          usage: {
+            assetId,
+            totalReferences: references.length,
+          },
+        });
+      }
+
+      const variants = await deps.withMediaService(instanceId, (service) => service.listVariantsByAssetId(instanceId, assetId));
+      const variantBytes =
+        typeof asset.technical?.variantBytes === 'number' && Number.isFinite(asset.technical.variantBytes)
+          ? asset.technical.variantBytes
+          : 0;
+
+      await deps.storagePort.deleteObject({
+        instanceId,
+        storageKey: asset.storageKey,
+      });
+      for (const variant of variants) {
+        await deps.storagePort.deleteObject({
+          instanceId,
+          storageKey: variant.storageKey,
+        });
+      }
+
+      await deps.withMediaService(instanceId, async (service) => {
+        await service.deleteAsset(instanceId, assetId);
+        await service.applyStorageUsageDelta({
+          instanceId,
+          totalBytesDelta: -(Number(asset.byteSize) + variantBytes),
+          assetCountDelta: -1,
+        });
+      });
+
       await emitMediaAuditEvent({
         deps,
         ctx,
         instanceId,
         actionId: 'media.delete',
-        result: 'failure',
-        reasonCode: 'asset_not_found',
+        result: 'success',
         resourceType: 'media_asset',
         resourceId: assetId,
       });
-      return createApiError(404, 'not_found', 'Medienobjekt nicht gefunden.', getRequestId());
+      return jsonResponse(200, asApiItem({ assetId, deleted: true }, getRequestId()));
+    } catch (error) {
+      if (error instanceof MediaStorageUnavailableError) {
+        await emitMediaAuditEvent({
+          deps,
+          ctx,
+          instanceId,
+          actionId: 'media.delete',
+          result: 'failure',
+          reasonCode: 'media_storage_unavailable',
+          resourceType: 'media_asset',
+          resourceId: assetId,
+        });
+        return createApiError(503, 'internal_error', 'Medien-Storage ist momentan nicht verfügbar.', getRequestId());
+      }
+      throw error;
     }
-
-    const references = await deps.withMediaService(instanceId, (service) => service.listReferencesByAssetId(instanceId, assetId));
-    const deletionDecision = canDeleteMediaAsset({
-      asset: asMediaAsset(asset)!,
-      references: asMediaReferences(references),
-    });
-    if (!deletionDecision.allowed) {
-      await emitMediaAuditEvent({
-        deps,
-        ctx,
-        instanceId,
-        actionId: 'media.delete',
-        result: 'failure',
-        reasonCode: deletionDecision.reason ?? 'delete_blocked',
-        resourceType: 'media_asset',
-        resourceId: assetId,
-      });
-      return createApiError(409, 'conflict', 'Das Medienobjekt kann derzeit nicht gelöscht werden.', getRequestId(), {
-        reason: deletionDecision.reason,
-        usage: {
-          assetId,
-          totalReferences: references.length,
-        },
-      });
-    }
-
-    await deps.withMediaService(instanceId, (service) => service.deleteAsset(instanceId, assetId));
-    await emitMediaAuditEvent({
-      deps,
-      ctx,
-      instanceId,
-      actionId: 'media.delete',
-      result: 'success',
-      resourceType: 'media_asset',
-      resourceId: assetId,
-    });
-    return jsonResponse(200, asApiItem({ assetId, deleted: true }, getRequestId()));
   },
 });
 

@@ -58,6 +58,7 @@ describe('media upload processing service', () => {
       listVariantsByAssetId: vi.fn(async () => []),
       getStorageUsage: vi.fn(async () => null),
       upsertStorageUsage: vi.fn(async () => undefined),
+      applyStorageUsageDelta: vi.fn(async () => undefined),
     };
 
     const storagePort = {
@@ -116,12 +117,11 @@ describe('media upload processing service', () => {
         status: 'validated',
       })
     );
-    expect(service.upsertStorageUsage).toHaveBeenCalledWith(
-      expect.objectContaining({
-        instanceId: 'tenant-a',
-        assetCount: 1,
-      })
-    );
+    expect(service.applyStorageUsageDelta).toHaveBeenCalledWith({
+      instanceId: 'tenant-a',
+      totalBytesDelta: expect.any(Number),
+      assetCountDelta: 1,
+    });
   });
 
   it('applies crop metadata to eager variants and avoids enlarging smaller sources', async () => {
@@ -154,6 +154,7 @@ describe('media upload processing service', () => {
       listVariantsByAssetId: vi.fn(async () => []),
       getStorageUsage: vi.fn(async () => null),
       upsertStorageUsage: vi.fn(async () => undefined),
+      applyStorageUsageDelta: vi.fn(async () => undefined),
     };
 
     const storagePort = {
@@ -220,6 +221,7 @@ describe('media upload processing service', () => {
       listVariantsByAssetId: vi.fn(async () => []),
       getStorageUsage: vi.fn(async () => null),
       upsertStorageUsage: vi.fn(async () => undefined),
+      applyStorageUsageDelta: vi.fn(async () => undefined),
     };
 
     const storagePort = {
@@ -266,5 +268,62 @@ describe('media upload processing service', () => {
       })
     );
     expect(storagePort.writeObject).not.toHaveBeenCalled();
+  });
+
+  it('rethrows infrastructure failures after persistence has started', async () => {
+    const originalBuffer = await sharp({
+      create: {
+        width: 1600,
+        height: 900,
+        channels: 3,
+        background: { r: 30, g: 40, b: 50 },
+      },
+    })
+      .png()
+      .toBuffer();
+
+    const service = {
+      getUploadSessionById: vi.fn(async () => createUploadSession({ byteSize: originalBuffer.byteLength })),
+      getAssetById: vi.fn(async () => createAsset({ byteSize: originalBuffer.byteLength })),
+      upsertAsset: vi.fn(async () => undefined),
+      upsertUploadSession: vi.fn(async () => undefined),
+      upsertVariant: vi.fn(async () => undefined),
+      listVariantsByAssetId: vi.fn(async () => []),
+      getStorageUsage: vi.fn(async () => null),
+      upsertStorageUsage: vi.fn(async () => undefined),
+      applyStorageUsageDelta: vi.fn(async () => undefined),
+    };
+
+    const storagePort = {
+      readObject: vi.fn(async () => ({
+        body: originalBuffer,
+        byteSize: originalBuffer.byteLength,
+        contentType: 'image/png',
+      })),
+      writeObject: vi
+        .fn()
+        .mockResolvedValueOnce({ byteSize: 128, etag: 'etag-variant-1' })
+        .mockRejectedValueOnce(new Error('s3_write_failed')),
+    };
+
+    const processor = createMediaUploadProcessingService({
+      service: service as never,
+      storagePort: storagePort as never,
+      createId: vi.fn().mockReturnValueOnce('variant-1').mockReturnValueOnce('variant-2').mockReturnValueOnce('variant-3'),
+    });
+
+    await expect(
+      processor.completeUpload({
+        instanceId: 'tenant-a',
+        uploadSessionId: 'upload-1',
+      })
+    ).rejects.toThrow('s3_write_failed');
+
+    expect(service.upsertAsset).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        uploadStatus: 'failed',
+        processingStatus: 'failed',
+      })
+    );
   });
 });

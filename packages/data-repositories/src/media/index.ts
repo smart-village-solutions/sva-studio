@@ -60,6 +60,12 @@ export type MediaStorageUsageRecord = {
   readonly updatedAt?: string;
 };
 
+export type MediaStorageUsageDelta = {
+  readonly instanceId: string;
+  readonly totalBytesDelta: number;
+  readonly assetCountDelta: number;
+};
+
 export type MediaStorageQuotaRecord = {
   readonly instanceId: string;
   readonly maxBytes: number;
@@ -99,6 +105,7 @@ export type MediaRepository = {
   upsertUploadSession(input: MediaUploadSessionRecord): Promise<void>;
   getUploadSessionById(instanceId: string, sessionId: string): Promise<MediaUploadSessionRecord | null>;
   upsertStorageUsage(input: MediaStorageUsageRecord): Promise<void>;
+  applyStorageUsageDelta(input: MediaStorageUsageDelta): Promise<void>;
   getStorageUsage(instanceId: string): Promise<MediaStorageUsageRecord | null>;
   upsertStorageQuota(input: MediaStorageQuotaRecord): Promise<void>;
   getStorageQuota(instanceId: string): Promise<MediaStorageQuotaRecord | null>;
@@ -405,8 +412,8 @@ INSERT INTO iam.media_variants (
   generation_status
 )
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-ON CONFLICT (id) DO UPDATE
-SET asset_id = EXCLUDED.asset_id,
+ON CONFLICT (asset_id, variant_key) DO UPDATE
+SET instance_id = EXCLUDED.instance_id,
     variant_key = EXCLUDED.variant_key,
     preset_key = EXCLUDED.preset_key,
     format = EXCLUDED.format,
@@ -521,6 +528,22 @@ SET total_bytes = EXCLUDED.total_bytes,
     updated_at = NOW();
 `,
   values: [input.instanceId, input.totalBytes, input.assetCount],
+});
+
+const applyStorageUsageDeltaStatement = (input: MediaStorageUsageDelta): SqlStatement => ({
+  text: `
+INSERT INTO iam.media_storage_usage (
+  instance_id,
+  total_bytes,
+  asset_count
+)
+VALUES ($1, GREATEST($2, 0), GREATEST($3, 0))
+ON CONFLICT (instance_id) DO UPDATE
+SET total_bytes = GREATEST(iam.media_storage_usage.total_bytes + EXCLUDED.total_bytes, 0),
+    asset_count = GREATEST(iam.media_storage_usage.asset_count + EXCLUDED.asset_count, 0),
+    updated_at = NOW();
+`,
+  values: [input.instanceId, input.totalBytesDelta, input.assetCountDelta],
 });
 
 const getStorageUsageStatement = (instanceId: string): SqlStatement => ({
@@ -671,6 +694,9 @@ export const createMediaRepository = (executor: SqlExecutor): MediaRepository =>
   async upsertStorageUsage(input) {
     await executor.execute(upsertStorageUsageStatement(input));
   },
+  async applyStorageUsageDelta(input) {
+    await executor.execute(applyStorageUsageDeltaStatement(input));
+  },
   async getStorageUsage(instanceId) {
     const result = await executor.execute<MediaStorageUsageRow>(getStorageUsageStatement(instanceId));
     return result.rows[0] ? mapStorageUsageRow(result.rows[0]) : null;
@@ -729,6 +755,7 @@ export const mediaStatements = {
   upsertUploadSession: upsertUploadSessionStatement,
   getUploadSessionById: getUploadSessionByIdStatement,
   upsertStorageUsage: upsertStorageUsageStatement,
+  applyStorageUsageDelta: applyStorageUsageDeltaStatement,
   getStorageUsage: getStorageUsageStatement,
   upsertStorageQuota: upsertStorageQuotaStatement,
   getStorageQuota: getStorageQuotaStatement,

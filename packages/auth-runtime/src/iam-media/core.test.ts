@@ -49,6 +49,13 @@ const createService = () => ({
     status: 'pending',
   })),
   getStorageUsage: vi.fn(async () => null),
+  listVariantsByAssetId: vi.fn(async () => [
+    {
+      id: 'variant-1',
+      assetId: 'asset-1',
+      storageKey: 'tenant-a/variants/asset-1/thumbnail.webp',
+    },
+  ]),
   listReferencesByTarget: vi.fn(async () => [
     {
       id: 'reference-1',
@@ -69,6 +76,7 @@ const createService = () => ({
   upsertUploadSession: vi.fn(async () => undefined),
   upsertVariant: vi.fn(async () => undefined),
   upsertStorageUsage: vi.fn(async () => undefined),
+  applyStorageUsageDelta: vi.fn(async () => undefined),
   deleteAsset: vi.fn(async () => undefined),
   replaceReferences: vi.fn(async () => undefined),
 });
@@ -360,6 +368,7 @@ describe('media http handlers', () => {
       writeObject: vi.fn(async ({ body }: { body: Uint8Array }) => ({
         byteSize: body.byteLength,
       })),
+      deleteObject: vi.fn(async () => undefined),
     };
     const handlers = createMediaHttpHandlers({
       withMediaService: async (_instanceId, work) => work(service as never),
@@ -378,6 +387,52 @@ describe('media http handlers', () => {
     );
 
     expect(response.status).toBe(200);
+  });
+
+  it('returns a server error when upload completion hits infrastructure failures after persistence starts', async () => {
+    const service = createService();
+    const storagePort = {
+      prepareUpload: vi.fn(),
+      resolveDelivery: vi.fn(),
+      readObject: vi.fn(async () => ({
+        body: await import('sharp').then((module) =>
+          module.default({
+            create: {
+              width: 1200,
+              height: 800,
+              channels: 3,
+              background: { r: 20, g: 20, b: 20 },
+            },
+          })
+            .jpeg()
+            .toBuffer()
+        ),
+        byteSize: 1024,
+        contentType: 'image/jpeg',
+      })),
+      writeObject: vi
+        .fn()
+        .mockResolvedValueOnce({ byteSize: 256 })
+        .mockRejectedValueOnce(new Error('s3_write_failed')),
+      deleteObject: vi.fn(async () => undefined),
+    };
+    const handlers = createMediaHttpHandlers({
+      withMediaService: async (_instanceId, work) => work(service as never),
+      storagePort: storagePort as never,
+      authorizeAction: allowAuthorization,
+      createId: () => 'id-1',
+      now: () => '2026-04-29T19:00:00.000Z',
+      emitAuditEvent,
+    });
+
+    await expect(
+      handlers.completeUpload(
+        new Request('http://localhost/api/v1/iam/media/upload-sessions/upload-1/complete?instanceId=tenant-a', {
+          method: 'POST',
+        }),
+        createContext()
+      )
+    ).rejects.toThrow('s3_write_failed');
   });
 
   it('blocks deletion when an asset still has active references', async () => {
@@ -409,5 +464,73 @@ describe('media http handlers', () => {
 
     expect(response.status).toBe(409);
     expect(service.deleteAsset).not.toHaveBeenCalled();
+  });
+
+  it('deletes media blobs and decrements storage usage on successful deletion', async () => {
+    const service = createService();
+    service.getAssetById = vi.fn(async () => ({
+      id: 'asset-1',
+      instanceId: 'tenant-a',
+      storageKey: 'tenant-a/originals/asset-1.jpg',
+      mediaType: 'image',
+      mimeType: 'image/jpeg',
+      byteSize: 1234,
+      visibility: 'protected',
+      uploadStatus: 'processed',
+      processingStatus: 'ready',
+      metadata: {},
+      technical: {
+        variantBytes: 456,
+      },
+    }));
+    service.listReferencesByAssetId = vi.fn(async () => []);
+    service.listVariantsByAssetId = vi.fn(async () => [
+      {
+        id: 'variant-1',
+        assetId: 'asset-1',
+        variantKey: 'thumbnail',
+        presetKey: 'thumbnail',
+        format: 'webp',
+        width: 320,
+        storageKey: 'tenant-a/variants/asset-1/thumbnail.webp',
+        generationStatus: 'ready',
+      },
+    ]);
+    const storagePort = {
+      prepareUpload: vi.fn(),
+      resolveDelivery: vi.fn(),
+      deleteObject: vi.fn(async () => undefined),
+    };
+    const handlers = createMediaHttpHandlers({
+      withMediaService: async (_instanceId, work) => work(service as never),
+      storagePort: storagePort as never,
+      authorizeAction: allowAuthorization,
+      createId: () => 'id-1',
+      now: () => '2026-04-29T19:00:00.000Z',
+      emitAuditEvent,
+    });
+
+    const response = await handlers.deleteMedia(
+      new Request('http://localhost/api/v1/iam/media/asset-1?instanceId=tenant-a', {
+        method: 'DELETE',
+      }),
+      createContext()
+    );
+
+    expect(response.status).toBe(200);
+    expect(storagePort.deleteObject).toHaveBeenNthCalledWith(1, {
+      instanceId: 'tenant-a',
+      storageKey: 'tenant-a/originals/asset-1.jpg',
+    });
+    expect(storagePort.deleteObject).toHaveBeenNthCalledWith(2, {
+      instanceId: 'tenant-a',
+      storageKey: 'tenant-a/variants/asset-1/thumbnail.webp',
+    });
+    expect(service.deleteAsset).toHaveBeenCalledWith('tenant-a', 'asset-1');
+    expect(service.applyStorageUsageDelta).toHaveBeenCalledWith({
+      instanceId: 'tenant-a',
+      totalBytesDelta: -(1234 + 456),
+      assetCountDelta: -1,
+    });
   });
 });

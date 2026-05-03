@@ -11,6 +11,7 @@ export const createMediaService = (repository: MediaRepository) => ({
   upsertUploadSession: repository.upsertUploadSession,
   getUploadSessionById: repository.getUploadSessionById,
   upsertStorageUsage: repository.upsertStorageUsage,
+  applyStorageUsageDelta: repository.applyStorageUsageDelta,
   getStorageUsage: repository.getStorageUsage,
   upsertStorageQuota: repository.upsertStorageQuota,
   getStorageQuota: repository.getStorageQuota,

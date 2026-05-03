@@ -306,6 +306,7 @@ gleichzeitig beeinflussen.
 - Proposal-Reviews werden über einen dedizierten Proposal-Orchestrator konsolidiert
 - PR- und Code-Reviews werden über einen separaten PR-Orchestrator konsolidiert
 - Spezialisierte Review-Agents decken ergänzend Testqualität, i18n/Content, User Journey & Usability und Performance ab
+- Relevante Bot-Kommentare von `Copilot` und `chatgpt-codex-connector[bot]` werden zusaetzlich ueber ein eigenes PR-Gate auf Bearbeitungsnachweise geprueft
 - Zentrale und kritische Module werden zusätzlich über ein eigenes Komplexitäts-Gate mit Ticketpflicht überwacht
 - Das Modulregister und die Schwellwerte liegen versioniert unter `tooling/quality/complexity-policy.json`
 - Bekannte Überschreitungen bleiben nur dann zulässig, wenn sie in `trackedFindings` mit Refactoring-Ticket hinterlegt sind
@@ -315,6 +316,7 @@ gleichzeitig beeinflussen.
   - `ux-accessibility.agent.md` für WCAG/BITV, Fokus, Tastatur und Screenreader
   - `user-journey-usability.agent.md` für Friktion, Verständlichkeit und Aufgabenbewältigung
 - i18n/harte Strings werden als eigener Governance-Strang behandelt und nicht nur implizit im Code-Review geprüft
+- Der Bearbeitungsnachweis fuer Bot-Kommentare nutzt standardisierte Marker fuer `accepted`, `rejected` und `resolved`; Diff-Threads muessen zusaetzlich als resolved markiert sein
 - Konflikte zwischen Review-Perspektiven werden auf Orchestrator-Ebene explizit gemacht, die Entscheidung bleibt beim Menschen
 
 ### Package-Boundaries und Runtime-Imports

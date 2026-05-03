@@ -12,10 +12,12 @@ Die Review des laufenden Changes hat zusätzlich gezeigt, dass ein reiner Zuschn
 
 - führt die wiederverwendbare Studio-Listen- und Tabellen-UI aus `apps/sva-studio-react` in `@sva/studio-ui-react` zusammen
 - reduziert app-lokale Basis-UI-Primitives auf echte App-Spezialfälle und ersetzt Duplikate durch Package-Imports
+- belässt `@sva/studio-ui-react` i18n-neutral, sodass die App Tabellen-Labels explizit liefert statt eine zweite App-Fassade über der Package-Tabelle zu pflegen
 - deklariert `@sva/iam-governance` als kanonische Ownership für Legal-Text-HTML-Sanitizing auch für die React-App
 - verlagert host-owned Mainserver-Request-Parsing und inhaltsbezogene Server-Handler aus der App in paketseitige Server-Verträge
+- schneidet die Mainserver-Host-Adapter als getrennte öffentliche Server-Verträge für `news`, `events` und `poi`, mit gemeinsamem internem Sharing nur für tatsächlich identische Technik- und Parser-Bausteine
 - begrenzt `apps/sva-studio-react` auf App-Komposition, Routing-Bindings, Shell-Zusammensetzung und framework-spezifische Server-Einstiege
-- konsolidiert app-lokale Zugriffs- und Kontextregeln in Schnittstellen-Serverfunktionen, damit dieselben Fachentscheidungen nicht mehrfach im App-Layer gepflegt werden
+- überführt `interfaces-api` als Mainserver-bezogenen Serververtrag nach `@sva/sva-mainserver/server`, während `apps/sva-studio-react` nur dünne `createServerFn`-Adapter behält
 - aktualisiert Architektur- und Entwicklerdokumentation an den betroffenen Boundary-Stellen
 
 ## Out of Scope
@@ -57,8 +59,9 @@ Die Review des laufenden Changes hat zusätzlich gezeigt, dass ein reiner Zuschn
 ## Success Criteria
 
 - wiederverwendbare Studio-Listen- und Tabellenbausteine werden nur noch aus `@sva/studio-ui-react` konsumiert
+- die App liefert Tabellen-Labels explizit an `@sva/studio-ui-react`, statt eine dauerhafte app-lokale Tabellenfassade als zweite Owner-Schicht zu behalten
 - die React-App verwendet keinen eigenen kanonischen Legal-Text-Sanitizer mehr neben `@sva/iam-governance`
-- host-owned Mainserver-Inhaltsrouten für News, Events und POI enthalten in der App nur noch dünne Entry-Point-Logik
-- app-seitige Schnittstellenfunktionen pflegen keine doppelten Regeln für Instanzkontext und Zugriffsentscheidungen, wenn dieselbe Fachentscheidung lokal bereits zentralisiert werden kann
+- host-owned Mainserver-Inhaltsrouten für News, Events und POI enthalten in der App nur noch dünne Entry-Point-Logik und delegieren an getrennte paketseitige `news`-, `events`- und `poi`-Verträge
+- `interfaces-api` enthält im App-Layer nur noch framework-spezifische `createServerFn`-Adapter, waehrend Mainserver-spezifische Regeln, Fehlerabbildung und Persistenzdelegation in `@sva/sva-mainserver/server` liegen
 - Mainserver-spezifische Parse-, Validierungs- und Fehler-Mappings sind in Package-Tests absicherbar und nicht nur über App-Tests indirekt nachweisbar
 - neue oder bestehende Package-Boundaries sind durch Tests, Imports und Doku konsistent nachvollziehbar

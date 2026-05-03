@@ -70,6 +70,7 @@ export type StudioListPageTemplateProps = Readonly<{
   description?: React.ReactNode;
   primaryAction?: StudioListPageAction;
   tabs?: readonly StudioListPageTab[];
+  tabsAriaLabel?: string;
   children?: React.ReactNode;
   className?: string;
 }>;
@@ -92,6 +93,7 @@ export function StudioListPageTemplate({
   description,
   primaryAction,
   tabs,
+  tabsAriaLabel,
   children,
   className,
 }: StudioListPageTemplateProps) {
@@ -108,7 +110,7 @@ export function StudioListPageTemplate({
 
       {hasTabs && tabs ? (
         <Tabs defaultValue={defaultTab} className="space-y-0">
-          <TabsList aria-label={typeof title === 'string' ? title : undefined}>
+          <TabsList aria-label={tabsAriaLabel ?? (typeof title === 'string' ? title : undefined)}>
             {tabs.map((tab) => (
               <TabsTrigger key={tab.id} value={tab.id}>
                 {tab.label}

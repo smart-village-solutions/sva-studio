@@ -283,9 +283,7 @@ export const useOrganizations = (initial?: Partial<OrganizationFilters>): UseOrg
       mutate(() => updateOrganization(organizationId, payload), { organizationId }),
     deactivateOrganization: async (organizationId) => {
       const response = await mutate(() => deactivateOrganization(organizationId));
-      if (selectedOrganization?.id === organizationId) {
-        setSelectedOrganization(null);
-      }
+      setSelectedOrganization((current) => (current?.id === organizationId ? null : current));
       return Boolean(response);
     },
     assignMembership: async (organizationId, payload) =>

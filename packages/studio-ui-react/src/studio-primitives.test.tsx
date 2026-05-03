@@ -107,6 +107,25 @@ describe('studio-ui-react primitives', () => {
     expect(screen.getByRole('tab', { name: 'Ausweichtermine' }).getAttribute('data-state')).toBe('inactive');
   });
 
+  it('renders tab lists with an explicit accessible name when the title is not a plain string', () => {
+    render(
+      <StudioListPageTemplate
+        title={
+          <span>
+            <strong>Abfall</strong> kalender
+          </span>
+        }
+        tabsAriaLabel="Inhaltsbereiche"
+        tabs={[
+          { id: 'pickup', label: 'Abholorte', content: <div>Abholorte-Inhalt</div> },
+          { id: 'dates', label: 'Ausweichtermine', content: <div>Ausweichtermine-Inhalt</div> },
+        ]}
+      />
+    );
+
+    expect(screen.getByRole('tablist', { name: 'Inhaltsbereiche' })).toBeTruthy();
+  });
+
   it('renders detail pages, grouped fields and form summaries', () => {
     render(
       <StudioDetailPageTemplate title="Detail" description="Beschreibung" actions={<Button>Speichern</Button>}>

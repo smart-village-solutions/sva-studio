@@ -29,6 +29,7 @@ describe('interfaces.server', () => {
   });
 
   it('loads interfaces overview for admin roles', async () => {
+    let capturedResponse: Response | null = null;
     state.withAuthenticatedUser.mockImplementation(
       async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<Response>) =>
         handler({
@@ -37,6 +38,9 @@ describe('interfaces.server', () => {
             instanceId: 'de-musterhausen',
             roles: ['app_manager'],
           },
+        }).then((response) => {
+          capturedResponse = response;
+          return response;
         })
     );
     state.loadSvaMainserverSettings.mockResolvedValue({
@@ -58,6 +62,7 @@ describe('interfaces.server', () => {
       config: expect.objectContaining({ enabled: true }),
       status: expect.objectContaining({ status: 'connected' }),
     });
+    expect(capturedResponse?.headers.get('Cache-Control')).toBe('no-store');
   });
 
   it('returns forbidden status for users without management role', async () => {

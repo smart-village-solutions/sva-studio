@@ -1,5 +1,5 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useOrganizations } from './use-organizations';
 
@@ -50,9 +50,47 @@ vi.mock('../providers/auth-provider', () => ({
   useAuth: () => authMockValue,
 }));
 
+const createOrganizationListItem = (overrides: Record<string, unknown> = {}) => ({
+  id: 'org-1',
+  organizationKey: 'alpha',
+  displayName: 'Alpha',
+  parentOrganizationId: undefined,
+  parentDisplayName: undefined,
+  organizationType: 'county',
+  contentAuthorPolicy: 'org_only',
+  isActive: true,
+  depth: 0,
+  hierarchyPath: [],
+  childCount: 0,
+  membershipCount: 0,
+  ...overrides,
+});
+
+const createOrganizationDetail = (overrides: Record<string, unknown> = {}) => ({
+  ...createOrganizationListItem(),
+  memberships: [],
+  children: [],
+  metadata: {},
+  ...overrides,
+});
+
+const createDeferred = <T,>() => {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((nextResolve, nextReject) => {
+    resolve = nextResolve;
+    reject = nextReject;
+  });
+  return { promise, resolve, reject };
+};
+
 describe('useOrganizations', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('loads organizations and updates filters with page clamping', async () => {
@@ -76,7 +114,7 @@ describe('useOrganizations', () => {
       pagination: { page: 1, pageSize: 25, total: 1 },
     });
 
-    const { result } = renderHook(() => useOrganizations({ page: 2 }));
+    const { result, unmount } = renderHook(() => useOrganizations({ page: 2 }));
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
@@ -94,42 +132,188 @@ describe('useOrganizations', () => {
     expect(result.current.filters.organizationType).toBe('municipality');
     expect(result.current.filters.status).toBe('inactive');
     expect(result.current.page).toBe(1);
+
+    unmount();
   });
 
-  it('loads detail and supports organization mutations', async () => {
+  it('loads organization details', async () => {
     listOrganizationsMock
       .mockResolvedValueOnce({
         data: [],
         pagination: { page: 1, pageSize: 25, total: 0 },
+      });
+    getOrganizationMock.mockResolvedValue({ data: createOrganizationDetail() });
+
+    const { result } = renderHook(() => useOrganizations());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    await act(async () => {
+      await expect(result.current.loadOrganization('org-1')).resolves.toMatchObject({
+        id: 'org-1',
+        displayName: 'Alpha',
+      });
+    });
+
+    expect(getOrganizationMock).toHaveBeenCalledWith('org-1');
+    expect(result.current.selectedOrganization).toMatchObject({
+      id: 'org-1',
+      displayName: 'Alpha',
+    });
+  });
+
+  it('keeps the newest list response when older requests resolve later', async () => {
+    const initialRequest = createDeferred<{ data: ReturnType<typeof createOrganizationListItem>[]; pagination: { page: number; pageSize: number; total: number } }>();
+    const searchRequest = createDeferred<{ data: ReturnType<typeof createOrganizationListItem>[]; pagination: { page: number; pageSize: number; total: number } }>();
+
+    listOrganizationsMock.mockImplementation(({ search }: { search?: string }) => {
+      if (search === 'beta') {
+        return searchRequest.promise;
+      }
+      return initialRequest.promise;
+    });
+
+    const { result } = renderHook(() => useOrganizations());
+
+    await waitFor(() => {
+      expect(listOrganizationsMock).toHaveBeenCalledTimes(1);
+    });
+
+    act(() => {
+      result.current.setSearch('beta');
+    });
+
+    await act(async () => {
+      await new Promise((resolve) => {
+        globalThis.window.setTimeout(resolve, 350);
+      });
+    });
+
+    await waitFor(() => {
+      expect(listOrganizationsMock).toHaveBeenCalledTimes(2);
+    });
+
+    await act(async () => {
+      searchRequest.resolve({
+        data: [createOrganizationListItem({ id: 'org-2', organizationKey: 'beta', displayName: 'Beta' })],
+        pagination: { page: 1, pageSize: 25, total: 1 },
+      });
+      await searchRequest.promise;
+    });
+
+    await waitFor(() => {
+      expect(result.current.organizations).toMatchObject([{ id: 'org-2', displayName: 'Beta' }]);
+    });
+
+    await act(async () => {
+      initialRequest.resolve({
+        data: [createOrganizationListItem()],
+        pagination: { page: 1, pageSize: 25, total: 1 },
+      });
+      await initialRequest.promise;
+    });
+
+    expect(result.current.organizations).toMatchObject([{ id: 'org-2', displayName: 'Beta' }]);
+  });
+
+  it('keeps the newest detail response when older detail requests resolve later', async () => {
+    listOrganizationsMock.mockResolvedValue({
+      data: [],
+      pagination: { page: 1, pageSize: 25, total: 0 },
+    });
+
+    const firstDetail = createDeferred<{ data: ReturnType<typeof createOrganizationDetail> }>();
+    const secondDetail = createDeferred<{ data: ReturnType<typeof createOrganizationDetail> }>();
+
+    getOrganizationMock.mockImplementation((organizationId: string) => {
+      if (organizationId === 'org-2') {
+        return secondDetail.promise;
+      }
+      return firstDetail.promise;
+    });
+
+    const { result } = renderHook(() => useOrganizations());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    let firstPromise: Promise<unknown>;
+    let secondPromise: Promise<unknown>;
+
+    await act(async () => {
+      firstPromise = result.current.loadOrganization('org-1');
+      secondPromise = result.current.loadOrganization('org-2');
+    });
+
+    await act(async () => {
+      secondDetail.resolve({ data: createOrganizationDetail({ id: 'org-2', organizationKey: 'beta', displayName: 'Beta' }) });
+      await secondPromise;
+    });
+
+    await waitFor(() => {
+      expect(result.current.selectedOrganization).toMatchObject({ id: 'org-2', displayName: 'Beta' });
+    });
+
+    await act(async () => {
+      firstDetail.resolve({ data: createOrganizationDetail() });
+      await firstPromise;
+    });
+
+    expect(result.current.selectedOrganization).toMatchObject({ id: 'org-2', displayName: 'Beta' });
+  });
+
+  it('refreshes selected organization details after a successful update', async () => {
+    listOrganizationsMock
+      .mockResolvedValueOnce({
+        data: [createOrganizationListItem()],
+        pagination: { page: 1, pageSize: 25, total: 1 },
       })
-      .mockResolvedValue({
+      .mockResolvedValueOnce({
+        data: [createOrganizationListItem({ displayName: 'Alpha 2' })],
+        pagination: { page: 1, pageSize: 25, total: 1 },
+      });
+    getOrganizationMock
+      .mockResolvedValueOnce({ data: createOrganizationDetail() })
+      .mockResolvedValueOnce({ data: createOrganizationDetail({ displayName: 'Alpha 2' }) });
+    updateOrganizationMock.mockResolvedValue({ data: { id: 'org-1' } });
+
+    const { result } = renderHook(() => useOrganizations());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.organizations).toMatchObject([{ id: 'org-1', displayName: 'Alpha' }]);
+    });
+
+    await act(async () => {
+      await result.current.loadOrganization('org-1');
+      await expect(result.current.updateOrganization('org-1', { displayName: 'Alpha 2' })).resolves.toMatchObject({
+        id: 'org-1',
+      });
+    });
+
+    expect(updateOrganizationMock).toHaveBeenCalledWith('org-1', { displayName: 'Alpha 2' });
+    expect(result.current.organizations).toMatchObject([{ id: 'org-1', displayName: 'Alpha 2' }]);
+    expect(result.current.selectedOrganization).toMatchObject({
+      id: 'org-1',
+      displayName: 'Alpha 2',
+    });
+  });
+
+  it('clears the selected organization after deactivation', async () => {
+    listOrganizationsMock
+      .mockResolvedValueOnce({
+        data: [createOrganizationListItem()],
+        pagination: { page: 1, pageSize: 25, total: 1 },
+      })
+      .mockResolvedValueOnce({
         data: [],
         pagination: { page: 1, pageSize: 25, total: 0 },
       });
-    getOrganizationMock.mockResolvedValue({
-      data: {
-        id: 'org-1',
-        organizationKey: 'alpha',
-        displayName: 'Alpha',
-        parentOrganizationId: undefined,
-        parentDisplayName: undefined,
-        organizationType: 'county',
-        contentAuthorPolicy: 'org_only',
-        isActive: true,
-        depth: 0,
-        hierarchyPath: [],
-        childCount: 0,
-        membershipCount: 0,
-        memberships: [],
-        children: [],
-        metadata: {},
-      },
-    });
-    createOrganizationMock.mockResolvedValue({ data: { id: 'org-2' } });
-    updateOrganizationMock.mockResolvedValue({ data: { id: 'org-1' } });
+    getOrganizationMock.mockResolvedValueOnce({ data: createOrganizationDetail() });
     deactivateOrganizationMock.mockResolvedValue({ data: { id: 'org-1' } });
-    assignOrganizationMembershipMock.mockResolvedValue({ data: { id: 'org-1' } });
-    removeOrganizationMembershipMock.mockResolvedValue({ data: { id: 'org-1' } });
 
     const { result } = renderHook(() => useOrganizations());
 
@@ -139,29 +323,55 @@ describe('useOrganizations', () => {
 
     await act(async () => {
       await result.current.loadOrganization('org-1');
-      await result.current.createOrganization({
-        organizationKey: 'beta',
-        displayName: 'Beta',
-        organizationType: 'municipality',
-        contentAuthorPolicy: 'org_only',
-      });
-      await result.current.updateOrganization('org-1', { displayName: 'Alpha 2' });
-      await result.current.assignMembership('org-1', { accountId: 'account-1', visibility: 'internal' });
-      await result.current.removeMembership('org-1', 'account-1');
-      const deactivated = await result.current.deactivateOrganization('org-1');
-      expect(deactivated).toBe(true);
+      await expect(result.current.deactivateOrganization('org-1')).resolves.toBe(true);
     });
 
-    expect(getOrganizationMock).toHaveBeenCalledWith('org-1');
-    expect(createOrganizationMock).toHaveBeenCalledTimes(1);
-    expect(updateOrganizationMock).toHaveBeenCalledTimes(1);
-    expect(assignOrganizationMembershipMock).toHaveBeenCalledTimes(1);
-    expect(removeOrganizationMembershipMock).toHaveBeenCalledTimes(1);
-    expect(deactivateOrganizationMock).toHaveBeenCalledTimes(1);
-    expect(result.current.selectedOrganization).toMatchObject({
-      id: 'org-1',
-      displayName: 'Alpha',
+    expect(result.current.organizations).toEqual([]);
+    expect(result.current.selectedOrganization).toBeNull();
+  });
+
+  it('returns created organizations and reloads the list', async () => {
+    listOrganizationsMock
+      .mockResolvedValueOnce({
+        data: [],
+        pagination: { page: 1, pageSize: 25, total: 0 },
+      })
+      .mockResolvedValueOnce({
+        data: [
+          createOrganizationListItem({
+            id: 'org-2',
+            organizationKey: 'beta',
+            displayName: 'Beta',
+            organizationType: 'municipality',
+          }),
+        ],
+        pagination: { page: 1, pageSize: 25, total: 1 },
+      });
+    createOrganizationMock.mockResolvedValue({
+      data: createOrganizationDetail({ id: 'org-2', organizationKey: 'beta', displayName: 'Beta', organizationType: 'municipality' }),
     });
+
+    const { result } = renderHook(() => useOrganizations());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    await act(async () => {
+      await expect(
+        result.current.createOrganization({
+          organizationKey: 'beta',
+          displayName: 'Beta',
+          organizationType: 'municipality',
+          contentAuthorPolicy: 'org_only',
+        })
+      ).resolves.toMatchObject({
+        id: 'org-2',
+        displayName: 'Beta',
+      });
+    });
+
+    expect(result.current.organizations).toMatchObject([{ id: 'org-2', displayName: 'Beta' }]);
   });
 
   it('preserves the current list when the post-create refetch fails', async () => {

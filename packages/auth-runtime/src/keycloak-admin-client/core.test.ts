@@ -255,7 +255,7 @@ describe('Keycloak admin client', () => {
   });
 
   it('rejects assigning unknown realm roles and skips empty removals', async () => {
-    const { KeycloakAdminRequestError } = await import('./core.js');
+    type KeycloakAdminRequestError = import('./core.js').KeycloakAdminRequestError;
     const assignFetch = vi
       .fn()
       .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
@@ -346,7 +346,7 @@ describe('Keycloak admin client', () => {
   });
 
   it('fails updateRole when post-update lookup no longer finds the role', async () => {
-    const { KeycloakAdminRequestError } = await import('./core.js');
+    type KeycloakAdminRequestError = import('./core.js').KeycloakAdminRequestError;
     const fetchImpl = vi
       .fn()
       .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))

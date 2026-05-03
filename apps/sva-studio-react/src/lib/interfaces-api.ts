@@ -1,24 +1,28 @@
 import { createServerFn } from '@tanstack/react-start';
-import { getRequest } from '@tanstack/react-start/server';
 
 import {
-  loadSvaMainserverInterfacesOverview as loadSvaMainserverInterfacesOverviewContract,
   type SaveSvaMainserverInterfaceSettingsInput,
   type SvaMainserverInterfacesOverview,
-  saveSvaMainserverInterfaceSettings as saveSvaMainserverInterfaceSettingsContract,
 } from '@sva/sva-mainserver/server';
 
 export const loadSvaMainserverInterfacesOverviewServerFn = createServerFn().handler(
-  async (): Promise<SvaMainserverInterfacesOverview> =>
-    loadSvaMainserverInterfacesOverviewContract(getRequest())
+  async (): Promise<SvaMainserverInterfacesOverview> => {
+    const { getRequest } = await import('@tanstack/react-start/server');
+    const { loadSvaMainserverInterfacesOverview } = await import('@sva/sva-mainserver/server');
+
+    return loadSvaMainserverInterfacesOverview(getRequest());
+  }
 );
 
 export const loadInterfacesOverview = loadSvaMainserverInterfacesOverviewServerFn;
 
 export const saveSvaMainserverInterfaceSettings = createServerFn({ method: 'POST' })
   .inputValidator((payload: SaveSvaMainserverInterfaceSettingsInput['data']) => payload)
-  .handler(async ({ data }) =>
-    saveSvaMainserverInterfaceSettingsContract(getRequest(), {
+  .handler(async ({ data }) => {
+    const { getRequest } = await import('@tanstack/react-start/server');
+    const { saveSvaMainserverInterfaceSettings } = await import('@sva/sva-mainserver/server');
+
+    return saveSvaMainserverInterfaceSettings(getRequest(), {
       data,
     })
-  );
+  });

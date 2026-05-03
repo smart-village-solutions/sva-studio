@@ -209,7 +209,10 @@ const createErrorStatus = (
 const jsonResponse = (status: number, payload: unknown): Response =>
   new Response(JSON.stringify(payload), {
     status,
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'Cache-Control': 'no-store',
+    },
   });
 
 const parseJson = async <T>(response: Response): Promise<T | null> => {
@@ -435,66 +438,66 @@ export const saveSvaMainserverInterfaceSettings = async (
     const response = await withAuthenticatedUser(request, async ({ user }) => {
       const instanceId = user.instanceId;
 
-        if (!instanceId) {
-          logger.warn('Save interfaces settings rejected: missing instance context', {
-            operation: 'save_interfaces_settings',
-            user_id: user.id,
-          });
-          return jsonResponse(400, { error: 'invalid_config' } satisfies ErrorPayload);
-        }
+      if (!instanceId) {
+        logger.warn('Save interfaces settings rejected: missing instance context', {
+          operation: 'save_interfaces_settings',
+          user_id: user.id,
+        });
+        return jsonResponse(400, { error: 'invalid_config' } satisfies ErrorPayload);
+      }
 
-        if (!hasInterfacesAccessRole(user)) {
-          logger.warn('Save interfaces settings rejected: insufficient permissions', {
-            operation: 'save_interfaces_settings',
-            workspace_id: instanceId,
-            user_id: user.id,
-            user_roles: user.roles,
-          });
-          return jsonResponse(403, { error: 'forbidden' } satisfies ErrorPayload);
-        }
-
-        if (typeof payloadData.enabled !== 'boolean') {
-          logger.warn('Save interfaces settings rejected: missing enabled flag', {
-            operation: 'save_interfaces_settings',
-            workspace_id: instanceId,
-            user_id: user.id,
-          });
-          return jsonResponse(400, { error: 'invalid_config' } satisfies ErrorPayload);
-        }
-
-        logger.info('Saving interfaces settings', {
+      if (!hasInterfacesAccessRole(user)) {
+        logger.warn('Save interfaces settings rejected: insufficient permissions', {
           operation: 'save_interfaces_settings',
           workspace_id: instanceId,
+          user_id: user.id,
+          user_roles: user.roles,
+        });
+        return jsonResponse(403, { error: 'forbidden' } satisfies ErrorPayload);
+      }
+
+      if (typeof payloadData.enabled !== 'boolean') {
+        logger.warn('Save interfaces settings rejected: missing enabled flag', {
+          operation: 'save_interfaces_settings',
+          workspace_id: instanceId,
+          user_id: user.id,
+        });
+        return jsonResponse(400, { error: 'invalid_config' } satisfies ErrorPayload);
+      }
+
+      logger.info('Saving interfaces settings', {
+        operation: 'save_interfaces_settings',
+        workspace_id: instanceId,
+        enabled: payloadData.enabled,
+      });
+
+      let config: SvaMainserverInstanceConfig;
+      try {
+        config = await saveSvaMainserverSettings({
+          instanceId,
+          graphqlBaseUrl: payloadData.graphqlBaseUrl?.trim() ?? '',
+          oauthTokenUrl: payloadData.oauthTokenUrl?.trim() ?? '',
           enabled: payloadData.enabled,
         });
-
-        let config: SvaMainserverInstanceConfig;
-        try {
-          config = await saveSvaMainserverSettings({
-            instanceId,
-            graphqlBaseUrl: payloadData.graphqlBaseUrl?.trim() ?? '',
-            oauthTokenUrl: payloadData.oauthTokenUrl?.trim() ?? '',
-            enabled: payloadData.enabled,
-          });
-        } catch (error) {
-          const errorPayload = getErrorPayload(error, 'network_error');
-          logger.error('Failed to persist interfaces settings', {
-            operation: 'save_interfaces_settings',
-            workspace_id: instanceId,
-            error_code: errorPayload.error,
-            error_field: errorPayload.field,
-            ...extractErrorDiagnostics(error),
-          });
-          return jsonResponse(getErrorStatusCode(error, 500), errorPayload);
-        }
-
-        logger.info('Interfaces settings saved successfully', {
+      } catch (error) {
+        const errorPayload = getErrorPayload(error, 'network_error');
+        logger.error('Failed to persist interfaces settings', {
           operation: 'save_interfaces_settings',
           workspace_id: instanceId,
-          enabled: config.enabled,
+          error_code: errorPayload.error,
+          error_field: errorPayload.field,
+          ...extractErrorDiagnostics(error),
         });
+        return jsonResponse(getErrorStatusCode(error, 500), errorPayload);
+      }
 
-        return jsonResponse(200, config);
+      logger.info('Interfaces settings saved successfully', {
+        operation: 'save_interfaces_settings',
+        workspace_id: instanceId,
+        enabled: config.enabled,
+      });
+
+      return jsonResponse(200, config);
     });
 
     const payload = await parseJson<SvaMainserverInstanceConfig | ErrorPayload>(response);

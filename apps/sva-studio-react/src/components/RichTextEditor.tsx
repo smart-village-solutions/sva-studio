@@ -1,6 +1,6 @@
 import React from 'react';
 
-import { sanitizeLegalTextHtml } from '@sva/iam-governance/legal-text-html';
+import { sanitizeLegalTextHtml } from '@sva/iam-governance/legal-text-sanitize-html';
 
 import { Button } from './ui/button';
 

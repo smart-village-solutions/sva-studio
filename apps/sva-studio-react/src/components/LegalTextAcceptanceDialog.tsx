@@ -1,6 +1,6 @@
 import React from 'react';
 
-import { sanitizeLegalTextHtml } from '@sva/iam-governance/legal-text-html';
+import { sanitizeLegalTextHtml } from '@sva/iam-governance/legal-text-sanitize-html';
 
 import { acceptLegalText, asIamError, getMyPendingLegalTexts, LEGAL_ACCEPTANCE_REQUIRED_EVENT } from '../lib/iam-api';
 import {

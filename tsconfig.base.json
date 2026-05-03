@@ -23,6 +23,7 @@
       "@sva/iam-governance/dsr-read-models-internal": ["packages/iam-governance/src/dsr-read-models-internal.ts"],
       "@sva/iam-governance/governance-compliance-export": ["packages/iam-governance/src/governance-compliance-export.ts"],
       "@sva/iam-governance/legal-text-html": ["packages/iam-governance/src/legal-text-html.ts"],
+      "@sva/iam-governance/legal-text-sanitize-html": ["packages/iam-governance/src/legal-text-sanitize-html.ts"],
       "@sva/iam-governance/legal-text-repository-shared": ["packages/iam-governance/src/legal-text-repository-shared.ts"],
       "@sva/iam-governance": ["packages/iam-governance/src/index.ts"],
       "@sva/instance-registry/http-contracts": ["packages/instance-registry/src/http-contracts.ts"],

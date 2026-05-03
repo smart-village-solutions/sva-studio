@@ -58,6 +58,10 @@
       "types": "./dist/legal-text-html.d.ts",
       "default": "./dist/legal-text-html.js"
     },
+    "./legal-text-sanitize-html": {
+      "types": "./dist/legal-text-sanitize-html.d.ts",
+      "default": "./dist/legal-text-sanitize-html.js"
+    },
     "./legal-text-mutation-handlers": {
       "types": "./dist/legal-text-mutation-handlers.d.ts",
       "default": "./dist/legal-text-mutation-handlers.js"

@@ -128,6 +128,9 @@ const config = defineConfig({
         '../../packages/iam-governance/src/legal-text-repository.ts'
       ),
       '@sva/iam-governance/legal-text-html': resolveAppPath('../../packages/iam-governance/src/legal-text-html.ts'),
+      '@sva/iam-governance/legal-text-sanitize-html': resolveAppPath(
+        '../../packages/iam-governance/src/legal-text-sanitize-html.ts'
+      ),
       '@sva/iam-governance/legal-text-mutation-handlers': resolveAppPath(
         '../../packages/iam-governance/src/legal-text-mutation-handlers.ts'
       ),

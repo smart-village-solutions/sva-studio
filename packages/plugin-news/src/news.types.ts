@@ -134,8 +134,3 @@ export type NewsContentItem = {
   readonly updatedAt: string;
   readonly publishedAt: string;
 };
-
-export type NewsListResult = {
-  readonly data: readonly NewsContentItem[];
-  readonly pagination: NewsListPagination;
-};

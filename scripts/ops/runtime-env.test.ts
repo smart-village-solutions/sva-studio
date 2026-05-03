@@ -14,6 +14,7 @@ import {
   shouldRetryInternalProbeFailure,
   shouldRetryInternalVerifyAttempt,
   shouldRetryInternalVerify,
+  tryReadGithubStudioImageVerifyEvidence,
   waitForPostDeployStabilization,
 } from './runtime-env.ts';
 import type { AcceptanceProbeResult } from './runtime-env.shared.ts';

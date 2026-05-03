@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
-import type { Page, Request as PlaywrightRequest, Route } from '@playwright/test';
+import type { Page, Route } from '@playwright/test';
 
 type NewsRecord = {
   id: string;
@@ -34,7 +34,6 @@ const authenticatedUser = {
     instanceId: 'de-musterhausen',
     assignedModules: ['news'],
     roles: ['editor'],
-    assignedModules: ['news'],
     permissionActions: ['news.read', 'news.create', 'news.update', 'news.delete'],
   },
 };

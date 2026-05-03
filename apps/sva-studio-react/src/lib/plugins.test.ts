@@ -1,8 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { studioBuildTimeRegistry } from './plugins.js';
-import { studioModuleIamContracts, studioPluginModuleIamContracts } from '@sva/studio-module-iam';
-
 const browserLoggerMock = vi.hoisted(() => ({
   debug: vi.fn(),
   info: vi.fn(),

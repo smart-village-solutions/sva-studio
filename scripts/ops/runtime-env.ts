@@ -999,12 +999,15 @@ const readLocalStudioImageVerifyEvidence = (imageDigest?: string): StudioImageVe
   return undefined;
 };
 
-const tryReadGithubStudioImageVerifyEvidence = (
+export const tryReadGithubStudioImageVerifyEvidence = (
   imageDigest?: string,
-  imageTag?: string,
-  runCaptureImpl: typeof runCapture = runCapture,
+  options?: GithubVerifyEvidenceOptions,
 ): StudioImageVerifyEvidence | undefined => {
-  if (!imageDigest || !commandExists('gh')) {
+  const runCaptureImpl = options?.runCaptureImpl ?? runCapture;
+  const commandExistsImpl = options?.commandExistsImpl ?? commandExists;
+  const imageTag = options?.imageTag;
+
+  if (!imageDigest || !commandExistsImpl('gh')) {
     return undefined;
   }
 
@@ -1082,7 +1085,7 @@ export const readStudioImageVerifyEvidence = (
   }
 ): StudioImageVerifyEvidence | undefined =>
   readLocalStudioImageVerifyEvidence(imageDigest) ??
-  tryReadGithubStudioImageVerifyEvidence(imageDigest, options?.imageTag);
+  tryReadGithubStudioImageVerifyEvidence(imageDigest, { imageTag: options?.imageTag });
 
 export const buildStudioImageVerifyEvidenceCheck = (
   runtimeProfile: RemoteRuntimeProfile,
@@ -4053,13 +4056,18 @@ export const waitForPostDeployStabilization = async (
   return stabilizationDelayMs;
 };
 
+export const deriveInternalVerifyMaxAttempts = (input: {
+  readonly retryDelayMs: number;
+  readonly warmupWindowMs: number;
+}) => Math.max(1, Math.floor(input.warmupWindowMs / Math.max(input.retryDelayMs, 1)) + 1);
+
 const runInternalVerify = async (runtimeProfile: RemoteRuntimeProfile, env: NodeJS.ProcessEnv): Promise<{
   doctorReport: DoctorReport;
   probes: readonly AcceptanceProbeResult[];
 }> => {
   const retryDelayMs = Number(env.SVA_INTERNAL_VERIFY_RETRY_DELAY_MS ?? '5000');
   const warmupWindowMs = Number(env.SVA_INTERNAL_VERIFY_WARMUP_WINDOW_MS ?? '90000');
-  const derivedMaxAttempts = Math.max(1, Math.floor(warmupWindowMs / Math.max(retryDelayMs, 1)) + 1);
+  const derivedMaxAttempts = deriveInternalVerifyMaxAttempts({ retryDelayMs, warmupWindowMs });
   const maxAttempts = Number(env.SVA_INTERNAL_VERIFY_MAX_ATTEMPTS ?? String(derivedMaxAttempts));
   const retryableWarmupChecks = new Set([
     'health-live',

@@ -12,16 +12,22 @@ import type {
   SvaMainserverContactInput,
   SvaMainserverDateInput,
   SvaMainserverEventInput,
+  SvaMainserverPoiInput,
   SvaMainserverWebUrlInput,
 } from '../types.js';
 import { SvaMainserverError } from './errors.js';
 import { parseMainserverListQuery } from './list-pagination.js';
 import {
   createSvaMainserverEvent,
+  createSvaMainserverPoi,
   deleteSvaMainserverEvent,
+  deleteSvaMainserverPoi,
   getSvaMainserverEvent,
+  getSvaMainserverPoi,
   listSvaMainserverEvents,
+  listSvaMainserverPoi,
   updateSvaMainserverEvent,
+  updateSvaMainserverPoi,
 } from './service.js';
 
 const EVENTS_CONTENT_TYPE = 'events.event-record';

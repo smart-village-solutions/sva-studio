@@ -31,9 +31,7 @@ type UiRouteDefinition = {
 };
 type AdminResourceBindingResolver = { readonly list: BindingKey; readonly create: BindingKey; readonly detail: BindingKey; readonly history?: BindingKey };
 type AdminResourceRouteKind = 'list' | 'create' | 'detail' | 'history';
-type AdminResourceViewKind = keyof AdminResourceDefinition['views'];
-
-const hasBindingKey = (bindings: AppRouteBindings, bindingKey: string): bindingKey is BindingKey =>
+type AdminResourceViewKind = keyof AdminResourceDefinition['views']; const hasBindingKey = (bindings: AppRouteBindings, bindingKey: string): bindingKey is BindingKey =>
   Object.prototype.hasOwnProperty.call(bindings, bindingKey);
 
 const resolveBindingKey = (
@@ -234,10 +232,8 @@ export const createLegacyContentAliasFactories = (
       })),
   ] as const;
 
-  return aliasMappings.flatMap(({ sourcePrefix, targetPrefix }) => {
-    const aliasPaths = [sourcePrefix, `${sourcePrefix}/new`, `${sourcePrefix}/$contentId`] as const;
-
-    return aliasPaths.map((path) => (rootRoute: RootRoute) =>
+  return aliasMappings.flatMap(({ sourcePrefix, targetPrefix }) =>
+    [sourcePrefix, `${sourcePrefix}/new`, `${sourcePrefix}/$contentId`].map((path) => (rootRoute: RootRoute) =>
       createRoute({
         getParentRoute: () => rootRoute,
         path,
@@ -257,6 +253,6 @@ export const createLegacyContentAliasFactories = (
         },
         component: () => null,
       })
-    );
-  });
+    )
+  );
 };

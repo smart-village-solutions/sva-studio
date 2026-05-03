@@ -61,32 +61,6 @@ const expectInterfacesShellReady = async (page: Page, timeout = 20_000) => {
     .toBe(true);
 };
 
-const expectHydratedPlaywrightShell = async (page: Page, timeout = 20_000) => {
-  await expect
-    .poll(
-      async () => ({
-        dataTheme: await page.locator('html').getAttribute('data-theme'),
-        hasRouterHook: await page
-          .evaluate(
-            () =>
-              Boolean(
-                (
-                  window as typeof window & {
-                    __SVA_PLAYWRIGHT_ROUTER__?: unknown;
-                  }
-                ).__SVA_PLAYWRIGHT_ROUTER__
-              )
-          )
-          .catch(() => false),
-      }),
-      { timeout }
-    )
-    .toEqual({
-      dataTheme: 'sva-default',
-      hasRouterHook: true,
-    });
-};
-
 const mockAuthenticatedPluginShell = async (page: Page) => {
   await page.route('**/auth/me', async (route) => {
     await route.fulfill({
@@ -217,7 +191,7 @@ test('interfaces page uses the real /_server transport during overview load', as
   const pageErrors: string[] = [];
   const serverFnResponses = captureServerFnResponses(page);
 
-  await mockAuthenticatedInterfacesShell(page);
+  await mockAuthenticatedPluginShell(page);
   await page.route('**/_server/**', async (route) => {
     if (route.request().method() === 'GET') {
       await route.fulfill({
@@ -280,6 +254,11 @@ const navigateWithPlaywrightRouter = async (page: Page, to: string) => {
 };
 
 test('authenticated client navigation to /admin/news renders the host-owned content route', async ({ page }) => {
+  const pageErrors: string[] = [];
+  const consoleErrors: string[] = [];
+  const requestFailures: string[] = [];
+  const scriptRequests: string[] = [];
+  const observedRequests: string[] = [];
   await mockAuthenticatedPluginShell(page);
 
   page.on('pageerror', (error) => {

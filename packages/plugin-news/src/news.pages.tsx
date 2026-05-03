@@ -118,33 +118,6 @@ const resolveNewsErrorMessage = (pt: ReturnType<typeof usePluginTranslation>, er
   return pt(fallbackKey);
 };
 
-type ListSearchState = Record<string, unknown>;
-
-type ListPaginationState = Readonly<{
-  page: number;
-  pageSize: number;
-  hasNextPage: boolean;
-}>;
-
-type ListPaginationNavProps = Readonly<{
-  ariaLabel: string;
-  pageLabel: string;
-  previousLabel: string;
-  nextLabel: string;
-  pagination: ListPaginationState;
-  onPageChange: (page: number) => void;
-}>;
-
-const updateListSearchPage = (
-  current: ListSearchState,
-  page: number,
-  pageSize: number
-): ListSearchState => ({
-  ...current,
-  page,
-  pageSize,
-});
-
 const persistFlashMessage = (code: FlashMessageCode) => {
   if (typeof globalThis.window === 'undefined') {
     return;
@@ -311,72 +284,6 @@ const firstBlockSummary = (item: NewsContentItem) => {
 
 const categorySummary = (item: NewsContentItem) =>
   item.categoryName ?? item.categories?.map((category) => category.name).join(', ') ?? item.payload.category ?? '—';
-
-const NewsListEditAction = ({ id, label }: Readonly<{ id: string; label: string }>) => (
-  <Button asChild variant="outline" size="sm">
-    <Link to="/admin/news/$id" params={{ id }}>
-      {label}
-    </Link>
-  </Button>
-);
-
-const NewsPaginationNav = ({
-  ariaLabel,
-  pageLabel,
-  previousLabel,
-  nextLabel,
-  pagination,
-  onPageChange,
-}: ListPaginationNavProps) => (
-  <nav aria-label={ariaLabel} className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
-    <p key={pagination.page} aria-live="polite" className="animate-pagination-active">
-      {pageLabel}
-    </p>
-    <div className="flex items-center gap-2">
-      <Button
-        type="button"
-        size="sm"
-        variant="outline"
-        disabled={pagination.page <= 1}
-        onClick={() => onPageChange(Math.max(1, pagination.page - 1))}
-      >
-        {previousLabel}
-      </Button>
-      <Button
-        type="button"
-        size="sm"
-        variant="outline"
-        disabled={!pagination.hasNextPage}
-        onClick={() => onPageChange(pagination.page + 1)}
-      >
-        {nextLabel}
-      </Button>
-    </div>
-  </nav>
-);
-
-const createNewsListColumns = (pt: ReturnType<typeof usePluginTranslation>) => [
-  {
-    id: 'title',
-    header: pt('fields.title'),
-    cell: (item: NewsContentItem) => (
-      <div>
-        <div className="font-medium">{item.title}</div>
-        <div className="mt-1 line-clamp-2 text-xs text-muted-foreground">{firstBlockSummary(item)}</div>
-      </div>
-    ),
-  },
-  {
-    id: 'categoryName',
-    header: pt('fields.categoryName'),
-    cell: categorySummary,
-  },
-  {
-    id: 'updatedAt',
-    header: pt('fields.updatedAt'),
-    cell: (item: NewsContentItem) => formatDate(item.updatedAt),
-  },
-];
 
 const NewsForm = ({
   mode,
@@ -1044,18 +951,6 @@ export const NewsListPage = () => {
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [flashMessage, setFlashMessage] = React.useState<FlashMessageCode | null>(null);
-
-  const handlePageChange = React.useCallback(
-    (nextPage: number) => {
-      Promise.resolve(
-        navigate({
-          to: '/admin/news',
-          search: (current: ListSearchState) => updateListSearchPage(current, nextPage, result.pagination.pageSize),
-        })
-      ).catch(() => undefined);
-    },
-    [navigate, result.pagination.pageSize]
-  );
 
   React.useEffect(() => {
     setFlashMessage(consumeFlashMessage());

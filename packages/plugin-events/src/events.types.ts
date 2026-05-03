@@ -68,11 +68,6 @@ export type EventContentItem = EventFormInput & {
   readonly updatedAt: string;
 };
 
-export type EventListResult = {
-  readonly data: readonly EventContentItem[];
-  readonly pagination: EventListPagination;
-};
-
 export type PoiSelectItem = {
   readonly id: string;
   readonly name: string;

@@ -109,69 +109,6 @@ const LazyInterfacesPage = React.lazy(async () => {
 
 const InterfacesRoutePage = () => renderLazyPage(LazyInterfacesPage);
 
-const LazyNewsListPage = React.lazy(async () => {
-  const mod = await import('@sva/plugin-news');
-  return { default: mod.NewsListPage };
-});
-
-const NewsListRoutePage = () => renderLazyPage(LazyNewsListPage);
-
-const LazyNewsCreatePage = React.lazy(async () => {
-  const mod = await import('@sva/plugin-news');
-  return { default: mod.NewsCreatePage };
-});
-
-const NewsCreateRoutePage = () => renderLazyPage(LazyNewsCreatePage);
-
-const LazyNewsEditPage = React.lazy(async () => {
-  const mod = await import('@sva/plugin-news');
-  return { default: mod.NewsEditPage };
-});
-
-const NewsEditRoutePage = () => renderLazyPage(LazyNewsEditPage);
-
-const LazyEventsListPage = React.lazy(async () => {
-  const mod = await import('@sva/plugin-events');
-  return { default: mod.EventsListPage };
-});
-
-const EventsListRoutePage = () => renderLazyPage(LazyEventsListPage);
-
-const LazyEventsCreatePage = React.lazy(async () => {
-  const mod = await import('@sva/plugin-events');
-  return { default: mod.EventsCreatePage };
-});
-
-const EventsCreateRoutePage = () => renderLazyPage(LazyEventsCreatePage);
-
-const LazyEventsEditPage = React.lazy(async () => {
-  const mod = await import('@sva/plugin-events');
-  return { default: mod.EventsEditPage };
-});
-
-const EventsEditRoutePage = () => renderLazyPage(LazyEventsEditPage);
-
-const LazyPoiListPage = React.lazy(async () => {
-  const mod = await import('@sva/plugin-poi');
-  return { default: mod.PoiListPage };
-});
-
-const PoiListRoutePage = () => renderLazyPage(LazyPoiListPage);
-
-const LazyPoiCreatePage = React.lazy(async () => {
-  const mod = await import('@sva/plugin-poi');
-  return { default: mod.PoiCreatePage };
-});
-
-const PoiCreateRoutePage = () => renderLazyPage(LazyPoiCreatePage);
-
-const LazyPoiEditPage = React.lazy(async () => {
-  const mod = await import('@sva/plugin-poi');
-  return { default: mod.PoiEditPage };
-});
-
-const PoiEditRoutePage = () => renderLazyPage(LazyPoiEditPage);
-
 const LazyGroupsPage = React.lazy(async () => {
   const mod = await import('../routes/admin/groups/-groups-page');
   return { default: mod.GroupsPage };
@@ -275,6 +212,7 @@ export const appRouteBindings: StudioAppRouteBindings = {
   poiDetail: PoiEditPage,
   poiEditor: PoiCreatePage,
   media: MediaPage,
+  adminMedia: MediaPage,
   categories: CategoriesPlaceholderRoutePage,
   app: AppPlaceholderRoutePage,
   interfaces: InterfacesRoutePage,

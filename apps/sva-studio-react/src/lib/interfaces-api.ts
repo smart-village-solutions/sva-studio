@@ -2,10 +2,9 @@ import { createServerFn } from '@tanstack/react-start';
 
 import {
   type SaveSvaMainserverInterfaceSettingsInput,
-  type SvaMainserverConnectionStatus,
-  type SvaMainserverInstanceConfig,
   type SvaMainserverInterfacesOverview,
 } from '@sva/sva-mainserver/server';
+import type { SvaMainserverConnectionStatus, SvaMainserverInstanceConfig } from '@sva/sva-mainserver';
 
 import { extractErrorDiagnostics, isRecord, readErrorMessage } from './error-message-utils';
 import { hasInterfacesAccessRole } from './iam-admin-access';
@@ -39,54 +38,6 @@ const isSvaMainserverInstanceConfig = (value: unknown): value is SvaMainserverIn
     typeof value.graphqlBaseUrl === 'string' &&
     typeof value.oauthTokenUrl === 'string' &&
     typeof value.enabled === 'boolean'
-  );
-};
-
-const isSvaMainserverConnectionStatus = (value: unknown): value is SvaMainserverConnectionStatus => {
-  if (!isRecord(value)) {
-    return false;
-  }
-
-  if (value.status !== 'connected' && value.status !== 'error') {
-    return false;
-  }
-
-  if (typeof value.checkedAt !== 'string') {
-    return false;
-  }
-
-  if (value.config !== undefined && value.config !== null && !isSvaMainserverInstanceConfig(value.config)) {
-    return false;
-  }
-
-  if (value.queryRootTypename !== undefined && typeof value.queryRootTypename !== 'string') {
-    return false;
-  }
-
-  if (value.mutationRootTypename !== undefined && typeof value.mutationRootTypename !== 'string') {
-    return false;
-  }
-
-  if (value.errorCode !== undefined && typeof value.errorCode !== 'string') {
-    return false;
-  }
-
-  if (value.errorMessage !== undefined && typeof value.errorMessage !== 'string') {
-    return false;
-  }
-
-  return true;
-};
-
-const isInterfacesOverviewModel = (payload: unknown): payload is InterfacesOverviewModel => {
-  if (!isRecord(payload)) {
-    return false;
-  }
-
-  return (
-    typeof payload.instanceId === 'string' &&
-    (payload.config === null || payload.config === undefined || isSvaMainserverInstanceConfig(payload.config)) &&
-    isSvaMainserverConnectionStatus(payload.status)
   );
 };
 
@@ -211,25 +162,6 @@ const createClientError = (payload: ErrorPayload | null, fallbackMessage: string
   return new Error(message, {
     cause: payload ?? undefined,
   });
-};
-
-const getOverviewFallbackStatus = (
-  response: Response,
-  payload: ErrorPayload | null
-): SvaMainserverConnectionStatus => {
-  if (response.status === 401 || payload?.error === 'unauthorized') {
-    return createErrorStatus('unauthorized');
-  }
-
-  if (response.status === 403 || payload?.error === 'forbidden') {
-    return createErrorStatus('forbidden');
-  }
-
-  if (payload && isSvaMainserverErrorCode(payload.error)) {
-    return createErrorStatus(payload.error);
-  }
-
-  return createErrorStatus('network_error');
 };
 
 type ServerRuntimeLogger = Awaited<typeof import('@sva/server-runtime')> extends {

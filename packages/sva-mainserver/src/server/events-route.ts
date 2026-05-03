@@ -12,22 +12,16 @@ import type {
   SvaMainserverContactInput,
   SvaMainserverDateInput,
   SvaMainserverEventInput,
-  SvaMainserverPoiInput,
   SvaMainserverWebUrlInput,
 } from '../types.js';
 import { SvaMainserverError } from './errors.js';
 import { parseMainserverListQuery } from './list-pagination.js';
 import {
   createSvaMainserverEvent,
-  createSvaMainserverPoi,
   deleteSvaMainserverEvent,
-  deleteSvaMainserverPoi,
   getSvaMainserverEvent,
-  getSvaMainserverPoi,
   listSvaMainserverEvents,
-  listSvaMainserverPoi,
   updateSvaMainserverEvent,
-  updateSvaMainserverPoi,
 } from './service.js';
 
 const EVENTS_CONTENT_TYPE = 'events.event-record';
@@ -384,90 +378,6 @@ const parseEventInput = async (request: Request): Promise<SvaMainserverEventInpu
   return isResponse(relations) ? relations : buildEventInput(body, title, relations);
 };
 
-const parsePoiRelations = (
-  body: Record<string, unknown>
-): ParsedValue<{
-  readonly categories: readonly SvaMainserverCategoryInput[] | undefined;
-  readonly addresses: readonly SvaMainserverAddressInput[] | undefined;
-  readonly contact: SvaMainserverContactInput | undefined;
-  readonly webUrls: readonly SvaMainserverWebUrlInput[] | undefined;
-  readonly tags: readonly string[] | undefined;
-}> => {
-  const categories = parseCategories(body.categories);
-  if (isResponse(categories)) {
-    return categories;
-  }
-
-  const addresses = parseAddressList(body.addresses);
-  if (isResponse(addresses)) {
-    return addresses;
-  }
-
-  const contact = parseContact(body.contact);
-  if (isResponse(contact)) {
-    return contact;
-  }
-
-  const webUrls = parseWebUrls(body.webUrls);
-  if (isResponse(webUrls)) {
-    return webUrls;
-  }
-
-  const tags = parseTags(body.tags);
-  if (isResponse(tags)) {
-    return tags;
-  }
-
-  return {
-    categories,
-    addresses,
-    contact,
-    webUrls,
-    tags,
-  };
-};
-
-const buildPoiInput = (
-  body: Record<string, unknown>,
-  name: string,
-  relations: {
-    readonly categories: readonly SvaMainserverCategoryInput[] | undefined;
-    readonly addresses: readonly SvaMainserverAddressInput[] | undefined;
-    readonly contact: SvaMainserverContactInput | undefined;
-    readonly webUrls: readonly SvaMainserverWebUrlInput[] | undefined;
-    readonly tags: readonly string[] | undefined;
-  }
-): SvaMainserverPoiInput => ({
-  name,
-  ...(readString(body.description) ? { description: readString(body.description) } : {}),
-  ...(readString(body.mobileDescription) ? { mobileDescription: readString(body.mobileDescription) } : {}),
-  ...(readString(body.externalId) ? { externalId: readString(body.externalId) } : {}),
-  ...(readString(body.keywords) ? { keywords: readString(body.keywords) } : {}),
-  ...(readBoolean(body.active) !== undefined ? { active: readBoolean(body.active) } : {}),
-  ...(readString(body.categoryName) ? { categoryName: readString(body.categoryName) } : {}),
-  ...(body.payload !== undefined ? { payload: body.payload } : {}),
-  ...(relations.categories ? { categories: relations.categories } : {}),
-  ...(relations.addresses ? { addresses: relations.addresses } : {}),
-  ...(relations.contact ? { contact: relations.contact } : {}),
-  ...(relations.webUrls ? { webUrls: relations.webUrls } : {}),
-  ...(relations.tags ? { tags: relations.tags } : {}),
-});
-
-const parsePoiInput = async (request: Request): Promise<SvaMainserverPoiInput | Response> => {
-  const body = await parseJsonObjectBody(request, 'POI-Daten müssen als Objekt gesendet werden.');
-  if (isResponse(body)) {
-    return body;
-  }
-
-  const name = readString(body.name);
-  if (!name) {
-    return errorJson(400, 'invalid_request', 'Der POI-Name ist erforderlich.');
-  }
-
-  const relations = parsePoiRelations(body);
-  return isResponse(relations) ? relations : buildPoiInput(body, name, relations);
-};
-
 const toMainserverErrorResponse = (error: unknown): Response => {
   if (error instanceof SvaMainserverError) {
     const status =
@@ -552,10 +462,7 @@ const handleCollectionRead = async (
   }
 
   const listQuery = parseMainserverListQuery(request);
-  const data =
-    route.contentKind === 'events'
-      ? await listSvaMainserverEvents({ ...actor, ...listQuery })
-      : await listSvaMainserverPoi({ ...actor, ...listQuery });
+  const data = await listSvaMainserverEvents({ ...actor, ...listQuery });
   logSuccess(`mainserver_${route.contentKind}_list`);
   return json(data);
 };
@@ -570,10 +477,7 @@ const handleItemRead = async (
     return actor;
   }
 
-  const data =
-    route.contentKind === 'events'
-      ? await getSvaMainserverEvent({ ...actor, eventId: route.itemId })
-      : await getSvaMainserverPoi({ ...actor, poiId: route.itemId });
+  const data = await getSvaMainserverEvent({ ...actor, eventId: route.itemId });
   logSuccess(`mainserver_${route.contentKind}_detail`, route.itemId);
   return json({ data });
 };
@@ -604,16 +508,6 @@ const createEventsContent = async (request: Request, actor: ContentActor) => {
   return { data };
 };
 
-const createPoiContent = async (request: Request, actor: ContentActor) => {
-  const parsed = await parsePoiInput(request);
-  if (isResponse(parsed)) {
-    return parsed;
-  }
-
-  const data = await createSvaMainserverPoi({ ...actor, poi: parsed });
-  return { data };
-};
-
 const handleCollectionCreate = async (
   request: Request,
   route: Extract<RouteMatch, { readonly kind: 'collection' }>,
@@ -626,10 +520,7 @@ const handleCollectionCreate = async (
     return actor;
   }
 
-  const result =
-    route.contentKind === 'events'
-      ? await createEventsContent(request, actor)
-      : await createPoiContent(request, actor);
+  const result = await createEventsContent(request, actor);
   if (isResponse(result)) {
     return result;
   }
@@ -648,16 +539,6 @@ const updateEventsContent = async (request: Request, actor: ContentActor, itemId
   return { data };
 };
 
-const updatePoiContent = async (request: Request, actor: ContentActor, itemId: string) => {
-  const parsed = await parsePoiInput(request);
-  if (isResponse(parsed)) {
-    return parsed;
-  }
-
-  const data = await updateSvaMainserverPoi({ ...actor, poiId: itemId, poi: parsed });
-  return { data };
-};
-
 const handleItemUpdate = async (
   request: Request,
   route: Extract<RouteMatch, { readonly kind: 'item' }>,
@@ -670,10 +551,7 @@ const handleItemUpdate = async (
     return actor;
   }
 
-  const result =
-    route.contentKind === 'events'
-      ? await updateEventsContent(request, actor, route.itemId)
-      : await updatePoiContent(request, actor, route.itemId);
+  const result = await updateEventsContent(request, actor, route.itemId);
   if (isResponse(result)) {
     return result;
   }
@@ -694,10 +572,7 @@ const handleItemDelete = async (
     return actor;
   }
 
-  const data =
-    route.contentKind === 'events'
-      ? await deleteSvaMainserverEvent({ ...actor, eventId: route.itemId })
-      : await deleteSvaMainserverPoi({ ...actor, poiId: route.itemId });
+  const data = await deleteSvaMainserverEvent({ ...actor, eventId: route.itemId });
   logSuccess(`mainserver_${route.contentKind}_delete`, route.itemId);
   return json({ data });
 };

@@ -318,6 +318,143 @@ describe('mainserver content route contracts', () => {
     );
   });
 
+  it('updates events with normalized optional fields and nested relations', async () => {
+    mockAuthorizedMutation();
+    state.updateSvaMainserverEvent.mockResolvedValue({ id: 'event-1' });
+
+    const response = await dispatchSvaMainserverEventsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/events/event-1', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          title: ' Feierabendmarkt ',
+          description: ' Regionales Angebot ',
+          externalId: 'event-ext-2',
+          keywords: ' markt ',
+          repeat: false,
+          categoryName: 'Freizeit',
+          dates: [
+            {
+              weekday: ' Freitag ',
+              dateStart: '2026-09-11',
+              timeDescription: ' abends ',
+              useOnlyTimeDescription: true,
+            },
+          ],
+          categories: [{ name: ' Wochenmarkt ', payload: { icon: 'bag' } }],
+          addresses: [{ addition: ' Innenhof ', city: 'Musterhausen', geoLocation: { latitude: '52.6', longitude: '13.5' } }],
+          contact: {
+            firstName: ' Eva ',
+            email: 'markt@example.invalid',
+            webUrls: [{ url: 'https://example.invalid/markt', description: ' Details ' }],
+          },
+          urls: [{ url: 'https://example.invalid/programm', description: ' Programm ' }],
+          tags: [' regional ', '', null],
+          recurring: 'monthly',
+          recurringType: 'date',
+          recurringInterval: '2',
+          recurringWeekdays: [' fr ', '', false],
+          pointOfInterestId: 'poi-9',
+          pushNotification: false,
+        }),
+      })
+    );
+
+    expect(response?.status).toBe(200);
+    expect(state.updateSvaMainserverEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventId: 'event-1',
+        event: {
+          title: 'Feierabendmarkt',
+          description: 'Regionales Angebot',
+          externalId: 'event-ext-2',
+          keywords: 'markt',
+          repeat: false,
+          categoryName: 'Freizeit',
+          dates: [
+            {
+              weekday: 'Freitag',
+              dateStart: '2026-09-11',
+              timeDescription: 'abends',
+              useOnlyTimeDescription: true,
+            },
+          ],
+          categories: [{ name: 'Wochenmarkt', payload: { icon: 'bag' } }],
+          addresses: [{ addition: 'Innenhof', city: 'Musterhausen', geoLocation: { latitude: 52.6, longitude: 13.5 } }],
+          contacts: [
+            {
+              firstName: 'Eva',
+              email: 'markt@example.invalid',
+              webUrls: [{ url: 'https://example.invalid/markt', description: 'Details' }],
+            },
+          ],
+          urls: [{ url: 'https://example.invalid/programm', description: 'Programm' }],
+          tags: ['regional'],
+          recurring: 'monthly',
+          recurringType: 'date',
+          recurringInterval: '2',
+          recurringWeekdays: ['fr'],
+          pointOfInterestId: 'poi-9',
+          pushNotification: false,
+        },
+      })
+    );
+  });
+
+  it('creates POI with normalized optional fields, payload, contact, URLs and addresses', async () => {
+    mockAuthorizedMutation();
+    state.createSvaMainserverPoi.mockResolvedValue({ id: 'poi-1' });
+
+    const response = await dispatchSvaMainserverPoiRequest(
+      createRequest('https://studio.test/api/v1/mainserver/poi', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: ' Bürgeramt ',
+          description: ' Zentrale Annahme ',
+          mobileDescription: ' Kurztext ',
+          externalId: 'poi-ext-2',
+          keywords: ' service ',
+          active: true,
+          categoryName: 'Service',
+          payload: { source: 'portal' },
+          categories: [{ name: ' Beratung ', children: [{ name: ' Anmeldung ' }] }],
+          addresses: [{ id: '7', street: 'Rathausgasse 2', city: 'Musterhausen', geoLocation: { latitude: '52.4', longitude: '13.2' } }],
+          contact: {
+            lastName: 'Team',
+            phone: '+49 30 555',
+            webUrls: [{ url: 'https://example.invalid/buergerservice', description: ' Kontakt ' }],
+          },
+          webUrls: [{ url: 'https://example.invalid/buergeramt', description: ' Infos ' }],
+          tags: [' amt ', '', 1],
+        }),
+      })
+    );
+
+    expect(response?.status).toBe(201);
+    expect(state.createSvaMainserverPoi).toHaveBeenCalledWith(
+      expect.objectContaining({
+        poi: {
+          name: 'Bürgeramt',
+          description: 'Zentrale Annahme',
+          mobileDescription: 'Kurztext',
+          externalId: 'poi-ext-2',
+          keywords: 'service',
+          active: true,
+          categoryName: 'Service',
+          payload: { source: 'portal' },
+          categories: [{ name: 'Beratung', children: [{ name: 'Anmeldung' }] }],
+          addresses: [{ id: 7, street: 'Rathausgasse 2', city: 'Musterhausen', geoLocation: { latitude: 52.4, longitude: 13.2 } }],
+          contact: {
+            lastName: 'Team',
+            phone: '+49 30 555',
+            webUrls: [{ url: 'https://example.invalid/buergerservice', description: 'Kontakt' }],
+          },
+          webUrls: [{ url: 'https://example.invalid/buergeramt', description: 'Infos' }],
+          tags: ['amt'],
+        },
+      })
+    );
+  });
+
   it('updates POI with parsed optional fields, payload, contact, URLs and addresses', async () => {
     mockAuthorizedMutation();
     state.updateSvaMainserverPoi.mockResolvedValue({ id: 'poi-1' });
@@ -429,6 +566,7 @@ describe('mainserver content route contracts', () => {
   it.each([
     ['non-object event body', 'events', { method: 'POST', body: JSON.stringify(null) }],
     ['missing event title', 'events', { method: 'POST', body: JSON.stringify({ description: 'ohne Titel' }) }],
+    ['non-object poi body', 'poi', { method: 'POST', body: JSON.stringify(null) }],
     ['missing POI name', 'poi', { method: 'POST', body: JSON.stringify({ description: 'ohne Name' }) }],
     ['non-list POI URLs', 'poi', { method: 'POST', body: JSON.stringify({ name: 'Rathaus', webUrls: 'https://bad' }) }],
     [

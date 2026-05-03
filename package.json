@@ -123,6 +123,8 @@
       "h3": "2.0.1-rc.20",
       "minimatch": "10.2.3",
       "axios": "1.15.2",
+      "follow-redirects": "1.16.0",
+      "postcss": "8.5.11",
       "protobufjs@<7.5.5": "7.5.5",
       "rollup": "4.59.0",
       "srvx": "0.11.15",

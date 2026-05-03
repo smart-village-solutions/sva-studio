@@ -1,8 +1,8 @@
+import { StudioDataTable, StudioListPageTemplate, type StudioColumnDef } from '@sva/studio-ui-react';
 import { Link, useLocation, useNavigate, useParams } from '@tanstack/react-router';
 import React from 'react';
 
-import { StudioDataTable, type StudioColumnDef } from '../../../components/StudioDataTable';
-import { StudioListPageTemplate } from '../../../components/StudioListPageTemplate';
+import { createStudioDataTableLabels } from '../../../components/studio-data-table-labels';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
@@ -113,6 +113,7 @@ const formatMediaRole = (role: string): string =>
   role in mediaRoleKeyByValue ? t(mediaRoleKeyByValue[role as keyof typeof mediaRoleKeyByValue]) : role;
 
 const MediaLibraryPage = () => {
+  const studioDataTableLabels = createStudioDataTableLabels();
   const [search, setSearch] = React.useState('');
   const [visibility, setVisibility] = React.useState<MediaLibraryFilter>('all');
   const mediaApi = useMediaLibrary({ search: search.trim() || undefined, visibility });
@@ -228,6 +229,7 @@ const MediaLibraryPage = () => {
 
         <StudioDataTable
           ariaLabel={t('media.table.ariaLabel')}
+          labels={studioDataTableLabels}
           caption={t('media.table.caption')}
           columns={columns}
           data={mediaApi.assets}

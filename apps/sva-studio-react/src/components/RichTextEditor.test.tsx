@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { sanitizeLegalTextHtml } from '@sva/iam-governance/legal-text-sanitize-html';
 import { RichTextEditor } from './RichTextEditor';
 
 describe('RichTextEditor', () => {
@@ -123,6 +124,10 @@ describe('RichTextEditor', () => {
     });
 
     expect(onChange).toHaveBeenLastCalledWith('<p>Neu</p>');
+  });
+
+  it('uses the browser-safe legal text sanitizer entry', () => {
+    expect(sanitizeLegalTextHtml('<p>Hallo</p><script>alert(1)</script>')).toBe('<p>Hallo</p>');
   });
 
   it('exposes textbox semantics for keyboard and assistive technology', () => {

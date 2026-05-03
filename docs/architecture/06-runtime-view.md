@@ -71,12 +71,13 @@ Fehlerpfad:
 4. Der Host wendet den registrierten Plugin-Guard an, zum Beispiel `news.read`, `events.read` oder `poi.read`, und rendert optional die spezialisierte Plugin-Fläche innerhalb der Host-Shell.
 5. Die Fachlisten rufen ihre Host-Fassaden auf: `/api/v1/mainserver/news`, `/api/v1/mainserver/events` oder `/api/v1/mainserver/poi`; lokale IAM-Contents werden nicht mehr produktiv gelesen.
 6. Die Host-Fassaden delegieren serverseitig an `@sva/sva-mainserver`, liefern nur die angeforderte Seite und serialisieren `pagination.page`, `pagination.pageSize` sowie `pagination.hasNextPage`.
-7. Die Editoren senden Create-, Update- und Delete-Requests an die jeweilige Fassade und Detailroute.
-8. Die App-Fassade prüft Session, `instanceId`, plugin-spezifische IAM-Permission und Mainserver-Credentials serverseitig.
-9. `@sva/sva-mainserver/server` führt typisierte GraphQL-Operationen für News, Events und POI mit Benutzer-Credentials aus.
-10. News nutzt das vollständige Mainserver-Modell mit dedizierten Feldern; Events und POI nutzen eigene Mapping-Adapter für Termine, Adressen, Kontakte, URLs, Medien, Preise, Barrierefreiheit, Tags und POI-Bezug.
-11. Es gibt keinen Dual-Write und keine Legacy-Migration in lokale IAM-Contents.
-12. Nach erfolgreichem Speichern oder Löschen zeigt die host-owned Route Statusfeedback und navigiert zurück zur jeweiligen Admin-Liste.
+7. `apps/sva-studio-react/src/server.ts` bleibt bewusst Owner für Request-Matching, Dispatch-Reihenfolge und TanStack-Start-/Nitro-Transport, während die fachlichen News-, Event-, POI- und Interfaces-Verträge in Packages liegen.
+8. Die Editoren senden Create-, Update- und Delete-Requests an die jeweilige Fassade und Detailroute.
+9. Die App-Fassade prüft Session, `instanceId`, plugin-spezifische IAM-Permission und Mainserver-Credentials serverseitig.
+10. `@sva/sva-mainserver/server` führt typisierte GraphQL-Operationen für News, Events und POI mit Benutzer-Credentials aus.
+11. News nutzt das vollständige Mainserver-Modell mit dedizierten Feldern; Events und POI nutzen eigene Mapping-Adapter für Termine, Adressen, Kontakte, URLs, Medien, Preise, Barrierefreiheit, Tags und POI-Bezug.
+12. Es gibt keinen Dual-Write und keine Legacy-Migration in lokale IAM-Contents.
+13. Nach erfolgreichem Speichern oder Löschen zeigt die host-owned Route Statusfeedback und navigiert zurück zur jeweiligen Admin-Liste.
 
 Fehlerpfad:
 

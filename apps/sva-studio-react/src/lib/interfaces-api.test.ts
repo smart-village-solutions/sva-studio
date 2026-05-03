@@ -1,15 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
-  request: new Request('http://localhost'),
-  withAuthenticatedUser: vi.fn(),
-  getSvaMainserverConnectionStatus: vi.fn(),
-  loadSvaMainserverSettings: vi.fn(),
-  saveSvaMainserverSettings: vi.fn(),
+  request: new Request('http://localhost/interfaces'),
+  loadSvaMainserverInterfacesOverview: vi.fn(),
+  saveSvaMainserverInterfaceSettings: vi.fn(),
+  serverModuleLoads: 0,
+  contractModuleLoads: 0,
 }));
 
 vi.mock('@tanstack/react-start', () => ({
-  createServerFn: () => ({
+  createServerFn: (_options?: unknown) => ({
     inputValidator: () => ({
       handler: (handler: (input: { data: unknown }) => Promise<unknown>) => handler,
     }),
@@ -18,399 +18,86 @@ vi.mock('@tanstack/react-start', () => ({
 }));
 
 vi.mock('@tanstack/react-start/server', () => ({
+  ...(state.serverModuleLoads++, {}),
   getRequest: () => state.request,
 }));
 
-vi.mock('@sva/auth-runtime/server', () => ({
-  withAuthenticatedUser: state.withAuthenticatedUser,
-}));
-
 vi.mock('@sva/sva-mainserver/server', () => ({
-  getSvaMainserverConnectionStatus: state.getSvaMainserverConnectionStatus,
-  loadSvaMainserverSettings: state.loadSvaMainserverSettings,
-  saveSvaMainserverSettings: state.saveSvaMainserverSettings,
+  ...(state.contractModuleLoads++, {}),
+  loadSvaMainserverInterfacesOverview: state.loadSvaMainserverInterfacesOverview,
+  saveSvaMainserverInterfaceSettings: state.saveSvaMainserverInterfaceSettings,
 }));
 
-describe('interfaces.server', () => {
+describe('interfaces app adapter', () => {
   beforeEach(() => {
-    state.withAuthenticatedUser.mockReset();
-    state.getSvaMainserverConnectionStatus.mockReset();
-    state.loadSvaMainserverSettings.mockReset();
-    state.saveSvaMainserverSettings.mockReset();
+    vi.resetModules();
+    state.loadSvaMainserverInterfacesOverview.mockReset();
+    state.saveSvaMainserverInterfaceSettings.mockReset();
+    state.serverModuleLoads = 0;
+    state.contractModuleLoads = 0;
   });
 
-  it('loads interfaces overview for admin roles', async () => {
-    state.withAuthenticatedUser.mockImplementation(
-      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<Response>) =>
-        handler({
-          user: {
-            id: 'subject-1',
-            instanceId: 'de-musterhausen',
-            roles: ['app_manager'],
-          },
-        })
-    );
-    state.loadSvaMainserverSettings.mockResolvedValue({
+  it('keeps server-only modules out of eager module evaluation', async () => {
+    await import('./interfaces-api');
+
+    expect(state.serverModuleLoads).toBe(0);
+    expect(state.contractModuleLoads).toBe(0);
+  });
+
+  it('delegates overview loading to the package contract with the current request', async () => {
+    const overview = {
       instanceId: 'de-musterhausen',
-      providerKey: 'sva_mainserver',
-      graphqlBaseUrl: 'https://mainserver.example/graphql',
-      oauthTokenUrl: 'https://mainserver.example/oauth/token',
-      enabled: true,
-    });
-    state.getSvaMainserverConnectionStatus.mockResolvedValue({
-      status: 'connected',
-      checkedAt: '2026-03-15T11:00:00.000Z',
-    });
-
-    const { loadInterfacesOverview } = await import('./interfaces-api');
-
-    await expect(loadInterfacesOverview()).resolves.toMatchObject({
-      instanceId: 'de-musterhausen',
-      config: expect.objectContaining({ enabled: true }),
-      status: expect.objectContaining({ status: 'connected' }),
-    });
-  });
-
-  it('returns forbidden status for users without management role', async () => {
-    state.withAuthenticatedUser.mockImplementation(
-      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<Response>) =>
-        handler({
-          user: {
-            id: 'subject-1',
-            instanceId: 'de-musterhausen',
-            roles: ['editor'],
-          },
-        })
-    );
-
-    const { loadInterfacesOverview } = await import('./interfaces-api');
-
-    await expect(loadInterfacesOverview()).resolves.toMatchObject({
-      instanceId: 'de-musterhausen',
-      status: expect.objectContaining({
-        status: 'error',
-        errorCode: 'forbidden',
-      }),
-    });
-  });
-
-  it('returns a validation error when the session misses an instance context', async () => {
-    state.withAuthenticatedUser.mockImplementation(
-      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<Response>) =>
-        handler({
-          user: {
-            id: 'subject-1',
-            roles: ['system_admin'],
-          },
-        })
-    );
-
-    const { loadInterfacesOverview } = await import('./interfaces-api');
-
-    await expect(loadInterfacesOverview()).resolves.toMatchObject({
-      instanceId: '',
-      status: expect.objectContaining({
-        status: 'error',
-        errorCode: 'invalid_config',
-      }),
-    });
-  });
-
-  it('maps unauthorized auth responses to an unauthorized status', async () => {
-    state.withAuthenticatedUser.mockResolvedValue(
-      new Response(JSON.stringify({ error: 'unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' },
-      })
-    );
-
-    const { loadInterfacesOverview } = await import('./interfaces-api');
-
-    await expect(loadInterfacesOverview()).resolves.toMatchObject({
-      instanceId: '',
-      status: expect.objectContaining({
-        status: 'error',
-        errorCode: 'unauthorized',
-      }),
-    });
-  });
-
-  it('maps non-contract forbidden responses to a forbidden status', async () => {
-    state.withAuthenticatedUser.mockResolvedValue(
-      new Response(JSON.stringify({ error: 'forbidden' }), {
-        status: 403,
-        headers: { 'Content-Type': 'application/json' },
-      })
-    );
-
-    const { loadInterfacesOverview } = await import('./interfaces-api');
-
-    await expect(loadInterfacesOverview()).resolves.toMatchObject({
-      instanceId: '',
-      status: expect.objectContaining({
-        status: 'error',
-        errorCode: 'forbidden',
-      }),
-    });
-  });
-
-  it('maps load failures from the data layer to invalid_config', async () => {
-    state.withAuthenticatedUser.mockImplementation(
-      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<Response>) =>
-        handler({
-          user: {
-            id: 'subject-1',
-            instanceId: 'de-musterhausen',
-            roles: ['system_admin'],
-          },
-        })
-    );
-    state.loadSvaMainserverSettings.mockRejectedValue(new Error('db down'));
-
-    const { loadInterfacesOverview } = await import('./interfaces-api');
-
-    await expect(loadInterfacesOverview()).resolves.toMatchObject({
-      instanceId: 'de-musterhausen',
-      status: expect.objectContaining({
-        status: 'error',
-        errorCode: 'invalid_config',
-      }),
-    });
-  });
-
-  it('returns a sanitized network error when the connection check fails unexpectedly', async () => {
-    state.withAuthenticatedUser.mockImplementation(
-      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<Response>) =>
-        handler({
-          user: {
-            id: 'subject-1',
-            instanceId: 'de-musterhausen',
-            roles: ['system_admin'],
-          },
-        })
-    );
-    state.loadSvaMainserverSettings.mockResolvedValue(null);
-    state.getSvaMainserverConnectionStatus.mockRejectedValue({
-      response: {
-        data: {
-          message: 'secret backend detail',
-        },
+      config: null,
+      status: {
+        status: 'connected' as const,
+        checkedAt: '2026-05-03T17:00:00.000Z',
       },
-    });
+    };
+    state.loadSvaMainserverInterfacesOverview.mockResolvedValue(overview);
 
-    const { loadInterfacesOverview } = await import('./interfaces-api');
+    const { loadSvaMainserverInterfacesOverviewServerFn } = await import('./interfaces-api');
 
-    await expect(loadInterfacesOverview()).resolves.toMatchObject({
-      instanceId: 'de-musterhausen',
-      status: expect.objectContaining({
-        status: 'error',
-        errorCode: 'network_error',
-      }),
-    });
+    await expect(loadSvaMainserverInterfacesOverviewServerFn()).resolves.toEqual(overview);
+    expect(state.loadSvaMainserverInterfacesOverview).toHaveBeenCalledWith(state.request);
   });
 
-  it('falls back to a network error when the overview response shape is invalid', async () => {
-    state.withAuthenticatedUser.mockResolvedValue(
-      new Response(JSON.stringify({ instanceId: 'de-musterhausen', status: { foo: 'bar' } }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      })
-    );
-
-    const { loadInterfacesOverview } = await import('./interfaces-api');
-
-    await expect(loadInterfacesOverview()).resolves.toMatchObject({
-      instanceId: '',
-      status: expect.objectContaining({
-        status: 'error',
-        errorCode: 'network_error',
-      }),
-    });
-  });
-
-  it('saves mainserver settings for authorized users', async () => {
-    state.withAuthenticatedUser.mockImplementation(
-      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<Response>) =>
-        handler({
-          user: {
-            id: 'subject-1',
-            instanceId: 'de-musterhausen',
-            roles: ['system_admin'],
-          },
-        })
-    );
-    state.saveSvaMainserverSettings.mockResolvedValue({
+  it('exports the overview alias with the same server function binding', async () => {
+    const overview = {
       instanceId: 'de-musterhausen',
-      providerKey: 'sva_mainserver',
-      graphqlBaseUrl: 'https://mainserver.example/graphql',
-      oauthTokenUrl: 'https://mainserver.example/oauth/token',
-      enabled: true,
-    });
-
-    const { saveSvaMainserverInterfaceSettings } = await import('./interfaces-api');
-
-    await saveSvaMainserverInterfaceSettings({
-      data: {
-        graphqlBaseUrl: 'https://mainserver.example/graphql',
-        oauthTokenUrl: 'https://mainserver.example/oauth/token',
-        enabled: true,
+      config: null,
+      status: {
+        status: 'connected' as const,
+        checkedAt: '2026-05-03T17:00:00.000Z',
       },
-    });
+    };
+    state.loadSvaMainserverInterfacesOverview.mockResolvedValue(overview);
 
-    expect(state.saveSvaMainserverSettings).toHaveBeenCalledWith(
-      expect.objectContaining({
-        instanceId: 'de-musterhausen',
-        enabled: true,
-      })
-    );
+    const { loadInterfacesOverview } = await import('./interfaces-api');
+
+    await expect(loadInterfacesOverview()).resolves.toEqual(overview);
+    expect(state.loadSvaMainserverInterfacesOverview).toHaveBeenCalledWith(state.request);
   });
 
-  it('allows interface_manager users to save mainserver settings', async () => {
-    state.withAuthenticatedUser.mockImplementation(
-      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<Response>) =>
-        handler({
-          user: {
-            id: 'subject-1',
-            instanceId: 'de-musterhausen',
-            roles: ['interface_manager'],
-          },
-        })
-    );
-    state.saveSvaMainserverSettings.mockResolvedValue({
+  it('delegates saving to the package contract with request and payload', async () => {
+    const config = {
       instanceId: 'de-musterhausen',
       providerKey: 'sva_mainserver',
       graphqlBaseUrl: 'https://mainserver.example/graphql',
       oauthTokenUrl: 'https://mainserver.example/oauth/token',
       enabled: true,
-    });
-
-    const { saveSvaMainserverInterfaceSettings } = await import('./interfaces-api');
-
-    await expect(
-      saveSvaMainserverInterfaceSettings({
-        data: {
-          graphqlBaseUrl: 'https://mainserver.example/graphql',
-          oauthTokenUrl: 'https://mainserver.example/oauth/token',
-          enabled: true,
-        },
-      })
-    ).resolves.toMatchObject({
-      instanceId: 'de-musterhausen',
+    };
+    const payload = {
+      graphqlBaseUrl: 'https://mainserver.example/graphql',
+      oauthTokenUrl: 'https://mainserver.example/oauth/token',
       enabled: true,
+    };
+    state.saveSvaMainserverInterfaceSettings.mockResolvedValue(config);
+
+    const { saveSvaMainserverInterfaceSettings } = await import('./interfaces-api');
+
+    await expect(saveSvaMainserverInterfaceSettings({ data: payload })).resolves.toEqual(config);
+    expect(state.saveSvaMainserverInterfaceSettings).toHaveBeenCalledWith(state.request, {
+      data: payload,
     });
-
-    expect(state.saveSvaMainserverSettings).toHaveBeenCalledWith(
-      expect.objectContaining({
-        instanceId: 'de-musterhausen',
-        enabled: true,
-      })
-    );
-  });
-
-  it('sanitizes internal save errors before surfacing them to clients', async () => {
-    state.withAuthenticatedUser.mockImplementation(
-      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<Response>) =>
-        handler({
-          user: {
-            id: 'subject-1',
-            instanceId: 'de-musterhausen',
-            roles: ['system_admin'],
-          },
-        })
-    );
-    state.saveSvaMainserverSettings.mockRejectedValue(new Error('Error: boom\n    at save (/srv/app.ts:1:1)'));
-
-    const { saveSvaMainserverInterfaceSettings } = await import('./interfaces-api');
-
-    await expect(
-      saveSvaMainserverInterfaceSettings({
-        data: {
-          graphqlBaseUrl: 'https://mainserver.example/graphql',
-          oauthTokenUrl: 'https://mainserver.example/oauth/token',
-          enabled: true,
-        },
-      })
-    ).rejects.toThrow('network_error');
-  });
-
-  it('rejects save requests from users without interfaces permissions', async () => {
-    state.withAuthenticatedUser.mockImplementation(
-      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<Response>) =>
-        handler({
-          user: {
-            id: 'subject-1',
-            instanceId: 'de-musterhausen',
-            roles: ['editor'],
-          },
-        })
-    );
-
-    const { saveSvaMainserverInterfaceSettings } = await import('./interfaces-api');
-
-    await expect(
-      saveSvaMainserverInterfaceSettings({
-        data: {
-          graphqlBaseUrl: 'https://mainserver.example/graphql',
-          oauthTokenUrl: 'https://mainserver.example/oauth/token',
-          enabled: true,
-        },
-      })
-    ).rejects.toThrow('forbidden');
-  });
-
-  it('rejects save requests when the enabled flag is missing', async () => {
-    state.withAuthenticatedUser.mockImplementation(
-      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<Response>) =>
-        handler({
-          user: {
-            id: 'subject-1',
-            instanceId: 'de-musterhausen',
-            roles: ['system_admin'],
-          },
-        })
-    );
-
-    const { saveSvaMainserverInterfaceSettings } = await import('./interfaces-api');
-
-    await expect(
-      saveSvaMainserverInterfaceSettings({
-        data: {
-          graphqlBaseUrl: 'https://mainserver.example/graphql',
-          oauthTokenUrl: 'https://mainserver.example/oauth/token',
-        },
-      })
-    ).rejects.toThrow('invalid_config');
-
-    expect(state.saveSvaMainserverSettings).not.toHaveBeenCalled();
-  });
-
-  it('preserves invalid_config errors from settings validation with their affected field', async () => {
-    state.withAuthenticatedUser.mockImplementation(
-      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<Response>) =>
-        handler({
-          user: {
-            id: 'subject-1',
-            instanceId: 'de-musterhausen',
-            roles: ['system_admin'],
-          },
-        })
-    );
-    state.saveSvaMainserverSettings.mockRejectedValue({
-      code: 'invalid_config',
-      message: 'Die konfigurierte Upstream-URL graphql_base_url ist ungültig.',
-      statusCode: 400,
-    });
-
-    const { saveSvaMainserverInterfaceSettings } = await import('./interfaces-api');
-
-    await expect(
-      saveSvaMainserverInterfaceSettings({
-        data: {
-          graphqlBaseUrl: 'https://mainserver.example/graphql',
-          oauthTokenUrl: 'https://mainserver.example/oauth/token',
-          enabled: true,
-        },
-      })
-    ).rejects.toThrow('invalid_config');
   });
 });

@@ -31,7 +31,7 @@ vi.mock('@sva/server-runtime', () => ({
   getWorkspaceContext: state.getWorkspaceContext,
 }));
 
-vi.mock('@sva/sva-mainserver/server', () => ({
+vi.mock('./service.js', () => ({
   SvaMainserverError: class SvaMainserverError extends Error {
     public readonly code: string;
     public readonly statusCode?: number;
@@ -54,8 +54,9 @@ vi.mock('@sva/sva-mainserver/server', () => ({
   deleteSvaMainserverPoi: state.deleteSvaMainserverPoi,
 }));
 
-import { SvaMainserverError } from '@sva/sva-mainserver/server';
-import { dispatchMainserverEventsPoiRequest } from './mainserver-events-poi-api.server';
+import { SvaMainserverError } from './errors.js';
+import { dispatchSvaMainserverEventsRequest } from './events-route';
+import { dispatchSvaMainserverPoiRequest } from './poi-route';
 
 const ctx = {
   sessionId: 'session-1',
@@ -88,20 +89,20 @@ const mockAuthorizedMutation = () => {
   });
 };
 
-describe('dispatchMainserverEventsPoiRequest', () => {
+describe('mainserver content route contracts', () => {
   afterEach(() => {
     vi.resetAllMocks();
   });
 
   it('ignores unrelated routes', async () => {
-    const response = await dispatchMainserverEventsPoiRequest(createRequest('https://studio.test/api/v1/mainserver/news'));
+    const response = await dispatchSvaMainserverEventsRequest(createRequest('https://studio.test/api/v1/mainserver/news'));
 
     expect(response).toBeNull();
     expect(state.withAuthenticatedUser).not.toHaveBeenCalled();
   });
 
   it('ignores item routes with invalid percent encoding', async () => {
-    const response = await dispatchMainserverEventsPoiRequest(
+    const response = await dispatchSvaMainserverEventsRequest(
       createRequest('https://studio.test/api/v1/mainserver/events/%E0%A4%A')
     );
 
@@ -120,10 +121,10 @@ describe('dispatchMainserverEventsPoiRequest', () => {
       pagination: { page: 1, pageSize: 25, hasNextPage: false },
     });
 
-    const eventsResponse = await dispatchMainserverEventsPoiRequest(
+    const eventsResponse = await dispatchSvaMainserverEventsRequest(
       createRequest('https://studio.test/api/v1/mainserver/events')
     );
-    const poiResponse = await dispatchMainserverEventsPoiRequest(createRequest('https://studio.test/api/v1/mainserver/poi'));
+    const poiResponse = await dispatchSvaMainserverPoiRequest(createRequest('https://studio.test/api/v1/mainserver/poi'));
 
     expect(eventsResponse?.status).toBe(200);
     await expect(eventsResponse?.json()).resolves.toEqual({
@@ -160,10 +161,10 @@ describe('dispatchMainserverEventsPoiRequest', () => {
       pagination: { page: 1, pageSize: 25, hasNextPage: false },
     });
 
-    await dispatchMainserverEventsPoiRequest(
+    await dispatchSvaMainserverEventsRequest(
       createRequest('https://studio.test/api/v1/mainserver/events?page=-2&pageSize=13')
     );
-    await dispatchMainserverEventsPoiRequest(
+    await dispatchSvaMainserverPoiRequest(
       createRequest('https://studio.test/api/v1/mainserver/poi?page=abc&pageSize=101')
     );
 
@@ -186,10 +187,10 @@ describe('dispatchMainserverEventsPoiRequest', () => {
     state.getSvaMainserverEvent.mockResolvedValue({ id: 'event-1' });
     state.getSvaMainserverPoi.mockResolvedValue({ id: 'poi-1' });
 
-    const eventsResponse = await dispatchMainserverEventsPoiRequest(
+    const eventsResponse = await dispatchSvaMainserverEventsRequest(
       createRequest('https://studio.test/api/v1/mainserver/events/event-1')
     );
-    const poiResponse = await dispatchMainserverEventsPoiRequest(
+    const poiResponse = await dispatchSvaMainserverPoiRequest(
       createRequest('https://studio.test/api/v1/mainserver/poi/poi-1')
     );
 
@@ -207,7 +208,7 @@ describe('dispatchMainserverEventsPoiRequest', () => {
     mockAuthorizedMutation();
     state.createSvaMainserverEvent.mockResolvedValue({ id: 'event-1' });
 
-    const response = await dispatchMainserverEventsPoiRequest(
+    const response = await dispatchSvaMainserverEventsRequest(
       createRequest('https://studio.test/api/v1/mainserver/events', {
         method: 'POST',
         body: JSON.stringify({
@@ -321,7 +322,7 @@ describe('dispatchMainserverEventsPoiRequest', () => {
     mockAuthorizedMutation();
     state.updateSvaMainserverPoi.mockResolvedValue({ id: 'poi-1' });
 
-    const response = await dispatchMainserverEventsPoiRequest(
+    const response = await dispatchSvaMainserverPoiRequest(
       createRequest('https://studio.test/api/v1/mainserver/poi/poi-1', {
         method: 'PATCH',
         body: JSON.stringify({
@@ -370,10 +371,10 @@ describe('dispatchMainserverEventsPoiRequest', () => {
     state.deleteSvaMainserverEvent.mockResolvedValue({ id: 'event-1', deleted: true });
     state.deleteSvaMainserverPoi.mockResolvedValue({ id: 'poi-1', deleted: true });
 
-    const eventResponse = await dispatchMainserverEventsPoiRequest(
+    const eventResponse = await dispatchSvaMainserverEventsRequest(
       createRequest('https://studio.test/api/v1/mainserver/events/event-1', { method: 'DELETE' })
     );
-    const poiResponse = await dispatchMainserverEventsPoiRequest(
+    const poiResponse = await dispatchSvaMainserverPoiRequest(
       createRequest('https://studio.test/api/v1/mainserver/poi/poi-1', { method: 'DELETE' })
     );
 
@@ -391,7 +392,7 @@ describe('dispatchMainserverEventsPoiRequest', () => {
     state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
     state.validateCsrf.mockReturnValue(new Response('CSRF', { status: 403 }));
 
-    const response = await dispatchMainserverEventsPoiRequest(
+    const response = await dispatchSvaMainserverEventsRequest(
       createRequest('https://studio.test/api/v1/mainserver/events', {
         method: 'POST',
         body: JSON.stringify({ title: 'Stadtfest' }),
@@ -413,7 +414,7 @@ describe('dispatchMainserverEventsPoiRequest', () => {
       message: 'Forbidden',
     });
 
-    const response = await dispatchMainserverEventsPoiRequest(
+    const response = await dispatchSvaMainserverPoiRequest(
       createRequest('https://studio.test/api/v1/mainserver/poi/poi-1', {
         method: 'PATCH',
         body: JSON.stringify({ name: 'Rathaus' }),
@@ -463,9 +464,8 @@ describe('dispatchMainserverEventsPoiRequest', () => {
   ])('rejects invalid request payloads: %s', async (_label, path, init) => {
     mockAuthorizedMutation();
 
-    const response = await dispatchMainserverEventsPoiRequest(
-      createRequest(`https://studio.test/api/v1/mainserver/${path}`, init)
-    );
+    const dispatcher = path === 'events' ? dispatchSvaMainserverEventsRequest : dispatchSvaMainserverPoiRequest;
+    const response = await dispatcher(createRequest(`https://studio.test/api/v1/mainserver/${path}`, init));
 
     expect(response?.status).toBe(400);
     await expect(response?.json()).resolves.toMatchObject({ error: 'invalid_request' });
@@ -476,7 +476,7 @@ describe('dispatchMainserverEventsPoiRequest', () => {
   it('does not log create success when event payload validation fails', async () => {
     mockAuthorizedMutation();
 
-    const response = await dispatchMainserverEventsPoiRequest(
+    const response = await dispatchSvaMainserverEventsRequest(
       createRequest('https://studio.test/api/v1/mainserver/events', {
         method: 'POST',
         body: JSON.stringify({ description: 'ohne Titel' }),
@@ -493,7 +493,7 @@ describe('dispatchMainserverEventsPoiRequest', () => {
   it('does not log update success when poi payload validation fails', async () => {
     mockAuthorizedMutation();
 
-    const response = await dispatchMainserverEventsPoiRequest(
+    const response = await dispatchSvaMainserverPoiRequest(
       createRequest('https://studio.test/api/v1/mainserver/poi/poi-1', {
         method: 'PATCH',
         body: JSON.stringify({ description: 'ohne Name' }),
@@ -510,7 +510,7 @@ describe('dispatchMainserverEventsPoiRequest', () => {
   it('returns method-not-allowed for unsupported route methods', async () => {
     mockAuthorizedMutation();
 
-    const response = await dispatchMainserverEventsPoiRequest(
+    const response = await dispatchSvaMainserverEventsRequest(
       createRequest('https://studio.test/api/v1/mainserver/events', { method: 'PUT' })
     );
 
@@ -524,14 +524,14 @@ describe('dispatchMainserverEventsPoiRequest', () => {
   it('maps upstream and unexpected errors without leaking internal details', async () => {
     mockAuthorizedMutation();
     state.listSvaMainserverEvents.mockRejectedValueOnce(
-      new SvaMainserverError({ code: 'forbidden', message: 'Kein Zugriff' })
+      new SvaMainserverError({ code: 'forbidden', message: 'Kein Zugriff', statusCode: 403 })
     );
     state.listSvaMainserverEvents.mockRejectedValueOnce(new Error('database password leaked'));
 
-    const forbiddenResponse = await dispatchMainserverEventsPoiRequest(
+    const forbiddenResponse = await dispatchSvaMainserverEventsRequest(
       createRequest('https://studio.test/api/v1/mainserver/events')
     );
-    const internalResponse = await dispatchMainserverEventsPoiRequest(
+    const internalResponse = await dispatchSvaMainserverEventsRequest(
       createRequest('https://studio.test/api/v1/mainserver/events')
     );
 
@@ -548,7 +548,7 @@ describe('dispatchMainserverEventsPoiRequest', () => {
     mockAuthorizedMutation();
     state.updateSvaMainserverEvent.mockResolvedValue({ id: 'event-1' });
 
-    const response = await dispatchMainserverEventsPoiRequest(
+    const response = await dispatchSvaMainserverEventsRequest(
       createRequest('https://studio.test/api/v1/mainserver/events/event-1', {
         method: 'PATCH',
         body: JSON.stringify({
@@ -578,7 +578,7 @@ describe('dispatchMainserverEventsPoiRequest', () => {
     mockAuthorizedMutation();
     state.createSvaMainserverPoi.mockResolvedValue({ id: 'poi-1' });
 
-    const response = await dispatchMainserverEventsPoiRequest(
+    const response = await dispatchSvaMainserverPoiRequest(
       createRequest('https://studio.test/api/v1/mainserver/poi', {
         method: 'POST',
         body: JSON.stringify({
@@ -601,7 +601,7 @@ describe('dispatchMainserverEventsPoiRequest', () => {
   it('rejects invalid nested category children before GraphQL', async () => {
     mockAuthorizedMutation();
 
-    const response = await dispatchMainserverEventsPoiRequest(
+    const response = await dispatchSvaMainserverPoiRequest(
       createRequest('https://studio.test/api/v1/mainserver/poi', {
         method: 'POST',
         body: JSON.stringify({

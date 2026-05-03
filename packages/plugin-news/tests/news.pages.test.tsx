@@ -1,7 +1,12 @@
 import React from 'react';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { registerPluginTranslationResolver } from '@sva/plugin-sdk';
+import {
+  listHostMediaAssets,
+  listHostMediaReferencesByTarget,
+  registerPluginTranslationResolver,
+  replaceHostMediaReferences,
+} from '@sva/plugin-sdk';
 
 import { NewsCreatePage, NewsEditPage, NewsListPage } from '../src/news.pages.js';
 import { NewsApiError, createNews, deleteNews, getNews, listNews, updateNews } from '../src/news.api.js';
@@ -49,6 +54,101 @@ const navigateMock = vi.fn();
 const paramsMock = vi.fn(() => ({ contentId: 'news-1' }));
 const searchMock = vi.fn(() => ({ page: 1, pageSize: 25 }));
 
+const interpolate = (template: string, variables?: Record<string, string | number>) =>
+  template.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (match, key: string) => {
+    const value = variables?.[key];
+    return value === undefined ? match : String(value);
+  });
+
+const registerNewsTranslations = () => {
+  registerPluginTranslationResolver((key, variables) => {
+    const labels: Record<string, string> = {
+      'news.messages.loading': 'News werden geladen.',
+      'news.messages.loadError': 'News konnten nicht geladen werden.',
+      'news.messages.missingContent': 'Der angeforderte News-Eintrag konnte nicht geladen werden.',
+      'news.messages.saveError': 'News konnten nicht gespeichert werden.',
+      'news.messages.validationError': 'Bitte korrigieren Sie die markierten Felder.',
+      'news.messages.createSuccess': 'News-Eintrag wurde erstellt.',
+      'news.messages.updateSuccess': 'News-Eintrag wurde aktualisiert.',
+      'news.messages.deleteSuccess': 'News-Eintrag wurde gelöscht.',
+      'news.messages.deleteError': 'News-Eintrag konnte nicht gelöscht werden.',
+      'news.messages.errors.forbidden': 'Keine Berechtigung für Mainserver-News.',
+      'news.messages.errors.graphqlError': 'Der Mainserver hat die News-Anfrage abgelehnt.',
+      'news.messages.errors.invalidRequest': 'Die News-Anfrage ist ungültig.',
+      'news.messages.errors.invalidResponse': 'Der Mainserver hat eine ungültige News-Antwort geliefert.',
+      'news.messages.errors.missingCredentials': 'Mainserver-Credentials fehlen.',
+      'news.messages.errors.missingInstance': 'Kein Instanzkontext vorhanden.',
+      'news.messages.errors.networkError': 'Der Mainserver ist nicht erreichbar.',
+      'news.empty.title': 'Noch keine News vorhanden',
+      'news.empty.description': 'Legen Sie den ersten News-Eintrag an.',
+      'news.pagination.ariaLabel': 'Seitennavigation',
+      'news.pagination.previous': 'Zurück',
+      'news.pagination.next': 'Weiter',
+      'news.pagination.pageLabel': 'Seite {{page}}',
+      'news.list.title': 'News',
+      'news.list.description': 'Verwalten Sie News-Einträge über das Plugin.',
+      'news.actions.create': 'News anlegen',
+      'news.actions.update': 'Änderungen speichern',
+      'news.actions.back': 'Zurück zur Liste',
+      'news.actions.delete': 'Löschen',
+      'news.actions.deleteConfirm': 'Soll dieser News-Eintrag wirklich gelöscht werden?',
+      'news.editor.createTitle': 'News-Eintrag anlegen',
+      'news.editor.createDescription': 'Erstellen Sie einen neuen News-Eintrag.',
+      'news.editor.editTitle': 'News-Eintrag bearbeiten',
+      'news.editor.editDescription': 'Aktualisieren oder löschen Sie den News-Eintrag.',
+      'news.fields.title': 'Titel',
+      'news.fields.author': 'Autor',
+      'news.fields.keywords': 'Schlagwörter',
+      'news.fields.externalId': 'Externe ID',
+      'news.fields.newsType': 'News-Typ',
+      'news.fields.fullVersion': 'Vollversion',
+      'news.fields.charactersToBeShown': 'Zeichenbegrenzung',
+      'news.fields.publishedAt': 'Veröffentlichungsdatum',
+      'news.fields.publicationDate': 'Publikationsdatum',
+      'news.fields.showPublishDate': 'Publikationsdatum anzeigen',
+      'news.fields.pushNotification': 'Push-Benachrichtigung senden',
+      'news.fields.categoryName': 'Kategorie',
+      'news.fields.categories': 'Kategorien',
+      'news.fields.categoriesHelp': 'Eine Kategorie pro Zeile.',
+      'news.fields.sourceUrl': 'Quell-URL',
+      'news.fields.sourceUrlDescription': 'Quellbeschreibung',
+      'news.fields.street': 'Straße',
+      'news.fields.zip': 'PLZ',
+      'news.fields.city': 'Ort',
+      'news.fields.pointOfInterestId': 'POI-ID',
+      'news.fields.contentBlocks': 'Inhaltsblöcke',
+      'news.fields.contentBlock': 'Inhaltsblock',
+      'news.fields.blockTitle': 'Blocktitel',
+      'news.fields.blockIntro': 'Einleitung',
+      'news.fields.blockBody': 'Inhalt',
+      'news.fields.mediaContents': 'Medien',
+      'news.fields.mediaUrl': 'Medien-URL',
+      'news.fields.mediaCaption': 'Bildunterschrift',
+      'news.fields.mediaContentType': 'Medientyp',
+      'news.fields.technicalDetails': 'Technische Details',
+      'news.fields.dataProvider': 'Datenanbieter',
+      'news.fields.visible': 'Sichtbar',
+      'news.fields.likeCount': 'Likes',
+      'news.fields.likedByMe': 'Von mir geliked',
+      'news.fields.pushNotificationsSentAt': 'Push gesendet am',
+      'news.fields.settings': 'Einstellungen',
+      'news.fields.announcements': 'Ankündigungen',
+      'news.fields.updatedAt': 'Geändert am',
+      'news.fields.actions': 'Aktionen',
+      'news.values.yes': 'Ja',
+      'news.values.no': 'Nein',
+      'news.actions.edit': 'Bearbeiten',
+      'news.actions.addContentBlock': 'Inhaltsblock hinzufügen',
+      'news.actions.addMedia': 'Medium hinzufügen',
+      'news.actions.remove': 'Entfernen',
+      'news.validation.contentBlocks': 'Mindestens ein Inhaltsblock benötigt Inhalt und darf maximal 50.000 Zeichen haben.',
+      'news.validation.sourceUrl': 'Die Quell-URL muss mit https:// beginnen.',
+      'news.validation.publishedAt': 'Das Veröffentlichungsdatum ist erforderlich.',
+    };
+    return interpolate(labels[key] ?? key, variables);
+  });
+};
+
 const stubConfirm = (result: boolean) => {
   const confirmMock = vi.fn(() => result);
   Object.defineProperty(window, 'confirm', {
@@ -70,8 +170,28 @@ vi.mock('@sva/plugin-sdk', async () => {
   const actual = await vi.importActual<typeof import('@sva/plugin-sdk')>('@sva/plugin-sdk');
   return {
     ...actual,
+    listHostMediaAssets: vi.fn(async () => []),
+    listHostMediaReferencesByTarget: vi.fn(async () => []),
+    replaceHostMediaReferences: vi.fn(async (input: unknown) => input),
   };
 });
+
+const createDeferred = <T,>() => {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((nextResolve, nextReject) => {
+    resolve = nextResolve;
+    reject = nextReject;
+  });
+  return { promise, resolve, reject };
+};
+
+const actResolve = async <T,>(deferred: { resolve: (value: T) => void; promise: Promise<T> }, value: T) => {
+  await act(async () => {
+    deferred.resolve(value);
+    await deferred.promise;
+  });
+};
 
 describe('NewsListPage', () => {
   afterEach(() => {
@@ -84,99 +204,39 @@ describe('NewsListPage', () => {
     navigateMock.mockReset();
     paramsMock.mockReset();
     searchMock.mockReset();
+    vi.mocked(listNews).mockResolvedValue({
+      data: [],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false },
+    });
+    vi.mocked(getNews).mockResolvedValue({
+      id: 'news-1',
+      title: 'Bestehende News',
+      contentType: NEWS_CONTENT_TYPE,
+      payload: {
+        teaser: 'Kurztext',
+        body: '<p>Body</p>',
+        category: 'Allgemein',
+      },
+      status: 'published',
+      author: 'Editor',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-02T00:00:00.000Z',
+      publishedAt: '2026-01-02T00:00:00.000Z',
+    });
+    vi.mocked(createNews).mockResolvedValue({ id: 'news-created' });
+    vi.mocked(updateNews).mockResolvedValue({ id: 'news-1' });
+    vi.mocked(deleteNews).mockResolvedValue(undefined);
     paramsMock.mockReturnValue({ contentId: 'news-1' });
     searchMock.mockReturnValue({ page: 1, pageSize: 25 });
     window.sessionStorage.clear();
-    registerPluginTranslationResolver((key) => {
-      const labels: Record<string, string> = {
-        'news.messages.loading': 'News werden geladen.',
-        'news.messages.loadError': 'News konnten nicht geladen werden.',
-        'news.messages.missingContent': 'Der angeforderte News-Eintrag konnte nicht geladen werden.',
-        'news.messages.saveError': 'News konnten nicht gespeichert werden.',
-        'news.messages.validationError': 'Bitte korrigieren Sie die markierten Felder.',
-        'news.messages.createSuccess': 'News-Eintrag wurde erstellt.',
-        'news.messages.updateSuccess': 'News-Eintrag wurde aktualisiert.',
-        'news.messages.deleteSuccess': 'News-Eintrag wurde gelöscht.',
-        'news.messages.deleteError': 'News-Eintrag konnte nicht gelöscht werden.',
-        'news.messages.errors.forbidden': 'Keine Berechtigung für Mainserver-News.',
-        'news.messages.errors.graphqlError': 'Der Mainserver hat die News-Anfrage abgelehnt.',
-        'news.messages.errors.invalidRequest': 'Die News-Anfrage ist ungültig.',
-        'news.messages.errors.invalidResponse': 'Der Mainserver hat eine ungültige News-Antwort geliefert.',
-        'news.messages.errors.missingCredentials': 'Mainserver-Credentials fehlen.',
-        'news.messages.errors.missingInstance': 'Kein Instanzkontext vorhanden.',
-        'news.messages.errors.networkError': 'Der Mainserver ist nicht erreichbar.',
-        'news.empty.title': 'Noch keine News vorhanden',
-        'news.empty.description': 'Legen Sie den ersten News-Eintrag an.',
-        'news.pagination.ariaLabel': 'News-Pagination',
-        'news.pagination.previous': 'Zurück',
-        'news.pagination.next': 'Weiter',
-        'news.pagination.pageLabel': 'Seite {{page}}',
-        'news.list.title': 'News',
-        'news.list.description': 'Verwalten Sie News-Einträge über das Plugin.',
-        'news.actions.create': 'News anlegen',
-        'news.actions.update': 'Änderungen speichern',
-        'news.actions.back': 'Zurück zur Liste',
-        'news.actions.delete': 'Löschen',
-        'news.actions.deleteConfirm': 'Soll dieser News-Eintrag wirklich gelöscht werden?',
-        'news.editor.createTitle': 'News-Eintrag anlegen',
-        'news.editor.createDescription': 'Erstellen Sie einen neuen News-Eintrag.',
-        'news.editor.editTitle': 'News-Eintrag bearbeiten',
-        'news.editor.editDescription': 'Aktualisieren oder löschen Sie den News-Eintrag.',
-        'news.fields.title': 'Titel',
-        'news.fields.author': 'Autor',
-        'news.fields.keywords': 'Schlagwörter',
-        'news.fields.externalId': 'Externe ID',
-        'news.fields.newsType': 'News-Typ',
-        'news.fields.fullVersion': 'Vollversion',
-        'news.fields.charactersToBeShown': 'Zeichenbegrenzung',
-        'news.fields.publishedAt': 'Veröffentlichungsdatum',
-        'news.fields.publicationDate': 'Publikationsdatum',
-        'news.fields.showPublishDate': 'Publikationsdatum anzeigen',
-        'news.fields.pushNotification': 'Push-Benachrichtigung senden',
-        'news.fields.categoryName': 'Kategorie',
-        'news.fields.categories': 'Kategorien',
-        'news.fields.categoriesHelp': 'Eine Kategorie pro Zeile.',
-        'news.fields.sourceUrl': 'Quell-URL',
-        'news.fields.sourceUrlDescription': 'Quellbeschreibung',
-        'news.fields.street': 'Straße',
-        'news.fields.zip': 'PLZ',
-        'news.fields.city': 'Ort',
-        'news.fields.pointOfInterestId': 'POI-ID',
-        'news.fields.contentBlocks': 'Inhaltsblöcke',
-        'news.fields.contentBlock': 'Inhaltsblock',
-        'news.fields.blockTitle': 'Blocktitel',
-        'news.fields.blockIntro': 'Einleitung',
-        'news.fields.blockBody': 'Inhalt',
-        'news.fields.mediaContents': 'Medien',
-        'news.fields.mediaUrl': 'Medien-URL',
-        'news.fields.mediaCaption': 'Bildunterschrift',
-        'news.fields.mediaContentType': 'Medientyp',
-        'news.fields.technicalDetails': 'Technische Details',
-        'news.fields.dataProvider': 'Datenanbieter',
-        'news.fields.visible': 'Sichtbar',
-        'news.fields.likeCount': 'Likes',
-        'news.fields.likedByMe': 'Von mir geliked',
-        'news.fields.pushNotificationsSentAt': 'Push gesendet am',
-        'news.fields.settings': 'Einstellungen',
-        'news.fields.announcements': 'Ankündigungen',
-        'news.fields.updatedAt': 'Geändert am',
-        'news.fields.actions': 'Aktionen',
-        'news.values.yes': 'Ja',
-        'news.values.no': 'Nein',
-        'news.pagination.ariaLabel': 'Seitennavigation',
-        'news.pagination.pageLabel': 'Seite {{page}}',
-        'news.pagination.previous': 'Zurück',
-        'news.pagination.next': 'Weiter',
-        'news.actions.edit': 'Bearbeiten',
-        'news.actions.addContentBlock': 'Inhaltsblock hinzufügen',
-        'news.actions.addMedia': 'Medium hinzufügen',
-        'news.actions.remove': 'Entfernen',
-        'news.validation.contentBlocks': 'Mindestens ein Inhaltsblock benötigt Inhalt und darf maximal 50.000 Zeichen haben.',
-        'news.validation.sourceUrl': 'Die Quell-URL muss mit https:// beginnen.',
-        'news.validation.publishedAt': 'Das Veröffentlichungsdatum ist erforderlich.',
-      };
-      return labels[key] ?? key;
+    vi.mocked(listHostMediaAssets).mockResolvedValue([]);
+    vi.mocked(listHostMediaReferencesByTarget).mockResolvedValue([]);
+    vi.mocked(replaceHostMediaReferences).mockResolvedValue({
+      targetType: 'news',
+      targetId: 'news-1',
+      references: [],
     });
+    registerNewsTranslations();
   });
 
   it('renders the empty state when no news exist', async () => {
@@ -214,6 +274,34 @@ describe('NewsListPage', () => {
       expect(screen.getAllByText('Neuigkeit').length).toBeGreaterThan(0);
       expect(screen.getAllByText('Kurztext').length).toBeGreaterThan(0);
       expect(screen.getAllByText('Bearbeiten').length).toBeGreaterThan(0);
+    });
+  });
+
+  it('renders the interpolated current page label', async () => {
+    vi.mocked(listNews).mockResolvedValueOnce({
+      data: [
+        {
+          id: 'news-2',
+          title: 'Neuigkeit',
+          contentType: NEWS_CONTENT_TYPE,
+          payload: {
+            teaser: 'Kurztext',
+            body: '<p>Body</p>',
+            category: 'Allgemein',
+          },
+          status: 'published',
+          author: 'Editor',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-02T00:00:00.000Z',
+        },
+      ],
+      pagination: { page: 2, pageSize: 25, hasNextPage: true },
+    });
+
+    render(<NewsListPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Seite 2')).toBeTruthy();
     });
   });
 
@@ -351,7 +439,7 @@ describe('NewsListPage', () => {
     render(<NewsListPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('Seite {{page}}')).toBeTruthy();
+      expect(screen.getByText('Seite 2')).toBeTruthy();
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Zurück' }));
@@ -581,6 +669,72 @@ describe('NewsListPage', () => {
     });
 
     expect(getNews).not.toHaveBeenCalled();
+  });
+
+  it('keeps the latest edit payload when an older content request resolves later', async () => {
+    const firstNews = createDeferred<Awaited<ReturnType<typeof getNews>>>();
+    const secondNews = createDeferred<Awaited<ReturnType<typeof getNews>>>();
+    const firstRefs = createDeferred<Awaited<ReturnType<typeof listHostMediaReferencesByTarget>>>();
+    const secondRefs = createDeferred<Awaited<ReturnType<typeof listHostMediaReferencesByTarget>>>();
+
+    vi.mocked(getNews).mockImplementation((contentId: string) => {
+      if (contentId === 'news-2') {
+        return secondNews.promise;
+      }
+      return firstNews.promise;
+    });
+    vi.mocked(listHostMediaReferencesByTarget).mockImplementation(({ targetId }: { targetId: string }) => {
+      if (targetId === 'news-2') {
+        return secondRefs.promise;
+      }
+      return firstRefs.promise;
+    });
+
+    const { rerender } = render(<NewsEditPage />);
+
+    paramsMock.mockReturnValue({ contentId: 'news-2' });
+    rerender(<NewsEditPage />);
+
+    await actResolve(secondNews, {
+      id: 'news-2',
+      title: 'Neuere News',
+      contentType: NEWS_CONTENT_TYPE,
+      payload: {
+        teaser: 'Neuer Kurztext',
+        body: '<p>Neu</p>',
+        category: 'Allgemein',
+      },
+      status: 'published',
+      author: 'Editor',
+      createdAt: '2026-01-03T00:00:00.000Z',
+      updatedAt: '2026-01-04T00:00:00.000Z',
+      publishedAt: '2026-01-04T00:00:00.000Z',
+    });
+    await actResolve(secondRefs, [{ id: 'ref-2', assetId: 'asset-2', role: 'teaser_image', targetType: 'news', targetId: 'news-2' }]);
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('Neuere News')).toBeTruthy();
+    });
+
+    await actResolve(firstNews, {
+      id: 'news-1',
+      title: 'Alte News',
+      contentType: NEWS_CONTENT_TYPE,
+      payload: {
+        teaser: 'Alter Kurztext',
+        body: '<p>Alt</p>',
+        category: 'Allgemein',
+      },
+      status: 'published',
+      author: 'Editor',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-02T00:00:00.000Z',
+      publishedAt: '2026-01-02T00:00:00.000Z',
+    });
+    await actResolve(firstRefs, [{ id: 'ref-1', assetId: 'asset-1', role: 'teaser_image', targetType: 'news', targetId: 'news-1' }]);
+
+    expect(screen.getByDisplayValue('Neuere News')).toBeTruthy();
+    expect(screen.queryByDisplayValue('Alte News')).toBeNull();
   });
 
   it('shows an inline success message after updating an existing news entry', async () => {

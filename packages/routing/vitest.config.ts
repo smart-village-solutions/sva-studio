@@ -21,6 +21,7 @@ export default defineConfig({
       { find: /^@sva\/media$/, replacement: resolve(__dirname, '../media/src/index.ts') },
       { find: /^@sva\/auth-runtime$/, replacement: resolve(__dirname, '../auth-runtime/src/index.ts') },
       { find: /^@sva\/iam-core$/, replacement: resolve(__dirname, '../iam-core/src/index.ts') },
+      { find: /^@sva\/iam-admin\/encryption$/, replacement: resolve(__dirname, '../iam-admin/src/encryption.ts') },
       { find: /^@sva\/iam-admin$/, replacement: resolve(__dirname, '../iam-admin/src/index.ts') },
       {
         find: /^@sva\/monitoring-client\/logger-provider.server$/,

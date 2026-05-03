@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 type TestSessionUser = {
   id: string;
@@ -84,6 +84,12 @@ vi.mock('./auth-server/session.js', () => ({
 }));
 
 describe('auth-runtime withAuthenticatedUser', () => {
+  let withAuthenticatedUser: typeof import('./middleware.js').withAuthenticatedUser;
+
+  beforeAll(async () => {
+    ({ withAuthenticatedUser } = await import('./middleware.js'));
+  });
+
   beforeEach(() => {
     vi.resetAllMocks();
     authServerMocks.getAuthConfig.mockReturnValue({
@@ -97,7 +103,6 @@ describe('auth-runtime withAuthenticatedUser', () => {
   });
 
   it('rejects requests without a session cookie before reading the session store', async () => {
-    const { withAuthenticatedUser } = await import('./middleware.js');
     const response = await withAuthenticatedUser(new Request('http://localhost/auth/me'), () => new Response('ok'));
 
     expect(response.status).toBe(401);
@@ -115,7 +120,6 @@ describe('auth-runtime withAuthenticatedUser', () => {
 
   it('rejects invalid sessions', async () => {
     getSessionUserMock.mockResolvedValue(null);
-    const { withAuthenticatedUser } = await import('./middleware.js');
     const request = new Request('http://localhost/auth/me', {
       headers: { cookie: 'sva_auth_session=session-1' },
     });
@@ -142,7 +146,6 @@ describe('auth-runtime withAuthenticatedUser', () => {
       roles: ['admin'],
       instanceId: 'de-musterhausen',
     });
-    const { withAuthenticatedUser } = await import('./middleware.js');
     const request = new Request('http://localhost/auth/me', {
       headers: { cookie: 'sva_auth_session=session-2' },
     });
@@ -167,7 +170,6 @@ describe('auth-runtime withAuthenticatedUser', () => {
       instanceId: 'de-musterhausen',
     });
     authServerMocks.shouldEnforceLegalTextCompliance.mockResolvedValue(true);
-    const { withAuthenticatedUser } = await import('./middleware.js');
     const request = new Request('http://localhost/api/v1/iam/users/me/profile?tab=account', {
       headers: { cookie: 'sva_auth_session=session-3' },
     });

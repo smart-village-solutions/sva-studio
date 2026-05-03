@@ -393,12 +393,26 @@ const NewsForm = ({
   const [teaserImageAssetId, setTeaserImageAssetId] = React.useState<string | null>(null);
   const [headerImageAssetId, setHeaderImageAssetId] = React.useState<string | null>(null);
   const [existingMediaReferenceCount, setExistingMediaReferenceCount] = React.useState(0);
+  const editLoadRequestIdRef = React.useRef(0);
   const hasFieldError = React.useCallback((field: string) => fieldErrors.includes(field), [fieldErrors]);
 
   React.useEffect(() => {
+    let active = true;
     void listHostMediaAssets({ fetch: globalThis.fetch.bind(globalThis) })
-      .then((assets) => setMediaOptions(toHostMediaFieldOptions(assets)))
-      .catch(() => setMediaOptions([]));
+      .then((assets) => {
+        if (active) {
+          setMediaOptions(toHostMediaFieldOptions(assets));
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setMediaOptions([]);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   React.useEffect(() => {
@@ -412,11 +426,12 @@ const NewsForm = ({
       return;
     }
 
+    const requestId = ++editLoadRequestIdRef.current;
     let active = true;
 
     void getNews(contentId)
       .then((item) => {
-        if (active) {
+        if (active && requestId === editLoadRequestIdRef.current) {
           setForm(itemToForm(item));
           setLoadedItem(item);
           void listHostMediaReferencesByTarget({
@@ -425,24 +440,28 @@ const NewsForm = ({
             targetId: item.id,
           })
             .then((references) => {
-              setExistingMediaReferenceCount(references.length);
-              setTeaserImageAssetId(findHostMediaReferenceAssetId(references, pluginNewsMediaPickers.teaserImage.roles[0]));
-              setHeaderImageAssetId(findHostMediaReferenceAssetId(references, pluginNewsMediaPickers.headerImage.roles[0]));
+              if (active && requestId === editLoadRequestIdRef.current) {
+                setExistingMediaReferenceCount(references.length);
+                setTeaserImageAssetId(findHostMediaReferenceAssetId(references, pluginNewsMediaPickers.teaserImage.roles[0]));
+                setHeaderImageAssetId(findHostMediaReferenceAssetId(references, pluginNewsMediaPickers.headerImage.roles[0]));
+              }
             })
             .catch(() => {
-              setExistingMediaReferenceCount(0);
-              setTeaserImageAssetId(null);
-              setHeaderImageAssetId(null);
+              if (active && requestId === editLoadRequestIdRef.current) {
+                setExistingMediaReferenceCount(0);
+                setTeaserImageAssetId(null);
+                setHeaderImageAssetId(null);
+              }
             });
         }
       })
       .catch((error: unknown) => {
-        if (active) {
+        if (active && requestId === editLoadRequestIdRef.current) {
           setStatusMessage({ kind: 'error', text: resolveNewsErrorMessage(pt, error, 'messages.loadError') });
         }
       })
       .finally(() => {
-        if (active) {
+        if (active && requestId === editLoadRequestIdRef.current) {
           setIsLoading(false);
         }
       });

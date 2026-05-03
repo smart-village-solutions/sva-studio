@@ -49,8 +49,9 @@ const normalizeInternalPath = (value: string, fallbackPath: string): string => {
   return `${url.pathname}${url.search}${url.hash}`;
 };
 
-const buildLoginHref = (loginPath: string, returnTo: string) => {
-  const url = new URL(normalizeInternalPath(loginPath, DEFAULT_LOGIN_PATH), INTERNAL_REDIRECT_BASE);
+const buildLoginHref = (_loginPath: string, returnTo: string) => {
+  const url = new URL(DEFAULT_FALLBACK_PATH, INTERNAL_REDIRECT_BASE);
+  url.searchParams.set('auth', 'login');
   url.searchParams.set('returnTo', normalizeInternalPath(returnTo, DEFAULT_FALLBACK_PATH));
   return `${url.pathname}${url.search}`;
 };
@@ -96,11 +97,11 @@ export const createProtectedRoute = <TContext extends RouteGuardContext = RouteG
     if (!user) {
       if (diagnosticsRoute) {
         emitRoutingDiagnostic(diagnostics, {
-          level: 'info',
-          event: 'routing.guard.access_denied',
-          route: diagnosticsRoute,
-          reason: 'unauthenticated',
-          redirect_target: sanitizePathForDiagnostics(loginPath, DEFAULT_LOGIN_PATH),
+            level: 'info',
+            event: 'routing.guard.access_denied',
+            route: diagnosticsRoute,
+            reason: 'unauthenticated',
+            redirect_target: sanitizePathForDiagnostics(DEFAULT_FALLBACK_PATH, DEFAULT_FALLBACK_PATH),
         });
       }
       throw redirect({ href: buildLoginHref(loginPath, location.href) });

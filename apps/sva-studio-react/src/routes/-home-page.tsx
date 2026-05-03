@@ -12,6 +12,7 @@ export const HomePage = () => {
   const [authStateError, setAuthStateError] = React.useState<string | null>(null);
   const [routeError, setRouteError] = React.useState<string | null>(null);
   const [authReturnTo, setAuthReturnTo] = React.useState<string | null>(null);
+  const [shouldStartLoginRedirect, setShouldStartLoginRedirect] = React.useState(false);
 
   React.useEffect(() => {
     const search = new URLSearchParams(window.location.search);
@@ -19,6 +20,7 @@ export const HomePage = () => {
     const routeErrorCode = search.get('error');
     const returnTo = sanitizeReturnTo(search.get('returnTo'));
     setAuthReturnTo(returnTo);
+    setShouldStartLoginRedirect(authState === 'login');
 
     if (authState === 'error') {
       setAuthStateError(t('home.authError.loginFailed'));
@@ -36,6 +38,14 @@ export const HomePage = () => {
       setRouteError(null);
     }
   }, []);
+
+  React.useEffect(() => {
+    if (!shouldStartLoginRedirect || isLoading || isAuthenticated) {
+      return;
+    }
+
+    window.location.replace(createLoginHref(authReturnTo ?? undefined));
+  }, [authReturnTo, isAuthenticated, isLoading, shouldStartLoginRedirect]);
 
   const authError =
     authStateError ??

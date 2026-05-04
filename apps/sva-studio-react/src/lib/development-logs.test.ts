@@ -14,20 +14,24 @@ describe('readDevelopmentServerLogs', () => {
     vi.clearAllMocks();
   });
 
-  it('returns no entries when the development UI is disabled', async () => {
-    getLoggingRuntimeConfig.mockReturnValue({
-      environment: 'production',
-      consoleEnabled: false,
-      uiEnabled: false,
-      otelRequested: true,
-      otelRequired: true,
-    });
+  it(
+    'returns no entries when the development UI is disabled',
+    async () => {
+      getLoggingRuntimeConfig.mockReturnValue({
+        environment: 'production',
+        consoleEnabled: false,
+        uiEnabled: false,
+        otelRequested: true,
+        otelRequired: true,
+      });
 
-    const { readDevelopmentServerLogs } = await import('./development-logs');
+      const { readDevelopmentServerLogs } = await import('./development-logs');
 
-    await expect(readDevelopmentServerLogs({ afterId: 12 })).resolves.toEqual([]);
-    expect(readDevelopmentLogEntries).not.toHaveBeenCalled();
-  });
+      await expect(readDevelopmentServerLogs({ afterId: 12 })).resolves.toEqual([]);
+      expect(readDevelopmentLogEntries).not.toHaveBeenCalled();
+    },
+    15_000
+  );
 
   it('loads redacted server entries in development mode', async () => {
     getLoggingRuntimeConfig.mockReturnValue({

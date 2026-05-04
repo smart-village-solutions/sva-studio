@@ -586,4 +586,52 @@ describe('media http handlers', () => {
       assetCountDelta: -1,
     });
   });
+
+  it('falls back to legacy variantTotalBytes when deleting existing media assets', async () => {
+    const service = createService();
+    service.getAssetById = vi.fn(async () => ({
+      id: 'asset-1',
+      instanceId: 'tenant-a',
+      storageKey: 'tenant-a/originals/asset-1.jpg',
+      mediaType: 'image',
+      mimeType: 'image/jpeg',
+      byteSize: 1234,
+      visibility: 'protected',
+      uploadStatus: 'processed',
+      processingStatus: 'ready',
+      metadata: {},
+      technical: {
+        variantTotalBytes: 789,
+      },
+    }));
+    service.listReferencesByAssetId = vi.fn(async () => []);
+    service.listVariantsByAssetId = vi.fn(async () => []);
+    const storagePort = {
+      prepareUpload: vi.fn(),
+      resolveDelivery: vi.fn(),
+      deleteObject: vi.fn(async () => undefined),
+    };
+    const handlers = createMediaHttpHandlers({
+      withMediaService: async (_instanceId, work) => work(service as never),
+      storagePort: storagePort as never,
+      authorizeAction: allowAuthorization,
+      createId: () => 'id-1',
+      now: () => '2026-04-29T19:00:00.000Z',
+      emitAuditEvent,
+    });
+
+    const response = await handlers.deleteMedia(
+      new Request('http://localhost/api/v1/iam/media/asset-1?instanceId=tenant-a', {
+        method: 'DELETE',
+      }),
+      createContext()
+    );
+
+    expect(response.status).toBe(200);
+    expect(service.applyStorageUsageDelta).toHaveBeenCalledWith({
+      instanceId: 'tenant-a',
+      totalBytesDelta: -(1234 + 789),
+      assetCountDelta: -1,
+    });
+  });
 });

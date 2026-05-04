@@ -156,6 +156,15 @@ const createVariantBuffer = async (input: {
 const markProcessingFailure = async (input: {
   readonly deps: {
     readonly service: Pick<MediaService, 'upsertAsset' | 'upsertUploadSession'>;
+    readonly storagePort: Pick<
+      {
+        deleteObject: (input: {
+          readonly instanceId: string;
+          readonly storageKey: string;
+        }) => Promise<void>;
+      },
+      'deleteObject'
+    >;
   };
   readonly asset: Awaited<ReturnType<MediaService['getAssetById']>>;
   readonly uploadSession: Awaited<ReturnType<MediaService['getUploadSessionById']>>;
@@ -164,6 +173,13 @@ const markProcessingFailure = async (input: {
   if (!input.asset || !input.uploadSession) {
     return asErrorResult(404, 'asset_not_found');
   }
+
+  await Promise.allSettled([
+    input.deps.storagePort.deleteObject({
+      instanceId: String(input.uploadSession.instanceId),
+      storageKey: String(input.uploadSession.storageKey),
+    }),
+  ]);
 
   await input.deps.service.upsertAsset({
     ...input.asset,

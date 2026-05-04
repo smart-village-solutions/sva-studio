@@ -273,6 +273,10 @@ describe('media upload processing service', () => {
         status: 'failed',
       })
     );
+    expect(storagePort.deleteObject).toHaveBeenCalledWith({
+      instanceId: 'tenant-a',
+      storageKey: 'tenant-a/originals/asset-1.png',
+    });
     expect(storagePort.writeObject).not.toHaveBeenCalled();
   });
 

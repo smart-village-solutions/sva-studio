@@ -281,10 +281,10 @@ Der Deploypfad führt verbindlich aus:
 
 Interpretationshilfe:
 
-- wenn der Deploy-Report rot ist, aber Service-Spec, laufende Tasks und externe Smokes gruen sind, liegt wahrscheinlich ein False-Negative im Verify-/Transportpfad vor
-- in diesem Fall zuerst Live-Service und Smokes als Wahrheitsebene pruefen, dann den Reportpfad debuggen
-- wenn `migrate` gruen ist, `bootstrap` aber rot, zuerst den Bootstrap-SQL-Vertrag gegen die zuletzt eingezogenen Schema-Pflichtfelder pruefen; ein pauschaler Retry des Gesamtdeploys hilft dann meist nicht
-- wenn der Cutover technisch durch ist, aber die ersten externen Health-/Tenant-Probes kurz `404` liefern, ist das zuerst als moegliche Post-Cutover-Settling-Phase zu behandeln und nicht sofort als belastbare Regression
+- wenn der Deploy-Report rot ist, aber Service-Spec, laufende Tasks und externe Smokes grün sind, liegt wahrscheinlich ein False-Negative im Verify-/Transportpfad vor
+- in diesem Fall zuerst Live-Service und Smokes als Wahrheitsebene prüfen, dann den Reportpfad debuggen
+- wenn `migrate` grün ist, `bootstrap` aber rot, zuerst den Bootstrap-SQL-Vertrag gegen die zuletzt eingezogenen Schema-Pflichtfelder prüfen; ein pauschaler Retry des Gesamtdeploys hilft dann meist nicht
+- wenn der Cutover technisch durch ist, aber die ersten externen Health-/Tenant-Probes kurz `404` liefern, ist das zuerst als mögliche Post-Cutover-Settling-Phase zu behandeln und nicht sofort als belastbare Regression
 8. Schreiben eines Deploy-Reports unter `artifacts/runtime/deployments/`
 
 Read-only Betriebsregel:
@@ -296,8 +296,8 @@ Read-only Betriebsregel:
 
 Für das produktionsnahe Profil `studio` gilt derselbe Netzwerk-/Ingress-Vertrag zusätzlich gegen `config/runtime/studio.local.vars`:
 
-- `SVA_IMAGE_REF`, `SVA_IMAGE_DIGEST` und `SVA_IMAGE_TAG` in dieser lokalen Operator-Datei muessen den bewusst freigegebenen Zielstand repraesentieren
-- ein `app-only`-Reconcile dient als kanonischer, nicht destruktiver Recovery-Pfad fuer Netz-/Ingress-Drift
+- `SVA_IMAGE_REF`, `SVA_IMAGE_DIGEST` und `SVA_IMAGE_TAG` in dieser lokalen Operator-Datei müssen den bewusst freigegebenen Zielstand repräsentieren
+- ein `app-only`-Reconcile dient als kanonischer, nicht destruktiver Recovery-Pfad für Netz-/Ingress-Drift
 - `env:migrate:studio` und `schema-and-app` duerfen nur die Temp-Job-Stacks `migrate` und `bootstrap` bewegen; Seiteneffekte auf `studio_app` ausserhalb des expliziten Deploy-Schritts sind kein akzeptierter Zustand
 - `precheck` und `doctor` muessen `app-db-principal` fuer `APP_DB_USER` als gesund bestaetigen; Superuser-only-Sicht ist kein Freigabenachweis
 - wenn das Ziel-Digest bereits auf `studio_app` laeuft, darf `image-smoke` die Live-Paritaet nur wiederverwenden, wenn Ingress-Konsistenz, `app-db-principal`, Tenant-Auth-Proof und Runtime-Flags fuer genau dieses Digest gruen sind

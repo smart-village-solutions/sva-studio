@@ -989,7 +989,9 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
       const variantBytes =
         typeof asset.technical?.variantBytes === 'number' && Number.isFinite(asset.technical.variantBytes)
           ? asset.technical.variantBytes
-          : 0;
+          : typeof asset.technical?.variantTotalBytes === 'number' && Number.isFinite(asset.technical.variantTotalBytes)
+            ? asset.technical.variantTotalBytes
+            : 0;
 
       await deps.storagePort.deleteObject({
         instanceId,

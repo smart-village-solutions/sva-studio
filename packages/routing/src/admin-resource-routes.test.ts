@@ -248,7 +248,7 @@ describe('admin resource routes', () => {
         resourceId: 'host.media',
         basePath: 'media',
         titleKey: 'media.title',
-        guard: 'adminInstances',
+        guard: 'media',
         moduleId: 'media',
         permissions: {
           list: ['media.read'],
@@ -286,7 +286,7 @@ describe('admin resource routes', () => {
         resourceId: 'host.media',
         basePath: 'media',
         titleKey: 'media.title',
-        guard: 'adminInstances',
+        guard: 'media',
         moduleId: 'media',
         permissions: {
           list: ['media.read'],

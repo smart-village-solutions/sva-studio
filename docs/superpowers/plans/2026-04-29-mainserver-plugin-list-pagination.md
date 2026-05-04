@@ -4,7 +4,7 @@
 
 **Goal:** Die Listenansichten von News, Events und POI auf serverseitige Pagination und `StudioDataTable` harmonisieren.
 
-**Architecture:** Ein gemeinsamer Host-Vertrag fuehrt `page`, `pageSize` und ehrliche Pagination-Metadaten durch `@sva/sva-mainserver`, Host-Routen, Plugin-API-Wrapper und Plugin-Pages. Die UI zeigt Prev/Next auf Basis von `hasNextPage` und verzichtet ohne belastbaren Upstream-Count auf fingierte Totalseiten.
+**Architecture:** Ein gemeinsamer Host-Vertrag führt `page`, `pageSize` und ehrliche Pagination-Metadaten durch `@sva/sva-mainserver`, Host-Routen, Plugin-API-Wrapper und Plugin-Pages. Die UI zeigt Prev/Next auf Basis von `hasNextPage` und verzichtet ohne belastbaren Upstream-Count auf fingierte Totalseiten.
 
 **Tech Stack:** TypeScript strict mode, React, TanStack Router, Nx, Vitest, Playwright, `StudioDataTable`
 

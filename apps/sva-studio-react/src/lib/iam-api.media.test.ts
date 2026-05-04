@@ -32,7 +32,7 @@ describe('iam-api media helpers', () => {
     );
     vi.stubGlobal('fetch', fetchMock);
 
-    await listMedia({ search: 'hero', visibility: 'public', page: 2, pageSize: 50 } as never);
+    await listMedia({ search: 'hero', visibility: 'public', page: 2, pageSize: 50 });
     await listMedia({ visibility: 'all' });
 
     expect(fetchMock).toHaveBeenNthCalledWith(

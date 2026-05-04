@@ -21,7 +21,7 @@ Die Listenansichten von `news`, `events` und `poi` sollen nicht mehr komplette D
 
 - sie reduziert Ladezeit und Renderkosten
 - sie entfernt drei parallele Tabellenbasen
-- sie vermeidet das Vortaeuschen exakter Totalseiten ohne Upstream-Beleg
+- sie vermeidet das Vortäuschen exakter Totalseiten ohne Upstream-Beleg
 
 ## Betroffene Architektur
 

@@ -14,7 +14,6 @@ const fixtureReport = fixture as {
   healthModel: unknown[];
   priorityModel: Record<string, unknown>;
   milestones: Record<string, unknown>[];
-  workPackages: Record<string, unknown>[];
 };
 
 describe('project status report fixture', () => {
@@ -71,15 +70,16 @@ describe('project status report fixture', () => {
           title: '',
           plannedEffortPt: -1,
           sortOrder: 0,
+          workPackages: [],
         },
         {
           id: 'M1',
           title: 'Duplikat',
           plannedEffortPt: 1,
           sortOrder: 2,
+          workPackages: [],
         },
       ],
-      workPackages: [],
     };
 
     expect(validateProjectStatusReport(invalidReport)).toEqual([
@@ -93,50 +93,47 @@ describe('project status report fixture', () => {
   it('rejects invalid work package references and value types', () => {
     const invalidReport = {
       ...fixtureReport,
-      workPackages: [
+      milestones: [
         {
-          id: 'WP-001',
-          milestoneId: 'missing',
-          title: '',
-          area: '',
-          priority: 'urgent',
-          effortPt: -1,
-          status: 'rolling',
-          progress: 999,
-          health: 'unknown',
-          dependsOn: [42],
-          contributesTo: ['missing'],
-          notes: 7,
-        },
-        {
-          id: 'WP-001',
-          milestoneId: 'M1',
-          title: 'Duplikat',
-          area: 'Test',
-          priority: 'must',
-          effortPt: 1,
-          status: 'planned',
-          progress: 0,
-          health: 'on_track',
-          dependsOn: [],
-          contributesTo: ['M1'],
+          ...(fixtureReport.milestones[0] ?? {}),
+          id: 'M1',
+          workPackages: [
+            {
+              id: 'WP-001',
+              title: '',
+              area: '',
+              priority: 'urgent',
+              effortPt: -1,
+              status: 'rolling',
+              health: 'unknown',
+              dependsOn: [42],
+              notes: 7,
+            },
+            {
+              id: 'WP-001',
+              title: 'Duplikat',
+              area: 'Test',
+              priority: 'must',
+              effortPt: 1,
+              status: 'planned',
+              health: 'on_track',
+              dependsOn: [],
+            },
+          ],
         },
       ],
     };
 
     expect(validateProjectStatusReport(invalidReport)).toEqual([
-      'workPackages[0].milestoneId must reference a known milestone',
-      'workPackages[0].title must be a non-empty string',
-      'workPackages[0].area must be a non-empty string',
-      'workPackages[0].priority must use a known public priority key',
-      'workPackages[0].effortPt must be a non-negative number',
-      'workPackages[0].status must use a known public status key',
-      'workPackages[0].health must use a known public health key',
-      'workPackages[0].dependsOn must be an array of work package ids',
-      'workPackages[0].contributesTo must only reference known milestones',
-      'workPackages[0].notes must be a string when provided',
-      'workPackages[1].id must be unique',
-      'workPackages[1].progress must match the configured status model',
+      'milestones[0].workPackages[0].title must be a non-empty string',
+      'milestones[0].workPackages[0].area must be a non-empty string',
+      'milestones[0].workPackages[0].priority must use a known public priority key',
+      'milestones[0].workPackages[0].effortPt must be a non-negative number',
+      'milestones[0].workPackages[0].status must use a known public status key',
+      'milestones[0].workPackages[0].health must use a known public health key',
+      'milestones[0].workPackages[0].dependsOn must be an array of work package ids',
+      'milestones[0].workPackages[0].notes must be a string when provided',
+      'milestones[0].workPackages[1].id must be unique',
     ]);
   });
 });

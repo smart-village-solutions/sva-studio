@@ -1,0 +1,1739 @@
+{
+  "meta": {
+    "version": "1.0.0",
+    "updatedAt": "2026-05-04",
+    "source": "CSV SVA-Studio-Kostenschätzung-22.03.2026.csv; Initialstatus aus der Kostenschätzung als commissioned/on_track abgeleitet"
+  },
+  "statusModel": {
+    "idea": 0,
+    "commissioned": 0,
+    "planned": 10,
+    "prototype": 20,
+    "implementation": 45,
+    "optimization": 70,
+    "testing": 80,
+    "acceptance": 90,
+    "done": 100
+  },
+  "healthModel": [
+    "on_track",
+    "needs_attention",
+    "at_risk",
+    "blocked"
+  ],
+  "priorityModel": {
+    "must": "1: Muss sein",
+    "replacement_required": "2: Notwendig für die Ablösung des Alt-Systems",
+    "valuable": "3: Neu, aber sehr sinnvoll",
+    "requested": "4: Neu und gewünscht",
+    "funded_optional": "5: Nicht so wichtig, aber finanziert",
+    "unfunded_nice_to_have": "6: Nice to have, noch ohne Finanzierung",
+    "irrelevant": "7: Irrelevant"
+  },
+  "milestones": [
+    {
+      "id": "M1",
+      "title": "Rollen & Rechte",
+      "plannedEffortPt": 50,
+      "sortOrder": 1,
+      "workPackages": [
+        {
+          "id": "WP-001",
+          "title": "Authentifizierung und Sicherheit unter Berücksichtigung von Mandantenfähigkeit",
+          "area": "1. Rechte & Rollen",
+          "priority": "must",
+          "effortPt": 4,
+          "status": "testing",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-002",
+          "title": "Benutzer-Accounts und Profile mit Organisations-Hierarchie",
+          "area": "1. Rechte & Rollen",
+          "priority": "must",
+          "effortPt": 4,
+          "status": "testing",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-003",
+          "title": "Organisation und Struktur",
+          "area": "1. Rechte & Rollen",
+          "priority": "must",
+          "effortPt": 4,
+          "status": "testing",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-004",
+          "title": "Permission Engine",
+          "area": "1. Rechte & Rollen",
+          "priority": "must",
+          "effortPt": 5.5,
+          "status": "testing",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-005",
+          "title": "Rollen- und Rechtemanagement via KeyCloak",
+          "area": "1. Rechte & Rollen",
+          "priority": "must",
+          "effortPt": 4,
+          "status": "testing",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-006",
+          "title": "Datenschutz und Compliance",
+          "area": "1. Rechte & Rollen",
+          "priority": "must",
+          "effortPt": 4,
+          "status": "testing",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-007",
+          "title": "Audit-Log",
+          "area": "1. Rechte & Rollen",
+          "priority": "valuable",
+          "effortPt": 2,
+          "status": "testing",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-008",
+          "title": "Datenlöschkonzept",
+          "area": "1. Rechte & Rollen",
+          "priority": "valuable",
+          "effortPt": 2,
+          "status": "testing",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-009",
+          "title": "Nachrichten (MVP)",
+          "area": "2. Datentypen",
+          "priority": "must",
+          "effortPt": 0.5,
+          "status": "testing",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-010",
+          "title": "Rechtstexte",
+          "area": "2. Datentypen",
+          "priority": "valuable",
+          "effortPt": 4,
+          "status": "testing",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-011",
+          "title": "Basis-UI & Navigation",
+          "area": "3. Datenverwaltung",
+          "priority": "must",
+          "effortPt": 1.5,
+          "status": "testing",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-012",
+          "title": "E-Mail-Server",
+          "area": "4. Schnittstellen",
+          "priority": "must",
+          "effortPt": 0.5,
+          "status": "testing",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-013",
+          "title": "Keycloak",
+          "area": "4. Schnittstellen",
+          "priority": "must",
+          "effortPt": 0.5,
+          "status": "testing",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-014",
+          "title": "Main-Server",
+          "area": "4. Schnittstellen",
+          "priority": "must",
+          "effortPt": 0.5,
+          "status": "testing",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-015",
+          "title": "OTEL",
+          "area": "4. Schnittstellen",
+          "priority": "must",
+          "effortPt": 0.5,
+          "status": "testing",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-016",
+          "title": "Grafana",
+          "area": "4. Schnittstellen",
+          "priority": "valuable",
+          "effortPt": 0.5,
+          "status": "testing",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-017",
+          "title": "Loki",
+          "area": "4. Schnittstellen",
+          "priority": "valuable",
+          "effortPt": 0.5,
+          "status": "testing",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-018",
+          "title": "News-Modul",
+          "area": "5. Module",
+          "priority": "must",
+          "effortPt": 2.5,
+          "status": "optimization",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-019",
+          "title": "Dokumentation der Funktionalitäten und Entwicklungen des Moduls",
+          "area": "6. Allgemein",
+          "priority": "must",
+          "effortPt": 1,
+          "status": "optimization",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-020",
+          "title": "Monitoringsystem",
+          "area": "6. Allgemein",
+          "priority": "valuable",
+          "effortPt": 3,
+          "status": "testing",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-021",
+          "title": "Redaktion über die App",
+          "area": "7. Frontend",
+          "priority": "funded_optional",
+          "effortPt": 5,
+          "status": "testing",
+          "health": "on_track",
+          "dependsOn": []
+        }
+      ]
+    },
+    {
+      "id": "M2",
+      "title": "Basis CMS",
+      "plannedEffortPt": 69,
+      "sortOrder": 2,
+      "workPackages": [
+        {
+          "id": "WP-022",
+          "title": "Workflows für Freigaben",
+          "area": "1. Rechte & Rollen",
+          "priority": "valuable",
+          "effortPt": 3,
+          "status": "planned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-023",
+          "title": "Onboarding/Offboarding",
+          "area": "1. Rechte & Rollen",
+          "priority": "requested",
+          "effortPt": 2,
+          "status": "idea",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-024",
+          "title": "Vertretungsrechte",
+          "area": "1. Rechte & Rollen",
+          "priority": "requested",
+          "effortPt": 1,
+          "status": "idea",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-025",
+          "title": "Events",
+          "area": "2. Datentypen",
+          "priority": "must",
+          "effortPt": 2,
+          "status": "optimization",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-026",
+          "title": "Nachrichten",
+          "area": "2. Datentypen",
+          "priority": "must",
+          "effortPt": 1.5,
+          "status": "optimization",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-027",
+          "title": "POI",
+          "area": "2. Datentypen",
+          "priority": "must",
+          "effortPt": 1.5,
+          "status": "optimization",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-028",
+          "title": "Touren",
+          "area": "2. Datentypen",
+          "priority": "must",
+          "effortPt": 1,
+          "status": "implementation",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-029",
+          "title": "Umfragen",
+          "area": "2. Datentypen",
+          "priority": "must",
+          "effortPt": 2,
+          "status": "planned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-030",
+          "title": "Eigene Datentypen (eventuell auch schon durch SDK abgedeckt?)",
+          "area": "2. Datentypen",
+          "priority": "requested",
+          "effortPt": 5,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-031",
+          "title": "Filterkriterien & -logiken",
+          "area": "3. Datenverwaltung",
+          "priority": "replacement_required",
+          "effortPt": 3,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-032",
+          "title": "Medienverwaltung",
+          "area": "3. Datenverwaltung",
+          "priority": "valuable",
+          "effortPt": 5,
+          "status": "optimization",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-033",
+          "title": "Karten-Funktionen",
+          "area": "3. Datenverwaltung",
+          "priority": "requested",
+          "effortPt": 3,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-034",
+          "title": "QR-Codes",
+          "area": "3. Datenverwaltung",
+          "priority": "requested",
+          "effortPt": 0.5,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-035",
+          "title": "Serienevent Verbesserung?",
+          "area": "3. Datenverwaltung",
+          "priority": "requested",
+          "effortPt": 2,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-036",
+          "title": "Suche & Navigation: Standard-Suchfunktion in allen Listen",
+          "area": "3. Datenverwaltung",
+          "priority": "requested",
+          "effortPt": 2.5,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-037",
+          "title": "URL-Deeplinking",
+          "area": "3. Datenverwaltung",
+          "priority": "requested",
+          "effortPt": 1,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-038",
+          "title": "OSM Tileserver",
+          "area": "4. Schnittstellen",
+          "priority": "must",
+          "effortPt": 0.5,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-039",
+          "title": "RSS / Importer",
+          "area": "4. Schnittstellen",
+          "priority": "replacement_required",
+          "effortPt": 1,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-040",
+          "title": "TMB",
+          "area": "4. Schnittstellen",
+          "priority": "replacement_required",
+          "effortPt": 3,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-041",
+          "title": "Bildoptimierung",
+          "area": "4. Schnittstellen",
+          "priority": "valuable",
+          "effortPt": 2,
+          "status": "implementation",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-042",
+          "title": "Meili Search",
+          "area": "4. Schnittstellen",
+          "priority": "valuable",
+          "effortPt": 2.5,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-043",
+          "title": "Anbindung externe Datenplattform",
+          "area": "4. Schnittstellen",
+          "priority": "requested",
+          "effortPt": 3,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-044",
+          "title": "Masterportal",
+          "area": "4. Schnittstellen",
+          "priority": "requested",
+          "effortPt": 1.5,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-045",
+          "title": "Nachrichten (Finalisierung)",
+          "area": "5. Module",
+          "priority": "must",
+          "effortPt": 1.5,
+          "status": "optimization",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-046",
+          "title": "POI",
+          "area": "5. Module",
+          "priority": "must",
+          "effortPt": 1.5,
+          "status": "optimization",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-047",
+          "title": "Touren",
+          "area": "5. Module",
+          "priority": "must",
+          "effortPt": 1,
+          "status": "optimization",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-048",
+          "title": "Umfragen",
+          "area": "5. Module",
+          "priority": "must",
+          "effortPt": 2,
+          "status": "optimization",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-049",
+          "title": "Veranstaltungen",
+          "area": "5. Module",
+          "priority": "must",
+          "effortPt": 3,
+          "status": "optimization",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-050",
+          "title": "Abfallkalender",
+          "area": "5. Module",
+          "priority": "replacement_required",
+          "effortPt": 4,
+          "status": "prototype",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-051",
+          "title": "Dokumentation der Funktionalitäten und Entwicklungen des Moduls",
+          "area": "6. Allgemein",
+          "priority": "must",
+          "effortPt": 1,
+          "status": "prototype",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-052",
+          "title": "Dashboard-Core • Aufgabenübersicht („Meine Aufgaben”):",
+          "area": "6. Allgemein",
+          "priority": "requested",
+          "effortPt": 1.5,
+          "status": "idea",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-053",
+          "title": "Dashboard-Core • System-Status & Alerts",
+          "area": "6. Allgemein",
+          "priority": "requested",
+          "effortPt": 1.5,
+          "status": "idea",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-054",
+          "title": "Monitoringsystem",
+          "area": "6. Allgemein",
+          "priority": "requested",
+          "effortPt": 1,
+          "status": "testing",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-055",
+          "title": "Ticketsystem",
+          "area": "6. Allgemein",
+          "priority": "funded_optional",
+          "effortPt": 1.5,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        }
+      ]
+    },
+    {
+      "id": "M3",
+      "title": "App-Konfiguration",
+      "plannedEffortPt": 33.5,
+      "sortOrder": 3,
+      "workPackages": [
+        {
+          "id": "WP-056",
+          "title": "Mandantenverwaltung",
+          "area": "1. Rechte & Rollen",
+          "priority": "requested",
+          "effortPt": 5,
+          "status": "testing",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-057",
+          "title": "Tags an Inhalte (\"liken\")",
+          "area": "2. Datentypen",
+          "priority": "requested",
+          "effortPt": 1,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-058",
+          "title": "E-Mail-Konfiguration und -Verwaltung",
+          "area": "3. Datenverwaltung",
+          "priority": "requested",
+          "effortPt": 0.5,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-059",
+          "title": "Mehrsprachige Inhalte",
+          "area": "3. Datenverwaltung",
+          "priority": "requested",
+          "effortPt": 1,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-060",
+          "title": "Themes und Dark Mode für das Studio",
+          "area": "3. Datenverwaltung",
+          "priority": "unfunded_nice_to_have",
+          "effortPt": 1,
+          "status": "optimization",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-061",
+          "title": "App-Konfiguration (Tabbar, Drawer, Kacheln, Listen, Social Sharing, Favoriten, ...)",
+          "area": "5. Module",
+          "priority": "must",
+          "effortPt": 10,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-062",
+          "title": "App-Suche",
+          "area": "5. Module",
+          "priority": "valuable",
+          "effortPt": 5,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-063",
+          "title": "Rechtstexte-Aktionen",
+          "area": "5. Module",
+          "priority": "valuable",
+          "effortPt": 2,
+          "status": "optimization",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-064",
+          "title": "Individualisierung der App im CMS",
+          "area": "5. Module",
+          "priority": "irrelevant",
+          "effortPt": 0,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-065",
+          "title": "Dokumentation der Funktionalitäten und Entwicklungen des Moduls",
+          "area": "6. Allgemein",
+          "priority": "must",
+          "effortPt": 1,
+          "status": "prototype",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-066",
+          "title": "Dashboard: Alerts",
+          "area": "6. Allgemein",
+          "priority": "valuable",
+          "effortPt": 1,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-067",
+          "title": "Bereitstellung von Monitoringsystembausteinen für Redakteure",
+          "area": "6. Allgemein",
+          "priority": "requested",
+          "effortPt": 1,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-068",
+          "title": "Sprachverwaltung und i18n-System",
+          "area": "6. Allgemein",
+          "priority": "requested",
+          "effortPt": 1,
+          "status": "optimization",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-069",
+          "title": "Dashboard-Core • Modul-Status & Verfügbarkeit:",
+          "area": "6. Allgemein",
+          "priority": "funded_optional",
+          "effortPt": 1,
+          "status": "prototype",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-070",
+          "title": "Individualisierung der App durch Nutzer",
+          "area": "7. Frontend",
+          "priority": "funded_optional",
+          "effortPt": 2,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-071",
+          "title": "Like-Funktion",
+          "area": "7. Frontend",
+          "priority": "funded_optional",
+          "effortPt": 1,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        }
+      ]
+    },
+    {
+      "id": "M4",
+      "title": "Schnittstellen",
+      "plannedEffortPt": 35,
+      "sortOrder": 4,
+      "workPackages": [
+        {
+          "id": "WP-072",
+          "title": "Verwaltungsleistungen",
+          "area": "2. Datentypen",
+          "priority": "requested",
+          "effortPt": 1,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-073",
+          "title": "Räume (Buchungsobjekte)",
+          "area": "2. Datentypen",
+          "priority": "funded_optional",
+          "effortPt": 1,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-074",
+          "title": "Abgeordnete",
+          "area": "2. Datentypen",
+          "priority": "unfunded_nice_to_have",
+          "effortPt": 0.5,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-075",
+          "title": "Gremien",
+          "area": "2. Datentypen",
+          "priority": "unfunded_nice_to_have",
+          "effortPt": 0.5,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-076",
+          "title": "ÖPNV-Abfahrten",
+          "area": "2. Datentypen",
+          "priority": "unfunded_nice_to_have",
+          "effortPt": 0.5,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-077",
+          "title": "Organisationseinheiten",
+          "area": "2. Datentypen",
+          "priority": "unfunded_nice_to_have",
+          "effortPt": 0.5,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-078",
+          "title": "Sitzungstermine",
+          "area": "2. Datentypen",
+          "priority": "unfunded_nice_to_have",
+          "effortPt": 0.5,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-079",
+          "title": "API-Spezifikationen und Standards",
+          "area": "3. Datenverwaltung",
+          "priority": "valuable",
+          "effortPt": 2,
+          "status": "implementation",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-080",
+          "title": "Erweiterte Datenverwaltung: Export-Funktionen für alle Tabellen",
+          "area": "3. Datenverwaltung",
+          "priority": "funded_optional",
+          "effortPt": 0.25,
+          "status": "implementation",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-081",
+          "title": "Import",
+          "area": "3. Datenverwaltung",
+          "priority": "funded_optional",
+          "effortPt": 0.5,
+          "status": "implementation",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-082",
+          "title": "Exportfunktionen",
+          "area": "4. Schnittstellen",
+          "priority": "funded_optional",
+          "effortPt": 0.25,
+          "status": "implementation",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-083",
+          "title": "Fahrradboxen",
+          "area": "4. Schnittstellen",
+          "priority": "funded_optional",
+          "effortPt": 2,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-084",
+          "title": "Importfunktionen",
+          "area": "4. Schnittstellen",
+          "priority": "funded_optional",
+          "effortPt": 0.5,
+          "status": "implementation",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-085",
+          "title": "Schnittstellenmanager",
+          "area": "4. Schnittstellen",
+          "priority": "funded_optional",
+          "effortPt": 5,
+          "status": "optimization",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-086",
+          "title": "SSO Biletado",
+          "area": "4. Schnittstellen",
+          "priority": "funded_optional",
+          "effortPt": 1,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-087",
+          "title": "GBFS",
+          "area": "4. Schnittstellen",
+          "priority": "unfunded_nice_to_have",
+          "effortPt": 1,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-088",
+          "title": "GeoJSON-Import",
+          "area": "4. Schnittstellen",
+          "priority": "unfunded_nice_to_have",
+          "effortPt": 1,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-089",
+          "title": "GTFS",
+          "area": "4. Schnittstellen",
+          "priority": "unfunded_nice_to_have",
+          "effortPt": 0.5,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-090",
+          "title": "Matomo",
+          "area": "4. Schnittstellen",
+          "priority": "unfunded_nice_to_have",
+          "effortPt": 1,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-091",
+          "title": "OpenWeatherMap",
+          "area": "4. Schnittstellen",
+          "priority": "unfunded_nice_to_have",
+          "effortPt": 1,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-092",
+          "title": "RIS/oParl -Schnittstellen einbinden",
+          "area": "4. Schnittstellen",
+          "priority": "unfunded_nice_to_have",
+          "effortPt": 2,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-093",
+          "title": "SSO Consul",
+          "area": "4. Schnittstellen",
+          "priority": "unfunded_nice_to_have",
+          "effortPt": 1,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-094",
+          "title": "Postfach/ Feedback",
+          "area": "5. Module",
+          "priority": "replacement_required",
+          "effortPt": 1,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-095",
+          "title": "Zuständigkeitsfinder",
+          "area": "5. Module",
+          "priority": "requested",
+          "effortPt": 1,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-096",
+          "title": "Raum- /Fahrradbox-Öffnung (biletado)",
+          "area": "5. Module",
+          "priority": "funded_optional",
+          "effortPt": 2,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-097",
+          "title": "Car-/Bike-Sharing",
+          "area": "5. Module",
+          "priority": "unfunded_nice_to_have",
+          "effortPt": 0.5,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-098",
+          "title": "Consul",
+          "area": "5. Module",
+          "priority": "unfunded_nice_to_have",
+          "effortPt": 1,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-099",
+          "title": "ÖPNV-Abfahrtszeiten",
+          "area": "5. Module",
+          "priority": "unfunded_nice_to_have",
+          "effortPt": 0.5,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-100",
+          "title": "Rats-Infos-System (RIS)",
+          "area": "5. Module",
+          "priority": "unfunded_nice_to_have",
+          "effortPt": 0.5,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-101",
+          "title": "Dokumentation der Funktionalitäten und Entwicklungen des Moduls",
+          "area": "6. Allgemein",
+          "priority": "must",
+          "effortPt": 1,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-102",
+          "title": "Monitoringsystem",
+          "area": "6. Allgemein",
+          "priority": "valuable",
+          "effortPt": 1,
+          "status": "optimization",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-103",
+          "title": "Dashboard: Schnittstellen-Übersicht",
+          "area": "6. Allgemein",
+          "priority": "funded_optional",
+          "effortPt": 1,
+          "status": "optimization",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-104",
+          "title": "Reporting",
+          "area": "6. Allgemein",
+          "priority": "funded_optional",
+          "effortPt": 2,
+          "status": "implementation",
+          "health": "on_track",
+          "dependsOn": []
+        }
+      ]
+    },
+    {
+      "id": "M5",
+      "title": "Erweiterte Module",
+      "plannedEffortPt": 46.5,
+      "sortOrder": 5,
+      "workPackages": [
+        {
+          "id": "WP-105",
+          "title": "Baustellen",
+          "area": "2. Datentypen",
+          "priority": "replacement_required",
+          "effortPt": 0.5,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-106",
+          "title": "Fristen",
+          "area": "2. Datentypen",
+          "priority": "replacement_required",
+          "effortPt": 1,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-107",
+          "title": "Gastro-Angebote/Speisekarten",
+          "area": "2. Datentypen",
+          "priority": "replacement_required",
+          "effortPt": 0.5,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-108",
+          "title": "Gutscheine",
+          "area": "2. Datentypen",
+          "priority": "replacement_required",
+          "effortPt": 1.5,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-109",
+          "title": "Mängelmeldungen",
+          "area": "2. Datentypen",
+          "priority": "replacement_required",
+          "effortPt": 1.5,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-110",
+          "title": "Produkte / Dienstleistungen",
+          "area": "2. Datentypen",
+          "priority": "replacement_required",
+          "effortPt": 0.5,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-111",
+          "title": "Stellenanzeigen",
+          "area": "2. Datentypen",
+          "priority": "replacement_required",
+          "effortPt": 0.5,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-112",
+          "title": "Angebote/Gesuche",
+          "area": "2. Datentypen",
+          "priority": "replacement_required",
+          "effortPt": 1,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-113",
+          "title": "AR-Inhalte",
+          "area": "2. Datentypen",
+          "priority": "replacement_required",
+          "effortPt": 1,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-114",
+          "title": "Open311",
+          "area": "4. Schnittstellen",
+          "priority": "replacement_required",
+          "effortPt": 1.5,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-115",
+          "title": "HumHub",
+          "area": "4. Schnittstellen",
+          "priority": "replacement_required",
+          "effortPt": 1,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-116",
+          "title": "Hinweisgeber-Systeme",
+          "area": "4. Schnittstellen",
+          "priority": "funded_optional",
+          "effortPt": 1,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-117",
+          "title": "App-Intro",
+          "area": "5. Module",
+          "priority": "must",
+          "effortPt": 2,
+          "status": "implementation",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-118",
+          "title": "Bilderslider",
+          "area": "5. Module",
+          "priority": "must",
+          "effortPt": 1,
+          "status": "implementation",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-119",
+          "title": "Feedback",
+          "area": "5. Module",
+          "priority": "must",
+          "effortPt": 0.5,
+          "status": "implementation",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-120",
+          "title": "Statische Seiten",
+          "area": "5. Module",
+          "priority": "must",
+          "effortPt": 1,
+          "status": "implementation",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-121",
+          "title": "Störer",
+          "area": "5. Module",
+          "priority": "must",
+          "effortPt": 1,
+          "status": "implementation",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-122",
+          "title": "Baustellen",
+          "area": "5. Module",
+          "priority": "replacement_required",
+          "effortPt": 0.5,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-123",
+          "title": "Gutscheine",
+          "area": "5. Module",
+          "priority": "replacement_required",
+          "effortPt": 1.5,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-124",
+          "title": "Mängelmelder (einfach oder mit API)",
+          "area": "5. Module",
+          "priority": "replacement_required",
+          "effortPt": 1.5,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-125",
+          "title": "Produkte/Dienstleistungen",
+          "area": "5. Module",
+          "priority": "replacement_required",
+          "effortPt": 0.5,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-126",
+          "title": "Schwarzes Brett",
+          "area": "5. Module",
+          "priority": "replacement_required",
+          "effortPt": 1.5,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-127",
+          "title": "Stellenanzeigen",
+          "area": "5. Module",
+          "priority": "replacement_required",
+          "effortPt": 1,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-128",
+          "title": "Chatbot-Integration",
+          "area": "5. Module",
+          "priority": "replacement_required",
+          "effortPt": 4.5,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-129",
+          "title": "Fristenmelder",
+          "area": "5. Module",
+          "priority": "replacement_required",
+          "effortPt": 1,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-130",
+          "title": "Gastro-Angebote",
+          "area": "5. Module",
+          "priority": "replacement_required",
+          "effortPt": 1,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-131",
+          "title": "Mitfahrbörse",
+          "area": "5. Module",
+          "priority": "replacement_required",
+          "effortPt": 3,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-132",
+          "title": "Smartes Trampen",
+          "area": "5. Module",
+          "priority": "replacement_required",
+          "effortPt": 1,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-133",
+          "title": "Augmented Reality",
+          "area": "5. Module",
+          "priority": "funded_optional",
+          "effortPt": 1.5,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-134",
+          "title": "Hinweisgebersystem",
+          "area": "5. Module",
+          "priority": "funded_optional",
+          "effortPt": 1,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-135",
+          "title": "Humhub-Anbindung",
+          "area": "5. Module",
+          "priority": "funded_optional",
+          "effortPt": 3,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-136",
+          "title": "Monitoringsystem",
+          "area": "6. Allgemein",
+          "priority": "requested",
+          "effortPt": 2,
+          "status": "optimization",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-137",
+          "title": "Analytics & Reporting",
+          "area": "6. Allgemein",
+          "priority": "unfunded_nice_to_have",
+          "effortPt": 3,
+          "status": "optimization",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-138",
+          "title": "Dashboard: App-Nutzung",
+          "area": "6. Allgemein",
+          "priority": "unfunded_nice_to_have",
+          "effortPt": 1,
+          "status": "implementation",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-139",
+          "title": "Real-Time Updates",
+          "area": "6. Allgemein",
+          "priority": "unfunded_nice_to_have",
+          "effortPt": 1,
+          "status": "prototype",
+          "health": "on_track",
+          "dependsOn": []
+        }
+      ]
+    },
+    {
+      "id": "M6",
+      "title": "SDK & Marktplatz",
+      "plannedEffortPt": 28,
+      "sortOrder": 6,
+      "workPackages": [
+        {
+          "id": "WP-140",
+          "title": "Einführung eines flexiblen Modul-Frameworks und eines SDKs.",
+          "area": "3. Datenverwaltung",
+          "priority": "requested",
+          "effortPt": 5,
+          "status": "optimization",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-141",
+          "title": "App-Instanzen-Verwaltung",
+          "area": "5. Module",
+          "priority": "valuable",
+          "effortPt": 15,
+          "status": "optimization",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-142",
+          "title": "Modul-Marktplatz mit Versionsverwaltung und Dependency-Check",
+          "area": "5. Module",
+          "priority": "requested",
+          "effortPt": 5,
+          "status": "implementation",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-143",
+          "title": "Widget-System & Personalisierung",
+          "area": "6. Allgemein",
+          "priority": "unfunded_nice_to_have",
+          "effortPt": 3,
+          "status": "planned",
+          "health": "on_track",
+          "dependsOn": []
+        }
+      ]
+    },
+    {
+      "id": "M7",
+      "title": "Hilfe & Compliance",
+      "plannedEffortPt": 37,
+      "sortOrder": 7,
+      "workPackages": [
+        {
+          "id": "WP-144",
+          "title": "Performance-Optimierungen",
+          "area": "3. Datenverwaltung",
+          "priority": "valuable",
+          "effortPt": 5,
+          "status": "optimization",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-145",
+          "title": "Refactoring",
+          "area": "3. Datenverwaltung",
+          "priority": "valuable",
+          "effortPt": 10,
+          "status": "optimization",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-146",
+          "title": "Ticketsystem",
+          "area": "4. Schnittstellen",
+          "priority": "funded_optional",
+          "effortPt": 1.5,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-147",
+          "title": "Runbooks für Deployments und Entwicklung",
+          "area": "6. Allgemein",
+          "priority": "must",
+          "effortPt": 1,
+          "status": "optimization",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-148",
+          "title": "Barrierefreiheitstest",
+          "area": "6. Allgemein",
+          "priority": "valuable",
+          "effortPt": 5,
+          "status": "implementation",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-149",
+          "title": "Compliance-Erklärungen für BSI & Co.",
+          "area": "6. Allgemein",
+          "priority": "valuable",
+          "effortPt": 1,
+          "status": "implementation",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-150",
+          "title": "Pen-Test",
+          "area": "6. Allgemein",
+          "priority": "valuable",
+          "effortPt": 5,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-151",
+          "title": "Verfahrensdokumentation für DSFA",
+          "area": "6. Allgemein",
+          "priority": "valuable",
+          "effortPt": 1,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-152",
+          "title": "Hilfe-Bereich / Wiki mit Suche",
+          "area": "6. Allgemein",
+          "priority": "unfunded_nice_to_have",
+          "effortPt": 2.5,
+          "status": "planned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-153",
+          "title": "Darstellung der Release-Notes & Changelog im Studio",
+          "area": "6. Allgemein",
+          "priority": "unfunded_nice_to_have",
+          "effortPt": 0.5,
+          "status": "planned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-154",
+          "title": "Darstellung der Roadmap im Studio",
+          "area": "6. Allgemein",
+          "priority": "unfunded_nice_to_have",
+          "effortPt": 0.5,
+          "status": "planned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-155",
+          "title": "Kontextbezogene Hilfetexte",
+          "area": "6. Allgemein",
+          "priority": "unfunded_nice_to_have",
+          "effortPt": 1,
+          "status": "planned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-156",
+          "title": "Onboarding-Tour",
+          "area": "6. Allgemein",
+          "priority": "unfunded_nice_to_have",
+          "effortPt": 3,
+          "status": "idea",
+          "health": "on_track",
+          "dependsOn": []
+        }
+      ]
+    },
+    {
+      "id": "M8",
+      "title": "KI-Anbindung",
+      "plannedEffortPt": 26,
+      "sortOrder": 8,
+      "workPackages": [
+        {
+          "id": "WP-157",
+          "title": "KI-gestützte Übersetzungsvorschläge vgl Mehrsprachigkeit und leichte Sprache",
+          "area": "3. Datenverwaltung",
+          "priority": "requested",
+          "effortPt": 3,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-158",
+          "title": "Automatische Erstellung von Wissens- und Hilfetexten",
+          "area": "3. Datenverwaltung",
+          "priority": "unfunded_nice_to_have",
+          "effortPt": 3,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-159",
+          "title": "Duplikatserkennung",
+          "area": "3. Datenverwaltung",
+          "priority": "unfunded_nice_to_have",
+          "effortPt": 5,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-160",
+          "title": "KI-gestützte Contenterstellung",
+          "area": "3. Datenverwaltung",
+          "priority": "unfunded_nice_to_have",
+          "effortPt": 3,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-161",
+          "title": "Tagging & Kategorisierung",
+          "area": "3. Datenverwaltung",
+          "priority": "unfunded_nice_to_have",
+          "effortPt": 2,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-162",
+          "title": "LLM-Anbieter (OpenAI, Mistral, Gemini, lokale Modelle, ...)",
+          "area": "4. Schnittstellen",
+          "priority": "requested",
+          "effortPt": 2,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-163",
+          "title": "MCP",
+          "area": "4. Schnittstellen",
+          "priority": "unfunded_nice_to_have",
+          "effortPt": 5,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        },
+        {
+          "id": "WP-164",
+          "title": "KI-Administration und Management",
+          "area": "6. Allgemein",
+          "priority": "requested",
+          "effortPt": 3,
+          "status": "commissioned",
+          "health": "on_track",
+          "dependsOn": []
+        }
+      ]
+    }
+  ]
+}

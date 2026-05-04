@@ -44,7 +44,7 @@ describe('project report app', () => {
   });
 
   it('does not emit a React key warning when rendering work package rows', () => {
-    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
     render(<App />);
     fireEvent.click(screen.getByRole('tab', { name: 'Arbeitspakete' }));

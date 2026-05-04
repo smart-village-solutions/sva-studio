@@ -6,6 +6,7 @@ const createInstanceRegistryRuntimeMock = vi.fn(() => ({
   withRegistryProvisioningWorkerService: vi.fn(),
   withRegistryProvisioningWorkerDeps: vi.fn(),
 }));
+const resolveIdentityProviderForInstanceMock = vi.fn();
 
 vi.mock('../db.js', () => ({
   createPoolResolver: vi.fn(() => 'resolve-pool'),
@@ -21,6 +22,10 @@ vi.mock('@sva/data-repositories/server', () => ({
 
 vi.mock('@sva/instance-registry/runtime-wiring', () => ({
   createInstanceRegistryRuntime: createInstanceRegistryRuntimeMock,
+}));
+
+vi.mock('@sva/studio-module-iam', () => ({
+  studioModuleIamRegistry: new Map(),
 }));
 
 vi.mock('../runtime-secrets.js', () => ({
@@ -41,6 +46,10 @@ vi.mock('./provisioning-auth-state.js', () => ({
 vi.mock('../iam-account-management/encryption.js', () => ({
   protectField: vi.fn(),
   revealField: vi.fn(),
+}));
+
+vi.mock('../iam-account-management/shared-runtime.js', () => ({
+  resolveIdentityProviderForInstance: (...args: unknown[]) => resolveIdentityProviderForInstanceMock(...args),
 }));
 
 describe('iam instance registry repository wiring', () => {
@@ -83,6 +92,29 @@ describe('iam instance registry repository wiring', () => {
         provisioningWorkerServiceDeps: expect.objectContaining({
           moduleIamRegistry: serviceRegistry,
         }),
+      })
+    );
+  });
+
+  it('reports blocked tenant IAM access instead of throwing when the tenant admin client is missing', async () => {
+    resolveIdentityProviderForInstanceMock.mockResolvedValueOnce(null);
+    await import('./repository.js');
+
+    const runtimeConfig = createInstanceRegistryRuntimeMock.mock.calls.at(-1)?.[0];
+    expect(runtimeConfig).toBeDefined();
+
+    await expect(
+      runtimeConfig?.serviceDeps.probeTenantIamAccess({
+        instanceId: 'demo',
+        requestId: 'req-probe-1',
+      })
+    ).resolves.toEqual(
+      expect.objectContaining({
+        status: 'blocked',
+        summary: 'Tenant-Admin-Client ist für diese Instanz noch nicht konfiguriert.',
+        source: 'access_probe',
+        errorCode: 'tenant_admin_client_not_configured',
+        requestId: 'req-probe-1',
       })
     );
   });

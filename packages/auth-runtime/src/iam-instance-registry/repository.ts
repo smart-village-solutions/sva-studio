@@ -31,7 +31,14 @@ const probeTenantIamAccess = async (input: { instanceId: string; requestId?: str
   });
 
   if (!identityProvider) {
-    throw new Error('tenant_admin_client_not_configured');
+    return {
+      status: 'blocked',
+      summary: 'Tenant-Admin-Client ist für diese Instanz noch nicht konfiguriert.',
+      source: 'access_probe',
+      checkedAt: new Date().toISOString(),
+      errorCode: 'tenant_admin_client_not_configured',
+      requestId: input.requestId,
+    } as const;
   }
 
   try {

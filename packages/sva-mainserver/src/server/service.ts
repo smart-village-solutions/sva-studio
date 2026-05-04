@@ -1734,7 +1734,6 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
       const upstreamItems = options.readItems(response);
       exhausted = upstreamItems.length < batchSize;
       skip += upstreamItems.length;
-      assertUpstreamScanLimit(skip);
 
       for (const item of upstreamItems) {
         if (options.isVisible(item) === false) {

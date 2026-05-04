@@ -52,6 +52,8 @@ packages/plugin-sdk/
 |   |-- plugin-translations.ts
 |   |-- guardrails.ts
 |   `-- *.test.ts
+|-- tests/
+|   `-- *.test.ts
 |-- package.json
 |-- project.json
 |-- tsconfig.json
@@ -66,6 +68,8 @@ Orientierung innerhalb von `src/`:
 - [`admin-resources.ts`](./src/admin-resources.ts) und [`content-types.ts`](./src/content-types.ts): fachliche Verträge inklusive Validierung
 - [`standard-content-plugin.ts`](./src/standard-content-plugin.ts): Opinionated Factory-Funktionen für Standard-Content-Plugins
 - [`mainserver-client.ts`](./src/mainserver-client.ts), [`media-picker*.ts`](./src/media-picker.ts), [`plugin-translations.ts`](./src/plugin-translations.ts): Integrationshilfen zum Host-System
+
+Tests können sowohl colocated unter `src/**/*.test.ts` als auch als paketweite Szenarien unter `tests/**/*.test.ts` liegen.
 
 ## Nx-Konfiguration
 

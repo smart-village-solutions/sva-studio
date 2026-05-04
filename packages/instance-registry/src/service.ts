@@ -99,15 +99,25 @@ const invalidateInstancePermissionSnapshots = async (
   await deps.invalidatePermissionSnapshots?.({ instanceId, trigger });
 };
 
-const createModuleAssignRollbackError = (syncError: unknown, rollbackError: unknown): Error => {
+const createModuleAssignRollbackError = (
+  instanceId: string,
+  moduleId: string,
+  syncError: unknown,
+  rollbackError: unknown
+): Error => {
   const message =
     syncError instanceof Error ? syncError.message : typeof syncError === 'string' ? syncError : 'instance_module_sync_failed';
-  const combined = new Error(message, {
-    cause: {
-      syncError,
-      rollbackError,
-    },
-  });
+  const combined = new Error(message) as Error & {
+    cause?: {
+      rollbackError: unknown;
+      syncError: unknown;
+    };
+  };
+  combined.message = `instance_module_assign_rollback_failed:${instanceId}:${moduleId}:${message}`;
+  combined.cause = {
+    syncError,
+    rollbackError,
+  };
   combined.name = 'InstanceModuleAssignRollbackError';
   return combined;
 };
@@ -142,7 +152,7 @@ const createAssignModuleHandler =
       try {
         await deps.repository.revokeModule(input.instanceId, input.moduleId);
       } catch (rollbackError) {
-        throw createModuleAssignRollbackError(error, rollbackError);
+        throw createModuleAssignRollbackError(input.instanceId, input.moduleId, error, rollbackError);
       }
       throw error;
     }

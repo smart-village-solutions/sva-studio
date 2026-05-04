@@ -601,6 +601,49 @@ describe('createSvaMainserverService', () => {
     });
   });
 
+  it('keeps the highest allowed visible-list page reachable when the has-next probe crosses the scan limit', async () => {
+    const fetchImpl = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      if (
+        init?.body instanceof URLSearchParams ||
+        (typeof init?.body === 'string' && init.body.startsWith('grant_type='))
+      ) {
+        return createJsonResponse(200, { access_token: 'token-1', expires_in: 120 });
+      }
+
+      const requestBody = JSON.parse(init.body as string) as {
+        variables?: { limit?: number; skip?: number };
+      };
+      const skip = requestBody.variables?.skip ?? 0;
+      const limit = requestBody.variables?.limit ?? 100;
+      const remaining = Math.max(0, 10001 - skip);
+      const batchCount = Math.min(limit, remaining);
+      const newsItems = Array.from({ length: batchCount }, (_value, index) => ({
+        id: `news-${skip + index + 1}`,
+        title: `News ${skip + index + 1}`,
+        payload: { teaser: 'Kurztext', body: '<p>Body</p>' },
+        publishedAt: '2026-04-14T09:30:00.000Z',
+        visible: true,
+      }));
+
+      return createJsonResponse(200, { data: { newsItems } });
+    });
+
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
+      fetchImpl,
+    });
+
+    await expect(
+      service.listNews({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1', page: 100, pageSize: 100 })
+    ).resolves.toEqual({
+      data: Array.from({ length: 100 }, (_value, index) =>
+        expect.objectContaining({ id: `news-${9901 + index}` })
+      ),
+      pagination: { page: 100, pageSize: 100, hasNextPage: true },
+    });
+  });
+
   it('maps news payload strings and hides invisible upstream news', async () => {
     const publishedAt = '2026-04-14T09:30:00.000Z';
     const fetchImpl = vi

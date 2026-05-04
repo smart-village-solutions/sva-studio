@@ -90,6 +90,14 @@ export type PluginDefinition = {
 
 const LEGACY_ACTION_ALIAS_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
+const trimTrailingSlashes = (value: string): string => {
+  let endIndex = value.length;
+  while (endIndex > 0 && value[endIndex - 1] === '/') {
+    endIndex -= 1;
+  }
+  return value.slice(0, endIndex);
+};
+
 const pluginDefinitionAllowedKeys = new Set([
   'id',
   'displayName',
@@ -122,7 +130,17 @@ const contentTypeDefinitionAllowedKeys = new Set([
   'actions',
   'validatePayload',
 ] as const);
-const adminResourceDefinitionAllowedKeys = new Set(['resourceId', 'basePath', 'titleKey', 'guard', 'views', 'capabilities', 'contentUi'] as const);
+const adminResourceDefinitionAllowedKeys = new Set([
+  'resourceId',
+  'basePath',
+  'titleKey',
+  'guard',
+  'moduleId',
+  'views',
+  'permissions',
+  'capabilities',
+  'contentUi',
+] as const);
 const auditEventDefinitionAllowedKeys = new Set(['eventType', 'titleKey'] as const);
 const moduleIamContractAllowedKeys = new Set(['moduleId', 'permissionIds', 'systemRoles'] as const);
 const moduleIamSystemRoleAllowedKeys = new Set(['roleName', 'permissionIds'] as const);
@@ -270,7 +288,7 @@ const assertPluginPermissionReference = (
 };
 
 const isStandardCrudPluginRoute = (pluginNamespace: string, path: string): boolean => {
-  const normalizedPath = path.trim().replace(/\/+$/, '') || '/';
+  const normalizedPath = trimTrailingSlashes(path.trim()) || '/';
   const pluginRoot = `/plugins/${pluginNamespace}`;
 
   if (normalizedPath === pluginRoot || normalizedPath === `${pluginRoot}/new`) {

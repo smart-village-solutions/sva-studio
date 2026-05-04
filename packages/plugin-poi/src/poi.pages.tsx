@@ -130,13 +130,11 @@ const createPoiListColumns = (pt: ReturnType<typeof usePluginTranslation>) => [
 
 const PoiPaginationNav = ({
   page,
-  pageSize,
   hasNextPage,
   onPageChange,
   pt,
 }: Readonly<{
   page: number;
-  pageSize: number;
   hasNextPage: boolean;
   onPageChange: (page: number) => void;
   pt: ReturnType<typeof usePluginTranslation>;
@@ -247,7 +245,6 @@ export function PoiListPage() {
           />
           <PoiPaginationNav
             page={result.pagination.page}
-            pageSize={result.pagination.pageSize}
             hasNextPage={result.pagination.hasNextPage}
             onPageChange={handlePageChange}
             pt={pt}

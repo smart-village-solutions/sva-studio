@@ -682,7 +682,7 @@ describe('instance registry service facade', () => {
       expect.unreachable('assignModule should throw');
     } catch (error) {
       expect(error).toBeInstanceOf(Error);
-      expect((error as Error).message).toBe('sync_failed');
+      expect((error as Error).message).toBe('instance_module_assign_rollback_failed:demo:events:sync_failed');
       expect((error as Error).name).toBe('InstanceModuleAssignRollbackError');
       expect((error as Error).cause).toEqual({
         syncError: expect.any(Error),

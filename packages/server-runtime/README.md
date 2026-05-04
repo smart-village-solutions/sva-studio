@@ -86,7 +86,7 @@ packages/server-runtime/
         └── json-error-response.server.ts
 ```
 
-Die Tests liegen jeweils direkt neben den Implementierungen als `*.test.ts`.
+Die Tests liegen überwiegend direkt neben den Implementierungen als `src/**/*.test.ts`. Ergänzend nutzt das Paket bei Bedarf auch eigenständige Tests unter `tests/**/*.test.ts`, wenn eine stärkere Trennung von Implementierung und Test-Setup sinnvoll ist.
 
 ## Nx-Konfiguration
 

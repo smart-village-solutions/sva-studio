@@ -25,5 +25,4 @@ Das System SHALL `apps/sva-studio-react` als Host-App fuer Shell-, Routing- und 
 
 - **WHEN** Routing-Bindings, Shell-Zusammensetzung oder host-spezifische Resource-Assemblierung konfiguriert werden
 - **THEN** duerfen diese in `apps/sva-studio-react` verbleiben
-- **AND** Beispiele wie `appRouteBindings`, `appAdminResources` oder gleichartige Shell-Assemblierung bleiben App-Komposition
 - **AND** sie werden nicht nur aus Abstraktionsgruenden in ein generisches Package verschoben

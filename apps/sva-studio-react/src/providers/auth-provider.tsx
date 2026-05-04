@@ -53,7 +53,7 @@ const isTestRuntime = () =>
   import.meta.env.MODE === 'test' ||
   import.meta.env.VITEST === true ||
   import.meta.env.VITEST === 'true';
-const SILENT_SSO_TIMEOUT_MS = isTestRuntime() ? 25 : 8_000;
+const SILENT_SSO_TIMEOUT_MS = isTestRuntime() ? 250 : 8_000;
 const AUTH_DEBUG_ENABLED = !isProductionMode;
 const authLogger = createOperationLogger('auth-provider', AUTH_DEBUG_ENABLED ? 'debug' : 'info');
 

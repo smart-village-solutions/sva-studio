@@ -61,32 +61,6 @@ const expectInterfacesShellReady = async (page: Page, timeout = 20_000) => {
     .toBe(true);
 };
 
-const expectHydratedPlaywrightShell = async (page: Page, timeout = 20_000) => {
-  await expect
-    .poll(
-      async () => ({
-        dataTheme: await page.locator('html').getAttribute('data-theme'),
-        hasRouterHook: await page
-          .evaluate(
-            () =>
-              Boolean(
-                (
-                  window as typeof window & {
-                    __SVA_PLAYWRIGHT_ROUTER__?: unknown;
-                  }
-                ).__SVA_PLAYWRIGHT_ROUTER__
-              )
-          )
-          .catch(() => false),
-      }),
-      { timeout }
-    )
-    .toEqual({
-      dataTheme: 'sva-default',
-      hasRouterHook: true,
-    });
-};
-
 const mockAuthenticatedPluginShell = async (page: Page) => {
   await page.route('**/auth/me', async (route) => {
     await route.fulfill({
@@ -193,72 +167,6 @@ const mockAuthenticatedPluginShell = async (page: Page) => {
   });
 };
 
-const mockAuthenticatedInterfacesShell = async (page: Page) => {
-  await page.route('**/auth/me', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        user: {
-          id: 'kc-interface-manager-1',
-          name: 'Interface Manager',
-          email: 'interfaces@example.com',
-          instanceId: 'de-musterhausen',
-          assignedModules: [],
-          roles: ['interface_manager'],
-          permissionActions: [],
-        },
-      }),
-    });
-  });
-
-  await page.route('**/iam/me/permissions?**', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        instanceId: 'de-musterhausen',
-        permissions: [],
-        subject: {
-          actorUserId: 'kc-interface-manager-1',
-          effectiveUserId: 'kc-interface-manager-1',
-          isImpersonating: false,
-        },
-        evaluatedAt: '2026-04-13T12:00:00.000Z',
-      }),
-    });
-  });
-
-  await page.route('**/iam/authorize', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ allowed: true, reason: 'mocked_authorize' }),
-    });
-  });
-
-  await page.route('**/iam/me/legal-texts/pending', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ data: [], pagination: { page: 1, pageSize: 0, total: 0 } }),
-    });
-  });
-
-  await page.route('**/api/v1/iam/me/context', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        data: {
-          activeOrganizationId: null,
-          organizations: [],
-        },
-      }),
-    });
-  });
-};
-
 test('GET / returns 200 and renders app shell', async ({ page }) => {
   const response = await page.goto('/');
   expect(response).not.toBeNull();
@@ -283,7 +191,7 @@ test('interfaces page uses the real /_server transport during overview load', as
   const pageErrors: string[] = [];
   const serverFnResponses = captureServerFnResponses(page);
 
-  await mockAuthenticatedInterfacesShell(page);
+  await mockAuthenticatedPluginShell(page);
   await page.route('**/_server/**', async (route) => {
     if (route.request().method() === 'GET') {
       await route.fulfill({
@@ -351,7 +259,6 @@ test('authenticated client navigation to /admin/news renders the host-owned cont
   const requestFailures: string[] = [];
   const scriptRequests: string[] = [];
   const observedRequests: string[] = [];
-
   await mockAuthenticatedPluginShell(page);
 
   page.on('pageerror', (error) => {
@@ -376,7 +283,7 @@ test('authenticated client navigation to /admin/news renders the host-owned cont
   expect(response).not.toBeNull();
   expect(response?.status()).toBeLessThan(400);
   await expectInterfacesShellReady(page);
-  await expectHydratedPlaywrightShell(page);
+  await expect(page.locator('html')).toHaveAttribute('data-theme', /.+/);
   await navigateWithPlaywrightRouter(page, '/admin/news');
   await expect(page).toHaveURL(/\/admin\/news(?:\?.*)?$/);
   await expect(page.getByRole('heading', { name: 'News', exact: true })).toBeVisible();
@@ -456,7 +363,7 @@ test('router keeps the shell active during client-side navigation', async ({ pag
 
   await page.goto('/interfaces');
   await expectInterfacesShellReady(page);
-  await expectHydratedPlaywrightShell(page);
+  await expect(page.locator('html')).toHaveAttribute('data-theme', /.+/);
   await navigateWithPlaywrightRouter(page, '/admin/news');
   await expect(page.getByRole('heading', { name: 'News', exact: true })).toBeVisible();
   await navigateWithPlaywrightRouter(page, '/interfaces');

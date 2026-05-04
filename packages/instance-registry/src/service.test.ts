@@ -523,35 +523,6 @@ describe('instance registry service facade', () => {
     );
   });
 
-  it('rolls back an assigned module when IAM sync fails', async () => {
-    const repository = createRepository({
-      assignModule: vi.fn(async () => true),
-      revokeModule: vi.fn(async () => true),
-      listAssignedModules: vi.fn(async () => ['news', 'events']),
-      syncAssignedModuleIam: vi.fn(async () => {
-        throw new Error('sync_failed');
-      }),
-      getInstanceById: vi.fn(async () => baseInstance),
-    });
-    const deps = createDeps(repository);
-    const service = createInstanceRegistryService(deps);
-
-    await expect(
-      service.assignModule({
-        instanceId: 'demo',
-        moduleId: 'events',
-        idempotencyKey: 'idem-module-rollback',
-        actorId: 'actor-1',
-        requestId: 'req-module-rollback',
-      })
-    ).rejects.toThrow('sync_failed');
-
-    expect(repository.assignModule).toHaveBeenCalledWith('demo', 'events');
-    expect(repository.revokeModule).toHaveBeenCalledWith('demo', 'events');
-    expect(deps.invalidatePermissionSnapshots).not.toHaveBeenCalled();
-    expect(repository.appendAuditEvent).not.toHaveBeenCalled();
-  });
-
   it('invalidates instance permission snapshots after module IAM changes', async () => {
     const repository = createRepository({
       assignModule: vi.fn(async () => true),
@@ -602,6 +573,124 @@ describe('instance registry service facade', () => {
       instanceId: 'demo',
       trigger: 'instance_module_iam_seeded',
     });
+  });
+
+  it('assigns the host-owned media module when it is present in the module registry', async () => {
+    const repository = createRepository({
+      assignModule: vi.fn(async () => true),
+      listAssignedModules: vi.fn(async () => ['media']),
+      getInstanceById: vi
+        .fn()
+        .mockResolvedValueOnce(baseInstance)
+        .mockResolvedValueOnce({ ...baseInstance, assignedModules: ['media'] }),
+    });
+    const service = createInstanceRegistryService(
+      createDeps(repository, {
+        moduleIamRegistry: new Map([
+          [
+            'media',
+            {
+              moduleId: 'media',
+              permissionIds: ['media.read', 'media.create'],
+              systemRoles: [{ roleName: 'editor', permissionIds: ['media.read', 'media.create'] }],
+            },
+          ],
+        ]),
+      })
+    );
+
+    await expect(
+      service.assignModule({
+        instanceId: 'demo',
+        moduleId: 'media',
+        idempotencyKey: 'idem-module-media-1',
+        actorId: 'actor-1',
+        requestId: 'req-module-media-1',
+      })
+    ).resolves.toEqual({
+      ok: true,
+      instance: expect.objectContaining({
+        assignedModules: ['media'],
+      }),
+    });
+
+    expect(repository.assignModule).toHaveBeenCalledWith('demo', 'media');
+    expect(repository.syncAssignedModuleIam).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'demo',
+        managedModuleIds: ['media'],
+        contracts: [expect.objectContaining({ moduleId: 'media' })],
+      })
+    );
+  });
+
+  it('rolls back the persisted module assignment when IAM sync fails', async () => {
+    const repository = createRepository({
+      assignModule: vi.fn(async () => true),
+      revokeModule: vi.fn(async () => true),
+      listAssignedModules: vi.fn(async () => ['news', 'events']),
+      syncAssignedModuleIam: vi.fn(async () => {
+        throw new Error('sync_failed');
+      }),
+      getInstanceById: vi.fn(async () => baseInstance),
+    });
+    const deps = createDeps(repository);
+    const service = createInstanceRegistryService(deps);
+
+    await expect(
+      service.assignModule({
+        instanceId: 'demo',
+        moduleId: 'events',
+        idempotencyKey: 'idem-module-rollback-1',
+        actorId: 'actor-1',
+        requestId: 'req-module-rollback-1',
+      })
+    ).rejects.toThrow('sync_failed');
+
+    expect(repository.assignModule).toHaveBeenCalledWith('demo', 'events');
+    expect(repository.revokeModule).toHaveBeenCalledWith('demo', 'events');
+    expect(repository.appendAuditEvent).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: 'instance_module_assigned',
+      })
+    );
+    expect(deps.invalidatePermissionSnapshots).not.toHaveBeenCalled();
+  });
+
+  it('preserves sync and rollback failures when the rollback itself fails', async () => {
+    const repository = createRepository({
+      assignModule: vi.fn(async () => true),
+      revokeModule: vi.fn(async () => {
+        throw new Error('rollback_failed');
+      }),
+      listAssignedModules: vi.fn(async () => ['news', 'events']),
+      syncAssignedModuleIam: vi.fn(async () => {
+        throw new Error('sync_failed');
+      }),
+      getInstanceById: vi.fn(async () => baseInstance),
+    });
+    const service = createInstanceRegistryService(createDeps(repository));
+
+    try {
+      await service.assignModule({
+        instanceId: 'demo',
+        moduleId: 'events',
+        idempotencyKey: 'idem-module-rollback-2',
+        actorId: 'actor-1',
+        requestId: 'req-module-rollback-2',
+      });
+      expect.unreachable('assignModule should throw');
+    } catch (error) {
+      expect(error).toBeInstanceOf(Error);
+      expect((error as Error).message).toBe('instance_module_assign_rollback_failed:demo:events:sync_failed');
+      expect((error as Error).name).toBe('InstanceModuleAssignRollbackError');
+      expect((error as Error).cause).toEqual({
+        syncError: expect.any(Error),
+        rollbackError: expect.any(Error),
+      });
+      expect(((error as Error).cause as { syncError: Error }).syncError.message).toBe('sync_failed');
+      expect(((error as Error).cause as { rollbackError: Error }).rollbackError.message).toBe('rollback_failed');
+    }
   });
 
   it('revokes a module and reseeds the remaining module IAM baseline', async () => {

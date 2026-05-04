@@ -29,11 +29,16 @@ export type EventListQuery = {
   readonly pageSize: number;
 };
 
-export type EventListPagination = {
+export type EventPagination = {
   readonly page: number;
   readonly pageSize: number;
   readonly hasNextPage: boolean;
   readonly total?: number;
+};
+
+export type EventListResult = {
+  readonly data: readonly EventContentItem[];
+  readonly pagination: EventPagination;
 };
 
 export type EventFormInput = {
@@ -61,11 +66,6 @@ export type EventContentItem = EventFormInput & {
   readonly visible?: boolean;
   readonly createdAt: string;
   readonly updatedAt: string;
-};
-
-export type EventListResult = {
-  readonly data: readonly EventContentItem[];
-  readonly pagination: EventListPagination;
 };
 
 export type PoiSelectItem = {

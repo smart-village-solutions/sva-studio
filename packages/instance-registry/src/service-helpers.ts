@@ -41,77 +41,63 @@ const isConfigurationReady = (
 
 const tenantIamPrecedence: ReadonlyArray<IamTenantIamAxis['status']> = ['blocked', 'degraded', 'unknown', 'ready'];
 
-const createUnknownTenantIamAxis = (
-  source: IamTenantIamAxis['source'],
-  summary: string
-): IamTenantIamAxis =>
-  createTenantIamAxis({
-    status: 'unknown',
-    summary,
-    source,
-  });
-
-const buildConfigurationTenantIamAxis = (
-  keycloakStatus?: IamInstanceDetail['keycloakStatus']
-): IamTenantIamAxis => {
-  if (!keycloakStatus) {
-    return createUnknownTenantIamAxis('registry', 'Noch kein Strukturstatus für Tenant-IAM vorhanden.');
-  }
-
-  const configurationReady = isConfigurationReady(keycloakStatus);
-  return createTenantIamAxis({
-    status: configurationReady ? 'ready' : 'degraded',
-    summary: configurationReady
-      ? 'Tenant-IAM-Struktur ist vollständig vorhanden.'
-      : 'Tenant-IAM-Struktur ist unvollständig oder driftet.',
-    source: 'keycloak_status_snapshot',
-  });
-};
-
-const buildEvidenceTenantIamAxis = (
-  evidence: TenantIamEvidence | undefined,
-  fallback: { readonly source: IamTenantIamAxis['source']; readonly summary: string }
-): IamTenantIamAxis => (evidence ? createTenantIamAxis(evidence) : createUnknownTenantIamAxis(fallback.source, fallback.summary));
-
-const resolveTenantIamOverallStatus = (axes: readonly IamTenantIamAxis[]): IamTenantIamAxis['status'] =>
-  tenantIamPrecedence.find((candidate) => axes.some((axis) => axis.status === candidate)) ?? 'unknown';
-
-const resolveDominantTenantIamAxis = (
-  overallStatus: IamTenantIamAxis['status'],
-  axes: readonly IamTenantIamAxis[]
-): IamTenantIamAxis => axes.find((axis) => axis.status === overallStatus) ?? axes[0];
-
-const resolveTenantIamOverallSummary = (overallStatus: IamTenantIamAxis['status']): string => {
-  if (overallStatus === 'ready') {
-    return 'Tenant-IAM ist betriebsbereit.';
-  }
-  if (overallStatus === 'blocked') {
-    return 'Tenant-IAM ist blockiert.';
-  }
-  if (overallStatus === 'degraded') {
-    return 'Tenant-IAM ist eingeschränkt.';
-  }
-  return 'Tenant-IAM-Befund ist unvollständig.';
-};
-
 export const buildTenantIamStatus = (input: {
   keycloakStatus?: IamInstanceDetail['keycloakStatus'];
   accessEvidence?: TenantIamEvidence;
   reconcileEvidence?: TenantIamEvidence;
 }): IamTenantIamStatus => {
-  const configuration = buildConfigurationTenantIamAxis(input.keycloakStatus);
-  const access = buildEvidenceTenantIamAxis(input.accessEvidence, {
-    source: 'access_probe',
-    summary: 'Noch keine tenantlokale Rechteprobe vorhanden.',
-  });
-  const reconcile = buildEvidenceTenantIamAxis(input.reconcileEvidence, {
-    source: 'role_reconcile',
-    summary: 'Noch kein Rollenabgleich ausgeführt.',
-  });
-  const axes = [configuration, access, reconcile] as const;
-  const overallStatus = resolveTenantIamOverallStatus(axes);
-  const dominantAxis = resolveDominantTenantIamAxis(overallStatus, axes);
-  const overallSummary = resolveTenantIamOverallSummary(overallStatus);
+  const configuration = input.keycloakStatus
+    ? createTenantIamAxis({
+        status: isConfigurationReady(input.keycloakStatus) ? 'ready' : 'degraded',
+        summary: isConfigurationReady(input.keycloakStatus)
+          ? 'Tenant-IAM-Struktur ist vollständig vorhanden.'
+          : 'Tenant-IAM-Struktur ist unvollständig oder driftet.',
+        source: 'keycloak_status_snapshot',
+      })
+    : createTenantIamAxis({
+        status: 'unknown',
+        summary: 'Noch kein Strukturstatus für Tenant-IAM vorhanden.',
+        source: 'registry',
+      });
+
+  const access = input.accessEvidence
+    ? createTenantIamAxis(input.accessEvidence)
+    : createTenantIamAxis({
+        status: 'unknown',
+        summary: 'Noch keine tenantlokale Rechteprobe vorhanden.',
+        source: 'access_probe',
+      });
+
+  const reconcile = input.reconcileEvidence
+    ? createTenantIamAxis(input.reconcileEvidence)
+    : createTenantIamAxis({
+        status: 'unknown',
+        summary: 'Noch kein Rollenabgleich ausgeführt.',
+        source: 'role_reconcile',
+      });
+
+  const overallStatus =
+    tenantIamPrecedence.find((candidate) =>
+      [configuration.status, access.status, reconcile.status].includes(candidate)
+    ) ?? 'unknown';
+
+  const dominantAxis =
+    overallStatus === configuration.status
+      ? configuration
+      : overallStatus === access.status
+        ? access
+        : overallStatus === reconcile.status
+          ? reconcile
+          : configuration;
+
+  const overallSummary =
+    overallStatus === 'ready'
+      ? 'Tenant-IAM ist betriebsbereit.'
+      : overallStatus === 'blocked'
+        ? 'Tenant-IAM ist blockiert.'
+        : overallStatus === 'degraded'
+          ? 'Tenant-IAM ist eingeschränkt.'
+          : 'Tenant-IAM-Befund ist unvollständig.';
 
   return {
     configuration,

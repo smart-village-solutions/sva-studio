@@ -47,76 +47,65 @@ vi.mock('@tanstack/react-router', () => ({
   Link: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
   useNavigate: () => navigateMock,
   useParams: () => paramsMock(),
-  useSearch: () => searchMock(),
+  useSearch: () => ({ page: 1, pageSize: 25 }),
 }));
 
 const navigateMock = vi.fn();
 const paramsMock = vi.fn(() => ({ id: 'poi-1' }));
-const searchMock = vi.fn(() => ({ page: 1, pageSize: 25 }));
-
-const interpolate = (template: string, variables?: Record<string, string | number>) =>
-  template.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (match, key: string) => {
-    const value = variables?.[key];
-    return value === undefined ? match : String(value);
-  });
-
-const registerPoiTranslations = () => {
-  registerPluginTranslationResolver((key, variables) => {
-    const labels: Record<string, string> = {
-      'poi.list.title': 'POI',
-      'poi.list.description': 'Points of Interest aus dem Mainserver bearbeiten.',
-      'poi.messages.loading': 'POI werden geladen.',
-      'poi.messages.loadError': 'POI konnten nicht geladen werden.',
-      'poi.messages.missingContent': 'Der POI konnte nicht geladen werden.',
-      'poi.messages.saveError': 'POI konnte nicht gespeichert werden.',
-      'poi.messages.createSuccess': 'POI wurde erstellt.',
-      'poi.messages.updateSuccess': 'POI wurde aktualisiert.',
-      'poi.messages.validationError': 'Bitte korrigieren Sie die markierten Felder.',
-      'poi.empty.title': 'Noch keine POI vorhanden',
-      'poi.actions.create': 'POI anlegen',
-      'poi.actions.update': 'Änderungen speichern',
-      'poi.actions.clearMedia': 'Medium entfernen',
-      'poi.fields.actions': 'Aktionen',
-      'poi.fields.name': 'Name',
-      'poi.fields.description': 'Beschreibung',
-      'poi.fields.mobileDescription': 'Mobile Beschreibung',
-      'poi.fields.teaserImage': 'Teaserbild',
-      'poi.fields.active': 'Aktiv',
-      'poi.fields.categoryName': 'Kategorie',
-      'poi.fields.street': 'Straße',
-      'poi.fields.city': 'Ort',
-      'poi.fields.email': 'E-Mail',
-      'poi.fields.url': 'Web-URL',
-      'poi.fields.weekday': 'Wochentag',
-      'poi.fields.timeFrom': 'Öffnet',
-      'poi.fields.payload': 'Payload JSON',
-      'poi.fields.mediaPlaceholder': 'Medium auswählen',
-      'poi.pagination.ariaLabel': 'POI-Pagination',
-      'poi.pagination.previous': 'Zurück',
-      'poi.pagination.next': 'Weiter',
-      'poi.pagination.pageLabel': 'Seite {{page}}',
-      'poi.editor.createTitle': 'POI anlegen',
-      'poi.editor.createDescription': 'Erstellen Sie einen neuen Point of Interest.',
-      'poi.editor.editTitle': 'POI bearbeiten',
-      'poi.editor.editDescription': 'Aktualisieren oder löschen Sie den Point of Interest.',
-      'poi.validation.name': 'Der Name ist erforderlich.',
-      'poi.validation.webUrls': 'URLs müssen mit https:// beginnen.',
-      'poi.validation.categoryName': 'Die Kategorie darf maximal 128 Zeichen haben.',
-      'poi.validation.payload': 'Payload muss gültiges JSON sein.',
-    };
-    return interpolate(labels[key] ?? key, variables);
-  });
-};
 
 describe('PoiListPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     navigateMock.mockReset();
     paramsMock.mockReset();
-    searchMock.mockReset();
     paramsMock.mockReturnValue({ id: 'poi-1' });
-    searchMock.mockReturnValue({ page: 1, pageSize: 25 });
-    registerPoiTranslations();
+    registerPluginTranslationResolver((key) => {
+      const labels: Record<string, string> = {
+        'poi.list.title': 'POI',
+        'poi.list.description': 'Points of Interest aus dem Mainserver bearbeiten.',
+        'poi.messages.loading': 'POI werden geladen.',
+        'poi.messages.loadError': 'POI konnten nicht geladen werden.',
+        'poi.messages.missingContent': 'Der POI konnte nicht geladen werden.',
+        'poi.messages.saveError': 'POI konnte nicht gespeichert werden.',
+        'poi.messages.createSuccess': 'POI wurde erstellt.',
+        'poi.messages.updateSuccess': 'POI wurde aktualisiert.',
+        'poi.messages.validationError': 'Bitte korrigieren Sie die markierten Felder.',
+        'poi.empty.title': 'Noch keine POI vorhanden',
+        'poi.actions.create': 'POI anlegen',
+        'poi.actions.update': 'Änderungen speichern',
+        'poi.actions.clearMedia': 'Medium entfernen',
+        'poi.fields.actions': 'Aktionen',
+        'poi.fields.name': 'Name',
+        'poi.fields.description': 'Beschreibung',
+        'poi.fields.mobileDescription': 'Mobile Beschreibung',
+        'poi.fields.teaserImage': 'Teaserbild',
+        'poi.fields.active': 'Aktiv',
+        'poi.fields.categoryName': 'Kategorie',
+        'poi.fields.street': 'Straße',
+        'poi.fields.city': 'Ort',
+        'poi.fields.email': 'E-Mail',
+        'poi.fields.url': 'Web-URL',
+        'poi.fields.weekday': 'Wochentag',
+        'poi.fields.timeFrom': 'Öffnet',
+        'poi.fields.payload': 'Payload JSON',
+        'poi.fields.mediaPlaceholder': 'Medium auswählen',
+        'poi.pagination.ariaLabel': 'POI-Pagination',
+        'poi.pagination.previous': 'Zurück',
+        'poi.pagination.next': 'Weiter',
+        'poi.pagination.pageLabel': 'Seite {{page}}',
+        'poi.values.notAvailable': 'Nicht verfügbar',
+        'poi.values.active': 'Ja',
+        'poi.editor.createTitle': 'POI anlegen',
+        'poi.editor.createDescription': 'Erstellen Sie einen neuen Point of Interest.',
+        'poi.editor.editTitle': 'POI bearbeiten',
+        'poi.editor.editDescription': 'Aktualisieren oder löschen Sie den Point of Interest.',
+        'poi.validation.name': 'Der Name ist erforderlich.',
+        'poi.validation.webUrls': 'URLs müssen mit https:// beginnen.',
+        'poi.validation.categoryName': 'Die Kategorie darf maximal 128 Zeichen haben.',
+        'poi.validation.payload': 'Payload muss gültiges JSON sein.',
+      };
+      return labels[key] ?? key;
+    });
     vi.mocked(listHostMediaAssets).mockResolvedValue([{ id: 'asset-teaser', metadata: { title: 'Teaser Asset' } }]);
     vi.mocked(listHostMediaReferencesByTarget).mockResolvedValue([]);
     vi.mocked(replaceHostMediaReferences).mockResolvedValue({
@@ -145,72 +134,6 @@ describe('PoiListPage', () => {
 
     await waitFor(() => {
       expect(screen.getByText('POI konnten nicht geladen werden.')).toBeTruthy();
-    });
-  });
-
-  it('navigates through paginated list results', async () => {
-    vi.mocked(listPoi).mockResolvedValueOnce({
-      data: [
-        {
-          id: 'poi-1',
-          name: 'Rathaus',
-          categoryName: 'Verwaltung',
-          active: true,
-        },
-      ],
-      pagination: { page: 2, pageSize: 25, hasNextPage: true },
-    });
-
-    render(<PoiListPage />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Seite 2')).toBeTruthy();
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: 'Zurück' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
-
-    expect(navigateMock).toHaveBeenCalledTimes(2);
-
-    const previousTarget = navigateMock.mock.calls[0]?.[0] as {
-      search: (current: Record<string, unknown>) => Record<string, unknown>;
-    };
-    const nextTarget = navigateMock.mock.calls[1]?.[0] as {
-      search: (current: Record<string, unknown>) => Record<string, unknown>;
-    };
-
-    expect(previousTarget.search({ filter: 'open' })).toEqual({
-      filter: 'open',
-      page: 1,
-      pageSize: 25,
-    });
-    expect(nextTarget.search({ filter: 'open' })).toEqual({
-      filter: 'open',
-      page: 3,
-      pageSize: 25,
-    });
-  });
-
-  it('reads pagination values from search params and falls back for invalid values', async () => {
-    searchMock.mockReturnValueOnce({ page: 3, pageSize: 50 });
-
-    render(<PoiListPage />);
-
-    await waitFor(() => {
-      expect(listPoi).toHaveBeenCalledWith({ page: 3, pageSize: 50 });
-    });
-
-    cleanup();
-    searchMock.mockReturnValueOnce({ page: undefined, pageSize: 0 });
-    vi.mocked(listPoi).mockResolvedValueOnce({
-      data: [],
-      pagination: { page: 1, pageSize: 25, hasNextPage: false },
-    });
-
-    render(<PoiListPage />);
-
-    await waitFor(() => {
-      expect(listPoi).toHaveBeenCalledWith({ page: 1, pageSize: 25 });
     });
   });
 

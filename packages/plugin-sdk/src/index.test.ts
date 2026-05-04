@@ -1,0 +1,58 @@
+import { describe, expect, it } from 'vitest';
+
+import {
+  definePluginActions,
+  definePluginModuleIamContract,
+  definePluginPermissions,
+  pluginSdkPackageRoles,
+  pluginSdkVersion,
+  registerPluginTranslationResolver,
+  translatePluginKey,
+} from './index.js';
+
+describe('@sva/plugin-sdk package scaffold', () => {
+  it('declares the target package role', () => {
+    expect(pluginSdkVersion).toBe('0.0.1');
+    expect(pluginSdkPackageRoles).toContain('plugin-contracts');
+  });
+
+  it('exposes plugin contracts through the target package edge', () => {
+    const actions = definePluginActions('news', [
+      {
+        id: 'news.create',
+        titleKey: 'news.actions.create',
+        requiredAction: 'news.create',
+      },
+    ]);
+    const permissions = definePluginPermissions('news', [{ id: 'news.create', titleKey: 'news.permissions.create' }]);
+
+    expect(actions).toEqual([
+      {
+        id: 'news.create',
+        titleKey: 'news.actions.create',
+        requiredAction: 'news.create',
+      },
+    ]);
+    expect(permissions).toEqual([{ id: 'news.create', titleKey: 'news.permissions.create' }]);
+  });
+
+  it('exposes plugin module IAM contracts through the target package edge', () => {
+    const contract = definePluginModuleIamContract('news', {
+      moduleId: ' news ',
+      permissionIds: [' news.create '],
+      systemRoles: [{ roleName: ' editor ', permissionIds: [' news.create '] }],
+    });
+
+    expect(contract).toEqual({
+      moduleId: 'news',
+      permissionIds: ['news.create'],
+      systemRoles: [{ roleName: 'editor', permissionIds: ['news.create'] }],
+    });
+  });
+
+  it('exposes plugin translation helpers through the target package edge', () => {
+    registerPluginTranslationResolver((key) => (key === 'news.actions.create' ? 'News anlegen' : key));
+
+    expect(translatePluginKey('news', 'actions.create')).toBe('News anlegen');
+  });
+});

@@ -12,7 +12,6 @@ export default defineConfig({
       { find: /^@sva\/data-repositories\/server$/, replacement: resolve(currentDir, '../data-repositories/src/server.ts') },
       { find: /^@sva\/data-repositories$/, replacement: resolve(currentDir, '../data-repositories/src/index.ts') },
       { find: /^@sva\/media$/, replacement: resolve(currentDir, '../media/src/index.ts') },
-      { find: /^@sva\/studio-module-iam$/, replacement: resolve(currentDir, '../studio-module-iam/src/index.ts') },
       { find: /^@sva\/server-runtime$/, replacement: resolve(currentDir, '../server-runtime/src/index.ts') },
       { find: /^@sva\/iam-core$/, replacement: resolve(currentDir, '../iam-core/src/index.ts') },
       { find: /^@sva\/iam-admin\/encryption$/, replacement: resolve(currentDir, '../iam-admin/src/encryption.ts') },

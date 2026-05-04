@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router';
+import { Link, useNavigate, useParams } from '@tanstack/react-router';
 import {
   findHostMediaReferenceAssetId,
   fromDatetimeLocalValue,
@@ -29,7 +29,6 @@ import {
 } from '@sva/studio-ui-react';
 
 import { NewsApiError, createNews, deleteNews, getNews, listNews, updateNews } from './news.api.js';
-import { normalizeListSearch } from './list-pagination.js';
 import { getPluginNewsActionDefinition, pluginNewsActionIds, pluginNewsMediaPickers } from './plugin.js';
 import type { NewsContentBlock, NewsContentItem, NewsFormInput, NewsListResult, NewsMediaContent } from './news.types.js';
 import { validateNewsForm } from './news.validation.js';
@@ -119,33 +118,6 @@ const resolveNewsErrorMessage = (pt: ReturnType<typeof usePluginTranslation>, er
   return pt(fallbackKey);
 };
 
-type ListSearchState = Record<string, unknown>;
-
-type ListPaginationState = Readonly<{
-  page: number;
-  pageSize: number;
-  hasNextPage: boolean;
-}>;
-
-type ListPaginationNavProps = Readonly<{
-  ariaLabel: string;
-  pageLabel: string;
-  previousLabel: string;
-  nextLabel: string;
-  pagination: ListPaginationState;
-  onPageChange: (page: number) => void;
-}>;
-
-const updateListSearchPage = (
-  current: ListSearchState,
-  page: number,
-  pageSize: number
-): ListSearchState => ({
-  ...current,
-  page,
-  pageSize,
-});
-
 const persistFlashMessage = (code: FlashMessageCode) => {
   if (typeof globalThis.window === 'undefined') {
     return;
@@ -196,6 +168,16 @@ const formatSettings = (value: NewsContentItem['settings']) => {
 const compactString = (value?: string) => {
   const trimmed = value?.trim();
   return trimmed && trimmed.length > 0 ? trimmed : undefined;
+};
+
+const readPaginationValue = (key: 'page' | 'pageSize', fallback: number) => {
+  const search = typeof globalThis.window === 'undefined' ? '' : globalThis.window.location.search;
+  const rawValue = new URLSearchParams(search).get(key);
+  if (!rawValue) {
+    return fallback;
+  }
+  const parsedValue = Number(rawValue);
+  return Number.isInteger(parsedValue) && parsedValue > 0 ? parsedValue : fallback;
 };
 
 const normalizeOptionalNumber = (value: number | string | undefined): number | undefined => {
@@ -303,72 +285,6 @@ const firstBlockSummary = (item: NewsContentItem) => {
 const categorySummary = (item: NewsContentItem) =>
   item.categoryName ?? item.categories?.map((category) => category.name).join(', ') ?? item.payload.category ?? '—';
 
-const NewsListEditAction = ({ id, label }: Readonly<{ id: string; label: string }>) => (
-  <Button asChild variant="outline" size="sm">
-    <Link to="/admin/news/$id" params={{ id }}>
-      {label}
-    </Link>
-  </Button>
-);
-
-const NewsPaginationNav = ({
-  ariaLabel,
-  pageLabel,
-  previousLabel,
-  nextLabel,
-  pagination,
-  onPageChange,
-}: ListPaginationNavProps) => (
-  <nav aria-label={ariaLabel} className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
-    <p key={pagination.page} aria-live="polite" className="animate-pagination-active">
-      {pageLabel}
-    </p>
-    <div className="flex items-center gap-2">
-      <Button
-        type="button"
-        size="sm"
-        variant="outline"
-        disabled={pagination.page <= 1}
-        onClick={() => onPageChange(Math.max(1, pagination.page - 1))}
-      >
-        {previousLabel}
-      </Button>
-      <Button
-        type="button"
-        size="sm"
-        variant="outline"
-        disabled={!pagination.hasNextPage}
-        onClick={() => onPageChange(pagination.page + 1)}
-      >
-        {nextLabel}
-      </Button>
-    </div>
-  </nav>
-);
-
-const createNewsListColumns = (pt: ReturnType<typeof usePluginTranslation>) => [
-  {
-    id: 'title',
-    header: pt('fields.title'),
-    cell: (item: NewsContentItem) => (
-      <div>
-        <div className="font-medium">{item.title}</div>
-        <div className="mt-1 line-clamp-2 text-xs text-muted-foreground">{firstBlockSummary(item)}</div>
-      </div>
-    ),
-  },
-  {
-    id: 'categoryName',
-    header: pt('fields.categoryName'),
-    cell: categorySummary,
-  },
-  {
-    id: 'updatedAt',
-    header: pt('fields.updatedAt'),
-    cell: (item: NewsContentItem) => formatDate(item.updatedAt),
-  },
-];
-
 const NewsForm = ({
   mode,
   contentId,
@@ -397,22 +313,9 @@ const NewsForm = ({
   const hasFieldError = React.useCallback((field: string) => fieldErrors.includes(field), [fieldErrors]);
 
   React.useEffect(() => {
-    let active = true;
     void listHostMediaAssets({ fetch: globalThis.fetch.bind(globalThis) })
-      .then((assets) => {
-        if (active) {
-          setMediaOptions(toHostMediaFieldOptions(assets));
-        }
-      })
-      .catch(() => {
-        if (active) {
-          setMediaOptions([]);
-        }
-      });
-
-    return () => {
-      active = false;
-    };
+      .then((assets) => setMediaOptions(toHostMediaFieldOptions(assets)))
+      .catch(() => setMediaOptions([]));
   }, []);
 
   React.useEffect(() => {
@@ -440,18 +343,20 @@ const NewsForm = ({
             targetId: item.id,
           })
             .then((references) => {
-              if (active && requestId === editLoadRequestIdRef.current) {
-                setExistingMediaReferenceCount(references.length);
-                setTeaserImageAssetId(findHostMediaReferenceAssetId(references, pluginNewsMediaPickers.teaserImage.roles[0]));
-                setHeaderImageAssetId(findHostMediaReferenceAssetId(references, pluginNewsMediaPickers.headerImage.roles[0]));
+              if (!active || requestId !== editLoadRequestIdRef.current) {
+                return;
               }
+              setExistingMediaReferenceCount(references.length);
+              setTeaserImageAssetId(findHostMediaReferenceAssetId(references, pluginNewsMediaPickers.teaserImage.roles[0]));
+              setHeaderImageAssetId(findHostMediaReferenceAssetId(references, pluginNewsMediaPickers.headerImage.roles[0]));
             })
             .catch(() => {
-              if (active && requestId === editLoadRequestIdRef.current) {
-                setExistingMediaReferenceCount(0);
-                setTeaserImageAssetId(null);
-                setHeaderImageAssetId(null);
+              if (!active || requestId !== editLoadRequestIdRef.current) {
+                return;
               }
+              setExistingMediaReferenceCount(0);
+              setTeaserImageAssetId(null);
+              setHeaderImageAssetId(null);
             });
         }
       })
@@ -1041,11 +946,10 @@ const NewsForm = ({
 export const NewsListPage = () => {
   const pt = usePluginTranslation('news');
   const navigate = useNavigate();
-  const search = useSearch({ strict: false }) as { readonly page?: number; readonly pageSize?: number };
   const createLabel = resolvePluginActionLabel(pt, pluginNewsActionIds.create);
   const editLabel = resolvePluginActionLabel(pt, pluginNewsActionIds.edit);
-  const columns = createNewsListColumns(pt);
-  const { page, pageSize } = normalizeListSearch(search);
+  const page = readPaginationValue('page', 1);
+  const pageSize = readPaginationValue('pageSize', 25);
   const [result, setResult] = React.useState<NewsListResult>({
     data: [],
     pagination: { page, pageSize, hasNextPage: false },
@@ -1053,32 +957,6 @@ export const NewsListPage = () => {
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [flashMessage, setFlashMessage] = React.useState<FlashMessageCode | null>(null);
-
-  const handlePageChange = React.useCallback(
-    (nextPage: number) => {
-      Promise.resolve(
-        navigate({
-          to: '/admin/news',
-          search: (current: ListSearchState) => updateListSearchPage(current, nextPage, result.pagination.pageSize),
-        })
-      ).catch(() => undefined);
-    },
-    [navigate, result.pagination.pageSize]
-  );
-
-  React.useEffect(() => {
-    if (search.page === page && search.pageSize === pageSize) {
-      return;
-    }
-
-    Promise.resolve(
-      navigate({
-        to: '/admin/news',
-        replace: true,
-        search: (current: ListSearchState) => updateListSearchPage(current, page, pageSize),
-      })
-    ).catch(() => undefined);
-  }, [navigate, page, pageSize, search.page, search.pageSize]);
 
   React.useEffect(() => {
     setFlashMessage(consumeFlashMessage());
@@ -1088,7 +966,6 @@ export const NewsListPage = () => {
     let active = true;
 
     setIsLoading(true);
-    setError(null);
     void listNews({ page, pageSize })
       .then((nextResult) => {
         if (active) {
@@ -1151,21 +1028,86 @@ export const NewsListPage = () => {
               selectRow: ({ label }) => label,
             }}
             data={result.data}
-            columns={columns}
-            rowActions={(item) => <NewsListEditAction id={item.id} label={editLabel} />}
+            columns={[
+              {
+                id: 'title',
+                header: pt('fields.title'),
+                cell: (item: NewsContentItem) => (
+                  <div>
+                    <div className="font-medium">{item.title}</div>
+                    <div className="mt-1 line-clamp-2 text-xs text-muted-foreground">{firstBlockSummary(item)}</div>
+                  </div>
+                ),
+              },
+              {
+                id: 'categoryName',
+                header: pt('fields.categoryName'),
+                cell: categorySummary,
+              },
+              {
+                id: 'updatedAt',
+                header: pt('fields.updatedAt'),
+                cell: (item: NewsContentItem) => formatDate(item.updatedAt),
+              },
+            ]}
+            rowActions={(item) => (
+              <Button asChild variant="outline" size="sm">
+                <Link to="/admin/news/$id" params={{ id: item.id }}>
+                  {editLabel}
+                </Link>
+              </Button>
+            )}
             emptyState={null}
             getRowId={(item) => item.id}
             selectionMode="none"
           />
 
-          <NewsPaginationNav
-            ariaLabel={pt('pagination.ariaLabel')}
-            pageLabel={pt('pagination.pageLabel', { page: result.pagination.page })}
-            previousLabel={pt('pagination.previous')}
-            nextLabel={pt('pagination.next')}
-            pagination={result.pagination}
-            onPageChange={handlePageChange}
-          />
+          <nav
+            aria-label={pt('pagination.ariaLabel')}
+            className="flex items-center justify-between gap-3 text-sm text-muted-foreground"
+          >
+            <p key={result.pagination.page} aria-live="polite" className="animate-pagination-active">
+              {pt('pagination.pageLabel', { page: result.pagination.page })}
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={result.pagination.page <= 1}
+                onClick={() =>
+                  void navigate({
+                    to: '/admin/news',
+                    search: (current: Record<string, unknown>) => ({
+                      ...current,
+                      page: Math.max(1, result.pagination.page - 1),
+                      pageSize: result.pagination.pageSize,
+                    }),
+                  })
+                }
+              >
+                {pt('pagination.previous')}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={!result.pagination.hasNextPage}
+                onClick={() =>
+                  void navigate({
+                    to: '/admin/news',
+                    search: (current: Record<string, unknown>) => ({
+                      ...current,
+                      page: result.pagination.page + 1,
+                      pageSize: result.pagination.pageSize,
+                    }),
+                  })
+                }
+              >
+                {pt('pagination.next')}
+              </Button>
+            </div>
+          </nav>
         </div>
       )}
     </StudioOverviewPageTemplate>

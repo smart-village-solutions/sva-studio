@@ -116,4 +116,21 @@ describe('ensureSdkInitialized', () => {
       reason: 'collector unavailable',
     });
   });
+
+  it('logs an info message when OTEL is disabled explicitly', async () => {
+    getInstanceConfig.mockReturnValue(null);
+    initializeOtelSdk.mockResolvedValue({
+      status: 'disabled',
+      reason: 'otel disabled by config',
+    });
+
+    const { ensureSdkInitialized } = await loadModule();
+
+    await expect(ensureSdkInitialized()).resolves.toBeUndefined();
+
+    expect(logger.info).toHaveBeenCalledWith('SDK initialisiert ohne OTEL', {
+      reason: 'otel disabled by config',
+    });
+    expect(logger.error).not.toHaveBeenCalled();
+  });
 });

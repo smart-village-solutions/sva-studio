@@ -1,0 +1,2545 @@
+{
+  "meta": {
+    "version": "1.0.0",
+    "updatedAt": "2026-05-04",
+    "source": "CSV SVA-Studio-Kostenschätzung-22.03.2026.csv; Initialstatus aus der Kostenschätzung als commissioned/on_track abgeleitet"
+  },
+  "statusModel": {
+    "idea": 0,
+    "commissioned": 0,
+    "planned": 10,
+    "prototype": 20,
+    "implementation": 45,
+    "optimization": 70,
+    "testing": 80,
+    "acceptance": 90,
+    "done": 100
+  },
+  "healthModel": [
+    "on_track",
+    "needs_attention",
+    "at_risk",
+    "blocked"
+  ],
+  "priorityModel": {
+    "must": "1: Muss sein",
+    "replacement_required": "2: Notwendig für die Ablösung des Alt-Systems",
+    "valuable": "3: Neu, aber sehr sinnvoll",
+    "requested": "4: Neu und gewünscht",
+    "funded_optional": "5: Nicht so wichtig, aber finanziert",
+    "unfunded_nice_to_have": "6: Nice to have, noch ohne Finanzierung",
+    "irrelevant": "7: Irrelevant"
+  },
+  "milestones": [
+    {
+      "id": "M1",
+      "title": "Rollen & Rechte",
+      "plannedEffortPt": 50,
+      "sortOrder": 1
+    },
+    {
+      "id": "M2",
+      "title": "Basis CMS",
+      "plannedEffortPt": 69,
+      "sortOrder": 2
+    },
+    {
+      "id": "M3",
+      "title": "App-Konfiguration",
+      "plannedEffortPt": 33.5,
+      "sortOrder": 3
+    },
+    {
+      "id": "M4",
+      "title": "Schnittstellen",
+      "plannedEffortPt": 35,
+      "sortOrder": 4
+    },
+    {
+      "id": "M5",
+      "title": "Erweiterte Module",
+      "plannedEffortPt": 46.5,
+      "sortOrder": 5
+    },
+    {
+      "id": "M6",
+      "title": "SDK & Marktplatz",
+      "plannedEffortPt": 28,
+      "sortOrder": 6
+    },
+    {
+      "id": "M7",
+      "title": "Hilfe & Compliance",
+      "plannedEffortPt": 37,
+      "sortOrder": 7
+    },
+    {
+      "id": "M8",
+      "title": "KI-Anbindung",
+      "plannedEffortPt": 26,
+      "sortOrder": 8
+    }
+  ],
+  "workPackages": [
+    {
+      "id": "WP-001",
+      "milestoneId": "M1",
+      "title": "Authentifizierung und Sicherheit unter Berücksichtigung von Mandantenfähigkeit",
+      "area": "1. Rechte & Rollen",
+      "priority": "must",
+      "effortPt": 4.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M1"
+      ]
+    },
+    {
+      "id": "WP-002",
+      "milestoneId": "M1",
+      "title": "Benutzer-Accounts und Profile mit Organisations-Hierarchie",
+      "area": "1. Rechte & Rollen",
+      "priority": "must",
+      "effortPt": 4.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M1"
+      ]
+    },
+    {
+      "id": "WP-003",
+      "milestoneId": "M1",
+      "title": "Organisation und Struktur",
+      "area": "1. Rechte & Rollen",
+      "priority": "must",
+      "effortPt": 4.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M1"
+      ]
+    },
+    {
+      "id": "WP-004",
+      "milestoneId": "M1",
+      "title": "Permission Engine",
+      "area": "1. Rechte & Rollen",
+      "priority": "must",
+      "effortPt": 5.5,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M1"
+      ]
+    },
+    {
+      "id": "WP-005",
+      "milestoneId": "M1",
+      "title": "Rollen- und Rechtemanagement via KeyCloak",
+      "area": "1. Rechte & Rollen",
+      "priority": "must",
+      "effortPt": 4.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M1"
+      ]
+    },
+    {
+      "id": "WP-006",
+      "milestoneId": "M1",
+      "title": "Datenschutz und Compliance",
+      "area": "1. Rechte & Rollen",
+      "priority": "must",
+      "effortPt": 4.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M1"
+      ]
+    },
+    {
+      "id": "WP-007",
+      "milestoneId": "M1",
+      "title": "Audit-Log",
+      "area": "1. Rechte & Rollen",
+      "priority": "valuable",
+      "effortPt": 2.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M1"
+      ]
+    },
+    {
+      "id": "WP-008",
+      "milestoneId": "M1",
+      "title": "Datenlöschkonzept",
+      "area": "1. Rechte & Rollen",
+      "priority": "valuable",
+      "effortPt": 2.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M1"
+      ]
+    },
+    {
+      "id": "WP-009",
+      "milestoneId": "M1",
+      "title": "Nachrichten (MVP)",
+      "area": "2. Datentypen",
+      "priority": "must",
+      "effortPt": 0.5,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M1"
+      ]
+    },
+    {
+      "id": "WP-010",
+      "milestoneId": "M1",
+      "title": "Rechtstexte",
+      "area": "2. Datentypen",
+      "priority": "valuable",
+      "effortPt": 4.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M1"
+      ]
+    },
+    {
+      "id": "WP-011",
+      "milestoneId": "M1",
+      "title": "Basis-UI & Navigation",
+      "area": "3. Datenverwaltung",
+      "priority": "must",
+      "effortPt": 1.5,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M1"
+      ]
+    },
+    {
+      "id": "WP-012",
+      "milestoneId": "M1",
+      "title": "E-Mail-Server",
+      "area": "4. Schnittstellen",
+      "priority": "must",
+      "effortPt": 0.5,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M1"
+      ]
+    },
+    {
+      "id": "WP-013",
+      "milestoneId": "M1",
+      "title": "Keycloak",
+      "area": "4. Schnittstellen",
+      "priority": "must",
+      "effortPt": 0.5,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M1"
+      ]
+    },
+    {
+      "id": "WP-014",
+      "milestoneId": "M1",
+      "title": "Main-Server",
+      "area": "4. Schnittstellen",
+      "priority": "must",
+      "effortPt": 0.5,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M1"
+      ]
+    },
+    {
+      "id": "WP-015",
+      "milestoneId": "M1",
+      "title": "OTEL",
+      "area": "4. Schnittstellen",
+      "priority": "must",
+      "effortPt": 0.5,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M1"
+      ]
+    },
+    {
+      "id": "WP-016",
+      "milestoneId": "M1",
+      "title": "Grafana",
+      "area": "4. Schnittstellen",
+      "priority": "valuable",
+      "effortPt": 0.5,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M1"
+      ]
+    },
+    {
+      "id": "WP-017",
+      "milestoneId": "M1",
+      "title": "Loki",
+      "area": "4. Schnittstellen",
+      "priority": "valuable",
+      "effortPt": 0.5,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M1"
+      ]
+    },
+    {
+      "id": "WP-018",
+      "milestoneId": "M1",
+      "title": "News-Modul",
+      "area": "5. Module",
+      "priority": "must",
+      "effortPt": 2.5,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M1"
+      ]
+    },
+    {
+      "id": "WP-019",
+      "milestoneId": "M1",
+      "title": "Dokumentation der Funktionalitäten und Entwicklungen des Moduls",
+      "area": "6. Allgemein",
+      "priority": "must",
+      "effortPt": 1.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M1"
+      ]
+    },
+    {
+      "id": "WP-020",
+      "milestoneId": "M1",
+      "title": "Monitoringsystem",
+      "area": "6. Allgemein",
+      "priority": "valuable",
+      "effortPt": 3.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M1"
+      ]
+    },
+    {
+      "id": "WP-021",
+      "milestoneId": "M1",
+      "title": "Redaktion über die App",
+      "area": "7. Frontend",
+      "priority": "funded_optional",
+      "effortPt": 5.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M1"
+      ]
+    },
+    {
+      "id": "WP-022",
+      "milestoneId": "M2",
+      "title": "Workflows für Freigaben",
+      "area": "1. Rechte & Rollen",
+      "priority": "valuable",
+      "effortPt": 3.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M2"
+      ]
+    },
+    {
+      "id": "WP-023",
+      "milestoneId": "M2",
+      "title": "Onboarding/Offboarding",
+      "area": "1. Rechte & Rollen",
+      "priority": "requested",
+      "effortPt": 2.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M2"
+      ]
+    },
+    {
+      "id": "WP-024",
+      "milestoneId": "M2",
+      "title": "Vertretungsrechte",
+      "area": "1. Rechte & Rollen",
+      "priority": "requested",
+      "effortPt": 1.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M2"
+      ]
+    },
+    {
+      "id": "WP-025",
+      "milestoneId": "M2",
+      "title": "Events",
+      "area": "2. Datentypen",
+      "priority": "must",
+      "effortPt": 2.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M2"
+      ]
+    },
+    {
+      "id": "WP-026",
+      "milestoneId": "M2",
+      "title": "Nachrichten",
+      "area": "2. Datentypen",
+      "priority": "must",
+      "effortPt": 1.5,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M2"
+      ]
+    },
+    {
+      "id": "WP-027",
+      "milestoneId": "M2",
+      "title": "POI",
+      "area": "2. Datentypen",
+      "priority": "must",
+      "effortPt": 1.5,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M2"
+      ]
+    },
+    {
+      "id": "WP-028",
+      "milestoneId": "M2",
+      "title": "Touren",
+      "area": "2. Datentypen",
+      "priority": "must",
+      "effortPt": 1.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M2"
+      ]
+    },
+    {
+      "id": "WP-029",
+      "milestoneId": "M2",
+      "title": "Umfragen",
+      "area": "2. Datentypen",
+      "priority": "must",
+      "effortPt": 2.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M2"
+      ]
+    },
+    {
+      "id": "WP-030",
+      "milestoneId": "M2",
+      "title": "Eigene Datentypen (eventuell auch schon durch SDK abgedeckt?)",
+      "area": "2. Datentypen",
+      "priority": "requested",
+      "effortPt": 5.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M2"
+      ]
+    },
+    {
+      "id": "WP-031",
+      "milestoneId": "M2",
+      "title": "Filterkriterien & -logiken",
+      "area": "3. Datenverwaltung",
+      "priority": "replacement_required",
+      "effortPt": 3.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M2"
+      ]
+    },
+    {
+      "id": "WP-032",
+      "milestoneId": "M2",
+      "title": "Medienverwaltung",
+      "area": "3. Datenverwaltung",
+      "priority": "valuable",
+      "effortPt": 5.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M2"
+      ]
+    },
+    {
+      "id": "WP-033",
+      "milestoneId": "M2",
+      "title": "Karten-Funktionen",
+      "area": "3. Datenverwaltung",
+      "priority": "requested",
+      "effortPt": 3.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M2"
+      ]
+    },
+    {
+      "id": "WP-034",
+      "milestoneId": "M2",
+      "title": "QR-Codes",
+      "area": "3. Datenverwaltung",
+      "priority": "requested",
+      "effortPt": 0.5,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M2"
+      ]
+    },
+    {
+      "id": "WP-035",
+      "milestoneId": "M2",
+      "title": "Serienevent Verbesserung?",
+      "area": "3. Datenverwaltung",
+      "priority": "requested",
+      "effortPt": 2.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M2"
+      ]
+    },
+    {
+      "id": "WP-036",
+      "milestoneId": "M2",
+      "title": "Suche & Navigation: Standard-Suchfunktion in allen Listen",
+      "area": "3. Datenverwaltung",
+      "priority": "requested",
+      "effortPt": 2.5,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M2"
+      ]
+    },
+    {
+      "id": "WP-037",
+      "milestoneId": "M2",
+      "title": "URL-Deeplinking",
+      "area": "3. Datenverwaltung",
+      "priority": "requested",
+      "effortPt": 1.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M2"
+      ]
+    },
+    {
+      "id": "WP-038",
+      "milestoneId": "M2",
+      "title": "OSM Tileserver",
+      "area": "4. Schnittstellen",
+      "priority": "must",
+      "effortPt": 0.5,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M2"
+      ]
+    },
+    {
+      "id": "WP-039",
+      "milestoneId": "M2",
+      "title": "RSS / Importer",
+      "area": "4. Schnittstellen",
+      "priority": "replacement_required",
+      "effortPt": 1.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M2"
+      ]
+    },
+    {
+      "id": "WP-040",
+      "milestoneId": "M2",
+      "title": "TMB",
+      "area": "4. Schnittstellen",
+      "priority": "replacement_required",
+      "effortPt": 3.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M2"
+      ]
+    },
+    {
+      "id": "WP-041",
+      "milestoneId": "M2",
+      "title": "Bildoptimierung",
+      "area": "4. Schnittstellen",
+      "priority": "valuable",
+      "effortPt": 2.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M2"
+      ]
+    },
+    {
+      "id": "WP-042",
+      "milestoneId": "M2",
+      "title": "Meili Search",
+      "area": "4. Schnittstellen",
+      "priority": "valuable",
+      "effortPt": 2.5,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M2"
+      ]
+    },
+    {
+      "id": "WP-043",
+      "milestoneId": "M2",
+      "title": "Anbindung externe Datenplattform",
+      "area": "4. Schnittstellen",
+      "priority": "requested",
+      "effortPt": 3.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M2"
+      ]
+    },
+    {
+      "id": "WP-044",
+      "milestoneId": "M2",
+      "title": "Masterportal",
+      "area": "4. Schnittstellen",
+      "priority": "requested",
+      "effortPt": 1.5,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M2"
+      ]
+    },
+    {
+      "id": "WP-045",
+      "milestoneId": "M2",
+      "title": "Nachrichten (Finalisierung)",
+      "area": "5. Module",
+      "priority": "must",
+      "effortPt": 1.5,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M2"
+      ]
+    },
+    {
+      "id": "WP-046",
+      "milestoneId": "M2",
+      "title": "POI",
+      "area": "5. Module",
+      "priority": "must",
+      "effortPt": 1.5,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M2"
+      ]
+    },
+    {
+      "id": "WP-047",
+      "milestoneId": "M2",
+      "title": "Touren",
+      "area": "5. Module",
+      "priority": "must",
+      "effortPt": 1.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M2"
+      ]
+    },
+    {
+      "id": "WP-048",
+      "milestoneId": "M2",
+      "title": "Umfragen",
+      "area": "5. Module",
+      "priority": "must",
+      "effortPt": 2.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M2"
+      ]
+    },
+    {
+      "id": "WP-049",
+      "milestoneId": "M2",
+      "title": "Veranstaltungen",
+      "area": "5. Module",
+      "priority": "must",
+      "effortPt": 3.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M2"
+      ]
+    },
+    {
+      "id": "WP-050",
+      "milestoneId": "M2",
+      "title": "Abfallkalender",
+      "area": "5. Module",
+      "priority": "replacement_required",
+      "effortPt": 4.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M2"
+      ]
+    },
+    {
+      "id": "WP-051",
+      "milestoneId": "M2",
+      "title": "Dokumentation der Funktionalitäten und Entwicklungen des Moduls",
+      "area": "6. Allgemein",
+      "priority": "must",
+      "effortPt": 1.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M2"
+      ]
+    },
+    {
+      "id": "WP-052",
+      "milestoneId": "M2",
+      "title": "Dashboard-Core • Aufgabenübersicht („Meine Aufgaben”):",
+      "area": "6. Allgemein",
+      "priority": "requested",
+      "effortPt": 1.5,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M2"
+      ]
+    },
+    {
+      "id": "WP-053",
+      "milestoneId": "M2",
+      "title": "Dashboard-Core • System-Status & Alerts",
+      "area": "6. Allgemein",
+      "priority": "requested",
+      "effortPt": 1.5,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M2"
+      ]
+    },
+    {
+      "id": "WP-054",
+      "milestoneId": "M2",
+      "title": "Monitoringsystem",
+      "area": "6. Allgemein",
+      "priority": "requested",
+      "effortPt": 1.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M2"
+      ]
+    },
+    {
+      "id": "WP-055",
+      "milestoneId": "M2",
+      "title": "Ticketsystem",
+      "area": "6. Allgemein",
+      "priority": "funded_optional",
+      "effortPt": 1.5,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M2"
+      ]
+    },
+    {
+      "id": "WP-056",
+      "milestoneId": "M3",
+      "title": "Mandantenverwaltung",
+      "area": "1. Rechte & Rollen",
+      "priority": "requested",
+      "effortPt": 5.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M3"
+      ]
+    },
+    {
+      "id": "WP-057",
+      "milestoneId": "M3",
+      "title": "Tags an Inhalte (\"liken\")",
+      "area": "2. Datentypen",
+      "priority": "requested",
+      "effortPt": 1.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M3"
+      ]
+    },
+    {
+      "id": "WP-058",
+      "milestoneId": "M3",
+      "title": "E-Mail-Konfiguration und -Verwaltung",
+      "area": "3. Datenverwaltung",
+      "priority": "requested",
+      "effortPt": 0.5,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M3"
+      ]
+    },
+    {
+      "id": "WP-059",
+      "milestoneId": "M3",
+      "title": "Mehrsprachige Inhalte",
+      "area": "3. Datenverwaltung",
+      "priority": "requested",
+      "effortPt": 1.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M3"
+      ]
+    },
+    {
+      "id": "WP-060",
+      "milestoneId": "M3",
+      "title": "Themes und Dark Mode für das Studio --> Barrierefreiheit?",
+      "area": "3. Datenverwaltung",
+      "priority": "unfunded_nice_to_have",
+      "effortPt": 1.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M3"
+      ]
+    },
+    {
+      "id": "WP-061",
+      "milestoneId": "M3",
+      "title": "App-Konfiguration (Tabbar, Drawer, Kacheln, Listen, Social Sharing, Favoriten, ...)",
+      "area": "5. Module",
+      "priority": "must",
+      "effortPt": 10.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M3"
+      ]
+    },
+    {
+      "id": "WP-062",
+      "milestoneId": "M3",
+      "title": "App-Suche",
+      "area": "5. Module",
+      "priority": "valuable",
+      "effortPt": 5.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M3"
+      ]
+    },
+    {
+      "id": "WP-063",
+      "milestoneId": "M3",
+      "title": "Rechtstexte-Aktionen",
+      "area": "5. Module",
+      "priority": "valuable",
+      "effortPt": 2.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M3"
+      ]
+    },
+    {
+      "id": "WP-064",
+      "milestoneId": "M3",
+      "title": "Individualisierung der App im CMS",
+      "area": "5. Module",
+      "priority": "irrelevant",
+      "effortPt": 0.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M3"
+      ]
+    },
+    {
+      "id": "WP-065",
+      "milestoneId": "M3",
+      "title": "Dokumentation der Funktionalitäten und Entwicklungen des Moduls",
+      "area": "6. Allgemein",
+      "priority": "must",
+      "effortPt": 1.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M3"
+      ]
+    },
+    {
+      "id": "WP-066",
+      "milestoneId": "M3",
+      "title": "Dashboard: Alerts",
+      "area": "6. Allgemein",
+      "priority": "valuable",
+      "effortPt": 1.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M3"
+      ]
+    },
+    {
+      "id": "WP-067",
+      "milestoneId": "M3",
+      "title": "Bereitstellung von Monitoringsystembausteinen für Redakteure",
+      "area": "6. Allgemein",
+      "priority": "requested",
+      "effortPt": 1.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M3"
+      ]
+    },
+    {
+      "id": "WP-068",
+      "milestoneId": "M3",
+      "title": "Sprachverwaltung und i18n-System",
+      "area": "6. Allgemein",
+      "priority": "requested",
+      "effortPt": 1.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M3"
+      ]
+    },
+    {
+      "id": "WP-069",
+      "milestoneId": "M3",
+      "title": "Dashboard-Core • Modul-Status & Verfügbarkeit:",
+      "area": "6. Allgemein",
+      "priority": "funded_optional",
+      "effortPt": 1.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M3"
+      ]
+    },
+    {
+      "id": "WP-070",
+      "milestoneId": "M3",
+      "title": "Individualisierung der App durch Nutzer",
+      "area": "7. Frontend",
+      "priority": "funded_optional",
+      "effortPt": 2.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M3"
+      ]
+    },
+    {
+      "id": "WP-071",
+      "milestoneId": "M3",
+      "title": "Like-Funktion",
+      "area": "7. Frontend",
+      "priority": "funded_optional",
+      "effortPt": 1.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M3"
+      ]
+    },
+    {
+      "id": "WP-072",
+      "milestoneId": "M4",
+      "title": "Verwaltungsleistungen",
+      "area": "2. Datentypen",
+      "priority": "requested",
+      "effortPt": 1.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M4"
+      ]
+    },
+    {
+      "id": "WP-073",
+      "milestoneId": "M4",
+      "title": "Räume (Buchungsobjekte)",
+      "area": "2. Datentypen",
+      "priority": "funded_optional",
+      "effortPt": 1.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M4"
+      ]
+    },
+    {
+      "id": "WP-074",
+      "milestoneId": "M4",
+      "title": "Abgeordnete",
+      "area": "2. Datentypen",
+      "priority": "unfunded_nice_to_have",
+      "effortPt": 0.5,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M4"
+      ]
+    },
+    {
+      "id": "WP-075",
+      "milestoneId": "M4",
+      "title": "Gremien",
+      "area": "2. Datentypen",
+      "priority": "unfunded_nice_to_have",
+      "effortPt": 0.5,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M4"
+      ]
+    },
+    {
+      "id": "WP-076",
+      "milestoneId": "M4",
+      "title": "ÖPNV-Abfahrten",
+      "area": "2. Datentypen",
+      "priority": "unfunded_nice_to_have",
+      "effortPt": 0.5,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M4"
+      ]
+    },
+    {
+      "id": "WP-077",
+      "milestoneId": "M4",
+      "title": "Organisationseinheiten",
+      "area": "2. Datentypen",
+      "priority": "unfunded_nice_to_have",
+      "effortPt": 0.5,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M4"
+      ]
+    },
+    {
+      "id": "WP-078",
+      "milestoneId": "M4",
+      "title": "Sitzungstermine",
+      "area": "2. Datentypen",
+      "priority": "unfunded_nice_to_have",
+      "effortPt": 0.5,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M4"
+      ]
+    },
+    {
+      "id": "WP-079",
+      "milestoneId": "M4",
+      "title": "API-Spezifikationen und Standards",
+      "area": "3. Datenverwaltung",
+      "priority": "valuable",
+      "effortPt": 2.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M4"
+      ]
+    },
+    {
+      "id": "WP-080",
+      "milestoneId": "M4",
+      "title": "Erweiterte Datenverwaltung: Export-Funktionen für alle Tabellen",
+      "area": "3. Datenverwaltung",
+      "priority": "funded_optional",
+      "effortPt": 0.25,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M4"
+      ]
+    },
+    {
+      "id": "WP-081",
+      "milestoneId": "M4",
+      "title": "Import",
+      "area": "3. Datenverwaltung",
+      "priority": "funded_optional",
+      "effortPt": 0.5,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M4"
+      ]
+    },
+    {
+      "id": "WP-082",
+      "milestoneId": "M4",
+      "title": "Exportfunktionen",
+      "area": "4. Schnittstellen",
+      "priority": "funded_optional",
+      "effortPt": 0.25,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M4"
+      ]
+    },
+    {
+      "id": "WP-083",
+      "milestoneId": "M4",
+      "title": "Fahrradboxen",
+      "area": "4. Schnittstellen",
+      "priority": "funded_optional",
+      "effortPt": 2.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M4"
+      ]
+    },
+    {
+      "id": "WP-084",
+      "milestoneId": "M4",
+      "title": "Importfunktionen",
+      "area": "4. Schnittstellen",
+      "priority": "funded_optional",
+      "effortPt": 0.5,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M4"
+      ]
+    },
+    {
+      "id": "WP-085",
+      "milestoneId": "M4",
+      "title": "Schnittstellenmanager",
+      "area": "4. Schnittstellen",
+      "priority": "funded_optional",
+      "effortPt": 5.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M4"
+      ]
+    },
+    {
+      "id": "WP-086",
+      "milestoneId": "M4",
+      "title": "SSO Biletado",
+      "area": "4. Schnittstellen",
+      "priority": "funded_optional",
+      "effortPt": 1.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M4"
+      ]
+    },
+    {
+      "id": "WP-087",
+      "milestoneId": "M4",
+      "title": "GBFS",
+      "area": "4. Schnittstellen",
+      "priority": "unfunded_nice_to_have",
+      "effortPt": 1.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M4"
+      ]
+    },
+    {
+      "id": "WP-088",
+      "milestoneId": "M4",
+      "title": "GeoJSON-Import",
+      "area": "4. Schnittstellen",
+      "priority": "unfunded_nice_to_have",
+      "effortPt": 1.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M4"
+      ]
+    },
+    {
+      "id": "WP-089",
+      "milestoneId": "M4",
+      "title": "GTFS",
+      "area": "4. Schnittstellen",
+      "priority": "unfunded_nice_to_have",
+      "effortPt": 0.5,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M4"
+      ]
+    },
+    {
+      "id": "WP-090",
+      "milestoneId": "M4",
+      "title": "Matomo",
+      "area": "4. Schnittstellen",
+      "priority": "unfunded_nice_to_have",
+      "effortPt": 1.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M4"
+      ]
+    },
+    {
+      "id": "WP-091",
+      "milestoneId": "M4",
+      "title": "OpenWeatherMap",
+      "area": "4. Schnittstellen",
+      "priority": "unfunded_nice_to_have",
+      "effortPt": 1.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M4"
+      ]
+    },
+    {
+      "id": "WP-092",
+      "milestoneId": "M4",
+      "title": "RIS/oParl -Schnittstellen einbinden",
+      "area": "4. Schnittstellen",
+      "priority": "unfunded_nice_to_have",
+      "effortPt": 2.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M4"
+      ]
+    },
+    {
+      "id": "WP-093",
+      "milestoneId": "M4",
+      "title": "SSO Consul",
+      "area": "4. Schnittstellen",
+      "priority": "unfunded_nice_to_have",
+      "effortPt": 1.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M4"
+      ]
+    },
+    {
+      "id": "WP-094",
+      "milestoneId": "M4",
+      "title": "Postfach/ Feedback",
+      "area": "5. Module",
+      "priority": "replacement_required",
+      "effortPt": 1.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M4"
+      ]
+    },
+    {
+      "id": "WP-095",
+      "milestoneId": "M4",
+      "title": "Zuständigkeitsfinder",
+      "area": "5. Module",
+      "priority": "requested",
+      "effortPt": 1.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M4"
+      ]
+    },
+    {
+      "id": "WP-096",
+      "milestoneId": "M4",
+      "title": "Raum- /Fahrradbox-Öffnung (biletado)",
+      "area": "5. Module",
+      "priority": "funded_optional",
+      "effortPt": 2.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M4"
+      ]
+    },
+    {
+      "id": "WP-097",
+      "milestoneId": "M4",
+      "title": "Car-/Bike-Sharing",
+      "area": "5. Module",
+      "priority": "unfunded_nice_to_have",
+      "effortPt": 0.5,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M4"
+      ]
+    },
+    {
+      "id": "WP-098",
+      "milestoneId": "M4",
+      "title": "Consul",
+      "area": "5. Module",
+      "priority": "unfunded_nice_to_have",
+      "effortPt": 1.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M4"
+      ]
+    },
+    {
+      "id": "WP-099",
+      "milestoneId": "M4",
+      "title": "ÖPNV-Abfahrtszeiten",
+      "area": "5. Module",
+      "priority": "unfunded_nice_to_have",
+      "effortPt": 0.5,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M4"
+      ]
+    },
+    {
+      "id": "WP-100",
+      "milestoneId": "M4",
+      "title": "Rats-Infos-System (RIS)",
+      "area": "5. Module",
+      "priority": "unfunded_nice_to_have",
+      "effortPt": 0.5,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M4"
+      ]
+    },
+    {
+      "id": "WP-101",
+      "milestoneId": "M4",
+      "title": "Dokumentation der Funktionalitäten und Entwicklungen des Moduls",
+      "area": "6. Allgemein",
+      "priority": "must",
+      "effortPt": 1.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M4"
+      ]
+    },
+    {
+      "id": "WP-102",
+      "milestoneId": "M4",
+      "title": "Monitoringsystem",
+      "area": "6. Allgemein",
+      "priority": "valuable",
+      "effortPt": 1.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M4"
+      ]
+    },
+    {
+      "id": "WP-103",
+      "milestoneId": "M4",
+      "title": "Dashboard: Schnittstellen-Übersicht",
+      "area": "6. Allgemein",
+      "priority": "funded_optional",
+      "effortPt": 1.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M4"
+      ]
+    },
+    {
+      "id": "WP-104",
+      "milestoneId": "M4",
+      "title": "Reporting",
+      "area": "6. Allgemein",
+      "priority": "funded_optional",
+      "effortPt": 2.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M4"
+      ]
+    },
+    {
+      "id": "WP-105",
+      "milestoneId": "M5",
+      "title": "Baustellen",
+      "area": "2. Datentypen",
+      "priority": "replacement_required",
+      "effortPt": 0.5,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M5"
+      ]
+    },
+    {
+      "id": "WP-106",
+      "milestoneId": "M5",
+      "title": "Fristen",
+      "area": "2. Datentypen",
+      "priority": "replacement_required",
+      "effortPt": 1.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M5"
+      ]
+    },
+    {
+      "id": "WP-107",
+      "milestoneId": "M5",
+      "title": "Gastro-Angebote/Speisekarten",
+      "area": "2. Datentypen",
+      "priority": "replacement_required",
+      "effortPt": 0.5,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M5"
+      ]
+    },
+    {
+      "id": "WP-108",
+      "milestoneId": "M5",
+      "title": "Gutscheine",
+      "area": "2. Datentypen",
+      "priority": "replacement_required",
+      "effortPt": 1.5,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M5"
+      ]
+    },
+    {
+      "id": "WP-109",
+      "milestoneId": "M5",
+      "title": "Mängelmeldungen",
+      "area": "2. Datentypen",
+      "priority": "replacement_required",
+      "effortPt": 1.5,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M5"
+      ]
+    },
+    {
+      "id": "WP-110",
+      "milestoneId": "M5",
+      "title": "Produkte / Dienstleistungen",
+      "area": "2. Datentypen",
+      "priority": "replacement_required",
+      "effortPt": 0.5,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M5"
+      ]
+    },
+    {
+      "id": "WP-111",
+      "milestoneId": "M5",
+      "title": "Stellenanzeigen",
+      "area": "2. Datentypen",
+      "priority": "replacement_required",
+      "effortPt": 0.5,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M5"
+      ]
+    },
+    {
+      "id": "WP-112",
+      "milestoneId": "M5",
+      "title": "Angebote/Gesuche",
+      "area": "2. Datentypen",
+      "priority": "replacement_required",
+      "effortPt": 1.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M5"
+      ]
+    },
+    {
+      "id": "WP-113",
+      "milestoneId": "M5",
+      "title": "AR-Inhalte",
+      "area": "2. Datentypen",
+      "priority": "replacement_required",
+      "effortPt": 1.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M5"
+      ]
+    },
+    {
+      "id": "WP-114",
+      "milestoneId": "M5",
+      "title": "Open311",
+      "area": "4. Schnittstellen",
+      "priority": "replacement_required",
+      "effortPt": 1.5,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M5"
+      ]
+    },
+    {
+      "id": "WP-115",
+      "milestoneId": "M5",
+      "title": "HumHub",
+      "area": "4. Schnittstellen",
+      "priority": "replacement_required",
+      "effortPt": 1.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M5"
+      ]
+    },
+    {
+      "id": "WP-116",
+      "milestoneId": "M5",
+      "title": "Hinweisgeber-Systeme",
+      "area": "4. Schnittstellen",
+      "priority": "funded_optional",
+      "effortPt": 1.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M5"
+      ]
+    },
+    {
+      "id": "WP-117",
+      "milestoneId": "M5",
+      "title": "App-Intro",
+      "area": "5. Module",
+      "priority": "must",
+      "effortPt": 2.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M5"
+      ]
+    },
+    {
+      "id": "WP-118",
+      "milestoneId": "M5",
+      "title": "Bilderslider",
+      "area": "5. Module",
+      "priority": "must",
+      "effortPt": 1.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M5"
+      ]
+    },
+    {
+      "id": "WP-119",
+      "milestoneId": "M5",
+      "title": "Feedback",
+      "area": "5. Module",
+      "priority": "must",
+      "effortPt": 0.5,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M5"
+      ]
+    },
+    {
+      "id": "WP-120",
+      "milestoneId": "M5",
+      "title": "Statische Seiten",
+      "area": "5. Module",
+      "priority": "must",
+      "effortPt": 1.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M5"
+      ]
+    },
+    {
+      "id": "WP-121",
+      "milestoneId": "M5",
+      "title": "Störer",
+      "area": "5. Module",
+      "priority": "must",
+      "effortPt": 1.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M5"
+      ]
+    },
+    {
+      "id": "WP-122",
+      "milestoneId": "M5",
+      "title": "Baustellen",
+      "area": "5. Module",
+      "priority": "replacement_required",
+      "effortPt": 0.5,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M5"
+      ]
+    },
+    {
+      "id": "WP-123",
+      "milestoneId": "M5",
+      "title": "Gutscheine",
+      "area": "5. Module",
+      "priority": "replacement_required",
+      "effortPt": 1.5,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M5"
+      ]
+    },
+    {
+      "id": "WP-124",
+      "milestoneId": "M5",
+      "title": "Mängelmelder (einfach oder mit API)",
+      "area": "5. Module",
+      "priority": "replacement_required",
+      "effortPt": 1.5,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M5"
+      ]
+    },
+    {
+      "id": "WP-125",
+      "milestoneId": "M5",
+      "title": "Produkte/Dienstleistungen",
+      "area": "5. Module",
+      "priority": "replacement_required",
+      "effortPt": 0.5,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M5"
+      ]
+    },
+    {
+      "id": "WP-126",
+      "milestoneId": "M5",
+      "title": "Schwarzes Brett",
+      "area": "5. Module",
+      "priority": "replacement_required",
+      "effortPt": 1.5,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M5"
+      ]
+    },
+    {
+      "id": "WP-127",
+      "milestoneId": "M5",
+      "title": "Stellenanzeigen",
+      "area": "5. Module",
+      "priority": "replacement_required",
+      "effortPt": 1.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M5"
+      ]
+    },
+    {
+      "id": "WP-128",
+      "milestoneId": "M5",
+      "title": "Chatbot-Integration",
+      "area": "5. Module",
+      "priority": "replacement_required",
+      "effortPt": 4.5,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M5"
+      ]
+    },
+    {
+      "id": "WP-129",
+      "milestoneId": "M5",
+      "title": "Fristenmelder",
+      "area": "5. Module",
+      "priority": "replacement_required",
+      "effortPt": 1.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M5"
+      ]
+    },
+    {
+      "id": "WP-130",
+      "milestoneId": "M5",
+      "title": "Gastro-Angebote",
+      "area": "5. Module",
+      "priority": "replacement_required",
+      "effortPt": 1.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M5"
+      ]
+    },
+    {
+      "id": "WP-131",
+      "milestoneId": "M5",
+      "title": "Mitfahrbörse",
+      "area": "5. Module",
+      "priority": "replacement_required",
+      "effortPt": 3.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M5"
+      ]
+    },
+    {
+      "id": "WP-132",
+      "milestoneId": "M5",
+      "title": "Smartes Trampen",
+      "area": "5. Module",
+      "priority": "replacement_required",
+      "effortPt": 1.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M5"
+      ]
+    },
+    {
+      "id": "WP-133",
+      "milestoneId": "M5",
+      "title": "Augmented Reality",
+      "area": "5. Module",
+      "priority": "funded_optional",
+      "effortPt": 1.5,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M5"
+      ]
+    },
+    {
+      "id": "WP-134",
+      "milestoneId": "M5",
+      "title": "Hinweisgebersystem",
+      "area": "5. Module",
+      "priority": "funded_optional",
+      "effortPt": 1.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M5"
+      ]
+    },
+    {
+      "id": "WP-135",
+      "milestoneId": "M5",
+      "title": "Humhub-Anbindung",
+      "area": "5. Module",
+      "priority": "funded_optional",
+      "effortPt": 3.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M5"
+      ]
+    },
+    {
+      "id": "WP-136",
+      "milestoneId": "M5",
+      "title": "Monitoringsystem",
+      "area": "6. Allgemein",
+      "priority": "requested",
+      "effortPt": 2.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M5"
+      ]
+    },
+    {
+      "id": "WP-137",
+      "milestoneId": "M5",
+      "title": "Analytics & Reporting",
+      "area": "6. Allgemein",
+      "priority": "unfunded_nice_to_have",
+      "effortPt": 3.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M5"
+      ]
+    },
+    {
+      "id": "WP-138",
+      "milestoneId": "M5",
+      "title": "Dashboard: App-Nutzung",
+      "area": "6. Allgemein",
+      "priority": "unfunded_nice_to_have",
+      "effortPt": 1.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M5"
+      ]
+    },
+    {
+      "id": "WP-139",
+      "milestoneId": "M5",
+      "title": "Real-Time Updates",
+      "area": "6. Allgemein",
+      "priority": "unfunded_nice_to_have",
+      "effortPt": 1.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M5"
+      ]
+    },
+    {
+      "id": "WP-140",
+      "milestoneId": "M6",
+      "title": "Einführung eines flexiblen Modul-Frameworks und eines SDKs.",
+      "area": "3. Datenverwaltung",
+      "priority": "requested",
+      "effortPt": 5.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M6"
+      ]
+    },
+    {
+      "id": "WP-141",
+      "milestoneId": "M6",
+      "title": "App-Instanzen-Verwaltung",
+      "area": "5. Module",
+      "priority": "valuable",
+      "effortPt": 15.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M6"
+      ]
+    },
+    {
+      "id": "WP-142",
+      "milestoneId": "M6",
+      "title": "Modul-Marktplatz mit Versionsverwaltung und Dependency-Check",
+      "area": "5. Module",
+      "priority": "requested",
+      "effortPt": 5.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M6"
+      ]
+    },
+    {
+      "id": "WP-143",
+      "milestoneId": "M6",
+      "title": "Widget-System & Personalisierung",
+      "area": "6. Allgemein",
+      "priority": "unfunded_nice_to_have",
+      "effortPt": 3.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M6"
+      ]
+    },
+    {
+      "id": "WP-144",
+      "milestoneId": "M7",
+      "title": "Performance-Optimierungen",
+      "area": "3. Datenverwaltung",
+      "priority": "valuable",
+      "effortPt": 5.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M7"
+      ]
+    },
+    {
+      "id": "WP-145",
+      "milestoneId": "M7",
+      "title": "Refactoring",
+      "area": "3. Datenverwaltung",
+      "priority": "valuable",
+      "effortPt": 10.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M7"
+      ]
+    },
+    {
+      "id": "WP-146",
+      "milestoneId": "M7",
+      "title": "Ticketsystem",
+      "area": "4. Schnittstellen",
+      "priority": "funded_optional",
+      "effortPt": 1.5,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M7"
+      ]
+    },
+    {
+      "id": "WP-147",
+      "milestoneId": "M7",
+      "title": "Runbooks für Deployments und Entwicklung",
+      "area": "6. Allgemein",
+      "priority": "must",
+      "effortPt": 1.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M7"
+      ]
+    },
+    {
+      "id": "WP-148",
+      "milestoneId": "M7",
+      "title": "Barrierefreiheitstest",
+      "area": "6. Allgemein",
+      "priority": "valuable",
+      "effortPt": 5.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M7"
+      ]
+    },
+    {
+      "id": "WP-149",
+      "milestoneId": "M7",
+      "title": "Compliance-Erklärungen für BSI & Co.",
+      "area": "6. Allgemein",
+      "priority": "valuable",
+      "effortPt": 1.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M7"
+      ]
+    },
+    {
+      "id": "WP-150",
+      "milestoneId": "M7",
+      "title": "Pen-Test",
+      "area": "6. Allgemein",
+      "priority": "valuable",
+      "effortPt": 5.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M7"
+      ]
+    },
+    {
+      "id": "WP-151",
+      "milestoneId": "M7",
+      "title": "Verfahrensdokumentation für DSFA",
+      "area": "6. Allgemein",
+      "priority": "valuable",
+      "effortPt": 1.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M7"
+      ]
+    },
+    {
+      "id": "WP-152",
+      "milestoneId": "M7",
+      "title": "Hilfe-Bereich / Wiki mit Suche",
+      "area": "6. Allgemein",
+      "priority": "unfunded_nice_to_have",
+      "effortPt": 2.5,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M7"
+      ]
+    },
+    {
+      "id": "WP-153",
+      "milestoneId": "M7",
+      "title": "Darstellung der Release-Notes & Changelog im Studio",
+      "area": "6. Allgemein",
+      "priority": "unfunded_nice_to_have",
+      "effortPt": 0.5,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M7"
+      ]
+    },
+    {
+      "id": "WP-154",
+      "milestoneId": "M7",
+      "title": "Darstellung der Roadmap im Studio",
+      "area": "6. Allgemein",
+      "priority": "unfunded_nice_to_have",
+      "effortPt": 0.5,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M7"
+      ]
+    },
+    {
+      "id": "WP-155",
+      "milestoneId": "M7",
+      "title": "Kontextbezogene Hilfetexte",
+      "area": "6. Allgemein",
+      "priority": "unfunded_nice_to_have",
+      "effortPt": 1.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M7"
+      ]
+    },
+    {
+      "id": "WP-156",
+      "milestoneId": "M7",
+      "title": "Onboarding-Tour",
+      "area": "6. Allgemein",
+      "priority": "unfunded_nice_to_have",
+      "effortPt": 3.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M7"
+      ]
+    },
+    {
+      "id": "WP-157",
+      "milestoneId": "M8",
+      "title": "KI-gestützte Übersetzungsvorschläge vgl Mehrsprachigkeit und leichte Sprache",
+      "area": "3. Datenverwaltung",
+      "priority": "requested",
+      "effortPt": 3.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M8"
+      ]
+    },
+    {
+      "id": "WP-158",
+      "milestoneId": "M8",
+      "title": "Automatische Erstellung von Wissens- und Hilfetexten",
+      "area": "3. Datenverwaltung",
+      "priority": "unfunded_nice_to_have",
+      "effortPt": 3.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M8"
+      ]
+    },
+    {
+      "id": "WP-159",
+      "milestoneId": "M8",
+      "title": "Duplikatserkennung",
+      "area": "3. Datenverwaltung",
+      "priority": "unfunded_nice_to_have",
+      "effortPt": 5.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M8"
+      ]
+    },
+    {
+      "id": "WP-160",
+      "milestoneId": "M8",
+      "title": "KI-gestützte Contenterstellung",
+      "area": "3. Datenverwaltung",
+      "priority": "unfunded_nice_to_have",
+      "effortPt": 3.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M8"
+      ]
+    },
+    {
+      "id": "WP-161",
+      "milestoneId": "M8",
+      "title": "Tagging & Kategorisierung",
+      "area": "3. Datenverwaltung",
+      "priority": "unfunded_nice_to_have",
+      "effortPt": 2.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M8"
+      ]
+    },
+    {
+      "id": "WP-162",
+      "milestoneId": "M8",
+      "title": "LLM-Anbieter (OpenAI, Mistral, Gemini, lokale Modelle, ...)",
+      "area": "4. Schnittstellen",
+      "priority": "requested",
+      "effortPt": 2.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M8"
+      ]
+    },
+    {
+      "id": "WP-163",
+      "milestoneId": "M8",
+      "title": "MCP",
+      "area": "4. Schnittstellen",
+      "priority": "unfunded_nice_to_have",
+      "effortPt": 5.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M8"
+      ]
+    },
+    {
+      "id": "WP-164",
+      "milestoneId": "M8",
+      "title": "KI-Administration und Management",
+      "area": "6. Allgemein",
+      "priority": "requested",
+      "effortPt": 3.0,
+      "status": "commissioned",
+      "progress": 0,
+      "health": "on_track",
+      "dependsOn": [],
+      "contributesTo": [
+        "M8"
+      ]
+    }
+  ]
+}

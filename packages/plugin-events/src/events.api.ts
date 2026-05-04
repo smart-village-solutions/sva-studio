@@ -6,9 +6,6 @@ import {
 
 import type { EventContentItem, EventFormInput, EventListQuery, EventListResult, PoiSelectItem } from './events.types.js';
 
-const DEFAULT_LIST_QUERY: EventListQuery = { page: 1, pageSize: 25 };
-const MAX_POI_SELECTION_PAGES = 101;
-
 export class EventsApiError extends Error {
   public constructor(
     public readonly code: string,
@@ -19,26 +16,15 @@ export class EventsApiError extends Error {
   }
 }
 
-const eventsClient = createMainserverCrudClient<
-  EventContentItem,
-  EventFormInput,
-  Readonly<{ data: readonly EventContentItem[]; pagination?: EventListResult['pagination'] }>,
-  EventListResult,
-  EventsApiError
->({
+const MAX_POI_SELECTION_PAGE = 101;
+
+const eventsClient = createMainserverCrudClient<EventContentItem, EventFormInput, EventListResult, EventListResult, EventsApiError>({
   basePath: '/api/v1/mainserver/events',
   errorFactory: (code, message) => new EventsApiError(code, message),
-  mapListResponse: (response, _mapItem, query) => ({
-    data: response.data,
-    pagination: response.pagination ?? {
-      page: query.page,
-      pageSize: query.pageSize,
-      hasNextPage: false,
-    },
-  }),
+  mapListResponse: (response) => response,
 });
 
-export const listEvents = async (query: EventListQuery = DEFAULT_LIST_QUERY): Promise<EventListResult> => eventsClient.list(query);
+export const listEvents = async (query: EventListQuery): Promise<EventListResult> => eventsClient.list(query);
 
 export const getEvent = async (contentId: string): Promise<EventContentItem> => eventsClient.get(contentId);
 
@@ -55,23 +41,28 @@ export const listPoiForEventSelection = async (): Promise<readonly PoiSelectItem
   let hasNextPage = true;
 
   while (hasNextPage) {
-    if (page > MAX_POI_SELECTION_PAGES) {
+    if (page > MAX_POI_SELECTION_PAGE) {
       throw new EventsApiError(
         'poi_selection_page_limit_exceeded',
-        'Die POI-Auswahl überschreitet das erlaubte Pagination-Limit.'
+        'Die POI-Auswahlliste überschreitet das erlaubte Pagination-Budget.'
       );
     }
 
     const response = await requestMainserverJson<{
       readonly data: readonly PoiSelectItem[];
-      readonly pagination?: EventListResult['pagination'];
-    }, EventsApiError>({
+      readonly pagination: EventListResult['pagination'];
+    }>({
       url: buildMainserverListUrl('/api/v1/mainserver/poi', { page, pageSize: 100 }),
       errorFactory: (code, message) => new EventsApiError(code, message),
     });
-    const pageItems = response.data.map((item) => ({ id: item.id, name: item.name }));
-    items.push(...pageItems);
-    hasNextPage = response.pagination?.hasNextPage === true && pageItems.length > 0;
+    items.push(...response.data.map((item) => ({ id: item.id, name: item.name })));
+    if (response.pagination.hasNextPage && response.data.length === 0) {
+      throw new EventsApiError(
+        'poi_selection_invalid_pagination',
+        'Die POI-Auswahlliste liefert eine ungültige Pagination-Antwort.'
+      );
+    }
+    hasNextPage = response.pagination.hasNextPage;
     page += 1;
   }
 

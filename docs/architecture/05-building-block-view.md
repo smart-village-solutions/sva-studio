@@ -41,8 +41,6 @@ Abhängigkeiten des aktuellen Systems.
    - Diagnosebausteine für Session-Hydration/-Refresh, Hostvalidierung, Schema-Guard, Runtime-Health und allowlist-basierte API-Fehlerdetails
 5. Plugin SDK, Studio Module IAM und Server Runtime (`packages/plugin-sdk`, `packages/studio-module-iam`, `packages/server-runtime`)
    - `@sva/plugin-sdk`: öffentlicher Plugin-Vertrag v1, Build-time-Registry, Admin-Ressourcen, Content-Type- und Translation-Verträge
-   - erweitert den Admin-Ressourcenvertrag um hostgeführte Listen- und Detail-Capabilities fuer Search, Filter, Sorting, Pagination, Bulk-Actions, Historie und Revisionen
-   - `@sva/studio-module-iam`: framework-agnostische Vertragsfamilie für modulbezogene Permission- und Systemrollen-Kataloge, konsumierbar durch Host, Plugins, Runtime und Provisioning
    - bündelt außerdem wiederverwendbare Helper für standardisierte Content-Plugins, Mainserver-CRUD-Basis und kleine UI-nahe Plugin-Utilities
    - `@sva/server-runtime`: Logger, Request-Kontext, JSON-Fehlerantworten, Workspace-Kontext und OTEL-Bootstrap
    - Namespacing- und Ownership-Validierung für plugin-beigestellte registrierte Host-Identifier
@@ -178,8 +176,6 @@ Abhängigkeiten des aktuellen Systems.
    - persistieren die kanonische Instanz-Modul-Zuordnung in `iam.instance_modules`.
 3. `packages/plugin-sdk`
    - definiert den deklarativen Modul-IAM-Vertrag pro Plugin.
-   - `packages/studio-module-iam`
-   - leitet daraus den runtime-sicheren, UI-freien Modul-IAM-Katalog für Host, Plugins und `auth-runtime` ab.
 4. `packages/instance-registry`
    - ist führender Fachbaustein für `assignModule`, `revokeModule` und `seedIamBaseline`.
 5. `packages/auth-runtime`

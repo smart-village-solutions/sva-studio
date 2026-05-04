@@ -1,0 +1,154 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sva-studio.example/project-status.schema.json",
+  "title": "SVA Studio Public Project Status Report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "meta",
+    "statusModel",
+    "healthModel",
+    "priorityModel",
+    "milestones",
+    "workPackages"
+  ],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "updatedAt", "source"],
+      "properties": {
+        "version": { "type": "string", "minLength": 1 },
+        "updatedAt": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+        "source": { "type": "string", "minLength": 1 }
+      }
+    },
+    "statusModel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "idea",
+        "commissioned",
+        "planned",
+        "prototype",
+        "implementation",
+        "optimization",
+        "testing",
+        "acceptance",
+        "done"
+      ],
+      "properties": {
+        "idea": { "const": 0 },
+        "commissioned": { "const": 0 },
+        "planned": { "const": 10 },
+        "prototype": { "const": 20 },
+        "implementation": { "const": 45 },
+        "optimization": { "const": 70 },
+        "testing": { "const": 80 },
+        "acceptance": { "const": 90 },
+        "done": { "const": 100 }
+      }
+    },
+    "healthModel": {
+      "const": ["on_track", "needs_attention", "at_risk", "blocked"]
+    },
+    "priorityModel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "must",
+        "replacement_required",
+        "valuable",
+        "requested",
+        "funded_optional",
+        "unfunded_nice_to_have",
+        "irrelevant"
+      ],
+      "properties": {
+        "must": { "const": "1: Muss sein" },
+        "replacement_required": { "const": "2: Notwendig für die Ablösung des Alt-Systems" },
+        "valuable": { "const": "3: Neu, aber sehr sinnvoll" },
+        "requested": { "const": "4: Neu und gewünscht" },
+        "funded_optional": { "const": "5: Nicht so wichtig, aber finanziert" },
+        "unfunded_nice_to_have": { "const": "6: Nice to have, noch ohne Finanzierung" },
+        "irrelevant": { "const": "7: Irrelevant" }
+      }
+    },
+    "milestones": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "title", "plannedEffortPt", "sortOrder"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "title": { "type": "string", "minLength": 1 },
+          "plannedEffortPt": { "type": "number", "minimum": 0 },
+          "sortOrder": { "type": "integer", "minimum": 1 }
+        }
+      }
+    },
+    "workPackages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "milestoneId",
+          "title",
+          "area",
+          "priority",
+          "effortPt",
+          "status",
+          "progress",
+          "health",
+          "dependsOn",
+          "contributesTo"
+        ],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "milestoneId": { "type": "string", "minLength": 1 },
+          "title": { "type": "string", "minLength": 1 },
+          "area": { "type": "string", "minLength": 1 },
+          "priority": {
+            "enum": [
+              "must",
+              "replacement_required",
+              "valuable",
+              "requested",
+              "funded_optional",
+              "unfunded_nice_to_have",
+              "irrelevant"
+            ]
+          },
+          "effortPt": { "type": "number", "minimum": 0 },
+          "status": {
+            "enum": [
+              "idea",
+              "commissioned",
+              "planned",
+              "prototype",
+              "implementation",
+              "optimization",
+              "testing",
+              "acceptance",
+              "done"
+            ]
+          },
+          "progress": { "enum": [0, 10, 20, 45, 70, 80, 90, 100] },
+          "health": { "enum": ["on_track", "needs_attention", "at_risk", "blocked"] },
+          "dependsOn": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "contributesTo": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "notes": { "type": "string" }
+        }
+      }
+    }
+  }
+}

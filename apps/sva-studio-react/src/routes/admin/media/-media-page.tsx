@@ -116,7 +116,10 @@ const MediaLibraryPage = () => {
   const studioDataTableLabels = createStudioDataTableLabels();
   const [search, setSearch] = React.useState('');
   const [visibility, setVisibility] = React.useState<MediaLibraryFilter>('all');
-  const mediaApi = useMediaLibrary({ search: search.trim() || undefined, visibility });
+  const [page, setPage] = React.useState(1);
+  const [pageSize, setPageSize] = React.useState(25);
+  const mediaApi = useMediaLibrary({ search: search.trim() || undefined, visibility, page, pageSize });
+  const totalPages = Math.max(1, Math.ceil(mediaApi.total / mediaApi.pageSize));
 
   const columns = React.useMemo<readonly StudioColumnDef<IamMediaAsset>[]>(
     () => [
@@ -207,7 +210,10 @@ const MediaLibraryPage = () => {
             <Input
               id="media-search"
               value={search}
-              onChange={(event) => setSearch(event.target.value)}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setPage(1);
+              }}
               placeholder={t('media.filters.searchPlaceholder')}
             />
           </div>
@@ -216,9 +222,12 @@ const MediaLibraryPage = () => {
             <Select
               id="media-visibility"
               value={visibility}
-              onChange={(event) => setVisibility(event.target.value as MediaLibraryFilter)}
+              onChange={(event) => {
+                setVisibility(event.target.value as MediaLibraryFilter);
+                setPage(1);
+              }}
             >
-                  <option value="all">{t('media.filters.visibilityAll')}</option>
+              <option value="all">{t('media.filters.visibilityAll')}</option>
               <option value="public">{t(mediaVisibilityKeyByValue.public)}</option>
               <option value="protected">{t(mediaVisibilityKeyByValue.protected)}</option>
             </Select>
@@ -234,8 +243,54 @@ const MediaLibraryPage = () => {
           columns={columns}
           data={mediaApi.assets}
           emptyState={<p className="text-sm text-muted-foreground">{t('media.empty.body')}</p>}
+          isLoading={mediaApi.isLoading}
+          loadingState={t('media.messages.loading')}
+          selectionMode="none"
           getRowId={(asset) => asset.id}
         />
+
+        <div className="flex flex-col gap-3 rounded-lg border bg-card p-4 md:flex-row md:items-end md:justify-between">
+          <div className="space-y-2">
+            <Label htmlFor="media-page-size">{t('content.pagination.pageSizeLabel')}</Label>
+            <Select
+              id="media-page-size"
+              value={String(pageSize)}
+              onChange={(event) => {
+                setPageSize(Number(event.target.value));
+                setPage(1);
+              }}
+            >
+              {[25, 50, 100].map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">
+              {t('content.pagination.pageLabel', { page: mediaApi.page, total: totalPages })}
+            </span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={mediaApi.isLoading || mediaApi.page <= 1}
+              onClick={() => setPage((current) => Math.max(1, current - 1))}
+            >
+              {t('content.pagination.previous')}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={mediaApi.isLoading || mediaApi.page >= totalPages}
+              onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+            >
+              {t('content.pagination.next')}
+            </Button>
+          </div>
+        </div>
 
         {!mediaApi.isLoading && mediaApi.assets.length === 0 ? (
           <Alert>
@@ -403,20 +458,27 @@ const MediaDetailPage = ({ assetId }: { assetId: string }) => {
     await mediaApi.updateMedia({
       visibility,
       metadata: {
-        title: title.trim() || undefined,
-        altText: altText.trim() || undefined,
-        description: description.trim() || undefined,
-        copyright: copyright.trim() || undefined,
-        license: license.trim() || undefined,
+        title: title.trim() || null,
+        altText: altText.trim() || null,
+        description: description.trim() || null,
+        copyright: copyright.trim() || null,
+        license: license.trim() || null,
         focusPoint:
-          Number.isFinite(parsedFocusPointX) && Number.isFinite(parsedFocusPointY)
+          focusPointX.trim().length === 0 && focusPointY.trim().length === 0
+            ? null
+            : Number.isFinite(parsedFocusPointX) && Number.isFinite(parsedFocusPointY)
             ? {
                 x: parsedFocusPointX as number,
                 y: parsedFocusPointY as number,
               }
             : undefined,
         crop:
-          Number.isFinite(parsedCropX) &&
+          cropX.trim().length === 0 &&
+          cropY.trim().length === 0 &&
+          cropWidth.trim().length === 0 &&
+          cropHeight.trim().length === 0
+            ? null
+            : Number.isFinite(parsedCropX) &&
           Number.isFinite(parsedCropY) &&
           Number.isFinite(parsedCropWidth) &&
           Number.isFinite(parsedCropHeight) &&

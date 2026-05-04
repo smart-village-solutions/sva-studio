@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ModulesPage } from './-modules-page';
@@ -7,6 +7,37 @@ const useInstancesMock = vi.fn();
 
 vi.mock('../../../hooks/use-instances', () => ({
   useInstances: () => useInstancesMock(),
+}));
+
+vi.mock('../../../components/ConfirmDialog', () => ({
+  ConfirmDialog: ({
+    open,
+    title,
+    description,
+    confirmLabel,
+    cancelLabel,
+    onConfirm,
+    onCancel,
+  }: {
+    open: boolean;
+    title: string;
+    description: string;
+    confirmLabel: string;
+    cancelLabel: string;
+    onConfirm: () => void;
+    onCancel: () => void;
+  }) =>
+    open ? (
+      <div role="dialog" aria-label={title}>
+        <p>{description}</p>
+        <button type="button" onClick={onConfirm}>
+          {confirmLabel}
+        </button>
+        <button type="button" onClick={onCancel}>
+          {cancelLabel}
+        </button>
+      </div>
+    ) : null,
 }));
 
 vi.mock('../../../lib/plugins', () => ({
@@ -23,8 +54,8 @@ vi.mock('../../../lib/plugins', () => ({
     },
     {
       moduleId: 'media',
-      permissionIds: ['media.read'],
-      systemRoles: [{ roleName: 'editor', permissionIds: ['media.read'] }],
+      permissionIds: ['media.read', 'media.create'],
+      systemRoles: [{ roleName: 'editor', permissionIds: ['media.read', 'media.create'] }],
     },
   ],
 }));
@@ -57,6 +88,16 @@ const createInstancesApiState = (overrides: Record<string, unknown> = {}) => ({
   seedIamBaseline: vi.fn().mockResolvedValue(true),
   ...overrides,
 });
+
+const createDeferred = <T,>() => {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+};
 
 describe('ModulesPage', () => {
   afterEach(() => {
@@ -94,28 +135,14 @@ describe('ModulesPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'IAM-Basis neu aufbauen' }));
     fireEvent.click(screen.getByRole('button', { name: 'Modul entziehen' }));
-    const confirmDialog = await screen.findByRole('alertdialog');
-    fireEvent.click(within(confirmDialog).getByRole('button', { name: 'Modul entziehen' }));
-    fireEvent.click(screen.getAllByRole('button', { name: 'Modul zuweisen' })[0]);
+    expect(screen.getByRole('dialog', { name: 'Modul wirklich entziehen?' })).toBeTruthy();
+    expect(revokeModule).not.toHaveBeenCalled();
+    fireEvent.click(screen.getAllByRole('button', { name: 'Modul entziehen' })[1]!);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Modul zuweisen' })[0]!);
 
     expect(seedIamBaseline).toHaveBeenCalledWith('demo');
     expect(revokeModule).toHaveBeenCalledWith('demo', 'news');
     expect(assignModule).toHaveBeenCalledWith('demo', 'events');
-  });
-
-  it('does not revoke a module before the confirmation dialog is confirmed', async () => {
-    const revokeModule = vi.fn().mockResolvedValue(true);
-    useInstancesMock.mockReturnValue(
-      createInstancesApiState({
-        revokeModule,
-      })
-    );
-
-    render(<ModulesPage />);
-
-    fireEvent.click(screen.getByRole('button', { name: 'Modul entziehen' }));
-
-    expect(revokeModule).not.toHaveBeenCalled();
   });
 
   it('does not reload the selected instance on rerender when loadInstance is stable', async () => {
@@ -137,6 +164,30 @@ describe('ModulesPage', () => {
 
     await waitFor(() => {
       expect(loadInstance).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('keeps the revoke dialog open until the revoke request succeeds', async () => {
+    const revokeDeferred = createDeferred<boolean>();
+    const revokeModule = vi.fn(() => revokeDeferred.promise);
+    useInstancesMock.mockReturnValue(
+      createInstancesApiState({
+        revokeModule,
+      })
+    );
+
+    render(<ModulesPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Modul entziehen' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Modul entziehen' })[1]!);
+
+    expect(revokeModule).toHaveBeenCalledWith('demo', 'news');
+    expect(screen.getByRole('dialog', { name: 'Modul wirklich entziehen?' })).toBeTruthy();
+
+    revokeDeferred.resolve(true);
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'Modul wirklich entziehen?' })).toBeNull();
     });
   });
 

@@ -38,17 +38,6 @@ export const ModulesPage = () => {
   const availableModules = studioModuleIamContracts.filter((module) => !assignedModuleIds.has(module.moduleId));
   const pendingRevokeModule = assignedModules.find((module) => module.moduleId === pendingRevokeModuleId) ?? null;
 
-  const onConfirmRevokeModule = async () => {
-    if (!selectedInstance || !pendingRevokeModule) {
-      return;
-    }
-
-    const success = await instancesApi.revokeModule(selectedInstance.instanceId, pendingRevokeModule.moduleId);
-    if (success) {
-      setPendingRevokeModuleId(null);
-    }
-  };
-
   return (
     <section className="space-y-5" aria-busy={instancesApi.isLoading || instancesApi.detailLoading || instancesApi.statusLoading}>
       <header className="space-y-2">
@@ -179,15 +168,24 @@ export const ModulesPage = () => {
       )}
 
       <ConfirmDialog
-        open={pendingRevokeModule !== null}
-        title={t('admin.instances.instanceModules.confirm.revokeTitle')}
-        description={t('admin.instances.instanceModules.confirm.revokeDescription', {
+        open={pendingRevokeModule !== null && selectedInstance !== null}
+        title={t('admin.instances.instanceModules.confirmRevoke.title')}
+        description={t('admin.instances.instanceModules.confirmRevoke.description', {
           moduleId: pendingRevokeModule?.moduleId ?? '',
+          instanceId: selectedInstance?.instanceId ?? '',
         })}
-        confirmLabel={t('admin.instances.instanceModules.actions.revoke')}
-        cancelLabel={t('account.actions.cancel')}
-        onConfirm={() => void onConfirmRevokeModule()}
+        confirmLabel={t('admin.instances.instanceModules.confirmRevoke.confirm')}
+        cancelLabel={t('admin.instances.instanceModules.confirmRevoke.cancel')}
         onCancel={() => setPendingRevokeModuleId(null)}
+        onConfirm={async () => {
+          if (!selectedInstance || !pendingRevokeModule) {
+            return;
+          }
+          const success = await instancesApi.revokeModule(selectedInstance.instanceId, pendingRevokeModule.moduleId);
+          if (success) {
+            setPendingRevokeModuleId(null);
+          }
+        }}
       />
     </section>
   );

@@ -13,9 +13,9 @@ export const appAdminResources = [
       detail: ['media.read'],
     },
     views: {
-      list: { bindingKey: 'adminMedia' },
-      create: { bindingKey: 'adminMedia' },
-      detail: { bindingKey: 'adminMedia' },
+      list: { bindingKey: 'media' },
+      create: { bindingKey: 'media' },
+      detail: { bindingKey: 'media' },
     },
     capabilities: {
       list: {

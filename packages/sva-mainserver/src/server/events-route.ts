@@ -34,6 +34,13 @@ type RouteMatch =
   | { readonly kind: 'collection'; readonly contentKind: ContentKind }
   | { readonly kind: 'item'; readonly contentKind: ContentKind; readonly itemId: string };
 
+type ContentActor = {
+  readonly instanceId: string;
+  readonly keycloakSubject: string;
+};
+
+type ParsedValue<T> = T | Response;
+
 const json = (body: unknown, status = 200): Response =>
   Response.json(body, {
     status,
@@ -252,6 +259,13 @@ const parseTags = (value: unknown): readonly string[] | Response | undefined => 
   return value.map(readString).filter((tag): tag is string => Boolean(tag));
 };
 
+const isResponse = <T>(value: ParsedValue<T>): value is Response => value instanceof Response;
+
+const parseJsonObjectBody = async (request: Request, message: string): Promise<Record<string, unknown> | Response> => {
+  const body = (await request.json().catch(() => null)) as unknown;
+  return isRecord(body) ? body : errorJson(400, 'invalid_request', message);
+};
+
 const parseEventDates = (value: unknown): readonly SvaMainserverDateInput[] | undefined =>
   Array.isArray(value)
     ? value
@@ -269,73 +283,99 @@ const parseEventDates = (value: unknown): readonly SvaMainserverDateInput[] | un
         }))
     : undefined;
 
-const parseRecurringWeekdays = (value: unknown): readonly string[] | undefined =>
-  Array.isArray(value) ? value.map(readString).filter((entry): entry is string => Boolean(entry)) : undefined;
+const parseEventRelations = (
+  body: Record<string, unknown>
+): ParsedValue<{
+  readonly categories: readonly SvaMainserverCategoryInput[] | undefined;
+  readonly addresses: readonly SvaMainserverAddressInput[] | undefined;
+  readonly contact: SvaMainserverContactInput | undefined;
+  readonly urls: readonly SvaMainserverWebUrlInput[] | undefined;
+  readonly tags: readonly string[] | undefined;
+}> => {
+  const categories = parseCategories(body.categories);
+  if (isResponse(categories)) {
+    return categories;
+  }
 
-const buildEventInput = (input: {
-  body: Record<string, unknown>;
-  dates: readonly SvaMainserverDateInput[] | undefined;
-  categories: SvaMainserverEventInput['categories'] | undefined;
-  addresses: SvaMainserverEventInput['addresses'] | undefined;
-  contact: ReturnType<typeof parseContact> extends Response | infer T | undefined ? T | undefined : never;
-  urls: SvaMainserverEventInput['urls'] | undefined;
-  tags: readonly string[] | undefined;
-}): SvaMainserverEventInput => {
-  const recurringWeekdays = parseRecurringWeekdays(input.body.recurringWeekdays);
+  const addresses = parseAddressList(body.addresses);
+  if (isResponse(addresses)) {
+    return addresses;
+  }
+
+  const contact = parseContact(body.contact);
+  if (isResponse(contact)) {
+    return contact;
+  }
+
+  const urls = parseWebUrls(body.urls);
+  if (isResponse(urls)) {
+    return urls;
+  }
+
+  const tags = parseTags(body.tags);
+  if (isResponse(tags)) {
+    return tags;
+  }
 
   return {
-    title: readString(input.body.title) as string,
-    ...(readString(input.body.description) ? { description: readString(input.body.description) } : {}),
-    ...(readString(input.body.externalId) ? { externalId: readString(input.body.externalId) } : {}),
-    ...(readString(input.body.keywords) ? { keywords: readString(input.body.keywords) } : {}),
-    ...(input.dates ? { dates: input.dates } : {}),
-    ...(readBoolean(input.body.repeat) !== undefined ? { repeat: readBoolean(input.body.repeat) } : {}),
-    ...(readString(input.body.categoryName) ? { categoryName: readString(input.body.categoryName) } : {}),
-    ...(input.categories ? { categories: input.categories } : {}),
-    ...(input.addresses ? { addresses: input.addresses } : {}),
-    ...(input.contact ? { contacts: [input.contact] } : {}),
-    ...(input.urls ? { urls: input.urls } : {}),
-    ...(input.tags ? { tags: input.tags } : {}),
-    ...(readString(input.body.recurring) ? { recurring: readString(input.body.recurring) } : {}),
-    ...(readString(input.body.recurringType) ? { recurringType: readString(input.body.recurringType) } : {}),
-    ...(readString(input.body.recurringInterval) ? { recurringInterval: readString(input.body.recurringInterval) } : {}),
-    ...(recurringWeekdays ? { recurringWeekdays } : {}),
-    ...(readString(input.body.pointOfInterestId) ? { pointOfInterestId: readString(input.body.pointOfInterestId) } : {}),
-    ...(readBoolean(input.body.pushNotification) !== undefined ? { pushNotification: readBoolean(input.body.pushNotification) } : {}),
+    categories,
+    addresses,
+    contact,
+    urls,
+    tags,
+  };
+};
+
+const buildEventInput = (
+  body: Record<string, unknown>,
+  title: string,
+  relations: {
+    readonly categories: readonly SvaMainserverCategoryInput[] | undefined;
+    readonly addresses: readonly SvaMainserverAddressInput[] | undefined;
+    readonly contact: SvaMainserverContactInput | undefined;
+    readonly urls: readonly SvaMainserverWebUrlInput[] | undefined;
+    readonly tags: readonly string[] | undefined;
+  }
+): SvaMainserverEventInput => {
+  const dates = parseEventDates(body.dates);
+
+  return {
+    title,
+    ...(readString(body.description) ? { description: readString(body.description) } : {}),
+    ...(readString(body.externalId) ? { externalId: readString(body.externalId) } : {}),
+    ...(readString(body.keywords) ? { keywords: readString(body.keywords) } : {}),
+    ...(dates ? { dates } : {}),
+    ...(readBoolean(body.repeat) !== undefined ? { repeat: readBoolean(body.repeat) } : {}),
+    ...(readString(body.categoryName) ? { categoryName: readString(body.categoryName) } : {}),
+    ...(relations.categories ? { categories: relations.categories } : {}),
+    ...(relations.addresses ? { addresses: relations.addresses } : {}),
+    ...(relations.contact ? { contacts: [relations.contact] } : {}),
+    ...(relations.urls ? { urls: relations.urls } : {}),
+    ...(relations.tags ? { tags: relations.tags } : {}),
+    ...(readString(body.recurring) ? { recurring: readString(body.recurring) } : {}),
+    ...(readString(body.recurringType) ? { recurringType: readString(body.recurringType) } : {}),
+    ...(readString(body.recurringInterval) ? { recurringInterval: readString(body.recurringInterval) } : {}),
+    ...(Array.isArray(body.recurringWeekdays)
+      ? { recurringWeekdays: body.recurringWeekdays.map(readString).filter((value): value is string => Boolean(value)) }
+      : {}),
+    ...(readString(body.pointOfInterestId) ? { pointOfInterestId: readString(body.pointOfInterestId) } : {}),
+    ...(readBoolean(body.pushNotification) !== undefined ? { pushNotification: readBoolean(body.pushNotification) } : {}),
   };
 };
 
 const parseEventInput = async (request: Request): Promise<SvaMainserverEventInput | Response> => {
-  const body = (await request.json().catch(() => null)) as unknown;
-  if (!isRecord(body)) {
-    return errorJson(400, 'invalid_request', 'Event-Daten müssen als Objekt gesendet werden.');
+  const body = await parseJsonObjectBody(request, 'Event-Daten müssen als Objekt gesendet werden.');
+  if (isResponse(body)) {
+    return body;
   }
+
   const title = readString(body.title);
   if (!title) {
     return errorJson(400, 'invalid_request', 'Der Event-Titel ist erforderlich.');
   }
-  const dates = parseEventDates(body.dates);
-  const categories = parseCategories(body.categories);
-  const addresses = parseAddressList(body.addresses);
-  const contact = parseContact(body.contact);
-  const urls = parseWebUrls(body.urls);
-  const tags = parseTags(body.tags);
-  if (categories instanceof Response) {
-    return categories;
-  }
-  if (addresses instanceof Response) {
-    return addresses;
-  }
-  if (contact instanceof Response) {
-    return contact;
-  }
-  if (urls instanceof Response) {
-    return urls;
-  }
-  if (tags instanceof Response) {
-    return tags;
-  }
-  return buildEventInput({ body, dates, categories, addresses, contact, urls, tags });
+
+  const relations = parseEventRelations(body);
+  return isResponse(relations) ? relations : buildEventInput(body, title, relations);
 };
 
 const toMainserverErrorResponse = (error: unknown): Response => {
@@ -410,52 +450,130 @@ const authorizeOrResponse = async (
   };
 };
 
-const listContentForRoute = async (
-  _route: Extract<RouteMatch, { kind: 'collection' }>,
-  actor: { readonly instanceId: string; readonly keycloakSubject: string },
-  request: Request
+const handleCollectionRead = async (
+  request: Request,
+  route: Extract<RouteMatch, { readonly kind: 'collection' }>,
+  ctx: AuthenticatedRequestContext,
+  logSuccess: (operation: string, contentId?: string) => void
 ) => {
+  const actor = await authorizeOrResponse(ctx, route.contentKind, pluginActionFor(route.contentKind, 'read'));
+  if (isResponse(actor)) {
+    return actor;
+  }
+
   const listQuery = parseMainserverListQuery(request);
-  return listSvaMainserverEvents({ ...actor, ...listQuery });
+  const data = await listSvaMainserverEvents({ ...actor, ...listQuery });
+  logSuccess(`mainserver_${route.contentKind}_list`);
+  return json(data);
 };
 
-const getContentForRoute = async (
-  route: Extract<RouteMatch, { kind: 'item' }>,
-  actor: { readonly instanceId: string; readonly keycloakSubject: string }
-) =>
-  getSvaMainserverEvent({ ...actor, eventId: route.itemId });
-
-const createContentForRoute = async (
-  _route: Extract<RouteMatch, { kind: 'collection' }>,
-  actor: { readonly instanceId: string; readonly keycloakSubject: string },
-  request: Request
+const handleItemRead = async (
+  route: Extract<RouteMatch, { readonly kind: 'item' }>,
+  ctx: AuthenticatedRequestContext,
+  logSuccess: (operation: string, contentId?: string) => void
 ) => {
-  const parsed = await parseEventInput(request);
-  if (parsed instanceof Response) {
-    return parsed;
+  const actor = await authorizeOrResponse(ctx, route.contentKind, pluginActionFor(route.contentKind, 'read'), route.itemId);
+  if (isResponse(actor)) {
+    return actor;
   }
-  const data = await createSvaMainserverEvent({ ...actor, event: parsed });
-  return json({ data }, 201);
-};
 
-const updateContentForRoute = async (
-  _route: Extract<RouteMatch, { kind: 'item' }>,
-  actor: { readonly instanceId: string; readonly keycloakSubject: string },
-  request: Request
-) => {
-  const parsed = await parseEventInput(request);
-  if (parsed instanceof Response) {
-    return parsed;
-  }
-  const data = await updateSvaMainserverEvent({ ...actor, eventId: _route.itemId, event: parsed });
+  const data = await getSvaMainserverEvent({ ...actor, eventId: route.itemId });
+  logSuccess(`mainserver_${route.contentKind}_detail`, route.itemId);
   return json({ data });
 };
 
-const deleteContentForRoute = async (
-  route: Extract<RouteMatch, { kind: 'item' }>,
-  actor: { readonly instanceId: string; readonly keycloakSubject: string }
+const authorizeMutation = async (
+  request: Request,
+  ctx: AuthenticatedRequestContext,
+  contentKind: ContentKind,
+  actionName: 'create' | 'update' | 'delete',
+  requestId?: string,
+  contentId?: string
+): Promise<Response | ContentActor> => {
+  const csrfError = validateMutationRequest(request, requestId);
+  if (csrfError) {
+    return csrfError;
+  }
+
+  return authorizeOrResponse(ctx, contentKind, pluginActionFor(contentKind, actionName), contentId);
+};
+
+const createEventsContent = async (request: Request, actor: ContentActor) => {
+  const parsed = await parseEventInput(request);
+  if (isResponse(parsed)) {
+    return parsed;
+  }
+
+  const data = await createSvaMainserverEvent({ ...actor, event: parsed });
+  return { data };
+};
+
+const handleCollectionCreate = async (
+  request: Request,
+  route: Extract<RouteMatch, { readonly kind: 'collection' }>,
+  ctx: AuthenticatedRequestContext,
+  requestId: string | undefined,
+  logSuccess: (operation: string, contentId?: string) => void
 ) => {
+  const actor = await authorizeMutation(request, ctx, route.contentKind, 'create', requestId);
+  if (isResponse(actor)) {
+    return actor;
+  }
+
+  const result = await createEventsContent(request, actor);
+  if (isResponse(result)) {
+    return result;
+  }
+
+  logSuccess(`mainserver_${route.contentKind}_create`, result.data.id);
+  return json(result, 201);
+};
+
+const updateEventsContent = async (request: Request, actor: ContentActor, itemId: string) => {
+  const parsed = await parseEventInput(request);
+  if (isResponse(parsed)) {
+    return parsed;
+  }
+
+  const data = await updateSvaMainserverEvent({ ...actor, eventId: itemId, event: parsed });
+  return { data };
+};
+
+const handleItemUpdate = async (
+  request: Request,
+  route: Extract<RouteMatch, { readonly kind: 'item' }>,
+  ctx: AuthenticatedRequestContext,
+  requestId: string | undefined,
+  logSuccess: (operation: string, contentId?: string) => void
+) => {
+  const actor = await authorizeMutation(request, ctx, route.contentKind, 'update', requestId, route.itemId);
+  if (isResponse(actor)) {
+    return actor;
+  }
+
+  const result = await updateEventsContent(request, actor, route.itemId);
+  if (isResponse(result)) {
+    return result;
+  }
+
+  logSuccess(`mainserver_${route.contentKind}_update`, route.itemId);
+  return json(result);
+};
+
+const handleItemDelete = async (
+  request: Request,
+  route: Extract<RouteMatch, { readonly kind: 'item' }>,
+  ctx: AuthenticatedRequestContext,
+  requestId: string | undefined,
+  logSuccess: (operation: string, contentId?: string) => void
+) => {
+  const actor = await authorizeMutation(request, ctx, route.contentKind, 'delete', requestId, route.itemId);
+  if (isResponse(actor)) {
+    return actor;
+  }
+
   const data = await deleteSvaMainserverEvent({ ...actor, eventId: route.itemId });
+  logSuccess(`mainserver_${route.contentKind}_delete`, route.itemId);
   return json({ data });
 };
 
@@ -477,79 +595,26 @@ const dispatchAuthenticated = async (request: Request, route: RouteMatch, ctx: A
       // Observability failures must not turn successful upstream operations into request failures.
     }
   };
-  const logSuccessIfOk = (response: Response, operation: string, contentId?: string) => {
-    if (!response.ok) {
-      return response;
-    }
-    logSuccess(operation, contentId);
-    return response;
-  };
 
   try {
     if (route.kind === 'collection' && request.method === 'GET') {
-      const actor = await authorizeOrResponse(ctx, route.contentKind, pluginActionFor(route.contentKind, 'read'));
-      if (actor instanceof Response) {
-        return actor;
-      }
-      const data = await listContentForRoute(route, actor, request);
-      logSuccess(`mainserver_${route.contentKind}_list`);
-      return json(data);
+      return await handleCollectionRead(request, route, ctx, logSuccess);
     }
 
     if (route.kind === 'item' && request.method === 'GET') {
-      const actor = await authorizeOrResponse(ctx, route.contentKind, pluginActionFor(route.contentKind, 'read'), route.itemId);
-      if (actor instanceof Response) {
-        return actor;
-      }
-      const data = await getContentForRoute(route, actor);
-      logSuccess(`mainserver_${route.contentKind}_detail`, route.itemId);
-      return json({ data });
+      return await handleItemRead(route, ctx, logSuccess);
     }
 
     if (route.kind === 'collection' && request.method === 'POST') {
-      const csrfError = validateMutationRequest(request, workspaceContext.requestId);
-      if (csrfError) {
-        return csrfError;
-      }
-      const actor = await authorizeOrResponse(ctx, route.contentKind, pluginActionFor(route.contentKind, 'create'));
-      if (actor instanceof Response) {
-        return actor;
-      }
-      const response = await createContentForRoute(route, actor, request);
-      const responseBody = (await response.clone().json().catch(() => null)) as { data?: { id?: string } } | null;
-      return logSuccessIfOk(response, `mainserver_${route.contentKind}_create`, responseBody?.data?.id);
+      return await handleCollectionCreate(request, route, ctx, workspaceContext.requestId, logSuccess);
     }
 
     if (route.kind === 'item' && request.method === 'PATCH') {
-      const csrfError = validateMutationRequest(request, workspaceContext.requestId);
-      if (csrfError) {
-        return csrfError;
-      }
-      const updateActor = await authorizeOrResponse(
-        ctx,
-        route.contentKind,
-        pluginActionFor(route.contentKind, 'update'),
-        route.itemId
-      );
-      if (updateActor instanceof Response) {
-        return updateActor;
-      }
-      const response = await updateContentForRoute(route, updateActor, request);
-      return logSuccessIfOk(response, `mainserver_${route.contentKind}_update`, route.itemId);
+      return await handleItemUpdate(request, route, ctx, workspaceContext.requestId, logSuccess);
     }
 
     if (route.kind === 'item' && request.method === 'DELETE') {
-      const csrfError = validateMutationRequest(request, workspaceContext.requestId);
-      if (csrfError) {
-        return csrfError;
-      }
-      const actor = await authorizeOrResponse(ctx, route.contentKind, pluginActionFor(route.contentKind, 'delete'), route.itemId);
-      if (actor instanceof Response) {
-        return actor;
-      }
-      const response = await deleteContentForRoute(route, actor);
-      logSuccess(`mainserver_${route.contentKind}_delete`, route.itemId);
-      return response;
+      return await handleItemDelete(request, route, ctx, workspaceContext.requestId, logSuccess);
     }
 
     return errorJson(405, 'method_not_allowed', 'Methode wird für diesen Mainserver-Inhalt nicht unterstützt.');

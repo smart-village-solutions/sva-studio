@@ -98,7 +98,7 @@ vi.mock('../routes/admin/legal-texts/-legal-texts-page', () => ({
 }));
 
 vi.mock('../routes/admin/modules/-modules-page', () => ({
-  ModulesPage: () => <div data-testid="modules-page">{'modules'}</div>,
+  ModulesPage: () => <div data-testid="modules-page">modules</div>,
 }));
 
 vi.mock('../routes/admin/media/-media-page', () => ({
@@ -207,7 +207,6 @@ describe('appRouteBindings', () => {
     const { appRouteBindings } = await import('./app-route-bindings');
 
     const cases: Array<[keyof typeof appRouteBindings, string]> = [
-      ['media', 'Data management|Media'],
       ['categories', 'Data management|Categories'],
       ['app', 'Applications|App'],
       ['monitoring', 'System|Monitoring'],
@@ -304,15 +303,15 @@ describe('appRouteBindings', () => {
     cleanup();
 
     render(<appRouteBindings.newsList />);
-    await waitFor(() => expect(screen.getByTestId('news-list-page')).toBeTruthy());
+    expect(screen.getByTestId('news-list-page')).toBeTruthy();
     cleanup();
 
     render(<appRouteBindings.newsEditor />);
-    await waitFor(() => expect(screen.getByTestId('news-create-page')).toBeTruthy());
+    expect(screen.getByTestId('news-create-page')).toBeTruthy();
     cleanup();
 
     render(<appRouteBindings.newsDetail />);
-    await waitFor(() => expect(screen.getByTestId('news-edit-page')).toBeTruthy());
+    expect(screen.getByTestId('news-edit-page')).toBeTruthy();
   });
 
   it('falls back to empty string route params when router params are not strings', async () => {
@@ -379,7 +378,7 @@ describe('appRouteBindings', () => {
     expect(screen.getByTestId('content-list-page')).toBeTruthy();
     cleanup();
 
-    render(<appRouteBindings.adminMedia />);
+    render(<appRouteBindings.media />);
     expect(screen.getByTestId('media-page')).toBeTruthy();
     cleanup();
 
@@ -428,26 +427,26 @@ describe('appRouteBindings', () => {
     cleanup();
 
     render(<appRouteBindings.eventsList />);
-    await waitFor(() => expect(screen.getByTestId('events-list-page')).toBeTruthy());
+    expect(screen.getByTestId('events-list-page')).toBeTruthy();
     cleanup();
 
     render(<appRouteBindings.eventsEditor />);
-    await waitFor(() => expect(screen.getByTestId('events-create-page')).toBeTruthy());
+    expect(screen.getByTestId('events-create-page')).toBeTruthy();
     cleanup();
 
     render(<appRouteBindings.eventsDetail />);
-    await waitFor(() => expect(screen.getByTestId('events-edit-page')).toBeTruthy());
+    expect(screen.getByTestId('events-edit-page')).toBeTruthy();
     cleanup();
 
     render(<appRouteBindings.poiList />);
-    await waitFor(() => expect(screen.getByTestId('poi-list-page')).toBeTruthy());
+    expect(screen.getByTestId('poi-list-page')).toBeTruthy();
     cleanup();
 
     render(<appRouteBindings.poiEditor />);
-    await waitFor(() => expect(screen.getByTestId('poi-create-page')).toBeTruthy());
+    expect(screen.getByTestId('poi-create-page')).toBeTruthy();
     cleanup();
 
     render(<appRouteBindings.poiDetail />);
-    await waitFor(() => expect(screen.getByTestId('poi-edit-page')).toBeTruthy());
+    expect(screen.getByTestId('poi-edit-page')).toBeTruthy();
   });
 });

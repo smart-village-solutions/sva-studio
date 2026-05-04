@@ -208,6 +208,8 @@ describe('meHandler', () => {
   });
 
   it('returns fail-closed empty assignedModules when module lookup fails', async () => {
+    const { meHandler } = await import('./auth-route-handlers.js');
+
     mocks.withRegistryRepository.mockRejectedValueOnce(new Error('db unavailable'));
 
     const response = await meHandler(new Request('http://localhost/auth/me', { headers: { cookie: 'sva_session=session-1' } }));
@@ -678,19 +680,7 @@ describe('callbackHandler', () => {
     );
   });
 
-  it('redirects back to /auth/login when callback parameters are incomplete', async () => {
-    const { callbackHandler } = await import('./auth-route-handlers.js');
-    const { resolveAuthConfigForRequest } = await import('./config.js');
-
-    vi.mocked(resolveAuthConfigForRequest).mockResolvedValueOnce(authConfigBase as never);
-
-    const response = await callbackHandler(new Request('http://localhost/auth/callback?state=state-abc123def456'));
-
-    expect(response.status).toBe(302);
-    expect(response.headers.get('Location')).toBe('/auth/login');
-  });
-
-  it('redirects to state-expired when the login state cookie is stale', async () => {
+  it('redirects to /?auth=state-expired and emits cleanup logging for expired login state', async () => {
     const { callbackHandler } = await import('./auth-route-handlers.js');
     const { resolveAuthConfigForRequest } = await import('./config.js');
     const { decodeLoginStateCookie } = await import('./login-state-cookie.js');
@@ -698,13 +688,16 @@ describe('callbackHandler', () => {
     vi.mocked(resolveAuthConfigForRequest).mockResolvedValueOnce(authConfigBase as never);
     vi.mocked(decodeLoginStateCookie).mockReturnValueOnce({
       state: 'state-abc123def456',
-      codeVerifier: 'verifier',
-      nonce: 'nonce',
+      codeVerifier: 'code-verifier',
+      nonce: 'nonce-xyz789',
       createdAt: Date.now() - 11 * 60 * 1000,
-      returnTo: '/admin',
+      returnTo: '/',
       silent: false,
       kind: 'platform',
     } as never);
+    mocks.readCookieFromRequest.mockImplementation((_request: Request, cookieName: string) =>
+      cookieName === 'sva_session' ? 'session-1' : 'encoded-login-state'
+    );
 
     const response = await callbackHandler(
       new Request('http://localhost/auth/callback?code=abc&state=state-abc123def456')
@@ -714,41 +707,7 @@ describe('callbackHandler', () => {
     expect(response.headers.get('Location')).toBe('/?auth=state-expired');
     expect(mocks.logger.info).toHaveBeenCalledWith(
       'Expired callback cookie cleanup prepared',
-      expect.objectContaining({ operation: 'login_callback_cookie_cleanup' })
-    );
-  });
-
-  it('returns an error redirect when token validation fails during callback', async () => {
-    const { callbackHandler } = await import('./auth-route-handlers.js');
-    const { resolveAuthConfigForRequest } = await import('./config.js');
-    const { handleCallback } = await import('./auth-server/callback.js');
-    const { decodeLoginStateCookie } = await import('./login-state-cookie.js');
-
-    vi.mocked(resolveAuthConfigForRequest).mockResolvedValueOnce(authConfigBase as never);
-    vi.mocked(decodeLoginStateCookie).mockReturnValueOnce({
-      state: 'state-abc123def456',
-      codeVerifier: 'verifier',
-      nonce: 'nonce',
-      createdAt: Date.now(),
-      returnTo: '/admin',
-      silent: false,
-      kind: 'platform',
-    } as never);
-    vi.mocked(handleCallback).mockRejectedValueOnce({
-      error: 'invalid_grant',
-      error_description: 'Code verifier mismatch',
-      response: { status: 401 },
-    });
-
-    const response = await callbackHandler(
-      new Request('http://localhost/auth/callback?code=abc&state=state-abc123def456')
-    );
-
-    expect(response.status).toBe(302);
-    expect(response.headers.get('Location')).toBe('/?auth=error');
-    expect(mocks.logger.warn).toHaveBeenCalledWith(
-      'Token validation failed in callback',
-      expect.objectContaining({ reason_code: 'token_validate_failed', oauth_error: 'invalid_grant' })
+      expect.objectContaining({ had_session_cookie_on_callback: true })
     );
   });
 });

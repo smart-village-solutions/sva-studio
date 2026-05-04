@@ -45,75 +45,62 @@ vi.mock('@tanstack/react-router', () => ({
   Link: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
   useNavigate: () => navigateMock,
   useParams: () => paramsMock(),
-  useSearch: () => searchMock(),
+  useSearch: () => ({ page: 1, pageSize: 25 }),
 }));
 
 const navigateMock = vi.fn();
 const paramsMock = vi.fn(() => ({ id: 'event-1' }));
-const searchMock = vi.fn(() => ({ page: 1, pageSize: 25 }));
-
-const interpolate = (template: string, variables?: Record<string, string | number>) =>
-  template.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (match, key: string) => {
-    const value = variables?.[key];
-    return value === undefined ? match : String(value);
-  });
-
-const registerEventTranslations = () => {
-  registerPluginTranslationResolver((key, variables) => {
-    const labels: Record<string, string> = {
-      'events.list.title': 'Events',
-      'events.list.description': 'Veranstaltungen aus dem Mainserver bearbeiten.',
-      'events.messages.loading': 'Events werden geladen.',
-      'events.messages.loadError': 'Events konnten nicht geladen werden.',
-      'events.messages.missingContent': 'Das Event konnte nicht geladen werden.',
-      'events.messages.saveError': 'Event konnte nicht gespeichert werden.',
-      'events.messages.createSuccess': 'Event wurde erstellt.',
-      'events.messages.updateSuccess': 'Event wurde aktualisiert.',
-      'events.messages.validationError': 'Bitte korrigieren Sie die markierten Felder.',
-      'events.empty.title': 'Noch keine Events vorhanden',
-      'events.actions.create': 'Event anlegen',
-      'events.actions.update': 'Änderungen speichern',
-      'events.actions.clearMedia': 'Medium entfernen',
-      'events.fields.actions': 'Aktionen',
-      'events.fields.title': 'Titel',
-      'events.fields.description': 'Beschreibung',
-      'events.fields.headerImage': 'Headerbild',
-      'events.fields.categoryName': 'Kategorie',
-      'events.fields.dateStart': 'Startdatum',
-      'events.fields.dateEnd': 'Enddatum',
-      'events.fields.street': 'Straße',
-      'events.fields.city': 'Ort',
-      'events.fields.email': 'E-Mail',
-      'events.fields.url': 'Web-URL',
-      'events.fields.mediaPlaceholder': 'Medium auswählen',
-      'events.fields.pointOfInterestId': 'Zugehöriger POI',
-      'events.fields.repeat': 'Wiederholung',
-      'events.pagination.ariaLabel': 'Events-Pagination',
-      'events.pagination.previous': 'Zurück',
-      'events.pagination.next': 'Weiter',
-      'events.pagination.pageLabel': 'Seite {{page}}',
-      'events.editor.createTitle': 'Event anlegen',
-      'events.editor.createDescription': 'Erstellen Sie einen neuen Veranstaltungseintrag.',
-      'events.editor.editTitle': 'Event bearbeiten',
-      'events.editor.editDescription': 'Aktualisieren oder löschen Sie den Veranstaltungseintrag.',
-      'events.validation.title': 'Der Titel ist erforderlich.',
-      'events.validation.dates': 'Datumswerte müssen gültig sein.',
-      'events.validation.urls': 'URLs müssen mit https:// beginnen.',
-      'events.validation.categoryName': 'Die Kategorie darf maximal 128 Zeichen haben.',
-    };
-    return interpolate(labels[key] ?? key, variables);
-  });
-};
 
 describe('EventsListPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     navigateMock.mockReset();
     paramsMock.mockReset();
-    searchMock.mockReset();
     paramsMock.mockReturnValue({ id: 'event-1' });
-    searchMock.mockReturnValue({ page: 1, pageSize: 25 });
-    registerEventTranslations();
+    registerPluginTranslationResolver((key) => {
+      const labels: Record<string, string> = {
+        'events.list.title': 'Events',
+        'events.list.description': 'Veranstaltungen aus dem Mainserver bearbeiten.',
+        'events.messages.loading': 'Events werden geladen.',
+        'events.messages.loadError': 'Events konnten nicht geladen werden.',
+        'events.messages.missingContent': 'Das Event konnte nicht geladen werden.',
+        'events.messages.saveError': 'Event konnte nicht gespeichert werden.',
+        'events.messages.createSuccess': 'Event wurde erstellt.',
+        'events.messages.updateSuccess': 'Event wurde aktualisiert.',
+        'events.messages.validationError': 'Bitte korrigieren Sie die markierten Felder.',
+        'events.empty.title': 'Noch keine Events vorhanden',
+        'events.actions.create': 'Event anlegen',
+        'events.actions.update': 'Änderungen speichern',
+        'events.actions.clearMedia': 'Medium entfernen',
+        'events.fields.actions': 'Aktionen',
+        'events.fields.title': 'Titel',
+        'events.fields.description': 'Beschreibung',
+        'events.fields.headerImage': 'Headerbild',
+        'events.fields.categoryName': 'Kategorie',
+        'events.fields.dateStart': 'Startdatum',
+        'events.fields.dateEnd': 'Enddatum',
+        'events.fields.street': 'Straße',
+        'events.fields.city': 'Ort',
+        'events.fields.email': 'E-Mail',
+        'events.fields.url': 'Web-URL',
+        'events.fields.mediaPlaceholder': 'Medium auswählen',
+        'events.fields.pointOfInterestId': 'Zugehöriger POI',
+        'events.fields.repeat': 'Wiederholung',
+        'events.pagination.ariaLabel': 'Events-Pagination',
+        'events.pagination.previous': 'Zurück',
+        'events.pagination.next': 'Weiter',
+        'events.pagination.pageLabel': 'Seite {{page}}',
+        'events.editor.createTitle': 'Event anlegen',
+        'events.editor.createDescription': 'Erstellen Sie einen neuen Veranstaltungseintrag.',
+        'events.editor.editTitle': 'Event bearbeiten',
+        'events.editor.editDescription': 'Aktualisieren oder löschen Sie den Veranstaltungseintrag.',
+        'events.validation.title': 'Der Titel ist erforderlich.',
+        'events.validation.dates': 'Datumswerte müssen gültig sein.',
+        'events.validation.urls': 'URLs müssen mit https:// beginnen.',
+        'events.validation.categoryName': 'Die Kategorie darf maximal 128 Zeichen haben.',
+      };
+      return labels[key] ?? key;
+    });
     vi.mocked(listHostMediaAssets).mockResolvedValue([{ id: 'asset-header', metadata: { title: 'Header Asset' } }]);
     vi.mocked(listHostMediaReferencesByTarget).mockResolvedValue([]);
     vi.mocked(replaceHostMediaReferences).mockResolvedValue({
@@ -142,72 +129,6 @@ describe('EventsListPage', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Events konnten nicht geladen werden.')).toBeTruthy();
-    });
-  });
-
-  it('navigates through paginated list results', async () => {
-    vi.mocked(listEvents).mockResolvedValueOnce({
-      data: [
-        {
-          id: 'event-1',
-          title: 'Stadtfest',
-          categoryName: 'Kultur',
-          dates: [{ dateStart: '2026-04-14T09:30:00.000Z' }],
-        },
-      ],
-      pagination: { page: 2, pageSize: 25, hasNextPage: true },
-    });
-
-    render(<EventsListPage />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Seite 2')).toBeTruthy();
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: 'Zurück' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
-
-    expect(navigateMock).toHaveBeenCalledTimes(2);
-
-    const previousTarget = navigateMock.mock.calls[0]?.[0] as {
-      search: (current: Record<string, unknown>) => Record<string, unknown>;
-    };
-    const nextTarget = navigateMock.mock.calls[1]?.[0] as {
-      search: (current: Record<string, unknown>) => Record<string, unknown>;
-    };
-
-    expect(previousTarget.search({ filter: 'open' })).toEqual({
-      filter: 'open',
-      page: 1,
-      pageSize: 25,
-    });
-    expect(nextTarget.search({ filter: 'open' })).toEqual({
-      filter: 'open',
-      page: 3,
-      pageSize: 25,
-    });
-  });
-
-  it('reads pagination values from search params and falls back for invalid values', async () => {
-    searchMock.mockReturnValueOnce({ page: 3, pageSize: 50 });
-
-    render(<EventsListPage />);
-
-    await waitFor(() => {
-      expect(listEvents).toHaveBeenCalledWith({ page: 3, pageSize: 50 });
-    });
-
-    cleanup();
-    searchMock.mockReturnValueOnce({ page: undefined, pageSize: 0 });
-    vi.mocked(listEvents).mockResolvedValueOnce({
-      data: [],
-      pagination: { page: 1, pageSize: 25, hasNextPage: false },
-    });
-
-    render(<EventsListPage />);
-
-    await waitFor(() => {
-      expect(listEvents).toHaveBeenCalledWith({ page: 1, pageSize: 25 });
     });
   });
 

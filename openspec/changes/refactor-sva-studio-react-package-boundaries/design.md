@@ -26,12 +26,9 @@ Die Folge ist kein einzelner Laufzeitfehler, sondern Boundary-Drift:
 ## Entscheidungen
 
 - `@sva/studio-ui-react` ist der kanonische Ort fuer wiederverwendbare Studio-Primitives, Listen-Templates, Tabellen und vergleichbare Verwaltungs-UI.
-- `@sva/studio-ui-react` bleibt i18n-neutral. App und andere Consumer liefern Labels explizit, statt dass die App eine dauerhafte Wrapper-Fassade mit eigener Tabellen-Ownership behaelt.
 - `apps/sva-studio-react/src/components/ui/**` darf nur noch App-spezifische Spezialbausteine enthalten, fuer die kein geteilter Vertrag benoetigt wird.
 - `@sva/iam-governance` ist die kanonische Ownership fuer Legal-Text-HTML-Sanitizing. Die App konsumiert diese Funktion, statt eine zweite Implementierung zu pflegen.
 - `@sva/sva-mainserver/server` oder eng dazugehoerige serverseitige Zielmodule tragen die Ownership fuer host-owned News-, Events- und POI-Request-Parsing, Validierung und Mutations-Delegation.
-- Die oeffentlichen Mainserver-Host-Vertraege werden fachlich getrennt fuer `news`, `events` und `poi` exportiert. Geteilte Auth-, Fehler- und Parser-Bausteine duerfen intern wiederverwendet werden, aber die fachliche Owner-Schnitt bleibt pro Inhaltstyp getrennt.
-- `interfaces-api` wird als Mainserver-bezogener Serververtrag ebenfalls in `@sva/sva-mainserver/server` verankert. Die App behaelt nur duenne `createServerFn`-Adapter und app- bzw. framework-nahe Einstiegspunkte.
 - `apps/sva-studio-react` behaelt framework-spezifische Server-Einstiege, Request-Matching und Route-Assemblierung, delegiert aber fachliche Serverlogik an Packages.
 - `appRouteBindings`, `appAdminResources` und vergleichbare Host-Assemblierung bleiben im App-Layer, solange sie keine generische Wiederverwendung ueber mehrere Consumer beanspruchen.
 
@@ -48,12 +45,6 @@ Sanitizer und vergleichbare fachlich sensible Helper duerfen nicht parallel in A
 ### 3. Mainserver-Host-Adapter
 
 Die App soll Requests empfangen und an Zielpackages delegieren, nicht selbst den fachlichen Serververtrag definieren. News-, Events- und POI-Handler werden deshalb so geschnitten, dass Parsing, Fehlerabbildung und Upstream-Mutationslogik ausserhalb der App testbar und wiederverwendbar liegen. Die App behaelt nur den TanStack-Start- oder Nitro-spezifischen Einstieg.
-
-Die drei oeffentlichen Vertraege bleiben getrennt, auch wenn Events und POI technische Hilfen teilen. Gemeinsame Infrastruktur wie Auth, CSRF, Pagination oder identische Feldparser darf in interne Shared-Module gehen, aber nicht in einen monolithischen Sammel-Handler kippen, der die fachliche Ownership wieder verwischt.
-
-### 4. Mainserver-Interfaces-Vertrag
-
-Die Schnittstellen-Serverfunktionen fuer Mainserver-Einstellungen und Verbindungsstatus werden als Mainserver-spezifischer Serververtrag behandelt. Mainserver-Regeln, Fehlerabbildung und Persistenzdelegation liegen deshalb in `@sva/sva-mainserver/server`, waehrend `apps/sva-studio-react` nur die TanStack-`createServerFn`-Adapter und den unmittelbaren Request-/Session-Kontext beibehält.
 
 ## Risiken / Trade-offs
 
@@ -74,4 +65,4 @@ Die Schnittstellen-Serverfunktionen fuer Mainserver-Einstellungen und Verbindung
 
 ## Offene Fragen
 
-- Ob die neuen Server-Vertraege direkt in `@sva/sva-mainserver/server` oder in eng gekoppelten internen Teilmodulen innerhalb desselben Packages organisiert werden, wird waehrend der Implementierung anhand der vorhandenen Runtime-Abhaengigkeiten entschieden, ohne die festgezogene Ownership oder die getrennten oeffentlichen Adapter fuer `news`, `events` und `poi` wieder aufzuweichen.
+- Ob die Mainserver-Host-Handler direkt in `@sva/sva-mainserver/server` aufgehen oder ein eng gekoppeltes serverseitiges Teilmodul benoetigen, wird waehrend der Implementierung anhand der vorhandenen Runtime-Abhaengigkeiten entschieden.

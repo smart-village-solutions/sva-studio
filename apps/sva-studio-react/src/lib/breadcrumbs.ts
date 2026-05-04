@@ -74,14 +74,6 @@ const breadcrumbRoutes: ReadonlyArray<
     ],
   },
   {
-    pattern: /^\/plugins\/news\/new$/,
-    build: () => [
-      overviewBreadcrumb(),
-      { href: '/admin/news', label: t('news.navigation.title') },
-      { label: t('news.editor.createTitle') },
-    ],
-  },
-  {
     pattern: /^\/admin\/news\/[^/]+$/,
     build: () => [
       overviewBreadcrumb(),
@@ -90,19 +82,7 @@ const breadcrumbRoutes: ReadonlyArray<
     ],
   },
   {
-    pattern: /^\/plugins\/news\/[^/]+$/,
-    build: () => [
-      overviewBreadcrumb(),
-      { href: '/admin/news', label: t('news.navigation.title') },
-      { label: t('news.editor.editTitle') },
-    ],
-  },
-  {
     pattern: /^\/admin\/news$/,
-    build: () => [overviewBreadcrumb(), { label: t('news.navigation.title') }],
-  },
-  {
-    pattern: /^\/plugins\/news$/,
     build: () => [overviewBreadcrumb(), { label: t('news.navigation.title') }],
   },
   {

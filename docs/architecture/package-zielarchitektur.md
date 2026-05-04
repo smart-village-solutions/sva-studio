@@ -147,7 +147,7 @@ Nicht zulässig im Zielbild:
 - `@sva/routing` importiert historische Auth-Sammelpackages für Pfade oder Runtime-Handler.
 - Plugins importieren `@sva/core`, `@sva/auth-runtime`, `@sva/iam-*`, `@sva/instance-registry`, `@sva/data` oder App-Code direkt.
 - Plugins importieren wiederverwendbare UI aus `apps/sva-studio-react/src/**` oder definieren eigene Basis-Control-Systeme für Buttons, Inputs, Dialoge, Tabs oder Tabellen.
-- App-Komponenten oder app-seitige Servermodule modellieren IAM-, Instanz- oder Integrationsregeln selbst.
+- App-Komponenten modellieren IAM-, Instanz- oder Integrationsregeln selbst.
 - Fachmodule greifen direkt auf fremde Fachmodul-Interna zu, statt über öffentliche Verträge zu gehen.
 
 ## PII-Datenfluss-Regel

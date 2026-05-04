@@ -114,123 +114,76 @@ const errorMessage = (pt: ReturnType<typeof usePluginTranslation>, error: unknow
 
 type ListSearchState = Record<string, unknown>;
 
-type ListPaginationState = Readonly<{
-  page: number;
-  pageSize: number;
-  hasNextPage: boolean;
-}>;
-
-type ListPaginationNavProps = Readonly<{
-  ariaLabel: string;
-  pageLabel: string;
-  previousLabel: string;
-  nextLabel: string;
-  pagination: ListPaginationState;
-  onPageChange: (page: number) => void;
-}>;
-
-const updateListSearchPage = (
-  current: ListSearchState,
-  page: number,
-  pageSize: number
-): ListSearchState => ({
-  ...current,
-  page,
-  pageSize,
-});
-
-const PoiListEditAction = ({ id, label }: Readonly<{ id: string; label: string }>) => (
-  <Button asChild variant="outline" size="sm">
-    <Link to="/admin/poi/$id" params={{ id }}>
-      {label}
-    </Link>
-  </Button>
-);
+const createPoiListColumns = (pt: ReturnType<typeof usePluginTranslation>) => [
+  { id: 'name', header: pt('fields.name'), cell: (item: PoiContentItem) => item.name },
+  {
+    id: 'categoryName',
+    header: pt('fields.categoryName'),
+    cell: (item: PoiContentItem) => item.categoryName ?? pt('values.notAvailable'),
+  },
+  {
+    id: 'active',
+    header: pt('fields.active'),
+    cell: (item: PoiContentItem) => (item.active === false ? pt('values.notAvailable') : pt('values.active')),
+  },
+];
 
 const PoiPaginationNav = ({
-  ariaLabel,
-  pageLabel,
-  previousLabel,
-  nextLabel,
-  pagination,
+  page,
+  hasNextPage,
   onPageChange,
-}: ListPaginationNavProps) => (
-  <nav aria-label={ariaLabel} className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
-    <p key={pagination.page} aria-live="polite" className="animate-pagination-active">
-      {pageLabel}
+  pt,
+}: Readonly<{
+  page: number;
+  hasNextPage: boolean;
+  onPageChange: (page: number) => void;
+  pt: ReturnType<typeof usePluginTranslation>;
+}>) => (
+  <nav aria-label={pt('pagination.ariaLabel')} className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
+    <p key={page} aria-live="polite" className="animate-pagination-active">
+      {pt('pagination.pageLabel', { page })}
     </p>
     <div className="flex items-center gap-2">
-      <Button
-        type="button"
-        size="sm"
-        variant="outline"
-        disabled={pagination.page <= 1}
-        onClick={() => onPageChange(Math.max(1, pagination.page - 1))}
-      >
-        {previousLabel}
+      <Button type="button" size="sm" variant="outline" disabled={page <= 1} onClick={() => onPageChange(Math.max(1, page - 1))}>
+        {pt('pagination.previous')}
       </Button>
-      <Button
-        type="button"
-        size="sm"
-        variant="outline"
-        disabled={!pagination.hasNextPage}
-        onClick={() => onPageChange(pagination.page + 1)}
-      >
-        {nextLabel}
+      <Button type="button" size="sm" variant="outline" disabled={!hasNextPage} onClick={() => onPageChange(page + 1)}>
+        {pt('pagination.next')}
       </Button>
     </div>
   </nav>
 );
 
-const createPoiListColumns = (pt: ReturnType<typeof usePluginTranslation>) => [
-  { id: 'name', header: pt('fields.name'), cell: (item: PoiContentItem) => item.name },
-  { id: 'categoryName', header: pt('fields.categoryName'), cell: (item: PoiContentItem) => item.categoryName ?? '—' },
-  { id: 'active', header: pt('fields.active'), cell: (item: PoiContentItem) => (item.active === false ? '—' : '✓') },
-];
-
 export function PoiListPage() {
   const pt = usePluginTranslation('poi');
   const navigate = useNavigate();
-  const search = useSearch({ strict: false }) as { readonly page?: number; readonly pageSize?: number };
-  const { page, pageSize } = normalizeListSearch(search);
-  const editLabel = pt('actions.edit');
+  const search = useSearch({ strict: false }) as ListSearchState;
+  const normalizedSearch = normalizeListSearch(search);
+  const page = normalizedSearch.page;
+  const pageSize = normalizedSearch.pageSize;
   const [result, setResult] = React.useState<PoiListResult>({
     data: [],
     pagination: { page, pageSize, hasNextPage: false },
   });
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
-
   const handlePageChange = React.useCallback(
     (nextPage: number) => {
-      Promise.resolve(
-        navigate({
-          to: '/admin/poi',
-          search: (current: ListSearchState) => updateListSearchPage(current, nextPage, result.pagination.pageSize),
-        })
-      ).catch(() => undefined);
+      void navigate({
+        to: '/admin/poi',
+        search: (current: Record<string, unknown>) => ({
+          ...current,
+          page: nextPage,
+          pageSize: result.pagination.pageSize,
+        }),
+      });
     },
     [navigate, result.pagination.pageSize]
   );
 
   React.useEffect(() => {
-    if (search.page === page && search.pageSize === pageSize) {
-      return;
-    }
-
-    Promise.resolve(
-      navigate({
-        to: '/admin/poi',
-        replace: true,
-        search: (current: ListSearchState) => updateListSearchPage(current, page, pageSize),
-      })
-    ).catch(() => undefined);
-  }, [navigate, page, pageSize, search.page, search.pageSize]);
-
-  React.useEffect(() => {
     let active = true;
     setLoading(true);
-    setError(null);
     listPoi({ page, pageSize })
       .then((data) => {
         if (active) {
@@ -279,18 +232,22 @@ export function PoiListPage() {
             }}
             data={result.data}
             columns={createPoiListColumns(pt)}
-            rowActions={(item) => <PoiListEditAction id={item.id} label={editLabel} />}
+            rowActions={(item) => (
+              <Button asChild variant="outline" size="sm">
+                <Link to="/admin/poi/$id" params={{ id: item.id }}>
+                  {pt('actions.edit')}
+                </Link>
+              </Button>
+            )}
             emptyState={null}
             getRowId={(item) => item.id}
             selectionMode="none"
           />
           <PoiPaginationNav
-            ariaLabel={pt('pagination.ariaLabel')}
-            pageLabel={pt('pagination.pageLabel', { page: result.pagination.page })}
-            previousLabel={pt('pagination.previous')}
-            nextLabel={pt('pagination.next')}
-            pagination={result.pagination}
+            page={result.pagination.page}
+            hasNextPage={result.pagination.hasNextPage}
             onPageChange={handlePageChange}
+            pt={pt}
           />
         </div>
       ) : null}

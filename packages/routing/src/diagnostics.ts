@@ -78,12 +78,20 @@ export interface RoutingDiagnosticsLogger {
 
 type RoutingFallbackLogger = Pick<RoutingDiagnosticsLogger, 'error'>;
 
-let routingDiagnosticsFailureLogger: RoutingFallbackLogger | null = null;
+let serverFallbackLogger: RoutingFallbackLogger | null = null;
 
 const isBrowserRuntime = () => typeof globalThis.window !== 'undefined';
 
 export const setRoutingDiagnosticsFailureLogger = (logger: RoutingFallbackLogger | null): void => {
-  routingDiagnosticsFailureLogger = logger;
+  serverFallbackLogger = logger;
+};
+
+export const registerServerFallbackLogger = (logger: RoutingFallbackLogger): void => {
+  setRoutingDiagnosticsFailureLogger(logger);
+};
+
+export const resetServerFallbackLogger = (): void => {
+  setRoutingDiagnosticsFailureLogger(null);
 };
 
 const isPromiseLike = (value: unknown): value is PromiseLike<unknown> =>
@@ -165,8 +173,8 @@ const logRoutingDiagnosticFailure = (event: RoutingDiagnosticEvent, error: unkno
     return;
   }
 
-  if (routingDiagnosticsFailureLogger) {
-    routingDiagnosticsFailureLogger.error(message, meta);
+  if (serverFallbackLogger) {
+    serverFallbackLogger.error(message, meta);
     return;
   }
 

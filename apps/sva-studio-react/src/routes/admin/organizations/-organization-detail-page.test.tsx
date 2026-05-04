@@ -104,131 +104,139 @@ describe('OrganizationDetailPage', () => {
     listUsersMock.mockReset();
   });
 
-  it('loads detail state, saves changes, manages memberships, and deactivates', async () => {
-    const loadOrganization = vi.fn().mockResolvedValue(organizationFixture);
-    const updateOrganization = vi.fn().mockResolvedValue(true);
-    const assignMembership = vi.fn().mockResolvedValue(true);
-    const removeMembership = vi.fn().mockResolvedValue(true);
-    const deactivateOrganization = vi.fn().mockResolvedValue(true);
-    useOrganizationsMock.mockReturnValue(
-      createState({
-        loadOrganization,
-        updateOrganization,
-        assignMembership,
-        removeMembership,
-        deactivateOrganization,
-      })
-    );
-    const firstPageUsers = Array.from({ length: 25 }, (_, index) => ({
-      id: `user-${index + 1}`,
-      keycloakSubject: `kc-user-${index + 1}`,
-      displayName: index === 0 ? 'Anna Admin' : `User ${index + 1}`,
-      email: index === 0 ? 'anna@example.org' : `user${index + 1}@example.org`,
-      status: 'active' as const,
-      roles: [],
-    }));
-    const searchedUser = {
-      id: 'user-101',
-      keycloakSubject: 'kc-user-101',
-      displayName: 'Zoe Zebra',
-      email: 'zoe@example.org',
-      status: 'active' as const,
-      roles: [],
-    };
-    listUsersMock
-      .mockResolvedValueOnce({
-        data: firstPageUsers,
-        pagination: { page: 1, pageSize: 25, total: 101 },
-      })
-      .mockResolvedValueOnce({
-        data: [searchedUser],
-        pagination: { page: 1, pageSize: 25, total: 1 },
+  it(
+    'loads detail state, saves changes, manages memberships, and deactivates',
+    async () => {
+      const loadOrganization = vi.fn().mockResolvedValue(organizationFixture);
+      const updateOrganization = vi.fn().mockResolvedValue(true);
+      const assignMembership = vi.fn().mockResolvedValue(true);
+      const removeMembership = vi.fn().mockResolvedValue(true);
+      const deactivateOrganization = vi.fn().mockResolvedValue(true);
+      useOrganizationsMock.mockReturnValue(
+        createState({
+          loadOrganization,
+          updateOrganization,
+          assignMembership,
+          removeMembership,
+          deactivateOrganization,
+        })
+      );
+      const firstPageUsers = Array.from({ length: 100 }, (_, index) => ({
+        id: `user-${index + 1}`,
+        keycloakSubject: `kc-user-${index + 1}`,
+        displayName: index === 0 ? 'Anna Admin' : `User ${index + 1}`,
+        email: index === 0 ? 'anna@example.org' : `user${index + 1}@example.org`,
+        status: 'active' as const,
+        roles: [],
+      }));
+      const secondPageUser = {
+        id: 'user-101',
+        keycloakSubject: 'kc-user-101',
+        displayName: 'Zoe Zebra',
+        email: 'zoe@example.org',
+        status: 'active' as const,
+        roles: [],
+      };
+      listUsersMock
+        .mockResolvedValueOnce({
+          data: firstPageUsers,
+          pagination: { page: 1, pageSize: 100, total: 100 },
+        })
+        .mockResolvedValueOnce({
+          data: [secondPageUser],
+          pagination: { page: 1, pageSize: 100, total: 1 },
+        });
+
+      render(<OrganizationDetailPage organizationId="org-1" />);
+
+      await waitFor(() => {
+        expect(loadOrganization).toHaveBeenCalledWith('org-1');
+      });
+      await waitFor(() => {
+        expect(listUsersMock).toHaveBeenCalledTimes(1);
+        expect(listUsersMock).toHaveBeenCalledWith({
+          page: 1,
+          pageSize: 100,
+          search: undefined,
+          status: 'active',
+        });
       });
 
-    render(<OrganizationDetailPage organizationId="org-1" />);
-
-    await waitFor(() => {
-      expect(loadOrganization).toHaveBeenCalledWith('org-1');
-    });
-    await waitFor(() => {
-      expect(listUsersMock).toHaveBeenCalledWith({
-        page: 1,
-        pageSize: 25,
-        search: undefined,
-        status: 'active',
+      fireEvent.change(screen.getByLabelText('Technischer Schlüssel', { selector: '#organization-key' }), {
+        target: { value: ' landkreis-alpha-neu ' },
       });
-    });
-
-    fireEvent.change(screen.getByLabelText('Technischer Schlüssel', { selector: '#organization-key' }), {
-      target: { value: ' landkreis-alpha-neu ' },
-    });
-    fireEvent.change(screen.getByLabelText('Anzeigename', { selector: '#organization-name' }), {
-      target: { value: ' Landkreis Alpha Neu ' },
-    });
-    fireEvent.change(screen.getByLabelText('Organisationstyp', { selector: '#organization-type' }), {
-      target: { value: 'district' },
-    });
-    fireEvent.change(screen.getByLabelText('Autoren-Policy', { selector: '#organization-policy' }), {
-      target: { value: 'org_or_personal' },
-    });
-    fireEvent.change(screen.getByLabelText('Parent-Organisation', { selector: '#organization-parent' }), {
-      target: { value: 'parent-2' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
-
-    await waitFor(() => {
-      expect(updateOrganization).toHaveBeenCalledWith('org-1', {
-        organizationKey: 'landkreis-alpha-neu',
-        displayName: 'Landkreis Alpha Neu',
-        organizationType: 'district',
-        parentOrganizationId: 'parent-2',
-        contentAuthorPolicy: 'org_or_personal',
+      fireEvent.change(screen.getByLabelText('Anzeigename', { selector: '#organization-name' }), {
+        target: { value: ' Landkreis Alpha Neu ' },
       });
-    });
-
-    expect(screen.queryByRole('option', { name: 'Anna Admin <anna@example.org>' })).toBeNull();
-    fireEvent.change(screen.getByLabelText('Mitglieder suchen', { selector: '#membership-account-search' }), {
-      target: { value: 'zoe' },
-    });
-    await waitFor(() => {
-      expect(listUsersMock).toHaveBeenLastCalledWith({
-        page: 1,
-        pageSize: 25,
-        search: 'zoe',
-        status: 'active',
+      fireEvent.change(screen.getByLabelText('Organisationstyp', { selector: '#organization-type' }), {
+        target: { value: 'district' },
       });
-    });
-    expect(screen.getByRole('option', { name: 'Zoe Zebra <zoe@example.org>' })).toBeTruthy();
-
-    fireEvent.change(document.getElementById('membership-account') as HTMLSelectElement, {
-      target: { value: 'user-101' },
-    });
-    fireEvent.change(screen.getByLabelText('Sichtbarkeit', { selector: '#membership-visibility' }), {
-      target: { value: 'external' },
-    });
-    fireEvent.click(document.getElementById('membership-default') as HTMLInputElement);
-    fireEvent.click(screen.getByRole('button', { name: 'Mitglied zuweisen' }));
-
-    await waitFor(() => {
-      expect(assignMembership).toHaveBeenCalledWith('org-1', {
-        accountId: 'user-101',
-        visibility: 'external',
-        isDefaultContext: true,
+      fireEvent.change(screen.getByLabelText('Autoren-Policy', { selector: '#organization-policy' }), {
+        target: { value: 'org_or_personal' },
       });
-    });
+      fireEvent.change(screen.getByLabelText('Parent-Organisation', { selector: '#organization-parent' }), {
+        target: { value: 'parent-2' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
 
-    fireEvent.click(screen.getByRole('button', { name: 'Mitglied entfernen' }));
-    await waitFor(() => {
-      expect(removeMembership).toHaveBeenCalledWith('org-1', 'user-1');
-    });
+      await waitFor(() => {
+        expect(updateOrganization).toHaveBeenCalledWith('org-1', {
+          organizationKey: 'landkreis-alpha-neu',
+          displayName: 'Landkreis Alpha Neu',
+          organizationType: 'district',
+          parentOrganizationId: 'parent-2',
+          contentAuthorPolicy: 'org_or_personal',
+        });
+      });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Deaktivieren' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Deaktivieren' }));
+      expect(screen.queryByRole('option', { name: 'Anna Admin <anna@example.org>' })).toBeNull();
+      fireEvent.change(screen.getByLabelText('Mitglieder suchen', { selector: '#membership-account-search' }), {
+        target: { value: 'zoe' },
+      });
+      expect(listUsersMock).toHaveBeenCalledTimes(1);
+      await new Promise((resolve) => globalThis.setTimeout(resolve, 350));
+      await waitFor(() => {
+        expect(listUsersMock).toHaveBeenCalledTimes(2);
+        expect(listUsersMock).toHaveBeenLastCalledWith({
+          page: 1,
+          pageSize: 100,
+          search: 'zoe',
+          status: 'active',
+        });
+        expect(screen.getByRole('option', { name: 'Zoe Zebra <zoe@example.org>' })).toBeTruthy();
+      });
 
-    await waitFor(() => {
-      expect(deactivateOrganization).toHaveBeenCalledWith('org-1');
-    });
-  });
+      fireEvent.change(document.getElementById('membership-account') as HTMLSelectElement, {
+        target: { value: 'user-101' },
+      });
+      fireEvent.change(screen.getByLabelText('Sichtbarkeit', { selector: '#membership-visibility' }), {
+        target: { value: 'external' },
+      });
+      fireEvent.click(document.getElementById('membership-default') as HTMLInputElement);
+      fireEvent.click(screen.getByRole('button', { name: 'Mitglied zuweisen' }));
+
+      await waitFor(() => {
+        expect(assignMembership).toHaveBeenCalledWith('org-1', {
+          accountId: 'user-101',
+          visibility: 'external',
+          isDefaultContext: true,
+        });
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: 'Mitglied entfernen' }));
+      await waitFor(() => {
+        expect(removeMembership).toHaveBeenCalledWith('org-1', 'user-1');
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: 'Deaktivieren' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Deaktivieren' }));
+
+      await waitFor(() => {
+        expect(deactivateOrganization).toHaveBeenCalledWith('org-1');
+      });
+    },
+    15_000
+  );
 
   it('does not reload organization detail on rerender when the load callback is stable', async () => {
     const loadOrganization = vi.fn().mockResolvedValue(organizationFixture);

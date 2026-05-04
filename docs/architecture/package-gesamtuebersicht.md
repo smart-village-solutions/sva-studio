@@ -52,7 +52,7 @@ Es ist damit ein kleines, fokussiertes Core-Package für mediennahe Verträge, d
 
 `@sva/sva-mainserver` ist die Integrationsschicht zum externen SVA-Mainserver. Das Package trennt zwischen gemeinsam nutzbaren Typen und serverseitiger Laufzeitlogik für Konfiguration, Credential-Auflösung, OAuth2-Tokenabruf, GraphQL-Transport und Fehlerabbildung.
 
-Immer wenn das Studio mit News-, Event- oder POI-Daten aus dem Mainserver arbeitet, ist dieses Package die zuständige Integrationsgrenze. Seit dem Boundary-Refactoring liegen hier auch die kanonischen serverseitigen Host-Verträge für News-, Event-, POI- und Schnittstellen-Requests; die App hält nur noch dünne Delegationsadapter.
+Immer wenn das Studio mit News-, Event- oder POI-Daten aus dem Mainserver arbeitet, ist dieses Package die zuständige Integrationsgrenze.
 
 ## 4. Fachliche IAM- und Instanz-Services
 
@@ -72,7 +72,7 @@ Dieses Package ist zuständig, wenn Administrationsfunktionen für Benutzer und 
 
 `@sva/iam-governance` deckt Governance- und Compliance-Fälle im IAM-Bereich ab. Dazu gehören insbesondere DSR-Prozesse, Legal Texts, Export- und Audit-nahe Fachfälle.
 
-Das Package trennt bewusst Governance-Logik von klassischer Benutzer- und Rollenverwaltung. Dazu gehört auch der kanonische Legal-Text-HTML-Sanitizer, den App- und Runtime-Consumer direkt aus diesem Package beziehen.
+Das Package trennt bewusst Governance-Logik von klassischer Benutzer- und Rollenverwaltung.
 
 ### `@sva/instance-registry`
 
@@ -98,7 +98,7 @@ Die App selbst liefert nur Bindings und konkrete Seiten. Die eigentliche Routing
 
 `@sva/studio-ui-react` ist die öffentliche React-UI-Bibliothek für Studio-Oberflächen. Das Package stellt wiederverwendbare UI-Primitives, Studio-Seitenbausteine, Tabellen, Surface-Komponenten und Formularhilfen bereit.
 
-Es ist bewusst UI-only: keine Routing-Logik, keine Datenpersistenz, keine IAM-Fachlogik, keine Server-Runtime. Wiederverwendbare Host-Listen- und Template-Bausteine wie `StudioDataTable` und `StudioListPageTemplate` gehören in dieses Package; die App liefert nur Labels, Daten und Navigation.
+Es ist bewusst UI-only: keine Routing-Logik, keine Datenpersistenz, keine IAM-Fachlogik, keine Server-Runtime.
 
 ### `@sva/plugin-news`
 

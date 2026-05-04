@@ -99,15 +99,27 @@ const invalidateInstancePermissionSnapshots = async (
   await deps.invalidatePermissionSnapshots?.({ instanceId, trigger });
 };
 
-const withErrorCause = (message: string, cause: unknown): Error => {
-  const error = new Error(message);
-  Object.defineProperty(error, 'cause', {
-    value: cause,
-    configurable: true,
-    enumerable: false,
-    writable: true,
-  });
-  return error;
+const createModuleAssignRollbackError = (
+  instanceId: string,
+  moduleId: string,
+  syncError: unknown,
+  rollbackError: unknown
+): Error => {
+  const message =
+    syncError instanceof Error ? syncError.message : typeof syncError === 'string' ? syncError : 'instance_module_sync_failed';
+  const combined = new Error(message) as Error & {
+    cause?: {
+      rollbackError: unknown;
+      syncError: unknown;
+    };
+  };
+  combined.message = `instance_module_assign_rollback_failed:${instanceId}:${moduleId}:${message}`;
+  combined.cause = {
+    syncError,
+    rollbackError,
+  };
+  combined.name = 'InstanceModuleAssignRollbackError';
+  return combined;
 };
 
 const createAssignModuleHandler =
@@ -128,8 +140,9 @@ const createAssignModuleHandler =
       return { ok: false, reason: 'conflict' };
     }
 
-    const assignedModuleIds = await deps.repository.listAssignedModules(input.instanceId);
+    let assignedModuleIds: readonly string[];
     try {
+      assignedModuleIds = await deps.repository.listAssignedModules(input.instanceId);
       await deps.repository.syncAssignedModuleIam({
         instanceId: input.instanceId,
         managedModuleIds: [...registry.keys()],
@@ -139,13 +152,7 @@ const createAssignModuleHandler =
       try {
         await deps.repository.revokeModule(input.instanceId, input.moduleId);
       } catch (rollbackError) {
-        throw withErrorCause(
-          `assign_module_sync_failed_and_rollback_failed:${input.instanceId}:${input.moduleId}`,
-          {
-            syncError: error,
-            rollbackError,
-          }
-        );
+        throw createModuleAssignRollbackError(input.instanceId, input.moduleId, error, rollbackError);
       }
       throw error;
     }

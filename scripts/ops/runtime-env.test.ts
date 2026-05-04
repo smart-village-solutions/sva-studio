@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  assertLoginFlow,
   buildStudioImageVerifyEvidenceCheck,
   deriveInternalVerifyMaxAttempts,
   readStudioImageVerifyEvidence,
@@ -14,6 +15,7 @@ import {
   shouldRetryInternalVerifyAttempt,
   shouldRetryInternalVerify,
   tryReadGithubStudioImageVerifyEvidence,
+  waitForPostDeployStabilization,
 } from './runtime-env.ts';
 import type { AcceptanceProbeResult } from './runtime-env.shared.ts';
 
@@ -200,6 +202,55 @@ describe('deriveInternalVerifyMaxAttempts', () => {
   it('caps derived attempts when retry delay is zero or negative', () => {
     expect(deriveInternalVerifyMaxAttempts({ retryDelayMs: 0, warmupWindowMs: 90_000 })).toBe(91);
     expect(deriveInternalVerifyMaxAttempts({ retryDelayMs: -100, warmupWindowMs: 90_000 })).toBe(91);
+  });
+});
+
+describe('assertLoginFlow', () => {
+  it('includes the HTTP status when login warmup returns a non-redirect response', async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response('<html><body><h1>404 Not Found</h1></body></html>', {
+        status: 404,
+        headers: {
+          'content-type': 'text/html',
+        },
+      }),
+    );
+
+    try {
+      await expect(
+        assertLoginFlow('studio', {
+          SVA_PUBLIC_BASE_URL: 'https://studio.smart-village.app',
+        }),
+      ).rejects.toThrow('Status 404');
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+});
+
+describe('waitForPostDeployStabilization', () => {
+  it('waits for the default stabilization delay after deploy', async () => {
+    const waitFn = vi.fn<(ms: number) => Promise<void>>().mockResolvedValue();
+
+    const delayMs = await waitForPostDeployStabilization({}, waitFn);
+
+    expect(delayMs).toBe(5000);
+    expect(waitFn).toHaveBeenCalledWith(5000);
+  });
+
+  it('skips the delay when it is disabled explicitly', async () => {
+    const waitFn = vi.fn<(ms: number) => Promise<void>>().mockResolvedValue();
+
+    const delayMs = await waitForPostDeployStabilization(
+      {
+        SVA_POST_DEPLOY_STABILIZATION_DELAY_MS: '0',
+      },
+      waitFn,
+    );
+
+    expect(delayMs).toBe(0);
+    expect(waitFn).not.toHaveBeenCalled();
   });
 });
 
@@ -459,83 +510,12 @@ describe('studio image verify evidence', () => {
         runCaptureImpl: runCapture,
       }),
     ).toMatchObject({
-      imageRef: 'ghcr.io/smart-village-solutions/sva-studio@sha256:deadbeefcafebabefeedface',
-      path: 'https://github.com/smart-village-solutions/sva-studio/actions/runs/1003',
-      reportId: 'studio-image-verify-report',
-      source: 'github-artifact',
-      status: 'ok',
-    });
-
-    expect(runCapture).toHaveBeenCalledTimes(5);
-    expect(runCapture.mock.calls.some(([, args]) => args.includes('1002'))).toBe(false);
-    expect(readArtifactEvidence).toHaveBeenCalledTimes(1);
-  });
-
-  it('accepts tag-based GitHub artifacts when imageTag is provided and the downloaded report matches the digest', () => {
-    const runCapture = vi.fn<(command: string, args: readonly string[]) => string>();
-    const readArtifactEvidence = vi.fn<
-      (args: { artifactName: string; imageDigest: string; owner: string; repo: string; runId: number }) =>
-        | {
-            imageRef: string;
-            reportId?: string;
-            status: 'ok';
-          }
-        | undefined
-    >();
-
-    runCapture.mockImplementation((command, args) => {
-      if (command === 'git') {
-        return 'git@github.com:smart-village-solutions/sva-studio.git\n';
-      }
-
-      if (command === 'gh' && args[0] === 'api') {
-        return JSON.stringify({
-          artifacts: [
-            {
-              expired: false,
-              name: 'studio-image-verify-v1.2.3-20260502T091000Z',
-              workflow_run: { id: 1002 },
-            },
-          ],
-        });
-      }
-
-      if (command === 'gh' && args[0] === 'run' && args[2] === '1002') {
-        return JSON.stringify({
-          conclusion: 'success',
-          url: 'https://github.com/smart-village-solutions/sva-studio/actions/runs/1002',
-          workflowName: 'Studio Image Verify',
-        });
-      }
-
-      throw new Error(`Unexpected command: ${command} ${args.join(' ')}`);
-    });
-
-    readArtifactEvidence.mockReturnValue({
-      imageRef: 'ghcr.io/smart-village-solutions/sva-studio@sha256:deadbeefcafebabefeedface',
-      reportId: 'studio-image-verify-v1.2.3-20260502T091000Z',
-      status: 'ok',
-    });
-
-    expect(
-      tryReadGithubStudioImageVerifyEvidence('sha256:deadbeefcafebabefeedface', {
-        commandExistsImpl: () => true,
-        imageTag: 'v1.2.3',
-        readArtifactEvidenceImpl: readArtifactEvidence,
-        runCaptureImpl: runCapture,
-      }),
-    ).toMatchObject({
-      path: 'https://github.com/smart-village-solutions/sva-studio/actions/runs/1002',
-      reportId: 'studio-image-verify-v1.2.3-20260502T091000Z',
-      source: 'github-artifact',
-      status: 'ok',
-    });
-    expect(readArtifactEvidence).toHaveBeenCalledWith({
-      artifactName: 'studio-image-verify-v1.2.3-20260502T091000Z',
-      imageDigest: 'sha256:deadbeefcafebabefeedface',
-      owner: 'smart-village-solutions',
-      repo: 'sva-studio',
-      runId: 1002,
+      code: 'image_verify_evidence_missing',
+      details: {
+        acceptedSources: ['artifacts/runtime/image-verify', 'GitHub Actions artifact "Studio Image Verify"'],
+      },
+      name: 'studio-image-verify-evidence',
+      status: 'warn',
     });
   });
 

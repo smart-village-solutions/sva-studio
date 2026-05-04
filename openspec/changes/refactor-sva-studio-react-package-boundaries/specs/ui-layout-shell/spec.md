@@ -38,5 +38,4 @@ Das Studio SHALL eine wiederverwendbare Datentabelle fuer Verwaltungslisten bere
 
 - **WHEN** eine App-Route oder ein Plugin eine Verwaltungs-Tabelle benoetigt
 - **THEN** importiert sie diese aus `@sva/studio-ui-react`
-- **AND** die App liefert benoetigte Labels oder gleichartige i18n-Werte explizit an die Package-API
 - **AND** app-lokale Tabellenkopien werden nicht als zweite kanonische Implementierung weitergefuehrt

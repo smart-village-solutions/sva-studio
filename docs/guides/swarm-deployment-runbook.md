@@ -298,10 +298,10 @@ Für das produktionsnahe Profil `studio` gilt derselbe Netzwerk-/Ingress-Vertrag
 
 - `SVA_IMAGE_REF`, `SVA_IMAGE_DIGEST` und `SVA_IMAGE_TAG` in dieser lokalen Operator-Datei müssen den bewusst freigegebenen Zielstand repräsentieren
 - ein `app-only`-Reconcile dient als kanonischer, nicht destruktiver Recovery-Pfad für Netz-/Ingress-Drift
-- `env:migrate:studio` und `schema-and-app` dürfen nur die Temp-Job-Stacks `migrate` und `bootstrap` bewegen; Seiteneffekte auf `studio_app` außerhalb des expliziten Deploy-Schritts sind kein akzeptierter Zustand
-- `precheck` und `doctor` müssen `app-db-principal` für `APP_DB_USER` als gesund bestätigen; Superuser-only-Sicht ist kein Freigabenachweis
-- wenn das Ziel-Digest bereits auf `studio_app` läuft, darf `image-smoke` die Live-Parität nur wiederverwenden, wenn Ingress-Konsistenz, `app-db-principal`, Tenant-Auth-Proof und Runtime-Flags für genau dieses Digest grün sind
-- eine erfolgreich gelaufene GitHub-Image-Verifikation für dasselbe Digest ist operativ maßgeblich; lokale Operator-Warnungen wegen fehlender lokaler Verify-Artefakte sind nachrangig, bis der Artefakt-Lookup vereinheitlicht ist
+- `env:migrate:studio` und `schema-and-app` duerfen nur die Temp-Job-Stacks `migrate` und `bootstrap` bewegen; Seiteneffekte auf `studio_app` ausserhalb des expliziten Deploy-Schritts sind kein akzeptierter Zustand
+- `precheck` und `doctor` muessen `app-db-principal` fuer `APP_DB_USER` als gesund bestaetigen; Superuser-only-Sicht ist kein Freigabenachweis
+- wenn das Ziel-Digest bereits auf `studio_app` laeuft, darf `image-smoke` die Live-Paritaet nur wiederverwenden, wenn Ingress-Konsistenz, `app-db-principal`, Tenant-Auth-Proof und Runtime-Flags fuer genau dieses Digest gruen sind
+- eine erfolgreich gelaufene GitHub-Image-Verifikation fuer dasselbe Digest ist operativ massgeblich; lokale Operator-Warnungen wegen fehlender lokaler Verify-Artefakte sind nachrangig, bis der Artefakt-Lookup vereinheitlicht ist
 
 ## Schritt 3a: Neue Instanz im Registry-Modell anlegen
 

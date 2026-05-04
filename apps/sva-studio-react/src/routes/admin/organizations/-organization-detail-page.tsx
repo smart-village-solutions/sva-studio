@@ -25,7 +25,8 @@ const ORGANIZATION_TYPE_KEYS = {
 } satisfies Record<IamOrganizationType, TranslationKey>;
 
 const typeOptions = Object.keys(ORGANIZATION_TYPE_KEYS) as IamOrganizationType[];
-const MEMBERSHIP_USER_PAGE_SIZE = 25;
+const MEMBERSHIP_USER_PAGE_SIZE = 100;
+const MEMBERSHIP_SEARCH_DEBOUNCE_MS = 300;
 
 const normalizeMembershipSearchValue = (value: string) => value.trim().toLocaleLowerCase();
 
@@ -117,12 +118,12 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
     organizationsApi.selectedOrganization?.id === organizationId ? organizationsApi.selectedOrganization : null;
 
   React.useEffect(() => {
-    const timer = globalThis.setTimeout(() => {
-      setDebouncedMembershipSearch(membershipSearch.trim());
-    }, 300);
+    const timeoutId = globalThis.setTimeout(() => {
+      setDebouncedMembershipSearch(membershipSearch);
+    }, MEMBERSHIP_SEARCH_DEBOUNCE_MS);
 
     return () => {
-      globalThis.clearTimeout(timer);
+      globalThis.clearTimeout(timeoutId);
     };
   }, [membershipSearch]);
 
@@ -137,7 +138,7 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
         const response = await listUsers({
           page: 1,
           pageSize: MEMBERSHIP_USER_PAGE_SIZE,
-          search: debouncedMembershipSearch || undefined,
+          search: debouncedMembershipSearch.trim() || undefined,
           status: 'active',
         });
 

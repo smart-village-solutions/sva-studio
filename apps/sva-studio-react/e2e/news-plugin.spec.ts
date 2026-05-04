@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
-import type { Page, Request as PlaywrightRequest, Route } from '@playwright/test';
+import type { Page, Route } from '@playwright/test';
 
 type NewsRecord = {
   id: string;
@@ -54,14 +54,41 @@ const permissionPayload = {
 };
 
 const navigateClientSide = async (page: Page, targetPath: string) => {
-  await page.evaluate((path) => {
-    window.history.pushState({}, '', path);
-    window.dispatchEvent(new PopStateEvent('popstate'));
+  await page.waitForFunction(() => {
+    return Boolean(
+      (
+        window as typeof window & {
+          __SVA_PLAYWRIGHT_ROUTER__?: {
+            navigate: (options: { to: string }) => Promise<void> | void;
+          };
+        }
+      ).__SVA_PLAYWRIGHT_ROUTER__
+    );
+  });
+
+  await page.evaluate(async (path) => {
+    const router = (
+      window as typeof window & {
+        __SVA_PLAYWRIGHT_ROUTER__?: {
+          navigate: (options: { to: string }) => Promise<void> | void;
+        };
+      }
+    ).__SVA_PLAYWRIGHT_ROUTER__;
+
+    if (!router) {
+      throw new Error('Playwright router hook fehlt.');
+    }
+
+    await router.navigate({ to: path });
   }, targetPath);
 };
 
 const expectPluginPageHeading = async (page: Page, pattern: RegExp) => {
   await expect(page.locator('main h1').filter({ hasText: pattern })).toBeVisible();
+};
+
+const expectNewsListUrl = async (page: Page) => {
+  await expect(page).toHaveURL(/\/admin\/news\?(?:.*&)?page=1(?:&.*)?$/);
 };
 
 const mockSharedShellRequests = async (page: Page) => {
@@ -98,23 +125,12 @@ const mockSharedShellRequests = async (page: Page) => {
   });
 };
 
-const paginateRecords = <T extends { readonly id: string }>(items: readonly T[], request: PlaywrightRequest) => {
-  const url = new URL(request.url());
-  const page = Math.max(1, Number.parseInt(url.searchParams.get('page') ?? '1', 10) || 1);
-  const requestedPageSize = Number.parseInt(url.searchParams.get('pageSize') ?? '25', 10) || 25;
-  const pageSize = [25, 50, 100].includes(requestedPageSize) ? requestedPageSize : 25;
-  const start = (page - 1) * pageSize;
-  const visibleItems = items.slice(start, start + pageSize);
-
-  return {
-    data: visibleItems,
-    pagination: {
-      page,
-      pageSize,
-      hasNextPage: start + pageSize < items.length,
-    },
-  };
-};
+const createPagination = (total: number) => ({
+  page: 1,
+  pageSize: 25,
+  hasNextPage: false,
+  total,
+});
 
 const fulfillContentRoute = async (
   route: Route,
@@ -130,7 +146,7 @@ const fulfillContentRoute = async (
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify(paginateRecords(newsItems, request)),
+      body: JSON.stringify({ data: newsItems, pagination: createPagination(newsItems.length) }),
     });
     return;
   }
@@ -245,7 +261,7 @@ test.describe('news plugin', () => {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify(paginateRecords(newsItems, request)),
+          body: JSON.stringify({ data: newsItems, pagination: createPagination(newsItems.length) }),
         });
         return;
       }
@@ -280,7 +296,7 @@ test.describe('news plugin', () => {
     await expect(page.getByRole('heading', { name: 'SVA Studio' })).toBeVisible();
 
     await page.getByRole('link', { name: 'News' }).click();
-    await expect(page).toHaveURL(/\/admin\/news(?:\?.*)?$/);
+    await expectNewsListUrl(page);
     await expectPluginPageHeading(page, /News|news\.list\.title/);
 
     await page.locator('a[href="/admin/news/new"]').click();
@@ -309,8 +325,8 @@ test.describe('news plugin', () => {
     await page.locator('#news-media-caption-0-0').fill('Titelbild');
     await page.getByRole('button', { name: /News anlegen|news\.actions\.create/ }).click();
 
-    await expect(page).toHaveURL(/\/admin\/news(?:\?.*)?$/);
-    await expect(page.locator('main').getByText('Erste News').first()).toBeVisible();
+    await expectNewsListUrl(page);
+    await expect(page.locator('main table').getByText('Erste News')).toBeVisible();
     expect(createdBody).toMatchObject({
       title: 'Erste News',
       author: 'Redaktion Musterhausen',
@@ -347,7 +363,7 @@ test.describe('news plugin', () => {
     page.once('dialog', (dialog) => dialog.accept());
     await page.getByRole('button', { name: /Löschen|news\.actions\.delete/ }).click();
 
-    await expect(page).toHaveURL(/\/admin\/news(?:\?.*)?$/);
+    await expectNewsListUrl(page);
     await expect(page.getByText(/Noch keine News vorhanden|news\.empty\.title/)).toBeVisible();
   });
 
@@ -374,7 +390,7 @@ test.describe('news plugin', () => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify(paginateRecords(newsItems, route.request())),
+        body: JSON.stringify({ data: newsItems, pagination: createPagination(newsItems.length) }),
       });
     });
 
@@ -384,7 +400,7 @@ test.describe('news plugin', () => {
     await page.locator('a[href="/admin/news"]').focus();
     await page.keyboard.press('Enter');
 
-    await expect(page).toHaveURL(/\/admin\/news(?:\?.*)?$/);
+    await expectNewsListUrl(page);
     await expectPluginPageHeading(page, /News|news\.list\.title/);
   });
 
@@ -441,7 +457,7 @@ test.describe('news plugin', () => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ data: newsItems }),
+        body: JSON.stringify({ data: newsItems, pagination: createPagination(newsItems.length) }),
       });
     });
 

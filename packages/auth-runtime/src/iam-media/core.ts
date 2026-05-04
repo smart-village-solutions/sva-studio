@@ -1,7 +1,16 @@
 import { randomUUID } from 'node:crypto';
 
 import { getWorkspaceContext } from '@sva/server-runtime';
-import { canDeleteMediaAsset, defaultMediaPresets, type MediaAsset, type MediaProcessingStatus, type MediaReference, type MediaRole, type MediaUploadStatus, type MediaVisibility } from '@sva/media';
+import {
+  canDeleteMediaAsset,
+  defaultMediaPresets,
+  type MediaAsset,
+  type MediaProcessingStatus,
+  type MediaReference,
+  type MediaRole,
+  type MediaUploadStatus,
+  type MediaVisibility,
+} from '@sva/media';
 import { asApiItem, asApiList, createApiError, parseRequestBody, readInstanceIdFromRequest, readPage, readPathSegment } from '../shared/request-helpers.js';
 import { jsonResponse } from '../db.js';
 import { withAuthenticatedUser, type AuthenticatedRequestContext } from '../middleware.js';
@@ -22,21 +31,25 @@ const uploadInitializationSchema = z.object({
   visibility: z.enum(['public', 'protected']).default('public'),
 });
 
+const estimateProcessedStorageBytes = (byteSize: number): number =>
+  byteSize * (defaultMediaPresets.length + 1);
+
 const metadataUpdateSchema = z.object({
   instanceId: z.string().trim().min(1).optional(),
   visibility: z.enum(['public', 'protected']).optional(),
   metadata: z
     .object({
-      title: z.string().trim().min(1).max(512).optional(),
-      description: z.string().trim().min(1).max(5000).optional(),
-      altText: z.string().trim().min(1).max(512).optional(),
-      copyright: z.string().trim().min(1).max(512).optional(),
-      license: z.string().trim().min(1).max(512).optional(),
+      title: z.string().trim().min(1).max(512).nullable().optional(),
+      description: z.string().trim().min(1).max(5000).nullable().optional(),
+      altText: z.string().trim().min(1).max(512).nullable().optional(),
+      copyright: z.string().trim().min(1).max(512).nullable().optional(),
+      license: z.string().trim().min(1).max(512).nullable().optional(),
       focusPoint: z
         .object({
           x: z.number().min(0).max(1),
           y: z.number().min(0).max(1),
         })
+        .nullable()
         .optional(),
       crop: z
         .object({
@@ -45,39 +58,26 @@ const metadataUpdateSchema = z.object({
           width: z.number().positive(),
           height: z.number().positive(),
         })
+        .nullable()
         .optional(),
     })
     .partial()
-    .optional(),
-}).refine(
-  (value) => value.visibility !== undefined || Object.keys(value.metadata ?? {}).length > 0,
-  'metadata: Mindestens ein Metadatenfeld oder eine Sichtbarkeitsänderung ist erforderlich.',
-);
+    .refine((value) => Object.keys(value).length > 0, 'metadata: Mindestens ein Metadatenfeld ist erforderlich.'),
+});
 
-const editableMetadataKeys = ['title', 'description', 'altText', 'copyright', 'license', 'focusPoint', 'crop'] as const;
-type EditableMetadataKey = (typeof editableMetadataKeys)[number];
-
-const applyEditableMetadataUpdate = (
-  currentMetadata: Record<string, unknown> | undefined,
-  metadataUpdate: Partial<Record<EditableMetadataKey, unknown>> | undefined
+const mergeMediaMetadata = (
+  current: Record<string, unknown>,
+  patch: Record<string, unknown>
 ): Record<string, unknown> => {
-  const nextMetadata = { ...(currentMetadata ?? {}) };
-
-  if (!metadataUpdate) {
-    return nextMetadata;
-  }
-
-  for (const key of editableMetadataKeys) {
-    delete nextMetadata[key];
-  }
-
-  for (const [key, value] of Object.entries(metadataUpdate) as Array<[EditableMetadataKey, unknown]>) {
-    if (value !== undefined) {
-      nextMetadata[key] = value;
+  const next = { ...current };
+  for (const [key, value] of Object.entries(patch)) {
+    if (value === null) {
+      delete next[key];
+      continue;
     }
+    next[key] = value;
   }
-
-  return nextMetadata;
+  return next;
 };
 
 const replaceReferencesSchema = z.object({
@@ -141,7 +141,6 @@ const MEDIA_VISIBILITIES = new Set<MediaVisibility>(['public', 'protected']);
 const MEDIA_UPLOAD_STATUSES = new Set<MediaUploadStatus>(['pending', 'validated', 'processed', 'failed', 'blocked']);
 const MEDIA_PROCESSING_STATUSES = new Set<MediaProcessingStatus>(['pending', 'ready', 'failed']);
 const MEDIA_ROLES = new Set<MediaRole>(['thumbnail', 'teaser_image', 'header_image', 'gallery_item', 'download', 'hero_image']);
-const MEDIA_VARIANT_STORAGE_RESERVATION_RATIO = 0.5;
 
 const asMediaVisibility = (value: string): MediaVisibility => (MEDIA_VISIBILITIES.has(value as MediaVisibility) ? (value as MediaVisibility) : 'public');
 
@@ -153,24 +152,12 @@ const asMediaProcessingStatus = (value: string): MediaProcessingStatus =>
 
 const asMediaRole = (value: string): MediaRole => (MEDIA_ROLES.has(value as MediaRole) ? (value as MediaRole) : 'download');
 
-const estimateMediaUploadReservationBytes = (byteSize: number): number => {
-  const normalizedByteSize = Math.max(0, Math.trunc(byteSize));
-  const variantReservationBytes = Math.ceil(
-    normalizedByteSize * MEDIA_VARIANT_STORAGE_RESERVATION_RATIO * defaultMediaPresets.length
-  );
-
-  return normalizedByteSize + variantReservationBytes;
-};
-
-type BrowserMediaAsset = Omit<MediaAsset, 'storageKey'>;
-
-const asMediaAsset = (asset: Awaited<ReturnType<MediaService['getAssetById']>>): BrowserMediaAsset | null => {
+const asMediaAsset = (asset: Awaited<ReturnType<MediaService['getAssetById']>>): MediaAsset | null => {
   if (!asset) {
     return null;
   }
-  const { storageKey: _storageKey, ...rest } = asset;
   return {
-    ...rest,
+    ...asset,
     mediaType: 'image',
     visibility: asMediaVisibility(asset.visibility),
     uploadStatus: asMediaUploadStatus(asset.uploadStatus),
@@ -257,25 +244,22 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
     const search = url.searchParams.get('search')?.trim() || undefined;
     const visibility = url.searchParams.get('visibility')?.trim() || undefined;
 
-    const [assets, total] = await deps.withMediaService(instanceId, (service) =>
-      Promise.all([
+    const [assets, total] = await deps.withMediaService(instanceId, async (service) => {
+      const filter = {
+        instanceId,
+        search,
+        visibility,
+      };
+
+      return Promise.all([
         service.listAssets({
-          instanceId,
-          search,
-          visibility,
+          ...filter,
           limit: pageSize,
           offset: (page - 1) * pageSize,
         }),
-        service.countAssets({
-          instanceId,
-          search,
-          visibility,
-        }),
-      ])
-    );
-    const browserAssets = assets
-      .map((asset: Awaited<ReturnType<MediaService['listAssets']>>[number]) => asMediaAsset(asset))
-      .filter((asset: BrowserMediaAsset | null): asset is BrowserMediaAsset => asset !== null);
+        service.countAssets(filter),
+      ]);
+    });
 
     await emitMediaAuditEvent({
       deps,
@@ -286,7 +270,7 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
       resourceType: 'media_library',
     });
 
-    return jsonResponse(200, asApiList(browserAssets, { page, pageSize, total }, getRequestId()));
+    return jsonResponse(200, asApiList(assets, { page, pageSize, total }, getRequestId()));
   },
 
   async getMedia(request: Request, ctx: AuthenticatedRequestContext): Promise<Response> {
@@ -314,8 +298,7 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
     }
 
     const asset = await deps.withMediaService(instanceId, (service) => service.getAssetById(instanceId, assetId));
-    const browserAsset = asMediaAsset(asset);
-    if (!asset || !browserAsset) {
+    if (!asset) {
       await emitMediaAuditEvent({
         deps,
         ctx,
@@ -339,7 +322,7 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
       resourceId: assetId,
     });
 
-    return jsonResponse(200, asApiItem(browserAsset, getRequestId()));
+    return jsonResponse(200, asApiItem(asset, getRequestId()));
   },
 
   async getMediaUsage(request: Request, ctx: AuthenticatedRequestContext): Promise<Response> {
@@ -407,9 +390,8 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
       return mapAuthorizationFailure(authorization);
     }
 
-    const reservedByteSize = estimateMediaUploadReservationBytes(parsed.data.byteSize);
     const quotaCheck = await deps.withMediaService(instanceId, (service) =>
-      service.wouldExceedStorageQuota(instanceId, reservedByteSize)
+      service.wouldExceedStorageQuota(instanceId, estimateProcessedStorageBytes(parsed.data.byteSize))
     );
 
     if (quotaCheck.wouldExceed) {
@@ -560,11 +542,10 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
 
     const usageImpact = await deps.withMediaService(instanceId, (service) => service.getUsageImpact(instanceId, assetId));
 
-    const metadataUpdate = parsed.data.metadata ?? {};
     const updatedAsset = {
       ...asset,
       visibility: parsed.data.visibility ?? asset.visibility,
-      metadata: applyEditableMetadataUpdate(asset.metadata, metadataUpdate),
+      metadata: mergeMediaMetadata(asset.metadata, parsed.data.metadata),
     };
 
     await deps.withMediaService(instanceId, async (service) => {
@@ -578,7 +559,7 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
       actionId: 'media.metadataUpdate',
       result: 'success',
       reasonCode:
-        metadataUpdate.crop || metadataUpdate.focusPoint
+        parsed.data.metadata.crop || parsed.data.metadata.focusPoint
           ? 'image_edit_applied'
           : usageImpact.totalReferences > 0
             ? 'referenced_asset_updated'
@@ -587,7 +568,7 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
       resourceId: assetId,
     });
 
-    return jsonResponse(200, asApiItem({ ...asMediaAsset(updatedAsset), usageImpact }, getRequestId()));
+    return jsonResponse(200, asApiItem({ ...updatedAsset, usageImpact }, getRequestId()));
   },
 
   async completeUpload(request: Request, ctx: AuthenticatedRequestContext): Promise<Response> {
@@ -713,7 +694,7 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
 
     const authorization = await deps.authorizeAction({
       ctx,
-      action: 'media.referenceManage',
+      action: 'media.reference.manage',
       resource: {
         targetType: parsed.data.targetType,
         targetId: parsed.data.targetId,
@@ -820,7 +801,7 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
 
     const authorization = await deps.authorizeAction({
       ctx,
-      action: 'media.referenceManage',
+      action: 'media.reference.manage',
       resource: {
         targetType,
         targetId,
@@ -881,7 +862,7 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
       }
       const authorization = await deps.authorizeAction({
         ctx,
-        action: asset.visibility === 'protected' ? 'media.deliverProtected' : 'media.read',
+        action: asset.visibility === 'protected' ? 'media.deliver.protected' : 'media.read',
         resource: {
           assetId,
           visibility: asset.visibility,
@@ -963,82 +944,101 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
       return mapAuthorizationFailure(authorization);
     }
 
-    const asset = await deps.withMediaService(instanceId, (service) => service.getAssetById(instanceId, assetId));
-    if (!asset) {
-      await emitMediaAuditEvent({
-        deps,
-        ctx,
-        instanceId,
-        actionId: 'media.delete',
-        result: 'failure',
-        reasonCode: 'asset_not_found',
-        resourceType: 'media_asset',
-        resourceId: assetId,
-      });
-      return createApiError(404, 'not_found', 'Medienobjekt nicht gefunden.', getRequestId());
-    }
-
-    const references = await deps.withMediaService(instanceId, (service) => service.listReferencesByAssetId(instanceId, assetId));
-    const deletionDecision = canDeleteMediaAsset({
-      asset: {
-        ...asset,
-        mediaType: 'image',
-        visibility: asMediaVisibility(asset.visibility),
-        uploadStatus: asMediaUploadStatus(asset.uploadStatus),
-        processingStatus: asMediaProcessingStatus(asset.processingStatus),
-      },
-      references: asMediaReferences(references),
-    });
-    if (!deletionDecision.allowed) {
-      await emitMediaAuditEvent({
-        deps,
-        ctx,
-        instanceId,
-        actionId: 'media.delete',
-        result: 'failure',
-        reasonCode: deletionDecision.reason ?? 'delete_blocked',
-        resourceType: 'media_asset',
-        resourceId: assetId,
-      });
-      return createApiError(409, 'conflict', 'Das Medienobjekt kann derzeit nicht gelöscht werden.', getRequestId(), {
-        reason: deletionDecision.reason,
-        usage: {
-          assetId,
-          totalReferences: references.length,
-        },
-      });
-    }
-
-    const variants = await deps.withMediaService(instanceId, async (service) => service.listVariantsByAssetId(instanceId, assetId));
-    const releasedBytes =
-      Math.max(0, Number(asset.byteSize) || 0)
-      + Math.max(0, Number((asset.technical as { variantTotalBytes?: unknown } | undefined)?.variantTotalBytes) || 0);
-    await Promise.all(
-      [String(asset.storageKey), ...variants.map((variant) => String(variant.storageKey))].map((storageKey) =>
-        deps.storagePort.deleteObject({
+    try {
+      const asset = await deps.withMediaService(instanceId, (service) => service.getAssetById(instanceId, assetId));
+      if (!asset) {
+        await emitMediaAuditEvent({
+          deps,
+          ctx,
           instanceId,
-          storageKey,
-        })
-      )
-    );
-    await deps.withMediaService(instanceId, async (service) => {
-      await service.deleteAsset(instanceId, assetId);
-      await service.adjustStorageUsage({
-        instanceId,
-        totalBytesDelta: -releasedBytes,
-        assetCountDelta: -1,
+          actionId: 'media.delete',
+          result: 'failure',
+          reasonCode: 'asset_not_found',
+          resourceType: 'media_asset',
+          resourceId: assetId,
+        });
+        return createApiError(404, 'not_found', 'Medienobjekt nicht gefunden.', getRequestId());
+      }
+
+      const references = await deps.withMediaService(instanceId, (service) => service.listReferencesByAssetId(instanceId, assetId));
+      const deletionDecision = canDeleteMediaAsset({
+        asset: asMediaAsset(asset)!,
+        references: asMediaReferences(references),
       });
-    });
-    await emitMediaAuditEvent({
-      deps,
-      ctx,
-      instanceId,
-      actionId: 'media.delete',
-      result: 'success',
-      resourceType: 'media_asset',
-      resourceId: assetId,
-    });
-    return jsonResponse(200, asApiItem({ assetId, deleted: true }, getRequestId()));
+      if (!deletionDecision.allowed) {
+        await emitMediaAuditEvent({
+          deps,
+          ctx,
+          instanceId,
+          actionId: 'media.delete',
+          result: 'failure',
+          reasonCode: deletionDecision.reason ?? 'delete_blocked',
+          resourceType: 'media_asset',
+          resourceId: assetId,
+        });
+        return createApiError(409, 'conflict', 'Das Medienobjekt kann derzeit nicht gelöscht werden.', getRequestId(), {
+          reason: deletionDecision.reason,
+          usage: {
+            assetId,
+            totalReferences: references.length,
+          },
+        });
+      }
+
+      const variants = await deps.withMediaService(instanceId, (service) => service.listVariantsByAssetId(instanceId, assetId));
+      const variantBytes =
+        typeof asset.technical?.variantBytes === 'number' && Number.isFinite(asset.technical.variantBytes)
+          ? asset.technical.variantBytes
+          : typeof asset.technical?.variantTotalBytes === 'number' && Number.isFinite(asset.technical.variantTotalBytes)
+            ? asset.technical.variantTotalBytes
+            : 0;
+
+      await deps.storagePort.deleteObject({
+        instanceId,
+        storageKey: asset.storageKey,
+      });
+      for (const variant of variants) {
+        await deps.storagePort.deleteObject({
+          instanceId,
+          storageKey: variant.storageKey,
+        });
+      }
+
+      await deps.withMediaService(instanceId, async (service) => {
+        await service.deleteAsset(instanceId, assetId);
+        await service.applyStorageUsageDelta({
+          instanceId,
+          totalBytesDelta: -(Number(asset.byteSize) + variantBytes),
+          assetCountDelta: -1,
+        });
+      });
+
+      await emitMediaAuditEvent({
+        deps,
+        ctx,
+        instanceId,
+        actionId: 'media.delete',
+        result: 'success',
+        resourceType: 'media_asset',
+        resourceId: assetId,
+      });
+      return jsonResponse(200, asApiItem({ assetId, deleted: true }, getRequestId()));
+    } catch (error) {
+      if (error instanceof MediaStorageUnavailableError) {
+        await emitMediaAuditEvent({
+          deps,
+          ctx,
+          instanceId,
+          actionId: 'media.delete',
+          result: 'failure',
+          reasonCode: 'media_storage_unavailable',
+          resourceType: 'media_asset',
+          resourceId: assetId,
+        });
+        return createApiError(503, 'internal_error', 'Medien-Storage ist momentan nicht verfügbar.', getRequestId());
+      }
+      throw error;
+    }
   },
 });
 

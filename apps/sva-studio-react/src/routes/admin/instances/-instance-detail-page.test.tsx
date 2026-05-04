@@ -395,6 +395,140 @@ describe('InstanceDetailPage', () => {
     });
   });
 
+  it('shows visible feedback after workflow checks are triggered', async () => {
+    const refreshKeycloakPreflight = vi.fn().mockResolvedValue({
+      overallStatus: 'ready',
+      checks: [],
+    });
+    const refreshKeycloakStatus = vi.fn().mockResolvedValue({
+      realmExists: true,
+    });
+    const planKeycloakProvisioning = vi.fn().mockResolvedValue({
+      overallStatus: 'ready',
+      steps: [],
+    });
+
+    useInstancesMock.mockReturnValue(
+      createInstancesApiState({
+        refreshKeycloakPreflight,
+        refreshKeycloakStatus,
+        planKeycloakProvisioning,
+      })
+    );
+
+    render(<InstanceDetailPage instanceId="demo" />);
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Betrieb' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Vorbedingungen prüfen' })[0]);
+
+    await waitFor(() => {
+      expect(refreshKeycloakPreflight).toHaveBeenCalledWith('demo');
+    });
+    expect(screen.getByText('Vorbedingungen wurden aktualisiert.')).toBeTruthy();
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Keycloak-Status prüfen' })[0]);
+    await waitFor(() => {
+      expect(refreshKeycloakStatus).toHaveBeenCalledWith('demo');
+    });
+    expect(screen.getByText('Keycloak-Status wurde aktualisiert.')).toBeTruthy();
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Provisioning-Vorschau laden' })[0]);
+    await waitFor(() => {
+      expect(planKeycloakProvisioning).toHaveBeenCalledWith('demo');
+    });
+    expect(screen.getByText('Provisioning-Vorschau wurde aktualisiert.')).toBeTruthy();
+  });
+
+  it('surfaces a missing worker env blocker from the latest provisioning run', () => {
+    useInstancesMock.mockReturnValue(
+      createInstancesApiState({
+        selectedInstance: createSelectedInstance({
+          latestKeycloakProvisioningRun: {
+            id: 'run-failed',
+            intent: 'provision',
+            mode: 'existing',
+            overallStatus: 'failed',
+            driftSummary: 'Provisioning wurde mit einem Fehler abgebrochen.',
+            requestId: 'req-worker',
+            steps: [
+              {
+                stepKey: 'worker_preflight_snapshot',
+                title: 'Vorbedingungen prüfen',
+                status: 'failed',
+                summary: 'Die Vorbedingungen blockieren die Ausführung.',
+                details: {
+                  preflight: {
+                    checks: [
+                      {
+                        checkKey: 'keycloak_admin_access',
+                        status: 'blocked',
+                        title: 'Technischer Keycloak-Zugriff',
+                        summary: 'Der technische Keycloak-Admin-Client konnte den Ziel-Realm nicht lesen.',
+                        details: {
+                          error: 'Missing required env: KEYCLOAK_ADMIN_BASE_URL',
+                        },
+                      },
+                    ],
+                  },
+                },
+              },
+            ],
+          },
+          keycloakProvisioningRuns: [],
+        }),
+      })
+    );
+
+    render(<InstanceDetailPage instanceId="demo" />);
+
+    expect(
+      screen.getByText(
+        'Der Provisioning-Worker kann Keycloak derzeit nicht technisch prüfen. Im laufenden Prozess fehlt KEYCLOAK_ADMIN_BASE_URL.'
+      )
+    ).toBeTruthy();
+  });
+
+  it('marks worker-pending projections as non-live keycloak evidence', () => {
+    useInstancesMock.mockReturnValue(
+      createInstancesApiState({
+        selectedInstance: createSelectedInstance({
+          keycloakPreflight: {
+            overallStatus: 'warning',
+            checkedAt: '2026-01-01T00:00:00.000Z',
+            checks: [
+              {
+                checkKey: 'keycloak_admin_access',
+                status: 'warning',
+                title: 'Technischer Keycloak-Zugriff',
+                summary: 'Die technische Prüfung wird durch den Provisioning-Worker durchgeführt und ist noch nicht gelaufen.',
+                details: {
+                  source: 'worker_pending',
+                },
+              },
+            ],
+          },
+          keycloakPlan: {
+            mode: 'existing',
+            overallStatus: 'ready',
+            generatedAt: '2026-01-01T00:00:00.000Z',
+            driftSummary: 'Keycloak und Registry weisen Drift auf und werden beim nächsten Lauf abgeglichen.',
+            steps: [],
+          },
+          latestKeycloakProvisioningRun: undefined,
+          keycloakProvisioningRuns: [],
+        }),
+      })
+    );
+
+    render(<InstanceDetailPage instanceId="demo" />);
+
+    expect(
+      screen.getByText(
+        'Die angezeigten Vorbedingungen und der Keycloak-Status sind derzeit nur eine Registry-basierte Vorabschätzung. Ein echter Live-Abgleich erfolgt erst im Provisioning-Worker.'
+      )
+    ).toBeTruthy();
+  });
+
   it('renders a separate tenant IAM operations block', async () => {
     useInstancesMock.mockReturnValue(
       createInstancesApiState({

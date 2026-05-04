@@ -18,6 +18,7 @@ import {
 import { createProvisioningArtifacts } from './service-provisioning.js';
 
 const logger = createSdkLogger({ component: 'iam-instance-registry-service', level: 'info' });
+const DEFAULT_TENANT_ADMIN_CLIENT_ID = 'sva-studio-admin';
 
 const invalidateHostWithLog = (
   invalidateHost: InstanceRegistryServiceDeps['invalidateHost'],
@@ -266,6 +267,7 @@ const createProvisioningRequestHandler =
 
     const normalizedParentDomain = normalizeHost(input.parentDomain);
     const primaryHostname = buildPrimaryHostname(input.instanceId, normalizedParentDomain);
+    const tenantAdminClient = input.tenantAdminClient ?? { clientId: DEFAULT_TENANT_ADMIN_CLIENT_ID };
     const instance = await deps.repository.createInstance({
       instanceId: input.instanceId,
       displayName: input.displayName,
@@ -277,10 +279,10 @@ const createProvisioningRequestHandler =
       authClientId: input.authClientId,
       authIssuerUrl: input.authIssuerUrl,
       authClientSecretCiphertext: encryptAuthClientSecret(deps, input.instanceId, input.authClientSecret),
-      tenantAdminClient: input.tenantAdminClient
+      tenantAdminClient: tenantAdminClient
         ? {
-            clientId: input.tenantAdminClient.clientId,
-            secretCiphertext: encryptTenantAdminClientSecret(deps, input.instanceId, input.tenantAdminClient.secret),
+            clientId: tenantAdminClient.clientId,
+            secretCiphertext: encryptTenantAdminClientSecret(deps, input.instanceId, tenantAdminClient.secret),
           }
         : undefined,
       tenantAdminBootstrap: input.tenantAdminBootstrap,

@@ -869,6 +869,17 @@ export const i18nResources = {
           rotateClientSecret: 'Client-Secret rotieren',
           loadRun: 'Run laden',
         },
+        feedback: {
+          preflightUpdated: 'Vorbedingungen wurden aktualisiert.',
+          keycloakStatusUpdated: 'Keycloak-Status wurde aktualisiert.',
+          provisioningPreviewUpdated: 'Provisioning-Vorschau wurde aktualisiert.',
+          provisioningQueued: 'Provisioning-Auftrag wurde gespeichert und zur Abarbeitung vorgemerkt.',
+          tenantIamProbeUpdated: 'Tenant-IAM-Rechteprobe wurde aktualisiert.',
+          workerEnvMissing:
+            'Der Provisioning-Worker kann Keycloak derzeit nicht technisch prüfen. Im laufenden Prozess fehlt {{envName}}.',
+          workerProjectionHint:
+            'Die angezeigten Vorbedingungen und der Keycloak-Status sind derzeit nur eine Registry-basierte Vorabschätzung. Ein echter Live-Abgleich erfolgt erst im Provisioning-Worker.',
+        },
         keycloakPanel: {
           title: 'Keycloak-Status und Bootstrap',
           subtitle: 'Abgleich von Realm, Client, Mapper und Tenant-Admin für die ausgewählte Instanz.',
@@ -3085,6 +3096,17 @@ export const i18nResources = {
           resetTenantAdmin: 'Reset tenant admin',
           rotateClientSecret: 'Rotate client secret',
           loadRun: 'Load run',
+        },
+        feedback: {
+          preflightUpdated: 'Preflight data was refreshed.',
+          keycloakStatusUpdated: 'Keycloak status was refreshed.',
+          provisioningPreviewUpdated: 'Provisioning preview was refreshed.',
+          provisioningQueued: 'The provisioning job was queued for execution.',
+          tenantIamProbeUpdated: 'The tenant IAM access probe was refreshed.',
+          workerEnvMissing:
+            'The provisioning worker cannot technically inspect Keycloak right now. The running process is missing {{envName}}.',
+          workerProjectionHint:
+            'The displayed preflight and Keycloak status are currently only a registry-based projection. A real live reconciliation only happens inside the provisioning worker.',
         },
         keycloakPanel: {
           title: 'Keycloak status and bootstrap',

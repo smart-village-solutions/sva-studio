@@ -462,16 +462,27 @@ const deleteContentForRoute = async (
 const dispatchAuthenticated = async (request: Request, route: RouteMatch, ctx: AuthenticatedRequestContext) => {
   const workspaceContext = getWorkspaceContext();
   const logSuccess = (operation: string, contentId?: string) => {
-    logger.info('Mainserver content route succeeded', {
-      operation,
-      request_id: workspaceContext.requestId,
-      trace_id: workspaceContext.traceId,
-      actor_id: ctx.user.id,
-      instance_id: ctx.user.instanceId,
-      content_type: contentTypeFor(route.contentKind),
-      content_id: contentId,
-      method: request.method,
-    });
+    try {
+      logger.info('Mainserver content route succeeded', {
+        operation,
+        request_id: workspaceContext.requestId,
+        trace_id: workspaceContext.traceId,
+        actor_id: ctx.user.id,
+        instance_id: ctx.user.instanceId,
+        content_type: contentTypeFor(route.contentKind),
+        content_id: contentId,
+        method: request.method,
+      });
+    } catch {
+      // Observability failures must not turn successful upstream operations into request failures.
+    }
+  };
+  const logSuccessIfOk = (response: Response, operation: string, contentId?: string) => {
+    if (!response.ok) {
+      return response;
+    }
+    logSuccess(operation, contentId);
+    return response;
   };
 
   try {
@@ -506,10 +517,7 @@ const dispatchAuthenticated = async (request: Request, route: RouteMatch, ctx: A
       }
       const response = await createContentForRoute(route, actor, request);
       const responseBody = (await response.clone().json().catch(() => null)) as { data?: { id?: string } } | null;
-      if (response.ok) {
-        logSuccess(`mainserver_${route.contentKind}_create`, responseBody?.data?.id);
-      }
-      return response;
+      return logSuccessIfOk(response, `mainserver_${route.contentKind}_create`, responseBody?.data?.id);
     }
 
     if (route.kind === 'item' && request.method === 'PATCH') {
@@ -527,10 +535,7 @@ const dispatchAuthenticated = async (request: Request, route: RouteMatch, ctx: A
         return updateActor;
       }
       const response = await updateContentForRoute(route, updateActor, request);
-      if (response.ok) {
-        logSuccess(`mainserver_${route.contentKind}_update`, route.itemId);
-      }
-      return response;
+      return logSuccessIfOk(response, `mainserver_${route.contentKind}_update`, route.itemId);
     }
 
     if (route.kind === 'item' && request.method === 'DELETE') {

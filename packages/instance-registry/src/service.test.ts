@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { InstanceRegistryRepository } from '@sva/data-repositories';
 
 import { createInstanceRegistryService } from './service.js';
+import { createGetKeycloakStatusHandler } from './service-keycloak.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
 
 const baseInstance = {
@@ -212,6 +213,38 @@ describe('instance registry service facade', () => {
       expect.objectContaining({ operation: 'create', status: 'requested' })
     );
     expect(deps.invalidateHost).toHaveBeenCalledWith('demo.studio.example.org');
+  });
+
+  it('defaults the tenant admin client id on create when the form does not submit one', async () => {
+    const repository = createRepository({
+      getInstanceById: vi.fn(async () => null),
+    });
+    const deps = createDeps(repository);
+    const service = createInstanceRegistryService(deps);
+
+    await expect(
+      service.createProvisioningRequest({
+        instanceId: 'demo',
+        displayName: 'Demo',
+        parentDomain: 'studio.example.org',
+        realmMode: 'existing',
+        authRealm: 'demo',
+        authClientId: 'studio-client',
+        idempotencyKey: 'idem-1',
+      })
+    ).resolves.toEqual({
+      ok: true,
+      instance: expect.objectContaining({ instanceId: 'demo' }),
+    });
+
+    expect(repository.createInstance).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantAdminClient: {
+          clientId: 'sva-studio-admin',
+          secretCiphertext: undefined,
+        },
+      })
+    );
   });
 
   it('handles status transitions and emits status artifacts', async () => {
@@ -455,7 +488,7 @@ describe('instance registry service facade', () => {
           requestId: 'req-probe-1',
         }),
         overall: expect.objectContaining({
-          status: 'unknown',
+          status: 'degraded',
         }),
       })
     );
@@ -730,5 +763,44 @@ describe('instance registry service facade', () => {
         }),
       })
     );
+  });
+
+  it('returns a local fallback keycloak status when no status snapshot exists yet', async () => {
+    const repository = createRepository({
+      getInstanceById: vi.fn(async () => ({
+        ...baseInstance,
+        authClientSecretConfigured: false,
+        tenantAdminClient: {
+          clientId: 'tenant-admin',
+          secretConfigured: false,
+        },
+      })),
+      listKeycloakProvisioningRuns: vi.fn(async () => []),
+      getAuthClientSecretCiphertext: vi.fn(async () => null),
+      getTenantAdminClientSecretCiphertext: vi.fn(async () => null),
+    });
+
+    const status = await createGetKeycloakStatusHandler(createDeps(repository))('demo');
+
+    expect(status).toEqual({
+      realmExists: false,
+      clientExists: false,
+      tenantAdminClientExists: false,
+      instanceIdMapperExists: false,
+      tenantAdminExists: false,
+      tenantAdminHasSystemAdmin: false,
+      tenantAdminHasInstanceRegistryAdmin: false,
+      tenantAdminInstanceIdMatches: false,
+      redirectUrisMatch: false,
+      logoutUrisMatch: false,
+      webOriginsMatch: false,
+      clientSecretConfigured: false,
+      tenantClientSecretReadable: false,
+      clientSecretAligned: false,
+      tenantAdminClientSecretConfigured: false,
+      tenantAdminClientSecretReadable: false,
+      tenantAdminClientSecretAligned: false,
+      runtimeSecretSource: 'tenant',
+    });
   });
 });

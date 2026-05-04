@@ -177,12 +177,14 @@ export const ModulesPage = () => {
         confirmLabel={t('admin.instances.instanceModules.confirmRevoke.confirm')}
         cancelLabel={t('admin.instances.instanceModules.confirmRevoke.cancel')}
         onCancel={() => setPendingRevokeModuleId(null)}
-        onConfirm={() => {
+        onConfirm={async () => {
           if (!selectedInstance || !pendingRevokeModule) {
             return;
           }
-          void instancesApi.revokeModule(selectedInstance.instanceId, pendingRevokeModule.moduleId);
-          setPendingRevokeModuleId(null);
+          const success = await instancesApi.revokeModule(selectedInstance.instanceId, pendingRevokeModule.moduleId);
+          if (success) {
+            setPendingRevokeModuleId(null);
+          }
         }}
       />
     </section>

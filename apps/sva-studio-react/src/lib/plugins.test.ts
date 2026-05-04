@@ -157,7 +157,13 @@ describe('plugin action alias lookup', () => {
   });
 
   it('resolves legacy aliases and warns only once per alias', async () => {
-    const { getStudioPluginAction, studioAdminResources, studioBuildTimeRegistry } = await import('./plugins');
+    const {
+      getStudioPluginAction,
+      studioAdminResources,
+      studioBuildTimeRegistry,
+      studioModuleIamContracts,
+      studioModuleIamRegistry,
+    } = await import('./plugins');
 
     const first = getStudioPluginAction('create');
     const second = getStudioPluginAction('create');
@@ -181,6 +187,9 @@ describe('plugin action alias lookup', () => {
     expect(studioBuildTimeRegistry.plugins).toHaveLength(3);
     expect(studioBuildTimeRegistry.routes).toHaveLength(0);
     expect(studioBuildTimeRegistry.adminResources).toEqual(studioAdminResources);
+    expect(studioModuleIamContracts.find((contract) => contract.moduleId === 'media')).toEqual(
+      studioModuleIamRegistry.get('media')
+    );
     expect(studioAdminResources.find((resource) => resource.resourceId === 'content')).toMatchObject({
       resourceId: 'content',
       basePath: 'content',

@@ -89,6 +89,16 @@ const createInstancesApiState = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 });
 
+const createDeferred = <T,>() => {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+};
+
 describe('ModulesPage', () => {
   afterEach(() => {
     cleanup();
@@ -154,6 +164,30 @@ describe('ModulesPage', () => {
 
     await waitFor(() => {
       expect(loadInstance).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('keeps the revoke dialog open until the revoke request succeeds', async () => {
+    const revokeDeferred = createDeferred<boolean>();
+    const revokeModule = vi.fn(() => revokeDeferred.promise);
+    useInstancesMock.mockReturnValue(
+      createInstancesApiState({
+        revokeModule,
+      })
+    );
+
+    render(<ModulesPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Modul entziehen' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Modul entziehen' })[1]!);
+
+    expect(revokeModule).toHaveBeenCalledWith('demo', 'news');
+    expect(screen.getByRole('dialog', { name: 'Modul wirklich entziehen?' })).toBeTruthy();
+
+    revokeDeferred.resolve(true);
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'Modul wirklich entziehen?' })).toBeNull();
     });
   });
 

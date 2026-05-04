@@ -25,6 +25,36 @@ export const projectPriorityModel = {
 export type ProjectStatus = keyof typeof projectStatusModel;
 export type ProjectHealth = (typeof projectHealthModel)[number];
 export type ProjectPriority = keyof typeof projectPriorityModel;
+export type ProjectStatusMeta = Readonly<{
+  version: string;
+  updatedAt: string;
+  source: string;
+}>;
+export type ProjectStatusMilestone = Readonly<{
+  id: string;
+  title: string;
+  plannedEffortPt: number;
+  sortOrder: number;
+  workPackages: readonly ProjectStatusWorkPackage[];
+}>;
+export type ProjectStatusWorkPackage = Readonly<{
+  id: string;
+  title: string;
+  area: string;
+  priority: ProjectPriority;
+  effortPt: number;
+  status: ProjectStatus;
+  health: ProjectHealth;
+  dependsOn: readonly string[];
+  notes?: string;
+}>;
+export type ProjectStatusReportContract = Readonly<{
+  meta: ProjectStatusMeta;
+  statusModel: Readonly<Record<ProjectStatus, number>>;
+  healthModel: readonly ProjectHealth[];
+  priorityModel: Readonly<Record<ProjectPriority, string>>;
+  milestones: readonly ProjectStatusMilestone[];
+}>;
 
 type JsonRecord = Record<string, unknown>;
 
@@ -74,12 +104,13 @@ const validateMeta = (meta: unknown, errors: string[]): void => {
   }
 };
 
-const validateMilestones = (milestones: unknown, errors: string[]): Set<string> => {
-  const ids = new Set<string>();
+const validateMilestones = (milestones: unknown, errors: string[]): void => {
+  const milestoneIds = new Set<string>();
+  const workPackageIds = new Set<string>();
 
   if (!Array.isArray(milestones)) {
     errors.push('milestones must be an array');
-    return ids;
+    return;
   }
 
   milestones.forEach((milestone, index) => {
@@ -90,10 +121,10 @@ const validateMilestones = (milestones: unknown, errors: string[]): Set<string> 
 
     if (typeof milestone.id !== 'string' || milestone.id.length === 0) {
       errors.push(`milestones[${index}].id must be a non-empty string`);
-    } else if (ids.has(milestone.id)) {
+    } else if (milestoneIds.has(milestone.id)) {
       errors.push(`milestones[${index}].id must be unique`);
     } else {
-      ids.add(milestone.id);
+      milestoneIds.add(milestone.id);
     }
 
     if (typeof milestone.title !== 'string' || milestone.title.length === 0) {
@@ -108,75 +139,69 @@ const validateMilestones = (milestones: unknown, errors: string[]): Set<string> 
     if (typeof sortOrder !== 'number' || !Number.isInteger(sortOrder) || sortOrder < 1) {
       errors.push(`milestones[${index}].sortOrder must be a positive integer`);
     }
+
+    validateWorkPackages(milestone.workPackages, workPackageIds, errors, `milestones[${index}].workPackages`);
   });
 
-  return ids;
 };
 
-const validateWorkPackages = (workPackages: unknown, milestoneIds: Set<string>, errors: string[]): void => {
+const validateWorkPackages = (
+  workPackages: unknown,
+  knownWorkPackageIds: Set<string>,
+  errors: string[],
+  path: string
+): void => {
   if (!Array.isArray(workPackages)) {
-    errors.push('workPackages must be an array');
+    errors.push(`${path} must be an array`);
     return;
   }
 
-  const ids = new Set<string>();
-
   workPackages.forEach((workPackage, index) => {
+    const itemPath = `${path}[${index}]`;
+
     if (!isRecord(workPackage)) {
-      errors.push(`workPackages[${index}] must be an object`);
+      errors.push(`${itemPath} must be an object`);
       return;
     }
 
     if (typeof workPackage.id !== 'string' || workPackage.id.length === 0) {
-      errors.push(`workPackages[${index}].id must be a non-empty string`);
-    } else if (ids.has(workPackage.id)) {
-      errors.push(`workPackages[${index}].id must be unique`);
+      errors.push(`${itemPath}.id must be a non-empty string`);
+    } else if (knownWorkPackageIds.has(workPackage.id)) {
+      errors.push(`${itemPath}.id must be unique`);
     } else {
-      ids.add(workPackage.id);
-    }
-
-    if (typeof workPackage.milestoneId !== 'string' || !milestoneIds.has(workPackage.milestoneId)) {
-      errors.push(`workPackages[${index}].milestoneId must reference a known milestone`);
+      knownWorkPackageIds.add(workPackage.id);
     }
 
     if (typeof workPackage.title !== 'string' || workPackage.title.length === 0) {
-      errors.push(`workPackages[${index}].title must be a non-empty string`);
+      errors.push(`${itemPath}.title must be a non-empty string`);
     }
 
     if (typeof workPackage.area !== 'string' || workPackage.area.length === 0) {
-      errors.push(`workPackages[${index}].area must be a non-empty string`);
+      errors.push(`${itemPath}.area must be a non-empty string`);
     }
 
     if (typeof workPackage.priority !== 'string' || !(workPackage.priority in projectPriorityModel)) {
-      errors.push(`workPackages[${index}].priority must use a known public priority key`);
+      errors.push(`${itemPath}.priority must use a known public priority key`);
     }
 
     if (!isFiniteNumber(workPackage.effortPt) || workPackage.effortPt < 0) {
-      errors.push(`workPackages[${index}].effortPt must be a non-negative number`);
+      errors.push(`${itemPath}.effortPt must be a non-negative number`);
     }
 
     if (typeof workPackage.status !== 'string' || !(workPackage.status in projectStatusModel)) {
-      errors.push(`workPackages[${index}].status must use a known public status key`);
-    } else if (workPackage.progress !== projectStatusModel[workPackage.status as ProjectStatus]) {
-      errors.push(`workPackages[${index}].progress must match the configured status model`);
+      errors.push(`${itemPath}.status must use a known public status key`);
     }
 
     if (typeof workPackage.health !== 'string' || !projectHealthModel.includes(workPackage.health as ProjectHealth)) {
-      errors.push(`workPackages[${index}].health must use a known public health key`);
+      errors.push(`${itemPath}.health must use a known public health key`);
     }
 
     if (!isStringArray(workPackage.dependsOn)) {
-      errors.push(`workPackages[${index}].dependsOn must be an array of work package ids`);
-    }
-
-    if (!isStringArray(workPackage.contributesTo)) {
-      errors.push(`workPackages[${index}].contributesTo must be an array of milestone ids`);
-    } else if (workPackage.contributesTo.some((milestoneId) => !milestoneIds.has(milestoneId))) {
-      errors.push(`workPackages[${index}].contributesTo must only reference known milestones`);
+      errors.push(`${itemPath}.dependsOn must be an array of work package ids`);
     }
 
     if ('notes' in workPackage && typeof workPackage.notes !== 'string') {
-      errors.push(`workPackages[${index}].notes must be a string when provided`);
+      errors.push(`${itemPath}.notes must be a string when provided`);
     }
   });
 };
@@ -209,8 +234,7 @@ export const validateProjectStatusReport = (value: unknown): string[] => {
     errors.push('priorityModel must exactly match the approved public priority mapping');
   }
 
-  const milestoneIds = validateMilestones(value.milestones, errors);
-  validateWorkPackages(value.workPackages, milestoneIds, errors);
+  validateMilestones(value.milestones, errors);
 
   return errors;
 };

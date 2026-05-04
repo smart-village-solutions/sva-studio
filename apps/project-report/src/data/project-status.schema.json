@@ -9,8 +9,7 @@
     "statusModel",
     "healthModel",
     "priorityModel",
-    "milestones",
-    "workPackages"
+    "milestones"
   ],
   "properties": {
     "meta": {
@@ -79,74 +78,65 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["id", "title", "plannedEffortPt", "sortOrder"],
+        "required": ["id", "title", "plannedEffortPt", "sortOrder", "workPackages"],
         "properties": {
           "id": { "type": "string", "minLength": 1 },
           "title": { "type": "string", "minLength": 1 },
           "plannedEffortPt": { "type": "number", "minimum": 0 },
-          "sortOrder": { "type": "integer", "minimum": 1 }
-        }
-      }
-    },
-    "workPackages": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "id",
-          "milestoneId",
-          "title",
-          "area",
-          "priority",
-          "effortPt",
-          "status",
-          "progress",
-          "health",
-          "dependsOn",
-          "contributesTo"
-        ],
-        "properties": {
-          "id": { "type": "string", "minLength": 1 },
-          "milestoneId": { "type": "string", "minLength": 1 },
-          "title": { "type": "string", "minLength": 1 },
-          "area": { "type": "string", "minLength": 1 },
-          "priority": {
-            "enum": [
-              "must",
-              "replacement_required",
-              "valuable",
-              "requested",
-              "funded_optional",
-              "unfunded_nice_to_have",
-              "irrelevant"
-            ]
-          },
-          "effortPt": { "type": "number", "minimum": 0 },
-          "status": {
-            "enum": [
-              "idea",
-              "commissioned",
-              "planned",
-              "prototype",
-              "implementation",
-              "optimization",
-              "testing",
-              "acceptance",
-              "done"
-            ]
-          },
-          "progress": { "enum": [0, 10, 20, 45, 70, 80, 90, 100] },
-          "health": { "enum": ["on_track", "needs_attention", "at_risk", "blocked"] },
-          "dependsOn": {
+          "sortOrder": { "type": "integer", "minimum": 1 },
+          "workPackages": {
             "type": "array",
-            "items": { "type": "string", "minLength": 1 }
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "id",
+                "title",
+                "area",
+                "priority",
+                "effortPt",
+                "status",
+                "health",
+                "dependsOn"
+              ],
+              "properties": {
+                "id": { "type": "string", "minLength": 1 },
+                "title": { "type": "string", "minLength": 1 },
+                "area": { "type": "string", "minLength": 1 },
+                "priority": {
+                  "enum": [
+                    "must",
+                    "replacement_required",
+                    "valuable",
+                    "requested",
+                    "funded_optional",
+                    "unfunded_nice_to_have",
+                    "irrelevant"
+                  ]
+                },
+                "effortPt": { "type": "number", "minimum": 0 },
+                "status": {
+                  "enum": [
+                    "idea",
+                    "commissioned",
+                    "planned",
+                    "prototype",
+                    "implementation",
+                    "optimization",
+                    "testing",
+                    "acceptance",
+                    "done"
+                  ]
+                },
+                "health": { "enum": ["on_track", "needs_attention", "at_risk", "blocked"] },
+                "dependsOn": {
+                  "type": "array",
+                  "items": { "type": "string", "minLength": 1 }
+                },
+                "notes": { "type": "string" }
+              }
+            }
           },
-          "contributesTo": {
-            "type": "array",
-            "items": { "type": "string", "minLength": 1 }
-          },
-          "notes": { "type": "string" }
         }
       }
     }

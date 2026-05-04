@@ -1,7 +1,7 @@
 # Change: Separate Project Report App
 
 ## Why
-Die öffentliche Fortschrittsansicht für Meilensteine und Arbeitspakete hat andere Anforderungen als die interne Studio-App: statische Auslieferung, reduzierte öffentliche Datenbasis, teilbare Filter-URLs und eine klar getrennte Build-/Deploy-Kette.
+Die öffentliche Fortschrittsansicht für Meilensteine und Arbeitspakete hat andere Anforderungen als die interne Studio-App: statische Auslieferung über GitHub Pages im Repository `smart-village-solutions/sva-studio`, reduzierte öffentliche Datenbasis, teilbare Filter-URLs und eine klar getrennte Build-/Deploy-Kette.
 
 Die bestehende App `apps/sva-studio-react` soll nicht mit einer zusätzlichen öffentlichen Reporting-Oberfläche, GitHub-Pages-spezifischen Anforderungen und separater Visualisierungslogik belastet werden.
 

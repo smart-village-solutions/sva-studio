@@ -57,6 +57,7 @@
     "env:migrate:local-keycloak:hb": "tsx scripts/ops/runtime-env.ts migrate local-keycloak --local-override-file=config/runtime/local-keycloak.hb.local.vars",
     "env:doctor:local-keycloak:hb": "tsx scripts/ops/runtime-env.ts doctor local-keycloak --local-override-file=config/runtime/local-keycloak.hb.local.vars",
     "env:bootstrap:local-instance-db": "tsx scripts/ops/bootstrap-local-instance-db.ts",
+    "env:delete:local-instance-db": "tsx scripts/ops/delete-local-instance-db.ts",
     "env:up:local-keycloak:hb:docker": "docker compose -f docker-compose.yml -f docker-compose.monitoring.yml -f docker-compose.local-hb-app.yml --profile hb-app up -d app-hb",
     "env:down:local-keycloak:hb:docker": "docker compose -f docker-compose.yml -f docker-compose.monitoring.yml -f docker-compose.local-hb-app.yml --profile hb-app stop app-hb",
     "env:status:local-keycloak:hb:docker": "docker compose -f docker-compose.yml -f docker-compose.monitoring.yml -f docker-compose.local-hb-app.yml --profile hb-app ps app-hb",

@@ -237,6 +237,58 @@ Optional:
   - `sva_app` oder `iam_app` fehlen auf der Ziel-Datenbank
   - Lösung: Bootstrap ohne `--skip-app-user-bootstrap` wiederholen
 
+## Instanz lokal hart löschen und neu bootstrapen
+
+Für einen sauberen lokalen Neustart derselben Instanz-ID steht ein reiner Konsolenpfad zur Verfügung:
+
+```bash
+pnpm env:delete:local-instance-db -- \
+  --target-instance-id=hb-meinquartier \
+  --target-db-container=sva-studio-postgres-hb \
+  --force
+```
+
+Optional:
+
+- `--dry-run` zeigt nur den lokalen Löschumfang
+- `--yes` überspringt die interaktive Bestätigung in TTY-Läufen
+- `--target-db-name` und `--target-db-user` überschreiben die Standardwerte `sva_studio` und `sva`
+
+Der Hard-Delete entfernt ausschließlich lokale Datenbankdaten der Zielinstanz:
+
+- den Instanzdatensatz in `iam.instances`
+- lokale Registry-, Hostname-, Provisioning- und Auditdaten
+- lokale IAM-Katalog-, Membership- und Integrationsdaten
+- lokale Content- und Media-Metadaten
+
+Bewusst **nicht** entfernt werden:
+
+- Keycloak-Realm, Keycloak-User oder andere Keycloak-Artefakte
+- Mainserver-Daten oder Mainserver-Credentials
+- physische Media- oder Blob-Storage-Objekte
+
+Wichtig:
+
+- aktive lokale Instanzen dürfen nur mit explizitem `--force` gelöscht werden
+- der Befehl ist nur für lokale Docker-Datenbanken gedacht und kein Remote-Admin-Pfad
+- für dieselbe `instanceId` ist danach ein normaler Rebootstrap über `pnpm env:bootstrap:local-instance-db -- ...` vorgesehen
+
+Beispiel für den direkten Rebootstrap nach dem Hard-Delete:
+
+```bash
+pnpm env:bootstrap:local-instance-db -- \
+  --create-db \
+  --import-schema \
+  --target-instance-id=hb-meinquartier \
+  --target-display-name="HB MeinQuartier" \
+  --target-realm=saas-hb-meinquartier \
+  --target-db-container=sva-studio-postgres-hb \
+  --source-db-container=sva-studio-postgres \
+  --source-instance-id=de-musterhausen \
+  --keycloak-admin-client-id=sva-studio-iam-service \
+  --keycloak-admin-client-secret='<secret>'
+```
+
 ## Betriebsregeln
 
 - niemals Userdaten einer anderen Instanz als vermeintlichen Seed kopieren

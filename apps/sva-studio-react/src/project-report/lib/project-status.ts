@@ -104,7 +104,8 @@ const validateMilestones = (milestones: unknown, errors: string[]): Set<string> 
       errors.push(`milestones[${index}].plannedEffortPt must be a non-negative number`);
     }
 
-    if (!Number.isInteger(milestone.sortOrder) || milestone.sortOrder < 1) {
+    const sortOrder = milestone.sortOrder;
+    if (typeof sortOrder !== 'number' || !Number.isInteger(sortOrder) || sortOrder < 1) {
       errors.push(`milestones[${index}].sortOrder must be a positive integer`);
     }
   });
@@ -195,9 +196,10 @@ export const validateProjectStatusReport = (value: unknown): string[] => {
     errors.push('statusModel must exactly match the approved public progress mapping');
   }
 
-  if (!Array.isArray(value.healthModel) || value.healthModel.length !== healthEntries.length) {
+  const healthModel = value.healthModel;
+  if (!Array.isArray(healthModel) || healthModel.length !== healthEntries.length) {
     errors.push('healthModel must exactly match the approved public health mapping');
-  } else if (!healthEntries.every((entry, index) => value.healthModel[index] === entry)) {
+  } else if (!healthEntries.every((entry, index) => healthModel[index] === entry)) {
     errors.push('healthModel must exactly match the approved public health mapping');
   }
 

@@ -1,11 +1,11 @@
 import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import { resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
 import { validateProjectStatusReport } from './project-status';
 
-const fixturePath = fileURLToPath(new URL('../data/project-status.json', import.meta.url));
+const fixturePath = resolve(process.cwd(), 'apps/sva-studio-react/src/project-report/data/project-status.json');
 const fixture = JSON.parse(readFileSync(fixturePath, 'utf8')) as unknown;
 
 describe('project status report fixture', () => {

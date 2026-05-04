@@ -645,6 +645,30 @@ describe('mainserver content route contracts', () => {
     );
   });
 
+  it('does not let logger failures turn successful creates into route errors', async () => {
+    mockAuthorizedMutation();
+    state.createSvaMainserverEvent.mockResolvedValue({ id: 'event-1' });
+    state.loggerInfo.mockImplementation(() => {
+      throw new Error('logger transport failed');
+    });
+
+    const response = await dispatchSvaMainserverEventsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/events', {
+        method: 'POST',
+        body: JSON.stringify({
+          title: 'Stadtfest',
+        }),
+      })
+    );
+
+    expect(response?.status).toBe(201);
+    await expect(response?.json()).resolves.toEqual({
+      data: {
+        id: 'event-1',
+      },
+    });
+  });
+
   it('returns method-not-allowed for unsupported route methods', async () => {
     mockAuthorizedMutation();
 

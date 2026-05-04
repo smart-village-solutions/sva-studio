@@ -580,16 +580,20 @@ const handleItemDelete = async (
 const dispatchAuthenticated = async (request: Request, route: RouteMatch, ctx: AuthenticatedRequestContext) => {
   const workspaceContext = getWorkspaceContext();
   const logSuccess = (operation: string, contentId?: string) => {
-    logger.info('Mainserver content route succeeded', {
-      operation,
-      request_id: workspaceContext.requestId,
-      trace_id: workspaceContext.traceId,
-      actor_id: ctx.user.id,
-      instance_id: ctx.user.instanceId,
-      content_type: contentTypeFor(route.contentKind),
-      content_id: contentId,
-      method: request.method,
-    });
+    try {
+      logger.info('Mainserver content route succeeded', {
+        operation,
+        request_id: workspaceContext.requestId,
+        trace_id: workspaceContext.traceId,
+        actor_id: ctx.user.id,
+        instance_id: ctx.user.instanceId,
+        content_type: contentTypeFor(route.contentKind),
+        content_id: contentId,
+        method: request.method,
+      });
+    } catch {
+      // Observability failures must not turn successful upstream operations into request failures.
+    }
   };
 
   try {

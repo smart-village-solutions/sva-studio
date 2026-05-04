@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { App } from './app';
 
@@ -41,5 +41,20 @@ describe('project report app', () => {
 
     expect(screen.getByRole('tab', { name: 'Arbeitspakete' }).getAttribute('aria-selected')).toBe('true');
     expect(screen.getByText('Für die aktuellen Filter gibt es keine Einträge.')).toBeTruthy();
+  });
+
+  it('does not emit a React key warning when rendering work package rows', () => {
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    render(<App />);
+    fireEvent.click(screen.getByRole('tab', { name: 'Arbeitspakete' }));
+
+    expect(
+      consoleErrorSpy.mock.calls.some(([message]) =>
+        String(message).includes('Each child in a list should have a unique "key" prop')
+      )
+    ).toBe(false);
+
+    consoleErrorSpy.mockRestore();
   });
 });

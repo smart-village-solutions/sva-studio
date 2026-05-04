@@ -113,13 +113,13 @@ const WorkPackageTable = ({
       </thead>
       <tbody>
         {rows.map((entry) => (
-          <>
-            <tr key={`progress-${entry.id}`} className="table-row-progress">
+          <React.Fragment key={entry.id}>
+            <tr className="table-row-progress">
               <td colSpan={7}>
                 <ProgressBar value={entry.progressPercent} />
               </td>
             </tr>
-            <tr key={entry.id}>
+            <tr>
               <td>{entry.id}</td>
               <td>
                 <strong>{entry.title}</strong>
@@ -135,7 +135,7 @@ const WorkPackageTable = ({
               </td>
               <td>{entry.effortPt}</td>
             </tr>
-          </>
+          </React.Fragment>
         ))}
       </tbody>
     </table>

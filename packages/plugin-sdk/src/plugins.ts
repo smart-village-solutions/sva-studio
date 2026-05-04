@@ -270,7 +270,7 @@ const assertPluginPermissionReference = (
 };
 
 const isStandardCrudPluginRoute = (pluginNamespace: string, path: string): boolean => {
-  const normalizedPath = path.trim();
+  const normalizedPath = path.trim().replace(/\/+$/, '') || '/';
   const pluginRoot = `/plugins/${pluginNamespace}`;
 
   if (normalizedPath === pluginRoot || normalizedPath === `${pluginRoot}/new`) {

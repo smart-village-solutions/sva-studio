@@ -137,6 +137,7 @@ const DEFAULT_CACHE_MAX_SIZE = 256;
 const DEFAULT_RETRY_BASE_DELAY_MS = 150;
 const RETRYABLE_STATUS_CODES = new Set([503]);
 const MAX_MAINSERVER_PAGE_SIZE = 100;
+const ALLOWED_MAINSERVER_PAGE_SIZES = new Set([25, 50, 100]);
 const MAX_MAINSERVER_UPSTREAM_SCAN_RECORDS = 10_000;
 
 const tokenResponseSchema = z.object({
@@ -607,7 +608,8 @@ const assertUpstreamScanLimit = (skip: number) => {
 };
 
 const normalizeVisibleListQuery = (input: SvaMainserverListQuery): SvaMainserverListQuery => {
-  const pageSize = Math.min(MAX_MAINSERVER_PAGE_SIZE, Math.max(1, Math.trunc(input.pageSize)));
+  const requestedPageSize = Math.trunc(input.pageSize);
+  const pageSize = ALLOWED_MAINSERVER_PAGE_SIZES.has(requestedPageSize) ? requestedPageSize : 25;
   const maxPage = Math.floor((MAX_MAINSERVER_UPSTREAM_SCAN_RECORDS - 1) / pageSize) + 1;
   return {
     page: Math.min(Math.max(1, Math.trunc(input.page)), maxPage),
@@ -1732,6 +1734,7 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
       const upstreamItems = options.readItems(response);
       exhausted = upstreamItems.length < batchSize;
       skip += upstreamItems.length;
+      assertUpstreamScanLimit(skip);
 
       for (const item of upstreamItems) {
         if (options.isVisible(item) === false) {

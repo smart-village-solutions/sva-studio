@@ -79,6 +79,47 @@ const createVariantBuffer = async (input: {
   readonly focusPoint?: MediaFocusPoint;
 }): Promise<Buffer> => {
   const image = sharp(input.buffer, { failOn: 'error' }).rotate();
+  const sourceMetadata = await image.metadata();
+  const sourceWidth = sourceMetadata.width;
+  const sourceHeight = sourceMetadata.height;
+
+  const extractAroundFocusPoint = () => {
+    if (!input.focusPoint || !input.preset.height || !sourceWidth || !sourceHeight) {
+      return;
+    }
+
+    const targetAspectRatio = input.preset.width / input.preset.height;
+    const sourceAspectRatio = sourceWidth / sourceHeight;
+    if (!Number.isFinite(targetAspectRatio) || !Number.isFinite(sourceAspectRatio)) {
+      return;
+    }
+
+    if (sourceAspectRatio > targetAspectRatio) {
+      const extractWidth = Math.max(1, Math.min(sourceWidth, Math.round(sourceHeight * targetAspectRatio)));
+      const focusX = Math.max(0, Math.min(1, input.focusPoint.x));
+      const left = Math.max(0, Math.min(sourceWidth - extractWidth, Math.round(focusX * sourceWidth - extractWidth / 2)));
+      image.extract({
+        left,
+        top: 0,
+        width: extractWidth,
+        height: sourceHeight,
+      });
+      return;
+    }
+
+    if (sourceAspectRatio < targetAspectRatio) {
+      const extractHeight = Math.max(1, Math.min(sourceHeight, Math.round(sourceWidth / targetAspectRatio)));
+      const focusY = Math.max(0, Math.min(1, input.focusPoint.y));
+      const top = Math.max(0, Math.min(sourceHeight - extractHeight, Math.round(focusY * sourceHeight - extractHeight / 2)));
+      image.extract({
+        left: 0,
+        top,
+        width: sourceWidth,
+        height: extractHeight,
+      });
+    }
+  };
+
   if (input.crop) {
     image.extract({
       left: Math.max(0, Math.round(input.crop.x)),
@@ -86,6 +127,8 @@ const createVariantBuffer = async (input: {
       width: Math.max(1, Math.round(input.crop.width)),
       height: Math.max(1, Math.round(input.crop.height)),
     });
+  } else {
+    extractAroundFocusPoint();
   }
 
   const resized = image.resize({
@@ -162,6 +205,10 @@ export const createMediaUploadProcessingService = (deps: {
       byteSize: number;
       etag?: string;
     }>;
+    deleteObject: (input: {
+      readonly instanceId: string;
+      readonly storageKey: string;
+    }) => Promise<void>;
   };
   readonly createId: () => string;
 }) => ({
@@ -176,7 +223,16 @@ export const createMediaUploadProcessingService = (deps: {
       return asErrorResult(404, 'asset_not_found');
     }
 
+    if (uploadSession.status === 'validated' && asset.uploadStatus === 'processed' && asset.processingStatus === 'ready') {
+      return {
+        ok: true,
+        asset,
+        uploadSessionId: String(uploadSession.id),
+      };
+    }
+
     let persistenceStarted = false;
+    const persistedVariantStorageKeys: string[] = [];
 
     try {
       const object = await deps.storagePort.readObject({
@@ -259,6 +315,7 @@ export const createMediaUploadProcessingService = (deps: {
           body: variant.body,
           contentType: variant.contentType,
         });
+        persistedVariantStorageKeys.push(variant.storageKey);
         variantBytes += writeResult.byteSize;
         await deps.service.upsertVariant(input.instanceId, {
           id: variant.id,
@@ -302,6 +359,17 @@ export const createMediaUploadProcessingService = (deps: {
         uploadSessionId: String(uploadSession.id),
       };
     } catch (error) {
+      if (persistenceStarted) {
+        await Promise.allSettled(
+          persistedVariantStorageKeys.map((storageKey) =>
+            deps.storagePort.deleteObject({
+              instanceId: input.instanceId,
+              storageKey,
+            })
+          )
+        );
+        await deps.service.deleteVariantsByAssetId(input.instanceId, String(asset.id));
+      }
       if (error instanceof MediaStorageUnavailableError || persistenceStarted) {
         throw error;
       }

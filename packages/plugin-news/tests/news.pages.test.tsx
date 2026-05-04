@@ -605,10 +605,19 @@ describe('NewsListPage', () => {
       updatedAt: '2026-01-04T00:00:00.000Z',
       publishedAt: '2026-01-04T00:00:00.000Z',
     });
-    await actResolve(secondRefs, [{ id: 'ref-2', assetId: 'asset-2', role: 'teaser_image', targetType: 'news', targetId: 'news-2' }]);
+    await actResolve(secondRefs, [
+      {
+        id: 'ref-2',
+        assetId: 'asset-hero',
+        role: 'teaser_image',
+        targetType: 'news',
+        targetId: 'news-2',
+      },
+    ]);
 
     await waitFor(() => {
       expect(screen.getByDisplayValue('Neuere News')).toBeTruthy();
+      expect((screen.getByLabelText('Teaserbild') as HTMLSelectElement).value).toBe('asset-hero');
     });
 
     await actResolve(firstNews, {
@@ -626,10 +635,19 @@ describe('NewsListPage', () => {
       updatedAt: '2026-01-02T00:00:00.000Z',
       publishedAt: '2026-01-02T00:00:00.000Z',
     });
-    await actResolve(firstRefs, [{ id: 'ref-1', assetId: 'asset-1', role: 'teaser_image', targetType: 'news', targetId: 'news-1' }]);
+    await actResolve(firstRefs, [
+      {
+        id: 'ref-1',
+        assetId: 'asset-header',
+        role: 'teaser_image',
+        targetType: 'news',
+        targetId: 'news-1',
+      },
+    ]);
 
     expect(screen.getByDisplayValue('Neuere News')).toBeTruthy();
     expect(screen.queryByDisplayValue('Alte News')).toBeNull();
+    expect((screen.getByLabelText('Teaserbild') as HTMLSelectElement).value).toBe('asset-hero');
   });
 
   it('shows an inline success message after updating an existing news entry', async () => {

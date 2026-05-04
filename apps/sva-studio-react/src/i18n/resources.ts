@@ -927,6 +927,13 @@ export const i18nResources = {
             revoke: 'Modul entziehen',
             seedIamBaseline: 'IAM-Basis neu aufbauen',
           },
+          confirmRevoke: {
+            title: 'Modul wirklich entziehen?',
+            description:
+              'Das Modul {{moduleId}} wird der Instanz {{instanceId}} entzogen. Zugehörige Berechtigungen und IAM-Basis werden dabei entfernt.',
+            confirm: 'Modul entziehen',
+            cancel: 'Abbrechen',
+          },
         },
         wizard: {
           steps: {
@@ -3136,6 +3143,13 @@ export const i18nResources = {
             assign: 'Assign module',
             revoke: 'Revoke module',
             seedIamBaseline: 'Rebuild IAM baseline',
+          },
+          confirmRevoke: {
+            title: 'Really revoke module?',
+            description:
+              'Module {{moduleId}} will be revoked from instance {{instanceId}}. Related permissions and IAM baseline data will be removed.',
+            confirm: 'Revoke module',
+            cancel: 'Cancel',
           },
         },
         wizard: {

@@ -9,6 +9,37 @@ vi.mock('../../../hooks/use-instances', () => ({
   useInstances: () => useInstancesMock(),
 }));
 
+vi.mock('../../../components/ConfirmDialog', () => ({
+  ConfirmDialog: ({
+    open,
+    title,
+    description,
+    confirmLabel,
+    cancelLabel,
+    onConfirm,
+    onCancel,
+  }: {
+    open: boolean;
+    title: string;
+    description: string;
+    confirmLabel: string;
+    cancelLabel: string;
+    onConfirm: () => void;
+    onCancel: () => void;
+  }) =>
+    open ? (
+      <div role="dialog" aria-label={title}>
+        <p>{description}</p>
+        <button type="button" onClick={onConfirm}>
+          {confirmLabel}
+        </button>
+        <button type="button" onClick={onCancel}>
+          {cancelLabel}
+        </button>
+      </div>
+    ) : null,
+}));
+
 vi.mock('../../../lib/plugins', () => ({
   studioModuleIamContracts: [
     {
@@ -94,6 +125,9 @@ describe('ModulesPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'IAM-Basis neu aufbauen' }));
     fireEvent.click(screen.getByRole('button', { name: 'Modul entziehen' }));
+    expect(screen.getByRole('dialog', { name: 'Modul wirklich entziehen?' })).toBeTruthy();
+    expect(revokeModule).not.toHaveBeenCalled();
+    fireEvent.click(screen.getAllByRole('button', { name: 'Modul entziehen' })[1]!);
     fireEvent.click(screen.getAllByRole('button', { name: 'Modul zuweisen' })[0]!);
 
     expect(seedIamBaseline).toHaveBeenCalledWith('demo');

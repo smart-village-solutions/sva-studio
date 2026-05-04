@@ -568,6 +568,39 @@ describe('createSvaMainserverService', () => {
     await expect(deleteSvaMainserverPoi({ ...connection, poiId: 'poi-1' })).resolves.toEqual({ id: 'poi-1' });
   });
 
+  it('normalizes unsupported visible-list page sizes back to the canonical contract', async () => {
+    const item = {
+      id: 'news-1',
+      title: 'News',
+      payload: { teaser: 'Kurztext', body: '<p>Body</p>' },
+      publishedAt: '2026-04-14T09:30:00.000Z',
+      visible: true,
+    };
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { newsItems: [item] } }));
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
+      fetchImpl,
+    });
+
+    await expect(
+      service.listNews({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1', page: 1, pageSize: 13 })
+    ).resolves.toEqual({
+      data: [expect.objectContaining({ id: 'news-1' })],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false },
+    });
+
+    const requestBody = JSON.parse(fetchImpl.mock.calls[1]?.[1]?.body as string) as { variables?: Record<string, unknown> };
+    expect(requestBody.variables).toMatchObject({
+      limit: 26,
+      skip: 0,
+      order: 'publishedAt_DESC',
+    });
+  });
+
   it('maps news payload strings and hides invisible upstream news', async () => {
     const publishedAt = '2026-04-14T09:30:00.000Z';
     const fetchImpl = vi

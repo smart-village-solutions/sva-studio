@@ -153,7 +153,7 @@ const mockSharedShellRequests = async (page: Page) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ data: [], pagination: { page: 1, pageSize: 0, total: 0 } }),
+      body: JSON.stringify({ data: [], pagination: { page: 1, pageSize: 25, total: 0 } }),
     });
   });
 

@@ -77,6 +77,7 @@ const createService = () => ({
   upsertVariant: vi.fn(async () => undefined),
   upsertStorageUsage: vi.fn(async () => undefined),
   applyStorageUsageDelta: vi.fn(async () => undefined),
+  deleteVariantsByAssetId: vi.fn(async () => undefined),
   deleteAsset: vi.fn(async () => undefined),
   replaceReferences: vi.fn(async () => undefined),
 });

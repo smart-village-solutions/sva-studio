@@ -343,11 +343,17 @@ const NewsForm = ({
             targetId: item.id,
           })
             .then((references) => {
+              if (!active || requestId !== editLoadRequestIdRef.current) {
+                return;
+              }
               setExistingMediaReferenceCount(references.length);
               setTeaserImageAssetId(findHostMediaReferenceAssetId(references, pluginNewsMediaPickers.teaserImage.roles[0]));
               setHeaderImageAssetId(findHostMediaReferenceAssetId(references, pluginNewsMediaPickers.headerImage.roles[0]));
             })
             .catch(() => {
+              if (!active || requestId !== editLoadRequestIdRef.current) {
+                return;
+              }
               setExistingMediaReferenceCount(0);
               setTeaserImageAssetId(null);
               setHeaderImageAssetId(null);

@@ -6,6 +6,7 @@ const createRepository = () => ({
   listAssets: vi.fn(async () => [{ id: 'asset-1' }]),
   countAssets: vi.fn(async () => 1),
   getAssetById: vi.fn(async () => ({ id: 'asset-1' })),
+  deleteVariantsByAssetId: vi.fn(async () => undefined),
   listVariantsByAssetId: vi.fn(async () => [{ id: 'variant-1' }]),
   getUsageImpact: vi.fn(async () => ({ assetId: 'asset-1', totalReferences: 1, references: [] })),
   getStorageUsage: vi.fn(async () => ({ instanceId: 'tenant-a', totalBytes: 1024, assetCount: 1 })),

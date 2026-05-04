@@ -26,6 +26,7 @@ const ORGANIZATION_TYPE_KEYS = {
 
 const typeOptions = Object.keys(ORGANIZATION_TYPE_KEYS) as IamOrganizationType[];
 const MEMBERSHIP_USER_PAGE_SIZE = 100;
+const MEMBERSHIP_SEARCH_DEBOUNCE_MS = 300;
 
 const normalizeMembershipSearchValue = (value: string) => value.trim().toLocaleLowerCase();
 
@@ -81,6 +82,7 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
     isDefaultContext: false,
   });
   const [membershipSearch, setMembershipSearch] = React.useState('');
+  const [debouncedMembershipSearch, setDebouncedMembershipSearch] = React.useState('');
   const [membershipUsers, setMembershipUsers] = React.useState<readonly IamUserListItem[]>([]);
   const [membershipUsersLoading, setMembershipUsersLoading] = React.useState(true);
   const [membershipUsersError, setMembershipUsersError] = React.useState<IamHttpError | null>(null);
@@ -116,6 +118,16 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
     organizationsApi.selectedOrganization?.id === organizationId ? organizationsApi.selectedOrganization : null;
 
   React.useEffect(() => {
+    const timeoutId = globalThis.setTimeout(() => {
+      setDebouncedMembershipSearch(membershipSearch);
+    }, MEMBERSHIP_SEARCH_DEBOUNCE_MS);
+
+    return () => {
+      globalThis.clearTimeout(timeoutId);
+    };
+  }, [membershipSearch]);
+
+  React.useEffect(() => {
     let active = true;
 
     const loadMembershipUsers = async () => {
@@ -126,7 +138,7 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
         const response = await listUsers({
           page: 1,
           pageSize: MEMBERSHIP_USER_PAGE_SIZE,
-          search: membershipSearch.trim() || undefined,
+          search: debouncedMembershipSearch.trim() || undefined,
           status: 'active',
         });
 
@@ -155,7 +167,7 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
     return () => {
       active = false;
     };
-  }, [membershipSearch]);
+  }, [debouncedMembershipSearch]);
 
   const assignedMembershipAccountIds = React.useMemo(
     () => new Set(selectedOrganization?.memberships.map((membership) => membership.accountId) ?? []),

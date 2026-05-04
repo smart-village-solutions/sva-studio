@@ -54,6 +54,7 @@ describe('media upload processing service', () => {
       ),
       upsertAsset: vi.fn(async () => undefined),
       upsertUploadSession: vi.fn(async () => undefined),
+      deleteVariantsByAssetId: vi.fn(async () => undefined),
       upsertVariant: vi.fn(async () => undefined),
       listVariantsByAssetId: vi.fn(async () => []),
       getStorageUsage: vi.fn(async () => null),
@@ -72,6 +73,7 @@ describe('media upload processing service', () => {
         byteSize: body.byteLength,
         etag: 'etag-variant',
       })),
+      deleteObject: vi.fn(async () => undefined),
     };
 
     const processor = createMediaUploadProcessingService({
@@ -150,6 +152,7 @@ describe('media upload processing service', () => {
       ),
       upsertAsset: vi.fn(async () => undefined),
       upsertUploadSession: vi.fn(async () => undefined),
+      deleteVariantsByAssetId: vi.fn(async () => undefined),
       upsertVariant: vi.fn(async () => undefined),
       listVariantsByAssetId: vi.fn(async () => []),
       getStorageUsage: vi.fn(async () => null),
@@ -171,6 +174,7 @@ describe('media upload processing service', () => {
           etag: `etag-${storageKey}`,
         };
       }),
+      deleteObject: vi.fn(async () => undefined),
     };
 
     const processor = createMediaUploadProcessingService({
@@ -217,6 +221,7 @@ describe('media upload processing service', () => {
       getAssetById: vi.fn(async () => createAsset()),
       upsertAsset: vi.fn(async () => undefined),
       upsertUploadSession: vi.fn(async () => undefined),
+      deleteVariantsByAssetId: vi.fn(async () => undefined),
       upsertVariant: vi.fn(async () => undefined),
       listVariantsByAssetId: vi.fn(async () => []),
       getStorageUsage: vi.fn(async () => null),
@@ -231,6 +236,7 @@ describe('media upload processing service', () => {
         contentType: 'image/png',
       })),
       writeObject: vi.fn(),
+      deleteObject: vi.fn(async () => undefined),
     };
 
     const processor = createMediaUploadProcessingService({
@@ -287,6 +293,7 @@ describe('media upload processing service', () => {
       getAssetById: vi.fn(async () => createAsset({ byteSize: originalBuffer.byteLength })),
       upsertAsset: vi.fn(async () => undefined),
       upsertUploadSession: vi.fn(async () => undefined),
+      deleteVariantsByAssetId: vi.fn(async () => undefined),
       upsertVariant: vi.fn(async () => undefined),
       listVariantsByAssetId: vi.fn(async () => []),
       getStorageUsage: vi.fn(async () => null),
@@ -300,6 +307,7 @@ describe('media upload processing service', () => {
         byteSize: originalBuffer.byteLength,
         contentType: 'image/png',
       })),
+      deleteObject: vi.fn(async () => undefined),
       writeObject: vi
         .fn()
         .mockResolvedValueOnce({ byteSize: 128, etag: 'etag-variant-1' })
@@ -319,11 +327,162 @@ describe('media upload processing service', () => {
       })
     ).rejects.toThrow('s3_write_failed');
 
+    expect(storagePort.deleteObject).toHaveBeenCalledWith({
+      instanceId: 'tenant-a',
+      storageKey: 'tenant-a/variants/asset-1/thumbnail.webp',
+    });
+    expect(service.deleteVariantsByAssetId).toHaveBeenCalledWith('tenant-a', 'asset-1');
     expect(service.upsertAsset).not.toHaveBeenCalledWith(
       expect.objectContaining({
         uploadStatus: 'failed',
         processingStatus: 'failed',
       })
     );
+  });
+
+  it('treats repeated completion of an already validated session as idempotent success', async () => {
+    const asset = createAsset({
+      uploadStatus: 'processed',
+      processingStatus: 'ready',
+      technical: {
+        width: 1200,
+        height: 800,
+        variantBytes: 456,
+      },
+    });
+    const service = {
+      getUploadSessionById: vi.fn(async () => createUploadSession({ status: 'validated' })),
+      getAssetById: vi.fn(async () => asset),
+      upsertAsset: vi.fn(async () => undefined),
+      upsertUploadSession: vi.fn(async () => undefined),
+      deleteVariantsByAssetId: vi.fn(async () => undefined),
+      upsertVariant: vi.fn(async () => undefined),
+      listVariantsByAssetId: vi.fn(async () => []),
+      getStorageUsage: vi.fn(async () => null),
+      upsertStorageUsage: vi.fn(async () => undefined),
+      applyStorageUsageDelta: vi.fn(async () => undefined),
+    };
+
+    const storagePort = {
+      readObject: vi.fn(),
+      writeObject: vi.fn(),
+      deleteObject: vi.fn(async () => undefined),
+    };
+
+    const processor = createMediaUploadProcessingService({
+      service: service as never,
+      storagePort: storagePort as never,
+      createId: () => 'variant-1',
+    });
+
+    await expect(
+      processor.completeUpload({
+        instanceId: 'tenant-a',
+        uploadSessionId: 'upload-1',
+      })
+    ).resolves.toEqual({
+      ok: true,
+      asset,
+      uploadSessionId: 'upload-1',
+    });
+
+    expect(storagePort.readObject).not.toHaveBeenCalled();
+    expect(storagePort.writeObject).not.toHaveBeenCalled();
+    expect(service.applyStorageUsageDelta).not.toHaveBeenCalled();
+  });
+
+  it('uses focus point metadata to keep off-center content in cover variants', async () => {
+    const originalBuffer = await sharp({
+      create: {
+        width: 2000,
+        height: 1000,
+        channels: 3,
+        background: { r: 0, g: 0, b: 255 },
+      },
+    })
+      .composite([
+        {
+          input: {
+            create: {
+              width: 240,
+              height: 1000,
+              channels: 3,
+              background: { r: 255, g: 0, b: 0 },
+            },
+          },
+          left: 1760,
+          top: 0,
+        },
+      ])
+      .png()
+      .toBuffer();
+
+    const writtenVariants: Array<{ storageKey: string; body: Uint8Array }> = [];
+    const service = {
+      getUploadSessionById: vi.fn(async () => createUploadSession({ byteSize: originalBuffer.byteLength })),
+      getAssetById: vi.fn(async () =>
+        createAsset({
+          byteSize: originalBuffer.byteLength,
+          metadata: {
+            focusPoint: { x: 0.95, y: 0.5 },
+          },
+        })
+      ),
+      upsertAsset: vi.fn(async () => undefined),
+      upsertUploadSession: vi.fn(async () => undefined),
+      deleteVariantsByAssetId: vi.fn(async () => undefined),
+      upsertVariant: vi.fn(async () => undefined),
+      listVariantsByAssetId: vi.fn(async () => []),
+      getStorageUsage: vi.fn(async () => null),
+      upsertStorageUsage: vi.fn(async () => undefined),
+      applyStorageUsageDelta: vi.fn(async () => undefined),
+    };
+
+    const storagePort = {
+      readObject: vi.fn(async () => ({
+        body: originalBuffer,
+        byteSize: originalBuffer.byteLength,
+        contentType: 'image/png',
+        etag: 'etag-original',
+      })),
+      writeObject: vi.fn(async ({ storageKey, body }: { storageKey: string; body: Uint8Array }) => {
+        writtenVariants.push({ storageKey, body });
+        return {
+          byteSize: body.byteLength,
+          etag: `etag-${storageKey}`,
+        };
+      }),
+      deleteObject: vi.fn(async () => undefined),
+    };
+
+    const processor = createMediaUploadProcessingService({
+      service: service as never,
+      storagePort: storagePort as never,
+      createId: vi
+        .fn()
+        .mockReturnValueOnce('variant-1')
+        .mockReturnValueOnce('variant-2')
+        .mockReturnValueOnce('variant-3'),
+    });
+
+    const result = await processor.completeUpload({
+      instanceId: 'tenant-a',
+      uploadSessionId: 'upload-1',
+    });
+
+    expect(result.ok).toBe(true);
+    const thumbnailVariant = writtenVariants.find((entry) => entry.storageKey.endsWith('/thumbnail.webp'));
+    expect(thumbnailVariant).toBeTruthy();
+    const { data, info } = await sharp(thumbnailVariant?.body)
+      .removeAlpha()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+    const channels = info.channels;
+    const centerRow = Math.floor(info.height / 2);
+    const leftPixelIndex = (centerRow * info.width + 24) * channels;
+    const rightPixelIndex = (centerRow * info.width + (info.width - 24)) * channels;
+
+    expect(data[leftPixelIndex + 2]).toBeGreaterThan(data[leftPixelIndex]);
+    expect(data[rightPixelIndex]).toBeGreaterThan(data[rightPixelIndex + 2]);
   });
 });

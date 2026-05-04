@@ -100,6 +100,7 @@ export type MediaRepository = {
   listAssets(filter: MediaAssetListFilter): Promise<readonly MediaAssetRecord[]>;
   countAssets(filter: Omit<MediaAssetListFilter, 'limit' | 'offset'>): Promise<number>;
   deleteAsset(instanceId: string, assetId: string): Promise<void>;
+  deleteVariantsByAssetId(instanceId: string, assetId: string): Promise<void>;
   upsertVariant(instanceId: string, input: MediaVariantRecord): Promise<void>;
   listVariantsByAssetId(instanceId: string, assetId: string): Promise<readonly MediaVariantRecord[]>;
   upsertUploadSession(input: MediaUploadSessionRecord): Promise<void>;
@@ -329,6 +330,15 @@ WHERE instance_id = $1
   values: [instanceId, assetId],
 });
 
+const deleteVariantsByAssetIdStatement = (instanceId: string, assetId: string): SqlStatement => ({
+  text: `
+DELETE FROM iam.media_variants
+WHERE instance_id = $1
+  AND asset_id = $2;
+`,
+  values: [instanceId, assetId],
+});
+
 const buildAssetFilterClauses = (filter: Omit<MediaAssetListFilter, 'limit' | 'offset'>) => {
   const clauses = ['instance_id = $1'];
   const values: unknown[] = [filter.instanceId];
@@ -537,7 +547,7 @@ INSERT INTO iam.media_storage_usage (
   total_bytes,
   asset_count
 )
-VALUES ($1, GREATEST($2, 0), GREATEST($3, 0))
+VALUES ($1, $2, $3)
 ON CONFLICT (instance_id) DO UPDATE
 SET total_bytes = GREATEST(iam.media_storage_usage.total_bytes + EXCLUDED.total_bytes, 0),
     asset_count = GREATEST(iam.media_storage_usage.asset_count + EXCLUDED.asset_count, 0),
@@ -677,6 +687,9 @@ export const createMediaRepository = (executor: SqlExecutor): MediaRepository =>
   async deleteAsset(instanceId, assetId) {
     await executor.execute(deleteAssetStatement(instanceId, assetId));
   },
+  async deleteVariantsByAssetId(instanceId, assetId) {
+    await executor.execute(deleteVariantsByAssetIdStatement(instanceId, assetId));
+  },
   async upsertVariant(instanceId, input) {
     await executor.execute(upsertVariantStatement(instanceId, input));
   },
@@ -750,6 +763,7 @@ export const mediaStatements = {
   listAssets: listAssetsStatement,
   countAssets: countAssetsStatement,
   deleteAsset: deleteAssetStatement,
+  deleteVariantsByAssetId: deleteVariantsByAssetIdStatement,
   upsertVariant: upsertVariantStatement,
   listVariantsByAssetId: listVariantsByAssetIdStatement,
   upsertUploadSession: upsertUploadSessionStatement,

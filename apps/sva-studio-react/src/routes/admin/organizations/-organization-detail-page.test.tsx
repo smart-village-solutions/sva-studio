@@ -191,6 +191,8 @@ describe('OrganizationDetailPage', () => {
     fireEvent.change(screen.getByLabelText('Mitglieder suchen', { selector: '#membership-account-search' }), {
       target: { value: 'zoe' },
     });
+    expect(listUsersMock).toHaveBeenCalledTimes(1);
+    await new Promise((resolve) => globalThis.setTimeout(resolve, 350));
     await waitFor(() => {
       expect(listUsersMock).toHaveBeenCalledTimes(2);
       expect(listUsersMock).toHaveBeenLastCalledWith({

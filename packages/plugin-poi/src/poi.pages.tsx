@@ -128,6 +128,34 @@ const createPoiListColumns = (pt: ReturnType<typeof usePluginTranslation>) => [
   },
 ];
 
+const PoiPaginationNav = ({
+  page,
+  pageSize,
+  hasNextPage,
+  onPageChange,
+  pt,
+}: Readonly<{
+  page: number;
+  pageSize: number;
+  hasNextPage: boolean;
+  onPageChange: (page: number) => void;
+  pt: ReturnType<typeof usePluginTranslation>;
+}>) => (
+  <nav aria-label={pt('pagination.ariaLabel')} className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
+    <p key={page} aria-live="polite" className="animate-pagination-active">
+      {pt('pagination.pageLabel', { page })}
+    </p>
+    <div className="flex items-center gap-2">
+      <Button type="button" size="sm" variant="outline" disabled={page <= 1} onClick={() => onPageChange(Math.max(1, page - 1))}>
+        {pt('pagination.previous')}
+      </Button>
+      <Button type="button" size="sm" variant="outline" disabled={!hasNextPage} onClick={() => onPageChange(page + 1)}>
+        {pt('pagination.next')}
+      </Button>
+    </div>
+  </nav>
+);
+
 export function PoiListPage() {
   const pt = usePluginTranslation('poi');
   const navigate = useNavigate();
@@ -141,6 +169,19 @@ export function PoiListPage() {
   });
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  const handlePageChange = React.useCallback(
+    (nextPage: number) => {
+      void navigate({
+        to: '/admin/poi',
+        search: (current: Record<string, unknown>) => ({
+          ...current,
+          page: nextPage,
+          pageSize: result.pagination.pageSize,
+        }),
+      });
+    },
+    [navigate, result.pagination.pageSize]
+  );
 
   React.useEffect(() => {
     let active = true;
@@ -204,49 +245,13 @@ export function PoiListPage() {
             getRowId={(item) => item.id}
             selectionMode="none"
           />
-          <nav aria-label={pt('pagination.ariaLabel')} className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
-            <p key={result.pagination.page} aria-live="polite" className="animate-pagination-active">
-              {pt('pagination.pageLabel', { page: result.pagination.page })}
-            </p>
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                disabled={result.pagination.page <= 1}
-                onClick={() =>
-                  void navigate({
-                    to: '/admin/poi',
-                    search: (current: Record<string, unknown>) => ({
-                      ...current,
-                      page: Math.max(1, result.pagination.page - 1),
-                      pageSize: result.pagination.pageSize,
-                    }),
-                  })
-                }
-              >
-                {pt('pagination.previous')}
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                disabled={!result.pagination.hasNextPage}
-                onClick={() =>
-                  void navigate({
-                    to: '/admin/poi',
-                    search: (current: Record<string, unknown>) => ({
-                      ...current,
-                      page: result.pagination.page + 1,
-                      pageSize: result.pagination.pageSize,
-                    }),
-                  })
-                }
-              >
-                {pt('pagination.next')}
-              </Button>
-            </div>
-          </nav>
+          <PoiPaginationNav
+            page={result.pagination.page}
+            pageSize={result.pagination.pageSize}
+            hasNextPage={result.pagination.hasNextPage}
+            onPageChange={handlePageChange}
+            pt={pt}
+          />
         </div>
       ) : null}
     </StudioOverviewPageTemplate>

@@ -80,10 +80,16 @@ describe('standard content plugin helpers', () => {
       basePath: 'events',
       titleKey: 'events.navigation.title',
       guard: 'content',
+      moduleId: 'events',
       views: {
         list: { bindingKey: 'content' },
         create: { bindingKey: 'contentCreate' },
         detail: { bindingKey: 'contentDetail' },
+      },
+      permissions: {
+        list: ['events.read'],
+        create: ['events.create'],
+        detail: ['events.read'],
       },
       capabilities: {
         list: {

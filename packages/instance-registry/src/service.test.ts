@@ -657,6 +657,42 @@ describe('instance registry service facade', () => {
     expect(deps.invalidatePermissionSnapshots).not.toHaveBeenCalled();
   });
 
+  it('preserves sync and rollback failures when the rollback itself fails', async () => {
+    const repository = createRepository({
+      assignModule: vi.fn(async () => true),
+      revokeModule: vi.fn(async () => {
+        throw new Error('rollback_failed');
+      }),
+      listAssignedModules: vi.fn(async () => ['news', 'events']),
+      syncAssignedModuleIam: vi.fn(async () => {
+        throw new Error('sync_failed');
+      }),
+      getInstanceById: vi.fn(async () => baseInstance),
+    });
+    const service = createInstanceRegistryService(createDeps(repository));
+
+    try {
+      await service.assignModule({
+        instanceId: 'demo',
+        moduleId: 'events',
+        idempotencyKey: 'idem-module-rollback-2',
+        actorId: 'actor-1',
+        requestId: 'req-module-rollback-2',
+      });
+      expect.unreachable('assignModule should throw');
+    } catch (error) {
+      expect(error).toBeInstanceOf(Error);
+      expect((error as Error).message).toBe('sync_failed');
+      expect((error as Error).name).toBe('InstanceModuleAssignRollbackError');
+      expect((error as Error).cause).toEqual({
+        syncError: expect.any(Error),
+        rollbackError: expect.any(Error),
+      });
+      expect(((error as Error).cause as { syncError: Error }).syncError.message).toBe('sync_failed');
+      expect(((error as Error).cause as { rollbackError: Error }).rollbackError.message).toBe('rollback_failed');
+    }
+  });
+
   it('revokes a module and reseeds the remaining module IAM baseline', async () => {
     const repository = createRepository({
       revokeModule: vi.fn(async () => true),

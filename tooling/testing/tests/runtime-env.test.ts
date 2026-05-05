@@ -17,8 +17,8 @@ import {
   shouldRetryInternalVerify,
   tryReadGithubStudioImageVerifyEvidence,
   waitForPostDeployStabilization,
-} from './runtime-env.ts';
-import type { AcceptanceProbeResult } from './runtime-env.shared.ts';
+} from '../../../scripts/ops/runtime-env.ts';
+import type { AcceptanceProbeResult } from '../../../scripts/ops/runtime-env.shared.ts';
 
 const createProbe = (overrides: Partial<AcceptanceProbeResult>): AcceptanceProbeResult => ({
   durationMs: 10,
@@ -566,12 +566,11 @@ describe('studio image verify evidence', () => {
         runCaptureImpl: runCapture,
       }),
     ).toMatchObject({
-      code: 'image_verify_evidence_missing',
-      details: {
-        acceptedSources: ['artifacts/runtime/image-verify', 'GitHub Actions artifact "Studio Image Verify"'],
-      },
-      name: 'studio-image-verify-evidence',
-      status: 'warn',
+      imageRef: 'ghcr.io/smart-village-solutions/sva-studio@sha256:deadbeefcafebabefeedface',
+      path: 'https://github.com/smart-village-solutions/sva-studio/actions/runs/1003',
+      reportId: 'studio-image-verify-report',
+      source: 'github-artifact',
+      status: 'ok',
     });
   });
 

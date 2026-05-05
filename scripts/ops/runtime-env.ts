@@ -1006,6 +1006,7 @@ export const tryReadGithubStudioImageVerifyEvidence = (
   const runCaptureImpl = options?.runCaptureImpl ?? runCapture;
   const commandExistsImpl = options?.commandExistsImpl ?? commandExists;
   const imageTag = options?.imageTag;
+  const readArtifactEvidenceImpl = options?.readArtifactEvidenceImpl;
 
   if (!imageDigest || !commandExistsImpl('gh')) {
     return undefined;
@@ -1027,52 +1028,84 @@ export const tryReadGithubStudioImageVerifyEvidence = (
       artifactPrefixes.add(`studio-image-verify-${sanitizedImageTag}`);
     }
 
-    const artifactOutput = runCaptureImpl('gh', ['api', `repos/${owner}/${repo}/actions/artifacts?per_page=100`]);
-    const artifactPayload = JSON.parse(artifactOutput) as {
-      artifacts?: Array<{
-        expired?: boolean;
-        name?: string;
-        workflow_run?: {
+    for (let page = 1; page <= 10; page += 1) {
+      const artifactOutput = runCaptureImpl('gh', ['api', `repos/${owner}/${repo}/actions/artifacts?per_page=100&page=${page}`]);
+      const artifactPayload = JSON.parse(artifactOutput) as {
+        artifacts?: Array<{
+          expired?: boolean;
           id?: number;
-        };
-      }>;
-    };
-    const matchingArtifact = artifactPayload.artifacts?.find((artifact) => {
-      if (artifact.expired || typeof artifact.name !== 'string') {
-        return false;
-      }
+          name?: string;
+          workflow_run?: {
+            id?: number;
+          };
+        }>;
+      };
+      const artifacts = artifactPayload.artifacts ?? [];
+      const matchingArtifacts = artifacts.filter((artifact) => {
+        if (artifact.expired || typeof artifact.name !== 'string') {
+          return false;
+        }
 
-      for (const prefix of artifactPrefixes) {
-        if (artifact.name.startsWith(`${prefix}-`)) {
-          return true;
+        for (const prefix of artifactPrefixes) {
+          if (artifact.name.startsWith(`${prefix}-`)) {
+            return true;
+          }
+        }
+
+        return false;
+      });
+
+      for (const matchingArtifact of matchingArtifacts) {
+        const runId = matchingArtifact.workflow_run?.id;
+        if (!runId) {
+          continue;
+        }
+
+        const runOutput = runCaptureImpl('gh', ['run', 'view', String(runId), '--json', 'conclusion,url,workflowName']);
+        const runPayload = JSON.parse(runOutput) as {
+          conclusion?: string;
+          url?: string;
+          workflowName?: string;
+        };
+        if (runPayload.conclusion !== 'success' || runPayload.workflowName !== 'Studio Image Verify') {
+          continue;
+        }
+
+        const artifactEvidence = readArtifactEvidenceImpl?.({
+          artifactId: matchingArtifact.id,
+          artifactName: matchingArtifact.name,
+          imageDigest,
+          owner,
+          repo,
+          runId,
+        });
+        if (artifactEvidence && artifactEvidence.imageRef.includes(imageDigest)) {
+          return {
+            imageRef: artifactEvidence.imageRef,
+            path: runPayload.url ?? `https://github.com/${owner}/${repo}/actions/runs/${runId}`,
+            reportId: artifactEvidence.reportId ?? matchingArtifact.name,
+            source: 'github-artifact',
+            status: artifactEvidence.status,
+          };
+        }
+
+        if (!readArtifactEvidenceImpl) {
+          return {
+            imageRef: `ghcr.io/smart-village-solutions/sva-studio@${imageDigest}`,
+            path: runPayload.url ?? `https://github.com/${owner}/${repo}/actions/runs/${runId}`,
+            reportId: matchingArtifact.name,
+            source: 'github-artifact',
+            status: 'ok',
+          };
         }
       }
 
-      return false;
-    });
-
-    const runId = matchingArtifact?.workflow_run?.id;
-    if (!runId) {
-      return undefined;
+      if (artifacts.length < 100) {
+        break;
+      }
     }
 
-    const runOutput = runCaptureImpl('gh', ['run', 'view', String(runId), '--json', 'conclusion,url,workflowName']);
-    const runPayload = JSON.parse(runOutput) as {
-      conclusion?: string;
-      url?: string;
-      workflowName?: string;
-    };
-    if (runPayload.conclusion !== 'success' || runPayload.workflowName !== 'Studio Image Verify') {
-      return undefined;
-    }
-
-    return {
-      imageRef: `ghcr.io/smart-village-solutions/sva-studio@${imageDigest}`,
-      path: runPayload.url ?? `https://github.com/${owner}/${repo}/actions/runs/${runId}`,
-      reportId: matchingArtifact?.name,
-      source: 'github-artifact',
-      status: 'ok',
-    };
+    return undefined;
   } catch {
     return undefined;
   }
@@ -4063,7 +4096,10 @@ export const waitForPostDeployStabilization = async (
 export const deriveInternalVerifyMaxAttempts = (input: {
   readonly retryDelayMs: number;
   readonly warmupWindowMs: number;
-}) => Math.max(1, Math.floor(input.warmupWindowMs / Math.max(input.retryDelayMs, 1)) + 1);
+}) => {
+  const normalizedRetryDelayMs = input.retryDelayMs > 0 ? input.retryDelayMs : 1000;
+  return Math.max(1, Math.floor(input.warmupWindowMs / normalizedRetryDelayMs) + 1);
+};
 
 const runInternalVerify = async (runtimeProfile: RemoteRuntimeProfile, env: NodeJS.ProcessEnv): Promise<{
   doctorReport: DoctorReport;

@@ -1,11 +1,11 @@
 /**
  * Unit-Tests für Struktur und Loading-Verhalten der AppShell.
  */
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import AppShell, { shouldRenderLegalTextAcceptanceDialog } from './AppShell';
+import AppShell from './AppShell';
 
 const useAuthMock = vi.fn();
 
@@ -164,6 +164,35 @@ describe('AppShell', () => {
   });
 
   it('laedt den Rechtstext-Dialog nicht fuer anonyme Nutzer nach der Hydrierung', async () => {
-    expect(shouldRenderLegalTextAcceptanceDialog({ isHydrated: true, isAuthenticated: false })).toBe(false);
+    useAuthMock.mockReturnValue({
+      user: null,
+      isAuthenticated: false,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      logout: vi.fn(),
+      invalidatePermissions: vi.fn(),
+    });
+
+    render(
+      <AppShell>
+        <div>Inhalt</div>
+      </AppShell>
+    );
+
+    await screen.findByTestId('runtime-health-indicator');
+    await waitFor(() => {
+      expect(screen.queryByTestId('legal-text-acceptance-dialog')).toBeNull();
+    });
+  });
+
+  it('laedt den Rechtstext-Dialog fuer authentifizierte Nutzer nach der Hydrierung', async () => {
+    render(
+      <AppShell>
+        <div>Inhalt</div>
+      </AppShell>
+    );
+
+    expect(await screen.findByTestId('legal-text-acceptance-dialog')).toBeTruthy();
   });
 });

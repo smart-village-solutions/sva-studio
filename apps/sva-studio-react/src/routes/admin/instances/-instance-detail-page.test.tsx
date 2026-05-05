@@ -113,7 +113,16 @@ const createInstancesApiState = (overrides: Record<string, unknown> = {}) => ({
   detailLoading: false,
   statusLoading: false,
   error: null,
-  mutationError: null,
+  mutationError: null as
+    | {
+        status: number;
+        code: string;
+        message: string;
+        classification?: string;
+        recommendedAction?: string;
+        requestId?: string;
+      }
+    | null,
   filters: {
     search: '',
     status: 'all',
@@ -446,7 +455,9 @@ describe('InstanceDetailPage', () => {
   });
 
   it('clears stale success feedback before a later workflow action fails', async () => {
-    const apiState = createInstancesApiState();
+    const apiState = createInstancesApiState() as ReturnType<typeof createInstancesApiState> & {
+      mutationError: { status: number; code: string; message: string } | null;
+    };
     apiState.refreshKeycloakPreflight = vi.fn().mockResolvedValue({
       overallStatus: 'ready',
       checks: [],
@@ -486,37 +497,6 @@ describe('InstanceDetailPage', () => {
     useInstancesMock.mockReturnValue(
       createInstancesApiState({
         selectedInstance: createSelectedInstance({
-          latestKeycloakProvisioningRun: {
-            id: 'run-history',
-            intent: 'provision',
-            mode: 'existing',
-            overallStatus: 'failed',
-            driftSummary: 'Historischer Lauf mit altem Fehler.',
-            requestId: 'req-history',
-            steps: [
-              {
-                stepKey: 'worker_preflight_snapshot',
-                title: 'Vorbedingungen prüfen',
-                status: 'failed',
-                summary: 'Historischer Lauf hatte einen anderen Fehler.',
-                details: {
-                  preflight: {
-                    checks: [
-                      {
-                        checkKey: 'keycloak_admin_access',
-                        status: 'blocked',
-                        title: 'Technischer Keycloak-Zugriff',
-                        summary: 'Historischer Fehler.',
-                        details: {
-                          error: 'Missing required env: KEYCLOAK_REALM',
-                        },
-                      },
-                    ],
-                  },
-                },
-              },
-            ],
-          },
           latestKeycloakProvisioningRun: {
             id: 'run-failed',
             intent: 'provision',
@@ -572,6 +552,37 @@ describe('InstanceDetailPage', () => {
                           summary: 'Der technische Keycloak-Admin-Client konnte den Ziel-Realm nicht lesen.',
                           details: {
                             error: 'Missing required env: KEYCLOAK_ADMIN_BASE_URL',
+                          },
+                        },
+                      ],
+                    },
+                  },
+                },
+              ],
+            },
+            {
+              id: 'run-history',
+              intent: 'provision',
+              mode: 'existing',
+              overallStatus: 'failed',
+              driftSummary: 'Historischer Lauf mit altem Fehler.',
+              requestId: 'req-history',
+              steps: [
+                {
+                  stepKey: 'worker_preflight_snapshot',
+                  title: 'Vorbedingungen prüfen',
+                  status: 'failed',
+                  summary: 'Historischer Lauf hatte einen anderen Fehler.',
+                  details: {
+                    preflight: {
+                      checks: [
+                        {
+                          checkKey: 'keycloak_admin_access',
+                          status: 'blocked',
+                          title: 'Technischer Keycloak-Zugriff',
+                          summary: 'Historischer Fehler.',
+                          details: {
+                            error: 'Missing required env: KEYCLOAK_REALM',
                           },
                         },
                       ],

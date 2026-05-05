@@ -976,4 +976,39 @@ describe('instance registry service facade', () => {
     expect(getAuthClientSecretCiphertext).not.toHaveBeenCalled();
     expect(getTenantAdminClientSecretCiphertext).not.toHaveBeenCalled();
   });
+
+  it('returns null for keycloak status snapshots when the instance no longer exists', async () => {
+    const repository = createRepository({
+      getInstanceById: vi.fn(async () => null),
+      listKeycloakProvisioningRuns: vi.fn(async () => [
+        {
+          id: 'keycloak-run-1',
+          instanceId: 'demo',
+          mode: 'existing',
+          intent: 'provision',
+          overallStatus: 'succeeded',
+          driftSummary: 'Done',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+          steps: [
+            {
+              stepKey: 'status_snapshot',
+              title: 'Status',
+              status: 'done',
+              summary: 'Snapshot vorhanden',
+              details: {
+                status: {
+                  realmExists: true,
+                },
+              },
+            },
+          ],
+        },
+      ]),
+    });
+
+    const status = await createGetKeycloakStatusHandler(createDeps(repository))('demo');
+
+    expect(status).toBeNull();
+  });
 });

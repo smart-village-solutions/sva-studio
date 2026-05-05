@@ -439,6 +439,41 @@ describe('InstanceDetailPage', () => {
     expect(screen.getByText('Provisioning-Vorschau wurde aktualisiert.')).toBeTruthy();
   });
 
+  it('clears stale success feedback before a later workflow action fails', async () => {
+    const apiState = createInstancesApiState();
+    apiState.refreshKeycloakPreflight = vi.fn().mockResolvedValue({
+      overallStatus: 'ready',
+      checks: [],
+    });
+    apiState.refreshKeycloakStatus = vi.fn().mockResolvedValue(false);
+    apiState.mutationError = null;
+
+    useInstancesMock.mockImplementation(() => apiState);
+
+    render(<InstanceDetailPage instanceId="demo" />);
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Betrieb' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Vorbedingungen prüfen' })[0]);
+
+    await waitFor(() => {
+      expect(apiState.refreshKeycloakPreflight).toHaveBeenCalledWith('demo');
+    });
+    expect(screen.getByText('Vorbedingungen wurden aktualisiert.')).toBeTruthy();
+
+    apiState.mutationError = {
+      status: 500,
+      code: 'keycloak_unavailable',
+      message: 'Status konnte nicht gelesen werden.',
+    };
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Keycloak-Status prüfen' })[0]);
+
+    await waitFor(() => {
+      expect(apiState.refreshKeycloakStatus).toHaveBeenCalledWith('demo');
+    });
+    expect(screen.queryByText('Vorbedingungen wurden aktualisiert.')).toBeNull();
+  });
+
   it('surfaces a missing worker env blocker from the latest provisioning run', () => {
     useInstancesMock.mockReturnValue(
       createInstancesApiState({

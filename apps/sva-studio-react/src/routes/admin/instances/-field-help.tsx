@@ -17,6 +17,7 @@ type FieldHelpProps = {
 const POPOVER_WIDTH_PX = 320;
 const VIEWPORT_PADDING_PX = 12;
 const TRIGGER_OFFSET_PX = 8;
+const useIsomorphicLayoutEffect = typeof window === 'undefined' ? React.useEffect : React.useLayoutEffect;
 
 export const FieldHelp = ({ title, what, value, source, impact, defaultHint }: FieldHelpProps) => {
   const [open, setOpen] = React.useState(false);
@@ -75,7 +76,7 @@ export const FieldHelp = ({ title, what, value, source, impact, defaultHint }: F
     };
   }, [open]);
 
-  React.useLayoutEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     if (!open) {
       setPopoverPosition(null);
       return;

@@ -803,4 +803,84 @@ describe('instance registry service facade', () => {
       runtimeSecretSource: 'tenant',
     });
   });
+
+  it('returns a persisted keycloak status snapshot without loading secrets', async () => {
+    const getAuthClientSecretCiphertext = vi.fn(async () => {
+      throw new Error('should_not_load_auth_secret');
+    });
+    const getTenantAdminClientSecretCiphertext = vi.fn(async () => {
+      throw new Error('should_not_load_tenant_secret');
+    });
+    const repository = createRepository({
+      listKeycloakProvisioningRuns: vi.fn(async () => [
+        {
+          id: 'keycloak-run-1',
+          instanceId: 'demo',
+          mode: 'existing',
+          intent: 'provision',
+          overallStatus: 'succeeded',
+          driftSummary: 'Done',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+          steps: [
+            {
+              stepKey: 'status_snapshot',
+              title: 'Status',
+              status: 'done',
+              summary: 'Snapshot vorhanden',
+              details: {
+                status: {
+                  realmExists: true,
+                  clientExists: true,
+                  tenantAdminClientExists: true,
+                  instanceIdMapperExists: true,
+                  tenantAdminExists: true,
+                  tenantAdminHasSystemAdmin: true,
+                  tenantAdminHasInstanceRegistryAdmin: true,
+                  tenantAdminInstanceIdMatches: true,
+                  redirectUrisMatch: true,
+                  logoutUrisMatch: true,
+                  webOriginsMatch: true,
+                  clientSecretConfigured: true,
+                  tenantClientSecretReadable: true,
+                  clientSecretAligned: true,
+                  tenantAdminClientSecretConfigured: true,
+                  tenantAdminClientSecretReadable: true,
+                  tenantAdminClientSecretAligned: true,
+                  runtimeSecretSource: 'tenant',
+                },
+              },
+            },
+          ],
+        },
+      ]),
+      getAuthClientSecretCiphertext,
+      getTenantAdminClientSecretCiphertext,
+    });
+
+    const status = await createGetKeycloakStatusHandler(createDeps(repository, { revealSecret: undefined }))('demo');
+
+    expect(status).toEqual({
+      realmExists: true,
+      clientExists: true,
+      tenantAdminClientExists: true,
+      instanceIdMapperExists: true,
+      tenantAdminExists: true,
+      tenantAdminHasSystemAdmin: true,
+      tenantAdminHasInstanceRegistryAdmin: true,
+      tenantAdminInstanceIdMatches: true,
+      redirectUrisMatch: true,
+      logoutUrisMatch: true,
+      webOriginsMatch: true,
+      clientSecretConfigured: true,
+      tenantClientSecretReadable: true,
+      clientSecretAligned: true,
+      tenantAdminClientSecretConfigured: true,
+      tenantAdminClientSecretReadable: true,
+      tenantAdminClientSecretAligned: true,
+      runtimeSecretSource: 'tenant',
+    });
+    expect(getAuthClientSecretCiphertext).not.toHaveBeenCalled();
+    expect(getTenantAdminClientSecretCiphertext).not.toHaveBeenCalled();
+  });
 });

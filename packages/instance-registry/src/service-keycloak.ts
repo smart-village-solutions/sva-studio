@@ -223,21 +223,24 @@ export const createGetKeycloakStatusHandler =
   (deps: InstanceRegistryServiceDeps) =>
   async (instanceId: string): Promise<KeycloakTenantStatus | null> => {
     logger.debug('get_keycloak_status_started', { operation: 'get_keycloak_status', instance_id: instanceId });
+    const runs = await deps.repository.listKeycloakProvisioningRuns(instanceId);
+    const status = readSnapshotFromRun<KeycloakTenantStatus>(runs, 'status_snapshot', 'status');
+    if (status) {
+      logger.info('keycloak_status_check_completed', { operation: 'get_keycloak_status', instance_id: instanceId });
+      return status;
+    }
+
     const loaded = await loadInstanceWithSecret(deps, instanceId);
     if (!loaded) {
       return null;
     }
 
-    const runs = await deps.repository.listKeycloakProvisioningRuns(instanceId);
-    const status = readSnapshotFromRun<KeycloakTenantStatus>(runs, 'status_snapshot', 'status');
-    const result =
-      status ??
-      buildLocalStatus({
-        authClientSecretConfigured: loaded.instance.authClientSecretConfigured,
-        authClientSecret: loaded.authClientSecret,
-        tenantAdminClient: loaded.instance.tenantAdminClient,
-        tenantAdminClientSecret: loaded.tenantAdminClientSecret,
-      });
+    const result = buildLocalStatus({
+      authClientSecretConfigured: loaded.instance.authClientSecretConfigured,
+      authClientSecret: loaded.authClientSecret,
+      tenantAdminClient: loaded.instance.tenantAdminClient,
+      tenantAdminClientSecret: loaded.tenantAdminClientSecret,
+    });
 
     logger.info('keycloak_status_check_completed', { operation: 'get_keycloak_status', instance_id: instanceId });
     return result;

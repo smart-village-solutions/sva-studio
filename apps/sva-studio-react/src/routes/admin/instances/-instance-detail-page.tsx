@@ -201,10 +201,12 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
 
   React.useEffect(() => {
     if (!selectedInstance) {
+      setActionFeedback(null);
       setDetailFormValues(null);
       return;
     }
 
+    setActionFeedback(null);
     setDetailFormValues(createDetailForm(selectedInstance));
     setActiveWorkspaceTab('configuration');
   }, [selectedInstance]);
@@ -260,6 +262,7 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
       return;
     }
 
+    setActionFeedback(null);
     const result = await instancesApi.executeKeycloakProvisioning(selectedInstance.instanceId, {
       intent,
       tenantAdminTemporaryPassword: detailFormValues.tenantAdminTemporaryPassword.trim() || undefined,
@@ -288,6 +291,7 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
       return;
     }
 
+    setActionFeedback(null);
     switch (action) {
       case 'check_preflight': {
         const result = await instancesApi.refreshKeycloakPreflight(selectedInstance.instanceId);
@@ -337,6 +341,7 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
     if (!selectedInstance) {
       return;
     }
+    setActionFeedback(null);
     const result = await instancesApi.probeTenantIamAccess(selectedInstance.instanceId);
     if (result) {
       setActionFeedback({

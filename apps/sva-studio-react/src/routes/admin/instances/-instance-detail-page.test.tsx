@@ -424,19 +424,25 @@ describe('InstanceDetailPage', () => {
     await waitFor(() => {
       expect(refreshKeycloakPreflight).toHaveBeenCalledWith('demo');
     });
-    expect(screen.getByText('Vorbedingungen wurden aktualisiert.')).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByText('Vorbedingungen wurden aktualisiert.')).toBeTruthy();
+    });
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Keycloak-Status prüfen' })[0]);
     await waitFor(() => {
       expect(refreshKeycloakStatus).toHaveBeenCalledWith('demo');
     });
-    expect(screen.getByText('Keycloak-Status wurde aktualisiert.')).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByText('Keycloak-Status wurde aktualisiert.')).toBeTruthy();
+    });
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Provisioning-Vorschau laden' })[0]);
     await waitFor(() => {
       expect(planKeycloakProvisioning).toHaveBeenCalledWith('demo');
     });
-    expect(screen.getByText('Provisioning-Vorschau wurde aktualisiert.')).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByText('Provisioning-Vorschau wurde aktualisiert.')).toBeTruthy();
+    });
   });
 
   it('clears stale success feedback before a later workflow action fails', async () => {
@@ -458,7 +464,9 @@ describe('InstanceDetailPage', () => {
     await waitFor(() => {
       expect(apiState.refreshKeycloakPreflight).toHaveBeenCalledWith('demo');
     });
-    expect(screen.getByText('Vorbedingungen wurden aktualisiert.')).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByText('Vorbedingungen wurden aktualisiert.')).toBeTruthy();
+    });
 
     apiState.mutationError = {
       status: 500,
@@ -478,6 +486,37 @@ describe('InstanceDetailPage', () => {
     useInstancesMock.mockReturnValue(
       createInstancesApiState({
         selectedInstance: createSelectedInstance({
+          latestKeycloakProvisioningRun: {
+            id: 'run-history',
+            intent: 'provision',
+            mode: 'existing',
+            overallStatus: 'failed',
+            driftSummary: 'Historischer Lauf mit altem Fehler.',
+            requestId: 'req-history',
+            steps: [
+              {
+                stepKey: 'worker_preflight_snapshot',
+                title: 'Vorbedingungen prüfen',
+                status: 'failed',
+                summary: 'Historischer Lauf hatte einen anderen Fehler.',
+                details: {
+                  preflight: {
+                    checks: [
+                      {
+                        checkKey: 'keycloak_admin_access',
+                        status: 'blocked',
+                        title: 'Technischer Keycloak-Zugriff',
+                        summary: 'Historischer Fehler.',
+                        details: {
+                          error: 'Missing required env: KEYCLOAK_REALM',
+                        },
+                      },
+                    ],
+                  },
+                },
+              },
+            ],
+          },
           latestKeycloakProvisioningRun: {
             id: 'run-failed',
             intent: 'provision',
@@ -509,7 +548,39 @@ describe('InstanceDetailPage', () => {
               },
             ],
           },
-          keycloakProvisioningRuns: [],
+          keycloakProvisioningRuns: [
+            {
+              id: 'run-failed',
+              intent: 'provision',
+              mode: 'existing',
+              overallStatus: 'failed',
+              driftSummary: 'Provisioning wurde mit einem Fehler abgebrochen.',
+              requestId: 'req-worker',
+              steps: [
+                {
+                  stepKey: 'worker_preflight_snapshot',
+                  title: 'Vorbedingungen prüfen',
+                  status: 'failed',
+                  summary: 'Die Vorbedingungen blockieren die Ausführung.',
+                  details: {
+                    preflight: {
+                      checks: [
+                        {
+                          checkKey: 'keycloak_admin_access',
+                          status: 'blocked',
+                          title: 'Technischer Keycloak-Zugriff',
+                          summary: 'Der technische Keycloak-Admin-Client konnte den Ziel-Realm nicht lesen.',
+                          details: {
+                            error: 'Missing required env: KEYCLOAK_ADMIN_BASE_URL',
+                          },
+                        },
+                      ],
+                    },
+                  },
+                },
+              ],
+            },
+          ],
         }),
       })
     );
@@ -813,6 +884,49 @@ describe('InstanceDetailPage', () => {
 
     await waitFor(() => {
       expect(loadKeycloakProvisioningRun).toHaveBeenCalledWith('demo', 'run-history-1');
+    });
+  });
+
+  it('keeps action feedback visible across same-instance reloads after provisioning', async () => {
+    const loadInstance = vi.fn().mockResolvedValue(true);
+    const executeKeycloakProvisioning = vi.fn().mockImplementation(async () => {
+      useInstancesMock.mockReturnValue(
+        createInstancesApiState({
+          loadInstance,
+          executeKeycloakProvisioning,
+          selectedInstance: createSelectedInstance({
+            updatedAt: '2026-01-02T00:00:00.000Z',
+          }),
+        })
+      );
+      return { queued: true };
+    });
+
+    useInstancesMock.mockReturnValue(
+      createInstancesApiState({
+        loadInstance,
+        executeKeycloakProvisioning,
+      })
+    );
+
+    render(<InstanceDetailPage instanceId="demo" />);
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Betrieb' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Provisioning ausführen' })[0]);
+
+    await waitFor(() => {
+      expect(executeKeycloakProvisioning).toHaveBeenCalledWith('demo', {
+        intent: 'provision',
+        tenantAdminTemporaryPassword: undefined,
+      });
+    });
+    await waitFor(() => {
+      expect(loadInstance).toHaveBeenCalledWith('demo');
+    });
+    await waitFor(() => {
+      expect(
+        screen.getByText('Provisioning-Auftrag wurde gespeichert und zur Abarbeitung vorgemerkt.')
+      ).toBeTruthy();
     });
   });
 

@@ -82,6 +82,9 @@ const TenantIamStatusBadge = ({ status }: { status?: 'ready' | 'degraded' | 'blo
 const readLatestKeycloakRun = (instance: ReturnType<typeof useInstances>['selectedInstance']) =>
   instance?.latestKeycloakProvisioningRun ?? instance?.keycloakProvisioningRuns[0];
 
+const readActualLatestKeycloakRun = (instance: ReturnType<typeof useInstances>['selectedInstance']) =>
+  instance?.keycloakProvisioningRuns[0] ?? instance?.latestKeycloakProvisioningRun;
+
 const readWorkerPendingProjection = (instance: ReturnType<typeof useInstances>['selectedInstance']) =>
   Boolean(
     instance?.keycloakPreflight?.checks.some((check) => {
@@ -91,7 +94,9 @@ const readWorkerPendingProjection = (instance: ReturnType<typeof useInstances>['
   );
 
 const readMissingWorkerEnvName = (instance: ReturnType<typeof useInstances>['selectedInstance']) => {
-  const preflightStep = readLatestKeycloakRun(instance)?.steps.find((step) => step.stepKey === 'worker_preflight_snapshot');
+  const preflightStep = readActualLatestKeycloakRun(instance)?.steps.find(
+    (step) => step.stepKey === 'worker_preflight_snapshot'
+  );
   const details = preflightStep?.details as
     | {
         preflight?: {
@@ -187,6 +192,7 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
   const [activeWorkspaceTab, setActiveWorkspaceTab] = React.useState<'configuration' | 'operations' | 'history'>(
     'configuration'
   );
+  const previousSelectedInstanceIdRef = React.useRef<string | null>(null);
 
   React.useEffect(() => {
     void instancesApi.loadInstance(instanceId);
@@ -201,12 +207,16 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
 
   React.useEffect(() => {
     if (!selectedInstance) {
+      previousSelectedInstanceIdRef.current = null;
       setActionFeedback(null);
       setDetailFormValues(null);
       return;
     }
 
-    setActionFeedback(null);
+    if (previousSelectedInstanceIdRef.current !== selectedInstance.instanceId) {
+      setActionFeedback(null);
+    }
+    previousSelectedInstanceIdRef.current = selectedInstance.instanceId;
     setDetailFormValues(createDetailForm(selectedInstance));
     setActiveWorkspaceTab('configuration');
   }, [selectedInstance]);

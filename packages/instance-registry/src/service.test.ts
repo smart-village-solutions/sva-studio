@@ -800,8 +800,101 @@ describe('instance registry service facade', () => {
       tenantAdminClientSecretConfigured: false,
       tenantAdminClientSecretReadable: false,
       tenantAdminClientSecretAligned: false,
-      runtimeSecretSource: 'tenant',
+      runtimeSecretSource: 'global',
     });
+  });
+
+  it('returns a local fallback keycloak status without decrypting secrets when revealSecret is unavailable', async () => {
+    const getAuthClientSecretCiphertext = vi.fn(async () => 'cipher-auth');
+    const getTenantAdminClientSecretCiphertext = vi.fn(async () => 'cipher-admin');
+    const repository = createRepository({
+      getInstanceById: vi.fn(async () => ({
+        ...baseInstance,
+        authClientSecretConfigured: true,
+        tenantAdminClient: {
+          clientId: 'tenant-admin',
+          secretConfigured: true,
+        },
+      })),
+      listKeycloakProvisioningRuns: vi.fn(async () => []),
+      getAuthClientSecretCiphertext,
+      getTenantAdminClientSecretCiphertext,
+    });
+
+    const status = await createGetKeycloakStatusHandler(createDeps(repository, { revealSecret: undefined }))('demo');
+
+    expect(status).toEqual({
+      realmExists: false,
+      clientExists: false,
+      tenantAdminClientExists: false,
+      instanceIdMapperExists: false,
+      tenantAdminExists: false,
+      tenantAdminHasSystemAdmin: false,
+      tenantAdminHasInstanceRegistryAdmin: false,
+      tenantAdminInstanceIdMatches: false,
+      redirectUrisMatch: false,
+      logoutUrisMatch: false,
+      webOriginsMatch: false,
+      clientSecretConfigured: true,
+      tenantClientSecretReadable: false,
+      clientSecretAligned: false,
+      tenantAdminClientSecretConfigured: true,
+      tenantAdminClientSecretReadable: false,
+      tenantAdminClientSecretAligned: false,
+      runtimeSecretSource: 'global',
+    });
+    expect(getAuthClientSecretCiphertext).not.toHaveBeenCalled();
+    expect(getTenantAdminClientSecretCiphertext).not.toHaveBeenCalled();
+  });
+
+  it('does not return a persisted keycloak status snapshot for unknown instances', async () => {
+    const repository = createRepository({
+      getInstanceById: vi.fn(async () => null),
+      listKeycloakProvisioningRuns: vi.fn(async () => [
+        {
+          id: 'keycloak-run-1',
+          instanceId: 'demo',
+          mode: 'existing',
+          intent: 'provision',
+          overallStatus: 'succeeded',
+          driftSummary: 'Done',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+          steps: [
+            {
+              stepKey: 'status_snapshot',
+              title: 'Status',
+              status: 'done',
+              summary: 'Snapshot vorhanden',
+              details: {
+                status: {
+                  realmExists: true,
+                  clientExists: true,
+                  tenantAdminClientExists: true,
+                  instanceIdMapperExists: true,
+                  tenantAdminExists: true,
+                  tenantAdminHasSystemAdmin: true,
+                  tenantAdminHasInstanceRegistryAdmin: true,
+                  tenantAdminInstanceIdMatches: true,
+                  redirectUrisMatch: true,
+                  logoutUrisMatch: true,
+                  webOriginsMatch: true,
+                  clientSecretConfigured: true,
+                  tenantClientSecretReadable: true,
+                  clientSecretAligned: true,
+                  tenantAdminClientSecretConfigured: true,
+                  tenantAdminClientSecretReadable: true,
+                  tenantAdminClientSecretAligned: true,
+                  runtimeSecretSource: 'tenant',
+                },
+              },
+            },
+          ],
+        },
+      ]),
+    });
+
+    await expect(createGetKeycloakStatusHandler(createDeps(repository))('demo')).resolves.toBeNull();
   });
 
   it('returns a persisted keycloak status snapshot without loading secrets', async () => {

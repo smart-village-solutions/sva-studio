@@ -780,4 +780,83 @@ describe('InstanceDetailPage', () => {
       expect(loadKeycloakProvisioningRun).toHaveBeenCalledWith('demo', 'run-history-1');
     });
   });
+
+  it('renders a loading shell when no matching instance detail is selected', () => {
+    useInstancesMock.mockReturnValue(
+      createInstancesApiState({
+        selectedInstance: createSelectedInstance({
+          instanceId: 'other-instance',
+        }),
+      })
+    );
+
+    render(<InstanceDetailPage instanceId="demo" />);
+
+    expect(screen.getByText('Inhalte werden geladen ...')).toBeTruthy();
+    expect(screen.queryByText('Operativer Überblick')).toBeNull();
+  });
+
+  it('shows generated-secret and empty artifact states for a new realm setup', () => {
+    useInstancesMock.mockReturnValue(
+      createInstancesApiState({
+        selectedInstance: createSelectedInstance({
+          realmMode: 'new',
+          authClientSecretConfigured: false,
+          tenantAdminClient: {
+            clientId: 'sva-studio-admin',
+            secretConfigured: false,
+          },
+          keycloakStatus: undefined,
+          keycloakPreflight: {
+            overallStatus: 'warning',
+            checkedAt: '2026-01-01T00:00:00.000Z',
+            checks: [],
+          },
+          keycloakPlan: {
+            mode: 'new',
+            overallStatus: 'warning',
+            generatedAt: '2026-01-01T00:00:00.000Z',
+            driftSummary: 'Noch keine Vorschau vorhanden.',
+            steps: [],
+          },
+          latestKeycloakProvisioningRun: undefined,
+          keycloakProvisioningRuns: [],
+          provisioningRuns: [],
+          moduleIamStatus: {
+            overall: {
+              status: 'unknown',
+              summary: 'Noch keine Module zugewiesen.',
+              source: 'registry',
+            },
+            modules: [],
+          },
+        }),
+      })
+    );
+
+    render(<InstanceDetailPage instanceId="demo" />);
+
+    const tenantClientSecret = screen.getByLabelText('Tenant-Client-Secret', {
+      selector: '#detail-auth-client-secret',
+    }) as HTMLInputElement;
+    expect(tenantClientSecret.disabled).toBe(true);
+    expect(tenantClientSecret.placeholder).toContain('automatisch');
+    expect(
+      screen.getByText('Für neue Realms wird das Tenant-Client-Secret erst beim Provisioning erzeugt und danach gespeichert.')
+    ).toBeTruthy();
+
+    const tenantAdminClientSecret = screen.getByLabelText('Tenant-Admin-Client-Secret', {
+      selector: '#detail-tenant-admin-client-secret',
+    }) as HTMLInputElement;
+    expect(tenantAdminClientSecret.placeholder).toContain('Secret fehlt noch');
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Betrieb' }));
+    expect(screen.getByText(/der instanz sind aktuell keine module zugewiesen/i)).toBeTruthy();
+    expect(screen.getByText(/für diese instanz wurde noch keine provisioning-vorschau erzeugt/i)).toBeTruthy();
+    expect(screen.getByText(/es liegen noch keine keycloak-statusdaten für diese instanz vor/i)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Historie' }));
+    expect(screen.getByText(/für diese instanz wurden noch keine keycloak-provisioning-läufe aufgezeichnet/i)).toBeTruthy();
+    expect(screen.getByText(/für diese instanz liegen noch keine läufe vor/i)).toBeTruthy();
+  });
 });

@@ -83,7 +83,7 @@ RUN if find /workspace/apps/sva-studio-react/.output/server -type f \
       \( -name '*.js' -o -name '*.mjs' -o -name '*.cjs' \) \
       ! -name '*.map' \
       ! -path '*/node_modules/*' \
-      -exec grep -E -q 'jsxDEV|jsx-dev-runtime' {} +; then \
+      -exec grep -E -l 'jsxDEV|jsx-dev-runtime' {} + | grep -q .; then \
       echo "Docker production artifact must not contain React development JSX runtime." >&2; \
       exit 1; \
     fi

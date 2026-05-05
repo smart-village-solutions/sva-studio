@@ -175,12 +175,12 @@ describe('AppShell', () => {
     });
 
     render(
-      <AppShell>
+      <AppShell currentPathname="/admin/users/123">
         <div>Inhalt</div>
       </AppShell>
     );
 
-    await screen.findByTestId('runtime-health-indicator');
+    await screen.findByRole('navigation', { name: 'Brotkrumen-Navigation' });
     await waitFor(() => {
       expect(screen.queryByTestId('legal-text-acceptance-dialog')).toBeNull();
     });
@@ -188,11 +188,12 @@ describe('AppShell', () => {
 
   it('laedt den Rechtstext-Dialog fuer authentifizierte Nutzer nach der Hydrierung', async () => {
     render(
-      <AppShell>
+      <AppShell currentPathname="/admin/users/123">
         <div>Inhalt</div>
       </AppShell>
     );
 
+    await screen.findByRole('navigation', { name: 'Brotkrumen-Navigation' });
     expect(await screen.findByTestId('legal-text-acceptance-dialog')).toBeTruthy();
   });
 });

@@ -4284,13 +4284,19 @@ export const waitForRemoteSmokeWarmup = async (
     options?.runtimeProfile ??
     parseRuntimeProfile(env.SVA_RUNTIME_PROFILE as RuntimeProfile | undefined) ??
     'local-keycloak';
+  const blockingProbeNames = new Set(['public-live', 'public-ready', 'public-auth-login']);
   const probes = await runExternalSmokeWithWarmup(env, {
     maxAttempts: options?.maxAttempts,
     retryDelayMs: options?.retryDelayMs,
     runtimeProfile,
     runner: options?.runner,
+    shouldRetry: (candidateProbes) =>
+      shouldRetryExternalSmoke(
+        candidateProbes.filter(
+          (probe) => blockingProbeNames.has(probe.name) || probe.name.startsWith('public-auth-login-')
+        )
+      ),
   });
-  const blockingProbeNames = new Set(['public-live', 'public-ready', 'public-auth-login']);
   const failingProbe = probes.find(
     (probe) => probe.status === 'error' && (blockingProbeNames.has(probe.name) || probe.name.startsWith('public-auth-login-')),
   );
@@ -4432,6 +4438,7 @@ export const runExternalSmokeWithWarmup = async (
     readonly retryDelayMs?: number;
     readonly runtimeProfile?: RuntimeProfile;
     readonly runner?: (env: NodeJS.ProcessEnv) => Promise<readonly AcceptanceProbeResult[]>;
+    readonly shouldRetry?: (probes: readonly AcceptanceProbeResult[]) => boolean;
   }
 ): Promise<readonly AcceptanceProbeResult[]> => {
   const retryDelayMs = options?.retryDelayMs ?? Number(env.SVA_EXTERNAL_SMOKE_RETRY_DELAY_MS ?? '15000');
@@ -4445,13 +4452,14 @@ export const runExternalSmokeWithWarmup = async (
         options?.runtimeProfile ?? parseRuntimeProfile(currentEnv.SVA_RUNTIME_PROFILE as RuntimeProfile | undefined) ?? 'local-keycloak',
         currentEnv
       ));
+  const shouldRetry = options?.shouldRetry ?? shouldRetryExternalSmoke;
   let lastProbes: readonly AcceptanceProbeResult[] = [];
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     const probes = await runner(env);
     lastProbes = probes;
 
-    if (!shouldRetryExternalSmoke(probes) || attempt >= maxAttempts) {
+    if (!shouldRetry(probes) || attempt >= maxAttempts) {
       return probes;
     }
 

@@ -17,8 +17,8 @@ import {
   shouldRetryInternalVerify,
   tryReadGithubStudioImageVerifyEvidence,
   waitForPostDeployStabilization,
-} from '../../../scripts/ops/runtime-env.ts';
-import type { AcceptanceProbeResult } from '../../../scripts/ops/runtime-env.shared.ts';
+} from './runtime-env.ts';
+import type { AcceptanceProbeResult } from './runtime-env.shared.ts';
 
 const createProbe = (overrides: Partial<AcceptanceProbeResult>): AcceptanceProbeResult => ({
   durationMs: 10,

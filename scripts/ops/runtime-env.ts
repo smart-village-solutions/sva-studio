@@ -1060,6 +1060,9 @@ export const tryReadGithubStudioImageVerifyEvidence = (
         if (!runId) {
           continue;
         }
+        if (typeof matchingArtifact.name !== 'string') {
+          continue;
+        }
 
         const runOutput = runCaptureImpl('gh', ['run', 'view', String(runId), '--json', 'conclusion,url,workflowName']);
         const runPayload = JSON.parse(runOutput) as {
@@ -1071,7 +1074,7 @@ export const tryReadGithubStudioImageVerifyEvidence = (
           continue;
         }
 
-        const artifactEvidence = readArtifactEvidenceImpl?.({
+        const artifactEvidence: GithubVerifyArtifactEvidence | undefined = readArtifactEvidenceImpl?.({
           artifactId: matchingArtifact.id,
           artifactName: matchingArtifact.name,
           imageDigest,

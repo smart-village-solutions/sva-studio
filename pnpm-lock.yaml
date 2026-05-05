@@ -68,7 +68,7 @@ importers:
         specifier: ^22.7.0
         version: 22.7.0
       postcss:
-        specifier: ^8.5.11
+        specifier: 8.5.11
         version: 8.5.11
       tailwindcss:
         specifier: 4.2.4
@@ -185,7 +185,7 @@ importers:
         specifier: 3.0.260415-beta
         version: 3.0.260415-beta(dotenv@16.4.7)(ioredis@5.10.1)(jiti@2.6.1)(lru-cache@11.3.5)(rollup@4.59.0)(vite@8.0.8(@types/node@25.6.0)(esbuild@0.27.7)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.3))
       postcss:
-        specifier: ^8.5.11
+        specifier: 8.5.11
         version: 8.5.11
       react:
         specifier: ^19.2.0
@@ -303,7 +303,7 @@ importers:
         specifier: ^8.20.0
         version: 8.20.0
       postcss:
-        specifier: ^8.5.11
+        specifier: 8.5.11
         version: 8.5.11
       sanitize-html:
         specifier: ^2.17.3
@@ -3440,6 +3440,7 @@ packages:
   '@smithy/util-retry@4.3.6':
     resolution: {integrity: sha512-p6/FO1n2KxMeQyna067i0uJ6TSbb165ZhnRtCpWh4Foxqbfc6oW+XITaL8QkFJj3KFnDe2URt4gOhgU06EP9ew==}
     engines: {node: '>=18.0.0'}
+    deprecated: '@smithy/util-retry v4.3.6 contains a bug in Adaptive Retry, see https://github.com/smithy-lang/smithy-typescript/issues/1993. Upgrade to 4.3.7+'
 
   '@smithy/util-stream@4.5.25':
     resolution: {integrity: sha512-/PFpG4k8Ze8Ei+mMKj3oiPICYekthuzePZMgZbCqMiXIHHf4n2aZ4Ps0aSRShycFTGuj/J6XldmC0x0DwednIA==}

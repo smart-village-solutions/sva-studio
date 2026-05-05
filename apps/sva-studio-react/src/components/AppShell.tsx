@@ -60,12 +60,23 @@ const LegalTextAcceptanceDialogSlot = ({ enabled, pathname }: Readonly<{ enabled
     }
 
     let isCancelled = false;
-    void import('./LegalTextAcceptanceDialog').then((module) => {
-      if (isCancelled) {
-        return;
+
+    const loadDialogComponent = async () => {
+      try {
+        const module = await import('./LegalTextAcceptanceDialog');
+        if (isCancelled) {
+          return;
+        }
+        setDialogComponent(() => module.LegalTextAcceptanceDialog);
+      } catch {
+        if (isCancelled) {
+          return;
+        }
+        setDialogComponent(null);
       }
-      setDialogComponent(() => module.LegalTextAcceptanceDialog);
-    });
+    };
+
+    void loadDialogComponent();
 
     return () => {
       isCancelled = true;

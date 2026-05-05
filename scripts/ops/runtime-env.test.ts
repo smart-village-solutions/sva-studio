@@ -10,6 +10,7 @@ import {
   readStudioImageVerifyEvidence,
   resolveTenantRuntimeTargets,
   runExternalSmokeWithWarmup,
+  waitForRemoteSmokeWarmup,
   shouldRetryExternalSmoke,
   shouldRetryInternalProbeFailure,
   shouldRetryInternalVerifyAttempt,
@@ -312,6 +313,129 @@ describe('runExternalSmokeWithWarmup', () => {
   });
 });
 
+describe('waitForRemoteSmokeWarmup', () => {
+  it('waits through transient remote smoke warmup failures', async () => {
+    const runner = vi
+      .fn<(env: NodeJS.ProcessEnv) => Promise<readonly AcceptanceProbeResult[]>>()
+      .mockResolvedValueOnce([
+        createProbe({
+          message: 'Erwartet HTTP 200, erhalten 404.',
+          name: 'public-live',
+          status: 'error',
+          target: 'https://studio.smart-village.app/health/live',
+        }),
+      ])
+      .mockResolvedValueOnce([
+        createProbe({
+          message: 'Probe erfolgreich mit HTTP 200.',
+          name: 'public-live',
+          status: 'ok',
+          target: 'https://studio.smart-village.app/health/live',
+        }),
+        createProbe({
+          message: 'Probe erfolgreich mit HTTP 200.',
+          name: 'public-ready',
+          status: 'ok',
+          target: 'https://studio.smart-village.app/health/ready',
+        }),
+        createProbe({
+          message: 'Probe erfolgreich mit HTTP 302.',
+          name: 'public-auth-login',
+          status: 'ok',
+          target: 'https://studio.smart-village.app/auth/login',
+        }),
+      ]);
+
+    await expect(
+      waitForRemoteSmokeWarmup(
+        {
+          SVA_PUBLIC_BASE_URL: 'https://studio.smart-village.app',
+        },
+        {
+          maxAttempts: 2,
+          retryDelayMs: 0,
+          runner,
+          runtimeProfile: 'studio',
+        },
+      ),
+    ).resolves.toEqual([
+      expect.objectContaining({ name: 'public-live', status: 'ok' }),
+      expect.objectContaining({ name: 'public-ready', status: 'ok' }),
+      expect.objectContaining({ name: 'public-auth-login', status: 'ok' }),
+    ]);
+
+    expect(runner).toHaveBeenCalledTimes(2);
+  });
+
+  it('ignores non-blocking external probe failures while blocking warmup probes are still retryable', async () => {
+    const runner = vi
+      .fn<(env: NodeJS.ProcessEnv) => Promise<readonly AcceptanceProbeResult[]>>()
+      .mockResolvedValueOnce([
+        createProbe({
+          message: 'Erwartet HTTP 200, erhalten 404.',
+          name: 'public-live',
+          status: 'error',
+          target: 'https://studio.smart-village.app/health/live',
+        }),
+        createProbe({
+          message: 'IAM-Instanzliste lieferte HTML statt JSON/API-Vertrag.',
+          name: 'public-iam-instances',
+          status: 'error',
+          target: 'https://studio.smart-village.app/api/v1/iam/instances',
+        }),
+      ])
+      .mockResolvedValueOnce([
+        createProbe({
+          message: 'Probe erfolgreich mit HTTP 200.',
+          name: 'public-live',
+          status: 'ok',
+          target: 'https://studio.smart-village.app/health/live',
+        }),
+        createProbe({
+          message: 'Probe erfolgreich mit HTTP 200.',
+          name: 'public-ready',
+          status: 'ok',
+          target: 'https://studio.smart-village.app/health/ready',
+        }),
+        createProbe({
+          message: 'Probe erfolgreich mit HTTP 302.',
+          name: 'public-auth-login',
+          status: 'ok',
+          target: 'https://studio.smart-village.app/auth/login',
+        }),
+        createProbe({
+          message: 'IAM-Instanzliste lieferte HTML statt JSON/API-Vertrag.',
+          name: 'public-iam-instances',
+          status: 'error',
+          target: 'https://studio.smart-village.app/api/v1/iam/instances',
+        }),
+      ]);
+
+    await expect(
+      waitForRemoteSmokeWarmup(
+        {
+          SVA_PUBLIC_BASE_URL: 'https://studio.smart-village.app',
+        },
+        {
+          maxAttempts: 2,
+          retryDelayMs: 0,
+          runner,
+          runtimeProfile: 'studio',
+        },
+      ),
+    ).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: 'public-live', status: 'ok' }),
+        expect.objectContaining({ name: 'public-ready', status: 'ok' }),
+        expect.objectContaining({ name: 'public-auth-login', status: 'ok' }),
+        expect.objectContaining({ name: 'public-iam-instances', status: 'error' }),
+      ]),
+    );
+
+    expect(runner).toHaveBeenCalledTimes(2);
+  });
+});
+
 describe('resolveTenantRuntimeTargets', () => {
   it('prefers explicit tenant scope instance ids over the legacy allowlist', async () => {
     const resolution = await resolveTenantRuntimeTargets('local-keycloak', {
@@ -510,12 +634,11 @@ describe('studio image verify evidence', () => {
         runCaptureImpl: runCapture,
       }),
     ).toMatchObject({
-      code: 'image_verify_evidence_missing',
-      details: {
-        acceptedSources: ['artifacts/runtime/image-verify', 'GitHub Actions artifact "Studio Image Verify"'],
-      },
-      name: 'studio-image-verify-evidence',
-      status: 'warn',
+      imageRef: 'ghcr.io/smart-village-solutions/sva-studio@sha256:deadbeefcafebabefeedface',
+      path: 'https://github.com/smart-village-solutions/sva-studio/actions/runs/1003',
+      reportId: 'studio-image-verify-report',
+      source: 'github-artifact',
+      status: 'ok',
     });
   });
 

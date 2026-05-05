@@ -1006,6 +1006,7 @@ export const tryReadGithubStudioImageVerifyEvidence = (
   const runCaptureImpl = options?.runCaptureImpl ?? runCapture;
   const commandExistsImpl = options?.commandExistsImpl ?? commandExists;
   const imageTag = options?.imageTag;
+  const readArtifactEvidenceImpl = options?.readArtifactEvidenceImpl;
 
   if (!imageDigest || !commandExistsImpl('gh')) {
     return undefined;
@@ -1027,52 +1028,87 @@ export const tryReadGithubStudioImageVerifyEvidence = (
       artifactPrefixes.add(`studio-image-verify-${sanitizedImageTag}`);
     }
 
-    const artifactOutput = runCaptureImpl('gh', ['api', `repos/${owner}/${repo}/actions/artifacts?per_page=100`]);
-    const artifactPayload = JSON.parse(artifactOutput) as {
-      artifacts?: Array<{
-        expired?: boolean;
-        name?: string;
-        workflow_run?: {
+    for (let page = 1; page <= 10; page += 1) {
+      const artifactOutput = runCaptureImpl('gh', ['api', `repos/${owner}/${repo}/actions/artifacts?per_page=100&page=${page}`]);
+      const artifactPayload = JSON.parse(artifactOutput) as {
+        artifacts?: Array<{
+          expired?: boolean;
           id?: number;
-        };
-      }>;
-    };
-    const matchingArtifact = artifactPayload.artifacts?.find((artifact) => {
-      if (artifact.expired || typeof artifact.name !== 'string') {
-        return false;
-      }
+          name?: string;
+          workflow_run?: {
+            id?: number;
+          };
+        }>;
+      };
+      const artifacts = artifactPayload.artifacts ?? [];
+      const matchingArtifacts = artifacts.filter((artifact) => {
+        if (artifact.expired || typeof artifact.name !== 'string') {
+          return false;
+        }
 
-      for (const prefix of artifactPrefixes) {
-        if (artifact.name.startsWith(`${prefix}-`)) {
-          return true;
+        for (const prefix of artifactPrefixes) {
+          if (artifact.name.startsWith(`${prefix}-`)) {
+            return true;
+          }
+        }
+
+        return false;
+      });
+
+      for (const matchingArtifact of matchingArtifacts) {
+        const runId = matchingArtifact.workflow_run?.id;
+        if (!runId) {
+          continue;
+        }
+        if (typeof matchingArtifact.name !== 'string') {
+          continue;
+        }
+
+        const runOutput = runCaptureImpl('gh', ['run', 'view', String(runId), '--json', 'conclusion,url,workflowName']);
+        const runPayload = JSON.parse(runOutput) as {
+          conclusion?: string;
+          url?: string;
+          workflowName?: string;
+        };
+        if (runPayload.conclusion !== 'success' || runPayload.workflowName !== 'Studio Image Verify') {
+          continue;
+        }
+
+        const artifactEvidence: GithubVerifyArtifactEvidence | undefined = readArtifactEvidenceImpl?.({
+          artifactId: matchingArtifact.id,
+          artifactName: matchingArtifact.name,
+          imageDigest,
+          owner,
+          repo,
+          runId,
+        });
+        if (artifactEvidence && artifactEvidence.imageRef.includes(imageDigest)) {
+          return {
+            imageRef: artifactEvidence.imageRef,
+            path: runPayload.url ?? `https://github.com/${owner}/${repo}/actions/runs/${runId}`,
+            reportId: artifactEvidence.reportId ?? matchingArtifact.name,
+            source: 'github-artifact',
+            status: artifactEvidence.status,
+          };
+        }
+
+        if (!readArtifactEvidenceImpl) {
+          return {
+            imageRef: `ghcr.io/smart-village-solutions/sva-studio@${imageDigest}`,
+            path: runPayload.url ?? `https://github.com/${owner}/${repo}/actions/runs/${runId}`,
+            reportId: matchingArtifact.name,
+            source: 'github-artifact',
+            status: 'ok',
+          };
         }
       }
 
-      return false;
-    });
-
-    const runId = matchingArtifact?.workflow_run?.id;
-    if (!runId) {
-      return undefined;
+      if (artifacts.length < 100) {
+        break;
+      }
     }
 
-    const runOutput = runCaptureImpl('gh', ['run', 'view', String(runId), '--json', 'conclusion,url,workflowName']);
-    const runPayload = JSON.parse(runOutput) as {
-      conclusion?: string;
-      url?: string;
-      workflowName?: string;
-    };
-    if (runPayload.conclusion !== 'success' || runPayload.workflowName !== 'Studio Image Verify') {
-      return undefined;
-    }
-
-    return {
-      imageRef: `ghcr.io/smart-village-solutions/sva-studio@${imageDigest}`,
-      path: runPayload.url ?? `https://github.com/${owner}/${repo}/actions/runs/${runId}`,
-      reportId: matchingArtifact?.name,
-      source: 'github-artifact',
-      status: 'ok',
-    };
+    return undefined;
   } catch {
     return undefined;
   }
@@ -2818,6 +2854,10 @@ const assertAcceptanceContainerHealth = async (env: NodeJS.ProcessEnv) => {
 const smokeRuntime = async (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => {
   assertRuntimeEnv(runtimeProfile, env);
 
+  if (!getRuntimeProfileDefinition(runtimeProfile).isLocal) {
+    await waitForRemoteSmokeWarmup(env, { runtimeProfile });
+  }
+
   const live = await checkHttpHealth(new URL('/health/live', env.SVA_PUBLIC_BASE_URL ?? 'http://localhost:3000').toString());
   if (!live.response.ok) {
     throw new Error(`Live-Healthcheck fehlgeschlagen: ${live.response.status}`);
@@ -4059,7 +4099,10 @@ export const waitForPostDeployStabilization = async (
 export const deriveInternalVerifyMaxAttempts = (input: {
   readonly retryDelayMs: number;
   readonly warmupWindowMs: number;
-}) => Math.max(1, Math.floor(input.warmupWindowMs / Math.max(input.retryDelayMs, 1)) + 1);
+}) => {
+  const normalizedRetryDelayMs = input.retryDelayMs > 0 ? input.retryDelayMs : 1000;
+  return Math.max(1, Math.floor(input.warmupWindowMs / normalizedRetryDelayMs) + 1);
+};
 
 const runInternalVerify = async (runtimeProfile: RemoteRuntimeProfile, env: NodeJS.ProcessEnv): Promise<{
   doctorReport: DoctorReport;
@@ -4228,6 +4271,43 @@ export const shouldRetryInternalProbeFailure = (probe: AcceptanceProbeResult) =>
   );
 };
 
+export const waitForRemoteSmokeWarmup = async (
+  env: NodeJS.ProcessEnv,
+  options?: {
+    readonly maxAttempts?: number;
+    readonly retryDelayMs?: number;
+    readonly runtimeProfile?: RuntimeProfile;
+    readonly runner?: (env: NodeJS.ProcessEnv) => Promise<readonly AcceptanceProbeResult[]>;
+  }
+): Promise<readonly AcceptanceProbeResult[]> => {
+  const runtimeProfile =
+    options?.runtimeProfile ??
+    parseRuntimeProfile(env.SVA_RUNTIME_PROFILE as RuntimeProfile | undefined) ??
+    'local-keycloak';
+  const blockingProbeNames = new Set(['public-live', 'public-ready', 'public-auth-login']);
+  const probes = await runExternalSmokeWithWarmup(env, {
+    maxAttempts: options?.maxAttempts,
+    retryDelayMs: options?.retryDelayMs,
+    runtimeProfile,
+    runner: options?.runner,
+    shouldRetry: (candidateProbes) =>
+      shouldRetryExternalSmoke(
+        candidateProbes.filter(
+          (probe) => blockingProbeNames.has(probe.name) || probe.name.startsWith('public-auth-login-')
+        )
+      ),
+  });
+  const failingProbe = probes.find(
+    (probe) => probe.status === 'error' && (blockingProbeNames.has(probe.name) || probe.name.startsWith('public-auth-login-')),
+  );
+
+  if (failingProbe) {
+    throw new Error(`${failingProbe.name}: ${failingProbe.message}`);
+  }
+
+  return probes;
+};
+
 const runExternalSmoke = async (
   runtimeProfile: RuntimeProfile,
   env: NodeJS.ProcessEnv
@@ -4358,6 +4438,7 @@ export const runExternalSmokeWithWarmup = async (
     readonly retryDelayMs?: number;
     readonly runtimeProfile?: RuntimeProfile;
     readonly runner?: (env: NodeJS.ProcessEnv) => Promise<readonly AcceptanceProbeResult[]>;
+    readonly shouldRetry?: (probes: readonly AcceptanceProbeResult[]) => boolean;
   }
 ): Promise<readonly AcceptanceProbeResult[]> => {
   const retryDelayMs = options?.retryDelayMs ?? Number(env.SVA_EXTERNAL_SMOKE_RETRY_DELAY_MS ?? '15000');
@@ -4371,13 +4452,14 @@ export const runExternalSmokeWithWarmup = async (
         options?.runtimeProfile ?? parseRuntimeProfile(currentEnv.SVA_RUNTIME_PROFILE as RuntimeProfile | undefined) ?? 'local-keycloak',
         currentEnv
       ));
+  const shouldRetry = options?.shouldRetry ?? shouldRetryExternalSmoke;
   let lastProbes: readonly AcceptanceProbeResult[] = [];
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     const probes = await runner(env);
     lastProbes = probes;
 
-    if (!shouldRetryExternalSmoke(probes) || attempt >= maxAttempts) {
+    if (!shouldRetry(probes) || attempt >= maxAttempts) {
       return probes;
     }
 

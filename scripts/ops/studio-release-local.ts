@@ -153,10 +153,14 @@ export const runLocalStudioReleasePlan = (
 
   try {
     for (const step of plan.steps) {
-      runStep(step);
+      try {
+        runStep(step);
+      } catch (error) {
+        const normalizedError = error instanceof Error ? error : new Error(String(error));
+        primaryFailure = normalizedError;
+        break;
+      }
     }
-  } catch (error) {
-    primaryFailure = error instanceof Error ? error : new Error(String(error));
   } finally {
     try {
       runStep(plan.feedbackStep);

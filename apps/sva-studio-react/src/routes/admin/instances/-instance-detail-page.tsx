@@ -79,9 +79,6 @@ const TenantIamStatusBadge = ({ status }: { status?: 'ready' | 'degraded' | 'blo
   return <span className={`rounded-full px-2 py-1 text-xs font-medium ${tone}`}>{status ?? 'unknown'}</span>;
 };
 
-const readLatestKeycloakRun = (instance: ReturnType<typeof useInstances>['selectedInstance']) =>
-  instance?.latestKeycloakProvisioningRun ?? instance?.keycloakProvisioningRuns[0];
-
 const readActualLatestKeycloakRun = (instance: ReturnType<typeof useInstances>['selectedInstance']) =>
   instance?.keycloakProvisioningRuns[0] ?? instance?.latestKeycloakProvisioningRun;
 

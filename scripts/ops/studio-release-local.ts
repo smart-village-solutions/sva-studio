@@ -150,22 +150,13 @@ export const runLocalStudioReleasePlan = (
 ) => {
   let primaryFailure: Error | undefined;
   let feedbackFailure: Error | undefined;
-  let deferredDeployFailure: Error | undefined;
-  let smokeCompleted = false;
 
   try {
     for (const step of plan.steps) {
       try {
         runStep(step);
-        if (step.name === 'smoke') {
-          smokeCompleted = true;
-        }
       } catch (error) {
         const normalizedError = error instanceof Error ? error : new Error(String(error));
-        if (step.name === 'deploy') {
-          deferredDeployFailure = normalizedError;
-          continue;
-        }
         primaryFailure = normalizedError;
         break;
       }
@@ -180,10 +171,6 @@ export const runLocalStudioReleasePlan = (
 
   if (primaryFailure) {
     throw primaryFailure;
-  }
-
-  if (deferredDeployFailure && !smokeCompleted) {
-    throw deferredDeployFailure;
   }
 
   if (feedbackFailure) {

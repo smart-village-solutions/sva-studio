@@ -192,6 +192,42 @@ describe('createSvaMainserverService', () => {
     expect(fetchImpl).toHaveBeenCalledTimes(4);
   });
 
+  it('evicts least recently used credential cache entries when the max size is exceeded', async () => {
+    let nowMs = 0;
+    const readCredentials = vi
+      .fn()
+      .mockResolvedValueOnce({ apiKey: 'key-1', apiSecret: 'secret-1' })
+      .mockResolvedValueOnce({ apiKey: 'key-2', apiSecret: 'secret-2' })
+      .mockResolvedValueOnce({ apiKey: 'key-1b', apiSecret: 'secret-1b' });
+
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async ({ instanceId }) => ({
+        ...baseConfig,
+        instanceId,
+      }),
+      readCredentials,
+      fetchImpl: vi
+        .fn()
+        .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+        .mockResolvedValueOnce(createJsonResponse(200, { data: { __typename: 'Query' } }))
+        .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-2', expires_in: 120 }))
+        .mockResolvedValueOnce(createJsonResponse(200, { data: { __typename: 'Query' } }))
+        .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-3', expires_in: 120 }))
+        .mockResolvedValueOnce(createJsonResponse(200, { data: { __typename: 'Query' } })),
+      now: () => nowMs,
+      credentialCacheMaxSize: 1,
+      tokenCacheMaxSize: 1,
+    });
+
+    await service.getQueryRootTypename({ instanceId: 'de-one', keycloakSubject: 'subject-1' });
+    nowMs += 1;
+    await service.getQueryRootTypename({ instanceId: 'de-two', keycloakSubject: 'subject-2' });
+    nowMs += 1;
+    await service.getQueryRootTypename({ instanceId: 'de-one', keycloakSubject: 'subject-1' });
+
+    expect(readCredentials).toHaveBeenCalledTimes(3);
+  });
+
   it('executes query and mutation diagnostics with typed responses', async () => {
     const fetchImpl = vi
       .fn()

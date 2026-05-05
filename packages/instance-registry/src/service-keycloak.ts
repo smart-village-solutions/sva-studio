@@ -8,7 +8,7 @@ import type {
   KeycloakTenantStatus,
   ResolveRuntimeInstanceResult,
 } from './keycloak-types.js';
-import { buildPlan, toOverallPreflightStatus } from './provisioning-auth-evaluation.js';
+import { buildMissingRealmStatus, buildPlan, toOverallPreflightStatus } from './provisioning-auth-evaluation.js';
 import { toListItem } from './service-helpers.js';
 import { createExecuteKeycloakProvisioningHandler, createReconcileKeycloakHandler } from './service-keycloak-execution.js';
 
@@ -132,6 +132,22 @@ const buildLocalPreflight = (input: {
   };
 };
 
+const buildLocalStatus = (input: {
+  authClientSecretConfigured: boolean;
+  authClientSecret?: string;
+  tenantAdminClient?: {
+    clientId: string;
+    secretConfigured: boolean;
+  };
+  tenantAdminClientSecret?: string;
+}): KeycloakTenantStatus =>
+  buildMissingRealmStatus(
+    input.authClientSecretConfigured,
+    input.authClientSecret,
+    input.tenantAdminClient,
+    input.tenantAdminClientSecret
+  );
+
 const revealSecret = (
   deps: SecretReaderDeps,
   value: string | null | undefined,
@@ -201,12 +217,27 @@ export const createGetKeycloakStatusHandler =
 
     const runs = await deps.repository.listKeycloakProvisioningRuns(instanceId);
     const status = readSnapshotFromRun<KeycloakTenantStatus>(runs, 'status_snapshot', 'status');
-    if (!status) {
-      return null;
+    if (status) {
+      logger.info('keycloak_status_check_completed', { operation: 'get_keycloak_status', instance_id: instanceId });
+      return status;
     }
 
+    let authClientSecret: string | undefined;
+    let tenantAdminClientSecret: string | undefined;
+    if (deps.revealSecret) {
+      authClientSecret = await loadRepositoryAuthClientSecret(deps, deps.repository, instance.instanceId);
+      tenantAdminClientSecret = await loadRepositoryTenantAdminClientSecret(deps, deps.repository, instance.instanceId);
+    }
+
+    const result = buildLocalStatus({
+      authClientSecretConfigured: instance.authClientSecretConfigured,
+      authClientSecret,
+      tenantAdminClient: instance.tenantAdminClient,
+      tenantAdminClientSecret,
+    });
+
     logger.info('keycloak_status_check_completed', { operation: 'get_keycloak_status', instance_id: instanceId });
-    return status;
+    return result;
   };
 
 export const createGetKeycloakPreflightHandler =

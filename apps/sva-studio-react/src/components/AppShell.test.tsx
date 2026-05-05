@@ -5,7 +5,7 @@ import { cleanup, render, screen, within } from '@testing-library/react';
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import AppShell from './AppShell';
+import AppShell, { shouldRenderLegalTextAcceptanceDialog } from './AppShell';
 
 const useAuthMock = vi.fn();
 
@@ -161,5 +161,9 @@ describe('AppShell', () => {
     expect(screen.queryByLabelText('Seitenleiste')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Navigation öffnen' })).toBeNull();
     expect(screen.getByRole('main')).toBeTruthy();
+  });
+
+  it('laedt den Rechtstext-Dialog nicht fuer anonyme Nutzer nach der Hydrierung', async () => {
+    expect(shouldRenderLegalTextAcceptanceDialog({ isHydrated: true, isAuthenticated: false })).toBe(false);
   });
 });

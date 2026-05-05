@@ -10,6 +10,7 @@ import {
   readStudioImageVerifyEvidence,
   resolveTenantRuntimeTargets,
   runExternalSmokeWithWarmup,
+  waitForRemoteSmokeWarmup,
   shouldRetryExternalSmoke,
   shouldRetryInternalProbeFailure,
   shouldRetryInternalVerifyAttempt,
@@ -309,6 +310,61 @@ describe('runExternalSmokeWithWarmup', () => {
 
     expect(runner).toHaveBeenCalledTimes(1);
     expect(probes[0]?.status).toBe('error');
+  });
+});
+
+describe('waitForRemoteSmokeWarmup', () => {
+  it('waits through transient remote smoke warmup failures', async () => {
+    const runner = vi
+      .fn<(env: NodeJS.ProcessEnv) => Promise<readonly AcceptanceProbeResult[]>>()
+      .mockResolvedValueOnce([
+        createProbe({
+          message: 'Erwartet HTTP 200, erhalten 404.',
+          name: 'public-live',
+          status: 'error',
+          target: 'https://studio.smart-village.app/health/live',
+        }),
+      ])
+      .mockResolvedValueOnce([
+        createProbe({
+          message: 'Probe erfolgreich mit HTTP 200.',
+          name: 'public-live',
+          status: 'ok',
+          target: 'https://studio.smart-village.app/health/live',
+        }),
+        createProbe({
+          message: 'Probe erfolgreich mit HTTP 200.',
+          name: 'public-ready',
+          status: 'ok',
+          target: 'https://studio.smart-village.app/health/ready',
+        }),
+        createProbe({
+          message: 'Probe erfolgreich mit HTTP 302.',
+          name: 'public-auth-login',
+          status: 'ok',
+          target: 'https://studio.smart-village.app/auth/login',
+        }),
+      ]);
+
+    await expect(
+      waitForRemoteSmokeWarmup(
+        {
+          SVA_PUBLIC_BASE_URL: 'https://studio.smart-village.app',
+        },
+        {
+          maxAttempts: 2,
+          retryDelayMs: 0,
+          runner,
+          runtimeProfile: 'studio',
+        },
+      ),
+    ).resolves.toEqual([
+      expect.objectContaining({ name: 'public-live', status: 'ok' }),
+      expect.objectContaining({ name: 'public-ready', status: 'ok' }),
+      expect.objectContaining({ name: 'public-auth-login', status: 'ok' }),
+    ]);
+
+    expect(runner).toHaveBeenCalledTimes(2);
   });
 });
 

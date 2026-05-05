@@ -2818,6 +2818,10 @@ const assertAcceptanceContainerHealth = async (env: NodeJS.ProcessEnv) => {
 const smokeRuntime = async (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => {
   assertRuntimeEnv(runtimeProfile, env);
 
+  if (!getRuntimeProfileDefinition(runtimeProfile).isLocal) {
+    await waitForRemoteSmokeWarmup(env, { runtimeProfile });
+  }
+
   const live = await checkHttpHealth(new URL('/health/live', env.SVA_PUBLIC_BASE_URL ?? 'http://localhost:3000').toString());
   if (!live.response.ok) {
     throw new Error(`Live-Healthcheck fehlgeschlagen: ${live.response.status}`);
@@ -4226,6 +4230,37 @@ export const shouldRetryInternalProbeFailure = (probe: AcceptanceProbeResult) =>
   return [state, currentState, desiredState].some(
     (value) => typeof value === 'string' && retryableWarmupStates.some((warmupState) => value.includes(warmupState)),
   );
+};
+
+export const waitForRemoteSmokeWarmup = async (
+  env: NodeJS.ProcessEnv,
+  options?: {
+    readonly maxAttempts?: number;
+    readonly retryDelayMs?: number;
+    readonly runtimeProfile?: RuntimeProfile;
+    readonly runner?: (env: NodeJS.ProcessEnv) => Promise<readonly AcceptanceProbeResult[]>;
+  }
+): Promise<readonly AcceptanceProbeResult[]> => {
+  const runtimeProfile =
+    options?.runtimeProfile ??
+    parseRuntimeProfile(env.SVA_RUNTIME_PROFILE as RuntimeProfile | undefined) ??
+    'local-keycloak';
+  const probes = await runExternalSmokeWithWarmup(env, {
+    maxAttempts: options?.maxAttempts,
+    retryDelayMs: options?.retryDelayMs,
+    runtimeProfile,
+    runner: options?.runner,
+  });
+  const blockingProbeNames = new Set(['public-live', 'public-ready', 'public-auth-login']);
+  const failingProbe = probes.find(
+    (probe) => probe.status === 'error' && (blockingProbeNames.has(probe.name) || probe.name.startsWith('public-auth-login-')),
+  );
+
+  if (failingProbe) {
+    throw new Error(`${failingProbe.name}: ${failingProbe.message}`);
+  }
+
+  return probes;
 };
 
 const runExternalSmoke = async (

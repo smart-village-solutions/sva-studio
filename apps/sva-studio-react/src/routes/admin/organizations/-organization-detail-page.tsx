@@ -33,6 +33,15 @@ const normalizeMembershipSearchValue = (value: string) => value.trim().toLocaleL
 const formatMembershipUserLabel = (user: IamUserListItem) =>
   user.email ? `${user.displayName} <${user.email}>` : `${user.displayName} <${user.keycloakSubject}>`;
 
+export const sortMembershipUsersByLabel = (users: readonly IamUserListItem[]): readonly IamUserListItem[] =>
+  users
+    .map((user) => ({
+      user,
+      label: formatMembershipUserLabel(user),
+    }))
+    .sort((left, right) => left.label.localeCompare(right.label))
+    .map(({ user }) => user);
+
 const matchesMembershipSearch = (user: IamUserListItem, search: string) => {
   const normalizedSearch = normalizeMembershipSearchValue(search);
   if (!normalizedSearch) {
@@ -146,9 +155,7 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
           return;
         }
 
-        setMembershipUsers(
-          [...response.data].sort((left, right) => formatMembershipUserLabel(left).localeCompare(formatMembershipUserLabel(right)))
-        );
+        setMembershipUsers(sortMembershipUsersByLabel(response.data));
       } catch (cause) {
         if (!active) {
           return;

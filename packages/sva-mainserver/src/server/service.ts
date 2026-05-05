@@ -468,19 +468,40 @@ const pruneCache = <TValue>(
   nowMs: number,
   maxSize: number
 ): void => {
+  let oldestLiveKey: string | null = null;
+  let oldestLiveTimestamp = Number.POSITIVE_INFINITY;
+
   for (const [key, entry] of cache.entries()) {
     if (entry.expiresAtMs <= nowMs) {
       cache.delete(key);
+      continue;
+    }
+
+    if (entry.lastUsedAtMs < oldestLiveTimestamp) {
+      oldestLiveTimestamp = entry.lastUsedAtMs;
+      oldestLiveKey = key;
     }
   }
 
-  if (cache.size <= maxSize) {
-    return;
-  }
+  while (cache.size > maxSize) {
+    if (oldestLiveKey !== null) {
+      cache.delete(oldestLiveKey);
+    } else {
+      const firstKey = cache.keys().next().value;
+      if (firstKey === undefined) {
+        return;
+      }
+      cache.delete(firstKey);
+    }
 
-  const oldestEntries = [...cache.entries()].sort((left, right) => left[1].lastUsedAtMs - right[1].lastUsedAtMs);
-  for (const [key] of oldestEntries.slice(0, cache.size - maxSize)) {
-    cache.delete(key);
+    oldestLiveKey = null;
+    oldestLiveTimestamp = Number.POSITIVE_INFINITY;
+    for (const [key, entry] of cache.entries()) {
+      if (entry.lastUsedAtMs < oldestLiveTimestamp) {
+        oldestLiveTimestamp = entry.lastUsedAtMs;
+        oldestLiveKey = key;
+      }
+    }
   }
 };
 

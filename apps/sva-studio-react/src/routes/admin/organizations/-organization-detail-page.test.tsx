@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { OrganizationDetailPage } from './-organization-detail-page';
+import { OrganizationDetailPage, sortMembershipUsersByLabel } from './-organization-detail-page';
 
 const useOrganizationsMock = vi.fn();
 const listUsersMock = vi.fn();
@@ -237,6 +237,32 @@ describe('OrganizationDetailPage', () => {
     },
     15_000
   );
+
+  it('sorts membership users by their rendered label', () => {
+    expect(
+      sortMembershipUsersByLabel([
+        {
+          id: 'user-2',
+          keycloakSubject: 'kc-user-2',
+          displayName: 'Zoe Zebra',
+          email: 'zoe@example.org',
+          status: 'active',
+          roles: [],
+        },
+        {
+          id: 'user-1',
+          keycloakSubject: 'kc-user-1',
+          displayName: 'Anna Admin',
+          email: 'anna@example.org',
+          status: 'active',
+          roles: [],
+        },
+      ])
+    ).toMatchObject([
+      { id: 'user-1' },
+      { id: 'user-2' },
+    ]);
+  });
 
   it('does not reload organization detail on rerender when the load callback is stable', async () => {
     const loadOrganization = vi.fn().mockResolvedValue(organizationFixture);

@@ -188,6 +188,27 @@ const describePermissionTraceSource = (entry: IamUserPermissionTraceItem) => {
 const appendUnique = (values: readonly string[], nextValue: string): string[] =>
   values.includes(nextValue) ? [...values] : [...values, nextValue];
 
+const areStringArraysEqual = (left: readonly string[], right: readonly string[]): boolean =>
+  left.length === right.length && left.every((value, index) => value === right[index]);
+
+export const hasUserFormChanges = (baseline: UserFormValues, current: UserFormValues): boolean =>
+  baseline.firstName !== current.firstName ||
+  baseline.lastName !== current.lastName ||
+  baseline.displayName !== current.displayName ||
+  baseline.email !== current.email ||
+  baseline.phone !== current.phone ||
+  baseline.position !== current.position ||
+  baseline.department !== current.department ||
+  baseline.status !== current.status ||
+  baseline.preferredLanguage !== current.preferredLanguage ||
+  baseline.timezone !== current.timezone ||
+  baseline.notes !== current.notes ||
+  !areStringArraysEqual(baseline.roleIds, current.roleIds) ||
+  !areStringArraysEqual(baseline.groupIds, current.groupIds) ||
+  baseline.mainserverUserApplicationId !== current.mainserverUserApplicationId ||
+  baseline.mainserverUserApplicationSecret !== current.mainserverUserApplicationSecret ||
+  baseline.mainserverUserApplicationSecretSet !== current.mainserverUserApplicationSecretSet;
+
 export const UserEditPage = ({ userId }: UserEditPageProps) => {
   const userApi = useUser(userId);
   const rolesApi = useRoles();
@@ -223,9 +244,11 @@ export const UserEditPage = ({ userId }: UserEditPageProps) => {
     setHasLoadedTimeline(false);
   }, [userId]);
 
-  const baselineSignature = React.useMemo(() => JSON.stringify(toFormValues(userApi.user)), [userApi.user]);
-  const currentSignature = React.useMemo(() => JSON.stringify(formValues), [formValues]);
-  const hasUnsavedChanges = baselineSignature !== currentSignature;
+  const baselineFormValues = React.useMemo(() => toFormValues(userApi.user), [userApi.user]);
+  const hasUnsavedChanges = React.useMemo(
+    () => hasUserFormChanges(baselineFormValues, formValues),
+    [baselineFormValues, formValues]
+  );
   const effectivePermissionTrace = React.useMemo(
     () => (userApi.user?.permissionTrace ?? []).filter((entry) => entry.isEffective),
     [userApi.user?.permissionTrace]

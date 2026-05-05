@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { sanitizeLegalTextHtml } from '@sva/iam-governance/legal-text-sanitize-html';
+import { sanitizeLegalTextHtml } from '../lib/legal-text-html-sanitizer';
 import { RichTextEditor } from './RichTextEditor';
 
 describe('RichTextEditor', () => {

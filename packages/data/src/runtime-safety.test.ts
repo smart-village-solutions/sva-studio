@@ -75,9 +75,15 @@ test('runtime artifact checks avoid stale images and dev JSX false positives', (
   assert.match(runtimeVerifyScript, /"\$\{SERVER_CHUNK_PATH\}"/);
   assert.doesNotMatch(runtimeVerifyScript, /grep -R -E 'jsxDEV\|jsx-dev-runtime' "\$\{APP_DIR\}\/\.output\/server"/);
 
-  assert.match(portainerDockerfile, /--exclude-dir='node_modules'/);
-  assert.match(portainerDockerfile, /--exclude='\*\.map'/);
-  assert.match(portainerDockerfile, /--include='\*\.mjs'/);
+  assert.match(
+    portainerDockerfile,
+    /find \/workspace\/apps\/sva-studio-react\/\.output\/server -type f[\s\S]*-name '\*\.js'[\s\S]*-name '\*\.mjs'[\s\S]*-name '\*\.cjs'/
+  );
+  assert.match(portainerDockerfile, /! -name '\*\.map'/);
+  assert.match(portainerDockerfile, /! -path '\*\/node_modules\/\*'/);
+  assert.match(portainerDockerfile, /-exec grep -E -q 'jsxDEV\|jsx-dev-runtime' \{\} \+/);
+  assert.doesNotMatch(portainerDockerfile, /--include='\*\.mjs'/);
+  assert.doesNotMatch(portainerDockerfile, /--exclude-dir='node_modules'/);
 
   assert.match(patchRuntimeArtifact, /findPnpmPackageDir/);
   assert.match(patchRuntimeArtifact, /path\.join\(pnpmDir, entry\.name, 'node_modules', \.\.\.packageSegments\)/);

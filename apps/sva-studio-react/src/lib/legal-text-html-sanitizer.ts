@@ -136,12 +136,22 @@ const sanitizeBrowserHtml = (value: string): string => {
   return container.innerHTML;
 };
 
-const sanitizeWithoutBrowserDom = (value: string): string =>
+const escapeHtml = (value: string): string =>
   value
-    .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
-    .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, '')
-    .replace(/\son[a-z]+\s*=\s*(['"]).*?\1/gi, '')
-    .replace(/\shref\s*=\s*(['"])\s*(?:javascript:|data:).*?\1/gi, '');
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+
+const sanitizeWithoutBrowserDom = (value: string): string => {
+  const plainText = collapseWhitespace(value);
+  if (!plainText) {
+    return '<p></p>';
+  }
+
+  return `<p>${escapeHtml(plainText)}</p>`;
+};
 
 export const sanitizeLegalTextHtml = (value: string): string => {
   const sanitized = collapseWhitespace(

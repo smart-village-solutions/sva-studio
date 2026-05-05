@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { UserEditPage, hasUserFormChanges } from './-user-edit-page';
+import { UserEditPage, buildGroupMembershipById, hasUserFormChanges } from './-user-edit-page';
 import { userErrorMessage } from './-user-error-message';
 
 const useUserMock = vi.fn();
@@ -130,6 +130,17 @@ describe('UserEditPage', () => {
     expect(hasUserFormChanges(baseline, { ...baseline })).toBe(false);
     expect(hasUserFormChanges(baseline, { ...baseline, displayName: 'Alice Updated' })).toBe(true);
     expect(hasUserFormChanges(baseline, { ...baseline, roleIds: ['role-1', 'role-2'] })).toBe(true);
+  });
+
+  it('builds group membership lookups by group id once for constant-time access', () => {
+    const membershipById = buildGroupMembershipById([
+      { groupId: 'group-1', groupKey: 'admins', displayName: 'Admins', groupType: 'role_bundle', origin: 'manual' as const },
+      { groupId: 'group-2', groupKey: 'authors', displayName: 'Authors', groupType: 'role_bundle', origin: 'sync' as const },
+    ]);
+
+    expect(membershipById.get('group-1')).toMatchObject({ displayName: 'Admins' });
+    expect(membershipById.get('group-2')).toMatchObject({ origin: 'sync' });
+    expect(membershipById.get('group-3')).toBeUndefined();
   });
 
   it('renders localized initial load errors when user is missing', () => {

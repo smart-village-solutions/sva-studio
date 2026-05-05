@@ -191,6 +191,11 @@ const appendUnique = (values: readonly string[], nextValue: string): string[] =>
 const areStringArraysEqual = (left: readonly string[], right: readonly string[]): boolean =>
   left.length === right.length && left.every((value, index) => value === right[index]);
 
+export const buildGroupMembershipById = (
+  groups: NonNullable<ReturnType<typeof useUser>['user']>['groups'] | undefined
+): ReadonlyMap<string, NonNullable<NonNullable<ReturnType<typeof useUser>['user']>['groups']>[number]> =>
+  new Map((groups ?? []).map((entry) => [entry.groupId, entry] as const));
+
 export const hasUserFormChanges = (baseline: UserFormValues, current: UserFormValues): boolean =>
   baseline.firstName !== current.firstName ||
   baseline.lastName !== current.lastName ||
@@ -257,6 +262,7 @@ export const UserEditPage = ({ userId }: UserEditPageProps) => {
     () => (userApi.user?.permissionTrace ?? []).filter((entry) => !entry.isEffective),
     [userApi.user?.permissionTrace]
   );
+  const groupMembershipById = React.useMemo(() => buildGroupMembershipById(userApi.user?.groups), [userApi.user?.groups]);
 
   React.useEffect(() => {
     if (!hasUnsavedChanges) {
@@ -620,7 +626,7 @@ export const UserEditPage = ({ userId }: UserEditPageProps) => {
             <div className="grid gap-2 sm:grid-cols-2">
               {selectableGroups.map((group) => {
                 const selected = formValues.groupIds.includes(group.id);
-                const currentMembership = userApi.user?.groups?.find((entry) => entry.groupId === group.id);
+                const currentMembership = groupMembershipById.get(group.id);
                 return (
                   <Label key={group.id} className="flex items-start gap-2 rounded border border-border bg-background px-3 py-2 text-sm text-foreground">
                     <Checkbox

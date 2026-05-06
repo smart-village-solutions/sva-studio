@@ -8,7 +8,7 @@
 
 - [ ] 2.1 die duplizierten Tabellen-, Listen- und Basis-UI-Bausteine in `apps/sva-studio-react` inventarisieren und einem Ziel-Export in `packages/studio-ui-react` zuordnen
 - [ ] 2.2 fehlende Package-Exports oder API-Anpassungen in `@sva/studio-ui-react` ergänzen, damit App und Plugins dieselben Bausteine konsumieren können
-- [ ] 2.3 App-Routen und Komponenten schrittweise von lokalen UI-Duplikaten auf Package-Imports umstellen
+- [ ] 2.3 App-Routen und Komponenten schrittweise von lokalen UI-Duplikaten auf Package-Imports umstellen, aktuell mindestens `apps/sva-studio-react/src/routes/content/-content-list-page.tsx`, `apps/sva-studio-react/src/routes/admin/roles/-roles-page.tsx`, `apps/sva-studio-react/src/routes/admin/media/-media-page.tsx`, `apps/sva-studio-react/src/routes/admin/instances/-instances-page.tsx` und `apps/sva-studio-react/src/routes/admin/users/-user-list-page.tsx`
 - [ ] 2.4 betroffene Unit-Tests für App und Package anpassen oder ergänzen, damit die gemeinsame UI-API abgesichert ist
 
 ## 3. Domain-Helper-Konsolidierung
@@ -16,7 +16,7 @@
 - [ ] 3.1 `sanitizeLegalTextHtml` und zugehörige Tests auf den kanonischen Helper aus `@sva/iam-governance` zurückführen
 - [ ] 3.2 app-lokale Sanitizer-Duplikate entfernen oder auf reine Kompatibilitäts-Wrapper reduzieren, falls eine Zwischenmigration nötig ist
 - [ ] 3.3 prüfen, ob weitere app-lokale Helper mit derselben Ownership-Dynamik existieren, und nur reale Duplikate in denselben Refactoring-Strang aufnehmen
-- [ ] 3.4 direkte App-Consumer wie Rich-Text-Editoren und Legal-Text-Dialoge auf die kanonische `@sva/iam-governance`-API umstellen und die Ownership in Tests nachvollziehbar machen
+- [ ] 3.4 direkte App-Consumer wie `apps/sva-studio-react/src/components/RichTextEditor.tsx` und `apps/sva-studio-react/src/components/LegalTextAcceptanceDialog.tsx` auf die kanonische `@sva/iam-governance`-API umstellen und die Ownership in Tests nachvollziehbar machen
 
 ## 4. Mainserver-Host-Adapter aus der App herauslösen
 

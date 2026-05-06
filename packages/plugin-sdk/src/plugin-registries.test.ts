@@ -562,7 +562,7 @@ describe('plugin registries', () => {
           ...newsPlugin,
           routes: [
             {
-              id: 'news.trailing-slash',
+              id: 'news.list',
               path: '/plugins/news/',
               guard: 'news.read',
               component,
@@ -589,7 +589,7 @@ describe('plugin registries', () => {
           ]),
         },
       ])
-    ).toThrow('plugin_guardrail_route_bypass:news:news.trailing-slash:path');
+    ).toThrow('plugin_guardrail_route_bypass:news:news.list:path');
   });
 
   it('rejects plugin authorization, audit, persistence and dynamic-registration bypass fields', () => {

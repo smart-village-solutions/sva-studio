@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
-import type { Page, Request as PlaywrightRequest, Route } from '@playwright/test';
+import type { Page, Route } from '@playwright/test';
 
 type EventRecord = {
   readonly id: string;
@@ -78,14 +78,41 @@ const permissionPayload = {
 };
 
 const navigateClientSide = async (page: Page, targetPath: string) => {
-  await page.evaluate((path) => {
-    window.history.pushState({}, '', path);
-    window.dispatchEvent(new PopStateEvent('popstate'));
+  await page.waitForFunction(() => {
+    return Boolean(
+      (
+        window as typeof window & {
+          __SVA_PLAYWRIGHT_ROUTER__?: {
+            navigate: (options: { to: string }) => Promise<void> | void;
+          };
+        }
+      ).__SVA_PLAYWRIGHT_ROUTER__
+    );
+  });
+
+  await page.evaluate(async (path) => {
+    const router = (
+      window as typeof window & {
+        __SVA_PLAYWRIGHT_ROUTER__?: {
+          navigate: (options: { to: string }) => Promise<void> | void;
+        };
+      }
+    ).__SVA_PLAYWRIGHT_ROUTER__;
+
+    if (!router) {
+      throw new Error('Playwright router hook fehlt.');
+    }
+
+    await router.navigate({ to: path });
   }, targetPath);
 };
 
 const expectPluginPageHeading = async (page: Page, pattern: RegExp) => {
   await expect(page.locator('main h1').filter({ hasText: pattern })).toBeVisible();
+};
+
+const expectAdminListUrl = async (page: Page, basePath: '/admin/events' | '/admin/poi') => {
+  await expect(page).toHaveURL(new RegExp(`${basePath.replace('/', '\\/')}\\?(?:.*&)??page=1(?:&.*)?$`));
 };
 
 const mockSharedShellRequests = async (page: Page) => {
@@ -123,23 +150,12 @@ const mockSharedShellRequests = async (page: Page) => {
 };
 
 const createdAt = '2026-04-13T12:10:00.000Z';
-
-const paginateRecords = <T extends { readonly id: string }>(items: readonly T[], request: PlaywrightRequest) => {
-  const url = new URL(request.url());
-  const page = Math.max(1, Number.parseInt(url.searchParams.get('page') ?? '1', 10) || 1);
-  const requestedPageSize = Number.parseInt(url.searchParams.get('pageSize') ?? '25', 10) || 25;
-  const pageSize = [25, 50, 100].includes(requestedPageSize) ? requestedPageSize : 25;
-  const start = (page - 1) * pageSize;
-
-  return {
-    data: items.slice(start, start + pageSize),
-    pagination: {
-      page,
-      pageSize,
-      hasNextPage: start + pageSize < items.length,
-    },
-  };
-};
+const createPagination = (total: number) => ({
+  page: 1,
+  pageSize: 25,
+  hasNextPage: false,
+  total,
+});
 
 const routeEvents = async (route: Route, events: EventRecord[]) => {
   const request = route.request();
@@ -151,7 +167,7 @@ const routeEvents = async (route: Route, events: EventRecord[]) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify(paginateRecords(events, request)),
+        body: JSON.stringify({ data: events, pagination: createPagination(events.length) }),
       });
       return;
     }
@@ -226,7 +242,7 @@ const routePoi = async (route: Route, pois: PoiRecord[]) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify(paginateRecords(pois, request)),
+        body: JSON.stringify({ data: pois, pagination: createPagination(pois.length) }),
       });
       return;
     }
@@ -306,7 +322,7 @@ test.describe('events and POI plugins', () => {
 
     await page.goto('/');
     await page.locator('a[href="/admin/poi"]').click();
-    await expect(page).toHaveURL(/\/admin\/poi(?:\?.*)?$/);
+    await expectAdminListUrl(page, '/admin/poi');
     await expectPluginPageHeading(page, /POI|poi\.list\.title/);
 
     await page.locator('a[href="/admin/poi/new"]').click();
@@ -336,7 +352,7 @@ test.describe('events and POI plugins', () => {
     page.once('dialog', (dialog) => dialog.accept());
     await page.getByRole('button', { name: /Löschen|poi\.actions\.delete/ }).click();
 
-    await expect(page).toHaveURL(/\/admin\/poi(?:\?.*)?$/);
+    await expectAdminListUrl(page, '/admin/poi');
     await expect(page.getByText(/Noch keine POI vorhanden|poi\.empty\.title/)).toBeVisible();
   });
 
@@ -363,7 +379,7 @@ test.describe('events and POI plugins', () => {
 
     await page.goto('/');
     await page.locator('a[href="/admin/events"]').click();
-    await expect(page).toHaveURL(/\/admin\/events(?:\?.*)?$/);
+    await expectAdminListUrl(page, '/admin/events');
     await expectPluginPageHeading(page, /Events|events\.list\.title/);
 
     await page.locator('a[href="/admin/events/new"]').click();
@@ -391,7 +407,7 @@ test.describe('events and POI plugins', () => {
     page.once('dialog', (dialog) => dialog.accept());
     await page.getByRole('button', { name: /Löschen|events\.actions\.delete/ }).click();
 
-    await expect(page).toHaveURL(/\/admin\/events(?:\?.*)?$/);
+    await expectAdminListUrl(page, '/admin/events');
     await expect(page.getByText(/Noch keine Events vorhanden|events\.empty\.title/)).toBeVisible();
   });
 

@@ -421,3 +421,64 @@ The system SHALL include the domain capability and resolved primitive action in 
 - **WHEN** an auditor reviews a denied or successful mapped action
 - **THEN** the stored audit record exposes the fachliche capability, resolved primitive action, result, reason code, actor reference, and scope consistently
 
+### Requirement: Admin Standard Interaction Auditing
+The system SHALL audit host-standard admin interactions that mutate multiple records, restore revisions, or expose history-sensitive operations.
+
+#### Scenario: Bulk action is audited
+- **GIVEN** a user executes a host-standard bulk action on an admin resource
+- **WHEN** the operation is accepted
+- **THEN** the host emits an audit event containing the resource identifier, action, affected record count, actor, and scope
+
+#### Scenario: Revision restore is audited
+- **GIVEN** a user restores an admin resource revision
+- **WHEN** the restore operation completes
+- **THEN** the host emits an audit event linking the current record and restored revision
+
+#### Scenario: History-sensitive operation is audited
+- **GIVEN** a user opens or executes a host-standard history-sensitive admin operation
+- **WHEN** the operation is accepted by the host
+- **THEN** the host emits or reuses the appropriate activity-log or audit-event mechanism with resource identifier, actor, scope, and operation metadata
+
+### Requirement: Revisionssichere Auditspur für Medienereignisse
+
+Das System SHALL für sicherheits- und fachrelevante Medienoperationen unveränderbare Audit-Events erzeugen.
+
+#### Scenario: Upload oder Asset-Anlage wird protokolliert
+
+- **WHEN** ein Medium hochgeladen oder als Asset registriert wird
+- **THEN** erzeugt das System ein Audit-Event mit Zeitpunkt, pseudonymisierter Actor-Referenz, Scope, Zielobjekt und Ergebnis
+- **AND** Klartext-PII oder geheime Zugangsartefakte werden nicht im Event gespeichert
+- **AND** der Upload-Status wird redigiert korrelierbar protokolliert
+
+#### Scenario: Metadaten oder Sichtbarkeit eines Assets werden geändert
+
+- **WHEN** redaktionelle Metadaten, Sichtbarkeit oder fachliche Einordnung eines Assets geändert werden
+- **THEN** erzeugt das System ein Audit-Event mit Änderungsart und Ergebnis
+- **AND** das Event bleibt exportierbar und unveränderbar
+
+#### Scenario: Lösch- oder Ersetzungsentscheidung wird protokolliert
+
+- **WHEN** ein Asset gelöscht oder archiviert werden soll
+- **THEN** erzeugt das System ein Audit-Event mit Aktion, Ergebnis und referenzbezogenem Kontext
+- **AND** eine Blockierung wegen aktiver Nutzung bleibt ebenso nachvollziehbar auditierbar
+- **AND** der Usage-Impact wird als redigierter Kontext mitgeführt
+
+#### Scenario: Variantenverarbeitung bleibt nachvollziehbar
+
+- **WHEN** das System Varianten generiert, erneut erzeugt oder verwirft
+- **THEN** entstehen dafür nachvollziehbare Medienereignisse mit Ergebnis und technischem Status
+- **AND** operative Fehlerpfade bleiben redigiert und korrelierbar
+
+#### Scenario: Bildbearbeitung bleibt nachvollziehbar
+
+- **WHEN** Fokuspunkt, Zuschnitt oder Processing-Maximalabmessungen eines Bildes geändert werden
+- **THEN** erzeugt das System ein Audit-Event mit Änderungsart, Zielobjekt und Ergebnis
+- **AND** technische Details werden so redigiert, dass keine geheimen Storage-Artefakte oder PII offengelegt werden
+
+#### Scenario: Legacy-Bridge und Migrationsschritte bleiben auditierbar
+
+- **WHEN** bestehende URL-basierte Medienbeziehungen aus News, Events oder POI in hostseitige Medienreferenzen überführt, ersetzt oder verworfen werden
+- **THEN** erzeugt das System nachvollziehbare Audit-Events für den Migrations- oder Bridge-Schritt
+- **AND** Ergebnis, Scope und Zielobjekt bleiben exportierbar nachvollziehbar
+- **AND** rohe Legacy-URLs oder geheime Storage-Artefakte werden nicht unnötig offengelegt
+

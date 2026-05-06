@@ -16,11 +16,7 @@ export type MainserverCrudClientOptions<
   errorFactory: MainserverErrorFactory<TError>;
   fetch?: typeof fetch;
   mapItem?: (item: TItem) => TItem;
-  mapListResponse: (
-    response: TListResponse,
-    mapItem: (item: TItem) => TItem,
-    query: MainserverListQuery
-  ) => TListResult;
+  mapListResponse: (response: TListResponse, mapItem: (item: TItem) => TItem) => TListResult;
   createBody?: (input: TMutationInput) => unknown;
   updateBody?: (input: TMutationInput) => unknown;
   createHeaders?: () => HeadersInit;
@@ -54,18 +50,27 @@ const resolveFetch = (fetchOverride?: typeof fetch): typeof fetch => {
   return resolvedFetch;
 };
 
-const createHeaders = (headers?: HeadersInit): Headers => new Headers(headers);
-
-export const createMainserverJsonRequestHeaders = (headers?: HeadersInit): Headers => {
-  const requestHeaders = createHeaders(headers);
-  if (!requestHeaders.has('Content-Type')) {
-    requestHeaders.set('Content-Type', 'application/json');
+const mergeHeaders = (...headersList: Array<HeadersInit | undefined>): Headers => {
+  const merged = new Headers();
+  for (const headers of headersList) {
+    if (!headers) {
+      continue;
+    }
+    for (const [key, value] of new Headers(headers).entries()) {
+      merged.set(key, value);
+    }
   }
-  if (!requestHeaders.has('X-Requested-With')) {
-    requestHeaders.set('X-Requested-With', 'XMLHttpRequest');
-  }
-  return requestHeaders;
+  return merged;
 };
+
+export const createMainserverJsonRequestHeaders = (headers?: HeadersInit): Headers =>
+  mergeHeaders(
+    {
+      'Content-Type': 'application/json',
+      'X-Requested-With': 'XMLHttpRequest',
+    },
+    headers
+  );
 
 export const buildMainserverListUrl = (basePath: string, query: MainserverListQuery): string =>
   `${basePath}?page=${encodeURIComponent(String(query.page))}&pageSize=${encodeURIComponent(String(query.pageSize))}`;
@@ -76,15 +81,10 @@ export const requestMainserverJson = async <T, TError extends Error = Mainserver
   readonly fetch?: typeof fetch;
   readonly errorFactory?: MainserverErrorFactory<TError>;
 }): Promise<T> => {
-  const headers = createHeaders(input.init?.headers);
-  if (!headers.has('Accept')) {
-    headers.set('Accept', 'application/json');
-  }
-
   const response = await resolveFetch(input.fetch)(input.url, {
     credentials: 'include',
     ...input.init,
-    headers,
+    headers: mergeHeaders({ Accept: 'application/json' }, input.init?.headers),
   });
 
   if (!response.ok) {
@@ -126,7 +126,7 @@ export const createMainserverCrudClient = <
         fetch: options.fetch,
         errorFactory: options.errorFactory,
       });
-      return options.mapListResponse(response, mapItem, query);
+      return options.mapListResponse(response, mapItem);
     },
     get: async (contentId: string): Promise<TItem> => {
       const response = await requestMainserverJson<ApiItemResponse<TItem>, TError>({

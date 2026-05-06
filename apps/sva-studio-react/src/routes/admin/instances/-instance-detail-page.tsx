@@ -34,6 +34,11 @@ type InstanceDetailPageProps = {
   readonly instanceId: string;
 };
 
+type ActionFeedback = {
+  readonly tone: 'success' | 'warning';
+  readonly message: string;
+};
+
 const formatDateTime = (value?: string) => {
   if (!value) {
     return '—';
@@ -72,6 +77,41 @@ const TenantIamStatusBadge = ({ status }: { status?: 'ready' | 'degraded' | 'blo
           : 'bg-muted text-muted-foreground';
 
   return <span className={`rounded-full px-2 py-1 text-xs font-medium ${tone}`}>{status ?? 'unknown'}</span>;
+};
+
+const readActualLatestKeycloakRun = (instance: ReturnType<typeof useInstances>['selectedInstance']) =>
+  instance?.keycloakProvisioningRuns[0] ?? instance?.latestKeycloakProvisioningRun;
+
+const readWorkerPendingProjection = (instance: ReturnType<typeof useInstances>['selectedInstance']) =>
+  Boolean(
+    instance?.keycloakPreflight?.checks.some((check) => {
+      const details = check.details as Record<string, unknown> | undefined;
+      return details?.source === 'worker_pending';
+    })
+  );
+
+const readMissingWorkerEnvName = (instance: ReturnType<typeof useInstances>['selectedInstance']) => {
+  const preflightStep = readActualLatestKeycloakRun(instance)?.steps.find(
+    (step) => step.stepKey === 'worker_preflight_snapshot'
+  );
+  const details = preflightStep?.details as
+    | {
+        preflight?: {
+          checks?: Array<{
+            checkKey?: string;
+            details?: {
+              error?: string;
+            };
+          }>;
+        };
+      }
+    | undefined;
+  const keycloakAccessCheck = details?.preflight?.checks?.find((check) => check.checkKey === 'keycloak_admin_access');
+  const error = keycloakAccessCheck?.details?.error;
+  if (!error?.startsWith('Missing required env: ')) {
+    return undefined;
+  }
+  return error.replace('Missing required env: ', '').trim() || undefined;
 };
 
 const COCKPIT_STATUS_STYLES = {
@@ -145,9 +185,11 @@ const InstanceRuntimeEvidence = ({
 export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
   const instancesApi = useInstances();
   const [detailFormValues, setDetailFormValues] = React.useState<ReturnType<typeof createDetailForm> | null>(null);
+  const [actionFeedback, setActionFeedback] = React.useState<ActionFeedback | null>(null);
   const [activeWorkspaceTab, setActiveWorkspaceTab] = React.useState<'configuration' | 'operations' | 'history'>(
     'configuration'
   );
+  const previousSelectedInstanceIdRef = React.useRef<string | null>(null);
 
   React.useEffect(() => {
     void instancesApi.loadInstance(instanceId);
@@ -157,13 +199,21 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
   const effectiveTenantIamStatus = selectedInstance ? getEffectiveTenantIamStatus(selectedInstance) : undefined;
   const tenantSecretUserInputRequired = selectedInstance ? isTenantSecretUserInputRequired(selectedInstance.realmMode) : true;
   const configurationAssessment = selectedInstance ? evaluateInstanceConfiguration(selectedInstance, instancesApi.mutationError) : null;
+  const missingWorkerEnvName = readMissingWorkerEnvName(selectedInstance);
+  const workerPendingProjection = readWorkerPendingProjection(selectedInstance);
 
   React.useEffect(() => {
     if (!selectedInstance) {
+      previousSelectedInstanceIdRef.current = null;
+      setActionFeedback(null);
       setDetailFormValues(null);
       return;
     }
 
+    if (previousSelectedInstanceIdRef.current !== selectedInstance.instanceId) {
+      setActionFeedback(null);
+    }
+    previousSelectedInstanceIdRef.current = selectedInstance.instanceId;
     setDetailFormValues(createDetailForm(selectedInstance));
     setActiveWorkspaceTab('configuration');
   }, [selectedInstance]);
@@ -219,10 +269,17 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
       return;
     }
 
-    await instancesApi.executeKeycloakProvisioning(selectedInstance.instanceId, {
+    setActionFeedback(null);
+    const result = await instancesApi.executeKeycloakProvisioning(selectedInstance.instanceId, {
       intent,
       tenantAdminTemporaryPassword: detailFormValues.tenantAdminTemporaryPassword.trim() || undefined,
     });
+    if (result) {
+      setActionFeedback({
+        tone: 'success',
+        message: t('admin.instances.feedback.provisioningQueued'),
+      });
+    }
     await instancesApi.loadInstance(selectedInstance.instanceId);
     setDetailFormValues((current) => (current ? { ...current, tenantAdminTemporaryPassword: '' } : current));
   };
@@ -241,16 +298,38 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
       return;
     }
 
+    setActionFeedback(null);
     switch (action) {
-      case 'check_preflight':
-        await instancesApi.refreshKeycloakPreflight(selectedInstance.instanceId);
+      case 'check_preflight': {
+        const result = await instancesApi.refreshKeycloakPreflight(selectedInstance.instanceId);
+        if (result) {
+          setActionFeedback({
+            tone: 'success',
+            message: t('admin.instances.feedback.preflightUpdated'),
+          });
+        }
         return;
-      case 'check_keycloak_status':
-        await instancesApi.refreshKeycloakStatus(selectedInstance.instanceId);
+      }
+      case 'check_keycloak_status': {
+        const result = await instancesApi.refreshKeycloakStatus(selectedInstance.instanceId);
+        if (result) {
+          setActionFeedback({
+            tone: 'success',
+            message: t('admin.instances.feedback.keycloakStatusUpdated'),
+          });
+        }
         return;
-      case 'plan_provisioning':
-        await instancesApi.planKeycloakProvisioning(selectedInstance.instanceId);
+      }
+      case 'plan_provisioning': {
+        const result = await instancesApi.planKeycloakProvisioning(selectedInstance.instanceId);
+        if (result) {
+          setActionFeedback({
+            tone: 'success',
+            message: t('admin.instances.feedback.provisioningPreviewUpdated'),
+          });
+        }
         return;
+      }
       case 'execute_provisioning':
         await executeProvisioning('provision');
         return;
@@ -269,7 +348,14 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
     if (!selectedInstance) {
       return;
     }
-    await instancesApi.probeTenantIamAccess(selectedInstance.instanceId);
+    setActionFeedback(null);
+    const result = await instancesApi.probeTenantIamAccess(selectedInstance.instanceId);
+    if (result) {
+      setActionFeedback({
+        tone: 'success',
+        message: t('admin.instances.feedback.tenantIamProbeUpdated'),
+      });
+    }
   };
 
   const runDetailAction = async (action: DetailWorkflowAction) => {
@@ -304,6 +390,34 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
           <Link to="/admin/instances">{t('admin.instances.actions.back')}</Link>
         </Button>
       </header>
+
+      {actionFeedback ? (
+        <Alert
+          className={
+            actionFeedback.tone === 'success'
+              ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-900'
+              : 'border-amber-500/40 bg-amber-500/10 text-amber-950'
+          }
+        >
+          <AlertDescription>{actionFeedback.message}</AlertDescription>
+        </Alert>
+      ) : null}
+
+      {missingWorkerEnvName ? (
+        <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
+          <AlertDescription>
+            {t('admin.instances.feedback.workerEnvMissing', {
+              envName: missingWorkerEnvName,
+            })}
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
+      {workerPendingProjection && !missingWorkerEnvName ? (
+        <Alert className="border-amber-500/40 bg-amber-500/10 text-amber-950">
+          <AlertDescription>{t('admin.instances.feedback.workerProjectionHint')}</AlertDescription>
+        </Alert>
+      ) : null}
 
       {instancesApi.mutationError && instancesApi.mutationError.code !== 'keycloak_unavailable' ? (
         <Alert className="border-destructive/40 bg-destructive/10 text-destructive">

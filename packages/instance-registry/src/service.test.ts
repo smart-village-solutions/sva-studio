@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { InstanceRegistryRepository } from '@sva/data-repositories';
 
 import { createInstanceRegistryService } from './service.js';
+import { createGetKeycloakStatusHandler } from './service-keycloak.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
 
 const baseInstance = {
@@ -212,6 +213,38 @@ describe('instance registry service facade', () => {
       expect.objectContaining({ operation: 'create', status: 'requested' })
     );
     expect(deps.invalidateHost).toHaveBeenCalledWith('demo.studio.example.org');
+  });
+
+  it('defaults the tenant admin client id on create when the form does not submit one', async () => {
+    const repository = createRepository({
+      getInstanceById: vi.fn(async () => null),
+    });
+    const deps = createDeps(repository);
+    const service = createInstanceRegistryService(deps);
+
+    await expect(
+      service.createProvisioningRequest({
+        instanceId: 'demo',
+        displayName: 'Demo',
+        parentDomain: 'studio.example.org',
+        realmMode: 'existing',
+        authRealm: 'demo',
+        authClientId: 'studio-client',
+        idempotencyKey: 'idem-1',
+      })
+    ).resolves.toEqual({
+      ok: true,
+      instance: expect.objectContaining({ instanceId: 'demo' }),
+    });
+
+    expect(repository.createInstance).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantAdminClient: {
+          clientId: 'sva-studio-admin',
+          secretCiphertext: undefined,
+        },
+      })
+    );
   });
 
   it('handles status transitions and emits status artifacts', async () => {
@@ -455,7 +488,7 @@ describe('instance registry service facade', () => {
           requestId: 'req-probe-1',
         }),
         overall: expect.objectContaining({
-          status: 'unknown',
+          status: 'degraded',
         }),
       })
     );
@@ -523,35 +556,6 @@ describe('instance registry service facade', () => {
     );
   });
 
-  it('rolls back an assigned module when IAM sync fails', async () => {
-    const repository = createRepository({
-      assignModule: vi.fn(async () => true),
-      revokeModule: vi.fn(async () => true),
-      listAssignedModules: vi.fn(async () => ['news', 'events']),
-      syncAssignedModuleIam: vi.fn(async () => {
-        throw new Error('sync_failed');
-      }),
-      getInstanceById: vi.fn(async () => baseInstance),
-    });
-    const deps = createDeps(repository);
-    const service = createInstanceRegistryService(deps);
-
-    await expect(
-      service.assignModule({
-        instanceId: 'demo',
-        moduleId: 'events',
-        idempotencyKey: 'idem-module-rollback',
-        actorId: 'actor-1',
-        requestId: 'req-module-rollback',
-      })
-    ).rejects.toThrow('sync_failed');
-
-    expect(repository.assignModule).toHaveBeenCalledWith('demo', 'events');
-    expect(repository.revokeModule).toHaveBeenCalledWith('demo', 'events');
-    expect(deps.invalidatePermissionSnapshots).not.toHaveBeenCalled();
-    expect(repository.appendAuditEvent).not.toHaveBeenCalled();
-  });
-
   it('invalidates instance permission snapshots after module IAM changes', async () => {
     const repository = createRepository({
       assignModule: vi.fn(async () => true),
@@ -604,6 +608,124 @@ describe('instance registry service facade', () => {
     });
   });
 
+  it('assigns the host-owned media module when it is present in the module registry', async () => {
+    const repository = createRepository({
+      assignModule: vi.fn(async () => true),
+      listAssignedModules: vi.fn(async () => ['media']),
+      getInstanceById: vi
+        .fn()
+        .mockResolvedValueOnce(baseInstance)
+        .mockResolvedValueOnce({ ...baseInstance, assignedModules: ['media'] }),
+    });
+    const service = createInstanceRegistryService(
+      createDeps(repository, {
+        moduleIamRegistry: new Map([
+          [
+            'media',
+            {
+              moduleId: 'media',
+              permissionIds: ['media.read', 'media.create'],
+              systemRoles: [{ roleName: 'editor', permissionIds: ['media.read', 'media.create'] }],
+            },
+          ],
+        ]),
+      })
+    );
+
+    await expect(
+      service.assignModule({
+        instanceId: 'demo',
+        moduleId: 'media',
+        idempotencyKey: 'idem-module-media-1',
+        actorId: 'actor-1',
+        requestId: 'req-module-media-1',
+      })
+    ).resolves.toEqual({
+      ok: true,
+      instance: expect.objectContaining({
+        assignedModules: ['media'],
+      }),
+    });
+
+    expect(repository.assignModule).toHaveBeenCalledWith('demo', 'media');
+    expect(repository.syncAssignedModuleIam).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'demo',
+        managedModuleIds: ['media'],
+        contracts: [expect.objectContaining({ moduleId: 'media' })],
+      })
+    );
+  });
+
+  it('rolls back the persisted module assignment when IAM sync fails', async () => {
+    const repository = createRepository({
+      assignModule: vi.fn(async () => true),
+      revokeModule: vi.fn(async () => true),
+      listAssignedModules: vi.fn(async () => ['news', 'events']),
+      syncAssignedModuleIam: vi.fn(async () => {
+        throw new Error('sync_failed');
+      }),
+      getInstanceById: vi.fn(async () => baseInstance),
+    });
+    const deps = createDeps(repository);
+    const service = createInstanceRegistryService(deps);
+
+    await expect(
+      service.assignModule({
+        instanceId: 'demo',
+        moduleId: 'events',
+        idempotencyKey: 'idem-module-rollback-1',
+        actorId: 'actor-1',
+        requestId: 'req-module-rollback-1',
+      })
+    ).rejects.toThrow('sync_failed');
+
+    expect(repository.assignModule).toHaveBeenCalledWith('demo', 'events');
+    expect(repository.revokeModule).toHaveBeenCalledWith('demo', 'events');
+    expect(repository.appendAuditEvent).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: 'instance_module_assigned',
+      })
+    );
+    expect(deps.invalidatePermissionSnapshots).not.toHaveBeenCalled();
+  });
+
+  it('preserves sync and rollback failures when the rollback itself fails', async () => {
+    const repository = createRepository({
+      assignModule: vi.fn(async () => true),
+      revokeModule: vi.fn(async () => {
+        throw new Error('rollback_failed');
+      }),
+      listAssignedModules: vi.fn(async () => ['news', 'events']),
+      syncAssignedModuleIam: vi.fn(async () => {
+        throw new Error('sync_failed');
+      }),
+      getInstanceById: vi.fn(async () => baseInstance),
+    });
+    const service = createInstanceRegistryService(createDeps(repository));
+
+    try {
+      await service.assignModule({
+        instanceId: 'demo',
+        moduleId: 'events',
+        idempotencyKey: 'idem-module-rollback-2',
+        actorId: 'actor-1',
+        requestId: 'req-module-rollback-2',
+      });
+      expect.unreachable('assignModule should throw');
+    } catch (error) {
+      expect(error).toBeInstanceOf(Error);
+      expect((error as Error).message).toBe('instance_module_assign_rollback_failed:demo:events:sync_failed');
+      expect((error as Error).name).toBe('InstanceModuleAssignRollbackError');
+      expect((error as Error).cause).toEqual({
+        syncError: expect.any(Error),
+        rollbackError: expect.any(Error),
+      });
+      expect(((error as Error).cause as { syncError: Error }).syncError.message).toBe('sync_failed');
+      expect(((error as Error).cause as { rollbackError: Error }).rollbackError.message).toBe('rollback_failed');
+    }
+  });
+
   it('revokes a module and reseeds the remaining module IAM baseline', async () => {
     const repository = createRepository({
       revokeModule: vi.fn(async () => true),
@@ -641,5 +763,252 @@ describe('instance registry service facade', () => {
         }),
       })
     );
+  });
+
+  it('returns a local fallback keycloak status when no status snapshot exists yet', async () => {
+    const repository = createRepository({
+      getInstanceById: vi.fn(async () => ({
+        ...baseInstance,
+        authClientSecretConfigured: false,
+        tenantAdminClient: {
+          clientId: 'tenant-admin',
+          secretConfigured: false,
+        },
+      })),
+      listKeycloakProvisioningRuns: vi.fn(async () => []),
+      getAuthClientSecretCiphertext: vi.fn(async () => null),
+      getTenantAdminClientSecretCiphertext: vi.fn(async () => null),
+    });
+
+    const status = await createGetKeycloakStatusHandler(createDeps(repository))('demo');
+
+    expect(status).toEqual({
+      realmExists: false,
+      clientExists: false,
+      tenantAdminClientExists: false,
+      instanceIdMapperExists: false,
+      tenantAdminExists: false,
+      tenantAdminHasSystemAdmin: false,
+      tenantAdminHasInstanceRegistryAdmin: false,
+      tenantAdminInstanceIdMatches: false,
+      redirectUrisMatch: false,
+      logoutUrisMatch: false,
+      webOriginsMatch: false,
+      clientSecretConfigured: false,
+      tenantClientSecretReadable: false,
+      clientSecretAligned: false,
+      tenantAdminClientSecretConfigured: false,
+      tenantAdminClientSecretReadable: false,
+      tenantAdminClientSecretAligned: false,
+      runtimeSecretSource: 'global',
+    });
+  });
+
+  it('returns a local fallback keycloak status without decrypting secrets when revealSecret is unavailable', async () => {
+    const getAuthClientSecretCiphertext = vi.fn(async () => 'cipher-auth');
+    const getTenantAdminClientSecretCiphertext = vi.fn(async () => 'cipher-admin');
+    const repository = createRepository({
+      getInstanceById: vi.fn(async () => ({
+        ...baseInstance,
+        authClientSecretConfigured: true,
+        tenantAdminClient: {
+          clientId: 'tenant-admin',
+          secretConfigured: true,
+        },
+      })),
+      listKeycloakProvisioningRuns: vi.fn(async () => []),
+      getAuthClientSecretCiphertext,
+      getTenantAdminClientSecretCiphertext,
+    });
+
+    const status = await createGetKeycloakStatusHandler(createDeps(repository, { revealSecret: undefined }))('demo');
+
+    expect(status).toEqual({
+      realmExists: false,
+      clientExists: false,
+      tenantAdminClientExists: false,
+      instanceIdMapperExists: false,
+      tenantAdminExists: false,
+      tenantAdminHasSystemAdmin: false,
+      tenantAdminHasInstanceRegistryAdmin: false,
+      tenantAdminInstanceIdMatches: false,
+      redirectUrisMatch: false,
+      logoutUrisMatch: false,
+      webOriginsMatch: false,
+      clientSecretConfigured: true,
+      tenantClientSecretReadable: false,
+      clientSecretAligned: false,
+      tenantAdminClientSecretConfigured: true,
+      tenantAdminClientSecretReadable: false,
+      tenantAdminClientSecretAligned: false,
+      runtimeSecretSource: 'global',
+    });
+    expect(getAuthClientSecretCiphertext).not.toHaveBeenCalled();
+    expect(getTenantAdminClientSecretCiphertext).not.toHaveBeenCalled();
+  });
+
+  it('does not return a persisted keycloak status snapshot for unknown instances', async () => {
+    const repository = createRepository({
+      getInstanceById: vi.fn(async () => null),
+      listKeycloakProvisioningRuns: vi.fn(async () => [
+        {
+          id: 'keycloak-run-1',
+          instanceId: 'demo',
+          mode: 'existing',
+          intent: 'provision',
+          overallStatus: 'succeeded',
+          driftSummary: 'Done',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+          steps: [
+            {
+              stepKey: 'status_snapshot',
+              title: 'Status',
+              status: 'done',
+              summary: 'Snapshot vorhanden',
+              details: {
+                status: {
+                  realmExists: true,
+                  clientExists: true,
+                  tenantAdminClientExists: true,
+                  instanceIdMapperExists: true,
+                  tenantAdminExists: true,
+                  tenantAdminHasSystemAdmin: true,
+                  tenantAdminHasInstanceRegistryAdmin: true,
+                  tenantAdminInstanceIdMatches: true,
+                  redirectUrisMatch: true,
+                  logoutUrisMatch: true,
+                  webOriginsMatch: true,
+                  clientSecretConfigured: true,
+                  tenantClientSecretReadable: true,
+                  clientSecretAligned: true,
+                  tenantAdminClientSecretConfigured: true,
+                  tenantAdminClientSecretReadable: true,
+                  tenantAdminClientSecretAligned: true,
+                  runtimeSecretSource: 'tenant',
+                },
+              },
+            },
+          ],
+        },
+      ]),
+    });
+
+    await expect(createGetKeycloakStatusHandler(createDeps(repository))('demo')).resolves.toBeNull();
+  });
+
+  it('returns a persisted keycloak status snapshot without loading secrets', async () => {
+    const getAuthClientSecretCiphertext = vi.fn(async () => {
+      throw new Error('should_not_load_auth_secret');
+    });
+    const getTenantAdminClientSecretCiphertext = vi.fn(async () => {
+      throw new Error('should_not_load_tenant_secret');
+    });
+    const repository = createRepository({
+      listKeycloakProvisioningRuns: vi.fn(async () => [
+        {
+          id: 'keycloak-run-1',
+          instanceId: 'demo',
+          mode: 'existing',
+          intent: 'provision',
+          overallStatus: 'succeeded',
+          driftSummary: 'Done',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+          steps: [
+            {
+              stepKey: 'status_snapshot',
+              title: 'Status',
+              status: 'done',
+              summary: 'Snapshot vorhanden',
+              details: {
+                status: {
+                  realmExists: true,
+                  clientExists: true,
+                  tenantAdminClientExists: true,
+                  instanceIdMapperExists: true,
+                  tenantAdminExists: true,
+                  tenantAdminHasSystemAdmin: true,
+                  tenantAdminHasInstanceRegistryAdmin: true,
+                  tenantAdminInstanceIdMatches: true,
+                  redirectUrisMatch: true,
+                  logoutUrisMatch: true,
+                  webOriginsMatch: true,
+                  clientSecretConfigured: true,
+                  tenantClientSecretReadable: true,
+                  clientSecretAligned: true,
+                  tenantAdminClientSecretConfigured: true,
+                  tenantAdminClientSecretReadable: true,
+                  tenantAdminClientSecretAligned: true,
+                  runtimeSecretSource: 'tenant',
+                },
+              },
+            },
+          ],
+        },
+      ]),
+      getAuthClientSecretCiphertext,
+      getTenantAdminClientSecretCiphertext,
+    });
+
+    const status = await createGetKeycloakStatusHandler(createDeps(repository, { revealSecret: undefined }))('demo');
+
+    expect(status).toEqual({
+      realmExists: true,
+      clientExists: true,
+      tenantAdminClientExists: true,
+      instanceIdMapperExists: true,
+      tenantAdminExists: true,
+      tenantAdminHasSystemAdmin: true,
+      tenantAdminHasInstanceRegistryAdmin: true,
+      tenantAdminInstanceIdMatches: true,
+      redirectUrisMatch: true,
+      logoutUrisMatch: true,
+      webOriginsMatch: true,
+      clientSecretConfigured: true,
+      tenantClientSecretReadable: true,
+      clientSecretAligned: true,
+      tenantAdminClientSecretConfigured: true,
+      tenantAdminClientSecretReadable: true,
+      tenantAdminClientSecretAligned: true,
+      runtimeSecretSource: 'tenant',
+    });
+    expect(getAuthClientSecretCiphertext).not.toHaveBeenCalled();
+    expect(getTenantAdminClientSecretCiphertext).not.toHaveBeenCalled();
+  });
+
+  it('returns null for keycloak status snapshots when the instance no longer exists', async () => {
+    const repository = createRepository({
+      getInstanceById: vi.fn(async () => null),
+      listKeycloakProvisioningRuns: vi.fn(async () => [
+        {
+          id: 'keycloak-run-1',
+          instanceId: 'demo',
+          mode: 'existing',
+          intent: 'provision',
+          overallStatus: 'succeeded',
+          driftSummary: 'Done',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+          steps: [
+            {
+              stepKey: 'status_snapshot',
+              title: 'Status',
+              status: 'done',
+              summary: 'Snapshot vorhanden',
+              details: {
+                status: {
+                  realmExists: true,
+                },
+              },
+            },
+          ],
+        },
+      ]),
+    });
+
+    const status = await createGetKeycloakStatusHandler(createDeps(repository))('demo');
+
+    expect(status).toBeNull();
   });
 });

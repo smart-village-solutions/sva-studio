@@ -174,6 +174,35 @@ const invalidCreateAction = 'create';
 
 ---
 
+## 1.5 Server-Orchestrierung und Routing-Verantwortung
+
+### ✅ REQUIRED
+- Das aktuelle Architekturmodell darf beibehalten werden:
+  - `@sva/routing` bleibt das kanonische Modell für UI-/TanStack-Routing.
+  - Der App-Entry `apps/sva-studio-react/src/server.ts` darf app-spezifische Server-Orchestrierung, Vorab-Dispatch und Transport-Diagnostik bündeln.
+- `server.ts` ist als Composition Root zu behandeln:
+  - neue Fachlogik, Validierung oder domänenspezifische Entscheidungslogik sollen nicht dort anwachsen
+  - stattdessen in dedizierte Module oder Packages verschieben, sobald sie nicht mehr nur reines Wiring sind
+- Strukturrefactorings wie ein aggregierter Package-Dispatcher oder das Herausziehen der Orchestrierung sind nur dann zu priorisieren, wenn konkrete Reibung vorliegt, zum Beispiel:
+  - hohe Änderungsfrequenz im Entry-Point
+  - sinkende Testbarkeit
+  - Wiederverwendungsbedarf über mehrere Apps
+  - wachsender Aufwand beim Ergänzen neuer Spezialrouten oder Bypass-Pfade
+- `createServerFn`-Wrapper bleiben grundsätzlich App-Adapter. Framework-agnostische Geschäftslogik gehört in Packages; die TanStack-Start-Bindung wird nur mit klarer Begründung in ein Package verschoben.
+
+### ❌ FORBIDDEN
+- UI-Routing und HTTP-Dispatch begrifflich oder architektonisch unklar zu einem einzigen "kanonischen Routing-Modell" zu vermischen.
+- `server.ts` schrittweise zu einem Sammelpunkt für fachliche Sonderlogik auszubauen.
+- Framework-Kopplung in Domänenpackages einzuführen, nur um dünne App-Adapter-Dateien zu vermeiden.
+- Architektur-Refactorings ohne klaren Nutzen, messbare Reibung oder dokumentierte Zielsetzung anzustoßen.
+
+**Warum diese Regel wichtig ist:**
+- Sie schützt vor unnötigen Architekturumbauten ohne akuten Nutzen.
+- Sie hält die Trennung zwischen kanonischem UI-Routing und app-spezifischem Server-Transport klar.
+- Sie erlaubt pragmatische Weiterentwicklung, ohne `server.ts` unkontrolliert wachsen zu lassen.
+
+---
+
 ## 2. Translation System
 
 ### Process for UI Texts

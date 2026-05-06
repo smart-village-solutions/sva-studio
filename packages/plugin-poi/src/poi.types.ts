@@ -21,11 +21,16 @@ export type PoiListQuery = {
   readonly pageSize: number;
 };
 
-export type PoiListPagination = {
+export type PoiPagination = {
   readonly page: number;
   readonly pageSize: number;
   readonly hasNextPage: boolean;
   readonly total?: number;
+};
+
+export type PoiListResult = {
+  readonly data: readonly PoiContentItem[];
+  readonly pagination: PoiPagination;
 };
 
 export type PoiOpeningHour = {
@@ -57,9 +62,4 @@ export type PoiContentItem = PoiFormInput & {
   readonly visible?: boolean;
   readonly createdAt: string;
   readonly updatedAt: string;
-};
-
-export type PoiListResult = {
-  readonly data: readonly PoiContentItem[];
-  readonly pagination: PoiListPagination;
 };

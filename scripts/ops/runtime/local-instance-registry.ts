@@ -32,8 +32,8 @@ export const buildLocalInstanceRegistryReconciliationInput = (
   return {
     allowedInstanceIds,
     parentDomain,
-    tenantAuthClientId: env.SVA_LOCAL_TENANT_AUTH_CLIENT_ID?.trim() || 'sva-studio',
-    tenantAdminClientId: env.SVA_LOCAL_TENANT_ADMIN_CLIENT_ID?.trim() || 'sva-studio-admin',
+    tenantAuthClientId: env.SVA_LOCAL_TENANT_AUTH_CLIENT_ID?.trim() || 'sva-studio-login',
+    tenantAdminClientId: env.SVA_LOCAL_TENANT_ADMIN_CLIENT_ID?.trim() || 'sva-studio-realm-admin',
     tenantAuthRealmMode,
   };
 };

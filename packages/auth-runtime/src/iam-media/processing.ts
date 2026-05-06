@@ -72,27 +72,6 @@ const resolvePresetContentType = (format: MediaPreset['format']): string => {
   }
 };
 
-const shouldDeleteFailedUploadBlob = (errorCode: MediaUploadProcessingFailureCode): boolean =>
-  errorCode === 'invalid_media_content' || errorCode === 'upload_size_exceeded';
-
-const isRecoverableValidationError = (error: unknown): error is Error => {
-  if (!(error instanceof Error)) {
-    return false;
-  }
-
-  if (error.message === 'upload_size_mismatch') {
-    return true;
-  }
-
-  // Sharp uses these messages for malformed or unsupported image payloads.
-  return (
-    error.message.includes('unsupported image format')
-    || error.message.includes('Input buffer')
-    || error.message.includes('Vips')
-    || error.message.includes('corrupt')
-  );
-};
-
 const createVariantBuffer = async (input: {
   readonly buffer: Uint8Array;
   readonly preset: MediaPreset;
@@ -100,7 +79,47 @@ const createVariantBuffer = async (input: {
   readonly focusPoint?: MediaFocusPoint;
 }): Promise<Buffer> => {
   const image = sharp(input.buffer, { failOn: 'error' }).rotate();
-  const metadata = await image.metadata();
+  const sourceMetadata = await image.metadata();
+  const sourceWidth = sourceMetadata.width;
+  const sourceHeight = sourceMetadata.height;
+
+  const extractAroundFocusPoint = () => {
+    if (!input.focusPoint || !input.preset.height || !sourceWidth || !sourceHeight) {
+      return;
+    }
+
+    const targetAspectRatio = input.preset.width / input.preset.height;
+    const sourceAspectRatio = sourceWidth / sourceHeight;
+    if (!Number.isFinite(targetAspectRatio) || !Number.isFinite(sourceAspectRatio)) {
+      return;
+    }
+
+    if (sourceAspectRatio > targetAspectRatio) {
+      const extractWidth = Math.max(1, Math.min(sourceWidth, Math.round(sourceHeight * targetAspectRatio)));
+      const focusX = Math.max(0, Math.min(1, input.focusPoint.x));
+      const left = Math.max(0, Math.min(sourceWidth - extractWidth, Math.round(focusX * sourceWidth - extractWidth / 2)));
+      image.extract({
+        left,
+        top: 0,
+        width: extractWidth,
+        height: sourceHeight,
+      });
+      return;
+    }
+
+    if (sourceAspectRatio < targetAspectRatio) {
+      const extractHeight = Math.max(1, Math.min(sourceHeight, Math.round(sourceWidth / targetAspectRatio)));
+      const focusY = Math.max(0, Math.min(1, input.focusPoint.y));
+      const top = Math.max(0, Math.min(sourceHeight - extractHeight, Math.round(focusY * sourceHeight - extractHeight / 2)));
+      image.extract({
+        left: 0,
+        top,
+        width: sourceWidth,
+        height: extractHeight,
+      });
+    }
+  };
+
   if (input.crop) {
     image.extract({
       left: Math.max(0, Math.round(input.crop.x)),
@@ -108,33 +127,8 @@ const createVariantBuffer = async (input: {
       width: Math.max(1, Math.round(input.crop.width)),
       height: Math.max(1, Math.round(input.crop.height)),
     });
-  } else if (input.focusPoint && input.preset.height && metadata.width && metadata.height) {
-    const targetAspectRatio = input.preset.width / input.preset.height;
-    const sourceAspectRatio = metadata.width / metadata.height;
-
-    if (Math.abs(sourceAspectRatio - targetAspectRatio) > 0.001) {
-      if (sourceAspectRatio > targetAspectRatio) {
-        const cropWidth = Math.max(1, Math.round(metadata.height * targetAspectRatio));
-        const focusX = Math.round(input.focusPoint.x * metadata.width);
-        const left = Math.min(Math.max(0, focusX - Math.round(cropWidth / 2)), metadata.width - cropWidth);
-        image.extract({
-          left,
-          top: 0,
-          width: cropWidth,
-          height: metadata.height,
-        });
-      } else {
-        const cropHeight = Math.max(1, Math.round(metadata.width / targetAspectRatio));
-        const focusY = Math.round(input.focusPoint.y * metadata.height);
-        const top = Math.min(Math.max(0, focusY - Math.round(cropHeight / 2)), metadata.height - cropHeight);
-        image.extract({
-          left: 0,
-          top,
-          width: metadata.width,
-          height: cropHeight,
-        });
-      }
-    }
+  } else {
+    extractAroundFocusPoint();
   }
 
   const resized = image.resize({
@@ -164,7 +158,10 @@ const markProcessingFailure = async (input: {
     readonly service: Pick<MediaService, 'upsertAsset' | 'upsertUploadSession'>;
     readonly storagePort: Pick<
       {
-        deleteObject: (input: { instanceId: string; storageKey: string }) => Promise<void>;
+        deleteObject: (input: {
+          readonly instanceId: string;
+          readonly storageKey: string;
+        }) => Promise<void>;
       },
       'deleteObject'
     >;
@@ -177,12 +174,12 @@ const markProcessingFailure = async (input: {
     return asErrorResult(404, 'asset_not_found');
   }
 
-  if (shouldDeleteFailedUploadBlob(input.errorCode)) {
-    await input.deps.storagePort.deleteObject({
-      instanceId: String(input.asset.instanceId),
+  await Promise.allSettled([
+    input.deps.storagePort.deleteObject({
+      instanceId: String(input.uploadSession.instanceId),
       storageKey: String(input.uploadSession.storageKey),
-    });
-  }
+    }),
+  ]);
 
   await input.deps.service.upsertAsset({
     ...input.asset,
@@ -241,13 +238,8 @@ export const createMediaUploadProcessingService = (deps: {
     if (!asset) {
       return asErrorResult(404, 'asset_not_found');
     }
-    if (asset.uploadStatus === 'processed' && asset.processingStatus === 'ready') {
-      if (uploadSession.status !== 'validated') {
-        await deps.service.upsertUploadSession({
-          ...uploadSession,
-          status: 'validated',
-        });
-      }
+
+    if (uploadSession.status === 'validated' && asset.uploadStatus === 'processed' && asset.processingStatus === 'ready') {
       return {
         ok: true,
         asset,
@@ -255,7 +247,8 @@ export const createMediaUploadProcessingService = (deps: {
       };
     }
 
-    const writtenVariantStorageKeys: string[] = [];
+    let persistenceStarted = false;
+    const persistedVariantStorageKeys: string[] = [];
 
     try {
       const object = await deps.storagePort.readObject({
@@ -286,7 +279,20 @@ export const createMediaUploadProcessingService = (deps: {
         etag: object.etag,
       };
 
-      let variantBytes = 0;
+      const variantsToPersist: Array<{
+        id: string;
+        assetId: string;
+        variantKey: string;
+        presetKey: string;
+        format: string;
+        width: number;
+        height?: number;
+        storageKey: string;
+        generationStatus: 'ready';
+        body: Buffer;
+        contentType: string;
+      }> = [];
+
       for (const preset of defaultMediaPresets) {
         const variantBuffer = await createVariantBuffer({
           buffer: object.body,
@@ -300,16 +306,8 @@ export const createMediaUploadProcessingService = (deps: {
           variantKey: preset.key,
           format: preset.format,
         });
-        const writeResult = await deps.storagePort.writeObject({
-          instanceId: input.instanceId,
-          storageKey,
-          body: variantBuffer,
-          contentType: resolvePresetContentType(preset.format),
-        });
-        writtenVariantStorageKeys.push(storageKey);
-        variantBytes += writeResult.byteSize;
         const variantMetadata = await sharp(variantBuffer).metadata();
-        await deps.service.upsertVariant(input.instanceId, {
+        variantsToPersist.push({
           id: deps.createId(),
           assetId: asset.id,
           variantKey: preset.key,
@@ -319,6 +317,32 @@ export const createMediaUploadProcessingService = (deps: {
           height: variantMetadata.height,
           storageKey,
           generationStatus: 'ready',
+          body: variantBuffer,
+          contentType: resolvePresetContentType(preset.format),
+        });
+      }
+
+      let variantBytes = 0;
+      persistenceStarted = true;
+      for (const variant of variantsToPersist) {
+        const writeResult = await deps.storagePort.writeObject({
+          instanceId: input.instanceId,
+          storageKey: variant.storageKey,
+          body: variant.body,
+          contentType: variant.contentType,
+        });
+        persistedVariantStorageKeys.push(variant.storageKey);
+        variantBytes += writeResult.byteSize;
+        await deps.service.upsertVariant(input.instanceId, {
+          id: variant.id,
+          assetId: variant.assetId,
+          variantKey: variant.variantKey,
+          presetKey: variant.presetKey,
+          format: variant.format,
+          width: variant.width,
+          height: variant.height,
+          storageKey: variant.storageKey,
+          generationStatus: variant.generationStatus,
         });
       }
 
@@ -329,7 +353,7 @@ export const createMediaUploadProcessingService = (deps: {
         processingStatus: 'ready',
         technical: {
           ...technical,
-          variantTotalBytes: variantBytes,
+          variantBytes,
         },
       };
 
@@ -338,7 +362,8 @@ export const createMediaUploadProcessingService = (deps: {
         ...uploadSession,
         status: 'validated',
       });
-      await deps.service.adjustStorageUsage({
+
+      await deps.service.applyStorageUsageDelta({
         instanceId: input.instanceId,
         totalBytesDelta: object.byteSize + variantBytes,
         assetCountDelta: 1,
@@ -350,9 +375,9 @@ export const createMediaUploadProcessingService = (deps: {
         uploadSessionId: String(uploadSession.id),
       };
     } catch (error) {
-      if (writtenVariantStorageKeys.length > 0) {
+      if (persistenceStarted) {
         await Promise.allSettled(
-          writtenVariantStorageKeys.map((storageKey) =>
+          persistedVariantStorageKeys.map((storageKey) =>
             deps.storagePort.deleteObject({
               instanceId: input.instanceId,
               storageKey,
@@ -361,14 +386,9 @@ export const createMediaUploadProcessingService = (deps: {
         );
         await deps.service.deleteVariantsByAssetId(input.instanceId, String(asset.id));
       }
-
-      if (error instanceof MediaStorageUnavailableError) {
+      if (error instanceof MediaStorageUnavailableError || persistenceStarted) {
         throw error;
       }
-      if (!isRecoverableValidationError(error)) {
-        throw error;
-      }
-
       return markProcessingFailure({
         deps,
         asset,

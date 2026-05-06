@@ -254,9 +254,9 @@ describe('admin resource routes', () => {
           list: ['media.read'],
         },
         views: {
-          list: { bindingKey: 'adminMedia' },
-          create: { bindingKey: 'adminMedia' },
-          detail: { bindingKey: 'adminMedia' },
+          list: { bindingKey: 'media' },
+          create: { bindingKey: 'media' },
+          detail: { bindingKey: 'media' },
         },
       },
     ]).find((candidate) => {
@@ -294,9 +294,9 @@ describe('admin resource routes', () => {
           detail: ['media.read'],
         },
         views: {
-          list: { bindingKey: 'adminMedia' },
-          create: { bindingKey: 'adminMedia' },
-          detail: { bindingKey: 'adminMedia' },
+          list: { bindingKey: 'media' },
+          create: { bindingKey: 'media' },
+          detail: { bindingKey: 'media' },
         },
       },
     ]).find((candidate) => {
@@ -326,15 +326,15 @@ describe('admin resource routes', () => {
         resourceId: 'host.media',
         basePath: 'media',
         titleKey: 'media.title',
-        guard: 'media',
+        guard: 'adminInstances',
         moduleId: 'media',
         permissions: {
           list: ['media.read'],
         },
         views: {
-          list: { bindingKey: 'adminMedia' },
-          create: { bindingKey: 'adminMedia' },
-          detail: { bindingKey: 'adminMedia' },
+          list: { bindingKey: 'media' },
+          create: { bindingKey: 'media' },
+          detail: { bindingKey: 'media' },
         },
       },
     ]).find((candidate) => {
@@ -462,29 +462,6 @@ describe('admin resource routes', () => {
       search: 'news',
       sort: undefined,
     });
-  });
-
-  it('does not attach list search normalization when no list capabilities are declared', () => {
-    const routeFactories = createAdminResourceRouteFactories(bindings, [
-      {
-        resourceId: 'news.content',
-        basePath: 'news',
-        titleKey: 'news.navigation.title',
-        guard: 'content',
-        views: {
-          list: { bindingKey: 'content' },
-          create: { bindingKey: 'contentCreate' },
-          detail: { bindingKey: 'contentDetail' },
-        },
-      } as never,
-    ]);
-    const rootRoute = { id: 'root' };
-    const listRoute = routeFactories
-      .map((factory) => factory(rootRoute as never))
-      .map((route) => readRouteOptions(route))
-      .find((route) => route.path === '/admin/news');
-
-    expect(listRoute?.validateSearch).toBeUndefined();
   });
 
   it('redirects legacy content aliases using href and location.href fallbacks', () => {

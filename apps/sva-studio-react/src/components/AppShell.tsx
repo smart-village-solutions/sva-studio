@@ -11,6 +11,8 @@ import Header from './Header';
 import { t } from '../i18n';
 import { useAuth } from '../providers/auth-provider';
 
+type LegalTextAcceptanceDialogComponent = typeof import('./LegalTextAcceptanceDialog').LegalTextAcceptanceDialog;
+
 type AppShellProps = Readonly<{
   children: React.ReactNode;
   currentPathname?: string;
@@ -34,13 +36,6 @@ const LazySidebar = React.lazy(async () => {
   };
 });
 
-const LazyLegalTextAcceptanceDialog = React.lazy(async () => {
-  const module = await import('./LegalTextAcceptanceDialog');
-  return {
-    default: module.LegalTextAcceptanceDialog,
-  };
-});
-
 const LazyPermissionsDegradedBanner = React.lazy(async () => {
   const module = await import('./PermissionsDegradedBanner');
   return {
@@ -49,6 +44,51 @@ const LazyPermissionsDegradedBanner = React.lazy(async () => {
 });
 
 const runtimeHealthIndicatorEnabled = import.meta.env.VITE_PLAYWRIGHT_TEST !== 'true';
+
+export const shouldRenderLegalTextAcceptanceDialog = (input: {
+  readonly isHydrated: boolean;
+  readonly isAuthenticated: boolean;
+}): boolean => input.isHydrated && input.isAuthenticated;
+
+const LegalTextAcceptanceDialogSlot = ({ enabled, pathname }: Readonly<{ enabled: boolean; pathname: string }>) => {
+  const [DialogComponent, setDialogComponent] = React.useState<LegalTextAcceptanceDialogComponent | null>(null);
+
+  React.useEffect(() => {
+    if (!enabled) {
+      setDialogComponent(null);
+      return;
+    }
+
+    let isCancelled = false;
+
+    const loadDialogComponent = async () => {
+      try {
+        const module = await import('./LegalTextAcceptanceDialog');
+        if (isCancelled) {
+          return;
+        }
+        setDialogComponent(() => module.LegalTextAcceptanceDialog);
+      } catch {
+        if (isCancelled) {
+          return;
+        }
+        setDialogComponent(null);
+      }
+    };
+
+    void loadDialogComponent();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [enabled]);
+
+  if (!enabled || DialogComponent === null) {
+    return null;
+  }
+
+  return <DialogComponent pathname={pathname} />;
+};
 
 /**
  * Rendert das anwendungsweite Shell-Layout mit austauschbarem Sidebar-Slot.
@@ -70,6 +110,10 @@ export default function AppShell({
   const [isHydrated, setIsHydrated] = React.useState(false);
   const showSidebar = isAuthenticated && !isAuthLoading;
   const showBreadcrumbs = isHydrated && currentPathname !== '/';
+  const showLegalTextAcceptanceDialog = shouldRenderLegalTextAcceptanceDialog({
+    isHydrated,
+    isAuthenticated,
+  });
 
   React.useEffect(() => {
     setIsHydrated(true);
@@ -129,11 +173,7 @@ export default function AppShell({
             </div>
           )}
         </main>
-        {isHydrated ? (
-          <React.Suspense fallback={null}>
-            <LazyLegalTextAcceptanceDialog pathname={currentPathname} />
-          </React.Suspense>
-        ) : null}
+        <LegalTextAcceptanceDialogSlot enabled={showLegalTextAcceptanceDialog} pathname={currentPathname} />
       </div>
     </div>
   );

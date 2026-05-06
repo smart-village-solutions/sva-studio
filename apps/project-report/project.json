@@ -1,0 +1,72 @@
+{
+  "name": "project-report",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/project-report/src",
+  "projectType": "application",
+  "tags": ["scope:app", "type:app"],
+  "targets": {
+    "serve": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/project-report",
+        "command": "pnpm run dev"
+      }
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": ["production", "^production", "frontendTooling"],
+      "outputs": ["{projectRoot}/dist"],
+      "options": {
+        "cwd": "apps/project-report",
+        "command": "pnpm run build"
+      }
+    },
+    "preview": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/project-report",
+        "command": "pnpm run preview"
+      }
+    },
+    "test:unit": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": ["default", "^production", "testing", "frontendTooling"],
+      "outputs": [],
+      "options": {
+        "cwd": "apps/project-report",
+        "command": "pnpm exec vitest run --reporter=verbose --config vitest.config.ts --passWithNoTests"
+      }
+    },
+    "test:coverage": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": ["default", "^production", "testing", "frontendTooling"],
+      "outputs": ["{projectRoot}/coverage"],
+      "options": {
+        "cwd": "apps/project-report",
+        "command": "pnpm exec vitest run --coverage --reporter=verbose --config vitest.config.ts --passWithNoTests"
+      }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": ["default", "^production", "frontendTooling"],
+      "outputs": [],
+      "options": {
+        "cwd": "apps/project-report",
+        "command": "pnpm exec tsc --noEmit -p tsconfig.json"
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "cache": true,
+      "inputs": ["default", "^production", "frontendTooling"],
+      "outputs": [],
+      "options": {
+        "lintFilePatterns": ["apps/project-report/src/**/*.{ts,tsx,js,jsx}"]
+      }
+    }
+  }
+}

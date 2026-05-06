@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import React from 'react';
 
-import { RoleDetailPage } from './-role-detail-page';
+import { RoleDetailPage, sortPermissionIdsByCatalog } from './-role-detail-page';
 
 const useRolesMock = vi.fn();
 const useRolePermissionsMock = vi.fn();
@@ -206,6 +206,19 @@ describe('RoleDetailPage', () => {
         permissionIds: ['perm-1', 'perm-2'],
       });
     });
+  });
+
+  it('sorts permission ids by catalog keys without depending on incoming id order', () => {
+    expect(
+      sortPermissionIdsByCatalog(
+        ['perm-2', 'perm-4', 'perm-1'],
+        [
+          { id: 'perm-1', permissionKey: 'content.read' },
+          { id: 'perm-2', permissionKey: 'content.updatePayload' },
+          { id: 'perm-4', permissionKey: 'news.read' },
+        ]
+      )
+    ).toEqual(['perm-1', 'perm-2', 'perm-4']);
   });
 
   it('can reveal technical permission details and links to the IAM cockpit', () => {

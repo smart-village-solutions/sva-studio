@@ -869,6 +869,17 @@ export const i18nResources = {
           rotateClientSecret: 'Client-Secret rotieren',
           loadRun: 'Run laden',
         },
+        feedback: {
+          preflightUpdated: 'Vorbedingungen wurden aktualisiert.',
+          keycloakStatusUpdated: 'Keycloak-Status wurde aktualisiert.',
+          provisioningPreviewUpdated: 'Provisioning-Vorschau wurde aktualisiert.',
+          provisioningQueued: 'Provisioning-Auftrag wurde gespeichert und zur Abarbeitung vorgemerkt.',
+          tenantIamProbeUpdated: 'Tenant-IAM-Rechteprobe wurde aktualisiert.',
+          workerEnvMissing:
+            'Der Provisioning-Worker kann Keycloak derzeit nicht technisch prüfen. Im laufenden Prozess fehlt {{envName}}.',
+          workerProjectionHint:
+            'Die angezeigten Vorbedingungen und der Keycloak-Status sind derzeit nur eine Registry-basierte Vorabschätzung. Ein echter Live-Abgleich erfolgt erst im Provisioning-Worker.',
+        },
         keycloakPanel: {
           title: 'Keycloak-Status und Bootstrap',
           subtitle: 'Abgleich von Realm, Client, Mapper und Tenant-Admin für die ausgewählte Instanz.',
@@ -918,11 +929,6 @@ export const i18nResources = {
             title: 'IAM-Basis der Module',
             subtitle: 'Deklarierter Modulvertrag und registrierter Befund der aktuell zugewiesenen Module.',
           },
-          confirm: {
-            revokeTitle: 'Modul wirklich entziehen?',
-            revokeDescription:
-              'Das Modul {{moduleId}} wird der gewählten Instanz entzogen. Anschließend muss die IAM-Basis bei Bedarf neu aufgebaut werden.',
-          },
           module: {
             permissions: 'Berechtigungen: {{value}}',
             roles: 'Systemrollen: {{value}}',
@@ -931,6 +937,13 @@ export const i18nResources = {
             assign: 'Modul zuweisen',
             revoke: 'Modul entziehen',
             seedIamBaseline: 'IAM-Basis neu aufbauen',
+          },
+          confirmRevoke: {
+            title: 'Modul wirklich entziehen?',
+            description:
+              'Das Modul {{moduleId}} wird der Instanz {{instanceId}} entzogen. Zugehörige Berechtigungen und IAM-Basis werden dabei entfernt.',
+            confirm: 'Modul entziehen',
+            cancel: 'Abbrechen',
           },
         },
         wizard: {
@@ -3084,6 +3097,17 @@ export const i18nResources = {
           rotateClientSecret: 'Rotate client secret',
           loadRun: 'Load run',
         },
+        feedback: {
+          preflightUpdated: 'Preflight data was refreshed.',
+          keycloakStatusUpdated: 'Keycloak status was refreshed.',
+          provisioningPreviewUpdated: 'Provisioning preview was refreshed.',
+          provisioningQueued: 'The provisioning job was queued for execution.',
+          tenantIamProbeUpdated: 'The tenant IAM access probe was refreshed.',
+          workerEnvMissing:
+            'The provisioning worker cannot technically inspect Keycloak right now. The running process is missing {{envName}}.',
+          workerProjectionHint:
+            'The displayed preflight and Keycloak status are currently only a registry-based projection. A real live reconciliation only happens inside the provisioning worker.',
+        },
         keycloakPanel: {
           title: 'Keycloak status and bootstrap',
           subtitle: 'Reconcile realm, client, mapper, and tenant admin for the selected instance.',
@@ -3133,11 +3157,6 @@ export const i18nResources = {
             title: 'Module IAM baseline',
             subtitle: 'Declared module contract and registry status for the currently assigned modules.',
           },
-          confirm: {
-            revokeTitle: 'Really revoke module?',
-            revokeDescription:
-              'The module {{moduleId}} will be revoked from the selected instance. Rebuild the IAM baseline afterwards if needed.',
-          },
           module: {
             permissions: 'Permissions: {{value}}',
             roles: 'System roles: {{value}}',
@@ -3146,6 +3165,13 @@ export const i18nResources = {
             assign: 'Assign module',
             revoke: 'Revoke module',
             seedIamBaseline: 'Rebuild IAM baseline',
+          },
+          confirmRevoke: {
+            title: 'Really revoke module?',
+            description:
+              'Module {{moduleId}} will be revoked from instance {{instanceId}}. Related permissions and IAM baseline data will be removed.',
+            confirm: 'Revoke module',
+            cancel: 'Cancel',
           },
         },
         wizard: {

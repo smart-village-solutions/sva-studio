@@ -1,9 +1,9 @@
 import { withServerDeniedContentAccess, type IamContentAccessSummary } from '@sva/core';
+import { StudioDataTable, StudioListPageTemplate, type StudioColumnDef } from '@sva/studio-ui-react';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import React from 'react';
 
-import { StudioDataTable, type StudioColumnDef } from '../../components/StudioDataTable';
-import { StudioListPageTemplate } from '../../components/StudioListPageTemplate';
+import { createStudioDataTableLabels } from '../../components/studio-data-table-labels';
 import { Alert, AlertDescription } from '../../components/ui/alert';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
@@ -258,6 +258,7 @@ const ContentPaginationNav = ({
 );
 
 export const ContentListPage = () => {
+  const studioDataTableLabels = createStudioDataTableLabels();
   const navigate = useNavigate();
   const search = useSearch({ strict: false }) as RouteSearchState;
   const contentsApi = useContents();
@@ -498,6 +499,7 @@ export const ContentListPage = () => {
 
       <StudioDataTable
         ariaLabel={t('content.table.ariaLabel')}
+        labels={studioDataTableLabels}
         caption={t('content.table.caption')}
         data={pagedContents}
         columns={contentColumns}

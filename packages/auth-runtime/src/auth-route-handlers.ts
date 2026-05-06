@@ -386,6 +386,387 @@ const isSilentSsoSuppressed = (request: Request): boolean => {
   return Number.isFinite(suppressUntil) && suppressUntil > Date.now();
 };
 
+type AuthScope = ReturnType<typeof getScopeFromAuthConfig>;
+
+type CallbackDependencies = {
+  readonly authConfig: Awaited<ReturnType<typeof resolveAuthConfigForRequest>>;
+  readonly authScope: AuthScope;
+  readonly cookieLoginState: Awaited<ReturnType<typeof resolveCookieLoginState>>;
+  readonly hadSessionCookieOnCallback: boolean;
+  readonly callbackInput: ReturnType<typeof resolveCallbackInput>;
+};
+
+type AuthMeResolution = {
+  readonly permissionActions: string[];
+  readonly permissionStatus: 'ok' | 'degraded';
+  readonly assignedModules: string[];
+};
+
+const logCallbackCookieCleanup = (
+  message: 'Callback cookie cleanup prepared' | 'Expired callback cookie cleanup prepared' | 'Failed callback cookie cleanup prepared',
+  response: Response,
+  strategy: string,
+  hadSessionCookieOnCallback: boolean,
+  scope: AuthScope | NonNullable<Awaited<ReturnType<typeof resolveCookieLoginState>>>
+) => {
+  logger.info(message, {
+    operation: 'login_callback_cookie_cleanup',
+    strategy,
+    response_set_cookie_count: getSetCookieValues(response.headers).length,
+    had_session_cookie_on_callback: hadSessionCookieOnCallback,
+    ...buildLogContext(scope),
+  });
+};
+
+const emitCallbackFailureAuditEvent = async (input: {
+  readonly eventType: 'login' | 'login_state_expired' | 'silent_reauth_failed';
+  readonly scope: AuthScope | NonNullable<Awaited<ReturnType<typeof resolveCookieLoginState>>>;
+}) => {
+  await emitAuthAuditEvent({
+    eventType: input.eventType,
+    scope: input.scope,
+    workspaceId: getWorkspaceIdForScope(input.scope),
+    outcome: 'failure',
+  });
+};
+
+const createCallbackFailureResponse = (
+  isSilent: boolean,
+  location = '/?auth=error'
+) => (isSilent ? createSilentSsoResponse('failure') : createRedirectResponse(location));
+
+const handleCallbackErrorResponse = async (dependencies: CallbackDependencies): Promise<Response | null> => {
+  if (!dependencies.callbackInput.error) {
+    return null;
+  }
+
+  const response = createCallbackFailureResponse(dependencies.cookieLoginState?.silent === true);
+  const loginStateDeleteStrategy = attachDeletedCookie(response, dependencies.authConfig.loginStateCookieName);
+  logCallbackCookieCleanup(
+    'Callback cookie cleanup prepared',
+    response,
+    loginStateDeleteStrategy,
+    dependencies.hadSessionCookieOnCallback,
+    dependencies.authScope
+  );
+  await emitCallbackFailureAuditEvent({
+    eventType: dependencies.cookieLoginState?.silent ? 'silent_reauth_failed' : 'login',
+    scope: dependencies.cookieLoginState ?? dependencies.authScope,
+  });
+  return response;
+};
+
+const handleExpiredCallbackState = async (dependencies: CallbackDependencies): Promise<Response | null> => {
+  if (!dependencies.cookieLoginState || !isExpiredLoginState(dependencies.cookieLoginState.createdAt)) {
+    return null;
+  }
+
+  const response = createRedirectResponse('/?auth=state-expired');
+  const loginStateDeleteStrategy = attachDeletedCookie(response, dependencies.authConfig.loginStateCookieName);
+  logCallbackCookieCleanup(
+    'Expired callback cookie cleanup prepared',
+    response,
+    loginStateDeleteStrategy,
+    dependencies.hadSessionCookieOnCallback,
+    dependencies.cookieLoginState
+  );
+  await emitCallbackFailureAuditEvent({
+    eventType: 'login_state_expired',
+    scope: dependencies.cookieLoginState,
+  });
+  return response;
+};
+
+const logSuccessfulCallback = (input: {
+  readonly user: Awaited<ReturnType<typeof handleCallback>>['user'];
+  readonly authConfig: Awaited<ReturnType<typeof resolveAuthConfigForRequest>>;
+  readonly authScope: AuthScope;
+  readonly redirectTarget: string;
+  readonly isSilent: boolean;
+  readonly retryPerformed: boolean;
+  readonly iss: string | null;
+}) => {
+  const successScope = input.user.instanceId ? { kind: 'instance' as const, instanceId: input.user.instanceId } : input.authScope;
+  logger.info('tenant_auth_callback_result', {
+    operation: 'tenant_auth_callback',
+    scope_kind: input.user.instanceId ? 'instance' : input.authScope.kind,
+    instance_id: input.user.instanceId ?? (input.authConfig.kind === 'instance' ? input.authConfig.instanceId : undefined),
+    auth_realm: input.authConfig.authRealm ?? PLATFORM_WORKSPACE_ID,
+    client_id: input.authConfig.clientId,
+    issuer: input.authConfig.issuer,
+    redirect_uri: input.authConfig.redirectUri,
+    is_silent: input.isSilent,
+    retry_performed: input.retryPerformed,
+    result: 'success',
+    auth_scope_kind: input.authScope.kind,
+    ...buildLogContext(successScope),
+  });
+
+  logger.info('Auth callback successful', {
+    auth_flow: 'callback',
+    operation: 'login_callback',
+    is_silent: input.isSilent,
+    session_created: true,
+    ...summarizeRedirectTarget(input.redirectTarget),
+    has_code: true,
+    has_state: true,
+    has_iss: Boolean(input.iss),
+    ...buildLogContext(successScope),
+  });
+};
+
+const finalizeSuccessfulCallback = async (input: {
+  readonly response: Response;
+  readonly user: Awaited<ReturnType<typeof handleCallback>>['user'];
+  readonly authConfig: Awaited<ReturnType<typeof resolveAuthConfigForRequest>>;
+  readonly authScope: AuthScope;
+  readonly hadSessionCookieOnCallback: boolean;
+  readonly sessionId: string;
+  readonly expiresAt?: number;
+  readonly isSilent: boolean;
+}) => {
+  const loginStateDeleteStrategy = attachDeletedCookie(input.response, input.authConfig.loginStateCookieName);
+  const sessionCookieStrategy = attachSessionCookie(
+    input.response,
+    input.authConfig.sessionCookieName,
+    input.sessionId,
+    input.expiresAt
+  );
+  const silentSsoDeleteStrategy = attachDeletedCookie(input.response, input.authConfig.silentSsoSuppressCookieName);
+  const successScope = input.user.instanceId ? { kind: 'instance' as const, instanceId: input.user.instanceId } : input.authScope;
+
+  logger.info('Callback cookies prepared', {
+    operation: 'login_callback_cookies',
+    login_state_delete_strategy: loginStateDeleteStrategy,
+    session_cookie_strategy: sessionCookieStrategy,
+    silent_sso_delete_strategy: silentSsoDeleteStrategy,
+    response_set_cookie_count: getSetCookieValues(input.response.headers).length,
+    had_session_cookie_on_callback: input.hadSessionCookieOnCallback,
+    ...buildLogContext(successScope),
+  });
+  await emitAuthAuditEvent({
+    eventType: input.isSilent ? 'silent_reauth_success' : 'login',
+    actorUserId: input.user.id,
+    scope: successScope,
+    workspaceId: input.user.instanceId ?? getWorkspaceIdForScope(input.authScope),
+    outcome: 'success',
+  });
+  return input.response;
+};
+
+const logFailedCallback = (input: {
+  readonly error: unknown;
+  readonly authConfig: Awaited<ReturnType<typeof resolveAuthConfigForRequest>>;
+  readonly authScope: AuthScope;
+  readonly cookieLoginState: Awaited<ReturnType<typeof resolveCookieLoginState>>;
+  readonly isSilent: boolean;
+  readonly iss: string | null;
+}) => {
+  const callbackScope = input.cookieLoginState ?? input.authScope;
+  if (input.error instanceof TenantScopeConflictError) {
+    logger.error('Tenant scope conflict in callback', {
+      operation: 'tenant_scope_validate',
+      is_silent: input.isSilent,
+      error_type: input.error.name,
+      reason_code: input.error.reason,
+      expected_instance_id: input.error.expectedInstanceId,
+      token_instance_id: input.error.actualInstanceId,
+      auth_realm: input.authConfig.authRealm ?? PLATFORM_WORKSPACE_ID,
+      client_id: input.authConfig.clientId,
+      issuer: input.authConfig.issuer,
+      ...buildLogContext(callbackScope),
+    });
+    logger.error('tenant_auth_callback_result', {
+      operation: 'tenant_auth_callback',
+      scope_kind: callbackScope.kind,
+      instance_id: callbackScope.kind === 'instance' ? callbackScope.instanceId : undefined,
+      auth_realm: input.authConfig.authRealm ?? PLATFORM_WORKSPACE_ID,
+      client_id: input.authConfig.clientId,
+      issuer: input.authConfig.issuer,
+      redirect_uri: input.authConfig.redirectUri,
+      is_silent: input.isSilent,
+      retry_performed: false,
+      result: 'failure',
+      error_type: input.error.name,
+      reason_code: input.error.reason,
+      auth_scope_kind: input.authScope.kind,
+      ...buildLogContext(callbackScope),
+    });
+    return;
+  }
+
+  if (isTokenErrorLike(input.error)) {
+    logger.warn('Token validation failed in callback', {
+      operation: 'token_validate',
+      is_silent: input.isSilent,
+      error_type: input.error instanceof Error ? input.error.constructor.name : typeof input.error,
+      reason_code: 'token_validate_failed',
+      has_refresh_token: false,
+      ...describeTokenError(input.error),
+      ...buildLogContext(callbackScope),
+    });
+    logger.warn('tenant_auth_callback_result', {
+      operation: 'tenant_auth_callback',
+      scope_kind: callbackScope.kind,
+      instance_id: callbackScope.kind === 'instance' ? callbackScope.instanceId : undefined,
+      auth_realm: input.authConfig.authRealm ?? PLATFORM_WORKSPACE_ID,
+      client_id: input.authConfig.clientId,
+      issuer: input.authConfig.issuer,
+      redirect_uri: input.authConfig.redirectUri,
+      is_silent: input.isSilent,
+      retry_performed: false,
+      result: 'failure',
+      auth_scope_kind: input.authScope.kind,
+      ...describeTokenError(input.error),
+      ...buildLogContext(callbackScope),
+    });
+    return;
+  }
+
+  logger.error('Auth callback failed', {
+    auth_flow: 'callback',
+    operation: 'login_callback',
+    is_silent: input.isSilent,
+    error_type: input.error instanceof Error ? input.error.constructor.name : typeof input.error,
+    reason_code: 'callback_failed',
+    has_code: true,
+    has_state: true,
+    has_iss: Boolean(input.iss),
+    ...buildLogContext(callbackScope),
+  });
+  logger.error('tenant_auth_callback_result', {
+    operation: 'tenant_auth_callback',
+    scope_kind: callbackScope.kind,
+    instance_id: callbackScope.kind === 'instance' ? callbackScope.instanceId : undefined,
+    auth_realm: input.authConfig.authRealm ?? PLATFORM_WORKSPACE_ID,
+    client_id: input.authConfig.clientId,
+    issuer: input.authConfig.issuer,
+    redirect_uri: input.authConfig.redirectUri,
+    is_silent: input.isSilent,
+    retry_performed: false,
+    result: 'failure',
+    error_type: input.error instanceof Error ? input.error.constructor.name : typeof input.error,
+    reason_code: 'callback_failed',
+    auth_scope_kind: input.authScope.kind,
+    ...buildLogContext(callbackScope),
+  });
+};
+
+const finalizeFailedCallback = async (input: {
+  readonly authConfig: Awaited<ReturnType<typeof resolveAuthConfigForRequest>>;
+  readonly authScope: AuthScope;
+  readonly cookieLoginState: Awaited<ReturnType<typeof resolveCookieLoginState>>;
+  readonly hadSessionCookieOnCallback: boolean;
+  readonly isSilent: boolean;
+}) => {
+  const response = createCallbackFailureResponse(input.isSilent);
+  const loginStateDeleteStrategy = attachDeletedCookie(response, input.authConfig.loginStateCookieName);
+  logCallbackCookieCleanup(
+    'Failed callback cookie cleanup prepared',
+    response,
+    loginStateDeleteStrategy,
+    input.hadSessionCookieOnCallback,
+    input.cookieLoginState ?? input.authScope
+  );
+  await emitCallbackFailureAuditEvent({
+    eventType: input.isSilent ? 'silent_reauth_failed' : 'login',
+    scope: input.cookieLoginState ?? input.authScope,
+  });
+  return response;
+};
+
+const loadAuthMePermissionState = async (user: { id: string; instanceId?: string }): Promise<Pick<AuthMeResolution, 'permissionActions' | 'permissionStatus'>> => {
+  if (!user.instanceId) {
+    return {
+      permissionActions: [],
+      permissionStatus: 'ok',
+    };
+  }
+
+  try {
+    const resolvedPermissions = await resolveEffectivePermissions({
+      instanceId: user.instanceId,
+      keycloakSubject: user.id,
+    });
+
+    if (resolvedPermissions.ok) {
+      return {
+        permissionActions: collectEffectivePermissionActions(resolvedPermissions.permissions),
+        permissionStatus: 'ok',
+      };
+    }
+
+    logger.warn('Auth me resolved user but permission snapshot failed', {
+      endpoint: '/auth/me',
+      operation: 'get_current_user',
+      reason_code: 'permission_snapshot_unavailable',
+      ...buildLogContext({ kind: 'instance', instanceId: user.instanceId }),
+    });
+  } catch (error) {
+    logger.error('Auth me permission action lookup failed', {
+      endpoint: '/auth/me',
+      operation: 'get_current_user',
+      error_type: error instanceof Error ? error.name : typeof error,
+      reason_code: 'permission_action_lookup_failed',
+      ...buildLogContext({ kind: 'instance', instanceId: user.instanceId }),
+    });
+  }
+
+  return {
+    permissionActions: [],
+    permissionStatus: 'degraded',
+  };
+};
+
+const loadAssignedModulesForAuthMe = async (user: { instanceId?: string }): Promise<string[]> => {
+  if (!user.instanceId) {
+    return [];
+  }
+  const instanceId = user.instanceId;
+
+  try {
+    return Array.from(await withRegistryRepository((repository) => repository.listAssignedModules(instanceId)));
+  } catch (error) {
+    logger.error('Auth me assigned module lookup failed', {
+      endpoint: '/auth/me',
+      operation: 'get_current_user',
+      error_type: error instanceof Error ? error.name : typeof error,
+      reason_code: 'assigned_module_lookup_failed',
+      ...buildLogContext({ kind: 'instance', instanceId }),
+    });
+    return [];
+  }
+};
+
+const resolveAuthMeState = async (user: { id: string; instanceId?: string }): Promise<AuthMeResolution> => {
+  const permissionState = await loadAuthMePermissionState(user);
+  const assignedModules = await loadAssignedModulesForAuthMe(user);
+
+  return {
+    ...permissionState,
+    assignedModules,
+  };
+};
+
+const createAuthMeResponse = (
+  user: Record<string, unknown>,
+  resolution: AuthMeResolution
+) =>
+  new Response(
+    JSON.stringify({
+      user: {
+        ...user,
+        assignedModules: resolution.assignedModules,
+        permissionActions: resolution.permissionActions,
+        permissionStatus: resolution.permissionStatus,
+      },
+    }),
+    {
+      status: 200,
+      headers: createAuthMeHeaders(),
+    }
+  );
+
 export const loginHandler = async (request?: Request): Promise<Response> => {
   return withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
     if (isMockAuthEnabled()) {
@@ -475,53 +856,33 @@ export const callbackHandler = async (request: Request): Promise<Response> => {
     }
 
     try {
-      const { code, state, error, iss } = resolveCallbackInput(request);
+      const callbackInput = resolveCallbackInput(request);
+      const { code, state, iss } = callbackInput;
       const authConfig = await resolveAuthConfigForRequest(request);
       const authScope = getScopeFromAuthConfig(authConfig);
       const { loginStateCookieName, sessionCookieName } = authConfig;
       const cookieLoginState = state ? await resolveCookieLoginState(request, state) : null;
       const hadSessionCookieOnCallback = Boolean(readCookieFromRequest(request, sessionCookieName));
+      const dependencies: CallbackDependencies = {
+        authConfig,
+        authScope,
+        cookieLoginState,
+        hadSessionCookieOnCallback,
+        callbackInput,
+      };
 
-      if (error) {
-        const response = cookieLoginState?.silent ? createSilentSsoResponse('failure') : createRedirectResponse('/?auth=error');
-        const loginStateDeleteStrategy = attachDeletedCookie(response, loginStateCookieName);
-        logger.info('Callback cookie cleanup prepared', {
-          operation: 'login_callback_cookie_cleanup',
-          strategy: loginStateDeleteStrategy,
-          response_set_cookie_count: getSetCookieValues(response.headers).length,
-          had_session_cookie_on_callback: hadSessionCookieOnCallback,
-          ...buildLogContext(authScope),
-        });
-        await emitAuthAuditEvent({
-          eventType: cookieLoginState?.silent ? 'silent_reauth_failed' : 'login',
-          scope: cookieLoginState ?? authScope,
-          workspaceId: getWorkspaceIdForScope(cookieLoginState ?? authScope),
-          outcome: 'failure',
-        });
-        return response;
+      const callbackErrorResponse = await handleCallbackErrorResponse(dependencies);
+      if (callbackErrorResponse) {
+        return callbackErrorResponse;
       }
 
       if (!code || !state) {
         return createRedirectResponse('/auth/login');
       }
 
-      if (cookieLoginState && isExpiredLoginState(cookieLoginState.createdAt)) {
-        const response = createRedirectResponse('/?auth=state-expired');
-        const loginStateDeleteStrategy = attachDeletedCookie(response, loginStateCookieName);
-        logger.info('Expired callback cookie cleanup prepared', {
-          operation: 'login_callback_cookie_cleanup',
-          strategy: loginStateDeleteStrategy,
-          response_set_cookie_count: getSetCookieValues(response.headers).length,
-          had_session_cookie_on_callback: hadSessionCookieOnCallback,
-          ...buildLogContext(cookieLoginState ?? authScope),
-        });
-        await emitAuthAuditEvent({
-          eventType: 'login_state_expired',
-          scope: cookieLoginState ?? authScope,
-          workspaceId: getWorkspaceIdForScope(cookieLoginState ?? authScope),
-          outcome: 'failure',
-        });
-        return response;
+      const expiredCallbackResponse = await handleExpiredCallbackState(dependencies);
+      if (expiredCallbackResponse) {
+        return expiredCallbackResponse;
       }
 
       try {
@@ -536,160 +897,43 @@ export const callbackHandler = async (request: Request): Promise<Response> => {
         const redirectTarget = effectiveLoginState?.returnTo ?? DEFAULT_POST_LOGIN_REDIRECT;
         const isSilent = effectiveLoginState?.silent === true;
         const response = isSilent ? createSilentSsoResponse('success') : createRedirectResponse(redirectTarget);
-
-        logger.info('tenant_auth_callback_result', {
-          operation: 'tenant_auth_callback',
-          scope_kind: user.instanceId ? 'instance' : authScope.kind,
-          instance_id: user.instanceId ?? (authConfig.kind === 'instance' ? authConfig.instanceId : undefined),
-          auth_realm: authConfig.authRealm ?? PLATFORM_WORKSPACE_ID,
-          client_id: authConfig.clientId,
-          issuer: authConfig.issuer,
-          redirect_uri: authConfig.redirectUri,
-          is_silent: isSilent,
-          retry_performed: retryPerformed,
-          result: 'success',
-          auth_scope_kind: authScope.kind,
-          ...buildLogContext(user.instanceId ? { kind: 'instance', instanceId: user.instanceId } : authScope),
+        logSuccessfulCallback({
+          user,
+          authConfig,
+          authScope,
+          redirectTarget,
+          isSilent,
+          retryPerformed,
+          iss,
         });
 
-        logger.info('Auth callback successful', {
-          auth_flow: 'callback',
-          operation: 'login_callback',
-          is_silent: isSilent,
-          session_created: true,
-          ...summarizeRedirectTarget(redirectTarget),
-          has_code: true,
-          has_state: true,
-          has_iss: Boolean(iss),
-          ...buildLogContext(user.instanceId ? { kind: 'instance', instanceId: user.instanceId } : authScope),
+        return finalizeSuccessfulCallback({
+          response,
+          user,
+          authConfig,
+          authScope,
+          hadSessionCookieOnCallback,
+          sessionId,
+          expiresAt,
+          isSilent,
         });
-
-        const loginStateDeleteStrategy = attachDeletedCookie(response, loginStateCookieName);
-        const sessionCookieStrategy = attachSessionCookie(response, sessionCookieName, sessionId, expiresAt);
-        const silentSsoDeleteStrategy = attachDeletedCookie(response, authConfig.silentSsoSuppressCookieName);
-        logger.info('Callback cookies prepared', {
-          operation: 'login_callback_cookies',
-          login_state_delete_strategy: loginStateDeleteStrategy,
-          session_cookie_strategy: sessionCookieStrategy,
-          silent_sso_delete_strategy: silentSsoDeleteStrategy,
-          response_set_cookie_count: getSetCookieValues(response.headers).length,
-          had_session_cookie_on_callback: hadSessionCookieOnCallback,
-          ...buildLogContext(user.instanceId ? { kind: 'instance', instanceId: user.instanceId } : authScope),
-        });
-        await emitAuthAuditEvent({
-          eventType: isSilent ? 'silent_reauth_success' : 'login',
-          actorUserId: user.id,
-          scope: user.instanceId ? { kind: 'instance', instanceId: user.instanceId } : authScope,
-          workspaceId: user.instanceId ?? getWorkspaceIdForScope(authScope),
-          outcome: 'success',
-        });
-
-        return response;
       } catch (error) {
         const isSilent = cookieLoginState?.silent === true;
-        if (error instanceof TenantScopeConflictError) {
-          const callbackScope = cookieLoginState ?? authScope;
-          logger.error('Tenant scope conflict in callback', {
-            operation: 'tenant_scope_validate',
-            is_silent: isSilent,
-            error_type: error.name,
-            reason_code: error.reason,
-            expected_instance_id: error.expectedInstanceId,
-            token_instance_id: error.actualInstanceId,
-            auth_realm: authConfig.authRealm ?? PLATFORM_WORKSPACE_ID,
-            client_id: authConfig.clientId,
-            issuer: authConfig.issuer,
-            ...buildLogContext(callbackScope),
-          });
-          logger.error('tenant_auth_callback_result', {
-            operation: 'tenant_auth_callback',
-            scope_kind: callbackScope.kind,
-            instance_id: callbackScope.kind === 'instance' ? callbackScope.instanceId : undefined,
-            auth_realm: authConfig.authRealm ?? PLATFORM_WORKSPACE_ID,
-            client_id: authConfig.clientId,
-            issuer: authConfig.issuer,
-            redirect_uri: authConfig.redirectUri,
-            is_silent: isSilent,
-            retry_performed: false,
-            result: 'failure',
-            error_type: error.name,
-            reason_code: error.reason,
-            auth_scope_kind: authScope.kind,
-            ...buildLogContext(callbackScope),
-          });
-        } else if (isTokenErrorLike(error)) {
-          const callbackScope = cookieLoginState ?? authScope;
-          logger.warn('Token validation failed in callback', {
-            operation: 'token_validate',
-            is_silent: isSilent,
-            error_type: error instanceof Error ? error.constructor.name : typeof error,
-            reason_code: 'token_validate_failed',
-            has_refresh_token: false,
-            ...describeTokenError(error),
-            ...buildLogContext(callbackScope),
-          });
-          logger.warn('tenant_auth_callback_result', {
-            operation: 'tenant_auth_callback',
-            scope_kind: callbackScope.kind,
-            instance_id: callbackScope.kind === 'instance' ? callbackScope.instanceId : undefined,
-            auth_realm: authConfig.authRealm ?? PLATFORM_WORKSPACE_ID,
-            client_id: authConfig.clientId,
-            issuer: authConfig.issuer,
-            redirect_uri: authConfig.redirectUri,
-            is_silent: isSilent,
-            retry_performed: false,
-            result: 'failure',
-            auth_scope_kind: authScope.kind,
-            ...describeTokenError(error),
-            ...buildLogContext(callbackScope),
-          });
-        } else {
-          const callbackScope = cookieLoginState ?? authScope;
-          logger.error('Auth callback failed', {
-            auth_flow: 'callback',
-            operation: 'login_callback',
-            is_silent: isSilent,
-            error_type: error instanceof Error ? error.constructor.name : typeof error,
-            reason_code: 'callback_failed',
-            has_code: true,
-            has_state: true,
-            has_iss: Boolean(iss),
-            ...buildLogContext(callbackScope),
-          });
-          logger.error('tenant_auth_callback_result', {
-            operation: 'tenant_auth_callback',
-            scope_kind: callbackScope.kind,
-            instance_id: callbackScope.kind === 'instance' ? callbackScope.instanceId : undefined,
-            auth_realm: authConfig.authRealm ?? PLATFORM_WORKSPACE_ID,
-            client_id: authConfig.clientId,
-            issuer: authConfig.issuer,
-            redirect_uri: authConfig.redirectUri,
-            is_silent: isSilent,
-            retry_performed: false,
-            result: 'failure',
-            error_type: error instanceof Error ? error.constructor.name : typeof error,
-            reason_code: 'callback_failed',
-            auth_scope_kind: authScope.kind,
-            ...buildLogContext(callbackScope),
-          });
-        }
-
-        const response = isSilent ? createSilentSsoResponse('failure') : createRedirectResponse('/?auth=error');
-        const loginStateDeleteStrategy = attachDeletedCookie(response, loginStateCookieName);
-        logger.info('Failed callback cookie cleanup prepared', {
-          operation: 'login_callback_cookie_cleanup',
-          strategy: loginStateDeleteStrategy,
-          response_set_cookie_count: getSetCookieValues(response.headers).length,
-          had_session_cookie_on_callback: hadSessionCookieOnCallback,
-          ...buildLogContext(cookieLoginState ?? authScope),
+        logFailedCallback({
+          error,
+          authConfig,
+          authScope,
+          cookieLoginState,
+          isSilent,
+          iss,
         });
-        await emitAuthAuditEvent({
-          eventType: isSilent ? 'silent_reauth_failed' : 'login',
-          scope: cookieLoginState ?? authScope,
-          workspaceId: getWorkspaceIdForScope(cookieLoginState ?? authScope),
-          outcome: 'failure',
+        return finalizeFailedCallback({
+          authConfig,
+          authScope,
+          cookieLoginState,
+          hadSessionCookieOnCallback,
+          isSilent,
         });
-        return response;
       }
     } catch (error) {
       return createAuthDependencyErrorResponse(request, 'auth_callback', error);
@@ -715,69 +959,19 @@ export const meHandler = async (request: Request): Promise<Response> => {
     });
 
     return withAuthenticatedUser(request, async ({ user }) => {
-      let permissionActions: string[] = [];
-      let permissionStatus: 'ok' | 'degraded' = 'ok';
-      let assignedModules: string[] = [];
-
-      if (user.instanceId) {
-        try {
-          const resolvedPermissions = await resolveEffectivePermissions({
-            instanceId: user.instanceId,
-            keycloakSubject: user.id,
-          });
-
-          if (resolvedPermissions.ok) {
-            permissionActions = collectEffectivePermissionActions(resolvedPermissions.permissions);
-          } else {
-            permissionStatus = 'degraded';
-            logger.warn('Auth me resolved user but permission snapshot failed', {
-              endpoint: '/auth/me',
-              operation: 'get_current_user',
-              reason_code: 'permission_snapshot_unavailable',
-              ...buildLogContext({ kind: 'instance', instanceId: user.instanceId }),
-            });
-          }
-        } catch (error) {
-          permissionStatus = 'degraded';
-          logger.error('Auth me permission action lookup failed', {
-            endpoint: '/auth/me',
-            operation: 'get_current_user',
-            error_type: error instanceof Error ? error.name : typeof error,
-            reason_code: 'permission_action_lookup_failed',
-            ...buildLogContext({ kind: 'instance', instanceId: user.instanceId }),
-          });
-        }
-
-        try {
-          assignedModules = Array.from(
-            await withRegistryRepository((repository) => repository.listAssignedModules(user.instanceId!)),
-          );
-        } catch (error) {
-          assignedModules = [];
-          logger.error('Auth me assigned module lookup failed', {
-            endpoint: '/auth/me',
-            operation: 'get_current_user',
-            error_type: error instanceof Error ? error.name : typeof error,
-            reason_code: 'assigned_module_lookup_failed',
-            ...buildLogContext({ kind: 'instance', instanceId: user.instanceId }),
-          });
-        }
-      }
+      const resolution = await resolveAuthMeState(user);
 
       logger.debug('Auth check successful', {
         endpoint: '/auth/me',
         auth_state: 'authenticated',
         operation: 'get_current_user',
         roles_count: user.roles?.length ?? 0,
-        permission_actions_count: permissionActions.length,
-        permission_status: permissionStatus,
+        permission_actions_count: resolution.permissionActions.length,
+        permission_status: resolution.permissionStatus,
         ...buildLogContext(user.instanceId ? { kind: 'instance', instanceId: user.instanceId } : undefined),
       });
 
-      return new Response(JSON.stringify({ user: { ...user, assignedModules, permissionActions, permissionStatus } }), {
-        status: 200,
-        headers: createAuthMeHeaders(),
-      });
+      return createAuthMeResponse(user, resolution);
     });
   });
 };

@@ -10,12 +10,7 @@ export default defineConfig({
     coverage: {
       ...sharedCoverageConfig,
       include: ['src/**/*.ts'],
-      exclude: [
-        '**/*.test.ts',
-        '**/*.vitest.test.ts',
-        '**/packages/data-client/src/**',
-        '**/packages/data-repositories/src/**',
-      ],
+      exclude: ['src/**/*.test.ts', 'src/**/*.vitest.test.ts'],
     },
   },
   resolve: {

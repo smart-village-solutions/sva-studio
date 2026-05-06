@@ -8,8 +8,8 @@ Die Listenansichten von `news`, `events` und `poi` sollen nicht mehr komplette D
 
 - `@sva/sva-mainserver` akzeptiert List-Queries mit `page` und `pageSize`
 - Host-Routen normalisieren Query-Parameter und liefern `data` plus `pagination`
-- `pagination` enthält mindestens `page`, `pageSize`, `hasNextPage`
-- `total` bleibt optional, weil der aktuelle Snapshot keine offensichtlichen globalen Count-Felder für News, Events oder POI zeigt
+- `pagination` enthaelt mindestens `page`, `pageSize`, `hasNextPage`
+- `total` bleibt optional, weil der aktuelle Snapshot keine offensichtlichen globalen Count-Felder fuer News, Events oder POI zeigt
 
 ## UI-Richtung
 

@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import {
   getRuntimeProfileDerivedEnvKeys,
   getRuntimeProfileDefinition,
+  isMockAuthRuntimeProfile,
   parseRuntimeProfile,
   getRuntimeProfileRequiredEnvKeys,
   type RuntimeProfile,
@@ -141,7 +142,7 @@ type GithubVerifyEvidenceOptions = Readonly<{
 
 type LocalState = {
   command?: string;
-  launcher?: 'local-dev-server-runner';
+  launcher?: 'local-dev-server-runner' | 'local-provisioning-worker-runner';
   logFile: string;
   pid: number;
   profile: RuntimeProfile;
@@ -158,6 +159,7 @@ const jsonOutput = cliOptions.jsonOutput;
 const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const runtimeArtifactsDir = resolve(rootDir, 'artifacts/runtime');
 const localStateFile = resolve(runtimeArtifactsDir, 'local-app-state.json');
+const localWorkerStateFile = resolve(runtimeArtifactsDir, 'local-worker-state.json');
 const appLogDir = resolve(runtimeArtifactsDir, 'logs');
 const deployReportDir = resolve(runtimeArtifactsDir, 'deployments');
 const gooseConfigPath = resolve(rootDir, 'packages/data/goose.config.json');
@@ -950,6 +952,13 @@ type StudioImageVerifyEvidence = Readonly<{
   status?: string;
 }>;
 
+const sanitizeVerifyArtifactSuffix = (value: string) =>
+  value
+    .replace(/[^A-Za-z0-9._ -]+/g, '-')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
 const readLocalStudioImageVerifyEvidence = (imageDigest?: string): StudioImageVerifyEvidence | undefined => {
   if (!imageDigest) {
     return undefined;
@@ -992,77 +1001,14 @@ const readLocalStudioImageVerifyEvidence = (imageDigest?: string): StudioImageVe
   return undefined;
 };
 
-const sanitizeVerifyArtifactSuffix = (value: string) =>
-  value.replaceAll(/[^A-Za-z0-9._ -]+/gu, '-').replaceAll(/\s+/gu, '-').replaceAll(/-+/gu, '-').replaceAll(/^-|-$/gu, '');
-
-const collectJsonFilesRecursively = (directory: string): string[] => {
-  const files: string[] = [];
-
-  for (const entry of readdirSync(directory, { withFileTypes: true })) {
-    const entryPath = resolve(directory, entry.name);
-    if (entry.isDirectory()) {
-      files.push(...collectJsonFilesRecursively(entryPath));
-      continue;
-    }
-
-    if (entry.isFile() && entry.name.endsWith('.json')) {
-      files.push(entryPath);
-    }
-  }
-
-  return files;
-};
-
-const readGithubVerifyArtifactEvidence = ({
-  artifactName,
-  imageDigest,
-  runId,
-}: {
-  artifactName: string;
-  imageDigest: string;
-  runId: number;
-}): GithubVerifyArtifactEvidence | undefined => {
-  const downloadDir = mkdtempSync(resolve(tmpdir(), 'sva-studio-image-verify-'));
-
-  try {
-    run('gh', ['run', 'download', String(runId), '--name', artifactName, '--dir', downloadDir]);
-
-    for (const reportPath of collectJsonFilesRecursively(downloadDir)) {
-      try {
-        const report = JSON.parse(readFileSync(reportPath, 'utf8')) as {
-          imageRef?: unknown;
-          reportId?: unknown;
-          status?: unknown;
-        };
-        const imageRef = typeof report.imageRef === 'string' ? report.imageRef : undefined;
-        const status = report.status === 'ok' ? 'ok' : undefined;
-        if (status === 'ok' && imageRef?.includes(imageDigest)) {
-          return {
-            imageRef,
-            reportId: typeof report.reportId === 'string' ? report.reportId : artifactName,
-            status,
-          };
-        }
-      } catch {
-        // Ignore malformed files inside downloaded artifacts and continue scanning.
-      }
-    }
-  } catch {
-    return undefined;
-  } finally {
-    rmSync(downloadDir, { force: true, recursive: true });
-  }
-
-  return undefined;
-};
-
 export const tryReadGithubStudioImageVerifyEvidence = (
   imageDigest?: string,
-  options: GithubVerifyEvidenceOptions = {},
+  options?: GithubVerifyEvidenceOptions,
 ): StudioImageVerifyEvidence | undefined => {
-  const commandExistsImpl = options.commandExistsImpl ?? commandExists;
-  const runCaptureImpl = options.runCaptureImpl ?? runCapture;
-  const readArtifactEvidenceImpl = options.readArtifactEvidenceImpl ?? readGithubVerifyArtifactEvidence;
+  const runCaptureImpl = options?.runCaptureImpl ?? runCapture;
+  const commandExistsImpl = options?.commandExistsImpl ?? commandExists;
+  const imageTag = options?.imageTag;
+  const readArtifactEvidenceImpl = options?.readArtifactEvidenceImpl;
 
   if (!imageDigest || !commandExistsImpl('gh')) {
     return undefined;
@@ -1078,29 +1024,45 @@ export const tryReadGithubStudioImageVerifyEvidence = (
     }
 
     const digestShort = imageDigest.replace(/^sha256:/, '').slice(0, 12);
-    const artifactPrefixes = new Set([`studio-image-verify-${digestShort}-`]);
-    const sanitizedImageTag = options.imageTag ? sanitizeVerifyArtifactSuffix(options.imageTag) : '';
+    const artifactPrefixes = new Set([`studio-image-verify-${digestShort}`]);
+    const sanitizedImageTag = imageTag ? sanitizeVerifyArtifactSuffix(imageTag) : '';
     if (sanitizedImageTag) {
-      artifactPrefixes.add(`studio-image-verify-${sanitizedImageTag}-`);
+      artifactPrefixes.add(`studio-image-verify-${sanitizedImageTag}`);
     }
 
     for (let page = 1; page <= 10; page += 1) {
       const artifactOutput = runCaptureImpl('gh', ['api', `repos/${owner}/${repo}/actions/artifacts?per_page=100&page=${page}`]);
       const artifactPayload = JSON.parse(artifactOutput) as {
-        artifacts?: GithubArtifactRecord[];
+        artifacts?: Array<{
+          expired?: boolean;
+          id?: number;
+          name?: string;
+          workflow_run?: {
+            id?: number;
+          };
+        }>;
       };
       const artifacts = artifactPayload.artifacts ?? [];
       const matchingArtifacts = artifacts.filter((artifact) => {
-        if (artifact.expired || typeof artifact.name !== 'string' || !artifact.workflow_run?.id) {
+        if (artifact.expired || typeof artifact.name !== 'string') {
           return false;
         }
 
-        return Array.from(artifactPrefixes).some((prefix) => artifact.name?.startsWith(prefix));
+        for (const prefix of artifactPrefixes) {
+          if (artifact.name.startsWith(`${prefix}-`)) {
+            return true;
+          }
+        }
+
+        return false;
       });
 
       for (const matchingArtifact of matchingArtifacts) {
         const runId = matchingArtifact.workflow_run?.id;
-        if (!runId || typeof matchingArtifact.name !== 'string') {
+        if (!runId) {
+          continue;
+        }
+        if (typeof matchingArtifact.name !== 'string') {
           continue;
         }
 
@@ -1114,7 +1076,7 @@ export const tryReadGithubStudioImageVerifyEvidence = (
           continue;
         }
 
-        const artifactEvidence = readArtifactEvidenceImpl({
+        const artifactEvidence: GithubVerifyArtifactEvidence | undefined = readArtifactEvidenceImpl?.({
           artifactId: matchingArtifact.id,
           artifactName: matchingArtifact.name,
           imageDigest,
@@ -1122,35 +1084,43 @@ export const tryReadGithubStudioImageVerifyEvidence = (
           repo,
           runId,
         });
-        if (!artifactEvidence || !artifactEvidence.imageRef.includes(imageDigest)) {
-          continue;
+        if (artifactEvidence && artifactEvidence.imageRef.includes(imageDigest)) {
+          return {
+            imageRef: artifactEvidence.imageRef,
+            path: runPayload.url ?? `https://github.com/${owner}/${repo}/actions/runs/${runId}`,
+            reportId: artifactEvidence.reportId ?? matchingArtifact.name,
+            source: 'github-artifact',
+            status: artifactEvidence.status,
+          };
         }
 
-        return {
-          imageRef: artifactEvidence.imageRef,
-          path: runPayload.url ?? `https://github.com/${owner}/${repo}/actions/runs/${runId}`,
-          reportId: artifactEvidence.reportId ?? matchingArtifact.name,
-          source: 'github-artifact',
-          status: artifactEvidence.status,
-        };
+        if (!readArtifactEvidenceImpl) {
+          return {
+            imageRef: `ghcr.io/smart-village-solutions/sva-studio@${imageDigest}`,
+            path: runPayload.url ?? `https://github.com/${owner}/${repo}/actions/runs/${runId}`,
+            reportId: matchingArtifact.name,
+            source: 'github-artifact',
+            status: 'ok',
+          };
+        }
       }
 
       if (artifacts.length < 100) {
         break;
       }
     }
+
+    return undefined;
   } catch {
     return undefined;
   }
-
-  return undefined;
 };
 
 export const readStudioImageVerifyEvidence = (
   imageDigest?: string,
   options?: {
     readonly imageTag?: string;
-  },
+  }
 ): StudioImageVerifyEvidence | undefined =>
   readLocalStudioImageVerifyEvidence(imageDigest) ??
   tryReadGithubStudioImageVerifyEvidence(imageDigest, { imageTag: options?.imageTag });
@@ -1332,9 +1302,28 @@ const readLocalState = (): LocalState | null => {
   }
 };
 
+const readLocalWorkerState = (): LocalState | null => {
+  if (!existsSync(localWorkerStateFile)) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(readFileSync(localWorkerStateFile, 'utf8')) as LocalState;
+    return typeof parsed.pid === 'number' ? parsed : null;
+  } catch {
+    return null;
+  }
+};
+
 const clearLocalState = () => {
   if (existsSync(localStateFile)) {
     unlinkSync(localStateFile);
+  }
+};
+
+const clearLocalWorkerState = () => {
+  if (existsSync(localWorkerStateFile)) {
+    unlinkSync(localWorkerStateFile);
   }
 };
 
@@ -1343,6 +1332,20 @@ const stopKnownLocalDevServers = () => {
     'scripts/ops/runtime/local-dev-server-runner.ts',
     'sva-studio-react:serve',
     'vite.js dev --port 3000',
+  ] as const;
+
+  for (const pattern of patterns) {
+    spawnSync('pkill', ['-f', pattern], {
+      cwd: rootDir,
+      stdio: 'ignore',
+    });
+  }
+};
+
+const stopKnownLocalProvisioningWorkers = () => {
+  const patterns = [
+    'scripts/ops/runtime/local-provisioning-worker-runner.ts',
+    'packages/auth-runtime/src/iam-instance-registry/worker.ts',
   ] as const;
 
   for (const pattern of patterns) {
@@ -1377,6 +1380,32 @@ const stopLocalApp = () => {
 
   clearLocalState();
   stopKnownLocalDevServers();
+};
+
+const stopLocalProvisioningWorker = () => {
+  const state = readLocalWorkerState();
+  if (!state) {
+    stopKnownLocalProvisioningWorkers();
+    return;
+  }
+
+  if (!isProcessAlive(state.pid)) {
+    clearLocalWorkerState();
+    return;
+  }
+
+  try {
+    process.kill(-state.pid, 'SIGTERM');
+  } catch {
+    try {
+      process.kill(state.pid, 'SIGTERM');
+    } catch {
+      // Ignore stale process state.
+    }
+  }
+
+  clearLocalWorkerState();
+  stopKnownLocalProvisioningWorkers();
 };
 
 const startLocalApp = async (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => {
@@ -1438,6 +1467,117 @@ const startLocalApp = async (runtimeProfile: RuntimeProfile, env: NodeJS.Process
   );
 
   await waitForHttpOk(new URL('/health/live', env.SVA_PUBLIC_BASE_URL ?? 'http://localhost:3000').toString(), 60_000);
+};
+
+const startLocalProvisioningWorker = (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => {
+  ensureDirs();
+
+  const existing = readLocalWorkerState();
+  if (existing && isProcessAlive(existing.pid) && existing.profile !== runtimeProfile) {
+    throw new Error(
+      `Lokaler Provisioning-Worker laeuft bereits mit Profil ${existing.profile}. Erst env:down:${existing.profile} ausfuehren.`,
+    );
+  }
+
+  if (existing && isProcessAlive(existing.pid) && existing.profile === runtimeProfile) {
+    return;
+  }
+
+  const logFile = resolve(appLogDir, `${runtimeProfile}.worker.log`);
+  writeFileSync(logFile, '', 'utf8');
+  const child = spawn(
+    process.execPath,
+    [
+      '--import',
+      'tsx',
+      'scripts/ops/runtime/local-provisioning-worker-runner.ts',
+      `--profile=${runtimeProfile}`,
+      `--log-file=${logFile}`,
+      `--state-file=${localWorkerStateFile}`,
+    ],
+    {
+      cwd: rootDir,
+      env,
+      detached: true,
+      stdio: 'ignore',
+    },
+  );
+
+  if (child.pid === undefined) {
+    throw new Error(`Provisioning-Worker fuer ${runtimeProfile} konnte nicht gestartet werden.`);
+  }
+
+  child.unref();
+
+  writeFileSync(
+    localWorkerStateFile,
+    `${JSON.stringify(
+      {
+        command: 'tsx packages/auth-runtime/src/iam-instance-registry/worker.ts',
+        launcher: 'local-provisioning-worker-runner',
+        pid: child.pid,
+        profile: runtimeProfile,
+        startedAt: new Date().toISOString(),
+        logFile,
+      } satisfies LocalState,
+      null,
+      2,
+    )}\n`,
+    'utf8',
+  );
+};
+
+export const buildLocalProvisioningWorkerCheck = (
+  runtimeProfile: RuntimeProfile,
+  workerState: LocalState | null,
+  isAlive: (pid: number) => boolean = isProcessAlive,
+): DoctorCheck => {
+  if (!getRuntimeProfileDefinition(runtimeProfile).isLocal) {
+    return toDoctorCheck(
+      'keycloak-provisioning-worker',
+      'skipped',
+      'local_provisioning_worker_not_applicable',
+      'Provisioning-Worker-Check ist fuer Remote-Profile nicht anwendbar.',
+    );
+  }
+
+  if (!workerState) {
+    return toDoctorCheck(
+      'keycloak-provisioning-worker',
+      'warn',
+      'local_keycloak_provisioning_worker_missing',
+      'Kein lokaler Keycloak-Provisioning-Worker registriert. Neue Provisioning-Laeufe bleiben sonst in planned/queued stehen.',
+      { profile: runtimeProfile },
+    );
+  }
+
+  if (!isAlive(workerState.pid)) {
+    return toDoctorCheck(
+      'keycloak-provisioning-worker',
+      'warn',
+      'local_keycloak_provisioning_worker_stale',
+      'Der lokale Keycloak-Provisioning-Worker ist nicht mehr aktiv. Neue Provisioning-Laeufe werden nicht abgearbeitet.',
+      {
+        logFile: workerState.logFile,
+        pid: workerState.pid,
+        profile: workerState.profile,
+        startedAt: workerState.startedAt,
+      },
+    );
+  }
+
+  return toDoctorCheck(
+    'keycloak-provisioning-worker',
+    'ok',
+    'local_keycloak_provisioning_worker_running',
+    'Der lokale Keycloak-Provisioning-Worker laeuft.',
+    {
+      logFile: workerState.logFile,
+      pid: workerState.pid,
+      profile: workerState.profile,
+      startedAt: workerState.startedAt,
+    },
+  );
 };
 
 const waitForHttpOk = async (url: string, timeoutMs: number) => {
@@ -2546,6 +2686,7 @@ const precheckAcceptance = async (
   checks.push(await buildAcceptanceIngressConsistencyCheck(env));
   checks.push(await buildLiveRuntimeEnvCheck(runtimeProfile, env));
   checks.push(await buildAppPrincipalReadinessCheck(env));
+  checks.push(await buildKeycloakClientSecretCheck(runtimeProfile, env));
   checks.push(await buildObservabilityDoctorCheck(runtimeProfile, env));
   checks.push(await buildTenantAuthProofCheck(runtimeProfile, env));
   checks.push(buildAcceptancePostgresCheck(env));
@@ -2595,6 +2736,8 @@ const doctorRuntime = async (runtimeProfile: RuntimeProfile, env: NodeJS.Process
     );
   }
 
+  checks.push(buildLocalProvisioningWorkerCheck(runtimeProfile, readLocalWorkerState()));
+
   const baseUrl = env.SVA_PUBLIC_BASE_URL ?? 'http://localhost:3000';
 
   try {
@@ -2633,6 +2776,8 @@ const doctorRuntime = async (runtimeProfile: RuntimeProfile, env: NodeJS.Process
   } catch (error) {
     checks.push(toDoctorCheck('health-ready', 'error', 'ready_unreachable', error instanceof Error ? error.message : String(error)));
   }
+
+  checks.push(await buildKeycloakClientSecretCheck(runtimeProfile, env));
 
   try {
     await assertLoginFlow(runtimeProfile, env);
@@ -2697,7 +2842,7 @@ const doctorRuntime = async (runtimeProfile: RuntimeProfile, env: NodeJS.Process
   return finalizeDoctorReport(runtimeProfile, checks);
 };
 
-const assertLoginFlow = async (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => {
+export const assertLoginFlow = async (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => {
   const loginUrl = new URL('/auth/login', env.SVA_PUBLIC_BASE_URL ?? 'http://localhost:3000').toString();
   const response = await fetch(loginUrl, { redirect: 'manual' });
   const location = response.headers.get('location') ?? '';
@@ -2711,7 +2856,7 @@ const assertLoginFlow = async (runtimeProfile: RuntimeProfile, env: NodeJS.Proce
   }
 
   if (response.status !== 302 || !isExpectedOidcRedirect(location, env)) {
-    throw new Error(`OIDC-Login redirect stimmt nicht. Erhalten ${location}`);
+    throw new Error(`OIDC-Login redirect stimmt nicht. Erhalten Status ${response.status} mit Location ${location}`);
   }
 };
 
@@ -2757,6 +2902,177 @@ const assertIamContextEndpoint = async (env: NodeJS.ProcessEnv) => {
   }
 
   throw new Error(`/api/v1/iam/me/context antwortet unerwartet mit ${response.status}`);
+};
+
+type OidcClientSecretProbe = Readonly<{
+  allowClientAuthOnly?: boolean;
+  clientId: string;
+  clientSecret: string;
+  issuerUrl: string;
+  name: string;
+}>;
+
+type OidcClientSecretProbeResult = Readonly<{
+  mode: 'authenticated' | 'skipped';
+  name: string;
+  reason?: string;
+  status: 'ok' | 'skipped';
+}>;
+
+const normalizeBaseUrl = (value: string) => value.replace(/\/+$/u, '');
+
+const readJsonResponse = async (response: Response): Promise<Record<string, unknown>> => {
+  const text = await response.text();
+  if (!text.trim()) {
+    return {};
+  }
+
+  try {
+    const parsed = JSON.parse(text) as unknown;
+    return typeof parsed === 'object' && parsed !== null ? (parsed as Record<string, unknown>) : {};
+  } catch {
+    return { raw: text };
+  }
+};
+
+const probeOidcClientSecret = async (probe: OidcClientSecretProbe): Promise<OidcClientSecretProbeResult> => {
+  const tokenUrl = `${normalizeBaseUrl(probe.issuerUrl)}/protocol/openid-connect/token`;
+  const body = new URLSearchParams({
+    grant_type: 'client_credentials',
+    client_id: probe.clientId,
+    client_secret: probe.clientSecret,
+  });
+
+  const response = await fetch(tokenUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body,
+    signal: AbortSignal.timeout(10_000),
+  });
+
+  const payload = await readJsonResponse(response);
+  if (response.ok) {
+    const accessToken = typeof payload.access_token === 'string' ? payload.access_token.trim() : '';
+    if (!accessToken) {
+      throw new Error(`${probe.name}: Token-Endpoint liefert kein access_token.`);
+    }
+
+    return {
+      mode: 'authenticated',
+      name: probe.name,
+      status: 'ok',
+    };
+  }
+
+  const oauthError = typeof payload.error === 'string' ? payload.error : '';
+  const oauthDescription = typeof payload.error_description === 'string' ? payload.error_description : '';
+  if (
+    probe.allowClientAuthOnly
+    && response.status < 500
+    && oauthError.length > 0
+    && oauthError !== 'invalid_client'
+  ) {
+    return {
+      mode: 'authenticated',
+      name: probe.name,
+      reason: oauthDescription || oauthError,
+      status: 'ok',
+    };
+  }
+
+  throw new Error(
+    `${probe.name}: Client-Secret-Pruefung fehlgeschlagen (${response.status}${oauthError ? ` ${oauthError}` : ''}${
+      oauthDescription ? `: ${oauthDescription}` : ''
+    }).`,
+  );
+};
+
+export const buildKeycloakClientSecretCheck = async (
+  runtimeProfile: RuntimeProfile,
+  env: NodeJS.ProcessEnv,
+): Promise<DoctorCheck> => {
+  if (isMockAuthRuntimeProfile(runtimeProfile)) {
+    return toDoctorCheck(
+      'keycloak-client-secrets',
+      'skipped',
+      'keycloak_client_secrets_not_applicable',
+      'Keycloak-Client-Secret-Pruefung ist fuer Mock-Auth-Profile nicht anwendbar.',
+    );
+  }
+
+  const keycloakBaseUrl = env.KEYCLOAK_ADMIN_BASE_URL?.trim();
+  const authIssuer = env.SVA_AUTH_ISSUER?.trim();
+  const authClientId = env.SVA_AUTH_CLIENT_ID?.trim();
+  const authClientSecret = env.SVA_AUTH_CLIENT_SECRET?.trim();
+  const adminRealm = env.KEYCLOAK_ADMIN_REALM?.trim();
+  const adminClientId = env.KEYCLOAK_ADMIN_CLIENT_ID?.trim();
+  const adminClientSecret = env.KEYCLOAK_ADMIN_CLIENT_SECRET?.trim();
+  const provisionerRealm = env.KEYCLOAK_PROVISIONER_REALM?.trim();
+  const provisionerClientId = env.KEYCLOAK_PROVISIONER_CLIENT_ID?.trim();
+  const provisionerClientSecret = env.KEYCLOAK_PROVISIONER_CLIENT_SECRET?.trim();
+
+  const probes: OidcClientSecretProbe[] = [];
+  if (authIssuer && authClientId && authClientSecret) {
+    probes.push({
+      allowClientAuthOnly: true,
+      clientId: authClientId,
+      clientSecret: authClientSecret,
+      issuerUrl: authIssuer,
+      name: 'auth-client',
+    });
+  }
+
+  if (keycloakBaseUrl && adminRealm && adminClientId && adminClientSecret) {
+    probes.push({
+      clientId: adminClientId,
+      clientSecret: adminClientSecret,
+      issuerUrl: `${normalizeBaseUrl(keycloakBaseUrl)}/realms/${adminRealm}`,
+      name: 'admin-client',
+    });
+  }
+
+  if (keycloakBaseUrl && provisionerRealm && provisionerClientId && provisionerClientSecret) {
+    probes.push({
+      clientId: provisionerClientId,
+      clientSecret: provisionerClientSecret,
+      issuerUrl: `${normalizeBaseUrl(keycloakBaseUrl)}/realms/${provisionerRealm}`,
+      name: 'provisioner-client',
+    });
+  }
+
+  if (probes.length === 0) {
+    return toDoctorCheck(
+      'keycloak-client-secrets',
+      'warn',
+      'keycloak_client_secrets_unconfigured',
+      'Keine pruefbaren Keycloak-Client-Secrets fuer Runtime-Doctor gefunden.',
+    );
+  }
+
+  try {
+    const results = await Promise.all(probes.map((probe) => probeOidcClientSecret(probe)));
+    return toDoctorCheck(
+      'keycloak-client-secrets',
+      'ok',
+      'keycloak_client_secrets_verified',
+      'Alle pruefbaren Keycloak-Client-Secrets authentifizieren erfolgreich gegen den Token-Endpoint.',
+      {
+        clients: results.map((result) => ({
+          mode: result.mode,
+          name: result.name,
+          reason: result.reason,
+          status: result.status,
+        })),
+      },
+    );
+  } catch (error) {
+    return toDoctorCheck(
+      'keycloak-client-secrets',
+      'error',
+      'keycloak_client_secret_check_failed',
+      error instanceof Error ? error.message : String(error),
+    );
+  }
 };
 
 const assertMainserverSmoke = async (env: NodeJS.ProcessEnv) => {
@@ -2886,6 +3202,10 @@ const assertAcceptanceContainerHealth = async (env: NodeJS.ProcessEnv) => {
 const smokeRuntime = async (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => {
   assertRuntimeEnv(runtimeProfile, env);
 
+  if (!getRuntimeProfileDefinition(runtimeProfile).isLocal) {
+    await waitForRemoteSmokeWarmup(env, { runtimeProfile });
+  }
+
   const live = await checkHttpHealth(new URL('/health/live', env.SVA_PUBLIC_BASE_URL ?? 'http://localhost:3000').toString());
   if (!live.response.ok) {
     throw new Error(`Live-Healthcheck fehlgeschlagen: ${live.response.status}`);
@@ -2925,9 +3245,11 @@ const runLocalCommand = async (runtimeProfile: RuntimeProfile, runtimeCommand: R
       bootstrapLocalAppUser(env);
       reconcileLocalInstanceRegistry(runtimeProfile, env);
       await startLocalApp(runtimeProfile, env);
+      startLocalProvisioningWorker(runtimeProfile, env);
       console.log(`Profil ${runtimeProfile} gestartet.`);
       return;
     case 'down':
+      stopLocalProvisioningWorker();
       stopLocalApp();
       downLocalInfra(env);
       console.log(`Profil ${runtimeProfile} gestoppt.`);
@@ -2938,13 +3260,16 @@ const runLocalCommand = async (runtimeProfile: RuntimeProfile, runtimeCommand: R
       upLocalInfra(env);
       bootstrapLocalAppUser(env);
       reconcileLocalInstanceRegistry(runtimeProfile, env);
+      stopLocalProvisioningWorker();
       stopLocalApp();
       await startLocalApp(runtimeProfile, env);
+      startLocalProvisioningWorker(runtimeProfile, env);
       console.log(`Profil ${runtimeProfile} aktualisiert.`);
       return;
     case 'status': {
       const state = readLocalState();
-      console.log(JSON.stringify({ app: state, profile: runtimeProfile }, null, 2));
+      const worker = readLocalWorkerState();
+      console.log(JSON.stringify({ app: state, profile: runtimeProfile, worker }, null, 2));
       run('docker', [...getComposeArgs(env), 'ps'], env);
       return;
     }
@@ -4110,15 +4435,26 @@ const buildSwarmServicePresenceProbe = (env: NodeJS.ProcessEnv): AcceptanceProbe
   });
 };
 
-export const deriveInternalVerifyMaxAttempts = ({
-  retryDelayMs,
-  warmupWindowMs,
-}: {
-  retryDelayMs: number;
-  warmupWindowMs: number;
+export const waitForPostDeployStabilization = async (
+  env: NodeJS.ProcessEnv,
+  waitFn: (ms: number) => Promise<unknown> = wait,
+) => {
+  const stabilizationDelayMs = Number(env.SVA_POST_DEPLOY_STABILIZATION_DELAY_MS ?? '5000');
+
+  if (!Number.isFinite(stabilizationDelayMs) || stabilizationDelayMs <= 0) {
+    return 0;
+  }
+
+  await waitFn(stabilizationDelayMs);
+  return stabilizationDelayMs;
+};
+
+export const deriveInternalVerifyMaxAttempts = (input: {
+  readonly retryDelayMs: number;
+  readonly warmupWindowMs: number;
 }) => {
-  const safeRetryDelayMs = retryDelayMs > 0 ? retryDelayMs : 1_000;
-  return Math.max(1, Math.floor(warmupWindowMs / safeRetryDelayMs) + 1);
+  const normalizedRetryDelayMs = input.retryDelayMs > 0 ? input.retryDelayMs : 1000;
+  return Math.max(1, Math.floor(input.warmupWindowMs / normalizedRetryDelayMs) + 1);
 };
 
 const runInternalVerify = async (runtimeProfile: RemoteRuntimeProfile, env: NodeJS.ProcessEnv): Promise<{
@@ -4288,6 +4624,43 @@ export const shouldRetryInternalProbeFailure = (probe: AcceptanceProbeResult) =>
   );
 };
 
+export const waitForRemoteSmokeWarmup = async (
+  env: NodeJS.ProcessEnv,
+  options?: {
+    readonly maxAttempts?: number;
+    readonly retryDelayMs?: number;
+    readonly runtimeProfile?: RuntimeProfile;
+    readonly runner?: (env: NodeJS.ProcessEnv) => Promise<readonly AcceptanceProbeResult[]>;
+  }
+): Promise<readonly AcceptanceProbeResult[]> => {
+  const runtimeProfile =
+    options?.runtimeProfile ??
+    parseRuntimeProfile(env.SVA_RUNTIME_PROFILE as RuntimeProfile | undefined) ??
+    'local-keycloak';
+  const blockingProbeNames = new Set(['public-live', 'public-ready', 'public-auth-login']);
+  const probes = await runExternalSmokeWithWarmup(env, {
+    maxAttempts: options?.maxAttempts,
+    retryDelayMs: options?.retryDelayMs,
+    runtimeProfile,
+    runner: options?.runner,
+    shouldRetry: (candidateProbes) =>
+      shouldRetryExternalSmoke(
+        candidateProbes.filter(
+          (probe) => blockingProbeNames.has(probe.name) || probe.name.startsWith('public-auth-login-')
+        )
+      ),
+  });
+  const failingProbe = probes.find(
+    (probe) => probe.status === 'error' && (blockingProbeNames.has(probe.name) || probe.name.startsWith('public-auth-login-')),
+  );
+
+  if (failingProbe) {
+    throw new Error(`${failingProbe.name}: ${failingProbe.message}`);
+  }
+
+  return probes;
+};
+
 const runExternalSmoke = async (
   runtimeProfile: RuntimeProfile,
   env: NodeJS.ProcessEnv
@@ -4418,6 +4791,7 @@ export const runExternalSmokeWithWarmup = async (
     readonly retryDelayMs?: number;
     readonly runtimeProfile?: RuntimeProfile;
     readonly runner?: (env: NodeJS.ProcessEnv) => Promise<readonly AcceptanceProbeResult[]>;
+    readonly shouldRetry?: (probes: readonly AcceptanceProbeResult[]) => boolean;
   }
 ): Promise<readonly AcceptanceProbeResult[]> => {
   const retryDelayMs = options?.retryDelayMs ?? Number(env.SVA_EXTERNAL_SMOKE_RETRY_DELAY_MS ?? '15000');
@@ -4431,13 +4805,14 @@ export const runExternalSmokeWithWarmup = async (
         options?.runtimeProfile ?? parseRuntimeProfile(currentEnv.SVA_RUNTIME_PROFILE as RuntimeProfile | undefined) ?? 'local-keycloak',
         currentEnv
       ));
+  const shouldRetry = options?.shouldRetry ?? shouldRetryExternalSmoke;
   let lastProbes: readonly AcceptanceProbeResult[] = [];
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     const probes = await runner(env);
     lastProbes = probes;
 
-    if (!shouldRetryExternalSmoke(probes) || attempt >= maxAttempts) {
+    if (!shouldRetry(probes) || attempt >= maxAttempts) {
       return probes;
     }
 
@@ -4682,6 +5057,8 @@ const runAcceptanceDeploy = async (runtimeProfile: RemoteRuntimeProfile, env: No
       };
       throw { category: 'startup' as const, report };
     }
+
+    await waitForPostDeployStabilization(env);
 
     const internalVerifyStartedAt = Date.now();
     const internalVerify = await runInternalVerify(runtimeProfile, env);

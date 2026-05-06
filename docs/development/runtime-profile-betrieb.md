@@ -4,7 +4,7 @@
 
 Dieses Runbook definiert die offiziellen Betriebsprofile für SVA Studio und vereinheitlicht Start, Update, Stop, Diagnose, Smoke-Checks und Migrationen:
 
-- `local-keycloak`: lokaler Betrieb auf `http://localhost:3000` mit globalem Test-Realm `svs-intern-studio-staging`
+- `local-keycloak`: lokaler Betrieb auf `http://localhost:3000` mit Plattform-Login gegen `svs-intern-studio-staging` und Realm-Provisioning über `master`
 - `local-builder`: lokaler Betrieb auf `http://localhost:3000` mit Builder.io und Mock-User
 - `studio`: produktionsnaher Serverbetrieb auf `https://studio.smart-village.app` mit dediziertem Swarm-Stack
 
@@ -127,10 +127,13 @@ Wichtig für den lokalen `local-keycloak`-Pfad:
 - `studio.localhost:3000` ist der Root-/Plattform-Host und authentifiziert gegen `svs-intern-studio-staging`.
 - `<instanceId>.studio.localhost:3000` ist ein Tenant-Host und authentifiziert gegen den in `iam.instances.auth_realm` hinterlegten Tenant-Realm, zum Beispiel `de-musterhausen`.
 - Normale Tenant-Mutationen für Nutzer, Rollen und Gruppen laufen im lokalen Standardpfad strikt gegen denselben Tenant-Realm wie der Login-Flow, aber über den separaten `tenantAdminClient`.
+- `pnpm env:up:local-keycloak` startet neben dem Dev-Server auch den lokalen Keycloak-Provisioning-Worker. Dessen State und Log liegen unter `artifacts/runtime/`.
+- Fehlt der Worker oder ist sein Prozess stale, meldet `pnpm env:doctor:local-keycloak` einen sichtbaren `warn`-Check, damit Provisioning-Läufe nicht unbemerkt in `planned`/`queued` hängen bleiben.
 - `KEYCLOAK_ADMIN_REALM` und `KEYCLOAK_ADMIN_CLIENT_ID` beschreiben im lokalen Profil nur noch den Plattform-/Break-Glass-Pfad. Sie sind kein impliziter Fallback für Tenant-Alltagsverwaltung mehr.
+- Realm-Provisioning im lokalen Worker nutzt explizit `KEYCLOAK_PROVISIONER_*`, standardmäßig `master` plus `sva-studio-provisioner`. Fehlen diese Variablen, fällt der Worker weiterhin auf `KEYCLOAK_ADMIN_*` zurück; das ist für neue Tenant-Realms fachlich nicht gewollt.
 - Fehlen tenantlokaler Admin-Client oder tenantlokales Secret im Instanzdatensatz, schlagen Tenant-Mutationen fail-closed mit `tenant_admin_client_not_configured` oder `tenant_admin_client_secret_missing` fehl.
 
-Für zusätzliche lokale Instanzen oder zweite lokale Datenbanken ist `../guides/lokale-instanz-db-initialisierung.md` der kanonische Bootstrap-Pfad.
+Für zusätzliche lokale Instanzen oder weitere lokale Datenbanken ist `../guides/lokale-instanz-db-initialisierung.md` der kanonische Bootstrap-Pfad.
 
 Für lokale Multi-Tenant-Hosttests ist `../guides/instance-registry-local-development.md` der kanonische Pfad. Offiziell unterstützt sind `studio.lvh.me` und `<instanceId>.studio.lvh.me`.
 
@@ -168,16 +171,6 @@ Der Container-Entrypoint kennt zusätzlich nur noch einen expliziten Legacy-Reco
 
 - `SVA_ENABLE_RUNTIME_RECOVERY_PATCH=1` erlaubt im Incident-Fall den dokumentierten Runtime-Patch auf dem finalen Nitro-Entry
 - ohne dieses Flag bleibt jede Artefakt-Umschreibung deaktiviert; der Standardbetrieb muss mit dem unveränderten Build-Output gesund starten
-
-### Lokale HB-Produktivsimulation in Docker
-
-```bash
-pnpm env:up:local-keycloak:hb:docker
-pnpm env:status:local-keycloak:hb:docker
-pnpm env:down:local-keycloak:hb:docker
-```
-
-Dieser Pfad startet die App als Produktionscontainer lokal gegen `postgres-hb`, `redis` und `otel-collector`. Die dafür verwendete Runtime-Datei ist `config/runtime/local-keycloak.hb.docker.local.vars`.
 
 ## Verhalten der Kommandos
 
@@ -249,9 +242,9 @@ Dieser Pfad startet die App als Produktionscontainer lokal gegen `postgres-hb`, 
 - `--json` schreibt zusätzlich zur Artefakterzeugung den vollständigen Deploy-Report auf stdout
 - Vor dem eigentlichen Stack-Update validiert der gehärtete Renderpfad, dass `app` weiterhin die Netzwerke `internal` und `public` sowie die ingressrelevanten Traefik-Labels enthält. Fehlende Einträge blockieren den Rollout vor jedem Live-Mutationsschritt.
 - Wenn das Ziel-Digest bereits live auf `app` läuft, darf das Parity-Gate die Live-Evidenz desselben Digests wiederverwenden. Voraussetzung sind grüne Nachweise für Ingress-Konsistenz, `app-db-principal`, Tenant-Auth-Proof und Live-Runtime-Flags.
-- Ein lokaler Kandidatencontainer ersetzt für `studio` keinen echten Swarm-/Ingress-/Private-DNS-Nachweis. Kann der Remote-Hostvertrag lokal nicht realistisch abgebildet werden, bleibt nur die dokumentierte Live-Parität desselben Digests oder ein echter Remote-Rollout im kanonischen Pfad.
+- Ein lokaler Kandidatencontainer ersetzt fuer `studio` keinen echten Swarm-/Ingress-/Private-DNS-Nachweis. Kann der Remote-Hostvertrag lokal nicht realistisch abgebildet werden, bleibt nur die dokumentierte Live-Paritaet desselben Digests oder ein echter Remote-Rollout im kanonischen Pfad.
 - Erkenntnis aus dem Studio-Release vom 28. April 2026: `migrate` und `bootstrap` bleiben harte Freigabegates, weil Schema-Pflichtfelder und Bootstrap-Reconcile gemeinsam betrachtet werden müssen.
-- Erkenntnis aus dem Studio-Release vom 28. April 2026: externe Health- und Tenant-Probes direkt nach dem Stack-Cutover können kurzzeitige `404` liefern, obwohl der neue Task wenige Sekunden später gesund ist; Release-Wrapper sollen diesen Zeitraum mit bounded Retries statt mit einem Sofort-Abbruch behandeln.
+- Erkenntnis aus dem Studio-Release vom 28. April 2026: externe Health- und Tenant-Probes direkt nach dem Stack-Cutover koennen kurzzeitige `404` liefern, obwohl der neue Task wenige Sekunden spaeter gesund ist; Release-Wrapper sollen diesen Zeitraum mit bounded Retries statt mit einem Sofort-Abbruch behandeln.
 - Erkenntnis aus dem Studio-Release vom 28. April 2026: eine erfolgreich in GitHub gelaufene `Studio Image Verify`-Evidenz ist fachlich gleichwertig zu lokal erzeugten Verify-Artefakten; ein reiner Lookup auf `artifacts/runtime/image-verify` erzeugt sonst Warnrauschen.
 
 ### `smoke`
@@ -274,14 +267,14 @@ Ausnahme für `studio` in der frühen Testphase:
 Zusatzprüfungen:
 
 - lokal: OTEL Collector `http://127.0.0.1:13133/healthz`
-- lokal im Multi-Tenant-Pfad: Root-Host `studio.lvh.me`, Tenant-Host `hb.studio.lvh.me` und fail-closed-Fall `blocked.studio.lvh.me`
+- lokal im Multi-Tenant-Pfad: Root-Host `studio.lvh.me`, Tenant-Host `demo2.studio.lvh.me` und fail-closed-Fall `blocked.studio.lvh.me`
 - Remote: Service-/Task-Status für `app`, `redis`, `postgres` bevorzugt über Portainer-API
 - Remote: `otel-collector` nur dann zusätzlich, wenn `ENABLE_OTEL` im Zielprofil aktiviert ist
 - Remote: öffentliche Smoke-Probes gegen Root-Host `/`, `/health/live`, `/health/ready`, `/auth/login`, `/api/v1/iam/me/context`
 - Remote: zusätzlich `/api/v1/iam/instances`
 - Remote: mindestens ein aktiver Tenant-Host und ein negativer Host-Fall gegen dieselbe App-Instanz
-- Remote: `doctor` und `precheck` müssen `app-db-principal` für denselben Runtime-User wie die laufende App als `ok` ausweisen
-- Remote: wenn die erste externe Probe direkt nach einem `app-only`-Rollout fehlschlägt, ist mindestens ein kurzer Retry-Zeitraum verpflichtend, bevor der gesamte Release als `health`-Fehler gewertet wird
+- Remote: `doctor` und `precheck` muessen `app-db-principal` fuer denselben Runtime-User wie die laufende App als `ok` ausweisen
+- Remote: wenn die erste externe Probe direkt nach einem `app-only`-Rollout fehlschlaegt, ist mindestens ein kurzer Retry-Zeitraum verpflichtend, bevor der gesamte Release als `health`-Fehler gewertet wird
 
 Im Profil `studio` prüfen die externen Smokes zusätzlich tenant-spezifische OIDC-Redirects. Der Scope kommt bevorzugt aus der Instanz-Registry; `SVA_ALLOWED_INSTANCE_IDS` bleibt nur lokaler oder migrationsbezogener Fallback, und `SVA_TENANT_SCOPE_INSTANCE_IDS` kann den Scope für gezielte Operator-Läufe explizit übersteuern.
 

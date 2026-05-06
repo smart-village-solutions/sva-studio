@@ -11,14 +11,7 @@ GOOSE_COMMAND="${1:-up}"
 GOOSE_WRAPPER="${GOOSE_WRAPPER:-packages/data/scripts/goosew.sh}"
 MIGRATIONS_DIR="${MIGRATIONS_DIR:-packages/data/migrations}"
 
-case "${POSTGRES_SERVICE}" in
-  postgres-hb)
-    POSTGRES_PORT="${POSTGRES_PORT:-5433}"
-    ;;
-  *)
-    POSTGRES_PORT="${POSTGRES_PORT:-5432}"
-    ;;
-esac
+POSTGRES_PORT="${POSTGRES_PORT:-5432}"
 
 if [ -n "${SVA_LOCAL_POSTGRES_CONTAINER_NAME}" ]; then
   if [ -z "$(docker ps -q -f "name=^/${SVA_LOCAL_POSTGRES_CONTAINER_NAME}$")" ]; then

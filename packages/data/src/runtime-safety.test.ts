@@ -1,7 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
+import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 
 const testDirectory = dirname(fileURLToPath(import.meta.url));
@@ -75,13 +77,58 @@ test('runtime artifact checks avoid stale images and dev JSX false positives', (
   assert.match(runtimeVerifyScript, /"\$\{SERVER_CHUNK_PATH\}"/);
   assert.doesNotMatch(runtimeVerifyScript, /grep -R -E 'jsxDEV\|jsx-dev-runtime' "\$\{APP_DIR\}\/\.output\/server"/);
 
-  assert.match(portainerDockerfile, /--exclude-dir='node_modules'/);
-  assert.match(portainerDockerfile, /--exclude='\*\.map'/);
-  assert.match(portainerDockerfile, /--include='\*\.mjs'/);
+  assert.match(
+    portainerDockerfile,
+    /find \/workspace\/apps\/sva-studio-react\/\.output\/server -type f[\s\S]*-name '\*\.js'[\s\S]*-name '\*\.mjs'[\s\S]*-name '\*\.cjs'/
+  );
+  assert.match(portainerDockerfile, /! -name '\*\.map'/);
+  assert.match(portainerDockerfile, /! -path '\*\/node_modules\/\*'/);
+  assert.match(portainerDockerfile, /-exec grep -E -l 'jsxDEV\|jsx-dev-runtime' \{\} \+ \| grep -q \./);
+  assert.doesNotMatch(portainerDockerfile, /--include='\*\.mjs'/);
+  assert.doesNotMatch(portainerDockerfile, /--exclude-dir='node_modules'/);
 
   assert.match(patchRuntimeArtifact, /findPnpmPackageDir/);
   assert.match(patchRuntimeArtifact, /path\.join\(pnpmDir, entry\.name, 'node_modules', \.\.\.packageSegments\)/);
   assert.match(patchRuntimeArtifact, /path\.join\(currentDir, 'node_modules', \.\.\.packageSegments\)/);
   assert.doesNotMatch(patchRuntimeArtifact, /node_modules', '\.pnpm', 'node_modules'/);
   assert.doesNotMatch(patchRuntimeArtifact, /requireFromApp\.resolve/);
+});
+
+test('portable docker runtime guard only fails when a JSX dev runtime match is present', () => {
+  const tempRoot = mkdtempSync(resolve(tmpdir(), 'runtime-guard-'));
+  const noMatchDir = resolve(tempRoot, 'no-match');
+  const matchDir = resolve(tempRoot, 'match');
+  const guardScript = `if find "$TARGET_DIR" -type f \\
+  \\( -name '*.js' -o -name '*.mjs' -o -name '*.cjs' \\) \\
+  ! -name '*.map' \\
+  ! -path '*/node_modules/*' \\
+  -exec grep -E -l 'jsxDEV|jsx-dev-runtime' {} + | grep -q .; then
+  exit 1
+fi`;
+
+  try {
+    execFileSync('mkdir', ['-p', noMatchDir, matchDir]);
+    writeFileSync(resolve(noMatchDir, 'server.js'), 'export const server = "prod-runtime";\n');
+    writeFileSync(resolve(matchDir, 'server.js'), 'const runtime = "jsxDEV";\n');
+
+    execFileSync('sh', ['-c', guardScript], {
+      env: {
+        ...process.env,
+        TARGET_DIR: noMatchDir,
+      },
+    });
+
+    assert.throws(
+      () =>
+        execFileSync('sh', ['-c', guardScript], {
+          env: {
+            ...process.env,
+            TARGET_DIR: matchDir,
+          },
+        }),
+      /Command failed/,
+    );
+  } finally {
+    rmSync(tempRoot, { force: true, recursive: true });
+  }
 });

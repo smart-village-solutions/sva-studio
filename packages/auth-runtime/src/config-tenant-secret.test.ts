@@ -14,7 +14,7 @@ vi.mock('@sva/data-repositories/server', () => ({
   loadTenantAdminClientSecretCiphertext: loadAdminSecretMock,
 }));
 
-vi.mock('@sva/iam-admin', () => ({
+vi.mock('@sva/iam-admin/encryption', () => ({
   revealField: revealFieldMock,
 }));
 

@@ -54,6 +54,14 @@
       "types": "./dist/legal-text-repository.d.ts",
       "default": "./dist/legal-text-repository.js"
     },
+    "./legal-text-html": {
+      "types": "./dist/legal-text-html.d.ts",
+      "default": "./dist/legal-text-html.js"
+    },
+    "./legal-text-sanitize-html": {
+      "types": "./dist/legal-text-sanitize-html.d.ts",
+      "default": "./dist/legal-text-sanitize-html.js"
+    },
     "./legal-text-mutation-handlers": {
       "types": "./dist/legal-text-mutation-handlers.d.ts",
       "default": "./dist/legal-text-mutation-handlers.js"
@@ -72,6 +80,7 @@
     "@sva/data-repositories": "workspace:*",
     "@sva/iam-core": "workspace:*",
     "@sva/server-runtime": "workspace:*",
+    "postcss": "^8.5.11",
     "sanitize-html": "^2.17.3",
     "zod": "^4.3.6"
   },

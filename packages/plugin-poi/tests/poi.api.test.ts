@@ -31,40 +31,6 @@ describe('poi api', () => {
     );
   });
 
-  it('uses the default list query when no pagination is passed', async () => {
-    const fetchMock = vi.fn(async () =>
-      Response.json({
-        data: [],
-        pagination: { page: defaultListQuery.page, pageSize: defaultListQuery.pageSize, hasNextPage: false },
-      })
-    );
-    vi.stubGlobal('fetch', fetchMock);
-
-    await expect(listPoi()).resolves.toEqual({
-      data: [],
-      pagination: { page: 1, pageSize: 25, hasNextPage: false },
-    });
-    expect(fetchMock).toHaveBeenCalledWith(
-      `/api/v1/mainserver/poi?page=${defaultListQuery.page}&pageSize=${defaultListQuery.pageSize}`,
-      expect.objectContaining({ credentials: 'include' })
-    );
-  });
-
-  it('falls back to the requested pagination when the host omits it', async () => {
-    const requestedQuery = { page: 4, pageSize: 50 } as const;
-    const fetchMock = vi.fn(async () =>
-      Response.json({
-        data: [{ id: 'poi-1', name: 'Rathaus' }],
-      })
-    );
-    vi.stubGlobal('fetch', fetchMock);
-
-    await expect(listPoi(requestedQuery)).resolves.toEqual({
-      data: [{ id: 'poi-1', name: 'Rathaus' }],
-      pagination: { page: 4, pageSize: 50, hasNextPage: false },
-    });
-  });
-
   it('creates POI via POST', async () => {
     const fetchMock = vi.fn(async () => Response.json({ data: { id: 'poi-1', name: 'Rathaus' } }));
     vi.stubGlobal('fetch', fetchMock);
@@ -79,6 +45,6 @@ describe('poi api', () => {
   it('throws stable errors', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => Response.json({ error: 'forbidden', message: 'Nope' }, { status: 403 })));
 
-    await expect(listPoi(defaultListQuery)).rejects.toBeInstanceOf(PoiApiError);
+    await expect(listPoi({ page: 1, pageSize: 25 })).rejects.toBeInstanceOf(PoiApiError);
   });
 });

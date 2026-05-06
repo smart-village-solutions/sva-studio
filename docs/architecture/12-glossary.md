@@ -18,7 +18,7 @@ Architektur und Betrieb.
 | arc42 | Strukturrahmen für Architekturdokumentation mit 12 Abschnitten | `docs/architecture/README.md` |
 | ADR | Architecture Decision Record für nachvollziehbare Entscheidungen | `docs/adr/README.md` |
 | Kommune | Organisations-/Mandanteneinheit im Smart-Village-Kontext (fachlicher Begriff) | `concepts/konzeption-cms-v2/01_Einleitung/Einleitung.md` |
-| Mandant | Isolierter Betriebs-/Datenkontext (Tenant); wird im Code u. a. ueber `workspace_id` abgebildet | `packages/server-runtime/src/observability/context.server.ts` |
+| Mandant | Isolierter Betriebs-/Datenkontext (Tenant); wird im Code u. a. über `workspace_id` abgebildet | `packages/server-runtime/src/observability/context.server.ts` |
 | workspace_id | Identifier zur Kontext-Korrelation (z. B. Tenant/Workspace) in Logs/Telemetry | `docs/architecture/logging-architecture.md` |
 | Core Route Factory | Funktion, die aus `rootRoute` eine Route erzeugt | `packages/core/src/routing/registry.ts` |
 | Plugin-Vertrag | Öffentlicher Plugin-Vertrag, über den ein Plugin Routen, Navigation, Content-Typen und Übersetzungen beschreibt | `packages/plugin-sdk/src/plugins.ts` |

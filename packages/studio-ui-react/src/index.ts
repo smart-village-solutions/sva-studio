@@ -42,6 +42,7 @@ export {
   type StudioDataTableProps,
 } from './studio-data-table.js';
 export {
+  StudioListPageTemplate,
   StudioDetailPageTemplate,
   StudioEmptyState,
   StudioErrorState,
@@ -57,6 +58,9 @@ export {
   type StudioFieldGroupProps,
   type StudioFieldProps,
   type StudioFormSummaryProps,
+  type StudioListPageAction,
+  type StudioListPageTemplateProps,
+  type StudioListPageTab,
   type StudioOverviewPageTemplateProps,
   type StudioPageHeaderProps,
   type StudioStateBlockProps,

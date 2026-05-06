@@ -155,49 +155,54 @@ const readErrorMessageFromPayload = (payload: IamErrorPayload | null, status: nu
 };
 
 const readSafeDiagnosticDetails = (payload: IamErrorPayload | null): IamRuntimeSafeDetails | undefined => {
+  const source = readErrorDetailsRecord(payload);
+  if (!source) {
+    return undefined;
+  }
+
+  const safeDetails: IamRuntimeSafeDetails = {
+    reason_code: readStringDetail(source, 'reason_code'),
+    dependency: readStringDetail(source, 'dependency'),
+    schema_object: readStringDetail(source, 'schema_object'),
+    expected_migration: readStringDetail(source, 'expected_migration'),
+    actor_resolution: readStringDetail(source, 'actor_resolution'),
+    instance_id: readStringDetail(source, 'instance_id'),
+    return_to: readStringDetail(source, 'return_to'),
+    sync_state: readSyncState(source),
+    sync_error_code: readSyncErrorCode(source),
+  };
+
+  return hasStringValues(safeDetails) ? safeDetails : undefined;
+};
+
+const readStructuredErrorPayload = (payload: IamErrorPayload | null) =>
+  payload && typeof payload.error === 'object' && payload.error ? (payload.error as Record<string, unknown>) : undefined;
+
+const readErrorDetailsRecord = (payload: IamErrorPayload | null): Record<string, unknown> | undefined => {
   if (!payload || typeof payload.error !== 'object' || !payload.error || !('details' in payload.error)) {
     return undefined;
   }
 
   const details = (payload.error as { details?: unknown }).details;
-  if (!details || typeof details !== 'object') {
-    return undefined;
-  }
-
-  const source = details as Record<string, unknown>;
-  const syncError =
-    typeof source.syncError === 'object' && source.syncError !== null ? (source.syncError as Record<string, unknown>) : undefined;
-  const safeDetails: IamRuntimeSafeDetails = {
-    reason_code: typeof source.reason_code === 'string' ? source.reason_code : undefined,
-    dependency: typeof source.dependency === 'string' ? source.dependency : undefined,
-    schema_object: typeof source.schema_object === 'string' ? source.schema_object : undefined,
-    expected_migration:
-      typeof source.expected_migration === 'string' ? source.expected_migration : undefined,
-    actor_resolution:
-      typeof source.actor_resolution === 'string' ? source.actor_resolution : undefined,
-    instance_id: typeof source.instance_id === 'string' ? source.instance_id : undefined,
-    return_to: typeof source.return_to === 'string' ? source.return_to : undefined,
-    sync_state:
-      typeof source.sync_state === 'string'
-        ? source.sync_state
-        : typeof source.syncState === 'string'
-          ? source.syncState
-          : undefined,
-    sync_error_code:
-      typeof source.sync_error_code === 'string'
-        ? source.sync_error_code
-        : typeof source.syncErrorCode === 'string'
-          ? source.syncErrorCode
-          : typeof syncError?.code === 'string'
-            ? syncError.code
-            : undefined,
-  };
-
-  return Object.values(safeDetails).some((value) => typeof value === 'string') ? safeDetails : undefined;
+  return details && typeof details === 'object' ? (details as Record<string, unknown>) : undefined;
 };
 
-const readStructuredErrorPayload = (payload: IamErrorPayload | null) =>
-  payload && typeof payload.error === 'object' && payload.error ? (payload.error as Record<string, unknown>) : undefined;
+const readStringDetail = (source: Record<string, unknown>, key: string): string | undefined =>
+  typeof source[key] === 'string' ? (source[key] as string) : undefined;
+
+const readSyncState = (source: Record<string, unknown>): string | undefined =>
+  readStringDetail(source, 'sync_state') ?? readStringDetail(source, 'syncState');
+
+const readSyncErrorRecord = (source: Record<string, unknown>): Record<string, unknown> | undefined =>
+  typeof source.syncError === 'object' && source.syncError !== null ? (source.syncError as Record<string, unknown>) : undefined;
+
+const readSyncErrorCode = (source: Record<string, unknown>): string | undefined =>
+  readStringDetail(source, 'sync_error_code') ??
+  readStringDetail(source, 'syncErrorCode') ??
+  readStringDetail(readSyncErrorRecord(source) ?? {}, 'code');
+
+const hasStringValues = (details: IamRuntimeSafeDetails): boolean =>
+  Object.values(details).some((value) => typeof value === 'string');
 
 const normalizeRuntimeDiagnosticClassification = (
   value: unknown,
@@ -230,37 +235,48 @@ const readRuntimeDiagnostics = (
   safeDetails: IamRuntimeSafeDetails | undefined
 ) => {
   const structuredError = readStructuredErrorPayload(payload);
+  const fallbackDiagnostics = deriveFallbackRuntimeDiagnostics(structuredError, status, code);
+  return mergeRuntimeDiagnostics(structuredError, fallbackDiagnostics, safeDetails);
+};
+
+const deriveFallbackRuntimeDiagnostics = (
+  structuredError: Record<string, unknown> | undefined,
+  status: number,
+  code: string
+) => {
   const rawDetails =
     structuredError?.details && typeof structuredError.details === 'object'
       ? (structuredError.details as Readonly<Record<string, unknown>>)
       : undefined;
-  const fallbackDiagnostics = deriveIamRuntimeDiagnostics({
+
+  return deriveIamRuntimeDiagnostics({
     code,
     status,
     details: rawDetails,
   });
+};
 
-  const classification = normalizeRuntimeDiagnosticClassification(
+const readExplicitSafeDetails = (structuredError: Record<string, unknown> | undefined): IamRuntimeSafeDetails | undefined =>
+  structuredError?.safeDetails && typeof structuredError.safeDetails === 'object'
+    ? (structuredError.safeDetails as IamRuntimeSafeDetails)
+    : undefined;
+
+const mergeRuntimeDiagnostics = (
+  structuredError: Record<string, unknown> | undefined,
+  fallbackDiagnostics: ReturnType<typeof deriveIamRuntimeDiagnostics>,
+  safeDetails: IamRuntimeSafeDetails | undefined
+) => ({
+  classification: normalizeRuntimeDiagnosticClassification(
     structuredError?.classification,
     fallbackDiagnostics.classification
-  );
-  const diagnosticStatus = normalizeRuntimeDiagnosticStatus(structuredError?.status, fallbackDiagnostics.status);
-  const recommendedAction = normalizeRuntimeRecommendedAction(
+  ),
+  diagnosticStatus: normalizeRuntimeDiagnosticStatus(structuredError?.status, fallbackDiagnostics.status),
+  recommendedAction: normalizeRuntimeRecommendedAction(
     structuredError?.recommendedAction,
     fallbackDiagnostics.recommendedAction
-  );
-  const explicitSafeDetails =
-    structuredError?.safeDetails && typeof structuredError.safeDetails === 'object'
-      ? (structuredError.safeDetails as IamRuntimeSafeDetails)
-      : undefined;
-
-  return {
-    classification,
-    diagnosticStatus,
-    recommendedAction,
-    safeDetails: explicitSafeDetails ?? safeDetails ?? fallbackDiagnostics.safeDetails,
-  };
-};
+  ),
+  safeDetails: readExplicitSafeDetails(structuredError) ?? safeDetails ?? fallbackDiagnostics.safeDetails,
+});
 
 const logDevelopmentApiError = (input: {
   requestId?: string;
@@ -434,6 +450,7 @@ export type MediaMetadata = Readonly<{
 export type IamMediaAsset = Readonly<{
   id: string;
   instanceId: string;
+  storageKey: string;
   mediaType: 'image';
   mimeType: string;
   byteSize: number;
@@ -480,9 +497,19 @@ export type InitializeMediaUploadResponse = Readonly<{
   initializedAt: string;
 }>;
 
+export type UpdateMediaMetadataPayload = Readonly<{
+  title?: string | null;
+  description?: string | null;
+  altText?: string | null;
+  copyright?: string | null;
+  license?: string | null;
+  focusPoint?: MediaMetadata['focusPoint'] | null;
+  crop?: MediaMetadata['crop'] | null;
+}>;
+
 export type UpdateMediaPayload = Readonly<{
   visibility?: MediaVisibility;
-  metadata: Partial<MediaMetadata>;
+  metadata: UpdateMediaMetadataPayload;
 }>;
 
 export type IamMediaDelivery = Readonly<{
@@ -491,6 +518,13 @@ export type IamMediaDelivery = Readonly<{
   deliveryUrl: string;
   expiresAt?: string;
 }>;
+
+export type MediaListQuery = {
+  readonly search?: string;
+  readonly visibility?: MediaVisibility | 'all';
+  readonly page?: number;
+  readonly pageSize?: number;
+};
 
 export type OrganizationsQuery = {
   readonly page: number;
@@ -960,10 +994,7 @@ export const deleteContent = async (contentId: string): Promise<ApiItemResponse<
     headers: IAM_HEADERS,
   });
 
-export const listMedia = async (query: {
-  readonly search?: string;
-  readonly visibility?: MediaVisibility | 'all';
-} = {}): Promise<ApiListResponse<IamMediaAsset>> => {
+export const listMedia = async (query: MediaListQuery = {}): Promise<ApiListResponse<IamMediaAsset>> => {
   const params = new URLSearchParams();
 
   if (query.search) {
@@ -971,6 +1002,12 @@ export const listMedia = async (query: {
   }
   if (query.visibility && query.visibility !== 'all') {
     params.set('visibility', query.visibility);
+  }
+  if (typeof query.page === 'number') {
+    params.set('page', String(query.page));
+  }
+  if (typeof query.pageSize === 'number') {
+    params.set('pageSize', String(query.pageSize));
   }
 
   const suffix = params.toString();

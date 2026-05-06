@@ -144,6 +144,7 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
 - Review-Governance:
   - Proposal- und PR-Reviews nutzen spezialisierte Agents mit standardisierten Templates
   - Trigger-Matrix und Abgrenzungen sind in `docs/development/review-agent-governance.md` dokumentiert
+  - relevante Bot-Kommentare von `Copilot` und `chatgpt-codex-connector[bot]` blockieren den Merge, bis ein maschinenlesbarer Bearbeitungsnachweis vorliegt
 
 ### Qualitätsattribute und Review-Zuordnung
 

@@ -11,9 +11,9 @@ describe('appAdminResources', () => {
           basePath: 'media',
           moduleId: 'media',
           views: {
-            list: { bindingKey: 'adminMedia' },
-            create: { bindingKey: 'adminMedia' },
-            detail: { bindingKey: 'adminMedia' },
+            list: { bindingKey: 'media' },
+            create: { bindingKey: 'media' },
+            detail: { bindingKey: 'media' },
           },
         }),
       ])

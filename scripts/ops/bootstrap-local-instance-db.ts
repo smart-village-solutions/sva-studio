@@ -49,7 +49,7 @@ const usage = () => {
   --keycloak-admin-client-id=<id> \\
   --keycloak-admin-client-secret=<secret> \\
   [--target-display-name=<name>] \\
-  [--target-db-container=sva-studio-postgres-hb] \\
+  --target-db-container=<container> \\
   [--target-db-name=sva_studio] \\
   [--target-db-user=sva] \\
   [--target-app-db-user=sva_app] \\
@@ -129,7 +129,7 @@ const parseArgs = (args: readonly string[]): CliOptions => {
     sourceInstanceId: readString('source-instance-id', 'de-musterhausen'),
     targetAppDbPassword: readString('target-app-db-password', 'sva_app_local_dev_password'),
     targetAppDbUser: readString('target-app-db-user', 'sva_app'),
-    targetDbContainer: readString('target-db-container', 'sva-studio-postgres-hb'),
+    targetDbContainer: readRequired('target-db-container'),
     targetDbName: readString('target-db-name', 'sva_studio'),
     targetDbUser: readString('target-db-user', 'sva'),
     targetDisplayName: readString('target-display-name', targetInstanceId),

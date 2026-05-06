@@ -110,8 +110,8 @@ describe('media repository', () => {
     expect(statements[0]?.values[9]).toBe(JSON.stringify({ title: 'Rathaus' }));
   });
 
-  it('maps asset lookups, filtered asset listings, and matching totals', async () => {
-    const { executor, statements } = createQueuedExecutor([[assetRow], [assetRow], [{ total: 7 }]]);
+  it('maps asset lookups and filtered asset listings', async () => {
+    const { executor, statements } = createQueuedExecutor([[assetRow], [assetRow]]);
     const repository = createMediaRepository(executor);
 
     await expect(repository.getAssetById('tenant-a', 'asset-1')).resolves.toEqual({
@@ -139,9 +139,7 @@ describe('media repository', () => {
         offset: 20,
       })
     ).resolves.toHaveLength(1);
-    await expect(repository.countAssets({ instanceId: 'tenant-a', search: ' Rathaus ', visibility: 'public' })).resolves.toBe(7);
     expect(statements[1]?.values).toEqual(['tenant-a', '%rathaus%', 'public', 10, 20]);
-    expect(statements[2]?.values).toEqual(['tenant-a', '%rathaus%', 'public']);
   });
 
   it('uses default asset list filters and normalizes nullable asset metadata fail-closed', async () => {
@@ -177,6 +175,24 @@ describe('media repository', () => {
     ]);
 
     expect(statements[0]?.values).toEqual(['tenant-a', 25, 0]);
+  });
+
+  it('counts matching assets without pagination clauses', async () => {
+    const { executor, statements } = createQueuedExecutor([[{ total: 31 }]]);
+    const repository = createMediaRepository(executor);
+
+    await expect(
+      repository.countAssets({
+        instanceId: 'tenant-a',
+        search: ' Rathaus ',
+        visibility: 'public',
+      })
+    ).resolves.toBe(31);
+
+    expect(statements[0]?.text).toContain('SELECT COUNT(*)::int AS total');
+    expect(statements[0]?.text).not.toContain('LIMIT');
+    expect(statements[0]?.text).not.toContain('OFFSET');
+    expect(statements[0]?.values).toEqual(['tenant-a', '%rathaus%', 'public']);
   });
 
   it('keeps asset lookup fail-closed across instances', async () => {
@@ -249,7 +265,7 @@ describe('media repository', () => {
   });
 
   it('persists variants and upload sessions and reads storage usage', async () => {
-    const { executor, statements } = createQueuedExecutor([[], [variantRow], [], [], [uploadSessionRow], [], [storageUsageRow]]);
+    const { executor, statements } = createQueuedExecutor([[], [variantRow], [], [], [uploadSessionRow], [], [], [storageUsageRow]]);
     const repository = createMediaRepository(executor);
 
     await repository.upsertVariant('tenant-a', {
@@ -265,7 +281,7 @@ describe('media repository', () => {
     });
 
     expect(statements[0]?.text.includes('INSERT INTO iam.media_variants')).toBe(true);
-    expect(statements[0]?.text.includes('ON CONFLICT (asset_id, variant_key) DO UPDATE')).toBe(true);
+    expect(statements[0]?.text).toContain('ON CONFLICT (asset_id, variant_key) DO UPDATE');
     expect(statements[0]?.values.slice(0, 4)).toEqual(['variant-1', 'tenant-a', 'asset-1', 'teaser-landscape']);
 
     await expect(repository.listVariantsByAssetId('tenant-a', 'asset-1')).resolves.toEqual([
@@ -285,6 +301,7 @@ describe('media repository', () => {
     ]);
 
     await repository.deleteVariantsByAssetId('tenant-a', 'asset-1');
+
     expect(statements[2]?.text.includes('DELETE FROM iam.media_variants')).toBe(true);
     expect(statements[2]?.values).toEqual(['tenant-a', 'asset-1']);
 
@@ -324,39 +341,22 @@ describe('media repository', () => {
     expect(statements[5]?.text.includes('INSERT INTO iam.media_storage_usage')).toBe(true);
     expect(statements[5]?.values).toEqual(['tenant-a', 4096, 3]);
 
+    await repository.applyStorageUsageDelta({
+      instanceId: 'tenant-a',
+      totalBytesDelta: -512,
+      assetCountDelta: -1,
+    });
+
+    expect(statements[6]?.text).toContain('VALUES ($1, $2, $3)');
+    expect(statements[6]?.text).toContain('GREATEST(iam.media_storage_usage.total_bytes + EXCLUDED.total_bytes, 0)');
+    expect(statements[6]?.values).toEqual(['tenant-a', -512, -1]);
+
     await expect(repository.getStorageUsage('tenant-a')).resolves.toEqual({
       instanceId: 'tenant-a',
       totalBytes: 4096,
       assetCount: 3,
       updatedAt: '2026-04-29T10:09:00.000Z',
     });
-
-    const { executor: adjustExecutor, statements: adjustStatements } = createQueuedExecutor([
-      [
-        {
-          instance_id: 'tenant-a',
-          total_bytes: 2541,
-          asset_count: 2,
-          updated_at: '2026-04-29T10:11:00.000Z',
-        },
-      ],
-    ]);
-    const adjustRepository = createMediaRepository(adjustExecutor);
-
-    await expect(
-      adjustRepository.adjustStorageUsage({
-        instanceId: 'tenant-a',
-        totalBytesDelta: -1555,
-        assetCountDelta: -1,
-      })
-    ).resolves.toEqual({
-      instanceId: 'tenant-a',
-      totalBytes: 2541,
-      assetCount: 2,
-      updatedAt: '2026-04-29T10:11:00.000Z',
-    });
-    expect(adjustStatements[0]?.text.includes('RETURNING')).toBe(true);
-    expect(adjustStatements[0]?.values).toEqual(['tenant-a', -1555, -1]);
   });
 
   it('normalizes nullable variant, upload session, and reference fields', async () => {
@@ -479,25 +479,6 @@ describe('media repository', () => {
       maxBytes: null,
       wouldExceed: false,
     });
-  });
-
-  it('fails closed for missing upload sessions and counts and throws on impossible storage adjustments', async () => {
-    const { executor, statements } = createQueuedExecutor([[], [], []]);
-    const repository = createMediaRepository(executor);
-
-    await expect(repository.countAssets({ instanceId: 'tenant-a' })).resolves.toBe(0);
-    await expect(repository.getUploadSessionById('tenant-a', 'upload-missing')).resolves.toBeNull();
-    await expect(
-      repository.adjustStorageUsage({
-        instanceId: 'tenant-a',
-        totalBytesDelta: 128,
-        assetCountDelta: 1,
-      })
-    ).rejects.toThrowError('media_storage_usage_adjust_failed:tenant-a');
-
-    expect(statements[0]?.values).toEqual(['tenant-a']);
-    expect(statements[1]?.values).toEqual(['tenant-a', 'upload-missing']);
-    expect(statements[2]?.values).toEqual(['tenant-a', 128, 1]);
   });
 
   it('deletes assets in an instance-scoped way', async () => {

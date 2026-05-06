@@ -12,8 +12,8 @@ import {
   readLegalAcceptanceReturnTo,
   storeLegalAcceptanceReturnTo,
 } from '../lib/legal-acceptance-navigation';
+import { sanitizeLegalTextHtml } from '../lib/legal-text-html-sanitizer';
 import { t } from '../i18n';
-import { sanitizeLegalTextHtml } from '../lib/legal-text-html';
 import { useAuth } from '../providers/auth-provider';
 import { Alert, AlertDescription } from './ui/alert';
 import { Button } from './ui/button';

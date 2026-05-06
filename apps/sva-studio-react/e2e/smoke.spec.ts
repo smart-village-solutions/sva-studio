@@ -306,16 +306,16 @@ test('GET /auth/login returns redirect response', async ({ request }) => {
 });
 
 test('tenant-host login fails closed when canonical auth redirect prerequisites are unavailable', async ({ request }) => {
-  const tenantLoginUrl = process.env.PLAYWRIGHT_TENANT_LOGIN_URL ?? 'http://hb.studio.lvh.me:4173/auth/login?returnTo=%2Fadmin%2Finstances';
+  const tenantLoginUrl = process.env.PLAYWRIGHT_TENANT_LOGIN_URL ?? 'http://demo2.studio.lvh.me:4173/auth/login?returnTo=%2Fadmin%2Finstances';
   const parsedTenantLoginUrl = new URL(tenantLoginUrl);
   const requestUrl =
-    parsedTenantLoginUrl.hostname === 'hb.studio.lvh.me'
+    parsedTenantLoginUrl.hostname === 'demo2.studio.lvh.me'
       ? new URL(`${parsedTenantLoginUrl.pathname}${parsedTenantLoginUrl.search}`, 'http://127.0.0.1:4173').toString()
       : tenantLoginUrl;
 
   const response = await request.get(requestUrl, {
     headers:
-      parsedTenantLoginUrl.hostname === 'hb.studio.lvh.me'
+      parsedTenantLoginUrl.hostname === 'demo2.studio.lvh.me'
         ? {
             host: parsedTenantLoginUrl.host,
           }

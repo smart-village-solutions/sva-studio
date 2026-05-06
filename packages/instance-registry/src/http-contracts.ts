@@ -17,6 +17,12 @@ const optionalUrlSchema = z
   })
   .optional();
 
+const authRealmSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .regex(/^[A-Za-z0-9][A-Za-z0-9._-]*$/, 'Ungültiger Realm-Name');
+
 const tenantAdminBootstrapSchema = z
   .object({
     username: z.string().trim().min(1),
@@ -43,7 +49,7 @@ export const createInstanceSchema = z.object({
   displayName: z.string().trim().min(1),
   parentDomain: z.string().trim().min(1),
   realmMode: z.enum(['new', 'existing']),
-  authRealm: z.string().trim().min(1),
+  authRealm: authRealmSchema,
   authClientId: z.string().trim().min(1),
   authIssuerUrl: optionalUrlSchema,
   authClientSecret: z.string().trim().min(1).optional(),

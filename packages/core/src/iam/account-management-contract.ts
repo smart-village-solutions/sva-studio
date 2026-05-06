@@ -467,11 +467,9 @@ export type IamInstanceKeycloakStatus = {
   readonly realmExists: boolean;
   readonly clientExists: boolean;
   readonly tenantAdminClientExists: boolean;
-  readonly instanceIdMapperExists: boolean;
   readonly tenantAdminExists: boolean;
   readonly tenantAdminHasSystemAdmin: boolean;
   readonly tenantAdminHasInstanceRegistryAdmin: boolean;
-  readonly tenantAdminInstanceIdMatches: boolean;
   readonly redirectUrisMatch: boolean;
   readonly logoutUrisMatch: boolean;
   readonly webOriginsMatch: boolean;

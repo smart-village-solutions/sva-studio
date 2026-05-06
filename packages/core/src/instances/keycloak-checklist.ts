@@ -9,13 +9,11 @@ export type InstanceKeycloakRequirementKey =
   | 'redirect_uris'
   | 'logout_uris'
   | 'web_origins'
-  | 'instance_id_mapper'
   | 'tenant_secret'
   | 'tenant_admin_client_secret'
   | 'tenant_admin'
   | 'tenant_admin_system_admin'
-  | 'tenant_admin_lacks_instance_registry_admin'
-  | 'tenant_admin_instance_id';
+  | 'tenant_admin_lacks_instance_registry_admin';
 
 export type InstanceKeycloakRequirement = {
   readonly key: InstanceKeycloakRequirementKey;
@@ -91,17 +89,6 @@ export const INSTANCE_KEYCLOAK_REQUIREMENTS: readonly InstanceKeycloakRequiremen
     uiStepKey: 'client',
   },
   {
-    key: 'instance_id_mapper',
-    statusField: 'instanceIdMapperExists',
-    expectedValue: true,
-    sourceFields: ['instanceId'],
-    dbFields: ['iam.instances.id'],
-    keycloakArtifacts: ['protocol-mapper:instanceId'],
-    workerStepKey: 'mapper',
-    uiStepKey: 'mapper',
-    blocksLoginReadiness: false,
-  },
-  {
     key: 'tenant_secret',
     statusField: 'clientSecretAligned',
     expectedValue: true,
@@ -160,17 +147,6 @@ export const INSTANCE_KEYCLOAK_REQUIREMENTS: readonly InstanceKeycloakRequiremen
     keycloakArtifacts: ['user-role:instance_registry_admin'],
     workerStepKey: 'roles',
     uiStepKey: 'tenantAdmin',
-  },
-  {
-    key: 'tenant_admin_instance_id',
-    statusField: 'tenantAdminInstanceIdMatches',
-    expectedValue: true,
-    sourceFields: ['instanceId', 'tenantAdminBootstrap.username'],
-    dbFields: ['iam.instances.id', 'iam.instances.tenant_admin_username'],
-    keycloakArtifacts: ['user-attribute:instanceId'],
-    workerStepKey: 'tenant_admin',
-    uiStepKey: 'tenantAdmin',
-    blocksLoginReadiness: false,
   },
 ] as const;
 

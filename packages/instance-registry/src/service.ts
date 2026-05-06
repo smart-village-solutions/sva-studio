@@ -18,7 +18,7 @@ import {
 import { createProvisioningArtifacts } from './service-provisioning.js';
 
 const logger = createSdkLogger({ component: 'iam-instance-registry-service', level: 'info' });
-const DEFAULT_TENANT_ADMIN_CLIENT_ID = 'sva-studio-admin';
+const DEFAULT_TENANT_ADMIN_CLIENT_ID = 'sva-studio-realm-admin';
 
 const invalidateHostWithLog = (
   invalidateHost: InstanceRegistryServiceDeps['invalidateHost'],

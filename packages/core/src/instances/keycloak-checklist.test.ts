@@ -7,7 +7,7 @@ import {
 } from './keycloak-checklist';
 
 describe('instance keycloak checklist', () => {
-  it('covers the canonical requirement matrix including tenant admin instance binding', () => {
+  it('covers the canonical requirement matrix without deprecated user attribute checks', () => {
     expect(INSTANCE_KEYCLOAK_REQUIREMENTS.map((requirement) => requirement.key)).toEqual([
       'realm',
       'client',
@@ -15,13 +15,11 @@ describe('instance keycloak checklist', () => {
       'redirect_uris',
       'logout_uris',
       'web_origins',
-      'instance_id_mapper',
       'tenant_secret',
       'tenant_admin_client_secret',
       'tenant_admin',
       'tenant_admin_system_admin',
       'tenant_admin_lacks_instance_registry_admin',
-      'tenant_admin_instance_id',
     ]);
   });
 
@@ -30,11 +28,9 @@ describe('instance keycloak checklist', () => {
       realmExists: true,
       clientExists: true,
       tenantAdminClientExists: true,
-      instanceIdMapperExists: true,
       tenantAdminExists: true,
       tenantAdminHasSystemAdmin: true,
       tenantAdminHasInstanceRegistryAdmin: false,
-      tenantAdminInstanceIdMatches: true,
       redirectUrisMatch: true,
       logoutUrisMatch: true,
       webOriginsMatch: true,
@@ -48,19 +44,12 @@ describe('instance keycloak checklist', () => {
     } as const;
 
     expect(areAllInstanceKeycloakRequirementsSatisfied(status)).toBe(true);
+    expect(areAllInstanceKeycloakRequirementsSatisfied({ ...status, clientExists: false })).toBe(false);
     expect(
       isInstanceKeycloakRequirementSatisfied(
-        { ...status, tenantAdminInstanceIdMatches: false },
-        INSTANCE_KEYCLOAK_REQUIREMENTS.find((requirement) => requirement.key === 'tenant_admin_instance_id')!
+        { ...status, tenantAdminHasInstanceRegistryAdmin: true },
+        INSTANCE_KEYCLOAK_REQUIREMENTS.find((requirement) => requirement.key === 'tenant_admin_lacks_instance_registry_admin')!
       )
     ).toBe(false);
-    expect(
-      areAllInstanceKeycloakRequirementsSatisfied({
-        ...status,
-        instanceIdMapperExists: false,
-        tenantAdminInstanceIdMatches: false,
-      })
-    ).toBe(true);
-    expect(areAllInstanceKeycloakRequirementsSatisfied({ ...status, clientExists: false })).toBe(false);
   });
 });

@@ -2,7 +2,7 @@ import type { InstanceRealmMode } from '@sva/core';
 
 import type { KeycloakTenantPlan, KeycloakTenantPreflight } from './keycloak-types.js';
 import type { KeycloakReadState } from './provisioning-auth-types.js';
-import { equalSets, INSTANCE_ID_MAPPER_NAME, readPostLogoutUris } from './provisioning-auth-utils.js';
+import { equalSets, readPostLogoutUris } from './provisioning-auth-utils.js';
 
 const buildRealmStep = (
   realmMode: InstanceRealmMode,
@@ -29,7 +29,6 @@ const readClientAlignment = (state: KeycloakReadState | undefined) => {
   const clientRepresentation = state?.clientRepresentation;
   return {
     clientRepresentation,
-    mapperExists: Boolean(state?.protocolMappers.some((mapper) => mapper.name === INSTANCE_ID_MAPPER_NAME)),
     redirectUrisMatch: expectedClient
       ? equalSets(clientRepresentation?.redirectUris ?? [], expectedClient.redirectUris)
       : false,
@@ -84,17 +83,6 @@ const buildTenantAdminClientStep = (input: {
   details: {
     clientExists: input.clientExists,
   },
-});
-
-const buildMapperStep = (blocked: boolean, mapperExists: boolean): KeycloakTenantPlan['steps'][number] => ({
-  stepKey: 'mapper',
-  title: 'instanceId-Mapper sicherstellen',
-  action: mapperExists ? 'verify' : 'create',
-  status: blocked ? 'blocked' : 'ready',
-  summary: mapperExists
-    ? 'Der instanceId-Mapper ist bereits vorhanden.'
-    : 'Der instanceId-Mapper wird angelegt oder korrigiert.',
-  details: { mapperExists },
 });
 
 const buildSecretStep = (blocked: boolean, secretAligned: boolean): KeycloakTenantPlan['steps'][number] => ({
@@ -203,7 +191,6 @@ export const buildPlan = (input: {
       blocked,
       clientExists: Boolean(input.state?.tenantAdminClientRepresentation),
     }),
-    buildMapperStep(blocked, alignment.mapperExists),
     buildSecretStep(blocked, secretAligned),
     buildTenantAdminClientSecretStep(
       blocked,

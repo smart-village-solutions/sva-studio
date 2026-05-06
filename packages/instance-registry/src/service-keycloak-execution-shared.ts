@@ -211,17 +211,16 @@ export const syncProvisionedClientSecretToRegistry = async (
     actorId?: string;
   }
 ) => {
-  if (input.loaded.authClientSecret) {
-    return;
-  }
-
   if (!deps.readKeycloakStateViaProvisioner) {
     throw new Error('dependency_missing_readKeycloakStateViaProvisioner');
   }
   const state = await deps.readKeycloakStateViaProvisioner(buildProvisioningInput(input.loaded));
   const provisionedSecret = state.keycloakClientSecret;
   const provisionedTenantAdminSecret = state.tenantAdminClientSecret;
-  if (!provisionedSecret && !provisionedTenantAdminSecret) {
+  const authSecretDrift = Boolean(provisionedSecret) && provisionedSecret !== input.loaded.authClientSecret;
+  const tenantAdminSecretDrift = Boolean(provisionedTenantAdminSecret)
+    && provisionedTenantAdminSecret !== input.loaded.tenantAdminClientSecret;
+  if (!authSecretDrift && !tenantAdminSecretDrift) {
     return;
   }
 
@@ -237,7 +236,7 @@ export const syncProvisionedClientSecretToRegistry = async (
     authClientSecretCiphertext: encryptAuthClientSecret(
       deps,
       input.loaded.instance.instanceId,
-      provisionedSecret ?? undefined
+      authSecretDrift ? provisionedSecret ?? undefined : input.loaded.authClientSecret
     ),
     keepExistingAuthClientSecret: false,
     tenantAdminClient: input.loaded.instance.tenantAdminClient
@@ -246,11 +245,11 @@ export const syncProvisionedClientSecretToRegistry = async (
           secretCiphertext: encryptTenantAdminClientSecret(
             deps,
             input.loaded.instance.instanceId,
-            provisionedTenantAdminSecret ?? undefined
+            tenantAdminSecretDrift ? provisionedTenantAdminSecret ?? undefined : input.loaded.tenantAdminClientSecret
           ),
         }
       : undefined,
-    keepExistingTenantAdminClientSecret: !provisionedTenantAdminSecret,
+    keepExistingTenantAdminClientSecret: !(tenantAdminSecretDrift || input.loaded.tenantAdminClientSecret),
     tenantAdminBootstrap: input.loaded.instance.tenantAdminBootstrap,
     actorId: input.actorId,
     requestId: input.requestId,
@@ -259,8 +258,10 @@ export const syncProvisionedClientSecretToRegistry = async (
     mainserverConfigRef: input.loaded.instance.mainserverConfigRef,
   });
 
-  input.loaded.authClientSecret = provisionedSecret ?? undefined;
-  input.loaded.tenantAdminClientSecret = provisionedTenantAdminSecret ?? undefined;
+  input.loaded.authClientSecret = authSecretDrift ? provisionedSecret ?? undefined : input.loaded.authClientSecret;
+  input.loaded.tenantAdminClientSecret = tenantAdminSecretDrift
+    ? provisionedTenantAdminSecret ?? undefined
+    : input.loaded.tenantAdminClientSecret;
 };
 
 export const completeRun = async (

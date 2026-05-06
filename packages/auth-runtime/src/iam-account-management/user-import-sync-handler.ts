@@ -36,32 +36,8 @@ import {
 } from './shared.js';
 
 const KEYCLOAK_PAGE_SIZE = 100;
-const SKIPPED_USER_DEBUG_LOG_CAP = 20;
-const SKIPPED_USER_INSTANCE_SAMPLE_CAP = 5;
-
 const isPlatformIdentityProviderConfigurationError = (error: unknown): boolean =>
   error instanceof Error && error.message === 'platform_identity_provider_not_configured';
-
-const readSingleAttribute = (
-  attributes: Readonly<Record<string, readonly string[]>> | undefined,
-  key: string
-): string | undefined => {
-  const value = attributes?.[key]?.[0];
-  return typeof value === 'string' && value.trim().length > 0 ? value : undefined;
-};
-
-const matchesInstanceId = (
-  user: IdentityListedUser,
-  instanceId: string,
-  acceptUsersWithoutInstanceIdAttribute: boolean
-): boolean => {
-  const configuredInstanceIds = user.attributes?.instanceId;
-  if (!configuredInstanceIds || configuredInstanceIds.length === 0) {
-    return acceptUsersWithoutInstanceIdAttribute;
-  }
-
-  return configuredInstanceIds.includes(instanceId);
-};
 
 const normalizeOptionalText = (value: string | undefined | null): string | undefined => {
   const trimmed = value?.trim();
@@ -268,57 +244,15 @@ const resolveSyncActor = async (
 
 export const collectSyncCandidates = (
   listedUsers: readonly IdentityListedUser[],
-  expectedInstanceId: string,
-  options?: {
-    readonly acceptUsersWithoutInstanceIdAttribute?: boolean;
-  }
 ): {
   matchingUsers: IdentityListedUser[];
-  matchedWithoutInstanceAttributeCount: number;
   skippedCount: number;
   skippedInstanceIds: ReadonlySet<string>;
 } => {
-  const matchingUsers: IdentityListedUser[] = [];
-  let matchedWithoutInstanceAttributeCount = 0;
-  const debugLoggingEnabled = logger.isLevelEnabled('debug');
-  let skippedCount = 0;
-  let debugLoggedCount = 0;
-  const skippedInstanceIds = new Set<string>();
-  const acceptUsersWithoutInstanceIdAttribute =
-    options?.acceptUsersWithoutInstanceIdAttribute === true;
-
-  for (const user of listedUsers) {
-    const hasInstanceIdAttribute = (user.attributes?.instanceId?.length ?? 0) > 0;
-    if (matchesInstanceId(user, expectedInstanceId, acceptUsersWithoutInstanceIdAttribute)) {
-      matchingUsers.push(user);
-      if (!hasInstanceIdAttribute && acceptUsersWithoutInstanceIdAttribute) {
-        matchedWithoutInstanceAttributeCount += 1;
-      }
-      continue;
-    }
-
-    skippedCount += 1;
-    const userInstanceId = readSingleAttribute(user.attributes, 'instanceId');
-    if (userInstanceId && skippedInstanceIds.size < SKIPPED_USER_INSTANCE_SAMPLE_CAP) {
-      skippedInstanceIds.add(userInstanceId);
-    }
-
-    if (debugLoggingEnabled && debugLoggedCount < SKIPPED_USER_DEBUG_LOG_CAP) {
-      debugLoggedCount += 1;
-      logger.debug('Skipped Keycloak user during IAM sync due to instance mismatch', {
-        operation: 'sync_keycloak_users',
-        subject_ref: toSubjectRef(user.externalId),
-        user_instance_id: userInstanceId,
-        expected_instance_id: expectedInstanceId,
-      });
-    }
-  }
-
   return {
-    matchingUsers,
-    matchedWithoutInstanceAttributeCount,
-    skippedCount,
-    skippedInstanceIds,
+    matchingUsers: [...listedUsers],
+    skippedCount: 0,
+    skippedInstanceIds: new Set<string>(),
   };
 };
 
@@ -389,23 +323,7 @@ export const runKeycloakUserImportSync = async (input: {
     trace_id: input.traceId,
   });
   const { resolution, users: listedUsers } = await listAllKeycloakUsers(input.instanceId);
-  const acceptUsersWithoutInstanceIdAttribute = resolution.source === 'instance';
-  const { matchingUsers, matchedWithoutInstanceAttributeCount, skippedCount, skippedInstanceIds } =
-    collectSyncCandidates(listedUsers, input.instanceId, {
-      acceptUsersWithoutInstanceIdAttribute,
-    });
-
-  if (matchedWithoutInstanceAttributeCount > 0) {
-    logger.info('Keycloak user sync matched users by realm scope without instance attribute', {
-      operation: 'sync_keycloak_users',
-      instance_id: input.instanceId,
-      auth_realm: resolution.realm,
-      provider_source: resolution.source,
-      matched_without_instance_attribute_count: matchedWithoutInstanceAttributeCount,
-      request_id: input.requestId,
-      trace_id: input.traceId,
-    });
-  }
+  const { matchingUsers, skippedCount, skippedInstanceIds } = collectSyncCandidates(listedUsers);
 
   if (skippedCount > 0) {
     logger.info('Keycloak user sync skipped users because instance ids did not match', {
@@ -422,14 +340,11 @@ export const runKeycloakUserImportSync = async (input: {
 
   const skippedInstanceIdSamples = [...skippedInstanceIds];
   const diagnostics =
-    matchedWithoutInstanceAttributeCount > 0 || skippedInstanceIdSamples.length > 0
+    skippedInstanceIdSamples.length > 0
       ? {
           authRealm: resolution.realm,
           providerSource: resolution.source,
           executionMode: resolution.executionMode,
-          ...(matchedWithoutInstanceAttributeCount > 0
-            ? { matchedWithoutInstanceAttributeCount }
-            : {}),
           ...(skippedInstanceIdSamples.length > 0
             ? { skippedInstanceIds: skippedInstanceIdSamples }
             : {}),

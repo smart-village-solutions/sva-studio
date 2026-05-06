@@ -794,6 +794,8 @@ export const i18nResources = {
           tenantAdminClientSecret: 'Tenant-Admin-Client-Secret',
           tenantAdminClientSecretConfigured: 'Secret bereits konfiguriert',
           tenantAdminClientSecretMissing: 'Secret fehlt noch',
+          tenantAdminClientSecretGeneratedHint:
+            'Bei neuen Realms wird das Tenant-Admin-Client-Secret beim Provisioning automatisch erzeugt und danach in Studio gespeichert.',
           tenantAdminClientSecretHint:
             'Leer lassen, um das bestehende Tenant-Admin-Client-Secret unverändert zu lassen.',
           tenantAdminTitle: 'Initialer Tenant-Admin',
@@ -868,6 +870,7 @@ export const i18nResources = {
           noEvidenceTimestamp: 'Keine belastbare Zeitmarke verfügbar.',
           tabsAriaLabel: 'Arbeitsbereiche der Instanz-Detailseite',
           tabs: {
+            overview: 'Überblick',
             configuration: 'Konfiguration',
             operations: 'Betrieb',
             history: 'Historie',
@@ -900,10 +903,135 @@ export const i18nResources = {
             diagnostics: 'Diagnose',
           },
         },
+        history: {
+          currentRunTitle: 'Aktueller Keycloak-Lauf',
+          currentRunSubtitle: 'Diese Evidenz repräsentiert den zuletzt relevanten technischen Zustand.',
+          previousRunsTitle: 'Ältere Keycloak-Läufe',
+          previousRunsSubtitle: 'Frühere Läufe bleiben zur Diagnose sichtbar, dominieren aber nicht den Erstblick.',
+          previousRunsEmpty: 'Es liegen noch keine älteren Keycloak-Läufe vor.',
+          mismatchHint: 'Ältere Fehl-Läufe sind weiterhin sichtbar, repräsentieren aber nicht den aktuellen Hauptzustand.',
+        },
+        operations: {
+          overview: {
+            eyebrow: 'Nächster Schritt',
+          },
+          labels: {
+            currentState: 'Gesamtzustand',
+            evidence: 'Evidenz: {{value}}',
+          },
+          followUpSummary:
+            'Tenant-IAM-Basis, Modulzuordnung und weitere Folgearbeiten bleiben bewusst vom Realm-Grundaufbau getrennt.',
+          status: {
+            offen: 'Offen',
+            bereit: 'Bereit',
+            laeuft: 'Läuft',
+            erfolgreich: 'Erfolgreich',
+            fehlgeschlagen: 'Fehlgeschlagen',
+          },
+          new: {
+            title: 'Neuen Realm aufbauen',
+            stepsTitle: 'Schrittkette für den Realm-Grundaufbau',
+            stepsSubtitle:
+              'Die Schritte folgen der realen Worker-Kette aus Registry-Vertrag, Vorbedingungen, Provisioning und Abschlussvalidierung.',
+            summary: {
+              contractIncomplete: 'Der Registry-Vertrag ist noch unvollständig. Korrigieren Sie zuerst die Pflichtdaten.',
+              modeConflict: 'Der Ziel-Realm steht im Konflikt zum Modus "Neu erstellen". Klären Sie zuerst den Live-Zustand.',
+              preflightBlocked: 'Der Worker meldet blockierende Vorbedingungen. Beheben Sie diese vor dem nächsten Lauf.',
+              runFailed: 'Der letzte technische Lauf ist fehlgeschlagen. Prüfen Sie den betroffenen Schritt und starten Sie danach erneut.',
+              bootstrapComplete: 'Der Realm-Grundaufbau ist erfolgreich abgeschlossen. Folgearbeiten bleiben separat sichtbar.',
+              inProgress: 'Der Realm-Grundaufbau ist vorbereitet oder läuft. Führen Sie den nächsten sichtbaren Schritt aus.',
+            },
+            steps: {
+              registryContract: 'Registry-Vertrag gespeichert',
+              workerPreflight: 'Technische Vorbedingungen geprüft',
+              workerPlan: 'Worker-Plan erzeugt',
+              realm: 'Realm angelegt',
+              loginClient: 'Login-Client angelegt oder abgeglichen',
+              tenantAdminClient: 'Tenant-Admin-Client angelegt oder abgeglichen',
+              realmRoles: 'Realm-Rollen sichergestellt',
+              tenantAdmin: 'Tenant-Admin angelegt oder korrigiert',
+              secretSync: 'Client-Secrets in Registry synchronisiert',
+              finalValidation: 'Abschlusszustand validiert',
+              realmBootstrapComplete: 'Realm-Grundaufbau erfolgreich',
+            },
+            stepSummaries: {
+              registryContractReady: 'Die benötigten Registry-Vertragsdaten sind vollständig gespeichert.',
+              registryContractFailed: 'Pflichtdaten im Registry-Vertrag fehlen oder sind technisch unvollständig.',
+              workerPreflightPending: 'Vorbedingungen können erst nach vollständigem Registry-Vertrag belastbar geprüft werden.',
+              workerPreflightReady: 'Die Vorbedingungen wurden erfolgreich geprüft.',
+              workerPreflightReadyToRun: 'Die Vorbedingungen sollten jetzt geprüft werden.',
+              workerPreflightFailed: 'Die Vorbedingungen blockieren den technischen Aufbau aktuell.',
+              workerPlanPending: 'Der Worker-Plan folgt nach erfolgreichem Preflight.',
+              workerPlanReady: 'Der Worker-Plan liegt vor und beschreibt die technische Ausführung.',
+              workerPlanReadyToRun: 'Der Soll-Ist-Plan sollte jetzt geladen werden.',
+              pendingWorkerExecution: 'Dieser Schritt wird im nächsten technischen Lauf erzeugt oder geprüft.',
+              awaitingCurrentRun: 'Dieser Schritt wird durch den aktuellen oder vorgemerkten Lauf bearbeitet.',
+              realmReady: 'Der Ziel-Realm ist vorhanden.',
+              realmFailed: 'Der Ziel-Realm ist nach dem Lauf noch nicht im Sollzustand.',
+              loginClientReady: 'Der Login-Client entspricht dem Sollzustand.',
+              loginClientFailed: 'Der Login-Client ist noch nicht vollständig angelegt oder abgeglichen.',
+              tenantAdminClientReady: 'Der Tenant-Admin-Client entspricht dem Sollzustand.',
+              tenantAdminClientFailed: 'Der Tenant-Admin-Client ist noch nicht vollständig angelegt oder abgeglichen.',
+              realmRolesReady: 'Die minimalen Realm-Rollen sind vorhanden.',
+              realmRolesFailed: 'Die minimalen Realm-Rollen entsprechen noch nicht dem Sollzustand.',
+              tenantAdminReady: 'Der Tenant-Admin entspricht dem Minimalprofil.',
+              tenantAdminFailed: 'Der Tenant-Admin ist noch nicht vollständig vorhanden oder korrekt zugeordnet.',
+              secretSyncReady: 'Die erzeugten Client-Secrets sind in der Registry synchronisiert.',
+              secretSyncFailed: 'Mindestens ein Client-Secret ist noch nicht korrekt mit der Registry abgeglichen.',
+              finalValidationReady: 'Die Abschlussvalidierung bestätigt den Zielzustand.',
+              finalValidationFailed: 'Die Abschlussvalidierung zeigt noch offene technische Abweichungen.',
+              finalValidationPending: 'Die Abschlussvalidierung folgt nach erfolgreicher technischer Ausführung.',
+              bootstrapCompleteReady: 'Der Realm-Grundaufbau ist erfolgreich abgeschlossen.',
+              bootstrapCompletePending: 'Der Realm-Grundaufbau ist noch nicht vollständig abgeschlossen.',
+            },
+          },
+          existing: {
+            title: 'Bestehenden Realm abgleichen',
+            stepsTitle: 'Diagnose- und Reconcile-Schritte',
+            stepsSubtitle:
+              'Diese Sicht priorisiert Drift, Vertragslücken und Reconcile-Aktionen für bereits existierende Realms.',
+            summary: {
+              driftDetected: 'Zwischen Registry-Vertrag und Live-Realm besteht weiterhin Drift oder ein technischer Defekt.',
+              reconcileReady: 'Der bestehende Realm ist geprüft. Nutzen Sie diese Sicht für weitere Reconcile- oder Folgearbeiten.',
+            },
+            steps: {
+              registryContract: 'Registry-Vertrag geprüft',
+              workerPreflight: 'Technische Vorbedingungen geprüft',
+              liveStatus: 'Live-Status geladen',
+              driftAnalysis: 'Drift analysiert',
+              contractRepair: 'Vertragsdaten ergänzt',
+              reconcile: 'Reconcile ausgeführt',
+              resultValidation: 'Ergebnis validiert',
+            },
+            stepSummaries: {
+              registryContractReady: 'Die relevanten Vertragsdaten sind vollständig gepflegt.',
+              registryContractFailed: 'Vertragsdaten oder Secrets fehlen noch für einen sauberen Abgleich.',
+              workerPreflightPending: 'Vorbedingungen folgen nach vollständigem Vertrag.',
+              workerPreflightReady: 'Die Vorbedingungen erlauben die technische Prüfung.',
+              workerPreflightReadyToRun: 'Die Vorbedingungen sollten jetzt geprüft werden.',
+              workerPreflightFailed: 'Die Vorbedingungen blockieren den Abgleich aktuell.',
+              liveStatusReady: 'Der Live-Zustand des Realm wurde geladen.',
+              liveStatusPending: 'Der Live-Zustand sollte jetzt gegen Keycloak geladen werden.',
+              driftAnalysisPending: 'Eine belastbare Driftanalyse folgt nach dem Live-Status.',
+              driftAnalysisReady: 'Der Live-Zustand entspricht aktuell dem gepflegten Vertrag.',
+              driftAnalysisFailed: 'Der Live-Zustand weicht aktuell vom gepflegten Vertrag ab.',
+              contractRepairReady: 'Die Vertragsdaten sind für den Reconcile-Lauf vollständig.',
+              contractRepairFailed: 'Ergänzen Sie zuerst fehlende Secrets oder Vertragsdaten.',
+              reconcilePending: 'Ein Reconcile-Lauf ist erst nach Driftanalyse sinnvoll.',
+              reconcileReadyToRun: 'Die Drift ist sichtbar. Ein Reconcile-Lauf ist jetzt die nächste sinnvolle Aktion.',
+              reconcileReady: 'Der letzte Reconcile-Lauf hat den Zustand erfolgreich angeglichen.',
+              reconcileFailed: 'Der letzte Reconcile-Lauf ist fehlgeschlagen oder unvollständig.',
+              resultValidationPending: 'Die Ergebnisvalidierung folgt nach dem Reconcile-Lauf.',
+              resultValidationReady: 'Die Ergebnisvalidierung bestätigt den abgeglichenen Zustand.',
+              resultValidationFailed: 'Die Ergebnisvalidierung zeigt weiterhin offene Drift oder Defekte.',
+            },
+          },
+        },
         actions: {
           create: 'Instanz anlegen',
           edit: 'Bearbeiten',
           save: 'Instanz speichern',
+          openConfiguration: 'Konfiguration öffnen',
           checkPreflight: 'Vorbedingungen prüfen',
           activate: 'Aktivieren',
           suspend: 'Suspendieren',
@@ -930,6 +1058,8 @@ export const i18nResources = {
             'Der Provisioning-Worker kann Keycloak derzeit nicht technisch prüfen. Im laufenden Prozess fehlt {{envName}}.',
           workerProjectionHint:
             'Die angezeigten Vorbedingungen und der Keycloak-Status sind derzeit nur eine Registry-basierte Vorabschätzung. Ein echter Live-Abgleich erfolgt erst im Provisioning-Worker.',
+          workerUnavailable:
+            'Für diesen Provisioning-Auftrag hat noch kein Worker übernommen. Bitte den Provisioning-Worker prüfen oder lokal starten und den Lauf danach erneut anstoßen.',
         },
         keycloakPanel: {
           title: 'Keycloak-Status und Bootstrap',
@@ -1030,7 +1160,11 @@ export const i18nResources = {
             displayName: 'Bitte einen Anzeigenamen angeben.',
             parentDomain: 'Bitte eine Parent-Domain angeben.',
             authRealm: 'Bitte ein Auth-Realm angeben.',
+            authRealmFormat: 'Bitte ein gueltiges Auth-Realm ohne Leerzeichen oder Fliesstext angeben.',
             authClientId: 'Bitte eine Auth-Client-ID angeben.',
+            authClientSecret: 'Bitte ein Tenant-Client-Secret angeben.',
+            tenantAdminClientId: 'Bitte eine Tenant-Admin-Client-ID angeben.',
+            tenantAdminClientSecret: 'Bitte ein Tenant-Admin-Client-Secret angeben.',
           },
           readiness: {
             secretTitle: 'Tenant-Client-Secret',
@@ -1135,12 +1269,10 @@ export const i18nResources = {
           authClientId: {
             title: 'Auth-Client-ID',
             what: 'OIDC-Client im Tenant-Realm, den Studio zur Anmeldung und zum Abgleich erwartet.',
-            value:
-              'In der Regel "sva-studio", sofern kein abweichender Tenant-Client verwendet wird.',
+            value: 'In der Regel "sva-studio-login", sofern kein abweichender Tenant-Client verwendet wird.',
             source: 'Kommt aus dem Keycloak-Client im Tenant-Realm.',
-            impact:
-              'Ein falscher Client führt zu fehlgeschlagenen Statusprüfungen und unpassenden Client-Änderungen.',
-            defaultHint: 'Standardwert ist "sva-studio".',
+            impact: 'Ein falscher Client führt zu fehlgeschlagenen Statusprüfungen und unpassenden Client-Änderungen.',
+            defaultHint: 'Standardwert ist "sva-studio-login".',
           },
           authIssuerUrl: {
             title: 'Auth-Issuer-URL',
@@ -1165,13 +1297,10 @@ export const i18nResources = {
           tenantAdminClientId: {
             title: 'Tenant-Admin-Client-ID',
             what: 'OIDC-Client für tenant-spezifische Verwaltungs- und Bootstrap-Vorgänge.',
-            value: 'Den erwarteten Client-Namen eintragen, z. B. "sva-studio-admin".',
-            source:
-              'Kommt aus dem Tenant-Realm in Keycloak oder aus dem vorgesehenen Provisioning-Vertrag.',
-            impact:
-              'Ohne korrekte Client-ID bleiben tenant-spezifische Verwaltungsaktionen und Teile der Benutzerverwaltung blockiert.',
-            defaultHint:
-              'Falls der Client noch nicht existiert, kann Studio ihn über das Provisioning bereitstellen.',
+            value: 'Den erwarteten Client-Namen eintragen, z. B. "sva-studio-realm-admin".',
+            source: 'Kommt aus dem Tenant-Realm in Keycloak oder aus dem vorgesehenen Provisioning-Vertrag.',
+            impact: 'Ohne korrekte Client-ID bleiben tenant-spezifische Verwaltungsaktionen und Teile der Benutzerverwaltung blockiert.',
+            defaultHint: 'Falls der Client noch nicht existiert, kann Studio ihn über das Provisioning bereitstellen.',
           },
           tenantAdminClientSecret: {
             title: 'Tenant-Admin-Client-Secret',
@@ -1260,13 +1389,6 @@ export const i18nResources = {
               'Der Tenant-Admin-Client konnte wegen fehlendem Keycloak-Zugriff noch nicht geprüft werden.',
             pending:
               'Der Tenant-Admin-Client sollte jetzt per Provisioning geprüft oder abgeglichen werden.',
-          },
-          mapper: {
-            title: 'instanceId-Mapper prüfen',
-            ready: 'Der instanceId-Mapper ist vorhanden.',
-            blocked:
-              'Der Mapper konnte wegen fehlendem Keycloak-Zugriff noch nicht geprüft werden.',
-            pending: 'Der Mapper wird nach dem Status- oder Provisioning-Lauf verifiziert.',
           },
           tenantSecret: {
             title: 'Tenant-Secret prüfen',
@@ -1372,6 +1494,13 @@ export const i18nResources = {
               keycloakUnavailable:
                 'Die kanonischen Anforderungen konnten aktuell nicht zuverlässig gegen Keycloak geprüft werden.',
             },
+            expectedArtifacts: {
+              title: 'Konfiguration vorbereitet',
+              pending:
+                'Für einen neuen Realm sind fehlende Keycloak-Artefakte vor dem ersten technischen Lauf erwartbar. Prüfen Sie den Vertrag und starten Sie anschließend den nächsten Schritt.',
+              running:
+                'Der neue Realm befindet sich im technischen Aufbau. Fehlende Keycloak-Artefakte werden bis zum Abschluss des Realm-Grundaufbaus nicht als aktuelle Blocker gewertet.',
+            },
           },
         },
         keycloakStatus: {
@@ -1380,11 +1509,9 @@ export const i18nResources = {
           realmExists: 'Realm vorhanden',
           clientExists: 'Client vorhanden',
           tenantAdminClientExists: 'Tenant-Admin-Client vorhanden',
-          instanceIdMapperExists: 'instanceId-Mapper vorhanden',
           tenantAdminExists: 'Tenant-Admin vorhanden',
           tenantAdminHasSystemAdmin: 'Tenant-Admin hat system_admin',
           tenantAdminHasInstanceRegistryAdmin: 'Tenant-Admin hat instance_registry_admin',
-          tenantAdminInstanceIdMatches: 'Tenant-Admin hat passendes instanceId-Attribut',
           redirectUrisMatch: 'Redirect-URIs stimmen',
           logoutUrisMatch: 'Logout-URIs stimmen',
           webOriginsMatch: 'Web-Origins stimmen',
@@ -3178,6 +3305,8 @@ export const i18nResources = {
           tenantAdminClientSecret: 'Tenant admin client secret',
           tenantAdminClientSecretConfigured: 'Secret already configured',
           tenantAdminClientSecretMissing: 'Secret still missing',
+          tenantAdminClientSecretGeneratedHint:
+            'For new realms, the tenant admin client secret is generated automatically during provisioning and stored in Studio afterwards.',
           tenantAdminClientSecretHint:
             'Leave empty to keep the existing tenant admin client secret unchanged.',
           tenantAdminTitle: 'Initial tenant admin',
@@ -3248,6 +3377,7 @@ export const i18nResources = {
           noEvidenceTimestamp: 'No trusted timestamp available.',
           tabsAriaLabel: 'Instance detail work areas',
           tabs: {
+            overview: 'Overview',
             configuration: 'Configuration',
             operations: 'Operations',
             history: 'History',
@@ -3280,10 +3410,135 @@ export const i18nResources = {
             diagnostics: 'Diagnostics',
           },
         },
+        history: {
+          currentRunTitle: 'Current Keycloak run',
+          currentRunSubtitle: 'This evidence represents the most relevant current technical state.',
+          previousRunsTitle: 'Older Keycloak runs',
+          previousRunsSubtitle: 'Earlier runs remain visible for diagnosis but no longer dominate the first glance.',
+          previousRunsEmpty: 'No older Keycloak runs are available yet.',
+          mismatchHint: 'Older failed runs remain visible, but they no longer represent the current leading state.',
+        },
+        operations: {
+          overview: {
+            eyebrow: 'Next step',
+          },
+          labels: {
+            currentState: 'Overall state',
+            evidence: 'Evidence: {{value}}',
+          },
+          followUpSummary:
+            'Tenant IAM baseline, module assignment, and other follow-up work remain intentionally separate from core realm bootstrap.',
+          status: {
+            offen: 'Open',
+            bereit: 'Ready',
+            laeuft: 'Running',
+            erfolgreich: 'Successful',
+            fehlgeschlagen: 'Failed',
+          },
+          new: {
+            title: 'Build new realm',
+            stepsTitle: 'Realm bootstrap step chain',
+            stepsSubtitle:
+              'These steps follow the real worker chain from registry contract to preflight, provisioning, and final validation.',
+            summary: {
+              contractIncomplete: 'The registry contract is still incomplete. Correct the required fields first.',
+              modeConflict: 'The target realm conflicts with the "new realm" mode. Clarify the live state first.',
+              preflightBlocked: 'The worker reports blocking preconditions. Resolve them before the next run.',
+              runFailed: 'The latest technical run failed. Inspect the affected step and retry afterwards.',
+              bootstrapComplete: 'Core realm bootstrap completed successfully. Follow-up work remains separate.',
+              inProgress: 'Core realm bootstrap is prepared or in progress. Execute the next visible step.',
+            },
+            steps: {
+              registryContract: 'Registry contract stored',
+              workerPreflight: 'Technical preconditions checked',
+              workerPlan: 'Worker plan generated',
+              realm: 'Realm created',
+              loginClient: 'Login client created or reconciled',
+              tenantAdminClient: 'Tenant admin client created or reconciled',
+              realmRoles: 'Realm roles ensured',
+              tenantAdmin: 'Tenant admin created or corrected',
+              secretSync: 'Client secrets synchronized back to registry',
+              finalValidation: 'Final state validated',
+              realmBootstrapComplete: 'Core realm bootstrap complete',
+            },
+            stepSummaries: {
+              registryContractReady: 'The required registry contract data is stored completely.',
+              registryContractFailed: 'Required registry contract data is missing or technically incomplete.',
+              workerPreflightPending: 'Preconditions can only be checked reliably after the registry contract is complete.',
+              workerPreflightReady: 'Preconditions were checked successfully.',
+              workerPreflightReadyToRun: 'Preconditions should be checked now.',
+              workerPreflightFailed: 'Preconditions currently block the technical bootstrap.',
+              workerPlanPending: 'The worker plan follows after a successful preflight.',
+              workerPlanReady: 'The worker plan is available and describes the technical execution.',
+              workerPlanReadyToRun: 'The desired-vs-actual plan should be loaded now.',
+              pendingWorkerExecution: 'This step will be created or checked in the next technical run.',
+              awaitingCurrentRun: 'This step is being processed by the current or queued run.',
+              realmReady: 'The target realm exists.',
+              realmFailed: 'The target realm is still not in the desired state after the run.',
+              loginClientReady: 'The login client matches the desired state.',
+              loginClientFailed: 'The login client is not yet fully created or reconciled.',
+              tenantAdminClientReady: 'The tenant admin client matches the desired state.',
+              tenantAdminClientFailed: 'The tenant admin client is not yet fully created or reconciled.',
+              realmRolesReady: 'The minimal realm roles exist.',
+              realmRolesFailed: 'The minimal realm roles do not yet match the desired state.',
+              tenantAdminReady: 'The tenant admin matches the minimal profile.',
+              tenantAdminFailed: 'The tenant admin is not yet fully present or correctly assigned.',
+              secretSyncReady: 'The generated client secrets are synchronized to the registry.',
+              secretSyncFailed: 'At least one client secret is not yet aligned with the registry.',
+              finalValidationReady: 'Final validation confirms the desired state.',
+              finalValidationFailed: 'Final validation still shows technical deviations.',
+              finalValidationPending: 'Final validation follows after successful technical execution.',
+              bootstrapCompleteReady: 'Core realm bootstrap completed successfully.',
+              bootstrapCompletePending: 'Core realm bootstrap is not yet fully complete.',
+            },
+          },
+          existing: {
+            title: 'Reconcile existing realm',
+            stepsTitle: 'Diagnosis and reconcile steps',
+            stepsSubtitle:
+              'This view prioritizes drift, contract gaps, and reconcile actions for already existing realms.',
+            summary: {
+              driftDetected: 'Drift or a technical defect still exists between the registry contract and the live realm.',
+              reconcileReady: 'The existing realm is checked. Use this view for further reconcile or follow-up actions.',
+            },
+            steps: {
+              registryContract: 'Registry contract checked',
+              workerPreflight: 'Technical preconditions checked',
+              liveStatus: 'Live status loaded',
+              driftAnalysis: 'Drift analyzed',
+              contractRepair: 'Contract data completed',
+              reconcile: 'Reconcile executed',
+              resultValidation: 'Result validated',
+            },
+            stepSummaries: {
+              registryContractReady: 'The relevant contract data is fully maintained.',
+              registryContractFailed: 'Contract data or secrets are still missing for a clean reconcile.',
+              workerPreflightPending: 'Preconditions follow after the contract is complete.',
+              workerPreflightReady: 'Preconditions allow technical inspection.',
+              workerPreflightReadyToRun: 'Preconditions should be checked now.',
+              workerPreflightFailed: 'Preconditions currently block the reconcile.',
+              liveStatusReady: 'The live realm state has been loaded.',
+              liveStatusPending: 'The live realm state should now be loaded from Keycloak.',
+              driftAnalysisPending: 'Reliable drift analysis follows after the live status.',
+              driftAnalysisReady: 'The live state currently matches the stored contract.',
+              driftAnalysisFailed: 'The live state currently deviates from the stored contract.',
+              contractRepairReady: 'Contract data is complete for the reconcile run.',
+              contractRepairFailed: 'Complete missing secrets or contract data first.',
+              reconcilePending: 'A reconcile run only makes sense after drift analysis.',
+              reconcileReadyToRun: 'Drift is visible. A reconcile run is now the next meaningful action.',
+              reconcileReady: 'The latest reconcile run successfully aligned the state.',
+              reconcileFailed: 'The latest reconcile run failed or remained incomplete.',
+              resultValidationPending: 'Result validation follows after the reconcile run.',
+              resultValidationReady: 'Result validation confirms the reconciled state.',
+              resultValidationFailed: 'Result validation still shows drift or defects.',
+            },
+          },
+        },
         actions: {
           create: 'Create instance',
           edit: 'Edit',
           save: 'Save instance',
+          openConfiguration: 'Open configuration',
           checkPreflight: 'Check preflight',
           activate: 'Activate',
           suspend: 'Suspend',
@@ -3309,6 +3564,8 @@ export const i18nResources = {
             'The provisioning worker cannot technically inspect Keycloak right now. The running process is missing {{envName}}.',
           workerProjectionHint:
             'The displayed preflight and Keycloak status are currently only a registry-based projection. A real live reconciliation only happens inside the provisioning worker.',
+          workerUnavailable:
+            'No worker has picked up this provisioning run yet. Check or start the provisioning worker and then retry the run.',
         },
         keycloakPanel: {
           title: 'Keycloak status and bootstrap',
@@ -3405,7 +3662,11 @@ export const i18nResources = {
             displayName: 'Please provide a display name.',
             parentDomain: 'Please provide a parent domain.',
             authRealm: 'Please provide an auth realm.',
+            authRealmFormat: 'Please provide a valid auth realm without spaces or prose.',
             authClientId: 'Please provide an auth client id.',
+            authClientSecret: 'Please provide a tenant client secret.',
+            tenantAdminClientId: 'Please provide a tenant admin client id.',
+            tenantAdminClientSecret: 'Please provide a tenant admin client secret.',
           },
           readiness: {
             secretTitle: 'Tenant client secret',
@@ -3505,10 +3766,10 @@ export const i18nResources = {
           authClientId: {
             title: 'Auth client id',
             what: 'OIDC client inside the tenant realm that Studio expects for sign-in and reconciliation.',
-            value: 'Usually "sva-studio", unless the tenant uses a different client id.',
+            value: 'Usually "sva-studio-login", unless the tenant uses a different client id.',
             source: 'Comes from the Keycloak client configuration in the tenant realm.',
             impact: 'A wrong client id causes failed status checks and mismatched client updates.',
-            defaultHint: 'Default value is "sva-studio".',
+            defaultHint: 'Default value is "sva-studio-login".',
           },
           authIssuerUrl: {
             title: 'Auth issuer URL',
@@ -3532,11 +3793,9 @@ export const i18nResources = {
           tenantAdminClientId: {
             title: 'Tenant admin client id',
             what: 'OIDC client for tenant-specific administrative and bootstrap operations.',
-            value: 'Enter the expected client name, for example "sva-studio-admin".',
-            source:
-              'Comes from the tenant realm in Keycloak or from the intended provisioning contract.',
-            impact:
-              'Without the correct client id, tenant-specific administration and parts of user management stay blocked.',
+            value: 'Enter the expected client name, for example "sva-studio-realm-admin".',
+            source: 'Comes from the tenant realm in Keycloak or from the intended provisioning contract.',
+            impact: 'Without the correct client id, tenant-specific administration and parts of user management stay blocked.',
             defaultHint: 'If the client does not exist yet, Studio can provision it.',
           },
           tenantAdminClientSecret: {
@@ -3618,12 +3877,6 @@ export const i18nResources = {
               'The tenant admin client could not be checked yet because Keycloak access is blocked.',
             pending:
               'The tenant admin client should now be verified or reconciled through provisioning.',
-          },
-          mapper: {
-            title: 'Check instanceId mapper',
-            ready: 'The instanceId mapper exists.',
-            blocked: 'The mapper could not be checked yet because Keycloak access is blocked.',
-            pending: 'The mapper will be verified after a status or provisioning run.',
           },
           tenantSecret: {
             title: 'Check tenant secret',
@@ -3723,6 +3976,13 @@ export const i18nResources = {
               keycloakUnavailable:
                 'The canonical requirements could not be checked against Keycloak reliably at the moment.',
             },
+            expectedArtifacts: {
+              title: 'Configuration prepared',
+              pending:
+                'For a new realm, missing Keycloak artifacts are expected before the first technical run. Review the contract and then execute the next step.',
+              running:
+                'The new realm is currently being built technically. Missing Keycloak artifacts are not treated as current blockers until core realm bootstrap completes.',
+            },
           },
         },
         keycloakStatus: {
@@ -3731,11 +3991,9 @@ export const i18nResources = {
           realmExists: 'Realm exists',
           clientExists: 'Client exists',
           tenantAdminClientExists: 'Tenant admin client exists',
-          instanceIdMapperExists: 'instanceId mapper exists',
           tenantAdminExists: 'Tenant admin exists',
           tenantAdminHasSystemAdmin: 'Tenant admin has system_admin',
           tenantAdminHasInstanceRegistryAdmin: 'Tenant admin has instance_registry_admin',
-          tenantAdminInstanceIdMatches: 'Tenant admin has matching instanceId attribute',
           redirectUrisMatch: 'Redirect URIs match',
           logoutUrisMatch: 'Logout URIs match',
           webOriginsMatch: 'Web origins match',

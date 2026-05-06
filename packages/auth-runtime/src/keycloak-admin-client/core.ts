@@ -380,6 +380,11 @@ export class KeycloakAdminClient implements IdentityProviderPort {
   private consecutiveFailures = 0;
   private circuitOpenUntilMs = 0;
 
+  private invalidateAccessTokenCache() {
+    this.cachedToken = undefined;
+    this.tokenRefreshPromise = undefined;
+  }
+
   constructor(config: KeycloakAdminClientConfig) {
     this.baseUrl = normalizeBaseUrl(config.baseUrl);
     this.realm = config.realm;
@@ -918,6 +923,7 @@ export class KeycloakAdminClient implements IdentityProviderPort {
         }),
         operation: 'create_realm',
       });
+      this.invalidateAccessTokenCache();
       logKeycloakWriteSuccess('create_realm', {
         operation: 'create_realm',
         realm: this.realm,
@@ -1103,8 +1109,11 @@ export class KeycloakAdminClient implements IdentityProviderPort {
       rotateClientSecret?: boolean;
     }
   ): Promise<void> {
-    // If no clientSecret is provided, skip secret sync/rotation entirely.
-    // rotateClientSecret without clientSecret is not a valid operation.
+    // Secret reconciliation is registry-facing. Only explicit rotation mutates
+    // Keycloak because the admin API can only generate a new secret here.
+    if (!input.rotateClientSecret) {
+      return;
+    }
     if (!input.clientSecret) {
       return;
     }

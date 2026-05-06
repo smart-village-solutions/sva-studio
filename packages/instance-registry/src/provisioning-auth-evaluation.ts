@@ -1,7 +1,7 @@
 import type { InstanceKeycloakPreflightCheck, InstanceRealmMode } from '@sva/core';
 import type { KeycloakTenantPreflight, KeycloakTenantStatus } from './keycloak-types.js';
 import type { KeycloakProvisioningInput, KeycloakReadState, TenantAdminBootstrap } from './provisioning-auth-types.js';
-import { equalSets, INSTANCE_ID_MAPPER_NAME, readPostLogoutUris } from './provisioning-auth-utils.js';
+import { equalSets, readPostLogoutUris } from './provisioning-auth-utils.js';
 export { buildPlan } from './provisioning-auth-plan.js';
 
 export const buildMissingRealmStatus = (
@@ -13,11 +13,9 @@ export const buildMissingRealmStatus = (
   realmExists: false,
   clientExists: false,
   tenantAdminClientExists: false,
-  instanceIdMapperExists: false,
   tenantAdminExists: false,
   tenantAdminHasSystemAdmin: false,
   tenantAdminHasInstanceRegistryAdmin: false,
-  tenantAdminInstanceIdMatches: false,
   redirectUrisMatch: false,
   logoutUrisMatch: false,
   webOriginsMatch: false,
@@ -230,7 +228,6 @@ export const buildKeycloakStatus = (
     realmExists: true,
     clientExists: Boolean(input.state.clientRepresentation),
     tenantAdminClientExists: Boolean(input.state.tenantAdminClientRepresentation),
-    instanceIdMapperExists: input.state.protocolMappers.some((mapper) => mapper.name === INSTANCE_ID_MAPPER_NAME),
     ...input.state.tenantAdminStatus,
     redirectUrisMatch: equalSets(input.state.clientRepresentation?.redirectUris ?? [], input.state.expectedClient.redirectUris),
     logoutUrisMatch: equalSets(

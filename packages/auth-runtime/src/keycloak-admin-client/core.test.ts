@@ -388,6 +388,39 @@ describe('Keycloak admin client', () => {
     );
   });
 
+  it('refreshes the cached token after creating a realm before reading clients in that realm', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-2', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(200, []));
+
+    const client = await createClient(fetchImpl);
+
+    await expect(client.ensureRealm({ displayName: 'Demo Realm' })).resolves.toBeUndefined();
+    await expect(client.getOidcClientByClientId('sva-studio-login')).resolves.toBeNull();
+
+    expect(fetchImpl).toHaveBeenNthCalledWith(
+      3,
+      'https://keycloak.example/realms/demo/protocol/openid-connect/token',
+      expect.objectContaining({
+        body: 'grant_type=client_credentials&client_id=studio&client_secret=secret',
+        method: 'POST',
+      }),
+    );
+    expect(fetchImpl).toHaveBeenNthCalledWith(
+      4,
+      'https://keycloak.example/admin/realms/demo/clients?clientId=sva-studio-login',
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: 'Bearer token-2',
+        }),
+        method: 'GET',
+      }),
+    );
+  });
+
   it('creates OIDC clients, rotates secrets and updates changed clients', async () => {
     const fetchImpl = vi
       .fn()
@@ -442,6 +475,41 @@ describe('Keycloak admin client', () => {
 
     const rotateCall = fetchImpl.mock.calls[5];
     expect(String(rotateCall?.[0])).toContain('/clients/client-1/client-secret');
+  });
+
+  it('does not regenerate a client secret during normal reconciliation when the configured secret differs', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, [
+          {
+            id: 'client-1',
+            clientId: 'web-app',
+            rootUrl: 'https://new.example',
+            redirectUris: ['https://new.example/callback'],
+            webOrigins: ['https://new.example'],
+            attributes: { 'post.logout.redirect.uris': 'https://new.example/logout' },
+          },
+        ])
+      )
+      .mockResolvedValueOnce(createJsonResponse(200, { value: 'keycloak-secret' }));
+
+    const client = await createClient(fetchImpl);
+
+    await client.ensureOidcClient({
+      clientId: 'web-app',
+      redirectUris: ['https://new.example/callback'],
+      postLogoutRedirectUris: ['https://new.example/logout'],
+      webOrigins: ['https://new.example'],
+      rootUrl: 'https://new.example',
+      clientSecret: 'registry-secret',
+      rotateClientSecret: false,
+    });
+
+    expect(fetchImpl.mock.calls.some((call) => String(call[0]).includes('/client-secret') && call[1]?.method === 'POST')).toBe(
+      false
+    );
   });
 
   it('creates and updates protocol mappers only when configuration changed', async () => {

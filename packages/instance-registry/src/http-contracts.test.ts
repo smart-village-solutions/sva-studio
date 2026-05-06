@@ -31,6 +31,19 @@ describe('http-contracts', () => {
     expect(result.success).toBe(false);
   });
 
+  it('rejects authRealm values that are not realm identifiers', () => {
+    const result = createInstanceSchema.safeParse({
+      instanceId: 'de-test',
+      displayName: 'Demo',
+      parentDomain: 'studio.smart-village.app',
+      realmMode: 'new',
+      authRealm: 'Bitte ein Tenant-Client-Secret angeben. Bitte ein Tenant-Admin-Client-Secret angeben.',
+      authClientId: 'sva-studio',
+    });
+
+    expect(result.success).toBe(false);
+  });
+
   it('allows create requests without a tenant admin client contract', () => {
     const result = createInstanceSchema.safeParse({
       instanceId: 'de-test',

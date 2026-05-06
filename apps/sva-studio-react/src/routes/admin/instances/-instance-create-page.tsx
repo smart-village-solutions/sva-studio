@@ -128,9 +128,15 @@ export const InstanceCreatePage = () => {
       parentDomain: formValues.parentDomain.trim(),
       realmMode: formValues.realmMode,
       authRealm: formValues.authRealm.trim() || instanceId,
-      authClientId: formValues.authClientId.trim() || 'sva-studio',
+      authClientId: formValues.authClientId.trim() || 'sva-studio-login',
       authIssuerUrl: formValues.authIssuerUrl.trim() || undefined,
       authClientSecret: formValues.authClientSecret.trim() || undefined,
+      tenantAdminClient: formValues.tenantAdminClient.clientId.trim()
+        ? {
+            clientId: formValues.tenantAdminClient.clientId.trim(),
+            secret: formValues.tenantAdminClient.secret.trim() || undefined,
+          }
+        : undefined,
       tenantAdminBootstrap: formValues.tenantAdminBootstrap.username.trim()
         ? {
             username: formValues.tenantAdminBootstrap.username.trim(),
@@ -329,6 +335,49 @@ export const InstanceCreatePage = () => {
                   />
                 </div>
               </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="space-y-1">
+                  <FormLabelWithHelp
+                    htmlFor="instance-tenant-admin-client-id"
+                    label={t('admin.instances.form.tenantAdminClientId')}
+                    helpKey="tenantAdminClientId"
+                  />
+                  <Input
+                    id="instance-tenant-admin-client-id"
+                    value={formValues.tenantAdminClient.clientId}
+                    onChange={(event) =>
+                      updateForm((current) => ({
+                        ...current,
+                        tenantAdminClient: { ...current.tenantAdminClient, clientId: event.target.value },
+                      }))
+                    }
+                  />
+                </div>
+                <div className="space-y-1">
+                  <FormLabelWithHelp
+                    htmlFor="instance-tenant-admin-client-secret"
+                    label={t('admin.instances.form.tenantAdminClientSecret')}
+                    helpKey="tenantAdminClientSecret"
+                  />
+                  <Input
+                    id="instance-tenant-admin-client-secret"
+                    type="password"
+                    disabled={!tenantSecretUserInputRequired}
+                    placeholder={
+                      tenantSecretUserInputRequired
+                        ? undefined
+                        : t('admin.instances.form.authClientSecretGeneratedDuringProvisioning')
+                    }
+                    value={formValues.tenantAdminClient.secret}
+                    onChange={(event) =>
+                      updateForm((current) => ({
+                        ...current,
+                        tenantAdminClient: { ...current.tenantAdminClient, secret: event.target.value },
+                      }))
+                    }
+                  />
+                </div>
+              </div>
               <div className="space-y-1">
                 <FormLabelWithHelp
                   htmlFor="instance-auth-issuer-url"
@@ -463,6 +512,10 @@ export const InstanceCreatePage = () => {
                 <ReviewRow label={t('admin.instances.form.parentDomain')} value={formValues.parentDomain || '—'} />
                 <ReviewRow label={t('admin.instances.form.authRealm')} value={formValues.authRealm || '—'} />
                 <ReviewRow label={t('admin.instances.form.authClientId')} value={formValues.authClientId || '—'} />
+                <ReviewRow
+                  label={t('admin.instances.form.tenantAdminClientId')}
+                  value={formValues.tenantAdminClient.clientId || '—'}
+                />
                 <ReviewRow
                   label={t('admin.instances.form.authIssuerUrl')}
                   value={formValues.authIssuerUrl || t('admin.instances.wizard.reviewDefaultIssuer')}

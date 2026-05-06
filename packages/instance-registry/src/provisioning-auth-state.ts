@@ -9,7 +9,6 @@ import type {
 import {
   buildExpectedClientConfig,
   buildExpectedTenantAdminClientConfig,
-  INSTANCE_ID_MAPPER_NAME,
   INSTANCE_REGISTRY_ADMIN_ROLE,
   SYSTEM_ADMIN_ROLE,
 } from './provisioning-auth-utils.js';
@@ -95,7 +94,6 @@ export const createKeycloakProvisioningAdapters = (createClient: KeycloakProvisi
 });
 
 type TenantAdminInput = {
-  instanceId: string;
   username: string;
   email?: string;
   firstName?: string;
@@ -136,18 +134,10 @@ const ensureTenantAdmin = async (client: KeycloakProvisioningClient, input: Tena
     await client.setUserRequiredActions(userId, ['UPDATE_PASSWORD']);
   };
 
-  const buildAttributes = (attributes?: Readonly<Record<string, readonly string[]>>) => ({
-    ...Object.fromEntries(
-      Object.entries(attributes ?? {}).map(([key, value]) => [key, [...value]])
-    ),
-    instanceId: [input.instanceId],
-  });
-
   const updateExisting = async (user: {
     id: string;
     email?: string;
     enabled?: boolean;
-    attributes?: Readonly<Record<string, readonly string[]>>;
   }) => {
     await client.updateUser(user.id, {
       username: input.username,
@@ -155,7 +145,6 @@ const ensureTenantAdmin = async (client: KeycloakProvisioningClient, input: Tena
       firstName: input.firstName,
       lastName: input.lastName,
       enabled: user.enabled ?? true,
-      attributes: buildAttributes(user.attributes),
     });
     await syncTenantAdminAccess(user.id);
   };
@@ -176,7 +165,6 @@ const ensureTenantAdmin = async (client: KeycloakProvisioningClient, input: Tena
         firstName: input.firstName,
         lastName: input.lastName,
         enabled: true,
-        attributes: buildAttributes(),
       });
       await syncTenantAdminAccess(created.externalId);
       return;
@@ -194,7 +182,6 @@ const ensureTenantAdmin = async (client: KeycloakProvisioningClient, input: Tena
         id: conflictingUser.id,
         email: resolvedEmail,
         enabled: conflictingUser.enabled,
-        attributes: conflictingUser.attributes,
       });
       return;
     }
@@ -206,7 +193,6 @@ const readTenantAdminStatus = async (
   client: KeycloakProvisioningClient,
   input: {
     username: string | undefined;
-    instanceId: string;
   }
 ): Promise<TenantAdminStatus> => {
   if (!input.username) {
@@ -214,18 +200,15 @@ const readTenantAdminStatus = async (
       tenantAdminExists: false,
       tenantAdminHasSystemAdmin: false,
       tenantAdminHasInstanceRegistryAdmin: false,
-      tenantAdminInstanceIdMatches: false,
     };
   }
 
   const tenantAdmin = await client.findUserByUsername(input.username);
   const tenantAdminRoles = tenantAdmin ? await client.listUserRoleNames(tenantAdmin.id) : [];
-  const tenantAdminInstanceIds = tenantAdmin?.attributes?.instanceId ?? [];
   return {
     tenantAdminExists: Boolean(tenantAdmin),
     tenantAdminHasSystemAdmin: tenantAdminRoles.includes(SYSTEM_ADMIN_ROLE),
     tenantAdminHasInstanceRegistryAdmin: tenantAdminRoles.includes(INSTANCE_REGISTRY_ADMIN_ROLE),
-    tenantAdminInstanceIdMatches: tenantAdminInstanceIds.includes(input.instanceId),
   };
 };
 
@@ -254,7 +237,6 @@ export const createReadKeycloakState =
           tenantAdminExists: false,
           tenantAdminHasSystemAdmin: false,
           tenantAdminHasInstanceRegistryAdmin: false,
-          tenantAdminInstanceIdMatches: false,
         },
         keycloakClientSecret: null,
         tenantAdminClientSecret: null,
@@ -270,7 +252,6 @@ export const createReadKeycloakState =
     const protocolMappers = clientRepresentation ? await client.listClientProtocolMappers(input.authClientId) : [];
     const tenantAdminStatus = await readTenantAdminStatus(client, {
       username: input.tenantAdminBootstrap?.username,
-      instanceId: input.instanceId,
     });
     const keycloakClientSecret = clientRepresentation ? await client.getOidcClientSecretValue(input.authClientId) : null;
     const tenantAdminClientSecret = input.tenantAdminClient?.clientId
@@ -337,16 +318,8 @@ export const createProvisionInstanceAuthArtifacts =
         serviceAccountsEnabled: expectedTenantAdminClient.serviceAccountsEnabled,
       });
     }
-    await client.ensureUserAttributeProtocolMapper({
-      clientId: input.authClientId,
-      name: INSTANCE_ID_MAPPER_NAME,
-      userAttribute: INSTANCE_ID_MAPPER_NAME,
-      claimName: INSTANCE_ID_MAPPER_NAME,
-    });
-
     if (input.tenantAdminBootstrap) {
       await ensureTenantAdmin(client, {
-        instanceId: input.instanceId,
         ...input.tenantAdminBootstrap,
         temporaryPassword: input.tenantAdminTemporaryPassword,
       });

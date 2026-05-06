@@ -88,10 +88,12 @@ describe('provisioning-auth-state', () => {
     expect(client.ensureRealm).toHaveBeenCalledWith({ displayName: 'demo' });
     expect(client.ensureOidcClient).toHaveBeenCalledWith(expect.objectContaining({ clientId: 'sva-studio' }));
     expect(client.ensureOidcClient).toHaveBeenCalledWith(expect.objectContaining({ clientId: 'tenant-admin' }));
-    expect(client.ensureUserAttributeProtocolMapper).toHaveBeenCalledWith(
-      expect.objectContaining({ clientId: 'sva-studio', name: 'instanceId' })
+    expect(client.ensureUserAttributeProtocolMapper).not.toHaveBeenCalled();
+    expect(client.createUser).toHaveBeenCalledWith(
+      expect.objectContaining({
+        username: 'tenant-admin',
+      })
     );
-    expect(client.createUser).toHaveBeenCalledWith(expect.objectContaining({ username: 'tenant-admin' }));
     expect(client.setUserPassword).toHaveBeenCalledWith('user-1', 'tmp-password', true);
   });
 

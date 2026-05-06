@@ -1,8 +1,8 @@
 {
   "meta": {
-    "version": "1.0.0",
-    "updatedAt": "2026-05-04",
-    "source": "CSV SVA-Studio-Kostenschätzung-22.03.2026.csv; Initialstatus aus der Kostenschätzung als commissioned/on_track abgeleitet"
+    "version": "1.0.1",
+    "updatedAt": "2026-05-06",
+    "source": "CSV SVA-Studio-Kostenschätzung-22.03.2026.csv; commissioned-Status am 2026-05-06 fachlich auf idea zurückgesetzt, Health weiterhin aus der Kostenschätzung als on_track abgeleitet"
   },
   "statusModel": {
     "idea": 0,
@@ -351,7 +351,7 @@
           "area": "3. Datenverwaltung",
           "priority": "replacement_required",
           "effortPt": 3,
-          "status": "commissioned",
+          "status": "idea",
           "health": "on_track",
           "dependsOn": []
         },
@@ -381,7 +381,7 @@
           "area": "3. Datenverwaltung",
           "priority": "requested",
           "effortPt": 0.5,
-          "status": "commissioned",
+          "status": "idea",
           "health": "on_track",
           "dependsOn": []
         },
@@ -391,7 +391,7 @@
           "area": "3. Datenverwaltung",
           "priority": "requested",
           "effortPt": 2,
-          "status": "commissioned",
+          "status": "idea",
           "health": "on_track",
           "dependsOn": []
         },
@@ -411,7 +411,7 @@
           "area": "3. Datenverwaltung",
           "priority": "requested",
           "effortPt": 1,
-          "status": "commissioned",
+          "status": "idea",
           "health": "on_track",
           "dependsOn": []
         },
@@ -431,7 +431,7 @@
           "area": "4. Schnittstellen",
           "priority": "replacement_required",
           "effortPt": 1,
-          "status": "commissioned",
+          "status": "idea",
           "health": "on_track",
           "dependsOn": []
         },
@@ -471,7 +471,7 @@
           "area": "4. Schnittstellen",
           "priority": "requested",
           "effortPt": 3,
-          "status": "commissioned",
+          "status": "idea",
           "health": "on_track",
           "dependsOn": []
         },
@@ -619,7 +619,7 @@
           "area": "2. Datentypen",
           "priority": "requested",
           "effortPt": 1,
-          "status": "commissioned",
+          "status": "idea",
           "health": "on_track",
           "dependsOn": []
         },
@@ -629,7 +629,7 @@
           "area": "3. Datenverwaltung",
           "priority": "requested",
           "effortPt": 0.5,
-          "status": "commissioned",
+          "status": "idea",
           "health": "on_track",
           "dependsOn": []
         },
@@ -709,7 +709,7 @@
           "area": "6. Allgemein",
           "priority": "valuable",
           "effortPt": 1,
-          "status": "commissioned",
+          "status": "idea",
           "health": "on_track",
           "dependsOn": []
         },
@@ -719,7 +719,7 @@
           "area": "6. Allgemein",
           "priority": "requested",
           "effortPt": 1,
-          "status": "commissioned",
+          "status": "idea",
           "health": "on_track",
           "dependsOn": []
         },
@@ -749,7 +749,7 @@
           "area": "7. Frontend",
           "priority": "funded_optional",
           "effortPt": 2,
-          "status": "commissioned",
+          "status": "idea",
           "health": "on_track",
           "dependsOn": []
         },
@@ -759,7 +759,7 @@
           "area": "7. Frontend",
           "priority": "funded_optional",
           "effortPt": 1,
-          "status": "commissioned",
+          "status": "idea",
           "health": "on_track",
           "dependsOn": []
         }
@@ -777,7 +777,7 @@
           "area": "2. Datentypen",
           "priority": "requested",
           "effortPt": 1,
-          "status": "commissioned",
+          "status": "idea",
           "health": "on_track",
           "dependsOn": []
         },
@@ -797,7 +797,7 @@
           "area": "2. Datentypen",
           "priority": "unfunded_nice_to_have",
           "effortPt": 0.5,
-          "status": "commissioned",
+          "status": "idea",
           "health": "on_track",
           "dependsOn": []
         },
@@ -807,7 +807,7 @@
           "area": "2. Datentypen",
           "priority": "unfunded_nice_to_have",
           "effortPt": 0.5,
-          "status": "commissioned",
+          "status": "idea",
           "health": "on_track",
           "dependsOn": []
         },
@@ -817,7 +817,7 @@
           "area": "2. Datentypen",
           "priority": "unfunded_nice_to_have",
           "effortPt": 0.5,
-          "status": "commissioned",
+          "status": "idea",
           "health": "on_track",
           "dependsOn": []
         },
@@ -827,7 +827,7 @@
           "area": "2. Datentypen",
           "priority": "unfunded_nice_to_have",
           "effortPt": 0.5,
-          "status": "commissioned",
+          "status": "idea",
           "health": "on_track",
           "dependsOn": []
         },
@@ -837,7 +837,7 @@
           "area": "2. Datentypen",
           "priority": "unfunded_nice_to_have",
           "effortPt": 0.5,
-          "status": "commissioned",
+          "status": "idea",
           "health": "on_track",
           "dependsOn": []
         },
@@ -927,7 +927,7 @@
           "area": "4. Schnittstellen",
           "priority": "unfunded_nice_to_have",
           "effortPt": 1,
-          "status": "commissioned",
+          "status": "idea",
           "health": "on_track",
           "dependsOn": []
         },
@@ -937,7 +937,7 @@
           "area": "4. Schnittstellen",
           "priority": "unfunded_nice_to_have",
           "effortPt": 1,
-          "status": "commissioned",
+          "status": "idea",
           "health": "on_track",
           "dependsOn": []
         },
@@ -947,7 +947,7 @@
           "area": "4. Schnittstellen",
           "priority": "unfunded_nice_to_have",
           "effortPt": 0.5,
-          "status": "commissioned",
+          "status": "idea",
           "health": "on_track",
           "dependsOn": []
         },
@@ -957,7 +957,7 @@
           "area": "4. Schnittstellen",
           "priority": "unfunded_nice_to_have",
           "effortPt": 1,
-          "status": "commissioned",
+          "status": "idea",
           "health": "on_track",
           "dependsOn": []
         },
@@ -967,7 +967,7 @@
           "area": "4. Schnittstellen",
           "priority": "unfunded_nice_to_have",
           "effortPt": 1,
-          "status": "commissioned",
+          "status": "idea",
           "health": "on_track",
           "dependsOn": []
         },
@@ -977,7 +977,7 @@
           "area": "4. Schnittstellen",
           "priority": "unfunded_nice_to_have",
           "effortPt": 2,
-          "status": "commissioned",
+          "status": "idea",
           "health": "on_track",
           "dependsOn": []
         },
@@ -987,7 +987,7 @@
           "area": "4. Schnittstellen",
           "priority": "unfunded_nice_to_have",
           "effortPt": 1,
-          "status": "commissioned",
+          "status": "idea",
           "health": "on_track",
           "dependsOn": []
         },
@@ -997,7 +997,7 @@
           "area": "5. Module",
           "priority": "replacement_required",
           "effortPt": 1,
-          "status": "commissioned",
+          "status": "idea",
           "health": "on_track",
           "dependsOn": []
         },
@@ -1007,7 +1007,7 @@
           "area": "5. Module",
           "priority": "requested",
           "effortPt": 1,
-          "status": "commissioned",
+          "status": "idea",
           "health": "on_track",
           "dependsOn": []
         },
@@ -1027,7 +1027,7 @@
           "area": "5. Module",
           "priority": "unfunded_nice_to_have",
           "effortPt": 0.5,
-          "status": "commissioned",
+          "status": "idea",
           "health": "on_track",
           "dependsOn": []
         },
@@ -1037,7 +1037,7 @@
           "area": "5. Module",
           "priority": "unfunded_nice_to_have",
           "effortPt": 1,
-          "status": "commissioned",
+          "status": "idea",
           "health": "on_track",
           "dependsOn": []
         },
@@ -1047,7 +1047,7 @@
           "area": "5. Module",
           "priority": "unfunded_nice_to_have",
           "effortPt": 0.5,
-          "status": "commissioned",
+          "status": "idea",
           "health": "on_track",
           "dependsOn": []
         },
@@ -1057,7 +1057,7 @@
           "area": "5. Module",
           "priority": "unfunded_nice_to_have",
           "effortPt": 0.5,
-          "status": "commissioned",
+          "status": "idea",
           "health": "on_track",
           "dependsOn": []
         },
@@ -1067,7 +1067,7 @@
           "area": "6. Allgemein",
           "priority": "must",
           "effortPt": 1,
-          "status": "commissioned",
+          "status": "idea",
           "health": "on_track",
           "dependsOn": []
         },
@@ -1115,7 +1115,7 @@
           "area": "2. Datentypen",
           "priority": "replacement_required",
           "effortPt": 0.5,
-          "status": "commissioned",
+          "status": "idea",
           "health": "on_track",
           "dependsOn": []
         },
@@ -1125,7 +1125,7 @@
           "area": "2. Datentypen",
           "priority": "replacement_required",
           "effortPt": 1,
-          "status": "commissioned",
+          "status": "idea",
           "health": "on_track",
           "dependsOn": []
         },
@@ -1135,7 +1135,7 @@
           "area": "2. Datentypen",
           "priority": "replacement_required",
           "effortPt": 0.5,
-          "status": "commissioned",
+          "status": "idea",
           "health": "on_track",
           "dependsOn": []
         },
@@ -1145,7 +1145,7 @@
           "area": "2. Datentypen",
           "priority": "replacement_required",
           "effortPt": 1.5,
-          "status": "commissioned",
+          "status": "idea",
           "health": "on_track",
           "dependsOn": []
         },
@@ -1155,7 +1155,7 @@
           "area": "2. Datentypen",
           "priority": "replacement_required",
           "effortPt": 1.5,
-          "status": "commissioned",
+          "status": "idea",
           "health": "on_track",
           "dependsOn": []
         },
@@ -1165,7 +1165,7 @@
           "area": "2. Datentypen",
           "priority": "replacement_required",
           "effortPt": 0.5,
-          "status": "commissioned",
+          "status": "idea",
           "health": "on_track",
           "dependsOn": []
         },
@@ -1175,7 +1175,7 @@
           "area": "2. Datentypen",
           "priority": "replacement_required",
           "effortPt": 0.5,
-          "status": "commissioned",
+          "status": "idea",
           "health": "on_track",
           "dependsOn": []
         },
@@ -1185,7 +1185,7 @@
           "area": "2. Datentypen",
           "priority": "replacement_required",
           "effortPt": 1,
-          "status": "commissioned",
+          "status": "idea",
           "health": "on_track",
           "dependsOn": []
         },
@@ -1195,7 +1195,7 @@
           "area": "2. Datentypen",
           "priority": "replacement_required",
           "effortPt": 1,
-          "status": "commissioned",
+          "status": "idea",
           "health": "on_track",
           "dependsOn": []
         },
@@ -1285,7 +1285,7 @@
           "area": "5. Module",
           "priority": "replacement_required",
           "effortPt": 0.5,
-          "status": "commissioned",
+          "status": "idea",
           "health": "on_track",
           "dependsOn": []
         },
@@ -1295,7 +1295,7 @@
           "area": "5. Module",
           "priority": "replacement_required",
           "effortPt": 1.5,
-          "status": "commissioned",
+          "status": "idea",
           "health": "on_track",
           "dependsOn": []
         },
@@ -1305,7 +1305,7 @@
           "area": "5. Module",
           "priority": "replacement_required",
           "effortPt": 1.5,
-          "status": "commissioned",
+          "status": "idea",
           "health": "on_track",
           "dependsOn": []
         },
@@ -1315,7 +1315,7 @@
           "area": "5. Module",
           "priority": "replacement_required",
           "effortPt": 0.5,
-          "status": "commissioned",
+          "status": "idea",
           "health": "on_track",
           "dependsOn": []
         },
@@ -1325,7 +1325,7 @@
           "area": "5. Module",
           "priority": "replacement_required",
           "effortPt": 1.5,
-          "status": "commissioned",
+          "status": "idea",
           "health": "on_track",
           "dependsOn": []
         },
@@ -1335,7 +1335,7 @@
           "area": "5. Module",
           "priority": "replacement_required",
           "effortPt": 1,
-          "status": "commissioned",
+          "status": "idea",
           "health": "on_track",
           "dependsOn": []
         },
@@ -1355,7 +1355,7 @@
           "area": "5. Module",
           "priority": "replacement_required",
           "effortPt": 1,
-          "status": "commissioned",
+          "status": "idea",
           "health": "on_track",
           "dependsOn": []
         },
@@ -1365,7 +1365,7 @@
           "area": "5. Module",
           "priority": "replacement_required",
           "effortPt": 1,
-          "status": "commissioned",
+          "status": "idea",
           "health": "on_track",
           "dependsOn": []
         },
@@ -1385,7 +1385,7 @@
           "area": "5. Module",
           "priority": "replacement_required",
           "effortPt": 1,
-          "status": "commissioned",
+          "status": "idea",
           "health": "on_track",
           "dependsOn": []
         },
@@ -1581,7 +1581,7 @@
           "area": "6. Allgemein",
           "priority": "valuable",
           "effortPt": 5,
-          "status": "commissioned",
+          "status": "idea",
           "health": "on_track",
           "dependsOn": []
         },
@@ -1591,7 +1591,7 @@
           "area": "6. Allgemein",
           "priority": "valuable",
           "effortPt": 1,
-          "status": "commissioned",
+          "status": "idea",
           "health": "on_track",
           "dependsOn": []
         },
@@ -1659,7 +1659,7 @@
           "area": "3. Datenverwaltung",
           "priority": "requested",
           "effortPt": 3,
-          "status": "commissioned",
+          "status": "idea",
           "health": "on_track",
           "dependsOn": []
         },
@@ -1669,7 +1669,7 @@
           "area": "3. Datenverwaltung",
           "priority": "unfunded_nice_to_have",
           "effortPt": 3,
-          "status": "commissioned",
+          "status": "idea",
           "health": "on_track",
           "dependsOn": []
         },
@@ -1679,7 +1679,7 @@
           "area": "3. Datenverwaltung",
           "priority": "unfunded_nice_to_have",
           "effortPt": 5,
-          "status": "commissioned",
+          "status": "idea",
           "health": "on_track",
           "dependsOn": []
         },
@@ -1689,7 +1689,7 @@
           "area": "3. Datenverwaltung",
           "priority": "unfunded_nice_to_have",
           "effortPt": 3,
-          "status": "commissioned",
+          "status": "idea",
           "health": "on_track",
           "dependsOn": []
         },
@@ -1699,7 +1699,7 @@
           "area": "3. Datenverwaltung",
           "priority": "unfunded_nice_to_have",
           "effortPt": 2,
-          "status": "commissioned",
+          "status": "idea",
           "health": "on_track",
           "dependsOn": []
         },
@@ -1709,7 +1709,7 @@
           "area": "4. Schnittstellen",
           "priority": "requested",
           "effortPt": 2,
-          "status": "commissioned",
+          "status": "idea",
           "health": "on_track",
           "dependsOn": []
         },
@@ -1719,7 +1719,7 @@
           "area": "4. Schnittstellen",
           "priority": "unfunded_nice_to_have",
           "effortPt": 5,
-          "status": "commissioned",
+          "status": "idea",
           "health": "on_track",
           "dependsOn": []
         },
@@ -1729,7 +1729,7 @@
           "area": "6. Allgemein",
           "priority": "requested",
           "effortPt": 3,
-          "status": "commissioned",
+          "status": "idea",
           "health": "on_track",
           "dependsOn": []
         }

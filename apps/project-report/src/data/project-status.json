@@ -1,8 +1,8 @@
 {
   "meta": {
-    "version": "1.0.0",
-    "updatedAt": "2026-05-04",
-    "source": "CSV SVA-Studio-Kostenschätzung-22.03.2026.csv; Initialstatus aus der Kostenschätzung als commissioned/on_track abgeleitet"
+    "version": "1.0.1",
+    "updatedAt": "2026-05-06",
+    "source": ""
   },
   "statusModel": {
     "idea": 0,

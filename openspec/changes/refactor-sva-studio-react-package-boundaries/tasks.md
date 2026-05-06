@@ -3,14 +3,14 @@
 - [ ] 1.1 OpenSpec-Deltas für `monorepo-structure`, `ui-layout-shell` und `sva-mainserver-integration` auf die tatsächliche Drei-Schritt-Migration zuschneiden und dokumentieren, welche App-Bereiche bewusst im App-Layer bleiben
 - [ ] 1.2 die Ziel-Ownership für die aktuell klar belegten Kandidaten festschreiben: `sanitizeLegalTextHtml` nach `@sva/iam-governance`, wiederverwendbare Tabellen-/Listen-UI nach `@sva/studio-ui-react`, Mainserver-Host-Parsing nach `@sva/sva-mainserver/server`
 - [ ] 1.3 `apps/sva-studio-react/src/lib/legal-text-html.ts` gegen den kanonischen Helper aus `packages/iam-governance/src/legal-text-html.ts` zurückführen und nur dann einen Kompatibilitäts-Wrapper stehen lassen, wenn die Umstellung nicht atomar möglich ist
-- [ ] 1.4 die direkten App-Consumer des Sanitizers auf die kanonische Ownership umstellen, aktuell mindestens `src/components/RichTextEditor.tsx` und `src/components/LegalTextAcceptanceDialog.tsx`
+- [ ] 1.4 die direkten App-Consumer des Sanitizers auf die kanonische Ownership umstellen, aktuell mindestens `apps/sva-studio-react/src/components/RichTextEditor.tsx` und `apps/sva-studio-react/src/components/LegalTextAcceptanceDialog.tsx`
 - [ ] 1.5 App- und Package-Tests für Legal-Text-Sanitizing so anpassen, dass die kanonische Implementierung abgesichert ist und das app-lokale Duplikat danach entfernt werden kann
 
 ## 2. Schritt 2: Studio-UI aus der App in `@sva/studio-ui-react` zurückführen
 
 - [ ] 2.1 das aktuelle Delta zwischen `apps/sva-studio-react/src/components/StudioDataTable.tsx` und `packages/studio-ui-react/src/studio-data-table.tsx` inventarisieren und die fehlenden Package-API-Teile benennen, insbesondere Labels/i18n, Bulk-Action-Typen und eventuelle App-spezifische Komfortprops
 - [ ] 2.2 `@sva/studio-ui-react` so erweitern oder anpassen, dass die App ihren lokalen `StudioDataTable` ohne Funktionsverlust ersetzen kann, statt einen zweiten kanonischen Tabellenbaustein zu pflegen
-- [ ] 2.3 die bekannten App-Consumer schrittweise auf Package-Imports umstellen, aktuell mindestens `src/routes/content/-content-list-page.tsx`, `src/routes/admin/roles/-roles-page.tsx`, `src/routes/admin/media/-media-page.tsx`, `src/routes/admin/instances/-instances-page.tsx` und `src/routes/admin/users/-user-list-page.tsx`
+- [ ] 2.3 die bekannten App-Consumer schrittweise auf Package-Imports umstellen, aktuell mindestens `apps/sva-studio-react/src/routes/content/-content-list-page.tsx`, `apps/sva-studio-react/src/routes/admin/roles/-roles-page.tsx`, `apps/sva-studio-react/src/routes/admin/media/-media-page.tsx`, `apps/sva-studio-react/src/routes/admin/instances/-instances-page.tsx` und `apps/sva-studio-react/src/routes/admin/users/-user-list-page.tsx`
 - [ ] 2.4 den app-lokalen `StudioDataTable` und zugehörige Duplikat-Tests erst entfernen, wenn die Package-Variante alle benötigten App-Fälle abdeckt und die Route-Tests grün sind
 - [ ] 2.5 betroffene Unit-Tests in App und Package so ergänzen, dass die gemeinsame Tabellen-API als Boundary-Vertrag nachvollziehbar abgesichert ist
 

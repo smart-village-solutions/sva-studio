@@ -25,7 +25,7 @@ describe('runtime-env.shared', () => {
       '--rollback-hint=Redeploy previous digest',
       '--image-tag=ghcr.io/example/app:1.2.3',
       '--local-override-file',
-      'config/runtime/local-keycloak.hb.local.vars',
+      'config/runtime/local-keycloak.local.vars',
       '--actor',
       'gha',
     ]);
@@ -36,7 +36,7 @@ describe('runtime-env.shared', () => {
       maintenanceWindow: '2026-03-20 19:00-19:15 CET',
       rollbackHint: 'Redeploy previous digest',
       imageTag: 'ghcr.io/example/app:1.2.3',
-      localOverrideFile: 'config/runtime/local-keycloak.hb.local.vars',
+      localOverrideFile: 'config/runtime/local-keycloak.local.vars',
       actor: 'gha',
     });
   });

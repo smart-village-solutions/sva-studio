@@ -1,7 +1,8 @@
 {
   "meta": {
-    "version": "1.0.",    "updatedAt": "2026-05-06",
-    "source": ""
+    "version": "1.0.1",
+    "updatedAt": "2026-05-06",
+    "source": "CSV SVA-Studio-Kostenschätzung-22.03.2026.csv; commissioned-Status am 2026-05-06 fachlich auf idea zurückgesetzt, Health weiterhin aus der Kostenschätzung als on_track abgeleitet"
   },
   "statusModel": {
     "idea": 0,
@@ -580,7 +581,7 @@
           "area": "6. Allgemein",
           "priority": "requested",
           "effortPt": 1,
-          "status": "idea",
+          "status": "testing",
           "health": "on_track",
           "dependsOn": []
         },
@@ -648,7 +649,7 @@
           "area": "3. Datenverwaltung",
           "priority": "unfunded_nice_to_have",
           "effortPt": 1,
-          "status": "idea",
+          "status": "optimization",
           "health": "on_track",
           "dependsOn": []
         },
@@ -906,7 +907,7 @@
           "area": "4. Schnittstellen",
           "priority": "funded_optional",
           "effortPt": 5,
-          "status": "idea",
+          "status": "optimization",
           "health": "on_track",
           "dependsOn": []
         },
@@ -1076,7 +1077,7 @@
           "area": "6. Allgemein",
           "priority": "valuable",
           "effortPt": 1,
-          "status": "idea",
+          "status": "optimization",
           "health": "on_track",
           "dependsOn": []
         },
@@ -1234,7 +1235,7 @@
           "area": "5. Module",
           "priority": "must",
           "effortPt": 2,
-          "status": "idea",
+          "status": "implementation",
           "health": "on_track",
           "dependsOn": []
         },
@@ -1244,7 +1245,7 @@
           "area": "5. Module",
           "priority": "must",
           "effortPt": 1,
-          "status": "idea",
+          "status": "implementation",
           "health": "on_track",
           "dependsOn": []
         },
@@ -1254,7 +1255,7 @@
           "area": "5. Module",
           "priority": "must",
           "effortPt": 0.5,
-          "status": "idea",
+          "status": "implementation",
           "health": "on_track",
           "dependsOn": []
         },
@@ -1264,7 +1265,7 @@
           "area": "5. Module",
           "priority": "must",
           "effortPt": 1,
-          "status": "idea",
+          "status": "implementation",
           "health": "on_track",
           "dependsOn": []
         },
@@ -1274,7 +1275,7 @@
           "area": "5. Module",
           "priority": "must",
           "effortPt": 1,
-          "status": "idea",
+          "status": "implementation",
           "health": "on_track",
           "dependsOn": []
         },
@@ -1424,7 +1425,7 @@
           "area": "6. Allgemein",
           "priority": "requested",
           "effortPt": 2,
-          "status": "idea",
+          "status": "optimization",
           "health": "on_track",
           "dependsOn": []
         },
@@ -1434,7 +1435,7 @@
           "area": "6. Allgemein",
           "priority": "unfunded_nice_to_have",
           "effortPt": 3,
-          "status": "idea",
+          "status": "optimization",
           "health": "on_track",
           "dependsOn": []
         },
@@ -1444,7 +1445,7 @@
           "area": "6. Allgemein",
           "priority": "unfunded_nice_to_have",
           "effortPt": 1,
-          "status": "idea",
+          "status": "implementation",
           "health": "on_track",
           "dependsOn": []
         },
@@ -1454,7 +1455,7 @@
           "area": "6. Allgemein",
           "priority": "unfunded_nice_to_have",
           "effortPt": 1,
-          "status": "idea",
+          "status": "prototype",
           "health": "on_track",
           "dependsOn": []
         }
@@ -1482,7 +1483,7 @@
           "area": "5. Module",
           "priority": "valuable",
           "effortPt": 15,
-          "status": "idea",
+          "status": "optimization",
           "health": "on_track",
           "dependsOn": []
         },
@@ -1492,7 +1493,7 @@
           "area": "5. Module",
           "priority": "requested",
           "effortPt": 5,
-          "status": "idea",
+          "status": "implementation",
           "health": "on_track",
           "dependsOn": []
         },
@@ -1502,7 +1503,7 @@
           "area": "6. Allgemein",
           "priority": "unfunded_nice_to_have",
           "effortPt": 3,
-          "status": "idea",
+          "status": "planned",
           "health": "on_track",
           "dependsOn": []
         }
@@ -1520,7 +1521,7 @@
           "area": "3. Datenverwaltung",
           "priority": "valuable",
           "effortPt": 5,
-          "status": "idea",
+          "status": "optimization",
           "health": "on_track",
           "dependsOn": []
         },
@@ -1530,7 +1531,7 @@
           "area": "3. Datenverwaltung",
           "priority": "valuable",
           "effortPt": 10,
-          "status": "idea",
+          "status": "optimization",
           "health": "on_track",
           "dependsOn": []
         },
@@ -1560,7 +1561,7 @@
           "area": "6. Allgemein",
           "priority": "valuable",
           "effortPt": 5,
-          "status": "idea",
+          "status": "implementation",
           "health": "on_track",
           "dependsOn": []
         },
@@ -1570,7 +1571,7 @@
           "area": "6. Allgemein",
           "priority": "valuable",
           "effortPt": 1,
-          "status": "idea",
+          "status": "implementation",
           "health": "on_track",
           "dependsOn": []
         },
@@ -1600,7 +1601,7 @@
           "area": "6. Allgemein",
           "priority": "unfunded_nice_to_have",
           "effortPt": 2.5,
-          "status": "idea",
+          "status": "planned",
           "health": "on_track",
           "dependsOn": []
         },
@@ -1610,7 +1611,7 @@
           "area": "6. Allgemein",
           "priority": "unfunded_nice_to_have",
           "effortPt": 0.5,
-          "status": "idea",
+          "status": "planned",
           "health": "on_track",
           "dependsOn": []
         },
@@ -1620,7 +1621,7 @@
           "area": "6. Allgemein",
           "priority": "unfunded_nice_to_have",
           "effortPt": 0.5,
-          "status": "idea",
+          "status": "planned",
           "health": "on_track",
           "dependsOn": []
         },
@@ -1630,7 +1631,7 @@
           "area": "6. Allgemein",
           "priority": "unfunded_nice_to_have",
           "effortPt": 1,
-          "status": "idea",
+          "status": "planned",
           "health": "on_track",
           "dependsOn": []
         },

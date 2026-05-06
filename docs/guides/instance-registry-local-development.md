@@ -31,7 +31,7 @@ Diese Anleitung beschreibt den lokalen Standardpfad und den registry-nahen Multi
 Empfohlene Seed-Instanzen:
 
 - `de-musterhausen`
-- `hb`
+- `demo2`
 - `demo`
 - negativer Fall über unbekannten Host, zum Beispiel `blocked.studio.lvh.me`
 
@@ -39,7 +39,7 @@ Verifikation:
 
 ```bash
 curl -i http://studio.lvh.me:3000/
-curl -i http://hb.studio.lvh.me:3000/
+curl -i http://demo2.studio.lvh.me:3000/
 curl -i http://blocked.studio.lvh.me:3000/auth/me
 ```
 
@@ -52,8 +52,9 @@ curl -i http://blocked.studio.lvh.me:3000/auth/me
 
 Hinweis zum lokalen Realm-Modell:
 
-- Für `local-keycloak` wird lokal nicht pro Instanz ein eigener Realm erwartet.
-- Neue lokale Test-Instanzen dürfen deshalb auf denselben globalen Test-Realm `svs-intern-studio-staging` zeigen, solange User und Rollen dort sauber mit `instanceId`-Attributen getrennt werden.
+- Auch im Profil `local-keycloak` benötigt jeder Tenant einen eigenen Realm.
+- Der globale Realm `svs-intern-studio-staging` ist nur für den Root-/Plattform-Host vorgesehen und ersetzt keine tenant-spezifischen Realms.
+- Neue lokale Test-Instanzen müssen deshalb mit einem eigenen `authRealm` angelegt und gegen diesen Realm geprüft werden.
 
 Verifikation:
 
@@ -62,7 +63,7 @@ pnpm exec tsx scripts/ops/instance-registry.ts create \
   --instance-id demo2 \
   --display-name "Demo 2" \
   --parent-domain studio.lvh.me \
-  --auth-realm svs-intern-studio-staging \
+  --auth-realm demo2 \
   --auth-client-id sva-studio \
   --actor-id local-admin
 pnpm exec tsx scripts/ops/instance-registry.ts activate \
@@ -75,7 +76,7 @@ Für Playwright ist der offizielle Multi-Tenant-Pfad:
 
 ```bash
 PLAYWRIGHT_BASE_URL=http://studio.lvh.me:4173 \
-PLAYWRIGHT_TENANT_LOGIN_URL=http://hb.studio.lvh.me:4173/auth/login?returnTo=%2Fadmin%2Finstances \
+PLAYWRIGHT_TENANT_LOGIN_URL=http://demo2.studio.lvh.me:4173/auth/login?returnTo=%2Fadmin%2Finstances \
 pnpm nx run sva-studio-react:test:e2e -- --grep "tenant-host login"
 ```
 
@@ -91,7 +92,7 @@ pnpm exec tsx scripts/ops/instance-registry.ts create \
   --instance-id demo \
   --display-name "Demo" \
   --parent-domain studio.lvh.me \
-  --auth-realm svs-intern-studio-staging \
+  --auth-realm demo \
   --auth-client-id sva-studio \
   --actor-id local-admin
 pnpm exec tsx scripts/ops/instance-registry.ts activate \

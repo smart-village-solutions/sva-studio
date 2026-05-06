@@ -15,15 +15,15 @@ describe('buildLocalInstanceRegistryReconciliationInput', () => {
     expect(
       buildLocalInstanceRegistryReconciliationInput({
         SVA_ALLOWED_INSTANCE_IDS: ' de-musterhausen , hb-meinquartier ',
-        SVA_LOCAL_TENANT_AUTH_CLIENT_ID: 'sva-studio',
+        SVA_LOCAL_TENANT_AUTH_CLIENT_ID: 'sva-studio-login',
         SVA_LOCAL_TENANT_AUTH_REALM_MODE: 'instance-id',
         SVA_PARENT_DOMAIN: 'Studio.Localhost',
       })
     ).toEqual({
       allowedInstanceIds: ['de-musterhausen', 'hb-meinquartier'],
       parentDomain: 'studio.localhost',
-      tenantAuthClientId: 'sva-studio',
-      tenantAdminClientId: 'sva-studio-admin',
+      tenantAuthClientId: 'sva-studio-login',
+      tenantAdminClientId: 'sva-studio-realm-admin',
       tenantAuthRealmMode: 'instance-id',
     });
   });
@@ -34,15 +34,17 @@ describe('buildLocalInstanceRegistryReconciliationSql', () => {
     const sql = buildLocalInstanceRegistryReconciliationSql({
       allowedInstanceIds: ['de-musterhausen'],
       parentDomain: 'studio.localhost',
-      tenantAuthClientId: 'sva-studio',
-      tenantAdminClientId: 'sva-studio-admin',
+      tenantAuthClientId: 'sva-studio-login',
+      tenantAdminClientId: 'sva-studio-realm-admin',
       tenantAuthRealmMode: 'instance-id',
     });
 
     expect(sql).toContain("parent_domain = 'studio.localhost'");
     expect(sql).toContain("primary_hostname = 'de-musterhausen.studio.localhost'");
     expect(sql).toContain("auth_realm = 'de-musterhausen'");
-    expect(sql).toContain("tenant_admin_client_id = COALESCE(NULLIF(tenant_admin_client_id, ''), 'sva-studio-admin')");
+    expect(sql).toContain(
+      "tenant_admin_client_id = COALESCE(NULLIF(tenant_admin_client_id, ''), 'sva-studio-realm-admin')"
+    );
     expect(sql).toContain("VALUES ('de-musterhausen.studio.localhost', 'de-musterhausen', true, 'runtime-env-local')");
   });
 
@@ -50,8 +52,8 @@ describe('buildLocalInstanceRegistryReconciliationSql', () => {
     const sql = buildLocalInstanceRegistryReconciliationSql({
       allowedInstanceIds: ['de-musterhausen'],
       parentDomain: 'studio.localhost',
-      tenantAuthClientId: 'sva-studio',
-      tenantAdminClientId: 'sva-studio-admin',
+      tenantAuthClientId: 'sva-studio-login',
+      tenantAdminClientId: 'sva-studio-realm-admin',
       tenantAuthRealmMode: 'keep',
     });
 

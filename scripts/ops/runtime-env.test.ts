@@ -5,6 +5,8 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   assertLoginFlow,
+  buildKeycloakClientSecretCheck,
+  buildLocalProvisioningWorkerCheck,
   buildStudioImageVerifyEvidenceCheck,
   deriveInternalVerifyMaxAttempts,
   readStudioImageVerifyEvidence,
@@ -227,6 +229,147 @@ describe('assertLoginFlow', () => {
     } finally {
       globalThis.fetch = originalFetch;
     }
+  });
+});
+
+describe('buildLocalProvisioningWorkerCheck', () => {
+  it('returns a warning when the local provisioning worker state is missing', () => {
+    expect(buildLocalProvisioningWorkerCheck('local-keycloak', null, () => false)).toMatchObject({
+      code: 'local_keycloak_provisioning_worker_missing',
+      name: 'keycloak-provisioning-worker',
+      status: 'warn',
+    });
+  });
+
+  it('returns a warning when the local provisioning worker process is stale', () => {
+    expect(
+      buildLocalProvisioningWorkerCheck(
+        'local-keycloak',
+        {
+          command: 'tsx packages/auth-runtime/src/iam-instance-registry/worker.ts',
+          launcher: 'local-provisioning-worker-runner',
+          logFile: '/tmp/local-keycloak.worker.log',
+          pid: 1234,
+          profile: 'local-keycloak',
+          startedAt: '2026-05-06T10:15:20.000Z',
+        },
+        () => false,
+      ),
+    ).toMatchObject({
+      code: 'local_keycloak_provisioning_worker_stale',
+      status: 'warn',
+    });
+  });
+
+  it('returns ok when the local provisioning worker is running', () => {
+    expect(
+      buildLocalProvisioningWorkerCheck(
+        'local-keycloak',
+        {
+          command: 'tsx packages/auth-runtime/src/iam-instance-registry/worker.ts',
+          launcher: 'local-provisioning-worker-runner',
+          logFile: '/tmp/local-keycloak.worker.log',
+          pid: 1234,
+          profile: 'local-keycloak',
+          startedAt: '2026-05-06T10:15:20.000Z',
+        },
+        () => true,
+      ),
+    ).toMatchObject({
+      code: 'local_keycloak_provisioning_worker_running',
+      status: 'ok',
+    });
+  });
+});
+
+describe('buildKeycloakClientSecretCheck', () => {
+  it('verifies auth, admin and provisioner clients when their secrets authenticate', async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = vi.fn<typeof fetch>().mockImplementation(async (input) => {
+      const url = input instanceof Request ? input.url : String(input);
+      if (url === 'https://keycloak.example/realms/platform/protocol/openid-connect/token') {
+        return new Response(
+          JSON.stringify({
+            error: 'unauthorized_client',
+            error_description: 'Client not enabled to retrieve service account',
+          }),
+          { status: 400, headers: { 'content-type': 'application/json' } },
+        );
+      }
+
+      if (
+        url === 'https://keycloak.example/realms/master/protocol/openid-connect/token'
+        || url === 'https://keycloak.example/realms/provisioning/protocol/openid-connect/token'
+      ) {
+        return new Response(JSON.stringify({ access_token: 'token' }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+
+      throw new Error(`Unexpected URL: ${url}`);
+    });
+
+    try {
+      await expect(
+        buildKeycloakClientSecretCheck('local-keycloak', {
+          SVA_AUTH_ISSUER: 'https://keycloak.example/realms/platform',
+          SVA_AUTH_CLIENT_ID: 'studio-bff',
+          SVA_AUTH_CLIENT_SECRET: 'auth-secret',
+          KEYCLOAK_ADMIN_BASE_URL: 'https://keycloak.example',
+          KEYCLOAK_ADMIN_REALM: 'master',
+          KEYCLOAK_ADMIN_CLIENT_ID: 'iam-service',
+          KEYCLOAK_ADMIN_CLIENT_SECRET: 'admin-secret',
+          KEYCLOAK_PROVISIONER_REALM: 'provisioning',
+          KEYCLOAK_PROVISIONER_CLIENT_ID: 'provisioner',
+          KEYCLOAK_PROVISIONER_CLIENT_SECRET: 'provisioner-secret',
+        }),
+      ).resolves.toMatchObject({
+        code: 'keycloak_client_secrets_verified',
+        name: 'keycloak-client-secrets',
+        status: 'ok',
+      });
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it('returns an error when a client secret is rejected by Keycloak', async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          error: 'invalid_client',
+          error_description: 'Invalid client secret',
+        }),
+        { status: 401, headers: { 'content-type': 'application/json' } },
+      ),
+    );
+
+    try {
+      await expect(
+        buildKeycloakClientSecretCheck('local-keycloak', {
+          KEYCLOAK_ADMIN_BASE_URL: 'https://keycloak.example',
+          KEYCLOAK_ADMIN_REALM: 'master',
+          KEYCLOAK_ADMIN_CLIENT_ID: 'iam-service',
+          KEYCLOAK_ADMIN_CLIENT_SECRET: 'wrong-secret',
+        }),
+      ).resolves.toMatchObject({
+        code: 'keycloak_client_secret_check_failed',
+        name: 'keycloak-client-secrets',
+        status: 'error',
+      });
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it('skips the check for mock-auth profiles', async () => {
+    await expect(buildKeycloakClientSecretCheck('local-builder', {})).resolves.toMatchObject({
+      code: 'keycloak_client_secrets_not_applicable',
+      name: 'keycloak-client-secrets',
+      status: 'skipped',
+    });
   });
 });
 
@@ -462,15 +605,15 @@ describe('resolveTenantRuntimeTargets', () => {
   it('uses the local allowlist only as a local fallback when no explicit scope is configured', async () => {
     const resolution = await resolveTenantRuntimeTargets('local-keycloak', {
       SVA_PARENT_DOMAIN: 'studio.example.org',
-      SVA_ALLOWED_INSTANCE_IDS: 'hb-meinquartier',
+      SVA_ALLOWED_INSTANCE_IDS: 'demo2',
     });
 
     expect(resolution.source).toBe('local_allowlist');
     expect(resolution.targets).toEqual([
       {
-        authRealm: 'hb-meinquartier',
-        host: 'hb-meinquartier.studio.example.org',
-        instanceId: 'hb-meinquartier',
+        authRealm: 'demo2',
+        host: 'demo2.studio.example.org',
+        instanceId: 'demo2',
       },
     ]);
   });

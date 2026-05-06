@@ -15,6 +15,7 @@ import { useRoles } from '../../../hooks/use-roles';
 import { t } from '../../../i18n';
 import type { TranslationKey } from '../../../i18n/translate';
 import type { IamHttpError } from '../../../lib/iam-api';
+import { useAuth } from '../../../providers/auth-provider';
 
 type SortDirection = 'asc' | 'desc';
 
@@ -42,7 +43,9 @@ const groupErrorMessage = (error: IamHttpError | null, fallbackKey: TranslationK
 };
 
 const roleCountLabel = (count: number) =>
-  count === 1 ? t('admin.groups.labels.roleCountOne') : t('admin.groups.labels.roleCountOther', { count: String(count) });
+  count === 1
+    ? t('admin.groups.labels.roleCountOne')
+    : t('admin.groups.labels.roleCountOther', { count: String(count) });
 
 const memberCountLabel = (count: number) =>
   count === 1
@@ -50,13 +53,17 @@ const memberCountLabel = (count: number) =>
     : t('admin.groups.labels.memberCountOther', { count: String(count) });
 
 export const GroupsPage = () => {
+  const { user } = useAuth();
   const groupsApi = useGroups();
   const rolesApi = useRoles();
+  const hasInstanceContext = Boolean(user?.instanceId);
 
   const [search, setSearch] = React.useState('');
   const [sortDirection, setSortDirection] = React.useState<SortDirection>('asc');
   const [deleteGroupId, setDeleteGroupId] = React.useState<string | null>(null);
-  const [detailByGroupId, setDetailByGroupId] = React.useState<Record<string, IamAdminGroupDetail>>({});
+  const [detailByGroupId, setDetailByGroupId] = React.useState<Record<string, IamAdminGroupDetail>>(
+    {}
+  );
 
   const roleNameById = React.useMemo(
     () => new Map(rolesApi.roles.map((role) => [role.id, role.roleName])),
@@ -67,7 +74,9 @@ export const GroupsPage = () => {
     const query = search.trim().toLowerCase();
     const result = groupsApi.groups.filter((group) => {
       const detail = detailByGroupId[group.id];
-      const roleNames = (detail?.assignedRoleIds ?? []).map((roleId) => roleNameById.get(roleId) ?? roleId);
+      const roleNames = (detail?.assignedRoleIds ?? []).map(
+        (roleId) => roleNameById.get(roleId) ?? roleId
+      );
 
       if (!query) {
         return true;
@@ -114,7 +123,9 @@ export const GroupsPage = () => {
         return;
       }
 
-      const nextEntries = entries.filter((entry): entry is [string, IamAdminGroupDetail] => entry !== null);
+      const nextEntries = entries.filter(
+        (entry): entry is [string, IamAdminGroupDetail] => entry !== null
+      );
       if (nextEntries.length === 0) {
         return;
       }
@@ -168,7 +179,11 @@ export const GroupsPage = () => {
             placeholder={t('admin.groups.filters.searchPlaceholder')}
           />
         </div>
-        <Button type="button" variant="outline" onClick={() => setSortDirection((current) => (current === 'asc' ? 'desc' : 'asc'))}>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => setSortDirection((current) => (current === 'asc' ? 'desc' : 'asc'))}
+        >
           {t('admin.groups.actions.sort')}
         </Button>
         <Button asChild type="button">
@@ -176,12 +191,23 @@ export const GroupsPage = () => {
         </Button>
       </Card>
 
-      {groupsApi.error ? (
+      {!hasInstanceContext ? (
+        <Alert>
+          <AlertDescription>{t('admin.groups.messages.instanceContextRequired')}</AlertDescription>
+        </Alert>
+      ) : null}
+
+      {hasInstanceContext && groupsApi.error ? (
         <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
           <AlertDescription className="flex flex-col gap-3">
             <span>{groupErrorMessage(groupsApi.error, 'admin.groups.messages.error')}</span>
             <div>
-              <Button type="button" size="sm" variant="outline" onClick={() => void groupsApi.refetch()}>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => void groupsApi.refetch()}
+              >
                 {t('admin.groups.actions.retry')}
               </Button>
             </div>
@@ -190,7 +216,10 @@ export const GroupsPage = () => {
       ) : null}
 
       <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-shell">
-        <table className="min-w-full border-collapse" aria-label={t('admin.groups.table.ariaLabel')}>
+        <table
+          className="min-w-full border-collapse"
+          aria-label={t('admin.groups.table.ariaLabel')}
+        >
           <caption className="sr-only">{t('admin.groups.table.caption')}</caption>
           <thead className="bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground">
             <tr>
@@ -226,7 +255,10 @@ export const GroupsPage = () => {
                 .filter((roleName): roleName is string => Boolean(roleName));
 
               return (
-                <tr key={group.id} className="border-t border-border align-top text-sm text-foreground">
+                <tr
+                  key={group.id}
+                  className="border-t border-border align-top text-sm text-foreground"
+                >
                   <th scope="row" className="px-3 py-3 text-left font-medium">
                     <div className="space-y-1">
                       <div>{group.displayName}</div>
@@ -239,21 +271,25 @@ export const GroupsPage = () => {
                   <td className="px-3 py-3">{group.groupType}</td>
                   <td className="px-3 py-3">
                     <div className="flex flex-wrap gap-2">
-                      {roleLabels.length > 0
-                        ? roleLabels.map((label) => (
-                            <Badge key={`${group.id}-${label}`} variant="outline">
-                              {label}
-                            </Badge>
-                          ))
-                        : (
-                            <span className="text-muted-foreground">{roleCountLabel(group.roleCount)}</span>
-                          )}
+                      {roleLabels.length > 0 ? (
+                        roleLabels.map((label) => (
+                          <Badge key={`${group.id}-${label}`} variant="outline">
+                            {label}
+                          </Badge>
+                        ))
+                      ) : (
+                        <span className="text-muted-foreground">
+                          {roleCountLabel(group.roleCount)}
+                        </span>
+                      )}
                     </div>
                   </td>
                   <td className="px-3 py-3">{memberCountLabel(group.memberCount)}</td>
                   <td className="px-3 py-3">
                     <Badge variant="outline">
-                      {group.isActive ? t('admin.groups.labels.active') : t('admin.groups.labels.inactive')}
+                      {group.isActive
+                        ? t('admin.groups.labels.active')
+                        : t('admin.groups.labels.inactive')}
                     </Badge>
                   </td>
                   <td className="px-3 py-3">
@@ -263,7 +299,12 @@ export const GroupsPage = () => {
                           {t('admin.groups.actions.edit')}
                         </Link>
                       </Button>
-                      <Button type="button" size="sm" variant="destructive" onClick={() => setDeleteGroupId(group.id)}>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => setDeleteGroupId(group.id)}
+                      >
                         {t('admin.groups.actions.delete')}
                       </Button>
                     </div>
@@ -275,7 +316,7 @@ export const GroupsPage = () => {
         </table>
       </div>
 
-      {!groupsApi.isLoading && filteredGroups.length === 0 ? (
+      {hasInstanceContext && !groupsApi.isLoading && filteredGroups.length === 0 ? (
         <Card className="p-5 text-sm text-muted-foreground" role="status">
           {t('admin.groups.messages.emptyState')}
         </Card>

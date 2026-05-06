@@ -135,26 +135,34 @@ describe('auth server session resolution', () => {
     vi.restoreAllMocks();
   });
 
-  it('returns null when the session is missing', async () => {
+  it('returns invalid_session when the session is missing', async () => {
     state.getSession.mockResolvedValue(null);
 
-    const { getSessionUser } = await import('./session.js');
+    const { resolveSessionUser } = await import('./session.js');
 
-    await expect(getSessionUser('session-1')).resolves.toBeNull();
+    await expect(resolveSessionUser('session-1')).resolves.toEqual({
+      kind: 'invalid',
+      reason: 'invalid_session',
+    });
   });
 
   it('deletes disallowed sessions when control state invalidates them', async () => {
     state.getSession.mockResolvedValue(createSession({ sessionVersion: 1 }));
     state.getSessionControlState.mockResolvedValue({ minimumSessionVersion: 2 });
 
-    const { getSessionUser } = await import('./session.js');
+    const { resolveSessionUser } = await import('./session.js');
 
-    await expect(getSessionUser('session-1')).resolves.toBeNull();
+    await expect(resolveSessionUser('session-1')).resolves.toEqual({
+      kind: 'invalid',
+      reason: 'forced_reauth',
+    });
     expect(state.deleteSession).toHaveBeenCalledWith('session-1');
   });
 
   it('hydrates incomplete session users from the access token on fresh sessions', async () => {
-    state.getSession.mockResolvedValue(createSession({ user: incompleteUser, refreshToken: undefined, expiresAt: 100_000 }));
+    state.getSession.mockResolvedValue(
+      createSession({ user: incompleteUser, refreshToken: undefined, expiresAt: 100_000 })
+    );
 
     const { getSessionUser } = await import('./session.js');
 
@@ -163,18 +171,29 @@ describe('auth server session resolution', () => {
   });
 
   it('deletes expired sessions without a refresh token', async () => {
-    state.getSession.mockResolvedValue(createSession({ refreshToken: undefined, expiresAt: 4_000 }));
+    state.getSession.mockResolvedValue(
+      createSession({ refreshToken: undefined, expiresAt: 4_000 })
+    );
 
-    const { getSessionUser } = await import('./session.js');
+    const { resolveSessionUser } = await import('./session.js');
 
-    await expect(getSessionUser('session-1')).resolves.toBeNull();
+    await expect(resolveSessionUser('session-1')).resolves.toEqual({
+      kind: 'invalid',
+      reason: 'session_expired',
+    });
     expect(state.deleteSession).toHaveBeenCalledWith('session-1');
   });
 
   it('refreshes expiring sessions and returns the updated user', async () => {
     state.getSession
       .mockResolvedValueOnce(createSession({ expiresAt: 5_100 }))
-      .mockResolvedValueOnce(createSession({ user: completeUser, accessToken: 'refreshed-access-token', expiresAt: 9_000 }));
+      .mockResolvedValueOnce(
+        createSession({
+          user: completeUser,
+          accessToken: 'refreshed-access-token',
+          expiresAt: 9_000,
+        })
+      );
 
     const { getSessionUser } = await import('./session.js');
 
@@ -192,15 +211,19 @@ describe('auth server session resolution', () => {
     );
   });
 
-  it('returns the fallback user when token refresh fails before expiry', async () => {
+  it('returns the fallback user and preserves expiry when token refresh fails before expiry', async () => {
     const session = createSession({ expiresAt: 5_100, user: completeUser });
     state.getSession.mockResolvedValue(session);
     state.refreshTokenGrant.mockRejectedValue(new Error('oauth unavailable'));
     state.isTokenErrorLike.mockReturnValue(true);
 
-    const { getSessionUser } = await import('./session.js');
+    const { resolveSessionUser } = await import('./session.js');
 
-    await expect(getSessionUser('session-1')).resolves.toEqual(completeUser);
+    await expect(resolveSessionUser('session-1')).resolves.toEqual({
+      kind: 'authenticated',
+      user: completeUser,
+      expiresAt: 5_100,
+    });
     expect(state.deleteSession).not.toHaveBeenCalled();
   });
 
@@ -210,9 +233,12 @@ describe('auth server session resolution', () => {
     state.refreshTokenGrant.mockRejectedValue(new Error('oauth unavailable'));
     state.isTokenErrorLike.mockReturnValue(true);
 
-    const { getSessionUser } = await import('./session.js');
+    const { resolveSessionUser } = await import('./session.js');
 
-    await expect(getSessionUser('session-1')).resolves.toBeNull();
+    await expect(resolveSessionUser('session-1')).resolves.toEqual({
+      kind: 'invalid',
+      reason: 'token_refresh_failed_after_expiry',
+    });
     expect(state.deleteSession).toHaveBeenCalledWith('session-1');
   });
 

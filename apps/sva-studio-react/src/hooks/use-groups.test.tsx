@@ -17,6 +17,7 @@ const authMockValue = {
   user: {
     id: 'admin-1',
     name: 'Admin',
+    instanceId: 'de-test',
     roles: ['system_admin'],
   },
   isAuthenticated: true,

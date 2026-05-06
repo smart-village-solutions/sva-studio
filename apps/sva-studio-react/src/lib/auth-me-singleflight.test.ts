@@ -1,12 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { fetchAuthMeSingleFlight, _resetAuthMeSingleFlight, type AuthMeResult } from './auth-me-singleflight';
+import {
+  fetchAuthMeSingleFlight,
+  _resetAuthMeSingleFlight,
+  type AuthMeResult,
+} from './auth-me-singleflight';
 
-const makeResponse = (ok: boolean, status: number, body: unknown): Response =>
-  ({
-    ok,
+const makeResponse = (_ok: boolean, status: number, body: unknown): Response =>
+  new Response(JSON.stringify(body), {
     status,
-    json: () => Promise.resolve(body),
-  }) as unknown as Response;
+    headers: {
+      'content-type': 'application/json',
+    },
+  });
 
 beforeEach(() => {
   _resetAuthMeSingleFlight();
@@ -44,14 +49,38 @@ describe('fetchAuthMeSingleFlight', () => {
     expect(r2.payload).toEqual(payload2);
   });
 
-  it('gibt ok=false und payload=null zurück wenn der Fetch nicht erfolgreich ist', async () => {
-    const fetchFn = vi.fn(() => Promise.resolve(makeResponse(false, 401, null)));
+  it('gibt ok=false und den geparsten Fehler zurück wenn der Fetch nicht erfolgreich ist', async () => {
+    const fetchFn = vi.fn(() =>
+      Promise.resolve(
+        makeResponse(false, 401, {
+          error: {
+            code: 'unauthorized',
+            message: 'unauthorized',
+            classification: 'session_store_or_session_hydration',
+            status: 'recovery_laeuft',
+            recommendedAction: 'erneut_anmelden',
+            safeDetails: {
+              reason_code: 'invalid_session',
+            },
+          },
+          requestId: 'req-auth-me',
+        })
+      )
+    );
 
     const result: AuthMeResult = await fetchAuthMeSingleFlight(fetchFn);
 
     expect(result.ok).toBe(false);
     expect(result.status).toBe(401);
     expect(result.payload).toBeNull();
+    expect(result.error).toMatchObject({
+      classification: 'session_store_or_session_hydration',
+      diagnosticStatus: 'recovery_laeuft',
+      requestId: 'req-auth-me',
+      safeDetails: {
+        reason_code: 'invalid_session',
+      },
+    });
   });
 
   it('parsed den JSON-Body bei erfolgreichem Response', async () => {

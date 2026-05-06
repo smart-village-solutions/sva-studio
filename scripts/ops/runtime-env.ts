@@ -1438,6 +1438,10 @@ const bootstrapLocalAppUser = (env: NodeJS.ProcessEnv) => {
   run('pnpm', ['nx', 'run', 'data:db:bootstrap-app-user'], env);
 };
 
+const migrateLocalDatabase = (env: NodeJS.ProcessEnv) => {
+  run('pnpm', ['nx', 'run', 'data:db:migrate'], env);
+};
+
 const reconcileLocalInstanceRegistry = (runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv) => {
   const input = buildLocalInstanceRegistryReconciliationInput(env);
   if (!input) {
@@ -2894,6 +2898,7 @@ const runLocalCommand = async (runtimeProfile: RuntimeProfile, runtimeCommand: R
     case 'up':
       assertRuntimeEnv(runtimeProfile, env);
       upLocalInfra(env);
+      migrateLocalDatabase(env);
       bootstrapLocalAppUser(env);
       reconcileLocalInstanceRegistry(runtimeProfile, env);
       await startLocalApp(runtimeProfile, env);
@@ -2908,6 +2913,7 @@ const runLocalCommand = async (runtimeProfile: RuntimeProfile, runtimeCommand: R
       assertRuntimeEnv(runtimeProfile, env);
       pullLocalInfra(env);
       upLocalInfra(env);
+      migrateLocalDatabase(env);
       bootstrapLocalAppUser(env);
       reconcileLocalInstanceRegistry(runtimeProfile, env);
       stopLocalApp();

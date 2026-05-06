@@ -30,6 +30,7 @@ const mocks = vi.hoisted(() => {
     createMockSessionUser: vi.fn(),
     getAuthConfig: vi.fn(() => ({ sessionCookieName: 'sva_session' })),
     readCookieFromRequest: vi.fn(() => 'session-1'),
+    appendSetCookie: vi.fn(),
   };
 });
 
@@ -91,7 +92,7 @@ vi.mock('./config.js', () => ({
 }));
 
 vi.mock('./cookies.js', () => ({
-  appendSetCookie: vi.fn(),
+  appendSetCookie: mocks.appendSetCookie,
   deleteCookieHeader: vi.fn(),
   readCookieFromRequest: mocks.readCookieFromRequest,
 }));
@@ -149,13 +150,15 @@ describe('meHandler', () => {
       roles: ['system_admin'],
     } satisfies SessionUser);
 
-    mocks.withAuthenticatedUser.mockImplementation(async (_request: Request, handler: (ctx: { user: SessionUser }) => Promise<Response>) =>
+    mocks.withAuthenticatedUser.mockImplementation(async (_request: Request, handler: (ctx: { user: SessionUser; sessionExpiresAt?: number; sessionId: string }) => Promise<Response>) =>
       handler({
         user: {
           id: 'kc-user-1',
           instanceId: 'de-test',
           roles: ['editor'],
         },
+        sessionExpiresAt: 1_800_000_000_000,
+        sessionId: 'session-1',
       })
     );
 
@@ -205,6 +208,11 @@ describe('meHandler', () => {
     expect(payload.user.id).toBe('kc-user-1');
     expect(payload.user.assignedModules).toEqual(['news']);
     expect(payload.user.permissionActions).toEqual(['events.read']);
+    expect(payload.expiresAt).toBe(1_800_000_000_000);
+    expect(mocks.appendSetCookie).toHaveBeenCalledWith(
+      response,
+      expect.stringContaining('sva_session=session-1')
+    );
   });
 
   it('returns fail-closed empty assignedModules when module lookup fails', async () => {
@@ -244,8 +252,11 @@ describe('meHandler', () => {
 
   it('skips permission lookup and returns empty permissionActions when user has no instanceId', async () => {
     mocks.withAuthenticatedUser.mockImplementationOnce(
-      async (_request: Request, handler: (ctx: { user: Omit<SessionUser, 'instanceId'> }) => Promise<Response>) =>
-        handler({ user: { id: 'kc-no-instance', roles: [] } })
+      async (
+        _request: Request,
+        handler: (ctx: { user: Omit<SessionUser, 'instanceId'>; sessionExpiresAt?: number; sessionId: string }) => Promise<Response>
+      ) =>
+        handler({ user: { id: 'kc-no-instance', roles: [] }, sessionExpiresAt: 1_800_000_000_000, sessionId: 'session-1' })
     );
 
     const response = await meHandler(new Request('http://localhost/auth/me', { headers: { cookie: 'sva_session=session-1' } }));

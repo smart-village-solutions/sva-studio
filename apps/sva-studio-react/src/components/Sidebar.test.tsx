@@ -48,7 +48,7 @@ vi.mock('@tanstack/react-router', () => ({
     to: string;
     children: React.ReactNode;
     activeOptions?: unknown;
-  }) => (
+  }) =>
     (() => {
       const { activeOptions: _activeOptions, ...anchorProps } = props;
       const pathname = useRouterStateMock();
@@ -58,9 +58,10 @@ vi.mock('@tanstack/react-router', () => ({
           {children}
         </a>
       );
-    })()
-  ),
-  useRouterState: (options?: { select?: (state: { location: { pathname: string } }) => unknown }) => {
+    })(),
+  useRouterState: (options?: {
+    select?: (state: { location: { pathname: string } }) => unknown;
+  }) => {
     const pathname = useRouterStateMock();
     const state = { location: { pathname } };
     return options?.select ? options.select(state) : state;
@@ -80,7 +81,8 @@ vi.mock('../lib/plugins', () => ({
     return studioPluginNavigationMock.items;
   },
   getStudioPluginAction: (actionId: string) => studioPluginActionLookupMock.get(actionId),
-  getStudioPluginNavigationModuleId: (item: PluginNavigationItemMock) => item.id.split('.')[0] ?? null,
+  getStudioPluginNavigationModuleId: (item: PluginNavigationItemMock) =>
+    item.id.split('.')[0] ?? null,
 }));
 
 const unauthenticatedAuthState = {
@@ -152,6 +154,7 @@ describe('Sidebar', () => {
         id: 'user-1',
         name: 'Admin',
         roles: ['system_admin', 'instance_registry_admin'],
+        instanceId: 'de-musterhausen',
       },
       isAuthenticated: true,
     });
@@ -175,7 +178,9 @@ describe('Sidebar', () => {
     expect(screen.getByText('Anwendungen')).toBeTruthy();
     expect(screen.getByText('System')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Übersicht' }).getAttribute('href')).toBe('/');
-    expect(screen.getByRole('link', { name: 'Inhalte' }).getAttribute('href')).toBe('/admin/content');
+    expect(screen.getByRole('link', { name: 'Inhalte' }).getAttribute('href')).toBe(
+      '/admin/content'
+    );
     expect(screen.getByRole('link', { name: 'App' }).getAttribute('href')).toBe('/app');
     expect(screen.getByRole('link', { name: 'Cockpit' }).getAttribute('href')).toBe(COCKPIT_URL);
     expect(screen.getByRole('link', { name: 'Cockpit' }).getAttribute('target')).toBe('_blank');
@@ -183,19 +188,74 @@ describe('Sidebar', () => {
     const usersToggle = screen.getByRole('button', { name: 'Benutzer' });
     fireEvent.click(usersToggle);
 
-    expect(screen.getByRole('link', { name: 'Accounts' }).getAttribute('href')).toBe('/admin/users');
-    expect(screen.getByRole('link', { name: 'Organisationen' }).getAttribute('href')).toBe('/admin/organizations');
-    expect(screen.getByRole('link', { name: 'Instanzen' }).getAttribute('href')).toBe('/admin/instances');
+    expect(screen.getByRole('link', { name: 'Accounts' }).getAttribute('href')).toBe(
+      '/admin/users'
+    );
+    expect(screen.getByRole('link', { name: 'Organisationen' }).getAttribute('href')).toBe(
+      '/admin/organizations'
+    );
+    expect(screen.getByRole('link', { name: 'Instanzen' }).getAttribute('href')).toBe(
+      '/admin/instances'
+    );
     expect(screen.getByRole('link', { name: 'Rollen' }).getAttribute('href')).toBe('/admin/roles');
-    expect(screen.getByRole('link', { name: 'Gruppen' }).getAttribute('href')).toBe('/admin/groups');
-    expect(screen.getByRole('link', { name: 'Rechtstexte' }).getAttribute('href')).toBe('/admin/legal-texts');
-    expect(screen.getByRole('link', { name: 'Datenschutz' }).getAttribute('href')).toBe('/admin/iam');
-    expect(screen.getByRole('link', { name: 'Schnittstellen' }).getAttribute('href')).toBe('/interfaces');
+    expect(screen.getByRole('link', { name: 'Gruppen' }).getAttribute('href')).toBe(
+      '/admin/groups'
+    );
+    expect(screen.getByRole('link', { name: 'Rechtstexte' }).getAttribute('href')).toBe(
+      '/admin/legal-texts'
+    );
+    expect(screen.getByRole('link', { name: 'Datenschutz' }).getAttribute('href')).toBe(
+      '/admin/iam'
+    );
+    expect(screen.getByRole('link', { name: 'Schnittstellen' }).getAttribute('href')).toBe(
+      '/interfaces'
+    );
     expect(screen.getByRole('link', { name: 'Module' }).getAttribute('href')).toBe('/modules');
-    expect(screen.getByRole('link', { name: 'Monitoring' }).getAttribute('href')).toBe('/monitoring');
-    expect(screen.getByRole('link', { name: 'Hilfe' }).getAttribute('href')).toBe(HELP_DISCUSSIONS_URL);
-    expect(screen.getByRole('link', { name: 'Support' }).getAttribute('href')).toBe(SUPPORT_ISSUES_URL);
-    expect(screen.getByRole('link', { name: 'Lizenz' }).getAttribute('href')).toBe(LICENSE_ISSUE_URL);
+    expect(screen.getByRole('link', { name: 'Monitoring' }).getAttribute('href')).toBe(
+      '/monitoring'
+    );
+    expect(screen.getByRole('link', { name: 'Hilfe' }).getAttribute('href')).toBe(
+      HELP_DISCUSSIONS_URL
+    );
+    expect(screen.getByRole('link', { name: 'Support' }).getAttribute('href')).toBe(
+      SUPPORT_ISSUES_URL
+    );
+    expect(screen.getByRole('link', { name: 'Lizenz' }).getAttribute('href')).toBe(
+      LICENSE_ISSUE_URL
+    );
+  });
+
+  it('blendet Gruppen ohne Instanzkontext aus', () => {
+    useAuthMock.mockReturnValue({
+      ...unauthenticatedAuthState,
+      user: {
+        id: 'user-1',
+        name: 'Admin',
+        roles: ['system_admin', 'instance_registry_admin'],
+      },
+      isAuthenticated: true,
+    });
+    useContentAccessMock.mockReturnValue({
+      access: {
+        state: 'editable',
+        canRead: true,
+        canCreate: true,
+        canUpdate: true,
+        organizationIds: [],
+        sourceKinds: ['direct_role'],
+      },
+      permissionActions: ['news.read'],
+      isLoading: false,
+      error: null,
+    });
+
+    render(<Sidebar />);
+
+    const usersToggle = screen.getByRole('button', { name: 'Benutzer' });
+    fireEvent.click(usersToggle);
+
+    expect(screen.queryByRole('link', { name: 'Gruppen' })).toBeNull();
+    expect(screen.getByRole('link', { name: 'Rollen' }).getAttribute('href')).toBe('/admin/roles');
   });
 
   it('rendert Schnittstellen fuer interface_manager ohne System-Untermenue', () => {
@@ -224,14 +284,21 @@ describe('Sidebar', () => {
 
     render(<Sidebar />);
 
-    expect(screen.getByRole('link', { name: 'Schnittstellen' }).getAttribute('href')).toBe('/interfaces');
-    expect(screen.getByRole('link', { name: 'Hilfe' }).getAttribute('href')).toBe(HELP_DISCUSSIONS_URL);
-    expect(screen.getByRole('link', { name: 'Support' }).getAttribute('href')).toBe(SUPPORT_ISSUES_URL);
-    expect(screen.getByRole('link', { name: 'Lizenz' }).getAttribute('href')).toBe(LICENSE_ISSUE_URL);
+    expect(screen.getByRole('link', { name: 'Schnittstellen' }).getAttribute('href')).toBe(
+      '/interfaces'
+    );
+    expect(screen.getByRole('link', { name: 'Hilfe' }).getAttribute('href')).toBe(
+      HELP_DISCUSSIONS_URL
+    );
+    expect(screen.getByRole('link', { name: 'Support' }).getAttribute('href')).toBe(
+      SUPPORT_ISSUES_URL
+    );
+    expect(screen.getByRole('link', { name: 'Lizenz' }).getAttribute('href')).toBe(
+      LICENSE_ISSUE_URL
+    );
     expect(screen.queryByRole('button', { name: 'Benutzer' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Module' })).toBeNull();
   });
-
 
   it('zeigt Unterpunkte als Flyout, wenn die Desktop-Sidebar eingeklappt ist', () => {
     window.localStorage.setItem('sva-studio-sidebar-collapsed', '1');
@@ -241,6 +308,7 @@ describe('Sidebar', () => {
         id: 'user-1',
         name: 'Admin',
         roles: ['system_admin', 'instance_registry_admin'],
+        instanceId: 'de-musterhausen',
       },
       isAuthenticated: true,
     });
@@ -265,10 +333,18 @@ describe('Sidebar', () => {
     const usersToggle = screen.getByRole('button', { name: 'Benutzer' });
     fireEvent.click(usersToggle);
 
-    expect(screen.getByRole('link', { name: 'Accounts' }).getAttribute('href')).toBe('/admin/users');
-    expect(screen.getByRole('link', { name: 'Instanzen' }).getAttribute('href')).toBe('/admin/instances');
-    expect(screen.getByRole('link', { name: 'Gruppen' }).getAttribute('href')).toBe('/admin/groups');
-    expect(screen.getByRole('link', { name: 'Datenschutz' }).getAttribute('href')).toBe('/admin/iam');
+    expect(screen.getByRole('link', { name: 'Accounts' }).getAttribute('href')).toBe(
+      '/admin/users'
+    );
+    expect(screen.getByRole('link', { name: 'Instanzen' }).getAttribute('href')).toBe(
+      '/admin/instances'
+    );
+    expect(screen.getByRole('link', { name: 'Gruppen' }).getAttribute('href')).toBe(
+      '/admin/groups'
+    );
+    expect(screen.getByRole('link', { name: 'Datenschutz' }).getAttribute('href')).toBe(
+      '/admin/iam'
+    );
   });
 
   it('schaltet die Sidebar um und verwaltet Flyout-Fokus und Hover im eingeklappten Zustand', () => {
@@ -330,7 +406,9 @@ describe('Sidebar', () => {
     render(<Sidebar isMobileOpen onMobileOpenChange={onMobileOpenChange} />);
 
     fireEvent.click(
-      within(screen.getByRole('dialog', { name: 'Seitenleiste' })).getByRole('link', { name: 'Übersicht' })
+      within(screen.getByRole('dialog', { name: 'Seitenleiste' })).getByRole('link', {
+        name: 'Übersicht',
+      })
     );
 
     expect(onMobileOpenChange).toHaveBeenCalledWith(false);
@@ -571,7 +649,9 @@ describe('Sidebar', () => {
 
     render(<Sidebar />);
 
-    expect(screen.getByRole('link', { name: 'news.actions.publish' }).getAttribute('href')).toBe('/plugins/news/publish');
+    expect(screen.getByRole('link', { name: 'news.actions.publish' }).getAttribute('href')).toBe(
+      '/plugins/news/publish'
+    );
     expect(studioPluginActionLookupMock.get).toHaveBeenCalledWith('news.publish');
   });
 

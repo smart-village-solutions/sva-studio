@@ -113,6 +113,27 @@ describe('deriveIamRuntimeDiagnostics', () => {
       },
       status: 'recovery_laeuft',
     });
+
+    expect(
+      deriveIamRuntimeDiagnostics({
+        code: 'unauthorized',
+        status: 401,
+        details: {
+          reason_code: 'silent_recovery_timeout',
+          auth_flow_id: 'flow-1',
+          recovery_step: 'iframe_timeout',
+        },
+      })
+    ).toEqual({
+      classification: 'oidc_discovery_or_exchange',
+      recommendedAction: 'erneut_anmelden',
+      safeDetails: {
+        auth_flow_id: 'flow-1',
+        reason_code: 'silent_recovery_timeout',
+        recovery_step: 'iframe_timeout',
+      },
+      status: 'recovery_laeuft',
+    });
   });
 
   it('classifies actor resolution, keycloak dependency and provisioning drift errors', () => {
@@ -335,6 +356,23 @@ describe('deriveIamRuntimeDiagnostics', () => {
       recommendedAction: 'erneut_anmelden',
       safeDetails: {
         reason_code: 'missing_session_instance_id',
+      },
+      status: 'recovery_laeuft',
+    });
+
+    expect(
+      deriveIamRuntimeDiagnostics({
+        code: 'unauthorized',
+        status: 401,
+        details: {
+          reason_code: 'session_expired',
+        },
+      })
+    ).toEqual({
+      classification: 'session_store_or_session_hydration',
+      recommendedAction: 'erneut_anmelden',
+      safeDetails: {
+        reason_code: 'session_expired',
       },
       status: 'recovery_laeuft',
     });

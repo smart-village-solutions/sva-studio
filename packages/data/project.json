@@ -41,7 +41,7 @@
     "test:integration": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "bash packages/data/scripts/test-seeds.sh"
+        "command": "POSTGRES_HOST_PORT=${POSTGRES_HOST_PORT:-5434} POSTGRES_PORT=${POSTGRES_PORT:-5434} bash packages/data/scripts/test-seeds.sh"
       }
     },
     "db:up": {
@@ -113,7 +113,7 @@
     "db:test:seeds": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "bash packages/data/scripts/test-seeds.sh"
+        "command": "POSTGRES_HOST_PORT=${POSTGRES_HOST_PORT:-5434} POSTGRES_PORT=${POSTGRES_PORT:-5434} bash packages/data/scripts/test-seeds.sh"
       }
     },
     "db:test:encryption": {

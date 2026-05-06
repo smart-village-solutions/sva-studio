@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from '@tanstack/react-router';
 
 import { t } from '../i18n';
+import { readLatestAuthDiagnosticSnapshot } from '../lib/auth-diagnostics';
 import { createLoginHref, sanitizeReturnTo } from '../lib/auth-navigation';
 import { useAuth } from '../providers/auth-provider';
 import { Button } from '../components/ui/button';
@@ -13,6 +14,9 @@ export const HomePage = () => {
   const [routeError, setRouteError] = React.useState<string | null>(null);
   const [authReturnTo, setAuthReturnTo] = React.useState<string | null>(null);
   const [shouldStartLoginRedirect, setShouldStartLoginRedirect] = React.useState(false);
+  const [authDiagnosticSnapshot, setAuthDiagnosticSnapshot] = React.useState(
+    readLatestAuthDiagnosticSnapshot()
+  );
 
   React.useEffect(() => {
     const search = new URLSearchParams(window.location.search);
@@ -40,6 +44,10 @@ export const HomePage = () => {
   }, []);
 
   React.useEffect(() => {
+    setAuthDiagnosticSnapshot(readLatestAuthDiagnosticSnapshot());
+  }, [error, sessionRecoveryFailed]);
+
+  React.useEffect(() => {
     if (!shouldStartLoginRedirect || isLoading || isAuthenticated) {
       return;
     }
@@ -52,16 +60,21 @@ export const HomePage = () => {
     routeError ??
     (sessionRecoveryFailed ? t('home.authError.sessionExpired') : null) ??
     (error ? t('home.authError.sessionLoadFailed') : null);
-  const authErrorLoginHref = authError && !isAuthenticated ? createLoginHref(authReturnTo ?? undefined) : null;
+  const authErrorLoginHref =
+    authError && !isAuthenticated ? createLoginHref(authReturnTo ?? undefined) : null;
 
   return (
     <div className="min-h-full bg-background text-foreground">
       <section className="bg-gradient-to-b from-muted/40 via-background to-background">
         <div className="mx-auto flex max-w-6xl flex-col gap-10 px-6 pb-12 pt-12">
           <div className="flex flex-col gap-6 lg:max-w-3xl">
-            <p className="text-xs uppercase tracking-[0.32em] text-muted-foreground">{t('home.hero.eyebrow')}</p>
+            <p className="text-xs uppercase tracking-[0.32em] text-muted-foreground">
+              {t('home.hero.eyebrow')}
+            </p>
             <div className="space-y-4">
-              <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">{t('shell.appName')}</h1>
+              <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
+                {t('shell.appName')}
+              </h1>
               <p className="max-w-2xl text-lg text-muted-foreground">{t('home.hero.subtitle')}</p>
               <p className="max-w-2xl text-sm text-muted-foreground">{t('home.hero.body')}</p>
             </div>
@@ -78,11 +91,27 @@ export const HomePage = () => {
             {authError ? (
               <div className="flex max-w-2xl flex-col gap-3 rounded-lg border border-secondary/40 bg-secondary/10 px-4 py-3 text-sm text-secondary sm:flex-row sm:items-center sm:justify-between">
                 <span>{authError}</span>
-                {authErrorLoginHref ? (
-                  <Button asChild size="sm" variant="outline">
-                    <a href={authErrorLoginHref}>{t('home.authError.loginAction')}</a>
-                  </Button>
-                ) : null}
+                <div className="flex flex-col items-start gap-2 sm:items-end">
+                  {authDiagnosticSnapshot.requestId ? (
+                    <span>
+                      {t('home.authError.requestId', {
+                        requestId: authDiagnosticSnapshot.requestId,
+                      })}
+                    </span>
+                  ) : null}
+                  {authDiagnosticSnapshot.authFlowId ? (
+                    <span>
+                      {t('home.authError.authFlowId', {
+                        authFlowId: authDiagnosticSnapshot.authFlowId,
+                      })}
+                    </span>
+                  ) : null}
+                  {authErrorLoginHref ? (
+                    <Button asChild size="sm" variant="outline">
+                      <a href={authErrorLoginHref}>{t('home.authError.loginAction')}</a>
+                    </Button>
+                  ) : null}
+                </div>
               </div>
             ) : null}
           </div>
@@ -96,8 +125,12 @@ export const HomePage = () => {
       ) : isAuthenticated ? (
         <section className="mx-auto max-w-6xl px-6 py-12">
           <div className="mb-6 flex flex-col gap-2">
-            <h2 className="text-2xl font-semibold tracking-tight">{t('home.sections.overviewTitle')}</h2>
-            <p className="max-w-3xl text-sm text-muted-foreground">{t('home.sections.overviewBody')}</p>
+            <h2 className="text-2xl font-semibold tracking-tight">
+              {t('home.sections.overviewTitle')}
+            </h2>
+            <p className="max-w-3xl text-sm text-muted-foreground">
+              {t('home.sections.overviewBody')}
+            </p>
           </div>
 
           <div className="grid gap-4 md:grid-cols-3">

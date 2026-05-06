@@ -43,7 +43,8 @@ export const iamRuntimeDiagnosticClassifications = [
   'unknown',
 ] as const;
 
-export type IamRuntimeDiagnosticClassification = (typeof iamRuntimeDiagnosticClassifications)[number];
+export type IamRuntimeDiagnosticClassification =
+  (typeof iamRuntimeDiagnosticClassifications)[number];
 
 export const iamRuntimeDiagnosticStatuses = [
   'gesund',
@@ -75,6 +76,8 @@ export type IamRuntimeSafeDetails = Readonly<{
   actor_resolution?: string;
   instance_id?: string;
   return_to?: string;
+  auth_flow_id?: string;
+  recovery_step?: string;
   sync_state?: string;
   sync_error_code?: string;
 }>;
@@ -512,7 +515,11 @@ export type IamInstanceKeycloakProvisioningRun = {
   readonly id: string;
   readonly instanceId: string;
   readonly mode: InstanceRealmMode;
-  readonly intent: 'provision' | 'provision_admin_client' | 'reset_tenant_admin' | 'rotate_client_secret';
+  readonly intent:
+    | 'provision'
+    | 'provision_admin_client'
+    | 'reset_tenant_admin'
+    | 'rotate_client_secret';
   readonly overallStatus: 'planned' | 'running' | 'succeeded' | 'failed';
   readonly driftSummary: string;
   readonly requestId?: string;

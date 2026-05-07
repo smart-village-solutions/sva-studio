@@ -1771,6 +1771,7 @@ export const i18nResources = {
           emptyState: 'Keine Nutzer gefunden.',
           loading: 'Nutzer werden geladen ...',
           error: 'Nutzer konnten nicht geladen werden.',
+          mutationError: 'Die Nutzeraktion konnte nicht abgeschlossen werden.',
           resultCount: '{{count}} Nutzer gefunden.',
           syncRunning: 'Synchronisierung läuft ...',
           syncEmpty:
@@ -1822,6 +1823,7 @@ export const i18nResources = {
           unauthorized: 'Die Sitzung ist nicht mehr gültig. Bitte erneut anmelden.',
           unexpectedHttp: 'Unerwartete Serverantwort (HTTP {{status}}).',
           unexpectedClient: 'Technischer Fehler beim Laden der Nutzer: {{message}}',
+          unexpectedMutationClient: 'Technischer Fehler bei der Nutzeraktion: {{message}}',
         },
       },
       organizations: {
@@ -4282,6 +4284,7 @@ export const i18nResources = {
           emptyState: 'No users found.',
           loading: 'Loading users ...',
           error: 'Users could not be loaded.',
+          mutationError: 'The user action could not be completed.',
           resultCount: '{{count}} users found.',
           syncRunning: 'Synchronization in progress ...',
           syncEmpty:
@@ -4327,6 +4330,7 @@ export const i18nResources = {
           unauthorized: 'Your session is no longer valid. Please sign in again.',
           unexpectedHttp: 'Unexpected server response (HTTP {{status}}).',
           unexpectedClient: 'Technical error while loading users: {{message}}',
+          unexpectedMutationClient: 'Technical error during the user action: {{message}}',
         },
       },
       organizations: {

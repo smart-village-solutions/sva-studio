@@ -897,11 +897,11 @@ export const UserEditPage = ({ userId, invitationStatus }: UserEditPageProps) =>
           )}
         </section>
 
-        {userApi.error ? (
+        {userApi.mutationError ? (
           <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
             <AlertDescription className="flex flex-col gap-3">
-              <span>{userErrorMessage(userApi.error)}</span>
-              {userApi.error ? <IamRuntimeDiagnosticDetails error={userApi.error} /> : null}
+              <span>{userErrorMessage(userApi.mutationError, 'mutation')}</span>
+              {userApi.mutationError ? <IamRuntimeDiagnosticDetails error={userApi.mutationError} /> : null}
             </AlertDescription>
           </Alert>
         ) : null}

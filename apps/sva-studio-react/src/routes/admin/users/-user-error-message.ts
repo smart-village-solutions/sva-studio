@@ -1,14 +1,37 @@
 import { t } from '../../../i18n';
 import type { IamHttpError } from '../../../lib/iam-api';
 
+type UserErrorContext = 'load' | 'mutation';
+
 const readHttpStatusFromMessage = (message: string): string | null => {
   const match = /^http_(\d{3})$/.exec(message.trim());
   return match?.[1] ?? null;
 };
 
-export const userErrorMessage = (error: IamHttpError | null): string => {
+const getDefaultContextualMessage = (context: UserErrorContext): string =>
+  context === 'mutation' ? t('admin.users.messages.mutationError') : t('admin.users.messages.error');
+
+const staticErrorCodeMap: Record<string, () => string> = {
+  forbidden: () => t('admin.users.errors.forbidden'),
+  csrf_validation_failed: () => t('admin.users.errors.csrfValidationFailed'),
+  rate_limited: () => t('admin.users.errors.rateLimited'),
+  conflict: () => t('admin.users.errors.conflict'),
+  tenant_admin_client_not_configured: () => t('admin.users.errors.tenantAdminClientNotConfigured'),
+  tenant_admin_client_secret_missing: () => t('admin.users.errors.tenantAdminClientSecretMissing'),
+  keycloak_unavailable: () => t('admin.users.errors.keycloakUnavailable'),
+  database_unavailable: () => t('admin.users.errors.databaseUnavailable'),
+  last_admin_protection: () => t('admin.users.errors.lastAdminProtection'),
+  self_protection: () => t('admin.users.errors.selfProtection'),
+  feature_disabled: () => t('admin.users.errors.featureDisabled'),
+  unauthorized: () => t('admin.users.errors.unauthorized'),
+};
+
+export const userErrorMessage = (
+  error: IamHttpError | null,
+  context: UserErrorContext = 'load'
+): string => {
   if (!error) {
-    return t('admin.users.messages.error');
+    return getDefaultContextualMessage(context);
   }
 
   if (error.diagnosticStatus === 'recovery_laeuft') {
@@ -19,49 +42,36 @@ export const userErrorMessage = (error: IamHttpError | null): string => {
     return t('admin.users.errors.keycloakReconcile');
   }
 
-  switch (error.code) {
-    case 'invalid_request':
-      return t('admin.users.messages.error');
-    case 'forbidden':
-      return t('admin.users.errors.forbidden');
-    case 'csrf_validation_failed':
-      return t('admin.users.errors.csrfValidationFailed');
-    case 'rate_limited':
-      return t('admin.users.errors.rateLimited');
-    case 'conflict':
-      return t('admin.users.errors.conflict');
-    case 'tenant_admin_client_not_configured':
-      return t('admin.users.errors.tenantAdminClientNotConfigured');
-    case 'tenant_admin_client_secret_missing':
-      return t('admin.users.errors.tenantAdminClientSecretMissing');
-    case 'keycloak_unavailable':
-      return t('admin.users.errors.keycloakUnavailable');
-    case 'database_unavailable':
-      return t('admin.users.errors.databaseUnavailable');
-    case 'last_admin_protection':
-      return t('admin.users.errors.lastAdminProtection');
-    case 'self_protection':
-      return t('admin.users.errors.selfProtection');
-    case 'feature_disabled':
-      return t('admin.users.errors.featureDisabled');
-    case 'unauthorized':
-      return t('admin.users.errors.unauthorized');
-    case 'non_json_response':
-      if (error.status >= 400) {
-        return t('admin.users.errors.unexpectedHttp', { status: String(error.status) });
-      }
-      return t('admin.users.errors.unexpectedClient', { message: error.message });
-    case 'internal_error': {
-      const httpStatus = readHttpStatusFromMessage(error.message);
-      if (httpStatus) {
-        return t('admin.users.errors.unexpectedHttp', { status: httpStatus });
-      }
-      if (error.message.trim().length > 0) {
-        return t('admin.users.errors.unexpectedClient', { message: error.message });
-      }
-      return t('admin.users.messages.error');
-    }
-    default:
-      return t('admin.users.messages.error');
+  const staticMessage = staticErrorCodeMap[error.code];
+  if (staticMessage) {
+    return staticMessage();
   }
+
+  if (error.code === 'invalid_request') {
+    return getDefaultContextualMessage(context);
+  }
+
+  if (error.code === 'non_json_response') {
+    if (error.status >= 400) {
+      return t('admin.users.errors.unexpectedHttp', { status: String(error.status) });
+    }
+    return context === 'mutation'
+      ? t('admin.users.errors.unexpectedMutationClient', { message: error.message })
+      : t('admin.users.errors.unexpectedClient', { message: error.message });
+  }
+
+  if (error.code === 'internal_error') {
+    const httpStatus = readHttpStatusFromMessage(error.message);
+    if (httpStatus) {
+      return t('admin.users.errors.unexpectedHttp', { status: httpStatus });
+    }
+    if (error.message.trim().length > 0) {
+      return context === 'mutation'
+        ? t('admin.users.errors.unexpectedMutationClient', { message: error.message })
+        : t('admin.users.errors.unexpectedClient', { message: error.message });
+    }
+    return getDefaultContextualMessage(context);
+  }
+
+  return getDefaultContextualMessage(context);
 };

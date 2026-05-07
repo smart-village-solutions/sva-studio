@@ -437,7 +437,95 @@ describe('useUsers', () => {
     });
 
     expect(response).toBeNull();
-    expect(result.current.error?.status).toBe(403);
+    expect(result.current.error).toMatchObject({
+      status: 403,
+      code: 'forbidden',
+    });
+    expect(result.current.mutationError?.status).toBe(403);
     expect(authMockValue.invalidatePermissions).toHaveBeenCalled();
+  });
+
+  it('preserves mutation errors across successful list refetches', async () => {
+    listUsersMock
+      .mockResolvedValueOnce({
+        data: [],
+        pagination: { page: 1, pageSize: 25, total: 0 },
+      })
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 'user-1',
+            keycloakSubject: 'subject-1',
+            displayName: 'Ada Lovelace',
+            email: 'ada@example.com',
+            status: 'active',
+            roles: [],
+          },
+        ],
+        pagination: { page: 1, pageSize: 25, total: 1 },
+      });
+    updateUserMock.mockRejectedValue({
+      status: 409,
+      code: 'conflict',
+      message: 'conflict',
+    });
+
+    const { result } = renderHook(() => useUsers());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    await act(async () => {
+      const response = await result.current.updateUser('user-1', { firstName: 'Ada' });
+      expect(response).toBeNull();
+    });
+
+    expect(result.current.mutationError).toMatchObject({
+      status: 409,
+      code: 'conflict',
+    });
+
+    await act(async () => {
+      await result.current.refetch();
+    });
+
+    expect(result.current.users).toHaveLength(1);
+    expect(result.current.mutationError).toMatchObject({
+      status: 409,
+      code: 'conflict',
+    });
+  });
+
+  it('keeps mutation failures visible through error for existing consumers', async () => {
+    listUsersMock.mockResolvedValue({
+      data: [],
+      pagination: { page: 1, pageSize: 25, total: 0 },
+    });
+    deactivateUserMock.mockRejectedValue({
+      status: 503,
+      code: 'database_unavailable',
+      message: 'db down',
+    });
+
+    const { result } = renderHook(() => useUsers());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    await act(async () => {
+      const response = await result.current.deactivateUser('user-1');
+      expect(response).toBe(false);
+    });
+
+    expect(result.current.mutationError).toMatchObject({
+      status: 503,
+      code: 'database_unavailable',
+    });
+    expect(result.current.error).toMatchObject({
+      status: 503,
+      code: 'database_unavailable',
+    });
   });
 });

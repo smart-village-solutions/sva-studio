@@ -34,8 +34,9 @@
     },
     "test:types": {
       "executor": "nx:run-commands",
+      "dependsOn": ["^build"],
       "options": {
-        "command": "tsc -p packages/auth-runtime/tsconfig.lib.json --noEmit"
+        "command": "pnpm exec node -e \"require('node:fs').rmSync('packages/auth-runtime/tsconfig.lib.tsbuildinfo', { force: true });\" && tsc -p packages/auth-runtime/tsconfig.lib.json --noEmit"
       }
     },
     "test:coverage": {

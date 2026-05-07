@@ -7,6 +7,7 @@ const createInstanceRegistryRuntimeMock = vi.fn(() => ({
   withRegistryProvisioningWorkerDeps: vi.fn(),
 }));
 const resolveIdentityProviderForInstanceMock = vi.fn();
+const resolveAuthConfigForInstanceMock = vi.fn();
 
 vi.mock('../db.js', () => ({
   createPoolResolver: vi.fn(() => 'resolve-pool'),
@@ -50,6 +51,11 @@ vi.mock('../iam-account-management/encryption.js', () => ({
 
 vi.mock('../iam-account-management/shared-runtime.js', () => ({
   resolveIdentityProviderForInstance: (...args: unknown[]) => resolveIdentityProviderForInstanceMock(...args),
+  isKeycloakIdentityProvider: (provider: unknown) => typeof provider === 'object' && provider !== null && 'getOidcClientByClientId' in provider,
+}));
+
+vi.mock('../config.js', () => ({
+  resolveAuthConfigForInstance: (...args: unknown[]) => resolveAuthConfigForInstanceMock(...args),
 }));
 
 describe('iam instance registry repository wiring', () => {
@@ -117,5 +123,143 @@ describe('iam instance registry repository wiring', () => {
         requestId: 'req-probe-1',
       })
     );
+  });
+
+  it('reports ready tenant IAM access when password setup emails can be triggered for the configured login client', async () => {
+    resolveIdentityProviderForInstanceMock.mockResolvedValueOnce({
+      provider: {
+        listRoles: vi.fn(async () => []),
+        listUsers: vi.fn(async () => []),
+        executeActionsEmail: vi.fn(async () => undefined),
+        getOidcClientByClientId: vi.fn(async () => ({ id: 'client-1', clientId: 'sva-studio' })),
+      },
+    });
+    resolveAuthConfigForInstanceMock.mockResolvedValueOnce({
+      clientId: 'sva-studio',
+    });
+    await import('./repository.js');
+
+    const runtimeConfig = createInstanceRegistryRuntimeMock.mock.calls.at(-1)?.[0];
+    expect(runtimeConfig).toBeDefined();
+
+    await expect(
+      runtimeConfig?.serviceDeps.probeTenantIamAccess({
+        instanceId: 'demo',
+        requestId: 'req-probe-2',
+      })
+    ).resolves.toEqual(
+      expect.objectContaining({
+        status: 'ready',
+        summary:
+          'Tenant-Admin-Client kann Nutzer lesen und Passwort-Setup-Mails über den Login-Client sva-studio anstoßen.',
+        source: 'access_probe',
+        requestId: 'req-probe-2',
+      })
+    );
+  });
+
+  it('reports blocked tenant IAM access when the referenced login client is missing in the tenant realm', async () => {
+    resolveIdentityProviderForInstanceMock.mockResolvedValueOnce({
+      provider: {
+        listRoles: vi.fn(async () => []),
+        listUsers: vi.fn(async () => []),
+        executeActionsEmail: vi.fn(async () => undefined),
+        getOidcClientByClientId: vi.fn(async () => null),
+      },
+    });
+    resolveAuthConfigForInstanceMock.mockResolvedValueOnce({
+      clientId: 'sva-studio',
+    });
+    await import('./repository.js');
+
+    const runtimeConfig = createInstanceRegistryRuntimeMock.mock.calls.at(-1)?.[0];
+    expect(runtimeConfig).toBeDefined();
+
+    await expect(
+      runtimeConfig?.serviceDeps.probeTenantIamAccess({
+        instanceId: 'demo',
+        requestId: 'req-probe-3',
+      })
+    ).resolves.toEqual(
+      expect.objectContaining({
+        status: 'blocked',
+        summary: 'Der referenzierte Login-Client sva-studio fehlt im Tenant-Realm.',
+        source: 'access_probe',
+        errorCode: 'AUTH_CLIENT_MISSING',
+        requestId: 'req-probe-3',
+      })
+    );
+  });
+
+  it('reports forbidden tenant IAM access without implying that only role reads failed', async () => {
+    resolveIdentityProviderForInstanceMock.mockResolvedValueOnce({
+      provider: {
+        listRoles: vi.fn(async () => []),
+        listUsers: vi.fn(async () => {
+          throw new Error('403 Forbidden');
+        }),
+        executeActionsEmail: vi.fn(async () => undefined),
+        getOidcClientByClientId: vi.fn(async () => ({ id: 'client-1', clientId: 'sva-studio' })),
+      },
+    });
+    resolveAuthConfigForInstanceMock.mockResolvedValueOnce({
+      clientId: 'sva-studio',
+    });
+    await import('./repository.js');
+
+    const runtimeConfig = createInstanceRegistryRuntimeMock.mock.calls.at(-1)?.[0];
+    expect(runtimeConfig).toBeDefined();
+
+    await expect(
+      runtimeConfig?.serviceDeps.probeTenantIamAccess({
+        instanceId: 'demo',
+        requestId: 'req-probe-4',
+      })
+    ).resolves.toEqual(
+      expect.objectContaining({
+        status: 'blocked',
+        summary: 'Tenant-Admin-Client darf die erforderlichen IAM-Ressourcen nicht lesen.',
+        source: 'access_probe',
+        errorCode: 'IDP_FORBIDDEN',
+        requestId: 'req-probe-4',
+      })
+    );
+  });
+
+  it('does not leak a follow-up capability rejection when IAM reads already failed', async () => {
+    const unhandledRejectionHandler = vi.fn();
+    process.once('unhandledRejection', unhandledRejectionHandler);
+
+    resolveIdentityProviderForInstanceMock.mockResolvedValueOnce({
+      provider: {
+        listRoles: vi.fn(async () => {
+          throw new Error('403 Forbidden');
+        }),
+        listUsers: vi.fn(async () => []),
+        executeActionsEmail: vi.fn(async () => undefined),
+        getOidcClientByClientId: vi.fn(async () => ({ id: 'client-1', clientId: 'sva-studio' })),
+      },
+    });
+    resolveAuthConfigForInstanceMock.mockRejectedValueOnce(new Error('config failed'));
+    await import('./repository.js');
+
+    const runtimeConfig = createInstanceRegistryRuntimeMock.mock.calls.at(-1)?.[0];
+    expect(runtimeConfig).toBeDefined();
+
+    await expect(
+      runtimeConfig?.serviceDeps.probeTenantIamAccess({
+        instanceId: 'demo',
+        requestId: 'req-probe-5',
+      })
+    ).resolves.toEqual(
+      expect.objectContaining({
+        status: 'blocked',
+        errorCode: 'IDP_FORBIDDEN',
+        requestId: 'req-probe-5',
+      })
+    );
+
+    await Promise.resolve();
+    expect(unhandledRejectionHandler).not.toHaveBeenCalled();
   });
 });

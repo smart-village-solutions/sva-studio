@@ -22,6 +22,7 @@ type UseUserResult = {
   readonly user: IamUserDetail | null;
   readonly isLoading: boolean;
   readonly error: IamHttpError | null;
+  readonly mutationError: IamHttpError | null;
   readonly refetch: () => Promise<void>;
   readonly save: (payload: UpdateUserPayload) => Promise<IamUserDetail | null>;
   readonly resendPasswordSetupEmail?: () => Promise<boolean>;
@@ -34,6 +35,11 @@ export const useUser = (userId: string): UseUserResult => {
   const [user, setUser] = React.useState<IamUserDetail | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<IamHttpError | null>(null);
+  const [mutationError, setMutationError] = React.useState<IamHttpError | null>(null);
+
+  React.useEffect(() => {
+    setMutationError(null);
+  }, [userId]);
 
   const refetch = React.useCallback(async () => {
     logBrowserOperationStart(userLogger, 'user_detail_refetch_started', {
@@ -80,7 +86,7 @@ export const useUser = (userId: string): UseUserResult => {
 
   const save = React.useCallback(
     async (payload: UpdateUserPayload) => {
-      setError(null);
+      setMutationError(null);
       logBrowserOperationStart(userLogger, 'user_save_started', {
         operation: 'update_user',
         user_id: userId,
@@ -104,7 +110,7 @@ export const useUser = (userId: string): UseUserResult => {
             user_id: userId,
           });
         }
-        setError(resolvedError);
+        setMutationError(resolvedError);
         logBrowserOperationFailure(userLogger, 'user_save_failed', resolvedError, {
           operation: 'update_user',
           user_id: userId,
@@ -116,7 +122,7 @@ export const useUser = (userId: string): UseUserResult => {
   );
 
   const resendPasswordSetupEmailAction = React.useCallback(async () => {
-    setError(null);
+    setMutationError(null);
     logBrowserOperationStart(userLogger, 'user_password_setup_email_started', {
       operation: 'send_password_setup_email',
       user_id: userId,
@@ -140,7 +146,7 @@ export const useUser = (userId: string): UseUserResult => {
           user_id: userId,
         });
       }
-      setError(resolvedError);
+      setMutationError(resolvedError);
       logBrowserOperationFailure(userLogger, 'user_password_setup_email_failed', resolvedError, {
         operation: 'send_password_setup_email',
         user_id: userId,
@@ -153,6 +159,7 @@ export const useUser = (userId: string): UseUserResult => {
     user,
     isLoading,
     error,
+    mutationError,
     refetch,
     save,
     resendPasswordSetupEmail: resendPasswordSetupEmailAction,

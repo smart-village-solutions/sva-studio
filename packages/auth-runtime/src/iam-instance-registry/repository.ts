@@ -14,7 +14,11 @@ import {
 } from './provisioning-auth.js';
 import { readKeycloakStateViaProvisioner } from './provisioning-auth-state.js';
 import { protectField, revealField } from '../iam-account-management/encryption.js';
-import { resolveIdentityProviderForInstance } from '../iam-account-management/shared-runtime.js';
+import { resolveAuthConfigForInstance } from '../config.js';
+import {
+  isKeycloakIdentityProvider,
+  resolveIdentityProviderForInstance,
+} from '../iam-account-management/shared-runtime.js';
 
 const getWorkerKeycloakPreflight = async (input: Parameters<typeof getInstanceKeycloakPreflightViaProvisioner>[0]) =>
   getInstanceKeycloakPreflightViaProvisioner(input);
@@ -24,6 +28,41 @@ const getWorkerKeycloakPlan = async (input: Parameters<typeof getInstanceKeycloa
 
 const getWorkerKeycloakStatus = async (input: Parameters<typeof getInstanceKeycloakStatusViaProvisioner>[0]) =>
   getInstanceKeycloakStatusViaProvisioner(input);
+
+const probePasswordSetupEmailCapability = async (input: {
+  instanceId: string;
+  identityProvider: NonNullable<Awaited<ReturnType<typeof resolveIdentityProviderForInstance>>>;
+}) => {
+  if (!input.identityProvider.provider.executeActionsEmail) {
+    return {
+      ok: false as const,
+      errorCode: 'IDP_UNSUPPORTED_PASSWORD_SETUP_EMAIL',
+      summary: 'Tenant-Admin-Client unterstützt den Passwort-Setup-Mailversand nicht.',
+    };
+  }
+
+  if (!isKeycloakIdentityProvider(input.identityProvider.provider)) {
+    return {
+      ok: true as const,
+      loginClientId: undefined,
+    };
+  }
+
+  const authConfig = await resolveAuthConfigForInstance(input.instanceId);
+  const targetClient = await input.identityProvider.provider.getOidcClientByClientId(authConfig.clientId);
+  if (!targetClient) {
+    return {
+      ok: false as const,
+      errorCode: 'AUTH_CLIENT_MISSING',
+      summary: `Der referenzierte Login-Client ${authConfig.clientId} fehlt im Tenant-Realm.`,
+    };
+  }
+
+  return {
+    ok: true as const,
+    loginClientId: authConfig.clientId,
+  };
+};
 
 const probeTenantIamAccess = async (input: { instanceId: string; requestId?: string }) => {
   const identityProvider = await resolveIdentityProviderForInstance(input.instanceId, {
@@ -42,10 +81,47 @@ const probeTenantIamAccess = async (input: { instanceId: string; requestId?: str
   }
 
   try {
-    await identityProvider.provider.listRoles();
+    const [rolesResult, usersResult, capabilityResult] = await Promise.allSettled([
+      identityProvider.provider.listRoles(),
+      identityProvider.provider.listUsers({ max: 1 }),
+      probePasswordSetupEmailCapability({
+        instanceId: input.instanceId,
+        identityProvider,
+      }),
+    ]);
+
+    const firstAccessFailure =
+      rolesResult.status === 'rejected'
+        ? rolesResult.reason
+        : usersResult.status === 'rejected'
+          ? usersResult.reason
+          : null;
+    if (firstAccessFailure) {
+      throw firstAccessFailure;
+    }
+
+    if (capabilityResult.status === 'rejected') {
+      throw capabilityResult.reason;
+    }
+
+    const passwordSetupEmailCapability = capabilityResult.value;
+
+    if (!passwordSetupEmailCapability.ok) {
+      return {
+        status: 'blocked',
+        summary: passwordSetupEmailCapability.summary,
+        source: 'access_probe',
+        checkedAt: new Date().toISOString(),
+        errorCode: passwordSetupEmailCapability.errorCode,
+        requestId: input.requestId,
+      } as const;
+    }
+
     return {
       status: 'ready',
-      summary: 'Tenant-Admin-Client kann Realm-Rollen lesen.',
+      summary: passwordSetupEmailCapability.loginClientId
+        ? `Tenant-Admin-Client kann Nutzer lesen und Passwort-Setup-Mails über den Login-Client ${passwordSetupEmailCapability.loginClientId} anstoßen.`
+        : 'Tenant-Admin-Client kann Nutzer lesen und Passwort-Setup-Mails anstoßen.',
       source: 'access_probe',
       checkedAt: new Date().toISOString(),
       requestId: input.requestId,
@@ -61,7 +137,7 @@ const probeTenantIamAccess = async (input: { instanceId: string; requestId?: str
       status: errorCode === 'IDP_FORBIDDEN' ? 'blocked' : 'degraded',
       summary:
         errorCode === 'IDP_FORBIDDEN'
-          ? 'Tenant-Admin-Client darf Realm-Rollen nicht lesen.'
+          ? 'Tenant-Admin-Client darf die erforderlichen IAM-Ressourcen nicht lesen.'
           : 'Tenant-Admin-Rechteprobe konnte nicht abgeschlossen werden.',
       source: 'access_probe',
       checkedAt: new Date().toISOString(),

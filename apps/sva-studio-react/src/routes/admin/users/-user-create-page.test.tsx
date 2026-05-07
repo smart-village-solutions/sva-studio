@@ -43,6 +43,25 @@ describe('UserCreatePage', () => {
     cleanup();
   });
 
+  it('renders mutation-specific client errors without load wording', () => {
+    useUsersMock.mockReturnValue(
+      createUsersApiState({
+        mutationError: {
+          status: 500,
+          code: 'internal_error',
+          message: 'Einladungs-E-Mail zum Passwort setzen konnte nicht gesendet werden.',
+        },
+      })
+    );
+
+    render(<UserCreatePage />);
+
+    expect(screen.getByRole('alert').textContent).toContain(
+      'Technischer Fehler bei der Nutzeraktion: Einladungs-E-Mail zum Passwort setzen konnte nicht gesendet werden.'
+    );
+    expect(screen.getByRole('alert').textContent).not.toContain('Technischer Fehler beim Laden der Nutzer');
+  });
+
   it('renders the password setup invite option enabled by default', () => {
     useUsersMock.mockReturnValue(createUsersApiState());
 

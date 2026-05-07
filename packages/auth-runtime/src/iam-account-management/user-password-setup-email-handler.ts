@@ -60,7 +60,7 @@ export const sendPasswordSetupEmailInternal = async (
     actor,
     ctx,
     endpoint: SEND_PASSWORD_SETUP_EMAIL_ENDPOINT,
-    executeActionsEmail: identityProvider.provider.executeActionsEmail,
+    executeActionsEmail: identityProvider.provider.executeActionsEmail?.bind(identityProvider.provider),
     idempotencyKey: idempotencyKey.key,
     userId,
   });

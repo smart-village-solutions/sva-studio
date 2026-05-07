@@ -34,6 +34,7 @@
     },
     "test:types": {
       "executor": "nx:run-commands",
+      "dependsOn": ["^build"],
       "options": {
         "command": "rm -f packages/auth-runtime/tsconfig.lib.tsbuildinfo && tsc -p packages/auth-runtime/tsconfig.lib.json --noEmit"
       }

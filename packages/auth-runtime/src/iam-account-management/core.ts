@@ -32,7 +32,6 @@ import {
   listUsersInternal,
   sendPasswordSetupEmailInternal,
   runKeycloakUserImportSync,
-  sendPasswordSetupEmailInternal,
   syncUsersFromKeycloakInternal,
   updateMyProfileInternal,
   updateUserInternal,
@@ -92,9 +91,6 @@ export const updateUserHandler = async (request: Request): Promise<Response> =>
 
 export const deactivateUserHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedIamHandler(request, deactivateUserInternal);
-
-export const sendPasswordSetupEmailHandler = async (request: Request): Promise<Response> =>
-  withAuthenticatedIamHandler(request, sendPasswordSetupEmailInternal);
 
 export const bulkDeactivateUsersHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedIamHandler(request, bulkDeactivateInternal);

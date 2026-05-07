@@ -119,28 +119,9 @@ export {
   SYSTEM_ADMIN_ROLE,
   toSortedUnique,
 } from './provisioning-auth-utils.js';
-export {
-  createAuditDetails,
-  createStatusArtifacts,
-  getAuditEventType,
-  getStatusOperation,
-  toListItem,
-  buildInstanceDetail,
-} from './service-helpers.js';
-export { appendRunStep, buildFinalRunSteps } from './service-keycloak-run-steps.js';
-export { failClaimedRun, failRun } from './service-keycloak-execution-failures.js';
-export { createProvisioningArtifacts, provisionInstanceAuth } from './service-provisioning.js';
 export type { InstanceRegistryService, InstanceRegistryServiceDeps } from './service-types.js';
 export { createInstanceRegistryService } from './service.js';
 export { createGetInstanceDetail, loadKeycloakDetailArtifacts } from './service-detail.js';
-export {
-  buildProvisioningInput,
-  completeRun,
-  createQueuedRun,
-  readQueuedTemporaryPassword,
-  syncProvisionedClientSecretToRegistry,
-  syncRotatedClientSecretToRegistry,
-} from './service-keycloak-execution-shared.js';
 export {
   createExecuteKeycloakProvisioningHandler,
   createReconcileKeycloakHandler,
@@ -153,11 +134,6 @@ export {
   createGetKeycloakStatusHandler,
   createPlanKeycloakProvisioningHandler,
   createRuntimeResolver,
-  decryptAuthClientSecret,
-  decryptTenantAdminClientSecret,
-  loadInstanceWithSecret,
-  loadRepositoryAuthClientSecret,
-  loadRepositoryTenantAdminClientSecret,
 } from './service-keycloak.js';
 export {
   isInstanceTrafficAllowed,

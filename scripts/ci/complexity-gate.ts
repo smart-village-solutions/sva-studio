@@ -28,6 +28,7 @@ export interface ComplexityModule {
   include: string[];
   exclude?: string[];
   overrides?: Partial<ComplexityThresholds>;
+  priority?: number;
 }
 
 export interface TrackedFinding {
@@ -227,6 +228,10 @@ export function assertComplexityPolicy(policy: unknown): asserts policy is Compl
     ) {
       throw new TypeError(`Invalid complexity policy: module ${moduleConfig.id} overrides are invalid`);
     }
+
+    if (moduleConfig.priority !== undefined && typeof moduleConfig.priority !== 'number') {
+      throw new TypeError(`Invalid complexity policy: module ${moduleConfig.id} priority must be a number`);
+    }
   }
 
   if (!isRecord(policy.trackedFindings)) {
@@ -324,31 +329,39 @@ function walkFiles(dirPath: string, results: string[] = []): string[] {
 
 function resolveModuleFiles(rootDir: string, modules: ComplexityModule[]): AnalyzedFile[] {
   const allFiles = walkFiles(rootDir).map((filePath) => normalizePath(path.relative(rootDir, filePath)));
-  const assignments = new Map<string, ComplexityModule>();
   const analyzedFiles: AnalyzedFile[] = [];
 
-  for (const moduleConfig of modules) {
-    const include = createMatcher(moduleConfig.include);
-    const exclude = createMatcher(moduleConfig.exclude ?? []);
+  const compiledModules = modules.map((moduleConfig) => ({
+    module: moduleConfig,
+    include: createMatcher(moduleConfig.include),
+    exclude: createMatcher(moduleConfig.exclude ?? []),
+    priority: moduleConfig.priority ?? 0,
+  }));
 
-    for (const relativePath of allFiles) {
-      if (!include(relativePath) || exclude(relativePath)) {
-        continue;
-      }
+  for (const relativePath of allFiles) {
+    const matchingModules = compiledModules
+      .filter(({ include, exclude }) => include(relativePath) && !exclude(relativePath))
+      .sort((left, right) => right.priority - left.priority);
 
-      const existingModule = assignments.get(relativePath);
-      if (existingModule && existingModule.id !== moduleConfig.id) {
-        throw new Error(
-          `Complexity module overlap detected: ${relativePath} matches both ${existingModule.id} and ${moduleConfig.id}`
-        );
-      }
-
-      assignments.set(relativePath, moduleConfig);
-      analyzedFiles.push({
-        module: moduleConfig,
-        metrics: analyzeFile(path.join(rootDir, relativePath), relativePath),
-      });
+    if (matchingModules.length === 0) {
+      continue;
     }
+
+    const selectedModule = matchingModules[0];
+    const conflictingModule = matchingModules.find(
+      ({ module, priority }) => module.id !== selectedModule.module.id && priority === selectedModule.priority
+    );
+
+    if (conflictingModule) {
+      throw new Error(
+        `Complexity module overlap detected: ${relativePath} matches both ${selectedModule.module.id} and ${conflictingModule.module.id}`
+      );
+    }
+
+    analyzedFiles.push({
+      module: selectedModule.module,
+      metrics: analyzeFile(path.join(rootDir, relativePath), relativePath),
+    });
   }
 
   return analyzedFiles.sort((left, right) => left.metrics.filePath.localeCompare(right.metrics.filePath));

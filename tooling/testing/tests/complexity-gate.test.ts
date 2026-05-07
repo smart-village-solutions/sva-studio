@@ -72,6 +72,61 @@ afterEach(() => {
 });
 
 describe('complexity gate', () => {
+  it('covers the central production modules with only narrow exclusions', () => {
+    const policy = JSON.parse(
+      fs.readFileSync(path.join(process.cwd(), 'tooling/quality/complexity-policy.json'), 'utf8')
+    ) as {
+      modules: Array<{ id: string; exclude?: string[]; priority?: number }>;
+    };
+
+    expect(policy.modules.map((module) => module.id)).toEqual(
+      expect.arrayContaining([
+        'packages-default',
+        'apps-default',
+        'scripts-default',
+        'routing',
+        'core-security',
+        'core-iam',
+        'iam-data',
+        'instance-registry-data',
+        'instance-registry-repositories',
+        'auth-runtime',
+        'iam-admin',
+        'iam-governance',
+        'instance-registry-service',
+        'plugin-sdk',
+        'plugin-news',
+        'sva-mainserver',
+        'frontend-app',
+        'ci-scripts',
+        'ops-scripts',
+      ])
+    );
+
+    expect(policy.modules.some((module) => (module.priority ?? 0) > 0)).toBe(true);
+
+    for (const module of policy.modules) {
+      expect(module.exclude ?? []).toEqual(
+        expect.arrayContaining(
+          (module.exclude ?? []).filter(
+            (pattern) =>
+              pattern !== '**/*.test.ts' &&
+              pattern !== '**/*.test.tsx' &&
+              pattern !== 'packages/sva-mainserver/src/generated/**/*.ts'
+          )
+        )
+      );
+      expect(
+        (module.exclude ?? []).every(
+          (pattern) =>
+            pattern === '**/*.test.ts' ||
+            pattern === '**/*.test.tsx' ||
+            pattern === 'packages/sva-mainserver/src/generated/**/*.ts'
+        )
+      ).toBe(true);
+    }
+  });
+
   it('analyzes file metrics from TypeScript source', () => {
     const rootDir = createTempWorkspace();
     const filePath = writeSourceFile(
@@ -118,6 +173,70 @@ describe('complexity gate', () => {
     writeSourceFile(rootDir, 'large.ts', 'export const value = 1;\n');
 
     expect(() => runComplexityGate({ rootDir, stepSummaryPath: null })).toThrow(/Invalid complexity policy/);
+  });
+
+  it('prefers the higher priority module when include patterns overlap', () => {
+    const rootDir = createTempWorkspace();
+    writePolicy(rootDir, {
+      modules: [
+        {
+          id: 'default',
+          label: 'Default',
+          class: 'zentral',
+          owner: 'team-platform',
+          reviewCadence: 'pro-pr',
+          include: ['packages/**/*.ts'],
+          exclude: ['**/*.test.ts'],
+        },
+        {
+          id: 'iam-server',
+          label: 'IAM Server',
+          class: 'kritisch',
+          owner: 'team-iam',
+          reviewCadence: 'pro-pr',
+          include: ['packages/iam-target/src/**/*.ts'],
+          exclude: ['**/*.test.ts'],
+          priority: 10,
+        },
+      ],
+    });
+    writeSourceFile(rootDir, 'priority.ts', 'export const value = 1;\n');
+
+    const result = runComplexityGate({ rootDir, stepSummaryPath: null });
+
+    expect(result.analyzedFiles).toHaveLength(1);
+    expect(result.analyzedFiles[0]?.module.id).toBe('iam-server');
+  });
+
+  it('throws when overlapping modules share the same priority', () => {
+    const rootDir = createTempWorkspace();
+    writePolicy(rootDir, {
+      modules: [
+        {
+          id: 'default',
+          label: 'Default',
+          class: 'zentral',
+          owner: 'team-platform',
+          reviewCadence: 'pro-pr',
+          include: ['packages/**/*.ts'],
+          exclude: ['**/*.test.ts'],
+        },
+        {
+          id: 'iam-server',
+          label: 'IAM Server',
+          class: 'kritisch',
+          owner: 'team-iam',
+          reviewCadence: 'pro-pr',
+          include: ['packages/iam-target/src/**/*.ts'],
+          exclude: ['**/*.test.ts'],
+        },
+      ],
+    });
+    writeSourceFile(rootDir, 'priority.ts', 'export const value = 1;\n');
+
+    expect(() => runComplexityGate({ rootDir, stepSummaryPath: null })).toThrow(
+      /Complexity module overlap detected/
+    );
   });
 
   it('fails for untracked findings above threshold', () => {

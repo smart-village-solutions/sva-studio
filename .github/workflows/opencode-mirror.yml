@@ -1,0 +1,36 @@
+name: OpenCode Mirror
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mirror-main-to-opencode:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout source repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Force-push main to OpenCode GitLab
+        env:
+          OPENCODE_GITLAB_PAT: ${{ secrets.OPENCODE_GITLAB_PAT }}
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${OPENCODE_GITLAB_PAT}" ]]; then
+            echo "Missing required secret: OPENCODE_GITLAB_PAT"
+            exit 1
+          fi
+
+          REMOTE_URL="https://oauth2:${OPENCODE_GITLAB_PAT}@gitlab.opencode.de/bad-belzig/sva-studio/sva-studio.git"
+
+          git push --force "${REMOTE_URL}" refs/remotes/origin/main:refs/heads/main

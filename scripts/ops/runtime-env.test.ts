@@ -11,6 +11,7 @@ import {
   deriveInternalVerifyMaxAttempts,
   readStudioImageVerifyEvidence,
   resolveTenantRuntimeTargets,
+  shouldRunLocalProvisioningWorker,
   runExternalSmokeWithWarmup,
   waitForRemoteSmokeWarmup,
   shouldRetryExternalSmoke,
@@ -233,6 +234,14 @@ describe('assertLoginFlow', () => {
 });
 
 describe('buildLocalProvisioningWorkerCheck', () => {
+  it('skips the provisioning worker check for mock-auth profiles', () => {
+    expect(buildLocalProvisioningWorkerCheck('local-builder', null, () => false)).toMatchObject({
+      code: 'local_provisioning_worker_not_applicable',
+      name: 'keycloak-provisioning-worker',
+      status: 'skipped',
+    });
+  });
+
   it('returns a warning when the local provisioning worker state is missing', () => {
     expect(buildLocalProvisioningWorkerCheck('local-keycloak', null, () => false)).toMatchObject({
       code: 'local_keycloak_provisioning_worker_missing',
@@ -279,6 +288,14 @@ describe('buildLocalProvisioningWorkerCheck', () => {
       code: 'local_keycloak_provisioning_worker_running',
       status: 'ok',
     });
+  });
+});
+
+describe('shouldRunLocalProvisioningWorker', () => {
+  it('runs only for local keycloak profiles', () => {
+    expect(shouldRunLocalProvisioningWorker('local-keycloak')).toBe(true);
+    expect(shouldRunLocalProvisioningWorker('local-builder')).toBe(false);
+    expect(shouldRunLocalProvisioningWorker('studio')).toBe(false);
   });
 });
 

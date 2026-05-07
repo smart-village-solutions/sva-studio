@@ -15,15 +15,15 @@ import {
   createEmptyCreateForm,
   getCreateReadinessChecks,
   getCreateStepValidationMessages,
-  getErrorMessage,
   getPostCreateGuidance,
   INSTANCE_FIELD_HELP,
   isTenantSecretUserInputRequired,
   readSuggestedParentDomain,
-  WorkflowStatusBadge,
-} from './-instances-shared';
+} from './-instance-form-models';
+import { getErrorMessage } from './-instance-error-messages';
+import { WorkflowStatusBadge } from './-instance-status-badges';
+import type { CreateFormValues, CreateWizardStepKey } from './-instances-shared-types';
 
-import type { CreateFormValues, CreateWizardStepKey } from './-instances-shared';
 import type { IamInstanceListItem } from '@sva/core';
 
 const stepOrder = CREATE_WIZARD_STEPS.map((step) => step.key);

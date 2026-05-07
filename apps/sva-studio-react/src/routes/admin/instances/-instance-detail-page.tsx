@@ -19,7 +19,9 @@ import {
   ConfigurationStatusBadge,
   createDetailForm,
   type DetailWorkflowAction,
+  type EvidenceSource,
   getOperationsActionLabel,
+  getOperationsEvidenceSourceLabel,
   evaluateInstanceConfiguration,
   getErrorMessage,
   getStatusGuidance,
@@ -234,7 +236,7 @@ const OperationsStepsPanel = ({
     title: string;
     status: 'offen' | 'bereit' | 'läuft' | 'erfolgreich' | 'fehlgeschlagen';
     summary: string;
-    evidenceSource: string;
+    evidenceSource: EvidenceSource;
     checkedAt?: string;
     requestId?: string;
     action?: DetailWorkflowAction | 'focus_configuration' | 'rotate_client_secret' | 'probeTenantIamAccess' | 'reconcileKeycloak';
@@ -258,7 +260,7 @@ const OperationsStepsPanel = ({
             <OperationsStepStatusBadge status={step.status} />
           </div>
           <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-            <span>{t('admin.instances.operations.labels.evidence', { value: step.evidenceSource })}</span>
+            <span>{t('admin.instances.operations.labels.evidence', { value: getOperationsEvidenceSourceLabel(step.evidenceSource) })}</span>
             {step.checkedAt ? <span>{t('admin.instances.cockpit.checkedAt', { value: formatDateTime(step.checkedAt) })}</span> : null}
             {step.requestId ? <span>{t('admin.instances.tenantIam.requestId', { value: step.requestId })}</span> : null}
           </div>

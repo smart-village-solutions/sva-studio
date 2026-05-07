@@ -41,12 +41,11 @@ Im `new`-Pfad sind fehlende Realm-, Client- und Secret-Artefakte vor dem ersten 
     4. Realm anlegen
     5. Login-Client anlegen oder abgleichen
     6. Tenant-Admin-Client anlegen oder abgleichen
-    7. `instanceId`-Mapper sicherstellen
-    8. Realm-Rollen sicherstellen
-    9. Tenant-Admin anlegen oder auf Minimalprofil korrigieren
-    10. Erzeugte Client-Secrets in die Registry zurückschreiben
-    11. Abschlusszustand validieren
-    12. Realm-Grundaufbau erfolgreich
+    7. Realm-Rollen sicherstellen
+    8. Tenant-Admin anlegen oder auf Minimalprofil korrigieren
+    9. Erzeugte Client-Secrets in die Registry zurückschreiben
+    10. Abschlusszustand validieren
+    11. Realm-Grundaufbau erfolgreich
   - `existing`-Pfad:
     1. Vorbedingungen prüfen
     2. Live-Status laden
@@ -78,7 +77,7 @@ Im `new`-Pfad sind fehlende Realm-, Client- und Secret-Artefakte vor dem ersten 
     - welcher Schritt fehlgeschlagen ist
     - welche Vorbedingungen davor bereits erfolgreich waren
     - ob ein Retry, eine Konfigurationskorrektur oder eine Live-Pruefung der naechste Schritt ist
-  - Erfolgs-, Warn- und Fehlertexte muessen die konkrete Artefaktklasse nennen, z. B. `Realm`, `Login-Client`, `Tenant-Admin-Client`, `Mapper`, `Tenant-Admin`, `Tenant-Secret`, `Tenant-Admin-Client-Secret`.
+  - Erfolgs-, Warn- und Fehlertexte muessen die konkrete Artefaktklasse nennen, z. B. `Realm`, `Login-Client`, `Tenant-Admin-Client`, `Realm-Rollen`, `Tenant-Admin`, `Tenant-Secret`, `Tenant-Admin-Client-Secret`.
 
 - Decision: Die naechste Hauptaktion folgt einer festen Prioritaetsregel
   - Fuer `realmMode = new` wird die eine primaere naechste Aktion in dieser Reihenfolge abgeleitet:

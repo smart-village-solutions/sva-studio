@@ -209,7 +209,7 @@ describe('UserListPage', () => {
     await waitFor(() => expect(screen.getByText(/6 geprüft: 3 korrigiert, 1 manuell prüfen/i)).toBeTruthy());
     await waitFor(() =>
       expect(
-        screen.getByText(/Realm de-musterhausen, Quelle Instanz-Realm\. 2 Benutzer ohne `instanceId`/i)
+        screen.getByText(/Realm de-musterhausen, Quelle Instanz-Realm\./i)
       ).toBeTruthy()
     );
     expect(screen.getByText('1 Benutzerobjekte mit Diagnose: missing_instance_attribute')).toBeTruthy();

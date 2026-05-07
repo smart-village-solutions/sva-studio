@@ -918,6 +918,14 @@ export const i18nResources = {
           labels: {
             currentState: 'Gesamtzustand',
             evidence: 'Evidenz: {{value}}',
+            evidenceSources: {
+              registryContract: 'Registry-Vertrag',
+              workerPreflight: 'Worker-Preflight',
+              workerPlan: 'Worker-Plan',
+              keycloakRun: 'Keycloak-Lauf',
+              finalValidation: 'Abschlussvalidierung',
+              history: 'Historie',
+            },
           },
           followUpSummary:
             'Tenant-IAM-Basis, Modulzuordnung und weitere Folgearbeiten bleiben bewusst vom Realm-Grundaufbau getrennt.',
@@ -1160,7 +1168,7 @@ export const i18nResources = {
             displayName: 'Bitte einen Anzeigenamen angeben.',
             parentDomain: 'Bitte eine Parent-Domain angeben.',
             authRealm: 'Bitte ein Auth-Realm angeben.',
-            authRealmFormat: 'Bitte ein gueltiges Auth-Realm ohne Leerzeichen oder Fliesstext angeben.',
+            authRealmFormat: 'Bitte ein gültiges Auth-Realm ohne Leerzeichen oder Fließtext angeben.',
             authClientId: 'Bitte eine Auth-Client-ID angeben.',
             authClientSecret: 'Bitte ein Tenant-Client-Secret angeben.',
             tenantAdminClientId: 'Bitte eine Tenant-Admin-Client-ID angeben.',
@@ -1738,11 +1746,11 @@ export const i18nResources = {
           resultCount: '{{count}} Nutzer gefunden.',
           syncRunning: 'Synchronisierung läuft ...',
           syncEmpty:
-            'Keine neuen oder geänderten Benutzer gefunden. {{skippedCount}} ohne passenden Instanzkontext übersprungen.',
+            'Keine neuen oder geänderten Benutzer gefunden. {{skippedCount}} übersprungen.',
           syncResult:
-            '{{checkedCount}} geprüft: {{correctedCount}} korrigiert, {{manualReviewCount}} manuell prüfen. {{importedCount}} importiert, {{updatedCount}} aktualisiert, {{skippedCount}} ohne passenden Instanzkontext übersprungen.',
+            '{{checkedCount}} geprüft: {{correctedCount}} korrigiert, {{manualReviewCount}} manuell prüfen. {{importedCount}} importiert, {{updatedCount}} aktualisiert, {{skippedCount}} übersprungen.',
           syncDiagnostics:
-            'Realm {{authRealm}}, Quelle {{providerSource}}. {{matchedWithoutInstanceAttributeCount}} Benutzer ohne `instanceId` wurden über den Realm-Kontext zugeordnet.',
+            'Realm {{authRealm}}, Quelle {{providerSource}}.',
           syncObjectDiagnostics: '{{count}} Benutzerobjekte mit Diagnose: {{codes}}',
           diagnosticCodes: 'Diagnose: {{codes}}',
           syncOutcome: {
@@ -3425,6 +3433,14 @@ export const i18nResources = {
           labels: {
             currentState: 'Overall state',
             evidence: 'Evidence: {{value}}',
+            evidenceSources: {
+              registryContract: 'Registry contract',
+              workerPreflight: 'Worker preflight',
+              workerPlan: 'Worker plan',
+              keycloakRun: 'Keycloak run',
+              finalValidation: 'Final validation',
+              history: 'History',
+            },
           },
           followUpSummary:
             'Tenant IAM baseline, module assignment, and other follow-up work remain intentionally separate from core realm bootstrap.',
@@ -4213,11 +4229,11 @@ export const i18nResources = {
           resultCount: '{{count}} users found.',
           syncRunning: 'Synchronization in progress ...',
           syncEmpty:
-            'No new or changed users found. {{skippedCount}} skipped without matching instance context.',
+            'No new or changed users found. {{skippedCount}} skipped.',
           syncResult:
-            'Checked {{checkedCount}} users: {{correctedCount}} corrected, {{manualReviewCount}} require manual review. {{importedCount}} imported, {{updatedCount}} updated, {{skippedCount}} skipped without matching instance context.',
+            'Checked {{checkedCount}} users: {{correctedCount}} corrected, {{manualReviewCount}} require manual review. {{importedCount}} imported, {{updatedCount}} updated, {{skippedCount}} skipped.',
           syncDiagnostics:
-            'Realm {{authRealm}}, source {{providerSource}}. {{matchedWithoutInstanceAttributeCount}} users without `instanceId` were matched by realm scope.',
+            'Realm {{authRealm}}, source {{providerSource}}.',
           syncObjectDiagnostics: '{{count}} user objects with diagnostics: {{codes}}',
           diagnosticCodes: 'Diagnostics: {{codes}}',
           syncOutcome: {

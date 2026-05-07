@@ -176,6 +176,10 @@ export type RealmOperationsModel = {
   readonly summary: string;
   readonly steps: readonly OperationsStepModel[];
   readonly followUpActions: readonly OperationsDetailAction[];
+  readonly signals: {
+    readonly modeConflict: boolean;
+    readonly hasDrift: boolean;
+  };
 };
 
 export type HistoryWorkspaceModel = {
@@ -736,6 +740,9 @@ const isRegistryContractComplete = (instance: IamInstanceDetail) =>
 
 const createOperationStep = (input: OperationsStepModel): OperationsStepModel => input;
 
+const isNewRealmProvisioningStep = (stepKey: OperationsStepKey) =>
+  ['realm', 'login_client', 'tenant_admin_client', 'realm_roles', 'tenant_admin', 'secret_sync'].includes(stepKey);
+
 export const getOperationsActionLabel = (action: OperationsDetailAction): string => {
   switch (action) {
     case 'focus_configuration':
@@ -760,6 +767,23 @@ export const getOperationsActionLabel = (action: OperationsDetailAction): string
       return t('admin.instances.actions.probeTenantIamAccess');
     case 'reconcileKeycloak':
       return t('admin.instances.actions.reconcileKeycloak');
+  }
+};
+
+export const getOperationsEvidenceSourceLabel = (source: EvidenceSource): string => {
+  switch (source) {
+    case 'registry_contract':
+      return t('admin.instances.operations.labels.evidenceSources.registryContract');
+    case 'worker_preflight':
+      return t('admin.instances.operations.labels.evidenceSources.workerPreflight');
+    case 'worker_plan':
+      return t('admin.instances.operations.labels.evidenceSources.workerPlan');
+    case 'keycloak_run':
+      return t('admin.instances.operations.labels.evidenceSources.keycloakRun');
+    case 'final_validation':
+      return t('admin.instances.operations.labels.evidenceSources.finalValidation');
+    case 'history':
+      return t('admin.instances.operations.labels.evidenceSources.history');
   }
 };
 
@@ -894,18 +918,14 @@ const buildNewRealmArtifactSteps = (instance: IamInstanceDetail): OperationsStep
       requestId,
       status: isFinalKeycloakStateSatisfied(instance)
         ? 'erfolgreich'
-        : keycloakStatus
+        : runState.failed || runState.succeeded
           ? 'fehlgeschlagen'
           : runState.running || runState.planned
             ? 'läuft'
-            : runState.failed
-              ? 'fehlgeschlagen'
-              : 'offen',
+            : 'offen',
       summary: isFinalKeycloakStateSatisfied(instance)
         ? t('admin.instances.operations.new.stepSummaries.finalValidationReady')
-        : keycloakStatus
-          ? t('admin.instances.operations.new.stepSummaries.finalValidationFailed')
-          : runState.failed
+        : runState.failed || runState.succeeded
             ? t('admin.instances.operations.new.stepSummaries.finalValidationFailed')
             : t('admin.instances.operations.new.stepSummaries.finalValidationPending'),
     }),
@@ -1022,6 +1042,10 @@ export const buildNewRealmOperationsModel = (
     followUpActions: instance.status !== 'active' && isFinalKeycloakStateSatisfied(instance)
       ? ['activate_instance']
       : [],
+    signals: {
+      modeConflict: realmModeBlocked,
+      hasDrift: false,
+    },
   };
 };
 
@@ -1169,6 +1193,10 @@ export const buildExistingRealmOperationsModel = (
       : t('admin.instances.operations.existing.summary.reconcileReady'),
     steps,
     followUpActions: [],
+    signals: {
+      modeConflict: false,
+      hasDrift,
+    },
   };
 };
 
@@ -1183,7 +1211,7 @@ export const buildOperationsPrimaryAction = (model: RealmOperationsModel): Opera
       };
     }
     const preflightStep = model.steps.find((step) => step.key === 'worker_preflight');
-    if (preflightStep?.summary === t('admin.instances.operations.new.summary.modeConflict')) {
+    if (model.signals.modeConflict) {
       return {
         action: 'check_preflight',
         label: getOperationsActionLabel('check_preflight'),
@@ -1197,8 +1225,25 @@ export const buildOperationsPrimaryAction = (model: RealmOperationsModel): Opera
         reason: 'preflight_blocked',
       };
     }
+    const finalValidationStep = model.steps.find((step) => step.key === 'final_validation');
+    const followUpAction = model.followUpActions[0];
+    if (finalValidationStep?.status === 'erfolgreich' && followUpAction) {
+      return {
+        action: followUpAction,
+        label: getOperationsActionLabel(followUpAction),
+        reason: 'follow_up',
+      };
+    }
+    const workerPlanStep = model.steps.find((step) => step.key === 'worker_plan');
+    if (workerPlanStep?.status === 'bereit' || workerPlanStep?.status === 'fehlgeschlagen') {
+      return {
+        action: 'plan_provisioning',
+        label: getOperationsActionLabel('plan_provisioning'),
+        reason: 'follow_up',
+      };
+    }
     const latestFailure = model.steps.find((step) =>
-      ['realm', 'login_client', 'tenant_admin_client', 'realm_roles', 'tenant_admin'].includes(step.key)
+      isNewRealmProvisioningStep(step.key)
       && step.status === 'fehlgeschlagen'
     );
     if (latestFailure) {
@@ -1216,12 +1261,11 @@ export const buildOperationsPrimaryAction = (model: RealmOperationsModel): Opera
         reason: 'secret_sync',
       };
     }
-    const finalValidationStep = model.steps.find((step) => step.key === 'final_validation');
     const pendingArtifactStep = model.steps.find((step) =>
-      ['realm', 'login_client', 'tenant_admin_client', 'realm_roles', 'tenant_admin', 'secret_sync'].includes(step.key)
+      isNewRealmProvisioningStep(step.key)
       && step.status === 'offen'
     );
-    if (finalValidationStep?.status === 'fehlgeschlagen' && pendingArtifactStep) {
+    if (pendingArtifactStep) {
       return {
         action: 'execute_provisioning',
         label: getOperationsActionLabel('execute_provisioning'),
@@ -1235,11 +1279,17 @@ export const buildOperationsPrimaryAction = (model: RealmOperationsModel): Opera
         reason: 'final_validation',
       };
     }
-    const followUpAction = model.followUpActions[0] ?? 'activate_instance';
+    if (followUpAction) {
+      return {
+        action: followUpAction,
+        label: getOperationsActionLabel(followUpAction),
+        reason: 'follow_up',
+      };
+    }
     return {
-      action: followUpAction,
-      label: getOperationsActionLabel(followUpAction),
-      reason: 'follow_up',
+      action: 'check_keycloak_status',
+      label: getOperationsActionLabel('check_keycloak_status'),
+      reason: 'final_validation',
     };
   }
 
@@ -1267,10 +1317,18 @@ export const buildOperationsPrimaryAction = (model: RealmOperationsModel): Opera
       reason: 'final_validation',
     };
   }
+  const reconcileStep = model.steps.find((step) => step.key === 'reconcile');
+  if (model.signals.hasDrift || reconcileStep?.status === 'fehlgeschlagen') {
+    return {
+      action: 'reconcileKeycloak',
+      label: getOperationsActionLabel('reconcileKeycloak'),
+      reason: 'run_retry',
+    };
+  }
   return {
-    action: 'reconcileKeycloak',
-    label: getOperationsActionLabel('reconcileKeycloak'),
-    reason: 'run_retry',
+    action: 'check_keycloak_status',
+    label: getOperationsActionLabel('check_keycloak_status'),
+    reason: 'final_validation',
   };
 };
 

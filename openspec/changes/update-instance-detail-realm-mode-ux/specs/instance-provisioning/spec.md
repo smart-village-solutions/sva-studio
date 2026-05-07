@@ -27,7 +27,7 @@ Das System SHALL fuer die Instanz-Detailansicht denselben strukturellen Datensta
 #### Scenario: Neuer Realm orientiert sich an der tatsaechlichen Worker-Schrittkette
 
 - **WHEN** eine Instanz `realmMode = new` besitzt
-- **THEN** orientiert die Detailansicht die Aufbauphase mindestens an `Registry-Vertrag`, `Preflight`, `Plan`, `Realm`, `Login-Client`, `Tenant-Admin-Client`, `instanceId-Mapper`, `Realm-Rollen`, `Tenant-Admin`, `Secret-Sync` und `Abschlussvalidierung`
+- **THEN** orientiert die Detailansicht die Aufbauphase mindestens an `Registry-Vertrag`, `Preflight`, `Plan`, `Realm`, `Login-Client`, `Tenant-Admin-Client`, `Realm-Rollen`, `Tenant-Admin`, `Secret-Sync` und `Abschlussvalidierung`
 - **AND** behandelt sie diese Schritte als getrennt beobachtbare Artefaktphasen
 - **AND** vermeidet sie eine gleichwertige Vermischung von Registry-Vorbereitung, Keycloak-Ausfuehrung und nachgelagerter Validierung
 
@@ -41,7 +41,7 @@ Das System SHALL fuer die Instanz-Detailansicht denselben strukturellen Datensta
 #### Scenario: Abschlussvalidierung ist vom Ausfuehrungsschritt getrennt
 
 - **WHEN** ein Provisioning-Lauf fuer einen neuen Realm abgeschlossen wurde
-- **THEN** prueft die Detailansicht den resultierenden Zustand getrennt von der eigentlichen Ausfuehrung gegen Realm, Clients, Mapper, Secrets, Rollen und Tenant-Admin
+- **THEN** prueft die Detailansicht den resultierenden Zustand getrennt von der eigentlichen Ausfuehrung gegen Realm, Clients, Secrets, Rollen und Tenant-Admin
 - **AND** kann dadurch einen Fehler in der Abschlussvalidierung anzeigen, obwohl fruehere Ausfuehrungsschritte erfolgreich waren
 
 #### Scenario: Neuer Realm mit bereits existierendem Live-Realm erzeugt einen Moduskonflikt
@@ -78,7 +78,7 @@ Das System SHALL fuer die Instanz-Detailansicht denselben strukturellen Datensta
 
 #### Scenario: Neuer Realm erreicht einen expliziten Abschluss vor optionalen Folgearbeiten
 
-- **WHEN** Realm, Clients, Mapper, Rollen, Tenant-Admin, Secret-Sync und Abschlussvalidierung fuer eine Instanz `realmMode = new` erfolgreich sind
+- **WHEN** Realm, Clients, Rollen, Tenant-Admin, Secret-Sync und Abschlussvalidierung fuer eine Instanz `realmMode = new` erfolgreich sind
 - **THEN** betrachtet die Detailansicht den Realm-Grundaufbau als erfolgreich abgeschlossen
 - **AND** behandelt sie optionale Aktivierung, Modulzuordnung oder modulbezogene IAM-Synchronisation nicht als blockierenden Restschritt desselben Kernflows
 

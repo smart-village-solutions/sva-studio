@@ -12,6 +12,7 @@ import {
   getCreateReadinessChecks,
   getErrorMessage,
   getCreateStepValidationMessages,
+  getOperationsEvidenceSourceLabel,
   getEffectiveTenantIamStatus,
   getKeycloakStatusEntries,
   getPostCreateGuidance,
@@ -83,13 +84,18 @@ describe('instances shared helpers', () => {
     ]);
   });
 
+  it('maps operations evidence sources to translated labels', () => {
+    expect(getOperationsEvidenceSourceLabel('worker_preflight')).toBe('Worker-Preflight');
+    expect(getOperationsEvidenceSourceLabel('final_validation')).toBe('Abschlussvalidierung');
+  });
+
   it('returns a validation message for malformed auth realms', () => {
     const formValues = createEmptyCreateForm('');
     formValues.authRealm =
       'Bitte ein Tenant-Client-Secret angeben. Bitte ein Tenant-Admin-Client-Secret angeben.';
 
     expect(getCreateStepValidationMessages('auth', formValues)).toContain(
-      'Bitte ein gueltiges Auth-Realm ohne Leerzeichen oder Fliesstext angeben.'
+      'Bitte ein gültiges Auth-Realm ohne Leerzeichen oder Fließtext angeben.'
     );
   });
 
@@ -1095,10 +1101,40 @@ describe('instances shared helpers', () => {
     );
 
     expect(model.steps.find((step) => step.key === 'realm')).toMatchObject({ status: 'offen' });
-    expect(model.steps.find((step) => step.key === 'final_validation')).toMatchObject({ status: 'fehlgeschlagen' });
+    expect(model.steps.find((step) => step.key === 'final_validation')).toMatchObject({ status: 'offen' });
     expect(buildOperationsPrimaryAction(model)).toMatchObject({
       action: 'execute_provisioning',
       reason: 'run_retry',
+    });
+  });
+
+  it('prefers the plan action before provisioning when preflight passed but no worker plan exists yet', () => {
+    const model = buildNewRealmOperationsModel(
+      createDetailFixture({
+        keycloakPreflight: {
+          overallStatus: 'ready',
+          checkedAt: '2026-05-06T14:46:53.000Z',
+          checks: [
+            {
+              checkKey: 'realm_mode',
+              status: 'ready',
+              title: 'Realm-Modus',
+              summary: 'Der Ziel-Realm fehlt und kann neu angelegt werden.',
+              details: {},
+            },
+          ],
+        },
+        keycloakPlan: undefined,
+        keycloakStatus: undefined,
+        latestKeycloakProvisioningRun: undefined,
+        keycloakProvisioningRuns: [],
+      }),
+      null,
+    );
+
+    expect(buildOperationsPrimaryAction(model)).toMatchObject({
+      action: 'plan_provisioning',
+      reason: 'follow_up',
     });
   });
 
@@ -1215,6 +1251,48 @@ describe('instances shared helpers', () => {
     expect(buildOperationsPrimaryAction(model)).toMatchObject({
       action: 'reconcileKeycloak',
       reason: 'run_retry',
+    });
+  });
+
+  it('does not suggest reconcile for an existing realm without drift', () => {
+    const model = buildExistingRealmOperationsModel(
+      createDetailFixture({
+        realmMode: 'existing',
+        authClientSecretConfigured: true,
+        tenantAdminClient: {
+          clientId: 'sva-studio-realm-admin',
+          secretConfigured: true,
+        },
+        keycloakPreflight: {
+          overallStatus: 'ready',
+          checkedAt: '2026-01-02T09:00:00.000Z',
+          checks: [],
+        },
+        keycloakStatus: {
+          realmExists: true,
+          clientExists: true,
+          tenantAdminClientExists: true,
+          tenantAdminExists: true,
+          tenantAdminHasSystemAdmin: true,
+          tenantAdminHasInstanceRegistryAdmin: false,
+          redirectUrisMatch: true,
+          logoutUrisMatch: true,
+          webOriginsMatch: true,
+          clientSecretConfigured: true,
+          tenantClientSecretReadable: true,
+          clientSecretAligned: true,
+          tenantAdminClientSecretConfigured: true,
+          tenantAdminClientSecretReadable: true,
+          tenantAdminClientSecretAligned: true,
+          runtimeSecretSource: 'tenant',
+        },
+      }),
+      null,
+    );
+
+    expect(buildOperationsPrimaryAction(model)).toMatchObject({
+      action: 'check_keycloak_status',
+      reason: 'final_validation',
     });
   });
 

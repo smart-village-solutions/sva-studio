@@ -242,20 +242,6 @@ const resolveSyncActor = async (
   return { actor: actorResolution.actor };
 };
 
-export const collectSyncCandidates = (
-  listedUsers: readonly IdentityListedUser[],
-): {
-  matchingUsers: IdentityListedUser[];
-  skippedCount: number;
-  skippedInstanceIds: ReadonlySet<string>;
-} => {
-  return {
-    matchingUsers: [...listedUsers],
-    skippedCount: 0,
-    skippedInstanceIds: new Set<string>(),
-  };
-};
-
 const mapSyncErrorResponse = (error: unknown, requestId?: string): Response | undefined => {
   if (error instanceof KeycloakUserSyncBlockedError) {
     return createApiError(
@@ -323,33 +309,14 @@ export const runKeycloakUserImportSync = async (input: {
     trace_id: input.traceId,
   });
   const { resolution, users: listedUsers } = await listAllKeycloakUsers(input.instanceId);
-  const { matchingUsers, skippedCount, skippedInstanceIds } = collectSyncCandidates(listedUsers);
-
-  if (skippedCount > 0) {
-    logger.info('Keycloak user sync skipped users because instance ids did not match', {
-      operation: 'sync_keycloak_users',
-      instance_id: input.instanceId,
-      auth_realm: resolution.realm,
-      provider_source: resolution.source,
-      skipped_count: skippedCount,
-      sample_instance_ids: [...skippedInstanceIds].join(','),
-      request_id: input.requestId,
-      trace_id: input.traceId,
-    });
-  }
-
-  const skippedInstanceIdSamples = [...skippedInstanceIds];
-  const diagnostics =
-    skippedInstanceIdSamples.length > 0
-      ? {
-          authRealm: resolution.realm,
-          providerSource: resolution.source,
-          executionMode: resolution.executionMode,
-          ...(skippedInstanceIdSamples.length > 0
-            ? { skippedInstanceIds: skippedInstanceIdSamples }
-            : {}),
-        }
-      : undefined;
+  const matchingUsers = [...listedUsers];
+  const skippedCount = 0;
+  const skippedInstanceIds = new Set<string>();
+  const diagnostics = {
+    authRealm: resolution.realm,
+    providerSource: resolution.source,
+    executionMode: resolution.executionMode,
+  } as const;
 
   const report = await withInstanceScopedDb(input.instanceId, async (client) => {
     let importedCount = 0;

@@ -40,7 +40,7 @@ Das System MUST die Instanz-Detailseite unter `/admin/instances/:instanceId` so 
 #### Scenario: Neuer Realm fuehrt ueber die tatsaechlichen technischen Teilphasen
 
 - **WENN** `realmMode` einer Instanz auf `new` steht
-- **DANN** bildet die Detailseite den Aufbaupfad mindestens entlang der Teilphasen `Registry-Vertrag`, `Vorbedingungen`, `Worker-Plan`, `Realm`, `Login-Client`, `Tenant-Admin-Client`, `instanceId-Mapper`, `Realm-Rollen`, `Tenant-Admin`, `Secret-Sync` und `Abschlussvalidierung` ab
+- **DANN** bildet die Detailseite den Aufbaupfad mindestens entlang der Teilphasen `Registry-Vertrag`, `Vorbedingungen`, `Worker-Plan`, `Realm`, `Login-Client`, `Tenant-Admin-Client`, `Realm-Rollen`, `Tenant-Admin`, `Secret-Sync` und `Abschlussvalidierung` ab
 - **UND** fasst sie diese Teilphasen nicht zu einer einzigen unscharfen Gesamtaktion ohne Zwischenschritte zusammen
 - **UND** bleibt fuer einen Operator erkennbar, welche Teilphase bereits erfolgreich, welche laufend und welche als naechste vorgesehen ist
 
@@ -75,7 +75,7 @@ Das System MUST die Instanz-Detailseite unter `/admin/instances/:instanceId` so 
 #### Scenario: Neuer Realm endet im Cockpit beim erfolgreichen Realm-Grundaufbau
 
 - **WENN** `realmMode` einer Instanz auf `new` steht
-- **UND** Realm, Clients, Mapper, Rollen, Tenant-Admin, Secret-Sync und Abschlussvalidierung erfolgreich sind
+- **UND** Realm, Clients, Rollen, Tenant-Admin, Secret-Sync und Abschlussvalidierung erfolgreich sind
 - **DANN** markiert die Detailseite den `new`-Kernworkflow als fachlich abgeschlossen
 - **UND** behandelt sie eine optionale Instanzaktivierung oder nachgelagerte Modul-/IAM-Folgearbeiten nicht als noch fehlenden Pflichtschritt desselben Kernworkflows
 

@@ -175,12 +175,14 @@ describe('InstanceDetailPage', () => {
   it('loads the detail page, shows the new overview first, and saves configuration changes', async () => {
     const loadInstance = vi.fn().mockResolvedValue(true);
     const updateInstance = vi.fn().mockResolvedValue(true);
+    const refreshKeycloakStatus = vi.fn().mockResolvedValue(true);
     const reconcileKeycloak = vi.fn().mockResolvedValue(true);
 
     useInstancesMock.mockReturnValue(
       createInstancesApiState({
         loadInstance,
         updateInstance,
+        refreshKeycloakStatus,
         reconcileKeycloak,
       })
     );
@@ -197,9 +199,10 @@ describe('InstanceDetailPage', () => {
     expect(screen.getByText('Bestehenden Realm abgleichen')).toBeTruthy();
     expect(screen.getByText('Diagnose- und Reconcile-Schritte')).toBeTruthy();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Realm anwenden' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Keycloak-Status prüfen' }));
     await waitFor(() => {
-      expect(reconcileKeycloak).toHaveBeenCalledWith('demo', {});
+      expect(refreshKeycloakStatus).toHaveBeenCalledWith('demo');
+      expect(reconcileKeycloak).not.toHaveBeenCalled();
     });
 
     await activateTab('Konfiguration');

@@ -1,8 +1,8 @@
 import { Badge } from '../../../components/ui/badge';
 import { t } from '../../../i18n';
+import type { OperationStepStatus } from './-instance-detail-operations-types';
 import type {
   InstanceConfigurationOverallStatus,
-  OperationStepStatus,
   WorkflowStepState,
 } from './-instances-shared-types';
 

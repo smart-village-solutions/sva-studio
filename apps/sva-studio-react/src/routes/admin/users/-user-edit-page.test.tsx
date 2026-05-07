@@ -853,6 +853,14 @@ describe('UserEditPage', () => {
 
   it('falls back to the generic message for null and unknown errors', () => {
     expect(userErrorMessage(null)).toBe('Nutzer konnten nicht geladen werden.');
+    expect(userErrorMessage(null, 'mutation')).toBe('Die Nutzeraktion konnte nicht abgeschlossen werden.');
+    expect(
+      userErrorMessage({
+        status: 400,
+        code: 'invalid_request',
+        message: 'invalid payload',
+      } as never, 'mutation')
+    ).toBe('Die Nutzeraktion konnte nicht abgeschlossen werden.');
     expect(
       userErrorMessage({
         status: 404,
@@ -867,6 +875,36 @@ describe('UserEditPage', () => {
         message: 'Failed to fetch',
       } as never)
     ).toBe('Technischer Fehler beim Laden der Nutzer: Failed to fetch');
+    expect(
+      userErrorMessage({
+        status: 0,
+        code: 'non_json_response',
+        message: 'upstream proxy text',
+      } as never, 'mutation')
+    ).toBe('Technischer Fehler bei der Nutzeraktion: upstream proxy text');
+    expect(
+      userErrorMessage({
+        status: 500,
+        code: 'internal_error',
+        message: '   ',
+      } as never, 'mutation')
+    ).toBe('Die Nutzeraktion konnte nicht abgeschlossen werden.');
+    expect(
+      userErrorMessage({
+        status: 500,
+        code: 'unknown_error',
+        message: 'reconcile',
+        classification: 'keycloak_reconcile',
+      } as never)
+    ).toBe('Der Benutzerabgleich mit Keycloak ist fehlgeschlagen oder erfordert manuelle Nacharbeit. Bitte den Reconcile-Befund prüfen.');
+    expect(
+      userErrorMessage({
+        status: 503,
+        code: 'unknown_error',
+        message: 'recovery',
+        diagnosticStatus: 'recovery_laeuft',
+      } as never)
+    ).toBe('Die Sitzung wird gerade wiederhergestellt oder ist instabil. Bitte erneut anmelden.');
     expect(
       userErrorMessage({
         status: 500,

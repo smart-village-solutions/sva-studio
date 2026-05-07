@@ -349,7 +349,7 @@ Zulässig zur Übernahme oder engen Anlehnung sind:
 
 Nicht zulässig zur produktiven Übernahme sind:
 
-- `Newcms`-Hooks für Datenladen, Mutation, Auth oder Kontextauflosung
+- `Newcms`-Hooks für Datenladen, Mutation, Auth oder Kontextauflösung
 - `Newcms`-API-Clients, Edge-Functions oder direkte Supabase-Aufrufe
 - `Newcms`-spezifische Zustandscontainer, globale Stores oder implizite Datenlebenszyklen
 - `Newcms`-Berechtigungslogik, die nicht auf `waste-management.*` und Host-Guards gemappt wurde

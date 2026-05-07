@@ -90,6 +90,7 @@ vi.mock('./user-detail-query.js', () => ({
 describe('sendPasswordSetupEmailInternal', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    state.ensureActorCanManageTarget.mockReturnValue({ ok: true });
     state.resolveUserMutationActor.mockResolvedValue({
       actor: {
         instanceId: 'instance-1',
@@ -180,5 +181,183 @@ describe('sendPasswordSetupEmailInternal', () => {
       error: { code: 'not_found', message: 'Nutzer nicht gefunden.' },
       requestId: 'req-1',
     });
+  });
+
+  it('replays an existing idempotent response', async () => {
+    state.reserveIdempotency.mockResolvedValue({
+      status: 'replay',
+      responseStatus: 200,
+      responseBody: {
+        data: { status: 'sent' },
+        requestId: 'req-1',
+      },
+    });
+    const { sendPasswordSetupEmailInternal } = await import('./user-password-setup-email-handler.js');
+
+    const response = await sendPasswordSetupEmailInternal(
+      new Request('http://localhost/api/v1/iam/users/user-1/send-password-setup-email', {
+        method: 'POST',
+        body: '{}',
+      }),
+      {
+        sessionId: 'session-1',
+        user: {
+          id: 'kc-actor-1',
+          instanceId: 'instance-1',
+          roles: ['system_admin'],
+        },
+      }
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      data: { status: 'sent' },
+      requestId: 'req-1',
+    });
+    expect(state.resolveUserDetail).not.toHaveBeenCalled();
+  });
+
+  it('returns an idempotency conflict when the key was reused with a different payload', async () => {
+    state.reserveIdempotency.mockResolvedValue({
+      status: 'conflict',
+      message: 'idempotency mismatch',
+    });
+    const { sendPasswordSetupEmailInternal } = await import('./user-password-setup-email-handler.js');
+
+    const response = await sendPasswordSetupEmailInternal(
+      new Request('http://localhost/api/v1/iam/users/user-1/send-password-setup-email', {
+        method: 'POST',
+        body: '{}',
+      }),
+      {
+        sessionId: 'session-1',
+        user: {
+          id: 'kc-actor-1',
+          instanceId: 'instance-1',
+          roles: ['system_admin'],
+        },
+      }
+    );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      error: { code: 'idempotency_key_reuse', message: 'idempotency mismatch' },
+      requestId: 'req-1',
+    });
+  });
+
+  it('returns forbidden when the actor cannot manage the target user', async () => {
+    state.ensureActorCanManageTarget.mockReturnValue({
+      ok: false,
+      code: 'forbidden',
+      message: 'Forbidden target',
+    });
+    const { sendPasswordSetupEmailInternal } = await import('./user-password-setup-email-handler.js');
+
+    const response = await sendPasswordSetupEmailInternal(
+      new Request('http://localhost/api/v1/iam/users/user-1/send-password-setup-email', {
+        method: 'POST',
+        body: '{}',
+      }),
+      {
+        sessionId: 'session-1',
+        user: {
+          id: 'kc-actor-1',
+          instanceId: 'instance-1',
+          roles: ['system_admin'],
+        },
+      }
+    );
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toEqual({
+      error: { code: 'forbidden', message: 'Forbidden target' },
+      requestId: 'req-1',
+    });
+    expect(state.completeIdempotency).toHaveBeenCalledWith(
+      expect.objectContaining({
+        responseStatus: 403,
+        status: 'FAILED',
+      })
+    );
+  });
+
+  it('returns keycloak_unavailable when the provider cannot send execute-actions emails', async () => {
+    state.requireUserMutationIdentityProvider.mockResolvedValue({
+      provider: {},
+    });
+    const { sendPasswordSetupEmailInternal } = await import('./user-password-setup-email-handler.js');
+
+    const response = await sendPasswordSetupEmailInternal(
+      new Request('http://localhost/api/v1/iam/users/user-1/send-password-setup-email', {
+        method: 'POST',
+        body: '{}',
+      }),
+      {
+        sessionId: 'session-1',
+        user: {
+          id: 'kc-actor-1',
+          instanceId: 'instance-1',
+          roles: ['system_admin'],
+        },
+      }
+    );
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toEqual({
+      error: {
+        code: 'keycloak_unavailable',
+        message: 'Einladungs-E-Mail zum Passwort setzen konnte nicht an Keycloak übergeben werden.',
+      },
+      requestId: 'req-1',
+    });
+  });
+
+  it('maps execute-actions-email failures to keycloak_unavailable and writes the failure audit', async () => {
+    state.requireUserMutationIdentityProvider.mockResolvedValue({
+      provider: {
+        executeActionsEmail: vi.fn(async () => {
+          throw new Error('smtp-down');
+        }),
+      },
+    });
+    const { sendPasswordSetupEmailInternal } = await import('./user-password-setup-email-handler.js');
+
+    const response = await sendPasswordSetupEmailInternal(
+      new Request('http://localhost/api/v1/iam/users/user-1/send-password-setup-email', {
+        method: 'POST',
+        body: '{}',
+      }),
+      {
+        sessionId: 'session-1',
+        user: {
+          id: 'kc-actor-1',
+          instanceId: 'instance-1',
+          roles: ['system_admin'],
+        },
+      }
+    );
+
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toEqual({
+      error: {
+        code: 'internal_error',
+        message: 'Einladungs-E-Mail zum Passwort setzen konnte nicht gesendet werden.',
+      },
+      requestId: 'req-1',
+    });
+    expect(state.emitActivityLog).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        eventType: 'user.password_setup_email_failed',
+        result: 'failure',
+      })
+    );
+    expect(state.completeIdempotency).toHaveBeenCalledWith(
+      expect.objectContaining({
+        responseStatus: 500,
+        status: 'FAILED',
+      })
+    );
   });
 });

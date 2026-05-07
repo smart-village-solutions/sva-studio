@@ -1,0 +1,64 @@
+publiccodeYmlVersion: "0.3"
+name: SVA Studio
+url: "https://github.com/smart-village-solutions/sva-studio"
+landingURL: "https://smart-village.app"
+softwareType: "standalone/web"
+platforms:
+  - web
+categories:
+  - content-management
+  - identity-management
+  - digital-citizenship
+  - data-collection
+  - workflow-management
+developmentStatus: development
+roadmap: "https://smart-village-solutions.github.io/sva-studio/"
+localisation:
+  localisationReady: false
+  availableLanguages:
+    - de
+description:
+  de:
+    genericName: Verwaltungs- und Redaktionsplattform
+    shortDescription: >-
+      SVA Studio ist eine modulare Open-Source-Plattform für kommunales
+      Content-Management, Benutzerverwaltung, App-Design, Module und
+      Schnittstellen.
+    longDescription: >-
+      SVA Studio modernisiert das Redaktionssystem der Smart Village App zu
+      einer integrierten, API-first ausgerichteten Plattform für Kommunen und
+      andere öffentliche Organisationen. Das System bündelt Content-Management,
+      Identitäts- und Rechteverwaltung, Design- und Modulkonfiguration sowie
+      die Anbindung externer Fachverfahren in einer erweiterbaren Webanwendung.
+      Der Schwerpunkt liegt auf typsicherer, modularer Architektur,
+      nachnutzbaren Schnittstellen, sicherem Betrieb und der Unterstützung
+      kommunaler Redaktions- und Verwaltungsprozesse.
+features:
+  - Modulare Webplattform für kommunales Content-Management
+  - Rollen- und Rechteverwaltung mit OIDC- und Session-Unterstützung
+  - Typsicheres Routing und pluginfähige Erweiterungsarchitektur
+  - API-first-Ansatz für Apps, Websites und weitere Ausgabekanäle
+  - Betriebsprofile für lokale Entwicklung und produktionsnahen Studio-Betrieb
+  - OpenTelemetry-, Monitoring- und Quality-Gate-Integration
+screenshots:
+  - "docs/images/mockup-01-2026.png"
+intendedAudience:
+  countries:
+    - de
+scope:
+  - government
+  - local-authorities
+  - communication-and-information
+  - digital-citizenship
+maintenance:
+  type: community
+  contacts:
+    - name: Philipp Wilimzig
+      affiliation: Smart Village Solutions SVS GmbH
+      email: operations@smart-village.app
+legal:
+  license: EUPL-1.2
+  repoOwner: Smart Village Solutions SVS GmbH
+  mainCopyrightOwner: Smart Village Solutions SVS GmbH
+documentation: "https://github.com/smart-village-solutions/sva-studio#readme"
+logo: "docs/images/smart-village-app-logo.png"

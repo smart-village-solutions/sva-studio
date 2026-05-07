@@ -636,7 +636,8 @@ describe('instance registry service facade', () => {
       }),
       getInstanceById: vi.fn(async () => baseInstance),
     });
-    const service = createInstanceRegistryService(createDeps(repository));
+    const deps = createDeps(repository);
+    const service = createInstanceRegistryService(deps);
 
     await expect(
       service.bootstrapAdminStructure({
@@ -651,6 +652,10 @@ describe('instance registry service facade', () => {
     expect(repository.assignModule).not.toHaveBeenCalled();
     expect(repository.revokeModule).not.toHaveBeenCalled();
     expect(repository.syncAssignedModuleIam).toHaveBeenCalled();
+    expect(deps.invalidatePermissionSnapshots).toHaveBeenCalledWith({
+      instanceId: 'demo',
+      trigger: 'instance_module_assigned',
+    });
     expect(repository.appendAuditEvent).not.toHaveBeenCalledWith(
       expect.objectContaining({
         eventType: 'instance_admin_bootstrapped',

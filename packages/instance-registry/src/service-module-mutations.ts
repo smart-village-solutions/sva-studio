@@ -149,24 +149,33 @@ export const createBootstrapAdminStructureHandler =
       contracts: resolveAssignedModuleContracts(deps, assignedModuleIds),
     });
 
-    await deps.repository.syncInstanceAdminBootstrap({
-      instanceId: input.instanceId,
-      groupKey: ADMIN_GROUP_KEY,
-      groupDisplayName: ADMIN_GROUP_DISPLAY_NAME,
-      coreRole: {
-        roleKey: CORE_ADMIN_ROLE_KEY,
-        displayName: CORE_ADMIN_ROLE_DISPLAY_NAME,
-        permissionKeys: [...CORE_ADMIN_PERMISSION_KEYS],
-      },
-      moduleRoles: requestedModuleIds.map((moduleId) => ({
-        moduleId,
-        roleKey: toModuleAdminRoleKey(moduleId),
-        displayName: toModuleAdminRoleDisplayName(moduleId),
-        permissionKeys: [...(registry.get(moduleId)?.permissionIds ?? [])],
-      })),
-    });
+    let bootstrapCompleted = false;
+    try {
+      await deps.repository.syncInstanceAdminBootstrap({
+        instanceId: input.instanceId,
+        groupKey: ADMIN_GROUP_KEY,
+        groupDisplayName: ADMIN_GROUP_DISPLAY_NAME,
+        coreRole: {
+          roleKey: CORE_ADMIN_ROLE_KEY,
+          displayName: CORE_ADMIN_ROLE_DISPLAY_NAME,
+          permissionKeys: [...CORE_ADMIN_PERMISSION_KEYS],
+        },
+        moduleRoles: requestedModuleIds.map((moduleId) => ({
+          moduleId,
+          roleKey: toModuleAdminRoleKey(moduleId),
+          displayName: toModuleAdminRoleDisplayName(moduleId),
+          permissionKeys: [...(registry.get(moduleId)?.permissionIds ?? [])],
+        })),
+      });
+      bootstrapCompleted = true;
+    } finally {
+      await invalidateInstancePermissionSnapshots(
+        deps,
+        input.instanceId,
+        bootstrapCompleted ? 'instance_admin_bootstrapped' : 'instance_module_assigned'
+      );
+    }
 
-    await invalidateInstancePermissionSnapshots(deps, input.instanceId, 'instance_admin_bootstrapped');
     await deps.repository.appendAuditEvent({
       instanceId: input.instanceId,
       eventType: 'instance_admin_bootstrapped',

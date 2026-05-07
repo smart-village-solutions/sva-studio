@@ -750,10 +750,12 @@ const resolveAuthMeState = async (user: { id: string; instanceId?: string }): Pr
 
 const createAuthMeResponse = (
   user: Record<string, unknown>,
-  resolution: AuthMeResolution
+  resolution: AuthMeResolution,
+  expiresAt?: number
 ) =>
   new Response(
     JSON.stringify({
+      ...(typeof expiresAt === 'number' ? { expiresAt } : {}),
       user: {
         ...user,
         assignedModules: resolution.assignedModules,
@@ -958,7 +960,7 @@ export const meHandler = async (request: Request): Promise<Response> => {
       ...buildLogContext(),
     });
 
-    return withAuthenticatedUser(request, async ({ user }) => {
+    return withAuthenticatedUser(request, async ({ user, sessionExpiresAt, sessionId }) => {
       const resolution = await resolveAuthMeState(user);
 
       logger.debug('Auth check successful', {
@@ -971,7 +973,14 @@ export const meHandler = async (request: Request): Promise<Response> => {
         ...buildLogContext(user.instanceId ? { kind: 'instance', instanceId: user.instanceId } : undefined),
       });
 
-      return createAuthMeResponse(user, resolution);
+      const response = createAuthMeResponse(user, resolution, sessionExpiresAt);
+      attachSessionCookie(
+        response,
+        getAuthConfig().sessionCookieName,
+        sessionId,
+        sessionExpiresAt
+      );
+      return response;
     });
   });
 };

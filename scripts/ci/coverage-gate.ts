@@ -316,6 +316,10 @@ export function projectFromCoveragePath(coverageSummaryPath: string): string | n
   return path.basename(projectRoot);
 }
 
+function isWorkspaceProjectRoot(projectRoot: string): boolean {
+  return ['project.json', 'package.json'].some((manifest) => fs.existsSync(path.join(projectRoot, manifest)));
+}
+
 export function toMetricValues(summary: CoverageSummary, projectRoot?: string): MetricFloors {
   if (projectRoot) {
     const normalizedProjectRoot = `${path.resolve(projectRoot)}${path.sep}`;
@@ -437,6 +441,10 @@ function loadCoverageData(rootDir: string): LoadedCoverageData {
     }
 
     const projectRoot = path.dirname(path.dirname(summaryPath));
+    if (!isWorkspaceProjectRoot(projectRoot)) {
+      return acc;
+    }
+
     acc[projectName] = toMetricValues(readJson<CoverageSummary>(summaryPath), projectRoot);
     return acc;
   }, {});
@@ -446,6 +454,11 @@ function loadCoverageData(rootDir: string): LoadedCoverageData {
     (acc, lcovPath) => {
       const projectName = projectFromCoveragePath(lcovPath.replace(/lcov\.info$/, 'coverage-summary.json'));
       if (!projectName) {
+        return acc;
+      }
+
+      const projectRoot = path.dirname(path.dirname(lcovPath));
+      if (!isWorkspaceProjectRoot(projectRoot)) {
         return acc;
       }
 

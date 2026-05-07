@@ -11,7 +11,11 @@
  * TanStack-Start-Request-Kontext isoliert – keine Deduplizierung nötig.
  */
 
+import type { IamHttpError } from './iam-api';
+import { readIamErrorResponse } from './iam-api';
+
 export type AuthMeResult = {
+  readonly error?: IamHttpError;
   readonly ok: boolean;
   readonly status: number;
   readonly payload: unknown;
@@ -32,8 +36,26 @@ export const fetchAuthMeSingleFlight = (fetchFn: FetchFn): Promise<AuthMeResult>
 
   inFlight = fetchFn()
     .then(async (response): Promise<AuthMeResult> => {
-      const payload = response.ok ? ((await response.json()) as unknown) : null;
-      return { ok: response.ok, status: response.status, payload };
+      if (response.ok) {
+        return {
+          ok: true,
+          status: response.status,
+          payload: (await response.json()) as unknown,
+        };
+      }
+
+      const contentType = response.headers.get('content-type') ?? '';
+      if (contentType.includes('application/json')) {
+        const error = await readIamErrorResponse(response);
+        return {
+          error,
+          ok: false,
+          payload: null,
+          status: response.status,
+        };
+      }
+
+      return { ok: false, status: response.status, payload: null };
     })
     .finally(() => {
       inFlight = null;

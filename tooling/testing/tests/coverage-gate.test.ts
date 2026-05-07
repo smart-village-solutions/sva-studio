@@ -16,6 +16,22 @@ function createTempWorkspace(): string {
   return rootDir;
 }
 
+function ensureProjectManifest(rootDir: string, projectPath: string): void {
+  const manifestPath = path.join(rootDir, projectPath, 'package.json');
+  fs.mkdirSync(path.dirname(manifestPath), { recursive: true });
+  fs.writeFileSync(
+    manifestPath,
+    JSON.stringify(
+      {
+        name: path.basename(projectPath),
+        private: true,
+      },
+      null,
+      2
+    )
+  );
+}
+
 function writePolicy(rootDir: string, overrides: Record<string, unknown> = {}): void {
   const basePolicy = {
     version: 1,
@@ -76,6 +92,7 @@ function writeCoverageSummary(
   branches = 0,
   projectPath = 'packages/server-runtime'
 ): void {
+  ensureProjectManifest(rootDir, projectPath);
   const summaryPath = path.join(rootDir, projectPath, 'coverage');
   fs.mkdirSync(summaryPath, { recursive: true });
 
@@ -111,6 +128,7 @@ function writeLcovSummary(
     brh: 2,
   }
 ): void {
+  ensureProjectManifest(rootDir, projectPath);
   const coverageDir = path.join(rootDir, projectPath, 'coverage');
   fs.mkdirSync(coverageDir, { recursive: true });
   const lines = [

@@ -1,6 +1,7 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { readAuthDiagnosticTrail } from '../lib/auth-diagnostics';
 import { AuthProvider, useAuth } from './auth-provider';
 
 const browserLoggerMock = vi.hoisted(() => ({
@@ -11,6 +12,7 @@ const browserLoggerMock = vi.hoisted(() => ({
 }));
 
 const localStorageState = new Map<string, string>();
+const sessionStorageState = new Map<string, string>();
 const localStorageMock = {
   getItem: vi.fn((key: string) => localStorageState.get(key) ?? null),
   setItem: vi.fn((key: string, value: string) => {
@@ -22,6 +24,34 @@ const localStorageMock = {
   clear: vi.fn(() => {
     localStorageState.clear();
   }),
+};
+const sessionStorageMock = {
+  getItem: vi.fn((key: string) => sessionStorageState.get(key) ?? null),
+  setItem: vi.fn((key: string, value: string) => {
+    sessionStorageState.set(key, value);
+  }),
+  removeItem: vi.fn((key: string) => {
+    sessionStorageState.delete(key);
+  }),
+  clear: vi.fn(() => {
+    sessionStorageState.clear();
+  }),
+};
+
+const createJsonResponse = (status: number, body: unknown): Response =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: {
+      'content-type': 'application/json',
+      'X-Request-Id': `req-${status}`,
+    },
+  });
+
+const requireScheduledCallback = (callback: (() => void) | null): (() => void) => {
+  if (callback === null) {
+    throw new Error('Expected scheduled auth refresh callback to be registered.');
+  }
+  return callback;
 };
 
 vi.mock('@sva/monitoring-client/logging', () => ({
@@ -56,23 +86,34 @@ const AuthProbe = () => {
 describe('AuthProvider', () => {
   beforeEach(() => {
     localStorageState.clear();
+    sessionStorageState.clear();
     localStorageMock.getItem.mockClear();
     localStorageMock.setItem.mockClear();
     localStorageMock.removeItem.mockClear();
     localStorageMock.clear.mockClear();
+    sessionStorageMock.getItem.mockClear();
+    sessionStorageMock.setItem.mockClear();
+    sessionStorageMock.removeItem.mockClear();
+    sessionStorageMock.clear.mockClear();
     Object.defineProperty(window, 'localStorage', {
       configurable: true,
       value: localStorageMock,
+    });
+    Object.defineProperty(window, 'sessionStorage', {
+      configurable: true,
+      value: sessionStorageMock,
     });
   });
 
   afterEach(() => {
     cleanup();
+    vi.useRealTimers();
     browserLoggerMock.debug.mockReset();
     browserLoggerMock.info.mockReset();
     browserLoggerMock.warn.mockReset();
     browserLoggerMock.error.mockReset();
     localStorageState.clear();
+    sessionStorageState.clear();
     window.history.replaceState({}, '', '/');
     vi.unstubAllGlobals();
   });
@@ -80,16 +121,15 @@ describe('AuthProvider', () => {
   it('loads authenticated user via /auth/me', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({
+      vi.fn().mockResolvedValue(
+        createJsonResponse(200, {
           user: {
             id: 'user-1',
             roles: ['editor'],
             instanceId: 'instance-1',
           },
-        }),
-      } satisfies Partial<Response>)
+        })
+      )
     );
 
     render(
@@ -116,13 +156,177 @@ describe('AuthProvider', () => {
     );
   });
 
+  it('refreshes the session shortly before cookie expiry', async () => {
+    const now = new Date('2026-05-06T12:00:00.000Z');
+    const dateNowSpy = vi.spyOn(Date, 'now').mockReturnValue(now.getTime());
+    let scheduledCallback: (() => void) | null = null;
+    const originalSetTimeout = window.setTimeout.bind(window);
+    const setTimeoutSpy = vi.spyOn(window, 'setTimeout').mockImplementation(
+      ((handler: TimerHandler, timeout?: number, ...args: unknown[]): number => {
+        if (timeout === 60_000 && scheduledCallback === null && typeof handler === 'function') {
+          const callback = handler as (...callbackArgs: unknown[]) => void;
+          scheduledCallback = () => {
+            callback(...args);
+          };
+        }
+        return originalSetTimeout(handler, timeout, ...args);
+      }) as typeof window.setTimeout
+    );
+
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          expiresAt: now.getTime() + 120_000,
+          user: {
+            id: 'user-1',
+            roles: ['editor'],
+            instanceId: 'instance-1',
+          },
+        })
+      )
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          expiresAt: now.getTime() + 240_000,
+          user: {
+            id: 'user-1',
+            roles: ['editor'],
+            instanceId: 'instance-1',
+          },
+        })
+      );
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { unmount } = render(
+      <AuthProvider>
+        <AuthProbe />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('status').textContent).toBe('ready');
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 60_000);
+    expect(scheduledCallback).not.toBeNull();
+
+    requireScheduledCallback(scheduledCallback)();
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+
+    expect(readAuthDiagnosticTrail()).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ event: 'auth_pre_expiry_recovery_scheduled' }),
+        expect.objectContaining({ event: 'auth_pre_expiry_recovery_started' }),
+      ])
+    );
+
+    unmount();
+    setTimeoutSpy.mockRestore();
+    dateNowSpy.mockRestore();
+  });
+
+  it('retries before expiry when pre-expiry renewal keeps the same expiry', async () => {
+    const baseTime = new Date('2026-05-06T12:00:00.000Z');
+    let currentTimeMs = baseTime.getTime();
+    const dateNowSpy = vi.spyOn(Date, 'now').mockImplementation(() => currentTimeMs);
+    const scheduledCallbacks: Array<() => void> = [];
+    const scheduledAuthTimeouts: number[] = [];
+    const originalSetTimeout = window.setTimeout.bind(window);
+    const setTimeoutSpy = vi.spyOn(window, 'setTimeout').mockImplementation(
+      ((handler: TimerHandler, timeout?: number, ...args: unknown[]): number => {
+        if (
+          typeof handler === 'function' &&
+          typeof timeout === 'number' &&
+          timeout >= 59_000 &&
+          timeout <= 60_000
+        ) {
+          const callback = handler as (...callbackArgs: unknown[]) => void;
+          scheduledAuthTimeouts.push(timeout);
+          scheduledCallbacks.push(() => {
+            callback(...args);
+          });
+        }
+        return originalSetTimeout(handler, timeout, ...args);
+      }) as typeof window.setTimeout
+    );
+
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          expiresAt: baseTime.getTime() + 120_000,
+          user: {
+            id: 'user-1',
+            roles: ['editor'],
+            instanceId: 'instance-1',
+          },
+        })
+      )
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          expiresAt: baseTime.getTime() + 120_000,
+          user: {
+            id: 'user-1',
+            roles: ['editor'],
+            instanceId: 'instance-1',
+          },
+        })
+      );
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <AuthProvider>
+        <AuthProbe />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('status').textContent).toBe('ready');
+    });
+
+    expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 60_000);
+
+    currentTimeMs += 60_000;
+    await act(async () => {
+      scheduledCallbacks[0]?.();
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+
+    expect(scheduledAuthTimeouts).toEqual([60_000, 59_000]);
+    expect(scheduledCallbacks).toHaveLength(2);
+
+    setTimeoutSpy.mockRestore();
+    dateNowSpy.mockRestore();
+  });
+
   it('resolves to the signed-out state immediately while silent recovery still runs', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue({
-        ok: false,
-        status: 401,
-      } satisfies Partial<Response>)
+      vi.fn().mockResolvedValue(
+        createJsonResponse(401, {
+          error: {
+            code: 'unauthorized',
+            message: 'invalid',
+            classification: 'session_store_or_session_hydration',
+            status: 'recovery_laeuft',
+            recommendedAction: 'erneut_anmelden',
+            safeDetails: {
+              reason_code: 'invalid_session',
+            },
+          },
+          requestId: 'req-auth-401',
+        })
+      )
     );
 
     render(
@@ -162,20 +366,30 @@ describe('AuthProvider', () => {
   it('attempts silent session recovery once after a 401 and retries the session lookup', async () => {
     const fetchMock = vi
       .fn()
-      .mockResolvedValueOnce({
-        ok: false,
-        status: 401,
-      } satisfies Partial<Response>)
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
+      .mockResolvedValueOnce(
+        createJsonResponse(401, {
+          error: {
+            code: 'unauthorized',
+            message: 'expired',
+            classification: 'session_store_or_session_hydration',
+            status: 'recovery_laeuft',
+            recommendedAction: 'erneut_anmelden',
+            safeDetails: {
+              reason_code: 'session_expired',
+            },
+          },
+          requestId: 'req-auth-401',
+        })
+      )
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
           user: {
             id: 'user-2',
             roles: ['editor'],
             instanceId: 'instance-1',
           },
-        }),
-      } satisfies Partial<Response>);
+        })
+      );
 
     vi.stubGlobal('fetch', fetchMock);
 
@@ -215,10 +429,21 @@ describe('AuthProvider', () => {
   });
 
   it('stays unauthenticated when silent recovery fails', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: false,
-      status: 401,
-    } satisfies Partial<Response>);
+    const fetchMock = vi.fn().mockResolvedValue(
+      createJsonResponse(401, {
+        error: {
+          code: 'unauthorized',
+          message: 'expired',
+          classification: 'session_store_or_session_hydration',
+          status: 'recovery_laeuft',
+          recommendedAction: 'erneut_anmelden',
+          safeDetails: {
+            reason_code: 'session_expired',
+          },
+        },
+        requestId: 'req-auth-401',
+      })
+    );
 
     vi.stubGlobal('fetch', fetchMock);
 
@@ -253,10 +478,21 @@ describe('AuthProvider', () => {
   });
 
   it('marks a known session as expired and redirects to the notice page after failed recovery', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: false,
-      status: 401,
-    } satisfies Partial<Response>);
+    const fetchMock = vi.fn().mockResolvedValue(
+      createJsonResponse(401, {
+        error: {
+          code: 'unauthorized',
+          message: 'expired',
+          classification: 'session_store_or_session_hydration',
+          status: 'recovery_laeuft',
+          recommendedAction: 'erneut_anmelden',
+          safeDetails: {
+            reason_code: 'session_expired',
+          },
+        },
+        requestId: 'req-auth-401',
+      })
+    );
     const assignMock = vi.fn();
     const originalLocation = window.location;
 
@@ -293,6 +529,87 @@ describe('AuthProvider', () => {
       expect(screen.getByTestId('session-recovery-failed').textContent).toBe('yes');
     });
 
+    expect(assignMock).toHaveBeenCalledWith(
+      '/?auth=session-expired&returnTo=%2Fadmin%2Fusers%3Fpage%3D2'
+    );
+
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: originalLocation,
+    });
+  });
+
+  it('marks a known session as expired when auth me still returns 401 after successful recovery', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        createJsonResponse(401, {
+          error: {
+            code: 'unauthorized',
+            message: 'expired',
+            classification: 'session_store_or_session_hydration',
+            status: 'recovery_laeuft',
+            recommendedAction: 'erneut_anmelden',
+            safeDetails: {
+              reason_code: 'session_expired',
+            },
+          },
+          requestId: 'req-auth-401',
+        })
+      )
+      .mockResolvedValueOnce(
+        createJsonResponse(401, {
+          error: {
+            code: 'unauthorized',
+            message: 'expired-again',
+            classification: 'session_store_or_session_hydration',
+            status: 'recovery_laeuft',
+            recommendedAction: 'erneut_anmelden',
+            safeDetails: {
+              reason_code: 'session_expired',
+            },
+          },
+          requestId: 'req-auth-401-retry',
+        })
+      );
+    const assignMock = vi.fn();
+    const originalLocation = window.location;
+
+    window.localStorage.setItem('sva_auth_had_session', '1');
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: {
+        ...originalLocation,
+        origin: originalLocation.origin,
+        pathname: '/admin/users',
+        search: '?page=2',
+        assign: assignMock,
+      },
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <AuthProvider>
+        <AuthProbe />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('is-recovering-session').textContent).toBe('yes');
+    });
+
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        origin: window.location.origin,
+        data: { type: 'sva-auth:silent-sso', status: 'success' },
+      })
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-recovery-failed').textContent).toBe('yes');
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(assignMock).toHaveBeenCalledWith('/?auth=session-expired&returnTo=%2Fadmin%2Fusers%3Fpage%3D2');
 
     Object.defineProperty(window, 'location', {
@@ -304,17 +621,30 @@ describe('AuthProvider', () => {
   it('ignores cross-origin silent-sso messages and accepts same-origin success', async () => {
     const fetchMock = vi
       .fn()
-      .mockResolvedValueOnce({ ok: false, status: 401 } satisfies Partial<Response>)
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
+      .mockResolvedValueOnce(
+        createJsonResponse(401, {
+          error: {
+            code: 'unauthorized',
+            message: 'expired',
+            classification: 'session_store_or_session_hydration',
+            status: 'recovery_laeuft',
+            recommendedAction: 'erneut_anmelden',
+            safeDetails: {
+              reason_code: 'session_expired',
+            },
+          },
+          requestId: 'req-auth-401',
+        })
+      )
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
           user: {
             id: 'user-3',
             roles: ['editor'],
             instanceId: 'instance-1',
           },
-        }),
-      } satisfies Partial<Response>);
+        })
+      );
 
     vi.stubGlobal('fetch', fetchMock);
 
@@ -354,26 +684,24 @@ describe('AuthProvider', () => {
   it('supports explicit refetch', async () => {
     const fetchMock = vi
       .fn()
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
           user: {
             id: 'user-1',
             roles: ['editor'],
             instanceId: 'instance-1',
           },
-        }),
-      } satisfies Partial<Response>)
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
+        })
+      )
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
           user: {
             id: 'user-1',
             roles: ['admin'],
             instanceId: 'instance-1',
           },
-        }),
-      } satisfies Partial<Response>);
+        })
+      );
 
     vi.stubGlobal('fetch', fetchMock);
 
@@ -415,26 +743,24 @@ describe('AuthProvider', () => {
   it('invalidates permissions via silent auth refresh', async () => {
     const fetchMock = vi
       .fn()
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
           user: {
             id: 'user-1',
             roles: ['editor'],
             instanceId: 'instance-1',
           },
-        }),
-      } satisfies Partial<Response>)
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
+        })
+      )
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
           user: {
             id: 'user-1',
             roles: ['system_admin'],
             instanceId: 'instance-1',
           },
-        }),
-      } satisfies Partial<Response>);
+        })
+      );
 
     vi.stubGlobal('fetch', fetchMock);
 
@@ -461,19 +787,16 @@ describe('AuthProvider', () => {
   it('resets local auth state on logout', async () => {
     const fetchMock = vi
       .fn()
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
           user: {
             id: 'user-1',
             roles: ['editor'],
             instanceId: 'instance-1',
           },
-        }),
-      } satisfies Partial<Response>)
-      .mockResolvedValueOnce({
-        ok: true,
-      } satisfies Partial<Response>);
+        })
+      )
+      .mockResolvedValueOnce(createJsonResponse(200, { ok: true }));
 
     vi.stubGlobal('fetch', fetchMock);
 
@@ -507,5 +830,74 @@ describe('AuthProvider', () => {
         signal: expect.any(AbortSignal),
       })
     );
+  });
+
+  it('stores a diagnostic trail with a shared authFlowId for failed recovery redirects', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      createJsonResponse(401, {
+        error: {
+          code: 'unauthorized',
+          message: 'expired',
+          classification: 'session_store_or_session_hydration',
+          status: 'recovery_laeuft',
+          recommendedAction: 'erneut_anmelden',
+          safeDetails: {
+            reason_code: 'session_expired',
+          },
+        },
+        requestId: 'req-session-expired',
+      })
+    );
+    const assignMock = vi.fn();
+    const originalLocation = window.location;
+
+    window.localStorage.setItem('sva_auth_had_session', '1');
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: {
+        ...originalLocation,
+        pathname: '/admin/users',
+        search: '?page=2',
+        assign: assignMock,
+      },
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <AuthProvider>
+        <AuthProbe />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('is-recovering-session').textContent).toBe('yes');
+    });
+
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        origin: window.location.origin,
+        data: { type: 'sva-auth:silent-sso', status: 'failed' },
+      })
+    );
+
+    await waitFor(() => {
+      expect(assignMock).toHaveBeenCalled();
+    });
+
+    const trail = readAuthDiagnosticTrail();
+    expect(
+      trail.some(
+        (entry) =>
+          entry.event === 'auth_me_401_received' && entry.requestId === 'req-session-expired'
+      )
+    ).toBe(true);
+    expect(trail.some((entry) => entry.event === 'auth_redirect_session_expired')).toBe(true);
+    expect(trail[0]?.authFlowId).toBeTruthy();
+    expect(new Set(trail.map((entry) => entry.authFlowId)).size).toBe(1);
+
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: originalLocation,
+    });
   });
 });

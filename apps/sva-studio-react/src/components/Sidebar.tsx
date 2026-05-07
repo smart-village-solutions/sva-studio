@@ -8,8 +8,8 @@ import {
   IconBuildingCommunity,
   IconCategory,
   IconCertificate,
-  IconChevronLeft,
   IconChevronDown,
+  IconChevronLeft,
   IconChevronRight,
   IconFileText,
   IconGauge,
@@ -29,9 +29,13 @@ import {
 import { Link, useRouterState } from '@tanstack/react-router';
 import React from 'react';
 
-import { t } from '../i18n';
 import { useContentAccess } from '../hooks/use-content-access';
-import { getStudioPluginAction, getStudioPluginNavigationModuleId, studioPluginNavigation } from '../lib/plugins';
+import { t } from '../i18n';
+import {
+  createOperationLogger,
+  logBrowserOperationStart,
+  logBrowserOperationSuccess,
+} from '../lib/browser-operation-logging';
 import {
   hasIamAdminRole,
   hasInstanceRegistryAdminRole,
@@ -41,10 +45,10 @@ import {
   isIamUiEnabled,
 } from '../lib/iam-admin-access';
 import {
-  createOperationLogger,
-  logBrowserOperationStart,
-  logBrowserOperationSuccess,
-} from '../lib/browser-operation-logging';
+  getStudioPluginAction,
+  getStudioPluginNavigationModuleId,
+  studioPluginNavigation,
+} from '../lib/plugins';
 import { useAuth } from '../providers/auth-provider';
 import { Button } from './ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
@@ -142,12 +146,15 @@ const logSidebarDebug = (eventName: string, meta: Record<string, unknown>) => {
 
 const hasRequiredContentAccess = (
   requiredAction: string | undefined,
-  access: {
-    readonly canRead?: boolean;
-    readonly canCreate?: boolean;
-    readonly canUpdate?: boolean;
-    readonly permissionActions?: readonly string[];
-  } | null | undefined,
+  access:
+    | {
+        readonly canRead?: boolean;
+        readonly canCreate?: boolean;
+        readonly canUpdate?: boolean;
+        readonly permissionActions?: readonly string[];
+      }
+    | null
+    | undefined,
   isLoading: boolean
 ) => {
   if (!requiredAction) {
@@ -210,7 +217,10 @@ const isLeafActive = (pathname: string, item: SidebarLeafItem) => {
   return pathname === item.to || pathname.startsWith(`${item.to}/`);
 };
 
-const isModuleAssignedToUser = (moduleId: string | null | undefined, user: { assignedModules?: readonly string[] } | null | undefined) => {
+const isModuleAssignedToUser = (
+  moduleId: string | null | undefined,
+  user: { assignedModules?: readonly string[] } | null | undefined
+) => {
   if (!moduleId) {
     return true;
   }
@@ -240,7 +250,13 @@ type SidebarLeafLinkProps = Readonly<{
   onClick?: () => void;
 }>;
 
-const SidebarLeafLink = ({ item, isActive, isCollapsed, isChild = false, onClick }: SidebarLeafLinkProps) => {
+const SidebarLeafLink = ({
+  item,
+  isActive,
+  isCollapsed,
+  isChild = false,
+  onClick,
+}: SidebarLeafLinkProps) => {
   const IconComponent = item.icon;
   const showLabel = isCollapsed === false;
   const content = (
@@ -287,7 +303,12 @@ type SidebarGroupFlyoutProps = Readonly<{
   closeFlyout: () => void;
 }>;
 
-const SidebarGroupFlyout = ({ item, pathname, onNavigate, closeFlyout }: SidebarGroupFlyoutProps) => {
+const SidebarGroupFlyout = ({
+  item,
+  pathname,
+  onNavigate,
+  closeFlyout,
+}: SidebarGroupFlyoutProps) => {
   const handleItemClick = () => {
     closeFlyout();
     onNavigate?.();
@@ -298,7 +319,9 @@ const SidebarGroupFlyout = ({ item, pathname, onNavigate, closeFlyout }: Sidebar
       id={`sidebar-group-${item.id}`}
       className="absolute left-full top-0 z-[100] w-64 rounded-2xl border border-sidebar-border bg-card p-3 shadow-[0_20px_50px_rgba(15,23,42,0.18)]"
     >
-      <p className="px-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">{item.label}</p>
+      <p className="px-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+        {item.label}
+      </p>
       <div className="mt-3 space-y-1">
         {item.children.map((child) => (
           <SidebarLeafLink
@@ -379,7 +402,7 @@ const SidebarNavItem = ({
 
   const isActive = isGroupActive(pathname, item);
   const persistedOpen = groupOpenState[item.id];
-  const isExpanded = isCollapsed ? flyoutGroupId === item.id : persistedOpen ?? isActive;
+  const isExpanded = isCollapsed ? flyoutGroupId === item.id : (persistedOpen ?? isActive);
   const IconComponent = item.icon;
   const handleBlurCapture = (event: React.FocusEvent<HTMLLIElement>) => {
     logSidebarDebug('sidebar_group_blur_capture', {
@@ -391,7 +414,9 @@ const SidebarNavItem = ({
       related_target_tag:
         event.relatedTarget instanceof HTMLElement ? event.relatedTarget.tagName : null,
       related_target_text:
-        event.relatedTarget instanceof HTMLElement ? event.relatedTarget.textContent?.trim().slice(0, 80) : null,
+        event.relatedTarget instanceof HTMLElement
+          ? event.relatedTarget.textContent?.trim().slice(0, 80)
+          : null,
     });
     if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
       onCloseFlyout();
@@ -458,11 +483,19 @@ const SidebarNavItem = ({
           </button>
 
           {isExpanded ? (
-            <SidebarGroupFlyout item={item} pathname={pathname} onNavigate={onNavigate} closeFlyout={onCloseFlyout} />
+            <SidebarGroupFlyout
+              item={item}
+              pathname={pathname}
+              onNavigate={onNavigate}
+              closeFlyout={onCloseFlyout}
+            />
           ) : null}
         </>
       ) : (
-        <Collapsible open={isExpanded} onOpenChange={(open) => onToggleExpandedGroup(item.id, open)}>
+        <Collapsible
+          open={isExpanded}
+          onOpenChange={(open) => onToggleExpandedGroup(item.id, open)}
+        >
           <CollapsibleTrigger
             className={`w-full ${getLinkClasses(isActive || isExpanded, false)}`}
             aria-controls={`sidebar-group-${item.id}`}
@@ -506,7 +539,11 @@ const SidebarNavItem = ({
             <IconComponent className="h-5 w-5 shrink-0" />
             <span className="truncate">{item.label}</span>
             <span className="ml-auto inline-flex h-5 w-5 items-center justify-center text-muted-foreground">
-              {isExpanded ? <IconChevronDown className="h-4 w-4" /> : <IconChevronRight className="h-4 w-4 animate-collapse-icon" />}
+              {isExpanded ? (
+                <IconChevronDown className="h-4 w-4" />
+              ) : (
+                <IconChevronRight className="h-4 w-4 animate-collapse-icon" />
+              )}
             </span>
           </CollapsibleTrigger>
           <SidebarGroupContent item={item} pathname={pathname} onNavigate={onNavigate} />
@@ -581,13 +618,18 @@ const SidebarPanel = ({
       return;
     }
 
-    logBrowserOperationSuccess(sidebarLogger, 'sidebar_state_snapshot', {
-      pathname,
-      is_collapsed: isCollapsed,
-      flyout_group_id: flyoutGroupId,
-      group_open_state: groupOpenState,
-      sections_count: sections.length,
-    }, 'debug');
+    logBrowserOperationSuccess(
+      sidebarLogger,
+      'sidebar_state_snapshot',
+      {
+        pathname,
+        is_collapsed: isCollapsed,
+        flyout_group_id: flyoutGroupId,
+        group_open_state: groupOpenState,
+        sections_count: sections.length,
+      },
+      'debug'
+    );
   }, [flyoutGroupId, groupOpenState, isCollapsed, pathname, sections.length]);
   const showAppTitle = isCollapsed === false;
   const showFooter = isLoading === false;
@@ -595,8 +637,12 @@ const SidebarPanel = ({
   return (
     <div className="flex h-full flex-col">
       <div className="px-4 py-4">
-        <div className={`relative flex min-h-12 items-center ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
-          {showAppTitle ? <p className="text-3xl font-semibold text-foreground">{t('shell.appName')}</p> : null}
+        <div
+          className={`relative flex min-h-12 items-center ${isCollapsed ? 'justify-center' : 'justify-between'}`}
+        >
+          {showAppTitle ? (
+            <p className="text-3xl font-semibold text-foreground">{t('shell.appName')}</p>
+          ) : null}
           {allowCollapse ? (
             <Button
               type="button"
@@ -606,7 +652,11 @@ const SidebarPanel = ({
               aria-label={isCollapsed ? t('shell.sidebar.expand') : t('shell.sidebar.collapse')}
               onClick={onToggleCollapsed}
             >
-              {isCollapsed ? <IconChevronRight className="h-5 w-5" /> : <IconChevronLeft className="h-5 w-5" />}
+              {isCollapsed ? (
+                <IconChevronRight className="h-5 w-5" />
+              ) : (
+                <IconChevronLeft className="h-5 w-5" />
+              )}
             </Button>
           ) : null}
           {showMobileHeader ? (
@@ -628,53 +678,53 @@ const SidebarPanel = ({
         aria-label={t('shell.sidebar.navAriaLabel')}
         className={`flex-1 min-h-0 px-3 py-4 ${isCollapsed ? 'overflow-visible' : 'overflow-y-auto'}`}
       >
-          {isLoading ? (
-            <ul className="space-y-2">
-              {sidebarSkeletonKeys.map((key) => (
-                <li key={key}>
-                  <span
-                    aria-hidden="true"
-                    className={`block animate-skeleton rounded-xl border border-sidebar-border ${
-                      isCollapsed ? 'mx-auto h-11 w-11' : 'h-11 w-full'
-                    }`}
-                  />
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <div className="space-y-5">
-              {sections.map((section) => (
-                <section key={section.id} className="space-y-2">
-                  {isCollapsed ? (
-                    <div className="px-2" aria-hidden="true">
-                      <span className="mx-auto block h-px w-8 bg-sidebar-border" />
-                    </div>
-                  ) : (
-                    <p className="px-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-                      {section.label}
-                    </p>
-                  )}
-                  <ul className="space-y-1">
-                    {section.items.map((item) => (
-                      <SidebarNavItem
-                        key={item.id}
-                        item={item}
-                        pathname={pathname}
-                        isCollapsed={isCollapsed}
-                        groupOpenState={groupOpenState}
-                        flyoutGroupId={flyoutGroupId}
-                        onNavigate={onNavigate}
-                        onToggleCollapsedGroup={toggleCollapsedGroup}
-                        onToggleExpandedGroup={toggleExpandedGroup}
-                        onOpenFlyout={openFlyout}
-                        onCloseFlyout={closeFlyout}
-                      />
-                    ))}
-                  </ul>
-                </section>
-              ))}
-            </div>
-          )}
+        {isLoading ? (
+          <ul className="space-y-2">
+            {sidebarSkeletonKeys.map((key) => (
+              <li key={key}>
+                <span
+                  aria-hidden="true"
+                  className={`block animate-skeleton rounded-xl border border-sidebar-border ${
+                    isCollapsed ? 'mx-auto h-11 w-11' : 'h-11 w-full'
+                  }`}
+                />
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div className="space-y-5">
+            {sections.map((section) => (
+              <section key={section.id} className="space-y-2">
+                {isCollapsed ? (
+                  <div className="px-2" aria-hidden="true">
+                    <span className="mx-auto block h-px w-8 bg-sidebar-border" />
+                  </div>
+                ) : (
+                  <p className="px-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+                    {section.label}
+                  </p>
+                )}
+                <ul className="space-y-1">
+                  {section.items.map((item) => (
+                    <SidebarNavItem
+                      key={item.id}
+                      item={item}
+                      pathname={pathname}
+                      isCollapsed={isCollapsed}
+                      groupOpenState={groupOpenState}
+                      flyoutGroupId={flyoutGroupId}
+                      onNavigate={onNavigate}
+                      onToggleCollapsedGroup={toggleCollapsedGroup}
+                      onToggleExpandedGroup={toggleExpandedGroup}
+                      onOpenFlyout={openFlyout}
+                      onCloseFlyout={closeFlyout}
+                    />
+                  ))}
+                </ul>
+              </section>
+            ))}
+          </div>
+        )}
       </nav>
 
       {showFooter ? (
@@ -700,7 +750,11 @@ const SidebarPanel = ({
 /**
  * Rendert die Seitenleiste inklusive Navigation, Collapse und mobilem Drawer.
  */
-export default function Sidebar({ isLoading = false, isMobileOpen = false, onMobileOpenChange }: SidebarProps) {
+export default function Sidebar({
+  isLoading = false,
+  isMobileOpen = false,
+  onMobileOpenChange,
+}: SidebarProps) {
   const { user, isAuthenticated } = useAuth();
   const contentAccessApi = useContentAccess();
   const canAccessWorkspace = isAuthenticated && isIamUiEnabled();
@@ -709,11 +763,17 @@ export default function Sidebar({ isLoading = false, isMobileOpen = false, onMob
   const canAccessMedia =
     canAccessWorkspace &&
     isModuleAssignedToUser('media', user) &&
-    hasPermissionAction('media.read', contentAccessApi.permissionActions, contentAccessApi.isLoading);
+    hasPermissionAction(
+      'media.read',
+      contentAccessApi.permissionActions,
+      contentAccessApi.isLoading
+    );
   const canAccessAdminUsers = isAuthenticated && isIamAdminEnabled() && hasIamAdminRole(user);
   const canAccessAdminOrganizations = canAccessAdminUsers;
-  const canAccessAdminInstances = isAuthenticated && isIamAdminEnabled() && hasInstanceRegistryAdminRole(user);
+  const canAccessAdminInstances =
+    isAuthenticated && isIamAdminEnabled() && hasInstanceRegistryAdminRole(user);
   const canAccessAdminRoles = canAccessAdminUsers && hasSystemAdminRole(user);
+  const canAccessAdminGroups = canAccessAdminRoles && Boolean(user?.instanceId);
   const canAccessAdminPrivacy = canAccessAdminUsers;
   const canAccessInterfaces = isAuthenticated && isIamUiEnabled() && hasInterfacesAccessRole(user);
   const canAccessSystemTools = canAccessAdminRoles;
@@ -765,8 +825,12 @@ export default function Sidebar({ isLoading = false, isMobileOpen = false, onMob
         moduleId: getStudioPluginNavigationModuleId(item),
       }))
       .filter((item) => isModuleAssignedToUser(item.moduleId, user));
-    const pluginDataManagementItems = pluginNavigationItems.filter((item) => item.section === 'dataManagement');
-    const pluginApplicationItems = pluginNavigationItems.filter((item) => item.section === 'applications');
+    const pluginDataManagementItems = pluginNavigationItems.filter(
+      (item) => item.section === 'dataManagement'
+    );
+    const pluginApplicationItems = pluginNavigationItems.filter(
+      (item) => item.section === 'applications'
+    );
     const pluginSystemItems = pluginNavigationItems.filter((item) => item.section === 'system');
 
     const dataManagementItems: SidebarItem[] = [
@@ -873,13 +937,17 @@ export default function Sidebar({ isLoading = false, isMobileOpen = false, onMob
               label: t('shell.sidebar.roles'),
               icon: IconShieldLock,
             },
-            {
-              kind: 'link' as const,
-              id: 'groups',
-              to: '/admin/groups',
-              label: t('shell.sidebar.groups'),
-              icon: IconUsersGroup,
-            },
+            ...(canAccessAdminGroups
+              ? [
+                  {
+                    kind: 'link' as const,
+                    id: 'groups',
+                    to: '/admin/groups',
+                    label: t('shell.sidebar.groups'),
+                    icon: IconUsersGroup,
+                  },
+                ]
+              : []),
             {
               kind: 'link' as const,
               id: 'legal-texts',
@@ -1038,7 +1106,11 @@ export default function Sidebar({ isLoading = false, isMobileOpen = false, onMob
           className="p-0"
           side="left"
         >
-          <aside id="mobile-sidebar" aria-label={t('shell.sidebar.ariaLabel')} className="h-full bg-sidebar">
+          <aside
+            id="mobile-sidebar"
+            aria-label={t('shell.sidebar.ariaLabel')}
+            className="h-full bg-sidebar"
+          >
             <SidebarPanel
               isLoading={isLoading}
               sections={sections}

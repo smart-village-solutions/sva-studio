@@ -40,6 +40,7 @@ export type KeycloakProvisioningClient = {
     directAccessGrantsEnabled?: boolean;
     serviceAccountsEnabled?: boolean;
   }): Promise<void>;
+  ensureTenantAdminServiceAccess(clientId: string): Promise<void>;
   listClientProtocolMappers(clientId: string): Promise<readonly { name: string }[]>;
   ensureUserAttributeProtocolMapper(input: {
     clientId: string;
@@ -317,6 +318,7 @@ export const createProvisionInstanceAuthArtifacts =
         directAccessGrantsEnabled: expectedTenantAdminClient.directAccessGrantsEnabled,
         serviceAccountsEnabled: expectedTenantAdminClient.serviceAccountsEnabled,
       });
+      await client.ensureTenantAdminServiceAccess(input.tenantAdminClient.clientId);
     }
     if (input.tenantAdminBootstrap) {
       await ensureTenantAdmin(client, {

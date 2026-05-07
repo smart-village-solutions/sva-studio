@@ -203,6 +203,35 @@ Nur wenn die jeweilige Funktion tatsächlich benötigt wird:
 
 Diese Rollen sind bewusst nicht Teil des pauschalen Standard-Bootstraps.
 
+## Technischer Tenant-Admin-Client
+
+Zusätzlich zum menschlichen Tenant-Admin benötigt der technische Tenant-Admin-Client
+`iam.instances.tenantAdminClient.clientId` einen eigenen Service-Account im Tenant-Realm.
+
+### Minimaler Rollenvertrag für den Service-Account
+
+Dem Service-Account des Tenant-Admin-Clients werden mindestens folgende
+`realm-management`-Rollen zugewiesen:
+
+- `manage-users`
+- `view-users`
+- `view-realm`
+- `manage-realm`
+- `manage-clients`
+
+Begründung:
+
+- Die ersten vier Rollen decken tenant-lokales User- und Realm-Rollen-Management ab.
+- `manage-clients` ist erforderlich, damit Studio den referenzierten Login-Client
+  `authClientId` im Tenant-Realm lesen und Passwort-Setup-Mails mit dem richtigen
+  `client_id` auslösen kann.
+
+Nicht Ziel dieses Vertrags:
+
+- globale Plattformrechte
+- `realm-admin`
+- Identity-Provider- oder Event-Administration
+
 ## Alias-Regel
 
 Studio akzeptiert aktuell zusätzlich den Realm-Rollen-Alias:

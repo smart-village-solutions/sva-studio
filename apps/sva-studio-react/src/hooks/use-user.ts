@@ -24,6 +24,7 @@ type UseUserResult = {
   readonly error: IamHttpError | null;
   readonly mutationError: IamHttpError | null;
   readonly refetch: () => Promise<void>;
+  readonly clearMutationError: () => void;
   readonly save: (payload: UpdateUserPayload) => Promise<IamUserDetail | null>;
   readonly resendPasswordSetupEmail?: () => Promise<boolean>;
 };
@@ -161,6 +162,7 @@ export const useUser = (userId: string): UseUserResult => {
     error,
     mutationError,
     refetch,
+    clearMutationError: () => setMutationError(null),
     save,
     resendPasswordSetupEmail: resendPasswordSetupEmailAction,
   };

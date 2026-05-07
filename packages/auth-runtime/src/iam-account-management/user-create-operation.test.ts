@@ -47,6 +47,7 @@ describe('executeCreateUser', () => {
     });
     state.resolveAuthConfigForInstance.mockResolvedValue({
       clientId: 'sva-studio',
+      redirectUri: 'https://tenant.example.test/auth/callback',
       postLogoutRedirectUri: 'https://tenant.example.test/',
     });
   });
@@ -118,7 +119,7 @@ describe('executeCreateUser', () => {
     expect(identityProvider.provider.executeActionsEmail).toHaveBeenCalledWith('kc-user-1', {
       actions: ['UPDATE_PASSWORD'],
       clientId: 'sva-studio',
-      redirectUri: 'https://tenant.example.test/',
+      redirectUri: 'https://tenant.example.test/auth/callback',
     });
     expect(result.invitation.status).toBe('sent');
   });

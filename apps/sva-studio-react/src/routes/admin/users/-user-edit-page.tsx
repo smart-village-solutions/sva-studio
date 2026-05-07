@@ -499,7 +499,14 @@ export const UserEditPage = ({ userId, invitationStatus }: UserEditPageProps) =>
               ? t('admin.users.actions.sendingPasswordSetupEmail')
               : t('admin.users.actions.sendPasswordSetupEmail')}
           </Button>
-          <Button type="button" variant="outline" onClick={() => void userApi.refetch()}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              userApi.clearMutationError();
+              void userApi.refetch();
+            }}
+          >
             {t('admin.users.actions.retry')}
           </Button>
         </div>

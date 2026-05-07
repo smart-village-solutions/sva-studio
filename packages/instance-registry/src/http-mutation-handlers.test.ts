@@ -330,6 +330,27 @@ describe('http mutation handlers', () => {
     expect(body.code).toBe('invalid_request');
   });
 
+  it('mutateInstanceStatus preserves parseRequestBody validation messages', async () => {
+    vi.mocked(deps.parseRequestBody).mockResolvedValueOnce({
+      ok: false,
+      message: 'Request body muss ein gueltiges JSON-Objekt sein.',
+    });
+    const handlers = createInstanceRegistryMutationHttpHandlers(deps);
+
+    const response = await handlers.mutateInstanceStatus(
+      new Request('http://localhost/api/instances/inst-1/status'),
+      { userId: 'u-1' },
+      'active'
+    );
+    const body = await readBody(response);
+
+    expect(response.status).toBe(400);
+    expect(body).toMatchObject({
+      code: 'invalid_request',
+      message: 'Request body muss ein gueltiges JSON-Objekt sein.',
+    });
+  });
+
   it('mutateInstanceStatus returns the changed instance on success', async () => {
     vi.mocked(deps.parseRequestBody).mockResolvedValueOnce({ ok: true, data: { status: 'suspended' } });
     vi.mocked(deps.withRegistryService).mockImplementationOnce(async (work) =>

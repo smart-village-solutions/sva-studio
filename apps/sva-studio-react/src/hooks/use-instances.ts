@@ -112,6 +112,33 @@ export const useInstances = () => {
     []
   );
 
+  const invalidatePermissionsAfter403 = React.useCallback(
+    async (
+      input: {
+        operation: string;
+        status: number;
+        errorCode: string;
+        instanceId?: string;
+      },
+      state?: { invalidated: boolean }
+    ) => {
+      if (state?.invalidated) {
+        return;
+      }
+      if (state) {
+        state.invalidated = true;
+      }
+      await invalidatePermissions();
+      instancesLogger.info('permission_invalidated_after_403', {
+        operation: input.operation,
+        status: input.status,
+        error_code: input.errorCode,
+        instance_id: input.instanceId,
+      });
+    },
+    [invalidatePermissions]
+  );
+
   const refetch = React.useCallback(async () => {
     logBrowserOperationStart(instancesLogger, 'instance_list_refetch_started', {
       operation: 'list_instances',
@@ -167,6 +194,7 @@ export const useInstances = () => {
       });
       setDetailLoading(true);
       setMutationError(null);
+      const permissionInvalidationState = { invalidated: false };
       try {
         let statusError: IamHttpError | undefined;
         const [detailResponse, statusResponse] = await Promise.all([
@@ -174,13 +202,15 @@ export const useInstances = () => {
           getInstanceKeycloakStatus(instanceId).catch(async (cause) => {
             const resolvedError = asIamError(cause);
             if (resolvedError.status === 403) {
-              await invalidatePermissions();
-              instancesLogger.info('permission_invalidated_after_403', {
-                operation: 'get_instance_keycloak_status',
-                status: resolvedError.status,
-                error_code: resolvedError.code,
-                instance_id: instanceId,
-              });
+              await invalidatePermissionsAfter403(
+                {
+                  operation: 'get_instance_keycloak_status',
+                  status: resolvedError.status,
+                  errorCode: resolvedError.code,
+                  instanceId,
+                },
+                permissionInvalidationState
+              );
             }
             statusError = resolvedError;
             logBrowserOperationFailure(instancesLogger, 'instance_keycloak_status_refresh_failed', resolvedError, {
@@ -206,13 +236,15 @@ export const useInstances = () => {
       } catch (cause) {
         const resolvedError = asIamError(cause);
         if (resolvedError.status === 403) {
-          await invalidatePermissions();
-          instancesLogger.info('permission_invalidated_after_403', {
-            operation: 'get_instance_detail',
-            status: resolvedError.status,
-            error_code: resolvedError.code,
-            instance_id: instanceId,
-          });
+          await invalidatePermissionsAfter403(
+            {
+              operation: 'get_instance_detail',
+              status: resolvedError.status,
+              errorCode: resolvedError.code,
+              instanceId,
+            },
+            permissionInvalidationState
+          );
         }
         setMutationError(resolvedError);
         logBrowserOperationFailure(instancesLogger, 'instance_detail_load_failed', resolvedError, {
@@ -224,7 +256,7 @@ export const useInstances = () => {
         setDetailLoading(false);
       }
     },
-    [invalidatePermissions]
+    [invalidatePermissionsAfter403]
   );
 
   const mutate = React.useCallback(
@@ -459,44 +491,28 @@ export const useInstances = () => {
       ),
     assignModule: async (instanceId: string, moduleId: string) =>
       mutate(
-        async () => {
-          const response = await assignInstanceModule(instanceId, moduleId);
-          setSelectedInstance(response.data);
-          return response;
-        },
+        async () => assignInstanceModule(instanceId, moduleId),
         instanceId,
         'assign_instance_module',
         { invalidateAuthAfterSuccess: true }
       ),
     bootstrapAdminStructure: async (instanceId: string, moduleIds: readonly string[]) =>
       mutate(
-        async () => {
-          const response = await bootstrapInstanceAdminStructure(instanceId, moduleIds);
-          setSelectedInstance(response.data);
-          return response;
-        },
+        async () => bootstrapInstanceAdminStructure(instanceId, moduleIds),
         instanceId,
         'bootstrap_instance_admin_structure',
         { invalidateAuthAfterSuccess: true }
       ),
     revokeModule: async (instanceId: string, moduleId: string) =>
       mutate(
-        async () => {
-          const response = await revokeInstanceModule(instanceId, moduleId);
-          setSelectedInstance(response.data);
-          return response;
-        },
+        async () => revokeInstanceModule(instanceId, moduleId),
         instanceId,
         'revoke_instance_module',
         { invalidateAuthAfterSuccess: true }
       ),
     seedIamBaseline: async (instanceId: string) =>
       mutate(
-        async () => {
-          const response = await seedInstanceIamBaseline(instanceId);
-          setSelectedInstance(response.data);
-          return response;
-        },
+        async () => seedInstanceIamBaseline(instanceId),
         instanceId,
         'seed_instance_iam_baseline',
         { invalidateAuthAfterSuccess: true }

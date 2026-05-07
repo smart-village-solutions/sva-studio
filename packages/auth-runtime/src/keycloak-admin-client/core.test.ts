@@ -504,6 +504,120 @@ describe('Keycloak admin client', () => {
     expect(String(rotateCall?.[0])).toContain('/clients/client-1/client-secret');
   });
 
+  it('grants required realm-management client roles to the tenant admin service account', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(200, [{ id: 'tenant-admin-client-id', clientId: 'tenant-admin' }]))
+      .mockResolvedValueOnce(createJsonResponse(200, [{ id: 'realm-management-client-id', clientId: 'realm-management' }]))
+      .mockResolvedValueOnce(createJsonResponse(200, { id: 'service-account-user-id', username: 'service-account-tenant-admin' }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, [
+          { id: 'role-manage-users', name: 'manage-users' },
+          { id: 'role-view-users', name: 'view-users' },
+          { id: 'role-view-realm', name: 'view-realm' },
+          { id: 'role-manage-realm', name: 'manage-realm' },
+          { id: 'role-manage-clients', name: 'manage-clients' },
+        ])
+      )
+      .mockResolvedValueOnce(createJsonResponse(200, [{ id: 'role-view-users', name: 'view-users' }]))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+
+    const client = await createClient(fetchImpl);
+
+    await client.ensureTenantAdminServiceAccess('tenant-admin');
+
+    const addRolesCall = fetchImpl.mock.calls[6];
+    expect(String(addRolesCall?.[0])).toContain(
+      '/users/service-account-user-id/role-mappings/clients/realm-management-client-id'
+    );
+    expect(addRolesCall?.[1]?.method).toBe('POST');
+    expect(JSON.parse(String(addRolesCall?.[1]?.body))).toEqual([
+      { id: 'role-manage-users', name: 'manage-users' },
+      { id: 'role-view-realm', name: 'view-realm' },
+      { id: 'role-manage-realm', name: 'manage-realm' },
+      { id: 'role-manage-clients', name: 'manage-clients' },
+    ]);
+  });
+
+  it('skips tenant admin service role updates when all required roles are already assigned', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(200, [{ id: 'tenant-admin-client-id', clientId: 'tenant-admin' }]))
+      .mockResolvedValueOnce(createJsonResponse(200, [{ id: 'realm-management-client-id', clientId: 'realm-management' }]))
+      .mockResolvedValueOnce(createJsonResponse(200, { id: 'service-account-user-id', username: 'service-account-tenant-admin' }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, [
+          { id: 'role-manage-users', name: 'manage-users' },
+          { id: 'role-view-users', name: 'view-users' },
+          { id: 'role-view-realm', name: 'view-realm' },
+          { id: 'role-manage-realm', name: 'manage-realm' },
+          { id: 'role-manage-clients', name: 'manage-clients' },
+        ])
+      )
+      .mockResolvedValueOnce(
+        createJsonResponse(200, [
+          { id: 'role-manage-users', name: 'manage-users' },
+          { id: 'role-view-users', name: 'view-users' },
+          { id: 'role-view-realm', name: 'view-realm' },
+          { id: 'role-manage-realm', name: 'manage-realm' },
+          { id: 'role-manage-clients', name: 'manage-clients' },
+        ])
+      );
+
+    const client = await createClient(fetchImpl);
+
+    await expect(client.ensureTenantAdminServiceAccess('tenant-admin')).resolves.toBeUndefined();
+    expect(fetchImpl).toHaveBeenCalledTimes(6);
+    expect(
+      fetchImpl.mock.calls.some(
+        (call) =>
+          call[1]?.method === 'POST'
+          && String(call[0]).includes('/users/service-account-user-id/role-mappings/clients/realm-management-client-id')
+      )
+    ).toBe(false);
+  });
+
+  it('fails tenant admin service access provisioning when a required realm-management role is missing', async () => {
+    type KeycloakAdminRequestError = import('./core.js').KeycloakAdminRequestError;
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(200, [{ id: 'tenant-admin-client-id', clientId: 'tenant-admin' }]))
+      .mockResolvedValueOnce(createJsonResponse(200, [{ id: 'realm-management-client-id', clientId: 'realm-management' }]))
+      .mockResolvedValueOnce(createJsonResponse(200, { id: 'service-account-user-id', username: 'service-account-tenant-admin' }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, [
+          { id: 'role-manage-users', name: 'manage-users' },
+          { id: 'role-view-users', name: 'view-users' },
+          { id: 'role-view-realm', name: 'view-realm' },
+          { id: 'role-manage-realm', name: 'manage-realm' },
+        ])
+      )
+      .mockResolvedValueOnce(createJsonResponse(200, []));
+
+    const client = await createClient(fetchImpl);
+
+    await expect(client.ensureTenantAdminServiceAccess('tenant-admin')).rejects.toMatchObject<KeycloakAdminRequestError>({
+      code: 'realm_management_role_missing',
+      statusCode: 500,
+    });
+  });
+
+  it('fails tenant admin service access provisioning when the target client is missing', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(200, []));
+
+    const client = await createClient(fetchImpl);
+
+    await expect(client.ensureTenantAdminServiceAccess('tenant-admin')).rejects.toMatchObject<
+      import('./core.js').KeycloakAdminRequestError
+    >({ code: 'unknown_client', statusCode: 404 });
+  });
+
   it('does not regenerate a client secret during normal reconciliation when the configured secret differs', async () => {
     const fetchImpl = vi
       .fn()

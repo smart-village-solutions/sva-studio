@@ -350,6 +350,28 @@ describe('instance registry repository', () => {
     expect(statements.filter((statement) => statement.text.includes('iam.instance_hostnames'))).toHaveLength(2);
     expect(statements[0]?.values.at(17)).toBe('{}');
     expect(statements[2]?.values.at(8)).toBe(true);
+    expect(statements[0]?.text).toContain('ON CONFLICT (id) DO NOTHING');
+  });
+
+  it('returns null when createInstance loses a race against an existing instance id', async () => {
+    const { executor, statements } = createQueuedExecutor([[], []]);
+    const repository = createInstanceRegistryRepository(executor);
+
+    await expect(
+      repository.createInstance({
+        instanceId: 'tenant-a',
+        displayName: 'Tenant A',
+        status: 'active',
+        parentDomain: 'example.test',
+        primaryHostname: 'tenant-a.example.test',
+        realmMode: 'shared',
+        authRealm: 'sva',
+        authClientId: 'studio',
+        actorId: 'actor-1',
+      })
+    ).resolves.toBeNull();
+
+    expect(statements[0]?.text).toContain('ON CONFLICT (id) DO NOTHING');
   });
 
   it('returns null for empty mutations and maps created runs and steps', async () => {

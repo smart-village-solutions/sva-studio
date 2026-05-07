@@ -223,7 +223,10 @@ export const createMutateInstanceStatusHandler =
       request,
       statusMutationSchema
     );
-    if (!payloadResult.ok || payloadResult.data.status !== nextStatus) {
+    if (!payloadResult.ok) {
+      return deps.createApiError(400, 'invalid_request', payloadResult.message, deps.getRequestId());
+    }
+    if (payloadResult.data.status !== nextStatus) {
       return deps.createApiError(400, 'invalid_request', 'Ungültiger Statuswechsel.', deps.getRequestId());
     }
 

@@ -71,6 +71,14 @@ type KeycloakRoleMapping = {
   readonly containerId?: string;
 };
 
+const REQUIRED_TENANT_ADMIN_CLIENT_ROLE_NAMES = [
+  'manage-users',
+  'view-users',
+  'view-realm',
+  'manage-realm',
+  'manage-clients',
+] as const;
+
 type KeycloakClientRepresentation = {
   readonly id: string;
   readonly clientId: string;
@@ -625,6 +633,84 @@ export class KeycloakAdminClient implements IdentityProviderPort {
   async listUserRoleNames(externalId: string): Promise<readonly string[]> {
     const currentRoleMappings = await this.readUserRoleMappings(externalId, 'list_user_roles');
     return currentRoleMappings.map((role) => role.name);
+  }
+
+  async ensureTenantAdminServiceAccess(clientId: string): Promise<void> {
+    await this.assertWriteAvailability();
+    const tenantAdminClient = await this.getOidcClientByClientId(clientId);
+    if (!tenantAdminClient) {
+      throw new KeycloakAdminRequestError({
+        message: `Unknown Keycloak client: ${clientId}`,
+        statusCode: 404,
+        code: 'unknown_client',
+        retryable: false,
+      });
+    }
+
+    const realmManagementClient = await this.getOidcClientByClientId('realm-management');
+    if (!realmManagementClient) {
+      throw new KeycloakAdminRequestError({
+        message: 'Missing Keycloak client: realm-management',
+        statusCode: 404,
+        code: 'realm_management_client_missing',
+        retryable: false,
+      });
+    }
+
+    const [serviceAccountUser, availableRoles] = await Promise.all([
+      this.executeWithResilience<KeycloakAdminUser>({
+        method: 'GET',
+        path: `/admin/realms/${encodePathSegment(this.realm)}/clients/${encodePathSegment(tenantAdminClient.id)}/service-account-user`,
+        operation: 'get_service_account_user',
+      }),
+      this.executeWithResilience<KeycloakRoleMapping[]>({
+        method: 'GET',
+        path: `/admin/realms/${encodePathSegment(this.realm)}/clients/${encodePathSegment(realmManagementClient.id)}/roles`,
+        operation: 'list_realm_management_client_roles',
+      }),
+    ]);
+
+    const currentRoleMappings = await this.executeWithResilience<KeycloakRoleMapping[]>({
+      method: 'GET',
+      path:
+        `/admin/realms/${encodePathSegment(this.realm)}/users/${encodePathSegment(serviceAccountUser.id)}`
+        + `/role-mappings/clients/${encodePathSegment(realmManagementClient.id)}`,
+      operation: 'list_service_account_client_roles',
+    });
+
+    const availableRoleNames = new Set(availableRoles.map((role) => role.name));
+    const missingRequiredRoles = REQUIRED_TENANT_ADMIN_CLIENT_ROLE_NAMES.filter((roleName) => !availableRoleNames.has(roleName));
+    if (missingRequiredRoles.length > 0) {
+      throw new KeycloakAdminRequestError({
+        message: `Missing required Keycloak realm-management roles: ${missingRequiredRoles.join(', ')}`,
+        statusCode: 500,
+        code: 'realm_management_role_missing',
+        retryable: false,
+      });
+    }
+
+    const currentRoleNames = new Set(currentRoleMappings.map((role) => role.name));
+    const rolesToAdd = availableRoles
+      .filter((role) =>
+        REQUIRED_TENANT_ADMIN_CLIENT_ROLE_NAMES.includes(
+          role.name as (typeof REQUIRED_TENANT_ADMIN_CLIENT_ROLE_NAMES)[number]
+        )
+      )
+      .filter((role) => !currentRoleNames.has(role.name))
+      .map((role) => ({ id: role.id, name: role.name }));
+
+    if (rolesToAdd.length === 0) {
+      return;
+    }
+
+    await this.executeWithResilience<void>({
+      method: 'POST',
+      path:
+        `/admin/realms/${encodePathSegment(this.realm)}/users/${encodePathSegment(serviceAccountUser.id)}`
+        + `/role-mappings/clients/${encodePathSegment(realmManagementClient.id)}`,
+      body: JSON.stringify(rolesToAdd),
+      operation: 'grant_service_account_client_roles',
+    });
   }
 
   async getUserAttributes(

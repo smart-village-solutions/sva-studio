@@ -6,9 +6,11 @@ import { createAuditDetails } from './service-helpers.js';
 
 const logger = createSdkLogger({ component: 'iam-instance-registry-provisioning', level: 'info' });
 
+type CreatedInstanceRecord = NonNullable<Awaited<ReturnType<InstanceRegistryRepository['createInstance']>>>;
+
 export const createProvisioningArtifacts = async (
   repository: InstanceRegistryRepository,
-  instance: Awaited<ReturnType<InstanceRegistryRepository['createInstance']>>,
+  instance: CreatedInstanceRecord,
   input: CreateInstanceProvisioningInput
 ): Promise<void> => {
   await repository.createProvisioningRun({
@@ -33,9 +35,9 @@ export const createProvisioningArtifacts = async (
 
 export const provisionInstanceAuth = async (
   deps: InstanceRegistryServiceDeps,
-  instance: Awaited<ReturnType<InstanceRegistryRepository['createInstance']>>,
+  instance: CreatedInstanceRecord,
   input: CreateInstanceProvisioningInput
-): Promise<Awaited<ReturnType<InstanceRegistryRepository['createInstance']>>> => {
+): Promise<CreatedInstanceRecord> => {
   if (!deps.provisionInstanceAuth) {
     return instance;
   }

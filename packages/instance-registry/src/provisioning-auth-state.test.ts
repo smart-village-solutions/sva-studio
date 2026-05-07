@@ -22,6 +22,7 @@ const createClient = (overrides?: Partial<KeycloakProvisioningClient>): Keycloak
   })),
   getOidcClientSecretValue: vi.fn(async () => 'secret'),
   ensureOidcClient: vi.fn(async () => undefined),
+  ensureTenantAdminServiceAccess: vi.fn(async () => undefined),
   listClientProtocolMappers: vi.fn(async () => [{ name: 'instanceId' }]),
   ensureUserAttributeProtocolMapper: vi.fn(async () => undefined),
   ensureRealmRole: vi.fn(async () => undefined),
@@ -88,6 +89,7 @@ describe('provisioning-auth-state', () => {
     expect(client.ensureRealm).toHaveBeenCalledWith({ displayName: 'demo' });
     expect(client.ensureOidcClient).toHaveBeenCalledWith(expect.objectContaining({ clientId: 'sva-studio' }));
     expect(client.ensureOidcClient).toHaveBeenCalledWith(expect.objectContaining({ clientId: 'tenant-admin' }));
+    expect(client.ensureTenantAdminServiceAccess).toHaveBeenCalledWith('tenant-admin');
     expect(client.ensureUserAttributeProtocolMapper).not.toHaveBeenCalled();
     expect(client.createUser).toHaveBeenCalledWith(
       expect.objectContaining({

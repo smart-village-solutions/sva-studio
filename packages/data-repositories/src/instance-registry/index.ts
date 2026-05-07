@@ -284,7 +284,7 @@ export type InstanceRegistryRepository = {
     themeKey?: string;
     featureFlags?: Readonly<Record<string, boolean>>;
     mainserverConfigRef?: string;
-  }): Promise<InstanceRegistryRecord>;
+  }): Promise<InstanceRegistryRecord | null>;
   updateInstance(input: {
     instanceId: string;
     displayName: string;
@@ -1401,28 +1401,7 @@ INSERT INTO iam.instances (
   updated_by
 )
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19::jsonb, $20, $20)
-ON CONFLICT (id) DO UPDATE
-SET
-  display_name = EXCLUDED.display_name,
-  status = EXCLUDED.status,
-  parent_domain = EXCLUDED.parent_domain,
-  primary_hostname = EXCLUDED.primary_hostname,
-  realm_mode = EXCLUDED.realm_mode,
-  auth_realm = EXCLUDED.auth_realm,
-  auth_client_id = EXCLUDED.auth_client_id,
-  auth_issuer_url = EXCLUDED.auth_issuer_url,
-  auth_client_secret_ciphertext = EXCLUDED.auth_client_secret_ciphertext,
-  tenant_admin_client_id = EXCLUDED.tenant_admin_client_id,
-  tenant_admin_client_secret_ciphertext = EXCLUDED.tenant_admin_client_secret_ciphertext,
-  tenant_admin_username = EXCLUDED.tenant_admin_username,
-  tenant_admin_email = EXCLUDED.tenant_admin_email,
-  tenant_admin_first_name = EXCLUDED.tenant_admin_first_name,
-  tenant_admin_last_name = EXCLUDED.tenant_admin_last_name,
-  theme_key = EXCLUDED.theme_key,
-  feature_flags = EXCLUDED.feature_flags,
-  mainserver_config_ref = EXCLUDED.mainserver_config_ref,
-  updated_by = EXCLUDED.updated_by,
-  updated_at = NOW()
+ON CONFLICT (id) DO NOTHING
 RETURNING
   id AS instance_id,
   display_name,
@@ -1472,6 +1451,10 @@ RETURNING
         ],
       }
     );
+
+    if (!rows[0]) {
+      return null;
+    }
 
     await executor.execute({
       text: `

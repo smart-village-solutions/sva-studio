@@ -3,11 +3,16 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import * as instancesShared from './-instances-shared';
 import {
+  buildExistingRealmOperationsModel,
+  buildHistoryWorkspaceModel,
+  buildNewRealmOperationsModel,
+  buildOperationsPrimaryAction,
   createEmptyCreateForm,
   evaluateInstanceConfiguration,
   getCreateReadinessChecks,
   getErrorMessage,
   getCreateStepValidationMessages,
+  getOperationsEvidenceSourceLabel,
   getEffectiveTenantIamStatus,
   getKeycloakStatusEntries,
   getPostCreateGuidance,
@@ -15,6 +20,50 @@ import {
   getStatusGuidance,
   readSuggestedParentDomain,
 } from './-instances-shared';
+
+const createDetailFixture = (overrides: Record<string, unknown> = {}) =>
+  ({
+    instanceId: 'demo',
+    displayName: 'Demo',
+    status: 'requested',
+    featureFlags: {},
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+    parentDomain: 'studio.example.org',
+    primaryHostname: 'demo.studio.example.org',
+    assignedModules: [],
+    realmMode: 'new',
+    authRealm: 'demo',
+    authClientId: 'sva-studio-login',
+    authClientSecretConfigured: false,
+    tenantAdminClient: {
+      clientId: 'sva-studio-realm-admin',
+      secretConfigured: false,
+    },
+    tenantAdminBootstrap: {
+      username: 'demo-admin',
+      email: 'demo@example.org',
+      firstName: 'Demo',
+      lastName: 'Admin',
+    },
+    hostnames: [],
+    provisioningRuns: [],
+    auditEvents: [],
+    keycloakPreflight: undefined,
+    keycloakPlan: undefined,
+    keycloakProvisioningRuns: [],
+    keycloakStatus: undefined,
+    latestKeycloakProvisioningRun: undefined,
+    moduleIamStatus: {
+      overall: {
+        status: 'unknown',
+        summary: 'Noch keine Module für diese Instanz zugewiesen.',
+        source: 'registry',
+      },
+      modules: [],
+    },
+    ...overrides,
+  }) as const;
 
 describe('instances shared helpers', () => {
   afterEach(() => {
@@ -33,6 +82,31 @@ describe('instances shared helpers', () => {
     expect(getCreateStepValidationMessages('auth', formValues)).toEqual([
       'Bitte ein Auth-Realm angeben.',
     ]);
+  });
+
+  it('maps operations evidence sources to translated labels', () => {
+    expect(getOperationsEvidenceSourceLabel('worker_preflight')).toBe('Worker-Preflight');
+    expect(getOperationsEvidenceSourceLabel('final_validation')).toBe('Abschlussvalidierung');
+  });
+
+  it('returns a validation message for malformed auth realms', () => {
+    const formValues = createEmptyCreateForm('');
+    formValues.authRealm =
+      'Bitte ein Tenant-Client-Secret angeben. Bitte ein Tenant-Admin-Client-Secret angeben.';
+
+    expect(getCreateStepValidationMessages('auth', formValues)).toContain(
+      'Bitte ein gültiges Auth-Realm ohne Leerzeichen oder Fließtext angeben.'
+    );
+  });
+
+  it('pre-populates both client ids for new create forms', () => {
+    expect(createEmptyCreateForm('studio.smart-village.app')).toMatchObject({
+      authClientId: 'sva-studio-login',
+      tenantAdminClient: {
+        clientId: 'sva-studio-realm-admin',
+        secret: '',
+      },
+    });
   });
 
   it('maps unauthorized instance errors to the session guidance message', () => {
@@ -96,7 +170,7 @@ describe('instances shared helpers', () => {
         key: 'secret',
         title: 'Tenant-Client-Secret',
         ready: true,
-        summary: 'Ein Secret wird mit der Instanz gespeichert und kann im Provisioning direkt geprüft werden.',
+        summary: 'Bei einem neuen Realm wird das Tenant-Client-Secret erst beim Provisioning erzeugt und danach gespeichert.',
       },
       {
         key: 'tenantAdmin',
@@ -235,7 +309,6 @@ describe('instances shared helpers', () => {
       ['realm', 'blocked'],
       ['client', 'blocked'],
       ['tenantAdminClient', 'blocked'],
-      ['mapper', 'blocked'],
       ['tenantSecret', 'blocked'],
       ['tenantAdmin', 'blocked'],
       ['provisioning', 'current'],
@@ -247,16 +320,14 @@ describe('instances shared helpers', () => {
     });
   });
 
-  it('marks tenant admin status as not fulfilled when the instanceId attribute is missing', () => {
+  it('does not surface deprecated tenant admin instance attribute drift anymore', () => {
     const entries = getKeycloakStatusEntries({
       keycloakStatus: {
         realmExists: true,
         clientExists: true,
-        instanceIdMapperExists: true,
         tenantAdminExists: true,
         tenantAdminHasSystemAdmin: true,
         tenantAdminHasInstanceRegistryAdmin: false,
-        tenantAdminInstanceIdMatches: false,
         redirectUrisMatch: true,
         logoutUrisMatch: true,
         webOriginsMatch: true,
@@ -267,10 +338,6 @@ describe('instances shared helpers', () => {
       },
     } as never);
 
-    expect(entries).toContainEqual([
-      'admin.instances.keycloakStatus.tenantAdminInstanceIdMatches',
-      false,
-    ]);
     expect(entries).toContainEqual([
       'admin.instances.keycloakStatus.tenantAdminHasInstanceRegistryAdmin',
       true,
@@ -310,11 +377,9 @@ describe('instances shared helpers', () => {
           realmExists: true,
           clientExists: true,
           tenantAdminClientExists: false,
-          instanceIdMapperExists: true,
           tenantAdminExists: false,
           tenantAdminHasSystemAdmin: false,
           tenantAdminHasInstanceRegistryAdmin: false,
-          tenantAdminInstanceIdMatches: false,
           redirectUrisMatch: true,
           logoutUrisMatch: true,
           webOriginsMatch: true,
@@ -368,11 +433,9 @@ describe('instances shared helpers', () => {
           realmExists: true,
           clientExists: true,
           tenantAdminClientExists: false,
-          instanceIdMapperExists: true,
           tenantAdminExists: true,
           tenantAdminHasSystemAdmin: true,
           tenantAdminHasInstanceRegistryAdmin: false,
-          tenantAdminInstanceIdMatches: true,
           redirectUrisMatch: true,
           logoutUrisMatch: true,
           webOriginsMatch: true,
@@ -595,11 +658,9 @@ describe('instances shared helpers', () => {
           realmExists: true,
           clientExists: true,
           tenantAdminClientExists: true,
-          instanceIdMapperExists: false,
           tenantAdminExists: true,
           tenantAdminHasSystemAdmin: true,
           tenantAdminHasInstanceRegistryAdmin: false,
-          tenantAdminInstanceIdMatches: false,
           redirectUrisMatch: true,
           logoutUrisMatch: true,
           webOriginsMatch: true,
@@ -705,11 +766,9 @@ describe('instances shared helpers', () => {
           realmExists: true,
           clientExists: true,
           tenantAdminClientExists: true,
-          instanceIdMapperExists: true,
           tenantAdminExists: true,
           tenantAdminHasSystemAdmin: true,
           tenantAdminHasInstanceRegistryAdmin: false,
-          tenantAdminInstanceIdMatches: true,
           redirectUrisMatch: true,
           logoutUrisMatch: true,
           webOriginsMatch: true,
@@ -742,11 +801,9 @@ describe('instances shared helpers', () => {
         realmExists: true,
         clientExists: true,
         tenantAdminClientExists: true,
-        instanceIdMapperExists: true,
         tenantAdminExists: true,
         tenantAdminHasSystemAdmin: true,
         tenantAdminHasInstanceRegistryAdmin: true,
-        tenantAdminInstanceIdMatches: true,
         redirectUrisMatch: true,
         logoutUrisMatch: true,
         webOriginsMatch: true,
@@ -911,5 +968,411 @@ describe('instances shared helpers', () => {
 
     expect(screen.getByText('skipped')).toBeTruthy();
     expect(screen.getByText('failed')).toBeTruthy();
+  });
+
+  it('builds the new realm operations model from the worker flow and derives a retry action from failed provisioning', () => {
+    const model = buildNewRealmOperationsModel(
+      createDetailFixture({
+        keycloakPreflight: {
+          overallStatus: 'ready',
+          checkedAt: '2026-01-02T09:00:00.000Z',
+          checks: [
+            {
+              checkKey: 'keycloak_admin_access',
+              status: 'ready',
+              title: 'Technischer Keycloak-Zugriff',
+              summary: 'Der technische Keycloak-Admin-Client kann den Ziel-Realm lesen.',
+              details: {},
+            },
+            {
+              checkKey: 'realm_mode',
+              status: 'ready',
+              title: 'Realm-Modus',
+              summary: 'Der Ziel-Realm fehlt und kann neu angelegt werden.',
+              details: {},
+            },
+          ],
+        },
+        keycloakPlan: {
+          mode: 'new',
+          overallStatus: 'ready',
+          generatedAt: '2026-01-02T09:05:00.000Z',
+          driftSummary: 'Keycloak und Registry weisen Drift auf und werden beim nächsten Lauf abgeglichen.',
+          steps: [],
+        },
+        latestKeycloakProvisioningRun: {
+          id: 'run-1',
+          intent: 'provision',
+          mode: 'new',
+          overallStatus: 'failed',
+          driftSummary: 'Provisioning fehlgeschlagen.',
+          requestId: 'req-run-1',
+          steps: [],
+        },
+        keycloakProvisioningRuns: [
+          {
+            id: 'run-1',
+            intent: 'provision',
+            mode: 'new',
+            overallStatus: 'failed',
+            driftSummary: 'Provisioning fehlgeschlagen.',
+            requestId: 'req-run-1',
+            steps: [],
+          },
+        ],
+      }),
+      null
+    );
+
+    expect(model.mode).toBe('new');
+    expect(model.steps.map((step) => step.key)).toEqual([
+      'registry_contract',
+      'worker_preflight',
+      'worker_plan',
+      'realm',
+      'login_client',
+      'tenant_admin_client',
+      'realm_roles',
+      'tenant_admin',
+      'secret_sync',
+      'final_validation',
+      'realm_bootstrap_complete',
+    ]);
+    expect(model.steps.find((step) => step.key === 'worker_preflight')).toMatchObject({
+      status: 'erfolgreich',
+      evidenceSource: 'worker_preflight',
+    });
+    expect(model.steps.find((step) => step.key === 'worker_plan')).toMatchObject({
+      status: 'erfolgreich',
+      evidenceSource: 'worker_plan',
+    });
+    expect(buildOperationsPrimaryAction(model)).toMatchObject({
+      action: 'execute_provisioning',
+      reason: 'run_retry',
+    });
+  });
+
+  it('prefers execute provisioning over a pure status refresh when preflight and worker plan are ready but the realm artifacts are still open', () => {
+    const model = buildNewRealmOperationsModel(
+      createDetailFixture({
+        updatedAt: '2026-05-06T14:46:44.000Z',
+        keycloakPreflight: {
+          overallStatus: 'ready',
+          checkedAt: '2026-05-06T14:46:53.000Z',
+          checks: [
+            {
+              checkKey: 'realm_mode',
+              status: 'ready',
+              title: 'Realm-Modus',
+              summary: 'Der Ziel-Realm fehlt und kann neu angelegt werden.',
+              details: {},
+            },
+          ],
+        },
+        keycloakPlan: {
+          mode: 'new',
+          overallStatus: 'ready',
+          generatedAt: '2026-05-06T14:46:53.000Z',
+          driftSummary: 'Der Worker kann den Realm-Grundaufbau ausführen.',
+          steps: [],
+        },
+        keycloakStatus: {
+          realmExists: false,
+          clientExists: false,
+          tenantAdminClientExists: false,
+          tenantAdminExists: false,
+          tenantAdminHasSystemAdmin: false,
+          tenantAdminHasInstanceRegistryAdmin: false,
+          redirectUrisMatch: false,
+          logoutUrisMatch: false,
+          webOriginsMatch: false,
+          clientSecretConfigured: false,
+          tenantClientSecretReadable: false,
+          clientSecretAligned: false,
+          tenantAdminClientSecretConfigured: false,
+          tenantAdminClientSecretReadable: false,
+          tenantAdminClientSecretAligned: false,
+          runtimeSecretSource: 'platform',
+        },
+        latestKeycloakProvisioningRun: undefined,
+        keycloakProvisioningRuns: [],
+      }),
+      null,
+    );
+
+    expect(model.steps.find((step) => step.key === 'realm')).toMatchObject({ status: 'offen' });
+    expect(model.steps.find((step) => step.key === 'final_validation')).toMatchObject({ status: 'offen' });
+    expect(buildOperationsPrimaryAction(model)).toMatchObject({
+      action: 'execute_provisioning',
+      reason: 'run_retry',
+    });
+  });
+
+  it('prefers the plan action before provisioning when preflight passed but no worker plan exists yet', () => {
+    const model = buildNewRealmOperationsModel(
+      createDetailFixture({
+        keycloakPreflight: {
+          overallStatus: 'ready',
+          checkedAt: '2026-05-06T14:46:53.000Z',
+          checks: [
+            {
+              checkKey: 'realm_mode',
+              status: 'ready',
+              title: 'Realm-Modus',
+              summary: 'Der Ziel-Realm fehlt und kann neu angelegt werden.',
+              details: {},
+            },
+          ],
+        },
+        keycloakPlan: undefined,
+        keycloakStatus: undefined,
+        latestKeycloakProvisioningRun: undefined,
+        keycloakProvisioningRuns: [],
+      }),
+      null,
+    );
+
+    expect(buildOperationsPrimaryAction(model)).toMatchObject({
+      action: 'plan_provisioning',
+      reason: 'follow_up',
+    });
+  });
+
+  it('derives final validation and follow-up recommendations for a successful new realm bootstrap', () => {
+    const model = buildNewRealmOperationsModel(
+      createDetailFixture({
+        status: 'validated',
+        authClientSecretConfigured: true,
+        tenantAdminClient: {
+          clientId: 'sva-studio-realm-admin',
+          secretConfigured: true,
+        },
+        keycloakStatus: {
+          realmExists: true,
+          clientExists: true,
+          tenantAdminClientExists: true,
+          tenantAdminExists: true,
+          tenantAdminHasSystemAdmin: true,
+          tenantAdminHasInstanceRegistryAdmin: false,
+          redirectUrisMatch: true,
+          logoutUrisMatch: true,
+          webOriginsMatch: true,
+          clientSecretConfigured: true,
+          tenantClientSecretReadable: true,
+          clientSecretAligned: true,
+          tenantAdminClientSecretConfigured: true,
+          tenantAdminClientSecretReadable: true,
+          tenantAdminClientSecretAligned: true,
+          runtimeSecretSource: 'tenant',
+        },
+        latestKeycloakProvisioningRun: {
+          id: 'run-success-1',
+          intent: 'provision',
+          mode: 'new',
+          overallStatus: 'succeeded',
+          driftSummary: 'Kein Drift.',
+          requestId: 'req-success-1',
+          steps: [],
+        },
+        keycloakProvisioningRuns: [
+          {
+            id: 'run-success-1',
+            intent: 'provision',
+            mode: 'new',
+            overallStatus: 'succeeded',
+            driftSummary: 'Kein Drift.',
+            requestId: 'req-success-1',
+            steps: [],
+          },
+        ],
+      }),
+      null
+    );
+
+    expect(model.steps.find((step) => step.key === 'final_validation')).toMatchObject({
+      status: 'erfolgreich',
+      evidenceSource: 'final_validation',
+    });
+    expect(model.steps.find((step) => step.key === 'realm_bootstrap_complete')).toMatchObject({
+      status: 'erfolgreich',
+    });
+    expect(buildOperationsPrimaryAction(model)).toMatchObject({
+      action: 'activate_instance',
+      reason: 'follow_up',
+    });
+  });
+
+  it('builds the existing realm operations model with a reconcile action when drift remains', () => {
+    const model = buildExistingRealmOperationsModel(
+      createDetailFixture({
+        realmMode: 'existing',
+        authClientSecretConfigured: true,
+        tenantAdminClient: {
+          clientId: 'sva-studio-realm-admin',
+          secretConfigured: true,
+        },
+        keycloakPreflight: {
+          overallStatus: 'ready',
+          checkedAt: '2026-01-02T09:00:00.000Z',
+          checks: [],
+        },
+        keycloakStatus: {
+          realmExists: true,
+          clientExists: true,
+          tenantAdminClientExists: true,
+          tenantAdminExists: true,
+          tenantAdminHasSystemAdmin: true,
+          tenantAdminHasInstanceRegistryAdmin: false,
+          redirectUrisMatch: true,
+          logoutUrisMatch: false,
+          webOriginsMatch: true,
+          clientSecretConfigured: true,
+          tenantClientSecretReadable: true,
+          clientSecretAligned: true,
+          tenantAdminClientSecretConfigured: true,
+          tenantAdminClientSecretReadable: true,
+          tenantAdminClientSecretAligned: false,
+          runtimeSecretSource: 'tenant',
+        },
+      }),
+      null
+    );
+
+    expect(model.mode).toBe('existing');
+    expect(model.steps.map((step) => step.key)).toEqual([
+      'registry_contract',
+      'worker_preflight',
+      'live_status',
+      'drift_analysis',
+      'contract_repair',
+      'reconcile',
+      'result_validation',
+    ]);
+    expect(buildOperationsPrimaryAction(model)).toMatchObject({
+      action: 'reconcileKeycloak',
+      reason: 'run_retry',
+    });
+  });
+
+  it('does not suggest reconcile for an existing realm without drift', () => {
+    const model = buildExistingRealmOperationsModel(
+      createDetailFixture({
+        realmMode: 'existing',
+        authClientSecretConfigured: true,
+        tenantAdminClient: {
+          clientId: 'sva-studio-realm-admin',
+          secretConfigured: true,
+        },
+        keycloakPreflight: {
+          overallStatus: 'ready',
+          checkedAt: '2026-01-02T09:00:00.000Z',
+          checks: [],
+        },
+        keycloakStatus: {
+          realmExists: true,
+          clientExists: true,
+          tenantAdminClientExists: true,
+          tenantAdminExists: true,
+          tenantAdminHasSystemAdmin: true,
+          tenantAdminHasInstanceRegistryAdmin: false,
+          redirectUrisMatch: true,
+          logoutUrisMatch: true,
+          webOriginsMatch: true,
+          clientSecretConfigured: true,
+          tenantClientSecretReadable: true,
+          clientSecretAligned: true,
+          tenantAdminClientSecretConfigured: true,
+          tenantAdminClientSecretReadable: true,
+          tenantAdminClientSecretAligned: true,
+          runtimeSecretSource: 'tenant',
+        },
+      }),
+      null,
+    );
+
+    expect(buildOperationsPrimaryAction(model)).toMatchObject({
+      action: 'check_keycloak_status',
+      reason: 'final_validation',
+    });
+  });
+
+  it('separates current and historical provisioning runs in the history workspace model', () => {
+    const model = buildHistoryWorkspaceModel(
+      createDetailFixture({
+        latestKeycloakProvisioningRun: {
+          id: 'run-success',
+          intent: 'provision',
+          mode: 'new',
+          overallStatus: 'succeeded',
+          driftSummary: 'Kein Drift.',
+          requestId: 'req-success',
+          finishedAt: '2026-01-03T10:00:00.000Z',
+          steps: [],
+        },
+        keycloakProvisioningRuns: [
+          {
+            id: 'run-success',
+            intent: 'provision',
+            mode: 'new',
+            overallStatus: 'succeeded',
+            driftSummary: 'Kein Drift.',
+            requestId: 'req-success',
+            finishedAt: '2026-01-03T10:00:00.000Z',
+            steps: [],
+          },
+          {
+            id: 'run-failed',
+            intent: 'provision',
+            mode: 'new',
+            overallStatus: 'failed',
+            driftSummary: 'Früherer Fehler.',
+            requestId: 'req-failed',
+            finishedAt: '2026-01-02T10:00:00.000Z',
+            steps: [],
+          },
+        ],
+      }),
+      buildNewRealmOperationsModel(
+        createDetailFixture({
+          latestKeycloakProvisioningRun: {
+            id: 'run-success',
+            intent: 'provision',
+            mode: 'new',
+            overallStatus: 'succeeded',
+            driftSummary: 'Kein Drift.',
+            requestId: 'req-success',
+            finishedAt: '2026-01-03T10:00:00.000Z',
+            steps: [],
+          },
+          keycloakProvisioningRuns: [
+            {
+              id: 'run-success',
+              intent: 'provision',
+              mode: 'new',
+              overallStatus: 'succeeded',
+              driftSummary: 'Kein Drift.',
+              requestId: 'req-success',
+              finishedAt: '2026-01-03T10:00:00.000Z',
+              steps: [],
+            },
+            {
+              id: 'run-failed',
+              intent: 'provision',
+              mode: 'new',
+              overallStatus: 'failed',
+              driftSummary: 'Früherer Fehler.',
+              requestId: 'req-failed',
+              finishedAt: '2026-01-02T10:00:00.000Z',
+              steps: [],
+            },
+          ],
+        }),
+        null
+      )
+    );
+
+    expect(model.currentRun?.id).toBe('run-success');
+    expect(model.historicalRuns.map((run) => run.id)).toEqual(['run-failed']);
+    expect(model.hasHistoricalMismatchHint).toBe(true);
   });
 });

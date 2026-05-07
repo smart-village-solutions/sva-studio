@@ -34,14 +34,14 @@ describe('tenant-keycloak-user-projection', () => {
     });
   });
 
-  it('requires manual review when instance attributes are missing or wrong', () => {
+  it('keeps unmapped users independent from deprecated instance attributes', () => {
     expect(
       mapUnmappedKeycloakUser({ externalId: 'kc-1', attributes: {} }, null, 'de-musterhausen')
     ).toEqual(
       expect.objectContaining({
-        mappingStatus: 'manual_review',
+        mappingStatus: 'unmapped',
         diagnostics: [
-          { code: 'missing_instance_attribute', objectId: 'kc-1', objectType: 'user' },
+          { code: 'mapping_missing', objectId: 'kc-1', objectType: 'user' },
           { code: 'keycloak_projection_degraded', objectId: 'kc-1', objectType: 'user' },
         ],
       })
@@ -55,8 +55,8 @@ describe('tenant-keycloak-user-projection', () => {
       )
     ).toEqual(
       expect.objectContaining({
-        mappingStatus: 'manual_review',
-        diagnostics: [{ code: 'mapping_incomplete', objectId: 'kc-2', objectType: 'user' }],
+        mappingStatus: 'unmapped',
+        diagnostics: [{ code: 'mapping_missing', objectId: 'kc-2', objectType: 'user' }],
       })
     );
   });

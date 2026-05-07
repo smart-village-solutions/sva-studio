@@ -81,7 +81,6 @@ const readState = vi.fn(async (): Promise<KeycloakReadState> => ({
     tenantAdminExists: true,
     tenantAdminHasSystemAdmin: true,
     tenantAdminHasInstanceRegistryAdmin: true,
-    tenantAdminInstanceIdMatches: true,
   },
   keycloakClientSecret: 'secret',
   tenantAdminClientSecret: 'tenant-secret',

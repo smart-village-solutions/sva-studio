@@ -29,9 +29,9 @@ const createCreatedInstance = (overrides: Record<string, unknown> = {}) => ({
   status: 'requested',
   parentDomain: 'studio.example.org',
   primaryHostname: 'demo.studio.example.org',
-  realmMode: 'existing',
+  realmMode: 'new',
   authRealm: 'demo',
-  authClientId: 'sva-studio',
+  authClientId: 'sva-studio-login',
   authIssuerUrl: undefined,
   authClientSecretConfigured: false,
   hostnames: [],
@@ -90,7 +90,10 @@ describe('InstanceCreatePage', () => {
     const parentDomainInput = screen.getByLabelText('Parent-Domain', { selector: '#instance-parent-domain' }) as HTMLInputElement;
     expect(parentDomainInput.value).toBe('localhost');
     expect(parentDomainInput.placeholder).toBe('localhost');
-    expect(screen.getByText('Bestehender Realm: Der Provisioning-Lauf erwartet den Realm bereits in Keycloak und zeigt Drift an.')).toBeTruthy();
+    expect((screen.getByRole('radio', { name: /Neuer Realm:/u }) as HTMLInputElement).checked).toBe(true);
+    expect(
+      screen.getByText('Neuer Realm: Der Provisioning-Lauf legt den Realm an und blockiert, wenn er bereits existiert.')
+    ).toBeTruthy();
 
     fireEvent.change(screen.getByLabelText('Instanz-ID', { selector: '#instance-id' }), { target: { value: ' demo ' } });
     fireEvent.change(screen.getByLabelText('Anzeigename', { selector: '#instance-display-name' }), {
@@ -106,9 +109,19 @@ describe('InstanceCreatePage', () => {
     fireEvent.change(screen.getByLabelText('Auth-Client-ID', { selector: '#instance-auth-client-id' }), {
       target: { value: ' tenant-client ' },
     });
-    fireEvent.change(screen.getByLabelText('Tenant-Client-Secret', { selector: '#instance-auth-client-secret' }), {
-      target: { value: ' test-client-secret ' },
-    });
+    const authClientSecretInput = screen.getByLabelText('Tenant-Client-Secret', {
+      selector: '#instance-auth-client-secret',
+    }) as HTMLInputElement;
+    expect(authClientSecretInput.disabled).toBe(true);
+    const tenantAdminClientIdInput = screen.getByLabelText('Tenant-Admin-Client-ID', {
+      selector: '#instance-tenant-admin-client-id',
+    }) as HTMLInputElement;
+    expect(tenantAdminClientIdInput.value).toBe('sva-studio-realm-admin');
+    fireEvent.change(tenantAdminClientIdInput, { target: { value: ' sva-studio-realm-admin ' } });
+    const tenantAdminSecretInput = screen.getByLabelText('Tenant-Admin-Client-Secret', {
+      selector: '#instance-tenant-admin-client-secret',
+    }) as HTMLInputElement;
+    expect(tenantAdminSecretInput.disabled).toBe(true);
     fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
 
     expect(screen.getByText('Tenant-Admin')).toBeTruthy();
@@ -121,8 +134,8 @@ describe('InstanceCreatePage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
 
     expect(screen.getByText('Eingaben prüfen')).toBeTruthy();
-    expect(screen.getByText('Bestehender Realm')).toBeTruthy();
-    expect(screen.getByText('Ein Secret wird mit der Instanz gespeichert und kann im Provisioning direkt geprüft werden.')).toBeTruthy();
+    expect(screen.getByText('Neuer Realm')).toBeTruthy();
+    expect(screen.getByText('Bei einem neuen Realm wird das Tenant-Client-Secret erst beim Provisioning erzeugt und danach gespeichert.')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Instanz anlegen' }));
 
     await waitFor(() => {
@@ -130,11 +143,15 @@ describe('InstanceCreatePage', () => {
         instanceId: 'demo',
         displayName: 'Demo',
         parentDomain: 'studio.example.org',
-        realmMode: 'existing',
+        realmMode: 'new',
         authRealm: 'saas-demo',
         authClientId: 'tenant-client',
         authIssuerUrl: undefined,
-        authClientSecret: 'test-client-secret',
+        authClientSecret: undefined,
+        tenantAdminClient: {
+          clientId: 'sva-studio-realm-admin',
+          secret: undefined,
+        },
         tenantAdminBootstrap: {
           username: 'setup-admin',
           email: 'admin@example.org',
@@ -185,8 +202,17 @@ describe('InstanceCreatePage', () => {
     const secretInput = screen.getByLabelText('Tenant-Client-Secret', {
       selector: '#instance-auth-client-secret',
     }) as HTMLInputElement;
+    const tenantAdminSecretInput = screen.getByLabelText('Tenant-Admin-Client-Secret', {
+      selector: '#instance-tenant-admin-client-secret',
+    }) as HTMLInputElement;
+    const tenantAdminClientIdInput = screen.getByLabelText('Tenant-Admin-Client-ID', {
+      selector: '#instance-tenant-admin-client-id',
+    }) as HTMLInputElement;
     expect(secretInput.disabled).toBe(true);
+    expect(tenantAdminSecretInput.disabled).toBe(true);
+    expect(tenantAdminClientIdInput.value).toBe('sva-studio-realm-admin');
     expect(secretInput.placeholder).toBe('Wird beim Provisioning automatisch erzeugt');
+    expect(tenantAdminSecretInput.placeholder).toBe('Wird beim Provisioning automatisch erzeugt');
     expect(
       screen.getByText(
         'Für neue Realms müssen Sie hier kein Secret kennen. Studio erzeugt es beim Provisioning und speichert es anschließend.'
@@ -197,7 +223,7 @@ describe('InstanceCreatePage', () => {
       target: { value: 'saas-demo-new' },
     });
     fireEvent.change(screen.getByLabelText('Auth-Client-ID', { selector: '#instance-auth-client-id' }), {
-      target: { value: 'sva-studio' },
+      target: { value: 'sva-studio-login' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
     fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
@@ -215,9 +241,13 @@ describe('InstanceCreatePage', () => {
         parentDomain: 'localhost',
         realmMode: 'new',
         authRealm: 'saas-demo-new',
-        authClientId: 'sva-studio',
+        authClientId: 'sva-studio-login',
         authIssuerUrl: undefined,
         authClientSecret: undefined,
+        tenantAdminClient: {
+          clientId: 'sva-studio-realm-admin',
+          secret: undefined,
+        },
         tenantAdminBootstrap: undefined,
       });
     });

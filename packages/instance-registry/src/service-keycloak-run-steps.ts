@@ -73,16 +73,6 @@ const buildTenantAdminClientCompletionStep = (status: KeycloakTenantStatus): Com
   ok: status.tenantAdminClientExists,
 });
 
-const buildMapperCompletionStep = (status: KeycloakTenantStatus): CompletionStep => ({
-  stepKey: 'mapper',
-  title: 'instanceId-Mapper sicherstellen',
-  summary: status.instanceIdMapperExists
-    ? 'Der instanceId-Mapper ist als Interop-Artefakt vorhanden.'
-    : 'Der instanceId-Mapper fehlt als optionales Interop-Artefakt.',
-  details: { instanceIdMapperExists: status.instanceIdMapperExists, titleKey: 'iam.provisioning.steps.mapper.title' },
-  ok: true,
-});
-
 const buildSecretCompletionStep = (status: KeycloakTenantStatus): CompletionStep => ({
   stepKey: 'secret',
   title: 'Tenant-Secret abgleichen',
@@ -124,15 +114,11 @@ const buildRolesCompletionStep = (status: KeycloakTenantStatus): CompletionStep 
 const buildTenantAdminCompletionStep = (status: KeycloakTenantStatus): CompletionStep => ({
   stepKey: 'tenant_admin',
   title: 'Tenant-Admin sicherstellen',
-  summary:
-    status.tenantAdminExists && status.tenantAdminInstanceIdMatches
-      ? 'Der Tenant-Admin ist vorhanden und führt das optionale instanceId-Attribut.'
-      : status.tenantAdminExists
-        ? 'Der Tenant-Admin ist vorhanden; das optionale instanceId-Attribut weicht ab oder fehlt.'
-        : 'Der Tenant-Admin fehlt weiterhin.',
+  summary: status.tenantAdminExists
+    ? 'Der Tenant-Admin entspricht dem Minimalprofil.'
+    : 'Der Tenant-Admin fehlt weiterhin.',
   details: {
     tenantAdminExists: status.tenantAdminExists,
-    tenantAdminInstanceIdMatches: status.tenantAdminInstanceIdMatches,
     titleKey: 'iam.provisioning.steps.tenant_admin.title',
   },
   ok: status.tenantAdminExists,
@@ -157,7 +143,6 @@ export const buildFinalRunSteps = (input: {
     buildRealmCompletionStep(input.status),
     buildClientCompletionStep(input.status),
     buildTenantAdminClientCompletionStep(input.status),
-    buildMapperCompletionStep(input.status),
     buildSecretCompletionStep(input.status),
     buildTenantAdminClientSecretCompletionStep(input.status),
     buildRolesCompletionStep(input.status),

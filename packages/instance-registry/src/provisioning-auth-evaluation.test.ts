@@ -94,12 +94,11 @@ describe('provisioning-auth-evaluation', () => {
             'post.logout.redirect.uris': expectedClient.postLogoutRedirectUris.join('##'),
           },
         } as never,
-        protocolMappers: [{ name: 'instanceId' }],
+        protocolMappers: [],
         tenantAdminStatus: {
           tenantAdminExists: true,
           tenantAdminHasSystemAdmin: true,
           tenantAdminHasInstanceRegistryAdmin: true,
-          tenantAdminInstanceIdMatches: true,
         },
         keycloakClientSecret: 'tenant-secret',
         systemAdminRole: { id: 'role-1', externalName: 'system_admin' } as never,
@@ -109,7 +108,6 @@ describe('provisioning-auth-evaluation', () => {
 
     expect(status.realmExists).toBe(true);
     expect(status.clientExists).toBe(true);
-    expect(status.instanceIdMapperExists).toBe(true);
     expect(status.redirectUrisMatch).toBe(true);
     expect(status.logoutUrisMatch).toBe(true);
     expect(status.webOriginsMatch).toBe(true);

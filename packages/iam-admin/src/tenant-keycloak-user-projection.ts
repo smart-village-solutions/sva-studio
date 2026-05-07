@@ -39,19 +39,10 @@ const mapKeycloakUserStatus = (user: IdentityListedUser): UserStatus => (user.en
 export const mapUnmappedKeycloakUser = (
   user: IdentityListedUser,
   roleNames: readonly string[] | null,
-  instanceId: string
+  _instanceId: string
 ): IamUserListItem => {
-  const configuredInstanceIds = user.attributes?.instanceId ?? [];
-  const missingInstanceAttribute = configuredInstanceIds.length === 0;
-  const wrongInstanceAttribute = configuredInstanceIds.length > 0 && !configuredInstanceIds.includes(instanceId);
   const diagnostics: IamKeycloakObjectDiagnostic[] = [];
-  if (missingInstanceAttribute) {
-    diagnostics.push({ code: 'missing_instance_attribute', objectId: user.externalId, objectType: 'user' });
-  } else if (wrongInstanceAttribute) {
-    diagnostics.push({ code: 'mapping_incomplete', objectId: user.externalId, objectType: 'user' });
-  } else {
-    diagnostics.push({ code: 'mapping_missing', objectId: user.externalId, objectType: 'user' });
-  }
+  diagnostics.push({ code: 'mapping_missing', objectId: user.externalId, objectType: 'user' });
   if (roleNames === null) {
     diagnostics.push({ code: 'keycloak_projection_degraded', objectId: user.externalId, objectType: 'user' });
   }
@@ -62,7 +53,7 @@ export const mapUnmappedKeycloakUser = (
     displayName: resolveDisplayName(user),
     email: user.email,
     status: mapKeycloakUserStatus(user),
-    mappingStatus: missingInstanceAttribute || wrongInstanceAttribute ? 'manual_review' : 'unmapped',
+    mappingStatus: 'unmapped',
     editability: 'blocked',
     diagnostics,
     roles: [],

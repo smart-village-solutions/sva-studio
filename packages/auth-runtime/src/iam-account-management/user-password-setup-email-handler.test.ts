@@ -349,6 +349,7 @@ describe('sendPasswordSetupEmailInternal', () => {
     expect(state.emitActivityLog).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
+        subjectId: 'user-1',
         eventType: 'user.password_setup_email_failed',
         result: 'failure',
       })

@@ -100,7 +100,7 @@ describe('UserCreatePage', () => {
     );
   });
 
-  it('omits the invite flag when the checkbox is disabled', async () => {
+  it('submits the invite flag as false when the checkbox is disabled', async () => {
     const createUser = vi.fn().mockResolvedValue({
       user: {
         id: 'user-1',

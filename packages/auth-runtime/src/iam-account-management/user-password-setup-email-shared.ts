@@ -101,6 +101,7 @@ export const emitPasswordSetupEmailFailureAudit = async (input: {
       emitActivityLog(client, {
         instanceId: input.actor.instanceId,
         accountId: input.actor.actorAccountId,
+        subjectId: input.userId,
         eventType: 'user.password_setup_email_failed',
         result: 'failure',
         payload: {

@@ -812,6 +812,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SendPasswordSetupEmailResponse'
+        '400':
+          description: Ungueltiger Request, fehlender Idempotency-Key oder ungueltige Header.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '403':
+          description: Keine Berechtigung fuer den Versand oder Ziel-User darf nicht verwaltet werden.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
         '404':
           description: Nutzer nicht gefunden.
           content:
@@ -820,6 +832,18 @@ paths:
                 $ref: '#/components/schemas/ApiErrorResponse'
         '409':
           description: Idempotency-Key-Konflikt.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '500':
+          description: Interner Fehler beim Versand der Einladungs-E-Mail.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '503':
+          description: Keycloak derzeit nicht verfuegbar oder Versand konnte nicht uebergeben werden.
           content:
             application/json:
               schema:

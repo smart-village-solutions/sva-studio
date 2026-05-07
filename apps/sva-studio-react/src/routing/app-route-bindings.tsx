@@ -159,7 +159,11 @@ const LazyUserEditPage = React.lazy(async () => {
 
 const UserEditRoutePage = () => {
   const params = useParams({ strict: false });
-  return renderLazyPage(LazyUserEditPage, { userId: readStringParam(params.userId) });
+  const search = useSearch({ strict: false });
+  return renderLazyPage(LazyUserEditPage, {
+    userId: readStringParam(params.userId),
+    invitationStatus: search.invite === 'failed' ? 'failed' : undefined,
+  });
 };
 
 const ContentDetailRoutePage = () => {

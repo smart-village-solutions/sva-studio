@@ -669,7 +669,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UserItemResponse'
+                $ref: '#/components/schemas/CreateUserResponse'
         '409':
           description: Idempotency-Key-Konflikt.
           content:
@@ -773,6 +773,77 @@ paths:
                 $ref: '#/components/schemas/UserItemResponse'
         '409':
           description: Self- oder Last-Admin-Schutz.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+  /api/v1/iam/users/{userId}/send-password-setup-email:
+    post:
+      summary: Passwort-Setzen-Einladung erneut senden
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema:
+            type: string
+        - in: header
+          name: X-Requested-With
+          required: true
+          schema:
+            type: string
+            enum: [XMLHttpRequest]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+      responses:
+        '200':
+          description: Einladungs-E-Mail versendet.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SendPasswordSetupEmailResponse'
+        '400':
+          description: Ungueltiger Request, fehlender Idempotency-Key oder ungueltige Header.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '403':
+          description: Keine Berechtigung fuer den Versand oder Ziel-User darf nicht verwaltet werden.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '404':
+          description: Nutzer nicht gefunden.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '409':
+          description: Idempotency-Key-Konflikt.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '500':
+          description: Interner Fehler beim Versand der Einladungs-E-Mail.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '503':
+          description: Keycloak derzeit nicht verfuegbar oder Versand konnte nicht uebergeben werden.
           content:
             application/json:
               schema:
@@ -1488,6 +1559,38 @@ components:
           type: string
         data:
           $ref: '#/components/schemas/User'
+    CreateUserResponse:
+      type: object
+      required: [data]
+      properties:
+        requestId:
+          type: string
+        data:
+          type: object
+          required: [user, invitation]
+          properties:
+            user:
+              $ref: '#/components/schemas/User'
+            invitation:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [not_requested, sent, failed]
+    SendPasswordSetupEmailResponse:
+      type: object
+      required: [data]
+      properties:
+        requestId:
+          type: string
+        data:
+          type: object
+          required: [status]
+          properties:
+            status:
+              type: string
+              enum: [sent]
     UserListResponse:
       type: object
       required: [data, pagination]
@@ -1536,6 +1639,7 @@ components:
     CreateUserRequest:
       type: object
       required: [email]
+      additionalProperties: false
       properties:
         email:
           type: string
@@ -1551,6 +1655,9 @@ components:
           items:
             type: string
             format: uuid
+        sendPasswordSetupEmail:
+          type: boolean
+          description: Löst nach erfolgreicher Nutzeranlage eine Keycloak-Einladung zum Setzen des Passworts aus.
     UpdateUserRequest:
       type: object
       additionalProperties: false

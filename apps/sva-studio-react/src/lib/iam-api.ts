@@ -5,6 +5,7 @@ import type {
   CreateIamContentInput,
   IamAdminGroupDetail,
   IamAdminGroupListItem,
+  IamCreateUserResult,
   IamContentDetail,
   IamContentHistoryEntry,
   IamContentListItem,
@@ -364,6 +365,7 @@ export type CreateUserPayload = {
   readonly preferredLanguage?: string;
   readonly timezone?: string;
   readonly roleIds?: readonly string[];
+  readonly sendPasswordSetupEmail?: boolean;
 };
 
 export type UpdateUserPayload = Partial<Omit<CreateUserPayload, 'roleIds'>> & {
@@ -971,8 +973,8 @@ export const getUserTimeline = async (
 
 export const createUser = async (
   payload: CreateUserPayload
-): Promise<ApiItemResponse<IamUserDetail>> =>
-  postJson<ApiItemResponse<IamUserDetail>, CreateUserPayload>('/api/v1/iam/users', payload, true);
+): Promise<ApiItemResponse<IamCreateUserResult>> =>
+  postJson<ApiItemResponse<IamCreateUserResult>, CreateUserPayload>('/api/v1/iam/users', payload, true);
 
 export const updateUser = async (
   userId: string,
@@ -981,6 +983,15 @@ export const updateUser = async (
   patchJson<ApiItemResponse<IamUserDetail>, UpdateUserPayload>(
     `/api/v1/iam/users/${userId}`,
     payload
+  );
+
+export const sendPasswordSetupEmail = async (
+  userId: string
+): Promise<ApiItemResponse<{ status: 'sent' }>> =>
+  postJson<ApiItemResponse<{ status: 'sent' }>, Record<string, never>>(
+    `/api/v1/iam/users/${userId}/send-password-setup-email`,
+    {},
+    true
   );
 
 export const deactivateUser = async (userId: string): Promise<ApiItemResponse<{ id: string }>> =>

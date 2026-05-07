@@ -1,7 +1,14 @@
 import type { IamUserDetail } from '@sva/core';
 import React from 'react';
 
-import { asIamError, getUser, IamHttpError, updateUser, type UpdateUserPayload } from '../lib/iam-api';
+import {
+  asIamError,
+  getUser,
+  IamHttpError,
+  sendPasswordSetupEmail,
+  updateUser,
+  type UpdateUserPayload,
+} from '../lib/iam-api';
 import {
   createOperationLogger,
   logBrowserOperationFailure,
@@ -17,6 +24,7 @@ type UseUserResult = {
   readonly error: IamHttpError | null;
   readonly refetch: () => Promise<void>;
   readonly save: (payload: UpdateUserPayload) => Promise<IamUserDetail | null>;
+  readonly resendPasswordSetupEmail?: () => Promise<boolean>;
 };
 
 const userLogger = createOperationLogger('user-hook', 'debug');
@@ -107,11 +115,46 @@ export const useUser = (userId: string): UseUserResult => {
     [invalidatePermissions, userId]
   );
 
+  const resendPasswordSetupEmailAction = React.useCallback(async () => {
+    setError(null);
+    logBrowserOperationStart(userLogger, 'user_password_setup_email_started', {
+      operation: 'send_password_setup_email',
+      user_id: userId,
+    });
+
+    try {
+      await sendPasswordSetupEmail(userId);
+      logBrowserOperationSuccess(userLogger, 'user_password_setup_email_succeeded', {
+        operation: 'send_password_setup_email',
+        user_id: userId,
+      });
+      return true;
+    } catch (cause) {
+      const resolvedError = asIamError(cause);
+      if (resolvedError.status === 403) {
+        await invalidatePermissions();
+        userLogger.info('permission_invalidated_after_403', {
+          operation: 'send_password_setup_email',
+          status: resolvedError.status,
+          error_code: resolvedError.code,
+          user_id: userId,
+        });
+      }
+      setError(resolvedError);
+      logBrowserOperationFailure(userLogger, 'user_password_setup_email_failed', resolvedError, {
+        operation: 'send_password_setup_email',
+        user_id: userId,
+      });
+      return false;
+    }
+  }, [invalidatePermissions, userId]);
+
   return {
     user,
     isLoading,
     error,
     refetch,
     save,
+    resendPasswordSetupEmail: resendPasswordSetupEmailAction,
   };
 };

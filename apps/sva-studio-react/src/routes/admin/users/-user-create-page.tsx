@@ -5,6 +5,7 @@ import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Button } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
 import { IamRuntimeDiagnosticDetails } from '../../../components/iam-runtime-diagnostic-details';
+import { Checkbox } from '../../../components/ui/checkbox';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
 import { Select } from '../../../components/ui/select';
@@ -23,6 +24,7 @@ export const UserCreatePage = () => {
     firstName: '',
     lastName: '',
     roleId: '',
+    sendPasswordSetupEmail: true,
   });
 
   const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -39,6 +41,7 @@ export const UserCreatePage = () => {
         lastName: formValues.lastName.trim() || undefined,
         displayName: `${formValues.firstName} ${formValues.lastName}`.trim() || undefined,
         roleIds: formValues.roleId ? [formValues.roleId] : [],
+        sendPasswordSetupEmail: formValues.sendPasswordSetupEmail,
       });
 
       if (!created) {
@@ -47,7 +50,8 @@ export const UserCreatePage = () => {
 
       await navigate({
         to: '/admin/users/$userId',
-        params: { userId: created.id },
+        params: { userId: created.user.id },
+        search: created.invitation.status === 'failed' ? ({ invite: 'failed' } as const) : undefined,
       });
     } finally {
       setIsSubmitting(false);
@@ -112,6 +116,18 @@ export const UserCreatePage = () => {
                 </option>
               ))}
             </Select>
+          </div>
+          <div className="flex items-center gap-3 rounded-md border border-border/60 px-3 py-3 text-sm text-foreground">
+            <Checkbox
+              id="create-user-send-password-setup-email"
+              checked={formValues.sendPasswordSetupEmail}
+              onChange={(event) =>
+                setFormValues((current) => ({ ...current, sendPasswordSetupEmail: event.target.checked }))
+              }
+            />
+            <Label htmlFor="create-user-send-password-setup-email" className="cursor-pointer">
+              {t('admin.users.createDialog.sendPasswordSetupEmail')}
+            </Label>
           </div>
 
           <div className="mt-2 flex justify-end gap-3">

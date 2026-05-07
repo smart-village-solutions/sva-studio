@@ -433,6 +433,38 @@ export class KeycloakAdminClient implements IdentityProviderPort {
     return { externalId };
   }
 
+  async executeActionsEmail(
+    externalId: string,
+    input: {
+      readonly actions: readonly string[];
+      readonly clientId?: string;
+      readonly redirectUri?: string;
+      readonly lifespan?: number;
+    }
+  ): Promise<void> {
+    await this.assertWriteAvailability();
+    const params = new URLSearchParams();
+    if (input.clientId) {
+      params.set('client_id', input.clientId);
+    }
+    if (input.redirectUri) {
+      params.set('redirect_uri', input.redirectUri);
+    }
+    if (typeof input.lifespan === 'number') {
+      params.set('lifespan', String(input.lifespan));
+    }
+
+    const query = params.toString();
+    await this.executeWithResilience<void>({
+      method: 'PUT',
+      path: `/admin/realms/${encodePathSegment(this.realm)}/users/${encodePathSegment(externalId)}/execute-actions-email${
+        query.length > 0 ? `?${query}` : ''
+      }`,
+      body: JSON.stringify([...input.actions]),
+      operation: 'execute_actions_email',
+    });
+  }
+
   async updateUser(externalId: string, input: UpdateIdentityUserInput): Promise<void> {
     await this.assertWriteAvailability();
     const payload = {

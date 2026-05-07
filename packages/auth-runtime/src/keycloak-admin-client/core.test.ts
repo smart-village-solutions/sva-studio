@@ -540,6 +540,60 @@ describe('Keycloak admin client', () => {
     ]);
   });
 
+  it('skips tenant admin service role updates when all required roles are already assigned', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(200, [{ id: 'tenant-admin-client-id', clientId: 'tenant-admin' }]))
+      .mockResolvedValueOnce(createJsonResponse(200, [{ id: 'realm-management-client-id', clientId: 'realm-management' }]))
+      .mockResolvedValueOnce(createJsonResponse(200, { id: 'service-account-user-id', username: 'service-account-tenant-admin' }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, [
+          { id: 'role-manage-users', name: 'manage-users' },
+          { id: 'role-view-users', name: 'view-users' },
+          { id: 'role-view-realm', name: 'view-realm' },
+          { id: 'role-manage-realm', name: 'manage-realm' },
+          { id: 'role-manage-clients', name: 'manage-clients' },
+        ])
+      )
+      .mockResolvedValueOnce(
+        createJsonResponse(200, [
+          { id: 'role-manage-users', name: 'manage-users' },
+          { id: 'role-view-users', name: 'view-users' },
+          { id: 'role-view-realm', name: 'view-realm' },
+          { id: 'role-manage-realm', name: 'manage-realm' },
+          { id: 'role-manage-clients', name: 'manage-clients' },
+        ])
+      );
+
+    const client = await createClient(fetchImpl);
+
+    await expect(client.ensureTenantAdminServiceAccess('tenant-admin')).resolves.toBeUndefined();
+    expect(fetchImpl).toHaveBeenCalledTimes(6);
+    expect(
+      fetchImpl.mock.calls.some(
+        (call) =>
+          call[1]?.method === 'POST'
+          && String(call[0]).includes('/users/service-account-user-id/role-mappings/clients/realm-management-client-id')
+      )
+    ).toBe(false);
+  });
+
+  it('fails tenant admin service access provisioning when the target client is missing', async () => {
+    const { KeycloakAdminRequestError } = await import('./core.js');
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(200, []));
+
+    const client = await createClient(fetchImpl);
+
+    await expect(client.ensureTenantAdminServiceAccess('tenant-admin')).rejects.toMatchObject<KeycloakAdminRequestError>({
+      code: 'unknown_client',
+      statusCode: 404,
+    });
+  });
+
   it('does not regenerate a client secret during normal reconciliation when the configured secret differs', async () => {
     const fetchImpl = vi
       .fn()

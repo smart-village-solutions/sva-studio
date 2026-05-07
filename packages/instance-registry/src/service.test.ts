@@ -728,6 +728,44 @@ describe('instance registry service facade', () => {
     expect(deps.invalidatePermissionSnapshots).not.toHaveBeenCalled();
   });
 
+  it('throws a bootstrap rollback error when reverting newly assigned modules also fails', async () => {
+    const repository = createRepository({
+      assignModule: vi.fn(async (instanceId: string, moduleId: string) => moduleId === 'events'),
+      revokeModule: vi.fn(async () => {
+        throw new Error('rollback_failed');
+      }),
+      listAssignedModules: vi.fn().mockResolvedValueOnce(['news']).mockResolvedValueOnce(['news', 'events']),
+      syncAssignedModuleIam: vi.fn(async () => {
+        throw new Error('sync_failed');
+      }),
+      getInstanceById: vi.fn(async () => baseInstance),
+    });
+    const service = createInstanceRegistryService(createDeps(repository));
+
+    try {
+      await service.bootstrapAdminStructure({
+        instanceId: 'demo',
+        moduleIds: ['news', 'events'],
+        idempotencyKey: 'idem-bootstrap-rollback-2',
+        actorId: 'actor-1',
+        requestId: 'req-bootstrap-rollback-2',
+      });
+      expect.unreachable('bootstrapAdminStructure should throw');
+    } catch (error) {
+      expect(error).toBeInstanceOf(Error);
+      expect((error as Error).message).toBe(
+        'instance_module_bootstrap_rollback_failed:demo:events:sync_failed'
+      );
+      expect((error as Error).name).toBe('InstanceModuleBootstrapRollbackError');
+      expect((error as Error).cause).toEqual({
+        syncError: expect.any(Error),
+        rollbackError: expect.any(Error),
+      });
+      expect(((error as Error).cause as { syncError: Error }).syncError.message).toBe('sync_failed');
+      expect(((error as Error).cause as { rollbackError: Error }).rollbackError.message).toBe('rollback_failed');
+    }
+  });
+
   it('invalidates instance permission snapshots after module IAM changes', async () => {
     const repository = createRepository({
       assignModule: vi.fn(async () => true),

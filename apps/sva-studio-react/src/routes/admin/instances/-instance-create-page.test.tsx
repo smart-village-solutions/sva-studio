@@ -230,6 +230,127 @@ describe('InstanceCreatePage', () => {
     });
   });
 
+  it('passes selected modules to the admin bootstrap and clears the finished state after form edits', async () => {
+    const createInstance = vi.fn().mockResolvedValue(
+      createCreatedInstance({
+        instanceId: 'demo',
+        authRealm: 'saas-demo',
+      })
+    );
+    const bootstrapAdminStructure = vi.fn().mockResolvedValue({
+      instanceId: 'demo',
+      displayName: 'Demo',
+      status: 'requested',
+      parentDomain: 'studio.example.org',
+      primaryHostname: 'demo.studio.example.org',
+      hostnames: [],
+      provisioningRuns: [],
+      keycloakProvisioningRuns: [],
+      auditEvents: [],
+      assignedModules: [
+        { moduleId: 'news', assignedAt: '2026-05-07T16:00:00.000Z' },
+        { moduleId: 'events', assignedAt: '2026-05-07T16:00:00.000Z' },
+      ],
+    });
+    useInstancesMock.mockReturnValue(createInstancesApiState({ createInstance, bootstrapAdminStructure }));
+
+    render(<InstanceCreatePage />);
+
+    fireEvent.change(screen.getByLabelText('Instanz-ID', { selector: '#instance-id' }), { target: { value: 'demo' } });
+    fireEvent.change(screen.getByLabelText('Anzeigename', { selector: '#instance-display-name' }), {
+      target: { value: 'Demo' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+    fireEvent.change(screen.getByLabelText('Auth-Realm', { selector: '#instance-auth-realm' }), {
+      target: { value: 'saas-demo' },
+    });
+    fireEvent.change(screen.getByLabelText('Auth-Client-ID', { selector: '#instance-auth-client-id' }), {
+      target: { value: 'tenant-client' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Instanz anlegen' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Admin-Struktur jetzt anlegen' })).toBeTruthy();
+    });
+
+    const newsCheckbox = screen.getByText('News').closest('label')?.querySelector('input');
+    const eventsCheckbox = screen.getByText('Events').closest('label')?.querySelector('input');
+    expect(newsCheckbox instanceof HTMLInputElement).toBe(true);
+    expect(eventsCheckbox instanceof HTMLInputElement).toBe(true);
+    fireEvent.click(newsCheckbox as HTMLInputElement);
+    fireEvent.click(eventsCheckbox as HTMLInputElement);
+    fireEvent.click(screen.getByRole('button', { name: 'Admin-Struktur jetzt anlegen' }));
+
+    await waitFor(() => {
+      expect(bootstrapAdminStructure).toHaveBeenCalledWith('demo', ['news', 'events']);
+    });
+
+    expect(
+      screen.getByText('Die initiale Admin-Struktur wurde erfolgreich angelegt. Die Instanz gilt damit im Create-Flow als fertig.')
+    ).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: /Basisdaten/u }));
+    fireEvent.change(screen.getByLabelText('Anzeigename', { selector: '#instance-display-name' }), {
+      target: { value: 'Demo aktualisiert' },
+    });
+
+    expect(
+      screen.queryByText('Die initiale Admin-Struktur wurde erfolgreich angelegt. Die Instanz gilt damit im Create-Flow als fertig.')
+    ).toBeNull();
+    expect((screen.getByRole('button', { name: 'Admin-Struktur jetzt anlegen' }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('shows the bootstrap mutation error after create when the admin structure step fails', async () => {
+    const createInstance = vi.fn().mockResolvedValue(
+      createCreatedInstance({
+        instanceId: 'demo',
+        authRealm: 'saas-demo',
+      })
+    );
+    const instancesApiState = createInstancesApiState() as ReturnType<typeof createInstancesApiState> & {
+      mutationError: { status: number; code: string; message: string } | null;
+    };
+    const mutableInstancesApiState = instancesApiState as { mutationError: { status: number; code: string; message: string } | null };
+    const bootstrapAdminStructure = vi.fn().mockImplementation(async () => {
+      mutableInstancesApiState.mutationError = { status: 409, code: 'conflict', message: 'bootstrap fehlgeschlagen' };
+      return null;
+    });
+    instancesApiState.createInstance = createInstance;
+    instancesApiState.bootstrapAdminStructure = bootstrapAdminStructure;
+    useInstancesMock.mockImplementation(() => instancesApiState);
+
+    render(<InstanceCreatePage />);
+
+    fireEvent.change(screen.getByLabelText('Instanz-ID', { selector: '#instance-id' }), { target: { value: 'demo' } });
+    fireEvent.change(screen.getByLabelText('Anzeigename', { selector: '#instance-display-name' }), {
+      target: { value: 'Demo' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+    fireEvent.change(screen.getByLabelText('Auth-Realm', { selector: '#instance-auth-realm' }), {
+      target: { value: 'saas-demo' },
+    });
+    fireEvent.change(screen.getByLabelText('Auth-Client-ID', { selector: '#instance-auth-client-id' }), {
+      target: { value: 'tenant-client' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Instanz anlegen' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Admin-Struktur jetzt anlegen' })).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Admin-Struktur jetzt anlegen' }));
+
+    await waitFor(() => {
+      expect(bootstrapAdminStructure).toHaveBeenCalledWith('demo', []);
+    });
+
+    expect(screen.getByText('Die gewünschte Änderung steht im Konflikt mit dem aktuellen Instanzstatus.')).toBeTruthy();
+  });
+
   it('shows step validation before moving on', () => {
     useInstancesMock.mockReturnValue(createInstancesApiState());
 
@@ -312,6 +433,103 @@ describe('InstanceCreatePage', () => {
           secret: undefined,
         },
         tenantAdminBootstrap: undefined,
+      });
+    });
+  });
+
+  it('requires secrets for existing realms and submits the optional issuer and tenant-admin fields', async () => {
+    const createInstance = vi.fn().mockResolvedValue(
+      createCreatedInstance({
+        instanceId: 'demo-existing',
+        realmMode: 'existing',
+        authRealm: 'tenant-existing',
+        authClientSecretConfigured: true,
+      })
+    );
+    useInstancesMock.mockReturnValue(createInstancesApiState({ createInstance }));
+
+    render(<InstanceCreatePage />);
+
+    fireEvent.click(screen.getAllByRole('radio')[1]!);
+    fireEvent.change(screen.getByLabelText('Instanz-ID', { selector: '#instance-id' }), {
+      target: { value: 'demo-existing' },
+    });
+    fireEvent.change(screen.getByLabelText('Anzeigename', { selector: '#instance-display-name' }), {
+      target: { value: 'Demo Existing' },
+    });
+    fireEvent.change(screen.getByLabelText('Parent-Domain', { selector: '#instance-parent-domain' }), {
+      target: { value: 'studio.example.org' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+
+    const authClientSecretInput = screen.getByLabelText('Tenant-Client-Secret', {
+      selector: '#instance-auth-client-secret',
+    }) as HTMLInputElement;
+    const tenantAdminSecretInput = screen.getByLabelText('Tenant-Admin-Client-Secret', {
+      selector: '#instance-tenant-admin-client-secret',
+    }) as HTMLInputElement;
+    expect(authClientSecretInput.disabled).toBe(false);
+    expect(tenantAdminSecretInput.disabled).toBe(false);
+    expect(
+      screen.getByText(
+        'Das Tenant-Client-Secret ist für bestehende Realms stark empfohlen, damit Status- und Drift-Prüfungen vollständig laufen.'
+      )
+    ).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText('Auth-Realm', { selector: '#instance-auth-realm' }), {
+      target: { value: 'tenant-existing' },
+    });
+    fireEvent.change(screen.getByLabelText('Auth-Client-ID', { selector: '#instance-auth-client-id' }), {
+      target: { value: 'tenant-client' },
+    });
+    fireEvent.change(authClientSecretInput, { target: { value: ' tenant-secret ' } });
+    fireEvent.change(screen.getByLabelText('Tenant-Admin-Client-ID', { selector: '#instance-tenant-admin-client-id' }), {
+      target: { value: ' tenant-admin-client ' },
+    });
+    fireEvent.change(tenantAdminSecretInput, { target: { value: ' tenant-admin-secret ' } });
+    fireEvent.change(screen.getByLabelText('Auth-Issuer-URL', { selector: '#instance-auth-issuer-url' }), {
+      target: { value: ' https://auth.example.org/realms/tenant-existing ' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+
+    fireEvent.change(screen.getByLabelText('Admin-Benutzername', { selector: '#instance-admin-username' }), {
+      target: { value: ' tenant-admin ' },
+    });
+    fireEvent.change(screen.getByLabelText('Admin-E-Mail', { selector: '#instance-admin-email' }), {
+      target: { value: ' tenant-admin@example.org ' },
+    });
+    fireEvent.change(screen.getByLabelText('Admin-Vorname', { selector: '#instance-admin-first-name' }), {
+      target: { value: ' Tina ' },
+    });
+    fireEvent.change(screen.getByLabelText('Admin-Nachname', { selector: '#instance-admin-last-name' }), {
+      target: { value: ' Admin ' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+
+    expect(screen.getByText('Bestehender Realm')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Instanz anlegen' }));
+
+    await waitFor(() => {
+      expect(createInstance).toHaveBeenCalledWith({
+        instanceId: 'demo-existing',
+        displayName: 'Demo Existing',
+        parentDomain: 'studio.example.org',
+        realmMode: 'existing',
+        authRealm: 'tenant-existing',
+        authClientId: 'tenant-client',
+        authIssuerUrl: 'https://auth.example.org/realms/tenant-existing',
+        authClientSecret: 'tenant-secret',
+        tenantAdminClient: {
+          clientId: 'tenant-admin-client',
+          secret: 'tenant-admin-secret',
+        },
+        tenantAdminBootstrap: {
+          username: 'tenant-admin',
+          email: 'tenant-admin@example.org',
+          firstName: 'Tina',
+          lastName: 'Admin',
+        },
       });
     });
   });

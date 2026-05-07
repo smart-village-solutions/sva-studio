@@ -18,6 +18,7 @@ export default defineConfig({
       '@sva/core': resolve(__dirname, '../core/src/index.ts'),
       '@sva/auth-runtime/server': resolve(__dirname, '../auth-runtime/src/server.ts'),
       '@sva/auth-runtime': resolve(__dirname, '../auth-runtime/src/index.ts'),
+      '@sva/iam-admin/encryption': resolve(__dirname, '../iam-admin/src/encryption.ts'),
       '@sva/iam-admin': resolve(__dirname, '../iam-admin/src/index.ts'),
       '@sva/data-repositories/server': resolve(__dirname, '../data-repositories/src/server.ts'),
       '@sva/data-repositories': resolve(__dirname, '../data-repositories/src/index.ts'),

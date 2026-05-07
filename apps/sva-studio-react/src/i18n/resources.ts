@@ -8,7 +8,8 @@ export const i18nResources = {
         loadingStatus: 'Inhalt wird geladen.',
       },
       permissionsDegraded: {
-        message: 'Berechtigungen konnten nicht vollständig geladen werden. Einige Bereiche sind vorübergehend nicht erreichbar.',
+        message:
+          'Berechtigungen konnten nicht vollständig geladen werden. Einige Bereiche sind vorübergehend nicht erreichbar.',
         retry: 'Neu laden',
         dismiss: 'Schließen',
       },
@@ -83,8 +84,10 @@ export const i18nResources = {
         organizationContextStatus: 'Aktiver Organisationskontext: {{name}}',
         organizationContextUpdating: 'Organisationskontext wird aktualisiert.',
         organizationContextError: 'Organisationskontext konnte nicht gewechselt werden.',
-        organizationContextErrorInvalid: 'Diese Organisation steht im aktuellen Kontext nicht zur Auswahl.',
-        organizationContextErrorInactive: 'Inaktive Organisationen können nicht als aktiver Kontext gesetzt werden.',
+        organizationContextErrorInvalid:
+          'Diese Organisation steht im aktuellen Kontext nicht zur Auswahl.',
+        organizationContextErrorInactive:
+          'Inaktive Organisationen können nicht als aktiver Kontext gesetzt werden.',
         organizationContextDefault: 'Default-Kontext',
         iamViewer: 'IAM-Viewer',
       },
@@ -144,13 +147,15 @@ export const i18nResources = {
     },
     placeholder: {
       eyebrow: 'Platzhalterseite',
-      description: 'Für „{{area}}“ ist die Seitenstruktur bereits vorbereitet. Fachlogik und Datenquellen können hier als Nächstes ergänzt werden.',
+      description:
+        'Für „{{area}}“ ist die Seitenstruktur bereits vorbereitet. Fachlogik und Datenquellen können hier als Nächstes ergänzt werden.',
       statusLabel: 'Status',
       statusValue: 'Bereit für Inhalt',
       body: 'Diese Ansicht ist absichtlich als Placeholder angelegt, damit Navigation, Berechtigungen und Shell-Verhalten schon jetzt stabil integriert sind.',
       nextStepLabel: 'Nächster Ausbau',
       nextStepTitle: 'Anschluss an echte Inhalte',
-      nextStepBody: 'Definieren Sie für „{{area}}“ die konkreten Daten, Aktionen und Freigaben. Die Route und Navigation sind bereits vorbereitet.',
+      nextStepBody:
+        'Definieren Sie für „{{area}}“ die konkreten Daten, Aktionen und Freigaben. Die Route und Navigation sind bereits vorbereitet.',
     },
     news: {
       navigation: {
@@ -164,13 +169,28 @@ export const i18nResources = {
     content: {
       page: {
         title: 'Inhalte',
-        subtitle: 'Verwalten Sie generische Inhalte mit Kernmetadaten, JSON-Payload und auditierbarer Historie.',
+        subtitle:
+          'Verwalten Sie generische Inhalte mit Kernmetadaten, JSON-Payload und auditierbarer Historie.',
       },
       filters: {
         searchLabel: 'Suche',
         searchPlaceholder: 'Nach Titel, Typ, Autor oder Payload suchen',
         statusLabel: 'Status',
         statusAll: 'Alle Status',
+      },
+      pagination: {
+        ariaLabel: 'Inhaltsseiten',
+        previous: 'Zurück',
+        next: 'Weiter',
+        pageLabel: 'Seite {{page}} von {{total}}',
+        pageSizeLabel: 'Seitengröße',
+      },
+      bulk: {
+        scope: {
+          explicitIds: 'Auswahl',
+          currentPage: 'Aktuelle Seite',
+          allMatchingQuery: 'Alle Treffer',
+        },
       },
       actions: {
         create: 'Neuer Inhalt',
@@ -216,13 +236,15 @@ export const i18nResources = {
       },
       editor: {
         createTitle: 'Neuen Inhalt anlegen',
-        createSubtitle: 'Definieren Sie den Basiskern und hinterlegen Sie die generische JSON-Payload.',
+        createSubtitle:
+          'Definieren Sie den Basiskern und hinterlegen Sie die generische JSON-Payload.',
         editTitle: 'Inhalt bearbeiten',
         editSubtitle: 'Aktualisieren Sie Metadaten, Status und Payload des ausgewählten Inhalts.',
       },
       meta: {
         title: 'Metadaten',
-        createHint: 'Metadaten wie Autor, Zeitstempel und ID werden nach dem ersten Speichern ergänzt.',
+        createHint:
+          'Metadaten wie Autor, Zeitstempel und ID werden nach dem ersten Speichern ergänzt.',
         author: 'Autor',
         createdAt: 'Erstellt am',
         updatedAt: 'Geändert am',
@@ -272,29 +294,35 @@ export const i18nResources = {
         loading: 'Inhalte werden geladen ...',
         loadError: 'Inhalte konnten nicht geladen werden.',
         saveError: 'Inhalt konnte nicht gespeichert werden.',
-        actionsDisabled: 'Aktionen bleiben deaktiviert, bis die erforderlichen Berechtigungen im aktuellen Kontext vorliegen.',
-        readOnly: 'Der Inhalt ist im aktuellen Kontext nur lesbar. Felder und Speichern bleiben deaktiviert.',
+        actionsDisabled:
+          'Aktionen bleiben deaktiviert, bis die erforderlichen Berechtigungen im aktuellen Kontext vorliegen.',
+        readOnly:
+          'Der Inhalt ist im aktuellen Kontext nur lesbar. Felder und Speichern bleiben deaktiviert.',
         accessSummary: 'Aktueller Zugriffsstatus: {{state}}. {{context}}',
         accessLoadError:
           'Der globale Inhaltskontext konnte nicht vollständig geladen werden. Einzelne Statusangaben bleiben erhalten.',
       },
       errors: {
         forbidden: 'Unzureichende Berechtigungen für diese Inhaltsaktion.',
-        csrfValidationFailed: 'Sicherheitsprüfung fehlgeschlagen. Bitte Seite neu laden und erneut versuchen.',
+        csrfValidationFailed:
+          'Sicherheitsprüfung fehlgeschlagen. Bitte Seite neu laden und erneut versuchen.',
         rateLimited: 'Zu viele Anfragen in kurzer Zeit. Bitte kurz warten und erneut versuchen.',
         notFound: 'Der angeforderte Inhalt wurde nicht gefunden.',
-        databaseUnavailable: 'Die Inhaltsdaten konnten wegen eines Datenbankproblems nicht verarbeitet werden.',
+        databaseUnavailable:
+          'Die Inhaltsdaten konnten wegen eines Datenbankproblems nicht verarbeitet werden.',
         invalidRequest: 'Der Inhalt enthält ungültige oder unvollständige Daten.',
       },
       validation: {
         payloadJsonInvalid: 'Die Payload muss gültiges JSON sein.',
-        publishedAtRequired: 'Für veröffentlichte Inhalte ist ein Veröffentlichungsdatum erforderlich.',
+        publishedAtRequired:
+          'Für veröffentlichte Inhalte ist ein Veröffentlichungsdatum erforderlich.',
       },
     },
     media: {
       page: {
         title: 'Medienbibliothek',
-        subtitle: 'Verwalten Sie Uploads, Metadaten, Sichtbarkeit und die aktuelle Nutzung Ihrer Medienobjekte.',
+        subtitle:
+          'Verwalten Sie Uploads, Metadaten, Sichtbarkeit und die aktuelle Nutzung Ihrer Medienobjekte.',
       },
       filters: {
         searchLabel: 'Suche',
@@ -367,13 +395,17 @@ export const i18nResources = {
       },
       editor: {
         createTitle: 'Medienupload vorbereiten',
-        createSubtitle: 'Initialisieren Sie einen Upload und erhalten Sie die signierte Ziel-URL für das Medienobjekt.',
+        createSubtitle:
+          'Initialisieren Sie einen Upload und erhalten Sie die signierte Ziel-URL für das Medienobjekt.',
         detailTitle: 'Medium bearbeiten',
-        detailSubtitle: 'Pflegen Sie Metadaten, Sichtbarkeit und prüfen Sie die aktuelle Verwendung.',
+        detailSubtitle:
+          'Pflegen Sie Metadaten, Sichtbarkeit und prüfen Sie die aktuelle Verwendung.',
         uploadCardTitle: 'Upload anlegen',
-        uploadCardDescription: 'Der MVP initialisiert den Upload serverseitig und liefert die signierte Upload-URL zurück.',
+        uploadCardDescription:
+          'Der MVP initialisiert den Upload serverseitig und liefert die signierte Upload-URL zurück.',
         uploadReadyTitle: 'Upload bereit',
-        uploadReadyDescription: 'Diese Daten können jetzt für den eigentlichen Datei-Upload verwendet werden.',
+        uploadReadyDescription:
+          'Diese Daten können jetzt für den eigentlichen Datei-Upload verwendet werden.',
         metadataTitle: 'Metadaten',
         metadataDescription: 'Bearbeiten Sie fachliche Metadaten und die Sichtbarkeit des Mediums.',
       },
@@ -394,7 +426,8 @@ export const i18nResources = {
         title: 'Nutzungstransparenz',
         subtitle: 'Aktive Referenzen dieses Mediums in Host- oder Fachmodulen.',
         pageTitle: 'Usage-Impact',
-        pageSubtitle: 'Prüfen Sie, welche Referenzen dieses Medium aktuell blockieren oder beeinflussen.',
+        pageSubtitle:
+          'Prüfen Sie, welche Referenzen dieses Medium aktuell blockieren oder beeinflussen.',
         assetTitle: 'Aktuelles Medienobjekt',
         summary: 'Aktive Referenzen: {{count}}',
         empty: 'Dieses Medium ist aktuell nicht referenziert.',
@@ -413,12 +446,14 @@ export const i18nResources = {
       },
       errors: {
         forbidden: 'Unzureichende Berechtigungen für diese Medienaktion.',
-        databaseUnavailable: 'Die Mediendaten konnten wegen eines Datenbankproblems nicht verarbeitet werden.',
+        databaseUnavailable:
+          'Die Mediendaten konnten wegen eines Datenbankproblems nicht verarbeitet werden.',
         notFound: 'Das angeforderte Medium wurde nicht gefunden.',
         conflict: 'Die Medienaktion konnte wegen eines Konflikts nicht abgeschlossen werden.',
         invalidMediaContent: 'Das hochgeladene Medium konnte nicht validiert werden.',
         uploadSizeExceeded: 'Das hochgeladene Medium überschreitet die erlaubte Größe.',
-        activeReferences: 'Das Medium kann wegen aktiver Referenzen derzeit nicht geändert oder gelöscht werden.',
+        activeReferences:
+          'Das Medium kann wegen aktiver Referenzen derzeit nicht geändert oder gelöscht werden.',
       },
       values: {
         notAvailable: 'Nicht verfügbar',
@@ -470,22 +505,26 @@ export const i18nResources = {
       },
       sections: {
         overviewTitle: 'Direkte Einstiege',
-        overviewBody: 'Nutzen Sie die wichtigsten Bereiche direkt aus der Startseite. Details zu Rollen, Guards und technischen Entscheidungen bleiben in den jeweiligen Fachbereichen verankert.',
+        overviewBody:
+          'Nutzen Sie die wichtigsten Bereiche direkt aus der Startseite. Details zu Rollen, Guards und technischen Entscheidungen bleiben in den jeweiligen Fachbereichen verankert.',
       },
       cards: {
         content: {
           title: 'Inhalte',
-          description: 'Pflegen Sie redaktionelle Inhalte, Metadaten und Veröffentlichungsstände in der zentralen Inhaltsverwaltung.',
+          description:
+            'Pflegen Sie redaktionelle Inhalte, Metadaten und Veröffentlichungsstände in der zentralen Inhaltsverwaltung.',
           action: 'Inhalte öffnen',
         },
         account: {
           title: 'Konto',
-          description: 'Prüfen Sie Ihr Profil, Ihren Datenschutzkontext und weitere selbstbedienbare Kontofunktionen.',
+          description:
+            'Prüfen Sie Ihr Profil, Ihren Datenschutzkontext und weitere selbstbedienbare Kontofunktionen.',
           action: 'Konto öffnen',
         },
         interfaces: {
           title: 'Schnittstellen',
-          description: 'Überblicken Sie angebundene Integrationen und öffnen Sie die verwalteten Schnittstellenbereiche.',
+          description:
+            'Überblicken Sie angebundene Integrationen und öffnen Sie die verwalteten Schnittstellenbereiche.',
           action: 'Schnittstellen öffnen',
         },
       },
@@ -493,8 +532,11 @@ export const i18nResources = {
         loginFailed: 'Login fehlgeschlagen. Bitte erneut versuchen.',
         stateExpired: 'Login abgebrochen oder abgelaufen. Bitte erneut anmelden.',
         sessionExpired: 'Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an.',
-        insufficientRole: 'Keine Berechtigung für diese Seite. Bitte wenden Sie sich an die Administration.',
+        insufficientRole:
+          'Keine Berechtigung für diese Seite. Bitte wenden Sie sich an die Administration.',
         sessionLoadFailed: 'Fehler beim Laden der Session. Bitte erneut anmelden.',
+        requestId: 'Request-ID: {{requestId}}',
+        authFlowId: 'Auth-Flow: {{authFlowId}}',
         loginAction: 'Erneut anmelden',
       },
     },
@@ -535,7 +577,8 @@ export const i18nResources = {
         invalidConfig: 'Die Mainserver-Konfiguration ist ungültig.',
         invalidGraphqlBaseUrl: 'Die GraphQL Basis-URL ist ungültig.',
         invalidOauthTokenUrl: 'Die OAuth Token-URL ist ungültig.',
-        databaseUnavailable: 'Die Konfiguration konnte wegen eines Datenbankproblems nicht geladen werden.',
+        databaseUnavailable:
+          'Die Konfiguration konnte wegen eines Datenbankproblems nicht geladen werden.',
         identityProviderUnavailable: 'Der Identity Provider ist derzeit nicht erreichbar.',
         missingCredentials: 'Für die Mainserver-Verbindung fehlen Zugangsdaten.',
         tokenRequestFailed: 'Der Zugriffstoken für den Mainserver konnte nicht abgerufen werden.',
@@ -589,7 +632,8 @@ export const i18nResources = {
         keycloakRedirectHint: 'Sie werden zur Keycloak-Kontoverwaltung weitergeleitet.',
       },
       diagnostics: {
-        sessionRecovery: 'Die Sitzung konnte nicht stabil wiederhergestellt werden. Bitte erneut anmelden.',
+        sessionRecovery:
+          'Die Sitzung konnte nicht stabil wiederhergestellt werden. Bitte erneut anmelden.',
         actorResolutionOrMembership:
           'Ihr Konto ist technisch erreichbar, aber die fachliche Zuordnung oder Instanz-Mitgliedschaft ist unvollständig.',
         databaseOrSchemaDrift:
@@ -609,7 +653,8 @@ export const i18nResources = {
       },
       privacy: {
         title: 'Datenschutz & Transparenz',
-        subtitle: 'Exports, Betroffenenrechte und Einschränkungen der Verarbeitung für Ihr eigenes Konto verwalten.',
+        subtitle:
+          'Exports, Betroffenenrechte und Einschränkungen der Verarbeitung für Ihr eigenes Konto verwalten.',
         cta: {
           title: 'Datenschutz-Cockpit öffnen',
           body: 'Sehen Sie Export-Jobs, Betroffenenanfragen und Einschränkungen der Verarbeitung in einer eigenen Ansicht.',
@@ -680,7 +725,8 @@ export const i18nResources = {
             actorResolutionOrMembership: 'Akteur-Auflösung oder Mitgliedschaft',
             keycloakDependency: 'Keycloak-Abhängigkeit',
             databaseOrSchemaDrift: 'Datenbank- oder Schema-Drift',
-            databaseMappingOrMembershipInconsistency: 'Datenbank-Mapping oder Mitgliedschaft inkonsistent',
+            databaseMappingOrMembershipInconsistency:
+              'Datenbank-Mapping oder Mitgliedschaft inkonsistent',
             registryOrProvisioningDrift: 'Registry- oder Provisioning-Drift',
             keycloakReconcile: 'Keycloak-Reconcile',
             frontendStateOrPermissionStaleness: 'Frontend-State oder Berechtigungsstand veraltet',
@@ -707,7 +753,8 @@ export const i18nResources = {
       instances: {
         page: {
           title: 'Instanzverwaltung',
-          subtitle: 'Verwalten Sie Registry-Einträge, Hostnamen und den Lebenszyklus neuer Studio-Instanzen.',
+          subtitle:
+            'Verwalten Sie Registry-Einträge, Hostnamen und den Lebenszyklus neuer Studio-Instanzen.',
         },
         filters: {
           searchLabel: 'Suche',
@@ -725,7 +772,8 @@ export const i18nResources = {
         },
         form: {
           title: 'Neue Instanz anlegen',
-          subtitle: 'Die Anlage startet denselben Provisioning-Vertrag wie der Ops-Pfad und hinterlegt Realm-Grundeinstellungen für Keycloak.',
+          subtitle:
+            'Die Anlage startet denselben Provisioning-Vertrag wie der Ops-Pfad und hinterlegt Realm-Grundeinstellungen für Keycloak.',
           instanceId: 'Instanz-ID',
           displayName: 'Anzeigename',
           parentDomain: 'Parent-Domain',
@@ -736,10 +784,12 @@ export const i18nResources = {
           authClientSecretConfigured: 'Secret bereits konfiguriert',
           authClientSecretMissing: 'Noch kein Secret hinterlegt',
           authClientSecretHint: 'Leer lassen, um das bestehende Secret unverändert zu lassen.',
-          authClientSecretGeneratedHint: 'Bei neuen Realms wird das Secret beim Provisioning automatisch erzeugt und danach in Studio gespeichert.',
+          authClientSecretGeneratedHint:
+            'Bei neuen Realms wird das Secret beim Provisioning automatisch erzeugt und danach in Studio gespeichert.',
           authClientSecretGeneratedDuringProvisioning: 'Wird beim Provisioning automatisch erzeugt',
           tenantAdminClientTitle: 'Tenant-Admin-Client',
-          tenantAdminClientSubtitle: 'Client-Vertrag und Secret für tenant-spezifische Verwaltungsoperationen.',
+          tenantAdminClientSubtitle:
+            'Client-Vertrag und Secret für tenant-spezifische Verwaltungsoperationen.',
           tenantAdminClientId: 'Tenant-Admin-Client-ID',
           tenantAdminClientSecret: 'Tenant-Admin-Client-Secret',
           tenantAdminClientSecretConfigured: 'Secret bereits konfiguriert',
@@ -755,28 +805,39 @@ export const i18nResources = {
         },
         flow: {
           realmModeTitle: 'Realm-Modus',
-          realmModeSubtitle: 'Legen Sie fest, ob ein neuer Realm angelegt oder ein bestehender Realm abgeglichen wird.',
+          realmModeSubtitle:
+            'Legen Sie fest, ob ein neuer Realm angelegt oder ein bestehender Realm abgeglichen wird.',
           realmModeNewLabel: 'Neuer Realm',
           realmModeExistingLabel: 'Bestehender Realm',
-          realmModeNew: 'Neuer Realm: Der Provisioning-Lauf legt den Realm an und blockiert, wenn er bereits existiert.',
-          realmModeExisting: 'Bestehender Realm: Der Provisioning-Lauf erwartet den Realm bereits in Keycloak und zeigt Drift an.',
-          createHint: 'Das Speichern legt nur die Instanz und den Registry-Sollzustand an. Keycloak-Provisioning wird erst im Detail explizit ausgeführt.',
+          realmModeNew:
+            'Neuer Realm: Der Provisioning-Lauf legt den Realm an und blockiert, wenn er bereits existiert.',
+          realmModeExisting:
+            'Bestehender Realm: Der Provisioning-Lauf erwartet den Realm bereits in Keycloak und zeigt Drift an.',
+          createHint:
+            'Das Speichern legt nur die Instanz und den Registry-Sollzustand an. Keycloak-Provisioning wird erst im Detail explizit ausgeführt.',
           preflightTitle: 'Vorbedingungen',
-          preflightSubtitle: 'Prüft Root-Host-Zugriff, technischen Keycloak-Zugang und die notwendigen Stammdaten.',
+          preflightSubtitle:
+            'Prüft Root-Host-Zugriff, technischen Keycloak-Zugang und die notwendigen Stammdaten.',
           preflightEmpty: 'Für diese Instanz wurden noch keine Vorbedingungen geladen.',
           previewTitle: 'Vorschau',
-          previewSubtitle: 'Zeigt die geplanten Create-/Update-Schritte vor dem eigentlichen Provisioning.',
+          previewSubtitle:
+            'Zeigt die geplanten Create-/Update-Schritte vor dem eigentlichen Provisioning.',
           previewEmpty: 'Für diese Instanz wurde noch keine Provisioning-Vorschau erzeugt.',
           executeTitle: 'Ausführen',
-          executeSubtitle: 'Startet das eigentliche Tenant-Provisioning explizit und schreibt ein sichtbares Operationsprotokoll.',
+          executeSubtitle:
+            'Startet das eigentliche Tenant-Provisioning explizit und schreibt ein sichtbares Operationsprotokoll.',
           protocolTitle: 'Protokoll',
-          protocolSubtitle: 'Persistierte Keycloak-Provisioning-Läufe mit Schrittstatus, Ergebnis und Request-ID.',
-          protocolEmpty: 'Für diese Instanz wurden noch keine Keycloak-Provisioning-Läufe aufgezeichnet.',
+          protocolSubtitle:
+            'Persistierte Keycloak-Provisioning-Läufe mit Schrittstatus, Ergebnis und Request-ID.',
+          protocolEmpty:
+            'Für diese Instanz wurden noch keine Keycloak-Provisioning-Läufe aufgezeichnet.',
         },
         detail: {
           title: 'Instanzdetails',
-          subtitle: 'Pflegen Sie Registry- und Keycloak-Grundeinstellungen der ausgewählten Instanz.',
-          empty: 'Wählen Sie eine Instanz aus der Liste, um Details, Realm-Status und Läufe anzuzeigen.',
+          subtitle:
+            'Pflegen Sie Registry- und Keycloak-Grundeinstellungen der ausgewählten Instanz.',
+          empty:
+            'Wählen Sie eine Instanz aus der Liste, um Details, Realm-Status und Läufe anzuzeigen.',
           primaryHostname: 'Primärer Hostname: {{value}}',
           parentDomain: 'Parent-Domain: {{value}}',
           status: 'Status: {{value}}',
@@ -787,7 +848,8 @@ export const i18nResources = {
         cockpit: {
           eyebrow: 'Control Tower',
           title: 'Operativer Überblick',
-          subtitle: 'Aktueller Zustand, dominante Befunde und die nächste sinnvolle Operator-Aktion auf einen Blick.',
+          subtitle:
+            'Aktueller Zustand, dominante Befunde und die nächste sinnvolle Operator-Aktion auf einen Blick.',
           identity: 'Instanz',
           currentState: 'Gesamtstatus',
           configurationSnapshot: 'Konfiguration',
@@ -797,9 +859,11 @@ export const i18nResources = {
           secondaryActions: 'Spezial- und Folgeaktionen',
           anomaliesTitle: 'Offene Befunde',
           anomaliesSubtitle: 'Verdichtete Anomalien, bevor Sie in Betrieb oder Historie abtauchen.',
-          anomaliesEmpty: 'Keine dominanten Abweichungen. Die Instanz zeigt aktuell keinen priorisierten Befund.',
+          anomaliesEmpty:
+            'Keine dominanten Abweichungen. Die Instanz zeigt aktuell keinen priorisierten Befund.',
           evidenceTitle: 'Dominante Evidenz',
-          evidenceSubtitle: 'Quelle, Frische und Herkunft des führenden Zustands für den Erstblick.',
+          evidenceSubtitle:
+            'Quelle, Frische und Herkunft des führenden Zustands für den Erstblick.',
           checkedAt: 'Belastbare Evidenz: {{value}}',
           noEvidenceTimestamp: 'Keine belastbare Zeitmarke verfügbar.',
           tabsAriaLabel: 'Arbeitsbereiche der Instanz-Detailseite',
@@ -855,17 +919,32 @@ export const i18nResources = {
           rotateClientSecret: 'Client-Secret rotieren',
           loadRun: 'Run laden',
         },
+        feedback: {
+          preflightUpdated: 'Vorbedingungen wurden aktualisiert.',
+          keycloakStatusUpdated: 'Keycloak-Status wurde aktualisiert.',
+          provisioningPreviewUpdated: 'Provisioning-Vorschau wurde aktualisiert.',
+          provisioningQueued:
+            'Provisioning-Auftrag wurde gespeichert und zur Abarbeitung vorgemerkt.',
+          tenantIamProbeUpdated: 'Tenant-IAM-Rechteprobe wurde aktualisiert.',
+          workerEnvMissing:
+            'Der Provisioning-Worker kann Keycloak derzeit nicht technisch prüfen. Im laufenden Prozess fehlt {{envName}}.',
+          workerProjectionHint:
+            'Die angezeigten Vorbedingungen und der Keycloak-Status sind derzeit nur eine Registry-basierte Vorabschätzung. Ein echter Live-Abgleich erfolgt erst im Provisioning-Worker.',
+        },
         keycloakPanel: {
           title: 'Keycloak-Status und Bootstrap',
-          subtitle: 'Abgleich von Realm, Client, Mapper und Tenant-Admin für die ausgewählte Instanz.',
+          subtitle:
+            'Abgleich von Realm, Client, Mapper und Tenant-Admin für die ausgewählte Instanz.',
           temporaryPassword: 'Temporäres Admin-Passwort',
-          passwordHint: 'Das Passwort wird nur für diesen Bootstrap verwendet und nicht in Studio gespeichert.',
+          passwordHint:
+            'Das Passwort wird nur für diesen Bootstrap verwendet und nicht in Studio gespeichert.',
           rotateClientSecret: 'Tenant-Client-Secret beim Reconcile erneut in Keycloak setzen',
           empty: 'Es liegen noch keine Keycloak-Statusdaten für diese Instanz vor.',
         },
         tenantIam: {
           title: 'Tenant-IAM-Betrieb',
-          subtitle: 'Getrennte Sicht auf Konfiguration, Rechteprobe und Rollenabgleich der Instanz.',
+          subtitle:
+            'Getrennte Sicht auf Konfiguration, Rechteprobe und Rollenabgleich der Instanz.',
           requestId: 'Request-ID: {{value}}',
           axes: {
             configuration: 'Konfiguration',
@@ -883,7 +962,8 @@ export const i18nResources = {
         },
         instanceModules: {
           title: 'Instanzmodule',
-          subtitle: 'Module pro Instanz zuweisen, entziehen und die zugehörige IAM-Basis neu aufbauen.',
+          subtitle:
+            'Module pro Instanz zuweisen, entziehen und die zugehörige IAM-Basis neu aufbauen.',
           empty: 'Wählen Sie eine Instanz aus, um Modulzuweisungen zu verwalten.',
           instanceSelect: {
             label: 'Instanz auswählen',
@@ -902,12 +982,8 @@ export const i18nResources = {
           },
           detail: {
             title: 'IAM-Basis der Module',
-            subtitle: 'Deklarierter Modulvertrag und registrierter Befund der aktuell zugewiesenen Module.',
-          },
-          confirm: {
-            revokeTitle: 'Modul wirklich entziehen?',
-            revokeDescription:
-              'Das Modul {{moduleId}} wird der gewählten Instanz entzogen. Anschließend muss die IAM-Basis bei Bedarf neu aufgebaut werden.',
+            subtitle:
+              'Deklarierter Modulvertrag und registrierter Befund der aktuell zugewiesenen Module.',
           },
           module: {
             permissions: 'Berechtigungen: {{value}}',
@@ -918,24 +994,35 @@ export const i18nResources = {
             revoke: 'Modul entziehen',
             seedIamBaseline: 'IAM-Basis neu aufbauen',
           },
+          confirmRevoke: {
+            title: 'Modul wirklich entziehen?',
+            description:
+              'Das Modul {{moduleId}} wird der Instanz {{instanceId}} entzogen. Zugehörige Berechtigungen und IAM-Basis werden dabei entfernt.',
+            confirm: 'Modul entziehen',
+            cancel: 'Abbrechen',
+          },
         },
         wizard: {
           steps: {
             basics: {
               title: 'Basisdaten',
-              description: 'Instanz-ID, Anzeigename und Parent-Domain für den Registry-Eintrag festlegen.',
+              description:
+                'Instanz-ID, Anzeigename und Parent-Domain für den Registry-Eintrag festlegen.',
             },
             auth: {
               title: 'Keycloak-Zuordnung',
-              description: 'Realm, Client und optionales Issuer-/Secret-Mapping für den Tenant hinterlegen.',
+              description:
+                'Realm, Client und optionales Issuer-/Secret-Mapping für den Tenant hinterlegen.',
             },
             tenantAdmin: {
               title: 'Tenant-Admin',
-              description: 'Optional den initialen Tenant-Admin für Bootstrap und Recovery vorbereiten.',
+              description:
+                'Optional den initialen Tenant-Admin für Bootstrap und Recovery vorbereiten.',
             },
             review: {
               title: 'Prüfen & Erstellen',
-              description: 'Eingaben kontrollieren und die Instanz zunächst nur in der Registry anlegen.',
+              description:
+                'Eingaben kontrollieren und die Instanz zunächst nur in der Registry anlegen.',
             },
           },
           validation: {
@@ -947,20 +1034,30 @@ export const i18nResources = {
           },
           readiness: {
             secretTitle: 'Tenant-Client-Secret',
-            secretReady: 'Ein Secret wird mit der Instanz gespeichert und kann im Provisioning direkt geprüft werden.',
-            secretMissing: 'Noch kein Secret eingetragen. Der spätere Abgleich bleibt dadurch unvollständig.',
-            secretGenerated: 'Bei einem neuen Realm wird das Tenant-Client-Secret erst beim Provisioning erzeugt und danach gespeichert.',
+            secretReady:
+              'Ein Secret wird mit der Instanz gespeichert und kann im Provisioning direkt geprüft werden.',
+            secretMissing:
+              'Noch kein Secret eingetragen. Der spätere Abgleich bleibt dadurch unvollständig.',
+            secretGenerated:
+              'Bei einem neuen Realm wird das Tenant-Client-Secret erst beim Provisioning erzeugt und danach gespeichert.',
             tenantAdminTitle: 'Initialer Tenant-Admin',
-            tenantAdminReady: 'Ein Tenant-Admin ist hinterlegt und kann beim ersten Bootstrap oder Reset verwendet werden.',
-            tenantAdminMissing: 'Kein Tenant-Admin hinterlegt. Der Schritt bleibt nach dem Erstellen manuell offen.',
+            tenantAdminReady:
+              'Ein Tenant-Admin ist hinterlegt und kann beim ersten Bootstrap oder Reset verwendet werden.',
+            tenantAdminMissing:
+              'Kein Tenant-Admin hinterlegt. Der Schritt bleibt nach dem Erstellen manuell offen.',
             followUpTitle: 'Nächster Betriebs-Schritt',
-            followUpSummary: 'Nach dem Speichern folgt im Detail die technische Prüfung und das Keycloak-Provisioning.',
+            followUpSummary:
+              'Nach dem Speichern folgt im Detail die technische Prüfung und das Keycloak-Provisioning.',
           },
-          authHint: 'Das Tenant-Client-Secret ist für bestehende Realms stark empfohlen, damit Status- und Drift-Prüfungen vollständig laufen.',
-          authSecretGeneratedHint: 'Für neue Realms müssen Sie hier kein Secret kennen. Studio erzeugt es beim Provisioning und speichert es anschließend.',
-          tenantAdminOptional: 'Diese Angaben sind optional, solange der Tenant-Admin nicht direkt beim ersten Provisioning neu gesetzt werden muss.',
+          authHint:
+            'Das Tenant-Client-Secret ist für bestehende Realms stark empfohlen, damit Status- und Drift-Prüfungen vollständig laufen.',
+          authSecretGeneratedHint:
+            'Für neue Realms müssen Sie hier kein Secret kennen. Studio erzeugt es beim Provisioning und speichert es anschließend.',
+          tenantAdminOptional:
+            'Diese Angaben sind optional, solange der Tenant-Admin nicht direkt beim ersten Provisioning neu gesetzt werden muss.',
           reviewTitle: 'Eingaben prüfen',
-          reviewSubtitle: 'Die Instanz wird jetzt nur angelegt. Der eigentliche Keycloak-Abgleich folgt danach auf der Detailseite.',
+          reviewSubtitle:
+            'Die Instanz wird jetzt nur angelegt. Der eigentliche Keycloak-Abgleich folgt danach auf der Detailseite.',
           reviewDefaultIssuer: 'Wird automatisch aus dem Realm abgeleitet',
           reviewNotConfigured: 'Nicht konfiguriert',
           actions: {
@@ -970,15 +1067,18 @@ export const i18nResources = {
         },
         success: {
           title: 'Instanz gespeichert',
-          summary: 'Die Instanz {{instanceId}} wurde in der Registry angelegt. Aktueller Status: {{status}}.',
+          summary:
+            'Die Instanz {{instanceId}} wurde in der Registry angelegt. Aktueller Status: {{status}}.',
           actions: {
             openDetail: 'Detailseite öffnen',
             backToOverview: 'Zur Übersicht',
           },
           nextSteps: {
-            openDetail: 'Öffnen Sie die Detailseite, um den technischen Zustand der Instanz zu prüfen.',
+            openDetail:
+              'Öffnen Sie die Detailseite, um den technischen Zustand der Instanz zu prüfen.',
             runProvisioning: 'Führen Sie dort den Keycloak-Abgleich für Realm {{realm}} aus.',
-            activate: 'Aktivieren Sie die Instanz erst nach erfolgreichem Provisioning für {{hostname}}.',
+            activate:
+              'Aktivieren Sie die Instanz erst nach erfolgreichem Provisioning für {{hostname}}.',
           },
         },
         help: {
@@ -992,30 +1092,36 @@ export const i18nResources = {
             title: 'Realm-Modus',
             what: 'Legt fest, ob Studio einen Realm neu anlegen oder einen bereits existierenden Realm prüfen und abgleichen soll.',
             value: 'Im Regelfall für produktionsnahe Tenants "Bestehender Realm" wählen.',
-            source: 'Kommt aus dem Betriebsfall des Tenants und aus dem aktuellen Stand in Keycloak.',
-            impact: 'Der falsche Modus führt dazu, dass Provisioning blockiert oder einen unerwarteten Drift meldet.',
+            source:
+              'Kommt aus dem Betriebsfall des Tenants und aus dem aktuellen Stand in Keycloak.',
+            impact:
+              'Der falsche Modus führt dazu, dass Provisioning blockiert oder einen unerwarteten Drift meldet.',
             defaultHint: 'Für bestehende Tenants ist "Bestehender Realm" der Standard.',
           },
           instanceId: {
             title: 'Instanz-ID',
             what: 'Technische Kennung der Instanz innerhalb von Studio und der Registry.',
             value: 'Ein stabiler, kleingeschriebener Bezeichner wie "hb-meinquartier".',
-            source: 'Kommt aus dem Tenant-Namensschema und wird oft auch in Mappern, Hostnamen und Rollen wiederverwendet.',
-            impact: 'Änderungen oder Tippfehler ziehen sich durch Hostnamen, Mapper und Betriebsautomatisierung.',
+            source:
+              'Kommt aus dem Tenant-Namensschema und wird oft auch in Mappern, Hostnamen und Rollen wiederverwendet.',
+            impact:
+              'Änderungen oder Tippfehler ziehen sich durch Hostnamen, Mapper und Betriebsautomatisierung.',
           },
           displayName: {
             title: 'Anzeigename',
             what: 'Lesbarer Name der Instanz für Administration und UI.',
             value: 'Den fachlichen Tenant-Namen eintragen, z. B. "MeinQuartier".',
             source: 'Kommt aus dem Produkt- oder Mandantennamen.',
-            impact: 'Ein falscher Wert ist meist kein technischer Blocker, erzeugt aber Verwirrung in Verwaltung und Support.',
+            impact:
+              'Ein falscher Wert ist meist kein technischer Blocker, erzeugt aber Verwirrung in Verwaltung und Support.',
           },
           parentDomain: {
             title: 'Parent-Domain',
             what: 'Die übergeordnete Domain, unter der der primäre Hostname der Instanz erzeugt wird.',
             value: 'Die gemeinsame Plattform-Domain, z. B. "studio.smart-village.app".',
             source: 'Kommt aus der Zielumgebung oder dem Plattform-Setup.',
-            impact: 'Eine falsche Domain erzeugt falsche Hostnamen und inkonsistente Redirect- und Runtime-Konfiguration.',
+            impact:
+              'Eine falsche Domain erzeugt falsche Hostnamen und inkonsistente Redirect- und Runtime-Konfiguration.',
             defaultHint: 'Wenn möglich wird die aktuelle Host-Domain als Vorschlag vorbelegt.',
           },
           authRealm: {
@@ -1023,22 +1129,27 @@ export const i18nResources = {
             what: 'Name des Tenant-Realm in Keycloak, aus dem sich Issuer und Prüfungen ableiten.',
             value: 'Den exakten Realm-Namen eintragen, z. B. "saas-hb-meinquartier".',
             source: 'Kommt direkt aus Keycloak.',
-            impact: 'Ein falscher Realm verhindert Statusprüfungen, Drift-Erkennung und Provisioning gegen den richtigen Tenant.',
+            impact:
+              'Ein falscher Realm verhindert Statusprüfungen, Drift-Erkennung und Provisioning gegen den richtigen Tenant.',
           },
           authClientId: {
             title: 'Auth-Client-ID',
             what: 'OIDC-Client im Tenant-Realm, den Studio zur Anmeldung und zum Abgleich erwartet.',
-            value: 'In der Regel "sva-studio", sofern kein abweichender Tenant-Client verwendet wird.',
+            value:
+              'In der Regel "sva-studio", sofern kein abweichender Tenant-Client verwendet wird.',
             source: 'Kommt aus dem Keycloak-Client im Tenant-Realm.',
-            impact: 'Ein falscher Client führt zu fehlgeschlagenen Statusprüfungen und unpassenden Client-Änderungen.',
+            impact:
+              'Ein falscher Client führt zu fehlgeschlagenen Statusprüfungen und unpassenden Client-Änderungen.',
             defaultHint: 'Standardwert ist "sva-studio".',
           },
           authIssuerUrl: {
             title: 'Auth-Issuer-URL',
             what: 'Explizite Issuer-URL des Tenant-Realm. Wenn sie leer bleibt, wird sie aus dem Realm-Namen abgeleitet.',
             value: 'Meist leer lassen oder die vollständige Realm-URL eintragen.',
-            source: 'Kommt aus der Keycloak-Installation oder wird automatisch aus Basis-URL und Realm gebildet.',
-            impact: 'Ein falscher Issuer führt zu fehlerhaften Token-Prüfungen und inkonsistenter Runtime-Konfiguration.',
+            source:
+              'Kommt aus der Keycloak-Installation oder wird automatisch aus Basis-URL und Realm gebildet.',
+            impact:
+              'Ein falscher Issuer führt zu fehlerhaften Token-Prüfungen und inkonsistenter Runtime-Konfiguration.',
             defaultHint: 'Leer bedeutet: Issuer automatisch aus Basis-URL und Realm berechnen.',
           },
           authClientSecret: {
@@ -1055,9 +1166,12 @@ export const i18nResources = {
             title: 'Tenant-Admin-Client-ID',
             what: 'OIDC-Client für tenant-spezifische Verwaltungs- und Bootstrap-Vorgänge.',
             value: 'Den erwarteten Client-Namen eintragen, z. B. "sva-studio-admin".',
-            source: 'Kommt aus dem Tenant-Realm in Keycloak oder aus dem vorgesehenen Provisioning-Vertrag.',
-            impact: 'Ohne korrekte Client-ID bleiben tenant-spezifische Verwaltungsaktionen und Teile der Benutzerverwaltung blockiert.',
-            defaultHint: 'Falls der Client noch nicht existiert, kann Studio ihn über das Provisioning bereitstellen.',
+            source:
+              'Kommt aus dem Tenant-Realm in Keycloak oder aus dem vorgesehenen Provisioning-Vertrag.',
+            impact:
+              'Ohne korrekte Client-ID bleiben tenant-spezifische Verwaltungsaktionen und Teile der Benutzerverwaltung blockiert.',
+            defaultHint:
+              'Falls der Client noch nicht existiert, kann Studio ihn über das Provisioning bereitstellen.',
           },
           tenantAdminClientSecret: {
             title: 'Tenant-Admin-Client-Secret',
@@ -1072,7 +1186,8 @@ export const i18nResources = {
             what: 'Technischer Benutzername des Tenant-Admins für Bootstrap oder Reset.',
             value: 'Den geplanten oder bestehenden Login-Namen des Tenant-Admins eintragen.',
             source: 'Kommt aus dem Tenant-Betrieb oder aus dem bestehenden Keycloak-Setup.',
-            impact: 'Ohne diesen Wert kann der Admin im Provisioning nicht neu gesetzt oder sauber geprüft werden.',
+            impact:
+              'Ohne diesen Wert kann der Admin im Provisioning nicht neu gesetzt oder sauber geprüft werden.',
           },
           tenantAdminEmail: {
             title: 'Admin-E-Mail',
@@ -1086,19 +1201,22 @@ export const i18nResources = {
             what: 'Vorname des initialen Tenant-Admins.',
             value: 'Den gewünschten oder bestehenden Vornamen eintragen.',
             source: 'Kommt aus dem Benutzerprofil des Tenant-Admins.',
-            impact: 'Ist primär ein Komfort- und Qualitätsmerkmal, sollte aber konsistent gepflegt werden.',
+            impact:
+              'Ist primär ein Komfort- und Qualitätsmerkmal, sollte aber konsistent gepflegt werden.',
           },
           tenantAdminLastName: {
             title: 'Admin-Nachname',
             what: 'Nachname des initialen Tenant-Admins.',
             value: 'Den gewünschten oder bestehenden Nachnamen eintragen.',
             source: 'Kommt aus dem Benutzerprofil des Tenant-Admins.',
-            impact: 'Ist primär ein Komfort- und Qualitätsmerkmal, sollte aber konsistent gepflegt werden.',
+            impact:
+              'Ist primär ein Komfort- und Qualitätsmerkmal, sollte aber konsistent gepflegt werden.',
           },
         },
         workflow: {
           title: 'Was ist noch offen?',
-          subtitle: 'Dieser Ablauf zeigt, welche technischen Schritte nach dem Speichern noch nötig sind.',
+          subtitle:
+            'Dieser Ablauf zeigt, welche technischen Schritte nach dem Speichern noch nötig sind.',
           badges: {
             done: 'Erledigt',
             current: 'Als Nächstes',
@@ -1112,63 +1230,80 @@ export const i18nResources = {
           keycloakAccess: {
             title: 'Technischer Keycloak-Zugriff',
             ready: 'Der technische Zugriff auf Keycloak wurde erfolgreich geprüft.',
-            pending: 'Die technische Erreichbarkeit und Admin-Berechtigung sollte jetzt geprüft werden.',
-            blocked: 'Keycloak ist aktuell nicht erreichbar oder die technische Prüfung ist fehlgeschlagen.',
+            pending:
+              'Die technische Erreichbarkeit und Admin-Berechtigung sollte jetzt geprüft werden.',
+            blocked:
+              'Keycloak ist aktuell nicht erreichbar oder die technische Prüfung ist fehlgeschlagen.',
           },
           realm: {
             title: 'Realm prüfen',
             newRealm: 'Für diesen Flow wird der Realm im Provisioning neu angelegt.',
             ready: 'Der erwartete Realm ist vorhanden.',
-            blocked: 'Der konfigurierte Realm passt nicht zum gewählten Modus oder ist nicht erreichbar.',
+            blocked:
+              'Der konfigurierte Realm passt nicht zum gewählten Modus oder ist nicht erreichbar.',
             pending: 'Der Realm sollte jetzt gegen die gespeicherte Konfiguration geprüft werden.',
           },
           client: {
             title: 'Client prüfen',
             ready: 'Der erwartete Tenant-Client wurde gefunden.',
-            blocked: 'Der Client konnte wegen fehlendem Keycloak-Zugriff noch nicht geprüft werden.',
+            blocked:
+              'Der Client konnte wegen fehlendem Keycloak-Zugriff noch nicht geprüft werden.',
             pending: 'Der Tenant-Client sollte per Vorschau oder Statuslauf geprüft werden.',
           },
           tenantAdminClient: {
             title: 'Tenant-Admin-Client prüfen',
             notConfigured: 'In der Registry ist noch kein Tenant-Admin-Client hinterlegt.',
-            secretMissing: 'Der Tenant-Admin-Client ist in der Registry vorhanden, aber der Secret-Vertrag ist noch unvollständig.',
+            secretMissing:
+              'Der Tenant-Admin-Client ist in der Registry vorhanden, aber der Secret-Vertrag ist noch unvollständig.',
             ready: 'Tenant-Admin-Client und Secret-Vertrag entsprechen dem erwarteten Zustand.',
-            blocked: 'Der Tenant-Admin-Client konnte wegen fehlendem Keycloak-Zugriff noch nicht geprüft werden.',
-            pending: 'Der Tenant-Admin-Client sollte jetzt per Provisioning geprüft oder abgeglichen werden.',
+            blocked:
+              'Der Tenant-Admin-Client konnte wegen fehlendem Keycloak-Zugriff noch nicht geprüft werden.',
+            pending:
+              'Der Tenant-Admin-Client sollte jetzt per Provisioning geprüft oder abgeglichen werden.',
           },
           mapper: {
             title: 'instanceId-Mapper prüfen',
             ready: 'Der instanceId-Mapper ist vorhanden.',
-            blocked: 'Der Mapper konnte wegen fehlendem Keycloak-Zugriff noch nicht geprüft werden.',
+            blocked:
+              'Der Mapper konnte wegen fehlendem Keycloak-Zugriff noch nicht geprüft werden.',
             pending: 'Der Mapper wird nach dem Status- oder Provisioning-Lauf verifiziert.',
           },
           tenantSecret: {
             title: 'Tenant-Secret prüfen',
-            missing: 'Es ist noch kein Tenant-Client-Secret gespeichert. Dieser Schritt blockiert technische Abgleiche.',
-            generatedDuringProvisioning: 'Für neue Realms wird das Tenant-Client-Secret erst beim Provisioning erzeugt und danach gespeichert.',
+            missing:
+              'Es ist noch kein Tenant-Client-Secret gespeichert. Dieser Schritt blockiert technische Abgleiche.',
+            generatedDuringProvisioning:
+              'Für neue Realms wird das Tenant-Client-Secret erst beim Provisioning erzeugt und danach gespeichert.',
             ready: 'Das Tenant-Secret ist gespeichert und technisch lesbar.',
             blocked: 'Das Secret konnte noch nicht gegen Keycloak geprüft werden.',
-            pending: 'Das Secret ist vorhanden, muss aber noch technisch gegen Keycloak geprüft werden.',
+            pending:
+              'Das Secret ist vorhanden, muss aber noch technisch gegen Keycloak geprüft werden.',
           },
           tenantAdmin: {
             title: 'Tenant-Admin prüfen',
-            missing: 'Es ist noch kein Tenant-Admin hinterlegt. Dieser Schritt bleibt bis zur Pflege blockiert.',
+            missing:
+              'Es ist noch kein Tenant-Admin hinterlegt. Dieser Schritt bleibt bis zur Pflege blockiert.',
             ready: 'Tenant-Admin und system_admin-Rolle sind vorhanden.',
-            blocked: 'Der Tenant-Admin konnte wegen fehlendem Keycloak-Zugriff noch nicht geprüft werden.',
-            pending: 'Der Tenant-Admin ist gespeichert, muss aber noch im Realm geprüft oder neu gesetzt werden.',
+            blocked:
+              'Der Tenant-Admin konnte wegen fehlendem Keycloak-Zugriff noch nicht geprüft werden.',
+            pending:
+              'Der Tenant-Admin ist gespeichert, muss aber noch im Realm geprüft oder neu gesetzt werden.',
           },
           provisioning: {
             title: 'Provisioning ausführen',
             ready: 'Der letzte Keycloak-Provisioning-Lauf war erfolgreich.',
             running: 'Der Keycloak-Provisioning-Lauf läuft gerade.',
-            failed: 'Der letzte Keycloak-Provisioning-Lauf ist fehlgeschlagen und muss geprüft werden.',
-            pending: 'Nach Prüfung von Realm, Client und Admin kann jetzt das Provisioning ausgeführt werden.',
+            failed:
+              'Der letzte Keycloak-Provisioning-Lauf ist fehlgeschlagen und muss geprüft werden.',
+            pending:
+              'Nach Prüfung von Realm, Client und Admin kann jetzt das Provisioning ausgeführt werden.',
           },
           activation: {
             title: 'Instanz aktivieren',
             ready: 'Die Instanz ist aktiv und betriebsbereit.',
             current: 'Provisioning ist erfolgreich. Die Instanz kann jetzt aktiviert werden.',
-            pending: 'Die Aktivierung bleibt gesperrt, bis das Provisioning erfolgreich abgeschlossen ist.',
+            pending:
+              'Die Aktivierung bleibt gesperrt, bis das Provisioning erfolgreich abgeschlossen ist.',
           },
         },
         guidance: {
@@ -1200,7 +1335,8 @@ export const i18nResources = {
             title: 'Instanz archiviert',
             body: 'Die Instanz ist archiviert und sollte nur noch zu Dokumentations- oder Diagnosezwecken geändert werden.',
           },
-          keycloakUnavailable: 'Die Detailseite bleibt bedienbar, aber Keycloak-Aktionen und Prüfungen sind aktuell blockiert. Prüfen Sie Erreichbarkeit und Credentials.',
+          keycloakUnavailable:
+            'Die Detailseite bleibt bedienbar, aber Keycloak-Aktionen und Prüfungen sind aktuell blockiert. Prüfen Sie Erreichbarkeit und Credentials.',
         },
         configuration: {
           title: 'Konfigurationsstatus',
@@ -1275,27 +1411,34 @@ export const i18nResources = {
         },
         errors: {
           unauthorized: 'Die Sitzung ist nicht mehr gültig. Bitte erneut anmelden.',
-          recoveryRunning: 'Die Sitzung wird gerade wiederhergestellt oder ist instabil. Bitte erneut anmelden.',
+          recoveryRunning:
+            'Die Sitzung wird gerade wiederhergestellt oder ist instabil. Bitte erneut anmelden.',
           forbidden: 'Keine Berechtigung für die Instanzverwaltung.',
-          csrfValidationFailed: 'Sicherheitsprüfung fehlgeschlagen. Bitte Seite neu laden und erneut versuchen.',
+          csrfValidationFailed:
+            'Sicherheitsprüfung fehlgeschlagen. Bitte Seite neu laden und erneut versuchen.',
           reauthRequired: 'Für diese Aktion ist eine frische Re-Authentisierung erforderlich.',
           conflict: 'Die gewünschte Änderung steht im Konflikt mit dem aktuellen Instanzstatus.',
-          databaseUnavailable: 'Die Registry konnte wegen eines Datenbankproblems nicht verarbeitet werden.',
-          databaseOrSchemaDrift: 'Die Instanzverwaltung ist derzeit wegen einer Datenbank- oder Migrationsabweichung eingeschränkt.',
+          databaseUnavailable:
+            'Die Registry konnte wegen eines Datenbankproblems nicht verarbeitet werden.',
+          databaseOrSchemaDrift:
+            'Die Instanzverwaltung ist derzeit wegen einer Datenbank- oder Migrationsabweichung eingeschränkt.',
           registryOrProvisioningDrift:
             'Für diese Instanz liegt ein Registry- oder Provisioning-Drift vor. Bitte Keycloak-Status, Preflight und letzten Run gemeinsam prüfen.',
           keycloakReconcile:
             'Der Keycloak-Abgleich ist fehlgeschlagen oder erfordert manuelle Nacharbeit. Bitte den Reconcile-Befund mit Request-ID prüfen.',
-          tenantAuthClientSecretMissing: 'Für diese Instanz ist noch kein Tenant-Client-Secret hinterlegt.',
+          tenantAuthClientSecretMissing:
+            'Für diese Instanz ist noch kein Tenant-Client-Secret hinterlegt.',
           tenantAdminClientNotConfigured:
             'Für diese Instanz ist noch kein Tenant-Admin-Client hinterlegt. Pflegen Sie den Client-Vertrag und speichern Sie die Instanz.',
           tenantAdminClientSecretMissing:
             'Für diese Instanz fehlt noch das Tenant-Admin-Client-Secret. Hinterlegen Sie es in der Detailseite und speichern Sie erneut.',
           keycloakUnavailable: 'Keycloak konnte nicht erreicht oder nicht abgeglichen werden.',
-          encryptionNotConfigured: 'Die notwendige Feldverschlüsselung für Tenant-Secrets ist nicht konfiguriert.',
+          encryptionNotConfigured:
+            'Die notwendige Feldverschlüsselung für Tenant-Secrets ist nicht konfiguriert.',
         },
         diagnostics: {
-          preflightEvidence: 'Vorbedingungen zuletzt geprüft: Status {{status}}, Zeitpunkt {{checkedAt}}',
+          preflightEvidence:
+            'Vorbedingungen zuletzt geprüft: Status {{status}}, Zeitpunkt {{checkedAt}}',
           planEvidence: 'Letzte Provisioning-Vorschau: {{summary}}',
           latestRunEvidence: 'Letzter Keycloak-Run: Request-ID {{requestId}}, Status {{status}}',
         },
@@ -1305,7 +1448,8 @@ export const i18nResources = {
           title: 'Benutzerverwaltung',
           subtitle: 'Benutzerkonten suchen, filtern und verwalten',
           platformTitle: 'Plattform-Benutzer',
-          platformSubtitle: 'Root-Benutzer aus dem Plattform-Realm suchen, filtern und synchronisieren',
+          platformSubtitle:
+            'Root-Benutzer aus dem Plattform-Realm suchen, filtern und synchronisieren',
         },
         table: {
           caption: 'Tabelle mit allen Benutzern in der aktuellen Instanz',
@@ -1378,7 +1522,8 @@ export const i18nResources = {
           mainserverApplicationSecretPlaceholder: 'Neues Secret eingeben',
           mainserverApplicationSecretConfigured: 'Ein Secret ist bereits hinterlegt.',
           mainserverApplicationSecretMissing: 'Es ist noch kein Secret hinterlegt.',
-          mainserverApplicationSecretHint: 'Leer lassen, um das bestehende Secret unverändert zu lassen.',
+          mainserverApplicationSecretHint:
+            'Leer lassen, um das bestehende Secret unverändert zu lassen.',
           rolesLabel: 'Rollen-Zuweisung',
           groupsLabel: 'Gruppen-Zuweisung',
           notesLabel: 'Notizen',
@@ -1386,7 +1531,8 @@ export const i18nResources = {
           directPermissionsTitle: 'Direkte Rechte',
           directPermissionsHint:
             'Direkte Nutzerrechte ergänzen oder überschreiben Rollen- und Gruppenrechte. Direkte Verweigerungen haben Vorrang.',
-          directPermissionsSectionHint: 'Setzen Sie je Berechtigung eine direkte Wirkung oder lassen Sie die Vererbung aktiv.',
+          directPermissionsSectionHint:
+            'Setzen Sie je Berechtigung eine direkte Wirkung oder lassen Sie die Vererbung aktiv.',
           directPermissionsEmpty: 'Es sind keine direkten Nutzerrechte gesetzt.',
           directPermissionsSelectLabel: 'Direkte Wirkung für {{permission}}',
           effectivePermissionsTitle: 'Aktuell wirksame Rechte',
@@ -1402,7 +1548,8 @@ export const i18nResources = {
           permissionsEmpty: 'Keine effektiven Berechtigungen vorhanden.',
           permissionTrace: {
             title: 'Effektive Berechtigungen',
-            description: 'Schreibgeschützte Auflösung aller wirksamen und nicht wirksamen Berechtigungsquellen.',
+            description:
+              'Schreibgeschützte Auflösung aller wirksamen und nicht wirksamen Berechtigungsquellen.',
             effectiveTitle: 'Wirksame Quellen',
             inactiveTitle: 'Nicht wirksame Quellen',
             directAssignmentsTitle: 'Direkte Zuweisungen',
@@ -1463,7 +1610,8 @@ export const i18nResources = {
           error: 'Nutzer konnten nicht geladen werden.',
           resultCount: '{{count}} Nutzer gefunden.',
           syncRunning: 'Synchronisierung läuft ...',
-          syncEmpty: 'Keine neuen oder geänderten Benutzer gefunden. {{skippedCount}} ohne passenden Instanzkontext übersprungen.',
+          syncEmpty:
+            'Keine neuen oder geänderten Benutzer gefunden. {{skippedCount}} ohne passenden Instanzkontext übersprungen.',
           syncResult:
             '{{checkedCount}} geprüft: {{correctedCount}} korrigiert, {{manualReviewCount}} manuell prüfen. {{importedCount}} importiert, {{updatedCount}} aktualisiert, {{skippedCount}} ohne passenden Instanzkontext übersprungen.',
           syncDiagnostics:
@@ -1472,7 +1620,8 @@ export const i18nResources = {
           diagnosticCodes: 'Diagnose: {{codes}}',
           syncOutcome: {
             success: 'Der Sync wurde deterministisch ohne offenen Nachlauf abgeschlossen.',
-            partialFailure: 'Der Sync wurde mit teilweisen Fehlern oder manuellem Nachlauf abgeschlossen.',
+            partialFailure:
+              'Der Sync wurde mit teilweisen Fehlern oder manuellem Nachlauf abgeschlossen.',
             blocked: 'Der Sync wurde durch Drift oder fehlende Laufzeitvoraussetzungen blockiert.',
             failed: 'Der Sync endete ohne verwertbares Ergebnis.',
           },
@@ -1485,20 +1634,27 @@ export const i18nResources = {
         },
         errors: {
           forbidden: 'Unzureichende Berechtigungen für diese Nutzeraktion.',
-          recoveryRunning: 'Die Sitzung wird gerade wiederhergestellt oder ist instabil. Bitte erneut anmelden.',
-          csrfValidationFailed: 'Sicherheitsprüfung fehlgeschlagen. Bitte Seite neu laden und erneut versuchen.',
+          recoveryRunning:
+            'Die Sitzung wird gerade wiederhergestellt oder ist instabil. Bitte erneut anmelden.',
+          csrfValidationFailed:
+            'Sicherheitsprüfung fehlgeschlagen. Bitte Seite neu laden und erneut versuchen.',
           rateLimited: 'Zu viele Anfragen in kurzer Zeit. Bitte kurz warten und erneut versuchen.',
-          conflict: 'Die Nutzeränderung steht in Konflikt mit dem aktuellen Zustand. Bitte aktualisieren und erneut versuchen.',
+          conflict:
+            'Die Nutzeränderung steht in Konflikt mit dem aktuellen Zustand. Bitte aktualisieren und erneut versuchen.',
           keycloakReconcile:
             'Der Benutzerabgleich mit Keycloak ist fehlgeschlagen oder erfordert manuelle Nacharbeit. Bitte den Reconcile-Befund prüfen.',
           tenantAdminClientNotConfigured:
             'Für diese Instanz ist noch kein Tenant-Admin-Client hinterlegt. Bitte zuerst den Instanzvertrag abgleichen.',
           tenantAdminClientSecretMissing:
             'Für diese Instanz fehlt noch das Tenant-Admin-Client-Secret. Bitte zuerst den Instanzvertrag abgleichen.',
-          keycloakUnavailable: 'Die Verbindung zu Keycloak ist derzeit nicht verfügbar. Bitte später erneut versuchen.',
-          databaseUnavailable: 'Die IAM-Datenbank ist derzeit nicht erreichbar. Bitte später erneut versuchen.',
-          lastAdminProtection: 'Der letzte aktive System-Administrator kann nicht entfernt oder deaktiviert werden.',
-          selfProtection: 'Das aktuell angemeldete Konto kann nicht auf diese Weise deaktiviert werden.',
+          keycloakUnavailable:
+            'Die Verbindung zu Keycloak ist derzeit nicht verfügbar. Bitte später erneut versuchen.',
+          databaseUnavailable:
+            'Die IAM-Datenbank ist derzeit nicht erreichbar. Bitte später erneut versuchen.',
+          lastAdminProtection:
+            'Der letzte aktive System-Administrator kann nicht entfernt oder deaktiviert werden.',
+          selfProtection:
+            'Das aktuell angemeldete Konto kann nicht auf diese Weise deaktiviert werden.',
           featureDisabled: 'Die Nutzerverwaltung ist derzeit deaktiviert.',
           unauthorized: 'Die Sitzung ist nicht mehr gültig. Bitte erneut anmelden.',
           unexpectedHttp: 'Unerwartete Serverantwort (HTTP {{status}}).',
@@ -1580,7 +1736,8 @@ export const i18nResources = {
         },
         confirm: {
           deactivateTitle: 'Organisation deaktivieren',
-          deactivateDescription: 'Die Organisation wird kontrolliert deaktiviert, sofern keine Abhängigkeiten bestehen.',
+          deactivateDescription:
+            'Die Organisation wird kontrolliert deaktiviert, sofern keine Abhängigkeiten bestehen.',
         },
         form: {
           keyLabel: 'Technischer Schlüssel',
@@ -1614,12 +1771,15 @@ export const i18nResources = {
         },
         errors: {
           forbidden: 'Unzureichende Berechtigungen für diese Organisationsaktion.',
-          csrfValidationFailed: 'Sicherheitsprüfung fehlgeschlagen. Bitte Seite neu laden und erneut versuchen.',
+          csrfValidationFailed:
+            'Sicherheitsprüfung fehlgeschlagen. Bitte Seite neu laden und erneut versuchen.',
           rateLimited: 'Zu viele Anfragen in kurzer Zeit. Bitte kurz warten und erneut versuchen.',
           conflict: 'Die Organisationsänderung steht in Konflikt mit dem aktuellen Zustand.',
           invalidOrganization: 'Die angegebene Organisation ist ungültig.',
-          organizationInactive: 'Inaktive Organisationen können für diese Aktion nicht verwendet werden.',
-          databaseUnavailable: 'Die IAM-Datenbank ist derzeit nicht erreichbar. Bitte später erneut versuchen.',
+          organizationInactive:
+            'Inaktive Organisationen können für diese Aktion nicht verwendet werden.',
+          databaseUnavailable:
+            'Die IAM-Datenbank ist derzeit nicht erreichbar. Bitte später erneut versuchen.',
         },
       },
       roles: {
@@ -1627,7 +1787,8 @@ export const i18nResources = {
           title: 'Rollenverwaltung',
           subtitle: 'System- und benutzerdefinierte Rollen verwalten',
           platformTitle: 'Plattform-Rollen',
-          platformSubtitle: 'Root-Rollen und Plattform-Berechtigungen aus dem Plattform-Realm prüfen',
+          platformSubtitle:
+            'Root-Rollen und Plattform-Berechtigungen aus dem Plattform-Realm prüfen',
         },
         table: {
           caption: 'Tabelle aller Rollen mit Einstieg in die Rollen-Detailansicht',
@@ -1711,13 +1872,15 @@ export const i18nResources = {
             invalidRoleKey:
               'Der Rollenschlüssel muss 3 bis 64 Zeichen lang sein und darf nur Kleinbuchstaben, Ziffern und Unterstriche enthalten.',
             invalidRequest: 'Die Rollenanlage enthält ungültige oder unvollständige Daten.',
-            retry: 'Die Anfrage wurde bereits verarbeitet oder kollidiert mit einem vorherigen Versuch. Bitte die Seite neu laden und erneut versuchen.',
+            retry:
+              'Die Anfrage wurde bereits verarbeitet oder kollidiert mit einem vorherigen Versuch. Bitte die Seite neu laden und erneut versuchen.',
             submitFailed: 'Die Rolle konnte nicht erstellt werden.',
           },
         },
         editDialog: {
           title: 'Rolle bearbeiten',
-          description: 'Nur Keycloak-relevante Rollenmetadaten werden für {{roleKey}} mit Keycloak synchronisiert.',
+          description:
+            'Nur Keycloak-relevante Rollenmetadaten werden für {{roleKey}} mit Keycloak synchronisiert.',
           keyLabel: 'Technischer Rollenschlüssel',
           nameLabel: 'Anzeigename',
           descriptionLabel: 'Beschreibung',
@@ -1725,7 +1888,8 @@ export const i18nResources = {
         },
         confirm: {
           deleteTitle: 'Rolle löschen',
-          deleteDescription: 'Die Rolle wird dauerhaft gelöscht, sofern keine Abhängigkeiten bestehen.',
+          deleteDescription:
+            'Die Rolle wird dauerhaft gelöscht, sofern keine Abhängigkeiten bestehen.',
         },
         sync: {
           synced: 'Synchronisiert',
@@ -1749,22 +1913,29 @@ export const i18nResources = {
           reconcileObjectDiagnostics: '{{count}} Rollenobjekte mit Diagnose: {{codes}}',
           reconcileOutcome: {
             success: 'Der Abgleich wurde deterministisch ohne offenen Nachlauf abgeschlossen.',
-            partialFailure: 'Der Abgleich wurde mit fehlgeschlagenen oder manuell zu prüfenden Einträgen abgeschlossen.',
-            blocked: 'Der Abgleich wurde durch Drift oder fehlende Laufzeitvoraussetzungen blockiert.',
+            partialFailure:
+              'Der Abgleich wurde mit fehlgeschlagenen oder manuell zu prüfenden Einträgen abgeschlossen.',
+            blocked:
+              'Der Abgleich wurde durch Drift oder fehlende Laufzeitvoraussetzungen blockiert.',
             failed: 'Der Abgleich endete ohne verwertbares Ergebnis.',
           },
         },
         workspace: {
           title: 'Berechtigungsarbeitsbereich',
-          subtitle: 'Vorhandene Rollenrechte fachlich lesen und bei Bedarf über das IAM-Cockpit prüfen.',
+          subtitle:
+            'Vorhandene Rollenrechte fachlich lesen und bei Bedarf über das IAM-Cockpit prüfen.',
           editPermissionsTitle: 'Rechte bearbeiten',
-          editPermissionsSubtitle: 'Verfügbare Berechtigungen pro Fachbereich auswählen und direkt an der Rolle speichern.',
+          editPermissionsSubtitle:
+            'Verfügbare Berechtigungen pro Fachbereich auswählen und direkt an der Rolle speichern.',
           sideTitle: 'Prüfkontext',
-          sideSubtitle: 'Bestehende Prüffunktionen nutzen dieselben serverseitigen Entscheidungsgrundlagen wie operative Rechteprüfungen.',
+          sideSubtitle:
+            'Bestehende Prüffunktionen nutzen dieselben serverseitigen Entscheidungsgrundlagen wie operative Rechteprüfungen.',
           editable: 'Bearbeitbar',
           readOnly: 'Read-only',
-          readOnlySystemHint: 'Systemrollen bleiben schreibgeschützt, damit Baseline-Rechte konsistent und nachvollziehbar bleiben.',
-          readOnlyExternalHint: 'Extern verwaltete Rollen bleiben schreibgeschützt und müssen in der führenden Quelle angepasst werden.',
+          readOnlySystemHint:
+            'Systemrollen bleiben schreibgeschützt, damit Baseline-Rechte konsistent und nachvollziehbar bleiben.',
+          readOnlyExternalHint:
+            'Extern verwaltete Rollen bleiben schreibgeschützt und müssen in der führenden Quelle angepasst werden.',
           technicalKey: 'Technischer Schlüssel: {{value}}',
           resourceLabel: 'Fachbereich: {{value}}',
           permissionCountLabel: 'Zugeordnete Rechte',
@@ -1780,7 +1951,8 @@ export const i18nResources = {
           permissionsLoadError: 'Der Berechtigungskatalog konnte nicht geladen werden.',
         },
         detail: {
-          subtitle: 'Rollenmetadaten, Berechtigungen, Zuweisungen und Synchronisierung getrennt bearbeiten.',
+          subtitle:
+            'Rollenmetadaten, Berechtigungen, Zuweisungen und Synchronisierung getrennt bearbeiten.',
           backToList: 'Zur Rollenliste',
           notFound: 'Die angeforderte Rolle wurde nicht gefunden.',
           tabsAriaLabel: 'Rollen-Detail Tabs',
@@ -1801,7 +1973,8 @@ export const i18nResources = {
             saving: 'Speichert allgemeine Daten ...',
           },
           permissions: {
-            subtitle: 'Verfügbare Berechtigungen nach Fachbereich gruppiert direkt an der Rolle pflegen.',
+            subtitle:
+              'Verfügbare Berechtigungen nach Fachbereich gruppiert direkt an der Rolle pflegen.',
             cockpitHint:
               'Für die technische Rechteprüfung und serverseitige Entscheidungsdetails bleibt das IAM-Cockpit die maßgebliche Referenz.',
             showTechnicalDetails: 'Technische Details anzeigen',
@@ -1812,12 +1985,14 @@ export const i18nResources = {
           },
           assignments: {
             summaryTitle: 'Zuweisungsübersicht',
-            summaryBody: 'Diese Sicht zeigt, wie stark die Rolle aktuell genutzt wird und aus welchem Verwaltungsbereich sie stammt.',
+            summaryBody:
+              'Diese Sicht zeigt, wie stark die Rolle aktuell genutzt wird und aus welchem Verwaltungsbereich sie stammt.',
             managedBy: 'Verwaltet durch',
             searchLabel: 'Benutzer suchen',
             searchPlaceholder: 'Nach Name, E-Mail oder Subject suchen',
             managementTitle: 'Zuweisungen bearbeiten',
-            managementBody: 'Benutzer können direkt dieser Rolle zugeordnet oder daraus entfernt werden.',
+            managementBody:
+              'Benutzer können direkt dieser Rolle zugeordnet oder daraus entfernt werden.',
             openUsers: 'Benutzerverwaltung öffnen',
             currentTitle: 'Aktuell zugewiesen',
             availableTitle: 'Verfügbare Benutzer',
@@ -1831,41 +2006,52 @@ export const i18nResources = {
           },
           sync: {
             title: 'Keycloak-Metadatensynchronisierung',
-            subtitle: 'Diese Ansicht beschreibt ausschließlich den Abgleich der Studio-Rollenmetadaten mit Keycloak.',
-            metadataOnlyHint: 'Berechtigungen, Zuweisungen und lokale Rollenlevel werden im Studio gespeichert und verändern diesen Keycloak-Status nicht.',
-            externalHint: 'Diese Rolle wird extern verwaltet. Der angezeigte Status beschreibt nur den bekannten Keycloak-Bezug, nicht lokale Berechtigungszuordnungen.',
+            subtitle:
+              'Diese Ansicht beschreibt ausschließlich den Abgleich der Studio-Rollenmetadaten mit Keycloak.',
+            metadataOnlyHint:
+              'Berechtigungen, Zuweisungen und lokale Rollenlevel werden im Studio gespeichert und verändern diesen Keycloak-Status nicht.',
+            externalHint:
+              'Diese Rolle wird extern verwaltet. Der angezeigte Status beschreibt nur den bekannten Keycloak-Bezug, nicht lokale Berechtigungszuordnungen.',
             metadataStatus: 'Keycloak-Metadatenstatus',
             lastSyncedAt: 'Zuletzt mit Keycloak synchronisiert',
             source: 'Führende Quelle',
             errorCode: 'Keycloak-Fehlercode',
             notAvailable: 'Nicht verfügbar',
             localChangesTitle: 'Lokale Studio-Änderungen',
-            localChangesBody: 'Folgende Änderungen bleiben lokal in der Studio-Datenbank und lösen keine Keycloak-Synchronisierung aus:',
+            localChangesBody:
+              'Folgende Änderungen bleiben lokal in der Studio-Datenbank und lösen keine Keycloak-Synchronisierung aus:',
             localChangeItems: {
               permissions: 'Berechtigungen der Rolle',
               assignments: 'Benutzerzuweisungen zur Rolle',
               roleLevel: 'Lokale Rollenlevel für Studio-interne Freigabelogik',
             },
             actionsTitle: 'Synchronisierungsaktionen',
-            actionsBody: 'Nur fehlgeschlagene oder manuell angestoßene Keycloak-Metadatensynchronisierungen werden hier erneut ausgeführt.',
+            actionsBody:
+              'Nur fehlgeschlagene oder manuell angestoßene Keycloak-Metadatensynchronisierungen werden hier erneut ausgeführt.',
           },
         },
         errors: {
           forbidden: 'Unzureichende Berechtigungen für diese Rollenaktion.',
-          recoveryRunning: 'Die Sitzung wird gerade wiederhergestellt oder ist instabil. Bitte erneut anmelden.',
-          csrfValidationFailed: 'Sicherheitsprüfung fehlgeschlagen. Bitte Seite neu laden und erneut versuchen.',
+          recoveryRunning:
+            'Die Sitzung wird gerade wiederhergestellt oder ist instabil. Bitte erneut anmelden.',
+          csrfValidationFailed:
+            'Sicherheitsprüfung fehlgeschlagen. Bitte Seite neu laden und erneut versuchen.',
           rateLimited: 'Zu viele Anfragen in kurzer Zeit. Bitte kurz warten und erneut versuchen.',
-          conflict: 'Die Rollenänderung steht in Konflikt mit dem aktuellen Zustand. Bitte aktualisieren und erneut versuchen.',
+          conflict:
+            'Die Rollenänderung steht in Konflikt mit dem aktuellen Zustand. Bitte aktualisieren und erneut versuchen.',
           keycloakReconcile:
             'Der Rollenabgleich mit Keycloak ist fehlgeschlagen oder erfordert manuelle Nacharbeit. Bitte den Reconcile-Befund prüfen.',
-          keycloakUnavailable: 'Die Verbindung zu Keycloak ist derzeit nicht verfügbar. Bitte später erneut versuchen.',
-          databaseUnavailable: 'Die IAM-Datenbank ist derzeit nicht erreichbar. Bitte später erneut versuchen.',
+          keycloakUnavailable:
+            'Die Verbindung zu Keycloak ist derzeit nicht verfügbar. Bitte später erneut versuchen.',
+          databaseUnavailable:
+            'Die IAM-Datenbank ist derzeit nicht erreichbar. Bitte später erneut versuchen.',
         },
       },
       groups: {
         page: {
           title: 'Gruppenverwaltung',
-          subtitle: 'Instanzgebundene Gruppen verwalten, Rollen bündeln und Mitgliedschaften zuordnen',
+          subtitle:
+            'Instanzgebundene Gruppen verwalten, Rollen bündeln und Mitgliedschaften zuordnen',
         },
         table: {
           caption: 'Tabelle aller Gruppen in der aktiven Instanz',
@@ -1903,7 +2089,8 @@ export const i18nResources = {
           createTitle: 'Neue Gruppe erstellen',
           createDescription: 'Gruppen bündeln Rollen für wiederverwendbare Mitgliedschaften.',
           editTitle: 'Gruppe bearbeiten',
-          editDescription: 'Aktualisiert Rollenbündel, Status und Mitgliedschaften für {{groupKey}}.',
+          editDescription:
+            'Aktualisiert Rollenbündel, Status und Mitgliedschaften für {{groupKey}}.',
           keyLabel: 'Technischer Gruppenschlüssel',
           displayNameLabel: 'Anzeigename',
           descriptionLabel: 'Beschreibung',
@@ -1940,14 +2127,18 @@ export const i18nResources = {
           emptyState: 'Keine Gruppen gefunden.',
           loading: 'Gruppendetails werden geladen ...',
           error: 'Gruppen konnten nicht geladen werden.',
+          instanceContextRequired:
+            'Die Gruppenverwaltung ist nur mit aktivem Instanzkontext verfügbar.',
         },
         errors: {
           forbidden: 'Unzureichende Berechtigungen für diese Gruppenaktion.',
-          csrfValidationFailed: 'Sicherheitsprüfung fehlgeschlagen. Bitte Seite neu laden und erneut versuchen.',
+          csrfValidationFailed:
+            'Sicherheitsprüfung fehlgeschlagen. Bitte Seite neu laden und erneut versuchen.',
           rateLimited: 'Zu viele Anfragen in kurzer Zeit. Bitte kurz warten und erneut versuchen.',
           conflict: 'Die Gruppenänderung steht in Konflikt mit dem aktuellen Zustand.',
           invalidRequest: 'Die Gruppenänderung enthält ungültige Daten.',
-          databaseUnavailable: 'Die IAM-Datenbank ist derzeit nicht erreichbar. Bitte später erneut versuchen.',
+          databaseUnavailable:
+            'Die IAM-Datenbank ist derzeit nicht erreichbar. Bitte später erneut versuchen.',
         },
       },
       legalTexts: {
@@ -2003,7 +2194,8 @@ export const i18nResources = {
         },
         dialogs: {
           createTitle: 'Neuen Rechtstext anlegen',
-          createDescription: 'Legt einen neuen Rechtstext mit Name, Version, Sprache, Status und HTML-Inhalt an.',
+          createDescription:
+            'Legt einen neuen Rechtstext mit Name, Version, Sprache, Status und HTML-Inhalt an.',
           editTitle: 'Rechtstext-Version bearbeiten',
           editDescription: 'Aktualisiert Inhalt und Metadaten für {{id}} {{version}} ({{locale}}).',
           editDescriptionFallback: 'Aktualisiert die gewählte Rechtstext-Version.',
@@ -2049,11 +2241,13 @@ export const i18nResources = {
         },
         errors: {
           forbidden: 'Unzureichende Berechtigungen für diese Rechtstext-Aktion.',
-          csrfValidationFailed: 'Sicherheitsprüfung fehlgeschlagen. Bitte Seite neu laden und erneut versuchen.',
+          csrfValidationFailed:
+            'Sicherheitsprüfung fehlgeschlagen. Bitte Seite neu laden und erneut versuchen.',
           rateLimited: 'Zu viele Anfragen in kurzer Zeit. Bitte kurz warten und erneut versuchen.',
           conflict: 'Diese Rechtstext-Version existiert bereits.',
           notFound: 'Die angeforderte Rechtstext-Version wurde nicht gefunden.',
-          databaseUnavailable: 'Die IAM-Datenbank ist derzeit nicht erreichbar. Bitte später erneut versuchen.',
+          databaseUnavailable:
+            'Die IAM-Datenbank ist derzeit nicht erreichbar. Bitte später erneut versuchen.',
           invalidRequest: 'Der Rechtstext enthält ungültige oder unvollständige Daten.',
         },
       },
@@ -2075,7 +2269,8 @@ export const i18nResources = {
       iam: {
         page: {
           title: 'IAM Transparenz-Cockpit',
-          subtitle: 'Rechte, Governance-Fälle und Datenschutzvorgänge mit typisierten Read-Modellen prüfen.',
+          subtitle:
+            'Rechte, Governance-Fälle und Datenschutzvorgänge mit typisierten Read-Modellen prüfen.',
         },
         tabs: {
           ariaLabel: 'IAM Transparenz Tabs',
@@ -2208,7 +2403,8 @@ export const i18nResources = {
         loadingStatus: 'Content is loading.',
       },
       permissionsDegraded: {
-        message: 'Permissions could not be fully loaded. Some areas may be temporarily unavailable.',
+        message:
+          'Permissions could not be fully loaded. Some areas may be temporarily unavailable.',
         retry: 'Retry',
         dismiss: 'Dismiss',
       },
@@ -2283,8 +2479,10 @@ export const i18nResources = {
         organizationContextStatus: 'Active organization context: {{name}}',
         organizationContextUpdating: 'Organization context is being updated.',
         organizationContextError: 'Organization context could not be changed.',
-        organizationContextErrorInvalid: 'This organization is not available in the current context.',
-        organizationContextErrorInactive: 'Inactive organizations cannot be set as the active context.',
+        organizationContextErrorInvalid:
+          'This organization is not available in the current context.',
+        organizationContextErrorInactive:
+          'Inactive organizations cannot be set as the active context.',
         organizationContextDefault: 'Default context',
         iamViewer: 'IAM Viewer',
       },
@@ -2344,13 +2542,15 @@ export const i18nResources = {
     },
     placeholder: {
       eyebrow: 'Placeholder page',
-      description: 'The page structure for "{{area}}" is ready. Domain logic and data sources can be attached here next.',
+      description:
+        'The page structure for "{{area}}" is ready. Domain logic and data sources can be attached here next.',
       statusLabel: 'Status',
       statusValue: 'Ready for content',
       body: 'This view is intentionally rendered as a placeholder so navigation, permissions, and shell behavior are already wired consistently.',
       nextStepLabel: 'Next expansion',
       nextStepTitle: 'Connect real content',
-      nextStepBody: 'Define the concrete data, actions, and access rules for "{{area}}". The route and navigation are already in place.',
+      nextStepBody:
+        'Define the concrete data, actions, and access rules for "{{area}}". The route and navigation are already in place.',
     },
     news: {
       navigation: {
@@ -2364,13 +2564,28 @@ export const i18nResources = {
     content: {
       page: {
         title: 'Content',
-        subtitle: 'Manage generic content with core metadata, JSON payloads, and auditable history.',
+        subtitle:
+          'Manage generic content with core metadata, JSON payloads, and auditable history.',
       },
       filters: {
         searchLabel: 'Search',
         searchPlaceholder: 'Search by title, type, author, or payload',
         statusLabel: 'Status',
         statusAll: 'All statuses',
+      },
+      pagination: {
+        ariaLabel: 'Content pages',
+        previous: 'Previous',
+        next: 'Next',
+        pageLabel: 'Page {{page}} of {{total}}',
+        pageSizeLabel: 'Page size',
+      },
+      bulk: {
+        scope: {
+          explicitIds: 'Selection',
+          currentPage: 'Current page',
+          allMatchingQuery: 'All matches',
+        },
       },
       actions: {
         create: 'New content',
@@ -2472,8 +2687,10 @@ export const i18nResources = {
         loading: 'Loading content ...',
         loadError: 'Content could not be loaded.',
         saveError: 'Content could not be saved.',
-        actionsDisabled: 'Actions stay disabled until the required permissions are available in the current context.',
-        readOnly: 'This content is read-only in the current context. Fields and save stay disabled.',
+        actionsDisabled:
+          'Actions stay disabled until the required permissions are available in the current context.',
+        readOnly:
+          'This content is read-only in the current context. Fields and save stay disabled.',
         accessSummary: 'Current access state: {{state}}. {{context}}',
         accessLoadError:
           'The global content context could not be loaded completely. Per-item states remain available.',
@@ -2494,7 +2711,8 @@ export const i18nResources = {
     media: {
       page: {
         title: 'Media library',
-        subtitle: 'Manage uploads, metadata, visibility, and the current usage footprint of your media assets.',
+        subtitle:
+          'Manage uploads, metadata, visibility, and the current usage footprint of your media assets.',
       },
       filters: {
         searchLabel: 'Search',
@@ -2567,11 +2785,13 @@ export const i18nResources = {
       },
       editor: {
         createTitle: 'Prepare media upload',
-        createSubtitle: 'Initialize an upload and receive the signed target URL for the media asset.',
+        createSubtitle:
+          'Initialize an upload and receive the signed target URL for the media asset.',
         detailTitle: 'Edit media',
         detailSubtitle: 'Maintain metadata, visibility, and inspect current usage.',
         uploadCardTitle: 'Create upload',
-        uploadCardDescription: 'The MVP initializes uploads server-side and returns the signed upload URL.',
+        uploadCardDescription:
+          'The MVP initializes uploads server-side and returns the signed upload URL.',
         uploadReadyTitle: 'Upload ready',
         uploadReadyDescription: 'These values can now be used for the actual file upload.',
         metadataTitle: 'Metadata',
@@ -2618,7 +2838,8 @@ export const i18nResources = {
         conflict: 'The media action could not be completed because of a conflict.',
         invalidMediaContent: 'The uploaded media could not be validated.',
         uploadSizeExceeded: 'The uploaded media exceeds the permitted size.',
-        activeReferences: 'The media asset cannot be changed or deleted because it still has active references.',
+        activeReferences:
+          'The media asset cannot be changed or deleted because it still has active references.',
       },
       values: {
         notAvailable: 'Not available',
@@ -2670,17 +2891,20 @@ export const i18nResources = {
       },
       sections: {
         overviewTitle: 'Direct entry points',
-        overviewBody: 'Use the key areas directly from the home page. Details about roles, guards, and technical decisions remain within their dedicated feature areas.',
+        overviewBody:
+          'Use the key areas directly from the home page. Details about roles, guards, and technical decisions remain within their dedicated feature areas.',
       },
       cards: {
         content: {
           title: 'Content',
-          description: 'Manage editorial content, metadata, and publication states in the central content area.',
+          description:
+            'Manage editorial content, metadata, and publication states in the central content area.',
           action: 'Open content',
         },
         account: {
           title: 'Account',
-          description: 'Review your profile, privacy context, and other self-service account capabilities.',
+          description:
+            'Review your profile, privacy context, and other self-service account capabilities.',
           action: 'Open account',
         },
         interfaces: {
@@ -2693,8 +2917,11 @@ export const i18nResources = {
         loginFailed: 'Login failed. Please try again.',
         stateExpired: 'Login was cancelled or expired. Please sign in again.',
         sessionExpired: 'Your session has expired. Please sign in again.',
-        insufficientRole: 'You do not have permission to access this page. Please contact an administrator.',
+        insufficientRole:
+          'You do not have permission to access this page. Please contact an administrator.',
         sessionLoadFailed: 'Session could not be loaded. Please sign in again.',
+        requestId: 'Request ID: {{requestId}}',
+        authFlowId: 'Auth flow: {{authFlowId}}',
         loginAction: 'Sign in again',
       },
     },
@@ -2809,7 +3036,8 @@ export const i18nResources = {
       },
       privacy: {
         title: 'Privacy & Transparency',
-        subtitle: 'Manage exports, data subject rights, and processing restrictions for your own account.',
+        subtitle:
+          'Manage exports, data subject rights, and processing restrictions for your own account.',
         cta: {
           title: 'Open privacy cockpit',
           body: 'Review export jobs, data subject requests, and processing restrictions in a dedicated view.',
@@ -2880,7 +3108,8 @@ export const i18nResources = {
             actorResolutionOrMembership: 'Actor resolution or membership',
             keycloakDependency: 'Keycloak dependency',
             databaseOrSchemaDrift: 'Database or schema drift',
-            databaseMappingOrMembershipInconsistency: 'Database mapping or membership inconsistency',
+            databaseMappingOrMembershipInconsistency:
+              'Database mapping or membership inconsistency',
             registryOrProvisioningDrift: 'Registry or provisioning drift',
             keycloakReconcile: 'Keycloak reconcile',
             frontendStateOrPermissionStaleness: 'Frontend state or permission staleness',
@@ -2907,7 +3136,8 @@ export const i18nResources = {
       instances: {
         page: {
           title: 'Instance Management',
-          subtitle: 'Manage registry records, hostnames, and the lifecycle of new Studio instances.',
+          subtitle:
+            'Manage registry records, hostnames, and the lifecycle of new Studio instances.',
         },
         filters: {
           searchLabel: 'Search',
@@ -2925,7 +3155,8 @@ export const i18nResources = {
         },
         form: {
           title: 'Create instance',
-          subtitle: 'Creation uses the same provisioning contract as the ops path and stores the base Keycloak realm settings.',
+          subtitle:
+            'Creation uses the same provisioning contract as the ops path and stores the base Keycloak realm settings.',
           instanceId: 'Instance id',
           displayName: 'Display name',
           parentDomain: 'Parent domain',
@@ -2938,9 +3169,11 @@ export const i18nResources = {
           authClientSecretHint: 'Leave empty to keep the existing secret unchanged.',
           authClientSecretGeneratedHint:
             'For new realms, the secret is generated automatically during provisioning and stored in Studio afterwards.',
-          authClientSecretGeneratedDuringProvisioning: 'Generated automatically during provisioning',
+          authClientSecretGeneratedDuringProvisioning:
+            'Generated automatically during provisioning',
           tenantAdminClientTitle: 'Tenant admin client',
-          tenantAdminClientSubtitle: 'Client contract and secret for tenant-specific administrative operations.',
+          tenantAdminClientSubtitle:
+            'Client contract and secret for tenant-specific administrative operations.',
           tenantAdminClientId: 'Tenant admin client id',
           tenantAdminClientSecret: 'Tenant admin client secret',
           tenantAdminClientSecretConfigured: 'Secret already configured',
@@ -2956,22 +3189,30 @@ export const i18nResources = {
         },
         flow: {
           realmModeTitle: 'Realm mode',
-          realmModeSubtitle: 'Choose whether Studio should create a new realm or reconcile an existing one.',
+          realmModeSubtitle:
+            'Choose whether Studio should create a new realm or reconcile an existing one.',
           realmModeNewLabel: 'New realm',
           realmModeExistingLabel: 'Existing realm',
-          realmModeNew: 'New realm: the provisioning run creates the realm and blocks when it already exists.',
-          realmModeExisting: 'Existing realm: the provisioning run expects the realm to exist and reports drift.',
-          createHint: 'Saving only stores the instance and desired registry state. Keycloak provisioning is triggered explicitly from the detail view.',
+          realmModeNew:
+            'New realm: the provisioning run creates the realm and blocks when it already exists.',
+          realmModeExisting:
+            'Existing realm: the provisioning run expects the realm to exist and reports drift.',
+          createHint:
+            'Saving only stores the instance and desired registry state. Keycloak provisioning is triggered explicitly from the detail view.',
           preflightTitle: 'Preflight',
-          preflightSubtitle: 'Checks root-host access, technical Keycloak access, and the required bootstrap metadata.',
+          preflightSubtitle:
+            'Checks root-host access, technical Keycloak access, and the required bootstrap metadata.',
           preflightEmpty: 'No preflight data has been loaded for this instance yet.',
           previewTitle: 'Preview',
-          previewSubtitle: 'Shows the planned create/update steps before the actual provisioning run.',
+          previewSubtitle:
+            'Shows the planned create/update steps before the actual provisioning run.',
           previewEmpty: 'No provisioning preview has been generated for this instance yet.',
           executeTitle: 'Execute',
-          executeSubtitle: 'Starts tenant provisioning explicitly and writes a visible operations log.',
+          executeSubtitle:
+            'Starts tenant provisioning explicitly and writes a visible operations log.',
           protocolTitle: 'Protocol',
-          protocolSubtitle: 'Persisted Keycloak provisioning runs with step status, result, and request id.',
+          protocolSubtitle:
+            'Persisted Keycloak provisioning runs with step status, result, and request id.',
           protocolEmpty: 'No Keycloak provisioning runs have been recorded for this instance yet.',
         },
         detail: {
@@ -2988,7 +3229,8 @@ export const i18nResources = {
         cockpit: {
           eyebrow: 'Control Tower',
           title: 'Operational overview',
-          subtitle: 'Current state, dominant findings, and the next meaningful operator action at a glance.',
+          subtitle:
+            'Current state, dominant findings, and the next meaningful operator action at a glance.',
           identity: 'Instance',
           currentState: 'Overall state',
           configurationSnapshot: 'Configuration',
@@ -2998,7 +3240,8 @@ export const i18nResources = {
           secondaryActions: 'Specialized and follow-up actions',
           anomaliesTitle: 'Open findings',
           anomaliesSubtitle: 'Condensed anomalies before you dive into operations or history.',
-          anomaliesEmpty: 'No dominant deviations. The instance currently has no prioritized finding.',
+          anomaliesEmpty:
+            'No dominant deviations. The instance currently has no prioritized finding.',
           evidenceTitle: 'Dominant evidence',
           evidenceSubtitle: 'Source, freshness, and provenance of the leading first-glance state.',
           checkedAt: 'Trusted evidence: {{value}}',
@@ -3056,6 +3299,17 @@ export const i18nResources = {
           rotateClientSecret: 'Rotate client secret',
           loadRun: 'Load run',
         },
+        feedback: {
+          preflightUpdated: 'Preflight data was refreshed.',
+          keycloakStatusUpdated: 'Keycloak status was refreshed.',
+          provisioningPreviewUpdated: 'Provisioning preview was refreshed.',
+          provisioningQueued: 'The provisioning job was queued for execution.',
+          tenantIamProbeUpdated: 'The tenant IAM access probe was refreshed.',
+          workerEnvMissing:
+            'The provisioning worker cannot technically inspect Keycloak right now. The running process is missing {{envName}}.',
+          workerProjectionHint:
+            'The displayed preflight and Keycloak status are currently only a registry-based projection. A real live reconciliation only happens inside the provisioning worker.',
+        },
         keycloakPanel: {
           title: 'Keycloak status and bootstrap',
           subtitle: 'Reconcile realm, client, mapper, and tenant admin for the selected instance.',
@@ -3066,7 +3320,8 @@ export const i18nResources = {
         },
         tenantIam: {
           title: 'Tenant IAM operations',
-          subtitle: 'Separate view of configuration, access probe, and reconciliation for this instance.',
+          subtitle:
+            'Separate view of configuration, access probe, and reconciliation for this instance.',
           requestId: 'Request id: {{value}}',
           axes: {
             configuration: 'Configuration',
@@ -3103,12 +3358,8 @@ export const i18nResources = {
           },
           detail: {
             title: 'Module IAM baseline',
-            subtitle: 'Declared module contract and registry status for the currently assigned modules.',
-          },
-          confirm: {
-            revokeTitle: 'Really revoke module?',
-            revokeDescription:
-              'The module {{moduleId}} will be revoked from the selected instance. Rebuild the IAM baseline afterwards if needed.',
+            subtitle:
+              'Declared module contract and registry status for the currently assigned modules.',
           },
           module: {
             permissions: 'Permissions: {{value}}',
@@ -3119,20 +3370,30 @@ export const i18nResources = {
             revoke: 'Revoke module',
             seedIamBaseline: 'Rebuild IAM baseline',
           },
+          confirmRevoke: {
+            title: 'Really revoke module?',
+            description:
+              'Module {{moduleId}} will be revoked from instance {{instanceId}}. Related permissions and IAM baseline data will be removed.',
+            confirm: 'Revoke module',
+            cancel: 'Cancel',
+          },
         },
         wizard: {
           steps: {
             basics: {
               title: 'Basics',
-              description: 'Define instance id, display name, and parent domain for the registry record.',
+              description:
+                'Define instance id, display name, and parent domain for the registry record.',
             },
             auth: {
               title: 'Keycloak mapping',
-              description: 'Store realm, client, and optional issuer/secret mapping for the tenant.',
+              description:
+                'Store realm, client, and optional issuer/secret mapping for the tenant.',
             },
             tenantAdmin: {
               title: 'Tenant admin',
-              description: 'Optionally prepare the initial tenant admin for bootstrap and recovery.',
+              description:
+                'Optionally prepare the initial tenant admin for bootstrap and recovery.',
             },
             review: {
               title: 'Review & create',
@@ -3148,22 +3409,30 @@ export const i18nResources = {
           },
           readiness: {
             secretTitle: 'Tenant client secret',
-            secretReady: 'A secret will be stored with the instance so provisioning can verify it immediately.',
-            secretMissing: 'No secret entered yet. Later drift and status checks will remain incomplete.',
+            secretReady:
+              'A secret will be stored with the instance so provisioning can verify it immediately.',
+            secretMissing:
+              'No secret entered yet. Later drift and status checks will remain incomplete.',
             secretGenerated:
               'For a new realm, the tenant client secret is only generated during provisioning and stored afterwards.',
             tenantAdminTitle: 'Initial tenant admin',
-            tenantAdminReady: 'A tenant admin is stored and can be reused for the first bootstrap or reset.',
-            tenantAdminMissing: 'No tenant admin stored. This follow-up step will stay manual after creation.',
+            tenantAdminReady:
+              'A tenant admin is stored and can be reused for the first bootstrap or reset.',
+            tenantAdminMissing:
+              'No tenant admin stored. This follow-up step will stay manual after creation.',
             followUpTitle: 'Next operational step',
-            followUpSummary: 'After saving, continue on the detail page with technical checks and Keycloak provisioning.',
+            followUpSummary:
+              'After saving, continue on the detail page with technical checks and Keycloak provisioning.',
           },
-          authHint: 'The tenant client secret is strongly recommended for existing realms so status and drift checks can run completely.',
+          authHint:
+            'The tenant client secret is strongly recommended for existing realms so status and drift checks can run completely.',
           authSecretGeneratedHint:
             'For new realms, you do not need to know a secret here. Studio generates it during provisioning and stores it afterwards.',
-          tenantAdminOptional: 'These values are optional as long as the tenant admin does not need to be reset during the first provisioning run.',
+          tenantAdminOptional:
+            'These values are optional as long as the tenant admin does not need to be reset during the first provisioning run.',
           reviewTitle: 'Review input',
-          reviewSubtitle: 'The instance will only be created now. The actual Keycloak reconciliation happens afterwards on the detail page.',
+          reviewSubtitle:
+            'The instance will only be created now. The actual Keycloak reconciliation happens afterwards on the detail page.',
           reviewDefaultIssuer: 'Derived automatically from the realm',
           reviewNotConfigured: 'Not configured',
           actions: {
@@ -3173,7 +3442,8 @@ export const i18nResources = {
         },
         success: {
           title: 'Instance saved',
-          summary: 'The instance {{instanceId}} has been created in the registry. Current status: {{status}}.',
+          summary:
+            'The instance {{instanceId}} has been created in the registry. Current status: {{status}}.',
           actions: {
             openDetail: 'Open detail page',
             backToOverview: 'Back to overview',
@@ -3203,7 +3473,8 @@ export const i18nResources = {
             title: 'Instance id',
             what: 'Technical identifier of the instance inside Studio and the registry.',
             value: 'Use a stable lowercase identifier such as "hb-meinquartier".',
-            source: 'Comes from the tenant naming scheme and is often reused in hostnames, mappers, and roles.',
+            source:
+              'Comes from the tenant naming scheme and is often reused in hostnames, mappers, and roles.',
             impact: 'Typos or later changes leak into hostnames, mappers, and automation.',
           },
           displayName: {
@@ -3211,14 +3482,16 @@ export const i18nResources = {
             what: 'Readable name of the instance for administration and UI.',
             value: 'Enter the business-facing tenant name, for example "MeinQuartier".',
             source: 'Comes from the product or tenant name.',
-            impact: 'Usually not a hard technical blocker, but wrong values confuse operations and support.',
+            impact:
+              'Usually not a hard technical blocker, but wrong values confuse operations and support.',
           },
           parentDomain: {
             title: 'Parent domain',
             what: 'The shared base domain used to derive the primary hostname of the instance.',
             value: 'Enter the platform domain, for example "studio.smart-village.app".',
             source: 'Comes from the target environment or platform setup.',
-            impact: 'A wrong domain creates wrong hostnames and inconsistent redirect/runtime configuration.',
+            impact:
+              'A wrong domain creates wrong hostnames and inconsistent redirect/runtime configuration.',
             defaultHint: 'If possible, the current host domain is suggested automatically.',
           },
           authRealm: {
@@ -3226,7 +3499,8 @@ export const i18nResources = {
             what: 'Name of the tenant realm in Keycloak used for issuer derivation and checks.',
             value: 'Enter the exact realm name, for example "saas-hb-meinquartier".',
             source: 'Comes directly from Keycloak.',
-            impact: 'A wrong realm breaks status checks, drift detection, and provisioning against the intended tenant.',
+            impact:
+              'A wrong realm breaks status checks, drift detection, and provisioning against the intended tenant.',
           },
           authClientId: {
             title: 'Auth client id',
@@ -3240,7 +3514,8 @@ export const i18nResources = {
             title: 'Auth issuer URL',
             what: 'Explicit issuer URL of the tenant realm. If empty, it is derived from the realm name.',
             value: 'Usually leave it empty or enter the full realm URL.',
-            source: 'Comes from the Keycloak installation or is derived automatically from base URL and realm.',
+            source:
+              'Comes from the Keycloak installation or is derived automatically from base URL and realm.',
             impact: 'A wrong issuer breaks token validation and runtime configuration.',
             defaultHint: 'Empty means: derive the issuer automatically from base URL and realm.',
           },
@@ -3258,8 +3533,10 @@ export const i18nResources = {
             title: 'Tenant admin client id',
             what: 'OIDC client for tenant-specific administrative and bootstrap operations.',
             value: 'Enter the expected client name, for example "sva-studio-admin".',
-            source: 'Comes from the tenant realm in Keycloak or from the intended provisioning contract.',
-            impact: 'Without the correct client id, tenant-specific administration and parts of user management stay blocked.',
+            source:
+              'Comes from the tenant realm in Keycloak or from the intended provisioning contract.',
+            impact:
+              'Without the correct client id, tenant-specific administration and parts of user management stay blocked.',
             defaultHint: 'If the client does not exist yet, Studio can provision it.',
           },
           tenantAdminClientSecret: {
@@ -3334,10 +3611,13 @@ export const i18nResources = {
           tenantAdminClient: {
             title: 'Check tenant admin client',
             notConfigured: 'No tenant admin client is stored in the registry yet.',
-            secretMissing: 'The tenant admin client exists in the registry, but its secret contract is still incomplete.',
+            secretMissing:
+              'The tenant admin client exists in the registry, but its secret contract is still incomplete.',
             ready: 'The tenant admin client and its secret contract match the expected state.',
-            blocked: 'The tenant admin client could not be checked yet because Keycloak access is blocked.',
-            pending: 'The tenant admin client should now be verified or reconciled through provisioning.',
+            blocked:
+              'The tenant admin client could not be checked yet because Keycloak access is blocked.',
+            pending:
+              'The tenant admin client should now be verified or reconciled through provisioning.',
           },
           mapper: {
             title: 'Check instanceId mapper',
@@ -3358,8 +3638,10 @@ export const i18nResources = {
             title: 'Check tenant admin',
             missing: 'No tenant admin is stored yet. This step stays blocked until you add one.',
             ready: 'Tenant admin and system_admin role are present.',
-            blocked: 'The tenant admin could not be checked yet because Keycloak access is blocked.',
-            pending: 'The tenant admin is stored but still needs to be verified or reset in the realm.',
+            blocked:
+              'The tenant admin could not be checked yet because Keycloak access is blocked.',
+            pending:
+              'The tenant admin is stored but still needs to be verified or reset in the realm.',
           },
           provisioning: {
             title: 'Execute provisioning',
@@ -3404,7 +3686,8 @@ export const i18nResources = {
             title: 'Instance archived',
             body: 'The instance is archived and should only be changed for documentation or diagnostics.',
           },
-          keycloakUnavailable: 'The detail page remains usable, but Keycloak actions and checks are currently blocked. Verify reachability and credentials.',
+          keycloakUnavailable:
+            'The detail page remains usable, but Keycloak actions and checks are currently blocked. Verify reachability and credentials.',
         },
         configuration: {
           title: 'Configuration status',
@@ -3485,18 +3768,21 @@ export const i18nResources = {
           reauthRequired: 'A fresh re-authentication is required for this action.',
           conflict: 'The requested change conflicts with the current instance state.',
           databaseUnavailable: 'The registry could not be processed because of a database problem.',
-          databaseOrSchemaDrift: 'Instance management is currently degraded because of a database or migration mismatch.',
+          databaseOrSchemaDrift:
+            'Instance management is currently degraded because of a database or migration mismatch.',
           registryOrProvisioningDrift:
             'Registry or provisioning drift was detected for this instance. Please review Keycloak status, preflight, and the latest run together.',
           keycloakReconcile:
             'The Keycloak reconcile failed or needs manual follow-up. Please inspect the reconcile finding with the request ID.',
-          tenantAuthClientSecretMissing: 'No tenant client secret has been stored for this instance yet.',
+          tenantAuthClientSecretMissing:
+            'No tenant client secret has been stored for this instance yet.',
           tenantAdminClientNotConfigured:
             'No tenant admin client has been stored for this instance yet. Enter the client contract and save the instance.',
           tenantAdminClientSecretMissing:
             'The tenant admin client secret is still missing for this instance. Enter it on the detail page and save again.',
           keycloakUnavailable: 'Keycloak could not be reached or reconciled.',
-          encryptionNotConfigured: 'Field encryption required for tenant secrets is not configured.',
+          encryptionNotConfigured:
+            'Field encryption required for tenant secrets is not configured.',
         },
         diagnostics: {
           preflightEvidence: 'Latest preflight check: status {{status}}, checked at {{checkedAt}}',
@@ -3668,7 +3954,8 @@ export const i18nResources = {
           error: 'Users could not be loaded.',
           resultCount: '{{count}} users found.',
           syncRunning: 'Synchronization in progress ...',
-          syncEmpty: 'No new or changed users found. {{skippedCount}} skipped without matching instance context.',
+          syncEmpty:
+            'No new or changed users found. {{skippedCount}} skipped without matching instance context.',
           syncResult:
             'Checked {{checkedCount}} users: {{correctedCount}} corrected, {{manualReviewCount}} require manual review. {{importedCount}} imported, {{updatedCount}} updated, {{skippedCount}} skipped without matching instance context.',
           syncDiagnostics:
@@ -3700,9 +3987,11 @@ export const i18nResources = {
             'No tenant admin client is configured for this instance yet. Reconcile the instance contract first.',
           tenantAdminClientSecretMissing:
             'The tenant admin client secret is still missing for this instance. Reconcile the instance contract first.',
-          keycloakUnavailable: 'The connection to Keycloak is currently unavailable. Please try again later.',
+          keycloakUnavailable:
+            'The connection to Keycloak is currently unavailable. Please try again later.',
           databaseUnavailable: 'The IAM database is currently unavailable. Please try again later.',
-          lastAdminProtection: 'The last active system administrator cannot be removed or deactivated.',
+          lastAdminProtection:
+            'The last active system administrator cannot be removed or deactivated.',
           selfProtection: 'The currently signed-in account cannot be deactivated this way.',
           featureDisabled: 'User management is currently disabled.',
           unauthorized: 'Your session is no longer valid. Please sign in again.',
@@ -3785,7 +4074,8 @@ export const i18nResources = {
         },
         confirm: {
           deactivateTitle: 'Deactivate organization',
-          deactivateDescription: 'The organization is deactivated in a controlled way if no blocking dependencies exist.',
+          deactivateDescription:
+            'The organization is deactivated in a controlled way if no blocking dependencies exist.',
         },
         form: {
           keyLabel: 'Technical key',
@@ -3916,13 +4206,15 @@ export const i18nResources = {
             invalidRoleKey:
               'The role key must be 3 to 64 characters long and contain only lowercase letters, digits, and underscores.',
             invalidRequest: 'The role creation request contains invalid or incomplete data.',
-            retry: 'The request was already processed or conflicts with a previous attempt. Reload the page and try again.',
+            retry:
+              'The request was already processed or conflicts with a previous attempt. Reload the page and try again.',
             submitFailed: 'The role could not be created.',
           },
         },
         editDialog: {
           title: 'Edit role',
-          description: 'Only Keycloak-relevant role metadata is synchronized to Keycloak for {{roleKey}}.',
+          description:
+            'Only Keycloak-relevant role metadata is synchronized to Keycloak for {{roleKey}}.',
           keyLabel: 'Technical role key',
           nameLabel: 'Display name',
           descriptionLabel: 'Description',
@@ -3961,15 +4253,20 @@ export const i18nResources = {
         },
         workspace: {
           title: 'Permission workspace',
-          subtitle: 'Read existing role permissions in business terms and verify them in the IAM cockpit when needed.',
+          subtitle:
+            'Read existing role permissions in business terms and verify them in the IAM cockpit when needed.',
           editPermissionsTitle: 'Edit permissions',
-          editPermissionsSubtitle: 'Select available permissions by business area and save them directly on the role.',
+          editPermissionsSubtitle:
+            'Select available permissions by business area and save them directly on the role.',
           sideTitle: 'Verification context',
-          sideSubtitle: 'Existing verification flows use the same server-side decision basis as operational permission checks.',
+          sideSubtitle:
+            'Existing verification flows use the same server-side decision basis as operational permission checks.',
           editable: 'Editable',
           readOnly: 'Read-only',
-          readOnlySystemHint: 'System roles remain read-only so baseline permissions stay consistent and understandable.',
-          readOnlyExternalHint: 'Externally managed roles remain read-only and must be changed in the leading source.',
+          readOnlySystemHint:
+            'System roles remain read-only so baseline permissions stay consistent and understandable.',
+          readOnlyExternalHint:
+            'Externally managed roles remain read-only and must be changed in the leading source.',
           technicalKey: 'Technical key: {{value}}',
           resourceLabel: 'Business area: {{value}}',
           permissionCountLabel: 'Assigned permissions',
@@ -3985,7 +4282,8 @@ export const i18nResources = {
           permissionsLoadError: 'The permission catalog could not be loaded.',
         },
         detail: {
-          subtitle: 'Edit role metadata, permissions, assignments, and synchronization in separate tabs.',
+          subtitle:
+            'Edit role metadata, permissions, assignments, and synchronization in separate tabs.',
           backToList: 'Back to role list',
           notFound: 'The requested role could not be found.',
           tabsAriaLabel: 'Role detail tabs',
@@ -4006,7 +4304,8 @@ export const i18nResources = {
             saving: 'Saving general data ...',
           },
           permissions: {
-            subtitle: 'Maintain available permissions grouped by business area directly on the role.',
+            subtitle:
+              'Maintain available permissions grouped by business area directly on the role.',
             cockpitHint:
               'The IAM cockpit remains the authoritative reference for technical permission checks and server-side decision details.',
             showTechnicalDetails: 'Show technical details',
@@ -4017,7 +4316,8 @@ export const i18nResources = {
           },
           assignments: {
             summaryTitle: 'Assignment overview',
-            summaryBody: 'This view shows how widely the role is currently used and which management source owns it.',
+            summaryBody:
+              'This view shows how widely the role is currently used and which management source owns it.',
             managedBy: 'Managed by',
             searchLabel: 'Search users',
             searchPlaceholder: 'Search by name, email, or subject',
@@ -4036,23 +4336,28 @@ export const i18nResources = {
           },
           sync: {
             title: 'Keycloak metadata synchronization',
-            subtitle: 'This view only describes how Studio role metadata is synchronized with Keycloak.',
-            metadataOnlyHint: 'Permissions, assignments, and local role levels are stored in Studio and do not change this Keycloak status.',
-            externalHint: 'This role is managed externally. The shown status only describes the known Keycloak relation, not local permission assignments.',
+            subtitle:
+              'This view only describes how Studio role metadata is synchronized with Keycloak.',
+            metadataOnlyHint:
+              'Permissions, assignments, and local role levels are stored in Studio and do not change this Keycloak status.',
+            externalHint:
+              'This role is managed externally. The shown status only describes the known Keycloak relation, not local permission assignments.',
             metadataStatus: 'Keycloak metadata status',
             lastSyncedAt: 'Last synchronized with Keycloak',
             source: 'Source of truth',
             errorCode: 'Keycloak error code',
             notAvailable: 'Not available',
             localChangesTitle: 'Local Studio changes',
-            localChangesBody: 'The following changes remain local to the Studio database and do not trigger a Keycloak synchronization:',
+            localChangesBody:
+              'The following changes remain local to the Studio database and do not trigger a Keycloak synchronization:',
             localChangeItems: {
               permissions: 'Role permissions',
               assignments: 'User assignments for the role',
               roleLevel: 'Local role levels for Studio-internal release logic',
             },
             actionsTitle: 'Synchronization actions',
-            actionsBody: 'Only failed or explicitly triggered Keycloak metadata synchronizations are retried here.',
+            actionsBody:
+              'Only failed or explicitly triggered Keycloak metadata synchronizations are retried here.',
           },
         },
         errors: {
@@ -4060,10 +4365,12 @@ export const i18nResources = {
           recoveryRunning: 'The session is currently recovering or unstable. Please sign in again.',
           csrfValidationFailed: 'Security validation failed. Please reload the page and try again.',
           rateLimited: 'Too many requests in a short time. Please wait and try again.',
-          conflict: 'The role change conflicts with the current state. Please refresh and try again.',
+          conflict:
+            'The role change conflicts with the current state. Please refresh and try again.',
           keycloakReconcile:
             'Role sync with Keycloak failed or needs manual follow-up. Please inspect the reconcile finding.',
-          keycloakUnavailable: 'The Keycloak connection is currently unavailable. Please try again later.',
+          keycloakUnavailable:
+            'The Keycloak connection is currently unavailable. Please try again later.',
           databaseUnavailable: 'The IAM database is currently unavailable. Please try again later.',
         },
       },
@@ -4145,6 +4452,8 @@ export const i18nResources = {
           emptyState: 'No groups found.',
           loading: 'Loading group details ...',
           error: 'Groups could not be loaded.',
+          instanceContextRequired:
+            'Group management is only available with an active instance context.',
         },
         errors: {
           forbidden: 'You do not have sufficient permissions for this group action.',
@@ -4208,7 +4517,8 @@ export const i18nResources = {
         },
         dialogs: {
           createTitle: 'Create legal text',
-          createDescription: 'Creates a new legal text with name, version, locale, status, and HTML content.',
+          createDescription:
+            'Creates a new legal text with name, version, locale, status, and HTML content.',
           editTitle: 'Edit legal text version',
           editDescription: 'Updates content and metadata for {{id}} {{version}} ({{locale}}).',
           editDescriptionFallback: 'Updates the selected legal text version.',
@@ -4280,7 +4590,8 @@ export const i18nResources = {
       iam: {
         page: {
           title: 'IAM transparency cockpit',
-          subtitle: 'Inspect rights, governance cases, and privacy workflows with typed read models.',
+          subtitle:
+            'Inspect rights, governance cases, and privacy workflows with typed read models.',
         },
         tabs: {
           ariaLabel: 'IAM transparency tabs',

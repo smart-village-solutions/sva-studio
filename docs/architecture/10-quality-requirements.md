@@ -120,6 +120,10 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - `pnpm nx run plugin-sdk:test:unit` muss Bypass-Versuche gegen Route, Autorisierung, Audit, Persistenz und Dynamic Registration abdecken
   - `pnpm nx run routing:test:unit` muss sicherstellen, dass unbekannte Plugin-Guards und nicht-kanonische Plugin-Pfade fail-fast abgewiesen werden
   - Plugin-UI-Komponenten und host-invoked Content-Validatoren müssen weiterhin als erlaubte Erweiterungspunkte testbar bleiben
+- Admin-Resource-Host-Standards:
+  - deklarierte Listen-Capabilities muessen ueber Routing, Host-UI und Tests denselben kanonischen Search-State reproduzierbar rehydrieren
+  - Bulk-Actions muessen Selection-Modes (`explicitIds`, `currentPage`, `allMatchingQuery`) deterministisch abbilden und ohne Suchtext-/PII-Leak nur sichere Scope-Metadaten protokollieren
+  - Ressourcen ohne deklarierte Capabilities duerfen keine erzwungenen Search-/Bulk-Vertraege erhalten
 - Plugin-UI-Boundary:
   - `pnpm check:plugin-ui-boundary` muss für Plugin-Packages grün sein
   - Plugin-Custom-Views importieren gemeinsame UI aus `@sva/studio-ui-react` und keine App-internen Komponentenpfade
@@ -140,6 +144,7 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
 - Review-Governance:
   - Proposal- und PR-Reviews nutzen spezialisierte Agents mit standardisierten Templates
   - Trigger-Matrix und Abgrenzungen sind in `docs/development/review-agent-governance.md` dokumentiert
+  - relevante Bot-Kommentare von `Copilot` und `chatgpt-codex-connector[bot]` blockieren den Merge, bis ein maschinenlesbarer Bearbeitungsnachweis vorliegt
 
 ### Qualitätsattribute und Review-Zuordnung
 

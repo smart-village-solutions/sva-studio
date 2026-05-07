@@ -5,6 +5,7 @@ import React from 'react';
 import { HomePage } from './-home-page';
 
 const useAuthMock = vi.fn();
+const readLatestAuthDiagnosticSnapshotMock = vi.fn(() => ({}));
 
 vi.mock('@tanstack/react-router', () => ({
   createFileRoute: () => () => ({}),
@@ -23,10 +24,16 @@ vi.mock('../providers/auth-provider', () => ({
   useAuth: () => useAuthMock(),
 }));
 
+vi.mock('../lib/auth-diagnostics', () => ({
+  readLatestAuthDiagnosticSnapshot: () => readLatestAuthDiagnosticSnapshotMock(),
+}));
+
 describe('HomePage', () => {
   afterEach(() => {
     cleanup();
     globalThis.history.replaceState({}, '', '/');
+    readLatestAuthDiagnosticSnapshotMock.mockReset();
+    readLatestAuthDiagnosticSnapshotMock.mockReturnValue({});
     useAuthMock.mockReset();
   });
 
@@ -129,7 +136,9 @@ describe('HomePage', () => {
         .getAllByRole('link', { name: 'Konto öffnen' })
         .some((link) => link.getAttribute('href') === '/account')
     ).toBe(true);
-    expect(screen.getByRole('link', { name: 'Schnittstellen öffnen' }).getAttribute('href')).toBe('/interfaces');
+    expect(screen.getByRole('link', { name: 'Schnittstellen öffnen' }).getAttribute('href')).toBe(
+      '/interfaces'
+    );
   });
 
   it('shows a helpful message after insufficient role redirect', () => {
@@ -150,7 +159,9 @@ describe('HomePage', () => {
     render(<HomePage />);
 
     expect(
-      screen.getByText('Keine Berechtigung für diese Seite. Bitte wenden Sie sich an die Administration.')
+      screen.getByText(
+        'Keine Berechtigung für diese Seite. Bitte wenden Sie sich an die Administration.'
+      )
     ).toBeTruthy();
   });
 
@@ -191,7 +202,45 @@ describe('HomePage', () => {
 
     render(<HomePage />);
 
-    expect(screen.getByText('Login abgebrochen oder abgelaufen. Bitte erneut anmelden.')).toBeTruthy();
+    expect(
+      screen.getByText('Login abgebrochen oder abgelaufen. Bitte erneut anmelden.')
+    ).toBeTruthy();
+  });
+
+  it('starts a full-document login redirect from the home route when auth=login is present', () => {
+    useAuthMock.mockReturnValue({
+      user: null,
+      isAuthenticated: false,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      logout: vi.fn(),
+      invalidatePermissions: vi.fn(),
+      hasResolvedSession: true,
+      isRecoveringSession: false,
+      sessionRecoveryFailed: false,
+    });
+
+    const replaceMock = vi.fn();
+    const originalLocation = window.location;
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: {
+        ...originalLocation,
+        pathname: '/',
+        search: '?auth=login&returnTo=%2Fadmin%2Fusers%3Fpage%3D2',
+        replace: replaceMock,
+      },
+    });
+
+    render(<HomePage />);
+
+    expect(replaceMock).toHaveBeenCalledWith('/auth/login?returnTo=%2Fadmin%2Fusers%3Fpage%3D2');
+
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: originalLocation,
+    });
   });
 
   it('shows generic auth load error from auth provider state', () => {
@@ -226,14 +275,44 @@ describe('HomePage', () => {
       sessionRecoveryFailed: false,
     });
 
-    globalThis.history.replaceState({}, '', '/?auth=session-expired&returnTo=%2Fadmin%2Fusers%3Fpage%3D2');
+    globalThis.history.replaceState(
+      {},
+      '',
+      '/?auth=session-expired&returnTo=%2Fadmin%2Fusers%3Fpage%3D2'
+    );
 
     render(<HomePage />);
 
-    expect(screen.getByText('Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an.')).toBeTruthy();
+    expect(
+      screen.getByText('Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an.')
+    ).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Erneut anmelden' }).getAttribute('href')).toBe(
       '/auth/login?returnTo=%2Fadmin%2Fusers%3Fpage%3D2'
     );
+  });
+
+  it('renders auth diagnostic identifiers when available', () => {
+    readLatestAuthDiagnosticSnapshotMock.mockReturnValue({
+      authFlowId: 'auth-flow-1',
+      requestId: 'req-123',
+    });
+    useAuthMock.mockReturnValue({
+      user: null,
+      isAuthenticated: false,
+      isLoading: false,
+      error: new Error('session failed'),
+      refetch: vi.fn(),
+      logout: vi.fn(),
+      invalidatePermissions: vi.fn(),
+      hasResolvedSession: true,
+      isRecoveringSession: false,
+      sessionRecoveryFailed: false,
+    });
+
+    render(<HomePage />);
+
+    expect(screen.getByText('Request-ID: req-123')).toBeTruthy();
+    expect(screen.getByText('Auth-Flow: auth-flow-1')).toBeTruthy();
   });
 
   it('shows session-expired notice from auth provider state', () => {
@@ -252,7 +331,11 @@ describe('HomePage', () => {
 
     render(<HomePage />);
 
-    expect(screen.getByText('Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an.')).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'Erneut anmelden' }).getAttribute('href')).toBe('/auth/login?returnTo=%2F');
+    expect(
+      screen.getByText('Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an.')
+    ).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Erneut anmelden' }).getAttribute('href')).toBe(
+      '/auth/login?returnTo=%2F'
+    );
   });
 });

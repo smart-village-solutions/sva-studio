@@ -30,7 +30,7 @@ vi.mock('@tanstack/react-start', () => ({
 }));
 
 vi.mock('../../lib/interfaces-api', () => ({
-  loadInterfacesOverview: state.loadToken,
+  loadSvaMainserverInterfacesOverviewServerFn: state.loadToken,
   saveSvaMainserverInterfaceSettings: state.saveToken,
 }));
 

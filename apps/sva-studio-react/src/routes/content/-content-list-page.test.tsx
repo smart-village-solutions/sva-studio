@@ -6,8 +6,12 @@ import { ContentListPage } from './-content-list-page';
 
 const useContentsMock = vi.fn();
 const useContentAccessMock = vi.fn();
+const navigateMock = vi.fn();
+let searchState: Record<string, unknown> = {};
 
 vi.mock('@tanstack/react-router', () => ({
+  useNavigate: () => navigateMock,
+  useSearch: () => searchState,
   Link: ({ children, to, params, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { to: string; params?: Record<string, string> }) => {
     const href =
       typeof params?.contentId === 'string'
@@ -35,6 +39,8 @@ describe('ContentListPage', () => {
   beforeEach(() => {
     useContentsMock.mockReset();
     useContentAccessMock.mockReset();
+    navigateMock.mockReset();
+    searchState = {};
     useContentAccessMock.mockReturnValue({
       access: {
         state: 'editable',
@@ -100,9 +106,11 @@ describe('ContentListPage', () => {
       mutationError: null,
       refetch: vi.fn(),
       clearMutationError: vi.fn(),
+      archiveContents: vi.fn(),
+      deleteContents: vi.fn(),
     });
 
-    render(<ContentListPage />);
+    const view = render(<ContentListPage />);
 
     expect(screen.getByRole('heading', { name: 'Inhalte' })).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Neuer Inhalt' }).getAttribute('href')).toBe('/admin/content/new');
@@ -111,7 +119,11 @@ describe('ContentListPage', () => {
       target: { value: 'archiv' },
     });
 
-    expect(screen.queryByText('Startseite')).toBeNull();
+    const searchUpdater = navigateMock.mock.calls.at(-1)?.[0]?.search as ((current: Record<string, unknown>) => Record<string, unknown>) | undefined;
+    searchState = searchUpdater?.(searchState) ?? searchState;
+    view.rerender(<ContentListPage />);
+
+    expect(screen.queryAllByText('Startseite')).toHaveLength(0);
     expect(screen.getAllByText('Archiv').length).toBeGreaterThan(0);
     expect(screen.getAllByRole('link', { name: 'Nur lesen' })[0]?.getAttribute('href')).toBe('/admin/content/content-2');
     expect(screen.getAllByText('Nur lesbar').length).toBeGreaterThan(0);
@@ -125,6 +137,8 @@ describe('ContentListPage', () => {
       mutationError: null,
       refetch: vi.fn(),
       clearMutationError: vi.fn(),
+      archiveContents: vi.fn(),
+      deleteContents: vi.fn(),
     });
 
     const { rerender } = render(<ContentListPage />);
@@ -174,9 +188,11 @@ describe('ContentListPage', () => {
       mutationError: null,
       refetch: vi.fn(),
       clearMutationError: vi.fn(),
+      archiveContents: vi.fn(),
+      deleteContents: vi.fn(),
     });
 
-    render(<ContentListPage />);
+    const view = render(<ContentListPage />);
 
     expect(screen.getByText('Inhalte konnten nicht geladen werden.')).toBeTruthy();
 
@@ -184,7 +200,11 @@ describe('ContentListPage', () => {
       target: { value: 'published' },
     });
 
-    expect(screen.queryByText('Startseite')).toBeNull();
+    const searchUpdater = navigateMock.mock.calls.at(-1)?.[0]?.search as ((current: Record<string, unknown>) => Record<string, unknown>) | undefined;
+    searchState = searchUpdater?.(searchState) ?? searchState;
+    view.rerender(<ContentListPage />);
+
+    expect(screen.queryAllByText('Startseite')).toHaveLength(0);
     expect(screen.getAllByText('Live').length).toBeGreaterThan(0);
     expect(screen.getAllByText('invalid-date').length).toBeGreaterThan(0);
   });
@@ -230,6 +250,8 @@ describe('ContentListPage', () => {
       mutationError: null,
       refetch: vi.fn(),
       clearMutationError: vi.fn(),
+      archiveContents: vi.fn(),
+      deleteContents: vi.fn(),
     });
 
     render(<ContentListPage />);
@@ -240,5 +262,166 @@ describe('ContentListPage', () => {
     expect(screen.getAllByRole('button', { name: 'Gesperrt' }).every((button) => (button as HTMLButtonElement).disabled)).toBe(true);
     expect(screen.getAllByText('{}').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Nicht gesetzt').length).toBeGreaterThan(0);
+  });
+
+  it('hydrates host list controls from route search state and updates canonical params', () => {
+    searchState = {
+      search: 'archiv',
+      filters: { status: 'archived' },
+      page: 2,
+      pageSize: 1,
+      sort: { field: 'updatedAt', direction: 'desc' },
+    };
+
+    useContentsMock.mockReturnValue({
+      contents: [
+        {
+          id: 'content-1',
+          contentType: 'generic',
+          title: 'Archiv alt',
+          createdAt: '2026-03-20T10:00:00.000Z',
+          updatedAt: '2026-03-21T10:00:00.000Z',
+          author: 'Editor',
+          payload: { hero: 'A' },
+          status: 'archived',
+        },
+        {
+          id: 'content-2',
+          contentType: 'generic',
+          title: 'Archiv neu',
+          createdAt: '2026-03-20T10:00:00.000Z',
+          updatedAt: '2026-03-22T10:00:00.000Z',
+          author: 'Editor',
+          payload: { hero: 'B' },
+          status: 'archived',
+        },
+      ],
+      isLoading: false,
+      error: null,
+      mutationError: null,
+      refetch: vi.fn(),
+      clearMutationError: vi.fn(),
+      archiveContents: vi.fn(),
+      deleteContents: vi.fn(),
+    });
+
+    render(<ContentListPage />);
+
+    expect((screen.getByLabelText('Suche') as HTMLInputElement).value).toBe('archiv');
+    expect((screen.getByLabelText('Status') as HTMLSelectElement).value).toBe('archived');
+    expect(screen.queryByText('Archiv neu')).toBeNull();
+    expect(screen.getAllByText('Archiv alt').length).toBeGreaterThan(0);
+
+    fireEvent.change(screen.getByLabelText('Suche'), {
+      target: { value: 'neu' },
+    });
+
+    expect(navigateMock).toHaveBeenCalled();
+
+    const searchUpdater = navigateMock.mock.calls[0]?.[0]?.search as ((current: Record<string, unknown>) => Record<string, unknown>) | undefined;
+    expect(searchUpdater).toBeTypeOf('function');
+    expect(searchUpdater?.(searchState)).toEqual({
+      page: 1,
+      pageSize: 1,
+      q: 'neu',
+      sort: '-updatedAt',
+      status: 'archived',
+    });
+  });
+
+  it('derives bulk action scopes from host capabilities and forwards normalized selection inputs', async () => {
+    const archiveContents = vi.fn().mockResolvedValue({ acceptedCount: 2, failedCount: 0, skippedCount: 0 });
+    const deleteContents = vi.fn().mockResolvedValue({ acceptedCount: 1, failedCount: 0, skippedCount: 0 });
+    searchState = {
+      search: '',
+      filters: { status: 'all' },
+      page: 1,
+      pageSize: 2,
+      sort: { field: 'updatedAt', direction: 'desc' },
+    };
+
+    useContentsMock.mockReturnValue({
+      contents: [
+        {
+          id: 'content-1',
+          contentType: 'generic',
+          title: 'Startseite',
+          createdAt: '2026-03-20T10:00:00.000Z',
+          updatedAt: '2026-03-23T10:00:00.000Z',
+          author: 'Editor',
+          payload: { hero: 'A' },
+          status: 'draft',
+        },
+        {
+          id: 'content-2',
+          contentType: 'generic',
+          title: 'Archiv',
+          createdAt: '2026-03-20T10:00:00.000Z',
+          updatedAt: '2026-03-22T10:00:00.000Z',
+          author: 'Editor',
+          payload: { hero: 'B' },
+          status: 'published',
+        },
+        {
+          id: 'content-3',
+          contentType: 'generic',
+          title: 'Kontakt',
+          createdAt: '2026-03-20T10:00:00.000Z',
+          updatedAt: '2026-03-21T10:00:00.000Z',
+          author: 'Editor',
+          payload: { hero: 'C' },
+          status: 'published',
+        },
+      ],
+      isLoading: false,
+      error: null,
+      mutationError: null,
+      refetch: vi.fn(),
+      clearMutationError: vi.fn(),
+      archiveContents,
+      deleteContents,
+    });
+
+    render(<ContentListPage />);
+
+    fireEvent.click(screen.getAllByLabelText(/Inhalte: Zeile content-1 auswählen/i)[0]!);
+    fireEvent.click(screen.getByRole('button', { name: 'Löschen (Auswahl)' }));
+
+    expect(deleteContents).toHaveBeenCalledWith({
+      actionId: 'content.delete',
+      contentIds: ['content-1'],
+      matchingCount: 3,
+      page: 1,
+      pageSize: 2,
+      selectionMode: 'explicitIds',
+      sort: { direction: 'desc', field: 'updatedAt' },
+      statusFilter: 'all',
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Archivieren (Aktuelle Seite)' }));
+
+    expect(archiveContents).toHaveBeenCalledWith({
+      actionId: 'content.archive',
+      contentIds: ['content-1', 'content-2'],
+      matchingCount: 3,
+      page: 1,
+      pageSize: 2,
+      selectionMode: 'currentPage',
+      sort: { direction: 'desc', field: 'updatedAt' },
+      statusFilter: 'all',
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Archivieren (Alle Treffer)' }));
+
+    expect(archiveContents).toHaveBeenCalledWith({
+      actionId: 'content.archive',
+      contentIds: ['content-1', 'content-2', 'content-3'],
+      matchingCount: 3,
+      page: 1,
+      pageSize: 2,
+      selectionMode: 'allMatchingQuery',
+      sort: { direction: 'desc', field: 'updatedAt' },
+      statusFilter: 'all',
+    });
   });
 });

@@ -163,11 +163,16 @@ gleichzeitig beeinflussen.
 - Sensitive-Keys-Redaction umfasst zusätzlich Cookie-, Session-, CSRF- und API-Key-Header/Felder
 - Pseudonyme technische IDs bleiben personenbezogen und werden nur geloggt, wenn sie fuer Betrieb, Audit oder Korrelation wirklich erforderlich sind
 - Auth-Audit und Betriebslogs unterscheiden `login`, `silent_reauth_success`, `silent_reauth_failed`, `forced_reauth` und `logout`
+- Auth-Diagnostik für `/auth/me` verwendet denselben strukturierten Fehlervertrag wie übrige IAM-Endpunkte: `classification`, `status`, `recommendedAction`, `requestId` und allowlist-basierte `safeDetails`
+- Auth-Unterbrechungen klassifizieren zusätzlich nicht-sensitive `reason_code`-Werte wie `missing_session_cookie`, `invalid_session`, `session_expired`, `silent_recovery_timeout` oder `forced_reauth`
+- Browser-seitige Auth-Recovery-Flows erzeugen pro Vorfall eine `authFlowId`, damit `/auth/me`, Silent-SSO, Redirect auf `session-expired` und nachgelagerte Retry-Schritte gemeinsam korrelierbar bleiben
+- Ein lokaler Browser-Ringpuffer in `sessionStorage` darf in Development- oder Diagnosemodi die letzten Auth-Ereignisse eines Tabs speichern; er enthält keine Tokens und keine PII, sondern nur sichere Diagnosemetadaten wie `authFlowId`, `requestId`, `reason_code` und `recovery_step`
 - Workspace-Context-Warnungen erfolgen über lazy `process.emitWarning` statt `console.warn`
 - Mainserver-Logs enthalten nur `instanceId`/`workspace_id`, `operation_name`, `request_id`, `trace_id`, Status und abstrahierte Fehlercodes; API-Key, Secret, Token und unredactete Variablen werden nie geloggt
 - IAM-Request-Spans tragen konsistente Diagnoseattribute wie `iam.endpoint`, `iam.instance_id`, `iam.actor_resolution`, `iam.reason_code`, `iam.feature_flags`, `db.schema_guard_result`, `dependency.redis.status` und `dependency.keycloak.status`
 - Der Runtime-Doctor- und Migrationspfad emittiert eigene OTEL-Ereignisse für Schema-Guard, Actor-Diagnose und verifizierte Migrationsläufe, damit Betriebsfehler mit `request_id` und `trace_id` korrelierbar bleiben
 - Inhalts-Historie nutzt ein eigenes Read-Modell statt Roh-Logs; jede Erstellung, Aktualisierung und jeder Statuswechsel erzeugt zusätzlich Audit-Ereignisse im bestehenden IAM-Auditpfad. Audit-Payloads für Content-Aktionen enthalten additiv fachliche Capability, primitive Action, Ergebnis, Reason-Code und Korrelationsfelder, ohne bestehende Exportformate zu migrieren.
+- Hostgeführte Bulk-Actions fuer Content reusen denselben Audit-/Mutation-Backbone: der Host protokolliert nur sichere Metadaten wie Resource-ID, Action-ID, Selection-Mode, Counts und Sort-/Filter-Scope, waehrend die fachliche Mutation und serverseitige Audit-Persistenz in den bestehenden Content-Endpunkten bleibt
 - Studio-Deploys erzeugen zusätzlich strukturierte Release-Evidenz unter `artifacts/runtime/deployments/`; enthalten sind Release-Modus, Actor, Workflow, Image-Referenz, Schrittstatus und Stack-Zusammenfassung, jedoch keine Secrets oder PII
 - Produktionsnahe Releases erzeugen zusätzlich eigenständige Artefakte für Release-Manifest, Phasenstatus, Migration, Bootstrap, Migrationsjob, Bootstrap-Job, interne Probes und externe Probes; diese Artefakte bleiben bewusst ohne Secrets oder PII
 - Remote-Prechecks für `studio` vergleichen zusätzlich die Live-Service-Spec der App mit dem gerenderten Sollzustand aus dem Deploy-Compose; dabei sind Netzwerke und ingressrelevante Labels eigene Drift-Signale
@@ -303,6 +308,7 @@ gleichzeitig beeinflussen.
 - Proposal-Reviews werden über einen dedizierten Proposal-Orchestrator konsolidiert
 - PR- und Code-Reviews werden über einen separaten PR-Orchestrator konsolidiert
 - Spezialisierte Review-Agents decken ergänzend Testqualität, i18n/Content, User Journey & Usability und Performance ab
+- Relevante Bot-Kommentare von `Copilot` und `chatgpt-codex-connector[bot]` werden zusaetzlich ueber ein eigenes PR-Gate auf Bearbeitungsnachweise geprueft
 - Zentrale und kritische Module werden zusätzlich über ein eigenes Komplexitäts-Gate mit Ticketpflicht überwacht
 - Das Modulregister und die Schwellwerte liegen versioniert unter `tooling/quality/complexity-policy.json`
 - Bekannte Überschreitungen bleiben nur dann zulässig, wenn sie in `trackedFindings` mit Refactoring-Ticket hinterlegt sind
@@ -312,6 +318,7 @@ gleichzeitig beeinflussen.
   - `ux-accessibility.agent.md` für WCAG/BITV, Fokus, Tastatur und Screenreader
   - `user-journey-usability.agent.md` für Friktion, Verständlichkeit und Aufgabenbewältigung
 - i18n/harte Strings werden als eigener Governance-Strang behandelt und nicht nur implizit im Code-Review geprüft
+- Der Bearbeitungsnachweis fuer Bot-Kommentare nutzt standardisierte Marker fuer `accepted`, `rejected` und `resolved`; Diff-Threads muessen zusaetzlich als resolved markiert sein
 - Konflikte zwischen Review-Perspektiven werden auf Orchestrator-Ebene explizit gemacht, die Entscheidung bleibt beim Menschen
 
 ### Package-Boundaries und Runtime-Imports
@@ -422,6 +429,7 @@ Referenzen:
 - Die Mainserver-Integration ist eine reine Server-Side-Integration; es gibt keinen generischen Browser-Proxy auf den externen GraphQL-Endpunkt.
 - Fachadapter wie News stellen getypte, eng zugeschnittene Fassaden bereit; Browser-Plugins sprechen nur hosteigene HTTP-Endpunkte und importieren keine Mainserver-Servermodule.
 - Events und POI folgen demselben Host-Fassadenmuster. Der Event-Editor bezieht POI-Auswahldaten über `/api/v1/mainserver/poi`, nicht über einen direkten Import von `@sva/plugin-poi`.
+- `apps/sva-studio-react` bleibt bewusst Host für TanStack-`createServerFn`-Bindings, Request-Matching und die Dispatch-Reihenfolge im Server-Entry. Diese Transport- und Framework-Bindung ist keine fachliche Package-Ownership.
 - Per-User-Credentials liegen ausschließlich in Keycloak-User-Attributen (`mainserverUserApplicationId`, `mainserverUserApplicationSecret`) und werden serverseitig on demand gelesen; die bisherigen Namen `sva_mainserver_api_key` und `sva_mainserver_api_secret` bleiben nur als Legacy-Fallback lesbar.
 - Die Studio-Datenbank hält nur instanzbezogene Endpunktkonfiguration (`graphql_base_url`, `oauth_token_url`, Prüfstatus) in `iam.instance_integrations`.
 - Credential-Caching bleibt kurzlebig im Prozessspeicher; Access-Tokens werden ebenfalls nur in-memory und vor Ablauf mit Skew erneuert.

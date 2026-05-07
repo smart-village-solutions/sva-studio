@@ -1,10 +1,10 @@
 import type { IamKeycloakObjectDiagnostic } from '@sva/core';
+import { StudioDataTable, StudioListPageTemplate, type StudioColumnDef } from '@sva/studio-ui-react';
 import React from 'react';
 import { Link } from '@tanstack/react-router';
 
 import { ConfirmDialog } from '../../../components/ConfirmDialog';
-import { StudioDataTable, type StudioColumnDef } from '../../../components/StudioDataTable';
-import { StudioListPageTemplate } from '../../../components/StudioListPageTemplate';
+import { createStudioDataTableLabels } from '../../../components/studio-data-table-labels';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
@@ -109,6 +109,7 @@ const roleErrorMessage = (error: IamHttpError | null, fallbackKey: TranslationKe
 };
 
 export const RolesPage = () => {
+  const studioDataTableLabels = createStudioDataTableLabels();
   const rolesApi = useRoles();
   const { user } = useAuth();
   const isPlatformScope = user !== null && !user.instanceId;
@@ -237,6 +238,7 @@ export const RolesPage = () => {
       >
         <StudioDataTable
           ariaLabel={t(isPlatformScope ? 'admin.roles.table.platformAriaLabel' : 'admin.roles.table.ariaLabel')}
+          labels={studioDataTableLabels}
           caption={t(isPlatformScope ? 'admin.roles.table.platformCaption' : 'admin.roles.table.caption')}
           data={filteredRoles}
           columns={roleColumns}

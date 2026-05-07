@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   createRoutingDiagnosticsLogger,
   emitRoutingDiagnostic,
+  registerServerFallbackLogger,
+  resetServerFallbackLogger,
   setRoutingDiagnosticsFailureLogger,
   type RoutingDiagnosticEvent,
 } from './diagnostics';
@@ -26,11 +28,9 @@ beforeEach(() => {
 });
 
 describe('emitRoutingDiagnostic', () => {
-  it('returns early when no diagnostics hook is configured', () => {
-    expect(() => emitRoutingDiagnostic(undefined, testEvent)).not.toThrow();
-  });
+  it('uses the registered server fallback logger for server-side hook failures', async () => {
+    registerServerFallbackLogger(fallbackLogger);
 
-  it('swallows synchronous diagnostics hook failures', async () => {
     expect(() =>
       emitRoutingDiagnostic(() => {
         throw new Error('diagnostics failed');
@@ -48,6 +48,13 @@ describe('emitRoutingDiagnostic', () => {
         error_message: 'diagnostics failed',
       })
     );
+
+    resetServerFallbackLogger();
+    fallbackLogger.error.mockReset();
+  });
+
+  it('returns early when no diagnostics hook is configured', () => {
+    expect(() => emitRoutingDiagnostic(undefined, testEvent)).not.toThrow();
   });
 
   it('supports synchronous diagnostics hooks without promise handling', () => {
@@ -58,6 +65,8 @@ describe('emitRoutingDiagnostic', () => {
   });
 
   it('swallows rejected promises from async diagnostics hooks', async () => {
+    registerServerFallbackLogger(fallbackLogger);
+
     expect(() =>
       emitRoutingDiagnostic((() => Promise.reject(new Error('diagnostics failed'))) as never, testEvent)
     ).not.toThrow();
@@ -73,9 +82,14 @@ describe('emitRoutingDiagnostic', () => {
         error_message: 'diagnostics failed',
       })
     );
+
+    resetServerFallbackLogger();
+    fallbackLogger.error.mockReset();
   });
 
   it('normalizes non-Error diagnostics hook failures deterministically', async () => {
+    registerServerFallbackLogger(fallbackLogger);
+
     expect(() =>
       emitRoutingDiagnostic(() => {
         throw 'plain diagnostics failure';
@@ -93,6 +107,9 @@ describe('emitRoutingDiagnostic', () => {
         error_message: 'plain diagnostics failure',
       })
     );
+
+    resetServerFallbackLogger();
+    fallbackLogger.error.mockReset();
   });
 
   it('logs browser-side diagnostics hook failures directly to console.error', async () => {
@@ -137,7 +154,6 @@ describe('emitRoutingDiagnostic', () => {
       }, testEvent)
     ).not.toThrow();
 
-    await new Promise((resolve) => setTimeout(resolve, 0));
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(consoleError).toHaveBeenCalledWith(

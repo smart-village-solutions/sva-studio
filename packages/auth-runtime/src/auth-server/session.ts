@@ -7,7 +7,12 @@ import { SessionStoreUnavailableError } from '../runtime-errors.js';
 import type { RuntimeScopeRef, Session, SessionUser } from '../types.js';
 
 import { client, getOidcConfig } from '../oidc.js';
-import { deleteSession, getSession, getSessionControlState, updateSession } from '../redis-session.js';
+import {
+  deleteSession,
+  getSession,
+  getSessionControlState,
+  updateSession,
+} from '../redis-session.js';
 import { buildSessionUser, resolveSessionExpiry, TOKEN_REFRESH_SKEW_MS } from './shared.js';
 
 const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
@@ -18,24 +23,39 @@ const shouldRefreshSession = (expiresAt: number | undefined): boolean =>
 const needsSessionUserHydration = (user: SessionUser | null | undefined): boolean =>
   !user?.instanceId || user.roles.length === 0;
 
-const isSessionAllowed = async (session: Session): Promise<boolean> => {
+export type SessionResolutionFailureReason =
+  | 'invalid_session'
+  | 'session_expired'
+  | 'forced_reauth'
+  | 'token_refresh_failed_after_expiry';
+
+export type SessionResolutionResult =
+  | { kind: 'authenticated'; user: SessionUser | null; expiresAt?: number }
+  | { kind: 'invalid'; reason: SessionResolutionFailureReason };
+
+const readSessionInvalidationReason = async (
+  session: Session
+): Promise<Extract<SessionResolutionResult, { kind: 'invalid' }>['reason'] | null> => {
   const state = await getSessionControlState(session.userId);
   if (!state) {
-    return true;
+    return null;
   }
 
   const sessionVersion = session.sessionVersion ?? 1;
   const issuedAt = session.issuedAt ?? session.createdAt;
 
-  if (typeof state.minimumSessionVersion === 'number' && sessionVersion < state.minimumSessionVersion) {
-    return false;
+  if (
+    typeof state.minimumSessionVersion === 'number' &&
+    sessionVersion < state.minimumSessionVersion
+  ) {
+    return 'forced_reauth';
   }
 
   if (typeof state.forcedReauthAt === 'number' && issuedAt < state.forcedReauthAt) {
-    return false;
+    return 'forced_reauth';
   }
 
-  return true;
+  return null;
 };
 
 const logIncompleteSessionUser = (
@@ -67,7 +87,9 @@ const hydrateSessionUserFromAccessToken = async (
     return session.user ?? null;
   }
 
-  const authConfig = session.auth ? resolveAuthConfigFromSessionAuth(session.auth) : getAuthConfig();
+  const authConfig = session.auth
+    ? resolveAuthConfigFromSessionAuth(session.auth)
+    : getAuthConfig();
   const hydratedUser = buildSessionUser({
     accessToken: session.accessToken,
     claims: {},
@@ -87,14 +109,20 @@ const hydrateSessionUserFromAccessToken = async (
     hydration_source: 'access_token',
     had_instance_id: Boolean(session.user?.instanceId),
     had_roles: (session.user?.roles.length ?? 0) > 0,
-    ...buildLogContext(hydratedUser.instanceId ? { kind: 'instance', instanceId: hydratedUser.instanceId } : session.auth),
+    ...buildLogContext(
+      hydratedUser.instanceId
+        ? { kind: 'instance', instanceId: hydratedUser.instanceId }
+        : session.auth
+    ),
   });
 
   return hydratedUser;
 };
 
 const refreshSession = async (sessionId: string, session: Session) => {
-  const authConfig = session.auth ? resolveAuthConfigFromSessionAuth(session.auth) : getAuthConfig();
+  const authConfig = session.auth
+    ? resolveAuthConfigFromSessionAuth(session.auth)
+    : getAuthConfig();
   const config = await getOidcConfig(authConfig);
   const refreshed = await client.refreshTokenGrant(config, session.refreshToken ?? '');
   const updatedUser = buildSessionUser({
@@ -127,7 +155,7 @@ const handleRefreshFailure = async (input: {
   expiresAt?: number;
   scope?: Session['auth'];
   fallbackUser: SessionUser | null;
-}): Promise<SessionUser | null> => {
+}): Promise<SessionResolutionResult> => {
   if (input.error instanceof SessionStoreUnavailableError) {
     throw input.error;
   }
@@ -154,35 +182,40 @@ const handleRefreshFailure = async (input: {
 
   if (input.expiresAt && input.expiresAt < now) {
     await deleteSession(input.sessionId);
-    return null;
+    return { kind: 'invalid', reason: 'token_refresh_failed_after_expiry' };
   }
 
-  return input.fallbackUser;
+  return { kind: 'authenticated', user: input.fallbackUser, expiresAt: input.expiresAt };
 };
 
-export const getSessionUser = async (sessionId: string) => {
+export const resolveSessionUser = async (sessionId: string): Promise<SessionResolutionResult> => {
   const session = await getSession(sessionId);
   if (!session) {
-    return null;
+    return { kind: 'invalid', reason: 'invalid_session' };
   }
 
-  if (!(await isSessionAllowed(session))) {
+  const sessionInvalidationReason = await readSessionInvalidationReason(session);
+  if (sessionInvalidationReason) {
     await deleteSession(sessionId);
-    return null;
+    return { kind: 'invalid', reason: sessionInvalidationReason };
   }
 
   if (!shouldRefreshSession(session.expiresAt)) {
     const user = await hydrateSessionUserFromAccessToken(sessionId, session);
     logIncompleteSessionUser(user, 'session_read');
-    return user;
+    return { kind: 'authenticated', user, expiresAt: session.expiresAt };
   }
 
   if (!session.refreshToken) {
     if (session.expiresAt && session.expiresAt < Date.now()) {
       await deleteSession(sessionId);
-      return null;
+      return { kind: 'invalid', reason: 'session_expired' };
     }
-    return hydrateSessionUserFromAccessToken(sessionId, session);
+    return {
+      kind: 'authenticated',
+      user: await hydrateSessionUserFromAccessToken(sessionId, session),
+      expiresAt: session.expiresAt,
+    };
   }
 
   try {
@@ -202,7 +235,11 @@ export const getSessionUser = async (sessionId: string) => {
       ...buildLogContext(updatedSession?.auth),
     });
 
-    return updatedSession?.user ?? null;
+    return {
+      kind: 'authenticated',
+      user: updatedSession?.user ?? null,
+      expiresAt: updatedSession?.expiresAt,
+    };
   } catch (error) {
     return handleRefreshFailure({
       error,
@@ -213,4 +250,9 @@ export const getSessionUser = async (sessionId: string) => {
       fallbackUser: session.user ?? null,
     });
   }
+};
+
+export const getSessionUser = async (sessionId: string) => {
+  const result = await resolveSessionUser(sessionId);
+  return result.kind === 'authenticated' ? result.user : null;
 };

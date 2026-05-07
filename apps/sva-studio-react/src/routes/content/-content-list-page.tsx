@@ -1,9 +1,9 @@
 import { withServerDeniedContentAccess, type IamContentAccessSummary } from '@sva/core';
-import { Link } from '@tanstack/react-router';
+import { StudioDataTable, StudioListPageTemplate, type StudioColumnDef } from '@sva/studio-ui-react';
+import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import React from 'react';
 
-import { StudioDataTable, type StudioColumnDef } from '../../components/StudioDataTable';
-import { StudioListPageTemplate } from '../../components/StudioListPageTemplate';
+import { createStudioDataTableLabels } from '../../components/studio-data-table-labels';
 import { Alert, AlertDescription } from '../../components/ui/alert';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
@@ -14,8 +14,29 @@ import { useContentAccess } from '../../hooks/use-content-access';
 import { useContents } from '../../hooks/use-contents';
 import { t } from '../../i18n';
 import type { IamHttpError } from '../../lib/iam-api';
+import { appAdminResources } from '../../routing/admin-resources';
 
 type StatusFilter = 'all' | 'draft' | 'in_review' | 'approved' | 'published' | 'archived';
+type SortDirection = 'asc' | 'desc';
+type ContentListSortState = Readonly<{
+  field: string;
+  direction: SortDirection;
+}>;
+type RouteSearchState = Readonly<Record<string, unknown>>;
+type ContentListRouteState = Readonly<{
+  search: string;
+  status: StatusFilter;
+  page: number;
+  pageSize: number;
+  sort?: ContentListSortState;
+}>;
+
+const contentAdminResource = appAdminResources.find((resource) => resource.resourceId === 'content');
+const contentListCapabilities = contentAdminResource?.capabilities?.list;
+const contentBulkActions = contentListCapabilities?.bulkActions ?? [];
+const contentPagination = contentListCapabilities?.pagination;
+const contentSorting = contentListCapabilities?.sorting;
+const contentStatusOptions = ['all', 'draft', 'in_review', 'approved', 'published', 'archived'] as const satisfies readonly StatusFilter[];
 
 const contentErrorMessage = (error: IamHttpError | null): string => {
   if (!error) {
@@ -119,12 +140,131 @@ const statusLabelKeyByValue = {
   archived: 'content.status.archived',
 } as const;
 
+const normalizeStatusFilter = (value: unknown): StatusFilter =>
+  typeof value === 'string' && contentStatusOptions.includes(value as StatusFilter) ? (value as StatusFilter) : 'all';
+
+const normalizePositiveInteger = (value: unknown, fallback: number): number => {
+  if (typeof value === 'number' && Number.isInteger(value) && value > 0) {
+    return value;
+  }
+  if (typeof value === 'string') {
+    const parsed = Number.parseInt(value, 10);
+    if (Number.isInteger(parsed) && parsed > 0) {
+      return parsed;
+    }
+  }
+  return fallback;
+};
+
+const normalizeSortState = (value: unknown): ContentListSortState | undefined => {
+  if (value && typeof value === 'object') {
+    const field = typeof (value as { field?: unknown }).field === 'string' ? (value as { field: string }).field : undefined;
+    const direction = (value as { direction?: unknown }).direction;
+    if (field && (direction === 'asc' || direction === 'desc')) {
+      return { field, direction };
+    }
+  }
+
+  if (typeof value === 'string' && value.trim().length > 0) {
+    return value.startsWith('-')
+      ? { field: value.slice(1), direction: 'desc' }
+      : { field: value, direction: 'asc' };
+  }
+
+  return undefined;
+};
+
+const readNormalizedRouteState = (search: RouteSearchState): ContentListRouteState => {
+  const normalizedFilters =
+    search.filters && typeof search.filters === 'object' ? (search.filters as Record<string, unknown>) : undefined;
+  const normalizedSearch = typeof search.search === 'string' ? search.search : typeof search.q === 'string' ? search.q : '';
+  const pageSizeDefault = contentPagination?.defaultPageSize ?? 25;
+
+  const fallbackSort = contentSorting
+    ? {
+        field: contentSorting.defaultField,
+        direction: contentSorting.defaultDirection,
+      }
+    : undefined;
+
+  return {
+    search: normalizedSearch,
+    status: normalizeStatusFilter(normalizedFilters?.status ?? search.status),
+    page: normalizePositiveInteger(search.page, 1),
+    pageSize: normalizePositiveInteger(search.pageSize, pageSizeDefault),
+    sort: normalizeSortState(search.sort) ?? normalizeSortState(search.sort ?? search.sorting) ?? fallbackSort,
+  };
+};
+
+const serializeRouteState = (state: ContentListRouteState): RouteSearchState => ({
+  ...(state.search.trim().length > 0 ? { q: state.search.trim() } : {}),
+  ...(state.status !== 'all' ? { status: state.status } : {}),
+  ...(state.sort ? { sort: state.sort.direction === 'desc' ? `-${state.sort.field}` : state.sort.field } : {}),
+  page: state.page,
+  pageSize: state.pageSize,
+});
+
+const updateRouteState = (
+  current: RouteSearchState,
+  next: Partial<ContentListRouteState>
+): RouteSearchState => {
+  const normalized = readNormalizedRouteState(current);
+  return serializeRouteState({
+    ...normalized,
+    ...next,
+  });
+};
+
+const sortContents = <TItem extends Record<string, unknown>>(
+  items: readonly TItem[],
+  sort: ContentListSortState | undefined
+): readonly TItem[] => {
+  if (!sort) {
+    return items;
+  }
+
+  const direction = sort.direction === 'desc' ? -1 : 1;
+  return [...items].sort((left, right) => {
+    const leftValue = left[sort.field];
+    const rightValue = right[sort.field];
+    const normalizedLeft = typeof leftValue === 'string' ? leftValue.toLowerCase() : String(leftValue ?? '');
+    const normalizedRight = typeof rightValue === 'string' ? rightValue.toLowerCase() : String(rightValue ?? '');
+    return normalizedLeft.localeCompare(normalizedRight) * direction;
+  });
+};
+
+const ContentPaginationNav = ({
+  page,
+  pageCount,
+  onPageChange,
+}: Readonly<{
+  page: number;
+  pageCount: number;
+  onPageChange: (page: number) => void;
+}>) => (
+  <nav aria-label={t('content.pagination.ariaLabel')} className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
+    <p aria-live="polite">
+      {t('content.pagination.pageLabel', { page, total: pageCount })}
+    </p>
+    <div className="flex items-center gap-2">
+      <Button type="button" size="sm" variant="outline" disabled={page <= 1} onClick={() => onPageChange(Math.max(1, page - 1))}>
+        {t('content.pagination.previous')}
+      </Button>
+      <Button type="button" size="sm" variant="outline" disabled={page >= pageCount} onClick={() => onPageChange(Math.min(pageCount, page + 1))}>
+        {t('content.pagination.next')}
+      </Button>
+    </div>
+  </nav>
+);
+
 export const ContentListPage = () => {
+  const studioDataTableLabels = createStudioDataTableLabels();
+  const navigate = useNavigate();
+  const search = useSearch({ strict: false }) as RouteSearchState;
   const contentsApi = useContents();
   const contentAccessApi = useContentAccess();
-  const [search, setSearch] = React.useState('');
-  const [statusFilter, setStatusFilter] = React.useState<StatusFilter>('all');
-  const normalizedSearch = search.trim().toLowerCase();
+  const routeState = readNormalizedRouteState(search);
+  const normalizedSearch = routeState.search.trim().toLowerCase();
   const createDisabled =
     contentAccessApi.access ? !contentAccessApi.access.canCreate : contentsApi.error?.code === 'forbidden';
 
@@ -145,9 +285,58 @@ export const ContentListPage = () => {
       item.contentType.toLowerCase().includes(normalizedSearch) ||
       item.payloadJson.toLowerCase().includes(normalizedSearch);
 
-    const matchesStatus = statusFilter === 'all' || item.status === statusFilter;
+    const matchesStatus = routeState.status === 'all' || item.status === routeState.status;
     return matchesSearch && matchesStatus;
   });
+  const sortedContents = React.useMemo(() => sortContents(filteredContents, routeState.sort), [filteredContents, routeState.sort]);
+  const pageCount = Math.max(1, Math.ceil(sortedContents.length / routeState.pageSize));
+  const safePage = Math.min(routeState.page, pageCount);
+  const pagedContents = React.useMemo(
+    () => sortedContents.slice((safePage - 1) * routeState.pageSize, safePage * routeState.pageSize),
+    [routeState.pageSize, safePage, sortedContents]
+  );
+
+  const navigateSearch = React.useCallback(
+    (next: Partial<ContentListRouteState>) => {
+      Promise.resolve(
+        navigate({
+          to: '/admin/content',
+          search: (current: RouteSearchState) => updateRouteState(current, next),
+        })
+      ).catch(() => undefined);
+    },
+    [navigate]
+  );
+
+  const runBulkAction = React.useCallback(
+    async (actionId: 'content.archive' | 'content.delete', selectionMode: 'explicitIds' | 'currentPage' | 'allMatchingQuery', selectedIds: readonly string[]) => {
+      const contentIds =
+        selectionMode === 'currentPage'
+          ? pagedContents.map((item) => item.id)
+          : selectionMode === 'allMatchingQuery'
+            ? sortedContents.map((item) => item.id)
+            : selectedIds;
+
+      const input = {
+        actionId,
+        contentIds,
+        matchingCount: sortedContents.length,
+        page: safePage,
+        pageSize: routeState.pageSize,
+        selectionMode,
+        ...(routeState.sort ? { sort: routeState.sort } : {}),
+        statusFilter: routeState.status,
+      } as const;
+
+      if (actionId === 'content.archive') {
+        await contentsApi.archiveContents(input);
+        return;
+      }
+
+      await contentsApi.deleteContents(input);
+    },
+    [contentsApi, pagedContents, routeState.pageSize, routeState.sort, routeState.status, safePage, sortedContents]
+  );
 
   const contentColumns = React.useMemo<readonly StudioColumnDef<(typeof filteredContents)[number]>[]>(
     () => [
@@ -230,7 +419,40 @@ export const ContentListPage = () => {
         cell: (item) => formatAccessContext(resolveRowAccess(item.access, contentsApi.error)),
       },
     ],
-    [contentsApi.error, filteredContents]
+    [contentsApi.error]
+  );
+
+  const bulkActionButtons = contentBulkActions.flatMap((action) =>
+    action.selectionModes.map((selectionMode) => {
+      const labelKey =
+        selectionMode === 'explicitIds'
+          ? 'content.bulk.scope.explicitIds'
+          : selectionMode === 'currentPage'
+            ? 'content.bulk.scope.currentPage'
+            : 'content.bulk.scope.allMatchingQuery';
+
+      const enabledForScope =
+        selectionMode === 'explicitIds'
+          ? undefined
+          : selectionMode === 'currentPage'
+            ? pagedContents.length === 0
+            : sortedContents.length === 0;
+
+      return {
+        id: `${action.id}:${selectionMode}`,
+        label: `${t(action.labelKey)} (${t(labelKey)})`,
+        disabled: selectionMode === 'explicitIds' ? undefined : enabledForScope,
+        variant: 'outline' as const,
+        onClick: async ({ selectedRows, clearSelection }: { selectedRows: typeof pagedContents; clearSelection: () => void }) => {
+          await runBulkAction(
+            action.actionId as 'content.archive' | 'content.delete',
+            selectionMode,
+            selectedRows.map((row) => row.id)
+          );
+          clearSelection();
+        },
+      };
+    })
   );
 
   return (
@@ -277,11 +499,13 @@ export const ContentListPage = () => {
 
       <StudioDataTable
         ariaLabel={t('content.table.ariaLabel')}
+        labels={studioDataTableLabels}
         caption={t('content.table.caption')}
-        data={filteredContents}
+        data={pagedContents}
         columns={contentColumns}
         getRowId={(item) => item.id}
-        selectionMode="none"
+        selectionMode={contentBulkActions.length > 0 ? 'multiple' : 'none'}
+        bulkActions={bulkActionButtons}
         isLoading={contentsApi.isLoading || contentAccessApi.isLoading}
         loadingState={t('content.messages.loading')}
         emptyState={
@@ -296,8 +520,8 @@ export const ContentListPage = () => {
               <Label htmlFor="content-search">{t('content.filters.searchLabel')}</Label>
               <Input
                 id="content-search"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
+                value={routeState.search}
+                onChange={(event) => navigateSearch({ search: event.target.value, page: 1 })}
                 placeholder={t('content.filters.searchPlaceholder')}
               />
             </div>
@@ -305,8 +529,8 @@ export const ContentListPage = () => {
               <Label htmlFor="content-status-filter">{t('content.filters.statusLabel')}</Label>
               <Select
                 id="content-status-filter"
-                value={statusFilter}
-                onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}
+                value={routeState.status}
+                onChange={(event) => navigateSearch({ status: event.target.value as StatusFilter, page: 1 })}
               >
                 <option value="all">{t('content.filters.statusAll')}</option>
                 <option value="draft">{t('content.status.draft')}</option>
@@ -316,6 +540,25 @@ export const ContentListPage = () => {
                 <option value="archived">{t('content.status.archived')}</option>
               </Select>
             </div>
+          </>
+        }
+        toolbarEnd={
+          <>
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="content-page-size">{t('content.pagination.pageSizeLabel')}</Label>
+              <Select
+                id="content-page-size"
+                value={String(routeState.pageSize)}
+                onChange={(event) => navigateSearch({ page: 1, pageSize: Number(event.target.value) })}
+              >
+                {(contentPagination?.pageSizeOptions ?? [25]).map((option) => (
+                  <option key={option} value={option}>
+                    {String(option)}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <ContentPaginationNav page={safePage} pageCount={pageCount} onPageChange={(page) => navigateSearch({ page })} />
           </>
         }
         rowActions={(item) => {

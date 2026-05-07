@@ -28,7 +28,7 @@ describe('protected routes', () => {
     } catch (error) {
       expect(isRedirect(error)).toBe(true);
       if (isRedirect(error)) {
-        expect(error.options.href).toBe('/auth/login?returnTo=%2Fadmin%2Fusers%3Fpage%3D2');
+        expect(error.options.href).toBe('/?auth=login&returnTo=%2Fadmin%2Fusers%3Fpage%3D2');
       }
     }
 
@@ -37,7 +37,7 @@ describe('protected routes', () => {
       event: 'routing.guard.access_denied',
       route: '/admin/users/$userId',
       reason: 'unauthenticated',
-      redirect_target: '/auth/login',
+      redirect_target: '/',
     });
   });
 
@@ -137,7 +137,7 @@ describe('protected routes', () => {
     } catch (error) {
       expect(isRedirect(error)).toBe(true);
       if (isRedirect(error)) {
-        expect(error.options.href).toBe('/auth/login?returnTo=%2F');
+        expect(error.options.href).toBe('/?auth=login&returnTo=%2F');
       }
     }
   });

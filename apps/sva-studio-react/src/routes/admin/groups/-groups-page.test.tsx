@@ -8,7 +8,11 @@ const useGroupsMock = vi.fn();
 const useRolesMock = vi.fn();
 
 vi.mock('@tanstack/react-router', () => ({
-  Link: ({ to, children, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { to: string }) => (
+  Link: ({
+    to,
+    children,
+    ...props
+  }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { to: string }) => (
     <a href={to} {...props}>
       {children}
     </a>
@@ -23,10 +27,24 @@ vi.mock('../../../hooks/use-roles', () => ({
   useRoles: () => useRolesMock(),
 }));
 
+const useAuthMock = vi.fn();
+
+vi.mock('../../../providers/auth-provider', () => ({
+  useAuth: () => useAuthMock(),
+}));
+
 describe('GroupsPage', () => {
   beforeEach(() => {
     useGroupsMock.mockReset();
     useRolesMock.mockReset();
+    useAuthMock.mockReset();
+    useAuthMock.mockReturnValue({
+      user: {
+        id: 'user-1',
+        roles: ['system_admin'],
+        instanceId: 'de-musterhausen',
+      },
+    });
     useRolesMock.mockReturnValue({
       roles: [{ id: 'role-1', roleName: 'Editor' }],
       isLoading: false,
@@ -100,8 +118,12 @@ describe('GroupsPage', () => {
     render(<GroupsPage />);
 
     expect(screen.getByText('Admins')).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'Gruppe anlegen' }).getAttribute('href')).toBe('/admin/groups/new');
-    expect(screen.getByRole('link', { name: 'Gruppe bearbeiten' }).getAttribute('href')).toBe('/admin/groups/$groupId');
+    expect(screen.getByRole('link', { name: 'Gruppe anlegen' }).getAttribute('href')).toBe(
+      '/admin/groups/new'
+    );
+    expect(screen.getByRole('link', { name: 'Gruppe bearbeiten' }).getAttribute('href')).toBe(
+      '/admin/groups/$groupId'
+    );
     await waitFor(() => expect(loadGroupDetail).toHaveBeenCalledWith('group-1'));
   });
 
@@ -135,5 +157,21 @@ describe('GroupsPage', () => {
 
     expect(refetch).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(deleteGroup).toHaveBeenCalledWith('group-1'));
+  });
+
+  it('shows a guard message without instance context', () => {
+    useAuthMock.mockReturnValue({
+      user: {
+        id: 'user-1',
+        roles: ['system_admin'],
+      },
+    });
+    useGroupsMock.mockReturnValue(createGroupsState());
+
+    render(<GroupsPage />);
+
+    expect(
+      screen.getByText('Die Gruppenverwaltung ist nur mit aktivem Instanzkontext verfügbar.')
+    ).toBeTruthy();
   });
 });

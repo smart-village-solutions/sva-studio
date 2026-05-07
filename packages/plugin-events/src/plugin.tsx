@@ -57,6 +57,7 @@ export const pluginEvents: PluginDefinition = {
         fields: {
           title: 'Titel',
           description: 'Beschreibung',
+          headerImage: 'Headerbild',
           categoryName: 'Kategorie',
           dateStart: 'Startdatum',
           dateEnd: 'Enddatum',
@@ -69,6 +70,7 @@ export const pluginEvents: PluginDefinition = {
           phone: 'Telefon',
           email: 'E-Mail',
           url: 'Web-URL',
+          mediaPlaceholder: 'Medium auswählen',
           tags: 'Tags',
           pointOfInterestId: 'Zugehöriger POI',
           repeat: 'Wiederholung',
@@ -81,6 +83,7 @@ export const pluginEvents: PluginDefinition = {
           delete: 'Löschen',
           back: 'Zurück zur Liste',
           deleteConfirm: 'Soll dieses Event wirklich gelöscht werden?',
+          clearMedia: 'Medium entfernen',
         },
         messages: {
           loading: 'Events werden geladen.',
@@ -94,6 +97,12 @@ export const pluginEvents: PluginDefinition = {
           validationError: 'Bitte korrigieren Sie die markierten Felder.',
         },
         empty: { title: 'Noch keine Events vorhanden', description: 'Legen Sie das erste Event an.' },
+        pagination: {
+          ariaLabel: 'Events-Pagination',
+          previous: 'Zurück',
+          next: 'Weiter',
+          pageLabel: 'Seite {{page}}',
+        },
         validation: {
           title: 'Der Titel ist erforderlich.',
           dates: 'Datumswerte müssen gültig sein.',
@@ -115,6 +124,7 @@ export const pluginEvents: PluginDefinition = {
         fields: {
           title: 'Title',
           description: 'Description',
+          headerImage: 'Header image',
           categoryName: 'Category',
           dateStart: 'Start date',
           dateEnd: 'End date',
@@ -127,6 +137,7 @@ export const pluginEvents: PluginDefinition = {
           phone: 'Phone',
           email: 'Email',
           url: 'Web URL',
+          mediaPlaceholder: 'Select media',
           tags: 'Tags',
           pointOfInterestId: 'Related POI',
           repeat: 'Repeating',
@@ -139,6 +150,7 @@ export const pluginEvents: PluginDefinition = {
           delete: 'Delete',
           back: 'Back to list',
           deleteConfirm: 'Delete this event?',
+          clearMedia: 'Clear media',
         },
         messages: {
           loading: 'Loading events.',
@@ -152,6 +164,12 @@ export const pluginEvents: PluginDefinition = {
           validationError: 'Please correct the highlighted fields.',
         },
         empty: { title: 'No events yet', description: 'Create the first event.' },
+        pagination: {
+          ariaLabel: 'Events pagination',
+          previous: 'Previous',
+          next: 'Next',
+          pageLabel: 'Page {{page}}',
+        },
         validation: {
           title: 'Title is required.',
           dates: 'Dates must be valid.',

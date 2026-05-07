@@ -157,6 +157,11 @@ describe('useMediaLibrary', () => {
           technical: {},
         },
       ],
+      pagination: {
+        page: 1,
+        pageSize: 25,
+        total: 1,
+      },
     });
 
     render(<MediaLibraryProbe search="hero" visibility="public" />);

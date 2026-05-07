@@ -241,7 +241,7 @@ Die zugrunde liegende Job-Orchestrierung soll nicht waste-spezifisch bleiben, so
 - die erste konkrete `Monitoring`-Sicht bleibt eine technische und zunächst temporäre Admin-Sicht
 - sie darf Jobs, aktuellen technischen Datenquellenstatus und technische Ereignishistorie kombinieren
 - eine breitere fachliche Betriebsoberfläche wird in diesem Change noch nicht festgelegt
-- plugininterne technische Hilfsdaten können weiterhin in der externen Waste-Datenbank liegen, die übergreifende Job-Orchestrierung soll aber auf Wiederverwendung für weitere Plugins ausgelegt werden
+- plugininterne technische Hilfsdaten können weiterhin in der externen Waste-Datenbank liegen, die übergreifende Job-Orchestrierung und ihre führende Persistenz im Studio-Postgres werden dadurch aber nicht ersetzt
 
 Diese Plattformfähigkeit wird in diesem Change bewusst nicht nur als schmale Vorstufe angelegt. Sie soll bereits im ersten Wurf tragfähig genug für weitere reale Plugin-Nutzer sein, solange Waste der erste konkrete Treiber bleibt.
 

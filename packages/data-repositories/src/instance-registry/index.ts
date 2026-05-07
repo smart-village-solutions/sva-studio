@@ -361,67 +361,6 @@ const quoteSqlLiteral = (value: string): string => `'${value.split("'").join("''
 
 const createTextList = (values: readonly string[]): string => values.map(quoteSqlLiteral).join(', ');
 
-type RolePermissionPair = {
-  readonly roleName: string;
-  readonly permissionId: string;
-};
-
-const listManagedRoleNames = (contracts: readonly InstanceModuleIamContractRecord[]): readonly string[] =>
-  Array.from(new Set(contracts.flatMap((contract) => contract.systemRoles.map((role) => role.roleName)))).sort(
-    compareAlphabetically
-  );
-
-const listRolePermissionPairs = (contracts: readonly InstanceModuleIamContractRecord[]): readonly RolePermissionPair[] => {
-  const pairs: RolePermissionPair[] = [];
-  for (const contract of contracts) {
-    for (const role of contract.systemRoles) {
-      for (const permissionId of role.permissionIds) {
-        pairs.push({
-          roleName: role.roleName,
-          permissionId,
-        });
-      }
-    }
-  }
-  return pairs;
-};
-
-const createDesiredRolePermissionFilter = (pairs: readonly RolePermissionPair[]): string => {
-  if (pairs.length === 0) {
-    return '';
-  }
-
-  const desiredPairSql = pairs
-    .map((pair) => `(${quoteSqlLiteral(pair.roleName)}, ${quoteSqlLiteral(pair.permissionId)})`)
-    .join(', ');
-
-  return `AND (role.role_key, permission.permission_key) NOT IN (${desiredPairSql})`;
-};
-
-const createManagedModulePermissionFilter = (permissionKeys: readonly string[]): string => {
-  if (permissionKeys.length === 0) {
-    return '';
-  }
-
-  return `AND permission_key NOT IN (${createTextList(permissionKeys)})`;
-};
-
-const mapRoleReconcileStatus = (syncState: NonNullable<'synced' | 'pending' | 'failed' | null>): 'ready' | 'degraded' =>
-  syncState === 'synced' ? 'ready' : 'degraded';
-
-const formatRoleReconcileSummary = (failedCount: number, pendingCount: number): string => {
-  const parts: string[] = [];
-
-  if (failedCount > 0) {
-    parts.push(`${failedCount} Rollen mit Fehler`);
-  }
-  if (pendingCount > 0) {
-    parts.push(`${pendingCount} Rollen im Backlog`);
-  }
-
-  return parts.length > 0 ? `${parts.join(', ')}.` : 'Letzter Rollenabgleich ist synchron.';
-};
-
 const listKeycloakProvisioningStepRows = async (
   executor: SqlExecutor,
   runIds: readonly string[]
@@ -599,11 +538,16 @@ WHERE instance_id = $1
   },
 
   async syncAssignedModuleIam({ instanceId, managedModuleIds, contracts }) {
-    const permissionKeys = Array.from(new Set(contracts.flatMap((contract) => contract.permissionIds))).sort(
-      compareAlphabetically
+    const permissionKeys = Array.from(new Set(contracts.flatMap((contract) => contract.permissionIds))).sort();
+    const rolePermissionPairs = contracts.flatMap((contract) =>
+      contract.systemRoles.flatMap((role) =>
+        role.permissionIds.map((permissionId) => ({
+          roleName: role.roleName,
+          permissionId,
+        }))
+      )
     );
-    const managedRoleNames = listManagedRoleNames(contracts);
-    const rolePermissionPairs = listRolePermissionPairs(contracts);
+    const managedRoleNames = Array.from(new Set(rolePermissionPairs.map((pair) => pair.roleName))).sort();
 
     for (const permissionKey of permissionKeys) {
       await executor.execute(
@@ -717,7 +661,12 @@ ON CONFLICT (instance_id, role_id, permission_id) DO NOTHING;
     }
 
     if (managedRoleNames.length > 0) {
-      const desiredRolePermissionFilter = createDesiredRolePermissionFilter(rolePermissionPairs);
+      const desiredPairSql =
+        rolePermissionPairs.length > 0
+          ? rolePermissionPairs
+              .map((pair) => `(${quoteSqlLiteral(pair.roleName)}, ${quoteSqlLiteral(pair.permissionId)})`)
+              .join(', ')
+          : null;
 
       await executor.execute(
         statement(
@@ -730,7 +679,11 @@ WHERE role_permission.instance_id = $1
   AND permission.instance_id = role_permission.instance_id
   AND permission.id = role_permission.permission_id
   AND role.role_key IN (${createTextList(managedRoleNames)})
-  ${desiredRolePermissionFilter};
+  ${
+    desiredPairSql
+      ? `AND (role.role_key, permission.permission_key) NOT IN (${desiredPairSql})`
+      : ''
+  };
 `,
           [instanceId]
         )
@@ -741,7 +694,8 @@ WHERE role_permission.instance_id = $1
       const managedPrefixConditions = managedModuleIds
         .map((moduleId) => `permission_key LIKE ${quoteSqlLiteral(`${moduleId}.%`)}`)
         .join(' OR ');
-      const desiredPermissionFilter = createManagedModulePermissionFilter(permissionKeys);
+      const desiredPermissionFilter =
+        permissionKeys.length > 0 ? `AND permission_key NOT IN (${createTextList(permissionKeys)})` : '';
 
       await executor.execute(
         statement(
@@ -1061,8 +1015,16 @@ LIMIT 1;
       )
     );
     const correlation = correlationRows[0];
-    const status = mapRoleReconcileStatus(aggregate.sync_state);
-    const summary = formatRoleReconcileSummary(aggregate.failed_count, aggregate.pending_count);
+    const status =
+      aggregate.sync_state === 'failed' ? 'degraded' : aggregate.sync_state === 'pending' ? 'degraded' : 'ready';
+    const summary =
+      aggregate.failed_count > 0 && aggregate.pending_count > 0
+        ? `${aggregate.failed_count} Rollen mit Fehler, ${aggregate.pending_count} Rollen im Backlog.`
+        : aggregate.failed_count > 0
+          ? `${aggregate.failed_count} Rollen mit Fehler.`
+          : aggregate.pending_count > 0
+            ? `${aggregate.pending_count} Rollen im Backlog.`
+            : 'Letzter Rollenabgleich ist synchron.';
 
     return {
       status,

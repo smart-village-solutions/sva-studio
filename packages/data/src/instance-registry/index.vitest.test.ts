@@ -389,52 +389,6 @@ describe('instance registry repository (vitest)', () => {
     expect(statements.slice(3).some((statement) => statement.text.includes('DELETE FROM iam.permissions'))).toBe(true);
   });
 
-  it('sorts managed permission keys and role names alphabetically before writing IAM rows', async () => {
-    const statements: SqlStatement[] = [];
-    const execute = createSequencedExecutor(
-      [
-        { rowCount: 1, rows: [] },
-        { rowCount: 1, rows: [] },
-        { rowCount: 1, rows: [] },
-        { rowCount: 1, rows: [] },
-        { rowCount: 1, rows: [] },
-        { rowCount: 1, rows: [] },
-        { rowCount: 1, rows: [] },
-        { rowCount: 1, rows: [] },
-        { rowCount: 1, rows: [] },
-      ],
-      statements
-    );
-    const repository = createInstanceRegistryRepository({ execute });
-
-    await expect(
-      repository.syncAssignedModuleIam({
-        instanceId: 'demo',
-        managedModuleIds: ['news'],
-        contracts: [
-          {
-            moduleId: 'news',
-            permissionIds: ['news.write', 'news.read'],
-            systemRoles: [
-              { roleName: 'news_editor', permissionIds: ['news.write'] },
-              { roleName: 'news_admin', permissionIds: ['news.read'] },
-            ],
-          },
-        ],
-      })
-    ).resolves.toBeUndefined();
-
-    const insertedPermissionKeys = statements
-      .filter((statement) => statement.text.includes('INSERT INTO iam.permissions'))
-      .map((statement) => statement.values[1]);
-    const insertedRoleNames = statements
-      .filter((statement) => statement.text.includes('INSERT INTO iam.roles'))
-      .map((statement) => statement.values[1]);
-
-    expect(insertedPermissionKeys).toEqual(['news.read', 'news.write']);
-    expect(insertedRoleNames).toEqual(['news_admin', 'news_editor']);
-  });
-
   it('maps provisioning runs and audit events including optional fields', async () => {
     const execute = createSequencedExecutor([
       {

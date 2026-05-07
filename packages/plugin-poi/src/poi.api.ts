@@ -12,22 +12,13 @@ export class PoiApiError extends Error {
   }
 }
 
-const DEFAULT_LIST_QUERY: PoiListQuery = { page: 1, pageSize: 25 };
-
 const poiClient = createMainserverCrudClient<PoiContentItem, PoiFormInput, PoiListResult, PoiListResult, PoiApiError>({
   basePath: '/api/v1/mainserver/poi',
   errorFactory: (code, message) => new PoiApiError(code, message),
-  mapListResponse: (response, _mapItem, query) => ({
-    data: response.data,
-    pagination: response.pagination ?? {
-      page: query.page,
-      pageSize: query.pageSize,
-      hasNextPage: false,
-    },
-  }),
+  mapListResponse: (response) => response,
 });
 
-export const listPoi = async (query: PoiListQuery = DEFAULT_LIST_QUERY): Promise<PoiListResult> => poiClient.list(query);
+export const listPoi = async (query: PoiListQuery): Promise<PoiListResult> => poiClient.list(query);
 
 export const getPoi = async (contentId: string): Promise<PoiContentItem> => poiClient.get(contentId);
 

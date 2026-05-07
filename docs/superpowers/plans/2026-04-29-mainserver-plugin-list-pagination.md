@@ -19,11 +19,11 @@
 - `apps/sva-studio-react/src/lib/mainserver-events-poi-api.server.ts`
   - Query-Normalisierung und paginierte Events-/POI-Routen
 - `packages/plugin-news/src/news.api.ts`
-  - paginierter Browser-Client für News
+  - paginierter Browser-Client fuer News
 - `packages/plugin-events/src/events.api.ts`
-  - paginierter Browser-Client für Events
+  - paginierter Browser-Client fuer Events
 - `packages/plugin-poi/src/poi.api.ts`
-  - paginierter Browser-Client für POI
+  - paginierter Browser-Client fuer POI
 - `packages/plugin-news/src/news.pages.tsx`
   - `StudioDataTable`-basierte News-Liste
 - `packages/plugin-events/src/events.pages.tsx`
@@ -31,12 +31,12 @@
 - `packages/plugin-poi/src/poi.pages.tsx`
   - `StudioDataTable`-basierte POI-Liste
 - `packages/studio-ui-react/src/studio-data-table.tsx`
-  - generische Tabellen-Erweiterungen, falls für die Harmonisierung nötig
+  - generische Tabellen-Erweiterungen, falls fuer die Harmonisierung noetig
 
-## Umsetzungsblöcke
+## Umsetzungsbloecke
 
-- [ ] Test- und Typ-Basis für paginierte List-Contracts zuerst ergänzen
-- [ ] Mainserver- und Host-Vertrag anschließend umstellen
+- [ ] Test- und Typ-Basis fuer paginierte List-Contracts zuerst ergaenzen
+- [ ] Mainserver- und Host-Vertrag anschliessend umstellen
 - [ ] Plugin-API-Wrapper migrieren
 - [ ] Plugin-Pages auf `StudioDataTable` + Prev/Next umstellen
 - [ ] Unit-, Typ- und E2E-Gates grün ziehen

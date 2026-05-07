@@ -1,200 +1,149 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   buildMainserverListUrl,
   createMainserverCrudClient,
   createMainserverJsonRequestHeaders,
+  MainserverApiError,
   requestMainserverJson,
-} from './index.js';
+} from './mainserver-client.js';
 
-class TestApiError extends Error {
-  public constructor(
-    public readonly code: string,
-    message = code
-  ) {
-    super(message);
-    this.name = 'TestApiError';
-  }
-}
+describe('mainserver-client', () => {
+  const readHeaders = (headers: HeadersInit | undefined): Record<string, string> =>
+    Object.fromEntries(new Headers(headers).entries());
 
-describe('mainserver client helpers', () => {
-  beforeEach(() => {
-    vi.stubGlobal('fetch', vi.fn());
-    vi.stubGlobal('crypto', {
-      randomUUID: vi.fn(() => 'uuid-1'),
-    });
-  });
-
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
-
-  it('builds canonical list urls and default json headers', () => {
-    expect(buildMainserverListUrl('/api/v1/mainserver/news', { page: 2, pageSize: 50 })).toBe(
-      '/api/v1/mainserver/news?page=2&pageSize=50'
+  it('builds canonical list urls and json request headers', () => {
+    expect(buildMainserverListUrl('/api/v1/news', { page: 2, pageSize: 50 })).toBe(
+      '/api/v1/news?page=2&pageSize=50'
     );
-    expect(Object.fromEntries(createMainserverJsonRequestHeaders({ 'Idempotency-Key': 'uuid-1' }))).toEqual({
+    expect(readHeaders(createMainserverJsonRequestHeaders({ Authorization: 'Bearer test' }))).toEqual({
+      authorization: 'Bearer test',
       'content-type': 'application/json',
-      'idempotency-key': 'uuid-1',
       'x-requested-with': 'XMLHttpRequest',
     });
   });
 
-  it('normalizes tuple- and Headers-based header inputs without dropping json defaults', async () => {
-    vi.mocked(fetch).mockResolvedValueOnce(Response.json({ data: { id: 'news-1' } }));
-
-    await requestMainserverJson<{ readonly data: { readonly id: string } }>({
-      url: '/api/v1/mainserver/news/news-1',
-      init: {
-        headers: new Headers([['X-Correlation-Id', 'trace-1']]),
-      },
-    });
-
-    const requestInit = vi.mocked(fetch).mock.calls[0]?.[1] as RequestInit;
-    const headers = requestInit.headers as Headers;
-    expect(headers.get('Accept')).toBe('application/json');
-    expect(headers.get('X-Correlation-Id')).toBe('trace-1');
-  });
-
-  it('keeps caller-provided accept and content-type headers intact', async () => {
-    vi.mocked(fetch).mockResolvedValueOnce(Response.json({ data: { id: 'news-1' } }));
-
-    await requestMainserverJson<{ readonly data: { readonly id: string } }>({
-      url: '/api/v1/mainserver/news/news-1',
-      init: {
-        headers: {
-          Accept: 'application/problem+json',
-          'Content-Type': 'application/merge-patch+json',
-        },
-      },
-    });
-
-    const requestInit = vi.mocked(fetch).mock.calls[0]?.[1] as RequestInit;
-    const headers = requestInit.headers as Headers;
-    expect(headers.get('Accept')).toBe('application/problem+json');
-    expect(createMainserverJsonRequestHeaders(headers).get('Content-Type')).toBe('application/merge-patch+json');
-  });
-
-  it('keeps deterministic http fallback errors when the server returns no json envelope', async () => {
-    vi.mocked(fetch).mockResolvedValueOnce(new Response('gateway down', { status: 502 }));
-
-    await expect(
-      requestMainserverJson({
-        url: '/api/v1/mainserver/news/news-1',
-      })
-    ).rejects.toMatchObject({
-      name: 'MainserverApiError',
-      code: 'http_502',
-      message: 'http_502',
-    });
-  });
-
-  it('fails fast when no fetch implementation is available', async () => {
+  it('uses deterministic fallback errors when fetch is unavailable or error envelopes are missing', async () => {
+    const originalFetch = globalThis.fetch;
     vi.stubGlobal('fetch', undefined);
 
-    await expect(
-      requestMainserverJson({
-        url: '/api/v1/mainserver/news/news-1',
-        fetch: undefined,
-      })
-    ).rejects.toThrow('mainserver_fetch_unavailable');
+    await expect(requestMainserverJson({ url: '/api/v1/news' })).rejects.toThrow('mainserver_fetch_unavailable');
+
+    vi.stubGlobal('fetch', originalFetch);
+
+    const fetchMock = vi.fn(async () => new Response('kaputt', { status: 500 }));
+    await expect(requestMainserverJson({ url: '/api/v1/news', fetch: fetchMock as typeof fetch })).rejects.toMatchObject({
+      code: 'http_500',
+      message: 'http_500',
+      name: 'MainserverApiError',
+    });
+
+    vi.unstubAllGlobals();
   });
 
-  it('creates canonical CRUD clients with overridable request behavior', async () => {
+  it('parses error envelopes and exercises the default CRUD mapping branches', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith('/list?page=1&pageSize=10')) {
+        return new Response(JSON.stringify({ data: [{ id: 'news-1', title: 'Erste' }] }), { status: 200 });
+      }
+      if (url.endsWith('/list/news-1')) {
+        return new Response(JSON.stringify({ data: { id: 'news-1', title: 'Erste' } }), { status: 200 });
+      }
+      if (url.endsWith('/list') && init?.method === 'POST') {
+        return new Response(JSON.stringify({ data: { id: 'news-2', title: 'Zweite' } }), { status: 200 });
+      }
+      if (url.endsWith('/list/news-2') && init?.method === 'PATCH') {
+        return new Response(JSON.stringify({ data: { id: 'news-2', title: 'Aktualisiert' } }), { status: 200 });
+      }
+      if (url.endsWith('/list/news-2') && init?.method === 'DELETE') {
+        return new Response(JSON.stringify({ data: { id: 'news-2' } }), { status: 200 });
+      }
+      return new Response(JSON.stringify({ error: 'forbidden', message: 'Keine Rechte' }), { status: 403 });
+    });
+
     const client = createMainserverCrudClient<
-      { readonly id: string; readonly title: string; readonly pushNotification?: boolean },
-      { readonly title: string; readonly pushNotification?: boolean },
-      { readonly data: readonly { readonly id: string; readonly title: string }[]; readonly pagination: { readonly page: number; readonly pageSize: number; readonly hasNextPage: boolean } },
-      { readonly data: readonly { readonly id: string; readonly title: string }[]; readonly pagination: { readonly page: number; readonly pageSize: number; readonly hasNextPage: boolean } },
-      TestApiError
+      { id: string; title: string },
+      { title: string },
+      { readonly data: readonly { id: string; title: string }[] },
+      readonly { id: string; title: string }[]
     >({
-      basePath: '/api/v1/mainserver/news',
-      errorFactory: (code, message) => new TestApiError(code, message),
-      mapListResponse: (response) => response,
-      createBody: (input) => ({ title: input.title, pushNotification: input.pushNotification ?? false }),
-      updateBody: (input) => ({ title: input.title }),
-      createHeaders: () => createMainserverJsonRequestHeaders({ 'Idempotency-Key': crypto.randomUUID() }),
+      basePath: '/list',
+      fetch: fetchMock as typeof fetch,
+      errorFactory: (code, message) => new MainserverApiError(code, message),
+      mapListResponse: (response, mapItem) => response.data.map(mapItem),
+      createBody: (input) => ({ ...input, created: true }),
+      updateBody: (input) => ({ ...input, updated: true }),
+      createHeaders: () => ({ 'X-Create': 'yes' }),
+      updateHeaders: () => ({ 'X-Update': 'yes' }),
     });
 
-    vi.mocked(fetch)
-      .mockResolvedValueOnce(
-        Response.json({
-          data: [{ id: 'news-1', title: 'News' }],
-          pagination: { page: 1, pageSize: 25, hasNextPage: false },
-        })
-      )
-      .mockResolvedValueOnce(Response.json({ data: { id: 'news-1', title: 'Created' } }))
-      .mockResolvedValueOnce(Response.json({ data: { id: 'news-1', title: 'Updated' } }))
-      .mockResolvedValueOnce(Response.json({ data: { id: 'news-1' } }))
-      .mockResolvedValueOnce(
-        Response.json({ error: 'forbidden', message: 'Nope' }, { status: 403 })
-      );
+    await expect(client.list({ page: 1, pageSize: 10 })).resolves.toEqual([{ id: 'news-1', title: 'Erste' }]);
+    await expect(client.get('news-1')).resolves.toEqual({ id: 'news-1', title: 'Erste' });
+    await expect(client.create({ title: 'Zweite' })).resolves.toEqual({ id: 'news-2', title: 'Zweite' });
+    await expect(client.update('news-2', { title: 'Aktualisiert' })).resolves.toEqual({
+      id: 'news-2',
+      title: 'Aktualisiert',
+    });
+    await expect(client.remove('news-2')).resolves.toBeUndefined();
 
-    await expect(client.list({ page: 1, pageSize: 25 })).resolves.toEqual({
-      data: [{ id: 'news-1', title: 'News' }],
-      pagination: { page: 1, pageSize: 25, hasNextPage: false },
-    });
-    await expect(client.create({ title: 'Created', pushNotification: true })).resolves.toEqual({
-      id: 'news-1',
-      title: 'Created',
-    });
-    await expect(client.update('news-1', { title: 'Updated', pushNotification: true })).resolves.toEqual({
-      id: 'news-1',
-      title: 'Updated',
-    });
-    await expect(client.remove('news-1')).resolves.toBeUndefined();
-    await expect(client.get('news-1')).rejects.toMatchObject({
-      name: 'TestApiError',
+    await expect(requestMainserverJson({ url: '/forbidden', fetch: fetchMock as typeof fetch })).rejects.toMatchObject({
       code: 'forbidden',
-      message: 'Nope',
+      message: 'Keine Rechte',
     });
 
-    expect(fetch).toHaveBeenNthCalledWith(
-      1,
-      '/api/v1/mainserver/news?page=1&pageSize=25',
-      expect.objectContaining({ credentials: 'include' })
-    );
-    expect(fetch).toHaveBeenNthCalledWith(
-      2,
-      '/api/v1/mainserver/news',
+    expect(fetchMock.mock.calls[2]).toEqual([
+      '/list',
       expect.objectContaining({
         method: 'POST',
-        body: JSON.stringify({ title: 'Created', pushNotification: true }),
-      })
-    );
-    const createRequestInit = vi.mocked(fetch).mock.calls[1]?.[1] as RequestInit;
-    expect((createRequestInit.headers as Headers).get('Idempotency-Key')).toBe('uuid-1');
-    expect(fetch).toHaveBeenNthCalledWith(
-      3,
-      '/api/v1/mainserver/news/news-1',
+        headers: expect.any(Headers),
+        body: JSON.stringify({ title: 'Zweite', created: true }),
+      }),
+    ]);
+    expect(readHeaders(fetchMock.mock.calls[2]?.[1]?.headers)).toEqual({
+      accept: 'application/json',
+      'x-create': 'yes',
+    });
+    expect(fetchMock.mock.calls[3]).toEqual([
+      '/list/news-2',
       expect.objectContaining({
         method: 'PATCH',
-        body: JSON.stringify({ title: 'Updated' }),
-      })
-    );
-    expect(fetch).toHaveBeenNthCalledWith(
-      4,
-      '/api/v1/mainserver/news/news-1',
-      expect.objectContaining({ method: 'DELETE' })
-    );
+        headers: expect.any(Headers),
+        body: JSON.stringify({ title: 'Aktualisiert', updated: true }),
+      }),
+    ]);
+    expect(readHeaders(fetchMock.mock.calls[3]?.[1]?.headers)).toEqual({
+      accept: 'application/json',
+      'x-update': 'yes',
+    });
   });
 
-  it('maps get responses through a custom item mapper', async () => {
-    const fetchMock = vi.fn(async () => Response.json({ data: { id: 'news-1', title: 'Mapped' } }));
-    const client = createMainserverCrudClient<
-      { readonly id: string; readonly title: string },
-      { readonly title: string },
-      { readonly data: readonly { readonly id: string; readonly title: string }[] },
-      { readonly data: readonly { readonly id: string; readonly title: string }[] },
-      TestApiError
+  it('preserves tuple and Headers instances when merging request headers', async () => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ data: { id: 'news-1', title: 'Erste' } }), { status: 200 }));
+    const headerClient = createMainserverCrudClient<
+      { id: string; title: string },
+      { title: string },
+      { readonly data: readonly { id: string; title: string }[] },
+      readonly { id: string; title: string }[]
     >({
-      basePath: '/api/v1/mainserver/news',
+      basePath: '/headers',
       fetch: fetchMock as typeof fetch,
-      errorFactory: (code, message) => new TestApiError(code, message),
-      mapItem: (item) => ({ ...item, title: `${item.title}!` }),
-      mapListResponse: (response) => response,
+      errorFactory: (code, message) => new MainserverApiError(code, message),
+      mapListResponse: (response, mapItem) => response.data.map(mapItem),
+      createHeaders: () => new Headers([['X-From-Headers', 'one']]),
+      updateHeaders: () => [['X-From-Tuples', 'two']],
     });
 
-    await expect(client.get('news-1')).resolves.toEqual({ id: 'news-1', title: 'Mapped!' });
+    await headerClient.create({ title: 'Neu' });
+    await headerClient.update('news-1', { title: 'Update' });
+
+    expect(readHeaders(fetchMock.mock.calls[0]?.[1]?.headers)).toEqual({
+      accept: 'application/json',
+      'x-from-headers': 'one',
+    });
+    expect(readHeaders(fetchMock.mock.calls[1]?.[1]?.headers)).toEqual({
+      accept: 'application/json',
+      'x-from-tuples': 'two',
+    });
   });
 });

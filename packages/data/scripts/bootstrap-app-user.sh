@@ -39,6 +39,14 @@ if ! [[ "${app_user}" =~ ^[a-zA-Z0-9_]{1,63}$ ]]; then
 fi
 
 "${postgres_exec[@]}" -v ON_ERROR_STOP=1 -v app_user="${app_user}" -v app_password="${app_password}" -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" <<'SQL'
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'iam_app') THEN
+    CREATE ROLE iam_app NOINHERIT;
+  END IF;
+END
+$$;
+
 SELECT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'app_user') AS role_exists \gset
 \if :role_exists
 ALTER ROLE :"app_user" WITH LOGIN INHERIT PASSWORD :'app_password';

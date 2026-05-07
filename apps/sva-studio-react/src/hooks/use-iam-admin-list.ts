@@ -25,21 +25,33 @@ type UseIamAdminListResult<TItem> = {
     action: () => Promise<TResult>,
     meta?: BrowserOperationLogMeta
   ) => Promise<TResult | null>;
-  readonly runMutation: (action: () => Promise<unknown>, meta?: BrowserOperationLogMeta) => Promise<boolean>;
+  readonly runMutation: (
+    action: () => Promise<unknown>,
+    meta?: BrowserOperationLogMeta
+  ) => Promise<boolean>;
 };
 
 const adminListLogger = createOperationLogger('iam-admin-list', 'debug');
 
 export const useIamAdminList = <TItem>(
   listItems: () => Promise<ListResponse<TItem>>,
-  invalidatePermissions: () => Promise<void> | void
+  invalidatePermissions: () => Promise<void> | void,
+  options: { enabled?: boolean } = {}
 ): UseIamAdminListResult<TItem> => {
+  const enabled = options.enabled ?? true;
   const [items, setItems] = React.useState<readonly TItem[]>([]);
-  const [isLoading, setIsLoading] = React.useState(true);
+  const [isLoading, setIsLoading] = React.useState(enabled);
   const [error, setError] = React.useState<IamHttpError | null>(null);
   const [mutationError, setMutationError] = React.useState<IamHttpError | null>(null);
 
   const refetch = React.useCallback(async () => {
+    if (!enabled) {
+      setItems([]);
+      setIsLoading(false);
+      setError(null);
+      return;
+    }
+
     logBrowserOperationStart(adminListLogger, 'list_refetch_started');
     setIsLoading(true);
     setError(null);
@@ -71,11 +83,17 @@ export const useIamAdminList = <TItem>(
     } finally {
       setIsLoading(false);
     }
-  }, [invalidatePermissions, listItems]);
+  }, [enabled, invalidatePermissions, listItems]);
 
   React.useEffect(() => {
+    if (!enabled) {
+      setItems([]);
+      setIsLoading(false);
+      setError(null);
+      return;
+    }
     void refetch();
-  }, [refetch]);
+  }, [enabled, refetch]);
 
   const runMutationWithResult = React.useCallback(
     async <TResult>(action: () => Promise<TResult>, meta: BrowserOperationLogMeta = {}) => {
@@ -126,6 +144,15 @@ export const useIamAdminList = <TItem>(
       runMutationWithResult,
       runMutation,
     }),
-    [clearMutationError, error, isLoading, items, mutationError, refetch, runMutation, runMutationWithResult]
+    [
+      clearMutationError,
+      error,
+      isLoading,
+      items,
+      mutationError,
+      refetch,
+      runMutation,
+      runMutationWithResult,
+    ]
   );
 };

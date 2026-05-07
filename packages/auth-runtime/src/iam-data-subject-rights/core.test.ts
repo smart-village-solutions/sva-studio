@@ -349,6 +349,106 @@ describe('iam data subject rights handlers', () => {
     });
   });
 
+  it('completes restriction requests and persists the restriction reason', async () => {
+    const { dataSubjectRequestHandler } = await import('./core.js');
+
+    mocks.withResolvedInstanceDb.mockImplementationOnce(async (_resolver, _instanceId, work) =>
+      work(
+        buildDbClient({
+          account: buildAccount({ id: 'account-55', keycloak_subject: 'kc-user-1' }),
+          requestIds: ['restriction-1'],
+        })
+      )
+    );
+
+    const response = await dataSubjectRequestHandler(
+      new Request('http://localhost/iam/me/data-subject-rights', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'restriction',
+          payload: { reason: 'manual-review' },
+        }),
+      })
+    );
+
+    expect(response.status).toBe(200);
+    await expect(expectJson(response)).resolves.toEqual({
+      requestId: 'restriction-1',
+      status: 'completed',
+    });
+  });
+
+  it('completes objection requests and accepts an empty payload object', async () => {
+    const { dataSubjectRequestHandler } = await import('./core.js');
+
+    mocks.withResolvedInstanceDb.mockImplementationOnce(async (_resolver, _instanceId, work) =>
+      work(
+        buildDbClient({
+          account: buildAccount({ id: 'account-56', keycloak_subject: 'kc-user-1' }),
+          requestIds: ['objection-1'],
+        })
+      )
+    );
+
+    const response = await dataSubjectRequestHandler(
+      new Request('http://localhost/iam/me/data-subject-rights', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'objection',
+        }),
+      })
+    );
+
+    expect(response.status).toBe(200);
+    await expect(expectJson(response)).resolves.toEqual({
+      requestId: 'objection-1',
+      status: 'completed',
+    });
+  });
+
+  it('rejects unsupported DSR request types and instance mismatches early', async () => {
+    const { dataSubjectRequestHandler } = await import('./core.js');
+
+    const invalidType = await dataSubjectRequestHandler(
+      new Request('http://localhost/iam/me/data-subject-rights', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'portability' }),
+      })
+    );
+
+    expect(invalidType.status).toBe(400);
+    await expect(expectJson(invalidType)).resolves.toEqual({ error: 'invalid_request_type' });
+
+    const mismatch = await dataSubjectRequestHandler(
+      new Request('http://localhost/iam/me/data-subject-rights', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ instanceId: 'other-instance', type: 'deletion', payload: {} }),
+      })
+    );
+
+    expect(mismatch.status).toBe(403);
+    await expect(expectJson(mismatch)).resolves.toEqual({ error: 'instance_scope_mismatch' });
+    expect(mocks.withResolvedInstanceDb).not.toHaveBeenCalled();
+  });
+
+  it('allows optional processing when no restriction flags are active', async () => {
+    const { optionalProcessingExecuteHandler } = await import('./core.js');
+
+    const response = await optionalProcessingExecuteHandler(
+      new Request('http://localhost/iam/me/optional-processing?instanceId=de-test')
+    );
+
+    expect(response.status).toBe(200);
+    await expect(expectJson(response)).resolves.toEqual({
+      status: 'ok',
+      executed: true,
+    });
+  });
+
   it('rejects invalid legal hold expiration timestamps before database access', async () => {
     const { legalHoldApplyHandler } = await import('./core.js');
 
@@ -461,6 +561,60 @@ describe('iam data subject rights handlers', () => {
     await expect(expectJson(response)).resolves.toEqual({ dryRun: true, affected: 3 });
   });
 
+  it('rejects missing and mismatched instance scopes for DSR maintenance', async () => {
+    const { dataSubjectMaintenanceHandler } = await import('./core.js');
+
+    mocks.withAuthenticatedUser.mockImplementationOnce(async (_request, handler) =>
+      handler({ user: { ...baseUser, instanceId: undefined, roles: ['support_admin'] } })
+    );
+
+    const missingInstance = await dataSubjectMaintenanceHandler(
+      new Request('http://localhost/iam/admin/data-subject-rights/maintenance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dryRun: false }),
+      })
+    );
+
+    expect(missingInstance.status).toBe(400);
+    await expect(expectJson(missingInstance)).resolves.toEqual({ error: 'invalid_instance_id' });
+
+    mocks.withAuthenticatedUser.mockImplementationOnce(async (_request, handler) =>
+      handler({ user: { ...baseUser, roles: ['support_admin'] } })
+    );
+
+    const mismatch = await dataSubjectMaintenanceHandler(
+      new Request('http://localhost/iam/admin/data-subject-rights/maintenance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ instanceId: 'other-instance', dryRun: false }),
+      })
+    );
+
+    expect(mismatch.status).toBe(403);
+    await expect(expectJson(mismatch)).resolves.toEqual({ error: 'instance_scope_mismatch' });
+  });
+
+  it('maps maintenance database failures to service unavailable', async () => {
+    const { dataSubjectMaintenanceHandler } = await import('./core.js');
+
+    mocks.withAuthenticatedUser.mockImplementationOnce(async (_request, handler) =>
+      handler({ user: { ...baseUser, roles: ['support_admin'] } })
+    );
+    mocks.withResolvedInstanceDb.mockRejectedValueOnce(new Error('maintenance down'));
+
+    const response = await dataSubjectMaintenanceHandler(
+      new Request('http://localhost/iam/admin/data-subject-rights/maintenance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dryRun: false }),
+      })
+    );
+
+    expect(response.status).toBe(503);
+    await expect(expectJson(response)).resolves.toEqual({ error: 'database_unavailable' });
+  });
+
   it('rejects invalid admin export status job ids before database access', async () => {
     const { adminDataExportStatusHandler } = await import('./core.js');
 
@@ -477,6 +631,41 @@ describe('iam data subject rights handlers', () => {
     expect(mocks.withResolvedInstanceDb).not.toHaveBeenCalled();
   });
 
+  it('rejects admin export status requests outside the user instance scope', async () => {
+    const { adminDataExportStatusHandler } = await import('./core.js');
+
+    mocks.withAuthenticatedUser.mockImplementationOnce(async (_request, handler) =>
+      handler({ user: { ...baseUser, roles: ['iam_admin'] } })
+    );
+
+    const response = await adminDataExportStatusHandler(
+      new Request(
+        'http://localhost/iam/admin/data-export/status?instanceId=other-instance&jobId=123e4567-e89b-42d3-a456-426614174000'
+      )
+    );
+
+    expect(response.status).toBe(403);
+    await expect(expectJson(response)).resolves.toEqual({ error: 'instance_scope_mismatch' });
+  });
+
+  it('maps admin export status lookup failures to service unavailable', async () => {
+    const { adminDataExportStatusHandler } = await import('./core.js');
+
+    mocks.withAuthenticatedUser.mockImplementationOnce(async (_request, handler) =>
+      handler({ user: { ...baseUser, roles: ['iam_admin'] } })
+    );
+    mocks.withResolvedInstanceDb.mockRejectedValueOnce(new Error('status db down'));
+
+    const response = await adminDataExportStatusHandler(
+      new Request(
+        'http://localhost/iam/admin/data-export/status?instanceId=de-test&jobId=123e4567-e89b-42d3-a456-426614174000'
+      )
+    );
+
+    expect(response.status).toBe(503);
+    await expect(expectJson(response)).resolves.toEqual({ error: 'database_unavailable' });
+  });
+
   it('requires an admin role for the DSR case list', async () => {
     const { listAdminDataSubjectRightsCasesHandler } = await import('./core.js');
 
@@ -488,6 +677,56 @@ describe('iam data subject rights handlers', () => {
     await expect(expectJson(response)).resolves.toEqual({
       error: 'forbidden',
       message: 'Keine Berechtigung für DSR-Transparenz.',
+      requestId: 'req-test',
+    });
+  });
+
+  it('validates instance scope for the DSR case list and maps backend failures', async () => {
+    const { listAdminDataSubjectRightsCasesHandler } = await import('./core.js');
+
+    mocks.withAuthenticatedUser.mockImplementationOnce(async (_request, handler) =>
+      handler({ user: { ...baseUser, instanceId: undefined, roles: ['support_admin'] } })
+    );
+
+    const missingInstance = await listAdminDataSubjectRightsCasesHandler(
+      new Request('http://localhost/iam/admin/data-subject-rights/cases')
+    );
+
+    expect(missingInstance.status).toBe(400);
+    await expect(expectJson(missingInstance)).resolves.toEqual({
+      error: 'invalid_instance_id',
+      message: 'Instanzkontext fehlt.',
+      requestId: 'req-test',
+    });
+
+    mocks.withAuthenticatedUser.mockImplementationOnce(async (_request, handler) =>
+      handler({ user: { ...baseUser, roles: ['support_admin'] } })
+    );
+
+    const mismatch = await listAdminDataSubjectRightsCasesHandler(
+      new Request('http://localhost/iam/admin/data-subject-rights/cases?instanceId=other-instance')
+    );
+
+    expect(mismatch.status).toBe(403);
+    await expect(expectJson(mismatch)).resolves.toEqual({
+      error: 'forbidden',
+      message: 'Instanzkontext unzulässig.',
+      requestId: 'req-test',
+    });
+
+    mocks.withAuthenticatedUser.mockImplementationOnce(async (_request, handler) =>
+      handler({ user: { ...baseUser, roles: ['support_admin'] } })
+    );
+    mocks.withResolvedInstanceDb.mockRejectedValueOnce(new Error('case list down'));
+
+    const unavailable = await listAdminDataSubjectRightsCasesHandler(
+      new Request('http://localhost/iam/admin/data-subject-rights/cases?instanceId=de-test')
+    );
+
+    expect(unavailable.status).toBe(503);
+    await expect(expectJson(unavailable)).resolves.toEqual({
+      error: 'database_unavailable',
+      message: 'DSR-Fälle konnten nicht geladen werden.',
       requestId: 'req-test',
     });
   });

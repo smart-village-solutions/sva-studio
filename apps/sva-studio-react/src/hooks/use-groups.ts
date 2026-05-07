@@ -40,7 +40,10 @@ type UseGroupsResult = {
   readonly loadGroupDetail: (groupId: string) => Promise<IamAdminGroupDetail | null>;
   readonly assignRole: (groupId: string, roleId: string) => Promise<boolean>;
   readonly removeRole: (groupId: string, roleId: string) => Promise<boolean>;
-  readonly assignMembership: (groupId: string, payload: AssignGroupMembershipPayload) => Promise<boolean>;
+  readonly assignMembership: (
+    groupId: string,
+    payload: AssignGroupMembershipPayload
+  ) => Promise<boolean>;
   readonly removeMembership: (groupId: string, keycloakSubject: string) => Promise<boolean>;
 };
 
@@ -61,24 +64,22 @@ const normalizeGroupDetail = (detail: IamAdminGroupDetail): IamAdminGroupDetail 
     members?: readonly LegacyGroupMember[];
   };
 
-  const assignedRoleIds =
-    Array.isArray(detailRecord.assignedRoleIds)
-      ? detailRecord.assignedRoleIds
-      : (detailRecord.roles ?? []).map((role) => role.roleId);
+  const assignedRoleIds = Array.isArray(detailRecord.assignedRoleIds)
+    ? detailRecord.assignedRoleIds
+    : (detailRecord.roles ?? []).map((role) => role.roleId);
 
-  const memberships =
-    Array.isArray(detailRecord.memberships)
-      ? detailRecord.memberships
-      : (detailRecord.members ?? []).map((member) => ({
-          instanceId: detail.instanceId,
-          accountId: member.accountId,
-          groupId: member.groupId,
-          keycloakSubject: member.keycloakSubject?.trim() || '',
-          displayName: member.displayName,
-          validFrom: member.validFrom,
-          validUntil: member.validTo,
-          assignedAt: member.validFrom ?? detail.updatedAt,
-        }));
+  const memberships = Array.isArray(detailRecord.memberships)
+    ? detailRecord.memberships
+    : (detailRecord.members ?? []).map((member) => ({
+        instanceId: detail.instanceId,
+        accountId: member.accountId,
+        groupId: member.groupId,
+        keycloakSubject: member.keycloakSubject?.trim() || '',
+        displayName: member.displayName,
+        validFrom: member.validFrom,
+        validUntil: member.validTo,
+        assignedAt: member.validFrom ?? detail.updatedAt,
+      }));
 
   return {
     ...detail,
@@ -88,8 +89,11 @@ const normalizeGroupDetail = (detail: IamAdminGroupDetail): IamAdminGroupDetail 
 };
 
 export const useGroups = (): UseGroupsResult => {
-  const { invalidatePermissions } = useAuth();
-  const adminList = useIamAdminList(listGroups, invalidatePermissions);
+  const { invalidatePermissions, user } = useAuth();
+  const hasInstanceContext = Boolean(user?.instanceId);
+  const adminList = useIamAdminList(listGroups, invalidatePermissions, {
+    enabled: hasInstanceContext,
+  });
   const {
     items,
     isLoading,
@@ -140,12 +144,15 @@ export const useGroups = (): UseGroupsResult => {
 
   const createGroupWithResult = React.useCallback(
     (payload: CreateGroupPayload) =>
-      runMutationWithResult(() => createGroup(payload), { operation: 'create_group' }).then((response) => response?.data.id ?? null),
+      runMutationWithResult(() => createGroup(payload), { operation: 'create_group' }).then(
+        (response) => response?.data.id ?? null
+      ),
     [runMutationWithResult]
   );
 
   const updateGroupById = React.useCallback(
-    (groupId: string, payload: UpdateGroupPayload) => runMutation(() => updateGroup(groupId, payload), { operation: 'update_group' }),
+    (groupId: string, payload: UpdateGroupPayload) =>
+      runMutation(() => updateGroup(groupId, payload), { operation: 'update_group' }),
     [runMutation]
   );
 
@@ -155,24 +162,30 @@ export const useGroups = (): UseGroupsResult => {
   );
 
   const assignRoleToGroup = React.useCallback(
-    (groupId: string, roleId: string) => runMutation(() => assignGroupRole(groupId, { roleId }), { operation: 'assign_group_role' }),
+    (groupId: string, roleId: string) =>
+      runMutation(() => assignGroupRole(groupId, { roleId }), { operation: 'assign_group_role' }),
     [runMutation]
   );
 
   const removeRoleFromGroup = React.useCallback(
-    (groupId: string, roleId: string) => runMutation(() => removeGroupRole(groupId, roleId), { operation: 'remove_group_role' }),
+    (groupId: string, roleId: string) =>
+      runMutation(() => removeGroupRole(groupId, roleId), { operation: 'remove_group_role' }),
     [runMutation]
   );
 
   const assignGroupMembershipToGroup = React.useCallback(
     (groupId: string, payload: AssignGroupMembershipPayload) =>
-      runMutation(() => assignGroupMembership(groupId, payload), { operation: 'assign_group_membership' }),
+      runMutation(() => assignGroupMembership(groupId, payload), {
+        operation: 'assign_group_membership',
+      }),
     [runMutation]
   );
 
   const removeGroupMembershipFromGroup = React.useCallback(
     (groupId: string, keycloakSubject: string) =>
-      runMutation(() => removeGroupMembership(groupId, keycloakSubject), { operation: 'remove_group_membership' }),
+      runMutation(() => removeGroupMembership(groupId, keycloakSubject), {
+        operation: 'remove_group_membership',
+      }),
     [runMutation]
   );
 

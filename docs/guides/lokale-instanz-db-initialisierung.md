@@ -16,7 +16,7 @@ Damit werden die typischen Fehlerbilder `missing_actor_account`, `missing_instan
 
 Verwenden bei:
 
-- neuer lokaler Instanz wie `hb-meinquartier`
+- neuer lokaler Instanz wie `demo2`
 - zweiter lokaler Datenbank neben dem Standardprofil
 - Wechsel auf eine andere Keycloak-Realm bei lokal laufender App
 - Neuaufbau einer lokalen Instanz-Datenbank nach Drift oder Inkonsistenz
@@ -30,7 +30,8 @@ Für die reguläre lokale Standardentwicklung gilt stattdessen:
 
 - globaler Realm: `svs-intern-studio-staging`
 - fachliche Test-Instanz: `de-musterhausen`
-- Instanzbindung lokal über `instanceId`, nicht über einen eigenen Tenant-Realm
+- jede Tenant-Instanz verwendet ihren eigenen `authRealm`
+- der globale Realm dient lokal nur dem Root-/Plattform-Host und nicht als Shared-Realm für Tenant-Logins
 
 ## Voraussetzungen
 
@@ -94,10 +95,10 @@ Der neue Standardpfad ist:
 pnpm env:bootstrap:local-instance-db -- \
   --create-db \
   --import-schema \
-  --target-instance-id=hb-meinquartier \
-  --target-display-name="HB MeinQuartier" \
-  --target-realm=saas-hb-meinquartier \
-  --target-db-container=sva-studio-postgres-hb \
+  --target-instance-id=demo2 \
+  --target-display-name="Demo 2" \
+  --target-realm=demo2 \
+  --target-db-container=sva-studio-postgres-demo2 \
   --source-db-container=sva-studio-postgres \
   --source-instance-id=de-musterhausen \
   --keycloak-admin-client-id=sva-studio-iam-service \
@@ -117,7 +118,7 @@ Das Skript führt in Reihenfolge aus:
 Danach:
 
 ```bash
-pnpm env:doctor:local-keycloak -- --local-override-file=config/runtime/local-keycloak.hb.local.vars --json
+pnpm env:doctor:local-keycloak -- --local-override-file=config/runtime/local-keycloak.demo2.local.vars --json
 ```
 
 Erwartung:
@@ -133,7 +134,7 @@ Für den lokalen Produktionslauf:
 
 ```bash
 set -a
-source config/runtime/local-keycloak.hb.production.local.vars
+source config/runtime/local-keycloak.demo2.production.local.vars
 set +a
 cd apps/sva-studio-react
 node .output/server/index.mjs

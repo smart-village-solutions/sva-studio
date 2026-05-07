@@ -540,9 +540,7 @@ WHERE instance_id = $1
   },
 
   async syncAssignedModuleIam({ instanceId, managedModuleIds, contracts }) {
-    const permissionKeys = Array.from(new Set(contracts.flatMap((contract) => contract.permissionIds))).sort(
-      compareAlphabetically
-    );
+    const permissionKeys = Array.from(new Set(contracts.flatMap((contract) => contract.permissionIds))).sort();
     const rolePermissionPairs = contracts.flatMap((contract) =>
       contract.systemRoles.flatMap((role) =>
         role.permissionIds.map((permissionId) => ({
@@ -551,9 +549,7 @@ WHERE instance_id = $1
         }))
       )
     );
-    const managedRoleNames = Array.from(new Set(rolePermissionPairs.map((pair) => pair.roleName))).sort(
-      compareAlphabetically
-    );
+    const managedRoleNames = Array.from(new Set(rolePermissionPairs.map((pair) => pair.roleName))).sort();
 
     for (const permissionKey of permissionKeys) {
       await executor.execute(

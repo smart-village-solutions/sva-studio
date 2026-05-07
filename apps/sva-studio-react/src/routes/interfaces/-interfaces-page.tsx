@@ -5,7 +5,7 @@ import type { SvaMainserverConnectionStatus } from '@sva/sva-mainserver';
 
 import { t } from '../../i18n';
 import { isRecord, readErrorMessage } from '../../lib/error-message-utils';
-import { loadInterfacesOverview, saveSvaMainserverInterfaceSettings } from '../../lib/interfaces-api';
+import { loadSvaMainserverInterfacesOverviewServerFn, saveSvaMainserverInterfaceSettings } from '../../lib/interfaces-api';
 import { Alert, AlertDescription } from '../../components/ui/alert';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
@@ -141,7 +141,7 @@ const getStatusErrorMessage = (status: SvaMainserverConnectionStatus | null): st
 };
 
 export const InterfacesPage = () => {
-  const loadOverview = useServerFn(loadInterfacesOverview);
+  const loadOverview = useServerFn(loadSvaMainserverInterfacesOverviewServerFn);
   const saveSettings = useServerFn(saveSvaMainserverInterfaceSettings);
 
   // useServerFn gibt bei jedem Render eine neue Referenz zurück.

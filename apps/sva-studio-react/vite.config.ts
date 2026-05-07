@@ -103,6 +103,7 @@ const config = defineConfig({
       '@sva/auth-runtime': resolveAppPath('../../packages/auth-runtime/src/index.ts'),
       '@sva/data-repositories/server': resolveAppPath('../../packages/data-repositories/src/server.ts'),
       '@sva/data-repositories': resolveAppPath('../../packages/data-repositories/src/index.ts'),
+      '@sva/iam-admin/encryption': resolveAppPath('../../packages/iam-admin/src/encryption.ts'),
       '@sva/iam-admin': resolveAppPath('../../packages/iam-admin/src/index.ts'),
       '@sva/iam-core': resolveAppPath('../../packages/iam-core/src/index.ts'),
       '@sva/iam-governance/read-models-internal': resolveAppPath(
@@ -126,6 +127,10 @@ const config = defineConfig({
       ),
       '@sva/iam-governance/legal-text-repository': resolveAppPath(
         '../../packages/iam-governance/src/legal-text-repository.ts'
+      ),
+      '@sva/iam-governance/legal-text-html': resolveAppPath('../../packages/iam-governance/src/legal-text-html.ts'),
+      '@sva/iam-governance/legal-text-sanitize-html': resolveAppPath(
+        '../../packages/iam-governance/src/legal-text-sanitize-html.ts'
       ),
       '@sva/iam-governance/legal-text-mutation-handlers': resolveAppPath(
         '../../packages/iam-governance/src/legal-text-mutation-handlers.ts'

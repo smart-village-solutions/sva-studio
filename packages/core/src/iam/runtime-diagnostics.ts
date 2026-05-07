@@ -36,6 +36,9 @@ const PRE_SYNC_REASON_CLASSIFICATIONS = new Map<string, IamRuntimeDiagnosticClas
   ['return_encrypted', 'legacy_workaround_or_regression'],
   ['tenant_host_resolution_primary_hostname_fallback', 'legacy_workaround_or_regression'],
   ['registry_or_provisioning_drift_blocked', 'registry_or_provisioning_drift'],
+  ['silent_recovery_timeout', 'oidc_discovery_or_exchange'],
+  ['silent_recovery_failed', 'oidc_discovery_or_exchange'],
+  ['silent_recovery_succeeded', 'frontend_state_or_permission_staleness'],
 ]);
 
 const POST_SYNC_REASON_CLASSIFICATIONS = new Map<string, IamRuntimeDiagnosticClassification>([
@@ -50,6 +53,13 @@ const SESSION_REASON_CODES = new Set([
   'session_user_diagnostics',
   'session_store_unavailable',
   'missing_session_instance_id',
+  'missing_session_cookie',
+  'invalid_session',
+  'session_expired',
+  'session_not_allowed',
+  'token_refresh_failed_before_expiry',
+  'token_refresh_failed_after_expiry',
+  'forced_reauth',
 ]);
 
 const KEYCLOAK_REASON_CODES = new Set([
@@ -81,17 +91,23 @@ const SESSION_INPUT_CODES = new Set<ApiErrorCode>(['unauthorized', 'reauth_requi
 const KEYCLOAK_INPUT_CODES = new Set<ApiErrorCode>(['keycloak_unavailable']);
 const DATABASE_INPUT_CODES = new Set<ApiErrorCode>(['database_unavailable']);
 
-const readString = (value: unknown): string | undefined => (typeof value === 'string' ? value : undefined);
+const readString = (value: unknown): string | undefined =>
+  typeof value === 'string' ? value : undefined;
 
 const readReasonClassification = (
   reasonCode: string | undefined,
   classifications: ReadonlyMap<string, IamRuntimeDiagnosticClassification>
-): IamRuntimeDiagnosticClassification | undefined => (reasonCode ? classifications.get(reasonCode) : undefined);
+): IamRuntimeDiagnosticClassification | undefined =>
+  reasonCode ? classifications.get(reasonCode) : undefined;
 
-const matchesReasonCode = (reasonCode: string | undefined, reasonCodes: ReadonlySet<string>): boolean =>
-  reasonCode !== undefined && reasonCodes.has(reasonCode);
+const matchesReasonCode = (
+  reasonCode: string | undefined,
+  reasonCodes: ReadonlySet<string>
+): boolean => reasonCode !== undefined && reasonCodes.has(reasonCode);
 
-const readSafeDetails = (details?: Readonly<Record<string, unknown>>): IamRuntimeSafeDetails | undefined => {
+const readSafeDetails = (
+  details?: Readonly<Record<string, unknown>>
+): IamRuntimeSafeDetails | undefined => {
   if (!details) {
     return undefined;
   }
@@ -109,17 +125,30 @@ const readSafeDetails = (details?: Readonly<Record<string, unknown>>): IamRuntim
     actor_resolution: readString(details.actor_resolution),
     instance_id: readString(details.instance_id),
     return_to: readString(details.return_to),
+    auth_flow_id: readString(details.auth_flow_id),
+    recovery_step: readString(details.recovery_step),
     sync_state: readString(details.sync_state) ?? readString(details.syncState),
-    sync_error_code: readString(details.sync_error_code) ?? readString(details.syncErrorCode) ?? readString(syncError?.code),
+    sync_error_code:
+      readString(details.sync_error_code) ??
+      readString(details.syncErrorCode) ??
+      readString(syncError?.code),
   };
 
-  return Object.values(safeDetails).some((value) => typeof value === 'string') ? safeDetails : undefined;
+  return Object.values(safeDetails).some((value) => typeof value === 'string')
+    ? safeDetails
+    : undefined;
 };
 
-const classify = ({ input, safeDetails }: RuntimeDiagnosticSafeDetails): IamRuntimeDiagnosticClassification => {
+const classify = ({
+  input,
+  safeDetails,
+}: RuntimeDiagnosticSafeDetails): IamRuntimeDiagnosticClassification => {
   const reasonCode = safeDetails?.reason_code;
   const syncErrorCode = safeDetails?.sync_error_code;
-  const preSyncClassification = readReasonClassification(reasonCode, PRE_SYNC_REASON_CLASSIFICATIONS);
+  const preSyncClassification = readReasonClassification(
+    reasonCode,
+    PRE_SYNC_REASON_CLASSIFICATIONS
+  );
 
   if (preSyncClassification) {
     return preSyncClassification;
@@ -137,7 +166,10 @@ const classify = ({ input, safeDetails }: RuntimeDiagnosticSafeDetails): IamRunt
     return 'tenant_host_validation';
   }
 
-  const postSyncClassification = readReasonClassification(reasonCode, POST_SYNC_REASON_CLASSIFICATIONS);
+  const postSyncClassification = readReasonClassification(
+    reasonCode,
+    POST_SYNC_REASON_CLASSIFICATIONS
+  );
   if (postSyncClassification) {
     return postSyncClassification;
   }
@@ -158,11 +190,17 @@ const classify = ({ input, safeDetails }: RuntimeDiagnosticSafeDetails): IamRunt
     return 'actor_resolution_or_membership';
   }
 
-  if (KEYCLOAK_INPUT_CODES.has(input.code as ApiErrorCode) || matchesReasonCode(reasonCode, KEYCLOAK_REASON_CODES)) {
+  if (
+    KEYCLOAK_INPUT_CODES.has(input.code as ApiErrorCode) ||
+    matchesReasonCode(reasonCode, KEYCLOAK_REASON_CODES)
+  ) {
     return 'keycloak_dependency';
   }
 
-  if (DATABASE_INPUT_CODES.has(input.code as ApiErrorCode) || matchesReasonCode(reasonCode, DATABASE_REASON_CODES)) {
+  if (
+    DATABASE_INPUT_CODES.has(input.code as ApiErrorCode) ||
+    matchesReasonCode(reasonCode, DATABASE_REASON_CODES)
+  ) {
     return 'database_or_schema_drift';
   }
 
@@ -232,7 +270,9 @@ const resolveRecommendedAction = (
   }
 };
 
-export const deriveIamRuntimeDiagnostics = (input: RuntimeDiagnosticInput): IamRuntimeDiagnostics => {
+export const deriveIamRuntimeDiagnostics = (
+  input: RuntimeDiagnosticInput
+): IamRuntimeDiagnostics => {
   const safeDetails = readSafeDetails(input.details);
   const classification = classify({ input, safeDetails });
 

@@ -61,8 +61,12 @@ const HEAVY_IAM_REQUEST_TIMEOUT_MS = 20_000;
 const KNOWN_RUNTIME_DIAGNOSTIC_CLASSIFICATIONS = new Set<IamRuntimeDiagnosticClassification>(
   iamRuntimeDiagnosticClassifications
 );
-const KNOWN_RUNTIME_DIAGNOSTIC_STATUSES = new Set<IamRuntimeDiagnosticStatus>(iamRuntimeDiagnosticStatuses);
-const KNOWN_RUNTIME_RECOMMENDED_ACTIONS = new Set<IamRuntimeRecommendedAction>(iamRuntimeRecommendedActions);
+const KNOWN_RUNTIME_DIAGNOSTIC_STATUSES = new Set<IamRuntimeDiagnosticStatus>(
+  iamRuntimeDiagnosticStatuses
+);
+const KNOWN_RUNTIME_RECOMMENDED_ACTIONS = new Set<IamRuntimeRecommendedAction>(
+  iamRuntimeRecommendedActions
+);
 
 export class IamHttpError extends Error {
   readonly status: number;
@@ -154,56 +158,77 @@ const readErrorMessageFromPayload = (payload: IamErrorPayload | null, status: nu
   return `http_${status}`;
 };
 
-const readSafeDiagnosticDetails = (payload: IamErrorPayload | null): IamRuntimeSafeDetails | undefined => {
-  if (!payload || typeof payload.error !== 'object' || !payload.error || !('details' in payload.error)) {
+const readSafeDiagnosticDetails = (
+  payload: IamErrorPayload | null
+): IamRuntimeSafeDetails | undefined => {
+  const source = readErrorDetailsRecord(payload);
+  if (!source) {
+    return undefined;
+  }
+
+  const safeDetails: IamRuntimeSafeDetails = {
+    reason_code: readStringDetail(source, 'reason_code'),
+    dependency: readStringDetail(source, 'dependency'),
+    schema_object: readStringDetail(source, 'schema_object'),
+    expected_migration: readStringDetail(source, 'expected_migration'),
+    actor_resolution: readStringDetail(source, 'actor_resolution'),
+    instance_id: readStringDetail(source, 'instance_id'),
+    return_to: readStringDetail(source, 'return_to'),
+    sync_state: readSyncState(source),
+    sync_error_code: readSyncErrorCode(source),
+  };
+
+  return hasStringValues(safeDetails) ? safeDetails : undefined;
+};
+
+const readStructuredErrorPayload = (payload: IamErrorPayload | null) =>
+  payload && typeof payload.error === 'object' && payload.error
+    ? (payload.error as Record<string, unknown>)
+    : undefined;
+
+const readErrorDetailsRecord = (
+  payload: IamErrorPayload | null
+): Record<string, unknown> | undefined => {
+  if (
+    !payload ||
+    typeof payload.error !== 'object' ||
+    !payload.error ||
+    !('details' in payload.error)
+  ) {
     return undefined;
   }
 
   const details = (payload.error as { details?: unknown }).details;
-  if (!details || typeof details !== 'object') {
-    return undefined;
-  }
-
-  const source = details as Record<string, unknown>;
-  const syncError =
-    typeof source.syncError === 'object' && source.syncError !== null ? (source.syncError as Record<string, unknown>) : undefined;
-  const safeDetails: IamRuntimeSafeDetails = {
-    reason_code: typeof source.reason_code === 'string' ? source.reason_code : undefined,
-    dependency: typeof source.dependency === 'string' ? source.dependency : undefined,
-    schema_object: typeof source.schema_object === 'string' ? source.schema_object : undefined,
-    expected_migration:
-      typeof source.expected_migration === 'string' ? source.expected_migration : undefined,
-    actor_resolution:
-      typeof source.actor_resolution === 'string' ? source.actor_resolution : undefined,
-    instance_id: typeof source.instance_id === 'string' ? source.instance_id : undefined,
-    return_to: typeof source.return_to === 'string' ? source.return_to : undefined,
-    sync_state:
-      typeof source.sync_state === 'string'
-        ? source.sync_state
-        : typeof source.syncState === 'string'
-          ? source.syncState
-          : undefined,
-    sync_error_code:
-      typeof source.sync_error_code === 'string'
-        ? source.sync_error_code
-        : typeof source.syncErrorCode === 'string'
-          ? source.syncErrorCode
-          : typeof syncError?.code === 'string'
-            ? syncError.code
-            : undefined,
-  };
-
-  return Object.values(safeDetails).some((value) => typeof value === 'string') ? safeDetails : undefined;
+  return details && typeof details === 'object' ? (details as Record<string, unknown>) : undefined;
 };
 
-const readStructuredErrorPayload = (payload: IamErrorPayload | null) =>
-  payload && typeof payload.error === 'object' && payload.error ? (payload.error as Record<string, unknown>) : undefined;
+const readStringDetail = (source: Record<string, unknown>, key: string): string | undefined =>
+  typeof source[key] === 'string' ? (source[key] as string) : undefined;
+
+const readSyncState = (source: Record<string, unknown>): string | undefined =>
+  readStringDetail(source, 'sync_state') ?? readStringDetail(source, 'syncState');
+
+const readSyncErrorRecord = (
+  source: Record<string, unknown>
+): Record<string, unknown> | undefined =>
+  typeof source.syncError === 'object' && source.syncError !== null
+    ? (source.syncError as Record<string, unknown>)
+    : undefined;
+
+const readSyncErrorCode = (source: Record<string, unknown>): string | undefined =>
+  readStringDetail(source, 'sync_error_code') ??
+  readStringDetail(source, 'syncErrorCode') ??
+  readStringDetail(readSyncErrorRecord(source) ?? {}, 'code');
+
+const hasStringValues = (details: IamRuntimeSafeDetails): boolean =>
+  Object.values(details).some((value) => typeof value === 'string');
 
 const normalizeRuntimeDiagnosticClassification = (
   value: unknown,
   fallback: IamRuntimeDiagnosticClassification
 ): IamRuntimeDiagnosticClassification =>
-  typeof value === 'string' && KNOWN_RUNTIME_DIAGNOSTIC_CLASSIFICATIONS.has(value as IamRuntimeDiagnosticClassification)
+  typeof value === 'string' &&
+  KNOWN_RUNTIME_DIAGNOSTIC_CLASSIFICATIONS.has(value as IamRuntimeDiagnosticClassification)
     ? (value as IamRuntimeDiagnosticClassification)
     : fallback;
 
@@ -211,7 +236,8 @@ const normalizeRuntimeDiagnosticStatus = (
   value: unknown,
   fallback: IamRuntimeDiagnosticStatus
 ): IamRuntimeDiagnosticStatus =>
-  typeof value === 'string' && KNOWN_RUNTIME_DIAGNOSTIC_STATUSES.has(value as IamRuntimeDiagnosticStatus)
+  typeof value === 'string' &&
+  KNOWN_RUNTIME_DIAGNOSTIC_STATUSES.has(value as IamRuntimeDiagnosticStatus)
     ? (value as IamRuntimeDiagnosticStatus)
     : fallback;
 
@@ -219,7 +245,8 @@ const normalizeRuntimeRecommendedAction = (
   value: unknown,
   fallback: IamRuntimeRecommendedAction
 ): IamRuntimeRecommendedAction =>
-  typeof value === 'string' && KNOWN_RUNTIME_RECOMMENDED_ACTIONS.has(value as IamRuntimeRecommendedAction)
+  typeof value === 'string' &&
+  KNOWN_RUNTIME_RECOMMENDED_ACTIONS.has(value as IamRuntimeRecommendedAction)
     ? (value as IamRuntimeRecommendedAction)
     : fallback;
 
@@ -230,37 +257,54 @@ const readRuntimeDiagnostics = (
   safeDetails: IamRuntimeSafeDetails | undefined
 ) => {
   const structuredError = readStructuredErrorPayload(payload);
+  const fallbackDiagnostics = deriveFallbackRuntimeDiagnostics(structuredError, status, code);
+  return mergeRuntimeDiagnostics(structuredError, fallbackDiagnostics, safeDetails);
+};
+
+const deriveFallbackRuntimeDiagnostics = (
+  structuredError: Record<string, unknown> | undefined,
+  status: number,
+  code: string
+) => {
   const rawDetails =
     structuredError?.details && typeof structuredError.details === 'object'
       ? (structuredError.details as Readonly<Record<string, unknown>>)
       : undefined;
-  const fallbackDiagnostics = deriveIamRuntimeDiagnostics({
+
+  return deriveIamRuntimeDiagnostics({
     code,
     status,
     details: rawDetails,
   });
+};
 
-  const classification = normalizeRuntimeDiagnosticClassification(
+const readExplicitSafeDetails = (
+  structuredError: Record<string, unknown> | undefined
+): IamRuntimeSafeDetails | undefined =>
+  structuredError?.safeDetails && typeof structuredError.safeDetails === 'object'
+    ? (structuredError.safeDetails as IamRuntimeSafeDetails)
+    : undefined;
+
+const mergeRuntimeDiagnostics = (
+  structuredError: Record<string, unknown> | undefined,
+  fallbackDiagnostics: ReturnType<typeof deriveIamRuntimeDiagnostics>,
+  safeDetails: IamRuntimeSafeDetails | undefined
+) => ({
+  classification: normalizeRuntimeDiagnosticClassification(
     structuredError?.classification,
     fallbackDiagnostics.classification
-  );
-  const diagnosticStatus = normalizeRuntimeDiagnosticStatus(structuredError?.status, fallbackDiagnostics.status);
-  const recommendedAction = normalizeRuntimeRecommendedAction(
+  ),
+  diagnosticStatus: normalizeRuntimeDiagnosticStatus(
+    structuredError?.status,
+    fallbackDiagnostics.status
+  ),
+  recommendedAction: normalizeRuntimeRecommendedAction(
     structuredError?.recommendedAction,
     fallbackDiagnostics.recommendedAction
-  );
-  const explicitSafeDetails =
-    structuredError?.safeDetails && typeof structuredError.safeDetails === 'object'
-      ? (structuredError.safeDetails as IamRuntimeSafeDetails)
-      : undefined;
-
-  return {
-    classification,
-    diagnosticStatus,
-    recommendedAction,
-    safeDetails: explicitSafeDetails ?? safeDetails ?? fallbackDiagnostics.safeDetails,
-  };
-};
+  ),
+  safeDetails:
+    readExplicitSafeDetails(structuredError) ?? safeDetails ?? fallbackDiagnostics.safeDetails,
+});
 
 const logDevelopmentApiError = (input: {
   requestId?: string;
@@ -325,7 +369,10 @@ export type CreateUserPayload = {
 export type UpdateUserPayload = Partial<Omit<CreateUserPayload, 'roleIds'>> & {
   readonly roleIds?: readonly string[];
   readonly groupIds?: readonly string[];
-  readonly directPermissions?: readonly Pick<IamUserDirectPermissionAssignment, 'permissionId' | 'effect'>[];
+  readonly directPermissions?: readonly Pick<
+    IamUserDirectPermissionAssignment,
+    'permissionId' | 'effect'
+  >[];
   readonly status?: 'active' | 'inactive' | 'pending';
   readonly notes?: string;
   readonly mainserverUserApplicationId?: string;
@@ -434,6 +481,7 @@ export type MediaMetadata = Readonly<{
 export type IamMediaAsset = Readonly<{
   id: string;
   instanceId: string;
+  storageKey: string;
   mediaType: 'image';
   mimeType: string;
   byteSize: number;
@@ -480,9 +528,19 @@ export type InitializeMediaUploadResponse = Readonly<{
   initializedAt: string;
 }>;
 
+export type UpdateMediaMetadataPayload = Readonly<{
+  title?: string | null;
+  description?: string | null;
+  altText?: string | null;
+  copyright?: string | null;
+  license?: string | null;
+  focusPoint?: MediaMetadata['focusPoint'] | null;
+  crop?: MediaMetadata['crop'] | null;
+}>;
+
 export type UpdateMediaPayload = Readonly<{
   visibility?: MediaVisibility;
-  metadata: Partial<MediaMetadata>;
+  metadata: UpdateMediaMetadataPayload;
 }>;
 
 export type IamMediaDelivery = Readonly<{
@@ -491,6 +549,13 @@ export type IamMediaDelivery = Readonly<{
   deliveryUrl: string;
   expiresAt?: string;
 }>;
+
+export type MediaListQuery = {
+  readonly search?: string;
+  readonly visibility?: MediaVisibility | 'all';
+  readonly page?: number;
+  readonly pageSize?: number;
+};
 
 export type OrganizationsQuery = {
   readonly page: number;
@@ -593,7 +658,11 @@ export type ReconcileInstanceKeycloakPayload = {
 };
 
 export type ExecuteInstanceKeycloakProvisioningPayload = {
-  readonly intent: 'provision' | 'provision_admin_client' | 'reset_tenant_admin' | 'rotate_client_secret';
+  readonly intent:
+    | 'provision'
+    | 'provision_admin_client'
+    | 'reset_tenant_admin'
+    | 'rotate_client_secret';
   readonly tenantAdminTemporaryPassword?: string;
 };
 
@@ -607,12 +676,10 @@ const isAbortLikeError = (error: unknown): boolean =>
     ? error.name === 'AbortError' || error.name === 'TimeoutError'
     : error instanceof Error && error.name === 'AbortError';
 
-const mergeAbortSignals = (
-  input: {
-    readonly signal?: AbortSignal;
-    readonly timeoutMs: number;
-  }
-): {
+const mergeAbortSignals = (input: {
+  readonly signal?: AbortSignal;
+  readonly timeoutMs: number;
+}): {
   readonly signal: AbortSignal;
   readonly cleanup: () => void;
   readonly didTimeout: () => boolean;
@@ -624,8 +691,7 @@ const mergeAbortSignals = (
 
   const abortFromExternal = () => {
     controller.abort(
-      input.signal?.reason ??
-        new DOMException('IAM-Anfrage wurde abgebrochen.', 'AbortError')
+      input.signal?.reason ?? new DOMException('IAM-Anfrage wurde abgebrochen.', 'AbortError')
     );
   };
 
@@ -659,17 +725,24 @@ const mergeAbortSignals = (
 
 const createIdempotencyKey = () => crypto.randomUUID();
 
-const readErrorPayload = async (response: Response): Promise<IamHttpError> => {
+export const readIamErrorResponse = async (response: Response): Promise<IamHttpError> => {
   const payload = (await response.json().catch(() => null)) as IamErrorPayload | null;
   const code = readErrorCodeFromPayload(payload) ?? 'internal_error';
   const requestId = readRequestIdFromResponse(response, payload ?? undefined);
   const safeDetails = readSafeDiagnosticDetails(payload);
   const diagnostics = readRuntimeDiagnostics(payload, response.status, code, safeDetails);
 
-  logDevelopmentApiError({ requestId, status: response.status, code, details: diagnostics.safeDetails });
+  logDevelopmentApiError({
+    requestId,
+    status: response.status,
+    code,
+    details: diagnostics.safeDetails,
+  });
 
   if (code === 'legal_acceptance_required' && globalThis.window !== undefined) {
-    globalThis.dispatchEvent(new CustomEvent(LEGAL_ACCEPTANCE_REQUIRED_EVENT, { detail: diagnostics.safeDetails }));
+    globalThis.dispatchEvent(
+      new CustomEvent(LEGAL_ACCEPTANCE_REQUIRED_EVENT, { detail: diagnostics.safeDetails })
+    );
   }
 
   return new IamHttpError({
@@ -720,7 +793,11 @@ export const fetchWithRequestTimeout = async (
   }
 };
 
-const requestJson = async <T>(input: string, init?: RequestInit, options: IamRequestOptions = {}): Promise<T> => {
+const requestJson = async <T>(
+  input: string,
+  init?: RequestInit,
+  options: IamRequestOptions = {}
+): Promise<T> => {
   const { headers: initHeaders, ...restInit } = init ?? {};
   const response = await fetchWithRequestTimeout(
     input,
@@ -752,7 +829,7 @@ const requestJson = async <T>(input: string, init?: RequestInit, options: IamReq
         recommendedAction: 'erneut_versuchen',
       });
     }
-    throw await readErrorPayload(response);
+    throw await readIamErrorResponse(response);
   }
 
   if (!contentType.includes('application/json')) {
@@ -779,7 +856,10 @@ const requestJsonOrText = async <T>(
     input,
     {
       ...restInit,
-      headers: { Accept: 'application/json, text/plain, text/csv, application/xml', ...initHeaders },
+      headers: {
+        Accept: 'application/json, text/plain, text/csv, application/xml',
+        ...initHeaders,
+      },
     },
     options
   );
@@ -803,7 +883,7 @@ const requestJsonOrText = async <T>(
         recommendedAction: 'erneut_versuchen',
       });
     }
-    throw await readErrorPayload(response);
+    throw await readIamErrorResponse(response);
   }
 
   if (contentType.includes('application/json')) {
@@ -847,7 +927,11 @@ const postJson = async <TResponse, TPayload>(path: string, payload: TPayload, id
     body: JSON.stringify(payload),
   });
 
-const postJsonWithReauth = async <TResponse, TPayload>(path: string, payload: TPayload, idempotent = false) =>
+const postJsonWithReauth = async <TResponse, TPayload>(
+  path: string,
+  payload: TPayload,
+  idempotent = false
+) =>
   requestJson<TResponse>(path, {
     method: 'POST',
     headers: {
@@ -880,17 +964,24 @@ export const listUsers = async (query: UsersQuery): Promise<ApiListResponse<IamU
 export const getUser = async (userId: string): Promise<ApiItemResponse<IamUserDetail>> =>
   requestJson<ApiItemResponse<IamUserDetail>>(`/api/v1/iam/users/${userId}`);
 
-export const getUserTimeline = async (userId: string): Promise<ApiListResponse<IamUserTimelineEvent>> =>
+export const getUserTimeline = async (
+  userId: string
+): Promise<ApiListResponse<IamUserTimelineEvent>> =>
   requestJson<ApiListResponse<IamUserTimelineEvent>>(`/api/v1/iam/users/${userId}/timeline`);
 
-export const createUser = async (payload: CreateUserPayload): Promise<ApiItemResponse<IamUserDetail>> =>
+export const createUser = async (
+  payload: CreateUserPayload
+): Promise<ApiItemResponse<IamUserDetail>> =>
   postJson<ApiItemResponse<IamUserDetail>, CreateUserPayload>('/api/v1/iam/users', payload, true);
 
 export const updateUser = async (
   userId: string,
   payload: UpdateUserPayload
 ): Promise<ApiItemResponse<IamUserDetail>> =>
-  patchJson<ApiItemResponse<IamUserDetail>, UpdateUserPayload>(`/api/v1/iam/users/${userId}`, payload);
+  patchJson<ApiItemResponse<IamUserDetail>, UpdateUserPayload>(
+    `/api/v1/iam/users/${userId}`,
+    payload
+  );
 
 export const deactivateUser = async (userId: string): Promise<ApiItemResponse<{ id: string }>> =>
   requestJson<ApiItemResponse<{ id: string }>>(`/api/v1/iam/users/${userId}`, {
@@ -901,20 +992,23 @@ export const deactivateUser = async (userId: string): Promise<ApiItemResponse<{ 
 export const bulkDeactivateUsers = async (
   userIds: readonly string[]
 ): Promise<ApiItemResponse<{ deactivatedUserIds: readonly string[]; count: number }>> =>
-  postJson<ApiItemResponse<{ deactivatedUserIds: readonly string[]; count: number }>, { userIds: readonly string[] }>(
-    '/api/v1/iam/users/bulk-deactivate',
-    { userIds },
-    true
-  );
+  postJson<
+    ApiItemResponse<{ deactivatedUserIds: readonly string[]; count: number }>,
+    { userIds: readonly string[] }
+  >('/api/v1/iam/users/bulk-deactivate', { userIds }, true);
 
 export const syncUsersFromKeycloak = async (): Promise<ApiItemResponse<IamUserImportSyncReport>> =>
-  requestJson<ApiItemResponse<IamUserImportSyncReport>>('/api/v1/iam/users/sync-keycloak', {
-    method: 'POST',
-    headers: IAM_HEADERS,
-    body: JSON.stringify({}),
-  }, {
-    timeoutMs: HEAVY_IAM_REQUEST_TIMEOUT_MS,
-  });
+  requestJson<ApiItemResponse<IamUserImportSyncReport>>(
+    '/api/v1/iam/users/sync-keycloak',
+    {
+      method: 'POST',
+      headers: IAM_HEADERS,
+      body: JSON.stringify({}),
+    },
+    {
+      timeoutMs: HEAVY_IAM_REQUEST_TIMEOUT_MS,
+    }
+  );
 
 export const getMyProfile = async (): Promise<ApiItemResponse<IamUserDetail>> =>
   requestJson<ApiItemResponse<IamUserDetail>>('/api/v1/iam/users/me/profile');
@@ -922,7 +1016,10 @@ export const getMyProfile = async (): Promise<ApiItemResponse<IamUserDetail>> =>
 export const updateMyProfile = async (
   payload: UpdateMyProfilePayload
 ): Promise<ApiItemResponse<IamUserDetail>> =>
-  patchJson<ApiItemResponse<IamUserDetail>, UpdateMyProfilePayload>('/api/v1/iam/users/me/profile', payload);
+  patchJson<ApiItemResponse<IamUserDetail>, UpdateMyProfilePayload>(
+    '/api/v1/iam/users/me/profile',
+    payload
+  );
 
 export const listRoles = async (): Promise<ApiListResponse<IamRoleListItem>> =>
   requestJson<ApiListResponse<IamRoleListItem>>('/api/v1/iam/roles');
@@ -942,17 +1039,28 @@ export const listContents = async (): Promise<ApiListResponse<IamContentListItem
 export const getContent = async (contentId: string): Promise<ApiItemResponse<IamContentDetail>> =>
   requestJson<ApiItemResponse<IamContentDetail>>(`/api/v1/iam/contents/${contentId}`);
 
-export const getContentHistory = async (contentId: string): Promise<ApiListResponse<IamContentHistoryEntry>> =>
+export const getContentHistory = async (
+  contentId: string
+): Promise<ApiListResponse<IamContentHistoryEntry>> =>
   requestJson<ApiListResponse<IamContentHistoryEntry>>(`/api/v1/iam/contents/${contentId}/history`);
 
-export const createContent = async (payload: CreateContentPayload): Promise<ApiItemResponse<IamContentDetail>> =>
-  postJson<ApiItemResponse<IamContentDetail>, CreateContentPayload>('/api/v1/iam/contents', payload, true);
+export const createContent = async (
+  payload: CreateContentPayload
+): Promise<ApiItemResponse<IamContentDetail>> =>
+  postJson<ApiItemResponse<IamContentDetail>, CreateContentPayload>(
+    '/api/v1/iam/contents',
+    payload,
+    true
+  );
 
 export const updateContent = async (
   contentId: string,
   payload: UpdateContentPayload
 ): Promise<ApiItemResponse<IamContentDetail>> =>
-  patchJson<ApiItemResponse<IamContentDetail>, UpdateContentPayload>(`/api/v1/iam/contents/${contentId}`, payload);
+  patchJson<ApiItemResponse<IamContentDetail>, UpdateContentPayload>(
+    `/api/v1/iam/contents/${contentId}`,
+    payload
+  );
 
 export const deleteContent = async (contentId: string): Promise<ApiItemResponse<{ id: string }>> =>
   requestJson<ApiItemResponse<{ id: string }>>(`/api/v1/iam/contents/${contentId}`, {
@@ -960,10 +1068,9 @@ export const deleteContent = async (contentId: string): Promise<ApiItemResponse<
     headers: IAM_HEADERS,
   });
 
-export const listMedia = async (query: {
-  readonly search?: string;
-  readonly visibility?: MediaVisibility | 'all';
-} = {}): Promise<ApiListResponse<IamMediaAsset>> => {
+export const listMedia = async (
+  query: MediaListQuery = {}
+): Promise<ApiListResponse<IamMediaAsset>> => {
   const params = new URLSearchParams();
 
   if (query.search) {
@@ -972,15 +1079,25 @@ export const listMedia = async (query: {
   if (query.visibility && query.visibility !== 'all') {
     params.set('visibility', query.visibility);
   }
+  if (typeof query.page === 'number') {
+    params.set('page', String(query.page));
+  }
+  if (typeof query.pageSize === 'number') {
+    params.set('pageSize', String(query.pageSize));
+  }
 
   const suffix = params.toString();
-  return requestJson<ApiListResponse<IamMediaAsset>>(`/api/v1/iam/media${suffix ? `?${suffix}` : ''}`);
+  return requestJson<ApiListResponse<IamMediaAsset>>(
+    `/api/v1/iam/media${suffix ? `?${suffix}` : ''}`
+  );
 };
 
 export const getMedia = async (assetId: string): Promise<ApiItemResponse<IamMediaAsset>> =>
   requestJson<ApiItemResponse<IamMediaAsset>>(`/api/v1/iam/media/${assetId}`);
 
-export const getMediaUsage = async (assetId: string): Promise<ApiItemResponse<IamMediaUsageImpact>> =>
+export const getMediaUsage = async (
+  assetId: string
+): Promise<ApiItemResponse<IamMediaUsageImpact>> =>
   requestJson<ApiItemResponse<IamMediaUsageImpact>>(`/api/v1/iam/media/${assetId}/usage`);
 
 export const initializeMediaUpload = async (
@@ -996,9 +1113,14 @@ export const updateMedia = async (
   assetId: string,
   payload: UpdateMediaPayload
 ): Promise<ApiItemResponse<IamMediaAsset>> =>
-  patchJson<ApiItemResponse<IamMediaAsset>, UpdateMediaPayload>(`/api/v1/iam/media/${assetId}`, payload);
+  patchJson<ApiItemResponse<IamMediaAsset>, UpdateMediaPayload>(
+    `/api/v1/iam/media/${assetId}`,
+    payload
+  );
 
-export const getMediaDelivery = async (assetId: string): Promise<ApiItemResponse<IamMediaDelivery>> =>
+export const getMediaDelivery = async (
+  assetId: string
+): Promise<ApiItemResponse<IamMediaDelivery>> =>
   requestJson<ApiItemResponse<IamMediaDelivery>>(`/api/v1/iam/media/${assetId}/delivery`);
 
 export const deleteMedia = async (assetId: string): Promise<ApiItemResponse<{ id: string }>> =>
@@ -1025,10 +1147,14 @@ export const listOrganizations = async (
     params.set('status', query.status);
   }
 
-  return requestJson<ApiListResponse<IamOrganizationListItem>>(`/api/v1/iam/organizations?${params.toString()}`);
+  return requestJson<ApiListResponse<IamOrganizationListItem>>(
+    `/api/v1/iam/organizations?${params.toString()}`
+  );
 };
 
-export const listInstances = async (query: InstancesQuery = {}): Promise<ApiListResponse<IamInstanceListItem>> => {
+export const listInstances = async (
+  query: InstancesQuery = {}
+): Promise<ApiListResponse<IamInstanceListItem>> => {
   const params = new URLSearchParams();
   if (query.search) {
     params.set('search', query.search);
@@ -1037,16 +1163,24 @@ export const listInstances = async (query: InstancesQuery = {}): Promise<ApiList
     params.set('status', query.status);
   }
   const suffix = params.toString();
-  return requestJson<ApiListResponse<IamInstanceListItem>>(`/api/v1/iam/instances${suffix ? `?${suffix}` : ''}`);
+  return requestJson<ApiListResponse<IamInstanceListItem>>(
+    `/api/v1/iam/instances${suffix ? `?${suffix}` : ''}`
+  );
 };
 
-export const getInstance = async (instanceId: string): Promise<ApiItemResponse<IamInstanceDetail>> =>
+export const getInstance = async (
+  instanceId: string
+): Promise<ApiItemResponse<IamInstanceDetail>> =>
   requestJson<ApiItemResponse<IamInstanceDetail>>(`/api/v1/iam/instances/${instanceId}`);
 
 export const createInstance = async (
   payload: CreateInstancePayload
 ): Promise<ApiItemResponse<IamInstanceListItem>> =>
-  postJsonWithReauth<ApiItemResponse<IamInstanceListItem>, CreateInstancePayload>('/api/v1/iam/instances', payload, true);
+  postJsonWithReauth<ApiItemResponse<IamInstanceListItem>, CreateInstancePayload>(
+    '/api/v1/iam/instances',
+    payload,
+    true
+  );
 
 export const updateInstance = async (
   instanceId: string,
@@ -1060,7 +1194,9 @@ export const updateInstance = async (
 export const getInstanceKeycloakStatus = async (
   instanceId: string
 ): Promise<ApiItemResponse<IamInstanceDetail['keycloakStatus']>> =>
-  requestJson<ApiItemResponse<IamInstanceDetail['keycloakStatus']>>(`/api/v1/iam/instances/${instanceId}/keycloak/status`);
+  requestJson<ApiItemResponse<IamInstanceDetail['keycloakStatus']>>(
+    `/api/v1/iam/instances/${instanceId}/keycloak/status`
+  );
 
 export const getInstanceKeycloakPreflight = async (
   instanceId: string
@@ -1095,7 +1231,9 @@ export const getInstanceKeycloakProvisioningRun = async (
     `/api/v1/iam/instances/${instanceId}/keycloak/runs/${runId}`
   );
 
-export const getRuntimeHealth = async (options: IamRequestOptions = {}): Promise<RuntimeHealthResponse> =>
+export const getRuntimeHealth = async (
+  options: IamRequestOptions = {}
+): Promise<RuntimeHealthResponse> =>
   normalizeRuntimeHealthResponse(
     await requestJson<RuntimeHealthResponse>(
       '/api/v1/iam/health/ready',
@@ -1109,7 +1247,9 @@ export const getRuntimeHealth = async (options: IamRequestOptions = {}): Promise
     )
   );
 
-const toRuntimeDependencyStatus = (ready: boolean | undefined): RuntimeDependencyHealth['status'] => {
+const toRuntimeDependencyStatus = (
+  ready: boolean | undefined
+): RuntimeDependencyHealth['status'] => {
   if (ready === true) {
     return 'ready';
   }
@@ -1128,7 +1268,9 @@ const createFallbackRuntimeServices = (
   redis: checks.services?.redis ?? { status: toRuntimeDependencyStatus(checks.redis) },
 });
 
-export const normalizeRuntimeHealthResponse = (health: RuntimeHealthResponse): RuntimeHealthResponse => {
+export const normalizeRuntimeHealthResponse = (
+  health: RuntimeHealthResponse
+): RuntimeHealthResponse => {
   const checks: Partial<RuntimeHealthResponse['checks']> = health.checks ?? {};
 
   return {
@@ -1156,11 +1298,10 @@ export const reconcileInstanceKeycloak = async (
   instanceId: string,
   payload: ReconcileInstanceKeycloakPayload
 ): Promise<ApiItemResponse<IamInstanceDetail['keycloakStatus']>> =>
-  postJsonWithReauth<ApiItemResponse<IamInstanceDetail['keycloakStatus']>, ReconcileInstanceKeycloakPayload>(
-    `/api/v1/iam/instances/${instanceId}/keycloak/reconcile`,
-    payload,
-    true
-  );
+  postJsonWithReauth<
+    ApiItemResponse<IamInstanceDetail['keycloakStatus']>,
+    ReconcileInstanceKeycloakPayload
+  >(`/api/v1/iam/instances/${instanceId}/keycloak/reconcile`, payload, true);
 
 export const probeTenantIamAccess = async (
   instanceId: string
@@ -1185,47 +1326,66 @@ export const revokeInstanceModule = async (
   instanceId: string,
   moduleId: string
 ): Promise<ApiItemResponse<IamInstanceDetail>> =>
-  postJsonWithReauth<ApiItemResponse<IamInstanceDetail>, { moduleId: string; confirmation: 'REVOKE' }>(
+  postJsonWithReauth<
+    ApiItemResponse<IamInstanceDetail>,
+    { moduleId: string; confirmation: 'REVOKE' }
+  >(
     `/api/v1/iam/instances/${instanceId}/modules/revoke`,
     { moduleId, confirmation: 'REVOKE' },
     true
   );
 
-export const seedInstanceIamBaseline = async (instanceId: string): Promise<ApiItemResponse<IamInstanceDetail>> =>
+export const seedInstanceIamBaseline = async (
+  instanceId: string
+): Promise<ApiItemResponse<IamInstanceDetail>> =>
   postJsonWithReauth<ApiItemResponse<IamInstanceDetail>, Record<string, never>>(
     `/api/v1/iam/instances/${instanceId}/modules/seed-iam-baseline`,
     {},
     true
   );
 
-export const activateInstance = async (instanceId: string): Promise<ApiItemResponse<IamInstanceListItem>> =>
+export const activateInstance = async (
+  instanceId: string
+): Promise<ApiItemResponse<IamInstanceListItem>> =>
   postJsonWithReauth<ApiItemResponse<IamInstanceListItem>, { status: 'active' }>(
     `/api/v1/iam/instances/${instanceId}/activate`,
     { status: 'active' },
     true
   );
 
-export const suspendInstance = async (instanceId: string): Promise<ApiItemResponse<IamInstanceListItem>> =>
+export const suspendInstance = async (
+  instanceId: string
+): Promise<ApiItemResponse<IamInstanceListItem>> =>
   postJsonWithReauth<ApiItemResponse<IamInstanceListItem>, { status: 'suspended' }>(
     `/api/v1/iam/instances/${instanceId}/suspend`,
     { status: 'suspended' },
     true
   );
 
-export const archiveInstance = async (instanceId: string): Promise<ApiItemResponse<IamInstanceListItem>> =>
+export const archiveInstance = async (
+  instanceId: string
+): Promise<ApiItemResponse<IamInstanceListItem>> =>
   postJsonWithReauth<ApiItemResponse<IamInstanceListItem>, { status: 'archived' }>(
     `/api/v1/iam/instances/${instanceId}/archive`,
     { status: 'archived' },
     true
   );
 
-export const getOrganization = async (organizationId: string): Promise<ApiItemResponse<IamOrganizationDetail>> =>
-  requestJson<ApiItemResponse<IamOrganizationDetail>>(`/api/v1/iam/organizations/${organizationId}`);
+export const getOrganization = async (
+  organizationId: string
+): Promise<ApiItemResponse<IamOrganizationDetail>> =>
+  requestJson<ApiItemResponse<IamOrganizationDetail>>(
+    `/api/v1/iam/organizations/${organizationId}`
+  );
 
 export const createOrganization = async (
   payload: CreateOrganizationPayload
 ): Promise<ApiItemResponse<IamOrganizationDetail>> =>
-  postJson<ApiItemResponse<IamOrganizationDetail>, CreateOrganizationPayload>('/api/v1/iam/organizations', payload, true);
+  postJson<ApiItemResponse<IamOrganizationDetail>, CreateOrganizationPayload>(
+    '/api/v1/iam/organizations',
+    payload,
+    true
+  );
 
 export const updateOrganization = async (
   organizationId: string,
@@ -1236,7 +1396,9 @@ export const updateOrganization = async (
     payload
   );
 
-export const deactivateOrganization = async (organizationId: string): Promise<ApiItemResponse<{ id: string }>> =>
+export const deactivateOrganization = async (
+  organizationId: string
+): Promise<ApiItemResponse<{ id: string }>> =>
   requestJson<ApiItemResponse<{ id: string }>>(`/api/v1/iam/organizations/${organizationId}`, {
     method: 'DELETE',
     headers: IAM_HEADERS,
@@ -1264,8 +1426,9 @@ export const removeOrganizationMembership = async (
     }
   );
 
-export const getMyOrganizationContext = async (): Promise<ApiItemResponse<IamOrganizationContext>> =>
-  requestJson<ApiItemResponse<IamOrganizationContext>>('/api/v1/iam/me/context');
+export const getMyOrganizationContext = async (): Promise<
+  ApiItemResponse<IamOrganizationContext>
+> => requestJson<ApiItemResponse<IamOrganizationContext>>('/api/v1/iam/me/context');
 
 export const listPermissions = async (): Promise<ApiListResponse<IamPermission>> =>
   requestJson<ApiListResponse<IamPermission>>('/api/v1/iam/permissions');
@@ -1273,9 +1436,12 @@ export const listPermissions = async (): Promise<ApiListResponse<IamPermission>>
 export const updateMyOrganizationContext = async (
   organizationId: string
 ): Promise<ApiItemResponse<IamOrganizationContext>> =>
-  putJson<ApiItemResponse<IamOrganizationContext>, { organizationId: string }>('/api/v1/iam/me/context', {
-    organizationId,
-  });
+  putJson<ApiItemResponse<IamOrganizationContext>, { organizationId: string }>(
+    '/api/v1/iam/me/context',
+    {
+      organizationId,
+    }
+  );
 
 export const createRole = async (
   payload: CreateRolePayload
@@ -1285,21 +1451,38 @@ export const createRole = async (
 export const createGroup = async (
   payload: CreateGroupPayload
 ): Promise<ApiItemResponse<{ id: string }>> =>
-  postJson<ApiItemResponse<{ id: string }>, CreateGroupPayload>('/api/v1/iam/groups', payload, true);
+  postJson<ApiItemResponse<{ id: string }>, CreateGroupPayload>(
+    '/api/v1/iam/groups',
+    payload,
+    true
+  );
 
 export const createLegalText = async (
   payload: CreateLegalTextPayload
 ): Promise<ApiItemResponse<IamLegalTextListItem>> =>
-  postJson<ApiItemResponse<IamLegalTextListItem>, CreateLegalTextPayload>('/api/v1/iam/legal-texts', payload, true);
+  postJson<ApiItemResponse<IamLegalTextListItem>, CreateLegalTextPayload>(
+    '/api/v1/iam/legal-texts',
+    payload,
+    true
+  );
 
-export const updateRole = async (roleId: string, payload: UpdateRolePayload): Promise<ApiItemResponse<IamRoleListItem>> =>
-  patchJson<ApiItemResponse<IamRoleListItem>, UpdateRolePayload>(`/api/v1/iam/roles/${roleId}`, payload);
+export const updateRole = async (
+  roleId: string,
+  payload: UpdateRolePayload
+): Promise<ApiItemResponse<IamRoleListItem>> =>
+  patchJson<ApiItemResponse<IamRoleListItem>, UpdateRolePayload>(
+    `/api/v1/iam/roles/${roleId}`,
+    payload
+  );
 
 export const updateGroup = async (
   groupId: string,
   payload: UpdateGroupPayload
 ): Promise<ApiItemResponse<{ id: string }>> =>
-  patchJson<ApiItemResponse<{ id: string }>, UpdateGroupPayload>(`/api/v1/iam/groups/${groupId}`, payload);
+  patchJson<ApiItemResponse<{ id: string }>, UpdateGroupPayload>(
+    `/api/v1/iam/groups/${groupId}`,
+    payload
+  );
 
 export const updateLegalText = async (
   legalTextVersionId: string,
@@ -1322,7 +1505,9 @@ export const deleteGroup = async (groupId: string): Promise<ApiItemResponse<{ id
     headers: IAM_HEADERS,
   });
 
-export const deleteLegalText = async (legalTextVersionId: string): Promise<ApiItemResponse<{ id: string }>> =>
+export const deleteLegalText = async (
+  legalTextVersionId: string
+): Promise<ApiItemResponse<{ id: string }>> =>
   requestJson<ApiItemResponse<{ id: string }>>(`/api/v1/iam/legal-texts/${legalTextVersionId}`, {
     method: 'DELETE',
     headers: IAM_HEADERS,
@@ -1342,10 +1527,13 @@ export const removeGroupRole = async (
   groupId: string,
   roleId: string
 ): Promise<ApiItemResponse<{ groupId: string; roleId: string }>> =>
-  requestJson<ApiItemResponse<{ groupId: string; roleId: string }>>(`/api/v1/iam/groups/${groupId}/roles/${roleId}`, {
-    method: 'DELETE',
-    headers: IAM_HEADERS,
-  });
+  requestJson<ApiItemResponse<{ groupId: string; roleId: string }>>(
+    `/api/v1/iam/groups/${groupId}/roles/${roleId}`,
+    {
+      method: 'DELETE',
+      headers: IAM_HEADERS,
+    }
+  );
 
 export const assignGroupMembership = async (
   groupId: string,
@@ -1393,15 +1581,21 @@ export const listGovernanceCases = async (
     params.set('search', query.search);
   }
 
-  return requestJson<ApiListResponse<IamGovernanceCaseListItem>>(`/iam/governance/workflows?${params.toString()}`, {
-    signal: options?.signal,
-  }, {
-    signal: options?.signal,
-    timeoutMs: HEAVY_IAM_REQUEST_TIMEOUT_MS,
-  });
+  return requestJson<ApiListResponse<IamGovernanceCaseListItem>>(
+    `/iam/governance/workflows?${params.toString()}`,
+    {
+      signal: options?.signal,
+    },
+    {
+      signal: options?.signal,
+      timeoutMs: HEAVY_IAM_REQUEST_TIMEOUT_MS,
+    }
+  );
 };
 
-export const getMyDataSubjectRights = async (): Promise<ApiItemResponse<IamDsrSelfServiceOverview>> =>
+export const getMyDataSubjectRights = async (): Promise<
+  ApiItemResponse<IamDsrSelfServiceOverview>
+> =>
   requestJson<ApiItemResponse<IamDsrSelfServiceOverview>>('/iam/me/data-subject-rights/requests');
 
 export const getMyPendingLegalTexts = async (): Promise<ApiListResponse<IamPendingLegalTextItem>> =>
@@ -1414,7 +1608,9 @@ export const acceptLegalText = async (payload: {
   readonly legalTextId: string;
   readonly legalTextVersion: string;
   readonly locale: string;
-}): Promise<ApiItemResponse<{ workflowId: string; operation: 'accept_legal_text'; status: 'ok' }>> =>
+}): Promise<
+  ApiItemResponse<{ workflowId: string; operation: 'accept_legal_text'; status: 'ok' }>
+> =>
   postJson<
     ApiItemResponse<{ workflowId: string; operation: 'accept_legal_text'; status: 'ok' }>,
     {
@@ -1453,30 +1649,44 @@ export const requestDataExport = async (input: {
   | ApiItemResponse<{ exportJobId: string; status: string; format: string }>
   | { exportJobId?: undefined; status?: undefined; format?: undefined; data?: unknown }
 > => {
-  return requestJsonOrText('/iam/me/data-export', {
-    method: 'POST',
-    headers: {
-      ...IAM_HEADERS,
-      'Idempotency-Key': createIdempotencyKey(),
+  return requestJsonOrText(
+    '/iam/me/data-export',
+    {
+      method: 'POST',
+      headers: {
+        ...IAM_HEADERS,
+        'Idempotency-Key': createIdempotencyKey(),
+      },
+      body: JSON.stringify({
+        format: input.format,
+        async: input.async,
+      }),
     },
-    body: JSON.stringify({
-      format: input.format,
-      async: input.async,
-    }),
-  }, {
-    timeoutMs: HEAVY_IAM_REQUEST_TIMEOUT_MS,
-  });
+    {
+      timeoutMs: HEAVY_IAM_REQUEST_TIMEOUT_MS,
+    }
+  );
 };
 
 export const getDataExportStatus = async (
   jobId: string
-): Promise<ApiItemResponse<{ id: string; format: string; status: string; createdAt: string; completedAt?: string; errorMessage?: string }>> =>
+): Promise<
+  ApiItemResponse<{
+    id: string;
+    format: string;
+    status: string;
+    createdAt: string;
+    completedAt?: string;
+    errorMessage?: string;
+  }>
+> =>
   requestJson(`/iam/me/data-export/status?jobId=${encodeURIComponent(jobId)}`, undefined, {
     timeoutMs: HEAVY_IAM_REQUEST_TIMEOUT_MS,
   });
 
 export const checkOptionalProcessing = async (): Promise<
-  ApiItemResponse<{ status: 'ok'; executed: true }> | { error: string; blockedByRestriction?: boolean; blockedByObjection?: boolean }
+  | ApiItemResponse<{ status: 'ok'; executed: true }>
+  | { error: string; blockedByRestriction?: boolean; blockedByObjection?: boolean }
 > =>
   requestJson('/iam/me/optional-processing/execute', {
     method: 'POST',
@@ -1503,10 +1713,14 @@ export const listAdminDsrCases = async (
     params.set('search', query.search);
   }
 
-  return requestJson<ApiListResponse<IamDsrCaseListItem>>(`/iam/admin/data-subject-rights/cases?${params.toString()}`, {
-    signal: options?.signal,
-  }, {
-    signal: options?.signal,
-    timeoutMs: HEAVY_IAM_REQUEST_TIMEOUT_MS,
-  });
+  return requestJson<ApiListResponse<IamDsrCaseListItem>>(
+    `/iam/admin/data-subject-rights/cases?${params.toString()}`,
+    {
+      signal: options?.signal,
+    },
+    {
+      signal: options?.signal,
+      timeoutMs: HEAVY_IAM_REQUEST_TIMEOUT_MS,
+    }
+  );
 };

@@ -150,15 +150,18 @@ const summarizePermission = (permissionKey: string) => {
   };
 };
 
-const sortPermissionIdsByCatalog = (
+export const sortPermissionIdsByCatalog = (
   permissionIds: readonly string[],
   catalog: readonly { id: string; permissionKey: string }[]
-) =>
-  [...permissionIds].sort((left, right) => {
-    const leftKey = catalog.find((permission) => permission.id === left)?.permissionKey ?? left;
-    const rightKey = catalog.find((permission) => permission.id === right)?.permissionKey ?? right;
+) => {
+  const permissionKeyById = new Map(catalog.map((permission) => [permission.id, permission.permissionKey] as const));
+
+  return [...permissionIds].sort((left, right) => {
+    const leftKey = permissionKeyById.get(left) ?? left;
+    const rightKey = permissionKeyById.get(right) ?? right;
     return leftKey.localeCompare(rightKey);
   });
+};
 
 const groupPermissionsByCatalog = (
   permissions: readonly { id: string; permissionKey: string; description?: string | null }[]

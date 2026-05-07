@@ -98,7 +98,7 @@ const parseCliOptions = (argv: readonly string[]): CliOptions => {
     idempotencyKey?: string;
   } = {
     jsonOutput: false,
-    realmMode: 'existing',
+    realmMode: 'new',
   };
 
   for (let index = 0; index < rawOptions.length; index += 1) {
@@ -183,7 +183,7 @@ const parseCliOptions = (argv: readonly string[]): CliOptions => {
     jsonOutput: parsed.jsonOutput,
     mainserverConfigRef: parsed.mainserverConfigRef,
     parentDomain: parsed.parentDomain,
-    realmMode: parsed.realmMode ?? 'existing',
+    realmMode: parsed.realmMode ?? 'new',
     search: parsed.search,
     status: parseStatusOption(parsed.status),
     themeKey: parsed.themeKey,

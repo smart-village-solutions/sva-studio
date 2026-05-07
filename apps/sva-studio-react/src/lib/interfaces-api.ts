@@ -1,5 +1,9 @@
 import { createServerFn } from '@tanstack/react-start';
 
+import {
+  type SaveSvaMainserverInterfaceSettingsInput,
+  type SvaMainserverInterfacesOverview,
+} from '@sva/sva-mainserver/server';
 import type { SvaMainserverConnectionStatus, SvaMainserverInstanceConfig } from '@sva/sva-mainserver';
 
 import { extractErrorDiagnostics, isRecord, readErrorMessage } from './error-message-utils';
@@ -7,11 +11,7 @@ import { hasInterfacesAccessRole } from './iam-admin-access';
 
 const COMPONENT = 'interfaces-api';
 
-type InterfacesOverviewModel = {
-  readonly instanceId: string;
-  readonly config: SvaMainserverInstanceConfig | null;
-  readonly status: SvaMainserverConnectionStatus;
-};
+type InterfacesOverviewModel = SvaMainserverInterfacesOverview;
 
 type SaveInterfacesPayload = {
   readonly graphqlBaseUrl?: string;
@@ -38,54 +38,6 @@ const isSvaMainserverInstanceConfig = (value: unknown): value is SvaMainserverIn
     typeof value.graphqlBaseUrl === 'string' &&
     typeof value.oauthTokenUrl === 'string' &&
     typeof value.enabled === 'boolean'
-  );
-};
-
-const isSvaMainserverConnectionStatus = (value: unknown): value is SvaMainserverConnectionStatus => {
-  if (!isRecord(value)) {
-    return false;
-  }
-
-  if (value.status !== 'connected' && value.status !== 'error') {
-    return false;
-  }
-
-  if (typeof value.checkedAt !== 'string') {
-    return false;
-  }
-
-  if (value.config !== undefined && value.config !== null && !isSvaMainserverInstanceConfig(value.config)) {
-    return false;
-  }
-
-  if (value.queryRootTypename !== undefined && typeof value.queryRootTypename !== 'string') {
-    return false;
-  }
-
-  if (value.mutationRootTypename !== undefined && typeof value.mutationRootTypename !== 'string') {
-    return false;
-  }
-
-  if (value.errorCode !== undefined && typeof value.errorCode !== 'string') {
-    return false;
-  }
-
-  if (value.errorMessage !== undefined && typeof value.errorMessage !== 'string') {
-    return false;
-  }
-
-  return true;
-};
-
-const isInterfacesOverviewModel = (payload: unknown): payload is InterfacesOverviewModel => {
-  if (!isRecord(payload)) {
-    return false;
-  }
-
-  return (
-    typeof payload.instanceId === 'string' &&
-    (payload.config === null || payload.config === undefined || isSvaMainserverInstanceConfig(payload.config)) &&
-    isSvaMainserverConnectionStatus(payload.status)
   );
 };
 
@@ -212,221 +164,229 @@ const createClientError = (payload: ErrorPayload | null, fallbackMessage: string
   });
 };
 
-const getOverviewFallbackStatus = (
-  response: Response,
-  payload: ErrorPayload | null
-): SvaMainserverConnectionStatus => {
-  if (response.status === 401 || payload?.error === 'unauthorized') {
-    return createErrorStatus('unauthorized');
-  }
+type ServerRuntimeLogger = Awaited<typeof import('@sva/server-runtime')> extends {
+  createSdkLogger: (...args: never[]) => infer T;
+}
+  ? T
+  : never;
 
-  if (response.status === 403 || payload?.error === 'forbidden') {
-    return createErrorStatus('forbidden');
-  }
-
-  if (payload && isSvaMainserverErrorCode(payload.error)) {
-    return createErrorStatus(payload.error);
-  }
-
-  return createErrorStatus('network_error');
+type AuthenticatedInterfacesUser = {
+  readonly id: string;
+  readonly instanceId?: string;
+  readonly roles: string[];
 };
 
-export const loadInterfacesOverview = createServerFn().handler(async (): Promise<InterfacesOverviewModel> => {
-  try {
-    const { getRequest } = await import('@tanstack/react-start/server');
-    const { withAuthenticatedUser } = await import('@sva/auth-runtime/server');
-    const { getSvaMainserverConnectionStatus, loadSvaMainserverSettings } = await import('@sva/sva-mainserver/server');
-    const { createSdkLogger } = await import('@sva/server-runtime');
-    const logger = createSdkLogger({ component: COMPONENT });
-    const request = getRequest();
+type InterfacesRequestDependencies = {
+  readonly request: Request;
+  readonly logger: ServerRuntimeLogger;
+};
 
-    const response = await withAuthenticatedUser(request, async ({ user }) => {
-      const instanceId = user.instanceId;
+type SaveInterfacesDependencies = InterfacesRequestDependencies & {
+  readonly saveSvaMainserverSettings: typeof import('@sva/sva-mainserver/server').saveSvaMainserverSettings;
+};
 
-      if (!instanceId) {
-        logger.warn('Load interfaces overview rejected: missing instance context', {
-          operation: 'load_interfaces_overview',
-          user_id: user.id,
-        });
-        return jsonResponse(400, {
-          instanceId: '',
-          config: null,
-          status: createErrorStatus('invalid_config'),
-        } satisfies InterfacesOverviewModel);
-      }
+const loadInterfacesRequestDependencies = async (): Promise<InterfacesRequestDependencies> => {
+  const { getRequest } = await import('@tanstack/react-start/server');
+  const { createSdkLogger } = await import('@sva/server-runtime');
 
-      if (!hasInterfacesAccessRole(user)) {
-        logger.warn('Load interfaces overview rejected: insufficient permissions', {
-          operation: 'load_interfaces_overview',
-          workspace_id: instanceId,
-          user_id: user.id,
-          user_roles: user.roles,
-        });
-        return jsonResponse(403, {
-          instanceId,
-          config: null,
-          status: createErrorStatus('forbidden', 'Keine Berechtigung zur Schnittstellenverwaltung.'),
-        } satisfies InterfacesOverviewModel);
-      }
+  return {
+    request: getRequest(),
+    logger: createSdkLogger({ component: COMPONENT }),
+  };
+};
 
-      let config: Awaited<ReturnType<typeof loadSvaMainserverSettings>>;
-      try {
-        config = await loadSvaMainserverSettings(instanceId);
-        logger.info('Interfaces settings loaded', {
-          operation: 'load_interfaces_overview',
-          workspace_id: instanceId,
-          has_config: config !== null,
-        });
-      } catch (error) {
-        logger.error('Failed to load interfaces settings from data layer', {
-          operation: 'load_interfaces_overview',
-          workspace_id: instanceId,
-          error_message: error instanceof Error ? error.message : String(error),
-        });
-        return jsonResponse(200, {
-          instanceId,
-          config: null,
-          status: createErrorStatus('invalid_config'),
-        } satisfies InterfacesOverviewModel);
-      }
+const loadSaveInterfacesDependencies = async (): Promise<SaveInterfacesDependencies> => {
+  const base = await loadInterfacesRequestDependencies();
+  const { saveSvaMainserverSettings } = await import('@sva/sva-mainserver/server');
 
-      let status: SvaMainserverConnectionStatus;
-      try {
-        status = await getSvaMainserverConnectionStatus({
-          instanceId,
-          keycloakSubject: user.id,
-        });
-        logger.info('Interfaces connection status evaluated', {
-          operation: 'load_interfaces_overview',
-          workspace_id: instanceId,
-          connection_status: status.status,
-          error_code: status.errorCode,
-        });
-      } catch (error) {
-        logger.warn('Failed to evaluate interfaces connection status', {
-          operation: 'load_interfaces_overview',
-          workspace_id: instanceId,
-          ...extractErrorDiagnostics(error),
-        });
-        status = createErrorStatus('network_error');
-      }
+  return {
+    ...base,
+    saveSvaMainserverSettings,
+  };
+};
 
-      return jsonResponse(200, {
-        instanceId,
-        config,
-        status,
-      } satisfies InterfacesOverviewModel);
-    });
+const requireInterfacesInstanceId = (
+  logger: ServerRuntimeLogger,
+  user: AuthenticatedInterfacesUser,
+  operation: 'load_interfaces_overview' | 'save_interfaces_settings'
+): string | Response => {
+  if (user.instanceId) {
+    return user.instanceId;
+  }
 
-    const payload = await parseJson<InterfacesOverviewModel | ErrorPayload>(response);
-    if (payload && isInterfacesOverviewModel(payload)) {
-      return payload;
+  logger.warn(
+    operation === 'load_interfaces_overview'
+      ? 'Load interfaces overview rejected: missing instance context'
+      : 'Save interfaces settings rejected: missing instance context',
+    {
+      operation,
+      user_id: user.id,
     }
+  );
 
-    logger.warn('Load interfaces overview returned unexpected payload', {
-      operation: 'load_interfaces_overview',
-      http_status: response.status,
-      payload_type: payload === null ? 'null' : typeof payload,
-      payload_message: payload?.message,
-      payload_error: payload?.error,
+  return operation === 'load_interfaces_overview'
+    ? jsonResponse(400, {
+        instanceId: '',
+        config: null,
+        status: createErrorStatus('invalid_config'),
+      } satisfies InterfacesOverviewModel)
+    : jsonResponse(400, { error: 'invalid_config' } satisfies ErrorPayload);
+};
+
+const requireInterfacesAccess = (
+  logger: ServerRuntimeLogger,
+  user: AuthenticatedInterfacesUser,
+  instanceId: string,
+  operation: 'load_interfaces_overview' | 'save_interfaces_settings'
+): Response | null => {
+  if (hasInterfacesAccessRole(user)) {
+    return null;
+  }
+
+  logger.warn(
+    operation === 'load_interfaces_overview'
+      ? 'Load interfaces overview rejected: insufficient permissions'
+      : 'Save interfaces settings rejected: insufficient permissions',
+    {
+      operation,
+      workspace_id: instanceId,
+      user_id: user.id,
+      user_roles: user.roles,
+    }
+  );
+
+  return operation === 'load_interfaces_overview'
+    ? jsonResponse(403, {
+        instanceId,
+        config: null,
+        status: createErrorStatus('forbidden', 'Keine Berechtigung zur Schnittstellenverwaltung.'),
+      } satisfies InterfacesOverviewModel)
+    : jsonResponse(403, { error: 'forbidden' } satisfies ErrorPayload);
+};
+
+const validateSaveInterfacesPayload = (
+  logger: ServerRuntimeLogger,
+  user: AuthenticatedInterfacesUser,
+  instanceId: string,
+  payloadData: SaveInterfacesPayload
+): Response | null => {
+  if (typeof payloadData.enabled === 'boolean') {
+    return null;
+  }
+
+  logger.warn('Save interfaces settings rejected: missing enabled flag', {
+    operation: 'save_interfaces_settings',
+    workspace_id: instanceId,
+    user_id: user.id,
+  });
+  return jsonResponse(400, { error: 'invalid_config' } satisfies ErrorPayload);
+};
+
+const persistInterfacesSettings = async (
+  input: SaveInterfacesDependencies & {
+    readonly instanceId: string;
+    readonly payloadData: SaveInterfacesPayload & { readonly enabled: boolean };
+  }
+): Promise<SvaMainserverInstanceConfig | Response> => {
+  input.logger.info('Saving interfaces settings', {
+    operation: 'save_interfaces_settings',
+    workspace_id: input.instanceId,
+    enabled: input.payloadData.enabled,
+  });
+
+  try {
+    const config = await input.saveSvaMainserverSettings({
+      instanceId: input.instanceId,
+      graphqlBaseUrl: input.payloadData.graphqlBaseUrl?.trim() ?? '',
+      oauthTokenUrl: input.payloadData.oauthTokenUrl?.trim() ?? '',
+      enabled: input.payloadData.enabled,
     });
 
-    return {
-      instanceId: '',
-      config: null,
-      status: getOverviewFallbackStatus(response, isErrorPayload(payload) ? payload : null),
-    };
+    input.logger.info('Interfaces settings saved successfully', {
+      operation: 'save_interfaces_settings',
+      workspace_id: input.instanceId,
+      enabled: config.enabled,
+    });
+    return config;
   } catch (error) {
-    const { createSdkLogger } = await import('@sva/server-runtime');
-    const logger = createSdkLogger({ component: COMPONENT });
-    logger.error('Unexpected error loading interfaces overview', {
-      operation: 'load_interfaces_overview',
+    const errorPayload = getErrorPayload(error, 'network_error');
+    input.logger.error('Failed to persist interfaces settings', {
+      operation: 'save_interfaces_settings',
+      workspace_id: input.instanceId,
+      error_code: errorPayload.error,
+      error_field: errorPayload.field,
       ...extractErrorDiagnostics(error),
     });
+    return jsonResponse(getErrorStatusCode(error, 500), errorPayload);
+  }
+};
+
+const saveInterfacesSettingsForUser = async (
+  input: SaveInterfacesDependencies & {
+    readonly user: AuthenticatedInterfacesUser;
+    readonly payloadData: SaveInterfacesPayload;
+  }
+): Promise<Response> => {
+  const instanceId = requireInterfacesInstanceId(input.logger, input.user, 'save_interfaces_settings');
+  if (instanceId instanceof Response) {
+    return instanceId;
+  }
+
+  const accessError = requireInterfacesAccess(input.logger, input.user, instanceId, 'save_interfaces_settings');
+  if (accessError) {
+    return accessError;
+  }
+
+  const validationError = validateSaveInterfacesPayload(input.logger, input.user, instanceId, input.payloadData);
+  if (validationError) {
+    return validationError;
+  }
+
+  const config = await persistInterfacesSettings({
+    ...input,
+    instanceId,
+    payloadData: {
+      ...input.payloadData,
+      enabled: input.payloadData.enabled,
+    } as SaveInterfacesPayload & { readonly enabled: boolean },
+  });
+
+  return config instanceof Response ? config : jsonResponse(200, config);
+};
+
+export const loadSvaMainserverInterfacesOverviewServerFn = createServerFn().handler(async (): Promise<InterfacesOverviewModel> => {
+  try {
+    const { getRequest } = await import('@tanstack/react-start/server');
+    const { loadSvaMainserverInterfacesOverview } = await import('@sva/sva-mainserver/server');
+
+    return await loadSvaMainserverInterfacesOverview(getRequest());
+  } catch (error) {
+    const message = readErrorMessage(error, 'Schnittstellenstatus konnte nicht geladen werden.');
     return {
       instanceId: '',
       config: null,
-      status: createErrorStatus('network_error'),
+      status: createErrorStatus('network_error', message),
     };
   }
 });
 
+export const loadInterfacesOverview = loadSvaMainserverInterfacesOverviewServerFn;
+
 export const saveSvaMainserverInterfaceSettings = createServerFn({ method: 'POST' })
-  .inputValidator((data: SaveInterfacesPayload) => data)
+  .inputValidator((data: SaveSvaMainserverInterfaceSettingsInput['data']) => data)
   .handler(async ({ data }): Promise<SvaMainserverInstanceConfig> => {
     try {
-      const { getRequest } = await import('@tanstack/react-start/server');
       const { withAuthenticatedUser } = await import('@sva/auth-runtime/server');
-      const { saveSvaMainserverSettings } = await import('@sva/sva-mainserver/server');
-      const { createSdkLogger } = await import('@sva/server-runtime');
-      const logger = createSdkLogger({ component: COMPONENT });
-      const request = getRequest();
+      const dependencies = await loadSaveInterfacesDependencies();
       const payloadData = (data ?? {}) as SaveInterfacesPayload;
 
-      const response = await withAuthenticatedUser(request, async ({ user }) => {
-        const instanceId = user.instanceId;
-
-        if (!instanceId) {
-          logger.warn('Save interfaces settings rejected: missing instance context', {
-            operation: 'save_interfaces_settings',
-            user_id: user.id,
-          });
-          return jsonResponse(400, { error: 'invalid_config' } satisfies ErrorPayload);
-        }
-
-        if (!hasInterfacesAccessRole(user)) {
-          logger.warn('Save interfaces settings rejected: insufficient permissions', {
-            operation: 'save_interfaces_settings',
-            workspace_id: instanceId,
-            user_id: user.id,
-            user_roles: user.roles,
-          });
-          return jsonResponse(403, { error: 'forbidden' } satisfies ErrorPayload);
-        }
-
-        if (typeof payloadData.enabled !== 'boolean') {
-          logger.warn('Save interfaces settings rejected: missing enabled flag', {
-            operation: 'save_interfaces_settings',
-            workspace_id: instanceId,
-            user_id: user.id,
-          });
-          return jsonResponse(400, { error: 'invalid_config' } satisfies ErrorPayload);
-        }
-
-        logger.info('Saving interfaces settings', {
-          operation: 'save_interfaces_settings',
-          workspace_id: instanceId,
-          enabled: payloadData.enabled,
-        });
-
-        let config: SvaMainserverInstanceConfig;
-        try {
-          config = await saveSvaMainserverSettings({
-            instanceId,
-            graphqlBaseUrl: payloadData.graphqlBaseUrl?.trim() ?? '',
-            oauthTokenUrl: payloadData.oauthTokenUrl?.trim() ?? '',
-            enabled: payloadData.enabled,
-          });
-        } catch (error) {
-          const errorPayload = getErrorPayload(error, 'network_error');
-          logger.error('Failed to persist interfaces settings', {
-            operation: 'save_interfaces_settings',
-            workspace_id: instanceId,
-            error_code: errorPayload.error,
-            error_field: errorPayload.field,
-            ...extractErrorDiagnostics(error),
-          });
-          return jsonResponse(getErrorStatusCode(error, 500), errorPayload);
-        }
-
-        logger.info('Interfaces settings saved successfully', {
-          operation: 'save_interfaces_settings',
-          workspace_id: instanceId,
-          enabled: config.enabled,
-        });
-
-        return jsonResponse(200, config);
-      });
+      const response = await withAuthenticatedUser(dependencies.request, ({ user }) =>
+        saveInterfacesSettingsForUser({
+          ...dependencies,
+          user,
+          payloadData,
+        })
+      );
 
       const payload = await parseJson<SvaMainserverInstanceConfig | ErrorPayload>(response);
       if (response.ok && isSvaMainserverInstanceConfig(payload)) {

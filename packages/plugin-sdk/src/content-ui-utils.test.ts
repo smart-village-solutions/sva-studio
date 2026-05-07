@@ -6,41 +6,43 @@ import {
   fromDatetimeLocalValue,
   toDatetimeLocalValue,
   toHostMediaFieldOptions,
-} from './index.js';
+} from './content-ui-utils.js';
 
-describe('content ui utils', () => {
-  it('normalizes optional strings and datetime-local values', () => {
-    const datetimeLocalValue = '2026-05-01T12:30';
+describe('content-ui-utils', () => {
+  it('compacts optional strings and converts datetime-local values safely', () => {
+    expect(compactOptionalString('  Titel  ')).toBe('Titel');
+    expect(compactOptionalString('   ')).toBeUndefined();
+    expect(compactOptionalString()).toBeUndefined();
 
-    expect(compactOptionalString('  ')).toBeUndefined();
-    expect(compactOptionalString('  value  ')).toBe('value');
     expect(toDatetimeLocalValue(undefined)).toBe('');
-    expect(toDatetimeLocalValue('not-a-date')).toBe('');
-    expect(toDatetimeLocalValue('2026-05-01T10:15:00.000Z')).toMatch(/^2026-05-01T/);
+    expect(toDatetimeLocalValue('invalid-date')).toBe('');
+    expect(toDatetimeLocalValue('2026-04-29T09:30:00.000Z')).toMatch(/^2026-04-29T\d{2}:\d{2}$/);
+
     expect(fromDatetimeLocalValue('')).toBe('');
-    expect(fromDatetimeLocalValue('not-a-date')).toBe('');
-    expect(toDatetimeLocalValue(fromDatetimeLocalValue(datetimeLocalValue))).toBe(datetimeLocalValue);
+    expect(fromDatetimeLocalValue('invalid-date')).toBe('');
+    expect(fromDatetimeLocalValue('2026-04-29T11:45')).toContain('2026-04-29T');
   });
 
-  it('maps host media responses to field options and resolves role-based selections', () => {
+  it('maps host media options and resolves references by role with fallback behavior', () => {
     expect(
       toHostMediaFieldOptions([
-        { id: 'asset-1', metadata: { title: 'Hero Image' } },
+        { id: 'asset-1', metadata: { title: 'Titelbild' } },
         { id: 'asset-2' },
       ])
     ).toEqual([
-      { assetId: 'asset-1', label: 'Hero Image' },
+      { assetId: 'asset-1', label: 'Titelbild' },
       { assetId: 'asset-2', label: 'asset-2' },
     ]);
+
     expect(
       findHostMediaReferenceAssetId(
         [
-          { assetId: 'asset-1', role: 'header_image' },
-          { assetId: 'asset-2', role: 'teaser_image' },
+          { assetId: 'asset-1', role: 'teaser_image' },
+          { assetId: 'asset-2', role: 'gallery_item' },
         ],
-        'teaser_image'
+        'gallery_item'
       )
     ).toBe('asset-2');
-    expect(findHostMediaReferenceAssetId([], 'missing')).toBeNull();
+    expect(findHostMediaReferenceAssetId([{ assetId: 'asset-1', role: 'teaser_image' }], 'hero')).toBeNull();
   });
 });

@@ -66,6 +66,9 @@ describe('MediaPage', () => {
       ],
       isLoading: false,
       error: null,
+      page: 1,
+      pageSize: 25,
+      total: 60,
       refetch: vi.fn(),
     });
     useCreateMediaUploadMock.mockReturnValue({
@@ -134,6 +137,19 @@ describe('MediaPage', () => {
     expect(screen.getAllByText('Hero').length).toBeGreaterThan(0);
     expect(screen.getByRole('link', { name: 'Medium vorbereiten' }).getAttribute('href')).toBe('/admin/media/new');
     expect(screen.getAllByRole('link', { name: 'Öffnen' })[0]?.getAttribute('href')).toBe('/admin/media/asset-1');
+    expect(useMediaLibraryMock).toHaveBeenCalledWith({ search: undefined, visibility: 'all', page: 1, pageSize: 25 });
+    expect(screen.getByText('Seite 1 von 3')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Weiter' })).toBeTruthy();
+  });
+
+  it('advances the media library page and resets to page one when filters change', () => {
+    render(<MediaPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+    expect(useMediaLibraryMock).toHaveBeenLastCalledWith({ search: undefined, visibility: 'all', page: 2, pageSize: 25 });
+
+    fireEvent.change(screen.getByLabelText('Sichtbarkeit'), { target: { value: 'protected' } });
+    expect(useMediaLibraryMock).toHaveBeenLastCalledWith({ search: undefined, visibility: 'protected', page: 1, pageSize: 25 });
   });
 
   it('renders the upload initialization form on the create route', () => {
@@ -269,10 +285,10 @@ describe('MediaPage', () => {
         visibility: 'protected',
         metadata: {
           title: 'Detail Asset',
-          altText: undefined,
-          description: undefined,
-          copyright: undefined,
-          license: undefined,
+          altText: null,
+          description: null,
+          copyright: null,
+          license: null,
           focusPoint: { x: 0.25, y: 0.75 },
           crop: { x: 12, y: 24, width: 640, height: 360 },
         },
@@ -323,10 +339,10 @@ describe('MediaPage', () => {
         visibility: 'public',
         metadata: {
           title: 'Detail Asset',
-          altText: undefined,
-          description: undefined,
-          copyright: undefined,
-          license: undefined,
+          altText: null,
+          description: null,
+          copyright: null,
+          license: null,
           focusPoint: undefined,
           crop: undefined,
         },

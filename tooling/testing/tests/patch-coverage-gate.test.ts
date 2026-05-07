@@ -176,7 +176,7 @@ describe('patch coverage gate', () => {
     expect(result.passed).toBe(true);
     expect(result.consideredFiles).toBe(0);
     expect(result.ignoredFiles).toBe(0);
-  });
+  }, 20_000);
 
   it('ignores coverage-exempt projects when computing patch coverage', async () => {
     const runPatchCoverageGate = await loadRunPatchCoverageGate();

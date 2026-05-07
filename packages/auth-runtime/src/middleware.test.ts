@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 type TestSessionUser = {
   id: string;
@@ -7,7 +7,13 @@ type TestSessionUser = {
   instanceId?: string;
 };
 
-const getSessionUserMock = vi.hoisted(() => vi.fn<(_sessionId: string) => Promise<TestSessionUser | null>>());
+type SessionResolutionResult =
+  | { kind: 'authenticated'; user: TestSessionUser | null }
+  | { kind: 'invalid'; reason: string };
+
+const getSessionUserMock = vi.hoisted(() =>
+  vi.fn<(_sessionId: string) => Promise<SessionResolutionResult>>()
+);
 const middlewareLogger = vi.hoisted(() => ({
   debug: vi.fn(),
   error: vi.fn(),
@@ -29,7 +35,8 @@ const authServerMocks = vi.hoisted(() => ({
   shouldEnforceLegalTextCompliance: vi.fn(async () => false),
   validateTenantHost: vi.fn(async () => null as Response | null),
   withLegalTextCompliance: vi.fn(
-    async (_instanceId: string, _userId: string, handler: () => Promise<Response> | Response) => handler()
+    async (_instanceId: string, _userId: string, handler: () => Promise<Response> | Response) =>
+      handler()
   ),
 }));
 
@@ -40,21 +47,6 @@ vi.mock('@sva/server-runtime', () => ({
     traceId: 'trace-auth-runtime',
     workspaceId: 'de-musterhausen',
   }),
-  toJsonErrorResponse: (status: number, code: string, publicMessage?: string, options?: { requestId?: string }) =>
-    new Response(
-      JSON.stringify({
-        error: code,
-        ...(publicMessage ? { message: publicMessage } : {}),
-        ...(options?.requestId ? { requestId: options.requestId } : {}),
-      }),
-      {
-        status,
-        headers: {
-          'Content-Type': 'application/json',
-          ...(options?.requestId ? { 'X-Request-Id': options.requestId } : {}),
-        },
-      }
-    ),
 }));
 
 vi.mock('./middleware-hosts.js', () => ({
@@ -80,28 +72,64 @@ vi.mock('./mock-auth.js', () => ({
 }));
 
 vi.mock('./auth-server/session.js', () => ({
-  getSessionUser: getSessionUserMock,
+  resolveSessionUser: getSessionUserMock,
 }));
 
 describe('auth-runtime withAuthenticatedUser', () => {
+  let withAuthenticatedUser: typeof import('./middleware.js').withAuthenticatedUser;
+
+  beforeAll(async () => {
+    ({ withAuthenticatedUser } = await import('./middleware.js'));
+  });
+
   beforeEach(() => {
     vi.resetAllMocks();
     authServerMocks.getAuthConfig.mockReturnValue({
       sessionCookieName: 'sva_auth_session',
     });
     authServerMocks.isMockAuthEnabled.mockReturnValue(false);
-    authServerMocks.resolveSessionUser.mockImplementation(async (_request, sessionUser) => sessionUser);
+    authServerMocks.resolveSessionUser.mockImplementation(
+      async (_request, sessionUser) => sessionUser
+    );
     authServerMocks.shouldEnforceLegalTextCompliance.mockResolvedValue(false);
     authServerMocks.validateTenantHost.mockResolvedValue(null);
-    authServerMocks.withLegalTextCompliance.mockImplementation(async (_instanceId, _userId, handler) => handler());
+    authServerMocks.withLegalTextCompliance.mockImplementation(
+      async (_instanceId, _userId, handler) => handler()
+    );
+    getSessionUserMock.mockResolvedValue({
+      kind: 'authenticated',
+      user: {
+        id: 'user-1',
+        name: 'Max',
+        roles: ['admin'],
+        instanceId: 'de-musterhausen',
+      },
+    });
   });
 
   it('rejects requests without a session cookie before reading the session store', async () => {
-    const { withAuthenticatedUser } = await import('./middleware.js');
-    const response = await withAuthenticatedUser(new Request('http://localhost/auth/me'), () => new Response('ok'));
+    const response = await withAuthenticatedUser(
+      new Request('http://localhost/auth/me'),
+      () => new Response('ok')
+    );
 
     expect(response.status).toBe(401);
-    await expect(response.json()).resolves.toEqual({ error: 'unauthorized' });
+    await expect(response.json()).resolves.toEqual({
+      error: {
+        code: 'unauthorized',
+        message: 'Anmeldung erforderlich.',
+        classification: 'session_store_or_session_hydration',
+        recommendedAction: 'erneut_anmelden',
+        status: 'recovery_laeuft',
+        safeDetails: {
+          reason_code: 'missing_session_cookie',
+        },
+        details: {
+          reason_code: 'missing_session_cookie',
+        },
+      },
+      requestId: 'req-auth-runtime',
+    });
     expect(getSessionUserMock).not.toHaveBeenCalled();
     expect(middlewareLogger.debug).toHaveBeenCalledWith(
       'Auth middleware rejected request without session cookie',
@@ -114,8 +142,7 @@ describe('auth-runtime withAuthenticatedUser', () => {
   });
 
   it('rejects invalid sessions', async () => {
-    getSessionUserMock.mockResolvedValue(null);
-    const { withAuthenticatedUser } = await import('./middleware.js');
+    getSessionUserMock.mockResolvedValue({ kind: 'invalid', reason: 'invalid_session' });
     const request = new Request('http://localhost/auth/me', {
       headers: { cookie: 'sva_auth_session=session-1' },
     });
@@ -124,7 +151,22 @@ describe('auth-runtime withAuthenticatedUser', () => {
 
     expect(getSessionUserMock).toHaveBeenCalledWith('session-1');
     expect(response.status).toBe(401);
-    await expect(response.json()).resolves.toEqual({ error: 'unauthorized' });
+    await expect(response.json()).resolves.toEqual({
+      error: {
+        code: 'unauthorized',
+        message: 'Die Sitzung ist nicht mehr gültig.',
+        classification: 'session_store_or_session_hydration',
+        recommendedAction: 'erneut_anmelden',
+        status: 'recovery_laeuft',
+        safeDetails: {
+          reason_code: 'invalid_session',
+        },
+        details: {
+          reason_code: 'invalid_session',
+        },
+      },
+      requestId: 'req-auth-runtime',
+    });
     expect(middlewareLogger.warn).toHaveBeenCalledWith(
       'Auth middleware rejected request with invalid session',
       expect.objectContaining({
@@ -137,12 +179,14 @@ describe('auth-runtime withAuthenticatedUser', () => {
 
   it('passes the authenticated runtime session context to the protected handler', async () => {
     getSessionUserMock.mockResolvedValue({
-      id: 'user-1',
-      name: 'Max',
-      roles: ['admin'],
-      instanceId: 'de-musterhausen',
+      kind: 'authenticated',
+      user: {
+        id: 'user-1',
+        name: 'Max',
+        roles: ['admin'],
+        instanceId: 'de-musterhausen',
+      },
     });
-    const { withAuthenticatedUser } = await import('./middleware.js');
     const request = new Request('http://localhost/auth/me', {
       headers: { cookie: 'sva_auth_session=session-2' },
     });
@@ -161,13 +205,15 @@ describe('auth-runtime withAuthenticatedUser', () => {
 
   it('runs protected handlers through legal text compliance for tenant users when required', async () => {
     getSessionUserMock.mockResolvedValue({
-      id: 'user-2',
-      name: 'Erika',
-      roles: ['editor'],
-      instanceId: 'de-musterhausen',
+      kind: 'authenticated',
+      user: {
+        id: 'user-2',
+        name: 'Erika',
+        roles: ['editor'],
+        instanceId: 'de-musterhausen',
+      },
     });
     authServerMocks.shouldEnforceLegalTextCompliance.mockResolvedValue(true);
-    const { withAuthenticatedUser } = await import('./middleware.js');
     const request = new Request('http://localhost/api/v1/iam/users/me/profile?tab=account', {
       headers: { cookie: 'sva_auth_session=session-3' },
     });

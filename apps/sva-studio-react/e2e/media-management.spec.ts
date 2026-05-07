@@ -1,11 +1,6 @@
 import { expect, test } from '@playwright/test';
 import type { Page, Route } from '@playwright/test';
 
-type ServerFnDescriptor = {
-  readonly export?: string;
-  readonly file?: string;
-};
-
 type MediaAssetRecord = {
   readonly id: string;
   readonly instanceId: string;
@@ -55,9 +50,9 @@ const authenticatedUser = {
       'media.read',
       'media.create',
       'media.update',
-      'media.referenceManage',
+      'media.reference.manage',
       'media.delete',
-      'media.deliverProtected',
+      'media.deliver.protected',
     ],
   },
 };
@@ -68,9 +63,9 @@ const permissionPayload = {
     { action: 'media.read', resourceType: 'media' },
     { action: 'media.create', resourceType: 'media' },
     { action: 'media.update', resourceType: 'media' },
-    { action: 'media.referenceManage', resourceType: 'media' },
+    { action: 'media.reference.manage', resourceType: 'media' },
     { action: 'media.delete', resourceType: 'media' },
-    { action: 'media.deliverProtected', resourceType: 'media' },
+    { action: 'media.deliver.protected', resourceType: 'media' },
   ],
   subject: {
     actorUserId: 'kc-editor-1',
@@ -80,36 +75,11 @@ const permissionPayload = {
   evaluatedAt: '2026-04-29T12:00:00.000Z',
 };
 
-const readServerFnDescriptor = (url: string): ServerFnDescriptor | null => {
-  const encodedDescriptor = new URL(url).pathname.split('/_server/')[1];
-  if (!encodedDescriptor) {
-    return null;
-  }
-
-  try {
-    const raw = Buffer.from(encodedDescriptor, 'base64url').toString('utf8');
-    const parsed = JSON.parse(raw) as { export?: unknown; file?: unknown };
-
-    return {
-      export: typeof parsed.export === 'string' ? parsed.export : undefined,
-      file: typeof parsed.file === 'string' ? parsed.file : undefined,
-    };
-  } catch {
-    return null;
-  }
-};
-
-const isInterfacesServerFn = (descriptor: ServerFnDescriptor | null, exportName: string) =>
-  descriptor?.file?.includes('/src/lib/interfaces-api.ts') && descriptor.export?.includes(exportName);
-
 const expectInterfacesShellReady = async (page: Page, timeout = 20_000) => {
   await expect
     .poll(
       async () => {
-        const headingVisible = await page
-          .getByRole('heading', { name: 'Schnittstellen' })
-          .isVisible()
-          .catch(() => false);
+        const headingVisible = await page.getByRole('heading', { name: 'Schnittstellen' }).isVisible().catch(() => false);
         if (headingVisible) {
           return true;
         }
@@ -124,33 +94,19 @@ const expectInterfacesShellReady = async (page: Page, timeout = 20_000) => {
     .toBe(true);
 };
 
-const expectHydratedPlaywrightShell = async (page: Page, timeout = 20_000) => {
-  await expect
-    .poll(
-      async () => ({
-        dataTheme: await page.locator('html').getAttribute('data-theme'),
-        hasRouterHook: await page
-          .evaluate(
-            () =>
-              Boolean(
-                (
-                  window as typeof window & {
-                    __SVA_PLAYWRIGHT_ROUTER__?: unknown;
-                  }
-                ).__SVA_PLAYWRIGHT_ROUTER__
-              )
-          )
-          .catch(() => false),
-      }),
-      { timeout }
-    )
-    .toEqual({
-      dataTheme: 'sva-default',
-      hasRouterHook: true,
-    });
-};
-
 const navigateClientSide = async (page: Page, targetPath: string) => {
+  await page.waitForFunction(() => {
+    return Boolean(
+      (
+        window as typeof window & {
+          __SVA_PLAYWRIGHT_ROUTER__?: {
+            navigate: (options: { to: string }) => Promise<void> | void;
+          };
+        }
+      ).__SVA_PLAYWRIGHT_ROUTER__
+    );
+  });
+
   await page.evaluate(async (path) => {
     const router = (
       window as typeof window & {
@@ -169,32 +125,6 @@ const navigateClientSide = async (page: Page, targetPath: string) => {
 };
 
 const mockSharedShellRequests = async (page: Page) => {
-  await page.route('**/_server/**', async (route) => {
-    const descriptor = readServerFnDescriptor(route.request().url());
-
-    if (route.request().method() === 'GET' && isInterfacesServerFn(descriptor, 'loadInterfacesOverview')) {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          instanceId: 'de-musterhausen',
-          config: {
-            graphqlBaseUrl: 'https://initial.example.org/graphql',
-            oauthTokenUrl: 'https://initial.example.org/oauth/token',
-            enabled: true,
-          },
-          status: {
-            status: 'connected',
-            checkedAt: '2026-03-26T08:45:40.000Z',
-          },
-        }),
-      });
-      return;
-    }
-
-    await route.continue();
-  });
-
   await page.route('**/auth/me**', async (route) => {
     await route.fulfill({
       status: 200,
@@ -223,7 +153,7 @@ const mockSharedShellRequests = async (page: Page) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ data: [], pagination: { page: 1, pageSize: 0, total: 0 } }),
+      body: JSON.stringify({ data: [], pagination: { page: 1, pageSize: 25, total: 0 } }),
     });
   });
 
@@ -245,6 +175,7 @@ const mockSharedShellRequests = async (page: Page) => {
           page: 1,
           pageSize: 25,
           hasNextPage: false,
+          total: 0,
         },
       }),
     });
@@ -418,7 +349,6 @@ test.describe('media management', () => {
 
     await page.goto('/interfaces');
     await expectInterfacesShellReady(page);
-    await expectHydratedPlaywrightShell(page);
     await navigateClientSide(page, '/admin/media/new');
     await expect(page.getByRole('heading', { name: 'Medienupload vorbereiten' })).toBeVisible();
     await page.getByLabel('MIME-Typ').fill('image/jpeg');

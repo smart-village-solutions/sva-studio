@@ -1,11 +1,14 @@
 import { parse as parseCookie } from 'cookie-es';
-import { createSdkLogger, toJsonErrorResponse } from '@sva/server-runtime';
+import { createSdkLogger } from '@sva/server-runtime';
 
 import { createApiError } from './api-error.js';
 import { shouldEnforceLegalTextCompliance } from './middleware-compliance.js';
 import { withLegalTextCompliance } from './legal-text-enforcement.js';
-import { resolveSessionUser, validateTenantHost } from './middleware-hosts.js';
-import { getSessionUser } from './auth-server/session.js';
+import {
+  resolveSessionUser as resolveRuntimeSessionUser,
+  validateTenantHost,
+} from './middleware-hosts.js';
+import { resolveSessionUser as resolveStoredSessionUser } from './auth-server/session.js';
 import { getAuthConfig } from './config.js';
 import { buildLogContext } from './log-context.js';
 import { createMockSessionUser, isMockAuthEnabled } from './mock-auth.js';
@@ -16,11 +19,12 @@ const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
 
 export type AuthenticatedRequestContext = {
   sessionId: string;
+  sessionExpiresAt?: number;
   user: SessionUser;
 };
 
 type SessionResolution =
-  | { kind: 'authenticated'; sessionId: string; user: SessionUser }
+  | { kind: 'authenticated'; sessionId: string; sessionExpiresAt?: number; user: SessionUser }
   | { kind: 'response'; response: Response };
 
 const readSessionId = (request: Request) => {
@@ -29,11 +33,6 @@ const readSessionId = (request: Request) => {
   return cookies[sessionCookieName];
 };
 
-const unauthorized = () =>
-  new Response(JSON.stringify({ error: 'unauthorized' }), {
-    status: 401,
-    headers: { 'Content-Type': 'application/json' },
-  });
 const PROFILE_DIAGNOSTIC_PATHS = new Set(['/auth/me', '/api/v1/iam/users/me/profile']);
 
 const isProfileDiagnosticsEnabled = (): boolean => process.env.IAM_DEBUG_PROFILE_ERRORS === 'true';
@@ -63,32 +62,81 @@ const createAuthenticatedContext = async (request: Request): Promise<SessionReso
 
   const sessionId = readSessionId(request);
   if (!sessionId) {
+    const requestId = buildLogContext(undefined, { includeTraceId: true }).request_id;
     logger.debug('Auth middleware rejected request without session cookie', {
       endpoint: request.url,
       auth_state: 'unauthenticated',
       operation: 'auth_middleware',
+      reason_code: 'missing_session_cookie',
+      request_id: requestId,
       ...buildLogContext(undefined, { includeTraceId: true }),
     });
-    return { kind: 'response', response: unauthorized() };
+    return {
+      kind: 'response',
+      response: createApiError(401, 'unauthorized', 'Anmeldung erforderlich.', requestId, {
+        reason_code: 'missing_session_cookie',
+      }),
+    };
   }
 
-  const sessionUser = await getSessionUser(sessionId);
-  if (!sessionUser) {
-    logger.warn('Auth middleware rejected request with invalid session', {
+  const sessionResolution = await resolveStoredSessionUser(sessionId);
+  if (sessionResolution.kind === 'invalid') {
+    const logContext = buildLogContext(undefined, { includeTraceId: true });
+    const invalidSessionMessage =
+      sessionResolution.reason === 'forced_reauth'
+        ? 'Auth middleware rejected request because the session requires reauthentication'
+        : 'Auth middleware rejected request with invalid session';
+    logger.warn(invalidSessionMessage, {
       endpoint: request.url,
       auth_state: 'invalid_session',
       session_exists: true,
       user_exists: false,
       operation: 'auth_middleware',
-      ...buildLogContext(undefined, { includeTraceId: true }),
+      reason_code: sessionResolution.reason,
+      ...logContext,
     });
-    return { kind: 'response', response: unauthorized() };
+    return {
+      kind: 'response',
+      response: createApiError(
+        401,
+        'unauthorized',
+        'Die Sitzung ist nicht mehr gültig.',
+        logContext.request_id,
+        {
+          reason_code: sessionResolution.reason,
+        }
+      ),
+    };
+  }
+
+  if (!sessionResolution.user) {
+    const logContext = buildLogContext(undefined, { includeTraceId: true });
+    logger.warn('Auth middleware rejected request with unresolved session user', {
+      endpoint: request.url,
+      auth_state: 'invalid_session',
+      operation: 'auth_middleware',
+      reason_code: 'invalid_session',
+      ...logContext,
+    });
+    return {
+      kind: 'response',
+      response: createApiError(
+        401,
+        'unauthorized',
+        'Die Sitzung ist nicht mehr gültig.',
+        logContext.request_id,
+        {
+          reason_code: 'invalid_session',
+        }
+      ),
+    };
   }
 
   return {
     kind: 'authenticated',
     sessionId,
-    user: await resolveSessionUser(request, sessionUser),
+    sessionExpiresAt: sessionResolution.expiresAt,
+    user: await resolveRuntimeSessionUser(request, sessionResolution.user),
   };
 };
 
@@ -110,10 +158,13 @@ const logProfileDiagnosticsIfEnabled = (request: Request, user: SessionUser): vo
   });
 };
 
-const createProtectedHandler = (
-  ctx: AuthenticatedRequestContext,
-  handler: (ctx: AuthenticatedRequestContext) => Promise<Response> | Response
-): (() => Promise<Response>) => async () => handler(ctx);
+const createProtectedHandler =
+  (
+    ctx: AuthenticatedRequestContext,
+    handler: (ctx: AuthenticatedRequestContext) => Promise<Response> | Response
+  ): (() => Promise<Response>) =>
+  async () =>
+    handler(ctx);
 
 const runWithLegalTextComplianceIfRequired = async (
   request: Request,
@@ -154,24 +205,29 @@ const logUnexpectedMiddlewareError = (request: Request, error: unknown): Respons
       ...logContext,
     });
 
-    return toJsonErrorResponse(
+    return createApiError(
       503,
       'internal_error',
       'Authentifizierung ist momentan nicht verfügbar, weil der Sitzungsspeicher nicht erreichbar ist.',
+      logContext.request_id,
       {
-        requestId: logContext.request_id,
+        dependency: 'redis',
+        reason_code: 'session_store_unavailable',
       }
     );
   }
 
   if (error instanceof SessionUserHydrationError) {
-    logger.warn('Auth middleware rejected request because the session user is missing required tenant context', {
-      endpoint: request.url,
-      operation: 'auth_middleware',
-      reason_code: 'missing_session_instance_id',
-      request_host: error.requestHost,
-      ...logContext,
-    });
+    logger.warn(
+      'Auth middleware rejected request because the session user is missing required tenant context',
+      {
+        endpoint: request.url,
+        operation: 'auth_middleware',
+        reason_code: 'missing_session_instance_id',
+        request_host: error.requestHost,
+        ...logContext,
+      }
+    );
 
     return createApiError(
       401,
@@ -193,8 +249,8 @@ const logUnexpectedMiddlewareError = (request: Request, error: unknown): Respons
     ...logContext,
   });
 
-  return toJsonErrorResponse(500, 'internal_error', 'Authentifizierungsfehler.', {
-    requestId: logContext.request_id,
+  return createApiError(500, 'internal_error', 'Authentifizierungsfehler.', logContext.request_id, {
+    reason_code: 'auth_resolution_failed',
   });
 };
 
@@ -211,7 +267,11 @@ export const withAuthenticatedUser = async (
       return resolution.response;
     }
 
-    const ctx = { sessionId: resolution.sessionId, user: resolution.user };
+    const ctx = {
+      sessionId: resolution.sessionId,
+      sessionExpiresAt: resolution.sessionExpiresAt,
+      user: resolution.user,
+    };
     logProfileDiagnosticsIfEnabled(request, ctx.user);
     return await runWithLegalTextComplianceIfRequired(request, ctx, handler);
   } catch (error) {

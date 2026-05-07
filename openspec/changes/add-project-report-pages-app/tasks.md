@@ -1,0 +1,12 @@
+## 1. Umsetzung
+- [ ] 1.1 Eigene Nx-App `apps/project-report` mit statischem Build-Target und Workspace-konformen Test-/Lint-/Typecheck-Targets anlegen
+- [ ] 1.1a Eigenständige UI-Bausteine, Styles und Konfiguration für `apps/project-report` anlegen, ohne technische Abhängigkeit auf `apps/sva-studio-react` oder `@sva/studio-ui-react`
+- [ ] 1.2 Öffentliches Reporting-JSON aus der zentral gepflegten Repository-Quelle in `apps/project-report` einbinden, ohne eine zweite fachlich gepflegte App-Kopie einzuführen
+- [ ] 1.2a Öffentliches Reporting-JSON auf verschachtelte Arbeitspakete je Meilenstein umstellen und die eindeutige Meilenstein-Zuordnung im Schema absichern
+- [ ] 1.3 Grundlayout mit zwei Reitern `Meilensteine` und `Arbeitspakete` implementieren
+- [ ] 1.4 Filter über URL-Search-Params für Ansicht, Meilenstein, Status, Warnstatus, Priorität und Freitextsuche implementieren
+- [ ] 1.5 Fortschrittsbalken und aggregierte Kennzahlen für Meilensteine und Arbeitspakete implementieren
+- [ ] 1.6 Unit-Tests für Datenaggregation, Filterlogik und URL-Param-Mapping ergänzen
+- [ ] 1.6a Öffentliches Reporting-Datenmodell von redundanten `progress`-Feldern bereinigen und Status-zu-Fortschritt-Ableitung als alleinige Regel absichern
+- [ ] 1.7 Relevante Architektur- und Entwicklungsdokumentation unter `docs/architecture/` und `docs/` aktualisieren
+- [ ] 1.8 Relevante Nx- und Projekt-Checks ausführen und dokumentieren

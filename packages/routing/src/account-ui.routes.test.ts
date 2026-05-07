@@ -19,7 +19,7 @@ const invoke = async (guard: Guard, roles: readonly string[] | null, href: strin
 describe('accountUiRouteGuards', () => {
   it('redirects account route to login when unauthenticated', async () => {
     await expect(invoke(accountUiRouteGuards.account, null, '/account')).rejects.toMatchObject(
-      redirect({ href: '/auth/login?returnTo=%2Faccount' })
+      redirect({ href: '/?auth=login&returnTo=%2Faccount' })
     );
   });
 
@@ -106,7 +106,7 @@ describe('accountUiRouteGuards', () => {
     const guard = createAccountUiRouteGuard('account', diagnostics, '/media');
 
     await expect(invoke(guard, null, '/media')).rejects.toMatchObject(
-      redirect({ href: '/auth/login?returnTo=%2Fmedia' })
+      redirect({ href: '/?auth=login&returnTo=%2Fmedia' })
     );
 
     expect(diagnostics).toHaveBeenCalledWith({
@@ -114,7 +114,7 @@ describe('accountUiRouteGuards', () => {
       event: 'routing.guard.access_denied',
       route: '/media',
       reason: 'unauthenticated',
-      redirect_target: '/auth/login',
+      redirect_target: '/',
     });
   });
 
@@ -123,7 +123,7 @@ describe('accountUiRouteGuards', () => {
     const guard = createAccountUiRouteGuard('content', diagnostics, '/plugins/news');
 
     await expect(invoke(guard, null, '/plugins/news')).rejects.toMatchObject(
-      redirect({ href: '/auth/login?returnTo=%2Fplugins%2Fnews' })
+      redirect({ href: '/?auth=login&returnTo=%2Fplugins%2Fnews' })
     );
 
     expect(diagnostics).toHaveBeenCalledWith({
@@ -131,7 +131,7 @@ describe('accountUiRouteGuards', () => {
       event: 'routing.guard.access_denied',
       route: '/plugins/news',
       reason: 'unauthenticated',
-      redirect_target: '/auth/login',
+      redirect_target: '/',
     });
   });
 });

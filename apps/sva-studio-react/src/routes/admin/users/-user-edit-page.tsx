@@ -188,6 +188,32 @@ const describePermissionTraceSource = (entry: IamUserPermissionTraceItem) => {
 const appendUnique = (values: readonly string[], nextValue: string): string[] =>
   values.includes(nextValue) ? [...values] : [...values, nextValue];
 
+const areStringArraysEqual = (left: readonly string[], right: readonly string[]): boolean =>
+  left.length === right.length && left.every((value, index) => value === right[index]);
+
+export const buildGroupMembershipById = (
+  groups: NonNullable<ReturnType<typeof useUser>['user']>['groups'] | undefined
+): ReadonlyMap<string, NonNullable<NonNullable<ReturnType<typeof useUser>['user']>['groups']>[number]> =>
+  new Map((groups ?? []).map((entry) => [entry.groupId, entry] as const));
+
+export const hasUserFormChanges = (baseline: UserFormValues, current: UserFormValues): boolean =>
+  baseline.firstName !== current.firstName ||
+  baseline.lastName !== current.lastName ||
+  baseline.displayName !== current.displayName ||
+  baseline.email !== current.email ||
+  baseline.phone !== current.phone ||
+  baseline.position !== current.position ||
+  baseline.department !== current.department ||
+  baseline.status !== current.status ||
+  baseline.preferredLanguage !== current.preferredLanguage ||
+  baseline.timezone !== current.timezone ||
+  baseline.notes !== current.notes ||
+  !areStringArraysEqual(baseline.roleIds, current.roleIds) ||
+  !areStringArraysEqual(baseline.groupIds, current.groupIds) ||
+  baseline.mainserverUserApplicationId !== current.mainserverUserApplicationId ||
+  baseline.mainserverUserApplicationSecret !== current.mainserverUserApplicationSecret ||
+  baseline.mainserverUserApplicationSecretSet !== current.mainserverUserApplicationSecretSet;
+
 export const UserEditPage = ({ userId }: UserEditPageProps) => {
   const userApi = useUser(userId);
   const rolesApi = useRoles();
@@ -223,9 +249,11 @@ export const UserEditPage = ({ userId }: UserEditPageProps) => {
     setHasLoadedTimeline(false);
   }, [userId]);
 
-  const baselineSignature = React.useMemo(() => JSON.stringify(toFormValues(userApi.user)), [userApi.user]);
-  const currentSignature = React.useMemo(() => JSON.stringify(formValues), [formValues]);
-  const hasUnsavedChanges = baselineSignature !== currentSignature;
+  const baselineFormValues = React.useMemo(() => toFormValues(userApi.user), [userApi.user]);
+  const hasUnsavedChanges = React.useMemo(
+    () => hasUserFormChanges(baselineFormValues, formValues),
+    [baselineFormValues, formValues]
+  );
   const effectivePermissionTrace = React.useMemo(
     () => (userApi.user?.permissionTrace ?? []).filter((entry) => entry.isEffective),
     [userApi.user?.permissionTrace]
@@ -234,6 +262,7 @@ export const UserEditPage = ({ userId }: UserEditPageProps) => {
     () => (userApi.user?.permissionTrace ?? []).filter((entry) => !entry.isEffective),
     [userApi.user?.permissionTrace]
   );
+  const groupMembershipById = React.useMemo(() => buildGroupMembershipById(userApi.user?.groups), [userApi.user?.groups]);
 
   React.useEffect(() => {
     if (!hasUnsavedChanges) {
@@ -597,7 +626,7 @@ export const UserEditPage = ({ userId }: UserEditPageProps) => {
             <div className="grid gap-2 sm:grid-cols-2">
               {selectableGroups.map((group) => {
                 const selected = formValues.groupIds.includes(group.id);
-                const currentMembership = userApi.user?.groups?.find((entry) => entry.groupId === group.id);
+                const currentMembership = groupMembershipById.get(group.id);
                 return (
                   <Label key={group.id} className="flex items-start gap-2 rounded border border-border bg-background px-3 py-2 text-sm text-foreground">
                     <Checkbox

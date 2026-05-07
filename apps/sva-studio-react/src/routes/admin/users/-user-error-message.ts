@@ -8,26 +8,22 @@ const readHttpStatusFromMessage = (message: string): string | null => {
   return match?.[1] ?? null;
 };
 
-const getContextualMessage = (key: string, context: UserErrorContext): string => {
-  if (key === 'error') {
-    return context === 'mutation' ? t('admin.users.messages.mutationError') : t('admin.users.messages.error');
-  }
-  return t(`admin.users.errors.${key}`);
-};
+const getDefaultContextualMessage = (context: UserErrorContext): string =>
+  context === 'mutation' ? t('admin.users.messages.mutationError') : t('admin.users.messages.error');
 
-const staticErrorCodeMap: Record<string, string> = {
-  forbidden: 'forbidden',
-  csrf_validation_failed: 'csrfValidationFailed',
-  rate_limited: 'rateLimited',
-  conflict: 'conflict',
-  tenant_admin_client_not_configured: 'tenantAdminClientNotConfigured',
-  tenant_admin_client_secret_missing: 'tenantAdminClientSecretMissing',
-  keycloak_unavailable: 'keycloakUnavailable',
-  database_unavailable: 'databaseUnavailable',
-  last_admin_protection: 'lastAdminProtection',
-  self_protection: 'selfProtection',
-  feature_disabled: 'featureDisabled',
-  unauthorized: 'unauthorized',
+const staticErrorCodeMap: Record<string, () => string> = {
+  forbidden: () => t('admin.users.errors.forbidden'),
+  csrf_validation_failed: () => t('admin.users.errors.csrfValidationFailed'),
+  rate_limited: () => t('admin.users.errors.rateLimited'),
+  conflict: () => t('admin.users.errors.conflict'),
+  tenant_admin_client_not_configured: () => t('admin.users.errors.tenantAdminClientNotConfigured'),
+  tenant_admin_client_secret_missing: () => t('admin.users.errors.tenantAdminClientSecretMissing'),
+  keycloak_unavailable: () => t('admin.users.errors.keycloakUnavailable'),
+  database_unavailable: () => t('admin.users.errors.databaseUnavailable'),
+  last_admin_protection: () => t('admin.users.errors.lastAdminProtection'),
+  self_protection: () => t('admin.users.errors.selfProtection'),
+  feature_disabled: () => t('admin.users.errors.featureDisabled'),
+  unauthorized: () => t('admin.users.errors.unauthorized'),
 };
 
 export const userErrorMessage = (
@@ -35,7 +31,7 @@ export const userErrorMessage = (
   context: UserErrorContext = 'load'
 ): string => {
   if (!error) {
-    return getContextualMessage('error', context);
+    return getDefaultContextualMessage(context);
   }
 
   if (error.diagnosticStatus === 'recovery_laeuft') {
@@ -46,21 +42,22 @@ export const userErrorMessage = (
     return t('admin.users.errors.keycloakReconcile');
   }
 
-  const staticKey = staticErrorCodeMap[error.code];
-  if (staticKey) {
-    return t(`admin.users.errors.${staticKey}`);
+  const staticMessage = staticErrorCodeMap[error.code];
+  if (staticMessage) {
+    return staticMessage();
   }
 
   if (error.code === 'invalid_request') {
-    return getContextualMessage('error', context);
+    return getDefaultContextualMessage(context);
   }
 
   if (error.code === 'non_json_response') {
     if (error.status >= 400) {
       return t('admin.users.errors.unexpectedHttp', { status: String(error.status) });
     }
-    const msg = context === 'mutation' ? 'unexpectedMutationClient' : 'unexpectedClient';
-    return t(`admin.users.errors.${msg}`, { message: error.message });
+    return context === 'mutation'
+      ? t('admin.users.errors.unexpectedMutationClient', { message: error.message })
+      : t('admin.users.errors.unexpectedClient', { message: error.message });
   }
 
   if (error.code === 'internal_error') {
@@ -69,10 +66,11 @@ export const userErrorMessage = (
       return t('admin.users.errors.unexpectedHttp', { status: httpStatus });
     }
     if (error.message.trim().length > 0) {
-      const msg = context === 'mutation' ? 'unexpectedMutationClient' : 'unexpectedClient';
-      return t(`admin.users.errors.${msg}`, { message: error.message });
+      return context === 'mutation'
+        ? t('admin.users.errors.unexpectedMutationClient', { message: error.message })
+        : t('admin.users.errors.unexpectedClient', { message: error.message });
     }
-    return getContextualMessage('error', context);
+    return getDefaultContextualMessage(context);
   }
 
   return t('admin.users.messages.error');

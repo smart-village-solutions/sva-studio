@@ -1532,12 +1532,12 @@ export const buildLocalProvisioningWorkerCheck = (
   workerState: LocalState | null,
   isAlive: (pid: number) => boolean = isProcessAlive,
 ): DoctorCheck => {
-  if (!getRuntimeProfileDefinition(runtimeProfile).isLocal) {
+  if (!shouldRunLocalProvisioningWorker(runtimeProfile)) {
     return toDoctorCheck(
       'keycloak-provisioning-worker',
       'skipped',
       'local_provisioning_worker_not_applicable',
-      'Provisioning-Worker-Check ist fuer Remote-Profile nicht anwendbar.',
+      'Provisioning-Worker-Check ist fuer dieses Runtime-Profil nicht anwendbar.',
     );
   }
 
@@ -1579,6 +1579,9 @@ export const buildLocalProvisioningWorkerCheck = (
     },
   );
 };
+
+export const shouldRunLocalProvisioningWorker = (runtimeProfile: RuntimeProfile) =>
+  getRuntimeProfileDefinition(runtimeProfile).isLocal && !isMockAuthRuntimeProfile(runtimeProfile);
 
 const waitForHttpOk = async (url: string, timeoutMs: number) => {
   const startedAt = Date.now();
@@ -3245,7 +3248,9 @@ const runLocalCommand = async (runtimeProfile: RuntimeProfile, runtimeCommand: R
       bootstrapLocalAppUser(env);
       reconcileLocalInstanceRegistry(runtimeProfile, env);
       await startLocalApp(runtimeProfile, env);
-      startLocalProvisioningWorker(runtimeProfile, env);
+      if (shouldRunLocalProvisioningWorker(runtimeProfile)) {
+        startLocalProvisioningWorker(runtimeProfile, env);
+      }
       console.log(`Profil ${runtimeProfile} gestartet.`);
       return;
     case 'down':
@@ -3263,7 +3268,9 @@ const runLocalCommand = async (runtimeProfile: RuntimeProfile, runtimeCommand: R
       stopLocalProvisioningWorker();
       stopLocalApp();
       await startLocalApp(runtimeProfile, env);
-      startLocalProvisioningWorker(runtimeProfile, env);
+      if (shouldRunLocalProvisioningWorker(runtimeProfile)) {
+        startLocalProvisioningWorker(runtimeProfile, env);
+      }
       console.log(`Profil ${runtimeProfile} aktualisiert.`);
       return;
     case 'status': {

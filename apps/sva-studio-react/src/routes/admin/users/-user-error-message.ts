@@ -73,5 +73,5 @@ export const userErrorMessage = (
     return getDefaultContextualMessage(context);
   }
 
-  return t('admin.users.messages.error');
+  return getDefaultContextualMessage(context);
 };

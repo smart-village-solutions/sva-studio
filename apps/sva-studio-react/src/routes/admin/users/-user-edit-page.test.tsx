@@ -912,6 +912,13 @@ describe('UserEditPage', () => {
         message: 'unexpected failure',
       } as never)
     ).toBe('Nutzer konnten nicht geladen werden.');
+    expect(
+      userErrorMessage({
+        status: 500,
+        code: 'unknown_error',
+        message: 'unexpected failure',
+      } as never, 'mutation')
+    ).toBe('Die Nutzeraktion konnte nicht abgeschlossen werden.');
   });
 
   it('does not submit duplicate role ids when a selected role is toggled again', async () => {

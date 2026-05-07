@@ -437,7 +437,10 @@ describe('useUsers', () => {
     });
 
     expect(response).toBeNull();
-    expect(result.current.error).toBeNull();
+    expect(result.current.error).toMatchObject({
+      status: 403,
+      code: 'forbidden',
+    });
     expect(result.current.mutationError?.status).toBe(403);
     expect(authMockValue.invalidatePermissions).toHaveBeenCalled();
   });
@@ -491,6 +494,38 @@ describe('useUsers', () => {
     expect(result.current.mutationError).toMatchObject({
       status: 409,
       code: 'conflict',
+    });
+  });
+
+  it('keeps mutation failures visible through error for existing consumers', async () => {
+    listUsersMock.mockResolvedValue({
+      data: [],
+      pagination: { page: 1, pageSize: 25, total: 0 },
+    });
+    deactivateUserMock.mockRejectedValue({
+      status: 503,
+      code: 'database_unavailable',
+      message: 'db down',
+    });
+
+    const { result } = renderHook(() => useUsers());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    await act(async () => {
+      const response = await result.current.deactivateUser('user-1');
+      expect(response).toBe(false);
+    });
+
+    expect(result.current.mutationError).toMatchObject({
+      status: 503,
+      code: 'database_unavailable',
+    });
+    expect(result.current.error).toMatchObject({
+      status: 503,
+      code: 'database_unavailable',
     });
   });
 });

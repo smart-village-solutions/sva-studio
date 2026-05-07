@@ -225,4 +225,41 @@ describe('iam instance registry repository wiring', () => {
       })
     );
   });
+
+  it('does not leak a follow-up capability rejection when IAM reads already failed', async () => {
+    const unhandledRejectionHandler = vi.fn();
+    process.once('unhandledRejection', unhandledRejectionHandler);
+
+    resolveIdentityProviderForInstanceMock.mockResolvedValueOnce({
+      provider: {
+        listRoles: vi.fn(async () => {
+          throw new Error('403 Forbidden');
+        }),
+        listUsers: vi.fn(async () => []),
+        executeActionsEmail: vi.fn(async () => undefined),
+        getOidcClientByClientId: vi.fn(async () => ({ id: 'client-1', clientId: 'sva-studio' })),
+      },
+    });
+    resolveAuthConfigForInstanceMock.mockRejectedValueOnce(new Error('config failed'));
+    await import('./repository.js');
+
+    const runtimeConfig = createInstanceRegistryRuntimeMock.mock.calls.at(-1)?.[0];
+    expect(runtimeConfig).toBeDefined();
+
+    await expect(
+      runtimeConfig?.serviceDeps.probeTenantIamAccess({
+        instanceId: 'demo',
+        requestId: 'req-probe-5',
+      })
+    ).resolves.toEqual(
+      expect.objectContaining({
+        status: 'blocked',
+        errorCode: 'IDP_FORBIDDEN',
+        requestId: 'req-probe-5',
+      })
+    );
+
+    await Promise.resolve();
+    expect(unhandledRejectionHandler).not.toHaveBeenCalled();
+  });
 });

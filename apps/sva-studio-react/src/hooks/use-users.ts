@@ -218,7 +218,7 @@ export const useUsers = (initial?: Partial<UserFilters>): UseUsersResult => {
     page: filters.page,
     pageSize: filters.pageSize,
     isLoading,
-    error,
+    error: error ?? mutationError,
     mutationError,
     filters,
     setSearch: (value) => setFilters((current) => ({ ...current, page: 1, search: value })),

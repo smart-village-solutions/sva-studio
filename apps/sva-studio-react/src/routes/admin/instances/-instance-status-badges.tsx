@@ -2,6 +2,7 @@ import { Badge } from '../../../components/ui/badge';
 import { t } from '../../../i18n';
 import type {
   InstanceConfigurationOverallStatus,
+  OperationStepStatus,
   WorkflowStepState,
 } from './-instances-shared-types';
 
@@ -34,6 +35,22 @@ export const WorkflowStatusBadge = ({ status }: { status: WorkflowStepState }) =
     pending: t('admin.instances.workflow.badges.pending'),
   };
   return <Badge variant={status === 'done' ? 'secondary' : 'outline'}>{labelMap[status]}</Badge>;
+};
+
+const OPERATION_STATUS_BADGE_LABELS: Record<OperationStepStatus, string> = {
+  offen: 'admin.instances.operations.status.offen',
+  bereit: 'admin.instances.operations.status.bereit',
+  läuft: 'admin.instances.operations.status.laeuft',
+  erfolgreich: 'admin.instances.operations.status.erfolgreich',
+  fehlgeschlagen: 'admin.instances.operations.status.fehlgeschlagen',
+};
+
+export const OperationsStepStatusBadge = ({ status }: { status: OperationStepStatus }) => {
+  return (
+    <Badge variant={status === 'erfolgreich' ? 'secondary' : 'outline'}>
+      {t(OPERATION_STATUS_BADGE_LABELS[status])}
+    </Badge>
+  );
 };
 
 export const ProvisioningStepBadge = ({

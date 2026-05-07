@@ -5,7 +5,6 @@ import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Button } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
 import { Input } from '../../../components/ui/input';
-import { Label } from '../../../components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../components/ui/tabs';
 import { useInstances } from '../../../hooks/use-instances';
 import { t } from '../../../i18n';
@@ -16,21 +15,25 @@ import {
   buildHistoryWorkspaceModel,
   buildNewRealmOperationsModel,
   buildOperationsPrimaryAction,
-  ConfigurationStatusBadge,
-  createDetailForm,
   type DetailWorkflowAction,
   type EvidenceSource,
   getOperationsActionLabel,
   getOperationsEvidenceSourceLabel,
   evaluateInstanceConfiguration,
-  getErrorMessage,
   getStatusGuidance,
+} from './-instance-detail-models';
+import { getErrorMessage } from './-instance-error-messages';
+import {
+  createDetailForm,
   INSTANCE_FIELD_HELP,
-  INSTANCE_STATUS_LABELS,
   isTenantSecretUserInputRequired,
+} from './-instance-form-models';
+import { INSTANCE_STATUS_LABELS, FormLabelWithHelp } from './-instance-detail-view-shared';
+import {
+  ConfigurationStatusBadge,
   OperationsStepStatusBadge,
   ProvisioningStepBadge,
-} from './-instances-shared';
+} from './-instance-status-badges';
 
 type InstanceDetailPageProps = {
   readonly instanceId: string;
@@ -55,24 +58,6 @@ const formatDateTime = (value?: string) => {
 
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
-};
-
-const FormLabelWithHelp = ({
-  htmlFor,
-  label,
-  helpKey,
-}: {
-  htmlFor: string;
-  label: string;
-  helpKey: keyof typeof INSTANCE_FIELD_HELP;
-}) => {
-  const help = INSTANCE_FIELD_HELP[helpKey];
-  return (
-    <div className="flex items-center gap-2">
-      <Label htmlFor={htmlFor}>{label}</Label>
-      <FieldHelp {...help} />
-    </div>
-  );
 };
 
 const readActualLatestKeycloakRun = (instance: ReturnType<typeof useInstances>['selectedInstance']) =>

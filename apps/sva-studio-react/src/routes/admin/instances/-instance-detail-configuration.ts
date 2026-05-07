@@ -1,3 +1,5 @@
+import { areAllInstanceKeycloakRequirementsSatisfied } from '@sva/core';
+
 import { t } from '../../../i18n';
 import type { IamHttpError } from '../../../lib/iam-api';
 import type {
@@ -12,12 +14,19 @@ import {
   type IamInstanceDetail,
 } from './-instance-detail-shared';
 
+const isFinalKeycloakStateSatisfied = (instance: IamInstanceDetail) =>
+  Boolean(instance.keycloakStatus && areAllInstanceKeycloakRequirementsSatisfied(instance.keycloakStatus));
+
 export const evaluateInstanceConfiguration = (
   instance: IamInstanceDetail,
   mutationError: IamHttpError | null
 ): InstanceConfigurationAssessment => {
   const keycloakStatus = instance.keycloakStatus;
   const keycloakUnavailable = mutationError?.code === 'keycloak_unavailable';
+  const latestKeycloakRun = instance.latestKeycloakProvisioningRun ?? instance.keycloakProvisioningRuns[0];
+  const hasTechnicalRun = Boolean(latestKeycloakRun);
+  const hasBlockingTechnicalOutcome =
+    latestKeycloakRun?.overallStatus === 'failed' || latestKeycloakRun?.overallStatus === 'succeeded';
   const failingRequirements = keycloakStatus
     ? INSTANCE_KEYCLOAK_REQUIREMENTS.filter((requirement) => !isInstanceKeycloakRequirementSatisfied(keycloakStatus, requirement))
     : [];
@@ -36,6 +45,21 @@ export const evaluateInstanceConfiguration = (
     label: t(KEYCLOAK_STATUS_LABELS[requirement.statusField]),
     severity: 'blocking',
   }));
+
+  if (instance.realmMode === 'new' && !keycloakUnavailable && !hasBlockingTechnicalOutcome && !isFinalKeycloakStateSatisfied(instance)) {
+    return {
+      overallStatus: hasTechnicalRun ? 'degraded' : 'unknown',
+      title: t('admin.instances.configuration.summary.expectedArtifacts.title'),
+      body: hasTechnicalRun
+        ? t('admin.instances.configuration.summary.expectedArtifacts.running')
+        : t('admin.instances.configuration.summary.expectedArtifacts.pending'),
+      statusLabel: translateConfigurationStatus(hasTechnicalRun ? 'degraded' : 'unknown'),
+      satisfiedRequirements: keycloakStatus ? INSTANCE_KEYCLOAK_REQUIREMENTS.length - failingRequirements.length : 0,
+      totalRequirements: INSTANCE_KEYCLOAK_REQUIREMENTS.length,
+      blockingIssues: [],
+      warningIssues,
+    };
+  }
 
   if (keycloakUnavailable || !keycloakStatus) {
     return {

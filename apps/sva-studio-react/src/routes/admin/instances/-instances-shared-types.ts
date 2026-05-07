@@ -184,6 +184,10 @@ export type CreateFormValues = {
   authClientId: string;
   authIssuerUrl: string;
   authClientSecret: string;
+  tenantAdminClient: {
+    clientId: string;
+    secret: string;
+  };
   tenantAdminBootstrap: {
     username: string;
     email: string;

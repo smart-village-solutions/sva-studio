@@ -31,15 +31,21 @@ export const createEmptyTenantAdminBootstrap = () => ({
   lastName: '',
 });
 
+export const createEmptyTenantAdminClient = () => ({
+  clientId: 'sva-studio-realm-admin',
+  secret: '',
+});
+
 export const createEmptyCreateForm = (parentDomain = ''): CreateFormValues => ({
   instanceId: '',
   displayName: '',
   parentDomain,
-  realmMode: 'existing',
+  realmMode: 'new',
   authRealm: '',
-  authClientId: 'sva-studio',
+  authClientId: 'sva-studio-login',
   authIssuerUrl: '',
   authClientSecret: '',
+  tenantAdminClient: createEmptyTenantAdminClient(),
   tenantAdminBootstrap: createEmptyTenantAdminBootstrap(),
 });
 

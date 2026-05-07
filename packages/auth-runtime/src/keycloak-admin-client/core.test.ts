@@ -580,7 +580,6 @@ describe('Keycloak admin client', () => {
   });
 
   it('fails tenant admin service access provisioning when the target client is missing', async () => {
-    const { KeycloakAdminRequestError } = await import('./core.js');
     const fetchImpl = vi
       .fn()
       .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
@@ -588,10 +587,9 @@ describe('Keycloak admin client', () => {
 
     const client = await createClient(fetchImpl);
 
-    await expect(client.ensureTenantAdminServiceAccess('tenant-admin')).rejects.toMatchObject<KeycloakAdminRequestError>({
-      code: 'unknown_client',
-      statusCode: 404,
-    });
+    await expect(client.ensureTenantAdminServiceAccess('tenant-admin')).rejects.toMatchObject<
+      import('./core.js').KeycloakAdminRequestError
+    >({ code: 'unknown_client', statusCode: 404 });
   });
 
   it('does not regenerate a client secret during normal reconciliation when the configured secret differs', async () => {

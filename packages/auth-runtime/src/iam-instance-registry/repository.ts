@@ -81,16 +81,30 @@ const probeTenantIamAccess = async (input: { instanceId: string; requestId?: str
   }
 
   try {
-    const passwordSetupEmailCapabilityPromise = probePasswordSetupEmailCapability({
-      instanceId: input.instanceId,
-      identityProvider,
-    });
-
-    await Promise.all([
+    const [rolesResult, usersResult, capabilityResult] = await Promise.allSettled([
       identityProvider.provider.listRoles(),
       identityProvider.provider.listUsers({ max: 1 }),
+      probePasswordSetupEmailCapability({
+        instanceId: input.instanceId,
+        identityProvider,
+      }),
     ]);
-    const passwordSetupEmailCapability = await passwordSetupEmailCapabilityPromise;
+
+    const firstAccessFailure =
+      rolesResult.status === 'rejected'
+        ? rolesResult.reason
+        : usersResult.status === 'rejected'
+          ? usersResult.reason
+          : null;
+    if (firstAccessFailure) {
+      throw firstAccessFailure;
+    }
+
+    if (capabilityResult.status === 'rejected') {
+      throw capabilityResult.reason;
+    }
+
+    const passwordSetupEmailCapability = capabilityResult.value;
 
     if (!passwordSetupEmailCapability.ok) {
       return {

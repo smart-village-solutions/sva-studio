@@ -37,6 +37,7 @@ export const createUserSchema = z.object({
   notes: z.string().trim().max(2000).optional(),
   status: z.enum(USER_STATUS).optional(),
   roleIds: z.array(uuidLikeString('Ungültige ID.')).max(20).default([]),
+  sendPasswordSetupEmail: z.boolean().optional(),
 });
 
 export const updateUserSchema = z

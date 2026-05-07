@@ -1,3 +1,5 @@
+import type { IamCreateUserResult } from '@sva/core';
+import { resolveAuthConfigForInstance } from '../config.js';
 import {
   logger,
   resolveIdentityProviderForInstance,
@@ -16,6 +18,118 @@ type CreateUserActorInfo = {
   actorRoles?: readonly string[];
   requestId?: string;
   traceId?: string;
+};
+
+type InvitationStatus = IamCreateUserResult['invitation']['status'];
+
+const buildCreateUserResult = (
+  user: IamCreateUserResult['user'],
+  invitationStatus: InvitationStatus
+): IamCreateUserResult => ({
+  user,
+  invitation: {
+    status: invitationStatus,
+  },
+});
+
+const logCreateUserFailure = (input: {
+  actor: CreateUserActorInfo;
+  email: string;
+  error: unknown;
+}) => {
+  logger.error('IAM user creation failed', {
+    workspace_id: input.actor.instanceId,
+    context: {
+      operation: 'create_user',
+      instance_id: input.actor.instanceId,
+      request_id: input.actor.requestId,
+      trace_id: input.actor.traceId,
+      actor_account_id: input.actor.actorAccountId,
+      email_masked: maskEmail(input.email),
+      error: input.error instanceof Error ? input.error.message : String(input.error),
+    },
+  });
+};
+
+const logCreateUserCompensationFailure = (input: {
+  actor: CreateUserActorInfo;
+  createdExternalId: string;
+  error: unknown;
+}) => {
+  logger.error('IAM user create compensation failed', {
+    workspace_id: input.actor.instanceId,
+    context: {
+      operation: 'create_user_compensation',
+      keycloak_subject: input.createdExternalId,
+      request_id: input.actor.requestId,
+      trace_id: input.actor.traceId,
+      error: input.error instanceof Error ? input.error.message : String(input.error),
+    },
+  });
+};
+
+const logInvitationFailure = (input: {
+  actor: CreateUserActorInfo;
+  keycloakSubject: string;
+  error: unknown;
+}) => {
+  logger.error('IAM user invitation email failed', {
+    workspace_id: input.actor.instanceId,
+    context: {
+      operation: 'execute_actions_email',
+      instance_id: input.actor.instanceId,
+      keycloak_subject: input.keycloakSubject,
+      request_id: input.actor.requestId,
+      trace_id: input.actor.traceId,
+      actor_account_id: input.actor.actorAccountId,
+      error: input.error instanceof Error ? input.error.message : String(input.error),
+    },
+  });
+};
+
+const syncUserRolesIfNeeded = async (input: {
+  actor: CreateUserActorInfo;
+  identityProvider: IdentityProviderResolution;
+  keycloakSubject: string;
+  roleNames: readonly string[];
+}) => {
+  if (input.roleNames.length === 0) {
+    return;
+  }
+
+  await ensureManagedRealmRolesExist({
+    instanceId: input.actor.instanceId,
+    identityProvider: input.identityProvider,
+    externalRoleNames: input.roleNames,
+    actorAccountId: input.actor.actorAccountId,
+    requestId: input.actor.requestId,
+    traceId: input.actor.traceId,
+  });
+  await trackKeycloakCall('sync_roles', () =>
+    input.identityProvider.provider.syncRoles(input.keycloakSubject, input.roleNames)
+  );
+};
+
+const sendPasswordSetupInvitation = async (input: {
+  actor: CreateUserActorInfo;
+  identityProvider: IdentityProviderResolution;
+  keycloakSubject: string;
+}): Promise<InvitationStatus> => {
+  const executeActionsEmail = input.identityProvider.provider.executeActionsEmail;
+  if (!executeActionsEmail) {
+    throw new Error('execute_actions_email_not_supported');
+  }
+
+  const authConfig = await resolveAuthConfigForInstance(input.actor.instanceId);
+  await trackKeycloakCall('execute_actions_email', async () => {
+    await executeActionsEmail(input.keycloakSubject, {
+      actions: ['UPDATE_PASSWORD'],
+      clientId: authConfig.clientId,
+      redirectUri: authConfig.postLogoutRedirectUri,
+    });
+  });
+
+  return 'sent';
 };
 
 const deactivateCreatedExternalUser = async (input: {
@@ -39,7 +153,7 @@ export const executeCreateUser = async (input: {
   actorSubject: string;
   identityProvider: IdentityProviderResolution;
   payload: CreateUserPayload;
-}): Promise<Awaited<ReturnType<typeof persistCreatedUser>>> => {
+}): Promise<IamCreateUserResult> => {
   const { actor, actorSubject, identityProvider, payload } = input;
   let createdExternalId: string | undefined;
 
@@ -68,33 +182,37 @@ export const executeCreateUser = async (input: {
       })
     );
 
-    if (result.roleNames.length > 0) {
-      await ensureManagedRealmRolesExist({
-        instanceId: actor.instanceId,
-        identityProvider,
-        externalRoleNames: result.roleNames,
-        actorAccountId: actor.actorAccountId,
-        requestId: actor.requestId,
-        traceId: actor.traceId,
-      });
-      await trackKeycloakCall('sync_roles', () =>
-        identityProvider.provider.syncRoles(result.responseData.keycloakSubject, result.roleNames)
-      );
+    await syncUserRolesIfNeeded({
+      actor,
+      identityProvider,
+      keycloakSubject: result.responseData.keycloakSubject,
+      roleNames: result.roleNames,
+    });
+
+    if (payload.sendPasswordSetupEmail !== true) {
+      return buildCreateUserResult(result.responseData, 'not_requested');
     }
 
-    return result;
+    try {
+      const invitationStatus = await sendPasswordSetupInvitation({
+        actor,
+        identityProvider,
+        keycloakSubject: result.responseData.keycloakSubject,
+      });
+      return buildCreateUserResult(result.responseData, invitationStatus);
+    } catch (error) {
+      logInvitationFailure({
+        actor,
+        keycloakSubject: result.responseData.keycloakSubject,
+        error,
+      });
+      return buildCreateUserResult(result.responseData, 'failed');
+    }
   } catch (error) {
-    logger.error('IAM user creation failed', {
-      workspace_id: actor.instanceId,
-      context: {
-        operation: 'create_user',
-        instance_id: actor.instanceId,
-        request_id: actor.requestId,
-        trace_id: actor.traceId,
-        actor_account_id: actor.actorAccountId,
-        email_masked: maskEmail(payload.email),
-        error: error instanceof Error ? error.message : String(error),
-      },
+    logCreateUserFailure({
+      actor,
+      email: payload.email,
+      error,
     });
 
     if (createdExternalId) {
@@ -104,15 +222,10 @@ export const executeCreateUser = async (input: {
           createdExternalId,
         });
       } catch (compensationError) {
-        logger.error('IAM user create compensation failed', {
-          workspace_id: actor.instanceId,
-          context: {
-            operation: 'create_user_compensation',
-            keycloak_subject: createdExternalId,
-            request_id: actor.requestId,
-            trace_id: actor.traceId,
-            error: compensationError instanceof Error ? compensationError.message : String(compensationError),
-          },
+        logCreateUserCompensationFailure({
+          actor,
+          createdExternalId,
+          error: compensationError,
         });
       }
     }

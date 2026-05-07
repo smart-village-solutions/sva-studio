@@ -5,11 +5,7 @@ import { jsonResponse } from '../db.js';
 
 import { createApiError, requireIdempotencyKey, toPayloadHash } from './api-helpers.js';
 import { reserveIdempotency } from './shared.js';
-import {
-  requireUserId,
-  requireUserMutationIdentityProvider,
-  resolveUserMutationActor,
-} from './user-mutation-request-context.shared.js';
+import { requireUserId, requireUserMutationIdentityProvider, resolveUserMutationActor } from './user-mutation-request-context.shared.js';
 import { processPasswordSetupEmailSend } from './user-password-setup-email-send.js';
 
 const SEND_PASSWORD_SETUP_EMAIL_ENDPOINT = 'POST:/api/v1/iam/users/$userId/send-password-setup-email';

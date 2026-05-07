@@ -99,12 +99,17 @@ describe('useUsers', () => {
 
     createUserMock.mockResolvedValue({
       data: {
-        id: 'user-2',
-        keycloakSubject: 'subject-2',
-        displayName: 'Second User',
-        status: 'pending',
-        roles: [],
-        mainserverUserApplicationSecretSet: false,
+        user: {
+          id: 'user-2',
+          keycloakSubject: 'subject-2',
+          displayName: 'Second User',
+          status: 'pending',
+          roles: [],
+          mainserverUserApplicationSecretSet: false,
+        },
+        invitation: {
+          status: 'sent',
+        },
       },
     });
     deactivateUserMock.mockResolvedValue({ data: { id: 'user-1' } });
@@ -303,12 +308,17 @@ describe('useUsers', () => {
       .mockImplementationOnce(() => new Promise(() => undefined));
     createUserMock.mockResolvedValue({
       data: {
-        id: 'user-2',
-        keycloakSubject: 'subject-2',
-        displayName: 'Second User',
-        status: 'pending',
-        roles: [],
-        mainserverUserApplicationSecretSet: false,
+        user: {
+          id: 'user-2',
+          keycloakSubject: 'subject-2',
+          displayName: 'Second User',
+          status: 'pending',
+          roles: [],
+          mainserverUserApplicationSecretSet: false,
+        },
+        invitation: {
+          status: 'failed',
+        },
       },
     });
 
@@ -326,12 +336,17 @@ describe('useUsers', () => {
     });
 
     expect(createResult).toEqual({
-      id: 'user-2',
-      keycloakSubject: 'subject-2',
-      displayName: 'Second User',
-      status: 'pending',
-      roles: [],
-      mainserverUserApplicationSecretSet: false,
+      user: {
+        id: 'user-2',
+        keycloakSubject: 'subject-2',
+        displayName: 'Second User',
+        status: 'pending',
+        roles: [],
+        mainserverUserApplicationSecretSet: false,
+      },
+      invitation: {
+        status: 'failed',
+      },
     });
     expect(createUserMock).toHaveBeenCalledTimes(1);
     expect(listUsersMock).toHaveBeenCalledTimes(2);

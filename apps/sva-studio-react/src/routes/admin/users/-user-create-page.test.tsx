@@ -25,52 +25,34 @@ vi.mock('../../../hooks/use-roles', () => ({
   useRoles: () => useRolesMock(),
 }));
 
+const createUsersApiState = (overrides: Record<string, unknown> = {}) => ({
+  createUser: vi.fn(),
+  error: null,
+  ...overrides,
+});
+
 describe('UserCreatePage', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    useRolesMock.mockReturnValue({
+      roles: [{ id: 'role-1', roleName: 'Editor' }],
+    });
+  });
+
   afterEach(() => {
     cleanup();
   });
 
-  beforeEach(() => {
-    navigateMock.mockReset();
-    useUsersMock.mockReset();
-    useRolesMock.mockReset();
-
-    useRolesMock.mockReturnValue({
-      roles: [{ id: 'role-1', roleName: 'system_admin' }],
-      isLoading: false,
-      error: null,
-      refetch: vi.fn(),
-      createRole: vi.fn(),
-      updateRole: vi.fn(),
-      deleteRole: vi.fn(),
-    });
-  });
-
   it('renders mutation-specific client errors without load wording', () => {
-    useUsersMock.mockReturnValue({
-      users: [],
-      total: 0,
-      page: 1,
-      pageSize: 25,
-      isLoading: false,
-      error: null,
-      mutationError: {
-        status: 500,
-        code: 'internal_error',
-        message: 'Einladungs-E-Mail zum Passwort setzen konnte nicht gesendet werden.',
-      },
-      filters: { page: 1, pageSize: 25, search: '', status: 'all', role: '' },
-      setSearch: vi.fn(),
-      setStatus: vi.fn(),
-      setRole: vi.fn(),
-      setPage: vi.fn(),
-      refetch: vi.fn(),
-      createUser: vi.fn(),
-      updateUser: vi.fn(),
-      deactivateUser: vi.fn(),
-      bulkDeactivate: vi.fn(),
-      syncUsersFromKeycloak: vi.fn(),
-    });
+    useUsersMock.mockReturnValue(
+      createUsersApiState({
+        mutationError: {
+          status: 500,
+          code: 'internal_error',
+          message: 'Einladungs-E-Mail zum Passwort setzen konnte nicht gesendet werden.',
+        },
+      })
+    );
 
     render(<UserCreatePage />);
 
@@ -80,54 +62,101 @@ describe('UserCreatePage', () => {
     expect(screen.getByRole('alert').textContent).not.toContain('Technischer Fehler beim Laden der Nutzer');
   });
 
-  it('navigates to the created user after successful submit', async () => {
+  it('renders the password setup invite option enabled by default', () => {
+    useUsersMock.mockReturnValue(createUsersApiState());
+
+    const { container } = render(<UserCreatePage />);
+    const checkbox = container.querySelector<HTMLInputElement>('#create-user-send-password-setup-email');
+
+    expect(checkbox?.checked).toBe(true);
+  });
+
+  it('submits the invite flag and navigates with a warning marker when invitation delivery failed', async () => {
     const createUser = vi.fn().mockResolvedValue({
-      id: 'user-2',
+      user: {
+        id: 'user-1',
+        keycloakSubject: 'subject-1',
+        displayName: 'Alice Example',
+        status: 'pending',
+        roles: [],
+        mainserverUserApplicationSecretSet: false,
+      },
+      invitation: {
+        status: 'failed',
+      },
     });
+    useUsersMock.mockReturnValue(createUsersApiState({ createUser }));
 
-    useUsersMock.mockReturnValue({
-      users: [],
-      total: 0,
-      page: 1,
-      pageSize: 25,
-      isLoading: false,
-      error: null,
-      mutationError: null,
-      filters: { page: 1, pageSize: 25, search: '', status: 'all', role: '' },
-      setSearch: vi.fn(),
-      setStatus: vi.fn(),
-      setRole: vi.fn(),
-      setPage: vi.fn(),
-      refetch: vi.fn(),
-      createUser,
-      updateUser: vi.fn(),
-      deactivateUser: vi.fn(),
-      bulkDeactivate: vi.fn(),
-      syncUsersFromKeycloak: vi.fn(),
-    });
+    const { container } = render(<UserCreatePage />);
+    const emailInput = container.querySelector<HTMLInputElement>('#create-user-email');
+    const firstNameInput = container.querySelector<HTMLInputElement>('#create-user-first-name');
+    const lastNameInput = container.querySelector<HTMLInputElement>('#create-user-last-name');
+    const roleSelect = container.querySelector<HTMLSelectElement>('#create-user-role');
 
-    render(<UserCreatePage />);
+    if (!emailInput || !firstNameInput || !lastNameInput || !roleSelect) {
+      throw new Error('Expected create-user form inputs to be present');
+    }
 
-    fireEvent.change(screen.getByLabelText('E-Mail'), { target: { value: 'user@example.com' } });
-    fireEvent.change(screen.getByLabelText('Vorname'), { target: { value: 'Ada' } });
-    fireEvent.change(screen.getByLabelText('Nachname'), { target: { value: 'Lovelace' } });
+    fireEvent.change(emailInput, { target: { value: 'alice@example.com' } });
+    fireEvent.change(firstNameInput, { target: { value: 'Alice' } });
+    fireEvent.change(lastNameInput, { target: { value: 'Example' } });
+    fireEvent.change(roleSelect, { target: { value: 'role-1' } });
     fireEvent.click(screen.getByRole('button', { name: 'Nutzer anlegen' }));
 
-    await waitFor(() => {
-      expect(createUser).toHaveBeenCalledWith({
-        email: 'user@example.com',
-        firstName: 'Ada',
-        lastName: 'Lovelace',
-        displayName: 'Ada Lovelace',
-        roleIds: [],
-      });
-    });
-
-    await waitFor(() => {
+    await waitFor(() =>
+      expect(createUser).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sendPasswordSetupEmail: true,
+        })
+      )
+    );
+    await waitFor(() =>
       expect(navigateMock).toHaveBeenCalledWith({
         to: '/admin/users/$userId',
-        params: { userId: 'user-2' },
-      });
+        params: { userId: 'user-1' },
+        search: { invite: 'failed' },
+      })
+    );
+  });
+
+  it('submits the invite flag as false when the checkbox is disabled', async () => {
+    const createUser = vi.fn().mockResolvedValue({
+      user: {
+        id: 'user-1',
+        keycloakSubject: 'subject-1',
+        displayName: 'Alice Example',
+        status: 'pending',
+        roles: [],
+        mainserverUserApplicationSecretSet: false,
+      },
+      invitation: {
+        status: 'not_requested',
+      },
     });
+    useUsersMock.mockReturnValue(createUsersApiState({ createUser }));
+
+    const { container } = render(<UserCreatePage />);
+    const checkbox = container.querySelector<HTMLInputElement>('#create-user-send-password-setup-email');
+    const emailInput = container.querySelector<HTMLInputElement>('#create-user-email');
+    const firstNameInput = container.querySelector<HTMLInputElement>('#create-user-first-name');
+    const lastNameInput = container.querySelector<HTMLInputElement>('#create-user-last-name');
+
+    if (!checkbox || !emailInput || !firstNameInput || !lastNameInput) {
+      throw new Error('Expected create-user form controls to be present');
+    }
+
+    fireEvent.click(checkbox);
+    fireEvent.change(emailInput, { target: { value: 'alice@example.com' } });
+    fireEvent.change(firstNameInput, { target: { value: 'Alice' } });
+    fireEvent.change(lastNameInput, { target: { value: 'Example' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Nutzer anlegen' }));
+
+    await waitFor(() =>
+      expect(createUser).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sendPasswordSetupEmail: false,
+        })
+      )
+    );
   });
 });

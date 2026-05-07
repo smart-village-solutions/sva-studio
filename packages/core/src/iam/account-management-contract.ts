@@ -227,6 +227,15 @@ export type IamUserDetail = IamUserListItem & {
   readonly fieldEditability?: IamKeycloakUserFieldEditability;
 };
 
+export type IamUserInvitationStatus = 'not_requested' | 'sent' | 'failed';
+
+export type IamCreateUserResult = {
+  readonly user: IamUserDetail;
+  readonly invitation: {
+    readonly status: IamUserInvitationStatus;
+  };
+};
+
 export type IamKeycloakMappingStatus = 'mapped' | 'unmapped' | 'manual_review';
 
 export type IamKeycloakObjectEditability = 'editable' | 'read_only' | 'blocked';

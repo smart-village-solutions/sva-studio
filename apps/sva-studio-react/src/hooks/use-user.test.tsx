@@ -5,6 +5,7 @@ import { useUser } from './use-user';
 
 const getUserMock = vi.fn();
 const updateUserMock = vi.fn();
+const sendPasswordSetupEmailMock = vi.fn();
 const asIamErrorMock = vi.fn();
 const authMockValue = {
   user: {
@@ -32,6 +33,7 @@ vi.mock('../lib/iam-api', () => ({
     }
   },
   getUser: (...args: unknown[]) => getUserMock(...args),
+  sendPasswordSetupEmail: (...args: unknown[]) => sendPasswordSetupEmailMock(...args),
   updateUser: (...args: unknown[]) => updateUserMock(...args),
   asIamError: (...args: unknown[]) => asIamErrorMock(...args),
 }));
@@ -44,6 +46,7 @@ describe('useUser', () => {
   beforeEach(() => {
     getUserMock.mockReset();
     updateUserMock.mockReset();
+    sendPasswordSetupEmailMock.mockReset();
     asIamErrorMock.mockReset();
     authMockValue.invalidatePermissions.mockReset();
   });
@@ -164,5 +167,69 @@ describe('useUser', () => {
     expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
     expect(result.current.error).toBeNull();
     expect(result.current.mutationError).toBe(forbiddenError);
+  });
+
+  it('resends the password setup email successfully', async () => {
+    asIamErrorMock.mockImplementation((cause: unknown) => cause);
+    getUserMock.mockResolvedValueOnce({
+      data: {
+        id: 'user-4',
+        keycloakSubject: 'subject-4',
+        displayName: 'User Four',
+        status: 'active',
+        roles: [],
+        mainserverUserApplicationSecretSet: false,
+      },
+    });
+    sendPasswordSetupEmailMock.mockResolvedValueOnce({
+      data: {
+        status: 'sent',
+      },
+    });
+
+    const { result } = renderHook(() => useUser('user-4'));
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    await act(async () => {
+      const sent = await result.current.resendPasswordSetupEmail?.();
+      expect(sent).toBe(true);
+    });
+
+    expect(sendPasswordSetupEmailMock).toHaveBeenCalledWith('user-4');
+    expect(result.current.error).toBeNull();
+    expect(authMockValue.invalidatePermissions).not.toHaveBeenCalled();
+  });
+
+  it('invalidates permissions when resending the password setup email returns 403', async () => {
+    const forbiddenError = { status: 403, code: 'forbidden', message: 'Forbidden' };
+    asIamErrorMock.mockReturnValue(forbiddenError);
+    getUserMock.mockResolvedValueOnce({
+      data: {
+        id: 'user-5',
+        keycloakSubject: 'subject-5',
+        displayName: 'User Five',
+        status: 'active',
+        roles: [],
+        mainserverUserApplicationSecretSet: false,
+      },
+    });
+    sendPasswordSetupEmailMock.mockRejectedValueOnce(new Error('forbidden-resend'));
+
+    const { result } = renderHook(() => useUser('user-5'));
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    await act(async () => {
+      const sent = await result.current.resendPasswordSetupEmail?.();
+      expect(sent).toBe(false);
+    });
+
+    expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
+    expect(result.current.error).toBe(forbiddenError);
   });
 });

@@ -7,11 +7,11 @@ import { trackKeycloakCall, withInstanceScopedDb } from './shared.js';
 import { resolveUserDetail } from './user-detail-query.js';
 import {
   buildErrorResponseBody,
-  buildKeycloakUnavailableResponse,
   buildPasswordSetupEmailFailureResponse,
   buildRequestResponseBody,
+  buildKeycloakUnavailableResponse,
   emitPasswordSetupEmailFailureAudit,
-  type ExecuteActionsEmail,
+  ExecuteActionsEmail,
   finalizePasswordSetupEmailError,
   finalizePasswordSetupEmailResponse,
   logSendPasswordSetupEmailFailure,

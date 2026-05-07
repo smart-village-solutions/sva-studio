@@ -113,6 +113,33 @@ describe('Keycloak admin client', () => {
     ).rejects.toBeInstanceOf(KeycloakAdminRequestError);
   });
 
+  it('sends execute-actions emails with optional redirect and client parameters', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+
+    const client = await createClient(fetchImpl);
+
+    await expect(
+      client.executeActionsEmail('user-123', {
+        actions: ['UPDATE_PASSWORD'],
+        clientId: 'sva-studio',
+        redirectUri: 'https://tenant.example.test/',
+        lifespan: 900,
+      })
+    ).resolves.toBeUndefined();
+
+    expect(fetchImpl).toHaveBeenNthCalledWith(
+      2,
+      'https://keycloak.example/admin/realms/demo/users/user-123/execute-actions-email?client_id=sva-studio&redirect_uri=https%3A%2F%2Ftenant.example.test%2F&lifespan=900',
+      expect.objectContaining({
+        method: 'PUT',
+        body: JSON.stringify(['UPDATE_PASSWORD']),
+      })
+    );
+  });
+
   it('retries retryable request failures and then succeeds', async () => {
     const { KeycloakAdminClient } = await import('./core.js');
     const sleep = vi.fn(async () => undefined);

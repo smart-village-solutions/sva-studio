@@ -50,7 +50,7 @@
 
 - [ ] 5.1 In `packages/auth-runtime` die HTTP-Handler für `/api/v1/waste-management/*` mit Validierung, Rechteprüfung, Fehlervertrag und Endpunkten für die generische Job-Fähigkeit implementieren
 - [ ] 5.2 In `packages/routing` die freie Plugin-Route, Search-Param-Validierung, Guards und Sichtbarkeitsregeln für Waste-Management integrieren
-- [ ] 5.3 In `packages/routing` und `packages/auth-runtime` die Host-Routen für `/api/v1/waste-management/*` einschliesslich asynchroner Tool- und Migrationspfade in die bestehende Runtime- und Route-Registrierung aufnehmen
+- [ ] 5.3 In `packages/routing` und `packages/auth-runtime` die Host-Routen für `/api/v1/waste-management/*` einschließlich asynchroner Tool- und Migrationspfade in die bestehende Runtime- und Route-Registrierung aufnehmen
 - [ ] 5.4 In `packages/iam-admin` die neuen `waste-management.*` Rechte in Rollen- und Permission-Verwaltung integrieren, soweit diese zentral vom Studio gepflegt werden
 - [ ] 5.5 In `packages/iam-governance` die zentrale Audit-Integration und gegebenenfalls einfache Audit-basierte Verlaufsansichten für Waste-Mutationen anbinden
 - [ ] 5.6 Audit-Events, Modul-IAM und Berechtigungsauflosung für `waste-management.*` im Zusammenspiel von `packages/plugin-sdk`, `packages/iam-admin` und `packages/iam-governance` verdrahten

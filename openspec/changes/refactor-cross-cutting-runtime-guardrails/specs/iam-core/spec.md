@@ -46,7 +46,7 @@ Das System MUST In-Memory- und Redis-Session-Stores über denselben kanonischen 
 - **THEN** bleiben Tokens, Expiry-Felder, Versionsfelder und Konkurrenz-Metadaten semantisch identisch
 - **AND** adapterbedingte Unterschiede verändern nicht das Auth-Ergebnis
 
-#### Scenario: Test- und Produktionsadapter verhalten sich konkurenzgleich
+#### Scenario: Test- und Produktionsadapter verhalten sich konkurrenzgleich
 
 - **WHEN** Characterization- oder Integrationstests gegen beide Session-Store-Adapter laufen
 - **THEN** prüfen sie dieselben Refresh-, TTL- und Invalidation-Szenarien

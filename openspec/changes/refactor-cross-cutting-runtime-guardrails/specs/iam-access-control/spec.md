@@ -28,7 +28,7 @@ Das System MUST fully-qualified Action-IDs nicht nur für Plugin-Beiträge, sond
 - **THEN** schlägt der statische Qualitätslauf fehl
 - **AND** die Implementierung wird auf eine vollqualifizierte Action-ID migriert
 
-#### Scenario: Nicht autorisierbarer interner Hilfswert bleibt ausserhalb des Scopes
+#### Scenario: Nicht autorisierbarer interner Hilfswert bleibt außerhalb des Scopes
 
 - **WHEN** ein String nicht für eine Autorisierungsentscheidung, Auditierung oder Guard-Auswertung verwendet wird
 - **THEN** erzwingt der Gate ihn nicht als Action-ID

@@ -8,7 +8,7 @@ Die Produktions-Runtime MUST OpenTelemetry und den produktiven Server-Logger abs
 
 - **WHEN** die Produktions-Runtime bootet
 - **THEN** initialisiert sie OTEL und den verpflichtenden Exportpfad vor dem ersten Request-Handling
-- **AND** fruehe Boot- und Handler-Logs gehen nicht nur an lokale Fallback-Kanäle verloren
+- **AND** frühe Boot- und Handler-Logs gehen nicht nur an lokale Fallback-Kanäle verloren
 
 #### Scenario: OTEL ist in Produktion nicht bereit
 

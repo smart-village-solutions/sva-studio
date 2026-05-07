@@ -31,7 +31,7 @@ Das Routing-System SHALL Plugin-Routen über einen deklarativen, typisierten Ver
 
 #### Scenario: Plugin versucht host-owned Parsing zu ersetzen
 
-- **GIVEN** ein Plugin versucht eine Route mit eigenem Guard-, Parse- oder Materialisierungsverhalten ausserhalb des Vertrags zu liefern
+- **GIVEN** ein Plugin versucht eine Route mit eigenem Guard-, Parse- oder Materialisierungsverhalten außerhalb des Vertrags zu liefern
 - **WHEN** der Host die Definition validiert
 - **THEN** wird der Beitrag abgewiesen
 - **AND** Search-Param-Parsing, Guard-Auswertung und Route-Ownership bleiben hostkontrolliert

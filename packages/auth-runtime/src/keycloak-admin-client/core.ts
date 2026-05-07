@@ -678,6 +678,17 @@ export class KeycloakAdminClient implements IdentityProviderPort {
       operation: 'list_service_account_client_roles',
     });
 
+    const availableRoleNames = new Set(availableRoles.map((role) => role.name));
+    const missingRequiredRoles = REQUIRED_TENANT_ADMIN_CLIENT_ROLE_NAMES.filter((roleName) => !availableRoleNames.has(roleName));
+    if (missingRequiredRoles.length > 0) {
+      throw new KeycloakAdminRequestError({
+        message: `Missing required Keycloak realm-management roles: ${missingRequiredRoles.join(', ')}`,
+        statusCode: 500,
+        code: 'realm_management_role_missing',
+        retryable: false,
+      });
+    }
+
     const currentRoleNames = new Set(currentRoleMappings.map((role) => role.name));
     const rolesToAdd = availableRoles
       .filter((role) =>

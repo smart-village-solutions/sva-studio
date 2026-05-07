@@ -191,7 +191,7 @@ const createTenantAdminStep = (facts: WorkflowFacts): SetupWorkflowStep => {
     key: 'tenantAdmin',
     title: t('admin.instances.workflow.tenantAdmin.title'),
     description: !facts.tenantAdminConfigured
-      ? t('admin.instances.workflow.tenantAdmin.notConfigured')
+      ? t('admin.instances.workflow.tenantAdmin.missing')
       : ready
         ? t('admin.instances.workflow.tenantAdmin.ready')
         : facts.keycloakUnavailable
@@ -229,7 +229,7 @@ const createActivationStep = (facts: WorkflowFacts): SetupWorkflowStep =>
       facts.instance.status === 'active'
         ? t('admin.instances.workflow.activation.ready')
         : facts.provisioningSucceeded
-          ? t('admin.instances.workflow.activation.available')
+          ? t('admin.instances.workflow.activation.current')
           : t('admin.instances.workflow.activation.pending'),
     status: facts.instance.status === 'active' ? 'done' : facts.provisioningSucceeded ? 'current' : 'pending',
     actionLabel: facts.provisioningSucceeded ? t('admin.instances.actions.activate') : undefined,

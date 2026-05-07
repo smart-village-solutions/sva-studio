@@ -41,12 +41,14 @@ const createDetailFixture = (overrides: Record<string, unknown> = {}) =>
     keycloakPreflight: {
       overallStatus: 'ready',
       generatedAt: '2026-01-01T00:00:00.000Z',
+      checkedAt: '2026-01-01T00:00:00.000Z',
       checks: [
         {
           checkKey: 'keycloak_admin_access',
           status: 'ready',
           title: 'Keycloak erreichbar',
           summary: 'Technischer Zugriff ist vorhanden.',
+          details: {},
         },
       ],
     },
@@ -59,25 +61,31 @@ const createDetailFixture = (overrides: Record<string, unknown> = {}) =>
         {
           stepKey: 'client',
           action: 'create',
+          status: 'ready',
           title: 'Client anlegen',
           summary: 'Der Login-Client wird eingerichtet.',
+          details: {},
         },
       ],
     },
     keycloakProvisioningRuns: [
       {
         id: 'run-history-1',
+        instanceId: 'demo',
         intent: 'reset_tenant_admin',
         mode: 'existing',
         overallStatus: 'failed',
         driftSummary: 'Historischer Fehler',
         requestId: 'req-history-1',
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
         steps: [
           {
             stepKey: 'cleanup',
             title: 'Aufräumen',
             status: 'failed',
             summary: 'Abgebrochen',
+            details: {},
           },
         ],
       },
@@ -102,11 +110,14 @@ const createDetailFixture = (overrides: Record<string, unknown> = {}) =>
     },
     latestKeycloakProvisioningRun: {
       id: 'run-current',
+      instanceId: 'demo',
       intent: 'provision',
       mode: 'new',
       overallStatus: 'running',
       driftSummary: 'Worker läuft.',
       requestId: 'req-current',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
       steps: [],
     },
     moduleIamStatus: {
@@ -132,7 +143,7 @@ const createDetailFixture = (overrides: Record<string, unknown> = {}) =>
       overall: { status: 'blocked', summary: 'Eingeschränkt', source: 'role_reconcile' },
     },
     ...overrides,
-  }) as const;
+  }) as any;
 
 const createDetailFormValues = () => ({
   displayName: 'Demo',
@@ -374,9 +385,8 @@ describe('instance detail split sections', () => {
     });
 
     const Harness = () => {
-      const [activeWorkspaceTab, setActiveWorkspaceTab] = React.useState<'configuration' | 'operations' | 'history'>(
-        'configuration',
-      );
+      const [activeWorkspaceTab, setActiveWorkspaceTab] =
+        React.useState<'configuration' | 'operations' | 'history'>('configuration');
       const [detailFormValues, setDetailFormValues] = React.useState(createDetailFormValues());
 
       return (
@@ -399,7 +409,7 @@ describe('instance detail split sections', () => {
           mutationError={null}
           statusLoading={false}
           setActiveWorkspaceTab={setActiveWorkspaceTab}
-          setDetailFormValues={setDetailFormValues}
+          setDetailFormValues={setDetailFormValues as ConfigurationSectionProps['setDetailFormValues']}
           onUpdateSubmit={onUpdateSubmit}
           onTriggerWorkflowAction={onTriggerWorkflowAction}
           onExecuteProvisioning={onExecuteProvisioning}

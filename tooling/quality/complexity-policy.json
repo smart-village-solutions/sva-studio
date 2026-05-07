@@ -16,6 +16,50 @@
   },
   "modules": [
     {
+      "id": "packages-default",
+      "label": "Packages Default",
+      "class": "zentral",
+      "owner": "team-platform",
+      "reviewCadence": "pro-pr",
+      "include": [
+        "packages/**/src/**/*.ts",
+        "packages/**/src/**/*.tsx"
+      ],
+      "exclude": [
+        "**/*.test.ts",
+        "**/*.test.tsx",
+        "packages/sva-mainserver/src/generated/**/*.ts"
+      ]
+    },
+    {
+      "id": "apps-default",
+      "label": "Apps Default",
+      "class": "zentral",
+      "owner": "team-frontend",
+      "reviewCadence": "pro-pr",
+      "include": [
+        "apps/**/src/**/*.ts",
+        "apps/**/src/**/*.tsx"
+      ],
+      "exclude": [
+        "**/*.test.ts",
+        "**/*.test.tsx"
+      ]
+    },
+    {
+      "id": "scripts-default",
+      "label": "Scripts Default",
+      "class": "zentral",
+      "owner": "team-platform",
+      "reviewCadence": "pro-pr",
+      "include": [
+        "scripts/**/*.ts"
+      ],
+      "exclude": [
+        "**/*.test.ts"
+      ]
+    },
+    {
       "id": "routing",
       "label": "Routing",
       "class": "kritisch",
@@ -26,7 +70,8 @@
       ],
       "exclude": [
         "**/*.test.ts"
-      ]
+      ],
+      "priority": 100
     },
     {
       "id": "core-security",
@@ -39,7 +84,28 @@
       ],
       "exclude": [
         "**/*.test.ts"
-      ]
+      ],
+      "priority": 100
+    },
+    {
+      "id": "core-iam",
+      "label": "Core IAM",
+      "class": "kritisch",
+      "owner": "team-iam",
+      "reviewCadence": "pro-pr",
+      "include": [
+        "packages/core/src/iam/**/*.ts"
+      ],
+      "exclude": [
+        "**/*.test.ts"
+      ],
+      "priority": 100,
+      "overrides": {
+        "fileLines": 320,
+        "functionLines": 120,
+        "cyclomaticComplexity": 20,
+        "publicExports": 24
+      }
     },
     {
       "id": "iam-data",
@@ -52,15 +118,1203 @@
       ],
       "exclude": [
         "**/*.test.ts"
-      ]
+      ],
+      "priority": 100
+    },
+    {
+      "id": "instance-registry-data",
+      "label": "Instance Registry Data",
+      "class": "kritisch",
+      "owner": "team-data",
+      "reviewCadence": "pro-pr",
+      "include": [
+        "packages/data/src/instance-registry/**/*.ts"
+      ],
+      "exclude": [
+        "**/*.test.ts"
+      ],
+      "priority": 100
+    },
+    {
+      "id": "instance-registry-repositories",
+      "label": "Instance Registry Repositories",
+      "class": "kritisch",
+      "owner": "team-data",
+      "reviewCadence": "pro-pr",
+      "include": [
+        "packages/data-repositories/src/instance-registry/**/*.ts"
+      ],
+      "exclude": [
+        "**/*.test.ts"
+      ],
+      "priority": 100
+    },
+    {
+      "id": "auth-runtime",
+      "label": "Auth Runtime",
+      "class": "kritisch",
+      "owner": "team-iam",
+      "reviewCadence": "pro-pr",
+      "include": [
+        "packages/auth-runtime/src/**/*.ts"
+      ],
+      "exclude": [
+        "**/*.test.ts"
+      ],
+      "priority": 100,
+      "overrides": {
+        "fileLines": 320,
+        "functionLines": 100,
+        "cyclomaticComplexity": 18,
+        "publicExports": 20
+      }
+    },
+    {
+      "id": "iam-admin",
+      "label": "IAM Admin",
+      "class": "kritisch",
+      "owner": "team-iam",
+      "reviewCadence": "pro-pr",
+      "include": [
+        "packages/iam-admin/src/**/*.ts"
+      ],
+      "exclude": [
+        "**/*.test.ts"
+      ],
+      "priority": 100,
+      "overrides": {
+        "fileLines": 320,
+        "functionLines": 100,
+        "cyclomaticComplexity": 18,
+        "publicExports": 15
+      }
+    },
+    {
+      "id": "iam-governance",
+      "label": "IAM Governance",
+      "class": "zentral",
+      "owner": "team-iam",
+      "reviewCadence": "pro-pr",
+      "include": [
+        "packages/iam-governance/src/**/*.ts"
+      ],
+      "exclude": [
+        "**/*.test.ts"
+      ],
+      "priority": 100,
+      "overrides": {
+        "fileLines": 320,
+        "functionLines": 100,
+        "cyclomaticComplexity": 18,
+        "publicExports": 15
+      }
+    },
+    {
+      "id": "instance-registry-service",
+      "label": "Instance Registry Service",
+      "class": "kritisch",
+      "owner": "team-platform",
+      "reviewCadence": "pro-pr",
+      "include": [
+        "packages/instance-registry/src/**/*.ts"
+      ],
+      "exclude": [
+        "**/*.test.ts"
+      ],
+      "priority": 100,
+      "overrides": {
+        "fileLines": 320,
+        "functionLines": 100,
+        "cyclomaticComplexity": 18,
+        "publicExports": 15
+      }
+    },
+    {
+      "id": "plugin-sdk",
+      "label": "Plugin SDK",
+      "class": "zentral",
+      "owner": "team-platform",
+      "reviewCadence": "pro-pr",
+      "include": [
+        "packages/plugin-sdk/src/**/*.ts"
+      ],
+      "exclude": [
+        "**/*.test.ts"
+      ],
+      "priority": 100,
+      "overrides": {
+        "fileLines": 320,
+        "functionLines": 100,
+        "cyclomaticComplexity": 18,
+        "publicExports": 20
+      }
+    },
+    {
+      "id": "plugin-news",
+      "label": "Plugin News UI",
+      "class": "zentral",
+      "owner": "team-content",
+      "reviewCadence": "pro-pr",
+      "include": [
+        "packages/plugin-news/src/**/*.ts",
+        "packages/plugin-news/src/**/*.tsx"
+      ],
+      "exclude": [
+        "**/*.test.ts",
+        "**/*.test.tsx"
+      ],
+      "priority": 100,
+      "overrides": {
+        "fileLines": 320,
+        "functionLines": 120,
+        "cyclomaticComplexity": 20,
+        "publicExports": 20
+      }
+    },
+    {
+      "id": "sva-mainserver",
+      "label": "SVA Mainserver",
+      "class": "kritisch",
+      "owner": "team-platform",
+      "reviewCadence": "pro-pr",
+      "include": [
+        "packages/sva-mainserver/src/**/*.ts"
+      ],
+      "exclude": [
+        "**/*.test.ts",
+        "packages/sva-mainserver/src/generated/**/*.ts"
+      ],
+      "priority": 100,
+      "overrides": {
+        "fileLines": 320,
+        "functionLines": 120,
+        "cyclomaticComplexity": 20,
+        "publicExports": 20
+      }
+    },
+    {
+      "id": "frontend-app",
+      "label": "Frontend App",
+      "class": "zentral",
+      "owner": "team-frontend",
+      "reviewCadence": "pro-pr",
+      "include": [
+        "apps/sva-studio-react/src/**/*.ts",
+        "apps/sva-studio-react/src/**/*.tsx"
+      ],
+      "exclude": [
+        "**/*.test.ts",
+        "**/*.test.tsx"
+      ],
+      "priority": 100,
+      "overrides": {
+        "fileLines": 400,
+        "functionLines": 180,
+        "cyclomaticComplexity": 25,
+        "publicExports": 20
+      }
+    },
+    {
+      "id": "ci-scripts",
+      "label": "CI Scripts",
+      "class": "zentral",
+      "owner": "team-platform",
+      "reviewCadence": "pro-pr",
+      "include": [
+        "scripts/ci/**/*.ts"
+      ],
+      "exclude": [
+        "**/*.test.ts"
+      ],
+      "priority": 100,
+      "overrides": {
+        "fileLines": 320,
+        "functionLines": 120,
+        "cyclomaticComplexity": 20,
+        "publicExports": 20
+      }
+    },
+    {
+      "id": "ops-scripts",
+      "label": "Operations Scripts",
+      "class": "zentral",
+      "owner": "team-platform",
+      "reviewCadence": "pro-pr",
+      "include": [
+        "scripts/ops/**/*.ts"
+      ],
+      "exclude": [
+        "**/*.test.ts"
+      ],
+      "priority": 100,
+      "overrides": {
+        "fileLines": 400,
+        "functionLines": 120,
+        "cyclomaticComplexity": 20,
+        "publicExports": 20
+      }
     }
   ],
   "trackedFindings": {
-    "routing:packages/routing/src/auth.routes.server.ts:fileLines": {
-      "ticketId": "QUAL-109",
-      "ticketSystem": "backlog",
+    "apps-default:apps/project-report/src/app.tsx:fileLines": {
+      "ticketId": "baseline-apps-default-project-report-src-app-tsx",
+      "ticketSystem": "policy-baseline",
       "status": "open",
-      "summary": "Serverseitige Auth-Route-Komposition weiter in kleinere Routing-Bausteine zerlegen"
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (apps/project-report/src/app.tsx)"
+    },
+    "apps-default:apps/project-report/src/app.tsx:functionLines": {
+      "ticketId": "baseline-apps-default-project-report-src-app-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (apps/project-report/src/app.tsx)"
+    },
+    "apps-default:apps/project-report/src/lib/project-status.ts:cyclomaticComplexity": {
+      "ticketId": "baseline-apps-default-project-report-src-lib-project-status-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (apps/project-report/src/lib/project-status.ts)"
+    },
+    "auth-runtime:packages/auth-runtime/src/audit-db-sink.ts:fileLines": {
+      "ticketId": "baseline-auth-runtime-src-audit-db-sink-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/auth-runtime/src/audit-db-sink.ts)"
+    },
+    "auth-runtime:packages/auth-runtime/src/auth-route-handlers.ts:fileLines": {
+      "ticketId": "baseline-auth-runtime-src-auth-route-handlers-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/auth-runtime/src/auth-route-handlers.ts)"
+    },
+    "auth-runtime:packages/auth-runtime/src/iam-account-management/core.ts:publicExports": {
+      "ticketId": "baseline-auth-runtime-src-iam-account-management-core-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "oeffentliche Export-Oberflaeche in kleinere fachliche API-Segmente aufteilen (packages/auth-runtime/src/iam-account-management/core.ts)"
+    },
+    "auth-runtime:packages/auth-runtime/src/iam-account-management/diagnostics.ts:fileLines": {
+      "ticketId": "baseline-auth-runtime-src-iam-account-management-diagnostics-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/auth-runtime/src/iam-account-management/diagnostics.ts)"
+    },
+    "auth-runtime:packages/auth-runtime/src/iam-account-management/diagnostics.ts:functionLines": {
+      "ticketId": "baseline-auth-runtime-src-iam-account-management-diagnostics-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/auth-runtime/src/iam-account-management/diagnostics.ts)"
+    },
+    "auth-runtime:packages/auth-runtime/src/iam-account-management/platform-handlers.ts:cyclomaticComplexity": {
+      "ticketId": "baseline-auth-runtime-src-iam-account-management-platform-handlers-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (packages/auth-runtime/src/iam-account-management/platform-handlers.ts)"
+    },
+    "auth-runtime:packages/auth-runtime/src/iam-account-management/platform-handlers.ts:fileLines": {
+      "ticketId": "baseline-auth-runtime-src-iam-account-management-platform-handlers-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/auth-runtime/src/iam-account-management/platform-handlers.ts)"
+    },
+    "auth-runtime:packages/auth-runtime/src/iam-account-management/platform-handlers.ts:functionLines": {
+      "ticketId": "baseline-auth-runtime-src-iam-account-management-platform-handlers-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/auth-runtime/src/iam-account-management/platform-handlers.ts)"
+    },
+    "auth-runtime:packages/auth-runtime/src/iam-account-management/profile-handlers.ts:fileLines": {
+      "ticketId": "baseline-auth-runtime-src-iam-account-management-profile-handlers-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/auth-runtime/src/iam-account-management/profile-handlers.ts)"
+    },
+    "auth-runtime:packages/auth-runtime/src/iam-account-management/schema-guard.ts:fileLines": {
+      "ticketId": "baseline-auth-runtime-src-iam-account-management-schema-guard-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/auth-runtime/src/iam-account-management/schema-guard.ts)"
+    },
+    "auth-runtime:packages/auth-runtime/src/iam-account-management/shared.ts:publicExports": {
+      "ticketId": "baseline-auth-runtime-src-iam-account-management-shared-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "oeffentliche Export-Oberflaeche in kleinere fachliche API-Segmente aufteilen (packages/auth-runtime/src/iam-account-management/shared.ts)"
+    },
+    "auth-runtime:packages/auth-runtime/src/iam-account-management/user-import-sync-handler.ts:cyclomaticComplexity": {
+      "ticketId": "baseline-auth-runtime-src-iam-account-management-user-import-sync-handler-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (packages/auth-runtime/src/iam-account-management/user-import-sync-handler.ts)"
+    },
+    "auth-runtime:packages/auth-runtime/src/iam-account-management/user-import-sync-handler.ts:fileLines": {
+      "ticketId": "baseline-auth-runtime-src-iam-account-management-user-import-sync-handler-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/auth-runtime/src/iam-account-management/user-import-sync-handler.ts)"
+    },
+    "auth-runtime:packages/auth-runtime/src/iam-account-management/user-import-sync-handler.ts:functionLines": {
+      "ticketId": "baseline-auth-runtime-src-iam-account-management-user-import-sync-handler-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/auth-runtime/src/iam-account-management/user-import-sync-handler.ts)"
+    },
+    "auth-runtime:packages/auth-runtime/src/iam-authorization/authorize.ts:functionLines": {
+      "ticketId": "baseline-auth-runtime-src-iam-authorization-authorize-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/auth-runtime/src/iam-authorization/authorize.ts)"
+    },
+    "auth-runtime:packages/auth-runtime/src/iam-authorization/permission-store.ts:functionLines": {
+      "ticketId": "baseline-auth-runtime-src-iam-authorization-permission-store-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/auth-runtime/src/iam-authorization/permission-store.ts)"
+    },
+    "auth-runtime:packages/auth-runtime/src/iam-authorization/shared.ts:cyclomaticComplexity": {
+      "ticketId": "baseline-auth-runtime-src-iam-authorization-shared-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (packages/auth-runtime/src/iam-authorization/shared.ts)"
+    },
+    "auth-runtime:packages/auth-runtime/src/iam-authorization/shared.ts:fileLines": {
+      "ticketId": "baseline-auth-runtime-src-iam-authorization-shared-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/auth-runtime/src/iam-authorization/shared.ts)"
+    },
+    "auth-runtime:packages/auth-runtime/src/iam-authorization/shared.ts:publicExports": {
+      "ticketId": "baseline-auth-runtime-src-iam-authorization-shared-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "oeffentliche Export-Oberflaeche in kleinere fachliche API-Segmente aufteilen (packages/auth-runtime/src/iam-authorization/shared.ts)"
+    },
+    "auth-runtime:packages/auth-runtime/src/iam-contents/server-authorization.ts:functionLines": {
+      "ticketId": "baseline-auth-runtime-src-iam-contents-server-authorization-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/auth-runtime/src/iam-contents/server-authorization.ts)"
+    },
+    "auth-runtime:packages/auth-runtime/src/iam-data-subject-rights/core.ts:cyclomaticComplexity": {
+      "ticketId": "baseline-auth-runtime-src-iam-data-subject-rights-core-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (packages/auth-runtime/src/iam-data-subject-rights/core.ts)"
+    },
+    "auth-runtime:packages/auth-runtime/src/iam-data-subject-rights/core.ts:fileLines": {
+      "ticketId": "baseline-auth-runtime-src-iam-data-subject-rights-core-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/auth-runtime/src/iam-data-subject-rights/core.ts)"
+    },
+    "auth-runtime:packages/auth-runtime/src/iam-data-subject-rights/core.ts:functionLines": {
+      "ticketId": "baseline-auth-runtime-src-iam-data-subject-rights-core-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/auth-runtime/src/iam-data-subject-rights/core.ts)"
+    },
+    "auth-runtime:packages/auth-runtime/src/iam-media/core.ts:cyclomaticComplexity": {
+      "ticketId": "baseline-auth-runtime-src-iam-media-core-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (packages/auth-runtime/src/iam-media/core.ts)"
+    },
+    "auth-runtime:packages/auth-runtime/src/iam-media/core.ts:fileLines": {
+      "ticketId": "baseline-auth-runtime-src-iam-media-core-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/auth-runtime/src/iam-media/core.ts)"
+    },
+    "auth-runtime:packages/auth-runtime/src/iam-media/core.ts:functionLines": {
+      "ticketId": "baseline-auth-runtime-src-iam-media-core-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/auth-runtime/src/iam-media/core.ts)"
+    },
+    "auth-runtime:packages/auth-runtime/src/iam-media/processing.ts:cyclomaticComplexity": {
+      "ticketId": "baseline-auth-runtime-src-iam-media-processing-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (packages/auth-runtime/src/iam-media/processing.ts)"
+    },
+    "auth-runtime:packages/auth-runtime/src/iam-media/processing.ts:fileLines": {
+      "ticketId": "baseline-auth-runtime-src-iam-media-processing-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/auth-runtime/src/iam-media/processing.ts)"
+    },
+    "auth-runtime:packages/auth-runtime/src/iam-media/processing.ts:functionLines": {
+      "ticketId": "baseline-auth-runtime-src-iam-media-processing-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/auth-runtime/src/iam-media/processing.ts)"
+    },
+    "auth-runtime:packages/auth-runtime/src/iam-media/server-authorization.ts:functionLines": {
+      "ticketId": "baseline-auth-runtime-src-iam-media-server-authorization-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/auth-runtime/src/iam-media/server-authorization.ts)"
+    },
+    "auth-runtime:packages/auth-runtime/src/iam-media/storage-s3.ts:functionLines": {
+      "ticketId": "baseline-auth-runtime-src-iam-media-storage-s3-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/auth-runtime/src/iam-media/storage-s3.ts)"
+    },
+    "auth-runtime:packages/auth-runtime/src/index.ts:publicExports": {
+      "ticketId": "baseline-auth-runtime-src-index-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "oeffentliche Export-Oberflaeche in kleinere fachliche API-Segmente aufteilen (packages/auth-runtime/src/index.ts)"
+    },
+    "auth-runtime:packages/auth-runtime/src/keycloak-admin-client/core.ts:fileLines": {
+      "ticketId": "baseline-auth-runtime-src-keycloak-admin-client-core-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/auth-runtime/src/keycloak-admin-client/core.ts)"
+    },
+    "auth-runtime:packages/auth-runtime/src/redis-session.ts:fileLines": {
+      "ticketId": "baseline-auth-runtime-src-redis-session-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/auth-runtime/src/redis-session.ts)"
+    },
+    "auth-runtime:packages/auth-runtime/src/runtime-routes.ts:publicExports": {
+      "ticketId": "baseline-auth-runtime-src-runtime-routes-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "oeffentliche Export-Oberflaeche in kleinere fachliche API-Segmente aufteilen (packages/auth-runtime/src/runtime-routes.ts)"
+    },
+    "auth-runtime:packages/auth-runtime/src/server.ts:publicExports": {
+      "ticketId": "baseline-auth-runtime-src-server-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "oeffentliche Export-Oberflaeche in kleinere fachliche API-Segmente aufteilen (packages/auth-runtime/src/server.ts)"
+    },
+    "ci-scripts:scripts/ci/check-bot-comment-handling.ts:fileLines": {
+      "ticketId": "baseline-ci-check-bot-comment-handling-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (scripts/ci/check-bot-comment-handling.ts)"
+    },
+    "ci-scripts:scripts/ci/check-plugin-ui-boundary.ts:cyclomaticComplexity": {
+      "ticketId": "baseline-ci-check-plugin-ui-boundary-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (scripts/ci/check-plugin-ui-boundary.ts)"
+    },
+    "ci-scripts:scripts/ci/check-server-package-runtime.ts:fileLines": {
+      "ticketId": "baseline-ci-check-server-package-runtime-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (scripts/ci/check-server-package-runtime.ts)"
+    },
+    "ci-scripts:scripts/ci/complexity-gate.ts:cyclomaticComplexity": {
+      "ticketId": "baseline-ci-complexity-gate-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (scripts/ci/complexity-gate.ts)"
+    },
+    "ci-scripts:scripts/ci/complexity-gate.ts:fileLines": {
+      "ticketId": "baseline-ci-complexity-gate-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (scripts/ci/complexity-gate.ts)"
+    },
+    "ci-scripts:scripts/ci/coverage-gate.ts:cyclomaticComplexity": {
+      "ticketId": "baseline-ci-coverage-gate-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (scripts/ci/coverage-gate.ts)"
+    },
+    "ci-scripts:scripts/ci/coverage-gate.ts:fileLines": {
+      "ticketId": "baseline-ci-coverage-gate-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (scripts/ci/coverage-gate.ts)"
+    },
+    "ci-scripts:scripts/ci/patch-coverage-gate.ts:cyclomaticComplexity": {
+      "ticketId": "baseline-ci-patch-coverage-gate-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (scripts/ci/patch-coverage-gate.ts)"
+    },
+    "ci-scripts:scripts/ci/patch-coverage-gate.ts:fileLines": {
+      "ticketId": "baseline-ci-patch-coverage-gate-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (scripts/ci/patch-coverage-gate.ts)"
+    },
+    "ci-scripts:scripts/ci/run-iam-acceptance.ts:cyclomaticComplexity": {
+      "ticketId": "baseline-ci-run-iam-acceptance-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (scripts/ci/run-iam-acceptance.ts)"
+    },
+    "ci-scripts:scripts/ci/run-iam-acceptance.ts:fileLines": {
+      "ticketId": "baseline-ci-run-iam-acceptance-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (scripts/ci/run-iam-acceptance.ts)"
+    },
+    "ci-scripts:scripts/ci/run-iam-acceptance.ts:functionLines": {
+      "ticketId": "baseline-ci-run-iam-acceptance-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (scripts/ci/run-iam-acceptance.ts)"
+    },
+    "ci-scripts:scripts/ci/sonar-hotspots.ts:cyclomaticComplexity": {
+      "ticketId": "baseline-ci-sonar-hotspots-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (scripts/ci/sonar-hotspots.ts)"
+    },
+    "ci-scripts:scripts/ci/sonar-hotspots.ts:fileLines": {
+      "ticketId": "baseline-ci-sonar-hotspots-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (scripts/ci/sonar-hotspots.ts)"
+    },
+    "ci-scripts:scripts/ci/sonar-hotspots.ts:functionLines": {
+      "ticketId": "baseline-ci-sonar-hotspots-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (scripts/ci/sonar-hotspots.ts)"
+    },
+    "ci-scripts:scripts/ci/sonar-hotspots.ts:publicExports": {
+      "ticketId": "baseline-ci-sonar-hotspots-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "oeffentliche Export-Oberflaeche in kleinere fachliche API-Segmente aufteilen (scripts/ci/sonar-hotspots.ts)"
+    },
+    "ci-scripts:scripts/ci/sonar-new-code-gate.ts:cyclomaticComplexity": {
+      "ticketId": "baseline-ci-sonar-new-code-gate-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (scripts/ci/sonar-new-code-gate.ts)"
+    },
+    "ci-scripts:scripts/ci/sonar-new-code-gate.ts:fileLines": {
+      "ticketId": "baseline-ci-sonar-new-code-gate-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (scripts/ci/sonar-new-code-gate.ts)"
+    },
+    "core-iam:packages/core/src/iam/account-management-contract.ts:fileLines": {
+      "ticketId": "baseline-core-src-iam-account-management-contract-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/core/src/iam/account-management-contract.ts)"
+    },
+    "core-iam:packages/core/src/iam/account-management-contract.ts:publicExports": {
+      "ticketId": "baseline-core-src-iam-account-management-contract-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "oeffentliche Export-Oberflaeche in kleinere fachliche API-Segmente aufteilen (packages/core/src/iam/account-management-contract.ts)"
+    },
+    "core-iam:packages/core/src/iam/authorization-contract.ts:publicExports": {
+      "ticketId": "baseline-core-src-iam-authorization-contract-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "oeffentliche Export-Oberflaeche in kleinere fachliche API-Segmente aufteilen (packages/core/src/iam/authorization-contract.ts)"
+    },
+    "core-iam:packages/core/src/iam/authorization-engine.ts:cyclomaticComplexity": {
+      "ticketId": "baseline-core-src-iam-authorization-engine-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (packages/core/src/iam/authorization-engine.ts)"
+    },
+    "core-iam:packages/core/src/iam/authorization-engine.ts:fileLines": {
+      "ticketId": "baseline-core-src-iam-authorization-engine-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/core/src/iam/authorization-engine.ts)"
+    },
+    "core-iam:packages/core/src/iam/authorization-engine.ts:functionLines": {
+      "ticketId": "baseline-core-src-iam-authorization-engine-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/core/src/iam/authorization-engine.ts)"
+    },
+    "core-iam:packages/core/src/iam/index.ts:publicExports": {
+      "ticketId": "baseline-core-src-iam-index-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "oeffentliche Export-Oberflaeche in kleinere fachliche API-Segmente aufteilen (packages/core/src/iam/index.ts)"
+    },
+    "frontend-app:apps/sva-studio-react/src/components/DevelopmentLogConsole.tsx:functionLines": {
+      "ticketId": "baseline-sva-studio-react-src-components-developmentlogconsole-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (apps/sva-studio-react/src/components/DevelopmentLogConsole.tsx)"
+    },
+    "frontend-app:apps/sva-studio-react/src/components/LegalTextAcceptanceDialog.tsx:cyclomaticComplexity": {
+      "ticketId": "baseline-sva-studio-react-src-components-legaltextacceptancedialog-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (apps/sva-studio-react/src/components/LegalTextAcceptanceDialog.tsx)"
+    },
+    "frontend-app:apps/sva-studio-react/src/components/LegalTextAcceptanceDialog.tsx:functionLines": {
+      "ticketId": "baseline-sva-studio-react-src-components-legaltextacceptancedialog-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (apps/sva-studio-react/src/components/LegalTextAcceptanceDialog.tsx)"
+    },
+    "frontend-app:apps/sva-studio-react/src/components/Sidebar.tsx:cyclomaticComplexity": {
+      "ticketId": "baseline-sva-studio-react-src-components-sidebar-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (apps/sva-studio-react/src/components/Sidebar.tsx)"
+    },
+    "frontend-app:apps/sva-studio-react/src/components/Sidebar.tsx:fileLines": {
+      "ticketId": "baseline-sva-studio-react-src-components-sidebar-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (apps/sva-studio-react/src/components/Sidebar.tsx)"
+    },
+    "frontend-app:apps/sva-studio-react/src/components/Sidebar.tsx:functionLines": {
+      "ticketId": "baseline-sva-studio-react-src-components-sidebar-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (apps/sva-studio-react/src/components/Sidebar.tsx)"
+    },
+    "frontend-app:apps/sva-studio-react/src/hooks/use-instances.ts:cyclomaticComplexity": {
+      "ticketId": "baseline-sva-studio-react-src-hooks-use-instances-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (apps/sva-studio-react/src/hooks/use-instances.ts)"
+    },
+    "frontend-app:apps/sva-studio-react/src/hooks/use-instances.ts:fileLines": {
+      "ticketId": "baseline-sva-studio-react-src-hooks-use-instances-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (apps/sva-studio-react/src/hooks/use-instances.ts)"
+    },
+    "frontend-app:apps/sva-studio-react/src/hooks/use-instances.ts:functionLines": {
+      "ticketId": "baseline-sva-studio-react-src-hooks-use-instances-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (apps/sva-studio-react/src/hooks/use-instances.ts)"
+    },
+    "frontend-app:apps/sva-studio-react/src/hooks/use-organizations.ts:functionLines": {
+      "ticketId": "baseline-sva-studio-react-src-hooks-use-organizations-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (apps/sva-studio-react/src/hooks/use-organizations.ts)"
+    },
+    "frontend-app:apps/sva-studio-react/src/hooks/use-users.ts:functionLines": {
+      "ticketId": "baseline-sva-studio-react-src-hooks-use-users-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (apps/sva-studio-react/src/hooks/use-users.ts)"
+    },
+    "frontend-app:apps/sva-studio-react/src/i18n/resources.ts:fileLines": {
+      "ticketId": "baseline-sva-studio-react-src-i18n-resources-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (apps/sva-studio-react/src/i18n/resources.ts)"
+    },
+    "frontend-app:apps/sva-studio-react/src/lib/iam-api.ts:fileLines": {
+      "ticketId": "baseline-sva-studio-react-src-lib-iam-api-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (apps/sva-studio-react/src/lib/iam-api.ts)"
+    },
+    "frontend-app:apps/sva-studio-react/src/lib/iam-api.ts:publicExports": {
+      "ticketId": "baseline-sva-studio-react-src-lib-iam-api-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "oeffentliche Export-Oberflaeche in kleinere fachliche API-Segmente aufteilen (apps/sva-studio-react/src/lib/iam-api.ts)"
+    },
+    "frontend-app:apps/sva-studio-react/src/lib/interfaces-api.ts:fileLines": {
+      "ticketId": "baseline-sva-studio-react-src-lib-interfaces-api-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (apps/sva-studio-react/src/lib/interfaces-api.ts)"
+    },
+    "frontend-app:apps/sva-studio-react/src/providers/auth-provider.tsx:cyclomaticComplexity": {
+      "ticketId": "baseline-sva-studio-react-src-providers-auth-provider-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (apps/sva-studio-react/src/providers/auth-provider.tsx)"
+    },
+    "frontend-app:apps/sva-studio-react/src/providers/auth-provider.tsx:fileLines": {
+      "ticketId": "baseline-sva-studio-react-src-providers-auth-provider-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (apps/sva-studio-react/src/providers/auth-provider.tsx)"
+    },
+    "frontend-app:apps/sva-studio-react/src/providers/auth-provider.tsx:functionLines": {
+      "ticketId": "baseline-sva-studio-react-src-providers-auth-provider-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (apps/sva-studio-react/src/providers/auth-provider.tsx)"
+    },
+    "frontend-app:apps/sva-studio-react/src/routes/account/-account-privacy-page.tsx:functionLines": {
+      "ticketId": "baseline-sva-studio-react-src-routes-account-account-privacy-page-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (apps/sva-studio-react/src/routes/account/-account-privacy-page.tsx)"
+    },
+    "frontend-app:apps/sva-studio-react/src/routes/account/-account-profile-page.tsx:cyclomaticComplexity": {
+      "ticketId": "baseline-sva-studio-react-src-routes-account-account-profile-page-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (apps/sva-studio-react/src/routes/account/-account-profile-page.tsx)"
+    },
+    "frontend-app:apps/sva-studio-react/src/routes/account/-account-profile-page.tsx:fileLines": {
+      "ticketId": "baseline-sva-studio-react-src-routes-account-account-profile-page-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (apps/sva-studio-react/src/routes/account/-account-profile-page.tsx)"
+    },
+    "frontend-app:apps/sva-studio-react/src/routes/account/-account-profile-page.tsx:functionLines": {
+      "ticketId": "baseline-sva-studio-react-src-routes-account-account-profile-page-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (apps/sva-studio-react/src/routes/account/-account-profile-page.tsx)"
+    },
+    "frontend-app:apps/sva-studio-react/src/routes/admin/-iam-page.tsx:cyclomaticComplexity": {
+      "ticketId": "baseline-sva-studio-react-src-routes-admin-iam-page-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (apps/sva-studio-react/src/routes/admin/-iam-page.tsx)"
+    },
+    "frontend-app:apps/sva-studio-react/src/routes/admin/-iam-page.tsx:fileLines": {
+      "ticketId": "baseline-sva-studio-react-src-routes-admin-iam-page-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (apps/sva-studio-react/src/routes/admin/-iam-page.tsx)"
+    },
+    "frontend-app:apps/sva-studio-react/src/routes/admin/-iam-page.tsx:functionLines": {
+      "ticketId": "baseline-sva-studio-react-src-routes-admin-iam-page-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (apps/sva-studio-react/src/routes/admin/-iam-page.tsx)"
+    },
+    "frontend-app:apps/sva-studio-react/src/routes/admin/groups/-group-detail-page.tsx:cyclomaticComplexity": {
+      "ticketId": "baseline-sva-studio-react-src-routes-admin-groups-group-detail-page-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (apps/sva-studio-react/src/routes/admin/groups/-group-detail-page.tsx)"
+    },
+    "frontend-app:apps/sva-studio-react/src/routes/admin/groups/-group-detail-page.tsx:fileLines": {
+      "ticketId": "baseline-sva-studio-react-src-routes-admin-groups-group-detail-page-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (apps/sva-studio-react/src/routes/admin/groups/-group-detail-page.tsx)"
+    },
+    "frontend-app:apps/sva-studio-react/src/routes/admin/groups/-group-detail-page.tsx:functionLines": {
+      "ticketId": "baseline-sva-studio-react-src-routes-admin-groups-group-detail-page-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (apps/sva-studio-react/src/routes/admin/groups/-group-detail-page.tsx)"
+    },
+    "frontend-app:apps/sva-studio-react/src/routes/admin/groups/-groups-page.tsx:cyclomaticComplexity": {
+      "ticketId": "baseline-sva-studio-react-src-routes-admin-groups-groups-page-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (apps/sva-studio-react/src/routes/admin/groups/-groups-page.tsx)"
+    },
+    "frontend-app:apps/sva-studio-react/src/routes/admin/groups/-groups-page.tsx:functionLines": {
+      "ticketId": "baseline-sva-studio-react-src-routes-admin-groups-groups-page-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (apps/sva-studio-react/src/routes/admin/groups/-groups-page.tsx)"
+    },
+    "frontend-app:apps/sva-studio-react/src/routes/admin/instances/-instance-create-page.tsx:cyclomaticComplexity": {
+      "ticketId": "baseline-sva-studio-react-src-routes-admin-instances-instance-create-page-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (apps/sva-studio-react/src/routes/admin/instances/-instance-create-page.tsx)"
+    },
+    "frontend-app:apps/sva-studio-react/src/routes/admin/instances/-instance-create-page.tsx:fileLines": {
+      "ticketId": "baseline-sva-studio-react-src-routes-admin-instances-instance-create-page-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (apps/sva-studio-react/src/routes/admin/instances/-instance-create-page.tsx)"
+    },
+    "frontend-app:apps/sva-studio-react/src/routes/admin/instances/-instance-create-page.tsx:functionLines": {
+      "ticketId": "baseline-sva-studio-react-src-routes-admin-instances-instance-create-page-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (apps/sva-studio-react/src/routes/admin/instances/-instance-create-page.tsx)"
+    },
+    "frontend-app:apps/sva-studio-react/src/routes/admin/instances/-instance-detail-page.tsx:cyclomaticComplexity": {
+      "ticketId": "baseline-sva-studio-react-src-routes-admin-instances-instance-detail-page-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (apps/sva-studio-react/src/routes/admin/instances/-instance-detail-page.tsx)"
+    },
+    "frontend-app:apps/sva-studio-react/src/routes/admin/instances/-instance-detail-page.tsx:fileLines": {
+      "ticketId": "baseline-sva-studio-react-src-routes-admin-instances-instance-detail-page-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (apps/sva-studio-react/src/routes/admin/instances/-instance-detail-page.tsx)"
+    },
+    "frontend-app:apps/sva-studio-react/src/routes/admin/instances/-instance-detail-page.tsx:functionLines": {
+      "ticketId": "baseline-sva-studio-react-src-routes-admin-instances-instance-detail-page-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (apps/sva-studio-react/src/routes/admin/instances/-instance-detail-page.tsx)"
+    },
+    "frontend-app:apps/sva-studio-react/src/routes/admin/instances/-instances-shared.tsx:cyclomaticComplexity": {
+      "ticketId": "baseline-sva-studio-react-src-routes-admin-instances-instances-shared-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (apps/sva-studio-react/src/routes/admin/instances/-instances-shared.tsx)"
+    },
+    "frontend-app:apps/sva-studio-react/src/routes/admin/instances/-instances-shared.tsx:fileLines": {
+      "ticketId": "baseline-sva-studio-react-src-routes-admin-instances-instances-shared-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (apps/sva-studio-react/src/routes/admin/instances/-instances-shared.tsx)"
+    },
+    "frontend-app:apps/sva-studio-react/src/routes/admin/instances/-instances-shared.tsx:functionLines": {
+      "ticketId": "baseline-sva-studio-react-src-routes-admin-instances-instances-shared-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (apps/sva-studio-react/src/routes/admin/instances/-instances-shared.tsx)"
+    },
+    "frontend-app:apps/sva-studio-react/src/routes/admin/instances/-instances-shared.tsx:publicExports": {
+      "ticketId": "baseline-sva-studio-react-src-routes-admin-instances-instances-shared-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "oeffentliche Export-Oberflaeche in kleinere fachliche API-Segmente aufteilen (apps/sva-studio-react/src/routes/admin/instances/-instances-shared.tsx)"
+    },
+    "frontend-app:apps/sva-studio-react/src/routes/admin/legal-texts/-legal-text-detail-page.tsx:functionLines": {
+      "ticketId": "baseline-sva-studio-react-src-routes-admin-legal-texts-legal-text-detail-page-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (apps/sva-studio-react/src/routes/admin/legal-texts/-legal-text-detail-page.tsx)"
+    },
+    "frontend-app:apps/sva-studio-react/src/routes/admin/media/-media-page.tsx:cyclomaticComplexity": {
+      "ticketId": "baseline-sva-studio-react-src-routes-admin-media-media-page-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (apps/sva-studio-react/src/routes/admin/media/-media-page.tsx)"
+    },
+    "frontend-app:apps/sva-studio-react/src/routes/admin/media/-media-page.tsx:fileLines": {
+      "ticketId": "baseline-sva-studio-react-src-routes-admin-media-media-page-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (apps/sva-studio-react/src/routes/admin/media/-media-page.tsx)"
+    },
+    "frontend-app:apps/sva-studio-react/src/routes/admin/media/-media-page.tsx:functionLines": {
+      "ticketId": "baseline-sva-studio-react-src-routes-admin-media-media-page-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (apps/sva-studio-react/src/routes/admin/media/-media-page.tsx)"
+    },
+    "frontend-app:apps/sva-studio-react/src/routes/admin/organizations/-organization-detail-page.tsx:cyclomaticComplexity": {
+      "ticketId": "baseline-sva-studio-react-src-routes-admin-organizations-organization-detail-page-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (apps/sva-studio-react/src/routes/admin/organizations/-organization-detail-page.tsx)"
+    },
+    "frontend-app:apps/sva-studio-react/src/routes/admin/organizations/-organization-detail-page.tsx:fileLines": {
+      "ticketId": "baseline-sva-studio-react-src-routes-admin-organizations-organization-detail-page-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (apps/sva-studio-react/src/routes/admin/organizations/-organization-detail-page.tsx)"
+    },
+    "frontend-app:apps/sva-studio-react/src/routes/admin/organizations/-organization-detail-page.tsx:functionLines": {
+      "ticketId": "baseline-sva-studio-react-src-routes-admin-organizations-organization-detail-page-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (apps/sva-studio-react/src/routes/admin/organizations/-organization-detail-page.tsx)"
+    },
+    "frontend-app:apps/sva-studio-react/src/routes/admin/organizations/-organizations-page.tsx:functionLines": {
+      "ticketId": "baseline-sva-studio-react-src-routes-admin-organizations-organizations-page-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (apps/sva-studio-react/src/routes/admin/organizations/-organizations-page.tsx)"
+    },
+    "frontend-app:apps/sva-studio-react/src/routes/admin/roles/-role-detail-page.tsx:cyclomaticComplexity": {
+      "ticketId": "baseline-sva-studio-react-src-routes-admin-roles-role-detail-page-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (apps/sva-studio-react/src/routes/admin/roles/-role-detail-page.tsx)"
+    },
+    "frontend-app:apps/sva-studio-react/src/routes/admin/roles/-role-detail-page.tsx:fileLines": {
+      "ticketId": "baseline-sva-studio-react-src-routes-admin-roles-role-detail-page-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (apps/sva-studio-react/src/routes/admin/roles/-role-detail-page.tsx)"
+    },
+    "frontend-app:apps/sva-studio-react/src/routes/admin/roles/-role-detail-page.tsx:functionLines": {
+      "ticketId": "baseline-sva-studio-react-src-routes-admin-roles-role-detail-page-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (apps/sva-studio-react/src/routes/admin/roles/-role-detail-page.tsx)"
+    },
+    "frontend-app:apps/sva-studio-react/src/routes/admin/roles/-roles-page.tsx:cyclomaticComplexity": {
+      "ticketId": "baseline-sva-studio-react-src-routes-admin-roles-roles-page-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (apps/sva-studio-react/src/routes/admin/roles/-roles-page.tsx)"
+    },
+    "frontend-app:apps/sva-studio-react/src/routes/admin/roles/-roles-page.tsx:functionLines": {
+      "ticketId": "baseline-sva-studio-react-src-routes-admin-roles-roles-page-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (apps/sva-studio-react/src/routes/admin/roles/-roles-page.tsx)"
+    },
+    "frontend-app:apps/sva-studio-react/src/routes/admin/users/-user-edit-page.tsx:cyclomaticComplexity": {
+      "ticketId": "baseline-sva-studio-react-src-routes-admin-users-user-edit-page-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (apps/sva-studio-react/src/routes/admin/users/-user-edit-page.tsx)"
+    },
+    "frontend-app:apps/sva-studio-react/src/routes/admin/users/-user-edit-page.tsx:fileLines": {
+      "ticketId": "baseline-sva-studio-react-src-routes-admin-users-user-edit-page-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (apps/sva-studio-react/src/routes/admin/users/-user-edit-page.tsx)"
+    },
+    "frontend-app:apps/sva-studio-react/src/routes/admin/users/-user-edit-page.tsx:functionLines": {
+      "ticketId": "baseline-sva-studio-react-src-routes-admin-users-user-edit-page-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (apps/sva-studio-react/src/routes/admin/users/-user-edit-page.tsx)"
+    },
+    "frontend-app:apps/sva-studio-react/src/routes/admin/users/-user-list-page.tsx:cyclomaticComplexity": {
+      "ticketId": "baseline-sva-studio-react-src-routes-admin-users-user-list-page-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (apps/sva-studio-react/src/routes/admin/users/-user-list-page.tsx)"
+    },
+    "frontend-app:apps/sva-studio-react/src/routes/admin/users/-user-list-page.tsx:fileLines": {
+      "ticketId": "baseline-sva-studio-react-src-routes-admin-users-user-list-page-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (apps/sva-studio-react/src/routes/admin/users/-user-list-page.tsx)"
+    },
+    "frontend-app:apps/sva-studio-react/src/routes/admin/users/-user-list-page.tsx:functionLines": {
+      "ticketId": "baseline-sva-studio-react-src-routes-admin-users-user-list-page-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (apps/sva-studio-react/src/routes/admin/users/-user-list-page.tsx)"
+    },
+    "frontend-app:apps/sva-studio-react/src/routes/content/-content-editor-page.tsx:cyclomaticComplexity": {
+      "ticketId": "baseline-sva-studio-react-src-routes-content-content-editor-page-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (apps/sva-studio-react/src/routes/content/-content-editor-page.tsx)"
+    },
+    "frontend-app:apps/sva-studio-react/src/routes/content/-content-editor-page.tsx:fileLines": {
+      "ticketId": "baseline-sva-studio-react-src-routes-content-content-editor-page-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (apps/sva-studio-react/src/routes/content/-content-editor-page.tsx)"
+    },
+    "frontend-app:apps/sva-studio-react/src/routes/content/-content-editor-page.tsx:functionLines": {
+      "ticketId": "baseline-sva-studio-react-src-routes-content-content-editor-page-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (apps/sva-studio-react/src/routes/content/-content-editor-page.tsx)"
+    },
+    "frontend-app:apps/sva-studio-react/src/routes/content/-content-list-page.tsx:cyclomaticComplexity": {
+      "ticketId": "baseline-sva-studio-react-src-routes-content-content-list-page-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (apps/sva-studio-react/src/routes/content/-content-list-page.tsx)"
+    },
+    "frontend-app:apps/sva-studio-react/src/routes/content/-content-list-page.tsx:fileLines": {
+      "ticketId": "baseline-sva-studio-react-src-routes-content-content-list-page-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (apps/sva-studio-react/src/routes/content/-content-list-page.tsx)"
+    },
+    "frontend-app:apps/sva-studio-react/src/routes/content/-content-list-page.tsx:functionLines": {
+      "ticketId": "baseline-sva-studio-react-src-routes-content-content-list-page-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (apps/sva-studio-react/src/routes/content/-content-list-page.tsx)"
+    },
+    "frontend-app:apps/sva-studio-react/src/routes/interfaces/-interfaces-page.tsx:functionLines": {
+      "ticketId": "baseline-sva-studio-react-src-routes-interfaces-interfaces-page-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (apps/sva-studio-react/src/routes/interfaces/-interfaces-page.tsx)"
+    },
+    "iam-admin:packages/iam-admin/src/group-mutation-handlers.ts:fileLines": {
+      "ticketId": "baseline-iam-admin-src-group-mutation-handlers-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/iam-admin/src/group-mutation-handlers.ts)"
+    },
+    "iam-admin:packages/iam-admin/src/index.ts:fileLines": {
+      "ticketId": "baseline-iam-admin-src-index-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/iam-admin/src/index.ts)"
+    },
+    "iam-admin:packages/iam-admin/src/index.ts:publicExports": {
+      "ticketId": "baseline-iam-admin-src-index-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "oeffentliche Export-Oberflaeche in kleinere fachliche API-Segmente aufteilen (packages/iam-admin/src/index.ts)"
+    },
+    "iam-admin:packages/iam-admin/src/legacy-group-mutation-handlers.ts:cyclomaticComplexity": {
+      "ticketId": "baseline-iam-admin-src-legacy-group-mutation-handlers-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (packages/iam-admin/src/legacy-group-mutation-handlers.ts)"
+    },
+    "iam-admin:packages/iam-admin/src/legacy-group-mutation-handlers.ts:fileLines": {
+      "ticketId": "baseline-iam-admin-src-legacy-group-mutation-handlers-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/iam-admin/src/legacy-group-mutation-handlers.ts)"
+    },
+    "iam-admin:packages/iam-admin/src/legacy-group-mutation-handlers.ts:functionLines": {
+      "ticketId": "baseline-iam-admin-src-legacy-group-mutation-handlers-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/iam-admin/src/legacy-group-mutation-handlers.ts)"
+    },
+    "iam-admin:packages/iam-admin/src/managed-role-sync.ts:functionLines": {
+      "ticketId": "baseline-iam-admin-src-managed-role-sync-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/iam-admin/src/managed-role-sync.ts)"
+    },
+    "iam-admin:packages/iam-admin/src/organization-mutation-handlers.ts:cyclomaticComplexity": {
+      "ticketId": "baseline-iam-admin-src-organization-mutation-handlers-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (packages/iam-admin/src/organization-mutation-handlers.ts)"
+    },
+    "iam-admin:packages/iam-admin/src/organization-mutation-handlers.ts:fileLines": {
+      "ticketId": "baseline-iam-admin-src-organization-mutation-handlers-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/iam-admin/src/organization-mutation-handlers.ts)"
+    },
+    "iam-admin:packages/iam-admin/src/organization-mutation-handlers.ts:functionLines": {
+      "ticketId": "baseline-iam-admin-src-organization-mutation-handlers-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/iam-admin/src/organization-mutation-handlers.ts)"
+    },
+    "iam-admin:packages/iam-admin/src/organization-query.ts:fileLines": {
+      "ticketId": "baseline-iam-admin-src-organization-query-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/iam-admin/src/organization-query.ts)"
+    },
+    "iam-admin:packages/iam-admin/src/organization-query.ts:publicExports": {
+      "ticketId": "baseline-iam-admin-src-organization-query-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "oeffentliche Export-Oberflaeche in kleinere fachliche API-Segmente aufteilen (packages/iam-admin/src/organization-query.ts)"
+    },
+    "iam-admin:packages/iam-admin/src/organization-read-handlers.ts:functionLines": {
+      "ticketId": "baseline-iam-admin-src-organization-read-handlers-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/iam-admin/src/organization-read-handlers.ts)"
+    },
+    "iam-admin:packages/iam-admin/src/profile-commands.ts:cyclomaticComplexity": {
+      "ticketId": "baseline-iam-admin-src-profile-commands-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (packages/iam-admin/src/profile-commands.ts)"
+    },
+    "iam-admin:packages/iam-admin/src/profile-commands.ts:functionLines": {
+      "ticketId": "baseline-iam-admin-src-profile-commands-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/iam-admin/src/profile-commands.ts)"
+    },
+    "iam-admin:packages/iam-admin/src/reconcile-core.ts:fileLines": {
+      "ticketId": "baseline-iam-admin-src-reconcile-core-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/iam-admin/src/reconcile-core.ts)"
+    },
+    "iam-admin:packages/iam-admin/src/reconcile-core.ts:functionLines": {
+      "ticketId": "baseline-iam-admin-src-reconcile-core-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/iam-admin/src/reconcile-core.ts)"
+    },
+    "iam-admin:packages/iam-admin/src/role-create-handler.ts:fileLines": {
+      "ticketId": "baseline-iam-admin-src-role-create-handler-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/iam-admin/src/role-create-handler.ts)"
+    },
+    "iam-admin:packages/iam-admin/src/role-create-handler.ts:functionLines": {
+      "ticketId": "baseline-iam-admin-src-role-create-handler-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/iam-admin/src/role-create-handler.ts)"
+    },
+    "iam-admin:packages/iam-admin/src/role-delete-handler.ts:functionLines": {
+      "ticketId": "baseline-iam-admin-src-role-delete-handler-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/iam-admin/src/role-delete-handler.ts)"
+    },
+    "iam-admin:packages/iam-admin/src/role-mutation-persistence.ts:cyclomaticComplexity": {
+      "ticketId": "baseline-iam-admin-src-role-mutation-persistence-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (packages/iam-admin/src/role-mutation-persistence.ts)"
+    },
+    "iam-admin:packages/iam-admin/src/role-mutation-persistence.ts:fileLines": {
+      "ticketId": "baseline-iam-admin-src-role-mutation-persistence-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/iam-admin/src/role-mutation-persistence.ts)"
+    },
+    "iam-admin:packages/iam-admin/src/role-mutation-persistence.ts:functionLines": {
+      "ticketId": "baseline-iam-admin-src-role-mutation-persistence-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/iam-admin/src/role-mutation-persistence.ts)"
+    },
+    "iam-admin:packages/iam-admin/src/role-update-handler.ts:functionLines": {
+      "ticketId": "baseline-iam-admin-src-role-update-handler-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/iam-admin/src/role-update-handler.ts)"
+    },
+    "iam-admin:packages/iam-admin/src/user-create-persistence.ts:functionLines": {
+      "ticketId": "baseline-iam-admin-src-user-create-persistence-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/iam-admin/src/user-create-persistence.ts)"
+    },
+    "iam-admin:packages/iam-admin/src/user-import-persistence.ts:functionLines": {
+      "ticketId": "baseline-iam-admin-src-user-import-persistence-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/iam-admin/src/user-import-persistence.ts)"
+    },
+    "iam-admin:packages/iam-admin/src/user-read-handlers.ts:cyclomaticComplexity": {
+      "ticketId": "baseline-iam-admin-src-user-read-handlers-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (packages/iam-admin/src/user-read-handlers.ts)"
+    },
+    "iam-admin:packages/iam-admin/src/user-read-handlers.ts:fileLines": {
+      "ticketId": "baseline-iam-admin-src-user-read-handlers-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/iam-admin/src/user-read-handlers.ts)"
+    },
+    "iam-admin:packages/iam-admin/src/user-read-handlers.ts:functionLines": {
+      "ticketId": "baseline-iam-admin-src-user-read-handlers-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/iam-admin/src/user-read-handlers.ts)"
+    },
+    "iam-admin:packages/iam-admin/src/user-update-handler.ts:fileLines": {
+      "ticketId": "baseline-iam-admin-src-user-update-handler-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/iam-admin/src/user-update-handler.ts)"
     },
     "iam-data:packages/data/src/iam/repositories/statements.ts:fileLines": {
       "ticketId": "QUAL-116",
@@ -73,6 +1327,684 @@
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "IAM-Datentypen in fachlich kleinere Export-Surfaces für Gruppen-, Geo- und Membership-Modelle aufteilen"
+    },
+    "iam-governance:packages/iam-governance/src/dsr-export-flows.ts:fileLines": {
+      "ticketId": "baseline-iam-governance-src-dsr-export-flows-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/iam-governance/src/dsr-export-flows.ts)"
+    },
+    "iam-governance:packages/iam-governance/src/dsr-export-flows.ts:functionLines": {
+      "ticketId": "baseline-iam-governance-src-dsr-export-flows-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/iam-governance/src/dsr-export-flows.ts)"
+    },
+    "iam-governance:packages/iam-governance/src/dsr-export-payload.ts:functionLines": {
+      "ticketId": "baseline-iam-governance-src-dsr-export-payload-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/iam-governance/src/dsr-export-payload.ts)"
+    },
+    "iam-governance:packages/iam-governance/src/dsr-maintenance.ts:fileLines": {
+      "ticketId": "baseline-iam-governance-src-dsr-maintenance-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/iam-governance/src/dsr-maintenance.ts)"
+    },
+    "iam-governance:packages/iam-governance/src/dsr-maintenance.ts:functionLines": {
+      "ticketId": "baseline-iam-governance-src-dsr-maintenance-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/iam-governance/src/dsr-maintenance.ts)"
+    },
+    "iam-governance:packages/iam-governance/src/dsr-read-models-internal.ts:publicExports": {
+      "ticketId": "baseline-iam-governance-src-dsr-read-models-internal-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "oeffentliche Export-Oberflaeche in kleinere fachliche API-Segmente aufteilen (packages/iam-governance/src/dsr-read-models-internal.ts)"
+    },
+    "iam-governance:packages/iam-governance/src/governance-workflow-executor.ts:cyclomaticComplexity": {
+      "ticketId": "baseline-iam-governance-src-governance-workflow-executor-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (packages/iam-governance/src/governance-workflow-executor.ts)"
+    },
+    "iam-governance:packages/iam-governance/src/governance-workflow-executor.ts:fileLines": {
+      "ticketId": "baseline-iam-governance-src-governance-workflow-executor-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/iam-governance/src/governance-workflow-executor.ts)"
+    },
+    "iam-governance:packages/iam-governance/src/governance-workflow-executor.ts:functionLines": {
+      "ticketId": "baseline-iam-governance-src-governance-workflow-executor-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/iam-governance/src/governance-workflow-executor.ts)"
+    },
+    "iam-governance:packages/iam-governance/src/index.ts:publicExports": {
+      "ticketId": "baseline-iam-governance-src-index-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "oeffentliche Export-Oberflaeche in kleinere fachliche API-Segmente aufteilen (packages/iam-governance/src/index.ts)"
+    },
+    "iam-governance:packages/iam-governance/src/legal-text-mutation-handlers.ts:cyclomaticComplexity": {
+      "ticketId": "baseline-iam-governance-src-legal-text-mutation-handlers-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (packages/iam-governance/src/legal-text-mutation-handlers.ts)"
+    },
+    "iam-governance:packages/iam-governance/src/legal-text-mutation-handlers.ts:fileLines": {
+      "ticketId": "baseline-iam-governance-src-legal-text-mutation-handlers-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/iam-governance/src/legal-text-mutation-handlers.ts)"
+    },
+    "iam-governance:packages/iam-governance/src/legal-text-mutation-handlers.ts:functionLines": {
+      "ticketId": "baseline-iam-governance-src-legal-text-mutation-handlers-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/iam-governance/src/legal-text-mutation-handlers.ts)"
+    },
+    "iam-governance:packages/iam-governance/src/legal-text-repository.ts:fileLines": {
+      "ticketId": "baseline-iam-governance-src-legal-text-repository-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/iam-governance/src/legal-text-repository.ts)"
+    },
+    "iam-governance:packages/iam-governance/src/legal-text-repository.ts:functionLines": {
+      "ticketId": "baseline-iam-governance-src-legal-text-repository-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/iam-governance/src/legal-text-repository.ts)"
+    },
+    "instance-registry-data:packages/data/src/instance-registry/index.ts:cyclomaticComplexity": {
+      "ticketId": "baseline-data-src-instance-registry-index-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (packages/data/src/instance-registry/index.ts)"
+    },
+    "instance-registry-data:packages/data/src/instance-registry/index.ts:fileLines": {
+      "ticketId": "baseline-data-src-instance-registry-index-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/data/src/instance-registry/index.ts)"
+    },
+    "instance-registry-data:packages/data/src/instance-registry/index.ts:functionLines": {
+      "ticketId": "baseline-data-src-instance-registry-index-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/data/src/instance-registry/index.ts)"
+    },
+    "instance-registry-data:packages/data/src/instance-registry/server.ts:fileLines": {
+      "ticketId": "baseline-data-src-instance-registry-server-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/data/src/instance-registry/server.ts)"
+    },
+    "instance-registry-data:packages/data/src/instance-registry/server.ts:functionLines": {
+      "ticketId": "baseline-data-src-instance-registry-server-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/data/src/instance-registry/server.ts)"
+    },
+    "instance-registry-repositories:packages/data-repositories/src/instance-registry/index.ts:cyclomaticComplexity": {
+      "ticketId": "baseline-data-repositories-src-instance-registry-index-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (packages/data-repositories/src/instance-registry/index.ts)"
+    },
+    "instance-registry-repositories:packages/data-repositories/src/instance-registry/index.ts:fileLines": {
+      "ticketId": "baseline-data-repositories-src-instance-registry-index-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/data-repositories/src/instance-registry/index.ts)"
+    },
+    "instance-registry-repositories:packages/data-repositories/src/instance-registry/index.ts:functionLines": {
+      "ticketId": "baseline-data-repositories-src-instance-registry-index-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/data-repositories/src/instance-registry/index.ts)"
+    },
+    "instance-registry-repositories:packages/data-repositories/src/instance-registry/server.ts:fileLines": {
+      "ticketId": "baseline-data-repositories-src-instance-registry-server-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/data-repositories/src/instance-registry/server.ts)"
+    },
+    "instance-registry-repositories:packages/data-repositories/src/instance-registry/server.ts:functionLines": {
+      "ticketId": "baseline-data-repositories-src-instance-registry-server-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/data-repositories/src/instance-registry/server.ts)"
+    },
+    "instance-registry-service:packages/instance-registry/src/http-instance-handlers.ts:functionLines": {
+      "ticketId": "baseline-instance-registry-src-http-instance-handlers-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/instance-registry/src/http-instance-handlers.ts)"
+    },
+    "instance-registry-service:packages/instance-registry/src/http-mutation-handlers.ts:cyclomaticComplexity": {
+      "ticketId": "baseline-instance-registry-src-http-mutation-handlers-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (packages/instance-registry/src/http-mutation-handlers.ts)"
+    },
+    "instance-registry-service:packages/instance-registry/src/http-mutation-handlers.ts:fileLines": {
+      "ticketId": "baseline-instance-registry-src-http-mutation-handlers-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/instance-registry/src/http-mutation-handlers.ts)"
+    },
+    "instance-registry-service:packages/instance-registry/src/http-mutation-handlers.ts:functionLines": {
+      "ticketId": "baseline-instance-registry-src-http-mutation-handlers-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/instance-registry/src/http-mutation-handlers.ts)"
+    },
+    "instance-registry-service:packages/instance-registry/src/index.ts:publicExports": {
+      "ticketId": "baseline-instance-registry-src-index-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "oeffentliche Export-Oberflaeche in kleinere fachliche API-Segmente aufteilen (packages/instance-registry/src/index.ts)"
+    },
+    "instance-registry-service:packages/instance-registry/src/mutation-input-builders.ts:publicExports": {
+      "ticketId": "baseline-instance-registry-src-mutation-input-builders-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "oeffentliche Export-Oberflaeche in kleinere fachliche API-Segmente aufteilen (packages/instance-registry/src/mutation-input-builders.ts)"
+    },
+    "instance-registry-service:packages/instance-registry/src/provisioning-auth-state.ts:fileLines": {
+      "ticketId": "baseline-instance-registry-src-provisioning-auth-state-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/instance-registry/src/provisioning-auth-state.ts)"
+    },
+    "instance-registry-service:packages/instance-registry/src/service-keycloak-execution-shared.ts:fileLines": {
+      "ticketId": "baseline-instance-registry-src-service-keycloak-execution-shared-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/instance-registry/src/service-keycloak-execution-shared.ts)"
+    },
+    "instance-registry-service:packages/instance-registry/src/service-keycloak.ts:fileLines": {
+      "ticketId": "baseline-instance-registry-src-service-keycloak-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/instance-registry/src/service-keycloak.ts)"
+    },
+    "instance-registry-service:packages/instance-registry/src/service.ts:fileLines": {
+      "ticketId": "baseline-instance-registry-src-service-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/instance-registry/src/service.ts)"
+    },
+    "ops-scripts:scripts/ops/bootstrap-local-instance-db.ts:fileLines": {
+      "ticketId": "baseline-ops-bootstrap-local-instance-db-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (scripts/ops/bootstrap-local-instance-db.ts)"
+    },
+    "ops-scripts:scripts/ops/instance-registry.ts:cyclomaticComplexity": {
+      "ticketId": "baseline-ops-instance-registry-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (scripts/ops/instance-registry.ts)"
+    },
+    "ops-scripts:scripts/ops/instance-registry.ts:fileLines": {
+      "ticketId": "baseline-ops-instance-registry-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (scripts/ops/instance-registry.ts)"
+    },
+    "ops-scripts:scripts/ops/instance-registry.ts:functionLines": {
+      "ticketId": "baseline-ops-instance-registry-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (scripts/ops/instance-registry.ts)"
+    },
+    "ops-scripts:scripts/ops/runtime-env.shared.ts:cyclomaticComplexity": {
+      "ticketId": "baseline-ops-runtime-env-shared-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (scripts/ops/runtime-env.shared.ts)"
+    },
+    "ops-scripts:scripts/ops/runtime-env.shared.ts:fileLines": {
+      "ticketId": "baseline-ops-runtime-env-shared-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (scripts/ops/runtime-env.shared.ts)"
+    },
+    "ops-scripts:scripts/ops/runtime-env.shared.ts:publicExports": {
+      "ticketId": "baseline-ops-runtime-env-shared-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "oeffentliche Export-Oberflaeche in kleinere fachliche API-Segmente aufteilen (scripts/ops/runtime-env.shared.ts)"
+    },
+    "ops-scripts:scripts/ops/runtime-env.ts:cyclomaticComplexity": {
+      "ticketId": "baseline-ops-runtime-env-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (scripts/ops/runtime-env.ts)"
+    },
+    "ops-scripts:scripts/ops/runtime-env.ts:fileLines": {
+      "ticketId": "baseline-ops-runtime-env-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (scripts/ops/runtime-env.ts)"
+    },
+    "ops-scripts:scripts/ops/runtime-env.ts:functionLines": {
+      "ticketId": "baseline-ops-runtime-env-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (scripts/ops/runtime-env.ts)"
+    },
+    "ops-scripts:scripts/ops/runtime/goose.ts:fileLines": {
+      "ticketId": "baseline-ops-runtime-goose-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (scripts/ops/runtime/goose.ts)"
+    },
+    "ops-scripts:scripts/ops/runtime/goose.ts:functionLines": {
+      "ticketId": "baseline-ops-runtime-goose-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (scripts/ops/runtime/goose.ts)"
+    },
+    "ops-scripts:scripts/ops/runtime/local-dev-server-runner.ts:cyclomaticComplexity": {
+      "ticketId": "baseline-ops-runtime-local-dev-server-runner-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (scripts/ops/runtime/local-dev-server-runner.ts)"
+    },
+    "ops-scripts:scripts/ops/runtime/local-provisioning-worker-runner.ts:cyclomaticComplexity": {
+      "ticketId": "baseline-ops-runtime-local-provisioning-worker-runner-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (scripts/ops/runtime/local-provisioning-worker-runner.ts)"
+    },
+    "ops-scripts:scripts/ops/runtime/migration-job.ts:cyclomaticComplexity": {
+      "ticketId": "baseline-ops-runtime-migration-job-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (scripts/ops/runtime/migration-job.ts)"
+    },
+    "ops-scripts:scripts/ops/runtime/migration-job.ts:fileLines": {
+      "ticketId": "baseline-ops-runtime-migration-job-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (scripts/ops/runtime/migration-job.ts)"
+    },
+    "ops-scripts:scripts/ops/runtime/process.ts:cyclomaticComplexity": {
+      "ticketId": "baseline-ops-runtime-process-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (scripts/ops/runtime/process.ts)"
+    },
+    "packages-default:packages/core/src/content-management.ts:cyclomaticComplexity": {
+      "ticketId": "baseline-packages-default-core-src-content-management-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (packages/core/src/content-management.ts)"
+    },
+    "packages-default:packages/core/src/content-management.ts:fileLines": {
+      "ticketId": "baseline-packages-default-core-src-content-management-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/core/src/content-management.ts)"
+    },
+    "packages-default:packages/core/src/content-management.ts:publicExports": {
+      "ticketId": "baseline-packages-default-core-src-content-management-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "oeffentliche Export-Oberflaeche in kleinere fachliche API-Segmente aufteilen (packages/core/src/content-management.ts)"
+    },
+    "packages-default:packages/core/src/index.ts:publicExports": {
+      "ticketId": "baseline-packages-default-core-src-index-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "oeffentliche Export-Oberflaeche in kleinere fachliche API-Segmente aufteilen (packages/core/src/index.ts)"
+    },
+    "packages-default:packages/core/src/instances/registry.ts:fileLines": {
+      "ticketId": "baseline-packages-default-core-src-instances-registry-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/core/src/instances/registry.ts)"
+    },
+    "packages-default:packages/core/src/instances/registry.ts:publicExports": {
+      "ticketId": "baseline-packages-default-core-src-instances-registry-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "oeffentliche Export-Oberflaeche in kleinere fachliche API-Segmente aufteilen (packages/core/src/instances/registry.ts)"
+    },
+    "packages-default:packages/core/src/runtime-profile.ts:fileLines": {
+      "ticketId": "baseline-packages-default-core-src-runtime-profile-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/core/src/runtime-profile.ts)"
+    },
+    "packages-default:packages/data-client/src/index.ts:functionLines": {
+      "ticketId": "baseline-packages-default-data-client-src-index-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/data-client/src/index.ts)"
+    },
+    "packages-default:packages/data-repositories/src/iam/repositories/statements.ts:fileLines": {
+      "ticketId": "baseline-packages-default-data-repositories-src-iam-repositories-statements-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/data-repositories/src/iam/repositories/statements.ts)"
+    },
+    "packages-default:packages/data-repositories/src/iam/types.ts:publicExports": {
+      "ticketId": "baseline-packages-default-data-repositories-src-iam-types-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "oeffentliche Export-Oberflaeche in kleinere fachliche API-Segmente aufteilen (packages/data-repositories/src/iam/types.ts)"
+    },
+    "packages-default:packages/data-repositories/src/index.ts:publicExports": {
+      "ticketId": "baseline-packages-default-data-repositories-src-index-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "oeffentliche Export-Oberflaeche in kleinere fachliche API-Segmente aufteilen (packages/data-repositories/src/index.ts)"
+    },
+    "packages-default:packages/data-repositories/src/integrations/instance-integrations.server.ts:fileLines": {
+      "ticketId": "baseline-packages-default-data-repositories-src-integrations-instance-integrations-server-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/data-repositories/src/integrations/instance-integrations.server.ts)"
+    },
+    "packages-default:packages/data-repositories/src/media/index.ts:fileLines": {
+      "ticketId": "baseline-packages-default-data-repositories-src-media-index-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/data-repositories/src/media/index.ts)"
+    },
+    "packages-default:packages/data-repositories/src/media/index.ts:functionLines": {
+      "ticketId": "baseline-packages-default-data-repositories-src-media-index-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/data-repositories/src/media/index.ts)"
+    },
+    "packages-default:packages/data-repositories/src/media/index.ts:publicExports": {
+      "ticketId": "baseline-packages-default-data-repositories-src-media-index-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "oeffentliche Export-Oberflaeche in kleinere fachliche API-Segmente aufteilen (packages/data-repositories/src/media/index.ts)"
+    },
+    "packages-default:packages/data/src/integrations/instance-integrations.server.ts:fileLines": {
+      "ticketId": "baseline-packages-default-data-src-integrations-instance-integrations-server-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/data/src/integrations/instance-integrations.server.ts)"
+    },
+    "packages-default:packages/iam-core/src/index.ts:publicExports": {
+      "ticketId": "baseline-packages-default-iam-core-src-index-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "oeffentliche Export-Oberflaeche in kleinere fachliche API-Segmente aufteilen (packages/iam-core/src/index.ts)"
+    },
+    "packages-default:packages/media/src/index.ts:publicExports": {
+      "ticketId": "baseline-packages-default-media-src-index-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "oeffentliche Export-Oberflaeche in kleinere fachliche API-Segmente aufteilen (packages/media/src/index.ts)"
+    },
+    "packages-default:packages/plugin-events/src/events.pages.tsx:cyclomaticComplexity": {
+      "ticketId": "baseline-packages-default-plugin-events-src-events-pages-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (packages/plugin-events/src/events.pages.tsx)"
+    },
+    "packages-default:packages/plugin-events/src/events.pages.tsx:fileLines": {
+      "ticketId": "baseline-packages-default-plugin-events-src-events-pages-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/plugin-events/src/events.pages.tsx)"
+    },
+    "packages-default:packages/plugin-events/src/events.pages.tsx:functionLines": {
+      "ticketId": "baseline-packages-default-plugin-events-src-events-pages-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/plugin-events/src/events.pages.tsx)"
+    },
+    "packages-default:packages/plugin-poi/src/poi.pages.tsx:cyclomaticComplexity": {
+      "ticketId": "baseline-packages-default-plugin-poi-src-poi-pages-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (packages/plugin-poi/src/poi.pages.tsx)"
+    },
+    "packages-default:packages/plugin-poi/src/poi.pages.tsx:fileLines": {
+      "ticketId": "baseline-packages-default-plugin-poi-src-poi-pages-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/plugin-poi/src/poi.pages.tsx)"
+    },
+    "packages-default:packages/plugin-poi/src/poi.pages.tsx:functionLines": {
+      "ticketId": "baseline-packages-default-plugin-poi-src-poi-pages-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/plugin-poi/src/poi.pages.tsx)"
+    },
+    "packages-default:packages/server-runtime/src/index.ts:publicExports": {
+      "ticketId": "baseline-packages-default-server-runtime-src-index-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "oeffentliche Export-Oberflaeche in kleinere fachliche API-Segmente aufteilen (packages/server-runtime/src/index.ts)"
+    },
+    "packages-default:packages/server-runtime/src/logger/index.server.ts:cyclomaticComplexity": {
+      "ticketId": "baseline-packages-default-server-runtime-src-logger-index-server-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (packages/server-runtime/src/logger/index.server.ts)"
+    },
+    "packages-default:packages/server-runtime/src/logger/index.server.ts:fileLines": {
+      "ticketId": "baseline-packages-default-server-runtime-src-logger-index-server-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/server-runtime/src/logger/index.server.ts)"
+    },
+    "packages-default:packages/server-runtime/src/logger/index.server.ts:functionLines": {
+      "ticketId": "baseline-packages-default-server-runtime-src-logger-index-server-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/server-runtime/src/logger/index.server.ts)"
+    },
+    "packages-default:packages/server-runtime/src/server/bootstrap.server.ts:functionLines": {
+      "ticketId": "baseline-packages-default-server-runtime-src-server-bootstrap-server-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/server-runtime/src/server/bootstrap.server.ts)"
+    },
+    "packages-default:packages/studio-ui-react/src/index.ts:publicExports": {
+      "ticketId": "baseline-packages-default-studio-ui-react-src-index-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "oeffentliche Export-Oberflaeche in kleinere fachliche API-Segmente aufteilen (packages/studio-ui-react/src/index.ts)"
+    },
+    "packages-default:packages/studio-ui-react/src/studio-data-table.tsx:cyclomaticComplexity": {
+      "ticketId": "baseline-packages-default-studio-ui-react-src-studio-data-table-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (packages/studio-ui-react/src/studio-data-table.tsx)"
+    },
+    "packages-default:packages/studio-ui-react/src/studio-data-table.tsx:fileLines": {
+      "ticketId": "baseline-packages-default-studio-ui-react-src-studio-data-table-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/studio-ui-react/src/studio-data-table.tsx)"
+    },
+    "packages-default:packages/studio-ui-react/src/studio-data-table.tsx:functionLines": {
+      "ticketId": "baseline-packages-default-studio-ui-react-src-studio-data-table-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/studio-ui-react/src/studio-data-table.tsx)"
+    },
+    "packages-default:packages/studio-ui-react/src/studio-primitives.tsx:fileLines": {
+      "ticketId": "baseline-packages-default-studio-ui-react-src-studio-primitives-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/studio-ui-react/src/studio-primitives.tsx)"
+    },
+    "packages-default:packages/studio-ui-react/src/studio-primitives.tsx:publicExports": {
+      "ticketId": "baseline-packages-default-studio-ui-react-src-studio-primitives-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "oeffentliche Export-Oberflaeche in kleinere fachliche API-Segmente aufteilen (packages/studio-ui-react/src/studio-primitives.tsx)"
+    },
+    "packages-default:packages/studio-ui-react/src/studio-surfaces.tsx:publicExports": {
+      "ticketId": "baseline-packages-default-studio-ui-react-src-studio-surfaces-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "oeffentliche Export-Oberflaeche in kleinere fachliche API-Segmente aufteilen (packages/studio-ui-react/src/studio-surfaces.tsx)"
+    },
+    "plugin-news:packages/plugin-news/src/news.pages.tsx:cyclomaticComplexity": {
+      "ticketId": "baseline-plugin-news-src-news-pages-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (packages/plugin-news/src/news.pages.tsx)"
+    },
+    "plugin-news:packages/plugin-news/src/news.pages.tsx:fileLines": {
+      "ticketId": "baseline-plugin-news-src-news-pages-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/plugin-news/src/news.pages.tsx)"
+    },
+    "plugin-news:packages/plugin-news/src/news.pages.tsx:functionLines": {
+      "ticketId": "baseline-plugin-news-src-news-pages-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/plugin-news/src/news.pages.tsx)"
+    },
+    "plugin-news:packages/plugin-news/src/news.validation.ts:cyclomaticComplexity": {
+      "ticketId": "baseline-plugin-news-src-news-validation-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (packages/plugin-news/src/news.validation.ts)"
+    },
+    "plugin-sdk:packages/plugin-sdk/src/admin-resources.ts:fileLines": {
+      "ticketId": "baseline-plugin-sdk-src-admin-resources-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/plugin-sdk/src/admin-resources.ts)"
+    },
+    "plugin-sdk:packages/plugin-sdk/src/admin-resources.ts:publicExports": {
+      "ticketId": "baseline-plugin-sdk-src-admin-resources-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "oeffentliche Export-Oberflaeche in kleinere fachliche API-Segmente aufteilen (packages/plugin-sdk/src/admin-resources.ts)"
+    },
+    "plugin-sdk:packages/plugin-sdk/src/index.ts:publicExports": {
+      "ticketId": "baseline-plugin-sdk-src-index-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "oeffentliche Export-Oberflaeche in kleinere fachliche API-Segmente aufteilen (packages/plugin-sdk/src/index.ts)"
+    },
+    "plugin-sdk:packages/plugin-sdk/src/plugins.ts:fileLines": {
+      "ticketId": "baseline-plugin-sdk-src-plugins-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/plugin-sdk/src/plugins.ts)"
+    },
+    "plugin-sdk:packages/plugin-sdk/src/plugins.ts:publicExports": {
+      "ticketId": "baseline-plugin-sdk-src-plugins-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "oeffentliche Export-Oberflaeche in kleinere fachliche API-Segmente aufteilen (packages/plugin-sdk/src/plugins.ts)"
+    },
+    "plugin-sdk:packages/plugin-sdk/src/public-api.ts:publicExports": {
+      "ticketId": "baseline-plugin-sdk-src-public-api-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "oeffentliche Export-Oberflaeche in kleinere fachliche API-Segmente aufteilen (packages/plugin-sdk/src/public-api.ts)"
+    },
+    "routing:packages/routing/src/auth.routes.server.ts:fileLines": {
+      "ticketId": "QUAL-109",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Serverseitige Auth-Route-Komposition weiter in kleinere Routing-Bausteine zerlegen"
+    },
+    "sva-mainserver:packages/sva-mainserver/src/server/events-route.ts:cyclomaticComplexity": {
+      "ticketId": "baseline-sva-mainserver-src-server-events-route-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (packages/sva-mainserver/src/server/events-route.ts)"
+    },
+    "sva-mainserver:packages/sva-mainserver/src/server/events-route.ts:fileLines": {
+      "ticketId": "baseline-sva-mainserver-src-server-events-route-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/sva-mainserver/src/server/events-route.ts)"
+    },
+    "sva-mainserver:packages/sva-mainserver/src/server/interfaces-contract.ts:fileLines": {
+      "ticketId": "baseline-sva-mainserver-src-server-interfaces-contract-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/sva-mainserver/src/server/interfaces-contract.ts)"
+    },
+    "sva-mainserver:packages/sva-mainserver/src/server/news-route.ts:cyclomaticComplexity": {
+      "ticketId": "baseline-sva-mainserver-src-server-news-route-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (packages/sva-mainserver/src/server/news-route.ts)"
+    },
+    "sva-mainserver:packages/sva-mainserver/src/server/news-route.ts:fileLines": {
+      "ticketId": "baseline-sva-mainserver-src-server-news-route-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/sva-mainserver/src/server/news-route.ts)"
+    },
+    "sva-mainserver:packages/sva-mainserver/src/server/news-route.ts:functionLines": {
+      "ticketId": "baseline-sva-mainserver-src-server-news-route-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/sva-mainserver/src/server/news-route.ts)"
+    },
+    "sva-mainserver:packages/sva-mainserver/src/server/poi-route.ts:cyclomaticComplexity": {
+      "ticketId": "baseline-sva-mainserver-src-server-poi-route-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (packages/sva-mainserver/src/server/poi-route.ts)"
+    },
+    "sva-mainserver:packages/sva-mainserver/src/server/poi-route.ts:fileLines": {
+      "ticketId": "baseline-sva-mainserver-src-server-poi-route-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/sva-mainserver/src/server/poi-route.ts)"
+    },
+    "sva-mainserver:packages/sva-mainserver/src/server/service.ts:cyclomaticComplexity": {
+      "ticketId": "baseline-sva-mainserver-src-server-service-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (packages/sva-mainserver/src/server/service.ts)"
+    },
+    "sva-mainserver:packages/sva-mainserver/src/server/service.ts:fileLines": {
+      "ticketId": "baseline-sva-mainserver-src-server-service-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/sva-mainserver/src/server/service.ts)"
+    },
+    "sva-mainserver:packages/sva-mainserver/src/server/service.ts:functionLines": {
+      "ticketId": "baseline-sva-mainserver-src-server-service-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (packages/sva-mainserver/src/server/service.ts)"
+    },
+    "sva-mainserver:packages/sva-mainserver/src/server/service.ts:publicExports": {
+      "ticketId": "baseline-sva-mainserver-src-server-service-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "oeffentliche Export-Oberflaeche in kleinere fachliche API-Segmente aufteilen (packages/sva-mainserver/src/server/service.ts)"
+    },
+    "sva-mainserver:packages/sva-mainserver/src/types.ts:fileLines": {
+      "ticketId": "baseline-sva-mainserver-src-types-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei in kleinere fachliche Einheiten zerlegen (packages/sva-mainserver/src/types.ts)"
+    },
+    "sva-mainserver:packages/sva-mainserver/src/types.ts:publicExports": {
+      "ticketId": "baseline-sva-mainserver-src-types-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "oeffentliche Export-Oberflaeche in kleinere fachliche API-Segmente aufteilen (packages/sva-mainserver/src/types.ts)"
     }
   }
 }

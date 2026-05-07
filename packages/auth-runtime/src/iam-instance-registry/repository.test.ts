@@ -190,4 +190,39 @@ describe('iam instance registry repository wiring', () => {
       })
     );
   });
+
+  it('reports forbidden tenant IAM access without implying that only role reads failed', async () => {
+    resolveIdentityProviderForInstanceMock.mockResolvedValueOnce({
+      provider: {
+        listRoles: vi.fn(async () => []),
+        listUsers: vi.fn(async () => {
+          throw new Error('403 Forbidden');
+        }),
+        executeActionsEmail: vi.fn(async () => undefined),
+        getOidcClientByClientId: vi.fn(async () => ({ id: 'client-1', clientId: 'sva-studio' })),
+      },
+    });
+    resolveAuthConfigForInstanceMock.mockResolvedValueOnce({
+      clientId: 'sva-studio',
+    });
+    await import('./repository.js');
+
+    const runtimeConfig = createInstanceRegistryRuntimeMock.mock.calls.at(-1)?.[0];
+    expect(runtimeConfig).toBeDefined();
+
+    await expect(
+      runtimeConfig?.serviceDeps.probeTenantIamAccess({
+        instanceId: 'demo',
+        requestId: 'req-probe-4',
+      })
+    ).resolves.toEqual(
+      expect.objectContaining({
+        status: 'blocked',
+        summary: 'Tenant-Admin-Client darf die erforderlichen IAM-Ressourcen nicht lesen.',
+        source: 'access_probe',
+        errorCode: 'IDP_FORBIDDEN',
+        requestId: 'req-probe-4',
+      })
+    );
+  });
 });

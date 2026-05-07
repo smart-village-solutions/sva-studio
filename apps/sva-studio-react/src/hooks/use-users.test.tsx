@@ -441,4 +441,56 @@ describe('useUsers', () => {
     expect(result.current.mutationError?.status).toBe(403);
     expect(authMockValue.invalidatePermissions).toHaveBeenCalled();
   });
+
+  it('preserves mutation errors across successful list refetches', async () => {
+    listUsersMock
+      .mockResolvedValueOnce({
+        data: [],
+        pagination: { page: 1, pageSize: 25, total: 0 },
+      })
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 'user-1',
+            keycloakSubject: 'subject-1',
+            displayName: 'Ada Lovelace',
+            email: 'ada@example.com',
+            status: 'active',
+            roles: [],
+          },
+        ],
+        pagination: { page: 1, pageSize: 25, total: 1 },
+      });
+    updateUserMock.mockRejectedValue({
+      status: 409,
+      code: 'conflict',
+      message: 'conflict',
+    });
+
+    const { result } = renderHook(() => useUsers());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    await act(async () => {
+      const response = await result.current.updateUser('user-1', { firstName: 'Ada' });
+      expect(response).toBeNull();
+    });
+
+    expect(result.current.mutationError).toMatchObject({
+      status: 409,
+      code: 'conflict',
+    });
+
+    await act(async () => {
+      await result.current.refetch();
+    });
+
+    expect(result.current.users).toHaveLength(1);
+    expect(result.current.mutationError).toMatchObject({
+      status: 409,
+      code: 'conflict',
+    });
+  });
 });

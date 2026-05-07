@@ -120,7 +120,6 @@ export const useUsers = (initial?: Partial<UserFilters>): UseUsersResult => {
 
       setUsers(response.data);
       setTotal(response.pagination.total);
-      setMutationError(null);
       logBrowserOperationSuccess(
         usersLogger,
         'user_list_refetch_succeeded',

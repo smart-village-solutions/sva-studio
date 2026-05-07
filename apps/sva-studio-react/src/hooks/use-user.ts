@@ -48,7 +48,6 @@ export const useUser = (userId: string): UseUserResult => {
     try {
       const response = await getUser(userId);
       setUser(response.data);
-      setMutationError(null);
       logBrowserOperationSuccess(userLogger, 'user_detail_refetch_succeeded', {
         operation: 'get_user',
         user_id: userId,
@@ -119,7 +118,7 @@ export const useUser = (userId: string): UseUserResult => {
   );
 
   const resendPasswordSetupEmailAction = React.useCallback(async () => {
-    setError(null);
+    setMutationError(null);
     logBrowserOperationStart(userLogger, 'user_password_setup_email_started', {
       operation: 'send_password_setup_email',
       user_id: userId,
@@ -143,7 +142,7 @@ export const useUser = (userId: string): UseUserResult => {
           user_id: userId,
         });
       }
-      setError(resolvedError);
+      setMutationError(resolvedError);
       logBrowserOperationFailure(userLogger, 'user_password_setup_email_failed', resolvedError, {
         operation: 'send_password_setup_email',
         user_id: userId,

@@ -230,6 +230,55 @@ describe('useUser', () => {
     });
 
     expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
-    expect(result.current.error).toBe(forbiddenError);
+    expect(result.current.error).toBeNull();
+    expect(result.current.mutationError).toBe(forbiddenError);
+  });
+
+  it('preserves mutation errors across successful refetches', async () => {
+    const validationError = { status: 400, code: 'invalid', message: 'Invalid payload' };
+    asIamErrorMock.mockReturnValue(validationError);
+    getUserMock
+      .mockResolvedValueOnce({
+        data: {
+          id: 'user-6',
+          keycloakSubject: 'subject-6',
+          displayName: 'User Six',
+          status: 'active',
+          roles: [],
+          mainserverUserApplicationSecretSet: false,
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          id: 'user-6',
+          keycloakSubject: 'subject-6',
+          displayName: 'User Six Reloaded',
+          status: 'active',
+          roles: [],
+          mainserverUserApplicationSecretSet: false,
+        },
+      });
+    updateUserMock.mockRejectedValueOnce(new Error('validation-error'));
+
+    const { result } = renderHook(() => useUser('user-6'));
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.user?.displayName).toBe('User Six');
+    });
+
+    await act(async () => {
+      const saved = await result.current.save({ displayName: '' });
+      expect(saved).toBeNull();
+    });
+
+    expect(result.current.mutationError).toBe(validationError);
+
+    await act(async () => {
+      await result.current.refetch();
+    });
+
+    expect(result.current.user?.displayName).toBe('User Six Reloaded');
+    expect(result.current.mutationError).toBe(validationError);
   });
 });

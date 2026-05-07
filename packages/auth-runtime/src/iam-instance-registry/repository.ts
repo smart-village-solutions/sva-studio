@@ -81,14 +81,16 @@ const probeTenantIamAccess = async (input: { instanceId: string; requestId?: str
   }
 
   try {
-    const [_, __, passwordSetupEmailCapability] = await Promise.all([
+    const passwordSetupEmailCapabilityPromise = probePasswordSetupEmailCapability({
+      instanceId: input.instanceId,
+      identityProvider,
+    });
+
+    await Promise.all([
       identityProvider.provider.listRoles(),
       identityProvider.provider.listUsers({ max: 1 }),
-      probePasswordSetupEmailCapability({
-        instanceId: input.instanceId,
-        identityProvider,
-      }),
     ]);
+    const passwordSetupEmailCapability = await passwordSetupEmailCapabilityPromise;
 
     if (!passwordSetupEmailCapability.ok) {
       return {
@@ -121,7 +123,7 @@ const probeTenantIamAccess = async (input: { instanceId: string; requestId?: str
       status: errorCode === 'IDP_FORBIDDEN' ? 'blocked' : 'degraded',
       summary:
         errorCode === 'IDP_FORBIDDEN'
-          ? 'Tenant-Admin-Client darf Realm-Rollen nicht lesen.'
+          ? 'Tenant-Admin-Client darf die erforderlichen IAM-Ressourcen nicht lesen.'
           : 'Tenant-Admin-Rechteprobe konnte nicht abgeschlossen werden.',
       source: 'access_probe',
       checkedAt: new Date().toISOString(),

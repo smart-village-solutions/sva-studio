@@ -2,15 +2,15 @@
 
 ## Why
 
-Die aktuelle Architektur hat mehrere runtime-emergente und paketuebergreifende Risiken, die durch lokale Unit-Tests nicht sichtbar werden. Besonders betroffen sind der Auth-Session-Pfad, der Plugin-Vertrag und die CI-Erzwingung zentraler Architekturregeln.
+Die aktuelle Architektur hat mehrere runtime-emergente und paketübergreifende Risiken, die durch lokale Unit-Tests nicht sichtbar werden. Besonders betroffen sind der Auth-Session-Pfad, der Plugin-Vertrag und die CI-Erzwingung zentraler Architekturregeln.
 
 ## What Changes
 
-- Der Auth-Session-Pfad wird fuer parallele Requests, minimale `/auth/me`-Payloads und adapteruebergreifende Session-Store-Paritaet normativ gehaertet.
-- Der Plugin-Vertrag wird an den Host gebunden: fail-fast bei Routen- und Translation-Kollisionen, SDK-Kompatibilitaetspruefung, typisierte Routenbeitraege, runtime-faehige Aktivierung und zentrale IAM-Cross-Validation.
-- Die Plattform fuehrt harte Architektur-Gates fuer Dependency-Graph, i18n, server-only Importe, Interfaces-Leaks, Migrationsdrift und OTEL-Bootstrapping ein.
-- Kritische Auth-, Registry- und Routing-Hotspots erhalten strengere Coverage- und Komplexitaets-Governance inklusive Ratcheting- und No-Growth-Regeln.
-- Host und Plugins erhalten einen gemeinsamen Invalidation-Tag-Vertrag, damit Mutationen cache-konsistent ueber Paketgrenzen hinweg bleiben.
+- Der Auth-Session-Pfad wird für parallele Requests, minimale `/auth/me`-Payloads und adapterübergreifende Session-Store-Parität normativ gehärtet.
+- Der Plugin-Vertrag wird an den Host gebunden: fail-fast bei Routen- und Translation-Kollisionen, SDK-Kompatibilitätsprüfung, typisierte Routenbeiträge, runtime-fähige Aktivierung und zentrale IAM-Cross-Validation.
+- Die Plattform führt harte Architektur-Gates für Dependency-Graph, i18n, server-only Importe, Interfaces-Leaks, Migrationsdrift und OTEL-Bootstrapping ein.
+- Kritische Auth-, Registry- und Routing-Hotspots erhalten strengere Coverage- und Komplexitäts-Governance inklusive Ratcheting- und No-Growth-Regeln.
+- Host und Plugins erhalten einen gemeinsamen Invalidation-Tag-Vertrag, damit Mutationen cache-konsistent über Paketgrenzen hinweg bleiben.
 
 ## Impact
 

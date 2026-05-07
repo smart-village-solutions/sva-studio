@@ -479,6 +479,8 @@ describe('useInstances', () => {
   });
 
   it('invalidates permissions only once when detail and keycloak status both return forbidden', async () => {
+    const invalidateDeferred = createDeferred<void>();
+    authMockValue.invalidatePermissions.mockImplementationOnce(() => invalidateDeferred.promise);
     getInstanceMock.mockRejectedValueOnce({
       status: 403,
       code: 'forbidden',
@@ -496,8 +498,16 @@ describe('useInstances', () => {
       expect(result.current.isLoading).toBe(false);
     });
 
+    const loadPromise = result.current.loadInstance('demo');
+
+    await waitFor(() => {
+      expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
+    });
+
+    invalidateDeferred.resolve();
+
     await act(async () => {
-      await result.current.loadInstance('demo');
+      await loadPromise;
     });
 
     expect(result.current.mutationError).toEqual(expect.objectContaining({ status: 403, code: 'forbidden' }));

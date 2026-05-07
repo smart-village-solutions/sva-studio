@@ -125,10 +125,10 @@ export const useInstances = () => {
       if (state?.invalidated) {
         return;
       }
-      await invalidatePermissions();
       if (state) {
         state.invalidated = true;
       }
+      await invalidatePermissions();
       instancesLogger.info('permission_invalidated_after_403', {
         operation: input.operation,
         status: input.status,

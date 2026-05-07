@@ -206,7 +206,7 @@ Das gilt nicht nur serverseitig. Die UI muss schreibende und gefährliche Aktion
 
 ### 5. Audit und Historie
 
-Verlauf/Historie wird für das Modul nicht über eigene Primairtabellen gelöst, sondern über die Studio-Audit-Basis modelliert:
+Verlauf/Historie wird für das Modul nicht über eigene Primärtabellen gelöst, sondern über die Studio-Audit-Basis modelliert:
 
 - alle Mutationen erzeugen Audit-Events
 - Seed, Reset und CSV-Import tragen erweiterte sichere Metadaten

@@ -78,7 +78,8 @@ export type InstanceAuditEvent = {
     | 'tenant_iam_access_probed'
     | 'instance_module_assigned'
     | 'instance_module_revoked'
-    | 'instance_module_iam_seeded';
+    | 'instance_module_iam_seeded'
+    | 'instance_admin_bootstrapped';
   readonly actorId?: string;
   readonly requestId?: string;
   readonly details: Readonly<Record<string, unknown>>;

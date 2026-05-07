@@ -67,6 +67,49 @@ Das System SHALL die Rekonstruktion der IAM-Basis einer Instanz deterministisch 
 - **AND** schlaegt die Operation nicht mit einem Fehler fehl
 - **AND** ist das Ergebnis identisch mit dem Ausgangszustand
 
+### Requirement: Initialer Admin-Bootstrap erzeugt editierbare Initialrollen und eine Gruppe `Admins`
+
+Das System SHALL fuer neu angelegte Instanzen einen Bootstrap-Pfad bereitstellen, der eine initiale Gruppe `Admins` sowie editierbare Initialrollen fuer `Core` und optional ausgewaehlte Module erzeugt. Diese Initialrollen sind nicht als unveraenderbare Systemrollen zu behandeln.
+
+#### Scenario: Bootstrap erzeugt Core Admin mit nur Core-Basisrechten
+
+- **GIVEN** der Studio-Admin fuehrt den initialen Bootstrap fuer eine neu angelegte Instanz aus
+- **WHEN** die Aktion erfolgreich abgeschlossen wird
+- **THEN** legt das System eine Rolle `Core Admin` mit nur nicht-modulspezifischen Studio-/IAM-Basisrechten an oder ueberschreibt sie
+- **AND** verknuepft es diese Rolle mit der Gruppe `Admins`
+- **AND** darf die Rolle spaeter im IAM bearbeitet werden
+
+#### Scenario: Bootstrap erzeugt pro ausgewaehltem Modul eine editierbare Modul-Admin-Rolle
+
+- **GIVEN** der Studio-Admin fuehrt den Bootstrap fuer eine neu angelegte Instanz mit ausgewaehlten Modulen aus
+- **WHEN** die Aktion erfolgreich abgeschlossen wird
+- **THEN** erzeugt oder ueberschreibt das System pro ausgewaehltem Modul eine sprechend benannte Modul-Admin-Rolle mit Vollzugriffsrechten fuer genau dieses Modul
+- **AND** verknuepft es diese Rolle mit der Gruppe `Admins`
+- **AND** behandelt es diese Rolle nicht als unveraenderbare Systemrolle
+
+### Requirement: Gleichnamige Initialrollen duerfen beim Bootstrap ueberschrieben werden
+
+Das System SHALL beim initialen Admin-Bootstrap bestehende gleichnamige Zielrollen ueberschreiben duerfen. Fuer abweichende Sonderbedarfe sollen Administratoren spaeter neue Rollen anlegen koennen, statt die Bootstrap-Konvention zu aendern.
+
+#### Scenario: Bootstrap ueberschreibt gleichnamige Initialrolle
+
+- **GIVEN** in der Zielinstanz existiert bereits eine Rolle mit demselben vorgesehenen Namen wie eine Bootstrap-Initialrolle
+- **WHEN** der Studio-Admin den Bootstrap erneut ausfuehrt
+- **THEN** darf das System diese gleichnamige Rolle ueberschreiben
+- **AND** bleibt das Namensschema des Bootstraps stabil
+- **AND** koennen Administratoren fuer abweichende Bedarfe zusaetzliche Rollen separat anlegen
+
+### Requirement: Modulentzug loescht erzeugte Initialrollen nicht automatisch
+
+Das System SHALL einmal durch den Bootstrap erzeugte Admin-Rollen bei einem spaeteren Modulentzug nicht automatisch loeschen, auch wenn ihre urspruengliche Modulreferenz fachlich entfaellt.
+
+#### Scenario: Modul wird entzogen, Rolle bleibt bestehen
+
+- **GIVEN** eine Modul-Admin-Rolle wurde durch den Bootstrap fuer ein Modul erzeugt
+- **WHEN** dieses Modul spaeter von der Instanz entzogen wird
+- **THEN** bleibt die einmal erzeugte Rolle als IAM-Artefakt bestehen
+- **AND** wird sie nicht automatisch geloescht
+
 ### Requirement: Audit-Events fuer Modulzuweisung, Modulentzug und Reseeding sind normativ definiert
 
 Das System SHALL fuer `instance-registry.assignModule`, `instance-registry.revokeModule` und `instance-registry.seedIamBaseline` Audit-Events mit einem normativen Mindestumfang schreiben. Das Audit-Event muss mindestens `instanceId`, `moduleId` falls modulbezogen, `actor.userId` als technische ID, `correlationId`, `before`, `after` und `outcome` enthalten. Personenbezogene Klardaten wie Name oder E-Mail duerfen nicht geloggt werden.

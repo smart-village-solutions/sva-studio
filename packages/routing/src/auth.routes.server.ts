@@ -466,6 +466,11 @@ const authHandlerMap = {
       return authRuntimeRoutes.instanceRegistryHandlers.assignInstanceModule(ctx.request);
     },
   },
+  '/api/v1/iam/instances/$instanceId/modules/bootstrap-admin-structure': {
+    POST: async (ctx: { request: Request }) => {
+      return authRuntimeRoutes.instanceRegistryHandlers.bootstrapInstanceAdminStructure(ctx.request);
+    },
+  },
   '/api/v1/iam/instances/$instanceId/modules/revoke': {
     POST: async (ctx: { request: Request }) => {
       return authRuntimeRoutes.instanceRegistryHandlers.revokeInstanceModule(ctx.request);

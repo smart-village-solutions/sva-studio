@@ -453,9 +453,76 @@ describe('instance registry repository', () => {
       })
     ).resolves.toBeUndefined();
 
-    expect(statements).toHaveLength(1);
-    expect(statements[0]?.text).toContain("permission_key LIKE 'news.%'");
-    expect(statements[0]?.text).not.toContain('permission_key NOT IN (');
+    expect(statements).toHaveLength(2);
+    expect(statements[0]?.text).toContain("role_permission.grant_origin_module_id IN ('news')");
+    expect(statements[1]?.text).toContain("permission_key LIKE 'news.%'");
+    expect(statements[1]?.text).not.toContain('permission_key NOT IN (');
+  });
+
+  it('tags module-synced role grants with ownership metadata and cleans up only module-owned rows', async () => {
+    const { executor, statements } = createQueuedExecutor([[]]);
+    const repository = createInstanceRegistryRepository(executor);
+
+    await expect(
+      repository.syncAssignedModuleIam({
+        instanceId: 'tenant-a',
+        managedModuleIds: ['news', 'events'],
+        contracts: [
+          {
+            moduleId: 'news',
+            permissionIds: ['news.read'],
+            systemRoles: [{ roleName: 'system_admin', permissionIds: ['news.read'] }],
+          },
+        ],
+      })
+    ).resolves.toBeUndefined();
+
+    const rolePermissionInsert = statements.find((statement) => statement.text.includes('grant_origin_kind'));
+    expect(rolePermissionInsert?.text).toContain('grant_origin_kind');
+    expect(rolePermissionInsert?.text).toContain('grant_origin_module_id');
+    expect(rolePermissionInsert?.values).toEqual(['tenant-a', 'system_admin', 'news.read', 'module_sync', 'news']);
+
+    const rolePermissionCleanup = statements.find((statement) =>
+      statement.text.includes('DELETE FROM iam.role_permissions role_permission')
+    );
+    expect(rolePermissionCleanup?.text).toContain("role_permission.grant_origin_kind = 'module_sync'");
+    expect(rolePermissionCleanup?.text).toContain("role_permission.grant_origin_module_id IN ('news', 'events')");
+    expect(rolePermissionCleanup?.text).not.toContain('role.role_key IN');
+  });
+
+  it('tags bootstrap role grants with bootstrap ownership metadata', async () => {
+    const { executor, statements } = createQueuedExecutor([]);
+    const repository = createInstanceRegistryRepository(executor);
+
+    await expect(
+      repository.syncInstanceAdminBootstrap({
+        instanceId: 'tenant-a',
+        groupKey: 'admins',
+        groupDisplayName: 'Admins',
+        coreRole: {
+          roleKey: 'core_admin',
+          displayName: 'Core Admin',
+          permissionKeys: ['content.read'],
+        },
+        moduleRoles: [
+          {
+            moduleId: 'news',
+            roleKey: 'news_admin',
+            displayName: 'News Admin',
+            permissionKeys: ['news.read'],
+          },
+        ],
+      })
+    ).resolves.toBeUndefined();
+
+    const rolePermissionInserts = statements.filter((statement) => statement.text.includes('grant_origin_kind'));
+    expect(rolePermissionInserts).toHaveLength(2);
+    for (const statement of rolePermissionInserts) {
+      expect(statement.text).toContain('grant_origin_kind');
+      expect(statement.text).toContain('grant_origin_module_id');
+      expect(statement.values.at(-2)).toBe('bootstrap');
+      expect(statement.values.at(-1)).toBeNull();
+    }
   });
 
   it('resolves hostname variants and returns null when they are missing', async () => {

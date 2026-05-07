@@ -50,6 +50,7 @@ const createRepository = (overrides: Partial<InstanceRegistryRepository> = {}): 
     assignModule: vi.fn(async () => true),
     revokeModule: vi.fn(async () => true),
     syncAssignedModuleIam: vi.fn(async () => undefined),
+    syncInstanceAdminBootstrap: vi.fn(async () => undefined),
     getAuthClientSecretCiphertext: vi.fn(async () => 'auth-cipher'),
     getTenantAdminClientSecretCiphertext: vi.fn(async () => 'tenant-admin-cipher'),
     resolveHostname: vi.fn(async () => baseInstance),
@@ -550,6 +551,114 @@ describe('instance registry service facade', () => {
           moduleId: 'events',
           outcome: 'assigned',
         }),
+      })
+    );
+  });
+
+  it('bootstraps the editable admin structure and assigns selected modules first', async () => {
+    const repository = createRepository({
+      assignModule: vi.fn(async () => true),
+      listAssignedModules: vi.fn().mockResolvedValueOnce(['news']).mockResolvedValueOnce(['news', 'events']),
+      syncInstanceAdminBootstrap: vi.fn(async () => undefined),
+      getInstanceById: vi
+        .fn()
+        .mockResolvedValueOnce(baseInstance)
+        .mockResolvedValueOnce({ ...baseInstance, assignedModules: ['news', 'events'] }),
+    });
+    const service = createInstanceRegistryService(createDeps(repository));
+
+    await expect(
+      service.bootstrapAdminStructure({
+        instanceId: 'demo',
+        moduleIds: ['news', 'events'],
+        idempotencyKey: 'idem-bootstrap-1',
+        actorId: 'actor-1',
+        requestId: 'req-bootstrap-1',
+      })
+    ).resolves.toEqual({
+      ok: true,
+      instance: expect.objectContaining({
+        assignedModules: ['news', 'events'],
+      }),
+    });
+
+    expect(repository.assignModule).toHaveBeenCalledTimes(1);
+    expect(repository.assignModule).toHaveBeenCalledWith('demo', 'events');
+    expect(repository.syncAssignedModuleIam).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'demo',
+        managedModuleIds: ['news', 'events'],
+      })
+    );
+    expect(repository.syncInstanceAdminBootstrap).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'demo',
+        groupKey: 'admins',
+        groupDisplayName: 'Admins',
+        coreRole: expect.objectContaining({
+          roleKey: 'core_admin',
+          displayName: 'Core Admin',
+          permissionKeys: expect.arrayContaining(['instance.registry.manage']),
+        }),
+        moduleRoles: expect.arrayContaining([
+          expect.objectContaining({
+            moduleId: 'news',
+            roleKey: 'news_admin',
+            displayName: 'News Admin',
+            permissionKeys: ['news.read', 'news.create', 'news.update', 'news.delete'],
+          }),
+          expect.objectContaining({
+            moduleId: 'events',
+            roleKey: 'events_admin',
+            displayName: 'Events Admin',
+            permissionKeys: ['events.read'],
+          }),
+        ]),
+      })
+    );
+    expect(repository.appendAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: 'instance_admin_bootstrapped',
+        details: expect.objectContaining({
+          assignedModules: ['news', 'events'],
+          groupKey: 'admins',
+        }),
+      })
+    );
+  });
+
+  it('keeps successfully assigned modules when admin bootstrap role sync fails', async () => {
+    const repository = createRepository({
+      assignModule: vi.fn(async () => true),
+      listAssignedModules: vi.fn(async () => ['news']),
+      syncInstanceAdminBootstrap: vi.fn(async () => {
+        throw new Error('admin_bootstrap_failed');
+      }),
+      getInstanceById: vi.fn(async () => baseInstance),
+    });
+    const deps = createDeps(repository);
+    const service = createInstanceRegistryService(deps);
+
+    await expect(
+      service.bootstrapAdminStructure({
+        instanceId: 'demo',
+        moduleIds: ['news'],
+        idempotencyKey: 'idem-bootstrap-2',
+        actorId: 'actor-1',
+        requestId: 'req-bootstrap-2',
+      })
+    ).rejects.toThrow('admin_bootstrap_failed');
+
+    expect(repository.assignModule).not.toHaveBeenCalled();
+    expect(repository.revokeModule).not.toHaveBeenCalled();
+    expect(repository.syncAssignedModuleIam).toHaveBeenCalled();
+    expect(deps.invalidatePermissionSnapshots).toHaveBeenCalledWith({
+      instanceId: 'demo',
+      trigger: 'instance_module_assigned',
+    });
+    expect(repository.appendAuditEvent).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: 'instance_admin_bootstrapped',
       })
     );
   });

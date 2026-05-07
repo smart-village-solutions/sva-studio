@@ -7,6 +7,7 @@ import {
   activateInstanceInternal,
   assignInstanceModuleInternal,
   archiveInstanceInternal,
+  bootstrapInstanceAdminStructureInternal,
   createInstanceInternal,
   getInstanceInternal,
   listInstancesInternal,
@@ -79,6 +80,8 @@ export const instanceRegistryHandlers = {
     withAuthenticatedRegistryHandler(request, activateInstanceInternal),
   assignInstanceModule: async (request: Request): Promise<Response> =>
     withAuthenticatedRegistryHandler(request, assignInstanceModuleInternal),
+  bootstrapInstanceAdminStructure: async (request: Request): Promise<Response> =>
+    withAuthenticatedRegistryHandler(request, bootstrapInstanceAdminStructureInternal),
   revokeInstanceModule: async (request: Request): Promise<Response> =>
     withAuthenticatedRegistryHandler(request, revokeInstanceModuleInternal),
   seedInstanceIamBaseline: async (request: Request): Promise<Response> =>

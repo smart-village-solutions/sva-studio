@@ -19,6 +19,7 @@ const planInstanceKeycloakProvisioningMock = vi.fn();
 const executeInstanceKeycloakProvisioningMock = vi.fn();
 const probeTenantIamAccessMock = vi.fn();
 const assignInstanceModuleMock = vi.fn();
+const bootstrapInstanceAdminStructureMock = vi.fn();
 const revokeInstanceModuleMock = vi.fn();
 const seedInstanceIamBaselineMock = vi.fn();
 const createInstanceMock = vi.fn();
@@ -61,6 +62,7 @@ vi.mock('../lib/iam-api', () => ({
   executeInstanceKeycloakProvisioning: (...args: unknown[]) => executeInstanceKeycloakProvisioningMock(...args),
   probeTenantIamAccess: (...args: unknown[]) => probeTenantIamAccessMock(...args),
   assignInstanceModule: (...args: unknown[]) => assignInstanceModuleMock(...args),
+  bootstrapInstanceAdminStructure: (...args: unknown[]) => bootstrapInstanceAdminStructureMock(...args),
   revokeInstanceModule: (...args: unknown[]) => revokeInstanceModuleMock(...args),
   seedInstanceIamBaseline: (...args: unknown[]) => seedInstanceIamBaselineMock(...args),
   createInstance: (...args: unknown[]) => createInstanceMock(...args),
@@ -139,6 +141,20 @@ describe('useInstances', () => {
       },
     });
     assignInstanceModuleMock.mockResolvedValue({
+      data: {
+        instanceId: 'demo',
+        displayName: 'Demo',
+        status: 'active',
+        parentDomain: 'studio.example.org',
+        primaryHostname: 'demo.studio.example.org',
+        hostnames: [],
+        provisioningRuns: [],
+        keycloakProvisioningRuns: [],
+        auditEvents: [],
+        assignedModules: ['news'],
+      },
+    });
+    bootstrapInstanceAdminStructureMock.mockResolvedValue({
       data: {
         instanceId: 'demo',
         displayName: 'Demo',
@@ -278,6 +294,7 @@ describe('useInstances', () => {
       });
       await result.current.probeTenantIamAccess('demo');
       await result.current.reconcileKeycloak('demo', { rotateClientSecret: true });
+      await result.current.bootstrapAdminStructure('demo', ['news']);
       await result.current.activateInstance('demo');
       await result.current.suspendInstance('demo');
       await result.current.archiveInstance('demo');
@@ -287,6 +304,7 @@ describe('useInstances', () => {
     expect(updateInstanceMock).toHaveBeenCalledTimes(1);
     expect(probeTenantIamAccessMock).toHaveBeenCalledTimes(1);
     expect(reconcileInstanceKeycloakMock).toHaveBeenCalledTimes(1);
+    expect(bootstrapInstanceAdminStructureMock).toHaveBeenCalledTimes(1);
     expect(activateInstanceMock).toHaveBeenCalledTimes(1);
     expect(suspendInstanceMock).toHaveBeenCalledTimes(1);
     expect(archiveInstanceMock).toHaveBeenCalledTimes(1);
@@ -672,17 +690,36 @@ describe('useInstances', () => {
       expect(assigned).toEqual(expect.objectContaining({ assignedModules: ['news'] }));
     });
     expect(assignInstanceModuleMock).toHaveBeenCalledWith('demo', 'news');
+    expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
 
     await act(async () => {
       const seeded = await result.current.seedIamBaseline('demo');
       expect(seeded).toEqual(expect.objectContaining({ assignedModules: ['news'] }));
     });
     expect(seedInstanceIamBaselineMock).toHaveBeenCalledWith('demo');
+    expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(2);
 
     await act(async () => {
       const revoked = await result.current.revokeModule('demo', 'news');
       expect(revoked).toEqual(expect.objectContaining({ assignedModules: [] }));
     });
     expect(revokeInstanceModuleMock).toHaveBeenCalledWith('demo', 'news');
+    expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(3);
+  });
+
+  it('refreshes auth state after bootstrapping the admin structure', async () => {
+    const { result } = renderHook(() => useInstances());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    await act(async () => {
+      const bootstrapped = await result.current.bootstrapAdminStructure('demo', ['news']);
+      expect(bootstrapped).toEqual(expect.objectContaining({ assignedModules: ['news'] }));
+    });
+
+    expect(bootstrapInstanceAdminStructureMock).toHaveBeenCalledWith('demo', ['news']);
+    expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
   });
 });

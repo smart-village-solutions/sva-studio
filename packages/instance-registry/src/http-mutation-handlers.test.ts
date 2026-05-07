@@ -42,6 +42,7 @@ const createDeps = (): InstanceRegistryMutationHttpDeps<TestContext> => ({
       reconcileKeycloak: vi.fn(async () => ({ realmExists: true })),
       executeKeycloakProvisioning: vi.fn(async () => ({ id: 'run-1' })),
       assignModule: vi.fn(async () => ({ ok: true, instance: { instanceId: 'inst-1', assignedModules: ['news'] } })),
+      bootstrapAdminStructure: vi.fn(async () => ({ ok: true, instance: { instanceId: 'inst-1', assignedModules: ['news'] } })),
       revokeModule: vi.fn(async () => ({ ok: true, instance: { instanceId: 'inst-1', assignedModules: [] } })),
       seedIamBaseline: vi.fn(async () => ({ ok: true, instance: { instanceId: 'inst-1', assignedModules: ['news'] } })),
       probeTenantIamAccess: vi.fn(async () => ({
@@ -244,6 +245,38 @@ describe('http mutation handlers', () => {
     });
   });
 
+  it('bootstrapAdminStructure passes selected module ids into the registry service', async () => {
+    const bootstrapAdminStructure = vi.fn(async () => ({
+      ok: true,
+      instance: { instanceId: 'inst-1', assignedModules: ['news'] },
+    }));
+    vi.mocked(deps.parseRequestBody).mockResolvedValueOnce({ ok: true, data: { moduleIds: ['news'] } });
+    vi.mocked(deps.withRegistryService).mockImplementationOnce(async (work) =>
+      work({
+        bootstrapAdminStructure,
+      } as never)
+    );
+    const handlers = createInstanceRegistryMutationHttpHandlers(deps);
+
+    const response = await handlers.bootstrapAdminStructure(
+      new Request('http://localhost/api/instances/inst-1/admin-bootstrap', { method: 'POST' }),
+      { userId: 'u-1' }
+    );
+
+    expect(response.status).toBe(200);
+    expect(bootstrapAdminStructure).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'inst-1',
+        moduleIds: ['news'],
+        idempotencyKey: 'idem-1',
+      })
+    );
+    await expect(readBody(response)).resolves.toMatchObject({
+      instanceId: 'inst-1',
+      assignedModules: ['news'],
+    });
+  });
+
   it('seedIamBaseline requires an existing instance', async () => {
     vi.mocked(deps.parseRequestBody).mockResolvedValueOnce({ ok: true, data: {} });
     vi.mocked(deps.withRegistryService).mockImplementationOnce(async (work) =>
@@ -261,6 +294,25 @@ describe('http mutation handlers', () => {
 
     expect(response.status).toBe(404);
     expect(body.code).toBe('not_found');
+  });
+
+  it('bootstrapAdminStructure returns invalid_request for unknown modules', async () => {
+    vi.mocked(deps.parseRequestBody).mockResolvedValueOnce({ ok: true, data: { moduleIds: ['unknown'] } });
+    vi.mocked(deps.withRegistryService).mockImplementationOnce(async (work) =>
+      work({
+        bootstrapAdminStructure: vi.fn(async () => ({ ok: false, reason: 'unknown_module' })),
+      } as never)
+    );
+    const handlers = createInstanceRegistryMutationHttpHandlers(deps);
+
+    const response = await handlers.bootstrapAdminStructure(
+      new Request('http://localhost/api/instances/inst-1/admin-bootstrap', { method: 'POST' }),
+      { userId: 'u-1' }
+    );
+    const body = await readBody(response);
+
+    expect(response.status).toBe(400);
+    expect(body.code).toBe('invalid_request');
   });
 
   it('mutateInstanceStatus rejects mismatched status payloads', async () => {

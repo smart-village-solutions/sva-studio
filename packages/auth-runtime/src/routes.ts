@@ -40,6 +40,7 @@ export type AuthRoutePath =
   | '/api/v1/iam/instances/$instanceId/keycloak/reconcile'
   | '/api/v1/iam/instances/$instanceId/tenant-iam/access-probe'
   | '/api/v1/iam/instances/$instanceId/modules/assign'
+  | '/api/v1/iam/instances/$instanceId/modules/bootstrap-admin-structure'
   | '/api/v1/iam/instances/$instanceId/modules/revoke'
   | '/api/v1/iam/instances/$instanceId/modules/seed-iam-baseline'
   | '/api/v1/iam/instances/$instanceId/activate'
@@ -114,6 +115,7 @@ export const authRoutePaths = [
   '/api/v1/iam/instances/$instanceId/keycloak/reconcile',
   '/api/v1/iam/instances/$instanceId/tenant-iam/access-probe',
   '/api/v1/iam/instances/$instanceId/modules/assign',
+  '/api/v1/iam/instances/$instanceId/modules/bootstrap-admin-structure',
   '/api/v1/iam/instances/$instanceId/modules/revoke',
   '/api/v1/iam/instances/$instanceId/modules/seed-iam-baseline',
   '/api/v1/iam/instances/$instanceId/activate',

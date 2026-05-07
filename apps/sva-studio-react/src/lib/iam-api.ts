@@ -1333,6 +1333,16 @@ export const assignInstanceModule = async (
     true
   );
 
+export const bootstrapInstanceAdminStructure = async (
+  instanceId: string,
+  moduleIds: readonly string[]
+): Promise<ApiItemResponse<IamInstanceDetail>> =>
+  postJsonWithReauth<ApiItemResponse<IamInstanceDetail>, { moduleIds: readonly string[] }>(
+    `/api/v1/iam/instances/${instanceId}/modules/bootstrap-admin-structure`,
+    { moduleIds },
+    true
+  );
+
 export const revokeInstanceModule = async (
   instanceId: string,
   moduleId: string

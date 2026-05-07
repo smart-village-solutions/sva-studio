@@ -99,6 +99,12 @@ export type SeedInstanceIamBaselineInput = InstanceRegistryMutationActor & {
   readonly instanceId: string;
 };
 
+export type BootstrapAdminStructureInput = InstanceRegistryMutationActor & {
+  readonly idempotencyKey: string;
+  readonly instanceId: string;
+  readonly moduleIds: readonly string[];
+};
+
 export type CreateInstanceProvisioningResult =
   | { readonly ok: true; readonly instance: IamInstanceListItem }
   | { readonly ok: false; readonly reason: 'already_exists' };

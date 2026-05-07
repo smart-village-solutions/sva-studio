@@ -18,6 +18,7 @@ export type {
 } from './keycloak-types.js';
 export type {
   AssignInstanceModuleInput,
+  BootstrapAdminStructureInput,
   ChangeInstanceStatusInput,
   ChangeInstanceStatusResult,
   CreateInstanceProvisioningInput,
@@ -32,6 +33,7 @@ export type {
 } from './mutation-types.js';
 export {
   buildAssignInstanceModuleInput,
+  buildBootstrapAdminStructureInput,
   buildChangeInstanceStatusInput,
   buildCreateInstanceProvisioningInput,
   buildExecuteInstanceKeycloakProvisioningInput,
@@ -40,6 +42,7 @@ export {
   buildSeedInstanceIamBaselineInput,
   buildUpdateInstanceInput,
   type AssignInstanceModulePayload,
+  type BootstrapAdminStructurePayload,
   type CreateInstancePayload,
   type ExecuteKeycloakProvisioningPayload,
   type RevokeInstanceModulePayload,

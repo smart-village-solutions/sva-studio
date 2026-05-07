@@ -1223,6 +1223,28 @@ export const i18nResources = {
               'Aktivieren Sie die Instanz erst nach erfolgreichem Provisioning für {{hostname}}.',
           },
         },
+        adminBootstrap: {
+          title: 'Admin-Struktur',
+          subtitlePending:
+            'Der Abschnitt ist Teil des Happy Path, wird aber erst nach erfolgreichem Registry-Create aktiv.',
+          subtitleReady:
+            'Optional Module auswählen und danach die initiale Admin-Struktur für Core und zugewiesene Module anlegen.',
+          moduleHint: 'Enthält initial die Rechte: {{value}}',
+          conflictHint:
+            'Bestehende Rollen mit gleichem Namen werden beim erneuten Bootstrap überschrieben. Bereits angelegte Sonderrollen bleiben unberührt.',
+          action: 'Admin-Struktur jetzt anlegen',
+          actionHintPending: 'Zuerst die Instanz anlegen, danach wird dieser Schritt aktiv.',
+          actionHintReady:
+            'Ohne Modulauswahl werden nur die Gruppe Admins und die Core-Admin-Rolle angelegt.',
+          success:
+            'Die initiale Admin-Struktur wurde erfolgreich angelegt. Die Instanz gilt damit im Create-Flow als fertig.',
+          modules: {
+            news: 'News',
+            events: 'Events',
+            poi: 'POI',
+            media: 'Medien',
+          },
+        },
         help: {
           sections: {
             what: 'Was ist das?',
@@ -3735,6 +3757,28 @@ export const i18nResources = {
             openDetail: 'Open the detail page to inspect the technical state of the instance.',
             runProvisioning: 'Run the Keycloak reconciliation for realm {{realm}} there.',
             activate: 'Activate the instance only after provisioning succeeded for {{hostname}}.',
+          },
+        },
+        adminBootstrap: {
+          title: 'Admin structure',
+          subtitlePending:
+            'This section stays visible in the happy path but only becomes actionable after the registry create succeeded.',
+          subtitleReady:
+            'Optionally select modules and then create the initial admin structure for Core and the assigned modules.',
+          moduleHint: 'Initially grants: {{value}}',
+          conflictHint:
+            'Existing roles with the same name are overwritten during a repeated bootstrap. Already created custom roles stay untouched.',
+          action: 'Create admin structure now',
+          actionHintPending: 'Create the instance first, then this step becomes active.',
+          actionHintReady:
+            'Without selecting modules, only the Admins group and the Core Admin role are created.',
+          success:
+            'The initial admin structure was created successfully. In the create flow, the instance is now considered complete.',
+          modules: {
+            news: 'News',
+            events: 'Events',
+            poi: 'POI',
+            media: 'Media',
           },
         },
         help: {

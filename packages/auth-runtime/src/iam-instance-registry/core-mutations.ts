@@ -53,6 +53,11 @@ export const assignInstanceModuleMutation = (
   ctx: AuthenticatedRequestContext
 ): Promise<Response> => mutationHandlers.assignModule(request, ctx);
 
+export const bootstrapInstanceAdminStructureMutation = (
+  request: Request,
+  ctx: AuthenticatedRequestContext
+): Promise<Response> => mutationHandlers.bootstrapAdminStructure(request, ctx);
+
 export const revokeInstanceModuleMutation = (
   request: Request,
   ctx: AuthenticatedRequestContext

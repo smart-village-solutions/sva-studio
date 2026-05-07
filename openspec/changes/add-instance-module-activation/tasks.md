@@ -5,7 +5,8 @@
 - [x] 1.3 Berechtigungsvertrag fuer `instance-registry.assignModule`, `instance-registry.revokeModule` und `instance-registry.seedIamBaseline` als fully-qualified Actions mit Bindung an `studio.admin`-Rolle und `instanceId`-Scope spezifizieren; Confirmation-Anforderung fuer Entzug serverseitig absichern
 - [x] 1.4 Betroffene Capability-Deltas fuer Routing, `plugin-actions` sowie fachliche Host-/Integrationspfade (`content-management` und/oder `sva-mainserver-integration`) ergaenzen, damit fail-closed-Gating normativ vollstaendig ist
 - [x] 1.5 Rollout-, Bestandsinstanz- und Seed-Vertrag fuer initial leere Modulsaetze, lokale Fixtures und Testinstanzen spezifizieren
-- [x] 1.6 `openspec validate add-instance-module-activation --strict` ausfuehren
+- [x] 1.6 Initialen Admin-Bootstrap im Instanz-Create-Flow spezifizieren: sichtbarer Abschnitt, optionale Modulauswahl als echte Instanzzuordnung, Sammel-Button, Konflikthinweis und `fertig`-Kriterium
+- [x] 1.7 `openspec validate add-instance-module-activation --strict` ausfuehren
 
 ## 2. Canonical Module Contract and Persistence
 
@@ -21,6 +22,8 @@
 - [x] 3.3 Harte Entfernung modulbezogener Permissions, `role_permissions` und systemischer Rollenerweiterungen bei Entzug implementieren
 - [x] 3.4 Replay-, Parallelitaets- und Teilfehlerverhalten fuer Zuweisung, Entzug und Reseeding deterministisch absichern; Rollback bei Seeding-Fehler implementieren
 - [x] 3.5 Drift-Erkennung fuer fehlende Permissions, Systemrollen und `role_permissions` zugewiesener Module in einem konsistenten Diagnosemodell zusammenfuehren
+- [x] 3.6 Ownership-Metadaten fuer `iam.role_permissions` einfuehren (`manual`, `seed`, `bootstrap`, `module_sync`) und Modul-Cleanup auf moduleigene Grants begrenzen, damit Shared Roles ihre Core-Rechte behalten
+- [x] 3.7 Reparaturvertrag fuer Bestandsinstanzen festhalten: kein heuristischer SQL-Backfill fuer Modulownership; `seedIamBaseline` ist der offizielle Rebuild-Pfad nach Deployment
 
 ## 4. Runtime, Authorization and Integration Gating
 
@@ -29,6 +32,7 @@
 - [x] 4.3 Fachliche Content-, Mainserver- und weitere Integrationspfade nicht zugewiesener Module fail-closed blockieren
 - [x] 4.4 Modulspezifische Permission- und Rollenauflosung an den zugewiesenen Modulsatz koppeln, ohne Core-Rechte oder fremde Namespaces unbeabsichtigt zu beeinflussen
 - [x] 4.5 Negative und Integrations-Tests fuer nicht zugewiesene Module, geblockte Laufzeitnutzung, harte Rechteentfernung und Defense-in-Depth (Routing-Guard + IAM-Layer) ergaenzen
+- [x] 4.6 Nach erfolgreicher Modulmutation den Auth-/Permission-Sessionzustand aktualisieren, damit `assignedModules` und Plugin-Navigation ohne Neu-Login konsistent sind
 
 ## 5. UI and Studio-Admin Workflows
 

@@ -32,6 +32,16 @@ const authMockValue = {
   invalidatePermissions: vi.fn(),
 };
 
+const createDeferred = <T>() => {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((nextResolve, nextReject) => {
+    resolve = nextResolve;
+    reject = nextReject;
+  });
+  return { promise, resolve, reject };
+};
+
 vi.mock('../lib/iam-api', () => ({
   IamHttpError: class IamHttpError extends Error {
     status: number;
@@ -468,6 +478,39 @@ describe('useInstances', () => {
     expect(authMockValue.invalidatePermissions).toHaveBeenCalled();
   });
 
+  it('invalidates permissions only once when detail and keycloak status both return forbidden', async () => {
+    getInstanceMock.mockRejectedValueOnce({
+      status: 403,
+      code: 'forbidden',
+      message: 'forbidden',
+    });
+    getInstanceKeycloakStatusMock.mockRejectedValueOnce({
+      status: 403,
+      code: 'forbidden',
+      message: 'forbidden',
+    });
+
+    const { result } = renderHook(() => useInstances());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    await act(async () => {
+      await result.current.loadInstance('demo');
+    });
+
+    expect(result.current.mutationError).toEqual(expect.objectContaining({ status: 403, code: 'forbidden' }));
+    expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
+    expect(browserLoggerMock.info).toHaveBeenCalledTimes(1);
+    expect(browserLoggerMock.info).toHaveBeenCalledWith(
+      'permission_invalidated_after_403',
+      expect.objectContaining({
+        instance_id: 'demo',
+      })
+    );
+  });
+
   it('surfaces normalized non-keycloak detail warnings after the instance detail itself loads successfully', async () => {
     getInstanceKeycloakStatusMock.mockRejectedValueOnce({
       status: 500,
@@ -705,6 +748,79 @@ describe('useInstances', () => {
     });
     expect(revokeInstanceModuleMock).toHaveBeenCalledWith('demo', 'news');
     expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(3);
+  });
+
+  it('keeps the current selected instance until the post-mutation reload finishes', async () => {
+    const reloadedDetail = createDeferred<{
+      data: {
+        instanceId: string;
+        displayName: string;
+        status: string;
+        parentDomain: string;
+        primaryHostname: string;
+        hostnames: never[];
+        provisioningRuns: never[];
+        keycloakProvisioningRuns: never[];
+        auditEvents: never[];
+        assignedModules: string[];
+      };
+    }>();
+    getInstanceMock
+      .mockResolvedValueOnce({
+        data: {
+          instanceId: 'demo',
+          displayName: 'Demo',
+          status: 'active',
+          parentDomain: 'studio.example.org',
+          primaryHostname: 'demo.studio.example.org',
+          hostnames: [],
+          provisioningRuns: [],
+          keycloakProvisioningRuns: [],
+          auditEvents: [],
+          assignedModules: [],
+        },
+      })
+      .mockImplementationOnce(() => reloadedDetail.promise);
+
+    const { result } = renderHook(() => useInstances());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    await act(async () => {
+      await result.current.loadInstance('demo');
+    });
+
+    const mutationPromise = act(async () => {
+      await result.current.assignModule('demo', 'news');
+    });
+
+    await waitFor(() => {
+      expect(assignInstanceModuleMock).toHaveBeenCalledWith('demo', 'news');
+      expect(getInstanceMock).toHaveBeenCalledTimes(2);
+    });
+
+    expect(result.current.selectedInstance?.assignedModules).toEqual([]);
+
+    reloadedDetail.resolve({
+      data: {
+        instanceId: 'demo',
+        displayName: 'Demo',
+        status: 'active',
+        parentDomain: 'studio.example.org',
+        primaryHostname: 'demo.studio.example.org',
+        hostnames: [],
+        provisioningRuns: [],
+        keycloakProvisioningRuns: [],
+        auditEvents: [],
+        assignedModules: ['news'],
+      },
+    });
+
+    await mutationPromise;
+
+    expect(result.current.selectedInstance?.assignedModules).toEqual(['news']);
   });
 
   it('refreshes auth state after bootstrapping the admin structure', async () => {

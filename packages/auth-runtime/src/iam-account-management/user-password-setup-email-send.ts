@@ -155,7 +155,7 @@ const sendPasswordSetupEmail = async (input: {
     input.executeActionsEmail(input.user.keycloakSubject, {
       actions: ['UPDATE_PASSWORD'],
       clientId: authConfig.clientId,
-      redirectUri: authConfig.postLogoutRedirectUri,
+      redirectUri: authConfig.redirectUri,
     })
   );
 };

@@ -663,6 +663,71 @@ describe('instance registry service facade', () => {
     );
   });
 
+  it('continues bootstrapping when a requested module was assigned concurrently', async () => {
+    const repository = createRepository({
+      assignModule: vi.fn(async () => false),
+      listAssignedModules: vi.fn().mockResolvedValueOnce(['news']).mockResolvedValueOnce(['news', 'events']),
+      getInstanceById: vi
+        .fn()
+        .mockResolvedValueOnce(baseInstance)
+        .mockResolvedValueOnce({ ...baseInstance, assignedModules: ['news', 'events'] }),
+    });
+    const service = createInstanceRegistryService(createDeps(repository));
+
+    await expect(
+      service.bootstrapAdminStructure({
+        instanceId: 'demo',
+        moduleIds: ['news', 'events'],
+        idempotencyKey: 'idem-bootstrap-race-1',
+        actorId: 'actor-1',
+        requestId: 'req-bootstrap-race-1',
+      })
+    ).resolves.toEqual({
+      ok: true,
+      instance: expect.objectContaining({
+        assignedModules: ['news', 'events'],
+      }),
+    });
+
+    expect(repository.assignModule).toHaveBeenCalledWith('demo', 'events');
+    expect(repository.syncAssignedModuleIam).toHaveBeenCalledWith(
+      expect.objectContaining({
+        contracts: expect.arrayContaining([expect.objectContaining({ moduleId: 'news' }), expect.objectContaining({ moduleId: 'events' })]),
+      })
+    );
+    expect(repository.syncInstanceAdminBootstrap).toHaveBeenCalled();
+  });
+
+  it('rolls back newly assigned modules when bootstrap module IAM sync fails', async () => {
+    const repository = createRepository({
+      assignModule: vi.fn(async (instanceId: string, moduleId: string) => moduleId === 'events'),
+      revokeModule: vi.fn(async () => true),
+      listAssignedModules: vi.fn(async () => ['news', 'events']),
+      syncAssignedModuleIam: vi.fn(async () => {
+        throw new Error('sync_failed');
+      }),
+      getInstanceById: vi.fn(async () => baseInstance),
+    });
+    const deps = createDeps(repository);
+    const service = createInstanceRegistryService(deps);
+
+    await expect(
+      service.bootstrapAdminStructure({
+        instanceId: 'demo',
+        moduleIds: ['news', 'events'],
+        idempotencyKey: 'idem-bootstrap-rollback-1',
+        actorId: 'actor-1',
+        requestId: 'req-bootstrap-rollback-1',
+      })
+    ).rejects.toThrow('sync_failed');
+
+    expect(repository.assignModule).toHaveBeenCalledWith('demo', 'events');
+    expect(repository.revokeModule).toHaveBeenCalledWith('demo', 'events');
+    expect(repository.syncInstanceAdminBootstrap).not.toHaveBeenCalled();
+    expect(repository.appendAuditEvent).not.toHaveBeenCalled();
+    expect(deps.invalidatePermissionSnapshots).not.toHaveBeenCalled();
+  });
+
   it('invalidates instance permission snapshots after module IAM changes', async () => {
     const repository = createRepository({
       assignModule: vi.fn(async () => true),
@@ -831,6 +896,26 @@ describe('instance registry service facade', () => {
       expect(((error as Error).cause as { syncError: Error }).syncError.message).toBe('sync_failed');
       expect(((error as Error).cause as { rollbackError: Error }).rollbackError.message).toBe('rollback_failed');
     }
+  });
+
+  it('treats a create race during persistence as already_exists', async () => {
+    const repository = createRepository({
+      getInstanceById: vi.fn(async () => null),
+      createInstance: vi.fn(async () => null as never),
+    });
+    const service = createInstanceRegistryService(createDeps(repository));
+
+    await expect(
+      service.createProvisioningRequest({
+        instanceId: 'demo',
+        displayName: 'Demo',
+        parentDomain: 'Studio.Example.Org',
+        realmMode: 'new',
+        authRealm: 'demo',
+        authClientId: 'studio-client',
+        idempotencyKey: 'idem-race-1',
+      })
+    ).resolves.toEqual({ ok: false, reason: 'already_exists' });
   });
 
   it('revokes a module and reseeds the remaining module IAM baseline', async () => {

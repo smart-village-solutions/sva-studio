@@ -59,6 +59,14 @@ export const createProvisioningRequestHandler =
       featureFlags: input.featureFlags,
       mainserverConfigRef: input.mainserverConfigRef,
     });
+    if (!instance) {
+      instanceRegistryServiceLogger.warn('instance_create_rejected_duplicate', {
+        operation: 'create_instance',
+        instance_id: input.instanceId,
+        request_id: input.requestId,
+      });
+      return { ok: false, reason: 'already_exists' as const };
+    }
 
     await createProvisioningArtifacts(deps.repository, instance, input);
     invalidateHostWithLog(deps.invalidateHost, instance.primaryHostname, instance.instanceId);

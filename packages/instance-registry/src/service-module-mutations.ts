@@ -66,6 +66,29 @@ const createModuleAssignRollbackError = (
   return combined;
 };
 
+const createBootstrapAssignRollbackError = (
+  instanceId: string,
+  moduleIds: readonly string[],
+  syncError: unknown,
+  rollbackError: unknown
+): Error => {
+  const message =
+    syncError instanceof Error ? syncError.message : typeof syncError === 'string' ? syncError : 'instance_module_sync_failed';
+  const combined = new Error(message) as Error & {
+    cause?: {
+      rollbackError: unknown;
+      syncError: unknown;
+    };
+  };
+  combined.message = `instance_module_bootstrap_rollback_failed:${instanceId}:${moduleIds.join(',')}:${message}`;
+  combined.cause = {
+    syncError,
+    rollbackError,
+  };
+  combined.name = 'InstanceModuleBootstrapRollbackError';
+  return combined;
+};
+
 export const createAssignModuleHandler =
   (deps: InstanceRegistryServiceDeps): InstanceRegistryService['assignModule'] =>
   async (input) => {
@@ -133,21 +156,34 @@ export const createBootstrapAdminStructureHandler =
     }
 
     const currentAssignedModuleIds = new Set(await deps.repository.listAssignedModules(input.instanceId));
+    const newlyAssignedModuleIds: string[] = [];
     for (const moduleId of requestedModuleIds) {
       if (!currentAssignedModuleIds.has(moduleId)) {
         const inserted = await deps.repository.assignModule(input.instanceId, moduleId);
-        if (!inserted) {
-          return { ok: false, reason: 'conflict' };
+        if (inserted) {
+          newlyAssignedModuleIds.push(moduleId);
         }
       }
     }
 
-    const assignedModuleIds = await deps.repository.listAssignedModules(input.instanceId);
-    await deps.repository.syncAssignedModuleIam({
-      instanceId: input.instanceId,
-      managedModuleIds: [...registry.keys()],
-      contracts: resolveAssignedModuleContracts(deps, assignedModuleIds),
-    });
+    let assignedModuleIds: readonly string[];
+    try {
+      assignedModuleIds = await deps.repository.listAssignedModules(input.instanceId);
+      await deps.repository.syncAssignedModuleIam({
+        instanceId: input.instanceId,
+        managedModuleIds: [...registry.keys()],
+        contracts: resolveAssignedModuleContracts(deps, assignedModuleIds),
+      });
+    } catch (error) {
+      try {
+        for (const moduleId of [...newlyAssignedModuleIds].reverse()) {
+          await deps.repository.revokeModule(input.instanceId, moduleId);
+        }
+      } catch (rollbackError) {
+        throw createBootstrapAssignRollbackError(input.instanceId, newlyAssignedModuleIds, error, rollbackError);
+      }
+      throw error;
+    }
 
     let bootstrapCompleted = false;
     try {

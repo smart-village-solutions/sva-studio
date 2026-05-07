@@ -110,6 +110,7 @@ describe('sendPasswordSetupEmailInternal', () => {
     });
     state.resolveAuthConfigForInstance.mockResolvedValue({
       clientId: 'sva-studio',
+      redirectUri: 'https://tenant.example.test/auth/callback',
       postLogoutRedirectUri: 'https://tenant.example.test/',
     });
     state.requireUserMutationIdentityProvider.mockResolvedValue({
@@ -146,7 +147,7 @@ describe('sendPasswordSetupEmailInternal', () => {
     expect(identityProvider.provider.executeActionsEmail).toHaveBeenCalledWith('kc-user-1', {
       actions: ['UPDATE_PASSWORD'],
       clientId: 'sva-studio',
-      redirectUri: 'https://tenant.example.test/',
+      redirectUri: 'https://tenant.example.test/auth/callback',
     });
     expect(state.completeIdempotency).toHaveBeenCalledWith(
       expect.objectContaining({

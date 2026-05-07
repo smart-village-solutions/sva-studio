@@ -741,6 +741,8 @@ describe('UserEditPage', () => {
   }, 15000);
 
   it('shows localized save errors instead of the generic load error', () => {
+    const refetch = vi.fn();
+    const clearMutationError = vi.fn();
     useUserMock.mockReturnValue({
       user: baseUser,
       isLoading: false,
@@ -750,7 +752,8 @@ describe('UserEditPage', () => {
         code: 'keycloak_unavailable',
         message: 'sync failed',
       },
-      refetch: vi.fn(),
+      refetch,
+      clearMutationError,
       save: vi.fn(),
     });
 
@@ -770,6 +773,11 @@ describe('UserEditPage', () => {
       'Die Verbindung zu Keycloak ist derzeit nicht verfügbar. Bitte später erneut versuchen.'
     );
     expect(screen.getByRole('alert').textContent).not.toContain('Nutzer konnten nicht geladen werden.');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Erneut versuchen' }));
+
+    expect(clearMutationError).toHaveBeenCalledTimes(1);
+    expect(refetch).toHaveBeenCalledTimes(1);
   });
 
   it('renders mutation-specific client errors without the load wording', () => {

@@ -517,6 +517,7 @@ describe('Keycloak admin client', () => {
           { id: 'role-view-users', name: 'view-users' },
           { id: 'role-view-realm', name: 'view-realm' },
           { id: 'role-manage-realm', name: 'manage-realm' },
+          { id: 'role-manage-clients', name: 'manage-clients' },
         ])
       )
       .mockResolvedValueOnce(createJsonResponse(200, [{ id: 'role-view-users', name: 'view-users' }]))
@@ -535,6 +536,7 @@ describe('Keycloak admin client', () => {
       { id: 'role-manage-users', name: 'manage-users' },
       { id: 'role-view-realm', name: 'view-realm' },
       { id: 'role-manage-realm', name: 'manage-realm' },
+      { id: 'role-manage-clients', name: 'manage-clients' },
     ]);
   });
 

@@ -32,7 +32,7 @@ const authMockValue = {
   invalidatePermissions: vi.fn(),
 };
 
-const createDeferred = <T>() => {
+const createDeferred = <T,>() => {
   let resolve!: (value: T | PromiseLike<T>) => void;
   let reject!: (reason?: unknown) => void;
   const promise = new Promise<T>((nextResolve, nextReject) => {

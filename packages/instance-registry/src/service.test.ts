@@ -702,7 +702,7 @@ describe('instance registry service facade', () => {
     const repository = createRepository({
       assignModule: vi.fn(async (instanceId: string, moduleId: string) => moduleId === 'events'),
       revokeModule: vi.fn(async () => true),
-      listAssignedModules: vi.fn(async () => ['news', 'events']),
+      listAssignedModules: vi.fn().mockResolvedValueOnce(['news']).mockResolvedValueOnce(['news', 'events']),
       syncAssignedModuleIam: vi.fn(async () => {
         throw new Error('sync_failed');
       }),

@@ -176,12 +176,14 @@ export const createBootstrapAdminStructureHandler =
       });
     } catch (error) {
       try {
-        for (const moduleId of [...newlyAssignedModuleIds].reverse()) {
-          const removed = await deps.repository.revokeModule(input.instanceId, moduleId);
-          if (!removed) {
-            throw new Error(`rollback_revoke_failed:${moduleId}`);
-          }
+      for (const moduleId of [...newlyAssignedModuleIds].reverse()) {
+        const removed = await deps.repository.revokeModule(input.instanceId, moduleId);
+        if (!removed) {
+          throw new Error(`rollback_revoke_failed:${moduleId}`, {
+            cause: error,
+          });
         }
+      }
       } catch (rollbackError) {
         throw createBootstrapAssignRollbackError(input.instanceId, newlyAssignedModuleIds, error, rollbackError);
       }

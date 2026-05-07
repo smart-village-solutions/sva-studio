@@ -14,7 +14,6 @@ import {
 } from './http-mutation-module-actions.js';
 import {
   createInstanceMutationErrorMapper,
-  type InstanceRegistryMutationHttpActor,
   type InstanceRegistryMutationHttpDeps,
 } from './http-mutation-shared.js';
 

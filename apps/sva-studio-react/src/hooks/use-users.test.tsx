@@ -422,7 +422,8 @@ describe('useUsers', () => {
     });
 
     expect(response).toBeNull();
-    expect(result.current.error?.status).toBe(403);
+    expect(result.current.error).toBeNull();
+    expect(result.current.mutationError?.status).toBe(403);
     expect(authMockValue.invalidatePermissions).toHaveBeenCalled();
   });
 });

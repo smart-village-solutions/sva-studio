@@ -687,7 +687,8 @@ describe('UserEditPage', () => {
     useUserMock.mockReturnValue({
       user: baseUser,
       isLoading: false,
-      error: {
+      error: null,
+      mutationError: {
         status: 503,
         code: 'keycloak_unavailable',
         message: 'sync failed',
@@ -714,8 +715,40 @@ describe('UserEditPage', () => {
     expect(screen.getByRole('alert').textContent).not.toContain('Nutzer konnten nicht geladen werden.');
   });
 
+  it('renders mutation-specific client errors without the load wording', () => {
+    useUserMock.mockReturnValue({
+      user: baseUser,
+      isLoading: false,
+      error: null,
+      mutationError: {
+        status: 500,
+        code: 'internal_error',
+        message: 'Einladungs-E-Mail zum Passwort setzen konnte nicht gesendet werden.',
+      },
+      refetch: vi.fn(),
+      save: vi.fn(),
+    });
+
+    useRolesMock.mockReturnValue({
+      roles: [{ id: 'role-1', roleName: 'system_admin' }],
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      createRole: vi.fn(),
+      updateRole: vi.fn(),
+      deleteRole: vi.fn(),
+    });
+
+    render(<UserEditPage userId="user-1" />);
+
+    expect(screen.getByRole('alert').textContent).toContain(
+      'Technischer Fehler bei der Nutzeraktion: Einladungs-E-Mail zum Passwort setzen konnte nicht gesendet werden.'
+    );
+    expect(screen.getByRole('alert').textContent).not.toContain('Technischer Fehler beim Laden der Nutzer');
+  });
+
   it.each([
-    ['invalid_request', 'Nutzer konnten nicht geladen werden.'],
+    ['invalid_request', 'Die Nutzeraktion konnte nicht abgeschlossen werden.'],
     ['forbidden', 'Unzureichende Berechtigungen für diese Nutzeraktion.'],
     ['csrf_validation_failed', 'Sicherheitsprüfung fehlgeschlagen. Bitte Seite neu laden und erneut versuchen.'],
     ['rate_limited', 'Zu viele Anfragen in kurzer Zeit. Bitte kurz warten und erneut versuchen.'],
@@ -736,7 +769,8 @@ describe('UserEditPage', () => {
     useUserMock.mockReturnValue({
       user: baseUser,
       isLoading: false,
-      error: {
+      error: null,
+      mutationError: {
         status: 503,
         code,
         message: 'save failed',

@@ -77,6 +77,15 @@ export type IdentityUserAttributes = Readonly<Record<string, readonly string[]>>
 
 export interface IdentityProviderPort {
   createUser(input: CreateIdentityUserInput): Promise<IdentityUser>;
+  executeActionsEmail?(
+    externalId: string,
+    input: {
+      readonly actions: readonly string[];
+      readonly clientId?: string;
+      readonly lifespan?: number;
+      readonly redirectUri?: string;
+    }
+  ): Promise<void>;
   updateUser(externalId: string, input: UpdateIdentityUserInput): Promise<void>;
   deactivateUser(externalId: string): Promise<void>;
   listUsers(query?: IdentityUserListQuery): Promise<readonly IdentityListedUser[]>;

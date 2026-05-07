@@ -38,6 +38,7 @@ type UseUsersResult = {
   readonly pageSize: number;
   readonly isLoading: boolean;
   readonly error: IamHttpError | null;
+  readonly mutationError: IamHttpError | null;
   readonly filters: UserFilters;
   readonly setSearch: (value: string) => void;
   readonly setStatus: (value: UserStatusFilter) => void;
@@ -76,6 +77,7 @@ export const useUsers = (initial?: Partial<UserFilters>): UseUsersResult => {
   const [total, setTotal] = React.useState(0);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<IamHttpError | null>(null);
+  const [mutationError, setMutationError] = React.useState<IamHttpError | null>(null);
 
   React.useEffect(() => {
     usersLogger.debug('user_list_query_changed', {
@@ -118,6 +120,7 @@ export const useUsers = (initial?: Partial<UserFilters>): UseUsersResult => {
 
       setUsers(response.data);
       setTotal(response.pagination.total);
+      setMutationError(null);
       logBrowserOperationSuccess(
         usersLogger,
         'user_list_refetch_succeeded',
@@ -176,7 +179,7 @@ export const useUsers = (initial?: Partial<UserFilters>): UseUsersResult => {
 
   const mutate = React.useCallback(
     async <T,>(action: () => Promise<T>, operation = 'user_mutation'): Promise<T | null> => {
-      setError(null);
+      setMutationError(null);
       logBrowserOperationStart(usersLogger, `${operation}_started`, { operation });
       try {
         const result = await action();
@@ -202,7 +205,7 @@ export const useUsers = (initial?: Partial<UserFilters>): UseUsersResult => {
             error_code: resolvedError.code,
           });
         }
-        setError(resolvedError);
+        setMutationError(resolvedError);
         logBrowserOperationFailure(usersLogger, `${operation}_failed`, resolvedError, { operation });
         return null;
       }
@@ -217,6 +220,7 @@ export const useUsers = (initial?: Partial<UserFilters>): UseUsersResult => {
     pageSize: filters.pageSize,
     isLoading,
     error,
+    mutationError,
     filters,
     setSearch: (value) => setFilters((current) => ({ ...current, page: 1, search: value })),
     setStatus: (value) => setFilters((current) => ({ ...current, page: 1, status: value })),

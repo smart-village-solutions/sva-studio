@@ -15,6 +15,7 @@ type UseUserResult = {
   readonly user: IamUserDetail | null;
   readonly isLoading: boolean;
   readonly error: IamHttpError | null;
+  readonly mutationError: IamHttpError | null;
   readonly refetch: () => Promise<void>;
   readonly save: (payload: UpdateUserPayload) => Promise<IamUserDetail | null>;
 };
@@ -26,6 +27,7 @@ export const useUser = (userId: string): UseUserResult => {
   const [user, setUser] = React.useState<IamUserDetail | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<IamHttpError | null>(null);
+  const [mutationError, setMutationError] = React.useState<IamHttpError | null>(null);
 
   const refetch = React.useCallback(async () => {
     logBrowserOperationStart(userLogger, 'user_detail_refetch_started', {
@@ -38,6 +40,7 @@ export const useUser = (userId: string): UseUserResult => {
     try {
       const response = await getUser(userId);
       setUser(response.data);
+      setMutationError(null);
       logBrowserOperationSuccess(userLogger, 'user_detail_refetch_succeeded', {
         operation: 'get_user',
         user_id: userId,
@@ -72,7 +75,7 @@ export const useUser = (userId: string): UseUserResult => {
 
   const save = React.useCallback(
     async (payload: UpdateUserPayload) => {
-      setError(null);
+      setMutationError(null);
       logBrowserOperationStart(userLogger, 'user_save_started', {
         operation: 'update_user',
         user_id: userId,
@@ -96,7 +99,7 @@ export const useUser = (userId: string): UseUserResult => {
             user_id: userId,
           });
         }
-        setError(resolvedError);
+        setMutationError(resolvedError);
         logBrowserOperationFailure(userLogger, 'user_save_failed', resolvedError, {
           operation: 'update_user',
           user_id: userId,
@@ -111,6 +114,7 @@ export const useUser = (userId: string): UseUserResult => {
     user,
     isLoading,
     error,
+    mutationError,
     refetch,
     save,
   };

@@ -125,11 +125,11 @@ export const UserCreatePage = () => {
         </form>
       </Card>
 
-      {usersApi.error ? (
+      {usersApi.mutationError ? (
         <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
           <AlertDescription className="flex flex-col gap-3">
-            <span>{userErrorMessage(usersApi.error)}</span>
-            <IamRuntimeDiagnosticDetails error={usersApi.error} />
+            <span>{userErrorMessage(usersApi.mutationError, 'mutation')}</span>
+            <IamRuntimeDiagnosticDetails error={usersApi.mutationError} />
           </AlertDescription>
         </Alert>
       ) : null}

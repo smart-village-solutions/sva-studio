@@ -35,7 +35,7 @@
     "test:types": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "tsc -p packages/auth-runtime/tsconfig.lib.json --noEmit"
+        "command": "rm -f packages/auth-runtime/tsconfig.lib.tsbuildinfo && tsc -p packages/auth-runtime/tsconfig.lib.json --noEmit"
       }
     },
     "test:coverage": {

@@ -1,14 +1,21 @@
 import { t } from '../../../i18n';
 import type { IamHttpError } from '../../../lib/iam-api';
 
+type UserErrorContext = 'load' | 'mutation';
+
 const readHttpStatusFromMessage = (message: string): string | null => {
   const match = /^http_(\d{3})$/.exec(message.trim());
   return match?.[1] ?? null;
 };
 
-export const userErrorMessage = (error: IamHttpError | null): string => {
+export const userErrorMessage = (
+  error: IamHttpError | null,
+  context: UserErrorContext = 'load'
+): string => {
   if (!error) {
-    return t('admin.users.messages.error');
+    return context === 'mutation'
+      ? t('admin.users.messages.mutationError')
+      : t('admin.users.messages.error');
   }
 
   if (error.diagnosticStatus === 'recovery_laeuft') {
@@ -21,7 +28,9 @@ export const userErrorMessage = (error: IamHttpError | null): string => {
 
   switch (error.code) {
     case 'invalid_request':
-      return t('admin.users.messages.error');
+      return context === 'mutation'
+        ? t('admin.users.messages.mutationError')
+        : t('admin.users.messages.error');
     case 'forbidden':
       return t('admin.users.errors.forbidden');
     case 'csrf_validation_failed':
@@ -50,16 +59,22 @@ export const userErrorMessage = (error: IamHttpError | null): string => {
       if (error.status >= 400) {
         return t('admin.users.errors.unexpectedHttp', { status: String(error.status) });
       }
-      return t('admin.users.errors.unexpectedClient', { message: error.message });
+      return context === 'mutation'
+        ? t('admin.users.errors.unexpectedMutationClient', { message: error.message })
+        : t('admin.users.errors.unexpectedClient', { message: error.message });
     case 'internal_error': {
       const httpStatus = readHttpStatusFromMessage(error.message);
       if (httpStatus) {
         return t('admin.users.errors.unexpectedHttp', { status: httpStatus });
       }
       if (error.message.trim().length > 0) {
-        return t('admin.users.errors.unexpectedClient', { message: error.message });
+        return context === 'mutation'
+          ? t('admin.users.errors.unexpectedMutationClient', { message: error.message })
+          : t('admin.users.errors.unexpectedClient', { message: error.message });
       }
-      return t('admin.users.messages.error');
+      return context === 'mutation'
+        ? t('admin.users.messages.mutationError')
+        : t('admin.users.messages.error');
     }
     default:
       return t('admin.users.messages.error');

@@ -70,6 +70,7 @@ export {
   listRolesHandler,
   listUsersHandler,
   reconcileHandler,
+  sendPasswordSetupEmailHandler,
   syncUsersFromKeycloakHandler,
   updateMyProfileHandler,
   updateRoleHandler,

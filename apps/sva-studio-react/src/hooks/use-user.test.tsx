@@ -91,7 +91,8 @@ describe('useUser', () => {
       expect(saved).toBeNull();
     });
 
-    expect(result.current.error).toBe(validationError);
+    expect(result.current.error).toBeNull();
+    expect(result.current.mutationError).toBe(validationError);
     expect(authMockValue.invalidatePermissions).not.toHaveBeenCalled();
   });
 
@@ -161,6 +162,7 @@ describe('useUser', () => {
     });
 
     expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
-    expect(result.current.error).toBe(forbiddenError);
+    expect(result.current.error).toBeNull();
+    expect(result.current.mutationError).toBe(forbiddenError);
   });
 });

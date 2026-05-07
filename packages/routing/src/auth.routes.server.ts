@@ -287,6 +287,11 @@ const authHandlerMap = {
       return authRuntimeRoutes.deactivateUserHandler(request);
     },
   },
+  '/api/v1/iam/users/$userId/send-password-setup-email': {
+    POST: async ({ request }) => {
+      return authRuntimeRoutes.sendPasswordSetupEmailHandler(request);
+    },
+  },
   '/api/v1/iam/users/$userId/timeline': {
     GET: async ({ request }) => {
       return authRuntimeRoutes.getUserTimelineHandler(request);

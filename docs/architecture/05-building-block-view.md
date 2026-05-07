@@ -69,12 +69,14 @@ Abhängigkeiten des aktuellen Systems.
    - Host-Klassifikation, Vertrags- und Run-Modell fuer Registry, Preflight, Plan und Provisioning-Protokoll
    - Registry-Repositories, persistente Provisioning-Runs und Cache-Zugriffe über injizierte Repository-Verträge
    - Plattformvertrag, Keycloak-Control-Plane, Provisioning-Fassade und Root-Host-Guard
+   - Root-Entry exportiert bewusst nur die stabile Capability-Fläche; interne Service-, HTTP- und Provisioning-Helfer bleiben auf Subpath- oder interne Module begrenzt
    - Keycloak-Reconcile- und Execute-Mutationen führen `Idempotency-Key`, API-Mutation und stabilen Payload-Fingerprint bis in `iam.instance_keycloak_provisioning_runs`, damit Retries denselben fachlichen Run wiederverwenden
    - aggregiert für `GET /api/v1/iam/instances/:instanceId` zusätzlich `tenantIamStatus` aus Registry-/Provisioning-, Access-Probe- und Reconcile-Evidenz
    - persistiert die letzte explizite Tenant-IAM-Access-Probe als Audit-Evidenz in `iam.instance_audit_events` und stellt sie der Detailseite korrelierbar mit `requestId`, `errorCode` und Zeitstempel bereit
    - `apps/sva-studio-react`: gefuehrte Admin-Control-Plane unter `/admin/instances` mit Preflight, Plan, Ausfuehrung und Protokoll
    - der Instanzvertrag trennt `authClientId` fuer interaktive Logins von `tenantAdminClient.clientId` fuer tenant-lokale Admin-Mutationen und Reconcile
    - blockerrelevanter Drift aus Preflight, Provisioning-Plan oder fehlendem Tenant-Admin-Vertrag wird vor Reconcile-/Sync-Starts fail-closed durchgesetzt
+   - HTTP-Handler, Service-Komposition und Keycloak-Ausführung sind intern entlang Read, Mutation, Payload/Sync/Finalize und Diagnose getrennt, damit Runtime-Consumer stabile Fassaden nutzen und fachliche Flows nicht wieder in Sammeldateien zusammenlaufen
 
 ### IAM-Bausteine und Package-Zuordnung
 
@@ -94,7 +96,7 @@ Abhängigkeiten des aktuellen Systems.
   - `packages/auth-runtime`, `packages/iam-admin` und `packages/instance-registry`
 - Tenant-Admin-Pfad pro Instanz:
   - `packages/iam-admin` für Tenant-Admin-Orchestrierung
-  - `packages/instance-registry` für Registry-, Diagnose-, Access-Probe- und Health-Verträge des `tenantAdminClient`
+  - `packages/instance-registry` für Registry-, Diagnose-, Access-Probe-, Preflight- und Provisioning-Verträge des `tenantAdminClient`
   - `packages/data-repositories` für DB-nahe Registry- und IAM-Zugriffe
 - Instanzgebundene Mainserver-Endpunkte:
   - `packages/data-repositories` für Endpunktkonfiguration, `packages/sva-mainserver` für Integration und Adapter

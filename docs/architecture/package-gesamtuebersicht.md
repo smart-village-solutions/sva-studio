@@ -80,6 +80,8 @@ Das Package trennt bewusst Governance-Logik von klassischer Benutzer- und Rollen
 
 Wenn es um Mandantenbetrieb, Instanzdiagnostik oder Provisioning geht, ist dieses Package die führende fachliche Stelle.
 
+Nach dem Boundary-Refactor ist die Root-API bewusst schmaler: stabile Capability-Verträge bleiben öffentlich, interne HTTP-, Service- und Keycloak-Helfer werden nicht mehr breit über den Root-Entry re-exportiert. Die interne Struktur folgt getrennten Read-, Mutation-, Diagnose- und Provisioning-Slices statt großen Sammeldateien.
+
 ### `@sva/auth-runtime`
 
 `@sva/auth-runtime` ist die serverseitige Laufzeitschicht für Authentifizierung, Sessions und IAM-HTTP-Endpunkte. Das Package verbindet OIDC-Login, Session-Verarbeitung, Tenant-Auth-Konfiguration, Middleware und die Runtime-Handler für viele IAM-Fachbereiche.

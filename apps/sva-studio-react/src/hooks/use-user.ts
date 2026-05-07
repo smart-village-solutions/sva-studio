@@ -37,6 +37,10 @@ export const useUser = (userId: string): UseUserResult => {
   const [error, setError] = React.useState<IamHttpError | null>(null);
   const [mutationError, setMutationError] = React.useState<IamHttpError | null>(null);
 
+  React.useEffect(() => {
+    setMutationError(null);
+  }, [userId]);
+
   const refetch = React.useCallback(async () => {
     logBrowserOperationStart(userLogger, 'user_detail_refetch_started', {
       operation: 'get_user',

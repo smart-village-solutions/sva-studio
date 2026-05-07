@@ -281,4 +281,56 @@ describe('useUser', () => {
     expect(result.current.user?.displayName).toBe('User Six Reloaded');
     expect(result.current.mutationError).toBe(validationError);
   });
+
+  it('clears mutation errors when the hook is reused for another user', async () => {
+    const validationError = { status: 400, code: 'invalid', message: 'Invalid payload' };
+    asIamErrorMock.mockReturnValue(validationError);
+    getUserMock
+      .mockResolvedValueOnce({
+        data: {
+          id: 'user-7',
+          keycloakSubject: 'subject-7',
+          displayName: 'User Seven',
+          status: 'active',
+          roles: [],
+          mainserverUserApplicationSecretSet: false,
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          id: 'user-8',
+          keycloakSubject: 'subject-8',
+          displayName: 'User Eight',
+          status: 'active',
+          roles: [],
+          mainserverUserApplicationSecretSet: false,
+        },
+      });
+    updateUserMock.mockRejectedValueOnce(new Error('validation-error'));
+
+    const { result, rerender } = renderHook(({ userId }) => useUser(userId), {
+      initialProps: { userId: 'user-7' },
+    });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.user?.displayName).toBe('User Seven');
+    });
+
+    await act(async () => {
+      const saved = await result.current.save({ displayName: '' });
+      expect(saved).toBeNull();
+    });
+
+    expect(result.current.mutationError).toBe(validationError);
+
+    rerender({ userId: 'user-8' });
+
+    expect(result.current.mutationError).toBeNull();
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.user?.displayName).toBe('User Eight');
+    });
+  });
 });

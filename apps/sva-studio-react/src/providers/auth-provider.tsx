@@ -476,6 +476,19 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
               result: result.ok ? 'succeeded' : 'failed',
               status: result.status,
             });
+
+            if (!result.ok && result.status === 401 && hadKnownSession && !silent && isMountedRef.current) {
+              const retryResponseMeta = readAuthDiagnosticMeta(result.error);
+              setSessionRecoveryFailed(true);
+              redirectToSessionExpiredNotice({
+                attempt: recoveryAttempt,
+                authFlowId,
+                ...retryResponseMeta,
+                reasonCode: retryResponseMeta.reasonCode ?? 'session_expired',
+                recoveryStep: 'session_expired_redirect',
+                result: 'failed',
+              });
+            }
           }
         }
 

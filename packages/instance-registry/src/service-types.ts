@@ -9,6 +9,7 @@ import type {
 import type { InstanceRegistryRepository } from '@sva/data-repositories';
 import type {
   AssignInstanceModuleInput,
+  BootstrapAdminStructureInput,
   ChangeInstanceStatusInput,
   ChangeInstanceStatusResult,
   CreateInstanceProvisioningInput,
@@ -66,6 +67,7 @@ export type InstanceRegistryService = {
   planKeycloakProvisioning(instanceId: string): Promise<KeycloakTenantPlan | null>;
   executeKeycloakProvisioning(input: ExecuteInstanceKeycloakProvisioningInput): Promise<KeycloakTenantProvisioningRun | null>;
   assignModule(input: AssignInstanceModuleInput): Promise<InstanceModuleMutationResult>;
+  bootstrapAdminStructure(input: BootstrapAdminStructureInput): Promise<InstanceModuleMutationResult>;
   revokeModule(input: RevokeInstanceModuleInput): Promise<InstanceModuleMutationResult>;
   seedIamBaseline(input: SeedInstanceIamBaselineInput): Promise<InstanceModuleMutationResult>;
   probeTenantIamAccess(input: {

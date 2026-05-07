@@ -57,6 +57,18 @@ const createInstancesApiState = (overrides: Record<string, unknown> = {}) => ({
   clearSelectedInstance: vi.fn(),
   clearMutationError: vi.fn(),
   createInstance: vi.fn().mockResolvedValue(createCreatedInstance()),
+  bootstrapAdminStructure: vi.fn().mockResolvedValue({
+    instanceId: 'demo',
+    displayName: 'Demo',
+    status: 'requested',
+    parentDomain: 'studio.example.org',
+    primaryHostname: 'demo.studio.example.org',
+    hostnames: [],
+    provisioningRuns: [],
+    keycloakProvisioningRuns: [],
+    auditEvents: [],
+    assignedModules: [],
+  }),
   updateInstance: vi.fn().mockResolvedValue(true),
   refreshKeycloakStatus: vi.fn().mockResolvedValue(true),
   reconcileKeycloak: vi.fn().mockResolvedValue(true),
@@ -165,6 +177,57 @@ describe('InstanceCreatePage', () => {
     expect(screen.getByText('Die Instanz demo wurde in der Registry angelegt. Aktueller Status: Angefordert.')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Detailseite öffnen' }).getAttribute('href')).toBe('/admin/instances/demo');
     expect(screen.getByText('Führen Sie dort den Keycloak-Abgleich für Realm saas-demo aus.')).toBeTruthy();
+    expect(screen.getByText('Admin-Struktur')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Admin-Struktur jetzt anlegen' })).toBeTruthy();
+  });
+
+  it('runs the admin bootstrap step after a successful create', async () => {
+    const createInstance = vi.fn().mockResolvedValue(
+      createCreatedInstance({
+        instanceId: 'demo',
+        authRealm: 'saas-demo',
+      })
+    );
+    const bootstrapAdminStructure = vi.fn().mockResolvedValue({
+      instanceId: 'demo',
+      displayName: 'Demo',
+      status: 'requested',
+      parentDomain: 'studio.example.org',
+      primaryHostname: 'demo.studio.example.org',
+      hostnames: [],
+      provisioningRuns: [],
+      keycloakProvisioningRuns: [],
+      auditEvents: [],
+      assignedModules: [],
+    });
+    useInstancesMock.mockReturnValue(createInstancesApiState({ createInstance, bootstrapAdminStructure }));
+
+    render(<InstanceCreatePage />);
+
+    fireEvent.change(screen.getByLabelText('Instanz-ID', { selector: '#instance-id' }), { target: { value: 'demo' } });
+    fireEvent.change(screen.getByLabelText('Anzeigename', { selector: '#instance-display-name' }), {
+      target: { value: 'Demo' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+    fireEvent.change(screen.getByLabelText('Auth-Realm', { selector: '#instance-auth-realm' }), {
+      target: { value: 'saas-demo' },
+    });
+    fireEvent.change(screen.getByLabelText('Auth-Client-ID', { selector: '#instance-auth-client-id' }), {
+      target: { value: 'tenant-client' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Instanz anlegen' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Admin-Struktur jetzt anlegen' })).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Admin-Struktur jetzt anlegen' }));
+
+    await waitFor(() => {
+      expect(bootstrapAdminStructure).toHaveBeenCalledWith('demo', []);
+    });
   });
 
   it('shows step validation before moving on', () => {

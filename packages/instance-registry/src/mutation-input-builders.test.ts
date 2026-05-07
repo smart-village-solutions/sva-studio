@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   buildAssignInstanceModuleInput,
+  buildBootstrapAdminStructureInput,
   buildChangeInstanceStatusInput,
   buildCreateInstanceProvisioningInput,
   buildExecuteInstanceKeycloakProvisioningInput,
@@ -135,5 +136,19 @@ describe('mutation-input-builders', () => {
         actorId: 'user-1',
         requestId: 'req-8',
       });
+
+    expect(
+      buildBootstrapAdminStructureInput(
+        'demo',
+        { moduleIds: ['news', 'events'] },
+        { idempotencyKey: 'idem-9', actorId: 'user-1', requestId: 'req-9' }
+      )
+    ).toEqual({
+      idempotencyKey: 'idem-9',
+      instanceId: 'demo',
+      moduleIds: ['news', 'events'],
+      actorId: 'user-1',
+      requestId: 'req-9',
+    });
   });
 });

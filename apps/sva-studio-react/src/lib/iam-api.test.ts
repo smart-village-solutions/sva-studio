@@ -15,6 +15,7 @@ import {
   asIamError,
   activateInstance,
   assignInstanceModule,
+  bootstrapInstanceAdminStructure,
   assignGroupMembership,
   assignGroupRole,
   archiveInstance,
@@ -106,7 +107,7 @@ describe('iam-api organization helpers', () => {
     );
   });
 
-  it('sends module assignment, revoke, and baseline seed mutations to the instance IAM endpoints', async () => {
+  it('sends module assignment, bootstrap, revoke, and baseline seed mutations to the instance IAM endpoints', async () => {
     const fetchMock = vi.fn().mockImplementation(async () =>
       new Response(JSON.stringify({ data: { instanceId: 'demo' } }), {
         status: 200,
@@ -117,6 +118,7 @@ describe('iam-api organization helpers', () => {
     vi.stubGlobal('crypto', { randomUUID: () => 'uuid-test-2' });
 
     await assignInstanceModule('demo', 'news');
+    await bootstrapInstanceAdminStructure('demo', ['news', 'media']);
     await revokeInstanceModule('demo', 'news');
     await seedInstanceIamBaseline('demo');
 
@@ -130,6 +132,14 @@ describe('iam-api organization helpers', () => {
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
+      '/api/v1/iam/instances/demo/modules/bootstrap-admin-structure',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ moduleIds: ['news', 'media'] }),
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
       '/api/v1/iam/instances/demo/modules/revoke',
       expect.objectContaining({
         method: 'POST',
@@ -137,7 +147,7 @@ describe('iam-api organization helpers', () => {
       })
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
-      3,
+      4,
       '/api/v1/iam/instances/demo/modules/seed-iam-baseline',
       expect.objectContaining({
         method: 'POST',

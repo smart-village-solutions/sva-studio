@@ -18,6 +18,7 @@ import {
 import { createListInstances } from './service-list.js';
 import {
   createAssignModuleHandler,
+  createBootstrapAdminStructureHandler,
   createRevokeModuleHandler,
   createSeedIamBaselineHandler,
 } from './service-module-mutations.js';
@@ -34,6 +35,7 @@ export const createInstanceRegistryService = (deps: InstanceRegistryServiceDeps)
   planKeycloakProvisioning: createPlanKeycloakProvisioningHandler(deps),
   executeKeycloakProvisioning: createExecuteKeycloakProvisioningHandler(deps),
   assignModule: createAssignModuleHandler(deps),
+  bootstrapAdminStructure: createBootstrapAdminStructureHandler(deps),
   revokeModule: createRevokeModuleHandler(deps),
   seedIamBaseline: createSeedIamBaselineHandler(deps),
   probeTenantIamAccess: createProbeTenantIamAccessHandler(deps),

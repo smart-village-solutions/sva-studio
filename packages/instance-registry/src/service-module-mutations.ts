@@ -6,6 +6,43 @@ import {
 } from './service-shared.js';
 import type { InstanceRegistryService, InstanceRegistryServiceDeps } from './service-types.js';
 
+const ADMIN_GROUP_KEY = 'admins';
+const ADMIN_GROUP_DISPLAY_NAME = 'Admins';
+const CORE_ADMIN_ROLE_KEY = 'core_admin';
+const CORE_ADMIN_ROLE_DISPLAY_NAME = 'Core Admin';
+const CORE_ADMIN_PERMISSION_KEYS = [
+  'iam.user.read',
+  'iam.user.write',
+  'iam.role.read',
+  'iam.role.write',
+  'iam.org.read',
+  'iam.org.write',
+  'content.read',
+  'content.create',
+  'content.updateMetadata',
+  'content.publish',
+  'content.manageRevisions',
+  'integration.manage',
+  'feature.toggle',
+  'instance.registry.manage',
+  'content.updatePayload',
+  'content.changeStatus',
+  'content.archive',
+  'content.restore',
+  'content.readHistory',
+  'content.delete',
+] as const;
+
+const toTitleCase = (value: string) =>
+  value
+    .split(/[_-]+/u)
+    .filter((segment) => segment.length > 0)
+    .map((segment) => segment.slice(0, 1).toUpperCase() + segment.slice(1))
+    .join(' ');
+
+const toModuleAdminRoleKey = (moduleId: string) => `${moduleId}_admin`;
+const toModuleAdminRoleDisplayName = (moduleId: string) => `${toTitleCase(moduleId)} Admin`;
+
 const createModuleAssignRollbackError = (
   instanceId: string,
   moduleId: string,
@@ -73,6 +110,74 @@ export const createAssignModuleHandler =
         moduleId: input.moduleId,
         assignedModules: assignedModuleIds,
         outcome: 'assigned',
+      },
+    });
+
+    const detail = await createGetInstanceDetail(deps)(input.instanceId);
+    return detail ? { ok: true, instance: detail } : { ok: false, reason: 'not_found' };
+  };
+
+export const createBootstrapAdminStructureHandler =
+  (deps: InstanceRegistryServiceDeps): InstanceRegistryService['bootstrapAdminStructure'] =>
+  async (input) => {
+    const instance = await deps.repository.getInstanceById(input.instanceId);
+    if (!instance) {
+      return { ok: false, reason: 'not_found' };
+    }
+
+    const registry = requireModuleIamRegistry(deps);
+    const requestedModuleIds = Array.from(new Set(input.moduleIds.map((moduleId) => moduleId.trim()).filter(Boolean))).sort();
+
+    if (requestedModuleIds.some((moduleId) => !registry.has(moduleId))) {
+      return { ok: false, reason: 'unknown_module' };
+    }
+
+    const currentAssignedModuleIds = new Set(await deps.repository.listAssignedModules(input.instanceId));
+    for (const moduleId of requestedModuleIds) {
+      if (!currentAssignedModuleIds.has(moduleId)) {
+        const inserted = await deps.repository.assignModule(input.instanceId, moduleId);
+        if (!inserted) {
+          return { ok: false, reason: 'conflict' };
+        }
+      }
+    }
+
+    const assignedModuleIds = await deps.repository.listAssignedModules(input.instanceId);
+    await deps.repository.syncAssignedModuleIam({
+      instanceId: input.instanceId,
+      managedModuleIds: [...registry.keys()],
+      contracts: resolveAssignedModuleContracts(deps, assignedModuleIds),
+    });
+
+    await deps.repository.syncInstanceAdminBootstrap({
+      instanceId: input.instanceId,
+      groupKey: ADMIN_GROUP_KEY,
+      groupDisplayName: ADMIN_GROUP_DISPLAY_NAME,
+      coreRole: {
+        roleKey: CORE_ADMIN_ROLE_KEY,
+        displayName: CORE_ADMIN_ROLE_DISPLAY_NAME,
+        permissionKeys: [...CORE_ADMIN_PERMISSION_KEYS],
+      },
+      moduleRoles: requestedModuleIds.map((moduleId) => ({
+        moduleId,
+        roleKey: toModuleAdminRoleKey(moduleId),
+        displayName: toModuleAdminRoleDisplayName(moduleId),
+        permissionKeys: [...(registry.get(moduleId)?.permissionIds ?? [])],
+      })),
+    });
+
+    await invalidateInstancePermissionSnapshots(deps, input.instanceId, 'instance_admin_bootstrapped');
+    await deps.repository.appendAuditEvent({
+      instanceId: input.instanceId,
+      eventType: 'instance_admin_bootstrapped',
+      actorId: input.actorId,
+      requestId: input.requestId,
+      details: {
+        assignedModules: assignedModuleIds,
+        selectedModuleIds: requestedModuleIds,
+        groupKey: ADMIN_GROUP_KEY,
+        coreRoleKey: CORE_ADMIN_ROLE_KEY,
+        outcome: 'bootstrapped',
       },
     });
 

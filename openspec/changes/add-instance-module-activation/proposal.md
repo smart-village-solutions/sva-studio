@@ -10,6 +10,7 @@ Fuer den Betrieb bedeutet das konkret, dass Instanzen wie `hb-meinquartier` eine
 
 - Einfuehrung einer kanonischen, persistenten Modulzuordnung `Instanz <-> Modul`
 - Neuer zentraler Admin-Bereich `Module` auf Studio-Root-Ebene, ueber den der Studio-Admin Instanzen explizit Module zuweist oder entzieht
+- Der Instanz-Anlage-Flow erhaelt nach erfolgreichem Create einen eigenen sichtbaren Abschnitt fuer den initialen Admin-Bootstrap der Instanz
 - Die Steuerung erfolgt ausschliesslich durch den Studio-Admin; Instanz-Operatoren koennen keine eigene Modul-Aktivierung oder -Deaktivierung ausloesen
 - Zuweisung eines Moduls zu einer Instanz wird zu einer atomaren Studio-Admin-Aktion:
   - Modul der Instanz zuordnen
@@ -20,6 +21,10 @@ Fuer den Betrieb bedeutet das konkret, dass Instanzen wie `hb-meinquartier` eine
   - modulbezogene Permissions hart entfernen
   - modulbezogene `role_permissions` und systemische Rollenerweiterungen hart entfernen
 - Modulbezogene IAM-Artefakte werden ueber einen kanonischen Plugin-Vertrag deklariert, damit die Soll-Ableitung fuer `Core + zugewiesene Module` deterministisch bleibt
+- Fuer den neuen Setup-Abschnitt wird eine editierbare Initialstruktur eingefuehrt:
+  - kanonische Gruppe `Admins` wird initial angelegt
+  - sprechend benannte Initialrollen fuer `Core` und optional ausgewaehlte Module werden erzeugt oder bei Namensgleichheit ueberschrieben
+  - die Initialrollen duerfen spaeter im IAM weiter bearbeitet werden
 - Fachliche Nutzung nicht zugewiesener Module wird fail-closed blockiert:
   - keine Modulrouten
   - keine Modulakektionen
@@ -27,6 +32,7 @@ Fuer den Betrieb bedeutet das konkret, dass Instanzen wie `hb-meinquartier` eine
   - keine modulbezogenen IAM-Freigaben
 - Das Instanz-Cockpit zeigt einen expliziten Befund fuer fehlende oder driftende IAM-Basis zugewiesener Module und bietet dem Studio-Admin eine direkte Reparaturaktion zum Neu-Seeden an
 - Bestehende Instanzen werden nicht implizit migriert; ihr Modulsatz ist nach Einfuehrung zunaechst leer und muss vom Studio-Admin explizit befuellt werden
+- Eine Instanz gilt im neuen Provisioning-Flow erst dann als fachlich `fertig`, wenn der initiale Admin-Bootstrap mindestens einmal erfolgreich ausgefuehrt wurde
 
 ## Impact
 

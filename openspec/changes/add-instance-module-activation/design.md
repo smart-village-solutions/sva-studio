@@ -9,7 +9,10 @@ Die neue Funktion fuehrt deshalb einen instanzbezogenen Modulvertrag ein. Dieser
 - Der Studio-Admin muss pro Instanz zentral und explizit steuern koennen, welche Module einer Instanz zugewiesen oder entzogen werden.
 - Instanz-Operatoren haben keine Moeglichkeit, diese Zuordnung selbst zu aendern.
 - Zuweisung seedet die noetige IAM-Basis fuer `Core + zugewiesene Module` in derselben Operation.
+- Der Instanz-Anlage-Flow muss einen harmonischen, aber technisch getrennten Abschnitt fuer den initialen Admin-Bootstrap anbieten.
+- Der initiale Admin-Bootstrap muss auch ohne Modulauswahl moeglich sein und dann mindestens `Admins` plus `Core Admin` anlegen.
 - Entzug entfernt modulbezogene Rechte hart und sperrt fachliche Nutzung fail-closed.
+- Modul-Sync darf Shared Roles wie `system_admin` oder `app_manager` nur in seinem eigenen Ownership-Bereich bereinigen; Core-Rechte bleiben unangetastet.
 - Das Instanz-Cockpit muss fehlende oder driftende IAM-Basis fuer zugewiesene Module sichtbar machen und dem Studio-Admin eine direkte Reparaturaktion anbieten.
 
 ## Non-Goals
@@ -75,6 +78,14 @@ Jedes Plugin, das modulbezogene Permissions oder Systemrollen in die IAM-Basis e
 
 Die Soll-Ableitung fuer `Core + zugewiesene Module` darf ausschliesslich auf diesem Vertrag und nicht auf impliziten Ableitungen aus Laufzeitdaten beruhen.
 
+### 4.2 Ownership fuer role_permissions
+
+Damit Shared Roles durch spaetere Modul-Mutationen nicht versehentlich ihre Core-Rechte verlieren, erhalten `iam.role_permissions` interne Ownership-Metadaten. Modul-Sync schreibt seine Grants mit `grant_origin_kind = module_sync` und dem zugehoerigen `grant_origin_module_id`. Bootstrap-Grants fuer `Core Admin` und modulbezogene Admin-Rollen werden als `bootstrap` markiert. Historische und Seed-Grants ohne spezielle Ownership gelten konservativ als `manual`.
+
+Cleanup bei `assignModule`, `revokeModule` und `seedIamBaseline` darf nur `module_sync`-Rows fuer die jeweils verwalteten Module entfernen. Ein generisches `DELETE` ueber alle `role_permissions` einer Shared Role ist unzulaessig, weil es Core-Rechte wie `content.read` oder `iam.role.read` mitloeschen wuerde.
+
+Fuer Bestandsinstanzen wird keine heuristische Rueckprojektion alter Modulgrants in SQL vorgenommen. Stattdessen bleibt der Datenbestand nach der Migration funktional konservativ, bis der vorhandene Reparaturpfad `IAM-Basis neu aufbauen` (`seedIamBaseline`) die Modulgrants ownership-korrekt neu schreibt.
+
 ### 5. Cockpit und Reparaturpfad
 
 Das Instanz-Cockpit zeigt einen expliziten Betriebsbefund `IAM-Basis zugewiesener Module` an. Dieser Befund ist fuer den Studio-Admin auf der Instanz-Detailseite sichtbar und wird aus dem Soll-Ist-Vergleich von:
@@ -93,7 +104,32 @@ Wenn der Sollstand fuer zugewiesene Module nicht erreicht ist, zeigt das Cockpit
 - einen Eintrag in der `Anomaly Queue`
 - eine direkte Reparaturaktion `Berechtigungen und Systemrollen neu seeden` (nur fuer den Studio-Admin sichtbar und ausfuehrbar)
 
-### 6. UI-Schnitt
+Nach Deployment der Ownership-Korrektur ist dieser Reparaturpfad fuer Bestandsinstanzen mit bereits synchronisierten Modulrechten der offizielle Weg, um alte modulbezogene Grants in den neuen Ownership-Zustand zu ueberfuehren.
+
+### 6. Initialer Admin-Bootstrap im Instanz-Flow
+
+Der Create-Flow erhaelt nach dem erfolgreichen Anlegen der Instanz einen eigenen sichtbaren Abschnitt fuer den initialen Admin-Bootstrap. Dieser Abschnitt folgt demselben Navigationsmuster wie die frueheren Abschnitte: sichtbar im Flow, aber erst nach erfolgreichem Create aktiv sinnvoll nutzbar.
+
+Der Abschnitt bietet:
+
+- eine optionale Modulauswahl, die die echte offizielle Instanz-Modulzuordnung beschreibt
+- einen Sammel-Button fuer die Initialisierung der Admin-Struktur
+- einen Warnhinweis fuer moegliche Namenskonflikte, wenn bestehende Rollen mit denselben Namen bereits vorhanden sind
+- einen Abschlussstatus, der erst nach mindestens einem erfolgreichen Bootstrap-Lauf erreicht wird
+
+Der Sammel-Button fuehrt mindestens folgende Schritte aus:
+
+1. Sicherstellen oder Anlegen der Gruppe `Admins`
+2. Erzeugen oder Ueberschreiben der Rolle `Core Admin` mit nur nicht-modulspezifischen Studio-/IAM-Basisrechten
+3. Optionales Zuweisen der ausgewaehlten Module zur Instanz
+4. Erzeugen oder Ueberschreiben sprechend benannter Modul-Admin-Rollen fuer die ausgewaehlten Module
+5. Verknuepfen der erzeugten Rollen mit der Gruppe `Admins`
+
+Wichtig ist die asymmetrische Fehlersemantik: Die Gesamtaktion wird aus Usersicht als ein Schritt angeboten, ist technisch aber nicht streng all-or-nothing. Wenn die Modulzuordnung bereits erfolgreich persistiert wurde, darf sie bestehen bleiben, auch wenn das Erzeugen oder Verknuepfen von Rollen und Gruppen spaeter im Ablauf fehlschlaegt. Dadurch bleibt die fachliche Modulaktivierung nachvollziehbar, waehrend der Admin-Bootstrap separat erneut versucht werden kann.
+
+Die so angelegten Rollen sind ausdruecklich keine unveraenderbaren Systemrollen. Sie bilden nur den kanonischen Startzustand und duerfen spaeter im IAM-UI weiter bearbeitet, umbenannt oder funktional durch neue Rollen ergaenzt werden.
+
+### 7. UI-Schnitt
 
 Die Modulverwaltung ist ein zentraler Bereich auf Studio-Root-Ebene, zugaenglich ausschliesslich fuer den Studio-Admin. Von dort werden Instanzen Module zugewiesen oder entzogen. Eine Selbststeuerung durch Instanz-Operatoren ist nicht vorgesehen.
 

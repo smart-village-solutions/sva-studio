@@ -6,6 +6,7 @@ import {
   assignInstanceModule,
   archiveInstance,
   asIamError,
+  bootstrapInstanceAdminStructure,
   createInstance,
   executeInstanceKeycloakProvisioning,
   getInstanceKeycloakStatus,
@@ -227,7 +228,12 @@ export const useInstances = () => {
   );
 
   const mutate = React.useCallback(
-    async <T>(action: () => Promise<{ data: T }>, instanceId?: string, operation = 'instance_mutation') => {
+    async <T>(
+      action: () => Promise<{ data: T }>,
+      instanceId?: string,
+      operation = 'instance_mutation',
+      options?: { invalidateAuthAfterSuccess?: boolean }
+    ) => {
       setMutationError(null);
       logBrowserOperationStart(instancesLogger, 'instance_mutation_started', {
         operation,
@@ -235,6 +241,9 @@ export const useInstances = () => {
       });
       try {
         const result = await action();
+        if (options?.invalidateAuthAfterSuccess) {
+          await invalidatePermissions();
+        }
         await refetch();
         if (instanceId) {
           await loadInstance(instanceId);
@@ -456,7 +465,19 @@ export const useInstances = () => {
           return response;
         },
         instanceId,
-        'assign_instance_module'
+        'assign_instance_module',
+        { invalidateAuthAfterSuccess: true }
+      ),
+    bootstrapAdminStructure: async (instanceId: string, moduleIds: readonly string[]) =>
+      mutate(
+        async () => {
+          const response = await bootstrapInstanceAdminStructure(instanceId, moduleIds);
+          setSelectedInstance(response.data);
+          return response;
+        },
+        instanceId,
+        'bootstrap_instance_admin_structure',
+        { invalidateAuthAfterSuccess: true }
       ),
     revokeModule: async (instanceId: string, moduleId: string) =>
       mutate(
@@ -466,7 +487,8 @@ export const useInstances = () => {
           return response;
         },
         instanceId,
-        'revoke_instance_module'
+        'revoke_instance_module',
+        { invalidateAuthAfterSuccess: true }
       ),
     seedIamBaseline: async (instanceId: string) =>
       mutate(
@@ -476,7 +498,8 @@ export const useInstances = () => {
           return response;
         },
         instanceId,
-        'seed_instance_iam_baseline'
+        'seed_instance_iam_baseline',
+        { invalidateAuthAfterSuccess: true }
       ),
     activateInstance: async (instanceId: string) => mutate(() => activateInstance(instanceId), instanceId, 'activate_instance'),
     suspendInstance: async (instanceId: string) => mutate(() => suspendInstance(instanceId), instanceId, 'suspend_instance'),

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   assignModuleSchema,
+  bootstrapAdminStructureSchema,
   createInstanceSchema,
   revokeModuleSchema,
   readDetailInstanceId,
@@ -87,5 +88,11 @@ describe('http-contracts', () => {
     const result = seedIamBaselineSchema.safeParse({});
 
     expect(result.success).toBe(true);
+  });
+
+  it('accepts bootstrap payloads with optional module ids', () => {
+    expect(bootstrapAdminStructureSchema.safeParse({}).success).toBe(true);
+    expect(bootstrapAdminStructureSchema.safeParse({ moduleIds: ['news', 'events'] }).success).toBe(true);
+    expect(bootstrapAdminStructureSchema.safeParse({ moduleIds: [' ', 'news'] }).success).toBe(false);
   });
 });

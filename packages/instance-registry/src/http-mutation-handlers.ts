@@ -7,6 +7,7 @@ import {
 } from './http-mutation-actions.js';
 import {
   createAssignModuleHandler,
+  createBootstrapAdminStructureHandler,
   createMutateInstanceStatusHandler,
   createRevokeModuleHandler,
   createSeedIamBaselineHandler,
@@ -31,6 +32,7 @@ export const createInstanceRegistryMutationHttpHandlers = <TContext>(
     executeInstanceKeycloakProvisioning: createExecuteInstanceKeycloakProvisioningHandler(deps, mapMutationError),
     probeTenantIamAccess: createProbeTenantIamAccessHandler(deps, mapMutationError),
     assignModule: createAssignModuleHandler(deps),
+    bootstrapAdminStructure: createBootstrapAdminStructureHandler(deps),
     revokeModule: createRevokeModuleHandler(deps),
     seedIamBaseline: createSeedIamBaselineHandler(deps),
     mutateInstanceStatus: (

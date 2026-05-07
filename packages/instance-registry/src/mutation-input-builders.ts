@@ -2,6 +2,7 @@ import type { IamInstanceKeycloakProvisioningRun, InstanceRealmMode, InstanceSta
 
 import type {
   AssignInstanceModuleInput,
+  BootstrapAdminStructureInput,
   ChangeInstanceStatusInput,
   CreateInstanceProvisioningInput,
   ExecuteInstanceKeycloakProvisioningInput,
@@ -70,6 +71,10 @@ export type AssignInstanceModulePayload = {
 export type RevokeInstanceModulePayload = {
   readonly moduleId: string;
   readonly confirmation: 'REVOKE';
+};
+
+export type BootstrapAdminStructurePayload = {
+  readonly moduleIds?: readonly string[];
 };
 
 export const buildCreateInstanceProvisioningInput = (
@@ -195,6 +200,18 @@ export const buildSeedInstanceIamBaselineInput = (
 ): SeedInstanceIamBaselineInput => ({
   idempotencyKey: context.idempotencyKey,
   instanceId,
+  actorId: context.actorId,
+  requestId: context.requestId,
+});
+
+export const buildBootstrapAdminStructureInput = (
+  instanceId: string,
+  payload: BootstrapAdminStructurePayload,
+  context: IdempotentInstanceMutationContext
+): BootstrapAdminStructureInput => ({
+  idempotencyKey: context.idempotencyKey,
+  instanceId,
+  moduleIds: payload.moduleIds ?? [],
   actorId: context.actorId,
   requestId: context.requestId,
 });

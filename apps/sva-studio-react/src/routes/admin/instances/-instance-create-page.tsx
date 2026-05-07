@@ -9,6 +9,7 @@ import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
 import { useInstances } from '../../../hooks/use-instances';
 import { t } from '../../../i18n';
+import { studioModuleIamContracts } from '../../../lib/plugins';
 import { FieldHelp } from './-field-help';
 import {
   CREATE_WIZARD_STEPS,
@@ -27,6 +28,12 @@ import type { CreateFormValues, CreateWizardStepKey } from './-instances-shared-
 import type { IamInstanceListItem } from '@sva/core';
 
 const stepOrder = CREATE_WIZARD_STEPS.map((step) => step.key);
+const adminBootstrapModuleLabels = {
+  news: 'admin.instances.adminBootstrap.modules.news',
+  events: 'admin.instances.adminBootstrap.modules.events',
+  poi: 'admin.instances.adminBootstrap.modules.poi',
+  media: 'admin.instances.adminBootstrap.modules.media',
+} as const;
 
 const FormLabelWithHelp = ({
   htmlFor,
@@ -56,6 +63,8 @@ const ReviewRow = ({ label, value }: { label: string; value: string }) => (
 const getStepIndex = (step: CreateWizardStepKey) => stepOrder.indexOf(step);
 const getRealmModeLabel = (realmMode: 'new' | 'existing') =>
   realmMode === 'new' ? t('admin.instances.flow.realmModeNewLabel') : t('admin.instances.flow.realmModeExistingLabel');
+const getModuleLabel = (moduleId: keyof typeof adminBootstrapModuleLabels) =>
+  t(adminBootstrapModuleLabels[moduleId]);
 
 export const InstanceCreatePage = () => {
   const instancesApi = useInstances();
@@ -63,6 +72,9 @@ export const InstanceCreatePage = () => {
   const [currentStep, setCurrentStep] = React.useState<CreateWizardStepKey>('basics');
   const [stepErrors, setStepErrors] = React.useState<string[]>([]);
   const [createdInstance, setCreatedInstance] = React.useState<IamInstanceListItem | null>(null);
+  const [selectedModuleIds, setSelectedModuleIds] = React.useState<readonly string[]>([]);
+  const [isBootstrappingAdminStructure, setIsBootstrappingAdminStructure] = React.useState(false);
+  const [adminBootstrapCompleted, setAdminBootstrapCompleted] = React.useState(false);
   const [formValues, setFormValues] = React.useState(createEmptyCreateForm());
 
   React.useEffect(() => {
@@ -76,6 +88,8 @@ export const InstanceCreatePage = () => {
     setStepErrors([]);
     if (createdInstance) {
       setCreatedInstance(null);
+      setSelectedModuleIds([]);
+      setAdminBootstrapCompleted(false);
     }
   };
 
@@ -152,6 +166,34 @@ export const InstanceCreatePage = () => {
     }
 
     setCreatedInstance(created);
+    setAdminBootstrapCompleted(false);
+  };
+
+  const toggleModuleSelection = (moduleId: string) => {
+    setSelectedModuleIds((current) =>
+      current.includes(moduleId)
+        ? current.filter((value) => value !== moduleId)
+        : [...current, moduleId]
+    );
+  };
+
+  const onBootstrapAdminStructure = async () => {
+    if (!createdInstance) {
+      return;
+    }
+
+    setIsBootstrappingAdminStructure(true);
+    try {
+      const bootstrapped = await instancesApi.bootstrapAdminStructure(createdInstance.instanceId, selectedModuleIds);
+      if (!bootstrapped) {
+        return;
+      }
+
+      setCreatedInstance(bootstrapped);
+      setAdminBootstrapCompleted(true);
+    } finally {
+      setIsBootstrappingAdminStructure(false);
+    }
   };
 
   const readinessChecks = getCreateReadinessChecks(formValues);
@@ -205,6 +247,83 @@ export const InstanceCreatePage = () => {
           </AlertDescription>
         </Alert>
       ) : null}
+
+      <Card className="space-y-4 p-5">
+        <div className="space-y-2">
+          <div className="text-sm font-medium text-foreground">{t('admin.instances.adminBootstrap.title')}</div>
+          <p className="text-sm text-muted-foreground">
+            {createdInstance
+              ? t('admin.instances.adminBootstrap.subtitleReady')
+              : t('admin.instances.adminBootstrap.subtitlePending')}
+          </p>
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-2">
+          {studioModuleIamContracts.map((module) => {
+            const checked = selectedModuleIds.includes(module.moduleId);
+
+            return (
+              <label
+                key={module.moduleId}
+                className={`flex items-start gap-3 rounded-lg border p-3 text-sm ${
+                  createdInstance ? 'border-border' : 'border-border/60 opacity-60'
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  disabled={!createdInstance || isBootstrappingAdminStructure}
+                  onChange={() => toggleModuleSelection(module.moduleId)}
+                />
+                <span className="space-y-1">
+                  <span className="block font-medium text-foreground">
+                    {getModuleLabel(module.moduleId as keyof typeof adminBootstrapModuleLabels)}
+                  </span>
+                  <span className="block text-muted-foreground">
+                    {t('admin.instances.adminBootstrap.moduleHint', {
+                      value: module.permissionIds.join(', '),
+                    })}
+                  </span>
+                </span>
+              </label>
+            );
+          })}
+        </div>
+
+        <div className="rounded-lg border border-border bg-muted/30 p-3 text-sm text-muted-foreground">
+          {t('admin.instances.adminBootstrap.conflictHint')}
+        </div>
+
+        {adminBootstrapCompleted ? (
+          <Alert>
+            <AlertDescription>{t('admin.instances.adminBootstrap.success')}</AlertDescription>
+          </Alert>
+        ) : null}
+
+        {instancesApi.mutationError && createdInstance ? (
+          <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
+            <AlertDescription className="flex flex-col gap-3">
+              <span>{getErrorMessage(instancesApi.mutationError)}</span>
+              <IamRuntimeDiagnosticDetails error={instancesApi.mutationError} />
+            </AlertDescription>
+          </Alert>
+        ) : null}
+
+        <div className="flex flex-wrap items-center gap-3">
+          <Button
+            type="button"
+            disabled={!createdInstance || isBootstrappingAdminStructure}
+            onClick={() => void onBootstrapAdminStructure()}
+          >
+            {t('admin.instances.adminBootstrap.action')}
+          </Button>
+          <p className="text-xs text-muted-foreground">
+            {createdInstance
+              ? t('admin.instances.adminBootstrap.actionHintReady')
+              : t('admin.instances.adminBootstrap.actionHintPending')}
+          </p>
+        </div>
+      </Card>
 
       <Card className="space-y-5 p-4">
         <div className="grid gap-3 lg:grid-cols-4">

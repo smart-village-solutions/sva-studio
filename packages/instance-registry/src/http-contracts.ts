@@ -84,6 +84,10 @@ export const assignModuleSchema = z.object({
   moduleId: z.string().trim().min(1),
 });
 
+export const bootstrapAdminStructureSchema = z.object({
+  moduleIds: z.array(z.string().trim().min(1)).optional(),
+});
+
 export const revokeModuleSchema = z.object({
   moduleId: z.string().trim().min(1),
   confirmation: z.literal('REVOKE'),

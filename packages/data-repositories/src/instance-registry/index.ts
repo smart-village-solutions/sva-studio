@@ -204,6 +204,16 @@ export type InstanceModuleIamContractRecord = {
   }[];
 };
 
+export type InstanceAdminBootstrapRoleRecord = {
+  readonly roleKey: string;
+  readonly displayName: string;
+  readonly permissionKeys: readonly string[];
+};
+
+export type InstanceAdminBootstrapModuleRoleRecord = InstanceAdminBootstrapRoleRecord & {
+  readonly moduleId: string;
+};
+
 export type InstanceRegistryRepository = {
   listInstances(input?: { search?: string; status?: InstanceStatus }): Promise<readonly InstanceRegistryRecord[]>;
   getInstanceById(instanceId: string): Promise<InstanceRegistryRecord | null>;
@@ -214,6 +224,13 @@ export type InstanceRegistryRepository = {
     instanceId: string;
     managedModuleIds: readonly string[];
     contracts: readonly InstanceModuleIamContractRecord[];
+  }): Promise<void>;
+  syncInstanceAdminBootstrap(input: {
+    instanceId: string;
+    groupKey: string;
+    groupDisplayName: string;
+    coreRole: InstanceAdminBootstrapRoleRecord;
+    moduleRoles: readonly InstanceAdminBootstrapModuleRoleRecord[];
   }): Promise<void>;
   getAuthClientSecretCiphertext(instanceId: string): Promise<string | null>;
   getTenantAdminClientSecretCiphertext(instanceId: string): Promise<string | null>;
@@ -542,6 +559,7 @@ WHERE instance_id = $1
     const rolePermissionPairs = contracts.flatMap((contract) =>
       contract.systemRoles.flatMap((role) =>
         role.permissionIds.map((permissionId) => ({
+          moduleId: contract.moduleId,
           roleName: role.roleName,
           permissionId,
         }))
@@ -642,11 +660,19 @@ SET
       await executor.execute(
         statement(
           `
-INSERT INTO iam.role_permissions (instance_id, role_id, permission_id)
+INSERT INTO iam.role_permissions (
+  instance_id,
+  role_id,
+  permission_id,
+  grant_origin_kind,
+  grant_origin_module_id
+)
 SELECT
   $1,
   role.id,
-  permission.id
+  permission.id,
+  $4,
+  $5
 FROM iam.roles role
 JOIN iam.permissions permission
   ON permission.instance_id = role.instance_id
@@ -655,16 +681,19 @@ WHERE role.instance_id = $1
   AND permission.permission_key = $3
 ON CONFLICT (instance_id, role_id, permission_id) DO NOTHING;
 `,
-          [instanceId, pair.roleName, pair.permissionId]
+          [instanceId, pair.roleName, pair.permissionId, 'module_sync', pair.moduleId]
         )
       );
     }
 
-    if (managedRoleNames.length > 0) {
+    if (managedModuleIds.length > 0) {
       const desiredPairSql =
         rolePermissionPairs.length > 0
           ? rolePermissionPairs
-              .map((pair) => `(${quoteSqlLiteral(pair.roleName)}, ${quoteSqlLiteral(pair.permissionId)})`)
+              .map(
+                (pair) =>
+                  `(${quoteSqlLiteral(pair.moduleId)}, ${quoteSqlLiteral(pair.roleName)}, ${quoteSqlLiteral(pair.permissionId)})`
+              )
               .join(', ')
           : null;
 
@@ -678,10 +707,11 @@ WHERE role_permission.instance_id = $1
   AND role.id = role_permission.role_id
   AND permission.instance_id = role_permission.instance_id
   AND permission.id = role_permission.permission_id
-  AND role.role_key IN (${createTextList(managedRoleNames)})
+  AND role_permission.grant_origin_kind = 'module_sync'
+  AND role_permission.grant_origin_module_id IN (${createTextList(managedModuleIds)})
   ${
     desiredPairSql
-      ? `AND (role.role_key, permission.permission_key) NOT IN (${desiredPairSql})`
+      ? `AND (role_permission.grant_origin_module_id, role.role_key, permission.permission_key) NOT IN (${desiredPairSql})`
       : ''
   };
 `,
@@ -706,6 +736,200 @@ WHERE instance_id = $1
   AND (${managedPrefixConditions});
 `,
           [instanceId]
+        )
+      );
+    }
+  },
+
+  async syncInstanceAdminBootstrap({ instanceId, groupKey, groupDisplayName, coreRole, moduleRoles }) {
+    const roles = [coreRole, ...moduleRoles];
+    const permissionKeys = Array.from(new Set(roles.flatMap((role) => role.permissionKeys))).sort(compareAlphabetically);
+
+    await executor.execute(
+      statement(
+        `
+INSERT INTO iam.groups (
+  id,
+  instance_id,
+  group_key,
+  display_name,
+  description,
+  group_type,
+  is_active
+)
+VALUES (
+  gen_random_uuid(),
+  $1,
+  $2,
+  $3,
+  'Von Studio initial angelegte Admin-Gruppe',
+  'role_bundle',
+  TRUE
+)
+ON CONFLICT (instance_id, group_key) DO UPDATE
+SET
+  display_name = EXCLUDED.display_name,
+  description = EXCLUDED.description,
+  group_type = EXCLUDED.group_type,
+  is_active = TRUE,
+  updated_at = NOW();
+`,
+        [instanceId, groupKey, groupDisplayName]
+      )
+    );
+
+    for (const permissionKey of permissionKeys) {
+      await executor.execute(
+        statement(
+          `
+INSERT INTO iam.permissions (
+  id,
+  instance_id,
+  permission_key,
+  action,
+  resource_type,
+  resource_id,
+  effect,
+  scope,
+  description
+)
+VALUES (
+  gen_random_uuid(),
+  $1,
+  $2,
+  $2,
+  split_part($2, '.', 1),
+  NULL,
+  'allow',
+  '{}'::jsonb,
+  $3
+)
+ON CONFLICT (instance_id, permission_key) DO UPDATE
+SET
+  action = EXCLUDED.action,
+  resource_type = EXCLUDED.resource_type,
+  resource_id = EXCLUDED.resource_id,
+  effect = EXCLUDED.effect,
+  scope = EXCLUDED.scope,
+  description = EXCLUDED.description,
+  updated_at = NOW();
+`,
+          [instanceId, permissionKey, `Initiale Admin-Berechtigung ${permissionKey}`]
+        )
+      );
+    }
+
+    for (const role of roles) {
+      await executor.execute(
+        statement(
+          `
+INSERT INTO iam.roles (
+  id,
+  instance_id,
+  role_key,
+  role_name,
+  display_name,
+  external_role_name,
+  description,
+  is_system_role,
+  role_level,
+  managed_by,
+  sync_state,
+  last_synced_at,
+  last_error_code
+)
+VALUES (
+  gen_random_uuid(),
+  $1,
+  $2,
+  $2,
+  $3,
+  $3,
+  $4,
+  FALSE,
+  0,
+  'studio',
+  'pending',
+  NOW(),
+  NULL
+)
+ON CONFLICT (instance_id, role_key) DO UPDATE
+SET
+  role_name = EXCLUDED.role_name,
+  display_name = EXCLUDED.display_name,
+  external_role_name = EXCLUDED.external_role_name,
+  description = EXCLUDED.description,
+  is_system_role = FALSE,
+  updated_at = NOW();
+`,
+          [instanceId, role.roleKey, role.displayName, `Initiale Admin-Rolle ${role.displayName}`]
+        )
+      );
+
+      await executor.execute(
+        statement(
+          `
+DELETE FROM iam.role_permissions
+WHERE instance_id = $1
+  AND role_id = (
+    SELECT id
+    FROM iam.roles
+    WHERE instance_id = $1
+      AND role_key = $2
+    LIMIT 1
+  );
+`,
+          [instanceId, role.roleKey]
+        )
+      );
+
+      for (const permissionKey of role.permissionKeys) {
+        await executor.execute(
+          statement(
+            `
+INSERT INTO iam.role_permissions (
+  instance_id,
+  role_id,
+  permission_id,
+  grant_origin_kind,
+  grant_origin_module_id
+)
+SELECT
+  $1,
+  role.id,
+  permission.id,
+  $4,
+  $5
+FROM iam.roles role
+JOIN iam.permissions permission
+  ON permission.instance_id = role.instance_id
+WHERE role.instance_id = $1
+  AND role.role_key = $2
+  AND permission.permission_key = $3
+ON CONFLICT (instance_id, role_id, permission_id) DO NOTHING;
+`,
+            [instanceId, role.roleKey, permissionKey, 'bootstrap', null]
+          )
+        );
+      }
+
+      await executor.execute(
+        statement(
+          `
+INSERT INTO iam.group_roles (instance_id, group_id, role_id)
+SELECT
+  $1,
+  iam_group.id,
+  role.id
+FROM iam.groups iam_group
+JOIN iam.roles role
+  ON role.instance_id = iam_group.instance_id
+WHERE iam_group.instance_id = $1
+  AND iam_group.group_key = $2
+  AND role.role_key = $3
+ON CONFLICT (instance_id, group_id, role_id) DO NOTHING;
+`,
+          [instanceId, groupKey, role.roleKey]
         )
       );
     }

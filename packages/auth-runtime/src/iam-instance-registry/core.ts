@@ -9,6 +9,7 @@ import type { AuthenticatedRequestContext } from '../middleware.js';
 import { ensurePlatformAccess, requireFreshReauth } from './http.js';
 import {
   assignInstanceModuleMutation,
+  bootstrapInstanceAdminStructureMutation,
   mapInstanceMutationError,
   mutateInstanceStatus,
   revokeInstanceModuleMutation,
@@ -74,6 +75,11 @@ export const assignInstanceModuleInternal = async (
   request: Request,
   ctx: AuthenticatedRequestContext
 ): Promise<Response> => assignInstanceModuleMutation(request, ctx);
+
+export const bootstrapInstanceAdminStructureInternal = async (
+  request: Request,
+  ctx: AuthenticatedRequestContext
+): Promise<Response> => bootstrapInstanceAdminStructureMutation(request, ctx);
 
 export const revokeInstanceModuleInternal = async (
   request: Request,

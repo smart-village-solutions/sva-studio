@@ -107,6 +107,63 @@ describe('UserEditPage', () => {
     expect(screen.getByRole('status')).toBeTruthy();
   });
 
+  it('shows an invitation warning when the password setup email could not be delivered', () => {
+    useUserMock.mockReturnValue({
+      user: baseUser,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      save: vi.fn(),
+    });
+
+    useRolesMock.mockReturnValue({
+      roles: [],
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      createRole: vi.fn(),
+      updateRole: vi.fn(),
+      deleteRole: vi.fn(),
+    });
+
+    render(<UserEditPage userId="user-1" invitationStatus="failed" />);
+
+    expect(
+      screen.getByText(
+        'Der Nutzer wurde angelegt, aber die Einladungs-E-Mail zum Passwort setzen konnte nicht versendet werden.'
+      )
+    ).toBeTruthy();
+  });
+
+  it('resends the password setup email and shows a success notice', async () => {
+    const resendPasswordSetupEmail = vi.fn(async () => true);
+    useUserMock.mockReturnValue({
+      user: baseUser,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      save: vi.fn(),
+      resendPasswordSetupEmail,
+    });
+
+    useRolesMock.mockReturnValue({
+      roles: [],
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      createRole: vi.fn(),
+      updateRole: vi.fn(),
+      deleteRole: vi.fn(),
+    });
+
+    render(<UserEditPage userId="user-1" />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Passwort-Einladung erneut senden' }));
+
+    await waitFor(() => expect(resendPasswordSetupEmail).toHaveBeenCalledTimes(1));
+    expect(screen.getByText('Die Einladungs-E-Mail zum Passwort setzen wurde versendet.')).toBeTruthy();
+  });
+
   it('detects form changes without serializing the whole form', () => {
     const baseline = {
       firstName: 'Alice',

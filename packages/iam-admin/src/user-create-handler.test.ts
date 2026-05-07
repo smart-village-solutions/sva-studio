@@ -62,10 +62,13 @@ const createDeps = (
     requestId,
   })),
   executeCreateUser: vi.fn(async () => ({
-    responseData: {
+    user: {
       id: 'account-1',
       keycloakSubject: 'kc-user-1',
       email: 'alice@example.com',
+    },
+    invitation: {
+      status: 'sent',
     },
   })),
   iamUserOperationsCounter: {
@@ -100,8 +103,13 @@ describe('createCreateUserHandlerInternal', () => {
     expect(response.status).toBe(201);
     await expect(response.json()).resolves.toMatchObject({
       data: {
-        id: 'account-1',
-        keycloakSubject: 'kc-user-1',
+        user: {
+          id: 'account-1',
+          keycloakSubject: 'kc-user-1',
+        },
+        invitation: {
+          status: 'sent',
+        },
       },
       requestId: 'req-create',
     });

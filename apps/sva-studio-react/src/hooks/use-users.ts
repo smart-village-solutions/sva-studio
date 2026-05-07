@@ -1,4 +1,4 @@
-import type { IamUserDetail, IamUserImportSyncReport, IamUserListItem } from '@sva/core';
+import type { IamCreateUserResult, IamUserDetail, IamUserImportSyncReport, IamUserListItem } from '@sva/core';
 import React from 'react';
 
 import {
@@ -44,7 +44,7 @@ type UseUsersResult = {
   readonly setRole: (value: string) => void;
   readonly setPage: (value: number) => void;
   readonly refetch: () => Promise<void>;
-  readonly createUser: (payload: CreateUserPayload) => Promise<IamUserDetail | null>;
+  readonly createUser: (payload: CreateUserPayload) => Promise<IamCreateUserResult | null>;
   readonly updateUser: (userId: string, payload: UpdateUserPayload) => Promise<IamUserDetail | null>;
   readonly deactivateUser: (userId: string) => Promise<boolean>;
   readonly bulkDeactivate: (userIds: readonly string[]) => Promise<boolean>;

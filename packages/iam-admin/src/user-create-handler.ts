@@ -27,6 +27,7 @@ export type CreateUserPayloadShape = {
   readonly lastName?: string;
   readonly status?: 'active' | 'inactive' | 'pending';
   readonly roleIds: readonly string[];
+  readonly sendPasswordSetupEmail?: boolean;
 };
 
 export type CreateIdentityProvider = {
@@ -40,6 +41,15 @@ export type CreateIdentityProvider = {
       readonly attributes: Readonly<Record<string, string>>;
     }) => Promise<{ readonly externalId: string }>;
     readonly syncRoles: (keycloakSubject: string, roleNames: readonly string[]) => Promise<void>;
+    readonly executeActionsEmail?: (
+      keycloakSubject: string,
+      input: {
+        readonly actions: readonly string[];
+        readonly clientId?: string;
+        readonly redirectUri?: string;
+        readonly lifespan?: number;
+      }
+    ) => Promise<void>;
     readonly deactivateUser?: (keycloakSubject: string) => Promise<void>;
   };
 };
@@ -53,9 +63,9 @@ export type CreateUserApiErrorCode = 'invalid_request' | 'idempotency_key_reuse'
 export type CreateUserHandlerDeps<
   TPayload extends CreateUserPayloadShape = CreateUserPayloadShape,
   TIdentityProvider extends CreateIdentityProvider = CreateIdentityProvider,
-  TResult extends { readonly responseData: unknown } = { readonly responseData: unknown },
+  TResult = unknown,
 > = {
-  readonly asApiItem: (data: unknown, requestId?: string) => unknown;
+  readonly asApiItem: (data: TResult, requestId?: string) => unknown;
   readonly completeIdempotency: (input: {
     readonly instanceId: string;
     readonly actorAccountId: string;
@@ -132,7 +142,7 @@ export const createCreateUserHandlerInternal =
   <
     TPayload extends CreateUserPayloadShape,
     TIdentityProvider extends CreateIdentityProvider,
-    TResult extends { readonly responseData: unknown },
+    TResult,
   >(
     deps: CreateUserHandlerDeps<TPayload, TIdentityProvider, TResult>
   ) =>
@@ -188,7 +198,7 @@ export const createCreateUserHandlerInternal =
         identityProvider,
         payload: parsed.data,
       });
-      const responseBody = deps.asApiItem(result.responseData, actorContext.actor.requestId);
+      const responseBody = deps.asApiItem(result, actorContext.actor.requestId);
       await deps.completeIdempotency({
         instanceId: actorContext.actor.instanceId,
         actorAccountId: actorContext.actor.actorAccountId,

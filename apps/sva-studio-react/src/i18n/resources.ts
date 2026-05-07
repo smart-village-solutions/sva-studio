@@ -1619,6 +1619,8 @@ export const i18nResources = {
           bulkDeactivate: 'Auswahl deaktivieren',
           syncKeycloak: 'Aus Keycloak synchronisieren',
           syncing: 'Synchronisiert ...',
+          sendPasswordSetupEmail: 'Passwort-Einladung erneut senden',
+          sendingPasswordSetupEmail: 'Passwort-Einladung wird gesendet ...',
           retry: 'Erneut versuchen',
         },
         filters: {
@@ -1640,6 +1642,7 @@ export const i18nResources = {
           description: 'Erstellt ein neues Nutzerkonto in Keycloak und IAM.',
           roleLabel: 'Startrolle',
           rolePlaceholder: 'Keine Rolle vorauswählen',
+          sendPasswordSetupEmail: 'Einladungs-E-Mail zum Passwort setzen senden',
         },
         confirm: {
           singleTitle: 'Nutzer deaktivieren',
@@ -1652,6 +1655,9 @@ export const i18nResources = {
           tabsAriaLabel: 'Nutzerdetails Tabs',
           save: 'Änderungen speichern',
           saveSuccess: 'Nutzerdaten wurden gespeichert.',
+          passwordSetupEmailSuccess: 'Die Einladungs-E-Mail zum Passwort setzen wurde versendet.',
+          invitationWarning:
+            'Der Nutzer wurde angelegt, aber die Einladungs-E-Mail zum Passwort setzen konnte nicht versendet werden.',
           mainserverApplicationIdLabel: 'Mainserver Application-ID',
           mainserverApplicationSecretLabel: 'Mainserver Application-Secret',
           mainserverApplicationSecretPlaceholder: 'Neues Secret eingeben',
@@ -4104,6 +4110,8 @@ export const i18nResources = {
           bulkDeactivate: 'Deactivate selection',
           syncKeycloak: 'Sync from Keycloak',
           syncing: 'Syncing ...',
+          sendPasswordSetupEmail: 'Resend password invitation',
+          sendingPasswordSetupEmail: 'Sending password invitation ...',
           retry: 'Retry',
         },
         filters: {
@@ -4125,6 +4133,7 @@ export const i18nResources = {
           description: 'Creates a new user account in Keycloak and IAM.',
           roleLabel: 'Initial role',
           rolePlaceholder: 'No preselected role',
+          sendPasswordSetupEmail: 'Send invitation email to set password',
         },
         confirm: {
           singleTitle: 'Deactivate user',
@@ -4137,6 +4146,9 @@ export const i18nResources = {
           tabsAriaLabel: 'User detail tabs',
           save: 'Save changes',
           saveSuccess: 'User data has been saved.',
+          passwordSetupEmailSuccess: 'The invitation email for setting the password has been sent.',
+          invitationWarning:
+            'The user was created, but the invitation email for setting the password could not be delivered.',
           mainserverApplicationIdLabel: 'Mainserver application ID',
           mainserverApplicationSecretLabel: 'Mainserver application secret',
           mainserverApplicationSecretPlaceholder: 'Enter a new secret',

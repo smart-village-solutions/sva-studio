@@ -21,6 +21,7 @@ import { userErrorMessage } from './-user-error-message';
 
 type UserEditPageProps = {
   readonly userId: string;
+  readonly invitationStatus?: 'failed';
 };
 
 type UserEditTabKey = 'personal' | 'management' | 'permissions' | 'history';
@@ -214,7 +215,7 @@ export const hasUserFormChanges = (baseline: UserFormValues, current: UserFormVa
   baseline.mainserverUserApplicationSecret !== current.mainserverUserApplicationSecret ||
   baseline.mainserverUserApplicationSecretSet !== current.mainserverUserApplicationSecretSet;
 
-export const UserEditPage = ({ userId }: UserEditPageProps) => {
+export const UserEditPage = ({ userId, invitationStatus }: UserEditPageProps) => {
   const userApi = useUser(userId);
   const rolesApi = useRoles();
   const groupsApi = useGroups();
@@ -226,7 +227,9 @@ export const UserEditPage = ({ userId }: UserEditPageProps) => {
   const [activeTab, setActiveTab] = React.useState<UserEditTabKey>('personal');
   const [formValues, setFormValues] = React.useState<UserFormValues>(() => toFormValues(userApi.user));
   const [isSaving, setIsSaving] = React.useState(false);
+  const [isSendingPasswordSetupEmail, setIsSendingPasswordSetupEmail] = React.useState(false);
   const [saveSuccess, setSaveSuccess] = React.useState(false);
+  const [passwordSetupEmailSuccess, setPasswordSetupEmailSuccess] = React.useState(false);
   const [timeline, setTimeline] = React.useState<Awaited<ReturnType<typeof getUserTimeline>>['data']>([]);
   const [isLoadingTimeline, setIsLoadingTimeline] = React.useState(false);
   const [timelineError, setTimelineError] = React.useState<string | null>(null);
@@ -371,6 +374,7 @@ export const UserEditPage = ({ userId }: UserEditPageProps) => {
     event.preventDefault();
     setIsSaving(true);
     setSaveSuccess(false);
+    setPasswordSetupEmailSuccess(false);
 
     const result = await userApi.save({
       firstName: formValues.firstName || undefined,
@@ -396,6 +400,23 @@ export const UserEditPage = ({ userId }: UserEditPageProps) => {
     }
 
     setIsSaving(false);
+  };
+
+  const onSendPasswordSetupEmail = async () => {
+    if (!userApi.resendPasswordSetupEmail || isSendingPasswordSetupEmail) {
+      return;
+    }
+
+    setIsSendingPasswordSetupEmail(true);
+    setSaveSuccess(false);
+    setPasswordSetupEmailSuccess(false);
+
+    const sent = await userApi.resendPasswordSetupEmail();
+    if (sent) {
+      setPasswordSetupEmailSuccess(true);
+    }
+
+    setIsSendingPasswordSetupEmail(false);
   };
 
   if (userApi.isLoading) {
@@ -467,9 +488,21 @@ export const UserEditPage = ({ userId }: UserEditPageProps) => {
             </div>
           </div>
         </div>
-        <Button type="button" variant="outline" onClick={() => void userApi.refetch()}>
-          {t('admin.users.actions.retry')}
-        </Button>
+        <div className="flex flex-wrap gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => void onSendPasswordSetupEmail()}
+            disabled={isSendingPasswordSetupEmail}
+          >
+            {isSendingPasswordSetupEmail
+              ? t('admin.users.actions.sendingPasswordSetupEmail')
+              : t('admin.users.actions.sendPasswordSetupEmail')}
+          </Button>
+          <Button type="button" variant="outline" onClick={() => void userApi.refetch()}>
+            {t('admin.users.actions.retry')}
+          </Button>
+        </div>
       </Card>
 
       <Card role="tablist" aria-label={t('admin.users.edit.tabsAriaLabel')} className="flex overflow-x-auto p-1">
@@ -872,9 +905,19 @@ export const UserEditPage = ({ userId }: UserEditPageProps) => {
             </AlertDescription>
           </Alert>
         ) : null}
+        {invitationStatus === 'failed' ? (
+          <Alert className="border-secondary/40 bg-secondary/10 text-secondary" role="status">
+            <AlertDescription>{t('admin.users.edit.invitationWarning')}</AlertDescription>
+          </Alert>
+        ) : null}
         {saveSuccess ? (
           <Alert className="border-primary/40 bg-primary/10 text-primary" role="status">
             <AlertDescription>{t('admin.users.edit.saveSuccess')}</AlertDescription>
+          </Alert>
+        ) : null}
+        {passwordSetupEmailSuccess ? (
+          <Alert className="border-primary/40 bg-primary/10 text-primary" role="status">
+            <AlertDescription>{t('admin.users.edit.passwordSetupEmailSuccess')}</AlertDescription>
           </Alert>
         ) : null}
 

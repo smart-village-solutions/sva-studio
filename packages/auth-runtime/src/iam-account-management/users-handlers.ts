@@ -1,4 +1,5 @@
 export { createUserInternal } from './user-create-handler.js';
+export { sendPasswordSetupEmailInternal } from './user-password-setup-email-handler.js';
 export { getMyProfileInternal, updateMyProfileInternal } from './profile-handlers.js';
 export { getUserInternal, getUserTimelineInternal, listUsersInternal } from './user-read-handlers.js';
 export { runKeycloakUserImportSync, syncUsersFromKeycloakInternal } from './user-import-sync-handler.js';

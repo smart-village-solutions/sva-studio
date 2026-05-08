@@ -74,6 +74,7 @@ describe('GroupsPage', () => {
     ],
     isLoading: false,
     error: null,
+    detailError: null,
     mutationError: null,
     refetch: vi.fn(),
     clearMutationError: vi.fn(),
@@ -157,6 +158,39 @@ describe('GroupsPage', () => {
 
     expect(refetch).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(deleteGroup).toHaveBeenCalledWith('group-1'));
+  });
+
+  it('renders the request id for page-level errors', async () => {
+    useGroupsMock.mockReturnValue(
+      createGroupsState({
+        error: {
+          status: 503,
+          code: 'database_unavailable',
+          message: 'kaputt',
+          requestId: 'req-groups-1',
+        },
+      })
+    );
+
+    render(<GroupsPage />);
+
+    expect(screen.getByText('Request-ID: req-groups-1')).toBeTruthy();
+  });
+
+  it('does not render the page-level error banner when only row detail loading fails', async () => {
+    const loadGroupDetail = vi.fn().mockResolvedValue(null);
+    useGroupsMock.mockReturnValue(
+      createGroupsState({
+        error: null,
+        loadGroupDetail,
+      })
+    );
+
+    render(<GroupsPage />);
+
+    expect(screen.getByText('Admins')).toBeTruthy();
+    await waitFor(() => expect(loadGroupDetail).toHaveBeenCalledWith('group-1'));
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 
   it('shows a guard message without instance context', () => {

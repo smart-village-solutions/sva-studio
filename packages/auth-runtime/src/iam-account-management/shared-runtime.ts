@@ -96,7 +96,7 @@ export const resolveIdentityProviderForInstance = async (
     try {
       const config = getKeycloakAdminClientConfigFromEnv(instance.authRealm);
       const client = new KeycloakAdminClient(config);
-      return {
+      const resolution: IdentityProviderResolution = {
         provider: client,
         realm: config.realm,
         source: 'instance',
@@ -105,6 +105,15 @@ export const resolveIdentityProviderForInstance = async (
         executionMode,
         getCircuitBreakerState: () => client.getCircuitBreakerState(),
       };
+      logger.info('Instance identity provider resolved', {
+        instance_id: instanceId,
+        realm: resolution.realm,
+        admin_realm: resolution.adminRealm,
+        client_id: resolution.clientId,
+        source: resolution.source,
+        execution_mode: resolution.executionMode,
+      });
+      return resolution;
     } catch (error) {
       logger.warn('Instance identity provider resolution failed in break-glass mode', {
         instance_id: instanceId,
@@ -138,7 +147,7 @@ export const resolveIdentityProviderForInstance = async (
       clientSecret: resolvedSecret,
     } as const;
     const client = new KeycloakAdminClient(config);
-    return {
+    const resolution: IdentityProviderResolution = {
       provider: client,
       realm: config.realm,
       source: 'instance',
@@ -147,6 +156,15 @@ export const resolveIdentityProviderForInstance = async (
       executionMode,
       getCircuitBreakerState: () => client.getCircuitBreakerState(),
     };
+    logger.info('Instance identity provider resolved', {
+      instance_id: instanceId,
+      realm: resolution.realm,
+      admin_realm: resolution.adminRealm,
+      client_id: resolution.clientId,
+      source: resolution.source,
+      execution_mode: resolution.executionMode,
+    });
+    return resolution;
   } catch (error) {
       logger.warn('Instance identity provider resolution failed while loading tenant admin credentials', {
         instance_id: instanceId,

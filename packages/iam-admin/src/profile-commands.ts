@@ -271,6 +271,11 @@ WHERE id = $1::uuid
             normalizeSeedValue(sessionProfile?.displayName)
         ),
         error_name: error instanceof Error ? error.name : 'UnknownError',
+        error_message: error instanceof Error ? error.message : String(error),
+        error_code:
+          error && typeof error === 'object' && 'code' in error && typeof error.code === 'string'
+            ? error.code
+            : undefined,
       });
     }
 

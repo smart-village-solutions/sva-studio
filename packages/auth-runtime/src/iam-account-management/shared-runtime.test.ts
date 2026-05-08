@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
   logger: {
+    info: vi.fn(),
     warn: vi.fn(),
   },
   loadInstanceById: vi.fn(),
@@ -33,6 +34,7 @@ vi.mock('../config-tenant-secret.js', () => ({
 describe('iam account management shared runtime logging', () => {
   beforeEach(() => {
     vi.resetModules();
+    state.logger.info.mockReset();
     state.logger.warn.mockReset();
     state.loadInstanceById.mockReset();
     state.getKeycloakAdminClientConfigFromEnv.mockReset();
@@ -122,6 +124,37 @@ describe('iam account management shared runtime logging', () => {
       expect.objectContaining({
         instance_id: 'instance-1',
         reason_code: 'tenant_admin_credentials_incomplete',
+      })
+    );
+  });
+
+  it('returns and logs the resolved tenant admin identity provider metadata', async () => {
+    state.loadInstanceById.mockResolvedValueOnce({
+      authRealm: 'tenant-realm',
+      tenantAdminClient: { clientId: 'tenant-admin' },
+    });
+    state.resolveTenantAdminClientSecret.mockResolvedValueOnce({ secret: 'tenant-secret' });
+
+    const { resolveIdentityProviderForInstance } = await import('./shared-runtime.js');
+
+    const resolution = await resolveIdentityProviderForInstance('instance-1');
+
+    expect(resolution).toMatchObject({
+      realm: 'tenant-realm',
+      source: 'instance',
+      clientId: 'tenant-admin',
+      adminRealm: 'tenant-realm',
+      executionMode: 'tenant_admin',
+    });
+    expect(state.logger.info).toHaveBeenCalledWith(
+      'Instance identity provider resolved',
+      expect.objectContaining({
+        instance_id: 'instance-1',
+        realm: 'tenant-realm',
+        admin_realm: 'tenant-realm',
+        client_id: 'tenant-admin',
+        source: 'instance',
+        execution_mode: 'tenant_admin',
       })
     );
   });

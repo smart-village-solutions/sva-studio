@@ -13,7 +13,7 @@ export type GroupQueryClient = {
   ) => Promise<{ readonly rowCount: number; readonly rows: TRow[] }>;
 };
 
-const GROUP_SELECT_SQL = `
+const GROUP_SELECT_COLUMNS_SQL = `
   g.id,
   g.instance_id,
   g.group_key,
@@ -25,6 +25,9 @@ const GROUP_SELECT_SQL = `
   g.updated_at,
   COUNT(DISTINCT ag.account_id)::int AS member_count,
   COUNT(DISTINCT gr.role_id)::int    AS role_count
+`;
+
+const GROUP_FROM_AND_JOINS_SQL = `
 FROM iam.groups g
 LEFT JOIN iam.account_groups ag
   ON ag.instance_id = g.instance_id
@@ -33,21 +36,24 @@ LEFT JOIN iam.account_groups ag
 LEFT JOIN iam.group_roles gr
   ON gr.instance_id = g.instance_id
  AND gr.group_id = g.id
-WHERE g.instance_id = $1
-GROUP BY g.id
 `;
 
 const GROUP_LIST_SQL = `
 SELECT
-${GROUP_SELECT_SQL}
+${GROUP_SELECT_COLUMNS_SQL}
+${GROUP_FROM_AND_JOINS_SQL}
+WHERE g.instance_id = $1
+GROUP BY g.id
 ORDER BY g.display_name ASC
 `;
 
 const GROUP_DETAIL_SQL = `
 SELECT
-${GROUP_SELECT_SQL}
+${GROUP_SELECT_COLUMNS_SQL}
+${GROUP_FROM_AND_JOINS_SQL}
 WHERE g.instance_id = $1
   AND g.id = $2::uuid
+GROUP BY g.id
 LIMIT 1
 `;
 

@@ -51,6 +51,13 @@ type ProfileDiagnosticsStage =
   | 'rate_limit'
   | 'load_profile_detail';
 
+type ProfileUpdateFailureStage =
+  | 'load_existing_profile'
+  | 'identity_provider_resolution'
+  | 'identity_sync'
+  | 'local_persistence'
+  | 'projection';
+
 type ProfileDiagnosticResponseBody = {
   error?: {
     code?: string;
@@ -58,6 +65,30 @@ type ProfileDiagnosticResponseBody = {
     message?: string;
   };
   requestId?: string;
+};
+
+type ResolvedTenantIdentityProvider = Exclude<
+  Awaited<ReturnType<typeof resolveIdentityProviderForInstance>>,
+  null
+>;
+
+type ProfileUpdateAttemptState = {
+  existing_profile_loaded: boolean;
+  identity_provider_resolved: boolean;
+  identity_sync_attempted: boolean;
+  identity_sync_succeeded: boolean;
+  local_db_write_attempted: boolean;
+  local_db_write_succeeded: boolean;
+  compensation_attempted: boolean;
+  compensation_succeeded: boolean;
+  projected_detail_resolved: boolean;
+  failure_stage: ProfileUpdateFailureStage;
+  provider_realm?: string;
+  provider_admin_realm?: string;
+  provider_client_id?: string;
+  provider_source?: string;
+  provider_execution_mode?: string;
+  keycloak_subject?: string;
 };
 
 const PLATFORM_PROFILE_ROLES = new Set(['system_admin', 'instance_registry_admin']);
@@ -293,8 +324,11 @@ const resolveProjectedProfileDetail = async (input: {
   );
 };
 
-const ensureIdentityProvider = async (instanceId: string, requestId?: string) => {
-  const identityProvider = await resolveIdentityProviderForInstance(instanceId, {
+const ensureIdentityProvider = async (
+  actor: ActorInfo,
+  keycloakSubject?: string
+): Promise<Response | ResolvedTenantIdentityProvider> => {
+  const identityProvider = await resolveIdentityProviderForInstance(actor.instanceId, {
     executionMode: 'tenant_admin',
   });
   if (!identityProvider) {
@@ -302,17 +336,30 @@ const ensureIdentityProvider = async (instanceId: string, requestId?: string) =>
       409,
       'tenant_admin_client_not_configured',
       'Tenant-lokale Keycloak-Administration ist nicht konfiguriert.',
-      requestId,
+      actor.requestId,
       {
         dependency: 'keycloak',
         execution_mode: 'tenant_admin',
-        instance_id: instanceId,
+        instance_id: actor.instanceId,
         reason_code: 'tenant_admin_client_not_configured',
       }
     );
   }
 
-  return identityProvider.provider;
+  logger.info('IAM profile tenant identity provider resolved', {
+    operation: 'update_my_profile',
+    instance_id: actor.instanceId,
+    request_id: actor.requestId,
+    trace_id: actor.traceId,
+    keycloak_subject: keycloakSubject,
+    realm: identityProvider.realm,
+    admin_realm: identityProvider.adminRealm,
+    client_id: identityProvider.clientId,
+    source: identityProvider.source,
+    execution_mode: identityProvider.executionMode,
+  });
+
+  return identityProvider;
 };
 
 const shouldUpdateIdentityProfile = (payload: ProfileUpdatePayload): boolean =>
@@ -334,6 +381,21 @@ type UpdateIdentityUserFn = (
   input: UpdateIdentityUserInput
 ) => Promise<void>;
 
+const isKeycloakRequestError = (error: unknown): error is KeycloakAdminRequestError =>
+  error instanceof KeycloakAdminRequestError ||
+  (error instanceof Error &&
+    error.name === 'KeycloakAdminRequestError' &&
+    'statusCode' in error &&
+    'code' in error &&
+    'retryable' in error);
+
+const isKeycloakUnavailableError = (error: unknown): error is KeycloakAdminUnavailableError =>
+  error instanceof KeycloakAdminUnavailableError ||
+  (error instanceof Error &&
+    error.name === 'KeycloakAdminUnavailableError' &&
+    'statusCode' in error &&
+    (error as { statusCode?: unknown }).statusCode === 503);
+
 const syncIdentityProfile = async (
   keycloakSubject: string,
   payload: ProfileUpdatePayload,
@@ -353,9 +415,9 @@ const restoreIdentityProfile = async (
   actor: ActorInfo,
   existingDetail: Awaited<ReturnType<typeof loadMyProfileDetail>>,
   updateUser: UpdateIdentityUserFn
-): Promise<void> => {
+): Promise<boolean> => {
   if (!existingDetail) {
-    return;
+    return false;
   }
 
   try {
@@ -370,6 +432,7 @@ const restoreIdentityProfile = async (
         },
       })
     );
+    return true;
   } catch (compensationError) {
     logger.error('IAM profile update compensation failed', {
       operation: 'update_my_profile_compensation',
@@ -379,11 +442,33 @@ const restoreIdentityProfile = async (
       keycloak_subject: existingDetail.keycloakSubject,
       error: compensationError instanceof Error ? compensationError.message : String(compensationError),
     });
+    return false;
   }
 };
 
-const handleProfileUpdateError = (actor: ActorInfo, error: unknown): Response => {
-  if (error instanceof KeycloakAdminRequestError || error instanceof KeycloakAdminUnavailableError) {
+const handleProfileUpdateError = (
+  actor: ActorInfo,
+  error: unknown,
+  attemptState?: ProfileUpdateAttemptState
+): Response => {
+  logger.error('IAM profile update failed', {
+    operation: 'update_my_profile',
+    instance_id: actor.instanceId,
+    request_id: actor.requestId,
+    trace_id: actor.traceId,
+    error_type: error instanceof Error ? error.constructor.name : typeof error,
+    error: error instanceof Error ? error.message : String(error),
+    ...(isKeycloakRequestError(error)
+      ? {
+          keycloak_error_code: error.code,
+          keycloak_status_code: error.statusCode,
+          keycloak_retryable: error.retryable,
+        }
+      : {}),
+    ...(attemptState ?? {}),
+  });
+
+  if (isKeycloakRequestError(error) || isKeycloakUnavailableError(error)) {
     return createApiError(
       503,
       'keycloak_unavailable',
@@ -391,20 +476,11 @@ const handleProfileUpdateError = (actor: ActorInfo, error: unknown): Response =>
       actor.requestId
     );
   }
-
-  const errorMessage = error instanceof Error ? error.message : String(error);
   const classified = classifyIamDiagnosticError(error, 'Profil konnte nicht aktualisiert werden.', actor.requestId);
   if (classified.details.reason_code === 'pii_encryption_missing') {
     return createApiError(classified.status, classified.code, 'PII-Verschlüsselung ist nicht konfiguriert.', actor.requestId, classified.details);
   }
 
-  logger.error('IAM profile update failed', {
-    operation: 'update_my_profile',
-    instance_id: actor.instanceId,
-    request_id: actor.requestId,
-    trace_id: actor.traceId,
-    error: errorMessage,
-  });
   iamUserOperationsCounter.add(1, { action: 'update_my_profile', result: 'failure' });
   return createApiError(
     classified.status,
@@ -516,6 +592,19 @@ export const updateMyProfileInternal = async (
     return payload.error;
   }
 
+  const attemptState: ProfileUpdateAttemptState = {
+    existing_profile_loaded: false,
+    identity_provider_resolved: false,
+    identity_sync_attempted: false,
+    identity_sync_succeeded: false,
+    local_db_write_attempted: false,
+    local_db_write_succeeded: false,
+    compensation_attempted: false,
+    compensation_succeeded: false,
+    projected_detail_resolved: false,
+    failure_stage: 'load_existing_profile',
+  };
+
   try {
     const existingDetail = await loadMyProfileDetail(
       actorContext.actor,
@@ -525,41 +614,61 @@ export const updateMyProfileInternal = async (
     if (!existingDetail) {
       return createProfileNotFoundResponse(actorContext.actor.requestId);
     }
+    attemptState.existing_profile_loaded = true;
+    attemptState.keycloak_subject = existingDetail.keycloakSubject;
 
-    const identityProvider = await ensureIdentityProvider(
-      actorContext.actor.instanceId,
-      actorContext.actor.requestId
+    attemptState.failure_stage = 'identity_provider_resolution';
+    const identityProviderResolution = await ensureIdentityProvider(
+      actorContext.actor,
+      existingDetail.keycloakSubject
     );
-    if (identityProvider instanceof Response) {
-      return identityProvider;
+    if (identityProviderResolution instanceof Response) {
+      return identityProviderResolution;
     }
+    attemptState.identity_provider_resolved = true;
+    attemptState.provider_realm = identityProviderResolution.realm;
+    attemptState.provider_admin_realm = identityProviderResolution.adminRealm;
+    attemptState.provider_client_id = identityProviderResolution.clientId;
+    attemptState.provider_source = identityProviderResolution.source;
+    attemptState.provider_execution_mode = identityProviderResolution.executionMode;
+
+    const identityProvider = identityProviderResolution.provider;
 
     const shouldUpdateIdentity = shouldUpdateIdentityProfile(payload.data);
 
     try {
       if (shouldUpdateIdentity) {
+        attemptState.failure_stage = 'identity_sync';
+        attemptState.identity_sync_attempted = true;
         await syncIdentityProfile(existingDetail.keycloakSubject, payload.data, identityProvider.updateUser.bind(identityProvider));
+        attemptState.identity_sync_succeeded = true;
       }
 
+      attemptState.failure_stage = 'local_persistence';
+      attemptState.local_db_write_attempted = true;
       const detail = await updateMyProfileDetail(
         actorContext.actor,
         actorContext.dbKeycloakSubject,
         payload.data
       );
+      attemptState.local_db_write_succeeded = true;
       if (!detail) {
         return createProfileNotFoundResponse(actorContext.actor.requestId);
       }
 
+      attemptState.failure_stage = 'projection';
       const projectedDetail = await resolveProjectedProfileDetail({
         instanceId: actorContext.actor.instanceId,
         user: detail,
       });
+      attemptState.projected_detail_resolved = true;
 
       iamUserOperationsCounter.add(1, { action: 'update_my_profile', result: 'success' });
       return jsonResponse(200, asApiItem(projectedDetail, actorContext.actor.requestId));
     } catch (error) {
-      if (shouldUpdateIdentity) {
-        await restoreIdentityProfile(
+      if (shouldUpdateIdentity && attemptState.identity_sync_succeeded) {
+        attemptState.compensation_attempted = true;
+        attemptState.compensation_succeeded = await restoreIdentityProfile(
           actorContext.actor,
           existingDetail,
           identityProvider.updateUser.bind(identityProvider)
@@ -569,7 +678,7 @@ export const updateMyProfileInternal = async (
       throw error;
     }
   } catch (error) {
-    return handleProfileUpdateError(actorContext.actor, error);
+    return handleProfileUpdateError(actorContext.actor, error, attemptState);
   }
 };
 

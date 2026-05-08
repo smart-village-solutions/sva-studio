@@ -84,6 +84,7 @@ export const GroupDetailPage = ({ groupId }: GroupDetailPageProps) => {
   const rolesApi = useRoles();
   const {
     isLoading,
+    detailError,
     mutationError,
     loadGroupDetail,
     updateGroup,
@@ -207,7 +208,13 @@ export const GroupDetailPage = ({ groupId }: GroupDetailPageProps) => {
         </Button>
       </header>
 
-      {!group && !isLoading ? (
+      {!group && detailError ? (
+        <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
+          <AlertDescription>{groupErrorMessage(detailError, 'admin.groups.messages.error')}</AlertDescription>
+        </Alert>
+      ) : null}
+
+      {!group && !isLoading && !detailError ? (
         <Card className="p-5 text-sm text-muted-foreground" role="status">
           {t('admin.groups.detail.notFound')}
         </Card>

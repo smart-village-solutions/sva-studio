@@ -13,6 +13,12 @@ const removeGroupRoleMock = vi.fn();
 const assignGroupMembershipMock = vi.fn();
 const removeGroupMembershipMock = vi.fn();
 const asIamErrorMock = vi.fn();
+const groupsLogger = {
+  debug: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+};
 const authMockValue = {
   user: {
     id: 'admin-1',
@@ -55,6 +61,28 @@ vi.mock('../providers/auth-provider', () => ({
   useAuth: () => authMockValue,
 }));
 
+vi.mock('../lib/browser-operation-logging', () => ({
+  createOperationLogger: () => groupsLogger,
+  logBrowserOperationStart: (logger: typeof groupsLogger, eventName: string, meta: Record<string, unknown> = {}) =>
+    logger.debug(eventName, { result: 'started', ...meta }),
+  logBrowserOperationSuccess: (logger: typeof groupsLogger, eventName: string, meta: Record<string, unknown> = {}) =>
+    logger.info(eventName, { result: 'succeeded', ...meta }),
+  logBrowserOperationFailure: (
+    logger: typeof groupsLogger,
+    eventName: string,
+    error: { status?: number; code?: string; requestId?: string; message?: string },
+    meta: Record<string, unknown> = {}
+  ) =>
+    logger.warn(eventName, {
+      result: 'failed',
+      ...meta,
+      ...(typeof error.status === 'number' ? { status: error.status } : {}),
+      ...(typeof error.code === 'string' ? { error_code: error.code } : {}),
+      ...(typeof error.requestId === 'string' ? { request_id: error.requestId } : {}),
+      error_message: error.message ?? String(error),
+    }),
+}));
+
 const createGroupListItem = (overrides: Record<string, unknown> = {}) => ({
   id: 'group-1',
   groupKey: 'admins',
@@ -87,6 +115,10 @@ describe('useGroups', () => {
     removeGroupMembershipMock.mockReset();
     asIamErrorMock.mockReset();
     authMockValue.invalidatePermissions.mockReset();
+    groupsLogger.debug.mockReset();
+    groupsLogger.info.mockReset();
+    groupsLogger.warn.mockReset();
+    groupsLogger.error.mockReset();
   });
 
   it('loads groups on mount', async () => {
@@ -304,7 +336,53 @@ describe('useGroups', () => {
     });
 
     expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
-    expect(result.current.error).toBe(forbiddenError);
+    expect(result.current.error).toBeNull();
+    expect(result.current.detailError).toBe(forbiddenError);
+  });
+
+  it('keeps list data visible when a row detail fetch fails', async () => {
+    const databaseError = {
+      status: 503,
+      code: 'database_unavailable',
+      message: 'IAM-Datenbank ist nicht erreichbar.',
+      requestId: 'req-detail-1',
+    };
+    asIamErrorMock.mockReturnValue(databaseError);
+    listGroupsMock.mockResolvedValueOnce({
+      data: [createGroupListItem()],
+      pagination: {
+        page: 1,
+        pageSize: 1,
+        total: 1,
+      },
+    });
+    getGroupMock.mockRejectedValueOnce(new Error('db down'));
+
+    const { result } = renderHook(() => useGroups());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.groups).toHaveLength(1);
+    });
+
+    await act(async () => {
+      await expect(result.current.loadGroupDetail('group-1')).resolves.toBeNull();
+    });
+
+    expect(result.current.groups).toHaveLength(1);
+    expect(result.current.error).toBeNull();
+    expect(result.current.detailError).toBe(databaseError);
+    expect(groupsLogger.warn).toHaveBeenCalledWith(
+      'group_detail_error_classified',
+      expect.objectContaining({
+        result: 'failed',
+        operation: 'get_group',
+        group_id: 'group-1',
+        status: 503,
+        error_code: 'database_unavailable',
+        request_id: 'req-detail-1',
+      })
+    );
   });
 
   it('returns false and stores mutation error when create fails without 403', async () => {

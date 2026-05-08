@@ -62,6 +62,7 @@ const createDeps = (
     isUuid: vi.fn(() => true),
     jsonResponse: vi.fn(createJsonResponse),
     logger: {
+      info: vi.fn(),
       error: vi.fn(),
     },
     readPage: vi.fn(() => ({ page: 1, pageSize: 20 })),
@@ -146,6 +147,16 @@ describe('createGroupReadHandlers', () => {
     await expect(response.json()).resolves.toMatchObject({
       error: { code: 'invalid_request', message: 'Gruppe nicht gefunden' },
     });
+    expect(deps.logger.info).toHaveBeenCalledWith(
+      'Group detail not found',
+      expect.objectContaining({
+        operation: 'group_detail',
+        workspace_id: 'inst-g',
+        group_id: groupRow.id,
+        request_id: 'req-groups',
+        trace_id: 'trace-groups',
+      })
+    );
   });
 
   it('returns group detail with assigned roles and memberships', async () => {

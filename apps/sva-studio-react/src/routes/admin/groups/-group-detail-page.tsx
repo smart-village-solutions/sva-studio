@@ -3,6 +3,7 @@ import type { IamAdminGroupDetail } from '@sva/core';
 import React from 'react';
 
 import { ConfirmDialog } from '../../../components/ConfirmDialog';
+import { IamRuntimeDiagnosticDetails } from '../../../components/iam-runtime-diagnostic-details';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Button } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
@@ -210,7 +211,10 @@ export const GroupDetailPage = ({ groupId }: GroupDetailPageProps) => {
 
       {!group && detailError ? (
         <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
-          <AlertDescription>{groupErrorMessage(detailError, 'admin.groups.messages.error')}</AlertDescription>
+          <AlertDescription className="flex flex-col gap-2">
+            <span>{groupErrorMessage(detailError, 'admin.groups.messages.error')}</span>
+            <IamRuntimeDiagnosticDetails error={detailError} />
+          </AlertDescription>
         </Alert>
       ) : null}
 
@@ -390,7 +394,10 @@ export const GroupDetailPage = ({ groupId }: GroupDetailPageProps) => {
 
       {mutationError ? (
         <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
-          <AlertDescription>{groupErrorMessage(mutationError, 'admin.groups.messages.error')}</AlertDescription>
+          <AlertDescription className="flex flex-col gap-2">
+            <span>{groupErrorMessage(mutationError, 'admin.groups.messages.error')}</span>
+            <IamRuntimeDiagnosticDetails error={mutationError} />
+          </AlertDescription>
         </Alert>
       ) : null}
 

@@ -13,12 +13,14 @@ const removeGroupRoleMock = vi.fn();
 const assignGroupMembershipMock = vi.fn();
 const removeGroupMembershipMock = vi.fn();
 const asIamErrorMock = vi.fn();
-const groupsLogger = {
-  debug: vi.fn(),
-  info: vi.fn(),
-  warn: vi.fn(),
-  error: vi.fn(),
-};
+const { groupsLogger } = vi.hoisted(() => ({
+  groupsLogger: {
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  },
+}));
 const authMockValue = {
   user: {
     id: 'admin-1',

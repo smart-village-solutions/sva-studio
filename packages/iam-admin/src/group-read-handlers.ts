@@ -22,6 +22,7 @@ export type GroupReadActor = {
 };
 
 export type GroupReadLogger = {
+  readonly info: (message: string, meta: Readonly<Record<string, unknown>>) => void;
   readonly error: (message: string, meta: Readonly<Record<string, unknown>>) => void;
 };
 
@@ -155,6 +156,13 @@ export const createGroupReadHandlers = (deps: GroupReadHandlerDeps) => {
         loadGroupDetail(client, { instanceId: actor.instanceId, groupId })
       );
       if (!group) {
+        deps.logger.info('Group detail not found', {
+          operation: 'group_detail',
+          workspace_id: actor.instanceId,
+          group_id: groupId,
+          request_id: actor.requestId,
+          trace_id: actor.traceId,
+        });
         return deps.createApiError(404, 'invalid_request', 'Gruppe nicht gefunden', actor.requestId);
       }
       return deps.jsonResponse(200, deps.asApiItem(group, actor.requestId));

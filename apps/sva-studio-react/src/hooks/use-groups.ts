@@ -133,6 +133,17 @@ export const useGroups = (): UseGroupsResult => {
           });
         }
         setDetailError(resolvedError);
+        groupsLogger.warn('group_detail_error_classified', {
+          result: 'failed',
+          operation: 'get_group',
+          group_id: groupId,
+          status: resolvedError.status,
+          error_code: resolvedError.code,
+          request_id: resolvedError.requestId,
+          classification: resolvedError.classification,
+          diagnostic_status: resolvedError.diagnosticStatus,
+          recommended_action: resolvedError.recommendedAction,
+        });
         logBrowserOperationFailure(groupsLogger, 'group_detail_load_failed', resolvedError, {
           operation: 'get_group',
           group_id: groupId,

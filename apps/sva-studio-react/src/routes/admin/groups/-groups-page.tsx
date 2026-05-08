@@ -4,6 +4,7 @@ import type { IamAdminGroupDetail } from '@sva/core';
 import React from 'react';
 
 import { ConfirmDialog } from '../../../components/ConfirmDialog';
+import { IamRuntimeDiagnosticDetails } from '../../../components/iam-runtime-diagnostic-details';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
@@ -201,6 +202,7 @@ export const GroupsPage = () => {
         <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
           <AlertDescription className="flex flex-col gap-3">
             <span>{groupErrorMessage(groupsApi.error, 'admin.groups.messages.error')}</span>
+            <IamRuntimeDiagnosticDetails error={groupsApi.error} />
             <div>
               <Button
                 type="button"

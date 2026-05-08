@@ -6,10 +6,16 @@ Das System SHALL fuer Frontend-Unit- und Integrations-Tests, die HTTP-Verhalten 
 
 #### Scenario: Frontend-Test prueft API-Verhalten
 
-- **WHEN** ein Frontend-Test Request-, Fehler-, Lade- oder Retry-Verhalten gegen HTTP-Endpunkte prueft
+- **WHEN** ein neuer oder grundlegend ueberarbeiteter Frontend-Test Request-, Fehler-, Lade- oder Retry-Verhalten gegen HTTP-Endpunkte prueft
 - **THEN** beschreibt der Test das Netzwerkverhalten ueber `msw`
 - **AND** mockt nicht primaer interne Fetch-Wrapper oder komponentenlokale Implementierungsdetails
 - **AND** bleibt derselbe Mocking-Ansatz zwischen Browser- und Node-Testumgebungen wiederverwendbar
+
+#### Scenario: Bestehender Test nutzt noch direkten Fetch-Stub
+
+- **WHEN** ein bestehender HTTP-naher Frontend-Test noch direkte `fetch`- oder Wrapper-Stubs nutzt
+- **THEN** wird er spaetestens bei grundlegendem Umbau oder in einem definierten Pilotblock auf `msw` migriert
+- **AND** muss nicht allein aus kosmetischen Gruenden sofort umgestellt werden
 
 #### Scenario: MSW ersetzt keinen echten E2E- oder Infra-Lauf
 

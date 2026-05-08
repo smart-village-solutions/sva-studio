@@ -37,7 +37,9 @@ const groupErrorMessage = (error: IamHttpError | null, fallbackKey: TranslationK
     case 'invalid_request':
       return t('admin.groups.errors.invalidRequest');
     case 'database_unavailable':
-      return t('admin.groups.errors.databaseUnavailable');
+      return error.safeDetails?.reason_code === 'schema_drift'
+        ? t('admin.groups.errors.databaseSchemaDrift')
+        : t('admin.groups.errors.databaseUnavailable');
     default:
       return t(fallbackKey);
   }

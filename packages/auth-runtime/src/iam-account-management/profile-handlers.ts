@@ -397,16 +397,17 @@ const isKeycloakUnavailableError = (error: unknown): error is KeycloakAdminUnava
     (error as { statusCode?: unknown }).statusCode === 503);
 
 const syncIdentityProfile = async (
+  existingDetail: Awaited<ReturnType<typeof loadMyProfileDetail>>,
   keycloakSubject: string,
   payload: ProfileUpdatePayload,
   updateUser: UpdateIdentityUserFn
 ): Promise<void> =>
   trackKeycloakCall('update_my_profile', () =>
     updateUser(keycloakSubject, {
-      username: payload.username,
-      email: payload.email,
-      firstName: payload.firstName,
-      lastName: payload.lastName,
+      username: payload.username ?? existingDetail?.username,
+      email: payload.email ?? existingDetail?.email,
+      firstName: payload.firstName ?? existingDetail?.firstName,
+      lastName: payload.lastName ?? existingDetail?.lastName,
       attributes: buildIdentityAttributes(payload.displayName),
     })
   );
@@ -446,6 +447,43 @@ const restoreIdentityProfile = async (
   }
 };
 
+const buildKeycloakProfileUpdateErrorResponse = (
+  actor: ActorInfo,
+  error: KeycloakAdminRequestError
+): Response | undefined => {
+  if (error.statusCode === 400) {
+    return createApiError(
+      400,
+      'invalid_request',
+      'Profildaten wurden von Keycloak abgelehnt.',
+      actor.requestId,
+      {
+        dependency: 'keycloak',
+        reason_code: 'keycloak_validation_failed',
+        keycloak_error_code: error.code,
+        keycloak_status_code: error.statusCode,
+      }
+    );
+  }
+
+  if (error.statusCode === 409) {
+    return createApiError(
+      409,
+      'conflict',
+      'Profil konnte wegen eines Konflikts nicht mit Keycloak synchronisiert werden.',
+      actor.requestId,
+      {
+        dependency: 'keycloak',
+        reason_code: 'keycloak_conflict',
+        keycloak_error_code: error.code,
+        keycloak_status_code: error.statusCode,
+      }
+    );
+  }
+
+  return undefined;
+};
+
 const handleProfileUpdateError = (
   actor: ActorInfo,
   error: unknown,
@@ -467,6 +505,13 @@ const handleProfileUpdateError = (
       : {}),
     ...(attemptState ?? {}),
   });
+
+  if (isKeycloakRequestError(error)) {
+    const mappedKeycloakError = buildKeycloakProfileUpdateErrorResponse(actor, error);
+    if (mappedKeycloakError) {
+      return mappedKeycloakError;
+    }
+  }
 
   if (isKeycloakRequestError(error) || isKeycloakUnavailableError(error)) {
     return createApiError(
@@ -640,7 +685,12 @@ export const updateMyProfileInternal = async (
       if (shouldUpdateIdentity) {
         attemptState.failure_stage = 'identity_sync';
         attemptState.identity_sync_attempted = true;
-        await syncIdentityProfile(existingDetail.keycloakSubject, payload.data, identityProvider.updateUser.bind(identityProvider));
+        await syncIdentityProfile(
+          existingDetail,
+          existingDetail.keycloakSubject,
+          payload.data,
+          identityProvider.updateUser.bind(identityProvider)
+        );
         attemptState.identity_sync_succeeded = true;
       }
 

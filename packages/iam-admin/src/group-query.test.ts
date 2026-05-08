@@ -47,5 +47,13 @@ describe('group-query', () => {
     expect(detailQuery).toContain('GROUP BY g.id');
     expect(detailQuery.indexOf('AND g.id = $2::uuid')).toBeLessThan(detailQuery.indexOf('GROUP BY g.id'));
     expect(detailQuery.match(/\bWHERE\b/g)?.length).toBe(1);
+
+    const membershipsQuery = String(query.mock.calls[2]?.[0]);
+    expect(membershipsQuery).toContain('a.display_name_ciphertext');
+    expect(membershipsQuery).toContain('a.first_name_ciphertext');
+    expect(membershipsQuery).toContain('a.last_name_ciphertext');
+    expect(membershipsQuery).toContain('a.email_ciphertext');
+    expect(membershipsQuery).not.toContain('COALESCE(a.display_name');
+    expect(membershipsQuery).not.toContain('CONCAT_WS(');
   });
 });

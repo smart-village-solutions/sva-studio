@@ -13,6 +13,21 @@ export type GroupQueryClient = {
   ) => Promise<{ readonly rowCount: number; readonly rows: TRow[] }>;
 };
 
+export class GroupQueryExecutionError extends Error {
+  readonly stage: 'group_detail' | 'group_memberships' | 'group_roles';
+  readonly cause: unknown;
+
+  constructor(
+    stage: 'group_detail' | 'group_memberships' | 'group_roles',
+    cause: unknown
+  ) {
+    super(cause instanceof Error ? cause.message : String(cause));
+    this.name = 'GroupQueryExecutionError';
+    this.stage = stage;
+    this.cause = cause;
+  }
+}
+
 const GROUP_SELECT_COLUMNS_SQL = `
   g.id,
   g.instance_id,
@@ -63,7 +78,10 @@ SELECT
   ag.account_id,
   ag.group_id,
   a.keycloak_subject,
-  COALESCE(a.display_name, NULLIF(CONCAT_WS(' ', a.first_name, a.last_name), ''), a.email) AS display_name,
+  a.display_name_ciphertext,
+  a.first_name_ciphertext,
+  a.last_name_ciphertext,
+  a.email_ciphertext,
   ag.valid_from::text,
   ag.valid_until::text,
   ag.assigned_at::text,
@@ -73,7 +91,7 @@ JOIN iam.accounts a
   ON a.id = ag.account_id
 WHERE ag.instance_id = $1
   AND ag.group_id = $2::uuid
-ORDER BY COALESCE(a.display_name, NULLIF(CONCAT_WS(' ', a.first_name, a.last_name), ''), a.email, a.keycloak_subject) ASC;
+ORDER BY a.keycloak_subject ASC;
 `;
 
 export const loadGroupListItems = async (
@@ -88,17 +106,32 @@ export const loadGroupDetail = async (
   client: GroupQueryClient,
   input: { readonly instanceId: string; readonly groupId: string }
 ): Promise<IamAdminGroupDetail | null> => {
-  const rows = await client.query<GroupRow>(GROUP_DETAIL_SQL, [input.instanceId, input.groupId]);
+  let rows;
+  try {
+    rows = await client.query<GroupRow>(GROUP_DETAIL_SQL, [input.instanceId, input.groupId]);
+  } catch (error) {
+    throw new GroupQueryExecutionError('group_detail', error);
+  }
   const row = rows.rows[0];
   if (!row) {
     return null;
   }
 
-  const roleRows = await client.query<{ role_id: string }>(
-    'SELECT role_id FROM iam.group_roles WHERE instance_id = $1 AND group_id = $2::uuid',
-    [input.instanceId, input.groupId]
-  );
-  const membershipRows = await loadGroupMembershipRows(client, input);
+  let roleRows;
+  try {
+    roleRows = await client.query<{ role_id: string }>(
+      'SELECT role_id FROM iam.group_roles WHERE instance_id = $1 AND group_id = $2::uuid',
+      [input.instanceId, input.groupId]
+    );
+  } catch (error) {
+    throw new GroupQueryExecutionError('group_roles', error);
+  }
+  let membershipRows;
+  try {
+    membershipRows = await loadGroupMembershipRows(client, input);
+  } catch (error) {
+    throw new GroupQueryExecutionError('group_memberships', error);
+  }
 
   return {
     ...mapGroupListItem(row),

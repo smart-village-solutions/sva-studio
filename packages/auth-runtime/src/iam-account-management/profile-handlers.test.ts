@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { KeycloakAdminUnavailableError } from '../keycloak-admin-client.js';
+import { KeycloakAdminRequestError, KeycloakAdminUnavailableError } from '../keycloak-admin-client.js';
 
 const state = vi.hoisted(() => {
   const logger = {
@@ -244,6 +244,82 @@ describe('profile handlers', () => {
     );
   });
 
+  it('maps keycloak validation failures to invalid_request instead of keycloak_unavailable', async () => {
+    const updateUser = vi.fn(async () => {
+      throw new KeycloakAdminRequestError({
+        message: 'Keycloak update_user failed: error-user-attribute-required (email)',
+        statusCode: 400,
+        code: 'http_400',
+        retryable: false,
+      });
+    });
+    state.resolveIdentityProviderForInstance.mockResolvedValue({
+      provider: { updateUser },
+      realm: 'de-studio-sandbox',
+      source: 'instance',
+      clientId: 'tenant-admin-client',
+      adminRealm: 'de-studio-sandbox',
+      executionMode: 'tenant_admin',
+    });
+
+    const { updateMyProfileInternal } = await importSubject();
+
+    const response = await updateMyProfileInternal(
+      new Request('https://de-studio-sandbox.studio.smart-village.app/api/v1/iam/users/me/profile', {
+        method: 'PATCH',
+      }),
+      createAuthenticatedContext()
+    );
+    const payload = (await response.json()) as {
+      error: {
+        code: string;
+      };
+      requestId?: string;
+    };
+
+    expect(response.status).toBe(400);
+    expect(payload.error.code).toBe('invalid_request');
+    expect(payload.requestId).toBe('req-profile');
+  });
+
+  it('maps keycloak conflict failures to conflict instead of keycloak_unavailable', async () => {
+    const updateUser = vi.fn(async () => {
+      throw new KeycloakAdminRequestError({
+        message: 'Keycloak update_user failed: duplicate email',
+        statusCode: 409,
+        code: 'http_409',
+        retryable: false,
+      });
+    });
+    state.resolveIdentityProviderForInstance.mockResolvedValue({
+      provider: { updateUser },
+      realm: 'de-studio-sandbox',
+      source: 'instance',
+      clientId: 'tenant-admin-client',
+      adminRealm: 'de-studio-sandbox',
+      executionMode: 'tenant_admin',
+    });
+
+    const { updateMyProfileInternal } = await importSubject();
+
+    const response = await updateMyProfileInternal(
+      new Request('https://de-studio-sandbox.studio.smart-village.app/api/v1/iam/users/me/profile', {
+        method: 'PATCH',
+      }),
+      createAuthenticatedContext()
+    );
+    const payload = (await response.json()) as {
+      error: {
+        code: string;
+      };
+      requestId?: string;
+    };
+
+    expect(response.status).toBe(409);
+    expect(payload.error.code).toBe('conflict');
+    expect(payload.requestId).toBe('req-profile');
+  });
+
   it('marks the local persistence phase when the database write fails after a successful keycloak sync', async () => {
     const updateUser = vi.fn(async () => undefined);
     state.resolveIdentityProviderForInstance.mockResolvedValue({
@@ -288,5 +364,55 @@ describe('profile handlers', () => {
         provider_realm: 'de-studio-sandbox',
       })
     );
+  });
+
+  it('preserves the existing identity base fields for partial profile sync updates', async () => {
+    const updateUser = vi.fn(async () => undefined);
+    state.resolveIdentityProviderForInstance.mockResolvedValue({
+      provider: { updateUser },
+      realm: 'de-studio-sandbox',
+      source: 'instance',
+      clientId: 'tenant-admin-client',
+      adminRealm: 'de-studio-sandbox',
+      executionMode: 'tenant_admin',
+    });
+    state.parseRequestBody.mockResolvedValue({
+      ok: true,
+      data: {
+        displayName: 'Jane Example',
+      },
+    });
+    state.updateMyProfileDetail.mockResolvedValue({
+      id: 'account-1',
+      keycloakSubject: 'kc-user-1',
+      username: 'jane.doe',
+      email: 'jane@example.com',
+      firstName: 'Jane',
+      lastName: 'Doe',
+      displayName: 'Jane Example',
+      status: 'active',
+      roles: [],
+      mainserverUserApplicationSecretSet: false,
+    });
+
+    const { updateMyProfileInternal } = await importSubject();
+
+    const response = await updateMyProfileInternal(
+      new Request('https://de-studio-sandbox.studio.smart-village.app/api/v1/iam/users/me/profile', {
+        method: 'PATCH',
+      }),
+      createAuthenticatedContext()
+    );
+
+    expect(response.status).toBe(200);
+    expect(updateUser).toHaveBeenCalledWith('kc-user-1', {
+      username: 'jane.doe',
+      email: 'jane@example.com',
+      firstName: 'Jane',
+      lastName: 'Doe',
+      attributes: {
+        displayName: 'Jane Example',
+      },
+    });
   });
 });

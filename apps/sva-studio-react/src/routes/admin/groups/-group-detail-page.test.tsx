@@ -248,6 +248,34 @@ describe('GroupDetailPage', () => {
     expect(screen.queryByText('Die angeforderte Gruppe wurde nicht gefunden.')).toBeNull();
   });
 
+  it('shows a schema-drift specific detail error message when the backend classifies the failure accordingly', async () => {
+    useGroupsMock.mockReturnValue(
+      createGroupsState({
+        loadGroupDetail: vi.fn().mockResolvedValue(null),
+        detailError: {
+          status: 503,
+          code: 'database_unavailable',
+          message: 'kaputt',
+          requestId: 'req-detail-2',
+          safeDetails: {
+            reason_code: 'schema_drift',
+            schema_object: 'iam.accounts',
+            query_stage: 'group_memberships',
+          },
+        },
+      })
+    );
+
+    render(<GroupDetailPage groupId="group-1" />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert').textContent).toContain(
+        'Gruppendetails konnten wegen einer Server- oder Migrationsinkonsistenz nicht vollständig geladen werden. Bitte Deployment und Migrationen prüfen.'
+      );
+    });
+    expect(screen.getByText('Request-ID: req-detail-2')).toBeTruthy();
+  });
+
   it('loads the group detail only once during the initial render even when hook objects are recreated', async () => {
     const loadGroupDetail = vi.fn().mockResolvedValue(detailFixture);
 

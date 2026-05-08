@@ -1,6 +1,7 @@
 import type { ApiErrorCode } from '@sva/core';
 
 import {
+  GroupQueryExecutionError,
   loadGroupDetail,
   loadGroupListItems,
   type GroupQueryClient,
@@ -65,6 +66,11 @@ export type GroupReadHandlerDeps = {
 export type GroupReadApiErrorCode = ApiErrorCode;
 
 const ADMIN_ROLES = new Set(['system_admin', 'app_manager']);
+
+const isSchemaDriftLikeGroupQueryError = (error: unknown): boolean => {
+  const message = error instanceof Error ? error.message : String(error);
+  return /column .* does not exist|relation .* does not exist|syntax error|42P0\d|42703/i.test(message);
+};
 
 const resolveGroupReadActor = async (
   deps: GroupReadHandlerDeps,
@@ -167,14 +173,33 @@ export const createGroupReadHandlers = (deps: GroupReadHandlerDeps) => {
       }
       return deps.jsonResponse(200, deps.asApiItem(group, actor.requestId));
     } catch (error) {
+      const cause =
+        error instanceof GroupQueryExecutionError ? error.cause : error;
+      const queryStage = error instanceof GroupQueryExecutionError ? error.stage : 'group_list';
       deps.logger.error('Group detail query failed', {
         operation: 'group_detail',
         workspace_id: actor.instanceId,
         group_id: groupId,
+        query_stage: queryStage,
         error: error instanceof Error ? error.message : String(error),
+        error_cause: cause instanceof Error ? cause.message : String(cause),
         request_id: actor.requestId,
         trace_id: actor.traceId,
       });
+      if (isSchemaDriftLikeGroupQueryError(cause)) {
+        return deps.createApiError(
+          503,
+          'database_unavailable',
+          'Gruppendetails konnten wegen einer Server- oder Migrationsinkonsistenz nicht vollständig geladen werden.',
+          actor.requestId,
+          {
+            dependency: 'database',
+            reason_code: 'schema_drift',
+            schema_object: 'iam.accounts',
+            query_stage: queryStage,
+          }
+        );
+      }
       return deps.createApiError(
         503,
         'database_unavailable',

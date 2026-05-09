@@ -73,12 +73,14 @@ export const mapGroupMembership = (row: AccountGroupRow): IamAdminGroupMembershi
     row.last_name_ciphertext,
     `iam.accounts.last_name:${row.keycloak_subject}`
   );
-  const displayName = resolveUserDisplayName({
+  const email = revealField(row.email_ciphertext, `iam.accounts.email:${row.keycloak_subject}`);
+  const resolvedDisplayName = resolveUserDisplayName({
     decryptedDisplayName,
     firstName,
     lastName,
     keycloakSubject: row.keycloak_subject,
   });
+  const displayName = resolvedDisplayName === row.keycloak_subject && email ? email : resolvedDisplayName;
 
   return {
     instanceId: row.instance_id,

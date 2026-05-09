@@ -233,7 +233,10 @@ describe('createGroupReadHandlers', () => {
   it('maps schema drift style detail failures to a detailed database_unavailable error', async () => {
     const deps = createDeps([], {
       withInstanceScopedDb: vi.fn(async () => {
-        throw new GroupQueryExecutionError('detail_rows', new Error('column iam.accounts.display_name does not exist'));
+        throw new GroupQueryExecutionError(
+          'group_memberships',
+          new Error('column iam.accounts.display_name does not exist')
+        );
       }),
     });
     const handlers = createGroupReadHandlers(deps);
@@ -251,7 +254,7 @@ describe('createGroupReadHandlers', () => {
           dependency: 'database',
           reason_code: 'schema_drift',
           schema_object: 'iam.accounts',
-          query_stage: 'detail_rows',
+          query_stage: 'group_memberships',
         },
       },
       requestId: 'req-groups',
@@ -261,7 +264,43 @@ describe('createGroupReadHandlers', () => {
       expect.objectContaining({
         operation: 'group_detail',
         group_id: groupRow.id,
-        query_stage: 'detail_rows',
+        query_stage: 'group_memberships',
+      })
+    );
+  });
+
+  it('uses group_detail as fallback stage for non-wrapped detail errors and reports iam.groups', async () => {
+    const deps = createDeps([], {
+      withInstanceScopedDb: vi.fn(async () => {
+        throw new Error('column iam.groups.description does not exist');
+      }),
+    });
+    const handlers = createGroupReadHandlers(deps);
+
+    const response = await handlers.getGroupInternal(
+      new Request(`http://localhost/api/v1/iam/inst-g/groups/${groupRow.id}`),
+      ctx
+    );
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        code: 'database_unavailable',
+        details: {
+          dependency: 'database',
+          reason_code: 'schema_drift',
+          schema_object: 'iam.groups',
+          query_stage: 'group_detail',
+        },
+      },
+      requestId: 'req-groups',
+    });
+    expect(deps.logger.error).toHaveBeenCalledWith(
+      'Group detail query failed',
+      expect.objectContaining({
+        operation: 'group_detail',
+        group_id: groupRow.id,
+        query_stage: 'group_detail',
       })
     );
   });

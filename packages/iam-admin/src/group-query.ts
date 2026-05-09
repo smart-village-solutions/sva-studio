@@ -28,6 +28,20 @@ export class GroupQueryExecutionError extends Error {
   }
 }
 
+const compareMembershipDisplayNames = (
+  left: { readonly displayName?: string; readonly keycloakSubject: string },
+  right: { readonly displayName?: string; readonly keycloakSubject: string }
+): number => {
+  const leftLabel = left.displayName ?? left.keycloakSubject;
+  const rightLabel = right.displayName ?? right.keycloakSubject;
+  const labelComparison = leftLabel.localeCompare(rightLabel, 'de');
+  if (labelComparison !== 0) {
+    return labelComparison;
+  }
+
+  return left.keycloakSubject.localeCompare(right.keycloakSubject, 'de');
+};
+
 const GROUP_SELECT_COLUMNS_SQL = `
   g.id,
   g.instance_id,
@@ -132,11 +146,14 @@ export const loadGroupDetail = async (
   } catch (error) {
     throw new GroupQueryExecutionError('group_memberships', error);
   }
+  const memberships = membershipRows.rows
+    .map(mapGroupMembership)
+    .sort(compareMembershipDisplayNames);
 
   return {
     ...mapGroupListItem(row),
     assignedRoleIds: roleRows.rows.map((role) => role.role_id),
-    memberships: membershipRows.rows.map(mapGroupMembership),
+    memberships,
   };
 };
 

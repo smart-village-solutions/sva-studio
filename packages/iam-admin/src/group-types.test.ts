@@ -122,4 +122,12 @@ describe('mapGroupMembership', () => {
     });
     expect(result.displayName).toBe('Ada Lovelace');
   });
+
+  it('verwendet die entschlüsselte E-Mail als Fallback vor dem Keycloak-Subject', () => {
+    const result = mapGroupMembership({
+      ...baseRow,
+      email_ciphertext: 'ada@example.com',
+    });
+    expect(result.displayName).toBe('ada@example.com');
+  });
 });

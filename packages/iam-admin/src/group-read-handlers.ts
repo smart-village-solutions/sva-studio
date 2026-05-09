@@ -113,6 +113,19 @@ const buildGroupReadLogMeta = (
   ...details,
 });
 
+const resolveSchemaObjectForGroupDetailStage = (
+  stage: 'group_detail' | 'group_memberships' | 'group_roles'
+): 'iam.groups' | 'iam.accounts' | 'iam.group_roles' => {
+  switch (stage) {
+    case 'group_detail':
+      return 'iam.groups';
+    case 'group_memberships':
+      return 'iam.accounts';
+    case 'group_roles':
+      return 'iam.group_roles';
+  }
+};
+
 const createGroupNotFoundResponse = (
   deps: GroupReadHandlerDeps,
   actor: GroupReadActor,
@@ -135,7 +148,7 @@ const handleGroupDetailQueryError = (
   error: unknown
 ): Response => {
   const cause = error instanceof GroupQueryExecutionError ? error.cause : error;
-  const queryStage = error instanceof GroupQueryExecutionError ? error.stage : 'group_list';
+  const queryStage = error instanceof GroupQueryExecutionError ? error.stage : 'group_detail';
 
   deps.logger.error(
     'Group detail query failed',
@@ -157,7 +170,7 @@ const handleGroupDetailQueryError = (
       {
         dependency: 'database',
         reason_code: 'schema_drift',
-        schema_object: 'iam.accounts',
+        schema_object: resolveSchemaObjectForGroupDetailStage(queryStage),
         query_stage: queryStage,
       }
     );

@@ -1,7 +1,7 @@
 {
   "meta": {
     "version": "1.0.1",
-    "updatedAt": "2026-05-06",
+    "updatedAt": "2026-05-09",
     "source": "CSV SVA-Studio-Kostenschätzung-22.03.2026.csv; commissioned-Status am 2026-05-06 fachlich auf idea zurückgesetzt, Health weiterhin aus der Kostenschätzung als on_track abgeleitet"
   },
   "statusModel": {

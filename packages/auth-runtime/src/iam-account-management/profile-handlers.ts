@@ -381,6 +381,31 @@ type UpdateIdentityUserFn = (
   input: UpdateIdentityUserInput
 ) => Promise<void>;
 
+const createProfileUpdateAttemptState = (): ProfileUpdateAttemptState => ({
+  existing_profile_loaded: false,
+  identity_provider_resolved: false,
+  identity_sync_attempted: false,
+  identity_sync_succeeded: false,
+  local_db_write_attempted: false,
+  local_db_write_succeeded: false,
+  compensation_attempted: false,
+  compensation_succeeded: false,
+  projected_detail_resolved: false,
+  failure_stage: 'load_existing_profile',
+});
+
+const applyIdentityProviderResolutionToAttemptState = (
+  attemptState: ProfileUpdateAttemptState,
+  identityProviderResolution: ResolvedTenantIdentityProvider
+): void => {
+  attemptState.identity_provider_resolved = true;
+  attemptState.provider_realm = identityProviderResolution.realm;
+  attemptState.provider_admin_realm = identityProviderResolution.adminRealm;
+  attemptState.provider_client_id = identityProviderResolution.clientId;
+  attemptState.provider_source = identityProviderResolution.source;
+  attemptState.provider_execution_mode = identityProviderResolution.executionMode;
+};
+
 const isKeycloakRequestError = (error: unknown): error is KeycloakAdminRequestError =>
   error instanceof KeycloakAdminRequestError ||
   (error instanceof Error &&
@@ -444,6 +469,60 @@ const restoreIdentityProfile = async (
       error: compensationError instanceof Error ? compensationError.message : String(compensationError),
     });
     return false;
+  }
+};
+
+const runProfileUpdateMutation = async (input: {
+  actor: ActorInfo;
+  dbKeycloakSubject: string;
+  existingDetail: NonNullable<Awaited<ReturnType<typeof loadMyProfileDetail>>>;
+  payload: ProfileUpdatePayload;
+  attemptState: ProfileUpdateAttemptState;
+  updateUser: UpdateIdentityUserFn;
+}): Promise<Response> => {
+  const shouldUpdateIdentity = shouldUpdateIdentityProfile(input.payload);
+
+  try {
+    if (shouldUpdateIdentity) {
+      input.attemptState.failure_stage = 'identity_sync';
+      input.attemptState.identity_sync_attempted = true;
+      await syncIdentityProfile(
+        input.existingDetail,
+        input.existingDetail.keycloakSubject,
+        input.payload,
+        input.updateUser
+      );
+      input.attemptState.identity_sync_succeeded = true;
+    }
+
+    input.attemptState.failure_stage = 'local_persistence';
+    input.attemptState.local_db_write_attempted = true;
+    const detail = await updateMyProfileDetail(input.actor, input.dbKeycloakSubject, input.payload);
+    input.attemptState.local_db_write_succeeded = true;
+    if (!detail) {
+      return createProfileNotFoundResponse(input.actor.requestId);
+    }
+
+    input.attemptState.failure_stage = 'projection';
+    const projectedDetail = await resolveProjectedProfileDetail({
+      instanceId: input.actor.instanceId,
+      user: detail,
+    });
+    input.attemptState.projected_detail_resolved = true;
+
+    iamUserOperationsCounter.add(1, { action: 'update_my_profile', result: 'success' });
+    return jsonResponse(200, asApiItem(projectedDetail, input.actor.requestId));
+  } catch (error) {
+    if (shouldUpdateIdentity && input.attemptState.identity_sync_succeeded) {
+      input.attemptState.compensation_attempted = true;
+      input.attemptState.compensation_succeeded = await restoreIdentityProfile(
+        input.actor,
+        input.existingDetail,
+        input.updateUser
+      );
+    }
+
+    throw error;
   }
 };
 
@@ -637,18 +716,7 @@ export const updateMyProfileInternal = async (
     return payload.error;
   }
 
-  const attemptState: ProfileUpdateAttemptState = {
-    existing_profile_loaded: false,
-    identity_provider_resolved: false,
-    identity_sync_attempted: false,
-    identity_sync_succeeded: false,
-    local_db_write_attempted: false,
-    local_db_write_succeeded: false,
-    compensation_attempted: false,
-    compensation_succeeded: false,
-    projected_detail_resolved: false,
-    failure_stage: 'load_existing_profile',
-  };
+  const attemptState = createProfileUpdateAttemptState();
 
   try {
     const existingDetail = await loadMyProfileDetail(
@@ -670,63 +738,16 @@ export const updateMyProfileInternal = async (
     if (identityProviderResolution instanceof Response) {
       return identityProviderResolution;
     }
-    attemptState.identity_provider_resolved = true;
-    attemptState.provider_realm = identityProviderResolution.realm;
-    attemptState.provider_admin_realm = identityProviderResolution.adminRealm;
-    attemptState.provider_client_id = identityProviderResolution.clientId;
-    attemptState.provider_source = identityProviderResolution.source;
-    attemptState.provider_execution_mode = identityProviderResolution.executionMode;
+    applyIdentityProviderResolutionToAttemptState(attemptState, identityProviderResolution);
 
-    const identityProvider = identityProviderResolution.provider;
-
-    const shouldUpdateIdentity = shouldUpdateIdentityProfile(payload.data);
-
-    try {
-      if (shouldUpdateIdentity) {
-        attemptState.failure_stage = 'identity_sync';
-        attemptState.identity_sync_attempted = true;
-        await syncIdentityProfile(
-          existingDetail,
-          existingDetail.keycloakSubject,
-          payload.data,
-          identityProvider.updateUser.bind(identityProvider)
-        );
-        attemptState.identity_sync_succeeded = true;
-      }
-
-      attemptState.failure_stage = 'local_persistence';
-      attemptState.local_db_write_attempted = true;
-      const detail = await updateMyProfileDetail(
-        actorContext.actor,
-        actorContext.dbKeycloakSubject,
-        payload.data
-      );
-      attemptState.local_db_write_succeeded = true;
-      if (!detail) {
-        return createProfileNotFoundResponse(actorContext.actor.requestId);
-      }
-
-      attemptState.failure_stage = 'projection';
-      const projectedDetail = await resolveProjectedProfileDetail({
-        instanceId: actorContext.actor.instanceId,
-        user: detail,
-      });
-      attemptState.projected_detail_resolved = true;
-
-      iamUserOperationsCounter.add(1, { action: 'update_my_profile', result: 'success' });
-      return jsonResponse(200, asApiItem(projectedDetail, actorContext.actor.requestId));
-    } catch (error) {
-      if (shouldUpdateIdentity && attemptState.identity_sync_succeeded) {
-        attemptState.compensation_attempted = true;
-        attemptState.compensation_succeeded = await restoreIdentityProfile(
-          actorContext.actor,
-          existingDetail,
-          identityProvider.updateUser.bind(identityProvider)
-        );
-      }
-
-      throw error;
-    }
+    return await runProfileUpdateMutation({
+      actor: actorContext.actor,
+      dbKeycloakSubject: actorContext.dbKeycloakSubject,
+      existingDetail,
+      payload: payload.data,
+      attemptState,
+      updateUser: identityProviderResolution.provider.updateUser.bind(identityProviderResolution.provider),
+    });
   } catch (error) {
     return handleProfileUpdateError(actorContext.actor, error, attemptState);
   }

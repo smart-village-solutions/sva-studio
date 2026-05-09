@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createGroupReadHandlers, type GroupReadHandlerDeps } from './group-read-handlers.js';
+import { GroupQueryExecutionError } from './group-query.js';
 
 const ctx = {
   sessionId: 'session-1',
@@ -225,6 +226,42 @@ describe('createGroupReadHandlers', () => {
         operation: 'group_list',
         workspace_id: 'inst-g',
         error: 'database down',
+      })
+    );
+  });
+
+  it('maps schema drift style detail failures to a detailed database_unavailable error', async () => {
+    const deps = createDeps([], {
+      withInstanceScopedDb: vi.fn(async () => {
+        throw new GroupQueryExecutionError('detail_rows', new Error('column iam.accounts.display_name does not exist'));
+      }),
+    });
+    const handlers = createGroupReadHandlers(deps);
+
+    const response = await handlers.getGroupInternal(
+      new Request(`http://localhost/api/v1/iam/inst-g/groups/${groupRow.id}`),
+      ctx
+    );
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        code: 'database_unavailable',
+        details: {
+          dependency: 'database',
+          reason_code: 'schema_drift',
+          schema_object: 'iam.accounts',
+          query_stage: 'detail_rows',
+        },
+      },
+      requestId: 'req-groups',
+    });
+    expect(deps.logger.error).toHaveBeenCalledWith(
+      'Group detail query failed',
+      expect.objectContaining({
+        operation: 'group_detail',
+        group_id: groupRow.id,
+        query_stage: 'detail_rows',
       })
     );
   });

@@ -1,4 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
+
+const originalTenantAdminBaseUrl = process.env.KEYCLOAK_ADMIN_BASE_URL;
 
 const state = vi.hoisted(() => ({
   logger: {
@@ -39,6 +41,7 @@ describe('iam account management shared runtime logging', () => {
     state.loadInstanceById.mockReset();
     state.getKeycloakAdminClientConfigFromEnv.mockReset();
     state.resolveTenantAdminClientSecret.mockReset();
+    process.env.KEYCLOAK_ADMIN_BASE_URL = 'https://keycloak.example.test';
   });
 
   it('logs when the global identity provider configuration cannot be resolved', async () => {
@@ -158,4 +161,12 @@ describe('iam account management shared runtime logging', () => {
       })
     );
   });
+});
+
+afterAll(() => {
+  if (originalTenantAdminBaseUrl === undefined) {
+    delete process.env.KEYCLOAK_ADMIN_BASE_URL;
+  } else {
+    process.env.KEYCLOAK_ADMIN_BASE_URL = originalTenantAdminBaseUrl;
+  }
 });

@@ -5,6 +5,7 @@ import type {
   IamInstanceListItem,
   IamTenantIamAxis,
   IamTenantIamStatus,
+  WasteManagementDataSourceRecord,
 } from '@sva/core';
 import type { InstanceRegistryRepository } from '@sva/data-repositories';
 import type {
@@ -109,6 +110,8 @@ export type InstanceRegistryServiceDeps = {
   readonly getKeycloakPreflight?: (input: KeycloakProvisioningContext) => Promise<KeycloakTenantPreflight>;
   readonly planKeycloakProvisioning?: (input: KeycloakProvisioningContext) => Promise<KeycloakTenantPlan>;
   readonly getKeycloakStatus?: (input: KeycloakProvisioningContext) => Promise<KeycloakTenantStatus>;
+  readonly loadWasteDataSourceRecord?: (instanceId: string) => Promise<WasteManagementDataSourceRecord | null>;
+  readonly saveWasteDataSourceRecord?: (record: WasteManagementDataSourceRecord) => Promise<void>;
   readonly moduleIamRegistry?: ReadonlyMap<string, InstanceModuleIamRegistryEntry>;
   readonly probeTenantIamAccess?: (input: {
     instanceId: string;

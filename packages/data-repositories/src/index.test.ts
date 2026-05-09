@@ -4,6 +4,7 @@ import {
   createInstanceRegistryRepository,
   createMediaRepository,
   createStudioJobRepository,
+  createWasteMasterDataRepository,
   dataRepositoriesPackageRoles,
   dataRepositoriesVersion,
 } from './index.js';
@@ -18,5 +19,6 @@ describe('@sva/data-repositories package scaffold', () => {
     expect(typeof createInstanceRegistryRepository).toBe('function');
     expect(typeof createMediaRepository).toBe('function');
     expect(typeof createStudioJobRepository).toBe('function');
+    expect(typeof createWasteMasterDataRepository).toBe('function');
   });
 });

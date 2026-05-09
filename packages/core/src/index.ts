@@ -74,6 +74,40 @@ export type {
   StudioPluginOperationApiErrorResponse,
   StudioJobUpdateInput,
 } from './plugin-operations-contract.js';
+export { wasteManagementDataSourceContract } from './waste-management-contract.js';
+export type {
+  WasteManagementConnectionCheckRecord,
+  WasteManagementConnectionCheckStatus,
+  WasteManagementDataSourceProvider,
+  WasteManagementDataSourceRecord,
+  WasteManagementDataSourceStatus,
+  WasteManagementSettingsRecord,
+  WasteManagementTechnicalEventType,
+} from './waste-management-contract.js';
+export type {
+  WasteCollectionLocationListFilter,
+  WasteCollectionLocationRecord,
+  WasteCustomTourDate,
+  WasteCityListFilter,
+  WasteCityRecord,
+  WasteFractionListFilter,
+  WasteFractionRecord,
+  WasteGlobalDateShiftListFilter,
+  WasteGlobalDateShiftRecord,
+  WasteHouseNumberListFilter,
+  WasteHouseNumberRecord,
+  WasteLocationTourLinkListFilter,
+  WasteLocationTourLinkRecord,
+  WasteRegionListFilter,
+  WasteRegionRecord,
+  WasteStreetListFilter,
+  WasteStreetRecord,
+  WasteTourDateShiftListFilter,
+  WasteTourDateShiftRecord,
+  WasteTourListFilter,
+  WasteTourRecurrence,
+  WasteTourRecord,
+} from './waste-management-master-data.js';
 export * from './routing/registry.js';
 export * from './iam/index.js';
 export {

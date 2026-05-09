@@ -12,6 +12,7 @@ import type {
   IamInstanceListItem,
   IamTenantIamAxis,
   IamTenantIamStatus,
+  WasteManagementSettingsRecord,
 } from '@sva/core';
 
 import type { InstanceRegistryRepository } from '@sva/data-repositories';
@@ -214,7 +215,8 @@ export const buildInstanceDetail = (
   keycloakPlan?: IamInstanceKeycloakPlan,
   keycloakProvisioningRuns: readonly IamInstanceKeycloakProvisioningRun[] = [],
   tenantIamStatus?: IamTenantIamStatus,
-  moduleIamStatus?: IamInstanceDetail['moduleIamStatus']
+  moduleIamStatus?: IamInstanceDetail['moduleIamStatus'],
+  wasteManagementSettings?: WasteManagementSettingsRecord
 ): IamInstanceDetail => ({
   ...toListItem(instance, provisioningRuns[0]),
   hostnames: [
@@ -233,6 +235,7 @@ export const buildInstanceDetail = (
   keycloakProvisioningRuns,
   tenantIamStatus,
   moduleIamStatus,
+  wasteManagementSettings,
 });
 
 export const createAuditDetails = (

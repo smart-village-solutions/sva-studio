@@ -38,12 +38,27 @@ vi.mock('../db.js', () => ({
   createPoolResolver: vi.fn(() => 'resolve-pool'),
 }));
 
+vi.mock('@sva/server-runtime', () => ({
+  createSdkLogger: () => ({
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    isLevelEnabled: vi.fn(() => true),
+  }),
+  getWorkspaceContext: vi.fn(() => ({ requestId: 'req-test', traceId: 'trace-test' })),
+  getInstanceConfig: vi.fn(() => null),
+  isCanonicalAuthHost: vi.fn(() => true),
+}));
+
 vi.mock('@sva/data-repositories', () => ({
   createInstanceRegistryRepository: vi.fn(() => 'repository'),
 }));
 
 vi.mock('@sva/data-repositories/server', () => ({
   invalidateInstanceRegistryHost: vi.fn(),
+  loadWasteDataSourceRecord: vi.fn(),
+  saveWasteDataSourceRecord: vi.fn(),
 }));
 
 vi.mock('@sva/instance-registry/runtime-wiring', () => ({
@@ -119,9 +134,13 @@ describe('iam instance registry repository wiring', () => {
       expect.objectContaining({
         serviceDeps: expect.objectContaining({
           moduleIamRegistry: serviceRegistry,
+          loadWasteDataSourceRecord: expect.any(Function),
+          saveWasteDataSourceRecord: expect.any(Function),
         }),
         provisioningWorkerServiceDeps: expect.objectContaining({
           moduleIamRegistry: serviceRegistry,
+          loadWasteDataSourceRecord: expect.any(Function),
+          saveWasteDataSourceRecord: expect.any(Function),
         }),
       })
     );

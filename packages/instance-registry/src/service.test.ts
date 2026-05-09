@@ -102,6 +102,8 @@ const createDeps = (
   invalidatePermissionSnapshots: vi.fn(async () => undefined),
   protectSecret: vi.fn((value, aad) => (value ? `protected:${aad}:${value}` : null)),
   revealSecret: vi.fn((value) => (value ? `revealed:${value}` : undefined)),
+  loadWasteDataSourceRecord: vi.fn(async () => null),
+  saveWasteDataSourceRecord: vi.fn(async () => undefined),
   moduleIamRegistry: new Map([
     [
       'news',
@@ -214,6 +216,47 @@ describe('instance registry service facade', () => {
       expect.objectContaining({ operation: 'create', status: 'requested' })
     );
     expect(deps.invalidateHost).toHaveBeenCalledWith('demo.studio.example.org');
+  });
+
+  it('persists waste-management settings during create with protected datasource secrets', async () => {
+    const repository = createRepository({
+      getInstanceById: vi.fn(async () => null),
+    });
+    const deps = createDeps(repository);
+    const service = createInstanceRegistryService(deps);
+
+    await service.createProvisioningRequest({
+      instanceId: 'demo',
+      displayName: 'Demo',
+      parentDomain: 'Studio.Example.Org',
+      realmMode: 'new',
+      authRealm: 'demo',
+      authClientId: 'studio-client',
+      idempotencyKey: 'idem-1',
+      wasteManagementSettings: {
+        provider: 'supabase',
+        projectUrl: 'https://tenant-a.supabase.co',
+        enabled: true,
+        databaseUrl: ' postgres://waste.example/db ',
+        serviceRoleKey: ' service-role ',
+      },
+    });
+
+    expect(deps.saveWasteDataSourceRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'demo',
+        provider: 'supabase',
+        projectUrl: 'https://tenant-a.supabase.co',
+        schemaName: 'public',
+        visibleStatus: 'unknown',
+        databaseUrlConfigured: true,
+        serviceRoleKeyConfigured: true,
+        databaseUrlCiphertext:
+          'protected:iam.instance_waste_data_sources.database_url:demo:postgres://waste.example/db',
+        serviceRoleKeyCiphertext:
+          'protected:iam.instance_waste_data_sources.service_role_key:demo:service-role',
+      })
+    );
   });
 
   it('defaults the tenant admin client id on create when the form does not submit one', async () => {
@@ -365,6 +408,65 @@ describe('instance registry service facade', () => {
     expect(deps.invalidateHost).toHaveBeenCalledWith('demo.example.org');
   });
 
+  it('preserves existing waste datasource secrets on update when the form omits them', async () => {
+    const updated = {
+      ...baseInstance,
+      displayName: 'Updated',
+      parentDomain: 'example.org',
+      primaryHostname: 'demo.example.org',
+    };
+    const repository = createRepository({
+      getInstanceById: vi
+        .fn()
+        .mockResolvedValueOnce(baseInstance)
+        .mockResolvedValue(updated),
+      updateInstance: vi.fn(async () => updated),
+    });
+    const deps = createDeps(repository, {
+      loadWasteDataSourceRecord: vi.fn(async () => ({
+        instanceId: 'demo',
+        provider: 'supabase',
+        projectUrl: 'https://tenant-a.supabase.co',
+        schemaName: 'public',
+        enabled: true,
+        databaseUrlConfigured: true,
+        serviceRoleKeyConfigured: true,
+        databaseUrlCiphertext: 'existing-db-cipher',
+        serviceRoleKeyCiphertext: 'existing-service-cipher',
+        visibleStatus: 'ok',
+        lastCheckedAt: '2026-05-09T10:00:00.000Z',
+        lastCheckStatus: 'succeeded',
+      })),
+    });
+
+    await createInstanceRegistryService(deps).updateInstance({
+      instanceId: 'demo',
+      displayName: 'Updated',
+      parentDomain: 'Example.Org',
+      realmMode: 'existing',
+      authRealm: 'demo',
+      authClientId: 'studio-client',
+      wasteManagementSettings: {
+        provider: 'supabase',
+        projectUrl: 'https://tenant-b.supabase.co',
+        enabled: true,
+      },
+    });
+
+    expect(deps.saveWasteDataSourceRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        projectUrl: 'https://tenant-b.supabase.co',
+        databaseUrlCiphertext: 'existing-db-cipher',
+        serviceRoleKeyCiphertext: 'existing-service-cipher',
+        databaseUrlConfigured: true,
+        serviceRoleKeyConfigured: true,
+        visibleStatus: 'unknown',
+        lastCheckedAt: '2026-05-09T10:00:00.000Z',
+        lastCheckStatus: 'succeeded',
+      })
+    );
+  });
+
   it('returns null when updating a missing instance', async () => {
     const repository = createRepository({
       getInstanceById: vi.fn(async () => null),
@@ -429,6 +531,7 @@ describe('instance registry service facade', () => {
     await expect(service.getInstanceDetail('demo')).resolves.toEqual(
       expect.objectContaining({
         assignedModules: ['news'],
+        wasteManagementSettings: undefined,
         moduleIamStatus: expect.objectContaining({
           overall: expect.objectContaining({ status: 'ready' }),
           modules: [
@@ -451,6 +554,43 @@ describe('instance registry service facade', () => {
             status: 'blocked',
             requestId: 'req-probe-1',
           }),
+        }),
+      })
+    );
+  });
+
+  it('projects waste-management settings into instance detail when a datasource is configured', async () => {
+    const repository = createRepository({
+      listAuditEvents: vi.fn(async () => []),
+      listKeycloakProvisioningRuns: vi.fn(async () => []),
+    });
+    const service = createInstanceRegistryService(
+      createDeps(repository, {
+        loadWasteDataSourceRecord: vi.fn(async () => ({
+          instanceId: 'demo',
+          provider: 'supabase',
+          projectUrl: 'https://tenant-a.supabase.co',
+          schemaName: 'public',
+          enabled: true,
+          databaseUrlConfigured: true,
+          serviceRoleKeyConfigured: false,
+          visibleStatus: 'error',
+          lastCheckedAt: '2026-05-09T10:00:00.000Z',
+          lastCheckStatus: 'failed',
+          lastCheckErrorCode: 'connection_refused',
+          lastCheckErrorMessage: 'Host unreachable',
+        })),
+      })
+    );
+
+    await expect(service.getInstanceDetail('demo')).resolves.toEqual(
+      expect.objectContaining({
+        wasteManagementSettings: expect.objectContaining({
+          provider: 'supabase',
+          projectUrl: 'https://tenant-a.supabase.co',
+          visibleStatus: 'error',
+          lastCheckStatus: 'failed',
+          lastCheckErrorCode: 'connection_refused',
         }),
       })
     );

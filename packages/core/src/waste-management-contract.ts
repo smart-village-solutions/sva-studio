@@ -1,0 +1,70 @@
+const wasteManagementDataSourceProviders = ['supabase'] as const;
+const wasteManagementDataSourceStatuses = ['not_configured', 'unknown', 'ok', 'error'] as const;
+const wasteManagementConnectionCheckStatuses = ['succeeded', 'failed'] as const;
+const wasteManagementTechnicalEventTypes = [
+  'datasource.reconfigured',
+  'connection-check.succeeded',
+  'connection-check.failed',
+  'migration.started',
+  'migration.succeeded',
+  'migration.failed',
+  'import.started',
+  'import.succeeded',
+  'import.failed',
+  'seed.started',
+  'seed.succeeded',
+  'seed.failed',
+  'reset.started',
+  'reset.succeeded',
+  'reset.failed',
+] as const;
+
+export type WasteManagementDataSourceProvider = (typeof wasteManagementDataSourceProviders)[number];
+export type WasteManagementDataSourceStatus = (typeof wasteManagementDataSourceStatuses)[number];
+export type WasteManagementConnectionCheckStatus = (typeof wasteManagementConnectionCheckStatuses)[number];
+export type WasteManagementTechnicalEventType = (typeof wasteManagementTechnicalEventTypes)[number];
+
+export const wasteManagementDataSourceContract = {
+  providers: wasteManagementDataSourceProviders,
+  statuses: wasteManagementDataSourceStatuses,
+  checkStatuses: wasteManagementConnectionCheckStatuses,
+  technicalEventTypes: wasteManagementTechnicalEventTypes,
+  isProvider: (value: string): value is WasteManagementDataSourceProvider =>
+    (wasteManagementDataSourceProviders as readonly string[]).includes(value),
+  isStatus: (value: string): value is WasteManagementDataSourceStatus =>
+    (wasteManagementDataSourceStatuses as readonly string[]).includes(value),
+  isCheckStatus: (value: string): value is WasteManagementConnectionCheckStatus =>
+    (wasteManagementConnectionCheckStatuses as readonly string[]).includes(value),
+  isTechnicalEventType: (value: string): value is WasteManagementTechnicalEventType =>
+    (wasteManagementTechnicalEventTypes as readonly string[]).includes(value),
+} as const;
+
+export type WasteManagementSettingsRecord = {
+  readonly instanceId: string;
+  readonly provider: WasteManagementDataSourceProvider;
+  readonly projectUrl: string;
+  readonly schemaName: string;
+  readonly enabled: boolean;
+  readonly databaseUrlConfigured: boolean;
+  readonly serviceRoleKeyConfigured: boolean;
+  readonly visibleStatus: WasteManagementDataSourceStatus;
+  readonly lastCheckedAt?: string;
+  readonly lastCheckStatus?: WasteManagementConnectionCheckStatus;
+  readonly lastCheckErrorCode?: string;
+  readonly lastCheckErrorMessage?: string;
+  readonly updatedAt?: string;
+};
+
+export type WasteManagementDataSourceRecord = WasteManagementSettingsRecord & {
+  readonly databaseUrlCiphertext?: string;
+  readonly serviceRoleKeyCiphertext?: string;
+};
+
+export type WasteManagementConnectionCheckRecord = {
+  readonly instanceId: string;
+  readonly checkedAt: string;
+  readonly checkStatus: WasteManagementConnectionCheckStatus;
+  readonly visibleStatus: WasteManagementDataSourceStatus;
+  readonly errorCode?: string;
+  readonly errorMessage?: string;
+};

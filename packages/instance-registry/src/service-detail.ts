@@ -48,6 +48,7 @@ export const loadKeycloakDetailArtifacts = async (
     keycloakProvisioningRuns,
     accessEvidence,
     reconcileEvidence,
+    wasteManagementSettings,
   ] =
     await Promise.all([
       deps.repository.listProvisioningRuns(instance.instanceId),
@@ -58,6 +59,7 @@ export const loadKeycloakDetailArtifacts = async (
       deps.repository.listKeycloakProvisioningRuns(instance.instanceId),
       deps.repository.getLatestTenantIamAccessProbe(instance.instanceId),
       deps.repository.getRoleReconcileSummary(instance.instanceId),
+      deps.loadWasteDataSourceRecord?.(instance.instanceId) ?? Promise.resolve(null),
     ]);
 
   const tenantIamStatus = buildTenantIamStatus({
@@ -94,7 +96,8 @@ export const loadKeycloakDetailArtifacts = async (
     keycloakPlan,
     keycloakProvisioningRuns,
     tenantIamStatus,
-    moduleIamStatus
+    moduleIamStatus,
+    wasteManagementSettings ?? undefined
   );
 };
 

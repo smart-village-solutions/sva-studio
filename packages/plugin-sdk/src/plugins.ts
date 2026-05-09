@@ -751,14 +751,15 @@ const assertPluginRegistryModuleIam = ({ plugin, pluginNamespace }: PluginRegist
   }
 };
 
-const assertPluginRegistryOperations = ({ plugin, pluginNamespace }: PluginRegistryValidationContext): void => {
-  if (plugin.jobTypes) {
-    definePluginJobTypes(pluginNamespace, plugin.jobTypes);
-  }
-  if (plugin.importProfiles) {
-    definePluginImportProfiles(pluginNamespace, plugin.importProfiles);
-  }
-};
+const normalizePluginRegistryOperations = ({
+  plugin,
+  pluginNamespace,
+}: PluginRegistryValidationContext): Pick<PluginDefinition, 'jobTypes' | 'importProfiles'> => ({
+  jobTypes: plugin.jobTypes ? definePluginJobTypes(pluginNamespace, plugin.jobTypes) : plugin.jobTypes,
+  importProfiles: plugin.importProfiles
+    ? definePluginImportProfiles(pluginNamespace, plugin.importProfiles)
+    : plugin.importProfiles,
+});
 
 export const createPluginRegistry = (
   plugins: readonly PluginDefinition[]
@@ -767,6 +768,7 @@ export const createPluginRegistry = (
 
   for (const plugin of plugins) {
     const context = createPluginRegistryValidationContext(plugin, registry);
+    const normalizedOperations = normalizePluginRegistryOperations(context);
 
     assertPluginRegistryActions(context);
     assertPluginRegistryRoutes(context);
@@ -777,12 +779,12 @@ export const createPluginRegistry = (
     assertPluginRegistryAdminResources(context);
     assertPluginRegistryAuditEvents(context);
     assertPluginRegistryModuleIam(context);
-    assertPluginRegistryOperations(context);
 
     registry.set(context.pluginNamespace, {
       ...plugin,
       id: context.pluginNamespace,
       displayName: context.displayName,
+      ...normalizedOperations,
     });
   }
 

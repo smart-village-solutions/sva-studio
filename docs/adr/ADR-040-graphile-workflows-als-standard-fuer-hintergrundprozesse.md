@@ -1,4 +1,4 @@
-# ADR-040: Graphile Workflows als Standard für Hintergrundprozesse
+# ADR-040: graphile-worker als Standard für Hintergrundprozesse
 
 **Status:** Akzeptiert
 **Entscheidungsdatum:** 2026-05-09
@@ -17,12 +17,12 @@ SVA Studio benötigt einen belastbaren Standard für Hintergrundprozesse, langle
 
 Gleichzeitig ist absehbar, dass nicht jeder spätere Ablauf gleich bleibt. Ein Teil der heutigen und mittelfristigen Jobs ist datenbanknah, hostintern und orchestrationstechnisch überschaubar. Einzelne spätere Domänen können aber langlebigere, stärker verteilte oder signalgesteuerte Abläufe benötigen. Deshalb wird jetzt ein produktiver Standard benötigt, ohne die Architektur unnötig früh auf ein schwereres Orchestrierungsmodell festzulegen.
 
-Als konkrete Optionen standen Graphile Workflows, Temporal und Trigger.dev im Raum.
+Als konkrete Optionen standen `graphile-worker`, Temporal und Trigger.dev im Raum.
 
 ## Entscheidung
 
-- SVA Studio verwendet ab sofort Graphile Workflows als kanonischen Standard für neue Hintergrundprozesse und Workflow-Orchestrierung im Host.
-- Neue asynchrone Host-Abläufe sollen bevorzugt auf Graphile Workflows aufsetzen, solange ihre Anforderungen durch das Postgres-zentrierte Modell sauber abgedeckt werden.
+- SVA Studio verwendet ab sofort `graphile-worker` als kanonischen Standard für neue Hintergrundprozesse und technische Host-Orchestrierung.
+- Neue asynchrone Host-Abläufe sollen bevorzugt auf `graphile-worker` aufsetzen, solange ihre Anforderungen durch das Postgres-zentrierte Modell sauber abgedeckt werden.
 - Temporal wird ausdrücklich nicht eingeführt, bleibt aber als spätere Option für komplexere, langlebige oder stärker verteilte Orchestrierung offen.
 - Trigger.dev ist kein zulässiger Zielpfad für SVA Studio und wird nicht weiterverfolgt.
 - Workflow-Definitionen bleiben Host-Verantwortung; Plugins dürfen keinen eigenen Orchestrator, keine fremde Queue-Infrastruktur und keine an der Host-Governance vorbei laufenden Hintergrundpfade etablieren.
@@ -31,7 +31,7 @@ Als konkrete Optionen standen Graphile Workflows, Temporal und Trigger.dev im Ra
 
 ### Positive Konsequenzen
 
-- Graphile Workflows passt zum bestehenden Postgres-first Zuschnitt und vermeidet für den ersten produktiven Schritt eine zusätzliche Workflow-Control-Plane.
+- `graphile-worker` passt zum bestehenden Postgres-first Zuschnitt und vermeidet für den ersten produktiven Schritt eine zusätzliche Workflow-Control-Plane.
 - Der technische Fußabdruck bleibt kleiner als bei Temporal, während Retry, Scheduling, Entkopplung und betriebliche Sichtbarkeit trotzdem strukturiert modelliert werden können.
 - Die Entscheidung reduziert Einführungsaufwand für Entwicklung, Betrieb, Observability und lokale Reproduzierbarkeit.
 - Host-seitige Workflow-Steuerung bleibt konsistent mit den bestehenden Architekturprinzipien: fail-closed, auditierbar, mandantenbewusst und zentral governbar.
@@ -39,7 +39,7 @@ Als konkrete Optionen standen Graphile Workflows, Temporal und Trigger.dev im Ra
 
 ### Negative Konsequenzen
 
-- Graphile Workflows ist nicht automatisch die beste Endlösung für sehr langlebige, stark verteilte oder signalintensive Prozessketten.
+- `graphile-worker` ist nicht automatisch die beste Endlösung für sehr langlebige, stark verteilte oder signalintensive Prozessketten.
 - Eine spätere Migration einzelner Workflows auf Temporal kann zusätzlichen Schnitt- und Migrationsaufwand erzeugen.
 - Das Team muss diszipliniert darauf achten, Workflow-Verträge fachlich sauber zu kapseln, damit eine spätere Eskalation nicht an technischem Lock-in scheitert.
 
@@ -59,11 +59,11 @@ Verworfen, weil dies Retry-Logik, Fehlersemantik, Observability, Ownership und B
 
 ## Konsequenzen für Umsetzung und Betrieb
 
-- Neue Hintergrundprozesse sollen fachlich so modelliert werden, dass sie über explizite Host-Ports oder Domänenservices gestartet werden und Graphile Workflows nur die technische Orchestrierung übernimmt.
+- Neue Hintergrundprozesse sollen fachlich so modelliert werden, dass sie über explizite Host-Ports oder Domänenservices gestartet werden und `graphile-worker` nur die technische Orchestrierung übernimmt.
 - Workflow-Payloads, Statusübergänge und Fehlerklassen müssen weiter mit den bestehenden Audit-, Logging- und Diagnostikregeln kompatibel bleiben.
 - Mandantenbezug, Actor-Kontext, Korrelation und Idempotenz bleiben explizite Anforderungen an jeden produktiven Workflow.
-- Wenn ein neuer Ablauf Anforderungen wie lang laufende Signalinteraktion, komplexe Child-Workflow-Topologien oder stark systemübergreifende Orchestrierung aufweist, muss vor Umsetzung geprüft werden, ob Graphile Workflows noch angemessen ist oder ein gezielter Temporal-Change erforderlich wird.
-- Eine spätere Temporal-Einführung soll als bewusste Folgeentscheidung erfolgen und nicht als stiller Parallelpfad neben Graphile Workflows.
+- Wenn ein neuer Ablauf Anforderungen wie lang laufende Signalinteraktion, komplexe Child-Workflow-Topologien oder stark systemübergreifende Orchestrierung aufweist, muss vor Umsetzung geprüft werden, ob `graphile-worker` noch angemessen ist oder ein gezielter Temporal-Change erforderlich wird.
+- Eine spätere Temporal-Einführung soll als bewusste Folgeentscheidung erfolgen und nicht als stiller Parallelpfad neben `graphile-worker`.
 
 ## Verwandte ADRs
 

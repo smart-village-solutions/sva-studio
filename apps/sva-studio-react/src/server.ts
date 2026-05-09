@@ -96,9 +96,22 @@ const getDispatchMainserverPoiRequest = async () => {
 };
 
 const startPluginOperationWorkerInBackground = (): void => {
-  pluginOperationWorkerBootstrapPromise ??= getEnsurePluginOperationWorkerStarted()
-    .then((startWorker) => startWorker())
-    .catch(() => undefined);
+  if (pluginOperationWorkerBootstrapPromise) {
+    return;
+  }
+
+  pluginOperationWorkerBootstrapPromise = (async () => {
+    try {
+      const startWorker = await getEnsurePluginOperationWorkerStarted();
+      await startWorker();
+    } catch (error) {
+      pluginOperationWorkerBootstrapPromise = null;
+      (await getLogger('server-entry-transport')).info('Plugin worker bootstrap failed', {
+        operation: 'plugin_operation_worker_bootstrap',
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  })();
 };
 
 const getLogger = async (component: ServerTransportComponent): Promise<ServerTransportLogger> => {

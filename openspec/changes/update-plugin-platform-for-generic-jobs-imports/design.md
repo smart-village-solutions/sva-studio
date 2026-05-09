@@ -1,84 +1,92 @@
 ## Context
 
-Das Studio hat inzwischen mehrere tragfähige Host-Boundaries etabliert:
+Die generische Plugin-Operations-Plattform besitzt inzwischen hostgeführte Jobpersistenz, Start-/Detail-Endpunkte, technische History und erste Runtime-Diagnostik. Für den operativen Betrieb fehlt aber noch eine rudimentäre Host-Oberfläche, die laufende und historische Jobs sichtbar macht, ohne bereits einen vollständigen Monitoring-Vollausbau oder eine Eingriffs-UI einzuführen.
 
-- statische Plugin-Registrierung über `createBuildTimeRegistry(...)`
-- freie Plugin-Routen über hostmaterialisierte Routing-Factories
-- Modul-IAM über `moduleIam`-Verträge und zentrale Registry-Zuschnitte
-- serverseitige API-Routen über den typisierten Auth-/IAM-Route-Katalog
+Der gewünschte Scope ist bewusst lesend:
 
-Für generische Plugin-Jobs und strukturierte Importe fehlt aber noch ein entsprechender Plattformvertrag. Fachchanges würden sonst dieselben Querschnittsfragen mehrfach neu schneiden.
+- Unterbereich `Monitoring > Jobs`
+- Tabs `Aktiv` und `Historie`
+- einfache Filter für `Status`, `Plugin`, `Jobtyp` und Suche
+- eigene Detailseite pro Job
+- automatisches Polling nur für aktive Jobs im Abstand von 10 Sekunden
 
-## Goals
+## Goals / Non-Goals
 
-- allgemeine, pluginübergreifende Jobs und Importprofile als Host-Vertrag normieren
-- Plugins nur Fachverträge registrieren lassen, nicht Runtime oder Persistenz selbst definieren lassen
-- zentrale Persistenz-, Routing- und Sicherheitsgrenzen im Host verankern
-- Monitoring- und UI-Anbindung optional offenhalten, ohne einen fertigen Vollausbau zu erzwingen
-
-## Non-Goals
-
-- keine fachliche Waste-UI
-- kein verpflichtender Endnutzer-Wizard
-- keine neue parallele Plugin-Initialisierung
-- keine generische Fremdsystem-Synchronisationsplattform
+- Goals:
+  - hostgeführte Jobs im Monitoring sichtbar machen
+  - eine Listen-API mit stabiler Listenprojektion schaffen
+  - History, Runtime-Diagnostik und Ergebnis-/Fehlersicht auf einer Job-Detailseite bereitstellen
+  - den bestehenden Plugin-Operations-Vertrag als einzige Datenquelle nutzen
+- Non-Goals:
+  - keine Job-Mutationen außer bereits vorhandenem Cancel-Endpunkt
+  - kein generischer Import-Wizard
+  - keine Push-/SSE-/WebSocket-Einführung
+  - keine Vermischung mit Systemmetriken, Logs oder OTEL-Dashboards
 
 ## Decisions
 
-### 1. Plugin-Beiträge bleiben Build-Time- und Host-gesteuert
+### Decision: `Monitoring > Jobs` wird als eigener Unterbereich mit eigener Detailroute umgesetzt
 
-Jobtypen und Importprofile werden als weitere Plugin-Beitragstypen modelliert, die durch den bestehenden Host-Build-Time-Registry-Pfad validiert und publiziert werden. Plugins liefern also weiterhin nur deklarative Beiträge; die Runtime bleibt hostgeführt.
+Die Monitoring-Oberfläche erhält einen klaren Unterbereich für Jobs statt nur eines Widgets auf der Monitoring-Startseite. Die Detailansicht wird als eigene Route umgesetzt, nicht als Drawer.
 
-Warum:
-- Das passt zum bestehenden Registry- und Guardrail-Modell.
-- Es vermeidet einen zweiten, konkurrierenden Plugin-Initialisierungspfad.
+Begründung:
 
-### 2. Jobs sind hostgeführt und zentral persistent
+- technische History und Runtime-Diagnostik brauchen eine stabile, vertiefende Ansicht
+- eigene Route ist robuster für Navigation, Polling und Deep Links
+- die Informationsarchitektur bleibt auch bei wachsender History nachvollziehbar
 
-Pluginübergreifende Jobs werden als allgemeiner Studio-Vertrag mit zentraler Persistenz im Studio-Postgres modelliert. Fachplugins dürfen eigene Payloads, Typen und Ergebnisfelder registrieren, aber keine führende Jobplattform in externen Fachdatenbanken etablieren.
+### Decision: Die Listenansicht bekommt eine eigene hostgeführte Listen-API
 
-Warum:
-- Jobs sind eine Querschnittsfähigkeit mit Governance-, Audit- und Betriebsbezug.
-- Zentrale Persistenz passt zur vorhandenen Host-Verantwortung für Kontroll- und Governance-Daten.
+Der bisherige Detail-Endpunkt reicht für die Monitoring-Liste nicht aus. Deshalb wird `GET /api/v1/plugin-operations/jobs` als eigener lesender Endpunkt ergänzt.
 
-### 3. Importprofile sind deklarativ, nicht runtime-autonom
+Die Listen-API liefert:
 
-Importprofile beschreiben pro Plugin und Importtyp mindestens Kennung, erlaubte Quellformate, Schema-/Mapping-Erwartungen und Validierungsvertrag. Sie registrieren keine eigene Import-Runtime. Der Host bleibt zuständig für Request-Vertrag, Jobstart, Statusmodell und spätere UI-Andockpunkte.
+- `view=active|history`
+- Filter für `status`, `pluginId`, `jobTypeId`
+- Suchparameter `q`
+- Pagination
+- eine reduzierte Listenprojektion mit `latestEvent`, `runtime.staleState`, Status, Progress und Zeitstempeln
 
-Warum:
-- Das verhindert pluginweise Sonderplattformen.
-- Fachliche Unterschiede bleiben dennoch explizit je Importprofil modellierbar.
+Begründung:
 
-### 4. API-Einbindung läuft über den typisierten Host-Route-Katalog
+- die UI muss keine Detaildatensätze über-fetching-artig für Listen laden
+- Polling bleibt leichter und günstiger
+- Read-Model und Persistenzmodell bleiben entkoppelt
 
-Operations-Endpunkte für Jobs und generische Importe werden nur über den bestehenden typisierten Runtime-Route-Katalog des Hosts publiziert. Ein fachlicher oder generischer Endpoint gilt erst dann als Teil des Systems, wenn er dort samt Handler-Mapping aufgenommen ist.
+### Decision: Polling wird nur für aktive Jobs aggressiver eingesetzt
 
-Warum:
-- Das entspricht dem heutigen Runtime-Modell.
-- Es macht fehlende Host-Einbindung deterministisch sichtbar.
+Die Liste `Aktiv` pollt alle 10 Sekunden. `Historie` wird nur bei Navigation, Filterwechsel oder manuellem Refresh geladen. Die Detailroute pollt nur, solange der Job nicht terminal ist.
 
-### 5. Monitoring- oder Wizard-UI bleibt optionaler Andockpunkt
+Begründung:
 
-Der Plattform-Change darf UI-seitige Andockpunkte oder erste Host-Sichten vorbereiten, fordert aber keinen vollwertigen Monitoring-Bereich und keinen fertigen Import-Wizard als Lieferminimum.
+- aktive Jobs sollen betrieblich aktuell sichtbar sein
+- historische Daten brauchen kein Dauer-Polling
+- die Last auf Host und Datenbank bleibt kontrollierbar
 
-Warum:
-- Der aktuelle Workspace besitzt dort noch keine belastbare allgemeine Oberfläche.
-- Die Plattform soll Fachchanges entkoppeln, nicht eine komplette neue Admin-Oberfläche erzwingen.
+## Risks / Trade-offs
 
-Für die erste Umsetzung bedeutet das ausdrücklich: Die Plattform darf produktiv nur über deklarative Beiträge, zentrale Persistenz, Host-API und interne Worker-Anbindung bestehen. Eine allgemeine Host-UI ist in diesem Change kein Lieferbestandteil.
+- Der Change erweitert die bisher bewusst optionale UI-Anbindung der Plattform in einen konkreten Host-Unterbereich.
+  - Mitigation: Scope klar lesend halten, keine Eingriffs-UI und keine neue Datenquelle einführen.
+- Eine neue Listen-API bringt zusätzlichen Contract- und Testaufwand.
+  - Mitigation: Listenprojektion klein halten und Detail-Read-Modell wiederverwenden, wo sinnvoll.
+- Polling kann bei häufigen Besuchen unnötige Last erzeugen.
+  - Mitigation: nur `Aktiv` pollt automatisch; `Historie` bleibt weitgehend statisch.
 
-## Package-Zuschnitt
+## Implementation Outline
 
-- `packages/plugin-sdk`: neue deklarative Beitragstypen für Jobtypen und Importprofile, Registry-Validierung, Guardrails
-- `packages/core`: gemeinsame Verträge für Jobstatus, Jobdetail, Importprofil-Metadaten und API-Shapes
-- `packages/routing`: hostseitige Einbindung neuer Runtime-Endpunkte in die zentrale Routing-Wahrheit
-- `packages/auth-runtime`: Handler, Validierung, Auth-/Actor-/Permission-Auflösung
-- `packages/data-repositories`: zentrale Job-Persistenz und dazugehörige Queries/Mutationen
-- `packages/server-runtime`: gemeinsame Hilfen für Fehlerabbildung, Logging und requestbezogene Host-Orchestrierung
-- `apps/sva-studio-react`: nur soweit notwendig Host-Anbindung an registrierte Beiträge oder optionale erste UI-Einstiege
+1. `@sva/core`
+   - Query- und Response-Typen für Joblisten ergänzen
+2. `@sva/data-repositories`
+   - Listenquery mit Filter-, Such- und Pagination-Unterstützung ergänzen
+3. `@sva/auth-runtime`
+   - Listen-Handler, Filter-Parsing und Listenprojektion ergänzen
+4. `@sva/routing`
+   - Runtime-Route-Katalog und App-Routen für Monitoring-Jobs ergänzen
+5. `apps/sva-studio-react`
+   - Listenroute, Tabs, Filter, Detailroute und Polling ergänzen
+6. Tests und Doku
+   - Repository-, Runtime- und UI-Tests für Listen-/Detailfluss ergänzen
 
-## Risks
+## Open Questions
 
-- Zu viel UI-Scope würde den Plattform-Change unnötig aufblasen.
-- Eine zweite Registry oder implizite Laufzeitregistrierung würde bestehende Guardrails unterlaufen.
-- Externe Fachdatenbanken als führende Job-Persistenz würden Host-Governance und Betriebssicht fragmentieren.
+- Keine offenen Grundsatzfragen mehr; die erste Version bleibt bewusst lesend und fokussiert auf Plugin-Operations-Jobs.

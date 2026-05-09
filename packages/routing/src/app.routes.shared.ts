@@ -61,6 +61,8 @@ export type AppRouteBindings = {
   readonly adminIam: RouteComponent;
   readonly modules: RouteComponent;
   readonly monitoring: RouteComponent;
+  readonly monitoringJobs: RouteComponent;
+  readonly monitoringJobDetail: RouteComponent;
   readonly adminApiPhase1Test: RouteComponent;
 };
 
@@ -127,6 +129,8 @@ const uiRouteDefinitions: readonly UiRouteDefinition[] = [
   },
   { binding: 'modules', path: uiRoutePaths.modules, guard: 'adminInstances' },
   { binding: 'monitoring', path: uiRoutePaths.monitoring, guard: 'adminRoles' },
+  { binding: 'monitoringJobs', path: uiRoutePaths.monitoringJobs, guard: 'adminRoles' },
+  { binding: 'monitoringJobDetail', path: uiRoutePaths.monitoringJobDetail, guard: 'adminRoles' },
   { binding: 'adminApiPhase1Test', path: uiRoutePaths.adminApiPhase1Test },
 ] as const;
 

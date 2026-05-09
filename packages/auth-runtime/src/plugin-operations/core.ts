@@ -1,11 +1,21 @@
 import { randomUUID } from 'node:crypto';
 
-import type { StudioJobStartRequest } from '@sva/core';
+import { studioJobContract, studioJobListContract, type StudioJobListQuery, type StudioJobStartRequest } from '@sva/core';
 import { getWorkspaceContext } from '@sva/server-runtime';
 import { z } from 'zod';
 
-import { asApiItem, createApiError, parseRequestBody, readPathSegment, requireIdempotencyKey } from '../shared/request-helpers.js';
+import {
+  asApiList,
+  asApiItem,
+  createApiError,
+  parseRequestBody,
+  readPage,
+  readPathSegment,
+  requireIdempotencyKey,
+} from '../shared/request-helpers.js';
 import { withAuthenticatedUser } from '../middleware.js';
+import { normalizeStudioJobDetail } from './job-detail-read-model.js';
+import { normalizeStudioJobListItem } from './job-list-read-model.js';
 import { withStudioJobRepository } from './repository.js';
 import { queuePluginOperationJob } from './runner.js';
 
@@ -13,6 +23,8 @@ const startPluginOperationJobSchema = z.object({
   pluginId: z.string().trim().min(1),
   jobTypeId: z.string().trim().min(1),
   importProfileId: z.string().trim().min(1).optional(),
+  correlationId: z.string().trim().min(1).optional(),
+  parentJobId: z.string().trim().min(1).optional(),
   input: z.record(z.string(), z.unknown()),
 }) satisfies z.ZodType<StudioJobStartRequest>;
 
@@ -22,6 +34,34 @@ const requireActorInstanceId = (instanceId: string | null | undefined): string |
   instanceId && instanceId.trim().length > 0
     ? instanceId
     : createApiError(400, 'invalid_instance_id', 'Instanzkontext fehlt.', getRequestId());
+
+const readJobListQuery = (request: Request): StudioJobListQuery | Response => {
+  const url = new URL(request.url);
+  const pagination = readPage(request);
+  const viewParam = url.searchParams.get('view');
+  const statusParam = url.searchParams.get('status');
+  const pluginId = url.searchParams.get('pluginId')?.trim() || undefined;
+  const jobTypeId = url.searchParams.get('jobTypeId')?.trim() || undefined;
+  const q = url.searchParams.get('q')?.trim() || undefined;
+
+  const view = viewParam && studioJobListContract.isView(viewParam) ? viewParam : 'active';
+
+  if (statusParam && !studioJobContract.isStatus(statusParam)) {
+    return createApiError(400, 'invalid_request', 'Unbekannter Job-Statusfilter.', getRequestId());
+  }
+
+  const status = statusParam && studioJobContract.isStatus(statusParam) ? statusParam : undefined;
+
+  return {
+    view,
+    page: pagination.page,
+    pageSize: pagination.pageSize,
+    ...(status ? { status } : {}),
+    ...(pluginId ? { pluginId } : {}),
+    ...(jobTypeId ? { jobTypeId } : {}),
+    ...(q ? { q } : {}),
+  };
+};
 
 export const startPluginOperationJobHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedUser(request, async (ctx) => {
@@ -41,8 +81,8 @@ export const startPluginOperationJobHandler = async (request: Request): Promise<
     }
 
     try {
-      const job = await withStudioJobRepository(instanceId, (repository) =>
-        repository.createJob({
+      const job = await withStudioJobRepository(instanceId, async (repository) => {
+        const createdJob = await repository.createJob({
           id: randomUUID(),
           instanceId,
           pluginId: parsed.data.pluginId,
@@ -57,9 +97,26 @@ export const startPluginOperationJobHandler = async (request: Request): Promise<
           idempotencyKey: idempotency.key,
           requestId: getRequestId(),
           actorAccountId: ctx.user.id,
+          correlationId: parsed.data.correlationId,
+          parentJobId: parsed.data.parentJobId,
           scheduledAt: new Date().toISOString(),
-        })
-      );
+        });
+
+        await repository.appendJobEvent({
+          id: randomUUID(),
+          jobId: createdJob.id,
+          instanceId,
+          eventType: 'job.queued',
+          status: 'queued',
+          progress: {
+            completedSteps: 0,
+            totalSteps: 1,
+          },
+          attempts: 0,
+        });
+
+        return createdJob;
+      });
 
       try {
         await queuePluginOperationJob({
@@ -80,7 +137,7 @@ export const startPluginOperationJobHandler = async (request: Request): Promise<
             progress: job.progress,
             errorPayload: {
               code: 'plugin_operation_enqueue_failed',
-              retryable: false,
+              category: 'permanent',
             },
           })
         ).catch(() => undefined);
@@ -120,12 +177,12 @@ export const getPluginOperationJobHandler = async (request: Request): Promise<Re
     }
 
     try {
-      const job = await withStudioJobRepository(instanceId, (repository) => repository.getJobById(instanceId, jobId));
+      const job = await withStudioJobRepository(instanceId, (repository) => repository.getJobDetail(instanceId, jobId));
       if (!job) {
         return createApiError(404, 'not_found', 'Job wurde nicht gefunden.', getRequestId());
       }
 
-      return new Response(JSON.stringify(asApiItem(job, getRequestId())), {
+      return new Response(JSON.stringify(asApiItem(normalizeStudioJobDetail(job), getRequestId())), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       });
@@ -134,6 +191,86 @@ export const getPluginOperationJobHandler = async (request: Request): Promise<Re
         503,
         'database_unavailable',
         'Der Plugin-Job konnte nicht geladen werden.',
+        getRequestId()
+      );
+    }
+  });
+
+export const listPluginOperationJobsHandler = async (request: Request): Promise<Response> =>
+  withAuthenticatedUser(request, async (ctx) => {
+    const instanceId = requireActorInstanceId(ctx.user.instanceId);
+    if (instanceId instanceof Response) {
+      return instanceId;
+    }
+
+    const query = readJobListQuery(request);
+    if (query instanceof Response) {
+      return query;
+    }
+
+    try {
+      const jobs = await withStudioJobRepository(instanceId, (repository) => repository.listJobs(instanceId, query));
+
+      return new Response(
+        JSON.stringify(
+          asApiList(
+            jobs.items.map((job) => normalizeStudioJobListItem(job)),
+            {
+              page: query.page,
+              pageSize: query.pageSize,
+              total: jobs.total,
+            },
+            getRequestId()
+          )
+        ),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
+    } catch {
+      return createApiError(
+        503,
+        'database_unavailable',
+        'Die Plugin-Jobliste konnte nicht geladen werden.',
+        getRequestId()
+      );
+    }
+  });
+
+export const cancelPluginOperationJobHandler = async (request: Request): Promise<Response> =>
+  withAuthenticatedUser(request, async (ctx) => {
+    const instanceId = requireActorInstanceId(ctx.user.instanceId);
+    if (instanceId instanceof Response) {
+      return instanceId;
+    }
+
+    const jobId = readPathSegment(request, 4);
+    if (!jobId) {
+      return createApiError(400, 'invalid_request', 'Job-ID fehlt.', getRequestId());
+    }
+
+    try {
+      const job = await withStudioJobRepository(instanceId, (repository) =>
+        repository.requestJobCancellation({
+          jobId,
+          instanceId,
+          cancelRequestedAt: new Date().toISOString(),
+        })
+      );
+      if (!job) {
+        return createApiError(404, 'not_found', 'Job wurde nicht gefunden.', getRequestId());
+      }
+
+      return new Response(JSON.stringify(asApiItem(job, getRequestId())), {
+        status: 202,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    } catch {
+      return createApiError(
+        503,
+        'database_unavailable',
+        'Die Abbruchanfrage fuer den Plugin-Job konnte nicht gespeichert werden.',
         getRequestId()
       );
     }

@@ -182,6 +182,7 @@ const authServerMocks = vi.hoisted(() => {
     legalHoldApplyHandler: vi.fn(async () => response('legalHoldApplyHandler')),
     legalHoldReleaseHandler: vi.fn(async () => response('legalHoldReleaseHandler')),
     dataSubjectMaintenanceHandler: vi.fn(async () => response('dataSubjectMaintenanceHandler')),
+    listPluginOperationJobsHandler: vi.fn(async () => response('listPluginOperationJobsHandler')),
     startPluginOperationJobHandler: vi.fn(async () => response('startPluginOperationJobHandler')),
     getPluginOperationJobHandler: vi.fn(async () => response('getPluginOperationJobHandler')),
     cancelPluginOperationJobHandler: vi.fn(async () => response('cancelPluginOperationJobHandler')),
@@ -253,18 +254,23 @@ describe('auth.routes.server', () => {
     const detailHandlers = resolveAuthHandlers('/api/v1/plugin-operations/jobs/$jobId');
     const cancelHandlers = resolveAuthHandlers('/api/v1/plugin-operations/jobs/$jobId/cancel');
 
+    expect(createHandlers?.GET).toBeDefined();
     expect(createHandlers?.POST).toBeDefined();
     expect(detailHandlers?.GET).toBeDefined();
     expect(cancelHandlers?.POST).toBeDefined();
 
+    const list = createHandlers?.GET;
     const post = createHandlers?.POST;
     const get = detailHandlers?.GET;
     const cancel = cancelHandlers?.POST;
 
-    if (!post || !get || !cancel) {
+    if (!list || !post || !get || !cancel) {
       throw new Error('Expected plugin operation handlers to be defined');
     }
 
+    await list({
+      request: new Request('http://localhost/api/v1/plugin-operations/jobs', { method: 'GET' }),
+    });
     await post({
       request: new Request('http://localhost/api/v1/plugin-operations/jobs', { method: 'POST' }),
     });
@@ -275,6 +281,7 @@ describe('auth.routes.server', () => {
       request: new Request('http://localhost/api/v1/plugin-operations/jobs/job-1/cancel', { method: 'POST' }),
     });
 
+    expect(authServerMocks.listPluginOperationJobsHandler).toHaveBeenCalled();
     expect(authServerMocks.startPluginOperationJobHandler).toHaveBeenCalled();
     expect(authServerMocks.getPluginOperationJobHandler).toHaveBeenCalled();
     expect(authServerMocks.cancelPluginOperationJobHandler).toHaveBeenCalled();

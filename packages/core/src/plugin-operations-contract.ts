@@ -1,6 +1,7 @@
 import type {
   ApiErrorResponse,
   ApiItemResponse,
+  ApiListResponse,
   IamRuntimeDiagnosticClassification,
   IamRuntimeDiagnosticStatus,
   IamRuntimeRecommendedAction,
@@ -24,6 +25,9 @@ type StudioJobStatus = (typeof studioJobStatuses)[number];
 type TerminalStudioJobStatus = (typeof terminalStudioJobStatuses)[number];
 type StudioJobErrorCategory = (typeof studioJobErrorCategories)[number];
 type StudioJobEventType = (typeof studioJobEventTypes)[number];
+type StudioJobStaleState = 'fresh' | 'stale' | 'terminal';
+type StudioJobEventTone = 'neutral' | 'info' | 'success' | 'warning' | 'error';
+type StudioJobListView = 'active' | 'history';
 
 export const studioJobContract = {
   statuses: studioJobStatuses,
@@ -44,6 +48,18 @@ export const studioJobEventContract = {
   types: studioJobEventTypes,
   isType: (value: string): value is StudioJobEventType =>
     (studioJobEventTypes as readonly string[]).includes(value),
+} as const;
+
+export const studioJobRuntimeContract = {
+  staleStates: ['fresh', 'stale', 'terminal'] as const,
+  isStaleState: (value: string): value is StudioJobStaleState =>
+    (['fresh', 'stale', 'terminal'] as readonly string[]).includes(value),
+} as const;
+
+export const studioJobListContract = {
+  views: ['active', 'history'] as const,
+  isView: (value: string): value is StudioJobListView =>
+    (['active', 'history'] as readonly string[]).includes(value),
 } as const;
 
 const studioImportPhases = [
@@ -73,11 +89,48 @@ export type StudioJobProgress = {
   readonly lastUpdatedAt?: string;
 };
 
+export type StudioJobResultSummary = {
+  readonly processedItems?: number;
+  readonly acceptedItems?: number;
+  readonly rejectedItems?: number;
+  readonly skippedItems?: number;
+  readonly warningCount?: number;
+  readonly durationMs?: number;
+};
+
+export type StudioJobResult = {
+  readonly summary?: StudioJobResultSummary;
+  readonly plugin?: Readonly<Record<string, unknown>>;
+};
+
 export type StudioJobError = {
   readonly code: string;
   readonly category: StudioJobErrorCategory;
   readonly message?: string;
-  readonly details?: Readonly<Record<string, unknown>>;
+  readonly details?: {
+    readonly host?: StudioJobEventHostDetails;
+    readonly plugin?: Readonly<Record<string, unknown>>;
+  };
+};
+
+export type StudioJobEventHostDetails = {
+  readonly workerId?: string;
+  readonly errorCode?: string;
+  readonly errorCategory?: StudioJobErrorCategory;
+  readonly cancellationRequestedAt?: string;
+  readonly pluginId?: string;
+  readonly jobTypeId?: string;
+};
+
+export type StudioJobEventDetails = {
+  readonly host?: StudioJobEventHostDetails;
+  readonly plugin?: Readonly<Record<string, unknown>>;
+};
+
+export type StudioJobEventPresentation = {
+  readonly tone: StudioJobEventTone;
+  readonly title: string;
+  readonly isTerminal: boolean;
 };
 
 export type StudioJobEventRecord = {
@@ -89,7 +142,8 @@ export type StudioJobEventRecord = {
   readonly progress?: StudioJobProgress;
   readonly attempts: number;
   readonly message?: string;
-  readonly details?: Readonly<Record<string, unknown>>;
+  readonly details?: StudioJobEventDetails;
+  readonly presentation?: StudioJobEventPresentation;
   readonly createdAt: string;
 };
 
@@ -105,7 +159,7 @@ export type StudioJobRecord = {
   readonly status: StudioJobStatus;
   readonly progress?: StudioJobProgress;
   readonly inputPayload: Readonly<Record<string, unknown>>;
-  readonly resultPayload?: Readonly<Record<string, unknown>>;
+  readonly resultPayload?: StudioJobResult;
   readonly errorPayload?: StudioJobError;
   readonly attempts: number;
   readonly maxAttempts: number;
@@ -164,6 +218,50 @@ export type StudioJobCancellationRequestInput = {
 
 export type StudioJobDetail = StudioJobRecord & {
   readonly history: readonly StudioJobEventRecord[];
+  readonly latestEvent?: StudioJobEventRecord;
+  readonly runtime?: {
+    readonly cancellationRequested: boolean;
+    readonly staleState: StudioJobStaleState;
+    readonly staleAfterSeconds: number;
+    readonly evaluatedAt: string;
+    readonly lastObservedAt?: string;
+  };
+};
+
+export type StudioJobListQuery = {
+  readonly view: StudioJobListView;
+  readonly page: number;
+  readonly pageSize: number;
+  readonly status?: StudioJobStatus;
+  readonly pluginId?: string;
+  readonly jobTypeId?: string;
+  readonly q?: string;
+};
+
+export type StudioJobRuntimeDiagnostics = NonNullable<StudioJobDetail['runtime']>;
+
+export type StudioJobListItem = Pick<
+  StudioJobRecord,
+  | 'id'
+  | 'instanceId'
+  | 'pluginId'
+  | 'jobTypeId'
+  | 'status'
+  | 'progress'
+  | 'attempts'
+  | 'maxAttempts'
+  | 'correlationId'
+  | 'parentJobId'
+  | 'workerId'
+  | 'startedAt'
+  | 'finishedAt'
+  | 'createdAt'
+  | 'updatedAt'
+  | 'lastProgressAt'
+  | 'heartbeatAt'
+> & {
+  readonly latestEvent?: StudioJobEventRecord;
+  readonly runtime: StudioJobRuntimeDiagnostics;
 };
 
 export type StudioJobStartRequest = {
@@ -205,6 +303,7 @@ export type StudioPluginOperationApiError = {
 
 export type StudioJobResponse = ApiItemResponse<StudioJobRecord>;
 export type StudioJobDetailResponse = ApiItemResponse<StudioJobDetail>;
+export type StudioJobListResponse = ApiListResponse<StudioJobListItem>;
 
 export type StudioPluginOperationApiErrorResponse = Omit<ApiErrorResponse, 'error'> & {
   readonly error: StudioPluginOperationApiError;

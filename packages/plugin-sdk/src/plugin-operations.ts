@@ -16,6 +16,20 @@ export type PluginJobTypeDefinition = {
     readonly phaseKeys?: readonly string[];
     readonly stepKeys?: readonly string[];
   };
+  readonly result?: {
+    readonly summaryKeys?: readonly (
+      | 'processedItems'
+      | 'acceptedItems'
+      | 'rejectedItems'
+      | 'skippedItems'
+      | 'warningCount'
+      | 'durationMs'
+    )[];
+    readonly detailKeys?: readonly string[];
+  };
+  readonly errors?: {
+    readonly detailKeys?: readonly string[];
+  };
 };
 
 export type PluginImportProfileValidationMode = 'preflight-only' | 'preflight-and-commit';
@@ -45,6 +59,20 @@ export type PluginJobTypeRegistryEntry = {
     readonly phaseKeys?: readonly string[];
     readonly stepKeys?: readonly string[];
   };
+  readonly result?: {
+    readonly summaryKeys?: readonly (
+      | 'processedItems'
+      | 'acceptedItems'
+      | 'rejectedItems'
+      | 'skippedItems'
+      | 'warningCount'
+      | 'durationMs'
+    )[];
+    readonly detailKeys?: readonly string[];
+  };
+  readonly errors?: {
+    readonly detailKeys?: readonly string[];
+  };
 };
 
 export type PluginImportProfileRegistryEntry = {
@@ -69,6 +97,8 @@ const jobTypeDefinitionAllowedKeys = new Set([
   'displayName',
   'descriptionKey',
   'progress',
+  'result',
+  'errors',
 ] as const);
 
 const importProfileDefinitionAllowedKeys = new Set([
@@ -84,8 +114,30 @@ const importProfileDefinitionAllowedKeys = new Set([
 
 const importProfileValidationAllowedKeys = new Set(['mode'] as const);
 const jobTypeProgressAllowedKeys = new Set(['phaseKeys', 'stepKeys'] as const);
+const jobTypeResultAllowedKeys = new Set(['summaryKeys', 'detailKeys'] as const);
+const jobTypeErrorAllowedKeys = new Set(['detailKeys'] as const);
 
 const normalizeProgressKeys = (keys: readonly string[] | undefined): readonly string[] | undefined => {
+  if (!keys) {
+    return undefined;
+  }
+
+  const normalizedKeys = keys.map((key) => normalizePluginIdentifier(key));
+  if (normalizedKeys.some((key) => key.length === 0)) {
+    return undefined;
+  }
+
+  return normalizedKeys.length > 0 ? normalizedKeys : undefined;
+};
+
+const normalizeSummaryKeys = (
+  keys:
+    | readonly ('processedItems' | 'acceptedItems' | 'rejectedItems' | 'skippedItems' | 'warningCount' | 'durationMs')[]
+    | undefined
+): readonly ('processedItems' | 'acceptedItems' | 'rejectedItems' | 'skippedItems' | 'warningCount' | 'durationMs')[] | undefined =>
+  keys && keys.length > 0 ? [...new Set(keys)] : undefined;
+
+const normalizeDetailKeys = (keys: readonly string[] | undefined): readonly string[] | undefined => {
   if (!keys) {
     return undefined;
   }
@@ -108,6 +160,17 @@ const normalizeJobTypeDefinition = (definition: PluginJobTypeDefinition): Plugin
     ? {
         phaseKeys: normalizeProgressKeys(definition.progress.phaseKeys),
         stepKeys: normalizeProgressKeys(definition.progress.stepKeys),
+      }
+    : undefined,
+  result: definition.result
+    ? {
+        summaryKeys: normalizeSummaryKeys(definition.result.summaryKeys),
+        detailKeys: normalizeDetailKeys(definition.result.detailKeys),
+      }
+    : undefined,
+  errors: definition.errors
+    ? {
+        detailKeys: normalizeDetailKeys(definition.errors.detailKeys),
       }
     : undefined,
 });
@@ -149,6 +212,22 @@ export const definePluginJobTypes = <const TJobTypes extends readonly PluginJobT
         normalizePluginIdentifier(jobType.jobTypeId)
       );
     }
+    if (jobType.result) {
+      assertPluginContributionAllowedKeys(
+        jobType.result as Record<string, unknown>,
+        jobTypeResultAllowedKeys,
+        normalizedNamespace,
+        normalizePluginIdentifier(jobType.jobTypeId)
+      );
+    }
+    if (jobType.errors) {
+      assertPluginContributionAllowedKeys(
+        jobType.errors as Record<string, unknown>,
+        jobTypeErrorAllowedKeys,
+        normalizedNamespace,
+        normalizePluginIdentifier(jobType.jobTypeId)
+      );
+    }
 
     const normalizedJobType = normalizeJobTypeDefinition(jobType);
     const parsed = parseNamespacedPluginIdentifier(normalizedJobType.jobTypeId);
@@ -164,7 +243,9 @@ export const definePluginJobTypes = <const TJobTypes extends readonly PluginJobT
       normalizedJobType.queue.length === 0 ||
       normalizedJobType.displayName.length === 0 ||
       (jobType.progress?.phaseKeys && normalizedJobType.progress?.phaseKeys === undefined) ||
-      (jobType.progress?.stepKeys && normalizedJobType.progress?.stepKeys === undefined)
+      (jobType.progress?.stepKeys && normalizedJobType.progress?.stepKeys === undefined) ||
+      (jobType.result?.detailKeys && normalizedJobType.result?.detailKeys === undefined) ||
+      (jobType.errors?.detailKeys && normalizedJobType.errors?.detailKeys === undefined)
     ) {
       throw new Error(`invalid_plugin_job_type:${normalizedJobType.jobTypeId}`);
     }
@@ -274,6 +355,8 @@ export const createPluginJobTypeRegistry = (
         displayName: normalizedJobType.displayName,
         descriptionKey: normalizedJobType.descriptionKey,
         progress: normalizedJobType.progress,
+        result: normalizedJobType.result,
+        errors: normalizedJobType.errors,
       });
     }
   }

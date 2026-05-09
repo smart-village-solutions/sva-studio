@@ -2,7 +2,7 @@ import { normalizeIamTab, normalizeRoleDetailTab, type AppRouteBindings as BaseA
 import { EventsCreatePage, EventsEditPage, EventsListPage } from '@sva/plugin-events';
 import { NewsCreatePage, NewsEditPage, NewsListPage } from '@sva/plugin-news';
 import { PoiCreatePage, PoiEditPage, PoiListPage } from '@sva/plugin-poi';
-import { useParams, useSearch } from '@tanstack/react-router';
+import { useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import React from 'react';
 
 import { t } from '../i18n';
@@ -48,12 +48,20 @@ const AppPlaceholderRoutePage = () => (
   />
 );
 
-const MonitoringPlaceholderRoutePage = () => (
-  <PlaceholderPage
-    section={t('shell.sidebar.sections.system')}
-    title={t('shell.sidebar.monitoring')}
-  />
-);
+const MonitoringRoutePage = () => {
+  const navigate = useNavigate();
+
+  React.useEffect(() => {
+    void navigate({ to: '/monitoring/jobs', replace: true });
+  }, [navigate]);
+
+  return (
+    <PlaceholderPage
+      section={t('shell.sidebar.sections.system')}
+      title={t('shell.sidebar.monitoring')}
+    />
+  );
+};
 
 const HelpPlaceholderRoutePage = () => (
   <PlaceholderPage
@@ -115,6 +123,25 @@ const LazyGroupsPage = React.lazy(async () => {
 });
 
 const GroupsRoutePage = () => renderLazyPage(LazyGroupsPage);
+
+const LazyMonitoringJobsPage = React.lazy(async () => {
+  const mod = await import('../routes/monitoring/-jobs-page');
+  return { default: mod.MonitoringJobsPage };
+});
+
+const MonitoringJobsRoutePage = () => renderLazyPage(LazyMonitoringJobsPage);
+
+const LazyMonitoringJobDetailPage = React.lazy(async () => {
+  const mod = await import('../routes/monitoring/-job-detail-page');
+  return { default: mod.MonitoringJobDetailPage };
+});
+
+const MonitoringJobDetailRoutePage = () => {
+  const params = useParams({ strict: false });
+  return renderLazyPage(LazyMonitoringJobDetailPage, {
+    jobId: readStringParam(params.jobId),
+  });
+};
 
 const LazyGroupDetailPage = React.lazy(async () => {
   const mod = await import('../routes/admin/groups/-group-detail-page');
@@ -243,6 +270,8 @@ export const appRouteBindings: StudioAppRouteBindings = {
   adminLegalTextDetail: LegalTextDetailRoutePage,
   adminIam: IamRoutePage,
   modules: ModulesPage,
-  monitoring: MonitoringPlaceholderRoutePage,
+  monitoring: MonitoringRoutePage,
+  monitoringJobs: MonitoringJobsRoutePage,
+  monitoringJobDetail: MonitoringJobDetailRoutePage,
   adminApiPhase1Test: Phase1TestPage,
 };

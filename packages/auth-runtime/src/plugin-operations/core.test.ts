@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const repositoryState = vi.hoisted(() => ({
   withStudioJobRepository: vi.fn(),
@@ -39,12 +39,15 @@ vi.mock('./runner.js', () => ({
 import {
   cancelPluginOperationJobHandler,
   getPluginOperationJobHandler,
+  listPluginOperationJobsHandler,
   startPluginOperationJobHandler,
 } from './core.js';
 
 describe('plugin operations handlers', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-05-09T12:02:00.000Z'));
     runnerState.queuePluginOperationJob.mockResolvedValue(undefined);
     middlewareState.withAuthenticatedUser.mockImplementation(async (_request, handler) =>
       handler({
@@ -58,6 +61,10 @@ describe('plugin operations handlers', () => {
     );
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('starts a generic plugin operation job and returns 202', async () => {
     repositoryState.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
       work({
@@ -66,6 +73,7 @@ describe('plugin operations handlers', () => {
           createdAt: '2026-05-09T12:00:00.000Z',
           updatedAt: '2026-05-09T12:00:00.000Z',
         })),
+        appendJobEvent: vi.fn(async () => null),
       })
     );
 
@@ -80,8 +88,6 @@ describe('plugin operations handlers', () => {
           pluginId: 'news',
           jobTypeId: 'news.import-articles',
           importProfileId: 'news.article-import',
-          correlationId: 'corr-1',
-          parentJobId: 'job-parent',
           input: { source: 'upload-1' },
         }),
       })
@@ -100,8 +106,6 @@ describe('plugin operations handlers', () => {
         jobTypeId: 'news.import-articles',
         status: 'queued',
         requestId: 'req-test',
-        correlationId: 'corr-1',
-        parentJobId: 'job-parent',
       },
     });
   });
@@ -114,6 +118,7 @@ describe('plugin operations handlers', () => {
           createdAt: '2026-05-09T12:00:00.000Z',
           updatedAt: '2026-05-09T12:00:00.000Z',
         })),
+        appendJobEvent: vi.fn(async () => null),
         updateJobState: vi.fn(async () => null),
       })
     );
@@ -145,7 +150,7 @@ describe('plugin operations handlers', () => {
   it('reads a job status for the authenticated instance', async () => {
     repositoryState.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
       work({
-        getJobById: vi.fn(async () => ({
+        getJobDetail: vi.fn(async () => ({
           id: 'job-1',
           instanceId: 'tenant-a',
           pluginId: 'news',
@@ -211,6 +216,99 @@ describe('plugin operations handlers', () => {
             eventType: 'job.started',
           },
         ],
+        latestEvent: {
+          id: 'event-1',
+          eventType: 'job.started',
+        },
+        runtime: {
+          cancellationRequested: false,
+          staleState: 'fresh',
+          staleAfterSeconds: 120,
+          evaluatedAt: expect.any(String),
+          lastObservedAt: '2026-05-09T12:01:30.000Z',
+        },
+      },
+    });
+  });
+
+  it('lists plugin operation jobs for the authenticated instance', async () => {
+    repositoryState.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
+      work({
+        listJobs: vi.fn(async () => ({
+          total: 1,
+          items: [
+            {
+              id: 'job-1',
+              instanceId: 'tenant-a',
+              pluginId: 'news',
+              jobTypeId: 'news.import-articles',
+              queueName: 'plugin-operations',
+              status: 'running',
+              progress: {
+                completedSteps: 1,
+                totalSteps: 3,
+                currentStepKey: 'validate-schema',
+              },
+              inputPayload: { source: 'upload-1' },
+              attempts: 1,
+              maxAttempts: 5,
+              idempotencyKey: 'idem-1',
+              workerId: 'graphile-worker-1',
+              heartbeatAt: '2026-05-09T12:01:30.000Z',
+              lastProgressAt: '2026-05-09T12:01:00.000Z',
+              correlationId: 'corr-1',
+              scheduledAt: '2026-05-09T12:00:00.000Z',
+              startedAt: '2026-05-09T12:01:00.000Z',
+              createdAt: '2026-05-09T12:00:00.000Z',
+              updatedAt: '2026-05-09T12:01:00.000Z',
+              latestEvent: {
+                id: 'event-1',
+                jobId: 'job-1',
+                instanceId: 'tenant-a',
+                eventType: 'job.progressed',
+                status: 'running',
+                progress: {
+                  completedSteps: 1,
+                  totalSteps: 3,
+                  currentStepKey: 'validate-schema',
+                },
+                attempts: 1,
+                createdAt: '2026-05-09T12:01:00.000Z',
+              },
+            },
+          ],
+        })),
+      })
+    );
+
+    const response = await listPluginOperationJobsHandler(
+      new Request(
+        'https://studio.test/api/v1/plugin-operations/jobs?view=active&page=2&pageSize=5&status=running&pluginId=news&jobTypeId=news.import-articles&q=corr',
+        { method: 'GET' }
+      )
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      data: [
+        {
+          id: 'job-1',
+          status: 'running',
+          latestEvent: {
+            id: 'event-1',
+            presentation: {
+              title: 'Fortschritt aktualisiert',
+            },
+          },
+          runtime: {
+            staleState: 'fresh',
+          },
+        },
+      ],
+      pagination: {
+        page: 2,
+        pageSize: 5,
+        total: 1,
       },
     });
   });
@@ -251,4 +349,5 @@ describe('plugin operations handlers', () => {
       },
     });
   });
+
 });

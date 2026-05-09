@@ -1,10 +1,11 @@
 import * as graphileWorker from 'graphile-worker';
 
-import type { StudioJobProgress, StudioJobRecord } from '@sva/core';
 import { createSdkLogger } from '@sva/server-runtime';
 
 import { resolvePool } from '../db.js';
+import { createJobLifecycleOrchestrator } from './job-lifecycle-orchestrator.js';
 import { withStudioJobRepository } from './repository.js';
+import type { PluginOperationExecutionHandler } from './types.js';
 
 const logger = createSdkLogger({ component: 'plugin-operations-runner', level: 'info' });
 
@@ -14,15 +15,6 @@ type PluginOperationRunnerPayload = {
   readonly instanceId: string;
   readonly jobId: string;
 };
-
-export type PluginOperationExecutionResult = {
-  readonly progress?: StudioJobProgress;
-  readonly resultPayload?: Readonly<Record<string, unknown>>;
-};
-
-export type PluginOperationExecutionHandler = (
-  job: StudioJobRecord
-) => Promise<PluginOperationExecutionResult | void>;
 
 type PluginOperationExecutionRegistry = ReadonlyMap<string, PluginOperationExecutionHandler>;
 
@@ -50,84 +42,6 @@ const parseWorkerConcurrency = (rawValue: string | undefined): number => {
   return Math.min(parsed, 16);
 };
 
-const createMissingHandlerPayload = (job: StudioJobRecord) => ({
-  code: 'plugin_operation_handler_missing',
-  retryable: false,
-  jobTypeId: job.jobTypeId,
-  pluginId: job.pluginId,
-});
-
-const toErrorPayload = (error: unknown, retryable: boolean) => ({
-  code: 'plugin_operation_execution_failed',
-  retryable,
-  message: error instanceof Error ? error.message : String(error),
-});
-
-const markJobRunning = async (job: StudioJobRecord, attempts: number, startedAt: string) =>
-  withStudioJobRepository(job.instanceId, (repository) =>
-    repository.updateJobState({
-      jobId: job.id,
-      instanceId: job.instanceId,
-      status: 'running',
-      attempts,
-      startedAt: job.startedAt ?? startedAt,
-      progress: job.progress,
-    })
-  );
-
-const markJobCompleted = async (
-  job: StudioJobRecord,
-  attempts: number,
-  startedAt: string,
-  result: PluginOperationExecutionResult | void
-) =>
-  withStudioJobRepository(job.instanceId, (repository) =>
-    repository.updateJobState({
-      jobId: job.id,
-      instanceId: job.instanceId,
-      status: 'succeeded',
-      attempts,
-      startedAt: job.startedAt ?? startedAt,
-      finishedAt: new Date().toISOString(),
-      progress: result?.progress ?? { completedSteps: 1, totalSteps: 1, currentPhase: 'completed' },
-      resultPayload: result?.resultPayload,
-    })
-  );
-
-const markJobRetriedOrFailed = async (
-  job: StudioJobRecord,
-  attempts: number,
-  startedAt: string,
-  error: unknown,
-  finalFailure: boolean
-) =>
-  withStudioJobRepository(job.instanceId, (repository) =>
-    repository.updateJobState({
-      jobId: job.id,
-      instanceId: job.instanceId,
-      status: finalFailure ? 'failed' : 'retrying',
-      attempts,
-      startedAt: job.startedAt ?? startedAt,
-      finishedAt: finalFailure ? new Date().toISOString() : undefined,
-      progress: job.progress,
-      errorPayload: toErrorPayload(error, !finalFailure),
-    })
-  );
-
-const markJobMissingHandler = async (job: StudioJobRecord, attempts: number, startedAt: string) =>
-  withStudioJobRepository(job.instanceId, (repository) =>
-    repository.updateJobState({
-      jobId: job.id,
-      instanceId: job.instanceId,
-      status: 'failed',
-      attempts,
-      startedAt: job.startedAt ?? startedAt,
-      finishedAt: new Date().toISOString(),
-      progress: job.progress,
-      errorPayload: createMissingHandlerPayload(job),
-    })
-  );
-
 export const registerPluginOperationExecutionHandlers = (
   handlers: Readonly<Record<string, PluginOperationExecutionHandler>>
 ): void => {
@@ -142,36 +56,27 @@ export const createPluginOperationTaskList = (
 ): graphileWorker.TaskList => ({
   [pluginOperationTaskIdentifier]: async (payload, helpers) => {
     const { instanceId, jobId } = payload as PluginOperationRunnerPayload;
-    const job = await withStudioJobRepository(instanceId, (repository) => repository.getJobById(instanceId, jobId));
-    if (!job) {
-      logger.warn('Plugin-Operations-Jobdatensatz zur Worker-Ausführung nicht gefunden', {
-        operation: 'plugin_operation_job_missing',
-        job_id: jobId,
-        instance_id: instanceId,
-      });
-      return;
-    }
-
-    const attempts = helpers.job.attempts;
-    const startedAt = new Date().toISOString();
-    await markJobRunning(job, attempts, startedAt);
-
-    const handler = getHandlers().get(job.jobTypeId);
-    if (!handler) {
-      await markJobMissingHandler(job, attempts, startedAt);
-      return;
-    }
-
-    try {
-      const result = await handler(job);
-      await markJobCompleted(job, attempts, startedAt, result);
-    } catch (error) {
-      const finalFailure = attempts >= helpers.job.max_attempts;
-      await markJobRetriedOrFailed(job, attempts, startedAt, error, finalFailure);
-      if (!finalFailure) {
-        throw error;
-      }
-    }
+    await createJobLifecycleOrchestrator({
+      logger,
+      loadRepository: async (tenantInstanceId) => ({
+        getJobById: (repositoryInstanceId, repositoryJobId) =>
+          withStudioJobRepository(tenantInstanceId, (repository) =>
+            repository.getJobById(repositoryInstanceId, repositoryJobId)
+          ),
+        updateJobState: (input) =>
+          withStudioJobRepository(tenantInstanceId, (repository) => repository.updateJobState(input)),
+        updateJobProgress: (input) =>
+          withStudioJobRepository(tenantInstanceId, (repository) => repository.updateJobProgress(input)),
+        appendJobEvent: (input) =>
+          withStudioJobRepository(tenantInstanceId, (repository) => repository.appendJobEvent(input)),
+      }),
+      resolveHandler: (jobTypeId) => getHandlers().get(jobTypeId),
+    }).run({
+      instanceId,
+      jobId,
+      attempts: helpers.job.attempts,
+      maxAttempts: helpers.job.max_attempts,
+    });
   },
 });
 
@@ -237,3 +142,10 @@ export const stopPluginOperationWorker = async (): Promise<void> => {
   await runner.stop();
   runnerPromise = null;
 };
+
+export type {
+  PluginOperationExecutionHandler,
+  PluginOperationExecutionHandlerContext,
+  PluginOperationExecutionResult,
+  PluginOperationProgressReporter,
+} from './types.js';

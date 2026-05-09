@@ -1005,7 +1005,7 @@ export default function Sidebar({
             {
               kind: 'link' as const,
               id: 'monitoring',
-              to: '/monitoring',
+              to: '/monitoring/jobs',
               label: t('shell.sidebar.monitoring'),
               icon: IconActivityHeartbeat,
             },

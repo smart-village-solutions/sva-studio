@@ -105,6 +105,8 @@ const bindingKeys = [
   'adminIam',
   'modules',
   'monitoring',
+  'monitoringJobs',
+  'monitoringJobDetail',
   'adminApiPhase1Test',
 ] as const;
 
@@ -179,6 +181,8 @@ describe('app.routes', () => {
     expect(routeMap.has('/admin/roles/$roleId')).toBe(true);
     expect(routeMap.has('/modules')).toBe(true);
     expect(routeMap.has('/monitoring')).toBe(true);
+    expect(routeMap.has('/monitoring/jobs')).toBe(true);
+    expect(routeMap.has('/monitoring/jobs/$jobId')).toBe(true);
     expect(routeMap.has('/auth/login')).toBe(true);
     expect(routeMap.has('/plugins/calendar')).toBe(true);
     expect(pluginFactories).toHaveLength(1);
@@ -199,6 +203,8 @@ describe('app.routes', () => {
     await readRouteOptions(routeMap.get('/admin/users')).beforeLoad?.({ href: '/admin/users' });
     await readRouteOptions(routeMap.get('/modules')).beforeLoad?.({ href: '/modules' });
     await readRouteOptions(routeMap.get('/monitoring')).beforeLoad?.({ href: '/monitoring' });
+    await readRouteOptions(routeMap.get('/monitoring/jobs')).beforeLoad?.({ href: '/monitoring/jobs' });
+    await readRouteOptions(routeMap.get('/monitoring/jobs/$jobId')).beforeLoad?.({ href: '/monitoring/jobs/job-1' });
     await readRouteOptions(routeMap.get('/plugins/calendar')).beforeLoad?.({ href: '/plugins/calendar' });
     await readRouteOptions(routeMap.get('/plugins/news')).beforeLoad?.({ href: '/plugins/news' });
 
@@ -209,6 +215,8 @@ describe('app.routes', () => {
     expect(guardSpies.adminUsers).toHaveBeenCalledWith({ href: '/admin/users' });
     expect(guardSpies.adminInstances).toHaveBeenCalledWith({ href: '/modules' });
     expect(guardSpies.adminRoles).toHaveBeenCalledWith({ href: '/monitoring' });
+    expect(guardSpies.adminRoles).toHaveBeenCalledWith({ href: '/monitoring/jobs' });
+    expect(guardSpies.adminRoles).toHaveBeenCalledWith({ href: '/monitoring/jobs/job-1' });
     expect(guardSpies.content).toHaveBeenCalledWith({ href: '/plugins/news' });
     expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('account', undefined, '/account');
     expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('media', undefined, '/admin/media/$mediaId/usage');
@@ -216,6 +224,8 @@ describe('app.routes', () => {
     expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('adminUsers', undefined, '/admin/users');
     expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('adminInstances', undefined, '/modules');
     expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('adminRoles', undefined, '/monitoring');
+    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('adminRoles', undefined, '/monitoring/jobs');
+    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('adminRoles', undefined, '/monitoring/jobs/$jobId');
     expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('content', undefined, '/plugins/news');
 
     expect(readRouteOptions(routeMap.get('/admin/iam')).validateSearch?.({ tab: 'bogus' })).toEqual({

@@ -26,9 +26,13 @@ gleichzeitig beeinflussen.
 - Hostseitige Hintergrundprozesse folgen einem runner-agnostischen Plattformvertrag mit zentralem Jobdatensatz im Studio-Postgres.
 - Eine erste interne Worker-Implementierung wird bevorzugt mit Graphile Worker umgesetzt, bleibt aber ausdrücklich hinter der Host-Runtime verborgen.
 - Job-Starts, Actor-Kontext, Mandantenbezug, Korrelation, Status, Retry-Metadaten und Fehlerabbildung müssen im Hostvertrag explizit modelliert werden; ad-hoc Hintergrundjobs ohne gemeinsamen Orchestrierungsvertrag sind nicht der Zielpfad.
+- Fachliche Worker erhalten einen Host-Context mit `job`, `progressReporter`, `abortSignal`, `logger`, `requestId` und `actorAccountId`; sie kennen weder Graphile-Helper noch direkte Repository-Fabriken.
+- Progress ist ein erstklassiger Hostvertrag mit stabilen Feldern für Schritte, Phase, Details und Zeitstempel; Fortschritt darf mehrfach ohne terminalen Statuswechsel geschrieben werden.
+- Technische Job-Lifecycle-Events bleiben zunächst hostintern und werden zusammen mit Heartbeat und Job-History zentral persistiert; UI und spätere Integrationen lesen vorerst denselben Polling-Vertrag statt eines Brokers.
 - Öffentliche Plugin- und Client-Verträge dürfen keine Graphile-spezifischen Begriffe oder Tabellenkenntnis voraussetzen.
 - Temporal bleibt als spätere Eskalationsoption für komplexere Orchestrierung offen, ist aber noch kein zweiter aktiver Standard.
 - Trigger.dev ist für Studio kein zulässiger Workflow-Pfad.
+- Outbox, n8n-Anbindung, SSE/WebSocket und Broker-Pfade wie NATS bleiben explizite Folgearbeit hinter derselben Hostgrenze.
 
 ### Security und Privacy
 

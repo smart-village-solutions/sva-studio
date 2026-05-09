@@ -27,3 +27,13 @@ Das System SHALL eine einzige öffentliche Routing-Schnittstelle in `@sva/routin
 - **WHEN** die erste Plattformausbaustufe generische Jobs produktiv anbietet
 - **THEN** enthält der Runtime-Route-Katalog mindestens einen Start-Endpunkt und einen Detail-/Status-Endpunkt für Plugin-Operations
 - **AND** deren Handler werden über dieselben Host-Mappings verdrahtet wie bestehende Runtime-Endpunkte
+
+#### Scenario: Plugin-Operations-Listenendpunkt wird für Monitoring ergänzt
+- **WHEN** der Host unter `Monitoring > Jobs` eine lesende Jobs-Ansicht bereitstellt
+- **THEN** enthält der Runtime-Route-Katalog zusätzlich einen Listenendpunkt für Plugin-Operations-Jobs
+- **AND** dieser Endpunkt bleibt Teil desselben zentralen Host-Katalogs statt einer app-lokalen Sonderverdrahtung
+
+#### Scenario: Monitoring-Jobs-Routen bleiben Teil der kanonischen App-Routen
+- **WHEN** die App einen Unterbereich `Monitoring > Jobs` mit Listen- und Detailroute anbietet
+- **THEN** werden diese Seitenrouten über die kanonische Route-Registry bereitgestellt
+- **AND** sie entstehen nicht als app-lokale Parallelrouten außerhalb des bestehenden Routing-Contracts

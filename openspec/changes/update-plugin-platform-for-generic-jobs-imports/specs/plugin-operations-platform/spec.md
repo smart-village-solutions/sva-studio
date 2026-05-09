@@ -80,3 +80,52 @@ Das System SHALL erste UI-Andockpunkte für generische Jobs oder Importe erlaube
 - **WHEN** die generische Plugin-Operations-Plattform eingeführt wird
 - **THEN** darf sie zunächst ohne voll ausgebaute Monitoring-Oberfläche oder Import-Wizard bestehen
 - **AND** Fachchanges können die Plattform trotzdem über den Host-Vertrag konsumieren
+
+#### Scenario: Host führt einen ersten lesenden Jobs-Unterbereich unter Monitoring ein
+
+- **WHEN** der Host einen ersten UI-Einstieg für generische Plugin-Operations-Jobs bereitstellt
+- **THEN** darf dieser als gezielter Unterbereich `Monitoring > Jobs` umgesetzt werden
+- **AND** er bleibt im ersten Schnitt auf lesende Listen- und Detailansichten beschränkt
+- **AND** daraus entsteht noch kein verpflichtender Vollausbau einer allgemeinen Monitoring-Suite
+
+### Requirement: Host veröffentlicht eine lesende Listenansicht für Plugin-Operations-Jobs
+
+Das System SHALL für generische Plugin-Operations-Jobs eine hostgeführte Listenansicht mit separater Sicht auf aktive und historische Jobs bereitstellen.
+
+#### Scenario: Monitoring zeigt aktive Jobs
+
+- **WHEN** ein Operator die Jobliste im Tab `Aktiv` öffnet
+- **THEN** zeigt das System laufende und retryende Jobs mit Status, Progress-Kurzsicht, letzter Aktivität und Runtime-Diagnostik an
+- **AND** aktive Jobs werden periodisch aktualisiert, ohne dass die Historienansicht dieselbe Polling-Frequenz übernehmen muss
+
+#### Scenario: Monitoring zeigt historische Jobs
+
+- **WHEN** ein Operator den Tab `Historie` öffnet
+- **THEN** zeigt das System abgeschlossene oder anderweitig historische Jobs getrennt von aktiven Jobs an
+- **AND** die Historienansicht unterstützt mindestens Status-, Plugin- und Jobtyp-Filter sowie eine einfache Suche
+
+### Requirement: Host stellt eine paginierte Jobs-Listen-API bereit
+
+Das System SHALL für die Monitoring-Liste eine eigene hostgeführte Listen-API für Plugin-Operations-Jobs bereitstellen.
+
+#### Scenario: Client lädt aktive Jobs über Listen-API
+
+- **WHEN** ein Client die Jobliste für aktive Jobs lädt
+- **THEN** kann er die Sicht explizit als `active` anfordern
+- **AND** die Antwort enthält eine reduzierte Listenprojektion statt vollständiger Detaildatensätze
+
+#### Scenario: Client filtert historische Jobs
+
+- **WHEN** ein Client historische Jobs nach `status`, `pluginId`, `jobTypeId` oder einer einfachen Suche filtert
+- **THEN** wertet der Host diese Filter serverseitig aus
+- **AND** die Antwort bleibt paginiert und monitoringtauglich
+
+### Requirement: Host bietet eigene Detailseiten für Plugin-Operations-Jobs
+
+Das System SHALL für einzelne Plugin-Operations-Jobs eine eigene lesende Detailansicht mit technischer History bereitstellen.
+
+#### Scenario: Operator öffnet Jobdetail
+
+- **WHEN** ein Operator aus der Monitoring-Liste einen einzelnen Job öffnet
+- **THEN** zeigt die Detailansicht Status, Progress, Runtime-Diagnostik, Ergebnis-/Fehlerpayload und technische Event-History
+- **AND** die Detailansicht wird nicht als flüchtiges Inline-Panel erzwungen

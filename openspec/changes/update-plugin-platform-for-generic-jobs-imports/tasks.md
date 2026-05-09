@@ -30,10 +30,14 @@
 
 - [x] 5.1 Den typisierten Runtime-Route-Katalog für generische Plugin-Operations-Endpunkte erweitern
 - [x] 5.2 Die Handler-Mappings in `packages/routing` und `packages/auth-runtime` an die neuen Endpunkte anbinden
-- [x] 5.3 Optionale erste Host-UI-Einstiege nur so weit ergänzen, wie sie keinen Monitoring- oder Wizard-Vollausbau erzwingen
+- [x] 5.3 Eine lesende Host-Listen-API für Plugin-Operations-Jobs mit Filtern, Pagination und Listenprojektion ergänzen
+- [x] 5.4 `Monitoring > Jobs` als ersten Host-UI-Einstieg mit Tabs `Aktiv` und `Historie` ergänzen
+- [x] 5.5 Eine eigene Job-Detailroute mit technischer History, Runtime-Diagnostik und Ergebnis-/Fehlersicht ergänzen
+- [x] 5.6 Polling-Verhalten für aktive Jobs und terminale Historienansichten gezielt begrenzen
 
 ## 6. Slice E: Tests und Doku
 
 - [x] 6.1 Unit- und Type-Tests für neue Plugin-Registry-, Core-, Routing- und Runtime-Verträge ergänzen
 - [x] 6.2 Architektur- und Entwicklerdoku für Operations-Beiträge, zentrale Job-Persistenz und Host-Grenzen fortschreiben
 - [x] 6.3 Dokumentieren, dass Fachchanges wie Waste diese Plattform konsumieren statt neu definieren
+- [x] 6.4 Tests für Joblisten-Filter, Monitoring-Routen, Polling und Detailnavigation ergänzen

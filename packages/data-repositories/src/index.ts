@@ -42,6 +42,8 @@ export type {
   MediaVariantRecord,
   PermissionKey,
   PersonaSeed,
+  StudioJobListResult,
+  StudioJobListResultItem,
   SqlExecutionResult,
   SqlExecutor,
   SqlPrimitive,

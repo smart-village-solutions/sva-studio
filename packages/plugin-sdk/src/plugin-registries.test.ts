@@ -118,6 +118,13 @@ const newsPlugin: PluginDefinition = {
         phaseKeys: ['news.ingestion', 'news.mapping', 'news.completed'],
         stepKeys: ['fetch-source', 'validate-schema', 'persist-content'],
       },
+      result: {
+        summaryKeys: ['acceptedItems', 'rejectedItems'],
+        detailKeys: ['accepted-rows', 'rejected-rows'],
+      },
+      errors: {
+        detailKeys: ['upstream-status', 'failed-batch'],
+      },
     },
   ]),
   importProfiles: definePluginImportProfiles('news', [
@@ -219,6 +226,13 @@ describe('plugin registries', () => {
         phaseKeys: ['news.ingestion', 'news.mapping', 'news.completed'],
         stepKeys: ['fetch-source', 'validate-schema', 'persist-content'],
       },
+      result: {
+        summaryKeys: ['acceptedItems', 'rejectedItems'],
+        detailKeys: ['accepted-rows', 'rejected-rows'],
+      },
+      errors: {
+        detailKeys: ['upstream-status', 'failed-batch'],
+      },
     });
     expect(importProfiles.get('news.article-import')).toMatchObject({
       profileId: 'news.article-import',
@@ -238,6 +252,21 @@ describe('plugin registries', () => {
           displayName: 'Import articles',
           progress: {
             phaseKeys: ['news.ingestion', ' '],
+          },
+        },
+      ])
+    ).toThrowError('invalid_plugin_job_type:news.import-articles');
+  });
+
+  it('rejects empty result detail metadata entries for job types', () => {
+    expect(() =>
+      definePluginJobTypes('news', [
+        {
+          jobTypeId: 'news.import-articles',
+          queue: 'plugin-operations',
+          displayName: 'Import articles',
+          result: {
+            detailKeys: ['accepted-rows', ' '],
           },
         },
       ])

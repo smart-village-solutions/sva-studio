@@ -114,6 +114,9 @@ export const formatPermissionAreaLabel = (permission: EffectivePermission): stri
     case 'organizations':
     case 'legal':
     case 'interfaces':
+    case 'instance':
+    case 'integration':
+    case 'feature':
     case 'news':
     case 'events':
     case 'poi':

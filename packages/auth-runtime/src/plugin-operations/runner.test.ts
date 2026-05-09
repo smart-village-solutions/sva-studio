@@ -44,36 +44,21 @@ describe('plugin operation runner task list', () => {
     const updateJobState = vi.fn(async () => null);
     const updateJobProgress = vi.fn(async () => null);
     const appendJobEvent = vi.fn(async () => null);
-    repositoryState.withStudioJobRepository
-      .mockImplementationOnce(async (_instanceId, work) =>
-        work({
-          getJobById: vi.fn(async () => baseJob),
-        })
-      )
-      .mockImplementationOnce(async (_instanceId, work) =>
-        work({
-          updateJobState,
-          appendJobEvent,
-        })
-      )
-      .mockImplementationOnce(async (_instanceId, work) =>
-        work({
-          updateJobProgress,
-          appendJobEvent,
-        })
-      )
-      .mockImplementationOnce(async (_instanceId, work) =>
-        work({
-          updateJobState,
-          appendJobEvent,
-        })
-      );
+    repositoryState.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
+      work({
+        getJobById: vi.fn(async () => baseJob),
+        updateJobState,
+        updateJobProgress,
+        appendJobEvent,
+      })
+    );
 
-    const handler = vi.fn(async ({ job, progressReporter, requestId, actorAccountId, abortSignal }) => {
+    const handler = vi.fn(async ({ job, progressReporter, requestId, actorAccountId, abortSignal, throwIfCancellationRequested }) => {
       expect(job).toEqual(baseJob);
       expect(requestId).toBe('req-1');
       expect(actorAccountId).toBe('user-1');
       expect(abortSignal.aborted).toBe(false);
+      await expect(throwIfCancellationRequested()).resolves.toBeUndefined();
       await progressReporter.reportProgress({
         jobId: 'job-1',
         instanceId: 'tenant-a',
@@ -87,7 +72,14 @@ describe('plugin operation runner task list', () => {
 
       return {
         progress: { completedSteps: 1, totalSteps: 1, currentPhase: 'completed' },
-        resultPayload: { acceptedRows: 3 },
+        resultPayload: {
+          summary: {
+            acceptedItems: 3,
+          },
+          plugin: {
+            acceptedRows: 3,
+          },
+        },
       };
     });
     registerPluginOperationExecutionHandlers({
@@ -109,6 +101,7 @@ describe('plugin operation runner task list', () => {
         progressReporter: expect.objectContaining({
           reportProgress: expect.any(Function),
         }),
+        throwIfCancellationRequested: expect.any(Function),
       })
     );
     expect(updateJobState).toHaveBeenNthCalledWith(
@@ -134,12 +127,24 @@ describe('plugin operation runner task list', () => {
       expect.objectContaining({
         jobId: 'job-1',
         status: 'succeeded',
-        resultPayload: { acceptedRows: 3 },
+        resultPayload: {
+          summary: {
+            acceptedItems: 3,
+          },
+          plugin: {
+            acceptedRows: 3,
+          },
+        },
       })
     );
     expect(appendJobEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         eventType: 'job.progressed',
+        details: {
+          host: {
+            workerId: expect.stringContaining('graphile-worker'),
+          },
+        },
       })
     );
   });
@@ -147,24 +152,13 @@ describe('plugin operation runner task list', () => {
   it('marks a job as failed without retry when no handler is registered', async () => {
     const updateJobState = vi.fn(async () => null);
     const appendJobEvent = vi.fn(async () => null);
-    repositoryState.withStudioJobRepository
-      .mockImplementationOnce(async (_instanceId, work) =>
-        work({
-          getJobById: vi.fn(async () => baseJob),
-        })
-      )
-      .mockImplementationOnce(async (_instanceId, work) =>
-        work({
-          updateJobState,
-          appendJobEvent,
-        })
-      )
-      .mockImplementationOnce(async (_instanceId, work) =>
-        work({
-          updateJobState,
-          appendJobEvent,
-        })
-      );
+    repositoryState.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
+      work({
+        getJobById: vi.fn(async () => baseJob),
+        updateJobState,
+        appendJobEvent,
+      })
+    );
 
     const taskList = createPluginOperationTaskList(() => new Map());
 
@@ -191,24 +185,13 @@ describe('plugin operation runner task list', () => {
   it('marks a job as retrying and rethrows while attempts remain', async () => {
     const updateJobState = vi.fn(async () => null);
     const appendJobEvent = vi.fn(async () => null);
-    repositoryState.withStudioJobRepository
-      .mockImplementationOnce(async (_instanceId, work) =>
-        work({
-          getJobById: vi.fn(async () => baseJob),
-        })
-      )
-      .mockImplementationOnce(async (_instanceId, work) =>
-        work({
-          updateJobState,
-          appendJobEvent,
-        })
-      )
-      .mockImplementationOnce(async (_instanceId, work) =>
-        work({
-          updateJobState,
-          appendJobEvent,
-        })
-      );
+    repositoryState.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
+      work({
+        getJobById: vi.fn(async () => baseJob),
+        updateJobState,
+        appendJobEvent,
+      })
+    );
 
     const handler = vi.fn(async () => {
       throw new Error('boom');
@@ -241,24 +224,13 @@ describe('plugin operation runner task list', () => {
   it('marks a job as failed on the final attempt without rethrowing', async () => {
     const updateJobState = vi.fn(async () => null);
     const appendJobEvent = vi.fn(async () => null);
-    repositoryState.withStudioJobRepository
-      .mockImplementationOnce(async (_instanceId, work) =>
-        work({
-          getJobById: vi.fn(async () => baseJob),
-        })
-      )
-      .mockImplementationOnce(async (_instanceId, work) =>
-        work({
-          updateJobState,
-          appendJobEvent,
-        })
-      )
-      .mockImplementationOnce(async (_instanceId, work) =>
-        work({
-          updateJobState,
-          appendJobEvent,
-        })
-      );
+    repositoryState.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
+      work({
+        getJobById: vi.fn(async () => baseJob),
+        updateJobState,
+        appendJobEvent,
+      })
+    );
 
     const handler = vi.fn(async () => {
       throw new Error('boom');
@@ -284,6 +256,47 @@ describe('plugin operation runner task list', () => {
           code: 'plugin_operation_execution_failed',
           category: 'permanent',
         }),
+      })
+    );
+  });
+
+  it('marks a job as cancelled when the handler cooperatively aborts', async () => {
+    const updateJobState = vi.fn(async () => null);
+    const appendJobEvent = vi.fn(async () => null);
+    repositoryState.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
+      work({
+        getJobById: vi.fn(async () => ({
+          ...baseJob,
+          cancelRequestedAt: '2026-05-09T12:04:00.000Z',
+        })),
+        updateJobState,
+        appendJobEvent,
+      })
+    );
+
+    const handler = vi.fn(async ({ throwIfCancellationRequested }) => {
+      await throwIfCancellationRequested();
+    });
+
+    const taskList = createPluginOperationTaskList(() => new Map([['news.import-articles', handler]]));
+
+    await taskList[pluginOperationTaskIdentifier]?.(
+      { instanceId: 'tenant-a', jobId: 'job-1' },
+      {
+        job: { attempts: 2, max_attempts: 5 },
+      } as never
+    );
+
+    expect(updateJobState).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        jobId: 'job-1',
+        status: 'cancelled',
+      })
+    );
+    expect(appendJobEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: 'job.cancelled',
       })
     );
   });

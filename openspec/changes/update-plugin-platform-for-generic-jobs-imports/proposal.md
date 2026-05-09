@@ -13,16 +13,19 @@ Ein vorgelagerter Plattform-Change schafft deshalb zuerst die generischen Vertr�
 - Erweiterung der Build-Time-Registry um validierte Operations-Beiträge, ohne einen zweiten parallelen Plugin-Registry-Pfad einzuführen
 - Hostgeführte zentrale Persistenz für pluginübergreifende Jobs im Studio-Postgres als führender Vertrag
 - Hostgeführte API- und Routing-Einbindung für Plugin-Operations-Endpunkte über den bestehenden typisierten Runtime-Route-Katalog
+- Eine erste lesende Host-Oberfläche unter `Monitoring > Jobs` mit Tabs für aktive Jobs und Historie
+- Eine hostgeführte Listen-API für Jobs mit Filtern, Pagination und Polling-tauglicher Projektion
 - Klare Trennung zwischen generischer Plattformlogik für Jobs/Importe und fachplugin-spezifischen Payloads, Validierungen und UI-Abläufen
-- Monitoring- oder Wizard-Oberflächen werden in diesem Change nur als optionale erste Anbindung beschrieben, nicht als verpflichtender Vollausbau
+- Monitoring- oder Wizard-Oberflächen werden in diesem Change nicht vollumfänglich ausgebaut; die Jobs-Ansicht bleibt ein gezielter lesender Einstieg ohne Eingriffs-UI
 
 ## Non-Goals
 
 - Kein fachliches Waste-Management oder anderes Fachplugin in diesem Change
-- Keine verpflichtende vollständige Monitoring-Oberfläche unter `/monitoring`
+- Keine vollständige Monitoring-Suite jenseits des Unterbereichs `Monitoring > Jobs`
 - Kein verpflichtender generischer Import-Wizard als fertige Endnutzeroberfläche
 - Keine zweite Plugin- oder Route-Registry außerhalb der bestehenden Host-Build-Time-Registry
 - Keine Verlagerung von Plugin-Job-Persistenz in externe Fachdatenbanken als führenden Plattformvertrag
+- Keine manuellen Job-Aktionen wie Retry, Delete oder Bulk-Operationen in der ersten Monitoring-Ansicht
 
 ## Impact
 

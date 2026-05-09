@@ -5,6 +5,8 @@ import {
   studioJobContract,
   studioJobEventContract,
   studioJobErrorContract,
+  studioJobListContract,
+  studioJobRuntimeContract,
   studioPluginOperationErrorContract,
 } from './plugin-operations-contract.js';
 
@@ -78,5 +80,17 @@ describe('plugin-operations-contract', () => {
     ]);
     expect(studioJobEventContract.isType('job.progressed')).toBe(true);
     expect(studioJobEventContract.isType('job.resumed')).toBe(false);
+  });
+
+  it('defines stale runtime states for worker diagnostics', () => {
+    expect(studioJobRuntimeContract.staleStates).toEqual(['fresh', 'stale', 'terminal']);
+    expect(studioJobRuntimeContract.isStaleState('stale')).toBe(true);
+    expect(studioJobRuntimeContract.isStaleState('unknown')).toBe(false);
+  });
+
+  it('defines stable list views for monitoring projections', () => {
+    expect(studioJobListContract.views).toEqual(['active', 'history']);
+    expect(studioJobListContract.isView('active')).toBe(true);
+    expect(studioJobListContract.isView('archive')).toBe(false);
   });
 });

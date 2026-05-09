@@ -25,9 +25,12 @@ Dieser Abschnitt beschreibt kritische Laufzeitszenarien und Interaktionen.
 
 1. Ein Host- oder Fachclient ruft `POST /api/v1/plugin-operations/jobs` mit Plugin-ID, Jobtyp, optionalem Importprofil und fachlichem Input auf.
 2. `@sva/auth-runtime` prüft Session, Instanzkontext, Idempotency-Key und den generischen Request-Vertrag.
-3. Der Host legt über `@sva/data-repositories` einen führenden Jobdatensatz im Studio-Postgres an.
-4. Der Client liest den Fortschritt über `GET /api/v1/plugin-operations/jobs/:jobId`.
-5. Status, Progress, Ergebnis- und Fehlerfelder stammen immer aus demselben zentralen Datensatz.
+3. Der Host legt über `@sva/data-repositories` einen führenden Jobdatensatz sowie das technische Initialevent `job.queued` im Studio-Postgres an.
+4. Die interne Worker-Anbindung queued den Job runner-agnostisch und baut für den fachlichen Handler einen Host-Context mit `job`, `progressReporter`, `abortSignal`, `logger` und Request-/Actor-Bezug.
+5. Laufende Worker-Schritte schreiben Progress, Heartbeat und technische Lifecycle-Events gegen denselben zentralen Host-Store zurück.
+6. Der Client liest Status, Progress, Heartbeat und Verlauf über `GET /api/v1/plugin-operations/jobs/:jobId`.
+7. Eine Abbruchanforderung wird über `POST /api/v1/plugin-operations/jobs/:jobId/cancel` zunächst nur als gespeicherter Cancel-Request modelliert; die kooperative Reaktion bleibt Worker-Verantwortung.
+8. Status, Progress, Verlauf, Ergebnis- und Fehlerfelder stammen immer aus derselben zentralen Persistenz.
 
 Fehlerpfad:
 

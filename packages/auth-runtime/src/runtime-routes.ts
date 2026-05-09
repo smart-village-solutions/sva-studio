@@ -90,6 +90,8 @@ export {
   updateMediaHandler,
 } from './iam-media/core.js';
 export {
+  cancelPluginOperationJobHandler,
   getPluginOperationJobHandler,
+  listPluginOperationJobsHandler,
   startPluginOperationJobHandler,
 } from './plugin-operations/core.js';

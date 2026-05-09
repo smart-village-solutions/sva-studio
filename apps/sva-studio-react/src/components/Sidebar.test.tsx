@@ -212,7 +212,7 @@ describe('Sidebar', () => {
     );
     expect(screen.getByRole('link', { name: 'Module' }).getAttribute('href')).toBe('/modules');
     expect(screen.getByRole('link', { name: 'Monitoring' }).getAttribute('href')).toBe(
-      '/monitoring'
+      '/monitoring/jobs'
     );
     expect(screen.getByRole('link', { name: 'Hilfe' }).getAttribute('href')).toBe(
       HELP_DISCUSSIONS_URL

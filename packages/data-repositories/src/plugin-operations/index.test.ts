@@ -48,7 +48,7 @@ const eventRow = {
   },
   attempts: 1,
   message: 'Schema validiert',
-  details: { acceptedRows: 10 },
+  details: { plugin: { acceptedRows: 10 } },
   created_at: '2026-05-09T12:03:00.000Z',
 };
 
@@ -129,7 +129,7 @@ describe('studio job repository', () => {
         },
         attempts: 1,
         startedAt: '2026-05-09T12:01:00.000Z',
-        resultPayload: { acceptedRows: 0 },
+        resultPayload: { summary: { acceptedItems: 0 }, plugin: { acceptedRows: 0 } },
         errorPayload: { code: 'validation_failed', category: 'validation' },
         workerId: 'worker-a',
         heartbeatAt: '2026-05-09T12:01:30.000Z',
@@ -152,7 +152,7 @@ describe('studio job repository', () => {
       1,
       '2026-05-09T12:01:00.000Z',
       null,
-      JSON.stringify({ acceptedRows: 0 }),
+      JSON.stringify({ summary: { acceptedItems: 0 }, plugin: { acceptedRows: 0 } }),
       JSON.stringify({ code: 'validation_failed', category: 'validation' }),
       'worker-a',
       '2026-05-09T12:01:30.000Z',
@@ -218,5 +218,60 @@ describe('studio job repository', () => {
         },
       ],
     });
+  });
+
+  it('lists jobs with pagination filters and latest event projection', async () => {
+    const { executor, statements } = createQueuedExecutor([
+      [
+        {
+          ...jobRow,
+          latest_event_id: 'event-1',
+          latest_event_type: 'job.progressed',
+          latest_event_status: 'running',
+          latest_event_progress: eventRow.progress,
+          latest_event_attempts: 1,
+          latest_event_message: 'Schema validiert',
+          latest_event_details: { plugin: { acceptedRows: 10 } },
+          latest_event_created_at: '2026-05-09T12:03:00.000Z',
+          total_count: 1,
+        },
+      ],
+    ]);
+    const repository = createStudioJobRepository(executor);
+
+    await expect(
+      repository.listJobs('tenant-a', {
+        view: 'history',
+        page: 2,
+        pageSize: 10,
+        status: 'running',
+        pluginId: 'news',
+        jobTypeId: 'news.import-articles',
+        q: 'corr',
+      })
+    ).resolves.toMatchObject({
+      total: 1,
+      items: [
+        {
+          id: 'job-1',
+          latestEvent: {
+            id: 'event-1',
+            eventType: 'job.progressed',
+            message: 'Schema validiert',
+          },
+        },
+      ],
+    });
+
+    expect(statements[0]?.text).toContain('COUNT(*) OVER()::int AS total_count');
+    expect(statements[0]?.values).toEqual([
+      'tenant-a',
+      'running',
+      'news',
+      'news.import-articles',
+      '%corr%',
+      10,
+      10,
+    ]);
   });
 });

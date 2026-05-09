@@ -48,9 +48,9 @@ const mediaModuleIamContract: StudioModuleIamContract = {
     'media.read',
     'media.create',
     'media.update',
-    'media.referenceManage',
+    'media.reference.manage',
     'media.delete',
-    'media.deliverProtected',
+    'media.deliver.protected',
   ],
   systemRoles: [
     {
@@ -59,14 +59,14 @@ const mediaModuleIamContract: StudioModuleIamContract = {
         'media.read',
         'media.create',
         'media.update',
-        'media.referenceManage',
+        'media.reference.manage',
         'media.delete',
-        'media.deliverProtected',
+        'media.deliver.protected',
       ],
     },
     {
       roleName: 'editor',
-      permissionIds: ['media.read', 'media.create', 'media.update', 'media.referenceManage'],
+      permissionIds: ['media.read', 'media.create', 'media.update', 'media.reference.manage'],
     },
   ],
 };

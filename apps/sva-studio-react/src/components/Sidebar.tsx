@@ -851,23 +851,23 @@ export default function Sidebar({
               label: t('shell.sidebar.content'),
               icon: IconArticle,
             },
-            ...(canAccessMedia
-              ? [
-                  {
-                    kind: 'link' as const,
-                    id: 'media',
-                    to: '/admin/media',
-                    label: t('shell.sidebar.media'),
-                    icon: IconPhoto,
-                  },
-                ]
-              : []),
             {
               kind: 'link' as const,
               id: 'categories',
               to: '/categories',
               label: t('shell.sidebar.categories'),
               icon: IconCategory,
+            },
+          ]
+        : []),
+      ...(canAccessMedia
+        ? [
+            {
+              kind: 'link' as const,
+              id: 'media',
+              to: '/admin/media',
+              label: t('shell.sidebar.media'),
+              icon: IconPhoto,
             },
           ]
         : []),

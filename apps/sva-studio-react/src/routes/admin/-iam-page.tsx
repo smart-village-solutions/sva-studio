@@ -33,6 +33,7 @@ import { t } from '../../i18n';
 import { useAuth } from '../../providers/auth-provider';
 import {
   filterPermissions,
+  formatPermissionAreaLabel,
   formatPermissionSourceKindLabels,
   formatPermissionSourceKinds,
   getFirstAllowedTab,
@@ -132,6 +133,7 @@ const PermissionTable = ({
         <thead>
           <tr className="border-b border-border text-muted-foreground">
             <th className="py-2 pr-4 font-semibold">{t('admin.iam.rights.columns.action')}</th>
+            <th className="py-2 pr-4 font-semibold">{t('admin.iam.rights.columns.area')}</th>
             <th className="py-2 pr-4 font-semibold">{t('admin.iam.rights.columns.resourceType')}</th>
             <th className="py-2 pr-4 font-semibold">{t('admin.iam.rights.columns.resourceId')}</th>
             <th className="py-2 pr-4 font-semibold">{t('admin.iam.rights.columns.organization')}</th>
@@ -149,6 +151,7 @@ const PermissionTable = ({
               className="border-b border-border align-top text-foreground"
             >
               <td className="py-2 pr-4">{permission.action}</td>
+              <td className="py-2 pr-4">{formatPermissionAreaLabel(permission)}</td>
               <td className="py-2 pr-4">{permission.resourceType}</td>
               <td className="py-2 pr-4">{permission.resourceId ?? '—'}</td>
               <td className="py-2 pr-4">{permission.organizationId ?? t('admin.iam.rights.noOrganization')}</td>

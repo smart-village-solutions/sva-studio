@@ -166,103 +166,13 @@ const invalidateInstancePermissionSnapshots = async (input: { instanceId: string
   }
 };
 
-const pluginModuleIamRegistry = new Map([
-  [
-    'news',
-    {
-      moduleId: 'news',
-      permissionIds: ['news.read', 'news.create', 'news.update', 'news.delete'],
-      systemRoles: [
-        { roleName: 'system_admin', permissionIds: ['news.read', 'news.create', 'news.update', 'news.delete'] },
-        { roleName: 'app_manager', permissionIds: ['news.read'] },
-        { roleName: 'feature-manager', permissionIds: ['news.read', 'news.create', 'news.update', 'news.delete'] },
-        { roleName: 'interface-manager', permissionIds: ['news.read'] },
-        { roleName: 'designer', permissionIds: ['news.read', 'news.update'] },
-        { roleName: 'editor', permissionIds: ['news.read', 'news.create', 'news.update', 'news.delete'] },
-        { roleName: 'moderator', permissionIds: ['news.read'] },
-      ],
-    },
-  ],
-  [
-    'events',
-    {
-      moduleId: 'events',
-      permissionIds: ['events.read', 'events.create', 'events.update', 'events.delete'],
-      systemRoles: [
-        { roleName: 'system_admin', permissionIds: ['events.read', 'events.create', 'events.update', 'events.delete'] },
-        { roleName: 'app_manager', permissionIds: ['events.read'] },
-        { roleName: 'feature-manager', permissionIds: ['events.read', 'events.create', 'events.update', 'events.delete'] },
-        { roleName: 'interface-manager', permissionIds: ['events.read'] },
-        { roleName: 'designer', permissionIds: ['events.read', 'events.update'] },
-        { roleName: 'editor', permissionIds: ['events.read', 'events.create', 'events.update', 'events.delete'] },
-        { roleName: 'moderator', permissionIds: ['events.read'] },
-      ],
-    },
-  ],
-  [
-    'poi',
-    {
-      moduleId: 'poi',
-      permissionIds: ['poi.read', 'poi.create', 'poi.update', 'poi.delete'],
-      systemRoles: [
-        { roleName: 'system_admin', permissionIds: ['poi.read', 'poi.create', 'poi.update', 'poi.delete'] },
-        { roleName: 'app_manager', permissionIds: ['poi.read'] },
-        { roleName: 'feature-manager', permissionIds: ['poi.read', 'poi.create', 'poi.update', 'poi.delete'] },
-        { roleName: 'interface-manager', permissionIds: ['poi.read'] },
-        { roleName: 'designer', permissionIds: ['poi.read', 'poi.update'] },
-        { roleName: 'editor', permissionIds: ['poi.read', 'poi.create', 'poi.update', 'poi.delete'] },
-        { roleName: 'moderator', permissionIds: ['poi.read'] },
-      ],
-    },
-  ],
-  [
-    'media',
-    {
-      moduleId: 'media',
-      permissionIds: [
-        'media.read',
-        'media.create',
-        'media.update',
-        'media.reference.manage',
-        'media.delete',
-        'media.deliver.protected',
-      ],
-      systemRoles: [
-        {
-          roleName: 'system_admin',
-          permissionIds: [
-            'media.read',
-            'media.create',
-            'media.update',
-            'media.reference.manage',
-            'media.delete',
-            'media.deliver.protected',
-          ],
-        },
-        { roleName: 'app_manager', permissionIds: ['media.read'] },
-        {
-          roleName: 'feature-manager',
-          permissionIds: ['media.read', 'media.create', 'media.update', 'media.reference.manage', 'media.delete'],
-        },
-        { roleName: 'interface-manager', permissionIds: ['media.read'] },
-        { roleName: 'designer', permissionIds: ['media.read', 'media.update'] },
-        {
-          roleName: 'editor',
-          permissionIds: ['media.read', 'media.create', 'media.update', 'media.reference.manage'],
-        },
-        { roleName: 'moderator', permissionIds: ['media.read'] },
-      ],
-    },
-  ],
-]);
-
 const registryRuntime = createInstanceRegistryRuntime({
   resolvePool,
   createRepository: createInstanceRegistryRepository,
   serviceDeps: {
     invalidateHost: invalidateInstanceRegistryHost,
     invalidatePermissionSnapshots: invalidateInstancePermissionSnapshots,
-    moduleIamRegistry: pluginModuleIamRegistry,
+    moduleIamRegistry: studioModuleIamRegistry,
     protectSecret: protectField,
     revealSecret: revealField,
     readKeycloakStateViaProvisioner,
@@ -271,7 +181,7 @@ const registryRuntime = createInstanceRegistryRuntime({
   provisioningWorkerServiceDeps: {
     invalidateHost: invalidateInstanceRegistryHost,
     invalidatePermissionSnapshots: invalidateInstancePermissionSnapshots,
-    moduleIamRegistry: pluginModuleIamRegistry,
+    moduleIamRegistry: studioModuleIamRegistry,
     protectSecret: protectField,
     revealSecret: revealField,
     readKeycloakStateViaProvisioner,

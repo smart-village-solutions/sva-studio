@@ -1123,6 +1123,17 @@ export const i18nResources = {
             subtitle:
               'Deklarierter Modulvertrag und registrierter Befund der aktuell zugewiesenen Module.',
           },
+          guidance: {
+            title: 'Semantik der Freigaben',
+            subtitle:
+              'Module schalten Fachbereiche frei. Rollen und direkte Berechtigungen steuern, welche Aktionen innerhalb dieser Bereiche erlaubt sind.',
+            moduleTitle: 'Module schalten Bereiche frei',
+            moduleBody:
+              'Eine Modulzuweisung aktiviert einen Fachbereich für die Instanz. Sichtbarkeit und Routing orientieren sich an Modulzuweisung und passendem Leserecht.',
+            roleTitle: 'Rollen vergeben Berechtigungen',
+            roleBody:
+              'Rollen bündeln Berechtigungen wie Lesen, Anlegen oder Ändern. Die angezeigten Modulrechte kommen direkt aus dem kanonischen Modulvertrag.',
+          },
           module: {
             permissions: 'Berechtigungen: {{value}}',
             roles: 'Systemrollen: {{value}}',
@@ -2467,6 +2478,7 @@ export const i18nResources = {
           noOrganization: 'Keine Organisation',
           columns: {
             action: 'Aktion',
+            area: 'Bereich',
             resourceType: 'Ressourcentyp',
             resourceId: 'Ressourcen-ID',
             organization: 'Organisation',
@@ -2512,6 +2524,20 @@ export const i18nResources = {
             role: 'Rolle',
             group: 'Gruppe',
             delegation: 'Delegation',
+          },
+          permissionResources: {
+            content: 'Inhalte',
+            iam: 'IAM',
+            users: 'Benutzer',
+            roles: 'Rollen',
+            groups: 'Gruppen',
+            organizations: 'Organisationen',
+            legal: 'Rechtstexte',
+            interfaces: 'Schnittstellen',
+            media: 'Medien',
+            news: 'News',
+            events: 'Events',
+            poi: 'POI',
           },
         },
         governance: {
@@ -3663,6 +3689,17 @@ export const i18nResources = {
             title: 'Module IAM baseline',
             subtitle:
               'Declared module contract and registry status for the currently assigned modules.',
+          },
+          guidance: {
+            title: 'Release semantics',
+            subtitle:
+              'Modules enable business areas. Roles and direct permissions control which actions are allowed inside those areas.',
+            moduleTitle: 'Modules enable areas',
+            moduleBody:
+              'Assigning a module enables a business area for the instance. Visibility and routing follow module assignment plus the matching read permission.',
+            roleTitle: 'Roles grant permissions',
+            roleBody:
+              'Roles bundle permissions such as read, create, or update. The listed module permissions come directly from the canonical module contract.',
           },
           module: {
             permissions: 'Permissions: {{value}}',
@@ -4957,6 +4994,7 @@ export const i18nResources = {
           noOrganization: 'No organization',
           columns: {
             action: 'Action',
+            area: 'Area',
             resourceType: 'Resource type',
             resourceId: 'Resource ID',
             organization: 'Organization',
@@ -5002,6 +5040,20 @@ export const i18nResources = {
             role: 'Role',
             group: 'Group',
             delegation: 'Delegation',
+          },
+          permissionResources: {
+            content: 'Content',
+            iam: 'IAM',
+            users: 'Users',
+            roles: 'Roles',
+            groups: 'Groups',
+            organizations: 'Organizations',
+            legal: 'Legal texts',
+            interfaces: 'Interfaces',
+            media: 'Media',
+            news: 'News',
+            events: 'Events',
+            poi: 'POI',
           },
         },
         governance: {

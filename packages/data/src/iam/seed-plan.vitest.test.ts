@@ -17,6 +17,12 @@ const granularContentPermissions = [
 ] as const;
 
 const pluginContentPermissions = [
+  'media.read',
+  'media.create',
+  'media.update',
+  'media.reference.manage',
+  'media.delete',
+  'media.deliver.protected',
   'news.read',
   'news.create',
   'news.update',
@@ -43,21 +49,22 @@ describe('iamSeedPlan content permissions', () => {
 
   it('assigns granular content permissions to content personas', () => {
     expect(getPersonaSeed('app_manager').permissionKeys).toContain('content.readHistory');
+    expect(getPersonaSeed('app_manager').permissionKeys).toContain('media.read');
     expect(getPersonaSeed('interface_manager').permissionKeys).toContain('content.readHistory');
     expect(getPersonaSeed('feature_manager').permissionKeys).toEqual(
-      expect.arrayContaining(['content.updateMetadata', 'content.updatePayload', 'content.changeStatus'])
+      expect.arrayContaining(['content.updateMetadata', 'content.updatePayload', 'content.changeStatus', 'media.reference.manage'])
     );
     expect(getPersonaSeed('designer').permissionKeys).toEqual(
-      expect.arrayContaining(['content.updateMetadata', 'content.updatePayload'])
+      expect.arrayContaining(['content.updateMetadata', 'content.updatePayload', 'media.update'])
     );
     expect(getPersonaSeed('editor').permissionKeys).toEqual(
-      expect.arrayContaining(['content.create', 'content.changeStatus', 'content.delete'])
+      expect.arrayContaining(['content.create', 'content.changeStatus', 'content.delete', 'media.create', 'media.reference.manage'])
     );
     expect(getPersonaSeed('editor').permissionKeys).toEqual(
       expect.arrayContaining(['news.create', 'news.update', 'events.create', 'events.update', 'poi.create', 'poi.update'])
     );
     expect(getPersonaSeed('moderator').permissionKeys).toEqual(
-      expect.arrayContaining(['content.publish', 'content.archive', 'content.restore', 'content.manageRevisions'])
+      expect.arrayContaining(['content.publish', 'content.archive', 'content.restore', 'content.manageRevisions', 'media.read'])
     );
   });
 

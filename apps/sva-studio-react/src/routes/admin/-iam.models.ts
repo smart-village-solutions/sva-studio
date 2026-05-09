@@ -101,6 +101,29 @@ export const formatPermissionSourceKinds = (permission: EffectivePermission): st
   return formatPermissionSourceKindLabels(sourceKinds);
 };
 
+export const formatPermissionAreaLabel = (permission: EffectivePermission): string => {
+  const namespace = permission.action.split('.')[0]?.trim();
+  const candidate = namespace && namespace.length > 0 ? namespace : permission.resourceType;
+
+  switch (candidate) {
+    case 'content':
+    case 'iam':
+    case 'users':
+    case 'roles':
+    case 'groups':
+    case 'organizations':
+    case 'legal':
+    case 'interfaces':
+    case 'news':
+    case 'events':
+    case 'poi':
+    case 'media':
+      return t(`admin.iam.rights.permissionResources.${candidate}`);
+    default:
+      return candidate || permission.resourceType;
+  }
+};
+
 const includesIgnoreCase = (haystack: string | undefined, needle: string) =>
   Boolean(haystack?.toLowerCase().includes(needle.toLowerCase()));
 

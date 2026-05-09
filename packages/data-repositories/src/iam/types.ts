@@ -38,6 +38,12 @@ export type PermissionKey =
   | 'content.readHistory'
   | 'content.manageRevisions'
   | 'content.delete'
+  | 'media.read'
+  | 'media.create'
+  | 'media.update'
+  | 'media.reference.manage'
+  | 'media.delete'
+  | 'media.deliver.protected'
   | 'integration.manage'
   | 'feature.toggle'
   | 'instance.registry.manage';

@@ -36,6 +36,10 @@ describe('iam seed plan', () => {
       'content.updatePayload',
       'content.changeStatus',
       'content.delete',
+      'media.read',
+      'media.create',
+      'media.update',
+      'media.reference.manage',
       'news.read',
       'events.read',
       'poi.read',
@@ -74,6 +78,7 @@ describe('iam seed plan', () => {
       iamSeedPlan.permissions.find((permission) => permission.key === 'content.publish')?.resourceType,
       'content'
     );
+    assert.equal(iamSeedPlan.permissions.find((permission) => permission.key === 'media.read')?.resourceType, 'media');
     assert.equal(iamSeedPlan.permissions.find((permission) => permission.key === 'news.update')?.resourceType, 'news');
   });
 

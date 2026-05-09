@@ -16,7 +16,13 @@ type PluginOperationRunnerPayload = {
   readonly jobId: string;
 };
 
-type PluginOperationExecutionRegistry = ReadonlyMap<string, PluginOperationExecutionHandler>;
+export type PluginOperationExecutionRegistration = {
+  readonly handler: PluginOperationExecutionHandler;
+  readonly queueName: string;
+};
+
+type PluginOperationExecutionRegistry = ReadonlyMap<string, PluginOperationExecutionRegistration>;
+type PluginOperationExecutionHandlerRegistry = ReadonlyMap<string, PluginOperationExecutionHandler>;
 
 type QueuePluginOperationJobInput = {
   readonly instanceId: string;
@@ -26,7 +32,7 @@ type QueuePluginOperationJobInput = {
 };
 
 let runnerPromise: Promise<graphileWorker.Runner> | null = null;
-let registeredHandlers = new Map<string, PluginOperationExecutionHandler>();
+let registeredHandlers = new Map<string, PluginOperationExecutionRegistration>();
 
 const parseWorkerConcurrency = (rawValue: string | undefined): number => {
   const fallback = 1;
@@ -43,13 +49,20 @@ const parseWorkerConcurrency = (rawValue: string | undefined): number => {
 };
 
 export const registerPluginOperationExecutionHandlers = (
-  handlers: Readonly<Record<string, PluginOperationExecutionHandler>>
+  handlers: Readonly<Record<string, PluginOperationExecutionHandler | PluginOperationExecutionRegistration>>
 ): void => {
-  registeredHandlers = new Map(Object.entries(handlers));
+  registeredHandlers = new Map(
+    Object.entries(handlers).map(([jobTypeId, value]) => [
+      jobTypeId,
+      typeof value === 'function' ? { handler: value, queueName: 'plugin-operations' } : value,
+    ])
+  );
 };
 
-export const getRegisteredPluginOperationExecutionHandlers = (): PluginOperationExecutionRegistry =>
-  registeredHandlers;
+export const getRegisteredPluginOperationExecutionHandlers = (): PluginOperationExecutionHandlerRegistry =>
+  new Map(Array.from(registeredHandlers.entries(), ([jobTypeId, registration]) => [jobTypeId, registration.handler]));
+
+export const getRegisteredPluginOperationExecutionRegistry = (): PluginOperationExecutionRegistry => registeredHandlers;
 
 export const createPluginOperationTaskList = (
   getHandlers: () => PluginOperationExecutionRegistry
@@ -70,7 +83,7 @@ export const createPluginOperationTaskList = (
         appendJobEvent: (input) =>
           withStudioJobRepository(tenantInstanceId, (repository) => repository.appendJobEvent(input)),
       }),
-      resolveHandler: (jobTypeId) => getHandlers().get(jobTypeId),
+      resolveHandler: (jobTypeId) => getHandlers().get(jobTypeId)?.handler,
     }).run({
       instanceId,
       jobId,
@@ -90,7 +103,7 @@ const createGraphileWorkerRunner = async (): Promise<graphileWorker.Runner> => {
 
   return graphileWorker.run({
     pgPool: pool,
-    taskList: createPluginOperationTaskList(getRegisteredPluginOperationExecutionHandlers),
+    taskList: createPluginOperationTaskList(getRegisteredPluginOperationExecutionRegistry),
     concurrency: parseWorkerConcurrency(process.env.SVA_PLUGIN_OPERATION_WORKER_CONCURRENCY),
     noHandleSignals: true,
   });

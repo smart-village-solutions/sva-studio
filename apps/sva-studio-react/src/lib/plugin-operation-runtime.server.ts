@@ -1,4 +1,7 @@
-import { registerPluginOperationExecutionHandlers } from '@sva/auth-runtime/server';
+import {
+  registerPluginOperationExecutionHandlers,
+  type PluginOperationExecutionRegistration,
+} from '@sva/auth-runtime/server';
 import { pluginEvents } from '@sva/plugin-events';
 import { pluginNews } from '@sva/plugin-news';
 import { pluginPoi } from '@sva/plugin-poi';
@@ -10,21 +13,37 @@ const studioPluginOperationRegistry = createBuildTimeRegistry({
 
 type PluginOperationExecutionHandler = import('@sva/auth-runtime/server').PluginOperationExecutionHandler;
 
+const studioPluginOperationQueueRegistry = new Map(
+  studioPluginOperationRegistry.jobTypes.map((jobType) => [jobType.jobTypeId, jobType.queue] as const)
+);
+
 export const createStudioPluginOperationExecutionHandlers = (): Readonly<
-  Record<string, PluginOperationExecutionHandler>
-> => ({});
+  Record<string, PluginOperationExecutionRegistration>
+> => {
+  const handlers: Readonly<Record<string, PluginOperationExecutionHandler>> = {};
+
+  return Object.fromEntries(
+    Object.entries(handlers).map(([jobTypeId, handler]) => [
+      jobTypeId,
+      {
+        handler,
+        queueName: studioPluginOperationQueueRegistry.get(jobTypeId) ?? 'plugin-operations',
+      },
+    ])
+  );
+};
 
 const collectDeclaredJobTypeIds = (
   jobTypes: readonly PluginJobTypeDefinition[]
 ): readonly string[] => jobTypes.map((jobType) => jobType.jobTypeId).sort();
 
 const collectRegisteredHandlerIds = (
-  handlers: Readonly<Record<string, PluginOperationExecutionHandler>>
+  handlers: Readonly<Record<string, PluginOperationExecutionRegistration>>
 ): readonly string[] => Object.keys(handlers).sort();
 
 export const assertPluginOperationExecutionHandlerCoverage = (input: {
   readonly declaredJobTypeIds: readonly string[];
-  readonly handlers: Readonly<Record<string, PluginOperationExecutionHandler>>;
+  readonly handlers: Readonly<Record<string, PluginOperationExecutionRegistration>>;
 }): void => {
   const declaredJobTypeIds = [...input.declaredJobTypeIds].sort();
   const registeredHandlerIds = collectRegisteredHandlerIds(input.handlers);
@@ -41,7 +60,7 @@ export const assertPluginOperationExecutionHandlerCoverage = (input: {
 };
 
 export const assertStudioPluginOperationHandlerCoverage = (
-  handlers: Readonly<Record<string, PluginOperationExecutionHandler>>
+  handlers: Readonly<Record<string, PluginOperationExecutionRegistration>>
 ): void => {
   assertPluginOperationExecutionHandlerCoverage({
     declaredJobTypeIds: collectDeclaredJobTypeIds(studioPluginOperationRegistry.jobTypes),
@@ -50,7 +69,7 @@ export const assertStudioPluginOperationHandlerCoverage = (
 };
 
 export const registerStudioPluginOperationHandlers = (): Readonly<
-  Record<string, PluginOperationExecutionHandler>
+  Record<string, PluginOperationExecutionRegistration>
 > => {
   const handlers = createStudioPluginOperationExecutionHandlers();
   assertStudioPluginOperationHandlerCoverage(handlers);

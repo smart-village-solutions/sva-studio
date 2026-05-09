@@ -49,49 +49,46 @@ type RunInput = {
 const defaultCreateWorkerId = (job: { readonly instanceId: string; readonly id: string }): string =>
   `graphile-worker:${job.instanceId}:${job.id}`;
 
-const createStateWriter = (repository: Pick<RepositoryPort, 'updateJobState' | 'appendJobEvent'>, now?: () => string) => {
-  const eventWriter = createJobEventWriter({
-    appendJobEvent: repository.appendJobEvent,
-  });
-
-  return createJobStateWriter({
-    updateJobState: repository.updateJobState,
-    appendStartedEvent: eventWriter.appendStartedEvent,
-    appendSucceededEvent: eventWriter.appendSucceededEvent,
-    appendRetriedEvent: eventWriter.appendRetriedEvent,
-    appendFailedEvent: eventWriter.appendFailedEvent,
-    appendCancelledEvent: eventWriter.appendCancelledEvent,
-    now,
-  });
-};
-
 const createHandlerContext = async (
-  deps: OrchestratorDeps,
+  deps: Pick<OrchestratorDeps, 'logger' | 'now'>,
+  repository: RepositoryPort,
+  eventWriter: ReturnType<typeof createJobEventWriter>,
   job: StudioJobRecord,
   attempts: number,
   workerId: string
-): Promise<Omit<PluginOperationExecutionHandlerContext, 'job'>> => {
+): Promise<{
+  readonly handlerContext: Omit<PluginOperationExecutionHandlerContext, 'job'>;
+  readonly dispose: () => void;
+  readonly getLatestProgress: () => StudioJobRecord['progress'];
+}> => {
+  let latestProgress = job.progress;
   const progressReporter = createJobProgressReporter({
     job,
     attempts,
     workerId,
-    updateJobProgress: async (input) => (await deps.loadRepository(job.instanceId)).updateJobProgress(input),
-    appendProgressedEvent: async (input) =>
-      createJobEventWriter({
-        appendJobEvent: (await deps.loadRepository(job.instanceId)).appendJobEvent,
-      }).appendProgressedEvent(input),
+    updateJobProgress: repository.updateJobProgress,
+    appendProgressedEvent: eventWriter.appendProgressedEvent,
+    onProgressPersisted: (progress) => {
+      latestProgress = progress;
+    },
     now: deps.now,
   });
 
-  return createJobExecutionContext({
+  const managedContext = createJobExecutionContext({
     job,
     logger: deps.logger,
     progressReporter,
     isCancellationRequested: async () => {
-      const latestJob = await (await deps.loadRepository(job.instanceId)).getJobById(job.instanceId, job.id);
+      const latestJob = await repository.getJobById(job.instanceId, job.id);
       return Boolean(latestJob?.cancelRequestedAt);
     },
   });
+
+  return {
+    handlerContext: managedContext.context,
+    dispose: managedContext.dispose,
+    getLatestProgress: () => latestProgress,
+  };
 };
 
 export const createJobLifecycleOrchestrator = (deps: OrchestratorDeps) => ({
@@ -109,29 +106,48 @@ export const createJobLifecycleOrchestrator = (deps: OrchestratorDeps) => ({
 
     const startedAt = (deps.now ?? (() => new Date().toISOString()))();
     const workerId = (deps.createWorkerId ?? defaultCreateWorkerId)(job);
-    const handlerContext = await createHandlerContext(deps, job, attempts, workerId);
-    const stateWriter = createStateWriter(repository, deps.now);
-
-    await stateWriter.markRunning({
+    const eventWriter = createJobEventWriter({
+      appendJobEvent: repository.appendJobEvent,
+    });
+    const { handlerContext, dispose, getLatestProgress } = await createHandlerContext(
+      deps,
+      repository,
+      eventWriter,
       job,
       attempts,
-      startedAt,
-      workerId,
+      workerId
+    );
+    const stateWriter = createJobStateWriter({
+      updateJobState: repository.updateJobState,
+      appendStartedEvent: eventWriter.appendStartedEvent,
+      appendSucceededEvent: eventWriter.appendSucceededEvent,
+      appendRetriedEvent: eventWriter.appendRetriedEvent,
+      appendFailedEvent: eventWriter.appendFailedEvent,
+      appendCancelledEvent: eventWriter.appendCancelledEvent,
+      now: deps.now,
     });
 
-    const handler = deps.resolveHandler(job.jobTypeId);
-    if (!handler) {
-      await stateWriter.markMissingHandler({
+    try {
+      await stateWriter.markRunning({
         job,
         attempts,
         startedAt,
         workerId,
-        errorPayload: createMissingHandlerPayload(job),
       });
-      return;
-    }
 
-    try {
+      const handler = deps.resolveHandler(job.jobTypeId);
+      if (!handler) {
+        await stateWriter.markMissingHandler({
+          job,
+          attempts,
+          startedAt,
+          workerId,
+          progress: getLatestProgress(),
+          errorPayload: createMissingHandlerPayload(job),
+        });
+        return;
+      }
+
       const result = await handler({
         job,
         ...handlerContext,
@@ -151,6 +167,7 @@ export const createJobLifecycleOrchestrator = (deps: OrchestratorDeps) => ({
           startedAt,
           workerId,
           message: error.message,
+          progress: getLatestProgress(),
           cancelRequestedAt: error.cancelRequestedAt,
         });
         return;
@@ -162,12 +179,15 @@ export const createJobLifecycleOrchestrator = (deps: OrchestratorDeps) => ({
         attempts,
         startedAt,
         workerId,
+        progress: getLatestProgress(),
         errorPayload: createExecutionErrorPayload(error, finalFailure),
         finalFailure,
       });
       if (!finalFailure) {
         throw error;
       }
+    } finally {
+      dispose();
     }
   },
 });

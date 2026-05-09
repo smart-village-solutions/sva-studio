@@ -4,8 +4,6 @@ export type PluginOperationLogger = ReturnType<(typeof import('@sva/server-runti
 
 export type PluginOperationProgressReporter = {
   reportProgress(input: {
-    jobId: string;
-    instanceId: string;
     progress: StudioJobProgress;
   }): Promise<void>;
 };

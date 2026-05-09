@@ -12,27 +12,54 @@ type JobExecutionContextDeps = {
   readonly logger: PluginOperationLogger;
   readonly progressReporter: PluginOperationProgressReporter;
   readonly isCancellationRequested: () => Promise<boolean>;
+  readonly cancellationPollIntervalMs?: number;
+};
+
+type ManagedJobExecutionContext = {
+  readonly context: Omit<PluginOperationExecutionHandlerContext, 'job'>;
+  readonly dispose: () => void;
 };
 
 export const createJobExecutionContext = (
   deps: JobExecutionContextDeps
-): Omit<PluginOperationExecutionHandlerContext, 'job'> => {
+): ManagedJobExecutionContext => {
   const abortController = new AbortController();
   if (deps.job.cancelRequestedAt) {
     abortController.abort();
   }
 
+  let disposed = false;
+  const pollInterval = setInterval(() => {
+    void deps
+      .isCancellationRequested()
+      .then((cancellationRequested) => {
+        if (disposed || cancellationRequested === false || abortController.signal.aborted) {
+          return;
+        }
+
+        abortController.abort();
+      })
+      .catch(() => undefined);
+  }, deps.cancellationPollIntervalMs ?? 1_000);
+  pollInterval.unref?.();
+
   return {
-    logger: deps.logger,
-    progressReporter: deps.progressReporter,
-    abortSignal: abortController.signal,
-    isCancellationRequested: deps.isCancellationRequested,
-    throwIfCancellationRequested: () =>
-      throwIfCancellationRequested({
-        isCancellationRequested: deps.isCancellationRequested,
-        cancelRequestedAt: deps.job.cancelRequestedAt,
-      }),
-    requestId: deps.job.requestId,
-    actorAccountId: deps.job.actorAccountId,
+    context: {
+      logger: deps.logger,
+      progressReporter: deps.progressReporter,
+      abortSignal: abortController.signal,
+      isCancellationRequested: deps.isCancellationRequested,
+      throwIfCancellationRequested: () =>
+        throwIfCancellationRequested({
+          isCancellationRequested: deps.isCancellationRequested,
+          cancelRequestedAt: deps.job.cancelRequestedAt,
+        }),
+      requestId: deps.job.requestId,
+      actorAccountId: deps.job.actorAccountId,
+    },
+    dispose: () => {
+      disposed = true;
+      clearInterval(pollInterval);
+    },
   };
 };

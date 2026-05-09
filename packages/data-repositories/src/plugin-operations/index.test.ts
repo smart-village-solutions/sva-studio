@@ -491,6 +491,29 @@ describe('studio job repository', () => {
     expect(statements[0]?.text).toContain("j.status IN ('succeeded', 'failed', 'cancelled')");
   });
 
+  it('keeps the total count when the requested page is empty', async () => {
+    const { executor, statements } = createQueuedExecutor([
+      [],
+      [{ total_count: 3 }],
+    ]);
+    const repository = createStudioJobRepository(executor);
+
+    await expect(
+      repository.listJobs('tenant-a', {
+        view: 'history',
+        page: 4,
+        pageSize: 10,
+      })
+    ).resolves.toEqual({
+      items: [],
+      total: 3,
+    });
+
+    expect(statements).toHaveLength(2);
+    expect(statements[1]?.text).toContain('SELECT COUNT(*)::int AS total_count');
+    expect(statements[1]?.values).toEqual(['tenant-a']);
+  });
+
   it('rejects missing returning rows when creating jobs', async () => {
     const { executor } = createQueuedExecutor([[]]);
     const repository = createStudioJobRepository(executor);

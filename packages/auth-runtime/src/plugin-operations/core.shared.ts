@@ -21,6 +21,7 @@ export const createPluginOperationJob = async (input: {
   readonly idempotencyKey: string;
   readonly requestId?: string;
   readonly scheduledAt: string;
+  readonly queueName: string;
   readonly data: StudioJobStartRequest;
 }) =>
   withStudioJobRepository(input.instanceId, async (repository) => {
@@ -30,7 +31,7 @@ export const createPluginOperationJob = async (input: {
       pluginId: input.data.pluginId,
       jobTypeId: input.data.jobTypeId,
       importProfileId: input.data.importProfileId,
-      queueName: 'plugin-operations',
+      queueName: input.queueName,
       status: 'queued',
       progress: { completedSteps: 0, totalSteps: 1 },
       inputPayload: input.data.input,

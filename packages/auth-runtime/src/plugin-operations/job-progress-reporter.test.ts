@@ -20,8 +20,6 @@ describe('job progress reporter', () => {
     });
 
     await reporter.reportProgress({
-      jobId: 'job-1',
-      instanceId: 'tenant-a',
       progress: {
         completedSteps: 1,
         totalSteps: 3,
@@ -74,8 +72,6 @@ describe('job progress reporter', () => {
     });
 
     await reporter.reportProgress({
-      jobId: 'job-2',
-      instanceId: 'tenant-b',
       progress: {
         completedSteps: 1,
         totalSteps: 3,

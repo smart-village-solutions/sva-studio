@@ -39,7 +39,10 @@ describe('plugin operation runtime registration', () => {
       mod.assertPluginOperationExecutionHandlerCoverage({
         declaredJobTypeIds: [],
         handlers: {
-          'news.import-articles': vi.fn(),
+          'news.import-articles': {
+            handler: vi.fn(),
+            queueName: 'plugin-imports',
+          },
         },
       })
     ).toThrowError('unknown_plugin_operation_handlers:news.import-articles');

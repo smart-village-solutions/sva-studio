@@ -44,7 +44,7 @@ mit Bezug auf die arc42-Abschnitte.
 - `ADR-036-kanonischer-iam-projektions-und-reconcile-vertrag.md`
 - `ADR-038-instanz-modul-zuordnung-und-fail-closed-modulaktivierung.md`
 - `ADR-039-medienmanagement-host-capability-und-storage-vertrag.md`
-- `ADR-040-graphile-workflows-als-standard-fuer-hintergrundprozesse.md`
+- `ADR-040-graphile-worker-als-standard-fuer-hintergrundprozesse.md`
 
 ### Zuordnung zu arc42-Abschnitten
 
@@ -103,7 +103,7 @@ mit Bezug auf die arc42-Abschnitte.
 - ADR-036: Kanonischer IAM-Projektionskern, deterministischer Reconcile-/Sync-Vertrag und fail-closed Drift-Blocker (Abschnitt 04, 05, 06, 08, 09, 10, 11)
 - ADR-038: Kanonische Instanz-Modul-Zuordnung, hartes Rechte-Entziehen und fail-closed Modulaktivierung (Abschnitt 04, 05, 06, 08, 09, 10, 11, 12)
 - ADR-039: Medienmanagement als Host-Capability mit eigenem Domänenpackage, internem Storage-Port und Plugin-SDK-kompatibler Referenzgrenze (Abschnitt 03, 04, 05, 06, 07, 08, 09, 10, 11)
-- ADR-040: Graphile Workflows als aktueller Host-Standard für Hintergrundprozesse; Temporal bleibt dokumentierte Eskalationsoption, Trigger.dev ist ausgeschlossen (Abschnitt 04, 05, 06, 07, 08, 09, 10, 11)
+- ADR-040: `graphile-worker` als aktueller Host-Standard für Hintergrundprozesse; Temporal bleibt dokumentierte Eskalationsoption, Trigger.dev ist ausgeschlossen (Abschnitt 04, 05, 06, 07, 08, 09, 10, 11)
 
 ### Pflege-Regel
 
@@ -199,8 +199,8 @@ Zuordnung:
 
 ### Fortschreibung 2026-05: Workflow-Orchestrierung für Hintergrundprozesse
 
-- `ADR-040-graphile-workflows-als-standard-fuer-hintergrundprozesse.md`
-  - setzt Graphile Workflows als aktuellen Host-Standard für neue Hintergrundprozesse und asynchrone Folgearbeiten
+- `ADR-040-graphile-worker-als-standard-fuer-hintergrundprozesse.md`
+  - setzt `graphile-worker` als aktuellen Host-Standard für neue Hintergrundprozesse und asynchrone Folgearbeiten
   - hält Temporal bewusst als spätere Eskalationsoption offen, ohne bereits einen Parallelstandard einzuführen
   - schließt Trigger.dev als Zielpfad für Studio aus
 

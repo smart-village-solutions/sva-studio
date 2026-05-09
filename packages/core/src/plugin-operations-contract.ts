@@ -93,6 +93,8 @@ export type StudioJobEventRecord = {
   readonly createdAt: string;
 };
 
+export type StudioJobEventCreateInput = Omit<StudioJobEventRecord, 'createdAt'>;
+
 export type StudioJobRecord = {
   readonly id: string;
   readonly instanceId: string;

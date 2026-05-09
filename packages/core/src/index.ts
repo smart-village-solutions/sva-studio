@@ -51,6 +51,7 @@ export type {
   StudioJobDetail,
   StudioJobDetailResponse,
   StudioJobError,
+  StudioJobEventCreateInput,
   StudioJobEventRecord,
   StudioJobHeartbeatInput,
   StudioJobProgressUpdateInput,

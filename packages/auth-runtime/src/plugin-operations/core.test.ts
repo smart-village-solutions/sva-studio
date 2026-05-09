@@ -37,6 +37,7 @@ vi.mock('./runner.js', () => ({
 }));
 
 import {
+  cancelPluginOperationJobHandler,
   getPluginOperationJobHandler,
   startPluginOperationJobHandler,
 } from './core.js';
@@ -79,6 +80,8 @@ describe('plugin operations handlers', () => {
           pluginId: 'news',
           jobTypeId: 'news.import-articles',
           importProfileId: 'news.article-import',
+          correlationId: 'corr-1',
+          parentJobId: 'job-parent',
           input: { source: 'upload-1' },
         }),
       })
@@ -97,6 +100,8 @@ describe('plugin operations handlers', () => {
         jobTypeId: 'news.import-articles',
         status: 'queued',
         requestId: 'req-test',
+        correlationId: 'corr-1',
+        parentJobId: 'job-parent',
       },
     });
   });
@@ -148,17 +153,38 @@ describe('plugin operations handlers', () => {
           importProfileId: 'news.article-import',
           queueName: 'plugin-operations',
           status: 'running',
-          progress: { completedSteps: 1, totalSteps: 3, currentPhase: 'mapping' },
+          progress: {
+            completedSteps: 1,
+            totalSteps: 3,
+            currentPhase: 'mapping',
+            currentStepKey: 'validate-schema',
+            lastUpdatedAt: '2026-05-09T12:01:00.000Z',
+          },
           inputPayload: { source: 'upload-1' },
           attempts: 1,
           maxAttempts: 5,
           idempotencyKey: 'idem-1',
           requestId: 'req-test',
           actorAccountId: 'user-1',
+          workerId: 'graphile-worker-1',
+          heartbeatAt: '2026-05-09T12:01:30.000Z',
+          lastProgressAt: '2026-05-09T12:01:00.000Z',
+          correlationId: 'corr-1',
           scheduledAt: '2026-05-09T12:00:00.000Z',
           startedAt: '2026-05-09T12:01:00.000Z',
           createdAt: '2026-05-09T12:00:00.000Z',
           updatedAt: '2026-05-09T12:01:00.000Z',
+          history: [
+            {
+              id: 'event-1',
+              jobId: 'job-1',
+              instanceId: 'tenant-a',
+              eventType: 'job.started',
+              status: 'running',
+              attempts: 1,
+              createdAt: '2026-05-09T12:01:00.000Z',
+            },
+          ],
         })),
       })
     );
@@ -172,7 +198,56 @@ describe('plugin operations handlers', () => {
       data: {
         id: 'job-1',
         status: 'running',
-        progress: { completedSteps: 1, totalSteps: 3, currentPhase: 'mapping' },
+        progress: {
+          completedSteps: 1,
+          totalSteps: 3,
+          currentPhase: 'mapping',
+          currentStepKey: 'validate-schema',
+          lastUpdatedAt: '2026-05-09T12:01:00.000Z',
+        },
+        history: [
+          {
+            id: 'event-1',
+            eventType: 'job.started',
+          },
+        ],
+      },
+    });
+  });
+
+  it('stores a cancellation request for the authenticated instance', async () => {
+    repositoryState.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
+      work({
+        requestJobCancellation: vi.fn(async () => ({
+          id: 'job-1',
+          instanceId: 'tenant-a',
+          pluginId: 'news',
+          jobTypeId: 'news.import-articles',
+          queueName: 'plugin-operations',
+          status: 'running',
+          inputPayload: { source: 'upload-1' },
+          attempts: 1,
+          maxAttempts: 5,
+          idempotencyKey: 'idem-1',
+          cancelRequestedAt: '2026-05-09T12:02:00.000Z',
+          scheduledAt: '2026-05-09T12:00:00.000Z',
+          createdAt: '2026-05-09T12:00:00.000Z',
+          updatedAt: '2026-05-09T12:02:00.000Z',
+        })),
+      })
+    );
+
+    const response = await cancelPluginOperationJobHandler(
+      new Request('https://studio.test/api/v1/plugin-operations/jobs/job-1/cancel', {
+        method: 'POST',
+      })
+    );
+
+    expect(response.status).toBe(202);
+    await expect(response.json()).resolves.toMatchObject({
+      data: {
+        id: 'job-1',
+        cancelRequestedAt: '2026-05-09T12:02:00.000Z',
       },
     });
   });

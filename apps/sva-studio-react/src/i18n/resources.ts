@@ -211,6 +211,32 @@ export const i18nResources = {
           loadError: 'Die Jobliste konnte nicht geladen werden.',
           detailLoadError: 'Die Job-Details konnten nicht geladen werden.',
         },
+        events: {
+          titles: {
+            job: {
+              queued: 'Job eingeplant',
+              started: 'Job gestartet',
+              progressed: 'Fortschritt aktualisiert',
+              retrying: 'Neuer Versuch geplant',
+              succeeded: 'Job erfolgreich abgeschlossen',
+              failed: 'Job fehlgeschlagen',
+              cancelled: 'Job abgebrochen',
+            },
+          },
+          messages: {
+            job: {
+              queued: 'Job wurde zur Ausführung eingeplant.',
+              started: 'Job-Ausführung wurde gestartet.',
+              progressed: 'Fortschritt des Jobs wurde aktualisiert.',
+              progressedStepLabel: 'Fortschritt aktualisiert: {{value}}.',
+              progressedStepKey: 'Fortschritt aktualisiert: {{value}}.',
+              retrying: 'Job wird nach einem Fehler erneut versucht.',
+              succeeded: 'Job wurde erfolgreich abgeschlossen.',
+              failed: 'Job ist fehlgeschlagen.',
+              cancelled: 'Job wurde abgebrochen.',
+            },
+          },
+        },
         errors: {
           forbidden: 'Sie dürfen diese Jobs nicht einsehen.',
           databaseUnavailable: 'Die Jobdatenbank ist derzeit nicht erreichbar.',
@@ -2905,6 +2931,32 @@ export const i18nResources = {
           loading: 'Loading jobs.',
           loadError: 'The job list could not be loaded.',
           detailLoadError: 'The job details could not be loaded.',
+        },
+        events: {
+          titles: {
+            job: {
+              queued: 'Job queued',
+              started: 'Job started',
+              progressed: 'Progress updated',
+              retrying: 'Retry scheduled',
+              succeeded: 'Job completed successfully',
+              failed: 'Job failed',
+              cancelled: 'Job cancelled',
+            },
+          },
+          messages: {
+            job: {
+              queued: 'The job was queued for execution.',
+              started: 'Job execution started.',
+              progressed: 'Job progress was updated.',
+              progressedStepLabel: 'Progress updated: {{value}}.',
+              progressedStepKey: 'Progress updated: {{value}}.',
+              retrying: 'The job will retry after an error.',
+              succeeded: 'The job completed successfully.',
+              failed: 'The job failed.',
+              cancelled: 'The job was cancelled.',
+            },
+          },
         },
         errors: {
           forbidden: 'You are not allowed to view these jobs.',

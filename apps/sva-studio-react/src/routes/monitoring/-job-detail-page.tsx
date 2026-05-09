@@ -8,6 +8,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/ca
 import { usePluginOperationJobDetail } from '../../hooks/use-plugin-operation-jobs';
 import { t } from '../../i18n';
 import type { IamHttpError } from '../../lib/iam-api';
+import {
+  formatMonitoringJobEventMessage,
+  formatMonitoringJobEventTitle,
+  resolveMonitoringJobEventTone,
+} from './job-event-presentation';
 
 type MonitoringJobDetailPageProps = Readonly<{
   jobId: string;
@@ -203,12 +208,12 @@ export const MonitoringJobDetailPage = ({ jobId }: MonitoringJobDetailPageProps)
                       <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
                         <div className="space-y-2">
                           <div className="flex flex-wrap gap-2">
-                            <Badge variant={event.presentation?.tone === 'error' ? 'destructive' : 'outline'}>
-                              {event.presentation?.title ?? event.eventType}
+                            <Badge variant={resolveMonitoringJobEventTone(event) === 'error' ? 'destructive' : 'outline'}>
+                              {formatMonitoringJobEventTitle(event)}
                             </Badge>
                             <Badge variant={statusVariantByValue[event.status]}>{t(statusLabelKeyByValue[event.status])}</Badge>
                           </div>
-                          <p className="text-sm">{event.message ?? t('monitoring.jobs.values.notAvailable')}</p>
+                          <p className="text-sm">{formatMonitoringJobEventMessage(event) ?? t('monitoring.jobs.values.notAvailable')}</p>
                           {event.progress ? (
                             <p className="text-xs text-muted-foreground">
                               {t('monitoring.jobs.progress.summary', {

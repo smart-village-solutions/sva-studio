@@ -14,6 +14,7 @@ import { registerStudioPluginOperationHandlers } from './lib/plugin-operation-ru
 const startFetch = createStartHandler(defaultStreamHandler);
 const diagnosticsEnabled = (process.env.NODE_ENV ?? 'development') === 'development';
 const serverFnBase = normalizeServerFnBase(process.env.TSS_SERVER_FN_BASE);
+const pluginOperationWorkerEnabled = process.env.SVA_PLUGIN_OPERATION_WORKER_ENABLED !== 'false';
 
 registerStudioPluginOperationHandlers();
 
@@ -99,6 +100,10 @@ const getDispatchMainserverPoiRequest = async () => {
 };
 
 const startPluginOperationWorkerInBackground = (): void => {
+  if (!pluginOperationWorkerEnabled) {
+    return;
+  }
+
   if (pluginOperationWorkerBootstrapPromise) {
     return;
   }

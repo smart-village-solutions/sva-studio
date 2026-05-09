@@ -62,10 +62,10 @@ describe('job detail read model', () => {
     );
 
     expect(detail.latestEvent?.id).toBe('event-2');
-    expect(detail.latestEvent?.message).toBe('Fortschritt des Jobs wurde aktualisiert.');
+    expect(detail.latestEvent?.message).toBeUndefined();
     expect(detail.history[0]?.presentation).toEqual({
       tone: 'info',
-      title: 'Job gestartet',
+      title: 'job.started',
       isTerminal: false,
     });
     expect(detail.history[1]?.details).toEqual({

@@ -2,7 +2,6 @@ import type { StudioJobEventRecord, StudioJobListItem } from '@sva/core';
 import type { StudioJobListResultItem } from '@sva/data-repositories';
 
 import {
-  createStudioJobDefaultEventMessage,
   createStudioJobEventPresentation,
   createStudioJobRuntimeDiagnostics,
   normalizeStudioJobEventDetails,
@@ -19,7 +18,7 @@ const normalizeLatestEvent = (
   job.latestEvent
     ? {
         ...job.latestEvent,
-        message: job.latestEvent.message ?? createStudioJobDefaultEventMessage(job.latestEvent),
+        message: job.latestEvent.message,
         details: normalizeStudioJobEventDetails(job, job.latestEvent),
         presentation: job.latestEvent.presentation ?? createStudioJobEventPresentation(job.latestEvent),
       }

@@ -14,6 +14,7 @@ import { Tabs, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import { usePluginOperationJobs } from '../../hooks/use-plugin-operation-jobs';
 import { t } from '../../i18n';
 import type { IamHttpError } from '../../lib/iam-api';
+import { formatMonitoringJobEventMessage, formatMonitoringJobEventTitle } from './job-event-presentation';
 
 type MonitoringJobsView = 'active' | 'history';
 type MonitoringJobsStatusFilter = 'all' | StudioJobListItem['status'];
@@ -184,9 +185,9 @@ export const MonitoringJobsPage = () => {
         header: t('monitoring.jobs.table.latestEvent'),
         cell: (job) => (
           <div className="space-y-1">
-            <p>{job.latestEvent?.presentation?.title ?? t('monitoring.jobs.values.notAvailable')}</p>
+            <p>{job.latestEvent ? formatMonitoringJobEventTitle(job.latestEvent) : t('monitoring.jobs.values.notAvailable')}</p>
             <p className="text-xs text-muted-foreground">
-              {job.latestEvent?.message ?? t('monitoring.jobs.values.notAvailable')}
+              {job.latestEvent ? formatMonitoringJobEventMessage(job.latestEvent) : t('monitoring.jobs.values.notAvailable')}
             </p>
           </div>
         ),

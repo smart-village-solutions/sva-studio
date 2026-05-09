@@ -275,9 +275,9 @@ describe('MonitoringJobDetailPage', () => {
     expect(screen.getByText('Aktueller Schritt: Nicht verfügbar')).toBeTruthy();
     expect(screen.getByText('Gestartet: invalid-date')).toBeTruthy();
     expect(screen.getByText('Abbruch angefordert: Nein')).toBeTruthy();
-    expect(screen.getByText('job.started')).toBeTruthy();
+    expect(screen.getByText('Job gestartet')).toBeTruthy();
+    expect(screen.getByText('Job-Ausführung wurde gestartet.')).toBeTruthy();
     expect(screen.getByText('invalid-event-date')).toBeTruthy();
-    expect(screen.getByText('Nicht verfügbar')).toBeTruthy();
     expect(screen.getByText('{}')).toBeTruthy();
 
     rerender(<MonitoringJobDetailPage jobId="job-2" />);

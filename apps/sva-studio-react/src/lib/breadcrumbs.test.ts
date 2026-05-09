@@ -47,4 +47,17 @@ describe('resolveBreadcrumbItems', () => {
   it('falls back to overview for unknown paths', () => {
     expect(resolveBreadcrumbItems('/unbekannt')).toEqual([{ label: 'Übersicht' }]);
   });
+
+  it('returns monitoring job breadcrumbs for list and detail pages', () => {
+    expect(resolveBreadcrumbItems('/monitoring/jobs')).toEqual([
+      { href: '/', label: 'Übersicht' },
+      { label: 'Monitoring Jobs' },
+    ]);
+
+    expect(resolveBreadcrumbItems('/monitoring/jobs/job-1')).toEqual([
+      { href: '/', label: 'Übersicht' },
+      { href: '/monitoring/jobs', label: 'Monitoring Jobs' },
+      { label: 'Job-Details' },
+    ]);
+  });
 });

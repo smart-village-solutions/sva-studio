@@ -502,7 +502,7 @@ describe('plugin operations handlers', () => {
           latestEvent: {
             id: 'event-1',
             presentation: {
-              title: 'Fortschritt aktualisiert',
+              title: 'job.progressed',
             },
           },
           runtime: {

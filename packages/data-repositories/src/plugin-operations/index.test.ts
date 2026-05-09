@@ -111,6 +111,63 @@ describe('studio job repository', () => {
     expect(statements[1]?.values).toEqual(['tenant-a', 'job-1']);
   });
 
+  it('maps nullable job fields fail-closed and returns null for missing lookups', async () => {
+    const sparseRow = {
+      ...jobRow,
+      import_profile_id: null,
+      progress: null,
+      result_payload: null,
+      error_payload: null,
+      request_id: null,
+      actor_account_id: null,
+      worker_id: null,
+      heartbeat_at: null,
+      last_progress_at: null,
+      cancel_requested_at: null,
+      correlation_id: null,
+      parent_job_id: null,
+      started_at: null,
+      finished_at: null,
+    };
+    const { executor, statements } = createQueuedExecutor([[sparseRow], []]);
+    const repository = createStudioJobRepository(executor);
+
+    await expect(
+      repository.createJob({
+        id: 'job-2',
+        instanceId: 'tenant-a',
+        pluginId: 'news',
+        jobTypeId: 'news.import-articles',
+        queueName: 'plugin-operations',
+        status: 'queued',
+        inputPayload: { source: 'upload-2' },
+        attempts: 0,
+        maxAttempts: 5,
+        idempotencyKey: 'idem-2',
+        scheduledAt: '2026-05-09T12:00:00.000Z',
+      })
+    ).resolves.toMatchObject({
+      id: 'job-1',
+      importProfileId: undefined,
+      progress: undefined,
+      resultPayload: undefined,
+      errorPayload: undefined,
+      requestId: undefined,
+      actorAccountId: undefined,
+      workerId: undefined,
+      heartbeatAt: undefined,
+      lastProgressAt: undefined,
+      cancelRequestedAt: undefined,
+      correlationId: undefined,
+      parentJobId: undefined,
+      startedAt: undefined,
+      finishedAt: undefined,
+    });
+
+    await expect(repository.getJobById('tenant-a', 'missing')).resolves.toBeNull();
+    expect(statements[0]?.values[7]).toBeNull();
+  });
+
   it('updates job execution status, progress, results and errors', async () => {
     const { executor, statements } = createQueuedExecutor([[jobRow]]);
     const repository = createStudioJobRepository(executor);
@@ -203,6 +260,36 @@ describe('studio job repository', () => {
     expect(statements[2]?.text).toContain('cancel_requested_at = $1');
   });
 
+  it('returns null for missing updates and detail reads', async () => {
+    const { executor } = createQueuedExecutor([[], [], [], []]);
+    const repository = createStudioJobRepository(executor);
+
+    await expect(
+      repository.updateJobState({
+        jobId: 'missing',
+        instanceId: 'tenant-a',
+        status: 'running',
+        attempts: 1,
+      })
+    ).resolves.toBeNull();
+    await expect(
+      repository.updateJobProgress({
+        jobId: 'missing',
+        instanceId: 'tenant-a',
+        progress: { completedSteps: 1, totalSteps: 2 },
+        lastProgressAt: '2026-05-09T12:02:30.000Z',
+      })
+    ).resolves.toBeNull();
+    await expect(
+      repository.touchJobHeartbeat({
+        jobId: 'missing',
+        instanceId: 'tenant-a',
+        heartbeatAt: '2026-05-09T12:03:00.000Z',
+      })
+    ).resolves.toBeNull();
+    await expect(repository.getJobDetail('tenant-a', 'missing')).resolves.toBeNull();
+  });
+
   it('returns job detail together with technical event history', async () => {
     const { executor } = createQueuedExecutor([[jobRow], [eventRow]]);
     const repository = createStudioJobRepository(executor);
@@ -218,6 +305,55 @@ describe('studio job repository', () => {
         },
       ],
     });
+  });
+
+  it('maps sparse event rows, appends minimal events and rejects missing returning rows', async () => {
+    const sparseEventRow = {
+      ...eventRow,
+      progress: null,
+      message: null,
+      details: null,
+    };
+    const { executor } = createQueuedExecutor([[jobRow], [sparseEventRow], [sparseEventRow], []]);
+    const repository = createStudioJobRepository(executor);
+
+    await expect(repository.getJobDetail('tenant-a', 'job-1')).resolves.toMatchObject({
+      history: [
+        {
+          id: 'event-1',
+          progress: undefined,
+          message: undefined,
+          details: undefined,
+        },
+      ],
+    });
+
+    await expect(
+      repository.appendJobEvent({
+        id: 'event-2',
+        jobId: 'job-1',
+        instanceId: 'tenant-a',
+        eventType: 'job.queued',
+        status: 'queued',
+        attempts: 0,
+      })
+    ).resolves.toMatchObject({
+      id: 'event-1',
+      progress: undefined,
+      message: undefined,
+      details: undefined,
+    });
+
+    await expect(
+      repository.appendJobEvent({
+        id: 'event-3',
+        jobId: 'job-1',
+        instanceId: 'tenant-a',
+        eventType: 'job.started',
+        status: 'running',
+        attempts: 1,
+      })
+    ).rejects.toThrow('studio_job_event_create_failed:event-3');
   });
 
   it('lists jobs with pagination filters and latest event projection', async () => {
@@ -273,5 +409,86 @@ describe('studio job repository', () => {
       10,
       10,
     ]);
+  });
+
+  it('lists active jobs without hits and maps latest-event fallbacks when columns are sparse', async () => {
+    const { executor, statements } = createQueuedExecutor([
+      [],
+      [
+        {
+          ...jobRow,
+          latest_event_id: 'event-2',
+          latest_event_type: null,
+          latest_event_status: null,
+          latest_event_progress: null,
+          latest_event_attempts: null,
+          latest_event_message: null,
+          latest_event_details: null,
+          latest_event_created_at: null,
+          total_count: 1,
+        },
+      ],
+    ]);
+    const repository = createStudioJobRepository(executor);
+
+    await expect(
+      repository.listJobs('tenant-a', {
+        view: 'active',
+        page: 1,
+        pageSize: 25,
+      })
+    ).resolves.toEqual({
+      items: [],
+      total: 0,
+    });
+
+    await expect(
+      repository.listJobs('tenant-a', {
+        view: 'history',
+        page: 1,
+        pageSize: 25,
+      })
+    ).resolves.toMatchObject({
+      total: 1,
+      items: [
+        {
+          id: 'job-1',
+          latestEvent: {
+            id: 'event-2',
+            eventType: 'job.queued',
+            status: 'queued',
+            attempts: 0,
+            message: undefined,
+            details: undefined,
+            progress: undefined,
+            createdAt: '2026-05-09T12:00:00.000Z',
+          },
+        },
+      ],
+    });
+
+    expect(statements[0]?.text).toContain("j.status IN ('queued', 'running', 'retrying')");
+    expect(statements[0]?.values).toEqual(['tenant-a', 25, 0]);
+  });
+
+  it('rejects missing returning rows when creating jobs', async () => {
+    const { executor } = createQueuedExecutor([[]]);
+    const repository = createStudioJobRepository(executor);
+
+    await expect(
+      repository.createJob({
+        id: 'job-3',
+        instanceId: 'tenant-a',
+        pluginId: 'news',
+        jobTypeId: 'news.import-articles',
+        queueName: 'plugin-operations',
+        status: 'queued',
+        inputPayload: { source: 'upload-3' },
+        attempts: 0,
+        maxAttempts: 5,
+        idempotencyKey: 'idem-3',
+        scheduledAt: '2026-05-09T12:00:00.000Z',
+      })
+    ).rejects.toThrow('studio_job_create_failed:job-3');
   });
 });

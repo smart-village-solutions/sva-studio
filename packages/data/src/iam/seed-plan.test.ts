@@ -8,6 +8,10 @@ describe('iam seed plan', () => {
     assert.equal(iamSeedPlan.personas.length, 8);
   });
 
+  it('keeps the canonical permission catalog in sync with the seed integration expectations', () => {
+    assert.equal(iamSeedPlan.permissions.length, 38);
+  });
+
   it('uses unique role slugs and keycloak subjects', () => {
     const roleSlugs = new Set(iamSeedPlan.personas.map((persona) => persona.roleSlug));
     const subjects = new Set(iamSeedPlan.personas.map((persona) => persona.keycloakSubject));

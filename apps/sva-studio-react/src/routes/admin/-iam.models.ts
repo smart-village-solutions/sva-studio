@@ -74,6 +74,11 @@ const PERMISSION_RESOURCE_TRANSLATION_KEY_BY_VALUE = {
   media: 'admin.iam.rights.permissionResources.media',
 } as const satisfies Record<string, TranslationKey>;
 
+const hasPermissionResourceTranslationKey = (
+  value: string
+): value is keyof typeof PERMISSION_RESOURCE_TRANSLATION_KEY_BY_VALUE =>
+  value in PERMISSION_RESOURCE_TRANSLATION_KEY_BY_VALUE;
+
 const readReasonCodeFromDiagnostics = (diagnostics: unknown): string | undefined => {
   if (!diagnostics || typeof diagnostics !== 'object') {
     return undefined;
@@ -128,7 +133,7 @@ export const formatPermissionAreaLabel = (permission: EffectivePermission): stri
   const namespace = permission.action.split('.')[0]?.trim();
   const candidate = namespace && namespace.length > 0 ? namespace : permission.resourceType;
   const translationKey =
-    typeof candidate === 'string' && candidate.length > 0
+    typeof candidate === 'string' && candidate.length > 0 && hasPermissionResourceTranslationKey(candidate)
       ? PERMISSION_RESOURCE_TRANSLATION_KEY_BY_VALUE[candidate]
       : undefined;
 

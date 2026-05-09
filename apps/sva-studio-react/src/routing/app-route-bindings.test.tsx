@@ -12,6 +12,7 @@ vi.mock('@tanstack/react-router', () => ({
   useParams: () => routeState.params,
   useSearch: () => routeState.search,
   useLocation: () => ({ pathname: '/admin/media' }),
+  useNavigate: () => vi.fn(),
 }));
 
 vi.mock('@sva/routing', () => ({
@@ -32,6 +33,8 @@ vi.mock('../i18n', () => ({
         'shell.sidebar.sections.system': 'System',
         'shell.sidebar.modules': 'Modules',
         'shell.sidebar.monitoring': 'Monitoring',
+        'monitoring.jobs.page.title': 'Monitoring Jobs',
+        'monitoring.jobs.detail.title': 'Job Details',
         'shell.sidebar.help': 'Help',
         'shell.sidebar.support': 'Support',
         'shell.sidebar.license': 'License',
@@ -173,6 +176,14 @@ vi.mock('../routes/interfaces/-interfaces-page', () => ({
   InterfacesPage: () => <div data-testid="interfaces-page" />,
 }));
 
+vi.mock('../routes/monitoring/-jobs-page', () => ({
+  MonitoringJobsPage: () => <div data-testid="monitoring-jobs-page" />,
+}));
+
+vi.mock('../routes/monitoring/-job-detail-page', () => ({
+  MonitoringJobDetailPage: ({ jobId }: { jobId: string }) => <div data-testid="monitoring-job-detail-page">{jobId}</div>,
+}));
+
 vi.mock('@sva/plugin-news', () => ({
   NewsCreatePage: () => <div data-testid="news-create-page" />,
   NewsEditPage: () => <div data-testid="news-edit-page" />,
@@ -209,7 +220,6 @@ describe('appRouteBindings', () => {
     const cases: Array<[keyof typeof appRouteBindings, string]> = [
       ['categories', 'Data management|Categories'],
       ['app', 'Applications|App'],
-      ['monitoring', 'System|Monitoring'],
       ['help', 'Help|Help'],
       ['support', 'Support|Support'],
       ['license', 'License|License'],
@@ -242,6 +252,7 @@ describe('appRouteBindings', () => {
       organizationId: 'org-4',
       roleId: 'role-6',
       userId: 'user-8',
+      jobId: 'job-9',
     };
     routeState.search = {
       tab: 'members',
@@ -312,6 +323,14 @@ describe('appRouteBindings', () => {
 
     render(<appRouteBindings.newsDetail />);
     expect(screen.getByTestId('news-edit-page')).toBeTruthy();
+    cleanup();
+
+    render(<appRouteBindings.monitoringJobs />);
+    await waitFor(() => expect(screen.getByTestId('monitoring-jobs-page')).toBeTruthy());
+    cleanup();
+
+    render(<appRouteBindings.monitoringJobDetail />);
+    await waitFor(() => expect(screen.getByTestId('monitoring-job-detail-page').textContent).toBe('job-9'));
   });
 
   it('falls back to empty string route params when router params are not strings', async () => {

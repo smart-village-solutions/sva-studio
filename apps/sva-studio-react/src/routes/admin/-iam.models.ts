@@ -1,5 +1,6 @@
 import type { AuthorizeResponse, EffectivePermission, IamDsrCaseListItem, MePermissionsResponse } from '@sva/core';
 import { t } from '../../i18n';
+import type { TranslationKey } from '../../i18n/translate';
 
 import type { IamCockpitTabKey } from '../../lib/iam-viewer-access';
 
@@ -51,6 +52,33 @@ const DSR_STATUS_TRANSLATION_KEY_BY_VALUE = {
   failed: 'admin.iam.dsr.status.failed',
 } as const;
 
+const PERMISSION_RESOURCE_TRANSLATION_KEY_BY_VALUE = {
+  content: 'admin.iam.rights.permissionResources.content',
+  iam: 'admin.iam.rights.permissionResources.iam',
+  users: 'admin.iam.rights.permissionResources.users',
+  user: 'admin.iam.rights.permissionResources.users',
+  roles: 'admin.iam.rights.permissionResources.roles',
+  role: 'admin.iam.rights.permissionResources.roles',
+  groups: 'admin.iam.rights.permissionResources.groups',
+  group: 'admin.iam.rights.permissionResources.groups',
+  organizations: 'admin.iam.rights.permissionResources.organizations',
+  organization: 'admin.iam.rights.permissionResources.organizations',
+  legal: 'admin.iam.rights.permissionResources.legal',
+  interfaces: 'admin.iam.rights.permissionResources.interfaces',
+  instance: 'admin.iam.rights.permissionResources.instance',
+  integration: 'admin.iam.rights.permissionResources.integration',
+  feature: 'admin.iam.rights.permissionResources.feature',
+  news: 'admin.iam.rights.permissionResources.news',
+  events: 'admin.iam.rights.permissionResources.events',
+  poi: 'admin.iam.rights.permissionResources.poi',
+  media: 'admin.iam.rights.permissionResources.media',
+} as const satisfies Record<string, TranslationKey>;
+
+const hasPermissionResourceTranslationKey = (
+  value: string
+): value is keyof typeof PERMISSION_RESOURCE_TRANSLATION_KEY_BY_VALUE =>
+  value in PERMISSION_RESOURCE_TRANSLATION_KEY_BY_VALUE;
+
 const readReasonCodeFromDiagnostics = (diagnostics: unknown): string | undefined => {
   if (!diagnostics || typeof diagnostics !== 'object') {
     return undefined;
@@ -99,6 +127,21 @@ export const formatPermissionSourceKindLabels = (sourceKinds: readonly string[] 
 export const formatPermissionSourceKinds = (permission: EffectivePermission): string => {
   const sourceKinds = permission.provenance?.sourceKinds ?? [];
   return formatPermissionSourceKindLabels(sourceKinds);
+};
+
+export const formatPermissionAreaLabel = (permission: EffectivePermission): string => {
+  const namespace = permission.action.split('.')[0]?.trim();
+  const candidate = namespace && namespace.length > 0 ? namespace : permission.resourceType;
+  const translationKey =
+    typeof candidate === 'string' && candidate.length > 0 && hasPermissionResourceTranslationKey(candidate)
+      ? PERMISSION_RESOURCE_TRANSLATION_KEY_BY_VALUE[candidate]
+      : undefined;
+
+  if (translationKey) {
+    return t(translationKey);
+  }
+
+  return candidate || permission.resourceType;
 };
 
 const includesIgnoreCase = (haystack: string | undefined, needle: string) =>

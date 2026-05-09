@@ -124,6 +124,12 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - deklarierte Listen-Capabilities muessen ueber Routing, Host-UI und Tests denselben kanonischen Search-State reproduzierbar rehydrieren
   - Bulk-Actions muessen Selection-Modes (`explicitIds`, `currentPage`, `allMatchingQuery`) deterministisch abbilden und ohne Suchtext-/PII-Leak nur sichere Scope-Metadaten protokollieren
   - Ressourcen ohne deklarierte Capabilities duerfen keine erzwungenen Search-/Bulk-Vertraege erhalten
+- Plugin-Operations-Plattform:
+  - `openspec validate update-plugin-platform-for-generic-jobs-imports --strict` muss grün sein
+  - `@sva/plugin-sdk`, `@sva/core`, `@sva/auth-runtime`, `@sva/routing` und `@sva/data-repositories` müssen die neuen Job-/Import-Verträge über Unit- oder Type-Tests absichern
+  - produktive Plugin-Operations-Endpunkte dürfen nur über den typisierten Runtime-Route-Katalog erreichbar sein
+  - der Status eines generischen Plugin-Jobs muss aus genau einem zentralen Jobdatensatz gelesen werden
+  - die öffentliche Plattform darf keine konkrete Worker-Technologie im API- oder Plugin-Vertrag voraussetzen
 - Plugin-UI-Boundary:
   - `pnpm check:plugin-ui-boundary` muss für Plugin-Packages grün sein
   - Plugin-Custom-Views importieren gemeinsame UI aus `@sva/studio-ui-react` und keine App-internen Komponentenpfade

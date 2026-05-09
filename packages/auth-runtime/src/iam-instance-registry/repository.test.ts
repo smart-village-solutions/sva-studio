@@ -8,6 +8,31 @@ const createInstanceRegistryRuntimeMock = vi.fn(() => ({
 }));
 const resolveIdentityProviderForInstanceMock = vi.fn();
 const resolveAuthConfigForInstanceMock = vi.fn();
+const studioModuleIamRegistryMock = new Map([
+  [
+    'news',
+    {
+      moduleId: 'news',
+      permissionIds: ['news.read', 'news.create', 'news.update', 'news.delete'],
+      systemRoles: [{ roleName: 'system_admin', permissionIds: ['news.read', 'news.create', 'news.update', 'news.delete'] }],
+    },
+  ],
+  [
+    'media',
+    {
+      moduleId: 'media',
+      permissionIds: [
+        'media.read',
+        'media.create',
+        'media.update',
+        'media.reference.manage',
+        'media.delete',
+        'media.deliver.protected',
+      ],
+      systemRoles: [{ roleName: 'system_admin', permissionIds: ['media.read'] }],
+    },
+  ],
+]);
 
 vi.mock('../db.js', () => ({
   createPoolResolver: vi.fn(() => 'resolve-pool'),
@@ -26,7 +51,7 @@ vi.mock('@sva/instance-registry/runtime-wiring', () => ({
 }));
 
 vi.mock('@sva/studio-module-iam', () => ({
-  studioModuleIamRegistry: new Map(),
+  studioModuleIamRegistry: studioModuleIamRegistryMock,
 }));
 
 vi.mock('../runtime-secrets.js', () => ({

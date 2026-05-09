@@ -72,7 +72,10 @@ export type AuthRoutePath =
   | '/iam/admin/data-subject-rights/cases'
   | '/iam/admin/data-subject-rights/legal-holds/apply'
   | '/iam/admin/data-subject-rights/legal-holds/release'
-  | '/iam/admin/data-subject-rights/maintenance';
+  | '/iam/admin/data-subject-rights/maintenance'
+  | '/api/v1/plugin-operations/jobs'
+  | '/api/v1/plugin-operations/jobs/$jobId'
+  | '/api/v1/plugin-operations/jobs/$jobId/cancel';
 
 export const authRoutePaths = [
   '/auth/login',
@@ -148,4 +151,7 @@ export const authRoutePaths = [
   '/iam/admin/data-subject-rights/legal-holds/apply',
   '/iam/admin/data-subject-rights/legal-holds/release',
   '/iam/admin/data-subject-rights/maintenance',
+  '/api/v1/plugin-operations/jobs',
+  '/api/v1/plugin-operations/jobs/$jobId',
+  '/api/v1/plugin-operations/jobs/$jobId/cancel',
 ] as const satisfies readonly AuthRoutePath[];

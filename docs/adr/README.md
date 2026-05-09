@@ -65,6 +65,9 @@ Architecture Decision Records dokumentieren **wichtige technische Entscheidungen
 | 035 | Routing-Observability über Diagnostics-Hook und Safe-Event-Vertrag | ✅ | 2026-04-19 | Routing / Observability |
 | 036 | Kanonischer IAM-Projektions- und Reconcile-Vertrag | ✅ | 2026-04-19 | IAM / Runtime / UI |
 | 037 | Plugin-spezifische IAM-Rechte | ✅ | 2026-04-27 | Plugins / IAM / Authorization |
+| 038 | Instanz-Modul-Zuordnung und fail-closed Modulaktivierung | ✅ | 2026-04-29 | Runtime / Plugins / IAM |
+| 039 | Medienmanagement als Host-Capability mit Storage- und Processing-Vertrag | ✅ | 2026-04-29 | Media / Storage / Runtime |
+| 040 | graphile-worker als Standard für Hintergrundprozesse | ✅ | 2026-05-09 | Runtime / Workflow / Betrieb |
 
 ### Kanonischer Ablageort
 

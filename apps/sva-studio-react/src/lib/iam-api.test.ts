@@ -38,6 +38,7 @@ import {
   getRuntimeHealth,
   getMyDataSubjectRights,
   deactivateOrganization,
+  getPluginOperationJob,
   getGroup,
   getOrganization,
   getMyOrganizationContext,
@@ -47,6 +48,7 @@ import {
   listGroups,
   listInstances,
   listOrganizations,
+  listPluginOperationJobs,
   planInstanceKeycloakProvisioning,
   probeTenantIamAccess,
   reconcileRoles,
@@ -1192,5 +1194,58 @@ describe('iam-api transparency helpers', () => {
     );
     expect(fetchMock).toHaveBeenNthCalledWith(3, '/iam/me/data-subject-rights/requests', expect.any(Object));
     expect(fetchMock).toHaveBeenNthCalledWith(4, '/iam/me/data-export/status?jobId=job-1', expect.any(Object));
+  });
+
+  it('builds plugin operation job list queries with filters', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: [],
+          pagination: { page: 1, pageSize: 25, total: 0 },
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } }
+      )
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await listPluginOperationJobs({
+      view: 'history',
+      page: 2,
+      pageSize: 10,
+      status: 'failed',
+      pluginId: 'news',
+      jobTypeId: 'news.import-articles',
+      q: 'corr-1',
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/plugin-operations/jobs?view=history&page=2&pageSize=10&status=failed&pluginId=news&jobTypeId=news.import-articles&q=corr-1',
+      expect.objectContaining({
+        credentials: 'include',
+      })
+    );
+  });
+
+  it('unwraps plugin operation job detail responses', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            data: {
+              id: 'job-1',
+              status: 'running',
+              history: [],
+            },
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } }
+        )
+      )
+    );
+
+    await expect(getPluginOperationJob('job-1')).resolves.toMatchObject({
+      id: 'job-1',
+      status: 'running',
+    });
   });
 });

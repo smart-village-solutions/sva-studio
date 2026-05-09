@@ -21,6 +21,12 @@ const permissions = [
   ['40111111-1111-1111-1111-111111111128', 'content.restore', 'Restore content'],
   ['40111111-1111-1111-1111-111111111129', 'content.readHistory', 'Read content history'],
   ['40111111-1111-1111-1111-111111111130', 'content.delete', 'Delete content'],
+  ['40111111-1111-1111-1111-111111111143', 'media.read', 'Read media'],
+  ['40111111-1111-1111-1111-111111111144', 'media.create', 'Create media'],
+  ['40111111-1111-1111-1111-111111111145', 'media.update', 'Update media'],
+  ['40111111-1111-1111-1111-111111111146', 'media.reference.manage', 'Manage media references'],
+  ['40111111-1111-1111-1111-111111111147', 'media.delete', 'Delete media'],
+  ['40111111-1111-1111-1111-111111111148', 'media.deliver.protected', 'Deliver protected media'],
   ['40111111-1111-1111-1111-111111111131', 'news.read', 'Read news plugin content'],
   ['40111111-1111-1111-1111-111111111132', 'news.create', 'Create news plugin content'],
   ['40111111-1111-1111-1111-111111111133', 'news.update', 'Update news plugin content'],
@@ -35,6 +41,7 @@ const permissions = [
   ['40111111-1111-1111-1111-111111111142', 'poi.delete', 'Delete POI plugin content'],
 ] as const satisfies readonly [string, PermissionKey, string][];
 const pluginReadPermissions = ['news.read', 'events.read', 'poi.read'] as const;
+const mediaReadPermissions = ['media.read'] as const;
 const pluginWritePermissions = [
   'news.create',
   'news.update',
@@ -46,7 +53,9 @@ const pluginWritePermissions = [
   'poi.update',
   'poi.delete',
 ] as const;
+const mediaWritePermissions = ['media.create', 'media.update', 'media.reference.manage', 'media.delete'] as const;
 const pluginManagePermissions = [...pluginReadPermissions, ...pluginWritePermissions] as const;
+const mediaManagePermissions = [...mediaReadPermissions, ...mediaWritePermissions] as const;
 const personas: readonly PersonaSeed[] = [
   {
     personaKey: 'system_admin',
@@ -88,6 +97,7 @@ const personas: readonly PersonaSeed[] = [
       'iam.org.write',
       'content.read',
       'content.readHistory',
+      ...mediaReadPermissions,
       ...pluginReadPermissions,
       'feature.toggle',
     ],
@@ -109,6 +119,7 @@ const personas: readonly PersonaSeed[] = [
       'content.updateMetadata',
       'content.updatePayload',
       'content.changeStatus',
+      ...mediaManagePermissions,
       ...pluginManagePermissions,
       'feature.toggle',
     ],
@@ -124,7 +135,14 @@ const personas: readonly PersonaSeed[] = [
     displayName: 'Interface Manager',
     scopeDefault: 'instance',
     mfaPolicy: 'recommended',
-    permissionKeys: ['iam.org.read', 'content.read', 'content.readHistory', ...pluginReadPermissions, 'integration.manage'],
+    permissionKeys: [
+      'iam.org.read',
+      'content.read',
+      'content.readHistory',
+      ...mediaReadPermissions,
+      ...pluginReadPermissions,
+      'integration.manage',
+    ],
     accountId: '50444444-4444-4444-4444-444444444444',
     keycloakSubject: 'seed:interface_manager',
     seedEmailPlaceholder: 'seed.interface-manager@sva.local',
@@ -142,6 +160,8 @@ const personas: readonly PersonaSeed[] = [
       'content.readHistory',
       'content.updateMetadata',
       'content.updatePayload',
+      'media.read',
+      'media.update',
       ...pluginReadPermissions,
       'news.update',
       'events.update',
@@ -167,6 +187,10 @@ const personas: readonly PersonaSeed[] = [
       'content.updatePayload',
       'content.changeStatus',
       'content.delete',
+      'media.read',
+      'media.create',
+      'media.update',
+      'media.reference.manage',
       ...pluginManagePermissions,
     ],
     accountId: '50666666-6666-6666-6666-666666666666',
@@ -189,6 +213,7 @@ const personas: readonly PersonaSeed[] = [
       'content.archive',
       'content.restore',
       'content.manageRevisions',
+      ...mediaReadPermissions,
       ...pluginReadPermissions,
     ],
     accountId: '50777777-7777-7777-7777-777777777777',

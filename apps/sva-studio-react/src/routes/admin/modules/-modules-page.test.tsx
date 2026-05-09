@@ -129,6 +129,8 @@ describe('ModulesPage', () => {
     });
 
     expect(screen.getByDisplayValue('Demo (demo)')).toBeTruthy();
+    expect(screen.getByText('Module schalten Bereiche frei')).toBeTruthy();
+    expect(screen.getByText('Rollen vergeben Berechtigungen')).toBeTruthy();
     expect(screen.getByText('news')).toBeTruthy();
     expect(screen.getByText('events')).toBeTruthy();
     expect(screen.getByText('media')).toBeTruthy();

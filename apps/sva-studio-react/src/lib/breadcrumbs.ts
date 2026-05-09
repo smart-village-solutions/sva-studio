@@ -182,6 +182,18 @@ const breadcrumbRoutes: ReadonlyArray<
     build: () => [overviewBreadcrumb(), { label: t('shell.sidebar.monitoring') }],
   },
   {
+    pattern: /^\/monitoring\/jobs\/[^/]+$/,
+    build: () => [
+      overviewBreadcrumb(),
+      { href: '/monitoring/jobs', label: t('monitoring.jobs.page.title') },
+      { label: t('monitoring.jobs.detail.title') },
+    ],
+  },
+  {
+    pattern: /^\/monitoring\/jobs$/,
+    build: () => [overviewBreadcrumb(), { label: t('monitoring.jobs.page.title') }],
+  },
+  {
     pattern: /^\/help$/,
     build: () => [overviewBreadcrumb(), { label: t('shell.sidebar.help') }],
   },

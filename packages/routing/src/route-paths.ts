@@ -36,6 +36,8 @@ export const uiRoutePaths = {
   adminIam: '/admin/iam',
   modules: '/modules',
   monitoring: '/monitoring',
+  monitoringJobs: '/monitoring/jobs',
+  monitoringJobDetail: '/monitoring/jobs/$jobId',
   adminApiPhase1Test: '/admin/api/phase1-test',
 } as const;
 

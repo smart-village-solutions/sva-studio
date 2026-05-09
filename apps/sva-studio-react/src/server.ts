@@ -9,10 +9,14 @@ import {
   readServerFunctionResponseBodyForDiagnostics,
   resolveServerFunctionBranchDecision,
 } from './lib/server-function-request-diagnostics.server';
+import { registerStudioPluginOperationHandlers } from './lib/plugin-operation-runtime.server';
 
 const startFetch = createStartHandler(defaultStreamHandler);
 const diagnosticsEnabled = (process.env.NODE_ENV ?? 'development') === 'development';
 const serverFnBase = normalizeServerFnBase(process.env.TSS_SERVER_FN_BASE);
+const pluginOperationWorkerEnabled = process.env.SVA_PLUGIN_OPERATION_WORKER_ENABLED !== 'false';
+
+registerStudioPluginOperationHandlers();
 
 type WorkspaceContext = {
   readonly requestId?: string | null;
@@ -44,6 +48,9 @@ type RequestContextSdk = {
 let sdkPromise: Promise<RequestContextSdk> | null = null;
 const loggerPromises = new Map<ServerTransportComponent, Promise<ServerTransportLogger>>();
 let dispatchAuthRouteRequestPromise: Promise<typeof import('@sva/routing/server')['dispatchAuthRouteRequest']> | null = null;
+let ensurePluginOperationWorkerStartedPromise:
+  | Promise<typeof import('@sva/auth-runtime/server')['ensurePluginOperationWorkerStarted']>
+  | null = null;
 let dispatchMainserverNewsRequestPromise:
   | Promise<typeof import('./lib/mainserver-news-api.server')['dispatchMainserverNewsRequest']>
   | null = null;
@@ -53,6 +60,7 @@ let dispatchMainserverEventsRequestPromise:
 let dispatchMainserverPoiRequestPromise:
   | Promise<typeof import('./lib/mainserver-poi-api.server')['dispatchMainserverPoiRequest']>
   | null = null;
+let pluginOperationWorkerBootstrapPromise: Promise<void> | null = null;
 const getSdk = async (): Promise<RequestContextSdk> => {
   sdkPromise ??= import('@sva/server-runtime') as Promise<RequestContextSdk>;
   return sdkPromise;
@@ -61,6 +69,13 @@ const getSdk = async (): Promise<RequestContextSdk> => {
 const getDispatchAuthRouteRequest = async () => {
   dispatchAuthRouteRequestPromise ??= import('@sva/routing/server').then((mod) => mod.dispatchAuthRouteRequest);
   return dispatchAuthRouteRequestPromise;
+};
+
+const getEnsurePluginOperationWorkerStarted = async () => {
+  ensurePluginOperationWorkerStartedPromise ??= import('@sva/auth-runtime/server').then(
+    (mod) => mod.ensurePluginOperationWorkerStarted
+  );
+  return ensurePluginOperationWorkerStartedPromise;
 };
 
 const getDispatchMainserverNewsRequest = async () => {
@@ -84,6 +99,29 @@ const getDispatchMainserverPoiRequest = async () => {
   return dispatchMainserverPoiRequestPromise;
 };
 
+const startPluginOperationWorkerInBackground = (): void => {
+  if (!pluginOperationWorkerEnabled) {
+    return;
+  }
+
+  if (pluginOperationWorkerBootstrapPromise) {
+    return;
+  }
+
+  pluginOperationWorkerBootstrapPromise = (async () => {
+    try {
+      const startWorker = await getEnsurePluginOperationWorkerStarted();
+      await startWorker();
+    } catch (error) {
+      pluginOperationWorkerBootstrapPromise = null;
+      (await getLogger('server-entry-transport')).info('Plugin worker bootstrap failed', {
+        operation: 'plugin_operation_worker_bootstrap',
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  })();
+};
+
 const getLogger = async (component: ServerTransportComponent): Promise<ServerTransportLogger> => {
   let loggerPromise = loggerPromises.get(component);
   if (!loggerPromise) {
@@ -103,6 +141,7 @@ const getLogger = async (component: ServerTransportComponent): Promise<ServerTra
 
 const instrumentedFetch: RequestHandler<Register> = async (...args) => {
   const [request, requestOptions] = args;
+  startPluginOperationWorkerInBackground();
   const serverEntryDebugEnabled = process.env.SVA_SERVER_ENTRY_DEBUG === 'true';
   const logServerEntryDebug = async (message: string, meta: Record<string, unknown>) => {
     if (!serverEntryDebugEnabled) {

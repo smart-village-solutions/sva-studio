@@ -11,6 +11,8 @@ import {
   normalizePluginNamespace,
   parseNamespacedPluginIdentifier,
 } from './plugin-identifiers.js';
+import type { PluginImportProfileDefinition, PluginJobTypeDefinition } from './plugin-operations.js';
+import { definePluginImportProfiles, definePluginJobTypes } from './plugin-operations.js';
 
 export type PluginRouteGuard = string;
 
@@ -85,6 +87,8 @@ export type PluginDefinition = {
   readonly adminResources?: readonly PluginAdminResourceDefinition[];
   readonly auditEvents?: readonly PluginAuditEventDefinition[];
   readonly moduleIam?: PluginModuleIamContract;
+  readonly jobTypes?: readonly PluginJobTypeDefinition[];
+  readonly importProfiles?: readonly PluginImportProfileDefinition[];
   readonly translations?: PluginTranslations;
 };
 
@@ -109,6 +113,8 @@ const pluginDefinitionAllowedKeys = new Set([
   'adminResources',
   'auditEvents',
   'moduleIam',
+  'jobTypes',
+  'importProfiles',
   'translations',
 ] as const);
 
@@ -745,6 +751,16 @@ const assertPluginRegistryModuleIam = ({ plugin, pluginNamespace }: PluginRegist
   }
 };
 
+const normalizePluginRegistryOperations = ({
+  plugin,
+  pluginNamespace,
+}: PluginRegistryValidationContext): Pick<PluginDefinition, 'jobTypes' | 'importProfiles'> => ({
+  jobTypes: plugin.jobTypes ? definePluginJobTypes(pluginNamespace, plugin.jobTypes) : plugin.jobTypes,
+  importProfiles: plugin.importProfiles
+    ? definePluginImportProfiles(pluginNamespace, plugin.importProfiles)
+    : plugin.importProfiles,
+});
+
 export const createPluginRegistry = (
   plugins: readonly PluginDefinition[]
 ): ReadonlyMap<string, PluginDefinition> => {
@@ -752,6 +768,7 @@ export const createPluginRegistry = (
 
   for (const plugin of plugins) {
     const context = createPluginRegistryValidationContext(plugin, registry);
+    const normalizedOperations = normalizePluginRegistryOperations(context);
 
     assertPluginRegistryActions(context);
     assertPluginRegistryRoutes(context);
@@ -767,6 +784,7 @@ export const createPluginRegistry = (
       ...plugin,
       id: context.pluginNamespace,
       displayName: context.displayName,
+      ...normalizedOperations,
     });
   }
 

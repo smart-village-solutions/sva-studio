@@ -1916,6 +1916,60 @@
       "status": "open",
       "summary": "oeffentliche Export-Oberflaeche in kleinere fachliche API-Segmente aufteilen (packages/plugin-sdk/src/public-api.ts)"
     },
+    "auth-runtime:packages/auth-runtime/src/plugin-operations/job-event-writer.ts:functionLines": {
+      "ticketId": "QUAL-PLUGIN-OPS-001",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Event-Erzeugung in kleinere Host-Factories und Formatter zerlegen (packages/auth-runtime/src/plugin-operations/job-event-writer.ts)"
+    },
+    "auth-runtime:packages/auth-runtime/src/plugin-operations/job-state-writer.ts:functionLines": {
+      "ticketId": "QUAL-PLUGIN-OPS-002",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Status- und History-Schreibpfade in kleinere Lifecycle-Schritte aufteilen (packages/auth-runtime/src/plugin-operations/job-state-writer.ts)"
+    },
+    "frontend-app:apps/sva-studio-react/src/routes/admin/modules/-modules-page.tsx:functionLines": {
+      "ticketId": "QUAL-FRONTEND-021",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Admin-Module-Seite in kleinere UI-Sections und View-Model-Helfer zerlegen"
+    },
+    "frontend-app:apps/sva-studio-react/src/routes/monitoring/-jobs-page.tsx:functionLines": {
+      "ticketId": "QUAL-PLUGIN-OPS-003",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Monitoring-Jobliste in kleinere Filter-, Tabellen- und View-Model-Bausteine aufteilen"
+    },
+    "iam-data:packages/data/src/iam/seed-plan.ts:fileLines": {
+      "ticketId": "QUAL-IAM-DATA-004",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Seed-Plan-Definition in kleinere fachliche Module und Builder zerlegen (packages/data/src/iam/seed-plan.ts)"
+    },
+    "packages-default:packages/core/src/plugin-operations-contract.ts:fileLines": {
+      "ticketId": "QUAL-PLUGIN-OPS-004",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Plugin-Operations-Contract in kleinere Vertragsdateien fuer Runtime-, Progress- und Monitoring-Typen aufteilen"
+    },
+    "packages-default:packages/core/src/plugin-operations-contract.ts:publicExports": {
+      "ticketId": "QUAL-PLUGIN-OPS-004",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "oeffentliche Export-Oberflaeche des Plugin-Operations-Contracts ueber kuratierte Entrypoints segmentieren"
+    },
+    "packages-default:packages/data-repositories/src/plugin-operations/index.ts:fileLines": {
+      "ticketId": "QUAL-PLUGIN-OPS-005",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Plugin-Operations-Repository in kleinere Query-, Mapping- und Mutation-Module zerlegen"
+    },
+    "plugin-sdk:packages/plugin-sdk/src/plugin-operations.ts:fileLines": {
+      "ticketId": "QUAL-PLUGIN-OPS-006",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Plugin-SDK fuer Operations in kleinere Registrierungs- und Vertragshilfen aufteilen"
+    },
     "routing:packages/routing/src/auth.routes.server.ts:fileLines": {
       "ticketId": "QUAL-109",
       "ticketSystem": "backlog",

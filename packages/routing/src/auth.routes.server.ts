@@ -75,6 +75,16 @@ const governanceAuthHandlerMap = {
   '/iam/admin/data-subject-rights/maintenance': {
     POST: routeHandler(authRuntimeRoutes.dataSubjectMaintenanceHandler),
   },
+  '/api/v1/plugin-operations/jobs': {
+    GET: routeHandler(authRuntimeRoutes.listPluginOperationJobsHandler),
+    POST: routeHandler(authRuntimeRoutes.startPluginOperationJobHandler),
+  },
+  '/api/v1/plugin-operations/jobs/$jobId': {
+    GET: routeHandler(authRuntimeRoutes.getPluginOperationJobHandler),
+  },
+  '/api/v1/plugin-operations/jobs/$jobId/cancel': {
+    POST: routeHandler(authRuntimeRoutes.cancelPluginOperationJobHandler),
+  },
 } satisfies Partial<Record<AuthRoutePath, AuthHandlers>>;
 
 const authHandlerMap = {

@@ -6,11 +6,13 @@ const dispatchAuthRouteRequestMock = vi.fn();
 const dispatchMainserverNewsRequestMock = vi.fn();
 const dispatchMainserverEventsRequestMock = vi.fn();
 const dispatchMainserverPoiRequestMock = vi.fn();
+const ensurePluginOperationWorkerStartedMock = vi.fn();
 const getWorkspaceContextMock = vi.fn();
 const withRequestContextMock = vi.fn();
 const createServerFunctionRequestDiagnosticsMock = vi.fn();
 const readServerFunctionResponseBodyForDiagnosticsMock = vi.fn();
 const resolveServerFunctionBranchDecisionMock = vi.fn();
+const registerStudioPluginOperationHandlersMock = vi.fn();
 
 vi.mock('@tanstack/react-start/server', () => ({
   createStartHandler: createStartHandlerMock,
@@ -29,6 +31,10 @@ vi.mock('@sva/server-runtime', () => ({
 
 vi.mock('@sva/routing/server', () => ({
   dispatchAuthRouteRequest: dispatchAuthRouteRequestMock,
+}));
+
+vi.mock('@sva/auth-runtime/server', () => ({
+  ensurePluginOperationWorkerStarted: ensurePluginOperationWorkerStartedMock,
 }));
 
 vi.mock('./lib/mainserver-news-api.server', () => ({
@@ -50,6 +56,10 @@ vi.mock('./lib/server-function-request-diagnostics.server', () => ({
   resolveServerFunctionBranchDecision: resolveServerFunctionBranchDecisionMock,
 }));
 
+vi.mock('./lib/plugin-operation-runtime.server', () => ({
+  registerStudioPluginOperationHandlers: registerStudioPluginOperationHandlersMock,
+}));
+
 describe('server transport', () => {
   afterEach(() => {
     vi.unstubAllEnvs();
@@ -60,17 +70,21 @@ describe('server transport', () => {
     dispatchMainserverNewsRequestMock.mockReset();
     dispatchMainserverEventsRequestMock.mockReset();
     dispatchMainserverPoiRequestMock.mockReset();
+    ensurePluginOperationWorkerStartedMock.mockReset();
+    ensurePluginOperationWorkerStartedMock.mockResolvedValue(undefined);
     getWorkspaceContextMock.mockReset();
     withRequestContextMock.mockReset();
     createServerFunctionRequestDiagnosticsMock.mockReset();
     readServerFunctionResponseBodyForDiagnosticsMock.mockReset();
     resolveServerFunctionBranchDecisionMock.mockReset();
+    registerStudioPluginOperationHandlersMock.mockReset();
   });
 
   it('bypasses auth requests before TanStack Start', async () => {
     vi.stubEnv('NODE_ENV', 'production');
 
     const startFetch = vi.fn().mockResolvedValue(new Response('ok', { status: 200 }));
+    ensurePluginOperationWorkerStartedMock.mockResolvedValue(undefined);
     dispatchMainserverNewsRequestMock.mockResolvedValue(null);
     dispatchAuthRouteRequestMock.mockResolvedValue(new Response('auth', { status: 200 }));
     createStartHandlerMock.mockReturnValue(startFetch);
@@ -78,6 +92,7 @@ describe('server transport', () => {
     const mod = await import('./server');
     const response = await mod.default.fetch(new Request('http://localhost:3000/auth/login'));
 
+    expect(registerStudioPluginOperationHandlersMock).toHaveBeenCalledTimes(1);
     expect(dispatchAuthRouteRequestMock).toHaveBeenCalledTimes(1);
     expect(startFetch).not.toHaveBeenCalled();
     await expect(response.text()).resolves.toBe('auth');
@@ -87,6 +102,7 @@ describe('server transport', () => {
     vi.stubEnv('NODE_ENV', 'production');
 
     const startFetch = vi.fn().mockResolvedValue(new Response('ok', { status: 200 }));
+    ensurePluginOperationWorkerStartedMock.mockResolvedValue(undefined);
     dispatchMainserverNewsRequestMock.mockResolvedValue(new Response('news', { status: 200 }));
     dispatchMainserverEventsRequestMock.mockResolvedValue(null);
     dispatchMainserverPoiRequestMock.mockResolvedValue(null);
@@ -106,6 +122,7 @@ describe('server transport', () => {
     vi.stubEnv('NODE_ENV', 'production');
 
     const startFetch = vi.fn().mockResolvedValue(new Response('ok', { status: 200 }));
+    ensurePluginOperationWorkerStartedMock.mockResolvedValue(undefined);
     dispatchMainserverNewsRequestMock.mockResolvedValue(null);
     dispatchMainserverEventsRequestMock.mockResolvedValue(new Response('events', { status: 200 }));
     dispatchMainserverPoiRequestMock.mockResolvedValue(null);
@@ -127,6 +144,7 @@ describe('server transport', () => {
     vi.stubEnv('NODE_ENV', 'production');
 
     const startFetch = vi.fn().mockResolvedValue(new Response('ok', { status: 200 }));
+    ensurePluginOperationWorkerStartedMock.mockResolvedValue(undefined);
     dispatchMainserverNewsRequestMock.mockResolvedValue(null);
     dispatchMainserverEventsRequestMock.mockResolvedValue(null);
     dispatchMainserverPoiRequestMock.mockResolvedValue(new Response('poi', { status: 200 }));
@@ -148,6 +166,7 @@ describe('server transport', () => {
     vi.stubEnv('NODE_ENV', 'development');
 
     const startFetch = vi.fn().mockResolvedValue(new Response('plain', { status: 200 }));
+    ensurePluginOperationWorkerStartedMock.mockResolvedValue(undefined);
     dispatchMainserverNewsRequestMock.mockResolvedValue(null);
     dispatchMainserverEventsRequestMock.mockResolvedValue(null);
     dispatchMainserverPoiRequestMock.mockResolvedValue(null);
@@ -179,6 +198,7 @@ describe('server transport', () => {
         headers: { 'content-type': 'application/json' },
       }),
     );
+    ensurePluginOperationWorkerStartedMock.mockResolvedValue(undefined);
     const logger = { info: vi.fn() };
     dispatchMainserverNewsRequestMock.mockResolvedValue(null);
     dispatchMainserverEventsRequestMock.mockResolvedValue(null);
@@ -294,5 +314,77 @@ describe('server transport', () => {
       expect.objectContaining({ diagnostics_enabled: true, server_fn_request: false, status: 202 })
     );
     await expect(response.text()).resolves.toBe('plain');
+  });
+
+  it('does not block request handling on plugin worker bootstrap', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+
+    const startFetch = vi.fn().mockResolvedValue(new Response('ok', { status: 200 }));
+    ensurePluginOperationWorkerStartedMock.mockImplementation(() => new Promise(() => undefined));
+    dispatchMainserverNewsRequestMock.mockResolvedValue(null);
+    dispatchMainserverEventsRequestMock.mockResolvedValue(null);
+    dispatchMainserverPoiRequestMock.mockResolvedValue(null);
+    dispatchAuthRouteRequestMock.mockResolvedValue(null);
+    createStartHandlerMock.mockReturnValue(startFetch);
+
+    const mod = await import('./server');
+    const responsePromise = mod.default.fetch(new Request('http://localhost:3000/admin/users'));
+
+    await expect(responsePromise).resolves.toBeInstanceOf(Response);
+    expect(startFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not bootstrap the plugin worker when the runtime flag disables it', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('SVA_PLUGIN_OPERATION_WORKER_ENABLED', 'false');
+
+    const startFetch = vi.fn().mockResolvedValue(new Response('ok', { status: 200 }));
+    dispatchMainserverNewsRequestMock.mockResolvedValue(null);
+    dispatchMainserverEventsRequestMock.mockResolvedValue(null);
+    dispatchMainserverPoiRequestMock.mockResolvedValue(null);
+    dispatchAuthRouteRequestMock.mockResolvedValue(null);
+    createStartHandlerMock.mockReturnValue(startFetch);
+
+    const mod = await import('./server');
+    const response = await mod.default.fetch(new Request('http://localhost:3000/admin/users'));
+
+    await expect(response.text()).resolves.toBe('ok');
+    expect(ensurePluginOperationWorkerStartedMock).not.toHaveBeenCalled();
+  });
+
+  it('retries worker bootstrap after a transient startup failure and logs the failure', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+
+    const startFetch = vi
+      .fn()
+      .mockResolvedValueOnce(new Response('first', { status: 200 }))
+      .mockResolvedValueOnce(new Response('second', { status: 200 }));
+    const logger = { info: vi.fn() };
+    const bootstrapError = new Error('database unavailable');
+    ensurePluginOperationWorkerStartedMock
+      .mockRejectedValueOnce(bootstrapError)
+      .mockResolvedValueOnce(undefined);
+    dispatchMainserverNewsRequestMock.mockResolvedValue(null);
+    dispatchMainserverEventsRequestMock.mockResolvedValue(null);
+    dispatchMainserverPoiRequestMock.mockResolvedValue(null);
+    dispatchAuthRouteRequestMock.mockResolvedValue(null);
+    createStartHandlerMock.mockReturnValue(startFetch);
+    createSdkLoggerMock.mockReturnValue(logger);
+
+    const mod = await import('./server');
+
+    const firstResponse = await mod.default.fetch(new Request('http://localhost:3000/admin/users'));
+    const secondResponse = await mod.default.fetch(new Request('http://localhost:3000/admin/groups'));
+
+    await expect(firstResponse.text()).resolves.toBe('first');
+    await expect(secondResponse.text()).resolves.toBe('second');
+    expect(ensurePluginOperationWorkerStartedMock).toHaveBeenCalledTimes(2);
+    expect(logger.info).toHaveBeenCalledWith(
+      'Plugin worker bootstrap failed',
+      expect.objectContaining({
+        operation: 'plugin_operation_worker_bootstrap',
+        error: 'database unavailable',
+      })
+    );
   });
 });

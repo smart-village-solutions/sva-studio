@@ -26,6 +26,11 @@ import type {
   IamRoleListItem,
   IamRoleReconcileReport,
   RuntimeHealthResponse,
+  StudioJobDetail,
+  StudioJobDetailResponse,
+  StudioJobListItem,
+  StudioJobListQuery,
+  StudioJobListResponse,
   IamUserDirectPermissionAssignment,
   IamUserTimelineEvent,
   IamUserDetail,
@@ -1257,6 +1262,47 @@ export const getRuntimeHealth = async (
       }
     )
   );
+
+export const listPluginOperationJobs = async (
+  query: StudioJobListQuery,
+  options: IamRequestOptions = {}
+): Promise<ApiListResponse<StudioJobListItem>> => {
+  const params = new URLSearchParams({
+    view: query.view,
+    page: String(query.page),
+    pageSize: String(query.pageSize),
+  });
+
+  if (query.status) {
+    params.set('status', query.status);
+  }
+  if (query.pluginId) {
+    params.set('pluginId', query.pluginId);
+  }
+  if (query.jobTypeId) {
+    params.set('jobTypeId', query.jobTypeId);
+  }
+  if (query.q) {
+    params.set('q', query.q);
+  }
+
+  return requestJson<StudioJobListResponse>(`/api/v1/plugin-operations/jobs?${params.toString()}`, undefined, {
+    signal: options.signal,
+    timeoutMs: options.timeoutMs ?? DEFAULT_IAM_REQUEST_TIMEOUT_MS,
+  });
+};
+
+export const getPluginOperationJob = async (
+  jobId: string,
+  options: IamRequestOptions = {}
+): Promise<StudioJobDetail> => {
+  const response = await requestJson<StudioJobDetailResponse>(`/api/v1/plugin-operations/jobs/${jobId}`, undefined, {
+    signal: options.signal,
+    timeoutMs: options.timeoutMs ?? DEFAULT_IAM_REQUEST_TIMEOUT_MS,
+  });
+
+  return response.data;
+};
 
 const toRuntimeDependencyStatus = (
   ready: boolean | undefined

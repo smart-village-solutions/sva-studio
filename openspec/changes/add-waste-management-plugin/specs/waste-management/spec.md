@@ -384,7 +384,7 @@ Das System SHALL CSV-Import, Seed und Reset als kontrollierte Data-Tools im Wast
 
 #### Scenario: Generische Import-Fähigkeit wird als Plattformbasis aufgebaut
 
-- **WHEN** das Studio die erste allgemeine Import-Fähigkeit in diesem Change bereitstellt
+- **WHEN** das Studio die erste allgemeine Import-Fähigkeit im vorgelagerten Plattformchange bereitstellt
 - **THEN** wird sie bereits als tragfähige Plattformbasis für weitere Plugins aufgebaut
 - **AND** sie bleibt nicht nur eine schmale vorbereitende Sonderlösung für Waste allein
 
@@ -415,9 +415,10 @@ Das System SHALL CSV-Import, Seed und Reset als kontrollierte Data-Tools im Wast
 
 #### Scenario: Erste Import-Oberfläche folgt einem mehrstufigen Wizard
 
-- **WHEN** das Studio die erste allgemeine Import-Oberfläche für Waste bereitstellt
+- **WHEN** das Studio eine allgemeine Import-Oberfläche für die registrierten Host-Importverträge bereitstellt
 - **THEN** führt sie Benutzer mindestens durch Quellwahl, Profilwahl, Mapping-Prüfung, Validierungsvorschau, Job-Start und Ergebnisansicht
-- **AND** diese Bedienlogik wird als allgemeines Studio-Muster und nicht als einmaliger Waste-Sonderdialog aufgebaut
+- **AND** Waste kann diese allgemeine Bedienlogik anbinden
+- **AND** bis zur Verfügbarkeit einer solchen Host-Oberfläche darf Waste eine fachnahe Bedienhülle nutzen, solange der generische Host-Vertrag nicht umgangen wird
 
 #### Scenario: Import-Mapping darf automatische Vorschläge erzeugen
 
@@ -473,7 +474,7 @@ Das System SHALL CSV-Import, Seed und Reset als kontrollierte Data-Tools im Wast
 
 #### Scenario: Generische Job-Fähigkeit wird als Plattformbasis aufgebaut
 
-- **WHEN** das Studio die erste allgemeine Job-Fähigkeit in diesem Change bereitstellt
+- **WHEN** das Studio die erste allgemeine Job-Fähigkeit im vorgelagerten Plattformchange bereitstellt
 - **THEN** wird sie bereits als tragfähige Plattformbasis für weitere Plugins aufgebaut
 - **AND** sie bleibt nicht nur eine schmale vorbereitende Sonderlösung für Waste allein
 
@@ -514,19 +515,20 @@ Das System SHALL CSV-Import, Seed und Reset als kontrollierte Data-Tools im Wast
 
 #### Scenario: Generische Studio-Jobs sind pluginübergreifend im UI sichtbar
 
-- **WHEN** das Studio die erste Ausbaustufe seiner generischen Job-Fähigkeit bereitstellt
-- **THEN** ist diese nicht nur technisch, sondern auch UI-seitig als pluginübergreifendes Studio-Konzept sichtbar
-- **AND** Waste-Jobs erscheinen damit nicht ausschließlich als isolierte plugininterne Sonderdarstellung
+- **WHEN** das Studio eine zentrale Host-Sicht für generische Jobs bereitstellt
+- **THEN** können Waste-Jobs dort als pluginübergreifendes Studio-Konzept erscheinen
+- **AND** die Waste-Capability bleibt dennoch nutzbar, auch wenn zunächst nur fachnahe Statusdarstellungen im Plugin vorhanden sind
 
 #### Scenario: Erste zentrale Job-Sicht hängt unter `Monitoring`
 
-- **WHEN** das Studio die erste pluginübergreifende UI-Sicht für generische Jobs bereitstellt
-- **THEN** wird diese unter dem bestehenden Sidebar-Punkt `Monitoring` verankert
+- **WHEN** das Studio eine zentrale pluginübergreifende UI-Sicht für generische Jobs materialisiert
+- **THEN** darf diese unter dem bestehenden Sidebar-Punkt `Monitoring` verankert werden
+- **AND** die Waste-Capability hängt nicht zwingend von der sofortigen Verfügbarkeit dieser Seite ab
 - **AND** ein späteres Desktop-Widget ist für diesen Change nicht verpflichtend
 
 #### Scenario: Erste Monitoring-Sicht bleibt in ihrer Informationsarchitektur flexibel
 
-- **WHEN** das Studio die erste zentrale `Monitoring`-Sicht für Jobs und externe Datenquellen aufbaut
+- **WHEN** das Studio eine zentrale `Monitoring`-Sicht für Jobs und externe Datenquellen aufbaut
 - **THEN** bleibt diese zunächst eine technische und temporäre Admin-Sicht
 - **AND** sie darf initial Jobs, aktuellen technischen Datenquellenstatus und technische Ereignishistorie zeigen
 - **AND** eine breitere fachliche Betriebsoberfläche wird in diesem Change nicht verpflichtend eingeführt

@@ -45,6 +45,23 @@ export const ModulesPage = () => {
         <p className="max-w-3xl text-sm text-muted-foreground">{t('admin.instances.instanceModules.subtitle')}</p>
       </header>
 
+      <Card className="space-y-3 p-4">
+        <div className="space-y-1">
+          <div className="font-medium text-foreground">{t('admin.instances.instanceModules.guidance.title')}</div>
+          <p className="text-sm text-muted-foreground">{t('admin.instances.instanceModules.guidance.subtitle')}</p>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2">
+          <div className="rounded-lg border border-border p-3">
+            <div className="font-medium text-foreground">{t('admin.instances.instanceModules.guidance.moduleTitle')}</div>
+            <p className="mt-1 text-sm text-muted-foreground">{t('admin.instances.instanceModules.guidance.moduleBody')}</p>
+          </div>
+          <div className="rounded-lg border border-border p-3">
+            <div className="font-medium text-foreground">{t('admin.instances.instanceModules.guidance.roleTitle')}</div>
+            <p className="mt-1 text-sm text-muted-foreground">{t('admin.instances.instanceModules.guidance.roleBody')}</p>
+          </div>
+        </div>
+      </Card>
+
       {instancesApi.mutationError ? (
         <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
           <AlertDescription>{getErrorMessage(instancesApi.mutationError)}</AlertDescription>

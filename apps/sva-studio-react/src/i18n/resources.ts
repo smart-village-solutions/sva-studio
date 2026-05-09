@@ -157,6 +157,135 @@ export const i18nResources = {
       nextStepBody:
         'Definieren Sie für „{{area}}“ die konkreten Daten, Aktionen und Freigaben. Die Route und Navigation sind bereits vorbereitet.',
     },
+    monitoring: {
+      jobs: {
+        page: {
+          title: 'Monitoring Jobs',
+          subtitle: 'Überwachen Sie laufende und historische Plugin-Operations-Jobs mit Status, Fortschritt und technischem Verlauf.',
+        },
+        detail: {
+          title: 'Job-Details',
+          subtitle: 'Technischer Verlauf, Runtime-Diagnostik und Ergebnisdaten für einen einzelnen Plugin-Operations-Job.',
+          back: 'Zur Jobliste',
+          summaryTitle: 'Zusammenfassung',
+          runtimeTitle: 'Runtime',
+          resultTitle: 'Ergebnis',
+          errorTitle: 'Fehler',
+          historyTitle: 'Verlauf',
+        },
+        actions: {
+          refresh: 'Aktualisieren',
+          open: 'Öffnen',
+        },
+        tabs: {
+          ariaLabel: 'Job-Ansichten',
+          active: 'Aktiv',
+          history: 'Historie',
+        },
+        filters: {
+          searchLabel: 'Suche',
+          searchPlaceholder: 'Nach Job-ID oder Korrelation suchen',
+          statusLabel: 'Status',
+          statusAll: 'Alle Status',
+          pluginLabel: 'Plugin',
+          pluginPlaceholder: 'z. B. news',
+          jobTypeLabel: 'Jobtyp',
+          jobTypePlaceholder: 'z. B. news.import-articles',
+        },
+        table: {
+          ariaLabel: 'Plugin-Operations-Jobs',
+          caption: 'Liste technischer Plugin-Operations-Jobs',
+          status: 'Status',
+          job: 'Job',
+          progress: 'Fortschritt',
+          latestEvent: 'Letztes Ereignis',
+          timestamps: 'Zeitstempel',
+          actions: 'Aktionen',
+        },
+        empty: {
+          body: 'Für die aktuelle Auswahl wurden keine Jobs gefunden.',
+          history: 'Für diesen Job wurde noch kein technischer Verlauf gespeichert.',
+        },
+        messages: {
+          loading: 'Jobs werden geladen.',
+          loadError: 'Die Jobliste konnte nicht geladen werden.',
+          detailLoadError: 'Die Job-Details konnten nicht geladen werden.',
+        },
+        events: {
+          titles: {
+            job: {
+              queued: 'Job eingeplant',
+              started: 'Job gestartet',
+              progressed: 'Fortschritt aktualisiert',
+              retrying: 'Neuer Versuch geplant',
+              succeeded: 'Job erfolgreich abgeschlossen',
+              failed: 'Job fehlgeschlagen',
+              cancelled: 'Job abgebrochen',
+            },
+          },
+          messages: {
+            job: {
+              queued: 'Job wurde zur Ausführung eingeplant.',
+              started: 'Job-Ausführung wurde gestartet.',
+              progressed: 'Fortschritt des Jobs wurde aktualisiert.',
+              progressedStepLabel: 'Fortschritt aktualisiert: {{value}}.',
+              progressedStepKey: 'Fortschritt aktualisiert: {{value}}.',
+              retrying: 'Job wird nach einem Fehler erneut versucht.',
+              succeeded: 'Job wurde erfolgreich abgeschlossen.',
+              failed: 'Job ist fehlgeschlagen.',
+              cancelled: 'Job wurde abgebrochen.',
+            },
+          },
+        },
+        errors: {
+          forbidden: 'Sie dürfen diese Jobs nicht einsehen.',
+          databaseUnavailable: 'Die Jobdatenbank ist derzeit nicht erreichbar.',
+          notFound: 'Der angeforderte Job wurde nicht gefunden.',
+        },
+        status: {
+          queued: 'Eingeplant',
+          running: 'Läuft',
+          retrying: 'Wird erneut versucht',
+          succeeded: 'Erfolgreich',
+          failed: 'Fehlgeschlagen',
+          cancelled: 'Abgebrochen',
+        },
+        runtime: {
+          fresh: 'Aktiv',
+          stale: 'Verwaist',
+          terminal: 'Beendet',
+        },
+        progress: {
+          summary: '{{current}} / {{total}} Schritte ({{percent}} %)',
+          current: 'Fortschritt: {{value}}',
+          step: 'Aktueller Schritt: {{value}}',
+        },
+        pagination: {
+          ariaLabel: 'Job-Paginierung',
+          pageLabel: 'Seite {{page}} von {{total}}',
+          previous: 'Zurück',
+          next: 'Weiter',
+          pageSizeLabel: 'Einträge pro Seite',
+        },
+        values: {
+          notAvailable: 'Nicht verfügbar',
+          yes: 'Ja',
+          no: 'Nein',
+        },
+        labels: {
+          startedAt: 'Gestartet: {{value}}',
+          lastObservedAt: 'Letzte Aktivität: {{value}}',
+          finishedAt: 'Beendet: {{value}}',
+          pluginId: 'Plugin: {{value}}',
+          jobTypeId: 'Jobtyp: {{value}}',
+          correlationId: 'Korrelation: {{value}}',
+          parentJobId: 'Parent-Job: {{value}}',
+          workerId: 'Worker: {{value}}',
+          attempts: 'Versuche: {{current}} / {{max}}',
+          cancellationRequested: 'Abbruch angefordert: {{value}}',
+        },
+      },
+    },
     news: {
       navigation: {
         title: 'News',
@@ -1123,6 +1252,17 @@ export const i18nResources = {
             subtitle:
               'Deklarierter Modulvertrag und registrierter Befund der aktuell zugewiesenen Module.',
           },
+          guidance: {
+            title: 'Semantik der Freigaben',
+            subtitle:
+              'Module schalten Fachbereiche frei. Rollen und direkte Berechtigungen steuern, welche Aktionen innerhalb dieser Bereiche erlaubt sind.',
+            moduleTitle: 'Module schalten Bereiche frei',
+            moduleBody:
+              'Eine Modulzuweisung aktiviert einen Fachbereich für die Instanz. Sichtbarkeit und Routing orientieren sich an Modulzuweisung und passendem Leserecht.',
+            roleTitle: 'Rollen vergeben Berechtigungen',
+            roleBody:
+              'Rollen bündeln Berechtigungen wie Lesen, Anlegen oder Ändern. Die angezeigten Modulrechte kommen direkt aus dem kanonischen Modulvertrag.',
+          },
           module: {
             permissions: 'Berechtigungen: {{value}}',
             roles: 'Systemrollen: {{value}}',
@@ -2021,6 +2161,9 @@ export const i18nResources = {
           organizations: 'Organisationen',
           legal: 'Rechtstexte',
           interfaces: 'Schnittstellen',
+          instance: 'Instanz-Registry',
+          integration: 'Integrationen',
+          feature: 'Feature-Flags',
           news: 'News',
           events: 'Events',
           poi: 'POI',
@@ -2469,6 +2612,7 @@ export const i18nResources = {
           noOrganization: 'Keine Organisation',
           columns: {
             action: 'Aktion',
+            area: 'Bereich',
             resourceType: 'Ressourcentyp',
             resourceId: 'Ressourcen-ID',
             organization: 'Organisation',
@@ -2514,6 +2658,23 @@ export const i18nResources = {
             role: 'Rolle',
             group: 'Gruppe',
             delegation: 'Delegation',
+          },
+          permissionResources: {
+            content: 'Inhalte',
+            iam: 'IAM',
+            users: 'Benutzer',
+            roles: 'Rollen',
+            groups: 'Gruppen',
+            organizations: 'Organisationen',
+            legal: 'Rechtstexte',
+            interfaces: 'Schnittstellen',
+            instance: 'Instanz-Registry',
+            integration: 'Integrationen',
+            feature: 'Feature-Flags',
+            media: 'Medien',
+            news: 'News',
+            events: 'Events',
+            poi: 'POI',
           },
         },
         governance: {
@@ -2718,6 +2879,135 @@ export const i18nResources = {
       nextStepTitle: 'Connect real content',
       nextStepBody:
         'Define the concrete data, actions, and access rules for "{{area}}". The route and navigation are already in place.',
+    },
+    monitoring: {
+      jobs: {
+        page: {
+          title: 'Monitoring Jobs',
+          subtitle: 'Monitor running and historical plugin operation jobs with status, progress, and technical history.',
+        },
+        detail: {
+          title: 'Job Details',
+          subtitle: 'Technical history, runtime diagnostics, and result data for a single plugin operation job.',
+          back: 'Back to jobs',
+          summaryTitle: 'Summary',
+          runtimeTitle: 'Runtime',
+          resultTitle: 'Result',
+          errorTitle: 'Error',
+          historyTitle: 'History',
+        },
+        actions: {
+          refresh: 'Refresh',
+          open: 'Open',
+        },
+        tabs: {
+          ariaLabel: 'Job views',
+          active: 'Active',
+          history: 'History',
+        },
+        filters: {
+          searchLabel: 'Search',
+          searchPlaceholder: 'Search by job ID or correlation',
+          statusLabel: 'Status',
+          statusAll: 'All statuses',
+          pluginLabel: 'Plugin',
+          pluginPlaceholder: 'e.g. news',
+          jobTypeLabel: 'Job type',
+          jobTypePlaceholder: 'e.g. news.import-articles',
+        },
+        table: {
+          ariaLabel: 'Plugin operation jobs',
+          caption: 'List of technical plugin operation jobs',
+          status: 'Status',
+          job: 'Job',
+          progress: 'Progress',
+          latestEvent: 'Latest event',
+          timestamps: 'Timestamps',
+          actions: 'Actions',
+        },
+        empty: {
+          body: 'No jobs were found for the current selection.',
+          history: 'No technical history has been recorded for this job yet.',
+        },
+        messages: {
+          loading: 'Loading jobs.',
+          loadError: 'The job list could not be loaded.',
+          detailLoadError: 'The job details could not be loaded.',
+        },
+        events: {
+          titles: {
+            job: {
+              queued: 'Job queued',
+              started: 'Job started',
+              progressed: 'Progress updated',
+              retrying: 'Retry scheduled',
+              succeeded: 'Job completed successfully',
+              failed: 'Job failed',
+              cancelled: 'Job cancelled',
+            },
+          },
+          messages: {
+            job: {
+              queued: 'The job was queued for execution.',
+              started: 'Job execution started.',
+              progressed: 'Job progress was updated.',
+              progressedStepLabel: 'Progress updated: {{value}}.',
+              progressedStepKey: 'Progress updated: {{value}}.',
+              retrying: 'The job will retry after an error.',
+              succeeded: 'The job completed successfully.',
+              failed: 'The job failed.',
+              cancelled: 'The job was cancelled.',
+            },
+          },
+        },
+        errors: {
+          forbidden: 'You are not allowed to view these jobs.',
+          databaseUnavailable: 'The job database is currently unavailable.',
+          notFound: 'The requested job could not be found.',
+        },
+        status: {
+          queued: 'Queued',
+          running: 'Running',
+          retrying: 'Retrying',
+          succeeded: 'Succeeded',
+          failed: 'Failed',
+          cancelled: 'Cancelled',
+        },
+        runtime: {
+          fresh: 'Active',
+          stale: 'Stale',
+          terminal: 'Finished',
+        },
+        progress: {
+          summary: '{{current}} / {{total}} steps ({{percent}} %)',
+          current: 'Progress: {{value}}',
+          step: 'Current step: {{value}}',
+        },
+        pagination: {
+          ariaLabel: 'Job pagination',
+          pageLabel: 'Page {{page}} of {{total}}',
+          previous: 'Previous',
+          next: 'Next',
+          pageSizeLabel: 'Entries per page',
+        },
+        values: {
+          notAvailable: 'Not available',
+          yes: 'Yes',
+          no: 'No',
+        },
+        labels: {
+          startedAt: 'Started: {{value}}',
+          lastObservedAt: 'Last activity: {{value}}',
+          finishedAt: 'Finished: {{value}}',
+          pluginId: 'Plugin: {{value}}',
+          jobTypeId: 'Job type: {{value}}',
+          correlationId: 'Correlation: {{value}}',
+          parentJobId: 'Parent job: {{value}}',
+          workerId: 'Worker: {{value}}',
+          attempts: 'Attempts: {{current}} / {{max}}',
+          cancellationRequested: 'Cancellation requested: {{value}}',
+        },
+      },
     },
     news: {
       navigation: {
@@ -3666,6 +3956,17 @@ export const i18nResources = {
             subtitle:
               'Declared module contract and registry status for the currently assigned modules.',
           },
+          guidance: {
+            title: 'Release semantics',
+            subtitle:
+              'Modules enable business areas. Roles and direct permissions control which actions are allowed inside those areas.',
+            moduleTitle: 'Modules enable areas',
+            moduleBody:
+              'Assigning a module enables a business area for the instance. Visibility and routing follow module assignment plus the matching read permission.',
+            roleTitle: 'Roles grant permissions',
+            roleBody:
+              'Roles bundle permissions such as read, create, or update. The listed module permissions come directly from the canonical module contract.',
+          },
           module: {
             permissions: 'Permissions: {{value}}',
             roles: 'System roles: {{value}}',
@@ -4526,6 +4827,9 @@ export const i18nResources = {
           organizations: 'Organizations',
           legal: 'Legal texts',
           interfaces: 'Interfaces',
+          instance: 'Instance registry',
+          integration: 'Integrations',
+          feature: 'Feature flags',
           news: 'News',
           events: 'Events',
           poi: 'POI',
@@ -4961,6 +5265,7 @@ export const i18nResources = {
           noOrganization: 'No organization',
           columns: {
             action: 'Action',
+            area: 'Area',
             resourceType: 'Resource type',
             resourceId: 'Resource ID',
             organization: 'Organization',
@@ -5006,6 +5311,23 @@ export const i18nResources = {
             role: 'Role',
             group: 'Group',
             delegation: 'Delegation',
+          },
+          permissionResources: {
+            content: 'Content',
+            iam: 'IAM',
+            users: 'Users',
+            roles: 'Roles',
+            groups: 'Groups',
+            organizations: 'Organizations',
+            legal: 'Legal texts',
+            interfaces: 'Interfaces',
+            instance: 'Instance registry',
+            integration: 'Integrations',
+            feature: 'Feature flags',
+            media: 'Media',
+            news: 'News',
+            events: 'Events',
+            poi: 'POI',
           },
         },
         governance: {

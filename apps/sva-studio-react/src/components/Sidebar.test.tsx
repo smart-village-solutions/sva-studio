@@ -212,7 +212,7 @@ describe('Sidebar', () => {
     );
     expect(screen.getByRole('link', { name: 'Module' }).getAttribute('href')).toBe('/modules');
     expect(screen.getByRole('link', { name: 'Monitoring' }).getAttribute('href')).toBe(
-      '/monitoring'
+      '/monitoring/jobs'
     );
     expect(screen.getByRole('link', { name: 'Hilfe' }).getAttribute('href')).toBe(
       HELP_DISCUSSIONS_URL
@@ -501,6 +501,38 @@ describe('Sidebar', () => {
     render(<Sidebar />);
 
     expect(screen.getByRole('link', { name: 'Medien' }).getAttribute('href')).toBe('/admin/media');
+  });
+
+  it('zeigt den Medien-Link auch ohne content.read, solange media-Modul und media.read vorhanden sind', () => {
+    useAuthMock.mockReturnValue({
+      ...unauthenticatedAuthState,
+      user: {
+        id: 'user-2',
+        name: 'Editor',
+        roles: ['editor'],
+        assignedModules: ['media'],
+      },
+      isAuthenticated: true,
+    });
+    useContentAccessMock.mockReturnValue({
+      access: {
+        state: 'blocked',
+        canRead: false,
+        canCreate: false,
+        canUpdate: false,
+        reasonCode: 'content_read_missing',
+        organizationIds: [],
+        sourceKinds: ['direct_role'],
+      },
+      permissionActions: ['media.read'],
+      isLoading: false,
+      error: null,
+    });
+
+    render(<Sidebar />);
+
+    expect(screen.getByRole('link', { name: 'Medien' }).getAttribute('href')).toBe('/admin/media');
+    expect(screen.queryByRole('link', { name: 'Inhalte' })).toBeNull();
   });
 
   it('rendert den News-Plugin-Navigationspunkt innerhalb der Datenverwaltung und markiert ihn als aktiv', () => {

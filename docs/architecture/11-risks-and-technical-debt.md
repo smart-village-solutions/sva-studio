@@ -150,65 +150,96 @@ Schulden auf IST-Basis.
    - Wahrscheinlichkeit: mittel
    - Maßnahme: `content.read|create|write` in v1 beibehalten, feingranulare Content-Type-Rechte als Folgearbeit getrennt bewerten
 
-25. Untypisiertes `payload_json` als persistente Core-Struktur
+25. Rest-Asymmetrie zwischen Kernbereich Content und modulgebundenen Fachbereichen
+   - Impact: mittel (das vereinfachte Modell "Modul schaltet Bereich frei, Permission autorisiert Operation" gilt bereits für Media und Plugin-Bereiche, aber bewusst noch nicht für `content.*`)
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: Content als dokumentierten Sonderfall in UI und Architektur benennen oder in einem separaten Schritt auf ein eigenes Modul-Gate umstellen
+
+26. Untypisiertes `payload_json` als persistente Core-Struktur
    - Impact: mittel (Schema-Drift oder unvollständige Validierung kann erst im Write-Pfad auffallen)
    - Wahrscheinlichkeit: mittel
    - Maßnahme: serverseitige contentType-Registry und Zod-Validierung beibehalten, stärkere Persistenztypisierung nur kontrolliert und migrationsgestützt einführen; Mainserver-News umgehen diese Altlast im produktiven Schreibpfad über dedizierte `NewsItem`-Felder und `contentBlocks`
 
-26. Statische Bundle-Plugins statt Runtime-Loading
+27. Statische Bundle-Plugins statt Runtime-Loading
    - Impact: mittel (geringere betriebliche Flexibilität, Host-Rebuild für neue Plugins erforderlich)
    - Wahrscheinlichkeit: hoch
    - Maßnahme: statische Registrierung als bewussten v1-Trade-off dokumentieren und später nur mit Versionierungs-, Signierungs- und Sicherheitskonzept erweitern
 
-27. Fragmentierter öffentlicher IAM-Diagnosevertrag
+28. Fragmentierter öffentlicher IAM-Diagnosevertrag
    - Impact: hoch (gleiche Symptome werden in UI, Betrieb und Folgeanalyse unterschiedlich gelesen; Refactorings setzen auf unvollständiger Fehlertrennung auf)
    - Wahrscheinlichkeit: hoch
    - Maßnahme: classification-basierten Diagnosekern für Auth, IAM und Provisioning durchziehen; Tenant-Host-, Registry- und Session-Hydration-Fälle liefern jetzt strukturierte Fehlerantworten bis ins Frontend, Restscope bleibt für weitere IAM-Hotspots und Folgechange unter `openspec/changes/refactor-iam-runtime-diagnostics-contract/`
 
-28. Recovery-Pfade kaschieren degradierte IAM-Zustände
+29. Recovery-Pfade kaschieren degradierte IAM-Zustände
    - Impact: hoch (Silent-Recovery, Session-Hydration oder Fallbacks können echte Drift und Teilfehler überdecken)
    - Wahrscheinlichkeit: mittel
    - Maßnahme: degradierte und recovery-nahe Zustände explizit modellieren und UI-/Ops-seitig sichtbar machen, statt nur Endzustände zu berichten; tenantgebundene Sessions ohne `instanceId` sind jetzt fail-closed und werden nicht mehr still aus dem Host rekonstruiert, verbleibende Recovery-Pfade bleiben Folgearbeit
 
-29. Offener Live-Triage-Befund für IAM-Diagnostik
+30. Offener Live-Triage-Befund für IAM-Diagnostik
    - Impact: mittel bis hoch (Repo-Analyse deckt reale Host-, Cookie-, Keycloak- und Datenzustandsprobleme nur teilweise ab)
    - Wahrscheinlichkeit: hoch
    - Maßnahme: vorbereitete Szenario-Matrix aus `docs/reports/iam-diagnostics-analysis-2026-04-19.md` gegen reale Dev-/Staging-Umgebung ausführen, bevor der Analysechange als abgeschlossen gilt
 
-30. Restrisiko verbleibender `manual_review`-Fälle im IAM-Abgleich
+31. Restrisiko verbleibender `manual_review`-Fälle im IAM-Abgleich
    - Impact: mittel bis hoch (fachlich mehrdeutige Restfälle bleiben operatorpflichtig und können UI-seitig als unvollständig wahrgenommen werden)
    - Wahrscheinlichkeit: mittel
    - Maßnahme: nur deterministische Auto-Fixes zulassen, Restfälle explizit zählen und operatorseitig mit klaren Folgeaktionen dokumentieren
 
-31. Drift-Blocker und Basis-Health können betrieblich unterschiedlich gelesen werden
+32. Drift-Blocker und Basis-Health können betrieblich unterschiedlich gelesen werden
    - Impact: hoch (ein grüner Plattformstatus kann weiterhin als fachliche Entwarnung fehlinterpretiert werden)
    - Wahrscheinlichkeit: mittel
    - Maßnahme: Drift-Blocker im Root-Host, in Sync-/Reconcile-Fehlern und in den Admin-Ansichten konsistent korrelieren; Diagnosevertrag nicht auf reine Readiness reduzieren
 
-32. Rückfall auf alte Sammelpackage-Importe nach dem Hard-Cut
+33. Rückfall auf alte Sammelpackage-Importe nach dem Hard-Cut
    - Impact: hoch (neue Fachlogik würde wieder in unklare Ownership laufen)
    - Wahrscheinlichkeit: mittel
    - Maßnahme: Nx-`depConstraints`, ESLint-Importverbote, `check:server-runtime` und Review-Gates als harte Package-Grenze behandeln
 
-33. UI-Drift zwischen Host-Seiten und Plugin-Custom-Views
+34. UI-Drift zwischen Host-Seiten und Plugin-Custom-Views
    - Impact: mittel bis hoch (Plugins könnten eigene Basiscontrols, Fokusmuster oder visuelle Varianten etablieren und damit Accessibility, Design-System und Review-Aufwand verschlechtern)
    - Wahrscheinlichkeit: mittel
    - Maßnahme: gemeinsame UI-Basis `@sva/studio-ui-react`, ESLint-App-Importverbote, `pnpm check:plugin-ui-boundary` und Review-Regel für fachliche Wrapper statt paralleler Basis-Control-Systeme
 
-34. Event-/POI-Schema-Drift im Mainserver
+35. Event-/POI-Schema-Drift im Mainserver
    - Impact: hoch (verschachtelte Event- und POI-Felder können trotz grünem Build zur Laufzeit von Staging abweichen)
    - Wahrscheinlichkeit: mittel
    - Maßnahme: Event-/POI-Adapter eng am Snapshot halten, Delete-Record-Types in Staging verifizieren, `openspec validate`, `pnpm check:server-runtime` und Mainserver-Adaptertests vor Rollout ausführen
 
-35. Divergenz zwischen global registrierten Plugins und instanzbezogener Modulfreigabe
+36. Divergenz zwischen global registrierten Plugins und instanzbezogener Modulfreigabe
    - Impact: hoch (UI oder Routing könnten Module rendern, die fachlich nicht freigegeben sind)
    - Wahrscheinlichkeit: mittel
    - Maßnahme: `assignedModules` als kanonischen Session- und Routing-Kontext verwenden, Plugin-Navigation fail-closed ausblenden und Modul-IAM-Baseline nach jeder Mutation neu herstellen
 
-36. Synchrone Medienverarbeitung im MVP-Upload-Pfad
+37. Synchrone Medienverarbeitung im MVP-Upload-Pfad
    - Impact: mittel bis hoch (größere Bilder oder zusätzliche Presets erhöhen Latenz und koppeln Verarbeitungsfehler direkt an Request-Antworten)
    - Wahrscheinlichkeit: mittel
    - Maßnahme: Folge-Change `openspec/changes/add-media-async-processing/` für Queue-/Worker-Pfad, Retry-Strategie und entkoppelte Variantenverarbeitung umsetzen
+
+38. Öffentlicher Plugin-Operations-Vertrag könnte vor der ersten Runner-Integration zu früh als vollständig wahrgenommen werden
+   - Impact: mittel bis hoch (Consumer bauen auf Start-/Status-API, obwohl Queueing, Dispatch und Retry-Ausführung intern noch nicht vollständig verdrahtet sein können)
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: Plattform weiter runner-agnostisch halten, offene Worker-Schritte explizit in OpenSpec und Tasks führen und erste produktive Consumer erst nach nachgewiesener Host-Orchestrierung freigeben
+
+39. Zentrale Job-Persistenz trägt fachneutrale JSON-Payloads mit begrenzter Schemastrenge
+   - Impact: mittel (fachliche Payload-Drift oder unklare Ergebnis-/Fehlerdeutung wird erst in Plugin- oder Runtime-Pfaden sichtbar)
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: generische Hostfelder für Progress, Fehlerkategorien, Heartbeat und Event-History stabil halten; pluginfachliche Payload-Schemas weiterhin am Rand validieren
+
+40. Hostinterner Plugin-Operations-Verlauf nutzt vorerst Polling statt Push
+   - Impact: mittel (UI-Reaktionszeit und Infrastrukturkosten steigen bei häufigem Polling; Echtzeitwahrnehmung bleibt begrenzt)
+   - Wahrscheinlichkeit: hoch
+   - Maßnahme: denselben technischen Eventvertrag später hinter Outbox, SSE/WebSocket oder Broker wiederverwenden; vorerst Polling-Frequenz und History-Umfang kontrollieren
+
+41. n8n-/ETL-Integration ist architektonisch vorbereitet, aber noch nicht aus dem Job-Backbone heraus veröffentlicht
+   - Impact: mittel bis hoch (Integrationen könnten vorschnell auf interne Tabellen oder Runner-Details zugreifen)
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: Integrationsgrenze später über explizite Outbox-/Event-Verträge öffnen; keine direkte Kopplung an Graphile- oder Tabelleninterna zulassen
+   - Maßnahme: generische Grundfelder stabil halten, plugin-spezifische Payloads an registrierte Jobtypen und Importprofile binden und Validierung vor Start sowie bei Worker-Updates kontrolliert ausbauen
+
+42. Stale-Detection für Plugin-Worker ist bisher nur diagnostisch und ohne automatische Recovery
+   - Impact: mittel bis hoch (hängende oder verwaiste Jobs werden sichtbar, aber noch nicht aktiv bereinigt oder neu angestoßen)
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: die aktuelle Host-Diagnostik über `heartbeatAt`, `lastProgressAt` und `runtime.staleState` als Operator-Signal nutzen; Recovery-, Requeue- oder Dead-Letter-Strategie erst in einem getrennten Folgechange einführen
 
 ### Technische Schulden (Auswahl)
 
@@ -343,3 +374,8 @@ Referenzen:
    - Impact: mittel bis hoch (falsche Referenzen in Diagnose, Doku oder Acceptance-Operationen)
    - Wahrscheinlichkeit: mittel
    - Maßnahme: einheitlicher `goose`-Pfad, repo-weite Referenzaktualisierung, `db:migrate:status` und Schema-Guard parallel verifizieren
+
+32. Restliche mentale Last durch historisch gewachsene Rollen- und Rechtebilder
+   - Impact: mittel (Admin-UI bleibt trotz vereinfachter Gates erklärungsbedürftig)
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: Fachbereiche strikt über `Modulzuweisung + namespace.read` sichtbar machen, kanonische punktgetrennte Permission-IDs zentralisieren und Modul-/Rollen-Semantik im UI explizit erklären

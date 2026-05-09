@@ -29,6 +29,7 @@ Abhängigkeiten des aktuellen Systems.
 2. Core (`packages/core`)
    - generische Route-Registry Utilities (`mergeRouteFactories`, `buildRouteTree`)
    - kanonisches Inhaltsmodell für `Content`, Statusmodell und JSON-Payload-Validierung
+   - generische Plattformverträge für Plugin-Operations wie Jobstatus, Jobdetail, Jobstart und Importphasen
 3. Routing (`packages/routing`)
    - zentrale Route-Factories (client + server)
    - einzige Source of Truth für Auth-Handler-Mapping, Runtime-Guard und JSON-Error-Boundary
@@ -41,6 +42,7 @@ Abhängigkeiten des aktuellen Systems.
    - Diagnosebausteine für Session-Hydration/-Refresh, Hostvalidierung, Schema-Guard, Runtime-Health und allowlist-basierte API-Fehlerdetails
 5. Plugin SDK, Studio Module IAM und Server Runtime (`packages/plugin-sdk`, `packages/studio-module-iam`, `packages/server-runtime`)
    - `@sva/plugin-sdk`: öffentlicher Plugin-Vertrag v1, Build-time-Registry, Admin-Ressourcen, Content-Type- und Translation-Verträge
+   - erweitert um deklarative Operations-Beiträge für registrierte Jobtypen und Importprofile im bestehenden Build-time-Snapshot
    - bündelt außerdem wiederverwendbare Helper für standardisierte Content-Plugins, Mainserver-CRUD-Basis und kleine UI-nahe Plugin-Utilities
    - `@sva/server-runtime`: Logger, Request-Kontext, JSON-Fehlerantworten, Workspace-Kontext und OTEL-Bootstrap
    - Namespacing- und Ownership-Validierung für plugin-beigestellte registrierte Host-Identifier
@@ -54,6 +56,7 @@ Abhängigkeiten des aktuellen Systems.
 8. Data Client und Data Repositories (`packages/data-client`, `packages/data-repositories`)
    - `@sva/data-client`: client-sicherer HTTP-DataClient mit Schema-Validierung
    - `@sva/data-repositories`: serverseitige Repository-Fassaden und DB-nahe Operationen
+   - enthält den führenden zentralen Job-Store für generische Plugin-Operations im Studio-Postgres
    - IAM-Persistenzmodell (`iam`-Schema) mit Multi-Tenant-Struktur bleibt SQL-first versioniert
 9. SVA Mainserver (`packages/sva-mainserver`)
   - dedizierte Integrationsschicht für OAuth2, GraphQL-Transport, Fehlerabbildung und Fachadapter
@@ -77,6 +80,11 @@ Abhängigkeiten des aktuellen Systems.
    - der Instanzvertrag trennt `authClientId` fuer interaktive Logins von `tenantAdminClient.clientId` fuer tenant-lokale Admin-Mutationen und Reconcile
    - blockerrelevanter Drift aus Preflight, Provisioning-Plan oder fehlendem Tenant-Admin-Vertrag wird vor Reconcile-/Sync-Starts fail-closed durchgesetzt
    - HTTP-Handler, Service-Komposition und Keycloak-Ausführung sind intern entlang Read, Mutation, Payload/Sync/Finalize und Diagnose getrennt, damit Runtime-Consumer stabile Fassaden nutzen und fachliche Flows nicht wieder in Sammeldateien zusammenlaufen
+12. Plugin-Operations-Hostpfad (`packages/auth-runtime`, `packages/routing`, `packages/data-repositories`)
+   - `@sva/auth-runtime` veröffentlicht die hostgeführten Start- und Status-Endpunkte für generische Plugin-Jobs
+   - `@sva/routing` führt diese Endpunkte im typisierten Runtime-Route-Katalog als Single Source of Truth
+   - `@sva/data-repositories` hält den kanonischen Jobdatensatz mit Status, Progress, Payload-, Retry- und Fehlerfeldern
+   - eine interne Worker-Anbindung wie Graphile Worker bleibt hinter diesem Hostpfad austauschbar und ist kein Teil des öffentlichen Plugin-Vertrags
 
 ### IAM-Bausteine und Package-Zuordnung
 

@@ -182,6 +182,10 @@ const authServerMocks = vi.hoisted(() => {
     legalHoldApplyHandler: vi.fn(async () => response('legalHoldApplyHandler')),
     legalHoldReleaseHandler: vi.fn(async () => response('legalHoldReleaseHandler')),
     dataSubjectMaintenanceHandler: vi.fn(async () => response('dataSubjectMaintenanceHandler')),
+    listPluginOperationJobsHandler: vi.fn(async () => response('listPluginOperationJobsHandler')),
+    startPluginOperationJobHandler: vi.fn(async () => response('startPluginOperationJobHandler')),
+    getPluginOperationJobHandler: vi.fn(async () => response('getPluginOperationJobHandler')),
+    cancelPluginOperationJobHandler: vi.fn(async () => response('cancelPluginOperationJobHandler')),
   };
 });
 
@@ -243,6 +247,44 @@ describe('auth.routes.server', () => {
     });
 
     expect(authServerMocks.completeMediaUploadHandler).toHaveBeenCalled();
+  });
+
+  it('dispatches plugin operation routes to the auth runtime', async () => {
+    const createHandlers = resolveAuthHandlers('/api/v1/plugin-operations/jobs');
+    const detailHandlers = resolveAuthHandlers('/api/v1/plugin-operations/jobs/$jobId');
+    const cancelHandlers = resolveAuthHandlers('/api/v1/plugin-operations/jobs/$jobId/cancel');
+
+    expect(createHandlers?.GET).toBeDefined();
+    expect(createHandlers?.POST).toBeDefined();
+    expect(detailHandlers?.GET).toBeDefined();
+    expect(cancelHandlers?.POST).toBeDefined();
+
+    const list = createHandlers?.GET;
+    const post = createHandlers?.POST;
+    const get = detailHandlers?.GET;
+    const cancel = cancelHandlers?.POST;
+
+    if (!list || !post || !get || !cancel) {
+      throw new Error('Expected plugin operation handlers to be defined');
+    }
+
+    await list({
+      request: new Request('http://localhost/api/v1/plugin-operations/jobs', { method: 'GET' }),
+    });
+    await post({
+      request: new Request('http://localhost/api/v1/plugin-operations/jobs', { method: 'POST' }),
+    });
+    await get({
+      request: new Request('http://localhost/api/v1/plugin-operations/jobs/job-1', { method: 'GET' }),
+    });
+    await cancel({
+      request: new Request('http://localhost/api/v1/plugin-operations/jobs/job-1/cancel', { method: 'POST' }),
+    });
+
+    expect(authServerMocks.listPluginOperationJobsHandler).toHaveBeenCalled();
+    expect(authServerMocks.startPluginOperationJobHandler).toHaveBeenCalled();
+    expect(authServerMocks.getPluginOperationJobHandler).toHaveBeenCalled();
+    expect(authServerMocks.cancelPluginOperationJobHandler).toHaveBeenCalled();
   });
 
   it('executes all mapped handlers for all routes', async () => {

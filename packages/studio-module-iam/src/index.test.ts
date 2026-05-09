@@ -15,7 +15,14 @@ describe('@sva/studio-module-iam', () => {
     expect(studioModuleIamContracts.map((contract) => contract.moduleId)).toEqual(['news', 'events', 'poi', 'media']);
     expect(studioModuleIamRegistry.get('media')).toMatchObject({
       ownerPluginId: 'host',
-      permissionIds: ['media.read', 'media.create', 'media.update', 'media.referenceManage', 'media.delete', 'media.deliverProtected'],
+      permissionIds: [
+        'media.read',
+        'media.create',
+        'media.update',
+        'media.reference.manage',
+        'media.delete',
+        'media.deliver.protected',
+      ],
     });
   });
 

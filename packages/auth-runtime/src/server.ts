@@ -19,6 +19,18 @@ export { resolveAuthRequestHost, sanitizeAuthReturnTo } from './auth-return-to.j
 export { emitAuthAuditEvent } from './audit-events.js';
 export type { AuthAuditEvent, AuthAuditEventType, PluginActionAuditPayload } from './audit-events.types.js';
 export {
+  ensurePluginOperationWorkerStarted,
+  queuePluginOperationJob,
+  registerPluginOperationExecutionHandlers,
+  stopPluginOperationWorker,
+} from './plugin-operations/runner.js';
+export type { PluginOperationExecutionHandler, PluginOperationExecutionResult } from './plugin-operations/runner.js';
+export type {
+  PluginOperationExecutionHandlerContext,
+  PluginOperationExecutionRegistration,
+  PluginOperationProgressReporter,
+} from './plugin-operations/runner.js';
+export {
   persistAuthAuditEventToDb,
   persistAuthAuditEventWithClient,
   type AuditSqlClient,

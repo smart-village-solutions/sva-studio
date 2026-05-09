@@ -8,6 +8,10 @@ describe('iam seed plan', () => {
     assert.equal(iamSeedPlan.personas.length, 8);
   });
 
+  it('keeps the canonical permission catalog in sync with the seed integration expectations', () => {
+    assert.equal(iamSeedPlan.permissions.length, 38);
+  });
+
   it('uses unique role slugs and keycloak subjects', () => {
     const roleSlugs = new Set(iamSeedPlan.personas.map((persona) => persona.roleSlug));
     const subjects = new Set(iamSeedPlan.personas.map((persona) => persona.keycloakSubject));
@@ -36,6 +40,10 @@ describe('iam seed plan', () => {
       'content.updatePayload',
       'content.changeStatus',
       'content.delete',
+      'media.read',
+      'media.create',
+      'media.update',
+      'media.reference.manage',
       'news.read',
       'events.read',
       'poi.read',
@@ -74,6 +82,7 @@ describe('iam seed plan', () => {
       iamSeedPlan.permissions.find((permission) => permission.key === 'content.publish')?.resourceType,
       'content'
     );
+    assert.equal(iamSeedPlan.permissions.find((permission) => permission.key === 'media.read')?.resourceType, 'media');
     assert.equal(iamSeedPlan.permissions.find((permission) => permission.key === 'news.update')?.resourceType, 'news');
   });
 

@@ -19,20 +19,20 @@
 - [ ] 2.2 In `packages/core` gemeinsame Contracts für Waste-Settings, Datenquellenstatus, generische Job-Status und instanzbezogene Verwaltungsmodelle ergänzen
 - [ ] 2.3 Für alle aus `Newcms` angelehnten Artefakte dokumentieren und prüfen, dass keine produktiven `Newcms`-Hooks, API-Clients, Stores oder Rechteannahmen verbleiben
 
-## 2a. Slice A2: Generische Job-Fähigkeit
+## 2a. Slice A2: Vorgelagerte generische Job-Fähigkeit konsumieren
 
-- [ ] 2a.1 Eine allgemeine Studio-Job-Fähigkeit für langlaufende Plugin-Operationen als tragfähige Plattformbasis definieren, die für Waste und weitere reale Plugins direkt wiederverwendbar ist
-- [ ] 2a.2 Die minimale Persistenz-, Status- und Lifecycle-Schnittstelle dieser generischen Job-Fähigkeit festlegen und in die betroffenen Plattform-Packages einhängen
-- [ ] 2a.3 Im `packages/plugin-sdk` einen expliziten Plugin-Vertrag für die Registrierung fachlicher Jobtypen vorsehen
+- [ ] 2a.1 Den vorgelagerten Change `update-plugin-platform-for-generic-jobs-imports` als Voraussetzung für generische Jobtypen, Status und zentrale Job-Persistenz berücksichtigen
+- [ ] 2a.2 Waste-spezifische Jobtypen für Migration, Import, Seed und Reset auf den dort definierten Plattformvertrag mappen
+- [ ] 2a.3 In `packages/plugin-waste-management` und angrenzenden Host-Packages nur noch die waste-spezifische Nutzung der generischen Job-Fähigkeit ergänzen, ohne eine zweite Registrierungs- oder Persistenzlogik einzuführen
 
-## 2b. Slice A3: Generische Import-Fähigkeit
+## 2b. Slice A3: Vorgelagerte generische Import-Fähigkeit konsumieren
 
-- [ ] 2b.1 Eine allgemeine Studio-Import-Fähigkeit für CSV, Excel sowie schema-nahe JSON- und XML-Quellen als tragfähige Plattformbasis definieren, die für Waste und weitere reale Plugins direkt wiederverwendbar ist
-- [ ] 2b.2 Pluginseitige Importprofile mit kanonischer Vorlage, Mapping-Regeln und Validierungsvertrag als allgemeines Plattformmuster festlegen
-- [ ] 2b.3 Die erste automatische Mapping-Strecke mit manueller Korrekturfunktion so schneiden, dass später eine externe KI-basierte Vorschlagslogik als austauschbare Integrationsstelle angeschlossen werden kann
-- [ ] 2b.4 Den allgemeinen Import-Dialog als mehrstufigen Wizard mit Quellwahl, Profilwahl, Mapping, Validierungsvorschau, Job-Start und Ergebnisansicht festlegen
-- [ ] 2b.5 Einfache gespeicherte Mapping-Vorlagen pro Instanz und Importprofil als wiederverwendbares Plattformmuster vorsehen, ohne bereits komplexe Versionierungslogik einzuführen
-- [ ] 2b.6 Im `packages/plugin-sdk` einen expliziten Plugin-Vertrag für die Registrierung fachlicher Importprofile vorsehen
+- [ ] 2b.1 Den vorgelagerten Change `update-plugin-platform-for-generic-jobs-imports` als Voraussetzung für generische Importprofile und Host-Importverträge berücksichtigen
+- [ ] 2b.2 Die Waste-Importprofile `geografie-abholorte`, `touren` und `ausweichtermine` auf dem dort definierten Plugin-Vertrag modellieren
+- [ ] 2b.3 Waste-spezifische Mapping-, Validierungs- und Vorlagenlogik definieren, ohne eine parallele Importplattform im Plugin aufzubauen
+- [ ] 2b.4 Eine vorhandene allgemeine Host-Importoberfläche anbinden oder andernfalls einen fachnahen Waste-Flow nur als dünne Bedienhülle auf den generischen Host-Vertrag setzen
+- [ ] 2b.5 Wiederverwendbare Mapping-Vorlagen nur im Rahmen des zentralen Plattformvertrags nutzen, nicht als Waste-Sonderpersistenz neu schneiden
+- [ ] 2b.6 Keine zusätzlichen `plugin-sdk`-Grundverträge für Importprofile in diesem Fachchange definieren; nur noch deren Waste-Nutzung ergänzen
 
 ## 3. Slice B: Zentrale Governance- und Instanzkonfiguration
 
@@ -60,7 +60,7 @@
 - [ ] 6.1 `packages/plugin-waste-management` anlegen und die fachliche Hauptoberfläche unter `/plugins/waste-management` mit typisierten Search-Params materialisieren
 - [ ] 6.2 In `packages/plugin-waste-management` die Waste-Admin-UI für Tabs, Tabellen, Dialoge, Bulk-Flows sowie Lade-, Leer-, Fehler-, Job- und Berechtigungszustände umsetzen
 - [ ] 6.3 In `packages/plugin-waste-management` die Host-API-Clients für CRUD, Settings, asynchrone Import-, Seed-, Reset- und Migrationsoperationen anbinden
-- [ ] 6.4 In `packages/studio-ui-react` einen wiederverwendbaren Import-Dialog-Flow sowie allgemeine Job-, Monitoring-, Bulk-Action-, Hochrisiko-Confirm- und Statusbausteine ergänzen, soweit diese noch nicht vorhanden sind
+- [ ] 6.4 Bereits vorhandene allgemeine Host-UI-Bausteine für Import, Jobstatus, Hochrisiko-Confirm und technische Statusanzeigen anbinden; nur fehlende Waste-spezifische Bedienlogik im Plugin selbst halten
 - [ ] 6.5 In `packages/plugin-waste-management` Jahreskalender, Touren-, Ausweichtermin-, Abholort-, Fraktions- und Zuordnungsdialoge bewusst als fachliche Plugin-Komponenten halten und nur gegen die allgemeinen UI-Bausteine andocken
 - [ ] 6.6 In `apps/sva-studio-react` die statische Plugin-Registrierung und die Einbettung der instanzbezogenen Waste-Einstellungen in die Studio-Shell ergänzen
 

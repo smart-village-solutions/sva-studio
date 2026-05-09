@@ -279,7 +279,9 @@ const studioPluginOperationApiErrorCodes = [
   'not_found',
   'invalid_request',
   'invalid_instance_id',
+  'csrf_validation_failed',
   'idempotency_key_required',
+  'idempotency_key_reuse',
   'database_unavailable',
 ] as const;
 

@@ -50,7 +50,9 @@ describe('plugin-operations-contract', () => {
       'not_found',
       'invalid_request',
       'invalid_instance_id',
+      'csrf_validation_failed',
       'idempotency_key_required',
+      'idempotency_key_reuse',
       'database_unavailable',
     ]);
     expect(studioPluginOperationErrorContract.isCode('database_unavailable')).toBe(true);

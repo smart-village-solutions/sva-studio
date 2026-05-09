@@ -15,9 +15,12 @@ import {
   readPage,
   readPathSegment,
   requireIdempotencyKey,
+  toPayloadHash,
 } from '../shared/request-helpers.js';
+import { completeIdempotency, reserveIdempotency } from '../iam-account-management/shared.js';
 import { withAuthenticatedUser } from '../middleware.js';
 import { isUuid } from '../shared/input-readers.js';
+import { validateCsrf } from '../shared/request-security.js';
 import {
   createJsonItemResponse,
   createPluginOperationJob,
@@ -25,7 +28,7 @@ import {
 } from './core.shared.js';
 import { normalizeStudioJobDetail } from './job-detail-read-model.js';
 import { normalizeStudioJobListItem } from './job-list-read-model.js';
-import { queuePluginOperationJob } from './runner.js';
+import { getRegisteredPluginOperationExecutionHandlers, queuePluginOperationJob } from './runner.js';
 import { withStudioJobRepository } from './repository.js';
 
 const MONITORING_ADMIN_ROLES = new Set(['system_admin']);
@@ -50,6 +53,69 @@ const requireMonitoringAdminRole = (roles: readonly string[]): Response | null =
   roles.some((role) => MONITORING_ADMIN_ROLES.has(role))
     ? null
     : createApiError(403, 'forbidden', 'Keine Berechtigung für Plugin-Operations-Monitoring.', getRequestId());
+
+const startPluginOperationEndpoint = 'POST:/api/v1/plugin-operations/jobs';
+
+const readPluginNamespace = (value: string): string | null => {
+  const trimmed = value.trim();
+  const dotIndex = trimmed.indexOf('.');
+  if (dotIndex <= 0) {
+    return null;
+  }
+
+  return trimmed.slice(0, dotIndex);
+};
+
+const createCompletedIdempotencyResponse = async (
+  input: {
+    readonly instanceId: string;
+    readonly actorAccountId: string;
+    readonly idempotencyKey: string;
+  },
+  response: Response
+): Promise<Response> => {
+  const responseBody = await response.clone().json();
+  await completeIdempotency({
+    instanceId: input.instanceId,
+    actorAccountId: input.actorAccountId,
+    endpoint: startPluginOperationEndpoint,
+    idempotencyKey: input.idempotencyKey,
+    status: response.status >= 400 ? 'FAILED' : 'COMPLETED',
+    responseStatus: response.status,
+    responseBody,
+  });
+  return response;
+};
+
+const validateStartRequestData = (data: StudioJobStartRequest): Response | null => {
+  const jobTypeNamespace = readPluginNamespace(data.jobTypeId);
+  if (jobTypeNamespace !== data.pluginId) {
+    return createApiError(
+      400,
+      'invalid_request',
+      'Jobtyp muss zum angegebenen Plugin-Namespace passen.',
+      getRequestId()
+    );
+  }
+
+  if (data.importProfileId) {
+    const importProfileNamespace = readPluginNamespace(data.importProfileId);
+    if (importProfileNamespace !== data.pluginId) {
+      return createApiError(
+        400,
+        'invalid_request',
+        'Importprofil muss zum angegebenen Plugin-Namespace passen.',
+        getRequestId()
+      );
+    }
+  }
+
+  if (!getRegisteredPluginOperationExecutionHandlers().has(data.jobTypeId)) {
+    return createApiError(400, 'invalid_request', 'Unbekannter Plugin-Jobtyp.', getRequestId());
+  }
+
+  return null;
+};
 
 const readJobId = (request: Request): string | Response => {
   const jobId = readPathSegment(request, 4);
@@ -104,6 +170,11 @@ export const startPluginOperationJobHandler = async (request: Request): Promise<
       return instanceId;
     }
 
+    const csrfError = validateCsrf(request, getRequestId());
+    if (csrfError) {
+      return csrfError;
+    }
+
     const idempotency = requireIdempotencyKey(request, getRequestId());
     if ('error' in idempotency) {
       return idempotency.error;
@@ -112,6 +183,28 @@ export const startPluginOperationJobHandler = async (request: Request): Promise<
     const parsed = await parseRequestBody(request, startPluginOperationJobSchema);
     if (!parsed.ok) {
       return createApiError(400, 'invalid_request', parsed.message, getRequestId());
+    }
+
+    const validationError = validateStartRequestData(parsed.data);
+    if (validationError) {
+      return validationError;
+    }
+
+    const reserve = await reserveIdempotency({
+      instanceId,
+      actorAccountId: ctx.user.id,
+      endpoint: startPluginOperationEndpoint,
+      idempotencyKey: idempotency.key,
+      payloadHash: toPayloadHash(parsed.rawBody),
+    });
+    if (reserve.status === 'replay') {
+      return new Response(JSON.stringify(reserve.responseBody), {
+        status: reserve.responseStatus,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    if (reserve.status === 'conflict') {
+      return createApiError(409, 'idempotency_key_reuse', reserve.message, getRequestId());
     }
 
     try {
@@ -134,21 +227,37 @@ export const startPluginOperationJobHandler = async (request: Request): Promise<
       } catch {
         await markPluginOperationEnqueueFailed({ instanceId, job });
 
-        return createApiError(
-          503,
-          'database_unavailable',
-          'Der Plugin-Job konnte nicht in die Host-Queue gestellt werden.',
-          getRequestId()
+        return createCompletedIdempotencyResponse(
+          {
+            instanceId,
+            actorAccountId: ctx.user.id,
+            idempotencyKey: idempotency.key,
+          },
+          createApiError(
+            503,
+            'database_unavailable',
+            'Der Plugin-Job konnte nicht in die Host-Queue gestellt werden.',
+            getRequestId()
+          )
         );
       }
 
-      return createJsonItemResponse(202, job, getRequestId());
+      return createCompletedIdempotencyResponse(
+        {
+          instanceId,
+          actorAccountId: ctx.user.id,
+          idempotencyKey: idempotency.key,
+        },
+        createJsonItemResponse(202, job, getRequestId())
+      );
     } catch {
-      return createApiError(
-        503,
-        'database_unavailable',
-        'Der Plugin-Job konnte nicht angelegt werden.',
-        getRequestId()
+      return createCompletedIdempotencyResponse(
+        {
+          instanceId,
+          actorAccountId: ctx.user.id,
+          idempotencyKey: idempotency.key,
+        },
+        createApiError(503, 'database_unavailable', 'Der Plugin-Job konnte nicht angelegt werden.', getRequestId())
       );
     }
   });
@@ -244,6 +353,11 @@ export const cancelPluginOperationJobHandler = async (request: Request): Promise
     const instanceId = requireActorInstanceId(ctx.user.instanceId);
     if (instanceId instanceof Response) {
       return instanceId;
+    }
+
+    const csrfError = validateCsrf(request, getRequestId());
+    if (csrfError) {
+      return csrfError;
     }
 
     const jobId = readJobId(request);

@@ -94,6 +94,13 @@ Die erste Plattformausbaustufe veröffentlicht derzeit:
 
 Der Start-Endpunkt legt den zentralen Jobdatensatz an. Der Listen-Endpunkt liefert eine hostnormalisierte Monitoring-Projektion für `Aktiv` und `Historie`, inklusive Filter auf Status, Plugin, Jobtyp sowie einfacher Suche über Job- und Korrelationskennungen. Der Detail-Endpunkt liefert denselben Datensatz plus technische Event-Historie für UI-Polling. Der Cancel-Endpunkt speichert im ersten Schnitt nur die Abbruchanforderung am zentralen Datensatz; die kooperative Ausführung bleibt Host-Verantwortung. Alle Endpunkte bleiben bewusst hostgeführt und greifen auf dieselbe persistierte Wahrheit zu.
 
+Für mutierende Plugin-Operations-Endpunkte gilt zusätzlich:
+
+- `POST /api/v1/plugin-operations/jobs` und `POST /api/v1/plugin-operations/jobs/:jobId/cancel` verlangen denselben CSRF-Schutz wie andere cookie-authentifizierte IAM-Mutationen
+- der Start-Endpunkt akzeptiert nur registrierte Jobtypen
+- `pluginId`, `jobTypeId` und optional `importProfileId` müssen namespace-konsistent zueinander sein
+- wiederholte Start-Requests mit gleichem `Idempotency-Key` verwenden den gemeinsamen Host-Idempotency-Store und liefern Replay oder `409` statt eines generischen Datenbankfehlers
+
 Der Detail-Endpunkt liefert inzwischen zusätzlich eine kleine hostgeführte Laufzeitprojektion für Polling-Clients:
 
 - `latestEvent` als letzter technischer Lifecycle-Eintrag
@@ -112,7 +119,9 @@ Der aktuelle öffentliche Fehlervertrag dieser ersten Ausbaustufe ist bewusst sc
 - `not_found`
 - `invalid_request`
 - `invalid_instance_id`
+- `csrf_validation_failed`
 - `idempotency_key_required`
+- `idempotency_key_reuse`
 - `database_unavailable`
 
 ## Runner-Grenze

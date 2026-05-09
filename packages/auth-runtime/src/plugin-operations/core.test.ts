@@ -6,6 +6,7 @@ const repositoryState = vi.hoisted(() => ({
 
 const runnerState = vi.hoisted(() => ({
   queuePluginOperationJob: vi.fn(),
+  getRegisteredPluginOperationExecutionHandlers: vi.fn(),
 }));
 
 const middlewareState = vi.hoisted(() => ({
@@ -14,6 +15,11 @@ const middlewareState = vi.hoisted(() => ({
 
 const workspaceContextState = vi.hoisted(() => ({
   getWorkspaceContext: vi.fn(() => ({ requestId: 'req-test' })),
+}));
+
+const idempotencyState = vi.hoisted(() => ({
+  reserveIdempotency: vi.fn(),
+  completeIdempotency: vi.fn(),
 }));
 
 vi.mock('@sva/server-runtime', async () => {
@@ -34,6 +40,12 @@ vi.mock('./repository.js', () => ({
 
 vi.mock('./runner.js', () => ({
   queuePluginOperationJob: runnerState.queuePluginOperationJob,
+  getRegisteredPluginOperationExecutionHandlers: runnerState.getRegisteredPluginOperationExecutionHandlers,
+}));
+
+vi.mock('../iam-account-management/shared.js', () => ({
+  reserveIdempotency: idempotencyState.reserveIdempotency,
+  completeIdempotency: idempotencyState.completeIdempotency,
 }));
 
 import {
@@ -49,6 +61,11 @@ describe('plugin operations handlers', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-05-09T12:02:00.000Z'));
     runnerState.queuePluginOperationJob.mockResolvedValue(undefined);
+    runnerState.getRegisteredPluginOperationExecutionHandlers.mockReturnValue(
+      new Map([['news.import-articles', vi.fn()]])
+    );
+    idempotencyState.reserveIdempotency.mockResolvedValue({ status: 'reserved' });
+    idempotencyState.completeIdempotency.mockResolvedValue(undefined);
     middlewareState.withAuthenticatedUser.mockImplementation(async (_request, handler) =>
       handler({
         sessionId: 'session-1',
@@ -83,6 +100,8 @@ describe('plugin operations handlers', () => {
         headers: {
           'Content-Type': 'application/json',
           'Idempotency-Key': 'idem-1',
+          Origin: 'https://studio.test',
+          'X-Requested-With': 'XMLHttpRequest',
         },
         body: JSON.stringify({
           pluginId: 'news',
@@ -94,6 +113,13 @@ describe('plugin operations handlers', () => {
     );
 
     expect(response.status).toBe(202);
+    expect(idempotencyState.reserveIdempotency).toHaveBeenCalledWith({
+      actorAccountId: 'user-1',
+      endpoint: 'POST:/api/v1/plugin-operations/jobs',
+      idempotencyKey: 'idem-1',
+      instanceId: 'tenant-a',
+      payloadHash: expect.any(String),
+    });
     expect(runnerState.queuePluginOperationJob).toHaveBeenCalledWith({
       instanceId: 'tenant-a',
       jobId: expect.any(String),
@@ -107,6 +133,20 @@ describe('plugin operations handlers', () => {
         status: 'queued',
         requestId: 'req-test',
       },
+    });
+    expect(idempotencyState.completeIdempotency).toHaveBeenCalledWith({
+      actorAccountId: 'user-1',
+      endpoint: 'POST:/api/v1/plugin-operations/jobs',
+      idempotencyKey: 'idem-1',
+      instanceId: 'tenant-a',
+      responseBody: expect.objectContaining({
+        data: expect.objectContaining({
+          pluginId: 'news',
+        }),
+        requestId: 'req-test',
+      }),
+      responseStatus: 202,
+      status: 'COMPLETED',
     });
   });
 
@@ -130,6 +170,8 @@ describe('plugin operations handlers', () => {
         headers: {
           'Content-Type': 'application/json',
           'Idempotency-Key': 'idem-1',
+          Origin: 'https://studio.test',
+          'X-Requested-With': 'XMLHttpRequest',
         },
         body: JSON.stringify({
           pluginId: 'news',
@@ -145,6 +187,153 @@ describe('plugin operations handlers', () => {
         code: 'database_unavailable',
       },
     });
+    expect(idempotencyState.completeIdempotency).toHaveBeenCalledWith({
+      actorAccountId: 'user-1',
+      endpoint: 'POST:/api/v1/plugin-operations/jobs',
+      idempotencyKey: 'idem-1',
+      instanceId: 'tenant-a',
+      responseBody: expect.objectContaining({
+        error: expect.objectContaining({
+          code: 'database_unavailable',
+        }),
+      }),
+      responseStatus: 503,
+      status: 'FAILED',
+    });
+  });
+
+  it('rejects start requests without csrf protection before touching repositories', async () => {
+    const response = await startPluginOperationJobHandler(
+      new Request('https://studio.test/api/v1/plugin-operations/jobs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': 'idem-1',
+        },
+        body: JSON.stringify({
+          pluginId: 'news',
+          jobTypeId: 'news.import-articles',
+          input: { source: 'upload-1' },
+        }),
+      })
+    );
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        code: 'csrf_validation_failed',
+      },
+    });
+    expect(repositoryState.withStudioJobRepository).not.toHaveBeenCalled();
+    expect(idempotencyState.reserveIdempotency).not.toHaveBeenCalled();
+  });
+
+  it('replays the stored start response for matching idempotency keys', async () => {
+    idempotencyState.reserveIdempotency.mockResolvedValueOnce({
+      status: 'replay',
+      responseStatus: 202,
+      responseBody: {
+        data: {
+          id: 'job-1',
+          pluginId: 'news',
+          jobTypeId: 'news.import-articles',
+          status: 'queued',
+        },
+        requestId: 'req-test',
+      },
+    });
+
+    const response = await startPluginOperationJobHandler(
+      new Request('https://studio.test/api/v1/plugin-operations/jobs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': 'idem-1',
+          Origin: 'https://studio.test',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: JSON.stringify({
+          pluginId: 'news',
+          jobTypeId: 'news.import-articles',
+          input: { source: 'upload-1' },
+        }),
+      })
+    );
+
+    expect(response.status).toBe(202);
+    await expect(response.json()).resolves.toMatchObject({
+      data: {
+        id: 'job-1',
+        pluginId: 'news',
+      },
+    });
+    expect(repositoryState.withStudioJobRepository).not.toHaveBeenCalled();
+    expect(runnerState.queuePluginOperationJob).not.toHaveBeenCalled();
+    expect(idempotencyState.completeIdempotency).not.toHaveBeenCalled();
+  });
+
+  it('returns an idempotency conflict for reused keys with a different payload', async () => {
+    idempotencyState.reserveIdempotency.mockResolvedValueOnce({
+      status: 'conflict',
+      message: 'Idempotency-Key wurde bereits mit anderem Payload verwendet.',
+    });
+
+    const response = await startPluginOperationJobHandler(
+      new Request('https://studio.test/api/v1/plugin-operations/jobs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': 'idem-1',
+          Origin: 'https://studio.test',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: JSON.stringify({
+          pluginId: 'news',
+          jobTypeId: 'news.import-articles',
+          input: { source: 'upload-2' },
+        }),
+      })
+    );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        code: 'idempotency_key_reuse',
+      },
+    });
+    expect(repositoryState.withStudioJobRepository).not.toHaveBeenCalled();
+    expect(runnerState.queuePluginOperationJob).not.toHaveBeenCalled();
+    expect(idempotencyState.completeIdempotency).not.toHaveBeenCalled();
+  });
+
+  it('rejects unknown plugin operation job types before creating jobs', async () => {
+    runnerState.getRegisteredPluginOperationExecutionHandlers.mockReturnValueOnce(new Map());
+
+    const response = await startPluginOperationJobHandler(
+      new Request('https://studio.test/api/v1/plugin-operations/jobs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': 'idem-1',
+          Origin: 'https://studio.test',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: JSON.stringify({
+          pluginId: 'news',
+          jobTypeId: 'news.unknown-job',
+          input: { source: 'upload-1' },
+        }),
+      })
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        code: 'invalid_request',
+      },
+    });
+    expect(repositoryState.withStudioJobRepository).not.toHaveBeenCalled();
+    expect(runnerState.queuePluginOperationJob).not.toHaveBeenCalled();
   });
 
   it('reads a job status for the authenticated instance', async () => {
@@ -340,6 +529,10 @@ describe('plugin operations handlers', () => {
     const response = await cancelPluginOperationJobHandler(
       new Request('https://studio.test/api/v1/plugin-operations/jobs/11111111-1111-4111-8111-111111111111/cancel', {
         method: 'POST',
+        headers: {
+          Origin: 'https://studio.test',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
       })
     );
 
@@ -350,6 +543,22 @@ describe('plugin operations handlers', () => {
         cancelRequestedAt: '2026-05-09T12:02:00.000Z',
       },
     });
+  });
+
+  it('rejects cancellation requests without csrf protection before touching repositories', async () => {
+    const response = await cancelPluginOperationJobHandler(
+      new Request('https://studio.test/api/v1/plugin-operations/jobs/11111111-1111-4111-8111-111111111111/cancel', {
+        method: 'POST',
+      })
+    );
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        code: 'csrf_validation_failed',
+      },
+    });
+    expect(repositoryState.withStudioJobRepository).not.toHaveBeenCalled();
   });
 
   it('rejects plugin operation access for users without monitoring admin roles', async () => {
@@ -384,6 +593,8 @@ describe('plugin operations handlers', () => {
         headers: {
           'Content-Type': 'application/json',
           'Idempotency-Key': 'idem-1',
+          Origin: 'https://studio.test',
+          'X-Requested-With': 'XMLHttpRequest',
         },
         body: JSON.stringify({
           pluginId: 'news',

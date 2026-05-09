@@ -1,0 +1,222 @@
+import { describe, expect, it } from 'vitest';
+
+import type { SqlExecutionResult, SqlExecutor, SqlStatement } from '../iam/repositories/types.js';
+import { createStudioJobRepository } from './index.js';
+
+const jobRow = {
+  id: 'job-1',
+  instance_id: 'tenant-a',
+  plugin_id: 'news',
+  job_type_id: 'news.import-articles',
+  import_profile_id: 'news.article-import',
+  queue_name: 'plugin-operations',
+  status: 'queued',
+  progress: { completedSteps: 0, totalSteps: 3 },
+  input_payload: { source: 'upload-1' },
+  result_payload: null,
+  error_payload: null,
+  attempts: 0,
+  max_attempts: 5,
+  idempotency_key: 'idem-1',
+  request_id: 'req-1',
+  actor_account_id: 'user-1',
+  worker_id: 'worker-a',
+  heartbeat_at: '2026-05-09T12:02:00.000Z',
+  last_progress_at: '2026-05-09T12:02:00.000Z',
+  cancel_requested_at: null,
+  correlation_id: 'corr-1',
+  parent_job_id: null,
+  scheduled_at: '2026-05-09T12:00:00.000Z',
+  started_at: null,
+  finished_at: null,
+  created_at: '2026-05-09T12:00:00.000Z',
+  updated_at: '2026-05-09T12:00:00.000Z',
+};
+
+const eventRow = {
+  id: 'event-1',
+  job_id: 'job-1',
+  instance_id: 'tenant-a',
+  event_type: 'job.progressed',
+  status: 'running',
+  progress: {
+    completedSteps: 1,
+    totalSteps: 3,
+    currentPhase: 'mapping',
+    currentStepKey: 'validate-schema',
+    lastUpdatedAt: '2026-05-09T12:03:00.000Z',
+  },
+  attempts: 1,
+  message: 'Schema validiert',
+  details: { acceptedRows: 10 },
+  created_at: '2026-05-09T12:03:00.000Z',
+};
+
+const createQueuedExecutor = (queuedRows: readonly (readonly Record<string, unknown>[])[]) => {
+  const statements: SqlStatement[] = [];
+  const queue = [...queuedRows];
+  const executor: SqlExecutor = {
+    async execute<TRow = Record<string, unknown>>(statement: SqlStatement): Promise<SqlExecutionResult<TRow>> {
+      statements.push(statement);
+      const rows = queue.shift() ?? [];
+      return {
+        rowCount: rows.length,
+        rows: rows as readonly TRow[],
+      };
+    },
+  };
+
+  return { executor, statements };
+};
+
+describe('studio job repository', () => {
+  it('creates and reads central plugin operation jobs', async () => {
+    const { executor, statements } = createQueuedExecutor([[jobRow], [jobRow]]);
+    const repository = createStudioJobRepository(executor);
+
+    await expect(
+      repository.createJob({
+        id: 'job-1',
+        instanceId: 'tenant-a',
+        pluginId: 'news',
+        jobTypeId: 'news.import-articles',
+        importProfileId: 'news.article-import',
+        queueName: 'plugin-operations',
+        status: 'queued',
+        progress: { completedSteps: 0, totalSteps: 3 },
+        inputPayload: { source: 'upload-1' },
+        attempts: 0,
+        maxAttempts: 5,
+        idempotencyKey: 'idem-1',
+        requestId: 'req-1',
+        actorAccountId: 'user-1',
+        scheduledAt: '2026-05-09T12:00:00.000Z',
+      })
+    ).resolves.toMatchObject({
+      id: 'job-1',
+      pluginId: 'news',
+      jobTypeId: 'news.import-articles',
+      status: 'queued',
+    });
+
+    await expect(repository.getJobById('tenant-a', 'job-1')).resolves.toMatchObject({
+      id: 'job-1',
+      progress: { completedSteps: 0, totalSteps: 3 },
+      requestId: 'req-1',
+      workerId: 'worker-a',
+      correlationId: 'corr-1',
+    });
+
+    expect(statements[0]?.text.includes('INSERT INTO iam.plugin_operation_jobs')).toBe(true);
+    expect(statements[1]?.values).toEqual(['tenant-a', 'job-1']);
+  });
+
+  it('updates job execution status, progress, results and errors', async () => {
+    const { executor, statements } = createQueuedExecutor([[jobRow]]);
+    const repository = createStudioJobRepository(executor);
+
+    await expect(
+      repository.updateJobState({
+        jobId: 'job-1',
+        instanceId: 'tenant-a',
+        status: 'running',
+        progress: {
+          completedSteps: 1,
+          totalSteps: 3,
+          currentPhase: 'mapping',
+          currentStepKey: 'validate-schema',
+          lastUpdatedAt: '2026-05-09T12:01:00.000Z',
+        },
+        attempts: 1,
+        startedAt: '2026-05-09T12:01:00.000Z',
+        resultPayload: { acceptedRows: 0 },
+        errorPayload: { code: 'validation_failed', category: 'validation' },
+        workerId: 'worker-a',
+        heartbeatAt: '2026-05-09T12:01:30.000Z',
+      })
+    ).resolves.toMatchObject({
+      id: 'job-1',
+      status: 'queued',
+    });
+
+    expect(statements[0]?.text.includes('UPDATE iam.plugin_operation_jobs')).toBe(true);
+    expect(statements[0]?.values).toEqual([
+      'running',
+      JSON.stringify({
+        completedSteps: 1,
+        totalSteps: 3,
+        currentPhase: 'mapping',
+        currentStepKey: 'validate-schema',
+        lastUpdatedAt: '2026-05-09T12:01:00.000Z',
+      }),
+      1,
+      '2026-05-09T12:01:00.000Z',
+      null,
+      JSON.stringify({ acceptedRows: 0 }),
+      JSON.stringify({ code: 'validation_failed', category: 'validation' }),
+      'worker-a',
+      '2026-05-09T12:01:30.000Z',
+      'tenant-a',
+      'job-1',
+    ]);
+  });
+
+  it('updates progress, heartbeat and cancellation independently from terminal state changes', async () => {
+    const { executor, statements } = createQueuedExecutor([[jobRow], [jobRow], [jobRow]]);
+    const repository = createStudioJobRepository(executor);
+
+    await expect(
+      repository.updateJobProgress({
+        jobId: 'job-1',
+        instanceId: 'tenant-a',
+        progress: {
+          completedSteps: 2,
+          totalSteps: 3,
+          currentPhase: 'mapping',
+          currentStepKey: 'persist-content',
+          lastUpdatedAt: '2026-05-09T12:02:30.000Z',
+        },
+        lastProgressAt: '2026-05-09T12:02:30.000Z',
+        heartbeatAt: '2026-05-09T12:02:30.000Z',
+      })
+    ).resolves.toMatchObject({ id: 'job-1' });
+
+    await expect(
+      repository.touchJobHeartbeat({
+        jobId: 'job-1',
+        instanceId: 'tenant-a',
+        workerId: 'worker-b',
+        heartbeatAt: '2026-05-09T12:03:00.000Z',
+      })
+    ).resolves.toMatchObject({ id: 'job-1' });
+
+    await expect(
+      repository.requestJobCancellation({
+        jobId: 'job-1',
+        instanceId: 'tenant-a',
+        cancelRequestedAt: '2026-05-09T12:04:00.000Z',
+      })
+    ).resolves.toMatchObject({ id: 'job-1' });
+
+    expect(statements[0]?.text).toContain('last_progress_at = $2');
+    expect(statements[1]?.text).toContain('heartbeat_at = $1');
+    expect(statements[2]?.text).toContain('cancel_requested_at = $1');
+  });
+
+  it('returns job detail together with technical event history', async () => {
+    const { executor } = createQueuedExecutor([[jobRow], [eventRow]]);
+    const repository = createStudioJobRepository(executor);
+
+    await expect(repository.getJobDetail('tenant-a', 'job-1')).resolves.toMatchObject({
+      id: 'job-1',
+      history: [
+        {
+          id: 'event-1',
+          eventType: 'job.progressed',
+          status: 'running',
+          message: 'Schema validiert',
+        },
+      ],
+    });
+  });
+});

@@ -38,6 +38,7 @@ Architekturprinzipien auf IST-Basis.
 - UI-Shell folgt semantischen Design-Tokens statt direkter Farbcodes und bleibt kompatibel zu Tailwind-/shadcn-Primitives
 - Wiederverwendbare Studio-UI für Host-Seiten und Plugin-Custom-Views liegt in `@sva/studio-ui-react`; App-interne Komponenten bleiben Shell- oder Host-Bindings und sind keine öffentliche Plugin-API
 - Medienmanagement ist eine hostseitige Querschnitts-Capability: Domänenvertrag in `@sva/media`, Persistenz in `@sva/data-repositories`, Runtime in `@sva/auth-runtime`, Host-UI unter `/admin/media`, Plugin-Bindings nur über `@sva/plugin-sdk` und `@sva/studio-ui-react`
+- Hintergrundprozesse und asynchrone Folgearbeiten werden über einen hostgeführten, runner-agnostischen Plattformvertrag standardisiert; Graphile Worker ist die bevorzugte erste interne Runner-Implementierung, Temporal bleibt eine dokumentierte spätere Eskalationsoption
 - Wiederkehrende Mainserver-HTTP-Basis, Standard-Content-Metadaten und kleine UI-nahe Utilities werden für News, Events und POI im `@sva/plugin-sdk` gebündelt; fachliche Modelle und Editor-Spezialisierungen bleiben in den Plugins
 - Theming wird instanzfähig gedacht: `instanceId` kann Theme-Varianten bestimmen, Light/Dark-Mode bleibt dabei ein orthogonaler Modus
 
@@ -82,6 +83,7 @@ Architekturprinzipien auf IST-Basis.
 - Session-Lifecycle, Forced Reauth und kontrolliertes Silent SSO: `ADR-023`
 - Per-User-Mainserver-Delegation und Integrationsgrenze: `ADR-021`
 - OSS-Standard für SQL-Migrationen: `ADR-029`
+- Standard für Hintergrundprozess-Orchestrierung: `ADR-040`
 - Registry-basierte Instanzfreigabe und gemeinsamer Provisioning-Vertrag: `ADR-030`
 - Package-Zielarchitektur-Hard-Cut: OpenSpec-Change `refactor-package-target-architecture-hard-cut`
 
@@ -102,6 +104,7 @@ Referenzen:
 - `../adr/ADR-023-session-lifecycle-forced-reauth-und-silent-sso.md`
 - `../adr/ADR-021-per-user-sva-mainserver-delegation.md`
 - `../adr/ADR-030-registry-basierte-instance-freigabe-und-provisioning.md`
+- `../adr/ADR-040-graphile-workflows-als-standard-fuer-hintergrundprozesse.md`
 
 ### Fortschreibung 2026-04: Registry-basierte Tenant-Freigabe
 

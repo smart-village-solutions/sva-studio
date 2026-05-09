@@ -89,3 +89,7 @@ export {
   replaceMediaReferencesHandler,
   updateMediaHandler,
 } from './iam-media/core.js';
+export {
+  getPluginOperationJobHandler,
+  startPluginOperationJobHandler,
+} from './plugin-operations/core.js';

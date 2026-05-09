@@ -24,10 +24,13 @@ Die aktuelle Struktur trennt die vorherigen Sammelrollen in eigenständige Paket
 
 - `@sva/core` enthält framework-agnostische Verträge und reine Kernlogik.
 - `@sva/plugin-sdk` stellt Host-, Plugin-, Registry- und Content-Type-Verträge bereit.
+- `@sva/plugin-sdk` ist auch der einzige öffentliche Eintrittspunkt für deklarative Operations-Beiträge wie registrierte Jobtypen und Importprofile.
 - `@sva/server-runtime` stellt Request-Kontext, Logging, Fehlerantworten und OTEL-Bootstrap bereit.
 - `@sva/data-client` stellt den client-sicheren HTTP-/Schema-Client bereit.
 - `@sva/data-repositories` bündelt serverseitige Repositories, Migration-nahe Typen und DB-Zugriffe.
+- `@sva/data-repositories` hält für generische Plugin-Operations den führenden zentralen Job-Store im Studio-Postgres.
 - `@sva/auth-runtime` enthält Authentifizierung, Session, OIDC, Cookies, Auth-Middleware und Runtime-Routen.
+- `@sva/auth-runtime` veröffentlicht für Plugin-Operations die hostgeführten Start-, Status- und späteren Worker-Orchestrierungsendpunkte.
 - `@sva/iam-core` enthält zentrale Autorisierungsverträge und die Permission-Entscheidung.
 - `@sva/iam-admin` enthält Benutzer, Rollen, Gruppen, Organisationen, Actor-Auflösung, Reconcile und Keycloak-nahe Admin-Orchestrierung.
 - `@sva/iam-governance` enthält Governance, Legal Texts, DSR und audit-nahe IAM-Fachfälle.
@@ -109,12 +112,12 @@ Die Zielrollen sind als Workspace-Packages vorhanden und werden über Nx-, ESLin
 
 | Zielbaustein | Verantwortung | Aktueller Ort | Zielregel |
 | --- | --- | --- | --- |
-| `@sva/core` | Pure Domänenverträge, Value Objects, Validierungslogik ohne Runtime-Bindung | `packages/core` | Bleibt basal und darf keine App-, DB-, SDK- oder Runtime-Abhängigkeiten aufnehmen. |
-| `@sva/plugin-sdk` | Öffentlicher Vertrag für Plugins, Registries, Admin-Ressourcen, Content-Type-Erweiterungen, Plugin-i18n | `packages/plugin-sdk` | Plugins dürfen Host-Funktionen nur über diesen Vertrag konsumieren. |
+| `@sva/core` | Pure Domänenverträge, Value Objects, Validierungslogik ohne Runtime-Bindung | `packages/core` | Bleibt basal und darf keine App-, DB-, SDK- oder Runtime-Abhängigkeiten aufnehmen. Generische Job- und Import-Grundverträge liegen hier, nicht in Plugin- oder Runtime-Paketen. |
+| `@sva/plugin-sdk` | Öffentlicher Vertrag für Plugins, Registries, Admin-Ressourcen, Content-Type-Erweiterungen, Plugin-i18n | `packages/plugin-sdk` | Plugins dürfen Host-Funktionen nur über diesen Vertrag konsumieren. Registrierte `jobTypes` und `importProfiles` bleiben deklarativ und werden über denselben Build-Time-Registry-Pfad validiert. |
 | `@sva/server-runtime` | Request-Kontext, JSON-Fehlerantworten, Logger-Fassade, OTEL-Bootstrap, Workspace-Kontext | `packages/server-runtime` | Server-Hilfen bleiben fachfrei und dürfen keine IAM-Fachlogik enthalten. |
 | `@sva/data-client` | HTTP-Client, Cache, Runtime-Schema-Validierung für Browser-/Universal-Zugriff | `packages/data-client` | Keine DB-Treiber, keine serverseitigen Repositories, keine IAM-Fachlogik. |
-| `@sva/data-repositories` | Postgres-Repositories, Migration-nahe Typen, DB-Operationen | `packages/data-repositories` | Keine UI- oder Routing-Abhängigkeiten; nur serverseitige Konsumenten. |
-| `@sva/auth-runtime` | OIDC, Login, Logout, Session, Cookies, Silent-Reauth, Auth-Middleware, Runtime-Routen | `packages/auth-runtime` | Authentifizierung und Session bleiben getrennt von IAM-Fachverwaltung. |
+| `@sva/data-repositories` | Postgres-Repositories, Migration-nahe Typen, DB-Operationen | `packages/data-repositories` | Keine UI- oder Routing-Abhängigkeiten; nur serverseitige Konsumenten. Der generische Plugin-Jobdatensatz bleibt hier die führende Persistenz. |
+| `@sva/auth-runtime` | OIDC, Login, Logout, Session, Cookies, Silent-Reauth, Auth-Middleware, Runtime-Routen | `packages/auth-runtime` | Authentifizierung und Session bleiben getrennt von IAM-Fachverwaltung. Hostgeführte Plugin-Operations-Endpunkte und interne Runner-Orchestrierung werden hier angebunden. |
 | `@sva/iam-core` | Permission Engine, Authorize-Verträge, effektive Rechte, IAM-Basisregeln | `packages/iam-core` | Fachliche Entscheidung bleibt zentral; Fachmodule duplizieren keine Berechtigungsauflösung. |
 | `@sva/iam-admin` | Benutzer, Rollen, Gruppen, Organisationen, Keycloak-Admin-Abstraktion, Reconcile | `packages/iam-admin` | Admin-Funktionalität bleibt aus Auth-Runtime herausgelöst. |
 | `@sva/iam-governance` | Governance-Cases, DSR, Legal Texts, Audit-nahe IAM-Fachfälle | `packages/iam-governance` | Compliance-nahe Fachlogik hat eigene Ownership und eigene Tests. |
@@ -146,6 +149,7 @@ Nicht zulässig im Zielbild:
 
 - `@sva/routing` importiert historische Auth-Sammelpackages für Pfade oder Runtime-Handler.
 - Plugins importieren `@sva/core`, `@sva/auth-runtime`, `@sva/iam-*`, `@sva/instance-registry`, `@sva/data` oder App-Code direkt.
+- Plugins koppeln ihren öffentlichen Vertrag an keine konkrete Worker-Technologie oder zentrale Hosttabelle.
 - Plugins importieren wiederverwendbare UI aus `apps/sva-studio-react/src/**` oder definieren eigene Basis-Control-Systeme für Buttons, Inputs, Dialoge, Tabs oder Tabellen.
 - App-Komponenten modellieren IAM-, Instanz- oder Integrationsregeln selbst.
 - Fachmodule greifen direkt auf fremde Fachmodul-Interna zu, statt über öffentliche Verträge zu gehen.
@@ -251,6 +255,7 @@ Vor jeder funktionalen Erweiterung ist zu klären:
 | Betrifft sie DSR, Legal, Governance oder Audit-Fachfälle? | Zielbaustein `iam-governance`. |
 | Betrifft sie Instanzen, Hosts, Provisioning oder Tenant-Keycloak? | Zielbaustein `instance-registry`. |
 | Betrifft sie Plugin-Erweiterungen, Content-Type-Definitionen oder Admin-Ressourcen? | Zielbaustein `plugin-sdk`; Fachlogik in Plugin oder Fachmodul. |
+| Betrifft sie generische Plugin-Jobs oder strukturierte Importprofile? | Schnitt über `plugin-sdk`, `core`, `routing`, `auth-runtime`, `data-repositories` und bei gemeinsamen Fehler-/Logging-Helfern `server-runtime`; keine parallele Plugin- oder Runner-API einführen. |
 | Betrifft sie wiederverwendbare React-UI für Host oder Plugin-Custom-Views? | Zielbaustein `studio-ui-react`; App-Shell und Host-Bindings bleiben in der App. |
 | Betrifft sie Downstream-Systeme wie den SVA-Mainserver? | Eigenes Integrationspackage. |
 | Betrifft sie nur UI-Zustand und Darstellung? | App-Layer; Domänenentscheidungen bleiben außerhalb. |

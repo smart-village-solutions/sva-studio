@@ -6,6 +6,8 @@ import {
   createContentTypeRegistry,
   createPluginActionRegistry,
   createPluginAuditEventRegistry,
+  createPluginImportProfileRegistry,
+  createPluginJobTypeRegistry,
   createPluginModuleIamRegistry,
   createPluginGuardrailError,
   createPluginPermissionRegistry,
@@ -13,6 +15,8 @@ import {
   definePluginActions,
   definePluginAdminResources,
   definePluginAuditEvents,
+  definePluginImportProfiles,
+  definePluginJobTypes,
   definePluginModuleIamContract,
   definePluginContentTypes,
   definePluginPermissions,
@@ -22,6 +26,8 @@ import {
   mergePluginAdminResourceDefinitions,
   mergePluginAuditEventDefinitions,
   mergePluginContentTypes,
+  mergePluginImportProfiles,
+  mergePluginJobTypes,
   mergePluginModuleIamContracts,
   mergePluginNavigationItems,
   mergePluginPermissions,
@@ -102,6 +108,32 @@ const newsPlugin: PluginDefinition = {
       { roleName: 'editor', permissionIds: ['news.read', 'news.create'] },
     ],
   }),
+  jobTypes: definePluginJobTypes('news', [
+    {
+      jobTypeId: 'news.import-articles',
+      queue: 'plugin-operations',
+      displayName: 'Import articles',
+      descriptionKey: 'news.jobs.importArticles.description',
+      progress: {
+        phaseKeys: ['news.ingestion', 'news.mapping', 'news.completed'],
+        stepKeys: ['fetch-source', 'validate-schema', 'persist-content'],
+      },
+    },
+  ]),
+  importProfiles: definePluginImportProfiles('news', [
+    {
+      profileId: 'news.article-import',
+      jobTypeId: 'news.import-articles',
+      displayName: 'Article import',
+      sourceFormats: ['application/json', 'text/csv'],
+      schemaVersion: '1',
+      schemaStrategy: 'json-schema',
+      mappingStrategy: 'field-map',
+      validation: {
+        mode: 'preflight-and-commit',
+      },
+    },
+  ]),
   translations: {
     de: {
       news: {
@@ -126,6 +158,8 @@ describe('plugin registries', () => {
     expect(mergePluginAdminResourceDefinitions([...registry.values()])).toHaveLength(1);
     expect(mergePluginAuditEventDefinitions([...registry.values()])).toHaveLength(1);
     expect(mergePluginModuleIamContracts([...registry.values()])).toHaveLength(1);
+    expect(mergePluginJobTypes([...registry.values()])).toHaveLength(1);
+    expect(mergePluginImportProfiles([...registry.values()])).toHaveLength(1);
     expect(mergePluginTranslations([...registry.values()]).de).toEqual({
       news: {
         nav: 'Nachrichten',
@@ -138,6 +172,8 @@ describe('plugin registries', () => {
     const actions = createPluginActionRegistry([newsPlugin]);
     const permissions = createPluginPermissionRegistry([newsPlugin]);
     const modules = createPluginModuleIamRegistry([newsPlugin]);
+    const jobTypes = createPluginJobTypeRegistry([newsPlugin]);
+    const importProfiles = createPluginImportProfileRegistry([newsPlugin]);
     const readAction = actions.get('news.read');
     const legacyAction = actions.get('news-read');
     const auditEvents = createPluginAuditEventRegistry([newsPlugin]);
@@ -174,6 +210,38 @@ describe('plugin registries', () => {
         { roleName: 'editor', permissionIds: ['news.read', 'news.create'] },
       ],
     });
+    expect(jobTypes.get('news.import-articles')).toMatchObject({
+      jobTypeId: 'news.import-articles',
+      namespace: 'news',
+      ownerPluginId: 'news',
+      queue: 'plugin-operations',
+      progress: {
+        phaseKeys: ['news.ingestion', 'news.mapping', 'news.completed'],
+        stepKeys: ['fetch-source', 'validate-schema', 'persist-content'],
+      },
+    });
+    expect(importProfiles.get('news.article-import')).toMatchObject({
+      profileId: 'news.article-import',
+      namespace: 'news',
+      ownerPluginId: 'news',
+      jobTypeId: 'news.import-articles',
+      sourceFormats: ['application/json', 'text/csv'],
+    });
+  });
+
+  it('rejects empty progress metadata entries for job types', () => {
+    expect(() =>
+      definePluginJobTypes('news', [
+        {
+          jobTypeId: 'news.import-articles',
+          queue: 'plugin-operations',
+          displayName: 'Import articles',
+          progress: {
+            phaseKeys: ['news.ingestion', ' '],
+          },
+        },
+      ])
+    ).toThrowError('invalid_plugin_job_type:news.import-articles');
   });
 
   it('builds the complete build-time registry from plugin and host resources', () => {
@@ -217,6 +285,24 @@ describe('plugin registries', () => {
         ownerPluginId: 'news',
       }),
     ]);
+    expect(registry.jobTypes).toEqual([
+      expect.objectContaining({
+        jobTypeId: 'news.import-articles',
+        queue: 'plugin-operations',
+      }),
+    ]);
+    expect(registry.importProfiles).toEqual([
+      expect.objectContaining({
+        profileId: 'news.article-import',
+        jobTypeId: 'news.import-articles',
+      }),
+    ]);
+    expect(registry.pluginJobTypeRegistry.get('news.import-articles')).toMatchObject({
+      ownerPluginId: 'news',
+    });
+    expect(registry.pluginImportProfileRegistry.get('news.article-import')).toMatchObject({
+      ownerPluginId: 'news',
+    });
     expect(registry.contentTypes).toHaveLength(1);
     expect(registry.auditEvents).toHaveLength(1);
     expect(registry.pluginAuditEventRegistry.get('news.created')).toMatchObject({
@@ -265,6 +351,55 @@ describe('plugin registries', () => {
         ],
       })
     ).toThrow('unknown_admin_resource_content_type:news.content:news.missing');
+  });
+
+  it('rejects plugin job types outside the plugin namespace', () => {
+    expect(() =>
+      definePluginJobTypes('news', [
+        {
+          jobTypeId: 'other.import',
+          queue: 'plugin-operations',
+          displayName: 'Import',
+        },
+      ])
+    ).toThrow('plugin_job_type_namespace_mismatch:news:other:other.import');
+  });
+
+  it('rejects duplicate plugin job types and foreign import profile job references', () => {
+    expect(() =>
+      createPluginJobTypeRegistry([
+        {
+          ...newsPlugin,
+          jobTypes: definePluginJobTypes('news', [
+            {
+              jobTypeId: 'news.import-articles',
+              queue: 'plugin-operations',
+              displayName: 'Conflicting import A',
+            },
+            {
+              jobTypeId: 'news.import-articles',
+              queue: 'plugin-operations',
+              displayName: 'Conflicting import B',
+            },
+          ]),
+        },
+      ])
+    ).toThrow('duplicate_plugin_job_type:news.import-articles');
+
+    expect(() =>
+      definePluginImportProfiles('news', [
+        {
+          profileId: 'news.article-import',
+          jobTypeId: 'other.import',
+          displayName: 'Article import',
+          sourceFormats: ['application/json'],
+          schemaVersion: '1',
+          schemaStrategy: 'json-schema',
+          mappingStrategy: 'field-map',
+          validation: { mode: 'preflight-only' },
+        },
+      ])
+    ).toThrow('plugin_import_profile_job_type_namespace_mismatch:news:other:other.import');
   });
 
   it('creates deterministic plugin guardrail errors', () => {

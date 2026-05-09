@@ -28,6 +28,18 @@ import {
   mergePluginTranslations,
 } from './plugins.js';
 import type { ContentTypeDefinition } from './content-types.js';
+import {
+  createPluginImportProfileRegistry,
+  createPluginJobTypeRegistry,
+  mergePluginImportProfiles,
+  mergePluginJobTypes,
+} from './plugin-operations.js';
+import type {
+  PluginImportProfileDefinition,
+  PluginImportProfileRegistryEntry,
+  PluginJobTypeDefinition,
+  PluginJobTypeRegistryEntry,
+} from './plugin-operations.js';
 
 export type BuildTimeRegistryInput = {
   readonly plugins?: readonly PluginDefinition[];
@@ -41,8 +53,12 @@ export type BuildTimeRegistry = {
   readonly pluginAuditEventRegistry: ReadonlyMap<string, PluginAuditEventRegistryEntry>;
   readonly pluginPermissionRegistry: ReadonlyMap<string, PluginPermissionRegistryEntry>;
   readonly pluginModuleIamRegistry: ReadonlyMap<string, PluginModuleIamRegistryEntry>;
+  readonly pluginJobTypeRegistry: ReadonlyMap<string, PluginJobTypeRegistryEntry>;
+  readonly pluginImportProfileRegistry: ReadonlyMap<string, PluginImportProfileRegistryEntry>;
   readonly pluginPermissions: readonly PluginPermissionDefinition[];
   readonly pluginModuleIamContracts: readonly PluginModuleIamRegistryEntry[];
+  readonly jobTypes: readonly PluginJobTypeDefinition[];
+  readonly importProfiles: readonly PluginImportProfileDefinition[];
   readonly routes: readonly PluginRouteDefinition[];
   readonly navigation: readonly PluginNavigationItem[];
   readonly contentTypes: readonly ContentTypeDefinition[];
@@ -82,6 +98,13 @@ type PermissionPhaseOutput = {
   readonly pluginPermissionRegistry: ReadonlyMap<string, PluginPermissionRegistryEntry>;
   readonly pluginModuleIamContracts: readonly PluginModuleIamRegistryEntry[];
   readonly pluginModuleIamRegistry: ReadonlyMap<string, PluginModuleIamRegistryEntry>;
+};
+
+type OperationsPhaseOutput = {
+  readonly jobTypes: readonly PluginJobTypeDefinition[];
+  readonly importProfiles: readonly PluginImportProfileDefinition[];
+  readonly pluginJobTypeRegistry: ReadonlyMap<string, PluginJobTypeRegistryEntry>;
+  readonly pluginImportProfileRegistry: ReadonlyMap<string, PluginImportProfileRegistryEntry>;
 };
 
 const validateAdminResourceContentTypes = (
@@ -142,6 +165,13 @@ const runPermissionPhase = (plugins: readonly PluginDefinition[]): PermissionPha
   pluginModuleIamRegistry: createPluginModuleIamRegistry(plugins),
 });
 
+const runOperationsPhase = (plugins: readonly PluginDefinition[]): OperationsPhaseOutput => ({
+  jobTypes: mergePluginJobTypes(plugins),
+  importProfiles: mergePluginImportProfiles(plugins),
+  pluginJobTypeRegistry: createPluginJobTypeRegistry(plugins),
+  pluginImportProfileRegistry: createPluginImportProfileRegistry(plugins),
+});
+
 const runRoutingPhase = (plugins: readonly PluginDefinition[]): RoutingPhaseOutput => ({
   routes: mergePluginRouteDefinitions(plugins),
   navigation: mergePluginNavigationItems(plugins),
@@ -155,6 +185,7 @@ const publishBuildTimeRegistry = ({
   audit,
   routing,
   permissions,
+  operations,
 }: {
   readonly preflight: PreflightPhaseOutput;
   readonly content: ContentPhaseOutput;
@@ -162,6 +193,7 @@ const publishBuildTimeRegistry = ({
   readonly audit: AuditPhaseOutput;
   readonly routing: RoutingPhaseOutput;
   readonly permissions: PermissionPhaseOutput;
+  readonly operations: OperationsPhaseOutput;
 }): BuildTimeRegistry => ({
   plugins: preflight.plugins,
   pluginRegistry: preflight.pluginRegistry,
@@ -169,8 +201,12 @@ const publishBuildTimeRegistry = ({
   pluginAuditEventRegistry: audit.pluginAuditEventRegistry,
   pluginPermissionRegistry: permissions.pluginPermissionRegistry,
   pluginModuleIamRegistry: permissions.pluginModuleIamRegistry,
+  pluginJobTypeRegistry: operations.pluginJobTypeRegistry,
+  pluginImportProfileRegistry: operations.pluginImportProfileRegistry,
   pluginPermissions: permissions.pluginPermissions,
   pluginModuleIamContracts: permissions.pluginModuleIamContracts,
+  jobTypes: operations.jobTypes,
+  importProfiles: operations.importProfiles,
   routes: routing.routes,
   navigation: routing.navigation,
   contentTypes: content.contentTypes,
@@ -190,7 +226,8 @@ export const createBuildTimeRegistry = ({
   validateAdminResourceContentTypes(admin.adminResources, content.contentTypes);
   const audit = runAuditPhase(preflight.plugins);
   const permissions = runPermissionPhase(preflight.plugins);
+  const operations = runOperationsPhase(preflight.plugins);
   const routing = runRoutingPhase(preflight.plugins);
 
-  return publishBuildTimeRegistry({ preflight, content, admin, audit, routing, permissions });
+  return publishBuildTimeRegistry({ preflight, content, admin, audit, routing, permissions, operations });
 };

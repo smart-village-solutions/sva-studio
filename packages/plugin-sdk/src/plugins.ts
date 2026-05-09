@@ -11,6 +11,8 @@ import {
   normalizePluginNamespace,
   parseNamespacedPluginIdentifier,
 } from './plugin-identifiers.js';
+import type { PluginImportProfileDefinition, PluginJobTypeDefinition } from './plugin-operations.js';
+import { definePluginImportProfiles, definePluginJobTypes } from './plugin-operations.js';
 
 export type PluginRouteGuard = string;
 
@@ -85,6 +87,8 @@ export type PluginDefinition = {
   readonly adminResources?: readonly PluginAdminResourceDefinition[];
   readonly auditEvents?: readonly PluginAuditEventDefinition[];
   readonly moduleIam?: PluginModuleIamContract;
+  readonly jobTypes?: readonly PluginJobTypeDefinition[];
+  readonly importProfiles?: readonly PluginImportProfileDefinition[];
   readonly translations?: PluginTranslations;
 };
 
@@ -109,6 +113,8 @@ const pluginDefinitionAllowedKeys = new Set([
   'adminResources',
   'auditEvents',
   'moduleIam',
+  'jobTypes',
+  'importProfiles',
   'translations',
 ] as const);
 
@@ -745,6 +751,15 @@ const assertPluginRegistryModuleIam = ({ plugin, pluginNamespace }: PluginRegist
   }
 };
 
+const assertPluginRegistryOperations = ({ plugin, pluginNamespace }: PluginRegistryValidationContext): void => {
+  if (plugin.jobTypes) {
+    definePluginJobTypes(pluginNamespace, plugin.jobTypes);
+  }
+  if (plugin.importProfiles) {
+    definePluginImportProfiles(pluginNamespace, plugin.importProfiles);
+  }
+};
+
 export const createPluginRegistry = (
   plugins: readonly PluginDefinition[]
 ): ReadonlyMap<string, PluginDefinition> => {
@@ -762,6 +777,7 @@ export const createPluginRegistry = (
     assertPluginRegistryAdminResources(context);
     assertPluginRegistryAuditEvents(context);
     assertPluginRegistryModuleIam(context);
+    assertPluginRegistryOperations(context);
 
     registry.set(context.pluginNamespace, {
       ...plugin,

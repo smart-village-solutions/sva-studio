@@ -182,6 +182,8 @@ const authServerMocks = vi.hoisted(() => {
     legalHoldApplyHandler: vi.fn(async () => response('legalHoldApplyHandler')),
     legalHoldReleaseHandler: vi.fn(async () => response('legalHoldReleaseHandler')),
     dataSubjectMaintenanceHandler: vi.fn(async () => response('dataSubjectMaintenanceHandler')),
+    startPluginOperationJobHandler: vi.fn(async () => response('startPluginOperationJobHandler')),
+    getPluginOperationJobHandler: vi.fn(async () => response('getPluginOperationJobHandler')),
   };
 });
 
@@ -243,6 +245,31 @@ describe('auth.routes.server', () => {
     });
 
     expect(authServerMocks.completeMediaUploadHandler).toHaveBeenCalled();
+  });
+
+  it('dispatches plugin operation routes to the auth runtime', async () => {
+    const createHandlers = resolveAuthHandlers('/api/v1/plugin-operations/jobs');
+    const detailHandlers = resolveAuthHandlers('/api/v1/plugin-operations/jobs/$jobId');
+
+    expect(createHandlers?.POST).toBeDefined();
+    expect(detailHandlers?.GET).toBeDefined();
+
+    const post = createHandlers?.POST;
+    const get = detailHandlers?.GET;
+
+    if (!post || !get) {
+      throw new Error('Expected plugin operation handlers to be defined');
+    }
+
+    await post({
+      request: new Request('http://localhost/api/v1/plugin-operations/jobs', { method: 'POST' }),
+    });
+    await get({
+      request: new Request('http://localhost/api/v1/plugin-operations/jobs/job-1', { method: 'GET' }),
+    });
+
+    expect(authServerMocks.startPluginOperationJobHandler).toHaveBeenCalled();
+    expect(authServerMocks.getPluginOperationJobHandler).toHaveBeenCalled();
   });
 
   it('executes all mapped handlers for all routes', async () => {

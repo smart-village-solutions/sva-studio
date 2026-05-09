@@ -114,6 +114,21 @@ export {
   mergePluginTranslations,
 } from './plugins.js';
 export type {
+  PluginImportProfileDefinition,
+  PluginImportProfileRegistryEntry,
+  PluginImportProfileValidationMode,
+  PluginJobTypeDefinition,
+  PluginJobTypeRegistryEntry,
+} from './plugin-operations.js';
+export {
+  createPluginImportProfileRegistry,
+  createPluginJobTypeRegistry,
+  definePluginImportProfiles,
+  definePluginJobTypes,
+  mergePluginImportProfiles,
+  mergePluginJobTypes,
+} from './plugin-operations.js';
+export type {
   StandardContentAdminResourceOptions,
   StandardContentPluginActionIds,
   StandardContentPluginActionName,

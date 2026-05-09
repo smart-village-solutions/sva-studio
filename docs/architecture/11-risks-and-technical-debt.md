@@ -210,6 +210,16 @@ Schulden auf IST-Basis.
    - Wahrscheinlichkeit: mittel
    - Maßnahme: Folge-Change `openspec/changes/add-media-async-processing/` für Queue-/Worker-Pfad, Retry-Strategie und entkoppelte Variantenverarbeitung umsetzen
 
+37. Öffentlicher Plugin-Operations-Vertrag könnte vor der ersten Runner-Integration zu früh als vollständig wahrgenommen werden
+   - Impact: mittel bis hoch (Consumer bauen auf Start-/Status-API, obwohl Queueing, Dispatch und Retry-Ausführung intern noch nicht vollständig verdrahtet sein können)
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: Plattform weiter runner-agnostisch halten, offene Worker-Schritte explizit in OpenSpec und Tasks führen und erste produktive Consumer erst nach nachgewiesener Host-Orchestrierung freigeben
+
+38. Zentrale Job-Persistenz trägt fachneutrale JSON-Payloads mit begrenzter Schemastrenge
+   - Impact: mittel (fachliche Payload-Drift oder unklare Ergebnis-/Fehlerdeutung wird erst in Plugin- oder Runtime-Pfaden sichtbar)
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: generische Grundfelder stabil halten, plugin-spezifische Payloads an registrierte Jobtypen und Importprofile binden und Validierung vor Start sowie bei Worker-Updates kontrolliert ausbauen
+
 ### Technische Schulden (Auswahl)
 
 - Teilweise No-Op Testtargets in Libraries
@@ -343,3 +353,8 @@ Referenzen:
    - Impact: mittel bis hoch (falsche Referenzen in Diagnose, Doku oder Acceptance-Operationen)
    - Wahrscheinlichkeit: mittel
    - Maßnahme: einheitlicher `goose`-Pfad, repo-weite Referenzaktualisierung, `db:migrate:status` und Schema-Guard parallel verifizieren
+
+32. Restliche mentale Last durch historisch gewachsene Rollen- und Rechtebilder
+   - Impact: mittel (Admin-UI bleibt trotz vereinfachter Gates erklärungsbedürftig)
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: Fachbereiche strikt über `Modulzuweisung + namespace.read` sichtbar machen, kanonische punktgetrennte Permission-IDs zentralisieren und Modul-/Rollen-Semantik im UI explizit erklären

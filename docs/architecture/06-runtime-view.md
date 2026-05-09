@@ -21,6 +21,20 @@ Dieser Abschnitt beschreibt kritische Laufzeitszenarien und Interaktionen.
 5. Asset-, Varianten-, Session- und Usage-Daten werden über `@sva/data-repositories` persistiert.
 6. Fachmodule wie News, Events und POI speichern nur hostseitige Medienreferenzen und keine Storage-Artefakte.
 
+### Generischer Plugin-Jobstart und Statusabruf
+
+1. Ein Host- oder Fachclient ruft `POST /api/v1/plugin-operations/jobs` mit Plugin-ID, Jobtyp, optionalem Importprofil und fachlichem Input auf.
+2. `@sva/auth-runtime` prüft Session, Instanzkontext, Idempotency-Key und den generischen Request-Vertrag.
+3. Der Host legt über `@sva/data-repositories` einen führenden Jobdatensatz im Studio-Postgres an.
+4. Der Client liest den Fortschritt über `GET /api/v1/plugin-operations/jobs/:jobId`.
+5. Status, Progress, Ergebnis- und Fehlerfelder stammen immer aus demselben zentralen Datensatz.
+
+Fehlerpfad:
+
+- Ohne gültigen Instanzkontext oder Idempotency-Key antwortet der Host fail-closed mit einem stabilen Fehlervertrag.
+- Datenbankfehler beim Anlegen oder Lesen werden als hostgeführte `database_unavailable`-Antworten abgebildet.
+- Die öffentliche API bleibt runner-agnostisch; eine interne Worker-Technologie darf den Fehler- und Statusvertrag nicht verändern.
+
 ### Szenario 1: App-Start + Route-Komposition
 
 1. App lädt `getRouter()` in `apps/sva-studio-react/src/router.tsx`

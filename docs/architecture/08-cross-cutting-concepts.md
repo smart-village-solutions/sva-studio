@@ -21,6 +21,15 @@ gleichzeitig beeinflussen.
 - Löschungen bleiben fail-closed bei aktiven Referenzen oder unvollständigem Upload-/Processing-Zustand.
 - i18n für Medienrollen und Fehlerzustände folgt denselben Dot-Notation-Regeln wie übrige Host- und Plugin-Oberflächen.
 
+### Hintergrundprozesse und Workflow-Orchestrierung
+
+- Hostseitige Hintergrundprozesse folgen einem runner-agnostischen Plattformvertrag mit zentralem Jobdatensatz im Studio-Postgres.
+- Eine erste interne Worker-Implementierung wird bevorzugt mit Graphile Worker umgesetzt, bleibt aber ausdrücklich hinter der Host-Runtime verborgen.
+- Job-Starts, Actor-Kontext, Mandantenbezug, Korrelation, Status, Retry-Metadaten und Fehlerabbildung müssen im Hostvertrag explizit modelliert werden; ad-hoc Hintergrundjobs ohne gemeinsamen Orchestrierungsvertrag sind nicht der Zielpfad.
+- Öffentliche Plugin- und Client-Verträge dürfen keine Graphile-spezifischen Begriffe oder Tabellenkenntnis voraussetzen.
+- Temporal bleibt als spätere Eskalationsoption für komplexere Orchestrierung offen, ist aber noch kein zweiter aktiver Standard.
+- Trigger.dev ist für Studio kein zulässiger Workflow-Pfad.
+
 ### Security und Privacy
 
 - OIDC Authorization Code Flow mit PKCE

@@ -1,6 +1,5 @@
 export const coreVersion = '0.0.1';
 export {
-  GENERIC_CONTENT_TYPE,
   iamContentAccessReasonCodes,
   iamContentAccessStates,
   iamContentCapabilityMappings,
@@ -18,6 +17,7 @@ export {
   summarizeContentAccess,
   validateCreateIamContentInput,
   withServerDeniedContentAccess,
+  GENERIC_CONTENT_TYPE,
 } from './content-management.js';
 export type {
   ContentJsonPrimitive,
@@ -38,6 +38,30 @@ export type {
   ResolvedIamContentCapabilityMapping,
   UpdateIamContentInput,
 } from './content-management.js';
+export {
+  studioImportContract,
+  studioJobErrorContract,
+  studioJobEventContract,
+  studioJobContract,
+  studioPluginOperationErrorContract,
+} from './plugin-operations-contract.js';
+export type {
+  StudioJobCancellationRequestInput,
+  StudioJobCreateInput,
+  StudioJobDetail,
+  StudioJobDetailResponse,
+  StudioJobError,
+  StudioJobEventRecord,
+  StudioJobHeartbeatInput,
+  StudioJobProgressUpdateInput,
+  StudioJobResponse,
+  StudioJobProgress,
+  StudioJobRecord,
+  StudioJobStartRequest,
+  StudioPluginOperationApiError,
+  StudioPluginOperationApiErrorResponse,
+  StudioJobUpdateInput,
+} from './plugin-operations-contract.js';
 export * from './routing/registry.js';
 export * from './iam/index.js';
 export {

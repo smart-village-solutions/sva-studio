@@ -6,6 +6,7 @@ const dispatchAuthRouteRequestMock = vi.fn();
 const dispatchMainserverNewsRequestMock = vi.fn();
 const dispatchMainserverEventsRequestMock = vi.fn();
 const dispatchMainserverPoiRequestMock = vi.fn();
+const ensurePluginOperationWorkerStartedMock = vi.fn();
 const getWorkspaceContextMock = vi.fn();
 const withRequestContextMock = vi.fn();
 const createServerFunctionRequestDiagnosticsMock = vi.fn();
@@ -29,6 +30,10 @@ vi.mock('@sva/server-runtime', () => ({
 
 vi.mock('@sva/routing/server', () => ({
   dispatchAuthRouteRequest: dispatchAuthRouteRequestMock,
+}));
+
+vi.mock('@sva/auth-runtime/server', () => ({
+  ensurePluginOperationWorkerStarted: ensurePluginOperationWorkerStartedMock,
 }));
 
 vi.mock('./lib/mainserver-news-api.server', () => ({
@@ -60,6 +65,8 @@ describe('server transport', () => {
     dispatchMainserverNewsRequestMock.mockReset();
     dispatchMainserverEventsRequestMock.mockReset();
     dispatchMainserverPoiRequestMock.mockReset();
+    ensurePluginOperationWorkerStartedMock.mockReset();
+    ensurePluginOperationWorkerStartedMock.mockResolvedValue(undefined);
     getWorkspaceContextMock.mockReset();
     withRequestContextMock.mockReset();
     createServerFunctionRequestDiagnosticsMock.mockReset();
@@ -71,6 +78,7 @@ describe('server transport', () => {
     vi.stubEnv('NODE_ENV', 'production');
 
     const startFetch = vi.fn().mockResolvedValue(new Response('ok', { status: 200 }));
+    ensurePluginOperationWorkerStartedMock.mockResolvedValue(undefined);
     dispatchMainserverNewsRequestMock.mockResolvedValue(null);
     dispatchAuthRouteRequestMock.mockResolvedValue(new Response('auth', { status: 200 }));
     createStartHandlerMock.mockReturnValue(startFetch);
@@ -87,6 +95,7 @@ describe('server transport', () => {
     vi.stubEnv('NODE_ENV', 'production');
 
     const startFetch = vi.fn().mockResolvedValue(new Response('ok', { status: 200 }));
+    ensurePluginOperationWorkerStartedMock.mockResolvedValue(undefined);
     dispatchMainserverNewsRequestMock.mockResolvedValue(new Response('news', { status: 200 }));
     dispatchMainserverEventsRequestMock.mockResolvedValue(null);
     dispatchMainserverPoiRequestMock.mockResolvedValue(null);
@@ -106,6 +115,7 @@ describe('server transport', () => {
     vi.stubEnv('NODE_ENV', 'production');
 
     const startFetch = vi.fn().mockResolvedValue(new Response('ok', { status: 200 }));
+    ensurePluginOperationWorkerStartedMock.mockResolvedValue(undefined);
     dispatchMainserverNewsRequestMock.mockResolvedValue(null);
     dispatchMainserverEventsRequestMock.mockResolvedValue(new Response('events', { status: 200 }));
     dispatchMainserverPoiRequestMock.mockResolvedValue(null);
@@ -127,6 +137,7 @@ describe('server transport', () => {
     vi.stubEnv('NODE_ENV', 'production');
 
     const startFetch = vi.fn().mockResolvedValue(new Response('ok', { status: 200 }));
+    ensurePluginOperationWorkerStartedMock.mockResolvedValue(undefined);
     dispatchMainserverNewsRequestMock.mockResolvedValue(null);
     dispatchMainserverEventsRequestMock.mockResolvedValue(null);
     dispatchMainserverPoiRequestMock.mockResolvedValue(new Response('poi', { status: 200 }));
@@ -148,6 +159,7 @@ describe('server transport', () => {
     vi.stubEnv('NODE_ENV', 'development');
 
     const startFetch = vi.fn().mockResolvedValue(new Response('plain', { status: 200 }));
+    ensurePluginOperationWorkerStartedMock.mockResolvedValue(undefined);
     dispatchMainserverNewsRequestMock.mockResolvedValue(null);
     dispatchMainserverEventsRequestMock.mockResolvedValue(null);
     dispatchMainserverPoiRequestMock.mockResolvedValue(null);
@@ -179,6 +191,7 @@ describe('server transport', () => {
         headers: { 'content-type': 'application/json' },
       }),
     );
+    ensurePluginOperationWorkerStartedMock.mockResolvedValue(undefined);
     const logger = { info: vi.fn() };
     dispatchMainserverNewsRequestMock.mockResolvedValue(null);
     dispatchMainserverEventsRequestMock.mockResolvedValue(null);

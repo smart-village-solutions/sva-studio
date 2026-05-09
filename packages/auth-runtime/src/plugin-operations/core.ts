@@ -1,6 +1,9 @@
-import { randomUUID } from 'node:crypto';
-
-import { studioJobContract, studioJobListContract, type StudioJobListQuery, type StudioJobStartRequest } from '@sva/core';
+import {
+  studioJobContract,
+  studioJobListContract,
+  type StudioJobListQuery,
+  type StudioJobStartRequest,
+} from '@sva/core';
 import { getWorkspaceContext } from '@sva/server-runtime';
 import { z } from 'zod';
 
@@ -15,10 +18,15 @@ import {
 } from '../shared/request-helpers.js';
 import { withAuthenticatedUser } from '../middleware.js';
 import { isUuid } from '../shared/input-readers.js';
+import {
+  createJsonItemResponse,
+  createPluginOperationJob,
+  markPluginOperationEnqueueFailed,
+} from './core.shared.js';
 import { normalizeStudioJobDetail } from './job-detail-read-model.js';
 import { normalizeStudioJobListItem } from './job-list-read-model.js';
-import { withStudioJobRepository } from './repository.js';
 import { queuePluginOperationJob } from './runner.js';
+import { withStudioJobRepository } from './repository.js';
 
 const MONITORING_ADMIN_ROLES = new Set(['system_admin']);
 
@@ -107,41 +115,13 @@ export const startPluginOperationJobHandler = async (request: Request): Promise<
     }
 
     try {
-      const job = await withStudioJobRepository(instanceId, async (repository) => {
-        const createdJob = await repository.createJob({
-          id: randomUUID(),
-          instanceId,
-          pluginId: parsed.data.pluginId,
-          jobTypeId: parsed.data.jobTypeId,
-          importProfileId: parsed.data.importProfileId,
-          queueName: 'plugin-operations',
-          status: 'queued',
-          progress: { completedSteps: 0, totalSteps: 1 },
-          inputPayload: parsed.data.input,
-          attempts: 0,
-          maxAttempts: 5,
-          idempotencyKey: idempotency.key,
-          requestId: getRequestId(),
-          actorAccountId: ctx.user.id,
-          correlationId: parsed.data.correlationId,
-          parentJobId: parsed.data.parentJobId,
-          scheduledAt: new Date().toISOString(),
-        });
-
-        await repository.appendJobEvent({
-          id: randomUUID(),
-          jobId: createdJob.id,
-          instanceId,
-          eventType: 'job.queued',
-          status: 'queued',
-          progress: {
-            completedSteps: 0,
-            totalSteps: 1,
-          },
-          attempts: 0,
-        });
-
-        return createdJob;
+      const job = await createPluginOperationJob({
+        instanceId,
+        actorAccountId: ctx.user.id,
+        idempotencyKey: idempotency.key,
+        requestId: getRequestId(),
+        scheduledAt: new Date().toISOString(),
+        data: parsed.data,
       });
 
       try {
@@ -152,21 +132,7 @@ export const startPluginOperationJobHandler = async (request: Request): Promise<
           maxAttempts: job.maxAttempts,
         });
       } catch {
-        await withStudioJobRepository(instanceId, (repository) =>
-          repository.updateJobState({
-            jobId: job.id,
-            instanceId,
-            status: 'failed',
-            attempts: job.attempts,
-            startedAt: job.startedAt,
-            finishedAt: new Date().toISOString(),
-            progress: job.progress,
-            errorPayload: {
-              code: 'plugin_operation_enqueue_failed',
-              category: 'permanent',
-            },
-          })
-        ).catch(() => undefined);
+        await markPluginOperationEnqueueFailed({ instanceId, job });
 
         return createApiError(
           503,
@@ -176,10 +142,7 @@ export const startPluginOperationJobHandler = async (request: Request): Promise<
         );
       }
 
-      return new Response(JSON.stringify(asApiItem(job, getRequestId())), {
-        status: 202,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return createJsonItemResponse(202, job, getRequestId());
     } catch {
       return createApiError(
         503,
@@ -213,10 +176,7 @@ export const getPluginOperationJobHandler = async (request: Request): Promise<Re
         return createApiError(404, 'not_found', 'Job wurde nicht gefunden.', getRequestId());
       }
 
-      return new Response(JSON.stringify(asApiItem(normalizeStudioJobDetail(job), getRequestId())), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return createJsonItemResponse(200, normalizeStudioJobDetail(job), getRequestId());
     } catch {
       return createApiError(
         503,

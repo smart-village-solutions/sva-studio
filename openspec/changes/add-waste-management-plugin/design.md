@@ -10,6 +10,21 @@ Im `Newcms` existiert ein fachlicher Abfallkalender-MVP mit React-Oberflächen, 
 
 Der Waste-Management-Change muss diese Welten zusammenbringen, ohne `Newcms` als Architektur in das Studio zu kopieren.
 
+## Statusabgleich zum heutigen Workspace
+
+Seit dem ursprünglichen Zuschnitt des Changes hat sich der Workspace in mehreren relevanten Punkten weiterentwickelt:
+
+- Plugin-Beiträge werden heute zentral über die Build-Time-Registry des Hosts aggregiert und validiert.
+- Modul-IAM ist als eigener Registry- und Vertragszuschnitt etabliert und nicht mehr nur eine implizite Folgearbeit in `iam-admin`.
+- Produktive Host-Endpunkte hängen am typisierten Runtime-Route-Katalog; lose Handler-Annahmen reichen nicht mehr.
+- Der Sidebar-Punkt `Monitoring` ist aktuell noch kein ausgebauter Operations-Bereich, sondern nur ein Platzhalter.
+
+Daraus folgt für diesen Change:
+
+- generische Job- und Importplattform wird in den vorgelagerten Change `update-plugin-platform-for-generic-jobs-imports` ausgelagert
+- Waste konsumiert diese Plattform danach als Fachplugin
+- Waste-spezifische UI, Datenquelle, Fachlogik und Risikooperationen bleiben weiterhin in diesem Change
+
 ## Goals
 
 - Vollständige Admin-Capability für Waste-Management im Studio schaffen
@@ -225,7 +240,7 @@ CSV-Import, Seed, Reset und Waste-Schema-Migrationen werden als asynchrone Opera
 - Ergebnisse, Fehler und Fortschrittsstatus müssen für Administratoren nachvollziehbar rückgemeldet werden.
 - Reset bezieht sich nur auf Waste-Fachdaten der aktiven Instanz und nicht auf die technische Datenquellenkonfiguration im Studio-Postgres.
 
-Die zugrunde liegende Job-Orchestrierung soll nicht waste-spezifisch bleiben, sondern als generische Studio-Fähigkeit gedacht werden:
+Die zugrunde liegende Job-Orchestrierung soll nicht waste-spezifisch bleiben, sondern über den vorgelagerten Change `update-plugin-platform-for-generic-jobs-imports` als generische Studio-Fähigkeit bereitgestellt werden:
 
 - das Studio stellt ein allgemeines, pluginübergreifendes Jobmodell bereit
 - das Waste-Plugin nutzt dieses Jobmodell für Import, Seed, Reset und Migrationen mit eigenen Jobtypen oder plugin-spezifischem Payload
@@ -235,17 +250,10 @@ Die zugrunde liegende Job-Orchestrierung soll nicht waste-spezifisch bleiben, so
 - automatische Retry-Logik ist in dieser ersten Ausbaustufe bewusst nicht enthalten
 - fehlgeschlagene oder abgebrochene Jobs werden in dieser ersten Ausbaustufe nicht in-place neu gestartet; stattdessen wird bei Bedarf ein neuer Job angelegt
 - `cancelled` wird in dieser ersten Ausbaustufe bereits als Status reserviert, ohne dass damit schon für alle Jobtypen ein echter Abbruchpfad garantiert werden muss
-- die allgemeine Job-Fähigkeit soll nicht nur technisch wiederverwendbar, sondern auch im UI als pluginübergreifendes Studio-Konzept sichtbar sein
-- die erste zentrale UI-Verankerung dieser allgemeinen Job-Fähigkeit erfolgt unter dem bestehenden Sidebar-Punkt `Monitoring`
-- ein späteres Desktop-Widget für Monitoring oder Jobs bleibt möglich, ist aber nicht Teil dieses Changes
-- die erste konkrete `Monitoring`-Sicht bleibt eine technische und zunächst temporäre Admin-Sicht
-- sie darf Jobs, aktuellen technischen Datenquellenstatus und technische Ereignishistorie kombinieren
-- eine breitere fachliche Betriebsoberfläche wird in diesem Change noch nicht festgelegt
+- optionale zentrale UI-Anbindungen wie `Monitoring` oder ein generischer Host-Einstieg bleiben zulässig, sind aber kein Lieferminimum dieses Fachchanges
 - plugininterne technische Hilfsdaten können weiterhin in der externen Waste-Datenbank liegen, die übergreifende Job-Orchestrierung und ihre führende Persistenz im Studio-Postgres werden dadurch aber nicht ersetzt
 
-Diese Plattformfähigkeit wird in diesem Change bewusst nicht nur als schmale Vorstufe angelegt. Sie soll bereits im ersten Wurf tragfähig genug für weitere reale Plugin-Nutzer sein, solange Waste der erste konkrete Treiber bleibt.
-
-Die Andockstelle dafür soll explizit über das Plugin-Modell des Studios laufen:
+Die Andockstelle dafür soll explizit über das Plugin-Modell des Studios laufen und im Vorgängerchange normiert werden:
 
 - Plugins registrieren über `@sva/plugin-sdk` ihre fachlichen Jobtypen
 - Plugins registrieren über `@sva/plugin-sdk` ihre fachlichen Importprofile
@@ -254,7 +262,7 @@ Die Andockstelle dafür soll explizit über das Plugin-Modell des Studios laufen
 
 ### 5b. Generische Import-Fähigkeit und Mapping
 
-Auch strukturierte Datenimporte sollen nicht als Waste-Sonderlösung enden. Das Studio bekommt dafür eine generische Import-Fähigkeit, die bereits in diesem Change als substanzielle Plattformbasis für weitere Plugins angelegt wird.
+Auch strukturierte Datenimporte sollen nicht als Waste-Sonderlösung enden. Das Studio bekommt dafür im vorgelagerten Change `update-plugin-platform-for-generic-jobs-imports` eine generische Import-Fähigkeit, die Waste danach konsumiert.
 
 - das Studio stellt einen allgemeinen Import-Rahmen für CSV, Excel sowie schema-nahe JSON- und XML-Quellen bereit
 - dieser Rahmen deckt Upload, Vorprüfung, Quellformat-Erkennung, Spalten- oder Feldmapping, Validierung, asynchronen Importjob und Ergebnisdarstellung ab
@@ -320,7 +328,7 @@ Als allgemeine Studio-UI-Bausteine kommen in diesem Change insbesondere in Betra
 - generische Hochrisiko-Confirm-Dialoge
 - generische technische Statusanzeigen für Datenquellen und langlaufende Operationen
 
-Diese Bausteine gehören nach `packages/studio-ui-react`, sofern sie nicht bereits in passender Form vorhanden sind.
+Diese Bausteine gehören nach `packages/studio-ui-react`, sofern sie im vorgelagerten Plattformchange tatsächlich als allgemeine Host-UI materialisiert werden. Waste darf bis dahin fachnahe Status- und Importbedienlogik pluginlokal halten, solange der generische Host-Vertrag nicht umgangen wird.
 
 Bewusst fachlich im Waste-Plugin verbleiben:
 

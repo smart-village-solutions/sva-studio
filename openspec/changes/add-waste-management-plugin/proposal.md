@@ -26,22 +26,11 @@ Das Studio benötigt deshalb einen eigenständigen Change, der das Waste-Managem
 - Keine IAM-, Rollen-, Rechte- oder Audit-Primärdaten des Studios in der externen Waste-/Supabase-Datenbank
 - Waste-spezifische Migrations-, Job- und sonstige plugininterne Hilfsdaten dürfen in der externen Waste-/Supabase-Datenbank liegen
 - Das Studio-Postgres darf zusätzlich zentrale Status-, Monitoring- und fortlaufende Historienmetadaten zur externen Waste-Datenquelle führen
-- Die generische Studio-Job-Fähigkeit ist zentral persistent im Studio-Postgres und verwendet initial mindestens die Stati `queued`, `running`, `succeeded`, `failed`, `cancelled`
-- Das Studio stellt zusätzlich eine generische Import-Fähigkeit für CSV, Excel sowie schema-nahe JSON- und XML-Quellen bereit, die über pluginseitig definierte Importprofile genutzt wird
-- Die generischen Studio-Fähigkeiten für Jobs und strukturierte Importe werden in diesem Change bereits als tragfähige Plattformbasis für weitere Plugins aufgebaut und nicht nur als schmale Waste-Vorbereitung
-- Der `plugin-sdk` wird dabei so erweitert, dass Plugins explizit Jobtypen und Importprofile registrieren können, während das Studio Runtime, UI und Orchestrierung zentral bereitstellt
+- Waste setzt den vorgelagerten Change `update-plugin-platform-for-generic-jobs-imports` voraus und nutzt dessen generische Studio-Job-Fähigkeit mit zentraler Persistenz im Studio-Postgres
+- Waste setzt den vorgelagerten Change `update-plugin-platform-for-generic-jobs-imports` voraus und nutzt dessen generische Import-Fähigkeit über pluginseitig definierte Importprofile
+- Der `plugin-sdk` wird für Jobtypen und Importprofile im Vorgängerchange erweitert; Waste konsumiert diese Verträge und definiert darauf seine fachlichen Beiträge
 - Importprofile beschreiben je Plugin und Importtyp mindestens Zielfelder, Pflichtfelder, erlaubte Quellformate, Mapping-Regeln, Validierungen sowie eine kanonische Vorlage mit Beispieldatei oder Beispielspalten
-- Die erste Studio-Import-Oberfläche wird als mehrstufiger Wizard mit Quellwahl, Profilwahl, Mapping-Prüfung, Validierungsvorschau, Job-Start und Ergebnisansicht modelliert
-- Das Studio darf für solche Importprofile automatische Mapping-Vorschläge für Quellspalten erzeugen; Benutzer müssen diese Vorschläge prüfen und manuell korrigieren können
-- Das Studio darf einfache gespeicherte Mapping-Vorlagen pro Instanz und Importprofil vorhalten, damit wiederkehrende Importe nicht jedes Mal neu gemappt werden müssen
-- Die automatische Mapping-Strecke wird so geschnitten, dass später eine externe KI-basierte Vorschlagslogik als austauschbare Integrationsstelle ergänzt werden kann, ohne den generischen Importvertrag neu zu zerlegen
-- Automatische Retry-Logik ist nicht Teil der ersten generischen Studio-Job-Fähigkeit
-- Fehlgeschlagene oder abgebrochene Jobs werden in der ersten Ausbaustufe nicht neu gestartet, sondern bei Bedarf als neue Jobs erneut angestossen
-- `cancelled` ist in der ersten Ausbaustufe Teil des Statusmodells, ohne dass für alle Jobtypen bereits eine aktive Cancel-Mechanik verpflichtend sein muss
-- Die generische Studio-Job-Fähigkeit soll in der ersten Ausbaustufe auch UI-seitig als pluginübergreifendes Studio-Konzept sichtbar werden
-- Die erste pluginübergreifende Job-Sicht wird unter dem bestehenden Sidebar-Punkt `Monitoring` verankert; ein späteres Desktop-Widget ist nicht Teil dieses Changes
-- Die erste `Monitoring`-Sicht bleibt eine technische und zunächst temporäre Admin-Sicht für Jobs, Datenquellenstatus und technische Ereignishistorie; eine breitere Betriebsoberfläche ist nicht Teil dieses Changes
-- Wiederverwendbare Interaktionsmuster wie Import-Dialog-Flow, Job-/Monitoring-Darstellung, Bulk-Actions, Hochrisiko-Confirm und technische Statusanzeigen werden als allgemeine Studio-UI-Bausteine geschnitten
+- Die konkrete allgemeine Host-Oberfläche für Import-Wizard, Jobdarstellung oder Monitoring kann im Vorgängerchange vorbereitet werden; Waste darf diese anbinden, baut sie aber nicht mehr als plattformweite Voraussetzung selbst auf
 - Waste-spezifische Screens, Jahreskalender, Touren-, Ausweichtermin-, Abholort- und Fraktionsdialoge bleiben hingegen fachliche Bestandteile des Plugins und wandern nicht in die allgemeine Plugin-UI-Library
 - Die erste Pflichtmenge dieser zentralen Historie umfasst mindestens Connection-Checks, Datenquellen-Rekonfigurationen sowie Start/Erfolg/Fehler von Migration, Import, Seed und Reset
 - Diese erste zentrale Historie bleibt zunächst auf technische Ereignisse beschränkt
@@ -55,6 +44,13 @@ Das Studio benötigt deshalb einen eigenständigen Change, der das Waste-Managem
 - Search-Param- und Routing-Vertrag für tab-lastige Fachnavigation, Filter und Deep-Links
 - Rechtegesteuerte UI-Sichtbarkeit für schreibende und gefährliche Aktionen
 - Architektur- und Arc42-Fortschreibung für Plugin-Boundary, Server-Fassade, Instanzisolierung und Auditverhalten
+
+## Findings zum heutigen Workspace
+
+- Die statische Plugin-Registrierung läuft heute bereits über die Build-Time-Registry des Hosts; Waste muss sich dort einhängen statt eine zweite Registry-Logik anzunehmen.
+- Modul-IAM ist inzwischen zentral über `studio-module-iam` und Host-Registries organisiert; der Change darf dafür keine neue dritte Führungsquelle schneiden.
+- Host-API-Endpunkte gelten erst dann als produktiver Vertrag, wenn sie im typisierten Runtime-Route-Katalog verankert sind.
+- `/monitoring` existiert aktuell nur als Platzhalter; eine vollwertige pluginübergreifende Job- oder Monitoring-Oberfläche kann daher nicht länger als implizit vorhandene Basis vorausgesetzt werden.
 
 ## Non-Goals
 
@@ -85,6 +81,7 @@ Das Studio benötigt deshalb einen eigenständigen Change, der das Waste-Managem
   - `packages/data-repositories`
   - `packages/iam-admin`
   - `packages/iam-governance`
+  - `packages/studio-module-iam`
   - `packages/core`
   - `packages/studio-ui-react`
 - Affected arc42 sections:

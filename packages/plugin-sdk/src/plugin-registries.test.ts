@@ -175,6 +175,53 @@ describe('plugin registries', () => {
     });
   });
 
+  it('persists normalized job types and import profiles in the plugin registry snapshot', () => {
+    const registry = createPluginRegistry([
+      {
+        ...newsPlugin,
+        jobTypes: [
+          {
+            jobTypeId: ' news.import-articles ',
+            queue: ' plugin-operations ',
+            displayName: ' Import articles ',
+          },
+        ],
+        importProfiles: [
+          {
+            profileId: ' news.article-import ',
+            jobTypeId: ' news.import-articles ',
+            displayName: ' Article import ',
+            sourceFormats: [' application/json ', ' text/csv '],
+            schemaVersion: ' 1.0.0 ',
+            schemaStrategy: ' news.schema ',
+            mappingStrategy: ' news.mapping ',
+            validation: {
+              mode: 'preflight-and-commit',
+            },
+          },
+        ],
+      },
+    ]);
+
+    expect(registry.get('news')?.jobTypes).toEqual([
+      expect.objectContaining({
+        jobTypeId: 'news.import-articles',
+        queue: 'plugin-operations',
+        displayName: 'Import articles',
+      }),
+    ]);
+    expect(registry.get('news')?.importProfiles).toEqual([
+      expect.objectContaining({
+        profileId: 'news.article-import',
+        jobTypeId: 'news.import-articles',
+        sourceFormats: ['application/json', 'text/csv'],
+        schemaVersion: '1.0.0',
+        schemaStrategy: 'news.schema',
+        mappingStrategy: 'news.mapping',
+      }),
+    ]);
+  });
+
   it('builds action and audit registries including legacy aliases', () => {
     const actions = createPluginActionRegistry([newsPlugin]);
     const permissions = createPluginPermissionRegistry([newsPlugin]);

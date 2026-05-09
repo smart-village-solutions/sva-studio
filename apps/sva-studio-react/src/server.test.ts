@@ -326,4 +326,40 @@ describe('server transport', () => {
     await expect(responsePromise).resolves.toBeInstanceOf(Response);
     expect(startFetch).toHaveBeenCalledTimes(1);
   });
+
+  it('retries worker bootstrap after a transient startup failure and logs the failure', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+
+    const startFetch = vi
+      .fn()
+      .mockResolvedValueOnce(new Response('first', { status: 200 }))
+      .mockResolvedValueOnce(new Response('second', { status: 200 }));
+    const logger = { info: vi.fn() };
+    const bootstrapError = new Error('database unavailable');
+    ensurePluginOperationWorkerStartedMock
+      .mockRejectedValueOnce(bootstrapError)
+      .mockResolvedValueOnce(undefined);
+    dispatchMainserverNewsRequestMock.mockResolvedValue(null);
+    dispatchMainserverEventsRequestMock.mockResolvedValue(null);
+    dispatchMainserverPoiRequestMock.mockResolvedValue(null);
+    dispatchAuthRouteRequestMock.mockResolvedValue(null);
+    createStartHandlerMock.mockReturnValue(startFetch);
+    createSdkLoggerMock.mockReturnValue(logger);
+
+    const mod = await import('./server');
+
+    const firstResponse = await mod.default.fetch(new Request('http://localhost:3000/admin/users'));
+    const secondResponse = await mod.default.fetch(new Request('http://localhost:3000/admin/groups'));
+
+    await expect(firstResponse.text()).resolves.toBe('first');
+    await expect(secondResponse.text()).resolves.toBe('second');
+    expect(ensurePluginOperationWorkerStartedMock).toHaveBeenCalledTimes(2);
+    expect(logger.info).toHaveBeenCalledWith(
+      'Plugin worker bootstrap failed',
+      expect.objectContaining({
+        operation: 'plugin_operation_worker_bootstrap',
+        error: 'database unavailable',
+      })
+    );
+  });
 });

@@ -74,6 +74,7 @@ describe('GroupsPage', () => {
     ],
     isLoading: false,
     error: null,
+    detailError: null,
     mutationError: null,
     refetch: vi.fn(),
     clearMutationError: vi.fn(),
@@ -157,6 +158,64 @@ describe('GroupsPage', () => {
 
     expect(refetch).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(deleteGroup).toHaveBeenCalledWith('group-1'));
+  });
+
+  it('renders the request id for page-level errors', async () => {
+    useGroupsMock.mockReturnValue(
+      createGroupsState({
+        error: {
+          status: 503,
+          code: 'database_unavailable',
+          message: 'kaputt',
+          requestId: 'req-groups-1',
+        },
+      })
+    );
+
+    render(<GroupsPage />);
+
+    expect(screen.getByText('Request-ID: req-groups-1')).toBeTruthy();
+  });
+
+  it('shows a schema-drift specific page-level error message when the backend exposes reason_code=schema_drift', () => {
+    useGroupsMock.mockReturnValue(
+      createGroupsState({
+        error: {
+          status: 503,
+          code: 'database_unavailable',
+          message: 'kaputt',
+          requestId: 'req-groups-2',
+          safeDetails: {
+            reason_code: 'schema_drift',
+            schema_object: 'iam.accounts',
+            query_stage: 'group_memberships',
+          },
+        },
+      })
+    );
+
+    render(<GroupsPage />);
+
+    expect(screen.getByRole('alert').textContent).toContain(
+      'Gruppendetails konnten wegen einer Server- oder Migrationsinkonsistenz nicht vollständig geladen werden. Bitte Deployment und Migrationen prüfen.'
+    );
+    expect(screen.getByText('Request-ID: req-groups-2')).toBeTruthy();
+  });
+
+  it('does not render the page-level error banner when only row detail loading fails', async () => {
+    const loadGroupDetail = vi.fn().mockResolvedValue(null);
+    useGroupsMock.mockReturnValue(
+      createGroupsState({
+        error: null,
+        loadGroupDetail,
+      })
+    );
+
+    render(<GroupsPage />);
+
+    expect(screen.getByText('Admins')).toBeTruthy();
+    await waitFor(() => expect(loadGroupDetail).toHaveBeenCalledWith('group-1'));
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 
   it('shows a guard message without instance context', () => {

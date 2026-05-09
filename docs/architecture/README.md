@@ -26,6 +26,7 @@ Alle Architekturinformationen werden arc42-konform in den Abschnitten 1-12 gepfl
 - OpenSpec-Changes mit Architekturwirkung müssen betroffene arc42-Abschnitte in `proposal.md` und `tasks.md` referenzieren.
 - Architekturentscheidungen werden als ADR unter `../adr/` dokumentiert und in Abschnitt 9 verlinkt.
 - Referenzen sollen konsistent und klickbar sein (Dateipfade statt Freitext).
+- Bei Änderungen am Datenmodell oder an DB-Laufzeitverträgen zusätzlich immer den kanonischen Schema-Snapshot `../development/studio-db-schema-final.sql` und die Übersicht `../development/studio-db-schema.md` prüfen und fortschreiben.
 - Änderungen in IAM, Rollen-Sync, ABAC/RBAC oder Data-Subject-Rights müssen die Abschnitte 04, 05, 06 und 08 explizit prüfen und die betroffenen Dateien aktualisieren.
 - Änderungen an sicherheitskritischer oder domänenkritischer Logik müssen mindestens Abschnitt 05 oder 08 fortschreiben; "keine Architekturwirkung" ist zu begründen.
 - Neue oder geänderte IAM-Patterns benötigen eine ADR unter `../adr/` und einen Nachtrag in `./09-architecture-decisions.md`.
@@ -38,6 +39,8 @@ Alle Architekturinformationen werden arc42-konform in den Abschnitten 1-12 gepfl
 - Session-Analyse: `./session-management-analysis.md`
 - IAM-Service-Architektur: `./iam-service-architektur.md`
 - IAM-Datenklassifizierung: `./iam-datenklassifizierung.md`
+- Datenbankschema-Übersicht: `../development/studio-db-schema.md`
+- Datenbankschema-Snapshot (Soll-Stand): `../development/studio-db-schema-final.sql`
 - Package-Zielarchitektur: `./package-zielarchitektur.md`
 - Package-Gesamtübersicht: `./package-gesamtuebersicht.md`
 - Übersicht typischer Request-Flüsse: `./request-flow-szenarien.md`

@@ -50,6 +50,7 @@ const createGroupsState = (overrides: Record<string, unknown> = {}) => ({
   groups: [],
   isLoading: false,
   error: null,
+  detailError: null,
   mutationError: null,
   refetch: vi.fn(),
   clearMutationError: vi.fn(),
@@ -164,7 +165,7 @@ describe('GroupDetailPage', () => {
     useGroupsMock.mockReturnValue(
       createGroupsState({
         deleteGroup,
-        mutationError: { status: 503, code: 'database_unavailable', message: 'kaputt' },
+        mutationError: { status: 503, code: 'database_unavailable', message: 'kaputt', requestId: 'req-mutation-1' },
       })
     );
 
@@ -175,6 +176,7 @@ describe('GroupDetailPage', () => {
         'Die IAM-Datenbank ist derzeit nicht erreichbar. Bitte später erneut versuchen.'
       );
     });
+    expect(screen.getByText('Request-ID: req-mutation-1')).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'Gruppe löschen' }));
     fireEvent.click(screen.getByRole('button', { name: 'Gruppe löschen' }));
@@ -225,6 +227,53 @@ describe('GroupDetailPage', () => {
     await waitFor(() => {
       expect(screen.getByText('Die angeforderte Gruppe wurde nicht gefunden.')).toBeTruthy();
     });
+  });
+
+  it('renders a diagnostic alert instead of not-found when detail loading fails', async () => {
+    useGroupsMock.mockReturnValue(
+      createGroupsState({
+        loadGroupDetail: vi.fn().mockResolvedValue(null),
+        detailError: { status: 503, code: 'database_unavailable', message: 'kaputt', requestId: 'req-detail-1' },
+      })
+    );
+
+    render(<GroupDetailPage groupId="group-1" />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert').textContent).toContain(
+        'Die IAM-Datenbank ist derzeit nicht erreichbar. Bitte später erneut versuchen.'
+      );
+    });
+    expect(screen.getByText('Request-ID: req-detail-1')).toBeTruthy();
+    expect(screen.queryByText('Die angeforderte Gruppe wurde nicht gefunden.')).toBeNull();
+  });
+
+  it('shows a schema-drift specific detail error message when the backend classifies the failure accordingly', async () => {
+    useGroupsMock.mockReturnValue(
+      createGroupsState({
+        loadGroupDetail: vi.fn().mockResolvedValue(null),
+        detailError: {
+          status: 503,
+          code: 'database_unavailable',
+          message: 'kaputt',
+          requestId: 'req-detail-2',
+          safeDetails: {
+            reason_code: 'schema_drift',
+            schema_object: 'iam.accounts',
+            query_stage: 'group_memberships',
+          },
+        },
+      })
+    );
+
+    render(<GroupDetailPage groupId="group-1" />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert').textContent).toContain(
+        'Gruppendetails konnten wegen einer Server- oder Migrationsinkonsistenz nicht vollständig geladen werden. Bitte Deployment und Migrationen prüfen.'
+      );
+    });
+    expect(screen.getByText('Request-ID: req-detail-2')).toBeTruthy();
   });
 
   it('loads the group detail only once during the initial render even when hook objects are recreated', async () => {

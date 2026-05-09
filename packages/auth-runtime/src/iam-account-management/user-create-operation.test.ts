@@ -87,11 +87,23 @@ describe('executeCreateUser', () => {
   });
 
   it('sends an UPDATE_PASSWORD invitation after successful creation when requested', async () => {
+    const executeActionsEmail = vi.fn(async function (
+      this: { assertWriteAvailability: () => void },
+      _userId: string,
+      _input: {
+        actions: readonly string[];
+        clientId?: string;
+        redirectUri?: string;
+      }
+    ) {
+      this.assertWriteAvailability();
+    });
     const identityProvider = {
       provider: {
         createUser: vi.fn(async () => ({ externalId: 'kc-user-1' })),
         syncRoles: vi.fn(async () => undefined),
-        executeActionsEmail: vi.fn(async () => undefined),
+        assertWriteAvailability: vi.fn(),
+        executeActionsEmail,
       },
       realm: 'tenant-realm',
       source: 'instance' as const,
@@ -121,6 +133,7 @@ describe('executeCreateUser', () => {
       clientId: 'sva-studio',
       redirectUri: 'https://tenant.example.test/auth/callback',
     });
+    expect(identityProvider.provider.assertWriteAvailability).toHaveBeenCalledTimes(1);
     expect(result.invitation.status).toBe('sent');
   });
 

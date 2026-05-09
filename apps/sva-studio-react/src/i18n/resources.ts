@@ -2304,6 +2304,8 @@ export const i18nResources = {
           invalidRequest: 'Die Gruppenänderung enthält ungültige Daten.',
           databaseUnavailable:
             'Die IAM-Datenbank ist derzeit nicht erreichbar. Bitte später erneut versuchen.',
+          databaseSchemaDrift:
+            'Gruppendetails konnten wegen einer Server- oder Migrationsinkonsistenz nicht vollständig geladen werden. Bitte Deployment und Migrationen prüfen.',
         },
       },
       legalTexts: {
@@ -4796,6 +4798,8 @@ export const i18nResources = {
           conflict: 'The group change conflicts with the current state.',
           invalidRequest: 'The group change contains invalid data.',
           databaseUnavailable: 'The IAM database is currently unavailable. Please try again later.',
+          databaseSchemaDrift:
+            'Group details could not be loaded completely because of a server or migration inconsistency. Please verify the deployment and migrations.',
         },
       },
       legalTexts: {

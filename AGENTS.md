@@ -35,12 +35,14 @@
 - **Effizienter, zielgerichteter Test-Workflow:**
   1. **Nur affected:** `pnpm nx affected --target=test:unit` (vergleicht mit `main`-Branch)
   2. **Spezifische Packages:** `pnpm nx run sva-studio-react:test:unit`
-  3. **Spezifische Dateien:** `cd packages/data && npx vitest run tests/xyz.test.tsx`
+  3. **Spezifische Dateien via Nx/Vitest-Executor:** `pnpm nx run sva-studio-react:test:unit --testFiles=src/foo.test.tsx --testFiles=src/bar.test.tsx`
+  4. **Direkter Vitest-Fallback:** `cd packages/data && npx vitest run tests/xyz.test.tsx`
 - **Pro-Tipps:**
   - Mit `npx vitest list` verfügbare Tests vorab ansehen
   - Mit `-t "pattern"` gezielt auf Funktionalität fokussieren
   - Mit `--exclude`-Mustern Unrelevantes überspringen
   - Nx-Package-Targeting mit Vitest-File-Targeting kombinieren (maximale Präzision)
+  - Bei `@nx/vitest:test` Dateifilter nicht als Positionsargumente nach `--` übergeben, sondern immer explizit per `--testFiles=...`
 
 ## PR-Anweisungen
 
@@ -123,6 +125,7 @@ Die verbindlichen Entwicklungsrichtlinien liegen unter [DEVELOPMENT_RULES.md](DE
 7. **Docs**: Alle Änderungen müssen relevante Dokumentation aktualisieren (Code, Architektur, Guides)
 8. **Server-Package-Runtime**: Bei serverseitigen Workspace-Packages keine endungslosen relativen Runtime-Imports; `pnpm check:server-runtime` muss für entsprechende Änderungen grün bleiben
 9. **Action-IDs**: Autorisierbare Actions immer fully-qualified als `<namespace>.<actionName>` modellieren; keine neuen Kurzformen ohne Namespace, Plugins nur im eigenen Namespace
+10. **DB-Schema präsent halten**: Vor DB-/Migrationsänderungen `docs/development/studio-db-schema-final.sql` und `docs/development/studio-db-schema.md` prüfen; nach jeder Schemaänderung den Snapshot und die Doku fortschreiben
 
 **Details:** Siehe [DEVELOPMENT_RULES.md](DEVELOPMENT_RULES.md)
 
@@ -133,6 +136,7 @@ Die verbindlichen Entwicklungsrichtlinien liegen unter [DEVELOPMENT_RULES.md](DE
 - **Sprache**: Alle Dokumente müssen auf Deutsch verfasst sein und Umlaute korrekt verwenden (ä, ö, ü, ß statt ae, oe, ue, ss)
 - **Formatierung**: Markdown-Formatierung muss konsistent sein (z.B. Überschriften, Listen, Codeblöcke) und den Inhalt klar strukturieren
 - **Aktualität**: Alle Dokumente müssen aktuell gehalten werden; veraltete Informationen müssen entfernt oder aktualisiert werden
+- **DB-Schema-Snapshot**: Änderungen an Tabellen, Spalten, Constraints, Indizes, RLS, Triggern oder DB-Funktionen müssen immer auch `docs/development/studio-db-schema-final.sql` und bei Bedarf `docs/development/studio-db-schema.md` aktualisieren
 
 <!-- OPENSPEC:START -->
 
@@ -163,6 +167,7 @@ Behalte diesen verwalteten Block bei, damit 'openspec update' die Anweisungen ak
 
 - For navigating/exploring the workspace, invoke the `nx-workspace` skill first - it has patterns for querying projects, targets, and dependencies
 - When running tasks (for example build, lint, test, e2e, etc.), always prefer running the task through `nx` (i.e. `nx run`, `nx run-many`, `nx affected`) instead of using the underlying tooling directly
+- For `@nx/vitest:test` targets, pass file filters with `--testFiles=...` instead of positional file arguments after `--`
 - Prefix nx commands with the workspace's package manager (e.g., `pnpm nx build`, `npm exec nx test`) - avoids using globally installed CLI
 - You have access to the Nx MCP server and its tools, use them to help the user
 - For Nx plugin best practices, check `node_modules/@nx/<plugin>/PLUGIN.md`. Not all plugins have this file - proceed without it if unavailable.

@@ -6,6 +6,11 @@ Diese Anleitung ergänzt das bestehende Redis-Docker-Setup um eine lokale Postgr
 
 Die kanonischen Startpfade laufen jetzt über die Runtime-Profile aus `./runtime-profile-betrieb.md`. Die unten stehenden `data:db:*`-Targets bleiben die technische Grundlage, werden lokal aber bevorzugt über `pnpm env:*:local-keycloak` oder `pnpm env:*:local-builder` orchestriert.
 
+Wichtige Referenzen für Entwicklungsarbeit am Datenmodell:
+
+- Kanonischer Soll-Snapshot: `./studio-db-schema-final.sql`
+- Einordnung, Live-vs-Repo und Refresh-Hinweise: `./studio-db-schema.md`
+
 ## Voraussetzungen
 
 - Docker Desktop läuft lokal
@@ -90,6 +95,13 @@ Migrationen liegen unter:
 
 - `packages/data/migrations/*.sql`
 - ein `goose`-Migrationsfile enthält jeweils `Up` und `Down`
+
+Pflicht bei Schemaänderungen:
+
+- Migrationen anpassen
+- lokalen Zielstand anwenden
+- `docs/development/studio-db-schema-final.sql` fortschreiben
+- bei relevanten Abweichungen oder neuen Einordnungen `docs/development/studio-db-schema.md` mitpflegen
 
 Ausführung:
 

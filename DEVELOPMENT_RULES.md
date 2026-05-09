@@ -136,6 +136,33 @@ pnpm test:types
 
 ---
 
+## 1.3a Datenbankschema-Snapshot und Pflegepflicht
+
+### ✅ REQUIRED
+- Das kanonische Soll-Datenbankschema des Repositories ist als Snapshot unter `docs/development/studio-db-schema-final.sql` präsent zu halten.
+- Die begleitende Übersicht und Einordnung liegt unter `docs/development/studio-db-schema.md`.
+- Vor Änderungen an Migrationen, DB-Strukturen, Tabellen, Constraints, Indizes, RLS-Policies, Triggern oder DB-Funktionen muss der bestehende Snapshot konsultiert werden.
+- Nach jeder Schemaänderung muss der Snapshot `docs/development/studio-db-schema-final.sql` fortgeschrieben werden.
+- Wenn sich der Live-Stand relevant vom Repo-Soll unterscheidet, muss der Drift in `docs/development/studio-db-schema.md` dokumentiert oder aktualisiert werden.
+- PRs mit Datenbankschemaänderungen müssen explizit prüfen, ob die Schema-Dokumentation und der Snapshot mitgeändert wurden.
+
+### ❌ FORBIDDEN
+- Datenbankschemaänderungen nur in Migrationen umzusetzen, ohne den Snapshot zu aktualisieren.
+- Neue Tabellen, Spalten, Constraints, RLS-Regeln, Trigger oder Funktionen einzuführen, ohne das bestehende Schema als Referenz zu prüfen.
+- Das DB-Schema ausschließlich implizit aus verstreuten Migrationsdateien ableiten zu müssen, obwohl der Snapshot angepasst werden müsste.
+
+**Warum diese Regel kritisch ist:**
+- Sie macht das vorhandene Schema an einer zentralen Stelle sichtbar.
+- Sie reduziert Fehlannahmen bei Erweiterungen und Refactorings.
+- Sie verhindert, dass das tatsächliche Soll-Schema mit jeder Migration schwerer rekonstruierbar wird.
+
+**Kanonische Referenzen:**
+- `docs/development/studio-db-schema-final.sql`
+- `docs/development/studio-db-schema.md`
+- `packages/data/migrations/*.sql`
+
+---
+
 ## 1.4 Action-ID-Namensmodell und Namespace-Ownership
 
 ### ✅ REQUIRED

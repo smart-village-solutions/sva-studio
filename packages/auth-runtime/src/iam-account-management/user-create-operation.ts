@@ -115,7 +115,9 @@ const sendPasswordSetupInvitation = async (input: {
   identityProvider: IdentityProviderResolution;
   keycloakSubject: string;
 }): Promise<InvitationStatus> => {
-  const executeActionsEmail = input.identityProvider.provider.executeActionsEmail;
+  const executeActionsEmail = input.identityProvider.provider.executeActionsEmail?.bind(
+    input.identityProvider.provider
+  );
   if (!executeActionsEmail) {
     throw new Error('execute_actions_email_not_supported');
   }

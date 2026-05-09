@@ -42,8 +42,16 @@ const useAbortControllerSet = () => {
   return abortControllersRef;
 };
 
+const abortInFlightRequests = (controllers: Set<AbortController>): void => {
+  for (const controller of controllers) {
+    controller.abort();
+  }
+  controllers.clear();
+};
+
 export const usePluginOperationJobs = (query: StudioJobListQuery) => {
   const abortControllersRef = useAbortControllerSet();
+  const latestRequestIdRef = React.useRef(0);
   const [state, setState] = React.useState<JobListState>({
     error: null,
     isLoading: true,
@@ -58,8 +66,10 @@ export const usePluginOperationJobs = (query: StudioJobListQuery) => {
   const queryKey = React.useMemo(() => JSON.stringify(normalizedQuery), [normalizedQuery]);
 
   const refetch = React.useCallback(async () => {
+    abortInFlightRequests(abortControllersRef.current);
     const controller = new AbortController();
     abortControllersRef.current.add(controller);
+    const requestId = ++latestRequestIdRef.current;
 
     logBrowserOperationStart(jobsLogger, 'studio_plugin_operation_jobs_list_started', {
       operation: 'list_plugin_operation_jobs',
@@ -73,6 +83,9 @@ export const usePluginOperationJobs = (query: StudioJobListQuery) => {
 
     try {
       const response = await listPluginOperationJobs(normalizedQuery, { signal: controller.signal });
+      if (requestId !== latestRequestIdRef.current) {
+        return;
+      }
       setState({
         error: null,
         isLoading: false,
@@ -94,6 +107,9 @@ export const usePluginOperationJobs = (query: StudioJobListQuery) => {
       }
 
       const resolvedError = asIamError(error);
+      if (requestId !== latestRequestIdRef.current) {
+        return;
+      }
       setState((current) => ({
         ...current,
         error: resolvedError,
@@ -137,6 +153,7 @@ export const usePluginOperationJobs = (query: StudioJobListQuery) => {
 
 export const usePluginOperationJobDetail = (jobId: string) => {
   const abortControllersRef = useAbortControllerSet();
+  const latestRequestIdRef = React.useRef(0);
   const [state, setState] = React.useState<JobDetailState>({
     detail: null,
     error: null,
@@ -153,8 +170,10 @@ export const usePluginOperationJobDetail = (jobId: string) => {
       return;
     }
 
+    abortInFlightRequests(abortControllersRef.current);
     const controller = new AbortController();
     abortControllersRef.current.add(controller);
+    const requestId = ++latestRequestIdRef.current;
 
     logBrowserOperationStart(jobsLogger, 'studio_plugin_operation_job_detail_started', {
       operation: 'get_plugin_operation_job',
@@ -168,6 +187,9 @@ export const usePluginOperationJobDetail = (jobId: string) => {
 
     try {
       const detail = await getPluginOperationJob(jobId, { signal: controller.signal });
+      if (requestId !== latestRequestIdRef.current) {
+        return;
+      }
       setState({
         detail,
         error: null,
@@ -188,6 +210,9 @@ export const usePluginOperationJobDetail = (jobId: string) => {
       }
 
       const resolvedError = asIamError(error);
+      if (requestId !== latestRequestIdRef.current) {
+        return;
+      }
       setState((current) => ({
         ...current,
         error: resolvedError,

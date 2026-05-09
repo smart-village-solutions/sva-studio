@@ -12,6 +12,7 @@ const withRequestContextMock = vi.fn();
 const createServerFunctionRequestDiagnosticsMock = vi.fn();
 const readServerFunctionResponseBodyForDiagnosticsMock = vi.fn();
 const resolveServerFunctionBranchDecisionMock = vi.fn();
+const registerStudioPluginOperationHandlersMock = vi.fn();
 
 vi.mock('@tanstack/react-start/server', () => ({
   createStartHandler: createStartHandlerMock,
@@ -55,6 +56,10 @@ vi.mock('./lib/server-function-request-diagnostics.server', () => ({
   resolveServerFunctionBranchDecision: resolveServerFunctionBranchDecisionMock,
 }));
 
+vi.mock('./lib/plugin-operation-runtime.server', () => ({
+  registerStudioPluginOperationHandlers: registerStudioPluginOperationHandlersMock,
+}));
+
 describe('server transport', () => {
   afterEach(() => {
     vi.unstubAllEnvs();
@@ -72,6 +77,7 @@ describe('server transport', () => {
     createServerFunctionRequestDiagnosticsMock.mockReset();
     readServerFunctionResponseBodyForDiagnosticsMock.mockReset();
     resolveServerFunctionBranchDecisionMock.mockReset();
+    registerStudioPluginOperationHandlersMock.mockReset();
   });
 
   it('bypasses auth requests before TanStack Start', async () => {
@@ -86,6 +92,7 @@ describe('server transport', () => {
     const mod = await import('./server');
     const response = await mod.default.fetch(new Request('http://localhost:3000/auth/login'));
 
+    expect(registerStudioPluginOperationHandlersMock).toHaveBeenCalledTimes(1);
     expect(dispatchAuthRouteRequestMock).toHaveBeenCalledTimes(1);
     expect(startFetch).not.toHaveBeenCalled();
     await expect(response.text()).resolves.toBe('auth');

@@ -135,6 +135,14 @@ Die öffentliche Plattform spricht nicht über konkrete Worker-Technologie. Eine
 
 Die erste interne Implementierung nutzt dafür Graphile Worker im Hostprozess. Der Worker wird hostseitig lazy gestartet, nutzt denselben zentralen Studio-Postgres wie der führende Jobdatensatz und bleibt vollständig hinter `@sva/auth-runtime` verborgen.
 
+Für startbare Plugin-Jobtypen gilt zusätzlich ein verbindlicher Runtime-Integrationsschritt:
+
+- die deklarativen `jobTypes` bleiben Build-Time-Vertrag im Plugin
+- die tatsächlichen `PluginOperationExecutionHandler` werden explizit serverseitig im App-Layer registriert
+- die Registrierung darf nicht implizit über UI-Module oder Browser-Code erfolgen
+- ein Coverage-Test muss sicherstellen, dass jeder deklarierte startbare Jobtyp genau einen Runtime-Handler hat und kein Runtime-Handler ohne deklarativen Jobtyp existiert
+- neue startbare Jobtypen gelten erst dann als vollständig integriert, wenn Deklaration, Runtime-Registrierung und Start-Endpunkt-Test gemeinsam vorliegen
+
 Innerhalb von `@sva/auth-runtime` ist der Ablauf inzwischen weiter getrennt:
 
 - `runner.ts` bleibt Graphile-Adapter und Queue-Einstieg

@@ -9,10 +9,13 @@ import {
   readServerFunctionResponseBodyForDiagnostics,
   resolveServerFunctionBranchDecision,
 } from './lib/server-function-request-diagnostics.server';
+import { registerStudioPluginOperationHandlers } from './lib/plugin-operation-runtime.server';
 
 const startFetch = createStartHandler(defaultStreamHandler);
 const diagnosticsEnabled = (process.env.NODE_ENV ?? 'development') === 'development';
 const serverFnBase = normalizeServerFnBase(process.env.TSS_SERVER_FN_BASE);
+
+registerStudioPluginOperationHandlers();
 
 type WorkspaceContext = {
   readonly requestId?: string | null;

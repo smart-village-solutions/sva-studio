@@ -271,6 +271,87 @@ describe('usePluginOperationJobs', () => {
 
     expect(result.current.error).toBeNull();
   });
+
+  it('keeps the newest list response when an older request resolves later', async () => {
+    let resolveFirst:
+      | ((value: { data: readonly StudioJobListItem[]; pagination: { page: number; pageSize: number; total: number } }) => void)
+      | undefined;
+    let resolveSecond:
+      | ((value: { data: readonly StudioJobListItem[]; pagination: { page: number; pageSize: number; total: number } }) => void)
+      | undefined;
+
+    listPluginOperationJobsMock
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveFirst = resolve;
+          })
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveSecond = resolve;
+          })
+      );
+
+    const { result, rerender } = renderHook(
+      ({ query }: { query: StudioJobListQuery }) => usePluginOperationJobs(query),
+      {
+        initialProps: { query: activeQuery },
+      }
+    );
+
+    await waitFor(() => {
+      expect(listPluginOperationJobsMock).toHaveBeenCalledTimes(1);
+    });
+
+    rerender({
+      query: {
+        ...activeQuery,
+        q: 'newer-query',
+      },
+    });
+
+    await waitFor(() => {
+      expect(listPluginOperationJobsMock).toHaveBeenCalledTimes(2);
+    });
+
+    await act(async () => {
+      resolveSecond?.({
+        data: [
+          {
+            ...activeJobListItem,
+            id: 'job-new',
+            correlationId: 'corr-new',
+          },
+        ],
+        pagination: { page: 1, pageSize: 25, total: 1 },
+      });
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(result.current.items.map((item) => item.id)).toEqual(['job-new']);
+    });
+
+    await act(async () => {
+      resolveFirst?.({
+        data: [
+          {
+            ...activeJobListItem,
+            id: 'job-old',
+            correlationId: 'corr-old',
+          },
+        ],
+        pagination: { page: 1, pageSize: 25, total: 1 },
+      });
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(result.current.items.map((item) => item.id)).toEqual(['job-new']);
+    });
+  });
 });
 
 describe('usePluginOperationJobDetail', () => {
@@ -425,6 +506,68 @@ describe('usePluginOperationJobDetail', () => {
           result: 'aborted',
         })
       );
+    });
+  });
+
+  it('keeps the newest detail response when an older job request resolves later', async () => {
+    let resolveFirst: ((value: StudioJobDetail) => void) | undefined;
+    let resolveSecond: ((value: StudioJobDetail) => void) | undefined;
+
+    getPluginOperationJobMock
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveFirst = resolve;
+          })
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveSecond = resolve;
+          })
+      );
+
+    const { result, rerender } = renderHook(
+      ({ jobId }: { jobId: string }) => usePluginOperationJobDetail(jobId),
+      {
+        initialProps: { jobId: 'job-1' },
+      }
+    );
+
+    await waitFor(() => {
+      expect(getPluginOperationJobMock).toHaveBeenCalledTimes(1);
+    });
+
+    rerender({ jobId: 'job-2' });
+
+    await waitFor(() => {
+      expect(getPluginOperationJobMock).toHaveBeenCalledTimes(2);
+    });
+
+    await act(async () => {
+      resolveSecond?.({
+        ...runningJobDetail,
+        id: 'job-2',
+        correlationId: 'corr-2',
+      });
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(result.current.detail?.id).toBe('job-2');
+    });
+
+    await act(async () => {
+      resolveFirst?.({
+        ...runningJobDetail,
+        id: 'job-1',
+        correlationId: 'corr-1',
+      });
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(result.current.detail?.id).toBe('job-2');
     });
   });
 });

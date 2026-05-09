@@ -15,20 +15,18 @@ import {
   readPage,
   readPathSegment,
   requireIdempotencyKey,
-  toPayloadHash,
 } from '../shared/request-helpers.js';
-import { completeIdempotency, reserveIdempotency } from '../iam-account-management/shared.js';
 import { withAuthenticatedUser } from '../middleware.js';
 import { isUuid } from '../shared/input-readers.js';
 import { validateCsrf } from '../shared/request-security.js';
+import { createJsonItemResponse } from './core.shared.js';
 import {
-  createJsonItemResponse,
-  createPluginOperationJob,
-  markPluginOperationEnqueueFailed,
-} from './core.shared.js';
+  executeStartPluginOperationJob,
+  reserveStartIdempotency,
+  validateStartRequestData,
+} from './core.start.js';
 import { normalizeStudioJobDetail } from './job-detail-read-model.js';
 import { normalizeStudioJobListItem } from './job-list-read-model.js';
-import { getRegisteredPluginOperationExecutionHandlers, queuePluginOperationJob } from './runner.js';
 import { withStudioJobRepository } from './repository.js';
 
 const MONITORING_ADMIN_ROLES = new Set(['system_admin']);
@@ -53,69 +51,6 @@ const requireMonitoringAdminRole = (roles: readonly string[]): Response | null =
   roles.some((role) => MONITORING_ADMIN_ROLES.has(role))
     ? null
     : createApiError(403, 'forbidden', 'Keine Berechtigung für Plugin-Operations-Monitoring.', getRequestId());
-
-const startPluginOperationEndpoint = 'POST:/api/v1/plugin-operations/jobs';
-
-const readPluginNamespace = (value: string): string | null => {
-  const trimmed = value.trim();
-  const dotIndex = trimmed.indexOf('.');
-  if (dotIndex <= 0) {
-    return null;
-  }
-
-  return trimmed.slice(0, dotIndex);
-};
-
-const createCompletedIdempotencyResponse = async (
-  input: {
-    readonly instanceId: string;
-    readonly actorAccountId: string;
-    readonly idempotencyKey: string;
-  },
-  response: Response
-): Promise<Response> => {
-  const responseBody = await response.clone().json();
-  await completeIdempotency({
-    instanceId: input.instanceId,
-    actorAccountId: input.actorAccountId,
-    endpoint: startPluginOperationEndpoint,
-    idempotencyKey: input.idempotencyKey,
-    status: response.status >= 400 ? 'FAILED' : 'COMPLETED',
-    responseStatus: response.status,
-    responseBody,
-  });
-  return response;
-};
-
-const validateStartRequestData = (data: StudioJobStartRequest): Response | null => {
-  const jobTypeNamespace = readPluginNamespace(data.jobTypeId);
-  if (jobTypeNamespace !== data.pluginId) {
-    return createApiError(
-      400,
-      'invalid_request',
-      'Jobtyp muss zum angegebenen Plugin-Namespace passen.',
-      getRequestId()
-    );
-  }
-
-  if (data.importProfileId) {
-    const importProfileNamespace = readPluginNamespace(data.importProfileId);
-    if (importProfileNamespace !== data.pluginId) {
-      return createApiError(
-        400,
-        'invalid_request',
-        'Importprofil muss zum angegebenen Plugin-Namespace passen.',
-        getRequestId()
-      );
-    }
-  }
-
-  if (!getRegisteredPluginOperationExecutionHandlers().has(data.jobTypeId)) {
-    return createApiError(400, 'invalid_request', 'Unbekannter Plugin-Jobtyp.', getRequestId());
-  }
-
-  return null;
-};
 
 const readJobId = (request: Request): string | Response => {
   const jobId = readPathSegment(request, 4);
@@ -185,81 +120,30 @@ export const startPluginOperationJobHandler = async (request: Request): Promise<
       return createApiError(400, 'invalid_request', parsed.message, getRequestId());
     }
 
-    const validationError = validateStartRequestData(parsed.data);
+    const validationError = validateStartRequestData(parsed.data, getRequestId());
     if (validationError) {
       return validationError;
     }
 
-    const reserve = await reserveIdempotency({
+    const replayOrConflictResponse = await reserveStartIdempotency({
       instanceId,
       actorAccountId: ctx.user.id,
-      endpoint: startPluginOperationEndpoint,
       idempotencyKey: idempotency.key,
-      payloadHash: toPayloadHash(parsed.rawBody),
+      rawBody: parsed.rawBody,
+      requestId: getRequestId(),
     });
-    if (reserve.status === 'replay') {
-      return new Response(JSON.stringify(reserve.responseBody), {
-        status: reserve.responseStatus,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
-    if (reserve.status === 'conflict') {
-      return createApiError(409, 'idempotency_key_reuse', reserve.message, getRequestId());
+    if (replayOrConflictResponse) {
+      return replayOrConflictResponse;
     }
 
-    try {
-      const job = await createPluginOperationJob({
-        instanceId,
-        actorAccountId: ctx.user.id,
-        idempotencyKey: idempotency.key,
-        requestId: getRequestId(),
-        scheduledAt: new Date().toISOString(),
-        data: parsed.data,
-      });
-
-      try {
-        await queuePluginOperationJob({
-          instanceId,
-          jobId: job.id,
-          queueName: job.queueName,
-          maxAttempts: job.maxAttempts,
-        });
-      } catch {
-        await markPluginOperationEnqueueFailed({ instanceId, job });
-
-        return createCompletedIdempotencyResponse(
-          {
-            instanceId,
-            actorAccountId: ctx.user.id,
-            idempotencyKey: idempotency.key,
-          },
-          createApiError(
-            503,
-            'database_unavailable',
-            'Der Plugin-Job konnte nicht in die Host-Queue gestellt werden.',
-            getRequestId()
-          )
-        );
-      }
-
-      return createCompletedIdempotencyResponse(
-        {
-          instanceId,
-          actorAccountId: ctx.user.id,
-          idempotencyKey: idempotency.key,
-        },
-        createJsonItemResponse(202, job, getRequestId())
-      );
-    } catch {
-      return createCompletedIdempotencyResponse(
-        {
-          instanceId,
-          actorAccountId: ctx.user.id,
-          idempotencyKey: idempotency.key,
-        },
-        createApiError(503, 'database_unavailable', 'Der Plugin-Job konnte nicht angelegt werden.', getRequestId())
-      );
-    }
+    return executeStartPluginOperationJob({
+      instanceId,
+      actorAccountId: ctx.user.id,
+      idempotencyKey: idempotency.key,
+      requestId: getRequestId(),
+      scheduledAt: new Date().toISOString(),
+      data: parsed.data,
+    });
   });
 
 export const getPluginOperationJobHandler = async (request: Request): Promise<Response> =>

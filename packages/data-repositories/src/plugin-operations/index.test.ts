@@ -409,6 +409,8 @@ describe('studio job repository', () => {
       10,
       10,
     ]);
+    expect(statements[0]?.text).toContain('j.id::text ILIKE $5');
+    expect(statements[0]?.text).toContain("COALESCE(j.parent_job_id::text, '') ILIKE $5");
   });
 
   it('lists active jobs without hits and maps latest-event fallbacks when columns are sparse', async () => {
@@ -469,6 +471,24 @@ describe('studio job repository', () => {
 
     expect(statements[0]?.text).toContain("j.status IN ('queued', 'running', 'retrying')");
     expect(statements[0]?.values).toEqual(['tenant-a', 25, 0]);
+  });
+
+  it('restricts history views to terminal states', async () => {
+    const { executor, statements } = createQueuedExecutor([[]]);
+    const repository = createStudioJobRepository(executor);
+
+    await expect(
+      repository.listJobs('tenant-a', {
+        view: 'history',
+        page: 1,
+        pageSize: 25,
+      })
+    ).resolves.toEqual({
+      items: [],
+      total: 0,
+    });
+
+    expect(statements[0]?.text).toContain("j.status IN ('succeeded', 'failed', 'cancelled')");
   });
 
   it('rejects missing returning rows when creating jobs', async () => {

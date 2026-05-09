@@ -3,6 +3,7 @@ import type { AuthorizeResponse, EffectivePermission } from '@sva/core';
 
 import {
   filterPermissions,
+  formatPermissionAreaLabel,
   formatPermissionSourceKindLabels,
   formatPermissionSourceKinds,
   getFirstAllowedTab,
@@ -172,6 +173,28 @@ describe('iam.models', () => {
         provenance: undefined,
       })
     ).toBe('—');
+  });
+
+  it('formats permission area labels via translation keys and falls back for unknown namespaces', () => {
+    expect(
+      formatPermissionAreaLabel({
+        action: 'integration.manage',
+        resourceType: 'integration',
+        sourceUserIds: [],
+        sourceRoleIds: ['role-1'],
+        sourceGroupIds: [],
+      })
+    ).toBe('Integrationen');
+
+    expect(
+      formatPermissionAreaLabel({
+        action: 'custom.action',
+        resourceType: 'custom',
+        sourceUserIds: [],
+        sourceRoleIds: ['role-1'],
+        sourceGroupIds: [],
+      })
+    ).toBe('custom');
   });
 
   it('normalizes invalid IAM tabs to rights', () => {

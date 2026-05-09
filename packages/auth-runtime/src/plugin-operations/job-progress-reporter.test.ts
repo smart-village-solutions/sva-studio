@@ -56,4 +56,43 @@ describe('job progress reporter', () => {
       },
     });
   });
+
+  it('binds persistence writes to the reporter job context', async () => {
+    const updateJobProgress = vi.fn(async () => null);
+    const appendProgressedEvent = vi.fn(async () => null);
+
+    const reporter = createJobProgressReporter({
+      job: {
+        id: 'job-1',
+        instanceId: 'tenant-a',
+      },
+      attempts: 2,
+      workerId: 'graphile-worker:tenant-a:job-1',
+      updateJobProgress,
+      appendProgressedEvent,
+      now: () => '2026-05-09T12:01:00.000Z',
+    });
+
+    await reporter.reportProgress({
+      jobId: 'job-2',
+      instanceId: 'tenant-b',
+      progress: {
+        completedSteps: 1,
+        totalSteps: 3,
+      },
+    });
+
+    expect(updateJobProgress).toHaveBeenCalledWith(
+      expect.objectContaining({
+        jobId: 'job-1',
+        instanceId: 'tenant-a',
+      })
+    );
+    expect(appendProgressedEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        jobId: 'job-1',
+        instanceId: 'tenant-a',
+      })
+    );
+  });
 });

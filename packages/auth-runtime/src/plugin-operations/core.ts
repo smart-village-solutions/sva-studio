@@ -14,17 +14,20 @@ import {
   requireIdempotencyKey,
 } from '../shared/request-helpers.js';
 import { withAuthenticatedUser } from '../middleware.js';
+import { isUuid } from '../shared/input-readers.js';
 import { normalizeStudioJobDetail } from './job-detail-read-model.js';
 import { normalizeStudioJobListItem } from './job-list-read-model.js';
 import { withStudioJobRepository } from './repository.js';
 import { queuePluginOperationJob } from './runner.js';
+
+const MONITORING_ADMIN_ROLES = new Set(['system_admin']);
 
 const startPluginOperationJobSchema = z.object({
   pluginId: z.string().trim().min(1),
   jobTypeId: z.string().trim().min(1),
   importProfileId: z.string().trim().min(1).optional(),
   correlationId: z.string().trim().min(1).optional(),
-  parentJobId: z.string().trim().min(1).optional(),
+  parentJobId: z.string().trim().uuid().optional(),
   input: z.record(z.string(), z.unknown()),
 }) satisfies z.ZodType<StudioJobStartRequest>;
 
@@ -34,6 +37,24 @@ const requireActorInstanceId = (instanceId: string | null | undefined): string |
   instanceId && instanceId.trim().length > 0
     ? instanceId
     : createApiError(400, 'invalid_instance_id', 'Instanzkontext fehlt.', getRequestId());
+
+const requireMonitoringAdminRole = (roles: readonly string[]): Response | null =>
+  roles.some((role) => MONITORING_ADMIN_ROLES.has(role))
+    ? null
+    : createApiError(403, 'forbidden', 'Keine Berechtigung für Plugin-Operations-Monitoring.', getRequestId());
+
+const readJobId = (request: Request): string | Response => {
+  const jobId = readPathSegment(request, 4);
+  if (!jobId) {
+    return createApiError(400, 'invalid_request', 'Job-ID fehlt.', getRequestId());
+  }
+
+  if (!isUuid(jobId)) {
+    return createApiError(400, 'invalid_request', 'Job-ID muss eine UUID sein.', getRequestId());
+  }
+
+  return jobId;
+};
 
 const readJobListQuery = (request: Request): StudioJobListQuery | Response => {
   const url = new URL(request.url);
@@ -65,6 +86,11 @@ const readJobListQuery = (request: Request): StudioJobListQuery | Response => {
 
 export const startPluginOperationJobHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedUser(request, async (ctx) => {
+    const authorizationError = requireMonitoringAdminRole(ctx.user.roles);
+    if (authorizationError) {
+      return authorizationError;
+    }
+
     const instanceId = requireActorInstanceId(ctx.user.instanceId);
     if (instanceId instanceof Response) {
       return instanceId;
@@ -166,14 +192,19 @@ export const startPluginOperationJobHandler = async (request: Request): Promise<
 
 export const getPluginOperationJobHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedUser(request, async (ctx) => {
+    const authorizationError = requireMonitoringAdminRole(ctx.user.roles);
+    if (authorizationError) {
+      return authorizationError;
+    }
+
     const instanceId = requireActorInstanceId(ctx.user.instanceId);
     if (instanceId instanceof Response) {
       return instanceId;
     }
 
-    const jobId = readPathSegment(request, 4);
-    if (!jobId) {
-      return createApiError(400, 'invalid_request', 'Job-ID fehlt.', getRequestId());
+    const jobId = readJobId(request);
+    if (jobId instanceof Response) {
+      return jobId;
     }
 
     try {
@@ -198,6 +229,11 @@ export const getPluginOperationJobHandler = async (request: Request): Promise<Re
 
 export const listPluginOperationJobsHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedUser(request, async (ctx) => {
+    const authorizationError = requireMonitoringAdminRole(ctx.user.roles);
+    if (authorizationError) {
+      return authorizationError;
+    }
+
     const instanceId = requireActorInstanceId(ctx.user.instanceId);
     if (instanceId instanceof Response) {
       return instanceId;
@@ -240,14 +276,19 @@ export const listPluginOperationJobsHandler = async (request: Request): Promise<
 
 export const cancelPluginOperationJobHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedUser(request, async (ctx) => {
+    const authorizationError = requireMonitoringAdminRole(ctx.user.roles);
+    if (authorizationError) {
+      return authorizationError;
+    }
+
     const instanceId = requireActorInstanceId(ctx.user.instanceId);
     if (instanceId instanceof Response) {
       return instanceId;
     }
 
-    const jobId = readPathSegment(request, 4);
-    if (!jobId) {
-      return createApiError(400, 'invalid_request', 'Job-ID fehlt.', getRequestId());
+    const jobId = readJobId(request);
+    if (jobId instanceof Response) {
+      return jobId;
     }
 
     try {

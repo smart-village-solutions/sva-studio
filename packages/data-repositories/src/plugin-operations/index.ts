@@ -433,6 +433,10 @@ const buildListJobWhereClause = (
     conditions.push(`j.status IN ('queued', 'running', 'retrying')`);
   }
 
+  if (query.view === 'history') {
+    conditions.push(`j.status IN ('succeeded', 'failed', 'cancelled')`);
+  }
+
   if (query.status) {
     values.push(query.status);
     conditions.push(`j.status = $${values.length}`);
@@ -452,7 +456,7 @@ const buildListJobWhereClause = (
     values.push(`%${query.q}%`);
     const parameterIndex = values.length;
     conditions.push(
-      `(j.id ILIKE $${parameterIndex} OR COALESCE(j.correlation_id, '') ILIKE $${parameterIndex} OR COALESCE(j.parent_job_id, '') ILIKE $${parameterIndex})`
+      `(j.id::text ILIKE $${parameterIndex} OR COALESCE(j.correlation_id, '') ILIKE $${parameterIndex} OR COALESCE(j.parent_job_id::text, '') ILIKE $${parameterIndex})`
     );
   }
 

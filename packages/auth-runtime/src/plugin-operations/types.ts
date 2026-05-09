@@ -1,7 +1,6 @@
 import type { StudioJobProgress, StudioJobRecord, StudioJobResult } from '@sva/core';
-import type { createSdkLogger } from '@sva/server-runtime';
 
-export type PluginOperationLogger = ReturnType<typeof createSdkLogger>;
+export type PluginOperationLogger = ReturnType<(typeof import('@sva/server-runtime'))['createSdkLogger']>;
 
 export type PluginOperationProgressReporter = {
   reportProgress(input: {

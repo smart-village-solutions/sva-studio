@@ -56,6 +56,7 @@ let dispatchMainserverEventsRequestPromise:
 let dispatchMainserverPoiRequestPromise:
   | Promise<typeof import('./lib/mainserver-poi-api.server')['dispatchMainserverPoiRequest']>
   | null = null;
+let pluginOperationWorkerBootstrapPromise: Promise<void> | null = null;
 const getSdk = async (): Promise<RequestContextSdk> => {
   sdkPromise ??= import('@sva/server-runtime') as Promise<RequestContextSdk>;
   return sdkPromise;
@@ -94,6 +95,12 @@ const getDispatchMainserverPoiRequest = async () => {
   return dispatchMainserverPoiRequestPromise;
 };
 
+const startPluginOperationWorkerInBackground = (): void => {
+  pluginOperationWorkerBootstrapPromise ??= getEnsurePluginOperationWorkerStarted()
+    .then((startWorker) => startWorker())
+    .catch(() => undefined);
+};
+
 const getLogger = async (component: ServerTransportComponent): Promise<ServerTransportLogger> => {
   let loggerPromise = loggerPromises.get(component);
   if (!loggerPromise) {
@@ -113,7 +120,7 @@ const getLogger = async (component: ServerTransportComponent): Promise<ServerTra
 
 const instrumentedFetch: RequestHandler<Register> = async (...args) => {
   const [request, requestOptions] = args;
-  await (await getEnsurePluginOperationWorkerStarted())().catch(() => undefined);
+  startPluginOperationWorkerInBackground();
   const serverEntryDebugEnabled = process.env.SVA_SERVER_ENTRY_DEBUG === 'true';
   const logServerEntryDebug = async (message: string, meta: Record<string, unknown>) => {
     if (!serverEntryDebugEnabled) {

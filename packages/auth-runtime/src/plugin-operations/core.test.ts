@@ -195,7 +195,9 @@ describe('plugin operations handlers', () => {
     );
 
     const response = await getPluginOperationJobHandler(
-      new Request('https://studio.test/api/v1/plugin-operations/jobs/job-1', { method: 'GET' })
+      new Request('https://studio.test/api/v1/plugin-operations/jobs/11111111-1111-4111-8111-111111111111', {
+        method: 'GET',
+      })
     );
 
     expect(response.status).toBe(200);
@@ -336,7 +338,7 @@ describe('plugin operations handlers', () => {
     );
 
     const response = await cancelPluginOperationJobHandler(
-      new Request('https://studio.test/api/v1/plugin-operations/jobs/job-1/cancel', {
+      new Request('https://studio.test/api/v1/plugin-operations/jobs/11111111-1111-4111-8111-111111111111/cancel', {
         method: 'POST',
       })
     );
@@ -348,6 +350,71 @@ describe('plugin operations handlers', () => {
         cancelRequestedAt: '2026-05-09T12:02:00.000Z',
       },
     });
+  });
+
+  it('rejects plugin operation access for users without monitoring admin roles', async () => {
+    middlewareState.withAuthenticatedUser.mockImplementation(async (_request, handler) =>
+      handler({
+        sessionId: 'session-1',
+        user: {
+          id: 'user-2',
+          instanceId: 'tenant-a',
+          roles: ['editor'],
+        },
+      })
+    );
+
+    const response = await listPluginOperationJobsHandler(
+      new Request('https://studio.test/api/v1/plugin-operations/jobs?view=active', { method: 'GET' })
+    );
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        code: 'forbidden',
+      },
+    });
+    expect(repositoryState.withStudioJobRepository).not.toHaveBeenCalled();
+  });
+
+  it('rejects invalid parentJobId values before creating jobs', async () => {
+    const response = await startPluginOperationJobHandler(
+      new Request('https://studio.test/api/v1/plugin-operations/jobs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': 'idem-1',
+        },
+        body: JSON.stringify({
+          pluginId: 'news',
+          jobTypeId: 'news.import-articles',
+          parentJobId: 'not-a-uuid',
+          input: { source: 'upload-1' },
+        }),
+      })
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        code: 'invalid_request',
+      },
+    });
+    expect(repositoryState.withStudioJobRepository).not.toHaveBeenCalled();
+  });
+
+  it('rejects invalid job ids in detail routes before querying the repository', async () => {
+    const response = await getPluginOperationJobHandler(
+      new Request('https://studio.test/api/v1/plugin-operations/jobs/not-a-uuid', { method: 'GET' })
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        code: 'invalid_request',
+      },
+    });
+    expect(repositoryState.withStudioJobRepository).not.toHaveBeenCalled();
   });
 
 });

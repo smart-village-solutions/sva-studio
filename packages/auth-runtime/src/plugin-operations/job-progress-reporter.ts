@@ -33,15 +33,15 @@ export const createJobProgressReporter = (deps: JobProgressReporterDeps): Plugin
 
     await Promise.all([
       deps.updateJobProgress({
-        jobId: input.jobId,
-        instanceId: input.instanceId,
+        jobId: deps.job.id,
+        instanceId: deps.job.instanceId,
         progress,
         lastProgressAt: updatedAt,
         heartbeatAt: updatedAt,
       }),
       deps.appendProgressedEvent({
-        jobId: input.jobId,
-        instanceId: input.instanceId,
+        jobId: deps.job.id,
+        instanceId: deps.job.instanceId,
         progress,
         attempts: deps.attempts,
         hostDetails: {

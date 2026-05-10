@@ -7,6 +7,36 @@ vi.mock('@sva/auth-runtime/server', () => ({
   registerPluginOperationExecutionHandlers: registerPluginOperationExecutionHandlersMock,
 }));
 
+vi.mock('./plugins.js', () => ({
+  studioPluginSnapshot: {
+    registry: {
+      jobTypes: [
+        { jobTypeId: 'waste-management.apply-migrations' },
+        { jobTypeId: 'waste-management.import-data' },
+        { jobTypeId: 'waste-management.initialize-data-source' },
+        { jobTypeId: 'waste-management.reset-data' },
+        { jobTypeId: 'waste-management.seed-data' },
+      ],
+    },
+    pluginSources: [
+      {
+        pluginId: 'waste-management',
+        sourceType: 'workspace',
+        sourceRef: 'packages/plugin-waste-management',
+        manifest: {
+          entryPoints: {
+            browser: './dist/index.js',
+            jobs: './dist/server.js',
+          },
+          runtimeRequirements: {
+            jobs: 'waste-management.operations',
+          },
+        },
+      },
+    ],
+  },
+}));
+
 const createJobPluginSource = (input: {
   readonly pluginId: string;
   readonly runtimeRequirement?: string;

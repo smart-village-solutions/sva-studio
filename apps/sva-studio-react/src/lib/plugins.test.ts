@@ -216,6 +216,7 @@ describe('plugin action alias lookup', () => {
         }),
       ])
     );
+    expect(getStudioPluginNavigationModuleId({ id: 'waste-management.navigation' })).toBe('waste-management');
     expect(getStudioPluginNavigationModuleId({ id: 'unknown.navigation' })).toBeNull();
   }, 15000);
 

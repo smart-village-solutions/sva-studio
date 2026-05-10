@@ -32,6 +32,13 @@
         "command": "pnpm exec vitest run --reporter=verbose --config vitest.config.ts"
       }
     },
+    "test:types": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["^build"],
+      "options": {
+        "command": "tsc -p packages/sva-mainserver/tsconfig.lib.json --noEmit"
+      }
+    },
     "test:coverage": {
       "executor": "nx:run-commands",
       "options": {

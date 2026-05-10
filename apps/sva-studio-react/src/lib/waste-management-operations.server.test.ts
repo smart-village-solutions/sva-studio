@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { WasteManagementDataSourceRecord } from '@sva/core';
 import * as XLSX from 'xlsx';
+import type { SqlClient, WasteOperationSqlPool } from './waste-management-operations.types.js';
 
 import { createWasteManagementOperationRuntime } from './waste-management-operations.server.js';
 
@@ -579,10 +580,20 @@ const createExtendedGeographyWorkbookBytes = (): Uint8Array => {
 
 const createWorkbookBytes = (rows: readonly (readonly string[])[]): Uint8Array => {
   const workbook = XLSX.utils.book_new();
-  const sheet = XLSX.utils.aoa_to_sheet(rows);
+  const sheet = XLSX.utils.aoa_to_sheet(rows.map((row) => [...row]));
   XLSX.utils.book_append_sheet(workbook, sheet, 'Import');
   return XLSX.write(workbook, { type: 'array', bookType: 'xlsx' });
 };
+
+const createSqlClientMock = (query: SqlClient['query']): SqlClient => ({
+  query,
+  release: vi.fn(),
+});
+
+const createPoolMock = (client: SqlClient): WasteOperationSqlPool => ({
+  connect: vi.fn(async () => client),
+  end: vi.fn(async () => undefined),
+});
 
 const createRepositoryMock = () => ({
   upsertWasteRegion: vi.fn(async () => undefined),
@@ -609,13 +620,7 @@ const createRuntimeWithRepositoryMock = async (
   return createRuntime({
     loadDataSourceRecord: vi.fn(async () => createDataSourceRecord()),
     revealSecret: vi.fn((ciphertext) => (ciphertext ? 'postgres://waste:test@localhost:5432/waste' : undefined)),
-    createPool: vi.fn(() => ({
-      connect: vi.fn(async () => ({
-        query: vi.fn(async () => ({ rowCount: 0, rows: [] })),
-        release: vi.fn(),
-      })),
-      end: vi.fn(async () => undefined),
-    })),
+    createPool: vi.fn(() => createPoolMock(createSqlClientMock(vi.fn(async () => ({ rowCount: 0, rows: [] }))))),
     readBinarySource: vi.fn(async () => workbookBytes),
   });
 };
@@ -625,13 +630,7 @@ const createRuntimeWithRealRepository = async (workbookBytes: Uint8Array, query:
   return createRuntime({
     loadDataSourceRecord: vi.fn(async () => createDataSourceRecord()),
     revealSecret: vi.fn((ciphertext) => (ciphertext ? 'postgres://waste:test@localhost:5432/waste' : undefined)),
-    createPool: vi.fn(() => ({
-      connect: vi.fn(async () => ({
-        query,
-        release: vi.fn(),
-      })),
-      end: vi.fn(async () => undefined),
-    })),
+    createPool: vi.fn(() => createPoolMock(createSqlClientMock(query))),
     readBinarySource: vi.fn(async () => workbookBytes),
   });
 };

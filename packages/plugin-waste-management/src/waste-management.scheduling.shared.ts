@@ -1,4 +1,3 @@
-import { wasteManagementMasterDataContract } from '@sva/core';
 import type {
   WasteDateShiftReasonType,
   WasteGlobalDateShiftRecord,
@@ -174,6 +173,3 @@ export const filterGlobalDateShifts = (
       .filter((value): value is string => typeof value === 'string' && value.length > 0)
       .some((value) => matchesSearch(value, search.q));
   });
-
-export const wasteReasonTypeOptions = wasteManagementMasterDataContract.dateShiftReasonTypes;
-export const wasteFollowUpModeOptions = wasteManagementMasterDataContract.followUpModes;

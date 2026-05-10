@@ -30,62 +30,80 @@ export const formatTourDateRange = (tour: WasteTourRecord) => {
   return tour.firstDate ?? tour.endDate ?? '—';
 };
 
+const addRecurringDates = (
+  results: Set<string>,
+  year: number,
+  start: Date,
+  end: Date,
+  advance: (current: Date) => void
+) => {
+  const current = new Date(start);
+  while (current <= end) {
+    const iso = current.toISOString().slice(0, 10);
+    if (iso.startsWith(`${year}-`)) {
+      results.add(iso);
+    }
+    advance(current);
+  }
+};
+
+const resolveAdvanceStrategy = (recurrence: WasteTourRecord['recurrence']) => {
+  if (recurrence === 'weekly') {
+    return (current: Date) => current.setDate(current.getDate() + 7);
+  }
+  if (recurrence === 'biweekly') {
+    return (current: Date) => current.setDate(current.getDate() + 14);
+  }
+  if (recurrence === 'fourweekly') {
+    return (current: Date) => current.setDate(current.getDate() + 28);
+  }
+  if (recurrence === 'yearly') {
+    return (current: Date) => current.setFullYear(current.getFullYear() + 1);
+  }
+  return null;
+};
+
+const collectScheduledTourDates = (results: Set<string>, tour: WasteTourRecord, year: number) => {
+  if (!tour.recurrence || !tour.firstDate) {
+    return;
+  }
+  const start = new Date(`${tour.firstDate}T00:00:00`);
+  const end = new Date(`${tour.endDate ?? `${year}-12-31`}T00:00:00`);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    return;
+  }
+  const advance = resolveAdvanceStrategy(tour.recurrence);
+  if (advance) {
+    addRecurringDates(results, year, start, end, advance);
+  }
+};
+
+const collectCustomTourDates = (results: Set<string>, tour: WasteTourRecord, year: number) => {
+  for (const customDate of tour.customDates ?? []) {
+    if (customDate.date.startsWith(`${year}-`)) {
+      results.add(customDate.date);
+    }
+  }
+};
+
+const buildShiftMap = (
+  shifts: readonly { readonly originalDate: string; readonly actualDate: string }[]
+): Map<string, string> => new Map(shifts.map((shift) => [shift.originalDate, shift.actualDate] as const));
+
 export const calculateTourOccurrencesForYear = (
   tour: WasteTourRecord,
   year: number,
   scheduling: WasteManagementSchedulingOverview
 ): readonly string[] => {
   const results = new Set<string>();
+  collectScheduledTourDates(results, tour, year);
+  collectCustomTourDates(results, tour, year);
 
-  const addDate = (value?: string) => {
-    if (value?.startsWith(`${year}-`)) {
-      results.add(value);
-    }
-  };
-
-  if (tour.recurrence && tour.firstDate) {
-    const start = new Date(`${tour.firstDate}T00:00:00`);
-    const end = new Date(`${tour.endDate ?? `${year}-12-31`}T00:00:00`);
-    if (!Number.isNaN(start.getTime()) && !Number.isNaN(end.getTime())) {
-      const current = new Date(start);
-      const advanceDays =
-        tour.recurrence === 'weekly'
-          ? 7
-          : tour.recurrence === 'biweekly'
-            ? 14
-            : tour.recurrence === 'fourweekly'
-              ? 28
-              : null;
-
-      if (advanceDays !== null) {
-        while (current <= end) {
-          const iso = current.toISOString().slice(0, 10);
-          addDate(iso);
-          current.setDate(current.getDate() + advanceDays);
-        }
-      } else if (tour.recurrence === 'yearly') {
-        while (current <= end) {
-          const iso = current.toISOString().slice(0, 10);
-          addDate(iso);
-          current.setFullYear(current.getFullYear() + 1);
-        }
-      }
-    }
-  }
-
-  for (const customDate of tour.customDates ?? []) {
-    addDate(customDate.date);
-  }
-
-  const tourShiftMap = new Map(
-    (scheduling.tourDateShifts ?? [])
-      .filter((shift) => shift.tourId === tour.id)
-      .map((shift) => [shift.originalDate, shift.actualDate] as const)
+  const tourShiftMap = buildShiftMap(
+    (scheduling.tourDateShifts ?? []).filter((shift) => shift.tourId === tour.id)
   );
-  const globalShiftMap = new Map(
-    (scheduling.globalDateShifts ?? [])
-      .filter((shift) => !shift.tourIds || shift.tourIds.includes(tour.id))
-      .map((shift) => [shift.originalDate, shift.actualDate] as const)
+  const globalShiftMap = buildShiftMap(
+    (scheduling.globalDateShifts ?? []).filter((shift) => !shift.tourIds || shift.tourIds.includes(tour.id))
   );
 
   const shiftedResults = new Set<string>();

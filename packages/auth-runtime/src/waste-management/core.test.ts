@@ -19,14 +19,16 @@ import type {
   WasteTourRecord,
 } from '@sva/core';
 import type { AuthenticatedRequestContext } from '../middleware.js';
-import {
+import { wasteManagementCoreHandlers } from './core.js';
+
+const {
   createWasteManagementCityInternal,
   createWasteManagementCollectionLocationInternal,
-  createWasteManagementHouseNumberInternal,
-  createWasteManagementLocationTourLinksBulkInternal,
-  createWasteManagementGlobalDateShiftInternal,
   createWasteManagementFractionInternal,
+  createWasteManagementGlobalDateShiftInternal,
+  createWasteManagementHouseNumberInternal,
   createWasteManagementLocationTourLinkInternal,
+  createWasteManagementLocationTourLinksBulkInternal,
   createWasteManagementRegionInternal,
   createWasteManagementStreetInternal,
   createWasteManagementTourDateShiftInternal,
@@ -51,7 +53,7 @@ import {
   updateWasteManagementStreetInternal,
   updateWasteManagementTourDateShiftInternal,
   updateWasteManagementTourInternal,
-} from './core.js';
+} = wasteManagementCoreHandlers;
 
 const actor: AuthenticatedRequestContext = {
   sessionId: 'session-1',

@@ -17,21 +17,45 @@ interface CoveragePolicy {
   };
 }
 
+interface TsConfigJson {
+  include?: string[];
+}
+
+interface NxProjectJson {
+  targets?: Record<string, { options?: { lintFilePatterns?: string[] } }>;
+}
+
+function resolveRootDir(): string {
+  return path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
+}
+
 function loadRootPackageJson(): RootPackageJson {
-  const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
+  const rootDir = resolveRootDir();
   return JSON.parse(fs.readFileSync(path.join(rootDir, 'package.json'), 'utf8')) as RootPackageJson;
 }
 
 function loadCoveragePolicy(): CoveragePolicy {
-  const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
+  const rootDir = resolveRootDir();
   return JSON.parse(
     fs.readFileSync(path.join(rootDir, 'tooling/testing/coverage-policy.json'), 'utf8')
   ) as CoveragePolicy;
 }
 
 function loadStudioArtifactVerifyWorkflow(): string {
-  const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
+  const rootDir = resolveRootDir();
   return fs.readFileSync(path.join(rootDir, '.github/workflows/studio-artifact-verify.yml'), 'utf8');
+}
+
+function loadScriptsTsConfig(): TsConfigJson {
+  const rootDir = resolveRootDir();
+  return JSON.parse(fs.readFileSync(path.join(rootDir, 'tsconfig.scripts.json'), 'utf8')) as TsConfigJson;
+}
+
+function loadToolingTestingProject(): NxProjectJson {
+  const rootDir = resolveRootDir();
+  return JSON.parse(
+    fs.readFileSync(path.join(rootDir, 'tooling/testing/project.json'), 'utf8')
+  ) as NxProjectJson;
 }
 
 describe('workspace package scripts', () => {
@@ -39,6 +63,7 @@ describe('workspace package scripts', () => {
     const packageJson = loadRootPackageJson();
     const testPrScript = packageJson.scripts?.['test:pr'];
 
+    expect(testPrScript).toContain('pnpm test:types');
     expect(testPrScript).toContain('pnpm patch-coverage-gate --base=origin/main');
     expect(testPrScript).toContain('pnpm sonar-new-code-gate --base=origin/main');
   });
@@ -98,5 +123,45 @@ describe('workspace package scripts', () => {
       "safe_tag=\"$(printf '%s' \"${IMAGE_TAG}\" | sed -E 's/[^[:alnum:]. _-]+/-/g; s/[[:space:]]+/-/g; s/-+/-/g; s/^-+//; s/-+$//')\""
     );
     expect(workflow).not.toContain("tr -cs '[:alnum:]._- ' '-'");
+  });
+
+  it('runs type gates through workspace-wide Nx targets instead of hard-coded project lists', () => {
+    const packageJson = loadRootPackageJson();
+    const typesScript = packageJson.scripts?.['test:types'];
+
+    expect(typesScript).toContain('nx run-many -t test:types --parallel=1');
+    expect(typesScript).toContain('nx run-many -t typecheck --parallel=1');
+    expect(typesScript).not.toContain('--projects=');
+  });
+
+  it('runs the server runtime guard through the shared Nx target', () => {
+    const packageJson = loadRootPackageJson();
+    const runtimeScript = packageJson.scripts?.['check:server-runtime'];
+
+    expect(runtimeScript).toContain('nx run-many -t check:runtime --parallel=1');
+    expect(runtimeScript).not.toContain('--projects=');
+  });
+
+  it('typechecks all CI gate sources via tsconfig.scripts.json', () => {
+    const tsconfig = loadScriptsTsConfig();
+
+    expect(tsconfig.include).toEqual(
+      expect.arrayContaining([
+        'scripts/ci/**/*.ts',
+        'scripts/ops/**/*.ts',
+      ])
+    );
+  });
+
+  it('lints TypeScript script sources through the tooling-testing project', () => {
+    const toolingTestingProject = loadToolingTestingProject();
+    const lintPatterns = toolingTestingProject.targets?.lint?.options?.lintFilePatterns ?? [];
+
+    expect(lintPatterns).toEqual(
+      expect.arrayContaining([
+        'tooling/testing/tests/**/*.{ts,tsx,js,jsx}',
+        'scripts/**/*.ts',
+      ])
+    );
   });
 });

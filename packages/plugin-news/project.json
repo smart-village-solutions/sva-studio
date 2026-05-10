@@ -28,6 +28,13 @@
         "command": "pnpm exec vitest run tests --reporter=verbose --config vitest.config.ts --passWithNoTests"
       }
     },
+    "test:types": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["^build"],
+      "options": {
+        "command": "tsc -p packages/plugin-news/tsconfig.lib.json --noEmit"
+      }
+    },
     "test:coverage": {
       "executor": "nx:run-commands",
       "options": {

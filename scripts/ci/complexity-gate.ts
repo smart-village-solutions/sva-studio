@@ -458,7 +458,11 @@ function computeFunctionLines(sourceFile: ts.SourceFile, node: ts.FunctionLikeDe
   return end - start + 1;
 }
 
-function computeCyclomaticComplexity(node: ts.FunctionLikeDeclarationBase): number {
+function hasFunctionBody(node: ts.Node): node is ts.FunctionLikeDeclarationBase & { body: ts.FunctionBody } {
+  return 'body' in node && node.body !== undefined;
+}
+
+function computeCyclomaticComplexity(node: ts.FunctionLikeDeclarationBase & { body: ts.FunctionBody }): number {
   let complexity = 1;
 
   const visit = (current: ts.Node): void => {
@@ -509,7 +513,7 @@ export function analyzeFile(absolutePath: string, relativePath: string): FileCom
   let maxComplexityFunctionName = '<none>';
 
   const visit = (node: ts.Node): void => {
-    if (ts.isFunctionLike(node) && node.body) {
+    if (ts.isFunctionLike(node) && hasFunctionBody(node)) {
       const functionLines = computeFunctionLines(sourceFile, node);
       const functionName = findFunctionName(node);
       if (functionLines > maxFunctionLines) {

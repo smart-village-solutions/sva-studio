@@ -3,9 +3,8 @@ import { createWasteMasterDataFractionRegionSubmissions } from './waste-manageme
 import { createWasteMasterDataHouseNumberSubmissions } from './waste-management.master-data.house-number-submissions.js';
 import type { WasteMasterDataSubmissionContext } from './waste-management.master-data.submission.types.js';
 
-export const createWasteMasterDataEntitySubmissions = ({
-}: WasteMasterDataSubmissionContext) => ({
-  ...createWasteMasterDataFractionRegionSubmissions({ state, pt, search, loadOverview }),
-  ...createWasteMasterDataCityStreetSubmissions({ state, pt, search, loadOverview }),
-  ...createWasteMasterDataHouseNumberSubmissions({ state, pt, search, loadOverview }),
+export const createWasteMasterDataEntitySubmissions = (context: WasteMasterDataSubmissionContext) => ({
+  ...createWasteMasterDataFractionRegionSubmissions(context),
+  ...createWasteMasterDataCityStreetSubmissions(context),
+  ...createWasteMasterDataHouseNumberSubmissions(context),
 });

@@ -141,4 +141,152 @@ describe('plugin platform resolution', () => {
       })
     );
   });
+
+  it('rejects sdk mismatches, missing browser entries, missing modules, and mismatched plugin ids', () => {
+    const sdkMismatchEntry = definePluginCatalogEntry({
+      pluginId: 'sdk-mismatch',
+      sourceType: 'workspace',
+      enabled: true,
+      sourceRef: 'packages/sdk-mismatch',
+      manifest: definePluginManifest({
+        pluginId: 'sdk-mismatch',
+        version: '0.0.1',
+        sdkVersion: '9.9.9',
+        hostCompatibility: { studioVersionRange: '^0.0.1' },
+        entryPoints: { browser: './dist/index.js' },
+      }),
+    });
+    const missingBrowserEntry = definePluginCatalogEntry({
+      pluginId: 'missing-browser',
+      sourceType: 'workspace',
+      enabled: true,
+      sourceRef: 'packages/missing-browser',
+      manifest: definePluginManifest({
+        pluginId: 'missing-browser',
+        version: '0.0.1',
+        sdkVersion: '0.0.1',
+        hostCompatibility: { studioVersionRange: '^0.0.1' },
+        entryPoints: {},
+      }),
+    });
+    const missingModuleEntry = definePluginCatalogEntry({
+      pluginId: 'missing-module',
+      sourceType: 'workspace',
+      enabled: true,
+      sourceRef: 'packages/missing-module',
+      manifest: definePluginManifest({
+        pluginId: 'missing-module',
+        version: '0.0.1',
+        sdkVersion: '0.0.1',
+        hostCompatibility: { studioVersionRange: '^0.0.1' },
+        entryPoints: { browser: './dist/index.js' },
+      }),
+    });
+    const mismatchedModuleEntry = definePluginCatalogEntry({
+      pluginId: 'catalog-plugin-id',
+      sourceType: 'workspace',
+      enabled: true,
+      sourceRef: 'packages/mismatched-module',
+      manifest: definePluginManifest({
+        pluginId: 'catalog-plugin-id',
+        version: '0.0.1',
+        sdkVersion: '0.0.1',
+        hostCompatibility: { studioVersionRange: '^0.0.1' },
+        entryPoints: { browser: './dist/index.js' },
+      }),
+    });
+
+    const report = resolvePluginCatalog({
+      catalog: [sdkMismatchEntry, missingBrowserEntry, missingModuleEntry, mismatchedModuleEntry],
+      host: {
+        studioVersion: '0.0.1',
+        sdkVersion: '0.0.1',
+        capabilities: ['routing'],
+      },
+      resolvePlugin: (entry) => {
+        if (entry.pluginId === 'catalog-plugin-id') {
+          return createTestPlugin('exported-plugin-id');
+        }
+        return entry.pluginId === 'missing-module' ? undefined : createTestPlugin(entry.pluginId);
+      },
+    });
+
+    expect(report.rejectedCatalog).toEqual([
+      sdkMismatchEntry,
+      missingBrowserEntry,
+      missingModuleEntry,
+      mismatchedModuleEntry,
+    ]);
+    expect(report.issues.map((issue) => issue.code)).toEqual([
+      'plugin_incompatible_sdk_version',
+      'plugin_missing_browser_entry',
+      'plugin_module_missing',
+      'plugin_module_mismatch',
+    ]);
+  });
+
+  it('supports wildcard, exact, and prerelease-style caret host version ranges', () => {
+    const wildcardEntry = definePluginCatalogEntry({
+      pluginId: 'wildcard',
+      sourceType: 'workspace',
+      enabled: true,
+      sourceRef: 'packages/wildcard',
+      manifest: definePluginManifest({
+        pluginId: 'wildcard',
+        version: '0.0.1',
+        sdkVersion: '0.0.1',
+        hostCompatibility: { studioVersionRange: '*' },
+        entryPoints: { browser: './dist/index.js' },
+      }),
+    });
+    const exactEntry = definePluginCatalogEntry({
+      pluginId: 'exact',
+      sourceType: 'workspace',
+      enabled: true,
+      sourceRef: 'packages/exact',
+      manifest: definePluginManifest({
+        pluginId: 'exact',
+        version: '0.0.1',
+        sdkVersion: '0.0.1',
+        hostCompatibility: { studioVersionRange: '1.2.3' },
+        entryPoints: { browser: './dist/index.js' },
+      }),
+    });
+    const prereleaseCaretEntry = definePluginCatalogEntry({
+      pluginId: 'caret-pre-1-0',
+      sourceType: 'workspace',
+      enabled: true,
+      sourceRef: 'packages/caret-pre-1-0',
+      manifest: definePluginManifest({
+        pluginId: 'caret-pre-1-0',
+        version: '0.0.1',
+        sdkVersion: '0.0.1',
+        hostCompatibility: { studioVersionRange: '^0.2.0' },
+        entryPoints: { browser: './dist/index.js' },
+      }),
+    });
+
+    const report = resolvePluginCatalog({
+      catalog: [wildcardEntry, exactEntry, prereleaseCaretEntry],
+      host: {
+        studioVersion: '1.2.3',
+        sdkVersion: '0.0.1',
+        capabilities: ['routing'],
+      },
+      resolvePlugin: (entry) => createTestPlugin(entry.pluginId),
+    });
+    const preOneReport = resolvePluginCatalog({
+      catalog: [prereleaseCaretEntry],
+      host: {
+        studioVersion: '0.2.7',
+        sdkVersion: '0.0.1',
+        capabilities: ['routing'],
+      },
+      resolvePlugin: (entry) => createTestPlugin(entry.pluginId),
+    });
+
+    expect(report.activeCatalog).toEqual([wildcardEntry, exactEntry]);
+    expect(report.rejectedCatalog).toEqual([prereleaseCaretEntry]);
+    expect(preOneReport.activeCatalog).toEqual([prereleaseCaretEntry]);
+  });
 });

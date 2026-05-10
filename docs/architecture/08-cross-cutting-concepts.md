@@ -286,7 +286,7 @@ gleichzeitig beeinflussen.
 - Serverseitig direkt von Node geladene Workspace-Packages müssen deshalb ESM-strikte relative Runtime-Imports mit expliziter Laufzeitendung (`.js`) verwenden
 - Runtime-Imports auf andere Workspace-Packages bleiben nur dann gültig, wenn die jeweilige Dependency im lokalen `package.json` des importierenden Packages deklariert ist
 - Der technische Schutz gegen Drift liegt im zentralen Guard `pnpm check:server-runtime`, der statische Source-Prüfung und `dist`-Smoke-Imports kombiniert
-- `pnpm test:types` gilt dadurch zugleich als Typ- und Node-ESM-Kompatibilitäts-Gate für die serverseitigen Workspace-Packages
+- `pnpm test:types` gilt dadurch zugleich als Typ- und Node-ESM-Kompatibilitäts-Gate für die serverseitigen Workspace-Packages und aggregiert die vorhandenen `test:types`-/`typecheck`-Targets workspaceweit
 
 ### i18n und Accessibility
 

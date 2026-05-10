@@ -3,7 +3,7 @@ import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Badge, Button, StudioEmptyState } from '@sva/studio-ui-react';
 
 import { StatusNotice, type StatusMessage } from './waste-management.page.support.js';
-import { ShiftCard } from './waste-management.scheduling.dialogs.js';
+import { ShiftCard } from './waste-management.scheduling-card.js';
 
 export const WasteSchedulingEmptyState = ({
   onOpenCreateGlobalShiftDialog,

@@ -25,9 +25,6 @@ export default mergeConfig(
       maxWorkers: 1,
       coverage: {
         reportsDirectory: './coverage',
-        // Die monolithische Host-Admin-Seite wird über gezielte UI-Flows getestet,
-        // aber nicht als packageweites Coverage-Gate für den publizierbaren Plugin-Vertrag gewertet.
-        exclude: ['src/waste-management.page.tsx'],
       },
     },
   })

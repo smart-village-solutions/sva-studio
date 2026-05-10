@@ -2,6 +2,9 @@ import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+const createWasteManagementLocationTourLinkMock = vi.hoisted(() => vi.fn());
+const updateWasteManagementLocationTourLinkMock = vi.hoisted(() => vi.fn());
+
 import { WasteManagementApiError } from '../src/waste-management.api.js';
 import {
   createWasteMasterDataEntityActions,
@@ -27,6 +30,17 @@ import {
   formatTourDateRange,
   formatTourRecurrence,
 } from '../src/waste-management.tours.presentation.js';
+import { createWasteToursActions } from '../src/waste-management.tours.actions.js';
+import { createWasteToursAssignmentSubmitHandlers } from '../src/waste-management.tours.assignments-submissions.js';
+
+vi.mock('../src/waste-management.api.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../src/waste-management.api.js')>();
+  return {
+    ...actual,
+    createWasteManagementLocationTourLink: createWasteManagementLocationTourLinkMock,
+    updateWasteManagementLocationTourLink: updateWasteManagementLocationTourLinkMock,
+  };
+});
 
 vi.mock('@sva/plugin-sdk', () => ({
   usePluginTranslation: () => (key: string) => key,
@@ -364,6 +378,131 @@ describe('waste management helper modules', () => {
     expect(state.setLocationForm).toHaveBeenCalledWith(expect.objectContaining({ regionId: 'region-7', cityId: 'city-7' }));
     expect(state.setBulkAssignmentsForm).toHaveBeenCalledWith(expect.objectContaining({ tourId: 'tour-1' }));
     expect(state.setSelectedLocationIds).toHaveBeenCalledTimes(4);
+  });
+
+  it('covers waste tours dialog and selection actions', () => {
+    const state = {
+      masterDataOverview: {
+        fractions: [],
+        regions: [{ id: 'region-1' }],
+        cities: [{ id: 'city-1' }],
+        streets: [{ id: 'street-1' }],
+        houseNumbers: [{ id: 'house-1' }],
+        collectionLocations: [{ id: 'location-1' }],
+        locationTourLinks: [
+          {
+            id: 'link-1',
+            locationId: 'location-1',
+            tourId: 'tour-1',
+            startDate: '2026-05-01',
+            endDate: '2026-06-01',
+            createdAt: '2026-05-01T10:00:00.000Z',
+            updatedAt: '2026-05-01T10:00:00.000Z',
+          },
+        ],
+      },
+      setDialogMode: vi.fn(),
+      setTourForm: vi.fn(),
+      setMessage: vi.fn(),
+      setDialogOpen: vi.fn(),
+      setSelectedTour: vi.fn(),
+      setAssignmentsDialogMode: vi.fn(),
+      setLinkForm: vi.fn(),
+      setAssignmentsDialogOpen: vi.fn(),
+      setCalendarOpen: vi.fn(),
+    };
+
+    const actions = createWasteToursActions(state as never);
+    const tour = {
+      id: 'tour-1',
+      name: 'Tour A',
+      fractionId: 'fraction-1',
+      weekday: 2,
+      intervalWeeks: 2,
+      active: true,
+      createdAt: '2026-05-01T10:00:00.000Z',
+      updatedAt: '2026-05-01T10:00:00.000Z',
+    };
+
+    actions.openCreateDialog();
+    actions.openEditDialog(tour);
+    actions.openCreateAssignmentsDialog(tour);
+    actions.openEditAssignmentsDialog(tour, 'missing-link');
+    actions.openEditAssignmentsDialog(tour, 'link-1');
+    actions.openCalendar(tour);
+    actions.resetTourForm();
+    actions.resetLinkForm();
+
+    expect(state.setDialogMode).toHaveBeenCalledWith('create');
+    expect(state.setDialogMode).toHaveBeenCalledWith('edit');
+    expect(state.setTourForm).toHaveBeenCalled();
+    expect(state.setSelectedTour).toHaveBeenCalledWith(tour);
+    expect(state.setAssignmentsDialogMode).toHaveBeenCalledWith('create');
+    expect(state.setAssignmentsDialogMode).toHaveBeenCalledWith('edit');
+    expect(state.setAssignmentsDialogOpen).toHaveBeenCalledTimes(2);
+    expect(state.setLinkForm).toHaveBeenCalled();
+    expect(state.setCalendarOpen).toHaveBeenCalledWith(true);
+  });
+
+  it('covers waste tours assignment submission handlers for success and forbidden failures', async () => {
+    const loadOverview = vi.fn(async () => undefined);
+    const translate = (key: string) => key;
+    const state = {
+      assignmentsDialogMode: 'create',
+      linkForm: {
+        id: 'link-1',
+        locationId: 'location-1',
+        tourId: 'tour-1',
+        startDate: '2026-05-01',
+        endDate: '',
+      },
+      setSaving: vi.fn(),
+      setMessage: vi.fn(),
+      setAssignmentsDialogOpen: vi.fn(),
+    };
+
+    createWasteManagementLocationTourLinkMock.mockResolvedValueOnce(undefined);
+    const createHandlers = createWasteToursAssignmentSubmitHandlers({
+      state: state as never,
+      pt: translate,
+      loadOverview,
+    });
+
+    await createHandlers.onSubmitAssignments({ preventDefault: vi.fn() } as never);
+
+    expect(createWasteManagementLocationTourLinkMock).toHaveBeenCalledTimes(1);
+    expect(loadOverview).toHaveBeenCalledWith(true);
+    expect(state.setAssignmentsDialogOpen).toHaveBeenCalledWith(false);
+    expect(state.setMessage).toHaveBeenCalledWith({
+      kind: 'success',
+      text: 'tours.assignments.messages.createSuccess',
+    });
+
+    const updateState = {
+      ...state,
+      assignmentsDialogMode: 'edit',
+      setMessage: vi.fn(),
+      setSaving: vi.fn(),
+      setAssignmentsDialogOpen: vi.fn(),
+    };
+    updateWasteManagementLocationTourLinkMock.mockRejectedValueOnce(
+      new WasteManagementApiError('forbidden', 'Nicht erlaubt')
+    );
+
+    const updateHandlers = createWasteToursAssignmentSubmitHandlers({
+      state: updateState as never,
+      pt: translate,
+      loadOverview,
+    });
+
+    await updateHandlers.onSubmitAssignments({ preventDefault: vi.fn() } as never);
+
+    expect(updateWasteManagementLocationTourLinkMock).toHaveBeenCalledTimes(1);
+    expect(updateState.setMessage).toHaveBeenCalledWith({
+      kind: 'error',
+      text: 'tours.assignments.messages.saveForbidden',
+    });
+    expect(updateState.setSaving).toHaveBeenLastCalledWith(false);
   });
 
   it('covers tours presentation helpers including recurrence, ranges, custom dates, and shifts', () => {

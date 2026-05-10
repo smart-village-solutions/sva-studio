@@ -1723,6 +1723,314 @@ describe('waste-management auth runtime handlers', () => {
     });
   });
 
+  it('returns verification_failed responses for newly created waste entities when the read-after-write lookup misses', async () => {
+    const cases = [
+      {
+        label: 'street',
+        handler: createWasteManagementStreetInternal,
+        url: 'https://studio.test/api/v1/waste-management/streets',
+        permission: 'waste-management.master-data.manage',
+        deps: {
+          saveWasteStreet: vi.fn(async () => undefined),
+          loadWasteStreetById: vi.fn(async () => null),
+        },
+        body: {
+          id: 'street-fail',
+          name: 'Nebenstraße',
+          cityId: 'city-1',
+        },
+      },
+      {
+        label: 'collection-location',
+        handler: createWasteManagementCollectionLocationInternal,
+        url: 'https://studio.test/api/v1/waste-management/collection-locations',
+        permission: 'waste-management.master-data.manage',
+        deps: {
+          saveWasteCollectionLocation: vi.fn(async () => undefined),
+          loadWasteCollectionLocationById: vi.fn(async () => null),
+        },
+        body: {
+          id: 'location-fail',
+          cityId: 'city-1',
+          regionId: 'region-1',
+          streetId: 'street-1',
+          houseNumberId: 'house-1',
+          active: true,
+        },
+      },
+      {
+        label: 'location-tour-link',
+        handler: createWasteManagementLocationTourLinkInternal,
+        url: 'https://studio.test/api/v1/waste-management/location-tour-links',
+        permission: 'waste-management.tours.manage',
+        deps: {
+          saveWasteLocationTourLink: vi.fn(async () => undefined),
+          loadWasteLocationTourLinkById: vi.fn(async () => null),
+        },
+        body: {
+          id: 'link-fail',
+          locationId: 'location-1',
+          tourId: 'tour-1',
+          startDate: '2026-05-01',
+        },
+      },
+      {
+        label: 'tour',
+        handler: createWasteManagementTourInternal,
+        url: 'https://studio.test/api/v1/waste-management/tours',
+        permission: 'waste-management.tours.manage',
+        deps: {
+          saveWasteTour: vi.fn(async () => undefined),
+          loadWasteTourById: vi.fn(async () => null),
+        },
+        body: {
+          id: 'tour-fail',
+          name: 'Fehlerhafte Tour',
+          wasteFractionIds: ['fraction-1'],
+          active: true,
+        },
+      },
+      {
+        label: 'tour-date-shift',
+        handler: createWasteManagementTourDateShiftInternal,
+        url: 'https://studio.test/api/v1/waste-management/tour-date-shifts',
+        permission: 'waste-management.scheduling.manage',
+        deps: {
+          saveWasteTourDateShift: vi.fn(async () => undefined),
+          loadWasteTourDateShiftById: vi.fn(async () => null),
+        },
+        body: {
+          id: 'shift-fail',
+          tourId: 'tour-1',
+          originalDate: '2026-12-24',
+          actualDate: '2026-12-23',
+          hasYear: true,
+        },
+      },
+      {
+        label: 'global-date-shift',
+        handler: createWasteManagementGlobalDateShiftInternal,
+        url: 'https://studio.test/api/v1/waste-management/global-date-shifts',
+        permission: 'waste-management.scheduling.manage',
+        deps: {
+          saveWasteGlobalDateShift: vi.fn(async () => undefined),
+          loadWasteGlobalDateShiftById: vi.fn(async () => null),
+        },
+        body: {
+          id: 'global-shift-fail',
+          originalDate: '2026-01-01',
+          actualDate: '2026-01-02',
+          hasYear: true,
+          tourIds: ['tour-1'],
+        },
+      },
+    ] as const;
+
+    for (const testCase of cases) {
+      const response = await testCase.handler(
+        new Request(testCase.url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Origin: 'https://studio.test',
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+          body: JSON.stringify(testCase.body),
+        }),
+        actor,
+        {
+          getRequestId: () => `req-${testCase.label}`,
+          resolvePermissions: vi.fn(async () => ({
+            ok: true as const,
+            permissions: allowPermission(testCase.permission),
+          })),
+          ...testCase.deps,
+        }
+      );
+
+      expect(response.status, testCase.label).toBe(503);
+      await expect(response.json()).resolves.toMatchObject({
+        error: {
+          code: 'database_unavailable',
+          message: expect.any(String),
+        },
+        requestId: `req-${testCase.label}`,
+      });
+    }
+  });
+
+  it('returns database_unavailable responses for waste updates when persistence throws after validation', async () => {
+    const failingSave = vi.fn(async () => {
+      throw new Error('db_down');
+    });
+
+    const cases = [
+      {
+        label: 'street',
+        handler: updateWasteManagementStreetInternal,
+        url: 'https://studio.test/api/v1/waste-management/streets/street-1',
+        permission: 'waste-management.master-data.manage',
+        deps: {
+          saveWasteStreet: failingSave,
+          loadWasteStreetById: vi.fn(async () => ({ id: 'street-1', name: 'Hauptstraße', cityId: 'city-1' })),
+        },
+        body: { name: 'Hauptstraße Nord', cityId: 'city-1' },
+      },
+      {
+        label: 'house-number',
+        handler: updateWasteManagementHouseNumberInternal,
+        url: 'https://studio.test/api/v1/waste-management/house-numbers/house-1',
+        permission: 'waste-management.master-data.manage',
+        deps: {
+          saveWasteHouseNumber: failingSave,
+          loadWasteHouseNumberById: vi.fn(async () => ({ id: 'house-1', number: '12', streetId: 'street-1' })),
+        },
+        body: { number: '14', streetId: 'street-1' },
+      },
+      {
+        label: 'collection-location',
+        handler: updateWasteManagementCollectionLocationInternal,
+        url: 'https://studio.test/api/v1/waste-management/collection-locations/location-1',
+        permission: 'waste-management.master-data.manage',
+        deps: {
+          saveWasteCollectionLocation: failingSave,
+          loadWasteCollectionLocationById: vi.fn(async () => ({
+            id: 'location-1',
+            cityId: 'city-1',
+            regionId: 'region-1',
+            streetId: 'street-1',
+            houseNumberId: 'house-1',
+            active: true,
+          })),
+        },
+        body: {
+          cityId: 'city-1',
+          regionId: 'region-1',
+          streetId: 'street-1',
+          houseNumberId: 'house-2',
+          active: true,
+        },
+      },
+      {
+        label: 'location-tour-link',
+        handler: updateWasteManagementLocationTourLinkInternal,
+        url: 'https://studio.test/api/v1/waste-management/location-tour-links/link-1',
+        permission: 'waste-management.tours.manage',
+        deps: {
+          saveWasteLocationTourLink: failingSave,
+          loadWasteLocationTourLinkById: vi.fn(async () => ({
+            id: 'link-1',
+            locationId: 'location-1',
+            tourId: 'tour-1',
+            startDate: '2026-05-01',
+          })),
+        },
+        body: {
+          locationId: 'location-1',
+          tourId: 'tour-1',
+          startDate: '2026-05-01',
+          endDate: '2026-12-31',
+        },
+      },
+      {
+        label: 'tour',
+        handler: updateWasteManagementTourInternal,
+        url: 'https://studio.test/api/v1/waste-management/tours/tour-1',
+        permission: 'waste-management.tours.manage',
+        deps: {
+          saveWasteTour: failingSave,
+          loadWasteTourById: vi.fn(async () => ({
+            id: 'tour-1',
+            name: 'Restmüll Nord',
+            wasteFractionIds: ['fraction-1'],
+            active: true,
+            locationCount: 2,
+          })),
+        },
+        body: {
+          name: 'Restmüll Nord Plus',
+          wasteFractionIds: ['fraction-1'],
+          active: true,
+        },
+      },
+      {
+        label: 'tour-date-shift',
+        handler: updateWasteManagementTourDateShiftInternal,
+        url: 'https://studio.test/api/v1/waste-management/tour-date-shifts/shift-1',
+        permission: 'waste-management.scheduling.manage',
+        deps: {
+          saveWasteTourDateShift: failingSave,
+          loadWasteTourDateShiftById: vi.fn(async () => ({
+            id: 'shift-1',
+            tourId: 'tour-1',
+            originalDate: '2026-12-24',
+            actualDate: '2026-12-23',
+            hasYear: true,
+          })),
+        },
+        body: {
+          tourId: 'tour-1',
+          originalDate: '2026-12-24',
+          actualDate: '2026-12-22',
+          hasYear: true,
+        },
+      },
+      {
+        label: 'global-date-shift',
+        handler: updateWasteManagementGlobalDateShiftInternal,
+        url: 'https://studio.test/api/v1/waste-management/global-date-shifts/global-shift-1',
+        permission: 'waste-management.scheduling.manage',
+        deps: {
+          saveWasteGlobalDateShift: failingSave,
+          loadWasteGlobalDateShiftById: vi.fn(async () => ({
+            id: 'global-shift-1',
+            originalDate: '2026-01-01',
+            actualDate: '2026-01-02',
+            hasYear: true,
+            tourIds: ['tour-1'],
+          })),
+        },
+        body: {
+          originalDate: '2026-01-01',
+          actualDate: '2026-01-03',
+          hasYear: true,
+        },
+      },
+    ] as const;
+
+    for (const testCase of cases) {
+      const response = await testCase.handler(
+        new Request(testCase.url, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Origin: 'https://studio.test',
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+          body: JSON.stringify(testCase.body),
+        }),
+        actor,
+        {
+          getRequestId: () => `req-${testCase.label}`,
+          resolvePermissions: vi.fn(async () => ({
+            ok: true as const,
+            permissions: allowPermission(testCase.permission),
+          })),
+          ...testCase.deps,
+        }
+      );
+
+      expect(response.status, testCase.label).toBe(503);
+      await expect(response.json()).resolves.toMatchObject({
+        error: {
+          code: 'database_unavailable',
+          message: expect.any(String),
+        },
+        requestId: `req-${testCase.label}`,
+      });
+    }
+  });
+
   it('starts the waste migrations job through the generic plugin operations pipeline', async () => {
 
     const startJob = vi.fn(async () => new Response(JSON.stringify({ data: { id: 'job-1' } }), { status: 202 }));

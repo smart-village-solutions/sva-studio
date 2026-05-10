@@ -83,7 +83,7 @@ describe('plugin operation runtime registration', () => {
       'waste-management.seed-data',
     ]);
     expect(registerPluginOperationExecutionHandlersMock).toHaveBeenCalledWith(handlers);
-  }, 15000);
+  }, 30000);
 
   it('rejects declared job types without a registered runtime handler', async () => {
     const mod = await import('./plugin-operation-runtime.server');

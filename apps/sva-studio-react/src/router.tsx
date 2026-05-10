@@ -45,7 +45,7 @@ export const isMockAuthEnabled = async () => {
 };
 
 export const createMockRouteGuardUser = (): RouteGuardUser => ({
-  assignedModules: ['news', 'events', 'poi', 'media'],
+  assignedModules: ['news', 'events', 'poi', 'media', 'waste-management'],
   roles: [
     'system_admin',
     'iam_admin',
@@ -77,6 +77,14 @@ export const createMockRouteGuardUser = (): RouteGuardUser => ({
     'news.read',
     'events.read',
     'poi.read',
+    'waste-management.read',
+    'waste-management.master-data.manage',
+    'waste-management.tours.manage',
+    'waste-management.scheduling.manage',
+    'waste-management.import.execute',
+    'waste-management.seed.execute',
+    'waste-management.reset.execute',
+    'waste-management.settings.manage',
   ],
 });
 

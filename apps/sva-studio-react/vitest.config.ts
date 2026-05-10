@@ -32,6 +32,9 @@ export default defineConfig({
       '@sva/sva-mainserver/server': fileURLToPath(new URL('../../packages/sva-mainserver/src/index.server.ts', import.meta.url)),
       '@sva/sva-mainserver': fileURLToPath(new URL('../../packages/sva-mainserver/src/index.ts', import.meta.url)),
       '@sva/instance-registry': fileURLToPath(new URL('../../packages/instance-registry/src/index.ts', import.meta.url)),
+      '@sva/plugin-waste-management': fileURLToPath(
+        new URL('../../packages/plugin-waste-management/src/index.ts', import.meta.url)
+      ),
       '@sva/plugin-sdk': fileURLToPath(new URL('../../packages/plugin-sdk/src/index.ts', import.meta.url)),
       '@sva/studio-module-iam': fileURLToPath(new URL('../../packages/studio-module-iam/src/index.ts', import.meta.url)),
       '@sva/studio-ui-react': fileURLToPath(new URL('../../packages/studio-ui-react/src/index.ts', import.meta.url)),

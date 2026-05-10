@@ -128,6 +128,10 @@ export {
   mergePluginImportProfiles,
   mergePluginJobTypes,
 } from './plugin-operations.js';
+export {
+  createWasteManagementPluginImportProfiles,
+  createWasteManagementPluginJobTypes,
+} from './waste-management-operations.js';
 export type {
   StandardContentAdminResourceOptions,
   StandardContentPluginActionIds,

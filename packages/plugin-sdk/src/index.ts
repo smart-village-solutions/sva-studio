@@ -95,6 +95,8 @@ export {
   createStandardContentPluginPermissions,
   createStandardContentPluginSystemRoles,
   createStandardContentTypeDefinition,
+  createWasteManagementPluginImportProfiles,
+  createWasteManagementPluginJobTypes,
   createMainserverCrudClient,
   createMainserverJsonRequestHeaders,
   buildMainserverListUrl,

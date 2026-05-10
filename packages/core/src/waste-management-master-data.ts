@@ -127,6 +127,18 @@ export type WasteLocationTourLinkListFilter = {
   readonly tourId?: string;
 };
 
+export type WasteLocationTourLinkBulkCreateInput = {
+  readonly locationIds: readonly string[];
+  readonly tourId: string;
+  readonly startDate?: string;
+  readonly endDate?: string;
+};
+
+export type WasteLocationTourLinkBulkCreateResult = {
+  readonly items: readonly WasteLocationTourLinkRecord[];
+  readonly createdCount: number;
+};
+
 export type WasteTourDateShiftRecord = {
   readonly id: string;
   readonly tourId: string;
@@ -157,4 +169,23 @@ export type WasteGlobalDateShiftRecord = {
 export type WasteGlobalDateShiftListFilter = {
   readonly hasYear?: boolean;
   readonly appliesToTourId?: string;
+};
+
+export type WasteManagementMasterDataOverview = {
+  readonly fractions: readonly WasteFractionRecord[];
+  readonly regions: readonly WasteRegionRecord[];
+  readonly cities: readonly WasteCityRecord[];
+  readonly streets: readonly WasteStreetRecord[];
+  readonly houseNumbers: readonly WasteHouseNumberRecord[];
+  readonly collectionLocations: readonly WasteCollectionLocationRecord[];
+  readonly locationTourLinks: readonly WasteLocationTourLinkRecord[];
+};
+
+export type WasteManagementToursOverview = {
+  readonly tours: readonly WasteTourRecord[];
+};
+
+export type WasteManagementSchedulingOverview = {
+  readonly tourDateShifts: readonly WasteTourDateShiftRecord[];
+  readonly globalDateShifts: readonly WasteGlobalDateShiftRecord[];
 };

@@ -76,6 +76,12 @@ export type {
 } from './plugin-operations-contract.js';
 export { wasteManagementDataSourceContract } from './waste-management-contract.js';
 export type {
+  WasteManagementAuditOverview,
+  WasteManagementAuditOutcome,
+  WasteManagementAuditQuery,
+  WasteManagementAuditRecord,
+} from './waste-management-audit.js';
+export type {
   WasteManagementConnectionCheckRecord,
   WasteManagementConnectionCheckStatus,
   WasteManagementDataSourceProvider,
@@ -84,6 +90,27 @@ export type {
   WasteManagementSettingsRecord,
   WasteManagementTechnicalEventType,
 } from './waste-management-contract.js';
+export { wasteManagementOperationsContract } from './waste-management-operations-contract.js';
+export {
+  getWasteManagementImportCatalogEntry,
+  wasteManagementImportCatalog,
+} from './waste-management-import-catalog.js';
+export type {
+  WasteManagementImportColumnDefinition,
+  WasteManagementImportMappingTemplate,
+  WasteManagementImportProfileCatalogEntry,
+} from './waste-management-import-catalog.js';
+export type {
+  WasteManagementApplyMigrationsJobInput,
+  WasteManagementImportJobInput,
+  WasteManagementImportProfileId,
+  WasteManagementImportSourceFormat,
+  WasteManagementInitializeJobInput,
+  WasteManagementJobInput,
+  WasteManagementJobTypeId,
+  WasteManagementResetJobInput,
+  WasteManagementSeedJobInput,
+} from './waste-management-operations-contract.js';
 export type {
   WasteCollectionLocationListFilter,
   WasteCollectionLocationRecord,
@@ -96,6 +123,11 @@ export type {
   WasteGlobalDateShiftRecord,
   WasteHouseNumberListFilter,
   WasteHouseNumberRecord,
+  WasteLocationTourLinkBulkCreateInput,
+  WasteLocationTourLinkBulkCreateResult,
+  WasteManagementMasterDataOverview,
+  WasteManagementSchedulingOverview,
+  WasteManagementToursOverview,
   WasteLocationTourLinkListFilter,
   WasteLocationTourLinkRecord,
   WasteRegionListFilter,

@@ -907,6 +907,24 @@ export const i18nResources = {
           tenantAdminEmail: 'Admin-E-Mail',
           tenantAdminFirstName: 'Admin-Vorname',
           tenantAdminLastName: 'Admin-Nachname',
+          wasteManagementEnabled: 'Abfallmanagement konfigurieren',
+          wasteManagementSubtitle:
+            'Instanzbezogene Waste-Datenquelle und technische Zugangsdaten für das Waste-Plugin.',
+          wasteManagementProjectUrl: 'Supabase-Projekt-URL',
+          wasteManagementSchemaName: 'Schema-Name',
+          wasteManagementProvider: 'Provider',
+          wasteManagementDatabaseUrl: 'Datenbank-URL',
+          wasteManagementDatabaseUrlConfigured: 'Bereits konfiguriert',
+          wasteManagementDatabaseUrlHint:
+            'Leer lassen, um die bestehende Waste-Datenbank-URL unverändert zu lassen.',
+          wasteManagementDatabaseUrlCreateHint:
+            'Optional beim Anlegen. Kann später in der Instanzkonfiguration ergänzt werden.',
+          wasteManagementServiceRoleKey: 'Service-Role-Key',
+          wasteManagementServiceRoleKeyConfigured: 'Bereits konfiguriert',
+          wasteManagementServiceRoleKeyHint:
+            'Leer lassen, um den bestehenden Waste-Service-Role-Key unverändert zu lassen.',
+          wasteManagementServiceRoleKeyCreateHint:
+            'Optional beim Anlegen. Kann später in der Instanzkonfiguration ergänzt werden.',
         },
         flow: {
           realmModeTitle: 'Realm-Modus',
@@ -1287,6 +1305,8 @@ export const i18nResources = {
             authClientSecret: 'Bitte ein Tenant-Client-Secret angeben.',
             tenantAdminClientId: 'Bitte eine Tenant-Admin-Client-ID angeben.',
             tenantAdminClientSecret: 'Bitte ein Tenant-Admin-Client-Secret angeben.',
+            wasteProjectUrl:
+              'Bitte eine Supabase-Projekt-URL angeben, sobald Abfallmanagement für die Instanz aktiviert wird.',
           },
           readiness: {
             secretTitle: 'Tenant-Client-Secret',
@@ -1357,6 +1377,7 @@ export const i18nResources = {
             events: 'Events',
             poi: 'POI',
             media: 'Medien',
+            wasteManagement: 'Abfallmanagement',
           },
         },
         help: {
@@ -2141,6 +2162,7 @@ export const i18nResources = {
           news: 'News',
           events: 'Events',
           poi: 'POI',
+          wasteManagement: 'Abfallmanagement',
         },
         createDialog: {
           title: 'Neue Rolle erstellen',
@@ -2647,6 +2669,7 @@ export const i18nResources = {
             news: 'News',
             events: 'Events',
             poi: 'POI',
+            wasteManagement: 'Abfallmanagement',
           },
         },
         governance: {
@@ -3591,6 +3614,24 @@ export const i18nResources = {
           tenantAdminEmail: 'Admin email',
           tenantAdminFirstName: 'Admin first name',
           tenantAdminLastName: 'Admin last name',
+          wasteManagementEnabled: 'Configure waste management',
+          wasteManagementSubtitle:
+            'Instance-specific waste data source and technical credentials for the waste plugin.',
+          wasteManagementProjectUrl: 'Supabase project URL',
+          wasteManagementSchemaName: 'Schema name',
+          wasteManagementProvider: 'Provider',
+          wasteManagementDatabaseUrl: 'Database URL',
+          wasteManagementDatabaseUrlConfigured: 'Already configured',
+          wasteManagementDatabaseUrlHint:
+            'Leave empty to keep the existing waste database URL unchanged.',
+          wasteManagementDatabaseUrlCreateHint:
+            'Optional during creation. Can be added later in the instance configuration.',
+          wasteManagementServiceRoleKey: 'Service role key',
+          wasteManagementServiceRoleKeyConfigured: 'Already configured',
+          wasteManagementServiceRoleKeyHint:
+            'Leave empty to keep the existing waste service role key unchanged.',
+          wasteManagementServiceRoleKeyCreateHint:
+            'Optional during creation. Can be added later in the instance configuration.',
         },
         flow: {
           realmModeTitle: 'Realm mode',
@@ -3962,6 +4003,8 @@ export const i18nResources = {
             authClientSecret: 'Please provide a tenant client secret.',
             tenantAdminClientId: 'Please provide a tenant admin client id.',
             tenantAdminClientSecret: 'Please provide a tenant admin client secret.',
+            wasteProjectUrl:
+              'Please provide a Supabase project URL once waste management is enabled for the instance.',
           },
           readiness: {
             secretTitle: 'Tenant client secret',
@@ -4030,6 +4073,7 @@ export const i18nResources = {
             events: 'Events',
             poi: 'POI',
             media: 'Media',
+            wasteManagement: 'Waste management',
           },
         },
         help: {
@@ -4779,6 +4823,7 @@ export const i18nResources = {
           news: 'News',
           events: 'Events',
           poi: 'POI',
+          wasteManagement: 'Waste management',
         },
         createDialog: {
           title: 'Create role',
@@ -5272,6 +5317,7 @@ export const i18nResources = {
             news: 'News',
             events: 'Events',
             poi: 'POI',
+            wasteManagement: 'Waste management',
           },
         },
         governance: {

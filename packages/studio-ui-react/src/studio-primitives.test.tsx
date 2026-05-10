@@ -24,6 +24,7 @@ import {
   Input,
   Select,
   StudioActionMenu,
+  StudioConfirmDialog,
   StudioDataTable,
   type StudioDataTableLabels,
   StudioDetailTabs,
@@ -34,12 +35,14 @@ import {
   StudioField,
   StudioFieldGroup,
   StudioFormSummary,
+  StudioJobSummaryCard,
   StudioListPageTemplate,
   StudioLoadingState,
   StudioOverviewPageTemplate,
   StudioResourceHeader,
   StudioSection,
   StudioStateBlock,
+  StudioTechnicalStatusPanel,
   Textarea,
 } from './index.js';
 
@@ -483,6 +486,67 @@ describe('studio-ui-react primitives', () => {
     expect(screen.getByRole('alertdialog', { hidden: true })).toBeTruthy();
     expect(screen.getByText('Dialogtitel')).toBeTruthy();
     expect(screen.getByText('Bestätigen')).toBeTruthy();
+  });
+
+  it('renders shared confirm dialogs with embedded custom content', () => {
+    const onConfirm = vi.fn();
+    const onCancel = vi.fn();
+
+    render(
+      <StudioConfirmDialog
+        open
+        title="Reset"
+        description="Wirklich ausführen?"
+        confirmLabel="Ja"
+        cancelLabel="Nein"
+        onConfirm={onConfirm}
+        onCancel={onCancel}
+      >
+        <StudioField id="token" label="Token">
+          <Input id="token" defaultValue="RESET" />
+        </StudioField>
+      </StudioConfirmDialog>
+    );
+
+    expect(screen.getByRole('alertdialog', { hidden: true })).toBeTruthy();
+    expect(screen.getByLabelText('Token')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Ja' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Nein' }));
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+    expect(onCancel).toHaveBeenCalled();
+  });
+
+  it('renders technical status panels and generic job summary cards', () => {
+    render(
+      <>
+        <StudioTechnicalStatusPanel
+          title="Datenquelle"
+          description="Host-Status"
+          statusLabel="ok"
+          statusTone="success"
+          metadata={[
+            { id: 'checkedAt', label: 'Geprüft', value: 'Heute' },
+            { id: 'secret', label: 'Secret', value: 'Ja' },
+          ]}
+          actions={<Button>Neu prüfen</Button>}
+        />
+        <StudioJobSummaryCard
+          title="Letzter Job"
+          description="Host-Jobstatus"
+          statusLabel="running"
+          statusTone="warning"
+          metadata={[{ id: 'jobId', label: 'Job', value: 'job-1' }]}
+          actions={<Button>Öffnen</Button>}
+        />
+      </>
+    );
+
+    expect(screen.getByRole('heading', { name: 'Datenquelle' })).toBeTruthy();
+    expect(screen.getByText('Geprüft: Heute')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Neu prüfen' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Letzter Job' })).toBeTruthy();
+    expect(screen.getByText('Job: job-1')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Öffnen' })).toBeTruthy();
   });
 
   it('renders optional primitive variants without auxiliary content', () => {

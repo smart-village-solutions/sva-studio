@@ -72,6 +72,7 @@ const PERMISSION_RESOURCE_TRANSLATION_KEY_BY_VALUE = {
   events: 'admin.iam.rights.permissionResources.events',
   poi: 'admin.iam.rights.permissionResources.poi',
   media: 'admin.iam.rights.permissionResources.media',
+  'waste-management': 'admin.iam.rights.permissionResources.wasteManagement',
 } as const satisfies Record<string, TranslationKey>;
 
 const hasPermissionResourceTranslationKey = (

@@ -24,6 +24,7 @@ import {
 } from './-instance-detail-models';
 import { getErrorMessage } from './-instance-error-messages';
 import {
+  buildWasteManagementSettingsPayload,
   createDetailForm,
   INSTANCE_FIELD_HELP,
   isTenantSecretUserInputRequired,
@@ -34,6 +35,7 @@ import {
   OperationsStepStatusBadge,
   ProvisioningStepBadge,
 } from './-instance-status-badges';
+import { WasteManagementSettingsFields } from './-waste-management-settings-fields';
 
 type InstanceDetailPageProps = {
   readonly instanceId: string;
@@ -391,6 +393,7 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
             lastName: detailFormValues.tenantAdminBootstrap.lastName.trim() || undefined,
           }
         : undefined,
+      wasteManagementSettings: buildWasteManagementSettingsPayload(detailFormValues.wasteManagementSettings),
     });
 
     setDetailFormValues((current) =>
@@ -1034,6 +1037,23 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
                     />
                   </div>
                 </div>
+                <WasteManagementSettingsFields
+                  idPrefix="detail"
+                  value={detailFormValues.wasteManagementSettings}
+                  showConfiguredHints
+                  databaseUrlConfigured={selectedInstance.wasteManagementSettings?.databaseUrlConfigured}
+                  serviceRoleKeyConfigured={selectedInstance.wasteManagementSettings?.serviceRoleKeyConfigured}
+                  onChange={(updater) =>
+                    setDetailFormValues((current) =>
+                      current
+                        ? {
+                            ...current,
+                            wasteManagementSettings: updater(current.wasteManagementSettings),
+                          }
+                        : current
+                    )
+                  }
+                />
                 <Button type="submit" variant="outline">
                   {t('admin.instances.actions.save')}
                 </Button>

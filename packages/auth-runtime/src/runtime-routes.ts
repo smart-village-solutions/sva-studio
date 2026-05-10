@@ -77,6 +77,7 @@ export {
   updateUserHandler,
 } from './iam-account-management/core.js';
 export { instanceRegistryHandlers } from './iam-instance-registry/server.js';
+export { wasteManagementHandlers } from './waste-management/server.js';
 export {
   completeMediaUploadHandler,
   deleteMediaHandler,

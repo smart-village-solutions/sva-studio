@@ -1,6 +1,20 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { InstanceRegistryRepository } from '@sva/data-repositories';
 
+vi.mock('@sva/server-runtime', async () => {
+  const actual = await vi.importActual<typeof import('@sva/server-runtime')>('@sva/server-runtime');
+  return {
+    ...actual,
+    createSdkLogger: () => ({
+      debug: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+      isLevelEnabled: vi.fn(() => true),
+    }),
+  };
+});
+
 import { createInstanceRegistryService } from './service.js';
 import { createGetKeycloakStatusHandler } from './service-keycloak.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
@@ -124,6 +138,38 @@ const createDeps = (
         ownerPluginId: 'events',
         permissionIds: ['events.read'],
         systemRoles: [{ roleName: 'system_admin', permissionIds: ['events.read'] }],
+      },
+    ],
+    [
+      'waste-management',
+      {
+        moduleId: 'waste-management',
+        ownerPluginId: 'waste-management',
+        permissionIds: [
+          'waste-management.read',
+          'waste-management.master-data.manage',
+          'waste-management.tours.manage',
+          'waste-management.scheduling.manage',
+          'waste-management.import.execute',
+          'waste-management.seed.execute',
+          'waste-management.reset.execute',
+          'waste-management.settings.manage',
+        ],
+        systemRoles: [
+          {
+            roleName: 'system_admin',
+            permissionIds: [
+              'waste-management.read',
+              'waste-management.master-data.manage',
+              'waste-management.tours.manage',
+              'waste-management.scheduling.manage',
+              'waste-management.import.execute',
+              'waste-management.seed.execute',
+              'waste-management.reset.execute',
+              'waste-management.settings.manage',
+            ],
+          },
+        ],
       },
     ],
   ]),
@@ -677,7 +723,7 @@ describe('instance registry service facade', () => {
     expect(repository.syncAssignedModuleIam).toHaveBeenCalledWith(
       expect.objectContaining({
         instanceId: 'demo',
-        managedModuleIds: ['news', 'events'],
+        managedModuleIds: expect.arrayContaining(['news', 'events', 'waste-management']),
         contracts: expect.arrayContaining([
           expect.objectContaining({ moduleId: 'news' }),
           expect.objectContaining({ moduleId: 'events' }),
@@ -691,6 +737,52 @@ describe('instance registry service facade', () => {
           moduleId: 'events',
           outcome: 'assigned',
         }),
+      })
+    );
+  });
+
+  it('assigns the waste-management module and syncs its permission contract into instance IAM', async () => {
+    const repository = createRepository({
+      assignModule: vi.fn(async () => true),
+      listAssignedModules: vi.fn(async () => ['news', 'waste-management']),
+      getInstanceById: vi
+        .fn()
+        .mockResolvedValueOnce(baseInstance)
+        .mockResolvedValueOnce({ ...baseInstance, assignedModules: ['news', 'waste-management'] }),
+    });
+    const service = createInstanceRegistryService(createDeps(repository));
+
+    await expect(
+      service.assignModule({
+        instanceId: 'demo',
+        moduleId: 'waste-management',
+        idempotencyKey: 'idem-module-waste-1',
+        actorId: 'actor-1',
+        requestId: 'req-module-waste-1',
+      })
+    ).resolves.toEqual({
+      ok: true,
+      instance: expect.objectContaining({
+        assignedModules: ['news', 'waste-management'],
+      }),
+    });
+
+    expect(repository.assignModule).toHaveBeenCalledWith('demo', 'waste-management');
+    expect(repository.syncAssignedModuleIam).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'demo',
+        managedModuleIds: ['news', 'events', 'waste-management'],
+        contracts: expect.arrayContaining([
+          expect.objectContaining({ moduleId: 'news' }),
+          expect.objectContaining({
+            moduleId: 'waste-management',
+            permissionIds: expect.arrayContaining([
+              'waste-management.read',
+              'waste-management.settings.manage',
+              'waste-management.reset.execute',
+            ]),
+          }),
+        ]),
       })
     );
   });
@@ -727,7 +819,7 @@ describe('instance registry service facade', () => {
     expect(repository.syncAssignedModuleIam).toHaveBeenCalledWith(
       expect.objectContaining({
         instanceId: 'demo',
-        managedModuleIds: ['news', 'events'],
+        managedModuleIds: expect.arrayContaining(['news', 'events', 'waste-management']),
       })
     );
     expect(repository.syncInstanceAdminBootstrap).toHaveBeenCalledWith(

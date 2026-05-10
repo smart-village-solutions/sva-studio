@@ -108,4 +108,37 @@ describe('role-query', () => {
       })
     );
   });
+
+  it('falls back to centrally managed permission descriptions for waste-management rights', async () => {
+    const client = createQueryClient([
+      {
+        id: 'role-2',
+        role_key: 'waste_editor',
+        role_name: 'waste_editor',
+        display_name: 'Waste Editor',
+        external_role_name: 'waste_editor',
+        managed_by: 'studio',
+        description: null,
+        is_system_role: false,
+        role_level: 30,
+        member_count: 1,
+        sync_state: 'synced',
+        last_synced_at: null,
+        last_error_code: null,
+        permission_rows: [{ id: 'perm-2', permission_key: 'waste-management.master-data.manage', description: null }],
+      },
+    ]);
+
+    await expect(loadRoleListItems(client, 'de-musterhausen')).resolves.toEqual([
+      expect.objectContaining({
+        permissions: [
+          {
+            id: 'perm-2',
+            permissionKey: 'waste-management.master-data.manage',
+            description: 'Stammdaten im Waste-Management verwalten',
+          },
+        ],
+      }),
+    ]);
+  });
 });

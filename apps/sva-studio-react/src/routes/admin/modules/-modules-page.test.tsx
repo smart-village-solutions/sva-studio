@@ -57,6 +57,13 @@ vi.mock('../../../lib/plugins', () => ({
       permissionIds: ['media.read', 'media.create'],
       systemRoles: [{ roleName: 'editor', permissionIds: ['media.read', 'media.create'] }],
     },
+    {
+      moduleId: 'waste-management',
+      permissionIds: ['waste-management.read', 'waste-management.settings.manage'],
+      systemRoles: [
+        { roleName: 'waste_management_admin', permissionIds: ['waste-management.read', 'waste-management.settings.manage'] },
+      ],
+    },
   ],
 }));
 
@@ -134,6 +141,7 @@ describe('ModulesPage', () => {
     expect(screen.getByText('news')).toBeTruthy();
     expect(screen.getByText('events')).toBeTruthy();
     expect(screen.getByText('media')).toBeTruthy();
+    expect(screen.getByText('waste-management')).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'IAM-Basis neu aufbauen' }));
     fireEvent.click(screen.getByRole('button', { name: 'Modul entziehen' }));

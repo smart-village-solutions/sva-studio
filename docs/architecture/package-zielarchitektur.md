@@ -41,6 +41,7 @@ Die aktuelle Struktur trennt die vorherigen Sammelrollen in eigenständige Paket
 - `@sva/studio-ui-react` ist Owner der wiederverwendbaren Listen-/Template-UI; App-spezifische i18n-Labels bleiben Consumer-Verantwortung.
 - `@sva/sva-mainserver` kapselt die externe Mainserver-Integration und exportiert die kanonischen serverseitigen Host-Verträge für News, Events, POI und Mainserver-Schnittstellen.
 - `@sva/plugin-news` zeigt das Zielmuster für fachliche Plugins.
+- `@sva/plugin-waste-management` nutzt dasselbe freie Plugin-Muster für einen vollständig hostgeführten Fachbereich mit Settings, CRUD, Bulk-Flows sowie generischen Job- und Importpfaden.
 - `apps/sva-studio-react` enthält UI, TanStack-Start-Runtime, Router-Wiring und nur noch dünne App-Adapter für Package-Verträge.
 
 Die größte frühere strukturelle Last aus `@sva/auth` ist fachlich aufgelöst. Das Package ist kein aktiver Workspace-Baustein mehr.
@@ -127,6 +128,7 @@ Die Zielrollen sind als Workspace-Packages vorhanden und werden über Nx-, ESLin
 | `@sva/studio-ui-react` | React-basierte Studio-UI-Bausteine für Host-Seiten und Plugin-Custom-Views | `packages/studio-ui-react` | UI-only Package; keine Plugin-Registry-, Routing-, IAM-, DB- oder Server-Runtime-Verantwortung. Wiederverwendbare Host-Tabellen und Seiten-Templates gehören hierher. |
 | `@sva/*-integration` | Downstream-Integrationen mit getrennten client-sicheren Typen und serverseitigen Adaptern | `packages/sva-mainserver` | Integrationspakete kapseln OAuth2, GraphQL, Secret-Lookups, Fehlerabbildung und kanonische serverseitige Host-Verträge. |
 | `@sva/plugin-*` | Fachliche Erweiterungen über Plugin-SDK-Verträge und gemeinsame Studio-UI | `packages/plugin-news` | Keine Direktimporte aus `@sva/core`, `@sva/auth-runtime`, `@sva/iam-*`, `@sva/instance-registry`, `@sva/data` oder App-Modulen; Custom-Views nutzen `@sva/studio-ui-react`. |
+| `@sva/plugin-waste-management` | Freies Fachplugin für Waste-Management mit Search-Params, Audit-, Import- und Jobnutzung über den Host | `packages/plugin-waste-management` | Keine Supabase-Clients, keine `Newcms`-Runtime-Artefakte und keine direkte DB- oder Secret-Auflösung im Plugin; hostgeführte Zugriffe laufen nur über `/api/v1/waste-management/*`. |
 | `apps/sva-studio-react` | UI, TanStack Start, Router-Wiring, App-Shell, Server-Funktionen als Adapter | `apps/sva-studio-react` | Keine dauerhafte Domänenlogik, keine rohen DB-/Keycloak-/GraphQL-Zugriffe im Browser-Bundle. |
 
 ## Erlaubte Abhängigkeitsrichtung
@@ -219,6 +221,7 @@ Neue Consumer importieren die Zielrolle direkt; ein Compatibility-Layer im Works
 
 - universeller HTTP- und Schema-validierter DataClient
 - serverseitige Postgres-Repositories und Migration-nahe Datenzugriffe
+- für Waste-Management ausdrücklich keine neue Orchestrierungs-, SQL- oder Fachdaten-Ownership; diese bleibt in `@sva/data-repositories`, `@sva/auth-runtime` und `@sva/server-runtime`
 
 Neue DB-nahe Funktionen sollen nicht im universal importierbaren Entry landen. Browser- und Server-Exports bleiben getrennt.
 

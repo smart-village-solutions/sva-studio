@@ -11,6 +11,8 @@ export const iamGovernancePackageRoles = [
 
 export { listGovernanceCases } from './read-models.js';
 export type { GovernanceFilters } from './read-models.types.js';
+export { listWasteManagementAuditRecords } from './waste-audit-read-models.js';
+export type { WasteAuditFilters } from './waste-audit-read-models.types.js';
 export {
   listAdminDsrCases,
   loadDsrSelfServiceOverview,

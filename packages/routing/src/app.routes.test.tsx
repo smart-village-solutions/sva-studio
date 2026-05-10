@@ -167,6 +167,20 @@ describe('app.routes', () => {
             },
           ],
         },
+        {
+          id: 'waste-management',
+          displayName: 'Waste Management',
+          routes: [
+            {
+              id: 'waste-management.home',
+              path: '/plugins/waste-management',
+              validateSearch: (search: Record<string, unknown>) => ({
+                tab: typeof search.tab === 'string' ? search.tab : 'overview',
+              }),
+              component: () => 'waste',
+            },
+          ],
+        },
       ],
     });
     const rootRoute = { id: 'root' };
@@ -185,6 +199,7 @@ describe('app.routes', () => {
     expect(routeMap.has('/monitoring/jobs/$jobId')).toBe(true);
     expect(routeMap.has('/auth/login')).toBe(true);
     expect(routeMap.has('/plugins/calendar')).toBe(true);
+    expect(routeMap.has('/plugins/waste-management')).toBe(true);
     expect(pluginFactories).toHaveLength(1);
     expect(readRouteOptions(routeMap.get('/account')).getParentRoute?.()).toBe(rootRoute);
 
@@ -233,6 +248,9 @@ describe('app.routes', () => {
     });
     expect(readRouteOptions(routeMap.get('/admin/roles/$roleId')).validateSearch?.({ tab: 'bogus' })).toEqual({
       tab: 'general',
+    });
+    expect(readRouteOptions(routeMap.get('/plugins/waste-management')).validateSearch?.({ tab: 'settings' })).toEqual({
+      tab: 'settings',
     });
   });
 
@@ -521,6 +539,39 @@ describe('app.routes', () => {
         location: { href: '/plugins/news' },
       })
     ).resolves.toBeUndefined();
+  });
+
+  it('passes plugin search-param normalization through the central routing registry', () => {
+    const routeFactories = getPluginRouteFactories([
+      {
+        id: 'waste-management',
+        displayName: 'Waste Management',
+        permissions: [{ id: 'waste-management.read', titleKey: 'wasteManagement.permissions.read' }],
+        routes: [
+          {
+            id: 'waste-management.home',
+            path: '/plugins/waste-management',
+            guard: 'waste-management.read',
+            validateSearch: (search) => ({
+              tab: search.tab === 'settings' ? 'settings' : 'overview',
+              page: search.page === '2' ? 2 : 1,
+            }),
+            component: () => 'waste',
+          },
+        ],
+      },
+    ]);
+    const rootRoute = { id: 'root' };
+    const [route] = routeFactories.map((factory) => factory(rootRoute as never));
+
+    expect(readRouteOptions(route).validateSearch?.({ tab: 'settings', page: '2', ignored: 'value' })).toEqual({
+      tab: 'settings',
+      page: 2,
+    });
+    expect(readRouteOptions(route).validateSearch?.({ tab: 'bogus', page: '-1' })).toEqual({
+      tab: 'overview',
+      page: 1,
+    });
   });
 
   it('blocks plugin routes fail-closed when the active instance lacks the assigned module', async () => {

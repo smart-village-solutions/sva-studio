@@ -155,7 +155,7 @@ describe('router runtime helpers', () => {
     const { createMockRouteGuardUser } = await import('./router');
 
     expect(createMockRouteGuardUser()).toEqual({
-      assignedModules: ['news', 'events', 'poi', 'media'],
+      assignedModules: ['news', 'events', 'poi', 'media', 'waste-management'],
       roles: [
         'system_admin',
         'iam_admin',
@@ -187,6 +187,14 @@ describe('router runtime helpers', () => {
         'news.read',
         'events.read',
         'poi.read',
+        'waste-management.read',
+        'waste-management.master-data.manage',
+        'waste-management.tours.manage',
+        'waste-management.scheduling.manage',
+        'waste-management.import.execute',
+        'waste-management.seed.execute',
+        'waste-management.reset.execute',
+        'waste-management.settings.manage',
       ],
     });
   });
@@ -289,7 +297,7 @@ describe('router runtime helpers', () => {
 
     vi.stubEnv('VITE_MOCK_AUTH', 'true');
     expect(await getUser()).toEqual({
-      assignedModules: ['news', 'events', 'poi', 'media'],
+      assignedModules: ['news', 'events', 'poi', 'media', 'waste-management'],
       roles: [
         'system_admin',
         'iam_admin',
@@ -321,6 +329,14 @@ describe('router runtime helpers', () => {
         'news.read',
         'events.read',
         'poi.read',
+        'waste-management.read',
+        'waste-management.master-data.manage',
+        'waste-management.tours.manage',
+        'waste-management.scheduling.manage',
+        'waste-management.import.execute',
+        'waste-management.seed.execute',
+        'waste-management.reset.execute',
+        'waste-management.settings.manage',
       ],
     });
   });
@@ -362,7 +378,7 @@ describe('router runtime helpers', () => {
 
     vi.stubEnv('VITE_MOCK_AUTH', 'true');
     expect(await getUser()).toEqual({
-      assignedModules: ['news', 'events', 'poi', 'media'],
+      assignedModules: ['news', 'events', 'poi', 'media', 'waste-management'],
       roles: [
         'system_admin',
         'iam_admin',
@@ -394,6 +410,14 @@ describe('router runtime helpers', () => {
         'news.read',
         'events.read',
         'poi.read',
+        'waste-management.read',
+        'waste-management.master-data.manage',
+        'waste-management.tours.manage',
+        'waste-management.scheduling.manage',
+        'waste-management.import.execute',
+        'waste-management.seed.execute',
+        'waste-management.reset.execute',
+        'waste-management.settings.manage',
       ],
     });
   });

@@ -135,6 +135,39 @@ vi.mock('@sva/plugin-poi', () => ({
   },
 }));
 
+vi.mock('@sva/plugin-waste-management', () => ({
+  pluginWasteManagement: {
+    id: 'waste-management',
+    displayName: 'Waste Management',
+    routes: [
+      {
+        id: 'waste-management.home',
+        path: '/plugins/waste-management',
+        guard: 'waste-management.read',
+        validateSearch: (search: Record<string, unknown>) => ({
+          tab: search.tab === 'settings' ? 'settings' : 'overview',
+        }),
+        component: () => null,
+      },
+    ],
+    navigation: [
+      {
+        id: 'waste-management.navigation',
+        to: '/plugins/waste-management',
+        titleKey: 'wasteManagement.navigation.title',
+        section: 'dataManagement',
+        requiredAction: 'waste-management.read',
+      },
+    ],
+    permissions: [{ id: 'waste-management.read', titleKey: 'wasteManagement.permissions.read.title' }],
+    moduleIam: {
+      moduleId: 'waste-management',
+      permissionIds: ['waste-management.read'],
+      systemRoles: [{ roleName: 'system_admin', permissionIds: ['waste-management.read'] }],
+    },
+  },
+}));
+
 vi.mock('@sva/monitoring-client/logging', () => {
   return {
     createBrowserLogger: () => browserLoggerMock,
@@ -184,8 +217,8 @@ describe('plugin action alias lookup', () => {
       owner_plugin_id: 'news',
     });
 
-    expect(studioBuildTimeRegistry.plugins).toHaveLength(3);
-    expect(studioBuildTimeRegistry.routes).toHaveLength(0);
+    expect(studioBuildTimeRegistry.plugins).toHaveLength(4);
+    expect(studioBuildTimeRegistry.routes).toHaveLength(1);
     expect(studioBuildTimeRegistry.adminResources).toEqual(studioAdminResources);
     expect(studioModuleIamContracts.find((contract) => contract.moduleId === 'media')).toEqual(
       studioModuleIamRegistry.get('media')
@@ -237,5 +270,10 @@ describe('plugin action alias lookup', () => {
       },
     });
     expect(studioAdminResources.map((resource) => resource.basePath)).toEqual(['news', 'events', 'poi', 'media', 'content']);
+    expect(studioBuildTimeRegistry.routes[0]).toMatchObject({
+      id: 'waste-management.home',
+      path: '/plugins/waste-management',
+      guard: 'waste-management.read',
+    });
   });
 });

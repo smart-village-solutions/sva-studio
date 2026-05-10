@@ -1,4 +1,4 @@
-import { createRoleReadHandlers } from '@sva/iam-admin';
+import { createRoleReadHandlers, getManagedPermissionMetadata } from '@sva/iam-admin';
 import { getWorkspaceContext } from '@sva/server-runtime';
 import type { IamPermission } from '@sva/core';
 
@@ -40,7 +40,9 @@ ORDER BY p.permission_key ASC;
     id: row.id,
     instanceId: row.instance_id,
     permissionKey: row.permission_key,
-    ...(row.description ? { description: row.description } : {}),
+    ...((row.description ?? getManagedPermissionMetadata(row.permission_key)?.description)
+      ? { description: row.description ?? getManagedPermissionMetadata(row.permission_key)?.description }
+      : {}),
   }));
 };
 

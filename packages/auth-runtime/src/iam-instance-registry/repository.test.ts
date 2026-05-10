@@ -32,6 +32,37 @@ const studioModuleIamRegistryMock = new Map([
       systemRoles: [{ roleName: 'system_admin', permissionIds: ['media.read'] }],
     },
   ],
+  [
+    'waste-management',
+    {
+      moduleId: 'waste-management',
+      permissionIds: [
+        'waste-management.read',
+        'waste-management.master-data.manage',
+        'waste-management.tours.manage',
+        'waste-management.scheduling.manage',
+        'waste-management.import.execute',
+        'waste-management.seed.execute',
+        'waste-management.reset.execute',
+        'waste-management.settings.manage',
+      ],
+      systemRoles: [
+        {
+          roleName: 'system_admin',
+          permissionIds: [
+            'waste-management.read',
+            'waste-management.master-data.manage',
+            'waste-management.tours.manage',
+            'waste-management.scheduling.manage',
+            'waste-management.import.execute',
+            'waste-management.seed.execute',
+            'waste-management.reset.execute',
+            'waste-management.settings.manage',
+          ],
+        },
+      ],
+    },
+  ],
 ]);
 
 vi.mock('../db.js', () => ({
@@ -126,6 +157,18 @@ describe('iam instance registry repository wiring', () => {
           'media.reference.manage',
           'media.delete',
           'media.deliver.protected',
+        ]),
+      })
+    );
+    expect(serviceRegistry?.get('waste-management')).toEqual(
+      expect.objectContaining({
+        moduleId: 'waste-management',
+        permissionIds: expect.arrayContaining([
+          'waste-management.read',
+          'waste-management.import.execute',
+          'waste-management.seed.execute',
+          'waste-management.reset.execute',
+          'waste-management.settings.manage',
         ]),
       })
     );

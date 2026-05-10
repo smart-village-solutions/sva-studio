@@ -1,6 +1,8 @@
 import type { IamRoleListItem, IamRoleSyncState } from '@sva/core';
 import { redactObject } from '@sva/server-runtime';
 
+import { getManagedPermissionMetadata } from './managed-permissions.js';
+
 type IamRoleRow = {
   id: string;
   role_key: string;
@@ -174,7 +176,7 @@ export const mapRoleListItem = (row: {
     row.permission_rows?.map((permission) => ({
       id: permission.id,
       permissionKey: permission.permission_key,
-      description: permission.description ?? undefined,
+      description: permission.description ?? getManagedPermissionMetadata(permission.permission_key)?.description,
     })) ?? [],
 });
 

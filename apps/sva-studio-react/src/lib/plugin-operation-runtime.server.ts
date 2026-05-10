@@ -2,17 +2,27 @@ import { registerPluginOperationExecutionHandlers } from '@sva/auth-runtime/serv
 import { pluginEvents } from '@sva/plugin-events';
 import { pluginNews } from '@sva/plugin-news';
 import { pluginPoi } from '@sva/plugin-poi';
-import { createBuildTimeRegistry, type PluginJobTypeDefinition } from '@sva/plugin-sdk';
+import { pluginWasteManagement } from '@sva/plugin-waste-management';
+import {
+  createBuildTimeRegistry,
+  type PluginJobTypeDefinition,
+} from '@sva/plugin-sdk';
+
+import { createWasteManagementPluginOperationExecutionHandlers } from './waste-management-plugin-operation-handlers.server';
 
 const studioPluginOperationRegistry = createBuildTimeRegistry({
-  plugins: [pluginNews, pluginEvents, pluginPoi],
+  plugins: [pluginNews, pluginEvents, pluginPoi, pluginWasteManagement],
 });
+
+const studioDeclaredPluginOperationJobTypes = [...studioPluginOperationRegistry.jobTypes] as const;
 
 type PluginOperationExecutionHandler = import('@sva/auth-runtime/server').PluginOperationExecutionHandler;
 
 export const createStudioPluginOperationExecutionHandlers = (): Readonly<
   Record<string, PluginOperationExecutionHandler>
-> => ({});
+> => ({
+  ...createWasteManagementPluginOperationExecutionHandlers(),
+});
 
 const collectDeclaredJobTypeIds = (
   jobTypes: readonly PluginJobTypeDefinition[]
@@ -44,7 +54,7 @@ export const assertStudioPluginOperationHandlerCoverage = (
   handlers: Readonly<Record<string, PluginOperationExecutionHandler>>
 ): void => {
   assertPluginOperationExecutionHandlerCoverage({
-    declaredJobTypeIds: collectDeclaredJobTypeIds(studioPluginOperationRegistry.jobTypes),
+    declaredJobTypeIds: collectDeclaredJobTypeIds(studioDeclaredPluginOperationJobTypes),
     handlers,
   });
 };

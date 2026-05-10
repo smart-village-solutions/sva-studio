@@ -235,6 +235,7 @@ export const getPluginRouteFactories = (
         createRoute({
           getParentRoute: () => rootRoute,
           path: routeDefinition.path,
+          validateSearch: routeDefinition.validateSearch,
           beforeLoad: async (beforeLoadOptions) => {
             await guard?.(beforeLoadOptions);
 

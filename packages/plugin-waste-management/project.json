@@ -1,0 +1,53 @@
+{
+  "name": "plugin-waste-management",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/plugin-waste-management/src",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["^build"],
+      "outputs": ["{projectRoot}/dist"],
+      "options": {
+        "command": "tsc -p packages/plugin-waste-management/tsconfig.lib.json"
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "options": {
+        "lintFilePatterns": [
+          "packages/plugin-waste-management/src/**/*.{ts,tsx,js,jsx}",
+          "packages/plugin-waste-management/tests/**/*.{ts,tsx,js,jsx}"
+        ]
+      }
+    },
+    "test:unit": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "packages/plugin-waste-management",
+        "command": "pnpm exec vitest run tests --reporter=verbose --config vitest.config.ts --passWithNoTests"
+      }
+    },
+    "test:coverage": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "packages/plugin-waste-management",
+        "command": "pnpm exec vitest run tests --coverage --reporter=verbose --config vitest.config.ts --passWithNoTests"
+      }
+    },
+    "test:integration": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node -e \"console.log('no integration tests configured for @sva/plugin-waste-management')\""
+      }
+    },
+    "test:types": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["^build"],
+      "options": {
+        "command": "tsc -p packages/plugin-waste-management/tsconfig.lib.json --noEmit"
+      }
+    }
+  },
+  "tags": ["scope:plugin", "type:lib"]
+}

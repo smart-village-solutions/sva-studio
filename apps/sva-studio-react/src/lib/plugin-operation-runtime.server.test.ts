@@ -17,8 +17,14 @@ describe('plugin operation runtime registration', () => {
 
     const handlers = mod.registerStudioPluginOperationHandlers();
 
-    expect(handlers).toEqual({});
-    expect(registerPluginOperationExecutionHandlersMock).toHaveBeenCalledWith({});
+    expect(Object.keys(handlers).sort()).toEqual([
+      'waste-management.apply-migrations',
+      'waste-management.import-data',
+      'waste-management.initialize-data-source',
+      'waste-management.reset-data',
+      'waste-management.seed-data',
+    ]);
+    expect(registerPluginOperationExecutionHandlersMock).toHaveBeenCalledWith(handlers);
   });
 
   it('rejects declared job types without a registered runtime handler', async () => {
@@ -43,5 +49,11 @@ describe('plugin operation runtime registration', () => {
         },
       })
     ).toThrowError('unknown_plugin_operation_handlers:news.import-articles');
+  });
+
+  it('covers the declared waste job types with registered handlers', async () => {
+    const mod = await import('./plugin-operation-runtime.server');
+
+    expect(() => mod.assertStudioPluginOperationHandlerCoverage(mod.createStudioPluginOperationExecutionHandlers())).not.toThrow();
   });
 });

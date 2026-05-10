@@ -625,7 +625,7 @@ const createRuntimeWithRepositoryMock = async (
   });
 };
 
-const createRuntimeWithRealRepository = async (workbookBytes: Uint8Array, query: ReturnType<typeof vi.fn>) => {
+const createRuntimeWithRealRepository = async (workbookBytes: Uint8Array, query: SqlClient['query']) => {
   const { createWasteManagementOperationRuntime: createRuntime } = await import('./waste-management-operations.server.js');
   return createRuntime({
     loadDataSourceRecord: vi.fn(async () => createDataSourceRecord()),

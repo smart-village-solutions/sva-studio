@@ -242,6 +242,77 @@ describe('iam data subject rights handlers', () => {
     expect(mocks.withResolvedInstanceDb).not.toHaveBeenCalled();
   });
 
+  it('accepts async self exports via query instance scope and string async flag', async () => {
+    const { dataExportHandler } = await import('./core.js');
+
+    mocks.withAuthenticatedUser.mockImplementationOnce(async (_request, handler) =>
+      handler({ user: { ...baseUser, instanceId: undefined } })
+    );
+    mocks.runSelfExport.mockResolvedValueOnce(
+      new Response(JSON.stringify({ status: 'accepted' }), {
+        status: 202,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
+
+    const response = await dataExportHandler(
+      new Request('http://localhost/iam/me/data-export?instanceId=de-query', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Idempotency-Key': 'idem-1' },
+        body: JSON.stringify({ format: 'json', async: 'true' }),
+      })
+    );
+
+    expect(mocks.runSelfExport).toHaveBeenCalledWith({
+      client: expect.anything(),
+      instanceId: 'de-query',
+      keycloakSubject: 'kc-user-1',
+      exportRequest: {
+        instanceId: undefined,
+        format: 'json',
+        async: true,
+      },
+      idempotencyKey: 'idem-1',
+    });
+    expect(response.status).toBe(202);
+    await expect(expectJson(response)).resolves.toEqual({ status: 'accepted' });
+  });
+
+  it('rejects self exports without any resolvable instance context', async () => {
+    const { dataExportHandler } = await import('./core.js');
+
+    mocks.withAuthenticatedUser.mockImplementationOnce(async (_request, handler) =>
+      handler({ user: { ...baseUser, instanceId: undefined } })
+    );
+
+    const response = await dataExportHandler(
+      new Request('http://localhost/iam/me/data-export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Idempotency-Key': 'idem-1' },
+        body: JSON.stringify({ format: 'json', async: false }),
+      })
+    );
+
+    expect(response.status).toBe(400);
+    await expect(expectJson(response)).resolves.toEqual({ error: 'invalid_instance_id' });
+  });
+
+  it('rejects self exports when the requested instance leaves the authenticated scope', async () => {
+    const { dataExportHandler } = await import('./core.js');
+
+    const response = await dataExportHandler(
+      new Request('http://localhost/iam/me/data-export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Idempotency-Key': 'idem-1' },
+        body: JSON.stringify({ instanceId: 'other-instance', format: 'json', async: '1' }),
+      })
+    );
+
+    expect(response.status).toBe(403);
+    await expect(expectJson(response)).resolves.toEqual({ error: 'instance_scope_mismatch' });
+    expect(mocks.withResolvedInstanceDb).not.toHaveBeenCalled();
+  });
+
   it('rejects admin exports without a target subject', async () => {
     const { adminDataExportHandler } = await import('./core.js');
 
@@ -259,6 +330,48 @@ describe('iam data subject rights handlers', () => {
 
     expect(response.status).toBe(400);
     await expect(expectJson(response)).resolves.toEqual({ error: 'missing_target_keycloak_subject' });
+  });
+
+  it('rejects admin exports without a resolvable instance context', async () => {
+    const { adminDataExportHandler } = await import('./core.js');
+
+    mocks.withAuthenticatedUser.mockImplementationOnce(async (_request, handler) =>
+      handler({ user: { ...baseUser, instanceId: undefined, roles: ['iam_admin'] } })
+    );
+
+    const response = await adminDataExportHandler(
+      new Request('http://localhost/iam/admin/data-export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Idempotency-Key': 'idem-1' },
+        body: JSON.stringify({ format: 'json', targetKeycloakSubject: 'kc-target-1' }),
+      })
+    );
+
+    expect(response.status).toBe(400);
+    await expect(expectJson(response)).resolves.toEqual({ error: 'invalid_instance_id' });
+  });
+
+  it('rejects admin exports outside the authenticated instance scope', async () => {
+    const { adminDataExportHandler } = await import('./core.js');
+
+    mocks.withAuthenticatedUser.mockImplementationOnce(async (_request, handler) =>
+      handler({ user: { ...baseUser, roles: ['iam_admin'] } })
+    );
+
+    const response = await adminDataExportHandler(
+      new Request('http://localhost/iam/admin/data-export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Idempotency-Key': 'idem-1' },
+        body: JSON.stringify({
+          instanceId: 'other-instance',
+          format: 'json',
+          targetKeycloakSubject: 'kc-target-1',
+        }),
+      })
+    );
+
+    expect(response.status).toBe(403);
+    await expect(expectJson(response)).resolves.toEqual({ error: 'instance_scope_mismatch' });
   });
 
   it('redirects rectification requests to the dedicated profile correction endpoint', async () => {
@@ -756,6 +869,34 @@ describe('iam data subject rights handlers', () => {
     await expect(expectJson(response)).resolves.toEqual({ status: 'ready' });
   });
 
+  it('rejects self export status lookups without a resolvable instance context', async () => {
+    const { dataExportStatusHandler } = await import('./core.js');
+
+    mocks.withAuthenticatedUser.mockImplementationOnce(async (_request, handler) =>
+      handler({ user: { ...baseUser, instanceId: undefined } })
+    );
+
+    const response = await dataExportStatusHandler(
+      new Request('http://localhost/iam/me/data-export/status?jobId=123e4567-e89b-12d3-a456-426614174000')
+    );
+
+    expect(response.status).toBe(400);
+    await expect(expectJson(response)).resolves.toEqual({ error: 'invalid_instance_id' });
+  });
+
+  it('maps self export status backend failures to service unavailable', async () => {
+    const { dataExportStatusHandler } = await import('./core.js');
+
+    mocks.withResolvedInstanceDb.mockRejectedValueOnce(new Error('status lookup down'));
+
+    const response = await dataExportStatusHandler(
+      new Request('http://localhost/iam/me/data-export/status?instanceId=de-test&jobId=123e4567-e89b-12d3-a456-426614174000')
+    );
+
+    expect(response.status).toBe(503);
+    await expect(expectJson(response)).resolves.toEqual({ error: 'database_unavailable' });
+  });
+
   it('returns encryption_not_configured when profile correction cannot encrypt fields', async () => {
     const { profileCorrectionHandler } = await import('./core.js');
 
@@ -772,6 +913,60 @@ describe('iam data subject rights handlers', () => {
     expect(response.status).toBe(503);
     await expect(expectJson(response)).resolves.toEqual({ error: 'encryption_not_configured' });
     expect(mocks.withResolvedInstanceDb).not.toHaveBeenCalled();
+  });
+
+  it('rejects profile corrections without any changed profile fields', async () => {
+    const { profileCorrectionHandler } = await import('./core.js');
+
+    const response = await profileCorrectionHandler(
+      new Request('http://localhost/iam/me/profile-correction', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: 'noop' }),
+      })
+    );
+
+    expect(response.status).toBe(400);
+    await expect(expectJson(response)).resolves.toEqual({ error: 'missing_profile_fields' });
+  });
+
+  it('returns encryption_failed when one encrypted profile field cannot be produced', async () => {
+    const { profileCorrectionHandler } = await import('./core.js');
+
+    mocks.encryptFieldValue.mockImplementationOnce((value: string) => `enc:${value}`).mockImplementationOnce(() => {
+      throw new Error('encryption failed');
+    });
+
+    const response = await profileCorrectionHandler(
+      new Request('http://localhost/iam/me/profile-correction', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: 'new@example.test',
+          displayName: 'Broken Name',
+        }),
+      })
+    );
+
+    expect(response.status).toBe(500);
+    await expect(expectJson(response)).resolves.toEqual({ error: 'encryption_failed' });
+  });
+
+  it('maps profile correction database failures to service unavailable', async () => {
+    const { profileCorrectionHandler } = await import('./core.js');
+
+    mocks.withResolvedInstanceDb.mockRejectedValueOnce(new Error('profile db down'));
+
+    const response = await profileCorrectionHandler(
+      new Request('http://localhost/iam/me/profile-correction', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: 'new@example.test' }),
+      })
+    );
+
+    expect(response.status).toBe(503);
+    await expect(expectJson(response)).resolves.toEqual({ error: 'database_unavailable' });
   });
 
   it('persists profile corrections and returns a completed rectification request', async () => {
@@ -875,6 +1070,88 @@ describe('iam data subject rights handlers', () => {
     await expect(expectJson(response)).resolves.toEqual({
       releasedCount: 2,
     });
+  });
+
+  it('maps legal hold apply backend failures to service unavailable', async () => {
+    const { legalHoldApplyHandler } = await import('./core.js');
+
+    mocks.withAuthenticatedUser.mockImplementationOnce(async (_request, handler) =>
+      handler({ user: { ...baseUser, roles: ['system_admin'] } })
+    );
+    mocks.withResolvedInstanceDb.mockRejectedValueOnce(new Error('hold apply down'));
+
+    const response = await legalHoldApplyHandler(
+      new Request('http://localhost/iam/admin/legal-holds/apply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetKeycloakSubject: 'kc-target-1' }),
+      })
+    );
+
+    expect(response.status).toBe(503);
+    await expect(expectJson(response)).resolves.toEqual({ error: 'database_unavailable' });
+  });
+
+  it('maps legal hold release backend failures to service unavailable', async () => {
+    const { legalHoldReleaseHandler } = await import('./core.js');
+
+    mocks.withAuthenticatedUser.mockImplementationOnce(async (_request, handler) =>
+      handler({ user: { ...baseUser, roles: ['system_admin'] } })
+    );
+    mocks.withResolvedInstanceDb.mockRejectedValueOnce(new Error('hold release down'));
+
+    const response = await legalHoldReleaseHandler(
+      new Request('http://localhost/iam/admin/legal-holds/release', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetKeycloakSubject: 'kc-target-1' }),
+      })
+    );
+
+    expect(response.status).toBe(503);
+    await expect(expectJson(response)).resolves.toEqual({ error: 'database_unavailable' });
+  });
+
+  it('rejects admin export status lookups without a resolvable instance context', async () => {
+    const { adminDataExportStatusHandler } = await import('./core.js');
+
+    mocks.withAuthenticatedUser.mockImplementationOnce(async (_request, handler) =>
+      handler({ user: { ...baseUser, instanceId: undefined, roles: ['iam_admin'] } })
+    );
+
+    const response = await adminDataExportStatusHandler(
+      new Request('http://localhost/iam/admin/data-export/status?jobId=123e4567-e89b-42d3-a456-426614174000')
+    );
+
+    expect(response.status).toBe(400);
+    await expect(expectJson(response)).resolves.toEqual({ error: 'invalid_instance_id' });
+  });
+
+  it('delegates admin export status lookups to the status handler', async () => {
+    const { adminDataExportStatusHandler } = await import('./core.js');
+
+    mocks.withAuthenticatedUser.mockImplementationOnce(async (_request, handler) =>
+      handler({ user: { ...baseUser, roles: ['iam_admin'] } })
+    );
+    mocks.getAdminExportStatus.mockResolvedValueOnce(
+      new Response(JSON.stringify({ status: 'ready' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
+
+    const response = await adminDataExportStatusHandler(
+      new Request('http://localhost/iam/admin/data-export/status?instanceId=de-test&jobId=123e4567-e89b-42d3-a456-426614174000&download=csv')
+    );
+
+    expect(mocks.getAdminExportStatus).toHaveBeenCalledWith({
+      client: expect.anything(),
+      instanceId: 'de-test',
+      jobId: '123e4567-e89b-42d3-a456-426614174000',
+      downloadFormat: 'csv',
+    });
+    expect(response.status).toBe(200);
+    await expect(expectJson(response)).resolves.toEqual({ status: 'ready' });
   });
 
   it('lists admin DSR cases with normalized paging and filters', async () => {

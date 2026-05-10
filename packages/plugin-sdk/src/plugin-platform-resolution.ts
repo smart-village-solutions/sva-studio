@@ -53,6 +53,17 @@ type ResolvePluginCatalogInput = {
   readonly adminResources?: readonly AdminResourceDefinition[];
 };
 
+type ResolvePluginCatalogState = {
+  readonly host: PluginPlatformHost;
+  readonly resolvePlugin: (entry: PluginCatalogEntry) => PluginDefinition | undefined;
+  readonly hostCapabilities: ReadonlySet<PluginManifestCapability>;
+  readonly activeCatalog: PluginCatalogEntry[];
+  readonly inactiveCatalog: PluginCatalogEntry[];
+  readonly rejectedCatalog: PluginCatalogEntry[];
+  readonly issues: PluginCatalogIssue[];
+  readonly loadedPlugins: LoadedPluginEntry[];
+};
+
 const parseVersion = (
   rawVersion: string
 ): { readonly major: number; readonly minor: number; readonly patch: number } | undefined => {
@@ -130,122 +141,136 @@ const createIssue = (
   message,
 });
 
+const rejectPluginEntry = (
+  state: ResolvePluginCatalogState,
+  entry: PluginCatalogEntry,
+  code: PluginCatalogIssueCode,
+  message: string
+): void => {
+  state.rejectedCatalog.push(entry);
+  state.issues.push(createIssue(entry, 'error', code, message));
+};
+
+const validateEnabledPluginEntry = (
+  state: ResolvePluginCatalogState,
+  entry: PluginCatalogEntry
+): boolean => {
+  if (entry.manifest.sdkVersion !== state.host.sdkVersion) {
+    rejectPluginEntry(
+      state,
+      entry,
+      'plugin_incompatible_sdk_version',
+      `Plugin '${entry.pluginId}' erwartet SDK-Version '${entry.manifest.sdkVersion}', Host bietet '${state.host.sdkVersion}'.`
+    );
+    return false;
+  }
+
+  if (!satisfiesVersionRange(state.host.studioVersion, entry.manifest.hostCompatibility.studioVersionRange)) {
+    rejectPluginEntry(
+      state,
+      entry,
+      'plugin_incompatible_studio_version',
+      `Plugin '${entry.pluginId}' verlangt Studio-Version '${entry.manifest.hostCompatibility.studioVersionRange}', Host läuft auf '${state.host.studioVersion}'.`
+    );
+    return false;
+  }
+
+  const missingCapability = entry.manifest.hostCompatibility.requiredCapabilities?.find(
+    (capability) => !state.hostCapabilities.has(capability)
+  );
+  if (missingCapability) {
+    rejectPluginEntry(
+      state,
+      entry,
+      'plugin_missing_host_capability',
+      `Plugin '${entry.pluginId}' verlangt Host-Capability '${missingCapability}', die nicht aktiviert ist.`
+    );
+    return false;
+  }
+
+  if (!entry.manifest.entryPoints.browser) {
+    rejectPluginEntry(
+      state,
+      entry,
+      'plugin_missing_browser_entry',
+      `Plugin '${entry.pluginId}' deklariert keinen Browser-Entry-Point.`
+    );
+    return false;
+  }
+
+  return true;
+};
+
+const tryLoadPluginEntry = (state: ResolvePluginCatalogState, entry: PluginCatalogEntry): void => {
+  const plugin = state.resolvePlugin(entry);
+  if (!plugin) {
+    rejectPluginEntry(
+      state,
+      entry,
+      'plugin_module_missing',
+      `Plugin '${entry.pluginId}' konnte aus '${entry.sourceRef}' nicht geladen werden.`
+    );
+    return;
+  }
+
+  if (plugin.id !== entry.pluginId) {
+    rejectPluginEntry(
+      state,
+      entry,
+      'plugin_module_mismatch',
+      `Plugin-Modul aus '${entry.sourceRef}' exportiert '${plugin.id}' statt '${entry.pluginId}'.`
+    );
+    return;
+  }
+
+  state.activeCatalog.push(entry);
+  state.loadedPlugins.push({
+    catalogEntry: entry,
+    plugin,
+  });
+};
+
+const resolveCatalogEntry = (state: ResolvePluginCatalogState, entry: PluginCatalogEntry): void => {
+  if (!entry.enabled) {
+    state.inactiveCatalog.push(entry);
+    state.issues.push(createIssue(entry, 'info', 'plugin_disabled', `Plugin '${entry.pluginId}' ist im Katalog deaktiviert.`));
+    return;
+  }
+
+  if (!validateEnabledPluginEntry(state, entry)) {
+    return;
+  }
+
+  tryLoadPluginEntry(state, entry);
+};
+
 export const resolvePluginCatalog = (input: ResolvePluginCatalogInput): ResolvedPluginCatalog => {
   const catalog = input.catalog.map(definePluginCatalogEntry);
-  const activeCatalog: PluginCatalogEntry[] = [];
-  const inactiveCatalog: PluginCatalogEntry[] = [];
-  const rejectedCatalog: PluginCatalogEntry[] = [];
-  const issues: PluginCatalogIssue[] = [];
-  const loadedPlugins: LoadedPluginEntry[] = [];
-
-  const hostCapabilities = new Set(input.host.capabilities);
+  const state: ResolvePluginCatalogState = {
+    host: input.host,
+    resolvePlugin: input.resolvePlugin,
+    hostCapabilities: new Set(input.host.capabilities),
+    activeCatalog: [],
+    inactiveCatalog: [],
+    rejectedCatalog: [],
+    issues: [],
+    loadedPlugins: [],
+  };
 
   for (const entry of catalog) {
-    if (!entry.enabled) {
-      inactiveCatalog.push(entry);
-      issues.push(createIssue(entry, 'info', 'plugin_disabled', `Plugin '${entry.pluginId}' ist im Katalog deaktiviert.`));
-      continue;
-    }
-
-    if (entry.manifest.sdkVersion !== input.host.sdkVersion) {
-      rejectedCatalog.push(entry);
-      issues.push(
-        createIssue(
-          entry,
-          'error',
-          'plugin_incompatible_sdk_version',
-          `Plugin '${entry.pluginId}' erwartet SDK-Version '${entry.manifest.sdkVersion}', Host bietet '${input.host.sdkVersion}'.`
-        )
-      );
-      continue;
-    }
-
-    if (!satisfiesVersionRange(input.host.studioVersion, entry.manifest.hostCompatibility.studioVersionRange)) {
-      rejectedCatalog.push(entry);
-      issues.push(
-        createIssue(
-          entry,
-          'error',
-          'plugin_incompatible_studio_version',
-          `Plugin '${entry.pluginId}' verlangt Studio-Version '${entry.manifest.hostCompatibility.studioVersionRange}', Host läuft auf '${input.host.studioVersion}'.`
-        )
-      );
-      continue;
-    }
-
-    const missingCapability = entry.manifest.hostCompatibility.requiredCapabilities?.find(
-      (capability) => !hostCapabilities.has(capability)
-    );
-    if (missingCapability) {
-      rejectedCatalog.push(entry);
-      issues.push(
-        createIssue(
-          entry,
-          'error',
-          'plugin_missing_host_capability',
-          `Plugin '${entry.pluginId}' verlangt Host-Capability '${missingCapability}', die nicht aktiviert ist.`
-        )
-      );
-      continue;
-    }
-
-    if (!entry.manifest.entryPoints.browser) {
-      rejectedCatalog.push(entry);
-      issues.push(
-        createIssue(
-          entry,
-          'error',
-          'plugin_missing_browser_entry',
-          `Plugin '${entry.pluginId}' deklariert keinen Browser-Entry-Point.`
-        )
-      );
-      continue;
-    }
-
-    const plugin = input.resolvePlugin(entry);
-    if (!plugin) {
-      rejectedCatalog.push(entry);
-      issues.push(
-        createIssue(
-          entry,
-          'error',
-          'plugin_module_missing',
-          `Plugin '${entry.pluginId}' konnte aus '${entry.sourceRef}' nicht geladen werden.`
-        )
-      );
-      continue;
-    }
-
-    if (plugin.id !== entry.pluginId) {
-      rejectedCatalog.push(entry);
-      issues.push(
-        createIssue(
-          entry,
-          'error',
-          'plugin_module_mismatch',
-          `Plugin-Modul aus '${entry.sourceRef}' exportiert '${plugin.id}' statt '${entry.pluginId}'.`
-        )
-      );
-      continue;
-    }
-
-    activeCatalog.push(entry);
-    loadedPlugins.push({
-      catalogEntry: entry,
-      plugin,
-    });
+    resolveCatalogEntry(state, entry);
   }
 
   return {
     catalog,
-    activeCatalog,
-    inactiveCatalog,
-    rejectedCatalog,
-    issues,
-    loadedPlugins,
+    activeCatalog: state.activeCatalog,
+    inactiveCatalog: state.inactiveCatalog,
+    rejectedCatalog: state.rejectedCatalog,
+    issues: state.issues,
+    loadedPlugins: state.loadedPlugins,
     snapshot: createPluginSnapshot({
-      catalog: activeCatalog,
-      loadedPlugins,
+      catalog: state.activeCatalog,
+      loadedPlugins: state.loadedPlugins,
       adminResources: input.adminResources,
     }),
   };

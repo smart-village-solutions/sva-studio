@@ -180,6 +180,36 @@ describe('http mutation handlers', () => {
     });
   });
 
+  it('probeTenantIamAccess maps not_found and thrown registry errors', async () => {
+    vi.mocked(deps.parseRequestBody).mockResolvedValue({ ok: true, data: {} });
+    vi.mocked(deps.withRegistryService)
+      .mockImplementationOnce(async (work) =>
+        work({
+          probeTenantIamAccess: vi.fn(async () => null),
+        } as never)
+      )
+      .mockImplementationOnce(async () => {
+        throw new Error('tenant_admin_client_not_configured');
+      });
+    const handlers = createInstanceRegistryMutationHttpHandlers(deps);
+
+    const notFoundResponse = await handlers.probeTenantIamAccess(
+      new Request('http://localhost/api/instances/inst-1/tenant-iam/access-probe', { method: 'POST' }),
+      { userId: 'u-1' }
+    );
+    const errorResponse = await handlers.probeTenantIamAccess(
+      new Request('http://localhost/api/instances/inst-1/tenant-iam/access-probe', { method: 'POST' }),
+      { userId: 'u-1' }
+    );
+
+    expect(notFoundResponse.status).toBe(404);
+    await expect(readBody(notFoundResponse)).resolves.toMatchObject({ code: 'not_found' });
+    expect(errorResponse.status).toBe(409);
+    await expect(readBody(errorResponse)).resolves.toMatchObject({
+      code: 'tenant_admin_client_not_configured',
+    });
+  });
+
   it('keeps fresh reauth enforcement for reconcile mutations', async () => {
     vi.mocked(deps.requireFreshReauth).mockReturnValueOnce(new Response('reauth', { status: 403 }));
     const handlers = createInstanceRegistryMutationHttpHandlers(deps);
@@ -190,6 +220,27 @@ describe('http mutation handlers', () => {
     );
 
     expect(response.status).toBe(403);
+    expect(deps.parseRequestBody).not.toHaveBeenCalled();
+  });
+
+  it('assignModule returns idempotency and instance id errors before parsing the payload', async () => {
+    vi.mocked(deps.requireIdempotencyKey)
+      .mockReturnValueOnce({ error: new Response('missing idempotency', { status: 428 }) })
+      .mockReturnValueOnce({ key: 'idem-1' });
+    const handlers = createInstanceRegistryMutationHttpHandlers(deps);
+
+    const idempotencyResponse = await handlers.assignModule(
+      new Request('http://localhost/api/instances/inst-1/modules/assign', { method: 'POST' }),
+      { userId: 'u-1' }
+    );
+    const missingInstanceResponse = await handlers.assignModule(
+      new Request('http://localhost/api/instances', { method: 'POST' }),
+      { userId: 'u-1' }
+    );
+
+    expect(idempotencyResponse.status).toBe(428);
+    expect(missingInstanceResponse.status).toBe(400);
+    await expect(readBody(missingInstanceResponse)).resolves.toMatchObject({ code: 'invalid_instance_id' });
     expect(deps.parseRequestBody).not.toHaveBeenCalled();
   });
 
@@ -210,6 +261,36 @@ describe('http mutation handlers', () => {
 
     expect(response.status).toBe(400);
     expect(body.code).toBe('invalid_request');
+  });
+
+  it('assignModule maps not_found and conflict results', async () => {
+    vi.mocked(deps.parseRequestBody).mockResolvedValue({ ok: true, data: { moduleId: 'news' } });
+    vi.mocked(deps.withRegistryService)
+      .mockImplementationOnce(async (work) =>
+        work({
+          assignModule: vi.fn(async () => ({ ok: false, reason: 'not_found' })),
+        } as never)
+      )
+      .mockImplementationOnce(async (work) =>
+        work({
+          assignModule: vi.fn(async () => ({ ok: false, reason: 'conflict' })),
+        } as never)
+      );
+    const handlers = createInstanceRegistryMutationHttpHandlers(deps);
+
+    const notFoundResponse = await handlers.assignModule(
+      new Request('http://localhost/api/instances/inst-1/modules/assign', { method: 'POST' }),
+      { userId: 'u-1' }
+    );
+    const conflictResponse = await handlers.assignModule(
+      new Request('http://localhost/api/instances/inst-1/modules/assign', { method: 'POST' }),
+      { userId: 'u-1' }
+    );
+
+    expect(notFoundResponse.status).toBe(404);
+    await expect(readBody(notFoundResponse)).resolves.toMatchObject({ code: 'not_found' });
+    expect(conflictResponse.status).toBe(409);
+    await expect(readBody(conflictResponse)).resolves.toMatchObject({ code: 'conflict' });
   });
 
   it('revokeModule returns the refreshed instance detail on success', async () => {
@@ -243,6 +324,47 @@ describe('http mutation handlers', () => {
       instanceId: 'inst-1',
       assignedModules: [],
     });
+  });
+
+  it('revokeModule maps not_found, unknown_module and conflict results', async () => {
+    vi.mocked(deps.parseRequestBody).mockResolvedValue({ ok: true, data: { moduleId: 'news', confirmation: 'REVOKE' } });
+    vi.mocked(deps.withRegistryService)
+      .mockImplementationOnce(async (work) =>
+        work({
+          revokeModule: vi.fn(async () => ({ ok: false, reason: 'not_found' })),
+        } as never)
+      )
+      .mockImplementationOnce(async (work) =>
+        work({
+          revokeModule: vi.fn(async () => ({ ok: false, reason: 'unknown_module' })),
+        } as never)
+      )
+      .mockImplementationOnce(async (work) =>
+        work({
+          revokeModule: vi.fn(async () => ({ ok: false, reason: 'conflict' })),
+        } as never)
+      );
+    const handlers = createInstanceRegistryMutationHttpHandlers(deps);
+
+    const notFoundResponse = await handlers.revokeModule(
+      new Request('http://localhost/api/instances/inst-1/modules/revoke', { method: 'POST' }),
+      { userId: 'u-1' }
+    );
+    const unknownModuleResponse = await handlers.revokeModule(
+      new Request('http://localhost/api/instances/inst-1/modules/revoke', { method: 'POST' }),
+      { userId: 'u-1' }
+    );
+    const conflictResponse = await handlers.revokeModule(
+      new Request('http://localhost/api/instances/inst-1/modules/revoke', { method: 'POST' }),
+      { userId: 'u-1' }
+    );
+
+    expect(notFoundResponse.status).toBe(404);
+    await expect(readBody(notFoundResponse)).resolves.toMatchObject({ code: 'not_found' });
+    expect(unknownModuleResponse.status).toBe(400);
+    await expect(readBody(unknownModuleResponse)).resolves.toMatchObject({ code: 'invalid_request' });
+    expect(conflictResponse.status).toBe(409);
+    await expect(readBody(conflictResponse)).resolves.toMatchObject({ code: 'conflict' });
   });
 
   it('bootstrapAdminStructure passes selected module ids into the registry service', async () => {
@@ -315,6 +437,36 @@ describe('http mutation handlers', () => {
     expect(body.code).toBe('invalid_request');
   });
 
+  it('bootstrapAdminStructure maps not_found and conflict results', async () => {
+    vi.mocked(deps.parseRequestBody).mockResolvedValue({ ok: true, data: { moduleIds: ['news'] } });
+    vi.mocked(deps.withRegistryService)
+      .mockImplementationOnce(async (work) =>
+        work({
+          bootstrapAdminStructure: vi.fn(async () => ({ ok: false, reason: 'not_found' })),
+        } as never)
+      )
+      .mockImplementationOnce(async (work) =>
+        work({
+          bootstrapAdminStructure: vi.fn(async () => ({ ok: false, reason: 'conflict' })),
+        } as never)
+      );
+    const handlers = createInstanceRegistryMutationHttpHandlers(deps);
+
+    const notFoundResponse = await handlers.bootstrapAdminStructure(
+      new Request('http://localhost/api/instances/inst-1/admin-bootstrap', { method: 'POST' }),
+      { userId: 'u-1' }
+    );
+    const conflictResponse = await handlers.bootstrapAdminStructure(
+      new Request('http://localhost/api/instances/inst-1/admin-bootstrap', { method: 'POST' }),
+      { userId: 'u-1' }
+    );
+
+    expect(notFoundResponse.status).toBe(404);
+    await expect(readBody(notFoundResponse)).resolves.toMatchObject({ code: 'not_found' });
+    expect(conflictResponse.status).toBe(409);
+    await expect(readBody(conflictResponse)).resolves.toMatchObject({ code: 'conflict' });
+  });
+
   it('mutateInstanceStatus rejects mismatched status payloads', async () => {
     vi.mocked(deps.parseRequestBody).mockResolvedValueOnce({ ok: true, data: { status: 'archived' } });
     const handlers = createInstanceRegistryMutationHttpHandlers(deps);
@@ -372,5 +524,37 @@ describe('http mutation handlers', () => {
 
     expect(response.status).toBe(200);
     expect(body).toMatchObject({ instanceId: 'inst-1', status: 'suspended' });
+  });
+
+  it('mutateInstanceStatus maps not_found and conflict service responses', async () => {
+    vi.mocked(deps.parseRequestBody).mockResolvedValue({ ok: true, data: { status: 'active' } });
+    vi.mocked(deps.withRegistryService)
+      .mockImplementationOnce(async (work) =>
+        work({
+          changeStatus: vi.fn(async () => ({ ok: false, reason: 'not_found' })),
+        } as never)
+      )
+      .mockImplementationOnce(async (work) =>
+        work({
+          changeStatus: vi.fn(async () => ({ ok: false, reason: 'conflict' })),
+        } as never)
+      );
+    const handlers = createInstanceRegistryMutationHttpHandlers(deps);
+
+    const notFoundResponse = await handlers.mutateInstanceStatus(
+      new Request('http://localhost/api/instances/inst-1/status'),
+      { userId: 'u-1' },
+      'active'
+    );
+    const conflictResponse = await handlers.mutateInstanceStatus(
+      new Request('http://localhost/api/instances/inst-1/status'),
+      { userId: 'u-1' },
+      'active'
+    );
+
+    expect(notFoundResponse.status).toBe(404);
+    await expect(readBody(notFoundResponse)).resolves.toMatchObject({ code: 'not_found' });
+    expect(conflictResponse.status).toBe(409);
+    await expect(readBody(conflictResponse)).resolves.toMatchObject({ code: 'conflict' });
   });
 });

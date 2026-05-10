@@ -524,6 +524,24 @@ describe('loginHandler (full auth path)', () => {
       expect.objectContaining({ reason_code: 'scope_resolution_failed', tenant_host: 'studio.example.org' })
     );
   });
+
+  it('returns a JSON dependency response when requestless login initialization fails', async () => {
+    const { loginHandler } = await import('./auth-route-handlers.js');
+    const { createLoginUrl } = await import('./auth-server/login.js');
+
+    mocks.getAuthConfig.mockReturnValue(authConfigBase);
+    vi.mocked(createLoginUrl).mockRejectedValueOnce(new Error('offline'));
+
+    const response = await loginHandler();
+
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toEqual(
+      expect.objectContaining({
+        error: 'internal_error',
+        message: 'Authentifizierung ist momentan nicht verfügbar.',
+      })
+    );
+  });
 });
 
 describe('logoutHandler', () => {
@@ -650,6 +668,36 @@ describe('logoutHandler', () => {
       expect.objectContaining({ reason_code: 'session_store_unavailable' })
     );
   });
+
+  it('accepts explicit logout intent via header without parsing form data', async () => {
+    const { logoutHandler } = await import('./auth-route-handlers.js');
+    const { resolveAuthConfigForRequest } = await import('./config.js');
+    const { getSession } = await import('./redis-session.js');
+    const { logoutSession } = await import('./auth-server/logout.js');
+
+    vi.mocked(resolveAuthConfigForRequest).mockResolvedValueOnce(authConfigBase as never);
+    mocks.readCookieFromRequest.mockImplementation((_request: Request, cookieName: string) =>
+      cookieName === 'sva_session' ? 'session-1' : 'unused-cookie'
+    );
+    vi.mocked(getSession).mockResolvedValueOnce({
+      user: { id: 'kc-user-1' },
+    } as never);
+    vi.mocked(logoutSession).mockResolvedValueOnce('http://localhost/signed-out');
+
+    const response = await logoutHandler(
+      new Request('http://localhost/auth/logout', {
+        method: 'POST',
+        headers: {
+          'content-type': 'text/plain',
+          'x-sva-logout-intent': 'user',
+        },
+        body: 'ignored',
+      })
+    );
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get('Location')).toBe('http://localhost/signed-out');
+  });
 });
 
 describe('callbackHandler', () => {
@@ -719,6 +767,267 @@ describe('callbackHandler', () => {
     expect(mocks.logger.info).toHaveBeenCalledWith(
       'Expired callback cookie cleanup prepared',
       expect.objectContaining({ had_session_cookie_on_callback: true })
+    );
+  });
+
+  it('redirects back to login when code or state is missing after auth config resolution', async () => {
+    const { callbackHandler } = await import('./auth-route-handlers.js');
+    const { resolveAuthConfigForRequest } = await import('./config.js');
+
+    vi.mocked(resolveAuthConfigForRequest).mockResolvedValueOnce(authConfigBase as never);
+    mocks.readCookieFromRequest.mockReturnValue(null);
+
+    const response = await callbackHandler(new Request('http://localhost/auth/callback?state=missing-code'));
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get('Location')).toBe('/auth/login');
+  });
+
+  it('completes a platform callback, rotates cookies and emits a success audit event', async () => {
+    const { callbackHandler } = await import('./auth-route-handlers.js');
+    const { resolveAuthConfigForRequest } = await import('./config.js');
+    const { decodeLoginStateCookie } = await import('./login-state-cookie.js');
+    const { handleCallback } = await import('./auth-server/callback.js');
+    const { emitAuthAuditEvent } = await import('./audit-events.js');
+
+    vi.mocked(resolveAuthConfigForRequest).mockResolvedValueOnce(authConfigBase as never);
+    vi.mocked(decodeLoginStateCookie).mockReturnValueOnce({
+      state: 'state-abc123def456',
+      codeVerifier: 'code-verifier',
+      nonce: 'nonce-xyz789',
+      createdAt: Date.now() - 60_000,
+      returnTo: '/profile',
+      silent: false,
+      kind: 'platform',
+    } as never);
+    mocks.readCookieFromRequest.mockImplementation((_request: Request, cookieName: string) =>
+      cookieName === 'sva_session' ? 'existing-session' : 'encoded-login-state'
+    );
+    vi.mocked(handleCallback).mockResolvedValueOnce({
+      sessionId: 'session-2',
+      user: { id: 'kc-user-1' },
+      expiresAt: 1_800_000_000_000,
+      loginState: null,
+      retryPerformed: false,
+    } as never);
+
+    const response = await callbackHandler(
+      new Request('http://localhost/auth/callback?code=abc&state=state-abc123def456')
+    );
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get('Location')).toBe('/profile');
+    expect(mocks.logger.info).toHaveBeenCalledWith(
+      'Callback cookies prepared',
+      expect.objectContaining({
+        operation: 'login_callback_cookies',
+        had_session_cookie_on_callback: true,
+      })
+    );
+    expect(emitAuthAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: 'login',
+        actorUserId: 'kc-user-1',
+        workspaceId: 'platform',
+        outcome: 'success',
+      })
+    );
+  });
+
+  it('completes a silent instance callback and emits a silent reauth success event', async () => {
+    const { callbackHandler } = await import('./auth-route-handlers.js');
+    const { resolveAuthConfigForRequest } = await import('./config.js');
+    const { decodeLoginStateCookie } = await import('./login-state-cookie.js');
+    const { handleCallback } = await import('./auth-server/callback.js');
+    const { emitAuthAuditEvent } = await import('./audit-events.js');
+
+    vi.mocked(resolveAuthConfigForRequest).mockResolvedValueOnce({
+      ...authConfigBase,
+      kind: 'instance',
+      instanceId: 'de-test',
+    } as never);
+    vi.mocked(decodeLoginStateCookie).mockReturnValueOnce({
+      state: 'state-abc123def456',
+      codeVerifier: 'code-verifier',
+      nonce: 'nonce-xyz789',
+      createdAt: Date.now() - 60_000,
+      returnTo: '/ignored',
+      silent: true,
+      kind: 'instance',
+      instanceId: 'de-test',
+    } as never);
+    mocks.readCookieFromRequest.mockImplementation((_request: Request, cookieName: string) =>
+      cookieName === 'sva_session' ? null : 'encoded-login-state'
+    );
+    vi.mocked(handleCallback).mockResolvedValueOnce({
+      sessionId: 'session-3',
+      user: { id: 'kc-user-2', instanceId: 'de-test' },
+      expiresAt: 1_800_000_010_000,
+      loginState: {
+        returnTo: '/dashboard',
+        silent: true,
+      },
+      retryPerformed: true,
+    } as never);
+
+    const response = await callbackHandler(
+      new Request('http://localhost/auth/callback?code=abc&state=state-abc123def456&iss=issuer')
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('Content-Type')).toContain('text/html');
+    await expect(response.text()).resolves.toContain("status: 'success'");
+    expect(emitAuthAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: 'silent_reauth_success',
+        actorUserId: 'kc-user-2',
+        workspaceId: 'de-test',
+        outcome: 'success',
+      })
+    );
+  });
+
+  it('logs token validation failures with oauth metadata and returns a failed callback response', async () => {
+    const { callbackHandler } = await import('./auth-route-handlers.js');
+    const { resolveAuthConfigForRequest } = await import('./config.js');
+    const { decodeLoginStateCookie } = await import('./login-state-cookie.js');
+    const { handleCallback } = await import('./auth-server/callback.js');
+    const { emitAuthAuditEvent } = await import('./audit-events.js');
+
+    vi.mocked(resolveAuthConfigForRequest).mockResolvedValueOnce(authConfigBase as never);
+    vi.mocked(decodeLoginStateCookie).mockReturnValueOnce({
+      state: 'state-abc123def456',
+      codeVerifier: 'code-verifier',
+      nonce: 'nonce-xyz789',
+      createdAt: Date.now() - 60_000,
+      returnTo: '/profile',
+      silent: false,
+      kind: 'platform',
+    } as never);
+    mocks.readCookieFromRequest.mockImplementation((_request: Request, cookieName: string) =>
+      cookieName === 'sva_session' ? null : 'encoded-login-state'
+    );
+    vi.mocked(handleCallback).mockRejectedValueOnce({
+      error: 'invalid_grant',
+      error_description: 'grant invalid',
+      code: 'OIDC_401',
+      response: { status: 401 },
+    });
+
+    const response = await callbackHandler(
+      new Request('http://localhost/auth/callback?code=abc&state=state-abc123def456')
+    );
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get('Location')).toBe('/?auth=error');
+    expect(mocks.logger.warn).toHaveBeenCalledWith(
+      'Token validation failed in callback',
+      expect.objectContaining({
+        reason_code: 'token_validate_failed',
+        oauth_error: 'invalid_grant',
+        oauth_error_description: 'grant invalid',
+        oauth_code: 'OIDC_401',
+        oauth_status: 401,
+      })
+    );
+    expect(emitAuthAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: 'login',
+        outcome: 'failure',
+      })
+    );
+  });
+
+  it('logs tenant scope conflicts and returns a failed callback response', async () => {
+    const { callbackHandler } = await import('./auth-route-handlers.js');
+    const { resolveAuthConfigForRequest } = await import('./config.js');
+    const { decodeLoginStateCookie } = await import('./login-state-cookie.js');
+    const { handleCallback } = await import('./auth-server/callback.js');
+    const { TenantScopeConflictError } = await import('./runtime-errors.js');
+
+    vi.mocked(resolveAuthConfigForRequest).mockResolvedValueOnce({
+      ...authConfigBase,
+      kind: 'instance',
+      instanceId: 'de-test',
+    } as never);
+    vi.mocked(decodeLoginStateCookie).mockReturnValueOnce({
+      state: 'state-abc123def456',
+      codeVerifier: 'code-verifier',
+      nonce: 'nonce-xyz789',
+      createdAt: Date.now() - 60_000,
+      returnTo: '/profile',
+      silent: false,
+      kind: 'instance',
+      instanceId: 'de-test',
+    } as never);
+    mocks.readCookieFromRequest.mockImplementation((_request: Request, cookieName: string) =>
+      cookieName === 'sva_session' ? 'session-1' : 'encoded-login-state'
+    );
+    vi.mocked(handleCallback).mockRejectedValueOnce(
+      new TenantScopeConflictError({
+        expectedInstanceId: 'de-test',
+        actualInstanceId: 'de-other',
+      })
+    );
+
+    const response = await callbackHandler(
+      new Request('http://localhost/auth/callback?code=abc&state=state-abc123def456')
+    );
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get('Location')).toBe('/?auth=error');
+    expect(mocks.logger.error).toHaveBeenCalledWith(
+      'Tenant scope conflict in callback',
+      expect.objectContaining({
+        reason_code: 'tenant_scope_conflict',
+        expected_instance_id: 'de-test',
+        token_instance_id: 'de-other',
+      })
+    );
+  });
+
+  it('returns a silent failure response for unexpected callback errors on silent reauth', async () => {
+    const { callbackHandler } = await import('./auth-route-handlers.js');
+    const { resolveAuthConfigForRequest } = await import('./config.js');
+    const { decodeLoginStateCookie } = await import('./login-state-cookie.js');
+    const { handleCallback } = await import('./auth-server/callback.js');
+    const { emitAuthAuditEvent } = await import('./audit-events.js');
+
+    vi.mocked(resolveAuthConfigForRequest).mockResolvedValueOnce(authConfigBase as never);
+    vi.mocked(decodeLoginStateCookie).mockReturnValueOnce({
+      state: 'state-abc123def456',
+      codeVerifier: 'code-verifier',
+      nonce: 'nonce-xyz789',
+      createdAt: Date.now() - 60_000,
+      returnTo: '/profile',
+      silent: true,
+      kind: 'platform',
+    } as never);
+    mocks.readCookieFromRequest.mockImplementation((_request: Request, cookieName: string) =>
+      cookieName === 'sva_session' ? null : 'encoded-login-state'
+    );
+    vi.mocked(handleCallback).mockRejectedValueOnce('boom');
+
+    const response = await callbackHandler(
+      new Request('http://localhost/auth/callback?code=abc&state=state-abc123def456')
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('Content-Type')).toContain('text/html');
+    await expect(response.text()).resolves.toContain("status: 'failure'");
+    expect(mocks.logger.error).toHaveBeenCalledWith(
+      'Auth callback failed',
+      expect.objectContaining({
+        reason_code: 'callback_failed',
+        error_type: 'string',
+        is_silent: true,
+      })
+    );
+    expect(emitAuthAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: 'silent_reauth_failed',
+        outcome: 'failure',
+      })
     );
   });
 });

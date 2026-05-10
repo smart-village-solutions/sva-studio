@@ -1,0 +1,31 @@
+export const wasteManagementPluginTranslationsDEAudit = {
+  "audit": {
+    "settingsUpdated": "Waste-Einstellungen aktualisiert",
+    "fractionCreated": "Abfallfraktion angelegt",
+    "fractionUpdated": "Abfallfraktion aktualisiert",
+    "regionCreated": "Region angelegt",
+    "regionUpdated": "Region aktualisiert",
+    "cityCreated": "Ort angelegt",
+    "cityUpdated": "Ort aktualisiert",
+    "streetCreated": "Straße angelegt",
+    "streetUpdated": "Straße aktualisiert",
+    "houseNumberCreated": "Hausnummer angelegt",
+    "houseNumberUpdated": "Hausnummer aktualisiert",
+    "collectionLocationCreated": "Abholort angelegt",
+    "collectionLocationUpdated": "Abholort aktualisiert",
+    "locationTourLinkCreated": "Tour-Zuordnung angelegt",
+    "locationTourLinkUpdated": "Tour-Zuordnung aktualisiert",
+    "locationTourLinkBulkCreated": "Tour-Zuordnungen gesammelt angelegt",
+    "tourCreated": "Tour angelegt",
+    "tourUpdated": "Tour aktualisiert",
+    "tourDateShiftCreated": "Tourbezogenen Ausweichtermin angelegt",
+    "tourDateShiftUpdated": "Tourbezogenen Ausweichtermin aktualisiert",
+    "globalDateShiftCreated": "Globalen Ausweichtermin angelegt",
+    "globalDateShiftUpdated": "Globalen Ausweichtermin aktualisiert",
+    "migrationsStarted": "Waste-Migration gestartet",
+    "importStarted": "Waste-Import gestartet",
+    "seedStarted": "Waste-Seed gestartet",
+    "resetStarted": "Waste-Reset gestartet",
+    "dataSourceInitialized": "Waste-Datenquelle initialisiert"
+  }
+} as const;

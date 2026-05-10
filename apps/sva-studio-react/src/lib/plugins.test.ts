@@ -156,6 +156,7 @@ describe('plugin action alias lookup', () => {
   it('resolves legacy aliases and warns only once per alias', async () => {
     const {
       getStudioPluginAction,
+      getStudioPluginNavigationModuleId,
       studioAdminResources,
       studioPluginCatalog,
       studioPluginCatalogIssues,
@@ -215,6 +216,7 @@ describe('plugin action alias lookup', () => {
         }),
       ])
     );
+    expect(getStudioPluginNavigationModuleId({ id: 'unknown.navigation' })).toBeNull();
   }, 15000);
 
   it('logs skipped and rejected plugin catalog issues deterministically', async () => {

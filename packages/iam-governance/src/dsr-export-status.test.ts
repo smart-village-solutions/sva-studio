@@ -75,6 +75,76 @@ describe('dsr-export-status', () => {
     await expect(response.text()).resolves.toContain('ok,true');
   });
 
+  it('falls back to JSON status responses for unknown formats and missing requesters', async () => {
+    const missingRequesterQuery = vi.fn<QueryClient['query']>().mockResolvedValueOnce({ rowCount: 0, rows: [] });
+    const handlers = createDsrExportStatusHandlers(createDeps());
+
+    const missingRequesterResponse = await handlers.getSelfExportStatus({
+      client: { query: missingRequesterQuery },
+      instanceId: 'de-musterhausen',
+      keycloakSubject: 'kc-user-missing',
+      jobId: 'job-1',
+    });
+
+    expect(missingRequesterResponse.status).toBe(404);
+    await expect(readBody(missingRequesterResponse)).resolves.toEqual({ error: 'account_not_found' });
+
+    const query = vi
+      .fn<QueryClient['query']>()
+      .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 'account-1' }] })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [completedJob] });
+
+    const invalidFormatResponse = await handlers.getSelfExportStatus({
+      client: { query },
+      instanceId: 'de-musterhausen',
+      keycloakSubject: 'kc-user-1',
+      jobId: 'job-1',
+      downloadFormat: 'yaml',
+    });
+
+    expect(invalidFormatResponse.status).toBe(200);
+    await expect(readBody(invalidFormatResponse)).resolves.toMatchObject({
+      id: 'job-1',
+      status: 'completed',
+    });
+  });
+
+  it('downloads json and xml exports and fails closed when the row is unexpectedly empty', async () => {
+    const handlers = createDsrExportStatusHandlers(createDeps());
+    const jsonQuery = vi.fn<QueryClient['query']>().mockResolvedValueOnce({ rowCount: 1, rows: [completedJob] });
+    const xmlQuery = vi.fn<QueryClient['query']>().mockResolvedValueOnce({
+      rowCount: 1,
+      rows: [{ ...completedJob, format: 'xml', payload_xml: '<root />' }],
+    });
+    const emptyRowQuery = vi.fn<QueryClient['query']>().mockResolvedValueOnce({ rowCount: 1, rows: [] });
+
+    const jsonResponse = await handlers.getAdminExportStatus({
+      client: { query: jsonQuery },
+      instanceId: 'de-musterhausen',
+      jobId: 'job-1',
+      downloadFormat: 'json',
+    });
+    expect(jsonResponse.headers.get('Content-Type')).toBe('application/json');
+    await expect(jsonResponse.text()).resolves.toContain('"ok": true');
+
+    const xmlResponse = await handlers.getAdminExportStatus({
+      client: { query: xmlQuery },
+      instanceId: 'de-musterhausen',
+      jobId: 'job-1',
+      downloadFormat: 'xml',
+    });
+    expect(xmlResponse.headers.get('Content-Type')).toBe('application/xml; charset=utf-8');
+    await expect(xmlResponse.text()).resolves.toContain('<root />');
+
+    const emptyRowResponse = await handlers.getAdminExportStatus({
+      client: { query: emptyRowQuery },
+      instanceId: 'de-musterhausen',
+      jobId: 'job-empty',
+    });
+    expect(emptyRowResponse.status).toBe(404);
+    await expect(readBody(emptyRowResponse)).resolves.toEqual({ error: 'export_job_not_found' });
+  });
+
   it('returns export_job_not_found for unknown admin jobs', async () => {
     const query = vi.fn<QueryClient['query']>().mockResolvedValueOnce({ rowCount: 0, rows: [] });
     const handlers = createDsrExportStatusHandlers(createDeps());

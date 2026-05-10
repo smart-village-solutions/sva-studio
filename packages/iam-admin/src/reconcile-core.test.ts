@@ -313,4 +313,168 @@ describe('runRoleCatalogReconciliation', () => {
       ],
     });
   });
+
+  it('accepts canonical alias matches without updating the identity role payload', async () => {
+    const updateRole = vi.fn(async () => undefined);
+    const deps = createDeps({
+      resolveIdentityProviderForInstance: vi.fn(async () => ({
+        provider: {
+          listRoles: vi.fn(async () => [
+            {
+              externalName: 'Editor',
+              description: undefined,
+              clientRole: false,
+              attributes: {
+                managed_by: ['studio'],
+                instance_id: ['tenant-a'],
+                role_key: ['mainserver_editor'],
+                display_name: ['Editor'],
+              },
+            },
+          ]),
+          getRoleByName: vi.fn(async () => null),
+          updateRole,
+        } as never,
+      })),
+      withInstanceScopedDb: vi.fn(async (_instanceId, work) =>
+        work({
+          query: vi.fn(async (sql: string) => {
+            if (sql.includes('SELECT\n  id,')) {
+              return {
+                rows: [
+                  {
+                    id: 'role-editor',
+                    role_key: 'editor',
+                    role_name: 'editor',
+                    display_name: 'Editor',
+                    external_role_name: null,
+                    description: null,
+                    is_system_role: false,
+                    role_level: 0,
+                    managed_by: 'studio',
+                    sync_state: 'failed',
+                    last_synced_at: null,
+                    last_error_code: 'PREVIOUS_ERROR',
+                  },
+                ],
+              };
+            }
+            return { rows: [] };
+          }),
+        } as never)
+      ),
+    });
+
+    const report = await runRoleCatalogReconciliation({
+      deps,
+      instanceId: 'tenant-a',
+      requestId: 'req-alias',
+    });
+
+    expect(updateRole).not.toHaveBeenCalled();
+    expect(report).toMatchObject({
+      outcome: 'success',
+      correctedCount: 1,
+      failedCount: 0,
+      roles: [
+        {
+          roleId: 'role-editor',
+          roleKey: 'editor',
+          externalRoleName: 'Editor',
+          action: 'noop',
+          status: 'corrected',
+        },
+      ],
+    });
+  });
+
+  it('reports partial failures when one role sync succeeds and another one fails', async () => {
+    const createRole = vi.fn(async ({ externalName }: { externalName: string }) => {
+      if (externalName === 'missing_role') {
+        throw Object.assign(new Error('timeout'), { name: 'KeycloakAdminRequestError', code: 'read_timeout', statusCode: 504 });
+      }
+    });
+    const deps = createDeps({
+      resolveIdentityProviderForInstance: vi.fn(async () => ({
+        provider: {
+          listRoles: vi.fn(async () => [
+            {
+              externalName: 'existing_role',
+              description: 'Canonical description',
+              clientRole: false,
+              attributes: {
+                managed_by: ['studio'],
+                instance_id: ['tenant-a'],
+                role_key: ['existing_role'],
+                display_name: ['Existing role'],
+              },
+            },
+          ]),
+          getRoleByName: vi.fn(async () => null),
+          createRole,
+          updateRole: vi.fn(async () => undefined),
+        } as never,
+      })),
+      withInstanceScopedDb: vi.fn(async (_instanceId, work) =>
+        work({
+          query: vi.fn(async (sql: string) => {
+            if (sql.includes('SELECT\n  id,')) {
+              return {
+                rows: [
+                  {
+                    id: 'role-existing',
+                    role_key: 'existing_role',
+                    role_name: 'existing_role',
+                    display_name: 'Existing role',
+                    external_role_name: 'existing_role',
+                    description: 'Canonical description',
+                    is_system_role: false,
+                    role_level: 0,
+                    managed_by: 'studio',
+                    sync_state: 'failed',
+                    last_synced_at: null,
+                    last_error_code: 'OLD_ERROR',
+                  },
+                  {
+                    id: 'role-missing',
+                    role_key: 'missing_role',
+                    role_name: 'missing_role',
+                    display_name: 'Missing role',
+                    external_role_name: 'missing_role',
+                    description: null,
+                    is_system_role: false,
+                    role_level: 0,
+                    managed_by: 'studio',
+                    sync_state: 'failed',
+                    last_synced_at: null,
+                    last_error_code: 'OLD_ERROR',
+                  },
+                ],
+              };
+            }
+            return { rows: [] };
+          }),
+        } as never)
+      ),
+    });
+
+    const report = await runRoleCatalogReconciliation({
+      deps,
+      instanceId: 'tenant-a',
+      requestId: 'req-partial',
+    });
+
+    expect(report).toMatchObject({
+      outcome: 'partial_failure',
+      correctedCount: 1,
+      failedCount: 1,
+      requiresManualActionCount: 0,
+    });
+    expect(report.roles).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ roleKey: 'existing_role', status: 'corrected' }),
+        expect.objectContaining({ roleKey: 'missing_role', status: 'failed', errorCode: 'IDP_TIMEOUT' }),
+      ])
+    );
+  });
 });

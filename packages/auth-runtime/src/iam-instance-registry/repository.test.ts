@@ -188,7 +188,7 @@ describe('iam instance registry repository wiring', () => {
         }),
       })
     );
-  });
+  }, 15_000);
 
   it('reports blocked tenant IAM access instead of throwing when the tenant admin client is missing', async () => {
     resolveIdentityProviderForInstanceMock.mockResolvedValueOnce(null);

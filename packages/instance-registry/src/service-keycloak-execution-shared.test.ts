@@ -5,6 +5,7 @@ import {
   buildProvisioningInput,
   createQueuedRun,
   syncProvisionedClientSecretToRegistry,
+  syncRotatedClientSecretToRegistry,
 } from './service-keycloak-execution-shared.js';
 
 const createLoaded = () => ({
@@ -204,5 +205,67 @@ describe('service-keycloak-execution-shared', () => {
         keepExistingTenantAdminClientSecret: false,
       })
     );
+  });
+
+  it('keeps provisioned client secrets untouched when no drift exists', async () => {
+    const loaded = createLoaded() as never;
+    const repository = {
+      updateInstance: vi.fn(async () => undefined),
+    };
+    const readKeycloakStateViaProvisioner = vi.fn(async () => ({
+      keycloakClientSecret: 'auth-secret',
+      tenantAdminClientSecret: 'tenant-admin-secret',
+    }));
+
+    await syncProvisionedClientSecretToRegistry(
+      {
+        repository: repository as never,
+        readKeycloakStateViaProvisioner,
+      } as never,
+      {
+        loaded,
+      }
+    );
+
+    expect(repository.updateInstance).not.toHaveBeenCalled();
+  });
+
+  it('syncs rotated client secrets back into the registry', async () => {
+    const loaded = createLoaded() as never;
+    const repository = {
+      updateInstance: vi.fn(async () => undefined),
+    };
+    const readKeycloakStateViaProvisioner = vi.fn(async () => ({
+      keycloakClientSecret: 'actual-auth-secret',
+      tenantAdminClientSecret: 'actual-tenant-admin-secret',
+    }));
+    const protectSecret = vi.fn((value: string, aad: string) => `protected:${aad}:${value}`);
+
+    await syncRotatedClientSecretToRegistry(
+      {
+        repository: repository as never,
+        readKeycloakStateViaProvisioner,
+        protectSecret,
+      } as never,
+      {
+        loaded,
+        requestId: 'request-1',
+        actorId: 'actor-1',
+      }
+    );
+
+    expect(repository.updateInstance).toHaveBeenCalledWith(
+      expect.objectContaining({
+        authClientSecretCiphertext:
+          'protected:iam.instances.auth_client_secret:tenant-a:actual-auth-secret',
+        tenantAdminClient: expect.objectContaining({
+          secretCiphertext:
+            'protected:iam.instances.tenant_admin_client_secret:tenant-a:actual-tenant-admin-secret',
+        }),
+        keepExistingAuthClientSecret: false,
+      })
+    );
+    expect(loaded.authClientSecret).toBe('actual-auth-secret');
+    expect(loaded.tenantAdminClientSecret).toBe('actual-tenant-admin-secret');
   });
 });

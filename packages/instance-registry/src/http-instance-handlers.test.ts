@@ -134,4 +134,114 @@ describe('http-instance-handlers', () => {
     expect(response.status).toBe(502);
     expect(deps.mapMutationError).toHaveBeenCalledWith(thrown);
   });
+
+  it('returns guard failures before reading create payloads', async () => {
+    deps.ensurePlatformAccess.mockReturnValueOnce(new Response('forbidden', { status: 403 }));
+    const handlers = createInstanceRegistryHttpHandlers(deps);
+
+    const response = await handlers.createInstance(
+      new Request('https://studio.example.org/api/v1/iam/instances', { method: 'POST' }),
+      ctx
+    );
+
+    expect(response.status).toBe(403);
+    expect(deps.requireIdempotencyKey).not.toHaveBeenCalled();
+    expect(deps.parseRequestBody).not.toHaveBeenCalled();
+  });
+
+  it('returns idempotency and payload validation errors on create', async () => {
+    deps.requireIdempotencyKey.mockReturnValueOnce({
+      error: new Response(JSON.stringify({ code: 'missing_idempotency_key' }), { status: 400 }),
+    });
+    const handlers = createInstanceRegistryHttpHandlers(deps);
+
+    const first = await handlers.createInstance(
+      new Request('https://studio.example.org/api/v1/iam/instances', { method: 'POST' }),
+      ctx
+    );
+
+    expect(first.status).toBe(400);
+    expect(deps.parseRequestBody).not.toHaveBeenCalled();
+
+    deps.requireIdempotencyKey.mockReturnValueOnce({ key: 'idem-2' });
+    deps.parseRequestBody.mockResolvedValueOnce({
+      ok: false,
+      message: 'payload invalid',
+    });
+
+    const second = await handlers.createInstance(
+      new Request('https://studio.example.org/api/v1/iam/instances', { method: 'POST' }),
+      ctx
+    );
+
+    expect(second.status).toBe(400);
+    expect(await readBody(second)).toMatchObject({
+      code: 'invalid_request',
+      message: 'payload invalid',
+      requestId: 'req-1',
+    });
+  });
+
+  it('returns conflict when createProvisioningRequest rejects a duplicate instance id', async () => {
+    deps.parseRequestBody.mockResolvedValueOnce({
+      ok: true,
+      data: {
+        instanceId: 'demo',
+        displayName: 'Demo',
+        parentDomain: 'studio.example.org',
+        realmMode: 'existing',
+        authRealm: 'demo',
+        authClientId: 'sva-studio',
+      },
+    });
+    vi.mocked(service.createProvisioningRequest).mockResolvedValueOnce({ ok: false } as never);
+    const handlers = createInstanceRegistryHttpHandlers(deps);
+
+    const response = await handlers.createInstance(
+      new Request('https://studio.example.org/api/v1/iam/instances', { method: 'POST' }),
+      ctx
+    );
+
+    expect(response.status).toBe(409);
+    expect(await readBody(response)).toMatchObject({
+      code: 'conflict',
+    });
+  });
+
+  it('returns request and not-found errors on update before mapping service exceptions', async () => {
+    const handlers = createInstanceRegistryHttpHandlers(deps);
+
+    const missingId = await handlers.updateInstance(
+      new Request('https://studio.example.org/api/v1/iam/instances/', { method: 'PATCH' }),
+      ctx
+    );
+    expect(missingId.status).toBe(400);
+
+    deps.parseRequestBody.mockResolvedValueOnce({
+      ok: false,
+      message: 'invalid update',
+    });
+    const invalidPayload = await handlers.updateInstance(
+      new Request('https://studio.example.org/api/v1/iam/instances/demo', { method: 'PATCH' }),
+      ctx
+    );
+    expect(invalidPayload.status).toBe(400);
+
+    deps.parseRequestBody.mockResolvedValueOnce({
+      ok: true,
+      data: {
+        displayName: 'Demo',
+      },
+    });
+    vi.mocked(service.updateInstance).mockResolvedValueOnce(null as never);
+    const notFound = await handlers.updateInstance(
+      new Request('https://studio.example.org/api/v1/iam/instances/demo', { method: 'PATCH' }),
+      ctx
+    );
+
+    expect(notFound.status).toBe(404);
+    expect(await readBody(notFound)).toMatchObject({
+      code: 'not_found',
+    });
+  });
 });

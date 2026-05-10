@@ -34,22 +34,22 @@
       "branches": 86
     },
     "auth-runtime": {
-      "lines": 61,
-      "statements": 61,
-      "functions": 59,
-      "branches": 43
+      "lines": 70,
+      "statements": 70,
+      "functions": 70,
+      "branches": 70
     },
     "data": {
       "lines": 73,
       "statements": 72,
-      "functions": 61,
-      "branches": 52
+      "functions": 70,
+      "branches": 70
     },
     "data-client": {
       "lines": 81,
       "statements": 81,
       "functions": 83,
-      "branches": 57
+      "branches": 70
     },
     "data-repositories": {
       "lines": 88,
@@ -61,25 +61,25 @@
       "lines": 70,
       "statements": 70,
       "functions": 81,
-      "branches": 53
+      "branches": 70
     },
     "iam-governance": {
       "lines": 74,
       "statements": 74,
       "functions": 81,
-      "branches": 61
+      "branches": 70
     },
     "instance-registry": {
       "lines": 74,
       "statements": 74,
       "functions": 79,
-      "branches": 53
+      "branches": 70
     },
     "monitoring-client": {
       "lines": 81,
       "statements": 80,
       "functions": 82,
-      "branches": 66
+      "branches": 70
     },
     "routing": {
       "lines": 99,

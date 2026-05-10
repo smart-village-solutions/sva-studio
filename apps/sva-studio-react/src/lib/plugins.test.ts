@@ -216,4 +216,66 @@ describe('plugin action alias lookup', () => {
       ])
     );
   }, 15000);
+
+  it('logs skipped and rejected plugin catalog issues deterministically', async () => {
+    vi.doMock('./plugin-catalog-loader.js', () => ({
+      createStudioPluginCatalogReport: vi.fn(() => ({
+        catalog: [],
+        issues: [
+          {
+            pluginId: 'warn-plugin',
+            sourceRef: 'packages/warn-plugin',
+            sourceType: 'workspace',
+            severity: 'warning',
+            code: 'plugin_disabled',
+            message: 'Warn plugin skipped.',
+          },
+          {
+            pluginId: 'error-plugin',
+            sourceRef: 'packages/error-plugin',
+            sourceType: 'workspace',
+            severity: 'error',
+            code: 'plugin_module_missing',
+            message: 'Error plugin rejected.',
+          },
+        ],
+        snapshot: {
+          pluginSources: [],
+          registry: {
+            plugins: [],
+            pluginRegistry: new Map(),
+            pluginActionRegistry: new Map(),
+            pluginModuleIamRegistry: new Map(),
+            pluginModuleIamContracts: [],
+            routes: [],
+            navigation: [],
+            contentTypes: [],
+            adminResources: [],
+            translations: {},
+            jobTypes: [],
+          },
+        },
+      })),
+      getPackagePluginModuleCandidates: vi.fn(() => []),
+      getWorkspacePluginModuleCandidates: vi.fn(() => []),
+    }));
+
+    const { studioPluginCatalogIssues } = await import('./plugins');
+
+    expect(studioPluginCatalogIssues).toHaveLength(2);
+    expect(browserLoggerMock.warn).toHaveBeenCalledWith('plugin_catalog_entry_skipped', {
+      plugin_id: 'warn-plugin',
+      source_ref: 'packages/warn-plugin',
+      source_type: 'workspace',
+      reason_code: 'plugin_disabled',
+      message: 'Warn plugin skipped.',
+    });
+    expect(browserLoggerMock.error).toHaveBeenCalledWith('plugin_catalog_entry_rejected', {
+      plugin_id: 'error-plugin',
+      source_ref: 'packages/error-plugin',
+      source_type: 'workspace',
+      reason_code: 'plugin_module_missing',
+      message: 'Error plugin rejected.',
+    });
+  });
 });

@@ -104,6 +104,35 @@ describe('plugin operation runtime registration', () => {
     ]);
   });
 
+  it('ignores plugin sources without job entry points', async () => {
+    const mod = await import('./plugin-operation-runtime.server');
+
+    const handlers = mod.createPluginOperationExecutionHandlersFromSnapshot({
+      pluginSources: [
+        {
+          pluginId: 'browser-only-plugin',
+          sourceType: 'workspace',
+          sourceRef: 'packages/plugin-news',
+          manifest: definePluginManifest({
+            pluginId: 'browser-only-plugin',
+            version: '0.0.1',
+            sdkVersion: '0.0.1',
+            hostCompatibility: {
+              studioVersionRange: '^0.0.1',
+              requiredCapabilities: ['routing'],
+            },
+            entryPoints: {
+              browser: './dist/index.js',
+            },
+          }),
+        },
+      ],
+      runtimeFactories: {},
+    });
+
+    expect(handlers).toEqual({});
+  });
+
   it('rejects job entry points without declared runtime requirements', async () => {
     const mod = await import('./plugin-operation-runtime.server');
 
@@ -143,5 +172,27 @@ describe('plugin operation runtime registration', () => {
         runtimeFactories: {},
       })
     ).toThrowError('plugin_job_runtime_provider_missing:custom-waste-plugin:custom.runtime');
+  });
+
+  it('rejects package job sources without a loadable module factory', async () => {
+    const mod = await import('./plugin-operation-runtime.server');
+
+    expect(() =>
+      mod.createPluginOperationExecutionHandlersFromSnapshot({
+        pluginSources: [
+          {
+            ...createJobPluginSource({
+              pluginId: 'installed-waste-plugin',
+              runtimeRequirement: 'waste-management.operations',
+            }),
+            sourceType: 'installed-distribution',
+            sourceRef: '@acme/plugin-waste-management',
+          },
+        ],
+        runtimeFactories: {
+          'waste-management.operations': () => ({}),
+        },
+      })
+    ).toThrowError('missing_plugin_job_module_factory:installed-waste-plugin');
   });
 });

@@ -64,6 +64,28 @@ describe('provisioning-auth-state', () => {
     expect(client.ensureRealm).not.toHaveBeenCalled();
   });
 
+  it('returns an empty auth state when the realm does not exist', async () => {
+    const client = createClient({
+      getRealm: vi.fn(async () => null),
+    });
+    const readState = createReadKeycloakState(() => client);
+
+    const state = await readState({
+      instanceId: 'demo',
+      primaryHostname: 'demo.example.org',
+      realmMode: 'existing',
+      authRealm: 'demo',
+      authClientId: 'sva-studio',
+      authClientSecretConfigured: false,
+    });
+
+    expect(state.realm).toBeNull();
+    expect(state.clientRepresentation).toBeNull();
+    expect(state.protocolMappers).toEqual([]);
+    expect(state.keycloakClientSecret).toBeNull();
+    expect(client.getOidcClientByClientId).not.toHaveBeenCalled();
+  });
+
   it('provisions realm, clients, mapper and tenant admin through the injected client', async () => {
     const client = createClient();
     const provision = createProvisionInstanceAuthArtifacts(() => client);
@@ -97,6 +119,93 @@ describe('provisioning-auth-state', () => {
       })
     );
     expect(client.setUserPassword).toHaveBeenCalledWith('user-1', 'tmp-password', true);
+  });
+
+  it('rejects existing-realm provisioning when the target realm is missing', async () => {
+    const client = createClient({
+      getRealm: vi.fn(async () => null),
+    });
+    const provision = createProvisionInstanceAuthArtifacts(() => client);
+
+    await expect(
+      provision({
+        instanceId: 'demo',
+        primaryHostname: 'demo.example.org',
+        realmMode: 'existing',
+        authRealm: 'demo',
+        authClientId: 'sva-studio',
+      })
+    ).rejects.toThrow('Keycloak realm demo does not exist');
+
+    expect(client.ensureRealm).not.toHaveBeenCalled();
+  });
+
+  it('updates an existing tenant admin and falls back to a synthetic email when none is provided', async () => {
+    const client = createClient({
+      findUserByUsername: vi.fn(async () => ({
+        id: 'user-1',
+        enabled: false,
+      })),
+    });
+    const provision = createProvisionInstanceAuthArtifacts(() => client);
+
+    await provision({
+      instanceId: 'demo',
+      primaryHostname: 'demo.example.org',
+      realmMode: 'new',
+      authRealm: 'demo',
+      authClientId: 'sva-studio',
+      tenantAdminBootstrap: {
+        username: 'tenant-admin',
+      },
+      tenantAdminTemporaryPassword: 'tmp-password',
+    });
+
+    expect(client.updateUser).toHaveBeenCalledWith(
+      'user-1',
+      expect.objectContaining({
+        username: 'tenant-admin',
+        email: 'tenant-admin@tenant.invalid',
+        enabled: false,
+      })
+    );
+    expect(client.syncRoles).toHaveBeenCalledWith('user-1', ['system_admin']);
+  });
+
+  it('recovers from conflicting tenant admin creation by updating the matching email user', async () => {
+    const client = createClient({
+      findUserByUsername: vi.fn(async () => null),
+      findUserByEmail: vi
+        .fn()
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({
+          id: 'user-2',
+          enabled: true,
+        }),
+      createUser: vi.fn(async () => {
+        throw Object.assign(new Error('conflict'), { statusCode: 409 });
+      }),
+    });
+    const provision = createProvisionInstanceAuthArtifacts(() => client);
+
+    await provision({
+      instanceId: 'demo',
+      primaryHostname: 'demo.example.org',
+      realmMode: 'new',
+      authRealm: 'demo',
+      authClientId: 'sva-studio',
+      tenantAdminBootstrap: {
+        username: 'tenant-admin',
+        email: 'tenant-admin@example.org',
+      },
+    });
+
+    expect(client.updateUser).toHaveBeenCalledWith(
+      'user-2',
+      expect.objectContaining({
+        email: 'tenant-admin@example.org',
+      })
+    );
   });
 
   it('builds provisioning adapters from an injected config resolver and client constructor', async () => {

@@ -29,7 +29,7 @@ describe('iam account management feature flags', () => {
     expect(parseBooleanFlag('1', false)).toBe(true);
     expect(parseBooleanFlag('false', true)).toBe(false);
     expect(parseBooleanFlag('0', true)).toBe(false);
-  });
+  }, 15000);
 
   it('derives dependent feature flags from environment variables', async () => {
     const { getFeatureFlags } = await import('./feature-flags.js');

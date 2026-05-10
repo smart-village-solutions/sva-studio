@@ -1,0 +1,26 @@
+[
+  {
+    "pluginId": "news",
+    "sourceType": "workspace",
+    "enabled": true,
+    "sourceRef": "packages/plugin-news"
+  },
+  {
+    "pluginId": "events",
+    "sourceType": "workspace",
+    "enabled": true,
+    "sourceRef": "packages/plugin-events"
+  },
+  {
+    "pluginId": "poi",
+    "sourceType": "workspace",
+    "enabled": true,
+    "sourceRef": "packages/plugin-poi"
+  },
+  {
+    "pluginId": "waste-management",
+    "sourceType": "workspace",
+    "enabled": true,
+    "sourceRef": "packages/plugin-waste-management"
+  }
+]

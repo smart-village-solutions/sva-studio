@@ -1,12 +1,14 @@
 import {
-  createWasteManagementPluginImportProfiles,
-  createWasteManagementPluginJobTypes,
   definePluginAuditEvents,
   definePluginPermissions,
   type PluginDefinition,
 } from '@sva/plugin-sdk';
 import { studioModuleIamRegistry } from '@sva/studio-module-iam';
 
+import {
+  createWasteManagementPluginImportProfiles,
+  createWasteManagementPluginJobTypes,
+} from './plugin-operations.js';
 import { normalizeWasteManagementSearchParams } from './search-params.js';
 import { WasteManagementPage } from './waste-management.page.js';
 
@@ -55,6 +57,22 @@ export const wasteManagementAuditEventDefinitions = definePluginAuditEvents('was
   {
     eventType: 'waste-management.city.updated',
     titleKey: 'wasteManagement.audit.cityUpdated',
+  },
+  {
+    eventType: 'waste-management.street.created',
+    titleKey: 'wasteManagement.audit.streetCreated',
+  },
+  {
+    eventType: 'waste-management.street.updated',
+    titleKey: 'wasteManagement.audit.streetUpdated',
+  },
+  {
+    eventType: 'waste-management.house-number.created',
+    titleKey: 'wasteManagement.audit.houseNumberCreated',
+  },
+  {
+    eventType: 'waste-management.house-number.updated',
+    titleKey: 'wasteManagement.audit.houseNumberUpdated',
   },
   {
     eventType: 'waste-management.collection-location.created',
@@ -174,6 +192,10 @@ export const pluginWasteManagement: PluginDefinition = {
           regionUpdated: 'Region aktualisiert',
           cityCreated: 'Ort angelegt',
           cityUpdated: 'Ort aktualisiert',
+          streetCreated: 'Straße angelegt',
+          streetUpdated: 'Straße aktualisiert',
+          houseNumberCreated: 'Hausnummer angelegt',
+          houseNumberUpdated: 'Hausnummer aktualisiert',
           collectionLocationCreated: 'Abholort angelegt',
           collectionLocationUpdated: 'Abholort aktualisiert',
           locationTourLinkCreated: 'Tour-Zuordnung angelegt',
@@ -301,16 +323,23 @@ export const pluginWasteManagement: PluginDefinition = {
             emptyTitle: 'Noch keine Historieneinträge',
             emptyBody: 'Die zentrale Auditspur enthält für diese Suche oder Seite noch keine Waste-Ereignisse.',
           },
+          sections: {
+            technical: 'Technische Historie',
+            audit: 'Audit-Historie',
+          },
           meta: {
             total: '{{value}} Historieneinträge gesamt',
             visible: '{{value}} Einträge auf dieser Seite',
             occurredAt: 'Zeitpunkt: {{value}}',
+            jobId: 'Job: {{value}}',
+            jobTypeId: 'Jobtyp: {{value}}',
             resourceType: 'Ressourcentyp: {{value}}',
             resourceId: 'Ressource: {{value}}',
             reasonCode: 'Reason-Code: {{value}}',
             requestId: 'Request-ID: {{value}}',
           },
           outcome: {
+            started: 'Gestartet',
             success: 'Erfolg',
             failure: 'Fehler',
             denied: 'Verweigert',
@@ -321,6 +350,8 @@ export const pluginWasteManagement: PluginDefinition = {
             fractionCount: '{{value}} Fraktionen',
             regionCount: '{{value}} Regionen',
             cityCount: '{{value}} Orte',
+            streetCount: '{{value}} Straßen',
+            houseNumberCount: '{{value}} Hausnummern',
             collectionLocationCount: '{{value}} Abholorte',
           },
           messages: {
@@ -345,11 +376,14 @@ export const pluginWasteManagement: PluginDefinition = {
             },
             fields: {
               name: 'Name',
+              translationDe: 'Bezeichnung (DE)',
+              translationEn: 'Bezeichnung (EN)',
               color: 'Farbe',
               containerSize: 'Behältergröße',
               description: 'Beschreibung',
               active: 'Status',
             },
+            translationBadge: '{{locale}}: {{value}}',
             dialog: {
               createTitle: 'Abfallfraktion anlegen',
               createDescription: 'Erstellen Sie eine neue Fraktion für die weitere Touren- und Kalenderpflege.',
@@ -420,6 +454,68 @@ export const pluginWasteManagement: PluginDefinition = {
               updateSuccess: 'Der Waste-Ort wurde aktualisiert.',
               saveError: 'Der Waste-Ort konnte nicht gespeichert werden.',
               saveForbidden: 'Für das Speichern von Waste-Orten fehlt die Berechtigung.',
+            },
+          },
+          streets: {
+            title: 'Straßen',
+            description: 'Pflegen Sie Straßen als eigenständigen Adresspfad unterhalb der Orte.',
+            streetId: 'Straßen-ID: {{value}}',
+            cityId: 'Ort-ID: {{value}}',
+            actions: {
+              openCreate: 'Straße anlegen',
+              edit: 'Bearbeiten',
+              cancel: 'Abbrechen',
+              create: 'Straße speichern',
+              save: 'Änderungen speichern',
+              saving: 'Speichert…',
+            },
+            fields: {
+              name: 'Name',
+              cityId: 'Ort',
+              cityUnset: 'Ort auswählen',
+            },
+            dialog: {
+              createTitle: 'Straße anlegen',
+              createDescription: 'Erstellen Sie eine Straße und ordnen Sie sie einem Ort zu.',
+              editTitle: 'Straße bearbeiten',
+              editDescription: 'Ändern Sie den Namen oder den zugeordneten Ort der Straße.',
+            },
+            messages: {
+              createSuccess: 'Die Waste-Straße wurde angelegt.',
+              updateSuccess: 'Die Waste-Straße wurde aktualisiert.',
+              saveError: 'Die Waste-Straße konnte nicht gespeichert werden.',
+              saveForbidden: 'Für das Speichern von Waste-Straßen fehlt die Berechtigung.',
+            },
+          },
+          houseNumbers: {
+            title: 'Hausnummern',
+            description: 'Pflegen Sie Hausnummern als letzten direkten Pfad der Adresshierarchie.',
+            houseNumberId: 'Hausnummer-ID: {{value}}',
+            streetId: 'Straßen-ID: {{value}}',
+            actions: {
+              openCreate: 'Hausnummer anlegen',
+              edit: 'Bearbeiten',
+              cancel: 'Abbrechen',
+              create: 'Hausnummer speichern',
+              save: 'Änderungen speichern',
+              saving: 'Speichert…',
+            },
+            fields: {
+              number: 'Hausnummer',
+              streetId: 'Straße',
+              streetUnset: 'Straße auswählen',
+            },
+            dialog: {
+              createTitle: 'Hausnummer anlegen',
+              createDescription: 'Erstellen Sie eine Hausnummer und ordnen Sie sie einer Straße zu.',
+              editTitle: 'Hausnummer bearbeiten',
+              editDescription: 'Ändern Sie Hausnummer oder Straßenbezug.',
+            },
+            messages: {
+              createSuccess: 'Die Waste-Hausnummer wurde angelegt.',
+              updateSuccess: 'Die Waste-Hausnummer wurde aktualisiert.',
+              saveError: 'Die Waste-Hausnummer konnte nicht gespeichert werden.',
+              saveForbidden: 'Für das Speichern von Waste-Hausnummern fehlt die Berechtigung.',
             },
           },
           collectionLocations: {
@@ -498,8 +594,13 @@ export const pluginWasteManagement: PluginDefinition = {
               'Startet fachnahe Waste-Importe als dünne Bedienhülle auf der generischen Host-Job-Fähigkeit.',
             profileLabel: 'Importprofil',
             blobRefLabel: 'Quell-Referenz (Blob-Ref)',
+            sourceFormatLabel: 'Quellformat',
+            sourceFormats: {
+              csv: 'CSV',
+              xlsx: 'Excel (.xlsx)',
+            },
             dryRunLabel: 'Nur Vorprüfung (Dry-Run)',
-            templateColumns: 'Kanonische CSV-Spalten',
+            templateColumns: 'Kanonische Importspalten',
           },
           migrations: {
             title: 'Migrationen',
@@ -526,7 +627,7 @@ export const pluginWasteManagement: PluginDefinition = {
             startSeed: 'Seed starten',
             startReset: 'Reset starten',
             starting: 'Startet…',
-            downloadTemplate: 'CSV-Vorlage laden',
+            downloadTemplate: 'Vorlage laden',
             openJob: 'Job öffnen',
           },
           messages: {
@@ -541,6 +642,10 @@ export const pluginWasteManagement: PluginDefinition = {
             lastJobDescription: 'Zuletzt gestarteter Waste-Host-Job mit technischem Status.',
             noJobYet: 'Noch kein technischer Waste-Job gestartet.',
             noJobStatus: 'Kein Job',
+            technicalHistoryTitle: 'Technische Ereignisse',
+            technicalHistoryDescription:
+              'Zeigt die letzten technischen Waste-Ereignisse mit unterscheidbaren Ergebnissen für Start, Erfolg und Fehler.',
+            noTechnicalHistory: 'Noch keine technischen Waste-Ereignisse vorhanden.',
             jobId: 'Job: {{value}}',
             jobType: 'Typ: {{value}}',
             jobStatus: 'Status: {{value}}',
@@ -674,6 +779,9 @@ export const pluginWasteManagement: PluginDefinition = {
             fields: {
               originalDate: 'Ursprünglicher Termin',
               actualDate: 'Verschobener Termin',
+              reasonType: 'Abweichungsgrund',
+              reasonTypeUnset: 'Grund auswählen',
+              reasonKey: 'Grundschlüssel',
               description: 'Beschreibung',
               hasYear: 'Jahresbezug',
               tourIds: 'Betroffene Touren',
@@ -709,6 +817,11 @@ export const pluginWasteManagement: PluginDefinition = {
               tourUnset: 'Tour auswählen',
               originalDate: 'Ursprünglicher Termin',
               actualDate: 'Verschobener Termin',
+              reasonType: 'Abweichungsgrund',
+              reasonTypeUnset: 'Grund auswählen',
+              reasonKey: 'Grundschlüssel',
+              followUpMode: 'Folgeeffekt',
+              followUpModeUnset: 'Kein Folgeeffekt',
               description: 'Beschreibung',
               hasYear: 'Jahresbezug',
             },
@@ -730,6 +843,22 @@ export const pluginWasteManagement: PluginDefinition = {
             tourCount: '{{value}} tourbezogene Termine',
             hasYear: 'Jahresbezug: {{value}}',
             affectedTours: 'Betroffene Touren: {{value}}',
+            reasonType: 'Grund: {{value}}',
+            reasonKey: 'Schlüssel: {{value}}',
+            followUpMode: 'Folgeeffekt: {{value}}',
+          },
+          reasonTypes: {
+            holiday: 'Feiertag',
+            'global-deviation': 'Globale Abweichung',
+            'manual-adjustment': 'Manuelle Anpassung',
+            'operational-disruption': 'Betriebsstörung',
+            weather: 'Wetter',
+            other: 'Sonstiges',
+          },
+          followUpModes: {
+            none: 'Keiner',
+            'propagate-series': 'Serie fortschreiben',
+            'mark-follow-up-dates': 'Folgetermine markieren',
           },
           messages: {
             loading: 'Ausweichtermine werden geladen.',
@@ -865,11 +994,44 @@ export const pluginWasteManagement: PluginDefinition = {
             saveForbidden: 'Missing permission to save waste settings.',
           },
         },
+        overview: {
+          messages: {
+            loading: 'Loading waste history.',
+            loadError: 'Waste history could not be loaded.',
+            loadForbidden: 'Missing permission for waste history.',
+            emptyTitle: 'No history entries yet',
+            emptyBody: 'The central audit trail does not yet contain waste events for this search or page.',
+          },
+          sections: {
+            technical: 'Technical history',
+            audit: 'Audit history',
+          },
+          meta: {
+            total: '{{value}} history entries total',
+            visible: '{{value}} entries on this page',
+            occurredAt: 'Occurred at: {{value}}',
+            jobId: 'Job: {{value}}',
+            jobTypeId: 'Job type: {{value}}',
+            resourceType: 'Resource type: {{value}}',
+            resourceId: 'Resource: {{value}}',
+            reasonCode: 'Reason code: {{value}}',
+            requestId: 'Request ID: {{value}}',
+          },
+          outcome: {
+            started: 'Started',
+            success: 'Success',
+            failure: 'Failure',
+            denied: 'Denied',
+          },
+        },
         masterData: {
           meta: {
             fractionCount: '{{value}} fractions',
             regionCount: '{{value}} regions',
             cityCount: '{{value}} cities',
+            streetCount: '{{value}} streets',
+            houseNumberCount: '{{value}} house numbers',
+            collectionLocationCount: '{{value}} collection locations',
           },
           messages: {
             loading: 'Loading master data.',
@@ -893,11 +1055,14 @@ export const pluginWasteManagement: PluginDefinition = {
             },
             fields: {
               name: 'Name',
+              translationDe: 'Label (DE)',
+              translationEn: 'Label (EN)',
               color: 'Color',
               containerSize: 'Container size',
               description: 'Description',
               active: 'Status',
             },
+            translationBadge: '{{locale}}: {{value}}',
             dialog: {
               createTitle: 'Create waste fraction',
               createDescription: 'Create a new fraction for further tour and calendar maintenance.',
@@ -968,6 +1133,68 @@ export const pluginWasteManagement: PluginDefinition = {
               updateSuccess: 'The waste city was updated.',
               saveError: 'The waste city could not be saved.',
               saveForbidden: 'Missing permission to save waste cities.',
+            },
+          },
+          streets: {
+            title: 'Streets',
+            description: 'Maintain streets as a dedicated address path below cities.',
+            streetId: 'Street ID: {{value}}',
+            cityId: 'City ID: {{value}}',
+            actions: {
+              openCreate: 'Create street',
+              edit: 'Edit',
+              cancel: 'Cancel',
+              create: 'Save street',
+              save: 'Save changes',
+              saving: 'Saving…',
+            },
+            fields: {
+              name: 'Name',
+              cityId: 'City',
+              cityUnset: 'Select city',
+            },
+            dialog: {
+              createTitle: 'Create street',
+              createDescription: 'Create a street and assign it to a city.',
+              editTitle: 'Edit street',
+              editDescription: 'Adjust the street name or its linked city.',
+            },
+            messages: {
+              createSuccess: 'The waste street was created.',
+              updateSuccess: 'The waste street was updated.',
+              saveError: 'The waste street could not be saved.',
+              saveForbidden: 'Missing permission to save waste streets.',
+            },
+          },
+          houseNumbers: {
+            title: 'House numbers',
+            description: 'Maintain house numbers as the final direct path of the address hierarchy.',
+            houseNumberId: 'House number ID: {{value}}',
+            streetId: 'Street ID: {{value}}',
+            actions: {
+              openCreate: 'Create house number',
+              edit: 'Edit',
+              cancel: 'Cancel',
+              create: 'Save house number',
+              save: 'Save changes',
+              saving: 'Saving…',
+            },
+            fields: {
+              number: 'House number',
+              streetId: 'Street',
+              streetUnset: 'Select street',
+            },
+            dialog: {
+              createTitle: 'Create house number',
+              createDescription: 'Create a house number and assign it to a street.',
+              editTitle: 'Edit house number',
+              editDescription: 'Adjust the house number or its linked street.',
+            },
+            messages: {
+              createSuccess: 'The waste house number was created.',
+              updateSuccess: 'The waste house number was updated.',
+              saveError: 'The waste house number could not be saved.',
+              saveForbidden: 'Missing permission to save waste house numbers.',
             },
           },
           collectionLocations: {
@@ -1046,8 +1273,13 @@ export const pluginWasteManagement: PluginDefinition = {
               'Starts domain-near waste imports as a thin shell on top of the generic host job capability.',
             profileLabel: 'Import profile',
             blobRefLabel: 'Source reference (blob ref)',
+            sourceFormatLabel: 'Source format',
+            sourceFormats: {
+              csv: 'CSV',
+              xlsx: 'Excel (.xlsx)',
+            },
             dryRunLabel: 'Preflight only (dry run)',
-            templateColumns: 'Canonical CSV columns',
+            templateColumns: 'Canonical import columns',
           },
           migrations: {
             title: 'Migrations',
@@ -1074,7 +1306,7 @@ export const pluginWasteManagement: PluginDefinition = {
             startSeed: 'Start seed',
             startReset: 'Start reset',
             starting: 'Starting…',
-            downloadTemplate: 'Download CSV template',
+            downloadTemplate: 'Download template',
             openJob: 'Open job',
           },
           messages: {
@@ -1089,6 +1321,10 @@ export const pluginWasteManagement: PluginDefinition = {
             lastJobDescription: 'Most recently started waste host job with technical status.',
             noJobYet: 'No technical waste job has been started yet.',
             noJobStatus: 'No job',
+            technicalHistoryTitle: 'Technical events',
+            technicalHistoryDescription:
+              'Shows the latest technical waste events with distinct outcomes for start, success, and failure.',
+            noTechnicalHistory: 'No technical waste events yet.',
             jobId: 'Job: {{value}}',
             jobType: 'Type: {{value}}',
             jobStatus: 'Status: {{value}}',
@@ -1172,6 +1408,9 @@ export const pluginWasteManagement: PluginDefinition = {
             fields: {
               originalDate: 'Original date',
               actualDate: 'Shifted date',
+              reasonType: 'Reason',
+              reasonTypeUnset: 'Select reason',
+              reasonKey: 'Reason key',
               description: 'Description',
               hasYear: 'Year-specific',
               tourIds: 'Affected tours',
@@ -1207,6 +1446,11 @@ export const pluginWasteManagement: PluginDefinition = {
               tourUnset: 'Select tour',
               originalDate: 'Original date',
               actualDate: 'Shifted date',
+              reasonType: 'Reason',
+              reasonTypeUnset: 'Select reason',
+              reasonKey: 'Reason key',
+              followUpMode: 'Follow-up effect',
+              followUpModeUnset: 'No follow-up effect',
               description: 'Description',
               hasYear: 'Year-specific',
             },
@@ -1228,6 +1472,22 @@ export const pluginWasteManagement: PluginDefinition = {
             tourCount: '{{value}} tour shifts',
             hasYear: 'Year-specific: {{value}}',
             affectedTours: 'Affected tours: {{value}}',
+            reasonType: 'Reason: {{value}}',
+            reasonKey: 'Key: {{value}}',
+            followUpMode: 'Follow-up: {{value}}',
+          },
+          reasonTypes: {
+            holiday: 'Holiday',
+            'global-deviation': 'Global deviation',
+            'manual-adjustment': 'Manual adjustment',
+            'operational-disruption': 'Operational disruption',
+            weather: 'Weather',
+            other: 'Other',
+          },
+          followUpModes: {
+            none: 'None',
+            'propagate-series': 'Propagate series',
+            'mark-follow-up-dates': 'Mark follow-up dates',
           },
           messages: {
             loading: 'Loading scheduling shifts.',

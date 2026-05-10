@@ -1,7 +1,6 @@
 import { wasteManagementOperationsContract } from '@sva/core';
-
-import type { PluginImportProfileDefinition, PluginJobTypeDefinition } from './plugin-operations.js';
-import { definePluginImportProfiles, definePluginJobTypes } from './plugin-operations.js';
+import type { PluginImportProfileDefinition, PluginJobTypeDefinition } from '@sva/plugin-sdk';
+import { definePluginImportProfiles, definePluginJobTypes } from '@sva/plugin-sdk';
 
 const pluginNamespace = wasteManagementOperationsContract.pluginId;
 

@@ -130,6 +130,11 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - produktive Plugin-Operations-Endpunkte dürfen nur über den typisierten Runtime-Route-Katalog erreichbar sein
   - der Status eines generischen Plugin-Jobs muss aus genau einem zentralen Jobdatensatz gelesen werden
   - die öffentliche Plattform darf keine konkrete Worker-Technologie im API- oder Plugin-Vertrag voraussetzen
+- Plugin-Plattform v2:
+  - `openspec validate refactor-plugin-platform-for-external-publishable-plugins --strict` muss grün sein
+  - Architektur- und ADR-Dokumentation für Manifest, Katalog, Loader und Runtime muss konsistent aufeinander verweisen
+  - lokale Source-Plugins und installierte Distributions-Plugins müssen denselben Snapshot-Vertrag erfüllen
+  - inkompatible oder deaktivierte Plugins dürfen nicht teilweise in Routing, IAM, Audit oder Jobs sichtbar werden
 - Plugin-UI-Boundary:
   - `pnpm check:plugin-ui-boundary` muss für Plugin-Packages grün sein
   - Plugin-Custom-Views importieren gemeinsame UI aus `@sva/studio-ui-react` und keine App-internen Komponentenpfade

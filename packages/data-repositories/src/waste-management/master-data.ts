@@ -3,6 +3,7 @@ import type {
   WasteCollectionLocationRecord,
   WasteCustomTourDate,
   WasteCityListFilter,
+  WasteDateShiftReasonType,
   WasteCityRecord,
   WasteFractionListFilter,
   WasteFractionRecord,
@@ -10,12 +11,14 @@ import type {
   WasteGlobalDateShiftRecord,
   WasteHouseNumberListFilter,
   WasteHouseNumberRecord,
+  WasteLocalizedTextRecord,
   WasteLocationTourLinkListFilter,
   WasteLocationTourLinkRecord,
   WasteRegionListFilter,
   WasteRegionRecord,
   WasteStreetListFilter,
   WasteStreetRecord,
+  WasteTourDateShiftFollowUpMode,
   WasteTourDateShiftListFilter,
   WasteTourDateShiftRecord,
   WasteTourListFilter,
@@ -27,6 +30,7 @@ import type { SqlExecutor, SqlPrimitive, SqlStatement } from '../iam/repositorie
 type WasteFractionRow = {
   readonly id: string;
   readonly name: string;
+  readonly label_translations: unknown;
   readonly container_size: string | null;
   readonly color: string;
   readonly description: string | null;
@@ -108,6 +112,9 @@ type WasteTourDateShiftRow = {
   readonly original_date: string;
   readonly actual_date: string;
   readonly has_year: boolean;
+  readonly reason_type: WasteDateShiftReasonType | null;
+  readonly reason_key: string | null;
+  readonly follow_up_mode: WasteTourDateShiftFollowUpMode | null;
   readonly description: string | null;
   readonly created_at: string;
   readonly updated_at: string;
@@ -118,6 +125,8 @@ type WasteGlobalDateShiftRow = {
   readonly original_date: string;
   readonly actual_date: string;
   readonly has_year: boolean;
+  readonly reason_type: WasteDateShiftReasonType | null;
+  readonly reason_key: string | null;
   readonly description: string | null;
   readonly tour_ids: readonly string[] | null;
   readonly created_at: string;
@@ -176,6 +185,7 @@ export type WasteMasterDataRepository = {
 const mapWasteFractionRow = (row: WasteFractionRow): WasteFractionRecord => ({
   id: row.id,
   name: row.name,
+  translations: normalizeLocalizedTextRecord(row.label_translations),
   containerSize: row.container_size ?? undefined,
   color: row.color,
   description: row.description ?? undefined,
@@ -234,6 +244,26 @@ const normalizeStringArray = (value: unknown): readonly string[] => {
   return value.filter((entry): entry is string => typeof entry === 'string');
 };
 
+const normalizeLocalizedTextRecord = (value: unknown): WasteLocalizedTextRecord | undefined => {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return undefined;
+  }
+
+  const entries = Object.entries(value).flatMap(([locale, localizedValue]) => {
+    if (!locale.trim() || typeof localizedValue !== 'string' || !localizedValue.trim()) {
+      return [];
+    }
+
+    return [[locale, localizedValue] as const];
+  });
+
+  if (entries.length === 0) {
+    return undefined;
+  }
+
+  return Object.freeze(Object.fromEntries(entries));
+};
+
 const normalizeCustomDates = (value: unknown): readonly WasteCustomTourDate[] | undefined => {
   if (!Array.isArray(value)) {
     return undefined;
@@ -282,6 +312,9 @@ const mapWasteTourDateShiftRow = (row: WasteTourDateShiftRow): WasteTourDateShif
   originalDate: row.original_date,
   actualDate: row.actual_date,
   hasYear: row.has_year,
+  reasonType: row.reason_type ?? undefined,
+  reasonKey: row.reason_key ?? undefined,
+  followUpMode: row.follow_up_mode ?? undefined,
   description: row.description ?? undefined,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
@@ -292,6 +325,8 @@ const mapWasteGlobalDateShiftRow = (row: WasteGlobalDateShiftRow): WasteGlobalDa
   originalDate: row.original_date,
   actualDate: row.actual_date,
   hasYear: row.has_year,
+  reasonType: row.reason_type ?? undefined,
+  reasonKey: row.reason_key ?? undefined,
   description: row.description ?? undefined,
   tourIds: row.tour_ids ? normalizeStringArray(row.tour_ids) : undefined,
   createdAt: row.created_at,
@@ -319,6 +354,7 @@ const buildFractionListStatement = (filter: WasteFractionListFilter = {}): SqlSt
 SELECT
   id::text,
   name,
+  label_translations,
   container_size,
   color,
   description,
@@ -338,6 +374,7 @@ const buildFractionSelectStatement = (id: string): SqlStatement => ({
 SELECT
   id::text,
   name,
+  label_translations,
   container_size,
   color,
   description,
@@ -358,14 +395,16 @@ const buildFractionUpsertStatement = (
 INSERT INTO waste_fractions (
   id,
   name,
+  label_translations,
   container_size,
   color,
   description,
   active
 )
-VALUES ($1::uuid, $2, $3, $4, $5, $6)
+VALUES ($1::uuid, $2, $3::jsonb, $4, $5, $6, $7)
 ON CONFLICT (id) DO UPDATE
 SET name = EXCLUDED.name,
+    label_translations = EXCLUDED.label_translations,
     container_size = EXCLUDED.container_size,
     color = EXCLUDED.color,
     description = EXCLUDED.description,
@@ -375,6 +414,7 @@ SET name = EXCLUDED.name,
   values: [
     input.id,
     input.name,
+    input.translations ? JSON.stringify(input.translations) : null,
     input.containerSize ?? null,
     input.color,
     input.description ?? null,
@@ -922,6 +962,9 @@ SELECT
   original_date,
   actual_date,
   has_year,
+  reason_type,
+  reason_key,
+  follow_up_mode,
   description,
   created_at::text,
   updated_at::text
@@ -941,6 +984,9 @@ SELECT
   original_date,
   actual_date,
   has_year,
+  reason_type,
+  reason_key,
+  follow_up_mode,
   description,
   created_at::text,
   updated_at::text
@@ -961,18 +1007,34 @@ INSERT INTO waste_tour_date_shifts (
   original_date,
   actual_date,
   has_year,
+  reason_type,
+  reason_key,
+  follow_up_mode,
   description
 )
-VALUES ($1::uuid, $2::uuid, $3, $4, $5, $6)
+VALUES ($1::uuid, $2::uuid, $3, $4, $5, $6, $7, $8, $9)
 ON CONFLICT (id) DO UPDATE
 SET tour_id = EXCLUDED.tour_id,
     original_date = EXCLUDED.original_date,
     actual_date = EXCLUDED.actual_date,
     has_year = EXCLUDED.has_year,
+    reason_type = EXCLUDED.reason_type,
+    reason_key = EXCLUDED.reason_key,
+    follow_up_mode = EXCLUDED.follow_up_mode,
     description = EXCLUDED.description,
     updated_at = NOW();
 `,
-  values: [input.id, input.tourId, input.originalDate, input.actualDate, input.hasYear, input.description ?? null],
+  values: [
+    input.id,
+    input.tourId,
+    input.originalDate,
+    input.actualDate,
+    input.hasYear,
+    input.reasonType ?? null,
+    input.reasonKey ?? null,
+    input.followUpMode ?? null,
+    input.description ?? null,
+  ],
 });
 
 const buildGlobalDateShiftListStatement = (filter: WasteGlobalDateShiftListFilter = {}): SqlStatement => {
@@ -996,6 +1058,8 @@ SELECT
   original_date,
   actual_date,
   has_year,
+  reason_type,
+  reason_key,
   description,
   tour_ids,
   created_at::text,
@@ -1015,6 +1079,8 @@ SELECT
   original_date,
   actual_date,
   has_year,
+  reason_type,
+  reason_key,
   description,
   tour_ids,
   created_at::text,
@@ -1035,14 +1101,18 @@ INSERT INTO waste_global_date_shifts (
   original_date,
   actual_date,
   has_year,
+  reason_type,
+  reason_key,
   description,
   tour_ids
 )
-VALUES ($1::uuid, $2, $3, $4, $5, $6::text[])
+VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8::text[])
 ON CONFLICT (id) DO UPDATE
 SET original_date = EXCLUDED.original_date,
     actual_date = EXCLUDED.actual_date,
     has_year = EXCLUDED.has_year,
+    reason_type = EXCLUDED.reason_type,
+    reason_key = EXCLUDED.reason_key,
     description = EXCLUDED.description,
     tour_ids = EXCLUDED.tour_ids,
     updated_at = NOW();
@@ -1052,6 +1122,8 @@ SET original_date = EXCLUDED.original_date,
     input.originalDate,
     input.actualDate,
     input.hasYear,
+    input.reasonType ?? null,
+    input.reasonKey ?? null,
     input.description ?? null,
     input.tourIds ?? null,
   ],

@@ -20,6 +20,8 @@
     "@radix-ui/react-tabs": "^1.1.13",
     "@sva/auth-runtime": "workspace:*",
     "@sva/core": "workspace:*",
+    "@sva/data-repositories": "workspace:*",
+    "@sva/iam-admin": "workspace:*",
     "@sva/iam-governance": "workspace:*",
     "@sva/monitoring-client": "workspace:*",
     "@sva/plugin-events": "workspace:*",
@@ -44,11 +46,13 @@
     "jiti": "^2.6.1",
     "lucide-react": "^1.11.0",
     "nitro": "3.0.260415-beta",
+    "pg": "^8.20.0",
     "postcss": "^8.5.11",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "tailwind-merge": "^3.5.0",
-    "vite-tsconfig-paths": "^6.0.2"
+    "vite-tsconfig-paths": "^6.0.2",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.11.2",

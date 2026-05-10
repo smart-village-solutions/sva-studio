@@ -1,0 +1,142 @@
+import { describe, expect, it } from 'vitest';
+
+import { definePluginManifest } from '@sva/plugin-sdk';
+
+import {
+  createStudioPluginCatalogReport,
+  extractPluginDefinition,
+  getPackagePluginModuleCandidates,
+  getWorkspacePluginModuleCandidates,
+} from './plugin-catalog-loader.js';
+
+describe('plugin catalog loader', () => {
+  it('prefers source entries for workspace plugins and manifest entries for packaged plugins', () => {
+    const manifest = definePluginManifest({
+      pluginId: 'news',
+      version: '0.0.1',
+      sdkVersion: '0.0.1',
+      hostCompatibility: { studioVersionRange: '^0.0.1' },
+      entryPoints: { browser: './dist/index.js' },
+    });
+
+    expect(getWorkspacePluginModuleCandidates(manifest)).toEqual(['src/index.ts', 'src/index.tsx', 'dist/index.js']);
+    expect(getPackagePluginModuleCandidates(manifest)).toEqual(['dist/index.js', 'src/index.ts', 'src/index.tsx']);
+  });
+
+  it('creates a compatible snapshot from config, manifests and module exports', () => {
+    const manifest = definePluginManifest({
+      pluginId: 'news',
+      version: '0.0.1',
+      sdkVersion: '0.0.1',
+      hostCompatibility: { studioVersionRange: '^0.0.1', requiredCapabilities: ['routing'] },
+      entryPoints: { browser: './dist/index.js' },
+    });
+
+    const report = createStudioPluginCatalogReport({
+      catalogConfig: [
+        {
+          pluginId: 'news',
+          sourceType: 'workspace',
+          enabled: true,
+          sourceRef: 'packages/plugin-news',
+        },
+      ],
+      resolveManifest: () => manifest,
+      resolvePluginModule: () => ({
+        pluginNews: {
+          id: 'news',
+          displayName: 'News',
+          routes: [],
+          navigation: [],
+          translations: {},
+        },
+      }),
+    });
+
+    expect(report.snapshot.registry.plugins.map((plugin) => plugin.id)).toEqual(['news']);
+    expect(report.issues).toEqual([]);
+  });
+
+  it('loads an installed distribution through the same catalog and snapshot contract', () => {
+    const manifest = definePluginManifest({
+      pluginId: 'weather',
+      version: '1.2.3',
+      sdkVersion: '0.0.1',
+      hostCompatibility: { studioVersionRange: '^0.0.1', requiredCapabilities: ['routing'] },
+      entryPoints: { browser: './dist/index.js' },
+    });
+
+    const report = createStudioPluginCatalogReport({
+      catalogConfig: [
+        {
+          pluginId: 'weather',
+          sourceType: 'installed-distribution',
+          enabled: true,
+          sourceRef: '@vendor/plugin-weather',
+        },
+      ],
+      resolveManifest: () => manifest,
+      resolvePluginModule: () => ({
+        pluginWeather: {
+          id: 'weather',
+          displayName: 'Weather',
+          routes: [],
+          navigation: [],
+          translations: {},
+        },
+      }),
+    });
+
+    expect(report.snapshot.registry.plugins.map((plugin) => plugin.id)).toEqual(['weather']);
+    expect(report.activeCatalog).toEqual([
+      expect.objectContaining({
+        pluginId: 'weather',
+        sourceType: 'installed-distribution',
+      }),
+    ]);
+    expect(report.issues).toEqual([]);
+  });
+
+  it('fails closed when the manifest cannot be resolved', () => {
+    const report = createStudioPluginCatalogReport({
+      catalogConfig: [
+        {
+          pluginId: 'weather',
+          sourceType: 'installed-distribution',
+          enabled: true,
+          sourceRef: '@vendor/plugin-weather',
+        },
+      ],
+      resolveManifest: () => undefined,
+      resolvePluginModule: () => undefined,
+    });
+
+    expect(report.snapshot.registry.plugins).toHaveLength(0);
+    expect(report.issues).toContainEqual(
+      expect.objectContaining({
+        pluginId: 'weather',
+        code: 'plugin_module_missing',
+        severity: 'error',
+      })
+    );
+  });
+
+  it('extracts plugin definitions from named exports only when they match the public contract', () => {
+    expect(
+      extractPluginDefinition({
+        helper: { foo: 'bar' },
+        pluginNews: {
+          id: 'news',
+          displayName: 'News',
+          routes: [],
+          navigation: [],
+          translations: {},
+        },
+      })
+    ).toMatchObject({
+      id: 'news',
+      displayName: 'News',
+    });
+    expect(extractPluginDefinition({ helper: { foo: 'bar' } })).toBeUndefined();
+  });
+});

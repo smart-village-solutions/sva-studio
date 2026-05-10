@@ -62,7 +62,9 @@ gleichzeitig beeinflussen.
 - Inhaltsverwaltung bleibt im ersten Schnitt auf einen stabilen Core-Kern begrenzt: `title`, `contentType`, `publishedAt`, `createdAt`, `updatedAt`, `author`, `payload`, `status`, `history`
 - Inhaltstypen dürfen über das SDK zusätzliche Validierung, UI-Sektionen und Listenmetadaten registrieren, aber keine Core-Semantik oder das Statusmodell überschreiben
 - Plugin-Vertrag v1 bleibt statisch und bundlegebunden: Plugins deklarieren Metadaten über `PluginDefinition`, aber weder Runtime-Loading noch Plugin-eigene Sicherheits- oder Routing-Bypässe sind erlaubt
+- Im Zielbild der Plugin-Plattform v2 bleiben Manifest, Katalog, Loader und Runtime host-owned. Plugins dürfen diese Verträge konsumieren, aber keine parallelen Aktivierungs-, Routing-, Secret- oder Auditpfade etablieren.
 - Plugin-Guards werden grundsätzlich hostseitig angewendet; ein Plugin deklariert nur die fachliche Guard-Anforderung und darf keine eigene Autorisierungsschicht am Host vorbei etablieren
+- Pluginseitige Request-, Job- und Integrationsbeiträge laufen ausschließlich in host-owned Execution-Contexts mit Auth-, Instanz-, Logger-, Audit- und Fehlervertrag des Hosts
 - Plugin-Contributions werden beim Build-time-Snapshot phasenweise gegen Runtime-Allowlists geprüft; eigene Route-Handler, Autorisierungsresolver, Audit-Sinks, Persistenzhandler und dynamische Nachregistrierung werden mit `plugin_guardrail_*`-Codes fail-fast abgewiesen
 - Die phasenweise Registry-Erzeugung ordnet bestehende Outputs für Content, Admin, Audit und Routing, führt aber keine neuen Plugin-Beitragstypen oder Breaking-API ein
 - Standardisierte Content-Plugins registrieren ihre CRUD-Hauptflächen über `adminResources` mit optionalem `contentUi`-Spezialisierungsblock; `/admin/news`, `/admin/events` und `/admin/poi` sind host-owned Pfade mit pluginseitig beigestellten Fachflächen, nicht plugin-owned Routen

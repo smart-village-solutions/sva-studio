@@ -33,6 +33,7 @@
 - [x] 2b.4 Eine vorhandene allgemeine Host-Importoberfläche anbinden oder andernfalls einen fachnahen Waste-Flow nur als dünne Bedienhülle auf den generischen Host-Vertrag setzen
 - [x] 2b.5 Wiederverwendbare Mapping-Vorlagen nur im Rahmen des zentralen Plattformvertrags nutzen, nicht als Waste-Sonderpersistenz neu schneiden
 - [x] 2b.6 Keine zusätzlichen `plugin-sdk`-Grundverträge für Importprofile in diesem Fachchange definieren; nur noch deren Waste-Nutzung ergänzen
+- [x] 2b.7 Den aktuellen Waste-Importzuschnitt gegen die Spec für mehrere Quellformate abgleichen und CSV sowie echten Excel-Import (`.xlsx`) für alle drei Waste-Importprofile über den generischen Vertrag produktiv anbinden
 
 ## 3. Slice B: Zentrale Governance- und Instanzkonfiguration
 
@@ -45,6 +46,8 @@
 - [x] 4.1 In `packages/server-runtime` die serverseitige Auflösung der aktiven Waste-Datenquelle, Secret-Nutzung, Connection-Tests und technische Fehlerverträge kapseln
 - [x] 4.2 In `packages/data-repositories` die hostseitigen Repositories für die `waste_*`-Tabellenfamilie der instanzbezogenen Waste-Fachdatenbank implementieren
 - [x] 4.3 Die Waste-spezifische Einbindung in die generische Studio-Job-Fähigkeit für Initialisierung, Update-Migrationen, Import, Seed und Reset vorbereiten
+- [x] 4.4 Die bislang nur lesend vorhandenen Fachobjekte `streets` und `house_numbers` mit vollständigen Host-Mutationspfaden ergänzen, damit der zugesagte Admin-Scope für die ganze Adresshierarchie wirklich erreicht wird
+- [x] 4.5 Die Waste-Core- und Repository-Contracts für mehrsprachige Fraktionsbezeichnungen, explizite Feiertags-/Abweichungsgründe und fachlich ausdrückliche Folgeeffekte von Einzelverschiebungen nachschärfen
 
 ## 5. Slice D: Host-Fassade, Routing, IAM und Audit
 
@@ -54,6 +57,8 @@
 - [x] 5.4 In `packages/iam-admin` die neuen `waste-management.*` Rechte in Rollen- und Permission-Verwaltung integrieren, soweit diese zentral vom Studio gepflegt werden
 - [x] 5.5 In `packages/iam-governance` die zentrale Audit-Integration und gegebenenfalls einfache Audit-basierte Verlaufsansichten für Waste-Mutationen anbinden
 - [x] 5.6 Audit-Events, Modul-IAM und Berechtigungsauflösung für `waste-management.*` im Zusammenspiel von `packages/plugin-sdk`, `packages/iam-admin` und `packages/iam-governance` verdrahten
+- [x] 5.7 Die zentrale technische Historie für Connection-Checks, Datenquellen-Rekonfigurationen sowie Start/Erfolg/Fehler von Migration, Import, Seed und Reset vollständig abbilden, statt aktuell nur Start-Events und allgemeine Audit-Historie zu zeigen
+- [x] 5.8 Die sichtbare technische Datenquellenlage auch außerhalb des Settings-Speicherpfads konsistent aktualisieren, insbesondere bei erfolgreichen oder fehlgeschlagenen echten DB-Zugriffen mit Connectivity-Bezug
 
 ## 6. Slice E: Fachplugin und Admin-UI
 
@@ -67,9 +72,15 @@
 - [x] 6.2.6 Erste Scheduling-Ansicht für globale und tourbezogene Ausweichtermine mit Kontextfiltern und Statusdarstellung ausbauen
 - [x] 6.2.7 Ersten Mutationspfad für Ausweichtermine inklusive Dialog, Host-API-Client, Rechteprüfung und Refresh-Strategie implementieren
 - [x] 6.2.8 Bulk- und Massenbearbeitungsflüsse für fachlich geeignete Bereiche ergänzen, sobald die ersten Einzelmutationen stabil sind
+- [x] 6.2.9 Eigene Dialog- und Mutationspfade für Straßen und Hausnummern ergänzen, damit die Adresshierarchie nicht nur indirekt über Abholorte pflegbar ist
 - [x] 6.3 In `packages/plugin-waste-management` die Host-API-Clients für CRUD, Settings, asynchrone Import-, Seed-, Reset- und Migrationsoperationen anbinden
+- [x] 6.3.1 Die aktuell noch als Platzhalter ausgeführten Waste-Job-Handler für Initialisierung, Migration, Import, Seed und Reset durch echte Runtime-Ausführung oder einen bewusst spezifizierten Host-Pfad ersetzen
 - [x] 6.4 Bereits vorhandene allgemeine Host-UI-Bausteine für Import, Jobstatus, Hochrisiko-Confirm und technische Statusanzeigen anbinden; nur fehlende Waste-spezifische Bedienlogik im Plugin selbst halten
+- [x] 6.4.1 Die Plugin-Historie und Tool-Statusdarstellung auf die vollständige technische Ereignismenge ausrichten, damit Start/Erfolg/Fehler und Rekonfigurationen sichtbar unterscheidbar bleiben
 - [x] 6.5 In `packages/plugin-waste-management` Jahreskalender, Touren-, Ausweichtermin-, Abholort-, Fraktions- und Zuordnungsdialoge bewusst als fachliche Plugin-Komponenten halten und nur gegen die allgemeinen UI-Bausteine andocken
+- [x] 6.5.1 Feiertags- und sonstige Abweichungsgründe als eigene Fachlogik im Scheduling explizit modellieren, statt sie nur über freie Beschreibungen mitzuschleppen
+- [x] 6.5.2 Fachliche Folgeeffekte manueller Einzelverschiebungen auf wiederkehrende Serien im UI- und Host-Vertrag explizit abbilden
+- [x] 6.5.3 Mehrsprachige Bezeichnungen für Fraktionen und fachnahe farbcodierte Stammdaten im Domain- und UI-Vertrag vervollständigen
 - [x] 6.6 In `apps/sva-studio-react` die statische Plugin-Registrierung und die Einbettung der instanzbezogenen Waste-Einstellungen in die Studio-Shell ergänzen
 
 ## 7. Slice F: Tests, Dokumentation und Architektur
@@ -78,3 +89,4 @@
 - [x] 7.2 Integrations- und E2E-Tests in `apps/sva-studio-react` für Plugin-Navigation, Rechte, Settings, Rekonfiguration, CRUD, Import, Seed, Reset, Migrationen und Instanzisolation ergänzen
 - [x] 7.3 Relevante Arc42- und Entwicklerdokumentation für Persistenzgrenzen, Instanzkonfiguration, Runtime-Boundaries, asynchrone Data-Tools und Primärmodus aktualisieren
 - [x] 7.4 In der Architektur- und Entwicklerdokumentation die Portierungsstrategie gegen `Newcms` inklusive zulässiger UX-Anlehnung und verbotener Architekturkopplungen festhalten
+- [x] 7.5 Nach Abschluss der Nachschärfungen einen erneuten Spec-gegen-Code-Abgleich durchführen und die als erledigt markierten Tasks nur dort bestätigt lassen, wo Spec, Task und Runtime-Verhalten wirklich übereinstimmen

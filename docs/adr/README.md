@@ -68,6 +68,7 @@ Architecture Decision Records dokumentieren **wichtige technische Entscheidungen
 | 038 | Instanz-Modul-Zuordnung und fail-closed Modulaktivierung | ✅ | 2026-04-29 | Runtime / Plugins / IAM |
 | 039 | Medienmanagement als Host-Capability mit Storage- und Processing-Vertrag | ✅ | 2026-04-29 | Media / Storage / Runtime |
 | 040 | Graphile Workflows als Standard für Hintergrundprozesse | ✅ | 2026-05-09 | Runtime / Workflow / Betrieb |
+| 041 | Plugin-Plattform v2 für externe Distribution und host-owned Runtime | ✅ | 2026-05-10 | Plugins / Distribution / Runtime |
 
 ### Kanonischer Ablageort
 

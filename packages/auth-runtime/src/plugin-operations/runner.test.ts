@@ -55,8 +55,10 @@ describe('plugin operation runner task list', () => {
 
     const handler = vi.fn(async ({ job, progressReporter, requestId, actorAccountId, abortSignal, throwIfCancellationRequested }) => {
       expect(job).toEqual(baseJob);
+      expect(job.instanceId).toBe('tenant-a');
       expect(requestId).toBe('req-1');
       expect(actorAccountId).toBe('user-1');
+      expect(progressReporter).toBeDefined();
       expect(abortSignal.aborted).toBe(false);
       await expect(throwIfCancellationRequested()).resolves.toBeUndefined();
       await progressReporter.reportProgress({
@@ -97,6 +99,15 @@ describe('plugin operation runner task list', () => {
 
     expect(handler).toHaveBeenCalledWith(
       expect.objectContaining({
+        kind: 'job',
+        pluginId: 'news',
+        instanceId: 'tenant-a',
+        capabilities: {
+          requestContext: true,
+          auditReporter: false,
+          progressReporter: true,
+          secretAccess: false,
+        },
         job: baseJob,
         progressReporter: expect.objectContaining({
           reportProgress: expect.any(Function),

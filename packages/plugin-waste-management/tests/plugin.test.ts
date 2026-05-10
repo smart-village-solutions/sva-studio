@@ -59,6 +59,16 @@ describe('pluginWasteManagement contract', () => {
       { eventType: 'waste-management.region.updated', titleKey: 'wasteManagement.audit.regionUpdated' },
       { eventType: 'waste-management.city.created', titleKey: 'wasteManagement.audit.cityCreated' },
       { eventType: 'waste-management.city.updated', titleKey: 'wasteManagement.audit.cityUpdated' },
+      { eventType: 'waste-management.street.created', titleKey: 'wasteManagement.audit.streetCreated' },
+      { eventType: 'waste-management.street.updated', titleKey: 'wasteManagement.audit.streetUpdated' },
+      {
+        eventType: 'waste-management.house-number.created',
+        titleKey: 'wasteManagement.audit.houseNumberCreated',
+      },
+      {
+        eventType: 'waste-management.house-number.updated',
+        titleKey: 'wasteManagement.audit.houseNumberUpdated',
+      },
       {
         eventType: 'waste-management.collection-location.created',
         titleKey: 'wasteManagement.audit.collectionLocationCreated',

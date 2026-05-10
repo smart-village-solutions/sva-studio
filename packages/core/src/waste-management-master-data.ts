@@ -1,6 +1,32 @@
+const wasteDateShiftReasonTypes = [
+  'holiday',
+  'global-deviation',
+  'manual-adjustment',
+  'operational-disruption',
+  'weather',
+  'other',
+] as const;
+
+const wasteTourDateShiftFollowUpModes = ['none', 'propagate-series', 'mark-follow-up-dates'] as const;
+
+export type WasteDateShiftReasonType = (typeof wasteDateShiftReasonTypes)[number];
+export type WasteTourDateShiftFollowUpMode = (typeof wasteTourDateShiftFollowUpModes)[number];
+
+export const wasteManagementMasterDataContract = {
+  dateShiftReasonTypes: wasteDateShiftReasonTypes,
+  followUpModes: wasteTourDateShiftFollowUpModes,
+  isDateShiftReasonType: (value: string): value is WasteDateShiftReasonType =>
+    (wasteDateShiftReasonTypes as readonly string[]).includes(value),
+  isTourDateShiftFollowUpMode: (value: string): value is WasteTourDateShiftFollowUpMode =>
+    (wasteTourDateShiftFollowUpModes as readonly string[]).includes(value),
+} as const;
+
+export type WasteLocalizedTextRecord = Readonly<Record<string, string>>;
+
 export type WasteFractionRecord = {
   readonly id: string;
   readonly name: string;
+  readonly translations?: WasteLocalizedTextRecord;
   readonly containerSize?: string;
   readonly color: string;
   readonly description?: string;
@@ -145,6 +171,9 @@ export type WasteTourDateShiftRecord = {
   readonly originalDate: string;
   readonly actualDate: string;
   readonly hasYear: boolean;
+  readonly reasonType?: WasteDateShiftReasonType;
+  readonly reasonKey?: string;
+  readonly followUpMode?: WasteTourDateShiftFollowUpMode;
   readonly description?: string;
   readonly createdAt: string;
   readonly updatedAt: string;
@@ -160,6 +189,8 @@ export type WasteGlobalDateShiftRecord = {
   readonly originalDate: string;
   readonly actualDate: string;
   readonly hasYear: boolean;
+  readonly reasonType?: WasteDateShiftReasonType;
+  readonly reasonKey?: string;
   readonly description?: string;
   readonly tourIds?: readonly string[];
   readonly createdAt: string;

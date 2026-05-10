@@ -3,11 +3,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   createWasteManagementCity,
   createWasteManagementCollectionLocation,
+  createWasteManagementHouseNumber,
   createWasteManagementLocationTourLinksBulk,
   createWasteManagementFraction,
   createWasteManagementGlobalDateShift,
   createWasteManagementLocationTourLink,
   createWasteManagementRegion,
+  createWasteManagementStreet,
   createWasteManagementTour,
   createWasteManagementTourDateShift,
   getWasteManagementHistoryOverview,
@@ -24,8 +26,10 @@ import {
   updateWasteManagementCity,
   updateWasteManagementCollectionLocation,
   updateWasteManagementGlobalDateShift,
+  updateWasteManagementHouseNumber,
   updateWasteManagementLocationTourLink,
   updateWasteManagementRegion,
+  updateWasteManagementStreet,
   updateWasteManagementTour,
   updateWasteManagementTourDateShift,
   updateWasteManagementSettings,
@@ -93,17 +97,33 @@ describe('waste-management api client', () => {
       new Response(
         JSON.stringify({
           data: {
-            items: [
-              {
-                id: 'log-1',
-                actionId: 'waste-management.fraction.created',
-                actionNamespace: 'waste-management',
-                actionOwner: 'waste-management',
-                outcome: 'success',
-                occurredAt: '2026-05-09T12:00:00.000Z',
-              },
-            ],
-            total: 1,
+            audit: {
+              items: [
+                {
+                  id: 'log-1',
+                  actionId: 'waste-management.fraction.created',
+                  actionNamespace: 'waste-management',
+                  actionOwner: 'waste-management',
+                  outcome: 'success',
+                  occurredAt: '2026-05-09T12:00:00.000Z',
+                },
+              ],
+              total: 1,
+            },
+            technical: {
+              items: [
+                {
+                  id: 'job-1',
+                  eventType: 'migration.succeeded',
+                  outcome: 'success',
+                  occurredAt: '2026-05-09T12:05:00.000Z',
+                  source: 'job',
+                  jobId: 'job-1',
+                  jobTypeId: 'waste-management.apply-migrations',
+                },
+              ],
+              total: 1,
+            },
           },
         }),
         { status: 200, headers: { 'Content-Type': 'application/json' } }
@@ -111,8 +131,14 @@ describe('waste-management api client', () => {
     );
 
     await expect(getWasteManagementHistoryOverview({ q: 'fraction', page: 2, pageSize: 10 })).resolves.toMatchObject({
-      total: 1,
-      items: [expect.objectContaining({ actionId: 'waste-management.fraction.created' })],
+      audit: {
+        total: 1,
+        items: [expect.objectContaining({ actionId: 'waste-management.fraction.created' })],
+      },
+      technical: {
+        total: 1,
+        items: [expect.objectContaining({ eventType: 'migration.succeeded' })],
+      },
     });
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/v1/waste-management/history?page=2&pageSize=10&q=fraction',
@@ -202,11 +228,13 @@ describe('waste-management api client', () => {
     await createWasteManagementFraction({
       id: 'fraction-3',
       name: 'Papier',
+      translations: { de: 'Papier', en: 'Paper' },
       color: '#123456',
       active: true,
     });
     await updateWasteManagementFraction('fraction-3', {
       name: 'Papier Plus',
+      translations: { de: 'Papier Plus', en: 'Paper Plus' },
       color: '#123456',
       active: true,
     });
@@ -219,6 +247,7 @@ describe('waste-management api client', () => {
         body: JSON.stringify({
           id: 'fraction-3',
           name: 'Papier',
+          translations: { de: 'Papier', en: 'Paper' },
           color: '#123456',
           active: true,
         }),
@@ -231,6 +260,7 @@ describe('waste-management api client', () => {
         method: 'PUT',
         body: JSON.stringify({
           name: 'Papier Plus',
+          translations: { de: 'Papier Plus', en: 'Paper Plus' },
           color: '#123456',
           active: true,
         }),
@@ -363,6 +393,138 @@ describe('waste-management api client', () => {
       '/api/v1/waste-management/collection-locations/location-3',
       expect.objectContaining({
         method: 'PUT',
+      })
+    );
+  });
+
+  it('creates and updates waste streets through the host facade', async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            data: {
+              id: 'street-3',
+              name: 'Parkweg',
+              cityId: 'city-1',
+              createdAt: '2026-05-09T10:00:00.000Z',
+              updatedAt: '2026-05-09T10:00:00.000Z',
+            },
+          }),
+          { status: 201, headers: { 'Content-Type': 'application/json' } }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            data: {
+              id: 'street-3',
+              name: 'Parkweg Nord',
+              cityId: 'city-2',
+              createdAt: '2026-05-09T10:00:00.000Z',
+              updatedAt: '2026-05-09T12:00:00.000Z',
+            },
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        )
+      );
+
+    await createWasteManagementStreet({
+      id: 'street-3',
+      name: 'Parkweg',
+      cityId: 'city-1',
+    });
+    await updateWasteManagementStreet('street-3', {
+      name: 'Parkweg Nord',
+      cityId: 'city-2',
+    });
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      '/api/v1/waste-management/streets',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          id: 'street-3',
+          name: 'Parkweg',
+          cityId: 'city-1',
+        }),
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      '/api/v1/waste-management/streets/street-3',
+      expect.objectContaining({
+        method: 'PUT',
+        body: JSON.stringify({
+          name: 'Parkweg Nord',
+          cityId: 'city-2',
+        }),
+      })
+    );
+  });
+
+  it('creates and updates waste house numbers through the host facade', async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            data: {
+              id: 'house-3',
+              number: '14',
+              streetId: 'street-1',
+              createdAt: '2026-05-09T10:00:00.000Z',
+              updatedAt: '2026-05-09T10:00:00.000Z',
+            },
+          }),
+          { status: 201, headers: { 'Content-Type': 'application/json' } }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            data: {
+              id: 'house-3',
+              number: '14a',
+              streetId: 'street-2',
+              createdAt: '2026-05-09T10:00:00.000Z',
+              updatedAt: '2026-05-09T12:00:00.000Z',
+            },
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        )
+      );
+
+    await createWasteManagementHouseNumber({
+      id: 'house-3',
+      number: '14',
+      streetId: 'street-1',
+    });
+    await updateWasteManagementHouseNumber('house-3', {
+      number: '14a',
+      streetId: 'street-2',
+    });
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      '/api/v1/waste-management/house-numbers',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          id: 'house-3',
+          number: '14',
+          streetId: 'street-1',
+        }),
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      '/api/v1/waste-management/house-numbers/house-3',
+      expect.objectContaining({
+        method: 'PUT',
+        body: JSON.stringify({
+          number: '14a',
+          streetId: 'street-2',
+        }),
       })
     );
   });
@@ -740,12 +902,18 @@ describe('waste-management api client', () => {
       originalDate: '2026-12-24',
       actualDate: '2026-12-23',
       hasYear: true,
+      reasonType: 'manual-adjustment',
+      reasonKey: 'xmas-pull-forward',
+      followUpMode: 'propagate-series',
     });
     await updateWasteManagementTourDateShift('shift-3', {
       tourId: 'tour-1',
       originalDate: '2026-12-24',
       actualDate: '2026-12-22',
       hasYear: true,
+      reasonType: 'manual-adjustment',
+      reasonKey: 'xmas-pull-forward',
+      followUpMode: 'mark-follow-up-dates',
     });
 
     expect(fetchMock).toHaveBeenNthCalledWith(
@@ -759,6 +927,9 @@ describe('waste-management api client', () => {
           originalDate: '2026-12-24',
           actualDate: '2026-12-23',
           hasYear: true,
+          reasonType: 'manual-adjustment',
+          reasonKey: 'xmas-pull-forward',
+          followUpMode: 'propagate-series',
         }),
       })
     );
@@ -772,6 +943,9 @@ describe('waste-management api client', () => {
           originalDate: '2026-12-24',
           actualDate: '2026-12-22',
           hasYear: true,
+          reasonType: 'manual-adjustment',
+          reasonKey: 'xmas-pull-forward',
+          followUpMode: 'mark-follow-up-dates',
         }),
       })
     );
@@ -817,12 +991,16 @@ describe('waste-management api client', () => {
       originalDate: '2026-01-01',
       actualDate: '2026-01-02',
       hasYear: true,
+      reasonType: 'holiday',
+      reasonKey: 'new-year',
       tourIds: ['tour-1'],
     });
     await updateWasteManagementGlobalDateShift('global-shift-3', {
       originalDate: '2026-01-01',
       actualDate: '2026-01-03',
       hasYear: true,
+      reasonType: 'global-deviation',
+      reasonKey: 'holiday-backlog',
       tourIds: ['tour-1', 'tour-2'],
     });
 
@@ -836,6 +1014,8 @@ describe('waste-management api client', () => {
           originalDate: '2026-01-01',
           actualDate: '2026-01-02',
           hasYear: true,
+          reasonType: 'holiday',
+          reasonKey: 'new-year',
           tourIds: ['tour-1'],
         }),
       })
@@ -849,6 +1029,8 @@ describe('waste-management api client', () => {
           originalDate: '2026-01-01',
           actualDate: '2026-01-03',
           hasYear: true,
+          reasonType: 'global-deviation',
+          reasonKey: 'holiday-backlog',
           tourIds: ['tour-1', 'tour-2'],
         }),
       })
@@ -952,21 +1134,31 @@ describe('waste-management api client', () => {
       expect.arrayContaining([
         expect.objectContaining({
           profileId: 'waste-management.geografie-abholorte',
-          sourceFormat: 'text/csv',
+          sourceFormats: expect.arrayContaining([
+            'text/csv',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          ]),
         }),
         expect.objectContaining({
           profileId: 'waste-management.touren',
-          sourceFormat: 'text/csv',
+          sourceFormats: expect.arrayContaining([
+            'text/csv',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          ]),
         }),
         expect.objectContaining({
           profileId: 'waste-management.ausweichtermine',
-          sourceFormat: 'text/csv',
+          sourceFormats: expect.arrayContaining([
+            'text/csv',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          ]),
         }),
       ])
     );
 
     await startWasteManagementImport({
       importProfileId: 'waste-management.geografie-abholorte',
+      sourceFormat: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       blobRef: 'blob:waste/imports/catalog.csv',
       dryRun: true,
     });
@@ -977,6 +1169,7 @@ describe('waste-management api client', () => {
         method: 'POST',
         body: JSON.stringify({
           importProfileId: 'waste-management.geografie-abholorte',
+          sourceFormat: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
           blobRef: 'blob:waste/imports/catalog.csv',
           dryRun: true,
         }),

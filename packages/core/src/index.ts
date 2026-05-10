@@ -80,6 +80,10 @@ export type {
   WasteManagementAuditOutcome,
   WasteManagementAuditQuery,
   WasteManagementAuditRecord,
+  WasteManagementHistoryOverview,
+  WasteManagementTechnicalHistoryOverview,
+  WasteManagementTechnicalHistoryOutcome,
+  WasteManagementTechnicalHistoryRecord,
 } from './waste-management-audit.js';
 export type {
   WasteManagementConnectionCheckRecord,
@@ -112,6 +116,7 @@ export type {
   WasteManagementSeedJobInput,
 } from './waste-management-operations-contract.js';
 export type {
+  WasteDateShiftReasonType,
   WasteCollectionLocationListFilter,
   WasteCollectionLocationRecord,
   WasteCustomTourDate,
@@ -123,6 +128,7 @@ export type {
   WasteGlobalDateShiftRecord,
   WasteHouseNumberListFilter,
   WasteHouseNumberRecord,
+  WasteLocalizedTextRecord,
   WasteLocationTourLinkBulkCreateInput,
   WasteLocationTourLinkBulkCreateResult,
   WasteManagementMasterDataOverview,
@@ -134,12 +140,14 @@ export type {
   WasteRegionRecord,
   WasteStreetListFilter,
   WasteStreetRecord,
+  WasteTourDateShiftFollowUpMode,
   WasteTourDateShiftListFilter,
   WasteTourDateShiftRecord,
   WasteTourListFilter,
   WasteTourRecurrence,
   WasteTourRecord,
 } from './waste-management-master-data.js';
+export { wasteManagementMasterDataContract } from './waste-management-master-data.js';
 export * from './routing/registry.js';
 export * from './iam/index.js';
 export {

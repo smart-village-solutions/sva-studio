@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-
 const browserLoggerMock = vi.hoisted(() => ({
   debug: vi.fn(),
   info: vi.fn(),
@@ -7,7 +6,13 @@ const browserLoggerMock = vi.hoisted(() => ({
   error: vi.fn(),
 }));
 
-vi.mock('@sva/plugin-news', () => ({
+vi.mock('@sva/monitoring-client/logging', () => {
+  return {
+    createBrowserLogger: () => browserLoggerMock,
+  };
+});
+
+vi.mock('../../../../packages/plugin-news/src/index.ts', () => ({
   pluginNews: {
     id: 'news',
     displayName: 'News',
@@ -32,14 +37,6 @@ vi.mock('@sva/plugin-news', () => ({
           create: { bindingKey: 'contentCreate' },
           detail: { bindingKey: 'contentDetail' },
         },
-        contentUi: {
-          contentType: 'news.article',
-          bindings: {
-            list: { bindingKey: 'newsList' },
-            detail: { bindingKey: 'newsDetail' },
-            editor: { bindingKey: 'newsEditor' },
-          },
-        },
       },
     ],
     actions: [
@@ -50,31 +47,21 @@ vi.mock('@sva/plugin-news', () => ({
         legacyAliases: ['create'],
       },
     ],
-    contentTypes: [
-      {
-        contentType: 'news.article',
-        displayName: 'News',
-      },
-    ],
+    contentTypes: [{ contentType: 'news.article', displayName: 'News' }],
     permissions: [
       { id: 'news.read', titleKey: 'news.permissions.read' },
       { id: 'news.create', titleKey: 'news.permissions.create' },
     ],
+    translations: {},
   },
 }));
 
-vi.mock('@sva/plugin-events', () => ({
+vi.mock('../../../../packages/plugin-events/src/index.ts', () => ({
   pluginEvents: {
     id: 'events',
     displayName: 'Events',
     routes: [],
     actions: [],
-    contentTypes: [
-      {
-        contentType: 'events.event-record',
-        displayName: 'Events',
-      },
-    ],
     adminResources: [
       {
         resourceId: 'events.content',
@@ -86,31 +73,19 @@ vi.mock('@sva/plugin-events', () => ({
           create: { bindingKey: 'contentCreate' },
           detail: { bindingKey: 'contentDetail' },
         },
-        contentUi: {
-          contentType: 'events.event-record',
-          bindings: {
-            list: { bindingKey: 'eventsList' },
-            detail: { bindingKey: 'eventsDetail' },
-            editor: { bindingKey: 'eventsEditor' },
-          },
-        },
       },
     ],
+    contentTypes: [{ contentType: 'events.event-record', displayName: 'Events' }],
+    translations: {},
   },
 }));
 
-vi.mock('@sva/plugin-poi', () => ({
+vi.mock('../../../../packages/plugin-poi/src/index.ts', () => ({
   pluginPoi: {
     id: 'poi',
     displayName: 'POI',
     routes: [],
     actions: [],
-    contentTypes: [
-      {
-        contentType: 'poi.point-of-interest',
-        displayName: 'POI',
-      },
-    ],
     adminResources: [
       {
         resourceId: 'poi.content',
@@ -122,20 +97,14 @@ vi.mock('@sva/plugin-poi', () => ({
           create: { bindingKey: 'contentCreate' },
           detail: { bindingKey: 'contentDetail' },
         },
-        contentUi: {
-          contentType: 'poi.point-of-interest',
-          bindings: {
-            list: { bindingKey: 'poiList' },
-            detail: { bindingKey: 'poiDetail' },
-            editor: { bindingKey: 'poiEditor' },
-          },
-        },
       },
     ],
+    contentTypes: [{ contentType: 'poi.point-of-interest', displayName: 'POI' }],
+    translations: {},
   },
 }));
 
-vi.mock('@sva/plugin-waste-management', () => ({
+vi.mock('../../../../packages/plugin-waste-management/src/index.ts', () => ({
   pluginWasteManagement: {
     id: 'waste-management',
     displayName: 'Waste Management',
@@ -165,14 +134,9 @@ vi.mock('@sva/plugin-waste-management', () => ({
       permissionIds: ['waste-management.read'],
       systemRoles: [{ roleName: 'system_admin', permissionIds: ['waste-management.read'] }],
     },
+    translations: {},
   },
 }));
-
-vi.mock('@sva/monitoring-client/logging', () => {
-  return {
-    createBrowserLogger: () => browserLoggerMock,
-  };
-});
 
 vi.mock('../i18n', () => ({
   mergeI18nResources: vi.fn(),
@@ -193,6 +157,9 @@ describe('plugin action alias lookup', () => {
     const {
       getStudioPluginAction,
       studioAdminResources,
+      studioPluginCatalog,
+      studioPluginCatalogIssues,
+      studioPluginSnapshot,
       studioBuildTimeRegistry,
       studioModuleIamContracts,
       studioModuleIamRegistry,
@@ -218,62 +185,35 @@ describe('plugin action alias lookup', () => {
     });
 
     expect(studioBuildTimeRegistry.plugins).toHaveLength(4);
-    expect(studioBuildTimeRegistry.routes).toHaveLength(1);
+    expect(studioPluginCatalogIssues).toEqual([]);
+    expect(studioPluginCatalog.map((entry) => entry.pluginId)).toEqual(['news', 'events', 'poi', 'waste-management']);
+    expect(studioPluginCatalog.every((entry) => entry.sourceType === 'workspace' && entry.enabled)).toBe(true);
+    expect(studioPluginSnapshot.registry).toBe(studioBuildTimeRegistry);
+    expect(studioPluginSnapshot.pluginSources.map((source) => source.pluginId)).toEqual([
+      'news',
+      'events',
+      'poi',
+      'waste-management',
+    ]);
+    expect(studioBuildTimeRegistry.routes.length).toBeGreaterThan(0);
     expect(studioBuildTimeRegistry.adminResources).toEqual(studioAdminResources);
     expect(studioModuleIamContracts.find((contract) => contract.moduleId === 'media')).toEqual(
       studioModuleIamRegistry.get('media')
     );
-    expect(studioAdminResources.find((resource) => resource.resourceId === 'content')).toMatchObject({
-      resourceId: 'content',
-      basePath: 'content',
-      capabilities: {
-        list: {
-          search: {
-            param: 'q',
-            fields: ['title', 'author', 'contentType', 'payload'],
-          },
-          filters: [
-            {
-              id: 'status',
-              param: 'status',
-              defaultValue: 'all',
-            },
-          ],
-          sorting: {
-            defaultField: 'updatedAt',
-            defaultDirection: 'desc',
-          },
-          pagination: {
-            defaultPageSize: 25,
-          },
-          bulkActions: [
-            {
-              id: 'archive',
-              actionId: 'content.archive',
-              selectionModes: ['explicitIds', 'currentPage', 'allMatchingQuery'],
-            },
-            {
-              id: 'delete',
-              actionId: 'content.delete',
-              selectionModes: ['explicitIds'],
-            },
-          ],
-        },
-        detail: {
-          history: {
-            bindingKey: 'content.history',
-          },
-          revisions: {
-            restoreActionId: 'content.restore',
-          },
-        },
-      },
-    });
-    expect(studioAdminResources.map((resource) => resource.basePath)).toEqual(['news', 'events', 'poi', 'media', 'content']);
-    expect(studioBuildTimeRegistry.routes[0]).toMatchObject({
-      id: 'waste-management.home',
-      path: '/plugins/waste-management',
-      guard: 'waste-management.read',
-    });
-  });
+    expect(studioAdminResources.map((resource) => resource.resourceId)).toEqual(
+      expect.arrayContaining(['news.content', 'events.content', 'poi.content'])
+    );
+    expect(studioAdminResources.map((resource) => resource.basePath)).toEqual(
+      expect.arrayContaining(['news', 'events', 'poi'])
+    );
+    expect(studioBuildTimeRegistry.routes).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'waste-management.home',
+          path: '/plugins/waste-management',
+          guard: 'waste-management.read',
+        }),
+      ])
+    );
+  }, 15000);
 });

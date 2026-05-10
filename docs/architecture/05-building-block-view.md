@@ -46,6 +46,7 @@ Abhängigkeiten des aktuellen Systems.
    - bündelt außerdem wiederverwendbare Helper für standardisierte Content-Plugins, Mainserver-CRUD-Basis und kleine UI-nahe Plugin-Utilities
    - `@sva/server-runtime`: Logger, Request-Kontext, JSON-Fehlerantworten, Workspace-Kontext und OTEL-Bootstrap
    - Namespacing- und Ownership-Validierung für plugin-beigestellte registrierte Host-Identifier
+   - Zielbild Plugin-Plattform v2: zusätzlich serialisierbarer Manifest-Vertrag, hostgeführter Katalog, Loader zur Snapshot-Materialisierung und host-owned Runtime-Boundaries für pluginseitige Server-, Job- und Integrationsbeiträge
 6. Studio UI React (`packages/studio-ui-react`)
   - öffentliche React/UI-Basis `@sva/studio-ui-react` für Host-Seiten und Plugin-Custom-Views
   - kapselt shadcn-/Radix-Primitives, Studio-Templates, Formularfelder, Zustandsbausteine, Tabellen- und Aktionsmuster
@@ -258,6 +259,21 @@ Nicht erlaubt: `@sva/plugin-*` -> `apps/sva-studio-react/src/**`
    - hält die bestehende `BuildTimeRegistry`-API stabil; interne Phasen ordnen Preflight, Content, Admin, Audit, Permissions, Routing und Publish
    - validiert spezialisierte `contentUi.contentType`-Referenzen gegen den zusammengeführten Content-Type-Snapshot fail-fast vor der Veröffentlichung
 3. `packages/routing/src/app.routes.shared.ts`
+
+### Fortschreibung 2026-05: Zielbausteine der Plugin-Plattform v2
+
+1. `@sva/plugin-sdk`
+   - bleibt die öffentliche Authoring-Boundary für generische Contribution-Typen, Host-Client-Fassaden und pluginseitige React-Hilfen
+   - ist nicht der Zielort für Manifest-Speicherung, Aktivierungskatalog oder app-spezifische Loader-Entscheidungen
+2. `plugin-manifest` (Zielbaustein)
+   - beschreibt veröffentlichte Plugins serialisierbar mit Identität, Version, Kompatibilität, Capabilities und Entry-Points
+3. `plugin-catalog` (Zielbaustein)
+   - verwaltet lokale und installierte Plugins als aktivierbare Host-Bestandteile mit Status `aktiv`, `deaktiviert` oder `inkompatibel`
+4. `plugin-loader` (Zielbaustein)
+   - normalisiert lokale Source-Plugins und installierte Distributions-Plugins auf denselben validierten Host-Snapshot
+5. `plugin-runtime` (Zielbaustein)
+   - stellt host-owned Execution-Contexts für pluginseitige Request-, Job- und Integrationsbeiträge bereit
+   - kapselt Authentifizierung, Instanzauflösung, Guarding, Audit, Secret-Auflösung, Fehlervertrag und Orchestrierung außerhalb des Plugin-Codes
    - materialisiert deklarative Admin-Ressourcen unter `/admin/<resource>`; für News, Events und POI entstehen host-owned CRUD-Pfade unter `/admin/news`, `/admin/events` und `/admin/poi`
    - verwendet spezialisierte `contentUi`-Bindings nur innerhalb der vorgesehenen Host-Region und hält Legacy-Aliase wie `/content*` nur noch für die generische Inhaltsverwaltung
 4. `packages/auth-runtime/src/iam-contents/content-type-registry.ts`

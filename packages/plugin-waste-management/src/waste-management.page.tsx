@@ -1,17 +1,22 @@
 import { useNavigate, useSearch } from '@tanstack/react-router';
+import { wasteManagementMasterDataContract } from '@sva/core';
 import type {
   StudioJobResponse,
   WasteCityRecord,
   WasteCollectionLocationRecord,
   WasteCustomTourDate,
+  WasteDateShiftReasonType,
   WasteFractionRecord,
   WasteGlobalDateShiftRecord,
   WasteHouseNumberRecord,
+  WasteLocalizedTextRecord,
   WasteLocationTourLinkRecord,
   WasteManagementSettingsRecord,
   WasteManagementImportProfileCatalogEntry,
+  WasteManagementImportSourceFormat,
   WasteRegionRecord,
   WasteStreetRecord,
+  WasteTourDateShiftFollowUpMode,
   WasteTourDateShiftRecord,
   WasteTourRecord,
 } from '@sva/core';
@@ -47,6 +52,7 @@ import {
   Textarea,
 } from '@sva/studio-ui-react';
 import { startTransition, useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import * as XLSX from 'xlsx';
 
 import {
   normalizeWasteManagementSearchParams,
@@ -57,12 +63,14 @@ import {
 import {
   createWasteManagementCity,
   createWasteManagementCollectionLocation,
+  createWasteManagementHouseNumber,
   createWasteManagementLocationTourLinksBulk,
   createWasteManagementFraction,
   getWasteManagementHistoryOverview,
   createWasteManagementGlobalDateShift,
   createWasteManagementLocationTourLink,
   createWasteManagementRegion,
+  createWasteManagementStreet,
   createWasteManagementTour,
   createWasteManagementTourDateShift,
   getWasteManagementImportCatalog,
@@ -78,8 +86,10 @@ import {
   updateWasteManagementCity,
   updateWasteManagementCollectionLocation,
   updateWasteManagementGlobalDateShift,
+  updateWasteManagementHouseNumber,
   updateWasteManagementLocationTourLink,
   updateWasteManagementRegion,
+  updateWasteManagementStreet,
   updateWasteManagementTour,
   updateWasteManagementTourDateShift,
   updateWasteManagementSettings,
@@ -89,8 +99,10 @@ import {
   type CreateWasteManagementLocationTourLinksBulkInput,
   type CreateWasteManagementFractionInput,
   type CreateWasteManagementGlobalDateShiftInput,
+  type CreateWasteManagementHouseNumberInput,
   type CreateWasteManagementLocationTourLinkInput,
   type CreateWasteManagementRegionInput,
+  type CreateWasteManagementStreetInput,
   type CreateWasteManagementTourInput,
   type CreateWasteManagementTourDateShiftInput,
   type WasteManagementMasterDataOverview,
@@ -103,8 +115,10 @@ import {
   type UpdateWasteManagementCityInput,
   type UpdateWasteManagementCollectionLocationInput,
   type UpdateWasteManagementGlobalDateShiftInput,
+  type UpdateWasteManagementHouseNumberInput,
   type UpdateWasteManagementLocationTourLinkInput,
   type UpdateWasteManagementRegionInput,
+  type UpdateWasteManagementStreetInput,
   type UpdateWasteManagementTourInput,
   type UpdateWasteManagementTourDateShiftInput,
 } from './waste-management.api.js';
@@ -145,6 +159,7 @@ type TechnicalStatusTone = 'neutral' | 'success' | 'warning' | 'error';
 type FractionFormState = {
   readonly id: string;
   readonly name: string;
+  readonly translations: WasteLocalizedTextRecord;
   readonly containerSize: string;
   readonly color: string;
   readonly description: string;
@@ -160,6 +175,18 @@ type CityFormState = {
   readonly id: string;
   readonly name: string;
   readonly regionId: string;
+};
+
+type StreetFormState = {
+  readonly id: string;
+  readonly name: string;
+  readonly cityId: string;
+};
+
+type HouseNumberFormState = {
+  readonly id: string;
+  readonly number: string;
+  readonly streetId: string;
 };
 
 type CollectionLocationFormState = {
@@ -203,6 +230,9 @@ type TourDateShiftFormState = {
   readonly originalDate: string;
   readonly actualDate: string;
   readonly hasYear: boolean;
+  readonly reasonType: WasteDateShiftReasonType | '';
+  readonly reasonKey: string;
+  readonly followUpMode: WasteTourDateShiftFollowUpMode | '';
   readonly description: string;
 };
 
@@ -211,6 +241,8 @@ type GlobalDateShiftFormState = {
   readonly originalDate: string;
   readonly actualDate: string;
   readonly hasYear: boolean;
+  readonly reasonType: WasteDateShiftReasonType | '';
+  readonly reasonKey: string;
   readonly description: string;
   readonly tourIds: readonly string[];
 };
@@ -239,6 +271,7 @@ const createFractionId = (): string =>
 const createDefaultFractionForm = (): FractionFormState => ({
   id: createFractionId(),
   name: '',
+  translations: {},
   containerSize: '',
   color: '#4f6d7a',
   description: '',
@@ -254,6 +287,18 @@ const createDefaultCityForm = (): CityFormState => ({
   id: createFractionId(),
   name: '',
   regionId: '',
+});
+
+const createDefaultStreetForm = (): StreetFormState => ({
+  id: createFractionId(),
+  name: '',
+  cityId: '',
+});
+
+const createDefaultHouseNumberForm = (): HouseNumberFormState => ({
+  id: createFractionId(),
+  number: '',
+  streetId: '',
 });
 
 const createDefaultCollectionLocationForm = (): CollectionLocationFormState => ({
@@ -297,6 +342,9 @@ const createDefaultTourDateShiftForm = (): TourDateShiftFormState => ({
   originalDate: '',
   actualDate: '',
   hasYear: true,
+  reasonType: '',
+  reasonKey: '',
+  followUpMode: '',
   description: '',
 });
 
@@ -305,6 +353,8 @@ const createDefaultGlobalDateShiftForm = (): GlobalDateShiftFormState => ({
   originalDate: '',
   actualDate: '',
   hasYear: true,
+  reasonType: '',
+  reasonKey: '',
   description: '',
   tourIds: [],
 });
@@ -312,6 +362,7 @@ const createDefaultGlobalDateShiftForm = (): GlobalDateShiftFormState => ({
 const mapFractionToForm = (fraction: WasteFractionRecord): FractionFormState => ({
   id: fraction.id,
   name: fraction.name,
+  translations: fraction.translations ?? {},
   containerSize: fraction.containerSize ?? '',
   color: fraction.color,
   description: fraction.description ?? '',
@@ -327,6 +378,18 @@ const mapCityToForm = (city: WasteCityRecord): CityFormState => ({
   id: city.id,
   name: city.name,
   regionId: city.regionId ?? '',
+});
+
+const mapStreetToForm = (street: WasteStreetRecord): StreetFormState => ({
+  id: street.id,
+  name: street.name,
+  cityId: street.cityId,
+});
+
+const mapHouseNumberToForm = (houseNumber: WasteHouseNumberRecord): HouseNumberFormState => ({
+  id: houseNumber.id,
+  number: houseNumber.number,
+  streetId: houseNumber.streetId,
 });
 
 const mapCollectionLocationToForm = (location: WasteCollectionLocationRecord): CollectionLocationFormState => ({
@@ -367,6 +430,9 @@ const mapTourDateShiftToForm = (shift: WasteTourDateShiftRecord): TourDateShiftF
   originalDate: shift.originalDate,
   actualDate: shift.actualDate,
   hasYear: shift.hasYear,
+  reasonType: shift.reasonType ?? '',
+  reasonKey: shift.reasonKey ?? '',
+  followUpMode: shift.followUpMode ?? '',
   description: shift.description ?? '',
 });
 
@@ -375,6 +441,8 @@ const mapGlobalDateShiftToForm = (shift: WasteGlobalDateShiftRecord): GlobalDate
   originalDate: shift.originalDate,
   actualDate: shift.actualDate,
   hasYear: shift.hasYear,
+  reasonType: shift.reasonType ?? '',
+  reasonKey: shift.reasonKey ?? '',
   description: shift.description ?? '',
   tourIds: shift.tourIds ?? [],
 });
@@ -396,6 +464,24 @@ const compactOptionalString = (value: string): string | undefined => {
   return normalized.length > 0 ? normalized : undefined;
 };
 
+const normalizeLocalizedTextRecord = (value: WasteLocalizedTextRecord): WasteLocalizedTextRecord | undefined => {
+  const entries = Object.entries(value).flatMap(([locale, localizedValue]) => {
+    const normalizedLocale = locale.trim();
+    const normalizedValue = localizedValue.trim();
+
+    if (!normalizedLocale || !normalizedValue) {
+      return [];
+    }
+
+    return [[normalizedLocale, normalizedValue] as const];
+  });
+
+  return entries.length > 0 ? Object.fromEntries(entries) : undefined;
+};
+
+const wasteReasonTypeOptions = wasteManagementMasterDataContract.dateShiftReasonTypes;
+const wasteFollowUpModeOptions = wasteManagementMasterDataContract.followUpModes;
+
 const toSettingsInput = (form: SettingsFormState): WasteManagementSettingsInput => ({
   provider: form.provider,
   projectUrl: form.projectUrl.trim(),
@@ -408,6 +494,7 @@ const toSettingsInput = (form: SettingsFormState): WasteManagementSettingsInput 
 const toCreateFractionInput = (form: FractionFormState): CreateWasteManagementFractionInput => ({
   id: form.id,
   name: form.name.trim(),
+  translations: normalizeLocalizedTextRecord(form.translations),
   containerSize: compactOptionalString(form.containerSize),
   color: form.color.trim(),
   description: compactOptionalString(form.description),
@@ -416,6 +503,7 @@ const toCreateFractionInput = (form: FractionFormState): CreateWasteManagementFr
 
 const toUpdateFractionInput = (form: FractionFormState): UpdateWasteManagementFractionInput => ({
   name: form.name.trim(),
+  translations: normalizeLocalizedTextRecord(form.translations),
   containerSize: compactOptionalString(form.containerSize),
   color: form.color.trim(),
   description: compactOptionalString(form.description),
@@ -440,6 +528,28 @@ const toCreateCityInput = (form: CityFormState): CreateWasteManagementCityInput 
 const toUpdateCityInput = (form: CityFormState): UpdateWasteManagementCityInput => ({
   name: form.name.trim(),
   regionId: compactOptionalString(form.regionId),
+});
+
+const toCreateStreetInput = (form: StreetFormState): CreateWasteManagementStreetInput => ({
+  id: form.id.trim(),
+  name: form.name.trim(),
+  cityId: form.cityId.trim(),
+});
+
+const toUpdateStreetInput = (form: StreetFormState): UpdateWasteManagementStreetInput => ({
+  name: form.name.trim(),
+  cityId: form.cityId.trim(),
+});
+
+const toCreateHouseNumberInput = (form: HouseNumberFormState): CreateWasteManagementHouseNumberInput => ({
+  id: form.id.trim(),
+  number: form.number.trim(),
+  streetId: form.streetId.trim(),
+});
+
+const toUpdateHouseNumberInput = (form: HouseNumberFormState): UpdateWasteManagementHouseNumberInput => ({
+  number: form.number.trim(),
+  streetId: form.streetId.trim(),
 });
 
 const toCreateCollectionLocationInput = (
@@ -504,6 +614,19 @@ const parseCustomTourDatesText = (value: string): CreateWasteManagementTourInput
   return entries.length > 0 ? entries : undefined;
 };
 
+const resolveSingleSelectValue = (form: HTMLFormElement, fieldName: string): string => {
+  const field = form.elements.namedItem(fieldName);
+  if (!(field instanceof HTMLSelectElement)) {
+    return '';
+  }
+
+  const populatedValues = Array.from(field.options)
+    .map((option) => option.value.trim())
+    .filter((value) => value.length > 0);
+
+  return populatedValues.length === 1 ? populatedValues[0] ?? '' : '';
+};
+
 const toCreateTourInput = (form: TourFormState): CreateWasteManagementTourInput => ({
   id: form.id,
   name: form.name.trim(),
@@ -533,6 +656,9 @@ const toCreateTourDateShiftInput = (form: TourDateShiftFormState): CreateWasteMa
   originalDate: form.originalDate,
   actualDate: form.actualDate,
   hasYear: form.hasYear,
+  reasonType: form.reasonType || undefined,
+  reasonKey: compactOptionalString(form.reasonKey),
+  followUpMode: form.followUpMode || undefined,
   description: compactOptionalString(form.description),
 });
 
@@ -541,6 +667,9 @@ const toUpdateTourDateShiftInput = (form: TourDateShiftFormState): UpdateWasteMa
   originalDate: form.originalDate,
   actualDate: form.actualDate,
   hasYear: form.hasYear,
+  reasonType: form.reasonType || undefined,
+  reasonKey: compactOptionalString(form.reasonKey),
+  followUpMode: form.followUpMode || undefined,
   description: compactOptionalString(form.description),
 });
 
@@ -549,6 +678,8 @@ const toCreateGlobalDateShiftInput = (form: GlobalDateShiftFormState): CreateWas
   originalDate: form.originalDate,
   actualDate: form.actualDate,
   hasYear: form.hasYear,
+  reasonType: form.reasonType || undefined,
+  reasonKey: compactOptionalString(form.reasonKey),
   description: compactOptionalString(form.description),
   tourIds: form.tourIds.length ? form.tourIds : undefined,
 });
@@ -557,6 +688,8 @@ const toUpdateGlobalDateShiftInput = (form: GlobalDateShiftFormState): UpdateWas
   originalDate: form.originalDate,
   actualDate: form.actualDate,
   hasYear: form.hasYear,
+  reasonType: form.reasonType || undefined,
+  reasonKey: compactOptionalString(form.reasonKey),
   description: compactOptionalString(form.description),
   tourIds: form.tourIds.length ? form.tourIds : undefined,
 });
@@ -608,13 +741,32 @@ const createImportTemplateCsv = (profile: WasteManagementImportProfileCatalogEnt
   return `${headers.join(',')}\n${sampleRow.join(',')}\n`;
 };
 
-const downloadImportTemplate = (profile: WasteManagementImportProfileCatalogEntry) => {
-  const csv = createImportTemplateCsv(profile);
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+const createImportTemplateWorkbook = (profile: WasteManagementImportProfileCatalogEntry) => {
+  const headers = [...profile.requiredColumns, ...profile.optionalColumns].map((column) => column.key);
+  const sampleRow = [...profile.requiredColumns, ...profile.optionalColumns].map((column) => column.example ?? '');
+  const sheet = XLSX.utils.aoa_to_sheet([headers, sampleRow]);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, sheet, 'Import');
+  return workbook;
+};
+
+const downloadImportTemplate = (
+  profile: WasteManagementImportProfileCatalogEntry,
+  sourceFormat: WasteManagementImportSourceFormat
+) => {
+  const blob =
+    sourceFormat === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      ? new Blob([XLSX.write(createImportTemplateWorkbook(profile), { type: 'array', bookType: 'xlsx' })], {
+          type: sourceFormat,
+        })
+      : new Blob([createImportTemplateCsv(profile)], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
   anchor.href = url;
-  anchor.download = `${profile.profileId}.csv`;
+  anchor.download =
+    sourceFormat === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      ? `${profile.profileId}.xlsx`
+      : `${profile.profileId}.csv`;
   anchor.click();
   URL.revokeObjectURL(url);
 };
@@ -732,6 +884,30 @@ const filterCities = (
     }
 
     return search.q ? matchesSearch(city.name, search.q) : true;
+  });
+
+const filterStreets = (
+  streets: readonly WasteStreetRecord[],
+  search: WasteManagementSearchParams
+): readonly WasteStreetRecord[] =>
+  streets.filter((street) => {
+    if (search.cityId && street.cityId !== search.cityId) {
+      return false;
+    }
+
+    if (search.cityId) {
+      return true;
+    }
+
+    return search.q ? matchesSearch(street.name, search.q) : true;
+  });
+
+const filterHouseNumbers = (
+  houseNumbers: readonly WasteHouseNumberRecord[],
+  search: WasteManagementSearchParams
+): readonly WasteHouseNumberRecord[] =>
+  houseNumbers.filter((houseNumber) => {
+    return search.q ? matchesSearch(houseNumber.number, search.q) : true;
   });
 
 const filterCollectionLocations = (
@@ -891,6 +1067,34 @@ const FractionDialog = ({
           <StudioFieldGroup>
             <StudioField id="waste-fraction-name" label={pt('masterData.fractions.fields.name')}>
               <Input id="waste-fraction-name" value={form.name} onChange={(event) => onChange({ name: event.target.value })} />
+            </StudioField>
+            <StudioField id="waste-fraction-name-de" label={pt('masterData.fractions.fields.translationDe')}>
+              <Input
+                id="waste-fraction-name-de"
+                value={form.translations.de ?? ''}
+                onChange={(event) =>
+                  onChange({
+                    translations: {
+                      ...form.translations,
+                      de: event.target.value,
+                    },
+                  })
+                }
+              />
+            </StudioField>
+            <StudioField id="waste-fraction-name-en" label={pt('masterData.fractions.fields.translationEn')}>
+              <Input
+                id="waste-fraction-name-en"
+                value={form.translations.en ?? ''}
+                onChange={(event) =>
+                  onChange({
+                    translations: {
+                      ...form.translations,
+                      en: event.target.value,
+                    },
+                  })
+                }
+              />
             </StudioField>
             <StudioField id="waste-fraction-color" label={pt('masterData.fractions.fields.color')}>
               <Input id="waste-fraction-color" value={form.color} onChange={(event) => onChange({ color: event.target.value })} />
@@ -1073,6 +1277,174 @@ const CityDialog = ({
                 : mode === 'create'
                   ? pt('masterData.cities.actions.create')
                   : pt('masterData.cities.actions.save')}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+const StreetDialog = ({
+  open,
+  mode,
+  form,
+  cities,
+  saving,
+  message,
+  onOpenChange,
+  onChange,
+  onSubmit,
+}: {
+  readonly open: boolean;
+  readonly mode: 'create' | 'edit';
+  readonly form: StreetFormState;
+  readonly cities: readonly WasteCityRecord[];
+  readonly saving: boolean;
+  readonly message: StatusMessage | null;
+  readonly onOpenChange: (open: boolean) => void;
+  readonly onChange: (patch: Partial<StreetFormState>) => void;
+  readonly onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+}) => {
+  const pt = usePluginTranslation('wasteManagement');
+  const selectedCityId = form.cityId || (cities.length === 1 ? cities[0]?.id ?? '' : '');
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>
+            {mode === 'create' ? pt('masterData.streets.dialog.createTitle') : pt('masterData.streets.dialog.editTitle')}
+          </DialogTitle>
+          <DialogDescription>
+            {mode === 'create'
+              ? pt('masterData.streets.dialog.createDescription')
+              : pt('masterData.streets.dialog.editDescription')}
+          </DialogDescription>
+        </DialogHeader>
+        <form className="space-y-4" onSubmit={onSubmit}>
+          <StatusNotice message={message} />
+          <StudioFieldGroup>
+            <StudioField id="waste-street-name" label={pt('masterData.streets.fields.name')}>
+              <Input
+                id="waste-street-name"
+                name="name"
+                value={form.name}
+                onChange={(event) => onChange({ name: event.target.value })}
+              />
+            </StudioField>
+            <StudioField id="waste-street-city-id" label={pt('masterData.streets.fields.cityId')}>
+              <Select
+                id="waste-street-city-id"
+                aria-label={pt('masterData.streets.fields.cityId')}
+                name="cityId"
+                value={selectedCityId}
+                onChange={(event) => onChange({ cityId: event.target.value })}
+              >
+                <option value="">{pt('masterData.streets.fields.cityUnset')}</option>
+                {cities.map((city) => (
+                  <option key={city.id} value={city.id}>
+                    {city.name}
+                  </option>
+                ))}
+              </Select>
+            </StudioField>
+          </StudioFieldGroup>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              {pt('masterData.streets.actions.cancel')}
+            </Button>
+            <Button type="submit" disabled={saving}>
+              {saving
+                ? pt('masterData.streets.actions.saving')
+                : mode === 'create'
+                  ? pt('masterData.streets.actions.create')
+                  : pt('masterData.streets.actions.save')}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+const HouseNumberDialog = ({
+  open,
+  mode,
+  form,
+  streets,
+  saving,
+  message,
+  onOpenChange,
+  onChange,
+  onSubmit,
+}: {
+  readonly open: boolean;
+  readonly mode: 'create' | 'edit';
+  readonly form: HouseNumberFormState;
+  readonly streets: readonly WasteStreetRecord[];
+  readonly saving: boolean;
+  readonly message: StatusMessage | null;
+  readonly onOpenChange: (open: boolean) => void;
+  readonly onChange: (patch: Partial<HouseNumberFormState>) => void;
+  readonly onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+}) => {
+  const pt = usePluginTranslation('wasteManagement');
+  const selectedStreetId = form.streetId || (streets.length === 1 ? streets[0]?.id ?? '' : '');
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>
+            {mode === 'create'
+              ? pt('masterData.houseNumbers.dialog.createTitle')
+              : pt('masterData.houseNumbers.dialog.editTitle')}
+          </DialogTitle>
+          <DialogDescription>
+            {mode === 'create'
+              ? pt('masterData.houseNumbers.dialog.createDescription')
+              : pt('masterData.houseNumbers.dialog.editDescription')}
+          </DialogDescription>
+        </DialogHeader>
+        <form className="space-y-4" onSubmit={onSubmit}>
+          <StatusNotice message={message} />
+          <StudioFieldGroup>
+            <StudioField id="waste-house-number-value" label={pt('masterData.houseNumbers.fields.number')}>
+              <Input
+                id="waste-house-number-value"
+                name="number"
+                value={form.number}
+                onChange={(event) => onChange({ number: event.target.value })}
+              />
+            </StudioField>
+            <StudioField id="waste-house-number-street-id" label={pt('masterData.houseNumbers.fields.streetId')}>
+              <Select
+                id="waste-house-number-street-id"
+                aria-label={pt('masterData.houseNumbers.fields.streetId')}
+                name="streetId"
+                value={selectedStreetId}
+                onChange={(event) => onChange({ streetId: event.target.value })}
+              >
+                <option value="">{pt('masterData.houseNumbers.fields.streetUnset')}</option>
+                {streets.map((street) => (
+                  <option key={street.id} value={street.id}>
+                    {street.name}
+                  </option>
+                ))}
+              </Select>
+            </StudioField>
+          </StudioFieldGroup>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              {pt('masterData.houseNumbers.actions.cancel')}
+            </Button>
+            <Button type="submit" disabled={saving}>
+              {saving
+                ? pt('masterData.houseNumbers.actions.saving')
+                : mode === 'create'
+                  ? pt('masterData.houseNumbers.actions.create')
+                  : pt('masterData.houseNumbers.actions.save')}
             </Button>
           </DialogFooter>
         </form>
@@ -1682,6 +2054,12 @@ const WasteMasterDataPanel = ({ search }: { readonly search: WasteManagementSear
   const [cityDialogOpen, setCityDialogOpen] = useState(false);
   const [cityDialogMode, setCityDialogMode] = useState<'create' | 'edit'>('create');
   const [cityForm, setCityForm] = useState<CityFormState>(createDefaultCityForm());
+  const [streetDialogOpen, setStreetDialogOpen] = useState(false);
+  const [streetDialogMode, setStreetDialogMode] = useState<'create' | 'edit'>('create');
+  const [streetForm, setStreetForm] = useState<StreetFormState>(createDefaultStreetForm());
+  const [houseNumberDialogOpen, setHouseNumberDialogOpen] = useState(false);
+  const [houseNumberDialogMode, setHouseNumberDialogMode] = useState<'create' | 'edit'>('create');
+  const [houseNumberForm, setHouseNumberForm] = useState<HouseNumberFormState>(createDefaultHouseNumberForm());
   const [locationDialogOpen, setLocationDialogOpen] = useState(false);
   const [locationDialogMode, setLocationDialogMode] = useState<'create' | 'edit'>('create');
   const [locationForm, setLocationForm] = useState<CollectionLocationFormState>(createDefaultCollectionLocationForm());
@@ -1759,6 +2137,8 @@ const WasteMasterDataPanel = ({ search }: { readonly search: WasteManagementSear
   const filteredFractions = filterFractions(overview?.fractions ?? [], search);
   const filteredRegions = filterRegions(overview?.regions ?? [], search);
   const filteredCities = filterCities(overview?.cities ?? [], search);
+  const filteredStreets = filterStreets(overview?.streets ?? [], search);
+  const filteredHouseNumbers = filterHouseNumbers(overview?.houseNumbers ?? [], search);
   const filteredCollectionLocations = filterCollectionLocations(overview?.collectionLocations ?? [], search);
   const selectedCollectionLocations = filteredCollectionLocations.filter((location) =>
     selectedLocationIds.includes(location.id)
@@ -1810,6 +2190,40 @@ const WasteMasterDataPanel = ({ search }: { readonly search: WasteManagementSear
     setCityForm(mapCityToForm(city));
     setMessage(null);
     setCityDialogOpen(true);
+  };
+
+  const openCreateStreetDialog = () => {
+    setStreetDialogMode('create');
+    setStreetForm({
+      ...createDefaultStreetForm(),
+      cityId: search.cityId ?? (overview?.cities.length === 1 ? overview.cities[0]?.id ?? '' : ''),
+    });
+    setMessage(null);
+    setStreetDialogOpen(true);
+  };
+
+  const openEditStreetDialog = (street: WasteStreetRecord) => {
+    setStreetDialogMode('edit');
+    setStreetForm(mapStreetToForm(street));
+    setMessage(null);
+    setStreetDialogOpen(true);
+  };
+
+  const openCreateHouseNumberDialog = () => {
+    setHouseNumberDialogMode('create');
+    setHouseNumberForm({
+      ...createDefaultHouseNumberForm(),
+      streetId: overview?.streets.length === 1 ? overview.streets[0]?.id ?? '' : '',
+    });
+    setMessage(null);
+    setHouseNumberDialogOpen(true);
+  };
+
+  const openEditHouseNumberDialog = (houseNumber: WasteHouseNumberRecord) => {
+    setHouseNumberDialogMode('edit');
+    setHouseNumberForm(mapHouseNumberToForm(houseNumber));
+    setMessage(null);
+    setHouseNumberDialogOpen(true);
   };
 
   const openCreateLocationDialog = () => {
@@ -1978,6 +2392,109 @@ const WasteMasterDataPanel = ({ search }: { readonly search: WasteManagementSear
     }
   };
 
+  const onSubmitStreet = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSaving(true);
+    setMessage(null);
+
+    const submittedFormData = new FormData(event.currentTarget);
+    const submittedCityId = String(submittedFormData.get('cityId') ?? streetForm.cityId).trim();
+    const fallbackCityId =
+      submittedCityId ||
+      streetForm.cityId ||
+      resolveSingleSelectValue(event.currentTarget, 'cityId') ||
+      search.cityId ||
+      overview?.cities[0]?.id ||
+      '';
+    const submittedForm: StreetFormState = {
+      ...streetForm,
+      name: String(submittedFormData.get('name') ?? streetForm.name),
+      cityId: fallbackCityId,
+    };
+
+    try {
+      if (streetDialogMode === 'create') {
+        await createWasteManagementStreet(toCreateStreetInput(submittedForm));
+      } else {
+        await updateWasteManagementStreet(streetForm.id, toUpdateStreetInput(submittedForm));
+      }
+
+      await loadOverview(true);
+      startTransition(() => {
+        setStreetDialogOpen(false);
+        setMessage({
+          kind: 'success',
+          text:
+            streetDialogMode === 'create'
+              ? pt('masterData.streets.messages.createSuccess')
+              : pt('masterData.streets.messages.updateSuccess'),
+        });
+      });
+    } catch (saveError) {
+      const code = resolveApiErrorCode(saveError);
+      setMessage({
+        kind: 'error',
+        text:
+          code === 'forbidden'
+            ? pt('masterData.streets.messages.saveForbidden')
+            : pt('masterData.streets.messages.saveError'),
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const onSubmitHouseNumber = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSaving(true);
+    setMessage(null);
+
+    const submittedFormData = new FormData(event.currentTarget);
+    const submittedStreetId = String(submittedFormData.get('streetId') ?? houseNumberForm.streetId).trim();
+    const fallbackStreetId =
+      submittedStreetId ||
+      houseNumberForm.streetId ||
+      resolveSingleSelectValue(event.currentTarget, 'streetId') ||
+      overview?.streets[0]?.id ||
+      '';
+    const submittedForm: HouseNumberFormState = {
+      ...houseNumberForm,
+      number: String(submittedFormData.get('number') ?? houseNumberForm.number),
+      streetId: fallbackStreetId,
+    };
+
+    try {
+      if (houseNumberDialogMode === 'create') {
+        await createWasteManagementHouseNumber(toCreateHouseNumberInput(submittedForm));
+      } else {
+        await updateWasteManagementHouseNumber(houseNumberForm.id, toUpdateHouseNumberInput(submittedForm));
+      }
+
+      await loadOverview(true);
+      startTransition(() => {
+        setHouseNumberDialogOpen(false);
+        setMessage({
+          kind: 'success',
+          text:
+            houseNumberDialogMode === 'create'
+              ? pt('masterData.houseNumbers.messages.createSuccess')
+              : pt('masterData.houseNumbers.messages.updateSuccess'),
+        });
+      });
+    } catch (saveError) {
+      const code = resolveApiErrorCode(saveError);
+      setMessage({
+        kind: 'error',
+        text:
+          code === 'forbidden'
+            ? pt('masterData.houseNumbers.messages.saveForbidden')
+            : pt('masterData.houseNumbers.messages.saveError'),
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const onSubmitLocation = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setSaving(true);
@@ -2056,7 +2573,14 @@ const WasteMasterDataPanel = ({ search }: { readonly search: WasteManagementSear
     }
   };
 
-  if (!filteredFractions.length && !filteredRegions.length && !filteredCities.length && !filteredCollectionLocations.length) {
+  if (
+    !filteredFractions.length &&
+    !filteredRegions.length &&
+    !filteredCities.length &&
+    !filteredStreets.length &&
+    !filteredHouseNumbers.length &&
+    !filteredCollectionLocations.length
+  ) {
     return (
       <>
         <StudioEmptyState>
@@ -2118,6 +2642,38 @@ const WasteMasterDataPanel = ({ search }: { readonly search: WasteManagementSear
           }}
           onChange={(patch) => setCityForm((current) => ({ ...current, ...patch }))}
           onSubmit={onSubmitCity}
+        />
+        <StreetDialog
+          open={streetDialogOpen}
+          mode={streetDialogMode}
+          form={streetForm}
+          cities={overview?.cities ?? []}
+          saving={saving}
+          message={streetDialogOpen ? message : null}
+          onOpenChange={(open) => {
+            setStreetDialogOpen(open);
+            if (!open) {
+              setStreetForm(createDefaultStreetForm());
+            }
+          }}
+          onChange={(patch) => setStreetForm((current) => ({ ...current, ...patch }))}
+          onSubmit={onSubmitStreet}
+        />
+        <HouseNumberDialog
+          open={houseNumberDialogOpen}
+          mode={houseNumberDialogMode}
+          form={houseNumberForm}
+          streets={overview?.streets ?? []}
+          saving={saving}
+          message={houseNumberDialogOpen ? message : null}
+          onOpenChange={(open) => {
+            setHouseNumberDialogOpen(open);
+            if (!open) {
+              setHouseNumberForm(createDefaultHouseNumberForm());
+            }
+          }}
+          onChange={(patch) => setHouseNumberForm((current) => ({ ...current, ...patch }))}
+          onSubmit={onSubmitHouseNumber}
         />
         <CollectionLocationDialog
           open={locationDialogOpen}
@@ -2185,6 +2741,8 @@ const WasteMasterDataPanel = ({ search }: { readonly search: WasteManagementSear
         <Badge>{pt('masterData.meta.fractionCount', { value: filteredFractions.length })}</Badge>
         <Badge variant="outline">{pt('masterData.meta.regionCount', { value: filteredRegions.length })}</Badge>
         <Badge variant="outline">{pt('masterData.meta.cityCount', { value: filteredCities.length })}</Badge>
+        <Badge variant="outline">{pt('masterData.meta.streetCount', { value: filteredStreets.length })}</Badge>
+        <Badge variant="outline">{pt('masterData.meta.houseNumberCount', { value: filteredHouseNumbers.length })}</Badge>
         <Badge variant="outline">
           {pt('masterData.meta.collectionLocationCount', { value: filteredCollectionLocations.length })}
         </Badge>
@@ -2217,6 +2775,11 @@ const WasteMasterDataPanel = ({ search }: { readonly search: WasteManagementSear
                       {pt('masterData.fractions.containerSize', { value: fraction.containerSize })}
                     </Badge>
                   ) : null}
+                  {Object.entries(fraction.translations ?? {}).map(([locale, localizedName]) => (
+                    <Badge key={`${fraction.id}-${locale}`} variant="secondary">
+                      {pt('masterData.fractions.translationBadge', { locale, value: localizedName })}
+                    </Badge>
+                  ))}
                 </div>
                 <div className="mt-3">
                   <Button type="button" variant="outline" size="sm" onClick={() => openEditDialog(fraction)}>
@@ -2278,6 +2841,70 @@ const WasteMasterDataPanel = ({ search }: { readonly search: WasteManagementSear
                 <div className="mt-3">
                   <Button type="button" variant="outline" size="sm" onClick={() => openEditCityDialog(city)}>
                     {pt('masterData.cities.actions.edit')}
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
+      <div className="grid gap-4 xl:grid-cols-2">
+        <section className="space-y-3 rounded-lg border border-border/70 bg-card p-4">
+          <div className="space-y-1">
+            <h3 className="text-sm font-semibold">{pt('masterData.streets.title')}</h3>
+            <p className="text-sm text-muted-foreground">{pt('masterData.streets.description')}</p>
+          </div>
+          <div>
+            <Button type="button" variant="outline" size="sm" onClick={openCreateStreetDialog}>
+              {pt('masterData.streets.actions.openCreate')}
+            </Button>
+          </div>
+          <div className="space-y-2">
+            {filteredStreets.map((street) => (
+              <div key={street.id} className="rounded-md border border-border/60 p-3">
+                <p className="font-medium">{street.name}</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <Badge variant="outline">{pt('masterData.streets.streetId', { value: street.id })}</Badge>
+                  <Badge variant="outline">{pt('masterData.streets.cityId', { value: street.cityId })}</Badge>
+                </div>
+                <div className="mt-3">
+                  <Button type="button" variant="outline" size="sm" onClick={() => openEditStreetDialog(street)}>
+                    {pt('masterData.streets.actions.edit')}
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="space-y-3 rounded-lg border border-border/70 bg-card p-4">
+          <div className="space-y-1">
+            <h3 className="text-sm font-semibold">{pt('masterData.houseNumbers.title')}</h3>
+            <p className="text-sm text-muted-foreground">{pt('masterData.houseNumbers.description')}</p>
+          </div>
+          <div>
+            <Button type="button" variant="outline" size="sm" onClick={openCreateHouseNumberDialog}>
+              {pt('masterData.houseNumbers.actions.openCreate')}
+            </Button>
+          </div>
+          <div className="space-y-2">
+            {filteredHouseNumbers.map((houseNumber) => (
+              <div key={houseNumber.id} className="rounded-md border border-border/60 p-3">
+                <p className="font-medium">{houseNumber.number}</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <Badge variant="outline">
+                    {pt('masterData.houseNumbers.houseNumberId', { value: houseNumber.id })}
+                  </Badge>
+                  <Badge variant="outline">{pt('masterData.houseNumbers.streetId', { value: houseNumber.streetId })}</Badge>
+                </div>
+                <div className="mt-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => openEditHouseNumberDialog(houseNumber)}
+                  >
+                    {pt('masterData.houseNumbers.actions.edit')}
                   </Button>
                 </div>
               </div>
@@ -2406,6 +3033,38 @@ const WasteMasterDataPanel = ({ search }: { readonly search: WasteManagementSear
         }}
         onChange={(patch) => setCityForm((current) => ({ ...current, ...patch }))}
         onSubmit={onSubmitCity}
+      />
+      <StreetDialog
+        open={streetDialogOpen}
+        mode={streetDialogMode}
+        form={streetForm}
+        cities={overview?.cities ?? []}
+        saving={saving}
+        message={streetDialogOpen ? message : null}
+        onOpenChange={(open) => {
+          setStreetDialogOpen(open);
+          if (!open) {
+            setStreetForm(createDefaultStreetForm());
+          }
+        }}
+        onChange={(patch) => setStreetForm((current) => ({ ...current, ...patch }))}
+        onSubmit={onSubmitStreet}
+      />
+      <HouseNumberDialog
+        open={houseNumberDialogOpen}
+        mode={houseNumberDialogMode}
+        form={houseNumberForm}
+        streets={overview?.streets ?? []}
+        saving={saving}
+        message={houseNumberDialogOpen ? message : null}
+        onOpenChange={(open) => {
+          setHouseNumberDialogOpen(open);
+          if (!open) {
+            setHouseNumberForm(createDefaultHouseNumberForm());
+          }
+        }}
+        onChange={(patch) => setHouseNumberForm((current) => ({ ...current, ...patch }))}
+        onSubmit={onSubmitHouseNumber}
       />
       <CollectionLocationDialog
         open={locationDialogOpen}
@@ -2900,7 +3559,7 @@ const filterTourDateShifts = (
     if (!search.q) {
       return true;
     }
-    return [shift.description, shift.originalDate, shift.actualDate]
+    return [shift.description, shift.originalDate, shift.actualDate, shift.reasonKey]
       .filter((value): value is string => typeof value === 'string' && value.length > 0)
       .some((value) => matchesSearch(value, search.q));
   });
@@ -2919,7 +3578,7 @@ const filterGlobalDateShifts = (
     if (!search.q) {
       return true;
     }
-    return [shift.description, shift.originalDate, shift.actualDate]
+    return [shift.description, shift.originalDate, shift.actualDate, shift.reasonKey]
       .filter((value): value is string => typeof value === 'string' && value.length > 0)
       .some((value) => matchesSearch(value, search.q));
   });
@@ -3035,6 +3694,43 @@ const TourDateShiftDialog = ({
                 onChange={(event) => onChange({ description: event.target.value })}
               />
             </StudioField>
+            <StudioField id="waste-tour-shift-reason-type" label={pt('scheduling.tour.fields.reasonType')}>
+              <Select
+                id="waste-tour-shift-reason-type"
+                value={form.reasonType}
+                onChange={(event) => onChange({ reasonType: event.target.value as TourDateShiftFormState['reasonType'] })}
+              >
+                <option value="">{pt('scheduling.tour.fields.reasonTypeUnset')}</option>
+                {wasteReasonTypeOptions.map((reasonType) => (
+                  <option key={reasonType} value={reasonType}>
+                    {pt(`scheduling.reasonTypes.${reasonType}`)}
+                  </option>
+                ))}
+              </Select>
+            </StudioField>
+            <StudioField id="waste-tour-shift-reason-key" label={pt('scheduling.tour.fields.reasonKey')}>
+              <Input
+                id="waste-tour-shift-reason-key"
+                value={form.reasonKey}
+                onChange={(event) => onChange({ reasonKey: event.target.value })}
+              />
+            </StudioField>
+            <StudioField id="waste-tour-shift-follow-up-mode" label={pt('scheduling.tour.fields.followUpMode')}>
+              <Select
+                id="waste-tour-shift-follow-up-mode"
+                value={form.followUpMode}
+                onChange={(event) =>
+                  onChange({ followUpMode: event.target.value as TourDateShiftFormState['followUpMode'] })
+                }
+              >
+                <option value="">{pt('scheduling.tour.fields.followUpModeUnset')}</option>
+                {wasteFollowUpModeOptions.map((followUpMode) => (
+                  <option key={followUpMode} value={followUpMode}>
+                    {pt(`scheduling.followUpModes.${followUpMode}`)}
+                  </option>
+                ))}
+              </Select>
+            </StudioField>
             <StudioField id="waste-tour-shift-has-year" label={pt('scheduling.tour.fields.hasYear')}>
               <div className="flex items-center gap-3">
                 <Checkbox
@@ -3126,6 +3822,27 @@ const GlobalDateShiftDialog = ({
                 id="waste-global-shift-description"
                 value={form.description}
                 onChange={(event) => onChange({ description: event.target.value })}
+              />
+            </StudioField>
+            <StudioField id="waste-global-shift-reason-type" label={pt('scheduling.global.fields.reasonType')}>
+              <Select
+                id="waste-global-shift-reason-type"
+                value={form.reasonType}
+                onChange={(event) => onChange({ reasonType: event.target.value as GlobalDateShiftFormState['reasonType'] })}
+              >
+                <option value="">{pt('scheduling.global.fields.reasonTypeUnset')}</option>
+                {wasteReasonTypeOptions.map((reasonType) => (
+                  <option key={reasonType} value={reasonType}>
+                    {pt(`scheduling.reasonTypes.${reasonType}`)}
+                  </option>
+                ))}
+              </Select>
+            </StudioField>
+            <StudioField id="waste-global-shift-reason-key" label={pt('scheduling.global.fields.reasonKey')}>
+              <Input
+                id="waste-global-shift-reason-key"
+                value={form.reasonKey}
+                onChange={(event) => onChange({ reasonKey: event.target.value })}
               />
             </StudioField>
             <StudioField id="waste-global-shift-has-year" label={pt('scheduling.global.fields.hasYear')}>
@@ -3440,6 +4157,8 @@ const WasteSchedulingPanel = ({ search }: { readonly search: WasteManagementSear
               badges={[
                 pt('scheduling.meta.hasYear', { value: shift.hasYear ? pt('common.yes') : pt('common.no') }),
                 pt('scheduling.meta.affectedTours', { value: shift.tourIds?.length ?? 0 }),
+                ...(shift.reasonType ? [pt('scheduling.meta.reasonType', { value: pt(`scheduling.reasonTypes.${shift.reasonType}`) })] : []),
+                ...(shift.reasonKey ? [pt('scheduling.meta.reasonKey', { value: shift.reasonKey })] : []),
               ]}
               actions={
                 <Button type="button" variant="outline" size="sm" onClick={() => openEditGlobalShiftDialog(shift)}>
@@ -3463,6 +4182,11 @@ const WasteSchedulingPanel = ({ search }: { readonly search: WasteManagementSear
               description={shift.description}
               badges={[
                 pt('scheduling.meta.hasYear', { value: shift.hasYear ? pt('common.yes') : pt('common.no') }),
+                ...(shift.reasonType ? [pt('scheduling.meta.reasonType', { value: pt(`scheduling.reasonTypes.${shift.reasonType}`) })] : []),
+                ...(shift.reasonKey ? [pt('scheduling.meta.reasonKey', { value: shift.reasonKey })] : []),
+                ...(shift.followUpMode
+                  ? [pt('scheduling.meta.followUpMode', { value: pt(`scheduling.followUpModes.${shift.followUpMode}`) })]
+                  : []),
               ]}
               actions={
                 <Button type="button" variant="outline" size="sm" onClick={() => openEditTourShiftDialog(shift)}>
@@ -3709,8 +4433,9 @@ const WasteOverviewPanel = ({ search }: { readonly search: WasteManagementSearch
     return <StudioErrorState>{error}</StudioErrorState>;
   }
 
-  const items = overview?.items ?? [];
-  if (!items.length) {
+  const auditItems = overview?.audit.items ?? [];
+  const technicalItems = overview?.technical.items ?? [];
+  if (!auditItems.length && !technicalItems.length) {
     return (
       <StudioEmptyState>
         <div className="space-y-2 text-left">
@@ -3724,27 +4449,56 @@ const WasteOverviewPanel = ({ search }: { readonly search: WasteManagementSearch
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-2">
-        <Badge>{pt('overview.meta.total', { value: overview?.total ?? 0 })}</Badge>
-        <Badge variant="outline">{pt('overview.meta.visible', { value: items.length })}</Badge>
+        <Badge>{pt('overview.meta.total', { value: (overview?.audit.total ?? 0) + (overview?.technical.total ?? 0) })}</Badge>
+        <Badge variant="outline">
+          {pt('overview.meta.visible', { value: auditItems.length + technicalItems.length })}
+        </Badge>
       </div>
       <div className="space-y-3">
-        {items.map((item) => (
-          <div key={item.id} className="space-y-2 rounded-lg border border-border/70 p-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge>{item.actionId}</Badge>
-              <Badge variant={item.outcome === 'success' ? 'default' : item.outcome === 'failure' ? 'destructive' : 'secondary'}>
-                {pt(`overview.outcome.${item.outcome}`)}
-              </Badge>
-              <Badge variant="outline">{pt('overview.meta.occurredAt', { value: formatUpdatedAt(item.occurredAt) })}</Badge>
-            </div>
-            <div className="space-y-1 text-sm text-muted-foreground">
-              {item.resourceType ? <p>{pt('overview.meta.resourceType', { value: item.resourceType })}</p> : null}
-              {item.resourceId ? <p>{pt('overview.meta.resourceId', { value: item.resourceId })}</p> : null}
-              {item.reasonCode ? <p>{pt('overview.meta.reasonCode', { value: item.reasonCode })}</p> : null}
-              {item.requestId ? <p>{pt('overview.meta.requestId', { value: item.requestId })}</p> : null}
-            </div>
+        {technicalItems.length ? (
+          <div className="space-y-3">
+            <p className="text-sm font-semibold">{pt('overview.sections.technical')}</p>
+            {technicalItems.map((item: WasteManagementHistoryOverview['technical']['items'][number]) => (
+              <div key={item.id} className="space-y-2 rounded-lg border border-border/70 p-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge>{item.eventType}</Badge>
+                  <Badge variant={item.outcome === 'success' ? 'default' : item.outcome === 'failure' ? 'destructive' : 'secondary'}>
+                    {pt(`overview.outcome.${item.outcome}`)}
+                  </Badge>
+                  <Badge variant="outline">{pt('overview.meta.occurredAt', { value: formatUpdatedAt(item.occurredAt) })}</Badge>
+                </div>
+                <div className="space-y-1 text-sm text-muted-foreground">
+                  {item.jobId ? <p>{pt('overview.meta.jobId', { value: item.jobId })}</p> : null}
+                  {item.jobTypeId ? <p>{pt('overview.meta.jobTypeId', { value: item.jobTypeId })}</p> : null}
+                  {item.errorCode ? <p>{pt('overview.meta.reasonCode', { value: item.errorCode })}</p> : null}
+                  {item.requestId ? <p>{pt('overview.meta.requestId', { value: item.requestId })}</p> : null}
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
+        ) : null}
+        {auditItems.length ? (
+          <div className="space-y-3">
+            <p className="text-sm font-semibold">{pt('overview.sections.audit')}</p>
+            {auditItems.map((item: WasteManagementHistoryOverview['audit']['items'][number]) => (
+              <div key={item.id} className="space-y-2 rounded-lg border border-border/70 p-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge>{item.actionId}</Badge>
+                  <Badge variant={item.outcome === 'success' ? 'default' : item.outcome === 'failure' ? 'destructive' : 'secondary'}>
+                    {pt(`overview.outcome.${item.outcome}`)}
+                  </Badge>
+                  <Badge variant="outline">{pt('overview.meta.occurredAt', { value: formatUpdatedAt(item.occurredAt) })}</Badge>
+                </div>
+                <div className="space-y-1 text-sm text-muted-foreground">
+                  {item.resourceType ? <p>{pt('overview.meta.resourceType', { value: item.resourceType })}</p> : null}
+                  {item.resourceId ? <p>{pt('overview.meta.resourceId', { value: item.resourceId })}</p> : null}
+                  {item.reasonCode ? <p>{pt('overview.meta.reasonCode', { value: item.reasonCode })}</p> : null}
+                  {item.requestId ? <p>{pt('overview.meta.requestId', { value: item.requestId })}</p> : null}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : null}
       </div>
     </div>
   );
@@ -3757,6 +4511,9 @@ const WasteToolsPanel = () => {
   const [importProfileId, setImportProfileId] = useState<StartWasteManagementImportInput['importProfileId'] | ''>(
     importCatalog[0]?.profileId ?? ''
   );
+  const [importSourceFormat, setImportSourceFormat] = useState<StartWasteManagementImportInput['sourceFormat']>(
+    importCatalog[0]?.sourceFormats[0] ?? 'text/csv'
+  );
   const [importBlobRef, setImportBlobRef] = useState('');
   const [importDryRun, setImportDryRun] = useState(true);
   const [migrationSchema, setMigrationSchema] = useState('public');
@@ -3766,8 +4523,41 @@ const WasteToolsPanel = () => {
   const [runningAction, setRunningAction] = useState<'import' | 'migration' | 'seed' | 'reset' | null>(null);
   const [message, setMessage] = useState<StatusMessage | null>(null);
   const [lastJob, setLastJob] = useState<StudioJobResponse['data'] | null>(null);
+  const [technicalHistory, setTechnicalHistory] = useState<readonly WasteManagementHistoryOverview['technical']['items'][number][]>(
+    []
+  );
   const selectedImportProfile =
     importCatalog.find((profile) => profile.profileId === importProfileId) ?? importCatalog[0] ?? null;
+
+  const refreshTechnicalHistory = async (active = true) => {
+    try {
+      const history = await getWasteManagementHistoryOverview({ page: 1, pageSize: 8 });
+      if (active) {
+        setTechnicalHistory(history.technical.items);
+      }
+    } catch {
+      if (active) {
+        setTechnicalHistory([]);
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (!selectedImportProfile) {
+      return;
+    }
+    if (!selectedImportProfile.sourceFormats.includes(importSourceFormat)) {
+      setImportSourceFormat(selectedImportProfile.sourceFormats[0] ?? 'text/csv');
+    }
+  }, [importSourceFormat, selectedImportProfile]);
+
+  useEffect(() => {
+    let active = true;
+    void refreshTechnicalHistory(active);
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const runJob = async (
     action: 'import' | 'migration' | 'seed' | 'reset',
@@ -3778,6 +4568,7 @@ const WasteToolsPanel = () => {
     try {
       const job = await callback();
       setLastJob(job);
+      await refreshTechnicalHistory(true);
       setMessage({ kind: 'success', text: pt('tools.messages.jobStarted', { jobId: job.id }) });
     } catch (error) {
       const code = resolveApiErrorCode(error);
@@ -3828,6 +4619,26 @@ const WasteToolsPanel = () => {
             <StudioField id="waste-tools-import-blob-ref" label={pt('tools.imports.blobRefLabel')}>
               <Input value={importBlobRef} onChange={(event) => setImportBlobRef(event.target.value)} />
             </StudioField>
+            <StudioField id="waste-tools-import-source-format" label={pt('tools.imports.sourceFormatLabel')}>
+              <Select
+                aria-label={pt('tools.imports.sourceFormatLabel')}
+                value={importSourceFormat}
+                onChange={(event) => {
+                  const nextSourceFormat = event.target.value as WasteManagementImportSourceFormat;
+                  if (selectedImportProfile?.sourceFormats.includes(nextSourceFormat)) {
+                    setImportSourceFormat(nextSourceFormat);
+                  }
+                }}
+              >
+                {(selectedImportProfile?.sourceFormats ?? []).map((sourceFormat) => (
+                  <option key={sourceFormat} value={sourceFormat}>
+                    {sourceFormat === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                      ? pt('tools.imports.sourceFormats.xlsx')
+                      : pt('tools.imports.sourceFormats.csv')}
+                  </option>
+                ))}
+              </Select>
+            </StudioField>
           </StudioFieldGroup>
           <label className="flex items-center gap-2 text-sm text-foreground">
             <Checkbox checked={importDryRun} onChange={(event) => setImportDryRun(event.currentTarget.checked)} />
@@ -3852,7 +4663,11 @@ const WasteToolsPanel = () => {
                 ))}
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
-                <Button type="button" variant="outline" onClick={() => downloadImportTemplate(selectedImportProfile)}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => downloadImportTemplate(selectedImportProfile, importSourceFormat)}
+                >
                   {pt('tools.actions.downloadTemplate')}
                 </Button>
                 <Button
@@ -3862,6 +4677,7 @@ const WasteToolsPanel = () => {
                     void runJob('import', () =>
                       startWasteManagementImport({
                         importProfileId,
+                        sourceFormat: importSourceFormat,
                         blobRef: importBlobRef.trim(),
                         dryRun: importDryRun,
                       } satisfies StartWasteManagementImportInput)
@@ -3961,6 +4777,44 @@ const WasteToolsPanel = () => {
             ) : undefined
           }
         />
+        <div className="space-y-3 rounded-lg border border-border/70 bg-card p-4">
+          <div className="space-y-1">
+            <h3 className="text-sm font-semibold">{pt('tools.meta.technicalHistoryTitle')}</h3>
+            <p className="text-sm text-muted-foreground">{pt('tools.meta.technicalHistoryDescription')}</p>
+          </div>
+          {technicalHistory.length ? (
+            <div className="space-y-2">
+              {technicalHistory.slice(0, 5).map((item) => (
+                <div key={item.id} className="rounded-md border border-border/60 p-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge>{item.eventType}</Badge>
+                    <Badge
+                      variant={
+                        item.outcome === 'success'
+                          ? 'default'
+                          : item.outcome === 'failure'
+                            ? 'destructive'
+                            : 'secondary'
+                      }
+                    >
+                      {pt(`overview.outcome.${item.outcome}`)}
+                    </Badge>
+                    <Badge variant="outline">{pt('overview.meta.occurredAt', { value: formatUpdatedAt(item.occurredAt) })}</Badge>
+                  </div>
+                  <div className="mt-2 space-y-1 text-sm text-muted-foreground">
+                    {item.jobId ? <p>{pt('overview.meta.jobId', { value: item.jobId })}</p> : null}
+                    {item.jobTypeId ? <p>{pt('overview.meta.jobTypeId', { value: item.jobTypeId })}</p> : null}
+                    {item.requestId ? <p>{pt('overview.meta.requestId', { value: item.requestId })}</p> : null}
+                    {item.errorCode ? <p>{pt('overview.meta.reasonCode', { value: item.errorCode })}</p> : null}
+                    {item.message ? <p>{item.message}</p> : null}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <StudioEmptyState>{pt('tools.meta.noTechnicalHistory')}</StudioEmptyState>
+          )}
+        </div>
       </div>
       <ResetConfirmationDialog
         open={resetConfirmOpen}

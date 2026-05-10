@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { listWasteManagementAuditRecords } from './waste-audit-read-models.js';
+import {
+  listWasteManagementAuditRecords,
+  listWasteManagementTechnicalAuditRecords,
+} from './waste-audit-read-models.js';
 
 type QueryResult = {
   rowCount: number;
@@ -95,7 +98,69 @@ describe('iam-governance/waste-audit-read-models', () => {
       pageSize: 10,
     });
 
-    expect(client.query).toHaveBeenNthCalledWith(1, expect.any(String), ['tenant-a', '%fraction%', 10, 10]);
-    expect(client.query).toHaveBeenNthCalledWith(2, expect.any(String), ['tenant-a', '%fraction%']);
+    expect(client.query).toHaveBeenNthCalledWith(1, expect.any(String), ['tenant-a', null, '%fraction%', 10, 10]);
+    expect(client.query).toHaveBeenNthCalledWith(2, expect.any(String), ['tenant-a', null, '%fraction%']);
+  });
+
+  it('maps the technical waste audit subset into the technical history shape', async () => {
+    const client = buildClient(
+      {
+        rowCount: 2,
+        rows: [
+          {
+            id: 'log-2',
+            event_type: 'plugin_action_failed',
+            created_at: '2026-05-09T12:05:00.000Z',
+            account_id: 'account-2',
+            request_id: 'req-2',
+            trace_id: 'trace-2',
+            payload: {
+              action_id: 'waste-management.connection-check.failed',
+              action_namespace: 'waste-management',
+              reason_code: 'connection_failed',
+              result: 'failure',
+            },
+          },
+          {
+            id: 'log-1',
+            event_type: 'plugin_action_authorized',
+            created_at: '2026-05-09T12:00:00.000Z',
+            account_id: 'account-1',
+            request_id: 'req-1',
+            trace_id: 'trace-1',
+            payload: {
+              action_id: 'waste-management.import.started',
+              action_namespace: 'waste-management',
+              result: 'success',
+            },
+          },
+        ],
+      },
+      {
+        rowCount: 1,
+        rows: [{ total: 2 }],
+      }
+    );
+
+    const result = await listWasteManagementTechnicalAuditRecords(client as never, {
+      instanceId: 'tenant-a',
+      page: 1,
+      pageSize: 20,
+    });
+
+    expect(result.total).toBe(2);
+    expect(result.items).toEqual([
+      expect.objectContaining({
+        id: 'log-2',
+        eventType: 'connection-check.failed',
+        outcome: 'failure',
+        errorCode: 'connection_failed',
+      }),
+      expect.objectContaining({
+        id: 'log-1',
+        eventType: 'import.started',
+        outcome: 'started',
+      }),
+    ]);
   });
 });

@@ -97,6 +97,7 @@ vi.mock('@sva/instance-registry/runtime-wiring', () => ({
 }));
 
 vi.mock('@sva/studio-module-iam', () => ({
+  studioModuleIamContracts: Array.from(studioModuleIamRegistryMock.values()),
   studioModuleIamRegistry: studioModuleIamRegistryMock,
 }));
 

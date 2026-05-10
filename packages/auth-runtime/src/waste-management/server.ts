@@ -1,5 +1,5 @@
 import { createSdkLogger, toJsonErrorResponse, withRequestContext } from '@sva/server-runtime';
-import { listWasteManagementAuditRecords } from '@sva/iam-governance';
+import { listWasteManagementAuditRecords, listWasteManagementTechnicalAuditRecords } from '@sva/iam-governance';
 import {
   createWasteMasterDataRepository,
   type SqlExecutionResult,
@@ -9,15 +9,19 @@ import {
 import { loadWasteDataSourceRecord, saveWasteConnectionCheck, saveWasteDataSourceRecord } from '@sva/data-repositories/server';
 import { Pool } from 'pg';
 import type {
+  WasteManagementHistoryOverview,
+  WasteManagementTechnicalHistoryRecord,
   WasteCityRecord,
   WasteCollectionLocationRecord,
   WasteGlobalDateShiftRecord,
+  WasteHouseNumberRecord,
   WasteLocationTourLinkBulkCreateInput,
   WasteLocationTourLinkRecord,
   WasteManagementMasterDataOverview,
   WasteManagementSchedulingOverview,
   WasteManagementToursOverview,
   WasteRegionRecord,
+  WasteStreetRecord,
   WasteTourDateShiftRecord,
   WasteTourRecord,
 } from '@sva/core';
@@ -29,6 +33,8 @@ import {
   createWasteManagementFractionInternal,
   createWasteManagementRegionInternal,
   createWasteManagementCityInternal,
+  createWasteManagementStreetInternal,
+  createWasteManagementHouseNumberInternal,
   createWasteManagementCollectionLocationInternal,
   createWasteManagementGlobalDateShiftInternal,
   getWasteManagementHistoryInternal,
@@ -49,6 +55,8 @@ import {
   updateWasteManagementGlobalDateShiftInternal,
   updateWasteManagementRegionInternal,
   updateWasteManagementCityInternal,
+  updateWasteManagementStreetInternal,
+  updateWasteManagementHouseNumberInternal,
   updateWasteManagementCollectionLocationInternal,
   updateWasteManagementLocationTourLinkInternal,
   updateWasteManagementTourDateShiftInternal,
@@ -56,6 +64,7 @@ import {
 } from './core.js';
 import { resolveWasteDataSource } from '@sva/server-runtime';
 import { withInstanceDb } from '../db.js';
+import { withStudioJobRepository } from '../plugin-operations/repository.js';
 
 const logger = createSdkLogger({ component: 'waste-management-auth-runtime', level: 'info' });
 
@@ -147,6 +156,82 @@ const loadMasterDataOverview = async (instanceId: string): Promise<WasteManageme
 
 const loadWasteAuditOverview = async (query: { instanceId: string; search?: string; page: number; pageSize: number }) =>
   withInstanceDb(query.instanceId, (client) => listWasteManagementAuditRecords(client, query));
+
+const mapJobTypeIdToTechnicalEventType = (
+  jobTypeId: string,
+  status: 'succeeded' | 'failed' | 'cancelled'
+): WasteManagementTechnicalHistoryRecord['eventType'] | null => {
+  if (jobTypeId === 'waste-management.apply-migrations') {
+    return status === 'succeeded' ? 'migration.succeeded' : 'migration.failed';
+  }
+  if (jobTypeId === 'waste-management.import-data') {
+    return status === 'succeeded' ? 'import.succeeded' : 'import.failed';
+  }
+  if (jobTypeId === 'waste-management.seed-data') {
+    return status === 'succeeded' ? 'seed.succeeded' : 'seed.failed';
+  }
+  if (jobTypeId === 'waste-management.reset-data') {
+    return status === 'succeeded' ? 'reset.succeeded' : 'reset.failed';
+  }
+  return null;
+};
+
+const loadWasteHistoryOverview = async (query: {
+  instanceId: string;
+  search?: string;
+  page: number;
+  pageSize: number;
+}): Promise<WasteManagementHistoryOverview> => {
+  const [audit, technicalAudit, technicalJobs] = await Promise.all([
+    withInstanceDb(query.instanceId, (client) => listWasteManagementAuditRecords(client, query)),
+    withInstanceDb(query.instanceId, (client) => listWasteManagementTechnicalAuditRecords(client, query)),
+    withStudioJobRepository(query.instanceId, (repository) =>
+      repository.listJobs(query.instanceId, {
+        view: 'history',
+        page: query.page,
+        pageSize: query.pageSize,
+        pluginId: 'waste-management',
+        q: query.search,
+      })
+    ),
+  ]);
+
+  const jobItems = technicalJobs.items
+    .map((job): WasteManagementTechnicalHistoryRecord | null => {
+      if (job.status !== 'succeeded' && job.status !== 'failed' && job.status !== 'cancelled') {
+        return null;
+      }
+
+      const eventType = mapJobTypeIdToTechnicalEventType(job.jobTypeId, job.status);
+      if (!eventType) {
+        return null;
+      }
+
+      return {
+        id: `job:${job.id}:${job.status}`,
+        eventType,
+        outcome: job.status === 'succeeded' ? 'success' : 'failure',
+        occurredAt: job.finishedAt ?? job.updatedAt,
+        source: 'job',
+        jobId: job.id,
+        jobTypeId: job.jobTypeId,
+        requestId: job.requestId,
+        message: job.latestEvent?.message,
+        errorCode: job.errorPayload?.code,
+      };
+    })
+    .filter((item): item is WasteManagementTechnicalHistoryRecord => item !== null);
+
+  return {
+    audit,
+    technical: {
+      items: [...technicalAudit.items, ...jobItems].sort((left, right) =>
+        right.occurredAt.localeCompare(left.occurredAt)
+      ),
+      total: technicalAudit.total + technicalJobs.total,
+    },
+  };
+};
 
 const loadWasteFractionById = async (instanceId: string, fractionId: string) => {
   const dataSource = await resolveWasteDataSource({
@@ -311,6 +396,120 @@ const saveWasteCity = async (
     try {
       const repository = createWasteMasterDataRepository(createSqlExecutor(client));
       await repository.upsertWasteCity(input);
+    } finally {
+      client.release();
+    }
+  } finally {
+    await pool.end();
+  }
+};
+
+const loadWasteStreetById = async (instanceId: string, streetId: string) => {
+  const dataSource = await resolveWasteDataSource({
+    instanceId,
+    loadRecord: loadWasteDataSourceRecord,
+    revealSecret: (ciphertext, aad) => revealField(ciphertext, aad) ?? undefined,
+  });
+
+  const pool = new Pool({
+    connectionString: dataSource.databaseUrl,
+    max: 2,
+    idleTimeoutMillis: 5_000,
+    connectionTimeoutMillis: 5_000,
+  });
+
+  try {
+    const client = await pool.connect();
+    try {
+      const repository = createWasteMasterDataRepository(createSqlExecutor(client));
+      return await repository.getWasteStreetById(streetId);
+    } finally {
+      client.release();
+    }
+  } finally {
+    await pool.end();
+  }
+};
+
+const saveWasteStreet = async (
+  instanceId: string,
+  input: Omit<WasteStreetRecord, 'createdAt' | 'updatedAt'>
+) => {
+  const dataSource = await resolveWasteDataSource({
+    instanceId,
+    loadRecord: loadWasteDataSourceRecord,
+    revealSecret: (ciphertext, aad) => revealField(ciphertext, aad) ?? undefined,
+  });
+
+  const pool = new Pool({
+    connectionString: dataSource.databaseUrl,
+    max: 2,
+    idleTimeoutMillis: 5_000,
+    connectionTimeoutMillis: 5_000,
+  });
+
+  try {
+    const client = await pool.connect();
+    try {
+      const repository = createWasteMasterDataRepository(createSqlExecutor(client));
+      await repository.upsertWasteStreet(input);
+    } finally {
+      client.release();
+    }
+  } finally {
+    await pool.end();
+  }
+};
+
+const loadWasteHouseNumberById = async (instanceId: string, houseNumberId: string) => {
+  const dataSource = await resolveWasteDataSource({
+    instanceId,
+    loadRecord: loadWasteDataSourceRecord,
+    revealSecret: (ciphertext, aad) => revealField(ciphertext, aad) ?? undefined,
+  });
+
+  const pool = new Pool({
+    connectionString: dataSource.databaseUrl,
+    max: 2,
+    idleTimeoutMillis: 5_000,
+    connectionTimeoutMillis: 5_000,
+  });
+
+  try {
+    const client = await pool.connect();
+    try {
+      const repository = createWasteMasterDataRepository(createSqlExecutor(client));
+      return await repository.getWasteHouseNumberById(houseNumberId);
+    } finally {
+      client.release();
+    }
+  } finally {
+    await pool.end();
+  }
+};
+
+const saveWasteHouseNumber = async (
+  instanceId: string,
+  input: Omit<WasteHouseNumberRecord, 'createdAt' | 'updatedAt'>
+) => {
+  const dataSource = await resolveWasteDataSource({
+    instanceId,
+    loadRecord: loadWasteDataSourceRecord,
+    revealSecret: (ciphertext, aad) => revealField(ciphertext, aad) ?? undefined,
+  });
+
+  const pool = new Pool({
+    connectionString: dataSource.databaseUrl,
+    max: 2,
+    idleTimeoutMillis: 5_000,
+    connectionTimeoutMillis: 5_000,
+  });
+
+  try {
+    const client = await pool.connect();
+    try {
+      const repository = createWasteMasterDataRepository(createSqlExecutor(client));
+      await repository.upsertWasteHouseNumber(input);
     } finally {
       client.release();
     }
@@ -722,7 +921,7 @@ export const wasteManagementHandlers = {
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       getWasteManagementHistoryInternal(nextRequest, ctx, {
         ...sharedDeps,
-        loadWasteAuditOverview,
+        loadWasteHistoryOverview,
       })
     ),
   createFraction: async (request: Request): Promise<Response> =>
@@ -747,6 +946,22 @@ export const wasteManagementHandlers = {
         ...sharedDeps,
         saveWasteCity,
         loadWasteCityById,
+      })
+    ),
+  createStreet: async (request: Request): Promise<Response> =>
+    withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
+      createWasteManagementStreetInternal(nextRequest, ctx, {
+        ...sharedDeps,
+        saveWasteStreet,
+        loadWasteStreetById,
+      })
+    ),
+  createHouseNumber: async (request: Request): Promise<Response> =>
+    withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
+      createWasteManagementHouseNumberInternal(nextRequest, ctx, {
+        ...sharedDeps,
+        saveWasteHouseNumber,
+        loadWasteHouseNumberById,
       })
     ),
   createCollectionLocation: async (request: Request): Promise<Response> =>
@@ -847,6 +1062,22 @@ export const wasteManagementHandlers = {
         ...sharedDeps,
         saveWasteCity,
         loadWasteCityById,
+      })
+    ),
+  updateStreet: async (request: Request): Promise<Response> =>
+    withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
+      updateWasteManagementStreetInternal(nextRequest, ctx, {
+        ...sharedDeps,
+        saveWasteStreet,
+        loadWasteStreetById,
+      })
+    ),
+  updateHouseNumber: async (request: Request): Promise<Response> =>
+    withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
+      updateWasteManagementHouseNumberInternal(nextRequest, ctx, {
+        ...sharedDeps,
+        saveWasteHouseNumber,
+        loadWasteHouseNumberById,
       })
     ),
   updateCollectionLocation: async (request: Request): Promise<Response> =>

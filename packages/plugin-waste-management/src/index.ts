@@ -4,6 +4,14 @@ export {
   wasteManagementPermissionDefinitions,
 } from './plugin.js';
 export {
+  createWasteManagementPluginImportProfiles,
+  createWasteManagementPluginJobTypes,
+} from './plugin-operations.js';
+export {
+  createWasteManagementPluginOperationExecutionHandlers,
+  type WasteManagementOperationRuntime,
+} from './server.js';
+export {
   normalizeWasteManagementSearchParams,
   wasteManagementTabIds,
   type WasteManagementSearchParams,

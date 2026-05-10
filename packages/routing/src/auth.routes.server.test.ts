@@ -136,10 +136,12 @@ const authServerMocks = vi.hoisted(() => {
       createCity: vi.fn(async () => response('createWasteManagementCityHandler')),
       createCollectionLocation: vi.fn(async () => response('createWasteManagementCollectionLocationHandler')),
       createFraction: vi.fn(async () => response('createWasteManagementFractionHandler')),
+      createHouseNumber: vi.fn(async () => response('createWasteManagementHouseNumberHandler')),
       createGlobalDateShift: vi.fn(async () => response('createWasteManagementGlobalDateShiftHandler')),
       createLocationTourLinksBulk: vi.fn(async () => response('createWasteManagementLocationTourLinksBulkHandler')),
       createLocationTourLink: vi.fn(async () => response('createWasteManagementLocationTourLinkHandler')),
       createRegion: vi.fn(async () => response('createWasteManagementRegionHandler')),
+      createStreet: vi.fn(async () => response('createWasteManagementStreetHandler')),
       createTour: vi.fn(async () => response('createWasteManagementTourHandler')),
       createTourDateShift: vi.fn(async () => response('createWasteManagementTourDateShiftHandler')),
       getMasterDataOverview: vi.fn(async () => response('getWasteManagementMasterDataOverviewHandler')),
@@ -151,8 +153,10 @@ const authServerMocks = vi.hoisted(() => {
       updateCollectionLocation: vi.fn(async () => response('updateWasteManagementCollectionLocationHandler')),
       updateFraction: vi.fn(async () => response('updateWasteManagementFractionHandler')),
       updateGlobalDateShift: vi.fn(async () => response('updateWasteManagementGlobalDateShiftHandler')),
+      updateHouseNumber: vi.fn(async () => response('updateWasteManagementHouseNumberHandler')),
       updateLocationTourLink: vi.fn(async () => response('updateWasteManagementLocationTourLinkHandler')),
       updateRegion: vi.fn(async () => response('updateWasteManagementRegionHandler')),
+      updateStreet: vi.fn(async () => response('updateWasteManagementStreetHandler')),
       updateTour: vi.fn(async () => response('updateWasteManagementTourHandler')),
       updateTourDateShift: vi.fn(async () => response('updateWasteManagementTourDateShiftHandler')),
       startMigrations: vi.fn(async () => response('startWasteManagementMigrationsHandler')),
@@ -322,6 +326,10 @@ describe('auth.routes.server', () => {
     const collectionLocationDetailHandlers = resolveAuthHandlers(
       '/api/v1/waste-management/collection-locations/$locationId'
     );
+    const streetHandlers = resolveAuthHandlers('/api/v1/waste-management/streets');
+    const streetDetailHandlers = resolveAuthHandlers('/api/v1/waste-management/streets/$streetId');
+    const houseNumberHandlers = resolveAuthHandlers('/api/v1/waste-management/house-numbers');
+    const houseNumberDetailHandlers = resolveAuthHandlers('/api/v1/waste-management/house-numbers/$houseNumberId');
     const locationTourLinkHandlers = resolveAuthHandlers('/api/v1/waste-management/location-tour-links');
     const locationTourLinkBulkHandlers = resolveAuthHandlers('/api/v1/waste-management/location-tour-links/bulk');
     const locationTourLinkDetailHandlers = resolveAuthHandlers(
@@ -343,6 +351,10 @@ describe('auth.routes.server', () => {
     expect(masterDataHandlers?.GET).toBeDefined();
     expect(collectionLocationHandlers?.POST).toBeDefined();
     expect(collectionLocationDetailHandlers?.PUT).toBeDefined();
+    expect(streetHandlers?.POST).toBeDefined();
+    expect(streetDetailHandlers?.PUT).toBeDefined();
+    expect(houseNumberHandlers?.POST).toBeDefined();
+    expect(houseNumberDetailHandlers?.PUT).toBeDefined();
     expect(locationTourLinkHandlers?.POST).toBeDefined();
     expect(locationTourLinkBulkHandlers?.POST).toBeDefined();
     expect(locationTourLinkDetailHandlers?.PUT).toBeDefined();
@@ -371,6 +383,18 @@ describe('auth.routes.server', () => {
       request: new Request('http://localhost/api/v1/waste-management/collection-locations/location-1', {
         method: 'PUT',
       }),
+    });
+    await streetHandlers.POST?.({
+      request: new Request('http://localhost/api/v1/waste-management/streets', { method: 'POST' }),
+    });
+    await streetDetailHandlers.PUT?.({
+      request: new Request('http://localhost/api/v1/waste-management/streets/street-1', { method: 'PUT' }),
+    });
+    await houseNumberHandlers.POST?.({
+      request: new Request('http://localhost/api/v1/waste-management/house-numbers', { method: 'POST' }),
+    });
+    await houseNumberDetailHandlers.PUT?.({
+      request: new Request('http://localhost/api/v1/waste-management/house-numbers/house-1', { method: 'PUT' }),
     });
     await locationTourLinkHandlers.POST?.({
       request: new Request('http://localhost/api/v1/waste-management/location-tour-links', { method: 'POST' }),
@@ -429,6 +453,10 @@ describe('auth.routes.server', () => {
     expect(authServerMocks.wasteManagementHandlers.getMasterDataOverview).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.createCollectionLocation).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.updateCollectionLocation).toHaveBeenCalled();
+    expect(authServerMocks.wasteManagementHandlers.createStreet).toHaveBeenCalled();
+    expect(authServerMocks.wasteManagementHandlers.updateStreet).toHaveBeenCalled();
+    expect(authServerMocks.wasteManagementHandlers.createHouseNumber).toHaveBeenCalled();
+    expect(authServerMocks.wasteManagementHandlers.updateHouseNumber).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.createLocationTourLink).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.createLocationTourLinksBulk).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.updateLocationTourLink).toHaveBeenCalled();

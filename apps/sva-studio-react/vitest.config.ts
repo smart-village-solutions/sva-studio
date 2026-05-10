@@ -22,6 +22,7 @@ export default defineConfig({
         new URL('../../packages/auth-runtime/src/runtime-health.ts', import.meta.url)
       ),
       '@sva/auth-runtime': fileURLToPath(new URL('../../packages/auth-runtime/src/index.ts', import.meta.url)),
+      '@sva/iam-admin/encryption': fileURLToPath(new URL('../../packages/iam-admin/src/encryption.ts', import.meta.url)),
       '@sva/iam-admin': fileURLToPath(new URL('../../packages/iam-admin/src/index.ts', import.meta.url)),
       '@sva/iam-governance/legal-text-html': fileURLToPath(
         new URL('../../packages/iam-governance/src/legal-text-html.ts', import.meta.url)

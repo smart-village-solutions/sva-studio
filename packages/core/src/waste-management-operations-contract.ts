@@ -12,7 +12,10 @@ const wasteManagementImportProfileIds = {
   dateShifts: 'waste-management.ausweichtermine',
 } as const;
 
-const wasteManagementImportSourceFormats = ['text/csv'] as const;
+const wasteManagementImportSourceFormats = [
+  'text/csv',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+] as const;
 
 type ValueOf<T> = T[keyof T];
 

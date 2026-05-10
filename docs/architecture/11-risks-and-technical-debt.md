@@ -218,25 +218,39 @@ Schulden auf IST-Basis.
 38. Öffentlicher Plugin-Operations-Vertrag könnte vor der ersten Runner-Integration zu früh als vollständig wahrgenommen werden
    - Impact: mittel bis hoch (Consumer bauen auf Start-/Status-API, obwohl Queueing, Dispatch und Retry-Ausführung intern noch nicht vollständig verdrahtet sein können)
    - Wahrscheinlichkeit: mittel
-   - Maßnahme: Plattform weiter runner-agnostisch halten, offene Worker-Schritte explizit in OpenSpec und Tasks führen und erste produktive Consumer erst nach nachgewiesener Host-Orchestrierung freigeben
 
-39. Zentrale Job-Persistenz trägt fachneutrale JSON-Payloads mit begrenzter Schemastrenge
+39. Übergang zwischen statischem Plugin-SDK v1 und Plugin-Plattform v2
+   - Impact: hoch (Doku, Code und Reviews könnten unterschiedliche Zielbilder mischen und dadurch falsche Implementierungsentscheidungen treffen)
+   - Wahrscheinlichkeit: mittel bis hoch
+   - Maßnahme: ADR-034 und ADR-041 explizit gegeneinander abgrenzen, Zielrollen für Manifest/Katalog/Loader/Runtime getrennt dokumentieren und direkte App-Importlisten nur noch für echte Übergangspfade zulassen
+
+40. Installierte Plugin-Distributionen sind jetzt vertragsseitig möglich, aber noch nicht über gepackte End-to-End-Smoke-Tests abgesichert
+   - Impact: hoch (ein formal kompatibles Paket kann zur Laufzeit trotzdem an Packaging-, Symlink- oder Artefaktgrenzen scheitern)
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: dedizierte Installations-Smoke-Tests mit echten gepackten Artefakten und einem `installed-distribution`-Pfad außerhalb des Monorepos ergänzen
+
+41. Host-seitige Runtime-Auflösung ist bisher nur für Plugin-`jobs` generisch, nicht aber für `server`- oder `integrations`-Beiträge
+   - Impact: mittel (der Job-Pfad ist entkoppelt, aber weitere pluginseitige Runtime-Beiträge würden noch einen separaten Folgechange benötigen)
+   - Wahrscheinlichkeit: mittel
+   - Maßnahme: den deklarativen Runtime-Contract aus dem Job-Pfad auf `server`- und später `integrations`-Beiträge erweitern, ohne den fail-closed Host-Kontext aufzuweichen
+
+42. Zentrale Job-Persistenz trägt fachneutrale JSON-Payloads mit begrenzter Schemastrenge
    - Impact: mittel (fachliche Payload-Drift oder unklare Ergebnis-/Fehlerdeutung wird erst in Plugin- oder Runtime-Pfaden sichtbar)
    - Wahrscheinlichkeit: mittel
    - Maßnahme: generische Hostfelder für Progress, Fehlerkategorien, Heartbeat und Event-History stabil halten; pluginfachliche Payload-Schemas weiterhin am Rand validieren
 
-40. Hostinterner Plugin-Operations-Verlauf nutzt vorerst Polling statt Push
+43. Hostinterner Plugin-Operations-Verlauf nutzt vorerst Polling statt Push
    - Impact: mittel (UI-Reaktionszeit und Infrastrukturkosten steigen bei häufigem Polling; Echtzeitwahrnehmung bleibt begrenzt)
    - Wahrscheinlichkeit: hoch
    - Maßnahme: denselben technischen Eventvertrag später hinter Outbox, SSE/WebSocket oder Broker wiederverwenden; vorerst Polling-Frequenz und History-Umfang kontrollieren
 
-41. n8n-/ETL-Integration ist architektonisch vorbereitet, aber noch nicht aus dem Job-Backbone heraus veröffentlicht
+44. n8n-/ETL-Integration ist architektonisch vorbereitet, aber noch nicht aus dem Job-Backbone heraus veröffentlicht
    - Impact: mittel bis hoch (Integrationen könnten vorschnell auf interne Tabellen oder Runner-Details zugreifen)
    - Wahrscheinlichkeit: mittel
    - Maßnahme: Integrationsgrenze später über explizite Outbox-/Event-Verträge öffnen; keine direkte Kopplung an Graphile- oder Tabelleninterna zulassen
    - Maßnahme: generische Grundfelder stabil halten, plugin-spezifische Payloads an registrierte Jobtypen und Importprofile binden und Validierung vor Start sowie bei Worker-Updates kontrolliert ausbauen
 
-42. Stale-Detection für Plugin-Worker ist bisher nur diagnostisch und ohne automatische Recovery
+45. Stale-Detection für Plugin-Worker ist bisher nur diagnostisch und ohne automatische Recovery
    - Impact: mittel bis hoch (hängende oder verwaiste Jobs werden sichtbar, aber noch nicht aktiv bereinigt oder neu angestoßen)
    - Wahrscheinlichkeit: mittel
    - Maßnahme: die aktuelle Host-Diagnostik über `heartbeatAt`, `lastProgressAt` und `runtime.staleState` als Operator-Signal nutzen; Recovery-, Requeue- oder Dead-Letter-Strategie erst in einem getrennten Folgechange einführen

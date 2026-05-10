@@ -3,14 +3,17 @@ import {
   evaluateAuthorizeDecision,
   getWasteManagementImportCatalogEntry,
   wasteManagementOperationsContract,
+  wasteManagementMasterDataContract,
   type StudioJobStartRequest,
   type WasteManagementAuditOverview,
   type WasteManagementAuditQuery,
+  type WasteManagementHistoryOverview,
   type WasteManagementConnectionCheckRecord,
   type WasteManagementDataSourceRecord,
   type WasteCityRecord,
   type WasteCollectionLocationRecord,
   type WasteFractionRecord,
+  type WasteHouseNumberRecord,
   type WasteRegionRecord,
   type WasteManagementMasterDataOverview,
   type WasteManagementSchedulingOverview,
@@ -22,6 +25,7 @@ import {
   type WasteLocationTourLinkRecord,
   type WasteManagementSettingsRecord,
   type WasteCustomTourDate,
+  type WasteStreetRecord,
   type WasteTourDateShiftRecord,
   type WasteTourRecord,
   type WasteTourRecurrence,
@@ -58,6 +62,7 @@ const wasteManagementSettingsSchema = z.object({
 const createWasteFractionSchema = z.object({
   id: z.string().trim().min(1),
   name: z.string().trim().min(1),
+  translations: z.record(z.string().trim().min(1), z.string().trim().min(1)).optional(),
   containerSize: z.string().trim().min(1).optional(),
   color: z.string().trim().regex(/^#[0-9a-fA-F]{6}$/, 'Ungültiger Hex-Farbwert.'),
   description: z.string().trim().min(1).optional(),
@@ -80,6 +85,22 @@ const createWasteCitySchema = z.object({
 });
 
 const updateWasteCitySchema = createWasteCitySchema.omit({ id: true });
+
+const createWasteStreetSchema = z.object({
+  id: z.string().trim().min(1),
+  name: z.string().trim().min(1),
+  cityId: z.string().trim().min(1),
+});
+
+const updateWasteStreetSchema = createWasteStreetSchema.omit({ id: true });
+
+const createWasteHouseNumberSchema = z.object({
+  id: z.string().trim().min(1),
+  number: z.string().trim().min(1),
+  streetId: z.string().trim().min(1),
+});
+
+const updateWasteHouseNumberSchema = createWasteHouseNumberSchema.omit({ id: true });
 
 const createWasteCollectionLocationSchema = z.object({
   id: z.string().trim().min(1),
@@ -144,6 +165,9 @@ const createWasteTourDateShiftSchema = z.object({
   originalDate: wasteTourDateSchema,
   actualDate: wasteTourDateSchema,
   hasYear: z.boolean(),
+  reasonType: z.enum(wasteManagementMasterDataContract.dateShiftReasonTypes).optional(),
+  reasonKey: z.string().trim().min(1).optional(),
+  followUpMode: z.enum(wasteManagementMasterDataContract.followUpModes).optional(),
   description: z.string().trim().min(1).optional(),
 });
 
@@ -154,6 +178,8 @@ const createWasteGlobalDateShiftSchema = z.object({
   originalDate: wasteTourDateSchema,
   actualDate: wasteTourDateSchema,
   hasYear: z.boolean(),
+  reasonType: z.enum(wasteManagementMasterDataContract.dateShiftReasonTypes).optional(),
+  reasonKey: z.string().trim().min(1).optional(),
   description: z.string().trim().min(1).optional(),
   tourIds: z.array(z.string().trim().min(1)).optional(),
 });
@@ -167,6 +193,7 @@ const startMigrationsSchema = z.object({
 
 const startImportSchema = z.object({
   importProfileId: z.string().trim().min(1),
+  sourceFormat: z.string().trim().min(1),
   blobRef: z.string().trim().min(1),
   dryRun: z.boolean().optional(),
 });
@@ -211,6 +238,7 @@ type WasteManagementHandlerDeps = {
   }) => Promise<Response>;
   readonly emitAuditEvent?: typeof emitAuthAuditEvent;
   readonly loadWasteAuditOverview?: (query: WasteManagementAuditQuery) => Promise<WasteManagementAuditOverview>;
+  readonly loadWasteHistoryOverview?: (query: WasteManagementAuditQuery) => Promise<WasteManagementHistoryOverview>;
   readonly loadMasterDataOverview?: (instanceId: string) => Promise<WasteManagementMasterDataOverview>;
   readonly loadToursOverview?: (instanceId: string) => Promise<WasteManagementToursOverview>;
   readonly loadSchedulingOverview?: (instanceId: string) => Promise<WasteManagementSchedulingOverview>;
@@ -220,6 +248,16 @@ type WasteManagementHandlerDeps = {
   readonly loadWasteRegionById?: (instanceId: string, regionId: string) => Promise<WasteRegionRecord | null>;
   readonly saveWasteCity?: (instanceId: string, input: Omit<WasteCityRecord, 'createdAt' | 'updatedAt'>) => Promise<void>;
   readonly loadWasteCityById?: (instanceId: string, cityId: string) => Promise<WasteCityRecord | null>;
+  readonly saveWasteStreet?: (instanceId: string, input: Omit<WasteStreetRecord, 'createdAt' | 'updatedAt'>) => Promise<void>;
+  readonly loadWasteStreetById?: (instanceId: string, streetId: string) => Promise<WasteStreetRecord | null>;
+  readonly saveWasteHouseNumber?: (
+    instanceId: string,
+    input: Omit<WasteHouseNumberRecord, 'createdAt' | 'updatedAt'>
+  ) => Promise<void>;
+  readonly loadWasteHouseNumberById?: (
+    instanceId: string,
+    houseNumberId: string
+  ) => Promise<WasteHouseNumberRecord | null>;
   readonly saveWasteCollectionLocation?: (
     instanceId: string,
     input: Omit<WasteCollectionLocationRecord, 'createdAt' | 'updatedAt'>
@@ -347,6 +385,66 @@ const buildSettingsRecord = async (
     lastCheckErrorMessage: existing?.lastCheckErrorMessage,
     updatedAt: existing?.updatedAt,
   };
+};
+
+const persistWasteConnectionState = async (
+  deps: WasteManagementHandlerDeps,
+  record: WasteManagementConnectionCheckRecord
+): Promise<void> => {
+  if (!deps.saveWasteConnectionCheck) {
+    return;
+  }
+
+  await deps.saveWasteConnectionCheck(record);
+};
+
+const updateWasteVisibleStatus = async (
+  deps: WasteManagementHandlerDeps,
+  instanceId: string,
+  outcome: 'success' | 'revalidate'
+): Promise<void> => {
+  if (!deps.saveWasteConnectionCheck) {
+    return;
+  }
+
+  if (outcome === 'success') {
+    await persistWasteConnectionState(deps, {
+      instanceId,
+      checkedAt: new Date().toISOString(),
+      checkStatus: 'succeeded',
+      visibleStatus: 'ok',
+    });
+    return;
+  }
+
+  if (!deps.loadWasteDataSourceRecord || !deps.revealSecret) {
+    return;
+  }
+
+  try {
+    const dataSource = await resolveWasteDataSource({
+      instanceId,
+      loadRecord: deps.loadWasteDataSourceRecord,
+      revealSecret: (ciphertext, aad) => deps.revealSecret?.(ciphertext, aad) ?? undefined,
+    });
+    const connectionCheck = await runWasteConnectionCheck({
+      dataSource,
+      probe: deps.runConnectionProbe ?? defaultRunConnectionProbe,
+      now: () => new Date(),
+    });
+    await persistWasteConnectionState(deps, connectionCheck);
+  } catch (error) {
+    const errorCode = error instanceof Error && 'code' in error && typeof error.code === 'string' ? error.code : 'connection_failed';
+    const errorMessage = error instanceof Error ? error.message : 'Connection-Check fehlgeschlagen.';
+    await persistWasteConnectionState(deps, {
+      instanceId,
+      checkedAt: new Date().toISOString(),
+      checkStatus: 'failed',
+      visibleStatus: 'error',
+      errorCode,
+      errorMessage,
+    });
+  }
 };
 
 const startPluginOperationJobFromFacade = async (input: {
@@ -590,7 +688,7 @@ export const getWasteManagementHistoryInternal = async (
   const search = new URL(request.url).searchParams.get('q')?.trim() || undefined;
 
   try {
-    const overview = await requireDeps(deps.loadWasteAuditOverview, 'loadWasteAuditOverview')({
+    const overview = await requireDeps(deps.loadWasteHistoryOverview, 'loadWasteHistoryOverview')({
       instanceId,
       search,
       page,
@@ -623,11 +721,13 @@ export const getWasteManagementMasterDataOverviewInternal = async (
 
   try {
     const overview = await requireDeps(deps.loadMasterDataOverview, 'loadMasterDataOverview')(instanceId);
+    await updateWasteVisibleStatus(deps, instanceId, 'success');
     return new Response(JSON.stringify(asApiItem(overview, requestId)), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
   } catch {
+    await updateWasteVisibleStatus(deps, instanceId, 'revalidate');
     return createApiError(
       503,
       'database_unavailable',
@@ -672,6 +772,7 @@ export const createWasteManagementFractionInternal = async (
     await requireDeps(deps.saveWasteFraction, 'saveWasteFraction')(instanceId, {
       id: parsed.data.id,
       name: parsed.data.name.trim(),
+      translations: parsed.data.translations,
       containerSize: normalizeOptionalString(parsed.data.containerSize),
       color: parsed.data.color,
       description: normalizeOptionalString(parsed.data.description),
@@ -703,6 +804,7 @@ export const createWasteManagementFractionInternal = async (
       resourceId: saved.id,
     });
 
+    await updateWasteVisibleStatus(deps, instanceId, 'success');
     return new Response(JSON.stringify(asApiItem(saved, requestId)), {
       status: 201,
       headers: { 'Content-Type': 'application/json' },
@@ -721,6 +823,7 @@ export const createWasteManagementFractionInternal = async (
       resourceType: 'waste_fraction',
       resourceId: parsed.data.id,
     });
+    await updateWasteVisibleStatus(deps, instanceId, 'revalidate');
     return createApiError(503, 'database_unavailable', 'Die Waste-Fraktion konnte nicht gespeichert werden.', requestId);
   }
 };
@@ -770,6 +873,7 @@ export const updateWasteManagementFractionInternal = async (
     await requireDeps(deps.saveWasteFraction, 'saveWasteFraction')(instanceId, {
       id: fractionId,
       name: parsed.data.name.trim(),
+      translations: parsed.data.translations,
       containerSize: normalizeOptionalString(parsed.data.containerSize),
       color: parsed.data.color,
       description: normalizeOptionalString(parsed.data.description),
@@ -801,6 +905,7 @@ export const updateWasteManagementFractionInternal = async (
       resourceId: saved.id,
     });
 
+    await updateWasteVisibleStatus(deps, instanceId, 'success');
     return new Response(JSON.stringify(asApiItem(saved, requestId)), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
@@ -819,6 +924,7 @@ export const updateWasteManagementFractionInternal = async (
       resourceType: 'waste_fraction',
       resourceId: fractionId,
     });
+    await updateWasteVisibleStatus(deps, instanceId, 'revalidate');
     return createApiError(503, 'database_unavailable', 'Die Waste-Fraktion konnte nicht gespeichert werden.', requestId);
   }
 };
@@ -885,6 +991,7 @@ export const createWasteManagementRegionInternal = async (
       resourceId: saved.id,
     });
 
+    await updateWasteVisibleStatus(deps, instanceId, 'success');
     return new Response(JSON.stringify(asApiItem(saved, requestId)), {
       status: 201,
       headers: { 'Content-Type': 'application/json' },
@@ -903,6 +1010,7 @@ export const createWasteManagementRegionInternal = async (
       resourceType: 'waste_region',
       resourceId: parsed.data.id,
     });
+    await updateWasteVisibleStatus(deps, instanceId, 'revalidate');
     return createApiError(503, 'database_unavailable', 'Die Waste-Region konnte nicht gespeichert werden.', requestId);
   }
 };
@@ -979,6 +1087,7 @@ export const updateWasteManagementRegionInternal = async (
       resourceId: saved.id,
     });
 
+    await updateWasteVisibleStatus(deps, instanceId, 'success');
     return new Response(JSON.stringify(asApiItem(saved, requestId)), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
@@ -997,6 +1106,7 @@ export const updateWasteManagementRegionInternal = async (
       resourceType: 'waste_region',
       resourceId: regionId,
     });
+    await updateWasteVisibleStatus(deps, instanceId, 'revalidate');
     return createApiError(503, 'database_unavailable', 'Die Waste-Region konnte nicht gespeichert werden.', requestId);
   }
 };
@@ -1064,6 +1174,7 @@ export const createWasteManagementCityInternal = async (
       resourceId: saved.id,
     });
 
+    await updateWasteVisibleStatus(deps, instanceId, 'success');
     return new Response(JSON.stringify(asApiItem(saved, requestId)), {
       status: 201,
       headers: { 'Content-Type': 'application/json' },
@@ -1082,6 +1193,7 @@ export const createWasteManagementCityInternal = async (
       resourceType: 'waste_city',
       resourceId: parsed.data.id,
     });
+    await updateWasteVisibleStatus(deps, instanceId, 'revalidate');
     return createApiError(503, 'database_unavailable', 'Die Waste-Stadt konnte nicht gespeichert werden.', requestId);
   }
 };
@@ -1159,6 +1271,7 @@ export const updateWasteManagementCityInternal = async (
       resourceId: saved.id,
     });
 
+    await updateWasteVisibleStatus(deps, instanceId, 'success');
     return new Response(JSON.stringify(asApiItem(saved, requestId)), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
@@ -1177,7 +1290,385 @@ export const updateWasteManagementCityInternal = async (
       resourceType: 'waste_city',
       resourceId: cityId,
     });
+    await updateWasteVisibleStatus(deps, instanceId, 'revalidate');
     return createApiError(503, 'database_unavailable', 'Die Waste-Stadt konnte nicht gespeichert werden.', requestId);
+  }
+};
+
+export const createWasteManagementStreetInternal = async (
+  request: Request,
+  ctx: AuthenticatedRequestContext,
+  deps: WasteManagementHandlerDeps = {}
+): Promise<Response> => {
+  const requestId = getRequestId(deps);
+  const authError = await authorizeWasteManagementAction(
+    ctx,
+    'waste-management.master-data.manage',
+    deps,
+    requestId
+  );
+  if (authError) {
+    return authError;
+  }
+
+  const instanceId = requireActorInstanceId(ctx, requestId);
+  if (instanceId instanceof Response) {
+    return instanceId;
+  }
+
+  const csrfError = validateCsrf(request, requestId);
+  if (csrfError) {
+    return csrfError;
+  }
+
+  const parsed = await parseRequestBody(request, createWasteStreetSchema);
+  if (!parsed.ok) {
+    return createApiError(400, 'invalid_request', parsed.message, requestId);
+  }
+
+  try {
+    await requireDeps(deps.saveWasteStreet, 'saveWasteStreet')(instanceId, {
+      id: parsed.data.id,
+      name: parsed.data.name.trim(),
+      cityId: parsed.data.cityId,
+    });
+
+    const saved = await requireDeps(deps.loadWasteStreetById, 'loadWasteStreetById')(instanceId, parsed.data.id);
+    if (!saved) {
+      await emitWasteAuditEvent({
+        deps,
+        ctx,
+        instanceId,
+        actionId: 'waste-management.street.created',
+        result: 'failure',
+        reasonCode: 'verification_failed',
+        resourceType: 'waste_street',
+        resourceId: parsed.data.id,
+      });
+      return createApiError(503, 'database_unavailable', 'Die Waste-Straße konnte nicht verifiziert werden.', requestId);
+    }
+
+    await emitWasteAuditEvent({
+      deps,
+      ctx,
+      instanceId,
+      actionId: 'waste-management.street.created',
+      result: 'success',
+      resourceType: 'waste_street',
+      resourceId: saved.id,
+    });
+
+    await updateWasteVisibleStatus(deps, instanceId, 'success');
+    return new Response(JSON.stringify(asApiItem(saved, requestId)), {
+      status: 201,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith('missing_dependency:')) {
+      throw error;
+    }
+    await emitWasteAuditEvent({
+      deps,
+      ctx,
+      instanceId,
+      actionId: 'waste-management.street.created',
+      result: 'failure',
+      reasonCode: 'database_unavailable',
+      resourceType: 'waste_street',
+      resourceId: parsed.data.id,
+    });
+    await updateWasteVisibleStatus(deps, instanceId, 'revalidate');
+    return createApiError(503, 'database_unavailable', 'Die Waste-Straße konnte nicht gespeichert werden.', requestId);
+  }
+};
+
+export const updateWasteManagementStreetInternal = async (
+  request: Request,
+  ctx: AuthenticatedRequestContext,
+  deps: WasteManagementHandlerDeps = {}
+): Promise<Response> => {
+  const requestId = getRequestId(deps);
+  const authError = await authorizeWasteManagementAction(
+    ctx,
+    'waste-management.master-data.manage',
+    deps,
+    requestId
+  );
+  if (authError) {
+    return authError;
+  }
+
+  const instanceId = requireActorInstanceId(ctx, requestId);
+  if (instanceId instanceof Response) {
+    return instanceId;
+  }
+
+  const streetId = readPathSegment(request, 4)?.trim();
+  if (!streetId) {
+    return createApiError(400, 'invalid_request', 'streetId fehlt im Pfad.', requestId);
+  }
+
+  const csrfError = validateCsrf(request, requestId);
+  if (csrfError) {
+    return csrfError;
+  }
+
+  const parsed = await parseRequestBody(request, updateWasteStreetSchema);
+  if (!parsed.ok) {
+    return createApiError(400, 'invalid_request', parsed.message, requestId);
+  }
+
+  try {
+    const existing = await requireDeps(deps.loadWasteStreetById, 'loadWasteStreetById')(instanceId, streetId);
+    if (!existing) {
+      return createApiError(404, 'not_found', 'Die Waste-Straße wurde nicht gefunden.', requestId);
+    }
+
+    await requireDeps(deps.saveWasteStreet, 'saveWasteStreet')(instanceId, {
+      id: streetId,
+      name: parsed.data.name.trim(),
+      cityId: parsed.data.cityId,
+    });
+
+    const saved = await requireDeps(deps.loadWasteStreetById, 'loadWasteStreetById')(instanceId, streetId);
+    if (!saved) {
+      await emitWasteAuditEvent({
+        deps,
+        ctx,
+        instanceId,
+        actionId: 'waste-management.street.updated',
+        result: 'failure',
+        reasonCode: 'verification_failed',
+        resourceType: 'waste_street',
+        resourceId: streetId,
+      });
+      return createApiError(503, 'database_unavailable', 'Die Waste-Straße konnte nicht verifiziert werden.', requestId);
+    }
+
+    await emitWasteAuditEvent({
+      deps,
+      ctx,
+      instanceId,
+      actionId: 'waste-management.street.updated',
+      result: 'success',
+      resourceType: 'waste_street',
+      resourceId: saved.id,
+    });
+
+    await updateWasteVisibleStatus(deps, instanceId, 'success');
+    return new Response(JSON.stringify(asApiItem(saved, requestId)), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith('missing_dependency:')) {
+      throw error;
+    }
+    await emitWasteAuditEvent({
+      deps,
+      ctx,
+      instanceId,
+      actionId: 'waste-management.street.updated',
+      result: 'failure',
+      reasonCode: 'database_unavailable',
+      resourceType: 'waste_street',
+      resourceId: streetId,
+    });
+    await updateWasteVisibleStatus(deps, instanceId, 'revalidate');
+    return createApiError(503, 'database_unavailable', 'Die Waste-Straße konnte nicht gespeichert werden.', requestId);
+  }
+};
+
+export const createWasteManagementHouseNumberInternal = async (
+  request: Request,
+  ctx: AuthenticatedRequestContext,
+  deps: WasteManagementHandlerDeps = {}
+): Promise<Response> => {
+  const requestId = getRequestId(deps);
+  const authError = await authorizeWasteManagementAction(
+    ctx,
+    'waste-management.master-data.manage',
+    deps,
+    requestId
+  );
+  if (authError) {
+    return authError;
+  }
+
+  const instanceId = requireActorInstanceId(ctx, requestId);
+  if (instanceId instanceof Response) {
+    return instanceId;
+  }
+
+  const csrfError = validateCsrf(request, requestId);
+  if (csrfError) {
+    return csrfError;
+  }
+
+  const parsed = await parseRequestBody(request, createWasteHouseNumberSchema);
+  if (!parsed.ok) {
+    return createApiError(400, 'invalid_request', parsed.message, requestId);
+  }
+
+  try {
+    await requireDeps(deps.saveWasteHouseNumber, 'saveWasteHouseNumber')(instanceId, {
+      id: parsed.data.id,
+      number: parsed.data.number.trim(),
+      streetId: parsed.data.streetId,
+    });
+
+    const saved = await requireDeps(
+      deps.loadWasteHouseNumberById,
+      'loadWasteHouseNumberById'
+    )(instanceId, parsed.data.id);
+    if (!saved) {
+      await emitWasteAuditEvent({
+        deps,
+        ctx,
+        instanceId,
+        actionId: 'waste-management.house-number.created',
+        result: 'failure',
+        reasonCode: 'verification_failed',
+        resourceType: 'waste_house_number',
+        resourceId: parsed.data.id,
+      });
+      return createApiError(503, 'database_unavailable', 'Die Waste-Hausnummer konnte nicht verifiziert werden.', requestId);
+    }
+
+    await emitWasteAuditEvent({
+      deps,
+      ctx,
+      instanceId,
+      actionId: 'waste-management.house-number.created',
+      result: 'success',
+      resourceType: 'waste_house_number',
+      resourceId: saved.id,
+    });
+
+    await updateWasteVisibleStatus(deps, instanceId, 'success');
+    return new Response(JSON.stringify(asApiItem(saved, requestId)), {
+      status: 201,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith('missing_dependency:')) {
+      throw error;
+    }
+    await emitWasteAuditEvent({
+      deps,
+      ctx,
+      instanceId,
+      actionId: 'waste-management.house-number.created',
+      result: 'failure',
+      reasonCode: 'database_unavailable',
+      resourceType: 'waste_house_number',
+      resourceId: parsed.data.id,
+    });
+    await updateWasteVisibleStatus(deps, instanceId, 'revalidate');
+    return createApiError(503, 'database_unavailable', 'Die Waste-Hausnummer konnte nicht gespeichert werden.', requestId);
+  }
+};
+
+export const updateWasteManagementHouseNumberInternal = async (
+  request: Request,
+  ctx: AuthenticatedRequestContext,
+  deps: WasteManagementHandlerDeps = {}
+): Promise<Response> => {
+  const requestId = getRequestId(deps);
+  const authError = await authorizeWasteManagementAction(
+    ctx,
+    'waste-management.master-data.manage',
+    deps,
+    requestId
+  );
+  if (authError) {
+    return authError;
+  }
+
+  const instanceId = requireActorInstanceId(ctx, requestId);
+  if (instanceId instanceof Response) {
+    return instanceId;
+  }
+
+  const houseNumberId = readPathSegment(request, 4)?.trim();
+  if (!houseNumberId) {
+    return createApiError(400, 'invalid_request', 'houseNumberId fehlt im Pfad.', requestId);
+  }
+
+  const csrfError = validateCsrf(request, requestId);
+  if (csrfError) {
+    return csrfError;
+  }
+
+  const parsed = await parseRequestBody(request, updateWasteHouseNumberSchema);
+  if (!parsed.ok) {
+    return createApiError(400, 'invalid_request', parsed.message, requestId);
+  }
+
+  try {
+    const existing = await requireDeps(
+      deps.loadWasteHouseNumberById,
+      'loadWasteHouseNumberById'
+    )(instanceId, houseNumberId);
+    if (!existing) {
+      return createApiError(404, 'not_found', 'Die Waste-Hausnummer wurde nicht gefunden.', requestId);
+    }
+
+    await requireDeps(deps.saveWasteHouseNumber, 'saveWasteHouseNumber')(instanceId, {
+      id: houseNumberId,
+      number: parsed.data.number.trim(),
+      streetId: parsed.data.streetId,
+    });
+
+    const saved = await requireDeps(
+      deps.loadWasteHouseNumberById,
+      'loadWasteHouseNumberById'
+    )(instanceId, houseNumberId);
+    if (!saved) {
+      await emitWasteAuditEvent({
+        deps,
+        ctx,
+        instanceId,
+        actionId: 'waste-management.house-number.updated',
+        result: 'failure',
+        reasonCode: 'verification_failed',
+        resourceType: 'waste_house_number',
+        resourceId: houseNumberId,
+      });
+      return createApiError(503, 'database_unavailable', 'Die Waste-Hausnummer konnte nicht verifiziert werden.', requestId);
+    }
+
+    await emitWasteAuditEvent({
+      deps,
+      ctx,
+      instanceId,
+      actionId: 'waste-management.house-number.updated',
+      result: 'success',
+      resourceType: 'waste_house_number',
+      resourceId: saved.id,
+    });
+
+    await updateWasteVisibleStatus(deps, instanceId, 'success');
+    return new Response(JSON.stringify(asApiItem(saved, requestId)), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith('missing_dependency:')) {
+      throw error;
+    }
+    await emitWasteAuditEvent({
+      deps,
+      ctx,
+      instanceId,
+      actionId: 'waste-management.house-number.updated',
+      result: 'failure',
+      reasonCode: 'database_unavailable',
+      resourceType: 'waste_house_number',
+      resourceId: houseNumberId,
+    });
+    await updateWasteVisibleStatus(deps, instanceId, 'revalidate');
+    return createApiError(503, 'database_unavailable', 'Die Waste-Hausnummer konnte nicht gespeichert werden.', requestId);
   }
 };
 
@@ -1255,6 +1746,7 @@ export const createWasteManagementCollectionLocationInternal = async (
       resourceId: saved.id,
     });
 
+    await updateWasteVisibleStatus(deps, instanceId, 'success');
     return new Response(JSON.stringify(asApiItem(saved, requestId)), {
       status: 201,
       headers: { 'Content-Type': 'application/json' },
@@ -1273,6 +1765,7 @@ export const createWasteManagementCollectionLocationInternal = async (
       resourceType: 'waste_collection_location',
       resourceId: parsed.data.id,
     });
+    await updateWasteVisibleStatus(deps, instanceId, 'revalidate');
     return createApiError(503, 'database_unavailable', 'Der Waste-Abholort konnte nicht gespeichert werden.', requestId);
   }
 };
@@ -1364,6 +1857,7 @@ export const updateWasteManagementCollectionLocationInternal = async (
       resourceId: saved.id,
     });
 
+    await updateWasteVisibleStatus(deps, instanceId, 'success');
     return new Response(JSON.stringify(asApiItem(saved, requestId)), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
@@ -1382,6 +1876,7 @@ export const updateWasteManagementCollectionLocationInternal = async (
       resourceType: 'waste_collection_location',
       resourceId: locationId,
     });
+    await updateWasteVisibleStatus(deps, instanceId, 'revalidate');
     return createApiError(503, 'database_unavailable', 'Der Waste-Abholort konnte nicht gespeichert werden.', requestId);
   }
 };
@@ -1454,6 +1949,7 @@ export const createWasteManagementLocationTourLinkInternal = async (
       resourceId: saved.id,
     });
 
+    await updateWasteVisibleStatus(deps, instanceId, 'success');
     return new Response(JSON.stringify(asApiItem(saved, requestId)), {
       status: 201,
       headers: { 'Content-Type': 'application/json' },
@@ -1472,6 +1968,7 @@ export const createWasteManagementLocationTourLinkInternal = async (
       resourceType: 'waste_location_tour_link',
       resourceId: parsed.data.id,
     });
+    await updateWasteVisibleStatus(deps, instanceId, 'revalidate');
     return createApiError(
       503,
       'database_unavailable',
@@ -1562,6 +2059,7 @@ export const updateWasteManagementLocationTourLinkInternal = async (
       resourceId: saved.id,
     });
 
+    await updateWasteVisibleStatus(deps, instanceId, 'success');
     return new Response(JSON.stringify(asApiItem(saved, requestId)), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
@@ -1580,6 +2078,7 @@ export const updateWasteManagementLocationTourLinkInternal = async (
       resourceType: 'waste_location_tour_link',
       resourceId: linkId,
     });
+    await updateWasteVisibleStatus(deps, instanceId, 'revalidate');
     return createApiError(
       503,
       'database_unavailable',
@@ -1653,6 +2152,7 @@ export const createWasteManagementLocationTourLinksBulkInternal = async (
       resourceId: parsed.data.tourId,
     });
 
+    await updateWasteVisibleStatus(deps, instanceId, 'success');
     return new Response(JSON.stringify(asApiItem(result, requestId)), {
       status: 201,
       headers: { 'Content-Type': 'application/json' },
@@ -1671,6 +2171,7 @@ export const createWasteManagementLocationTourLinksBulkInternal = async (
       resourceType: 'waste_location_tour_link_batch',
       resourceId: parsed.data.tourId,
     });
+    await updateWasteVisibleStatus(deps, instanceId, 'revalidate');
     return createApiError(
       503,
       'database_unavailable',
@@ -1698,11 +2199,13 @@ export const getWasteManagementToursOverviewInternal = async (
 
   try {
     const overview = await requireDeps(deps.loadToursOverview, 'loadToursOverview')(instanceId);
+    await updateWasteVisibleStatus(deps, instanceId, 'success');
     return new Response(JSON.stringify(asApiItem(overview, requestId)), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
   } catch {
+    await updateWasteVisibleStatus(deps, instanceId, 'revalidate');
     return createApiError(503, 'database_unavailable', 'Die Waste-Touren konnten nicht geladen werden.', requestId);
   }
 };
@@ -1772,6 +2275,7 @@ export const createWasteManagementTourInternal = async (
       resourceId: saved.id,
     });
 
+    await updateWasteVisibleStatus(deps, instanceId, 'success');
     return new Response(JSON.stringify(asApiItem(saved, requestId)), {
       status: 201,
       headers: { 'Content-Type': 'application/json' },
@@ -1790,6 +2294,7 @@ export const createWasteManagementTourInternal = async (
       resourceType: 'waste_tour',
       resourceId: parsed.data.id,
     });
+    await updateWasteVisibleStatus(deps, instanceId, 'revalidate');
     return createApiError(503, 'database_unavailable', 'Die Waste-Tour konnte nicht gespeichert werden.', requestId);
   }
 };
@@ -1869,6 +2374,7 @@ export const updateWasteManagementTourInternal = async (
       resourceId: saved.id,
     });
 
+    await updateWasteVisibleStatus(deps, instanceId, 'success');
     return new Response(JSON.stringify(asApiItem(saved, requestId)), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
@@ -1887,6 +2393,7 @@ export const updateWasteManagementTourInternal = async (
       resourceType: 'waste_tour',
       resourceId: tourId,
     });
+    await updateWasteVisibleStatus(deps, instanceId, 'revalidate');
     return createApiError(503, 'database_unavailable', 'Die Waste-Tour konnte nicht gespeichert werden.', requestId);
   }
 };
@@ -1909,11 +2416,13 @@ export const getWasteManagementSchedulingOverviewInternal = async (
 
   try {
     const overview = await requireDeps(deps.loadSchedulingOverview, 'loadSchedulingOverview')(instanceId);
+    await updateWasteVisibleStatus(deps, instanceId, 'success');
     return new Response(JSON.stringify(asApiItem(overview, requestId)), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
   } catch {
+    await updateWasteVisibleStatus(deps, instanceId, 'revalidate');
     return createApiError(
       503,
       'database_unavailable',
@@ -1956,6 +2465,9 @@ export const createWasteManagementTourDateShiftInternal = async (
       originalDate: parsed.data.originalDate,
       actualDate: parsed.data.actualDate,
       hasYear: parsed.data.hasYear,
+      reasonType: parsed.data.reasonType,
+      reasonKey: normalizeOptionalString(parsed.data.reasonKey),
+      followUpMode: parsed.data.followUpMode,
       description: normalizeOptionalString(parsed.data.description),
     });
 
@@ -1992,6 +2504,7 @@ export const createWasteManagementTourDateShiftInternal = async (
       resourceId: saved.id,
     });
 
+    await updateWasteVisibleStatus(deps, instanceId, 'success');
     return new Response(JSON.stringify(asApiItem(saved, requestId)), {
       status: 201,
       headers: { 'Content-Type': 'application/json' },
@@ -2010,6 +2523,7 @@ export const createWasteManagementTourDateShiftInternal = async (
       resourceType: 'waste_tour_date_shift',
       resourceId: parsed.data.id,
     });
+    await updateWasteVisibleStatus(deps, instanceId, 'revalidate');
     return createApiError(
       503,
       'database_unavailable',
@@ -2062,6 +2576,9 @@ export const updateWasteManagementTourDateShiftInternal = async (
       originalDate: parsed.data.originalDate,
       actualDate: parsed.data.actualDate,
       hasYear: parsed.data.hasYear,
+      reasonType: parsed.data.reasonType,
+      reasonKey: normalizeOptionalString(parsed.data.reasonKey),
+      followUpMode: parsed.data.followUpMode,
       description: normalizeOptionalString(parsed.data.description),
     });
 
@@ -2095,6 +2612,7 @@ export const updateWasteManagementTourDateShiftInternal = async (
       resourceId: saved.id,
     });
 
+    await updateWasteVisibleStatus(deps, instanceId, 'success');
     return new Response(JSON.stringify(asApiItem(saved, requestId)), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
@@ -2113,6 +2631,7 @@ export const updateWasteManagementTourDateShiftInternal = async (
       resourceType: 'waste_tour_date_shift',
       resourceId: shiftId,
     });
+    await updateWasteVisibleStatus(deps, instanceId, 'revalidate');
     return createApiError(
       503,
       'database_unavailable',
@@ -2154,6 +2673,8 @@ export const createWasteManagementGlobalDateShiftInternal = async (
       originalDate: parsed.data.originalDate,
       actualDate: parsed.data.actualDate,
       hasYear: parsed.data.hasYear,
+      reasonType: parsed.data.reasonType,
+      reasonKey: normalizeOptionalString(parsed.data.reasonKey),
       description: normalizeOptionalString(parsed.data.description),
       tourIds: parsed.data.tourIds?.length ? parsed.data.tourIds.map((value) => value.trim()) : undefined,
     });
@@ -2191,6 +2712,7 @@ export const createWasteManagementGlobalDateShiftInternal = async (
       resourceId: saved.id,
     });
 
+    await updateWasteVisibleStatus(deps, instanceId, 'success');
     return new Response(JSON.stringify(asApiItem(saved, requestId)), {
       status: 201,
       headers: { 'Content-Type': 'application/json' },
@@ -2209,6 +2731,7 @@ export const createWasteManagementGlobalDateShiftInternal = async (
       resourceType: 'waste_global_date_shift',
       resourceId: parsed.data.id,
     });
+    await updateWasteVisibleStatus(deps, instanceId, 'revalidate');
     return createApiError(
       503,
       'database_unavailable',
@@ -2263,6 +2786,8 @@ export const updateWasteManagementGlobalDateShiftInternal = async (
       originalDate: parsed.data.originalDate,
       actualDate: parsed.data.actualDate,
       hasYear: parsed.data.hasYear,
+      reasonType: parsed.data.reasonType,
+      reasonKey: normalizeOptionalString(parsed.data.reasonKey),
       description: normalizeOptionalString(parsed.data.description),
       tourIds: parsed.data.tourIds?.length ? parsed.data.tourIds.map((value) => value.trim()) : undefined,
     });
@@ -2300,6 +2825,7 @@ export const updateWasteManagementGlobalDateShiftInternal = async (
       resourceId: saved.id,
     });
 
+    await updateWasteVisibleStatus(deps, instanceId, 'success');
     return new Response(JSON.stringify(asApiItem(saved, requestId)), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
@@ -2318,6 +2844,7 @@ export const updateWasteManagementGlobalDateShiftInternal = async (
       resourceType: 'waste_global_date_shift',
       resourceId: shiftId,
     });
+    await updateWasteVisibleStatus(deps, instanceId, 'revalidate');
     return createApiError(
       503,
       'database_unavailable',
@@ -2383,6 +2910,25 @@ export const updateWasteManagementSettingsInternal = async (
       lastCheckErrorMessage: connectionCheck.errorMessage,
     } satisfies WasteManagementDataSourceRecord;
 
+    await emitWasteAuditEvent({
+      deps,
+      ctx,
+      instanceId,
+      actionId: 'waste-management.datasource.reconfigured',
+      result: 'success',
+      resourceType: 'waste_data_source',
+      resourceId: instanceId,
+    });
+    await emitWasteAuditEvent({
+      deps,
+      ctx,
+      instanceId,
+      actionId: `waste-management.connection-check.${connectionCheck.checkStatus}`,
+      result: connectionCheck.checkStatus === 'succeeded' ? 'success' : 'failure',
+      reasonCode: connectionCheck.errorCode,
+      resourceType: 'waste_data_source',
+      resourceId: instanceId,
+    });
     await emitWasteAuditEvent({
       deps,
       ctx,
@@ -2534,6 +3080,25 @@ export const startWasteManagementImportInternal = async (
           message: 'Für das Importprofil fehlt ein fachlicher Katalogeintrag.',
           path: ['importProfileId'],
         });
+        return;
+      }
+
+      if (!wasteManagementOperationsContract.isImportSourceFormat(value.sourceFormat)) {
+        refinementCtx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Unbekanntes Waste-Importformat.',
+          path: ['sourceFormat'],
+        });
+        return;
+      }
+
+      const catalogEntry = getWasteManagementImportCatalogEntry(value.importProfileId);
+      if (catalogEntry && !catalogEntry.sourceFormats.includes(value.sourceFormat)) {
+        refinementCtx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Das Waste-Importprofil unterstützt dieses Quellformat nicht.',
+          path: ['sourceFormat'],
+        });
       }
     }),
     jobTypeId: wasteManagementOperationsContract.jobTypeIds.importData,
@@ -2541,7 +3106,7 @@ export const startWasteManagementImportInternal = async (
     toPayload: (data) => ({
       operation: 'import-data',
       importProfileId: data.importProfileId,
-      sourceFormat: 'text/csv',
+      sourceFormat: data.sourceFormat,
       dryRun: data.dryRun === true,
       blobRef: data.blobRef,
     }),

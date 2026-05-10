@@ -24,6 +24,7 @@ describe('waste master data repository', () => {
       {
         id: 'fraction-1',
         name: 'Bioabfall',
+        label_translations: { de: 'Bioabfall', en: 'Organic waste' },
         container_size: null,
         color: '#00AA00',
         description: null,
@@ -42,6 +43,7 @@ describe('waste master data repository', () => {
       {
         id: 'fraction-1',
         name: 'Bioabfall',
+        translations: { de: 'Bioabfall', en: 'Organic waste' },
         containerSize: undefined,
         color: '#00AA00',
         description: undefined,
@@ -53,6 +55,7 @@ describe('waste master data repository', () => {
 
     expect(statements[0]?.values).toEqual([true, '%Bio%']);
     expect(statements[0]?.text).toContain('FROM waste_fractions');
+    expect(statements[0]?.text).toContain('label_translations');
     expect(statements[0]?.text).toContain('active = $1');
     expect(statements[0]?.text).toContain('name ILIKE $2');
   });
@@ -62,6 +65,7 @@ describe('waste master data repository', () => {
       {
         id: 'fraction-1',
         name: 'Papier',
+        label_translations: { de: 'Papier', en: 'Paper' },
         container_size: '240l',
         color: '#0000FF',
         description: 'Blaue Tonne',
@@ -75,6 +79,7 @@ describe('waste master data repository', () => {
     await expect(repository.getWasteFractionById('fraction-1')).resolves.toEqual({
       id: 'fraction-1',
       name: 'Papier',
+      translations: { de: 'Papier', en: 'Paper' },
       containerSize: '240l',
       color: '#0000FF',
       description: 'Blaue Tonne',
@@ -90,6 +95,7 @@ describe('waste master data repository', () => {
     await createWasteMasterDataRepository(write.executor).upsertWasteFraction({
       id: 'fraction-2',
       name: 'Restmüll',
+      translations: { de: 'Restmüll', en: 'Residual waste' },
       containerSize: undefined,
       color: '#444444',
       description: undefined,
@@ -100,6 +106,7 @@ describe('waste master data repository', () => {
     expect(write.statements[0]?.values).toEqual([
       'fraction-2',
       'Restmüll',
+      JSON.stringify({ de: 'Restmüll', en: 'Residual waste' }),
       null,
       '#444444',
       null,
@@ -607,6 +614,9 @@ describe('waste master data repository', () => {
         original_date: '12-24',
         actual_date: '12-23',
         has_year: false,
+        reason_type: 'manual-adjustment',
+        reason_key: 'xmas-pull-forward',
+        follow_up_mode: 'none',
         description: null,
         created_at: '2026-05-09T10:00:00.000Z',
         updated_at: '2026-05-09T11:00:00.000Z',
@@ -625,6 +635,9 @@ describe('waste master data repository', () => {
         originalDate: '12-24',
         actualDate: '12-23',
         hasYear: false,
+        reasonType: 'manual-adjustment',
+        reasonKey: 'xmas-pull-forward',
+        followUpMode: 'none',
         description: undefined,
         createdAt: '2026-05-09T10:00:00.000Z',
         updatedAt: '2026-05-09T11:00:00.000Z',
@@ -640,6 +653,8 @@ describe('waste master data repository', () => {
         original_date: '2026-05-01',
         actual_date: '2026-05-02',
         has_year: true,
+        reason_type: 'holiday',
+        reason_key: 'labour-day',
         description: 'Feiertagsverschiebung',
         tour_ids: ['tour-1'],
         created_at: '2026-05-09T10:00:00.000Z',
@@ -658,6 +673,8 @@ describe('waste master data repository', () => {
         originalDate: '2026-05-01',
         actualDate: '2026-05-02',
         hasYear: true,
+        reasonType: 'holiday',
+        reasonKey: 'labour-day',
         description: 'Feiertagsverschiebung',
         tourIds: ['tour-1'],
         createdAt: '2026-05-09T10:00:00.000Z',
@@ -674,6 +691,8 @@ describe('waste master data repository', () => {
         original_date: '01-06',
         actual_date: '01-07',
         has_year: false,
+        reason_type: null,
+        reason_key: null,
         description: null,
         tour_ids: null,
         created_at: '2026-05-09T10:00:00.000Z',
@@ -686,6 +705,8 @@ describe('waste master data repository', () => {
       originalDate: '01-06',
       actualDate: '01-07',
       hasYear: false,
+      reasonType: undefined,
+      reasonKey: undefined,
       description: undefined,
       tourIds: undefined,
       createdAt: '2026-05-09T10:00:00.000Z',
@@ -700,6 +721,9 @@ describe('waste master data repository', () => {
       originalDate: '2026-10-03',
       actualDate: '2026-10-04',
       hasYear: true,
+      reasonType: 'manual-adjustment',
+      reasonKey: 'national-day-delay',
+      followUpMode: 'propagate-series',
       description: 'Einmalige Verschiebung',
     });
     await repository.upsertWasteGlobalDateShift({
@@ -707,6 +731,8 @@ describe('waste master data repository', () => {
       originalDate: '12-31',
       actualDate: '01-02',
       hasYear: false,
+      reasonType: 'global-deviation',
+      reasonKey: 'new-year-service-window',
       description: undefined,
       tourIds: ['tour-3', 'tour-4'],
     });
@@ -717,6 +743,9 @@ describe('waste master data repository', () => {
       '2026-10-03',
       '2026-10-04',
       true,
+      'manual-adjustment',
+      'national-day-delay',
+      'propagate-series',
       'Einmalige Verschiebung',
     ]);
     expect(write.statements[1]?.values).toEqual([
@@ -724,6 +753,8 @@ describe('waste master data repository', () => {
       '12-31',
       '01-02',
       false,
+      'global-deviation',
+      'new-year-service-window',
       null,
       ['tour-3', 'tour-4'],
     ]);

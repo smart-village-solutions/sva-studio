@@ -67,9 +67,23 @@ const wasteManagementApiMocks = vi.hoisted(() => ({
     createdAt: '2026-05-09T10:00:00.000Z',
     updatedAt: '2026-05-09T10:00:00.000Z',
   })),
+  createWasteManagementHouseNumber: vi.fn(async () => ({
+    id: 'house-3',
+    number: '42a',
+    streetId: 'street-1',
+    createdAt: '2026-05-09T10:00:00.000Z',
+    updatedAt: '2026-05-09T10:00:00.000Z',
+  })),
   createWasteManagementRegion: vi.fn(async () => ({
     id: 'region-3',
     name: 'Region West',
+    createdAt: '2026-05-09T10:00:00.000Z',
+    updatedAt: '2026-05-09T10:00:00.000Z',
+  })),
+  createWasteManagementStreet: vi.fn(async () => ({
+    id: 'street-3',
+    name: 'Bahnhofstraße',
+    cityId: 'city-1',
     createdAt: '2026-05-09T10:00:00.000Z',
     updatedAt: '2026-05-09T10:00:00.000Z',
   })),
@@ -120,15 +134,15 @@ const wasteManagementApiMocks = vi.hoisted(() => ({
     locationTourLinks: [],
   })),
   getWasteManagementHistoryOverview: vi.fn(async () => ({
-    items: [],
-    total: 0,
+    audit: { items: [], total: 0 },
+    technical: { items: [], total: 0 },
   })),
   getWasteManagementImportCatalog: vi.fn(() => [
     {
       profileId: 'waste-management.geografie-abholorte',
       displayName: 'Geografie und Abholorte',
       description: 'Importiert Regionen und Abholorte.',
-      sourceFormat: 'text/csv',
+      sourceFormats: ['text/csv', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
       requiredColumns: [
         { key: 'region_id', required: true },
         { key: 'city_id', required: true },
@@ -141,6 +155,12 @@ const wasteManagementApiMocks = vi.hoisted(() => ({
           displayName: 'Canonical CSV v1',
           description: 'Standardvorlage',
           sourceFormat: 'text/csv',
+        },
+        {
+          templateId: 'waste-management.geografie-abholorte.canonical-xlsx-v1',
+          displayName: 'Canonical XLSX v1',
+          description: 'Excel-Vorlage',
+          sourceFormat: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         },
       ],
     },
@@ -202,6 +222,20 @@ const wasteManagementApiMocks = vi.hoisted(() => ({
   updateWasteManagementRegion: vi.fn(async () => ({
     id: 'region-1',
     name: 'Region Mitte Plus',
+    createdAt: '2026-05-09T10:00:00.000Z',
+    updatedAt: '2026-05-09T12:00:00.000Z',
+  })),
+  updateWasteManagementHouseNumber: vi.fn(async () => ({
+    id: 'house-1',
+    number: '14',
+    streetId: 'street-1',
+    createdAt: '2026-05-09T10:00:00.000Z',
+    updatedAt: '2026-05-09T12:00:00.000Z',
+  })),
+  updateWasteManagementStreet: vi.fn(async () => ({
+    id: 'street-1',
+    name: 'Hauptstraße Nord',
+    cityId: 'city-1',
     createdAt: '2026-05-09T10:00:00.000Z',
     updatedAt: '2026-05-09T12:00:00.000Z',
   })),
@@ -271,8 +305,8 @@ describe('WasteManagementPage', () => {
     }));
     wasteManagementApiMocks.getWasteManagementHistoryOverview.mockReset();
     wasteManagementApiMocks.getWasteManagementHistoryOverview.mockImplementation(async () => ({
-      items: [],
-      total: 0,
+      audit: { items: [], total: 0 },
+      technical: { items: [], total: 0 },
     }));
     wasteManagementApiMocks.getWasteManagementImportCatalog.mockReset();
     wasteManagementApiMocks.getWasteManagementImportCatalog.mockImplementation(() => [
@@ -280,7 +314,7 @@ describe('WasteManagementPage', () => {
         profileId: 'waste-management.geografie-abholorte',
         displayName: 'Geografie und Abholorte',
         description: 'Importiert Regionen und Abholorte.',
-        sourceFormat: 'text/csv',
+        sourceFormats: ['text/csv', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
         requiredColumns: [
           { key: 'region_id', required: true },
           { key: 'city_id', required: true },
@@ -293,6 +327,12 @@ describe('WasteManagementPage', () => {
             displayName: 'Canonical CSV v1',
             description: 'Standardvorlage',
             sourceFormat: 'text/csv',
+          },
+          {
+            templateId: 'waste-management.geografie-abholorte.canonical-xlsx-v1',
+            displayName: 'Canonical XLSX v1',
+            description: 'Excel-Vorlage',
+            sourceFormat: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
           },
         ],
       },
@@ -360,10 +400,26 @@ describe('WasteManagementPage', () => {
         },
       ],
     }));
+    wasteManagementApiMocks.createWasteManagementHouseNumber.mockReset();
+    wasteManagementApiMocks.createWasteManagementHouseNumber.mockImplementation(async () => ({
+      id: 'house-3',
+      number: '42a',
+      streetId: 'street-1',
+      createdAt: '2026-05-09T10:00:00.000Z',
+      updatedAt: '2026-05-09T10:00:00.000Z',
+    }));
     wasteManagementApiMocks.createWasteManagementRegion.mockReset();
     wasteManagementApiMocks.createWasteManagementRegion.mockImplementation(async () => ({
       id: 'region-3',
       name: 'Region West',
+      createdAt: '2026-05-09T10:00:00.000Z',
+      updatedAt: '2026-05-09T10:00:00.000Z',
+    }));
+    wasteManagementApiMocks.createWasteManagementStreet.mockReset();
+    wasteManagementApiMocks.createWasteManagementStreet.mockImplementation(async () => ({
+      id: 'street-3',
+      name: 'Bahnhofstraße',
+      cityId: 'city-1',
       createdAt: '2026-05-09T10:00:00.000Z',
       updatedAt: '2026-05-09T10:00:00.000Z',
     }));
@@ -467,6 +523,14 @@ describe('WasteManagementPage', () => {
       createdAt: '2026-05-09T10:00:00.000Z',
       updatedAt: '2026-05-09T12:00:00.000Z',
     }));
+    wasteManagementApiMocks.updateWasteManagementHouseNumber.mockReset();
+    wasteManagementApiMocks.updateWasteManagementHouseNumber.mockImplementation(async () => ({
+      id: 'house-1',
+      number: '14',
+      streetId: 'street-1',
+      createdAt: '2026-05-09T10:00:00.000Z',
+      updatedAt: '2026-05-09T12:00:00.000Z',
+    }));
     wasteManagementApiMocks.updateWasteManagementLocationTourLink.mockReset();
     wasteManagementApiMocks.updateWasteManagementLocationTourLink.mockImplementation(async () => ({
       id: 'link-1',
@@ -474,6 +538,14 @@ describe('WasteManagementPage', () => {
       tourId: 'tour-1',
       startDate: '2026-05-01',
       endDate: '2026-12-31',
+      createdAt: '2026-05-09T10:00:00.000Z',
+      updatedAt: '2026-05-09T12:00:00.000Z',
+    }));
+    wasteManagementApiMocks.updateWasteManagementStreet.mockReset();
+    wasteManagementApiMocks.updateWasteManagementStreet.mockImplementation(async () => ({
+      id: 'street-1',
+      name: 'Hauptstraße Nord',
+      cityId: 'city-1',
       createdAt: '2026-05-09T10:00:00.000Z',
       updatedAt: '2026-05-09T12:00:00.000Z',
     }));
@@ -551,7 +623,7 @@ describe('WasteManagementPage', () => {
     expect(screen.getByRole('button', { name: 'wasteManagement.tools.actions.openJob' })).toBeTruthy();
   });
 
-  it('starts the import job through the waste tools facade', async () => {
+  it('starts the import job through the waste tools facade with an explicit xlsx source format', async () => {
     render(<WasteManagementPage />);
 
     const blobRefInput = screen
@@ -561,14 +633,18 @@ describe('WasteManagementPage', () => {
       throw new Error('Expected import blobRef input to be rendered');
     }
     fireEvent.change(blobRefInput, {
-      target: { value: 'blob:waste/imports/catalog.csv' },
+      target: { value: 'blob:waste/imports/catalog.xlsx' },
+    });
+    fireEvent.change(screen.getByLabelText('wasteManagement.tools.imports.sourceFormatLabel'), {
+      target: { value: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'wasteManagement.tools.actions.startImport' }));
 
     await waitFor(() => {
       expect(wasteManagementApiMocks.startWasteManagementImport).toHaveBeenCalledWith({
         importProfileId: 'waste-management.geografie-abholorte',
-        blobRef: 'blob:waste/imports/catalog.csv',
+        sourceFormat: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        blobRef: 'blob:waste/imports/catalog.xlsx',
         dryRun: true,
       });
     });
@@ -590,7 +666,7 @@ describe('WasteManagementPage', () => {
     });
   });
 
-  it('loads and renders the audit-based overview history', async () => {
+  it('loads and renders the audit and technical waste history', async () => {
     searchMock.mockImplementation(() => ({
       tab: 'overview',
       q: 'fraction',
@@ -600,31 +676,48 @@ describe('WasteManagementPage', () => {
       shiftContext: 'all',
     }));
     wasteManagementApiMocks.getWasteManagementHistoryOverview.mockImplementation(async () => ({
-      total: 1,
-      items: [
-        {
-          id: 'log-1',
-          actionId: 'waste-management.fraction.created',
-          actionNamespace: 'waste-management',
-          actionOwner: 'waste-management',
-          outcome: 'success',
-          occurredAt: '2026-05-09T12:00:00.000Z',
-          resourceType: 'waste_fraction',
-          resourceId: 'fraction-1',
-          requestId: 'req-1',
-        },
-      ],
+      audit: {
+        total: 1,
+        items: [
+          {
+            id: 'log-1',
+            actionId: 'waste-management.fraction.created',
+            actionNamespace: 'waste-management',
+            actionOwner: 'waste-management',
+            outcome: 'success',
+            occurredAt: '2026-05-09T12:00:00.000Z',
+            resourceType: 'waste_fraction',
+            resourceId: 'fraction-1',
+            requestId: 'req-1',
+          },
+        ],
+      },
+      technical: {
+        total: 1,
+        items: [
+          {
+            id: 'job-1',
+            eventType: 'migration.succeeded',
+            outcome: 'success',
+            occurredAt: '2026-05-09T12:05:00.000Z',
+            source: 'job',
+            jobId: 'job-1',
+            jobTypeId: 'waste-management.apply-migrations',
+          },
+        ],
+      },
     }));
 
     render(<WasteManagementPage />);
 
     await screen.findByText('waste-management.fraction.created');
+    expect(screen.getByText('migration.succeeded')).toBeTruthy();
     expect(wasteManagementApiMocks.getWasteManagementHistoryOverview).toHaveBeenCalledWith({
       q: 'fraction',
       page: 1,
       pageSize: 10,
     });
-    expect(screen.getByText('wasteManagement.overview.outcome.success')).toBeTruthy();
+    expect(screen.getAllByText('wasteManagement.overview.outcome.success').length).toBeGreaterThan(0);
   });
 
   it('loads and saves settings through the host api client', async () => {
@@ -826,15 +919,22 @@ describe('WasteManagementPage', () => {
     fireEvent.change(screen.getByLabelText('wasteManagement.masterData.fractions.fields.name'), {
       target: { value: 'Papier' },
     });
+    fireEvent.change(screen.getByLabelText('wasteManagement.masterData.fractions.fields.translationDe'), {
+      target: { value: 'Papier' },
+    });
+    fireEvent.change(screen.getByLabelText('wasteManagement.masterData.fractions.fields.translationEn'), {
+      target: { value: 'Paper' },
+    });
     fireEvent.change(screen.getByLabelText('wasteManagement.masterData.fractions.fields.color'), {
       target: { value: '#123456' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'wasteManagement.masterData.fractions.actions.create' }));
 
     await waitFor(() => {
-      expect(wasteManagementApiMocks.createWasteManagementFraction).toHaveBeenCalledWith(
+        expect(wasteManagementApiMocks.createWasteManagementFraction).toHaveBeenCalledWith(
         expect.objectContaining({
           name: 'Papier',
+          translations: { de: 'Papier', en: 'Paper' },
           color: '#123456',
           active: true,
         })
@@ -962,6 +1062,124 @@ describe('WasteManagementPage', () => {
       expect(wasteManagementApiMocks.createWasteManagementCity).toHaveBeenCalledWith(
         expect.objectContaining({
           name: 'Musterstadt West',
+        })
+      );
+    });
+  });
+
+  it('creates a waste street from the master-data dialog', async () => {
+    searchMock.mockImplementation(() => ({
+      tab: 'master-data',
+      q: '',
+      page: 1,
+      pageSize: 25,
+      status: 'all',
+      shiftContext: 'all',
+    }));
+    wasteManagementApiMocks.getWasteManagementMasterDataOverview.mockResolvedValueOnce({
+      fractions: [],
+      regions: [],
+      cities: [
+        {
+          id: 'city-1',
+          name: 'Musterstadt',
+          regionId: 'region-1',
+          createdAt: '2026-05-09T10:00:00.000Z',
+          updatedAt: '2026-05-09T10:00:00.000Z',
+        },
+      ],
+      streets: [],
+      houseNumbers: [],
+      collectionLocations: [],
+      locationTourLinks: [],
+    });
+
+    render(<WasteManagementPage />);
+
+    await waitFor(() => {
+      expect(wasteManagementApiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledTimes(1);
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'wasteManagement.masterData.streets.actions.openCreate' }));
+    fireEvent.change(screen.getByLabelText('wasteManagement.masterData.streets.fields.name'), {
+      target: { value: 'Bahnhofstraße' },
+    });
+    const streetCitySelect = document.getElementById('waste-street-city-id') as HTMLSelectElement | null;
+    expect(streetCitySelect).toBeTruthy();
+    if (!streetCitySelect) {
+      throw new Error('missing waste street city select');
+    }
+    streetCitySelect.value = 'city-1';
+    fireEvent.change(streetCitySelect);
+    fireEvent.click(screen.getByRole('button', { name: 'wasteManagement.masterData.streets.actions.create' }));
+
+    await waitFor(() => {
+      expect(wasteManagementApiMocks.createWasteManagementStreet).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'Bahnhofstraße',
+        })
+      );
+    });
+  });
+
+  it('creates a waste house number from the master-data dialog', async () => {
+    searchMock.mockImplementation(() => ({
+      tab: 'master-data',
+      q: '',
+      page: 1,
+      pageSize: 25,
+      status: 'all',
+      shiftContext: 'all',
+    }));
+    wasteManagementApiMocks.getWasteManagementMasterDataOverview.mockResolvedValueOnce({
+      fractions: [],
+      regions: [],
+      cities: [
+        {
+          id: 'city-1',
+          name: 'Musterstadt',
+          regionId: 'region-1',
+          createdAt: '2026-05-09T10:00:00.000Z',
+          updatedAt: '2026-05-09T10:00:00.000Z',
+        },
+      ],
+      streets: [
+        {
+          id: 'street-1',
+          name: 'Hauptstraße',
+          cityId: 'city-1',
+          createdAt: '2026-05-09T10:00:00.000Z',
+          updatedAt: '2026-05-09T10:00:00.000Z',
+        },
+      ],
+      houseNumbers: [],
+      collectionLocations: [],
+      locationTourLinks: [],
+    });
+
+    render(<WasteManagementPage />);
+
+    await waitFor(() => {
+      expect(wasteManagementApiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledTimes(1);
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'wasteManagement.masterData.houseNumbers.actions.openCreate' }));
+    fireEvent.change(screen.getByLabelText('wasteManagement.masterData.houseNumbers.fields.number'), {
+      target: { value: '42a' },
+    });
+    const houseNumberStreetSelect = document.getElementById('waste-house-number-street-id') as HTMLSelectElement | null;
+    expect(houseNumberStreetSelect).toBeTruthy();
+    if (!houseNumberStreetSelect) {
+      throw new Error('missing waste house number street select');
+    }
+    houseNumberStreetSelect.value = 'street-1';
+    fireEvent.change(houseNumberStreetSelect);
+    fireEvent.click(screen.getByRole('button', { name: 'wasteManagement.masterData.houseNumbers.actions.create' }));
+
+    await waitFor(() => {
+      expect(wasteManagementApiMocks.createWasteManagementHouseNumber).toHaveBeenCalledWith(
+        expect.objectContaining({
+          number: '42a',
         })
       );
     });
@@ -1450,15 +1668,27 @@ describe('WasteManagementPage', () => {
     fireEvent.change(screen.getByLabelText('wasteManagement.scheduling.tour.fields.actualDate'), {
       target: { value: '2026-12-23' },
     });
+    fireEvent.change(screen.getByLabelText('wasteManagement.scheduling.tour.fields.reasonType'), {
+      target: { value: 'manual-adjustment' },
+    });
+    fireEvent.change(screen.getByLabelText('wasteManagement.scheduling.tour.fields.reasonKey'), {
+      target: { value: 'xmas-pull-forward' },
+    });
+    fireEvent.change(screen.getByLabelText('wasteManagement.scheduling.tour.fields.followUpMode'), {
+      target: { value: 'propagate-series' },
+    });
     fireEvent.click(screen.getByRole('button', { name: 'wasteManagement.scheduling.tour.actions.create' }));
 
     await waitFor(() => {
-      expect(wasteManagementApiMocks.createWasteManagementTourDateShift).toHaveBeenCalledWith(
+        expect(wasteManagementApiMocks.createWasteManagementTourDateShift).toHaveBeenCalledWith(
         expect.objectContaining({
           tourId: 'tour-1',
           originalDate: '2026-12-24',
           actualDate: '2026-12-23',
           hasYear: true,
+          reasonType: 'manual-adjustment',
+          reasonKey: 'xmas-pull-forward',
+          followUpMode: 'propagate-series',
         })
       );
     });
@@ -1516,15 +1746,23 @@ describe('WasteManagementPage', () => {
     fireEvent.change(screen.getByLabelText('wasteManagement.scheduling.global.fields.actualDate'), {
       target: { value: '2026-01-02' },
     });
+    fireEvent.change(screen.getByLabelText('wasteManagement.scheduling.global.fields.reasonType'), {
+      target: { value: 'holiday' },
+    });
+    fireEvent.change(screen.getByLabelText('wasteManagement.scheduling.global.fields.reasonKey'), {
+      target: { value: 'new-year' },
+    });
     fireEvent.click(screen.getByText('Restmüll Nord'));
     fireEvent.click(screen.getByRole('button', { name: 'wasteManagement.scheduling.global.actions.create' }));
 
     await waitFor(() => {
-      expect(wasteManagementApiMocks.createWasteManagementGlobalDateShift).toHaveBeenCalledWith(
+        expect(wasteManagementApiMocks.createWasteManagementGlobalDateShift).toHaveBeenCalledWith(
         expect.objectContaining({
           originalDate: '2026-01-01',
           actualDate: '2026-01-02',
           hasYear: true,
+          reasonType: 'holiday',
+          reasonKey: 'new-year',
           tourIds: ['tour-1'],
         })
       );

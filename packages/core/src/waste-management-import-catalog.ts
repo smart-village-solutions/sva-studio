@@ -1,4 +1,8 @@
-import { wasteManagementOperationsContract, type WasteManagementImportProfileId } from './waste-management-operations-contract.js';
+import {
+  wasteManagementOperationsContract,
+  type WasteManagementImportProfileId,
+  type WasteManagementImportSourceFormat,
+} from './waste-management-operations-contract.js';
 
 export type WasteManagementImportColumnDefinition = {
   readonly key: string;
@@ -10,21 +14,40 @@ export type WasteManagementImportMappingTemplate = {
   readonly templateId: string;
   readonly displayName: string;
   readonly description: string;
-  readonly sourceFormat: 'text/csv';
+  readonly sourceFormat: WasteManagementImportSourceFormat;
 };
 
 export type WasteManagementImportProfileCatalogEntry = {
   readonly profileId: WasteManagementImportProfileId;
   readonly displayName: string;
   readonly description: string;
-  readonly sourceFormat: 'text/csv';
+  readonly sourceFormats: readonly WasteManagementImportSourceFormat[];
   readonly requiredColumns: readonly WasteManagementImportColumnDefinition[];
   readonly optionalColumns: readonly WasteManagementImportColumnDefinition[];
   readonly validationRules: readonly string[];
   readonly mappingTemplates: readonly WasteManagementImportMappingTemplate[];
 };
 
-const csvTemplate = (input: {
+const createTemplates = (
+  profileId: WasteManagementImportProfileId
+): readonly WasteManagementImportMappingTemplate[] => [
+  {
+    templateId: `${profileId}.canonical-csv-v1`,
+    displayName: 'Canonical CSV v1',
+    description: 'Uses the shared canonical waste CSV column layout without plugin-local persistence.',
+    sourceFormat: 'text/csv',
+  },
+  {
+    templateId: `${profileId}.canonical-xlsx-v1`,
+    displayName: 'Canonical XLSX v1',
+    description: 'Uses the shared canonical waste XLSX workbook layout without plugin-local persistence.',
+    sourceFormat: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  },
+];
+
+const importSourceFormats = [...wasteManagementOperationsContract.importSourceFormats] as const;
+
+const importTemplate = (input: {
   readonly profileId: WasteManagementImportProfileId;
   readonly displayName: string;
   readonly description: string;
@@ -34,26 +57,19 @@ const csvTemplate = (input: {
   profileId: input.profileId,
   displayName: input.displayName,
   description: input.description,
-  sourceFormat: 'text/csv',
+  sourceFormats: importSourceFormats,
   requiredColumns: input.requiredColumns,
   optionalColumns: input.optionalColumns,
   validationRules: [
-    'CSV header must match the canonical column keys exactly.',
+    'Header rows must match the canonical column keys exactly.',
     'Required columns must be present on every row.',
     'Referenced ids must be stable across repeated imports.',
   ],
-  mappingTemplates: [
-    {
-      templateId: `${input.profileId}.canonical-csv-v1`,
-      displayName: 'Canonical CSV v1',
-      description: 'Uses the shared canonical waste CSV column layout without plugin-local persistence.',
-      sourceFormat: 'text/csv',
-    },
-  ],
+  mappingTemplates: createTemplates(input.profileId),
 });
 
 export const wasteManagementImportCatalog = [
-  csvTemplate({
+  importTemplate({
     profileId: wasteManagementOperationsContract.importProfileIds.geographyCollectionLocations,
     displayName: 'Geografie und Abholorte',
     description:
@@ -73,7 +89,7 @@ export const wasteManagementImportCatalog = [
       { key: 'house_number_value', required: false, example: '42a' },
     ],
   }),
-  csvTemplate({
+  importTemplate({
     profileId: wasteManagementOperationsContract.importProfileIds.tours,
     displayName: 'Touren',
     description:
@@ -92,7 +108,7 @@ export const wasteManagementImportCatalog = [
       { key: 'custom_dates', required: false, example: '2026-01-10|2026-01-24' },
     ],
   }),
-  csvTemplate({
+  importTemplate({
     profileId: wasteManagementOperationsContract.importProfileIds.dateShifts,
     displayName: 'Ausweichtermine',
     description:

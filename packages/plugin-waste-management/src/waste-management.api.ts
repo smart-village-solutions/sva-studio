@@ -7,16 +7,20 @@ import type {
   WasteCustomTourDate,
   WasteCityRecord,
   WasteCollectionLocationRecord,
+  WasteDateShiftReasonType,
   WasteFractionRecord,
   WasteGlobalDateShiftRecord,
   WasteHouseNumberRecord,
+  WasteLocalizedTextRecord,
   WasteLocationTourLinkRecord,
   WasteLocationTourLinkBulkCreateResult,
   WasteRegionRecord,
   WasteManagementSettingsRecord,
-  WasteManagementAuditOverview,
+  WasteManagementHistoryOverview,
   WasteManagementImportProfileCatalogEntry,
+  WasteManagementImportSourceFormat,
   WasteStreetRecord,
+  WasteTourDateShiftFollowUpMode,
   WasteTourDateShiftRecord,
   WasteTourRecord,
   WasteTourRecurrence,
@@ -45,6 +49,7 @@ export type WasteManagementSettingsInput = Readonly<{
 export type CreateWasteManagementFractionInput = Readonly<{
   id: string;
   name: string;
+  translations?: WasteLocalizedTextRecord;
   containerSize?: string;
   color: string;
   description?: string;
@@ -53,6 +58,7 @@ export type CreateWasteManagementFractionInput = Readonly<{
 
 export type UpdateWasteManagementFractionInput = Readonly<{
   name: string;
+  translations?: WasteLocalizedTextRecord;
   containerSize?: string;
   color: string;
   description?: string;
@@ -77,6 +83,28 @@ export type CreateWasteManagementCityInput = Readonly<{
 export type UpdateWasteManagementCityInput = Readonly<{
   name: string;
   regionId?: string;
+}>;
+
+export type CreateWasteManagementStreetInput = Readonly<{
+  id: string;
+  name: string;
+  cityId: string;
+}>;
+
+export type UpdateWasteManagementStreetInput = Readonly<{
+  name: string;
+  cityId: string;
+}>;
+
+export type CreateWasteManagementHouseNumberInput = Readonly<{
+  id: string;
+  number: string;
+  streetId: string;
+}>;
+
+export type UpdateWasteManagementHouseNumberInput = Readonly<{
+  number: string;
+  streetId: string;
 }>;
 
 export type CreateWasteManagementCollectionLocationInput = Readonly<{
@@ -147,6 +175,9 @@ export type CreateWasteManagementTourDateShiftInput = Readonly<{
   originalDate: string;
   actualDate: string;
   hasYear: boolean;
+  reasonType?: WasteDateShiftReasonType;
+  reasonKey?: string;
+  followUpMode?: WasteTourDateShiftFollowUpMode;
   description?: string;
 }>;
 
@@ -155,6 +186,9 @@ export type UpdateWasteManagementTourDateShiftInput = Readonly<{
   originalDate: string;
   actualDate: string;
   hasYear: boolean;
+  reasonType?: WasteDateShiftReasonType;
+  reasonKey?: string;
+  followUpMode?: WasteTourDateShiftFollowUpMode;
   description?: string;
 }>;
 
@@ -163,6 +197,8 @@ export type CreateWasteManagementGlobalDateShiftInput = Readonly<{
   originalDate: string;
   actualDate: string;
   hasYear: boolean;
+  reasonType?: WasteDateShiftReasonType;
+  reasonKey?: string;
   description?: string;
   tourIds?: readonly string[];
 }>;
@@ -171,6 +207,8 @@ export type UpdateWasteManagementGlobalDateShiftInput = Readonly<{
   originalDate: string;
   actualDate: string;
   hasYear: boolean;
+  reasonType?: WasteDateShiftReasonType;
+  reasonKey?: string;
   description?: string;
   tourIds?: readonly string[];
 }>;
@@ -182,6 +220,7 @@ export type StartWasteManagementMigrationsInput = Readonly<{
 
 export type StartWasteManagementImportInput = Readonly<{
   importProfileId: string;
+  sourceFormat: WasteManagementImportSourceFormat;
   blobRef: string;
   dryRun?: boolean;
 }>;
@@ -213,7 +252,7 @@ export type WasteManagementSchedulingOverview = Readonly<{
   globalDateShifts: readonly WasteGlobalDateShiftRecord[];
 }>;
 
-export type WasteManagementHistoryOverview = WasteManagementAuditOverview;
+export type { WasteManagementHistoryOverview };
 
 export const getWasteManagementImportCatalog =
   (): readonly WasteManagementImportProfileCatalogEntry[] => wasteManagementImportCatalog;
@@ -348,6 +387,56 @@ export const updateWasteManagementCity = async (
 ): Promise<WasteCityRecord> =>
   requestWasteManagementItem<WasteCityRecord>({
     url: `/api/v1/waste-management/cities/${encodeURIComponent(cityId)}`,
+    init: {
+      method: 'PUT',
+      headers: createMainserverJsonRequestHeaders(),
+      body: JSON.stringify(input),
+    },
+  });
+
+export const createWasteManagementStreet = async (
+  input: CreateWasteManagementStreetInput
+): Promise<WasteStreetRecord> =>
+  requestWasteManagementItem<WasteStreetRecord>({
+    url: '/api/v1/waste-management/streets',
+    init: {
+      method: 'POST',
+      headers: createMainserverJsonRequestHeaders(),
+      body: JSON.stringify(input),
+    },
+  });
+
+export const updateWasteManagementStreet = async (
+  streetId: string,
+  input: UpdateWasteManagementStreetInput
+): Promise<WasteStreetRecord> =>
+  requestWasteManagementItem<WasteStreetRecord>({
+    url: `/api/v1/waste-management/streets/${encodeURIComponent(streetId)}`,
+    init: {
+      method: 'PUT',
+      headers: createMainserverJsonRequestHeaders(),
+      body: JSON.stringify(input),
+    },
+  });
+
+export const createWasteManagementHouseNumber = async (
+  input: CreateWasteManagementHouseNumberInput
+): Promise<WasteHouseNumberRecord> =>
+  requestWasteManagementItem<WasteHouseNumberRecord>({
+    url: '/api/v1/waste-management/house-numbers',
+    init: {
+      method: 'POST',
+      headers: createMainserverJsonRequestHeaders(),
+      body: JSON.stringify(input),
+    },
+  });
+
+export const updateWasteManagementHouseNumber = async (
+  houseNumberId: string,
+  input: UpdateWasteManagementHouseNumberInput
+): Promise<WasteHouseNumberRecord> =>
+  requestWasteManagementItem<WasteHouseNumberRecord>({
+    url: `/api/v1/waste-management/house-numbers/${encodeURIComponent(houseNumberId)}`,
     init: {
       method: 'PUT',
       headers: createMainserverJsonRequestHeaders(),

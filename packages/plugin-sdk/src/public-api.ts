@@ -114,6 +114,42 @@ export {
   mergePluginTranslations,
 } from './plugins.js';
 export type {
+  LoadedPluginEntry,
+  PluginCatalogEntry,
+  PluginCatalogSourceType,
+  PluginExecutionAuditReporter,
+  PluginExecutionBaseContext,
+  PluginExecutionContextCapabilities,
+  PluginExecutionLogger,
+  PluginExecutionProgressReporter,
+  PluginIntegrationExecutionContext,
+  PluginJobExecutionHandler,
+  PluginJobExecutionResult,
+  PluginJobHandlerContext,
+  PluginJobExecutionContext,
+  PluginJobProgressReporter,
+  PluginManifest,
+  PluginManifestCapability,
+  PluginRequestExecutionContext,
+  PluginSnapshot,
+} from './plugin-platform-contracts.js';
+export {
+  createPluginSnapshot,
+  definePluginCatalogEntry,
+  definePluginExecutionContextCapabilities,
+  definePluginManifest,
+} from './plugin-platform-contracts.js';
+export {
+  resolvePluginCatalog,
+} from './plugin-platform-resolution.js';
+export type {
+  PluginCatalogIssue,
+  PluginCatalogIssueCode,
+  PluginCatalogIssueSeverity,
+  PluginPlatformHost,
+  ResolvedPluginCatalog,
+} from './plugin-platform-resolution.js';
+export type {
   PluginImportProfileDefinition,
   PluginImportProfileRegistryEntry,
   PluginImportProfileValidationMode,
@@ -128,10 +164,6 @@ export {
   mergePluginImportProfiles,
   mergePluginJobTypes,
 } from './plugin-operations.js';
-export {
-  createWasteManagementPluginImportProfiles,
-  createWasteManagementPluginJobTypes,
-} from './waste-management-operations.js';
 export type {
   StandardContentAdminResourceOptions,
   StandardContentPluginActionIds,

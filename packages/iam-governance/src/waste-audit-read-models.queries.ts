@@ -12,6 +12,7 @@ export const loadWasteAuditRows = async (
 ): Promise<{ readonly rows: readonly WasteAuditRow[]; readonly total: number }> => {
   const searchPattern = buildSearchPattern(input.search);
   const offset = (input.page - 1) * input.pageSize;
+  const actionIds = input.actionIds?.length ? input.actionIds : null;
 
   const [itemsResult, totalResult] = await Promise.all([
     client.query<WasteAuditRow>(
@@ -28,17 +29,21 @@ FROM iam.activity_logs
 WHERE instance_id = $1
   AND payload->>'action_namespace' = 'waste-management'
   AND (
-    $2::text IS NULL
-    OR event_type ILIKE $2
-    OR COALESCE(payload->>'action_id', '') ILIKE $2
-    OR COALESCE(payload->>'resource_type', '') ILIKE $2
-    OR COALESCE(payload->>'resource_id', '') ILIKE $2
-    OR COALESCE(payload->>'reason_code', '') ILIKE $2
+    $2::text[] IS NULL
+    OR COALESCE(payload->>'action_id', '') = ANY($2)
+  )
+  AND (
+    $3::text IS NULL
+    OR event_type ILIKE $3
+    OR COALESCE(payload->>'action_id', '') ILIKE $3
+    OR COALESCE(payload->>'resource_type', '') ILIKE $3
+    OR COALESCE(payload->>'resource_id', '') ILIKE $3
+    OR COALESCE(payload->>'reason_code', '') ILIKE $3
   )
 ORDER BY created_at DESC
-LIMIT $3 OFFSET $4;
+LIMIT $4 OFFSET $5;
 `,
-      [input.instanceId, searchPattern, input.pageSize, offset]
+      [input.instanceId, actionIds, searchPattern, input.pageSize, offset]
     ),
     client.query<{ total: number }>(
       `
@@ -47,15 +52,19 @@ FROM iam.activity_logs
 WHERE instance_id = $1
   AND payload->>'action_namespace' = 'waste-management'
   AND (
-    $2::text IS NULL
-    OR event_type ILIKE $2
-    OR COALESCE(payload->>'action_id', '') ILIKE $2
-    OR COALESCE(payload->>'resource_type', '') ILIKE $2
-    OR COALESCE(payload->>'resource_id', '') ILIKE $2
-    OR COALESCE(payload->>'reason_code', '') ILIKE $2
+    $2::text[] IS NULL
+    OR COALESCE(payload->>'action_id', '') = ANY($2)
+  )
+  AND (
+    $3::text IS NULL
+    OR event_type ILIKE $3
+    OR COALESCE(payload->>'action_id', '') ILIKE $3
+    OR COALESCE(payload->>'resource_type', '') ILIKE $3
+    OR COALESCE(payload->>'resource_id', '') ILIKE $3
+    OR COALESCE(payload->>'reason_code', '') ILIKE $3
   );
 `,
-      [input.instanceId, searchPattern]
+      [input.instanceId, actionIds, searchPattern]
     ),
   ]);
 

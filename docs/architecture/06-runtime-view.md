@@ -83,6 +83,20 @@ Fehlerpfad:
 - Die Fehlermeldung folgt `<guardrailCode>:<pluginNamespace>:<contributionId>:<fieldOrReason>`.
 - Plugin-Routen, Navigation oder Actions mit produktiven `content.*`-Guards, fremden Namespaces oder nicht registrierten Permission-IDs brechen den Snapshot vor der Route-Materialisierung ab.
 
+### Zielbild 2026-05: Plugin-Load über Manifest, Katalog und Loader
+
+1. Der Host liest einen Plugin-Katalog mit lokalen Development-Einträgen und installierten Distributions-Einträgen.
+2. Für jeden aktiven Katalogeintrag liest der Host zunächst den serialisierbaren Manifest-Vertrag und prüft Identität, Version, Host-Kompatibilität und deklarierte Capabilities.
+3. Der Loader löst daraus die technischen Entry-Points auf und materialisiert lokale wie installierte Plugins in denselben kanonischen Host-Snapshot.
+4. Routing, Navigation, IAM, Audit und Job-Orchestrierung konsumieren ausschließlich diesen validierten Snapshot.
+5. Pluginseitige Request-, Job- oder Integrationsbeiträge laufen nur innerhalb host-owned Execution-Contexts.
+
+Fehlerpfad:
+
+- Inkompatible oder deaktivierte Plugins werden vor Snapshot-Publikation fail-closed ausgeschlossen.
+- Ein Plugin ohne gültiges Manifest oder mit unzulässigen Runtime-Beiträgen wird nicht teilweise geladen.
+- Runtime-Consumer erhalten nie einen partiell inkonsistenten Mischzustand aus rohen Plugin-Deskriptoren und validierten Snapshot-Daten.
+
 ### Szenario 1b: Materialisierung registrierter Admin-Ressourcen
 
 1. Die App lädt neben Seiten-Bindings auch die statische Liste `appAdminResources`.

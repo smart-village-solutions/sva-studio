@@ -11,8 +11,10 @@ import type {
   WasteCollectionLocationRecord,
   WasteFractionRecord,
   WasteGlobalDateShiftRecord,
+  WasteHouseNumberRecord,
   WasteLocationTourLinkRecord,
   WasteRegionRecord,
+  WasteStreetRecord,
   WasteTourDateShiftRecord,
   WasteTourRecord,
 } from '@sva/core';
@@ -20,11 +22,13 @@ import type { AuthenticatedRequestContext } from '../middleware.js';
 import {
   createWasteManagementCityInternal,
   createWasteManagementCollectionLocationInternal,
+  createWasteManagementHouseNumberInternal,
   createWasteManagementLocationTourLinksBulkInternal,
   createWasteManagementGlobalDateShiftInternal,
   createWasteManagementFractionInternal,
   createWasteManagementLocationTourLinkInternal,
   createWasteManagementRegionInternal,
+  createWasteManagementStreetInternal,
   createWasteManagementTourDateShiftInternal,
   createWasteManagementTourInternal,
   getWasteManagementHistoryInternal,
@@ -40,9 +44,11 @@ import {
   updateWasteManagementCollectionLocationInternal,
   updateWasteManagementFractionInternal,
   updateWasteManagementGlobalDateShiftInternal,
+  updateWasteManagementHouseNumberInternal,
   updateWasteManagementLocationTourLinkInternal,
   updateWasteManagementRegionInternal,
   updateWasteManagementSettingsInternal,
+  updateWasteManagementStreetInternal,
   updateWasteManagementTourDateShiftInternal,
   updateWasteManagementTourInternal,
 } from './core.js';
@@ -174,25 +180,41 @@ describe('waste-management auth runtime handlers', () => {
     });
   });
 
-  it('returns the central waste audit history for the authenticated instance', async () => {
+  it('returns the combined waste audit and technical history for the authenticated instance', async () => {
 
     const response = await getWasteManagementHistoryInternal(
       new Request('https://studio.test/api/v1/waste-management/history?page=2&pageSize=10&q=fraction'),
       actor,
       {
         getRequestId: () => 'req-test',
-        loadWasteAuditOverview: vi.fn(async () => ({
-          items: [
-            {
-              id: 'log-1',
-              actionId: 'waste-management.fraction.created',
-              actionNamespace: 'waste-management',
-              actionOwner: 'waste-management',
-              outcome: 'success',
-              occurredAt: '2026-05-09T12:00:00.000Z',
-            },
-          ],
-          total: 1,
+        loadWasteHistoryOverview: vi.fn(async () => ({
+          audit: {
+            items: [
+              {
+                id: 'log-1',
+                actionId: 'waste-management.fraction.created',
+                actionNamespace: 'waste-management',
+                actionOwner: 'waste-management',
+                outcome: 'success',
+                occurredAt: '2026-05-09T12:00:00.000Z',
+              },
+            ],
+            total: 1,
+          },
+          technical: {
+            items: [
+              {
+                id: 'job-1',
+                eventType: 'migration.succeeded',
+                outcome: 'success',
+                occurredAt: '2026-05-09T12:05:00.000Z',
+                source: 'job',
+                jobId: 'job-1',
+                jobTypeId: 'waste-management.apply-migrations',
+              },
+            ],
+            total: 1,
+          },
         })),
         resolvePermissions: vi.fn(async () => ({
           ok: true as const,
@@ -204,19 +226,70 @@ describe('waste-management auth runtime handlers', () => {
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
       data: {
-        items: [
-          {
-            id: 'log-1',
-            actionId: 'waste-management.fraction.created',
-            actionNamespace: 'waste-management',
-            actionOwner: 'waste-management',
-            outcome: 'success',
-            occurredAt: '2026-05-09T12:00:00.000Z',
-          },
-        ],
-        total: 1,
+        audit: {
+          items: [
+            {
+              id: 'log-1',
+              actionId: 'waste-management.fraction.created',
+              actionNamespace: 'waste-management',
+              actionOwner: 'waste-management',
+              outcome: 'success',
+              occurredAt: '2026-05-09T12:00:00.000Z',
+            },
+          ],
+          total: 1,
+        },
+        technical: {
+          items: [
+            {
+              id: 'job-1',
+              eventType: 'migration.succeeded',
+              outcome: 'success',
+              occurredAt: '2026-05-09T12:05:00.000Z',
+              source: 'job',
+              jobId: 'job-1',
+              jobTypeId: 'waste-management.apply-migrations',
+            },
+          ],
+          total: 1,
+        },
       },
       requestId: 'req-test',
+    });
+  });
+
+  it('refreshes the visible waste connection status after a successful master-data read', async () => {
+    const saveWasteConnectionCheck = vi.fn(async () => undefined);
+    const overview: WasteManagementMasterDataOverview = {
+      fractions: [],
+      regions: [],
+      cities: [],
+      streets: [],
+      houseNumbers: [],
+      collectionLocations: [],
+      locationTourLinks: [],
+    };
+
+    const response = await getWasteManagementMasterDataOverviewInternal(
+      new Request('https://studio.test/api/v1/waste-management/master-data'),
+      actor,
+      {
+        getRequestId: () => 'req-test',
+        loadMasterDataOverview: vi.fn(async () => overview),
+        saveWasteConnectionCheck,
+        resolvePermissions: vi.fn(async () => ({
+          ok: true as const,
+          permissions: allowPermission('waste-management.read'),
+        })),
+      }
+    );
+
+    expect(response.status).toBe(200);
+    expect(saveWasteConnectionCheck).toHaveBeenCalledWith({
+      instanceId: 'tenant-a',
+      checkedAt: '2026-05-09T12:30:00.000Z',
+      checkStatus: 'succeeded',
+      visibleStatus: 'ok',
     });
   });
 
@@ -336,6 +409,8 @@ describe('waste-management auth runtime handlers', () => {
       };
     });
 
+    const emitAuditEvent = vi.fn(async () => undefined);
+
     const response = await updateWasteManagementSettingsInternal(
       new Request('https://studio.test/api/v1/waste-management/settings', {
         method: 'PUT',
@@ -362,6 +437,7 @@ describe('waste-management auth runtime handlers', () => {
           ciphertext === 'old-db' ? 'postgres://waste-db' : ciphertext === 'old-key' ? 'srv-key' : undefined
         ),
         runConnectionProbe: vi.fn(async () => undefined),
+        emitAuditEvent,
         resolvePermissions: vi.fn(async () => ({
           ok: true as const,
           permissions: allowPermission('waste-management.settings.manage'),
@@ -384,6 +460,7 @@ describe('waste-management auth runtime handlers', () => {
       checkStatus: 'succeeded',
       visibleStatus: 'ok',
     });
+    expect(emitAuditEvent).toHaveBeenCalledTimes(3);
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
       data: {
@@ -407,6 +484,7 @@ describe('waste-management auth runtime handlers', () => {
     const savedFraction: WasteFractionRecord = {
       id: 'fraction-new',
       name: 'Papier',
+      translations: { de: 'Papier', en: 'Paper' },
       containerSize: '120L',
       color: '#123456',
       description: 'Blaue Tonne',
@@ -431,6 +509,7 @@ describe('waste-management auth runtime handlers', () => {
         body: JSON.stringify({
           id: 'fraction-new',
           name: 'Papier',
+          translations: { de: 'Papier', en: 'Paper' },
           containerSize: '120L',
           color: '#123456',
           description: 'Blaue Tonne',
@@ -453,6 +532,7 @@ describe('waste-management auth runtime handlers', () => {
     expect(saveWasteFraction).toHaveBeenCalledWith('tenant-a', {
       id: 'fraction-new',
       name: 'Papier',
+      translations: { de: 'Papier', en: 'Paper' },
       containerSize: '120L',
       color: '#123456',
       description: 'Blaue Tonne',
@@ -509,6 +589,7 @@ describe('waste-management auth runtime handlers', () => {
         },
         body: JSON.stringify({
           name: 'Restmüll Plus',
+          translations: { de: 'Restmüll Plus', en: 'Residual waste plus' },
           color: '#111111',
           active: true,
         }),
@@ -528,6 +609,7 @@ describe('waste-management auth runtime handlers', () => {
     expect(saveWasteFraction).toHaveBeenCalledWith('tenant-a', {
       id: 'fraction-1',
       name: 'Restmüll Plus',
+      translations: { de: 'Restmüll Plus', en: 'Residual waste plus' },
       containerSize: undefined,
       color: '#111111',
       description: undefined,
@@ -750,6 +832,222 @@ describe('waste-management auth runtime handlers', () => {
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
       data: updatedCity,
+      requestId: 'req-test',
+    });
+  });
+
+  it('creates a waste street through the master-data mutation path', async () => {
+    const savedStreet: WasteStreetRecord = {
+      id: 'street-new',
+      name: 'Parkweg',
+      cityId: 'city-1',
+      createdAt: '2026-05-09T12:00:00.000Z',
+      updatedAt: '2026-05-09T12:30:00.000Z',
+    };
+
+    const saveWasteStreet = vi.fn(async () => undefined);
+    const loadWasteStreetById = vi.fn(async () => savedStreet);
+
+    const response = await createWasteManagementStreetInternal(
+      new Request('https://studio.test/api/v1/waste-management/streets', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Origin: 'https://studio.test',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: JSON.stringify({
+          id: 'street-new',
+          name: 'Parkweg',
+          cityId: 'city-1',
+        }),
+      }),
+      actor,
+      {
+        getRequestId: () => 'req-test',
+        saveWasteStreet,
+        loadWasteStreetById,
+        resolvePermissions: vi.fn(async () => ({
+          ok: true as const,
+          permissions: allowPermission('waste-management.master-data.manage'),
+        })),
+      }
+    );
+
+    expect(saveWasteStreet).toHaveBeenCalledWith('tenant-a', {
+      id: 'street-new',
+      name: 'Parkweg',
+      cityId: 'city-1',
+    });
+    expect(response.status).toBe(201);
+    await expect(response.json()).resolves.toEqual({
+      data: savedStreet,
+      requestId: 'req-test',
+    });
+  });
+
+  it('updates a waste street through the master-data mutation path', async () => {
+    const existingStreet: WasteStreetRecord = {
+      id: 'street-1',
+      name: 'Parkweg',
+      cityId: 'city-1',
+      createdAt: '2026-05-09T10:00:00.000Z',
+      updatedAt: '2026-05-09T10:00:00.000Z',
+    };
+    const updatedStreet: WasteStreetRecord = {
+      ...existingStreet,
+      name: 'Parkweg Nord',
+      cityId: 'city-2',
+      updatedAt: '2026-05-09T12:30:00.000Z',
+    };
+
+    const loadWasteStreetById = vi
+      .fn<(_: string, __: string) => Promise<WasteStreetRecord | null>>()
+      .mockResolvedValueOnce(existingStreet)
+      .mockResolvedValueOnce(updatedStreet);
+    const saveWasteStreet = vi.fn(async () => undefined);
+
+    const response = await updateWasteManagementStreetInternal(
+      new Request('https://studio.test/api/v1/waste-management/streets/street-1', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Origin: 'https://studio.test',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: JSON.stringify({
+          name: 'Parkweg Nord',
+          cityId: 'city-2',
+        }),
+      }),
+      actor,
+      {
+        getRequestId: () => 'req-test',
+        saveWasteStreet,
+        loadWasteStreetById,
+        resolvePermissions: vi.fn(async () => ({
+          ok: true as const,
+          permissions: allowPermission('waste-management.master-data.manage'),
+        })),
+      }
+    );
+
+    expect(saveWasteStreet).toHaveBeenCalledWith('tenant-a', {
+      id: 'street-1',
+      name: 'Parkweg Nord',
+      cityId: 'city-2',
+    });
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      data: updatedStreet,
+      requestId: 'req-test',
+    });
+  });
+
+  it('creates a waste house number through the master-data mutation path', async () => {
+    const savedHouseNumber: WasteHouseNumberRecord = {
+      id: 'house-new',
+      number: '14',
+      streetId: 'street-1',
+      createdAt: '2026-05-09T12:00:00.000Z',
+      updatedAt: '2026-05-09T12:30:00.000Z',
+    };
+
+    const saveWasteHouseNumber = vi.fn(async () => undefined);
+    const loadWasteHouseNumberById = vi.fn(async () => savedHouseNumber);
+
+    const response = await createWasteManagementHouseNumberInternal(
+      new Request('https://studio.test/api/v1/waste-management/house-numbers', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Origin: 'https://studio.test',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: JSON.stringify({
+          id: 'house-new',
+          number: '14',
+          streetId: 'street-1',
+        }),
+      }),
+      actor,
+      {
+        getRequestId: () => 'req-test',
+        saveWasteHouseNumber,
+        loadWasteHouseNumberById,
+        resolvePermissions: vi.fn(async () => ({
+          ok: true as const,
+          permissions: allowPermission('waste-management.master-data.manage'),
+        })),
+      }
+    );
+
+    expect(saveWasteHouseNumber).toHaveBeenCalledWith('tenant-a', {
+      id: 'house-new',
+      number: '14',
+      streetId: 'street-1',
+    });
+    expect(response.status).toBe(201);
+    await expect(response.json()).resolves.toEqual({
+      data: savedHouseNumber,
+      requestId: 'req-test',
+    });
+  });
+
+  it('updates a waste house number through the master-data mutation path', async () => {
+    const existingHouseNumber: WasteHouseNumberRecord = {
+      id: 'house-1',
+      number: '14',
+      streetId: 'street-1',
+      createdAt: '2026-05-09T10:00:00.000Z',
+      updatedAt: '2026-05-09T10:00:00.000Z',
+    };
+    const updatedHouseNumber: WasteHouseNumberRecord = {
+      ...existingHouseNumber,
+      number: '14a',
+      streetId: 'street-2',
+      updatedAt: '2026-05-09T12:30:00.000Z',
+    };
+
+    const loadWasteHouseNumberById = vi
+      .fn<(_: string, __: string) => Promise<WasteHouseNumberRecord | null>>()
+      .mockResolvedValueOnce(existingHouseNumber)
+      .mockResolvedValueOnce(updatedHouseNumber);
+    const saveWasteHouseNumber = vi.fn(async () => undefined);
+
+    const response = await updateWasteManagementHouseNumberInternal(
+      new Request('https://studio.test/api/v1/waste-management/house-numbers/house-1', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Origin: 'https://studio.test',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: JSON.stringify({
+          number: '14a',
+          streetId: 'street-2',
+        }),
+      }),
+      actor,
+      {
+        getRequestId: () => 'req-test',
+        saveWasteHouseNumber,
+        loadWasteHouseNumberById,
+        resolvePermissions: vi.fn(async () => ({
+          ok: true as const,
+          permissions: allowPermission('waste-management.master-data.manage'),
+        })),
+      }
+    );
+
+    expect(saveWasteHouseNumber).toHaveBeenCalledWith('tenant-a', {
+      id: 'house-1',
+      number: '14a',
+      streetId: 'street-2',
+    });
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      data: updatedHouseNumber,
       requestId: 'req-test',
     });
   });
@@ -1148,6 +1446,9 @@ describe('waste-management auth runtime handlers', () => {
       originalDate: '2026-12-24',
       actualDate: '2026-12-23',
       hasYear: true,
+      reasonType: 'manual-adjustment',
+      reasonKey: 'xmas-pull-forward',
+      followUpMode: 'propagate-series',
       description: 'Vorverlegt',
       createdAt: '2026-05-09T12:00:00.000Z',
       updatedAt: '2026-05-09T12:30:00.000Z',
@@ -1170,6 +1471,9 @@ describe('waste-management auth runtime handlers', () => {
           originalDate: '2026-12-24',
           actualDate: '2026-12-23',
           hasYear: true,
+          reasonType: 'manual-adjustment',
+          reasonKey: 'xmas-pull-forward',
+          followUpMode: 'propagate-series',
           description: 'Vorverlegt',
         }),
       }),
@@ -1191,6 +1495,9 @@ describe('waste-management auth runtime handlers', () => {
       originalDate: '2026-12-24',
       actualDate: '2026-12-23',
       hasYear: true,
+      reasonType: 'manual-adjustment',
+      reasonKey: 'xmas-pull-forward',
+      followUpMode: 'propagate-series',
       description: 'Vorverlegt',
     });
     expect(response.status).toBe(201);
@@ -1214,6 +1521,9 @@ describe('waste-management auth runtime handlers', () => {
     const updatedShift: WasteTourDateShiftRecord = {
       ...existingShift,
       actualDate: '2026-12-22',
+      reasonType: 'manual-adjustment',
+      reasonKey: 'xmas-pull-forward',
+      followUpMode: 'mark-follow-up-dates',
       description: 'Stärker vorverlegt',
       updatedAt: '2026-05-09T12:30:00.000Z',
     };
@@ -1237,6 +1547,9 @@ describe('waste-management auth runtime handlers', () => {
           originalDate: '2026-12-24',
           actualDate: '2026-12-22',
           hasYear: true,
+          reasonType: 'manual-adjustment',
+          reasonKey: 'xmas-pull-forward',
+          followUpMode: 'mark-follow-up-dates',
           description: 'Stärker vorverlegt',
         }),
       }),
@@ -1258,6 +1571,9 @@ describe('waste-management auth runtime handlers', () => {
       originalDate: '2026-12-24',
       actualDate: '2026-12-22',
       hasYear: true,
+      reasonType: 'manual-adjustment',
+      reasonKey: 'xmas-pull-forward',
+      followUpMode: 'mark-follow-up-dates',
       description: 'Stärker vorverlegt',
     });
     expect(response.status).toBe(200);
@@ -1274,6 +1590,8 @@ describe('waste-management auth runtime handlers', () => {
       originalDate: '2026-01-01',
       actualDate: '2026-01-02',
       hasYear: true,
+      reasonType: 'holiday',
+      reasonKey: 'new-year',
       description: 'Neujahr',
       tourIds: ['tour-1'],
       createdAt: '2026-05-09T12:00:00.000Z',
@@ -1296,6 +1614,8 @@ describe('waste-management auth runtime handlers', () => {
           originalDate: '2026-01-01',
           actualDate: '2026-01-02',
           hasYear: true,
+          reasonType: 'holiday',
+          reasonKey: 'new-year',
           description: 'Neujahr',
           tourIds: ['tour-1'],
         }),
@@ -1317,6 +1637,8 @@ describe('waste-management auth runtime handlers', () => {
       originalDate: '2026-01-01',
       actualDate: '2026-01-02',
       hasYear: true,
+      reasonType: 'holiday',
+      reasonKey: 'new-year',
       description: 'Neujahr',
       tourIds: ['tour-1'],
     });
@@ -1341,6 +1663,8 @@ describe('waste-management auth runtime handlers', () => {
     const updatedShift: WasteGlobalDateShiftRecord = {
       ...existingShift,
       actualDate: '2026-01-03',
+      reasonType: 'global-deviation',
+      reasonKey: 'holiday-backlog',
       tourIds: ['tour-1', 'tour-2'],
       updatedAt: '2026-05-09T12:30:00.000Z',
     };
@@ -1363,6 +1687,8 @@ describe('waste-management auth runtime handlers', () => {
           originalDate: '2026-01-01',
           actualDate: '2026-01-03',
           hasYear: true,
+          reasonType: 'global-deviation',
+          reasonKey: 'holiday-backlog',
           tourIds: ['tour-1', 'tour-2'],
         }),
       }),
@@ -1383,6 +1709,8 @@ describe('waste-management auth runtime handlers', () => {
       originalDate: '2026-01-01',
       actualDate: '2026-01-03',
       hasYear: true,
+      reasonType: 'global-deviation',
+      reasonKey: 'holiday-backlog',
       description: undefined,
       tourIds: ['tour-1', 'tour-2'],
     });
@@ -1522,6 +1850,7 @@ describe('waste-management auth runtime handlers', () => {
         },
         body: JSON.stringify({
           importProfileId: 'waste-management.geografie-abholorte',
+          sourceFormat: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
           blobRef: 'blob:waste/imports/catalog.csv',
           dryRun: true,
         }),
@@ -1543,7 +1872,7 @@ describe('waste-management auth runtime handlers', () => {
         input: {
           operation: 'import-data',
           importProfileId: 'waste-management.geografie-abholorte',
-          sourceFormat: 'text/csv',
+          sourceFormat: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
           dryRun: true,
           blobRef: 'blob:waste/imports/catalog.csv',
         },

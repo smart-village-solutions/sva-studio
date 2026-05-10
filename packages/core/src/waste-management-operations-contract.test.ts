@@ -27,9 +27,17 @@ describe('waste-management-operations-contract', () => {
     expect(wasteManagementOperationsContract.isImportProfileId('waste-management.foo')).toBe(false);
   });
 
-  it('keeps csv as the first canonical source format for waste imports', () => {
-    expect(wasteManagementOperationsContract.importSourceFormats).toEqual(['text/csv']);
+  it('supports csv and xlsx as the current waste import source formats', () => {
+    expect(wasteManagementOperationsContract.importSourceFormats).toEqual([
+      'text/csv',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    ]);
     expect(wasteManagementOperationsContract.isImportSourceFormat('text/csv')).toBe(true);
+    expect(
+      wasteManagementOperationsContract.isImportSourceFormat(
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      )
+    ).toBe(true);
     expect(wasteManagementOperationsContract.isImportSourceFormat('application/json')).toBe(false);
   });
 });

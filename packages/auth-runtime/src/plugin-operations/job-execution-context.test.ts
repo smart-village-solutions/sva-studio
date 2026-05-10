@@ -7,17 +7,33 @@ describe('job execution context', () => {
     const context = createJobExecutionContext({
       job: {
         id: 'job-1',
+        pluginId: 'news',
+        instanceId: 'tenant-a',
         requestId: 'req-1',
         actorAccountId: 'user-1',
         cancelRequestedAt: '2026-05-09T12:03:00.000Z',
       },
-      logger: { info: () => undefined },
+      logger: {
+        debug: () => undefined,
+        info: () => undefined,
+        warn: () => undefined,
+        error: () => undefined,
+      },
       progressReporter: { reportProgress: async () => undefined },
       isCancellationRequested: async () => true,
     });
 
+    expect(context.kind).toBe('job');
+    expect(context.pluginId).toBe('news');
+    expect(context.instanceId).toBe('tenant-a');
     expect(context.requestId).toBe('req-1');
     expect(context.actorAccountId).toBe('user-1');
+    expect(context.capabilities).toEqual({
+      requestContext: true,
+      auditReporter: false,
+      progressReporter: true,
+      secretAccess: false,
+    });
     expect(context.abortSignal.aborted).toBe(true);
   });
 
@@ -25,11 +41,18 @@ describe('job execution context', () => {
     const context = createJobExecutionContext({
       job: {
         id: 'job-1',
+        pluginId: 'news',
+        instanceId: 'tenant-a',
         requestId: 'req-1',
         actorAccountId: 'user-1',
         cancelRequestedAt: '2026-05-09T12:03:00.000Z',
       },
-      logger: { info: () => undefined },
+      logger: {
+        debug: () => undefined,
+        info: () => undefined,
+        warn: () => undefined,
+        error: () => undefined,
+      },
       progressReporter: { reportProgress: async () => undefined },
       isCancellationRequested: async () => true,
     });

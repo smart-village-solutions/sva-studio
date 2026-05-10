@@ -45,6 +45,7 @@ mit Bezug auf die arc42-Abschnitte.
 - `ADR-038-instanz-modul-zuordnung-und-fail-closed-modulaktivierung.md`
 - `ADR-039-medienmanagement-host-capability-und-storage-vertrag.md`
 - `ADR-040-graphile-workflows-als-standard-fuer-hintergrundprozesse.md`
+- `ADR-041-plugin-plattform-v2-fuer-externe-distribution.md`
 
 ### Zuordnung zu arc42-Abschnitten
 
@@ -67,6 +68,7 @@ mit Bezug auf die arc42-Abschnitte.
 - Abschnitt 04/05/06/08/09/10/11/12 (Strategie/Bausteine/Laufzeit/Querschnitt/Entscheidungen/Qualität/Risiken/Glossar): ADR-038
 - Abschnitt 03/04/05/06/07/08/09/10/11 (Kontext/Strategie/Bausteine/Laufzeit/Deployment/Querschnitt/Entscheidungen/Qualität/Risiken): ADR-039
 - Abschnitt 04/05/06/07/08/09/10/11 (Strategie/Bausteine/Laufzeit/Deployment/Querschnitt/Entscheidungen/Qualität/Risiken): ADR-040
+- Abschnitt 04/05/06/07/08/09/10/11 (Strategie/Bausteine/Laufzeit/Deployment/Querschnitt/Entscheidungen/Qualität/Risiken): ADR-041
 - Abschnitt 03/04/05/06/08 (Kontext/Strategie/Bausteine/Laufzeit/Querschnitt): ADR-021
 
 ### Zuordnung Swarm-Deployment-ADRs
@@ -104,6 +106,7 @@ mit Bezug auf die arc42-Abschnitte.
 - ADR-038: Kanonische Instanz-Modul-Zuordnung, hartes Rechte-Entziehen und fail-closed Modulaktivierung (Abschnitt 04, 05, 06, 08, 09, 10, 11, 12)
 - ADR-039: Medienmanagement als Host-Capability mit eigenem Domänenpackage, internem Storage-Port und Plugin-SDK-kompatibler Referenzgrenze (Abschnitt 03, 04, 05, 06, 07, 08, 09, 10, 11)
 - ADR-040: Graphile Workflows als aktueller Host-Standard für Hintergrundprozesse; Temporal bleibt dokumentierte Eskalationsoption, Trigger.dev ist ausgeschlossen (Abschnitt 04, 05, 06, 07, 08, 09, 10, 11)
+- ADR-041: Plugin-Plattform v2 für externe Distribution, Katalog/Loader-Snapshot und host-owned Runtime; ADR-034 bleibt als v1-Zwischenstand bestehen (Abschnitt 04, 05, 06, 07, 08, 09, 10, 11)
 
 ### Pflege-Regel
 
@@ -207,6 +210,17 @@ Zuordnung:
 Zuordnung:
 
 - Abschnitt 04/05/06/07/08/09/10/11: ADR-040
+
+### Fortschreibung 2026-05: Plugin-Plattform v2 für externe Distribution
+
+- `ADR-041-plugin-plattform-v2-fuer-externe-distribution.md`
+  - ergänzt ADR-034 um das Zielbild einer extern publizierbaren Plugin-Plattform mit Manifest, Katalog, Loader und host-owned Runtime
+  - hält ADR-034 bewusst als dokumentierten v1-Zwischenstand aufrecht, statt ihn rückwirkend umzuschreiben
+  - definiert lokale Source-Plugins und installierte Distributions-Plugins als zwei technische Zuführungen desselben kanonischen Host-Snapshots
+
+Zuordnung:
+
+- Abschnitt 04/05/06/07/08/09/10/11: ADR-041
 
 ### Fortschreibung 2026-03: Swarm-Deployment und Multi-Host-Betrieb
 

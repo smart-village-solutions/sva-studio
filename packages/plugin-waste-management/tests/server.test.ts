@@ -1,14 +1,20 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import type { PluginOperationExecutionHandlerContext } from '@sva/auth-runtime/server';
+import type { PluginJobHandlerContext } from '@sva/plugin-sdk';
 import { wasteManagementOperationsContract } from '@sva/core';
 
-import { createWasteManagementPluginOperationExecutionHandlers } from './waste-management-plugin-operation-handlers.server';
+import {
+  createWasteManagementPluginOperationExecutionHandlers,
+  type WasteManagementOperationRuntime,
+} from '../src/server.js';
 
 const createContext = (input: {
   readonly jobTypeId: string;
   readonly inputPayload: Record<string, unknown>;
-}): PluginOperationExecutionHandlerContext => ({
+}): PluginJobHandlerContext => ({
+  kind: 'job',
+  pluginId: 'waste-management',
+  jobId: 'job-1',
   job: {
     id: 'job-1',
     instanceId: 'instance-1',
@@ -24,13 +30,21 @@ const createContext = (input: {
     createdAt: '2026-05-09T12:00:00.000Z',
     updatedAt: '2026-05-09T12:00:00.000Z',
   },
+  instanceId: 'instance-1',
   logger: {
     info: vi.fn(),
     warn: vi.fn(),
     error: vi.fn(),
     debug: vi.fn(),
-  } as unknown as PluginOperationExecutionHandlerContext['logger'],
+  },
+  capabilities: {
+    requestContext: true,
+    auditReporter: false,
+    progressReporter: true,
+    secretAccess: false,
+  },
   progressReporter: {
+    report: vi.fn(async () => undefined),
     reportProgress: vi.fn(async () => undefined),
   },
   abortSignal: new AbortController().signal,
@@ -40,15 +54,26 @@ const createContext = (input: {
   actorAccountId: 'actor-1',
 });
 
-describe('waste management plugin operation handlers', () => {
+describe('waste management plugin server handlers', () => {
   it('exposes handlers for all declared waste job types', () => {
-    const handlers = createWasteManagementPluginOperationExecutionHandlers();
+    const handlers = createWasteManagementPluginOperationExecutionHandlers(createRuntime());
 
     expect(Object.keys(handlers).sort()).toEqual(Object.values(wasteManagementOperationsContract.jobTypeIds).sort());
   });
 
   it('reports progress and returns a structured result for migration-oriented jobs', async () => {
-    const handlers = createWasteManagementPluginOperationExecutionHandlers();
+    const applyMigrations = vi.fn(async () => ({
+      durationMs: 12,
+      details: {
+        operation: 'apply-migrations',
+        appliedStatementCount: 5,
+      },
+    }));
+    const handlers = createWasteManagementPluginOperationExecutionHandlers(
+      createRuntime({
+        applyMigrations,
+      })
+    );
     const context = createContext({
       jobTypeId: wasteManagementOperationsContract.jobTypeIds.applyMigrations,
       inputPayload: {
@@ -68,6 +93,9 @@ describe('waste management plugin operation handlers', () => {
         }),
       })
     );
+    expect(applyMigrations).toHaveBeenCalledWith('instance-1', {
+      operation: 'apply-migrations',
+    });
     expect(result).toEqual({
       progress: expect.objectContaining({
         completedSteps: 2,
@@ -79,14 +107,15 @@ describe('waste management plugin operation handlers', () => {
         },
         plugin: {
           operation: 'apply-migrations',
-          mode: 'placeholder',
+          mode: 'executed',
+          appliedStatementCount: 5,
         },
       },
     });
   });
 
   it('rejects malformed waste job payloads fail-closed', async () => {
-    const handlers = createWasteManagementPluginOperationExecutionHandlers();
+    const handlers = createWasteManagementPluginOperationExecutionHandlers(createRuntime());
     const context = createContext({
       jobTypeId: wasteManagementOperationsContract.jobTypeIds.seedData,
       inputPayload: {
@@ -98,4 +127,15 @@ describe('waste management plugin operation handlers', () => {
       'invalid_waste_management_job_input:waste-management.seed-data'
     );
   });
+});
+
+const createRuntime = (
+  overrides: Partial<WasteManagementOperationRuntime> = {}
+): WasteManagementOperationRuntime => ({
+  initializeDataSource: vi.fn(async () => ({ durationMs: 1, details: { operation: 'initialize-data-source' } })),
+  applyMigrations: vi.fn(async () => ({ durationMs: 1, details: { operation: 'apply-migrations' } })),
+  importData: vi.fn(async () => ({ durationMs: 1, details: { operation: 'import-data' } })),
+  seedData: vi.fn(async () => ({ durationMs: 1, details: { operation: 'seed-data' } })),
+  resetData: vi.fn(async () => ({ durationMs: 1, details: { operation: 'reset-data' } })),
+  ...overrides,
 });

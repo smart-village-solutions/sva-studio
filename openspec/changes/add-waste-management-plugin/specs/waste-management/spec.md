@@ -407,11 +407,12 @@ Das System SHALL CSV-Import, Seed und Reset als kontrollierte Data-Tools im Wast
 - **AND** es bringt eine kanonische Vorlage mit Beispielspalten und bei Bedarf einer Beispieldatei mit
 - **AND** es enthält eigene fachliche und technische Validierungsregeln
 
-#### Scenario: Generische Import-Fähigkeit unterstützt mehrere Quellformate
+#### Scenario: Waste nutzt in diesem Change CSV und XLSX als erste produktive Importformate
 
-- **WHEN** das Studio die erste allgemeine Import-Fähigkeit für Waste bereitstellt
-- **THEN** unterstützt sie mindestens CSV, Excel sowie schema-nahe JSON- und XML-Quellen
-- **AND** JSON und XML müssen dabei ohne komplexe ETL-Sonderlogik auf das jeweilige Importprofil abbildbar bleiben
+- **WHEN** das Studio die erste produktive Importstrecke für Waste-Management in diesem Change bereitstellt
+- **THEN** unterstützen die registrierten Waste-Importprofile mindestens CSV und XLSX als Quellformate
+- **AND** XLSX wird als echte Tabellenquelle behandelt, nicht nur als umbenannte CSV-Datei
+- **AND** weitere Quellformate wie JSON oder XML bleiben als Plattformerweiterung des vorgelagerten generischen Import-Changes architektonisch zulässig
 
 #### Scenario: Erste Import-Oberfläche folgt einem mehrstufigen Wizard
 

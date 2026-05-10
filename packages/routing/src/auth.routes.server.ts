@@ -99,6 +99,18 @@ const governanceAuthHandlerMap = {
   '/api/v1/waste-management/cities/$cityId': {
     PUT: routeHandler(authRuntimeRoutes.wasteManagementHandlers.updateCity),
   },
+  '/api/v1/waste-management/streets': {
+    POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.createStreet),
+  },
+  '/api/v1/waste-management/streets/$streetId': {
+    PUT: routeHandler(authRuntimeRoutes.wasteManagementHandlers.updateStreet),
+  },
+  '/api/v1/waste-management/house-numbers': {
+    POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.createHouseNumber),
+  },
+  '/api/v1/waste-management/house-numbers/$houseNumberId': {
+    PUT: routeHandler(authRuntimeRoutes.wasteManagementHandlers.updateHouseNumber),
+  },
   '/api/v1/waste-management/collection-locations': {
     POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.createCollectionLocation),
   },

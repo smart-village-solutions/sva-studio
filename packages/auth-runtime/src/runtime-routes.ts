@@ -1,4 +1,11 @@
-export { callbackHandler, loginHandler, logoutHandler, meHandler } from './auth-route-handlers.js';
+export {
+  callbackHandler,
+  devLoginHandler,
+  devLogoutHandler,
+  loginHandler,
+  logoutHandler,
+  meHandler,
+} from './auth-route-handlers.js';
 export { authorizeHandler } from './iam-authorization/authorize.js';
 export { mePermissionsHandler } from './iam-authorization/me-permissions.js';
 export {

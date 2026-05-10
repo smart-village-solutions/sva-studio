@@ -83,8 +83,10 @@ const authServerMocks = vi.hoisted(() => {
   const response = (name: string) => new Response(JSON.stringify({ name }), { status: 200 });
   return {
     loginHandler: vi.fn(async () => response('loginHandler')),
+    devLoginHandler: vi.fn(async () => response('devLoginHandler')),
     callbackHandler: vi.fn(async () => response('callbackHandler')),
     meHandler: vi.fn(async () => response('meHandler')),
+    devLogoutHandler: vi.fn(async () => response('devLogoutHandler')),
     logoutHandler: vi.fn(async () => response('logoutHandler')),
     healthReadyHandler: vi.fn(async () => response('healthReadyHandler')),
     healthLiveHandler: vi.fn(async () => response('healthLiveHandler')),
@@ -512,8 +514,10 @@ describe('auth.routes.server', () => {
     }
 
     expect(authServerMocks.loginHandler).toHaveBeenCalled();
+    expect(authServerMocks.devLoginHandler).toHaveBeenCalled();
     expect(authServerMocks.callbackHandler).toHaveBeenCalled();
     expect(authServerMocks.meHandler).toHaveBeenCalled();
+    expect(authServerMocks.devLogoutHandler).toHaveBeenCalled();
     expect(authServerMocks.logoutHandler).toHaveBeenCalled();
     expect(authServerMocks.listUsersHandler).toHaveBeenCalled();
     expect(authServerMocks.getUserHandler).toHaveBeenCalled();

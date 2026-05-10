@@ -163,4 +163,225 @@ describe('iam-governance/waste-audit-read-models', () => {
       }),
     ]);
   });
+
+  it('prefers payload outcome fallbacks and maps denied or default audit outcomes deterministically', async () => {
+    const client = buildClient(
+      {
+        rowCount: 3,
+        rows: [
+          {
+            id: 'log-denied',
+            event_type: 'plugin_action_denied',
+            created_at: '2026-05-09T12:06:00.000Z',
+            account_id: null,
+            request_id: null,
+            trace_id: null,
+            payload: {
+              action_id: '',
+              outcome: 'denied',
+              resource_type: '',
+              resource_id: '',
+              reason_code: '',
+            },
+          },
+          {
+            id: 'log-fallback',
+            event_type: 'plugin_action_failed',
+            created_at: '2026-05-09T12:07:00.000Z',
+            account_id: null,
+            request_id: null,
+            trace_id: null,
+            payload: {
+              action_id: 'waste-management.custom.action',
+              outcome: 'failure',
+            },
+          },
+          {
+            id: 'log-default',
+            event_type: 'plugin_action_authorized',
+            created_at: '2026-05-09T12:08:00.000Z',
+            account_id: null,
+            request_id: null,
+            trace_id: null,
+            payload: {},
+          },
+        ],
+      },
+      {
+        rowCount: 1,
+        rows: [{ total: 3 }],
+      }
+    );
+
+    const result = await listWasteManagementAuditRecords(client as never, {
+      instanceId: 'tenant-a',
+      page: 1,
+      pageSize: 20,
+    });
+
+    expect(result.items).toEqual([
+      expect.objectContaining({
+        id: 'log-denied',
+        actionId: 'plugin_action_denied',
+        outcome: 'denied',
+        actorAccountId: undefined,
+        resourceType: undefined,
+        resourceId: undefined,
+        reasonCode: undefined,
+      }),
+      expect.objectContaining({
+        id: 'log-fallback',
+        outcome: 'failure',
+      }),
+      expect.objectContaining({
+        id: 'log-default',
+        actionId: 'plugin_action_authorized',
+        outcome: 'success',
+      }),
+    ]);
+  });
+
+  it('filters unknown technical audit actions and maps success outcomes for succeeded events', async () => {
+    const client = buildClient(
+      {
+        rowCount: 3,
+        rows: [
+          {
+            id: 'log-success',
+            event_type: 'plugin_action_authorized',
+            created_at: '2026-05-09T12:00:00.000Z',
+            account_id: 'account-1',
+            request_id: 'req-1',
+            trace_id: 'trace-1',
+            payload: {
+              action_id: 'waste-management.connection-check.succeeded',
+            },
+          },
+          {
+            id: 'log-ignored',
+            event_type: 'plugin_action_authorized',
+            created_at: '2026-05-09T12:01:00.000Z',
+            account_id: 'account-2',
+            request_id: 'req-2',
+            trace_id: 'trace-2',
+            payload: {
+              action_id: 'waste-management.unknown.action',
+            },
+          },
+          {
+            id: 'log-missing',
+            event_type: 'plugin_action_authorized',
+            created_at: '2026-05-09T12:02:00.000Z',
+            account_id: 'account-3',
+            request_id: 'req-3',
+            trace_id: 'trace-3',
+            payload: {},
+          },
+        ],
+      },
+      {
+        rowCount: 1,
+        rows: [{ total: 3 }],
+      }
+    );
+
+    const result = await listWasteManagementTechnicalAuditRecords(client as never, {
+      instanceId: 'tenant-a',
+      page: 1,
+      pageSize: 20,
+    });
+
+    expect(result.total).toBe(3);
+    expect(result.items).toEqual([
+      expect.objectContaining({
+        id: 'log-success',
+        eventType: 'connection-check.succeeded',
+        outcome: 'success',
+      }),
+    ]);
+  });
+
+  it('falls back to event_type-derived audit outcomes and preserves started technical events without request metadata', async () => {
+    const auditClient = buildClient(
+      {
+        rowCount: 2,
+        rows: [
+          {
+            id: 'log-denied-fallback',
+            event_type: 'plugin_action_denied',
+            created_at: '2026-05-09T12:10:00.000Z',
+            account_id: null,
+            request_id: null,
+            trace_id: null,
+            payload: {},
+          },
+          {
+            id: 'log-failed-fallback',
+            event_type: 'plugin_action_failed',
+            created_at: '2026-05-09T12:11:00.000Z',
+            account_id: null,
+            request_id: null,
+            trace_id: null,
+            payload: {},
+          },
+        ],
+      },
+      {
+        rowCount: 1,
+        rows: [{ total: 2 }],
+      }
+    );
+
+    const auditResult = await listWasteManagementAuditRecords(auditClient as never, {
+      instanceId: 'tenant-a',
+      page: 1,
+      pageSize: 20,
+    });
+
+    expect(auditResult.items).toEqual([
+      expect.objectContaining({ id: 'log-denied-fallback', outcome: 'denied' }),
+      expect.objectContaining({ id: 'log-failed-fallback', outcome: 'failure' }),
+    ]);
+
+    const technicalClient = buildClient(
+      {
+        rowCount: 1,
+        rows: [
+          {
+            id: 'log-started',
+            event_type: 'plugin_action_authorized',
+            created_at: '2026-05-09T12:12:00.000Z',
+            account_id: null,
+            request_id: null,
+            trace_id: null,
+            payload: {
+              action_id: 'waste-management.datasource.reconfigured',
+              reason_code: '',
+            },
+          },
+        ],
+      },
+      {
+        rowCount: 1,
+        rows: [{ total: 1 }],
+      }
+    );
+
+    const technicalResult = await listWasteManagementTechnicalAuditRecords(technicalClient as never, {
+      instanceId: 'tenant-a',
+      page: 1,
+      pageSize: 20,
+    });
+
+    expect(technicalResult.items).toEqual([
+      expect.objectContaining({
+        id: 'log-started',
+        eventType: 'datasource.reconfigured',
+        outcome: 'started',
+        requestId: undefined,
+        traceId: undefined,
+        errorCode: undefined,
+      }),
+    ]);
+  });
 });

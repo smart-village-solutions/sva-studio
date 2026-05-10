@@ -7,6 +7,7 @@ describe('waste-management search params', () => {
     expect(
       normalizeWasteManagementSearchParams({
         tab: 'bogus',
+        masterDataTab: 'bogus',
         q: '  ',
         page: '0',
         pageSize: '999',
@@ -15,7 +16,8 @@ describe('waste-management search params', () => {
         regionId: '  ',
       })
     ).toEqual({
-      tab: 'overview',
+      tab: 'fractions',
+      masterDataTab: 'locations',
       q: '',
       page: 1,
       pageSize: 25,
@@ -31,7 +33,8 @@ describe('waste-management search params', () => {
   it('keeps recognized deep-link values stable', () => {
     expect(
       normalizeWasteManagementSearchParams({
-        tab: 'settings',
+        tab: 'locations',
+        masterDataTab: 'locations',
         q: 'Bio',
         page: '3',
         pageSize: '50',
@@ -43,7 +46,8 @@ describe('waste-management search params', () => {
         tourId: 'tour-1',
       })
     ).toEqual({
-      tab: 'settings',
+      tab: 'locations',
+      masterDataTab: 'locations',
       q: 'Bio',
       page: 3,
       pageSize: 50,

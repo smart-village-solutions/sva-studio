@@ -177,6 +177,51 @@ describe('waste-management master-data branch handlers', () => {
 
   it.each([
     {
+      label: 'street update rejects invalid payloads even when the path id exists',
+      handler: wasteManagementStreetHandlers.updateWasteManagementStreetInternal,
+      request: () =>
+        new Request('https://studio.test/api/v1/waste-management/streets/street-invalid', {
+          method: 'PUT',
+          headers: createHeaders(),
+          body: JSON.stringify({}),
+        }),
+    },
+    {
+      label: 'collection-location update rejects invalid payloads even when the path id exists',
+      handler: wasteManagementCollectionLocationHandlers.updateWasteManagementCollectionLocationInternal,
+      request: () =>
+        new Request('https://studio.test/api/v1/waste-management/collection-locations/location-invalid', {
+          method: 'PUT',
+          headers: createHeaders(),
+          body: JSON.stringify({}),
+        }),
+    },
+    {
+      label: 'location-tour-link update rejects invalid payloads even when the path id exists',
+      handler: wasteManagementLocationTourLinkHandlers.updateWasteManagementLocationTourLinkInternal,
+      request: () =>
+        new Request('https://studio.test/api/v1/waste-management/location-tour-links/link-invalid', {
+          method: 'PUT',
+          headers: createHeaders(),
+          body: JSON.stringify({}),
+        }),
+      deps: () => createDeps('waste-management.tours.manage'),
+    },
+  ])('$label', async ({ handler, request, deps }) => {
+    const response = await handler(request(), actor, deps?.() ?? createDeps());
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        code: 'invalid_request',
+        message: expect.stringMatching(/required|erforderlich|invalid/i),
+      },
+      requestId: 'req-test',
+    });
+  });
+
+  it.each([
+    {
       label: 'fraction update rejects missing path ids',
       handler: wasteManagementFractionHandlers.updateWasteManagementFractionInternal,
       request: () =>
@@ -704,6 +749,67 @@ describe('waste-management master-data branch handlers', () => {
       expectedMessage: 'Die Waste-Hausnummer konnte nicht verifiziert werden.',
     },
     {
+      label: 'street create returns verification_failed when the saved record cannot be reloaded',
+      handler: wasteManagementStreetHandlers.createWasteManagementStreetInternal,
+      request: () =>
+        new Request('https://studio.test/api/v1/waste-management/streets', {
+          method: 'POST',
+          headers: createHeaders(),
+          body: JSON.stringify({ id: 'street-verify', name: 'Parkweg', cityId: 'city-1' }),
+        }),
+      deps: () => ({
+        ...createDeps(),
+        saveWasteStreet: vi.fn(async () => undefined),
+        loadWasteStreetById: vi.fn(async () => null),
+      }),
+      expectedMessage: 'Die Waste-Straße konnte nicht verifiziert werden.',
+    },
+    {
+      label: 'collection-location create returns verification_failed when the saved record cannot be reloaded',
+      handler: wasteManagementCollectionLocationHandlers.createWasteManagementCollectionLocationInternal,
+      request: () =>
+        new Request('https://studio.test/api/v1/waste-management/collection-locations', {
+          method: 'POST',
+          headers: createHeaders(),
+          body: JSON.stringify({
+            id: 'location-verify',
+            cityId: 'city-1',
+            regionId: 'region-1',
+            streetId: 'street-1',
+            houseNumberId: 'house-1',
+            active: true,
+          }),
+        }),
+      deps: () => ({
+        ...createDeps(),
+        saveWasteCollectionLocation: vi.fn(async () => undefined),
+        loadWasteCollectionLocationById: vi.fn(async () => null),
+      }),
+      expectedMessage: 'Der Waste-Abholort konnte nicht verifiziert werden.',
+    },
+    {
+      label: 'location-tour-link create returns verification_failed when the saved record cannot be reloaded',
+      handler: wasteManagementLocationTourLinkHandlers.createWasteManagementLocationTourLinkInternal,
+      request: () =>
+        new Request('https://studio.test/api/v1/waste-management/location-tour-links', {
+          method: 'POST',
+          headers: createHeaders(),
+          body: JSON.stringify({
+            id: 'link-verify',
+            locationId: 'location-1',
+            tourId: 'tour-1',
+            startDate: '2026-05-01',
+            endDate: '2026-05-31',
+          }),
+        }),
+      deps: () => ({
+        ...createDeps('waste-management.tours.manage'),
+        saveWasteLocationTourLink: vi.fn(async () => undefined),
+        loadWasteLocationTourLinkById: vi.fn(async () => null),
+      }),
+      expectedMessage: 'Die Waste-Tour-Zuordnung konnte nicht verifiziert werden.',
+    },
+    {
       label: 'tour create returns verification_failed when the saved record cannot be reloaded',
       handler: wasteManagementTourHandlers.createWasteManagementTourInternal,
       request: () =>
@@ -876,6 +982,100 @@ describe('waste-management master-data branch handlers', () => {
         };
       },
       expectedMessage: 'Die Waste-Hausnummer konnte nicht verifiziert werden.',
+    },
+    {
+      label: 'street update returns verification_failed when the saved record cannot be reloaded',
+      handler: wasteManagementStreetHandlers.updateWasteManagementStreetInternal,
+      request: () =>
+        new Request('https://studio.test/api/v1/waste-management/streets/street-verify', {
+          method: 'PUT',
+          headers: createHeaders(),
+          body: JSON.stringify({ name: 'Parkweg', cityId: 'city-1' }),
+        }),
+      deps: () => {
+        const loadWasteStreetById = vi
+          .fn()
+          .mockResolvedValueOnce({ id: 'street-verify', name: 'Alt', cityId: 'city-1', createdAt: '', updatedAt: '' })
+          .mockResolvedValueOnce(null);
+        return {
+          ...createDeps(),
+          saveWasteStreet: vi.fn(async () => undefined),
+          loadWasteStreetById,
+        };
+      },
+      expectedMessage: 'Die Waste-Straße konnte nicht verifiziert werden.',
+    },
+    {
+      label: 'collection-location update returns verification_failed when the saved record cannot be reloaded',
+      handler: wasteManagementCollectionLocationHandlers.updateWasteManagementCollectionLocationInternal,
+      request: () =>
+        new Request('https://studio.test/api/v1/waste-management/collection-locations/location-verify', {
+          method: 'PUT',
+          headers: createHeaders(),
+          body: JSON.stringify({
+            cityId: 'city-1',
+            regionId: 'region-1',
+            streetId: 'street-1',
+            houseNumberId: 'house-1',
+            active: true,
+          }),
+        }),
+      deps: () => {
+        const loadWasteCollectionLocationById = vi
+          .fn()
+          .mockResolvedValueOnce({
+            id: 'location-verify',
+            cityId: 'city-1',
+            regionId: 'region-1',
+            streetId: 'street-1',
+            houseNumberId: 'house-1',
+            active: true,
+            createdAt: '',
+            updatedAt: '',
+          })
+          .mockResolvedValueOnce(null);
+        return {
+          ...createDeps(),
+          saveWasteCollectionLocation: vi.fn(async () => undefined),
+          loadWasteCollectionLocationById,
+        };
+      },
+      expectedMessage: 'Der Waste-Abholort konnte nicht verifiziert werden.',
+    },
+    {
+      label: 'location-tour-link update returns verification_failed when the saved record cannot be reloaded',
+      handler: wasteManagementLocationTourLinkHandlers.updateWasteManagementLocationTourLinkInternal,
+      request: () =>
+        new Request('https://studio.test/api/v1/waste-management/location-tour-links/link-verify', {
+          method: 'PUT',
+          headers: createHeaders(),
+          body: JSON.stringify({
+            locationId: 'location-1',
+            tourId: 'tour-1',
+            startDate: '2026-05-01',
+            endDate: '2026-05-31',
+          }),
+        }),
+      deps: () => {
+        const loadWasteLocationTourLinkById = vi
+          .fn()
+          .mockResolvedValueOnce({
+            id: 'link-verify',
+            locationId: 'location-1',
+            tourId: 'tour-1',
+            startDate: '2026-05-01',
+            endDate: '2026-05-31',
+            createdAt: '',
+            updatedAt: '',
+          })
+          .mockResolvedValueOnce(null);
+        return {
+          ...createDeps('waste-management.tours.manage'),
+          saveWasteLocationTourLink: vi.fn(async () => undefined),
+          loadWasteLocationTourLinkById,
+        };
+      },
+      expectedMessage: 'Die Waste-Tour-Zuordnung konnte nicht verifiziert werden.',
     },
     {
       label: 'tour update returns verification_failed when the saved record cannot be reloaded',
@@ -1074,6 +1274,94 @@ describe('waste-management master-data branch handlers', () => {
         }),
       }),
       expectedMessage: 'Die Waste-Stadt konnte nicht gespeichert werden.',
+    },
+    {
+      label: 'street update maps persistence failures to database_unavailable',
+      handler: wasteManagementStreetHandlers.updateWasteManagementStreetInternal,
+      request: () =>
+        new Request('https://studio.test/api/v1/waste-management/streets/street-db', {
+          method: 'PUT',
+          headers: createHeaders(),
+          body: JSON.stringify({ name: 'Parkweg', cityId: 'city-1' }),
+        }),
+      deps: () => ({
+        ...createDeps(),
+        loadWasteStreetById: vi.fn(async () => ({
+          id: 'street-db',
+          name: 'Alt',
+          cityId: 'city-1',
+          createdAt: '',
+          updatedAt: '',
+        })),
+        saveWasteStreet: vi.fn(async () => {
+          throw new Error('db down');
+        }),
+      }),
+      expectedMessage: 'Die Waste-Straße konnte nicht gespeichert werden.',
+    },
+    {
+      label: 'collection-location update maps persistence failures to database_unavailable',
+      handler: wasteManagementCollectionLocationHandlers.updateWasteManagementCollectionLocationInternal,
+      request: () =>
+        new Request('https://studio.test/api/v1/waste-management/collection-locations/location-db', {
+          method: 'PUT',
+          headers: createHeaders(),
+          body: JSON.stringify({
+            cityId: 'city-1',
+            regionId: 'region-1',
+            streetId: 'street-1',
+            houseNumberId: 'house-1',
+            active: true,
+          }),
+        }),
+      deps: () => ({
+        ...createDeps(),
+        loadWasteCollectionLocationById: vi.fn(async () => ({
+          id: 'location-db',
+          cityId: 'city-1',
+          regionId: 'region-1',
+          streetId: 'street-1',
+          houseNumberId: 'house-1',
+          active: true,
+          createdAt: '',
+          updatedAt: '',
+        })),
+        saveWasteCollectionLocation: vi.fn(async () => {
+          throw new Error('db down');
+        }),
+      }),
+      expectedMessage: 'Der Waste-Abholort konnte nicht gespeichert werden.',
+    },
+    {
+      label: 'location-tour-link update maps persistence failures to database_unavailable',
+      handler: wasteManagementLocationTourLinkHandlers.updateWasteManagementLocationTourLinkInternal,
+      request: () =>
+        new Request('https://studio.test/api/v1/waste-management/location-tour-links/link-db', {
+          method: 'PUT',
+          headers: createHeaders(),
+          body: JSON.stringify({
+            locationId: 'location-1',
+            tourId: 'tour-1',
+            startDate: '2026-05-01',
+            endDate: '2026-05-31',
+          }),
+        }),
+      deps: () => ({
+        ...createDeps('waste-management.tours.manage'),
+        loadWasteLocationTourLinkById: vi.fn(async () => ({
+          id: 'link-db',
+          locationId: 'location-1',
+          tourId: 'tour-1',
+          startDate: '2026-05-01',
+          endDate: '2026-05-31',
+          createdAt: '',
+          updatedAt: '',
+        })),
+        saveWasteLocationTourLink: vi.fn(async () => {
+          throw new Error('db down');
+        }),
+      }),
+      expectedMessage: 'Die Waste-Tour-Zuordnung konnte nicht gespeichert werden.',
     },
     {
       label: 'tour update maps persistence failures to database_unavailable',

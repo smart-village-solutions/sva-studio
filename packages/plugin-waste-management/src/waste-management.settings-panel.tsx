@@ -1,4 +1,4 @@
-import { startTransition, useEffect, useState, type FormEvent } from 'react';
+import { startTransition, useEffect, useRef, useState, type FormEvent } from 'react';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import {
   StudioErrorState,
@@ -57,6 +57,8 @@ const toSettingsInput = (form: SettingsFormState): WasteManagementSettingsInput 
 
 export const WasteSettingsPanel = () => {
   const pt = usePluginTranslation('wasteManagement');
+  const ptRef = useRef(pt);
+  ptRef.current = pt;
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState<WasteManagementSettingsRecord | null>(null);
@@ -81,7 +83,11 @@ export const WasteSettingsPanel = () => {
           return;
         }
         const code = resolveApiErrorCode(loadError);
-        setError(code === 'forbidden' ? pt('settings.messages.loadForbidden') : pt('settings.messages.loadError'));
+        setError(
+          code === 'forbidden'
+            ? ptRef.current('settings.messages.loadForbidden')
+            : ptRef.current('settings.messages.loadError')
+        );
       } finally {
         if (active) {
           setLoading(false);
@@ -92,7 +98,7 @@ export const WasteSettingsPanel = () => {
     return () => {
       active = false;
     };
-  }, [pt]);
+  }, []);
 
   if (loading) {
     return <StudioLoadingState>{pt('settings.messages.loading')}</StudioLoadingState>;

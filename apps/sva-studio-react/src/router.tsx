@@ -4,6 +4,7 @@ import { createIsomorphicFn } from '@tanstack/react-start';
 import { isMockAuthRuntimeProfile, parseRuntimeProfile } from '@sva/core';
 import type { AppRouteFactory, RouteGuardUser } from '@sva/routing';
 
+import { isDevAuthAvailable } from './lib/dev-auth';
 import { fetchWithRequestTimeout } from './lib/iam-api';
 import { fetchAuthMeSingleFlight } from './lib/auth-me-singleflight';
 import { appRouteBindings } from './routing/app-route-bindings';
@@ -38,8 +39,7 @@ export const isMockAuthEnabled = async () => {
   const runtimeProfile = parseRuntimeProfile(import.meta.env.VITE_SVA_RUNTIME_PROFILE);
 
   return (
-    import.meta.env.VITE_MOCK_AUTH === true ||
-    import.meta.env.VITE_MOCK_AUTH === 'true' ||
+    isDevAuthAvailable() ||
     (runtimeProfile !== null && isMockAuthRuntimeProfile(runtimeProfile))
   );
 };
@@ -128,11 +128,10 @@ const loadRouteGuardUserFromAuthMe = async (url: string, init?: RequestInit): Pr
 
 const getRouteGuardUser = createIsomorphicFn()
   .server(async (): Promise<RouteGuardUser | null> => {
+    if (isDevAuthAvailable()) {
+      return createMockRouteGuardUser();
+    }
     try {
-      if (await isMockAuthEnabled()) {
-        return createMockRouteGuardUser();
-      }
-
       const { getRequest } = await import('@tanstack/react-start/server');
 
       const request = getRequest();
@@ -152,11 +151,10 @@ const getRouteGuardUser = createIsomorphicFn()
     }
   })
   .client(async (): Promise<RouteGuardUser | null> => {
+    if (isDevAuthAvailable()) {
+      return createMockRouteGuardUser();
+    }
     try {
-      if (await isMockAuthEnabled()) {
-        return createMockRouteGuardUser();
-      }
-
       const result = await fetchAuthMeSingleFlight(() =>
         fetchWithRequestTimeout(new URL('/auth/me', resolveBaseUrl()).toString(), undefined, { timeoutMs: 5_000 })
       );

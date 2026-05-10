@@ -21,7 +21,7 @@ import type {
   WasteTourRecord,
 } from '@sva/core';
 
-const defineRepositoryMethod = <T extends (...args: readonly unknown[]) => Promise<unknown>>() => undefined as unknown as T;
+const defineRepositoryMethod = <T extends (...args: any[]) => Promise<unknown>>() => undefined as unknown as T;
 
 export const wasteMasterDataRepositoryContract = {
   listWasteFractions: defineRepositoryMethod<

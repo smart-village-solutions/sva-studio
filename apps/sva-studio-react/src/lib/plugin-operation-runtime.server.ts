@@ -15,14 +15,14 @@ type PluginJobRuntimeFactory = () => unknown;
 type PluginJobRuntimeFactoryRegistry = Readonly<Record<string, PluginJobRuntimeFactory>>;
 type PluginSnapshotSource = PluginSnapshot['pluginSources'][number];
 
-const workspaceJobModules = import.meta.glob('../../../../packages/*/src/server.ts', {
+const workspaceJobModules = import.meta.glob('../../../../packages/plugin-*/src/server.ts', {
   eager: true,
 }) as Record<string, PluginJobModuleExports>;
 const nodeJobModules = {
-  ...import.meta.glob('../../../../node_modules/*/dist/server.js', { eager: true }),
-  ...import.meta.glob('../../../../node_modules/*/src/server.ts', { eager: true }),
-  ...import.meta.glob('../../../../node_modules/@*/*/dist/server.js', { eager: true }),
-  ...import.meta.glob('../../../../node_modules/@*/*/src/server.ts', { eager: true }),
+  ...import.meta.glob('../../../../node_modules/plugin-*/dist/server.js', { eager: true }),
+  ...import.meta.glob('../../../../node_modules/plugin-*/src/server.ts', { eager: true }),
+  ...import.meta.glob('../../../../node_modules/@*/plugin-*/dist/server.js', { eager: true }),
+  ...import.meta.glob('../../../../node_modules/@*/plugin-*/src/server.ts', { eager: true }),
 } as Record<string, PluginJobModuleExports>;
 
 const trimImportGlobPrefix = (path: string): string => path.replace(/^(\.\.\/)+/, '');

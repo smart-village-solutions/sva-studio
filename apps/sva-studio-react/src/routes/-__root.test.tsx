@@ -93,7 +93,7 @@ describe('root route document', () => {
         { name: 'viewport', content: 'width=device-width, initial-scale=1' },
         { title: 'SVA Studio' },
       ],
-      links: [{ rel: 'stylesheet', href: expect.any(String) }],
+      links: [],
     });
   });
 
@@ -116,6 +116,8 @@ describe('root route document', () => {
       expect(screen.getByTestId('app-shell').getAttribute('data-current-pathname')).toBe('/admin/users');
       expect(document.getElementById('main-content')).toBe(document.activeElement);
     });
+
+    expect(document.head.querySelector('style[data-app-styles="true"]')).not.toBeNull();
   });
 
   it('updates the document title for plugin routes', async () => {

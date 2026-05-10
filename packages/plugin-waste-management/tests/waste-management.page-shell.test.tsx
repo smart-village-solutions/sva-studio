@@ -7,11 +7,16 @@ import { WasteManagementPage } from '../src/waste-management.page.js';
 const navigateMock = vi.fn();
 const searchState = {
   tab: 'tools',
+  masterDataTab: 'locations',
   q: 'Restmüll',
   page: 3,
   pageSize: 50,
   status: 'active',
   shiftContext: 'tour',
+  regionId: undefined,
+  cityId: undefined,
+  wasteFractionId: undefined,
+  tourId: undefined,
 };
 
 vi.mock('@tanstack/react-router', () => ({
@@ -35,7 +40,7 @@ vi.mock('@sva/studio-ui-react', () => ({
     readonly title: string;
     readonly description: string;
     readonly primaryAction: React.ReactNode;
-    readonly toolbar: React.ReactNode;
+    readonly toolbar?: React.ReactNode;
     readonly children: React.ReactNode;
   }) => (
     <section>
@@ -77,11 +82,14 @@ describe('WasteManagementPage shell', () => {
     navigateMock.mockReset();
   });
 
-  it('renders the shell and resets pagination only for search and tab changes', () => {
+  it('renders the shell without the global toolbar and resets pagination for tab changes', () => {
     render(<WasteManagementPage />);
 
     expect(screen.getByText('page.title')).toBeTruthy();
     expect(screen.getByText('page.description')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'change-search' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'change-status' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'change-shift-context' })).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: 'actions.openSettings' }));
     expect(navigateMock).toHaveBeenNthCalledWith(1, {
@@ -93,38 +101,8 @@ describe('WasteManagementPage shell', () => {
       },
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'change-search' }));
-    expect(navigateMock).toHaveBeenNthCalledWith(2, {
-      to: '/plugins/waste-management',
-      search: {
-        ...searchState,
-        q: 'Bio',
-        page: 1,
-      },
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: 'change-status' }));
-    expect(navigateMock).toHaveBeenNthCalledWith(3, {
-      to: '/plugins/waste-management',
-      search: {
-        ...searchState,
-        status: 'inactive',
-        page: 3,
-      },
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: 'change-shift-context' }));
-    expect(navigateMock).toHaveBeenNthCalledWith(4, {
-      to: '/plugins/waste-management',
-      search: {
-        ...searchState,
-        shiftContext: 'global',
-        page: 3,
-      },
-    });
-
     fireEvent.click(screen.getByRole('button', { name: 'change-tab' }));
-    expect(navigateMock).toHaveBeenNthCalledWith(5, {
+    expect(navigateMock).toHaveBeenNthCalledWith(2, {
       to: '/plugins/waste-management',
       search: {
         ...searchState,

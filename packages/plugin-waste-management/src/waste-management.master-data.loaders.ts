@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 
 import {
   getWasteManagementMasterDataOverview,
@@ -10,24 +10,30 @@ import type { WasteMasterDataState } from './waste-management.master-data.state.
 type Translate = (key: string, variables?: Readonly<Record<string, string | number>>) => string;
 
 export const useWasteMasterDataDataLoading = (state: WasteMasterDataState, pt: Translate) => {
+  const ptRef = useRef(pt);
+  ptRef.current = pt;
+  const { setAvailableTours, setError, setLoading, setOverview } = state;
+
   const loadOverview = useCallback(
     async (active = true) => {
       try {
         const response = await getWasteManagementMasterDataOverview();
         if (!active) return;
-        state.setOverview(response);
-        state.setError(null);
+        setOverview(response);
+        setError(null);
       } catch (loadError) {
         if (!active) return;
         const code = resolveApiErrorCode(loadError);
-        state.setError(
-          code === 'forbidden' ? pt('masterData.messages.loadForbidden') : pt('masterData.messages.loadError')
+        setError(
+          code === 'forbidden'
+            ? ptRef.current('masterData.messages.loadForbidden')
+            : ptRef.current('masterData.messages.loadError')
         );
       } finally {
-        if (active) state.setLoading(false);
+        if (active) setLoading(false);
       }
     },
-    [pt, state]
+    [setError, setLoading, setOverview]
   );
 
   useEffect(() => {
@@ -43,15 +49,15 @@ export const useWasteMasterDataDataLoading = (state: WasteMasterDataState, pt: T
     void (async () => {
       try {
         const response = await getWasteManagementToursOverview();
-        if (active) state.setAvailableTours(response.tours);
+        if (active) setAvailableTours(response.tours);
       } catch {
-        if (active) state.setAvailableTours([]);
+        if (active) setAvailableTours([]);
       }
     })();
     return () => {
       active = false;
     };
-  }, [state]);
+  }, [setAvailableTours]);
 
   return loadOverview;
 };

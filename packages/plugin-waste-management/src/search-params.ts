@@ -1,14 +1,17 @@
-const wasteManagementTabs = ['overview', 'master-data', 'tours', 'scheduling', 'tools', 'settings'] as const;
+const wasteManagementTabs = ['fractions', 'tours', 'locations', 'scheduling', 'tools', 'settings'] as const;
+const wasteManagementMasterDataTabs = ['fractions', 'locations'] as const;
 const wasteManagementStatusFilters = ['all', 'active', 'inactive'] as const;
 const wasteManagementShiftContexts = ['all', 'global', 'tour'] as const;
 const allowedPageSizes = new Set([10, 25, 50, 100]);
 
 export type WasteManagementTabId = (typeof wasteManagementTabs)[number];
+export type WasteManagementMasterDataTabId = (typeof wasteManagementMasterDataTabs)[number];
 export type WasteManagementStatusFilter = (typeof wasteManagementStatusFilters)[number];
 export type WasteManagementShiftContext = (typeof wasteManagementShiftContexts)[number];
 
 export type WasteManagementSearchParams = Readonly<{
   tab: WasteManagementTabId;
+  masterDataTab: WasteManagementMasterDataTabId;
   q: string;
   page: number;
   pageSize: number;
@@ -31,7 +34,12 @@ const compactOptionalString = (value: unknown): string | undefined => {
 const normalizeTab = (value: unknown): WasteManagementTabId =>
   typeof value === 'string' && wasteManagementTabs.includes(value as WasteManagementTabId)
     ? (value as WasteManagementTabId)
-    : 'overview';
+    : 'fractions';
+
+const normalizeMasterDataTab = (value: unknown): WasteManagementMasterDataTabId =>
+  typeof value === 'string' && wasteManagementMasterDataTabs.includes(value as WasteManagementMasterDataTabId)
+    ? (value as WasteManagementMasterDataTabId)
+    : 'locations';
 
 const normalizeStatus = (value: unknown): WasteManagementStatusFilter =>
   typeof value === 'string' && wasteManagementStatusFilters.includes(value as WasteManagementStatusFilter)
@@ -65,6 +73,7 @@ export const normalizeWasteManagementSearchParams = (
   search: Record<string, unknown>
 ): WasteManagementSearchParams => ({
   tab: normalizeTab(search.tab),
+  masterDataTab: normalizeMasterDataTab(search.masterDataTab),
   q: compactOptionalString(search.q) ?? '',
   page: normalizePositiveInteger(search.page, 1),
   pageSize: normalizePageSize(search.pageSize),

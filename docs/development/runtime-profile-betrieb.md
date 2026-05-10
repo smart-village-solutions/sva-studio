@@ -104,9 +104,11 @@ Nur produktionsnahe Registry-Profile:
 
 Nur Builder:
 
-- `SVA_MOCK_AUTH=true`
-- `VITE_MOCK_AUTH=true`
+- `SVA_DEV_AUTH=true`
+- `VITE_SVA_DEV_AUTH=true`
 - `VITE_PUBLIC_BUILDER_KEY`
+
+Der lokale Dev-Auth-Modus ist unter `./lokaler-dev-auth-modus.md` dokumentiert. Die bisherigen Flags `SVA_MOCK_AUTH` und `VITE_MOCK_AUTH` bleiben als Legacy-Aliase zulässig, sollen für neue Setups aber nicht mehr die erste Wahl sein.
 
 ## Standardkommandos
 

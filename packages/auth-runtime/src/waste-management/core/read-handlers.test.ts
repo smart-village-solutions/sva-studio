@@ -114,6 +114,40 @@ describe('waste-management read handlers', () => {
     expect(historyResponse.status).toBe(503);
   });
 
+  it('returns guard errors before overview loaders run', async () => {
+    const forbiddenResponse = await wasteManagementReadHandlers.getWasteManagementMasterDataOverviewInternal(
+      new Request('https://studio.test/api/v1/waste-management/master-data'),
+      actor,
+      {
+        getRequestId: () => 'req-test',
+        resolvePermissions: vi.fn(async () => ({
+          ok: true as const,
+          permissions: [],
+        })),
+        loadMasterDataOverview: vi.fn(async () => ({ fractions: [] })),
+      }
+    );
+
+    expect(forbiddenResponse.status).toBe(403);
+
+    const invalidInstanceResponse = await wasteManagementReadHandlers.getWasteManagementSchedulingOverviewInternal(
+      new Request('https://studio.test/api/v1/waste-management/scheduling'),
+      {
+        ...actor,
+        user: {
+          ...actor.user,
+          instanceId: '',
+        },
+      },
+      {
+        ...createDeps(),
+        loadSchedulingOverview: vi.fn(async () => ({ tourDateShifts: [], globalDateShifts: [] })),
+      }
+    );
+
+    expect(invalidInstanceResponse.status).toBe(400);
+  });
+
   it('updates visible status for overview reads on success and revalidation failures', async () => {
     const successCases = [
       {

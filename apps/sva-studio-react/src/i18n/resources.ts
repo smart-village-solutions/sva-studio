@@ -66,6 +66,8 @@ export const i18nResources = {
         switchToGerman: 'Auf Deutsch wechseln',
         switchToEnglish: 'Auf Englisch wechseln',
         login: 'Login',
+        devLogin: 'Als Dev-User anmelden',
+        devAuthBadge: 'Dev-Auth aktiv',
         logout: 'Logout',
         openNavigation: 'Navigation öffnen',
         closeNavigation: 'Navigation schließen',
@@ -596,6 +598,9 @@ export const i18nResources = {
       },
     },
     home: {
+      devAuth: {
+        prompt: 'Lokaler Dev-Auth-Modus ist aktiv. Keycloak wird für diese Sitzung umgangen.',
+      },
       hero: {
         eyebrow: 'Studio Workspace',
         subtitle: 'Smart Village App Self-Service Plattform für Inhalte, Module und Erweiterungen.',
@@ -690,6 +695,76 @@ export const i18nResources = {
         networkError: 'Der Verbindungsstatus konnte nicht abgerufen werden.',
         graphqlError: 'Der Mainserver hat einen GraphQL-Fehler zurückgegeben.',
         invalidResponse: 'Der Mainserver hat eine unerwartete Antwort zurückgegeben.',
+      },
+      table: {
+        ariaLabel: 'Schnittstellen der Instanz',
+        caption: 'Alle pro Instanz konfigurierten Schnittstellen mit Typ, Status und letztem Check.',
+        headerName: 'Name',
+        headerType: 'Typ',
+        headerEndpoint: 'Endpoint',
+        headerStatus: 'Status',
+        headerLastChecked: 'Letzte Prüfung',
+        emptyState: 'Für diese Instanz sind noch keine Schnittstellen hinterlegt.',
+        countLabel: '{{count}} Schnittstelle(n)',
+      },
+      types: {
+        mainserver: {
+          label: 'SVA Mainserver',
+          description: 'GraphQL-Endpoint und OAuth-Token-URL für News-, Events- und POI-Importe.',
+        },
+        s3: {
+          label: 'S3-kompatibler Object Storage',
+          description: 'Bucket-Anbindung für die Medienverwaltung (Endpoint, Region, Bucket, Zugangsschlüssel).',
+        },
+        supabase: {
+          label: 'Supabase',
+          description: 'Project URL, Schema und Service-Role-Key – z. B. für den Abfallkalender.',
+        },
+      },
+      status: {
+        cardTitle: 'Verbindungsstatus',
+        instanceLabel: 'Instanz',
+        currentLabel: 'Status',
+        lastCheckedLabel: 'Zuletzt geprüft',
+        connected: 'Verbunden',
+        error: 'Fehler',
+        unknown: 'Unbekannt',
+        disabled: 'Deaktiviert',
+      },
+      create: {
+        action: 'Neue Schnittstelle',
+        dialogTitle: 'Schnittstellentyp wählen',
+        dialogDescription: 'Wähle aus, welche Art von Schnittstelle für diese Instanz angelegt werden soll.',
+        cancel: 'Abbrechen',
+        continue: 'Weiter',
+      },
+      edit: {
+        title: 'Schnittstelle bearbeiten',
+        deleteAction: 'Löschen',
+        deleteConfirmTitle: 'Schnittstelle löschen?',
+        deleteConfirmDescription: 'Die Schnittstelle „{{name}}" wird unwiderruflich entfernt.',
+        deleteConfirm: 'Endgültig löschen',
+        cancel: 'Abbrechen',
+        commonName: 'Anzeigename',
+        commonEnabled: 'Aktiv',
+      },
+      forms: {
+        s3: {
+          endpoint: 'Endpoint-URL',
+          region: 'Region',
+          bucket: 'Bucket',
+          accessKeyId: 'Access Key ID',
+          secretAccessKey: 'Secret Access Key',
+          forcePathStyle: 'Path-Style-URLs erzwingen',
+          notImplemented: 'Hinweis: Dieses Formular ist eine UI-Vorschau. Werte werden lokal im Browser persistiert, bis das Backend angebunden ist.',
+        },
+        supabase: {
+          projectUrl: 'Project URL',
+          schemaName: 'Schema',
+          databaseUrl: 'Direct DB URL (optional)',
+          serviceRoleKey: 'Service Role Key',
+          notImplemented: 'Hinweis: Dieses Formular ist eine UI-Vorschau. Werte werden lokal im Browser persistiert, bis das Backend angebunden ist.',
+        },
       },
     },
     account: {
@@ -2784,6 +2859,8 @@ export const i18nResources = {
         switchToGerman: 'Switch to German',
         switchToEnglish: 'Switch to English',
         login: 'Login',
+        devLogin: 'Sign in as dev user',
+        devAuthBadge: 'Dev auth active',
         logout: 'Logout',
         openNavigation: 'Open navigation',
         closeNavigation: 'Close navigation',
@@ -3305,6 +3382,9 @@ export const i18nResources = {
       },
     },
     home: {
+      devAuth: {
+        prompt: 'Local dev auth is active. Keycloak is bypassed for this session.',
+      },
       hero: {
         eyebrow: 'Studio workspace',
         subtitle: 'Smart Village App self-service platform for content, modules, and extensions.',

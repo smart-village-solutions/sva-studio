@@ -182,6 +182,8 @@ gleichzeitig beeinflussen.
 - Auth-Unterbrechungen klassifizieren zusätzlich nicht-sensitive `reason_code`-Werte wie `missing_session_cookie`, `invalid_session`, `session_expired`, `silent_recovery_timeout` oder `forced_reauth`
 - Browser-seitige Auth-Recovery-Flows erzeugen pro Vorfall eine `authFlowId`, damit `/auth/me`, Silent-SSO, Redirect auf `session-expired` und nachgelagerte Retry-Schritte gemeinsam korrelierbar bleiben
 - Ein lokaler Browser-Ringpuffer in `sessionStorage` darf in Development- oder Diagnosemodi die letzten Auth-Ereignisse eines Tabs speichern; er enthält keine Tokens und keine PII, sondern nur sichere Diagnosemetadaten wie `authFlowId`, `requestId`, `reason_code` und `recovery_step`
+- Zusätzlich darf ein explizit aktivierter lokaler Dev-Auth-Modus den OIDC-Loginpfad nur auf Entwicklerrechnern umgehen; er bleibt an lokale Env-Flags, sichtbare UI-Kennzeichnung und einen synthetischen Benutzerkontext gebunden
+- Der lokale Dev-Auth-Modus ist kein gültiger Ersatznachweis für Realm-Auflösung, Session-Lifecycle, Silent-SSO, Forced-Reauth oder feingranulare IAM-Entscheidungen und darf deshalb nicht in Staging- oder Shared-Dev-Verträgen vorausgesetzt werden
 - Workspace-Context-Warnungen erfolgen über lazy `process.emitWarning` statt `console.warn`
 - Mainserver-Logs enthalten nur `instanceId`/`workspace_id`, `operation_name`, `request_id`, `trace_id`, Status und abstrahierte Fehlercodes; API-Key, Secret, Token und unredactete Variablen werden nie geloggt
 - IAM-Request-Spans tragen konsistente Diagnoseattribute wie `iam.endpoint`, `iam.instance_id`, `iam.actor_resolution`, `iam.reason_code`, `iam.feature_flags`, `db.schema_guard_result`, `dependency.redis.status` und `dependency.keycloak.status`

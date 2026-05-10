@@ -33,7 +33,14 @@ export default function Header({
   isMobileNavigationOpen = false,
   onOpenMobileNavigation,
 }: HeaderProps) {
-  const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
+  const {
+    user,
+    isAuthenticated,
+    isLoading: isAuthLoading,
+    isDevAuthAvailable,
+    loginWithDevAuth,
+    logout,
+  } = useAuth();
   const { locale, setLocale } = useLocale();
   const { mode, toggleMode } = useTheme();
   const [isHydrated, setIsHydrated] = React.useState(false);
@@ -57,7 +64,16 @@ export default function Header({
       </>
     );
   } else if (!isAuthenticated) {
-    authAction = (
+    authAction = isDevAuthAvailable ? (
+      <>
+        <span className="rounded-full border border-amber-300 bg-amber-100 px-3 py-1 text-xs font-medium uppercase tracking-[0.2em] text-amber-800">
+          {t('shell.header.devAuthBadge')}
+        </span>
+        <Button className="ml-2" type="button" variant="secondary" onClick={() => void loginWithDevAuth()}>
+          {t('shell.header.devLogin')}
+        </Button>
+      </>
+    ) : (
       <Button asChild className="ml-2" variant="secondary">
         <a href={loginHref}>{t('shell.header.login')}</a>
       </Button>
@@ -65,15 +81,26 @@ export default function Header({
   } else if (user) {
     authAction = (
       <>
+        {isDevAuthAvailable ? (
+          <span className="rounded-full border border-amber-300 bg-amber-100 px-3 py-1 text-xs font-medium uppercase tracking-[0.2em] text-amber-800">
+            {t('shell.header.devAuthBadge')}
+          </span>
+        ) : null}
         <Button asChild className="ml-2" variant="outline">
           <Link to="/account">{t('shell.sidebar.account')}</Link>
         </Button>
-        <form action="/auth/logout" method="post" className="ml-2">
-          <input type="hidden" name="logoutIntent" value="user" />
-          <Button type="submit" variant="destructive">
+        {isDevAuthAvailable ? (
+          <Button className="ml-2" type="button" variant="destructive" onClick={() => void logout()}>
             {t('shell.header.logout')}
           </Button>
-        </form>
+        ) : (
+          <form action="/auth/logout" method="post" className="ml-2">
+            <input type="hidden" name="logoutIntent" value="user" />
+            <Button type="submit" variant="destructive">
+              {t('shell.header.logout')}
+            </Button>
+          </form>
+        )}
       </>
     );
   }

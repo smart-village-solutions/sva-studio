@@ -1,23 +1,23 @@
 export const wasteManagementPluginTranslationsENTabs = {
   "tabs": {
-    "ariaLabel": "Waste calendar areas",
-    "overview": {
-      "title": "Overview",
-      "body": "The main path is now materialized as a free plugin and keeps its reload-stable state through typed search params.",
-      "emptyTitle": "Overview coming next",
-      "emptyBody": "Upcoming slices add metrics, status surfaces and job hints."
-    },
-    "masterData": {
-      "title": "Master data",
-      "body": "Regions, cities, streets, house numbers, fractions and collection locations will be connected here step by step.",
-      "emptyTitle": "Master data coming next",
-      "emptyBody": "Table and dialog surfaces will be wired to the host facade in the next steps."
+    "ariaLabel": "Waste management areas",
+    "fractions": {
+      "title": "Waste types",
+      "body": "Manage fractions, colors, and translations as a dedicated waste management workspace.",
+      "emptyTitle": "No waste types yet",
+      "emptyBody": "Create the first fraction to make collection types available for tours and pickup locations."
     },
     "tours": {
       "title": "Tours",
       "body": "Tours, assignments and tour-specific maintenance get their own focused work area.",
       "emptyTitle": "Tours coming next",
       "emptyBody": "The first route already preserves shareable tab and filter state for this area."
+    },
+    "locations": {
+      "title": "Pickup locations",
+      "body": "Manage regions, cities, streets, house numbers, and concrete pickup locations in one shared location context.",
+      "emptyTitle": "No pickup locations yet",
+      "emptyBody": "As soon as regions and address data exist, pickup locations will appear in this area."
     },
     "scheduling": {
       "title": "Schedule deviations",
@@ -26,7 +26,7 @@ export const wasteManagementPluginTranslationsENTabs = {
       "emptyBody": "Calendar, bulk and conflict surfaces will be added here later."
     },
     "tools": {
-      "title": "Tools",
+      "title": "Data tools",
       "body": "Import, migration, seed and reset are started through the host generic job capability.",
       "emptyTitle": "Tools coming next",
       "emptyBody": "Job starters and progress views will be attached to the host endpoints in the next slice."

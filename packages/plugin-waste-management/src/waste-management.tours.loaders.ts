@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 
 import {
   getWasteManagementMasterDataOverview,
@@ -11,6 +11,10 @@ import type { WasteToursState } from './waste-management.tours.state.js';
 type Translate = (key: string, variables?: Readonly<Record<string, string | number>>) => string;
 
 export const useWasteToursDataLoading = (state: WasteToursState, pt: Translate) => {
+  const ptRef = useRef(pt);
+  ptRef.current = pt;
+  const { setAvailableFractions, setError, setLoading, setMasterDataOverview, setOverview, setSchedulingOverview } = state;
+
   const loadOverview = useCallback(
     async (active = true) => {
       try {
@@ -20,20 +24,20 @@ export const useWasteToursDataLoading = (state: WasteToursState, pt: Translate) 
           getWasteManagementSchedulingOverview(),
         ]);
         if (!active) return;
-        state.setOverview(toursResponse);
-        state.setAvailableFractions(masterDataResponse.fractions);
-        state.setMasterDataOverview(masterDataResponse);
-        state.setSchedulingOverview(schedulingResponse);
-        state.setError(null);
+        setOverview(toursResponse);
+        setAvailableFractions(masterDataResponse.fractions);
+        setMasterDataOverview(masterDataResponse);
+        setSchedulingOverview(schedulingResponse);
+        setError(null);
       } catch (loadError) {
         if (!active) return;
         const code = resolveApiErrorCode(loadError);
-        state.setError(code === 'forbidden' ? pt('tours.messages.loadForbidden') : pt('tours.messages.loadError'));
+        setError(code === 'forbidden' ? ptRef.current('tours.messages.loadForbidden') : ptRef.current('tours.messages.loadError'));
       } finally {
-        if (active) state.setLoading(false);
+        if (active) setLoading(false);
       }
     },
-    [pt, state]
+    [setAvailableFractions, setError, setLoading, setMasterDataOverview, setOverview, setSchedulingOverview]
   );
 
   useEffect(() => {

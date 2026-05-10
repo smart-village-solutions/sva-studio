@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 
 import {
   getWasteManagementSchedulingOverview,
@@ -10,6 +10,10 @@ import type { WasteSchedulingState } from './waste-management.scheduling.state.j
 type Translate = (key: string, variables?: Readonly<Record<string, string | number>>) => string;
 
 export const useWasteSchedulingDataLoading = (state: WasteSchedulingState, pt: Translate) => {
+  const ptRef = useRef(pt);
+  ptRef.current = pt;
+  const { setAvailableTours, setError, setLoading, setOverview } = state;
+
   const loadOverview = useCallback(
     async (active = true) => {
       try {
@@ -18,20 +22,22 @@ export const useWasteSchedulingDataLoading = (state: WasteSchedulingState, pt: T
           getWasteManagementToursOverview(),
         ]);
         if (!active) return;
-        state.setOverview(schedulingResponse);
-        state.setAvailableTours(toursResponse.tours);
-        state.setError(null);
+        setOverview(schedulingResponse);
+        setAvailableTours(toursResponse.tours);
+        setError(null);
       } catch (loadError) {
         if (!active) return;
         const code = resolveApiErrorCode(loadError);
-        state.setError(
-          code === 'forbidden' ? pt('scheduling.messages.loadForbidden') : pt('scheduling.messages.loadError')
+        setError(
+          code === 'forbidden'
+            ? ptRef.current('scheduling.messages.loadForbidden')
+            : ptRef.current('scheduling.messages.loadError')
         );
       } finally {
-        if (active) state.setLoading(false);
+        if (active) setLoading(false);
       }
     },
-    [pt, state]
+    [setAvailableTours, setError, setLoading, setOverview]
   );
 
   useEffect(() => {

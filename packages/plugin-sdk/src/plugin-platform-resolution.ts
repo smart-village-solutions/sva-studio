@@ -120,7 +120,11 @@ const satisfiesVersionRange = (version: string, range: string): boolean => {
       return parsedVersion.major === 0 && parsedVersion.minor === baseVersion.minor;
     }
 
-    return parsedVersion.major === 0 && parsedVersion.minor === 0;
+    return (
+      parsedVersion.major === 0 &&
+      parsedVersion.minor === 0 &&
+      parsedVersion.patch === baseVersion.patch
+    );
   }
 
   const exactVersion = parseVersion(normalizedRange);

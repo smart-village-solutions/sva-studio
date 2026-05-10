@@ -595,7 +595,24 @@ describe('WasteManagementPage', () => {
     render(<WasteManagementPage />);
 
     expect(screen.getByText('wasteManagement.page.title')).toBeTruthy();
-    expect(screen.getByDisplayValue('Restmüll')).toBeTruthy();
+    expect(screen.queryByDisplayValue('Restmüll')).toBeNull();
+    expect(screen.queryByLabelText('wasteManagement.filters.searchLabel')).toBeNull();
+    expect(screen.queryByLabelText('wasteManagement.filters.statusLabel')).toBeNull();
+    expect(screen.queryByLabelText('wasteManagement.filters.shiftContextLabel')).toBeNull();
+    expect(screen.queryByText(/wasteManagement\.meta\.search:/)).toBeNull();
+    const expectedTabs = [
+      'wasteManagement.tabs.fractions.title',
+      'wasteManagement.tabs.tours.title',
+      'wasteManagement.tabs.locations.title',
+      'wasteManagement.tabs.scheduling.title',
+      'wasteManagement.tabs.tools.title',
+      'wasteManagement.tabs.settings.title',
+    ];
+    for (const tabLabel of expectedTabs) {
+      const tab = screen.getByRole('tab', { name: tabLabel });
+      expect(tab.querySelector('svg')).toBeTruthy();
+      expect(tab.querySelector('[data-icon-library="tabler"]')).toBeTruthy();
+    }
     expect(screen.getByText('wasteManagement.tools.migrations.title')).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'wasteManagement.actions.openSettings' }));
@@ -666,10 +683,10 @@ describe('WasteManagementPage', () => {
     });
   });
 
-  it('loads and renders the audit and technical waste history', async () => {
+  it('loads and renders the technical waste history in Datentools', async () => {
     searchMock.mockImplementation(() => ({
-      tab: 'overview',
-      q: 'fraction',
+      tab: 'tools',
+      q: '',
       page: 1,
       pageSize: 10,
       status: 'all',
@@ -710,12 +727,10 @@ describe('WasteManagementPage', () => {
 
     render(<WasteManagementPage />);
 
-    await screen.findByText('waste-management.fraction.created');
-    expect(screen.getByText('migration.succeeded')).toBeTruthy();
+    await screen.findByText('migration.succeeded');
     expect(wasteManagementApiMocks.getWasteManagementHistoryOverview).toHaveBeenCalledWith({
-      q: 'fraction',
       page: 1,
-      pageSize: 10,
+      pageSize: 8,
     });
     expect(screen.getAllByText('wasteManagement.overview.outcome.success').length).toBeGreaterThan(0);
   });
@@ -729,7 +744,7 @@ describe('WasteManagementPage', () => {
       status: 'all',
       shiftContext: 'all',
     }));
-    wasteManagementApiMocks.getWasteManagementSettings.mockResolvedValueOnce({
+    wasteManagementApiMocks.getWasteManagementSettings.mockImplementation(async () => ({
       instanceId: 'tenant-a',
       provider: 'supabase',
       projectUrl: 'https://tenant-a.supabase.co',
@@ -738,8 +753,8 @@ describe('WasteManagementPage', () => {
       databaseUrlConfigured: true,
       serviceRoleKeyConfigured: true,
       visibleStatus: 'ok',
-    });
-    wasteManagementApiMocks.updateWasteManagementSettings.mockResolvedValueOnce({
+    }));
+    wasteManagementApiMocks.updateWasteManagementSettings.mockImplementation(async () => ({
       instanceId: 'tenant-a',
       provider: 'supabase',
       projectUrl: 'https://tenant-a.supabase.co',
@@ -748,7 +763,7 @@ describe('WasteManagementPage', () => {
       databaseUrlConfigured: true,
       serviceRoleKeyConfigured: true,
       visibleStatus: 'ok',
-    });
+    }));
 
     render(<WasteManagementPage />);
 
@@ -756,7 +771,17 @@ describe('WasteManagementPage', () => {
       expect(wasteManagementApiMocks.getWasteManagementSettings).toHaveBeenCalledTimes(1);
     });
 
-    fireEvent.change(screen.getByDisplayValue('https://tenant-a.supabase.co'), {
+    const projectUrlInput = await screen.findByLabelText('wasteManagement.settings.fields.projectUrl');
+    const schemaNameInput = await screen.findByLabelText('wasteManagement.settings.fields.schemaName');
+    const enabledCheckbox = await screen.findByLabelText('wasteManagement.settings.fields.enabled');
+
+    await waitFor(() => {
+      expect((projectUrlInput as HTMLInputElement).value).toBe('https://tenant-a.supabase.co');
+      expect((schemaNameInput as HTMLInputElement).value).toBe('wm');
+      expect((enabledCheckbox as HTMLInputElement).checked).toBe(true);
+    });
+
+    fireEvent.change(projectUrlInput, {
       target: { value: 'https://tenant-b.supabase.co' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'wasteManagement.settings.actions.save' }));
@@ -774,7 +799,8 @@ describe('WasteManagementPage', () => {
 
   it('loads and renders the filtered master-data overview', async () => {
     searchMock.mockImplementation(() => ({
-      tab: 'master-data',
+      tab: 'fractions',
+      masterDataTab: 'fractions',
       q: 'Rest',
       page: 1,
       pageSize: 25,
@@ -866,14 +892,12 @@ describe('WasteManagementPage', () => {
 
     expect(screen.getByText('Restmüll')).toBeTruthy();
     expect(screen.queryByText('Biomüll')).toBeNull();
-    expect(screen.getByText('Region Mitte')).toBeTruthy();
-    expect(screen.getByText('Musterstadt')).toBeTruthy();
-    expect(screen.queryByText('Nebenort')).toBeNull();
   });
 
   it('creates a waste fraction from the master-data dialog and reloads the overview', async () => {
     searchMock.mockImplementation(() => ({
-      tab: 'master-data',
+      tab: 'fractions',
+      masterDataTab: 'locations',
       q: '',
       page: 1,
       pageSize: 25,
@@ -944,7 +968,8 @@ describe('WasteManagementPage', () => {
 
   it('creates a waste region from the master-data dialog', async () => {
     searchMock.mockImplementation(() => ({
-      tab: 'master-data',
+      tab: 'locations',
+      masterDataTab: 'locations',
       q: '',
       page: 1,
       pageSize: 25,
@@ -991,7 +1016,8 @@ describe('WasteManagementPage', () => {
 
   it('creates a waste city from the master-data dialog', async () => {
     searchMock.mockImplementation(() => ({
-      tab: 'master-data',
+      tab: 'locations',
+      masterDataTab: 'locations',
       q: '',
       page: 1,
       pageSize: 25,
@@ -1069,7 +1095,8 @@ describe('WasteManagementPage', () => {
 
   it('creates a waste street from the master-data dialog', async () => {
     searchMock.mockImplementation(() => ({
-      tab: 'master-data',
+      tab: 'locations',
+      masterDataTab: 'locations',
       q: '',
       page: 1,
       pageSize: 25,
@@ -1124,7 +1151,8 @@ describe('WasteManagementPage', () => {
 
   it('creates a waste house number from the master-data dialog', async () => {
     searchMock.mockImplementation(() => ({
-      tab: 'master-data',
+      tab: 'locations',
+      masterDataTab: 'locations',
       q: '',
       page: 1,
       pageSize: 25,
@@ -1187,7 +1215,8 @@ describe('WasteManagementPage', () => {
 
   it('creates a waste collection location from the master-data dialog', async () => {
     searchMock.mockImplementation(() => ({
-      tab: 'master-data',
+      tab: 'locations',
+      masterDataTab: 'locations',
       q: '',
       page: 1,
       pageSize: 25,
@@ -1242,7 +1271,7 @@ describe('WasteManagementPage', () => {
     });
 
     fireEvent.click(
-      screen.getByRole('button', { name: 'wasteManagement.masterData.collectionLocations.actions.openCreate' })
+      screen.getByRole('button', { name: 'wasteManagement.masterData.locationsWorkspace.actions.createLocation' })
     );
     const citySelect = document.getElementById('waste-location-city-id') as HTMLSelectElement | null;
     const streetSelect = document.getElementById('waste-location-street-id') as HTMLSelectElement | null;
@@ -1270,7 +1299,8 @@ describe('WasteManagementPage', () => {
 
   it('creates waste location-tour links in bulk from selected collection locations', async () => {
     searchMock.mockImplementation(() => ({
-      tab: 'master-data',
+      tab: 'locations',
+      masterDataTab: 'locations',
       q: '',
       page: 1,
       pageSize: 25,

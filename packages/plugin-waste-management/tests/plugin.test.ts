@@ -30,8 +30,22 @@ describe('pluginWasteManagement contract', () => {
     });
     expect(pluginWasteManagement.routes[0]?.validateSearch?.({ tab: 'settings', page: '2' })).toEqual({
       tab: 'settings',
+      masterDataTab: 'locations',
       q: '',
       page: 2,
+      pageSize: 25,
+      status: 'all',
+      shiftContext: 'all',
+      regionId: undefined,
+      cityId: undefined,
+      wasteFractionId: undefined,
+      tourId: undefined,
+    });
+    expect(pluginWasteManagement.routes[0]?.validateSearch?.({})).toEqual({
+      tab: 'fractions',
+      masterDataTab: 'locations',
+      q: '',
+      page: 1,
       pageSize: 25,
       status: 'all',
       shiftContext: 'all',

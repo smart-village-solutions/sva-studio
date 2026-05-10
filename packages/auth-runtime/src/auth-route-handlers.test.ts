@@ -27,6 +27,7 @@ const mocks = vi.hoisted(() => {
     resolveEffectivePermissions: vi.fn(),
     withRegistryRepository: vi.fn(),
     isMockAuthEnabled: vi.fn(),
+    hasActiveMockAuthSession: vi.fn(() => false),
     createMockSessionUser: vi.fn(),
     getAuthConfig: vi.fn(() => ({ sessionCookieName: 'sva_session' })),
     readCookieFromRequest: vi.fn(() => 'session-1'),
@@ -82,7 +83,9 @@ vi.mock('./iam-instance-registry/repository.js', () => ({
 }));
 
 vi.mock('./mock-auth.js', () => ({
+  DEV_AUTH_COOKIE_NAME: 'sva_dev_auth',
   isMockAuthEnabled: mocks.isMockAuthEnabled,
+  hasActiveMockAuthSession: mocks.hasActiveMockAuthSession,
   createMockSessionUser: mocks.createMockSessionUser,
 }));
 
@@ -93,7 +96,7 @@ vi.mock('./config.js', () => ({
 
 vi.mock('./cookies.js', () => ({
   appendSetCookie: mocks.appendSetCookie,
-  deleteCookieHeader: vi.fn(),
+  deleteCookieHeader: vi.fn((name: string) => `${name}=; Path=/; Max-Age=0`),
   readCookieFromRequest: mocks.readCookieFromRequest,
 }));
 
@@ -144,6 +147,7 @@ describe('meHandler', () => {
     vi.clearAllMocks();
 
     mocks.isMockAuthEnabled.mockReturnValue(false);
+    mocks.hasActiveMockAuthSession.mockReturnValue(false);
     mocks.createMockSessionUser.mockReturnValue({
       id: 'mock-user',
       instanceId: 'de-test',
@@ -234,6 +238,7 @@ describe('meHandler', () => {
 
   it('returns hardened headers in mock-auth mode without permission lookup', async () => {
     mocks.isMockAuthEnabled.mockReturnValue(true);
+    mocks.hasActiveMockAuthSession.mockReturnValue(true);
 
     const response = await meHandler(new Request('http://localhost/auth/me'));
 
@@ -390,7 +395,7 @@ describe('loginHandler', () => {
     mocks.isMockAuthEnabled.mockReturnValue(false);
   });
 
-  it('redirects to /?auth=mock-login in mock-auth mode', async () => {
+  it('redirects to the local dev-auth entry point in mock-auth mode', async () => {
     const { loginHandler } = await import('./auth-route-handlers.js');
 
     mocks.isMockAuthEnabled.mockReturnValue(true);
@@ -398,8 +403,54 @@ describe('loginHandler', () => {
     const response = await loginHandler(new Request('http://localhost/auth/login'));
 
     expect(response.status).toBe(302);
-    expect(response.headers.get('Location')).toBe('/?auth=mock-login');
+    expect(response.headers.get('Location')).toBe('/?auth=dev-login&returnTo=%2F');
     expect(mocks.resolveEffectivePermissions).not.toHaveBeenCalled();
+  });
+});
+
+describe('dev auth handlers', () => {
+  it('returns not found for dev-login when dev auth is unavailable', async () => {
+    const { devLoginHandler } = await import('./auth-route-handlers.js');
+
+    mocks.isMockAuthEnabled.mockReturnValue(false);
+
+    const response = await devLoginHandler(new Request('http://localhost/auth/dev-login', { method: 'POST' }));
+
+    expect(response.status).toBe(404);
+  });
+
+  it('sets a dev auth cookie and redirects to the requested path when dev auth is available', async () => {
+    const { devLoginHandler } = await import('./auth-route-handlers.js');
+
+    mocks.isMockAuthEnabled.mockReturnValue(true);
+
+    const response = await devLoginHandler(
+      new Request('http://localhost/auth/dev-login?returnTo=%2Fplugins%2Fwaste-management', { method: 'POST' })
+    );
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get('Location')).toBe('/plugins/waste-management');
+    expect(mocks.appendSetCookie).toHaveBeenCalledWith(
+      response,
+      expect.stringContaining('sva_dev_auth=1')
+    );
+  });
+
+  it('clears the dev auth cookie on dev-logout', async () => {
+    const { devLogoutHandler } = await import('./auth-route-handlers.js');
+
+    mocks.isMockAuthEnabled.mockReturnValue(true);
+
+    const response = await devLogoutHandler(
+      new Request('http://localhost/auth/dev-logout?returnTo=%2F', { method: 'POST' })
+    );
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get('Location')).toBe('/');
+    expect(mocks.appendSetCookie).toHaveBeenCalledWith(
+      response,
+      expect.stringContaining('sva_dev_auth=')
+    );
   });
 });
 
@@ -550,7 +601,7 @@ describe('logoutHandler', () => {
     mocks.isMockAuthEnabled.mockReturnValue(false);
   });
 
-  it('redirects to /?auth=mock-logout in mock-auth mode', async () => {
+  it('clears local dev auth state in mock-auth logout mode', async () => {
     const { logoutHandler } = await import('./auth-route-handlers.js');
 
     mocks.isMockAuthEnabled.mockReturnValue(true);
@@ -558,7 +609,11 @@ describe('logoutHandler', () => {
     const response = await logoutHandler(new Request('http://localhost/auth/logout'));
 
     expect(response.status).toBe(302);
-    expect(response.headers.get('Location')).toBe('/?auth=mock-logout');
+    expect(response.headers.get('Location')).toBe('/');
+    expect(mocks.appendSetCookie).toHaveBeenCalledWith(
+      response,
+      expect.stringContaining('sva_dev_auth=')
+    );
   });
 
   it('rejects logout requests that lack explicit logout intent', async () => {

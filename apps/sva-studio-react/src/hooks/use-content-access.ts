@@ -131,7 +131,7 @@ export const useContentAccess = (): UseContentAccessResult => {
       });
 
     return () => {
-      controller.abort();
+      controller.abort(new DOMException('Content-Access-Hook wurde unmounted.', 'AbortError'));
     };
   }, [invalidatePermissions, organizationContext.context?.activeOrganizationId, user?.instanceId]);
 

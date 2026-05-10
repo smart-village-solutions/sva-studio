@@ -34,6 +34,7 @@ export const WasteSettingsForm = ({
         <StudioFieldGroup>
           <StudioField id="waste-settings-project-url" label={pt('settings.fields.projectUrl')}>
             <Input
+              id="waste-settings-project-url"
               value={form.projectUrl}
               onChange={(event) => onChange((current) => ({ ...current, projectUrl: event.target.value }))}
               placeholder="https://example.supabase.co"
@@ -41,6 +42,7 @@ export const WasteSettingsForm = ({
           </StudioField>
           <StudioField id="waste-settings-schema-name" label={pt('settings.fields.schemaName')}>
             <Input
+              id="waste-settings-schema-name"
               value={form.schemaName}
               onChange={(event) => onChange((current) => ({ ...current, schemaName: event.target.value }))}
               placeholder="public"
@@ -48,6 +50,7 @@ export const WasteSettingsForm = ({
           </StudioField>
           <StudioField id="waste-settings-database-url" label={pt('settings.fields.databaseUrl')}>
             <Input
+              id="waste-settings-database-url"
               value={form.databaseUrl}
               onChange={(event) => onChange((current) => ({ ...current, databaseUrl: event.target.value }))}
               placeholder="postgresql://..."
@@ -55,6 +58,7 @@ export const WasteSettingsForm = ({
           </StudioField>
           <StudioField id="waste-settings-service-role-key" label={pt('settings.fields.serviceRoleKey')}>
             <Input
+              id="waste-settings-service-role-key"
               value={form.serviceRoleKey}
               onChange={(event) => onChange((current) => ({ ...current, serviceRoleKey: event.target.value }))}
               placeholder="service-role-key"
@@ -62,6 +66,7 @@ export const WasteSettingsForm = ({
           </StudioField>
           <label className="flex items-center gap-3 text-sm font-medium">
             <Checkbox
+              id="waste-settings-enabled"
               checked={form.enabled}
               onChange={(event) => onChange((current) => ({ ...current, enabled: event.target.checked }))}
               aria-label={pt('settings.fields.enabled')}

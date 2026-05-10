@@ -27,7 +27,12 @@ import {
   getWorkspaceIdForScope,
 } from './scope.js';
 import { isTokenErrorLike } from './error-guards.js';
-import { createMockSessionUser, isMockAuthEnabled } from './mock-auth.js';
+import {
+  DEV_AUTH_COOKIE_NAME,
+  createMockSessionUser,
+  hasActiveMockAuthSession,
+  isMockAuthEnabled,
+} from './mock-auth.js';
 import { buildRequestOriginFromHeaders, resolveEffectiveRequestHost } from './request-hosts.js';
 import { SessionStoreUnavailableError, TenantAuthResolutionError, TenantScopeConflictError } from './runtime-errors.js';
 
@@ -56,6 +61,11 @@ const createAuthMeHeaders = (): HeadersInit => ({
   'Cache-Control': 'no-store',
   Pragma: 'no-cache',
 });
+
+const createNotFoundResponse = () =>
+  new Response(null, {
+    status: 404,
+  });
 
 const collectEffectivePermissionActions = (
   permissions: readonly {
@@ -242,6 +252,9 @@ const createLoginStateCookie = (input: { name: string; secret: string; payload: 
 const createSilentSsoSuppressCookie = (name: string, suppressUntil: number) =>
   serializeCookie(name, String(suppressUntil), createTimedCookieOptions(suppressUntil));
 
+const createDevAuthCookie = () =>
+  serializeCookie(DEV_AUTH_COOKIE_NAME, '1', createAuthCookieOptions());
+
 const getSetCookieValues = (headers: Headers): string[] => {
   const candidate = headers as Headers & { getSetCookie?: () => string[] };
   if (typeof candidate.getSetCookie === 'function') {
@@ -359,6 +372,9 @@ const hasExplicitLogoutIntent = async (request: Request): Promise<boolean> => {
 const sanitizeReturnTo = async (request: Request, value: string | null | undefined): Promise<string> => {
   return sanitizeAuthReturnTo(request, value, { defaultPath: DEFAULT_POST_LOGIN_REDIRECT });
 };
+
+const isActiveDevAuthRequest = (request: Request): boolean =>
+  isMockAuthEnabled() && hasActiveMockAuthSession(request);
 
 const resolveCookieLoginState = async (request: Request, state: string) => {
   const { loginStateCookieName, loginStateSecret } = getAuthConfig();
@@ -769,25 +785,140 @@ const createAuthMeResponse = (
     }
   );
 
+const resolveLoginRequestContext = async (request?: Request) => {
+  const url = request ? new URL(request.url) : null;
+  const isSilent = url?.searchParams.get('silent') === '1';
+  const returnTo = request
+    ? await sanitizeReturnTo(request, url?.searchParams.get('returnTo') ?? url?.searchParams.get('redirect'))
+    : DEFAULT_POST_LOGIN_REDIRECT;
+
+  return { url, isSilent, returnTo };
+};
+
+const handleMockLogin = async (request?: Request): Promise<Response> => {
+  const { isSilent, returnTo } = await resolveLoginRequestContext(request);
+  if (isSilent) {
+    return createSilentSsoResponse('failure');
+  }
+
+  return createRedirectResponse(`/?auth=dev-login&returnTo=${encodeURIComponent(returnTo)}`);
+};
+
+const resolveLoginAuthConfig = async (request?: Request) => {
+  const authConfig = request ? await resolveAuthConfigForRequest(request) : getAuthConfig();
+  return { authConfig, authScope: getScopeFromAuthConfig(authConfig) };
+};
+
+const createLoginErrorResponse = (request: Request | undefined, error: unknown): Response =>
+  request
+    ? createAuthDependencyErrorResponse(request, 'auth_login', error)
+    : toJsonErrorResponse(500, 'internal_error', 'Authentifizierung ist momentan nicht verfügbar.');
+
+const resolveLogoutUrl = async ({
+  request,
+  authConfig,
+  authScope,
+}: {
+  readonly request: Request;
+  readonly authConfig: Awaited<ReturnType<typeof resolveAuthConfigForRequest>>;
+  readonly authScope: ReturnType<typeof getScopeFromAuthConfig>;
+}): Promise<string> => {
+  const { sessionCookieName, postLogoutRedirectUri } = authConfig;
+  const sessionId = readCookieFromRequest(request, sessionCookieName);
+  if (!sessionId) {
+    logger.debug('Logout without session', {
+      endpoint: '/auth/logout',
+      operation: 'logout',
+      session_exists: false,
+      ...buildLogContext(authScope),
+    });
+    return postLogoutRedirectUri;
+  }
+
+  try {
+    const sessionBeforeLogout = await getSession(sessionId);
+    const logoutUrl = await logoutSession(sessionId, authConfig);
+
+    logger.info('Logout successful', {
+      endpoint: '/auth/logout',
+      operation: 'logout',
+      ...summarizeRedirectTarget(logoutUrl),
+      ...buildLogContext(
+        sessionBeforeLogout?.user?.instanceId ? { kind: 'instance', instanceId: sessionBeforeLogout.user.instanceId } : authScope
+      ),
+      workspaceId: sessionBeforeLogout?.user?.instanceId ?? getWorkspaceIdForScope(authScope),
+      outcome: 'success',
+    });
+
+    await emitAuthAuditEvent({
+      eventType: 'logout',
+      actorUserId: sessionBeforeLogout?.user?.id ?? sessionBeforeLogout?.userId,
+      scope: sessionBeforeLogout?.user?.instanceId ? { kind: 'instance', instanceId: sessionBeforeLogout.user.instanceId } : authScope,
+      workspaceId: sessionBeforeLogout?.user?.instanceId ?? getWorkspaceIdForScope(authScope),
+      outcome: 'success',
+    });
+
+    return logoutUrl;
+  } catch (error) {
+    if (error instanceof SessionStoreUnavailableError) {
+      throw error;
+    }
+    logger.error('Logout failed', {
+      endpoint: '/auth/logout',
+      operation: 'logout',
+      error_type: error instanceof Error ? error.constructor.name : typeof error,
+      reason_code: 'logout_failed',
+      ...buildLogContext(authScope),
+    });
+    return postLogoutRedirectUri;
+  }
+};
+
+const createLogoutResponse = ({
+  logoutUrl,
+  sessionCookieName,
+  silentSsoSuppressCookieName,
+  silentSsoSuppressAfterLogoutMs,
+  authScope,
+}: {
+  readonly logoutUrl: string;
+  readonly sessionCookieName: string;
+  readonly silentSsoSuppressCookieName: string;
+  readonly silentSsoSuppressAfterLogoutMs: number;
+  readonly authScope: ReturnType<typeof getScopeFromAuthConfig>;
+}) => {
+  const response = createRedirectResponse(logoutUrl);
+  const sessionDeleteStrategy = attachDeletedCookie(response, sessionCookieName);
+  const silentSsoSuppressStrategy = attachSilentSsoSuppressCookie(
+    response,
+    silentSsoSuppressCookieName,
+    Date.now() + silentSsoSuppressAfterLogoutMs
+  );
+  logger.info('Logout cookies prepared', {
+    endpoint: '/auth/logout',
+    operation: 'logout_cookie_cleanup',
+    session_delete_strategy: sessionDeleteStrategy,
+    silent_sso_suppress_strategy: silentSsoSuppressStrategy,
+    response_set_cookie_count: getSetCookieValues(response.headers).length,
+    ...buildLogContext(authScope),
+  });
+  return response;
+};
+
 export const loginHandler = async (request?: Request): Promise<Response> => {
   return withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
     if (isMockAuthEnabled()) {
-      return createRedirectResponse('/?auth=mock-login');
+      return handleMockLogin(request);
     }
 
     try {
-      const url = request ? new URL(request.url) : null;
-      const isSilent = url?.searchParams.get('silent') === '1';
+      const { isSilent, returnTo } = await resolveLoginRequestContext(request);
       if (request && isSilent && isSilentSsoSuppressed(request)) {
         return createSilentSsoResponse('failure');
       }
 
-      const authConfig = request ? await resolveAuthConfigForRequest(request) : getAuthConfig();
-      const authScope = getScopeFromAuthConfig(authConfig);
+      const { authConfig, authScope } = await resolveLoginAuthConfig(request);
       const { loginStateCookieName, loginStateSecret } = authConfig;
-      const returnTo = request
-        ? await sanitizeReturnTo(request, url?.searchParams.get('returnTo') ?? url?.searchParams.get('redirect'))
-        : DEFAULT_POST_LOGIN_REDIRECT;
       const { url: authorizationUrl, state, loginState } = await createLoginUrl({
         returnTo,
         silent: isSilent,
@@ -844,9 +975,7 @@ export const loginHandler = async (request?: Request): Promise<Response> => {
 
       return response;
     } catch (error) {
-      return request
-        ? createAuthDependencyErrorResponse(request, 'auth_login', error)
-        : toJsonErrorResponse(500, 'internal_error', 'Authentifizierung ist momentan nicht verfügbar.');
+      return createLoginErrorResponse(request, error);
     }
   });
 };
@@ -862,7 +991,7 @@ export const callbackHandler = async (request: Request): Promise<Response> => {
       const { code, state, iss } = callbackInput;
       const authConfig = await resolveAuthConfigForRequest(request);
       const authScope = getScopeFromAuthConfig(authConfig);
-      const { loginStateCookieName, sessionCookieName } = authConfig;
+      const { sessionCookieName } = authConfig;
       const cookieLoginState = state ? await resolveCookieLoginState(request, state) : null;
       const hadSessionCookieOnCallback = Boolean(readCookieFromRequest(request, sessionCookieName));
       const dependencies: CallbackDependencies = {
@@ -945,7 +1074,7 @@ export const callbackHandler = async (request: Request): Promise<Response> => {
 
 export const meHandler = async (request: Request): Promise<Response> => {
   return withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
-    if (isMockAuthEnabled()) {
+    if (isActiveDevAuthRequest(request)) {
       return new Response(JSON.stringify({ user: createMockSessionUser() }), {
         status: 200,
         headers: createAuthMeHeaders(),
@@ -985,10 +1114,40 @@ export const meHandler = async (request: Request): Promise<Response> => {
   });
 };
 
+export const devLoginHandler = async (request: Request): Promise<Response> => {
+  return withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
+    if (!isMockAuthEnabled()) {
+      return createNotFoundResponse();
+    }
+
+    const url = new URL(request.url);
+    const returnTo = await sanitizeReturnTo(request, url.searchParams.get('returnTo'));
+    const response = createRedirectResponse(returnTo);
+    appendSetCookie(response, createDevAuthCookie());
+    return response;
+  });
+};
+
+export const devLogoutHandler = async (request: Request): Promise<Response> => {
+  return withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
+    if (!isMockAuthEnabled()) {
+      return createNotFoundResponse();
+    }
+
+    const url = new URL(request.url);
+    const returnTo = await sanitizeReturnTo(request, url.searchParams.get('returnTo'));
+    const response = createRedirectResponse(returnTo);
+    appendSetCookie(response, deleteCookieHeader(DEV_AUTH_COOKIE_NAME));
+    return response;
+  });
+};
+
 export const logoutHandler = async (request: Request): Promise<Response> => {
   return withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
     if (isMockAuthEnabled()) {
-      return createRedirectResponse('/?auth=mock-logout');
+      const response = createRedirectResponse('/');
+      appendSetCookie(response, deleteCookieHeader(DEV_AUTH_COOKIE_NAME));
+      return response;
     }
 
     try {
@@ -1009,71 +1168,14 @@ export const logoutHandler = async (request: Request): Promise<Response> => {
       const authScope = getScopeFromAuthConfig(authConfig);
       const { sessionCookieName, postLogoutRedirectUri, silentSsoSuppressCookieName, silentSsoSuppressAfterLogoutMs } =
         authConfig;
-      const sessionId = readCookieFromRequest(request, sessionCookieName);
-      let logoutUrl = postLogoutRedirectUri;
-
-      if (sessionId) {
-        try {
-          const sessionBeforeLogout = await getSession(sessionId);
-          logoutUrl = await logoutSession(sessionId, authConfig);
-
-          logger.info('Logout successful', {
-            endpoint: '/auth/logout',
-            operation: 'logout',
-            ...summarizeRedirectTarget(logoutUrl),
-            ...buildLogContext(sessionBeforeLogout?.user?.instanceId
-              ? { kind: 'instance', instanceId: sessionBeforeLogout.user.instanceId }
-              : authScope),
-          });
-
-          await emitAuthAuditEvent({
-            eventType: 'logout',
-            actorUserId: sessionBeforeLogout?.user?.id ?? sessionBeforeLogout?.userId,
-            scope: sessionBeforeLogout?.user?.instanceId
-              ? { kind: 'instance', instanceId: sessionBeforeLogout.user.instanceId }
-              : authScope,
-            workspaceId:
-              sessionBeforeLogout?.user?.instanceId
-                ?? getWorkspaceIdForScope(authScope),
-            outcome: 'success',
-          });
-        } catch (error) {
-          if (error instanceof SessionStoreUnavailableError) {
-            throw error;
-          }
-          logger.error('Logout failed', {
-            endpoint: '/auth/logout',
-            operation: 'logout',
-            error_type: error instanceof Error ? error.constructor.name : typeof error,
-            reason_code: 'logout_failed',
-            ...buildLogContext(authScope),
-          });
-        }
-      } else {
-        logger.debug('Logout without session', {
-          endpoint: '/auth/logout',
-          operation: 'logout',
-          session_exists: false,
-          ...buildLogContext(authScope),
-        });
-      }
-
-      const response = createRedirectResponse(logoutUrl);
-      const sessionDeleteStrategy = attachDeletedCookie(response, sessionCookieName);
-      const silentSsoSuppressStrategy = attachSilentSsoSuppressCookie(
-        response,
+      const logoutUrl = await resolveLogoutUrl({ request, authConfig, authScope });
+      return createLogoutResponse({
+        logoutUrl: logoutUrl || postLogoutRedirectUri,
+        sessionCookieName,
         silentSsoSuppressCookieName,
-        Date.now() + silentSsoSuppressAfterLogoutMs
-      );
-      logger.info('Logout cookies prepared', {
-        endpoint: '/auth/logout',
-        operation: 'logout_cookie_cleanup',
-        session_delete_strategy: sessionDeleteStrategy,
-        silent_sso_suppress_strategy: silentSsoSuppressStrategy,
-        response_set_cookie_count: getSetCookieValues(response.headers).length,
-        ...buildLogContext(authScope),
+        silentSsoSuppressAfterLogoutMs,
+        authScope,
       });
-      return response;
     } catch (error) {
       return createAuthDependencyErrorResponse(request, 'auth_logout', error);
     }

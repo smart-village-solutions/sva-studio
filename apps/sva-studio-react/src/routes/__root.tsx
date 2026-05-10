@@ -17,7 +17,8 @@ import { LocaleProvider } from '../providers/locale-provider';
 import { ThemeProvider } from '../providers/theme-provider';
 import { t } from '../i18n';
 
-import appCss from '../styles.css?url';
+import appCssHref from '../styles.css?url';
+import appCssText from '../styles.css?inline';
 
 const tanstackDevtoolsEnabled = import.meta.env.DEV && import.meta.env.VITE_ENABLE_TANSTACK_DEVTOOLS === 'true';
 const playwrightDevRuntimeDisabled = import.meta.env.VITE_PLAYWRIGHT_TEST === 'true';
@@ -53,12 +54,14 @@ export const getRootHead = () => ({
       title: 'SVA Studio',
     },
   ],
-  links: [
-    {
-      rel: 'stylesheet',
-      href: appCss,
-    },
-  ],
+  links: import.meta.env.DEV
+    ? []
+    : [
+        {
+          rel: 'stylesheet',
+          href: appCssHref,
+        },
+      ],
 });
 
 export const Route = createRootRoute({
@@ -119,6 +122,7 @@ export function RootDocument({ children }: Readonly<{ children: React.ReactNode 
     <html lang="de" suppressHydrationWarning>
       <head>
         <HeadContent />
+        {import.meta.env.DEV ? <style dangerouslySetInnerHTML={{ __html: appCssText }} data-app-styles="true" /> : null}
       </head>
       <body className="flex min-h-screen flex-col bg-background text-foreground" suppressHydrationWarning>
         <AuthProvider>

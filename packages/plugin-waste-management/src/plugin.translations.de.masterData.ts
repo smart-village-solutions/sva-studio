@@ -1,3 +1,5 @@
+import { wasteManagementPluginTranslationsDEMasterDataLocationsWorkspace } from './plugin.translations.de.masterData.locations-workspace.js';
+
 export const wasteManagementPluginTranslationsDEMasterData = {
   "masterData": {
     "meta": {
@@ -15,6 +17,12 @@ export const wasteManagementPluginTranslationsDEMasterData = {
       "emptyTitle": "Keine Stammdaten gefunden",
       "emptyBody": "Passen Sie die Filter an oder legen Sie die erste Abfallfraktion an."
     },
+    "tabs": {
+      "ariaLabel": "Stammdatenbereiche",
+      "fractions": "Fraktionen",
+      "locations": "Abholorte"
+    },
+    "locationsWorkspace": wasteManagementPluginTranslationsDEMasterDataLocationsWorkspace,
     "fractions": {
       "title": "Abfallfraktionen",
       "description": "Pflegen Sie die sichtbaren Fraktionen als ersten echten Mutationspfad des Plugins.",

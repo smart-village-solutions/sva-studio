@@ -7,11 +7,7 @@ import {
   type WasteManagementSearchParams,
   type WasteManagementTabId,
 } from './search-params.js';
-import {
-  WasteManagementPageTabs,
-  WasteManagementPageToolbar,
-  wasteManagementTabTranslationKeyMap,
-} from './waste-management.page.layout.js';
+import { WasteManagementPageTabs } from './waste-management.page.layout.js';
 
 const updateSearch = (
   navigate: ReturnType<typeof useNavigate>,
@@ -44,15 +40,6 @@ export const WasteManagementPage = () => {
         <Button type="button" variant="outline" onClick={() => updateSearch(navigate, search, { tab: 'settings' })}>
           {pt('actions.openSettings')}
         </Button>
-      }
-      toolbar={
-        <WasteManagementPageToolbar
-          pt={pt}
-          search={search}
-          onSearchChange={(value) => updateSearch(navigate, search, { q: value })}
-          onStatusChange={(value) => updateSearch(navigate, search, { status: value })}
-          onShiftContextChange={(value) => updateSearch(navigate, search, { shiftContext: value })}
-        />
       }
     >
       <WasteManagementPageTabs

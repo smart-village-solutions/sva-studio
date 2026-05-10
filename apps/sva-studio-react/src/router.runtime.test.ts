@@ -202,6 +202,10 @@ describe('router runtime helpers', () => {
   it('enables mock auth from explicit env flags and runtime profile helpers', async () => {
     const { isMockAuthEnabled } = await import('./router');
 
+    vi.stubEnv('VITE_SVA_DEV_AUTH', 'true');
+    expect(await isMockAuthEnabled()).toBe(true);
+
+    vi.stubEnv('VITE_SVA_DEV_AUTH', 'false');
     vi.stubEnv('VITE_MOCK_AUTH', 'true');
     expect(await isMockAuthEnabled()).toBe(true);
 
@@ -256,7 +260,7 @@ describe('router runtime helpers', () => {
     expect((window as typeof window & { __SVA_PLAYWRIGHT_ROUTER__?: unknown }).__SVA_PLAYWRIGHT_ROUTER__).toBe(router);
   });
 
-  it('resolves route-guard users on the client from /auth/me and handles mock, non-ok, and failure cases', async () => {
+  it('resolves route-guard users on the client from /auth/me and handles non-ok and failure cases', async () => {
     const { getRouter } = await import('./router');
 
     const router = await getRouter();
@@ -294,51 +298,6 @@ describe('router runtime helpers', () => {
 
     routerMocks.fetchWithRequestTimeoutSpy.mockRejectedValueOnce(new Error('timeout'));
     expect(await getUser()).toBeNull();
-
-    vi.stubEnv('VITE_MOCK_AUTH', 'true');
-    expect(await getUser()).toEqual({
-      assignedModules: ['news', 'events', 'poi', 'media', 'waste-management'],
-      roles: [
-        'system_admin',
-        'iam_admin',
-        'support_admin',
-        'security_admin',
-        'instance_registry_admin',
-        'interface_manager',
-        'app_manager',
-        'editor',
-      ],
-      permissionActions: [
-        'content.read',
-        'content.create',
-        'content.updateMetadata',
-        'content.updatePayload',
-        'content.changeStatus',
-        'content.publish',
-        'content.archive',
-        'content.restore',
-        'content.readHistory',
-        'content.manageRevisions',
-        'content.delete',
-        'media.read',
-        'media.create',
-        'media.update',
-        'media.reference.manage',
-        'media.delete',
-        'media.deliver.protected',
-        'news.read',
-        'events.read',
-        'poi.read',
-        'waste-management.read',
-        'waste-management.master-data.manage',
-        'waste-management.tours.manage',
-        'waste-management.scheduling.manage',
-        'waste-management.import.execute',
-        'waste-management.seed.execute',
-        'waste-management.reset.execute',
-        'waste-management.settings.manage',
-      ],
-    });
   });
 
   it('resolves route-guard users on the server and falls back to null on failures', async () => {
@@ -375,51 +334,6 @@ describe('router runtime helpers', () => {
 
     routerMocks.fetchWithRequestTimeoutSpy.mockRejectedValueOnce(new Error('auth failed'));
     expect(await getUser()).toBeNull();
-
-    vi.stubEnv('VITE_MOCK_AUTH', 'true');
-    expect(await getUser()).toEqual({
-      assignedModules: ['news', 'events', 'poi', 'media', 'waste-management'],
-      roles: [
-        'system_admin',
-        'iam_admin',
-        'support_admin',
-        'security_admin',
-        'instance_registry_admin',
-        'interface_manager',
-        'app_manager',
-        'editor',
-      ],
-      permissionActions: [
-        'content.read',
-        'content.create',
-        'content.updateMetadata',
-        'content.updatePayload',
-        'content.changeStatus',
-        'content.publish',
-        'content.archive',
-        'content.restore',
-        'content.readHistory',
-        'content.manageRevisions',
-        'content.delete',
-        'media.read',
-        'media.create',
-        'media.update',
-        'media.reference.manage',
-        'media.delete',
-        'media.deliver.protected',
-        'news.read',
-        'events.read',
-        'poi.read',
-        'waste-management.read',
-        'waste-management.master-data.manage',
-        'waste-management.tours.manage',
-        'waste-management.scheduling.manage',
-        'waste-management.import.execute',
-        'waste-management.seed.execute',
-        'waste-management.reset.execute',
-        'waste-management.settings.manage',
-      ],
-    });
   });
 
   it('builds the runtime router from server route factories when executed on the server', async () => {

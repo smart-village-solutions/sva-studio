@@ -61,7 +61,7 @@ describe('waste master data repository', () => {
   });
 
   it('reads single waste fractions and upserts normalized nullable values', async () => {
-    const { executor, statements } = createExecutor([
+    const { executor } = createExecutor([
       {
         id: 'fraction-1',
         name: 'Papier',

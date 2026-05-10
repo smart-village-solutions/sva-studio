@@ -1,3 +1,5 @@
+import { wasteManagementPluginTranslationsENMasterDataLocationsWorkspace } from './plugin.translations.en.masterData.locations-workspace.js';
+
 export const wasteManagementPluginTranslationsENMasterData = {
   "masterData": {
     "meta": {
@@ -15,6 +17,12 @@ export const wasteManagementPluginTranslationsENMasterData = {
       "emptyTitle": "No master data found",
       "emptyBody": "Adjust the filters or create the first waste fraction."
     },
+    "tabs": {
+      "ariaLabel": "Master-data areas",
+      "fractions": "Fractions",
+      "locations": "Locations"
+    },
+    "locationsWorkspace": wasteManagementPluginTranslationsENMasterDataLocationsWorkspace,
     "fractions": {
       "title": "Waste fractions",
       "description": "Maintain visible fractions as the first real mutation path of the plugin.",

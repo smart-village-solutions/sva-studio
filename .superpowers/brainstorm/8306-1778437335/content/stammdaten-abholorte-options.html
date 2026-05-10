@@ -1,0 +1,116 @@
+<h2>Waste-Management: Stammdaten & Abholorte</h2>
+<p class="subtitle">Drei Richtungen für die erste UX-Verbesserung. Fokus: Userflows aus Newcms, Architektur aus Studio.</p>
+
+<div class="section">
+  <div class="pros-cons">
+    <div class="pros">
+      <h4>Ziel</h4>
+      <ul>
+        <li>Schneller pflegbare Hierarchie für Region, Ort, Straße, Hausnummer, Abholort</li>
+        <li>Bessere Massen- und Zuordnungsflows</li>
+        <li>Studio-Routing, API und Dialog-Architektur bleiben bestehen</li>
+      </ul>
+    </div>
+    <div class="cons">
+      <h4>Nicht Ziel</h4>
+      <ul>
+        <li>Keine Runtime-Übernahme aus Newcms</li>
+        <li>Kein UI-Redesign des gesamten Plugins in einem Schritt</li>
+        <li>Keine neue Daten- oder Rechtearchitektur</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="cards">
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">A · Bestehende Studio-Logik, nur aufgeräumt</div>
+        <div class="mockup-body">
+          <div class="mock-nav">Overview | Master Data | Tours | Scheduling | Tools | Settings</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:12px">
+            <div class="placeholder">Fractions Cards</div>
+            <div class="placeholder">Regions Cards</div>
+            <div class="placeholder">Cities Cards</div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
+            <div class="placeholder">Streets Cards</div>
+            <div class="placeholder">House Numbers Cards</div>
+          </div>
+          <div class="placeholder" style="margin-top:12px">Collection Locations Cards + Bulk Assign</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A · Geringes Risiko</h3>
+      <p>Verbessert nur Hierarchie, Labels und CTA-Reihenfolge. Bleibt card-lastig. Schnell, aber Newcms-Flows werden nur teilweise erreicht.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">B · Studio-Tab mit Unterbereichen</div>
+        <div class="mockup-body">
+          <div class="mock-nav">Overview | Master Data | Tours | Scheduling | Tools | Settings</div>
+          <div style="display:flex;gap:12px;margin-top:12px">
+            <div class="mock-sidebar">
+              Summary
+              <br>Fractions
+              <br>Address Hierarchy
+              <br>Collection Locations
+            </div>
+            <div class="mock-content">
+              <div style="display:flex;gap:8px;margin-bottom:10px">
+                <button class="mock-button">New Region</button>
+                <button class="mock-button">New City</button>
+                <button class="mock-button">New Street</button>
+                <button class="mock-button">New Location</button>
+              </div>
+              <div class="placeholder">Dense table/list for selected sub-area</div>
+              <div class="placeholder" style="margin-top:10px">Selection bar + bulk assignment</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B · Empfohlener Mittelweg</h3>
+      <p>Behält den Studio-Tab `master-data`, zerlegt ihn aber intern in klare Arbeitsbereiche. Übernimmt die Newcms-Userflows, ohne die Top-Level-IA zu kopieren.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">C · Nahe am Newcms-Arbeitsmodus</div>
+        <div class="mockup-body">
+          <div class="mock-nav">Overview | Master Data | Tours | Scheduling | Tools | Settings</div>
+          <div style="display:flex;gap:12px;margin-top:12px">
+            <div class="mock-sidebar">
+              Fractions
+              <br>Locations
+            </div>
+            <div class="mock-content">
+              <div style="display:flex;justify-content:space-between;gap:10px;margin-bottom:10px">
+                <div class="mock-input">Filter by Tour</div>
+                <button class="mock-button">Create ▼</button>
+              </div>
+              <div class="placeholder">Standard table with row actions, selection, bulk delete</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C · Stärkste Flow-Annäherung</h3>
+      <p>Bringt die Arbeitsweise von Newcms fast direkt zurück. Sehr effizient, aber näher an der alten Informationsarchitektur als nötig.</p>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Meine Empfehlung</h3>
+  <p class="subtitle">B: `master-data` bleibt als Studio-Haupttab erhalten, bekommt intern aber einen eigenen Bereich für die Adresshierarchie und einen dichteren, Newcms-näheren Abholort-Workflow.</p>
+</div>

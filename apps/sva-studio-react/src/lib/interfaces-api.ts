@@ -8,6 +8,12 @@ import type { SvaMainserverConnectionStatus, SvaMainserverInstanceConfig } from 
 
 import { extractErrorDiagnostics, isRecord, readErrorMessage } from './error-message-utils';
 import { hasInterfacesAccessRole } from './iam-admin-access';
+import type {
+  InstanceInterface,
+  InstanceInterfaceDraft,
+  InstanceInterfaceS3,
+  InstanceInterfaceSupabase,
+} from './instance-interfaces';
 
 const COMPONENT = 'interfaces-api';
 
@@ -371,6 +377,110 @@ export const loadSvaMainserverInterfacesOverviewServerFn = createServerFn().hand
 });
 
 export const loadInterfacesOverview = loadSvaMainserverInterfacesOverviewServerFn;
+
+type ListInstanceInterfacesResponse = Readonly<{
+  instanceId: string;
+  entries: readonly InstanceInterface[];
+}>;
+
+const projectStoredEntry = async (
+  instanceId: string,
+  entry:
+    | Omit<InstanceInterfaceS3, 'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'>
+    | Omit<InstanceInterfaceSupabase, 'status' | 'statusMessage' | 'errorCode' | 'lastCheckedAt'>
+): Promise<InstanceInterface> => {
+  const { checkStoredInterfaceHealth } = await import('./instance-interfaces-server.js');
+  const health = checkStoredInterfaceHealth(entry);
+  return {
+    ...entry,
+    instanceId,
+    status: health.status,
+    statusMessage: health.statusMessage,
+    lastCheckedAt: health.checkedAt,
+  } as InstanceInterface;
+};
+
+export const listInstanceInterfacesServerFn = createServerFn().handler(
+  async (): Promise<ListInstanceInterfacesResponse> => {
+    const overview = await (async () => {
+      try {
+        const { getRequest } = await import('@tanstack/react-start/server');
+        const { loadSvaMainserverInterfacesOverview } = await import('@sva/sva-mainserver/server');
+        return await loadSvaMainserverInterfacesOverview(getRequest());
+      } catch (error) {
+        const message = readErrorMessage(error, 'Schnittstellenstatus konnte nicht geladen werden.');
+        return {
+          instanceId: '',
+          config: null,
+          status: createErrorStatus('network_error', message),
+        } satisfies SvaMainserverInterfacesOverview;
+      }
+    })();
+
+    const { listStoredInterfaces } = await import('./instance-interfaces-server.js');
+    const stored = overview.instanceId ? listStoredInterfaces(overview.instanceId) : [];
+    const projected = await Promise.all(stored.map((entry) => projectStoredEntry(overview.instanceId, entry)));
+
+    const mainserverEntry: InstanceInterface | null = overview.config
+      ? ({
+          id: `mainserver:${overview.instanceId}`,
+          instanceId: overview.instanceId,
+          type: 'mainserver',
+          name: 'SVA Mainserver',
+          enabled: overview.config.enabled,
+          status:
+            overview.status.status === 'connected'
+              ? 'connected'
+              : overview.config.enabled
+                ? 'error'
+                : 'disabled',
+          statusMessage: overview.status.errorMessage,
+          errorCode: overview.status.errorCode,
+          lastCheckedAt: overview.status.checkedAt,
+          createdAt: overview.status.checkedAt ?? new Date().toISOString(),
+          updatedAt: overview.status.checkedAt ?? new Date().toISOString(),
+          config: {
+            graphqlBaseUrl: overview.config.graphqlBaseUrl,
+            oauthTokenUrl: overview.config.oauthTokenUrl,
+          },
+        } satisfies InstanceInterface)
+      : null;
+
+    return {
+      instanceId: overview.instanceId,
+      entries: [...(mainserverEntry ? [mainserverEntry] : []), ...projected],
+    };
+  }
+);
+
+type UpsertInstanceInterfaceInput = Readonly<{
+  instanceId: string;
+  draft: InstanceInterfaceDraft;
+  existingId?: string;
+}>;
+
+export const upsertInstanceInterfaceServerFn = createServerFn({ method: 'POST' })
+  .inputValidator((data: UpsertInstanceInterfaceInput) => data)
+  .handler(async ({ data }): Promise<InstanceInterface> => {
+    if (data.draft.type === 'mainserver') {
+      throw new Error('mainserver_interfaces_use_dedicated_endpoint');
+    }
+    const { upsertStoredInterface } = await import('./instance-interfaces-server.js');
+    const stored = upsertStoredInterface(data.instanceId, data.draft, data.existingId);
+    return projectStoredEntry(data.instanceId, stored);
+  });
+
+type DeleteInstanceInterfaceInput = Readonly<{
+  instanceId: string;
+  id: string;
+}>;
+
+export const deleteInstanceInterfaceServerFn = createServerFn({ method: 'POST' })
+  .inputValidator((data: DeleteInstanceInterfaceInput) => data)
+  .handler(async ({ data }): Promise<{ deleted: boolean }> => {
+    const { deleteStoredInterface } = await import('./instance-interfaces-server.js');
+    return { deleted: deleteStoredInterface(data.instanceId, data.id) };
+  });
 
 export const saveSvaMainserverInterfaceSettings = createServerFn({ method: 'POST' })
   .inputValidator((data: SaveSvaMainserverInterfaceSettingsInput['data']) => data)

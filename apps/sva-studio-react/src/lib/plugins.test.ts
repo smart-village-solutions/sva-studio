@@ -1,3 +1,7 @@
+import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 const browserLoggerMock = vi.hoisted(() => ({
   debug: vi.fn(),
@@ -5,6 +9,18 @@ const browserLoggerMock = vi.hoisted(() => ({
   warn: vi.fn(),
   error: vi.fn(),
 }));
+const registerPluginTranslationResolverMock = vi.hoisted(() => vi.fn());
+const mergeI18nResourcesMock = vi.hoisted(() => vi.fn());
+const resetTranslatorCacheMock = vi.hoisted(() => vi.fn());
+const translateMock = vi.hoisted(() => vi.fn((key: string) => key));
+
+vi.mock('@sva/plugin-sdk', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@sva/plugin-sdk')>();
+  return {
+    ...actual,
+    registerPluginTranslationResolver: registerPluginTranslationResolverMock,
+  };
+});
 
 vi.mock('@sva/monitoring-client/logging', () => {
   return {
@@ -139,9 +155,9 @@ vi.mock('../../../../packages/plugin-waste-management/src/index.ts', () => ({
 }));
 
 vi.mock('../i18n', () => ({
-  mergeI18nResources: vi.fn(),
-  resetTranslatorCache: vi.fn(),
-  t: vi.fn((key: string) => key),
+  mergeI18nResources: mergeI18nResourcesMock,
+  resetTranslatorCache: resetTranslatorCacheMock,
+  t: translateMock,
 }));
 
 describe('plugin action alias lookup', () => {
@@ -150,6 +166,10 @@ describe('plugin action alias lookup', () => {
     browserLoggerMock.info.mockReset();
     browserLoggerMock.warn.mockReset();
     browserLoggerMock.error.mockReset();
+    registerPluginTranslationResolverMock.mockReset();
+    mergeI18nResourcesMock.mockReset();
+    resetTranslatorCacheMock.mockReset();
+    translateMock.mockClear();
     vi.resetModules();
   });
 
@@ -218,6 +238,19 @@ describe('plugin action alias lookup', () => {
     );
     expect(getStudioPluginNavigationModuleId({ id: 'waste-management.navigation' })).toBe('waste-management');
     expect(getStudioPluginNavigationModuleId({ id: 'unknown.navigation' })).toBeNull();
+    expect(registerPluginTranslationResolverMock).toHaveBeenCalledTimes(1);
+    expect(resetTranslatorCacheMock).toHaveBeenCalledTimes(1);
+    expect(mergeI18nResourcesMock).toHaveBeenCalledWith(studioBuildTimeRegistry.translations);
+
+    const translationResolver = registerPluginTranslationResolverMock.mock.calls[0]?.[0] as
+      | ((key: string, variables?: Record<string, string | number>) => string)
+      | undefined;
+    expect(translationResolver?.('wasteManagement.navigation.title')).toBe('wasteManagement.navigation.title');
+    expect(getStudioPluginAction('news.create')).toMatchObject({
+      actionId: 'news.create',
+    });
+    expect(getStudioPluginAction('missing.action')).toBeUndefined();
+    expect(browserLoggerMock.warn).toHaveBeenCalledTimes(1);
   }, 15000);
 
   it('logs skipped and rejected plugin catalog issues deterministically', async () => {
@@ -280,5 +313,68 @@ describe('plugin action alias lookup', () => {
       reason_code: 'plugin_module_missing',
       message: 'Error plugin rejected.',
     });
+  });
+
+  it('covers unresolved manifest and plugin-module branches for workspace and package sources', async () => {
+    const resolveManifestResults: unknown[] = [];
+    const resolvePluginModuleResults: unknown[] = [];
+
+    vi.doMock('./plugin-catalog-loader.js', () => ({
+      createStudioPluginCatalogReport: vi.fn((input: {
+        resolveManifest: (entry: { sourceType: 'workspace' | 'package'; sourceRef: string }) => unknown;
+        resolvePluginModule: (
+          entry: { sourceType: 'workspace' | 'package'; sourceRef: string },
+          manifest: { entry?: string }
+        ) => unknown;
+      }) => {
+        resolveManifestResults.push(
+          input.resolveManifest({ sourceType: 'workspace', sourceRef: 'packages/missing-plugin' }),
+          input.resolveManifest({ sourceType: 'package', sourceRef: '@missing/plugin' })
+        );
+        resolvePluginModuleResults.push(
+          input.resolvePluginModule({ sourceType: 'workspace', sourceRef: 'packages/missing-plugin' }, { entry: './src/missing.ts' }),
+          input.resolvePluginModule({ sourceType: 'package', sourceRef: '@missing/plugin' }, { entry: './dist/missing.js' })
+        );
+
+        return {
+          catalog: [],
+          issues: [],
+          snapshot: {
+            pluginSources: [],
+            registry: {
+              plugins: [],
+              pluginRegistry: new Map(),
+              pluginActionRegistry: new Map(),
+              pluginModuleIamRegistry: new Map(),
+              pluginModuleIamContracts: [],
+              routes: [],
+              navigation: [],
+              contentTypes: [],
+              adminResources: [],
+              translations: {},
+              jobTypes: [],
+            },
+          },
+        };
+      }),
+      getPackagePluginModuleCandidates: vi.fn(() => ['./dist/missing.js']),
+      getWorkspacePluginModuleCandidates: vi.fn(() => ['./src/missing.ts']),
+    }));
+
+    const { studioPluginCatalog } = await import('./plugins');
+
+    expect(studioPluginCatalog).toEqual([]);
+    expect(resolveManifestResults).toEqual([undefined, undefined]);
+    expect(resolvePluginModuleResults).toEqual([undefined, undefined]);
+  });
+
+  it('restricts eager node-module plugin imports to the plugin package naming scheme', () => {
+    const currentFilePath = fileURLToPath(import.meta.url);
+    const source = readFileSync(resolve(dirname(currentFilePath), 'plugins.ts'), 'utf8');
+
+    expect(source).toContain("node_modules/plugin-*/dist/index.js");
+    expect(source).toContain("node_modules/@*/plugin-*/dist/index.js");
+    expect(source).not.toContain("node_modules/*/dist/index.js");
+    expect(source).not.toContain("node_modules/@*/*/dist/index.js");
   });
 });

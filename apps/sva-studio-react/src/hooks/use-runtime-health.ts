@@ -147,7 +147,7 @@ export const useRuntimeHealth = () => {
       return () => {
         document.removeEventListener('visibilitychange', handleVisibilityChange);
         for (const controller of abortControllersRef.current) {
-          controller.abort();
+          controller.abort(new DOMException('Runtime-Health-Hook wurde unmounted.', 'AbortError'));
         }
         abortControllersRef.current.clear();
         inFlightRef.current = null;
@@ -156,7 +156,7 @@ export const useRuntimeHealth = () => {
 
     return () => {
       for (const controller of abortControllersRef.current) {
-        controller.abort();
+        controller.abort(new DOMException('Runtime-Health-Hook wurde unmounted.', 'AbortError'));
       }
       abortControllersRef.current.clear();
       inFlightRef.current = null;

@@ -1,11 +1,11 @@
 import type { AuthenticatedRequestContext } from '../../middleware.js';
 import { validateCsrf } from '../../shared/request-security.js';
 import { asApiItem, createApiError, parseRequestBody, readPathSegment } from '../../shared/request-helpers.js';
-import { authorizeWasteManagementAction, emitWasteAuditEvent } from './auth.js';
+import { authorizeWasteManagementAction, emitWasteAuditEvent, getAuthorizedWasteManagementInstanceId } from './auth.js';
 import { wasteManagementMasterDataSchemas } from './schemas.js';
 import { updateWasteVisibleStatus } from './settings-shared.js';
 import type { WasteManagementHandlerDeps } from './types.js';
-import { getRequestId, requireActorInstanceId, requireDeps } from './utils.js';
+import { getRequestId, requireDeps } from './utils.js';
 
 const { createWasteStreetSchema, updateWasteStreetSchema } = wasteManagementMasterDataSchemas;
 
@@ -21,10 +21,7 @@ export const wasteManagementStreetHandlers = {
       return authError;
     }
 
-    const instanceId = requireActorInstanceId(ctx, requestId);
-    if (instanceId instanceof Response) {
-      return instanceId;
-    }
+    const instanceId = getAuthorizedWasteManagementInstanceId(ctx);
 
     const csrfError = validateCsrf(request, requestId);
     if (csrfError) {
@@ -102,10 +99,7 @@ export const wasteManagementStreetHandlers = {
       return authError;
     }
 
-    const instanceId = requireActorInstanceId(ctx, requestId);
-    if (instanceId instanceof Response) {
-      return instanceId;
-    }
+    const instanceId = getAuthorizedWasteManagementInstanceId(ctx);
 
     const streetId = readPathSegment(request, 4)?.trim();
     if (!streetId) {

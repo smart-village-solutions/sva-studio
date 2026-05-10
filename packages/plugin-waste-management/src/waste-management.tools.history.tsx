@@ -40,7 +40,7 @@ export const WasteToolsHistory = ({
           ) : undefined
         }
       />
-      <div className="space-y-3 rounded-lg border border-border/70 bg-card p-4">
+      <div className="space-y-3 rounded-lg border border-border/70 bg-[rgba(255,255,255,0.32)] p-4">
         <div className="space-y-1">
           <h3 className="text-sm font-semibold">{pt('tools.meta.technicalHistoryTitle')}</h3>
           <p className="text-sm text-muted-foreground">{pt('tools.meta.technicalHistoryDescription')}</p>

@@ -27,8 +27,14 @@ describe('waste-management operations shared helpers', () => {
   it('adapts nullable query results into deterministic sql execution results', async () => {
     const query = vi.fn(async () => ({
       rowCount: null,
-      rows: [{ id: 'row-1' }],
-    }));
+      rows: [{ id: 'row-1' }] as const,
+    })) as unknown as <TRow = Record<string, unknown>>(
+      text: string,
+      values?: readonly unknown[]
+    ) => Promise<{
+      readonly rowCount: number | null;
+      readonly rows: readonly TRow[];
+    }>;
 
     const result = await createSqlExecutor({ query }).execute({
       text: 'select 1',
@@ -72,14 +78,16 @@ describe('waste-management operations shared helpers', () => {
   it('validates reason and follow-up contract enums', () => {
     const contract = {
       isDateShiftReasonType: (value: string): value is 'holiday' => value === 'holiday',
-      isTourDateShiftFollowUpMode: (value: string): value is 'skip' => value === 'skip',
+      isTourDateShiftFollowUpMode: (
+        value: string
+      ): value is 'none' | 'propagate-series' | 'mark-follow-up-dates' => value === 'none',
     };
 
     expect(parseReasonType(contract, ' holiday ')).toBe('holiday');
     expect(parseReasonType(contract, ' ')).toBeUndefined();
     expect(() => parseReasonType(contract, 'weather')).toThrowError('invalid_reason_type:weather');
 
-    expect(parseFollowUpMode(contract, ' skip ')).toBe('skip');
+    expect(parseFollowUpMode(contract, ' none ')).toBe('none');
     expect(parseFollowUpMode(contract, undefined)).toBeUndefined();
     expect(() => parseFollowUpMode(contract, 'duplicate')).toThrowError('invalid_follow_up_mode:duplicate');
   });

@@ -4,11 +4,11 @@ import { z } from 'zod';
 import type { AuthenticatedRequestContext } from '../../middleware.js';
 import { validateCsrf } from '../../shared/request-security.js';
 import { createApiError, parseRequestBody, requireIdempotencyKey } from '../../shared/request-helpers.js';
-import { authorizeWasteManagementAction, emitWasteAuditEvent } from './auth.js';
+import { authorizeWasteManagementAction, emitWasteAuditEvent, getAuthorizedWasteManagementInstanceId } from './auth.js';
 import { startPluginOperationJobFromFacade } from './operations-support.js';
 import { wasteManagementOperationSchemas } from './schemas.js';
 import type { WasteManagementHandlerDeps } from './types.js';
-import { getRequestId, requireActorInstanceId } from './utils.js';
+import { getRequestId } from './utils.js';
 
 const { startImportSchema, startMigrationsSchema, startResetSchema, startSeedSchema } = wasteManagementOperationSchemas;
 
@@ -31,10 +31,7 @@ const startToolJob = async (
     return authError;
   }
 
-  const instanceId = requireActorInstanceId(ctx, requestId);
-  if (instanceId instanceof Response) {
-    return instanceId;
-  }
+  const instanceId = getAuthorizedWasteManagementInstanceId(ctx);
 
   const csrfError = validateCsrf(request, requestId);
   if (csrfError) {
@@ -175,7 +172,7 @@ export const wasteManagementOperationHandlers = {
       auditActionId: 'waste-management.seed.started',
       toPayload: (data) => ({
         operation: 'seed-data',
-        seedKey: data.seedKey === 'baseline' ? 'baseline' : 'baseline',
+        seedKey: 'baseline',
       }),
     }),
   startWasteManagementResetInternal: async (

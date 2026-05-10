@@ -56,12 +56,17 @@ export const wasteMasterDataPresentation = {
   ): readonly WasteHouseNumberRecord[] => houseNumbers.filter((houseNumber) => (search.q ? matchesSearch(houseNumber.number, search.q) : true)),
   filterCollectionLocations: (
     locations: readonly WasteCollectionLocationRecord[],
-    search: WasteManagementSearchParams
+    search: WasteManagementSearchParams,
+    locationTourLinks: WasteManagementMasterDataOverview['locationTourLinks']
   ): readonly WasteCollectionLocationRecord[] =>
     locations.filter((location) => {
       if (!matchesStatusFilter(search.status, location.active)) return false;
       if (search.regionId && location.regionId !== search.regionId) return false;
-      return !(search.cityId && location.cityId !== search.cityId);
+      if (search.cityId && location.cityId !== search.cityId) return false;
+      if (search.tourId) {
+        return locationTourLinks.some((link) => link.locationId === location.id && link.tourId === search.tourId);
+      }
+      return true;
     }),
   formatCollectionLocationLabel: (
     pt: PluginTranslation,

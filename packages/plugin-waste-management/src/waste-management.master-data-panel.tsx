@@ -4,12 +4,17 @@ import { StudioErrorState, StudioLoadingState } from '@sva/studio-ui-react';
 import { useWasteMasterDataController } from './waste-management.master-data.controller.js';
 import { WasteMasterDataDialogs } from './waste-management.master-data-dialogs.js';
 import { WasteMasterDataEmptyState } from './waste-management.master-data-empty-state.js';
-import { WasteMasterDataLocationsContent } from './waste-management.master-data-locations-content.js';
-import { WasteMasterDataSummaryContent } from './waste-management.master-data-summary-content.js';
+import { WasteMasterDataTabContent } from './waste-management.master-data-tab-content.js';
 import { StatusNotice } from './waste-management.page.support.js';
 import type { WasteManagementSearchParams } from './search-params.js';
 
-export const WasteMasterDataPanel = ({ search }: { readonly search: WasteManagementSearchParams }) => {
+export const WasteMasterDataPanel = ({
+  search,
+  tab,
+}: {
+  readonly search: WasteManagementSearchParams;
+  readonly tab: WasteManagementSearchParams['masterDataTab'];
+}) => {
   const pt = usePluginTranslation('wasteManagement');
   const controller = useWasteMasterDataController(pt, search);
 
@@ -46,36 +51,7 @@ export const WasteMasterDataPanel = ({ search }: { readonly search: WasteManagem
     <>
       <div className="space-y-4">
         <StatusNotice message={controller.message} />
-        <WasteMasterDataSummaryContent
-          fractions={controller.filteredFractions}
-          regions={controller.filteredRegions}
-          cities={controller.filteredCities}
-          streets={controller.filteredStreets}
-          houseNumbers={controller.filteredHouseNumbers}
-          onOpenCreateFraction={controller.openCreateDialog}
-          onOpenCreateRegion={controller.openCreateRegionDialog}
-          onOpenCreateCity={controller.openCreateCityDialog}
-          onOpenCreateStreet={controller.openCreateStreetDialog}
-          onOpenCreateHouseNumber={controller.openCreateHouseNumberDialog}
-          onOpenEditFraction={controller.openEditDialog}
-          onOpenEditRegion={controller.openEditRegionDialog}
-          onOpenEditCity={controller.openEditCityDialog}
-          onOpenEditStreet={controller.openEditStreetDialog}
-          onOpenEditHouseNumber={controller.openEditHouseNumberDialog}
-        />
-        <WasteMasterDataLocationsContent
-          collectionLocations={controller.filteredCollectionLocations}
-          selectedLocationIds={controller.selectedLocationIds}
-          selectedCollectionLocationsCount={controller.selectedCollectionLocations.length}
-          allFilteredLocationsSelected={controller.allFilteredLocationsSelected}
-          availableTours={controller.availableTours}
-          onToggleSelectAll={controller.toggleSelectAllFilteredLocations}
-          onToggleLocation={controller.toggleLocationSelection}
-          onOpenCreateLocation={controller.openCreateLocationDialog}
-          onOpenBulkAssignments={controller.openBulkAssignmentsDialog}
-          onOpenEditLocation={controller.openEditLocationDialog}
-          getLocationLabel={controller.getLocationLabel}
-        />
+        <WasteMasterDataTabContent controller={controller} search={search} tab={tab} />
       </div>
       {dialogs}
     </>

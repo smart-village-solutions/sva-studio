@@ -289,4 +289,49 @@ describe('plugin platform resolution', () => {
     expect(report.rejectedCatalog).toEqual([prereleaseCaretEntry]);
     expect(preOneReport.activeCatalog).toEqual([prereleaseCaretEntry]);
   });
+
+  it('keeps caret ranges on 0.0.x pinned to the same patch line', () => {
+    const exactPatchCaretEntry = definePluginCatalogEntry({
+      pluginId: 'caret-pre-0-0',
+      sourceType: 'workspace',
+      enabled: true,
+      sourceRef: 'packages/caret-pre-0-0',
+      manifest: definePluginManifest({
+        pluginId: 'caret-pre-0-0',
+        version: '0.0.1',
+        sdkVersion: '0.0.1',
+        hostCompatibility: { studioVersionRange: '^0.0.1' },
+        entryPoints: { browser: './dist/index.js' },
+      }),
+    });
+
+    const compatibleReport = resolvePluginCatalog({
+      catalog: [exactPatchCaretEntry],
+      host: {
+        studioVersion: '0.0.1',
+        sdkVersion: '0.0.1',
+        capabilities: ['routing'],
+      },
+      resolvePlugin: (entry) => createTestPlugin(entry.pluginId),
+    });
+    const incompatibleReport = resolvePluginCatalog({
+      catalog: [exactPatchCaretEntry],
+      host: {
+        studioVersion: '0.0.99',
+        sdkVersion: '0.0.1',
+        capabilities: ['routing'],
+      },
+      resolvePlugin: (entry) => createTestPlugin(entry.pluginId),
+    });
+
+    expect(compatibleReport.activeCatalog).toEqual([exactPatchCaretEntry]);
+    expect(incompatibleReport.activeCatalog).toEqual([]);
+    expect(incompatibleReport.rejectedCatalog).toEqual([exactPatchCaretEntry]);
+    expect(incompatibleReport.issues).toContainEqual(
+      expect.objectContaining({
+        pluginId: 'caret-pre-0-0',
+        code: 'plugin_incompatible_studio_version',
+      })
+    );
+  });
 });

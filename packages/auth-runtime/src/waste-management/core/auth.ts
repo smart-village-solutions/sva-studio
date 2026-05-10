@@ -90,3 +90,6 @@ export const authorizeWasteManagementAction = async (
 
   return null;
 };
+
+export const getAuthorizedWasteManagementInstanceId = (ctx: AuthenticatedRequestContext): string =>
+  ctx.user.instanceId as string;

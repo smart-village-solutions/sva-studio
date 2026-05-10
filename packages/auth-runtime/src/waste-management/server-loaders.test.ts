@@ -300,4 +300,59 @@ describe('waste-management server loaders', () => {
 
     expect(poolFactoryInstances.at(-1)?.query).toHaveBeenCalledWith('ROLLBACK');
   });
+
+  it('keeps technical history stable when jobs are unfinished or have unknown mappings', async () => {
+    listJobsMock.mockResolvedValueOnce({
+      items: [
+        {
+          id: 'job-reset',
+          jobTypeId: 'waste-management.reset-data',
+          status: 'failed',
+          finishedAt: null,
+          updatedAt: '2026-05-09T05:00:00.000Z',
+          requestId: 'req-reset',
+          latestEvent: { message: 'reset failed' },
+          errorPayload: { code: 'reset_failed' },
+        },
+        {
+          id: 'job-running',
+          jobTypeId: 'waste-management.seed-data',
+          status: 'running',
+          finishedAt: null,
+          updatedAt: '2026-05-09T04:00:00.000Z',
+          requestId: 'req-running',
+          latestEvent: { message: 'running' },
+          errorPayload: undefined,
+        },
+        {
+          id: 'job-unknown',
+          jobTypeId: 'custom-job',
+          status: 'failed',
+          finishedAt: null,
+          updatedAt: '2026-05-09T03:00:00.000Z',
+          requestId: 'req-unknown',
+          latestEvent: { message: 'unknown' },
+          errorPayload: { code: 'custom_failed' },
+        },
+      ],
+      total: 3,
+    });
+
+    const historyOverview = await wasteManagementOverviewLoaders.loadWasteHistoryOverview({
+      instanceId: 'tenant-a',
+      page: 1,
+      pageSize: 5,
+    });
+
+    expect(historyOverview.technical.items).toEqual([
+      expect.objectContaining({
+        id: 'technical-audit-1',
+      }),
+      expect.objectContaining({
+        id: 'job:job-reset:failed',
+        eventType: 'reset.failed',
+        occurredAt: '2026-05-09T05:00:00.000Z',
+      }),
+    ]);
+  });
 });

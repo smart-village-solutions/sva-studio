@@ -52,7 +52,7 @@ jobs:
         run: pnpm nx run project-report:build
 
       - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: apps/project-report/dist
 

@@ -37,7 +37,7 @@ describe('waste-management.tours.presentation', () => {
           globalDateShifts: [{ originalDate: '2026-01-28', actualDate: '2026-01-30' }],
         } as never
       )
-    ).toEqual(['2026-01-14', '2026-01-30', '2026-02-11']);
+    ).toEqual(['2026-01-15', '2026-01-29', '2026-02-12']);
 
     expect(
       calculateTourOccurrencesForYear(
@@ -54,7 +54,7 @@ describe('waste-management.tours.presentation', () => {
           globalDateShifts: [],
         } as never
       )
-    ).toEqual(['2026-01-28', '2026-02-25']);
+    ).toEqual(['2026-01-29', '2026-02-26']);
 
     expect(
       calculateTourOccurrencesForYear(
@@ -71,7 +71,7 @@ describe('waste-management.tours.presentation', () => {
           globalDateShifts: [],
         } as never
       )
-    ).toEqual(['2026-06-03', '2026-08-09']);
+    ).toEqual(['2026-06-02', '2026-08-09']);
 
     expect(
       calculateTourOccurrencesForYear(
@@ -164,7 +164,7 @@ describe('waste-management.tours.presentation', () => {
           ],
         } as never
       )
-    ).toEqual(['2026-01-08']);
+    ).toEqual(['2026-01-07']);
   });
 
   it('falls back to an empty global shift list when the scheduling overview omits it', () => {
@@ -183,6 +183,6 @@ describe('waste-management.tours.presentation', () => {
           globalDateShifts: undefined,
         } as never
       )
-    ).toEqual(['2026-01-06']);
+    ).toEqual(['2026-01-07']);
   });
 });

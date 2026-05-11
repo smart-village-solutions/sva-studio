@@ -528,7 +528,7 @@ describe('waste management helper modules', () => {
           globalDateShifts: [{ originalDate: '2026-02-01', actualDate: '2026-02-02', tourIds: ['tour-1'] }],
         } as never
       )
-    ).toEqual(['2026-01-01', '2026-01-08', '2026-01-15', '2026-02-02']);
+    ).toEqual(['2026-01-02', '2026-01-10', '2026-01-16', '2026-02-02']);
 
     expect(
       calculateTourOccurrencesForYear(

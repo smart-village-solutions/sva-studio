@@ -39,7 +39,7 @@ const addRecurringDates = (
 ) => {
   const current = new Date(start);
   while (current <= end) {
-    const iso = current.toISOString().slice(0, 10);
+    const iso = formatUtcDate(current);
     if (iso.startsWith(`${year}-`)) {
       results.add(iso);
     }
@@ -47,18 +47,22 @@ const addRecurringDates = (
   }
 };
 
+const parseDateOnlyUtc = (value: string): Date => new Date(`${value}T00:00:00Z`);
+
+const formatUtcDate = (value: Date): string => value.toISOString().slice(0, 10);
+
 const resolveAdvanceStrategy = (recurrence: WasteTourRecord['recurrence']) => {
   if (recurrence === 'weekly') {
-    return (current: Date) => current.setDate(current.getDate() + 7);
+    return (current: Date) => current.setUTCDate(current.getUTCDate() + 7);
   }
   if (recurrence === 'biweekly') {
-    return (current: Date) => current.setDate(current.getDate() + 14);
+    return (current: Date) => current.setUTCDate(current.getUTCDate() + 14);
   }
   if (recurrence === 'fourweekly') {
-    return (current: Date) => current.setDate(current.getDate() + 28);
+    return (current: Date) => current.setUTCDate(current.getUTCDate() + 28);
   }
   if (recurrence === 'yearly') {
-    return (current: Date) => current.setFullYear(current.getFullYear() + 1);
+    return (current: Date) => current.setUTCFullYear(current.getUTCFullYear() + 1);
   }
   return null;
 };
@@ -67,8 +71,8 @@ const collectScheduledTourDates = (results: Set<string>, tour: WasteTourRecord, 
   if (!tour.recurrence || !tour.firstDate) {
     return;
   }
-  const start = new Date(`${tour.firstDate}T00:00:00`);
-  const end = new Date(`${tour.endDate ?? `${year}-12-31`}T00:00:00`);
+  const start = parseDateOnlyUtc(tour.firstDate);
+  const end = parseDateOnlyUtc(tour.endDate ?? `${year}-12-31`);
   if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
     return;
   }

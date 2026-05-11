@@ -62,8 +62,6 @@ describe('plugin operation runner task list', () => {
       expect(abortSignal.aborted).toBe(false);
       await expect(throwIfCancellationRequested()).resolves.toBeUndefined();
       await progressReporter.reportProgress({
-        jobId: 'job-1',
-        instanceId: 'tenant-a',
         progress: {
           completedSteps: 1,
           totalSteps: 1,
@@ -88,7 +86,9 @@ describe('plugin operation runner task list', () => {
       'news.import-articles': handler,
     });
 
-    const taskList = createPluginOperationTaskList(() => new Map([['news.import-articles', handler]]));
+    const taskList = createPluginOperationTaskList(
+      () => new Map([['news.import-articles', { handler, queueName: 'plugin-operations' }]])
+    );
 
     await taskList[pluginOperationTaskIdentifier]?.(
       { instanceId: 'tenant-a', jobId: 'job-1' },
@@ -208,7 +208,9 @@ describe('plugin operation runner task list', () => {
       throw new Error('boom');
     });
 
-    const taskList = createPluginOperationTaskList(() => new Map([['news.import-articles', handler]]));
+    const taskList = createPluginOperationTaskList(
+      () => new Map([['news.import-articles', { handler, queueName: 'plugin-operations' }]])
+    );
 
     await expect(
       taskList[pluginOperationTaskIdentifier]?.(
@@ -247,7 +249,9 @@ describe('plugin operation runner task list', () => {
       throw new Error('boom');
     });
 
-    const taskList = createPluginOperationTaskList(() => new Map([['news.import-articles', handler]]));
+    const taskList = createPluginOperationTaskList(
+      () => new Map([['news.import-articles', { handler, queueName: 'plugin-operations' }]])
+    );
 
     await expect(
       taskList[pluginOperationTaskIdentifier]?.(
@@ -289,7 +293,9 @@ describe('plugin operation runner task list', () => {
       await throwIfCancellationRequested();
     });
 
-    const taskList = createPluginOperationTaskList(() => new Map([['news.import-articles', handler]]));
+    const taskList = createPluginOperationTaskList(
+      () => new Map([['news.import-articles', { handler, queueName: 'plugin-operations' }]])
+    );
 
     await taskList[pluginOperationTaskIdentifier]?.(
       { instanceId: 'tenant-a', jobId: 'job-1' },
@@ -308,6 +314,64 @@ describe('plugin operation runner task list', () => {
     expect(appendJobEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         eventType: 'job.cancelled',
+      })
+    );
+  });
+
+  it('aborts the handler signal when cancellation is requested after the job started', async () => {
+    vi.useFakeTimers();
+
+    const updateJobState = vi.fn(async () => null);
+    const appendJobEvent = vi.fn(async () => null);
+    let cancellationRequested = false;
+    repositoryState.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
+      work({
+        getJobById: vi.fn(async () =>
+          cancellationRequested
+            ? {
+                ...baseJob,
+                cancelRequestedAt: '2026-05-09T12:04:00.000Z',
+              }
+            : baseJob
+        ),
+        updateJobState,
+        appendJobEvent,
+        updateJobProgress: vi.fn(async () => null),
+      })
+    );
+
+    const handler = vi.fn(
+      async ({ abortSignal }) => {
+        await new Promise<void>((resolve) => {
+          setTimeout(resolve, 1_500);
+        });
+
+        if (abortSignal.aborted) {
+          throw new Error('aborted');
+        }
+      }
+    );
+
+    const taskList = createPluginOperationTaskList(
+      () => new Map([['news.import-articles', { handler, queueName: 'plugin-operations' }]])
+    );
+    const runPromise = taskList[pluginOperationTaskIdentifier]?.(
+      { instanceId: 'tenant-a', jobId: 'job-1' },
+      {
+        job: { attempts: 2, max_attempts: 5 },
+      } as never
+    );
+    const runAssertion = expect(runPromise).rejects.toThrow('aborted');
+
+    cancellationRequested = true;
+    await vi.advanceTimersByTimeAsync(1_500);
+
+    await runAssertion;
+    expect(updateJobState).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        jobId: 'job-1',
+        status: 'retrying',
       })
     );
   });

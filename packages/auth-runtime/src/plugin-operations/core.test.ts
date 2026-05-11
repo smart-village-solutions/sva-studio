@@ -7,6 +7,7 @@ const repositoryState = vi.hoisted(() => ({
 const runnerState = vi.hoisted(() => ({
   queuePluginOperationJob: vi.fn(),
   getRegisteredPluginOperationExecutionHandlers: vi.fn(),
+  getRegisteredPluginOperationExecutionRegistry: vi.fn(),
 }));
 
 const middlewareState = vi.hoisted(() => ({
@@ -41,6 +42,7 @@ vi.mock('./repository.js', () => ({
 vi.mock('./runner.js', () => ({
   queuePluginOperationJob: runnerState.queuePluginOperationJob,
   getRegisteredPluginOperationExecutionHandlers: runnerState.getRegisteredPluginOperationExecutionHandlers,
+  getRegisteredPluginOperationExecutionRegistry: runnerState.getRegisteredPluginOperationExecutionRegistry,
 }));
 
 vi.mock('../iam-account-management/shared.js', () => ({
@@ -63,6 +65,17 @@ describe('plugin operations handlers', () => {
     runnerState.queuePluginOperationJob.mockResolvedValue(undefined);
     runnerState.getRegisteredPluginOperationExecutionHandlers.mockReturnValue(
       new Map([['news.import-articles', vi.fn()]])
+    );
+    runnerState.getRegisteredPluginOperationExecutionRegistry.mockReturnValue(
+      new Map([
+        [
+          'news.import-articles',
+          {
+            handler: vi.fn(),
+            queueName: 'plugin-imports',
+          },
+        ],
+      ])
     );
     idempotencyState.reserveIdempotency.mockResolvedValue({ status: 'reserved' });
     idempotencyState.completeIdempotency.mockResolvedValue(undefined);
@@ -123,7 +136,7 @@ describe('plugin operations handlers', () => {
     expect(runnerState.queuePluginOperationJob).toHaveBeenCalledWith({
       instanceId: 'tenant-a',
       jobId: expect.any(String),
-      queueName: 'plugin-operations',
+      queueName: 'plugin-imports',
       maxAttempts: 5,
     });
     await expect(response.json()).resolves.toMatchObject({
@@ -308,6 +321,7 @@ describe('plugin operations handlers', () => {
 
   it('rejects unknown plugin operation job types before creating jobs', async () => {
     runnerState.getRegisteredPluginOperationExecutionHandlers.mockReturnValueOnce(new Map());
+    runnerState.getRegisteredPluginOperationExecutionRegistry.mockReturnValueOnce(new Map());
 
     const response = await startPluginOperationJobHandler(
       new Request('https://studio.test/api/v1/plugin-operations/jobs', {
@@ -488,7 +502,7 @@ describe('plugin operations handlers', () => {
           latestEvent: {
             id: 'event-1',
             presentation: {
-              title: 'Fortschritt aktualisiert',
+              title: 'job.progressed',
             },
           },
           runtime: {

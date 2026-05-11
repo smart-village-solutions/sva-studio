@@ -8,12 +8,22 @@ ALTER TABLE iam.plugin_operation_jobs
   ADD COLUMN IF NOT EXISTS correlation_id TEXT,
   ADD COLUMN IF NOT EXISTS parent_job_id UUID;
 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_plugin_operation_jobs_id_instance
+  ON iam.plugin_operation_jobs(id, instance_id);
+
+CREATE INDEX IF NOT EXISTS idx_plugin_operation_jobs_parent_job_id
+  ON iam.plugin_operation_jobs(parent_job_id);
+
+ALTER TABLE iam.plugin_operation_jobs
+  ADD CONSTRAINT plugin_operation_jobs_parent_job_fk
+  FOREIGN KEY (parent_job_id) REFERENCES iam.plugin_operation_jobs(id) ON DELETE SET NULL;
+
 CREATE INDEX IF NOT EXISTS idx_plugin_operation_jobs_instance_heartbeat_at
   ON iam.plugin_operation_jobs(instance_id, heartbeat_at DESC);
 
 CREATE TABLE IF NOT EXISTS iam.plugin_operation_job_events (
   id UUID PRIMARY KEY,
-  job_id UUID NOT NULL REFERENCES iam.plugin_operation_jobs(id) ON DELETE CASCADE,
+  job_id UUID NOT NULL,
   instance_id TEXT NOT NULL,
   event_type TEXT NOT NULL,
   status TEXT NOT NULL,
@@ -35,7 +45,9 @@ CREATE TABLE IF NOT EXISTS iam.plugin_operation_job_events (
   ),
   CONSTRAINT plugin_operation_job_events_status_check CHECK (
     status IN ('queued', 'running', 'retrying', 'succeeded', 'failed', 'cancelled')
-  )
+  ),
+  CONSTRAINT plugin_operation_job_events_job_instance_fk
+    FOREIGN KEY (job_id, instance_id) REFERENCES iam.plugin_operation_jobs(id, instance_id) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_plugin_operation_job_events_job_created_at
@@ -47,7 +59,10 @@ CREATE INDEX IF NOT EXISTS idx_plugin_operation_job_events_job_created_at
 DROP INDEX IF EXISTS iam.idx_plugin_operation_job_events_job_created_at;
 DROP TABLE IF EXISTS iam.plugin_operation_job_events;
 DROP INDEX IF EXISTS iam.idx_plugin_operation_jobs_instance_heartbeat_at;
+DROP INDEX IF EXISTS iam.idx_plugin_operation_jobs_parent_job_id;
+DROP INDEX IF EXISTS iam.idx_plugin_operation_jobs_id_instance;
 ALTER TABLE iam.plugin_operation_jobs
+  DROP CONSTRAINT IF EXISTS plugin_operation_jobs_parent_job_fk,
   DROP COLUMN IF EXISTS parent_job_id,
   DROP COLUMN IF EXISTS correlation_id,
   DROP COLUMN IF EXISTS cancel_requested_at,

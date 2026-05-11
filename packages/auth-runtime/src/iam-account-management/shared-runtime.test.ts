@@ -1,7 +1,10 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
+
+const originalTenantAdminBaseUrl = process.env.KEYCLOAK_ADMIN_BASE_URL;
 
 const state = vi.hoisted(() => ({
   logger: {
+    info: vi.fn(),
     warn: vi.fn(),
   },
   loadInstanceById: vi.fn(),
@@ -33,10 +36,12 @@ vi.mock('../config-tenant-secret.js', () => ({
 describe('iam account management shared runtime logging', () => {
   beforeEach(() => {
     vi.resetModules();
+    state.logger.info.mockReset();
     state.logger.warn.mockReset();
     state.loadInstanceById.mockReset();
     state.getKeycloakAdminClientConfigFromEnv.mockReset();
     state.resolveTenantAdminClientSecret.mockReset();
+    process.env.KEYCLOAK_ADMIN_BASE_URL = 'https://keycloak.example.test';
   });
 
   it('logs when the global identity provider configuration cannot be resolved', async () => {
@@ -125,4 +130,43 @@ describe('iam account management shared runtime logging', () => {
       })
     );
   });
+
+  it('returns and logs the resolved tenant admin identity provider metadata', async () => {
+    state.loadInstanceById.mockResolvedValueOnce({
+      authRealm: 'tenant-realm',
+      tenantAdminClient: { clientId: 'tenant-admin' },
+    });
+    state.resolveTenantAdminClientSecret.mockResolvedValueOnce({ secret: 'tenant-secret' });
+
+    const { resolveIdentityProviderForInstance } = await import('./shared-runtime.js');
+
+    const resolution = await resolveIdentityProviderForInstance('instance-1');
+
+    expect(resolution).toMatchObject({
+      realm: 'tenant-realm',
+      source: 'instance',
+      clientId: 'tenant-admin',
+      adminRealm: 'tenant-realm',
+      executionMode: 'tenant_admin',
+    });
+    expect(state.logger.info).toHaveBeenCalledWith(
+      'Instance identity provider resolved',
+      expect.objectContaining({
+        instance_id: 'instance-1',
+        realm: 'tenant-realm',
+        admin_realm: 'tenant-realm',
+        client_id: 'tenant-admin',
+        source: 'instance',
+        execution_mode: 'tenant_admin',
+      })
+    );
+  });
+});
+
+afterAll(() => {
+  if (originalTenantAdminBaseUrl === undefined) {
+    delete process.env.KEYCLOAK_ADMIN_BASE_URL;
+  } else {
+    process.env.KEYCLOAK_ADMIN_BASE_URL = originalTenantAdminBaseUrl;
+  }
 });

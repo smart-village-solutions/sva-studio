@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createGroupReadHandlers, type GroupReadHandlerDeps } from './group-read-handlers.js';
+import { GroupQueryExecutionError } from './group-query.js';
 
 const ctx = {
   sessionId: 'session-1',
@@ -62,6 +63,7 @@ const createDeps = (
     isUuid: vi.fn(() => true),
     jsonResponse: vi.fn(createJsonResponse),
     logger: {
+      info: vi.fn(),
       error: vi.fn(),
     },
     readPage: vi.fn(() => ({ page: 1, pageSize: 20 })),
@@ -146,6 +148,16 @@ describe('createGroupReadHandlers', () => {
     await expect(response.json()).resolves.toMatchObject({
       error: { code: 'invalid_request', message: 'Gruppe nicht gefunden' },
     });
+    expect(deps.logger.info).toHaveBeenCalledWith(
+      'Group detail not found',
+      expect.objectContaining({
+        operation: 'group_detail',
+        workspace_id: 'inst-g',
+        group_id: groupRow.id,
+        request_id: 'req-groups',
+        trace_id: 'trace-groups',
+      })
+    );
   });
 
   it('returns group detail with assigned roles and memberships', async () => {
@@ -160,7 +172,10 @@ describe('createGroupReadHandlers', () => {
             account_id: 'account-1',
             group_id: groupRow.id,
             keycloak_subject: 'kc-user-1',
-            display_name: 'Test User',
+            display_name_ciphertext: 'Test User',
+            first_name_ciphertext: null,
+            last_name_ciphertext: null,
+            email_ciphertext: null,
             valid_from: null,
             valid_until: null,
             assigned_at: '2026-01-03T00:00:00Z',
@@ -211,6 +226,81 @@ describe('createGroupReadHandlers', () => {
         operation: 'group_list',
         workspace_id: 'inst-g',
         error: 'database down',
+      })
+    );
+  });
+
+  it('maps schema drift style detail failures to a detailed database_unavailable error', async () => {
+    const deps = createDeps([], {
+      withInstanceScopedDb: vi.fn(async () => {
+        throw new GroupQueryExecutionError(
+          'group_memberships',
+          new Error('column iam.accounts.display_name does not exist')
+        );
+      }),
+    });
+    const handlers = createGroupReadHandlers(deps);
+
+    const response = await handlers.getGroupInternal(
+      new Request(`http://localhost/api/v1/iam/inst-g/groups/${groupRow.id}`),
+      ctx
+    );
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        code: 'database_unavailable',
+        details: {
+          dependency: 'database',
+          reason_code: 'schema_drift',
+          schema_object: 'iam.accounts',
+          query_stage: 'group_memberships',
+        },
+      },
+      requestId: 'req-groups',
+    });
+    expect(deps.logger.error).toHaveBeenCalledWith(
+      'Group detail query failed',
+      expect.objectContaining({
+        operation: 'group_detail',
+        group_id: groupRow.id,
+        query_stage: 'group_memberships',
+      })
+    );
+  });
+
+  it('uses group_detail as fallback stage for non-wrapped detail errors and reports iam.groups', async () => {
+    const deps = createDeps([], {
+      withInstanceScopedDb: vi.fn(async () => {
+        throw new Error('column iam.groups.description does not exist');
+      }),
+    });
+    const handlers = createGroupReadHandlers(deps);
+
+    const response = await handlers.getGroupInternal(
+      new Request(`http://localhost/api/v1/iam/inst-g/groups/${groupRow.id}`),
+      ctx
+    );
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        code: 'database_unavailable',
+        details: {
+          dependency: 'database',
+          reason_code: 'schema_drift',
+          schema_object: 'iam.groups',
+          query_stage: 'group_detail',
+        },
+      },
+      requestId: 'req-groups',
+    });
+    expect(deps.logger.error).toHaveBeenCalledWith(
+      'Group detail query failed',
+      expect.objectContaining({
+        operation: 'group_detail',
+        group_id: groupRow.id,
+        query_stage: 'group_detail',
       })
     );
   });

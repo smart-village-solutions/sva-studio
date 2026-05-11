@@ -25,7 +25,11 @@ export {
   stopPluginOperationWorker,
 } from './plugin-operations/runner.js';
 export type { PluginOperationExecutionHandler, PluginOperationExecutionResult } from './plugin-operations/runner.js';
-export type { PluginOperationExecutionHandlerContext, PluginOperationProgressReporter } from './plugin-operations/runner.js';
+export type {
+  PluginOperationExecutionHandlerContext,
+  PluginOperationExecutionRegistration,
+  PluginOperationProgressReporter,
+} from './plugin-operations/runner.js';
 export {
   persistAuthAuditEventToDb,
   persistAuthAuditEventWithClient,

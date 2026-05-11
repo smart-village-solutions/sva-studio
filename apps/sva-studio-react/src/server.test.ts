@@ -334,6 +334,24 @@ describe('server transport', () => {
     expect(startFetch).toHaveBeenCalledTimes(1);
   });
 
+  it('does not bootstrap the plugin worker when the runtime flag disables it', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('SVA_PLUGIN_OPERATION_WORKER_ENABLED', 'false');
+
+    const startFetch = vi.fn().mockResolvedValue(new Response('ok', { status: 200 }));
+    dispatchMainserverNewsRequestMock.mockResolvedValue(null);
+    dispatchMainserverEventsRequestMock.mockResolvedValue(null);
+    dispatchMainserverPoiRequestMock.mockResolvedValue(null);
+    dispatchAuthRouteRequestMock.mockResolvedValue(null);
+    createStartHandlerMock.mockReturnValue(startFetch);
+
+    const mod = await import('./server');
+    const response = await mod.default.fetch(new Request('http://localhost:3000/admin/users'));
+
+    await expect(response.text()).resolves.toBe('ok');
+    expect(ensurePluginOperationWorkerStartedMock).not.toHaveBeenCalled();
+  });
+
   it('retries worker bootstrap after a transient startup failure and logs the failure', async () => {
     vi.stubEnv('NODE_ENV', 'production');
 

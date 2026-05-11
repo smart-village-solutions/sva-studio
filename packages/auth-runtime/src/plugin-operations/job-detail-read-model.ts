@@ -26,42 +26,19 @@ export const resolveStudioJobLastObservedAt = (
 export const createStudioJobEventPresentation = (event: StudioJobEventRecord): StudioJobEventPresentation => {
   switch (event.eventType) {
     case 'job.queued':
-      return { tone: 'info', title: 'Job eingeplant', isTerminal: false };
+      return { tone: 'info', title: 'job.queued', isTerminal: false };
     case 'job.started':
-      return { tone: 'info', title: 'Job gestartet', isTerminal: false };
+      return { tone: 'info', title: 'job.started', isTerminal: false };
     case 'job.progressed':
-      return { tone: 'neutral', title: 'Fortschritt aktualisiert', isTerminal: false };
+      return { tone: 'neutral', title: 'job.progressed', isTerminal: false };
     case 'job.retrying':
-      return { tone: 'warning', title: 'Neuer Versuch geplant', isTerminal: false };
+      return { tone: 'warning', title: 'job.retrying', isTerminal: false };
     case 'job.succeeded':
-      return { tone: 'success', title: 'Job erfolgreich abgeschlossen', isTerminal: true };
+      return { tone: 'success', title: 'job.succeeded', isTerminal: true };
     case 'job.failed':
-      return { tone: 'error', title: 'Job fehlgeschlagen', isTerminal: true };
+      return { tone: 'error', title: 'job.failed', isTerminal: true };
     case 'job.cancelled':
-      return { tone: 'warning', title: 'Job abgebrochen', isTerminal: true };
-  }
-};
-
-export const createStudioJobDefaultEventMessage = (event: StudioJobEventRecord): string => {
-  switch (event.eventType) {
-    case 'job.queued':
-      return 'Job wurde zur Ausführung eingeplant.';
-    case 'job.started':
-      return 'Job-Ausführung wurde gestartet.';
-    case 'job.progressed':
-      return event.progress?.currentStepLabel
-        ? `Fortschritt aktualisiert: ${event.progress.currentStepLabel}.`
-        : event.progress?.currentStepKey
-          ? `Fortschritt aktualisiert: ${event.progress.currentStepKey}.`
-          : 'Fortschritt des Jobs wurde aktualisiert.';
-    case 'job.retrying':
-      return 'Job wird nach einem Fehler erneut versucht.';
-    case 'job.succeeded':
-      return 'Job wurde erfolgreich abgeschlossen.';
-    case 'job.failed':
-      return 'Job ist fehlgeschlagen.';
-    case 'job.cancelled':
-      return 'Job wurde abgebrochen.';
+      return { tone: 'warning', title: 'job.cancelled', isTerminal: true };
   }
 };
 
@@ -98,7 +75,7 @@ const normalizeHistory = (job: StudioJobDetail): readonly StudioJobEventRecord[]
     .sort((left, right) => Date.parse(left.createdAt) - Date.parse(right.createdAt))
     .map((event) => ({
       ...event,
-      message: event.message ?? createStudioJobDefaultEventMessage(event),
+      message: event.message,
       details: normalizeStudioJobEventDetails(job, event),
       presentation: event.presentation ?? createStudioJobEventPresentation(event),
     }));

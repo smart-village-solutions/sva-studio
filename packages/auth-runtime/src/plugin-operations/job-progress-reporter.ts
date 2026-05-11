@@ -20,6 +20,7 @@ type JobProgressReporterDeps = {
     readonly hostDetails?: StudioJobEventHostDetails;
     readonly pluginDetails?: Readonly<Record<string, unknown>>;
   }) => Promise<unknown>;
+  readonly onProgressPersisted?: (progress: StudioJobProgress) => void;
   readonly now?: () => string;
 };
 
@@ -36,6 +37,7 @@ export const createJobProgressReporter = (
       ...input.progress,
       lastUpdatedAt: updatedAt,
     } satisfies StudioJobProgress;
+    deps.onProgressPersisted?.(progress);
 
     await Promise.all([
       deps.updateJobProgress({

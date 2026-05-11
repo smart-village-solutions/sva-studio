@@ -4,6 +4,7 @@ import type { IamAdminGroupDetail } from '@sva/core';
 import React from 'react';
 
 import { ConfirmDialog } from '../../../components/ConfirmDialog';
+import { IamRuntimeDiagnosticDetails } from '../../../components/iam-runtime-diagnostic-details';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
@@ -36,7 +37,9 @@ const groupErrorMessage = (error: IamHttpError | null, fallbackKey: TranslationK
     case 'invalid_request':
       return t('admin.groups.errors.invalidRequest');
     case 'database_unavailable':
-      return t('admin.groups.errors.databaseUnavailable');
+      return error.safeDetails?.reason_code === 'schema_drift'
+        ? t('admin.groups.errors.databaseSchemaDrift')
+        : t('admin.groups.errors.databaseUnavailable');
     default:
       return t(fallbackKey);
   }
@@ -201,6 +204,7 @@ export const GroupsPage = () => {
         <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
           <AlertDescription className="flex flex-col gap-3">
             <span>{groupErrorMessage(groupsApi.error, 'admin.groups.messages.error')}</span>
+            <IamRuntimeDiagnosticDetails error={groupsApi.error} />
             <div>
               <Button
                 type="button"

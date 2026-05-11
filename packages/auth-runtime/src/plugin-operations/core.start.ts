@@ -3,7 +3,7 @@ import type { StudioJobStartRequest } from '@sva/core';
 import { completeIdempotency, reserveIdempotency } from '../iam-account-management/shared.js';
 import { createApiError, toPayloadHash } from '../shared/request-helpers.js';
 import { createJsonItemResponse, createPluginOperationJob, markPluginOperationEnqueueFailed } from './core.shared.js';
-import { getRegisteredPluginOperationExecutionHandlers, queuePluginOperationJob } from './runner.js';
+import { getRegisteredPluginOperationExecutionRegistry, queuePluginOperationJob } from './runner.js';
 
 export const startPluginOperationEndpoint = 'POST:/api/v1/plugin-operations/jobs';
 
@@ -38,7 +38,7 @@ export const validateStartRequestData = (
     }
   }
 
-  if (!getRegisteredPluginOperationExecutionHandlers().has(data.jobTypeId)) {
+  if (!getRegisteredPluginOperationExecutionRegistry().has(data.jobTypeId)) {
     return createApiError(400, 'invalid_request', 'Unbekannter Plugin-Jobtyp.', requestId);
   }
 
@@ -110,12 +110,21 @@ export const executeStartPluginOperationJob = async (input: {
   };
 
   try {
+    const registration = getRegisteredPluginOperationExecutionRegistry().get(input.data.jobTypeId);
+    if (!registration) {
+      return completeStartIdempotencyResponse(
+        responseContext,
+        createApiError(400, 'invalid_request', 'Unbekannter Plugin-Jobtyp.', input.requestId)
+      );
+    }
+
     const job = await createPluginOperationJob({
       instanceId: input.instanceId,
       actorAccountId: input.actorAccountId,
       idempotencyKey: input.idempotencyKey,
       requestId: input.requestId,
       scheduledAt: input.scheduledAt,
+      queueName: registration.queueName,
       data: input.data,
     });
 

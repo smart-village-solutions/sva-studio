@@ -58,6 +58,7 @@ type BaseStateInput = {
   readonly attempts: number;
   readonly startedAt: string;
   readonly workerId: string;
+  readonly progress?: StudioJobRecord['progress'];
 };
 
 const getNow = (deps: JobStateWriterDeps): string => (deps.now ?? (() => new Date().toISOString()))();
@@ -134,6 +135,7 @@ export const createJobStateWriter = (deps: JobStateWriterDeps) => ({
     attempts,
     startedAt,
     workerId,
+    progress,
     errorPayload,
     finalFailure,
   }: BaseStateInput & {
@@ -151,7 +153,7 @@ export const createJobStateWriter = (deps: JobStateWriterDeps) => ({
         attempts,
         startedAt: job.startedAt ?? startedAt,
         finishedAt: finalFailure ? occurredAt : undefined,
-        progress: job.progress,
+        progress: progress ?? job.progress,
         errorPayload,
         workerId,
         heartbeatAt: occurredAt,
@@ -160,7 +162,7 @@ export const createJobStateWriter = (deps: JobStateWriterDeps) => ({
         ? deps.appendFailedEvent({
             jobId: job.id,
             instanceId: job.instanceId,
-            progress: job.progress,
+            progress: progress ?? job.progress,
             attempts,
             errorPayload,
             hostDetails: {
@@ -170,7 +172,7 @@ export const createJobStateWriter = (deps: JobStateWriterDeps) => ({
         : deps.appendRetriedEvent({
             jobId: job.id,
             instanceId: job.instanceId,
-            progress: job.progress,
+            progress: progress ?? job.progress,
             attempts,
             errorPayload,
             hostDetails: {
@@ -185,6 +187,7 @@ export const createJobStateWriter = (deps: JobStateWriterDeps) => ({
     attempts,
     startedAt,
     workerId,
+    progress,
     errorPayload,
   }: BaseStateInput & {
     readonly errorPayload: StudioJobError;
@@ -199,7 +202,7 @@ export const createJobStateWriter = (deps: JobStateWriterDeps) => ({
         attempts,
         startedAt: job.startedAt ?? startedAt,
         finishedAt,
-        progress: job.progress,
+        progress: progress ?? job.progress,
         errorPayload,
         workerId,
         heartbeatAt: finishedAt,
@@ -207,7 +210,7 @@ export const createJobStateWriter = (deps: JobStateWriterDeps) => ({
       deps.appendFailedEvent({
         jobId: job.id,
         instanceId: job.instanceId,
-        progress: job.progress,
+        progress: progress ?? job.progress,
         attempts,
         errorPayload,
         hostDetails: {
@@ -223,6 +226,7 @@ export const createJobStateWriter = (deps: JobStateWriterDeps) => ({
     startedAt,
     workerId,
     message,
+    progress,
     cancelRequestedAt,
   }: BaseStateInput & {
     readonly message?: string;
@@ -238,7 +242,7 @@ export const createJobStateWriter = (deps: JobStateWriterDeps) => ({
         attempts,
         startedAt: job.startedAt ?? startedAt,
         finishedAt,
-        progress: job.progress,
+        progress: progress ?? job.progress,
         workerId,
         heartbeatAt: finishedAt,
       }),
@@ -246,7 +250,7 @@ export const createJobStateWriter = (deps: JobStateWriterDeps) => ({
         eventType: 'job.cancelled',
         jobId: job.id,
         instanceId: job.instanceId,
-        progress: job.progress,
+        progress: progress ?? job.progress,
         attempts,
         message,
         hostDetails: {

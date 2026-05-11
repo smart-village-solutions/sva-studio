@@ -1,6 +1,7 @@
 import type { ApiErrorCode } from '@sva/core';
 
 import {
+  GroupQueryExecutionError,
   loadGroupDetail,
   loadGroupListItems,
   type GroupQueryClient,
@@ -22,6 +23,7 @@ export type GroupReadActor = {
 };
 
 export type GroupReadLogger = {
+  readonly info: (message: string, meta: Readonly<Record<string, unknown>>) => void;
   readonly error: (message: string, meta: Readonly<Record<string, unknown>>) => void;
 };
 
@@ -65,6 +67,11 @@ export type GroupReadApiErrorCode = ApiErrorCode;
 
 const ADMIN_ROLES = new Set(['system_admin', 'app_manager']);
 
+const isSchemaDriftLikeGroupQueryError = (error: unknown): boolean => {
+  const message = error instanceof Error ? error.message : String(error);
+  return /column .* does not exist|relation .* does not exist|syntax error|42P0\d|42703/i.test(message);
+};
+
 const resolveGroupReadActor = async (
   deps: GroupReadHandlerDeps,
   request: Request,
@@ -94,6 +101,87 @@ const readGroupIdOrError = (
     return deps.createApiError(400, 'invalid_request', 'Ungültige Gruppen-ID', requestId);
   }
   return groupId;
+};
+
+const buildGroupReadLogMeta = (
+  actor: GroupReadActor,
+  details: Readonly<Record<string, unknown>> = {}
+): Readonly<Record<string, unknown>> => ({
+  workspace_id: actor.instanceId,
+  request_id: actor.requestId,
+  trace_id: actor.traceId,
+  ...details,
+});
+
+const resolveSchemaObjectForGroupDetailStage = (
+  stage: 'group_detail' | 'group_memberships' | 'group_roles'
+): 'iam.groups' | 'iam.accounts' | 'iam.group_roles' => {
+  switch (stage) {
+    case 'group_detail':
+      return 'iam.groups';
+    case 'group_memberships':
+      return 'iam.accounts';
+    case 'group_roles':
+      return 'iam.group_roles';
+  }
+};
+
+const createGroupNotFoundResponse = (
+  deps: GroupReadHandlerDeps,
+  actor: GroupReadActor,
+  groupId: string
+): Response => {
+  deps.logger.info(
+    'Group detail not found',
+    buildGroupReadLogMeta(actor, {
+      operation: 'group_detail',
+      group_id: groupId,
+    })
+  );
+  return deps.createApiError(404, 'invalid_request', 'Gruppe nicht gefunden', actor.requestId);
+};
+
+const handleGroupDetailQueryError = (
+  deps: GroupReadHandlerDeps,
+  actor: GroupReadActor,
+  groupId: string,
+  error: unknown
+): Response => {
+  const cause = error instanceof GroupQueryExecutionError ? error.cause : error;
+  const queryStage = error instanceof GroupQueryExecutionError ? error.stage : 'group_detail';
+
+  deps.logger.error(
+    'Group detail query failed',
+    buildGroupReadLogMeta(actor, {
+      operation: 'group_detail',
+      group_id: groupId,
+      query_stage: queryStage,
+      error: error instanceof Error ? error.message : String(error),
+      error_cause: cause instanceof Error ? cause.message : String(cause),
+    })
+  );
+
+  if (isSchemaDriftLikeGroupQueryError(cause)) {
+    return deps.createApiError(
+      503,
+      'database_unavailable',
+      'Gruppendetails konnten wegen einer Server- oder Migrationsinkonsistenz nicht vollständig geladen werden.',
+      actor.requestId,
+      {
+        dependency: 'database',
+        reason_code: 'schema_drift',
+        schema_object: resolveSchemaObjectForGroupDetailStage(queryStage),
+        query_stage: queryStage,
+      }
+    );
+  }
+
+  return deps.createApiError(
+    503,
+    'database_unavailable',
+    'Gruppe konnte nicht geladen werden.',
+    actor.requestId
+  );
 };
 
 export const createGroupReadHandlers = (deps: GroupReadHandlerDeps) => {
@@ -155,24 +243,11 @@ export const createGroupReadHandlers = (deps: GroupReadHandlerDeps) => {
         loadGroupDetail(client, { instanceId: actor.instanceId, groupId })
       );
       if (!group) {
-        return deps.createApiError(404, 'invalid_request', 'Gruppe nicht gefunden', actor.requestId);
+        return createGroupNotFoundResponse(deps, actor, groupId);
       }
       return deps.jsonResponse(200, deps.asApiItem(group, actor.requestId));
     } catch (error) {
-      deps.logger.error('Group detail query failed', {
-        operation: 'group_detail',
-        workspace_id: actor.instanceId,
-        group_id: groupId,
-        error: error instanceof Error ? error.message : String(error),
-        request_id: actor.requestId,
-        trace_id: actor.traceId,
-      });
-      return deps.createApiError(
-        503,
-        'database_unavailable',
-        'Gruppe konnte nicht geladen werden.',
-        actor.requestId
-      );
+      return handleGroupDetailQueryError(deps, actor, groupId, error);
     }
   };
 

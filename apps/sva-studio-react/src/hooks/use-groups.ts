@@ -31,6 +31,7 @@ type UseGroupsResult = {
   readonly groups: readonly IamAdminGroupListItem[];
   readonly isLoading: boolean;
   readonly error: IamHttpError | null;
+  readonly detailError: IamHttpError | null;
   readonly mutationError: IamHttpError | null;
   readonly refetch: () => Promise<void>;
   readonly clearMutationError: () => void;
@@ -101,14 +102,14 @@ export const useGroups = (): UseGroupsResult => {
     mutationError,
     refetch,
     clearMutationError,
-    setError,
     runMutationWithResult,
     runMutation,
   } = adminList;
+  const [detailError, setDetailError] = React.useState<IamHttpError | null>(null);
 
   const loadGroupDetail = React.useCallback(
     async (groupId: string) => {
-      setError(null);
+      setDetailError(null);
       logBrowserOperationStart(groupsLogger, 'group_detail_load_started', {
         operation: 'get_group',
       });
@@ -131,7 +132,18 @@ export const useGroups = (): UseGroupsResult => {
             group_id: groupId,
           });
         }
-        setError(resolvedError);
+        setDetailError(resolvedError);
+        groupsLogger.warn('group_detail_error_classified', {
+          result: 'failed',
+          operation: 'get_group',
+          group_id: groupId,
+          status: resolvedError.status,
+          error_code: resolvedError.code,
+          request_id: resolvedError.requestId,
+          classification: resolvedError.classification,
+          diagnostic_status: resolvedError.diagnosticStatus,
+          recommended_action: resolvedError.recommendedAction,
+        });
         logBrowserOperationFailure(groupsLogger, 'group_detail_load_failed', resolvedError, {
           operation: 'get_group',
           group_id: groupId,
@@ -139,7 +151,7 @@ export const useGroups = (): UseGroupsResult => {
         return null;
       }
     },
-    [invalidatePermissions, setError]
+    [invalidatePermissions]
   );
 
   const createGroupWithResult = React.useCallback(
@@ -194,6 +206,7 @@ export const useGroups = (): UseGroupsResult => {
       groups: items,
       isLoading,
       error,
+      detailError,
       mutationError,
       refetch,
       clearMutationError,
@@ -213,6 +226,7 @@ export const useGroups = (): UseGroupsResult => {
       createGroupWithResult,
       deleteGroupById,
       error,
+      detailError,
       isLoading,
       items,
       loadGroupDetail,

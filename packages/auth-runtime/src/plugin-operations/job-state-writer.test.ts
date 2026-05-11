@@ -131,4 +131,78 @@ describe('job state writer', () => {
     );
     expect(appendFailedEvent).not.toHaveBeenCalled();
   });
+
+  it('preserves the latest reported progress when retrying or failing after handler work', async () => {
+    const updateJobState = vi.fn(async () => null);
+    const appendRetriedEvent = vi.fn(async () => null);
+    const appendFailedEvent = vi.fn(async () => null);
+
+    const writer = createJobStateWriter({
+      updateJobState,
+      appendStartedEvent: vi.fn(async () => null),
+      appendSucceededEvent: vi.fn(async () => null),
+      appendRetriedEvent,
+      appendFailedEvent,
+      now: () => '2026-05-09T12:05:00.000Z',
+    });
+
+    const latestProgress = {
+      completedSteps: 2,
+      totalSteps: 3,
+      currentPhase: 'mapping',
+      currentStepKey: 'persist-content',
+      lastUpdatedAt: '2026-05-09T12:04:30.000Z',
+    } as const;
+
+    await writer.markRetriedOrFailed({
+      job: baseJob,
+      attempts: 2,
+      startedAt: '2026-05-09T12:01:00.000Z',
+      workerId: 'graphile-worker:tenant-a:job-1',
+      progress: latestProgress,
+      errorPayload: {
+        code: 'plugin_operation_execution_failed',
+        category: 'retryable',
+      },
+      finalFailure: false,
+    });
+
+    await writer.markRetriedOrFailed({
+      job: baseJob,
+      attempts: 5,
+      startedAt: '2026-05-09T12:01:00.000Z',
+      workerId: 'graphile-worker:tenant-a:job-1',
+      progress: latestProgress,
+      errorPayload: {
+        code: 'plugin_operation_execution_failed',
+        category: 'permanent',
+      },
+      finalFailure: true,
+    });
+
+    expect(updateJobState).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        status: 'retrying',
+        progress: latestProgress,
+      })
+    );
+    expect(appendRetriedEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        progress: latestProgress,
+      })
+    );
+    expect(updateJobState).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        status: 'failed',
+        progress: latestProgress,
+      })
+    );
+    expect(appendFailedEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        progress: latestProgress,
+      })
+    );
+  });
 });

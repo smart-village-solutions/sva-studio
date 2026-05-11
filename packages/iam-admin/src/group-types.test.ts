@@ -64,9 +64,15 @@ describe('mapGroupMembership', () => {
     instance_id: 'inst-2',
     account_id: 'acc-1',
     group_id: 'grp-2',
+    keycloak_subject: 'kc-1',
+    display_name_ciphertext: null,
+    first_name_ciphertext: null,
+    last_name_ciphertext: null,
+    email_ciphertext: null,
     valid_from: null,
     valid_until: null,
     assigned_at: '2025-03-01T10:00:00Z',
+    assigned_by: null,
   };
 
   it('mappt Pflichtfelder korrekt', () => {
@@ -105,5 +111,23 @@ describe('mapGroupMembership', () => {
     });
     expect(result.validFrom).toBe('2025-01-01T00:00:00Z');
     expect(result.validUntil).toBe('2025-06-30T23:59:59Z');
+  });
+
+  it('leitet den Anzeigenamen aus verschlüsselten Account-Feldern ab', () => {
+    const result = mapGroupMembership({
+      ...baseRow,
+      display_name_ciphertext: 'Ada Lovelace',
+      first_name_ciphertext: 'Ada',
+      last_name_ciphertext: 'Lovelace',
+    });
+    expect(result.displayName).toBe('Ada Lovelace');
+  });
+
+  it('verwendet die entschlüsselte E-Mail als Fallback vor dem Keycloak-Subject', () => {
+    const result = mapGroupMembership({
+      ...baseRow,
+      email_ciphertext: 'ada@example.com',
+    });
+    expect(result.displayName).toBe('ada@example.com');
   });
 });

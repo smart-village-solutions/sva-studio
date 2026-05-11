@@ -3,6 +3,7 @@ import type { IamAdminGroupDetail } from '@sva/core';
 import React from 'react';
 
 import { ConfirmDialog } from '../../../components/ConfirmDialog';
+import { IamRuntimeDiagnosticDetails } from '../../../components/iam-runtime-diagnostic-details';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Button } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
@@ -56,7 +57,9 @@ const groupErrorMessage = (error: IamHttpError | null, fallbackKey: TranslationK
     case 'invalid_request':
       return t('admin.groups.errors.invalidRequest');
     case 'database_unavailable':
-      return t('admin.groups.errors.databaseUnavailable');
+      return error.safeDetails?.reason_code === 'schema_drift'
+        ? t('admin.groups.errors.databaseSchemaDrift')
+        : t('admin.groups.errors.databaseUnavailable');
     default:
       return t(fallbackKey);
   }
@@ -84,6 +87,7 @@ export const GroupDetailPage = ({ groupId }: GroupDetailPageProps) => {
   const rolesApi = useRoles();
   const {
     isLoading,
+    detailError,
     mutationError,
     loadGroupDetail,
     updateGroup,
@@ -207,7 +211,16 @@ export const GroupDetailPage = ({ groupId }: GroupDetailPageProps) => {
         </Button>
       </header>
 
-      {!group && !isLoading ? (
+      {!group && detailError ? (
+        <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
+          <AlertDescription className="flex flex-col gap-2">
+            <span>{groupErrorMessage(detailError, 'admin.groups.messages.error')}</span>
+            <IamRuntimeDiagnosticDetails error={detailError} />
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
+      {!group && !isLoading && !detailError ? (
         <Card className="p-5 text-sm text-muted-foreground" role="status">
           {t('admin.groups.detail.notFound')}
         </Card>
@@ -383,7 +396,10 @@ export const GroupDetailPage = ({ groupId }: GroupDetailPageProps) => {
 
       {mutationError ? (
         <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
-          <AlertDescription>{groupErrorMessage(mutationError, 'admin.groups.messages.error')}</AlertDescription>
+          <AlertDescription className="flex flex-col gap-2">
+            <span>{groupErrorMessage(mutationError, 'admin.groups.messages.error')}</span>
+            <IamRuntimeDiagnosticDetails error={mutationError} />
+          </AlertDescription>
         </Alert>
       ) : null}
 

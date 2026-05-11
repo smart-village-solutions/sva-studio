@@ -69,6 +69,10 @@ type StudioJobListRow = StudioJobRow & {
   readonly total_count: number;
 };
 
+type StudioJobCountRow = {
+  readonly total_count: number;
+};
+
 export type StudioJobListResultItem = StudioJobRecord & {
   readonly latestEvent?: StudioJobEventRecord;
 };
@@ -511,6 +515,19 @@ OFFSET $${offsetIndex}
   };
 };
 
+const countJobsStatement = (instanceId: string, query: StudioJobListQuery): SqlStatement => {
+  const whereClause = buildListJobWhereClause(instanceId, query);
+
+  return {
+    text: `
+SELECT COUNT(*)::int AS total_count
+FROM iam.plugin_operation_jobs j
+WHERE ${whereClause.clause}
+    `,
+    values: whereClause.values,
+  };
+};
+
 const requireFirstRow = <TRow>(row: TRow | undefined, errorCode: string): TRow => {
   if (!row) {
     throw new Error(errorCode);
@@ -556,9 +573,12 @@ const listJobs = async (
   query: StudioJobListQuery
 ): Promise<StudioJobListResult> => {
   const rows = await queryRows<StudioJobListRow>(executor, listJobsStatement(instanceId, query));
+  const shouldFallbackToCount = rows.length === 0 && query.page > 1;
+  const fallbackCountRows =
+    shouldFallbackToCount ? await queryRows<StudioJobCountRow>(executor, countJobsStatement(instanceId, query)) : null;
   return {
     items: rows.map(mapStudioJobListRow),
-    total: rows[0]?.total_count ?? 0,
+    total: rows[0]?.total_count ?? fallbackCountRows?.[0]?.total_count ?? 0,
   };
 };
 

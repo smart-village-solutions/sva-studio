@@ -107,7 +107,7 @@ Referenzen:
 - `../adr/ADR-023-session-lifecycle-forced-reauth-und-silent-sso.md`
 - `../adr/ADR-021-per-user-sva-mainserver-delegation.md`
 - `../adr/ADR-030-registry-basierte-instance-freigabe-und-provisioning.md`
-- `../adr/ADR-040-graphile-workflows-als-standard-fuer-hintergrundprozesse.md`
+- `../adr/ADR-040-graphile-worker-als-standard-fuer-hintergrundprozesse.md`
 
 ### Fortschreibung 2026-04: Registry-basierte Tenant-Freigabe
 

@@ -17,7 +17,7 @@ describe('waste-management search params', () => {
       })
     ).toEqual({
       tab: 'fractions',
-      masterDataTab: 'locations',
+      masterDataTab: 'fractions',
       q: '',
       page: 1,
       pageSize: 25,
@@ -57,6 +57,27 @@ describe('waste-management search params', () => {
       cityId: 'city-1',
       wasteFractionId: 'fraction-1',
       tourId: 'tour-1',
+    });
+  });
+
+  it('synchronizes masterDataTab with the active master-data tab', () => {
+    expect(
+      normalizeWasteManagementSearchParams({
+        tab: 'fractions',
+        masterDataTab: 'locations',
+      })
+    ).toEqual({
+      tab: 'fractions',
+      masterDataTab: 'fractions',
+      q: '',
+      page: 1,
+      pageSize: 25,
+      status: 'all',
+      shiftContext: 'all',
+      regionId: undefined,
+      cityId: undefined,
+      wasteFractionId: undefined,
+      tourId: undefined,
     });
   });
 });

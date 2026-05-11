@@ -1,14 +1,8 @@
 import React from 'react';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-
-const navigateMock = vi.hoisted(() => vi.fn());
+import { cleanup, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { WasteToolsHistory } from '../src/waste-management.tools.history.js';
-
-vi.mock('@tanstack/react-router', () => ({
-  useNavigate: () => navigateMock,
-}));
 
 vi.mock('@sva/plugin-sdk', () => ({
   usePluginTranslation: () => (key: string, values?: Record<string, unknown>) =>
@@ -62,10 +56,6 @@ vi.mock('@sva/studio-ui-react', () => ({
 }));
 
 describe('WasteToolsHistory', () => {
-  beforeEach(() => {
-    navigateMock.mockReset();
-  });
-
   afterEach(() => {
     cleanup();
   });
@@ -77,10 +67,9 @@ describe('WasteToolsHistory', () => {
     expect(screen.getByText('tools.meta.noJobStatus')).toBeTruthy();
     expect(screen.getByText('tone:none')).toBeTruthy();
     expect(screen.getByTestId('empty-state').textContent).toContain('tools.meta.noTechnicalHistory');
-    expect(screen.queryByRole('button', { name: 'tools.actions.openJob' })).toBeNull();
   });
 
-  it('renders job metadata, optional history fields, and opens the job detail route', () => {
+  it('renders job metadata and optional history fields without an admin-only CTA', () => {
     render(
       <WasteToolsHistory
         lastJob={{
@@ -132,12 +121,6 @@ describe('WasteToolsHistory', () => {
     expect(variants).toContain('destructive');
     expect(variants).toContain('default');
     expect(variants).toContain('outline');
-
-    fireEvent.click(screen.getByRole('button', { name: 'tools.actions.openJob' }));
-
-    expect(navigateMock).toHaveBeenCalledWith({
-      to: '/monitoring/jobs/$jobId',
-      params: { jobId: 'job-7' },
-    });
+    expect(screen.queryByRole('button', { name: 'tools.actions.openJob' })).toBeNull();
   });
 });

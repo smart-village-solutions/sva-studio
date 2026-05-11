@@ -72,4 +72,45 @@ describe('WasteOverviewPanel', () => {
       expect(screen.getByTestId('error').textContent).toContain('overview.messages.loadForbidden');
     });
   });
+
+  it('ignores stale overview responses after the search params change', async () => {
+    let resolveFirst: ((value: unknown) => void) | undefined;
+    let resolveSecond: ((value: unknown) => void) | undefined;
+
+    apiState.getWasteManagementHistoryOverview
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveFirst = resolve;
+          })
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveSecond = resolve;
+          })
+      );
+
+    const { rerender } = render(<WasteOverviewPanel search={{ page: 1, pageSize: 25, q: 'alpha' } as never} />);
+
+    rerender(<WasteOverviewPanel search={{ page: 1, pageSize: 25, q: 'beta' } as never} />);
+
+    resolveSecond?.({
+      audit: { items: [{ id: 'new-audit' }], total: 1 },
+      technical: { items: [], total: 0 },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('overview-content').textContent).toContain('new-audit');
+    });
+
+    resolveFirst?.({
+      audit: { items: [{ id: 'stale-audit' }], total: 1 },
+      technical: { items: [], total: 0 },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('overview-content').textContent).not.toContain('stale-audit');
+    });
+  });
 });

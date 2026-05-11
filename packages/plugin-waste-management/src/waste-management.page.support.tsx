@@ -4,7 +4,7 @@ import type {
   WasteManagementImportSourceFormat,
   WasteManagementSettingsRecord,
 } from '@sva/plugin-sdk';
-import { usePluginTranslation } from '@sva/plugin-sdk';
+import { usePluginTranslation, wasteManagementOperationsContract } from '@sva/plugin-sdk';
 import {
   Alert,
   AlertDescription,
@@ -109,13 +109,30 @@ export const downloadImportTemplate = (
   URL.revokeObjectURL(url);
 };
 
-export const StatusNotice = ({ message }: { readonly message: StatusMessage | null }) =>
-  message ? (
+export const readFileAsDataUrl = async (file: File): Promise<string> =>
+  await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(reader.error ?? new Error('file_read_failed'));
+    reader.onload = () => {
+      if (typeof reader.result !== 'string') {
+        reject(new Error('file_read_failed'));
+        return;
+      }
+      resolve(reader.result);
+    };
+    reader.readAsDataURL(file);
+  });
+
+export const StatusNotice = ({ message }: { readonly message: StatusMessage | null }) => {
+  const pt = usePluginTranslation('wasteManagement');
+
+  return message ? (
     <Alert>
-      <AlertTitle>{message.kind === 'success' ? 'OK' : 'Fehler'}</AlertTitle>
+      <AlertTitle>{message.kind === 'success' ? pt('common.statusSuccessTitle') : pt('common.statusErrorTitle')}</AlertTitle>
       <AlertDescription>{message.text}</AlertDescription>
     </Alert>
   ) : null;
+};
 
 export const ResetConfirmationDialog = ({
   open,
@@ -141,7 +158,7 @@ export const ResetConfirmationDialog = ({
       description={pt('tools.reset.confirmDescription')}
       confirmLabel={running ? pt('tools.actions.starting') : pt('tools.reset.confirmAction')}
       cancelLabel={pt('tools.reset.confirmCancel')}
-      confirmDisabled={running || token.trim().length === 0}
+      confirmDisabled={running || token.trim() !== wasteManagementOperationsContract.resetConfirmationToken}
       onCancel={() => onOpenChange(false)}
       onConfirm={onConfirm}
     >
@@ -151,7 +168,7 @@ export const ResetConfirmationDialog = ({
             id="waste-tools-reset-token-dialog"
             value={token}
             onChange={(event) => onTokenChange(event.target.value)}
-            placeholder="RESET"
+            placeholder={wasteManagementOperationsContract.resetConfirmationToken}
           />
         </StudioField>
       </StudioFieldGroup>

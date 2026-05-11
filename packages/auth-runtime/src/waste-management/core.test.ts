@@ -2054,6 +2054,10 @@ describe('waste-management auth runtime handlers', () => {
       {
         getRequestId: () => 'req-test',
         startPluginOperationJob: startJob,
+        loadWasteDataSourceRecord: vi.fn(async () => ({
+          ...baseRecord,
+          schemaName: 'wm',
+        })),
         resolvePermissions: vi.fn(async () => ({
           ok: true as const,
           permissions: allowPermission('waste-management.settings.manage'),
@@ -2101,6 +2105,10 @@ describe('waste-management auth runtime handlers', () => {
       {
         getRequestId: () => 'req-test',
         startPluginOperationJob: startJob,
+        loadWasteDataSourceRecord: vi.fn(async () => ({
+          ...baseRecord,
+          schemaName: 'wm',
+        })),
         resolvePermissions: vi.fn(async () => ({
           ok: true as const,
           permissions: allowPermission('waste-management.settings.manage'),
@@ -2125,6 +2133,47 @@ describe('waste-management auth runtime handlers', () => {
       scheduledAt: '2026-05-09T12:30:00.000Z',
     });
     expect(response.status).toBe(202);
+  });
+
+  it('rejects waste tool starts when the requested schema differs from the configured instance schema', async () => {
+    const startJob = vi.fn();
+
+    const response = await startWasteManagementMigrationsInternal(
+      new Request('https://studio.test/api/v1/waste-management/tools/migrations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': 'idem-2',
+          Origin: 'https://studio.test',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: JSON.stringify({
+          targetSchema: 'other_schema',
+        }),
+      }),
+      actor,
+      {
+        getRequestId: () => 'req-test',
+        startPluginOperationJob: startJob,
+        loadWasteDataSourceRecord: vi.fn(async () => ({
+          ...baseRecord,
+          schemaName: 'wm',
+        })),
+        resolvePermissions: vi.fn(async () => ({
+          ok: true as const,
+          permissions: allowPermission('waste-management.settings.manage'),
+        })),
+      }
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        code: 'invalid_request',
+      },
+      requestId: 'req-test',
+    });
+    expect(startJob).not.toHaveBeenCalled();
   });
 
   it('creates waste location-tour links in bulk through the dedicated bulk endpoint', async () => {

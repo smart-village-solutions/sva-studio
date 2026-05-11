@@ -11,12 +11,14 @@ export const WasteToolsImportProfileCard = ({
   sourceFormat,
   running,
   importBlobRef,
+  fileInputId,
   onStartImport,
 }: {
   readonly profile: ImportCatalogEntry | null;
   readonly sourceFormat: WasteManagementImportSourceFormat;
   readonly running: boolean;
   readonly importBlobRef: string;
+  readonly fileInputId: string;
   readonly onStartImport: () => void;
 }) => {
   const pt = usePluginTranslation('wasteManagement');
@@ -45,7 +47,10 @@ export const WasteToolsImportProfileCard = ({
         <Button type="button" variant="outline" onClick={() => downloadImportTemplate(profile, sourceFormat)}>
           {pt('tools.actions.downloadTemplate')}
         </Button>
-        <Button type="button" disabled={running || importBlobRef.trim().length === 0} onClick={onStartImport}>
+        <Button type="button" variant="outline" onClick={() => document.getElementById(fileInputId)?.click()}>
+          {pt('tools.imports.blobRefLabel')}
+        </Button>
+        <Button type="button" disabled={running || !importBlobRef.startsWith('data:')} onClick={onStartImport}>
           {running ? pt('tools.actions.starting') : pt('tools.actions.startImport')}
         </Button>
       </div>

@@ -12,12 +12,16 @@ export const WasteOverviewPanel = ({ search }: { readonly search: WasteManagemen
   const pt = usePluginTranslation('wasteManagement');
   const ptRef = useRef(pt);
   ptRef.current = pt;
+  const isMountedRef = useRef(true);
+  const requestSequenceRef = useRef(0);
   const [loading, setLoading] = useState(true);
   const [overview, setOverview] = useState<WasteManagementHistoryOverview | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let active = true;
+    isMountedRef.current = true;
+    const requestSequence = requestSequenceRef.current + 1;
+    requestSequenceRef.current = requestSequence;
 
     void (async () => {
       setLoading(true);
@@ -27,13 +31,13 @@ export const WasteOverviewPanel = ({ search }: { readonly search: WasteManagemen
           page: search.page,
           pageSize: search.pageSize,
         });
-        if (!active) {
+        if (!isMountedRef.current || requestSequenceRef.current !== requestSequence) {
           return;
         }
         setOverview(response);
         setError(null);
       } catch (loadError) {
-        if (!active) {
+        if (!isMountedRef.current || requestSequenceRef.current !== requestSequence) {
           return;
         }
         const code = resolveApiErrorCode(loadError);
@@ -43,14 +47,14 @@ export const WasteOverviewPanel = ({ search }: { readonly search: WasteManagemen
             : ptRef.current('overview.messages.loadError')
         );
       } finally {
-        if (active) {
+        if (isMountedRef.current && requestSequenceRef.current === requestSequence) {
           setLoading(false);
         }
       }
     })();
 
     return () => {
-      active = false;
+      isMountedRef.current = false;
     };
   }, [search.page, search.pageSize, search.q]);
 

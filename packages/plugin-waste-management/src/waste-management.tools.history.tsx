@@ -1,7 +1,6 @@
-import { useNavigate } from '@tanstack/react-router';
 import type { StudioJobResponse, WasteManagementHistoryOverview } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { Badge, Button, StudioEmptyState, StudioJobSummaryCard } from '@sva/studio-ui-react';
+import { Badge, StudioEmptyState, StudioJobSummaryCard } from '@sva/studio-ui-react';
 
 import { formatUpdatedAt, toJobStatusTone } from './waste-management.page.support.js';
 
@@ -13,7 +12,6 @@ export const WasteToolsHistory = ({
   readonly technicalHistory: readonly WasteManagementHistoryOverview['technical']['items'][number][];
 }) => {
   const pt = usePluginTranslation('wasteManagement');
-  const navigate = useNavigate();
 
   return (
     <>
@@ -32,13 +30,6 @@ export const WasteToolsHistory = ({
             : undefined
         }
         emptyState={pt('tools.meta.noJobYet')}
-        actions={
-          lastJob ? (
-            <Button type="button" variant="outline" size="sm" onClick={() => void navigate({ to: '/monitoring/jobs/$jobId', params: { jobId: lastJob.id } })}>
-              {pt('tools.actions.openJob')}
-            </Button>
-          ) : undefined
-        }
       />
       <div className="space-y-3 rounded-lg border border-border/70 bg-[rgba(255,255,255,0.32)] p-4">
         <div className="space-y-1">

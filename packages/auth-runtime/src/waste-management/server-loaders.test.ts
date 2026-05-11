@@ -25,8 +25,51 @@ const listWasteManagementTechnicalAuditRecordsMock = vi.hoisted(() => vi.fn(asyn
   total: 1,
 })));
 
+const instanceDbQueryMock = vi.hoisted(() =>
+  vi.fn(async () => ({
+    rowCount: 3,
+    rows: [
+      {
+        id: 'job-1',
+        job_type_id: 'waste-management.apply-migrations',
+        status: 'succeeded',
+        finished_at: '2026-05-09T12:00:00.000Z',
+        updated_at: '2026-05-09T12:00:00.000Z',
+        request_id: 'req-1',
+        latest_event_message: 'done',
+        error_code: null,
+        total_count: 3,
+      },
+      {
+        id: 'job-2',
+        job_type_id: 'waste-management.import-data',
+        status: 'failed',
+        finished_at: '2026-05-09T11:00:00.000Z',
+        updated_at: '2026-05-09T11:00:00.000Z',
+        request_id: 'req-2',
+        latest_event_message: 'failed',
+        error_code: 'import_failed',
+        error_message: 'Import request failed loudly',
+        total_count: 3,
+      },
+      {
+        id: 'job-3',
+        job_type_id: 'waste-management.seed-data',
+        status: 'cancelled',
+        finished_at: '2026-05-09T10:00:00.000Z',
+        updated_at: '2026-05-09T10:00:00.000Z',
+        request_id: 'req-3',
+        latest_event_message: 'cancelled',
+        error_code: 'cancelled',
+        error_message: null,
+        total_count: 3,
+      },
+    ],
+  }))
+);
+
 const withInstanceDbMock = vi.hoisted(() => vi.fn(async (instanceId: string, work: (client: object) => Promise<unknown>) =>
-  work({ instanceId, kind: 'db-client' })
+  work({ instanceId, kind: 'db-client', query: instanceDbQueryMock })
 ));
 
 const withStudioJobRepositoryMock = vi.hoisted(() =>
@@ -219,22 +262,25 @@ describe('waste-management server loaders', () => {
       tourDateShifts: [{ id: 'shift-1' }],
       globalDateShifts: [{ id: 'global-shift-1' }],
     });
-    expect(withInstanceDbMock).toHaveBeenCalledTimes(2);
-    expect(listJobsMock).toHaveBeenCalledWith('tenant-a', {
-      view: 'history',
-      page: 1,
-      pageSize: 10,
-      pluginId: 'waste-management',
-      q: 'fraction',
-    });
+    expect(withInstanceDbMock).toHaveBeenCalledTimes(3);
+    expect(instanceDbQueryMock).toHaveBeenCalledWith(
+      expect.stringContaining('FROM iam.plugin_operation_jobs j'),
+      ['tenant-a', expect.any(Array), '%fraction%', 10]
+    );
     expect(historyOverview.audit.total).toBe(1);
     expect(historyOverview.technical.total).toBe(4);
     expect(historyOverview.technical.items).toEqual([
       expect.objectContaining({ id: 'job:job-1:succeeded', eventType: 'migration.succeeded' }),
-      expect.objectContaining({ id: 'job:job-2:failed', eventType: 'import.failed', errorCode: 'import_failed' }),
+      expect.objectContaining({
+        id: 'job:job-2:failed',
+        eventType: 'import.failed',
+        errorCode: 'import_failed',
+        message: 'failed',
+      }),
       expect.objectContaining({ id: 'job:job-3:cancelled', eventType: 'seed.failed' }),
       expect.objectContaining({ id: 'technical-audit-1' }),
     ]);
+    expect(poolFactoryInstances.at(0)?.query).toHaveBeenCalledWith('SET search_path TO "wm", public;');
   });
 
   it('delegates entity loaders, savers, and bulk link creation through the scoped repository', async () => {
@@ -284,6 +330,7 @@ describe('waste-management server loaders', () => {
     expect(bulkResult).toHaveLength(2);
     expect(poolFactoryInstances.at(-1)?.query).toHaveBeenCalledWith('BEGIN');
     expect(poolFactoryInstances.at(-1)?.query).toHaveBeenCalledWith('COMMIT');
+    expect(poolFactoryInstances.at(-1)?.query).toHaveBeenCalledWith('SET search_path TO "wm", public;');
   });
 
   it('rolls back the bulk location-tour-link transaction when verification fails', async () => {
@@ -302,40 +349,22 @@ describe('waste-management server loaders', () => {
   });
 
   it('keeps technical history stable when jobs are unfinished or have unknown mappings', async () => {
-    listJobsMock.mockResolvedValueOnce({
-      items: [
+    instanceDbQueryMock.mockResolvedValueOnce({
+      rowCount: 1,
+      rows: [
         {
           id: 'job-reset',
-          jobTypeId: 'waste-management.reset-data',
+          job_type_id: 'waste-management.reset-data',
           status: 'failed',
-          finishedAt: null,
-          updatedAt: '2026-05-09T05:00:00.000Z',
-          requestId: 'req-reset',
-          latestEvent: { message: 'reset failed' },
-          errorPayload: { code: 'reset_failed' },
-        },
-        {
-          id: 'job-running',
-          jobTypeId: 'waste-management.seed-data',
-          status: 'running',
-          finishedAt: null,
-          updatedAt: '2026-05-09T04:00:00.000Z',
-          requestId: 'req-running',
-          latestEvent: { message: 'running' },
-          errorPayload: undefined,
-        },
-        {
-          id: 'job-unknown',
-          jobTypeId: 'custom-job',
-          status: 'failed',
-          finishedAt: null,
-          updatedAt: '2026-05-09T03:00:00.000Z',
-          requestId: 'req-unknown',
-          latestEvent: { message: 'unknown' },
-          errorPayload: { code: 'custom_failed' },
+          finished_at: null,
+          updated_at: '2026-05-09T05:00:00.000Z',
+          request_id: 'req-reset',
+          latest_event_message: 'reset failed',
+          error_code: 'reset_failed',
+          error_message: 'Reset failed for request req-reset',
+          total_count: 1,
         },
       ],
-      total: 3,
     });
 
     const historyOverview = await wasteManagementOverviewLoaders.loadWasteHistoryOverview({
@@ -355,6 +384,63 @@ describe('waste-management server loaders', () => {
       }),
     ]);
     expect(historyOverview.technical.total).toBe(2);
+  });
+
+  it('maps initialize jobs into the technical history stream', async () => {
+    instanceDbQueryMock.mockResolvedValueOnce({
+      rowCount: 1,
+      rows: [
+        {
+          id: 'job-init',
+          job_type_id: 'waste-management.initialize-data-source',
+          status: 'succeeded',
+          finished_at: '2026-05-09T13:00:00.000Z',
+          updated_at: '2026-05-09T13:00:00.000Z',
+          request_id: 'req-init',
+          latest_event_message: 'initialized',
+          error_code: null,
+          error_message: null,
+          total_count: 1,
+        },
+      ],
+    });
+
+    const historyOverview = await wasteManagementOverviewLoaders.loadWasteHistoryOverview({
+      instanceId: 'tenant-a',
+      page: 1,
+      pageSize: 5,
+    });
+
+    expect(historyOverview.technical.items).toEqual([
+      expect.objectContaining({
+        id: 'job:job-init:succeeded',
+        eventType: 'datasource.reconfigured',
+        outcome: 'success',
+      }),
+      expect.objectContaining({ id: 'technical-audit-1' }),
+    ]);
+  });
+
+  it('searches technical job history across request and diagnosis fields', async () => {
+    await wasteManagementOverviewLoaders.loadWasteHistoryOverview({
+      instanceId: 'tenant-a',
+      search: 'req-2',
+      page: 1,
+      pageSize: 10,
+    });
+
+    expect(instanceDbQueryMock).toHaveBeenCalledWith(
+      expect.stringContaining("COALESCE(j.request_id, '') ILIKE $3"),
+      ['tenant-a', expect.any(Array), '%req-2%', 10]
+    );
+    expect(instanceDbQueryMock).toHaveBeenCalledWith(
+      expect.stringContaining("COALESCE(j.error_payload ->> 'message', '') ILIKE $3"),
+      ['tenant-a', expect.any(Array), '%req-2%', 10]
+    );
+    expect(instanceDbQueryMock).toHaveBeenCalledWith(
+      expect.stringContaining("COALESCE(j.error_payload ->> 'code', '') ILIKE $3"),
+      ['tenant-a', expect.any(Array), '%req-2%', 10]
+    );
   });
 
   it('paginates technical history across audit and job sources in global chronology', async () => {
@@ -393,58 +479,32 @@ describe('waste-management server loaders', () => {
       };
     });
 
-    listJobsMock.mockImplementation(async (_instanceId, query: { page: number; pageSize: number }) => {
-      const itemsByPage = {
-        1: [
-          {
-            id: 'job-1',
-            jobTypeId: 'waste-management.apply-migrations',
-            status: 'succeeded',
-            finishedAt: '2026-05-09T12:00:00.000Z',
-            updatedAt: '2026-05-09T12:00:00.000Z',
-            requestId: 'req-1',
-            latestEvent: { message: 'done' },
-            errorPayload: undefined,
-          },
-          {
-            id: 'job-running',
-            jobTypeId: 'waste-management.seed-data',
-            status: 'running',
-            finishedAt: null,
-            updatedAt: '2026-05-09T10:30:00.000Z',
-            requestId: 'req-running',
-            latestEvent: { message: 'running' },
-            errorPayload: undefined,
-          },
-        ],
-        2: [
-          {
-            id: 'job-2',
-            jobTypeId: 'waste-management.import-data',
-            status: 'failed',
-            finishedAt: '2026-05-09T10:00:00.000Z',
-            updatedAt: '2026-05-09T10:00:00.000Z',
-            requestId: 'req-2',
-            latestEvent: { message: 'failed' },
-            errorPayload: { code: 'import_failed' },
-          },
-          {
-            id: 'job-unknown',
-            jobTypeId: 'custom-job',
-            status: 'failed',
-            finishedAt: '2026-05-09T08:00:00.000Z',
-            updatedAt: '2026-05-09T08:00:00.000Z',
-            requestId: 'req-unknown',
-            latestEvent: { message: 'unknown' },
-            errorPayload: { code: 'custom_failed' },
-          },
-        ],
-      } as const;
-
-      return {
-        items: itemsByPage[query.page as 1 | 2] ?? [],
-        total: 4,
-      };
+    instanceDbQueryMock.mockResolvedValueOnce({
+      rowCount: 2,
+      rows: [
+        {
+          id: 'job-1',
+          job_type_id: 'waste-management.apply-migrations',
+          status: 'succeeded',
+          finished_at: '2026-05-09T12:00:00.000Z',
+          updated_at: '2026-05-09T12:00:00.000Z',
+          request_id: 'req-1',
+          latest_event_message: 'done',
+          error_code: null,
+          total_count: 2,
+        },
+        {
+          id: 'job-2',
+          job_type_id: 'waste-management.import-data',
+          status: 'failed',
+          finished_at: '2026-05-09T10:00:00.000Z',
+          updated_at: '2026-05-09T10:00:00.000Z',
+          request_id: 'req-2',
+          latest_event_message: 'failed',
+          error_code: 'import_failed',
+          total_count: 2,
+        },
+      ],
     });
 
     const historyOverview = await wasteManagementOverviewLoaders.loadWasteHistoryOverview({
@@ -474,15 +534,9 @@ describe('waste-management server loaders', () => {
       expect.anything(),
       expect.objectContaining({ page: 2, pageSize: 2 })
     );
-    expect(listJobsMock).toHaveBeenNthCalledWith(
-      1,
-      'tenant-a',
-      expect.objectContaining({ page: 1, pageSize: 2, pluginId: 'waste-management' })
-    );
-    expect(listJobsMock).toHaveBeenNthCalledWith(
-      2,
-      'tenant-a',
-      expect.objectContaining({ page: 2, pageSize: 2, pluginId: 'waste-management' })
+    expect(instanceDbQueryMock).toHaveBeenCalledWith(
+      expect.stringContaining('FROM iam.plugin_operation_jobs j'),
+      ['tenant-a', expect.any(Array), 4]
     );
   });
 });

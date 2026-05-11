@@ -2,6 +2,7 @@ import type { StudioJobResponse, WasteManagementHistoryOverview } from '@sva/plu
 
 import {
   getWasteManagementImportCatalog,
+  startWasteManagementInitialize,
   startWasteManagementImport,
   startWasteManagementMigrations,
   startWasteManagementReset,
@@ -76,6 +77,12 @@ export const createWasteToolsActions = ({
         blobRef: importBlobRef.trim(),
         dryRun: importDryRun,
       } satisfies StartWasteManagementImportInput)
+    ),
+  runInitialize: () =>
+    runJob('migration', () =>
+      startWasteManagementInitialize({
+        targetSchema: compactOptionalString(migrationSchema),
+      })
     ),
   runMigrations: () =>
     runJob('migration', () =>

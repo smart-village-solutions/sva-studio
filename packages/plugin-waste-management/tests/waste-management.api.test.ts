@@ -18,6 +18,7 @@ import {
   getWasteManagementSchedulingOverview,
   getWasteManagementSettings,
   getWasteManagementToursOverview,
+  startWasteManagementInitialize,
   startWasteManagementImport,
   startWasteManagementMigrations,
   startWasteManagementReset,
@@ -1086,18 +1087,28 @@ describe('waste-management api client', () => {
     expect(headers.get('X-Requested-With')).toBe('XMLHttpRequest');
   });
 
-  it('starts migration, seed and reset jobs with idempotency keys', async () => {
+  it('starts initialize, migration, seed and reset jobs with idempotency keys', async () => {
     fetchMock
+      .mockResolvedValueOnce(createJobResponse('waste-management.initialize-data-source'))
       .mockResolvedValueOnce(createJobResponse('waste-management.apply-migrations'))
       .mockResolvedValueOnce(createJobResponse('waste-management.seed-data'))
       .mockResolvedValueOnce(createJobResponse('waste-management.reset-data'));
 
+    await startWasteManagementInitialize({ targetSchema: 'wm' });
     await startWasteManagementMigrations({ targetSchema: 'wm', requestedByVersion: '2026.05.0' });
     await startWasteManagementSeed();
     await startWasteManagementReset({ confirmationToken: 'RESET' });
 
     expect(fetchMock).toHaveBeenNthCalledWith(
       1,
+      '/api/v1/waste-management/tools/initialize',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ targetSchema: 'wm' }),
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
       '/api/v1/waste-management/tools/migrations',
       expect.objectContaining({
         method: 'POST',
@@ -1105,7 +1116,7 @@ describe('waste-management api client', () => {
       })
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
-      2,
+      3,
       '/api/v1/waste-management/tools/seed',
       expect.objectContaining({
         method: 'POST',
@@ -1113,7 +1124,7 @@ describe('waste-management api client', () => {
       })
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
-      3,
+      4,
       '/api/v1/waste-management/tools/reset',
       expect.objectContaining({
         method: 'POST',
@@ -1159,7 +1170,7 @@ describe('waste-management api client', () => {
     await startWasteManagementImport({
       importProfileId: 'waste-management.geografie-abholorte',
       sourceFormat: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      blobRef: 'blob:waste/imports/catalog.csv',
+      blobRef: 'data:text/csv;base64,Y2F0YWxvZw==',
       dryRun: true,
     });
 
@@ -1170,7 +1181,7 @@ describe('waste-management api client', () => {
         body: JSON.stringify({
           importProfileId: 'waste-management.geografie-abholorte',
           sourceFormat: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-          blobRef: 'blob:waste/imports/catalog.csv',
+          blobRef: 'data:text/csv;base64,Y2F0YWxvZw==',
           dryRun: true,
         }),
       })

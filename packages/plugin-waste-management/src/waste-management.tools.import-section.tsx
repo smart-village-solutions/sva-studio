@@ -1,8 +1,10 @@
 import type { WasteManagementImportSourceFormat } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
+import { useId } from 'react';
 import { Checkbox, Input, Select, StudioField, StudioFieldGroup } from '@sva/studio-ui-react';
 
 import type { StartWasteManagementImportInput } from './waste-management.api.js';
+import { readFileAsDataUrl } from './waste-management.page.support.js';
 import { WasteToolsImportProfileCard } from './waste-management.tools.import-profile-card.js';
 
 type ImportCatalogEntry = ReturnType<typeof import('./waste-management.api.js').getWasteManagementImportCatalog>[number];
@@ -33,8 +35,13 @@ export const WasteToolsImportSection = ({
   readonly onStartImport: () => void;
 }) => {
   const pt = usePluginTranslation('wasteManagement');
+  const fileInputId = useId();
   const selectedImportProfile =
     importCatalog.find((profile) => profile.profileId === importProfileId) ?? importCatalog[0] ?? null;
+  const fileAccept =
+    importSourceFormat === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      ? '.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      : '.csv,text/csv';
 
   return (
     <div className="space-y-3">
@@ -53,7 +60,20 @@ export const WasteToolsImportSection = ({
           </Select>
         </StudioField>
         <StudioField id="waste-tools-import-blob-ref" label={pt('tools.imports.blobRefLabel')}>
-          <Input value={importBlobRef} onChange={(event) => onImportBlobRefChange(event.target.value)} />
+          <Input
+            id={fileInputId}
+            type="file"
+            accept={fileAccept}
+            onChange={(event) => {
+              const file = event.target.files?.[0] ?? null;
+              if (!file) {
+                onImportBlobRefChange('');
+                return;
+              }
+
+              void readFileAsDataUrl(file).then(onImportBlobRefChange, () => onImportBlobRefChange(''));
+            }}
+          />
         </StudioField>
         <StudioField id="waste-tools-import-source-format" label={pt('tools.imports.sourceFormatLabel')}>
           <Select
@@ -80,6 +100,7 @@ export const WasteToolsImportSection = ({
         sourceFormat={importSourceFormat}
         running={running}
         importBlobRef={importBlobRef}
+        fileInputId={fileInputId}
         onStartImport={onStartImport}
       />
     </div>

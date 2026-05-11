@@ -316,7 +316,7 @@ describe('waste management operations runtime', () => {
     });
   });
 
-  it('rejects invalid schemas and malformed blob references deterministically', async () => {
+  it('rejects invalid schemas, foreign schema targets, and malformed blob references deterministically', async () => {
     const runtime = createWasteManagementOperationRuntime({
       loadDataSourceRecord: vi.fn(async () => createDataSourceRecord()),
       revealSecret: vi.fn((ciphertext) => (ciphertext ? 'postgres://waste:test@localhost:5432/waste' : undefined)),
@@ -334,7 +334,14 @@ describe('waste management operations runtime', () => {
         operation: 'apply-migrations',
         targetSchema: 'wm-invalid!',
       })
-    ).rejects.toThrowError('invalid_waste_schema:wm-invalid!');
+    ).rejects.toThrowError('invalid_waste_schema_target:wm-invalid!');
+
+    await expect(
+      runtime.applyMigrations('instance-1', {
+        operation: 'apply-migrations',
+        targetSchema: 'foreign_schema',
+      })
+    ).rejects.toThrowError('invalid_waste_schema_target:foreign_schema');
 
     await expect(
       runtime.importData('instance-1', {
@@ -491,7 +498,7 @@ describe('waste management operations runtime', () => {
     ).rejects.toThrowError('unsupported_seed_key:baseline-v2');
   });
 
-  it('resets all waste tables and rejects blank confirmation tokens', async () => {
+  it('resets all waste tables and rejects blank or legacy confirmation tokens', async () => {
     const query = vi.fn(async (text: string) => ({
       rowCount: text.startsWith('DELETE FROM') ? 1 : 0,
       rows: [],
@@ -515,16 +522,23 @@ describe('waste management operations runtime', () => {
       })
     ).rejects.toThrowError('missing_reset_confirmation_token');
 
+    await expect(
+      runtime.resetData('instance-1', {
+        operation: 'reset-data',
+        confirmationToken: 'confirm-reset',
+      })
+    ).rejects.toThrowError('invalid_reset_confirmation_token');
+
     const result = await runtime.resetData('instance-1', {
       operation: 'reset-data',
-      confirmationToken: 'confirm-reset',
+      confirmationToken: 'RESET',
     });
 
     expect(query).toHaveBeenCalledWith('DELETE FROM waste_location_tour_links;');
     expect(query).toHaveBeenCalledWith('DELETE FROM waste_regions;');
     expect(result.details).toMatchObject({
       operation: 'reset-data',
-      confirmationTokenLength: 13,
+      confirmationTokenLength: 5,
     });
   });
 });

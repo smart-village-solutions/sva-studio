@@ -163,6 +163,38 @@ describe('plugin operations handlers', () => {
     });
   });
 
+  it('rejects waste-management jobs on the generic endpoint before reserving idempotency', async () => {
+    const response = await startPluginOperationJobHandler(
+      new Request('https://studio.test/api/v1/plugin-operations/jobs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': 'idem-waste',
+          Origin: 'https://studio.test',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: JSON.stringify({
+          pluginId: 'waste-management',
+          jobTypeId: 'waste-management.reset-data',
+          input: {
+            operation: 'reset-data',
+            confirmationToken: 'RESET',
+          },
+        }),
+      })
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        code: 'invalid_request',
+        message: expect.stringContaining('dedizierten Waste-Endpunkte'),
+      },
+    });
+    expect(idempotencyState.reserveIdempotency).not.toHaveBeenCalled();
+    expect(repositoryState.withStudioJobRepository).not.toHaveBeenCalled();
+  });
+
   it('returns 503 when queueing into the internal runner fails', async () => {
     repositoryState.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
       work({

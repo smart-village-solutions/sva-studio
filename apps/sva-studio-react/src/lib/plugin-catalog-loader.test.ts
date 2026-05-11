@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { definePluginManifest } from '@sva/plugin-sdk';
 
 import {
+  createStudioPluginCatalogSeed,
   createStudioPluginCatalogReport,
   extractPluginDefinition,
   getPackagePluginModuleCandidates,
@@ -19,8 +20,49 @@ describe('plugin catalog loader', () => {
       entryPoints: { browser: './dist/index.js' },
     });
 
-    expect(getWorkspacePluginModuleCandidates(manifest)).toEqual(['src/index.ts', 'src/index.tsx', 'dist/index.js']);
+    expect(getWorkspacePluginModuleCandidates(manifest)).toEqual(['dist/index.js', 'src/index.ts', 'src/index.tsx']);
     expect(getPackagePluginModuleCandidates(manifest)).toEqual(['dist/index.js', 'src/index.ts', 'src/index.tsx']);
+  });
+
+  it('builds catalog seeds from config and fails closed on unresolved manifests', () => {
+    const manifest = definePluginManifest({
+      pluginId: 'news',
+      version: '0.0.1',
+      sdkVersion: '0.0.1',
+      hostCompatibility: { studioVersionRange: '^0.0.1' },
+      entryPoints: { browser: './dist/index.js' },
+    });
+
+    const seed = createStudioPluginCatalogSeed({
+      catalogConfig: [
+        {
+          pluginId: 'news',
+          sourceType: 'workspace',
+          enabled: true,
+          sourceRef: 'packages/plugin-news',
+        },
+        {
+          pluginId: 'missing',
+          sourceType: 'workspace',
+          enabled: true,
+          sourceRef: 'packages/plugin-missing',
+        },
+      ],
+      resolveManifest: (entry) => (entry.pluginId === 'news' ? manifest : undefined),
+    });
+
+    expect(seed.catalog).toEqual([
+      expect.objectContaining({
+        pluginId: 'news',
+        sourceRef: 'packages/plugin-news',
+      }),
+    ]);
+    expect(seed.issues).toContainEqual(
+      expect.objectContaining({
+        pluginId: 'missing',
+        code: 'plugin_module_missing',
+      })
+    );
   });
 
   it('creates a compatible snapshot from config, manifests and module exports', async () => {

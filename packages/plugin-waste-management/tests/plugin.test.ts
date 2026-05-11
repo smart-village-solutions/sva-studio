@@ -43,7 +43,7 @@ describe('pluginWasteManagement contract', () => {
     });
     expect(pluginWasteManagement.routes[0]?.validateSearch?.({})).toEqual({
       tab: 'fractions',
-      masterDataTab: 'locations',
+      masterDataTab: 'fractions',
       q: '',
       page: 1,
       pageSize: 25,
@@ -126,7 +126,7 @@ describe('pluginWasteManagement contract', () => {
       { eventType: 'waste-management.seed.started', titleKey: 'wasteManagement.audit.seedStarted' },
       { eventType: 'waste-management.reset.started', titleKey: 'wasteManagement.audit.resetStarted' },
       {
-        eventType: 'waste-management.data-source.initialized',
+        eventType: 'waste-management.datasource.reconfigured',
         titleKey: 'wasteManagement.audit.dataSourceInitialized',
       },
     ]);

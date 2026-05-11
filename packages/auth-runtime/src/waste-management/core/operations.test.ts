@@ -29,6 +29,18 @@ const actor: AuthenticatedRequestContext = {
 const createDeps = () => ({
   getRequestId: () => 'req-test',
   emitAuditEvent: vi.fn(async () => undefined),
+  loadWasteDataSourceRecord: vi.fn(async () => ({
+    instanceId: 'tenant-a',
+    provider: 'supabase' as const,
+    projectUrl: 'https://tenant.example',
+    schemaName: 'wm',
+    enabled: true,
+    databaseUrlConfigured: true,
+    serviceRoleKeyConfigured: true,
+    databaseUrlCiphertext: 'cipher-db',
+    serviceRoleKeyCiphertext: 'cipher-key',
+    visibleStatus: 'ok' as const,
+  })),
   resolvePermissions: vi.fn(async () => ({
     ok: true as const,
     permissions: [
@@ -466,6 +478,7 @@ describe('waste-management operation handlers', () => {
   });
 
   it('starts the initialize job through the generic plugin operations pipeline', async () => {
+    const emitAuditEvent = vi.fn(async () => undefined);
     const startPluginOperationJob = vi.fn(
       async () =>
         new Response(JSON.stringify({ data: { id: 'job-init-1' } }), {
@@ -481,6 +494,7 @@ describe('waste-management operation handlers', () => {
       actor,
       {
         ...createDeps(),
+        emitAuditEvent,
         resolvePermissions: vi.fn(async () => ({
           ok: true as const,
           permissions: [
@@ -508,5 +522,49 @@ describe('waste-management operation handlers', () => {
         }),
       })
     );
+    expect(emitAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: 'plugin_action_authorized',
+        pluginAction: expect.objectContaining({
+          actionId: 'waste-management.initialize.started',
+          result: 'success',
+          resourceId: 'job-init-1',
+        }),
+      })
+    );
+  });
+
+  it('rejects tool starts that target a schema outside the configured waste schema', async () => {
+    const startPluginOperationJob = vi.fn();
+
+    const response = await wasteManagementOperationHandlers.startWasteManagementMigrationsInternal(
+      createToolRequest('https://studio.test/api/v1/waste-management/tools/migrations', {
+        targetSchema: 'foreign_schema',
+      }),
+      actor,
+      {
+        ...createDeps(),
+        resolvePermissions: vi.fn(async () => ({
+          ok: true as const,
+          permissions: [
+            {
+              action: 'waste-management.settings.manage',
+              resourceType: 'waste-management',
+              effect: 'allow' as const,
+            },
+          ],
+        })),
+        startPluginOperationJob,
+      }
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        code: 'invalid_request',
+        message: expect.stringContaining('konfigurierte Schema'),
+      },
+    });
+    expect(startPluginOperationJob).not.toHaveBeenCalled();
   });
 });

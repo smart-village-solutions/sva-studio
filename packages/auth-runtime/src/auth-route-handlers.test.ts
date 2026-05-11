@@ -425,7 +425,13 @@ describe('dev auth handlers', () => {
     mocks.isMockAuthEnabled.mockReturnValue(true);
 
     const response = await devLoginHandler(
-      new Request('http://localhost/auth/dev-login?returnTo=%2Fplugins%2Fwaste-management', { method: 'POST' })
+      new Request('http://localhost/auth/dev-login?returnTo=%2Fplugins%2Fwaste-management', {
+        method: 'POST',
+        headers: {
+          Origin: 'http://localhost',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      })
     );
 
     expect(response.status).toBe(302);
@@ -434,6 +440,51 @@ describe('dev auth handlers', () => {
       response,
       expect.stringContaining('sva_dev_auth=1')
     );
+  });
+
+  it('rejects dev-login when csrf headers are missing', async () => {
+    const { devLoginHandler } = await import('./auth-route-handlers.js');
+
+    vi.clearAllMocks();
+    mocks.isMockAuthEnabled.mockReturnValue(true);
+
+    const response = await devLoginHandler(new Request('http://localhost/auth/dev-login?returnTo=%2F', { method: 'POST' }));
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        code: 'csrf_validation_failed',
+      },
+      requestId: 'req-test',
+    });
+    expect(mocks.appendSetCookie).not.toHaveBeenCalled();
+  });
+
+  it('rejects cross-site dev-login requests before the dev auth cookie is written', async () => {
+    const { devLoginHandler } = await import('./auth-route-handlers.js');
+
+    vi.clearAllMocks();
+    mocks.isMockAuthEnabled.mockReturnValue(true);
+
+    const response = await devLoginHandler(
+      new Request('http://localhost/auth/dev-login?returnTo=%2Fplugins%2Fwaste-management', {
+        method: 'POST',
+        headers: {
+          Origin: 'https://evil.test',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      })
+    );
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        code: 'csrf_validation_failed',
+        message: expect.stringContaining('Origin'),
+      },
+      requestId: 'req-test',
+    });
+    expect(mocks.appendSetCookie).not.toHaveBeenCalled();
   });
 
   it('clears the dev auth cookie on dev-logout', async () => {

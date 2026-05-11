@@ -26,8 +26,28 @@ import { Pool } from 'pg';
 
 import { withInstanceDb } from '../db.js';
 import { revealField } from '../iam-account-management/encryption.js';
-import { withStudioJobRepository } from '../plugin-operations/repository.js';
 import { sharedWasteManagementDeps } from './server-context.js';
+
+const schemaIdentifierPattern = /^[A-Za-z_][A-Za-z0-9_]*$/;
+
+const quoteIdentifier = (value: string): string => {
+  if (!schemaIdentifierPattern.test(value)) {
+    throw new Error(`invalid_waste_schema:${value}`);
+  }
+  return `"${value}"`;
+};
+
+const setWasteSearchPath = async (
+  client: {
+    query: <TRow = Record<string, unknown>>(text: string, values?: readonly unknown[]) => Promise<{
+      readonly rowCount: number | null;
+      readonly rows: readonly TRow[];
+    }>;
+  },
+  schemaName: string
+): Promise<void> => {
+  await client.query(`SET search_path TO ${quoteIdentifier(schemaName)}, public;`);
+};
 
 const createSqlExecutor = (
   client: {
@@ -47,6 +67,21 @@ const createSqlExecutor = (
 });
 
 type WasteRepository = ReturnType<typeof createWasteMasterDataRepository>;
+type WasteTechnicalJobHistoryRow = {
+  readonly id: string;
+  readonly job_type_id: string;
+  readonly status: 'succeeded' | 'failed' | 'cancelled';
+  readonly finished_at: string | null;
+  readonly updated_at: string;
+  readonly request_id: string | null;
+  readonly latest_event_message: string | null;
+  readonly error_code: string | null;
+  readonly error_message: string | null;
+  readonly total_count: number;
+};
+type WasteTechnicalJobHistoryCountRow = {
+  readonly total_count: number;
+};
 
 const withWasteRepository = async <T>(instanceId: string, work: (repository: WasteRepository) => Promise<T>): Promise<T> => {
   const dataSource = await resolveWasteDataSource({
@@ -65,6 +100,7 @@ const withWasteRepository = async <T>(instanceId: string, work: (repository: Was
   try {
     const client = await pool.connect();
     try {
+      await setWasteSearchPath(client, dataSource.schemaName);
       return await work(createWasteMasterDataRepository(createSqlExecutor(client)));
     } finally {
       client.release();
@@ -85,6 +121,9 @@ const mapJobTypeIdToTechnicalEventType = (
 ): WasteManagementTechnicalHistoryRecord['eventType'] | null => {
   if (jobTypeId === 'waste-management.apply-migrations') {
     return status === 'succeeded' ? 'migration.succeeded' : 'migration.failed';
+  }
+  if (jobTypeId === 'waste-management.initialize-data-source') {
+    return status === 'succeeded' ? 'datasource.reconfigured' : 'connection-check.failed';
   }
   if (jobTypeId === 'waste-management.import-data') {
     return status === 'succeeded' ? 'import.succeeded' : 'import.failed';
@@ -120,7 +159,13 @@ const loadWasteHistoryOverview = async (query: {
 }): Promise<WasteManagementHistoryOverview> => {
   const audit = await withInstanceDb(query.instanceId, (client) => listWasteManagementAuditRecords(client, query));
 
-  const loadAllTechnicalAuditRecords = async (): Promise<readonly WasteManagementTechnicalHistoryRecord[]> => {
+  const technicalOffset = (query.page - 1) * query.pageSize;
+  const technicalLimit = technicalOffset + query.pageSize;
+
+  const loadTechnicalAuditHistoryPrefix = async (): Promise<{
+    readonly items: readonly WasteManagementTechnicalHistoryRecord[];
+    readonly total: number;
+  }> => {
     const items: WasteManagementTechnicalHistoryRecord[] = [];
     let currentPage = 1;
     let total = 0;
@@ -136,77 +181,172 @@ const loadWasteHistoryOverview = async (query: {
       items.push(...technicalAuditPage.items);
       total = technicalAuditPage.total;
       currentPage += 1;
-    } while (items.length < total);
+    } while (items.length < total && items.length < technicalLimit);
 
-    return items;
+    return {
+      items,
+      total,
+    };
   };
 
-  const loadAllTechnicalJobRecords = async (): Promise<readonly WasteManagementTechnicalHistoryRecord[]> => {
-    const items: WasteManagementTechnicalHistoryRecord[] = [];
-    let currentPage = 1;
-    let total = 0;
+  const loadTechnicalJobHistoryPage = async (): Promise<{
+    readonly items: readonly WasteManagementTechnicalHistoryRecord[];
+    readonly total: number;
+  }> => {
+    const supportedJobTypeIds = [
+      'waste-management.initialize-data-source',
+      'waste-management.apply-migrations',
+      'waste-management.import-data',
+      'waste-management.seed-data',
+      'waste-management.reset-data',
+    ] as const;
+    const buildJobHistoryWhereClause = (): {
+      readonly clause: string;
+      readonly values: readonly unknown[];
+    } => {
+      const values: unknown[] = [query.instanceId, supportedJobTypeIds];
+      const conditions = [
+        'j.instance_id = $1',
+        `j.job_type_id = ANY($2::text[])`,
+        `j.status IN ('succeeded', 'failed', 'cancelled')`,
+      ];
 
-    do {
-      const technicalJobsPage = await withStudioJobRepository(query.instanceId, (repository) =>
-        repository.listJobs(query.instanceId, {
-          view: 'history',
-          page: currentPage,
-          pageSize: query.pageSize,
-          pluginId: 'waste-management',
-          q: query.search,
-        })
+      if (query.search) {
+        values.push(`%${query.search}%`);
+        const parameterIndex = values.length;
+        conditions.push(
+          `(
+    j.id::text ILIKE $${parameterIndex}
+    OR COALESCE(j.correlation_id, '') ILIKE $${parameterIndex}
+    OR COALESCE(j.parent_job_id::text, '') ILIKE $${parameterIndex}
+    OR COALESCE(j.request_id, '') ILIKE $${parameterIndex}
+    OR COALESCE(j.error_payload ->> 'code', '') ILIKE $${parameterIndex}
+    OR COALESCE(j.error_payload ->> 'message', '') ILIKE $${parameterIndex}
+    OR EXISTS (
+      SELECT 1
+      FROM iam.plugin_operation_job_events event_search
+      WHERE event_search.instance_id = $1
+        AND event_search.job_id = j.id
+        AND COALESCE(event_search.message, '') ILIKE $${parameterIndex}
+    )
+  )`
+        );
+      }
+
+      return {
+        clause: conditions.join('\n  AND '),
+        values,
+      };
+    };
+
+    const whereClause = buildJobHistoryWhereClause();
+    const pageSizeIndex = whereClause.values.length + 1;
+
+    const rows = await withInstanceDb(query.instanceId, async (client) => {
+      const result = await client.query<WasteTechnicalJobHistoryRow>(
+        `
+WITH filtered_jobs AS (
+  SELECT
+    j.id,
+    j.job_type_id,
+    j.status,
+    j.finished_at,
+    j.updated_at,
+    j.request_id,
+    j.error_payload
+  FROM iam.plugin_operation_jobs j
+  WHERE ${whereClause.clause}
+)
+SELECT
+  filtered_jobs.id,
+  filtered_jobs.job_type_id,
+  filtered_jobs.status,
+  filtered_jobs.finished_at,
+  filtered_jobs.updated_at,
+  filtered_jobs.request_id,
+  latest_event.message AS latest_event_message,
+  filtered_jobs.error_payload ->> 'code' AS error_code,
+  filtered_jobs.error_payload ->> 'message' AS error_message,
+  COUNT(*) OVER()::int AS total_count
+FROM filtered_jobs
+LEFT JOIN LATERAL (
+  SELECT event.message
+  FROM iam.plugin_operation_job_events event
+  WHERE event.instance_id = $1
+    AND event.job_id = filtered_jobs.id
+  ORDER BY event.created_at DESC
+  LIMIT 1
+) latest_event ON TRUE
+ORDER BY
+  COALESCE(filtered_jobs.finished_at, filtered_jobs.updated_at) DESC,
+  filtered_jobs.updated_at DESC,
+  filtered_jobs.id DESC
+LIMIT $${pageSizeIndex}
+        `,
+        [...whereClause.values, technicalLimit]
       );
+      return result.rows;
+    });
 
-      items.push(
-        ...technicalJobsPage.items
-          .map((job): WasteManagementTechnicalHistoryRecord | null => {
-            if (job.status !== 'succeeded' && job.status !== 'failed' && job.status !== 'cancelled') {
-              return null;
-            }
-
-            const eventType = mapJobTypeIdToTechnicalEventType(job.jobTypeId, job.status);
-            if (!eventType) {
-              return null;
-            }
-
-            return {
-              id: `job:${job.id}:${job.status}`,
-              eventType,
-              outcome: job.status === 'succeeded' ? 'success' : 'failure',
-              occurredAt: job.finishedAt ?? job.updatedAt,
-              source: 'job',
-              jobId: job.id,
-              jobTypeId: job.jobTypeId,
-              requestId: job.requestId,
-              message: job.latestEvent?.message,
-              errorCode: job.errorPayload?.code,
-            };
+    const total =
+      rows[0]?.total_count ??
+      (query.page > 1
+        ? await withInstanceDb(query.instanceId, async (client) => {
+            const result = await client.query<WasteTechnicalJobHistoryCountRow>(
+              `
+SELECT COUNT(*)::int AS total_count
+FROM iam.plugin_operation_jobs j
+WHERE ${whereClause.clause}
+              `,
+              whereClause.values
+            );
+            return result.rows[0]?.total_count ?? 0;
           })
-          .filter((item): item is WasteManagementTechnicalHistoryRecord => item !== null)
-      );
+        : 0);
 
-      total = technicalJobsPage.total;
-      currentPage += 1;
-    } while ((currentPage - 1) * query.pageSize < total);
+    return {
+      items: rows
+        .map((row): WasteManagementTechnicalHistoryRecord | null => {
+          const eventType = mapJobTypeIdToTechnicalEventType(row.job_type_id, row.status);
+          if (!eventType) {
+            return null;
+          }
 
-    return items;
+          return {
+            id: `job:${row.id}:${row.status}`,
+            eventType,
+            outcome: row.status === 'succeeded' ? 'success' : 'failure',
+            occurredAt: row.finished_at ?? row.updated_at,
+            source: 'job',
+            jobId: row.id,
+            jobTypeId: row.job_type_id,
+            requestId: row.request_id ?? undefined,
+            message: row.latest_event_message ?? row.error_message ?? undefined,
+            errorCode: row.error_code ?? undefined,
+          };
+        })
+        .filter((item): item is WasteManagementTechnicalHistoryRecord => item !== null),
+      total,
+    };
   };
 
-  const [technicalAuditItems, technicalJobItems] = await Promise.all([
-    loadAllTechnicalAuditRecords(),
-    loadAllTechnicalJobRecords(),
+  const [
+    { items: technicalJobItems, total: technicalJobTotal },
+    { items: technicalAuditItems, total: technicalAuditTotal },
+  ] = await Promise.all([
+    loadTechnicalJobHistoryPage(),
+    loadTechnicalAuditHistoryPrefix(),
   ]);
 
   const mergedTechnicalItems = [...technicalAuditItems, ...technicalJobItems].sort((left, right) =>
     right.occurredAt.localeCompare(left.occurredAt)
   );
-  const technicalOffset = (query.page - 1) * query.pageSize;
 
   return {
     audit,
     technical: {
       items: mergedTechnicalItems.slice(technicalOffset, technicalOffset + query.pageSize),
-      total: mergedTechnicalItems.length,
+      total: technicalAuditTotal + technicalJobTotal,
     },
   };
 };
@@ -290,6 +430,7 @@ const saveWasteLocationTourLinksBulk = async (
   try {
     const client = await pool.connect();
     try {
+      await setWasteSearchPath(client, dataSource.schemaName);
       await client.query('BEGIN');
       const repository = createWasteMasterDataRepository(createSqlExecutor(client));
       const createdItems: WasteLocationTourLinkRecord[] = [];

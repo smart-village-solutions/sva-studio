@@ -1,6 +1,6 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { cleanup, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { WasteManagementPageTabs } from '../src/waste-management.page.layout.js';
 
@@ -67,14 +67,27 @@ vi.mock('../src/waste-management.scheduling-panel.js', () => ({
 }));
 
 vi.mock('../src/waste-management.tools-panel.js', () => ({
-  WasteToolsPanel: () => <div>tools</div>,
+  WasteToolsPanel: ({ overview }: { readonly overview?: React.ReactNode }) => (
+    <div>
+      <div>tools</div>
+      {overview}
+    </div>
+  ),
 }));
 
 vi.mock('../src/waste-management.settings-panel.js', () => ({
   WasteSettingsPanel: () => <div>settings</div>,
 }));
 
+vi.mock('../src/waste-management.overview-panel.js', () => ({
+  WasteOverviewPanel: () => <div>overview</div>,
+}));
+
 describe('WasteManagementPageTabs', () => {
+  afterEach(() => {
+    cleanup();
+  });
+
   it('keeps all tab panels mounted so switching tabs does not remount panel state', () => {
     const search = {
       masterDataTab: 'locations' as const,
@@ -155,6 +168,30 @@ describe('WasteManagementPageTabs', () => {
     expect(document.querySelector('.ml-\\[10px\\].gap-10')).toBeTruthy();
   });
 
+  it('renders the canonical master-data panel for the active top-level tab', () => {
+    render(
+      <WasteManagementPageTabs
+        pt={(key) => key}
+        search={{
+          tab: 'fractions',
+          masterDataTab: 'locations',
+          q: '',
+          page: 1,
+          pageSize: 25,
+          status: 'all',
+          shiftContext: 'all',
+          regionId: undefined,
+          cityId: undefined,
+          wasteFractionId: undefined,
+          tourId: undefined,
+        }}
+        onTabChange={() => undefined}
+      />
+    );
+
+    expect(screen.getAllByText('master-data:fractions').length).toBeGreaterThan(0);
+  });
+
   it('lets the tab list and tab panels sit flush without vertical gap', () => {
     render(
       <WasteManagementPageTabs
@@ -205,5 +242,59 @@ describe('WasteManagementPageTabs', () => {
     expect(tabDescription.closest('div')?.className).toContain('bg-[#E8E8D8]');
     expect(tabDescription.closest('div')?.className).toContain('border-b');
     expect(tabDescription.closest('div')?.className).not.toContain('border-t');
+  });
+
+  it('wires the overview panel into the tools tab content', () => {
+    render(
+      <WasteManagementPageTabs
+        pt={(key) => key}
+        search={{
+          tab: 'tools',
+          masterDataTab: 'locations',
+          q: '',
+          page: 1,
+          pageSize: 25,
+          status: 'all',
+          shiftContext: 'all',
+          regionId: undefined,
+          cityId: undefined,
+          wasteFractionId: undefined,
+          tourId: undefined,
+        }}
+        onTabChange={() => undefined}
+      />
+    );
+
+    expect(screen.getAllByText('tools').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('overview').length).toBeGreaterThan(0);
+  });
+
+  it('omits settings and tools tabs when the current UI access does not allow them', () => {
+    tabsContentSpy.mockClear();
+
+    render(
+      <WasteManagementPageTabs
+        pt={(key) => key}
+        search={{
+          tab: 'fractions',
+          masterDataTab: 'locations',
+          q: '',
+          page: 1,
+          pageSize: 25,
+          status: 'all',
+          shiftContext: 'all',
+          regionId: undefined,
+          cityId: undefined,
+          wasteFractionId: undefined,
+          tourId: undefined,
+        }}
+        visibleTabIds={['fractions', 'tours', 'locations', 'scheduling']}
+        onTabChange={() => undefined}
+      />
+    );
+
+    expect(screen.queryAllByText('tabs.tools.title')).toHaveLength(0);
+    expect(screen.queryAllByText('tabs.settings.title')).toHaveLength(0);
+    expect(tabsContentSpy).toHaveBeenCalledTimes(4);
   });
 });

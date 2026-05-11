@@ -3,6 +3,8 @@ export const wasteManagementPluginTranslationsENCommon = {
     "yes": "Yes",
     "no": "No",
     "active": "Active",
-    "inactive": "Inactive"
+    "inactive": "Inactive",
+    "statusSuccessTitle": "OK",
+    "statusErrorTitle": "Error"
   }
 } as const;

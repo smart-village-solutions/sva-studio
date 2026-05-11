@@ -64,6 +64,9 @@ export const updateWasteManagementSettings = async (
 ): Promise<WasteManagementSettingsRecord | null> =>
   requestWasteManagementMutation('/api/v1/waste-management/settings', input, 'PUT');
 
+export const startWasteManagementInitialize = async (input: Readonly<{ targetSchema?: string }> = {}) =>
+  requestWasteManagementJob('/api/v1/waste-management/tools/initialize', input);
+
 export const startWasteManagementMigrations = async (input: StartWasteManagementMigrationsInput) =>
   requestWasteManagementJob('/api/v1/waste-management/tools/migrations', input);
 

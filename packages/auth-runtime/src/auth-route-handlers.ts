@@ -34,6 +34,7 @@ import {
   isMockAuthEnabled,
 } from './mock-auth.js';
 import { buildRequestOriginFromHeaders, resolveEffectiveRequestHost } from './request-hosts.js';
+import { validateCsrf } from './shared/request-security.js';
 import { SessionStoreUnavailableError, TenantAuthResolutionError, TenantScopeConflictError } from './runtime-errors.js';
 
 const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
@@ -1118,6 +1119,11 @@ export const devLoginHandler = async (request: Request): Promise<Response> => {
   return withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
     if (!isMockAuthEnabled()) {
       return createNotFoundResponse();
+    }
+
+    const csrfError = validateCsrf(request, getWorkspaceContext().requestId);
+    if (csrfError) {
+      return csrfError;
     }
 
     const url = new URL(request.url);

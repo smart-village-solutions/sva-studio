@@ -21,6 +21,7 @@ import {
   compactOptionalString,
   downloadImportTemplate,
   formatUpdatedAt,
+  readFileAsDataUrl,
   resolveApiErrorCode,
   toJobStatusTone,
   toTechnicalStatusTone,
@@ -44,6 +45,9 @@ vi.mock('../src/waste-management.api.js', async (importOriginal) => {
 
 vi.mock('@sva/plugin-sdk', () => ({
   usePluginTranslation: () => (key: string) => key,
+  wasteManagementOperationsContract: {
+    resetConfirmationToken: 'RESET',
+  },
 }));
 
 vi.mock('@sva/studio-ui-react', () => ({
@@ -147,7 +151,7 @@ describe('waste management helper modules', () => {
     expect(screen.queryByTestId('alert')).toBeNull();
 
     rerender(<StatusNotice message={{ kind: 'error', text: 'Fehlertext' }} />);
-    expect(screen.getByTestId('alert').textContent).toContain('Fehler');
+    expect(screen.getByTestId('alert').textContent).toContain('common.statusErrorTitle');
     expect(screen.getByTestId('alert').textContent).toContain('Fehlertext');
 
     rerender(
@@ -167,6 +171,18 @@ describe('waste management helper modules', () => {
     rerender(
       <ResetConfirmationDialog
         open
+        token="reset"
+        running={false}
+        onOpenChange={() => undefined}
+        onTokenChange={onTokenChange}
+        onConfirm={onConfirm}
+      />
+    );
+    expect(screen.getByRole('button', { name: 'tools.reset.confirmAction' }).hasAttribute('disabled')).toBe(true);
+
+    rerender(
+      <ResetConfirmationDialog
+        open
         token="RESET"
         running={true}
         onOpenChange={() => undefined}
@@ -179,6 +195,12 @@ describe('waste management helper modules', () => {
     createElementSpy.mockRestore();
     objectUrlSpy.mockRestore();
     revokeSpy.mockRestore();
+  });
+
+  it('reads selected files as data urls', async () => {
+    const file = new File(['region_id\nregion-1\n'], 'catalog.csv', { type: 'text/csv' });
+
+    await expect(readFileAsDataUrl(file)).resolves.toMatch(/^data:text\/csv;base64,/);
   });
 
   it('covers form defaults, mappers, and select resolution', () => {

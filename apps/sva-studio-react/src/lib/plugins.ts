@@ -18,6 +18,7 @@ import {
   resolvePluginModuleFromRegistry,
 } from './plugin-build-registry.js';
 import {
+  createStudioPluginCatalogSeed,
   createStudioPluginCatalogReport,
   getPackagePluginModuleCandidates,
   getWorkspacePluginModuleCandidates,
@@ -83,8 +84,10 @@ const resolveNodePluginModule = (
 ): Promise<Record<string, unknown> | undefined> =>
   resolvePluginModuleFromRegistry(nodePluginRegistry, entry.sourceRef, getPackagePluginModuleCandidates(manifest));
 
+const studioPluginCatalogConfigEntries = studioPluginCatalogConfig as readonly StudioPluginCatalogConfigEntry[];
+
 const studioPluginCatalogReport = await createStudioPluginCatalogReport({
-  catalogConfig: studioPluginCatalogConfig as readonly StudioPluginCatalogConfigEntry[],
+  catalogConfig: studioPluginCatalogConfigEntries,
   resolveManifest: (entry) => (entry.sourceType === 'workspace' ? resolveWorkspaceManifest(entry) : resolveNodeManifest(entry)),
   resolvePluginModule: (entry, manifest) =>
     entry.sourceType === 'workspace'
@@ -111,6 +114,10 @@ for (const issue of studioPluginCatalogReport.issues) {
 export const studioPluginCatalog = studioPluginCatalogReport.catalog;
 export const studioPluginCatalogIssues = studioPluginCatalogReport.issues;
 export const studioPluginSnapshot = studioPluginCatalogReport.snapshot;
+export const studioPluginCatalogSeed = createStudioPluginCatalogSeed({
+  catalogConfig: studioPluginCatalogConfigEntries,
+  resolveManifest: (entry) => (entry.sourceType === 'workspace' ? resolveWorkspaceManifest(entry) : resolveNodeManifest(entry)),
+});
 
 export const studioBuildTimeRegistry = studioPluginSnapshot.registry;
 

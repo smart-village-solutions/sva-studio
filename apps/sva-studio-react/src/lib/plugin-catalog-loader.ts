@@ -21,6 +21,10 @@ export type StudioPluginCatalogConfigEntry = {
 };
 
 type PluginModuleExports = Readonly<Record<string, unknown>>;
+type PluginCatalogSeed = {
+  readonly catalog: readonly PluginCatalogEntry[];
+  readonly issues: readonly PluginCatalogIssue[];
+};
 
 type StudioPluginCatalogLoaderInput = {
   readonly catalogConfig: readonly StudioPluginCatalogConfigEntry[];
@@ -57,15 +61,39 @@ const createConfigIssue = (
 
 const normalizeEntryPath = (value: string): string => value.replace(/^[.][/]/, '').trim();
 
-export const getWorkspacePluginModuleCandidates = (manifest: PluginManifest): readonly string[] => {
-  const manifestBrowserEntry = normalizeEntryPath(manifest.entryPoints.browser ?? '');
-  const candidates = ['src/index.ts', 'src/index.tsx'];
+const pushUnique = (target: string[], value: string): void => {
+  if (value.length > 0 && target.includes(value) === false) {
+    target.push(value);
+  }
+};
 
-  if (manifestBrowserEntry.length > 0 && !candidates.includes(manifestBrowserEntry)) {
-    candidates.push(manifestBrowserEntry);
+const createWorkspaceSourceFallbacks = (entryPath: string, defaults: readonly string[]): readonly string[] => {
+  const candidates: string[] = [];
+  pushUnique(candidates, entryPath);
+
+  if (entryPath.startsWith('dist/') && entryPath.endsWith('.js')) {
+    const sourceBasePath = entryPath.slice('dist/'.length, -'.js'.length);
+    pushUnique(candidates, `src/${sourceBasePath}.ts`);
+    pushUnique(candidates, `src/${sourceBasePath}.tsx`);
+  } else if (entryPath.endsWith('.js')) {
+    pushUnique(candidates, entryPath.slice(0, -'.js'.length) + '.ts');
+    pushUnique(candidates, entryPath.slice(0, -'.js'.length) + '.tsx');
+  }
+
+  for (const fallback of defaults) {
+    pushUnique(candidates, fallback);
   }
 
   return candidates;
+};
+
+export const getWorkspacePluginModuleCandidates = (manifest: PluginManifest): readonly string[] => {
+  const manifestBrowserEntry = normalizeEntryPath(manifest.entryPoints.browser ?? '');
+  if (manifestBrowserEntry.length === 0) {
+    return ['src/index.ts', 'src/index.tsx'];
+  }
+
+  return createWorkspaceSourceFallbacks(manifestBrowserEntry, ['src/index.ts', 'src/index.tsx']);
 };
 
 export const getPackagePluginModuleCandidates = (manifest: PluginManifest): readonly string[] => {
@@ -96,9 +124,9 @@ export const extractPluginDefinition = (exportsObject: PluginModuleExports): Plu
   return undefined;
 };
 
-export const createStudioPluginCatalogReport = async (
-  input: StudioPluginCatalogLoaderInput
-): Promise<StudioPluginCatalogReport> => {
+export const createStudioPluginCatalogSeed = (
+  input: Pick<StudioPluginCatalogLoaderInput, 'catalogConfig' | 'resolveManifest'>
+): PluginCatalogSeed => {
   const catalog: PluginCatalogEntry[] = [];
   const issues: PluginCatalogIssue[] = [];
 
@@ -126,8 +154,16 @@ export const createStudioPluginCatalogReport = async (
     );
   }
 
+  return { catalog, issues };
+};
+
+export const createStudioPluginCatalogReport = async (
+  input: StudioPluginCatalogLoaderInput
+): Promise<StudioPluginCatalogReport> => {
+  const seed = createStudioPluginCatalogSeed(input);
+
   const resolved = await resolvePluginCatalogAsync({
-    catalog,
+    catalog: seed.catalog,
     host: studioHostPluginPlatform,
     resolvePlugin: async (entry) => {
       const exportsObject = await input.resolvePluginModule(entry, entry.manifest);
@@ -138,7 +174,7 @@ export const createStudioPluginCatalogReport = async (
 
   return {
     ...resolved,
-    issues: [...issues, ...resolved.issues],
+    issues: [...seed.issues, ...resolved.issues],
   };
 };
 

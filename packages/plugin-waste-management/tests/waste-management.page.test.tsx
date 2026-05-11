@@ -20,6 +20,30 @@ vi.mock('@tanstack/react-router', () => ({
   useSearch: () => searchMock(),
 }));
 
+vi.mock('../src/waste-management.ui-access.js', () => ({
+  deriveWasteManagementUiAccess: () => ({
+    visibleTabIds: ['fractions', 'tours', 'locations', 'scheduling', 'tools', 'settings'],
+    canAccessSettings: true,
+    canAccessTools: true,
+    canRunInitialize: true,
+    canRunMigrations: true,
+    canRunImport: true,
+    canRunSeed: true,
+    canRunReset: true,
+  }),
+  useWasteManagementUiAccess: () => ({
+    isResolved: true,
+    visibleTabIds: ['fractions', 'tours', 'locations', 'scheduling', 'tools', 'settings'],
+    canAccessSettings: true,
+    canAccessTools: true,
+    canRunInitialize: true,
+    canRunMigrations: true,
+    canRunImport: true,
+    canRunSeed: true,
+    canRunReset: true,
+  }),
+}));
+
 const wasteManagementApiMocks = vi.hoisted(() => ({
   createWasteManagementCity: vi.fn(async () => ({
     id: 'city-3',
@@ -177,6 +201,11 @@ const wasteManagementApiMocks = vi.hoisted(() => ({
   startWasteManagementMigrations: vi.fn(async () => ({
     id: 'job-1',
     jobTypeId: 'waste-management.apply-migrations',
+    status: 'pending',
+  })),
+  startWasteManagementInitialize: vi.fn(async () => ({
+    id: 'job-0',
+    jobTypeId: 'waste-management.initialize-data-source',
     status: 'pending',
   })),
   startWasteManagementImport: vi.fn(async () => ({
@@ -470,6 +499,12 @@ describe('WasteManagementPage', () => {
       jobTypeId: 'waste-management.apply-migrations',
       status: 'pending',
     }));
+    wasteManagementApiMocks.startWasteManagementInitialize.mockReset();
+    wasteManagementApiMocks.startWasteManagementInitialize.mockImplementation(async () => ({
+      id: 'job-0',
+      jobTypeId: 'waste-management.initialize-data-source',
+      status: 'pending',
+    }));
     wasteManagementApiMocks.startWasteManagementImport.mockReset();
     wasteManagementApiMocks.startWasteManagementImport.mockImplementation(async () => ({
       id: 'job-import-1',
@@ -621,6 +656,7 @@ describe('WasteManagementPage', () => {
       to: '/plugins/waste-management',
       search: expect.objectContaining({
         tab: 'settings',
+        masterDataTab: 'locations',
         q: 'Restmüll',
         page: 1,
         pageSize: 50,
@@ -637,32 +673,66 @@ describe('WasteManagementPage', () => {
     expect(screen.getByText('wasteManagement.tools.messages.jobStarted')).toBeTruthy();
     expect(screen.getByText('wasteManagement.tools.meta.lastJobTitle')).toBeTruthy();
     expect(screen.getByText(/wasteManagement\.tools\.meta\.jobStatusLabel:/)).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'wasteManagement.tools.actions.openJob' })).toBeTruthy();
   });
 
   it('starts the import job through the waste tools facade with an explicit xlsx source format', async () => {
+    class MockFileReader {
+      public result: string | null = null;
+      public error: DOMException | null = null;
+      public onload: null | (() => void) = null;
+      public onerror: null | (() => void) = null;
+
+      readAsDataURL(file: Blob) {
+        this.result = `data:${file.type};base64,ZmFrZQ==`;
+        this.onload?.();
+      }
+    }
+
+    vi.stubGlobal('FileReader', MockFileReader as unknown as typeof FileReader);
     render(<WasteManagementPage />);
 
-    const blobRefInput = screen
-      .getByText('wasteManagement.tools.imports.blobRefLabel')
-      .parentElement?.querySelector('input');
+    const blobRefInput = document.querySelector('input[type="file"]');
     if (!(blobRefInput instanceof HTMLInputElement)) {
       throw new Error('Expected import blobRef input to be rendered');
     }
-    fireEvent.change(blobRefInput, {
-      target: { value: 'blob:waste/imports/catalog.xlsx' },
-    });
     fireEvent.change(screen.getByLabelText('wasteManagement.tools.imports.sourceFormatLabel'), {
       target: { value: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'wasteManagement.tools.actions.startImport' }));
+    fireEvent.change(blobRefInput, {
+      target: {
+        files: [
+          new File(['catalog'], 'catalog.xlsx', {
+            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          }),
+        ],
+      },
+    });
+    const startImportButton = screen.getByRole('button', { name: 'wasteManagement.tools.actions.startImport' });
+    await waitFor(() => {
+      expect(startImportButton.hasAttribute('disabled')).toBe(false);
+    });
+    fireEvent.click(startImportButton);
 
     await waitFor(() => {
       expect(wasteManagementApiMocks.startWasteManagementImport).toHaveBeenCalledWith({
         importProfileId: 'waste-management.geografie-abholorte',
         sourceFormat: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        blobRef: 'blob:waste/imports/catalog.xlsx',
+        blobRef: 'data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,ZmFrZQ==',
         dryRun: true,
+      });
+    });
+
+    vi.unstubAllGlobals();
+  });
+
+  it('starts the initialize job through the waste tools facade', async () => {
+    render(<WasteManagementPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'wasteManagement.audit.dataSourceInitialized' }));
+
+    await waitFor(() => {
+      expect(wasteManagementApiMocks.startWasteManagementInitialize).toHaveBeenCalledWith({
+        targetSchema: 'public',
       });
     });
   });
@@ -727,7 +797,7 @@ describe('WasteManagementPage', () => {
 
     render(<WasteManagementPage />);
 
-    await screen.findByText('migration.succeeded');
+    expect((await screen.findAllByText('migration.succeeded')).length).toBeGreaterThan(0);
     expect(wasteManagementApiMocks.getWasteManagementHistoryOverview).toHaveBeenCalledWith({
       page: 1,
       pageSize: 8,

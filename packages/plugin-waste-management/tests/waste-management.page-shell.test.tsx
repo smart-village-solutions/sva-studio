@@ -1,6 +1,6 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { WasteManagementPage } from '../src/waste-management.page.js';
 
@@ -18,6 +18,17 @@ const searchState = {
   wasteFractionId: undefined,
   tourId: undefined,
 };
+const useWasteManagementUiAccessMock = vi.fn(() => ({
+  isResolved: true,
+  visibleTabIds: ['fractions', 'tours', 'locations', 'scheduling', 'tools', 'settings'],
+  canAccessSettings: true,
+  canAccessTools: true,
+  canRunInitialize: true,
+  canRunMigrations: true,
+  canRunImport: true,
+  canRunSeed: true,
+  canRunReset: true,
+}));
 
 vi.mock('@tanstack/react-router', () => ({
   useNavigate: () => navigateMock,
@@ -26,6 +37,10 @@ vi.mock('@tanstack/react-router', () => ({
 
 vi.mock('@sva/plugin-sdk', () => ({
   usePluginTranslation: () => (key: string) => key,
+}));
+
+vi.mock('../src/waste-management.ui-access.js', () => ({
+  useWasteManagementUiAccess: () => useWasteManagementUiAccessMock(),
 }));
 
 vi.mock('@sva/studio-ui-react', () => ({
@@ -71,15 +86,40 @@ vi.mock('../src/waste-management.page.layout.js', () => ({
   ),
   WasteManagementPageTabs: ({
     onTabChange,
+    visibleTabIds,
   }: {
     readonly onTabChange: (value: 'overview' | 'settings') => void;
-  }) => <button onClick={() => onTabChange('settings')}>change-tab</button>,
+    readonly visibleTabIds: readonly string[];
+  }) => (
+    <div>
+      <div>{visibleTabIds.join(',')}</div>
+      <button onClick={() => onTabChange('settings')}>change-tab</button>
+    </div>
+  ),
   wasteManagementTabTranslationKeyMap: {},
 }));
 
 describe('WasteManagementPage shell', () => {
+  afterEach(() => {
+    cleanup();
+  });
+
   beforeEach(() => {
     navigateMock.mockReset();
+    useWasteManagementUiAccessMock.mockReset();
+    useWasteManagementUiAccessMock.mockReturnValue({
+      isResolved: true,
+      visibleTabIds: ['fractions', 'tours', 'locations', 'scheduling', 'tools', 'settings'],
+      canAccessSettings: true,
+      canAccessTools: true,
+      canRunInitialize: true,
+      canRunMigrations: true,
+      canRunImport: true,
+      canRunSeed: true,
+      canRunReset: true,
+    });
+    searchState.tab = 'tools';
+    searchState.masterDataTab = 'locations';
   });
 
   it('renders the shell without the global toolbar and resets pagination for tab changes', () => {
@@ -109,6 +149,40 @@ describe('WasteManagementPage shell', () => {
         tab: 'settings',
         page: 1,
       },
+    });
+  });
+
+  it('hides the settings shortcut and redirects forbidden deep links back to the first visible tab', async () => {
+    searchState.tab = 'settings';
+    searchState.masterDataTab = 'locations';
+    useWasteManagementUiAccessMock.mockReturnValue({
+      isResolved: true,
+      visibleTabIds: ['fractions', 'tours', 'locations', 'scheduling'],
+      canAccessSettings: false,
+      canAccessTools: false,
+      canRunInitialize: false,
+      canRunMigrations: false,
+      canRunImport: false,
+      canRunSeed: false,
+      canRunReset: false,
+    });
+
+    render(<WasteManagementPage />);
+
+    expect(screen.queryByRole('button', { name: 'actions.openSettings' })).toBeNull();
+    expect(screen.getByText('fractions,tours,locations,scheduling')).toBeTruthy();
+
+    await waitFor(() => {
+      expect(navigateMock).toHaveBeenCalledWith({
+        to: '/plugins/waste-management',
+        search: {
+          ...searchState,
+          tab: 'fractions',
+          masterDataTab: 'fractions',
+          page: 1,
+        },
+        replace: true,
+      });
     });
   });
 });

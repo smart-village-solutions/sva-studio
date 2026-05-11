@@ -21,6 +21,15 @@ export const validateStartRequestData = (
   data: StudioJobStartRequest,
   requestId: string | undefined
 ): Response | null => {
+  if (data.pluginId === 'waste-management') {
+    return createApiError(
+      400,
+      'invalid_request',
+      'Waste-Management-Jobs dürfen nur über die dedizierten Waste-Endpunkte gestartet werden.',
+      requestId
+    );
+  }
+
   const jobTypeNamespace = readPluginNamespace(data.jobTypeId);
   if (jobTypeNamespace !== data.pluginId) {
     return createApiError(400, 'invalid_request', 'Jobtyp muss zum angegebenen Plugin-Namespace passen.', requestId);

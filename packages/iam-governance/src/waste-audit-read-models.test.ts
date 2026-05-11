@@ -328,7 +328,7 @@ describe('iam-governance/waste-audit-read-models', () => {
       },
       {
         rowCount: 1,
-        rows: [{ total: 2 }],
+        rows: [{ total: 1 }],
       }
     );
 
@@ -345,7 +345,7 @@ describe('iam-governance/waste-audit-read-models', () => {
 
     const technicalClient = buildClient(
       {
-        rowCount: 1,
+        rowCount: 2,
         rows: [
           {
             id: 'log-started',
@@ -357,6 +357,17 @@ describe('iam-governance/waste-audit-read-models', () => {
             payload: {
               action_id: 'waste-management.datasource.reconfigured',
               reason_code: '',
+            },
+          },
+          {
+            id: 'log-initialize-started',
+            event_type: 'plugin_action_authorized',
+            created_at: '2026-05-09T12:13:00.000Z',
+            account_id: null,
+            request_id: null,
+            trace_id: null,
+            payload: {
+              action_id: 'waste-management.initialize.started',
             },
           },
         ],
@@ -383,5 +394,6 @@ describe('iam-governance/waste-audit-read-models', () => {
         errorCode: undefined,
       }),
     ]);
+    expect(technicalResult.total).toBe(1);
   });
 });

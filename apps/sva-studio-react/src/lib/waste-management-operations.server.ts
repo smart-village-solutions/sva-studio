@@ -18,12 +18,24 @@ import type {
 
 export type { OperationSummary, WasteManagementOperationRuntime, WasteOperationRuntimeDeps } from './waste-management-operations.types.js';
 
+const resolveBoundWasteSchemaName = (configuredSchemaName: string, requestedSchema: string | undefined): string => {
+  const normalizedRequestedSchema = normalizeOptionalText(requestedSchema);
+  if (!normalizedRequestedSchema) {
+    return configuredSchemaName;
+  }
+  if (normalizedRequestedSchema !== configuredSchemaName) {
+    throw new Error(`invalid_waste_schema_target:${normalizedRequestedSchema}`);
+  }
+  return configuredSchemaName;
+};
+
 export const createWasteManagementOperationRuntime = (
   deps: WasteOperationRuntimeDeps = {}
 ): WasteManagementOperationRuntime => ({
   async initializeDataSource(instanceId, input) {
     const startedAt = Date.now();
     const dataSource = await resolveRuntimeDataSource(deps, instanceId);
+    const schemaName = resolveBoundWasteSchemaName(dataSource.schemaName, input.targetSchema);
     const connectionCheck = await runWasteConnectionCheck({
       dataSource,
       probe: async (resolved) => {
@@ -38,7 +50,7 @@ export const createWasteManagementOperationRuntime = (
       now: deps.now,
     });
     const schemaInspection = await withWasteClient(deps, instanceId, async ({ client, dataSource: resolved }) =>
-      inspectWasteSchema(client, input.targetSchema ?? resolved.schemaName)
+      inspectWasteSchema(client, resolveBoundWasteSchemaName(resolved.schemaName, schemaName))
     );
     return buildOperationSummary(startedAt, {
       operation: 'initialize-data-source',
@@ -51,7 +63,7 @@ export const createWasteManagementOperationRuntime = (
   async applyMigrations(instanceId, input) {
     const startedAt = Date.now();
     const details = await withWasteClient(deps, instanceId, async ({ client, dataSource }) => {
-      const schemaName = input.targetSchema ?? dataSource.schemaName;
+      const schemaName = resolveBoundWasteSchemaName(dataSource.schemaName, input.targetSchema);
       const statements = applySchemaStatements(schemaName);
       for (const statement of statements) {
         await client.query(statement);
@@ -121,14 +133,10 @@ export const createWasteManagementOperationRuntime = (
   async resetData(instanceId, input) {
     const startedAt = Date.now();
     const normalizedConfirmationToken = input.confirmationToken.trim();
-    const acceptedConfirmationTokens = new Set([
-      wasteManagementOperationsContract.resetConfirmationToken,
-      'confirm-reset',
-    ]);
     if (normalizedConfirmationToken.length === 0) {
       throw new Error('missing_reset_confirmation_token');
     }
-    if (!acceptedConfirmationTokens.has(normalizedConfirmationToken)) {
+    if (normalizedConfirmationToken !== wasteManagementOperationsContract.resetConfirmationToken) {
       throw new Error('invalid_reset_confirmation_token');
     }
     const details = await withWasteClient(deps, instanceId, async ({ client }) => {

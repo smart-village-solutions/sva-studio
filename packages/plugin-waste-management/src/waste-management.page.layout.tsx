@@ -11,11 +11,13 @@ import {
 import { StudioEmptyState, Tabs, TabsContent, TabsList, TabsTrigger } from '@sva/studio-ui-react';
 
 import { WasteMasterDataPanel } from './waste-management.master-data-panel.js';
+import { WasteOverviewPanel } from './waste-management.overview-panel.js';
 import { WasteSchedulingPanel } from './waste-management.scheduling-panel.js';
 import { WasteSettingsPanel } from './waste-management.settings-panel.js';
 import { WasteToolsPanel } from './waste-management.tools-panel.js';
 import { WasteToursPanel } from './waste-management.tours-panel.js';
 import { type WasteManagementSearchParams, type WasteManagementTabId, wasteManagementTabIds } from './search-params.js';
+import { deriveWasteManagementUiAccess, type WasteManagementUiAccess } from './waste-management.ui-access.js';
 
 type Translate = (key: string, variables?: Readonly<Record<string, string | number>>) => string;
 
@@ -37,41 +39,54 @@ const wasteManagementTabIconMap = {
   settings: IconSettings,
 } as const satisfies Record<WasteManagementTabId, typeof IconRecycle>;
 
+const defaultUiAccess = deriveWasteManagementUiAccess([
+  'waste-management.settings.manage',
+  'waste-management.import.execute',
+  'waste-management.seed.execute',
+  'waste-management.reset.execute',
+]);
+
 const tabContentMap = (
-  search: WasteManagementSearchParams
+  search: WasteManagementSearchParams,
+  access: WasteManagementUiAccess
 ): Record<WasteManagementTabId, ReactNode> => ({
   fractions: <WasteMasterDataPanel search={search} tab="fractions" />,
   tours: <WasteToursPanel search={search} />,
   locations: <WasteMasterDataPanel search={search} tab="locations" />,
   scheduling: <WasteSchedulingPanel search={search} />,
   settings: <WasteSettingsPanel />,
-  tools: <WasteToolsPanel />,
+  tools: <WasteToolsPanel search={search} access={access} overview={<WasteOverviewPanel search={search} />} />,
 });
 
 export const WasteManagementPageTabs = ({
   pt,
   search,
+  access = defaultUiAccess,
+  visibleTabIds = wasteManagementTabIds,
   onTabChange,
 }: {
   readonly pt: Translate;
   readonly search: WasteManagementSearchParams;
+  readonly access?: WasteManagementUiAccess;
+  readonly visibleTabIds?: readonly WasteManagementTabId[];
   readonly onTabChange: (value: WasteManagementTabId) => void;
 }) => {
-  const content = tabContentMap(search);
-  const [visitedTabIds, setVisitedTabIds] = useState<readonly WasteManagementTabId[]>([search.tab]);
+  const content = tabContentMap(search, access);
+  const activeTab = visibleTabIds.includes(search.tab) ? search.tab : visibleTabIds[0] ?? search.tab;
+  const [visitedTabIds, setVisitedTabIds] = useState<readonly WasteManagementTabId[]>([activeTab]);
 
   useEffect(() => {
-    setVisitedTabIds((current) => (current.includes(search.tab) ? current : [...current, search.tab]));
-  }, [search.tab]);
+    setVisitedTabIds((current) => (current.includes(activeTab) ? current : [...current, activeTab]));
+  }, [activeTab]);
 
   return (
     <div className="space-y-4">
-      <Tabs value={search.tab} onValueChange={(value) => onTabChange(value as WasteManagementTabId)} className="space-y-0">
+      <Tabs value={activeTab} onValueChange={(value) => onTabChange(value as WasteManagementTabId)} className="space-y-0">
         <TabsList aria-label={pt('tabs.ariaLabel')} className="ml-[10px] gap-10">
-          {wasteManagementTabIds.map((tabId) => {
+          {visibleTabIds.map((tabId) => {
             const tabKey = wasteManagementTabTranslationKeyMap[tabId];
             const TabIcon = wasteManagementTabIconMap[tabId];
-            const isActive = tabId === search.tab;
+            const isActive = tabId === activeTab;
             return (
               <TabsTrigger
                 key={tabId}
@@ -88,9 +103,9 @@ export const WasteManagementPageTabs = ({
             );
           })}
         </TabsList>
-        {wasteManagementTabIds.map((tabId) => {
+        {visibleTabIds.map((tabId) => {
           const tabKey = wasteManagementTabTranslationKeyMap[tabId];
-          const shouldKeepMounted = visitedTabIds.includes(tabId) && tabId !== search.tab;
+          const shouldKeepMounted = visitedTabIds.includes(tabId) && tabId !== activeTab;
           return (
             <TabsContent key={tabId} value={tabId} forceMount={shouldKeepMounted || undefined} className="mt-0">
               <div className="space-y-4 rounded-b-2xl rounded-tr-2xl border border-border/60 bg-[#E8E8D8] p-5">

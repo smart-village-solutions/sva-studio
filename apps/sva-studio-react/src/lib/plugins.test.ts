@@ -292,6 +292,10 @@ describe('plugin action alias lookup', () => {
           },
         },
       })),
+      createStudioPluginCatalogSeed: vi.fn(() => ({
+        catalog: [],
+        issues: [],
+      })),
       getPackagePluginModuleCandidates: vi.fn(() => []),
       getWorkspacePluginModuleCandidates: vi.fn(() => []),
     }));
@@ -363,6 +367,10 @@ describe('plugin action alias lookup', () => {
           },
         };
       }),
+      createStudioPluginCatalogSeed: vi.fn(() => ({
+        catalog: [],
+        issues: [],
+      })),
       getPackagePluginModuleCandidates: vi.fn(() => ['./dist/missing.js']),
       getWorkspacePluginModuleCandidates: vi.fn(() => ['./src/missing.ts']),
     }));

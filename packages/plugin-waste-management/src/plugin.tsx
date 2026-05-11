@@ -136,7 +136,7 @@ export const wasteManagementAuditEventDefinitions = definePluginAuditEvents('was
     titleKey: 'wasteManagement.audit.resetStarted',
   },
   {
-    eventType: 'waste-management.data-source.initialized',
+    eventType: 'waste-management.datasource.reconfigured',
     titleKey: 'wasteManagement.audit.dataSourceInitialized',
   },
 ]);

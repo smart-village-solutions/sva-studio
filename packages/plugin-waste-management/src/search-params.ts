@@ -69,20 +69,35 @@ const normalizePageSize = (value: unknown): number => {
   return allowedPageSizes.has(pageSize) ? pageSize : 25;
 };
 
+const normalizeMasterDataTabForTab = (
+  tab: WasteManagementTabId,
+  masterDataTab: WasteManagementMasterDataTabId
+): WasteManagementMasterDataTabId => {
+  if (tab === 'fractions' || tab === 'locations') {
+    return tab;
+  }
+
+  return masterDataTab;
+};
+
 export const normalizeWasteManagementSearchParams = (
   search: Record<string, unknown>
-): WasteManagementSearchParams => ({
-  tab: normalizeTab(search.tab),
-  masterDataTab: normalizeMasterDataTab(search.masterDataTab),
-  q: compactOptionalString(search.q) ?? '',
-  page: normalizePositiveInteger(search.page, 1),
-  pageSize: normalizePageSize(search.pageSize),
-  status: normalizeStatus(search.status),
-  shiftContext: normalizeShiftContext(search.shiftContext),
-  regionId: compactOptionalString(search.regionId),
-  cityId: compactOptionalString(search.cityId),
-  wasteFractionId: compactOptionalString(search.wasteFractionId),
-  tourId: compactOptionalString(search.tourId),
-});
+): WasteManagementSearchParams => {
+  const tab = normalizeTab(search.tab);
+
+  return {
+    tab,
+    masterDataTab: normalizeMasterDataTabForTab(tab, normalizeMasterDataTab(search.masterDataTab)),
+    q: compactOptionalString(search.q) ?? '',
+    page: normalizePositiveInteger(search.page, 1),
+    pageSize: normalizePageSize(search.pageSize),
+    status: normalizeStatus(search.status),
+    shiftContext: normalizeShiftContext(search.shiftContext),
+    regionId: compactOptionalString(search.regionId),
+    cityId: compactOptionalString(search.cityId),
+    wasteFractionId: compactOptionalString(search.wasteFractionId),
+    tourId: compactOptionalString(search.tourId),
+  };
+};
 
 export const wasteManagementTabIds = wasteManagementTabs;

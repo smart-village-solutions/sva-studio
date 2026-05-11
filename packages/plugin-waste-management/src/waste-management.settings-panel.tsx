@@ -106,9 +106,9 @@ const persistWasteSettings = async (
     };
   } catch (saveError) {
     const code = resolveApiErrorCode(saveError);
-    throw new Error(code === 'forbidden' ? pt('settings.messages.saveForbidden') : pt('settings.messages.saveError'), {
-      cause: saveError,
-    });
+    const error = new Error(code === 'forbidden' ? pt('settings.messages.saveForbidden') : pt('settings.messages.saveError'));
+    (error as Error & { cause?: unknown }).cause = saveError;
+    throw error;
   }
 };
 

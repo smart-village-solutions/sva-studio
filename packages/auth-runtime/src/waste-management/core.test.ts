@@ -38,6 +38,7 @@ const {
   getWasteManagementSchedulingOverviewInternal,
   getWasteManagementSettingsInternal,
   getWasteManagementToursOverviewInternal,
+  startWasteManagementInitializeInternal,
   startWasteManagementImportInternal,
   startWasteManagementMigrationsInternal,
   startWasteManagementResetInternal,
@@ -2073,6 +2074,52 @@ describe('waste-management auth runtime handlers', () => {
       },
       endpoint: 'POST:/api/v1/waste-management/tools/migrations',
       idempotencyKey: 'idem-1',
+      instanceId: 'tenant-a',
+      requestId: 'req-test',
+      scheduledAt: '2026-05-09T12:30:00.000Z',
+    });
+    expect(response.status).toBe(202);
+  });
+
+  it('starts the waste initialization job through the generic plugin operations pipeline', async () => {
+    const startJob = vi.fn(async () => new Response(JSON.stringify({ data: { id: 'job-init-1' } }), { status: 202 }));
+
+    const response = await startWasteManagementInitializeInternal(
+      new Request('https://studio.test/api/v1/waste-management/tools/initialize', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': 'idem-0',
+          Origin: 'https://studio.test',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: JSON.stringify({
+          targetSchema: 'wm',
+        }),
+      }),
+      actor,
+      {
+        getRequestId: () => 'req-test',
+        startPluginOperationJob: startJob,
+        resolvePermissions: vi.fn(async () => ({
+          ok: true as const,
+          permissions: allowPermission('waste-management.settings.manage'),
+        })),
+      }
+    );
+
+    expect(startJob).toHaveBeenCalledWith({
+      actorAccountId: 'user-1',
+      data: {
+        input: {
+          operation: 'initialize-data-source',
+          targetSchema: 'wm',
+        },
+        jobTypeId: 'waste-management.initialize-data-source',
+        pluginId: 'waste-management',
+      },
+      endpoint: 'POST:/api/v1/waste-management/tools/initialize',
+      idempotencyKey: 'idem-0',
       instanceId: 'tenant-a',
       requestId: 'req-test',
       scheduledAt: '2026-05-09T12:30:00.000Z',

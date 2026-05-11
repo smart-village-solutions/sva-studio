@@ -34,6 +34,7 @@ const coreHandlerMocks = vi.hoisted(() => ({
   getWasteManagementSchedulingOverviewInternal: vi.fn(async () => new Response('get-scheduling-overview')),
   getWasteManagementSettingsInternal: vi.fn(async () => new Response('get-settings')),
   getWasteManagementToursOverviewInternal: vi.fn(async () => new Response('get-tours-overview')),
+  startWasteManagementInitializeInternal: vi.fn(async () => new Response('start-initialize')),
   startWasteManagementImportInternal: vi.fn(async () => new Response('start-import')),
   startWasteManagementMigrationsInternal: vi.fn(async () => new Response('start-migrations')),
   startWasteManagementResetInternal: vi.fn(async () => new Response('start-reset')),
@@ -352,6 +353,10 @@ describe('wasteManagementHandlers', () => {
           saveWasteGlobalDateShift: saverMocks.saveWasteGlobalDateShift,
           loadWasteGlobalDateShiftById: loaderMocks.loadWasteGlobalDateShiftById,
         },
+      },
+      {
+        handlerKey: 'startInitialize',
+        internal: coreHandlerMocks.startWasteManagementInitializeInternal,
       },
       {
         handlerKey: 'startMigrations',

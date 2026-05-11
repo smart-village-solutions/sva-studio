@@ -11,18 +11,19 @@ type Translate = (key: string, variables?: Readonly<Record<string, string | numb
 
 export const useWasteMasterDataDataLoading = (state: WasteMasterDataState, pt: Translate) => {
   const ptRef = useRef(pt);
+  const isMountedRef = useRef(false);
   ptRef.current = pt;
   const { setAvailableTours, setError, setLoading, setOverview } = state;
 
   const loadOverview = useCallback(
-    async (active = true) => {
+    async () => {
       try {
         const response = await getWasteManagementMasterDataOverview();
-        if (!active) return;
+        if (!isMountedRef.current) return;
         setOverview(response);
         setError(null);
       } catch (loadError) {
-        if (!active) return;
+        if (!isMountedRef.current) return;
         const code = resolveApiErrorCode(loadError);
         setError(
           code === 'forbidden'
@@ -30,32 +31,32 @@ export const useWasteMasterDataDataLoading = (state: WasteMasterDataState, pt: T
             : ptRef.current('masterData.messages.loadError')
         );
       } finally {
-        if (active) setLoading(false);
+        if (isMountedRef.current) setLoading(false);
       }
     },
     [setError, setLoading, setOverview]
   );
 
   useEffect(() => {
-    let active = true;
-    void loadOverview(active);
+    isMountedRef.current = true;
+    void loadOverview();
     return () => {
-      active = false;
+      isMountedRef.current = false;
     };
   }, [loadOverview]);
 
   useEffect(() => {
-    let active = true;
+    isMountedRef.current = true;
     void (async () => {
       try {
         const response = await getWasteManagementToursOverview();
-        if (active) setAvailableTours(response.tours);
+        if (isMountedRef.current) setAvailableTours(response.tours);
       } catch {
-        if (active) setAvailableTours([]);
+        if (isMountedRef.current) setAvailableTours([]);
       }
     })();
     return () => {
-      active = false;
+      isMountedRef.current = false;
     };
   }, [setAvailableTours]);
 

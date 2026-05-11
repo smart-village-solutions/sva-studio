@@ -1,29 +1,30 @@
 import type { WasteManagementHistoryOverview } from '@sva/plugin-sdk';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { getWasteManagementHistoryOverview } from './waste-management.api.js';
 
 export const useWasteTechnicalHistory = () => {
   const [technicalHistory, setTechnicalHistory] = useState<readonly WasteManagementHistoryOverview['technical']['items'][number][]>([]);
+  const isMountedRef = useRef(false);
 
-  const refreshTechnicalHistory = async (active = true) => {
+  const refreshTechnicalHistory = async () => {
     try {
       const history = await getWasteManagementHistoryOverview({ page: 1, pageSize: 8 });
-      if (active) {
+      if (isMountedRef.current) {
         setTechnicalHistory(history.technical.items);
       }
     } catch {
-      if (active) {
+      if (isMountedRef.current) {
         setTechnicalHistory([]);
       }
     }
   };
 
   useEffect(() => {
-    let active = true;
-    void refreshTechnicalHistory(active);
+    isMountedRef.current = true;
+    void refreshTechnicalHistory();
     return () => {
-      active = false;
+      isMountedRef.current = false;
     };
   }, []);
 

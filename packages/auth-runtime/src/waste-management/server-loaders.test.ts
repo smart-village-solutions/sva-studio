@@ -200,7 +200,7 @@ describe('waste-management server loaders', () => {
     const historyOverview = await wasteManagementOverviewLoaders.loadWasteHistoryOverview({
       instanceId: 'tenant-a',
       search: 'fraction',
-      page: 2,
+      page: 1,
       pageSize: 10,
     });
 
@@ -222,13 +222,13 @@ describe('waste-management server loaders', () => {
     expect(withInstanceDbMock).toHaveBeenCalledTimes(2);
     expect(listJobsMock).toHaveBeenCalledWith('tenant-a', {
       view: 'history',
-      page: 2,
+      page: 1,
       pageSize: 10,
       pluginId: 'waste-management',
       q: 'fraction',
     });
     expect(historyOverview.audit.total).toBe(1);
-    expect(historyOverview.technical.total).toBe(6);
+    expect(historyOverview.technical.total).toBe(4);
     expect(historyOverview.technical.items).toEqual([
       expect.objectContaining({ id: 'job:job-1:succeeded', eventType: 'migration.succeeded' }),
       expect.objectContaining({ id: 'job:job-2:failed', eventType: 'import.failed', errorCode: 'import_failed' }),
@@ -354,5 +354,135 @@ describe('waste-management server loaders', () => {
         occurredAt: '2026-05-09T05:00:00.000Z',
       }),
     ]);
+    expect(historyOverview.technical.total).toBe(2);
+  });
+
+  it('paginates technical history across audit and job sources in global chronology', async () => {
+    listWasteManagementTechnicalAuditRecordsMock.mockImplementation(async (_client, query: { page: number; pageSize: number }) => {
+      const itemsByPage = {
+        1: [
+          {
+            id: 'technical-audit-1',
+            eventType: 'connection.check.failed',
+            outcome: 'failure',
+            occurredAt: '2026-05-09T13:00:00.000Z',
+            source: 'audit',
+          },
+          {
+            id: 'technical-audit-2',
+            eventType: 'connection.check.failed',
+            outcome: 'failure',
+            occurredAt: '2026-05-09T11:00:00.000Z',
+            source: 'audit',
+          },
+        ],
+        2: [
+          {
+            id: 'technical-audit-3',
+            eventType: 'connection.check.failed',
+            outcome: 'failure',
+            occurredAt: '2026-05-09T09:00:00.000Z',
+            source: 'audit',
+          },
+        ],
+      } as const;
+
+      return {
+        items: itemsByPage[query.page as 1 | 2] ?? [],
+        total: 3,
+      };
+    });
+
+    listJobsMock.mockImplementation(async (_instanceId, query: { page: number; pageSize: number }) => {
+      const itemsByPage = {
+        1: [
+          {
+            id: 'job-1',
+            jobTypeId: 'waste-management.apply-migrations',
+            status: 'succeeded',
+            finishedAt: '2026-05-09T12:00:00.000Z',
+            updatedAt: '2026-05-09T12:00:00.000Z',
+            requestId: 'req-1',
+            latestEvent: { message: 'done' },
+            errorPayload: undefined,
+          },
+          {
+            id: 'job-running',
+            jobTypeId: 'waste-management.seed-data',
+            status: 'running',
+            finishedAt: null,
+            updatedAt: '2026-05-09T10:30:00.000Z',
+            requestId: 'req-running',
+            latestEvent: { message: 'running' },
+            errorPayload: undefined,
+          },
+        ],
+        2: [
+          {
+            id: 'job-2',
+            jobTypeId: 'waste-management.import-data',
+            status: 'failed',
+            finishedAt: '2026-05-09T10:00:00.000Z',
+            updatedAt: '2026-05-09T10:00:00.000Z',
+            requestId: 'req-2',
+            latestEvent: { message: 'failed' },
+            errorPayload: { code: 'import_failed' },
+          },
+          {
+            id: 'job-unknown',
+            jobTypeId: 'custom-job',
+            status: 'failed',
+            finishedAt: '2026-05-09T08:00:00.000Z',
+            updatedAt: '2026-05-09T08:00:00.000Z',
+            requestId: 'req-unknown',
+            latestEvent: { message: 'unknown' },
+            errorPayload: { code: 'custom_failed' },
+          },
+        ],
+      } as const;
+
+      return {
+        items: itemsByPage[query.page as 1 | 2] ?? [],
+        total: 4,
+      };
+    });
+
+    const historyOverview = await wasteManagementOverviewLoaders.loadWasteHistoryOverview({
+      instanceId: 'tenant-a',
+      page: 2,
+      pageSize: 2,
+    });
+
+    expect(historyOverview.technical.total).toBe(5);
+    expect(historyOverview.technical.items).toEqual([
+      expect.objectContaining({
+        id: 'technical-audit-2',
+        occurredAt: '2026-05-09T11:00:00.000Z',
+      }),
+      expect.objectContaining({
+        id: 'job:job-2:failed',
+        occurredAt: '2026-05-09T10:00:00.000Z',
+      }),
+    ]);
+    expect(listWasteManagementTechnicalAuditRecordsMock).toHaveBeenNthCalledWith(
+      1,
+      expect.anything(),
+      expect.objectContaining({ page: 1, pageSize: 2 })
+    );
+    expect(listWasteManagementTechnicalAuditRecordsMock).toHaveBeenNthCalledWith(
+      2,
+      expect.anything(),
+      expect.objectContaining({ page: 2, pageSize: 2 })
+    );
+    expect(listJobsMock).toHaveBeenNthCalledWith(
+      1,
+      'tenant-a',
+      expect.objectContaining({ page: 1, pageSize: 2, pluginId: 'waste-management' })
+    );
+    expect(listJobsMock).toHaveBeenNthCalledWith(
+      2,
+      'tenant-a',
+      expect.objectContaining({ page: 2, pageSize: 2, pluginId: 'waste-management' })
+    );
   });
 });

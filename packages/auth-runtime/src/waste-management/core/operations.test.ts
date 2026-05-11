@@ -83,6 +83,24 @@ const actorWithoutInstance: AuthenticatedRequestContext = {
 describe('waste-management operation handlers', () => {
   it.each([
     {
+      label: 'initialize returns forbidden when the dedicated permission is missing',
+      handler: wasteManagementOperationHandlers.startWasteManagementInitializeInternal,
+      request: () =>
+        createToolRequest('https://studio.test/api/v1/waste-management/tools/initialize', {
+          targetSchema: 'wm',
+        }),
+      deps: () => ({
+        ...createDeps(),
+        resolvePermissions: vi.fn(async () => ({
+          ok: true as const,
+          permissions: [],
+        })),
+      }),
+      actor,
+      expectedStatus: 403,
+      expectedCode: 'forbidden',
+    },
+    {
       label: 'migrations returns forbidden when the dedicated permission is missing',
       handler: wasteManagementOperationHandlers.startWasteManagementMigrationsInternal,
       request: () =>
@@ -442,6 +460,51 @@ describe('waste-management operation handlers', () => {
           result: 'failure',
           reasonCode: 'job_start_failed',
           resourceId: undefined,
+        }),
+      })
+    );
+  });
+
+  it('starts the initialize job through the generic plugin operations pipeline', async () => {
+    const startPluginOperationJob = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ data: { id: 'job-init-1' } }), {
+          status: 202,
+          headers: { 'Content-Type': 'application/json' },
+        })
+    );
+
+    const response = await wasteManagementOperationHandlers.startWasteManagementInitializeInternal(
+      createToolRequest('https://studio.test/api/v1/waste-management/tools/initialize', {
+        targetSchema: 'wm',
+      }),
+      actor,
+      {
+        ...createDeps(),
+        resolvePermissions: vi.fn(async () => ({
+          ok: true as const,
+          permissions: [
+            {
+              action: 'waste-management.settings.manage',
+              resourceType: 'waste-management',
+              effect: 'allow' as const,
+            },
+          ],
+        })),
+        startPluginOperationJob,
+      }
+    );
+
+    expect(response.status).toBe(202);
+    expect(startPluginOperationJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        endpoint: 'POST:/api/v1/waste-management/tools/initialize',
+        data: expect.objectContaining({
+          jobTypeId: 'waste-management.initialize-data-source',
+          input: {
+            operation: 'initialize-data-source',
+            targetSchema: 'wm',
+          },
         }),
       })
     );

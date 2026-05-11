@@ -118,51 +118,95 @@ const loadWasteHistoryOverview = async (query: {
   page: number;
   pageSize: number;
 }): Promise<WasteManagementHistoryOverview> => {
-  const [audit, technicalAudit, technicalJobs] = await Promise.all([
-    withInstanceDb(query.instanceId, (client) => listWasteManagementAuditRecords(client, query)),
-    withInstanceDb(query.instanceId, (client) => listWasteManagementTechnicalAuditRecords(client, query)),
-    withStudioJobRepository(query.instanceId, (repository) =>
-      repository.listJobs(query.instanceId, {
-        view: 'history',
-        page: query.page,
-        pageSize: query.pageSize,
-        pluginId: 'waste-management',
-        q: query.search,
-      })
-    ),
+  const audit = await withInstanceDb(query.instanceId, (client) => listWasteManagementAuditRecords(client, query));
+
+  const loadAllTechnicalAuditRecords = async (): Promise<readonly WasteManagementTechnicalHistoryRecord[]> => {
+    const items: WasteManagementTechnicalHistoryRecord[] = [];
+    let currentPage = 1;
+    let total = 0;
+
+    do {
+      const technicalAuditPage = await withInstanceDb(query.instanceId, (client) =>
+        listWasteManagementTechnicalAuditRecords(client, {
+          ...query,
+          page: currentPage,
+          pageSize: query.pageSize,
+        })
+      );
+      items.push(...technicalAuditPage.items);
+      total = technicalAuditPage.total;
+      currentPage += 1;
+    } while (items.length < total);
+
+    return items;
+  };
+
+  const loadAllTechnicalJobRecords = async (): Promise<readonly WasteManagementTechnicalHistoryRecord[]> => {
+    const items: WasteManagementTechnicalHistoryRecord[] = [];
+    let currentPage = 1;
+    let total = 0;
+
+    do {
+      const technicalJobsPage = await withStudioJobRepository(query.instanceId, (repository) =>
+        repository.listJobs(query.instanceId, {
+          view: 'history',
+          page: currentPage,
+          pageSize: query.pageSize,
+          pluginId: 'waste-management',
+          q: query.search,
+        })
+      );
+
+      items.push(
+        ...technicalJobsPage.items
+          .map((job): WasteManagementTechnicalHistoryRecord | null => {
+            if (job.status !== 'succeeded' && job.status !== 'failed' && job.status !== 'cancelled') {
+              return null;
+            }
+
+            const eventType = mapJobTypeIdToTechnicalEventType(job.jobTypeId, job.status);
+            if (!eventType) {
+              return null;
+            }
+
+            return {
+              id: `job:${job.id}:${job.status}`,
+              eventType,
+              outcome: job.status === 'succeeded' ? 'success' : 'failure',
+              occurredAt: job.finishedAt ?? job.updatedAt,
+              source: 'job',
+              jobId: job.id,
+              jobTypeId: job.jobTypeId,
+              requestId: job.requestId,
+              message: job.latestEvent?.message,
+              errorCode: job.errorPayload?.code,
+            };
+          })
+          .filter((item): item is WasteManagementTechnicalHistoryRecord => item !== null)
+      );
+
+      total = technicalJobsPage.total;
+      currentPage += 1;
+    } while ((currentPage - 1) * query.pageSize < total);
+
+    return items;
+  };
+
+  const [technicalAuditItems, technicalJobItems] = await Promise.all([
+    loadAllTechnicalAuditRecords(),
+    loadAllTechnicalJobRecords(),
   ]);
 
-  const jobItems = technicalJobs.items
-    .map((job): WasteManagementTechnicalHistoryRecord | null => {
-      if (job.status !== 'succeeded' && job.status !== 'failed' && job.status !== 'cancelled') {
-        return null;
-      }
-
-      const eventType = mapJobTypeIdToTechnicalEventType(job.jobTypeId, job.status);
-      if (!eventType) {
-        return null;
-      }
-
-      return {
-        id: `job:${job.id}:${job.status}`,
-        eventType,
-        outcome: job.status === 'succeeded' ? 'success' : 'failure',
-        occurredAt: job.finishedAt ?? job.updatedAt,
-        source: 'job',
-        jobId: job.id,
-        jobTypeId: job.jobTypeId,
-        requestId: job.requestId,
-        message: job.latestEvent?.message,
-        errorCode: job.errorPayload?.code,
-      };
-    })
-    .filter((item): item is WasteManagementTechnicalHistoryRecord => item !== null);
+  const mergedTechnicalItems = [...technicalAuditItems, ...technicalJobItems].sort((left, right) =>
+    right.occurredAt.localeCompare(left.occurredAt)
+  );
+  const technicalOffset = (query.page - 1) * query.pageSize;
 
   return {
     audit,
     technical: {
-      items: [...technicalAudit.items, ...jobItems].sort((left, right) => right.occurredAt.localeCompare(left.occurredAt)),
-      total: technicalAudit.total + technicalJobs.total,
+      items: mergedTechnicalItems.slice(technicalOffset, technicalOffset + query.pageSize),
+      total: mergedTechnicalItems.length,
     },
   };
 };

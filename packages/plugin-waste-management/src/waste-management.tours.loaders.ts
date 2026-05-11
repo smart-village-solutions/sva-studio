@@ -12,39 +12,40 @@ type Translate = (key: string, variables?: Readonly<Record<string, string | numb
 
 export const useWasteToursDataLoading = (state: WasteToursState, pt: Translate) => {
   const ptRef = useRef(pt);
+  const isMountedRef = useRef(false);
   ptRef.current = pt;
   const { setAvailableFractions, setError, setLoading, setMasterDataOverview, setOverview, setSchedulingOverview } = state;
 
   const loadOverview = useCallback(
-    async (active = true) => {
+    async () => {
       try {
         const [toursResponse, masterDataResponse, schedulingResponse] = await Promise.all([
           getWasteManagementToursOverview(),
           getWasteManagementMasterDataOverview(),
           getWasteManagementSchedulingOverview(),
         ]);
-        if (!active) return;
+        if (!isMountedRef.current) return;
         setOverview(toursResponse);
         setAvailableFractions(masterDataResponse.fractions);
         setMasterDataOverview(masterDataResponse);
         setSchedulingOverview(schedulingResponse);
         setError(null);
       } catch (loadError) {
-        if (!active) return;
+        if (!isMountedRef.current) return;
         const code = resolveApiErrorCode(loadError);
         setError(code === 'forbidden' ? ptRef.current('tours.messages.loadForbidden') : ptRef.current('tours.messages.loadError'));
       } finally {
-        if (active) setLoading(false);
+        if (isMountedRef.current) setLoading(false);
       }
     },
     [setAvailableFractions, setError, setLoading, setMasterDataOverview, setOverview, setSchedulingOverview]
   );
 
   useEffect(() => {
-    let active = true;
-    void loadOverview(active);
+    isMountedRef.current = true;
+    void loadOverview();
     return () => {
-      active = false;
+      isMountedRef.current = false;
     };
   }, [loadOverview]);
 

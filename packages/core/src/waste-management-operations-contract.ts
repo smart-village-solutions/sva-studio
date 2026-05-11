@@ -6,6 +6,8 @@ const wasteManagementJobTypeIds = {
   resetData: 'waste-management.reset-data',
 } as const;
 
+const wasteManagementResetConfirmationToken = 'RESET' as const;
+
 const wasteManagementImportProfileIds = {
   geographyCollectionLocations: 'waste-management.geografie-abholorte',
   tours: 'waste-management.touren',
@@ -63,6 +65,7 @@ export const wasteManagementOperationsContract = {
   pluginId: 'waste-management',
   queueName: 'plugin-operations',
   jobTypeIds: wasteManagementJobTypeIds,
+  resetConfirmationToken: wasteManagementResetConfirmationToken,
   importProfileIds: wasteManagementImportProfileIds,
   importSourceFormats: wasteManagementImportSourceFormats,
   isJobTypeId: (value: string): value is WasteManagementJobTypeId =>

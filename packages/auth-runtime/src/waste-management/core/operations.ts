@@ -10,7 +10,8 @@ import { wasteManagementOperationSchemas } from './schemas.js';
 import type { WasteManagementHandlerDeps } from './types.js';
 import { getRequestId } from './utils.js';
 
-const { startImportSchema, startMigrationsSchema, startResetSchema, startSeedSchema } = wasteManagementOperationSchemas;
+const { startImportSchema, startInitializeSchema, startMigrationsSchema, startResetSchema, startSeedSchema } =
+  wasteManagementOperationSchemas;
 
 const startToolJob = async (
   request: Request,
@@ -87,6 +88,22 @@ const startToolJob = async (
 };
 
 export const wasteManagementOperationHandlers = {
+  startWasteManagementInitializeInternal: async (
+    request: Request,
+    ctx: AuthenticatedRequestContext,
+    deps: WasteManagementHandlerDeps = {}
+  ): Promise<Response> =>
+    startToolJob(request, ctx, deps, {
+      requiredPermission: 'waste-management.settings.manage',
+      endpoint: 'POST:/api/v1/waste-management/tools/initialize',
+      schema: startInitializeSchema,
+      jobTypeId: wasteManagementOperationsContract.jobTypeIds.initializeDataSource,
+      auditActionId: 'waste-management.initialize.started',
+      toPayload: (data) => ({
+        operation: 'initialize-data-source',
+        targetSchema: typeof data.targetSchema === 'string' ? data.targetSchema : undefined,
+      }),
+    }),
   startWasteManagementMigrationsInternal: async (
     request: Request,
     ctx: AuthenticatedRequestContext,

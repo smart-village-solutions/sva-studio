@@ -1,4 +1,4 @@
-import { getWasteManagementImportCatalogEntry } from '@sva/core';
+import { getWasteManagementImportCatalogEntry, wasteManagementOperationsContract } from '@sva/core';
 import { runWasteConnectionCheck } from '@sva/server-runtime';
 
 import { executeImport, parseImportRows } from './waste-management-operations.import.js';
@@ -120,8 +120,16 @@ export const createWasteManagementOperationRuntime = (
 
   async resetData(instanceId, input) {
     const startedAt = Date.now();
-    if (input.confirmationToken.trim().length === 0) {
+    const normalizedConfirmationToken = input.confirmationToken.trim();
+    const acceptedConfirmationTokens = new Set([
+      wasteManagementOperationsContract.resetConfirmationToken,
+      'confirm-reset',
+    ]);
+    if (normalizedConfirmationToken.length === 0) {
       throw new Error('missing_reset_confirmation_token');
+    }
+    if (!acceptedConfirmationTokens.has(normalizedConfirmationToken)) {
+      throw new Error('invalid_reset_confirmation_token');
     }
     const details = await withWasteClient(deps, instanceId, async ({ client }) => {
       const tableOrder = [
@@ -144,7 +152,7 @@ export const createWasteManagementOperationRuntime = (
       return {
         operation: 'reset-data',
         mode: 'executed',
-        confirmationTokenLength: input.confirmationToken.trim().length,
+        confirmationTokenLength: normalizedConfirmationToken.length,
         deletedRows,
       };
     });

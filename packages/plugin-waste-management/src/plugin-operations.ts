@@ -11,11 +11,11 @@ const wasteManagementPluginJobTypes = [
     displayName: 'Waste-Initialisierung',
     progress: {
       phaseKeys: ['waste-management.initialize', 'waste-management.completed'],
-      stepKeys: ['resolve-data-source', 'apply-baseline-schema'],
+      stepKeys: ['resolve-operation', 'complete-operation'],
     },
     result: {
       summaryKeys: ['durationMs'],
-      detailKeys: ['applied-migration-count'],
+      detailKeys: ['connectionCheck', 'schemaInspection'],
     },
     errors: {
       detailKeys: ['failed-step', 'failed-migration'],
@@ -27,11 +27,11 @@ const wasteManagementPluginJobTypes = [
     displayName: 'Waste-Migrationen anwenden',
     progress: {
       phaseKeys: ['waste-management.migrations', 'waste-management.completed'],
-      stepKeys: ['resolve-data-source', 'load-migration-plan', 'apply-migration-batch'],
+      stepKeys: ['resolve-operation', 'complete-operation'],
     },
     result: {
       summaryKeys: ['durationMs'],
-      detailKeys: ['applied-migration-count', 'target-schema-version'],
+      detailKeys: ['requestedByVersion', 'schemaInspection', 'appliedStatementCount'],
     },
     errors: {
       detailKeys: ['failed-step', 'failed-migration'],
@@ -42,12 +42,12 @@ const wasteManagementPluginJobTypes = [
     queue: wasteManagementOperationsContract.queueName,
     displayName: 'Waste-Daten importieren',
     progress: {
-      phaseKeys: ['ingestion', 'schema-validation', 'mapping', 'preview', 'commit', 'completed'],
-      stepKeys: ['parse-source', 'validate-records', 'map-records', 'persist-batch'],
+      phaseKeys: ['mapping', 'waste-management.completed'],
+      stepKeys: ['resolve-operation', 'complete-operation'],
     },
     result: {
-      summaryKeys: ['processedItems', 'acceptedItems', 'rejectedItems', 'warningCount', 'durationMs'],
-      detailKeys: ['import-profile-id', 'rejected-rows'],
+      summaryKeys: ['durationMs'],
+      detailKeys: ['importProfileId', 'sourceFormat', 'dryRun', 'rowCount', 'rows', 'upserts'],
     },
     errors: {
       detailKeys: ['failed-step', 'source-row'],
@@ -59,11 +59,11 @@ const wasteManagementPluginJobTypes = [
     displayName: 'Waste-Seed laden',
     progress: {
       phaseKeys: ['waste-management.seed', 'waste-management.completed'],
-      stepKeys: ['resolve-data-source', 'load-seed-bundle', 'persist-seed-batch'],
+      stepKeys: ['resolve-operation', 'complete-operation'],
     },
     result: {
-      summaryKeys: ['processedItems', 'acceptedItems', 'durationMs'],
-      detailKeys: ['seed-key'],
+      summaryKeys: ['durationMs'],
+      detailKeys: ['seedKey', 'seededEntityCount'],
     },
     errors: {
       detailKeys: ['failed-step', 'failed-entity'],
@@ -75,11 +75,11 @@ const wasteManagementPluginJobTypes = [
     displayName: 'Waste-Daten zurücksetzen',
     progress: {
       phaseKeys: ['waste-management.reset', 'waste-management.completed'],
-      stepKeys: ['resolve-data-source', 'delete-domain-data', 'verify-empty-state'],
+      stepKeys: ['resolve-operation', 'complete-operation'],
     },
     result: {
-      summaryKeys: ['processedItems', 'durationMs'],
-      detailKeys: ['deleted-table-count'],
+      summaryKeys: ['durationMs'],
+      detailKeys: ['confirmationTokenLength', 'deletedRows'],
     },
     errors: {
       detailKeys: ['failed-step', 'failed-table'],

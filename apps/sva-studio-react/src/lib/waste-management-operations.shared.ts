@@ -1,6 +1,3 @@
-import { readFile } from 'node:fs/promises';
-import { resolve as resolvePath } from 'node:path';
-
 import {
   createWasteMasterDataRepository,
   type SqlExecutionResult,
@@ -179,8 +176,7 @@ export const defaultReadBinarySource = async (blobRef: string): Promise<Uint8Arr
   if (blobRef.startsWith('blob:')) {
     throw new Error('unsupported_blob_ref:blob_url');
   }
-  const resolvedPath = blobRef.startsWith('file://') ? new URL(blobRef) : resolvePath(process.cwd(), blobRef);
-  return readFile(resolvedPath);
+  throw new Error('unsupported_blob_ref:local_file');
 };
 
 export const defaultCreatePool = (connectionString: string): WasteOperationSqlPool =>

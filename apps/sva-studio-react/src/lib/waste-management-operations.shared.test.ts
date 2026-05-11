@@ -92,7 +92,7 @@ describe('waste-management operations shared helpers', () => {
     expect(() => parseFollowUpMode(contract, 'duplicate')).toThrowError('invalid_follow_up_mode:duplicate');
   });
 
-  it('reads inline data urls and rejects unsupported blob urls', async () => {
+  it('reads inline data urls and rejects unsupported external blob refs', async () => {
     await expect(defaultReadBinarySource('data:text/plain,Hallo%20Welt')).resolves.toEqual(
       Buffer.from('Hallo Welt', 'utf8')
     );
@@ -101,6 +101,12 @@ describe('waste-management operations shared helpers', () => {
     );
     await expect(defaultReadBinarySource('data:text/plain;base64')).rejects.toThrowError('invalid_blob_ref:data_url');
     await expect(defaultReadBinarySource('blob:temporary')).rejects.toThrowError('unsupported_blob_ref:blob_url');
+    await expect(defaultReadBinarySource('file:///tmp/import.xlsx')).rejects.toThrowError(
+      'unsupported_blob_ref:local_file'
+    );
+    await expect(defaultReadBinarySource('../../etc/passwd')).rejects.toThrowError(
+      'unsupported_blob_ref:local_file'
+    );
   });
 
   it('builds operation summaries with a minimum duration of one millisecond', () => {

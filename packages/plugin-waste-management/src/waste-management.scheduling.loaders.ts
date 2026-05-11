@@ -11,22 +11,23 @@ type Translate = (key: string, variables?: Readonly<Record<string, string | numb
 
 export const useWasteSchedulingDataLoading = (state: WasteSchedulingState, pt: Translate) => {
   const ptRef = useRef(pt);
+  const isMountedRef = useRef(false);
   ptRef.current = pt;
   const { setAvailableTours, setError, setLoading, setOverview } = state;
 
   const loadOverview = useCallback(
-    async (active = true) => {
+    async () => {
       try {
         const [schedulingResponse, toursResponse] = await Promise.all([
           getWasteManagementSchedulingOverview(),
           getWasteManagementToursOverview(),
         ]);
-        if (!active) return;
+        if (!isMountedRef.current) return;
         setOverview(schedulingResponse);
         setAvailableTours(toursResponse.tours);
         setError(null);
       } catch (loadError) {
-        if (!active) return;
+        if (!isMountedRef.current) return;
         const code = resolveApiErrorCode(loadError);
         setError(
           code === 'forbidden'
@@ -34,17 +35,17 @@ export const useWasteSchedulingDataLoading = (state: WasteSchedulingState, pt: T
             : ptRef.current('scheduling.messages.loadError')
         );
       } finally {
-        if (active) setLoading(false);
+        if (isMountedRef.current) setLoading(false);
       }
     },
     [setAvailableTours, setError, setLoading, setOverview]
   );
 
   useEffect(() => {
-    let active = true;
-    void loadOverview(active);
+    isMountedRef.current = true;
+    void loadOverview();
     return () => {
-      active = false;
+      isMountedRef.current = false;
     };
   }, [loadOverview]);
 

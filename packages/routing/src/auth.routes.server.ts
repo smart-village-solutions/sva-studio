@@ -152,6 +152,9 @@ const governanceAuthHandlerMap = {
     GET: routeHandler(authRuntimeRoutes.wasteManagementHandlers.getSettings),
     PUT: routeHandler(authRuntimeRoutes.wasteManagementHandlers.updateSettings),
   },
+  '/api/v1/waste-management/tools/initialize': {
+    POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.startInitialize),
+  },
   '/api/v1/waste-management/tools/imports': {
     POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.startImport),
   },

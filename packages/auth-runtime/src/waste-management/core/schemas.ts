@@ -1,4 +1,4 @@
-import { wasteManagementMasterDataContract, type WasteTourRecurrence } from '@sva/core';
+import { wasteManagementMasterDataContract, wasteManagementOperationsContract, type WasteTourRecurrence } from '@sva/core';
 import { z } from 'zod';
 
 export const wasteManagementSettingsSchema = z.object({
@@ -141,6 +141,10 @@ const startMigrationsSchema = z.object({
   requestedByVersion: z.string().trim().min(1).optional(),
 });
 
+const startInitializeSchema = z.object({
+  targetSchema: z.string().trim().min(1).optional(),
+});
+
 const startImportSchema = z.object({
   importProfileId: z.string().trim().min(1),
   sourceFormat: z.string().trim().min(1),
@@ -153,7 +157,10 @@ const startSeedSchema = z.object({
 });
 
 const startResetSchema = z.object({
-  confirmationToken: z.string().trim().min(1),
+  confirmationToken: z.string().trim().refine(
+    (value) => value === wasteManagementOperationsContract.resetConfirmationToken,
+    `Bestätigungstoken muss exakt "${wasteManagementOperationsContract.resetConfirmationToken}" entsprechen.`
+  ),
 });
 
 export const wasteManagementMasterDataSchemas = {
@@ -186,6 +193,7 @@ export const wasteManagementTourSchemas = {
 } as const;
 
 export const wasteManagementOperationSchemas = {
+  startInitializeSchema,
   startMigrationsSchema,
   startImportSchema,
   startSeedSchema,

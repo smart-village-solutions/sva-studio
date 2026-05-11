@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { PluginJobHandlerContext } from '@sva/plugin-sdk';
 import { wasteManagementOperationsContract } from '@sva/plugin-sdk';
 
+import { createWasteManagementPluginJobTypes } from '../src/plugin-operations.js';
 import {
   createWasteManagementPluginOperationExecutionHandlers,
   type WasteManagementOperationRuntime,
@@ -66,7 +67,10 @@ describe('waste management plugin server handlers', () => {
       durationMs: 12,
       details: {
         operation: 'apply-migrations',
+        requestedByVersion: '1.2.3',
+        schemaInspection: { schemaVersion: 3 },
         appliedStatementCount: 5,
+        undeclaredKey: 'ignored',
       },
     }));
     const handlers = createWasteManagementPluginOperationExecutionHandlers(
@@ -82,14 +86,29 @@ describe('waste management plugin server handlers', () => {
     });
 
     const result = await handlers['waste-management.apply-migrations']?.(context);
+    const jobType = createWasteManagementPluginJobTypes().find(
+      (entry) => entry.jobTypeId === wasteManagementOperationsContract.jobTypeIds.applyMigrations
+    );
 
-    expect(context.progressReporter.reportProgress).toHaveBeenCalledWith(
+    expect(context.progressReporter.reportProgress).toHaveBeenNthCalledWith(
+      1,
       expect.objectContaining({
         jobId: 'job-1',
         instanceId: 'instance-1',
         progress: expect.objectContaining({
-          currentStepKey: 'complete-operation',
-          currentPhase: 'waste-management.completed',
+          currentStepKey: jobType?.progress.stepKeys[0],
+          currentPhase: jobType?.progress.phaseKeys[0],
+        }),
+      })
+    );
+    expect(context.progressReporter.reportProgress).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        jobId: 'job-1',
+        instanceId: 'instance-1',
+        progress: expect.objectContaining({
+          currentStepKey: jobType?.progress.stepKeys.at(-1),
+          currentPhase: jobType?.progress.phaseKeys.at(-1),
         }),
       })
     );
@@ -108,10 +127,82 @@ describe('waste management plugin server handlers', () => {
         plugin: {
           operation: 'apply-migrations',
           mode: 'executed',
+          requestedByVersion: '1.2.3',
+          schemaInspection: { schemaVersion: 3 },
           appliedStatementCount: 5,
         },
       },
     });
+    expect(Object.keys(result?.resultPayload.plugin ?? {}).sort()).toEqual(
+      ['appliedStatementCount', 'mode', 'operation', 'requestedByVersion', 'schemaInspection'].sort()
+    );
+  });
+
+  it('keeps declared progress and detail keys aligned with runtime emissions for every waste job type', async () => {
+    const handlers = createWasteManagementPluginOperationExecutionHandlers(createRuntime());
+    const jobTypes = createWasteManagementPluginJobTypes();
+    const scenarios = [
+      {
+        jobTypeId: wasteManagementOperationsContract.jobTypeIds.initializeDataSource,
+        inputPayload: { operation: 'initialize-data-source' },
+        expectedDetailKeys: ['connectionCheck', 'schemaInspection'],
+      },
+      {
+        jobTypeId: wasteManagementOperationsContract.jobTypeIds.applyMigrations,
+        inputPayload: { operation: 'apply-migrations' },
+        expectedDetailKeys: ['requestedByVersion', 'schemaInspection', 'appliedStatementCount'],
+      },
+      {
+        jobTypeId: wasteManagementOperationsContract.jobTypeIds.importData,
+        inputPayload: { operation: 'import-data' },
+        expectedDetailKeys: ['importProfileId', 'sourceFormat', 'dryRun', 'rowCount', 'rows', 'upserts'],
+      },
+      {
+        jobTypeId: wasteManagementOperationsContract.jobTypeIds.seedData,
+        inputPayload: { operation: 'seed-data' },
+        expectedDetailKeys: ['seedKey', 'seededEntityCount'],
+      },
+      {
+        jobTypeId: wasteManagementOperationsContract.jobTypeIds.resetData,
+        inputPayload: { operation: 'reset-data' },
+        expectedDetailKeys: ['confirmationTokenLength', 'deletedRows'],
+      },
+    ] as const;
+
+    for (const scenario of scenarios) {
+      const context = createContext({
+        jobTypeId: scenario.jobTypeId,
+        inputPayload: scenario.inputPayload,
+      });
+
+      const result = await handlers[scenario.jobTypeId]?.(context);
+      const jobType = jobTypes.find((entry) => entry.jobTypeId === scenario.jobTypeId);
+      const pluginPayload = result?.resultPayload.plugin ?? {};
+
+      expect(jobType?.progress.stepKeys).toEqual(['resolve-operation', 'complete-operation']);
+      expect(context.progressReporter.reportProgress).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({
+          progress: expect.objectContaining({
+            currentPhase: jobType?.progress.phaseKeys[0],
+            currentStepKey: jobType?.progress.stepKeys[0],
+          }),
+        })
+      );
+      expect(context.progressReporter.reportProgress).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          progress: expect.objectContaining({
+            currentPhase: jobType?.progress.phaseKeys.at(-1),
+            currentStepKey: jobType?.progress.stepKeys.at(-1),
+          }),
+        })
+      );
+      expect(jobType?.result.detailKeys.slice().sort()).toEqual(scenario.expectedDetailKeys.slice().sort());
+      expect(Object.keys(pluginPayload).sort()).toEqual(
+        ['mode', 'operation', ...scenario.expectedDetailKeys].sort()
+      );
+    }
   });
 
   it('rejects malformed waste job payloads fail-closed', async () => {
@@ -132,10 +223,50 @@ describe('waste management plugin server handlers', () => {
 const createRuntime = (
   overrides: Partial<WasteManagementOperationRuntime> = {}
 ): WasteManagementOperationRuntime => ({
-  initializeDataSource: vi.fn(async () => ({ durationMs: 1, details: { operation: 'initialize-data-source' } })),
-  applyMigrations: vi.fn(async () => ({ durationMs: 1, details: { operation: 'apply-migrations' } })),
-  importData: vi.fn(async () => ({ durationMs: 1, details: { operation: 'import-data' } })),
-  seedData: vi.fn(async () => ({ durationMs: 1, details: { operation: 'seed-data' } })),
-  resetData: vi.fn(async () => ({ durationMs: 1, details: { operation: 'reset-data' } })),
+  initializeDataSource: vi.fn(async () => ({
+    durationMs: 1,
+    details: {
+      operation: 'initialize-data-source',
+      connectionCheck: { status: 'ok' },
+      schemaInspection: { initialized: true },
+    },
+  })),
+  applyMigrations: vi.fn(async () => ({
+    durationMs: 1,
+    details: {
+      operation: 'apply-migrations',
+      requestedByVersion: '1.0.0',
+      schemaInspection: { schemaVersion: 2 },
+      appliedStatementCount: 4,
+    },
+  })),
+  importData: vi.fn(async () => ({
+    durationMs: 1,
+    details: {
+      operation: 'import-data',
+      importProfileId: 'waste-management.geografie-abholorte',
+      sourceFormat: 'xlsx',
+      dryRun: false,
+      rowCount: 3,
+      rows: 3,
+      upserts: 7,
+    },
+  })),
+  seedData: vi.fn(async () => ({
+    durationMs: 1,
+    details: {
+      operation: 'seed-data',
+      seedKey: 'baseline',
+      seededEntityCount: 5,
+    },
+  })),
+  resetData: vi.fn(async () => ({
+    durationMs: 1,
+    details: {
+      operation: 'reset-data',
+      confirmationTokenLength: 5,
+      deletedRows: { waste_regions: 1 },
+    },
+  })),
   ...overrides,
 });

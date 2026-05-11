@@ -1,5 +1,6 @@
 import type { PluginJobExecutionHandler } from '@sva/plugin-sdk';
 import {
+  type PluginJobTypeDefinition,
   wasteManagementOperationsContract,
   type WasteManagementApplyMigrationsJobInput,
   type WasteManagementImportJobInput,
@@ -8,6 +9,8 @@ import {
   type WasteManagementResetJobInput,
   type WasteManagementSeedJobInput,
 } from '@sva/plugin-sdk';
+
+import { createWasteManagementPluginJobTypes } from './plugin-operations.js';
 
 const createProgress = (input: {
   readonly completedSteps: number;
@@ -35,6 +38,48 @@ const assertWasteJobInput = <TJobInput extends WasteManagementJobInput>(
   }
 
   throw new Error(`invalid_waste_management_job_input:${jobTypeId}`);
+};
+
+const jobTypeDefinitionsById = new Map<string, PluginJobTypeDefinition>(
+  createWasteManagementPluginJobTypes().map((jobType) => [jobType.jobTypeId, jobType])
+);
+
+const getJobTypeDefinition = (jobTypeId: string): PluginJobTypeDefinition => {
+  const definition = jobTypeDefinitionsById.get(jobTypeId);
+  if (!definition) {
+    throw new Error(`unknown_waste_management_job_type:${jobTypeId}`);
+  }
+  return definition;
+};
+
+const pickDeclaredDetailKeys = (
+  details: Readonly<Record<string, unknown>>,
+  detailKeys: readonly string[]
+): Record<string, unknown> =>
+  Object.fromEntries(
+    detailKeys
+      .filter((detailKey) => Object.prototype.hasOwnProperty.call(details, detailKey))
+      .map((detailKey) => [detailKey, details[detailKey]])
+  );
+
+const getProgressDefinition = (
+  jobTypeDefinition: PluginJobTypeDefinition,
+  fallbackPhaseKey: string
+): {
+  readonly initialPhaseKey: string;
+  readonly initialStepKey: string;
+  readonly completedPhaseKey: string;
+  readonly completedStepKey: string;
+} => {
+  const phaseKeys = jobTypeDefinition.progress?.phaseKeys ?? [fallbackPhaseKey, 'waste-management.completed'];
+  const stepKeys = jobTypeDefinition.progress?.stepKeys ?? ['resolve-operation', 'complete-operation'];
+
+  return {
+    initialPhaseKey: phaseKeys[0] ?? fallbackPhaseKey,
+    initialStepKey: stepKeys[0] ?? 'resolve-operation',
+    completedPhaseKey: phaseKeys[phaseKeys.length - 1] ?? 'waste-management.completed',
+    completedStepKey: stepKeys[stepKeys.length - 1] ?? 'complete-operation',
+  };
 };
 
 export type WasteManagementOperationRuntime = {
@@ -90,6 +135,11 @@ const createOperationHandler = <TJobInput extends WasteManagementJobInput>(input
 }) =>
   (runtime: WasteManagementOperationRuntime): PluginJobExecutionHandler =>
   async (context) => {
+    const jobTypeDefinition = getJobTypeDefinition(input.jobTypeId);
+    const { initialPhaseKey, initialStepKey, completedPhaseKey, completedStepKey } = getProgressDefinition(
+      jobTypeDefinition,
+      input.phaseKey
+    );
     const payload = assertWasteJobInput<TJobInput>(input.jobTypeId, context.job.inputPayload, input.expectedOperation);
     const startedAt = Date.now();
 
@@ -100,8 +150,8 @@ const createOperationHandler = <TJobInput extends WasteManagementJobInput>(input
       progress: createProgress({
         completedSteps: 1,
         totalSteps: 2,
-        currentPhase: input.phaseKey,
-        currentStepKey: 'resolve-operation',
+        currentPhase: initialPhaseKey,
+        currentStepKey: initialStepKey,
       }),
     });
 
@@ -111,8 +161,8 @@ const createOperationHandler = <TJobInput extends WasteManagementJobInput>(input
     const progress = createProgress({
       completedSteps: 2,
       totalSteps: 2,
-      currentPhase: 'waste-management.completed',
-      currentStepKey: 'complete-operation',
+      currentPhase: completedPhaseKey,
+      currentStepKey: completedStepKey,
     });
 
     await context.progressReporter.reportProgress({
@@ -130,7 +180,7 @@ const createOperationHandler = <TJobInput extends WasteManagementJobInput>(input
         plugin: {
           operation: payload.operation,
           mode: 'executed',
-          ...operationResult.details,
+          ...pickDeclaredDetailKeys(operationResult.details, jobTypeDefinition.result?.detailKeys ?? []),
         },
       },
     };

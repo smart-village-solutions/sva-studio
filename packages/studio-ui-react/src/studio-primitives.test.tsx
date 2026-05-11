@@ -447,7 +447,7 @@ describe('studio-ui-react primitives', () => {
         this.callback([{ contentRect: { width: 320 } as DOMRectReadOnly }] as ResizeObserverEntry[], this as ResizeObserver);
       }
 
-      unobserve() {}
+      unobserve = vi.fn();
 
       disconnect = disconnect;
     } as typeof ResizeObserver;

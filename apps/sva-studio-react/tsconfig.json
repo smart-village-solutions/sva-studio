@@ -30,6 +30,8 @@
       "@sva/auth-runtime": ["../../packages/auth-runtime/src/index.ts"],
       "@sva/auth-runtime/routes": ["../../packages/auth-runtime/src/routes.ts"],
       "@sva/auth-runtime/server": ["../../packages/auth-runtime/src/server.ts"],
+      "@sva/data-repositories": ["../../packages/data-repositories/src/index.ts"],
+      "@sva/data-repositories/server": ["../../packages/data-repositories/src/server.ts"],
       "@sva/iam-governance/legal-text-html": ["../../packages/iam-governance/src/legal-text-html.ts"],
       "@sva/iam-governance/legal-text-sanitize-html": ["../../packages/iam-governance/src/legal-text-sanitize-html.ts"],
       "@sva/plugin-events": ["../../packages/plugin-events/src/index.ts"],

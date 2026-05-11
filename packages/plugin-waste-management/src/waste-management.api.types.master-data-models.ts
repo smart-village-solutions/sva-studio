@@ -7,4 +7,4 @@ export type {
   WasteLocationTourLinkRecord,
   WasteRegionRecord,
   WasteStreetRecord,
-} from '@sva/core';
+} from '@sva/plugin-sdk';

@@ -6,7 +6,7 @@ import type {
   WasteRegionRecord,
   WasteStreetRecord,
   WasteTourRecord,
-} from '@sva/core';
+} from '@sva/plugin-sdk';
 import { WasteMasterDataLocationsHierarchy } from './waste-management.master-data-locations-hierarchy.js';
 import { WasteMasterDataLocationsOverview } from './waste-management.master-data-locations-overview.js';
 import { WasteMasterDataLocationsTable } from './waste-management.master-data-locations-table.js';

@@ -1,4 +1,4 @@
-import type { WasteCityRecord, WasteFractionRecord, WasteHouseNumberRecord, WasteRegionRecord, WasteStreetRecord } from '@sva/core';
+import type { WasteCityRecord, WasteFractionRecord, WasteHouseNumberRecord, WasteRegionRecord, WasteStreetRecord } from '@sva/plugin-sdk';
 
 import { wasteMasterDataFormDefaults, wasteMasterDataFormMappers } from './waste-management.master-data.forms.js';
 import type { WasteMasterDataState } from './waste-management.master-data.state.js';

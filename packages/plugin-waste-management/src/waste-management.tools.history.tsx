@@ -1,5 +1,5 @@
 import { useNavigate } from '@tanstack/react-router';
-import type { StudioJobResponse, WasteManagementHistoryOverview } from '@sva/core';
+import type { StudioJobResponse, WasteManagementHistoryOverview } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Badge, Button, StudioEmptyState, StudioJobSummaryCard } from '@sva/studio-ui-react';
 

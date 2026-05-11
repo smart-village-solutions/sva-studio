@@ -1,4 +1,4 @@
-import type { WasteGlobalDateShiftRecord, WasteTourDateShiftRecord } from '@sva/core';
+import type { WasteGlobalDateShiftRecord, WasteTourDateShiftRecord } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Badge, Button, StudioEmptyState } from '@sva/studio-ui-react';
 

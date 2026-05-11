@@ -15,6 +15,7 @@ import {
   AlertDialogTitle,
   Badge,
   Button,
+  Checkbox,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -435,6 +436,44 @@ describe('studio-ui-react primitives', () => {
     expect(screen.getAllByText('a')).toHaveLength(2);
   });
 
+  it('renders the compact card layout and handles mobile row selection', () => {
+    const originalResizeObserver = globalThis.ResizeObserver;
+    const disconnect = vi.fn();
+
+    globalThis.ResizeObserver = class {
+      constructor(private readonly callback: ResizeObserverCallback) {}
+
+      observe() {
+        this.callback([{ contentRect: { width: 320 } as DOMRectReadOnly }] as ResizeObserverEntry[], this as ResizeObserver);
+      }
+
+      unobserve() {}
+
+      disconnect = disconnect;
+    } as typeof ResizeObserver;
+
+    try {
+      const { unmount } = render(
+        <StudioDataTable
+          ariaLabel="News"
+          labels={tableLabels}
+          data={[{ id: 'a', title: 'Alpha' }]}
+          getRowId={(row) => row.id}
+          columns={[{ id: 'title', header: 'Titel', cell: (row) => row.title }]}
+          emptyState={<p>Keine Daten</p>}
+        />
+      );
+
+      fireEvent.click(screen.getByLabelText('News a in Kartenansicht auswählen'));
+      expect((screen.getByLabelText('News a in Kartenansicht auswählen') as HTMLInputElement).checked).toBe(true);
+      unmount();
+    } finally {
+      globalThis.ResizeObserver = originalResizeObserver;
+    }
+
+    expect(disconnect).toHaveBeenCalledTimes(1);
+  });
+
   it('renders base controls', () => {
     render(
       <>
@@ -451,6 +490,22 @@ describe('studio-ui-react primitives', () => {
     expect(screen.getByText('Hinweis')).toBeTruthy();
     expect(screen.getByText('Aktiv')).toBeTruthy();
     expect(screen.getByRole('combobox', { name: 'Status' })).toBeTruthy();
+  });
+
+  it('forwards checkbox refs to callback and object refs', () => {
+    const callbackRef = vi.fn();
+    const objectRef = { current: null as HTMLInputElement | null };
+
+    render(
+      <>
+        <Checkbox aria-label="Callback-Checkbox" ref={callbackRef} />
+        <Checkbox aria-label="Objekt-Checkbox" ref={objectRef} indeterminate />
+      </>
+    );
+
+    expect(callbackRef).toHaveBeenCalledWith(screen.getByRole('checkbox', { name: 'Callback-Checkbox' }));
+    expect(objectRef.current).toBe(screen.getByRole('checkbox', { name: 'Objekt-Checkbox' }));
+    expect(objectRef.current?.indeterminate).toBe(true);
   });
 
   it('renders dialog wrappers', () => {

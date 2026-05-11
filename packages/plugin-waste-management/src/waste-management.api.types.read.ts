@@ -1,3 +1,3 @@
 export type {
   WasteManagementHistoryOverview,
-} from '@sva/core';
+} from '@sva/plugin-sdk';

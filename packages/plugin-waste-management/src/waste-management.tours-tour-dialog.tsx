@@ -1,4 +1,4 @@
-import type { WasteFractionRecord } from '@sva/core';
+import type { WasteFractionRecord } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Button, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@sva/studio-ui-react';
 import type { FormEvent } from 'react';

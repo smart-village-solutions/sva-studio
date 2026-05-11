@@ -4,7 +4,7 @@ import type {
   WasteManagementImportSourceFormat,
   WasteTourDateShiftFollowUpMode,
   WasteTourRecurrence,
-} from '@sva/core';
+} from '@sva/plugin-sdk';
 
 export type WasteManagementSettingsInput = Readonly<{
   provider: 'supabase';

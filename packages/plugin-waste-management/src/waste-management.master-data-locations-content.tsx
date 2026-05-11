@@ -1,4 +1,4 @@
-import type { WasteCollectionLocationRecord } from '@sva/core';
+import type { WasteCollectionLocationRecord } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Badge, Button, Checkbox } from '@sva/studio-ui-react';
 

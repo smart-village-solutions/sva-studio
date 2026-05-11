@@ -1,4 +1,4 @@
-import type { StudioJobResponse } from '@sva/core';
+import type { StudioJobResponse } from '@sva/plugin-sdk';
 import { useState } from 'react';
 
 import { getWasteManagementImportCatalog, type StartWasteManagementImportInput } from './waste-management.api.js';

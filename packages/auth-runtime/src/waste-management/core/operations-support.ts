@@ -1,4 +1,4 @@
-import type { StudioJobStartRequest } from '@sva/core';
+import { wasteManagementOperationsContract, type StudioJobStartRequest } from '@sva/core';
 
 import { completeIdempotency, reserveIdempotency } from '../../iam-account-management/shared.js';
 import {
@@ -58,6 +58,7 @@ export const startPluginOperationJobFromFacade = async (input: {
       idempotencyKey: input.idempotencyKey,
       requestId: input.requestId,
       scheduledAt: input.scheduledAt,
+      queueName: wasteManagementOperationsContract.queueName,
       data: input.data,
     });
 

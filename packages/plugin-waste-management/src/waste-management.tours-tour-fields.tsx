@@ -1,4 +1,4 @@
-import type { WasteFractionRecord } from '@sva/core';
+import type { WasteFractionRecord } from '@sva/plugin-sdk';
 import { Checkbox, Input, Select, StudioField, StudioFieldGroup, Textarea } from '@sva/studio-ui-react';
 
 import { WasteToursFractionSelection } from './waste-management.tours.fractions.js';

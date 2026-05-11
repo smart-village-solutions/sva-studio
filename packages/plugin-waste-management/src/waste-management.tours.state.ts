@@ -1,4 +1,4 @@
-import type { WasteFractionRecord, WasteTourRecord } from '@sva/core';
+import type { WasteFractionRecord, WasteTourRecord } from '@sva/plugin-sdk';
 import { useState } from 'react';
 
 import type {

@@ -1,4 +1,4 @@
-import type { WasteTourRecord } from '@sva/core';
+import type { WasteTourRecord } from '@sva/plugin-sdk';
 import { Checkbox, Input, Select, StudioField, StudioFieldGroup, Textarea } from '@sva/studio-ui-react';
 
 import { wasteReasonTypeOptions } from './waste-management.scheduling.options.js';

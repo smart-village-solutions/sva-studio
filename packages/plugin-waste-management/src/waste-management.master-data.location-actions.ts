@@ -1,4 +1,4 @@
-import type { WasteCollectionLocationRecord } from '@sva/core';
+import type { WasteCollectionLocationRecord } from '@sva/plugin-sdk';
 
 import { wasteMasterDataFormDefaults, wasteMasterDataFormMappers } from './waste-management.master-data.forms.js';
 import type { WasteMasterDataState } from './waste-management.master-data.state.js';

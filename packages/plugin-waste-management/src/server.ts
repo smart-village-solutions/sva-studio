@@ -7,7 +7,7 @@ import {
   type WasteManagementJobInput,
   type WasteManagementResetJobInput,
   type WasteManagementSeedJobInput,
-} from '@sva/core';
+} from '@sva/plugin-sdk';
 
 const createProgress = (input: {
   readonly completedSteps: number;

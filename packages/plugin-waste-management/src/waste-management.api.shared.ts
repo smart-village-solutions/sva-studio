@@ -1,4 +1,4 @@
-import type { ApiItemResponse, StudioJobResponse } from '@sva/core';
+import type { ApiItemResponse, StudioJobResponse } from '@sva/plugin-sdk';
 import { createMainserverJsonRequestHeaders, requestMainserverJson } from '@sva/plugin-sdk';
 
 export class WasteManagementApiError extends Error {

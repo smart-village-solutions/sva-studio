@@ -1,6 +1,6 @@
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { StudioErrorState, StudioLoadingState } from '@sva/studio-ui-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import type { WasteManagementHistoryOverview } from './waste-management.api.js';
 import { getWasteManagementHistoryOverview } from './waste-management.api.js';
@@ -10,6 +10,8 @@ import { resolveApiErrorCode } from './waste-management.page.support.js';
 
 export const WasteOverviewPanel = ({ search }: { readonly search: WasteManagementSearchParams }) => {
   const pt = usePluginTranslation('wasteManagement');
+  const ptRef = useRef(pt);
+  ptRef.current = pt;
   const [loading, setLoading] = useState(true);
   const [overview, setOverview] = useState<WasteManagementHistoryOverview | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -35,7 +37,11 @@ export const WasteOverviewPanel = ({ search }: { readonly search: WasteManagemen
           return;
         }
         const code = resolveApiErrorCode(loadError);
-        setError(code === 'forbidden' ? pt('overview.messages.loadForbidden') : pt('overview.messages.loadError'));
+        setError(
+          code === 'forbidden'
+            ? ptRef.current('overview.messages.loadForbidden')
+            : ptRef.current('overview.messages.loadError')
+        );
       } finally {
         if (active) {
           setLoading(false);
@@ -46,7 +52,7 @@ export const WasteOverviewPanel = ({ search }: { readonly search: WasteManagemen
     return () => {
       active = false;
     };
-  }, [pt, search.page, search.pageSize, search.q]);
+  }, [search.page, search.pageSize, search.q]);
 
   if (loading) {
     return <StudioLoadingState>{pt('overview.messages.loading')}</StudioLoadingState>;

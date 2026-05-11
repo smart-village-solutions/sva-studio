@@ -1,4 +1,4 @@
-import type { WasteFractionRecord } from '@sva/core';
+import type { WasteFractionRecord } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Badge, Button } from '@sva/studio-ui-react';
 

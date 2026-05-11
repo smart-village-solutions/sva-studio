@@ -1,4 +1,4 @@
-import type { WasteCustomTourDate, WasteFractionRecord, WasteLocationTourLinkRecord, WasteTourRecord } from '@sva/core';
+import type { WasteCustomTourDate, WasteFractionRecord, WasteLocationTourLinkRecord, WasteTourRecord } from '@sva/plugin-sdk';
 
 import type {
   CreateWasteManagementLocationTourLinkInput,

@@ -1,4 +1,4 @@
-import { wasteManagementOperationsContract } from '@sva/core';
+import { wasteManagementOperationsContract } from '@sva/plugin-sdk';
 import type { PluginImportProfileDefinition, PluginJobTypeDefinition } from '@sva/plugin-sdk';
 import { definePluginImportProfiles, definePluginJobTypes } from '@sva/plugin-sdk';
 

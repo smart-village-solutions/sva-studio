@@ -7,7 +7,7 @@ import {
   type GlobalDateShiftFormState,
   type TourDateShiftFormState,
 } from './waste-management.scheduling.shared.js';
-import type { WasteTourRecord } from '@sva/core';
+import type { WasteTourRecord } from '@sva/plugin-sdk';
 import type { StatusMessage } from './waste-management.page.support.js';
 
 export const useWasteSchedulingState = () => {

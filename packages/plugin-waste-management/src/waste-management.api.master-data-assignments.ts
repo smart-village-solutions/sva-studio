@@ -1,4 +1,4 @@
-import type { WasteLocationTourLinkBulkCreateResult, WasteLocationTourLinkRecord } from '@sva/core';
+import type { WasteLocationTourLinkBulkCreateResult, WasteLocationTourLinkRecord } from '@sva/plugin-sdk';
 
 import type {
   CreateWasteManagementLocationTourLinkInput,

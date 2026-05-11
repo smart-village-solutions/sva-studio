@@ -4,7 +4,7 @@ import {
   StudioErrorState,
   StudioLoadingState,
 } from '@sva/studio-ui-react';
-import type { WasteManagementSettingsRecord } from '@sva/core';
+import type { WasteManagementSettingsRecord } from '@sva/plugin-sdk';
 
 import { getWasteManagementSettings, updateWasteManagementSettings, type WasteManagementSettingsInput } from './waste-management.api.js';
 import {
@@ -55,16 +55,13 @@ const toSettingsInput = (form: SettingsFormState): WasteManagementSettingsInput 
   serviceRoleKey: compactOptionalString(form.serviceRoleKey),
 });
 
-export const WasteSettingsPanel = () => {
-  const pt = usePluginTranslation('wasteManagement');
+const useWasteSettingsState = (pt: ReturnType<typeof usePluginTranslation>) => {
   const ptRef = useRef(pt);
   ptRef.current = pt;
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState<WasteManagementSettingsRecord | null>(null);
   const [form, setForm] = useState<SettingsFormState>(createDefaultSettingsForm());
   const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<StatusMessage | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -72,16 +69,12 @@ export const WasteSettingsPanel = () => {
     void (async () => {
       try {
         const response = await getWasteManagementSettings();
-        if (!active) {
-          return;
-        }
+        if (!active) return;
         setSettings(response);
         setForm(mapSettingsToForm(response));
         setError(null);
       } catch (loadError) {
-        if (!active) {
-          return;
-        }
+        if (!active) return;
         const code = resolveApiErrorCode(loadError);
         setError(
           code === 'forbidden'
@@ -89,9 +82,7 @@ export const WasteSettingsPanel = () => {
             : ptRef.current('settings.messages.loadError')
         );
       } finally {
-        if (active) {
-          setLoading(false);
-        }
+        if (active) setLoading(false);
       }
     })();
 
@@ -99,6 +90,31 @@ export const WasteSettingsPanel = () => {
       active = false;
     };
   }, []);
+
+  return { error, form, loading, setForm, setSettings, settings };
+};
+
+const persistWasteSettings = async (
+  form: SettingsFormState,
+  pt: ReturnType<typeof usePluginTranslation>
+): Promise<{ readonly message: StatusMessage; readonly settings: WasteManagementSettingsRecord | null }> => {
+  try {
+    const response = await updateWasteManagementSettings(toSettingsInput(form));
+    return {
+      settings: response,
+      message: { kind: 'success', text: pt('settings.messages.saveSuccess') },
+    };
+  } catch (saveError) {
+    const code = resolveApiErrorCode(saveError);
+    throw new Error(code === 'forbidden' ? pt('settings.messages.saveForbidden') : pt('settings.messages.saveError'));
+  }
+};
+
+export const WasteSettingsPanel = () => {
+  const pt = usePluginTranslation('wasteManagement');
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState<StatusMessage | null>(null);
+  const { error, form, loading, setForm, setSettings, settings } = useWasteSettingsState(pt);
 
   if (loading) {
     return <StudioLoadingState>{pt('settings.messages.loading')}</StudioLoadingState>;
@@ -114,18 +130,14 @@ export const WasteSettingsPanel = () => {
     setMessage(null);
 
     try {
-      const response = await updateWasteManagementSettings(toSettingsInput(form));
+      const result = await persistWasteSettings(form, pt);
       startTransition(() => {
-        setSettings(response);
-        setForm(mapSettingsToForm(response));
-        setMessage({ kind: 'success', text: pt('settings.messages.saveSuccess') });
+        setSettings(result.settings);
+        setForm(mapSettingsToForm(result.settings));
+        setMessage(result.message);
       });
     } catch (saveError) {
-      const code = resolveApiErrorCode(saveError);
-      setMessage({
-        kind: 'error',
-        text: code === 'forbidden' ? pt('settings.messages.saveForbidden') : pt('settings.messages.saveError'),
-      });
+      setMessage({ kind: 'error', text: saveError instanceof Error ? saveError.message : pt('settings.messages.saveError') });
     } finally {
       setSaving(false);
     }

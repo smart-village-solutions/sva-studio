@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import type { PluginJobHandlerContext } from '@sva/plugin-sdk';
-import { wasteManagementOperationsContract } from '@sva/core';
+import { wasteManagementOperationsContract } from '@sva/plugin-sdk';
 
 import {
   createWasteManagementPluginOperationExecutionHandlers,

@@ -3,7 +3,7 @@ import type {
   WasteHouseNumberRecord,
   WasteRegionRecord,
   WasteStreetRecord,
-} from '@sva/core';
+} from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import type { ReactNode } from 'react';
 import { Badge, Button } from '@sva/studio-ui-react';

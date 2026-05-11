@@ -1,4 +1,4 @@
-import type { WasteTourRecord } from '@sva/core';
+import type { WasteTourRecord } from '@sva/plugin-sdk';
 import { Checkbox } from '@sva/studio-ui-react';
 
 type Translate = (key: string, variables?: Readonly<Record<string, string | number>>) => string;

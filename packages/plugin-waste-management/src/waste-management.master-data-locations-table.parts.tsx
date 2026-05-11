@@ -6,7 +6,7 @@ import type {
   WasteRegionRecord,
   WasteStreetRecord,
   WasteTourRecord,
-} from '@sva/core';
+} from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Badge, Button, Checkbox, Select, StudioEmptyState } from '@sva/studio-ui-react';
 

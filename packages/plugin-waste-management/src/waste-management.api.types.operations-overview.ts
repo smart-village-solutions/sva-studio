@@ -1,4 +1,4 @@
-import type { WasteGlobalDateShiftRecord, WasteTourDateShiftRecord, WasteTourRecord } from '@sva/core';
+import type { WasteGlobalDateShiftRecord, WasteTourDateShiftRecord, WasteTourRecord } from '@sva/plugin-sdk';
 
 export type WasteManagementToursOverview = Readonly<{
   tours: readonly WasteTourRecord[];

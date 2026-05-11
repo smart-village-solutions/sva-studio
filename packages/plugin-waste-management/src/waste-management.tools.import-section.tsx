@@ -1,4 +1,4 @@
-import type { WasteManagementImportSourceFormat } from '@sva/core';
+import type { WasteManagementImportSourceFormat } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Checkbox, Input, Select, StudioField, StudioFieldGroup } from '@sva/studio-ui-react';
 

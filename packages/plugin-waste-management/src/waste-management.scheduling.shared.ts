@@ -3,7 +3,7 @@ import type {
   WasteGlobalDateShiftRecord,
   WasteTourDateShiftFollowUpMode,
   WasteTourDateShiftRecord,
-} from '@sva/core';
+} from '@sva/plugin-sdk';
 
 import type {
   CreateWasteManagementGlobalDateShiftInput,

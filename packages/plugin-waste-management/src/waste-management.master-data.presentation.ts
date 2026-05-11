@@ -6,7 +6,7 @@ import type {
   WasteRegionRecord,
   WasteStreetRecord,
   WasteTourRecord,
-} from '@sva/core';
+} from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 
 import type { WasteManagementMasterDataOverview } from './waste-management.api.js';

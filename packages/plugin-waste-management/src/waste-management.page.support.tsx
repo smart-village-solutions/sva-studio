@@ -3,7 +3,7 @@ import type {
   WasteManagementImportProfileCatalogEntry,
   WasteManagementImportSourceFormat,
   WasteManagementSettingsRecord,
-} from '@sva/core';
+} from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import {
   Alert,

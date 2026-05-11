@@ -1,4 +1,4 @@
-import type { WasteLocalizedTextRecord } from '@sva/core';
+import type { WasteLocalizedTextRecord } from '@sva/plugin-sdk';
 
 export type CreateWasteManagementFractionInput = Readonly<{
   id: string;

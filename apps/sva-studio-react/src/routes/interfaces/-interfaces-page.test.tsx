@@ -1,94 +1,101 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { InterfacesPage } from './-interfaces-page';
 
 const state = vi.hoisted(() => {
-  const loadToken = () => undefined;
+  const listToken = () => undefined;
   const saveToken = () => undefined;
+  const upsertToken = () => undefined;
+  const deleteToken = () => undefined;
 
   return {
-    loadToken,
+    deleteInterface: vi.fn(),
+    deleteToken,
+    listInterfaces: vi.fn(),
+    listToken,
+    saveMainserver: vi.fn(),
     saveToken,
-    loadOverview: vi.fn(),
-    saveSettings: vi.fn(),
+    upsertInterface: vi.fn(),
+    upsertToken,
   };
 });
 
 vi.mock('@tanstack/react-start', () => ({
   useServerFn: (serverFn: unknown) => {
-    if (serverFn === state.loadToken) {
-      return state.loadOverview;
-    }
-
-    if (serverFn === state.saveToken) {
-      return state.saveSettings;
-    }
-
+    if (serverFn === state.listToken) return state.listInterfaces;
+    if (serverFn === state.saveToken) return state.saveMainserver;
+    if (serverFn === state.upsertToken) return state.upsertInterface;
+    if (serverFn === state.deleteToken) return state.deleteInterface;
     throw new Error('Unexpected server function token');
   },
 }));
 
 vi.mock('../../lib/interfaces-api', () => ({
-  loadSvaMainserverInterfacesOverviewServerFn: state.loadToken,
+  deleteInstanceInterfaceServerFn: state.deleteToken,
+  listInstanceInterfacesServerFn: state.listToken,
   saveSvaMainserverInterfaceSettings: state.saveToken,
+  upsertInstanceInterfaceServerFn: state.upsertToken,
 }));
 
-describe.skip('InterfacesPage (legacy single-mainserver layout, refactored to table view)', () => {
+const mainserverEntry = {
+  id: 'mainserver:de-musterhausen',
+  instanceId: 'de-musterhausen',
+  type: 'mainserver',
+  name: 'SVA Mainserver',
+  enabled: true,
+  status: 'connected',
+  lastCheckedAt: '2026-03-15T20:00:00.000Z',
+  createdAt: '2026-03-15T20:00:00.000Z',
+  updatedAt: '2026-03-15T20:00:00.000Z',
+  config: {
+    graphqlBaseUrl: 'https://mainserver.example/graphql',
+    oauthTokenUrl: 'https://mainserver.example/oauth/token',
+  },
+} as const;
+
+const s3Entry = {
+  id: 's3-1',
+  instanceId: 'de-musterhausen',
+  type: 's3',
+  name: 'Uploads',
+  enabled: true,
+  status: 'unknown',
+  statusMessage: 'Pending health check',
+  lastCheckedAt: '2026-03-15T20:01:00.000Z',
+  createdAt: '2026-03-15T20:01:00.000Z',
+  updatedAt: '2026-03-15T20:01:00.000Z',
+  config: {
+    endpoint: 'https://s3.example',
+    region: 'eu-central-1',
+    bucket: 'uploads',
+    accessKeyId: 'key-1',
+    secretAccessKey: '',
+    forcePathStyle: false,
+  },
+} as const;
+
+describe('InterfacesPage', () => {
   beforeEach(() => {
-    state.loadOverview.mockReset();
-    state.saveSettings.mockReset();
+    state.deleteInterface.mockReset();
+    state.listInterfaces.mockReset();
+    state.saveMainserver.mockReset();
+    state.upsertInterface.mockReset();
   });
 
   afterEach(() => {
-    vi.useRealTimers();
     cleanup();
   });
 
-  it('shows a loading state before the overview request resolves', () => {
-    state.loadOverview.mockImplementation(() => new Promise(() => undefined));
-
-    render(<InterfacesPage />);
-
-    expect(screen.getByText('Schnittstellen werden geladen ...')).toBeTruthy();
-  });
-
-  it('loads the overview and saves updated settings', async () => {
-    state.loadOverview
-      .mockResolvedValueOnce({
-        instanceId: 'de-musterhausen',
-        config: {
-          instanceId: 'de-musterhausen',
-          providerKey: 'sva_mainserver',
-          graphqlBaseUrl: 'https://mainserver.example/graphql',
-          oauthTokenUrl: 'https://mainserver.example/oauth/token',
-          enabled: true,
-        },
-        status: {
-          status: 'connected',
-          checkedAt: '2026-03-15T20:00:00.000Z',
-        },
-      })
-      .mockResolvedValueOnce({
-        instanceId: 'de-musterhausen',
-        config: {
-          instanceId: 'de-musterhausen',
-          providerKey: 'sva_mainserver',
-          graphqlBaseUrl: 'https://next.example/graphql',
-          oauthTokenUrl: 'https://next.example/oauth/token',
-          enabled: false,
-        },
-        status: {
-          status: 'error',
-          checkedAt: '2026-03-15T20:05:00.000Z',
-          errorCode: 'network_error',
-        },
-      });
-    state.saveSettings.mockResolvedValue({
+  it('loads the interface table and saves mainserver settings through the dedicated endpoint', async () => {
+    state.listInterfaces.mockResolvedValue({
+      instanceId: 'de-musterhausen',
+      entries: [mainserverEntry, s3Entry],
+    });
+    state.saveMainserver.mockResolvedValue({
+      ...mainserverEntry.config,
       instanceId: 'de-musterhausen',
       providerKey: 'sva_mainserver',
-      graphqlBaseUrl: 'https://next.example/graphql',
-      oauthTokenUrl: 'https://next.example/oauth/token',
       enabled: false,
     });
 
@@ -96,224 +103,100 @@ describe.skip('InterfacesPage (legacy single-mainserver layout, refactored to ta
 
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: 'Schnittstellen' })).toBeTruthy();
+      expect(screen.getByText('2 Schnittstelle(n)')).toBeTruthy();
     });
 
+    fireEvent.click(screen.getAllByRole('button', { name: 'Bearbeiten' })[0]!);
     fireEvent.change(screen.getByLabelText('GraphQL Basis-URL'), {
       target: { value: 'https://next.example/graphql' },
     });
     fireEvent.change(screen.getByLabelText('OAuth Token-URL'), {
       target: { value: 'https://next.example/oauth/token' },
     });
-    fireEvent.click(screen.getByLabelText('Integration aktiv'));
+    fireEvent.click(screen.getAllByRole('checkbox')[0]!);
     fireEvent.click(screen.getByRole('button', { name: 'Einstellungen speichern' }));
 
     await waitFor(() => {
-      expect(state.saveSettings).toHaveBeenCalledWith({
+      expect(state.saveMainserver).toHaveBeenCalledWith({
         data: {
+          enabled: false,
           graphqlBaseUrl: 'https://next.example/graphql',
           oauthTokenUrl: 'https://next.example/oauth/token',
-          enabled: false,
         },
       });
     });
 
-    await waitFor(() => {
-      expect(state.loadOverview).toHaveBeenCalledTimes(2);
-      expect(screen.getByDisplayValue('https://next.example/graphql')).toBeTruthy();
-      expect(screen.getByDisplayValue('https://next.example/oauth/token')).toBeTruthy();
-      expect(screen.getByText('Der Verbindungsstatus konnte nicht abgerufen werden.')).toBeTruthy();
-    });
+    expect(state.upsertInterface).not.toHaveBeenCalled();
+    expect(screen.getByText('Schnittstellen-Einstellungen wurden gespeichert.')).toBeTruthy();
   });
 
-  it('shows a load error when the overview request fails', async () => {
-    state.loadOverview.mockRejectedValue(new Error('Kaputt'));
-
-    render(<InterfacesPage />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Kaputt')).toBeTruthy();
-    });
-  });
-
-  it('retries once after an unauthorized overview result', async () => {
-    state.loadOverview
-      .mockResolvedValueOnce({
-        instanceId: '',
-        config: null,
-        status: {
-          status: 'error',
-          checkedAt: '2026-03-15T20:00:00.000Z',
-          errorCode: 'unauthorized',
-        },
-      })
-      .mockResolvedValueOnce({
-        instanceId: 'hb-meinquartier',
-        config: {
-          instanceId: 'hb-meinquartier',
-          providerKey: 'sva_mainserver',
-          graphqlBaseUrl: 'https://hb-meinquartier.server.smart-village.app/graphql',
-          oauthTokenUrl: 'https://hb-meinquartier.server.smart-village.app/oauth/token',
-          enabled: true,
-        },
-        status: {
-          status: 'connected',
-          checkedAt: '2026-03-15T20:05:00.000Z',
-        },
-      });
-
-    render(<InterfacesPage />);
-
-    await waitFor(() => {
-      expect(state.loadOverview).toHaveBeenCalledTimes(1);
-    });
-
-    await act(async () => {
-      await new Promise((resolve) => {
-        globalThis.setTimeout(resolve, 350);
-      });
-    });
-
-    await waitFor(() => {
-      expect(state.loadOverview).toHaveBeenCalledTimes(2);
-      expect(screen.getByText('Verbunden')).toBeTruthy();
-    });
-  });
-
-  it('reloads after a persisted unauthorized status update', async () => {
-    state.loadOverview
-      .mockResolvedValueOnce({
-        instanceId: 'de-musterhausen',
-        config: {
-          instanceId: 'de-musterhausen',
-          providerKey: 'sva_mainserver',
-          graphqlBaseUrl: 'https://mainserver.example/graphql',
-          oauthTokenUrl: 'https://mainserver.example/oauth/token',
-          enabled: true,
-        },
-        status: {
-          status: 'connected',
-          checkedAt: '2026-03-15T20:00:00.000Z',
-        },
-      })
-      .mockResolvedValueOnce({
-        instanceId: 'de-musterhausen',
-        config: {
-          instanceId: 'de-musterhausen',
-          providerKey: 'sva_mainserver',
-          graphqlBaseUrl: 'https://mainserver.example/graphql',
-          oauthTokenUrl: 'https://mainserver.example/oauth/token',
-          enabled: true,
-        },
-        status: {
-          status: 'error',
-          checkedAt: '2026-03-15T20:05:00.000Z',
-          errorCode: 'unauthorized',
-        },
-      })
-      .mockResolvedValueOnce({
-        instanceId: 'de-musterhausen',
-        config: {
-          instanceId: 'de-musterhausen',
-          providerKey: 'sva_mainserver',
-          graphqlBaseUrl: 'https://mainserver.example/graphql',
-          oauthTokenUrl: 'https://mainserver.example/oauth/token',
-          enabled: true,
-        },
-        status: {
-          status: 'connected',
-          checkedAt: '2026-03-15T20:06:00.000Z',
-        },
-      });
-    state.saveSettings.mockResolvedValue({
+  it('creates an s3 interface through the picker dialog and upsert endpoint', async () => {
+    state.listInterfaces.mockResolvedValue({
       instanceId: 'de-musterhausen',
-      providerKey: 'sva_mainserver',
-      graphqlBaseUrl: 'https://mainserver.example/graphql',
-      oauthTokenUrl: 'https://mainserver.example/oauth/token',
-      enabled: true,
+      entries: [mainserverEntry],
+    });
+    state.upsertInterface.mockResolvedValue({
+      ...s3Entry,
+      config: { ...s3Entry.config, secretAccessKey: '' },
     });
 
     render(<InterfacesPage />);
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Einstellungen speichern' })).toBeTruthy();
+      expect(screen.getByText('1 Schnittstelle(n)')).toBeTruthy();
     });
 
+    fireEvent.click(screen.getByRole('button', { name: 'Neue Schnittstelle' }));
+    fireEvent.click(screen.getByRole('radio', { name: /S3-kompatibler Object Storage/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+
+    const textboxes = screen.getAllByRole('textbox');
+    fireEvent.change(textboxes[0]!, { target: { value: 'Medien-S3' } });
+    fireEvent.change(textboxes[1]!, { target: { value: 'https://s3.example' } });
+    fireEvent.change(textboxes[3]!, { target: { value: 'media-bucket' } });
+    fireEvent.change(textboxes[4]!, { target: { value: 'key-2' } });
+    fireEvent.change(document.getElementById('s3-secret-key')!, { target: { value: 'secret-2' } });
     fireEvent.click(screen.getByRole('button', { name: 'Einstellungen speichern' }));
 
     await waitFor(() => {
-      expect(state.loadOverview).toHaveBeenCalledTimes(3);
-      expect(screen.getByText('Verbunden')).toBeTruthy();
-    });
-  });
-
-  it('reloads the overview when the reload action is used', async () => {
-    state.loadOverview
-      .mockResolvedValueOnce({
-        instanceId: 'de-musterhausen',
-        config: null,
-        status: {
-          status: 'error',
-          checkedAt: '2026-03-15T20:00:00.000Z',
-          errorCode: 'forbidden',
-        },
-      })
-      .mockResolvedValueOnce({
-        instanceId: 'de-musterhausen',
-        config: null,
-        status: {
-          status: 'connected',
-          checkedAt: '2026-03-15T20:10:00.000Z',
+      expect(state.upsertInterface).toHaveBeenCalledWith({
+        data: {
+          instanceId: 'de-musterhausen',
+          draft: expect.objectContaining({
+            type: 's3',
+            name: 'Medien-S3',
+            config: expect.objectContaining({
+              endpoint: 'https://s3.example',
+              bucket: 'media-bucket',
+              accessKeyId: 'key-2',
+              secretAccessKey: 'secret-2',
+            }),
+          }),
         },
       });
-
-    render(<InterfacesPage />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Keine Berechtigung zur Schnittstellenverwaltung.')).toBeTruthy();
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: 'Neu laden' }));
-
-    await waitFor(() => {
-      expect(state.loadOverview).toHaveBeenCalledTimes(2);
-      expect(screen.getByText('Verbunden')).toBeTruthy();
     });
   });
 
-  it('shows a save error when persisting settings fails', async () => {
-    state.loadOverview.mockResolvedValue({
+  it('deletes non-mainserver interfaces through the destructive confirm dialog', async () => {
+    state.listInterfaces.mockResolvedValue({
       instanceId: 'de-musterhausen',
-      config: {
-        instanceId: 'de-musterhausen',
-        providerKey: 'sva_mainserver',
-        graphqlBaseUrl: 'https://mainserver.example/graphql',
-        oauthTokenUrl: 'https://mainserver.example/oauth/token',
-        enabled: true,
-      },
-      status: {
-        status: 'connected',
-        checkedAt: '2026-03-15T20:00:00.000Z',
-      },
+      entries: [mainserverEntry, s3Entry],
     });
-    state.saveSettings.mockRejectedValue(
-      new Error('invalid_config', {
-        cause: {
-          error: 'invalid_config',
-          field: 'graphql_base_url',
-        },
-      })
-    );
+    state.deleteInterface.mockResolvedValue({ deleted: true });
 
     render(<InterfacesPage />);
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Einstellungen speichern' })).toBeTruthy();
+      expect(screen.getByText('2 Schnittstelle(n)')).toBeTruthy();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Einstellungen speichern' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Löschen' })[0]!);
+    fireEvent.click(screen.getByRole('button', { name: 'Endgültig löschen' }));
 
     await waitFor(() => {
-      expect(screen.getByText('Die GraphQL Basis-URL ist ungültig.')).toBeTruthy();
+      expect(state.deleteInterface).toHaveBeenCalledWith({
+        data: { id: 's3-1', instanceId: 'de-musterhausen' },
+      });
     });
   });
 });

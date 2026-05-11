@@ -1,4 +1,4 @@
-import { wasteManagementImportCatalog, type WasteManagementImportProfileCatalogEntry, type WasteManagementHistoryOverview, type WasteManagementSettingsRecord } from '@sva/core';
+import { wasteManagementImportCatalog, type WasteManagementImportProfileCatalogEntry, type WasteManagementHistoryOverview, type WasteManagementSettingsRecord } from '@sva/plugin-sdk';
 
 import type {
   WasteManagementMasterDataOverview,

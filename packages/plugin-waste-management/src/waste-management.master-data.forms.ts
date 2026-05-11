@@ -6,7 +6,7 @@ import type {
   WasteLocalizedTextRecord,
   WasteRegionRecord,
   WasteStreetRecord,
-} from '@sva/core';
+} from '@sva/plugin-sdk';
 
 import type {
   CreateWasteManagementCityInput,

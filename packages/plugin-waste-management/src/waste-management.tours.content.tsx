@@ -1,4 +1,4 @@
-import type { WasteTourRecord } from '@sva/core';
+import type { WasteTourRecord } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Badge, Button, StudioEmptyState } from '@sva/studio-ui-react';
 

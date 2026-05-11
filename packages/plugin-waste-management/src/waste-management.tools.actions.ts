@@ -1,4 +1,4 @@
-import type { StudioJobResponse, WasteManagementHistoryOverview } from '@sva/core';
+import type { StudioJobResponse, WasteManagementHistoryOverview } from '@sva/plugin-sdk';
 
 import {
   getWasteManagementImportCatalog,

@@ -7,7 +7,7 @@ import type {
   WasteRegionRecord,
   WasteStreetRecord,
   WasteTourRecord,
-} from '@sva/core';
+} from '@sva/plugin-sdk';
 
 const findRegionName = (regions: readonly WasteRegionRecord[], regionId?: string): string | undefined =>
   regionId ? regions.find((region) => region.id === regionId)?.name : undefined;

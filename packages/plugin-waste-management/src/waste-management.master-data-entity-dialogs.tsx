@@ -1,4 +1,4 @@
-import type { WasteCityRecord, WasteRegionRecord, WasteStreetRecord } from '@sva/core';
+import type { WasteCityRecord, WasteRegionRecord, WasteStreetRecord } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Button, Checkbox, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, Input, Select, StudioField, StudioFieldGroup } from '@sva/studio-ui-react';
 import type { FormEvent } from 'react';

@@ -1,4 +1,4 @@
-import type { WasteManagementSettingsRecord } from '@sva/core';
+import type { WasteManagementSettingsRecord } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { StudioTechnicalStatusPanel } from '@sva/studio-ui-react';
 

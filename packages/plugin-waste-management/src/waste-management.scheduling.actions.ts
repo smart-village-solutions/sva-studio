@@ -1,4 +1,4 @@
-import type { WasteGlobalDateShiftRecord, WasteTourDateShiftRecord } from '@sva/core';
+import type { WasteGlobalDateShiftRecord, WasteTourDateShiftRecord } from '@sva/plugin-sdk';
 
 import {
   createDefaultGlobalDateShiftForm,

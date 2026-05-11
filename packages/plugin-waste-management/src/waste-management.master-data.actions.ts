@@ -1,4 +1,4 @@
-import type { WasteCollectionLocationRecord } from '@sva/core';
+import type { WasteCollectionLocationRecord } from '@sva/plugin-sdk';
 
 import { createWasteMasterDataEntityActions } from './waste-management.master-data.entity-actions.js';
 import { createWasteMasterDataLocationActions } from './waste-management.master-data.location-actions.js';

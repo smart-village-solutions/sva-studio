@@ -1,4 +1,4 @@
-import type { StudioJobResponse, WasteManagementHistoryOverview, WasteManagementImportSourceFormat } from '@sva/core';
+import type { StudioJobResponse, WasteManagementHistoryOverview, WasteManagementImportSourceFormat } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import {
   ResetConfirmationDialog,

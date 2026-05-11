@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 
 import type { WasteManagementSchedulingOverview } from './waste-management.api.js';
 import { calculateTourOccurrencesForYear } from './waste-management.tours.presentation.js';
-import type { WasteTourRecord } from '@sva/core';
+import type { WasteTourRecord } from '@sva/plugin-sdk';
 
 const TourYearCalendarMonth = ({
   monthIndex,

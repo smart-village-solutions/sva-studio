@@ -16,7 +16,7 @@ const diagnosticsEnabled = (process.env.NODE_ENV ?? 'development') === 'developm
 const serverFnBase = normalizeServerFnBase(process.env.TSS_SERVER_FN_BASE);
 const pluginOperationWorkerEnabled = process.env.SVA_PLUGIN_OPERATION_WORKER_ENABLED !== 'false';
 
-registerStudioPluginOperationHandlers();
+await registerStudioPluginOperationHandlers();
 
 type WorkspaceContext = {
   readonly requestId?: string | null;

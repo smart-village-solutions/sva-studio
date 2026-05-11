@@ -37,7 +37,7 @@ describe('plugin build registry helpers', () => {
     );
   });
 
-  it('builds registries only for entries with resolvable source refs and resolves candidate modules', () => {
+  it('builds registries only for entries with resolvable source refs and resolves candidate modules', async () => {
     const workspaceManifest = { id: 'workspace-plugin', entryPoints: {} } as never;
     const nodeManifest = { id: 'node-plugin', entryPoints: {} } as never;
     const workspaceModule = { pluginWorkspace: { id: 'workspace-plugin' } };
@@ -48,45 +48,43 @@ describe('plugin build registry helpers', () => {
         '../../../../packages/plugin-workspace/plugin.manifest.json': workspaceManifest,
         '../../../../invalid-workspace/plugin.manifest.json': nodeManifest,
       },
-      workspacePluginModules: {
-        '../../../../packages/plugin-workspace/src/index.ts': workspaceModule,
-        '../../../../invalid-workspace/src/index.ts': nodeModule,
+      workspacePluginModuleLoaders: {
+        '../../../../packages/plugin-workspace/src/index.ts': async () => workspaceModule,
+        '../../../../invalid-workspace/src/index.ts': async () => nodeModule,
       },
       nodeManifestModules: {
         '../../../../node_modules/@scope/plugin-node/plugin.manifest.json': nodeManifest,
         '../../../../invalid-node/plugin.manifest.json': workspaceManifest,
       },
-      nodePluginModules: {
-        '../../../../node_modules/@scope/plugin-node/dist/index.js': nodeModule,
-        '../../../../invalid-node/dist/index.js': workspaceModule,
+      nodePluginModuleLoaders: {
+        '../../../../node_modules/@scope/plugin-node/dist/index.js': async () => nodeModule,
+        '../../../../invalid-node/dist/index.js': async () => workspaceModule,
       },
     });
 
     expect(registries.workspaceManifestRegistry.get('packages/plugin-workspace')).toBe(workspaceManifest);
     expect(registries.workspaceManifestRegistry.size).toBe(1);
-    expect(
-      registries.workspacePluginRegistry.get('packages/plugin-workspace::src/index.ts')
-    ).toBe(workspaceModule);
+    expect(typeof registries.workspacePluginRegistry.get('packages/plugin-workspace::src/index.ts')).toBe('function');
     expect(registries.workspacePluginRegistry.size).toBe(1);
 
     expect(registries.nodeManifestRegistry.get('@scope/plugin-node')).toBe(nodeManifest);
     expect(registries.nodeManifestRegistry.size).toBe(1);
-    expect(registries.nodePluginRegistry.get('@scope/plugin-node::dist/index.js')).toBe(nodeModule);
+    expect(typeof registries.nodePluginRegistry.get('@scope/plugin-node::dist/index.js')).toBe('function');
     expect(registries.nodePluginRegistry.size).toBe(1);
 
-    expect(
+    expect(await
       resolvePluginModuleFromRegistry(registries.workspacePluginRegistry, 'packages/plugin-workspace', [
         'dist/index.js',
         'src/index.ts',
       ])
     ).toBe(workspaceModule);
-    expect(
+    expect(await
       resolvePluginModuleFromRegistry(registries.nodePluginRegistry, '@scope/plugin-node', [
         'src/index.ts',
         'dist/index.js',
       ])
     ).toBe(nodeModule);
-    expect(
+    expect(await
       resolvePluginModuleFromRegistry(registries.nodePluginRegistry, '@scope/plugin-node', ['src/missing.ts'])
     ).toBeUndefined();
   });

@@ -320,20 +320,26 @@ describe('plugin action alias lookup', () => {
     const resolvePluginModuleResults: unknown[] = [];
 
     vi.doMock('./plugin-catalog-loader.js', () => ({
-      createStudioPluginCatalogReport: vi.fn((input: {
+      createStudioPluginCatalogReport: vi.fn(async (input: {
         resolveManifest: (entry: { sourceType: 'workspace' | 'package'; sourceRef: string }) => unknown;
         resolvePluginModule: (
           entry: { sourceType: 'workspace' | 'package'; sourceRef: string },
           manifest: { entry?: string }
-        ) => unknown;
+        ) => Promise<unknown>;
       }) => {
         resolveManifestResults.push(
           input.resolveManifest({ sourceType: 'workspace', sourceRef: 'packages/missing-plugin' }),
           input.resolveManifest({ sourceType: 'package', sourceRef: '@missing/plugin' })
         );
         resolvePluginModuleResults.push(
-          input.resolvePluginModule({ sourceType: 'workspace', sourceRef: 'packages/missing-plugin' }, { entry: './src/missing.ts' }),
-          input.resolvePluginModule({ sourceType: 'package', sourceRef: '@missing/plugin' }, { entry: './dist/missing.js' })
+          await input.resolvePluginModule(
+            { sourceType: 'workspace', sourceRef: 'packages/missing-plugin' },
+            { entry: './src/missing.ts' }
+          ),
+          await input.resolvePluginModule(
+            { sourceType: 'package', sourceRef: '@missing/plugin' },
+            { entry: './dist/missing.js' }
+          )
         );
 
         return {
@@ -368,7 +374,7 @@ describe('plugin action alias lookup', () => {
     expect(resolvePluginModuleResults).toEqual([undefined, undefined]);
   });
 
-  it('restricts eager node-module plugin imports to the plugin package naming scheme', () => {
+  it('restricts node-module plugin imports to the plugin package naming scheme', () => {
     const currentFilePath = fileURLToPath(import.meta.url);
     const source = readFileSync(resolve(dirname(currentFilePath), 'plugins.ts'), 'utf8');
 

@@ -1,6 +1,7 @@
 import type { PluginManifest } from '@sva/plugin-sdk';
 
 type PluginModuleExports = Record<string, unknown>;
+type PluginModuleLoader = () => Promise<PluginModuleExports>;
 
 export const trimImportGlobPrefix = (path: string): string => path.replace(/^(\.\.\/)+/, '');
 
@@ -28,9 +29,9 @@ export const getRelativePackagePath = (path: string, sourceRef: string): string 
 
 export const createPluginBuildRegistries = (input: {
   readonly workspaceManifestModules: Readonly<Record<string, PluginManifest>>;
-  readonly workspacePluginModules: Readonly<Record<string, PluginModuleExports>>;
+  readonly workspacePluginModuleLoaders: Readonly<Record<string, PluginModuleLoader>>;
   readonly nodeManifestModules: Readonly<Record<string, PluginManifest>>;
-  readonly nodePluginModules: Readonly<Record<string, PluginModuleExports>>;
+  readonly nodePluginModuleLoaders: Readonly<Record<string, PluginModuleLoader>>;
 }) => {
   const workspaceManifestRegistry = new Map<string, PluginManifest>();
   for (const [path, manifest] of Object.entries(input.workspaceManifestModules)) {
@@ -40,11 +41,11 @@ export const createPluginBuildRegistries = (input: {
     }
   }
 
-  const workspacePluginRegistry = new Map<string, PluginModuleExports>();
-  for (const [path, moduleExports] of Object.entries(input.workspacePluginModules)) {
+  const workspacePluginRegistry = new Map<string, PluginModuleLoader>();
+  for (const [path, moduleLoader] of Object.entries(input.workspacePluginModuleLoaders)) {
     const sourceRef = getWorkspaceSourceRefFromGlobPath(path);
     if (sourceRef) {
-      workspacePluginRegistry.set(`${sourceRef}::${getRelativePackagePath(path, sourceRef)}`, moduleExports);
+      workspacePluginRegistry.set(`${sourceRef}::${getRelativePackagePath(path, sourceRef)}`, moduleLoader);
     }
   }
 
@@ -56,11 +57,11 @@ export const createPluginBuildRegistries = (input: {
     }
   }
 
-  const nodePluginRegistry = new Map<string, PluginModuleExports>();
-  for (const [path, moduleExports] of Object.entries(input.nodePluginModules)) {
+  const nodePluginRegistry = new Map<string, PluginModuleLoader>();
+  for (const [path, moduleLoader] of Object.entries(input.nodePluginModuleLoaders)) {
     const sourceRef = getNodeSourceRefFromGlobPath(path);
     if (sourceRef) {
-      nodePluginRegistry.set(`${sourceRef}::${getRelativePackagePath(path, sourceRef)}`, moduleExports);
+      nodePluginRegistry.set(`${sourceRef}::${getRelativePackagePath(path, sourceRef)}`, moduleLoader);
     }
   }
 
@@ -73,16 +74,16 @@ export const createPluginBuildRegistries = (input: {
 };
 
 export const resolvePluginModuleFromRegistry = (
-  registry: ReadonlyMap<string, PluginModuleExports>,
+  registry: ReadonlyMap<string, PluginModuleLoader>,
   sourceRef: string,
   candidates: readonly string[]
-): PluginModuleExports | undefined => {
+): Promise<PluginModuleExports | undefined> => {
   for (const relativePath of candidates) {
-    const match = registry.get(`${sourceRef}::${relativePath}`);
-    if (match) {
-      return match;
+    const loader = registry.get(`${sourceRef}::${relativePath}`);
+    if (loader) {
+      return loader();
     }
   }
 
-  return undefined;
+  return Promise.resolve(undefined);
 };

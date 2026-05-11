@@ -10,6 +10,7 @@ const browserLoggerMock = vi.hoisted(() => ({
   warn: vi.fn(),
   error: vi.fn(),
 }));
+let cookieState = '';
 
 const localStorageState = new Map<string, string>();
 const sessionStorageState = new Map<string, string>();
@@ -92,6 +93,7 @@ describe('AuthProvider', () => {
     clearAuthDiagnosticTrail();
     vi.stubEnv('VITE_SVA_DEV_AUTH', 'false');
     vi.stubEnv('VITE_MOCK_AUTH', 'false');
+    cookieState = '';
     localStorageState.clear();
     sessionStorageState.clear();
     localStorageMock.getItem.mockClear();
@@ -109,6 +111,13 @@ describe('AuthProvider', () => {
     Object.defineProperty(window, 'sessionStorage', {
       configurable: true,
       value: sessionStorageMock,
+    });
+    Object.defineProperty(document, 'cookie', {
+      configurable: true,
+      get: () => cookieState,
+      set: (value: string) => {
+        cookieState = value;
+      },
     });
   });
 
@@ -889,6 +898,8 @@ describe('AuthProvider', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'dev-login' }));
 
+    cookieState = 'sva_dev_auth=1';
+
     await waitFor(() => {
       expect(screen.getByTestId('authenticated').textContent).toBe('yes');
     });
@@ -914,6 +925,54 @@ describe('AuthProvider', () => {
       expect.objectContaining({
         method: 'POST',
         credentials: 'include',
+        signal: expect.any(AbortSignal),
+      })
+    );
+  });
+
+  it('keeps standard logout when dev auth is available but no dev auth session is active', async () => {
+    vi.stubEnv('VITE_SVA_DEV_AUTH', 'true');
+
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          user: {
+            id: 'user-1',
+            roles: ['editor'],
+            instanceId: 'instance-1',
+          },
+        })
+      )
+      .mockResolvedValueOnce(createJsonResponse(200, { ok: true }));
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <AuthProvider>
+        <AuthProbe />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('authenticated').textContent).toBe('yes');
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'logout' }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('authenticated').textContent).toBe('no');
+    });
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      '/auth/logout',
+      expect.objectContaining({
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'x-sva-logout-intent': 'user',
+        },
         signal: expect.any(AbortSignal),
       })
     );
@@ -980,7 +1039,22 @@ describe('AuthProvider', () => {
     ).toBe(true);
     expect(trail.some((entry) => entry.event === 'auth_redirect_session_expired')).toBe(true);
     expect(trail[0]?.authFlowId).toBeTruthy();
-    expect(new Set(trail.map((entry) => entry.authFlowId)).size).toBe(1);
+    const currentFlowId = trail.find(
+      (entry) => entry.event === 'auth_me_401_received' && entry.requestId === 'req-session-expired'
+    )?.authFlowId;
+    expect(currentFlowId).toBeTruthy();
+    expect(
+      trail.some(
+        (entry) =>
+          entry.authFlowId === currentFlowId && entry.event === 'auth_silent_recovery_started'
+      )
+    ).toBe(true);
+    expect(
+      trail.some(
+        (entry) =>
+          entry.authFlowId === currentFlowId && entry.event === 'auth_redirect_session_expired'
+      )
+    ).toBe(true);
 
     Object.defineProperty(window, 'location', {
       configurable: true,

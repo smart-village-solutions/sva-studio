@@ -53,6 +53,13 @@ type ResolvePluginCatalogInput = {
   readonly adminResources?: readonly AdminResourceDefinition[];
 };
 
+type ResolvePluginCatalogAsyncInput = {
+  readonly catalog: readonly PluginCatalogEntry[];
+  readonly host: PluginPlatformHost;
+  readonly resolvePlugin: (entry: PluginCatalogEntry) => Promise<PluginDefinition | undefined>;
+  readonly adminResources?: readonly AdminResourceDefinition[];
+};
+
 type ResolvePluginCatalogState = {
   readonly host: PluginPlatformHost;
   readonly resolvePlugin: (entry: PluginCatalogEntry) => PluginDefinition | undefined;
@@ -248,6 +255,57 @@ const resolveCatalogEntry = (state: ResolvePluginCatalogState, entry: PluginCata
   tryLoadPluginEntry(state, entry);
 };
 
+const tryLoadPluginEntryAsync = async (
+  state: ResolvePluginCatalogState,
+  entry: PluginCatalogEntry,
+  resolvePlugin: (entry: PluginCatalogEntry) => Promise<PluginDefinition | undefined>
+): Promise<void> => {
+  const plugin = await resolvePlugin(entry);
+  if (!plugin) {
+    rejectPluginEntry(
+      state,
+      entry,
+      'plugin_module_missing',
+      `Plugin '${entry.pluginId}' konnte aus '${entry.sourceRef}' nicht geladen werden.`
+    );
+    return;
+  }
+
+  if (plugin.id !== entry.pluginId) {
+    rejectPluginEntry(
+      state,
+      entry,
+      'plugin_module_mismatch',
+      `Plugin-Modul aus '${entry.sourceRef}' exportiert '${plugin.id}' statt '${entry.pluginId}'.`
+    );
+    return;
+  }
+
+  state.activeCatalog.push(entry);
+  state.loadedPlugins.push({
+    catalogEntry: entry,
+    plugin,
+  });
+};
+
+const resolveCatalogEntryAsync = async (
+  state: ResolvePluginCatalogState,
+  entry: PluginCatalogEntry,
+  resolvePlugin: (entry: PluginCatalogEntry) => Promise<PluginDefinition | undefined>
+): Promise<void> => {
+  if (!entry.enabled) {
+    state.inactiveCatalog.push(entry);
+    state.issues.push(createIssue(entry, 'info', 'plugin_disabled', `Plugin '${entry.pluginId}' ist im Katalog deaktiviert.`));
+    return;
+  }
+
+  if (!validateEnabledPluginEntry(state, entry)) {
+    return;
+  }
+
+  await tryLoadPluginEntryAsync(state, entry, resolvePlugin);
+};
+
 export const resolvePluginCatalog = (input: ResolvePluginCatalogInput): ResolvedPluginCatalog => {
   const catalog = input.catalog.map(definePluginCatalogEntry);
   const state: ResolvePluginCatalogState = {
@@ -263,6 +321,40 @@ export const resolvePluginCatalog = (input: ResolvePluginCatalogInput): Resolved
 
   for (const entry of catalog) {
     resolveCatalogEntry(state, entry);
+  }
+
+  return {
+    catalog,
+    activeCatalog: state.activeCatalog,
+    inactiveCatalog: state.inactiveCatalog,
+    rejectedCatalog: state.rejectedCatalog,
+    issues: state.issues,
+    loadedPlugins: state.loadedPlugins,
+    snapshot: createPluginSnapshot({
+      catalog: state.activeCatalog,
+      loadedPlugins: state.loadedPlugins,
+      adminResources: input.adminResources,
+    }),
+  };
+};
+
+export const resolvePluginCatalogAsync = async (
+  input: ResolvePluginCatalogAsyncInput
+): Promise<ResolvedPluginCatalog> => {
+  const catalog = input.catalog.map(definePluginCatalogEntry);
+  const state: ResolvePluginCatalogState = {
+    host: input.host,
+    resolvePlugin: () => undefined,
+    hostCapabilities: new Set(input.host.capabilities),
+    activeCatalog: [],
+    inactiveCatalog: [],
+    rejectedCatalog: [],
+    issues: [],
+    loadedPlugins: [],
+  };
+
+  for (const entry of catalog) {
+    await resolveCatalogEntryAsync(state, entry, input.resolvePlugin);
   }
 
   return {

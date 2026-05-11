@@ -146,6 +146,7 @@ export {
   createPluginPermissionRegistry,
   createPluginRegistry,
   resolvePluginCatalog,
+  resolvePluginCatalogAsync,
   createStandardContentAdminResource,
   createStandardContentModuleIamContract,
   createStandardContentPluginActionIds,

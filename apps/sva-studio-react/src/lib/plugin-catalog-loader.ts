@@ -1,7 +1,7 @@
 import {
   definePluginCatalogEntry,
   pluginSdkVersion,
-  resolvePluginCatalog,
+  resolvePluginCatalogAsync,
   type AdminResourceDefinition,
   type PluginCatalogEntry,
   type PluginCatalogIssue,
@@ -28,7 +28,7 @@ type StudioPluginCatalogLoaderInput = {
   readonly resolvePluginModule: (
     entry: PluginCatalogEntry,
     manifest: PluginManifest
-  ) => PluginModuleExports | undefined;
+  ) => Promise<PluginModuleExports | undefined>;
   readonly adminResources?: readonly AdminResourceDefinition[];
 };
 
@@ -96,7 +96,9 @@ export const extractPluginDefinition = (exportsObject: PluginModuleExports): Plu
   return undefined;
 };
 
-export const createStudioPluginCatalogReport = (input: StudioPluginCatalogLoaderInput): StudioPluginCatalogReport => {
+export const createStudioPluginCatalogReport = async (
+  input: StudioPluginCatalogLoaderInput
+): Promise<StudioPluginCatalogReport> => {
   const catalog: PluginCatalogEntry[] = [];
   const issues: PluginCatalogIssue[] = [];
 
@@ -124,11 +126,11 @@ export const createStudioPluginCatalogReport = (input: StudioPluginCatalogLoader
     );
   }
 
-  const resolved = resolvePluginCatalog({
+  const resolved = await resolvePluginCatalogAsync({
     catalog,
     host: studioHostPluginPlatform,
-    resolvePlugin: (entry) => {
-      const exportsObject = input.resolvePluginModule(entry, entry.manifest);
+    resolvePlugin: async (entry) => {
+      const exportsObject = await input.resolvePluginModule(entry, entry.manifest);
       return exportsObject ? extractPluginDefinition(exportsObject) : undefined;
     },
     adminResources: input.adminResources,

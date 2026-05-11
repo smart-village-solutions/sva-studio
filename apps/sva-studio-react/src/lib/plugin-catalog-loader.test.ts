@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { definePluginManifest } from '@sva/plugin-sdk';
 
@@ -23,7 +23,7 @@ describe('plugin catalog loader', () => {
     expect(getPackagePluginModuleCandidates(manifest)).toEqual(['dist/index.js', 'src/index.ts', 'src/index.tsx']);
   });
 
-  it('creates a compatible snapshot from config, manifests and module exports', () => {
+  it('creates a compatible snapshot from config, manifests and module exports', async () => {
     const manifest = definePluginManifest({
       pluginId: 'news',
       version: '0.0.1',
@@ -32,7 +32,7 @@ describe('plugin catalog loader', () => {
       entryPoints: { browser: './dist/index.js' },
     });
 
-    const report = createStudioPluginCatalogReport({
+    const report = await createStudioPluginCatalogReport({
       catalogConfig: [
         {
           pluginId: 'news',
@@ -42,7 +42,7 @@ describe('plugin catalog loader', () => {
         },
       ],
       resolveManifest: () => manifest,
-      resolvePluginModule: () => ({
+      resolvePluginModule: async () => ({
         pluginNews: {
           id: 'news',
           displayName: 'News',
@@ -57,7 +57,7 @@ describe('plugin catalog loader', () => {
     expect(report.issues).toEqual([]);
   });
 
-  it('loads an installed distribution through the same catalog and snapshot contract', () => {
+  it('loads an installed distribution through the same catalog and snapshot contract', async () => {
     const manifest = definePluginManifest({
       pluginId: 'weather',
       version: '1.2.3',
@@ -66,7 +66,7 @@ describe('plugin catalog loader', () => {
       entryPoints: { browser: './dist/index.js' },
     });
 
-    const report = createStudioPluginCatalogReport({
+    const report = await createStudioPluginCatalogReport({
       catalogConfig: [
         {
           pluginId: 'weather',
@@ -76,7 +76,7 @@ describe('plugin catalog loader', () => {
         },
       ],
       resolveManifest: () => manifest,
-      resolvePluginModule: () => ({
+      resolvePluginModule: async () => ({
         pluginWeather: {
           id: 'weather',
           displayName: 'Weather',
@@ -97,8 +97,8 @@ describe('plugin catalog loader', () => {
     expect(report.issues).toEqual([]);
   });
 
-  it('fails closed when the manifest cannot be resolved', () => {
-    const report = createStudioPluginCatalogReport({
+  it('fails closed when the manifest cannot be resolved', async () => {
+    const report = await createStudioPluginCatalogReport({
       catalogConfig: [
         {
           pluginId: 'weather',
@@ -108,7 +108,7 @@ describe('plugin catalog loader', () => {
         },
       ],
       resolveManifest: () => undefined,
-      resolvePluginModule: () => undefined,
+      resolvePluginModule: async () => undefined,
     });
 
     expect(report.snapshot.registry.plugins).toHaveLength(0);
@@ -119,6 +119,41 @@ describe('plugin catalog loader', () => {
         severity: 'error',
       })
     );
+  });
+
+  it('does not load plugin modules for disabled catalog entries', async () => {
+    const manifest = definePluginManifest({
+      pluginId: 'news',
+      version: '0.0.1',
+      sdkVersion: '0.0.1',
+      hostCompatibility: { studioVersionRange: '^0.0.1', requiredCapabilities: ['routing'] },
+      entryPoints: { browser: './dist/index.js' },
+    });
+    const resolvePluginModule = vi.fn(async () => ({
+      pluginNews: {
+        id: 'news',
+        displayName: 'News',
+        routes: [],
+        navigation: [],
+        translations: {},
+      },
+    }));
+
+    const report = await createStudioPluginCatalogReport({
+      catalogConfig: [
+        {
+          pluginId: 'news',
+          sourceType: 'workspace',
+          enabled: false,
+          sourceRef: 'packages/plugin-news',
+        },
+      ],
+      resolveManifest: () => manifest,
+      resolvePluginModule,
+    });
+
+    expect(report.snapshot.registry.plugins).toHaveLength(0);
+    expect(resolvePluginModule).not.toHaveBeenCalled();
   });
 
   it('extracts plugin definitions from named exports only when they match the public contract', () => {

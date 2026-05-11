@@ -22,6 +22,7 @@ import {
   resolveCurrentReturnTo,
 } from '../lib/auth-navigation';
 import {
+  hasActiveDevAuthSession,
   DEV_AUTH_LOGIN_ENDPOINT,
   DEV_AUTH_LOGOUT_ENDPOINT,
   isDevAuthAvailable,
@@ -428,6 +429,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         }
 
         if (!result.ok && result.status === 401) {
+          const devAuthSessionActive = hasActiveDevAuthSession();
           const hadKnownSession = readHadKnownSession();
           const responseMeta = readAuthDiagnosticMeta(result.error);
           recordTrail('auth_me_401_received', {
@@ -449,7 +451,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             setIsRecoveringSession(true);
           }
 
-          const recovered = devAuthAvailable
+          const recovered = devAuthSessionActive
             ? false
             : await attemptSilentSessionRecovery({
                 attempt: firstAttempt,
@@ -668,6 +670,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   }, [loadUser]);
 
   const logout = React.useCallback(async () => {
+    const devAuthSessionActive = hasActiveDevAuthSession();
     const authFlowId = startAuthFlow();
     const attempt = nextAuthAttempt();
     logBrowserOperationStart(authLogger, 'auth_logout_started', {
@@ -683,10 +686,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     });
     try {
       await fetchWithRequestTimeout(
-        devAuthAvailable ? DEV_AUTH_LOGOUT_ENDPOINT : AUTH_LOGOUT_ENDPOINT,
+        devAuthSessionActive ? DEV_AUTH_LOGOUT_ENDPOINT : AUTH_LOGOUT_ENDPOINT,
         {
           method: 'POST',
-          ...(devAuthAvailable
+          ...(devAuthSessionActive
             ? {}
             : {
                 headers: {
@@ -729,7 +732,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       clearKnownSession();
       clearAuthDiagnosticTrail();
     }
-  }, [devAuthAvailable, nextAuthAttempt, recordTrail, startAuthFlow]);
+  }, [nextAuthAttempt, recordTrail, startAuthFlow]);
 
   const value = React.useMemo<AuthContextValue>(
     () => ({

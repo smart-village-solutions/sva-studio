@@ -177,6 +177,7 @@ export {
 } from './plugin-platform-contracts.js';
 export {
   resolvePluginCatalog,
+  resolvePluginCatalogAsync,
 } from './plugin-platform-resolution.js';
 export type {
   PluginCatalogIssue,

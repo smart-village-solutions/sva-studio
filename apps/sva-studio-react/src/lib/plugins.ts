@@ -37,32 +37,32 @@ const workspaceManifestModules = import.meta.glob('../../../../packages/plugin-*
   eager: true,
   import: 'default',
 }) as Record<string, PluginManifest>;
-const workspacePluginModules = {
-  ...import.meta.glob('../../../../packages/plugin-*/src/index.ts', { eager: true }),
-  ...import.meta.glob('../../../../packages/plugin-*/src/index.tsx', { eager: true }),
-} as Record<string, Record<string, unknown>>;
+const workspacePluginModuleLoaders = {
+  ...import.meta.glob('../../../../packages/plugin-*/src/index.ts'),
+  ...import.meta.glob('../../../../packages/plugin-*/src/index.tsx'),
+} as Record<string, () => Promise<Record<string, unknown>>>;
 const nodeManifestModules = {
   ...import.meta.glob('../../../../node_modules/*/plugin.manifest.json', { eager: true, import: 'default' }),
   ...import.meta.glob('../../../../node_modules/@*/*/plugin.manifest.json', { eager: true, import: 'default' }),
 } as Record<string, PluginManifest>;
-const nodePluginModules = {
+const nodePluginModuleLoaders = {
   // Restrict eager package-module imports to the documented plugin package naming
-  // scheme. Pulling every package or every "*plugin*" package into SSR startup
-  // drags unrelated CommonJS tooling like eslint-plugin packages into the module graph.
-  ...import.meta.glob('../../../../node_modules/plugin-*/dist/index.js', { eager: true }),
-  ...import.meta.glob('../../../../node_modules/plugin-*/src/index.ts', { eager: true }),
-  ...import.meta.glob('../../../../node_modules/plugin-*/src/index.tsx', { eager: true }),
-  ...import.meta.glob('../../../../node_modules/@*/plugin-*/dist/index.js', { eager: true }),
-  ...import.meta.glob('../../../../node_modules/@*/plugin-*/src/index.ts', { eager: true }),
-  ...import.meta.glob('../../../../node_modules/@*/plugin-*/src/index.tsx', { eager: true }),
-} as Record<string, Record<string, unknown>>;
+  // scheme. Modules stay lazy so disabled or uncatalogized plugins cannot
+  // execute top-level code during startup.
+  ...import.meta.glob('../../../../node_modules/plugin-*/dist/index.js'),
+  ...import.meta.glob('../../../../node_modules/plugin-*/src/index.ts'),
+  ...import.meta.glob('../../../../node_modules/plugin-*/src/index.tsx'),
+  ...import.meta.glob('../../../../node_modules/@*/plugin-*/dist/index.js'),
+  ...import.meta.glob('../../../../node_modules/@*/plugin-*/src/index.ts'),
+  ...import.meta.glob('../../../../node_modules/@*/plugin-*/src/index.tsx'),
+} as Record<string, () => Promise<Record<string, unknown>>>;
 
 const { workspaceManifestRegistry, workspacePluginRegistry, nodeManifestRegistry, nodePluginRegistry } =
   createPluginBuildRegistries({
     workspaceManifestModules,
-    workspacePluginModules,
+    workspacePluginModuleLoaders,
     nodeManifestModules,
-    nodePluginModules,
+    nodePluginModuleLoaders,
   });
 
 const resolveWorkspaceManifest = (entry: StudioPluginCatalogConfigEntry): PluginManifest | undefined =>
@@ -74,16 +74,16 @@ const resolveNodeManifest = (entry: StudioPluginCatalogConfigEntry): PluginManif
 const resolveWorkspacePluginModule = (
   entry: PluginCatalogEntry,
   manifest: PluginManifest
-): Record<string, unknown> | undefined =>
+): Promise<Record<string, unknown> | undefined> =>
   resolvePluginModuleFromRegistry(workspacePluginRegistry, entry.sourceRef, getWorkspacePluginModuleCandidates(manifest));
 
 const resolveNodePluginModule = (
   entry: PluginCatalogEntry,
   manifest: PluginManifest
-): Record<string, unknown> | undefined =>
+): Promise<Record<string, unknown> | undefined> =>
   resolvePluginModuleFromRegistry(nodePluginRegistry, entry.sourceRef, getPackagePluginModuleCandidates(manifest));
 
-const studioPluginCatalogReport = createStudioPluginCatalogReport({
+const studioPluginCatalogReport = await createStudioPluginCatalogReport({
   catalogConfig: studioPluginCatalogConfig as readonly StudioPluginCatalogConfigEntry[],
   resolveManifest: (entry) => (entry.sourceType === 'workspace' ? resolveWorkspaceManifest(entry) : resolveNodeManifest(entry)),
   resolvePluginModule: (entry, manifest) =>

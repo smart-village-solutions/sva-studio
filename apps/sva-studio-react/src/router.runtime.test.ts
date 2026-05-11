@@ -14,6 +14,8 @@ const readRouteGuardGetUser = (router: unknown) => {
   return (router as RouterWithAuthContext).options.context.auth.getUser;
 };
 
+let cookieState = '';
+
 const routerMocks = vi.hoisted(() => {
   const createRouterSpy = vi.fn((options: Record<string, unknown>) => ({
     __router: true,
@@ -134,6 +136,7 @@ vi.mock('@tanstack/react-start/server', () => ({
 describe('router runtime helpers', () => {
   beforeEach(() => {
     vi.unstubAllEnvs();
+    cookieState = '';
     routerMocks.executionMode.current = 'client';
     routerMocks.createRouterSpy.mockClear();
     routerMocks.fetchWithRequestTimeoutSpy.mockReset();
@@ -145,6 +148,13 @@ describe('router runtime helpers', () => {
     routerMocks.parseRuntimeProfile.mockClear();
     routerMocks.isMockAuthRuntimeProfile.mockClear();
     delete (window as typeof window & { __SVA_PLAYWRIGHT_ROUTER__?: unknown }).__SVA_PLAYWRIGHT_ROUTER__;
+    Object.defineProperty(document, 'cookie', {
+      configurable: true,
+      get: () => cookieState,
+      set: (value: string) => {
+        cookieState = value;
+      },
+    });
   });
 
   afterEach(() => {
@@ -298,6 +308,43 @@ describe('router runtime helpers', () => {
 
     routerMocks.fetchWithRequestTimeoutSpy.mockRejectedValueOnce(new Error('timeout'));
     expect(await getUser()).toBeNull();
+  });
+
+  it('does not bypass auth-me when dev auth is only available but no dev auth cookie exists', async () => {
+    const { getRouter } = await import('./router');
+
+    vi.stubEnv('VITE_SVA_DEV_AUTH', 'true');
+
+    const router = await getRouter();
+    const getUser = readRouteGuardGetUser(router);
+
+    routerMocks.fetchWithRequestTimeoutSpy.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          user: {
+            roles: ['editor'],
+            permissionActions: ['news.read'],
+            assignedModules: ['news'],
+          },
+        }),
+        {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }
+      )
+    );
+
+    expect(await getUser()).toEqual({
+      roles: ['editor'],
+      permissionActions: ['news.read'],
+      permissionStatus: 'ok',
+      assignedModules: ['news'],
+    });
+    expect(routerMocks.fetchWithRequestTimeoutSpy).toHaveBeenCalledWith(
+      'http://localhost:3000/auth/me',
+      undefined,
+      { timeoutMs: 5_000 }
+    );
   });
 
   it('resolves route-guard users on the server and falls back to null on failures', async () => {

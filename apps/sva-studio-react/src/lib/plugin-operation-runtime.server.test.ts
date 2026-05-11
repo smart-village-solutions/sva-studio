@@ -73,7 +73,7 @@ describe('plugin operation runtime registration', () => {
   it('registers the current studio plugin operation handlers after coverage validation', async () => {
     const mod = await import('./plugin-operation-runtime.server');
 
-    const handlers = mod.registerStudioPluginOperationHandlers();
+    const handlers = await mod.registerStudioPluginOperationHandlers();
 
     expect(Object.keys(handlers).sort()).toEqual([
       'waste-management.apply-migrations',
@@ -114,14 +114,15 @@ describe('plugin operation runtime registration', () => {
 
   it('covers the declared waste job types with registered handlers', async () => {
     const mod = await import('./plugin-operation-runtime.server');
+    const handlers = await mod.createStudioPluginOperationExecutionHandlers();
 
-    expect(() => mod.assertStudioPluginOperationHandlerCoverage(mod.createStudioPluginOperationExecutionHandlers())).not.toThrow();
+    expect(() => mod.assertStudioPluginOperationHandlerCoverage(handlers)).not.toThrow();
   });
 
   it('resolves job runtimes by runtime contract id instead of plugin id', async () => {
     const mod = await import('./plugin-operation-runtime.server');
 
-    const handlers = mod.createPluginOperationExecutionHandlersFromSnapshot({
+    const handlers = await mod.createPluginOperationExecutionHandlersFromSnapshot({
       pluginSources: [createJobPluginSource({ pluginId: 'custom-waste-plugin', runtimeRequirement: 'waste-management.operations' })],
       runtimeFactories: {
         'waste-management.operations': () => ({}),
@@ -140,7 +141,7 @@ describe('plugin operation runtime registration', () => {
   it('ignores plugin sources without job entry points', async () => {
     const mod = await import('./plugin-operation-runtime.server');
 
-    const handlers = mod.createPluginOperationExecutionHandlersFromSnapshot({
+    const handlers = await mod.createPluginOperationExecutionHandlersFromSnapshot({
       pluginSources: [
         {
           pluginId: 'browser-only-plugin',
@@ -169,7 +170,7 @@ describe('plugin operation runtime registration', () => {
   it('rejects job entry points without declared runtime requirements', async () => {
     const mod = await import('./plugin-operation-runtime.server');
 
-    expect(() =>
+    await expect(
       mod.createPluginOperationExecutionHandlersFromSnapshot({
         pluginSources: [
           {
@@ -193,24 +194,24 @@ describe('plugin operation runtime registration', () => {
         ],
         runtimeFactories: {},
       })
-    ).toThrowError('plugin_job_runtime_requirement_missing:custom-waste-plugin');
+    ).rejects.toThrowError('plugin_job_runtime_requirement_missing:custom-waste-plugin');
   });
 
   it('rejects missing host runtime providers for declared runtime contracts', async () => {
     const mod = await import('./plugin-operation-runtime.server');
 
-    expect(() =>
+    await expect(
       mod.createPluginOperationExecutionHandlersFromSnapshot({
         pluginSources: [createJobPluginSource({ pluginId: 'custom-waste-plugin', runtimeRequirement: 'custom.runtime' })],
         runtimeFactories: {},
       })
-    ).toThrowError('plugin_job_runtime_provider_missing:custom-waste-plugin:custom.runtime');
+    ).rejects.toThrowError('plugin_job_runtime_provider_missing:custom-waste-plugin:custom.runtime');
   });
 
   it('rejects package job sources without a loadable module factory', async () => {
     const mod = await import('./plugin-operation-runtime.server');
 
-    expect(() =>
+    await expect(
       mod.createPluginOperationExecutionHandlersFromSnapshot({
         pluginSources: [
           {
@@ -226,6 +227,6 @@ describe('plugin operation runtime registration', () => {
           'waste-management.operations': () => ({}),
         },
       })
-    ).toThrowError('missing_plugin_job_module_factory:installed-waste-plugin');
+    ).rejects.toThrowError('missing_plugin_job_module_factory:installed-waste-plugin');
   });
 });

@@ -14,19 +14,21 @@ type PluginJobModuleFactory = (runtime: unknown) => Readonly<Record<string, Plug
 type PluginJobModuleExports = {
   readonly createPluginJobExecutionHandlers?: PluginJobModuleFactory;
 };
+type PluginJobModuleLoader = () => Promise<PluginJobModuleExports>;
 type PluginJobRuntimeFactory = () => unknown;
 type PluginJobRuntimeFactoryRegistry = Readonly<Record<string, PluginJobRuntimeFactory>>;
 type PluginSnapshotSource = PluginSnapshot['pluginSources'][number];
 
-const workspaceJobModules = import.meta.glob('../../../../packages/plugin-*/src/server.ts', {
-  eager: true,
-}) as Record<string, PluginJobModuleExports>;
-const nodeJobModules = {
-  ...import.meta.glob('../../../../node_modules/plugin-*/dist/server.js', { eager: true }),
-  ...import.meta.glob('../../../../node_modules/plugin-*/src/server.ts', { eager: true }),
-  ...import.meta.glob('../../../../node_modules/@*/plugin-*/dist/server.js', { eager: true }),
-  ...import.meta.glob('../../../../node_modules/@*/plugin-*/src/server.ts', { eager: true }),
-} as Record<string, PluginJobModuleExports>;
+const workspaceJobModuleLoaders = import.meta.glob('../../../../packages/plugin-*/src/server.ts') as Record<
+  string,
+  PluginJobModuleLoader
+>;
+const nodeJobModuleLoaders = {
+  ...import.meta.glob('../../../../node_modules/plugin-*/dist/server.js'),
+  ...import.meta.glob('../../../../node_modules/plugin-*/src/server.ts'),
+  ...import.meta.glob('../../../../node_modules/@*/plugin-*/dist/server.js'),
+  ...import.meta.glob('../../../../node_modules/@*/plugin-*/src/server.ts'),
+} as Record<string, PluginJobModuleLoader>;
 
 const trimImportGlobPrefix = (path: string): string => path.replace(/^(\.\.\/)+/, '');
 
@@ -42,23 +44,23 @@ const getRelativePackagePath = (path: string, sourceRef: string): string => {
   return normalizedPath;
 };
 
-const workspaceJobModuleRegistry = new Map<string, PluginJobModuleExports>();
-for (const [path, moduleExports] of Object.entries(workspaceJobModules)) {
+const workspaceJobModuleRegistry = new Map<string, PluginJobModuleLoader>();
+for (const [path, moduleLoader] of Object.entries(workspaceJobModuleLoaders)) {
   const normalizedPath = trimImportGlobPrefix(path);
   const match = normalizedPath.match(/^(packages\/[^/]+)\//);
   const sourceRef = match?.[1];
   if (sourceRef) {
-    workspaceJobModuleRegistry.set(`${sourceRef}::${getRelativePackagePath(path, sourceRef)}`, moduleExports);
+    workspaceJobModuleRegistry.set(`${sourceRef}::${getRelativePackagePath(path, sourceRef)}`, moduleLoader);
   }
 }
 
-const nodeJobModuleRegistry = new Map<string, PluginJobModuleExports>();
-for (const [path, moduleExports] of Object.entries(nodeJobModules)) {
+const nodeJobModuleRegistry = new Map<string, PluginJobModuleLoader>();
+for (const [path, moduleLoader] of Object.entries(nodeJobModuleLoaders)) {
   const normalizedPath = trimImportGlobPrefix(path);
   const match = normalizedPath.match(/^node_modules\/((?:@[^/]+\/)?[^/]+)\//);
   const sourceRef = match?.[1];
   if (sourceRef) {
-    nodeJobModuleRegistry.set(`${sourceRef}::${getRelativePackagePath(path, sourceRef)}`, moduleExports);
+    nodeJobModuleRegistry.set(`${sourceRef}::${getRelativePackagePath(path, sourceRef)}`, moduleLoader);
   }
 }
 
@@ -91,7 +93,7 @@ const resolvePluginJobModule = (input: {
   readonly sourceRef: string;
   readonly jobsEntry: string;
   readonly sourceType: string;
-}): PluginJobModuleExports | undefined => {
+}): Promise<PluginJobModuleExports | undefined> => {
   const candidates =
     input.sourceType === 'workspace'
       ? getWorkspaceJobModuleCandidates(input.jobsEntry)
@@ -99,13 +101,13 @@ const resolvePluginJobModule = (input: {
   const registry = input.sourceType === 'workspace' ? workspaceJobModuleRegistry : nodeJobModuleRegistry;
 
   for (const relativePath of candidates) {
-    const moduleExports = registry.get(`${input.sourceRef}::${relativePath}`);
-    if (moduleExports) {
-      return moduleExports;
+    const moduleLoader = registry.get(`${input.sourceRef}::${relativePath}`);
+    if (moduleLoader) {
+      return moduleLoader();
     }
   }
 
-  return undefined;
+  return Promise.resolve(undefined);
 };
 
 const studioPluginJobRuntimeFactories: PluginJobRuntimeFactoryRegistry = {
@@ -129,63 +131,67 @@ const resolvePluginJobRuntimeRequirement = (input: {
 export const createPluginOperationExecutionHandlersFromSnapshot = (input: {
   readonly pluginSources: readonly PluginSnapshotSource[];
   readonly runtimeFactories: PluginJobRuntimeFactoryRegistry;
-}): Readonly<Record<string, PluginOperationExecutionHandler>> => {
-  const handlerEntries: Array<readonly [string, PluginOperationExecutionHandler]> = [];
+}): Promise<Readonly<Record<string, PluginOperationExecutionHandler>>> => {
+  return (async () => {
+    const handlerEntries: Array<readonly [string, PluginOperationExecutionHandler]> = [];
 
-  for (const source of input.pluginSources) {
-    const jobsEntry = source.manifest.entryPoints.jobs;
-    if (!jobsEntry) {
-      continue;
+    for (const source of input.pluginSources) {
+      const jobsEntry = source.manifest.entryPoints.jobs;
+      if (!jobsEntry) {
+        continue;
+      }
+
+      const runtimeRequirement = resolvePluginJobRuntimeRequirement({
+        pluginId: source.pluginId,
+        manifest: source.manifest,
+      });
+      const runtimeFactory = input.runtimeFactories[runtimeRequirement];
+      if (!runtimeFactory) {
+        throw new Error(`plugin_job_runtime_provider_missing:${source.pluginId}:${runtimeRequirement}`);
+      }
+
+      const jobModule = await resolvePluginJobModule({
+        sourceRef: source.sourceRef,
+        jobsEntry,
+        sourceType: source.sourceType,
+      });
+      const createPluginJobExecutionHandlers = jobModule?.createPluginJobExecutionHandlers;
+      if (!createPluginJobExecutionHandlers) {
+        throw new Error(`missing_plugin_job_module_factory:${source.pluginId}`);
+      }
+
+      for (const [jobTypeId, handler] of Object.entries(createPluginJobExecutionHandlers(runtimeFactory()))) {
+        handlerEntries.push([jobTypeId, handler] as const);
+      }
     }
 
-    const runtimeRequirement = resolvePluginJobRuntimeRequirement({
-      pluginId: source.pluginId,
-      manifest: source.manifest,
-    });
-    const runtimeFactory = input.runtimeFactories[runtimeRequirement];
-    if (!runtimeFactory) {
-      throw new Error(`plugin_job_runtime_provider_missing:${source.pluginId}:${runtimeRequirement}`);
-    }
-
-    const jobModule = resolvePluginJobModule({
-      sourceRef: source.sourceRef,
-      jobsEntry,
-      sourceType: source.sourceType,
-    });
-    const createPluginJobExecutionHandlers = jobModule?.createPluginJobExecutionHandlers;
-    if (!createPluginJobExecutionHandlers) {
-      throw new Error(`missing_plugin_job_module_factory:${source.pluginId}`);
-    }
-
-    for (const [jobTypeId, handler] of Object.entries(createPluginJobExecutionHandlers(runtimeFactory()))) {
-      handlerEntries.push([jobTypeId, handler] as const);
-    }
-  }
-
-  return Object.fromEntries(handlerEntries);
+    return Object.fromEntries(handlerEntries);
+  })();
 };
 
 const studioPluginOperationQueueRegistry = new Map(
   studioPluginSnapshot.registry.jobTypes.map((jobType) => [jobType.jobTypeId, jobType.queue] as const)
 );
 
-export const createStudioPluginOperationExecutionHandlers = (): Readonly<
-  Record<string, PluginOperationExecutionRegistration>
+export const createStudioPluginOperationExecutionHandlers = async (): Promise<
+  Readonly<Record<string, PluginOperationExecutionRegistration>>
 > => {
-  const handlers = createPluginOperationExecutionHandlersFromSnapshot({
-    pluginSources: studioPluginSnapshot.pluginSources,
-    runtimeFactories: studioPluginJobRuntimeFactories,
-  });
+  return (async () => {
+    const handlers = await createPluginOperationExecutionHandlersFromSnapshot({
+      pluginSources: studioPluginSnapshot.pluginSources,
+      runtimeFactories: studioPluginJobRuntimeFactories,
+    });
 
-  return Object.fromEntries(
-    Object.entries(handlers).map(([jobTypeId, handler]) => [
-      jobTypeId,
-      {
-        handler,
-        queueName: studioPluginOperationQueueRegistry.get(jobTypeId) ?? 'plugin-operations',
-      },
-    ])
-  );
+    return Object.fromEntries(
+      Object.entries(handlers).map(([jobTypeId, handler]) => [
+        jobTypeId,
+        {
+          handler,
+          queueName: studioPluginOperationQueueRegistry.get(jobTypeId) ?? 'plugin-operations',
+        },
+      ])
+    );
+  })();
 };
 
 const collectDeclaredJobTypeIds = (
@@ -223,11 +229,13 @@ export const assertStudioPluginOperationHandlerCoverage = (
   });
 };
 
-export const registerStudioPluginOperationHandlers = (): Readonly<
-  Record<string, PluginOperationExecutionRegistration>
+export const registerStudioPluginOperationHandlers = async (): Promise<
+  Readonly<Record<string, PluginOperationExecutionRegistration>>
 > => {
-  const handlers = createStudioPluginOperationExecutionHandlers();
-  assertStudioPluginOperationHandlerCoverage(handlers);
-  registerPluginOperationExecutionHandlers(handlers);
-  return handlers;
+  return (async () => {
+    const handlers = await createStudioPluginOperationExecutionHandlers();
+    assertStudioPluginOperationHandlerCoverage(handlers);
+    registerPluginOperationExecutionHandlers(handlers);
+    return handlers;
+  })();
 };

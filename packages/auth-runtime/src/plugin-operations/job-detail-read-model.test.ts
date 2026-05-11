@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  createStudioJobDefaultEventMessage,
   createStudioJobEventPresentation,
   createStudioJobRuntimeDiagnostics,
   normalizeStudioJobDetail,
@@ -93,58 +92,39 @@ describe('job detail read model', () => {
   it('covers event presentation and default messages for every event type', () => {
     expect(createStudioJobEventPresentation({ eventType: 'job.queued' } as never)).toEqual({
       tone: 'info',
-      title: 'Job eingeplant',
+      title: 'job.queued',
+      isTerminal: false,
+    });
+    expect(createStudioJobEventPresentation({ eventType: 'job.started' } as never)).toEqual({
+      tone: 'info',
+      title: 'job.started',
+      isTerminal: false,
+    });
+    expect(createStudioJobEventPresentation({ eventType: 'job.progressed' } as never)).toEqual({
+      tone: 'neutral',
+      title: 'job.progressed',
       isTerminal: false,
     });
     expect(createStudioJobEventPresentation({ eventType: 'job.retrying' } as never)).toEqual({
       tone: 'warning',
-      title: 'Neuer Versuch geplant',
+      title: 'job.retrying',
       isTerminal: false,
     });
     expect(createStudioJobEventPresentation({ eventType: 'job.succeeded' } as never)).toEqual({
       tone: 'success',
-      title: 'Job erfolgreich abgeschlossen',
+      title: 'job.succeeded',
       isTerminal: true,
     });
     expect(createStudioJobEventPresentation({ eventType: 'job.failed' } as never)).toEqual({
       tone: 'error',
-      title: 'Job fehlgeschlagen',
+      title: 'job.failed',
       isTerminal: true,
     });
     expect(createStudioJobEventPresentation({ eventType: 'job.cancelled' } as never)).toEqual({
       tone: 'warning',
-      title: 'Job abgebrochen',
+      title: 'job.cancelled',
       isTerminal: true,
     });
-
-    expect(createStudioJobDefaultEventMessage({ eventType: 'job.queued' } as never)).toBe(
-      'Job wurde zur Ausführung eingeplant.'
-    );
-    expect(createStudioJobDefaultEventMessage({ eventType: 'job.started' } as never)).toBe(
-      'Job-Ausführung wurde gestartet.'
-    );
-    expect(
-      createStudioJobDefaultEventMessage({
-        eventType: 'job.progressed',
-        progress: { currentStepLabel: 'Schritt A' },
-      } as never)
-    ).toBe('Fortschritt aktualisiert: Schritt A.');
-    expect(
-      createStudioJobDefaultEventMessage({
-        eventType: 'job.progressed',
-        progress: { currentStepKey: 'step_b' },
-      } as never)
-    ).toBe('Fortschritt aktualisiert: step_b.');
-    expect(createStudioJobDefaultEventMessage({ eventType: 'job.retrying' } as never)).toBe(
-      'Job wird nach einem Fehler erneut versucht.'
-    );
-    expect(createStudioJobDefaultEventMessage({ eventType: 'job.succeeded' } as never)).toBe(
-      'Job wurde erfolgreich abgeschlossen.'
-    );
-    expect(createStudioJobDefaultEventMessage({ eventType: 'job.failed' } as never)).toBe('Job ist fehlgeschlagen.');
-    expect(createStudioJobDefaultEventMessage({ eventType: 'job.cancelled' } as never)).toBe(
-      'Job wurde abgebrochen.'
-    );
   });
 
   it('derives event details and runtime states across host, plugin and stale-state variants', () => {

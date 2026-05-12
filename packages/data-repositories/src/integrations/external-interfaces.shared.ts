@@ -11,7 +11,7 @@ export type ExternalInterfaceTypeRow = {
   readonly category: 'api' | 'object_storage' | 'database' | 'feed';
   readonly public_schema_json: Record<string, unknown>;
   readonly secret_schema_json: Record<string, unknown>;
-  readonly status_check_kind: 'none' | 'sva_mainserver' | 's3' | 'supabase';
+  readonly status_check_kind: string;
   readonly enabled: boolean;
 };
 
@@ -30,7 +30,7 @@ export type ExternalInterfaceRow = {
   readonly auth_mode: string | null;
   readonly public_config_json: Record<string, unknown>;
   readonly secret_config_ciphertext: string | null;
-  readonly status_check_kind: 'none' | 'sva_mainserver' | 's3' | 'supabase';
+  readonly status_check_kind: string;
   readonly visible_status: 'not_configured' | 'unknown' | 'ok' | 'error' | 'disabled';
   readonly last_checked_at: string | null;
   readonly last_check_status: 'succeeded' | 'failed' | null;

@@ -147,6 +147,46 @@ describe('settings', () => {
     );
   });
 
+  it('resets disabled visible status back to unknown when re-enabling an existing mainserver record', async () => {
+    state.loadDefaultExternalInterfaceRecord.mockResolvedValue({
+      id: 'sva-mainserver:de-musterhausen',
+      instanceId: 'de-musterhausen',
+      typeKey: 'sva_mainserver',
+      ownerKind: 'host',
+      ownerId: 'host',
+      displayName: 'SVA Mainserver',
+      alias: 'default',
+      enabled: false,
+      isDefault: true,
+      category: 'api',
+      baseUrl: 'https://old.example.invalid/graphql',
+      authMode: 'oauth2',
+      publicConfig: {
+        graphqlBaseUrl: 'https://old.example.invalid/graphql',
+        oauthTokenUrl: 'https://old.example.invalid/oauth/token',
+      },
+      statusCheckKind: 'sva_mainserver',
+      visibleStatus: 'disabled',
+      lastCheckedAt: '2026-03-14T09:00:00.000Z',
+    });
+
+    const { saveSvaMainserverSettings } = await import('./settings');
+
+    await saveSvaMainserverSettings({
+      instanceId: 'de-musterhausen',
+      graphqlBaseUrl: 'https://new.example.invalid/graphql',
+      oauthTokenUrl: 'https://new.example.invalid/oauth/token',
+      enabled: true,
+    });
+
+    expect(state.saveExternalInterfaceRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        enabled: true,
+        visibleStatus: 'unknown',
+      })
+    );
+  });
+
   it('creates a default registry record id and unknown status for newly enabled settings', async () => {
     state.loadDefaultExternalInterfaceRecord.mockResolvedValue(null);
 

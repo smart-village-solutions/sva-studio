@@ -652,8 +652,7 @@ CREATE TABLE iam.external_interface_types (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT external_interface_types_category_chk CHECK ((category = ANY (ARRAY['api'::text, 'object_storage'::text, 'database'::text, 'feed'::text]))),
-    CONSTRAINT external_interface_types_owner_kind_chk CHECK ((owner_kind = ANY (ARRAY['host'::text, 'plugin'::text]))),
-    CONSTRAINT external_interface_types_status_check_kind_chk CHECK ((status_check_kind = ANY (ARRAY['none'::text, 'sva_mainserver'::text, 's3'::text, 'supabase'::text])))
+    CONSTRAINT external_interface_types_owner_kind_chk CHECK ((owner_kind = ANY (ARRAY['host'::text, 'plugin'::text])))
 );
 
 
@@ -687,7 +686,6 @@ CREATE TABLE iam.instance_external_interfaces (
     CONSTRAINT instance_external_interfaces_category_chk CHECK ((category = ANY (ARRAY['api'::text, 'object_storage'::text, 'database'::text, 'feed'::text]))),
     CONSTRAINT instance_external_interfaces_last_check_status_chk CHECK (((last_check_status IS NULL) OR (last_check_status = ANY (ARRAY['succeeded'::text, 'failed'::text])))),
     CONSTRAINT instance_external_interfaces_owner_kind_chk CHECK ((owner_kind = ANY (ARRAY['host'::text, 'plugin'::text]))),
-    CONSTRAINT instance_external_interfaces_status_check_kind_chk CHECK ((status_check_kind = ANY (ARRAY['none'::text, 'sva_mainserver'::text, 's3'::text, 'supabase'::text]))),
     CONSTRAINT instance_external_interfaces_visible_status_chk CHECK ((visible_status = ANY (ARRAY['not_configured'::text, 'unknown'::text, 'ok'::text, 'error'::text, 'disabled'::text]))),
     CONSTRAINT instance_external_interfaces_instance_type_alias_key UNIQUE (instance_id, type_key, alias)
 );

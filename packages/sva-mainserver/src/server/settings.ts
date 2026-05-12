@@ -45,6 +45,21 @@ const mapValuesToConfig = (input: {
   lastVerifiedStatus: input.lastVerifiedStatus,
 });
 
+const resolveStoredVisibleStatus = (
+  enabled: boolean,
+  existingVisibleStatus: ExternalInterfaceVisibleStatus | undefined
+): ExternalInterfaceVisibleStatus => {
+  if (!enabled) {
+    return 'disabled';
+  }
+
+  if (!existingVisibleStatus || existingVisibleStatus === 'disabled') {
+    return 'unknown';
+  }
+
+  return existingVisibleStatus;
+};
+
 export const loadSvaMainserverSettings = async (instanceId: string): Promise<SvaMainserverInstanceConfig | null> => {
   const record = await loadDefaultExternalInterfaceRecord(instanceId, SVA_MAINSERVER_TYPE_KEY);
   if (!record) {
@@ -94,7 +109,7 @@ export const saveSvaMainserverSettings = async (input: {
     },
     secretConfigCiphertext: undefined,
     statusCheckKind: 'sva_mainserver',
-    visibleStatus: input.enabled ? existing?.visibleStatus ?? 'unknown' : 'disabled',
+    visibleStatus: resolveStoredVisibleStatus(input.enabled, existing?.visibleStatus),
     lastCheckedAt: existing?.lastCheckedAt,
     lastCheckStatus: existing?.lastCheckStatus,
     lastCheckErrorCode: existing?.lastCheckErrorCode,

@@ -133,6 +133,84 @@ describe('external interface repository', () => {
     ]);
   });
 
+  it('keeps plugin-defined status check kinds when mapping rows and building upserts', async () => {
+    const pluginTypeDefinition: ExternalInterfaceTypeDefinition = {
+      typeKey: 'news-rss',
+      ownerKind: 'plugin',
+      ownerId: 'news',
+      displayName: 'RSS Feed',
+      category: 'feed',
+      publicSchema: { feedUrl: true },
+      secretSchema: {},
+      statusCheckKind: 'news.rss',
+      enabled: true,
+    };
+
+    const pluginRecord: ExternalInterfaceRecord = {
+      id: 'interface-rss',
+      instanceId: 'tenant-a',
+      typeKey: 'news-rss',
+      ownerKind: 'plugin',
+      ownerId: 'news',
+      displayName: 'RSS Feed',
+      alias: 'default',
+      enabled: true,
+      isDefault: true,
+      category: 'feed',
+      statusCheckKind: 'news.rss',
+      visibleStatus: 'unknown',
+      publicConfig: { feedUrl: 'https://example.com/feed.xml' },
+    };
+
+    const { executor } = createExecutor([
+      {
+        type_key: 'news-rss',
+        owner_kind: 'plugin',
+        owner_id: 'news',
+        display_name: 'RSS Feed',
+        category: 'feed',
+        public_schema_json: { feedUrl: true },
+        secret_schema_json: {},
+        status_check_kind: 'news.rss',
+        enabled: true,
+      },
+      {
+        id: 'interface-rss',
+        instance_id: 'tenant-a',
+        type_key: 'news-rss',
+        owner_kind: 'plugin',
+        owner_id: 'news',
+        display_name: 'RSS Feed',
+        alias: 'default',
+        enabled: true,
+        is_default: true,
+        category: 'feed',
+        base_url: null,
+        auth_mode: null,
+        public_config_json: { feedUrl: 'https://example.com/feed.xml' },
+        secret_config_ciphertext: null,
+        status_check_kind: 'news.rss',
+        visible_status: 'unknown',
+        last_checked_at: null,
+        last_check_status: null,
+        last_check_error_code: null,
+        last_check_error_message: null,
+        created_at: null,
+        updated_at: null,
+      },
+    ]);
+
+    await expect(createExternalInterfaceRepository(executor).listTypeDefinitions()).resolves.toContainEqual(
+      pluginTypeDefinition
+    );
+    await expect(createExternalInterfaceRepository(executor).listByInstanceId('tenant-a')).resolves.toContainEqual(
+      expect.objectContaining(pluginRecord)
+    );
+
+    expect(externalInterfaceStatements.upsertType(pluginTypeDefinition).values).toContain('news.rss');
+    expect(externalInterfaceStatements.upsert(pluginRecord).values).toContain('news.rss');
+  });
+
   it('maps nullable interface row fields to undefined and keeps empty lookups fail-closed', async () => {
     const nullableExecutor = createExecutor([
       {

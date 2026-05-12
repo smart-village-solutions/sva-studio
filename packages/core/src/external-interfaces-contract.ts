@@ -29,7 +29,7 @@ export type ExternalInterfaceTypeDefinition = Readonly<{
   category: ExternalInterfaceCategory;
   publicSchema: Readonly<Record<string, unknown>>;
   secretSchema: Readonly<Record<string, unknown>>;
-  statusCheckKind: ExternalInterfaceStatusCheckKind;
+  statusCheckKind: ExternalInterfaceStatusCheckKind | string;
   enabled: boolean;
 }>;
 
@@ -46,7 +46,7 @@ type ExternalInterfaceBase = Readonly<{
   category: ExternalInterfaceCategory;
   baseUrl?: string;
   authMode?: string;
-  statusCheckKind: ExternalInterfaceStatusCheckKind;
+  statusCheckKind: ExternalInterfaceStatusCheckKind | string;
   visibleStatus: ExternalInterfaceVisibleStatus;
   lastCheckedAt?: string;
   lastCheckStatus?: ExternalInterfaceCheckStatus;

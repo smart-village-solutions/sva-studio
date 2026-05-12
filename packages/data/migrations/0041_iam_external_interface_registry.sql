@@ -13,10 +13,7 @@ CREATE TABLE IF NOT EXISTS iam.external_interface_types (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   CONSTRAINT external_interface_types_owner_kind_chk CHECK (owner_kind IN ('host', 'plugin')),
-  CONSTRAINT external_interface_types_category_chk CHECK (category IN ('api', 'object_storage', 'database', 'feed')),
-  CONSTRAINT external_interface_types_status_check_kind_chk CHECK (
-    status_check_kind IN ('none', 'sva_mainserver', 's3', 'supabase')
-  )
+  CONSTRAINT external_interface_types_category_chk CHECK (category IN ('api', 'object_storage', 'database', 'feed'))
 );
 
 CREATE TABLE IF NOT EXISTS iam.instance_external_interfaces (
@@ -44,9 +41,6 @@ CREATE TABLE IF NOT EXISTS iam.instance_external_interfaces (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   CONSTRAINT instance_external_interfaces_owner_kind_chk CHECK (owner_kind IN ('host', 'plugin')),
   CONSTRAINT instance_external_interfaces_category_chk CHECK (category IN ('api', 'object_storage', 'database', 'feed')),
-  CONSTRAINT instance_external_interfaces_status_check_kind_chk CHECK (
-    status_check_kind IN ('none', 'sva_mainserver', 's3', 'supabase')
-  ),
   CONSTRAINT instance_external_interfaces_visible_status_chk CHECK (
     visible_status IN ('not_configured', 'unknown', 'ok', 'error', 'disabled')
   ),

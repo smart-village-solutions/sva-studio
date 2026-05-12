@@ -277,6 +277,59 @@ describe('instance-interfaces-server', () => {
     expect(state.saveExternalInterfaceRecord).not.toHaveBeenCalled();
   });
 
+  it('rejects non-object decrypted secret payloads during updates', async () => {
+    state.loadExternalInterfaceRecordById.mockResolvedValue({
+      id: 'existing-interface-id',
+      instanceId: 'de-test',
+      typeKey: 's3',
+      ownerKind: 'host',
+      ownerId: 'host',
+      displayName: 'Existing S3',
+      alias: 'existing-s3',
+      enabled: true,
+      isDefault: true,
+      category: 'object_storage',
+      baseUrl: 'https://s3.example',
+      authMode: 'access_key',
+      publicConfig: {
+        endpoint: 'https://s3.example',
+        region: 'eu-central-1',
+        bucket: 'uploads',
+        accessKeyId: 'key-1',
+        forcePathStyle: false,
+      },
+      secretConfigCiphertext: 'corrupted-ciphertext',
+      statusCheckKind: 's3',
+      createdAt: '2026-05-12T08:00:00.000Z',
+      updatedAt: '2026-05-12T08:00:00.000Z',
+    });
+    state.revealField.mockReturnValue('["secret-old"]');
+
+    const { upsertStoredInterface } = await import('./instance-interfaces-server');
+
+    await expect(
+      upsertStoredInterface(
+        'de-test',
+        {
+          type: 's3',
+          name: 'Updated S3',
+          enabled: true,
+          config: {
+            endpoint: 'https://s3.example',
+            region: 'eu-central-1',
+            bucket: 'uploads',
+            accessKeyId: 'key-1',
+            secretAccessKey: '',
+            forcePathStyle: false,
+          },
+        },
+        'existing-interface-id'
+      )
+    ).rejects.toThrow('secret_unreadable');
+
+    expect(state.saveExternalInterfaceRecord).not.toHaveBeenCalled();
+  });
+
   it('rejects updates when the requested existing interface id no longer exists', async () => {
     state.loadExternalInterfaceRecordById.mockResolvedValue(null);
     state.loadDefaultExternalInterfaceRecord.mockResolvedValue(null);
@@ -340,6 +393,16 @@ describe('instance-interfaces-server', () => {
         },
       })
     ).rejects.toThrow('interface_not_found');
+  });
+
+  it('rejects deleting dedicated mainserver-backed records through the generic delete path', async () => {
+    const { deleteStoredInterface } = await import('./instance-interfaces-server');
+
+    await expect(deleteStoredInterface('de-test', 'sva-mainserver:de-test')).rejects.toThrow(
+      'mainserver_interfaces_use_dedicated_endpoint'
+    );
+
+    expect(state.deleteExternalInterfaceRecord).not.toHaveBeenCalled();
   });
 
   it('derives deterministic health results for disabled, incomplete and unchecked entries', async () => {

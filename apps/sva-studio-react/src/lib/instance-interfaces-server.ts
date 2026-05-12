@@ -32,12 +32,11 @@ type PersistedStoredEntry = StoredEntry & Readonly<{
   lastCheckErrorCode?: string;
   lastCheckErrorMessage?: string;
 }>;
-
 const nowIso = (): string => new Date().toISOString();
-
 const coerceText = (value: unknown): string => (typeof value === 'string' ? value : '');
-
 const coerceBoolean = (value: unknown): boolean => value === true;
+const isPlainObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
 
 const parseSecretConfig = (ciphertext: string | undefined, interfaceId: string): Record<string, string> => {
   if (ciphertext === undefined) {
@@ -50,7 +49,10 @@ const parseSecretConfig = (ciphertext: string | undefined, interfaceId: string):
   }
 
   try {
-    const parsed = JSON.parse(revealed) as Record<string, unknown>;
+    const parsed = JSON.parse(revealed) as unknown;
+    if (!isPlainObject(parsed)) {
+      throw new Error('secret_unreadable');
+    }
     return Object.fromEntries(
       Object.entries(parsed).flatMap(([key, value]) =>
         typeof value === 'string' && value.length > 0 ? [[key, value]] : []
@@ -145,6 +147,113 @@ const buildSecretCiphertext = (input: {
   return ciphertext ?? undefined;
 };
 
+const resolveVisibleStatus = (
+  enabled: boolean,
+  existingVisibleStatus: ExternalInterfaceVisibleStatus | undefined
+): ExternalInterfaceVisibleStatus => {
+  if (!enabled) {
+    return 'disabled';
+  }
+
+  if (!existingVisibleStatus || existingVisibleStatus === 'disabled') {
+    return 'unknown';
+  }
+
+  return existingVisibleStatus;
+};
+
+const buildS3Record = (input: {
+  readonly instanceId: string;
+  readonly draft: Extract<InstanceInterfaceDraft, { type: 's3' }>;
+  readonly interfaceId: string;
+  readonly existing: ExternalInterfaceRecord | null;
+  readonly hasDefaultRecord: boolean;
+  readonly previousSecrets: Record<string, string>;
+}): ExternalInterfaceRecord => {
+  const nextSecretAccessKey = input.draft.config.secretAccessKey || input.previousSecrets.secretAccessKey || '';
+
+  return {
+    id: input.interfaceId,
+    instanceId: input.instanceId,
+    typeKey: 's3',
+    ownerKind: 'host',
+    ownerId: 'host',
+    displayName: input.draft.name.trim(),
+    alias: input.existing?.alias ?? input.interfaceId,
+    enabled: input.draft.enabled,
+    isDefault: input.existing?.isDefault ?? !input.hasDefaultRecord,
+    category: 'object_storage',
+    baseUrl: input.draft.config.endpoint.trim(),
+    authMode: 'access_key',
+    publicConfig: {
+      endpoint: input.draft.config.endpoint.trim(),
+      region: input.draft.config.region.trim(),
+      bucket: input.draft.config.bucket.trim(),
+      accessKeyId: input.draft.config.accessKeyId.trim(),
+      forcePathStyle: input.draft.config.forcePathStyle,
+    },
+    secretConfigCiphertext: buildSecretCiphertext({
+      interfaceId: input.interfaceId,
+      secretConfig: nextSecretAccessKey ? { secretAccessKey: nextSecretAccessKey } : {},
+    }),
+    statusCheckKind: 's3',
+    visibleStatus: resolveVisibleStatus(input.draft.enabled, input.existing?.visibleStatus),
+    lastCheckedAt: input.existing?.lastCheckedAt,
+    lastCheckStatus: input.existing?.lastCheckStatus,
+    lastCheckErrorCode: input.existing?.lastCheckErrorCode,
+    lastCheckErrorMessage: input.existing?.lastCheckErrorMessage,
+    createdAt: input.existing?.createdAt,
+    updatedAt: input.existing?.updatedAt,
+  };
+};
+
+const buildSupabaseRecord = (input: {
+  readonly instanceId: string;
+  readonly draft: Extract<InstanceInterfaceDraft, { type: 'supabase' }>;
+  readonly interfaceId: string;
+  readonly existing: ExternalInterfaceRecord | null;
+  readonly hasDefaultRecord: boolean;
+  readonly previousSecrets: Record<string, string>;
+}): ExternalInterfaceRecord => {
+  const nextSecretConfig = {
+    databaseUrl: input.draft.config.databaseUrl || input.previousSecrets.databaseUrl || '',
+    serviceRoleKey: input.draft.config.serviceRoleKey || input.previousSecrets.serviceRoleKey || '',
+  };
+
+  return {
+    id: input.interfaceId,
+    instanceId: input.instanceId,
+    typeKey: 'supabase',
+    ownerKind: 'host',
+    ownerId: 'host',
+    displayName: input.draft.name.trim(),
+    alias: input.existing?.alias ?? input.interfaceId,
+    enabled: input.draft.enabled,
+    isDefault: input.existing?.isDefault ?? !input.hasDefaultRecord,
+    category: 'database',
+    baseUrl: input.draft.config.projectUrl.trim(),
+    authMode: 'service_role',
+    publicConfig: {
+      projectUrl: input.draft.config.projectUrl.trim(),
+      schemaName: input.draft.config.schemaName.trim() || 'public',
+    },
+    secretConfigCiphertext: buildSecretCiphertext({
+      interfaceId: input.interfaceId,
+      secretConfig: Object.fromEntries(
+        Object.entries(nextSecretConfig).flatMap(([key, value]) => (value ? [[key, value]] : []))
+      ),
+    }),
+    statusCheckKind: 'supabase',
+    visibleStatus: resolveVisibleStatus(input.draft.enabled, input.existing?.visibleStatus),
+    lastCheckedAt: input.existing?.lastCheckedAt,
+    lastCheckStatus: input.existing?.lastCheckStatus,
+    lastCheckErrorCode: input.existing?.lastCheckErrorCode,
+    lastCheckErrorMessage: input.existing?.lastCheckErrorMessage,
+    createdAt: input.existing?.createdAt,
+    updatedAt: input.existing?.updatedAt,
+  };
+};
+
 const buildRecordFromDraft = async (input: {
   readonly instanceId: string;
   readonly draft: Extract<InstanceInterfaceDraft, { type: 's3' | 'supabase' }>;
@@ -168,86 +277,17 @@ const buildRecordFromDraft = async (input: {
     existing?.isDefault !== undefined
       ? existing
       : await loadDefaultExternalInterfaceRecord(input.instanceId, mapStoredTypeToKey(input.draft.type));
-
-  if (input.draft.type === 's3') {
-    const nextSecretConfig = {
-      secretAccessKey: input.draft.config.secretAccessKey || previousSecrets.secretAccessKey || '',
-    };
-
-    return {
-      id: interfaceId,
-      instanceId: input.instanceId,
-      typeKey: 's3',
-      ownerKind: 'host',
-      ownerId: 'host',
-      displayName: input.draft.name.trim(),
-      alias: existing?.alias ?? interfaceId,
-      enabled: input.draft.enabled,
-      isDefault: existing?.isDefault ?? !defaultRecord,
-      category: 'object_storage',
-      baseUrl: input.draft.config.endpoint.trim(),
-      authMode: 'access_key',
-      publicConfig: {
-        endpoint: input.draft.config.endpoint.trim(),
-        region: input.draft.config.region.trim(),
-        bucket: input.draft.config.bucket.trim(),
-        accessKeyId: input.draft.config.accessKeyId.trim(),
-        forcePathStyle: input.draft.config.forcePathStyle,
-      },
-      secretConfigCiphertext: buildSecretCiphertext({
-        interfaceId,
-        secretConfig: nextSecretConfig.secretAccessKey
-          ? { secretAccessKey: nextSecretConfig.secretAccessKey }
-          : {},
-      }),
-      statusCheckKind: 's3',
-      visibleStatus: input.draft.enabled ? existing?.visibleStatus ?? 'unknown' : 'disabled',
-      lastCheckedAt: existing?.lastCheckedAt,
-      lastCheckStatus: existing?.lastCheckStatus,
-      lastCheckErrorCode: existing?.lastCheckErrorCode,
-      lastCheckErrorMessage: existing?.lastCheckErrorMessage,
-      createdAt: existing?.createdAt,
-      updatedAt: existing?.updatedAt,
-    };
-  }
-
-  const nextSecretConfig = {
-    databaseUrl: input.draft.config.databaseUrl || previousSecrets.databaseUrl || '',
-    serviceRoleKey: input.draft.config.serviceRoleKey || previousSecrets.serviceRoleKey || '',
-  };
-
-  return {
-    id: interfaceId,
+  const sharedInput = {
     instanceId: input.instanceId,
-    typeKey: 'supabase',
-    ownerKind: 'host',
-    ownerId: 'host',
-    displayName: input.draft.name.trim(),
-    alias: existing?.alias ?? interfaceId,
-    enabled: input.draft.enabled,
-    isDefault: existing?.isDefault ?? !defaultRecord,
-    category: 'database',
-    baseUrl: input.draft.config.projectUrl.trim(),
-    authMode: 'service_role',
-    publicConfig: {
-      projectUrl: input.draft.config.projectUrl.trim(),
-      schemaName: input.draft.config.schemaName.trim() || 'public',
-    },
-    secretConfigCiphertext: buildSecretCiphertext({
-      interfaceId,
-      secretConfig: Object.fromEntries(
-        Object.entries(nextSecretConfig).flatMap(([key, value]) => (value ? [[key, value]] : []))
-      ),
-    }),
-    statusCheckKind: 'supabase',
-    visibleStatus: input.draft.enabled ? existing?.visibleStatus ?? 'unknown' : 'disabled',
-    lastCheckedAt: existing?.lastCheckedAt,
-    lastCheckStatus: existing?.lastCheckStatus,
-    lastCheckErrorCode: existing?.lastCheckErrorCode,
-    lastCheckErrorMessage: existing?.lastCheckErrorMessage,
-    createdAt: existing?.createdAt,
-    updatedAt: existing?.updatedAt,
-  };
+    interfaceId,
+    existing,
+    hasDefaultRecord: Boolean(defaultRecord),
+    previousSecrets,
+  } as const;
+
+  return input.draft.type === 's3'
+    ? buildS3Record({ ...sharedInput, draft: input.draft })
+    : buildSupabaseRecord({ ...sharedInput, draft: input.draft });
 };
 
 export const isCustomInterfaceStorageAvailable = (): boolean => true;
@@ -283,8 +323,13 @@ export const upsertStoredInterface = async (
   return mapped;
 };
 
-export const deleteStoredInterface = async (instanceId: string, id: string): Promise<boolean> =>
-  deleteExternalInterfaceRecord(instanceId, id);
+export const deleteStoredInterface = async (instanceId: string, id: string): Promise<boolean> => {
+  if (id === `sva-mainserver:${instanceId}`) {
+    throw new Error('mainserver_interfaces_use_dedicated_endpoint');
+  }
+
+  return deleteExternalInterfaceRecord(instanceId, id);
+};
 
 export const getStoredInterface = async (instanceId: string, id: string): Promise<StoredEntry | null> => {
   const record = await loadExternalInterfaceRecordById(instanceId, id);

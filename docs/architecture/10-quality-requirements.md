@@ -147,6 +147,7 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - `sva-studio-react:check:i18n` deckt Rollen- und Fehlerübersetzungen der Medienoberflächen ab
 - Coverage Governance:
   - Gate-Logik und Baselines in `scripts/ci/coverage-gate.ts` und `tooling/testing/*`
+  - Workflow- und CI-Dateien werden über `tooling-testing` targeted abgesichert und eskalieren Quality-/Coverage-Läufe nicht automatisch auf volle Produkt-Suiten
 - Complexity Governance:
   - `pnpm complexity-gate` muss für definierte zentrale/kritische Module grün sein
   - neue Schwellwertüberschreitungen ohne Ticket-Referenz blockieren den Qualitätslauf

@@ -135,43 +135,44 @@ Wenn die Komplexität eines kritischen Hotspots steigt, darf der bestehende Floo
 Workflow: `.github/workflows/runtime-gates.yml`
 
 - Pull Requests:
-  - Job `Coverage Gate`: `affected` oder `full` für `test:coverage` gegen den PR-Base-Branch, gesteuert durch `scripts/ci/pr-scope.ts`
-  - Job `Complexity Gate`: separates, blockierendes Komplexitäts-Gate
-  - Job `PR Integration Gate`: `affected`, `full` oder bewusster No-op für `test:integration`, exklusive `monitoring-client`
+  - Job `Coverage`: `affected` oder `full` für `test:coverage` gegen den PR-Base-Branch, gesteuert durch `scripts/ci/pr-scope.ts`
+  - Job `Complexity`: separates, blockierendes Komplexitäts-Gate
+  - Job `PR Integration`: `affected`, `full` oder bewusster No-op für `test:integration`, exklusive `monitoring-client`
   - Reine Doku-/Meta-PRs starten die Workflows weiterhin, beenden die betroffenen Jobs aber bewusst früh als erfolgreicher No-op, damit Required Checks nicht im Status `expected` hängen bleiben
+- Workflow- und CI-Dateiänderungen werden über `tooling-testing` targeted abgesichert und eskalieren Quality-/Coverage-Läufe nicht automatisch auf den vollen Produkt-Workspace
 - Main + Nightly:
-  - Job `Coverage Gate`: `test:coverage` (voll)
-  - Job `Complexity Gate`: blockierend
-  - Job `Integration Gate`: voller, verpflichtender Integrationslauf
+  - Job `Coverage`: `test:coverage` (voll)
+  - Job `Complexity`: blockierend
+  - Job `Integration`: voller, verpflichtender Integrationslauf
 
 ### PR-Workflow-Matrix
 
 | Workflow / Jobname in GitHub | Zweck | Trigger-Modell |
 | --- | --- | --- |
-| `Coverage Gate` | Coverage für affected/full + internes Coverage-Gate | alle PRs, `main`, nightly |
-| `Complexity Gate` | Repository-weites Komplexitäts-Gate | alle PRs, `main`, nightly |
-| `PR Integration Gate` | scoped `test:integration` außer Monitoring-Stack | Pull Requests |
-| `Integration Gate` | voller Integrationslauf | `main`, nightly |
-| `App E2E` | Browser-Smoke für App-Routen mit No-op bei Nicht-Relevanz | alle PRs, nightly, manuell |
+| `Runtime Gates / Coverage` | Coverage für affected/full + internes Coverage-Gate | alle PRs, `main`, nightly |
+| `Runtime Gates / Complexity` | Repository-weites Komplexitäts-Gate | alle PRs, `main`, nightly |
+| `Runtime Gates / PR Integration` | scoped `test:integration` außer Monitoring-Stack | Pull Requests |
+| `Runtime Gates / Integration` | voller Integrationslauf | `main`, nightly |
+| `App E2E / App E2E` | Browser-Smoke für App-Routen mit No-op bei Nicht-Relevanz | alle PRs, nightly, manuell |
 | `monitoring-stack` | Monitoring-spezifische Docker-/Stack-Checks | pfadbasiert |
 | `Schema Diff Gate` | Schema-Diff gegen Staging | pfadbasiert |
-| `check-file-placement` | Dateiplatzierungs-Regeln | alle PRs und `main` |
+| `Repository Hygiene / File Placement` | Dateiplatzierungs-Regeln | alle PRs und `main` |
 
 ### Recommended Branch-Protection-Checks
 
 Empfehlung für `main`:
 
 - immer required:
-  - `Lint / lint`
-  - `Unit / unit`
-  - `Types / types`
-  - `Coverage Gate`
-  - `Complexity Gate`
-  - `PR Integration Gate` für Pull Requests
-  - `Integration Gate` für `main`
-  - `check-file-placement`
+  - `Quality Gates / Lint`
+  - `Quality Gates / Unit`
+  - `Quality Gates / Types`
+  - `Runtime Gates / Coverage`
+  - `Runtime Gates / Complexity`
+  - `Runtime Gates / PR Integration` für Pull Requests
+  - `Runtime Gates / Integration` für `main`
+  - `Repository Hygiene / File Placement`
 - zusätzlich required:
-  - `App E2E`
+  - `App E2E / App E2E`
   - `monitoring-stack`
   - `Schema Diff Gate`
 

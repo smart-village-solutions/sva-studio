@@ -21,6 +21,8 @@ interface TsConfigJson {
   include?: string[];
 }
 
+type NamedInputValue = string | { env: string };
+
 interface NxProjectJson {
   targets?: Record<string, { options?: { lintFilePatterns?: string[] } }>;
 }
@@ -81,6 +83,13 @@ function loadMainBuildWorkflow(): string {
 function loadRunPrGateScript(): string {
   const rootDir = resolveRootDir();
   return fs.readFileSync(path.join(rootDir, 'scripts/ci/run-pr-gate.ts'), 'utf8');
+}
+
+function loadNxJson(): { namedInputs?: Record<string, NamedInputValue[]> } {
+  const rootDir = resolveRootDir();
+  return JSON.parse(fs.readFileSync(path.join(rootDir, 'nx.json'), 'utf8')) as {
+    namedInputs?: Record<string, NamedInputValue[]>;
+  };
 }
 
 describe('workspace package scripts', () => {
@@ -177,7 +186,7 @@ describe('workspace package scripts', () => {
       'env -u NO_COLOR nx affected --target=test:unit --base=${NX_BASE:-origin/main} --parallel=1'
     );
     expect(packageJson.scripts?.['test:types:affected']).toBe(
-      'pnpm clean:generated-source-artifacts && env -u NO_COLOR nx affected --target=test:types --base=${NX_BASE:-origin/main} --parallel=1 && env -u NO_COLOR nx affected --target=typecheck --base=${NX_BASE:-origin/main} --parallel=1 && pnpm check:server-runtime:affected'
+      'pnpm clean:generated-source-artifacts && env -u NO_COLOR nx affected --target=test:types --base=${NX_BASE:-origin/main} --parallel=1 && env -u NO_COLOR nx affected --target=typecheck --base=${NX_BASE:-origin/main} --parallel=1 && pnpm check:server-runtime:affected && pnpm exec tsc -p tsconfig.scripts.json --noEmit'
     );
     expect(packageJson.scripts?.['check:server-runtime:affected']).toBe(
       'env -u NO_COLOR NODE_OPTIONS="${NODE_OPTIONS:-} --import=./scripts/ci/node-listener-budget.mjs" nx affected --target=check:runtime --base=${NX_BASE:-origin/main} --parallel=1'
@@ -245,4 +254,35 @@ describe('workspace package scripts', () => {
       ])
     );
   });
+
+  it('marks tooling-testing affected for workflow and CI-gate changes', () => {
+    const nxJson = loadNxJson();
+    const toolingTestingProject = loadToolingTestingProject();
+    const namedInput = nxJson.namedInputs?.['ciGateTooling'] ?? [];
+    const toolingScriptsInput = nxJson.namedInputs?.['toolingScripts'] ?? [];
+    const lintInputs = (toolingTestingProject.targets?.lint as { inputs?: string[] } | undefined)?.inputs ?? [];
+    const unitInputs = (toolingTestingProject.targets?.['test:unit'] as { inputs?: string[] } | undefined)?.inputs ?? [];
+    const coverageInputs = (toolingTestingProject.targets?.['test:coverage'] as { inputs?: string[] } | undefined)?.inputs ?? [];
+
+    expect(namedInput).toEqual(
+      expect.arrayContaining([
+        '{workspaceRoot}/package.json',
+        '{workspaceRoot}/tsconfig.scripts.json',
+        '{workspaceRoot}/.github/actions/**',
+        '{workspaceRoot}/scripts/ci/**',
+        '{workspaceRoot}/.github/workflows/**/*.yml',
+        '{workspaceRoot}/.github/workflows/**/*.yaml',
+      ])
+    );
+    expect(toolingScriptsInput).toEqual(expect.arrayContaining(['{workspaceRoot}/scripts/**']));
+    expect(lintInputs).toContain('^production');
+    expect(lintInputs).toContain('lintTooling');
+    expect(lintInputs).toContain('ciGateTooling');
+    expect(lintInputs).toContain('toolingScripts');
+    expect(unitInputs).toContain('^production');
+    expect(unitInputs).toContain('ciGateTooling');
+    expect(unitInputs).toContain('toolingScripts');
+    expect(coverageInputs).toContain('toolingScripts');
+  });
+
 });

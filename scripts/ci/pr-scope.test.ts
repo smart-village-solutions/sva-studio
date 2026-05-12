@@ -96,12 +96,40 @@ describe('pr-scope', () => {
 
     expectDecision(decision, {
       codeRelevant: true,
-      qualityGateMode: 'full',
-      coverageMode: 'full',
+      qualityGateMode: 'affected',
+      coverageMode: 'affected',
       integrationMode: 'full',
       e2eMode: 'skip',
       appBuildMode: 'full',
     });
+  });
+
+  it('keeps workflow-only changes on affected quality gates', () => {
+    const decision = classifyPrScope(['.github/workflows/quality-gates.yml']);
+
+    expectDecision(decision, {
+      codeRelevant: true,
+      qualityGateMode: 'affected',
+      coverageMode: 'affected',
+      integrationMode: 'full',
+      e2eMode: 'skip',
+      appBuildMode: 'full',
+    });
+    expect(decision.escalationReasons).toEqual([]);
+  });
+
+  it('keeps ci-script changes on affected quality gates', () => {
+    const decision = classifyPrScope(['scripts/ci/run-pr-gate.ts']);
+
+    expectDecision(decision, {
+      codeRelevant: true,
+      qualityGateMode: 'affected',
+      coverageMode: 'affected',
+      integrationMode: 'full',
+      e2eMode: 'full',
+      appBuildMode: 'full',
+    });
+    expect(decision.escalationReasons).toEqual([]);
   });
 
   it('includes deleted files when resolving changed files', () => {

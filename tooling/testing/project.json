@@ -6,6 +6,13 @@
   "targets": {
     "lint": {
       "executor": "@nx/eslint:lint",
+      "inputs": [
+        "default",
+        "^production",
+        "lintTooling",
+        "ciGateTooling",
+        "toolingScripts"
+      ],
       "options": {
         "lintFilePatterns": [
           "tooling/testing/tests/**/*.{ts,tsx,js,jsx}",
@@ -15,12 +22,26 @@
     },
     "test:unit": {
       "executor": "nx:run-commands",
+      "inputs": [
+        "default",
+        "^production",
+        "testing",
+        "ciGateTooling",
+        "toolingScripts"
+      ],
       "options": {
         "command": "pnpm exec vitest --root tooling/testing run tests ../../scripts/ops/runtime-env.test.ts ../../scripts/ci/pr-scope.test.ts --reporter=verbose --config vitest.config.ts --passWithNoTests"
       }
     },
     "test:coverage": {
       "executor": "nx:run-commands",
+      "inputs": [
+        "default",
+        "^production",
+        "testing",
+        "ciGateTooling",
+        "toolingScripts"
+      ],
       "options": {
         "command": "pnpm exec vitest --root tooling/testing run tests ../../scripts/ops/runtime-env.test.ts ../../scripts/ci/pr-scope.test.ts --coverage --reporter=verbose --config vitest.config.ts --passWithNoTests"
       }

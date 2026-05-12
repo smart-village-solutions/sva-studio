@@ -334,6 +334,7 @@ gleichzeitig beeinflussen.
 - Bekannte Überschreitungen bleiben nur dann zulässig, wenn sie in `trackedFindings` mit Refactoring-Ticket hinterlegt sind
 - Bei modularem IAM-Refactoring wird Restschuld am tatsächlichen Kernmodul (`core.ts` oder feingranulare Teilbausteine) und nicht am historischen Fassadenpfad dokumentiert
 - Kritische Coverage-Hotspots werden in `tooling/testing/coverage-policy.json` als `hotspotFloors` geführt
+- Workflow- und CI-Dateiänderungen werden im PR-Pfad gezielt über `tooling-testing` abgesichert und nicht automatisch durch volle Produkt-Suiten eskaliert
 - Normative Accessibility und heuristische Nutzersicht sind bewusst getrennt:
   - `ux-accessibility.agent.md` für WCAG/BITV, Fokus, Tastatur und Screenreader
   - `user-journey-usability.agent.md` für Friktion, Verständlichkeit und Aufgabenbewältigung

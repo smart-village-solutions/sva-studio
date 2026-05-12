@@ -13,6 +13,7 @@ permissions:
 
 jobs:
   sync-wiki:
+    name: Sync Wiki
     runs-on: ubuntu-latest
     env:
       WIKI_SYNC_TOKEN: ${{ secrets.WIKI_SYNC_TOKEN }}

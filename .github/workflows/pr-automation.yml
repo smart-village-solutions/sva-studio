@@ -1,4 +1,4 @@
-name: PR Auto Assignment
+name: PR Automation
 
 on:
   pull_request_target:
@@ -14,6 +14,7 @@ permissions:
 
 jobs:
   assign-and-request-review:
+    name: Auto Assignment
     runs-on: ubuntu-latest
     steps:
       - name: Assign PR author and request Copilot review

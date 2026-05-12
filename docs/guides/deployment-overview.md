@@ -62,7 +62,7 @@ Wichtig:
    Für Serverprofile muss das Artefakt explizit `linux/amd64` unterstützen.
 2. Zielprofil auswählen.
 3. Zielumgebungsvariablen oder Secrets prüfen.
-4. Für `studio` zuerst `Studio Image Build and Publish` und `Studio Image Verify` oder den Vorbereitungsworkflow `Studio Build and Verify` ausführen.
+4. Für `studio` zuerst `Studio Image Build` und `Studio Image Verify` oder den Vorbereitungsworkflow `Studio Release Preparation` ausführen.
 5. Den verifizierten Digest lokal über `pnpm env:release:studio:local -- --image-digest=<sha256:...> ...` ausrollen.
 6. Den erzeugten Deploy-Report unter `artifacts/runtime/deployments/` prüfen.
 7. Monitoring und Logs auf Fehler prüfen.
@@ -111,11 +111,11 @@ Für das Remote-Profil `studio` gilt zusätzlich:
 
 Der offizielle Vorbereitungs- und Releasepfad fuer `studio` lautet:
 
-1. `Studio Image Build and Publish`
+1. `Studio Image Build`
 2. `Studio Image Verify`
 3. lokaler Operator-Deploy ueber `pnpm env:release:studio:local`
 
-Optional verbindet `Studio Build and Verify` die GitHub-Stufen 1 und 2 in einem manuellen Vorbereitungsworkflow.
+Optional verbindet `Studio Release Preparation` (`.github/workflows/studio-release-preparation.yml`) die GitHub-Stufen 1 und 2 in einem manuellen Vorbereitungsworkflow.
 
 - Lokales Setup und SQL-Workflow: `../development/postgres-setup.md`
 - Swarm-Ausführung und Reihenfolge: `./swarm-deployment-runbook.md`

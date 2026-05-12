@@ -24,6 +24,7 @@ concurrency:
 
 jobs:
   build:
+    name: Build Pages
     runs-on: ubuntu-latest
 
     steps:
@@ -56,6 +57,7 @@ jobs:
           path: apps/project-report/dist
 
   deploy:
+    name: Deploy Pages
     needs: build
     runs-on: ubuntu-latest
     environment:

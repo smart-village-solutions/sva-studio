@@ -1,4 +1,4 @@
-name: Bot Comment Handling
+name: Bot Comment Governance
 
 concurrency:
   group: bot-comment-handling-${{ github.event.pull_request.number || github.event.issue.number || github.run_id }}
@@ -38,7 +38,7 @@ permissions:
 
 jobs:
   check-bot-comment-handling:
-    name: Bot Comments / handled
+    name: Bot Comments
     if: github.event.pull_request != null || github.event.issue.pull_request != null
     runs-on: ubuntu-latest
     timeout-minutes: 10

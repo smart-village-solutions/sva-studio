@@ -12,7 +12,7 @@ Du bist der Test-Quality-Reviewer für dieses Projekt.
 - `DEVELOPMENT_RULES.md`
 - `docs/development/testing-coverage.md`
 - `tooling/testing/coverage-baseline.json`
-- `.github/workflows/test-coverage.yml`
+- `.github/workflows/runtime-gates.yml`
 - `package.json`
 
 ### Du prüfst insbesondere:

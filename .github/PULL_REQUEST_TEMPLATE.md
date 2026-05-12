@@ -57,11 +57,12 @@ Ausgeführt:
 - [ ] `pnpm test:types`
 - [ ] `pnpm test:eslint`
 - [ ] `pnpm test:e2e`
+- [ ] `pnpm test:pr`
 
 Zusätzlich ausgeführt:
 
-- [ ] `pnpm nx affected --target=test:unit --base=origin/main`
-- [ ] `pnpm nx affected --target=test:types --base=origin/main`
+- [ ] `pnpm test:unit:affected`
+- [ ] `pnpm test:types:affected`
 - [ ] Weitere gezielte Nx-/Vitest-/Playwright-Checks:
 
 Nicht ausgeführt / Abweichungen:

@@ -173,17 +173,17 @@ Governance Source: T4 - merge-review-gates.md
 Tool: `bash`
 Command:
 ```bash
-grep -E '`(Lint / lint|Unit / unit|Types / types|Coverage and Quality Gates / Coverage Gate|Coverage and Quality Gates / Complexity Gate|Coverage and Quality Gates / PR Integration Gate|App E2E Smoke / App E2E Smoke)`' docs/governance/merge-review-gates.md
+grep -E '`(Quality Gates / Lint|Quality Gates / Unit|Quality Gates / Types|Runtime Gates / Coverage|Runtime Gates / Complexity|Runtime Gates / PR Integration|App E2E / App E2E)`' docs/governance/merge-review-gates.md
 ```
 Expected:
 ```
-`Lint / lint`
-`Unit / unit`
-`Types / types`
-`Coverage and Quality Gates / Coverage Gate`
-`Coverage and Quality Gates / Complexity Gate`
-`Coverage and Quality Gates / PR Integration Gate`
-`App E2E Smoke / App E2E Smoke`
+`Quality Gates / Lint`
+`Quality Gates / Unit`
+`Quality Gates / Types`
+`Runtime Gates / Coverage`
+`Runtime Gates / Complexity`
+`Runtime Gates / PR Integration`
+`App E2E / App E2E`
 ```
 Failure:
 - Einer der dokumentierten Check-Namen fehlt
@@ -202,7 +202,7 @@ grep -F "nur bei Pfadtreffern" docs/governance/merge-review-gates.md && grep -F 
 ```
 Expected:
 ```
-`App E2E Smoke / App E2E Smoke` ... nur bei Pfadtreffern
+`App E2E / App E2E` ... immer sichtbar, bei Nicht-Relevanz als No-op success
 apps/sva-studio-react/**
 ```
 Failure:
@@ -325,10 +325,10 @@ gh api repos/smart-village-solutions/sva-studio/branches/main/protection | jq -r
 ```
 Expected:
 ```
-App E2E Smoke / App E2E Smoke
-Coverage and Quality Gates / Complexity Gate
-Coverage and Quality Gates / Coverage Gate
-Coverage and Quality Gates / PR Integration Gate
+App E2E / App E2E
+Runtime Gates / Complexity
+Runtime Gates / Coverage
+Runtime Gates / PR Integration
 Lint / lint
 Types / types
 Unit / unit
@@ -748,17 +748,17 @@ Frequency: daily
 
 ### Check #35: CI-Quelle für Coverage-Gate entspricht Governance-Referenz
 
-Governance Source: T4/T10 - merge-review-gates.md + test-coverage.yml
+Governance Source: T4/T10 - merge-review-gates.md + runtime-gates.yml
 Tool: `bash`
 Command:
 ```bash
-grep -E "name: Coverage and Quality Gates|jobs:|coverage:" .github/workflows/test-coverage.yml && grep -F "Workflow .github/workflows/test-coverage.yml, Job \`coverage\`" docs/governance/merge-review-gates.md
+grep -E "name: Runtime Gates|jobs:|coverage:" .github/workflows/runtime-gates.yml && grep -F "Workflow .github/workflows/runtime-gates.yml, Job \`coverage\`" docs/governance/merge-review-gates.md
 ```
 Expected:
 ```
-name: Coverage and Quality Gates
+name: Runtime Gates
 coverage:
-Workflow .github/workflows/test-coverage.yml, Job `coverage`
+Workflow .github/workflows/runtime-gates.yml, Job `coverage`
 ```
 Failure:
 - Coverage-Job ist in Workflow nicht vorhanden

@@ -1,4 +1,4 @@
-name: Coverage and Quality Gates
+name: Runtime Gates
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -18,7 +18,7 @@ permissions:
 
 jobs:
   coverage:
-    name: Coverage Gate
+    name: Coverage
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -53,8 +53,7 @@ jobs:
 
       - name: Start Redis for coverage tests
         if: github.event_name != 'pull_request' || steps.changes.outputs.relevant == 'true'
-        run: |
-          docker run -d --name sva-studio-redis-coverage -p 6379:6379 redis:7-alpine
+        run: docker run -d --name sva-studio-redis-coverage -p 6379:6379 redis:7-alpine
 
       - name: Wait for Redis readiness
         if: github.event_name != 'pull_request' || steps.changes.outputs.relevant == 'true'
@@ -72,13 +71,23 @@ jobs:
           docker ps -a
           exit 1
 
-      - name: Ensure origin/main is available for affected
+      - name: Ensure PR base ref is available
         if: github.event_name == 'pull_request' && steps.changes.outputs.relevant == 'true'
         run: git fetch origin "${{ github.base_ref }}" --no-tags --prune --depth=1
 
-      - name: Run affected coverage on PR
+      - name: Determine PR scope
+        id: scope
         if: github.event_name == 'pull_request' && steps.changes.outputs.relevant == 'true'
-        run: pnpm nx affected --target=test:coverage --base=origin/${{ github.base_ref }} --verbose --output-style=stream
+        run: pnpm exec tsx scripts/ci/pr-scope.ts --base origin/${{ github.base_ref }} --github-output
+
+      - name: Run coverage on PR
+        if: github.event_name == 'pull_request' && steps.changes.outputs.relevant == 'true'
+        run: |
+          if [ "${{ steps.scope.outputs.coverage_mode }}" = "full" ]; then
+            pnpm test:coverage
+          else
+            NX_BASE=origin/${{ github.base_ref }} pnpm test:coverage:affected
+          fi
 
       - name: Run full coverage on main/schedule
         if: github.event_name != 'pull_request'
@@ -129,9 +138,6 @@ jobs:
           else
             git fetch --tags --prune
           fi
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            git fetch origin "${{ github.base_ref }}" --no-tags --prune
-          fi
           git rev-parse --is-shallow-repository
 
       - name: SonarCloud Scan
@@ -151,19 +157,16 @@ jobs:
           if [ "${{ github.event_name }}" = "pull_request" ] && [ "${{ steps.changes.outputs.relevant }}" != "true" ]; then
             echo 'Scope: keine code-relevanten Änderungen im Pull Request, Heavy-Checks wurden bewusst übersprungen.' >> "$GITHUB_STEP_SUMMARY"
           elif [ "${{ github.event_name }}" = "pull_request" ]; then
-            echo "Scope: affected gegen \`origin/${{ github.base_ref }}\`" >> "$GITHUB_STEP_SUMMARY"
+            echo "Scope: \`${{ steps.scope.outputs.coverage_mode }}\` gegen \`origin/${{ github.base_ref }}\`" >> "$GITHUB_STEP_SUMMARY"
           else
             echo 'Scope: voller Coverage-Lauf für main/schedule' >> "$GITHUB_STEP_SUMMARY"
           fi
           if [ "${{ github.event_name }}" != "pull_request" ] || [ "${{ steps.changes.outputs.relevant }}" = "true" ]; then
             echo "Artifact: \`coverage-reports-${GITHUB_RUN_ID}\`" >> "$GITHUB_STEP_SUMMARY"
           fi
-          if [ "${{ github.event_name }}" != "pull_request" ]; then
-            echo 'Zusatz: Codecov- und Sonar-Schritte laufen nur außerhalb von Pull Requests.' >> "$GITHUB_STEP_SUMMARY"
-          fi
 
   complexity:
-    name: Complexity Gate
+    name: Complexity
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -207,7 +210,7 @@ jobs:
           echo 'Baseline und Policy stammen aus tooling/quality/complexity-*.json.' >> "$GITHUB_STEP_SUMMARY"
 
   integration-pr:
-    name: PR Integration Gate
+    name: PR Integration
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -236,13 +239,23 @@ jobs:
         if: steps.changes.outputs.relevant == 'true'
         uses: ./.github/actions/setup-pnpm-workspace
 
-      - name: Ensure origin/main is available for affected integration
+      - name: Ensure PR base ref is available
         if: steps.changes.outputs.relevant == 'true'
         run: git fetch origin "${{ github.base_ref }}" --no-tags --prune --depth=1
 
-      - name: Run affected integration tests not covered by dedicated PR workflows
+      - name: Determine PR scope
+        id: scope
         if: steps.changes.outputs.relevant == 'true'
-        run: pnpm nx affected --target=test:integration --base=origin/${{ github.base_ref }} --exclude=monitoring-client --output-style=stream
+        run: pnpm exec tsx scripts/ci/pr-scope.ts --base origin/${{ github.base_ref }} --github-output
+
+      - name: Run scoped integration tests
+        if: steps.changes.outputs.relevant == 'true' && steps.scope.outputs.integration_mode != 'skip'
+        run: |
+          if [ "${{ steps.scope.outputs.integration_mode }}" = "full" ]; then
+            pnpm test:integration
+          else
+            env -u NO_COLOR pnpm nx affected --target=test:integration --base=origin/${{ github.base_ref }} --exclude=monitoring-client --output-style=stream
+          fi
 
       - name: Publish PR integration summary
         if: always()
@@ -252,11 +265,15 @@ jobs:
             echo 'Scope: keine code-relevanten Änderungen im Pull Request, das Gate endet bewusst als No-op-Erfolg.' >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
-          echo "Scope: affected \`test:integration\` gegen \`origin/${{ github.base_ref }}\`, exklusive \`monitoring-client\`." >> "$GITHUB_STEP_SUMMARY"
-          echo 'Monitoring-Checks laufen separat im Workflow `Monitoring Stack CI`.' >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ steps.scope.outputs.integration_mode }}" = "skip" ]; then
+            echo 'Scope: kein Laufzeit-/Routing-/Transport-Einfluss im Pull Request, das Gate endet bewusst als No-op-Erfolg.' >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          echo "Scope: \`${{ steps.scope.outputs.integration_mode }}\` gegen \`origin/${{ github.base_ref }}\`." >> "$GITHUB_STEP_SUMMARY"
+          echo 'Monitoring-Checks laufen separat im Workflow `Monitoring Stack`.' >> "$GITHUB_STEP_SUMMARY"
 
   integration-required:
-    name: Integration Gate
+    name: Integration
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 25

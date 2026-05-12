@@ -219,7 +219,7 @@ gleichzeitig beeinflussen.
 - Runtime-Profile verwenden einen verbindlichen Diagnosepfad `pnpm env:doctor:<profil>`; manuelle `psql`-/Browser-Netzwerkdiagnose ist nur Fallback
 - Read-only Remote-Diagnostik trennt strikt zwischen Portainer-API als Primaerkanal und `quantum-cli` als Mutations-/Fallback-Kanal
 - Mutierende `studio`-Kommandos laufen regulär über den expliziten lokalen Operator-Kontext `local-operator`; der bisherige CI-/Runner-Deploypfad ist höchstens noch Legacy-Fallback
-- `studio` verwendet einen verbindlichen, fehlertoleranten Deploypfad über `Studio Image Build and Publish`, `Studio Image Verify` und den lokalen Einstieg `env:release:studio:local`; direkte `up`-/`update`-Deploys sind für Serverrollouts gesperrt
+- `studio` verwendet einen verbindlichen, fehlertoleranten Deploypfad über `Studio Image Build`, `Studio Image Verify` und den lokalen Einstieg `env:release:studio:local`; direkte `up`-/`update`-Deploys sind für Serverrollouts gesperrt
 - `pnpm test:release:studio` ist das gebündelte lokale Release-Gate aus `test:pr` und `verify:runtime-artifact`; normale PRs behalten `test:pr` als Standard-Gate
 - Der produktionsnahe Releasevertrag klassifiziert Fehler verbindlich in `config`, `image`, `migration`, `bootstrap`, `startup`, `health`, `ingress` und `dependency`; spätere Phasen dürfen frühere Resultate nicht überschreiben
 - Release-Modus `schema-and-app` arbeitet fail-closed: ohne dokumentiertes Wartungsfenster startet kein orchestrierter Studio-Deploy

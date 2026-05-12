@@ -65,7 +65,7 @@ Wenn ein Service fehlt, bricht der Test früh mit klarer Fehlermeldung ab.
 
 ## CI-Workflow
 
-- Workflow: `.github/workflows/app-e2e.yml` (`App E2E Smoke`)
+- Workflow: `.github/workflows/app-e2e.yml` (`App E2E`)
 - Startet dieselben Services via Docker Compose
 - startet die App über das Nx-Target `sva-studio-react:serve`
 - führt `pnpm nx run sva-studio-react:test:e2e` aus

@@ -1,4 +1,4 @@
-name: Studio Image Build and Publish
+name: Studio Image Build
 
 on:
   push:
@@ -32,7 +32,7 @@ permissions:
 
 jobs:
   build:
-    name: Build and Publish Studio Image
+    name: Build Studio Image
     runs-on: ubuntu-latest
     timeout-minutes: 30
     outputs:

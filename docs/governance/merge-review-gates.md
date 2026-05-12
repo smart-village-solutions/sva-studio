@@ -14,17 +14,17 @@ Die folgenden Status-Checks muessen im Branch-Schutz fuer `main` als **required*
 
 | Check-Run-Name (Branch Protection) | Quelle | Muss gruen sein, wenn ... |
 | --- | --- | --- |
-| `Lint / lint` | Root-Command `pnpm test:eslint` | immer |
-| `Unit / unit` | Root-Command `pnpm test:unit` | immer |
-| `Types / types` | Root-Command `pnpm test:types` | immer |
-| `Coverage and Quality Gates / Coverage Gate` | Workflow `.github/workflows/test-coverage.yml`, Job `coverage` | immer |
-| `Coverage and Quality Gates / Complexity Gate` | Workflow `.github/workflows/test-coverage.yml`, Job `complexity` | immer |
-| `Coverage and Quality Gates / PR Integration Gate` | Workflow `.github/workflows/test-coverage.yml`, Job `integration-pr` | Pull Requests |
-| `App E2E Smoke / App E2E Smoke` | Workflow `.github/workflows/app-e2e.yml`, Job `e2e` | Zielmodell: immer required. Der Workflow muss dafuer fuer alle PRs laufen und bei Nicht-Treffern fruehzeitig mit `success` enden. Solange `.github/workflows/app-e2e.yml` noch ueber `pull_request.paths` eingeschraenkt ist, darf der Check nicht als strikt required fuer alle PRs konfiguriert werden. |
+| `Quality Gates / Lint` | Root-Command `pnpm test:eslint` | immer |
+| `Quality Gates / Unit` | Root-Command `pnpm test:unit` | immer |
+| `Quality Gates / Types` | Root-Command `pnpm test:types` | immer |
+| `Runtime Gates / Coverage` | Workflow `.github/workflows/runtime-gates.yml`, Job `coverage` | immer |
+| `Runtime Gates / Complexity` | Workflow `.github/workflows/runtime-gates.yml`, Job `complexity` | immer |
+| `Runtime Gates / PR Integration` | Workflow `.github/workflows/runtime-gates.yml`, Job `integration-pr` | Pull Requests |
+| `App E2E / App E2E` | Workflow `.github/workflows/app-e2e.yml`, Job `e2e` | immer required. Der Workflow laeuft fuer alle PRs und endet bei Nicht-Relevanz bewusst frueh mit `success`. |
 
 Verbindliche Regel: Kein unspezifisches "CI ist gruen". Entscheidend sind genau die oben genannten Check-Namen.
 
-Hinweis zur aktuellen Repository-Situation: `.github/workflows/app-e2e.yml` verwendet derzeit `pull_request.paths`. Damit ist die oben beschriebene Zielkonfiguration fuer `App E2E Smoke / App E2E Smoke` noch nicht vollstaendig technisch durchgesetzt und muss vor harter Aktivierung angepasst werden.
+Die PR-Gates folgen einem einheitlichen `affected-first`-Modell: Normale Paketänderungen laufen affected, globale Tooling-Dateien eskalieren gezielt auf volle Läufe, irrelevante PRs enden bewusst als No-op-Erfolg.
 
 ## Review-Anforderungen
 
@@ -85,7 +85,7 @@ Queue-Verhalten:
 | 1 | Incident ausrufen, Merge-Freeze auf `main` setzen | Primaerer Owner | 10 Minuten ab erstem roten Required Check auf `main` |
 | 2 | Letzten fehlerausloesenden Merge **revertieren** (Standardpfad) | Primaerer Owner | 30 Minuten ab Detection |
 | 3 | Falls Revert technisch unmoeglich: eng begrenzter Forward-Fix mit identischen Gates | Sekundaerer Owner | 45 Minuten ab Detection |
-| 4 | Required Checks erneut ausfuehren (`Lint / lint`, `Unit / unit`, `Types / types`, `Coverage and Quality Gates / Coverage Gate`, `Coverage and Quality Gates / Complexity Gate`, ggf. `Coverage and Quality Gates / PR Integration Gate`, ggf. `App E2E Smoke / App E2E Smoke`) | Incident Owner | 60 Minuten ab Detection |
+| 4 | Required Checks erneut ausfuehren (`Quality Gates / Lint`, `Quality Gates / Unit`, `Quality Gates / Types`, `Runtime Gates / Coverage`, `Runtime Gates / Complexity`, ggf. `Runtime Gates / PR Integration`, ggf. `App E2E / App E2E`) | Incident Owner | 60 Minuten ab Detection |
 | 5 | Incident-Notiz mit Ursache, SHA, Aktion und Follow-up veroeffentlichen | Incident Owner | 90 Minuten ab Detection |
 
 SLA: `main` muss spaetestens nach **30 Minuten** wieder gruene Required Checks haben (Revert-first-Prinzip).

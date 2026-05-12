@@ -1,8 +1,17 @@
-export const isTokenErrorLike = (error: unknown): boolean => {
+const readErrorRecord = (error: unknown): Readonly<Record<string, unknown>> | undefined => {
   if (!error || typeof error !== 'object') {
+    return undefined;
+  }
+
+  return error as Readonly<Record<string, unknown>>;
+};
+
+export const isTokenErrorLike = (error: unknown): boolean => {
+  const typed = readErrorRecord(error);
+  if (!typed) {
     return false;
   }
-  const typed = error as { name?: unknown; code?: unknown; error?: unknown };
+
   const name = typeof typed.name === 'string' ? typed.name.toLowerCase() : '';
   const code = typeof typed.code === 'string' ? typed.code.toLowerCase() : '';
   const oauthError = typeof typed.error === 'string' ? typed.error.toLowerCase() : '';
@@ -14,15 +23,22 @@ export const isTokenErrorLike = (error: unknown): boolean => {
   );
 };
 
-const parseStatusCode = (status: unknown): number =>
-  typeof status === 'number' ? status : typeof status === 'string' ? Number.parseInt(status, 10) : Number.NaN;
+const parseStatusCode = (status: unknown): number => {
+  if (typeof status === 'number') {
+    return status;
+  }
+  if (typeof status === 'string') {
+    return Number.parseInt(status, 10);
+  }
+  return Number.NaN;
+};
 
 export const isRetryableTokenExchangeError = (error: unknown): boolean => {
-  if (!error || typeof error !== 'object') {
+  const typed = readErrorRecord(error);
+  if (!typed) {
     return false;
   }
 
-  const typed = error as { name?: unknown; code?: unknown; error?: unknown; status?: unknown };
   const name = typeof typed.name === 'string' ? typed.name.toLowerCase() : '';
   const code = typeof typed.code === 'string' ? typed.code.toLowerCase() : '';
   const oauthError = typeof typed.error === 'string' ? typed.error.toLowerCase() : '';

@@ -16,8 +16,7 @@ const parseBooleanEnv = (value: string | undefined): boolean | null => {
   return null;
 };
 
-const shouldTrustForwardedHeaders = (): boolean =>
-  parseBooleanEnv(process.env.SVA_TRUST_FORWARDED_HEADERS) ?? process.env.NODE_ENV === 'production';
+const shouldTrustForwardedHeaders = (): boolean => parseBooleanEnv(process.env.SVA_TRUST_FORWARDED_HEADERS) ?? false;
 
 const normalizeTrustedProto = (value: string | null): string | null => {
   const normalized = value?.trim().toLowerCase() ?? null;

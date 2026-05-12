@@ -6,6 +6,7 @@ import {
   createContentTypeRegistry,
   createPluginActionRegistry,
   createPluginAuditEventRegistry,
+  createPluginExternalInterfaceTypeRegistry,
   createPluginImportProfileRegistry,
   createPluginJobTypeRegistry,
   createPluginModuleIamRegistry,
@@ -15,6 +16,7 @@ import {
   definePluginActions,
   definePluginAdminResources,
   definePluginAuditEvents,
+  definePluginExternalInterfaceTypes,
   definePluginImportProfiles,
   definePluginJobTypes,
   definePluginModuleIamContract,
@@ -26,6 +28,7 @@ import {
   mergePluginAdminResourceDefinitions,
   mergePluginAuditEventDefinitions,
   mergePluginContentTypes,
+  mergePluginExternalInterfaceTypes,
   mergePluginImportProfiles,
   mergePluginJobTypes,
   mergePluginModuleIamContracts,
@@ -141,6 +144,20 @@ const newsPlugin: PluginDefinition = {
       },
     },
   ]),
+  externalInterfaceTypes: definePluginExternalInterfaceTypes('news', [
+    {
+      typeKey: 'news.rss-feed',
+      displayName: 'RSS Feed',
+      category: 'feed',
+      publicSchema: {
+        fields: ['baseUrl'],
+      },
+      secretSchema: {
+        fields: ['apiKey'],
+      },
+      statusCheckKind: 'news.rss',
+    },
+  ]),
   translations: {
     de: {
       news: {
@@ -167,6 +184,7 @@ describe('plugin registries', () => {
     expect(mergePluginModuleIamContracts([...registry.values()])).toHaveLength(1);
     expect(mergePluginJobTypes([...registry.values()])).toHaveLength(1);
     expect(mergePluginImportProfiles([...registry.values()])).toHaveLength(1);
+    expect(mergePluginExternalInterfaceTypes([...registry.values()])).toHaveLength(1);
     expect(mergePluginTranslations([...registry.values()]).de).toEqual({
       news: {
         nav: 'Nachrichten',
@@ -228,6 +246,7 @@ describe('plugin registries', () => {
     const modules = createPluginModuleIamRegistry([newsPlugin]);
     const jobTypes = createPluginJobTypeRegistry([newsPlugin]);
     const importProfiles = createPluginImportProfileRegistry([newsPlugin]);
+    const externalInterfaceTypes = createPluginExternalInterfaceTypeRegistry([newsPlugin]);
     const readAction = actions.get('news.read');
     const legacyAction = actions.get('news-read');
     const auditEvents = createPluginAuditEventRegistry([newsPlugin]);
@@ -287,6 +306,13 @@ describe('plugin registries', () => {
       ownerPluginId: 'news',
       jobTypeId: 'news.import-articles',
       sourceFormats: ['application/json', 'text/csv'],
+    });
+    expect(externalInterfaceTypes.get('news.rss-feed')).toMatchObject({
+      typeKey: 'news.rss-feed',
+      namespace: 'news',
+      ownerPluginId: 'news',
+      category: 'feed',
+      statusCheckKind: 'news.rss',
     });
   });
 
@@ -373,10 +399,19 @@ describe('plugin registries', () => {
         jobTypeId: 'news.import-articles',
       }),
     ]);
+    expect(registry.externalInterfaceTypes).toEqual([
+      expect.objectContaining({
+        typeKey: 'news.rss-feed',
+        statusCheckKind: 'news.rss',
+      }),
+    ]);
     expect(registry.pluginJobTypeRegistry.get('news.import-articles')).toMatchObject({
       ownerPluginId: 'news',
     });
     expect(registry.pluginImportProfileRegistry.get('news.article-import')).toMatchObject({
+      ownerPluginId: 'news',
+    });
+    expect(registry.pluginExternalInterfaceTypeRegistry.get('news.rss-feed')).toMatchObject({
       ownerPluginId: 'news',
     });
     expect(registry.contentTypes).toHaveLength(1);

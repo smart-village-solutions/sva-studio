@@ -30,6 +30,8 @@ type RouteMatch =
   | { readonly kind: 'collection' }
   | { readonly kind: 'item'; readonly newsId: string };
 
+type ParsedValue<T> = T | Response;
+
 const json = (body: unknown, status = 200): Response =>
   Response.json(body, {
     status,
@@ -56,6 +58,8 @@ const matchRoute = (request: Request): RouteMatch | null => {
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && Array.isArray(value) === false;
+
+const isResponse = <T>(value: ParsedValue<T>): value is Response => value instanceof Response;
 
 type ParsedNewsInput = {
   readonly news: SvaMainserverNewsInput;
@@ -283,6 +287,7 @@ const hasValidContentBlocks = (blocks: readonly NonNullable<SvaMainserverNewsInp
 
 const buildNewsInput = (input: {
   body: Record<string, unknown>;
+  title: string;
   publishedAt: string;
   publicationDate?: string;
   charactersToBeShown?: number;
@@ -292,7 +297,7 @@ const buildNewsInput = (input: {
   contentBlocks: SvaMainserverNewsInput['contentBlocks'] | undefined;
   allowPushNotification: boolean;
 }): SvaMainserverNewsInput => ({
-  title: readString(input.body.title) as string,
+  title: input.title,
   publishedAt: input.publishedAt,
   ...(readString(input.body.author) ? { author: readString(input.body.author) } : {}),
   ...(readString(input.body.keywords) ? { keywords: readString(input.body.keywords) } : {}),
@@ -405,6 +410,7 @@ const parseNewsInput = async (request: Request, options: ParseOptions): Promise<
     rawBody,
     news: buildNewsInput({
       body,
+      title,
       publishedAt,
       publicationDate,
       charactersToBeShown,
@@ -452,6 +458,173 @@ const completeNewsCreateIdempotency = async (input: {
 const readResponseBody = async (response: Response, fallback: Record<string, unknown>): Promise<Record<string, unknown>> => {
   const body = await response.clone().json().catch(() => fallback);
   return isRecord(body) ? body : fallback;
+};
+
+const handleCollectionRead = async (
+  request: Request,
+  ctx: AuthenticatedRequestContext,
+  logSuccess: (operation: string, newsId?: string) => void
+) => {
+  const actor = await authorizeOrResponse(ctx, 'news.read');
+  if (isResponse(actor)) {
+    return actor;
+  }
+
+  const data = await listNewsForRequest(request, actor);
+  logSuccess('mainserver_news_list');
+  return json(data);
+};
+
+const handleItemRead = async (
+  route: Extract<RouteMatch, { readonly kind: 'item' }>,
+  ctx: AuthenticatedRequestContext,
+  logSuccess: (operation: string, newsId?: string) => void
+) => {
+  const actor = await authorizeOrResponse(ctx, 'news.read', route.newsId);
+  if (isResponse(actor)) {
+    return actor;
+  }
+
+  const data = await getNewsForRoute(route, actor);
+  logSuccess('mainserver_news_detail', route.newsId);
+  return json({ data });
+};
+
+const handleCollectionCreate = async (
+  request: Request,
+  ctx: AuthenticatedRequestContext,
+  requestId: string | undefined,
+  logSuccess: (operation: string, newsId?: string) => void
+) => {
+  const csrfError = validateMutationRequest(request, requestId);
+  if (csrfError) {
+    return csrfError;
+  }
+
+  const idempotencyKey = readIdempotencyKey(request);
+  if (isResponse(idempotencyKey)) {
+    return idempotencyKey;
+  }
+
+  const parsed = await parseNewsInput(request, { allowPushNotification: true });
+  if (isResponse(parsed)) {
+    return parsed;
+  }
+
+  const actorInfo = await resolveActorInfo(request, ctx, { requireActorMembership: true });
+  if ('error' in actorInfo) {
+    return actorInfo.error;
+  }
+
+  const actorAccountId = actorInfo.actor.actorAccountId;
+  if (!actorAccountId) {
+    return errorJson(403, 'forbidden', 'Keine Berechtigung für diese Inhaltsoperation.');
+  }
+
+  const idempotency = await reserveIdempotency({
+    actorAccountId,
+    endpoint: 'POST:/api/v1/mainserver/news',
+    idempotencyKey,
+    instanceId: actorInfo.actor.instanceId,
+    payloadHash: toPayloadHash(parsed.rawBody),
+  });
+  if (idempotency.status === 'replay') {
+    return json(idempotency.responseBody, idempotency.responseStatus);
+  }
+  if (idempotency.status === 'conflict') {
+    return errorJson(409, 'idempotency_key_reuse', idempotency.message);
+  }
+
+  const actor = await authorizeOrResponse(ctx, 'news.create');
+  if (isResponse(actor)) {
+    await completeNewsCreateIdempotency({
+      actorAccountId,
+      instanceId: actorInfo.actor.instanceId,
+      idempotencyKey,
+      responseBody: await readResponseBody(actor, {
+        error: 'forbidden',
+        message: 'Keine Berechtigung für diese Inhaltsoperation.',
+      }),
+      responseStatus: actor.status,
+    });
+    return actor;
+  }
+
+  try {
+    const data = await createSvaMainserverNews({ ...actor, news: parsed.news });
+    logSuccess('mainserver_news_create', data.id);
+    const responseBody = { data };
+    await completeNewsCreateIdempotency({
+      actorAccountId,
+      instanceId: actorInfo.actor.instanceId,
+      idempotencyKey,
+      responseBody,
+      responseStatus: 201,
+    });
+    return json(responseBody, 201);
+  } catch (error) {
+    const response = toMainserverErrorResponse(error);
+    await completeNewsCreateIdempotency({
+      actorAccountId,
+      instanceId: actorInfo.actor.instanceId,
+      idempotencyKey,
+      responseBody: await readResponseBody(response, {
+        error: 'internal_error',
+        message: 'Mainserver-News-Anfrage ist fehlgeschlagen.',
+      }),
+      responseStatus: response.status,
+    });
+    return response;
+  }
+};
+
+const handleItemUpdate = async (
+  request: Request,
+  route: Extract<RouteMatch, { readonly kind: 'item' }>,
+  ctx: AuthenticatedRequestContext,
+  requestId: string | undefined,
+  logSuccess: (operation: string, newsId?: string) => void
+) => {
+  const csrfError = validateMutationRequest(request, requestId);
+  if (csrfError) {
+    return csrfError;
+  }
+
+  const parsed = await parseNewsInput(request, { allowPushNotification: false });
+  if (isResponse(parsed)) {
+    return parsed;
+  }
+
+  const actor = await authorizeOrResponse(ctx, 'news.update', route.newsId);
+  if (isResponse(actor)) {
+    return actor;
+  }
+
+  const response = await updateNewsForRoute(route, actor, parsed.news);
+  logSuccess('mainserver_news_update', route.newsId);
+  return response;
+};
+
+const handleItemDelete = async (
+  request: Request,
+  route: Extract<RouteMatch, { readonly kind: 'item' }>,
+  ctx: AuthenticatedRequestContext,
+  requestId: string | undefined,
+  logSuccess: (operation: string, newsId?: string) => void
+) => {
+  const csrfError = validateMutationRequest(request, requestId);
+  if (csrfError) {
+    return csrfError;
+  }
+
+  const actor = await authorizeOrResponse(ctx, 'news.delete', route.newsId);
+  if (isResponse(actor)) {
+    return actor;
+  }
+
+  const response = await deleteNewsForRoute(route, actor);
+  logSuccess('mainserver_news_delete', route.newsId);
+  return response;
 };
 
 const toMainserverErrorResponse = (error: unknown): Response => {
@@ -566,132 +739,23 @@ const dispatchAuthenticated = async (request: Request, route: RouteMatch, ctx: A
 
   try {
     if (route.kind === 'collection' && request.method === 'GET') {
-      const actor = await authorizeOrResponse(ctx, 'news.read');
-      if (actor instanceof Response) {
-        return actor;
-      }
-      const data = await listNewsForRequest(request, actor);
-      logSuccess('mainserver_news_list');
-      return json(data);
+      return await handleCollectionRead(request, ctx, logSuccess);
     }
 
     if (route.kind === 'item' && request.method === 'GET') {
-      const actor = await authorizeOrResponse(ctx, 'news.read', route.newsId);
-      if (actor instanceof Response) {
-        return actor;
-      }
-      const data = await getNewsForRoute(route, actor);
-      logSuccess('mainserver_news_detail', route.newsId);
-      return json({ data });
+      return await handleItemRead(route, ctx, logSuccess);
     }
 
     if (route.kind === 'collection' && request.method === 'POST') {
-      const csrfError = validateMutationRequest(request, workspaceContext.requestId);
-      if (csrfError) {
-        return csrfError;
-      }
-      const idempotencyKey = readIdempotencyKey(request);
-      if (idempotencyKey instanceof Response) {
-        return idempotencyKey;
-      }
-      const parsed = await parseNewsInput(request, { allowPushNotification: true });
-      if (parsed instanceof Response) {
-        return parsed;
-      }
-      const actorInfo = await resolveActorInfo(request, ctx, { requireActorMembership: true });
-      if ('error' in actorInfo) {
-        return actorInfo.error;
-      }
-      const actorAccountId = actorInfo.actor.actorAccountId;
-      if (!actorAccountId) {
-        return errorJson(403, 'forbidden', 'Keine Berechtigung für diese Inhaltsoperation.');
-      }
-      const idempotency = await reserveIdempotency({
-        actorAccountId,
-        endpoint: 'POST:/api/v1/mainserver/news',
-        idempotencyKey,
-        instanceId: actorInfo.actor.instanceId,
-        payloadHash: toPayloadHash(parsed.rawBody),
-      });
-      if (idempotency.status === 'replay') {
-        return json(idempotency.responseBody, idempotency.responseStatus);
-      }
-      if (idempotency.status === 'conflict') {
-        return errorJson(409, 'idempotency_key_reuse', idempotency.message);
-      }
-      const actor = await authorizeOrResponse(ctx, 'news.create');
-      if (actor instanceof Response) {
-        await completeNewsCreateIdempotency({
-          actorAccountId,
-          instanceId: actorInfo.actor.instanceId,
-          idempotencyKey,
-          responseBody: await readResponseBody(actor, {
-            error: 'forbidden',
-            message: 'Keine Berechtigung für diese Inhaltsoperation.',
-          }),
-          responseStatus: actor.status,
-        });
-        return actor;
-      }
-      try {
-        const data = await createSvaMainserverNews({ ...actor, news: parsed.news });
-        logSuccess('mainserver_news_create', data.id);
-        const responseBody = { data };
-        await completeNewsCreateIdempotency({
-          actorAccountId,
-          instanceId: actorInfo.actor.instanceId,
-          idempotencyKey,
-          responseBody,
-          responseStatus: 201,
-        });
-        return json(responseBody, 201);
-      } catch (error) {
-        const response = toMainserverErrorResponse(error);
-        await completeNewsCreateIdempotency({
-          actorAccountId,
-          instanceId: actorInfo.actor.instanceId,
-          idempotencyKey,
-          responseBody: await readResponseBody(response, {
-            error: 'internal_error',
-            message: 'Mainserver-News-Anfrage ist fehlgeschlagen.',
-          }),
-          responseStatus: response.status,
-        });
-        return response;
-      }
+      return await handleCollectionCreate(request, ctx, workspaceContext.requestId, logSuccess);
     }
 
     if (route.kind === 'item' && request.method === 'PATCH') {
-      const csrfError = validateMutationRequest(request, workspaceContext.requestId);
-      if (csrfError) {
-        return csrfError;
-      }
-      const parsed = await parseNewsInput(request, { allowPushNotification: false });
-      if (parsed instanceof Response) {
-        return parsed;
-      }
-      const updateActor = await authorizeOrResponse(ctx, 'news.update', route.newsId);
-      if (updateActor instanceof Response) {
-        return updateActor;
-      }
-
-      const response = await updateNewsForRoute(route, updateActor, parsed.news);
-      logSuccess('mainserver_news_update', route.newsId);
-      return response;
+      return await handleItemUpdate(request, route, ctx, workspaceContext.requestId, logSuccess);
     }
 
     if (route.kind === 'item' && request.method === 'DELETE') {
-      const csrfError = validateMutationRequest(request, workspaceContext.requestId);
-      if (csrfError) {
-        return csrfError;
-      }
-      const actor = await authorizeOrResponse(ctx, 'news.delete', route.newsId);
-      if (actor instanceof Response) {
-        return actor;
-      }
-      const response = await deleteNewsForRoute(route, actor);
-      logSuccess('mainserver_news_delete', route.newsId);
-      return response;
+      return await handleItemDelete(request, route, ctx, workspaceContext.requestId, logSuccess);
     }
 
     return errorJson(405, 'method_not_allowed', 'Methode wird für Mainserver-News nicht unterstützt.');

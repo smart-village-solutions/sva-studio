@@ -69,7 +69,7 @@ const normalizeContentTypeDefinition = (definition: ContentTypeDefinition): Cont
 const validateContentTypeActions = (definition: ContentTypeDefinition): void => {
   for (const action of definition.actions ?? []) {
     assertPluginContributionAllowedKeys(
-      action as unknown as Record<string, unknown>,
+      action,
       contentTypeActionDefinitionAllowedKeys,
       normalizePluginIdentifier(definition.contentType).split('.')[0] ?? 'host',
       `${normalizePluginIdentifier(definition.contentType)}.${action.key.trim()}`
@@ -110,7 +110,7 @@ export const definePluginContentTypes = <const TDefinitions extends readonly Con
 
   for (const definition of definitions) {
     assertPluginContributionAllowedKeys(
-      definition as unknown as Record<string, unknown>,
+      definition,
       contentTypeDefinitionAllowedKeys,
       normalizedNamespace,
       normalizePluginIdentifier(definition.contentType)
@@ -148,7 +148,7 @@ export const createContentTypeRegistry = (
 
   for (const definition of definitions) {
     assertPluginContributionAllowedKeys(
-      definition as unknown as Record<string, unknown>,
+      definition,
       contentTypeDefinitionAllowedKeys,
       normalizePluginIdentifier(definition.contentType).split('.')[0] ?? 'host',
       normalizePluginIdentifier(definition.contentType)

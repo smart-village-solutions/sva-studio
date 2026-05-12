@@ -4,6 +4,7 @@
     "paths": {
       "@sva/auth-runtime": ["packages/auth-runtime/dist/index.d.ts"],
       "@sva/auth-runtime/server": ["packages/auth-runtime/dist/server.d.ts"],
+      "@sva/core": ["packages/core/dist/index.d.ts"],
       "@sva/data-repositories": ["packages/data-repositories/dist/index.d.ts"],
       "@sva/data-repositories/server": ["packages/data-repositories/dist/server.d.ts"],
       "@sva/server-runtime": ["packages/server-runtime/dist/index.d.ts"]

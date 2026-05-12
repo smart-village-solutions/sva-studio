@@ -227,8 +227,10 @@ describe('AuthProvider', () => {
     });
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 60_000);
-    expect(scheduledCallback).not.toBeNull();
+    await waitFor(() => {
+      expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 60_000);
+      expect(scheduledCallback).not.toBeNull();
+    });
 
     requireScheduledCallback(scheduledCallback)();
 
@@ -308,7 +310,10 @@ describe('AuthProvider', () => {
       expect(screen.getByTestId('status').textContent).toBe('ready');
     });
 
-    expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 60_000);
+    await waitFor(() => {
+      expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 60_000);
+      expect(scheduledCallbacks).toHaveLength(1);
+    });
 
     currentTimeMs += 60_000;
     await act(async () => {
@@ -320,8 +325,10 @@ describe('AuthProvider', () => {
       expect(fetchMock).toHaveBeenCalledTimes(2);
     });
 
-    expect(scheduledAuthTimeouts).toEqual([60_000, 59_000]);
-    expect(scheduledCallbacks).toHaveLength(2);
+    await waitFor(() => {
+      expect(scheduledAuthTimeouts).toEqual([60_000, 59_000]);
+      expect(scheduledCallbacks).toHaveLength(2);
+    });
 
     setTimeoutSpy.mockRestore();
     dateNowSpy.mockRestore();

@@ -1052,18 +1052,22 @@ const mapRepeatDuration = (
   return Object.keys(repeatDuration).length > 0 ? repeatDuration : undefined;
 };
 
-const mapOpeningHour = (value: z.infer<typeof openingHourSchema>): SvaMainserverOpeningHour => ({
-  ...(optionalString(value.id) ? { id: optionalString(value.id) } : {}),
-  ...(optionalString(value.weekday) ? { weekday: optionalString(value.weekday) } : {}),
-  ...(optionalString(value.dateFrom) ? { dateFrom: optionalString(value.dateFrom) } : {}),
-  ...(optionalString(value.dateTo) ? { dateTo: optionalString(value.dateTo) } : {}),
-  ...(optionalString(value.timeFrom) ? { timeFrom: optionalString(value.timeFrom) } : {}),
-  ...(optionalString(value.timeTo) ? { timeTo: optionalString(value.timeTo) } : {}),
-  ...(optionalNumber(value.sortNumber) !== undefined ? { sortNumber: value.sortNumber as number } : {}),
-  ...(defined(value.open) ? { open: value.open } : {}),
-  ...(defined(value.useYear) ? { useYear: value.useYear } : {}),
-  ...(optionalString(value.description) ? { description: optionalString(value.description) } : {}),
-});
+const mapOpeningHour = (value: z.infer<typeof openingHourSchema>): SvaMainserverOpeningHour => {
+  const sortNumber = optionalNumber(value.sortNumber);
+
+  return {
+    ...(optionalString(value.id) ? { id: optionalString(value.id) } : {}),
+    ...(optionalString(value.weekday) ? { weekday: optionalString(value.weekday) } : {}),
+    ...(optionalString(value.dateFrom) ? { dateFrom: optionalString(value.dateFrom) } : {}),
+    ...(optionalString(value.dateTo) ? { dateTo: optionalString(value.dateTo) } : {}),
+    ...(optionalString(value.timeFrom) ? { timeFrom: optionalString(value.timeFrom) } : {}),
+    ...(optionalString(value.timeTo) ? { timeTo: optionalString(value.timeTo) } : {}),
+    ...(sortNumber !== undefined ? { sortNumber } : {}),
+    ...(defined(value.open) ? { open: value.open } : {}),
+    ...(defined(value.useYear) ? { useYear: value.useYear } : {}),
+    ...(optionalString(value.description) ? { description: optionalString(value.description) } : {}),
+  };
+};
 
 const mapEventItem = (item: SvaMainserverEventFragment | null | undefined): SvaMainserverEventItem => {
   const parsed = eventItemSchema.safeParse(item);
@@ -1078,6 +1082,9 @@ const mapEventItem = (item: SvaMainserverEventFragment | null | undefined): SvaM
   const categories = (parsed.data.categories ?? []).map(mapCategory).filter(defined);
   const category = mapCategory(parsed.data.category ?? {});
   const createdAt = parsed.data.createdAt ?? parsed.data.listDate ?? new Date(0).toISOString();
+  const parentId = optionalNumber(parsed.data.parentId);
+  const recurringType = optionalNumber(parsed.data.recurringType);
+  const recurringInterval = optionalNumber(parsed.data.recurringInterval);
 
   return {
     id: parsed.data.id,
@@ -1087,17 +1094,15 @@ const mapEventItem = (item: SvaMainserverEventFragment | null | undefined): SvaM
     ...(optionalString(parsed.data.description) ? { description: optionalString(parsed.data.description) } : {}),
     ...(optionalString(parsed.data.externalId) ? { externalId: optionalString(parsed.data.externalId) } : {}),
     ...(optionalString(parsed.data.keywords) ? { keywords: optionalString(parsed.data.keywords) } : {}),
-    ...(optionalNumber(parsed.data.parentId) !== undefined ? { parentId: parsed.data.parentId as number } : {}),
+    ...(parentId !== undefined ? { parentId } : {}),
     dates: (parsed.data.dates ?? []).map(mapDate),
     ...(optionalString(parsed.data.listDate) ? { listDate: optionalString(parsed.data.listDate) } : {}),
     ...(optionalString(parsed.data.sortDate) ? { sortDate: optionalString(parsed.data.sortDate) } : {}),
     ...(defined(parsed.data.repeat) ? { repeat: parsed.data.repeat } : {}),
     ...(mapRepeatDuration(parsed.data.repeatDuration) ? { repeatDuration: mapRepeatDuration(parsed.data.repeatDuration) } : {}),
     ...(defined(parsed.data.recurring) ? { recurring: parsed.data.recurring } : {}),
-    ...(optionalNumber(parsed.data.recurringType) !== undefined ? { recurringType: parsed.data.recurringType as number } : {}),
-    ...(optionalNumber(parsed.data.recurringInterval) !== undefined
-      ? { recurringInterval: parsed.data.recurringInterval as number }
-      : {}),
+    ...(recurringType !== undefined ? { recurringType } : {}),
+    ...(recurringInterval !== undefined ? { recurringInterval } : {}),
     recurringWeekdays: parsed.data.recurringWeekdays ?? [],
     ...(category ? { categoryName: category.name } : {}),
     categories,
@@ -1138,6 +1143,19 @@ const mapPoiItem = (item: SvaMainserverPoiFragment | null | undefined): SvaMains
   const categories = (parsed.data.categories ?? []).map(mapCategory).filter(defined);
   const category = mapCategory(parsed.data.category ?? {});
   const createdAt = parsed.data.createdAt ?? new Date(0).toISOString();
+  const certificates = (parsed.data.certificates ?? []).flatMap((certificate) => {
+    const name = optionalString(certificate.name);
+    if (!name) {
+      return [];
+    }
+
+    return [
+      {
+        ...(optionalString(certificate.id) ? { id: optionalString(certificate.id) } : {}),
+        name,
+      },
+    ];
+  });
 
   return {
     id: parsed.data.id,
@@ -1164,12 +1182,7 @@ const mapPoiItem = (item: SvaMainserverPoiFragment | null | undefined): SvaMains
     webUrls: (parsed.data.webUrls ?? []).map(mapWebUrl).filter(defined),
     mediaContents: (parsed.data.mediaContents ?? []).map(mapMediaContent),
     ...(mapLocation(parsed.data.location) ? { location: mapLocation(parsed.data.location) } : {}),
-    certificates: (parsed.data.certificates ?? [])
-      .filter((certificate) => certificate.name)
-      .map((certificate) => ({
-        ...(optionalString(certificate.id) ? { id: optionalString(certificate.id) } : {}),
-        name: certificate.name as string,
-      })),
+    certificates,
     ...(mapAccessibilityInformation(parsed.data.accessibilityInformation)
       ? { accessibilityInformation: mapAccessibilityInformation(parsed.data.accessibilityInformation) }
       : {}),
@@ -1808,6 +1821,32 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
     return mapOptionalNewsItem(response.newsItem);
   };
 
+  const buildNewsMutationVariables = (input: {
+    readonly news: SvaMainserverNewsInput;
+    readonly newsId?: string;
+    readonly forceCreate?: boolean;
+  }) => ({
+    ...(input.newsId ? { id: input.newsId } : {}),
+    ...(input.forceCreate === undefined ? {} : { forceCreate: input.forceCreate }),
+    title: input.news.title,
+    ...(input.newsId ? {} : { pushNotification: input.news.pushNotification ?? false }),
+    ...(input.news.author ? { author: input.news.author } : {}),
+    ...(input.news.keywords ? { keywords: input.news.keywords } : {}),
+    ...(input.news.externalId ? { externalId: input.news.externalId } : {}),
+    ...(input.news.fullVersion === undefined ? {} : { fullVersion: input.news.fullVersion }),
+    ...(input.news.charactersToBeShown === undefined ? {} : { charactersToBeShown: input.news.charactersToBeShown }),
+    ...(input.news.newsType ? { newsType: input.news.newsType } : {}),
+    publishedAt: input.news.publishedAt,
+    publicationDate: input.news.publicationDate ?? input.news.publishedAt,
+    ...(input.news.showPublishDate === undefined ? {} : { showPublishDate: input.news.showPublishDate }),
+    ...(input.news.categoryName ? { categoryName: input.news.categoryName } : {}),
+    ...(input.news.categories ? { categories: input.news.categories } : {}),
+    ...(input.news.sourceUrl ? { sourceUrl: input.news.sourceUrl } : {}),
+    ...(input.news.address ? { address: input.news.address } : {}),
+    ...(input.news.contentBlocks ? { contentBlocks: input.news.contentBlocks } : {}),
+    ...(input.news.pointOfInterestId ? { pointOfInterestId: input.news.pointOfInterestId } : {}),
+  });
+
   const writeNewsWithConfig = async (
     input: SvaMainserverConnectionInput & {
       readonly news: SvaMainserverNewsInput;
@@ -1822,29 +1861,7 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
         ...input,
         document: svaMainserverCreateNewsDocument,
         operationName: 'SvaMainserverCreateNews',
-        variables: {
-          ...(input.newsId ? { id: input.newsId } : {}),
-          ...(input.forceCreate === undefined ? {} : { forceCreate: input.forceCreate }),
-          title: input.news.title,
-          ...(input.newsId ? {} : { pushNotification: input.news.pushNotification ?? false }),
-          ...(input.news.author ? { author: input.news.author } : {}),
-          ...(input.news.keywords ? { keywords: input.news.keywords } : {}),
-          ...(input.news.externalId ? { externalId: input.news.externalId } : {}),
-          ...(input.news.fullVersion === undefined ? {} : { fullVersion: input.news.fullVersion }),
-          ...(input.news.charactersToBeShown === undefined
-            ? {}
-            : { charactersToBeShown: input.news.charactersToBeShown }),
-          ...(input.news.newsType ? { newsType: input.news.newsType } : {}),
-          publishedAt: input.news.publishedAt,
-          publicationDate: input.news.publicationDate ?? input.news.publishedAt,
-          ...(input.news.showPublishDate === undefined ? {} : { showPublishDate: input.news.showPublishDate }),
-          ...(input.news.categoryName ? { categoryName: input.news.categoryName } : {}),
-          ...(input.news.categories ? { categories: input.news.categories } : {}),
-          ...(input.news.sourceUrl ? { sourceUrl: input.news.sourceUrl } : {}),
-          ...(input.news.address ? { address: input.news.address } : {}),
-          ...(input.news.contentBlocks ? { contentBlocks: input.news.contentBlocks } : {}),
-          ...(input.news.pointOfInterestId ? { pointOfInterestId: input.news.pointOfInterestId } : {}),
-        },
+        variables: buildNewsMutationVariables(input),
       },
       config
     );
@@ -1911,6 +1928,40 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
     return mapOptionalEventItem(response.eventRecord);
   };
 
+  const buildEventMutationVariables = (input: {
+    readonly event: SvaMainserverEventInput;
+    readonly eventId?: string;
+    readonly forceCreate?: boolean;
+  }) => ({
+    ...(input.eventId ? { id: input.eventId } : {}),
+    ...(input.forceCreate === undefined ? {} : { forceCreate: input.forceCreate }),
+    title: input.event.title,
+    ...(input.eventId ? {} : { pushNotification: input.event.pushNotification ?? false }),
+    ...(input.event.parentId === undefined ? {} : { parentId: input.event.parentId }),
+    ...(input.event.keywords ? { keywords: input.event.keywords } : {}),
+    ...(input.event.description ? { description: input.event.description } : {}),
+    ...(input.event.externalId ? { externalId: input.event.externalId } : {}),
+    ...(input.event.dates ? { dates: input.event.dates } : {}),
+    ...(input.event.repeat === undefined ? {} : { repeat: input.event.repeat }),
+    ...(input.event.repeatDuration ? { repeatDuration: input.event.repeatDuration } : {}),
+    ...(input.event.categoryName ? { categoryName: input.event.categoryName } : {}),
+    ...(input.event.categories ? { categories: input.event.categories } : {}),
+    ...(input.event.addresses ? { addresses: input.event.addresses } : {}),
+    ...(input.event.location ? { location: input.event.location } : {}),
+    ...(input.event.contacts ? { contacts: input.event.contacts } : {}),
+    ...(input.event.urls ? { urls: input.event.urls } : {}),
+    ...(input.event.mediaContents ? { mediaContents: input.event.mediaContents } : {}),
+    ...(input.event.organizer ? { organizer: input.event.organizer } : {}),
+    ...(input.event.priceInformations ? { priceInformations: input.event.priceInformations } : {}),
+    ...(input.event.accessibilityInformation ? { accessibilityInformation: input.event.accessibilityInformation } : {}),
+    ...(input.event.tags ? { tags: input.event.tags } : {}),
+    ...(input.event.recurring ? { recurring: input.event.recurring } : {}),
+    ...(input.event.recurringWeekdays ? { recurringWeekdays: input.event.recurringWeekdays } : {}),
+    ...(input.event.recurringType ? { recurringType: input.event.recurringType } : {}),
+    ...(input.event.recurringInterval ? { recurringInterval: input.event.recurringInterval } : {}),
+    ...(input.event.pointOfInterestId ? { pointOfInterestId: input.event.pointOfInterestId } : {}),
+  });
+
   const writeEventWithConfig = async (
     input: SvaMainserverConnectionInput & {
       readonly event: SvaMainserverEventInput;
@@ -1924,37 +1975,7 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
         ...input,
         document: svaMainserverCreateEventDocument,
         operationName: 'SvaMainserverCreateEvent',
-        variables: {
-          ...(input.eventId ? { id: input.eventId } : {}),
-          ...(input.forceCreate === undefined ? {} : { forceCreate: input.forceCreate }),
-          title: input.event.title,
-          ...(input.eventId ? {} : { pushNotification: input.event.pushNotification ?? false }),
-          ...(input.event.parentId === undefined ? {} : { parentId: input.event.parentId }),
-          ...(input.event.keywords ? { keywords: input.event.keywords } : {}),
-          ...(input.event.description ? { description: input.event.description } : {}),
-          ...(input.event.externalId ? { externalId: input.event.externalId } : {}),
-          ...(input.event.dates ? { dates: input.event.dates } : {}),
-          ...(input.event.repeat === undefined ? {} : { repeat: input.event.repeat }),
-          ...(input.event.repeatDuration ? { repeatDuration: input.event.repeatDuration } : {}),
-          ...(input.event.categoryName ? { categoryName: input.event.categoryName } : {}),
-          ...(input.event.categories ? { categories: input.event.categories } : {}),
-          ...(input.event.addresses ? { addresses: input.event.addresses } : {}),
-          ...(input.event.location ? { location: input.event.location } : {}),
-          ...(input.event.contacts ? { contacts: input.event.contacts } : {}),
-          ...(input.event.urls ? { urls: input.event.urls } : {}),
-          ...(input.event.mediaContents ? { mediaContents: input.event.mediaContents } : {}),
-          ...(input.event.organizer ? { organizer: input.event.organizer } : {}),
-          ...(input.event.priceInformations ? { priceInformations: input.event.priceInformations } : {}),
-          ...(input.event.accessibilityInformation
-            ? { accessibilityInformation: input.event.accessibilityInformation }
-            : {}),
-          ...(input.event.tags ? { tags: input.event.tags } : {}),
-          ...(input.event.recurring ? { recurring: input.event.recurring } : {}),
-          ...(input.event.recurringWeekdays ? { recurringWeekdays: input.event.recurringWeekdays } : {}),
-          ...(input.event.recurringType ? { recurringType: input.event.recurringType } : {}),
-          ...(input.event.recurringInterval ? { recurringInterval: input.event.recurringInterval } : {}),
-          ...(input.event.pointOfInterestId ? { pointOfInterestId: input.event.pointOfInterestId } : {}),
-        },
+        variables: buildEventMutationVariables(input),
       },
       config
     );
@@ -2021,6 +2042,35 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
     return mapOptionalPoiItem(response.pointOfInterest);
   };
 
+  const buildPoiMutationVariables = (input: {
+    readonly poi: SvaMainserverPoiInput;
+    readonly poiId?: string;
+    readonly forceCreate?: boolean;
+  }) => ({
+    ...(input.poiId ? { id: input.poiId } : {}),
+    ...(input.forceCreate === undefined ? {} : { forceCreate: input.forceCreate }),
+    name: input.poi.name,
+    ...(input.poi.externalId ? { externalId: input.poi.externalId } : {}),
+    ...(input.poi.description ? { description: input.poi.description } : {}),
+    ...(input.poi.keywords ? { keywords: input.poi.keywords } : {}),
+    ...(input.poi.mobileDescription ? { mobileDescription: input.poi.mobileDescription } : {}),
+    ...(input.poi.active === undefined ? {} : { active: input.poi.active }),
+    ...(input.poi.categoryName ? { categoryName: input.poi.categoryName } : {}),
+    ...(input.poi.payload === undefined ? {} : { payload: input.poi.payload }),
+    ...(input.poi.categories ? { categories: input.poi.categories } : {}),
+    ...(input.poi.addresses ? { addresses: input.poi.addresses } : {}),
+    ...(input.poi.contact ? { contact: input.poi.contact } : {}),
+    ...(input.poi.priceInformations ? { priceInformations: input.poi.priceInformations } : {}),
+    ...(input.poi.openingHours ? { openingHours: input.poi.openingHours } : {}),
+    ...(input.poi.operatingCompany ? { operatingCompany: input.poi.operatingCompany } : {}),
+    ...(input.poi.webUrls ? { webUrls: input.poi.webUrls } : {}),
+    ...(input.poi.mediaContents ? { mediaContents: input.poi.mediaContents } : {}),
+    ...(input.poi.location ? { location: input.poi.location } : {}),
+    ...(input.poi.certificates ? { certificates: input.poi.certificates } : {}),
+    ...(input.poi.accessibilityInformation ? { accessibilityInformation: input.poi.accessibilityInformation } : {}),
+    ...(input.poi.tags ? { tags: input.poi.tags } : {}),
+  });
+
   const writePoiWithConfig = async (
     input: SvaMainserverConnectionInput & {
       readonly poi: SvaMainserverPoiInput;
@@ -2034,32 +2084,7 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
         ...input,
         document: svaMainserverCreatePoiDocument,
         operationName: 'SvaMainserverCreatePoi',
-        variables: {
-          ...(input.poiId ? { id: input.poiId } : {}),
-          ...(input.forceCreate === undefined ? {} : { forceCreate: input.forceCreate }),
-          name: input.poi.name,
-          ...(input.poi.externalId ? { externalId: input.poi.externalId } : {}),
-          ...(input.poi.description ? { description: input.poi.description } : {}),
-          ...(input.poi.keywords ? { keywords: input.poi.keywords } : {}),
-          ...(input.poi.mobileDescription ? { mobileDescription: input.poi.mobileDescription } : {}),
-          ...(input.poi.active === undefined ? {} : { active: input.poi.active }),
-          ...(input.poi.categoryName ? { categoryName: input.poi.categoryName } : {}),
-          ...(input.poi.payload === undefined ? {} : { payload: input.poi.payload }),
-          ...(input.poi.categories ? { categories: input.poi.categories } : {}),
-          ...(input.poi.addresses ? { addresses: input.poi.addresses } : {}),
-          ...(input.poi.contact ? { contact: input.poi.contact } : {}),
-          ...(input.poi.priceInformations ? { priceInformations: input.poi.priceInformations } : {}),
-          ...(input.poi.openingHours ? { openingHours: input.poi.openingHours } : {}),
-          ...(input.poi.operatingCompany ? { operatingCompany: input.poi.operatingCompany } : {}),
-          ...(input.poi.webUrls ? { webUrls: input.poi.webUrls } : {}),
-          ...(input.poi.mediaContents ? { mediaContents: input.poi.mediaContents } : {}),
-          ...(input.poi.location ? { location: input.poi.location } : {}),
-          ...(input.poi.certificates ? { certificates: input.poi.certificates } : {}),
-          ...(input.poi.accessibilityInformation
-            ? { accessibilityInformation: input.poi.accessibilityInformation }
-            : {}),
-          ...(input.poi.tags ? { tags: input.poi.tags } : {}),
-        },
+        variables: buildPoiMutationVariables(input),
       },
       config
     );

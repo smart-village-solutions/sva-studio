@@ -1,11 +1,13 @@
-import { loadInstanceIntegrationRecord } from '@sva/data-repositories/server';
+import { loadDefaultExternalInterfaceRecord } from '@sva/data-repositories/server';
 import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 
 import type { SvaMainserverInstanceConfig } from '../types.js';
 import { SvaMainserverError } from './errors.js';
 import { normalizeSvaMainserverUpstreamUrl } from './upstream-url-validation.js';
+import { mapVisibleStatusToVerificationStatus } from './verification-status.js';
 
 const logger = createSdkLogger({ component: 'sva-mainserver-config', level: 'debug' });
+const SVA_MAINSERVER_TYPE_KEY = 'sva_mainserver';
 
 const buildLogContext = (instanceId: string, extra: Record<string, unknown> = {}) => {
   const context = getWorkspaceContext();
@@ -48,7 +50,7 @@ export const loadSvaMainserverInstanceConfig = async (
   });
 
   try {
-    const record = await loadInstanceIntegrationRecord(instanceId, 'sva_mainserver');
+    const record = await loadDefaultExternalInterfaceRecord(instanceId, SVA_MAINSERVER_TYPE_KEY);
     if (!record) {
       throw new SvaMainserverError({
         code: 'config_not_found',
@@ -67,12 +69,20 @@ export const loadSvaMainserverInstanceConfig = async (
 
     const config = {
       instanceId: record.instanceId,
-      providerKey: record.providerKey,
-      graphqlBaseUrl: await validateUpstreamUrl(instanceId, 'graphql_base_url', record.graphqlBaseUrl),
-      oauthTokenUrl: await validateUpstreamUrl(instanceId, 'oauth_token_url', record.oauthTokenUrl),
+      providerKey: 'sva_mainserver',
+      graphqlBaseUrl: await validateUpstreamUrl(
+        instanceId,
+        'graphql_base_url',
+        typeof record.publicConfig.graphqlBaseUrl === 'string' ? record.publicConfig.graphqlBaseUrl : ''
+      ),
+      oauthTokenUrl: await validateUpstreamUrl(
+        instanceId,
+        'oauth_token_url',
+        typeof record.publicConfig.oauthTokenUrl === 'string' ? record.publicConfig.oauthTokenUrl : ''
+      ),
       enabled: record.enabled,
-      lastVerifiedAt: record.lastVerifiedAt,
-      lastVerifiedStatus: record.lastVerifiedStatus,
+      lastVerifiedAt: record.lastCheckedAt,
+      lastVerifiedStatus: mapVisibleStatusToVerificationStatus(record.visibleStatus),
     } satisfies SvaMainserverInstanceConfig;
 
     logger.info('SVA Mainserver instance config loaded', {

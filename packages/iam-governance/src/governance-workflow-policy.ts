@@ -13,6 +13,18 @@ export type GovernanceOperation =
   | 'accept_legal_text'
   | 'revoke_legal_acceptance';
 
+const GOVERNANCE_OPERATIONS = [
+  'submit_permission_change',
+  'approve_permission_change',
+  'apply_permission_change',
+  'create_delegation',
+  'revoke_delegation',
+  'start_impersonation',
+  'end_impersonation',
+  'accept_legal_text',
+  'revoke_legal_acceptance',
+] as const satisfies readonly GovernanceOperation[];
+
 export const governanceWorkflowRoles = new Set(['iam_admin', 'support_admin', 'system_admin']);
 
 export const governanceReadRoles = new Set([
@@ -37,6 +49,12 @@ const GOVERNANCE_CASE_TYPES = new Set<IamGovernanceCaseType>([
   'impersonation',
   'legal_acceptance',
 ]);
+
+const isGovernanceCaseType = (value: string): value is IamGovernanceCaseType =>
+  GOVERNANCE_CASE_TYPES.has(value as IamGovernanceCaseType);
+
+const isGovernanceOperation = (value: string): value is GovernanceOperation =>
+  GOVERNANCE_OPERATIONS.includes(value as GovernanceOperation);
 
 export const validateGovernanceTicketState = (
   ticketState: string | undefined
@@ -68,25 +86,13 @@ export const readGovernanceCaseType = (
   if (!value) {
     return undefined;
   }
-  return GOVERNANCE_CASE_TYPES.has(value as IamGovernanceCaseType) ? (value as IamGovernanceCaseType) : null;
+  return isGovernanceCaseType(value) ? value : null;
 };
 
 export const readGovernanceOperation = (value: unknown): GovernanceOperation | undefined => {
-  const operation = readString(value) as GovernanceOperation | undefined;
+  const operation = readString(value);
   if (!operation) {
     return undefined;
   }
-  return [
-    'submit_permission_change',
-    'approve_permission_change',
-    'apply_permission_change',
-    'create_delegation',
-    'revoke_delegation',
-    'start_impersonation',
-    'end_impersonation',
-    'accept_legal_text',
-    'revoke_legal_acceptance',
-  ].includes(operation)
-    ? operation
-    : undefined;
+  return isGovernanceOperation(operation) ? operation : undefined;
 };

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   clearAuthDiagnosticTrail,
+  createAuthFlowId,
   readAuthDiagnosticTrail,
   readLatestAuthDiagnosticSnapshot,
   recordAuthDiagnosticEvent,
@@ -65,5 +66,23 @@ describe('auth diagnostics trail', () => {
 
     expect(readAuthDiagnosticTrail()).toEqual([]);
     expect(readLatestAuthDiagnosticSnapshot()).toEqual({});
+  });
+
+  it('uses crypto.randomUUID to create auth flow ids', () => {
+    const originalCrypto = globalThis.crypto;
+    const randomUUID = vi.fn(() => '11111111-2222-4333-8444-555555555555');
+    vi.spyOn(Date, 'now').mockReturnValue(1_715_000_000_000);
+    Object.defineProperty(globalThis, 'crypto', {
+      configurable: true,
+      value: { randomUUID },
+    });
+
+    expect(createAuthFlowId()).toBe('auth-lvuypx4w-111111112222');
+    expect(randomUUID).toHaveBeenCalledTimes(1);
+
+    Object.defineProperty(globalThis, 'crypto', {
+      configurable: true,
+      value: originalCrypto,
+    });
   });
 });

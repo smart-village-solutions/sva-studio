@@ -148,9 +148,9 @@ const withClient = async <T>(
     throw new Error('iam_database_url_missing: IAM database not configured');
   }
 
-  const client = await pool.connect();
+  const client: QueryClient = await pool.connect();
   try {
-    return await work(client as QueryClient);
+    return await work(client);
   } finally {
     client.release();
   }

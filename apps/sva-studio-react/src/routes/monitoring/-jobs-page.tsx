@@ -14,7 +14,7 @@ import { Tabs, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import { usePluginOperationJobs } from '../../hooks/use-plugin-operation-jobs';
 import { t } from '../../i18n';
 import type { IamHttpError } from '../../lib/iam-api';
-import { formatMonitoringJobEventMessage, formatMonitoringJobEventTitle } from './job-event-presentation';
+import { formatMonitoringJobEventMessage, formatMonitoringJobEventTitle } from './-job-event-presentation';
 
 type MonitoringJobsView = 'active' | 'history';
 type MonitoringJobsStatusFilter = 'all' | StudioJobListItem['status'];

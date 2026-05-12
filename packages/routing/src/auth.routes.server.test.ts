@@ -242,6 +242,27 @@ describe('auth.routes.server', () => {
     }
   });
 
+  it('flags invalid handler registrations in coverage verification', () => {
+    expect(() =>
+      verifyAuthRouteHandlerCoverage(
+        ['/auth/login'],
+        {
+          '/auth/login': {
+            GET: 'not-a-handler',
+          } as unknown as ReturnType<typeof resolveAuthHandlers>,
+        },
+        routingLogger
+      )
+    ).toThrow('Invalid auth route handler registration');
+
+    expect(routingLogger.warn).toHaveBeenCalledWith(
+      'Auth route mapping contains invalid handler registrations',
+      expect.objectContaining({
+        invalid_handlers: '/auth/login#GET',
+      })
+    );
+  });
+
   it('maps runtime health API paths to the runtime health handlers', async () => {
     const readyHandlers = resolveAuthHandlers('/api/v1/iam/health/ready');
     const liveHandlers = resolveAuthHandlers('/api/v1/iam/health/live');

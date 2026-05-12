@@ -7,6 +7,7 @@ const state = vi.hoisted(() => ({
   upsertStoredInterface: vi.fn(),
   deleteStoredInterface: vi.fn(),
   checkStoredInterfaceHealth: vi.fn(),
+  isCustomInterfaceStorageAvailable: vi.fn(),
   saveSvaMainserverSettings: vi.fn(),
   withAuthenticatedUser: vi.fn(),
   logger: {
@@ -51,6 +52,7 @@ vi.mock('./instance-interfaces-server.js', () => ({
   upsertStoredInterface: state.upsertStoredInterface,
   deleteStoredInterface: state.deleteStoredInterface,
   checkStoredInterfaceHealth: state.checkStoredInterfaceHealth,
+  isCustomInterfaceStorageAvailable: state.isCustomInterfaceStorageAvailable,
 }));
 
 describe('interfaces app adapter', () => {
@@ -61,6 +63,7 @@ describe('interfaces app adapter', () => {
     state.upsertStoredInterface.mockReset();
     state.deleteStoredInterface.mockReset();
     state.checkStoredInterfaceHealth.mockReset();
+    state.isCustomInterfaceStorageAvailable.mockReset();
     state.saveSvaMainserverSettings.mockReset();
     state.withAuthenticatedUser.mockReset();
     state.logger.error.mockReset();
@@ -72,6 +75,7 @@ describe('interfaces app adapter', () => {
       status: 'unknown',
       checkedAt: '2026-05-12T08:00:00.000Z',
     });
+    state.isCustomInterfaceStorageAvailable.mockReturnValue(true);
   });
 
   it('keeps server-only modules out of eager module evaluation', async () => {
@@ -394,6 +398,73 @@ describe('interfaces app adapter', () => {
     expect(state.upsertStoredInterface).not.toHaveBeenCalled();
   });
 
+  it('delegates custom interface upserts to the registry-backed adapter', async () => {
+    state.withAuthenticatedUser.mockImplementation(
+      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<unknown>) =>
+        handler({
+          user: {
+            id: 'subject-1',
+            instanceId: 'de-musterhausen',
+            roles: ['interface_manager'],
+          },
+        })
+    );
+    state.upsertStoredInterface.mockResolvedValue({
+      id: 's3-1',
+      instanceId: 'de-musterhausen',
+      type: 's3',
+      name: 'Uploads',
+      enabled: true,
+      config: {
+        endpoint: 'https://s3.example',
+        region: 'eu-central-1',
+        bucket: 'uploads',
+        accessKeyId: 'key-1',
+        forcePathStyle: false,
+      },
+      createdAt: '2026-05-12T08:00:00.000Z',
+      updatedAt: '2026-05-12T08:00:00.000Z',
+    });
+
+    const { upsertInstanceInterfaceServerFn } = await import('./interfaces-api');
+
+    await expect(
+      upsertInstanceInterfaceServerFn({
+        data: {
+          instanceId: 'de-musterhausen',
+          draft: {
+            type: 's3',
+            name: 'Uploads',
+            enabled: true,
+            config: {
+              endpoint: 'https://s3.example',
+              region: 'eu-central-1',
+              bucket: 'uploads',
+              accessKeyId: 'key-1',
+              secretAccessKey: 'secret-1',
+              forcePathStyle: false,
+            },
+          },
+        },
+      })
+    ).resolves.toEqual(
+      expect.objectContaining({
+        id: 's3-1',
+        type: 's3',
+        instanceId: 'de-musterhausen',
+      })
+    );
+
+    expect(state.upsertStoredInterface).toHaveBeenCalledWith(
+      'de-musterhausen',
+      expect.objectContaining({
+        type: 's3',
+        name: 'Uploads',
+      }),
+      undefined
+    );
+  });
+
   it('rejects interface deletions for users without interfaces permissions', async () => {
     state.withAuthenticatedUser.mockImplementation(
       async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<unknown>) =>
@@ -418,5 +489,57 @@ describe('interfaces app adapter', () => {
     ).rejects.toThrow('forbidden');
 
     expect(state.deleteStoredInterface).not.toHaveBeenCalled();
+  });
+
+  it('delegates custom interface deletions to the registry-backed adapter', async () => {
+    state.withAuthenticatedUser.mockImplementation(
+      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<unknown>) =>
+        handler({
+          user: {
+            id: 'subject-1',
+            instanceId: 'de-musterhausen',
+            roles: ['interface_manager'],
+          },
+        })
+    );
+    state.deleteStoredInterface.mockResolvedValue(true);
+
+    const { deleteInstanceInterfaceServerFn } = await import('./interfaces-api');
+
+    await expect(
+      deleteInstanceInterfaceServerFn({
+        data: {
+          instanceId: 'de-musterhausen',
+          id: 's3-1',
+        },
+      })
+    ).resolves.toEqual({ deleted: true });
+
+    expect(state.deleteStoredInterface).toHaveBeenCalledWith('de-musterhausen', 's3-1');
+  });
+
+  it('rejects interface deletions when the store reports no deleted entry', async () => {
+    state.withAuthenticatedUser.mockImplementation(
+      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<unknown>) =>
+        handler({
+          user: {
+            id: 'subject-1',
+            instanceId: 'de-musterhausen',
+            roles: ['interface_manager'],
+          },
+        })
+    );
+    state.deleteStoredInterface.mockResolvedValue(false);
+
+    const { deleteInstanceInterfaceServerFn } = await import('./interfaces-api');
+
+    await expect(
+      deleteInstanceInterfaceServerFn({
+        data: {
+          instanceId: 'de-musterhausen',
+          id: 'missing',
+        },
+      })
+    ).rejects.toThrow('interface_not_found');
   });
 });

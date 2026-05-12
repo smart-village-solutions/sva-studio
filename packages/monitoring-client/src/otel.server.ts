@@ -187,7 +187,8 @@ export const createOtelSdk = (config: OtelConfig): NodeSDK => {
 
   const resource = resourceFromAttributes({
     [SemanticResourceAttributes.SERVICE_NAME]: config.serviceName,
-    [SemanticResourceAttributes.DEPLOYMENT_ENVIRONMENT]: config.environment ?? process.env.NODE_ENV ?? 'development'
+    [SemanticResourceAttributes.DEPLOYMENT_ENVIRONMENT]:
+      config.environment ?? process.env.NODE_ENV ?? 'development'
   });
 
   const metricExporter = new OTLPMetricExporter({

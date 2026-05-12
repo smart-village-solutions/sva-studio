@@ -29,6 +29,8 @@ type StudioPluginJobSource = {
   readonly manifest: PluginManifest;
 };
 
+const compareAlphabetically = (left: string, right: string): number => left.localeCompare(right, 'de');
+
 const workspaceJobModuleLoaders = import.meta.glob('../../../../packages/plugin-*/src/server.ts') as Record<
   string,
   PluginJobModuleLoader
@@ -193,6 +195,7 @@ export const createPluginOperationExecutionHandlersFromSnapshot = (input: {
 }): Promise<Readonly<Record<string, PluginOperationExecutionHandler>>> => {
   return (async () => {
     const handlerEntries: Array<readonly [string, PluginOperationExecutionHandler]> = [];
+    const handlerOwners = new Map<string, string>();
 
     for (const source of input.pluginSources) {
       const jobsEntry = source.manifest.entryPoints.jobs;
@@ -220,6 +223,11 @@ export const createPluginOperationExecutionHandlersFromSnapshot = (input: {
       }
 
       for (const [jobTypeId, handler] of Object.entries(createPluginJobExecutionHandlers(runtimeFactory()))) {
+        const existingOwner = handlerOwners.get(jobTypeId);
+        if (existingOwner) {
+          throw new Error(`duplicate_plugin_operation_handler:${jobTypeId}:${source.pluginId}:${existingOwner}`);
+        }
+        handlerOwners.set(jobTypeId, source.pluginId);
         handlerEntries.push([jobTypeId, handler] as const);
       }
     }
@@ -251,13 +259,13 @@ export const createStudioPluginOperationExecutionHandlers = async (): Promise<
 
 const collectRegisteredHandlerIds = (
   handlers: Readonly<Record<string, PluginOperationExecutionRegistration>>
-): readonly string[] => Object.keys(handlers).sort();
+): readonly string[] => Object.keys(handlers).sort(compareAlphabetically);
 
 export const assertPluginOperationExecutionHandlerCoverage = (input: {
   readonly declaredJobTypeIds: readonly string[];
   readonly handlers: Readonly<Record<string, PluginOperationExecutionRegistration>>;
 }): void => {
-  const declaredJobTypeIds = [...input.declaredJobTypeIds].sort();
+  const declaredJobTypeIds = [...input.declaredJobTypeIds].sort(compareAlphabetically);
   const registeredHandlerIds = collectRegisteredHandlerIds(input.handlers);
 
   const missingHandlerIds = declaredJobTypeIds.filter((jobTypeId) => !registeredHandlerIds.includes(jobTypeId));
@@ -275,7 +283,7 @@ export const assertStudioPluginOperationHandlerCoverage = (
   handlers: Readonly<Record<string, PluginOperationExecutionRegistration>>
 ): void => {
   assertPluginOperationExecutionHandlerCoverage({
-    declaredJobTypeIds: [...studioDeclaredPluginOperationJobTypeIds].sort(),
+    declaredJobTypeIds: [...studioDeclaredPluginOperationJobTypeIds].sort(compareAlphabetically),
     handlers,
   });
 };

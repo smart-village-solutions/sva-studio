@@ -35,6 +35,14 @@ import {
   mergePluginJobTypes,
 } from './plugin-operations.js';
 import type {
+  PluginExternalInterfaceTypeDefinition,
+  PluginExternalInterfaceTypeRegistryEntry,
+} from './external-interfaces.js';
+import {
+  createPluginExternalInterfaceTypeRegistry,
+  mergePluginExternalInterfaceTypes,
+} from './external-interfaces.js';
+import type {
   PluginImportProfileDefinition,
   PluginImportProfileRegistryEntry,
   PluginJobTypeDefinition,
@@ -55,10 +63,12 @@ export type BuildTimeRegistry = {
   readonly pluginModuleIamRegistry: ReadonlyMap<string, PluginModuleIamRegistryEntry>;
   readonly pluginJobTypeRegistry: ReadonlyMap<string, PluginJobTypeRegistryEntry>;
   readonly pluginImportProfileRegistry: ReadonlyMap<string, PluginImportProfileRegistryEntry>;
+  readonly pluginExternalInterfaceTypeRegistry: ReadonlyMap<string, PluginExternalInterfaceTypeRegistryEntry>;
   readonly pluginPermissions: readonly PluginPermissionDefinition[];
   readonly pluginModuleIamContracts: readonly PluginModuleIamRegistryEntry[];
   readonly jobTypes: readonly PluginJobTypeDefinition[];
   readonly importProfiles: readonly PluginImportProfileDefinition[];
+  readonly externalInterfaceTypes: readonly PluginExternalInterfaceTypeDefinition[];
   readonly routes: readonly PluginRouteDefinition[];
   readonly navigation: readonly PluginNavigationItem[];
   readonly contentTypes: readonly ContentTypeDefinition[];
@@ -103,8 +113,10 @@ type PermissionPhaseOutput = {
 type OperationsPhaseOutput = {
   readonly jobTypes: readonly PluginJobTypeDefinition[];
   readonly importProfiles: readonly PluginImportProfileDefinition[];
+  readonly externalInterfaceTypes: readonly PluginExternalInterfaceTypeDefinition[];
   readonly pluginJobTypeRegistry: ReadonlyMap<string, PluginJobTypeRegistryEntry>;
   readonly pluginImportProfileRegistry: ReadonlyMap<string, PluginImportProfileRegistryEntry>;
+  readonly pluginExternalInterfaceTypeRegistry: ReadonlyMap<string, PluginExternalInterfaceTypeRegistryEntry>;
 };
 
 const validateAdminResourceContentTypes = (
@@ -168,8 +180,10 @@ const runPermissionPhase = (plugins: readonly PluginDefinition[]): PermissionPha
 const runOperationsPhase = (plugins: readonly PluginDefinition[]): OperationsPhaseOutput => ({
   jobTypes: mergePluginJobTypes(plugins),
   importProfiles: mergePluginImportProfiles(plugins),
+  externalInterfaceTypes: mergePluginExternalInterfaceTypes(plugins),
   pluginJobTypeRegistry: createPluginJobTypeRegistry(plugins),
   pluginImportProfileRegistry: createPluginImportProfileRegistry(plugins),
+  pluginExternalInterfaceTypeRegistry: createPluginExternalInterfaceTypeRegistry(plugins),
 });
 
 const runRoutingPhase = (plugins: readonly PluginDefinition[]): RoutingPhaseOutput => ({
@@ -203,10 +217,12 @@ const publishBuildTimeRegistry = ({
   pluginModuleIamRegistry: permissions.pluginModuleIamRegistry,
   pluginJobTypeRegistry: operations.pluginJobTypeRegistry,
   pluginImportProfileRegistry: operations.pluginImportProfileRegistry,
+  pluginExternalInterfaceTypeRegistry: operations.pluginExternalInterfaceTypeRegistry,
   pluginPermissions: permissions.pluginPermissions,
   pluginModuleIamContracts: permissions.pluginModuleIamContracts,
   jobTypes: operations.jobTypes,
   importProfiles: operations.importProfiles,
+  externalInterfaceTypes: operations.externalInterfaceTypes,
   routes: routing.routes,
   navigation: routing.navigation,
   contentTypes: content.contentTypes,

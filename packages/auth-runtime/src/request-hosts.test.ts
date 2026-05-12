@@ -63,7 +63,7 @@ describe('request host resolution', () => {
     expect(resolveEffectiveRequestAuthority(input)).toBe('url.example.test:9443');
   });
 
-  it('uses trusted forwarded headers in production mode', () => {
+  it('does not trust forwarded headers in production mode unless the opt-in flag is explicitly enabled', () => {
     vi.stubEnv('NODE_ENV', 'production');
     vi.stubEnv('SVA_TRUST_FORWARDED_HEADERS', '');
 
@@ -72,10 +72,28 @@ describe('request host resolution', () => {
       host: 'host.example.test',
     });
 
-    expect(resolveEffectiveRequestHost(input)).toBe('forwarded.example.test');
-    expect(resolveEffectiveRequestAuthority(input)).toBe('forwarded.example.test');
+    expect(resolveEffectiveRequestHost(input)).toBe('url.example.test');
+    expect(resolveEffectiveRequestAuthority(input)).toBe('url.example.test');
     expect(resolveEffectiveRequestProtocol(input)).toBe('https');
-    expect(buildRequestOriginFromHeaders(input)).toBe('https://forwarded.example.test');
+    expect(buildRequestOriginFromHeaders(input)).toBe('https://url.example.test');
+  });
+
+  it('treats invalid trust flag values as disabled', () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('SVA_TRUST_FORWARDED_HEADERS', 'yes');
+
+    const input = request(
+      {
+        'x-forwarded-host': 'forwarded.example.test',
+        'x-forwarded-proto': 'http',
+        forwarded: 'for=1; proto=http; host=forwarded.example.test',
+      },
+      'https://url.example.test:9443/path'
+    );
+
+    expect(resolveEffectiveRequestHost(input)).toBe('url.example.test');
+    expect(resolveEffectiveRequestAuthority(input)).toBe('url.example.test:9443');
+    expect(resolveEffectiveRequestProtocol(input)).toBe('https');
   });
 
   it('falls back through host and url data when trusted forwarded headers are missing or invalid', () => {

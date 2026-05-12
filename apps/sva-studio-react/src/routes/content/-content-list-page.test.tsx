@@ -329,6 +329,55 @@ describe('ContentListPage', () => {
     });
   });
 
+  it('normalizes legacy query aliases from route search state into canonical list controls', () => {
+    searchState = {
+      q: 'live',
+      status: 'published',
+      page: '2',
+      pageSize: '1',
+      sorting: '-updatedAt',
+    };
+
+    useContentsMock.mockReturnValue({
+      contents: [
+        {
+          id: 'content-1',
+          contentType: 'generic',
+          title: 'Live alt',
+          createdAt: '2026-03-20T10:00:00.000Z',
+          updatedAt: '2026-03-21T10:00:00.000Z',
+          author: 'Editor',
+          payload: { hero: 'A' },
+          status: 'published',
+        },
+        {
+          id: 'content-2',
+          contentType: 'generic',
+          title: 'Live neu',
+          createdAt: '2026-03-20T10:00:00.000Z',
+          updatedAt: '2026-03-22T10:00:00.000Z',
+          author: 'Editor',
+          payload: { hero: 'B' },
+          status: 'published',
+        },
+      ],
+      isLoading: false,
+      error: null,
+      mutationError: null,
+      refetch: vi.fn(),
+      clearMutationError: vi.fn(),
+      archiveContents: vi.fn(),
+      deleteContents: vi.fn(),
+    });
+
+    render(<ContentListPage />);
+
+    expect((screen.getByLabelText('Suche') as HTMLInputElement).value).toBe('live');
+    expect((screen.getByLabelText('Status') as HTMLSelectElement).value).toBe('published');
+    expect(screen.queryByText('Live neu')).toBeNull();
+    expect(screen.getAllByText('Live alt').length).toBeGreaterThan(0);
+  });
+
   it('derives bulk action scopes from host capabilities and forwards normalized selection inputs', async () => {
     const archiveContents = vi.fn().mockResolvedValue({ acceptedCount: 2, failedCount: 0, skippedCount: 0 });
     const deleteContents = vi.fn().mockResolvedValue({ acceptedCount: 1, failedCount: 0, skippedCount: 0 });

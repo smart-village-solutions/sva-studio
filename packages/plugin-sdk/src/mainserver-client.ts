@@ -32,6 +32,9 @@ type ApiErrorResponse = Readonly<{
   message?: string;
 }>;
 
+const isApiErrorResponse = (value: unknown): value is ApiErrorResponse =>
+  typeof value === 'object' && value !== null;
+
 export class MainserverApiError extends Error {
   public constructor(
     public readonly code: string,
@@ -75,12 +78,24 @@ export const createMainserverJsonRequestHeaders = (headers?: HeadersInit): Heade
 export const buildMainserverListUrl = (basePath: string, query: MainserverListQuery): string =>
   `${basePath}?page=${encodeURIComponent(String(query.page))}&pageSize=${encodeURIComponent(String(query.pageSize))}`;
 
-export const requestMainserverJson = async <T, TError extends Error = MainserverApiError>(input: {
+export function requestMainserverJson<T>(input: {
+  readonly url: string;
+  readonly init?: RequestInit;
+  readonly fetch?: typeof fetch;
+  readonly errorFactory?: MainserverErrorFactory<MainserverApiError>;
+}): Promise<T>;
+export function requestMainserverJson<T, TError extends Error>(input: {
+  readonly url: string;
+  readonly init?: RequestInit;
+  readonly fetch?: typeof fetch;
+  readonly errorFactory: MainserverErrorFactory<TError>;
+}): Promise<T>;
+export async function requestMainserverJson<T, TError extends Error = MainserverApiError>(input: {
   readonly url: string;
   readonly init?: RequestInit;
   readonly fetch?: typeof fetch;
   readonly errorFactory?: MainserverErrorFactory<TError>;
-}): Promise<T> => {
+}): Promise<T> {
   const response = await resolveFetch(input.fetch)(input.url, {
     credentials: 'include',
     ...input.init,
@@ -92,21 +107,22 @@ export const requestMainserverJson = async <T, TError extends Error = Mainserver
     let message = errorCode;
 
     try {
-      const body = (await response.json()) as ApiErrorResponse;
+      const body = await response.json();
+      if (!isApiErrorResponse(body)) {
+        throw new Error('invalid_mainserver_error_response');
+      }
       errorCode = typeof body.error === 'string' && body.error.length > 0 ? body.error : errorCode;
       message = typeof body.message === 'string' && body.message.length > 0 ? body.message : errorCode;
     } catch {
       // Keep the deterministic HTTP fallback when the server returns no JSON error envelope.
     }
 
-    const errorFactory =
-      input.errorFactory ??
-      ((code: string, errorMessage: string) => new MainserverApiError(code, errorMessage) as unknown as TError);
+    const errorFactory = input.errorFactory ?? ((code: string, errorMessage: string) => new MainserverApiError(code, errorMessage));
     throw errorFactory(errorCode, message);
   }
 
   return (await response.json()) as T;
-};
+}
 
 export const createMainserverCrudClient = <
   TItem,

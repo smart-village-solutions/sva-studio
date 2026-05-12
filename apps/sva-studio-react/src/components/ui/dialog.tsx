@@ -7,10 +7,18 @@ const Dialog = DialogPrimitive.Root;
 const DialogTrigger = DialogPrimitive.Trigger;
 const DialogPortal = DialogPrimitive.Portal;
 const DialogClose = DialogPrimitive.Close;
+type DialogOverlayElement = React.ComponentRef<typeof DialogPrimitive.Overlay>;
+type DialogOverlayProps = React.ComponentProps<typeof DialogPrimitive.Overlay>;
+type DialogContentElement = React.ComponentRef<typeof DialogPrimitive.Content>;
+type DialogContentProps = React.ComponentProps<typeof DialogPrimitive.Content>;
+type DialogTitleElement = React.ComponentRef<typeof DialogPrimitive.Title>;
+type DialogTitleProps = React.ComponentProps<typeof DialogPrimitive.Title>;
+type DialogDescriptionElement = React.ComponentRef<typeof DialogPrimitive.Description>;
+type DialogDescriptionProps = React.ComponentProps<typeof DialogPrimitive.Description>;
 
 const DialogOverlay = React.forwardRef<
-  React.ElementRef<typeof DialogPrimitive.Overlay>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
+  DialogOverlayElement,
+  DialogOverlayProps
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Overlay
     ref={ref}
@@ -22,8 +30,8 @@ const DialogOverlay = React.forwardRef<
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 
 const DialogContent = React.forwardRef<
-  React.ElementRef<typeof DialogPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
+  DialogContentElement,
+  DialogContentProps
 >(({ className, ...props }, ref) => (
   <DialogPortal>
     <DialogOverlay />
@@ -48,16 +56,16 @@ const DialogFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivEleme
 );
 
 const DialogTitle = React.forwardRef<
-  React.ElementRef<typeof DialogPrimitive.Title>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title>
+  DialogTitleElement,
+  DialogTitleProps
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Title ref={ref} className={cn('text-lg font-semibold text-foreground', className)} {...props} />
 ));
 DialogTitle.displayName = DialogPrimitive.Title.displayName;
 
 const DialogDescription = React.forwardRef<
-  React.ElementRef<typeof DialogPrimitive.Description>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Description>
+  DialogDescriptionElement,
+  DialogDescriptionProps
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Description ref={ref} className={cn('text-sm text-muted-foreground', className)} {...props} />
 ));

@@ -202,6 +202,15 @@ export {
   mergePluginJobTypes,
 } from './plugin-operations.js';
 export type {
+  PluginExternalInterfaceTypeDefinition,
+  PluginExternalInterfaceTypeRegistryEntry,
+} from './external-interfaces.js';
+export {
+  createPluginExternalInterfaceTypeRegistry,
+  definePluginExternalInterfaceTypes,
+  mergePluginExternalInterfaceTypes,
+} from './external-interfaces.js';
+export type {
   StandardContentAdminResourceOptions,
   StandardContentPluginActionIds,
   StandardContentPluginActionName,

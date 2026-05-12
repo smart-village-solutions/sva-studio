@@ -926,6 +926,9 @@ importers:
       '@sva/auth-runtime':
         specifier: workspace:*
         version: link:../auth-runtime
+      '@sva/core':
+        specifier: workspace:*
+        version: link:../core
       '@sva/data-repositories':
         specifier: workspace:*
         version: link:../data-repositories

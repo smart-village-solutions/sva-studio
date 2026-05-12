@@ -307,6 +307,44 @@ describe('coverage gate', () => {
     expect(result.summaryBody).toContain('Global coverage (default-floor projects avg)');
   });
 
+  it('does not fail strict runs when no project inherits the global defaults', () => {
+    const rootDir = createTempWorkspace();
+    writePolicy(rootDir, {
+      globalFloors: {
+        lines: 85,
+        statements: 85,
+        functions: 85,
+        branches: 85,
+      },
+      perProjectFloors: {
+        'server-runtime': {
+          lines: 85,
+          statements: 85,
+          functions: 85,
+          branches: 85,
+        },
+        'sva-studio-react': {
+          lines: 85,
+          statements: 85,
+          functions: 85,
+          branches: 85,
+        },
+      },
+    });
+    writeBaseline(rootDir);
+    writeCoverageSummary(rootDir, 90, 90, 90, 90, 'packages/server-runtime');
+    writeCoverageSummary(rootDir, 92, 92, 92, 92, 'apps/sva-studio-react');
+
+    const result = runCoverageGate({
+      rootDir,
+      requireSummaries: true,
+    });
+
+    expect(result.passed).toBe(true);
+    expect(result.errors.some((error) => error.includes('[global]'))).toBe(false);
+    expect(result.summaryBody).toContain('Global coverage (no default-floor projects)');
+  });
+
   it('fails when per-project floor is not met', () => {
     const rootDir = createTempWorkspace();
     writePolicy(rootDir, {

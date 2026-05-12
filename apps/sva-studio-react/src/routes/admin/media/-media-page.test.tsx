@@ -240,6 +240,56 @@ describe('MediaPage', () => {
     expect(screen.getByText('Teaserbild')).toBeTruthy();
   });
 
+  it('treats unexpected prototype-like media roles as plain text', () => {
+    useParamsMock.mockReturnValue({ mediaId: 'asset-2' });
+    useLocationMock.mockReturnValue({ pathname: '/admin/media/asset-2' });
+    useMediaDetailMock.mockReturnValue({
+      asset: {
+        id: 'asset-2',
+        instanceId: 'instance-1',
+        storageKey: 'media/asset-2',
+        mediaType: 'image',
+        mimeType: 'image/png',
+        byteSize: 8192,
+        visibility: 'protected',
+        uploadStatus: 'processed',
+        processingStatus: 'ready',
+        metadata: {
+          title: 'Detail Asset',
+        },
+        technical: {},
+        createdAt: '2026-04-29T09:00:00.000Z',
+        updatedAt: '2026-04-29T10:00:00.000Z',
+      },
+      usage: {
+        assetId: 'asset-2',
+        totalReferences: 1,
+        references: [
+          {
+            id: 'ref-1',
+            assetId: 'asset-2',
+            targetType: 'news',
+            targetId: 'news-1',
+            role: 'toString',
+          },
+        ],
+      },
+      delivery: null,
+      isLoading: false,
+      error: null,
+      mutationError: null,
+      refetch: vi.fn(),
+      clearMutationError: vi.fn(),
+      updateMedia: vi.fn(),
+      resolveDelivery: vi.fn(),
+      deleteMedia: vi.fn(async () => true),
+    });
+
+    render(<MediaPage />);
+
+    expect(screen.getByText('toString')).toBeTruthy();
+  });
+
   it('submits focus point and crop metadata in detail mode', async () => {
     const updateMedia = vi.fn(async () => true);
     useParamsMock.mockReturnValue({ mediaId: 'asset-2' });
@@ -345,6 +395,66 @@ describe('MediaPage', () => {
           license: null,
           focusPoint: undefined,
           crop: undefined,
+        },
+      });
+    });
+  });
+
+  it('clears focus point and crop metadata when all related fields are emptied', async () => {
+    const updateMedia = vi.fn(async () => true);
+    useParamsMock.mockReturnValue({ mediaId: 'asset-2' });
+    useLocationMock.mockReturnValue({ pathname: '/admin/media/asset-2' });
+    useMediaDetailMock.mockReturnValue({
+      asset: {
+        id: 'asset-2',
+        instanceId: 'instance-1',
+        storageKey: 'media/asset-2',
+        mediaType: 'image',
+        mimeType: 'image/png',
+        byteSize: 8192,
+        visibility: 'protected',
+        uploadStatus: 'processed',
+        processingStatus: 'ready',
+        metadata: {
+          title: 'Detail Asset',
+          focusPoint: { x: 0.4, y: 0.6 },
+          crop: { x: 10, y: 20, width: 300, height: 180 },
+        },
+        technical: {},
+      },
+      usage: { assetId: 'asset-2', totalReferences: 0, references: [] },
+      delivery: null,
+      isLoading: false,
+      error: null,
+      mutationError: null,
+      refetch: vi.fn(),
+      clearMutationError: vi.fn(),
+      updateMedia,
+      resolveDelivery: vi.fn(),
+      deleteMedia: vi.fn(async () => true),
+    });
+
+    render(<MediaPage />);
+
+    fireEvent.change(screen.getByLabelText('Fokuspunkt X'), { target: { value: '' } });
+    fireEvent.change(screen.getByLabelText('Fokuspunkt Y'), { target: { value: '' } });
+    fireEvent.change(screen.getByLabelText('Zuschnitt X'), { target: { value: '' } });
+    fireEvent.change(screen.getByLabelText('Zuschnitt Y'), { target: { value: '' } });
+    fireEvent.change(screen.getByLabelText('Zuschnitt Breite'), { target: { value: '' } });
+    fireEvent.change(screen.getByLabelText('Zuschnitt Höhe'), { target: { value: '' } });
+    fireEvent.submit(screen.getByRole('button', { name: 'Metadaten speichern' }).closest('form') as HTMLFormElement);
+
+    await waitFor(() => {
+      expect(updateMedia).toHaveBeenCalledWith({
+        visibility: 'protected',
+        metadata: {
+          title: 'Detail Asset',
+          altText: null,
+          description: null,
+          copyright: null,
+          license: null,
+          focusPoint: null,
+          crop: null,
         },
       });
     });

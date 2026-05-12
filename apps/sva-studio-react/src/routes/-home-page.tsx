@@ -16,6 +16,24 @@ type HomeRouteState = {
   readonly showDevLoginPrompt: boolean;
 };
 
+const AUTH_STATE_ERROR_KEYS = {
+  error: 'home.authError.loginFailed',
+  'state-expired': 'home.authError.stateExpired',
+  'session-expired': 'home.authError.sessionExpired',
+} as const;
+
+const hasOwn = <T extends object>(value: T, key: PropertyKey): key is keyof T =>
+  Object.prototype.hasOwnProperty.call(value, key);
+
+const resolveHomeAuthStateError = (authState: string | null): string | null => {
+  if (!authState || !hasOwn(AUTH_STATE_ERROR_KEYS, authState)) {
+    return null;
+  }
+
+  const translationKey = AUTH_STATE_ERROR_KEYS[authState];
+  return typeof translationKey === 'string' ? t(translationKey) : null;
+};
+
 const resolveHomeRouteState = (): HomeRouteState => {
   const search = new URLSearchParams(window.location.search);
   const authState = search.get('auth');
@@ -25,14 +43,7 @@ const resolveHomeRouteState = (): HomeRouteState => {
     authReturnTo: sanitizeReturnTo(search.get('returnTo')),
     shouldStartLoginRedirect: authState === 'login',
     showDevLoginPrompt: authState === 'dev-login',
-    authStateError:
-      authState === 'error'
-        ? t('home.authError.loginFailed')
-        : authState === 'state-expired'
-          ? t('home.authError.stateExpired')
-          : authState === 'session-expired'
-            ? t('home.authError.sessionExpired')
-            : null,
+    authStateError: resolveHomeAuthStateError(authState),
     routeError: routeErrorCode === 'auth.insufficientRole' ? t('home.authError.insufficientRole') : null,
   };
 };
@@ -184,8 +195,7 @@ export const HomePage = () => {
     routeError ??
     (sessionRecoveryFailed ? t('home.authError.sessionExpired') : null) ??
     (error ? t('home.authError.sessionLoadFailed') : null);
-  const authErrorLoginHref =
-    authError && !isAuthenticated ? createLoginHref(authReturnTo ?? undefined) : null;
+  const authErrorLoginHref = !isAuthenticated && authError ? createLoginHref(authReturnTo ?? undefined) : null;
 
   return (
     <div className="min-h-full bg-background text-foreground">

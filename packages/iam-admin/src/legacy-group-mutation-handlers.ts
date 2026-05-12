@@ -92,7 +92,7 @@ export type LegacyGroupMutationHandlerDeps<TFeatureFlags = unknown> = {
   ) => Promise<void>;
   readonly parseRequestBody: <TData>(
     request: Request,
-    schema: z.ZodSchema<TData>
+    schema: z.ZodType<TData>
   ) => Promise<ParseRequestBodyResult<TData>>;
   readonly readPathSegment: (request: Request, index: number) => string | null | undefined;
   readonly requireIdempotencyKey: (

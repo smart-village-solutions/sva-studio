@@ -30,7 +30,7 @@ const loginStateCookiePayloadSchema = z.discriminatedUnion('kind', [
     kind: z.literal('instance'),
     instanceId: z.string().trim().min(1),
   }),
-]);
+]) satisfies z.ZodType<LoginStateCookiePayload>;
 
 export const encodeLoginStateCookie = (payload: LoginStateCookiePayload, secret: string) => {
   const json = JSON.stringify(payload);
@@ -65,7 +65,7 @@ export const decodeLoginStateCookie = (value: string | undefined, secret: string
     const json = Buffer.from(data, 'base64url').toString('utf8');
     const parsed = JSON.parse(json);
     const result = loginStateCookiePayloadSchema.safeParse(parsed);
-    return result.success ? (result.data as LoginStateCookiePayload) : null;
+    return result.success ? result.data : null;
   } catch {
     return null;
   }

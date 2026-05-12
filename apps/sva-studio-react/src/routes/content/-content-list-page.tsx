@@ -30,6 +30,10 @@ type ContentListRouteState = Readonly<{
   pageSize: number;
   sort?: ContentListSortState;
 }>;
+type SortStateLike = Readonly<{
+  field?: unknown;
+  direction?: unknown;
+}>;
 
 const contentAdminResource = appAdminResources.find((resource) => resource.resourceId === 'content');
 const contentListCapabilities = contentAdminResource?.capabilities?.list;
@@ -140,8 +144,13 @@ const statusLabelKeyByValue = {
   archived: 'content.status.archived',
 } as const;
 
-const normalizeStatusFilter = (value: unknown): StatusFilter =>
-  typeof value === 'string' && contentStatusOptions.includes(value as StatusFilter) ? (value as StatusFilter) : 'all';
+const isStatusFilter = (value: unknown): value is StatusFilter =>
+  typeof value === 'string' && contentStatusOptions.some((option) => option === value);
+
+const asRouteSearchState = (value: unknown): RouteSearchState | undefined =>
+  value && typeof value === 'object' ? (value as RouteSearchState) : undefined;
+
+const normalizeStatusFilter = (value: unknown): StatusFilter => (isStatusFilter(value) ? value : 'all');
 
 const normalizePositiveInteger = (value: unknown, fallback: number): number => {
   if (typeof value === 'number' && Number.isInteger(value) && value > 0) {
@@ -157,9 +166,10 @@ const normalizePositiveInteger = (value: unknown, fallback: number): number => {
 };
 
 const normalizeSortState = (value: unknown): ContentListSortState | undefined => {
-  if (value && typeof value === 'object') {
-    const field = typeof (value as { field?: unknown }).field === 'string' ? (value as { field: string }).field : undefined;
-    const direction = (value as { direction?: unknown }).direction;
+  const objectValue = asRouteSearchState(value) as SortStateLike | undefined;
+  if (objectValue) {
+    const field = typeof objectValue.field === 'string' ? objectValue.field : undefined;
+    const direction = objectValue.direction;
     if (field && (direction === 'asc' || direction === 'desc')) {
       return { field, direction };
     }
@@ -175,8 +185,7 @@ const normalizeSortState = (value: unknown): ContentListSortState | undefined =>
 };
 
 const readNormalizedRouteState = (search: RouteSearchState): ContentListRouteState => {
-  const normalizedFilters =
-    search.filters && typeof search.filters === 'object' ? (search.filters as Record<string, unknown>) : undefined;
+  const normalizedFilters = asRouteSearchState(search.filters);
   const normalizedSearch = typeof search.search === 'string' ? search.search : typeof search.q === 'string' ? search.q : '';
   const pageSizeDefault = contentPagination?.defaultPageSize ?? 25;
 
@@ -213,6 +222,58 @@ const updateRouteState = (
     ...normalized,
     ...next,
   });
+};
+
+const resolveContentIdsForBulkAction = <TItem extends { id: string }>(
+  selectionMode: 'explicitIds' | 'currentPage' | 'allMatchingQuery',
+  pagedItems: readonly TItem[],
+  allItems: readonly TItem[],
+  selectedIds: readonly string[]
+): readonly string[] => {
+  if (selectionMode === 'currentPage') {
+    return pagedItems.map((item) => item.id);
+  }
+  if (selectionMode === 'allMatchingQuery') {
+    return allItems.map((item) => item.id);
+  }
+  return selectedIds;
+};
+
+const resolveSelectionModeLabelKey = (
+  selectionMode: 'explicitIds' | 'currentPage' | 'allMatchingQuery'
+): 'content.bulk.scope.explicitIds' | 'content.bulk.scope.currentPage' | 'content.bulk.scope.allMatchingQuery' => {
+  switch (selectionMode) {
+    case 'explicitIds':
+      return 'content.bulk.scope.explicitIds';
+    case 'currentPage':
+      return 'content.bulk.scope.currentPage';
+    default:
+      return 'content.bulk.scope.allMatchingQuery';
+  }
+};
+
+const isBulkActionDisabled = (
+  selectionMode: 'explicitIds' | 'currentPage' | 'allMatchingQuery',
+  currentPageCount: number,
+  totalCount: number
+): boolean | undefined => {
+  if (selectionMode === 'explicitIds') {
+    return undefined;
+  }
+  if (selectionMode === 'currentPage') {
+    return currentPageCount === 0;
+  }
+  return totalCount === 0;
+};
+
+const resolveRowActionLabel = (access: IamContentAccessSummary): string => {
+  if (access.canUpdate) {
+    return t('content.actions.edit');
+  }
+  if (access.canRead) {
+    return t('content.actions.openReadOnly');
+  }
+  return t('content.actions.blocked');
 };
 
 const sortContents = <TItem extends Record<string, unknown>>(
@@ -310,12 +371,7 @@ export const ContentListPage = () => {
 
   const runBulkAction = React.useCallback(
     async (actionId: 'content.archive' | 'content.delete', selectionMode: 'explicitIds' | 'currentPage' | 'allMatchingQuery', selectedIds: readonly string[]) => {
-      const contentIds =
-        selectionMode === 'currentPage'
-          ? pagedContents.map((item) => item.id)
-          : selectionMode === 'allMatchingQuery'
-            ? sortedContents.map((item) => item.id)
-            : selectedIds;
+      const contentIds = resolveContentIdsForBulkAction(selectionMode, pagedContents, sortedContents, selectedIds);
 
       const input = {
         actionId,
@@ -424,24 +480,12 @@ export const ContentListPage = () => {
 
   const bulkActionButtons = contentBulkActions.flatMap((action) =>
     action.selectionModes.map((selectionMode) => {
-      const labelKey =
-        selectionMode === 'explicitIds'
-          ? 'content.bulk.scope.explicitIds'
-          : selectionMode === 'currentPage'
-            ? 'content.bulk.scope.currentPage'
-            : 'content.bulk.scope.allMatchingQuery';
-
-      const enabledForScope =
-        selectionMode === 'explicitIds'
-          ? undefined
-          : selectionMode === 'currentPage'
-            ? pagedContents.length === 0
-            : sortedContents.length === 0;
+      const labelKey = resolveSelectionModeLabelKey(selectionMode);
 
       return {
         id: `${action.id}:${selectionMode}`,
         label: `${t(action.labelKey)} (${t(labelKey)})`,
-        disabled: selectionMode === 'explicitIds' ? undefined : enabledForScope,
+        disabled: isBulkActionDisabled(selectionMode, pagedContents.length, sortedContents.length),
         variant: 'outline' as const,
         onClick: async ({ selectedRows, clearSelection }: { selectedRows: typeof pagedContents; clearSelection: () => void }) => {
           await runBulkAction(
@@ -530,7 +574,7 @@ export const ContentListPage = () => {
               <Select
                 id="content-status-filter"
                 value={routeState.status}
-                onChange={(event) => navigateSearch({ status: event.target.value as StatusFilter, page: 1 })}
+                onChange={(event) => navigateSearch({ status: normalizeStatusFilter(event.target.value), page: 1 })}
               >
                 <option value="all">{t('content.filters.statusAll')}</option>
                 <option value="draft">{t('content.status.draft')}</option>
@@ -563,11 +607,7 @@ export const ContentListPage = () => {
         }
         rowActions={(item) => {
           const access = resolveRowAccess(item.access, contentsApi.error);
-          const actionLabel = access.canUpdate
-            ? t('content.actions.edit')
-            : access.canRead
-              ? t('content.actions.openReadOnly')
-              : t('content.actions.blocked');
+          const actionLabel = resolveRowActionLabel(access);
 
           return access.canRead ? (
             <Button asChild size="sm" variant="outline">

@@ -48,6 +48,7 @@ gleichzeitig beeinflussen.
 - Silent SSO ist nur ein einmaliger Recovery-Versuch nach `401` und wird nach explizitem Logout temporär unterdrückt
 - Application-Level Column Encryption für IAM-PII-Felder (`email_ciphertext`, `display_name_ciphertext`)
 - Schlüsselverwaltung über `IAM_PII_ACTIVE_KEY_ID` + `IAM_PII_KEYRING_JSON` (außerhalb der DB)
+- Secret-Blöcke für externe Schnittstellen werden mit datensatzgebundener AAD verschlüsselt; Browser- und Plugin-Verträge sehen nur konfigurierte Marker, nie Klarwerte oder Ciphertexts.
 - Fehlertexte der Feldverschlüsselung enthalten keine internen Key-IDs; technische Key-Kontexte werden nur als strukturierter Fehlerkontext geführt
 - Redaction sensibler Logfelder in `@sva/server-runtime` und im OTEL Processor
 - Governance-Gates: Ticketpflicht, Vier-Augen-Prinzip, keine Self-Approvals
@@ -63,6 +64,8 @@ gleichzeitig beeinflussen.
 - Inhaltstypen dürfen über das SDK zusätzliche Validierung, UI-Sektionen und Listenmetadaten registrieren, aber keine Core-Semantik oder das Statusmodell überschreiben
 - Plugin-Vertrag v1 bleibt statisch und bundlegebunden: Plugins deklarieren Metadaten über `PluginDefinition`, aber weder Runtime-Loading noch Plugin-eigene Sicherheits- oder Routing-Bypässe sind erlaubt
 - Im Zielbild der Plugin-Plattform v2 bleiben Manifest, Katalog, Loader und Runtime host-owned. Plugins dürfen diese Verträge konsumieren, aber keine parallelen Aktivierungs-, Routing-, Secret- oder Auditpfade etablieren.
+- Externe technische Schnittstellen sind ebenfalls host-owned: Typkatalog, Instanzdatensätze, Default-Regeln, Secret-Verschlüsselung, Statusprojektion und Resolver liegen zentral im Host.
+- Plugin-deklarierte `externalInterfaceTypes` beschreiben nur Metadaten und Feldschemas; Persistenz, Secret-Auflösung, Health-Checks und Audit bleiben verpflichtend hostseitig.
 - Plugin-Guards werden grundsätzlich hostseitig angewendet; ein Plugin deklariert nur die fachliche Guard-Anforderung und darf keine eigene Autorisierungsschicht am Host vorbei etablieren
 - Pluginseitige Request-, Job- und Integrationsbeiträge laufen ausschließlich in host-owned Execution-Contexts mit Auth-, Instanz-, Logger-, Audit- und Fehlervertrag des Hosts
 - Plugin-Contributions werden beim Build-time-Snapshot phasenweise gegen Runtime-Allowlists geprüft; eigene Route-Handler, Autorisierungsresolver, Audit-Sinks, Persistenzhandler und dynamische Nachregistrierung werden mit `plugin_guardrail_*`-Codes fail-fast abgewiesen

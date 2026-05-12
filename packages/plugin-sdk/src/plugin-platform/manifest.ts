@@ -1,6 +1,8 @@
 import { normalizePluginNamespace } from '../plugin-identifiers.js';
 import type { PluginCatalogEntry, PluginManifest, PluginManifestCapability } from './contracts.js';
 
+const compareAlphabetically = (left: string, right: string): number => left.localeCompare(right, 'de');
+
 const normalizeRequiredCapabilities = (
   capabilities: readonly PluginManifestCapability[] | undefined
 ): readonly PluginManifestCapability[] | undefined => {
@@ -8,7 +10,9 @@ const normalizeRequiredCapabilities = (
     return undefined;
   }
 
-  return [...new Set(capabilities.map((capability) => capability.trim() as PluginManifestCapability))].sort();
+  return [...new Set(capabilities.map((capability) => capability.trim() as PluginManifestCapability))].sort(
+    compareAlphabetically
+  );
 };
 
 const normalizeEntryPoint = (value: string | undefined): string | undefined => {

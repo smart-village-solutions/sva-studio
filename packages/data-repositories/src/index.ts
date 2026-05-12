@@ -10,12 +10,14 @@ export const dataRepositoriesPackageRoles = [
 
 export {
   createIamSeedRepository,
+  createExternalInterfaceRepository,
   createInstanceIntegrationRepository,
   createInstanceRegistryRepository,
   createMediaRepository,
   createStudioJobRepository,
   createWasteDataSourceRepository,
   createWasteMasterDataRepository,
+  externalInterfaceStatements,
   iamSeedPlan,
   iamSeedStatements,
   instanceIntegrationStatements,
@@ -25,6 +27,7 @@ export {
 } from './public-api.js';
 
 export type {
+  ExternalInterfaceRepository,
   CachedInstanceIntegrationLoader,
   IamInstanceId,
   IamSeedPlan,
@@ -57,6 +60,9 @@ export type {
 } from './public-api.js';
 
 export type {
+  ExternalInterfaceConnectionCheckRecord,
+  ExternalInterfaceRecord,
+  ExternalInterfaceTypeDefinition,
   WasteCollectionLocationListFilter,
   WasteCollectionLocationRecord,
   InstanceAuditEvent,

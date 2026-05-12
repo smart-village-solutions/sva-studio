@@ -11,6 +11,8 @@ import {
   normalizePluginNamespace,
   parseNamespacedPluginIdentifier,
 } from './plugin-identifiers.js';
+import type { PluginExternalInterfaceTypeDefinition } from './external-interfaces.js';
+import { definePluginExternalInterfaceTypes } from './external-interfaces.js';
 import type { PluginImportProfileDefinition, PluginJobTypeDefinition } from './plugin-operations.js';
 import { definePluginImportProfiles, definePluginJobTypes } from './plugin-operations.js';
 
@@ -90,6 +92,7 @@ export type PluginDefinition = {
   readonly moduleIam?: PluginModuleIamContract;
   readonly jobTypes?: readonly PluginJobTypeDefinition[];
   readonly importProfiles?: readonly PluginImportProfileDefinition[];
+  readonly externalInterfaceTypes?: readonly PluginExternalInterfaceTypeDefinition[];
   readonly translations?: PluginTranslations;
 };
 
@@ -116,6 +119,7 @@ const pluginDefinitionAllowedKeys = new Set([
   'moduleIam',
   'jobTypes',
   'importProfiles',
+  'externalInterfaceTypes',
   'translations',
 ] as const);
 
@@ -325,7 +329,7 @@ export const definePluginActions = <const TActions extends readonly PluginAction
 
   for (const action of actions) {
     assertPluginContributionAllowedKeys(
-      action as unknown as Record<string, unknown>,
+      action,
       actionDefinitionAllowedKeys,
       normalizedNamespace,
       normalizePluginIdentifier(action.id)
@@ -363,7 +367,7 @@ export const definePluginPermissions = <const TPermissions extends readonly Plug
 
   for (const permission of permissions) {
     assertPluginContributionAllowedKeys(
-      permission as unknown as Record<string, unknown>,
+      permission,
       permissionDefinitionAllowedKeys,
       normalizedNamespace,
       normalizePluginIdentifier(permission.id)
@@ -408,7 +412,7 @@ export const definePluginAuditEvents = <const TEvents extends readonly PluginAud
 
   for (const event of events) {
     assertPluginContributionAllowedKeys(
-      event as unknown as Record<string, unknown>,
+      event,
       auditEventDefinitionAllowedKeys,
       normalizedNamespace,
       normalizePluginIdentifier(event.eventType)
@@ -444,14 +448,14 @@ export const definePluginModuleIamContract = <
   }
 
   assertPluginContributionAllowedKeys(
-    contract as unknown as Record<string, unknown>,
+    contract,
     moduleIamContractAllowedKeys,
     normalizedNamespace,
     normalizePluginIdentifier(contract.moduleId)
   );
   for (const systemRole of contract.systemRoles) {
     assertPluginContributionAllowedKeys(
-      systemRole as unknown as Record<string, unknown>,
+      systemRole,
       moduleIamSystemRoleAllowedKeys,
       normalizedNamespace,
       normalizePluginIdentifier(systemRole.roleName)
@@ -507,7 +511,7 @@ const createPluginRegistryValidationContext = (
 ): PluginRegistryValidationContext => {
   const contributionId = normalizePluginIdentifier(plugin.id);
   assertPluginContributionAllowedKeys(
-    plugin as unknown as Record<string, unknown>,
+    plugin,
     pluginDefinitionAllowedKeys,
     contributionId,
     contributionId
@@ -541,7 +545,7 @@ const createPluginRegistryValidationContext = (
 const assertPluginRegistryActions = ({ plugin, pluginNamespace }: PluginRegistryValidationContext): void => {
   for (const action of plugin.actions ?? []) {
     assertPluginContributionAllowedKeys(
-      action as unknown as Record<string, unknown>,
+      action,
       actionDefinitionAllowedKeys,
       pluginNamespace,
       normalizePluginIdentifier(action.id)
@@ -577,7 +581,7 @@ const assertOwnedPluginActionReference = (
 const assertPluginRegistryRoutes = ({ plugin, pluginNamespace }: PluginRegistryValidationContext): void => {
   for (const route of plugin.routes) {
     assertPluginContributionAllowedKeys(
-      route as unknown as Record<string, unknown>,
+      route,
       routeDefinitionAllowedKeys,
       pluginNamespace,
       normalizePluginIdentifier(route.id)
@@ -627,7 +631,7 @@ const assertPluginRegistryStandardContentRouteGuardrails = ({
 const assertPluginRegistryNavigation = ({ plugin, pluginNamespace }: PluginRegistryValidationContext): void => {
   for (const navigationItem of plugin.navigation ?? []) {
     assertPluginContributionAllowedKeys(
-      navigationItem as unknown as Record<string, unknown>,
+      navigationItem,
       navigationItemAllowedKeys,
       pluginNamespace,
       normalizePluginIdentifier(navigationItem.id)
@@ -662,7 +666,7 @@ const assertPluginRegistryNavigation = ({ plugin, pluginNamespace }: PluginRegis
 const assertPluginRegistryPermissions = ({ plugin, pluginNamespace }: PluginRegistryValidationContext): void => {
   for (const permission of plugin.permissions ?? []) {
     assertPluginContributionAllowedKeys(
-      permission as unknown as Record<string, unknown>,
+      permission,
       permissionDefinitionAllowedKeys,
       pluginNamespace,
       normalizePluginIdentifier(permission.id)
@@ -684,7 +688,7 @@ const assertPluginRegistryContentTypes = ({ plugin, pluginNamespace }: PluginReg
   for (const contentTypeDefinition of plugin.contentTypes ?? []) {
     const contributionId = normalizePluginIdentifier(contentTypeDefinition.contentType);
     assertPluginContributionAllowedKeys(
-      contentTypeDefinition as unknown as Record<string, unknown>,
+      contentTypeDefinition,
       contentTypeDefinitionAllowedKeys,
       pluginNamespace,
       contributionId
@@ -706,7 +710,7 @@ const assertPluginRegistryAdminResources = ({ plugin, pluginNamespace }: PluginR
   for (const adminResource of plugin.adminResources ?? []) {
     const contributionId = normalizePluginIdentifier(adminResource.resourceId);
     assertPluginContributionAllowedKeys(
-      adminResource as unknown as Record<string, unknown>,
+      adminResource,
       adminResourceDefinitionAllowedKeys,
       pluginNamespace,
       contributionId
@@ -728,7 +732,7 @@ const assertPluginRegistryAuditEvents = ({ plugin, pluginNamespace }: PluginRegi
   for (const eventDefinition of plugin.auditEvents ?? []) {
     const contributionId = normalizePluginIdentifier(eventDefinition.eventType);
     assertPluginContributionAllowedKeys(
-      eventDefinition as unknown as Record<string, unknown>,
+      eventDefinition,
       auditEventDefinitionAllowedKeys,
       pluginNamespace,
       contributionId
@@ -755,11 +759,14 @@ const assertPluginRegistryModuleIam = ({ plugin, pluginNamespace }: PluginRegist
 const normalizePluginRegistryOperations = ({
   plugin,
   pluginNamespace,
-}: PluginRegistryValidationContext): Pick<PluginDefinition, 'jobTypes' | 'importProfiles'> => ({
+}: PluginRegistryValidationContext): Pick<PluginDefinition, 'jobTypes' | 'importProfiles' | 'externalInterfaceTypes'> => ({
   jobTypes: plugin.jobTypes ? definePluginJobTypes(pluginNamespace, plugin.jobTypes) : plugin.jobTypes,
   importProfiles: plugin.importProfiles
     ? definePluginImportProfiles(pluginNamespace, plugin.importProfiles)
     : plugin.importProfiles,
+  externalInterfaceTypes: plugin.externalInterfaceTypes
+    ? definePluginExternalInterfaceTypes(pluginNamespace, plugin.externalInterfaceTypes)
+    : plugin.externalInterfaceTypes,
 });
 
 export const createPluginRegistry = (
@@ -864,7 +871,7 @@ export const createPluginActionRegistry = (
 
     for (const action of plugin.actions ?? []) {
       assertPluginContributionAllowedKeys(
-        action as unknown as Record<string, unknown>,
+        action,
         actionDefinitionAllowedKeys,
         pluginNamespace,
         normalizePluginIdentifier(action.id)
@@ -940,7 +947,7 @@ export const createPluginPermissionRegistry = (
 
     for (const permission of plugin.permissions ?? []) {
       assertPluginContributionAllowedKeys(
-        permission as unknown as Record<string, unknown>,
+        permission,
         permissionDefinitionAllowedKeys,
         pluginNamespace,
         normalizePluginIdentifier(permission.id)
@@ -989,7 +996,7 @@ export const createPluginAuditEventRegistry = (
 
     for (const eventDefinition of plugin.auditEvents ?? []) {
       assertPluginContributionAllowedKeys(
-        eventDefinition as unknown as Record<string, unknown>,
+        eventDefinition,
         auditEventDefinitionAllowedKeys,
         pluginNamespace,
         normalizePluginIdentifier(eventDefinition.eventType)
@@ -1045,8 +1052,9 @@ const mergeTranslationNode = (
   source: Readonly<Record<string, unknown>>
 ): Record<string, unknown> => {
   for (const [key, value] of Object.entries(source)) {
-    if (isRecord(value) && isRecord(target[key])) {
-      target[key] = mergeTranslationNode({ ...(target[key] as Record<string, unknown>) }, value);
+    const targetValue = target[key];
+    if (isRecord(value) && isRecord(targetValue)) {
+      target[key] = mergeTranslationNode({ ...targetValue }, value);
       continue;
     }
 

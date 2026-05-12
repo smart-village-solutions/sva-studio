@@ -719,6 +719,13 @@ export const i18nResources = {
         tokenRequestFailed: 'Der Zugriffstoken für den Mainserver konnte nicht abgerufen werden.',
         unauthorized: 'Die Sitzung ist nicht mehr gültig. Bitte erneut anmelden.',
         forbidden: 'Keine Berechtigung zur Schnittstellenverwaltung.',
+        customInterfacesNotSupported:
+          'Zusätzliche Schnittstellen werden erst unterstützt, sobald das Backend für diese Typen angebunden ist.',
+        interfaceNotFound: 'Die gewählte Schnittstelle wurde nicht gefunden oder bereits entfernt.',
+        interfaceInstanceMismatch:
+          'Die gewählte Schnittstelle gehört nicht zur aktuellen Instanz und konnte nicht geändert werden.',
+        interfaceTypeChangeNotSupported:
+          'Der Typ einer vorhandenen Schnittstelle kann nicht nachträglich geändert werden.',
         networkError: 'Der Verbindungsstatus konnte nicht abgerufen werden.',
         graphqlError: 'Der Mainserver hat einen GraphQL-Fehler zurückgegeben.',
         invalidResponse: 'Der Mainserver hat eine unerwartete Antwort zurückgegeben.',
@@ -773,14 +780,16 @@ export const i18nResources = {
           accessKeyId: 'Access Key ID',
           secretAccessKey: 'Secret Access Key',
           forcePathStyle: 'Path-Style-URLs erzwingen',
-          notImplemented: 'Hinweis: Dieses Formular ist eine UI-Vorschau. Werte werden lokal im Browser persistiert, bis das Backend angebunden ist.',
+          notImplemented:
+            'Hinweis: Diese Schnittstelle wird bereits serverseitig gespeichert. Automatische Statusprüfungen und Verbindungschecks folgen noch.',
         },
         supabase: {
           projectUrl: 'Project URL',
           schemaName: 'Schema',
           databaseUrl: 'Direct DB URL (optional)',
           serviceRoleKey: 'Service Role Key',
-          notImplemented: 'Hinweis: Dieses Formular ist eine UI-Vorschau. Werte werden lokal im Browser persistiert, bis das Backend angebunden ist.',
+          notImplemented:
+            'Hinweis: Diese Schnittstelle wird bereits serverseitig gespeichert. Automatische Statusprüfungen und Verbindungschecks folgen noch.',
         },
       },
     },
@@ -3530,14 +3539,16 @@ export const i18nResources = {
           accessKeyId: 'Access key ID',
           secretAccessKey: 'Secret access key',
           forcePathStyle: 'Force path-style URLs',
-          notImplemented: 'S3 interface settings are not implemented yet.',
+          notImplemented:
+            'This interface is already persisted on the server. Automated status checks and connection probes are still pending.',
         },
         supabase: {
           projectUrl: 'Project URL',
           schemaName: 'Schema name',
           databaseUrl: 'Database URL',
           serviceRoleKey: 'Service role key',
-          notImplemented: 'Supabase interface settings are not implemented yet.',
+          notImplemented:
+            'This interface is already persisted on the server. Automated status checks and connection probes are still pending.',
         },
       },
       actions: {
@@ -3580,6 +3591,13 @@ export const i18nResources = {
         tokenRequestFailed: 'The access token for the mainserver could not be requested.',
         unauthorized: 'Your session is no longer valid. Please sign in again.',
         forbidden: 'You do not have permission to manage interfaces.',
+        customInterfacesNotSupported:
+          'Additional interfaces will be supported once the backend for these types is connected.',
+        interfaceNotFound: 'The selected interface was not found or has already been removed.',
+        interfaceInstanceMismatch:
+          'The selected interface belongs to a different instance and could not be changed.',
+        interfaceTypeChangeNotSupported:
+          'The type of an existing interface cannot be changed afterwards.',
         networkError: 'The connection status could not be loaded.',
         graphqlError: 'The mainserver returned a GraphQL error.',
         invalidResponse: 'The mainserver returned an unexpected response.',

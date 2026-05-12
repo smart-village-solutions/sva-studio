@@ -76,6 +76,59 @@ const draftFromEntry = (entry: InstanceInterface): InstanceInterfaceDraft => {
   };
 };
 
+const translateInterfacesErrorMessage = (error: unknown, fallback: string): string => {
+  const message = readErrorMessage(error, fallback);
+
+  switch (message) {
+    case 'custom_interfaces_not_supported':
+      return t('interfaces.errors.customInterfacesNotSupported');
+    case 'interface_not_found':
+      return t('interfaces.errors.interfaceNotFound');
+    case 'interface_instance_mismatch':
+      return t('interfaces.errors.interfaceInstanceMismatch');
+    case 'interface_type_change_not_supported':
+      return t('interfaces.errors.interfaceTypeChangeNotSupported');
+    default:
+      return message;
+  }
+};
+
+const buildUpsertPayload = (
+  instanceId: string,
+  editState: Extract<EditState, { mode: 'create' | 'edit' }>
+) => ({
+  instanceId,
+  draft: editState.draft,
+  ...(editState.mode === 'edit' && editState.entry.type !== 'mainserver'
+    ? { existingId: editState.entry.id }
+    : {}),
+});
+
+const renderInterfaceRowActions = (
+  row: InstanceInterface,
+  setEditState: React.Dispatch<React.SetStateAction<EditState>>,
+  setPendingDelete: React.Dispatch<React.SetStateAction<InstanceInterface | null>>
+) => (
+  <>
+    <Button
+      type="button"
+      size="sm"
+      variant="outline"
+      onClick={() => setEditState({ mode: 'edit', entry: row, draft: draftFromEntry(row) })}
+    >
+      {t('admin.users.actions.edit')}
+    </Button>
+    {row.type === 'mainserver' ? null : (
+      <Button type="button" size="sm" variant="destructive" onClick={() => setPendingDelete(row)}>
+        {t('interfaces.edit.deleteAction')}
+      </Button>
+    )}
+  </>
+);
+
+const getEditCardTitle = (editState: Exclude<EditState, { mode: 'closed' }>): string =>
+  editState.mode === 'create' ? t(instanceInterfaceTypeMeta[editState.type].titleKey) : t('interfaces.edit.title');
+
 export const InterfacesPage = () => {
   const listInterfaces = useServerFn(listInstanceInterfacesServerFn);
   const saveMainserver = useServerFn(saveSvaMainserverInterfaceSettings);
@@ -111,7 +164,7 @@ export const InterfacesPage = () => {
       setInstanceId(result.instanceId);
       setInterfaces(result.entries);
     } catch (error) {
-      setErrorMessage(readErrorMessage(error, t('interfaces.messages.loadError')));
+      setErrorMessage(translateInterfacesErrorMessage(error, t('interfaces.messages.loadError')));
     } finally {
       setIsLoading(false);
     }
@@ -147,20 +200,14 @@ export const InterfacesPage = () => {
         });
       } else {
         await upsertInterfaceRef.current({
-          data: {
-            instanceId,
-            draft,
-            ...(editState.mode === 'edit' && editState.entry.type !== 'mainserver'
-              ? { existingId: editState.entry.id }
-              : {}),
-          },
+          data: buildUpsertPayload(instanceId, editState),
         });
       }
       setStatusMessage(t('interfaces.messages.saveSuccess'));
       setEditState({ mode: 'closed' });
       await refresh();
     } catch (error) {
-      setErrorMessage(readErrorMessage(error, t('interfaces.messages.saveError')));
+      setErrorMessage(translateInterfacesErrorMessage(error, t('interfaces.messages.saveError')));
     } finally {
       setIsSaving(false);
     }
@@ -173,13 +220,16 @@ export const InterfacesPage = () => {
     }
     setErrorMessage(null);
     try {
-      await deleteInterfaceRef.current({
+      const result = await deleteInterfaceRef.current({
         data: { instanceId, id: pendingDelete.id },
       });
+      if (!result.deleted) {
+        throw new Error('interface_not_found');
+      }
       setPendingDelete(null);
       await refresh();
     } catch (error) {
-      setErrorMessage(readErrorMessage(error, t('interfaces.messages.saveError')));
+      setErrorMessage(translateInterfacesErrorMessage(error, t('interfaces.messages.saveError')));
       setPendingDelete(null);
     }
   };
@@ -278,26 +328,7 @@ export const InterfacesPage = () => {
           </Button>
         }
         rowActions={(row) => (
-          <>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => setEditState({ mode: 'edit', entry: row, draft: draftFromEntry(row) })}
-            >
-              {t('admin.users.actions.edit')}
-            </Button>
-            {row.type !== 'mainserver' ? (
-              <Button
-                type="button"
-                size="sm"
-                variant="destructive"
-                onClick={() => setPendingDelete(row)}
-              >
-                {t('interfaces.edit.deleteAction')}
-              </Button>
-            ) : null}
-          </>
+          renderInterfaceRowActions(row, setEditState, setPendingDelete)
         )}
       />
 
@@ -305,9 +336,7 @@ export const InterfacesPage = () => {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm uppercase tracking-[0.16em] text-muted-foreground">
-              {editState.mode === 'create'
-                ? t(instanceInterfaceTypeMeta[editState.type].titleKey)
-                : t('interfaces.edit.title')}
+              {getEditCardTitle(editState)}
             </CardTitle>
           </CardHeader>
           <CardContent>

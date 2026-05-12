@@ -150,6 +150,7 @@ describe('auth return-to handling', () => {
 
   it('resolves the effective request host through the shared host parser', () => {
     vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('SVA_TRUST_FORWARDED_HEADERS', 'true');
 
     expect(resolveAuthRequestHost(request({ 'x-forwarded-host': 'Tenant.Example.Test' }))).toBe(
       'tenant.example.test'

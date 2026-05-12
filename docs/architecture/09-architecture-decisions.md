@@ -107,6 +107,7 @@ mit Bezug auf die arc42-Abschnitte.
 - ADR-039: Medienmanagement als Host-Capability mit eigenem Domänenpackage, internem Storage-Port und Plugin-SDK-kompatibler Referenzgrenze (Abschnitt 03, 04, 05, 06, 07, 08, 09, 10, 11)
 - ADR-040: `graphile-worker` als aktueller Host-Standard für Hintergrundprozesse; Temporal bleibt dokumentierte Eskalationsoption, Trigger.dev ist ausgeschlossen (Abschnitt 04, 05, 06, 07, 08, 09, 10, 11)
 - ADR-041: Plugin-Plattform v2 für externe Distribution, Katalog/Loader-Snapshot und host-owned Runtime; ADR-034 bleibt als v1-Zwischenstand bestehen (Abschnitt 04, 05, 06, 07, 08, 09, 10, 11)
+- ADR-042: Externe Schnittstellen als host-owned Registry mit zentralem Secret-Store, Default-Auflösung und plugin-konsumierbarem Typkatalog (Abschnitt 03, 05, 08, 09, 11, 12)
 
 ### Pflege-Regel
 
@@ -221,6 +222,17 @@ Zuordnung:
 Zuordnung:
 
 - Abschnitt 04/05/06/07/08/09/10/11: ADR-041
+
+### Fortschreibung 2026-05: Zentrale Registry für externe Schnittstellen
+
+- `ADR-042-externe-schnittstellen-als-host-owned-registry.md`
+  - definiert eine zentrale Host-Registry für `sva_mainserver`, `s3`, `supabase` und spätere externe Schnittstellentypen
+  - verschiebt Secret-Schutz, Default-Auflösung, Statusprojektion und Runtime-Resolver bewusst in host-owned Bausteine
+  - erlaubt plugin-deklarierte Typmetadaten, verbietet aber parallele Connection- und Secret-Stores außerhalb des Hosts
+
+Zuordnung:
+
+- Abschnitt 03/05/08/09/11/12: ADR-042
 
 ### Fortschreibung 2026-03: Swarm-Deployment und Multi-Host-Betrieb
 

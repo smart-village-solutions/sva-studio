@@ -1,13 +1,7 @@
 import type { AdminResourceDefinition } from '@sva/plugin-sdk';
 import { createRoute, redirect, type RootRoute } from '@tanstack/react-router';
 
-import {
-  LEGACY_CONTENT_ALIAS_PREFIX,
-  normalizeLegacyContentHref,
-  readBeforeLoadHref,
-  resolveCanonicalContentAdminRoutePath,
-  withCoreContentAdminResource,
-} from './admin-resource-route-aliases.js';
+import { withCoreContentAdminResource } from './admin-resource-route-aliases.js';
 import {
   adminDetailParamNameByBinding,
   getAdminDetailRoutePath,
@@ -20,6 +14,8 @@ import { normalizeAdminResourceListSearch } from './admin-resource-search-params
 import type { AppRouteBindings, AppRouteFactory } from './app.routes.shared.js';
 import type { RoutingDiagnosticsHook } from './diagnostics.js';
 
+export { createLegacyContentAliasFactories } from './admin-resource-route-legacy-alias-factories.js';
+
 type BindingKey = keyof AppRouteBindings;
 type UiRouteDefinition = {
   readonly binding: BindingKey;
@@ -31,7 +27,9 @@ type UiRouteDefinition = {
 };
 type AdminResourceBindingResolver = { readonly list: BindingKey; readonly create: BindingKey; readonly detail: BindingKey; readonly history?: BindingKey };
 type AdminResourceRouteKind = 'list' | 'create' | 'detail' | 'history';
-type AdminResourceViewKind = keyof AdminResourceDefinition['views']; const hasBindingKey = (bindings: AppRouteBindings, bindingKey: string): bindingKey is BindingKey =>
+type AdminResourceViewKind = keyof AdminResourceDefinition['views'];
+
+const hasBindingKey = (bindings: AppRouteBindings, bindingKey: string): bindingKey is BindingKey =>
   Object.prototype.hasOwnProperty.call(bindings, bindingKey);
 
 const resolveBindingKey = (
@@ -142,6 +140,41 @@ const ensureRequiredPermissions = async (
   }
 };
 
+const createHistoryRouteDefinition = (
+  historyBinding: BindingKey | undefined,
+  resource: AdminResourceDefinition,
+  detailPath: string
+): readonly UiRouteDefinition[] => {
+  if (!historyBinding) {
+    return [];
+  }
+
+  return [
+    {
+      binding: historyBinding,
+      resource,
+      guard: resolveAdminResourceGuard(resource, 'history'),
+      path: toAdminHistoryRoutePath(detailPath),
+      routeKind: 'history',
+    },
+  ];
+};
+
+const createListRouteDefinition = (
+  resource: AdminResourceDefinition,
+  resolvedBindings: AdminResourceBindingResolver,
+  basePath: string
+): UiRouteDefinition => ({
+  binding: resolvedBindings.list,
+  resource,
+  guard: resolveAdminResourceGuard(resource, 'list'),
+  path: basePath,
+  routeKind: 'list',
+  validateSearch: resource.capabilities?.list
+    ? (search: Record<string, unknown>) => normalizeAdminResourceListSearch(resource, search)
+    : undefined,
+});
+
 const createAdminResourceRouteDefinitions = (
   bindings: AppRouteBindings,
   resources: readonly AdminResourceDefinition[]
@@ -154,16 +187,7 @@ const createAdminResourceRouteDefinitions = (
     const detailPath = getAdminDetailRoutePath(basePath, detailBindingKey);
 
     return [
-      {
-        binding: resolvedBindings.list,
-        resource,
-        guard: resolveAdminResourceGuard(resource, 'list'),
-        path: basePath,
-        routeKind: 'list',
-        validateSearch: resource.capabilities?.list
-          ? (search: Record<string, unknown>) => normalizeAdminResourceListSearch(resource, search)
-          : undefined,
-      },
+      createListRouteDefinition(resource, resolvedBindings, basePath),
       {
         binding: resolvedBindings.create,
         resource,
@@ -178,17 +202,7 @@ const createAdminResourceRouteDefinitions = (
         path: detailPath,
         routeKind: 'detail',
       },
-      ...(resolvedBindings.history
-        ? [
-            {
-              binding: resolvedBindings.history,
-              resource,
-              guard: resolveAdminResourceGuard(resource, 'history'),
-              path: toAdminHistoryRoutePath(detailPath),
-              routeKind: 'history',
-            } satisfies UiRouteDefinition,
-          ]
-        : []),
+      ...createHistoryRouteDefinition(resolvedBindings.history, resource, detailPath),
     ] as const;
   });
 
@@ -214,45 +228,3 @@ export const createAdminResourceRouteFactories = (
         });
       }
   );
-
-export const createLegacyContentAliasFactories = (
-  resources: readonly AdminResourceDefinition[] = []
-): readonly AppRouteFactory[] => {
-  const canonicalContentPath = resolveCanonicalContentAdminRoutePath(resources);
-  const aliasMappings = [
-    {
-      sourcePrefix: LEGACY_CONTENT_ALIAS_PREFIX,
-      targetPrefix: canonicalContentPath,
-    },
-    ...resources
-      .filter((resource) => resource.guard === 'content')
-      .map((resource) => ({
-        sourcePrefix: `/plugins/${resource.basePath}`,
-        targetPrefix: toAdminRoutePath(resource.basePath),
-      })),
-  ] as const;
-
-  return aliasMappings.flatMap(({ sourcePrefix, targetPrefix }) =>
-    [sourcePrefix, `${sourcePrefix}/new`, `${sourcePrefix}/$contentId`].map((path) => (rootRoute: RootRoute) =>
-      createRoute({
-        getParentRoute: () => rootRoute,
-        path,
-        beforeLoad: (options) => {
-          const href = readBeforeLoadHref(options);
-          const normalizedHref =
-            sourcePrefix === LEGACY_CONTENT_ALIAS_PREFIX
-              ? normalizeLegacyContentHref(href, targetPrefix)
-              : href === sourcePrefix || href.startsWith(`${sourcePrefix}?`)
-                ? href.replace(sourcePrefix, targetPrefix)
-                : href === `${sourcePrefix}/new` || href.startsWith(`${sourcePrefix}/new?`)
-                  ? href.replace(`${sourcePrefix}/new`, `${targetPrefix}/new`)
-                  : href.startsWith(`${sourcePrefix}/`)
-                    ? href.replace(`${sourcePrefix}/`, `${targetPrefix}/`)
-                    : targetPrefix;
-          throw redirect({ href: normalizedHref });
-        },
-        component: () => null,
-      })
-    )
-  );
-};

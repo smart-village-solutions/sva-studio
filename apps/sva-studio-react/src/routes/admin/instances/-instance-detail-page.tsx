@@ -65,6 +65,25 @@ const formatDateTime = (value?: string) => {
 const readActualLatestKeycloakRun = (instance: ReturnType<typeof useInstances>['selectedInstance']) =>
   instance?.keycloakProvisioningRuns[0] ?? instance?.latestKeycloakProvisioningRun;
 
+const readPreflightTimestamp = (instance: ReturnType<typeof useInstances>['selectedInstance']) => {
+  if (!instance?.keycloakPreflight || typeof instance.keycloakPreflight !== 'object') {
+    return undefined;
+  }
+
+  if ('checkedAt' in instance.keycloakPreflight && typeof instance.keycloakPreflight.checkedAt === 'string') {
+    return instance.keycloakPreflight.checkedAt;
+  }
+
+  if (
+    'generatedAt' in instance.keycloakPreflight &&
+    typeof (instance.keycloakPreflight as { generatedAt?: string }).generatedAt === 'string'
+  ) {
+    return (instance.keycloakPreflight as { generatedAt?: string }).generatedAt;
+  }
+
+  return undefined;
+};
+
 const readWorkerPendingProjection = (instance: ReturnType<typeof useInstances>['selectedInstance']) =>
   Boolean(
     instance?.keycloakPreflight?.checks.some((check) => {
@@ -125,6 +144,61 @@ const OVERVIEW_STATUS_STYLES = {
   unknown: 'border-slate-400/30 bg-slate-500/10 text-slate-900',
 } as const;
 
+const readTenantSecretUserInputRequired = (
+  detailFormValues: ReturnType<typeof createDetailForm> | null,
+  selectedInstance: ReturnType<typeof useInstances>['selectedInstance']
+) => {
+  if (detailFormValues) {
+    return isTenantSecretUserInputRequired(detailFormValues.realmMode);
+  }
+
+  if (selectedInstance) {
+    return isTenantSecretUserInputRequired(selectedInstance.realmMode);
+  }
+
+  return true;
+};
+
+const readOperationsModel = (
+  selectedInstance: ReturnType<typeof useInstances>['selectedInstance'],
+  mutationError: ReturnType<typeof useInstances>['mutationError']
+) => {
+  if (!selectedInstance) {
+    return null;
+  }
+
+  if (selectedInstance.realmMode === 'new') {
+    return buildNewRealmOperationsModel(selectedInstance, mutationError);
+  }
+
+  return buildExistingRealmOperationsModel(selectedInstance, mutationError);
+};
+
+const readActionFeedbackClassName = (actionFeedback: ActionFeedback, actionFeedbackFading: boolean) => {
+  const opacityClassName = actionFeedbackFading ? 'opacity-0' : 'opacity-100';
+
+  if (actionFeedback.tone === 'success') {
+    return `border-emerald-500/40 bg-emerald-500/10 text-emerald-900 transition-opacity duration-300 ${opacityClassName}`;
+  }
+
+  return `border-amber-500/40 bg-amber-500/10 text-amber-950 transition-opacity duration-300 ${opacityClassName}`;
+};
+
+const clearSensitiveDetailFields = (current: ReturnType<typeof createDetailForm> | null) => {
+  if (!current) {
+    return current;
+  }
+
+  return {
+    ...current,
+    authClientSecret: '',
+    tenantAdminClient: {
+      ...current.tenantAdminClient,
+      secret: '',
+    },
+  };
+};
+
 const InstanceRuntimeEvidence = ({
   classification,
   instance,
@@ -140,15 +214,7 @@ const InstanceRuntimeEvidence = ({
     return null;
   }
 
-  const preflightTimestamp =
-    instance.keycloakPreflight && typeof instance.keycloakPreflight === 'object'
-      ? 'checkedAt' in instance.keycloakPreflight && typeof instance.keycloakPreflight.checkedAt === 'string'
-        ? instance.keycloakPreflight.checkedAt
-        : 'generatedAt' in instance.keycloakPreflight &&
-            typeof (instance.keycloakPreflight as { generatedAt?: string }).generatedAt === 'string'
-          ? (instance.keycloakPreflight as { generatedAt?: string }).generatedAt
-          : undefined
-      : undefined;
+  const preflightTimestamp = readPreflightTimestamp(instance);
   const latestRun = instance.latestKeycloakProvisioningRun ?? instance.keycloakProvisioningRuns[0];
 
   if (!instance.keycloakPreflight && !instance.keycloakPlan && !latestRun) {
@@ -278,17 +344,9 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
   }, [instanceId, loadInstance]);
 
   const selectedInstance = instancesApi.selectedInstance?.instanceId === instanceId ? instancesApi.selectedInstance : null;
-  const tenantSecretUserInputRequired = detailFormValues
-    ? isTenantSecretUserInputRequired(detailFormValues.realmMode)
-    : selectedInstance
-      ? isTenantSecretUserInputRequired(selectedInstance.realmMode)
-      : true;
+  const tenantSecretUserInputRequired = readTenantSecretUserInputRequired(detailFormValues, selectedInstance);
   const configurationAssessment = selectedInstance ? evaluateInstanceConfiguration(selectedInstance, instancesApi.mutationError) : null;
-  const operationsModel = selectedInstance
-    ? selectedInstance.realmMode === 'new'
-      ? buildNewRealmOperationsModel(selectedInstance, instancesApi.mutationError)
-      : buildExistingRealmOperationsModel(selectedInstance, instancesApi.mutationError)
-    : null;
+  const operationsModel = readOperationsModel(selectedInstance, instancesApi.mutationError);
   const historyModel = selectedInstance && operationsModel ? buildHistoryWorkspaceModel(selectedInstance, operationsModel) : null;
   const primaryAction = operationsModel ? buildOperationsPrimaryAction(operationsModel) : null;
   const operationsAnomalies = operationsModel?.steps.filter((step) => step.status === 'fehlgeschlagen').slice(0, 3) ?? [];
@@ -298,25 +356,24 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
   const hasRunningOperations = Boolean(operationsModel?.steps.some((step) => step.status === 'läuft'));
 
   React.useEffect(() => {
-    if (!selectedInstance) {
+    if (selectedInstance) {
+      const instanceChanged = previousSelectedInstanceIdRef.current !== selectedInstance.instanceId;
+
+      if (instanceChanged) {
+        setActionFeedback(null);
+        setDetailFormValues(createDetailForm(selectedInstance));
+        setActiveWorkspaceTab('overview');
+      } else if (!detailFormValues) {
+        setDetailFormValues(createDetailForm(selectedInstance));
+      }
+
+      previousSelectedInstanceIdRef.current = selectedInstance.instanceId;
+    } else {
       previousSelectedInstanceIdRef.current = null;
       setActionFeedback(null);
       setActionFeedbackFading(false);
       setDetailFormValues(null);
-      return;
     }
-
-    const instanceChanged = previousSelectedInstanceIdRef.current !== selectedInstance.instanceId;
-
-    if (instanceChanged) {
-      setActionFeedback(null);
-      setDetailFormValues(createDetailForm(selectedInstance));
-      setActiveWorkspaceTab('overview');
-    } else if (!detailFormValues) {
-      setDetailFormValues(createDetailForm(selectedInstance));
-    }
-
-    previousSelectedInstanceIdRef.current = selectedInstance.instanceId;
   }, [detailFormValues, selectedInstance]);
 
   React.useEffect(() => {
@@ -396,18 +453,7 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
       wasteManagementSettings: buildWasteManagementSettingsPayload(detailFormValues.wasteManagementSettings),
     });
 
-    setDetailFormValues((current) =>
-      current
-        ? {
-            ...current,
-            authClientSecret: '',
-            tenantAdminClient: {
-              ...current.tenantAdminClient,
-              secret: '',
-            },
-          }
-        : current
-    );
+    setDetailFormValues(clearSensitiveDetailFields);
   };
 
   const executeProvisioning = async (
@@ -541,17 +587,7 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
       </header>
 
       {actionFeedback ? (
-        <Alert
-          className={
-            actionFeedback.tone === 'success'
-              ? `border-emerald-500/40 bg-emerald-500/10 text-emerald-900 transition-opacity duration-300 ${
-                  actionFeedbackFading ? 'opacity-0' : 'opacity-100'
-                }`
-              : `border-amber-500/40 bg-amber-500/10 text-amber-950 transition-opacity duration-300 ${
-                  actionFeedbackFading ? 'opacity-0' : 'opacity-100'
-                }`
-          }
-        >
+        <Alert className={readActionFeedbackClassName(actionFeedback, actionFeedbackFading)}>
           <AlertDescription>{actionFeedback.message}</AlertDescription>
         </Alert>
       ) : null}

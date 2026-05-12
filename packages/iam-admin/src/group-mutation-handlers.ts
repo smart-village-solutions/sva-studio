@@ -104,7 +104,7 @@ export type GroupMutationHandlerDeps = {
   readonly logger: GroupMutationLogger;
   readonly parseRequestBody: <TData>(
     request: Request,
-    schema: z.ZodSchema<TData>
+    schema: z.ZodType<TData>
   ) => Promise<ParseRequestBodyResult<TData>>;
   readonly publishGroupEvent: (client: GroupQueryClient, event: GroupEvent) => Promise<void>;
   readonly randomUUID: () => string;

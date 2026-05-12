@@ -8,21 +8,28 @@ const buildRealmStep = (
   realmMode: InstanceRealmMode,
   state: KeycloakReadState | undefined,
   blocked: boolean
-): KeycloakTenantPlan['steps'][number] => ({
-  stepKey: 'realm',
-  title: realmMode === 'new' ? 'Realm erstellen' : 'Realm prüfen',
-  action: realmMode === 'new' && !state?.realm ? 'create' : 'verify',
-  status: blocked ? 'blocked' : 'ready',
-  summary:
-    realmMode === 'new'
-      ? state?.realm
-        ? 'Der Realm existiert bereits und blockiert den Modus "Neu erstellen".'
-        : 'Der Tenant-Realm wird neu angelegt.'
-      : state?.realm
-        ? 'Der vorhandene Realm wird verwendet.'
-        : 'Der vorhandene Realm fehlt.',
-  details: { realmExists: Boolean(state?.realm), realmMode },
-});
+): KeycloakTenantPlan['steps'][number] => {
+  const realmExists = Boolean(state?.realm);
+
+  return {
+    stepKey: 'realm',
+    title: realmMode === 'new' ? 'Realm erstellen' : 'Realm prüfen',
+    action: realmMode === 'new' && !realmExists ? 'create' : 'verify',
+    status: blocked ? 'blocked' : 'ready',
+    summary: resolveRealmSummary(realmMode, realmExists),
+    details: { realmExists, realmMode },
+  };
+};
+
+const resolveRealmSummary = (realmMode: InstanceRealmMode, realmExists: boolean): string => {
+  if (realmMode === 'new') {
+    return realmExists
+      ? 'Der Realm existiert bereits und blockiert den Modus "Neu erstellen".'
+      : 'Der Tenant-Realm wird neu angelegt.';
+  }
+
+  return realmExists ? 'Der vorhandene Realm wird verwendet.' : 'Der vorhandene Realm fehlt.';
+};
 
 const readClientAlignment = (state: KeycloakReadState | undefined) => {
   const expectedClient = state?.expectedClient;
@@ -47,27 +54,33 @@ const buildClientStep = (input: {
   redirectUrisMatch: boolean;
   logoutUrisMatch: boolean;
   webOriginsMatch: boolean;
-}): KeycloakTenantPlan['steps'][number] => ({
-  stepKey: 'client',
-  title: 'OIDC-Client abgleichen',
-  action: !input.clientExists
-    ? 'create'
-    : input.redirectUrisMatch && input.logoutUrisMatch && input.webOriginsMatch
-      ? 'verify'
-      : 'update',
-  status: input.blocked ? 'blocked' : 'ready',
-  summary: !input.clientExists
-    ? 'Der OIDC-Client wird angelegt.'
-    : input.redirectUrisMatch && input.logoutUrisMatch && input.webOriginsMatch
-      ? 'Der OIDC-Client entspricht bereits dem Sollzustand.'
-      : 'Der OIDC-Client wird auf Root-, Redirect-, Logout- und Origin-Werte abgeglichen.',
-  details: {
-    clientExists: input.clientExists,
-    redirectUrisMatch: input.redirectUrisMatch,
-    logoutUrisMatch: input.logoutUrisMatch,
-    webOriginsMatch: input.webOriginsMatch,
-  },
-});
+}): KeycloakTenantPlan['steps'][number] => {
+  const fullyAligned = areClientUrisAligned(input);
+
+  return {
+    stepKey: 'client',
+    title: 'OIDC-Client abgleichen',
+    action: !input.clientExists ? 'create' : fullyAligned ? 'verify' : 'update',
+    status: input.blocked ? 'blocked' : 'ready',
+    summary: !input.clientExists
+      ? 'Der OIDC-Client wird angelegt.'
+      : fullyAligned
+        ? 'Der OIDC-Client entspricht bereits dem Sollzustand.'
+        : 'Der OIDC-Client wird auf Root-, Redirect-, Logout- und Origin-Werte abgeglichen.',
+    details: {
+      clientExists: input.clientExists,
+      redirectUrisMatch: input.redirectUrisMatch,
+      logoutUrisMatch: input.logoutUrisMatch,
+      webOriginsMatch: input.webOriginsMatch,
+    },
+  };
+};
+
+const areClientUrisAligned = (input: {
+  redirectUrisMatch: boolean;
+  logoutUrisMatch: boolean;
+  webOriginsMatch: boolean;
+}): boolean => input.redirectUrisMatch && input.logoutUrisMatch && input.webOriginsMatch;
 
 const buildTenantAdminClientStep = (input: {
   blocked: boolean;
@@ -103,15 +116,35 @@ const buildTenantAdminClientSecretStep = (
 ): KeycloakTenantPlan['steps'][number] => ({
   stepKey: 'tenant_admin_client_secret',
   title: 'Tenant-Admin-Client-Secret abgleichen',
-  action: !tenantAdminClientConfigured ? 'skip' : secretAligned ? 'verify' : 'update',
+  action: resolveTenantAdminClientSecretAction(tenantAdminClientConfigured, secretAligned),
   status: blocked ? 'blocked' : 'ready',
-  summary: !tenantAdminClientConfigured
-    ? 'Ohne Tenant-Admin-Client ist kein separates Admin-Secret zu prüfen.'
-    : secretAligned
-      ? 'Das Tenant-Admin-Client-Secret ist bereits mit Keycloak abgeglichen.'
-      : 'Das Tenant-Admin-Client-Secret wird gegen Keycloak abgeglichen.',
+  summary: resolveTenantAdminClientSecretSummary(tenantAdminClientConfigured, secretAligned),
   details: { tenantAdminClientConfigured, secretAligned },
 });
+
+const resolveTenantAdminClientSecretAction = (
+  tenantAdminClientConfigured: boolean,
+  secretAligned: boolean
+): KeycloakTenantPlan['steps'][number]['action'] => {
+  if (!tenantAdminClientConfigured) {
+    return 'skip';
+  }
+
+  return secretAligned ? 'verify' : 'update';
+};
+
+const resolveTenantAdminClientSecretSummary = (
+  tenantAdminClientConfigured: boolean,
+  secretAligned: boolean
+): string => {
+  if (!tenantAdminClientConfigured) {
+    return 'Ohne Tenant-Admin-Client ist kein separates Admin-Secret zu prüfen.';
+  }
+
+  return secretAligned
+    ? 'Das Tenant-Admin-Client-Secret ist bereits mit Keycloak abgeglichen.'
+    : 'Das Tenant-Admin-Client-Secret wird gegen Keycloak abgeglichen.';
+};
 
 const buildRoleStep = (
   blocked: boolean,
@@ -136,11 +169,7 @@ const buildTenantAdminStep = (
   state: KeycloakReadState | undefined
 ): KeycloakTenantPlan['steps'][number] => {
   const adminStatus = state?.tenantAdminStatus;
-  const hasMinimalProfile = Boolean(
-    adminStatus?.tenantAdminExists &&
-      adminStatus.tenantAdminHasSystemAdmin &&
-      !adminStatus.tenantAdminHasInstanceRegistryAdmin
-  );
+  const hasMinimalProfile = hasTenantAdminMinimalProfile(adminStatus);
 
   return {
     stepKey: 'tenant_admin',
@@ -153,6 +182,15 @@ const buildTenantAdminStep = (
     details: adminStatus ?? {},
   };
 };
+
+const hasTenantAdminMinimalProfile = (
+  adminStatus: KeycloakReadState['tenantAdminStatus'] | undefined
+): boolean =>
+  Boolean(
+    adminStatus?.tenantAdminExists &&
+      adminStatus.tenantAdminHasSystemAdmin &&
+      !adminStatus.tenantAdminHasInstanceRegistryAdmin
+  );
 
 export const buildPlan = (input: {
   realmMode: InstanceRealmMode;
@@ -205,11 +243,21 @@ export const buildPlan = (input: {
     mode: input.realmMode,
     overallStatus: blocked ? 'blocked' : 'ready',
     generatedAt: new Date().toISOString(),
-    driftSummary: blocked
-      ? 'Provisioning ist blockiert, bis die Vorbedingungen erfüllt sind.'
-      : steps.some((step) => step.action !== 'verify' && step.action !== 'skip')
-        ? 'Keycloak und Registry weisen Drift auf und werden beim nächsten Lauf abgeglichen.'
-        : 'Keycloak entspricht bereits dem im Studio gepflegten Sollzustand.',
+    driftSummary: resolveDriftSummary(blocked, steps),
     steps,
   };
+};
+
+const resolveDriftSummary = (
+  blocked: boolean,
+  steps: KeycloakTenantPlan['steps']
+): KeycloakTenantPlan['driftSummary'] => {
+  if (blocked) {
+    return 'Provisioning ist blockiert, bis die Vorbedingungen erfüllt sind.';
+  }
+
+  const requiresChanges = steps.some((step) => step.action !== 'verify' && step.action !== 'skip');
+  return requiresChanges
+    ? 'Keycloak und Registry weisen Drift auf und werden beim nächsten Lauf abgeglichen.'
+    : 'Keycloak entspricht bereits dem im Studio gepflegten Sollzustand.';
 };

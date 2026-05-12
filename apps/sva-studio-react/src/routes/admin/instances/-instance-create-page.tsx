@@ -68,6 +68,41 @@ const getRealmModeLabel = (realmMode: 'new' | 'existing') =>
   realmMode === 'new' ? t('admin.instances.flow.realmModeNewLabel') : t('admin.instances.flow.realmModeExistingLabel');
 const getModuleLabel = (moduleId: keyof typeof adminBootstrapModuleLabels) =>
   t(adminBootstrapModuleLabels[moduleId]);
+const readAdminBootstrapSubtitle = (createdInstance: IamInstanceListItem | null) =>
+  createdInstance
+    ? t('admin.instances.adminBootstrap.subtitleReady')
+    : t('admin.instances.adminBootstrap.subtitlePending');
+const readAdminBootstrapActionHint = (createdInstance: IamInstanceListItem | null) =>
+  createdInstance
+    ? t('admin.instances.adminBootstrap.actionHintReady')
+    : t('admin.instances.adminBootstrap.actionHintPending');
+const readModuleCardClassName = (createdInstance: IamInstanceListItem | null) =>
+  createdInstance ? 'border-border' : 'border-border/60 opacity-60';
+const readStepStatus = (isCompleted: boolean, isCurrent: boolean) => {
+  if (isCompleted) {
+    return 'done' as const;
+  }
+
+  if (isCurrent) {
+    return 'current' as const;
+  }
+
+  return 'pending' as const;
+};
+const readSecretPlaceholder = (tenantSecretUserInputRequired: boolean) => {
+  if (tenantSecretUserInputRequired) {
+    return undefined;
+  }
+
+  return t('admin.instances.form.authClientSecretGeneratedDuringProvisioning');
+};
+const readAuthSecretHint = (tenantSecretUserInputRequired: boolean) => {
+  if (tenantSecretUserInputRequired) {
+    return t('admin.instances.wizard.authHint');
+  }
+
+  return t('admin.instances.wizard.authSecretGeneratedHint');
+};
 
 export const InstanceCreatePage = () => {
   const instancesApi = useInstances();
@@ -256,9 +291,7 @@ export const InstanceCreatePage = () => {
         <div className="space-y-2">
           <div className="text-sm font-medium text-foreground">{t('admin.instances.adminBootstrap.title')}</div>
           <p className="text-sm text-muted-foreground">
-            {createdInstance
-              ? t('admin.instances.adminBootstrap.subtitleReady')
-              : t('admin.instances.adminBootstrap.subtitlePending')}
+            {readAdminBootstrapSubtitle(createdInstance)}
           </p>
         </div>
 
@@ -269,9 +302,7 @@ export const InstanceCreatePage = () => {
             return (
               <label
                 key={module.moduleId}
-                className={`flex items-start gap-3 rounded-lg border p-3 text-sm ${
-                  createdInstance ? 'border-border' : 'border-border/60 opacity-60'
-                }`}
+                className={`flex items-start gap-3 rounded-lg border p-3 text-sm ${readModuleCardClassName(createdInstance)}`}
               >
                 <input
                   type="checkbox"
@@ -321,11 +352,7 @@ export const InstanceCreatePage = () => {
           >
             {t('admin.instances.adminBootstrap.action')}
           </Button>
-          <p className="text-xs text-muted-foreground">
-            {createdInstance
-              ? t('admin.instances.adminBootstrap.actionHintReady')
-              : t('admin.instances.adminBootstrap.actionHintPending')}
-          </p>
+          <p className="text-xs text-muted-foreground">{readAdminBootstrapActionHint(createdInstance)}</p>
         </div>
       </Card>
 
@@ -334,6 +361,7 @@ export const InstanceCreatePage = () => {
           {CREATE_WIZARD_STEPS.map((step, index) => {
             const isCurrent = step.key === currentStep;
             const isCompleted = getStepIndex(currentStep) > index;
+            const status = readStepStatus(isCompleted, isCurrent);
             return (
               <button
                 key={step.key}
@@ -346,7 +374,7 @@ export const InstanceCreatePage = () => {
                 <div className="text-xs uppercase tracking-wide text-muted-foreground">{index + 1}</div>
                 <div className="mt-1 flex items-center justify-between gap-3">
                   <span className="font-medium text-foreground">{step.title}</span>
-                  <WorkflowStatusBadge status={isCompleted ? 'done' : isCurrent ? 'current' : 'pending'} />
+                  <WorkflowStatusBadge status={status} />
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">{step.description}</p>
               </button>
@@ -486,11 +514,7 @@ export const InstanceCreatePage = () => {
                     id="instance-tenant-admin-client-secret"
                     type="password"
                     disabled={!tenantSecretUserInputRequired}
-                    placeholder={
-                      tenantSecretUserInputRequired
-                        ? undefined
-                        : t('admin.instances.form.authClientSecretGeneratedDuringProvisioning')
-                    }
+                    placeholder={readSecretPlaceholder(tenantSecretUserInputRequired)}
                     value={formValues.tenantAdminClient.secret}
                     onChange={(event) =>
                       updateForm((current) => ({
@@ -519,23 +543,15 @@ export const InstanceCreatePage = () => {
                   label={t('admin.instances.form.authClientSecret')}
                   helpKey="authClientSecret"
                 />
-                <Input
-                  id="instance-auth-client-secret"
-                  type="password"
-                  disabled={!tenantSecretUserInputRequired}
-                  placeholder={
-                    tenantSecretUserInputRequired
-                      ? undefined
-                      : t('admin.instances.form.authClientSecretGeneratedDuringProvisioning')
-                  }
-                  value={formValues.authClientSecret}
-                  onChange={(event) => updateForm((current) => ({ ...current, authClientSecret: event.target.value }))}
-                />
-                <p className="text-xs text-muted-foreground">
-                  {tenantSecretUserInputRequired
-                    ? t('admin.instances.wizard.authHint')
-                    : t('admin.instances.wizard.authSecretGeneratedHint')}
-                </p>
+                  <Input
+                    id="instance-auth-client-secret"
+                    type="password"
+                    disabled={!tenantSecretUserInputRequired}
+                    placeholder={readSecretPlaceholder(tenantSecretUserInputRequired)}
+                    value={formValues.authClientSecret}
+                    onChange={(event) => updateForm((current) => ({ ...current, authClientSecret: event.target.value }))}
+                  />
+                <p className="text-xs text-muted-foreground">{readAuthSecretHint(tenantSecretUserInputRequired)}</p>
               </div>
             </div>
           ) : null}

@@ -64,9 +64,21 @@ export {
   resetInstanceConfigCache,
 } from './instance/config.server.js';
 export type {
+  ExternalInterfaceRecord,
+  ExternalInterfaceSettingsRecord,
+  ResolvedExternalInterface,
+} from '@sva/core';
+export type {
   ResolvedWasteDataSource,
   WasteRuntimeErrorCode,
 } from './waste/data-source.server.js';
+export {
+  buildExternalInterfaceSecretConfigAad,
+  ExternalInterfaceRuntimeError,
+  resolveExternalInterface,
+  runExternalInterfaceConnectionCheck,
+  sanitizeExternalInterfaceRecord,
+} from './external-interfaces.server.js';
 export {
   buildWasteDatabaseUrlAad,
   buildWasteServiceRoleKeyAad,

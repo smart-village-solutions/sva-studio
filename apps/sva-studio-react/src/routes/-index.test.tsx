@@ -207,6 +207,27 @@ describe('HomePage', () => {
     ).toBeTruthy();
   });
 
+  it('ignores prototype-like auth query values without crashing', () => {
+    useAuthMock.mockReturnValue({
+      user: null,
+      isAuthenticated: false,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      logout: vi.fn(),
+      invalidatePermissions: vi.fn(),
+      hasResolvedSession: true,
+      isRecoveringSession: false,
+    });
+
+    globalThis.history.replaceState({}, '', '/?auth=toString');
+
+    render(<HomePage />);
+
+    expect(screen.queryByText('Login fehlgeschlagen. Bitte erneut versuchen.')).toBeNull();
+    expect(screen.queryByText('Login abgebrochen oder abgelaufen. Bitte erneut anmelden.')).toBeNull();
+  });
+
   it('starts a full-document login redirect from the home route when auth=login is present', () => {
     useAuthMock.mockReturnValue({
       user: null,

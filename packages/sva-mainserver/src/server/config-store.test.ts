@@ -75,6 +75,37 @@ describe('loadSvaMainserverInstanceConfig', () => {
     });
   });
 
+  it('maps unknown visible status to an undefined legacy verification status', async () => {
+    state.loadDefaultExternalInterfaceRecord.mockResolvedValue({
+      id: 'sva-mainserver:de-musterhausen',
+      instanceId: 'de-musterhausen',
+      typeKey: 'sva_mainserver',
+      ownerKind: 'host',
+      ownerId: 'host',
+      displayName: 'SVA Mainserver',
+      alias: 'default',
+      enabled: true,
+      isDefault: true,
+      category: 'api',
+      baseUrl: 'https://mainserver.example.invalid/graphql',
+      authMode: 'oauth2',
+      publicConfig: {
+        graphqlBaseUrl: 'https://mainserver.example.invalid/graphql',
+        oauthTokenUrl: 'https://mainserver.example.invalid/oauth/token',
+      },
+      statusCheckKind: 'sva_mainserver',
+      visibleStatus: 'unknown',
+      lastCheckedAt: '2026-03-15T10:00:00.000Z',
+    });
+
+    const { loadSvaMainserverInstanceConfig } = await import('./config-store');
+
+    await expect(loadSvaMainserverInstanceConfig('de-musterhausen')).resolves.toMatchObject({
+      lastVerifiedAt: '2026-03-15T10:00:00.000Z',
+      lastVerifiedStatus: undefined,
+    });
+  });
+
   it('rejects invalid non-https upstream URLs', async () => {
     state.loadDefaultExternalInterfaceRecord.mockResolvedValue({
       id: 'sva-mainserver:de-musterhausen',

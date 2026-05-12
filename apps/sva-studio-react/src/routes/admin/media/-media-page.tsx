@@ -109,7 +109,8 @@ const mediaRoleKeyByValue = {
   hero_image: 'media.roles.hero_image',
 } as const;
 
-const isMediaRoleKey = (role: string): role is keyof typeof mediaRoleKeyByValue => role in mediaRoleKeyByValue;
+const isMediaRoleKey = (role: string): role is keyof typeof mediaRoleKeyByValue =>
+  Object.prototype.hasOwnProperty.call(mediaRoleKeyByValue, role);
 
 const formatMediaRole = (role: string): string =>
   isMediaRoleKey(role) ? t(mediaRoleKeyByValue[role]) : role;

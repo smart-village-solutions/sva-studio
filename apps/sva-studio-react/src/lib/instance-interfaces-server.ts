@@ -40,9 +40,13 @@ const coerceText = (value: unknown): string => (typeof value === 'string' ? valu
 const coerceBoolean = (value: unknown): boolean => value === true;
 
 const parseSecretConfig = (ciphertext: string | undefined, interfaceId: string): Record<string, string> => {
+  if (ciphertext === undefined) {
+    return {};
+  }
+
   const revealed = revealField(ciphertext, buildExternalInterfaceSecretConfigAad(interfaceId));
   if (!revealed) {
-    return {};
+    throw new Error('secret_unreadable');
   }
 
   try {
@@ -149,6 +153,10 @@ const buildRecordFromDraft = async (input: {
   const existing = input.existingId
     ? await loadExternalInterfaceRecordById(input.instanceId, input.existingId)
     : null;
+  if (input.existingId && !existing) {
+    throw new Error('interface_not_found');
+  }
+
   const interfaceId = existing?.id ?? randomUUID();
   const previousSecrets = existing ? parseSecretConfig(existing.secretConfigCiphertext, interfaceId) : {};
 

@@ -22,13 +22,16 @@ const AUTH_STATE_ERROR_KEYS = {
   'session-expired': 'home.authError.sessionExpired',
 } as const;
 
+const hasOwn = <T extends object>(value: T, key: PropertyKey): key is keyof T =>
+  Object.prototype.hasOwnProperty.call(value, key);
+
 const resolveHomeAuthStateError = (authState: string | null): string | null => {
-  if (!authState) {
+  if (!authState || !hasOwn(AUTH_STATE_ERROR_KEYS, authState)) {
     return null;
   }
 
-  const translationKey = AUTH_STATE_ERROR_KEYS[authState as keyof typeof AUTH_STATE_ERROR_KEYS];
-  return translationKey ? t(translationKey) : null;
+  const translationKey = AUTH_STATE_ERROR_KEYS[authState];
+  return typeof translationKey === 'string' ? t(translationKey) : null;
 };
 
 const resolveHomeRouteState = (): HomeRouteState => {

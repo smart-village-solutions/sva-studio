@@ -8,6 +8,22 @@ import { normalizeSvaMainserverUpstreamUrl } from './upstream-url-validation.js'
 const logger = createSdkLogger({ component: 'sva-mainserver-config', level: 'debug' });
 const SVA_MAINSERVER_TYPE_KEY = 'sva_mainserver';
 
+const mapVisibleStatusToVerificationStatus = (
+  visibleStatus: string | undefined
+): SvaMainserverInstanceConfig['lastVerifiedStatus'] => {
+  switch (visibleStatus) {
+    case 'ok':
+      return 'ok';
+    case 'error':
+    case 'not_configured':
+      return 'error';
+    case 'disabled':
+      return 'disabled';
+    default:
+      return undefined;
+  }
+};
+
 const buildLogContext = (instanceId: string, extra: Record<string, unknown> = {}) => {
   const context = getWorkspaceContext();
 
@@ -81,7 +97,7 @@ export const loadSvaMainserverInstanceConfig = async (
       ),
       enabled: record.enabled,
       lastVerifiedAt: record.lastCheckedAt,
-      lastVerifiedStatus: record.visibleStatus,
+      lastVerifiedStatus: mapVisibleStatusToVerificationStatus(record.visibleStatus),
     } satisfies SvaMainserverInstanceConfig;
 
     logger.info('SVA Mainserver instance config loaded', {

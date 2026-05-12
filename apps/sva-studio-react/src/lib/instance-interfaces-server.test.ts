@@ -224,6 +224,88 @@ describe('instance-interfaces-server', () => {
     );
   });
 
+  it('fails closed when existing secrets can no longer be decrypted during updates', async () => {
+    state.loadExternalInterfaceRecordById.mockResolvedValue({
+      id: 'existing-interface-id',
+      instanceId: 'de-test',
+      typeKey: 's3',
+      ownerKind: 'host',
+      ownerId: 'host',
+      displayName: 'Existing S3',
+      alias: 'existing-s3',
+      enabled: true,
+      isDefault: true,
+      category: 'object_storage',
+      baseUrl: 'https://s3.example',
+      authMode: 'access_key',
+      publicConfig: {
+        endpoint: 'https://s3.example',
+        region: 'eu-central-1',
+        bucket: 'uploads',
+        accessKeyId: 'key-1',
+        forcePathStyle: false,
+      },
+      secretConfigCiphertext: 'corrupted-ciphertext',
+      statusCheckKind: 's3',
+      createdAt: '2026-05-12T08:00:00.000Z',
+      updatedAt: '2026-05-12T08:00:00.000Z',
+    });
+    state.revealField.mockReturnValue(undefined);
+
+    const { upsertStoredInterface } = await import('./instance-interfaces-server');
+
+    await expect(
+      upsertStoredInterface(
+        'de-test',
+        {
+          type: 's3',
+          name: 'Updated S3',
+          enabled: true,
+          config: {
+            endpoint: 'https://s3.example',
+            region: 'eu-central-1',
+            bucket: 'uploads',
+            accessKeyId: 'key-1',
+            secretAccessKey: '',
+            forcePathStyle: false,
+          },
+        },
+        'existing-interface-id'
+      )
+    ).rejects.toThrow('secret_unreadable');
+
+    expect(state.saveExternalInterfaceRecord).not.toHaveBeenCalled();
+  });
+
+  it('rejects updates when the requested existing interface id no longer exists', async () => {
+    state.loadExternalInterfaceRecordById.mockResolvedValue(null);
+    state.loadDefaultExternalInterfaceRecord.mockResolvedValue(null);
+
+    const { upsertStoredInterface } = await import('./instance-interfaces-server');
+
+    await expect(
+      upsertStoredInterface(
+        'de-test',
+        {
+          type: 's3',
+          name: 'Updated S3',
+          enabled: true,
+          config: {
+            endpoint: 'https://s3.example',
+            region: 'eu-central-1',
+            bucket: 'uploads',
+            accessKeyId: 'key-1',
+            secretAccessKey: 'secret-1',
+            forcePathStyle: false,
+          },
+        },
+        'missing-interface-id'
+      )
+    ).rejects.toThrow('interface_not_found');
+
+    expect(state.saveExternalInterfaceRecord).not.toHaveBeenCalled();
+  });
+
   it('rejects dedicated mainserver writes and missing records after persistence reload', async () => {
     state.loadDefaultExternalInterfaceRecord.mockResolvedValue(null);
     state.saveExternalInterfaceRecord.mockResolvedValue(undefined);

@@ -781,7 +781,7 @@ export const i18nResources = {
           secretAccessKey: 'Secret Access Key',
           forcePathStyle: 'Path-Style-URLs erzwingen',
           notImplemented:
-            'Hinweis: Dieses Formular ist vorbereitet, aber die serverseitige Persistenz für zusätzliche Schnittstellen ist noch nicht angebunden.',
+            'Hinweis: Diese Schnittstelle wird bereits serverseitig gespeichert. Automatische Statusprüfungen und Verbindungschecks folgen noch.',
         },
         supabase: {
           projectUrl: 'Project URL',
@@ -789,7 +789,7 @@ export const i18nResources = {
           databaseUrl: 'Direct DB URL (optional)',
           serviceRoleKey: 'Service Role Key',
           notImplemented:
-            'Hinweis: Dieses Formular ist vorbereitet, aber die serverseitige Persistenz für zusätzliche Schnittstellen ist noch nicht angebunden.',
+            'Hinweis: Diese Schnittstelle wird bereits serverseitig gespeichert. Automatische Statusprüfungen und Verbindungschecks folgen noch.',
         },
       },
     },
@@ -3540,7 +3540,7 @@ export const i18nResources = {
           secretAccessKey: 'Secret access key',
           forcePathStyle: 'Force path-style URLs',
           notImplemented:
-            'This form is prepared, but server-side persistence for additional interfaces is not connected yet.',
+            'This interface is already persisted on the server. Automated status checks and connection probes are still pending.',
         },
         supabase: {
           projectUrl: 'Project URL',
@@ -3548,7 +3548,7 @@ export const i18nResources = {
           databaseUrl: 'Database URL',
           serviceRoleKey: 'Service role key',
           notImplemented:
-            'This form is prepared, but server-side persistence for additional interfaces is not connected yet.',
+            'This interface is already persisted on the server. Automated status checks and connection probes are still pending.',
         },
       },
       actions: {

@@ -71,7 +71,7 @@
     "ciGateTooling": [
       "{workspaceRoot}/package.json",
       "{workspaceRoot}/tsconfig.scripts.json",
-      "{workspaceRoot}/scripts/ci/**/*.ts",
+      "{workspaceRoot}/scripts/ci/**",
       "{workspaceRoot}/.github/workflows/**/*.yml"
     ],
     "frontendTooling": [

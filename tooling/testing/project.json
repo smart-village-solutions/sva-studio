@@ -8,6 +8,8 @@
       "executor": "@nx/eslint:lint",
       "inputs": [
         "default",
+        "^production",
+        "lintTooling",
         "ciGateTooling"
       ],
       "options": {
@@ -21,6 +23,7 @@
       "executor": "nx:run-commands",
       "inputs": [
         "default",
+        "^production",
         "testing",
         "ciGateTooling"
       ],
@@ -32,6 +35,7 @@
       "executor": "nx:run-commands",
       "inputs": [
         "default",
+        "^production",
         "testing",
         "ciGateTooling"
       ],

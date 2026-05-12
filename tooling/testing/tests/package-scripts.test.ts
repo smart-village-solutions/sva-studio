@@ -262,11 +262,14 @@ describe('workspace package scripts', () => {
       expect.arrayContaining([
         '{workspaceRoot}/package.json',
         '{workspaceRoot}/tsconfig.scripts.json',
-        '{workspaceRoot}/scripts/ci/**/*.ts',
+        '{workspaceRoot}/scripts/ci/**',
         '{workspaceRoot}/.github/workflows/**/*.yml',
       ])
     );
+    expect(lintInputs).toContain('^production');
+    expect(lintInputs).toContain('lintTooling');
     expect(lintInputs).toContain('ciGateTooling');
+    expect(unitInputs).toContain('^production');
     expect(unitInputs).toContain('ciGateTooling');
   });
 

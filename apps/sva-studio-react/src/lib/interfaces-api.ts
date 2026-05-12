@@ -191,6 +191,12 @@ type SaveInterfacesDependencies = InterfacesRequestDependencies & {
   readonly saveSvaMainserverSettings: typeof import('@sva/sva-mainserver/server').saveSvaMainserverSettings;
 };
 
+type InterfacesOperation =
+  | 'list_interfaces'
+  | 'save_interfaces_settings'
+  | 'upsert_interface'
+  | 'delete_interface';
+
 const loadInterfacesRequestDependencies = async (): Promise<InterfacesRequestDependencies> => {
   const { getRequest } = await import('@tanstack/react-start/server');
   const { createSdkLogger } = await import('@sva/server-runtime');
@@ -209,6 +215,95 @@ const loadSaveInterfacesDependencies = async (): Promise<SaveInterfacesDependenc
     ...base,
     saveSvaMainserverSettings,
   };
+};
+
+const runWithAuthenticatedInterfacesUser = async <T>(input: {
+  readonly request: Request;
+  readonly fallbackMessage: string;
+  readonly run: (user: AuthenticatedInterfacesUser) => Promise<T>;
+}): Promise<T> => {
+  const { withAuthenticatedUser } = await import('@sva/auth-runtime/server');
+
+  let result: T | undefined;
+  const response = await withAuthenticatedUser(input.request, async ({ user }) => {
+    result = await input.run(user);
+    return new Response(null, { status: 204 });
+  });
+
+  if (response.ok) {
+    if (result === undefined) {
+      throw new Error('missing_authenticated_result');
+    }
+
+    return result;
+  }
+
+  const payload = await parseJson<ErrorPayload>(response);
+  throw createClientError(payload, input.fallbackMessage);
+};
+
+const logMissingInterfacesInstanceContext = (
+  logger: ServerRuntimeLogger,
+  user: AuthenticatedInterfacesUser,
+  operation: InterfacesOperation
+): void => {
+  logger.warn('Interfaces request rejected: missing instance context', {
+    operation,
+    user_id: user.id,
+  });
+};
+
+const logForbiddenInterfacesAccess = (
+  logger: ServerRuntimeLogger,
+  user: AuthenticatedInterfacesUser,
+  instanceId: string,
+  operation: InterfacesOperation
+): void => {
+  logger.warn('Interfaces request rejected: insufficient permissions', {
+    operation,
+    workspace_id: instanceId,
+    user_id: user.id,
+    user_roles: user.roles,
+  });
+};
+
+const logInterfacesInstanceMismatch = (
+  logger: ServerRuntimeLogger,
+  user: AuthenticatedInterfacesUser,
+  requestedInstanceId: string,
+  actualInstanceId: string,
+  operation: InterfacesOperation
+): void => {
+  logger.warn('Interfaces request rejected: instance mismatch', {
+    operation,
+    requested_workspace_id: requestedInstanceId,
+    workspace_id: actualInstanceId,
+    user_id: user.id,
+  });
+};
+
+const resolveAuthorizedInterfacesInstanceId = (
+  logger: ServerRuntimeLogger,
+  user: AuthenticatedInterfacesUser,
+  operation: InterfacesOperation,
+  requestedInstanceId?: string
+): string => {
+  if (!user.instanceId) {
+    logMissingInterfacesInstanceContext(logger, user, operation);
+    throw new Error('invalid_config');
+  }
+
+  if (!hasInterfacesAccessRole(user)) {
+    logForbiddenInterfacesAccess(logger, user, user.instanceId, operation);
+    throw new Error('forbidden');
+  }
+
+  if (requestedInstanceId && requestedInstanceId !== user.instanceId) {
+    logInterfacesInstanceMismatch(logger, user, requestedInstanceId, user.instanceId, operation);
+    throw new Error('forbidden');
+  }
+
+  return user.instanceId;
 };
 
 const requireInterfacesInstanceId = (
@@ -402,54 +497,71 @@ const projectStoredEntry = async (
 
 export const listInstanceInterfacesServerFn = createServerFn().handler(
   async (): Promise<ListInstanceInterfacesResponse> => {
-    const overview = await (async () => {
-      try {
-        const { getRequest } = await import('@tanstack/react-start/server');
-        const { loadSvaMainserverInterfacesOverview } = await import('@sva/sva-mainserver/server');
-        return await loadSvaMainserverInterfacesOverview(getRequest());
-      } catch (error) {
-        const message = readErrorMessage(error, 'Schnittstellenstatus konnte nicht geladen werden.');
-        return {
-          instanceId: '',
-          config: null,
-          status: createErrorStatus('network_error', message),
-        } satisfies SvaMainserverInterfacesOverview;
-      }
-    })();
+    const dependencies = await loadInterfacesRequestDependencies();
 
-    const { listStoredInterfaces } = await import('./instance-interfaces-server.js');
-    const stored = overview.instanceId ? listStoredInterfaces(overview.instanceId) : [];
-    const projected = await Promise.all(stored.map((entry) => projectStoredEntry(overview.instanceId, entry)));
+    return runWithAuthenticatedInterfacesUser({
+      request: dependencies.request,
+      fallbackMessage: 'Schnittstellen konnten nicht geladen werden.',
+      run: async (user) => {
+      const authorizedInstanceId = resolveAuthorizedInterfacesInstanceId(
+        dependencies.logger,
+        user,
+        'list_interfaces'
+      );
+      const overview = await (async () => {
+        try {
+          const { loadSvaMainserverInterfacesOverview } = await import('@sva/sva-mainserver/server');
+          return await loadSvaMainserverInterfacesOverview(dependencies.request);
+        } catch (error) {
+          const message = readErrorMessage(error, 'Schnittstellenstatus konnte nicht geladen werden.');
+          return {
+            instanceId: authorizedInstanceId,
+            config: null,
+            status: createErrorStatus('network_error', message),
+          } satisfies SvaMainserverInterfacesOverview;
+        }
+      })();
 
-    const mainserverEntry: InstanceInterface | null = overview.config
-      ? ({
-          id: `mainserver:${overview.instanceId}`,
-          instanceId: overview.instanceId,
-          type: 'mainserver',
-          name: 'SVA Mainserver',
-          enabled: overview.config.enabled,
-          status:
-            overview.status.status === 'connected'
-              ? 'connected'
-              : overview.config.enabled
-                ? 'error'
-                : 'disabled',
-          statusMessage: overview.status.errorMessage,
-          errorCode: overview.status.errorCode,
-          lastCheckedAt: overview.status.checkedAt,
-          createdAt: overview.status.checkedAt ?? new Date().toISOString(),
-          updatedAt: overview.status.checkedAt ?? new Date().toISOString(),
-          config: {
-            graphqlBaseUrl: overview.config.graphqlBaseUrl,
-            oauthTokenUrl: overview.config.oauthTokenUrl,
-          },
-        } satisfies InstanceInterface)
-      : null;
+      const blockedOverview =
+        overview.status.errorCode === 'forbidden' ||
+        (overview.instanceId.length > 0 && overview.instanceId !== authorizedInstanceId);
 
-    return {
-      instanceId: overview.instanceId,
-      entries: [...(mainserverEntry ? [mainserverEntry] : []), ...projected],
-    };
+      const { listStoredInterfaces } = await import('./instance-interfaces-server.js');
+      const stored = blockedOverview ? [] : listStoredInterfaces(authorizedInstanceId);
+      const projected = await Promise.all(stored.map((entry) => projectStoredEntry(authorizedInstanceId, entry)));
+
+      const mainserverEntry: InstanceInterface | null =
+        !blockedOverview && overview.config
+          ? ({
+              id: `mainserver:${authorizedInstanceId}`,
+              instanceId: authorizedInstanceId,
+              type: 'mainserver',
+              name: 'SVA Mainserver',
+              enabled: overview.config.enabled,
+              status:
+                overview.status.status === 'connected'
+                  ? 'connected'
+                  : overview.config.enabled
+                    ? 'error'
+                    : 'disabled',
+              statusMessage: overview.status.errorMessage,
+              errorCode: overview.status.errorCode,
+              lastCheckedAt: overview.status.checkedAt,
+              createdAt: overview.status.checkedAt ?? new Date().toISOString(),
+              updatedAt: overview.status.checkedAt ?? new Date().toISOString(),
+              config: {
+                graphqlBaseUrl: overview.config.graphqlBaseUrl,
+                oauthTokenUrl: overview.config.oauthTokenUrl,
+              },
+            } satisfies InstanceInterface)
+          : null;
+
+      return {
+        instanceId: authorizedInstanceId,
+        entries: [...(mainserverEntry ? [mainserverEntry] : []), ...projected],
+      };
+      },
+    });
   }
 );
 
@@ -465,9 +577,22 @@ export const upsertInstanceInterfaceServerFn = createServerFn({ method: 'POST' }
     if (data.draft.type === 'mainserver') {
       throw new Error('mainserver_interfaces_use_dedicated_endpoint');
     }
+    const dependencies = await loadInterfacesRequestDependencies();
     const { upsertStoredInterface } = await import('./instance-interfaces-server.js');
-    const stored = upsertStoredInterface(data.instanceId, data.draft, data.existingId);
-    return projectStoredEntry(data.instanceId, stored);
+    return runWithAuthenticatedInterfacesUser({
+      request: dependencies.request,
+      fallbackMessage: 'Schnittstelle konnte nicht gespeichert werden.',
+      run: async (user) => {
+        const instanceId = resolveAuthorizedInterfacesInstanceId(
+          dependencies.logger,
+          user,
+          'upsert_interface',
+          data.instanceId
+        );
+        const stored = upsertStoredInterface(instanceId, data.draft, data.existingId);
+        return projectStoredEntry(instanceId, stored);
+      },
+    });
   });
 
 type DeleteInstanceInterfaceInput = Readonly<{
@@ -478,8 +603,21 @@ type DeleteInstanceInterfaceInput = Readonly<{
 export const deleteInstanceInterfaceServerFn = createServerFn({ method: 'POST' })
   .inputValidator((data: DeleteInstanceInterfaceInput) => data)
   .handler(async ({ data }): Promise<{ deleted: boolean }> => {
+    const dependencies = await loadInterfacesRequestDependencies();
     const { deleteStoredInterface } = await import('./instance-interfaces-server.js');
-    return { deleted: deleteStoredInterface(data.instanceId, data.id) };
+    return runWithAuthenticatedInterfacesUser({
+      request: dependencies.request,
+      fallbackMessage: 'Schnittstelle konnte nicht gelöscht werden.',
+      run: async (user) => {
+        const instanceId = resolveAuthorizedInterfacesInstanceId(
+          dependencies.logger,
+          user,
+          'delete_interface',
+          data.instanceId
+        );
+        return { deleted: deleteStoredInterface(instanceId, data.id) };
+      },
+    });
   });
 
 export const saveSvaMainserverInterfaceSettings = createServerFn({ method: 'POST' })

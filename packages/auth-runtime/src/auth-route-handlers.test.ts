@@ -656,6 +656,7 @@ describe('logoutHandler', () => {
     const { logoutHandler } = await import('./auth-route-handlers.js');
 
     mocks.isMockAuthEnabled.mockReturnValue(true);
+    mocks.hasActiveMockAuthSession.mockReturnValue(true);
 
     const response = await logoutHandler(new Request('http://localhost/auth/logout'));
 
@@ -665,6 +666,34 @@ describe('logoutHandler', () => {
       response,
       expect.stringContaining('sva_dev_auth=')
     );
+  });
+
+  it('keeps the standard logout flow available when mock auth is enabled without a dev auth session', async () => {
+    const { logoutHandler } = await import('./auth-route-handlers.js');
+    const { resolveAuthConfigForRequest } = await import('./config.js');
+    const { getSession } = await import('./redis-session.js');
+    const { logoutSession } = await import('./auth-server/logout.js');
+
+    mocks.isMockAuthEnabled.mockReturnValue(true);
+    mocks.hasActiveMockAuthSession.mockReturnValue(false);
+    vi.mocked(resolveAuthConfigForRequest).mockResolvedValueOnce(authConfigBase as never);
+    mocks.readCookieFromRequest.mockImplementation((_request: Request, cookieName: string) =>
+      cookieName === 'sva_session' ? 'session-1' : 'unused-cookie'
+    );
+    vi.mocked(getSession).mockResolvedValueOnce({
+      user: { id: 'kc-user-1' },
+    } as never);
+    vi.mocked(logoutSession).mockResolvedValueOnce('http://localhost/signed-out');
+
+    const response = await logoutHandler(
+      new Request('http://localhost/auth/logout', {
+        method: 'POST',
+        headers: { 'x-sva-logout-intent': 'user' },
+      })
+    );
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get('Location')).toBe('http://localhost/signed-out');
   });
 
   it('rejects logout requests that lack explicit logout intent', async () => {

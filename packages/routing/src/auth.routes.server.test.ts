@@ -150,6 +150,7 @@ const authServerMocks = vi.hoisted(() => {
       getSchedulingOverview: vi.fn(async () => response('getWasteManagementSchedulingOverviewHandler')),
       getToursOverview: vi.fn(async () => response('getWasteManagementToursOverviewHandler')),
       getSettings: vi.fn(async () => response('getWasteManagementSettingsHandler')),
+      startInitialize: vi.fn(async () => response('startWasteManagementInitializeHandler')),
       updateSettings: vi.fn(async () => response('updateWasteManagementSettingsHandler')),
       updateCity: vi.fn(async () => response('updateWasteManagementCityHandler')),
       updateCollectionLocation: vi.fn(async () => response('updateWasteManagementCollectionLocationHandler')),
@@ -345,6 +346,7 @@ describe('auth.routes.server', () => {
     const toursHandlers = resolveAuthHandlers('/api/v1/waste-management/tours');
     const tourDetailHandlers = resolveAuthHandlers('/api/v1/waste-management/tours/$tourId');
     const settingsHandlers = resolveAuthHandlers('/api/v1/waste-management/settings');
+    const initializeHandlers = resolveAuthHandlers('/api/v1/waste-management/tools/initialize');
     const migrationsHandlers = resolveAuthHandlers('/api/v1/waste-management/tools/migrations');
     const importHandlers = resolveAuthHandlers('/api/v1/waste-management/tools/imports');
     const seedHandlers = resolveAuthHandlers('/api/v1/waste-management/tools/seed');
@@ -439,6 +441,9 @@ describe('auth.routes.server', () => {
     await settingsHandlers.PUT?.({
       request: new Request('http://localhost/api/v1/waste-management/settings', { method: 'PUT' }),
     });
+    await initializeHandlers.POST?.({
+      request: new Request('http://localhost/api/v1/waste-management/tools/initialize', { method: 'POST' }),
+    });
     await migrationsHandlers.POST?.({
       request: new Request('http://localhost/api/v1/waste-management/tools/migrations', { method: 'POST' }),
     });
@@ -472,6 +477,7 @@ describe('auth.routes.server', () => {
     expect(authServerMocks.wasteManagementHandlers.updateTour).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.getSettings).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.updateSettings).toHaveBeenCalled();
+    expect(authServerMocks.wasteManagementHandlers.startInitialize).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.startMigrations).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.startImport).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.startSeed).toHaveBeenCalled();

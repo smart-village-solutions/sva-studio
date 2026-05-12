@@ -109,15 +109,36 @@ export const getPackagePluginModuleCandidates = (manifest: PluginManifest): read
   return candidates;
 };
 
+const isReadonlyRecord = (value: unknown): value is Readonly<Record<string, unknown>> =>
+  Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+
+const isPluginDefinitionCandidate = (value: unknown): value is PluginDefinition => {
+  if (!isReadonlyRecord(value)) {
+    return false;
+  }
+
+  if (typeof value.id !== 'string' || typeof value.displayName !== 'string' || !Array.isArray(value.routes)) {
+    return false;
+  }
+
+  return (
+    (value.navigation === undefined || Array.isArray(value.navigation)) &&
+    (value.actions === undefined || Array.isArray(value.actions)) &&
+    (value.permissions === undefined || Array.isArray(value.permissions)) &&
+    (value.contentTypes === undefined || Array.isArray(value.contentTypes)) &&
+    (value.adminResources === undefined || Array.isArray(value.adminResources)) &&
+    (value.auditEvents === undefined || Array.isArray(value.auditEvents)) &&
+    (value.jobTypes === undefined || Array.isArray(value.jobTypes)) &&
+    (value.importProfiles === undefined || Array.isArray(value.importProfiles)) &&
+    (value.moduleIam === undefined || isReadonlyRecord(value.moduleIam)) &&
+    (value.translations === undefined || isReadonlyRecord(value.translations))
+  );
+};
+
 export const extractPluginDefinition = (exportsObject: PluginModuleExports): PluginDefinition | undefined => {
   for (const value of Object.values(exportsObject)) {
-    if (!value || typeof value !== 'object') {
-      continue;
-    }
-
-    const candidate = value as Partial<PluginDefinition>;
-    if (typeof candidate.id === 'string' && typeof candidate.displayName === 'string') {
-      return candidate as PluginDefinition;
+    if (isPluginDefinitionCandidate(value)) {
+      return value;
     }
   }
 

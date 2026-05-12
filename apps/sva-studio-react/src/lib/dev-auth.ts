@@ -1,3 +1,5 @@
+import { isMockAuthRuntimeProfile, parseRuntimeProfile } from '@sva/core';
+
 export const DEV_AUTH_LOGIN_ENDPOINT = '/auth/dev-login';
 export const DEV_AUTH_LOGOUT_ENDPOINT = '/auth/dev-logout';
 export const DEV_AUTH_COOKIE_NAME = 'sva_dev_auth';
@@ -18,11 +20,14 @@ const readCookieValue = (cookieHeader: string, name: string): string | null => {
 };
 
 export const isDevAuthAvailable = (): boolean => {
+  const runtimeProfile = parseRuntimeProfile(import.meta.env.VITE_SVA_RUNTIME_PROFILE);
+
   return (
     import.meta.env.VITE_SVA_DEV_AUTH === true ||
     import.meta.env.VITE_SVA_DEV_AUTH === 'true' ||
     import.meta.env.VITE_MOCK_AUTH === true ||
-    import.meta.env.VITE_MOCK_AUTH === 'true'
+    import.meta.env.VITE_MOCK_AUTH === 'true' ||
+    (runtimeProfile !== null && isMockAuthRuntimeProfile(runtimeProfile))
   );
 };
 

@@ -2059,6 +2059,36 @@
       "ticketSystem": "policy-baseline",
       "status": "open",
       "summary": "oeffentliche Export-Oberflaeche in kleinere fachliche API-Segmente aufteilen (packages/sva-mainserver/src/types.ts)"
+    },
+    "auth-runtime:packages/auth-runtime/src/waste-management/server-loaders.ts:fileLines": {
+      "ticketId": "QUAL-WASTE-LOADERS-001",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Waste-Management-Loaderdatei in kleinere serverseitige Ladebausteine zerlegen (packages/auth-runtime/src/waste-management/server-loaders.ts)"
+    },
+    "auth-runtime:packages/auth-runtime/src/waste-management/server-loaders.ts:functionLines": {
+      "ticketId": "QUAL-WASTE-LOADERS-001",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "lange Waste-Management-Loaderfunktionen in kleinere Lade- und Mapping-Schritte aufteilen (packages/auth-runtime/src/waste-management/server-loaders.ts)"
+    },
+    "packages-default:packages/plugin-waste-management/src/waste-management.tools-panel.tsx:functionLines": {
+      "ticketId": "QUAL-WASTE-TOOLS-001",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Tools-Panel in kleinere UI- und Aktionsbausteine zerlegen (packages/plugin-waste-management/src/waste-management.tools-panel.tsx)"
+    },
+    "packages-default:packages/plugin-waste-management/src/waste-management.tools.import-section.tsx:functionLines": {
+      "ticketId": "QUAL-WASTE-TOOLS-002",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Import-Sektion in kleinere Formular- und Statusbausteine zerlegen (packages/plugin-waste-management/src/waste-management.tools.import-section.tsx)"
+    },
+    "plugin-sdk:packages/plugin-sdk/src/plugin-platform-resolution.ts:fileLines": {
+      "ticketId": "QUAL-PLUGIN-SDK-001",
+      "ticketSystem": "backlog",
+      "status": "open",
+      "summary": "Plugin-Plattform-Resolution in kleinere Aufloesungs- und Kompatibilitaetsbausteine splitten (packages/plugin-sdk/src/plugin-platform-resolution.ts)"
     }
   }
 }

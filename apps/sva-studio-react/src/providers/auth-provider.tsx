@@ -657,6 +657,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       `${DEV_AUTH_LOGIN_ENDPOINT}?returnTo=${encodeURIComponent(resolveCurrentReturnTo())}`,
       {
         method: 'POST',
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest',
+        },
       },
       {
         timeoutMs: 5_000,

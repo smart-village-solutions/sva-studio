@@ -916,6 +916,9 @@ describe('AuthProvider', () => {
       expect.objectContaining({
         method: 'POST',
         credentials: 'include',
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest',
+        },
         signal: expect.any(AbortSignal),
       })
     );

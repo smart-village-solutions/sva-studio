@@ -43,6 +43,49 @@ describe('instance-interfaces-server', () => {
     expect(listStoredInterfaces('de-test')).toEqual([]);
   });
 
+  it('preserves stored secrets when an existing interface is edited without a new secret', () => {
+    const created = upsertStoredInterface('de-test', {
+      type: 's3',
+      name: 'S3 Uploads',
+      enabled: true,
+      config: {
+        endpoint: 'https://s3.example',
+        region: 'eu-central-1',
+        bucket: 'uploads',
+        accessKeyId: 'key-1',
+        secretAccessKey: 'secret-1',
+        forcePathStyle: true,
+      },
+    });
+
+    upsertStoredInterface(
+      'de-test',
+      {
+        type: 's3',
+        name: 'Renamed Uploads',
+        enabled: true,
+        config: {
+          endpoint: 'https://s3.example',
+          region: 'eu-central-1',
+          bucket: 'uploads',
+          accessKeyId: 'key-2',
+          secretAccessKey: '',
+          forcePathStyle: false,
+        },
+      },
+      created.id
+    );
+
+    const root = globalThis as Record<string, unknown>;
+    const store = root.__SVA_INSTANCE_INTERFACES_STORE__ as {
+      secrets: Map<string, Record<string, string>>;
+    };
+
+    expect(store.secrets.get(created.id)).toEqual({
+      secretAccessKey: 'secret-1',
+    });
+  });
+
   it('guards mismatched updates and unsupported mainserver drafts', () => {
     const existing = upsertStoredInterface('de-test', {
       type: 'supabase',

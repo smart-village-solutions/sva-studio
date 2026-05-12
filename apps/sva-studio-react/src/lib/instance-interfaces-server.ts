@@ -36,7 +36,8 @@ const generateId = (type: InstanceInterfaceType): string =>
 const buildEntry = (
   instanceId: string,
   draft: InstanceInterfaceDraft,
-  existing?: StoredEntry
+  existing?: StoredEntry,
+  existingSecrets?: SecretMap
 ): { entry: StoredEntry; secrets: SecretMap } => {
   const id = existing?.id ?? generateId(draft.type);
   const now = new Date().toISOString();
@@ -59,7 +60,15 @@ const buildEntry = (
       createdAt,
       updatedAt: now,
     };
-    return { entry, secrets: { secretAccessKey: draft.config.secretAccessKey } };
+    return {
+      entry,
+      secrets: {
+        secretAccessKey:
+          draft.config.secretAccessKey.length > 0
+            ? draft.config.secretAccessKey
+            : existingSecrets?.secretAccessKey ?? '',
+      },
+    };
   }
 
   if (draft.type === 'supabase') {
@@ -77,7 +86,15 @@ const buildEntry = (
       createdAt,
       updatedAt: now,
     };
-    return { entry, secrets: { serviceRoleKey: draft.config.serviceRoleKey } };
+    return {
+      entry,
+      secrets: {
+        serviceRoleKey:
+          draft.config.serviceRoleKey.length > 0
+            ? draft.config.serviceRoleKey
+            : existingSecrets?.serviceRoleKey ?? '',
+      },
+    };
   }
 
   throw new Error(`unsupported_interface_type:${draft.type}`);
@@ -107,7 +124,8 @@ export const upsertStoredInterface = (
   if (existing && existing.type !== draft.type) {
     throw new Error('interface_type_change_not_supported');
   }
-  const { entry, secrets } = buildEntry(instanceId, draft, existing);
+  const existingSecrets = existing ? store.secrets.get(existing.id) : undefined;
+  const { entry, secrets } = buildEntry(instanceId, draft, existing, existingSecrets);
   store.entries.set(entry.id, entry);
   store.secrets.set(entry.id, secrets);
   return entry;

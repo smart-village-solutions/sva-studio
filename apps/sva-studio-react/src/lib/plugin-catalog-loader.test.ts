@@ -214,6 +214,15 @@ describe('plugin catalog loader', () => {
       id: 'news',
       displayName: 'News',
     });
+    expect(
+      extractPluginDefinition({
+        metadata: {
+          id: 'news',
+          displayName: 'News',
+          version: '1.0.0',
+        },
+      })
+    ).toBeUndefined();
     expect(extractPluginDefinition({ helper: { foo: 'bar' } })).toBeUndefined();
   });
 });

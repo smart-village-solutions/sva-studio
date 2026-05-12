@@ -1150,7 +1150,7 @@ export const devLogoutHandler = async (request: Request): Promise<Response> => {
 
 export const logoutHandler = async (request: Request): Promise<Response> => {
   return withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
-    if (isMockAuthEnabled()) {
+    if (isActiveDevAuthRequest(request)) {
       const response = createRedirectResponse('/');
       appendSetCookie(response, deleteCookieHeader(DEV_AUTH_COOKIE_NAME));
       return response;

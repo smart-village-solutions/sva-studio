@@ -1,7 +1,9 @@
 import { execSync } from 'node:child_process';
+import { performance } from 'node:perf_hooks';
 import { pathToFileURL } from 'node:url';
 
 import { classifyPrScope, resolveChangedFiles, type GateMode } from './pr-scope.ts';
+import { runAffectedUnitGate, type DurationEntry } from './affected-unit-gate.ts';
 
 interface RunPrGateOptions {
   base: string;
@@ -37,75 +39,91 @@ const parseCliOptions = (args: readonly string[]): RunPrGateOptions => {
   return { base, head };
 };
 
-const runCommand = (command: string): void => {
+const runCommand = (command: string): number => {
   console.log(`\n$ ${command}`);
+  const startedAt = performance.now();
   execSync(command, {
     stdio: 'inherit',
     env: process.env,
   });
+  return performance.now() - startedAt;
 };
 
-const runAffectedCommand = (base: string, command: string): void => {
-  runCommand(`NX_BASE=${base} ${command}`);
+const runAffectedCommand = (base: string, command: string): number => {
+  return runCommand(`NX_BASE=${base} ${command}`);
 };
 
-const runQualityGates = (base: string, mode: GateMode): void => {
+const recordDuration = (durations: DurationEntry[], label: string, durationMs: number): void => {
+  durations.push({ label, durationMs });
+};
+
+const runQualityGates = (base: string, head: string, mode: GateMode, durations: DurationEntry[]): void => {
   if (mode === 'full') {
-    runCommand('pnpm test:eslint');
-    runCommand('pnpm test:unit');
-    runCommand('pnpm test:types');
+    recordDuration(durations, 'lint', runCommand('pnpm test:eslint'));
+    recordDuration(durations, 'unit', runCommand('pnpm test:unit'));
+    recordDuration(durations, 'types', runCommand('pnpm test:types'));
     return;
   }
 
   if (mode === 'affected') {
-    runAffectedCommand(base, 'pnpm test:eslint:affected');
-    runAffectedCommand(base, 'pnpm test:unit:affected');
-    runAffectedCommand(base, 'pnpm test:types:affected');
+    recordDuration(durations, 'lint:affected', runAffectedCommand(base, 'pnpm test:eslint:affected'));
+    for (const entry of runAffectedUnitGate({ base, head })) {
+      recordDuration(durations, entry.label, entry.durationMs);
+    }
+    recordDuration(durations, 'types:affected', runAffectedCommand(base, 'pnpm test:types:affected'));
   }
 };
 
-const runCoverageGate = (base: string, mode: GateMode): void => {
+const runCoverageGate = (base: string, mode: GateMode, durations: DurationEntry[]): void => {
   if (mode === 'full') {
-    runCommand('pnpm test:coverage');
+    recordDuration(durations, 'coverage', runCommand('pnpm test:coverage'));
   } else if (mode === 'affected') {
-    runAffectedCommand(base, 'pnpm test:coverage:affected');
+    recordDuration(durations, 'coverage:affected', runAffectedCommand(base, 'pnpm test:coverage:affected'));
   }
 
-  runCommand(`pnpm patch-coverage-gate --base=${base}`);
-  runCommand(`pnpm sonar-new-code-gate --base=${base}`);
-  runCommand('env COVERAGE_GATE_REQUIRE_SUMMARIES=0 pnpm coverage-gate');
-  runCommand('pnpm complexity-gate');
+  recordDuration(durations, 'patch-coverage', runCommand(`pnpm patch-coverage-gate --base=${base}`));
+  recordDuration(durations, 'sonar-new-code', runCommand(`pnpm sonar-new-code-gate --base=${base}`));
+  recordDuration(durations, 'coverage-gate', runCommand('env COVERAGE_GATE_REQUIRE_SUMMARIES=0 pnpm coverage-gate'));
+  recordDuration(durations, 'complexity', runCommand('pnpm complexity-gate'));
 };
 
-const runIntegrationGate = (base: string, mode: GateMode): void => {
+const runIntegrationGate = (base: string, mode: GateMode, durations: DurationEntry[]): void => {
   if (mode === 'full') {
-    runCommand('pnpm test:integration');
+    recordDuration(durations, 'integration', runCommand('pnpm test:integration'));
     return;
   }
 
   if (mode === 'affected') {
-    runCommand(
-      `env -u NO_COLOR pnpm nx affected --target=test:integration --base=${base} --exclude=monitoring-client --output-style=stream`
+    recordDuration(
+      durations,
+      'integration:affected',
+      runCommand(
+        `env -u NO_COLOR pnpm nx affected --target=test:integration --base=${base} --exclude=monitoring-client --output-style=stream`
+      )
     );
   }
 };
 
-const runAppBuildGate = (mode: GateMode): void => {
+const runAppBuildGate = (mode: GateMode, durations: DurationEntry[]): void => {
   if (mode !== 'skip') {
-    runCommand('pnpm nx run sva-studio-react:build');
+    recordDuration(durations, 'app-build', runCommand('pnpm nx run sva-studio-react:build'));
   }
 };
 
-const runE2EGate = (mode: GateMode): void => {
+const runE2EGate = (mode: GateMode, durations: DurationEntry[]): void => {
   if (mode !== 'skip') {
-    runCommand('pnpm test:e2e');
+    recordDuration(durations, 'app-e2e', runCommand('pnpm test:e2e'));
   }
 };
+
+export const formatDurationSummary = (durations: readonly DurationEntry[]): string =>
+  durations.map((entry) => `- ${entry.label}: ${(entry.durationMs / 1000).toFixed(2)}s`).join('\n');
 
 export const runPrGate = (args: readonly string[]): number => {
   const options = parseCliOptions(args);
   const changedFiles = resolveChangedFiles(options.base, options.head);
   const decision = classifyPrScope(changedFiles);
+  const durations: DurationEntry[] = [];
 
   console.log(
     JSON.stringify(
@@ -120,22 +138,27 @@ export const runPrGate = (args: readonly string[]): number => {
     )
   );
 
-  runCommand('pnpm check:file-placement');
+  recordDuration(durations, 'file-placement', runCommand('pnpm check:file-placement'));
 
   if (!decision.codeRelevant) {
     console.log('Keine code-relevanten Änderungen im PR-Scope. Weitere PR-Gates werden als No-op übersprungen.');
+    console.log('\nPR gate summary:');
+    console.log(formatDurationSummary(durations));
     return 0;
   }
 
-  runCommand('pnpm check:toolchain-consistency');
-  runCommand('pnpm clean:generated-source-artifacts');
-  runCommand('pnpm check:plugin-ui-boundary');
+  recordDuration(durations, 'toolchain-consistency', runCommand('pnpm check:toolchain-consistency'));
+  recordDuration(durations, 'clean-generated-source-artifacts', runCommand('pnpm clean:generated-source-artifacts'));
+  recordDuration(durations, 'plugin-ui-boundary', runCommand('pnpm check:plugin-ui-boundary'));
 
-  runQualityGates(options.base, decision.qualityGateMode);
-  runCoverageGate(options.base, decision.coverageMode);
-  runIntegrationGate(options.base, decision.integrationMode);
-  runAppBuildGate(decision.appBuildMode);
-  runE2EGate(decision.e2eMode);
+  runQualityGates(options.base, options.head, decision.qualityGateMode, durations);
+  runCoverageGate(options.base, decision.coverageMode, durations);
+  runIntegrationGate(options.base, decision.integrationMode, durations);
+  runAppBuildGate(decision.appBuildMode, durations);
+  runE2EGate(decision.e2eMode, durations);
+
+  console.log('\nPR gate summary:');
+  console.log(formatDurationSummary(durations));
 
   return 0;
 };

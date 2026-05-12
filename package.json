@@ -18,7 +18,7 @@
     "test:types:affected": "pnpm clean:generated-source-artifacts && env -u NO_COLOR nx affected --target=test:types --base=${NX_BASE:-origin/main} --parallel=1 && env -u NO_COLOR nx affected --target=typecheck --base=${NX_BASE:-origin/main} --parallel=1 && pnpm check:server-runtime:affected && pnpm exec tsc -p tsconfig.scripts.json --noEmit",
     "test": "pnpm test:unit",
     "test:unit": "env -u NO_COLOR nx run-many -t test:unit --parallel=1",
-    "test:unit:affected": "env -u NO_COLOR nx affected --target=test:unit --base=${NX_BASE:-origin/main} --parallel=1",
+    "test:unit:affected": "tsx scripts/ci/affected-unit-gate.ts --base ${NX_BASE:-origin/main}",
     "test:coverage": "env -u NO_COLOR nx run-many -t test:coverage",
     "test:coverage:affected": "env -u NO_COLOR nx affected --target=test:coverage --base=${NX_BASE:-origin/main}",
     "test:coverage:pr": "pnpm test:coverage:affected && pnpm patch-coverage-gate --base=${NX_BASE:-origin/main} && pnpm sonar-new-code-gate --base=${NX_BASE:-origin/main}",

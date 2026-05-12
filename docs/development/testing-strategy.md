@@ -49,6 +49,11 @@ Dieses Dokument beschreibt die übergeordnete Teststrategie für das Nx-Monorepo
 - `pnpm test:unit:affected`
 - bei Typänderungen zusätzlich `pnpm test:types:affected`
 - bei PR-relevanten Quality-Gate-, Coverage-, Logging-, Auth-, Routing- oder Build-Änderungen zusätzlich `pnpm test:pr`
+- bei isolierten App-Änderungen optional gezielt:
+  - `pnpm nx run sva-studio-react:test:unit:ui`
+  - `pnpm nx run sva-studio-react:test:unit:routes`
+  - `pnpm nx run sva-studio-react:test:unit:hooks`
+  - `pnpm nx run sva-studio-react:test:unit:server`
 
 ### Vor PR-Update
 
@@ -58,6 +63,7 @@ Dieses Dokument beschreibt die übergeordnete Teststrategie für das Nx-Monorepo
 
 - `pnpm check:file-placement`
 - `affected` oder `full` für `lint`, `test:unit`, `test:types`, `test:coverage` abhängig vom PR-Scope
+- bei isolierten App-only-Änderungen führt der Unit-Pfad nur die betroffenen `sva-studio-react`-Slices aus; gemischte oder unklare Änderungen fallen auf das aggregierte App-Target zurück
 - `pnpm patch-coverage-gate --base=origin/main` für New-Code-/Patch-Coverage
 - `pnpm coverage-gate` im PR-Modus
 - `pnpm complexity-gate`
@@ -132,6 +138,7 @@ Diese Strategie definiert nur die Leitplanken:
 - Reproduzierbarkeit lokal herstellen, bevor Workarounds dokumentiert werden.
 - Flaky Tests werden entweder stabilisiert oder vorübergehend explizit aus dem Pflichtpfad herausgenommen, aber nicht stillschweigend ignoriert.
 - Flake-anfällige Vitest-Targets im Pflichtpfad laufen bevorzugt seriell, wenn Parallelisierung nachweislich Race- oder Timing-Probleme erzeugt.
+- Große App-Suiten werden bei wachsendem Umfang in stabile Nx-Slices aufgeteilt, statt dauerhaft als einzelner monolithischer Target weiterzuwachsen.
 - Jede bewusste Testlücke braucht dokumentierte Folgearbeit.
 
 ## Dokumentationspflicht

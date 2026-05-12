@@ -85,6 +85,11 @@ function loadRunPrGateScript(): string {
   return fs.readFileSync(path.join(rootDir, 'scripts/ci/run-pr-gate.ts'), 'utf8');
 }
 
+function loadAffectedUnitGateScript(): string {
+  const rootDir = resolveRootDir();
+  return fs.readFileSync(path.join(rootDir, 'scripts/ci/affected-unit-gate.ts'), 'utf8');
+}
+
 function loadNxJson(): { namedInputs?: Record<string, NamedInputValue[]> } {
   const rootDir = resolveRootDir();
   return JSON.parse(fs.readFileSync(path.join(rootDir, 'nx.json'), 'utf8')) as {
@@ -182,9 +187,7 @@ describe('workspace package scripts', () => {
     expect(packageJson.scripts?.['test:eslint:affected']).toBe(
       'pnpm check:plugin-ui-boundary && env -u NO_COLOR nx affected --target=lint --base=${NX_BASE:-origin/main}'
     );
-    expect(packageJson.scripts?.['test:unit:affected']).toBe(
-      'env -u NO_COLOR nx affected --target=test:unit --base=${NX_BASE:-origin/main} --parallel=1'
-    );
+    expect(packageJson.scripts?.['test:unit:affected']).toBe('tsx scripts/ci/affected-unit-gate.ts --base ${NX_BASE:-origin/main}');
     expect(packageJson.scripts?.['test:types:affected']).toBe(
       'pnpm clean:generated-source-artifacts && env -u NO_COLOR nx affected --target=test:types --base=${NX_BASE:-origin/main} --parallel=1 && env -u NO_COLOR nx affected --target=typecheck --base=${NX_BASE:-origin/main} --parallel=1 && pnpm check:server-runtime:affected && pnpm exec tsc -p tsconfig.scripts.json --noEmit'
     );
@@ -285,4 +288,13 @@ describe('workspace package scripts', () => {
     expect(coverageInputs).toContain('toolingScripts');
   });
 
+  it('keeps the affected unit gate app-slice-aware', () => {
+    const affectedUnitGate = loadAffectedUnitGateScript();
+    const runPrGateScript = loadRunPrGateScript();
+
+    expect(affectedUnitGate).toContain("export type AppUnitSlice = 'hooks' | 'routes' | 'server' | 'ui'");
+    expect(affectedUnitGate).toContain('pnpm nx run ${APP_PROJECT}:test:unit:${slice}');
+    expect(runPrGateScript).toContain('formatDurationSummary');
+    expect(runPrGateScript).toContain('for (const entry of runAffectedUnitGate({ base, head }))');
+  });
 });

@@ -1,6 +1,7 @@
 name: Main Build
 
 on:
+  pull_request:
   push:
     branches:
       - main
@@ -8,6 +9,7 @@ on:
 permissions:
   actions: read
   contents: read
+  pull-requests: read
 
 jobs:
   main:
@@ -15,10 +17,58 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v6
+      - name: Checkout
+        uses: actions/checkout@v6
         with:
           filter: tree:0
           fetch-depth: 0
 
-      - uses: ./.github/actions/setup-pnpm-workspace
-      - run: pnpm nx run sva-studio-react:build
+      - name: Detect relevant PR changes
+        id: changes
+        if: github.event_name == 'pull_request'
+        uses: dorny/paths-filter@v4
+        with:
+          filters: |
+            relevant:
+              - '**'
+              - '!docs/**'
+              - '!**/*.md'
+              - '!.github/agents/**'
+              - '!.github/prompts/**'
+              - '!.github/ISSUE_TEMPLATE/**'
+              - '!.github/PULL_REQUEST_TEMPLATE.md'
+
+      - name: Setup workspace
+        if: github.event_name != 'pull_request' || steps.changes.outputs.relevant == 'true'
+        uses: ./.github/actions/setup-pnpm-workspace
+
+      - name: Ensure PR base ref is available
+        if: github.event_name == 'pull_request' && steps.changes.outputs.relevant == 'true'
+        run: git fetch origin "${{ github.base_ref }}" --no-tags --prune
+
+      - name: Determine PR scope
+        id: scope
+        if: github.event_name == 'pull_request' && steps.changes.outputs.relevant == 'true'
+        run: pnpm exec tsx scripts/ci/pr-scope.ts --base origin/${{ github.base_ref }} --github-output
+
+      - name: Run app build
+        if: github.event_name != 'pull_request' || (steps.changes.outputs.relevant == 'true' && steps.scope.outputs.app_build_mode != 'skip')
+        run: pnpm nx run sva-studio-react:build
+
+      - name: Publish build summary
+        if: always()
+        run: |
+          echo 'App-Build abgeschlossen.' >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ github.event_name }}" = "pull_request" ] && [ "${{ steps.changes.outputs.relevant }}" != "true" ]; then
+            echo 'Scope: keine code-relevanten Änderungen im Pull Request, das Gate endet bewusst als No-op-Erfolg.' >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          if [ "${{ github.event_name }}" = "pull_request" ] && [ "${{ steps.scope.outputs.app_build_mode }}" = "skip" ]; then
+            echo 'Scope: kein build-relevanter App-/UI-/Routing- oder Infrastruktur-Änderungsblock im Pull Request, das Gate endet bewusst als No-op-Erfolg.' >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "Scope: \`${{ steps.scope.outputs.app_build_mode }}\` gegen \`origin/${{ github.base_ref }}\`." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'Scope: voller App-Build für main.' >> "$GITHUB_STEP_SUMMARY"
+          fi

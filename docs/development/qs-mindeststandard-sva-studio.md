@@ -35,7 +35,7 @@ Wenn eine Änderung mehrere Klassen berührt, gilt die höchste Risikoklasse.
 | Änderungstyp | Mindestnachweis |
 | --- | --- |
 | Doku oder Governance ohne Laufzeitwirkung | `pnpm check:file-placement` und inhaltliche Reviewbarkeit |
-| Kernlogik oder Vertragsänderung | `pnpm test:types`, betroffene Unit-Tests, bei Bedarf `pnpm check:server-runtime` |
+| Kernlogik oder Vertragsänderung | `pnpm test:types` (enthaelt bereits `pnpm check:server-runtime`), betroffene Unit-Tests; der Runtime-Guard kann zusaetzlich frueh gezielt ausgefuehrt werden |
 | Datenzugriff, Auth, IAM, Routing, Server-Settings | betroffene Unit- und Type-Tests plus Integrations- oder Flow-Nachweis |
 | UI, Formulare, Navigation, Dialoge | betroffene Tests plus Accessibility-Selbstprüfung für Semantik, Labels, Tastaturbedienung und Fokus |
 | Release-, Rollout- oder Betriebslogik | passende technische Nachweise, aktualisierte Betriebsdoku und klare Rollback-Aussage |

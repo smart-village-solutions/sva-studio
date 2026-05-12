@@ -83,6 +83,11 @@ Nur echte Risiken nennen:
 
 ## Risikoklasse
 
+<!--
+Genau eine Option auswaehlen.
+Wenn mehrere Projekte betroffen sind, gilt die hoechste Risikoklasse.
+-->
+
 - [ ] hoch
 - [ ] mittel
 - [ ] normal

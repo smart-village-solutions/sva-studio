@@ -85,7 +85,7 @@ Nicht vollständig lokal abbildbar bleiben externe PR-Dienste wie SonarCloud, Co
 
 ## Risikoklassen nach Projektfamilie
 
-Die konkrete Testtiefe wird zusätzlich über die Risikoklasse des betroffenen Projekts oder Packages gesteuert. Details stehen in `./qs-mindeststandard-sva-studio.md`.
+Die konkrete Testtiefe wird zusätzlich über die Risikoklasse des betroffenen Projekts oder Packages gesteuert. Der QS-Mindeststandard unter `./qs-mindeststandard-sva-studio.md` bleibt die maßgebliche Quelle; die folgende Tabelle ist bewusst nur ein Kurz-Auszug für die Testing-Perspektive.
 
 | Risikoklasse | Typische Projekte | Erwartete Testtiefe |
 | --- | --- | --- |

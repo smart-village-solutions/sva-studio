@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { classifyPrScope, isNonCodeRelevantPath, type PrScopeDecision } from './pr-scope.ts';
+import {
+  classifyPrScope,
+  isNonCodeRelevantPath,
+  resolveChangedFiles,
+  type PrScopeDecision,
+} from './pr-scope.ts';
 
 const expectDecision = (
   decision: PrScopeDecision,
@@ -84,5 +89,27 @@ describe('pr-scope', () => {
       e2eMode: 'skip',
       appBuildMode: 'full',
     });
+  });
+
+  it('falls back to two-dot diff when no merge base is available', () => {
+    let invocationCount = 0;
+
+    const changedFiles = resolveChangedFiles('origin/main', 'HEAD', (args) => {
+      invocationCount += 1;
+      const diffRange = args.at(-1);
+
+      if (diffRange === 'origin/main...HEAD') {
+        throw new Error('fatal: origin/main...HEAD: no merge base');
+      }
+
+      expect(diffRange).toBe('origin/main..HEAD');
+      return 'packages/core/src/index.ts\napps/sva-studio-react/src/routes/index.tsx\n';
+    });
+
+    expect(invocationCount).toBe(2);
+    expect(changedFiles).toEqual([
+      'packages/core/src/index.ts',
+      'apps/sva-studio-react/src/routes/index.tsx',
+    ]);
   });
 });

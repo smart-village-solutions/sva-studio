@@ -73,7 +73,7 @@ jobs:
 
       - name: Ensure PR base ref is available
         if: github.event_name == 'pull_request' && steps.changes.outputs.relevant == 'true'
-        run: git fetch origin "${{ github.base_ref }}" --no-tags --prune --depth=1
+        run: git fetch origin "${{ github.base_ref }}" --no-tags --prune
 
       - name: Determine PR scope
         id: scope
@@ -175,6 +175,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           filter: tree:0
+          fetch-depth: 0
 
       - name: Detect relevant PR changes
         id: changes
@@ -241,7 +242,7 @@ jobs:
 
       - name: Ensure PR base ref is available
         if: steps.changes.outputs.relevant == 'true'
-        run: git fetch origin "${{ github.base_ref }}" --no-tags --prune --depth=1
+        run: git fetch origin "${{ github.base_ref }}" --no-tags --prune
 
       - name: Determine PR scope
         id: scope

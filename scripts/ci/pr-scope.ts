@@ -52,7 +52,7 @@ const integrationEscalationPatterns = [
   /^apps\/sva-studio-react\/(?:package\.json|playwright\.config\.ts|vite\.config\.ts|vitest\.config\.ts)$/u,
   /^packages\/(?:auth-runtime|core|data|data-repositories|instance-registry|routing|server-runtime|sva-mainserver)\/(?:package\.json|vite\.config\.ts|vitest\.config\.ts)$/u,
   /^scripts\/ci\//u,
-  /^\.github\/workflows\/(?:app-e2e|test-coverage|quality-checks)\.yml$/u,
+  /^\.github\/workflows\/(?:app-e2e|runtime-gates|quality-gates)\.yml$/u,
 ];
 
 const e2eRelevantPatterns = [
@@ -153,10 +153,22 @@ export const resolveChangedFiles = (
   ) => string = (args, options) =>
     execFileSync('git', [...args], { encoding: options?.encoding ?? 'utf8' }).trim()
 ): string[] => {
-  const output = runGitCommand(
-    ['diff', '--name-only', '--diff-filter=ACMR', `${base}...${head}`],
-    { encoding: 'utf8' }
-  );
+  let output = '';
+
+  try {
+    output = runGitCommand(['diff', '--name-only', '--diff-filter=ACMR', `${base}...${head}`], {
+      encoding: 'utf8',
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (!message.includes('no merge base')) {
+      throw error;
+    }
+
+    output = runGitCommand(['diff', '--name-only', '--diff-filter=ACMR', `${base}..${head}`], {
+      encoding: 'utf8',
+    });
+  }
 
   if (output.length === 0) {
     return [];

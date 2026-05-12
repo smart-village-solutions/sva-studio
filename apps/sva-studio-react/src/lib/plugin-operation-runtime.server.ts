@@ -193,6 +193,7 @@ export const createPluginOperationExecutionHandlersFromSnapshot = (input: {
 }): Promise<Readonly<Record<string, PluginOperationExecutionHandler>>> => {
   return (async () => {
     const handlerEntries: Array<readonly [string, PluginOperationExecutionHandler]> = [];
+    const handlerOwners = new Map<string, string>();
 
     for (const source of input.pluginSources) {
       const jobsEntry = source.manifest.entryPoints.jobs;
@@ -220,6 +221,11 @@ export const createPluginOperationExecutionHandlersFromSnapshot = (input: {
       }
 
       for (const [jobTypeId, handler] of Object.entries(createPluginJobExecutionHandlers(runtimeFactory()))) {
+        const existingOwner = handlerOwners.get(jobTypeId);
+        if (existingOwner) {
+          throw new Error(`duplicate_plugin_operation_handler:${jobTypeId}:${source.pluginId}:${existingOwner}`);
+        }
+        handlerOwners.set(jobTypeId, source.pluginId);
         handlerEntries.push([jobTypeId, handler] as const);
       }
     }

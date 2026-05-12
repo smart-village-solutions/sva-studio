@@ -53,10 +53,12 @@ const createJobPluginSource = (input: {
   readonly pluginId: string;
   readonly runtimeRequirement?: string;
   readonly sourceType?: PluginCatalogSourceType;
+  readonly sourceRef?: string;
+  readonly jobsEntry?: string;
 }) => ({
   pluginId: input.pluginId,
   sourceType: input.sourceType ?? 'workspace',
-  sourceRef: 'packages/plugin-waste-management',
+  sourceRef: input.sourceRef ?? 'packages/plugin-waste-management',
   manifest: definePluginManifest({
     pluginId: input.pluginId,
     version: '0.0.1',
@@ -67,7 +69,7 @@ const createJobPluginSource = (input: {
     },
     entryPoints: {
       browser: './dist/index.js',
-      jobs: './dist/server.js',
+      jobs: input.jobsEntry ?? './dist/server.js',
     },
     runtimeRequirements: input.runtimeRequirement
       ? {
@@ -279,6 +281,30 @@ describe('plugin operation runtime registration', () => {
         },
       })
     ).rejects.toThrowError('missing_plugin_job_module_factory:installed-waste-plugin');
+  });
+
+  it('rejects duplicate job handler ids across plugin job modules', async () => {
+    const mod = await import('./plugin-operation-runtime.server');
+
+    await expect(
+      mod.createPluginOperationExecutionHandlersFromSnapshot({
+        pluginSources: [
+          createJobPluginSource({
+            pluginId: 'workspace-waste-plugin',
+            runtimeRequirement: 'waste-management.operations',
+          }),
+          createJobPluginSource({
+            pluginId: 'workspace-waste-plugin-2',
+            runtimeRequirement: 'waste-management.operations',
+          }),
+        ],
+        runtimeFactories: {
+          'waste-management.operations': () => ({}),
+        },
+      })
+    ).rejects.toThrowError(
+      /^duplicate_plugin_operation_handler:waste-management\.[^:]+:workspace-waste-plugin-2:workspace-waste-plugin$/
+    );
   });
 
   it('prefers manifest-declared workspace job entries before falling back to src/server.ts', async () => {

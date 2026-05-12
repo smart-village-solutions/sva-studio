@@ -76,6 +76,23 @@ const draftFromEntry = (entry: InstanceInterface): InstanceInterfaceDraft => {
   };
 };
 
+const translateInterfacesErrorMessage = (error: unknown, fallback: string): string => {
+  const message = readErrorMessage(error, fallback);
+
+  switch (message) {
+    case 'custom_interfaces_not_supported':
+      return t('interfaces.errors.customInterfacesNotSupported');
+    case 'interface_not_found':
+      return t('interfaces.errors.interfaceNotFound');
+    case 'interface_instance_mismatch':
+      return t('interfaces.errors.interfaceInstanceMismatch');
+    case 'interface_type_change_not_supported':
+      return t('interfaces.errors.interfaceTypeChangeNotSupported');
+    default:
+      return message;
+  }
+};
+
 export const InterfacesPage = () => {
   const listInterfaces = useServerFn(listInstanceInterfacesServerFn);
   const saveMainserver = useServerFn(saveSvaMainserverInterfaceSettings);
@@ -111,7 +128,7 @@ export const InterfacesPage = () => {
       setInstanceId(result.instanceId);
       setInterfaces(result.entries);
     } catch (error) {
-      setErrorMessage(readErrorMessage(error, t('interfaces.messages.loadError')));
+      setErrorMessage(translateInterfacesErrorMessage(error, t('interfaces.messages.loadError')));
     } finally {
       setIsLoading(false);
     }
@@ -160,7 +177,7 @@ export const InterfacesPage = () => {
       setEditState({ mode: 'closed' });
       await refresh();
     } catch (error) {
-      setErrorMessage(readErrorMessage(error, t('interfaces.messages.saveError')));
+      setErrorMessage(translateInterfacesErrorMessage(error, t('interfaces.messages.saveError')));
     } finally {
       setIsSaving(false);
     }
@@ -173,13 +190,16 @@ export const InterfacesPage = () => {
     }
     setErrorMessage(null);
     try {
-      await deleteInterfaceRef.current({
+      const result = await deleteInterfaceRef.current({
         data: { instanceId, id: pendingDelete.id },
       });
+      if (!result.deleted) {
+        throw new Error('interface_not_found');
+      }
       setPendingDelete(null);
       await refresh();
     } catch (error) {
-      setErrorMessage(readErrorMessage(error, t('interfaces.messages.saveError')));
+      setErrorMessage(translateInterfacesErrorMessage(error, t('interfaces.messages.saveError')));
       setPendingDelete(null);
     }
   };

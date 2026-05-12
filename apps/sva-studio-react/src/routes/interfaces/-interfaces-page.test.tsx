@@ -199,4 +199,59 @@ describe('InterfacesPage', () => {
       });
     });
   });
+
+  it('shows the translated backend error when custom interface storage is unavailable', async () => {
+    state.listInterfaces.mockResolvedValue({
+      instanceId: 'de-musterhausen',
+      entries: [mainserverEntry],
+    });
+    state.upsertInterface.mockRejectedValue(new Error('custom_interfaces_not_supported'));
+
+    render(<InterfacesPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('1 Schnittstelle(n)')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Neue Schnittstelle' }));
+    fireEvent.click(screen.getByRole('radio', { name: /S3-kompatibler Object Storage/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+
+    const textboxes = screen.getAllByRole('textbox');
+    fireEvent.change(textboxes[0]!, { target: { value: 'Medien-S3' } });
+    fireEvent.change(textboxes[1]!, { target: { value: 'https://s3.example' } });
+    fireEvent.change(textboxes[3]!, { target: { value: 'media-bucket' } });
+    fireEvent.change(textboxes[4]!, { target: { value: 'key-2' } });
+    fireEvent.change(document.getElementById('s3-secret-key')!, { target: { value: 'secret-2' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Einstellungen speichern' }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Zusätzliche Schnittstellen werden erst unterstützt, sobald das Backend für diese Typen angebunden ist.')
+      ).toBeTruthy();
+    });
+  });
+
+  it('shows a save error when deletion reports no removed interface', async () => {
+    state.listInterfaces.mockResolvedValue({
+      instanceId: 'de-musterhausen',
+      entries: [mainserverEntry, s3Entry],
+    });
+    state.deleteInterface.mockRejectedValue(new Error('interface_not_found'));
+
+    render(<InterfacesPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('2 Schnittstelle(n)')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Löschen' })[0]!);
+    fireEvent.click(screen.getByRole('button', { name: 'Endgültig löschen' }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Die gewählte Schnittstelle wurde nicht gefunden oder bereits entfernt.')
+      ).toBeTruthy();
+    });
+  });
 });

@@ -554,6 +554,38 @@ describe('loginHandler (full auth path)', () => {
     }
   });
 
+  it('uses the request url host in debug auth headers when forwarded headers are not explicitly trusted', async () => {
+    const { loginHandler } = await import('./auth-route-handlers.js');
+    const { resolveAuthConfigForRequest } = await import('./config.js');
+
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('SVA_AUTH_DEBUG_HEADERS', 'true');
+    vi.stubEnv('SVA_TRUST_FORWARDED_HEADERS', '');
+    vi.mocked(resolveAuthConfigForRequest).mockResolvedValueOnce({
+      ...authConfigBase,
+      kind: 'instance',
+      instanceId: 'de-test',
+    } as never);
+
+    try {
+      const response = await loginHandler(
+        new Request('https://studio.example.org/auth/login?returnTo=%2Fplugins%2Fnews', {
+          headers: {
+            forwarded: 'for=1; proto=https; host=proxy.example.org',
+            'x-forwarded-host': 'proxy.example.org',
+            'x-forwarded-proto': 'https',
+          },
+        })
+      );
+
+      expect(response.status).toBe(302);
+      expect(response.headers.get('x-sva-debug-request-host')).toBe('studio.example.org');
+      expect(response.headers.get('x-sva-debug-request-origin')).toBe('https://studio.example.org');
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it('logs and returns 500 when login URL creation fails', async () => {
     const { loginHandler } = await import('./auth-route-handlers.js');
     const { createLoginUrl } = await import('./auth-server/login.js');

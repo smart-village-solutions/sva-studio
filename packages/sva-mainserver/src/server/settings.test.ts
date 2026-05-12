@@ -64,6 +64,42 @@ describe('settings', () => {
     await expect(loadSvaMainserverSettings('de-musterhausen')).resolves.toBeNull();
   });
 
+  it('maps non-configured status and non-string public config values defensively on load', async () => {
+    state.loadDefaultExternalInterfaceRecord.mockResolvedValue({
+      id: 'sva-mainserver:de-musterhausen',
+      instanceId: 'de-musterhausen',
+      typeKey: 'sva_mainserver',
+      ownerKind: 'host',
+      ownerId: 'host',
+      displayName: 'SVA Mainserver',
+      alias: 'default',
+      enabled: true,
+      isDefault: true,
+      category: 'api',
+      baseUrl: 'https://mainserver.example/graphql',
+      authMode: 'oauth2',
+      publicConfig: {
+        graphqlBaseUrl: 42,
+        oauthTokenUrl: null,
+      },
+      statusCheckKind: 'sva_mainserver',
+      visibleStatus: 'not_configured',
+      lastCheckedAt: '2026-03-15T10:00:00.000Z',
+    });
+
+    const { loadSvaMainserverSettings } = await import('./settings');
+
+    await expect(loadSvaMainserverSettings('de-musterhausen')).resolves.toEqual({
+      instanceId: 'de-musterhausen',
+      providerKey: 'sva_mainserver',
+      graphqlBaseUrl: '',
+      oauthTokenUrl: '',
+      enabled: true,
+      lastVerifiedAt: '2026-03-15T10:00:00.000Z',
+      lastVerifiedStatus: 'error',
+    });
+  });
+
   it('saves normalized settings and preserves verification metadata', async () => {
     state.loadDefaultExternalInterfaceRecord.mockResolvedValue({
       id: 'sva-mainserver:de-musterhausen',
@@ -107,6 +143,42 @@ describe('settings', () => {
         enabled: false,
         lastCheckedAt: '2026-03-14T09:00:00.000Z',
         visibleStatus: 'disabled',
+      })
+    );
+  });
+
+  it('creates a default registry record id and unknown status for newly enabled settings', async () => {
+    state.loadDefaultExternalInterfaceRecord.mockResolvedValue(null);
+
+    const { saveSvaMainserverSettings } = await import('./settings');
+
+    await expect(
+      saveSvaMainserverSettings({
+        instanceId: 'de-neu',
+        graphqlBaseUrl: 'https://new.example.invalid/graphql',
+        oauthTokenUrl: 'https://new.example.invalid/oauth/token',
+        enabled: true,
+      })
+    ).resolves.toEqual(
+      expect.objectContaining({
+        instanceId: 'de-neu',
+        providerKey: 'sva_mainserver',
+        graphqlBaseUrl: 'https://new.example.invalid/graphql',
+        oauthTokenUrl: 'https://new.example.invalid/oauth/token',
+        enabled: true,
+      })
+    );
+
+    expect(state.saveExternalInterfaceRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'sva-mainserver:de-neu',
+        alias: 'default',
+        enabled: true,
+        visibleStatus: 'unknown',
+        publicConfig: {
+          graphqlBaseUrl: 'https://new.example.invalid/graphql',
+          oauthTokenUrl: 'https://new.example.invalid/oauth/token',
+        },
       })
     );
   });

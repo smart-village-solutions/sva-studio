@@ -1,4 +1,5 @@
 import { execFileSync, execSync } from 'node:child_process';
+import { createRequire } from 'node:module';
 import { performance } from 'node:perf_hooks';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -24,6 +25,7 @@ interface AffectedUnitGateOptions {
 }
 
 const APP_PROJECT = 'sva-studio-react';
+const require = createRequire(import.meta.url);
 
 const APP_UI_PATTERNS = [/^apps\/sva-studio-react\/src\/(?:components|providers|i18n)\//u];
 const APP_ROUTES_PATTERNS = [/^apps\/sva-studio-react\/src\/(?:routes|routing)\//u];
@@ -33,11 +35,11 @@ const APP_SERVER_PATTERNS = [
 ];
 const APP_HOOKS_PATTERNS = [
   /^apps\/sva-studio-react\/src\/hooks\//u,
-  /^apps\/sva-studio-react\/src\/lib\//u,
 ];
 const APP_AGGREGATE_PATTERNS = [
   /^apps\/sva-studio-react\/(?:package\.json|tsconfig\.json|vite\.config\.ts|vitest(?:\..+)?\.config\.ts|playwright\.config\.ts)$/u,
   /^apps\/sva-studio-react\/(?:e2e|scripts)\//u,
+  /^apps\/sva-studio-react\/src\/lib\//u,
   /^apps\/sva-studio-react\/src\/(?:main|routeTreeGen|router)\.(?:ts|tsx)$/u,
 ];
 

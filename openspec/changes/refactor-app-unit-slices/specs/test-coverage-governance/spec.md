@@ -1,6 +1,6 @@
 ## ADDED Requirements
 
-### Requirement: PR-Unit-Pfad darf App-Unit-Slices selektiv ausfuehren
+### Requirement: PR-Unit-Pfad darf App-Unit-Slices selektiv ausführen
 Das System SHALL im PR-Pfad bei isolierten App-Änderungen nur die betroffenen App-Unit-Slices statt der kompletten App-Unit-Suite ausführen dürfen.
 
 #### Scenario: App-only-PR nutzt Slice-Ausführung

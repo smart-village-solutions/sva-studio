@@ -11,12 +11,12 @@ describe('affected-unit-gate', () => {
     });
   });
 
-  it('uses slices for app-only ui and hooks changes', () => {
+  it('uses slices for app-only ui and hook changes', () => {
     expect(
       planAppUnitExecution(
         [
           'apps/sva-studio-react/src/components/Header.tsx',
-          'apps/sva-studio-react/src/lib/theme.ts',
+          'apps/sva-studio-react/src/hooks/useTheme.ts',
         ],
         ['sva-studio-react']
       )
@@ -24,6 +24,14 @@ describe('affected-unit-gate', () => {
       mode: 'slices',
       reason: 'app-only-sliceable-change',
       slices: ['hooks', 'ui'],
+    });
+  });
+
+  it('uses the aggregate app target for shared lib changes', () => {
+    expect(planAppUnitExecution(['apps/sva-studio-react/src/lib/theme.ts'], ['sva-studio-react'])).toEqual({
+      mode: 'aggregate',
+      reason: 'aggregate-app-file',
+      slices: [],
     });
   });
 

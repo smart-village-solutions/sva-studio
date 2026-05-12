@@ -1,6 +1,6 @@
 ## ADDED Requirements
 
-### Requirement: App-Unit-Targets duerfen in stabile Slices aufgeteilt werden
+### Requirement: App-Unit-Targets dürfen in stabile Slices aufgeteilt werden
 Das Monorepo SHALL für große App-Test-Suiten mehrere stabile Nx-Unit-Targets neben einem aggregierten Voll-Target bereitstellen können.
 
 #### Scenario: Aggregiertes Voll-Target bleibt erhalten

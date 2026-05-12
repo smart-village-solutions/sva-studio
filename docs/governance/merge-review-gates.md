@@ -34,6 +34,18 @@ Hinweis zur aktuellen Repository-Situation: `.github/workflows/app-e2e.yml` verw
 - Stale-Approval wird bei neuem Commit invalidiert; ein neuer Approve ist erforderlich.
 - Bis zur vollen organisatorischen Trennung gilt fuer kritische Pfade mindestens ein dokumentierter fachlicher Review durch die zustaendige Verantwortungsgruppe.
 
+## Mindestinhalt jedes Pull Requests
+
+Jeder PR muss unabhaengig von seiner Groesse so beschrieben sein, dass Scope, Risiko und Nachweis ohne Rueckfrage erkennbar sind. Erwartet werden mindestens:
+
+- Ziel oder adressierte Anforderung
+- Betroffene Projekte oder Packages
+- Risikoeinstufung oder konkrete Risikobeschreibung
+- Tatsaechlich ausgefuehrte Tests oder begruendete Abweichung
+- Doku-Status und bei Bedarf Rollback-Hinweis
+
+Fuer Aenderungen in kritischen Pfaden muss der PR-Text ausserdem erkennen lassen, warum die ausgewaehlten Tests dem Risiko angemessen sind. Das formale Schema dafuer steht in `../development/qs-mindeststandard-sva-studio.md`.
+
 ## Merge-Methode pro Branch-Typ
 
 | Branch-Typ | Erlaubte Merge-Methode | Regel |

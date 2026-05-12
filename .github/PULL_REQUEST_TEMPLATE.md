@@ -7,6 +7,17 @@ Kurz beschreiben:
 - Welches Problem oder welcher Kontext wird adressiert?
 -->
 
+## Anforderung / Kontext
+
+<!--
+Pflicht für jede funktionale, technische oder betriebliche Änderung:
+- Welche Anforderung, welches Problem oder welches Ziel wird adressiert?
+- Falls vorhanden: Link zu Issue, OpenSpec-Change, Ticket oder ADR
+-->
+
+- Referenz:
+- Kontext:
+
 ## Umfang
 
 - [ ] Feature
@@ -21,6 +32,14 @@ Kurz beschreiben:
 <!--
 Die wichtigsten Änderungen knapp und konkret auflisten.
 Keine Commit-Chronologie, sondern fachliche Zusammenfassung.
+-->
+
+- 
+
+## Betroffene Projekte / Packages
+
+<!--
+Explizit benennen, damit Scope, Risiko und Testtiefe schnell beurteilbar bleiben.
 -->
 
 - 
@@ -62,6 +81,17 @@ Nur echte Risiken nennen:
 - Risiko:
 - Rollback:
 
+## Risikoklasse
+
+<!--
+Genau eine Option auswaehlen.
+Wenn mehrere Projekte betroffen sind, gilt die hoechste Risikoklasse.
+-->
+
+- [ ] hoch
+- [ ] mittel
+- [ ] normal
+
 ## Dokumentation
 
 <!--
@@ -90,11 +120,13 @@ Details:
 
 ## Checkliste
 
+- [ ] Ziel, Kontext und betroffene Projekte/Packages sind im PR klar beschrieben
 - [ ] Keine hardcodierten UI-Texte eingeführt; user-facing Texte laufen über das Übersetzungssystem
 - [ ] Logging im Server-Code nutzt keine `console.*`-Statements
 - [ ] Input-Validierung und PII-Schutz berücksichtigt
 - [ ] UI-/Styling-Änderungen folgen Design-System / `shadcn/ui`
 - [ ] Accessibility-Auswirkungen geprüft
+- [ ] Testdaten, Fixtures, Seeds und Snapshots enthalten keine echten personenbezogenen Daten
 - [ ] Tests wurden ergänzt oder angepasst, falls Verhalten geändert wurde
 - [ ] `pnpm check:file-placement` ist berücksichtigt
 

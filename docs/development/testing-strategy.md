@@ -83,6 +83,18 @@ Nicht vollständig lokal abbildbar bleiben externe PR-Dienste wie SonarCloud, Co
 | Deployment- oder Betriebsänderung | File-Placement, relevante Tests, Rendern der Compose-Konfiguration |
 | Architektur- oder Governance-Änderung | Doku-Update plus passende technische Nachweise |
 
+## Risikoklassen nach Projektfamilie
+
+Die konkrete Testtiefe wird zusätzlich über die Risikoklasse des betroffenen Projekts oder Packages gesteuert. Der QS-Mindeststandard unter `./qs-mindeststandard-sva-studio.md` bleibt die maßgebliche Quelle; die folgende Tabelle ist bewusst nur ein Kurz-Auszug für die Testing-Perspektive.
+
+| Risikoklasse | Typische Projekte | Erwartete Testtiefe |
+| --- | --- | --- |
+| hoch | `sva-mainserver`, `auth-runtime`, `iam-admin`, `iam-core`, `iam-governance`, `instance-registry`, `data`, `routing` | Type-, Unit- und bei Flow- oder Vertragswirkung zusätzliche Integrations- oder E2E-Nachweise |
+| mittel | `data-client`, `monitoring-client`, `plugin-sdk`, `server-runtime`, `studio-module-iam` | Type- und Unit-Tests; Integrationstests bei Schnittstellen- oder Runtime-Wirkung |
+| normal | `studio-ui-react`, fachliche Plugin-Packages, Doku- und Governance-Pfade | gezielte Nachweise für den betroffenen Scope; bei UI mindestens Accessibility-Selbstprüfung |
+
+Wenn eine Änderung mehrere Projektfamilien berührt, gilt die höchste betroffene Risikoklasse.
+
 ## E2E-Strategie
 
 E2E-Läufe sichern die kritischen Browser- und Integrationspfade ab. Das Detailsetup, die Pflichtdienste und der CI-Workflow stehen in `./app-e2e-integration-testing.md`.
@@ -123,4 +135,5 @@ Neue Features, Architekturänderungen oder neue Betriebswege müssen die betroff
 - Coverage-Governance: `./testing-coverage.md`
 - App-E2E-Integration: `./app-e2e-integration-testing.md`
 - Review-Governance: `./review-agent-governance.md`
+- QS-Mindeststandard: `./qs-mindeststandard-sva-studio.md`
 - Architekturüberblick: `../architecture/README.md`

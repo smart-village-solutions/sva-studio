@@ -36,15 +36,15 @@ Hinweis zur aktuellen Repository-Situation: `.github/workflows/app-e2e.yml` verw
 
 ## Mindestinhalt jedes PR
 
-Jeder PR muss unabhängig von seiner Größe so beschrieben sein, dass Scope, Risiko und Nachweis ohne Rückfrage erkennbar sind. Erwartet werden mindestens:
+Jeder PR muss unabhaengig von seiner Groesse so beschrieben sein, dass Scope, Risiko und Nachweis ohne Rueckfrage erkennbar sind. Erwartet werden mindestens:
 
 - Ziel oder adressierte Anforderung
 - betroffene Projekte oder Packages
 - Risikoeinstufung oder konkrete Risikobeschreibung
-- tatsächlich ausgeführte Tests oder begründete Abweichung
+- tatsaechlich ausgefuehrte Tests oder begruendete Abweichung
 - Doku-Status und bei Bedarf Rollback-Hinweis
 
-Für Änderungen in kritischen Pfaden muss der PR-Text außerdem erkennen lassen, warum die ausgewählten Tests dem Risiko angemessen sind. Das formale Schema dafür steht in `../development/qs-mindeststandard-sva-studio.md`.
+Fuer Aenderungen in kritischen Pfaden muss der PR-Text ausserdem erkennen lassen, warum die ausgewaehlten Tests dem Risiko angemessen sind. Das formale Schema dafuer steht in `../development/qs-mindeststandard-sva-studio.md`.
 
 ## Merge-Methode pro Branch-Typ
 

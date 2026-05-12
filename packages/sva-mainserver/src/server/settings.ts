@@ -6,27 +6,12 @@ import {
 
 import type { SvaMainserverInstanceConfig } from '../types.js';
 import { normalizeSvaMainserverUpstreamUrl } from './upstream-url-validation.js';
+import { mapVisibleStatusToVerificationStatus } from './verification-status.js';
 
 const SVA_MAINSERVER_TYPE_KEY = 'sva_mainserver';
 const SVA_MAINSERVER_ALIAS = 'default';
 
 const buildSvaMainserverInterfaceId = (instanceId: string): string => `sva-mainserver:${instanceId}`;
-
-const mapVisibleStatusToVerificationStatus = (
-  visibleStatus: ExternalInterfaceVisibleStatus | undefined
-): string | undefined => {
-  switch (visibleStatus) {
-    case 'ok':
-      return 'ok';
-    case 'error':
-    case 'not_configured':
-      return 'error';
-    case 'disabled':
-      return 'disabled';
-    default:
-      return undefined;
-  }
-};
 
 const mapValuesToConfig = (input: {
   instanceId: string;
@@ -34,7 +19,7 @@ const mapValuesToConfig = (input: {
   oauthTokenUrl: string;
   enabled: boolean;
   lastVerifiedAt?: string;
-  lastVerifiedStatus?: string;
+  lastVerifiedStatus?: SvaMainserverInstanceConfig['lastVerifiedStatus'];
 }): SvaMainserverInstanceConfig => ({
   instanceId: input.instanceId,
   providerKey: 'sva_mainserver',

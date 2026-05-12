@@ -4,25 +4,10 @@ import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 import type { SvaMainserverInstanceConfig } from '../types.js';
 import { SvaMainserverError } from './errors.js';
 import { normalizeSvaMainserverUpstreamUrl } from './upstream-url-validation.js';
+import { mapVisibleStatusToVerificationStatus } from './verification-status.js';
 
 const logger = createSdkLogger({ component: 'sva-mainserver-config', level: 'debug' });
 const SVA_MAINSERVER_TYPE_KEY = 'sva_mainserver';
-
-const mapVisibleStatusToVerificationStatus = (
-  visibleStatus: string | undefined
-): SvaMainserverInstanceConfig['lastVerifiedStatus'] => {
-  switch (visibleStatus) {
-    case 'ok':
-      return 'ok';
-    case 'error':
-    case 'not_configured':
-      return 'error';
-    case 'disabled':
-      return 'disabled';
-    default:
-      return undefined;
-  }
-};
 
 const buildLogContext = (instanceId: string, extra: Record<string, unknown> = {}) => {
   const context = getWorkspaceContext();

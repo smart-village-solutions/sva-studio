@@ -7,8 +7,7 @@ import {
   type Context
 } from '@opentelemetry/api';
 import { resourceFromAttributes } from '@opentelemetry/resources';
-import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
-import { ATTR_DEPLOYMENT_ENVIRONMENT } from '@opentelemetry/semantic-conventions/incubating';
+import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions';
 import { NodeSDK } from '@opentelemetry/sdk-node';
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http';
 import { OTLPLogExporter } from '@opentelemetry/exporter-logs-otlp-http';
@@ -187,8 +186,9 @@ export const createOtelSdk = (config: OtelConfig): NodeSDK => {
   }
 
   const resource = resourceFromAttributes({
-    [ATTR_SERVICE_NAME]: config.serviceName,
-    [ATTR_DEPLOYMENT_ENVIRONMENT]: config.environment ?? process.env.NODE_ENV ?? 'development'
+    [SemanticResourceAttributes.SERVICE_NAME]: config.serviceName,
+    [SemanticResourceAttributes.DEPLOYMENT_ENVIRONMENT]:
+      config.environment ?? process.env.NODE_ENV ?? 'development'
   });
 
   const metricExporter = new OTLPMetricExporter({

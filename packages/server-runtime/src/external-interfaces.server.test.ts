@@ -140,6 +140,55 @@ describe('external interfaces runtime', () => {
     });
   });
 
+  it('rejects non-object decrypted secret payloads fail-closed', async () => {
+    await expect(
+      resolveExternalInterface({
+        instanceId: 'tenant-a',
+        typeKey: 's3',
+        interfaceId: 'interface-1',
+        loadById: async () => ({
+          ...baseRecord,
+          typeKey: 's3',
+          category: 'object_storage',
+          statusCheckKind: 's3',
+        }),
+        loadByAlias: async () => null,
+        loadDefault: async () => null,
+        revealSecret: () => JSON.stringify(['not', 'an', 'object']),
+      })
+    ).rejects.toMatchObject({
+      code: 'secret_unreadable',
+      retryable: true,
+    });
+  });
+
+  it('allows resolving enabled interface types without configured secrets', async () => {
+    await expect(
+      resolveExternalInterface({
+        instanceId: 'tenant-a',
+        typeKey: 'sva_mainserver',
+        loadById: async () => null,
+        loadByAlias: async () => null,
+        loadDefault: async () => ({
+          ...baseRecord,
+          typeKey: 'sva_mainserver',
+          category: 'api',
+          statusCheckKind: 'sva_mainserver',
+          publicConfig: {
+            graphqlBaseUrl: 'https://tenant-a.example/graphql',
+          },
+          secretConfigCiphertext: undefined,
+        }),
+        revealSecret: () => undefined,
+      })
+    ).resolves.toEqual(
+      expect.objectContaining({
+        typeKey: 'sva_mainserver',
+        secretConfig: {},
+      })
+    );
+  });
+
   it('maps successful and failed connection checks into central technical status records', async () => {
     const resolved = {
       ...baseRecord,

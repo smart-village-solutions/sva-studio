@@ -48,6 +48,12 @@ const buildSecretConfigMarkers = (typeKey: string, configured: boolean): Record<
   }
 };
 
+const interfaceTypeRequiresSecrets = (typeKey: string): boolean =>
+  Object.keys(buildSecretConfigMarkers(typeKey, true)).length > 0;
+
+const isPlainObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
 export const sanitizeExternalInterfaceRecord = (
   record: ExternalInterfaceRecord
 ): ExternalInterfaceSettingsRecord => ({
@@ -77,7 +83,10 @@ export const sanitizeExternalInterfaceRecord = (
 
 const parseSecretConfig = (value: string, typeKey: string, instanceId: string): Record<string, string> => {
   try {
-    const parsed = JSON.parse(value) as Record<string, unknown>;
+    const parsed = JSON.parse(value) as unknown;
+    if (!isPlainObject(parsed)) {
+      throw new Error('secret_unreadable');
+    }
     return Object.fromEntries(
       Object.entries(parsed).flatMap(([key, entryValue]) =>
         typeof entryValue === 'string' && entryValue.length > 0 ? [[key, entryValue]] : []
@@ -145,6 +154,12 @@ export const resolveExternalInterface = async (input: {
   }
 
   if (!record.secretConfigCiphertext) {
+    if (!interfaceTypeRequiresSecrets(record.typeKey)) {
+      return {
+        ...record,
+        secretConfig: {},
+      };
+    }
     throw new ExternalInterfaceRuntimeError({
       code: 'secret_missing',
       instanceId: input.instanceId,

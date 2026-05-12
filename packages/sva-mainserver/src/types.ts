@@ -1,4 +1,5 @@
 export type SvaMainserverProviderKey = 'sva_mainserver';
+export type SvaMainserverVerificationStatus = 'ok' | 'error' | 'disabled';
 
 export type SvaMainserverErrorCode =
   | 'config_not_found'
@@ -22,7 +23,7 @@ export type SvaMainserverInstanceConfig = {
   readonly oauthTokenUrl: string;
   readonly enabled: boolean;
   readonly lastVerifiedAt?: string;
-  readonly lastVerifiedStatus?: string;
+  readonly lastVerifiedStatus?: SvaMainserverVerificationStatus;
 };
 
 export type SvaMainserverConnectionStatus = {

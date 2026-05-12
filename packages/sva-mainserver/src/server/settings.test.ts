@@ -100,6 +100,42 @@ describe('settings', () => {
     });
   });
 
+  it('maps disabled visible status to disabled verification status on load', async () => {
+    state.loadDefaultExternalInterfaceRecord.mockResolvedValue({
+      id: 'sva-mainserver:de-musterhausen',
+      instanceId: 'de-musterhausen',
+      typeKey: 'sva_mainserver',
+      ownerKind: 'host',
+      ownerId: 'host',
+      displayName: 'SVA Mainserver',
+      alias: 'default',
+      enabled: false,
+      isDefault: true,
+      category: 'api',
+      baseUrl: 'https://mainserver.example/graphql',
+      authMode: 'oauth2',
+      publicConfig: {
+        graphqlBaseUrl: 'https://mainserver.example/graphql',
+        oauthTokenUrl: 'https://mainserver.example/oauth/token',
+      },
+      statusCheckKind: 'sva_mainserver',
+      visibleStatus: 'disabled',
+      lastCheckedAt: '2026-03-15T10:00:00.000Z',
+    });
+
+    const { loadSvaMainserverSettings } = await import('./settings');
+
+    await expect(loadSvaMainserverSettings('de-musterhausen')).resolves.toEqual({
+      instanceId: 'de-musterhausen',
+      providerKey: 'sva_mainserver',
+      graphqlBaseUrl: 'https://mainserver.example/graphql',
+      oauthTokenUrl: 'https://mainserver.example/oauth/token',
+      enabled: false,
+      lastVerifiedAt: '2026-03-15T10:00:00.000Z',
+      lastVerifiedStatus: 'disabled',
+    });
+  });
+
   it('saves normalized settings and preserves verification metadata', async () => {
     state.loadDefaultExternalInterfaceRecord.mockResolvedValue({
       id: 'sva-mainserver:de-musterhausen',

@@ -78,12 +78,24 @@ export const createMainserverJsonRequestHeaders = (headers?: HeadersInit): Heade
 export const buildMainserverListUrl = (basePath: string, query: MainserverListQuery): string =>
   `${basePath}?page=${encodeURIComponent(String(query.page))}&pageSize=${encodeURIComponent(String(query.pageSize))}`;
 
-export const requestMainserverJson = async <T, TError extends Error = MainserverApiError>(input: {
+export function requestMainserverJson<T>(input: {
+  readonly url: string;
+  readonly init?: RequestInit;
+  readonly fetch?: typeof fetch;
+  readonly errorFactory?: MainserverErrorFactory<MainserverApiError>;
+}): Promise<T>;
+export function requestMainserverJson<T, TError extends Error>(input: {
+  readonly url: string;
+  readonly init?: RequestInit;
+  readonly fetch?: typeof fetch;
+  readonly errorFactory: MainserverErrorFactory<TError>;
+}): Promise<T>;
+export async function requestMainserverJson<T, TError extends Error = MainserverApiError>(input: {
   readonly url: string;
   readonly init?: RequestInit;
   readonly fetch?: typeof fetch;
   readonly errorFactory?: MainserverErrorFactory<TError>;
-}): Promise<T> => {
+}): Promise<T> {
   const response = await resolveFetch(input.fetch)(input.url, {
     credentials: 'include',
     ...input.init,
@@ -110,7 +122,7 @@ export const requestMainserverJson = async <T, TError extends Error = Mainserver
   }
 
   return (await response.json()) as T;
-};
+}
 
 export const createMainserverCrudClient = <
   TItem,

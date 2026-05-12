@@ -13,7 +13,6 @@ import {
 } from './authorize-runtime.js';
 import {
   buildRequestContext,
-  type DeniedAuthorizeResponseInput,
   errorResponse,
   iamAuthorizeLatencyHistogram,
   loadAuthorizeRequest,

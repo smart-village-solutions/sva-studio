@@ -264,6 +264,7 @@ describe('workspace package scripts', () => {
         '{workspaceRoot}/tsconfig.scripts.json',
         '{workspaceRoot}/scripts/ci/**',
         '{workspaceRoot}/.github/workflows/**/*.yml',
+        '{workspaceRoot}/.github/workflows/**/*.yaml',
       ])
     );
     expect(lintInputs).toContain('^production');

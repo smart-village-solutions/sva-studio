@@ -9,6 +9,7 @@ export default mergeConfig(
       include: [
         'src/routes/**/*.{test,spec}.{ts,tsx}',
         'src/routing/**/*.{test,spec}.{ts,tsx}',
+        'src/router*.{test,spec}.{ts,tsx}',
       ],
     },
   })

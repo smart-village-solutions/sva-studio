@@ -153,16 +153,21 @@ export const planAppUnitExecution = (
     };
   }
 
-  if (appFiles.some((filePath) => matchesAnyPattern(filePath, APP_AGGREGATE_PATTERNS))) {
+  const classifiedSlices = appFiles.map(classifyAppUnitSlice);
+  const slices = [...new Set(classifiedSlices)].filter((slice): slice is AppUnitSlice => slice !== null);
+
+  if (
+    appFiles.some(
+      (filePath, index) =>
+        classifiedSlices[index] === null && matchesAnyPattern(filePath, APP_AGGREGATE_PATTERNS)
+    )
+  ) {
     return {
       mode: 'aggregate',
       reason: 'aggregate-app-file',
       slices: [],
     };
   }
-
-  const classifiedSlices = appFiles.map(classifyAppUnitSlice);
-  const slices = [...new Set(classifiedSlices)].filter((slice): slice is AppUnitSlice => slice !== null);
 
   if (slices.length === 0 || classifiedSlices.some((slice) => slice === null)) {
     return {

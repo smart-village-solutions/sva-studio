@@ -7,7 +7,7 @@ import {
   formatMonitoringJobEventTitle,
   resolveMonitoringJobEventIsTerminal,
   resolveMonitoringJobEventTone,
-} from './job-event-presentation';
+} from './-job-event-presentation';
 
 const baseEvent: StudioJobEventRecord = {
   id: 'event-1',

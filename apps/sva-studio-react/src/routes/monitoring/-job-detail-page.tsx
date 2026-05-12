@@ -12,7 +12,7 @@ import {
   formatMonitoringJobEventMessage,
   formatMonitoringJobEventTitle,
   resolveMonitoringJobEventTone,
-} from './job-event-presentation';
+} from './-job-event-presentation';
 
 type MonitoringJobDetailPageProps = Readonly<{
   jobId: string;

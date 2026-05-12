@@ -158,6 +158,70 @@ describe('instance-interfaces-server', () => {
     expect(persisted?.secretConfigCiphertext).toBe(
       `iam.instance_external_interfaces.secret_config:${persisted?.id}:{"secretAccessKey":"secret-1"}`
     );
+    expect(persisted?.id).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    );
+  });
+
+  it('reuses persisted interface ids instead of generating a new uuid on updates', async () => {
+    state.loadExternalInterfaceRecordById.mockResolvedValue({
+      id: 'existing-interface-id',
+      instanceId: 'de-test',
+      typeKey: 's3',
+      ownerKind: 'host',
+      ownerId: 'host',
+      displayName: 'Existing S3',
+      alias: 'existing-s3',
+      enabled: true,
+      isDefault: true,
+      category: 'object_storage',
+      baseUrl: 'https://s3.example',
+      authMode: 'access_key',
+      publicConfig: {
+        endpoint: 'https://s3.example',
+        region: 'eu-central-1',
+        bucket: 'uploads',
+        accessKeyId: 'key-1',
+        forcePathStyle: false,
+      },
+      secretConfigCiphertext: 'iam.instance_external_interfaces.secret_config:existing-interface-id:{"secretAccessKey":"secret-old"}',
+      statusCheckKind: 's3',
+      createdAt: '2026-05-12T08:00:00.000Z',
+      updatedAt: '2026-05-12T08:00:00.000Z',
+    });
+
+    const { upsertStoredInterface } = await import('./instance-interfaces-server');
+
+    await expect(
+      upsertStoredInterface(
+        'de-test',
+        {
+          type: 's3',
+          name: 'Updated S3',
+          enabled: true,
+          config: {
+            endpoint: 'https://s3.example',
+            region: 'eu-central-1',
+            bucket: 'uploads',
+            accessKeyId: 'key-1',
+            secretAccessKey: '',
+            forcePathStyle: false,
+          },
+        },
+        'existing-interface-id'
+      )
+    ).resolves.toEqual(
+      expect.objectContaining({
+        id: 'existing-interface-id',
+        type: 's3',
+      })
+    );
+
+    const persisted = state.saveExternalInterfaceRecord.mock.calls[0]?.[0];
+    expect(persisted?.id).toBe('existing-interface-id');
+    expect(persisted?.secretConfigCiphertext).toBe(
+      'iam.instance_external_interfaces.secret_config:existing-interface-id:{"secretAccessKey":"secret-old"}'
+    );
   });
 
   it('rejects dedicated mainserver writes and missing records after persistence reload', async () => {

@@ -115,6 +115,11 @@ const expectAdminListUrl = async (page: Page, basePath: '/admin/events' | '/admi
   await expect(page).toHaveURL(new RegExp(`${basePath.replace('/', '\\/')}\\?(?:.*&)??page=1(?:&.*)?$`));
 };
 
+const expectUnauthenticatedRedirect = async (page: Page, returnToPath: string) => {
+  const encodedReturnToPath = encodeURIComponent(returnToPath).replace(/\//g, '\\/');
+  await expect(page).toHaveURL(new RegExp(`(?:\\/auth\\/login\\?returnTo=${encodedReturnToPath}|\\/\\?auth=(?:mock-login|dev-login)&returnTo=${encodedReturnToPath})`));
+};
+
 const mockSharedShellRequests = async (page: Page) => {
   await page.route('**/auth/me', async (route) => {
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(authenticatedUser) });
@@ -419,11 +424,11 @@ test.describe('events and POI plugins', () => {
 
     await page.goto('/');
     await navigateClientSide(page, '/admin/events');
-    await expect(page).toHaveURL(/\/auth\/login\?returnTo=%2Fadmin%2Fevents/);
+    await expectUnauthenticatedRedirect(page, '/admin/events?filters=%7B%7D&page=1&pageSize=25');
 
     await page.goto('/');
     await navigateClientSide(page, '/admin/poi');
-    await expect(page).toHaveURL(/\/auth\/login\?returnTo=%2Fadmin%2Fpoi/);
+    await expectUnauthenticatedRedirect(page, '/admin/poi?filters=%7B%7D&page=1&pageSize=25');
   });
 
   test('keeps central event and POI views free of serious accessibility violations', async ({ page }) => {

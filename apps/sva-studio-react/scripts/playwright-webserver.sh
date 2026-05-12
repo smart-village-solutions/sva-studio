@@ -8,6 +8,7 @@ MAX_ATTEMPTS=2
 READY_TIMEOUT_SECONDS=30
 POLL_INTERVAL_SECONDS=1
 BASE_URL="http://127.0.0.1:${PORT}"
+AUTH_READY_URL="${BASE_URL}/auth/login"
 
 : "${SVA_PARENT_DOMAIN:=studio.lvh.me}"
 : "${SVA_PUBLIC_BASE_URL:=http://studio.lvh.me:${PORT}}"
@@ -37,7 +38,8 @@ wait_for_server_readiness() {
       return 1
     fi
 
-    if curl -fsS "${BASE_URL}/@vite/client" >/dev/null 2>&1; then
+    if curl -fsS "${BASE_URL}/@vite/client" >/dev/null 2>&1 \
+      && curl -fsS -o /dev/null -D /dev/null "${AUTH_READY_URL}"; then
       return 0
     fi
 

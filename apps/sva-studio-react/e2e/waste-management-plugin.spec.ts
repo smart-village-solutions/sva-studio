@@ -145,8 +145,14 @@ const mockWasteFacade = async (page: Page, input: {
         status: 200,
         contentType: 'application/json',
         body: createApiItem({
-          items: [],
-          total: 0,
+          audit: {
+            items: [],
+            total: 0,
+          },
+          technical: {
+            items: [],
+            total: 0,
+          },
         }),
       });
       return;
@@ -372,7 +378,7 @@ test.describe('waste management plugin', () => {
       enabled: true,
     });
 
-    await page.getByRole('tab', { name: 'Stammdaten' }).click();
+    await page.getByRole('tab', { name: 'Abfallarten' }).click();
     await expect(page.getByRole('button', { name: 'Fraktion anlegen' })).toBeVisible();
     await page.getByRole('button', { name: 'Fraktion anlegen' }).click();
     await page.locator('#waste-fraction-name').fill('Papier');
@@ -390,16 +396,20 @@ test.describe('waste management plugin', () => {
       containerSize: '240l',
     });
 
-    await page.getByRole('tab', { name: 'Werkzeuge' }).click();
-    const toolsPanel = page.getByRole('tabpanel', { name: 'Werkzeuge' });
-    await toolsPanel.getByRole('textbox').nth(0).fill('blob:waste/imports/tenant-a.csv');
+    await page.getByRole('tab', { name: 'Datentools' }).click();
+    const toolsPanel = page.getByRole('tabpanel', { name: 'Datentools' });
+    await toolsPanel.locator('input[type="file"]').setInputFiles({
+      name: 'tenant-a.csv',
+      mimeType: 'text/csv',
+      buffer: Buffer.from('street,date\nMusterweg,2026-05-10\n'),
+    });
     await page.getByRole('button', { name: 'Import starten' }).click();
-    await toolsPanel.getByRole('textbox').nth(1).fill('waste_ops_v2');
-    await toolsPanel.getByRole('textbox').nth(2).fill('2026.05.10');
+    await toolsPanel.getByRole('textbox').nth(0).fill('waste_ops_v2');
+    await toolsPanel.getByRole('textbox').nth(1).fill('2026.05.10');
     await page.getByRole('button', { name: 'Migrationen starten' }).click();
     await page.getByRole('button', { name: 'Seed starten' }).click();
     await page.getByRole('button', { name: 'Reset starten' }).click();
-    await page.locator('input[placeholder="RESET"]').fill('RESET-WASTE');
+    await page.locator('input[placeholder="RESET"]').fill('RESET');
     await page.getByRole('button', { name: 'Reset bestätigen' }).click();
 
     await expect(page.getByText('Job job-reset-1 wurde gestartet.')).toBeVisible();
@@ -451,7 +461,7 @@ test.describe('waste management plugin', () => {
     await expect(page.locator('input[placeholder="https://example.supabase.co"]')).toHaveValue('https://tenant-b.supabase.co');
     await expect(page.locator('input[placeholder="https://example.supabase.co"]')).not.toHaveValue('https://tenant-a.supabase.co');
 
-    await page.getByRole('tab', { name: 'Stammdaten' }).click();
+    await page.getByRole('tab', { name: 'Abfallarten' }).click();
     await expect(page.getByText('Bioabfall')).toBeVisible();
     await page.getByRole('button', { name: 'Fraktion anlegen' }).click();
     await page.locator('#waste-fraction-name').fill('Papier Plus');

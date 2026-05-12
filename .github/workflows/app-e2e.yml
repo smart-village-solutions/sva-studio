@@ -90,7 +90,7 @@ jobs:
           docker ps -a
           exit 1
 
-      - name: Run app E2E smoke tests
+      - name: Run app E2E tests
         if: github.event_name != 'pull_request' || (steps.changes.outputs.relevant == 'true' && steps.scope.outputs.e2e_mode != 'skip')
         run: pnpm nx run sva-studio-react:test:e2e
 
@@ -112,7 +112,7 @@ jobs:
       - name: Publish E2E summary
         if: always()
         run: |
-          echo 'App-E2E-Smoke abgeschlossen.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'App E2E abgeschlossen.' >> "$GITHUB_STEP_SUMMARY"
           if [ "${{ github.event_name }}" = "pull_request" ] && [ "${{ steps.changes.outputs.relevant }}" != "true" ]; then
             echo 'Scope: keine code-relevanten Änderungen im Pull Request, das Gate endet bewusst als No-op-Erfolg.' >> "$GITHUB_STEP_SUMMARY"
             exit 0

@@ -41,7 +41,7 @@ function loadCoveragePolicy(): CoveragePolicy {
   ) as CoveragePolicy;
 }
 
-function loadStudioArtifactVerifyWorkflow(): string {
+function loadStudioImageVerifyWorkflow(): string {
   const rootDir = resolveRootDir();
   return fs.readFileSync(path.join(rootDir, '.github/workflows/studio-image-verify.yml'), 'utf8');
 }
@@ -58,12 +58,12 @@ function loadToolingTestingProject(): NxProjectJson {
   ) as NxProjectJson;
 }
 
-function loadQualityChecksWorkflow(): string {
+function loadQualityGatesWorkflow(): string {
   const rootDir = resolveRootDir();
   return fs.readFileSync(path.join(rootDir, '.github/workflows/quality-gates.yml'), 'utf8');
 }
 
-function loadCoverageWorkflow(): string {
+function loadRuntimeGatesWorkflow(): string {
   const rootDir = resolveRootDir();
   return fs.readFileSync(path.join(rootDir, '.github/workflows/runtime-gates.yml'), 'utf8');
 }
@@ -71,6 +71,11 @@ function loadCoverageWorkflow(): string {
 function loadAppE2EWorkflow(): string {
   const rootDir = resolveRootDir();
   return fs.readFileSync(path.join(rootDir, '.github/workflows/app-e2e.yml'), 'utf8');
+}
+
+function loadMainBuildWorkflow(): string {
+  const rootDir = resolveRootDir();
+  return fs.readFileSync(path.join(rootDir, '.github/workflows/main-build.yml'), 'utf8');
 }
 
 function loadRunPrGateScript(): string {
@@ -137,7 +142,7 @@ describe('workspace package scripts', () => {
   });
 
   it('keeps studio image verify tag sanitizing portable on GitHub runners', () => {
-    const workflow = loadStudioArtifactVerifyWorkflow();
+    const workflow = loadStudioImageVerifyWorkflow();
 
     expect(workflow).toContain(
       "safe_tag=\"$(printf '%s' \"${IMAGE_TAG}\" | sed -E 's/[^[:alnum:]. _-]+/-/g; s/[[:space:]]+/-/g; s/-+/-/g; s/^-+//; s/-+$//')\""
@@ -180,17 +185,34 @@ describe('workspace package scripts', () => {
   });
 
   it('keeps PR quality workflows on the shared pr-scope helper', () => {
-    const qualityWorkflow = loadQualityChecksWorkflow();
-    const coverageWorkflow = loadCoverageWorkflow();
+    const qualityWorkflow = loadQualityGatesWorkflow();
+    const runtimeWorkflow = loadRuntimeGatesWorkflow();
     const e2eWorkflow = loadAppE2EWorkflow();
 
     expect(qualityWorkflow).toContain('name: Quality Gates');
-    expect(coverageWorkflow).toContain('name: Runtime Gates');
+    expect(runtimeWorkflow).toContain('name: Runtime Gates');
     expect(e2eWorkflow).toContain('name: App E2E');
     expect(qualityWorkflow).toContain('tsx scripts/ci/pr-scope.ts --base origin/${{ github.base_ref }} --github-output');
-    expect(coverageWorkflow).toContain('tsx scripts/ci/pr-scope.ts --base origin/${{ github.base_ref }} --github-output');
+    expect(runtimeWorkflow).toContain('tsx scripts/ci/pr-scope.ts --base origin/${{ github.base_ref }} --github-output');
     expect(e2eWorkflow).toContain('tsx scripts/ci/pr-scope.ts --base origin/${{ github.base_ref }} --github-output');
     expect(e2eWorkflow).toContain('pull_request:');
+  });
+
+  it('keeps PR build validation on the shared pr-scope helper', () => {
+    const mainBuildWorkflow = loadMainBuildWorkflow();
+
+    expect(mainBuildWorkflow).toContain('pull_request:');
+    expect(mainBuildWorkflow).toContain('tsx scripts/ci/pr-scope.ts --base origin/${{ github.base_ref }} --github-output');
+    expect(mainBuildWorkflow).toContain("steps.scope.outputs.app_build_mode != 'skip'");
+  });
+
+  it('publishes App E2E summaries with the current workflow naming', () => {
+    const e2eWorkflow = loadAppE2EWorkflow();
+
+    expect(e2eWorkflow).toContain("echo 'App E2E abgeschlossen.' >> \"$GITHUB_STEP_SUMMARY\"");
+    expect(e2eWorkflow).not.toContain('App-E2E-Smoke abgeschlossen.');
+    expect(e2eWorkflow).toContain('Run app E2E tests');
+    expect(e2eWorkflow).not.toContain('Run app E2E smoke tests');
   });
 
   it('typechecks all CI gate sources via tsconfig.scripts.json', () => {

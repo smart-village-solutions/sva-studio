@@ -156,7 +156,7 @@ export const resolveChangedFiles = (
   let output = '';
 
   try {
-    output = runGitCommand(['diff', '--name-only', '--diff-filter=ACMR', `${base}...${head}`], {
+    output = runGitCommand(['diff', '--name-only', '--diff-filter=ACDMR', `${base}...${head}`], {
       encoding: 'utf8',
     });
   } catch (error) {
@@ -165,7 +165,7 @@ export const resolveChangedFiles = (
       throw error;
     }
 
-    output = runGitCommand(['diff', '--name-only', '--diff-filter=ACMR', `${base}..${head}`], {
+    output = runGitCommand(['diff', '--name-only', '--diff-filter=ACDMR', `${base}..${head}`], {
       encoding: 'utf8',
     });
   }

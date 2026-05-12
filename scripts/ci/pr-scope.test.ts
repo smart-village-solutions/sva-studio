@@ -91,12 +91,36 @@ describe('pr-scope', () => {
     });
   });
 
+  it('escalates integration to full for gate workflow changes with current workflow names', () => {
+    const decision = classifyPrScope(['.github/workflows/runtime-gates.yml']);
+
+    expectDecision(decision, {
+      codeRelevant: true,
+      qualityGateMode: 'full',
+      coverageMode: 'full',
+      integrationMode: 'full',
+      e2eMode: 'skip',
+      appBuildMode: 'full',
+    });
+  });
+
+  it('includes deleted files when resolving changed files', () => {
+    const changedFiles = resolveChangedFiles('origin/main', 'HEAD', (args) => {
+      expect(args).toEqual(['diff', '--name-only', '--diff-filter=ACDMR', 'origin/main...HEAD']);
+      return 'packages/core/src/deleted.ts\n';
+    });
+
+    expect(changedFiles).toEqual(['packages/core/src/deleted.ts']);
+  });
+
   it('falls back to two-dot diff when no merge base is available', () => {
     let invocationCount = 0;
 
     const changedFiles = resolveChangedFiles('origin/main', 'HEAD', (args) => {
       invocationCount += 1;
       const diffRange = args.at(-1);
+
+      expect(args.slice(0, 3)).toEqual(['diff', '--name-only', '--diff-filter=ACDMR']);
 
       if (diffRange === 'origin/main...HEAD') {
         throw new Error('fatal: origin/main...HEAD: no merge base');

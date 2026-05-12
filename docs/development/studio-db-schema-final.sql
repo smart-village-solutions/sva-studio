@@ -636,6 +636,66 @@ CREATE TABLE iam.instance_integrations (
 
 
 --
+-- Name: external_interface_types; Type: TABLE; Schema: iam; Owner: -
+--
+
+CREATE TABLE iam.external_interface_types (
+    type_key text NOT NULL,
+    owner_kind text NOT NULL,
+    owner_id text NOT NULL,
+    display_name text NOT NULL,
+    category text NOT NULL,
+    public_schema_json jsonb DEFAULT '{}'::jsonb NOT NULL,
+    secret_schema_json jsonb DEFAULT '{}'::jsonb NOT NULL,
+    status_check_kind text NOT NULL,
+    enabled boolean DEFAULT true NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT external_interface_types_category_chk CHECK ((category = ANY (ARRAY['api'::text, 'object_storage'::text, 'database'::text, 'feed'::text]))),
+    CONSTRAINT external_interface_types_owner_kind_chk CHECK ((owner_kind = ANY (ARRAY['host'::text, 'plugin'::text]))),
+    CONSTRAINT external_interface_types_status_check_kind_chk CHECK ((status_check_kind = ANY (ARRAY['none'::text, 'sva_mainserver'::text, 's3'::text, 'supabase'::text])))
+);
+
+
+--
+-- Name: instance_external_interfaces; Type: TABLE; Schema: iam; Owner: -
+--
+
+CREATE TABLE iam.instance_external_interfaces (
+    id text NOT NULL,
+    instance_id text NOT NULL,
+    type_key text NOT NULL,
+    owner_kind text NOT NULL,
+    owner_id text NOT NULL,
+    display_name text NOT NULL,
+    alias text NOT NULL,
+    enabled boolean DEFAULT true NOT NULL,
+    is_default boolean DEFAULT false NOT NULL,
+    category text NOT NULL,
+    base_url text,
+    auth_mode text,
+    public_config_json jsonb DEFAULT '{}'::jsonb NOT NULL,
+    secret_config_ciphertext text,
+    status_check_kind text NOT NULL,
+    visible_status text DEFAULT 'unknown'::text NOT NULL,
+    last_checked_at timestamp with time zone,
+    last_check_status text,
+    last_check_error_code text,
+    last_check_error_message text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT instance_external_interfaces_category_chk CHECK ((category = ANY (ARRAY['api'::text, 'object_storage'::text, 'database'::text, 'feed'::text]))),
+    CONSTRAINT instance_external_interfaces_last_check_status_chk CHECK (((last_check_status IS NULL) OR (last_check_status = ANY (ARRAY['succeeded'::text, 'failed'::text])))),
+    CONSTRAINT instance_external_interfaces_owner_kind_chk CHECK ((owner_kind = ANY (ARRAY['host'::text, 'plugin'::text]))),
+    CONSTRAINT instance_external_interfaces_status_check_kind_chk CHECK ((status_check_kind = ANY (ARRAY['none'::text, 'sva_mainserver'::text, 's3'::text, 'supabase'::text]))),
+    CONSTRAINT instance_external_interfaces_visible_status_chk CHECK ((visible_status = ANY (ARRAY['not_configured'::text, 'unknown'::text, 'ok'::text, 'error'::text, 'disabled'::text]))),
+    CONSTRAINT instance_external_interfaces_instance_type_alias_key UNIQUE (instance_id, type_key, alias)
+);
+
+ALTER TABLE ONLY iam.instance_external_interfaces FORCE ROW LEVEL SECURITY;
+
+
+--
 -- Name: instance_keycloak_provisioning_runs; Type: TABLE; Schema: iam; Owner: -
 --
 
@@ -1332,6 +1392,22 @@ ALTER TABLE ONLY iam.instance_integrations
 
 
 --
+-- Name: external_interface_types external_interface_types_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.external_interface_types
+    ADD CONSTRAINT external_interface_types_pkey PRIMARY KEY (type_key);
+
+
+--
+-- Name: instance_external_interfaces instance_external_interfaces_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.instance_external_interfaces
+    ADD CONSTRAINT instance_external_interfaces_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: instance_keycloak_provisioning_runs instance_keycloak_provisioning_runs_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
 --
 
@@ -1775,6 +1851,20 @@ CREATE INDEX idx_instance_audit_events_instance_created ON iam.instance_audit_ev
 --
 
 CREATE INDEX idx_instance_integrations_instance_provider ON iam.instance_integrations USING btree (instance_id, provider_key);
+
+
+--
+-- Name: idx_instance_external_interfaces_instance_type; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE INDEX idx_instance_external_interfaces_instance_type ON iam.instance_external_interfaces USING btree (instance_id, type_key);
+
+
+--
+-- Name: idx_instance_external_interfaces_default_per_type; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_instance_external_interfaces_default_per_type ON iam.instance_external_interfaces USING btree (instance_id, type_key) WHERE (is_default = true);
 
 
 --
@@ -2542,6 +2632,22 @@ ALTER TABLE ONLY iam.instance_integrations
 
 
 --
+-- Name: instance_external_interfaces instance_external_interfaces_instance_id_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.instance_external_interfaces
+    ADD CONSTRAINT instance_external_interfaces_instance_id_fkey FOREIGN KEY (instance_id) REFERENCES iam.instances(id) ON DELETE CASCADE;
+
+
+--
+-- Name: instance_external_interfaces instance_external_interfaces_type_key_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.instance_external_interfaces
+    ADD CONSTRAINT instance_external_interfaces_type_key_fkey FOREIGN KEY (type_key) REFERENCES iam.external_interface_types(type_key);
+
+
+--
 -- Name: instance_keycloak_provisioning_runs instance_keycloak_provisioning_runs_instance_id_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
 --
 
@@ -2842,6 +2948,12 @@ CREATE POLICY account_organizations_isolation_policy ON iam.account_organization
 ALTER TABLE iam.account_permissions ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: instance_external_interfaces; Type: ROW SECURITY; Schema: iam; Owner: -
+--
+
+ALTER TABLE iam.instance_external_interfaces ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: account_permissions account_permissions_isolation_policy; Type: POLICY; Schema: iam; Owner: -
 --
 
@@ -2968,6 +3080,13 @@ CREATE POLICY instance_integrations_isolation_policy ON iam.instance_integration
 
 
 --
+-- Name: instance_external_interfaces instance_external_interfaces_isolation_policy; Type: POLICY; Schema: iam; Owner: -
+--
+
+CREATE POLICY instance_external_interfaces_isolation_policy ON iam.instance_external_interfaces USING ((instance_id = iam.current_instance_id())) WITH CHECK ((instance_id = iam.current_instance_id()));
+
+
+--
 -- Name: instance_memberships instance_memberships_isolation_policy; Type: POLICY; Schema: iam; Owner: -
 --
 
@@ -3055,4 +3174,3 @@ CREATE POLICY roles_isolation_policy ON iam.roles USING ((instance_id = iam.curr
 --
 
 \unrestrict girulveFVe7rsELuzhDyELhRkYhBkmE1nk6Z9dY30PCoBJGlHUGEg1F1hq5RX6I
-

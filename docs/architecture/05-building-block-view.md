@@ -43,8 +43,9 @@ Abhängigkeiten des aktuellen Systems.
 5. Plugin SDK, Studio Module IAM und Server Runtime (`packages/plugin-sdk`, `packages/studio-module-iam`, `packages/server-runtime`)
    - `@sva/plugin-sdk`: öffentlicher Plugin-Vertrag v1, Build-time-Registry, Admin-Ressourcen, Content-Type- und Translation-Verträge
    - erweitert um deklarative Operations-Beiträge für registrierte Jobtypen und Importprofile im bestehenden Build-time-Snapshot
+   - erweitert um deklarative `externalInterfaceTypes`, damit Plugins zusätzliche Schnittstellentyp-Metadaten beisteuern können, ohne eigene Persistenz- oder Secret-Pfade einzuführen
    - bündelt außerdem wiederverwendbare Helper für standardisierte Content-Plugins, Mainserver-CRUD-Basis und kleine UI-nahe Plugin-Utilities
-   - `@sva/server-runtime`: Logger, Request-Kontext, JSON-Fehlerantworten, Workspace-Kontext und OTEL-Bootstrap
+   - `@sva/server-runtime`: Logger, Request-Kontext, JSON-Fehlerantworten, Workspace-Kontext, OTEL-Bootstrap und zentraler Resolver für External-Interface-Secrets und Statusprüfungen
    - Namespacing- und Ownership-Validierung für plugin-beigestellte registrierte Host-Identifier
    - Zielbild Plugin-Plattform v2: zusätzlich serialisierbarer Manifest-Vertrag, hostgeführter Katalog, Loader zur Snapshot-Materialisierung und host-owned Runtime-Boundaries für pluginseitige Server-, Job- und Integrationsbeiträge
 6. Studio UI React (`packages/studio-ui-react`)
@@ -58,11 +59,13 @@ Abhängigkeiten des aktuellen Systems.
    - `@sva/data-client`: client-sicherer HTTP-DataClient mit Schema-Validierung
    - `@sva/data-repositories`: serverseitige Repository-Fassaden und DB-nahe Operationen
    - enthält den führenden zentralen Job-Store für generische Plugin-Operations im Studio-Postgres
+   - hält zusätzlich den kanonischen Registry-Store für `external_interface_types` und `instance_external_interfaces`
    - IAM-Persistenzmodell (`iam`-Schema) mit Multi-Tenant-Struktur bleibt SQL-first versioniert
 9. SVA Mainserver (`packages/sva-mainserver`)
   - dedizierte Integrationsschicht für OAuth2, GraphQL-Transport, Fehlerabbildung und Fachadapter
   - trennt client-sichere Typen von serverseitigen Delegations- und Diagnostikfunktionen
   - exportiert die kanonischen serverseitigen Host-Verträge für Mainserver-News, -Events, -POI und die Schnittstellenverwaltung; `apps/sva-studio-react` hält dafür nur dünne Request- und TanStack-Adapter
+  - liest seine instanzbezogene Endpunktkonfiguration nicht mehr aus einer Mainserver-Spezialtabelle, sondern aus der zentralen External-Interface-Registry
 10. Plugin News (`packages/plugin-news`)
    - produktives Fachplugin für Mainserver-News mit pluginnahem Modell `news.article`
    - eigene Listen- und Editor-Ansichten, plugin-beigestellte Admin-Ressourcen-Spezialisierungen, Navigation und Übersetzungen

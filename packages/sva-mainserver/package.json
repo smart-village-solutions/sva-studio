@@ -18,6 +18,7 @@
   "dependencies": {
     "@opentelemetry/api": "^1.9.0",
     "@sva/auth-runtime": "workspace:*",
+    "@sva/core": "workspace:*",
     "@sva/data-repositories": "workspace:*",
     "@sva/server-runtime": "workspace:*",
     "zod": "^4.3.6"

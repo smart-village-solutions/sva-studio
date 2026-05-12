@@ -197,8 +197,6 @@ type InterfacesOperation =
   | 'upsert_interface'
   | 'delete_interface';
 
-const CUSTOM_INTERFACES_NOT_SUPPORTED_ERROR = 'custom_interfaces_not_supported';
-
 const loadInterfacesRequestDependencies = async (): Promise<InterfacesRequestDependencies> => {
   const { getRequest } = await import('@tanstack/react-start/server');
   const { createSdkLogger } = await import('@sva/server-runtime');
@@ -267,18 +265,6 @@ const logForbiddenInterfacesAccess = (
     user_id: user.id,
     user_roles: user.roles,
   });
-};
-
-const throwWhenCustomInterfacesStorageUnavailable = (
-  logger: ServerRuntimeLogger,
-  instanceId: string,
-  operation: Extract<InterfacesOperation, 'upsert_interface' | 'delete_interface'>
-): never => {
-  logger.warn('Interfaces request rejected: custom interface storage unavailable', {
-    operation,
-    workspace_id: instanceId,
-  });
-  throw new Error(CUSTOM_INTERFACES_NOT_SUPPORTED_ERROR);
 };
 
 const logInterfacesInstanceMismatch = (
@@ -541,7 +527,7 @@ export const listInstanceInterfacesServerFn = createServerFn().handler(
         (overview.instanceId.length > 0 && overview.instanceId !== authorizedInstanceId);
 
       const { listStoredInterfaces } = await import('./instance-interfaces-server.js');
-      const stored = blockedOverview ? [] : listStoredInterfaces(authorizedInstanceId);
+      const stored = blockedOverview ? [] : await listStoredInterfaces(authorizedInstanceId);
       const projected = await Promise.all(stored.map((entry) => projectStoredEntry(authorizedInstanceId, entry)));
 
       const mainserverEntry: InstanceInterface | null =
@@ -592,7 +578,7 @@ export const upsertInstanceInterfaceServerFn = createServerFn({ method: 'POST' }
       throw new Error('mainserver_interfaces_use_dedicated_endpoint');
     }
     const dependencies = await loadInterfacesRequestDependencies();
-    const { isCustomInterfaceStorageAvailable, upsertStoredInterface } = await import('./instance-interfaces-server.js');
+    const { upsertStoredInterface } = await import('./instance-interfaces-server.js');
     return runWithAuthenticatedInterfacesUser({
       request: dependencies.request,
       fallbackMessage: 'Schnittstelle konnte nicht gespeichert werden.',
@@ -603,10 +589,7 @@ export const upsertInstanceInterfaceServerFn = createServerFn({ method: 'POST' }
           'upsert_interface',
           data.instanceId
         );
-        if (!isCustomInterfaceStorageAvailable()) {
-          throwWhenCustomInterfacesStorageUnavailable(dependencies.logger, instanceId, 'upsert_interface');
-        }
-        const stored = upsertStoredInterface(instanceId, data.draft, data.existingId);
+        const stored = await upsertStoredInterface(instanceId, data.draft, data.existingId);
         return projectStoredEntry(instanceId, stored);
       },
     });
@@ -621,7 +604,7 @@ export const deleteInstanceInterfaceServerFn = createServerFn({ method: 'POST' }
   .inputValidator((data: DeleteInstanceInterfaceInput) => data)
   .handler(async ({ data }): Promise<{ deleted: boolean }> => {
     const dependencies = await loadInterfacesRequestDependencies();
-    const { deleteStoredInterface, isCustomInterfaceStorageAvailable } = await import('./instance-interfaces-server.js');
+    const { deleteStoredInterface } = await import('./instance-interfaces-server.js');
     return runWithAuthenticatedInterfacesUser({
       request: dependencies.request,
       fallbackMessage: 'Schnittstelle konnte nicht gelöscht werden.',
@@ -632,10 +615,7 @@ export const deleteInstanceInterfaceServerFn = createServerFn({ method: 'POST' }
           'delete_interface',
           data.instanceId
         );
-        if (!isCustomInterfaceStorageAvailable()) {
-          throwWhenCustomInterfacesStorageUnavailable(dependencies.logger, instanceId, 'delete_interface');
-        }
-        const deleted = deleteStoredInterface(instanceId, data.id);
+        const deleted = await deleteStoredInterface(instanceId, data.id);
         if (!deleted) {
           throw new Error('interface_not_found');
         }

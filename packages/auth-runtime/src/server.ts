@@ -51,6 +51,7 @@ export {
 } from './iam-contents/server-authorization.js';
 export { validateCsrf } from './shared/request-security.js';
 export { completeIdempotency, reserveIdempotency } from './iam-account-management/shared.js';
+export { protectField, revealField } from './iam-account-management/encryption.js';
 export { resolveActorInfo, type ActorInfo } from './iam-account-management/shared.js';
 export { getSessionUser } from './auth-server/session.js';
 export {

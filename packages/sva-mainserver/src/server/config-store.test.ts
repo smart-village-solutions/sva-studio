@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
-  loadInstanceIntegrationRecord: vi.fn(),
+  loadDefaultExternalInterfaceRecord: vi.fn(),
   dnsLookup: vi.fn(async () => [{ address: '203.0.113.10', family: 4 }]),
   logger: {
     debug: vi.fn(),
@@ -12,7 +12,7 @@ const state = vi.hoisted(() => ({
 }));
 
 vi.mock('@sva/data-repositories/server', () => ({
-  loadInstanceIntegrationRecord: state.loadInstanceIntegrationRecord,
+  loadDefaultExternalInterfaceRecord: state.loadDefaultExternalInterfaceRecord,
 }));
 
 vi.mock('node:dns/promises', () => ({
@@ -29,7 +29,7 @@ vi.mock('@sva/server-runtime', () => ({
 
 describe('loadSvaMainserverInstanceConfig', () => {
   beforeEach(() => {
-    state.loadInstanceIntegrationRecord.mockReset();
+    state.loadDefaultExternalInterfaceRecord.mockReset();
     state.dnsLookup.mockReset();
     state.dnsLookup.mockResolvedValue([{ address: '203.0.113.10', family: 4 }]);
     state.logger.debug.mockReset();
@@ -43,14 +43,26 @@ describe('loadSvaMainserverInstanceConfig', () => {
   });
 
   it('loads enabled https configuration from the data layer', async () => {
-    state.loadInstanceIntegrationRecord.mockResolvedValue({
+    state.loadDefaultExternalInterfaceRecord.mockResolvedValue({
+      id: 'sva-mainserver:de-musterhausen',
       instanceId: 'de-musterhausen',
-      providerKey: 'sva_mainserver',
-      graphqlBaseUrl: 'https://mainserver.example.invalid/graphql',
-      oauthTokenUrl: 'https://mainserver.example.invalid/oauth/token',
+      typeKey: 'sva_mainserver',
+      ownerKind: 'host',
+      ownerId: 'host',
+      displayName: 'SVA Mainserver',
+      alias: 'default',
       enabled: true,
-      lastVerifiedAt: '2026-03-15T10:00:00.000Z',
-      lastVerifiedStatus: 'ok',
+      isDefault: true,
+      category: 'api',
+      baseUrl: 'https://mainserver.example.invalid/graphql',
+      authMode: 'oauth2',
+      publicConfig: {
+        graphqlBaseUrl: 'https://mainserver.example.invalid/graphql',
+        oauthTokenUrl: 'https://mainserver.example.invalid/oauth/token',
+      },
+      statusCheckKind: 'sva_mainserver',
+      visibleStatus: 'ok',
+      lastCheckedAt: '2026-03-15T10:00:00.000Z',
     });
 
     const { loadSvaMainserverInstanceConfig } = await import('./config-store');
@@ -64,12 +76,23 @@ describe('loadSvaMainserverInstanceConfig', () => {
   });
 
   it('rejects invalid non-https upstream URLs', async () => {
-    state.loadInstanceIntegrationRecord.mockResolvedValue({
+    state.loadDefaultExternalInterfaceRecord.mockResolvedValue({
+      id: 'sva-mainserver:de-musterhausen',
       instanceId: 'de-musterhausen',
-      providerKey: 'sva_mainserver',
-      graphqlBaseUrl: 'http://mainserver.example.invalid/graphql',
-      oauthTokenUrl: 'https://mainserver.example.invalid/oauth/token',
+      typeKey: 'sva_mainserver',
+      ownerKind: 'host',
+      ownerId: 'host',
+      displayName: 'SVA Mainserver',
+      alias: 'default',
       enabled: true,
+      isDefault: true,
+      category: 'api',
+      publicConfig: {
+        graphqlBaseUrl: 'http://mainserver.example.invalid/graphql',
+        oauthTokenUrl: 'https://mainserver.example.invalid/oauth/token',
+      },
+      statusCheckKind: 'sva_mainserver',
+      visibleStatus: 'unknown',
     });
 
     const { loadSvaMainserverInstanceConfig } = await import('./config-store');
@@ -88,12 +111,23 @@ describe('loadSvaMainserverInstanceConfig', () => {
   });
 
   it('rejects private and local upstream hosts even with https', async () => {
-    state.loadInstanceIntegrationRecord.mockResolvedValue({
+    state.loadDefaultExternalInterfaceRecord.mockResolvedValue({
+      id: 'sva-mainserver:de-musterhausen',
       instanceId: 'de-musterhausen',
-      providerKey: 'sva_mainserver',
-      graphqlBaseUrl: 'https://127.0.0.1/graphql',
-      oauthTokenUrl: 'https://mainserver.example.invalid/oauth/token',
+      typeKey: 'sva_mainserver',
+      ownerKind: 'host',
+      ownerId: 'host',
+      displayName: 'SVA Mainserver',
+      alias: 'default',
       enabled: true,
+      isDefault: true,
+      category: 'api',
+      publicConfig: {
+        graphqlBaseUrl: 'https://127.0.0.1/graphql',
+        oauthTokenUrl: 'https://mainserver.example.invalid/oauth/token',
+      },
+      statusCheckKind: 'sva_mainserver',
+      visibleStatus: 'unknown',
     });
 
     const { loadSvaMainserverInstanceConfig } = await import('./config-store');
@@ -104,12 +138,23 @@ describe('loadSvaMainserverInstanceConfig', () => {
   });
 
   it('rejects https localhost upstream URLs', async () => {
-    state.loadInstanceIntegrationRecord.mockResolvedValue({
+    state.loadDefaultExternalInterfaceRecord.mockResolvedValue({
+      id: 'sva-mainserver:de-musterhausen',
       instanceId: 'de-musterhausen',
-      providerKey: 'sva_mainserver',
-      graphqlBaseUrl: 'https://localhost/graphql',
-      oauthTokenUrl: 'https://mainserver.example.invalid/oauth/token',
+      typeKey: 'sva_mainserver',
+      ownerKind: 'host',
+      ownerId: 'host',
+      displayName: 'SVA Mainserver',
+      alias: 'default',
       enabled: true,
+      isDefault: true,
+      category: 'api',
+      publicConfig: {
+        graphqlBaseUrl: 'https://localhost/graphql',
+        oauthTokenUrl: 'https://mainserver.example.invalid/oauth/token',
+      },
+      statusCheckKind: 'sva_mainserver',
+      visibleStatus: 'unknown',
     });
 
     const { loadSvaMainserverInstanceConfig } = await import('./config-store');
@@ -120,12 +165,23 @@ describe('loadSvaMainserverInstanceConfig', () => {
   });
 
   it('rejects RFC1918 and link-local hosts in upstream URLs', async () => {
-    state.loadInstanceIntegrationRecord.mockResolvedValue({
+    state.loadDefaultExternalInterfaceRecord.mockResolvedValue({
+      id: 'sva-mainserver:de-musterhausen',
       instanceId: 'de-musterhausen',
-      providerKey: 'sva_mainserver',
-      graphqlBaseUrl: 'https://10.1.2.3/graphql',
-      oauthTokenUrl: 'https://fe80::1/oauth/token',
+      typeKey: 'sva_mainserver',
+      ownerKind: 'host',
+      ownerId: 'host',
+      displayName: 'SVA Mainserver',
+      alias: 'default',
       enabled: true,
+      isDefault: true,
+      category: 'api',
+      publicConfig: {
+        graphqlBaseUrl: 'https://10.1.2.3/graphql',
+        oauthTokenUrl: 'https://fe80::1/oauth/token',
+      },
+      statusCheckKind: 'sva_mainserver',
+      visibleStatus: 'unknown',
     });
 
     const { loadSvaMainserverInstanceConfig } = await import('./config-store');
@@ -136,12 +192,23 @@ describe('loadSvaMainserverInstanceConfig', () => {
   });
 
   it('rejects IPv4-mapped IPv6 addresses as SSRF targets', async () => {
-    state.loadInstanceIntegrationRecord.mockResolvedValue({
+    state.loadDefaultExternalInterfaceRecord.mockResolvedValue({
+      id: 'sva-mainserver:de-musterhausen',
       instanceId: 'de-musterhausen',
-      providerKey: 'sva_mainserver',
-      graphqlBaseUrl: 'https://[::ffff:127.0.0.1]/graphql',
-      oauthTokenUrl: 'https://mainserver.example.invalid/oauth/token',
+      typeKey: 'sva_mainserver',
+      ownerKind: 'host',
+      ownerId: 'host',
+      displayName: 'SVA Mainserver',
+      alias: 'default',
       enabled: true,
+      isDefault: true,
+      category: 'api',
+      publicConfig: {
+        graphqlBaseUrl: 'https://[::ffff:127.0.0.1]/graphql',
+        oauthTokenUrl: 'https://mainserver.example.invalid/oauth/token',
+      },
+      statusCheckKind: 'sva_mainserver',
+      visibleStatus: 'unknown',
     });
 
     const { loadSvaMainserverInstanceConfig } = await import('./config-store');
@@ -152,14 +219,24 @@ describe('loadSvaMainserverInstanceConfig', () => {
   });
 
   it('allows public IPv4-mapped IPv6 hosts', async () => {
-    state.loadInstanceIntegrationRecord.mockResolvedValue({
+    state.loadDefaultExternalInterfaceRecord.mockResolvedValue({
+      id: 'sva-mainserver:de-musterhausen',
       instanceId: 'de-musterhausen',
-      providerKey: 'sva_mainserver',
-      graphqlBaseUrl: 'https://[::ffff:8.8.8.8]/graphql',
-      oauthTokenUrl: 'https://mainserver.example.invalid/oauth/token',
+      typeKey: 'sva_mainserver',
+      ownerKind: 'host',
+      ownerId: 'host',
+      displayName: 'SVA Mainserver',
+      alias: 'default',
       enabled: true,
-      lastVerifiedAt: '2026-03-15T10:00:00.000Z',
-      lastVerifiedStatus: 'ok',
+      isDefault: true,
+      category: 'api',
+      publicConfig: {
+        graphqlBaseUrl: 'https://[::ffff:8.8.8.8]/graphql',
+        oauthTokenUrl: 'https://mainserver.example.invalid/oauth/token',
+      },
+      statusCheckKind: 'sva_mainserver',
+      visibleStatus: 'ok',
+      lastCheckedAt: '2026-03-15T10:00:00.000Z',
     });
 
     const { loadSvaMainserverInstanceConfig } = await import('./config-store');
@@ -171,12 +248,23 @@ describe('loadSvaMainserverInstanceConfig', () => {
   });
 
   it('rejects malformed IPv4-mapped IPv6 hosts conservatively', async () => {
-    state.loadInstanceIntegrationRecord.mockResolvedValue({
+    state.loadDefaultExternalInterfaceRecord.mockResolvedValue({
+      id: 'sva-mainserver:de-musterhausen',
       instanceId: 'de-musterhausen',
-      providerKey: 'sva_mainserver',
-      graphqlBaseUrl: 'https://[::ffff:7f00:1:2]/graphql',
-      oauthTokenUrl: 'https://mainserver.example.invalid/oauth/token',
+      typeKey: 'sva_mainserver',
+      ownerKind: 'host',
+      ownerId: 'host',
+      displayName: 'SVA Mainserver',
+      alias: 'default',
       enabled: true,
+      isDefault: true,
+      category: 'api',
+      publicConfig: {
+        graphqlBaseUrl: 'https://[::ffff:7f00:1:2]/graphql',
+        oauthTokenUrl: 'https://mainserver.example.invalid/oauth/token',
+      },
+      statusCheckKind: 'sva_mainserver',
+      visibleStatus: 'unknown',
     });
 
     const { loadSvaMainserverInstanceConfig } = await import('./config-store');
@@ -187,7 +275,7 @@ describe('loadSvaMainserverInstanceConfig', () => {
   });
 
   it('maps unexpected data-layer failures to database_unavailable', async () => {
-    state.loadInstanceIntegrationRecord.mockRejectedValue(new Error('db offline'));
+    state.loadDefaultExternalInterfaceRecord.mockRejectedValue(new Error('db offline'));
 
     const { loadSvaMainserverInstanceConfig } = await import('./config-store');
 
@@ -204,12 +292,23 @@ describe('loadSvaMainserverInstanceConfig', () => {
   });
 
   it('rejects upstream hosts that resolve to private addresses via DNS', async () => {
-    state.loadInstanceIntegrationRecord.mockResolvedValue({
+    state.loadDefaultExternalInterfaceRecord.mockResolvedValue({
+      id: 'sva-mainserver:de-musterhausen',
       instanceId: 'de-musterhausen',
-      providerKey: 'sva_mainserver',
-      graphqlBaseUrl: 'https://public.example.invalid/graphql',
-      oauthTokenUrl: 'https://mainserver.example.invalid/oauth/token',
+      typeKey: 'sva_mainserver',
+      ownerKind: 'host',
+      ownerId: 'host',
+      displayName: 'SVA Mainserver',
+      alias: 'default',
       enabled: true,
+      isDefault: true,
+      category: 'api',
+      publicConfig: {
+        graphqlBaseUrl: 'https://public.example.invalid/graphql',
+        oauthTokenUrl: 'https://mainserver.example.invalid/oauth/token',
+      },
+      statusCheckKind: 'sva_mainserver',
+      visibleStatus: 'unknown',
     });
     state.dnsLookup.mockResolvedValueOnce([{ address: '127.0.0.1', family: 4 }]);
 

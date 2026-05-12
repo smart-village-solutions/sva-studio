@@ -47,6 +47,20 @@ export {
   studioJobRuntimeContract,
   studioPluginOperationErrorContract,
 } from './plugin-operations-contract.js';
+export { externalInterfaceContract } from './external-interfaces-contract.js';
+export type {
+  ExternalInterfaceCategory,
+  ExternalInterfaceConnectionCheckRecord,
+  ExternalInterfaceOwnerKind,
+  ExternalInterfaceRecord,
+  ExternalInterfaceRuntimeErrorCode,
+  ExternalInterfaceSettingsRecord,
+  ExternalInterfaceStatusCheckKind,
+  ExternalInterfaceTypeDefinition,
+  ExternalInterfaceTypeKey,
+  ExternalInterfaceVisibleStatus,
+  ResolvedExternalInterface,
+} from './external-interfaces-contract.js';
 export type {
   StudioJobCancellationRequestInput,
   StudioJobCreateInput,

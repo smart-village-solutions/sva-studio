@@ -200,12 +200,12 @@ describe('InterfacesPage', () => {
     });
   });
 
-  it('shows the translated backend error when custom interface storage is unavailable', async () => {
+  it('shows the translated backend error when the backend rejects an invalid interface mutation', async () => {
     state.listInterfaces.mockResolvedValue({
       instanceId: 'de-musterhausen',
       entries: [mainserverEntry],
     });
-    state.upsertInterface.mockRejectedValue(new Error('custom_interfaces_not_supported'));
+    state.upsertInterface.mockRejectedValue(new Error('interface_type_change_not_supported'));
 
     render(<InterfacesPage />);
 
@@ -227,8 +227,66 @@ describe('InterfacesPage', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText('Zusätzliche Schnittstellen werden erst unterstützt, sobald das Backend für diese Typen angebunden ist.')
+        screen.getByText('Der Typ einer vorhandenen Schnittstelle kann nicht nachträglich geändert werden.')
       ).toBeTruthy();
+    });
+  });
+
+  it('shows translated load errors before any mutation interaction', async () => {
+    state.listInterfaces.mockRejectedValue(new Error('interface_instance_mismatch'));
+
+    render(<InterfacesPage />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          'Die gewählte Schnittstelle gehört nicht zur aktuellen Instanz und konnte nicht geändert werden.'
+        )
+      ).toBeTruthy();
+    });
+
+    expect(state.saveMainserver).not.toHaveBeenCalled();
+    expect(state.upsertInterface).not.toHaveBeenCalled();
+  });
+
+  it('updates an existing s3 interface through the generic endpoint with its existing id', async () => {
+    state.listInterfaces.mockResolvedValue({
+      instanceId: 'de-musterhausen',
+      entries: [mainserverEntry, s3Entry],
+    });
+    state.upsertInterface.mockResolvedValue({
+      ...s3Entry,
+      name: 'Uploads aktualisiert',
+      config: { ...s3Entry.config, secretAccessKey: '' },
+    });
+
+    render(<InterfacesPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('2 Schnittstelle(n)')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Bearbeiten' })[1]!);
+    fireEvent.change(screen.getByDisplayValue('Uploads'), {
+      target: { value: 'Uploads aktualisiert' },
+    });
+    fireEvent.change(document.getElementById('s3-secret-key')!, { target: { value: 'rotated-secret' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Einstellungen speichern' }));
+
+    await waitFor(() => {
+      expect(state.upsertInterface).toHaveBeenCalledWith({
+        data: {
+          instanceId: 'de-musterhausen',
+          existingId: 's3-1',
+          draft: expect.objectContaining({
+            type: 's3',
+            name: 'Uploads aktualisiert',
+            config: expect.objectContaining({
+              secretAccessKey: 'rotated-secret',
+            }),
+          }),
+        },
+      });
     });
   });
 
@@ -238,6 +296,29 @@ describe('InterfacesPage', () => {
       entries: [mainserverEntry, s3Entry],
     });
     state.deleteInterface.mockRejectedValue(new Error('interface_not_found'));
+
+    render(<InterfacesPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('2 Schnittstelle(n)')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Löschen' })[0]!);
+    fireEvent.click(screen.getByRole('button', { name: 'Endgültig löschen' }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Die gewählte Schnittstelle wurde nicht gefunden oder bereits entfernt.')
+      ).toBeTruthy();
+    });
+  });
+
+  it('shows the translated not-found error when deletion resolves without removing a record', async () => {
+    state.listInterfaces.mockResolvedValue({
+      instanceId: 'de-musterhausen',
+      entries: [mainserverEntry, s3Entry],
+    });
+    state.deleteInterface.mockResolvedValue({ deleted: false });
 
     render(<InterfacesPage />);
 

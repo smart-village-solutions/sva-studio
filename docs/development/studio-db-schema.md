@@ -139,6 +139,8 @@ Kernidee:
 Tabellen für Instanzkonfiguration, Hostnames und technische Provisionierung:
 
 - `iam.instance_integrations`
+- `iam.external_interface_types`
+- `iam.instance_external_interfaces`
 - `iam.instance_modules`
 - `iam.instance_hostnames`
 - `iam.instance_provisioning_runs`
@@ -149,6 +151,7 @@ Tabellen für Instanzkonfiguration, Hostnames und technische Provisionierung:
 Kernidee:
 
 - Diese Tabellen modellieren die technische Betriebs- und Provisioning-Ebene pro Instanz.
+- Externe Schnittstellen werden hostgeführt über einen zentralen Typkatalog und instanzbezogene Konfigurationsdatensätze mit verschlüsselten Secret-Blöcken verwaltet.
 - Keycloak-bezogene Zustände sind explizit persistiert und auditierbar.
 
 ### 6. Content-Management

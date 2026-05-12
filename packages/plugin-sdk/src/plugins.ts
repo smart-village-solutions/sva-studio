@@ -11,6 +11,8 @@ import {
   normalizePluginNamespace,
   parseNamespacedPluginIdentifier,
 } from './plugin-identifiers.js';
+import type { PluginExternalInterfaceTypeDefinition } from './external-interfaces.js';
+import { definePluginExternalInterfaceTypes } from './external-interfaces.js';
 import type { PluginImportProfileDefinition, PluginJobTypeDefinition } from './plugin-operations.js';
 import { definePluginImportProfiles, definePluginJobTypes } from './plugin-operations.js';
 
@@ -90,6 +92,7 @@ export type PluginDefinition = {
   readonly moduleIam?: PluginModuleIamContract;
   readonly jobTypes?: readonly PluginJobTypeDefinition[];
   readonly importProfiles?: readonly PluginImportProfileDefinition[];
+  readonly externalInterfaceTypes?: readonly PluginExternalInterfaceTypeDefinition[];
   readonly translations?: PluginTranslations;
 };
 
@@ -116,6 +119,7 @@ const pluginDefinitionAllowedKeys = new Set([
   'moduleIam',
   'jobTypes',
   'importProfiles',
+  'externalInterfaceTypes',
   'translations',
 ] as const);
 
@@ -755,11 +759,14 @@ const assertPluginRegistryModuleIam = ({ plugin, pluginNamespace }: PluginRegist
 const normalizePluginRegistryOperations = ({
   plugin,
   pluginNamespace,
-}: PluginRegistryValidationContext): Pick<PluginDefinition, 'jobTypes' | 'importProfiles'> => ({
+}: PluginRegistryValidationContext): Pick<PluginDefinition, 'jobTypes' | 'importProfiles' | 'externalInterfaceTypes'> => ({
   jobTypes: plugin.jobTypes ? definePluginJobTypes(pluginNamespace, plugin.jobTypes) : plugin.jobTypes,
   importProfiles: plugin.importProfiles
     ? definePluginImportProfiles(pluginNamespace, plugin.importProfiles)
     : plugin.importProfiles,
+  externalInterfaceTypes: plugin.externalInterfaceTypes
+    ? definePluginExternalInterfaceTypes(pluginNamespace, plugin.externalInterfaceTypes)
+    : plugin.externalInterfaceTypes,
 });
 
 export const createPluginRegistry = (

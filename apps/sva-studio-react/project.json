@@ -118,6 +118,62 @@
         "configFile": "apps/sva-studio-react/vitest.config.ts"
       }
     },
+    "test:unit:ui": {
+      "executor": "@nx/vitest:test",
+      "cache": true,
+      "inputs": [
+        "default",
+        "^production",
+        "testing",
+        "frontendTooling"
+      ],
+      "outputs": [],
+      "options": {
+        "configFile": "apps/sva-studio-react/vitest.ui.config.ts"
+      }
+    },
+    "test:unit:routes": {
+      "executor": "@nx/vitest:test",
+      "cache": true,
+      "inputs": [
+        "default",
+        "^production",
+        "testing",
+        "frontendTooling"
+      ],
+      "outputs": [],
+      "options": {
+        "configFile": "apps/sva-studio-react/vitest.routes.config.ts"
+      }
+    },
+    "test:unit:hooks": {
+      "executor": "@nx/vitest:test",
+      "cache": true,
+      "inputs": [
+        "default",
+        "^production",
+        "testing",
+        "frontendTooling"
+      ],
+      "outputs": [],
+      "options": {
+        "configFile": "apps/sva-studio-react/vitest.hooks.config.ts"
+      }
+    },
+    "test:unit:server": {
+      "executor": "@nx/vitest:test",
+      "cache": true,
+      "inputs": [
+        "default",
+        "^production",
+        "testing",
+        "frontendTooling"
+      ],
+      "outputs": [],
+      "options": {
+        "configFile": "apps/sva-studio-react/vitest.server.config.ts"
+      }
+    },
     "test:coverage": {
       "executor": "nx:run-commands",
       "parallelism": false,

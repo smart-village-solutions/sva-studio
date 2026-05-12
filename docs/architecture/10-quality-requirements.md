@@ -36,6 +36,8 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - `@sva/studio-module-iam` bleibt React-frei und besteht `test:types`, `test:unit` sowie `check:runtime` als serverseitig konsumierbarer Vertrags-Edge
 - Unit-Test-Basis:
   - `pnpm test:unit` muss grün sein
+  - isolierte App-Änderungen dürfen im PR-Pfad über `sva-studio-react:test:unit:ui|routes|hooks|server` statt über die komplette App-Suite validiert werden
+  - gemischte oder nicht eindeutig klassifizierbare App-Änderungen fallen bewusst auf das aggregierte `sva-studio-react:test:unit` zurück
 - IAM-Acceptance-Gate:
   - `pnpm nx run sva-studio-react:test:acceptance` läuft als separates Delivery-Gate gegen die Testumgebung
   - Bericht mit JSON- und Markdown-Artefakt wird unter `docs/reports/` geschrieben
@@ -194,6 +196,7 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
 
 - Nicht alle Projekte haben vollwertige Unit/Coverage-Suites (teils exempt)
 - App-Tests laufen derzeit mit `--passWithNoTests`, daher eingeschränkte Aussagekraft
+- Große App-Unit-Suiten benötigen aktive Pflege ihrer Slice-Zuordnung; unklare Dateien müssen auf den Aggregat-Fallback statt auf partielle Unterabdeckung zurückfallen
 - Fehlende oder implizite Cache-Inputs für Frontend-Tooling können zu falschen Cache-Hits führen, wenn neue App-Targets nicht konsistent gepflegt werden
 - Mehrere IAM-Hotspots können fachlich weiterhin komplex sein, liegen aber nicht mehr als neue Ownership in den alten Sammelpackages.
 - Die Package-Zielarchitektur reduziert öffentliche Importflächen; verbleibende Restkomplexität wird im jeweiligen Zielpackage statt am historischen Fassadenpfad nachverfolgt.

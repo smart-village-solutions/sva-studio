@@ -6,7 +6,10 @@ export default mergeConfig(
   sharedVitestConfig,
   defineConfig({
     test: {
-      include: ['src/**/*.{test,spec}.{ts,tsx}'],
+      include: [
+        'src/routes/**/*.{test,spec}.{ts,tsx}',
+        'src/routing/**/*.{test,spec}.{ts,tsx}',
+      ],
     },
   })
 );

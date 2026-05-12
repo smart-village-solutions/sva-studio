@@ -59,6 +59,7 @@ Das Kommando bildet den blockierenden GitHub-PR-Workflow für lokale Vorprüfung
 
 - `check:file-placement`
 - `affected` oder `full` für `lint`, `test:unit`, `test:types` und `test:coverage` abhängig vom PR-Scope
+- bei isolierten App-only-Änderungen führt der Unit-Pfad nur die betroffenen `sva-studio-react`-Slices aus; unklare oder gemischte Änderungen nutzen den sicheren Aggregat-Fallback
 - `patch-coverage-gate --base=origin/main` für geänderte, ausführbare Zeilen im PR-Diff
 - `coverage-gate` im PR-Modus mit optionalen Summary-Dateien
 - `complexity-gate`

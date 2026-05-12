@@ -268,12 +268,13 @@ gleichzeitig beeinflussen.
 
 ### Build-, Test- und Cache-Konzept der Frontend-App
 
-- `apps/sva-studio-react` nutzt dedizierte Nx-Executor für Vite (`build`, `serve`, `preview`), Vitest (`test:unit`, `test:coverage`) und Playwright (`test:e2e`)
+- `apps/sva-studio-react` nutzt dedizierte Nx-Executor für Vite (`build`, `serve`, `preview`), Vitest (`test:unit`, `test:unit:ui`, `test:unit:routes`, `test:unit:hooks`, `test:unit:server`, `test:coverage`) und Playwright (`test:e2e`)
 - `apps/sva-studio-react:verify:runtime-artifact` ist der verbindliche Final-Artifact-Check nach dem Build; er validiert den finalen `.output/server/**`-Vertrag gegen echte Health-Probes und klassifiziert Fehler als `artifact-contract-failed`, `dependency-failed`, `runtime-start-failed` oder `http-dispatch-failed`
 - Cache-relevante Frontend-Konfigurationen werden über `frontendTooling` in `nx.json` explizit modelliert
 - Environment-Einflüsse mit Build-/Serve-/E2E-Relevanz (`CODECOV_TOKEN`, `TSS_DEV_SERVER`, `CI`) werden explizit in die Nx-Hash-Bildung aufgenommen
 - Pre-Build-Checks für i18n und Account-UI-Foundation bleiben als separate Nx-Targets vor dem App-Build erzwungen
 - Die App-Unit-Tests erzwingen wegen Node-25-/`jsdom`-Instabilitäten einen einzelnen Vitest-Worker im Thread-Pool
+- Der PR-Unit-Pfad darf bei isolierten App-Änderungen gezielt nur die betroffenen App-Slices ausführen; gemischte oder unklare Änderungen fallen bewusst auf das aggregierte `test:unit`-Target zurück
 
 ### Studio-UI-Boundary und Design-System-Kapselung
 

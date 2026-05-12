@@ -82,6 +82,7 @@
     "frontendTooling": [
       "{projectRoot}/vite.config.ts",
       "{projectRoot}/vitest.config.ts",
+      "{projectRoot}/vitest.*.config.ts",
       "{projectRoot}/playwright.config.ts",
       "{projectRoot}/tailwind.config.cjs",
       "{projectRoot}/postcss.config.cjs",

@@ -7,6 +7,22 @@ on:
   pull_request:
     branches:
       - main
+    paths:
+      - '.github/workflows/**'
+      - '.github/actions/**'
+      - '.github/codeql/**'
+      - '**/*.js'
+      - '**/*.cjs'
+      - '**/*.mjs'
+      - '**/*.jsx'
+      - '**/*.ts'
+      - '**/*.cts'
+      - '**/*.mts'
+      - '**/*.tsx'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'nx.json'
   schedule:
     - cron: '44 22 * * 3'
   workflow_dispatch:

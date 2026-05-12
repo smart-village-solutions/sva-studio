@@ -103,6 +103,23 @@ describe('plugin platform contracts', () => {
     });
   });
 
+  it('sorts required capabilities with locale-aware ordering', () => {
+    expect(
+      definePluginManifest({
+        pluginId: 'news',
+        version: '1.2.3',
+        sdkVersion: '0.0.1',
+        hostCompatibility: {
+          studioVersionRange: '^2.0.0',
+          requiredCapabilities: ['z-capability', 'ä-capability'],
+        },
+        entryPoints: {
+          browser: './dist/browser.js',
+        },
+      }).hostCompatibility.requiredCapabilities
+    ).toEqual(['ä-capability', 'z-capability']);
+  });
+
   it('creates catalog entries for local and installed plugin sources', () => {
     expect(
       definePluginCatalogEntry({

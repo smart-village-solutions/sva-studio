@@ -90,7 +90,7 @@ const writeTrailInternal = (trail: readonly AuthDiagnosticEvent[]): void => {
 };
 
 export const createAuthFlowId = (): string => {
-  const randomPart = Math.random().toString(36).slice(2, 8);
+  const randomPart = globalThis.crypto.randomUUID().replaceAll('-', '').slice(0, 12);
   return `auth-${Date.now().toString(36)}-${randomPart}`;
 };
 

@@ -149,7 +149,9 @@ export const createBootstrapAdminStructureHandler =
     }
 
     const registry = requireModuleIamRegistry(deps);
-    const requestedModuleIds = Array.from(new Set(input.moduleIds.map((moduleId) => moduleId.trim()).filter(Boolean))).sort();
+    const requestedModuleIds = Array.from(new Set(input.moduleIds.map((moduleId) => moduleId.trim()).filter(Boolean))).sort(
+      (left, right) => left.localeCompare(right, 'de')
+    );
 
     if (requestedModuleIds.some((moduleId) => !registry.has(moduleId))) {
       return { ok: false, reason: 'unknown_module' };

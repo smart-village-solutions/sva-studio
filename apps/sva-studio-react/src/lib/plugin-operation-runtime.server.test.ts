@@ -120,6 +120,17 @@ describe('plugin operation runtime registration', () => {
     ).toThrowError('missing_plugin_operation_handlers:news.import-articles');
   });
 
+  it('reports missing declared job types in locale-aware alphabetical order', async () => {
+    const mod = await import('./plugin-operation-runtime.server');
+
+    expect(() =>
+      mod.assertPluginOperationExecutionHandlerCoverage({
+        declaredJobTypeIds: ['z-job', 'ä-job'],
+        handlers: {},
+      })
+    ).toThrowError('missing_plugin_operation_handlers:ä-job,z-job');
+  });
+
   it('rejects registered runtime handlers without a declared job type', async () => {
     const mod = await import('./plugin-operation-runtime.server');
 

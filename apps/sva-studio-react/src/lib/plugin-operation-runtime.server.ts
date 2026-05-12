@@ -29,6 +29,8 @@ type StudioPluginJobSource = {
   readonly manifest: PluginManifest;
 };
 
+const compareAlphabetically = (left: string, right: string): number => left.localeCompare(right, 'de');
+
 const workspaceJobModuleLoaders = import.meta.glob('../../../../packages/plugin-*/src/server.ts') as Record<
   string,
   PluginJobModuleLoader
@@ -257,13 +259,13 @@ export const createStudioPluginOperationExecutionHandlers = async (): Promise<
 
 const collectRegisteredHandlerIds = (
   handlers: Readonly<Record<string, PluginOperationExecutionRegistration>>
-): readonly string[] => Object.keys(handlers).sort();
+): readonly string[] => Object.keys(handlers).sort(compareAlphabetically);
 
 export const assertPluginOperationExecutionHandlerCoverage = (input: {
   readonly declaredJobTypeIds: readonly string[];
   readonly handlers: Readonly<Record<string, PluginOperationExecutionRegistration>>;
 }): void => {
-  const declaredJobTypeIds = [...input.declaredJobTypeIds].sort();
+  const declaredJobTypeIds = [...input.declaredJobTypeIds].sort(compareAlphabetically);
   const registeredHandlerIds = collectRegisteredHandlerIds(input.handlers);
 
   const missingHandlerIds = declaredJobTypeIds.filter((jobTypeId) => !registeredHandlerIds.includes(jobTypeId));
@@ -281,7 +283,7 @@ export const assertStudioPluginOperationHandlerCoverage = (
   handlers: Readonly<Record<string, PluginOperationExecutionRegistration>>
 ): void => {
   assertPluginOperationExecutionHandlerCoverage({
-    declaredJobTypeIds: [...studioDeclaredPluginOperationJobTypeIds].sort(),
+    declaredJobTypeIds: [...studioDeclaredPluginOperationJobTypeIds].sort(compareAlphabetically),
     handlers,
   });
 };

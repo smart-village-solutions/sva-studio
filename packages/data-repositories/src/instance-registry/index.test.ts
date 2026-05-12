@@ -512,6 +512,39 @@ describe('instance registry repository', () => {
     expect(rolePermissionCleanup?.text).not.toContain('role.role_key IN');
   });
 
+  it('uses locale-aware ordering for managed permission and role cleanup sets', async () => {
+    const { executor, statements } = createQueuedExecutor([[]]);
+    const repository = createInstanceRegistryRepository(executor);
+
+    await expect(
+      repository.syncAssignedModuleIam({
+        instanceId: 'tenant-a',
+        managedModuleIds: ['news'],
+        contracts: [
+          {
+            moduleId: 'news',
+            permissionIds: ['z.permission', 'ä.permission'],
+            systemRoles: [{ roleName: 'z-role', permissionIds: ['z.permission'] }, { roleName: 'ä-role', permissionIds: ['ä.permission'] }],
+          },
+        ],
+      })
+    ).resolves.toBeUndefined();
+
+    const permissionCleanup = statements.find((statement) =>
+      statement.text.includes('DELETE FROM iam.permissions')
+    );
+    const roleUpserts = statements.filter((statement) =>
+      statement.text.includes('INSERT INTO iam.roles')
+    );
+    const permissionUpserts = statements.filter((statement) =>
+      statement.text.includes('INSERT INTO iam.permissions')
+    );
+
+    expect(permissionCleanup?.text).toContain("permission_key NOT IN ('ä.permission', 'z.permission')");
+    expect(permissionUpserts.map((statement) => statement.values[1])).toEqual(['ä.permission', 'z.permission']);
+    expect(roleUpserts.map((statement) => statement.values[1])).toEqual(['ä-role', 'z-role']);
+  });
+
   it('tags bootstrap role grants with bootstrap ownership metadata', async () => {
     const { executor, statements } = createQueuedExecutor([]);
     const repository = createInstanceRegistryRepository(executor);

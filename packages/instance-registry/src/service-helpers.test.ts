@@ -41,7 +41,16 @@ describe('service-helpers', () => {
     expect(
       buildInstanceDetail(instance as never, [latestProvisioningRun] as never, [{ id: 'audit-1' }] as never, {
         status: 'ready',
-      } as never),
+      } as never, undefined, undefined, [], undefined, undefined, {
+        instanceId: 'demo',
+        provider: 'supabase',
+        projectUrl: 'https://tenant-a.supabase.co',
+        schemaName: 'public',
+        enabled: true,
+        databaseUrlConfigured: true,
+        serviceRoleKeyConfigured: true,
+        visibleStatus: 'ok',
+      }),
     ).toEqual(
       expect.objectContaining({
         hostnames: [
@@ -52,6 +61,10 @@ describe('service-helpers', () => {
           },
         ],
         auditEvents: [{ id: 'audit-1' }],
+        wasteManagementSettings: expect.objectContaining({
+          provider: 'supabase',
+          visibleStatus: 'ok',
+        }),
       }),
     );
   });

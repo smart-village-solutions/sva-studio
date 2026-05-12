@@ -46,6 +46,7 @@ Laufzeitknoten auf Basis des aktuellen Repos.
 - OTEL Collector als Telemetrie-Hub
 - Loki/Prometheus als Storage, Grafana für Auswertung
 - `redis-exporter` als Prometheus-Scrape-Target für Redis-Infrastrukturmetriken
+- Plugin-Distributionsartefakte als eigener Betriebsgegenstand neben dem App-Image; sie werden über Manifest plus gebaute Artefakte aktiviert, nicht über Core-Codeänderungen
 
 ### Ergänzung 2026-03: Minimaler Server-Rollout mit Portainer
 
@@ -194,6 +195,13 @@ Referenzen:
 - HA-/Skalierungsdetails für produktiven Betrieb sind nur teilweise als ADR/Doku beschrieben
 - Sichere externe Erreichbarkeit für Grafana oder alternative interne Zugriffswege sind noch kein Teil des Referenzprofils
 - Redis-L2-Cache für Registry-Lookups ist Folgearbeit
+- Der produktive Betriebsvertrag für installierte Plugin-Distributionen, Katalog-Persistenz und Artefaktablage ist architektonisch beschrieben, aber noch nicht umgesetzt
+
+### Fortschreibung 2026-05: Verteilung der Plugin-Plattform v2
+
+- Lokale Entwicklung bleibt als Source-Mode innerhalb des Monorepos oder über lokal verlinkte Packages möglich, darf aber keinen App-Code-Edit für zusätzliche Plugin-Imports voraussetzen.
+- Veröffentlichte Plugins bestehen im Zielbild aus serialisierbarem Manifest und gebauten Artefakten; der Host aktiviert sie über einen Katalogzustand statt über Bundle-Neubau.
+- App-Deploy und Plugin-Deploy werden damit getrennte betriebliche Veränderungen, auch wenn beide weiterhin denselben hostvalidierten Snapshot-Vertrag erfüllen müssen.
 
 Referenzen:
 

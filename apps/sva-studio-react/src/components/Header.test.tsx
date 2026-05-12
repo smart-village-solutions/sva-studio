@@ -44,6 +44,44 @@ describe('Header auth actions', () => {
     vi.unstubAllEnvs();
   });
 
+  it('zeigt Dev-Auth-Badge und lokalen Dev-Login im expliziten Dev-Modus', async () => {
+    vi.stubEnv('VITE_SVA_DEV_AUTH', 'true');
+    window.history.replaceState({}, '', '/plugins/waste-management');
+
+    useAuthMock.mockReturnValue({
+      user: null,
+      isAuthenticated: false,
+      isLoading: false,
+      error: null,
+      hasResolvedSession: true,
+      isDevAuthAvailable: true,
+      refetch: vi.fn(),
+      loginWithDevAuth: vi.fn(),
+      logout: vi.fn(),
+      invalidatePermissions: vi.fn(),
+    });
+    useThemeMock.mockReturnValue({
+      mode: 'light',
+      themeName: 'sva-default',
+      themeLabel: 'SVA Studio',
+      setMode: vi.fn(),
+      toggleMode: vi.fn(),
+    });
+    useLocaleMock.mockReturnValue({
+      locale: 'de',
+      setLocale: vi.fn(),
+    });
+
+    render(<Header />);
+
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'Als Dev-User anmelden' })).not.toBeNull();
+    });
+
+    expect(screen.getByText('Dev-Auth aktiv')).toBeTruthy();
+    expect(screen.queryByRole('link', { name: 'Login' })).toBeNull();
+  });
+
   it('zeigt für unauthenticated user Theme-Toggle und Login', async () => {
     window.history.replaceState({}, '', '/account?tab=profile');
     useAuthMock.mockReturnValue({

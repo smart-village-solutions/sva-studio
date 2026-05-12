@@ -78,6 +78,11 @@ const serializeError = (value: Error): Record<string, unknown> => {
   }
 
   for (const [key, entry] of Object.entries(value)) {
+    if (SENSITIVE_LOG_KEYS.has(key.toLowerCase())) {
+      serialized[key] = '[REDACTED]';
+      continue;
+    }
+
     serialized[key] = serializeAndRedactLogValue(entry);
   }
 

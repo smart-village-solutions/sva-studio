@@ -25,6 +25,7 @@ Die aktuelle Struktur trennt die vorherigen Sammelrollen in eigenständige Paket
 - `@sva/core` enthält framework-agnostische Verträge und reine Kernlogik.
 - `@sva/plugin-sdk` stellt Host-, Plugin-, Registry- und Content-Type-Verträge bereit.
 - `@sva/plugin-sdk` ist auch der einzige öffentliche Eintrittspunkt für deklarative Operations-Beiträge wie registrierte Jobtypen und Importprofile.
+- Die Plugin-Plattform v2 ergänzt dazu Zielrollen für serialisierbare Plugin-Manifeste, einen hostgeführten Plugin-Katalog, einen Loader zur Snapshot-Materialisierung und host-owned Runtime-Bausteine für pluginseitige Server-, Job- und Integrationsbeiträge.
 - `@sva/server-runtime` stellt Request-Kontext, Logging, Fehlerantworten und OTEL-Bootstrap bereit.
 - `@sva/data-client` stellt den client-sicheren HTTP-/Schema-Client bereit.
 - `@sva/data-repositories` bündelt serverseitige Repositories, Migration-nahe Typen und DB-Zugriffe.
@@ -41,6 +42,7 @@ Die aktuelle Struktur trennt die vorherigen Sammelrollen in eigenständige Paket
 - `@sva/studio-ui-react` ist Owner der wiederverwendbaren Listen-/Template-UI; App-spezifische i18n-Labels bleiben Consumer-Verantwortung.
 - `@sva/sva-mainserver` kapselt die externe Mainserver-Integration und exportiert die kanonischen serverseitigen Host-Verträge für News, Events, POI und Mainserver-Schnittstellen.
 - `@sva/plugin-news` zeigt das Zielmuster für fachliche Plugins.
+- `@sva/plugin-waste-management` nutzt dasselbe freie Plugin-Muster für einen vollständig hostgeführten Fachbereich mit Settings, CRUD, Bulk-Flows sowie generischen Job- und Importpfaden.
 - `apps/sva-studio-react` enthält UI, TanStack-Start-Runtime, Router-Wiring und nur noch dünne App-Adapter für Package-Verträge.
 
 Die größte frühere strukturelle Last aus `@sva/auth` ist fachlich aufgelöst. Das Package ist kein aktiver Workspace-Baustein mehr.
@@ -114,6 +116,10 @@ Die Zielrollen sind als Workspace-Packages vorhanden und werden über Nx-, ESLin
 | --- | --- | --- | --- |
 | `@sva/core` | Pure Domänenverträge, Value Objects, Validierungslogik ohne Runtime-Bindung | `packages/core` | Bleibt basal und darf keine App-, DB-, SDK- oder Runtime-Abhängigkeiten aufnehmen. Generische Job- und Import-Grundverträge liegen hier, nicht in Plugin- oder Runtime-Paketen. |
 | `@sva/plugin-sdk` | Öffentlicher Vertrag für Plugins, Registries, Admin-Ressourcen, Content-Type-Erweiterungen, Plugin-i18n | `packages/plugin-sdk` | Plugins dürfen Host-Funktionen nur über diesen Vertrag konsumieren. Registrierte `jobTypes` und `importProfiles` bleiben deklarativ und werden über denselben Build-Time-Registry-Pfad validiert. |
+| `plugin-manifest` (Zielrolle) | Serialisierbarer Distributionsvertrag für veröffentlichte Plugins mit Identität, Version, Kompatibilität, Capabilities und Entry-Points | noch nicht als eigenes Package umgesetzt | Der Manifest-Vertrag wird vom Host ohne vorzeitige Codeausführung gelesen und validiert; er ist keine App-lokale Hilfsstruktur. |
+| `plugin-catalog` (Zielrolle) | Führender Aktivierungs-, Deaktivierungs- und Kompatibilitätskatalog für lokale und installierte Plugins | noch nicht als eigenes Package umgesetzt | Der Katalog steuert, welche Plugins in den kanonischen Host-Snapshot eingehen; deaktivierte oder inkompatible Plugins werden fail-closed ausgeschlossen. |
+| `plugin-loader` (Zielrolle) | Materialisiert lokale und installierte Plugins über denselben Descriptor in einen validierten kanonischen Host-Snapshot | noch nicht als eigenes Package umgesetzt | Routing, IAM, Audit, Jobs und weitere Host-Consumer lesen denselben Snapshot statt roher Plugin-Arrays oder paralleler Teilregistries. |
+| `plugin-runtime` (Zielrolle) | Host-owned Execution-Contexts und Entry-Point-Boundaries für pluginseitige Request-, Job- und Integrationsbeiträge | verteilt über `packages/auth-runtime`, `packages/server-runtime`, `packages/routing` und Folgebausteine | Plugins liefern fachliche Handler, übernehmen aber keine Host-Ownership für Auth, Instanzauflösung, Audit, Secrets, Fehlervertrag oder Orchestrierung. |
 | `@sva/server-runtime` | Request-Kontext, JSON-Fehlerantworten, Logger-Fassade, OTEL-Bootstrap, Workspace-Kontext | `packages/server-runtime` | Server-Hilfen bleiben fachfrei und dürfen keine IAM-Fachlogik enthalten. |
 | `@sva/data-client` | HTTP-Client, Cache, Runtime-Schema-Validierung für Browser-/Universal-Zugriff | `packages/data-client` | Keine DB-Treiber, keine serverseitigen Repositories, keine IAM-Fachlogik. |
 | `@sva/data-repositories` | Postgres-Repositories, Migration-nahe Typen, DB-Operationen | `packages/data-repositories` | Keine UI- oder Routing-Abhängigkeiten; nur serverseitige Konsumenten. Der generische Plugin-Jobdatensatz bleibt hier die führende Persistenz. |
@@ -127,6 +133,7 @@ Die Zielrollen sind als Workspace-Packages vorhanden und werden über Nx-, ESLin
 | `@sva/studio-ui-react` | React-basierte Studio-UI-Bausteine für Host-Seiten und Plugin-Custom-Views | `packages/studio-ui-react` | UI-only Package; keine Plugin-Registry-, Routing-, IAM-, DB- oder Server-Runtime-Verantwortung. Wiederverwendbare Host-Tabellen und Seiten-Templates gehören hierher. |
 | `@sva/*-integration` | Downstream-Integrationen mit getrennten client-sicheren Typen und serverseitigen Adaptern | `packages/sva-mainserver` | Integrationspakete kapseln OAuth2, GraphQL, Secret-Lookups, Fehlerabbildung und kanonische serverseitige Host-Verträge. |
 | `@sva/plugin-*` | Fachliche Erweiterungen über Plugin-SDK-Verträge und gemeinsame Studio-UI | `packages/plugin-news` | Keine Direktimporte aus `@sva/core`, `@sva/auth-runtime`, `@sva/iam-*`, `@sva/instance-registry`, `@sva/data` oder App-Modulen; Custom-Views nutzen `@sva/studio-ui-react`. |
+| `@sva/plugin-waste-management` | Freies Fachplugin für Waste-Management mit Search-Params, Audit-, Import- und Jobnutzung über den Host | `packages/plugin-waste-management` | Keine Supabase-Clients, keine `Newcms`-Runtime-Artefakte und keine direkte DB- oder Secret-Auflösung im Plugin; hostgeführte Zugriffe laufen nur über `/api/v1/waste-management/*`. |
 | `apps/sva-studio-react` | UI, TanStack Start, Router-Wiring, App-Shell, Server-Funktionen als Adapter | `apps/sva-studio-react` | Keine dauerhafte Domänenlogik, keine rohen DB-/Keycloak-/GraphQL-Zugriffe im Browser-Bundle. |
 
 ## Erlaubte Abhängigkeitsrichtung
@@ -150,6 +157,7 @@ Nicht zulässig im Zielbild:
 - `@sva/routing` importiert historische Auth-Sammelpackages für Pfade oder Runtime-Handler.
 - Plugins importieren `@sva/core`, `@sva/auth-runtime`, `@sva/iam-*`, `@sva/instance-registry`, `@sva/data` oder App-Code direkt.
 - Plugins koppeln ihren öffentlichen Vertrag an keine konkrete Worker-Technologie oder zentrale Hosttabelle.
+- App-lokale statische Plugin-Importlisten sind kein Zielbild für extern publizierbare Plugins; sie bleiben nur Übergangspfad bis Katalog und Loader eingeführt sind.
 - Plugins importieren wiederverwendbare UI aus `apps/sva-studio-react/src/**` oder definieren eigene Basis-Control-Systeme für Buttons, Inputs, Dialoge, Tabs oder Tabellen.
 - App-Komponenten modellieren IAM-, Instanz- oder Integrationsregeln selbst.
 - Fachmodule greifen direkt auf fremde Fachmodul-Interna zu, statt über öffentliche Verträge zu gehen.
@@ -219,6 +227,7 @@ Neue Consumer importieren die Zielrolle direkt; ein Compatibility-Layer im Works
 
 - universeller HTTP- und Schema-validierter DataClient
 - serverseitige Postgres-Repositories und Migration-nahe Datenzugriffe
+- für Waste-Management ausdrücklich keine neue Orchestrierungs-, SQL- oder Fachdaten-Ownership; diese bleibt in `@sva/data-repositories`, `@sva/auth-runtime` und `@sva/server-runtime`
 
 Neue DB-nahe Funktionen sollen nicht im universal importierbaren Entry landen. Browser- und Server-Exports bleiben getrennt.
 
@@ -255,6 +264,8 @@ Vor jeder funktionalen Erweiterung ist zu klären:
 | Betrifft sie DSR, Legal, Governance oder Audit-Fachfälle? | Zielbaustein `iam-governance`. |
 | Betrifft sie Instanzen, Hosts, Provisioning oder Tenant-Keycloak? | Zielbaustein `instance-registry`. |
 | Betrifft sie Plugin-Erweiterungen, Content-Type-Definitionen oder Admin-Ressourcen? | Zielbaustein `plugin-sdk`; Fachlogik in Plugin oder Fachmodul. |
+| Betrifft sie veröffentlichte Plugin-Distribution, Aktivierung oder lokale Dev-Einbindung ohne App-Codeänderung? | Zielrollen `plugin-manifest`, `plugin-catalog` und `plugin-loader`; nicht in App-Lokalcode verstecken. |
+| Betrifft sie pluginseitige Server-, Job- oder Integrationsausführung? | Zielrolle `plugin-runtime` mit host-owned Execution-Context; keine direkte Plugin-Anbindung an Secrets, Guards oder Runner-Interna. |
 | Betrifft sie generische Plugin-Jobs oder strukturierte Importprofile? | Schnitt über `plugin-sdk`, `core`, `routing`, `auth-runtime`, `data-repositories` und bei gemeinsamen Fehler-/Logging-Helfern `server-runtime`; keine parallele Plugin- oder Runner-API einführen. |
 | Betrifft sie wiederverwendbare React-UI für Host oder Plugin-Custom-Views? | Zielbaustein `studio-ui-react`; App-Shell und Host-Bindings bleiben in der App. |
 | Betrifft sie Downstream-Systeme wie den SVA-Mainserver? | Eigenes Integrationspackage. |

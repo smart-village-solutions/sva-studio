@@ -32,10 +32,54 @@ const studioModuleIamRegistryMock = new Map([
       systemRoles: [{ roleName: 'system_admin', permissionIds: ['media.read'] }],
     },
   ],
+  [
+    'waste-management',
+    {
+      moduleId: 'waste-management',
+      permissionIds: [
+        'waste-management.read',
+        'waste-management.master-data.manage',
+        'waste-management.tours.manage',
+        'waste-management.scheduling.manage',
+        'waste-management.import.execute',
+        'waste-management.seed.execute',
+        'waste-management.reset.execute',
+        'waste-management.settings.manage',
+      ],
+      systemRoles: [
+        {
+          roleName: 'system_admin',
+          permissionIds: [
+            'waste-management.read',
+            'waste-management.master-data.manage',
+            'waste-management.tours.manage',
+            'waste-management.scheduling.manage',
+            'waste-management.import.execute',
+            'waste-management.seed.execute',
+            'waste-management.reset.execute',
+            'waste-management.settings.manage',
+          ],
+        },
+      ],
+    },
+  ],
 ]);
 
 vi.mock('../db.js', () => ({
   createPoolResolver: vi.fn(() => 'resolve-pool'),
+}));
+
+vi.mock('@sva/server-runtime', () => ({
+  createSdkLogger: () => ({
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    isLevelEnabled: vi.fn(() => true),
+  }),
+  getWorkspaceContext: vi.fn(() => ({ requestId: 'req-test', traceId: 'trace-test' })),
+  getInstanceConfig: vi.fn(() => null),
+  isCanonicalAuthHost: vi.fn(() => true),
 }));
 
 vi.mock('@sva/data-repositories', () => ({
@@ -44,6 +88,8 @@ vi.mock('@sva/data-repositories', () => ({
 
 vi.mock('@sva/data-repositories/server', () => ({
   invalidateInstanceRegistryHost: vi.fn(),
+  loadWasteDataSourceRecord: vi.fn(),
+  saveWasteDataSourceRecord: vi.fn(),
 }));
 
 vi.mock('@sva/instance-registry/runtime-wiring', () => ({
@@ -51,6 +97,7 @@ vi.mock('@sva/instance-registry/runtime-wiring', () => ({
 }));
 
 vi.mock('@sva/studio-module-iam', () => ({
+  studioModuleIamContracts: Array.from(studioModuleIamRegistryMock.values()),
   studioModuleIamRegistry: studioModuleIamRegistryMock,
 }));
 
@@ -114,18 +161,34 @@ describe('iam instance registry repository wiring', () => {
         ]),
       })
     );
+    expect(serviceRegistry?.get('waste-management')).toEqual(
+      expect.objectContaining({
+        moduleId: 'waste-management',
+        permissionIds: expect.arrayContaining([
+          'waste-management.read',
+          'waste-management.import.execute',
+          'waste-management.seed.execute',
+          'waste-management.reset.execute',
+          'waste-management.settings.manage',
+        ]),
+      })
+    );
 
     expect(createInstanceRegistryRuntimeMock).toHaveBeenCalledWith(
       expect.objectContaining({
         serviceDeps: expect.objectContaining({
           moduleIamRegistry: serviceRegistry,
+          loadWasteDataSourceRecord: expect.any(Function),
+          saveWasteDataSourceRecord: expect.any(Function),
         }),
         provisioningWorkerServiceDeps: expect.objectContaining({
           moduleIamRegistry: serviceRegistry,
+          loadWasteDataSourceRecord: expect.any(Function),
+          saveWasteDataSourceRecord: expect.any(Function),
         }),
       })
     );
-  });
+  }, 15_000);
 
   it('reports blocked tenant IAM access instead of throwing when the tenant admin client is missing', async () => {
     resolveIdentityProviderForInstanceMock.mockResolvedValueOnce(null);

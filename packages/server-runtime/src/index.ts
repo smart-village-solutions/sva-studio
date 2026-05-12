@@ -1,12 +1,18 @@
 export const serverRuntimeVersion = '0.0.1';
 
-export type ServerRuntimePackageRole = 'request-context' | 'json-errors' | 'logging' | 'observability';
+export type ServerRuntimePackageRole =
+  | 'request-context'
+  | 'json-errors'
+  | 'logging'
+  | 'observability'
+  | 'external-data-sources';
 
 export const serverRuntimePackageRoles = [
   'request-context',
   'json-errors',
   'logging',
   'observability',
+  'external-data-sources',
 ] as const satisfies readonly ServerRuntimePackageRole[];
 
 export type ServerRuntimeLogger = {
@@ -57,6 +63,17 @@ export {
   parseInstanceIdFromHost,
   resetInstanceConfigCache,
 } from './instance/config.server.js';
+export type {
+  ResolvedWasteDataSource,
+  WasteRuntimeErrorCode,
+} from './waste/data-source.server.js';
+export {
+  buildWasteDatabaseUrlAad,
+  buildWasteServiceRoleKeyAad,
+  resolveWasteDataSource,
+  runWasteConnectionCheck,
+  WasteRuntimeError,
+} from './waste/data-source.server.js';
 export type {
   JsonErrorResponseOptions,
 } from './server/json-error-response.server.js';

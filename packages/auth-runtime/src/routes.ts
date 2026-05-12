@@ -1,8 +1,10 @@
 // This file exists so client and server code can share auth routes type-safely.
 export type AuthRoutePath =
   | '/auth/login'
+  | '/auth/dev-login'
   | '/auth/callback'
   | '/auth/me'
+  | '/auth/dev-logout'
   | '/auth/logout'
   | '/api/v1/iam/health/ready'
   | '/api/v1/iam/health/live'
@@ -73,14 +75,46 @@ export type AuthRoutePath =
   | '/iam/admin/data-subject-rights/legal-holds/apply'
   | '/iam/admin/data-subject-rights/legal-holds/release'
   | '/iam/admin/data-subject-rights/maintenance'
+  | '/api/v1/waste-management/history'
+  | '/api/v1/waste-management/master-data'
+  | '/api/v1/waste-management/fractions'
+  | '/api/v1/waste-management/fractions/$fractionId'
+  | '/api/v1/waste-management/regions'
+  | '/api/v1/waste-management/regions/$regionId'
+  | '/api/v1/waste-management/cities'
+  | '/api/v1/waste-management/cities/$cityId'
+  | '/api/v1/waste-management/streets'
+  | '/api/v1/waste-management/streets/$streetId'
+  | '/api/v1/waste-management/house-numbers'
+  | '/api/v1/waste-management/house-numbers/$houseNumberId'
+  | '/api/v1/waste-management/collection-locations'
+  | '/api/v1/waste-management/collection-locations/$locationId'
+  | '/api/v1/waste-management/location-tour-links'
+  | '/api/v1/waste-management/location-tour-links/bulk'
+  | '/api/v1/waste-management/location-tour-links/$linkId'
+  | '/api/v1/waste-management/scheduling'
+  | '/api/v1/waste-management/global-date-shifts'
+  | '/api/v1/waste-management/global-date-shifts/$shiftId'
+  | '/api/v1/waste-management/tour-date-shifts'
+  | '/api/v1/waste-management/tour-date-shifts/$shiftId'
+  | '/api/v1/waste-management/tours'
+  | '/api/v1/waste-management/tours/$tourId'
+  | '/api/v1/waste-management/settings'
+  | '/api/v1/waste-management/tools/initialize'
+  | '/api/v1/waste-management/tools/imports'
+  | '/api/v1/waste-management/tools/migrations'
+  | '/api/v1/waste-management/tools/seed'
+  | '/api/v1/waste-management/tools/reset'
   | '/api/v1/plugin-operations/jobs'
   | '/api/v1/plugin-operations/jobs/$jobId'
   | '/api/v1/plugin-operations/jobs/$jobId/cancel';
 
 export const authRoutePaths = [
   '/auth/login',
+  '/auth/dev-login',
   '/auth/callback',
   '/auth/me',
+  '/auth/dev-logout',
   '/auth/logout',
   '/api/v1/iam/health/ready',
   '/api/v1/iam/health/live',
@@ -151,6 +185,36 @@ export const authRoutePaths = [
   '/iam/admin/data-subject-rights/legal-holds/apply',
   '/iam/admin/data-subject-rights/legal-holds/release',
   '/iam/admin/data-subject-rights/maintenance',
+  '/api/v1/waste-management/history',
+  '/api/v1/waste-management/master-data',
+  '/api/v1/waste-management/fractions',
+  '/api/v1/waste-management/fractions/$fractionId',
+  '/api/v1/waste-management/regions',
+  '/api/v1/waste-management/regions/$regionId',
+  '/api/v1/waste-management/cities',
+  '/api/v1/waste-management/cities/$cityId',
+  '/api/v1/waste-management/streets',
+  '/api/v1/waste-management/streets/$streetId',
+  '/api/v1/waste-management/house-numbers',
+  '/api/v1/waste-management/house-numbers/$houseNumberId',
+  '/api/v1/waste-management/collection-locations',
+  '/api/v1/waste-management/collection-locations/$locationId',
+  '/api/v1/waste-management/location-tour-links',
+  '/api/v1/waste-management/location-tour-links/bulk',
+  '/api/v1/waste-management/location-tour-links/$linkId',
+  '/api/v1/waste-management/scheduling',
+  '/api/v1/waste-management/global-date-shifts',
+  '/api/v1/waste-management/global-date-shifts/$shiftId',
+  '/api/v1/waste-management/tour-date-shifts',
+  '/api/v1/waste-management/tour-date-shifts/$shiftId',
+  '/api/v1/waste-management/tours',
+  '/api/v1/waste-management/tours/$tourId',
+  '/api/v1/waste-management/settings',
+  '/api/v1/waste-management/tools/initialize',
+  '/api/v1/waste-management/tools/imports',
+  '/api/v1/waste-management/tools/migrations',
+  '/api/v1/waste-management/tools/seed',
+  '/api/v1/waste-management/tools/reset',
   '/api/v1/plugin-operations/jobs',
   '/api/v1/plugin-operations/jobs/$jobId',
   '/api/v1/plugin-operations/jobs/$jobId/cancel',

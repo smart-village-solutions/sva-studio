@@ -74,6 +74,80 @@ export type {
   StudioPluginOperationApiErrorResponse,
   StudioJobUpdateInput,
 } from './plugin-operations-contract.js';
+export { wasteManagementDataSourceContract } from './waste-management-contract.js';
+export type {
+  WasteManagementAuditOverview,
+  WasteManagementAuditOutcome,
+  WasteManagementAuditQuery,
+  WasteManagementAuditRecord,
+  WasteManagementHistoryOverview,
+  WasteManagementTechnicalHistoryOverview,
+  WasteManagementTechnicalHistoryOutcome,
+  WasteManagementTechnicalHistoryRecord,
+} from './waste-management-audit.js';
+export type {
+  WasteManagementConnectionCheckRecord,
+  WasteManagementConnectionCheckStatus,
+  WasteManagementDataSourceProvider,
+  WasteManagementDataSourceRecord,
+  WasteManagementDataSourceStatus,
+  WasteManagementSettingsRecord,
+  WasteManagementTechnicalEventType,
+} from './waste-management-contract.js';
+export { wasteManagementOperationsContract } from './waste-management-operations-contract.js';
+export {
+  getWasteManagementImportCatalogEntry,
+  wasteManagementImportCatalog,
+} from './waste-management-import-catalog.js';
+export type {
+  WasteManagementImportColumnDefinition,
+  WasteManagementImportMappingTemplate,
+  WasteManagementImportProfileCatalogEntry,
+} from './waste-management-import-catalog.js';
+export type {
+  WasteManagementApplyMigrationsJobInput,
+  WasteManagementImportJobInput,
+  WasteManagementImportProfileId,
+  WasteManagementImportSourceFormat,
+  WasteManagementInitializeJobInput,
+  WasteManagementJobInput,
+  WasteManagementJobTypeId,
+  WasteManagementResetJobInput,
+  WasteManagementSeedJobInput,
+} from './waste-management-operations-contract.js';
+export type {
+  WasteDateShiftReasonType,
+  WasteCollectionLocationListFilter,
+  WasteCollectionLocationRecord,
+  WasteCustomTourDate,
+  WasteCityListFilter,
+  WasteCityRecord,
+  WasteFractionListFilter,
+  WasteFractionRecord,
+  WasteGlobalDateShiftListFilter,
+  WasteGlobalDateShiftRecord,
+  WasteHouseNumberListFilter,
+  WasteHouseNumberRecord,
+  WasteLocalizedTextRecord,
+  WasteLocationTourLinkBulkCreateInput,
+  WasteLocationTourLinkBulkCreateResult,
+  WasteManagementMasterDataOverview,
+  WasteManagementSchedulingOverview,
+  WasteManagementToursOverview,
+  WasteLocationTourLinkListFilter,
+  WasteLocationTourLinkRecord,
+  WasteRegionListFilter,
+  WasteRegionRecord,
+  WasteStreetListFilter,
+  WasteStreetRecord,
+  WasteTourDateShiftFollowUpMode,
+  WasteTourDateShiftListFilter,
+  WasteTourDateShiftRecord,
+  WasteTourListFilter,
+  WasteTourRecurrence,
+  WasteTourRecord,
+} from './waste-management-master-data.js';
+export { wasteManagementMasterDataContract } from './waste-management-master-data.js';
 export * from './routing/registry.js';
 export * from './iam/index.js';
 export {

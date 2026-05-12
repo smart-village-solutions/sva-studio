@@ -11,7 +11,7 @@ import {
 import { resolveSessionUser as resolveStoredSessionUser } from './auth-server/session.js';
 import { getAuthConfig } from './config.js';
 import { buildLogContext } from './log-context.js';
-import { createMockSessionUser, isMockAuthEnabled } from './mock-auth.js';
+import { createMockSessionUser, hasActiveMockAuthSession, isMockAuthEnabled } from './mock-auth.js';
 import { SessionStoreUnavailableError, SessionUserHydrationError } from './runtime-errors.js';
 import type { SessionUser } from './types.js';
 
@@ -52,7 +52,7 @@ const createAuthenticatedContext = async (request: Request): Promise<SessionReso
     return { kind: 'response', response: tenantHostError };
   }
 
-  if (isMockAuthEnabled()) {
+  if (isMockAuthEnabled() && hasActiveMockAuthSession(request)) {
     return {
       kind: 'authenticated',
       sessionId: 'mock-auth-session',

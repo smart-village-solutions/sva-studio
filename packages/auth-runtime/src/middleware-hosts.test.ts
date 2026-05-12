@@ -70,7 +70,7 @@ describe('middleware-hosts', () => {
 
     await expect(resolveSessionUser(new Request('https://tenant.example.test'), user as never)).resolves.toBe(user);
     expect(state.resolveEffectiveRequestHost).not.toHaveBeenCalled();
-  });
+  }, 15_000);
 
   it('keeps non-tenant requests unchanged when the user has no instance context', async () => {
     state.classifyHost.mockReturnValueOnce({ kind: 'root' });

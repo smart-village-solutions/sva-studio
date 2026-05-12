@@ -1,0 +1,116 @@
+import type { SvaMainserverConnectionStatus } from '@sva/sva-mainserver';
+
+export type InstanceInterfaceType = 'mainserver' | 's3' | 'supabase';
+
+export type InstanceInterfaceStatus = 'connected' | 'error' | 'disabled' | 'unknown';
+
+export type InstanceInterfaceMainserverConfig = Readonly<{
+  graphqlBaseUrl: string;
+  oauthTokenUrl: string;
+}>;
+
+export type InstanceInterfaceS3Config = Readonly<{
+  endpoint: string;
+  region: string;
+  bucket: string;
+  accessKeyId: string;
+  forcePathStyle: boolean;
+}>;
+
+export type InstanceInterfaceSupabaseConfig = Readonly<{
+  projectUrl: string;
+  schemaName: string;
+  databaseUrl: string;
+}>;
+
+type InstanceInterfaceBase = Readonly<{
+  id: string;
+  instanceId: string;
+  name: string;
+  enabled: boolean;
+  status: InstanceInterfaceStatus;
+  statusMessage?: string;
+  errorCode?: SvaMainserverConnectionStatus['errorCode'];
+  lastCheckedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}>;
+
+export type InstanceInterfaceMainserver = InstanceInterfaceBase & Readonly<{
+  type: 'mainserver';
+  config: InstanceInterfaceMainserverConfig;
+}>;
+
+export type InstanceInterfaceS3 = InstanceInterfaceBase & Readonly<{
+  type: 's3';
+  config: InstanceInterfaceS3Config;
+}>;
+
+export type InstanceInterfaceSupabase = InstanceInterfaceBase & Readonly<{
+  type: 'supabase';
+  config: InstanceInterfaceSupabaseConfig;
+}>;
+
+export type InstanceInterface =
+  | InstanceInterfaceMainserver
+  | InstanceInterfaceS3
+  | InstanceInterfaceSupabase;
+
+export type InstanceInterfaceDraft =
+  | { type: 'mainserver'; name: string; enabled: boolean; config: InstanceInterfaceMainserverConfig }
+  | { type: 's3'; name: string; enabled: boolean; config: InstanceInterfaceS3Config & { secretAccessKey: string } }
+  | { type: 'supabase'; name: string; enabled: boolean; config: InstanceInterfaceSupabaseConfig & { serviceRoleKey: string } };
+
+export const instanceInterfaceTypeMeta: Record<InstanceInterfaceType, { titleKey: string; descriptionKey: string }> = {
+  mainserver: {
+    titleKey: 'interfaces.types.mainserver.label',
+    descriptionKey: 'interfaces.types.mainserver.description',
+  },
+  s3: {
+    titleKey: 'interfaces.types.s3.label',
+    descriptionKey: 'interfaces.types.s3.description',
+  },
+  supabase: {
+    titleKey: 'interfaces.types.supabase.label',
+    descriptionKey: 'interfaces.types.supabase.description',
+  },
+};
+
+export const createEmptyInstanceInterfaceDraft = (
+  type: InstanceInterfaceType
+): InstanceInterfaceDraft => {
+  if (type === 'mainserver') {
+    return {
+      type: 'mainserver',
+      name: 'Mainserver',
+      enabled: true,
+      config: { graphqlBaseUrl: '', oauthTokenUrl: '' },
+    };
+  }
+  if (type === 's3') {
+    return {
+      type: 's3',
+      name: 'S3 Storage',
+      enabled: true,
+      config: {
+        endpoint: '',
+        region: 'eu-central-1',
+        bucket: '',
+        accessKeyId: '',
+        secretAccessKey: '',
+        forcePathStyle: false,
+      },
+    };
+  }
+  return {
+    type: 'supabase',
+    name: 'Supabase',
+    enabled: true,
+    config: {
+      projectUrl: '',
+      schemaName: 'public',
+      databaseUrl: '',
+      serviceRoleKey: '',
+    },
+  };
+};

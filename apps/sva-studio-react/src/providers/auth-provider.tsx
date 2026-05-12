@@ -21,7 +21,17 @@ import {
   createSessionExpiredHref,
   resolveCurrentReturnTo,
 } from '../lib/auth-navigation';
-import { asIamError, fetchWithRequestTimeout, type IamHttpError } from '../lib/iam-api';
+import {
+  hasActiveDevAuthSession,
+  DEV_AUTH_LOGIN_ENDPOINT,
+  DEV_AUTH_LOGOUT_ENDPOINT,
+  isDevAuthAvailable,
+} from '../lib/dev-auth';
+import {
+  asIamError,
+  fetchWithRequestTimeout,
+  type IamHttpError,
+} from '../lib/iam-api';
 import { fetchAuthMeSingleFlight } from '../lib/auth-me-singleflight';
 
 type SessionUser = {
@@ -41,10 +51,12 @@ type AuthState = {
   readonly isRecoveringSession: boolean;
   readonly sessionRecoveryFailed: boolean;
   readonly permissionsDegraded: boolean;
+  readonly isDevAuthAvailable: boolean;
 };
 
 type AuthContextValue = AuthState & {
   refetch: () => Promise<void>;
+  loginWithDevAuth: () => Promise<void>;
   logout: () => Promise<void>;
   invalidatePermissions: () => Promise<void>;
 };
@@ -180,6 +192,7 @@ const computePreExpiryRetryDelayMs = (msUntilExpiry: number): number => {
 };
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {
+  const devAuthAvailable = isDevAuthAvailable();
   const [user, setUser] = React.useState<SessionUser | null>(null);
   const [sessionExpiresAt, setSessionExpiresAt] = React.useState<number | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -416,6 +429,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         }
 
         if (!result.ok && result.status === 401) {
+          const devAuthSessionActive = hasActiveDevAuthSession();
           const hadKnownSession = readHadKnownSession();
           const responseMeta = readAuthDiagnosticMeta(result.error);
           recordTrail('auth_me_401_received', {
@@ -437,10 +451,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             setIsRecoveringSession(true);
           }
 
-          const recovered = await attemptSilentSessionRecovery({
-            attempt: firstAttempt,
-            authFlowId,
-          });
+          const recovered = devAuthSessionActive
+            ? false
+            : await attemptSilentSessionRecovery({
+                attempt: firstAttempt,
+                authFlowId,
+              });
           logAuthDebug('auth_silent_recovery_result', { recovered });
 
           if (isMountedRef.current) {
@@ -632,11 +648,32 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     await loadUser(false);
   }, [loadUser]);
 
+  const loginWithDevAuth = React.useCallback(async () => {
+    if (!devAuthAvailable) {
+      return;
+    }
+
+    await fetchWithRequestTimeout(
+      `${DEV_AUTH_LOGIN_ENDPOINT}?returnTo=${encodeURIComponent(resolveCurrentReturnTo())}`,
+      {
+        method: 'POST',
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      },
+      {
+        timeoutMs: 5_000,
+      }
+    );
+    await loadUser(false);
+  }, [devAuthAvailable, loadUser]);
+
   const invalidatePermissions = React.useCallback(async () => {
     await loadUser(true);
   }, [loadUser]);
 
   const logout = React.useCallback(async () => {
+    const devAuthSessionActive = hasActiveDevAuthSession();
     const authFlowId = startAuthFlow();
     const attempt = nextAuthAttempt();
     logBrowserOperationStart(authLogger, 'auth_logout_started', {
@@ -652,12 +689,16 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     });
     try {
       await fetchWithRequestTimeout(
-        AUTH_LOGOUT_ENDPOINT,
+        devAuthSessionActive ? DEV_AUTH_LOGOUT_ENDPOINT : AUTH_LOGOUT_ENDPOINT,
         {
           method: 'POST',
-          headers: {
-            [LOGOUT_INTENT_HEADER]: LOGOUT_INTENT_VALUE,
-          },
+          ...(devAuthSessionActive
+            ? {}
+            : {
+                headers: {
+                  [LOGOUT_INTENT_HEADER]: LOGOUT_INTENT_VALUE,
+                },
+              }),
         },
         {
           timeoutMs: 5_000,
@@ -706,16 +747,20 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       isRecoveringSession,
       sessionRecoveryFailed,
       permissionsDegraded: user?.permissionStatus === 'degraded',
+      isDevAuthAvailable: devAuthAvailable,
       refetch,
+      loginWithDevAuth,
       logout,
       invalidatePermissions,
     }),
     [
       error,
+      devAuthAvailable,
       hasResolvedSession,
       invalidatePermissions,
       isLoading,
       isRecoveringSession,
+      loginWithDevAuth,
       logout,
       refetch,
       sessionRecoveryFailed,

@@ -3,6 +3,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const state = vi.hoisted(() => ({
   request: new Request('http://localhost/interfaces'),
   loadSvaMainserverInterfacesOverview: vi.fn(),
+  listStoredInterfaces: vi.fn(),
+  upsertStoredInterface: vi.fn(),
+  deleteStoredInterface: vi.fn(),
+  checkStoredInterfaceHealth: vi.fn(),
   saveSvaMainserverSettings: vi.fn(),
   withAuthenticatedUser: vi.fn(),
   logger: {
@@ -42,10 +46,21 @@ vi.mock('@sva/server-runtime', () => ({
   createSdkLogger: () => state.logger,
 }));
 
+vi.mock('./instance-interfaces-server.js', () => ({
+  listStoredInterfaces: state.listStoredInterfaces,
+  upsertStoredInterface: state.upsertStoredInterface,
+  deleteStoredInterface: state.deleteStoredInterface,
+  checkStoredInterfaceHealth: state.checkStoredInterfaceHealth,
+}));
+
 describe('interfaces app adapter', () => {
   beforeEach(() => {
     vi.resetModules();
     state.loadSvaMainserverInterfacesOverview.mockReset();
+    state.listStoredInterfaces.mockReset();
+    state.upsertStoredInterface.mockReset();
+    state.deleteStoredInterface.mockReset();
+    state.checkStoredInterfaceHealth.mockReset();
     state.saveSvaMainserverSettings.mockReset();
     state.withAuthenticatedUser.mockReset();
     state.logger.error.mockReset();
@@ -53,6 +68,10 @@ describe('interfaces app adapter', () => {
     state.logger.warn.mockReset();
     state.serverModuleLoads = 0;
     state.contractModuleLoads = 0;
+    state.checkStoredInterfaceHealth.mockReturnValue({
+      status: 'unknown',
+      checkedAt: '2026-05-12T08:00:00.000Z',
+    });
   });
 
   it('keeps server-only modules out of eager module evaluation', async () => {
@@ -94,6 +113,77 @@ describe('interfaces app adapter', () => {
 
     await expect(loadInterfacesOverview()).resolves.toEqual(overview);
     expect(state.loadSvaMainserverInterfacesOverview).toHaveBeenCalledWith(state.request);
+  });
+
+  it('loads stored interfaces only for authorized users in their own instance context', async () => {
+    state.withAuthenticatedUser.mockImplementation(
+      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<unknown>) =>
+        handler({
+          user: {
+            id: 'subject-1',
+            instanceId: 'de-musterhausen',
+            roles: ['interface_manager'],
+          },
+        })
+    );
+    state.loadSvaMainserverInterfacesOverview.mockResolvedValue({
+      instanceId: 'de-musterhausen',
+      config: null,
+      status: {
+        status: 'connected',
+        checkedAt: '2026-05-03T17:00:00.000Z',
+      },
+    });
+    state.listStoredInterfaces.mockReturnValue([
+      {
+        id: 's3-1',
+        instanceId: 'de-musterhausen',
+        type: 's3',
+        name: 'Uploads',
+        enabled: true,
+        config: {
+          endpoint: 'https://s3.example',
+          region: 'eu-central-1',
+          bucket: 'uploads',
+          accessKeyId: 'key-1',
+          forcePathStyle: false,
+        },
+        createdAt: '2026-05-03T17:00:00.000Z',
+        updatedAt: '2026-05-03T17:00:00.000Z',
+      },
+    ]);
+
+    const { listInstanceInterfacesServerFn } = await import('./interfaces-api');
+
+    await expect(listInstanceInterfacesServerFn()).resolves.toEqual({
+      instanceId: 'de-musterhausen',
+      entries: [
+        expect.objectContaining({
+          id: 's3-1',
+          instanceId: 'de-musterhausen',
+          type: 's3',
+        }),
+      ],
+    });
+    expect(state.listStoredInterfaces).toHaveBeenCalledWith('de-musterhausen');
+  });
+
+  it('rejects list requests from users without interfaces permissions before reading stored entries', async () => {
+    state.withAuthenticatedUser.mockImplementation(
+      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<unknown>) =>
+        handler({
+          user: {
+            id: 'subject-1',
+            instanceId: 'de-musterhausen',
+            roles: ['editor'],
+          },
+        })
+    );
+
+    const { listInstanceInterfacesServerFn } = await import('./interfaces-api');
+
+    await expect(listInstanceInterfacesServerFn()).rejects.toThrow('forbidden');
+    expect(state.listStoredInterfaces).not.toHaveBeenCalled();
   });
 
   it('delegates saving to the settings contract with request context and payload', async () => {
@@ -264,5 +354,69 @@ describe('interfaces app adapter', () => {
         },
       })
     ).rejects.toThrow('invalid_config');
+  });
+
+  it('rejects interface upserts for foreign instance ids before mutating stored interfaces', async () => {
+    state.withAuthenticatedUser.mockImplementation(
+      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<unknown>) =>
+        handler({
+          user: {
+            id: 'subject-1',
+            instanceId: 'de-musterhausen',
+            roles: ['interface_manager'],
+          },
+        })
+    );
+
+    const { upsertInstanceInterfaceServerFn } = await import('./interfaces-api');
+
+    await expect(
+      upsertInstanceInterfaceServerFn({
+        data: {
+          instanceId: 'other-instance',
+          draft: {
+            type: 's3',
+            name: 'Uploads',
+            enabled: true,
+            config: {
+              endpoint: 'https://s3.example',
+              region: 'eu-central-1',
+              bucket: 'uploads',
+              accessKeyId: 'key-1',
+              secretAccessKey: 'secret-1',
+              forcePathStyle: false,
+            },
+          },
+        },
+      })
+    ).rejects.toThrow('forbidden');
+
+    expect(state.upsertStoredInterface).not.toHaveBeenCalled();
+  });
+
+  it('rejects interface deletions for users without interfaces permissions', async () => {
+    state.withAuthenticatedUser.mockImplementation(
+      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<unknown>) =>
+        handler({
+          user: {
+            id: 'subject-1',
+            instanceId: 'de-musterhausen',
+            roles: ['editor'],
+          },
+        })
+    );
+
+    const { deleteInstanceInterfaceServerFn } = await import('./interfaces-api');
+
+    await expect(
+      deleteInstanceInterfaceServerFn({
+        data: {
+          instanceId: 'de-musterhausen',
+          id: 's3-1',
+        },
+      })
+    ).rejects.toThrow('forbidden');
+
+    expect(state.deleteStoredInterface).not.toHaveBeenCalled();
   });
 });

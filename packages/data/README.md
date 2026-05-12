@@ -37,6 +37,18 @@ Für neue Integrationen gilt:
 - Repository- und Server-Zugriffe direkt über `@sva/data-repositories` beziehungsweise `@sva/data-repositories/server` anbinden.
 - Datenbank-Migrationen, Seeds und lokale Prüfskripte weiterhin über die Nx-Targets des Projekts `data` ausführen.
 
+## Waste-Management-Boundary
+
+Für den Change `add-waste-management-plugin` wurde bewusst **keine** zusätzliche Waste-Orchestrierungs- oder Kompositionsschicht in `@sva/data` eingeführt.
+
+Die Gründe dafür sind:
+
+- Die zentrale Governance- und Settings-Persistenz liegt bereits in `@sva/data-repositories`.
+- Die Waste-Fachdatenzugriffe gegen die instanzbezogene `waste_*`-Tabellenfamilie liegen ebenfalls in `@sva/data-repositories`.
+- Die Host-Fassade, Rechteprüfung und Datenquellenauflösung liegen bereits in `@sva/auth-runtime` und `@sva/server-runtime`.
+
+Damit wäre eine zusätzliche `@sva/data`-Zwischenschicht aktuell nur ein technischer Umweg ohne eigenen Mehrwert. Für Waste-Management bleibt `@sva/data` daher bewusst bei seiner Rolle als Kompatibilitäts- und Betriebs-Package; neue primäre Waste-SQL-Heimat oder fachliche Kompositionslogik werden hier nicht aufgebaut.
+
 ## Projektstruktur
 
 Die Struktur des Packages spiegelt sowohl die verbliebene Kompatibilitätsschicht als auch die betriebliche Verantwortung für die Datenbank-Assets wider:

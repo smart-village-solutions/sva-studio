@@ -1,5 +1,16 @@
 import * as React from 'react';
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from './alert-dialog.js';
+import { Badge, type BadgeProps } from './badge.js';
 import { Button, type ButtonProps } from './button.js';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './tabs.js';
 import { cn } from './utils.js';
@@ -230,6 +241,156 @@ export function StudioFormSummary({ kind, children, className }: StudioFormSumma
     >
       {children}
     </p>
+  );
+}
+
+export type StudioConfirmDialogProps = Readonly<{
+  open: boolean;
+  title: React.ReactNode;
+  description: React.ReactNode;
+  confirmLabel: React.ReactNode;
+  cancelLabel: React.ReactNode;
+  onConfirm: () => void;
+  onCancel: () => void;
+  children?: React.ReactNode;
+  confirmDisabled?: boolean;
+}>;
+
+export function StudioConfirmDialog({
+  open,
+  title,
+  description,
+  confirmLabel,
+  cancelLabel,
+  onConfirm,
+  onCancel,
+  children,
+  confirmDisabled = false,
+}: StudioConfirmDialogProps) {
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) {
+      onCancel();
+    }
+  };
+
+  return (
+    <AlertDialog open={open} onOpenChange={handleOpenChange}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{title}</AlertDialogTitle>
+          <AlertDialogDescription>{description}</AlertDialogDescription>
+        </AlertDialogHeader>
+        {children ? <div className="mt-4">{children}</div> : null}
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={onCancel}>{cancelLabel}</AlertDialogCancel>
+          <AlertDialogAction onClick={onConfirm} disabled={confirmDisabled}>
+            {confirmLabel}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
+export type StudioTechnicalStatusTone = 'neutral' | 'success' | 'warning' | 'error';
+
+const technicalStatusBadgeVariantByTone: Record<StudioTechnicalStatusTone, BadgeProps['variant']> = {
+  neutral: 'outline',
+  success: 'default',
+  warning: 'secondary',
+  error: 'destructive',
+};
+
+export type StudioTechnicalStatusMetaItem = Readonly<{
+  id: string;
+  label: React.ReactNode;
+  value: React.ReactNode;
+}>;
+
+export type StudioTechnicalStatusPanelProps = Readonly<{
+  title: React.ReactNode;
+  description?: React.ReactNode;
+  statusLabel: React.ReactNode;
+  statusTone?: StudioTechnicalStatusTone;
+  metadata?: readonly StudioTechnicalStatusMetaItem[];
+  actions?: React.ReactNode;
+  className?: string;
+}>;
+
+export function StudioTechnicalStatusPanel({
+  title,
+  description,
+  statusLabel,
+  statusTone = 'neutral',
+  metadata,
+  actions,
+  className,
+}: StudioTechnicalStatusPanelProps) {
+  return (
+    <section className={cn('space-y-4 rounded-lg border border-border/70 bg-card p-4', className)}>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="space-y-1">
+          <h3 className="text-sm font-semibold">{title}</h3>
+          {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
+        </div>
+        <Badge variant={technicalStatusBadgeVariantByTone[statusTone]}>{statusLabel}</Badge>
+      </div>
+      {metadata?.length ? (
+        <div className="flex flex-wrap gap-2">
+          {metadata.map((item) => (
+            <Badge key={item.id} variant="outline">
+              {item.label}: {item.value}
+            </Badge>
+          ))}
+        </div>
+      ) : null}
+      {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
+    </section>
+  );
+}
+
+export type StudioJobSummaryCardProps = Readonly<{
+  title: React.ReactNode;
+  description?: React.ReactNode;
+  statusLabel: React.ReactNode;
+  statusTone?: StudioTechnicalStatusTone;
+  metadata?: readonly StudioTechnicalStatusMetaItem[];
+  actions?: React.ReactNode;
+  emptyState?: React.ReactNode;
+  className?: string;
+}>;
+
+export function StudioJobSummaryCard({
+  title,
+  description,
+  statusLabel,
+  statusTone = 'neutral',
+  metadata,
+  actions,
+  emptyState,
+  className,
+}: StudioJobSummaryCardProps) {
+  return (
+    <section className={cn('space-y-4 rounded-lg border border-border/70 bg-card p-4', className)}>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="space-y-1">
+          <h3 className="text-sm font-semibold">{title}</h3>
+          {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
+        </div>
+        <Badge variant={technicalStatusBadgeVariantByTone[statusTone]}>{statusLabel}</Badge>
+      </div>
+      {metadata?.length ? (
+        <div className="flex flex-wrap gap-2">
+          {metadata.map((item) => (
+            <Badge key={item.id} variant="outline">
+              {item.label}: {item.value}
+            </Badge>
+          ))}
+        </div>
+      ) : null}
+      {!metadata?.length && emptyState ? <div className="text-sm text-muted-foreground">{emptyState}</div> : null}
+      {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
+    </section>
   );
 }
 

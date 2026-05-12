@@ -63,6 +63,7 @@ describe('plugin registry', () => {
             path: '/plugins/news/new',
             guard: 'news.publish',
             actionId: 'news.publish',
+            validateSearch: (search) => search,
             component: (() => null) as never,
           },
         ],
@@ -84,6 +85,7 @@ describe('plugin registry', () => {
       id: 'news',
       displayName: 'News',
     });
+    expect(registry.get('news')?.routes[1]?.validateSearch?.({ page: '2' })).toEqual({ page: '2' });
   });
 
   it('rejects invalid and duplicate plugins', () => {
@@ -437,14 +439,19 @@ describe('plugin registry', () => {
       ])
     ).toThrow('invalid_plugin_action_definition:news.publish');
 
-    expect(() =>
+    expect(
       definePluginActions('news', [
         {
           id: 'news.publish.v2',
           titleKey: 'news.actions.publish',
         },
       ])
-    ).toThrow('invalid_plugin_action_id:news.publish.v2');
+    ).toEqual([
+      {
+        id: 'news.publish.v2',
+        titleKey: 'news.actions.publish',
+      },
+    ]);
 
     expect(
       definePluginActions('news', [

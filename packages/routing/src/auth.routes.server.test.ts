@@ -83,8 +83,10 @@ const authServerMocks = vi.hoisted(() => {
   const response = (name: string) => new Response(JSON.stringify({ name }), { status: 200 });
   return {
     loginHandler: vi.fn(async () => response('loginHandler')),
+    devLoginHandler: vi.fn(async () => response('devLoginHandler')),
     callbackHandler: vi.fn(async () => response('callbackHandler')),
     meHandler: vi.fn(async () => response('meHandler')),
+    devLogoutHandler: vi.fn(async () => response('devLogoutHandler')),
     logoutHandler: vi.fn(async () => response('logoutHandler')),
     healthReadyHandler: vi.fn(async () => response('healthReadyHandler')),
     healthLiveHandler: vi.fn(async () => response('healthLiveHandler')),
@@ -130,6 +132,40 @@ const authServerMocks = vi.hoisted(() => {
       activateInstance: vi.fn(async () => response('activateInstanceHandler')),
       suspendInstance: vi.fn(async () => response('suspendInstanceHandler')),
       archiveInstance: vi.fn(async () => response('archiveInstanceHandler')),
+    },
+    wasteManagementHandlers: {
+      getHistory: vi.fn(async () => response('getWasteManagementHistoryHandler')),
+      createCity: vi.fn(async () => response('createWasteManagementCityHandler')),
+      createCollectionLocation: vi.fn(async () => response('createWasteManagementCollectionLocationHandler')),
+      createFraction: vi.fn(async () => response('createWasteManagementFractionHandler')),
+      createHouseNumber: vi.fn(async () => response('createWasteManagementHouseNumberHandler')),
+      createGlobalDateShift: vi.fn(async () => response('createWasteManagementGlobalDateShiftHandler')),
+      createLocationTourLinksBulk: vi.fn(async () => response('createWasteManagementLocationTourLinksBulkHandler')),
+      createLocationTourLink: vi.fn(async () => response('createWasteManagementLocationTourLinkHandler')),
+      createRegion: vi.fn(async () => response('createWasteManagementRegionHandler')),
+      createStreet: vi.fn(async () => response('createWasteManagementStreetHandler')),
+      createTour: vi.fn(async () => response('createWasteManagementTourHandler')),
+      createTourDateShift: vi.fn(async () => response('createWasteManagementTourDateShiftHandler')),
+      getMasterDataOverview: vi.fn(async () => response('getWasteManagementMasterDataOverviewHandler')),
+      getSchedulingOverview: vi.fn(async () => response('getWasteManagementSchedulingOverviewHandler')),
+      getToursOverview: vi.fn(async () => response('getWasteManagementToursOverviewHandler')),
+      getSettings: vi.fn(async () => response('getWasteManagementSettingsHandler')),
+      startInitialize: vi.fn(async () => response('startWasteManagementInitializeHandler')),
+      updateSettings: vi.fn(async () => response('updateWasteManagementSettingsHandler')),
+      updateCity: vi.fn(async () => response('updateWasteManagementCityHandler')),
+      updateCollectionLocation: vi.fn(async () => response('updateWasteManagementCollectionLocationHandler')),
+      updateFraction: vi.fn(async () => response('updateWasteManagementFractionHandler')),
+      updateGlobalDateShift: vi.fn(async () => response('updateWasteManagementGlobalDateShiftHandler')),
+      updateHouseNumber: vi.fn(async () => response('updateWasteManagementHouseNumberHandler')),
+      updateLocationTourLink: vi.fn(async () => response('updateWasteManagementLocationTourLinkHandler')),
+      updateRegion: vi.fn(async () => response('updateWasteManagementRegionHandler')),
+      updateStreet: vi.fn(async () => response('updateWasteManagementStreetHandler')),
+      updateTour: vi.fn(async () => response('updateWasteManagementTourHandler')),
+      updateTourDateShift: vi.fn(async () => response('updateWasteManagementTourDateShiftHandler')),
+      startMigrations: vi.fn(async () => response('startWasteManagementMigrationsHandler')),
+      startImport: vi.fn(async () => response('startWasteManagementImportHandler')),
+      startSeed: vi.fn(async () => response('startWasteManagementSeedHandler')),
+      startReset: vi.fn(async () => response('startWasteManagementResetHandler')),
     },
     listContentsHandler: vi.fn(async () => response('listContentsHandler')),
     createContentHandler: vi.fn(async () => response('createContentHandler')),
@@ -287,6 +323,167 @@ describe('auth.routes.server', () => {
     expect(authServerMocks.cancelPluginOperationJobHandler).toHaveBeenCalled();
   });
 
+  it('dispatches waste management routes to the auth runtime', async () => {
+    const masterDataHandlers = resolveAuthHandlers('/api/v1/waste-management/master-data');
+    const collectionLocationHandlers = resolveAuthHandlers('/api/v1/waste-management/collection-locations');
+    const collectionLocationDetailHandlers = resolveAuthHandlers(
+      '/api/v1/waste-management/collection-locations/$locationId'
+    );
+    const streetHandlers = resolveAuthHandlers('/api/v1/waste-management/streets');
+    const streetDetailHandlers = resolveAuthHandlers('/api/v1/waste-management/streets/$streetId');
+    const houseNumberHandlers = resolveAuthHandlers('/api/v1/waste-management/house-numbers');
+    const houseNumberDetailHandlers = resolveAuthHandlers('/api/v1/waste-management/house-numbers/$houseNumberId');
+    const locationTourLinkHandlers = resolveAuthHandlers('/api/v1/waste-management/location-tour-links');
+    const locationTourLinkBulkHandlers = resolveAuthHandlers('/api/v1/waste-management/location-tour-links/bulk');
+    const locationTourLinkDetailHandlers = resolveAuthHandlers(
+      '/api/v1/waste-management/location-tour-links/$linkId'
+    );
+    const schedulingHandlers = resolveAuthHandlers('/api/v1/waste-management/scheduling');
+    const globalDateShiftHandlers = resolveAuthHandlers('/api/v1/waste-management/global-date-shifts');
+    const globalDateShiftDetailHandlers = resolveAuthHandlers('/api/v1/waste-management/global-date-shifts/$shiftId');
+    const tourDateShiftHandlers = resolveAuthHandlers('/api/v1/waste-management/tour-date-shifts');
+    const tourDateShiftDetailHandlers = resolveAuthHandlers('/api/v1/waste-management/tour-date-shifts/$shiftId');
+    const toursHandlers = resolveAuthHandlers('/api/v1/waste-management/tours');
+    const tourDetailHandlers = resolveAuthHandlers('/api/v1/waste-management/tours/$tourId');
+    const settingsHandlers = resolveAuthHandlers('/api/v1/waste-management/settings');
+    const initializeHandlers = resolveAuthHandlers('/api/v1/waste-management/tools/initialize');
+    const migrationsHandlers = resolveAuthHandlers('/api/v1/waste-management/tools/migrations');
+    const importHandlers = resolveAuthHandlers('/api/v1/waste-management/tools/imports');
+    const seedHandlers = resolveAuthHandlers('/api/v1/waste-management/tools/seed');
+    const resetHandlers = resolveAuthHandlers('/api/v1/waste-management/tools/reset');
+
+    expect(masterDataHandlers?.GET).toBeDefined();
+    expect(collectionLocationHandlers?.POST).toBeDefined();
+    expect(collectionLocationDetailHandlers?.PUT).toBeDefined();
+    expect(streetHandlers?.POST).toBeDefined();
+    expect(streetDetailHandlers?.PUT).toBeDefined();
+    expect(houseNumberHandlers?.POST).toBeDefined();
+    expect(houseNumberDetailHandlers?.PUT).toBeDefined();
+    expect(locationTourLinkHandlers?.POST).toBeDefined();
+    expect(locationTourLinkBulkHandlers?.POST).toBeDefined();
+    expect(locationTourLinkDetailHandlers?.PUT).toBeDefined();
+    expect(schedulingHandlers?.GET).toBeDefined();
+    expect(globalDateShiftHandlers?.POST).toBeDefined();
+    expect(globalDateShiftDetailHandlers?.PUT).toBeDefined();
+    expect(tourDateShiftHandlers?.POST).toBeDefined();
+    expect(tourDateShiftDetailHandlers?.PUT).toBeDefined();
+    expect(toursHandlers?.GET).toBeDefined();
+    expect(toursHandlers?.POST).toBeDefined();
+    expect(tourDetailHandlers?.PUT).toBeDefined();
+    expect(settingsHandlers?.GET).toBeDefined();
+    expect(settingsHandlers?.PUT).toBeDefined();
+    expect(migrationsHandlers?.POST).toBeDefined();
+    expect(importHandlers?.POST).toBeDefined();
+    expect(seedHandlers?.POST).toBeDefined();
+    expect(resetHandlers?.POST).toBeDefined();
+
+    await masterDataHandlers.GET?.({
+      request: new Request('http://localhost/api/v1/waste-management/master-data', { method: 'GET' }),
+    });
+    await collectionLocationHandlers.POST?.({
+      request: new Request('http://localhost/api/v1/waste-management/collection-locations', { method: 'POST' }),
+    });
+    await collectionLocationDetailHandlers.PUT?.({
+      request: new Request('http://localhost/api/v1/waste-management/collection-locations/location-1', {
+        method: 'PUT',
+      }),
+    });
+    await streetHandlers.POST?.({
+      request: new Request('http://localhost/api/v1/waste-management/streets', { method: 'POST' }),
+    });
+    await streetDetailHandlers.PUT?.({
+      request: new Request('http://localhost/api/v1/waste-management/streets/street-1', { method: 'PUT' }),
+    });
+    await houseNumberHandlers.POST?.({
+      request: new Request('http://localhost/api/v1/waste-management/house-numbers', { method: 'POST' }),
+    });
+    await houseNumberDetailHandlers.PUT?.({
+      request: new Request('http://localhost/api/v1/waste-management/house-numbers/house-1', { method: 'PUT' }),
+    });
+    await locationTourLinkHandlers.POST?.({
+      request: new Request('http://localhost/api/v1/waste-management/location-tour-links', { method: 'POST' }),
+    });
+    await locationTourLinkBulkHandlers.POST?.({
+      request: new Request('http://localhost/api/v1/waste-management/location-tour-links/bulk', { method: 'POST' }),
+    });
+    await locationTourLinkDetailHandlers.PUT?.({
+      request: new Request('http://localhost/api/v1/waste-management/location-tour-links/link-1', {
+        method: 'PUT',
+      }),
+    });
+    await schedulingHandlers.GET?.({
+      request: new Request('http://localhost/api/v1/waste-management/scheduling', { method: 'GET' }),
+    });
+    await globalDateShiftHandlers.POST?.({
+      request: new Request('http://localhost/api/v1/waste-management/global-date-shifts', { method: 'POST' }),
+    });
+    await globalDateShiftDetailHandlers.PUT?.({
+      request: new Request('http://localhost/api/v1/waste-management/global-date-shifts/shift-1', { method: 'PUT' }),
+    });
+    await tourDateShiftHandlers.POST?.({
+      request: new Request('http://localhost/api/v1/waste-management/tour-date-shifts', { method: 'POST' }),
+    });
+    await tourDateShiftDetailHandlers.PUT?.({
+      request: new Request('http://localhost/api/v1/waste-management/tour-date-shifts/shift-1', { method: 'PUT' }),
+    });
+    await toursHandlers.GET?.({
+      request: new Request('http://localhost/api/v1/waste-management/tours', { method: 'GET' }),
+    });
+    await toursHandlers.POST?.({
+      request: new Request('http://localhost/api/v1/waste-management/tours', { method: 'POST' }),
+    });
+    await tourDetailHandlers.PUT?.({
+      request: new Request('http://localhost/api/v1/waste-management/tours/tour-1', { method: 'PUT' }),
+    });
+    await settingsHandlers.GET?.({
+      request: new Request('http://localhost/api/v1/waste-management/settings', { method: 'GET' }),
+    });
+    await settingsHandlers.PUT?.({
+      request: new Request('http://localhost/api/v1/waste-management/settings', { method: 'PUT' }),
+    });
+    await initializeHandlers.POST?.({
+      request: new Request('http://localhost/api/v1/waste-management/tools/initialize', { method: 'POST' }),
+    });
+    await migrationsHandlers.POST?.({
+      request: new Request('http://localhost/api/v1/waste-management/tools/migrations', { method: 'POST' }),
+    });
+    await importHandlers.POST?.({
+      request: new Request('http://localhost/api/v1/waste-management/tools/imports', { method: 'POST' }),
+    });
+    await seedHandlers.POST?.({
+      request: new Request('http://localhost/api/v1/waste-management/tools/seed', { method: 'POST' }),
+    });
+    await resetHandlers.POST?.({
+      request: new Request('http://localhost/api/v1/waste-management/tools/reset', { method: 'POST' }),
+    });
+
+    expect(authServerMocks.wasteManagementHandlers.getMasterDataOverview).toHaveBeenCalled();
+    expect(authServerMocks.wasteManagementHandlers.createCollectionLocation).toHaveBeenCalled();
+    expect(authServerMocks.wasteManagementHandlers.updateCollectionLocation).toHaveBeenCalled();
+    expect(authServerMocks.wasteManagementHandlers.createStreet).toHaveBeenCalled();
+    expect(authServerMocks.wasteManagementHandlers.updateStreet).toHaveBeenCalled();
+    expect(authServerMocks.wasteManagementHandlers.createHouseNumber).toHaveBeenCalled();
+    expect(authServerMocks.wasteManagementHandlers.updateHouseNumber).toHaveBeenCalled();
+    expect(authServerMocks.wasteManagementHandlers.createLocationTourLink).toHaveBeenCalled();
+    expect(authServerMocks.wasteManagementHandlers.createLocationTourLinksBulk).toHaveBeenCalled();
+    expect(authServerMocks.wasteManagementHandlers.updateLocationTourLink).toHaveBeenCalled();
+    expect(authServerMocks.wasteManagementHandlers.getSchedulingOverview).toHaveBeenCalled();
+    expect(authServerMocks.wasteManagementHandlers.createGlobalDateShift).toHaveBeenCalled();
+    expect(authServerMocks.wasteManagementHandlers.updateGlobalDateShift).toHaveBeenCalled();
+    expect(authServerMocks.wasteManagementHandlers.createTourDateShift).toHaveBeenCalled();
+    expect(authServerMocks.wasteManagementHandlers.updateTourDateShift).toHaveBeenCalled();
+    expect(authServerMocks.wasteManagementHandlers.getToursOverview).toHaveBeenCalled();
+    expect(authServerMocks.wasteManagementHandlers.createTour).toHaveBeenCalled();
+    expect(authServerMocks.wasteManagementHandlers.updateTour).toHaveBeenCalled();
+    expect(authServerMocks.wasteManagementHandlers.getSettings).toHaveBeenCalled();
+    expect(authServerMocks.wasteManagementHandlers.updateSettings).toHaveBeenCalled();
+    expect(authServerMocks.wasteManagementHandlers.startInitialize).toHaveBeenCalled();
+    expect(authServerMocks.wasteManagementHandlers.startMigrations).toHaveBeenCalled();
+    expect(authServerMocks.wasteManagementHandlers.startImport).toHaveBeenCalled();
+    expect(authServerMocks.wasteManagementHandlers.startSeed).toHaveBeenCalled();
+    expect(authServerMocks.wasteManagementHandlers.startReset).toHaveBeenCalled();
+  });
+
   it('executes all mapped handlers for all routes', async () => {
     for (const path of authRoutePaths) {
       const handlers = resolveAuthHandlers(path);
@@ -323,8 +520,10 @@ describe('auth.routes.server', () => {
     }
 
     expect(authServerMocks.loginHandler).toHaveBeenCalled();
+    expect(authServerMocks.devLoginHandler).toHaveBeenCalled();
     expect(authServerMocks.callbackHandler).toHaveBeenCalled();
     expect(authServerMocks.meHandler).toHaveBeenCalled();
+    expect(authServerMocks.devLogoutHandler).toHaveBeenCalled();
     expect(authServerMocks.logoutHandler).toHaveBeenCalled();
     expect(authServerMocks.listUsersHandler).toHaveBeenCalled();
     expect(authServerMocks.getUserHandler).toHaveBeenCalled();

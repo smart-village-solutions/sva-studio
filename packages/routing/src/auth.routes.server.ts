@@ -75,6 +75,98 @@ const governanceAuthHandlerMap = {
   '/iam/admin/data-subject-rights/maintenance': {
     POST: routeHandler(authRuntimeRoutes.dataSubjectMaintenanceHandler),
   },
+  '/api/v1/waste-management/history': {
+    GET: routeHandler(authRuntimeRoutes.wasteManagementHandlers.getHistory),
+  },
+  '/api/v1/waste-management/master-data': {
+    GET: routeHandler(authRuntimeRoutes.wasteManagementHandlers.getMasterDataOverview),
+  },
+  '/api/v1/waste-management/fractions': {
+    POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.createFraction),
+  },
+  '/api/v1/waste-management/fractions/$fractionId': {
+    PUT: routeHandler(authRuntimeRoutes.wasteManagementHandlers.updateFraction),
+  },
+  '/api/v1/waste-management/regions': {
+    POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.createRegion),
+  },
+  '/api/v1/waste-management/regions/$regionId': {
+    PUT: routeHandler(authRuntimeRoutes.wasteManagementHandlers.updateRegion),
+  },
+  '/api/v1/waste-management/cities': {
+    POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.createCity),
+  },
+  '/api/v1/waste-management/cities/$cityId': {
+    PUT: routeHandler(authRuntimeRoutes.wasteManagementHandlers.updateCity),
+  },
+  '/api/v1/waste-management/streets': {
+    POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.createStreet),
+  },
+  '/api/v1/waste-management/streets/$streetId': {
+    PUT: routeHandler(authRuntimeRoutes.wasteManagementHandlers.updateStreet),
+  },
+  '/api/v1/waste-management/house-numbers': {
+    POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.createHouseNumber),
+  },
+  '/api/v1/waste-management/house-numbers/$houseNumberId': {
+    PUT: routeHandler(authRuntimeRoutes.wasteManagementHandlers.updateHouseNumber),
+  },
+  '/api/v1/waste-management/collection-locations': {
+    POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.createCollectionLocation),
+  },
+  '/api/v1/waste-management/collection-locations/$locationId': {
+    PUT: routeHandler(authRuntimeRoutes.wasteManagementHandlers.updateCollectionLocation),
+  },
+  '/api/v1/waste-management/location-tour-links': {
+    POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.createLocationTourLink),
+  },
+  '/api/v1/waste-management/location-tour-links/bulk': {
+    POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.createLocationTourLinksBulk),
+  },
+  '/api/v1/waste-management/location-tour-links/$linkId': {
+    PUT: routeHandler(authRuntimeRoutes.wasteManagementHandlers.updateLocationTourLink),
+  },
+  '/api/v1/waste-management/scheduling': {
+    GET: routeHandler(authRuntimeRoutes.wasteManagementHandlers.getSchedulingOverview),
+  },
+  '/api/v1/waste-management/global-date-shifts': {
+    POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.createGlobalDateShift),
+  },
+  '/api/v1/waste-management/global-date-shifts/$shiftId': {
+    PUT: routeHandler(authRuntimeRoutes.wasteManagementHandlers.updateGlobalDateShift),
+  },
+  '/api/v1/waste-management/tour-date-shifts': {
+    POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.createTourDateShift),
+  },
+  '/api/v1/waste-management/tour-date-shifts/$shiftId': {
+    PUT: routeHandler(authRuntimeRoutes.wasteManagementHandlers.updateTourDateShift),
+  },
+  '/api/v1/waste-management/tours': {
+    POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.createTour),
+    GET: routeHandler(authRuntimeRoutes.wasteManagementHandlers.getToursOverview),
+  },
+  '/api/v1/waste-management/tours/$tourId': {
+    PUT: routeHandler(authRuntimeRoutes.wasteManagementHandlers.updateTour),
+  },
+  '/api/v1/waste-management/settings': {
+    GET: routeHandler(authRuntimeRoutes.wasteManagementHandlers.getSettings),
+    PUT: routeHandler(authRuntimeRoutes.wasteManagementHandlers.updateSettings),
+  },
+  '/api/v1/waste-management/tools/initialize': {
+    POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.startInitialize),
+  },
+  '/api/v1/waste-management/tools/imports': {
+    POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.startImport),
+  },
+  '/api/v1/waste-management/tools/migrations': {
+    POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.startMigrations),
+  },
+  '/api/v1/waste-management/tools/seed': {
+    POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.startSeed),
+  },
+  '/api/v1/waste-management/tools/reset': {
+    POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.startReset),
+  },
   '/api/v1/plugin-operations/jobs': {
     GET: routeHandler(authRuntimeRoutes.listPluginOperationJobsHandler),
     POST: routeHandler(authRuntimeRoutes.startPluginOperationJobHandler),

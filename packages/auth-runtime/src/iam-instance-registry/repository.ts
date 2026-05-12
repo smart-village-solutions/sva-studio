@@ -1,6 +1,10 @@
 import { createPoolResolver } from '../db.js';
 import { createInstanceRegistryRepository } from '@sva/data-repositories';
-import { invalidateInstanceRegistryHost } from '@sva/data-repositories/server';
+import {
+  invalidateInstanceRegistryHost,
+  loadWasteDataSourceRecord,
+  saveWasteDataSourceRecord,
+} from '@sva/data-repositories/server';
 import { createInstanceRegistryRuntime } from '@sva/instance-registry/runtime-wiring';
 import { studioModuleIamRegistry } from '@sva/studio-module-iam';
 
@@ -175,6 +179,8 @@ const registryRuntime = createInstanceRegistryRuntime({
     moduleIamRegistry: studioModuleIamRegistry,
     protectSecret: protectField,
     revealSecret: revealField,
+    loadWasteDataSourceRecord,
+    saveWasteDataSourceRecord,
     readKeycloakStateViaProvisioner,
     probeTenantIamAccess,
   },
@@ -184,6 +190,8 @@ const registryRuntime = createInstanceRegistryRuntime({
     moduleIamRegistry: studioModuleIamRegistry,
     protectSecret: protectField,
     revealSecret: revealField,
+    loadWasteDataSourceRecord,
+    saveWasteDataSourceRecord,
     readKeycloakStateViaProvisioner,
     provisionInstanceAuth: provisionInstanceAuthArtifactsViaProvisioner,
     getKeycloakPreflight: getWorkerKeycloakPreflight,

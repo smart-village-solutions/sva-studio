@@ -1,4 +1,5 @@
 import type { IamInstanceDetail } from '@sva/core';
+import type { WasteManagementSettingsRecord } from '@sva/core';
 
 import { t } from '../../../i18n';
 import type {
@@ -7,6 +8,7 @@ import type {
   DetailFormValues,
   InstanceFieldHelpKey,
   SelectedInstance,
+  WasteManagementSettingsFormValues,
 } from './-instances-shared-types';
 import { INSTANCE_STATUS_LABELS } from './-instances-shared-types';
 
@@ -36,6 +38,49 @@ export const createEmptyTenantAdminClient = () => ({
   secret: '',
 });
 
+export const createEmptyWasteManagementSettingsForm = (): WasteManagementSettingsFormValues => ({
+  provider: 'supabase',
+  enabled: false,
+  projectUrl: '',
+  schemaName: 'public',
+  databaseUrl: '',
+  serviceRoleKey: '',
+});
+
+export const createWasteManagementSettingsForm = (
+  settings?: WasteManagementSettingsRecord
+): WasteManagementSettingsFormValues => ({
+  provider: 'supabase',
+  enabled: settings?.enabled ?? false,
+  projectUrl: settings?.projectUrl ?? '',
+  schemaName: settings?.schemaName ?? 'public',
+  databaseUrl: '',
+  serviceRoleKey: '',
+});
+
+export const buildWasteManagementSettingsPayload = (
+  settings: WasteManagementSettingsFormValues
+) => {
+  const projectUrl = settings.projectUrl.trim();
+  const schemaName = settings.schemaName.trim();
+  const databaseUrl = settings.databaseUrl.trim();
+  const serviceRoleKey = settings.serviceRoleKey.trim();
+  const hasExistingConfiguration = projectUrl.length > 0;
+
+  if (settings.enabled === false && hasExistingConfiguration === false) {
+    return undefined;
+  }
+
+  return {
+    provider: settings.provider,
+    enabled: settings.enabled,
+    projectUrl,
+    schemaName: schemaName || undefined,
+    databaseUrl: databaseUrl || undefined,
+    serviceRoleKey: serviceRoleKey || undefined,
+  };
+};
+
 export const createEmptyCreateForm = (parentDomain = ''): CreateFormValues => ({
   instanceId: '',
   displayName: '',
@@ -47,6 +92,7 @@ export const createEmptyCreateForm = (parentDomain = ''): CreateFormValues => ({
   authClientSecret: '',
   tenantAdminClient: createEmptyTenantAdminClient(),
   tenantAdminBootstrap: createEmptyTenantAdminBootstrap(),
+  wasteManagementSettings: createEmptyWasteManagementSettingsForm(),
 });
 
 export const createDetailForm = (instance: SelectedInstance): DetailFormValues => ({
@@ -68,6 +114,7 @@ export const createDetailForm = (instance: SelectedInstance): DetailFormValues =
     lastName: instance.tenantAdminBootstrap?.lastName ?? '',
   },
   tenantAdminTemporaryPassword: '',
+  wasteManagementSettings: createWasteManagementSettingsForm(instance.wasteManagementSettings),
 });
 
 export const CREATE_WIZARD_STEPS: readonly { key: CreateWizardStepKey; title: string; description: string }[] = [
@@ -224,6 +271,14 @@ export const getCreateStepValidationMessages = (step: CreateWizardStepKey, formV
     return [
       !trimValue(formValues.authRealm) ? t('admin.instances.wizard.validation.authRealm') : null,
       !trimValue(formValues.authClientId) ? t('admin.instances.wizard.validation.authClientId') : null,
+    ].filter((value): value is string => Boolean(value));
+  }
+
+  if (step === 'tenantAdmin') {
+    return [
+      formValues.wasteManagementSettings.enabled && !trimValue(formValues.wasteManagementSettings.projectUrl)
+        ? t('admin.instances.wizard.validation.wasteProjectUrl')
+        : null,
     ].filter((value): value is string => Boolean(value));
   }
 

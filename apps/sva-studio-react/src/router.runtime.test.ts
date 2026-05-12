@@ -14,6 +14,8 @@ const readRouteGuardGetUser = (router: unknown) => {
   return (router as RouterWithAuthContext).options.context.auth.getUser;
 };
 
+let cookieState = '';
+
 const routerMocks = vi.hoisted(() => {
   const createRouterSpy = vi.fn((options: Record<string, unknown>) => ({
     __router: true,
@@ -134,6 +136,7 @@ vi.mock('@tanstack/react-start/server', () => ({
 describe('router runtime helpers', () => {
   beforeEach(() => {
     vi.unstubAllEnvs();
+    cookieState = '';
     routerMocks.executionMode.current = 'client';
     routerMocks.createRouterSpy.mockClear();
     routerMocks.fetchWithRequestTimeoutSpy.mockReset();
@@ -145,6 +148,13 @@ describe('router runtime helpers', () => {
     routerMocks.parseRuntimeProfile.mockClear();
     routerMocks.isMockAuthRuntimeProfile.mockClear();
     delete (window as typeof window & { __SVA_PLAYWRIGHT_ROUTER__?: unknown }).__SVA_PLAYWRIGHT_ROUTER__;
+    Object.defineProperty(document, 'cookie', {
+      configurable: true,
+      get: () => cookieState,
+      set: (value: string) => {
+        cookieState = value;
+      },
+    });
   });
 
   afterEach(() => {
@@ -155,7 +165,7 @@ describe('router runtime helpers', () => {
     const { createMockRouteGuardUser } = await import('./router');
 
     expect(createMockRouteGuardUser()).toEqual({
-      assignedModules: ['news', 'events', 'poi', 'media'],
+      assignedModules: ['news', 'events', 'poi', 'media', 'waste-management'],
       roles: [
         'system_admin',
         'iam_admin',
@@ -187,6 +197,14 @@ describe('router runtime helpers', () => {
         'news.read',
         'events.read',
         'poi.read',
+        'waste-management.read',
+        'waste-management.master-data.manage',
+        'waste-management.tours.manage',
+        'waste-management.scheduling.manage',
+        'waste-management.import.execute',
+        'waste-management.seed.execute',
+        'waste-management.reset.execute',
+        'waste-management.settings.manage',
       ],
     });
   });
@@ -194,6 +212,10 @@ describe('router runtime helpers', () => {
   it('enables mock auth from explicit env flags and runtime profile helpers', async () => {
     const { isMockAuthEnabled } = await import('./router');
 
+    vi.stubEnv('VITE_SVA_DEV_AUTH', 'true');
+    expect(await isMockAuthEnabled()).toBe(true);
+
+    vi.stubEnv('VITE_SVA_DEV_AUTH', 'false');
     vi.stubEnv('VITE_MOCK_AUTH', 'true');
     expect(await isMockAuthEnabled()).toBe(true);
 
@@ -248,7 +270,7 @@ describe('router runtime helpers', () => {
     expect((window as typeof window & { __SVA_PLAYWRIGHT_ROUTER__?: unknown }).__SVA_PLAYWRIGHT_ROUTER__).toBe(router);
   });
 
-  it('resolves route-guard users on the client from /auth/me and handles mock, non-ok, and failure cases', async () => {
+  it('resolves route-guard users on the client from /auth/me and handles non-ok and failure cases', async () => {
     const { getRouter } = await import('./router');
 
     const router = await getRouter();
@@ -286,43 +308,43 @@ describe('router runtime helpers', () => {
 
     routerMocks.fetchWithRequestTimeoutSpy.mockRejectedValueOnce(new Error('timeout'));
     expect(await getUser()).toBeNull();
+  });
 
-    vi.stubEnv('VITE_MOCK_AUTH', 'true');
+  it('does not bypass auth-me when dev auth is only available but no dev auth cookie exists', async () => {
+    const { getRouter } = await import('./router');
+
+    vi.stubEnv('VITE_SVA_DEV_AUTH', 'true');
+
+    const router = await getRouter();
+    const getUser = readRouteGuardGetUser(router);
+
+    routerMocks.fetchWithRequestTimeoutSpy.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          user: {
+            roles: ['editor'],
+            permissionActions: ['news.read'],
+            assignedModules: ['news'],
+          },
+        }),
+        {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }
+      )
+    );
+
     expect(await getUser()).toEqual({
-      assignedModules: ['news', 'events', 'poi', 'media'],
-      roles: [
-        'system_admin',
-        'iam_admin',
-        'support_admin',
-        'security_admin',
-        'instance_registry_admin',
-        'interface_manager',
-        'app_manager',
-        'editor',
-      ],
-      permissionActions: [
-        'content.read',
-        'content.create',
-        'content.updateMetadata',
-        'content.updatePayload',
-        'content.changeStatus',
-        'content.publish',
-        'content.archive',
-        'content.restore',
-        'content.readHistory',
-        'content.manageRevisions',
-        'content.delete',
-        'media.read',
-        'media.create',
-        'media.update',
-        'media.reference.manage',
-        'media.delete',
-        'media.deliver.protected',
-        'news.read',
-        'events.read',
-        'poi.read',
-      ],
+      roles: ['editor'],
+      permissionActions: ['news.read'],
+      permissionStatus: 'ok',
+      assignedModules: ['news'],
     });
+    expect(routerMocks.fetchWithRequestTimeoutSpy).toHaveBeenCalledWith(
+      'http://localhost:3000/auth/me',
+      undefined,
+      { timeoutMs: 5_000 }
+    );
   });
 
   it('resolves route-guard users on the server and falls back to null on failures', async () => {
@@ -359,43 +381,6 @@ describe('router runtime helpers', () => {
 
     routerMocks.fetchWithRequestTimeoutSpy.mockRejectedValueOnce(new Error('auth failed'));
     expect(await getUser()).toBeNull();
-
-    vi.stubEnv('VITE_MOCK_AUTH', 'true');
-    expect(await getUser()).toEqual({
-      assignedModules: ['news', 'events', 'poi', 'media'],
-      roles: [
-        'system_admin',
-        'iam_admin',
-        'support_admin',
-        'security_admin',
-        'instance_registry_admin',
-        'interface_manager',
-        'app_manager',
-        'editor',
-      ],
-      permissionActions: [
-        'content.read',
-        'content.create',
-        'content.updateMetadata',
-        'content.updatePayload',
-        'content.changeStatus',
-        'content.publish',
-        'content.archive',
-        'content.restore',
-        'content.readHistory',
-        'content.manageRevisions',
-        'content.delete',
-        'media.read',
-        'media.create',
-        'media.update',
-        'media.reference.manage',
-        'media.delete',
-        'media.deliver.protected',
-        'news.read',
-        'events.read',
-        'poi.read',
-      ],
-    });
   });
 
   it('builds the runtime router from server route factories when executed on the server', async () => {

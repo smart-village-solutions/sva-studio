@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 
 import {
   buildRoleSyncFailure,
+  mapRoleListItem,
   mapRoleSyncErrorCode,
+  sanitizeRoleErrorMessage,
   sanitizeRoleAuditDetails,
 } from './role-audit.js';
 
@@ -38,6 +40,36 @@ describe('role-audit', () => {
         })
       )
     ).toBe('IDP_FORBIDDEN');
+
+    expect(
+      mapRoleSyncErrorCode(
+        new MockKeycloakAdminRequestError({
+          message: 'missing',
+          statusCode: 404,
+          code: 'not_found',
+        })
+      )
+    ).toBe('IDP_NOT_FOUND');
+
+    expect(
+      mapRoleSyncErrorCode(
+        new MockKeycloakAdminRequestError({
+          message: 'conflict',
+          statusCode: 409,
+          code: 'conflict',
+        })
+      )
+    ).toBe('IDP_CONFLICT');
+
+    expect(
+      mapRoleSyncErrorCode(
+        new MockKeycloakAdminRequestError({
+          message: 'busy',
+          statusCode: 429,
+          code: 'rate_limited',
+        })
+      )
+    ).toBe('IDP_UNAVAILABLE');
   });
 
   it('keeps the role sync failure response contract diagnostics', async () => {
@@ -72,6 +104,121 @@ describe('role-audit', () => {
     });
   });
 
+  it('maps conflict and unknown role sync failures to stable API responses', async () => {
+    const conflictResponse = buildRoleSyncFailure({
+      error: new MockKeycloakAdminRequestError({
+        message: 'duplicate',
+        statusCode: 409,
+        code: 'conflict',
+      }),
+      fallbackMessage: 'Konflikt beim Rollenabgleich.',
+      requestId: 'req-conflict',
+    });
+    const unknownResponse = buildRoleSyncFailure({
+      error: new Error('boom'),
+      fallbackMessage: 'Unbekannter Rollenfehler.',
+      requestId: 'req-unknown',
+    });
+
+    expect(conflictResponse.status).toBe(409);
+    await expect(conflictResponse.json()).resolves.toMatchObject({
+      error: {
+        code: 'conflict',
+        details: { syncError: { code: 'IDP_CONFLICT' } },
+      },
+      requestId: 'req-conflict',
+    });
+    expect(unknownResponse.status).toBe(500);
+    await expect(unknownResponse.json()).resolves.toMatchObject({
+      error: {
+        code: 'internal_error',
+        details: { syncError: { code: 'IDP_UNKNOWN' } },
+      },
+      requestId: 'req-unknown',
+    });
+  });
+
+  it('projects role list items with diagnostics, editability and managed permission fallbacks', () => {
+    expect(
+      mapRoleListItem({
+        id: 'role-system',
+        role_key: 'system.role',
+        role_name: 'system.role',
+        display_name: null,
+        external_role_name: null,
+        managed_by: 'studio',
+        description: null,
+        is_system_role: true,
+        role_level: 100,
+        member_count: 1,
+        sync_state: 'ready',
+        last_synced_at: null,
+        last_error_code: null,
+        permission_rows: null,
+      })
+    ).toMatchObject({
+      roleName: 'system.role',
+      externalRoleName: 'system.role',
+      editability: 'read_only',
+      diagnostics: [{ code: 'system_role' }],
+      permissions: [],
+    });
+
+    expect(
+      mapRoleListItem({
+        id: 'role-builtin',
+        role_key: 'builtin.role',
+        role_name: 'builtin.role',
+        display_name: 'Builtin',
+        external_role_name: 'kc-builtin',
+        managed_by: 'keycloak_builtin',
+        description: 'Managed',
+        is_system_role: false,
+        role_level: 10,
+        member_count: 2,
+        sync_state: 'failed',
+        last_synced_at: '2026-01-01T00:00:00.000Z',
+        last_error_code: 'IDP_FORBIDDEN',
+        permission_rows: [
+          {
+            id: 'perm-1',
+            permission_key: 'waste-management.read',
+            description: null,
+          },
+        ],
+      })
+    ).toMatchObject({
+      roleName: 'Builtin',
+      externalRoleName: 'kc-builtin',
+      editability: 'read_only',
+      diagnostics: [{ code: 'built_in_role' }],
+      syncError: { code: 'IDP_FORBIDDEN' },
+      permissions: [{ permissionKey: 'waste-management.read', description: expect.any(String) }],
+    });
+
+    expect(
+      mapRoleListItem({
+        id: 'role-external',
+        role_key: 'external.role',
+        role_name: 'external.role',
+        display_name: 'External',
+        external_role_name: 'external-name',
+        managed_by: 'external',
+        description: null,
+        is_system_role: false,
+        role_level: 5,
+        member_count: 0,
+        sync_state: 'ready',
+        last_synced_at: null,
+        last_error_code: null,
+        permission_rows: [],
+      })
+    ).toMatchObject({
+      editability: 'read_only',
+      diagnostics: [{ code: 'external_managed' }],
+    });
+  });
+
   it('redacts nested role audit details', () => {
     expect(
       sanitizeRoleAuditDetails({
@@ -88,5 +235,10 @@ describe('role-audit', () => {
         token: '[REDACTED]',
       },
     });
+  });
+
+  it('sanitizes error messages from strings and Error instances', () => {
+    expect(sanitizeRoleErrorMessage(new Error('authorization=Bearer abc.def session=secret'))).toContain('[REDACTED]');
+    expect(sanitizeRoleErrorMessage('token=abc client_secret=def')).toBe('token=[REDACTED] client_secret=[REDACTED]');
   });
 });

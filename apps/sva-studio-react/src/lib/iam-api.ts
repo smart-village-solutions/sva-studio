@@ -631,6 +631,14 @@ export type CreateInstancePayload = {
     readonly firstName?: string;
     readonly lastName?: string;
   };
+  readonly wasteManagementSettings?: {
+    readonly provider: 'supabase';
+    readonly projectUrl: string;
+    readonly schemaName?: string;
+    readonly enabled: boolean;
+    readonly databaseUrl?: string;
+    readonly serviceRoleKey?: string;
+  };
   readonly themeKey?: string;
   readonly mainserverConfigRef?: string;
   readonly featureFlags?: Readonly<Record<string, boolean>>;
@@ -653,6 +661,14 @@ export type UpdateInstancePayload = {
     readonly email?: string;
     readonly firstName?: string;
     readonly lastName?: string;
+  };
+  readonly wasteManagementSettings?: {
+    readonly provider: 'supabase';
+    readonly projectUrl: string;
+    readonly schemaName?: string;
+    readonly enabled: boolean;
+    readonly databaseUrl?: string;
+    readonly serviceRoleKey?: string;
   };
   readonly themeKey?: string;
   readonly mainserverConfigRef?: string;

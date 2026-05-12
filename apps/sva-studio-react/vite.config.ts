@@ -5,6 +5,7 @@ import viteReact from '@vitejs/plugin-react';
 import { codecovRollupPlugin } from '@codecov/rollup-plugin';
 import { nitro } from 'nitro/vite';
 import { fileURLToPath, URL } from 'node:url';
+import tailwindcss from '@tailwindcss/vite';
 
 const normalizeDirectory = (url: URL) => fileURLToPath(url).replace(/[\\/]$/, '');
 const resolveAppPath = (relativePath: string) => fileURLToPath(new URL(relativePath, import.meta.url));
@@ -60,6 +61,10 @@ if (process.cwd() !== appRoot) {
 
 const config = defineConfig({
   root: appRoot,
+  css: {
+    // Keep Vite on the Tailwind Vite plugin path instead of loading postcss.config.cjs.
+    postcss: {},
+  },
   oxc: {
     jsx: {
       runtime: 'automatic',
@@ -101,6 +106,9 @@ const config = defineConfig({
       '@sva/auth-runtime/runtime-routes': resolveAppPath('../../packages/auth-runtime/src/runtime-routes.ts'),
       '@sva/auth-runtime/runtime-health': resolveAppPath('../../packages/auth-runtime/src/runtime-health.ts'),
       '@sva/auth-runtime': resolveAppPath('../../packages/auth-runtime/src/index.ts'),
+      '@sva/data/server': resolveAppPath('../../packages/data/src/server.ts'),
+      '@sva/data': resolveAppPath('../../packages/data/src/index.ts'),
+      '@sva/data-client': resolveAppPath('../../packages/data-client/src/index.ts'),
       '@sva/data-repositories/server': resolveAppPath('../../packages/data-repositories/src/server.ts'),
       '@sva/data-repositories': resolveAppPath('../../packages/data-repositories/src/index.ts'),
       '@sva/iam-admin/encryption': resolveAppPath('../../packages/iam-admin/src/encryption.ts'),
@@ -202,6 +210,7 @@ const config = defineConfig({
       '@sva/sva-mainserver/server': resolveAppPath('../../packages/sva-mainserver/src/index.server.ts'),
       '@sva/sva-mainserver': resolveAppPath('../../packages/sva-mainserver/src/index.ts'),
       '@sva/media': resolveAppPath('../../packages/media/src/index.ts'),
+      '@sva/plugin-waste-management': resolveAppPath('../../packages/plugin-waste-management/src/index.ts'),
       '@sva/plugin-sdk': resolveAppPath('../../packages/plugin-sdk/src/index.ts'),
       '@sva/studio-module-iam': resolveAppPath('../../packages/studio-module-iam/src/index.ts'),
       '@sva/studio-ui-react': resolveAppPath('../../packages/studio-ui-react/src/index.ts'),
@@ -226,6 +235,7 @@ const config = defineConfig({
       '@sva/iam-governance',
       '@sva/instance-registry',
       '@sva/media',
+      '@sva/plugin-waste-management',
       '@sva/studio-module-iam',
       '@sva/routing',
       '@sva/studio-ui-react',
@@ -236,9 +246,18 @@ const config = defineConfig({
     ],
   },
   build: {
-    rollupOptions: {
+    rolldownOptions: {
       // Node.js modules für Client-Build blocken
-      external: [/^node:/, /^(async_hooks|crypto|fs|path|net|tls|events|stream|util|os|http|https|dns|url)$/, /^@sva\/.+\/server$/],
+      external: [
+        /^node:/,
+        /^(async_hooks|crypto|fs|path|net|tls|events|stream|util|os|http|https|dns|url)$/,
+        /^@sva\/.+\/server$/,
+        /^jiti(?:\/.+)?$/,
+        /^@tailwindcss\/node$/,
+        /^@tailwindcss\/oxide(?:-.+)?$/,
+        /^@tailwindcss\/postcss$/,
+        /^@tailwindcss\/vite$/,
+      ],
       plugins: codecovEnabled
         ? [
             codecovRollupPlugin({
@@ -253,6 +272,7 @@ const config = defineConfig({
   plugins: [
     tanstackStartClientEnvCompatPlugin(),
     ...(tanstackDevtoolsEnabled ? [devtools()] : []),
+    tailwindcss(),
     tanstackStart({
       server: {
         entry: tanstackServerEntry,

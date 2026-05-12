@@ -16,16 +16,7 @@
   "exemptProjects": [
     "tooling-testing"
   ],
-  "newCodeExemptProjects": [
-    "auth-runtime",
-    "data-client",
-    "data-repositories",
-    "iam-admin",
-    "iam-governance",
-    "instance-registry",
-    "plugin-sdk",
-    "server-runtime"
-  ],
+  "newCodeExemptProjects": [],
   "perProjectFloors": {
     "core": {
       "lines": 94,
@@ -34,22 +25,22 @@
       "branches": 86
     },
     "auth-runtime": {
-      "lines": 61,
-      "statements": 61,
-      "functions": 59,
-      "branches": 43
+      "lines": 70,
+      "statements": 70,
+      "functions": 70,
+      "branches": 70
     },
     "data": {
       "lines": 73,
       "statements": 72,
-      "functions": 61,
-      "branches": 52
+      "functions": 70,
+      "branches": 70
     },
     "data-client": {
       "lines": 81,
       "statements": 81,
       "functions": 83,
-      "branches": 57
+      "branches": 70
     },
     "data-repositories": {
       "lines": 88,
@@ -61,25 +52,43 @@
       "lines": 70,
       "statements": 70,
       "functions": 81,
-      "branches": 53
+      "branches": 70
+    },
+    "iam-core": {
+      "lines": 100,
+      "statements": 100,
+      "functions": 100,
+      "branches": 100
     },
     "iam-governance": {
       "lines": 74,
       "statements": 74,
       "functions": 81,
-      "branches": 61
+      "branches": 70
     },
     "instance-registry": {
       "lines": 74,
       "statements": 74,
       "functions": 79,
-      "branches": 53
+      "branches": 70
+    },
+    "media": {
+      "lines": 88,
+      "statements": 88,
+      "functions": 100,
+      "branches": 87
     },
     "monitoring-client": {
       "lines": 81,
       "statements": 80,
       "functions": 82,
-      "branches": 66
+      "branches": 70
+    },
+    "plugin-events": {
+      "lines": 77,
+      "statements": 77,
+      "functions": 59,
+      "branches": 72
     },
     "routing": {
       "lines": 99,
@@ -93,17 +102,47 @@
       "functions": 81,
       "branches": 80
     },
+    "plugin-poi": {
+      "lines": 76,
+      "statements": 76,
+      "functions": 58,
+      "branches": 72
+    },
     "plugin-sdk": {
       "lines": 92,
       "statements": 91,
       "functions": 95,
       "branches": 78
     },
+    "plugin-waste-management": {
+      "lines": 75,
+      "statements": 73,
+      "functions": 68,
+      "branches": 52
+    },
+    "project-report": {
+      "lines": 87,
+      "statements": 88,
+      "functions": 91,
+      "branches": 85
+    },
     "sva-mainserver": {
       "lines": 91,
       "statements": 91,
       "functions": 90,
       "branches": 81
+    },
+    "studio-module-iam": {
+      "lines": 100,
+      "statements": 100,
+      "functions": 100,
+      "branches": 100
+    },
+    "studio-ui-react": {
+      "lines": 97,
+      "statements": 97,
+      "functions": 98,
+      "branches": 86
     },
     "sva-studio-react": {
       "lines": 87,

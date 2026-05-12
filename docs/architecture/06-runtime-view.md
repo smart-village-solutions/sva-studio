@@ -38,6 +38,23 @@ Fehlerpfad:
 - Datenbankfehler beim Anlegen oder Lesen werden als hostgeführte `database_unavailable`-Antworten abgebildet.
 - Die öffentliche API bleibt runner-agnostisch; eine interne Worker-Technologie darf den Fehler- und Statusvertrag nicht verändern.
 
+### Waste-Management: Settings, CRUD und technische Tools
+
+1. Ein berechtigter Instanzbenutzer öffnet `/plugins/waste-management`.
+2. Die App-Shell materialisiert die freie Plugin-Route hostgeführt über `@sva/routing` und prüft Guard plus Modulfreigabe fail-closed.
+3. Das Plugin lädt fachliche Leseansichten ausschließlich über `/api/v1/waste-management/settings`, `/history`, `/master-data`, `/tours` und `/scheduling`.
+4. `@sva/auth-runtime` prüft Session, Instanzkontext, modulbezogene `waste-management.*`-Rechte und den stabilen Fehlervertrag.
+5. Für Settings, Seed, Reset, Migrations- und Importpfade löst `@sva/server-runtime` die aktive Waste-Datenquelle der Instanz auf und verwendet dabei serverseitig geschützte Secrets.
+6. Zentrale Governance-Daten wie Waste-Datenquelle, letzter Connection-Check und Auditspur liegen im Studio-Postgres; die fachlichen Waste-Daten liegen in der instanzbezogenen Waste-Fachdatenbank.
+7. Mutationen gegen Fraktionen, Orte, Abholorte, Touren, Ausweichtermine und Bulk-Zuordnungen laufen immer über dieselbe Host-Fassade und erzeugen zentrale Audit-Events.
+8. Technische Operationen wie Import, Migration, Seed und Reset starten als generische Plugin-Jobs über den gemeinsamen Host-Jobpfad; das Plugin zeigt nur die fachnahe Bedienhülle und Statusprojektion.
+
+Fehlerpfad:
+
+- Fehlt die Modulfreigabe oder die spezifische `waste-management.*`-Berechtigung, blockiert der Host fail-closed vor der Mutation oder dem Jobstart.
+- Fehlt oder driftet die Waste-Datenquelle einer Instanz, antwortet die Fassade mit technischem Fehlervertrag; Secrets werden nie im Plugin oder Browser aufgelöst.
+- Ein `Newcms`-ähnlicher Direktzugriff auf Supabase-Funktionen, direkte DB-Connections oder mitportierte Runtime-Hooks ist kein zulässiger Alternativpfad.
+
 ### Szenario 1: App-Start + Route-Komposition
 
 1. App lädt `getRouter()` in `apps/sva-studio-react/src/router.tsx`
@@ -65,6 +82,20 @@ Fehlerpfad:
 - Der Host veröffentlicht keinen teilweise materialisierten Plugin-Snapshot.
 - Die Fehlermeldung folgt `<guardrailCode>:<pluginNamespace>:<contributionId>:<fieldOrReason>`.
 - Plugin-Routen, Navigation oder Actions mit produktiven `content.*`-Guards, fremden Namespaces oder nicht registrierten Permission-IDs brechen den Snapshot vor der Route-Materialisierung ab.
+
+### Zielbild 2026-05: Plugin-Load über Manifest, Katalog und Loader
+
+1. Der Host liest einen Plugin-Katalog mit lokalen Development-Einträgen und installierten Distributions-Einträgen.
+2. Für jeden aktiven Katalogeintrag liest der Host zunächst den serialisierbaren Manifest-Vertrag und prüft Identität, Version, Host-Kompatibilität und deklarierte Capabilities.
+3. Der Loader löst daraus die technischen Entry-Points auf und materialisiert lokale wie installierte Plugins in denselben kanonischen Host-Snapshot.
+4. Routing, Navigation, IAM, Audit und Job-Orchestrierung konsumieren ausschließlich diesen validierten Snapshot.
+5. Pluginseitige Request-, Job- oder Integrationsbeiträge laufen nur innerhalb host-owned Execution-Contexts.
+
+Fehlerpfad:
+
+- Inkompatible oder deaktivierte Plugins werden vor Snapshot-Publikation fail-closed ausgeschlossen.
+- Ein Plugin ohne gültiges Manifest oder mit unzulässigen Runtime-Beiträgen wird nicht teilweise geladen.
+- Runtime-Consumer erhalten nie einen partiell inkonsistenten Mischzustand aus rohen Plugin-Deskriptoren und validierten Snapshot-Daten.
 
 ### Szenario 1b: Materialisierung registrierter Admin-Ressourcen
 

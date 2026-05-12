@@ -42,6 +42,12 @@
       "functions": 81.81,
       "branches": 53.47
     },
+    "media": {
+      "lines": 88.88,
+      "statements": 88.88,
+      "functions": 100,
+      "branches": 87.5
+    },
     "iam-core": {
       "lines": 100,
       "statements": 100,
@@ -72,11 +78,35 @@
       "functions": 81.03,
       "branches": 80.74
     },
+    "plugin-events": {
+      "lines": 77.27,
+      "statements": 77.25,
+      "functions": 59.03,
+      "branches": 72.76
+    },
+    "plugin-poi": {
+      "lines": 76.84,
+      "statements": 76.5,
+      "functions": 58.66,
+      "branches": 72.72
+    },
     "plugin-sdk": {
       "lines": 86.3,
       "statements": 86.4,
       "functions": 94.33,
       "branches": 72.27
+    },
+    "plugin-waste-management": {
+      "lines": 75.79,
+      "statements": 73.44,
+      "functions": 68.51,
+      "branches": 52.28
+    },
+    "project-report": {
+      "lines": 87.87,
+      "statements": 88.62,
+      "functions": 91.17,
+      "branches": 85.16
     },
     "routing": {
       "lines": 99.51,
@@ -89,6 +119,18 @@
       "statements": 82.58,
       "functions": 85.1,
       "branches": 70.73
+    },
+    "studio-module-iam": {
+      "lines": 100,
+      "statements": 100,
+      "functions": 100,
+      "branches": 100
+    },
+    "studio-ui-react": {
+      "lines": 97.69,
+      "statements": 97.73,
+      "functions": 98.93,
+      "branches": 86.95
     },
     "sva-mainserver": {
       "lines": 91.39,

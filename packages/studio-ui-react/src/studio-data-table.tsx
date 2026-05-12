@@ -158,6 +158,24 @@ export function StudioDataTable<TData>({
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
   const selectedRowCount = Object.keys(rowSelection).length;
 
+  const containerRef = React.useRef<HTMLDivElement | null>(null);
+  const [isCompact, setIsCompact] = React.useState(false);
+
+  React.useLayoutEffect(() => {
+    const node = containerRef.current;
+    if (!node || typeof ResizeObserver === 'undefined') {
+      return;
+    }
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const width = entry.contentRect.width;
+        setIsCompact(width < 640);
+      }
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
   React.useEffect(() => {
     setRowSelection({});
   }, [data]);
@@ -259,7 +277,7 @@ export function StudioDataTable<TData>({
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-card shadow-shell" aria-busy="false" data-selected-rows={selectedRowCount}>
+    <div ref={containerRef} className="overflow-hidden rounded-xl border border-border bg-card shadow-shell" aria-busy="false" data-selected-rows={selectedRowCount} data-layout={isCompact ? 'compact' : 'wide'}>
       {hasToolbar ? (
         <div className="flex flex-col gap-3 border-b border-border px-4 py-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex flex-wrap items-center gap-2">
@@ -284,7 +302,7 @@ export function StudioDataTable<TData>({
         </div>
       ) : null}
 
-      <div className="hidden overflow-x-auto md:block">
+      <div className={isCompact ? 'hidden' : 'overflow-x-auto'}>
         <table className="min-w-full border-collapse" aria-label={ariaLabel}>
           {caption ? <caption className="sr-only">{caption}</caption> : null}
           <thead className="bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground">
@@ -324,7 +342,7 @@ export function StudioDataTable<TData>({
         </table>
       </div>
 
-      <div className="space-y-3 p-3 md:hidden">
+      <div className={isCompact ? 'space-y-3 p-3' : 'hidden'}>
         {table.getRowModel().rows.map((row) => (
           <article key={row.id} className="rounded-lg border border-border bg-card p-3 text-sm text-foreground shadow-shell">
             {selectionMode === 'multiple' ? (

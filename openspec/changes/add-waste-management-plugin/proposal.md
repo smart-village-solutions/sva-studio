@@ -29,7 +29,7 @@ Das Studio benötigt deshalb einen eigenständigen Change, der das Waste-Managem
 - Waste setzt den vorgelagerten Change `update-plugin-platform-for-generic-jobs-imports` voraus und nutzt dessen generische Studio-Job-Fähigkeit mit zentraler Persistenz im Studio-Postgres
 - Waste setzt den vorgelagerten Change `update-plugin-platform-for-generic-jobs-imports` voraus und nutzt dessen generische Import-Fähigkeit über pluginseitig definierte Importprofile
 - Der `plugin-sdk` wird für Jobtypen und Importprofile im Vorgängerchange erweitert; Waste konsumiert diese Verträge und definiert darauf seine fachlichen Beiträge
-- Importprofile beschreiben je Plugin und Importtyp mindestens Zielfelder, Pflichtfelder, erlaubte Quellformate, Mapping-Regeln, Validierungen sowie eine kanonische Vorlage mit Beispieldatei oder Beispielspalten
+- Importprofile beschreiben je Plugin und Importtyp mindestens Zielfelder, Pflichtfelder, den im jeweiligen Fachchange wirklich gelieferten Quellformatumfang, Mapping-Regeln, Validierungen sowie eine kanonische Vorlage mit Beispieldatei oder Beispielspalten
 - Die konkrete allgemeine Host-Oberfläche für Import-Wizard, Jobdarstellung oder Monitoring kann im Vorgängerchange vorbereitet werden; Waste darf diese anbinden, baut sie aber nicht mehr als plattformweite Voraussetzung selbst auf
 - Waste-spezifische Screens, Jahreskalender, Touren-, Ausweichtermin-, Abholort- und Fraktionsdialoge bleiben hingegen fachliche Bestandteile des Plugins und wandern nicht in die allgemeine Plugin-UI-Library
 - Die erste Pflichtmenge dieser zentralen Historie umfasst mindestens Connection-Checks, Datenquellen-Rekonfigurationen sowie Start/Erfolg/Fehler von Migration, Import, Seed und Reset
@@ -41,6 +41,7 @@ Das Studio benötigt deshalb einen eigenständigen Change, der das Waste-Managem
 - Für den aktuellen sichtbaren Status gilt die einfachste Regel: jeder technisch erfolgreiche echte DB-Zugriff darf den Status sofort auf `ok` setzen
 - Asynchrone Data-Tools für CSV-Import, Seed, Reset und Waste-Schema-Migrationen auf Basis einer generischen Studio-Job-Fähigkeit mit nachvollziehbarem Statusmodell
 - Waste nutzt für `geografie-abholorte`, `touren` und `ausweichtermine` die generische Studio-Import-Fähigkeit mit jeweils eigenem Importprofil und eigener Validierung
+- Für Waste sind in diesem Change CSV und echter Excel-Import (`.xlsx`) die verpflichtenden ersten produktiven Importumfänge; weitere Quellformate bleiben Aufgabe der generischen Plattform und werden hier nicht als bereits geliefert behauptet
 - Search-Param- und Routing-Vertrag für tab-lastige Fachnavigation, Filter und Deep-Links
 - Rechtegesteuerte UI-Sichtbarkeit für schreibende und gefährliche Aktionen
 - Architektur- und Arc42-Fortschreibung für Plugin-Boundary, Server-Fassade, Instanzisolierung und Auditverhalten

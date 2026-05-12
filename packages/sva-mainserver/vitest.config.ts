@@ -32,6 +32,8 @@ export default defineConfig({
       '@sva/monitoring-client/server': resolve(__dirname, '../monitoring-client/src/server.ts'),
       '@sva/monitoring-client/logging': resolve(__dirname, '../monitoring-client/src/logging.ts'),
       '@sva/monitoring-client': resolve(__dirname, '../monitoring-client/src/index.ts'),
+      '@sva/plugin-sdk': resolve(__dirname, '../plugin-sdk/src/index.ts'),
+      '@sva/studio-module-iam': resolve(__dirname, '../studio-module-iam/src/index.ts'),
       '@sva/media': resolve(__dirname, '../media/src/index.ts'),
       '@sva/routing/auth': resolve(__dirname, '../routing/src/auth.routes.ts'),
       '@sva/routing/server': resolve(__dirname, '../routing/src/index.server.ts'),

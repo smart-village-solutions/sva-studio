@@ -14,10 +14,14 @@ export {
   createInstanceRegistryRepository,
   createMediaRepository,
   createStudioJobRepository,
+  createWasteDataSourceRepository,
+  createWasteMasterDataRepository,
   iamSeedPlan,
   iamSeedStatements,
   instanceIntegrationStatements,
   mediaStatements,
+  wasteDataSourceStatements,
+  wasteMasterDataStatements,
 } from './public-api.js';
 
 export type {
@@ -48,6 +52,34 @@ export type {
   SqlExecutor,
   SqlPrimitive,
   SqlStatement,
+  WasteDataSourceRepository,
+  WasteMasterDataRepository,
 } from './public-api.js';
 
-export type { InstanceAuditEvent, InstanceProvisioningRun, InstanceRegistryRecord } from '@sva/core';
+export type {
+  WasteCollectionLocationListFilter,
+  WasteCollectionLocationRecord,
+  InstanceAuditEvent,
+  InstanceProvisioningRun,
+  InstanceRegistryRecord,
+  WasteCustomTourDate,
+  WasteCityListFilter,
+  WasteCityRecord,
+  WasteFractionListFilter,
+  WasteFractionRecord,
+  WasteGlobalDateShiftListFilter,
+  WasteGlobalDateShiftRecord,
+  WasteHouseNumberListFilter,
+  WasteHouseNumberRecord,
+  WasteLocationTourLinkListFilter,
+  WasteLocationTourLinkRecord,
+  WasteRegionListFilter,
+  WasteRegionRecord,
+  WasteStreetListFilter,
+  WasteStreetRecord,
+  WasteTourDateShiftListFilter,
+  WasteTourDateShiftRecord,
+  WasteTourListFilter,
+  WasteTourRecurrence,
+  WasteTourRecord,
+} from '@sva/core';

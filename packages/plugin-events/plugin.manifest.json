@@ -1,0 +1,12 @@
+{
+  "pluginId": "events",
+  "version": "0.0.1",
+  "sdkVersion": "0.0.1",
+  "hostCompatibility": {
+    "studioVersionRange": "^0.0.1",
+    "requiredCapabilities": ["routing", "navigation", "iam"]
+  },
+  "entryPoints": {
+    "browser": "./dist/index.js"
+  }
+}

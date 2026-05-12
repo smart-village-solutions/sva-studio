@@ -1,4 +1,40 @@
 export type { RouteFactory } from '@sva/core';
+export {
+  wasteManagementImportCatalog,
+  wasteManagementMasterDataContract,
+  wasteManagementOperationsContract,
+} from '@sva/core';
+export type {
+  ApiItemResponse,
+  StudioJobResponse,
+  WasteCityRecord,
+  WasteCollectionLocationRecord,
+  WasteCustomTourDate,
+  WasteDateShiftReasonType,
+  WasteFractionRecord,
+  WasteGlobalDateShiftRecord,
+  WasteHouseNumberRecord,
+  WasteLocalizedTextRecord,
+  WasteLocationTourLinkBulkCreateResult,
+  WasteLocationTourLinkRecord,
+  WasteManagementApplyMigrationsJobInput,
+  WasteManagementHistoryOverview,
+  WasteManagementImportJobInput,
+  WasteManagementImportProfileCatalogEntry,
+  WasteManagementImportSourceFormat,
+  WasteManagementInitializeJobInput,
+  WasteManagementJobInput,
+  WasteManagementMasterDataOverview,
+  WasteManagementResetJobInput,
+  WasteManagementSeedJobInput,
+  WasteManagementSettingsRecord,
+  WasteRegionRecord,
+  WasteStreetRecord,
+  WasteTourDateShiftFollowUpMode,
+  WasteTourDateShiftRecord,
+  WasteTourRecord,
+  WasteTourRecurrence,
+} from '@sva/core';
 export type {
   BuildTimeRegistry,
   BuildTimeRegistryInput,
@@ -113,6 +149,43 @@ export {
   mergePluginRouteDefinitions,
   mergePluginTranslations,
 } from './plugins.js';
+export type {
+  LoadedPluginEntry,
+  PluginCatalogEntry,
+  PluginCatalogSourceType,
+  PluginExecutionAuditReporter,
+  PluginExecutionBaseContext,
+  PluginExecutionContextCapabilities,
+  PluginExecutionLogger,
+  PluginExecutionProgressReporter,
+  PluginIntegrationExecutionContext,
+  PluginJobExecutionHandler,
+  PluginJobExecutionResult,
+  PluginJobHandlerContext,
+  PluginJobExecutionContext,
+  PluginJobProgressReporter,
+  PluginManifest,
+  PluginManifestCapability,
+  PluginRequestExecutionContext,
+  PluginSnapshot,
+} from './plugin-platform-contracts.js';
+export {
+  createPluginSnapshot,
+  definePluginCatalogEntry,
+  definePluginExecutionContextCapabilities,
+  definePluginManifest,
+} from './plugin-platform-contracts.js';
+export {
+  resolvePluginCatalog,
+  resolvePluginCatalogAsync,
+} from './plugin-platform-resolution.js';
+export type {
+  PluginCatalogIssue,
+  PluginCatalogIssueCode,
+  PluginCatalogIssueSeverity,
+  PluginPlatformHost,
+  ResolvedPluginCatalog,
+} from './plugin-platform-resolution.js';
 export type {
   PluginImportProfileDefinition,
   PluginImportProfileRegistryEntry,

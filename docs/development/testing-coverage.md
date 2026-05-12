@@ -341,7 +341,7 @@ Wenn der PR Änderungen enthält, aber kein Projekt als betroffen erkannt wird, 
 - Exemption nur temporär nutzen.
 - Sobald Unit-Tests vorhanden sind:
   1. Projekt aus `exemptProjects` entfernen
-  2. Floors (z. B. unter `perProjectFloors`) setzen
+  2. Floors unter `perProjectFloors` setzen
   3. Baseline aktualisieren (Team-Entscheid)
 
 ---
@@ -373,7 +373,7 @@ Wenn der PR Änderungen enthält, aber kein Projekt als betroffen erkannt wird, 
    ```
 4. Policy aktualisieren:
    - Projekt aus `exemptProjects` in `tooling/testing/coverage-policy.json` entfernen
-   - Optional `perProjectFloors.<project>` setzen
+   - `perProjectFloors.<project>` setzen
 5. Baseline neu erzeugen:
    ```bash
    pnpm test:coverage

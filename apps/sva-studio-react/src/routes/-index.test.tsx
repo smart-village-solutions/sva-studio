@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import React from 'react';
 
@@ -337,5 +337,31 @@ describe('HomePage', () => {
     expect(screen.getByRole('link', { name: 'Erneut anmelden' }).getAttribute('href')).toBe(
       '/auth/login?returnTo=%2F'
     );
+  });
+
+  it('shows an explicit local dev login action when dev auth is available', () => {
+    const loginWithDevAuth = vi.fn();
+
+    useAuthMock.mockReturnValue({
+      user: null,
+      isAuthenticated: false,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      loginWithDevAuth,
+      logout: vi.fn(),
+      invalidatePermissions: vi.fn(),
+      hasResolvedSession: true,
+      isRecoveringSession: false,
+      sessionRecoveryFailed: false,
+      isDevAuthAvailable: true,
+    });
+
+    render(<HomePage />);
+
+    const loginButton = screen.getByRole('button', { name: 'Als Dev-User anmelden' });
+    fireEvent.click(loginButton);
+
+    expect(loginWithDevAuth).toHaveBeenCalledTimes(1);
   });
 });

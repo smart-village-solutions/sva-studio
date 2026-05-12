@@ -6,6 +6,11 @@ import { describe, expect, it } from 'vitest';
 
 import { readJson, type CoveragePolicy } from '../../../scripts/ci/coverage-gate.ts';
 
+interface NxProjectConfig {
+  name?: string;
+  targets?: Record<string, unknown>;
+}
+
 function parseCodecovUnittestPaths(codecovContents: string): string[] {
   const lines = codecovContents.split('\n');
   const paths: string[] = [];
@@ -123,6 +128,38 @@ function parseCodecovInformationalFlags(codecovContents: string): Record<string,
   return informationalByStatus;
 }
 
+function loadWorkspaceCoverageProjects(rootDir: string): string[] {
+  const projectRoots = ['apps', 'packages', 'tooling']
+    .map((directory) => path.join(rootDir, directory))
+    .filter((directory) => fs.existsSync(directory));
+
+  const names: string[] = [];
+  const visit = (directory: string): void => {
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+      const entryPath = path.join(directory, entry.name);
+      if (entry.isDirectory()) {
+        visit(entryPath);
+        continue;
+      }
+
+      if (entry.name !== 'project.json') {
+        continue;
+      }
+
+      const project = readJson<NxProjectConfig>(entryPath);
+      if (project.name && project.targets?.['test:coverage']) {
+        names.push(project.name);
+      }
+    }
+  };
+
+  for (const projectRoot of projectRoots) {
+    visit(projectRoot);
+  }
+
+  return names.sort((left, right) => left.localeCompare(right));
+}
+
 describe('codecov config', () => {
   it('does not include coverage-exempt projects in the unittests flag scope', () => {
     const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
@@ -151,6 +188,34 @@ describe('codecov config', () => {
       const packagePath = `packages/${projectName}/`;
       const appPath = `apps/${projectName}/`;
       expect(configuredPaths.includes(packagePath) || configuredPaths.includes(appPath)).toBe(true);
+    }
+  });
+
+  it('does not contain stale Codecov flag paths for non-existent projects', () => {
+    const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
+    const policy = readJson<CoveragePolicy>(path.join(rootDir, 'tooling/testing/coverage-policy.json'));
+    const codecovContents = fs.readFileSync(path.join(rootDir, 'codecov.yml'), 'utf8');
+    const configuredPaths = parseCodecovUnittestPaths(codecovContents);
+    const expectedProjects = new Set(Object.keys(policy.perProjectFloors));
+
+    for (const configuredPath of configuredPaths) {
+      const projectName = configuredPath.replace(/^apps\//, '').replace(/^packages\//, '').replace(/\/$/, '');
+      expect(expectedProjects.has(projectName)).toBe(true);
+    }
+  });
+
+  it('tracks every non-exempt project with test:coverage in the coverage policy', () => {
+    const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
+    const policy = readJson<CoveragePolicy>(path.join(rootDir, 'tooling/testing/coverage-policy.json'));
+    const exemptProjects = new Set(policy.exemptProjects);
+    const trackedProjects = new Set(Object.keys(policy.perProjectFloors));
+
+    for (const projectName of loadWorkspaceCoverageProjects(rootDir)) {
+      if (exemptProjects.has(projectName)) {
+        continue;
+      }
+
+      expect(trackedProjects.has(projectName)).toBe(true);
     }
   });
 

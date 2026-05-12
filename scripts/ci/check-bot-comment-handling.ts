@@ -37,6 +37,38 @@ export interface ReviewThreadRecord {
   comments: readonly ReviewThreadCommentRecord[];
 }
 
+interface ReviewThreadGraphqlComment {
+  id: string;
+  databaseId: number;
+  body: string;
+  createdAt: string;
+  url: string;
+  authorAssociation: string;
+  author: { login: string | null } | null;
+}
+
+interface ReviewThreadGraphqlPage {
+  repository: {
+    pullRequest: {
+      reviewThreads: ReviewThreadsConnection;
+    } | null;
+  } | null;
+}
+
+interface ReviewThreadsConnection {
+  pageInfo: {
+    hasNextPage: boolean;
+    endCursor: string | null;
+  };
+  nodes: Array<{
+    id: string;
+    isResolved: boolean;
+    comments: {
+      nodes: ReviewThreadGraphqlComment[];
+    };
+  }>;
+}
+
 export interface OpenBotCommentRecord {
   source: 'issue-comment' | 'review-thread';
   botCommentId: number | string;
@@ -361,33 +393,7 @@ export const fetchReviewThreads = async (input: PullRequestContext & { token: st
   let after: string | null = null;
 
   for (;;) {
-    const data = await githubGraphqlRequest<{
-      repository: {
-        pullRequest: {
-          reviewThreads: {
-            pageInfo: {
-              hasNextPage: boolean;
-              endCursor: string | null;
-            };
-            nodes: Array<{
-              id: string;
-              isResolved: boolean;
-              comments: {
-                nodes: Array<{
-                  id: string;
-                  databaseId: number;
-                  body: string;
-                  createdAt: string;
-                  url: string;
-                  authorAssociation: string;
-                  author: { login: string | null } | null;
-                }>;
-              };
-            }>;
-          };
-        } | null;
-      } | null;
-    }>({
+    const data: ReviewThreadGraphqlPage = await githubGraphqlRequest<ReviewThreadGraphqlPage>({
       token: input.token,
       query,
       variables: {
@@ -398,19 +404,20 @@ export const fetchReviewThreads = async (input: PullRequestContext & { token: st
       },
     });
 
-    const reviewThreads = data.repository?.pullRequest?.reviewThreads;
+    const reviewThreads: ReviewThreadsConnection | null | undefined =
+      data.repository?.pullRequest?.reviewThreads;
     if (!reviewThreads) {
       return [];
     }
 
     threads.push(
-      ...reviewThreads.nodes.map((thread) => ({
+      ...reviewThreads.nodes.map((thread: ReviewThreadsConnection['nodes'][number]) => ({
         id: thread.id,
         isResolved: thread.isResolved,
         url:
           thread.comments.nodes[0]?.url ??
           `https://github.com/${input.owner}/${input.repo}/pull/${input.pullNumber}/files`,
-        comments: thread.comments.nodes.map((comment) => ({
+        comments: thread.comments.nodes.map((comment: ReviewThreadGraphqlComment) => ({
           id: comment.id,
           databaseId: comment.databaseId,
           authorLogin: comment.author?.login ?? 'unknown',

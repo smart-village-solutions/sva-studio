@@ -58,6 +58,42 @@ describe('http-contracts', () => {
     expect(result.success).toBe(true);
   });
 
+  it('validates nested waste-management settings with a real project url', () => {
+    const result = createInstanceSchema.safeParse({
+      instanceId: 'de-test',
+      displayName: 'Demo',
+      parentDomain: 'studio.smart-village.app',
+      realmMode: 'new',
+      authRealm: 'de-test',
+      authClientId: 'sva-studio',
+      wasteManagementSettings: {
+        provider: 'supabase',
+        projectUrl: 'https://tenant-a.supabase.co',
+        enabled: true,
+      },
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects waste-management settings with an invalid project url', () => {
+    const result = createInstanceSchema.safeParse({
+      instanceId: 'de-test',
+      displayName: 'Demo',
+      parentDomain: 'studio.smart-village.app',
+      realmMode: 'new',
+      authRealm: 'de-test',
+      authClientId: 'sva-studio',
+      wasteManagementSettings: {
+        provider: 'supabase',
+        projectUrl: 'not-a-url',
+        enabled: true,
+      },
+    });
+
+    expect(result.success).toBe(false);
+  });
+
   it('extracts keycloak run ids from nested run routes', () => {
     const request = new Request(
       'https://studio.example.org/api/v1/iam/instances/de-test/keycloak/runs/run-42'

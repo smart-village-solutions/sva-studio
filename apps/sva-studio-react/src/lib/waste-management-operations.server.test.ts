@@ -1,0 +1,650 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import type { WasteManagementDataSourceRecord } from '@sva/core';
+import * as XLSX from 'xlsx';
+import type { SqlClient, WasteOperationSqlPool } from './waste-management-operations.types.js';
+
+import { createWasteManagementOperationRuntime } from './waste-management-operations.server.js';
+
+const createDataSourceRecord = (): WasteManagementDataSourceRecord => ({
+  instanceId: 'instance-1',
+  provider: 'supabase',
+  projectUrl: 'https://tenant.supabase.co',
+  schemaName: 'wm',
+  enabled: true,
+  databaseUrlConfigured: true,
+  serviceRoleKeyConfigured: true,
+  databaseUrlCiphertext: 'enc-db',
+  serviceRoleKeyCiphertext: 'enc-key',
+  visibleStatus: 'ok',
+  lastCheckStatus: 'succeeded',
+  lastCheckedAt: '2026-05-10T10:00:00.000Z',
+  updatedAt: '2026-05-10T10:00:00.000Z',
+});
+
+describe('waste management operations runtime', () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.doUnmock('@sva/server-runtime');
+    vi.doUnmock('@sva/data-repositories');
+  });
+
+  it('applies schema migrations against the resolved waste schema', async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValue({ rowCount: 0, rows: requiredTableRows });
+    const pool = {
+      connect: vi.fn(async () => ({
+        query,
+        release: vi.fn(),
+      })),
+      end: vi.fn(async () => undefined),
+    };
+    const runtime = createWasteManagementOperationRuntime({
+      loadDataSourceRecord: vi.fn(async () => createDataSourceRecord()),
+      revealSecret: vi.fn((ciphertext) => (ciphertext ? 'postgres://waste:test@localhost:5432/waste' : undefined)),
+      createPool: vi.fn(() => pool),
+    });
+
+    const result = await runtime.applyMigrations('instance-1', {
+      operation: 'apply-migrations',
+      targetSchema: 'wm',
+    });
+
+    expect(result.details).toMatchObject({
+      operation: 'apply-migrations',
+      mode: 'executed',
+      appliedStatementCount: expect.any(Number),
+      schemaInspection: {
+        schemaName: 'wm',
+        missingTables: [],
+      },
+    });
+    expect(query).toHaveBeenCalledWith('SET search_path TO "wm", public;');
+  });
+
+  it('parses geography imports as a dry run from an xlsx workbook', async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] });
+    const pool = {
+      connect: vi.fn(async () => ({
+        query,
+        release: vi.fn(),
+      })),
+      end: vi.fn(async () => undefined),
+    };
+    const runtime = createWasteManagementOperationRuntime({
+      loadDataSourceRecord: vi.fn(async () => createDataSourceRecord()),
+      revealSecret: vi.fn((ciphertext, aad) =>
+        ciphertext ? (aad.includes('database_url') ? 'postgres://waste:test@localhost:5432/waste' : 'service-key') : undefined
+      ),
+      createPool: vi.fn(() => pool),
+      readBinarySource: vi.fn(async () => createImportWorkbookBytes()),
+    });
+
+    const result = await runtime.importData('instance-1', {
+      operation: 'import-data',
+      importProfileId: 'waste-management.geografie-abholorte',
+      sourceFormat: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      dryRun: true,
+      blobRef: 'fixture.xlsx',
+    });
+
+    expect(result.details).toMatchObject({
+      operation: 'import-data',
+      mode: 'executed',
+      dryRun: true,
+      importProfileId: 'waste-management.geografie-abholorte',
+    });
+  });
+
+  it('initializes the data source with connection check and schema inspection', async () => {
+    const query = vi.fn().mockResolvedValue({
+      rowCount: requiredTableRows.length,
+      rows: requiredTableRows,
+    });
+    const release = vi.fn();
+    const pool = {
+      connect: vi
+        .fn()
+        .mockResolvedValueOnce({
+          release,
+        })
+        .mockResolvedValueOnce({
+          query,
+          release,
+        }),
+      end: vi.fn(async () => undefined),
+    };
+    const runWasteConnectionCheck = vi.fn(async (input: { readonly probe: (resolved: { readonly databaseUrl: string }) => Promise<void> }) => {
+      await input.probe({ databaseUrl: 'postgres://waste:test@localhost:5432/waste' });
+      return {
+        status: 'succeeded',
+        checkedAt: '2026-05-10T10:05:00.000Z',
+      };
+    });
+    const resolveWasteDataSource = vi.fn(async () => ({
+      instanceId: 'instance-1',
+      schemaName: 'wm',
+      databaseUrl: 'postgres://waste:test@localhost:5432/waste',
+      serviceRoleKey: 'service-key',
+      projectUrl: 'https://tenant.supabase.co',
+      enabled: true,
+    }));
+
+    vi.doMock('@sva/server-runtime', async (importOriginal) => {
+      const actual = await importOriginal<typeof import('@sva/server-runtime')>();
+      return {
+        ...actual,
+        buildWasteDatabaseUrlAad: vi.fn((instanceId: string) => `db:${instanceId}`),
+        buildWasteServiceRoleKeyAad: vi.fn((instanceId: string) => `service:${instanceId}`),
+        resolveWasteDataSource,
+        runWasteConnectionCheck,
+      };
+    });
+
+    const { createWasteManagementOperationRuntime: createRuntime } = await import('./waste-management-operations.server.js');
+    const runtime = createRuntime({
+      createPool: vi.fn(() => pool),
+      now: () => new Date('2026-05-10T10:05:00.000Z'),
+    });
+
+    const result = await runtime.initializeDataSource('instance-1', {
+      operation: 'initialize-data-source',
+      targetSchema: 'wm',
+    });
+
+    expect(resolveWasteDataSource).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'instance-1',
+      })
+    );
+    expect(runWasteConnectionCheck).toHaveBeenCalledTimes(1);
+    expect(release).toHaveBeenCalledTimes(2);
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining('information_schema.tables'),
+      ['wm', expect.any(Array)]
+    );
+    expect(result.details).toMatchObject({
+      operation: 'initialize-data-source',
+      mode: 'executed',
+      connectionCheck: {
+        status: 'succeeded',
+      },
+      schemaInspection: {
+        schemaName: 'wm',
+        missingTables: [],
+      },
+    });
+  });
+
+  it('imports tours with recurrence and custom dates in non-dry-run mode', async () => {
+    const repository = createRepositoryMock();
+    const runtime = await createRuntimeWithRepositoryMock(repository);
+
+    const result = await runtime.importData('instance-1', {
+      operation: 'import-data',
+      importProfileId: 'waste-management.touren',
+      sourceFormat: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      dryRun: false,
+      blobRef: 'fixture.xlsx',
+    });
+
+    expect(repository.upsertWasteTour).toHaveBeenCalledWith({
+      id: 'tour-1',
+      name: 'Restmüll Nord',
+      description: 'Standardtour Nord',
+      wasteFractionIds: ['rest', 'bio'],
+      recurrence: 'weekly',
+      firstDate: '2026-01-10',
+      endDate: '2026-12-31',
+      customDates: [{ date: '2026-01-10' }, { date: '2026-01-24' }],
+      active: true,
+    });
+    expect(result.details).toMatchObject({
+      operation: 'import-data',
+      dryRun: false,
+      upserts: 1,
+    });
+  });
+
+  it('reads import workbooks from inline base64 data urls', async () => {
+    const repository = createRepositoryMock();
+    vi.doMock('@sva/data-repositories', () => ({
+      createWasteMasterDataRepository: vi.fn(() => repository),
+    }));
+
+    const { createWasteManagementOperationRuntime: createRuntime } = await import('./waste-management-operations.server.js');
+    const runtime = createRuntime({
+      loadDataSourceRecord: vi.fn(async () => createDataSourceRecord()),
+      revealSecret: vi.fn((ciphertext) => (ciphertext ? 'postgres://waste:test@localhost:5432/waste' : undefined)),
+      createPool: vi.fn(() => ({
+        connect: vi.fn(async () => ({
+          query: vi.fn(async () => ({ rowCount: 0, rows: [] })),
+          release: vi.fn(),
+        })),
+        end: vi.fn(async () => undefined),
+      })),
+    });
+
+    const result = await runtime.importData('instance-1', {
+      operation: 'import-data',
+      importProfileId: 'waste-management.touren',
+      sourceFormat: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      dryRun: false,
+      blobRef: `data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,${Buffer.from(createMinimalToursWorkbookBytes()).toString('base64')}`,
+    });
+
+    expect(repository.upsertWasteTour).toHaveBeenCalledWith({
+      id: 'tour-inline',
+      name: 'Inline Tour',
+      description: undefined,
+      wasteFractionIds: ['rest'],
+      recurrence: null,
+      firstDate: undefined,
+      endDate: undefined,
+      customDates: undefined,
+      active: false,
+    });
+    expect(result.details).toMatchObject({
+      operation: 'import-data',
+      dryRun: false,
+      upserts: 1,
+    });
+  });
+
+  it('imports geography rows with optional street and house number fields through the real repository path', async () => {
+    const query = vi.fn(async () => ({ rowCount: 1, rows: [] }));
+    const runtime = await createRuntimeWithRealRepository(createExtendedGeographyWorkbookBytes(), query);
+
+    const result = await runtime.importData('instance-1', {
+      operation: 'import-data',
+      importProfileId: 'waste-management.geografie-abholorte',
+      sourceFormat: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      dryRun: false,
+      blobRef: 'fixture.xlsx',
+    });
+
+    expect(result.details).toMatchObject({
+      operation: 'import-data',
+      dryRun: false,
+      rows: 1,
+      upserts: 5,
+    });
+    expect(query).toHaveBeenCalled();
+  });
+
+  it('imports global and tour date shifts in non-dry-run mode', async () => {
+    const repository = createRepositoryMock();
+    const runtime = await createRuntimeWithRepositoryMock(repository, createDateShiftWorkbookBytes());
+
+    const result = await runtime.importData('instance-1', {
+      operation: 'import-data',
+      importProfileId: 'waste-management.ausweichtermine',
+      sourceFormat: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      dryRun: false,
+      blobRef: 'fixture.xlsx',
+    });
+
+    expect(repository.upsertWasteTourDateShift).toHaveBeenCalledWith({
+      id: 'shift-tour',
+      tourId: 'tour-1',
+      originalDate: '2026-04-03',
+      actualDate: '2026-04-04',
+      hasYear: true,
+      reasonType: 'holiday',
+      reasonKey: 'good-friday',
+      followUpMode: 'propagate-series',
+      description: 'Feiertagsverschiebung',
+    });
+    expect(repository.upsertWasteGlobalDateShift).toHaveBeenCalledWith({
+      id: 'shift-global',
+      originalDate: '2026-12-25',
+      actualDate: '2026-12-24',
+      hasYear: true,
+      reasonType: 'holiday',
+      reasonKey: 'christmas-day',
+      description: 'Globale Feiertagsverschiebung',
+      tourIds: ['tour-1', 'tour-2'],
+    });
+    expect(result.details).toMatchObject({
+      operation: 'import-data',
+      dryRun: false,
+      upserts: 2,
+    });
+  });
+
+  it('rejects invalid schemas, foreign schema targets, and malformed blob references deterministically', async () => {
+    const runtime = createWasteManagementOperationRuntime({
+      loadDataSourceRecord: vi.fn(async () => createDataSourceRecord()),
+      revealSecret: vi.fn((ciphertext) => (ciphertext ? 'postgres://waste:test@localhost:5432/waste' : undefined)),
+      createPool: vi.fn(() => ({
+        connect: vi.fn(async () => ({
+          query: vi.fn(async () => ({ rowCount: 0, rows: [] })),
+          release: vi.fn(),
+        })),
+        end: vi.fn(async () => undefined),
+      })),
+    });
+
+    await expect(
+      runtime.applyMigrations('instance-1', {
+        operation: 'apply-migrations',
+        targetSchema: 'wm-invalid!',
+      })
+    ).rejects.toThrowError('invalid_waste_schema_target:wm-invalid!');
+
+    await expect(
+      runtime.applyMigrations('instance-1', {
+        operation: 'apply-migrations',
+        targetSchema: 'foreign_schema',
+      })
+    ).rejects.toThrowError('invalid_waste_schema_target:foreign_schema');
+
+    await expect(
+      runtime.importData('instance-1', {
+        operation: 'import-data',
+        importProfileId: 'waste-management.touren',
+        sourceFormat: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        dryRun: true,
+        blobRef: 'blob:fixture.xlsx',
+      })
+    ).rejects.toThrowError('unsupported_blob_ref:blob_url');
+  });
+
+  it('rejects imports with missing columns and invalid boolean values', async () => {
+    const missingColumnRuntime = await createRuntimeWithRepositoryMock(createRepositoryMock(), createWorkbookBytes([
+      ['tour_id', 'tour_name', 'active'],
+      ['tour-1', 'Incomplete Tour', 'true'],
+    ]));
+
+    await expect(
+      missingColumnRuntime.importData('instance-1', {
+        operation: 'import-data',
+        importProfileId: 'waste-management.touren',
+        sourceFormat: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        dryRun: false,
+        blobRef: 'fixture.xlsx',
+      })
+    ).rejects.toThrowError('missing_import_column:waste-management.touren:waste_fraction_ids');
+
+    const invalidBooleanRuntime = await createRuntimeWithRepositoryMock(createRepositoryMock(), createWorkbookBytes([
+      ['region_id', 'region_name', 'city_id', 'city_name', 'location_id', 'active'],
+      ['region-1', 'Nord', 'city-1', 'Musterstadt', 'location-1', 'maybe'],
+    ]));
+
+    await expect(
+      invalidBooleanRuntime.importData('instance-1', {
+        operation: 'import-data',
+        importProfileId: 'waste-management.geografie-abholorte',
+        sourceFormat: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        dryRun: false,
+        blobRef: 'fixture.xlsx',
+      })
+    ).rejects.toThrowError('invalid_boolean:active');
+  });
+
+  it('rejects invalid recurrence values in tour imports', async () => {
+    const runtime = await createRuntimeWithRepositoryMock(createRepositoryMock(), createWorkbookBytes([
+      ['tour_id', 'tour_name', 'waste_fraction_ids', 'active', 'recurrence'],
+      ['tour-1', 'Restmüll Nord', 'rest|bio', 'true', 'monthly-ish'],
+    ]));
+
+    await expect(
+      runtime.importData('instance-1', {
+        operation: 'import-data',
+        importProfileId: 'waste-management.touren',
+        sourceFormat: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        dryRun: false,
+        blobRef: 'fixture.xlsx',
+      })
+    ).rejects.toThrowError('invalid_recurrence:monthly-ish');
+  });
+
+  it('rejects invalid date shift rows deterministically', async () => {
+    const invalidContextRuntime = await createRuntimeWithRepositoryMock(createRepositoryMock(), createWorkbookBytes([
+      ['shift_id', 'shift_context', 'original_date', 'actual_date', 'has_year'],
+      ['shift-1', 'sideways', '2026-04-03', '2026-04-04', 'true'],
+    ]));
+    await expect(
+      invalidContextRuntime.importData('instance-1', {
+        operation: 'import-data',
+        importProfileId: 'waste-management.ausweichtermine',
+        sourceFormat: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        dryRun: false,
+        blobRef: 'fixture.xlsx',
+      })
+    ).rejects.toThrowError('invalid_shift_context:sideways');
+
+    const missingTourRuntime = await createRuntimeWithRepositoryMock(createRepositoryMock(), createWorkbookBytes([
+      ['shift_id', 'shift_context', 'original_date', 'actual_date', 'has_year', 'tour_id'],
+      ['shift-2', 'tour', '2026-04-03', '2026-04-04', 'true', ''],
+    ]));
+    await expect(
+      missingTourRuntime.importData('instance-1', {
+        operation: 'import-data',
+        importProfileId: 'waste-management.ausweichtermine',
+        sourceFormat: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        dryRun: false,
+        blobRef: 'fixture.xlsx',
+      })
+    ).rejects.toThrowError('missing_tour_id:shift-2');
+
+    const invalidReasonRuntime = await createRuntimeWithRepositoryMock(createRepositoryMock(), createWorkbookBytes([
+      ['shift_id', 'shift_context', 'original_date', 'actual_date', 'has_year', 'reason_type'],
+      ['shift-3', 'global', '2026-12-25', '2026-12-24', 'true', 'mystery'],
+    ]));
+    await expect(
+      invalidReasonRuntime.importData('instance-1', {
+        operation: 'import-data',
+        importProfileId: 'waste-management.ausweichtermine',
+        sourceFormat: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        dryRun: false,
+        blobRef: 'fixture.xlsx',
+      })
+    ).rejects.toThrowError('invalid_reason_type:mystery');
+
+    const invalidFollowUpRuntime = await createRuntimeWithRepositoryMock(createRepositoryMock(), createWorkbookBytes([
+      ['shift_id', 'shift_context', 'original_date', 'actual_date', 'has_year', 'tour_id', 'follow_up_mode'],
+      ['shift-4', 'tour', '2026-04-03', '2026-04-04', 'true', 'tour-1', 'teleport-series'],
+    ]));
+    await expect(
+      invalidFollowUpRuntime.importData('instance-1', {
+        operation: 'import-data',
+        importProfileId: 'waste-management.ausweichtermine',
+        sourceFormat: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        dryRun: false,
+        blobRef: 'fixture.xlsx',
+      })
+    ).rejects.toThrowError('invalid_follow_up_mode:teleport-series');
+  });
+
+  it('seeds baseline entities through the repository', async () => {
+    const repository = createRepositoryMock();
+    const runtime = await createRuntimeWithRepositoryMock(repository);
+
+    const result = await runtime.seedData('instance-1', {
+      operation: 'seed-data',
+      seedKey: 'baseline',
+    });
+
+    expect(repository.upsertWasteRegion).toHaveBeenCalledTimes(1);
+    expect(repository.upsertWasteCity).toHaveBeenCalledTimes(1);
+    expect(repository.upsertWasteStreet).toHaveBeenCalledTimes(1);
+    expect(repository.upsertWasteHouseNumber).toHaveBeenCalledTimes(1);
+    expect(repository.upsertWasteCollectionLocation).toHaveBeenCalledTimes(1);
+    expect(repository.upsertWasteFraction).toHaveBeenCalledTimes(2);
+    expect(repository.upsertWasteTour).toHaveBeenCalledTimes(1);
+    expect(repository.upsertWasteLocationTourLink).toHaveBeenCalledTimes(1);
+    expect(repository.upsertWasteTourDateShift).toHaveBeenCalledTimes(1);
+    expect(repository.upsertWasteGlobalDateShift).toHaveBeenCalledTimes(1);
+    expect(result.details).toMatchObject({
+      operation: 'seed-data',
+      seedKey: 'baseline',
+      seededEntityCount: 11,
+    });
+  });
+
+  it('rejects unsupported seed keys', async () => {
+    const runtime = await createRuntimeWithRepositoryMock(createRepositoryMock());
+
+    await expect(
+      runtime.seedData('instance-1', {
+        operation: 'seed-data',
+        seedKey: 'baseline-v2' as 'baseline',
+      })
+    ).rejects.toThrowError('unsupported_seed_key:baseline-v2');
+  });
+
+  it('resets all waste tables and rejects blank or legacy confirmation tokens', async () => {
+    const query = vi.fn(async (text: string) => ({
+      rowCount: text.startsWith('DELETE FROM') ? 1 : 0,
+      rows: [],
+    }));
+    const runtime = createWasteManagementOperationRuntime({
+      loadDataSourceRecord: vi.fn(async () => createDataSourceRecord()),
+      revealSecret: vi.fn((ciphertext) => (ciphertext ? 'postgres://waste:test@localhost:5432/waste' : undefined)),
+      createPool: vi.fn(() => ({
+        connect: vi.fn(async () => ({
+          query,
+          release: vi.fn(),
+        })),
+        end: vi.fn(async () => undefined),
+      })),
+    });
+
+    await expect(
+      runtime.resetData('instance-1', {
+        operation: 'reset-data',
+        confirmationToken: '   ',
+      })
+    ).rejects.toThrowError('missing_reset_confirmation_token');
+
+    await expect(
+      runtime.resetData('instance-1', {
+        operation: 'reset-data',
+        confirmationToken: 'confirm-reset',
+      })
+    ).rejects.toThrowError('invalid_reset_confirmation_token');
+
+    const result = await runtime.resetData('instance-1', {
+      operation: 'reset-data',
+      confirmationToken: 'RESET',
+    });
+
+    expect(query).toHaveBeenCalledWith('DELETE FROM waste_location_tour_links;');
+    expect(query).toHaveBeenCalledWith('DELETE FROM waste_regions;');
+    expect(result.details).toMatchObject({
+      operation: 'reset-data',
+      confirmationTokenLength: 5,
+    });
+  });
+});
+
+const requiredTableRows = [
+  { table_name: 'waste_cities' },
+  { table_name: 'waste_collection_locations' },
+  { table_name: 'waste_fractions' },
+  { table_name: 'waste_global_date_shifts' },
+  { table_name: 'waste_house_numbers' },
+  { table_name: 'waste_location_tour_links' },
+  { table_name: 'waste_regions' },
+  { table_name: 'waste_streets' },
+  { table_name: 'waste_tour_date_shifts' },
+  { table_name: 'waste_tours' },
+];
+
+const createImportWorkbookBytes = (): Uint8Array => {
+  return createWorkbookBytes([
+    ['region_id', 'region_name', 'city_id', 'city_name', 'location_id', 'active'],
+    ['00000000-0000-4000-8000-000000000101', 'Nord', '00000000-0000-4000-8000-000000000102', 'Musterstadt', '00000000-0000-4000-8000-000000000103', 'true'],
+  ]);
+};
+
+const createToursWorkbookBytes = (): Uint8Array => {
+  return createWorkbookBytes([
+    ['tour_id', 'tour_name', 'waste_fraction_ids', 'active', 'description', 'recurrence', 'first_date', 'end_date', 'custom_dates'],
+    ['tour-1', 'Restmüll Nord', 'rest|bio', 'yes', 'Standardtour Nord', 'weekly', '2026-01-10', '2026-12-31', '2026-01-10|2026-01-24'],
+  ]);
+};
+
+const createDateShiftWorkbookBytes = (): Uint8Array => {
+  return createWorkbookBytes([
+    ['shift_id', 'shift_context', 'original_date', 'actual_date', 'has_year', 'tour_id', 'description', 'tour_ids', 'reason_type', 'reason_key', 'follow_up_mode'],
+    ['shift-tour', 'tour', '2026-04-03', '2026-04-04', 'true', 'tour-1', 'Feiertagsverschiebung', '', 'holiday', 'good-friday', 'propagate-series'],
+    ['shift-global', 'global', '2026-12-25', '2026-12-24', '1', '', 'Globale Feiertagsverschiebung', 'tour-1|tour-2', 'holiday', 'christmas-day', ''],
+  ]);
+};
+
+const createMinimalToursWorkbookBytes = (): Uint8Array => {
+  return createWorkbookBytes([
+    ['tour_id', 'tour_name', 'waste_fraction_ids', 'active'],
+    ['tour-inline', 'Inline Tour', 'rest', 'false'],
+  ]);
+};
+
+const createExtendedGeographyWorkbookBytes = (): Uint8Array => {
+  return createWorkbookBytes([
+    ['region_id', 'region_name', 'city_id', 'city_name', 'location_id', 'active', 'street_id', 'street_name', 'house_number_id', 'house_number_value'],
+    ['region-extended', 'Nord', 'city-extended', 'Musterstadt', 'location-extended', '0', 'street-extended', 'Hauptstraße', 'house-extended', '42a'],
+  ]);
+};
+
+const createWorkbookBytes = (rows: readonly (readonly string[])[]): Uint8Array => {
+  const workbook = XLSX.utils.book_new();
+  const sheet = XLSX.utils.aoa_to_sheet(rows.map((row) => [...row]));
+  XLSX.utils.book_append_sheet(workbook, sheet, 'Import');
+  return XLSX.write(workbook, { type: 'array', bookType: 'xlsx' });
+};
+
+const createSqlClientMock = (query: SqlClient['query']): SqlClient => ({
+  query,
+  release: vi.fn(),
+});
+
+const createPoolMock = (client: SqlClient): WasteOperationSqlPool => ({
+  connect: vi.fn(async () => client),
+  end: vi.fn(async () => undefined),
+});
+
+const createRepositoryMock = () => ({
+  upsertWasteRegion: vi.fn(async () => undefined),
+  upsertWasteCity: vi.fn(async () => undefined),
+  upsertWasteStreet: vi.fn(async () => undefined),
+  upsertWasteHouseNumber: vi.fn(async () => undefined),
+  upsertWasteCollectionLocation: vi.fn(async () => undefined),
+  upsertWasteFraction: vi.fn(async () => undefined),
+  upsertWasteTour: vi.fn(async () => undefined),
+  upsertWasteLocationTourLink: vi.fn(async () => undefined),
+  upsertWasteTourDateShift: vi.fn(async () => undefined),
+  upsertWasteGlobalDateShift: vi.fn(async () => undefined),
+});
+
+const createRuntimeWithRepositoryMock = async (
+  repository: ReturnType<typeof createRepositoryMock>,
+  workbookBytes: Uint8Array = createToursWorkbookBytes()
+) => {
+  vi.doMock('@sva/data-repositories', () => ({
+    createWasteMasterDataRepository: vi.fn(() => repository),
+  }));
+
+  const { createWasteManagementOperationRuntime: createRuntime } = await import('./waste-management-operations.server.js');
+  return createRuntime({
+    loadDataSourceRecord: vi.fn(async () => createDataSourceRecord()),
+    revealSecret: vi.fn((ciphertext) => (ciphertext ? 'postgres://waste:test@localhost:5432/waste' : undefined)),
+    createPool: vi.fn(() => createPoolMock(createSqlClientMock(vi.fn(async () => ({ rowCount: 0, rows: [] }))))),
+    readBinarySource: vi.fn(async () => workbookBytes),
+  });
+};
+
+const createRuntimeWithRealRepository = async (workbookBytes: Uint8Array, query: SqlClient['query']) => {
+  const { createWasteManagementOperationRuntime: createRuntime } = await import('./waste-management-operations.server.js');
+  return createRuntime({
+    loadDataSourceRecord: vi.fn(async () => createDataSourceRecord()),
+    revealSecret: vi.fn((ciphertext) => (ciphertext ? 'postgres://waste:test@localhost:5432/waste' : undefined)),
+    createPool: vi.fn(() => createPoolMock(createSqlClientMock(query))),
+    readBinarySource: vi.fn(async () => workbookBytes),
+  });
+};

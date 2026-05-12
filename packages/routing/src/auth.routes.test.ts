@@ -14,6 +14,8 @@ describe('auth.routes', () => {
     expect(new Set(authRoutePaths).size).toBe(authRoutePaths.length);
 
     expect(authRoutePaths).toContain('/auth/login');
+    expect(authRoutePaths).toContain('/auth/dev-login');
+    expect(authRoutePaths).toContain('/auth/dev-logout');
     expect(authRoutePaths).toContain('/auth/logout');
     expect(authRoutePaths).toContain('/api/v1/iam/health/ready');
     expect(authRoutePaths).toContain('/api/v1/iam/health/live');

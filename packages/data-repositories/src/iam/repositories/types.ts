@@ -16,7 +16,7 @@ type SqlArrayPrimitive = Readonly<{
   values: readonly string[];
 }>;
 
-export type SqlPrimitive = string | number | boolean | null | SqlArrayPrimitive;
+export type SqlPrimitive = string | number | boolean | null | readonly string[] | SqlArrayPrimitive;
 
 export type SqlStatement = {
   readonly text: string;

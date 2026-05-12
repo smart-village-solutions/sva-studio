@@ -15,6 +15,7 @@ import {
   AlertDialogTitle,
   Badge,
   Button,
+  Checkbox,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -24,6 +25,7 @@ import {
   Input,
   Select,
   StudioActionMenu,
+  StudioConfirmDialog,
   StudioDataTable,
   type StudioDataTableLabels,
   StudioDetailTabs,
@@ -34,12 +36,14 @@ import {
   StudioField,
   StudioFieldGroup,
   StudioFormSummary,
+  StudioJobSummaryCard,
   StudioListPageTemplate,
   StudioLoadingState,
   StudioOverviewPageTemplate,
   StudioResourceHeader,
   StudioSection,
   StudioStateBlock,
+  StudioTechnicalStatusPanel,
   Textarea,
 } from './index.js';
 
@@ -432,6 +436,44 @@ describe('studio-ui-react primitives', () => {
     expect(screen.getAllByText('a')).toHaveLength(2);
   });
 
+  it('renders the compact card layout and handles mobile row selection', () => {
+    const originalResizeObserver = globalThis.ResizeObserver;
+    const disconnect = vi.fn();
+
+    globalThis.ResizeObserver = class {
+      constructor(private readonly callback: ResizeObserverCallback) {}
+
+      observe() {
+        this.callback([{ contentRect: { width: 320 } as DOMRectReadOnly }] as ResizeObserverEntry[], this as ResizeObserver);
+      }
+
+      unobserve = vi.fn();
+
+      disconnect = disconnect;
+    } as typeof ResizeObserver;
+
+    try {
+      const { unmount } = render(
+        <StudioDataTable
+          ariaLabel="News"
+          labels={tableLabels}
+          data={[{ id: 'a', title: 'Alpha' }]}
+          getRowId={(row) => row.id}
+          columns={[{ id: 'title', header: 'Titel', cell: (row) => row.title }]}
+          emptyState={<p>Keine Daten</p>}
+        />
+      );
+
+      fireEvent.click(screen.getByLabelText('News a in Kartenansicht auswählen'));
+      expect((screen.getByLabelText('News a in Kartenansicht auswählen') as HTMLInputElement).checked).toBe(true);
+      unmount();
+    } finally {
+      globalThis.ResizeObserver = originalResizeObserver;
+    }
+
+    expect(disconnect).toHaveBeenCalledTimes(1);
+  });
+
   it('renders base controls', () => {
     render(
       <>
@@ -448,6 +490,22 @@ describe('studio-ui-react primitives', () => {
     expect(screen.getByText('Hinweis')).toBeTruthy();
     expect(screen.getByText('Aktiv')).toBeTruthy();
     expect(screen.getByRole('combobox', { name: 'Status' })).toBeTruthy();
+  });
+
+  it('forwards checkbox refs to callback and object refs', () => {
+    const callbackRef = vi.fn();
+    const objectRef = { current: null as HTMLInputElement | null };
+
+    render(
+      <>
+        <Checkbox aria-label="Callback-Checkbox" ref={callbackRef} />
+        <Checkbox aria-label="Objekt-Checkbox" ref={objectRef} indeterminate />
+      </>
+    );
+
+    expect(callbackRef).toHaveBeenCalledWith(screen.getByRole('checkbox', { name: 'Callback-Checkbox' }));
+    expect(objectRef.current).toBe(screen.getByRole('checkbox', { name: 'Objekt-Checkbox' }));
+    expect(objectRef.current?.indeterminate).toBe(true);
   });
 
   it('renders dialog wrappers', () => {
@@ -483,6 +541,67 @@ describe('studio-ui-react primitives', () => {
     expect(screen.getByRole('alertdialog', { hidden: true })).toBeTruthy();
     expect(screen.getByText('Dialogtitel')).toBeTruthy();
     expect(screen.getByText('Bestätigen')).toBeTruthy();
+  });
+
+  it('renders shared confirm dialogs with embedded custom content', () => {
+    const onConfirm = vi.fn();
+    const onCancel = vi.fn();
+
+    render(
+      <StudioConfirmDialog
+        open
+        title="Reset"
+        description="Wirklich ausführen?"
+        confirmLabel="Ja"
+        cancelLabel="Nein"
+        onConfirm={onConfirm}
+        onCancel={onCancel}
+      >
+        <StudioField id="token" label="Token">
+          <Input id="token" defaultValue="RESET" />
+        </StudioField>
+      </StudioConfirmDialog>
+    );
+
+    expect(screen.getByRole('alertdialog', { hidden: true })).toBeTruthy();
+    expect(screen.getByLabelText('Token')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Ja' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Nein' }));
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+    expect(onCancel).toHaveBeenCalled();
+  });
+
+  it('renders technical status panels and generic job summary cards', () => {
+    render(
+      <>
+        <StudioTechnicalStatusPanel
+          title="Datenquelle"
+          description="Host-Status"
+          statusLabel="ok"
+          statusTone="success"
+          metadata={[
+            { id: 'checkedAt', label: 'Geprüft', value: 'Heute' },
+            { id: 'secret', label: 'Secret', value: 'Ja' },
+          ]}
+          actions={<Button>Neu prüfen</Button>}
+        />
+        <StudioJobSummaryCard
+          title="Letzter Job"
+          description="Host-Jobstatus"
+          statusLabel="running"
+          statusTone="warning"
+          metadata={[{ id: 'jobId', label: 'Job', value: 'job-1' }]}
+          actions={<Button>Öffnen</Button>}
+        />
+      </>
+    );
+
+    expect(screen.getByRole('heading', { name: 'Datenquelle' })).toBeTruthy();
+    expect(screen.getByText('Geprüft: Heute')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Neu prüfen' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Letzter Job' })).toBeTruthy();
+    expect(screen.getByText('Job: job-1')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Öffnen' })).toBeTruthy();
   });
 
   it('renders optional primitive variants without auxiliary content', () => {

@@ -46,6 +46,7 @@ Abhängigkeiten des aktuellen Systems.
    - bündelt außerdem wiederverwendbare Helper für standardisierte Content-Plugins, Mainserver-CRUD-Basis und kleine UI-nahe Plugin-Utilities
    - `@sva/server-runtime`: Logger, Request-Kontext, JSON-Fehlerantworten, Workspace-Kontext und OTEL-Bootstrap
    - Namespacing- und Ownership-Validierung für plugin-beigestellte registrierte Host-Identifier
+   - Zielbild Plugin-Plattform v2: zusätzlich serialisierbarer Manifest-Vertrag, hostgeführter Katalog, Loader zur Snapshot-Materialisierung und host-owned Runtime-Boundaries für pluginseitige Server-, Job- und Integrationsbeiträge
 6. Studio UI React (`packages/studio-ui-react`)
   - öffentliche React/UI-Basis `@sva/studio-ui-react` für Host-Seiten und Plugin-Custom-Views
   - kapselt shadcn-/Radix-Primitives, Studio-Templates, Formularfelder, Zustandsbausteine, Tabellen- und Aktionsmuster
@@ -68,7 +69,12 @@ Abhängigkeiten des aktuellen Systems.
    - bildet das vollständige Mainserver-`NewsItem`-Modell über dedizierte Felder ab; `contentBlocks` sind der führende Langinhalt
    - nutzt `@sva/plugin-sdk` für Host-Metadaten und `@sva/studio-ui-react` für gemeinsame UI-Primitives statt App-interner Komponenten
    - persistiert nicht direkt in lokale IAM-Contents, sondern spricht die hostgeführte Mainserver-News-Fassade per HTTP an
-11. Instanz-Registry (`packages/instance-registry`)
+11. Plugin Waste Management (`packages/plugin-waste-management`)
+   - freies Fachplugin unter `/plugins/waste-management` für Waste-Stammdaten, Touren, Ausweichtermine, technische Werkzeuge und instanzbezogene Einstellungen
+   - konsumiert ausschließlich hostgeführte Endpunkte unter `/api/v1/waste-management/*`
+   - hält bewusst nur fachliche UI-, Dialog-, Bulk- und lokale View-Model-Logik; keine direkte Datenbank-, Supabase- oder `Newcms`-Runtime-Kopplung
+   - nutzt `@sva/plugin-sdk` für Route, Navigation, Audit-, Import- und Job-Verträge sowie `@sva/studio-ui-react` für generische Confirm-, Status- und Job-UI
+12. Instanz-Registry (`packages/instance-registry`)
    - Host-Klassifikation, Vertrags- und Run-Modell fuer Registry, Preflight, Plan und Provisioning-Protokoll
    - Registry-Repositories, persistente Provisioning-Runs und Cache-Zugriffe über injizierte Repository-Verträge
    - Plattformvertrag, Keycloak-Control-Plane, Provisioning-Fassade und Root-Host-Guard
@@ -80,11 +86,16 @@ Abhängigkeiten des aktuellen Systems.
    - der Instanzvertrag trennt `authClientId` fuer interaktive Logins von `tenantAdminClient.clientId` fuer tenant-lokale Admin-Mutationen und Reconcile
    - blockerrelevanter Drift aus Preflight, Provisioning-Plan oder fehlendem Tenant-Admin-Vertrag wird vor Reconcile-/Sync-Starts fail-closed durchgesetzt
    - HTTP-Handler, Service-Komposition und Keycloak-Ausführung sind intern entlang Read, Mutation, Payload/Sync/Finalize und Diagnose getrennt, damit Runtime-Consumer stabile Fassaden nutzen und fachliche Flows nicht wieder in Sammeldateien zusammenlaufen
-12. Plugin-Operations-Hostpfad (`packages/auth-runtime`, `packages/routing`, `packages/data-repositories`)
+13. Plugin-Operations-Hostpfad (`packages/auth-runtime`, `packages/routing`, `packages/data-repositories`)
    - `@sva/auth-runtime` veröffentlicht die hostgeführten Start- und Status-Endpunkte für generische Plugin-Jobs
    - `@sva/routing` führt diese Endpunkte im typisierten Runtime-Route-Katalog als Single Source of Truth
    - `@sva/data-repositories` hält den kanonischen Jobdatensatz mit Status, Progress, Payload-, Retry- und Fehlerfeldern
    - eine interne Worker-Anbindung wie Graphile Worker bleibt hinter diesem Hostpfad austauschbar und ist kein Teil des öffentlichen Plugin-Vertrags
+14. Waste-Host-Fassade (`packages/auth-runtime`, `packages/server-runtime`, `packages/data-repositories`)
+   - `@sva/auth-runtime` publiziert die hostgeführte Waste-Fassade für Settings, Historie, CRUD, Bulk-Flows und technische Tool-Starts
+   - `@sva/server-runtime` löst die aktive instanzbezogene Waste-Datenquelle serverseitig auf und kapselt Secret-Nutzung sowie Connection-Checks
+   - `@sva/data-repositories` hält sowohl die zentrale Governance-Persistenz der Waste-Datenquelle im Studio-Postgres als auch die hostseitigen Repositories gegen die instanzbezogene `waste_*`-Tabellenfamilie
+   - `@sva/data` bleibt dabei ausdrücklich ohne neue primäre Waste-SQL- oder Orchestrierungs-Ownership
 
 ### IAM-Bausteine und Package-Zuordnung
 
@@ -204,6 +215,7 @@ Abhängigkeiten des aktuellen Systems.
 - `@sva/studio-module-iam` -> keine React-, Host- oder Plugin-UI-Abhängigkeiten; nur Vertragsdaten und kleine Helper
 - `@sva/server-runtime` -> `@sva/core`, `@sva/monitoring-client`
 - `@sva/plugin-*` -> `@sva/plugin-sdk`, optional `@sva/studio-ui-react` für Custom-Views (kein Direktimport aus `@sva/core` oder App-internen Komponenten)
+- `@sva/plugin-waste-management` -> `@sva/plugin-sdk`, `@sva/studio-ui-react`; Host-Datenzugriffe ausschließlich über `/api/v1/waste-management/*`
 - `@sva/plugin-news`, `@sva/plugin-events` und `@sva/plugin-poi` bleiben absichtlich auf SDK, Studio-UI und Peer Dependencies beschränkt; API-Aufrufe laufen über öffentliche Host-Fassaden statt über App-Module
 - `@sva/monitoring-client` -> OTEL Libraries, `@sva/server-runtime` Context API
 - `@sva/iam-core` -> `@sva/core`
@@ -247,6 +259,21 @@ Nicht erlaubt: `@sva/plugin-*` -> `apps/sva-studio-react/src/**`
    - hält die bestehende `BuildTimeRegistry`-API stabil; interne Phasen ordnen Preflight, Content, Admin, Audit, Permissions, Routing und Publish
    - validiert spezialisierte `contentUi.contentType`-Referenzen gegen den zusammengeführten Content-Type-Snapshot fail-fast vor der Veröffentlichung
 3. `packages/routing/src/app.routes.shared.ts`
+
+### Fortschreibung 2026-05: Zielbausteine der Plugin-Plattform v2
+
+1. `@sva/plugin-sdk`
+   - bleibt die öffentliche Authoring-Boundary für generische Contribution-Typen, Host-Client-Fassaden und pluginseitige React-Hilfen
+   - ist nicht der Zielort für Manifest-Speicherung, Aktivierungskatalog oder app-spezifische Loader-Entscheidungen
+2. `plugin-manifest` (Zielbaustein)
+   - beschreibt veröffentlichte Plugins serialisierbar mit Identität, Version, Kompatibilität, Capabilities und Entry-Points
+3. `plugin-catalog` (Zielbaustein)
+   - verwaltet lokale und installierte Plugins als aktivierbare Host-Bestandteile mit Status `aktiv`, `deaktiviert` oder `inkompatibel`
+4. `plugin-loader` (Zielbaustein)
+   - normalisiert lokale Source-Plugins und installierte Distributions-Plugins auf denselben validierten Host-Snapshot
+5. `plugin-runtime` (Zielbaustein)
+   - stellt host-owned Execution-Contexts für pluginseitige Request-, Job- und Integrationsbeiträge bereit
+   - kapselt Authentifizierung, Instanzauflösung, Guarding, Audit, Secret-Auflösung, Fehlervertrag und Orchestrierung außerhalb des Plugin-Codes
    - materialisiert deklarative Admin-Ressourcen unter `/admin/<resource>`; für News, Events und POI entstehen host-owned CRUD-Pfade unter `/admin/news`, `/admin/events` und `/admin/poi`
    - verwendet spezialisierte `contentUi`-Bindings nur innerhalb der vorgesehenen Host-Region und hält Legacy-Aliase wie `/content*` nur noch für die generische Inhaltsverwaltung
 4. `packages/auth-runtime/src/iam-contents/content-type-registry.ts`

@@ -4,6 +4,7 @@ import { createIsomorphicFn } from '@tanstack/react-start';
 import { isMockAuthRuntimeProfile, parseRuntimeProfile } from '@sva/core';
 import type { AppRouteFactory, RouteGuardUser } from '@sva/routing';
 
+import { hasActiveDevAuthSession, hasActiveDevAuthSessionCookie, isDevAuthAvailable } from './lib/dev-auth';
 import { fetchWithRequestTimeout } from './lib/iam-api';
 import { fetchAuthMeSingleFlight } from './lib/auth-me-singleflight';
 import { appRouteBindings } from './routing/app-route-bindings';
@@ -38,14 +39,13 @@ export const isMockAuthEnabled = async () => {
   const runtimeProfile = parseRuntimeProfile(import.meta.env.VITE_SVA_RUNTIME_PROFILE);
 
   return (
-    import.meta.env.VITE_MOCK_AUTH === true ||
-    import.meta.env.VITE_MOCK_AUTH === 'true' ||
+    isDevAuthAvailable() ||
     (runtimeProfile !== null && isMockAuthRuntimeProfile(runtimeProfile))
   );
 };
 
 export const createMockRouteGuardUser = (): RouteGuardUser => ({
-  assignedModules: ['news', 'events', 'poi', 'media'],
+  assignedModules: ['news', 'events', 'poi', 'media', 'waste-management'],
   roles: [
     'system_admin',
     'iam_admin',
@@ -77,6 +77,14 @@ export const createMockRouteGuardUser = (): RouteGuardUser => ({
     'news.read',
     'events.read',
     'poi.read',
+    'waste-management.read',
+    'waste-management.master-data.manage',
+    'waste-management.tours.manage',
+    'waste-management.scheduling.manage',
+    'waste-management.import.execute',
+    'waste-management.seed.execute',
+    'waste-management.reset.execute',
+    'waste-management.settings.manage',
   ],
 });
 
@@ -121,15 +129,14 @@ const loadRouteGuardUserFromAuthMe = async (url: string, init?: RequestInit): Pr
 const getRouteGuardUser = createIsomorphicFn()
   .server(async (): Promise<RouteGuardUser | null> => {
     try {
-      if (await isMockAuthEnabled()) {
-        return createMockRouteGuardUser();
-      }
-
       const { getRequest } = await import('@tanstack/react-start/server');
 
       const request = getRequest();
-      const authMeUrl = new URL('/auth/me', request.url).toString();
       const cookie = request.headers.get('cookie');
+      if (isDevAuthAvailable() && hasActiveDevAuthSessionCookie(cookie)) {
+        return createMockRouteGuardUser();
+      }
+      const authMeUrl = new URL('/auth/me', request.url).toString();
 
       return await loadRouteGuardUserFromAuthMe(
         authMeUrl,
@@ -144,11 +151,10 @@ const getRouteGuardUser = createIsomorphicFn()
     }
   })
   .client(async (): Promise<RouteGuardUser | null> => {
+    if (isDevAuthAvailable() && hasActiveDevAuthSession()) {
+      return createMockRouteGuardUser();
+    }
     try {
-      if (await isMockAuthEnabled()) {
-        return createMockRouteGuardUser();
-      }
-
       const result = await fetchAuthMeSingleFlight(() =>
         fetchWithRequestTimeout(new URL('/auth/me', resolveBaseUrl()).toString(), undefined, { timeoutMs: 5_000 })
       );

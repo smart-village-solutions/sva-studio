@@ -11,7 +11,14 @@ describe('@sva/auth-runtime package scaffold', () => {
 
   it('exposes auth runtime route contracts through the target edge', () => {
     expect(authRoutePaths).toContain('/auth/login');
+    expect(authRoutePaths).toContain('/auth/dev-login');
+    expect(authRoutePaths).toContain('/auth/dev-logout');
     expect(authRoutePaths).toContain('/api/v1/iam/health/ready');
+    expect(authRoutePaths).toContain('/api/v1/waste-management/master-data');
+    expect(authRoutePaths).toContain('/api/v1/waste-management/history');
+    expect(authRoutePaths).toContain('/api/v1/waste-management/scheduling');
+    expect(authRoutePaths).toContain('/api/v1/waste-management/tours');
+    expect(authRoutePaths).toContain('/api/v1/waste-management/settings');
   });
 
   it('exposes auth runtime server contracts through the target edge', () => {

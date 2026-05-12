@@ -66,6 +66,8 @@ export const i18nResources = {
         switchToGerman: 'Auf Deutsch wechseln',
         switchToEnglish: 'Auf Englisch wechseln',
         login: 'Login',
+        devLogin: 'Als Dev-User anmelden',
+        devAuthBadge: 'Dev-Auth aktiv',
         logout: 'Logout',
         openNavigation: 'Navigation öffnen',
         closeNavigation: 'Navigation schließen',
@@ -622,6 +624,9 @@ export const i18nResources = {
       },
     },
     home: {
+      devAuth: {
+        prompt: 'Lokaler Dev-Auth-Modus ist aktiv. Keycloak wird für diese Sitzung umgangen.',
+      },
       hero: {
         eyebrow: 'Studio Workspace',
         subtitle: 'Smart Village App Self-Service Plattform für Inhalte, Module und Erweiterungen.',
@@ -681,6 +686,7 @@ export const i18nResources = {
         lastCheckedLabel: 'Zuletzt geprüft',
         connected: 'Verbunden',
         error: 'Fehler',
+        disabled: 'Deaktiviert',
         unknown: 'Unbekannt',
       },
       form: {
@@ -716,6 +722,66 @@ export const i18nResources = {
         networkError: 'Der Verbindungsstatus konnte nicht abgerufen werden.',
         graphqlError: 'Der Mainserver hat einen GraphQL-Fehler zurückgegeben.',
         invalidResponse: 'Der Mainserver hat eine unerwartete Antwort zurückgegeben.',
+      },
+      table: {
+        ariaLabel: 'Schnittstellen der Instanz',
+        caption: 'Alle pro Instanz konfigurierten Schnittstellen mit Typ, Status und letztem Check.',
+        headerName: 'Name',
+        headerType: 'Typ',
+        headerEndpoint: 'Endpoint',
+        headerStatus: 'Status',
+        headerLastChecked: 'Letzte Prüfung',
+        emptyState: 'Für diese Instanz sind noch keine Schnittstellen hinterlegt.',
+        countLabel: '{{count}} Schnittstelle(n)',
+      },
+      types: {
+        mainserver: {
+          label: 'SVA Mainserver',
+          description: 'GraphQL-Endpoint und OAuth-Token-URL für News-, Events- und POI-Importe.',
+        },
+        s3: {
+          label: 'S3-kompatibler Object Storage',
+          description: 'Bucket-Anbindung für die Medienverwaltung (Endpoint, Region, Bucket, Zugangsschlüssel).',
+        },
+        supabase: {
+          label: 'Supabase',
+          description: 'Project URL, Schema und Service-Role-Key – z. B. für den Abfallkalender.',
+        },
+      },
+      create: {
+        action: 'Neue Schnittstelle',
+        dialogTitle: 'Schnittstellentyp wählen',
+        dialogDescription: 'Wähle aus, welche Art von Schnittstelle für diese Instanz angelegt werden soll.',
+        cancel: 'Abbrechen',
+        continue: 'Weiter',
+      },
+      edit: {
+        title: 'Schnittstelle bearbeiten',
+        deleteAction: 'Löschen',
+        deleteConfirmTitle: 'Schnittstelle löschen?',
+        deleteConfirmDescription: 'Die Schnittstelle „{{name}}" wird unwiderruflich entfernt.',
+        deleteConfirm: 'Endgültig löschen',
+        cancel: 'Abbrechen',
+        commonName: 'Anzeigename',
+        commonEnabled: 'Aktiv',
+      },
+      forms: {
+        s3: {
+          endpoint: 'Endpoint-URL',
+          region: 'Region',
+          bucket: 'Bucket',
+          accessKeyId: 'Access Key ID',
+          secretAccessKey: 'Secret Access Key',
+          forcePathStyle: 'Path-Style-URLs erzwingen',
+          notImplemented: 'Hinweis: Dieses Formular ist eine UI-Vorschau. Werte werden lokal im Browser persistiert, bis das Backend angebunden ist.',
+        },
+        supabase: {
+          projectUrl: 'Project URL',
+          schemaName: 'Schema',
+          databaseUrl: 'Direct DB URL (optional)',
+          serviceRoleKey: 'Service Role Key',
+          notImplemented: 'Hinweis: Dieses Formular ist eine UI-Vorschau. Werte werden lokal im Browser persistiert, bis das Backend angebunden ist.',
+        },
       },
     },
     account: {
@@ -933,6 +999,24 @@ export const i18nResources = {
           tenantAdminEmail: 'Admin-E-Mail',
           tenantAdminFirstName: 'Admin-Vorname',
           tenantAdminLastName: 'Admin-Nachname',
+          wasteManagementEnabled: 'Abfallmanagement konfigurieren',
+          wasteManagementSubtitle:
+            'Instanzbezogene Waste-Datenquelle und technische Zugangsdaten für das Waste-Plugin.',
+          wasteManagementProjectUrl: 'Supabase-Projekt-URL',
+          wasteManagementSchemaName: 'Schema-Name',
+          wasteManagementProvider: 'Provider',
+          wasteManagementDatabaseUrl: 'Datenbank-URL',
+          wasteManagementDatabaseUrlConfigured: 'Bereits konfiguriert',
+          wasteManagementDatabaseUrlHint:
+            'Leer lassen, um die bestehende Waste-Datenbank-URL unverändert zu lassen.',
+          wasteManagementDatabaseUrlCreateHint:
+            'Optional beim Anlegen. Kann später in der Instanzkonfiguration ergänzt werden.',
+          wasteManagementServiceRoleKey: 'Service-Role-Key',
+          wasteManagementServiceRoleKeyConfigured: 'Bereits konfiguriert',
+          wasteManagementServiceRoleKeyHint:
+            'Leer lassen, um den bestehenden Waste-Service-Role-Key unverändert zu lassen.',
+          wasteManagementServiceRoleKeyCreateHint:
+            'Optional beim Anlegen. Kann später in der Instanzkonfiguration ergänzt werden.',
         },
         flow: {
           realmModeTitle: 'Realm-Modus',
@@ -1313,6 +1397,8 @@ export const i18nResources = {
             authClientSecret: 'Bitte ein Tenant-Client-Secret angeben.',
             tenantAdminClientId: 'Bitte eine Tenant-Admin-Client-ID angeben.',
             tenantAdminClientSecret: 'Bitte ein Tenant-Admin-Client-Secret angeben.',
+            wasteProjectUrl:
+              'Bitte eine Supabase-Projekt-URL angeben, sobald Abfallmanagement für die Instanz aktiviert wird.',
           },
           readiness: {
             secretTitle: 'Tenant-Client-Secret',
@@ -1383,6 +1469,7 @@ export const i18nResources = {
             events: 'Events',
             poi: 'POI',
             media: 'Medien',
+            wasteManagement: 'Abfallmanagement',
           },
         },
         help: {
@@ -2167,6 +2254,7 @@ export const i18nResources = {
           news: 'News',
           events: 'Events',
           poi: 'POI',
+          wasteManagement: 'Abfallmanagement',
         },
         createDialog: {
           title: 'Neue Rolle erstellen',
@@ -2675,6 +2763,7 @@ export const i18nResources = {
             news: 'News',
             events: 'Events',
             poi: 'POI',
+            wasteManagement: 'Abfallmanagement',
           },
         },
         governance: {
@@ -2789,6 +2878,8 @@ export const i18nResources = {
         switchToGerman: 'Switch to German',
         switchToEnglish: 'Switch to English',
         login: 'Login',
+        devLogin: 'Sign in as dev user',
+        devAuthBadge: 'Dev auth active',
         logout: 'Logout',
         openNavigation: 'Open navigation',
         closeNavigation: 'Close navigation',
@@ -3336,6 +3427,9 @@ export const i18nResources = {
       },
     },
     home: {
+      devAuth: {
+        prompt: 'Local dev auth is active. Keycloak is bypassed for this session.',
+      },
       hero: {
         eyebrow: 'Studio workspace',
         subtitle: 'Smart Village App self-service platform for content, modules, and extensions.',
@@ -3394,7 +3488,33 @@ export const i18nResources = {
         lastCheckedLabel: 'Last checked',
         connected: 'Connected',
         error: 'Error',
+        disabled: 'Disabled',
         unknown: 'Unknown',
+      },
+      table: {
+        ariaLabel: 'Interfaces table',
+        caption: 'Configured interfaces for the selected instance',
+        headerName: 'Name',
+        headerType: 'Type',
+        headerEndpoint: 'Endpoint',
+        headerStatus: 'Status',
+        headerLastChecked: 'Last checked',
+        emptyState: 'No interfaces are configured for this instance yet.',
+        countLabel: '{{count}} interfaces',
+      },
+      types: {
+        mainserver: {
+          label: 'SVA Mainserver',
+          description: 'Manage GraphQL and OAuth endpoints for the mainserver integration.',
+        },
+        s3: {
+          label: 'S3 Storage',
+          description: 'Manage object storage settings for uploads and exports.',
+        },
+        supabase: {
+          label: 'Supabase',
+          description: 'Manage project and database settings for Supabase integrations.',
+        },
       },
       form: {
         sectionTitle: 'Mainserver settings',
@@ -3402,10 +3522,45 @@ export const i18nResources = {
         oauthTokenUrl: 'OAuth token URL',
         enabled: 'Integration enabled',
       },
+      forms: {
+        s3: {
+          endpoint: 'Endpoint URL',
+          region: 'Region',
+          bucket: 'Bucket',
+          accessKeyId: 'Access key ID',
+          secretAccessKey: 'Secret access key',
+          forcePathStyle: 'Force path-style URLs',
+          notImplemented: 'S3 interface settings are not implemented yet.',
+        },
+        supabase: {
+          projectUrl: 'Project URL',
+          schemaName: 'Schema name',
+          databaseUrl: 'Database URL',
+          serviceRoleKey: 'Service role key',
+          notImplemented: 'Supabase interface settings are not implemented yet.',
+        },
+      },
       actions: {
         save: 'Save settings',
         saving: 'Saving ...',
         reload: 'Reload',
+      },
+      create: {
+        action: 'Create interface',
+        dialogTitle: 'Create interface',
+        dialogDescription: 'Choose the interface type you want to configure for this instance.',
+        cancel: 'Cancel',
+        continue: 'Continue',
+      },
+      edit: {
+        title: 'Edit interface',
+        deleteAction: 'Delete interface',
+        deleteConfirmTitle: 'Delete interface?',
+        deleteConfirmDescription: 'Do you really want to delete the interface "{{name}}"?',
+        deleteConfirm: 'Delete',
+        cancel: 'Cancel',
+        commonName: 'Name',
+        commonEnabled: 'Enabled',
       },
       messages: {
         loading: 'Loading interfaces ...',
@@ -3645,6 +3800,24 @@ export const i18nResources = {
           tenantAdminEmail: 'Admin email',
           tenantAdminFirstName: 'Admin first name',
           tenantAdminLastName: 'Admin last name',
+          wasteManagementEnabled: 'Configure waste management',
+          wasteManagementSubtitle:
+            'Instance-specific waste data source and technical credentials for the waste plugin.',
+          wasteManagementProjectUrl: 'Supabase project URL',
+          wasteManagementSchemaName: 'Schema name',
+          wasteManagementProvider: 'Provider',
+          wasteManagementDatabaseUrl: 'Database URL',
+          wasteManagementDatabaseUrlConfigured: 'Already configured',
+          wasteManagementDatabaseUrlHint:
+            'Leave empty to keep the existing waste database URL unchanged.',
+          wasteManagementDatabaseUrlCreateHint:
+            'Optional during creation. Can be added later in the instance configuration.',
+          wasteManagementServiceRoleKey: 'Service role key',
+          wasteManagementServiceRoleKeyConfigured: 'Already configured',
+          wasteManagementServiceRoleKeyHint:
+            'Leave empty to keep the existing waste service role key unchanged.',
+          wasteManagementServiceRoleKeyCreateHint:
+            'Optional during creation. Can be added later in the instance configuration.',
         },
         flow: {
           realmModeTitle: 'Realm mode',
@@ -4016,6 +4189,8 @@ export const i18nResources = {
             authClientSecret: 'Please provide a tenant client secret.',
             tenantAdminClientId: 'Please provide a tenant admin client id.',
             tenantAdminClientSecret: 'Please provide a tenant admin client secret.',
+            wasteProjectUrl:
+              'Please provide a Supabase project URL once waste management is enabled for the instance.',
           },
           readiness: {
             secretTitle: 'Tenant client secret',
@@ -4084,6 +4259,7 @@ export const i18nResources = {
             events: 'Events',
             poi: 'POI',
             media: 'Media',
+            wasteManagement: 'Waste management',
           },
         },
         help: {
@@ -4833,6 +5009,7 @@ export const i18nResources = {
           news: 'News',
           events: 'Events',
           poi: 'POI',
+          wasteManagement: 'Waste management',
         },
         createDialog: {
           title: 'Create role',
@@ -5328,6 +5505,7 @@ export const i18nResources = {
             news: 'News',
             events: 'Events',
             poi: 'POI',
+            wasteManagement: 'Waste management',
           },
         },
         governance: {

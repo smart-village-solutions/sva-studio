@@ -1,4 +1,5 @@
 import type { IamPermissionEffect, IamUuid } from './authorization-contract';
+import type { WasteManagementSettingsRecord } from '../waste-management-contract.js';
 
 export type ApiErrorCode =
   | 'unauthorized'
@@ -610,6 +611,7 @@ export type IamInstanceDetail = IamInstanceListItem & {
   readonly keycloakProvisioningRuns: readonly IamInstanceKeycloakProvisioningRun[];
   readonly tenantIamStatus?: IamTenantIamStatus;
   readonly moduleIamStatus?: IamInstanceModuleIamStatus;
+  readonly wasteManagementSettings?: WasteManagementSettingsRecord;
 };
 
 export type IamOrganizationChildItem = {

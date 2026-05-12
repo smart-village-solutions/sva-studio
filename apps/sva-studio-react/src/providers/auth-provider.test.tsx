@@ -1,7 +1,7 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { readAuthDiagnosticTrail } from '../lib/auth-diagnostics';
+import { clearAuthDiagnosticTrail, readAuthDiagnosticTrail } from '../lib/auth-diagnostics';
 import { AuthProvider, useAuth } from './auth-provider';
 
 const browserLoggerMock = vi.hoisted(() => ({
@@ -10,6 +10,7 @@ const browserLoggerMock = vi.hoisted(() => ({
   warn: vi.fn(),
   error: vi.fn(),
 }));
+let cookieState = '';
 
 const localStorageState = new Map<string, string>();
 const sessionStorageState = new Map<string, string>();
@@ -68,10 +69,14 @@ const AuthProbe = () => {
       <p data-testid="has-resolved-session">{auth.hasResolvedSession ? 'yes' : 'no'}</p>
       <p data-testid="is-recovering-session">{auth.isRecoveringSession ? 'yes' : 'no'}</p>
       <p data-testid="session-recovery-failed">{auth.sessionRecoveryFailed ? 'yes' : 'no'}</p>
+      <p data-testid="dev-auth-available">{auth.isDevAuthAvailable ? 'yes' : 'no'}</p>
       <p data-testid="user-id">{auth.user?.id ?? 'none'}</p>
       <p data-testid="user-roles">{auth.user?.roles.join(',') ?? 'none'}</p>
       <button type="button" onClick={() => void auth.refetch()}>
         refetch
+      </button>
+      <button type="button" onClick={() => void auth.loginWithDevAuth()}>
+        dev-login
       </button>
       <button type="button" onClick={() => void auth.invalidatePermissions()}>
         invalidate
@@ -85,6 +90,10 @@ const AuthProbe = () => {
 
 describe('AuthProvider', () => {
   beforeEach(() => {
+    clearAuthDiagnosticTrail();
+    vi.stubEnv('VITE_SVA_DEV_AUTH', 'false');
+    vi.stubEnv('VITE_MOCK_AUTH', 'false');
+    cookieState = '';
     localStorageState.clear();
     sessionStorageState.clear();
     localStorageMock.getItem.mockClear();
@@ -103,9 +112,17 @@ describe('AuthProvider', () => {
       configurable: true,
       value: sessionStorageMock,
     });
+    Object.defineProperty(document, 'cookie', {
+      configurable: true,
+      get: () => cookieState,
+      set: (value: string) => {
+        cookieState = value;
+      },
+    });
   });
 
   afterEach(() => {
+    clearAuthDiagnosticTrail();
     cleanup();
     vi.useRealTimers();
     browserLoggerMock.debug.mockReset();
@@ -145,6 +162,7 @@ describe('AuthProvider', () => {
     expect(screen.getByTestId('authenticated').textContent).toBe('yes');
     expect(screen.getByTestId('has-resolved-session').textContent).toBe('yes');
     expect(screen.getByTestId('session-recovery-failed').textContent).toBe('no');
+    expect(screen.getByTestId('dev-auth-available').textContent).toBe('no');
     expect(screen.getByTestId('user-id').textContent).toBe('user-1');
     expect(screen.getByTestId('user-roles').textContent).toBe('editor');
     expect(browserLoggerMock.info).toHaveBeenCalledWith(
@@ -832,6 +850,137 @@ describe('AuthProvider', () => {
     );
   });
 
+  it('supports explicit local dev login and uses the dedicated endpoint for logout in dev auth mode', async () => {
+    vi.stubEnv('VITE_SVA_DEV_AUTH', 'true');
+
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        createJsonResponse(401, {
+          error: {
+            code: 'unauthorized',
+            message: 'missing session',
+            classification: 'session_store_or_session_hydration',
+            status: 'recovery_laeuft',
+            recommendedAction: 'erneut_anmelden',
+            safeDetails: {
+              reason_code: 'missing_session_cookie',
+            },
+          },
+          requestId: 'req-auth-401',
+        })
+      )
+      .mockResolvedValueOnce(createJsonResponse(200, { ok: true }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          user: {
+            id: 'dev:local-admin',
+            roles: ['system_admin'],
+            instanceId: 'de-musterhausen',
+          },
+        })
+      )
+      .mockResolvedValueOnce(createJsonResponse(200, { ok: true }));
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <AuthProvider>
+        <AuthProbe />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('status').textContent).toBe('ready');
+    });
+
+    expect(screen.getByTestId('dev-auth-available').textContent).toBe('yes');
+
+    fireEvent.click(screen.getByRole('button', { name: 'dev-login' }));
+
+    cookieState = 'sva_dev_auth=1';
+
+    await waitFor(() => {
+      expect(screen.getByTestId('authenticated').textContent).toBe('yes');
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'logout' }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('authenticated').textContent).toBe('no');
+    });
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      '/auth/dev-login?returnTo=%2F',
+      expect.objectContaining({
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        signal: expect.any(AbortSignal),
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      4,
+      '/auth/dev-logout',
+      expect.objectContaining({
+        method: 'POST',
+        credentials: 'include',
+        signal: expect.any(AbortSignal),
+      })
+    );
+  });
+
+  it('keeps standard logout when dev auth is available but no dev auth session is active', async () => {
+    vi.stubEnv('VITE_SVA_DEV_AUTH', 'true');
+
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          user: {
+            id: 'user-1',
+            roles: ['editor'],
+            instanceId: 'instance-1',
+          },
+        })
+      )
+      .mockResolvedValueOnce(createJsonResponse(200, { ok: true }));
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <AuthProvider>
+        <AuthProbe />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('authenticated').textContent).toBe('yes');
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'logout' }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('authenticated').textContent).toBe('no');
+    });
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      '/auth/logout',
+      expect.objectContaining({
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'x-sva-logout-intent': 'user',
+        },
+        signal: expect.any(AbortSignal),
+      })
+    );
+  });
+
   it('stores a diagnostic trail with a shared authFlowId for failed recovery redirects', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       createJsonResponse(401, {
@@ -893,7 +1042,22 @@ describe('AuthProvider', () => {
     ).toBe(true);
     expect(trail.some((entry) => entry.event === 'auth_redirect_session_expired')).toBe(true);
     expect(trail[0]?.authFlowId).toBeTruthy();
-    expect(new Set(trail.map((entry) => entry.authFlowId)).size).toBe(1);
+    const currentFlowId = trail.find(
+      (entry) => entry.event === 'auth_me_401_received' && entry.requestId === 'req-session-expired'
+    )?.authFlowId;
+    expect(currentFlowId).toBeTruthy();
+    expect(
+      trail.some(
+        (entry) =>
+          entry.authFlowId === currentFlowId && entry.event === 'auth_silent_recovery_started'
+      )
+    ).toBe(true);
+    expect(
+      trail.some(
+        (entry) =>
+          entry.authFlowId === currentFlowId && entry.event === 'auth_redirect_session_expired'
+      )
+    ).toBe(true);
 
     Object.defineProperty(window, 'location', {
       configurable: true,

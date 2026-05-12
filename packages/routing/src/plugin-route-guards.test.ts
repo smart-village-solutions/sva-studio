@@ -104,4 +104,17 @@ describe('resolvePluginRouteGuard', () => {
     );
     expect(result).not.toBeNull();
   });
+
+  it('accepts fully-qualified dotted plugin permission names', () => {
+    const dotted: PluginDefinition = {
+      ...plugin,
+      permissions: [{ id: 'waste-management.settings.manage', titleKey: 'label' }],
+    };
+    const result = resolvePluginRouteGuard(
+      dotted,
+      { ...route, guard: 'waste-management.settings.manage' },
+      undefined
+    );
+    expect(result).not.toBeNull();
+  });
 });

@@ -1,0 +1,16 @@
+{
+  "pluginId": "waste-management",
+  "version": "0.0.1",
+  "sdkVersion": "0.0.1",
+  "hostCompatibility": {
+    "studioVersionRange": "^0.0.1",
+    "requiredCapabilities": ["routing", "navigation", "iam", "jobs", "imports"]
+  },
+  "entryPoints": {
+    "browser": "./dist/index.js",
+    "jobs": "./dist/server.js"
+  },
+  "runtimeRequirements": {
+    "jobs": "waste-management.operations"
+  }
+}

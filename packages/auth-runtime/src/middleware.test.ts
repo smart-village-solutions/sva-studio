@@ -21,6 +21,7 @@ const middlewareLogger = vi.hoisted(() => ({
   warn: vi.fn(),
 }));
 const authServerMocks = vi.hoisted(() => ({
+  hasActiveMockAuthSession: vi.fn(() => false),
   createMockSessionUser: vi.fn(() => ({
     id: 'mock-user',
     name: 'Mock User',
@@ -67,7 +68,9 @@ vi.mock('./config.js', () => ({
 }));
 
 vi.mock('./mock-auth.js', () => ({
+  DEV_AUTH_COOKIE_NAME: 'sva_dev_auth',
   createMockSessionUser: authServerMocks.createMockSessionUser,
+  hasActiveMockAuthSession: authServerMocks.hasActiveMockAuthSession,
   isMockAuthEnabled: authServerMocks.isMockAuthEnabled,
 }));
 
@@ -88,6 +91,7 @@ describe('auth-runtime withAuthenticatedUser', () => {
       sessionCookieName: 'sva_auth_session',
     });
     authServerMocks.isMockAuthEnabled.mockReturnValue(false);
+    authServerMocks.hasActiveMockAuthSession.mockReturnValue(false);
     authServerMocks.resolveSessionUser.mockImplementation(
       async (_request, sessionUser) => sessionUser
     );
@@ -201,6 +205,30 @@ describe('auth-runtime withAuthenticatedUser', () => {
       request,
       expect.objectContaining({ id: 'user-1' })
     );
+  });
+
+  it('accepts requests with an active local dev auth cookie in dev auth mode', async () => {
+    authServerMocks.isMockAuthEnabled.mockReturnValue(true);
+    authServerMocks.hasActiveMockAuthSession.mockReturnValue(true);
+
+    const response = await withAuthenticatedUser(
+      new Request('http://localhost/auth/me'),
+      ({ user, sessionId }) =>
+        new Response(JSON.stringify({ sessionId, user }), {
+          headers: { 'content-type': 'application/json' },
+        })
+    );
+
+    expect(getSessionUserMock).not.toHaveBeenCalled();
+    await expect(response.json()).resolves.toEqual({
+      sessionId: 'mock-auth-session',
+      user: {
+        id: 'mock-user',
+        name: 'Mock User',
+        roles: ['admin'],
+        instanceId: 'mock-instance',
+      },
+    });
   });
 
   it('runs protected handlers through legal text compliance for tenant users when required', async () => {

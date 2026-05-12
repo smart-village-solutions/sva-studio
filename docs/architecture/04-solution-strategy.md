@@ -20,6 +20,7 @@ Architekturprinzipien auf IST-Basis.
 - Plugin-SDK-Boundary: Plugins greifen ausschließlich über `@sva/plugin-sdk` auf Host-APIs zu
 - Standardisierte technische Wiederverwendung zwischen CRUD-Content-Plugins wird im Plugin-SDK zentralisiert; es gibt keine direkten Plugin-zu-Plugin-Abhängigkeiten
 - Plugin-Vertrag v1: Routen, Navigation, Content-Typen, Admin-Ressourcen und Übersetzungen werden als statische SDK-Metadaten beschrieben; Guard-Anwendung und Route-Materialisierung bleiben Host-Verantwortung
+- Plugin-Plattform v2 erweitert dieses Zielbild um Manifest-, Katalog-, Loader- und Runtime-Verträge, damit lokale Entwicklung und externe Distribution denselben hostvalidierten Snapshot-Pfad nutzen
 - Plugin-Governance folgt einem einheitlichen Namespace-Modell: plugin-beigestellte registrierte Host-Identifier verwenden `<pluginId>.<name>`, während Core-Identifier bewusst hosteigen und unqualifiziert bleiben dürfen
 - Trennung von client-sicheren und serverseitigen Routen/Handlern
 - Observability über OTEL-Standards statt vendor-spezifischer App-Anbindung
@@ -71,6 +72,7 @@ Architekturprinzipien auf IST-Basis.
 - Frontend-Framework: `ADR-001`
 - Plugin-Architektur: `ADR-002`
 - Plugin-SDK-Vertrag v1: `ADR-034`
+- Plugin-Plattform v2 für externe Distribution und host-owned Runtime: `ADR-041`
 - Design-Token-Architektur: `ADR-003`
 - Monitoring-Stack: `ADR-004`
 - Logging-Pipeline und Label-Policy: `ADR-006`, `ADR-007`
@@ -98,6 +100,7 @@ Referenzen:
 - `./decisions/ADR-008-codecov-coverage-reporting-and-gates.md`
 - `./iam-service-architektur.md`
 - `../adr/ADR-034-plugin-sdk-vertrag-v1.md`
+- `../adr/ADR-041-plugin-plattform-v2-fuer-externe-distribution.md`
 - `../adr/ADR-019-swarm-traefik-referenz-betriebsprofil.md`
 - `../adr/ADR-020-kanonischer-auth-host-multi-host-grenze.md`
 - `../adr/ADR-017-modulare-iam-server-bausteine.md`
@@ -125,6 +128,13 @@ Referenzen:
 - Plugin-Custom-Views bleiben zulässig, wenn sie hostmaterialisierte Routen, Guards und Shell respektieren und gemeinsame UI aus `@sva/studio-ui-react` komponieren.
 - Plugins dürfen keine App-internen Komponenten aus `apps/sva-studio-react/src/**` importieren und keine parallelen Basiscontrols für Buttons, Inputs, Tabellen, Tabs, Dialoge oder Alerts einführen.
 - Spezialisierte Fach-Controls wie Rich-Text, Upload, Medienauswahl, Farbe, Icon oder Geo-Auswahl werden erst bei pluginübergreifendem Bedarf in `@sva/studio-ui-react` aufgenommen; bis dahin bleiben nur fachspezifische Wrapper erlaubt, die Studio-Primitives erhalten.
+
+### Fortschreibung 2026-05: Plugin-Plattform v2 als Zielbild für externe Distribution
+
+- Der statische Plugin-SDK-Vertrag v1 bleibt ein bewusst dokumentierter Zwischenstand, ist aber nicht mehr das vollständige Zielbild der Plattform.
+- Strategisch führt Studio ein Dual-Model ein: lokaler `development source mode` und installierter `distribution mode` laufen über denselben kanonischen Descriptor- und Snapshot-Vertrag.
+- Manifest, Katalog, Loader und host-owned Runtime sind eigene Zielrollen. Sie dürfen nicht implizit in App-Lokalcode, Plugin-spezifischen Hilfsmodulen oder im generischen `@sva/plugin-sdk` verschwinden.
+- Routing, IAM, Audit, Jobs und weitere Runtime-Consumer lesen künftig denselben validierten Host-Snapshot, statt sich Daten aus statischen App-Listen oder parallelen Teilregistries zusammenzusuchen.
 
 ### Fortschreibung 2026-04: IAM-Diagnostik vor Refactoring
 

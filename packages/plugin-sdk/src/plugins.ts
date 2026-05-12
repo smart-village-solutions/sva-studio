@@ -23,6 +23,7 @@ export type PluginRouteDefinition = {
   readonly path: string;
   readonly guard?: PluginRouteGuard;
   readonly actionId?: string;
+  readonly validateSearch?: (search: Record<string, unknown>) => unknown;
   readonly component: (...args: never[]) => unknown;
 };
 
@@ -118,7 +119,7 @@ const pluginDefinitionAllowedKeys = new Set([
   'translations',
 ] as const);
 
-const routeDefinitionAllowedKeys = new Set(['id', 'path', 'guard', 'actionId', 'component'] as const);
+const routeDefinitionAllowedKeys = new Set(['id', 'path', 'guard', 'actionId', 'validateSearch', 'component'] as const);
 const navigationItemAllowedKeys = new Set(['id', 'to', 'titleKey', 'section', 'actionId', 'requiredAction'] as const);
 const actionDefinitionAllowedKeys = new Set([
   'id',

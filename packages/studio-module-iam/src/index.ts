@@ -40,6 +40,72 @@ const createStandardContentContract = (pluginId: string): StudioModuleIamContrac
 const newsModuleIamContract = createStandardContentContract('news');
 const eventsModuleIamContract = createStandardContentContract('events');
 const poiModuleIamContract = createStandardContentContract('poi');
+const wasteManagementModuleIamContract: StudioModuleIamContract = {
+  moduleId: 'waste-management',
+  namespace: 'waste-management',
+  ownerPluginId: 'waste-management',
+  permissionIds: [
+    'waste-management.read',
+    'waste-management.master-data.manage',
+    'waste-management.tours.manage',
+    'waste-management.scheduling.manage',
+    'waste-management.import.execute',
+    'waste-management.seed.execute',
+    'waste-management.reset.execute',
+    'waste-management.settings.manage',
+  ],
+  systemRoles: [
+    {
+      roleName: 'system_admin',
+      permissionIds: [
+        'waste-management.read',
+        'waste-management.master-data.manage',
+        'waste-management.tours.manage',
+        'waste-management.scheduling.manage',
+        'waste-management.import.execute',
+        'waste-management.seed.execute',
+        'waste-management.reset.execute',
+        'waste-management.settings.manage',
+      ],
+    },
+    {
+      roleName: 'app_manager',
+      permissionIds: ['waste-management.read', 'waste-management.settings.manage'],
+    },
+    {
+      roleName: 'feature-manager',
+      permissionIds: [
+        'waste-management.read',
+        'waste-management.master-data.manage',
+        'waste-management.tours.manage',
+        'waste-management.scheduling.manage',
+        'waste-management.import.execute',
+        'waste-management.settings.manage',
+      ],
+    },
+    {
+      roleName: 'editor',
+      permissionIds: [
+        'waste-management.read',
+        'waste-management.master-data.manage',
+        'waste-management.tours.manage',
+        'waste-management.scheduling.manage',
+      ],
+    },
+    {
+      roleName: 'designer',
+      permissionIds: ['waste-management.read'],
+    },
+    {
+      roleName: 'interface-manager',
+      permissionIds: ['waste-management.read'],
+    },
+    {
+      roleName: 'moderator',
+      permissionIds: ['waste-management.read'],
+    },
+  ],
+};
 const mediaModuleIamContract: StudioModuleIamContract = {
   moduleId: 'media',
   namespace: 'media',
@@ -75,6 +141,7 @@ export const studioPluginModuleIamContracts = [
   newsModuleIamContract,
   eventsModuleIamContract,
   poiModuleIamContract,
+  wasteManagementModuleIamContract,
 ] as const satisfies readonly StudioModuleIamContract[];
 
 export const studioHostModuleIamContracts = [mediaModuleIamContract] as const satisfies readonly StudioModuleIamContract[];

@@ -49,6 +49,16 @@
         "command": "pnpm exec vitest run --coverage --reporter=verbose --config vitest.config.ts --passWithNoTests"
       }
     },
+    "test:types": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": ["default", "^production", "frontendTooling"],
+      "outputs": [],
+      "options": {
+        "cwd": "apps/project-report",
+        "command": "pnpm exec tsc --noEmit -p tsconfig.json"
+      }
+    },
     "typecheck": {
       "executor": "nx:run-commands",
       "cache": true,

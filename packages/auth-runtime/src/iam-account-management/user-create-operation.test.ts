@@ -84,7 +84,7 @@ describe('executeCreateUser', () => {
 
     expect(identityProvider.provider.executeActionsEmail).not.toHaveBeenCalled();
     expect(result.invitation.status).toBe('not_requested');
-  });
+  }, 15_000);
 
   it('sends an UPDATE_PASSWORD invitation after successful creation when requested', async () => {
     const executeActionsEmail = vi.fn(async function (

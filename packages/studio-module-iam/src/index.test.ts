@@ -10,9 +10,20 @@ import {
 
 describe('@sva/studio-module-iam', () => {
   it('publishes the canonical studio module contracts and registry', () => {
-    expect(studioPluginModuleIamContracts.map((contract) => contract.moduleId)).toEqual(['news', 'events', 'poi']);
+    expect(studioPluginModuleIamContracts.map((contract) => contract.moduleId)).toEqual([
+      'news',
+      'events',
+      'poi',
+      'waste-management',
+    ]);
     expect(studioHostModuleIamContracts.map((contract) => contract.moduleId)).toEqual(['media']);
-    expect(studioModuleIamContracts.map((contract) => contract.moduleId)).toEqual(['news', 'events', 'poi', 'media']);
+    expect(studioModuleIamContracts.map((contract) => contract.moduleId)).toEqual([
+      'news',
+      'events',
+      'poi',
+      'waste-management',
+      'media',
+    ]);
     expect(studioModuleIamRegistry.get('media')).toMatchObject({
       ownerPluginId: 'host',
       permissionIds: [
@@ -22,6 +33,19 @@ describe('@sva/studio-module-iam', () => {
         'media.reference.manage',
         'media.delete',
         'media.deliver.protected',
+      ],
+    });
+    expect(studioModuleIamRegistry.get('waste-management')).toMatchObject({
+      ownerPluginId: 'waste-management',
+      permissionIds: [
+        'waste-management.read',
+        'waste-management.master-data.manage',
+        'waste-management.tours.manage',
+        'waste-management.scheduling.manage',
+        'waste-management.import.execute',
+        'waste-management.seed.execute',
+        'waste-management.reset.execute',
+        'waste-management.settings.manage',
       ],
     });
   });
@@ -35,5 +59,14 @@ describe('@sva/studio-module-iam', () => {
     });
     expect(getStudioModuleIamContract('events')?.systemRoles.map((role) => role.roleName)).toContain('system_admin');
     expect(getStudioModuleIamContract('poi')?.systemRoles.map((role) => role.roleName)).toContain('editor');
+    expect(getStudioModuleIamContract('waste-management')).toMatchObject({
+      moduleId: 'waste-management',
+      namespace: 'waste-management',
+      ownerPluginId: 'waste-management',
+    });
+    expect(getStudioModuleIamContract('waste-management')?.systemRoles).toContainEqual({
+      roleName: 'app_manager',
+      permissionIds: ['waste-management.read', 'waste-management.settings.manage'],
+    });
   });
 });

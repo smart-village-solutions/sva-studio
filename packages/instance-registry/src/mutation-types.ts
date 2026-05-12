@@ -23,6 +23,15 @@ type TenantAdminClient = {
   readonly secret?: string;
 };
 
+export type WasteManagementSettingsInput = {
+  readonly provider: 'supabase';
+  readonly projectUrl: string;
+  readonly schemaName?: string;
+  readonly enabled: boolean;
+  readonly databaseUrl?: string;
+  readonly serviceRoleKey?: string;
+};
+
 export type CreateInstanceProvisioningInput = InstanceRegistryMutationActor & {
   readonly idempotencyKey: string;
   readonly instanceId: string;
@@ -38,6 +47,7 @@ export type CreateInstanceProvisioningInput = InstanceRegistryMutationActor & {
   readonly themeKey?: string;
   readonly mainserverConfigRef?: string;
   readonly featureFlags?: Readonly<Record<string, boolean>>;
+  readonly wasteManagementSettings?: WasteManagementSettingsInput;
 };
 
 export type ChangeInstanceStatusInput = InstanceRegistryMutationActor & {
@@ -60,6 +70,7 @@ export type UpdateInstanceInput = InstanceRegistryMutationActor & {
   readonly themeKey?: string;
   readonly mainserverConfigRef?: string;
   readonly featureFlags?: Readonly<Record<string, boolean>>;
+  readonly wasteManagementSettings?: WasteManagementSettingsInput;
 };
 
 export type ReconcileInstanceKeycloakInput = InstanceRegistryMutationActor & {

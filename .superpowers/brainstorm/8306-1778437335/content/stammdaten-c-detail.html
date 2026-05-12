@@ -1,0 +1,58 @@
+<h2>Detailfrage zu Richtung C</h2>
+<p class="subtitle">Beide Varianten übernehmen den Newcms-Arbeitsmodus. Unterschied: wie man innerhalb von <code>master-data</code> navigiert.</p>
+
+<div class="cards">
+  <div class="card" data-choice="c1" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">C1 · Sekundäre Tabs</div>
+        <div class="mockup-body">
+          <div class="mock-nav">Overview | Master Data | Tours | Scheduling | Tools | Settings</div>
+          <div style="display:flex;gap:8px;margin-top:12px">
+            <button class="mock-button">Fractions</button>
+            <button class="mock-button">Locations</button>
+          </div>
+          <div style="display:flex;justify-content:space-between;gap:10px;margin-top:12px">
+            <div class="mock-input">Filter by Tour</div>
+            <button class="mock-button">Create ▼</button>
+          </div>
+          <div class="placeholder" style="margin-top:12px">Dense table/list for the active subtab</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C1 · Klare Umschaltung</h3>
+      <p>`Fractions` und `Locations` sind gleichrangige Untertabs. Passt gut zu Studio und ist simpel zu verstehen.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c2" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">C2 · Arbeitsfläche mit Sidebar</div>
+        <div class="mockup-body">
+          <div class="mock-nav">Overview | Master Data | Tours | Scheduling | Tools | Settings</div>
+          <div style="display:flex;gap:12px;margin-top:12px">
+            <div class="mock-sidebar">Fractions<br>Locations<br>Regions<br>Cities</div>
+            <div class="mock-content">
+              <div style="display:flex;justify-content:space-between;gap:10px;margin-bottom:10px">
+                <div class="mock-input">Filter by Tour</div>
+                <button class="mock-button">Create ▼</button>
+              </div>
+              <div class="placeholder">Primary work area with dense list/table</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C2 · Stärker wie ein Admin-Tool</h3>
+      <p>Mehr Arbeitsmodus, mehr Nähe zu Newcms. Mächtiger für Vielnutzer, aber strukturell schwerer.</p>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Frage</h3>
+  <p class="subtitle">Welche interne Navigation soll ich für den `master-data`-Umbau als Zielbild festhalten: <strong>C1</strong> oder <strong>C2</strong>?</p>
+</div>

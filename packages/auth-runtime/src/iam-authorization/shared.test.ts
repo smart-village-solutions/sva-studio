@@ -209,6 +209,52 @@ describe('iam authorization shared helpers', () => {
     ]);
   });
 
+  it('keeps effective permission defaults stable when optional fields are absent or duplicated', async () => {
+    const { toEffectivePermissions } = await importShared();
+
+    expect(
+      toEffectivePermissions([
+        {
+          permission_key: 'events.read',
+          action: '  ',
+          resource_type: null,
+          resource_id: '   ',
+          organization_id: null,
+          effect: null,
+          scope: null,
+          account_id: 'user-1',
+          role_id: 'role-1',
+          group_id: 'group-1',
+          group_key: null,
+          source_kind: null,
+        },
+        {
+          permission_key: 'events.read',
+          action: '',
+          resource_type: '',
+          resource_id: '',
+          organization_id: null,
+          effect: null,
+          scope: null,
+          account_id: 'user-1',
+          role_id: 'role-1',
+          group_id: 'group-1',
+          group_key: null,
+          source_kind: null,
+        },
+      ])
+    ).toEqual([
+      {
+        action: 'events.read',
+        resourceType: 'events',
+        effect: 'allow',
+        sourceUserIds: ['user-1'],
+        sourceRoleIds: ['role-1'],
+        sourceGroupIds: ['group-1'],
+      },
+    ]);
+  });
+
   it('parses authorize requests and returns typed error responses', async () => {
     const { loadAuthorizeRequest, errorResponse } = await importShared();
 
@@ -302,6 +348,51 @@ describe('iam authorization shared helpers', () => {
         hasDirectUserPermissions: true,
         hasGroupDerivedPermissions: true,
         hasGeoInheritance: true,
+      },
+    });
+  });
+
+  it('builds permission responses without provenance flags when no matching sources exist', async () => {
+    const { buildMePermissionsResponse } = await importShared();
+
+    expect(
+      buildMePermissionsResponse({
+        instanceId: 'tenant-b',
+        actorUserId: 'actor-2',
+        effectiveUserId: 'user-2',
+        isImpersonating: false,
+        permissions: [
+          {
+            action: 'system.audit',
+            resourceType: 'system',
+            effect: 'deny',
+          },
+        ],
+      })
+    ).toEqual({
+      instanceId: 'tenant-b',
+      organizationId: undefined,
+      permissions: [
+        {
+          action: 'system.audit',
+          resourceType: 'system',
+          effect: 'deny',
+        },
+      ],
+      subject: {
+        actorUserId: 'actor-2',
+        effectiveUserId: 'user-2',
+        isImpersonating: false,
+      },
+      evaluatedAt: expect.any(String),
+      requestId: 'req-1',
+      traceId: 'trace-1',
+      snapshotVersion: undefined,
+      cacheStatus: undefined,
+      provenance: {
+        hasDirectUserPermissions: false,
+        hasGroupDerivedPermissions: false,
+        hasGeoInheritance: false,
       },
     });
   });
@@ -455,6 +546,37 @@ describe('iam authorization shared helpers', () => {
       expect.objectContaining({
         operation: 'cache_invalidate_failed',
         error: 'connect failed',
+      })
+    );
+  });
+
+  it('ignores empty notification payloads and labels instance-wide invalidations correctly', async () => {
+    const { ensureInvalidationListener } = await importShared();
+
+    await ensureInvalidationListener();
+    const [notify] = mocks.notificationHandlers;
+
+    notify({ payload: undefined });
+    expect(mocks.parseInvalidationEvent).not.toHaveBeenCalled();
+
+    mocks.parseInvalidationEvent.mockReturnValueOnce({
+      instanceId: 'tenant-b',
+      keycloakSubject: undefined,
+      trigger: 'pg_notify',
+      event: { type: 'instance_scope_changed', instanceId: 'tenant-b' },
+    });
+
+    notify({ payload: 'instance-payload' });
+    await Promise.resolve();
+
+    expect(mocks.cacheInvalidate).toHaveBeenCalledWith({
+      instanceId: 'tenant-b',
+      keycloakSubject: undefined,
+    });
+    expect(mocks.cacheLogger.info).toHaveBeenCalledWith(
+      'Cache invalidation event received',
+      expect.objectContaining({
+        affected_scope: 'instance',
       })
     );
   });

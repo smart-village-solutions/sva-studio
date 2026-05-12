@@ -1,16 +1,20 @@
 import type { StudioJobRecord } from '@sva/core';
+import { definePluginExecutionContextCapabilities } from '@sva/plugin-sdk';
 
 import { throwIfCancellationRequested } from './job-cancellation.js';
 import type {
   PluginOperationExecutionHandlerContext,
   PluginOperationLogger,
-  PluginOperationProgressReporter,
+  PluginOperationExecutionProgressContext,
 } from './types.js';
 
 type JobExecutionContextDeps = {
-  readonly job: Pick<StudioJobRecord, 'id' | 'requestId' | 'actorAccountId' | 'cancelRequestedAt'>;
+  readonly job: Pick<
+    StudioJobRecord,
+    'id' | 'pluginId' | 'instanceId' | 'requestId' | 'actorAccountId' | 'cancelRequestedAt'
+  >;
   readonly logger: PluginOperationLogger;
-  readonly progressReporter: PluginOperationProgressReporter;
+  readonly progressReporter: PluginOperationExecutionProgressContext;
   readonly isCancellationRequested: () => Promise<boolean>;
   readonly cancellationPollIntervalMs?: number;
 };
@@ -45,7 +49,17 @@ export const createJobExecutionContext = (
 
   return {
     context: {
+      kind: 'job',
+      pluginId: deps.job.pluginId,
+      jobId: deps.job.id,
+      instanceId: deps.job.instanceId,
       logger: deps.logger,
+      capabilities: definePluginExecutionContextCapabilities({
+        requestContext: true,
+        auditReporter: false,
+        progressReporter: true,
+        secretAccess: false,
+      }),
       progressReporter: deps.progressReporter,
       abortSignal: abortController.signal,
       isCancellationRequested: deps.isCancellationRequested,

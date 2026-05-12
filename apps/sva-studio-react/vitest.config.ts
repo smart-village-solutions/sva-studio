@@ -22,6 +22,9 @@ export default defineConfig({
         new URL('../../packages/auth-runtime/src/runtime-health.ts', import.meta.url)
       ),
       '@sva/auth-runtime': fileURLToPath(new URL('../../packages/auth-runtime/src/index.ts', import.meta.url)),
+      '@sva/data-repositories/server': fileURLToPath(new URL('../../packages/data-repositories/src/server.ts', import.meta.url)),
+      '@sva/data-repositories': fileURLToPath(new URL('../../packages/data-repositories/src/index.ts', import.meta.url)),
+      '@sva/iam-admin/encryption': fileURLToPath(new URL('../../packages/iam-admin/src/encryption.ts', import.meta.url)),
       '@sva/iam-admin': fileURLToPath(new URL('../../packages/iam-admin/src/index.ts', import.meta.url)),
       '@sva/iam-governance/legal-text-html': fileURLToPath(
         new URL('../../packages/iam-governance/src/legal-text-html.ts', import.meta.url)
@@ -32,6 +35,9 @@ export default defineConfig({
       '@sva/sva-mainserver/server': fileURLToPath(new URL('../../packages/sva-mainserver/src/index.server.ts', import.meta.url)),
       '@sva/sva-mainserver': fileURLToPath(new URL('../../packages/sva-mainserver/src/index.ts', import.meta.url)),
       '@sva/instance-registry': fileURLToPath(new URL('../../packages/instance-registry/src/index.ts', import.meta.url)),
+      '@sva/plugin-waste-management': fileURLToPath(
+        new URL('../../packages/plugin-waste-management/src/index.ts', import.meta.url)
+      ),
       '@sva/plugin-sdk': fileURLToPath(new URL('../../packages/plugin-sdk/src/index.ts', import.meta.url)),
       '@sva/studio-module-iam': fileURLToPath(new URL('../../packages/studio-module-iam/src/index.ts', import.meta.url)),
       '@sva/studio-ui-react': fileURLToPath(new URL('../../packages/studio-ui-react/src/index.ts', import.meta.url)),

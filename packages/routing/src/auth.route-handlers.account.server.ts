@@ -10,8 +10,10 @@ const routeHandler =
 
 export const accountAuthHandlerMap = {
   '/auth/login': { GET: routeHandler(authRuntimeRoutes.loginHandler) },
+  '/auth/dev-login': { POST: routeHandler(authRuntimeRoutes.devLoginHandler) },
   '/auth/callback': { GET: routeHandler(authRuntimeRoutes.callbackHandler) },
   '/auth/me': { GET: routeHandler(authRuntimeRoutes.meHandler) },
+  '/auth/dev-logout': { POST: routeHandler(authRuntimeRoutes.devLogoutHandler) },
   '/auth/logout': { POST: routeHandler(authRuntimeRoutes.logoutHandler) },
   '/health/ready': { GET: routeHandler(authRuntimeHealth.healthReadyHandler) },
   '/health/live': { GET: routeHandler(authRuntimeHealth.healthLiveHandler) },

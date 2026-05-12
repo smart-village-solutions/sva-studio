@@ -1,6 +1,20 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { InstanceRegistryRepository } from '@sva/data-repositories';
 
+vi.mock('@sva/server-runtime', async () => {
+  const actual = await vi.importActual<typeof import('@sva/server-runtime')>('@sva/server-runtime');
+  return {
+    ...actual,
+    createSdkLogger: () => ({
+      debug: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+      isLevelEnabled: vi.fn(() => true),
+    }),
+  };
+});
+
 import { createInstanceRegistryService } from './service.js';
 import { createGetKeycloakStatusHandler } from './service-keycloak.js';
 import type { InstanceRegistryServiceDeps } from './service-types.js';
@@ -102,6 +116,8 @@ const createDeps = (
   invalidatePermissionSnapshots: vi.fn(async () => undefined),
   protectSecret: vi.fn((value, aad) => (value ? `protected:${aad}:${value}` : null)),
   revealSecret: vi.fn((value) => (value ? `revealed:${value}` : undefined)),
+  loadWasteDataSourceRecord: vi.fn(async () => null),
+  saveWasteDataSourceRecord: vi.fn(async () => undefined),
   moduleIamRegistry: new Map([
     [
       'news',
@@ -122,6 +138,38 @@ const createDeps = (
         ownerPluginId: 'events',
         permissionIds: ['events.read'],
         systemRoles: [{ roleName: 'system_admin', permissionIds: ['events.read'] }],
+      },
+    ],
+    [
+      'waste-management',
+      {
+        moduleId: 'waste-management',
+        ownerPluginId: 'waste-management',
+        permissionIds: [
+          'waste-management.read',
+          'waste-management.master-data.manage',
+          'waste-management.tours.manage',
+          'waste-management.scheduling.manage',
+          'waste-management.import.execute',
+          'waste-management.seed.execute',
+          'waste-management.reset.execute',
+          'waste-management.settings.manage',
+        ],
+        systemRoles: [
+          {
+            roleName: 'system_admin',
+            permissionIds: [
+              'waste-management.read',
+              'waste-management.master-data.manage',
+              'waste-management.tours.manage',
+              'waste-management.scheduling.manage',
+              'waste-management.import.execute',
+              'waste-management.seed.execute',
+              'waste-management.reset.execute',
+              'waste-management.settings.manage',
+            ],
+          },
+        ],
       },
     ],
   ]),
@@ -214,6 +262,47 @@ describe('instance registry service facade', () => {
       expect.objectContaining({ operation: 'create', status: 'requested' })
     );
     expect(deps.invalidateHost).toHaveBeenCalledWith('demo.studio.example.org');
+  });
+
+  it('persists waste-management settings during create with protected datasource secrets', async () => {
+    const repository = createRepository({
+      getInstanceById: vi.fn(async () => null),
+    });
+    const deps = createDeps(repository);
+    const service = createInstanceRegistryService(deps);
+
+    await service.createProvisioningRequest({
+      instanceId: 'demo',
+      displayName: 'Demo',
+      parentDomain: 'Studio.Example.Org',
+      realmMode: 'new',
+      authRealm: 'demo',
+      authClientId: 'studio-client',
+      idempotencyKey: 'idem-1',
+      wasteManagementSettings: {
+        provider: 'supabase',
+        projectUrl: 'https://tenant-a.supabase.co',
+        enabled: true,
+        databaseUrl: ' postgres://waste.example/db ',
+        serviceRoleKey: ' service-role ',
+      },
+    });
+
+    expect(deps.saveWasteDataSourceRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'demo',
+        provider: 'supabase',
+        projectUrl: 'https://tenant-a.supabase.co',
+        schemaName: 'public',
+        visibleStatus: 'unknown',
+        databaseUrlConfigured: true,
+        serviceRoleKeyConfigured: true,
+        databaseUrlCiphertext:
+          'protected:iam.instance_waste_data_sources.database_url:demo:postgres://waste.example/db',
+        serviceRoleKeyCiphertext:
+          'protected:iam.instance_waste_data_sources.service_role_key:demo:service-role',
+      })
+    );
   });
 
   it('defaults the tenant admin client id on create when the form does not submit one', async () => {
@@ -365,6 +454,65 @@ describe('instance registry service facade', () => {
     expect(deps.invalidateHost).toHaveBeenCalledWith('demo.example.org');
   });
 
+  it('preserves existing waste datasource secrets on update when the form omits them', async () => {
+    const updated = {
+      ...baseInstance,
+      displayName: 'Updated',
+      parentDomain: 'example.org',
+      primaryHostname: 'demo.example.org',
+    };
+    const repository = createRepository({
+      getInstanceById: vi
+        .fn()
+        .mockResolvedValueOnce(baseInstance)
+        .mockResolvedValue(updated),
+      updateInstance: vi.fn(async () => updated),
+    });
+    const deps = createDeps(repository, {
+      loadWasteDataSourceRecord: vi.fn(async () => ({
+        instanceId: 'demo',
+        provider: 'supabase',
+        projectUrl: 'https://tenant-a.supabase.co',
+        schemaName: 'public',
+        enabled: true,
+        databaseUrlConfigured: true,
+        serviceRoleKeyConfigured: true,
+        databaseUrlCiphertext: 'existing-db-cipher',
+        serviceRoleKeyCiphertext: 'existing-service-cipher',
+        visibleStatus: 'ok',
+        lastCheckedAt: '2026-05-09T10:00:00.000Z',
+        lastCheckStatus: 'succeeded',
+      })),
+    });
+
+    await createInstanceRegistryService(deps).updateInstance({
+      instanceId: 'demo',
+      displayName: 'Updated',
+      parentDomain: 'Example.Org',
+      realmMode: 'existing',
+      authRealm: 'demo',
+      authClientId: 'studio-client',
+      wasteManagementSettings: {
+        provider: 'supabase',
+        projectUrl: 'https://tenant-b.supabase.co',
+        enabled: true,
+      },
+    });
+
+    expect(deps.saveWasteDataSourceRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        projectUrl: 'https://tenant-b.supabase.co',
+        databaseUrlCiphertext: 'existing-db-cipher',
+        serviceRoleKeyCiphertext: 'existing-service-cipher',
+        databaseUrlConfigured: true,
+        serviceRoleKeyConfigured: true,
+        visibleStatus: 'unknown',
+        lastCheckedAt: '2026-05-09T10:00:00.000Z',
+        lastCheckStatus: 'succeeded',
+      })
+    );
+  });
+
   it('returns null when updating a missing instance', async () => {
     const repository = createRepository({
       getInstanceById: vi.fn(async () => null),
@@ -429,6 +577,7 @@ describe('instance registry service facade', () => {
     await expect(service.getInstanceDetail('demo')).resolves.toEqual(
       expect.objectContaining({
         assignedModules: ['news'],
+        wasteManagementSettings: undefined,
         moduleIamStatus: expect.objectContaining({
           overall: expect.objectContaining({ status: 'ready' }),
           modules: [
@@ -451,6 +600,43 @@ describe('instance registry service facade', () => {
             status: 'blocked',
             requestId: 'req-probe-1',
           }),
+        }),
+      })
+    );
+  });
+
+  it('projects waste-management settings into instance detail when a datasource is configured', async () => {
+    const repository = createRepository({
+      listAuditEvents: vi.fn(async () => []),
+      listKeycloakProvisioningRuns: vi.fn(async () => []),
+    });
+    const service = createInstanceRegistryService(
+      createDeps(repository, {
+        loadWasteDataSourceRecord: vi.fn(async () => ({
+          instanceId: 'demo',
+          provider: 'supabase',
+          projectUrl: 'https://tenant-a.supabase.co',
+          schemaName: 'public',
+          enabled: true,
+          databaseUrlConfigured: true,
+          serviceRoleKeyConfigured: false,
+          visibleStatus: 'error',
+          lastCheckedAt: '2026-05-09T10:00:00.000Z',
+          lastCheckStatus: 'failed',
+          lastCheckErrorCode: 'connection_refused',
+          lastCheckErrorMessage: 'Host unreachable',
+        })),
+      })
+    );
+
+    await expect(service.getInstanceDetail('demo')).resolves.toEqual(
+      expect.objectContaining({
+        wasteManagementSettings: expect.objectContaining({
+          provider: 'supabase',
+          projectUrl: 'https://tenant-a.supabase.co',
+          visibleStatus: 'error',
+          lastCheckStatus: 'failed',
+          lastCheckErrorCode: 'connection_refused',
         }),
       })
     );
@@ -537,7 +723,7 @@ describe('instance registry service facade', () => {
     expect(repository.syncAssignedModuleIam).toHaveBeenCalledWith(
       expect.objectContaining({
         instanceId: 'demo',
-        managedModuleIds: ['news', 'events'],
+        managedModuleIds: expect.arrayContaining(['news', 'events', 'waste-management']),
         contracts: expect.arrayContaining([
           expect.objectContaining({ moduleId: 'news' }),
           expect.objectContaining({ moduleId: 'events' }),
@@ -551,6 +737,52 @@ describe('instance registry service facade', () => {
           moduleId: 'events',
           outcome: 'assigned',
         }),
+      })
+    );
+  });
+
+  it('assigns the waste-management module and syncs its permission contract into instance IAM', async () => {
+    const repository = createRepository({
+      assignModule: vi.fn(async () => true),
+      listAssignedModules: vi.fn(async () => ['news', 'waste-management']),
+      getInstanceById: vi
+        .fn()
+        .mockResolvedValueOnce(baseInstance)
+        .mockResolvedValueOnce({ ...baseInstance, assignedModules: ['news', 'waste-management'] }),
+    });
+    const service = createInstanceRegistryService(createDeps(repository));
+
+    await expect(
+      service.assignModule({
+        instanceId: 'demo',
+        moduleId: 'waste-management',
+        idempotencyKey: 'idem-module-waste-1',
+        actorId: 'actor-1',
+        requestId: 'req-module-waste-1',
+      })
+    ).resolves.toEqual({
+      ok: true,
+      instance: expect.objectContaining({
+        assignedModules: ['news', 'waste-management'],
+      }),
+    });
+
+    expect(repository.assignModule).toHaveBeenCalledWith('demo', 'waste-management');
+    expect(repository.syncAssignedModuleIam).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'demo',
+        managedModuleIds: ['news', 'events', 'waste-management'],
+        contracts: expect.arrayContaining([
+          expect.objectContaining({ moduleId: 'news' }),
+          expect.objectContaining({
+            moduleId: 'waste-management',
+            permissionIds: expect.arrayContaining([
+              'waste-management.read',
+              'waste-management.settings.manage',
+              'waste-management.reset.execute',
+            ]),
+          }),
+        ]),
       })
     );
   });
@@ -587,7 +819,7 @@ describe('instance registry service facade', () => {
     expect(repository.syncAssignedModuleIam).toHaveBeenCalledWith(
       expect.objectContaining({
         instanceId: 'demo',
-        managedModuleIds: ['news', 'events'],
+        managedModuleIds: expect.arrayContaining(['news', 'events', 'waste-management']),
       })
     );
     expect(repository.syncInstanceAdminBootstrap).toHaveBeenCalledWith(

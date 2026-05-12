@@ -70,12 +70,32 @@ const mocks = vi.hoisted(() => {
 
   return {
     emitAuthAuditEvent: vi.fn(async () => undefined),
+    encryptToken: vi.fn((value: string, key: string) => `enc(${key}):${value}`),
+    decryptToken: vi.fn((value: string, key: string) => {
+      if (!value.startsWith(`enc(${key}):`)) {
+        throw new Error('decrypt failed');
+      }
+      return value.slice(`enc(${key}):`.length);
+    }),
+    getAuthConfig: vi.fn(() => ({
+      sessionRedisTtlBufferMs: 60_000,
+      sessionTtlMs: 120_000,
+    })),
     redis: new FakeRedis(),
   };
 });
 
 vi.mock('./audit-events.js', () => ({
   emitAuthAuditEvent: mocks.emitAuthAuditEvent,
+}));
+
+vi.mock('./config.js', () => ({
+  getAuthConfig: mocks.getAuthConfig,
+}));
+
+vi.mock('./crypto.js', () => ({
+  encryptToken: mocks.encryptToken,
+  decryptToken: mocks.decryptToken,
 }));
 
 vi.mock('./redis.js', () => ({
@@ -127,6 +147,9 @@ describe('redis-backed auth runtime session store', () => {
   beforeEach(() => {
     mocks.redis.reset();
     mocks.emitAuthAuditEvent.mockClear();
+    mocks.encryptToken.mockClear();
+    mocks.decryptToken.mockClear();
+    mocks.getAuthConfig.mockClear();
     vi.unstubAllEnvs();
   });
 
@@ -192,5 +215,96 @@ describe('redis-backed auth runtime session store', () => {
     await expect(updateSession('missing', { accessToken: 'none' })).rejects.toThrow(
       'Session not found: missing'
     );
+  });
+
+  it('uses worker and explicit redis key prefixes and applies configured ttl fallback values', async () => {
+    vi.stubEnv('NODE_ENV', 'test');
+    vi.stubEnv('VITEST_WORKER_ID', '7');
+
+    await createSession(
+      'session-prefixed',
+      createTestSession({
+        id: 'session-prefixed',
+        expiresAt: undefined,
+      })
+    );
+    await createLoginState('login-prefixed', createLoginStateInput());
+
+    const prefixedSessionKey = [...mocks.redis.data.keys()].find((key) => key.endsWith('session:session-prefixed'));
+    const prefixedLoginKey = [...mocks.redis.data.keys()].find((key) => key.endsWith('login_state:login-prefixed'));
+    expect(prefixedSessionKey).toBeDefined();
+    expect(prefixedLoginKey).toBeDefined();
+    expect(prefixedSessionKey?.includes('session:session-prefixed')).toBe(true);
+    expect(mocks.redis.expirations.get(prefixedSessionKey!)).toBe(180);
+
+    vi.stubEnv('SVA_AUTH_REDIS_KEY_PREFIX', 'custom:');
+    await createSession('session-custom', createTestSession({ id: 'session-custom' }), 42);
+    expect([...mocks.redis.data.keys()]).toContain('custom:session:session-custom');
+    expect(mocks.redis.expirations.get('custom:session:session-custom')).toBe(42);
+  });
+
+  it('encrypts and decrypts configured session tokens and falls back when config or decryption fails', async () => {
+    vi.stubEnv('ENCRYPTION_KEY', 'secret-key');
+    await createSession(
+      'session-encrypted',
+      createTestSession({
+        id: 'session-encrypted',
+        accessToken: 'access',
+        refreshToken: 'refresh',
+        idToken: 'id',
+      }),
+      60
+    );
+
+    const encryptedSessionKey = [...mocks.redis.data.keys()].find((key) => key.endsWith('session:session-encrypted'));
+    const stored = encryptedSessionKey ? mocks.redis.data.get(encryptedSessionKey) : undefined;
+    expect(stored).toContain('enc(secret-key):access');
+    await expect(getSession('session-encrypted')).resolves.toMatchObject({
+      accessToken: 'access',
+      refreshToken: 'refresh',
+      idToken: 'id',
+    });
+
+    mocks.getAuthConfig.mockImplementationOnce(() => {
+      throw new Error('missing config');
+    });
+    await createSession(
+      'session-default-ttl',
+      createTestSession({
+        id: 'session-default-ttl',
+        expiresAt: undefined,
+      })
+    );
+    const defaultTtlKey = [...mocks.redis.data.keys()].find((key) => key.endsWith('session:session-default-ttl'));
+    expect(defaultTtlKey).toBeDefined();
+    expect(mocks.redis.expirations.get(defaultTtlKey!)).toBe(605100);
+
+    const badEncryptionKey = [...mocks.redis.data.keys()].find((key) => key.endsWith('session:session-encrypted'))
+      ?.replace('session-encrypted', 'session-bad-encryption') ?? 'session:session-bad-encryption';
+    mocks.redis.data.set(
+      badEncryptionKey,
+      JSON.stringify({
+        ...createTestSession({ id: 'session-bad-encryption' }),
+        accessToken: 'invalid-value',
+      })
+    );
+    await expect(getSession('session-bad-encryption')).resolves.toMatchObject({
+      accessToken: 'invalid-value',
+    });
+  });
+
+  it('handles empty control state, cleanup helpers and redis failures as typed store errors', async () => {
+    await expect(getSessionControlState('missing-user')).resolves.toBeUndefined();
+    await expect(listUserSessionIds('missing-user')).resolves.toEqual([]);
+    await expect(getAllSessionKeys()).resolves.toEqual([]);
+    await expect(getSessionCount()).resolves.toBe(0);
+    await expect(import('./redis-session.js').then((mod) => mod.clearExpiredSessions())).resolves.toBeUndefined();
+
+    const originalGet = mocks.redis.get.bind(mocks.redis);
+    mocks.redis.get = vi.fn(async () => {
+      throw 'redis down';
+    }) as typeof mocks.redis.get;
+    await expect(getSession('broken')).rejects.toThrow('Session store unavailable during get_session');
+    mocks.redis.get = originalGet;
   });
 });

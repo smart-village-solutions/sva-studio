@@ -6,7 +6,8 @@ import type { RoutingDiagnosticsHook } from './diagnostics.js';
 import { mapPluginGuardToAccountGuard } from './app.routes.shared.js';
 
 const isPluginPermissionGuard = (guard: string): boolean =>
-  /^[a-z][a-z0-9-]{1,30}\.[a-z0-9]+(?:-[a-z0-9]+)*$/.test(guard) && guard.startsWith('content.') === false;
+  /^[a-z][a-z0-9-]{1,30}\.[a-z0-9]+(?:-[a-z0-9]+)*(?:\.[a-z0-9]+(?:-[a-z0-9]+)*)*$/.test(guard) &&
+  guard.startsWith('content.') === false;
 
 const hasRegisteredPluginPermissionGuard = (pluginDefinition: PluginDefinition, guard: string): boolean =>
   pluginDefinition.permissions?.some((permission) => permission.id.trim() === guard) === true;

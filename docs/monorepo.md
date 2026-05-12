@@ -234,10 +234,11 @@ Standardisierte Targets:
 - `test:unit`: schneller Standard-Testlauf
 - optional `test:coverage`: Coverage-Run für Projekte mit Messung
 - optional `test:integration`: infra- oder serviceabhängige Tests
-- optional `test:types` oder `typecheck`: dedizierte Typprüfung, wenn Projekt-spezifisch nötig
+- `test:types`: dedizierte Typprüfung für Projekte mit eigenem TypeScript-Gate
+- optional `typecheck`: ergänzendes Alias-/App-Target für projektspezifische Aufrufe
 - App-spezifisch zusätzlich z. B. `serve`, `preview`, `test:e2e`, domänenspezifische `check:*` Targets
 
-Die Root-Skripte im Workspace aggregieren diese Targets bewusst nicht 1:1 pro Projekt. `pnpm test:types` bündelt beispielsweise Library-Builds plus `sva-studio-react:typecheck`, obwohl nicht jedes Projekt ein eigenes `test:types` Target besitzt.
+Die Root-Skripte aggregieren die Quality-Gates über gemeinsame Nx-Targets statt über harte Projektlisten. `pnpm test:types` führt dafür workspaceweit `test:types` und ergänzende `typecheck`-Targets aus; `pnpm check:server-runtime` läuft analog über alle vorhandenen `check:runtime`-Targets.
 
 ## Module Boundaries (verbindlich)
 Zur langfristigen Architektur-Governance erzwingen wir Import-Grenzen mit

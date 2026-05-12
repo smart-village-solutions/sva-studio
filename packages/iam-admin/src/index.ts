@@ -25,6 +25,11 @@ export {
   type RoleReadAuthenticatedRequestContext,
   type RoleReadHandlerDeps,
 } from './role-read-handlers.js';
+export {
+  getManagedPermissionMetadata,
+  listManagedPermissionMetadata,
+  type ManagedPermissionMetadata,
+} from './managed-permissions.js';
 
 export {
   createCreateRoleHandlerInternal,

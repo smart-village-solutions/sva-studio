@@ -109,4 +109,76 @@ describe('@sva/data-client package scaffold', () => {
       expect.objectContaining({ operation: 'get', path: '/users/invalid', source: 'network' })
     );
   });
+
+  it('warns only once per path when runtime schema validation is omitted', async () => {
+    const warningSpy = vi.spyOn(process, 'emitWarning').mockImplementation(() => undefined);
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ ok: true }),
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = createDataClient({ baseUrl: 'https://data.example.invalid' });
+
+    await expect(client.get('/users/no-schema')).resolves.toEqual({ ok: true });
+    await expect(client.get('/users/no-schema')).resolves.toEqual({ ok: true });
+
+    expect(warningSpy).toHaveBeenCalledTimes(1);
+    expect(warningSpy).toHaveBeenCalledWith(
+      'DataClient.get(/users/no-schema) called without runtime schema validation',
+      expect.objectContaining({ code: 'SVA_DATA_RUNTIME_SCHEMA' })
+    );
+  });
+
+  it('evicts invalid cached payloads after schema mismatches and refetches them', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ age: 42 }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ age: '43' }),
+      });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = createDataClient({
+      baseUrl: 'https://data.example.invalid',
+      cacheTtlMs: 10_000,
+      logger: state.logger,
+    });
+
+    await expect(client.get('/users/cached', z.object({ age: z.number() }))).resolves.toEqual({ age: 42 });
+    await expect(client.get('/users/cached', z.object({ age: z.string() }))).rejects.toThrow();
+    await expect(client.get('/users/cached', z.object({ age: z.string() }))).resolves.toEqual({ age: '43' });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(state.logger.error).toHaveBeenCalledWith(
+      'schema_validation_failed',
+      expect.objectContaining({ operation: 'get', path: '/users/cached', source: 'cache' })
+    );
+  });
+
+  it('logs request failures when the upstream responds with a non-ok status', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        ok: false,
+        status: 503,
+      }))
+    );
+
+    const client = createDataClient({ baseUrl: 'https://data.example.invalid', logger: state.logger });
+
+    await expect(client.get('/users/downstream')).rejects.toThrow('DataClient GET /users/downstream failed with 503');
+    expect(state.logger.error).toHaveBeenCalledWith(
+      'request_failed',
+      expect.objectContaining({
+        operation: 'get',
+        path: '/users/downstream',
+        status: 503,
+      })
+    );
+  });
 });

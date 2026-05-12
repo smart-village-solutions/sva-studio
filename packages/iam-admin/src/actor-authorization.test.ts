@@ -43,6 +43,17 @@ describe('actor-authorization', () => {
     ).resolves.toBe(100);
   });
 
+  it('falls back to the persisted role level when no session roles are present', async () => {
+    const client = createClient(() => ({ rowCount: 1, rows: [{ max_role_level: 20 }] }));
+
+    await expect(
+      resolveActorMaxRoleLevel(client, {
+        instanceId: 'inst-1',
+        keycloakSubject: 'subject-1',
+      })
+    ).resolves.toBe(20);
+  });
+
   it('rejects target management above the actor level', () => {
     expect(
       ensureActorCanManageTarget({
@@ -63,6 +74,30 @@ describe('actor-authorization', () => {
         actorMaxRoleLevel: 0,
         actorRoles: ['system_admin'],
         targetRoles: [{ roleKey: 'system_admin', roleLevel: 100 }],
+      })
+    ).toEqual({ ok: true });
+  });
+
+  it('rejects non-admin actors from managing system_admin targets', () => {
+    expect(
+      ensureActorCanManageTarget({
+        actorMaxRoleLevel: 100,
+        actorRoles: ['editor'],
+        targetRoles: [{ roleKey: 'system_admin', roleLevel: 100 }],
+      })
+    ).toEqual({
+      ok: false,
+      code: 'forbidden',
+      message: 'Nur system_admin darf system_admin-Nutzer verwalten.',
+    });
+  });
+
+  it('allows managing targets within the actor level', () => {
+    expect(
+      ensureActorCanManageTarget({
+        actorMaxRoleLevel: 50,
+        actorRoles: ['editor'],
+        targetRoles: [{ roleKey: 'editor', roleLevel: 20 }],
       })
     ).toEqual({ ok: true });
   });
@@ -93,6 +128,48 @@ describe('actor-authorization', () => {
       ok: false,
       code: 'invalid_request',
       message: 'Mindestens eine Rolle existiert nicht.',
+    });
+  });
+
+  it('allows role assignment immediately for system_admin actors', async () => {
+    const client = createClient(() => ({
+      rowCount: 1,
+      rows: [{ id: 'role-1', role_key: 'editor', role_level: 10 }],
+    }));
+
+    await expect(
+      ensureRoleAssignmentWithinActorLevel({
+        client,
+        instanceId: 'inst-1',
+        actorSubject: 'subject-1',
+        actorRoles: ['system_admin'],
+        roleIds: ['role-1'],
+      })
+    ).resolves.toMatchObject({
+      ok: true,
+      roles: [{ role_key: 'editor', role_level: 10 }],
+    });
+  });
+
+  it('rejects role assignments above the actor level', async () => {
+    const client = createClient((text) => {
+      if (text.includes('COALESCE(MAX')) {
+        return { rowCount: 1, rows: [{ max_role_level: 10 }] };
+      }
+      return { rowCount: 1, rows: [{ id: 'role-1', role_key: 'manager', role_level: 20 }] };
+    });
+
+    await expect(
+      ensureRoleAssignmentWithinActorLevel({
+        client,
+        instanceId: 'inst-1',
+        actorSubject: 'subject-1',
+        roleIds: ['role-1'],
+      })
+    ).resolves.toEqual({
+      ok: false,
+      code: 'forbidden',
+      message: 'Rollenzuweisung überschreitet die eigene Berechtigungsstufe.',
     });
   });
 });

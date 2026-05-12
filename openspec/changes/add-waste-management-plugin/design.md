@@ -264,8 +264,8 @@ Die Andockstelle dafür soll explizit über das Plugin-Modell des Studios laufen
 
 Auch strukturierte Datenimporte sollen nicht als Waste-Sonderlösung enden. Das Studio bekommt dafür im vorgelagerten Change `update-plugin-platform-for-generic-jobs-imports` eine generische Import-Fähigkeit, die Waste danach konsumiert.
 
-- das Studio stellt einen allgemeinen Import-Rahmen für CSV, Excel sowie schema-nahe JSON- und XML-Quellen bereit
-- dieser Rahmen deckt Upload, Vorprüfung, Quellformat-Erkennung, Spalten- oder Feldmapping, Validierung, asynchronen Importjob und Ergebnisdarstellung ab
+- der vorgelagerte Plattformchange kann einen allgemeinen Import-Rahmen für CSV sowie später erweiterbare weitere Quellformate wie Excel, schema-nahe JSON- und XML-Quellen bereitstellen
+- dieser Rahmen deckt für den jeweils produktiv aktivierten Quellformatumfang Upload, Vorprüfung, Quellformat-Erkennung, Spalten- oder Feldmapping, Validierung, asynchronen Importjob und Ergebnisdarstellung ab
 - Plugins definieren fachliche Importprofile, das Studio stellt die generische Laufzeit- und Bedienlogik bereit
 - diese pluginseitigen Importprofile werden über einen expliziten Plugin-Vertrag registriert statt nur lose neben der Runtime zu existieren
 - Waste ist nur der erste Nutzer dieser allgemeinen Import-Fähigkeit
@@ -283,7 +283,7 @@ Ein Importprofil beschreibt mindestens:
 
 - fachlichen Importtyp und technische Kennung
 - Zielfelder und Pflichtfelder
-- erlaubte Quellformate
+- den im jeweiligen Fachchange wirklich gelieferten Quellformatumfang
 - kanonische Vorlage mit Beispielspalten und bei Bedarf Beispieldateien
 - Mapping-Regeln und Normalisierungshinweise
 - fachliche und technische Validierungen
@@ -305,6 +305,7 @@ Warum:
 - Ein einziger "Universalimport" führt schnell zu unscharfen Fehlerverträgen und schwer wartbaren Sonderregeln.
 - Getrennte Profile bleiben für Nutzer, Tests und spätere Weiterentwicklung deutlich klarer.
 - Das Studio lernt damit eine allgemeine Importfähigkeit, ohne Waste-spezifische Feldlogik in die Plattform zu ziehen.
+- Für diesen Waste-Change bleiben CSV und XLSX die verpflichtenden ersten produktiven Formatumfänge; weitere Formate werden nicht stillschweigend als bereits geliefert vorausgesetzt.
 
 Für das Mapping selbst gilt:
 
@@ -404,6 +405,7 @@ Die Host-Fassade kapselt mindestens folgende Ressourcengruppen:
 - `global-date-shifts`
 - `location-tour-links`
 - `imports/csv`
+- `imports/xlsx`
 - `tools/seed`
 - `tools/reset`
 - `tools/migrations`

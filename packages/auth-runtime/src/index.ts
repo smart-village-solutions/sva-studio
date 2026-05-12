@@ -40,7 +40,12 @@ export {
 } from './scope.js';
 export { isRetryableTokenExchangeError, isTokenErrorLike } from './error-guards.js';
 export { decryptToken, encryptToken, generateEncryptionKey, isEncrypted } from './crypto.js';
-export { createMockSessionUser, isMockAuthEnabled } from './mock-auth.js';
+export {
+  createMockSessionUser,
+  DEV_AUTH_COOKIE_NAME,
+  hasActiveMockAuthSession,
+  isMockAuthEnabled,
+} from './mock-auth.js';
 export { resolveSessionUser, validateTenantHost } from './middleware-hosts.js';
 export { shouldEnforceLegalTextCompliance } from './middleware-compliance.js';
 export { withLegalTextCompliance } from './legal-text-enforcement.js';

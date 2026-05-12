@@ -755,19 +755,21 @@ export default function Sidebar({
   isMobileOpen = false,
   onMobileOpenChange,
 }: SidebarProps) {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, isDevAuthAvailable: devAuthAvailable } = useAuth();
   const contentAccessApi = useContentAccess();
   const canAccessWorkspace = isAuthenticated && isIamUiEnabled();
   const canAccessContent =
-    canAccessWorkspace && (contentAccessApi.isLoading || contentAccessApi.access?.canRead === true);
+    canAccessWorkspace &&
+    (devAuthAvailable || contentAccessApi.isLoading || contentAccessApi.access?.canRead === true);
   const canAccessMedia =
     canAccessWorkspace &&
-    isModuleAssignedToUser('media', user) &&
-    hasPermissionAction(
-      'media.read',
-      contentAccessApi.permissionActions,
-      contentAccessApi.isLoading
-    );
+    (devAuthAvailable ||
+      (isModuleAssignedToUser('media', user) &&
+        hasPermissionAction(
+          'media.read',
+          contentAccessApi.permissionActions,
+          contentAccessApi.isLoading
+        )));
   const canAccessAdminUsers = isAuthenticated && isIamAdminEnabled() && hasIamAdminRole(user);
   const canAccessAdminOrganizations = canAccessAdminUsers;
   const canAccessAdminInstances =
@@ -807,6 +809,7 @@ export default function Sidebar({
         };
       })
       .filter(({ resolvedRequiredAction }) =>
+        devAuthAvailable ||
         hasRequiredContentAccess(
           resolvedRequiredAction,
           contentAccessApi.access
@@ -824,7 +827,7 @@ export default function Sidebar({
         section: item.section,
         moduleId: getStudioPluginNavigationModuleId(item),
       }))
-      .filter((item) => isModuleAssignedToUser(item.moduleId, user));
+      .filter((item) => devAuthAvailable || isModuleAssignedToUser(item.moduleId, user));
     const pluginDataManagementItems = pluginNavigationItems.filter(
       (item) => item.section === 'dataManagement'
     );
@@ -1052,6 +1055,9 @@ export default function Sidebar({
     canAccessContent,
     contentAccessApi.access,
     contentAccessApi.isLoading,
+    contentAccessApi.permissionActions,
+    devAuthAvailable,
+    user,
   ]);
 
   const footerItems = React.useMemo<readonly SidebarLeafItem[]>(

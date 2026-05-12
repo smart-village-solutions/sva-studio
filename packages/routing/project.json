@@ -38,6 +38,13 @@
         }
       }
     },
+    "test:types": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["^build"],
+      "options": {
+        "command": "tsc -p packages/routing/tsconfig.lib.json --noEmit"
+      }
+    },
     "test:coverage": {
       "executor": "nx:run-commands",
       "options": {

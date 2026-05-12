@@ -181,6 +181,16 @@ Fachchanges wie `add-waste-management-plugin` konsumieren diese Plattform und de
 - Waste registriert eigene Importprofile statt eine parallele Importplattform zu bauen.
 - Waste darf eine fachnahe Bedienhülle ergänzen, solange der generische Host-Vertrag, die zentrale Job-Persistenz und die hostgeführten Endpunkte nicht umgangen werden.
 
+## Aktueller Waste-Consumer
+
+`@sva/plugin-waste-management` ist der erste größere Fachconsumer dieses Plattformzuschnitts und dient damit als Referenz für folgende Grenzen:
+
+- freie Plugin-Route und fachliche UI bleiben im Plugin
+- Jobstart und Importstart laufen ausschließlich über `/api/v1/waste-management/tools/*`
+- die eigentliche Jobpersistenz und Statuswahrheit bleiben im generischen Host-Store
+- technische Settings- und Reconfigure-Pfade der aktiven Waste-Datenquelle bleiben von den Jobpfaden getrennt
+- fachliche Importkataloge und Mapping-Vorlagen dürfen im Plugin sichtbar werden, aber keine zweite Importpersistenz oder eigene Runner-API einführen
+
 ## Aktuelle Host-UI
 
 Die aktuelle Ausbaustufe liefert eine erste lesende Host-Oberfläche unter `Monitoring > Jobs`:

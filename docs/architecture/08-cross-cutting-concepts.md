@@ -62,7 +62,9 @@ gleichzeitig beeinflussen.
 - Inhaltsverwaltung bleibt im ersten Schnitt auf einen stabilen Core-Kern begrenzt: `title`, `contentType`, `publishedAt`, `createdAt`, `updatedAt`, `author`, `payload`, `status`, `history`
 - Inhaltstypen dürfen über das SDK zusätzliche Validierung, UI-Sektionen und Listenmetadaten registrieren, aber keine Core-Semantik oder das Statusmodell überschreiben
 - Plugin-Vertrag v1 bleibt statisch und bundlegebunden: Plugins deklarieren Metadaten über `PluginDefinition`, aber weder Runtime-Loading noch Plugin-eigene Sicherheits- oder Routing-Bypässe sind erlaubt
+- Im Zielbild der Plugin-Plattform v2 bleiben Manifest, Katalog, Loader und Runtime host-owned. Plugins dürfen diese Verträge konsumieren, aber keine parallelen Aktivierungs-, Routing-, Secret- oder Auditpfade etablieren.
 - Plugin-Guards werden grundsätzlich hostseitig angewendet; ein Plugin deklariert nur die fachliche Guard-Anforderung und darf keine eigene Autorisierungsschicht am Host vorbei etablieren
+- Pluginseitige Request-, Job- und Integrationsbeiträge laufen ausschließlich in host-owned Execution-Contexts mit Auth-, Instanz-, Logger-, Audit- und Fehlervertrag des Hosts
 - Plugin-Contributions werden beim Build-time-Snapshot phasenweise gegen Runtime-Allowlists geprüft; eigene Route-Handler, Autorisierungsresolver, Audit-Sinks, Persistenzhandler und dynamische Nachregistrierung werden mit `plugin_guardrail_*`-Codes fail-fast abgewiesen
 - Die phasenweise Registry-Erzeugung ordnet bestehende Outputs für Content, Admin, Audit und Routing, führt aber keine neuen Plugin-Beitragstypen oder Breaking-API ein
 - Standardisierte Content-Plugins registrieren ihre CRUD-Hauptflächen über `adminResources` mit optionalem `contentUi`-Spezialisierungsblock; `/admin/news`, `/admin/events` und `/admin/poi` sind host-owned Pfade mit pluginseitig beigestellten Fachflächen, nicht plugin-owned Routen
@@ -180,6 +182,8 @@ gleichzeitig beeinflussen.
 - Auth-Unterbrechungen klassifizieren zusätzlich nicht-sensitive `reason_code`-Werte wie `missing_session_cookie`, `invalid_session`, `session_expired`, `silent_recovery_timeout` oder `forced_reauth`
 - Browser-seitige Auth-Recovery-Flows erzeugen pro Vorfall eine `authFlowId`, damit `/auth/me`, Silent-SSO, Redirect auf `session-expired` und nachgelagerte Retry-Schritte gemeinsam korrelierbar bleiben
 - Ein lokaler Browser-Ringpuffer in `sessionStorage` darf in Development- oder Diagnosemodi die letzten Auth-Ereignisse eines Tabs speichern; er enthält keine Tokens und keine PII, sondern nur sichere Diagnosemetadaten wie `authFlowId`, `requestId`, `reason_code` und `recovery_step`
+- Zusätzlich darf ein explizit aktivierter lokaler Dev-Auth-Modus den OIDC-Loginpfad nur auf Entwicklerrechnern umgehen; er bleibt an lokale Env-Flags, sichtbare UI-Kennzeichnung und einen synthetischen Benutzerkontext gebunden
+- Der lokale Dev-Auth-Modus ist kein gültiger Ersatznachweis für Realm-Auflösung, Session-Lifecycle, Silent-SSO, Forced-Reauth oder feingranulare IAM-Entscheidungen und darf deshalb nicht in Staging- oder Shared-Dev-Verträgen vorausgesetzt werden
 - Workspace-Context-Warnungen erfolgen über lazy `process.emitWarning` statt `console.warn`
 - Mainserver-Logs enthalten nur `instanceId`/`workspace_id`, `operation_name`, `request_id`, `trace_id`, Status und abstrahierte Fehlercodes; API-Key, Secret, Token und unredactete Variablen werden nie geloggt
 - IAM-Request-Spans tragen konsistente Diagnoseattribute wie `iam.endpoint`, `iam.instance_id`, `iam.actor_resolution`, `iam.reason_code`, `iam.feature_flags`, `db.schema_guard_result`, `dependency.redis.status` und `dependency.keycloak.status`
@@ -284,7 +288,7 @@ gleichzeitig beeinflussen.
 - Serverseitig direkt von Node geladene Workspace-Packages müssen deshalb ESM-strikte relative Runtime-Imports mit expliziter Laufzeitendung (`.js`) verwenden
 - Runtime-Imports auf andere Workspace-Packages bleiben nur dann gültig, wenn die jeweilige Dependency im lokalen `package.json` des importierenden Packages deklariert ist
 - Der technische Schutz gegen Drift liegt im zentralen Guard `pnpm check:server-runtime`, der statische Source-Prüfung und `dist`-Smoke-Imports kombiniert
-- `pnpm test:types` gilt dadurch zugleich als Typ- und Node-ESM-Kompatibilitäts-Gate für die serverseitigen Workspace-Packages
+- `pnpm test:types` gilt dadurch zugleich als Typ- und Node-ESM-Kompatibilitäts-Gate für die serverseitigen Workspace-Packages und aggregiert die vorhandenen `test:types`-/`typecheck`-Targets workspaceweit
 
 ### i18n und Accessibility
 

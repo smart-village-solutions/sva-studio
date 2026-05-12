@@ -2,6 +2,8 @@ export * from './iam/repositories.js';
 export * from './iam/seed-plan.js';
 export * from './iam/types.js';
 export * from './integrations/instance-integrations.js';
+export * from './integrations/waste-data-sources.js';
 export * from './instance-registry/index.js';
 export * from './media/index.js';
 export * from './plugin-operations/index.js';
+export * from './waste-management/master-data.js';

@@ -68,6 +68,12 @@
       "{workspaceRoot}/vitest.config.ts",
       "{workspaceRoot}/vitest.workspace.ts"
     ],
+    "ciGateTooling": [
+      "{workspaceRoot}/package.json",
+      "{workspaceRoot}/tsconfig.scripts.json",
+      "{workspaceRoot}/scripts/ci/**/*.ts",
+      "{workspaceRoot}/.github/workflows/**/*.yml"
+    ],
     "frontendTooling": [
       "{projectRoot}/vite.config.ts",
       "{projectRoot}/vitest.config.ts",

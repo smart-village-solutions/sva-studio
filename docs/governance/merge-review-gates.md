@@ -24,7 +24,7 @@ Die folgenden Status-Checks muessen im Branch-Schutz fuer `main` als **required*
 
 Verbindliche Regel: Kein unspezifisches "CI ist gruen". Entscheidend sind genau die oben genannten Check-Namen.
 
-Die PR-Gates folgen einem einheitlichen `affected-first`-Modell: Normale Paketänderungen laufen affected, globale Tooling-Dateien eskalieren gezielt auf volle Läufe, irrelevante PRs enden bewusst als No-op-Erfolg.
+Die PR-Gates folgen einem einheitlichen `affected-first`-Modell: Normale Paketänderungen laufen affected, echte globale Workspace-Dateien eskalieren gezielt auf volle Läufe, Workflow-/CI-Dateien werden über `tooling-testing` targeted abgesichert und irrelevante PRs enden bewusst als No-op-Erfolg.
 
 ## Review-Anforderungen
 

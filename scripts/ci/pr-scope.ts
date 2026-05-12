@@ -38,9 +38,6 @@ const qualityEscalationPatterns = [
   /^eslint\.config\.mjs$/u,
   /^vitest\.config\.ts$/u,
   /^vitest\.workspace\.ts$/u,
-  /^package\.json$/u,
-  /^\.github\/workflows\//u,
-  /^scripts\/ci\//u,
 ];
 
 const integrationRelevantPatterns = [

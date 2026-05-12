@@ -83,6 +83,11 @@ function loadRunPrGateScript(): string {
   return fs.readFileSync(path.join(rootDir, 'scripts/ci/run-pr-gate.ts'), 'utf8');
 }
 
+function loadNxJson(): { namedInputs?: Record<string, string[]> } {
+  const rootDir = resolveRootDir();
+  return JSON.parse(fs.readFileSync(path.join(rootDir, 'nx.json'), 'utf8')) as { namedInputs?: Record<string, string[]> };
+}
+
 describe('workspace package scripts', () => {
   it('keeps patch coverage enforcement in the standard PR gate', () => {
     const packageJson = loadRootPackageJson();
@@ -245,4 +250,24 @@ describe('workspace package scripts', () => {
       ])
     );
   });
+
+  it('marks tooling-testing affected for workflow and CI-gate changes', () => {
+    const nxJson = loadNxJson();
+    const toolingTestingProject = loadToolingTestingProject();
+    const namedInput = nxJson.namedInputs?.['ciGateTooling'] ?? [];
+    const lintInputs = (toolingTestingProject.targets?.lint as { inputs?: string[] } | undefined)?.inputs ?? [];
+    const unitInputs = (toolingTestingProject.targets?.['test:unit'] as { inputs?: string[] } | undefined)?.inputs ?? [];
+
+    expect(namedInput).toEqual(
+      expect.arrayContaining([
+        '{workspaceRoot}/package.json',
+        '{workspaceRoot}/tsconfig.scripts.json',
+        '{workspaceRoot}/scripts/ci/**/*.ts',
+        '{workspaceRoot}/.github/workflows/**/*.yml',
+      ])
+    );
+    expect(lintInputs).toContain('ciGateTooling');
+    expect(unitInputs).toContain('ciGateTooling');
+  });
+
 });

@@ -91,8 +91,10 @@ const expectNewsListUrl = async (page: Page) => {
   await expect(page).toHaveURL(/\/admin\/news\?(?:.*&)?page=1(?:&.*)?$/);
 };
 
+const escapeForRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 const expectUnauthenticatedRedirect = async (page: Page, returnToPath: string) => {
-  const encodedReturnToPath = encodeURIComponent(returnToPath).replace(/\//g, '\\/');
+  const encodedReturnToPath = escapeForRegex(encodeURIComponent(returnToPath));
   await expect(page).toHaveURL(new RegExp(`(?:\\/auth\\/login\\?returnTo=${encodedReturnToPath}|\\/\\?auth=(?:mock-login|dev-login)&returnTo=${encodedReturnToPath})`));
 };
 

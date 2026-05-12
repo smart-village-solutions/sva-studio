@@ -619,6 +619,9 @@ function evaluateFloors(
 
   if (requireSummaries) {
     const globalProjects = selectProjectsForGlobalFloors(policy, activeProjects);
+    if (globalProjects.length === 0) {
+      return errors;
+    }
     const globalCoverage = mergeGlobal(globalProjects.map(([, values]) => values));
     const globalFloorErrors = metrics.flatMap((metric) => {
       const floor = Number(policy.globalFloors?.[metric] ?? 0);
@@ -755,7 +758,9 @@ function generateReport(policy: CoveragePolicy, projects: Record<string, MetricF
   );
   const footer = [
     '',
-    `${globalLabel}: lines ${formatPct(globalCoverage.lines)}, statements ${formatPct(globalCoverage.statements)}, functions ${formatPct(globalCoverage.functions)}, branches ${formatPct(globalCoverage.branches)}`,
+    globalProjects.length > 0
+      ? `${globalLabel}: lines ${formatPct(globalCoverage.lines)}, statements ${formatPct(globalCoverage.statements)}, functions ${formatPct(globalCoverage.functions)}, branches ${formatPct(globalCoverage.branches)}`
+      : `${globalLabel}: n/a`,
   ];
 
   return [...header, ...rows, ...footer].join('\n') + '\n';

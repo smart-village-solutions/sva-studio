@@ -670,9 +670,9 @@ describe('WasteManagementPage', () => {
     await waitFor(() => {
       expect(wasteManagementApiMocks.startWasteManagementSeed).toHaveBeenCalledTimes(1);
     });
-    expect(screen.getByText('wasteManagement.tools.messages.jobStarted')).toBeTruthy();
-    expect(screen.getByText('wasteManagement.tools.meta.lastJobTitle')).toBeTruthy();
-    expect(screen.getByText(/wasteManagement\.tools\.meta\.jobStatusLabel:/)).toBeTruthy();
+    expect(await screen.findByText('wasteManagement.tools.messages.jobStarted')).toBeTruthy();
+    expect(await screen.findByText('wasteManagement.tools.meta.lastJobTitle')).toBeTruthy();
+    expect(await screen.findByText(/wasteManagement\.tools\.meta\.jobStatusLabel:/)).toBeTruthy();
   });
 
   it('starts the import job through the waste tools facade with an explicit xlsx source format', async () => {

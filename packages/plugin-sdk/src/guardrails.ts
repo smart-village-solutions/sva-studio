@@ -41,6 +41,9 @@ const guardrailFieldCode = {
   registerContentType: 'plugin_guardrail_dynamic_registration',
 } as const satisfies Record<string, PluginGuardrailViolationCode>;
 
+const hasOwnGuardrailFieldCode = (field: string): field is keyof typeof guardrailFieldCode =>
+  Object.prototype.hasOwnProperty.call(guardrailFieldCode, field);
+
 export const createPluginContributionGuardrailError = (
   pluginNamespace: string,
   contributionId: string,
@@ -48,14 +51,14 @@ export const createPluginContributionGuardrailError = (
   fallbackCode: PluginGuardrailViolationCode = 'plugin_guardrail_unsupported_binding'
 ): Error =>
   createPluginGuardrailError({
-    code: guardrailFieldCode[field as keyof typeof guardrailFieldCode] ?? fallbackCode,
+    code: hasOwnGuardrailFieldCode(field) ? guardrailFieldCode[field] : fallbackCode,
     pluginNamespace,
     contributionId,
     fieldOrReason: field,
   });
 
 export const assertPluginContributionAllowedKeys = (
-  value: Record<string, unknown>,
+  value: object,
   allowedKeys: ReadonlySet<string>,
   pluginNamespace: string,
   contributionId: string

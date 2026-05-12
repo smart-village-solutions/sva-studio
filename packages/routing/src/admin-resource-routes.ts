@@ -31,7 +31,9 @@ type UiRouteDefinition = {
 };
 type AdminResourceBindingResolver = { readonly list: BindingKey; readonly create: BindingKey; readonly detail: BindingKey; readonly history?: BindingKey };
 type AdminResourceRouteKind = 'list' | 'create' | 'detail' | 'history';
-type AdminResourceViewKind = keyof AdminResourceDefinition['views']; const hasBindingKey = (bindings: AppRouteBindings, bindingKey: string): bindingKey is BindingKey =>
+type AdminResourceViewKind = keyof AdminResourceDefinition['views'];
+
+const hasBindingKey = (bindings: AppRouteBindings, bindingKey: string): bindingKey is BindingKey =>
   Object.prototype.hasOwnProperty.call(bindings, bindingKey);
 
 const resolveBindingKey = (
@@ -142,6 +144,41 @@ const ensureRequiredPermissions = async (
   }
 };
 
+const createHistoryRouteDefinition = (
+  historyBinding: BindingKey | undefined,
+  resource: AdminResourceDefinition,
+  detailPath: string
+): readonly UiRouteDefinition[] => {
+  if (!historyBinding) {
+    return [];
+  }
+
+  return [
+    {
+      binding: historyBinding,
+      resource,
+      guard: resolveAdminResourceGuard(resource, 'history'),
+      path: toAdminHistoryRoutePath(detailPath),
+      routeKind: 'history',
+    },
+  ];
+};
+
+const createListRouteDefinition = (
+  resource: AdminResourceDefinition,
+  resolvedBindings: AdminResourceBindingResolver,
+  basePath: string
+): UiRouteDefinition => ({
+  binding: resolvedBindings.list,
+  resource,
+  guard: resolveAdminResourceGuard(resource, 'list'),
+  path: basePath,
+  routeKind: 'list',
+  validateSearch: resource.capabilities?.list
+    ? (search: Record<string, unknown>) => normalizeAdminResourceListSearch(resource, search)
+    : undefined,
+});
+
 const createAdminResourceRouteDefinitions = (
   bindings: AppRouteBindings,
   resources: readonly AdminResourceDefinition[]
@@ -154,16 +191,7 @@ const createAdminResourceRouteDefinitions = (
     const detailPath = getAdminDetailRoutePath(basePath, detailBindingKey);
 
     return [
-      {
-        binding: resolvedBindings.list,
-        resource,
-        guard: resolveAdminResourceGuard(resource, 'list'),
-        path: basePath,
-        routeKind: 'list',
-        validateSearch: resource.capabilities?.list
-          ? (search: Record<string, unknown>) => normalizeAdminResourceListSearch(resource, search)
-          : undefined,
-      },
+      createListRouteDefinition(resource, resolvedBindings, basePath),
       {
         binding: resolvedBindings.create,
         resource,
@@ -178,19 +206,31 @@ const createAdminResourceRouteDefinitions = (
         path: detailPath,
         routeKind: 'detail',
       },
-      ...(resolvedBindings.history
-        ? [
-            {
-              binding: resolvedBindings.history,
-              resource,
-              guard: resolveAdminResourceGuard(resource, 'history'),
-              path: toAdminHistoryRoutePath(detailPath),
-              routeKind: 'history',
-            } satisfies UiRouteDefinition,
-          ]
-        : []),
+      ...createHistoryRouteDefinition(resolvedBindings.history, resource, detailPath),
     ] as const;
   });
+
+const normalizeAliasHref = (href: string, sourcePrefix: string, targetPrefix: string): string => {
+  if (sourcePrefix === LEGACY_CONTENT_ALIAS_PREFIX) {
+    return normalizeLegacyContentHref(href, targetPrefix);
+  }
+
+  if (href === sourcePrefix || href.startsWith(`${sourcePrefix}?`)) {
+    return href.replace(sourcePrefix, targetPrefix);
+  }
+
+  const createSourcePrefix = `${sourcePrefix}/new`;
+  const createTargetPrefix = `${targetPrefix}/new`;
+  if (href === createSourcePrefix || href.startsWith(`${createSourcePrefix}?`)) {
+    return href.replace(createSourcePrefix, createTargetPrefix);
+  }
+
+  if (href.startsWith(`${sourcePrefix}/`)) {
+    return href.replace(`${sourcePrefix}/`, `${targetPrefix}/`);
+  }
+
+  return targetPrefix;
+};
 
 export const createAdminResourceRouteFactories = (
   bindings: AppRouteBindings,
@@ -239,16 +279,7 @@ export const createLegacyContentAliasFactories = (
         path,
         beforeLoad: (options) => {
           const href = readBeforeLoadHref(options);
-          const normalizedHref =
-            sourcePrefix === LEGACY_CONTENT_ALIAS_PREFIX
-              ? normalizeLegacyContentHref(href, targetPrefix)
-              : href === sourcePrefix || href.startsWith(`${sourcePrefix}?`)
-                ? href.replace(sourcePrefix, targetPrefix)
-                : href === `${sourcePrefix}/new` || href.startsWith(`${sourcePrefix}/new?`)
-                  ? href.replace(`${sourcePrefix}/new`, `${targetPrefix}/new`)
-                  : href.startsWith(`${sourcePrefix}/`)
-                    ? href.replace(`${sourcePrefix}/`, `${targetPrefix}/`)
-                    : targetPrefix;
+          const normalizedHref = normalizeAliasHref(href, sourcePrefix, targetPrefix);
           throw redirect({ href: normalizedHref });
         },
         component: () => null,

@@ -48,6 +48,34 @@ const collectWorkflowFacts = (instance: IamInstanceDetail, mutationError: IamHtt
 
 const isProvisioningActive = (facts: WorkflowFacts) => facts.provisioningQueued || facts.provisioningRunning;
 
+const readKeycloakAccessDescription = (facts: WorkflowFacts) => {
+  if (facts.keycloakUnavailable) {
+    return t('admin.instances.workflow.keycloakAccess.blocked');
+  }
+
+  if (facts.keycloakAccessReady) {
+    return t('admin.instances.workflow.keycloakAccess.ready');
+  }
+
+  if (isProvisioningActive(facts)) {
+    return t('admin.instances.workflow.provisioning.running');
+  }
+
+  return t('admin.instances.workflow.keycloakAccess.pending');
+};
+
+const readKeycloakAccessStatus = (facts: WorkflowFacts): SetupWorkflowStep['status'] => {
+  if (facts.keycloakUnavailable) {
+    return 'blocked';
+  }
+
+  if (facts.keycloakAccessReady) {
+    return 'done';
+  }
+
+  return 'current';
+};
+
 const createRegistryStep = ({ instance }: WorkflowFacts): SetupWorkflowStep =>
   createWorkflowStep({
     key: 'registry',
@@ -62,17 +90,47 @@ const createKeycloakAccessStep = (facts: WorkflowFacts): SetupWorkflowStep =>
   createWorkflowStep({
     key: 'keycloakAccess',
     title: t('admin.instances.workflow.keycloakAccess.title'),
-    description: facts.keycloakUnavailable
-      ? t('admin.instances.workflow.keycloakAccess.blocked')
-      : facts.keycloakAccessReady
-        ? t('admin.instances.workflow.keycloakAccess.ready')
-        : isProvisioningActive(facts)
-          ? t('admin.instances.workflow.provisioning.running')
-          : t('admin.instances.workflow.keycloakAccess.pending'),
-    status: facts.keycloakUnavailable ? 'blocked' : facts.keycloakAccessReady ? 'done' : 'current',
+    description: readKeycloakAccessDescription(facts),
+    status: readKeycloakAccessStatus(facts),
     actionLabel: t('admin.instances.actions.checkPreflight'),
     action: 'check_preflight',
   });
+
+const readRealmDescription = (facts: WorkflowFacts, realmReady: boolean, realmUsesNewMode: boolean) => {
+  if (realmUsesNewMode) {
+    return t('admin.instances.workflow.realm.newRealm');
+  }
+
+  if (realmReady) {
+    return t('admin.instances.workflow.realm.ready');
+  }
+
+  if (facts.realmBlocked) {
+    return t('admin.instances.workflow.realm.blocked');
+  }
+
+  return t('admin.instances.workflow.realm.pending');
+};
+
+const readRealmStatus = (
+  facts: WorkflowFacts,
+  realmReady: boolean,
+  realmUsesNewMode: boolean
+): SetupWorkflowStep['status'] => {
+  if (realmUsesNewMode) {
+    return facts.provisioningSucceeded ? 'done' : 'current';
+  }
+
+  if (realmReady) {
+    return 'done';
+  }
+
+  if (facts.keycloakUnavailable || facts.realmBlocked) {
+    return 'blocked';
+  }
+
+  return 'pending';
+};
 
 const createRealmStep = (facts: WorkflowFacts): SetupWorkflowStep => {
   const realmReady = readRequirementGroupSatisfied(facts.instance.keycloakStatus, 'realm');
@@ -81,22 +139,8 @@ const createRealmStep = (facts: WorkflowFacts): SetupWorkflowStep => {
   return createWorkflowStep({
     key: 'realm',
     title: t('admin.instances.workflow.realm.title'),
-    description: realmUsesNewMode
-      ? t('admin.instances.workflow.realm.newRealm')
-      : realmReady
-        ? t('admin.instances.workflow.realm.ready')
-        : facts.realmBlocked
-          ? t('admin.instances.workflow.realm.blocked')
-          : t('admin.instances.workflow.realm.pending'),
-    status: realmUsesNewMode
-      ? facts.provisioningSucceeded
-        ? 'done'
-        : 'current'
-      : realmReady
-        ? 'done'
-        : facts.keycloakUnavailable || facts.realmBlocked
-          ? 'blocked'
-          : 'pending',
+    description: readRealmDescription(facts, realmReady, realmUsesNewMode),
+    status: readRealmStatus(facts, realmReady, realmUsesNewMode),
     actionLabel: t('admin.instances.actions.checkKeycloakStatus'),
     action: 'check_keycloak_status',
   });
@@ -116,43 +160,114 @@ const createRequirementStep = (
   }
 ): SetupWorkflowStep => {
   const ready = readRequirementGroupSatisfied(facts.instance.keycloakStatus, input.uiStepKey);
+  const description = ready
+    ? t(input.readyKey)
+    : facts.keycloakUnavailable
+      ? t(input.blockedKey)
+      : t(input.pendingKey);
+  const status = ready ? 'done' : facts.keycloakUnavailable ? 'blocked' : 'pending';
+
   return createWorkflowStep({
     key: input.key,
     title: t(input.titleKey),
-    description: ready
-      ? t(input.readyKey)
-      : facts.keycloakUnavailable
-        ? t(input.blockedKey)
-        : t(input.pendingKey),
-    status: ready ? 'done' : facts.keycloakUnavailable ? 'blocked' : 'pending',
+    description,
+    status,
     actionLabel: input.actionLabel,
     action: input.action,
   });
+};
+
+const readTenantAdminClientDescription = (facts: WorkflowFacts) => {
+  if (!facts.tenantAdminClientConfigured) {
+    return t('admin.instances.workflow.tenantAdminClient.notConfigured');
+  }
+
+  if (facts.tenantAdminClientReady) {
+    return t('admin.instances.workflow.tenantAdminClient.ready');
+  }
+
+  if (!facts.tenantAdminClientSecretConfigured) {
+    return t('admin.instances.workflow.tenantAdminClient.secretMissing');
+  }
+
+  if (facts.keycloakUnavailable) {
+    return t('admin.instances.workflow.tenantAdminClient.blocked');
+  }
+
+  return t('admin.instances.workflow.tenantAdminClient.pending');
+};
+
+const readTenantAdminClientStatus = (facts: WorkflowFacts): SetupWorkflowStep['status'] => {
+  if (!facts.tenantAdminClientConfigured) {
+    return 'blocked';
+  }
+
+  if (facts.tenantAdminClientReady) {
+    return 'done';
+  }
+
+  if (!facts.tenantAdminClientSecretConfigured || facts.keycloakUnavailable) {
+    return 'blocked';
+  }
+
+  return 'current';
 };
 
 const createTenantAdminClientStep = (facts: WorkflowFacts): SetupWorkflowStep =>
   createWorkflowStep({
     key: 'tenantAdminClient',
     title: t('admin.instances.workflow.tenantAdminClient.title'),
-    description: !facts.tenantAdminClientConfigured
-      ? t('admin.instances.workflow.tenantAdminClient.notConfigured')
-      : facts.tenantAdminClientReady
-        ? t('admin.instances.workflow.tenantAdminClient.ready')
-        : !facts.tenantAdminClientSecretConfigured
-          ? t('admin.instances.workflow.tenantAdminClient.secretMissing')
-          : facts.keycloakUnavailable
-            ? t('admin.instances.workflow.tenantAdminClient.blocked')
-            : t('admin.instances.workflow.tenantAdminClient.pending'),
-    status: !facts.tenantAdminClientConfigured
-      ? 'blocked'
-      : facts.tenantAdminClientReady
-        ? 'done'
-        : !facts.tenantAdminClientSecretConfigured || facts.keycloakUnavailable
-          ? 'blocked'
-          : 'current',
+    description: readTenantAdminClientDescription(facts),
+    status: readTenantAdminClientStatus(facts),
     actionLabel: t('admin.instances.actions.provisionAdminClient'),
     action: 'provision_admin_client',
   });
+
+const readTenantSecretDescription = (
+  facts: WorkflowFacts,
+  ready: boolean,
+  secretMissing: boolean,
+  generatedDuringProvisioning: boolean
+) => {
+  if (generatedDuringProvisioning) {
+    return t('admin.instances.workflow.tenantSecret.generatedDuringProvisioning');
+  }
+
+  if (secretMissing) {
+    return t('admin.instances.workflow.tenantSecret.missing');
+  }
+
+  if (ready) {
+    return t('admin.instances.workflow.tenantSecret.ready');
+  }
+
+  if (facts.keycloakUnavailable) {
+    return t('admin.instances.workflow.tenantSecret.blocked');
+  }
+
+  return t('admin.instances.workflow.tenantSecret.pending');
+};
+
+const readTenantSecretStatus = (
+  facts: WorkflowFacts,
+  ready: boolean,
+  secretMissing: boolean,
+  generatedDuringProvisioning: boolean
+): SetupWorkflowStep['status'] => {
+  if (secretMissing) {
+    return generatedDuringProvisioning ? 'pending' : 'blocked';
+  }
+
+  if (ready) {
+    return 'done';
+  }
+
+  if (facts.keycloakUnavailable) {
+    return 'blocked';
+  }
+
+  return 'current';
+};
 
 const createTenantSecretStep = (facts: WorkflowFacts): SetupWorkflowStep => {
   const ready = readRequirementGroupSatisfied(facts.instance.keycloakStatus, 'tenantSecret');
@@ -162,27 +277,43 @@ const createTenantSecretStep = (facts: WorkflowFacts): SetupWorkflowStep => {
   return createWorkflowStep({
     key: 'tenantSecret',
     title: t('admin.instances.workflow.tenantSecret.title'),
-    description: generatedDuringProvisioning
-      ? t('admin.instances.workflow.tenantSecret.generatedDuringProvisioning')
-      : secretMissing
-        ? t('admin.instances.workflow.tenantSecret.missing')
-        : ready
-          ? t('admin.instances.workflow.tenantSecret.ready')
-          : facts.keycloakUnavailable
-            ? t('admin.instances.workflow.tenantSecret.blocked')
-            : t('admin.instances.workflow.tenantSecret.pending'),
-    status: secretMissing
-      ? generatedDuringProvisioning
-        ? 'pending'
-        : 'blocked'
-      : ready
-        ? 'done'
-        : facts.keycloakUnavailable
-          ? 'blocked'
-          : 'current',
+    description: readTenantSecretDescription(facts, ready, secretMissing, generatedDuringProvisioning),
+    status: readTenantSecretStatus(facts, ready, secretMissing, generatedDuringProvisioning),
     actionLabel: t('admin.instances.actions.rotateClientSecret'),
     action: 'rotate_client_secret',
   });
+};
+
+const readTenantAdminDescription = (facts: WorkflowFacts, ready: boolean) => {
+  if (!facts.tenantAdminConfigured) {
+    return t('admin.instances.workflow.tenantAdmin.missing');
+  }
+
+  if (ready) {
+    return t('admin.instances.workflow.tenantAdmin.ready');
+  }
+
+  if (facts.keycloakUnavailable) {
+    return t('admin.instances.workflow.tenantAdmin.blocked');
+  }
+
+  return t('admin.instances.workflow.tenantAdmin.pending');
+};
+
+const readTenantAdminStatus = (facts: WorkflowFacts, ready: boolean): SetupWorkflowStep['status'] => {
+  if (!facts.tenantAdminConfigured) {
+    return 'blocked';
+  }
+
+  if (ready) {
+    return 'done';
+  }
+
+  if (facts.keycloakUnavailable) {
+    return 'blocked';
+  }
+
+  return 'current';
 };
 
 const createTenantAdminStep = (facts: WorkflowFacts): SetupWorkflowStep => {
@@ -190,48 +321,86 @@ const createTenantAdminStep = (facts: WorkflowFacts): SetupWorkflowStep => {
   return createWorkflowStep({
     key: 'tenantAdmin',
     title: t('admin.instances.workflow.tenantAdmin.title'),
-    description: !facts.tenantAdminConfigured
-      ? t('admin.instances.workflow.tenantAdmin.missing')
-      : ready
-        ? t('admin.instances.workflow.tenantAdmin.ready')
-        : facts.keycloakUnavailable
-          ? t('admin.instances.workflow.tenantAdmin.blocked')
-          : t('admin.instances.workflow.tenantAdmin.pending'),
-    status: !facts.tenantAdminConfigured ? 'blocked' : ready ? 'done' : facts.keycloakUnavailable ? 'blocked' : 'current',
+    description: readTenantAdminDescription(facts, ready),
+    status: readTenantAdminStatus(facts, ready),
     actionLabel: t('admin.instances.actions.resetTenantAdmin'),
     action: 'reset_tenant_admin',
   });
 };
 
+const readProvisioningDescription = (facts: WorkflowFacts) => {
+  if (facts.provisioningSucceeded) {
+    return t('admin.instances.workflow.provisioning.ready');
+  }
+
+  if (facts.provisioningFailed) {
+    return t('admin.instances.workflow.provisioning.failed');
+  }
+
+  if (isProvisioningActive(facts)) {
+    return t('admin.instances.workflow.provisioning.running');
+  }
+
+  return t('admin.instances.workflow.provisioning.pending');
+};
+
+const readProvisioningStatus = (facts: WorkflowFacts): SetupWorkflowStep['status'] => {
+  if (facts.provisioningSucceeded) {
+    return 'done';
+  }
+
+  if (facts.provisioningFailed) {
+    return 'blocked';
+  }
+
+  return 'current';
+};
+
+const readProvisioningAction = (facts: WorkflowFacts): SetupWorkflowStep['action'] =>
+  isProvisioningActive(facts) ? 'execute_provisioning' : 'plan_provisioning';
+
 const createProvisioningStep = (facts: WorkflowFacts): SetupWorkflowStep =>
   createWorkflowStep({
     key: 'provisioning',
     title: t('admin.instances.workflow.provisioning.title'),
-    description: facts.provisioningSucceeded
-      ? t('admin.instances.workflow.provisioning.ready')
-      : facts.provisioningFailed
-        ? t('admin.instances.workflow.provisioning.failed')
-        : isProvisioningActive(facts)
-          ? t('admin.instances.workflow.provisioning.running')
-          : t('admin.instances.workflow.provisioning.pending'),
-    status: facts.provisioningSucceeded ? 'done' : facts.provisioningFailed ? 'blocked' : 'current',
+    description: readProvisioningDescription(facts),
+    status: readProvisioningStatus(facts),
     actionLabel: isProvisioningActive(facts)
       ? t('admin.instances.actions.executeProvisioning')
       : t('admin.instances.actions.planProvisioning'),
-    action: isProvisioningActive(facts) ? 'execute_provisioning' : 'plan_provisioning',
+    action: readProvisioningAction(facts),
   });
+
+const readActivationDescription = (facts: WorkflowFacts) => {
+  if (facts.instance.status === 'active') {
+    return t('admin.instances.workflow.activation.ready');
+  }
+
+  if (facts.provisioningSucceeded) {
+    return t('admin.instances.workflow.activation.current');
+  }
+
+  return t('admin.instances.workflow.activation.pending');
+};
+
+const readActivationStatus = (facts: WorkflowFacts): SetupWorkflowStep['status'] => {
+  if (facts.instance.status === 'active') {
+    return 'done';
+  }
+
+  if (facts.provisioningSucceeded) {
+    return 'current';
+  }
+
+  return 'pending';
+};
 
 const createActivationStep = (facts: WorkflowFacts): SetupWorkflowStep =>
   createWorkflowStep({
     key: 'activation',
     title: t('admin.instances.workflow.activation.title'),
-    description:
-      facts.instance.status === 'active'
-        ? t('admin.instances.workflow.activation.ready')
-        : facts.provisioningSucceeded
-          ? t('admin.instances.workflow.activation.current')
-          : t('admin.instances.workflow.activation.pending'),
-    status: facts.instance.status === 'active' ? 'done' : facts.provisioningSucceeded ? 'current' : 'pending',
+    description: readActivationDescription(facts),
+    status: readActivationStatus(facts),
     actionLabel: facts.provisioningSucceeded ? t('admin.instances.actions.activate') : undefined,
     action: facts.provisioningSucceeded ? 'activate_instance' : undefined,
   });

@@ -196,7 +196,7 @@ const validateViewDefinition = (
 ): AdminResourceViewDefinition => {
   if (view) {
     assertPluginContributionAllowedKeys(
-      view as unknown as Record<string, unknown>,
+      view,
       adminResourceViewAllowedKeys,
       normalizePluginIdentifier(resourceId).split('.')[0] ?? 'host',
       `${resourceId}.${String(viewName)}`
@@ -221,7 +221,7 @@ const validateContentResourceBindingDefinition = (
   }
 
   assertPluginContributionAllowedKeys(
-    view as unknown as Record<string, unknown>,
+    view,
     adminResourceViewAllowedKeys,
     normalizePluginIdentifier(resourceId).split('.')[0] ?? 'host',
     `${resourceId}.contentUi.bindings.${String(viewName)}`
@@ -283,7 +283,7 @@ const normalizeSearchParamName = (resourceId: string, fieldName: string, value: 
 const assertAllowedCapabilityKeys = (
   resourceId: string,
   contributionId: string,
-  value: Record<string, unknown>,
+  value: object,
   allowedKeys: ReadonlySet<string>
 ) => {
   assertPluginContributionAllowedKeys(value, allowedKeys, resourceId.split('.')[0] ?? 'host', contributionId);
@@ -318,7 +318,7 @@ const normalizeSearchCapability = (
   assertAllowedCapabilityKeys(
     resourceId,
     `${resourceId}.capabilities.list.search`,
-    search as unknown as Record<string, unknown>,
+    search,
     adminResourceSearchCapabilityAllowedKeys
   );
 
@@ -343,7 +343,7 @@ const normalizeFilterCapability = (
   assertAllowedCapabilityKeys(
     resourceId,
     `${resourceId}.capabilities.list.filters`,
-    filter as unknown as Record<string, unknown>,
+    filter,
     adminResourceFilterCapabilityAllowedKeys
   );
 
@@ -352,7 +352,7 @@ const normalizeFilterCapability = (
     assertAllowedCapabilityKeys(
       resourceId,
       `${resourceId}.capabilities.list.filters.${id}.options`,
-      option as unknown as Record<string, unknown>,
+      option,
       adminResourceFilterOptionAllowedKeys
     );
     return {
@@ -391,7 +391,7 @@ const normalizeSortingCapability = (
   assertAllowedCapabilityKeys(
     resourceId,
     `${resourceId}.capabilities.list.sorting`,
-    sorting as unknown as Record<string, unknown>,
+    sorting,
     adminResourceSortingCapabilityAllowedKeys
   );
 
@@ -399,7 +399,7 @@ const normalizeSortingCapability = (
     assertAllowedCapabilityKeys(
       resourceId,
       `${resourceId}.capabilities.list.sorting.fields`,
-      field as unknown as Record<string, unknown>,
+      field,
       adminResourceSortingFieldAllowedKeys
     );
     return {
@@ -438,7 +438,7 @@ const normalizePaginationCapability = (
   assertAllowedCapabilityKeys(
     resourceId,
     `${resourceId}.capabilities.list.pagination`,
-    pagination as unknown as Record<string, unknown>,
+    pagination,
     adminResourcePaginationCapabilityAllowedKeys
   );
 
@@ -475,7 +475,7 @@ const normalizeBulkActionCapability = (
   assertAllowedCapabilityKeys(
     resourceId,
     `${resourceId}.capabilities.list.bulkActions`,
-    action as unknown as Record<string, unknown>,
+    action,
     adminResourceBulkActionCapabilityAllowedKeys
   );
 
@@ -504,7 +504,7 @@ const normalizeListCapabilities = (
   assertAllowedCapabilityKeys(
     resourceId,
     `${resourceId}.capabilities.list`,
-    capabilities as unknown as Record<string, unknown>,
+    capabilities,
     adminResourceListCapabilitiesAllowedKeys
   );
 
@@ -551,7 +551,7 @@ const normalizeDetailCapabilities = (
   assertAllowedCapabilityKeys(
     resourceId,
     `${resourceId}.capabilities.detail`,
-    capabilities as unknown as Record<string, unknown>,
+    capabilities,
     adminResourceDetailCapabilitiesAllowedKeys
   );
 
@@ -560,7 +560,7 @@ const normalizeDetailCapabilities = (
         assertAllowedCapabilityKeys(
           resourceId,
           `${resourceId}.capabilities.detail.history`,
-          capabilities.history as unknown as Record<string, unknown>,
+          capabilities.history,
           adminResourceHistoryCapabilityAllowedKeys
         );
         return {
@@ -575,7 +575,7 @@ const normalizeDetailCapabilities = (
         assertAllowedCapabilityKeys(
           resourceId,
           `${resourceId}.capabilities.detail.revisions`,
-          capabilities.revisions as unknown as Record<string, unknown>,
+          capabilities.revisions,
           adminResourceRevisionsCapabilityAllowedKeys
         );
         return {
@@ -604,7 +604,7 @@ const normalizeAdminResourceCapabilities = (
   assertAllowedCapabilityKeys(
     resourceId,
     `${resourceId}.capabilities`,
-    capabilities as unknown as Record<string, unknown>,
+    capabilities,
     adminResourceCapabilitiesAllowedKeys
   );
 
@@ -625,7 +625,7 @@ const normalizeAdminResourcePermissions = (
   assertAllowedCapabilityKeys(
     resourceId,
     `${resourceId}.permissions`,
-    permissions as unknown as Record<string, unknown>,
+    permissions,
     adminResourcePermissionsAllowedKeys
   );
 
@@ -677,7 +677,7 @@ const normalizeAdminResourceContentUi = (
   assertAllowedCapabilityKeys(
     resourceId,
     `${resourceId}.contentUi`,
-    contentUi as unknown as Record<string, unknown>,
+    contentUi,
     adminResourceContentUiAllowedKeys
   );
 
@@ -691,7 +691,7 @@ const normalizeAdminResourceContentUi = (
         assertAllowedCapabilityKeys(
           resourceId,
           `${resourceId}.contentUi.bindings`,
-          contentUi.bindings as unknown as Record<string, unknown>,
+          contentUi.bindings,
           adminResourceContentUiBindingsAllowedKeys
         );
 
@@ -712,14 +712,13 @@ const normalizeAdminResourceContentUi = (
 const normalizeAdminResourceDefinition = (resource: AdminResourceDefinition): AdminResourceDefinition => {
   const resourceId = normalizePluginIdentifier(resource.resourceId);
   assertPluginContributionAllowedKeys(
-    resource as unknown as Record<string, unknown>,
+    resource,
     adminResourceDefinitionAllowedKeys,
     resourceId.split('.')[0] ?? 'host',
     resourceId
   );
 
-  const views = resource.views as unknown as Record<string, unknown>;
-  for (const viewName of Object.keys(views)) {
+  for (const viewName of Object.keys(resource.views)) {
     if (!['list', 'create', 'detail', 'history'].includes(viewName)) {
       throw createPluginContributionGuardrailError(
         resourceId.split('.')[0] ?? 'host',

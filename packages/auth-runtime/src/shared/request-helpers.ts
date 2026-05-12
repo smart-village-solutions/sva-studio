@@ -54,7 +54,7 @@ export const asApiList = <T>(
   ...(requestId ? { requestId } : {}),
 });
 
-export const parseRequestBody = async <T>(request: Request, schema: z.ZodSchema<T>) => {
+export const parseRequestBody = async <T>(request: Request, schema: z.ZodType<T>) => {
   const raw = await request.text();
   let parsedJson: unknown;
   try {

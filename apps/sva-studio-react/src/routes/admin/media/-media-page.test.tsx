@@ -350,6 +350,66 @@ describe('MediaPage', () => {
     });
   });
 
+  it('clears focus point and crop metadata when all related fields are emptied', async () => {
+    const updateMedia = vi.fn(async () => true);
+    useParamsMock.mockReturnValue({ mediaId: 'asset-2' });
+    useLocationMock.mockReturnValue({ pathname: '/admin/media/asset-2' });
+    useMediaDetailMock.mockReturnValue({
+      asset: {
+        id: 'asset-2',
+        instanceId: 'instance-1',
+        storageKey: 'media/asset-2',
+        mediaType: 'image',
+        mimeType: 'image/png',
+        byteSize: 8192,
+        visibility: 'protected',
+        uploadStatus: 'processed',
+        processingStatus: 'ready',
+        metadata: {
+          title: 'Detail Asset',
+          focusPoint: { x: 0.4, y: 0.6 },
+          crop: { x: 10, y: 20, width: 300, height: 180 },
+        },
+        technical: {},
+      },
+      usage: { assetId: 'asset-2', totalReferences: 0, references: [] },
+      delivery: null,
+      isLoading: false,
+      error: null,
+      mutationError: null,
+      refetch: vi.fn(),
+      clearMutationError: vi.fn(),
+      updateMedia,
+      resolveDelivery: vi.fn(),
+      deleteMedia: vi.fn(async () => true),
+    });
+
+    render(<MediaPage />);
+
+    fireEvent.change(screen.getByLabelText('Fokuspunkt X'), { target: { value: '' } });
+    fireEvent.change(screen.getByLabelText('Fokuspunkt Y'), { target: { value: '' } });
+    fireEvent.change(screen.getByLabelText('Zuschnitt X'), { target: { value: '' } });
+    fireEvent.change(screen.getByLabelText('Zuschnitt Y'), { target: { value: '' } });
+    fireEvent.change(screen.getByLabelText('Zuschnitt Breite'), { target: { value: '' } });
+    fireEvent.change(screen.getByLabelText('Zuschnitt Höhe'), { target: { value: '' } });
+    fireEvent.submit(screen.getByRole('button', { name: 'Metadaten speichern' }).closest('form') as HTMLFormElement);
+
+    await waitFor(() => {
+      expect(updateMedia).toHaveBeenCalledWith({
+        visibility: 'protected',
+        metadata: {
+          title: 'Detail Asset',
+          altText: null,
+          description: null,
+          copyright: null,
+          license: null,
+          focusPoint: null,
+          crop: null,
+        },
+      });
+    });
+  });
+
   it('navigates back to the media library after a successful delete', async () => {
     const deleteMedia = vi.fn(async () => true);
     useParamsMock.mockReturnValue({ mediaId: 'asset-2' });

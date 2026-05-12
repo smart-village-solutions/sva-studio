@@ -38,6 +38,15 @@ describe('mainserver-client', () => {
       name: 'MainserverApiError',
     });
 
+    const nonObjectJsonFetchMock = vi.fn(async () => new Response(JSON.stringify('kaputt'), { status: 500 }));
+    await expect(
+      requestMainserverJson({ url: '/api/v1/news', fetch: nonObjectJsonFetchMock as typeof fetch })
+    ).rejects.toMatchObject({
+      code: 'http_500',
+      message: 'http_500',
+      name: 'MainserverApiError',
+    });
+
     vi.unstubAllGlobals();
   });
 

@@ -109,8 +109,54 @@ const mediaRoleKeyByValue = {
   hero_image: 'media.roles.hero_image',
 } as const;
 
+const isMediaRoleKey = (role: string): role is keyof typeof mediaRoleKeyByValue => role in mediaRoleKeyByValue;
+
 const formatMediaRole = (role: string): string =>
-  role in mediaRoleKeyByValue ? t(mediaRoleKeyByValue[role as keyof typeof mediaRoleKeyByValue]) : role;
+  isMediaRoleKey(role) ? t(mediaRoleKeyByValue[role]) : role;
+
+const parseMediaLibraryFilter = (value: string): MediaLibraryFilter =>
+  value === 'public' || value === 'protected' ? value : 'all';
+
+const parseMediaVisibility = (value: string): MediaVisibility => (value === 'protected' ? 'protected' : 'public');
+
+const parseOptionalNumber = (value: string): number | undefined => {
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? Number(trimmed) : undefined;
+};
+
+const isFiniteNumber = (value: number | undefined): value is number => typeof value === 'number' && Number.isFinite(value);
+
+const buildFocusPoint = (xValue: string, yValue: string) => {
+  const x = parseOptionalNumber(xValue);
+  const y = parseOptionalNumber(yValue);
+
+  if (xValue.trim().length === 0 && yValue.trim().length === 0) {
+    return null;
+  }
+
+  if (isFiniteNumber(x) && isFiniteNumber(y)) {
+    return { x, y };
+  }
+
+  return undefined;
+};
+
+const buildCrop = (xValue: string, yValue: string, widthValue: string, heightValue: string) => {
+  const x = parseOptionalNumber(xValue);
+  const y = parseOptionalNumber(yValue);
+  const width = parseOptionalNumber(widthValue);
+  const height = parseOptionalNumber(heightValue);
+
+  if ([xValue, yValue, widthValue, heightValue].every((value) => value.trim().length === 0)) {
+    return null;
+  }
+
+  if (isFiniteNumber(x) && isFiniteNumber(y) && isFiniteNumber(width) && isFiniteNumber(height) && width > 0 && height > 0) {
+    return { x, y, width, height };
+  }
+
+  return undefined;
+};
 
 const MediaLibraryPage = () => {
   const studioDataTableLabels = createStudioDataTableLabels();
@@ -223,7 +269,7 @@ const MediaLibraryPage = () => {
               id="media-visibility"
               value={visibility}
               onChange={(event) => {
-                setVisibility(event.target.value as MediaLibraryFilter);
+                setVisibility(parseMediaLibraryFilter(event.target.value));
                 setPage(1);
               }}
             >
@@ -377,7 +423,7 @@ const MediaCreatePage = () => {
               <Select
                 id="media-create-visibility"
                 value={visibility}
-                onChange={(event) => setVisibility(event.target.value as MediaVisibility)}
+                onChange={(event) => setVisibility(parseMediaVisibility(event.target.value))}
               >
                 <option value="public">{t('media.visibility.public')}</option>
                 <option value="protected">{t('media.visibility.protected')}</option>
@@ -448,12 +494,6 @@ const MediaDetailPage = ({ assetId }: { assetId: string }) => {
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const parsedFocusPointX = focusPointX.trim().length > 0 ? Number(focusPointX) : undefined;
-    const parsedFocusPointY = focusPointY.trim().length > 0 ? Number(focusPointY) : undefined;
-    const parsedCropX = cropX.trim().length > 0 ? Number(cropX) : undefined;
-    const parsedCropY = cropY.trim().length > 0 ? Number(cropY) : undefined;
-    const parsedCropWidth = cropWidth.trim().length > 0 ? Number(cropWidth) : undefined;
-    const parsedCropHeight = cropHeight.trim().length > 0 ? Number(cropHeight) : undefined;
 
     await mediaApi.updateMedia({
       visibility,
@@ -463,34 +503,8 @@ const MediaDetailPage = ({ assetId }: { assetId: string }) => {
         description: description.trim() || null,
         copyright: copyright.trim() || null,
         license: license.trim() || null,
-        focusPoint:
-          focusPointX.trim().length === 0 && focusPointY.trim().length === 0
-            ? null
-            : Number.isFinite(parsedFocusPointX) && Number.isFinite(parsedFocusPointY)
-            ? {
-                x: parsedFocusPointX as number,
-                y: parsedFocusPointY as number,
-              }
-            : undefined,
-        crop:
-          cropX.trim().length === 0 &&
-          cropY.trim().length === 0 &&
-          cropWidth.trim().length === 0 &&
-          cropHeight.trim().length === 0
-            ? null
-            : Number.isFinite(parsedCropX) &&
-          Number.isFinite(parsedCropY) &&
-          Number.isFinite(parsedCropWidth) &&
-          Number.isFinite(parsedCropHeight) &&
-          (parsedCropWidth as number) > 0 &&
-          (parsedCropHeight as number) > 0
-            ? {
-                x: parsedCropX as number,
-                y: parsedCropY as number,
-                width: parsedCropWidth as number,
-                height: parsedCropHeight as number,
-              }
-            : undefined,
+        focusPoint: buildFocusPoint(focusPointX, focusPointY),
+        crop: buildCrop(cropX, cropY, cropWidth, cropHeight),
       },
     });
   };
@@ -572,11 +586,11 @@ const MediaDetailPage = ({ assetId }: { assetId: string }) => {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="media-detail-visibility">{t('media.fields.visibility')}</Label>
-                <Select
-                  id="media-detail-visibility"
-                  value={visibility}
-                  onChange={(event) => setVisibility(event.target.value as MediaVisibility)}
-                >
+              <Select
+                id="media-detail-visibility"
+                value={visibility}
+                onChange={(event) => setVisibility(parseMediaVisibility(event.target.value))}
+              >
                   <option value="public">{t(mediaVisibilityKeyByValue.public)}</option>
                   <option value="protected">{t(mediaVisibilityKeyByValue.protected)}</option>
                 </Select>

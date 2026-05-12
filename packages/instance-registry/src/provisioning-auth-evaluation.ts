@@ -48,28 +48,36 @@ const buildRealmModeCheck = (input: {
   realmMode: InstanceRealmMode;
   realmExists: boolean;
 }): InstanceKeycloakPreflightCheck => {
-  const status: InstanceKeycloakPreflightCheck['status'] =
-    input.realmMode === 'new'
-      ? input.realmExists
-        ? 'blocked'
-        : 'ready'
-      : input.realmExists
-        ? 'ready'
-        : 'blocked';
-
-  const summary =
-    input.realmMode === 'new'
-      ? input.realmExists
-        ? 'Der Realm existiert bereits, obwohl "Neuer Realm" gewählt wurde.'
-        : 'Der Ziel-Realm fehlt und kann neu angelegt werden.'
-      : input.realmExists
-        ? 'Der bestehende Realm ist erreichbar.'
-        : 'Der gewählte Bestands-Realm wurde nicht gefunden.';
+  const status = resolveRealmModeStatus(input.realmMode, input.realmExists);
+  const summary = resolveRealmModeSummary(input.realmMode, input.realmExists);
 
   return createPreflightCheck('realm_mode', 'Realm-Modus', status, summary, {
     realmExists: input.realmExists,
     realmMode: input.realmMode,
   });
+};
+
+const resolveRealmModeStatus = (
+  realmMode: InstanceRealmMode,
+  realmExists: boolean
+): InstanceKeycloakPreflightCheck['status'] => {
+  if (realmMode === 'new') {
+    return realmExists ? 'blocked' : 'ready';
+  }
+
+  return realmExists ? 'ready' : 'blocked';
+};
+
+const resolveRealmModeSummary = (realmMode: InstanceRealmMode, realmExists: boolean): string => {
+  if (realmMode === 'new') {
+    return realmExists
+      ? 'Der Realm existiert bereits, obwohl "Neuer Realm" gewählt wurde.'
+      : 'Der Ziel-Realm fehlt und kann neu angelegt werden.';
+  }
+
+  return realmExists
+    ? 'Der bestehende Realm ist erreichbar.'
+    : 'Der gewählte Bestands-Realm wurde nicht gefunden.';
 };
 
 const buildTenantSecretCheck = (input: {
@@ -79,25 +87,48 @@ const buildTenantSecretCheck = (input: {
 }): InstanceKeycloakPreflightCheck => {
   const hasReadableSecret = Boolean(input.authClientSecret);
   const requiresTenantSecret = isTenantSecretRequired(input.realmMode);
-  const status: InstanceKeycloakPreflightCheck['status'] =
-    input.authClientSecretConfigured && hasReadableSecret
-      ? 'ready'
-      : requiresTenantSecret
-        ? 'blocked'
-        : 'warning';
-
-  const summary =
-    input.authClientSecretConfigured && hasReadableSecret
-      ? 'Ein lesbares Tenant-Client-Secret ist in der Registry vorhanden.'
-      : requiresTenantSecret
-        ? 'Für diese Instanz fehlt ein lesbares Tenant-Client-Secret in der Registry.'
-        : 'Das Tenant-Client-Secret wird beim Erstellen des neuen Realm automatisch erzeugt und anschließend gespeichert.';
+  const status = resolveTenantSecretStatus(
+    input.authClientSecretConfigured,
+    hasReadableSecret,
+    requiresTenantSecret
+  );
+  const summary = resolveTenantSecretSummary(
+    input.authClientSecretConfigured,
+    hasReadableSecret,
+    requiresTenantSecret
+  );
 
   return createPreflightCheck('tenant_secret', 'Tenant-Client-Secret', status, summary, {
     configured: input.authClientSecretConfigured,
     readable: hasReadableSecret,
     generatedDuringProvisioning: input.realmMode === 'new',
   });
+};
+
+const resolveTenantSecretStatus = (
+  authClientSecretConfigured: boolean,
+  hasReadableSecret: boolean,
+  requiresTenantSecret: boolean
+): InstanceKeycloakPreflightCheck['status'] => {
+  if (authClientSecretConfigured && hasReadableSecret) {
+    return 'ready';
+  }
+
+  return requiresTenantSecret ? 'blocked' : 'warning';
+};
+
+const resolveTenantSecretSummary = (
+  authClientSecretConfigured: boolean,
+  hasReadableSecret: boolean,
+  requiresTenantSecret: boolean
+): string => {
+  if (authClientSecretConfigured && hasReadableSecret) {
+    return 'Ein lesbares Tenant-Client-Secret ist in der Registry vorhanden.';
+  }
+
+  return requiresTenantSecret
+    ? 'Für diese Instanz fehlt ein lesbares Tenant-Client-Secret in der Registry.'
+    : 'Das Tenant-Client-Secret wird beim Erstellen des neuen Realm automatisch erzeugt und anschließend gespeichert.';
 };
 
 const buildTenantAdminCheck = (tenantAdminBootstrap?: TenantAdminBootstrap): InstanceKeycloakPreflightCheck => {
@@ -123,11 +154,7 @@ const buildTenantAdminClientCheck = (input: {
     'tenant_admin_client',
     'Tenant-Admin-Client',
     configured ? 'ready' : 'blocked',
-    configured
-      ? readable
-        ? 'Der Tenant-Admin-Client und sein Secret sind konfiguriert.'
-        : 'Der Tenant-Admin-Client ist konfiguriert; das Secret wird beim Worker-Lauf gelesen oder erzeugt.'
-      : 'Für den technischen Tenant-Admin-Client fehlen die erforderlichen Vertragsdaten.',
+    resolveTenantAdminClientSummary(configured, readable),
     {
       configured,
       clientId: input.tenantAdminClient?.clientId,
@@ -135,6 +162,16 @@ const buildTenantAdminClientCheck = (input: {
       readable,
     }
   );
+};
+
+const resolveTenantAdminClientSummary = (configured: boolean, readable: boolean): string => {
+  if (!configured) {
+    return 'Für den technischen Tenant-Admin-Client fehlen die erforderlichen Vertragsdaten.';
+  }
+
+  return readable
+    ? 'Der Tenant-Admin-Client und sein Secret sind konfiguriert.'
+    : 'Der Tenant-Admin-Client ist konfiguriert; das Secret wird beim Worker-Lauf gelesen oder erzeugt.';
 };
 
 export const buildPreflightChecks = (input: {

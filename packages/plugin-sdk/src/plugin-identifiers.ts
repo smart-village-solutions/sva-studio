@@ -3,6 +3,7 @@ const NAMESPACED_IDENTIFIER_PATTERN =
 const PLUGIN_NAMESPACE_PATTERN = /^[a-z][a-z0-9-]{1,30}$/;
 
 export const RESERVED_PLUGIN_NAMESPACES = ['content', 'iam', 'admin', 'core', 'system', 'platform'] as const;
+const reservedPluginNamespaces = new Set<string>(RESERVED_PLUGIN_NAMESPACES);
 
 export const normalizePluginIdentifier = (value: string): string => value.trim();
 
@@ -35,4 +36,4 @@ export const parseNamespacedPluginIdentifier = (
 };
 
 export const isReservedPluginNamespace = (namespace: string): boolean =>
-  RESERVED_PLUGIN_NAMESPACES.includes(namespace as (typeof RESERVED_PLUGIN_NAMESPACES)[number]);
+  reservedPluginNamespaces.has(namespace);

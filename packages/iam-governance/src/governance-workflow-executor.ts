@@ -92,6 +92,15 @@ const isCriticalRoleChange = async (
   return permissions.some((permission) => /(admin|security|iam)/i.test(permission));
 };
 
+const resolveActorAccountId = (
+  client: QueryClient,
+  actor: GovernanceActor
+): Promise<string | undefined> =>
+  resolveAccountId(client, {
+    instanceId: actor.instanceId,
+    keycloakSubject: actor.keycloakSubject,
+  });
+
 const emitGovernanceAuditEvent = async (
   deps: GovernanceWorkflowExecutorDeps,
   client: QueryClient,
@@ -589,10 +598,7 @@ const startImpersonation = async (
     };
   }
 
-  const actorAccountId = await resolveAccountId(client, {
-    instanceId: actor.instanceId,
-    keycloakSubject: actor.keycloakSubject,
-  });
+  const actorAccountId = await resolveActorAccountId(client, actor);
   const targetAccountId = await resolveAccountId(client, {
     instanceId: actor.instanceId,
     keycloakSubject: targetSubject,
@@ -608,18 +614,12 @@ const startImpersonation = async (
     return { operation: 'start_impersonation', status: 'error', reasonCode: 'DENY_SELF_APPROVAL' };
   }
 
-  let securityApproverAccountId: string | undefined;
-  if (actor.roles.includes('support_admin')) {
-    if (!securityApproverSubject) {
-      return { operation: 'start_impersonation', status: 'error', reasonCode: 'DENY_SELF_APPROVAL' };
-    }
-    securityApproverAccountId = await resolveAccountId(client, {
-      instanceId: actor.instanceId,
-      keycloakSubject: securityApproverSubject,
-    });
-    if (!securityApproverAccountId || securityApproverAccountId === actorAccountId) {
-      return { operation: 'start_impersonation', status: 'error', reasonCode: 'DENY_SELF_APPROVAL' };
-    }
+  const securityApproverResult = await resolveSecurityApproverAccountId(client, actor, {
+    actorAccountId,
+    securityApproverSubject,
+  });
+  if (!securityApproverResult.ok) {
+    return { operation: 'start_impersonation', status: 'error', reasonCode: securityApproverResult.reasonCode };
   }
 
   const insert = await client.query<{ id: string }>(
@@ -651,7 +651,7 @@ RETURNING id;
       ticketId,
       ticketState,
       approverAccountId,
-      securityApproverAccountId ?? null,
+      securityApproverResult.accountId ?? null,
       durationMinutes,
     ]
   );
@@ -699,10 +699,7 @@ const endImpersonation = async (
     return { operation: 'end_impersonation', status: 'error', reasonCode: 'invalid_request' };
   }
 
-  const actorAccountId = await resolveAccountId(client, {
-    instanceId: actor.instanceId,
-    keycloakSubject: actor.keycloakSubject,
-  });
+  const actorAccountId = await resolveActorAccountId(client, actor);
   if (!actorAccountId) {
     return { operation: 'end_impersonation', status: 'error', reasonCode: 'unauthorized' };
   }
@@ -728,10 +725,7 @@ RETURNING started_at, ticket_id;
   }
 
   const startedAtRaw = update.rows[0]?.started_at;
-  const durationSeconds =
-    startedAtRaw && Number.isFinite(new Date(startedAtRaw).getTime())
-      ? Math.max(0, Math.floor((Date.now() - new Date(startedAtRaw).getTime()) / 1000))
-      : undefined;
+  const durationSeconds = calculateImpersonationDurationSeconds(startedAtRaw);
   const ticketId = update.rows[0]?.ticket_id;
 
   deps.logWarn('Impersonation ended', {
@@ -757,6 +751,57 @@ RETURNING started_at, ticket_id;
 
   return { operation: 'end_impersonation', status: 'ok', workflowId: sessionId };
 };
+
+const resolveSecurityApproverAccountId = async (
+  client: QueryClient,
+  actor: GovernanceActor,
+  input: {
+    actorAccountId: string;
+    securityApproverSubject?: string;
+  }
+): Promise<
+  | { ok: true; accountId?: string }
+  | { ok: false; reasonCode: GovernanceWorkflowResponse['reasonCode'] }
+> => {
+  if (!actor.roles.includes('support_admin')) {
+    return { ok: true };
+  }
+
+  if (!input.securityApproverSubject) {
+    return { ok: false, reasonCode: 'DENY_SELF_APPROVAL' };
+  }
+
+  const accountId = await resolveAccountId(client, {
+    instanceId: actor.instanceId,
+    keycloakSubject: input.securityApproverSubject,
+  });
+  if (!accountId || accountId === input.actorAccountId) {
+    return { ok: false, reasonCode: 'DENY_SELF_APPROVAL' };
+  }
+
+  return { ok: true, accountId };
+};
+
+const calculateImpersonationDurationSeconds = (
+  startedAtRaw: string | undefined
+): number | undefined => {
+  if (!startedAtRaw) {
+    return undefined;
+  }
+
+  const startedAt = new Date(startedAtRaw);
+  if (!Number.isFinite(startedAt.getTime())) {
+    return undefined;
+  }
+
+  return Math.max(0, Math.floor((Date.now() - startedAt.getTime()) / 1000));
+};
+
+type WorkflowHandler = (
+  client: QueryClient,
+  actor: GovernanceActor,
+  payload: Record<string, unknown>
+) => Promise<GovernanceWorkflowResponse>;
 
 const acceptLegalText = async (
   deps: GovernanceWorkflowExecutorDeps,
@@ -863,28 +908,28 @@ export const createGovernanceWorkflowExecutor = (deps: GovernanceWorkflowExecuto
     actor: GovernanceActor,
     request: GovernanceWorkflowRequest
   ): Promise<GovernanceWorkflowResponse> => {
-    switch (request.operation) {
-      case 'submit_permission_change':
-        return submitPermissionChange(deps, client, actor, request.payload);
-      case 'approve_permission_change':
-        return approvePermissionChange(deps, client, actor, request.payload);
-      case 'apply_permission_change':
-        return applyPermissionChange(deps, client, actor, request.payload);
-      case 'create_delegation':
-        return createDelegation(deps, client, actor, request.payload);
-      case 'revoke_delegation':
-        return revokeDelegation(deps, client, actor, request.payload);
-      case 'start_impersonation':
-        return startImpersonation(deps, client, actor, request.payload);
-      case 'end_impersonation':
-        return endImpersonation(deps, client, actor, request.payload);
-      case 'accept_legal_text':
-        return acceptLegalText(deps, client, actor, request.payload, false);
-      case 'revoke_legal_acceptance':
-        return acceptLegalText(deps, client, actor, request.payload, true);
-      default:
-        return { operation: request.operation, status: 'error', reasonCode: 'invalid_request' };
-    }
+    const workflowHandlers: Record<GovernanceOperation, WorkflowHandler> = {
+      submit_permission_change: (currentClient, currentActor, payload) =>
+        submitPermissionChange(deps, currentClient, currentActor, payload),
+      approve_permission_change: (currentClient, currentActor, payload) =>
+        approvePermissionChange(deps, currentClient, currentActor, payload),
+      apply_permission_change: (currentClient, currentActor, payload) =>
+        applyPermissionChange(deps, currentClient, currentActor, payload),
+      create_delegation: (currentClient, currentActor, payload) =>
+        createDelegation(deps, currentClient, currentActor, payload),
+      revoke_delegation: (currentClient, currentActor, payload) =>
+        revokeDelegation(deps, currentClient, currentActor, payload),
+      start_impersonation: (currentClient, currentActor, payload) =>
+        startImpersonation(deps, currentClient, currentActor, payload),
+      end_impersonation: (currentClient, currentActor, payload) =>
+        endImpersonation(deps, currentClient, currentActor, payload),
+      accept_legal_text: (currentClient, currentActor, payload) =>
+        acceptLegalText(deps, currentClient, currentActor, payload, false),
+      revoke_legal_acceptance: (currentClient, currentActor, payload) =>
+        acceptLegalText(deps, currentClient, currentActor, payload, true),
+    };
+
+    return workflowHandlers[request.operation](client, actor, request.payload);
   },
 
   resolveImpersonationSubject: async (input: {

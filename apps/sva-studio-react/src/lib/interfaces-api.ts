@@ -60,7 +60,7 @@ const isErrorPayload = (value: unknown): value is ErrorPayload => {
   );
 };
 
-const ERROR_CODES = new Set<SvaMainserverConnectionStatus['errorCode']>([
+const ERROR_CODES = new Set<string>([
   'config_not_found',
   'integration_disabled',
   'invalid_config',
@@ -77,7 +77,7 @@ const ERROR_CODES = new Set<SvaMainserverConnectionStatus['errorCode']>([
 
 const isSvaMainserverErrorCode = (
   value: string | undefined
-): value is NonNullable<SvaMainserverConnectionStatus['errorCode']> => ERROR_CODES.has(value as SvaMainserverConnectionStatus['errorCode']);
+): value is NonNullable<SvaMainserverConnectionStatus['errorCode']> => typeof value === 'string' && ERROR_CODES.has(value);
 
 const createErrorStatus = (
   errorCode: SvaMainserverConnectionStatus['errorCode'],
@@ -122,13 +122,20 @@ const parseInterfacesErrorField = (message: string | null): InterfacesErrorField
 const isNumericStatusCode = (value: unknown): value is number =>
   typeof value === 'number' && Number.isInteger(value) && value >= 100 && value <= 599;
 
+const readErrorStatusCode = (error: Error): unknown => Reflect.get(error, 'statusCode');
+
+const readErrorCode = (error: Error): string | undefined => {
+  const candidate = Reflect.get(error, 'code');
+  return typeof candidate === 'string' ? candidate : undefined;
+};
+
 const getErrorStatusCode = (error: unknown, fallback: number): number => {
   if (isRecord(error) && isNumericStatusCode(error.statusCode)) {
     return error.statusCode;
   }
 
   if (error instanceof Error) {
-    const candidate = (error as Error & { statusCode?: unknown }).statusCode;
+    const candidate = readErrorStatusCode(error);
     if (isNumericStatusCode(candidate)) {
       return candidate;
     }
@@ -145,19 +152,14 @@ const getErrorPayload = (
     isRecord(error) && typeof error.code === 'string' && isSvaMainserverErrorCode(error.code)
       ? error.code
       : undefined;
-  const instanceErrorCode =
-    error instanceof Error &&
-    typeof (error as Error & { code?: unknown }).code === 'string' &&
-    isSvaMainserverErrorCode((error as Error & { code?: string }).code)
-      ? (error as Error & { code?: string }).code
-      : undefined;
+  const instanceErrorCode = error instanceof Error ? readErrorCode(error) : undefined;
   const errorCode = recordErrorCode ?? instanceErrorCode;
 
   const message = error instanceof Error ? error.message : readErrorMessage(error, '');
   const field = parseInterfacesErrorField(message || null);
 
   return {
-    error: errorCode ?? fallbackCode,
+    error: errorCode && isSvaMainserverErrorCode(errorCode) ? errorCode : fallbackCode,
     ...(field ? { field } : {}),
   };
 };

@@ -140,7 +140,7 @@ export type OrganizationMutationHandlerDeps<TFeatureFlags = unknown> = {
   ) => Promise<void>;
   readonly parseRequestBody: <TData>(
     request: Request,
-    schema: z.ZodSchema<TData>
+    schema: z.ZodType<TData>
   ) => Promise<ParseRequestBodyResult<TData>>;
   readonly randomUUID: () => string;
   readonly readPathSegment: (request: Request, index: number) => string | null | undefined;

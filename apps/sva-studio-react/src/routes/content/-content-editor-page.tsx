@@ -145,6 +145,9 @@ const parseContentPayload = (payloadText: string): { ok: true; payload: unknown 
   }
 };
 
+const toDeniedAccess = (errorCode: IamHttpError['code'] | undefined): IamContentAccessSummary | null =>
+  errorCode === 'forbidden' ? withServerDeniedContentAccess(undefined) : null;
+
 const renderContentMeta = ({
   mode,
   content,
@@ -228,7 +231,7 @@ const renderContentHistory = ({
 export const ContentEditorPage = ({ mode, contentId }: ContentEditorPageProps) => {
   const navigate = useNavigate();
   const createApi = useCreateContent();
-  const detailApi = useContentDetail(mode === 'edit' ? (contentId ?? null) : null);
+  const detailApi = useContentDetail(mode === 'edit' ? contentId ?? null : null);
   const contentAccessApi = useContentAccess();
   const [formState, setFormState] = React.useState<ContentFormState>(emptyFormState);
   const [payloadError, setPayloadError] = React.useState<string | null>(null);
@@ -246,9 +249,9 @@ export const ContentEditorPage = ({ mode, contentId }: ContentEditorPageProps) =
 
   const activeAccess = (() => {
     if (mode === 'edit') {
-      return content?.access ?? (detailApi.error?.code === 'forbidden' ? withServerDeniedContentAccess(undefined) : null);
+      return content?.access ?? toDeniedAccess(detailApi.error?.code);
     }
-    return contentAccessApi.access ?? (activeError?.code === 'forbidden' ? withServerDeniedContentAccess(undefined) : null);
+    return contentAccessApi.access ?? toDeniedAccess(activeError?.code);
   })();
 
   const isReadOnly = mode === 'edit' && activeAccess?.canRead === true && activeAccess.canUpdate === false;

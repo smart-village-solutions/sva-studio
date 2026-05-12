@@ -9,7 +9,7 @@ export const membershipVisibilitySchema = z.enum(['internal', 'external']);
 export const createOrganizationSchema = z.object({
   organizationKey: nonEmptyString,
   displayName: nonEmptyString,
-  parentOrganizationId: z.string().uuid().optional(),
+  parentOrganizationId: z.uuid().optional(),
   organizationType: organizationTypeSchema.default('other'),
   contentAuthorPolicy: contentAuthorPolicySchema.default('org_only'),
   metadata: z.record(z.string(), z.unknown()).optional(),
@@ -19,7 +19,7 @@ export const updateOrganizationSchema = z
   .object({
     organizationKey: nonEmptyString.optional(),
     displayName: nonEmptyString.optional(),
-    parentOrganizationId: z.string().uuid().nullable().optional(),
+    parentOrganizationId: z.uuid().nullable().optional(),
     organizationType: organizationTypeSchema.optional(),
     contentAuthorPolicy: contentAuthorPolicySchema.optional(),
     metadata: z.record(z.string(), z.unknown()).optional(),
@@ -36,11 +36,11 @@ export const updateOrganizationSchema = z
   );
 
 export const assignOrganizationMembershipSchema = z.object({
-  accountId: z.string().uuid(),
+  accountId: z.uuid(),
   isDefaultContext: z.boolean().optional(),
   visibility: membershipVisibilitySchema.optional(),
 });
 
 export const updateOrganizationContextSchema = z.object({
-  organizationId: z.string().uuid(),
+  organizationId: z.uuid(),
 });

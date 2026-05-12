@@ -48,7 +48,7 @@ export const definePluginExternalInterfaceTypes = <
 
   const normalized = externalInterfaceTypes.map((definition) => {
     assertPluginContributionAllowedKeys(
-      definition as Record<string, unknown>,
+      definition,
       externalInterfaceTypeAllowedKeys,
       normalizedNamespace,
       normalizePluginIdentifier(definition.typeKey)

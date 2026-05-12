@@ -157,7 +157,7 @@ const defaultCachedLoader = createCachedInstanceIntegrationLoader(
 );
 
 const customCachedLoaders = new Map<string, ReturnType<typeof createCachedInstanceIntegrationLoader>>();
-const functionIds = new WeakMap<(...args: never[]) => unknown, number>();
+const functionIds = new WeakMap<Function, number>();
 let nextFunctionId = 1;
 
 const getFunctionIdentity = (fn: unknown): string => {
@@ -165,15 +165,14 @@ const getFunctionIdentity = (fn: unknown): string => {
     return 'none';
   }
 
-  const functionRef = fn as (...args: never[]) => unknown;
-  const existing = functionIds.get(functionRef);
+  const existing = functionIds.get(fn);
   if (existing) {
     return String(existing);
   }
 
   const id = nextFunctionId;
   nextFunctionId += 1;
-  functionIds.set(functionRef, id);
+  functionIds.set(fn, id);
   return String(id);
 };
 

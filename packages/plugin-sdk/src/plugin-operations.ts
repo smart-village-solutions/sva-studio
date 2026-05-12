@@ -199,14 +199,14 @@ export const definePluginJobTypes = <const TJobTypes extends readonly PluginJobT
 
   const normalizedJobTypes = jobTypes.map((jobType) => {
     assertPluginContributionAllowedKeys(
-      jobType as Record<string, unknown>,
+      jobType,
       jobTypeDefinitionAllowedKeys,
       normalizedNamespace,
       normalizePluginIdentifier(jobType.jobTypeId)
     );
     if (jobType.progress) {
       assertPluginContributionAllowedKeys(
-        jobType.progress as Record<string, unknown>,
+        jobType.progress,
         jobTypeProgressAllowedKeys,
         normalizedNamespace,
         normalizePluginIdentifier(jobType.jobTypeId)
@@ -214,7 +214,7 @@ export const definePluginJobTypes = <const TJobTypes extends readonly PluginJobT
     }
     if (jobType.result) {
       assertPluginContributionAllowedKeys(
-        jobType.result as Record<string, unknown>,
+        jobType.result,
         jobTypeResultAllowedKeys,
         normalizedNamespace,
         normalizePluginIdentifier(jobType.jobTypeId)
@@ -222,7 +222,7 @@ export const definePluginJobTypes = <const TJobTypes extends readonly PluginJobT
     }
     if (jobType.errors) {
       assertPluginContributionAllowedKeys(
-        jobType.errors as Record<string, unknown>,
+        jobType.errors,
         jobTypeErrorAllowedKeys,
         normalizedNamespace,
         normalizePluginIdentifier(jobType.jobTypeId)
@@ -269,13 +269,13 @@ export const definePluginImportProfiles = <
 
   const normalizedImportProfiles = importProfiles.map((profile) => {
     assertPluginContributionAllowedKeys(
-      profile as Record<string, unknown>,
+      profile,
       importProfileDefinitionAllowedKeys,
       normalizedNamespace,
       normalizePluginIdentifier(profile.profileId)
     );
     assertPluginContributionAllowedKeys(
-      profile.validation as Record<string, unknown>,
+      profile.validation,
       importProfileValidationAllowedKeys,
       normalizedNamespace,
       normalizePluginIdentifier(profile.profileId)

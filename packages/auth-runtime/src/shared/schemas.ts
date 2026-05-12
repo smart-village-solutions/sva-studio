@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 const nonEmptyString = z.string().trim().min(1);
 const optionalRecord = z.record(z.string(), z.unknown()).optional();
+const optionalUuid = z.uuid().optional();
 
 export const authorizeRequestSchema = z.object({
   instanceId: nonEmptyString,
@@ -9,12 +10,12 @@ export const authorizeRequestSchema = z.object({
   resource: z.object({
     type: nonEmptyString,
     id: nonEmptyString.optional(),
-    organizationId: z.string().uuid().optional(),
+    organizationId: optionalUuid,
     attributes: optionalRecord,
   }),
   context: z
     .object({
-      organizationId: z.string().uuid().optional(),
+      organizationId: optionalUuid,
       requestId: nonEmptyString.optional(),
       traceId: nonEmptyString.optional(),
       actingAsUserId: nonEmptyString.optional(),
@@ -39,19 +40,17 @@ export const governanceRequestSchema = z.object({
   payload: z.record(z.string(), z.unknown()),
 });
 
-export const dataSubjectRightsRequestSchema = z
-  .object({
-    instanceId: nonEmptyString.optional(),
-    requestType: nonEmptyString.optional(),
-    payload: z.record(z.string(), z.unknown()).optional(),
-    email: nonEmptyString.optional(),
-    displayName: nonEmptyString.optional(),
-    reason: nonEmptyString.optional(),
-    targetKeycloakSubject: nonEmptyString.optional(),
-    holdReason: nonEmptyString.optional(),
-    holdUntil: nonEmptyString.optional(),
-    releaseReason: nonEmptyString.optional(),
-  })
-  .passthrough();
+export const dataSubjectRightsRequestSchema = z.looseObject({
+  instanceId: nonEmptyString.optional(),
+  requestType: nonEmptyString.optional(),
+  payload: z.record(z.string(), z.unknown()).optional(),
+  email: nonEmptyString.optional(),
+  displayName: nonEmptyString.optional(),
+  reason: nonEmptyString.optional(),
+  targetKeycloakSubject: nonEmptyString.optional(),
+  holdReason: nonEmptyString.optional(),
+  holdUntil: nonEmptyString.optional(),
+  releaseReason: nonEmptyString.optional(),
+});
 
 export type GovernanceRequestInput = z.infer<typeof governanceRequestSchema>;

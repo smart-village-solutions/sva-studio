@@ -137,20 +137,25 @@ type MediaHttpHandlerDeps = {
 
 type MediaAuditResult = 'success' | 'failure' | 'denied';
 
-const MEDIA_VISIBILITIES = new Set<MediaVisibility>(['public', 'protected']);
-const MEDIA_UPLOAD_STATUSES = new Set<MediaUploadStatus>(['pending', 'validated', 'processed', 'failed', 'blocked']);
-const MEDIA_PROCESSING_STATUSES = new Set<MediaProcessingStatus>(['pending', 'ready', 'failed']);
-const MEDIA_ROLES = new Set<MediaRole>(['thumbnail', 'teaser_image', 'header_image', 'gallery_item', 'download', 'hero_image']);
+const MEDIA_VISIBILITIES = new Set<string>(['public', 'protected']);
+const MEDIA_UPLOAD_STATUSES = new Set<string>(['pending', 'validated', 'processed', 'failed', 'blocked']);
+const MEDIA_PROCESSING_STATUSES = new Set<string>(['pending', 'ready', 'failed']);
+const MEDIA_ROLES = new Set<string>(['thumbnail', 'teaser_image', 'header_image', 'gallery_item', 'download', 'hero_image']);
 
-const asMediaVisibility = (value: string): MediaVisibility => (MEDIA_VISIBILITIES.has(value as MediaVisibility) ? (value as MediaVisibility) : 'public');
+const isMediaVisibility = (value: string): value is MediaVisibility => MEDIA_VISIBILITIES.has(value);
+const isMediaUploadStatus = (value: string): value is MediaUploadStatus => MEDIA_UPLOAD_STATUSES.has(value);
+const isMediaProcessingStatus = (value: string): value is MediaProcessingStatus => MEDIA_PROCESSING_STATUSES.has(value);
+const isMediaRole = (value: string): value is MediaRole => MEDIA_ROLES.has(value);
+
+const asMediaVisibility = (value: string): MediaVisibility => (isMediaVisibility(value) ? value : 'public');
 
 const asMediaUploadStatus = (value: string): MediaUploadStatus =>
-  MEDIA_UPLOAD_STATUSES.has(value as MediaUploadStatus) ? (value as MediaUploadStatus) : 'failed';
+  isMediaUploadStatus(value) ? value : 'failed';
 
 const asMediaProcessingStatus = (value: string): MediaProcessingStatus =>
-  MEDIA_PROCESSING_STATUSES.has(value as MediaProcessingStatus) ? (value as MediaProcessingStatus) : 'failed';
+  isMediaProcessingStatus(value) ? value : 'failed';
 
-const asMediaRole = (value: string): MediaRole => (MEDIA_ROLES.has(value as MediaRole) ? (value as MediaRole) : 'download');
+const asMediaRole = (value: string): MediaRole => (isMediaRole(value) ? value : 'download');
 
 const asMediaAsset = (asset: Awaited<ReturnType<MediaService['getAssetById']>>): MediaAsset | null => {
   if (!asset) {

@@ -193,13 +193,30 @@ const normalizeOptionalNumber = (value: number | string | undefined): number | u
 
 const compactWebUrl = (value: NewsFormInput['sourceUrl']) => {
   const url = compactString(value?.url);
-  return url
-    ? {
-        url,
-        ...(compactString(value?.description) ? { description: compactString(value?.description) } : {}),
-      }
-    : undefined;
+  if (!url) {
+    return undefined;
+  }
+
+  const description = compactString(value?.description);
+  return description ? { url, description } : { url };
 };
+
+const buildNewsMediaReferences = (
+  teaserImageAssetId: string | null,
+  headerImageAssetId: string | null
+) => [
+  ...(teaserImageAssetId
+    ? [{ assetId: teaserImageAssetId, role: pluginNewsMediaPickers.teaserImage.roles[0], sortOrder: 0 }]
+    : []),
+  ...(headerImageAssetId
+    ? [{ assetId: headerImageAssetId, role: pluginNewsMediaPickers.headerImage.roles[0], sortOrder: 1 }]
+    : []),
+];
+
+const shouldSyncMediaReferences = (
+  existingMediaReferenceCount: number,
+  mediaReferences: ReturnType<typeof buildNewsMediaReferences>
+): boolean => mediaReferences.length > 0 || existingMediaReferenceCount > 0;
 
 const compactForm = (form: NewsFormInput, mode: 'create' | 'edit'): NewsFormInput => ({
   title: form.title.trim(),
@@ -413,17 +430,11 @@ const NewsForm = ({
     }
 
     try {
-      const mediaReferences = [
-        ...(teaserImageAssetId
-          ? [{ assetId: teaserImageAssetId, role: pluginNewsMediaPickers.teaserImage.roles[0], sortOrder: 0 }]
-          : []),
-        ...(headerImageAssetId
-          ? [{ assetId: headerImageAssetId, role: pluginNewsMediaPickers.headerImage.roles[0], sortOrder: 1 }]
-          : []),
-      ];
+      const mediaReferences = buildNewsMediaReferences(teaserImageAssetId, headerImageAssetId);
+      const syncMediaReferences = shouldSyncMediaReferences(existingMediaReferenceCount, mediaReferences);
       if (mode === 'create') {
         const saved = await createNews(compactedForm);
-        if (mediaReferences.length > 0 || existingMediaReferenceCount > 0) {
+        if (syncMediaReferences) {
           await replaceHostMediaReferences({
             fetch: globalThis.fetch.bind(globalThis),
             targetType: 'news',
@@ -438,7 +449,7 @@ const NewsForm = ({
 
       if (contentId) {
         const saved = await updateNews(contentId, compactedForm);
-        if (mediaReferences.length > 0 || existingMediaReferenceCount > 0) {
+        if (syncMediaReferences) {
           await replaceHostMediaReferences({
             fetch: globalThis.fetch.bind(globalThis),
             targetType: 'news',
@@ -948,11 +959,13 @@ export const NewsListPage = () => {
   const navigate = useNavigate();
   const createLabel = resolvePluginActionLabel(pt, pluginNewsActionIds.create);
   const editLabel = resolvePluginActionLabel(pt, pluginNewsActionIds.edit);
-  const page = readPaginationValue('page', 1);
-  const pageSize = readPaginationValue('pageSize', 25);
+  const pagination = {
+    page: readPaginationValue('page', 1),
+    pageSize: readPaginationValue('pageSize', 25),
+  };
   const [result, setResult] = React.useState<NewsListResult>({
     data: [],
-    pagination: { page, pageSize, hasNextPage: false },
+    pagination: { ...pagination, hasNextPage: false },
   });
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -966,7 +979,7 @@ export const NewsListPage = () => {
     let active = true;
 
     setIsLoading(true);
-    void listNews({ page, pageSize })
+    void listNews(pagination)
       .then((nextResult) => {
         if (active) {
           setResult(nextResult);
@@ -987,7 +1000,7 @@ export const NewsListPage = () => {
     return () => {
       active = false;
     };
-  }, [page, pageSize]);
+  }, [pagination.page, pagination.pageSize]);
 
   if (isLoading) {
     return <StudioLoadingState>{pt('messages.loading')}</StudioLoadingState>;
@@ -1118,7 +1131,18 @@ export const NewsCreatePage = () => <NewsForm mode="create" />;
 
 export const NewsEditPage = () => {
   const params = useParams({ strict: false }) as { readonly contentId?: string; readonly id?: string };
-  const contentId = typeof params.contentId === 'string' ? params.contentId : typeof params.id === 'string' ? params.id : undefined;
+  const contentId = resolveNewsContentId(params);
 
   return <NewsForm mode="edit" contentId={contentId} />;
+};
+
+const resolveNewsContentId = (params: {
+  readonly contentId?: string;
+  readonly id?: string;
+}): string | undefined => {
+  if (typeof params.contentId === 'string') {
+    return params.contentId;
+  }
+
+  return typeof params.id === 'string' ? params.id : undefined;
 };

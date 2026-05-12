@@ -33,6 +33,13 @@ type RouteMatch =
   | { readonly kind: 'collection'; readonly contentKind: ContentKind }
   | { readonly kind: 'item'; readonly contentKind: ContentKind; readonly itemId: string };
 
+type ContentActor = {
+  readonly instanceId: string;
+  readonly keycloakSubject: string;
+};
+
+type ParsedValue<T> = T | Response;
+
 const json = (body: unknown, status = 200): Response =>
   Response.json(body, {
     status,
@@ -74,6 +81,8 @@ const matchRoute = (request: Request): RouteMatch | null => {
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && Array.isArray(value) === false;
+
+const isResponse = <T>(value: ParsedValue<T>): value is Response => value instanceof Response;
 
 const readString = (value: unknown): string | undefined =>
   typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
@@ -253,13 +262,14 @@ const parseTags = (value: unknown): readonly string[] | Response | undefined => 
 
 const buildPoiInput = (input: {
   body: Record<string, unknown>;
+  name: string;
   categories: SvaMainserverPoiInput['categories'] | undefined;
   addresses: SvaMainserverPoiInput['addresses'] | undefined;
   contact: ReturnType<typeof parseContact> extends Response | infer T | undefined ? T | undefined : never;
   webUrls: SvaMainserverPoiInput['webUrls'] | undefined;
   tags: readonly string[] | undefined;
 }): SvaMainserverPoiInput => ({
-  name: readString(input.body.name) as string,
+  name: input.name,
   ...(readString(input.body.description) ? { description: readString(input.body.description) } : {}),
   ...(readString(input.body.mobileDescription) ? { mobileDescription: readString(input.body.mobileDescription) } : {}),
   ...(readString(input.body.externalId) ? { externalId: readString(input.body.externalId) } : {}),
@@ -303,7 +313,7 @@ const parsePoiInput = async (request: Request): Promise<SvaMainserverPoiInput | 
   if (tags instanceof Response) {
     return tags;
   }
-  return buildPoiInput({ body, categories, addresses, contact, webUrls, tags });
+  return buildPoiInput({ body, name, categories, addresses, contact, webUrls, tags });
 };
 
 const toMainserverErrorResponse = (error: unknown): Response => {
@@ -378,52 +388,127 @@ const authorizeOrResponse = async (
   };
 };
 
-const listContentForRoute = async (
-  _route: Extract<RouteMatch, { kind: 'collection' }>,
-  actor: { readonly instanceId: string; readonly keycloakSubject: string },
-  request: Request
+const handleCollectionRead = async (
+  request: Request,
+  route: Extract<RouteMatch, { readonly kind: 'collection' }>,
+  ctx: AuthenticatedRequestContext,
+  logSuccess: (operation: string, contentId?: string) => void
 ) => {
-  const listQuery = parseMainserverListQuery(request);
-  return listSvaMainserverPoi({ ...actor, ...listQuery });
+  const actor = await authorizeOrResponse(ctx, route.contentKind, pluginActionFor(route.contentKind, 'read'));
+  if (isResponse(actor)) {
+    return actor;
+  }
+
+  const data = await listSvaMainserverPoi({ ...actor, ...parseMainserverListQuery(request) });
+  logSuccess(`mainserver_${route.contentKind}_list`);
+  return json(data);
 };
 
-const getContentForRoute = async (
-  route: Extract<RouteMatch, { kind: 'item' }>,
-  actor: { readonly instanceId: string; readonly keycloakSubject: string }
-) =>
-  getSvaMainserverPoi({ ...actor, poiId: route.itemId });
-
-const createContentForRoute = async (
-  _route: Extract<RouteMatch, { kind: 'collection' }>,
-  actor: { readonly instanceId: string; readonly keycloakSubject: string },
-  request: Request
+const handleItemRead = async (
+  route: Extract<RouteMatch, { readonly kind: 'item' }>,
+  ctx: AuthenticatedRequestContext,
+  logSuccess: (operation: string, contentId?: string) => void
 ) => {
-  const parsed = await parsePoiInput(request);
-  if (parsed instanceof Response) {
-    return parsed;
+  const actor = await authorizeOrResponse(ctx, route.contentKind, pluginActionFor(route.contentKind, 'read'), route.itemId);
+  if (isResponse(actor)) {
+    return actor;
   }
-  const data = await createSvaMainserverPoi({ ...actor, poi: parsed });
-  return json({ data }, 201);
-};
 
-const updateContentForRoute = async (
-  _route: Extract<RouteMatch, { kind: 'item' }>,
-  actor: { readonly instanceId: string; readonly keycloakSubject: string },
-  request: Request
-) => {
-  const parsed = await parsePoiInput(request);
-  if (parsed instanceof Response) {
-    return parsed;
-  }
-  const data = await updateSvaMainserverPoi({ ...actor, poiId: _route.itemId, poi: parsed });
+  const data = await getSvaMainserverPoi({ ...actor, poiId: route.itemId });
+  logSuccess(`mainserver_${route.contentKind}_detail`, route.itemId);
   return json({ data });
 };
 
-const deleteContentForRoute = async (
-  route: Extract<RouteMatch, { kind: 'item' }>,
-  actor: { readonly instanceId: string; readonly keycloakSubject: string }
+const authorizeMutation = async (
+  request: Request,
+  ctx: AuthenticatedRequestContext,
+  contentKind: ContentKind,
+  actionName: 'create' | 'update' | 'delete',
+  requestId?: string,
+  contentId?: string
+): Promise<Response | ContentActor> => {
+  const csrfError = validateMutationRequest(request, requestId);
+  if (csrfError) {
+    return csrfError;
+  }
+
+  return authorizeOrResponse(ctx, contentKind, pluginActionFor(contentKind, actionName), contentId);
+};
+
+const createPoiContent = async (request: Request, actor: ContentActor) => {
+  const parsed = await parsePoiInput(request);
+  if (isResponse(parsed)) {
+    return parsed;
+  }
+
+  return { data: await createSvaMainserverPoi({ ...actor, poi: parsed }) };
+};
+
+const handleCollectionCreate = async (
+  request: Request,
+  route: Extract<RouteMatch, { readonly kind: 'collection' }>,
+  ctx: AuthenticatedRequestContext,
+  requestId: string | undefined,
+  logSuccess: (operation: string, contentId?: string) => void
 ) => {
+  const actor = await authorizeMutation(request, ctx, route.contentKind, 'create', requestId);
+  if (isResponse(actor)) {
+    return actor;
+  }
+
+  const result = await createPoiContent(request, actor);
+  if (isResponse(result)) {
+    return result;
+  }
+
+  logSuccess(`mainserver_${route.contentKind}_create`, result.data.id);
+  return json(result, 201);
+};
+
+const updatePoiContent = async (request: Request, actor: ContentActor, itemId: string) => {
+  const parsed = await parsePoiInput(request);
+  if (isResponse(parsed)) {
+    return parsed;
+  }
+
+  return { data: await updateSvaMainserverPoi({ ...actor, poiId: itemId, poi: parsed }) };
+};
+
+const handleItemUpdate = async (
+  request: Request,
+  route: Extract<RouteMatch, { readonly kind: 'item' }>,
+  ctx: AuthenticatedRequestContext,
+  requestId: string | undefined,
+  logSuccess: (operation: string, contentId?: string) => void
+) => {
+  const actor = await authorizeMutation(request, ctx, route.contentKind, 'update', requestId, route.itemId);
+  if (isResponse(actor)) {
+    return actor;
+  }
+
+  const result = await updatePoiContent(request, actor, route.itemId);
+  if (isResponse(result)) {
+    return result;
+  }
+
+  logSuccess(`mainserver_${route.contentKind}_update`, route.itemId);
+  return json(result);
+};
+
+const handleItemDelete = async (
+  request: Request,
+  route: Extract<RouteMatch, { readonly kind: 'item' }>,
+  ctx: AuthenticatedRequestContext,
+  requestId: string | undefined,
+  logSuccess: (operation: string, contentId?: string) => void
+) => {
+  const actor = await authorizeMutation(request, ctx, route.contentKind, 'delete', requestId, route.itemId);
+  if (isResponse(actor)) {
+    return actor;
+  }
+
   const data = await deleteSvaMainserverPoi({ ...actor, poiId: route.itemId });
+  logSuccess(`mainserver_${route.contentKind}_delete`, route.itemId);
   return json({ data });
 };
 
@@ -444,75 +529,23 @@ const dispatchAuthenticated = async (request: Request, route: RouteMatch, ctx: A
 
   try {
     if (route.kind === 'collection' && request.method === 'GET') {
-      const actor = await authorizeOrResponse(ctx, route.contentKind, pluginActionFor(route.contentKind, 'read'));
-      if (actor instanceof Response) {
-        return actor;
-      }
-      const data = await listContentForRoute(route, actor, request);
-      logSuccess(`mainserver_${route.contentKind}_list`);
-      return json(data);
+      return await handleCollectionRead(request, route, ctx, logSuccess);
     }
 
     if (route.kind === 'item' && request.method === 'GET') {
-      const actor = await authorizeOrResponse(ctx, route.contentKind, pluginActionFor(route.contentKind, 'read'), route.itemId);
-      if (actor instanceof Response) {
-        return actor;
-      }
-      const data = await getContentForRoute(route, actor);
-      logSuccess(`mainserver_${route.contentKind}_detail`, route.itemId);
-      return json({ data });
+      return await handleItemRead(route, ctx, logSuccess);
     }
 
     if (route.kind === 'collection' && request.method === 'POST') {
-      const csrfError = validateMutationRequest(request, workspaceContext.requestId);
-      if (csrfError) {
-        return csrfError;
-      }
-      const actor = await authorizeOrResponse(ctx, route.contentKind, pluginActionFor(route.contentKind, 'create'));
-      if (actor instanceof Response) {
-        return actor;
-      }
-      const response = await createContentForRoute(route, actor, request);
-      const responseBody = (await response.clone().json().catch(() => null)) as { data?: { id?: string } } | null;
-      if (response.ok) {
-        logSuccess(`mainserver_${route.contentKind}_create`, responseBody?.data?.id);
-      }
-      return response;
+      return await handleCollectionCreate(request, route, ctx, workspaceContext.requestId, logSuccess);
     }
 
     if (route.kind === 'item' && request.method === 'PATCH') {
-      const csrfError = validateMutationRequest(request, workspaceContext.requestId);
-      if (csrfError) {
-        return csrfError;
-      }
-      const updateActor = await authorizeOrResponse(
-        ctx,
-        route.contentKind,
-        pluginActionFor(route.contentKind, 'update'),
-        route.itemId
-      );
-      if (updateActor instanceof Response) {
-        return updateActor;
-      }
-      const response = await updateContentForRoute(route, updateActor, request);
-      if (response.ok) {
-        logSuccess(`mainserver_${route.contentKind}_update`, route.itemId);
-      }
-      return response;
+      return await handleItemUpdate(request, route, ctx, workspaceContext.requestId, logSuccess);
     }
 
     if (route.kind === 'item' && request.method === 'DELETE') {
-      const csrfError = validateMutationRequest(request, workspaceContext.requestId);
-      if (csrfError) {
-        return csrfError;
-      }
-      const actor = await authorizeOrResponse(ctx, route.contentKind, pluginActionFor(route.contentKind, 'delete'), route.itemId);
-      if (actor instanceof Response) {
-        return actor;
-      }
-      const response = await deleteContentForRoute(route, actor);
-      logSuccess(`mainserver_${route.contentKind}_delete`, route.itemId);
-      return response;
+      return await handleItemDelete(request, route, ctx, workspaceContext.requestId, logSuccess);
     }
 
     return errorJson(405, 'method_not_allowed', 'Methode wird für diesen Mainserver-Inhalt nicht unterstützt.');

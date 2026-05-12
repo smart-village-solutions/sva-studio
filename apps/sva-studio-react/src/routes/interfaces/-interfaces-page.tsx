@@ -93,6 +93,42 @@ const translateInterfacesErrorMessage = (error: unknown, fallback: string): stri
   }
 };
 
+const buildUpsertPayload = (
+  instanceId: string,
+  editState: Extract<EditState, { mode: 'create' | 'edit' }>
+) => ({
+  instanceId,
+  draft: editState.draft,
+  ...(editState.mode === 'edit' && editState.entry.type !== 'mainserver'
+    ? { existingId: editState.entry.id }
+    : {}),
+});
+
+const renderInterfaceRowActions = (
+  row: InstanceInterface,
+  setEditState: React.Dispatch<React.SetStateAction<EditState>>,
+  setPendingDelete: React.Dispatch<React.SetStateAction<InstanceInterface | null>>
+) => (
+  <>
+    <Button
+      type="button"
+      size="sm"
+      variant="outline"
+      onClick={() => setEditState({ mode: 'edit', entry: row, draft: draftFromEntry(row) })}
+    >
+      {t('admin.users.actions.edit')}
+    </Button>
+    {row.type === 'mainserver' ? null : (
+      <Button type="button" size="sm" variant="destructive" onClick={() => setPendingDelete(row)}>
+        {t('interfaces.edit.deleteAction')}
+      </Button>
+    )}
+  </>
+);
+
+const getEditCardTitle = (editState: Exclude<EditState, { mode: 'closed' }>): string =>
+  editState.mode === 'create' ? t(instanceInterfaceTypeMeta[editState.type].titleKey) : t('interfaces.edit.title');
+
 export const InterfacesPage = () => {
   const listInterfaces = useServerFn(listInstanceInterfacesServerFn);
   const saveMainserver = useServerFn(saveSvaMainserverInterfaceSettings);
@@ -164,13 +200,7 @@ export const InterfacesPage = () => {
         });
       } else {
         await upsertInterfaceRef.current({
-          data: {
-            instanceId,
-            draft,
-            ...(editState.mode === 'edit' && editState.entry.type !== 'mainserver'
-              ? { existingId: editState.entry.id }
-              : {}),
-          },
+          data: buildUpsertPayload(instanceId, editState),
         });
       }
       setStatusMessage(t('interfaces.messages.saveSuccess'));
@@ -298,26 +328,7 @@ export const InterfacesPage = () => {
           </Button>
         }
         rowActions={(row) => (
-          <>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => setEditState({ mode: 'edit', entry: row, draft: draftFromEntry(row) })}
-            >
-              {t('admin.users.actions.edit')}
-            </Button>
-            {row.type !== 'mainserver' ? (
-              <Button
-                type="button"
-                size="sm"
-                variant="destructive"
-                onClick={() => setPendingDelete(row)}
-              >
-                {t('interfaces.edit.deleteAction')}
-              </Button>
-            ) : null}
-          </>
+          renderInterfaceRowActions(row, setEditState, setPendingDelete)
         )}
       />
 
@@ -325,9 +336,7 @@ export const InterfacesPage = () => {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm uppercase tracking-[0.16em] text-muted-foreground">
-              {editState.mode === 'create'
-                ? t(instanceInterfaceTypeMeta[editState.type].titleKey)
-                : t('interfaces.edit.title')}
+              {getEditCardTitle(editState)}
             </CardTitle>
           </CardHeader>
           <CardContent>

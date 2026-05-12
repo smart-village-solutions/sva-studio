@@ -182,7 +182,7 @@ describe('workspace package scripts', () => {
       'env -u NO_COLOR nx affected --target=test:unit --base=${NX_BASE:-origin/main} --parallel=1'
     );
     expect(packageJson.scripts?.['test:types:affected']).toBe(
-      'pnpm clean:generated-source-artifacts && env -u NO_COLOR nx affected --target=test:types --base=${NX_BASE:-origin/main} --parallel=1 && env -u NO_COLOR nx affected --target=typecheck --base=${NX_BASE:-origin/main} --parallel=1 && pnpm check:server-runtime:affected'
+      'pnpm clean:generated-source-artifacts && env -u NO_COLOR nx affected --target=test:types --base=${NX_BASE:-origin/main} --parallel=1 && env -u NO_COLOR nx affected --target=typecheck --base=${NX_BASE:-origin/main} --parallel=1 && pnpm check:server-runtime:affected && pnpm exec tsc -p tsconfig.scripts.json --noEmit'
     );
     expect(packageJson.scripts?.['check:server-runtime:affected']).toBe(
       'env -u NO_COLOR NODE_OPTIONS="${NODE_OPTIONS:-} --import=./scripts/ci/node-listener-budget.mjs" nx affected --target=check:runtime --base=${NX_BASE:-origin/main} --parallel=1'

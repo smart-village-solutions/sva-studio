@@ -149,30 +149,30 @@ Workflow: `.github/workflows/runtime-gates.yml`
 
 | Workflow / Jobname in GitHub | Zweck | Trigger-Modell |
 | --- | --- | --- |
-| `Coverage` | Coverage für affected/full + internes Coverage-Gate | alle PRs, `main`, nightly |
-| `Complexity` | Repository-weites Komplexitäts-Gate | alle PRs, `main`, nightly |
-| `PR Integration` | scoped `test:integration` außer Monitoring-Stack | Pull Requests |
-| `Integration` | voller Integrationslauf | `main`, nightly |
-| `App E2E` | Browser-Smoke für App-Routen mit No-op bei Nicht-Relevanz | alle PRs, nightly, manuell |
+| `Runtime Gates / Coverage` | Coverage für affected/full + internes Coverage-Gate | alle PRs, `main`, nightly |
+| `Runtime Gates / Complexity` | Repository-weites Komplexitäts-Gate | alle PRs, `main`, nightly |
+| `Runtime Gates / PR Integration` | scoped `test:integration` außer Monitoring-Stack | Pull Requests |
+| `Runtime Gates / Integration` | voller Integrationslauf | `main`, nightly |
+| `App E2E / App E2E` | Browser-Smoke für App-Routen mit No-op bei Nicht-Relevanz | alle PRs, nightly, manuell |
 | `monitoring-stack` | Monitoring-spezifische Docker-/Stack-Checks | pfadbasiert |
 | `Schema Diff Gate` | Schema-Diff gegen Staging | pfadbasiert |
-| `File Placement` | Dateiplatzierungs-Regeln | alle PRs und `main` |
+| `Repository Hygiene / File Placement` | Dateiplatzierungs-Regeln | alle PRs und `main` |
 
 ### Recommended Branch-Protection-Checks
 
 Empfehlung für `main`:
 
 - immer required:
-  - `Lint`
-  - `Unit`
-  - `Types`
-  - `Coverage`
-  - `Complexity`
-  - `PR Integration` für Pull Requests
-  - `Integration` für `main`
-  - `File Placement`
+  - `Quality Gates / Lint`
+  - `Quality Gates / Unit`
+  - `Quality Gates / Types`
+  - `Runtime Gates / Coverage`
+  - `Runtime Gates / Complexity`
+  - `Runtime Gates / PR Integration` für Pull Requests
+  - `Runtime Gates / Integration` für `main`
+  - `Repository Hygiene / File Placement`
 - zusätzlich required:
-  - `App E2E`
+  - `App E2E / App E2E`
   - `monitoring-stack`
   - `Schema Diff Gate`
 

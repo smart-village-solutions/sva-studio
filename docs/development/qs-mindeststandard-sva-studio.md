@@ -44,7 +44,7 @@ Wenn eine Änderung mehrere Klassen berührt, gilt die höchste Risikoklasse.
 
 Für neue oder geänderte UI gilt mindestens:
 
-- keine neuen hartcodierten user-facing Texte
+- keine neuen hardcodierten user-facing Texte
 - semantisch passende HTML-/UI-Struktur
 - bedienbar per Tastatur, soweit interaktiv
 - erkennbare Labels, Namen und Fokus-Zustände

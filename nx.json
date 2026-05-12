@@ -72,8 +72,12 @@
       "{workspaceRoot}/package.json",
       "{workspaceRoot}/tsconfig.scripts.json",
       "{workspaceRoot}/scripts/ci/**",
+      "{workspaceRoot}/.github/actions/**",
       "{workspaceRoot}/.github/workflows/**/*.yml",
       "{workspaceRoot}/.github/workflows/**/*.yaml"
+    ],
+    "toolingScripts": [
+      "{workspaceRoot}/scripts/**"
     ],
     "frontendTooling": [
       "{projectRoot}/vite.config.ts",

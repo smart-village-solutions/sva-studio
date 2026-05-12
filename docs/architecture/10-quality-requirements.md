@@ -33,7 +33,7 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - alte Sammelimporte in neuen Consumer-Pfaden werden durch ESLint und Nx-Boundaries blockiert
   - serverseitige Zielpackages bestehen `check:runtime` und verwenden Node-ESM-konforme Runtime-Imports mit expliziter `.js`-Endung
   - `pnpm openspec validate refactor-package-target-architecture-hard-cut --strict` muss für Package-Grenzänderungen grün sein
-- `@sva/studio-module-iam` bleibt React-frei und besteht `test:types`, `test:unit` sowie `check:runtime` als serverseitig konsumierbarer Vertrags-Edge
+  - `@sva/studio-module-iam` bleibt React-frei und besteht `test:types`, `test:unit` sowie `check:runtime` als serverseitig konsumierbarer Vertrags-Edge
 - Unit-Test-Basis:
   - `pnpm test:unit` muss grün sein
 - IAM-Acceptance-Gate:

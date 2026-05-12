@@ -10,7 +10,8 @@
         "default",
         "^production",
         "lintTooling",
-        "ciGateTooling"
+        "ciGateTooling",
+        "toolingScripts"
       ],
       "options": {
         "lintFilePatterns": [
@@ -25,7 +26,8 @@
         "default",
         "^production",
         "testing",
-        "ciGateTooling"
+        "ciGateTooling",
+        "toolingScripts"
       ],
       "options": {
         "command": "pnpm exec vitest --root tooling/testing run tests ../../scripts/ops/runtime-env.test.ts ../../scripts/ci/pr-scope.test.ts --reporter=verbose --config vitest.config.ts --passWithNoTests"
@@ -37,7 +39,8 @@
         "default",
         "^production",
         "testing",
-        "ciGateTooling"
+        "ciGateTooling",
+        "toolingScripts"
       ],
       "options": {
         "command": "pnpm exec vitest --root tooling/testing run tests ../../scripts/ops/runtime-env.test.ts ../../scripts/ci/pr-scope.test.ts --coverage --reporter=verbose --config vitest.config.ts --passWithNoTests"

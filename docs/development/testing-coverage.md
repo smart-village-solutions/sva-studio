@@ -139,7 +139,7 @@ Workflow: `.github/workflows/runtime-gates.yml`
   - Job `Complexity`: separates, blockierendes Komplexitäts-Gate
   - Job `PR Integration`: `affected`, `full` oder bewusster No-op für `test:integration`, exklusive `monitoring-client`
   - Reine Doku-/Meta-PRs starten die Workflows weiterhin, beenden die betroffenen Jobs aber bewusst früh als erfolgreicher No-op, damit Required Checks nicht im Status `expected` hängen bleiben
-  - Workflow- und CI-Dateiänderungen werden über `tooling-testing` targeted abgesichert und eskalieren Quality-/Coverage-Läufe nicht automatisch auf den vollen Produkt-Workspace
+- Workflow- und CI-Dateiänderungen werden über `tooling-testing` targeted abgesichert und eskalieren Quality-/Coverage-Läufe nicht automatisch auf den vollen Produkt-Workspace
 - Main + Nightly:
   - Job `Coverage`: `test:coverage` (voll)
   - Job `Complexity`: blockierend
@@ -156,7 +156,7 @@ Workflow: `.github/workflows/runtime-gates.yml`
 | `App E2E` | Browser-Smoke für App-Routen mit No-op bei Nicht-Relevanz | alle PRs, nightly, manuell |
 | `monitoring-stack` | Monitoring-spezifische Docker-/Stack-Checks | pfadbasiert |
 | `Schema Diff Gate` | Schema-Diff gegen Staging | pfadbasiert |
-| `check-file-placement` | Dateiplatzierungs-Regeln | alle PRs und `main` |
+| `File Placement` | Dateiplatzierungs-Regeln | alle PRs und `main` |
 
 ### Recommended Branch-Protection-Checks
 

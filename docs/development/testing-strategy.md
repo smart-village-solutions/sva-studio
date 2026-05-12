@@ -69,7 +69,7 @@ Die PR-Selektion folgt einem einheitlichen `affected-first`-Modell:
 - Reine Doku-/Meta-Änderungen enden als erfolgreicher No-op.
 - Normale Paketänderungen laufen affected.
 - Echte globale Workspace-Dateien wie `pnpm-lock.yaml`, `nx.json`, `tsconfig.base.json`, `eslint.config.mjs`, `vitest.config.ts` und `vitest.workspace.ts` eskalieren `lint`, `unit`, `types` und `coverage` bewusst auf volle Läufe.
-- Workflow- und CI-Dateien wie `.github/workflows/**`, `scripts/ci/**`, Root-`package.json` oder `tsconfig.scripts.json` werden gezielt über `tooling-testing` abgesichert und erzwingen nicht automatisch volle Produkt-Läufe.
+- Workflow- und CI-Dateien wie `.github/workflows/**`, `.github/actions/**`, `scripts/ci/**`, Root-`package.json` oder `tsconfig.scripts.json` werden gezielt über `tooling-testing` abgesichert und erzwingen nicht automatisch volle Produkt-Läufe für `lint`, `unit`, `types` und `coverage`.
 - `integration` und `e2e` eskalieren nur bei tatsächlicher Laufzeit-, Routing-, Auth-, Transport-, Build- oder App-Flow-Wirkung.
 
 Nicht vollständig lokal abbildbar bleiben externe PR-Dienste wie SonarCloud, Codecov und CodeQL. `pnpm test:pr` deckt jetzt aber neben der Repo-Coverage auch die lokale Patch-Coverage ab und reduziert damit die häufigsten Abweichungen zwischen lokalem Stand und GitHub-Checks deutlicher.

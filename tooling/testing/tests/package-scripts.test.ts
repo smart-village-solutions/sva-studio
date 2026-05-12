@@ -21,6 +21,8 @@ interface TsConfigJson {
   include?: string[];
 }
 
+type NamedInputValue = string | { env: string };
+
 interface NxProjectJson {
   targets?: Record<string, { options?: { lintFilePatterns?: string[] } }>;
 }
@@ -83,9 +85,11 @@ function loadRunPrGateScript(): string {
   return fs.readFileSync(path.join(rootDir, 'scripts/ci/run-pr-gate.ts'), 'utf8');
 }
 
-function loadNxJson(): { namedInputs?: Record<string, string[]> } {
+function loadNxJson(): { namedInputs?: Record<string, NamedInputValue[]> } {
   const rootDir = resolveRootDir();
-  return JSON.parse(fs.readFileSync(path.join(rootDir, 'nx.json'), 'utf8')) as { namedInputs?: Record<string, string[]> };
+  return JSON.parse(fs.readFileSync(path.join(rootDir, 'nx.json'), 'utf8')) as {
+    namedInputs?: Record<string, NamedInputValue[]>;
+  };
 }
 
 describe('workspace package scripts', () => {
@@ -255,23 +259,30 @@ describe('workspace package scripts', () => {
     const nxJson = loadNxJson();
     const toolingTestingProject = loadToolingTestingProject();
     const namedInput = nxJson.namedInputs?.['ciGateTooling'] ?? [];
+    const toolingScriptsInput = nxJson.namedInputs?.['toolingScripts'] ?? [];
     const lintInputs = (toolingTestingProject.targets?.lint as { inputs?: string[] } | undefined)?.inputs ?? [];
     const unitInputs = (toolingTestingProject.targets?.['test:unit'] as { inputs?: string[] } | undefined)?.inputs ?? [];
+    const coverageInputs = (toolingTestingProject.targets?.['test:coverage'] as { inputs?: string[] } | undefined)?.inputs ?? [];
 
     expect(namedInput).toEqual(
       expect.arrayContaining([
         '{workspaceRoot}/package.json',
         '{workspaceRoot}/tsconfig.scripts.json',
+        '{workspaceRoot}/.github/actions/**',
         '{workspaceRoot}/scripts/ci/**',
         '{workspaceRoot}/.github/workflows/**/*.yml',
         '{workspaceRoot}/.github/workflows/**/*.yaml',
       ])
     );
+    expect(toolingScriptsInput).toEqual(expect.arrayContaining(['{workspaceRoot}/scripts/**']));
     expect(lintInputs).toContain('^production');
     expect(lintInputs).toContain('lintTooling');
     expect(lintInputs).toContain('ciGateTooling');
+    expect(lintInputs).toContain('toolingScripts');
     expect(unitInputs).toContain('^production');
     expect(unitInputs).toContain('ciGateTooling');
+    expect(unitInputs).toContain('toolingScripts');
+    expect(coverageInputs).toContain('toolingScripts');
   });
 
 });

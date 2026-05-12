@@ -55,7 +55,7 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
-    "@axe-core/playwright": "^4.11.2",
+    "@axe-core/playwright": "^4.11.3",
     "@codecov/rollup-plugin": "^2.0.1",
     "@playwright/test": "^1.58.2",
     "@tailwindcss/vite": "4.2.4",

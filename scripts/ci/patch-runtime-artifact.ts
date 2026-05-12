@@ -6,6 +6,8 @@ const appDir = path.resolve(appDirArg);
 const outputServerDir = path.join(appDir, '.output', 'server');
 const outputBuildDir = path.join(outputServerDir, 'chunks', 'build');
 const outputSsrDir = path.join(outputServerDir, '_ssr');
+const outputNitroServiceEntryPath = path.join(outputServerDir, '_libs', '_.mjs');
+const outputNitroRendererEntryPath = path.join(outputServerDir, '_chunks', 'ssr-renderer.mjs');
 const finalServerEntryPath = path.join(outputServerDir, 'index.mjs');
 const intermediateServerEntryPath = path.join(appDir, '.nitro', 'vite', 'services', 'ssr', 'server.js');
 const generatedServerEntryFileName = 'tanstack-server-entry.mjs';
@@ -17,6 +19,9 @@ const finalSsrRendererPattern =
   /function ssrRenderer\(\{ req \}\) \{\n\treturn fetch\(req, \{ viteEnv: "ssr" \}\);\n\}/;
 
 const generatedEntryImportPattern = /^import \{[^}]*createStartHandler[^}]*\} from "\.\/assets\/[^"]+";/m;
+const nitroSsrDirectImportPath = './_ssr/ssr.mjs';
+const nitroSsrServiceImportPath = './_libs/_.mjs';
+const nitroSsrRendererImportPath = './_chunks/ssr-renderer.mjs';
 
 const pathExists = async (filePath: string) => {
   try {
@@ -107,14 +112,23 @@ const ensureTslibRuntimeContract = async () => {
 };
 
 const main = async () => {
-  const [finalServerEntrySource, nitroSsrEntryExists] = await Promise.all([
+  const [finalServerEntrySource, nitroSsrEntryExists, nitroServiceEntryExists, nitroRendererEntryExists] = await Promise.all([
     readFile(finalServerEntryPath, 'utf8'),
     pathExists(generatedNitroSsrEntryPath),
+    pathExists(outputNitroServiceEntryPath),
+    pathExists(outputNitroRendererEntryPath),
   ]);
 
   await ensureTslibRuntimeContract();
 
-  if (nitroSsrEntryExists && finalServerEntrySource.includes('./_ssr/ssr.mjs')) {
+  const usesDirectNitroSsrEntry = finalServerEntrySource.includes(nitroSsrDirectImportPath);
+  const usesNitroSsrServiceBridge =
+    nitroServiceEntryExists &&
+    nitroRendererEntryExists &&
+    finalServerEntrySource.includes(nitroSsrServiceImportPath) &&
+    finalServerEntrySource.includes(nitroSsrRendererImportPath);
+
+  if (nitroSsrEntryExists && (usesDirectNitroSsrEntry || usesNitroSsrServiceBridge)) {
     const generatedNitroSsrEntrySource = await readFile(generatedNitroSsrEntryPath, 'utf8');
     assertServerEntryContract(generatedNitroSsrEntrySource, generatedNitroSsrEntryPath);
 

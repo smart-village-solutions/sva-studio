@@ -73,6 +73,7 @@ SERVER_INDEX_PATH="${APP_DIR}/.output/server/index.mjs"
 SERVER_CHUNK_PATH=""
 LEGACY_PATCHED_SERVER_ENTRY_PATH="${APP_DIR}/.output/server/chunks/build/tanstack-server-entry.mjs"
 NITRO_SSR_SERVER_ENTRY_PATH="${APP_DIR}/.output/server/_ssr/ssr.mjs"
+NITRO_SERVICE_ENTRY_PATH="${APP_DIR}/.output/server/_libs/_.mjs"
 PATCHED_SERVER_ENTRY_PATH="${LEGACY_PATCHED_SERVER_ENTRY_PATH}"
 
 FAILURE_CLASS="none"
@@ -158,7 +159,16 @@ assert_artifact_contract() {
     return 1
   fi
 
-  if [ -f "${NITRO_SSR_SERVER_ENTRY_PATH}" ] && grep -Fq './_ssr/ssr.mjs' "${SERVER_INDEX_PATH}"; then
+  if [ -f "${NITRO_SSR_SERVER_ENTRY_PATH}" ] && \
+     { \
+       grep -Fq './_ssr/ssr.mjs' "${SERVER_INDEX_PATH}" || \
+       { \
+         [ -f "${NITRO_SERVICE_ENTRY_PATH}" ] && \
+         grep -Fq './_chunks/ssr-renderer.mjs' "${SERVER_INDEX_PATH}" && \
+         grep -Fq './_libs/_.mjs' "${SERVER_INDEX_PATH}" && \
+         grep -Fq '../_ssr/ssr.mjs' "${NITRO_SERVICE_ENTRY_PATH}"; \
+       }; \
+     }; then
     PATCHED_SERVER_ENTRY_PATH="${NITRO_SSR_SERVER_ENTRY_PATH}"
   elif [ -f "${LEGACY_PATCHED_SERVER_ENTRY_PATH}" ]; then
     PATCHED_SERVER_ENTRY_PATH="${LEGACY_PATCHED_SERVER_ENTRY_PATH}"
@@ -183,7 +193,11 @@ assert_artifact_contract() {
   fi
 
   if ! grep -Fq './chunks/build/tanstack-server-entry.mjs' "${SERVER_INDEX_PATH}" && \
-     ! grep -Fq './_ssr/ssr.mjs' "${SERVER_INDEX_PATH}"; then
+     ! grep -Fq './_ssr/ssr.mjs' "${SERVER_INDEX_PATH}" && \
+     ! { \
+       grep -Fq './_chunks/ssr-renderer.mjs' "${SERVER_INDEX_PATH}" && \
+       grep -Fq './_libs/_.mjs' "${SERVER_INDEX_PATH}"; \
+     }; then
     echo 'Finaler Server-Entry delegiert nicht an den finalen gepatchten Server-Entry.' >&2
     return 1
   fi

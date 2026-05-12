@@ -46,14 +46,10 @@ jobs:
         if: github.event_name != 'pull_request' || steps.changes.outputs.relevant == 'true'
         uses: ./.github/actions/setup-pnpm-workspace
 
-      - name: Ensure PR base ref is available
-        if: github.event_name == 'pull_request' && steps.changes.outputs.relevant == 'true'
-        run: git fetch origin "${{ github.base_ref }}" --no-tags --prune
-
       - name: Determine PR scope
         id: scope
         if: github.event_name == 'pull_request' && steps.changes.outputs.relevant == 'true'
-        run: pnpm exec tsx scripts/ci/pr-scope.ts --base origin/${{ github.base_ref }} --github-output
+        run: pnpm exec tsx scripts/ci/pr-scope.ts --base ${{ github.event.pull_request.base.sha }} --github-output
 
       - name: Run lint gate
         if: github.event_name != 'pull_request' || steps.changes.outputs.relevant == 'true'
@@ -63,7 +59,7 @@ jobs:
           elif [ "${{ steps.scope.outputs.quality_gate_mode }}" = "full" ]; then
             pnpm test:eslint
           else
-            NX_BASE=origin/${{ github.base_ref }} pnpm test:eslint:affected
+            NX_BASE=${{ github.event.pull_request.base.sha }} pnpm test:eslint:affected
           fi
 
       - name: Publish lint summary
@@ -111,14 +107,10 @@ jobs:
         if: github.event_name != 'pull_request' || steps.changes.outputs.relevant == 'true'
         uses: ./.github/actions/setup-pnpm-workspace
 
-      - name: Ensure PR base ref is available
-        if: github.event_name == 'pull_request' && steps.changes.outputs.relevant == 'true'
-        run: git fetch origin "${{ github.base_ref }}" --no-tags --prune
-
       - name: Determine PR scope
         id: scope
         if: github.event_name == 'pull_request' && steps.changes.outputs.relevant == 'true'
-        run: pnpm exec tsx scripts/ci/pr-scope.ts --base origin/${{ github.base_ref }} --github-output
+        run: pnpm exec tsx scripts/ci/pr-scope.ts --base ${{ github.event.pull_request.base.sha }} --github-output
 
       - name: Run unit gate
         if: github.event_name != 'pull_request' || steps.changes.outputs.relevant == 'true'
@@ -128,7 +120,7 @@ jobs:
           elif [ "${{ steps.scope.outputs.quality_gate_mode }}" = "full" ]; then
             pnpm test:unit
           else
-            NX_BASE=origin/${{ github.base_ref }} pnpm test:unit:affected
+            NX_BASE=${{ github.event.pull_request.base.sha }} pnpm test:unit:affected
           fi
 
       - name: Publish unit summary
@@ -176,14 +168,10 @@ jobs:
         if: github.event_name != 'pull_request' || steps.changes.outputs.relevant == 'true'
         uses: ./.github/actions/setup-pnpm-workspace
 
-      - name: Ensure PR base ref is available
-        if: github.event_name == 'pull_request' && steps.changes.outputs.relevant == 'true'
-        run: git fetch origin "${{ github.base_ref }}" --no-tags --prune
-
       - name: Determine PR scope
         id: scope
         if: github.event_name == 'pull_request' && steps.changes.outputs.relevant == 'true'
-        run: pnpm exec tsx scripts/ci/pr-scope.ts --base origin/${{ github.base_ref }} --github-output
+        run: pnpm exec tsx scripts/ci/pr-scope.ts --base ${{ github.event.pull_request.base.sha }} --github-output
 
       - name: Run types gate
         if: github.event_name != 'pull_request' || steps.changes.outputs.relevant == 'true'
@@ -193,7 +181,7 @@ jobs:
           elif [ "${{ steps.scope.outputs.quality_gate_mode }}" = "full" ]; then
             pnpm test:types
           else
-            NX_BASE=origin/${{ github.base_ref }} pnpm test:types:affected
+            NX_BASE=${{ github.event.pull_request.base.sha }} pnpm test:types:affected
           fi
 
       - name: Publish types summary

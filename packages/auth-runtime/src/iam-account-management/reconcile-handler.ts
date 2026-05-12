@@ -1,7 +1,6 @@
 import { getWorkspaceContext } from '@sva/server-runtime';
 import { createReconcileHandlerInternal } from '@sva/iam-admin';
 
-import type { AuthenticatedRequestContext } from '../middleware.js';
 import { jsonResponse } from '../db.js';
 
 import { SYSTEM_ADMIN_ROLES } from './constants.js';

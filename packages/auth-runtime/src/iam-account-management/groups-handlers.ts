@@ -1,7 +1,6 @@
 import { createLegacyGroupMutationHandlers, createLegacyGroupReadHandlers } from '@sva/iam-admin';
 import { getWorkspaceContext } from '@sva/server-runtime';
 
-import type { AuthenticatedRequestContext } from '../middleware.js';
 import { jsonResponse } from '../db.js';
 import { isUuid } from '../shared/input-readers.js';
 

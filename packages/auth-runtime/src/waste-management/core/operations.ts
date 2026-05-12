@@ -230,7 +230,7 @@ export const wasteManagementOperationHandlers = {
       schema: startSeedSchema,
       jobTypeId: wasteManagementOperationsContract.jobTypeIds.seedData,
       auditActionId: 'waste-management.seed.started',
-      toPayload: (data) => ({
+      toPayload: () => ({
         operation: 'seed-data',
         seedKey: 'baseline',
       }),

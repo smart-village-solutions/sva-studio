@@ -53,14 +53,10 @@ jobs:
         if: github.event_name != 'pull_request' || steps.changes.outputs.relevant == 'true'
         uses: ./.github/actions/setup-pnpm-workspace
 
-      - name: Ensure PR base ref is available
-        if: github.event_name == 'pull_request' && steps.changes.outputs.relevant == 'true'
-        run: git fetch origin "${{ github.base_ref }}" --no-tags --prune
-
       - name: Determine PR scope
         id: scope
         if: github.event_name == 'pull_request' && steps.changes.outputs.relevant == 'true'
-        run: pnpm exec tsx scripts/ci/pr-scope.ts --base origin/${{ github.base_ref }} --github-output
+        run: pnpm exec tsx scripts/ci/pr-scope.ts --base ${{ github.event.pull_request.base.sha }} --github-output
 
       - name: Install Playwright browser
         if: github.event_name != 'pull_request' || (steps.changes.outputs.relevant == 'true' && steps.scope.outputs.e2e_mode != 'skip')

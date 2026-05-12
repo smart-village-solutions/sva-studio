@@ -35,7 +35,7 @@ const captureServerFnResponses = (page: Page) => {
 const isAcceptedAuthRedirect = (location: string | null | undefined) =>
   Boolean(
     location?.match(
-      /(\/protocol\/openid-connect\/auth(?:\?|$)|accounts\.google\.com\/(signin\/oauth\/error|o\/oauth2\/v2\/auth)|\/\?auth=mock-login(?:$|&))/
+      /(\/protocol\/openid-connect\/auth(?:\?|$)|accounts\.google\.com\/(signin\/oauth\/error|o\/oauth2\/v2\/auth)|\/\?auth=(?:mock-login|dev-login)(?:$|&))/
     )
   );
 
@@ -306,11 +306,13 @@ test('GET /auth/login returns redirect response', async ({ request }) => {
 });
 
 test('tenant-host login fails closed when canonical auth redirect prerequisites are unavailable', async ({ request }) => {
-  const tenantLoginUrl = process.env.PLAYWRIGHT_TENANT_LOGIN_URL ?? 'http://demo2.studio.lvh.me:4173/auth/login?returnTo=%2Fadmin%2Finstances';
+  const playwrightPort = process.env.PLAYWRIGHT_PORT ?? '4173';
+  const tenantLoginUrl = process.env.PLAYWRIGHT_TENANT_LOGIN_URL
+    ?? `http://demo2.studio.lvh.me:${playwrightPort}/auth/login?returnTo=%2Fadmin%2Finstances`;
   const parsedTenantLoginUrl = new URL(tenantLoginUrl);
   const requestUrl =
     parsedTenantLoginUrl.hostname === 'demo2.studio.lvh.me'
-      ? new URL(`${parsedTenantLoginUrl.pathname}${parsedTenantLoginUrl.search}`, 'http://127.0.0.1:4173').toString()
+      ? new URL(`${parsedTenantLoginUrl.pathname}${parsedTenantLoginUrl.search}`, `http://127.0.0.1:${playwrightPort}`).toString()
       : tenantLoginUrl;
 
   const response = await request.get(requestUrl, {

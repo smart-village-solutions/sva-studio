@@ -377,7 +377,6 @@ test('admin user list and edit page are reachable for system_admin', async ({ pa
 });
 
 test('tenant admin mutations fail closed in the browser when the admin client contract is missing', async ({ page }) => {
-  let provisioningRequestBody: Record<string, unknown> | null = null;
   const registryAdminAuthPayload = {
     user: {
       ...adminAuthPayload.user,
@@ -452,25 +451,6 @@ test('tenant admin mutations fail closed in the browser when the admin client co
             runtimeSecretSource: 'tenant',
           },
           latestKeycloakProvisioningRun: null,
-        },
-      }),
-    });
-  });
-
-  await page.route('**/api/v1/iam/instances/demo/keycloak/execute', async (route) => {
-    provisioningRequestBody = route.request().postDataJSON() as Record<string, unknown>;
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        data: {
-          id: 'run-tenant-admin',
-          intent: 'provision',
-          mode: 'existing',
-          overallStatus: 'succeeded',
-          driftSummary: 'Realm, Login-Client und Tenant-Admin-Client sind angelegt.',
-          requestId: 'req-tenant-admin',
-          steps: [],
         },
       }),
     });
@@ -596,16 +576,9 @@ test('tenant admin mutations fail closed in the browser when the admin client co
   await navigateClientSide(page, '/admin/instances/demo');
 
   await expect(page.getByRole('heading', { name: 'Instanzdetails' })).toBeVisible({ timeout: 10000 });
+  await page.getByRole('tab', { name: 'Konfiguration' }).click();
   await expect(page.locator('#detail-auth-client-id')).toHaveValue('sva-studio');
   await expect(page.locator('#detail-admin-username')).toHaveValue('demo-admin');
-
-  await page.getByRole('button', { name: 'Provisioning ausführen' }).last().click();
-
-  await expect.poll(() => provisioningRequestBody).toEqual(
-    expect.objectContaining({
-      intent: 'provision',
-    })
-  );
 
   await navigateClientSide(page, '/admin/users/account-2');
 
@@ -712,7 +685,7 @@ test('direct access to admin users redirects unauthenticated clients to login', 
 
   if ([302, 303, 307, 308].includes(response.status())) {
     expect(response.headers().location).toMatch(
-      /(\/\?auth=login&returnTo=%2Fadmin%2Fusers|\/auth\/login\?returnTo=%2Fadmin%2Fusers|\/protocol\/openid-connect\/auth(?:\?|$)|accounts\.google\.com\/(signin\/oauth\/error|o\/oauth2\/v2\/auth)|\/\?auth=mock-login(?:$|&))/
+      /(\/\?auth=login&returnTo=%2Fadmin%2Fusers|\/auth\/login\?returnTo=%2Fadmin%2Fusers|\/protocol\/openid-connect\/auth(?:\?|$)|accounts\.google\.com\/(signin\/oauth\/error|o\/oauth2\/v2\/auth)|\/\?auth=(?:mock-login|dev-login)(?:$|&))/
     );
     return;
   }

@@ -46,8 +46,8 @@ Dieses Dokument beschreibt die übergeordnete Teststrategie für das Nx-Monorepo
 
 ### Vor Push
 
-- `pnpm nx affected --target=test:unit --base=origin/main`
-- bei Typänderungen zusätzlich `pnpm nx affected --target=test:types --base=origin/main`
+- `pnpm test:unit:affected`
+- bei Typänderungen zusätzlich `pnpm test:types:affected`
 - bei PR-relevanten Quality-Gate-, Coverage-, Logging-, Auth-, Routing- oder Build-Änderungen zusätzlich `pnpm test:pr`
 
 ### Vor PR-Update
@@ -57,12 +57,19 @@ Dieses Dokument beschreibt die übergeordnete Teststrategie für das Nx-Monorepo
 `pnpm test:pr` spiegelt den blockierenden GitHub-PR-Pfad so nah wie lokal sinnvoll möglich:
 
 - `pnpm check:file-placement`
-- `pnpm nx affected --target=test:coverage --base=origin/main`
+- `affected` oder `full` für `lint`, `test:unit`, `test:types`, `test:coverage` abhängig vom PR-Scope
 - `pnpm patch-coverage-gate --base=origin/main` für New-Code-/Patch-Coverage
 - `pnpm coverage-gate` im PR-Modus
 - `pnpm complexity-gate`
-- `pnpm test:integration`
-- `pnpm nx run sva-studio-react:build`
+- `affected`, `full` oder No-op für `test:integration` abhängig von Laufzeit-/Routing-/Transportwirkung
+- relevanter App-Build und relevanter App-E2E-Smoke nach derselben Scope-Logik wie GitHub
+
+Die PR-Selektion folgt einem einheitlichen `affected-first`-Modell:
+
+- Reine Doku-/Meta-Änderungen enden als erfolgreicher No-op.
+- Normale Paketänderungen laufen affected.
+- Globale Tooling-Dateien wie `pnpm-lock.yaml`, `nx.json`, `tsconfig.base.json`, `eslint.config.mjs`, `vitest.config.ts`, `vitest.workspace.ts`, Root-`package.json`, `.github/workflows/**` und `scripts/ci/**` eskalieren `lint`, `unit`, `types` und `coverage` bewusst auf volle Läufe.
+- `integration` und `e2e` eskalieren nur bei tatsächlicher Laufzeit-, Routing-, Auth-, Transport-, Build- oder App-Flow-Wirkung.
 
 Nicht vollständig lokal abbildbar bleiben externe PR-Dienste wie SonarCloud, Codecov und CodeQL. `pnpm test:pr` deckt jetzt aber neben der Repo-Coverage auch die lokale Patch-Coverage ab und reduziert damit die häufigsten Abweichungen zwischen lokalem Stand und GitHub-Checks deutlicher.
 

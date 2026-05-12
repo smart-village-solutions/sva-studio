@@ -16,13 +16,13 @@
     "test:unit": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "pnpm exec vitest --root tooling/testing run tests ../../scripts/ops/runtime-env.test.ts --reporter=verbose --config vitest.config.ts --passWithNoTests"
+        "command": "pnpm exec vitest --root tooling/testing run tests ../../scripts/ops/runtime-env.test.ts ../../scripts/ci/pr-scope.test.ts --reporter=verbose --config vitest.config.ts --passWithNoTests"
       }
     },
     "test:coverage": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "pnpm exec vitest --root tooling/testing run tests ../../scripts/ops/runtime-env.test.ts --coverage --reporter=verbose --config vitest.config.ts --passWithNoTests"
+        "command": "pnpm exec vitest --root tooling/testing run tests ../../scripts/ops/runtime-env.test.ts ../../scripts/ci/pr-scope.test.ts --coverage --reporter=verbose --config vitest.config.ts --passWithNoTests"
       }
     },
     "test:integration": {

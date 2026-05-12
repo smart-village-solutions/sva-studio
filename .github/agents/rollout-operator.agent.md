@@ -411,7 +411,7 @@ Bei Schema-Migrationen: Prüfe, ob die Migration rückwärtskompatibel ist, bevo
 
 ## GitHub Actions Integration
 
-Die Workflows `studio-image-build.yml`, `studio-artifact-verify.yml` und optional `studio-release.yml` automatisieren den vorbereitenden Ablauf:
+Die Workflows `studio-image-build.yml`, `studio-image-verify.yml` und optional `studio-release-preparation.yml` automatisieren den vorbereitenden Ablauf:
 
 1. **Inputs**: `image_tag`, `image_digest` (Pflicht für Verify/Preparation)
 2. **Stages**: Image Build → Artifact Verify
@@ -420,7 +420,7 @@ Die Workflows `studio-image-build.yml`, `studio-artifact-verify.yml` und optiona
 
 ```bash
 # Vorbereitungsworkflow manuell auslösen
-gh workflow run studio-release.yml
+gh workflow run studio-release-preparation.yml
 ```
 
 ---

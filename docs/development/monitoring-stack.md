@@ -127,7 +127,7 @@ Verbotene Labels (PII / High Cardinality):
 Für den Monitoring-Stack existiert ein dedizierter CI-Lauf:
 
 - Script: `scripts/ci/monitoring-stack-ci.sh`
-- Workflow: `.github/workflows/monitoring-stack-ci.yml`
+- Workflow: `.github/workflows/monitoring-stack.yml` (`Monitoring Stack`)
 
 Der CI-Lauf prüft:
 

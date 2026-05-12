@@ -14,21 +14,21 @@ Die Policy ist fuer kleine Teams und wachsende Maintainer-Strukturen geschrieben
 
 Die folgenden Checks muessen in GitHub Branch Protection fuer `main` als `required` konfiguriert sein:
 
-1. `Lint / lint`
-2. `Unit / unit`
-3. `Types / types`
-4. `Coverage and Quality Gates / Coverage Gate`
-5. `Coverage and Quality Gates / Complexity Gate`
-6. `Coverage and Quality Gates / PR Integration Gate`
-7. `App E2E Smoke / App E2E Smoke`
+1. `Quality Gates / Lint`
+2. `Quality Gates / Unit`
+3. `Quality Gates / Types`
+4. `Runtime Gates / Coverage`
+5. `Runtime Gates / Complexity`
+6. `Runtime Gates / PR Integration`
+7. `App E2E / App E2E`
 
 Quellen:
 
-- Coverage-Workflow: `.github/workflows/test-coverage.yml`
+- Coverage-Workflow: `.github/workflows/runtime-gates.yml`
 - E2E-Workflow: `.github/workflows/app-e2e.yml`
 - Gate-Baseline: `docs/governance/merge-review-gates.md`
 
-Enforcement-Hinweis fuer `App E2E Smoke / App E2E Smoke`:
+Enforcement-Hinweis fuer `App E2E / App E2E`:
 
 - Zielmodell: Der Check ist in Branch Protection immer als `required` hinterlegt.
 - Technische Voraussetzung: `.github/workflows/app-e2e.yml` muss dafuer fuer alle PRs laufen und bei PRs ohne relevante Pfadtreffer fruehzeitig mit Status `success` enden.

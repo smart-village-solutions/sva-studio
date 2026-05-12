@@ -1,4 +1,4 @@
-name: SVA Mainserver Schema Gate
+name: SVA Mainserver Schema Diff
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -17,7 +17,7 @@ permissions:
 
 jobs:
   schema-diff:
-    name: Schema Diff Gate
+    name: Schema Diff
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:

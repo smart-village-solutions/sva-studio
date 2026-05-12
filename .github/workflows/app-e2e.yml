@@ -1,20 +1,22 @@
-name: App E2E Smoke
+name: App E2E
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 on:
+  pull_request:
   schedule:
     - cron: '0 3 * * *'
   workflow_dispatch:
 
 permissions:
   contents: read
+  pull-requests: read
 
 jobs:
   e2e:
-    name: App E2E Smoke
+    name: App E2E
     runs-on: ubuntu-latest
     timeout-minutes: 25
     env:
@@ -30,21 +32,50 @@ jobs:
         uses: actions/checkout@v6
         with:
           filter: tree:0
+          fetch-depth: 0
+
+      - name: Detect relevant PR changes
+        id: changes
+        if: github.event_name == 'pull_request'
+        uses: dorny/paths-filter@v4
+        with:
+          filters: |
+            relevant:
+              - '**'
+              - '!docs/**'
+              - '!**/*.md'
+              - '!.github/agents/**'
+              - '!.github/prompts/**'
+              - '!.github/ISSUE_TEMPLATE/**'
+              - '!.github/PULL_REQUEST_TEMPLATE.md'
 
       - name: Setup workspace
+        if: github.event_name != 'pull_request' || steps.changes.outputs.relevant == 'true'
         uses: ./.github/actions/setup-pnpm-workspace
 
+      - name: Ensure PR base ref is available
+        if: github.event_name == 'pull_request' && steps.changes.outputs.relevant == 'true'
+        run: git fetch origin "${{ github.base_ref }}" --no-tags --prune
+
+      - name: Determine PR scope
+        id: scope
+        if: github.event_name == 'pull_request' && steps.changes.outputs.relevant == 'true'
+        run: pnpm exec tsx scripts/ci/pr-scope.ts --base origin/${{ github.base_ref }} --github-output
+
       - name: Install Playwright browser
+        if: github.event_name != 'pull_request' || (steps.changes.outputs.relevant == 'true' && steps.scope.outputs.e2e_mode != 'skip')
         run: pnpm --filter sva-studio-react exec playwright install --with-deps chromium
 
       - name: Start Redis for E2E
-        run: |
-          docker run -d --name sva-studio-redis-e2e -p 6379:6379 redis:7-alpine
+        if: github.event_name != 'pull_request' || (steps.changes.outputs.relevant == 'true' && steps.scope.outputs.e2e_mode != 'skip')
+        run: docker run -d --name sva-studio-redis-e2e -p 6379:6379 redis:7-alpine
 
       - name: Start required services
+        if: github.event_name != 'pull_request' || (steps.changes.outputs.relevant == 'true' && steps.scope.outputs.e2e_mode != 'skip')
         run: docker compose -f docker-compose.monitoring.yml up -d loki otel-collector promtail
 
       - name: Wait for Redis readiness
+        if: github.event_name != 'pull_request' || (steps.changes.outputs.relevant == 'true' && steps.scope.outputs.e2e_mode != 'skip')
         run: |
           set -euo pipefail
           for i in {1..30}; do
@@ -59,11 +90,12 @@ jobs:
           docker ps -a
           exit 1
 
-      - name: Run app E2E smoke tests
+      - name: Run app E2E tests
+        if: github.event_name != 'pull_request' || (steps.changes.outputs.relevant == 'true' && steps.scope.outputs.e2e_mode != 'skip')
         run: pnpm nx run sva-studio-react:test:e2e
 
       - name: Upload Playwright report
-        if: always()
+        if: always() && (github.event_name != 'pull_request' || (steps.changes.outputs.relevant == 'true' && steps.scope.outputs.e2e_mode != 'skip'))
         uses: actions/upload-artifact@v7
         with:
           name: app-e2e-report-${{ github.run_id }}
@@ -72,7 +104,7 @@ jobs:
           retention-days: 7
 
       - name: Stop services
-        if: always()
+        if: always() && (github.event_name != 'pull_request' || (steps.changes.outputs.relevant == 'true' && steps.scope.outputs.e2e_mode != 'skip'))
         run: |
           docker compose -f docker-compose.monitoring.yml down
           docker rm -f sva-studio-redis-e2e || true
@@ -80,6 +112,14 @@ jobs:
       - name: Publish E2E summary
         if: always()
         run: |
-          echo 'App-E2E-Smoke abgeschlossen.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'App E2E abgeschlossen.' >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ github.event_name }}" = "pull_request" ] && [ "${{ steps.changes.outputs.relevant }}" != "true" ]; then
+            echo 'Scope: keine code-relevanten Änderungen im Pull Request, das Gate endet bewusst als No-op-Erfolg.' >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          if [ "${{ github.event_name }}" = "pull_request" ] && [ "${{ steps.scope.outputs.e2e_mode }}" = "skip" ]; then
+            echo 'Scope: kein E2E-relevanter App-/Routing-/Auth-/Transport- oder kritischer Flow-Änderungsblock im Pull Request, das Gate endet bewusst als No-op-Erfolg.' >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
           echo "Artifact: \`app-e2e-report-${GITHUB_RUN_ID}\`" >> "$GITHUB_STEP_SUMMARY"
           echo 'Services: Redis, Loki, OTEL Collector, Promtail.' >> "$GITHUB_STEP_SUMMARY"

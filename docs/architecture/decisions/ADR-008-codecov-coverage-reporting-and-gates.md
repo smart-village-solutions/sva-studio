@@ -89,7 +89,7 @@ Die bindende Qualitätsentscheidung bleibt weiterhin bei der internen Governance
 ## Implementierung / Ausblick
 
 - [x] CI erzeugt Coverage-Reports via `pnpm test:coverage`/`pnpm nx affected --target=test:coverage`.
-- [x] Upload zu Codecov erfolgt in `.github/workflows/test-coverage.yml`.
+- [x] Upload zu Codecov erfolgt in `.github/workflows/runtime-gates.yml`.
 - [x] Grundkonfiguration liegt in `codecov.yml`.
 - [x] Codecov-Statuschecks `project` und `patch` sind informational und dienen nur der Transparenz.
 - [x] Codecov-Flag-Scope ist auf Projekte mit echtem LCOV-Upload begrenzt; coverage-exempt Projekte bleiben ausgeschlossen.
@@ -112,7 +112,7 @@ Damit ist ein Exit ohne Änderungen an den Test-Targets oder den Governance-Rege
 ---
 
 **Links:**
-- [Coverage Workflow](../../../.github/workflows/test-coverage.yml)
+- [Coverage Workflow](../../../.github/workflows/runtime-gates.yml)
 - [Codecov Konfiguration](../../../codecov.yml)
 - [Testing & Coverage Governance](../../development/testing-coverage.md)
 - [OpenSpec: Enhance Test Coverage Tooling](../../../openspec/changes/enhance-test-coverage-tooling/proposal.md)

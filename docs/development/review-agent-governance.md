@@ -28,7 +28,7 @@ Verbindliche Marker:
 - Normaler PR-Kommentar:
   `<!-- bot-comment-status: resolved; bot-comment-id: 123456789 -->`
 
-Die maschinelle Auswertung laeuft ueber `pnpm check:bot-comment-handling` im Workflow `Bot Comment Handling`.
+Die maschinelle Auswertung laeuft ueber `pnpm check:bot-comment-handling` im Workflow `Bot Comment Governance` (`.github/workflows/bot-comment-governance.yml`).
 
 ## Agenten-Inventar
 

@@ -1,4 +1,4 @@
-name: Studio Build and Verify
+name: Studio Release Preparation
 
 on:
   workflow_dispatch:
@@ -21,7 +21,7 @@ jobs:
 
   verify:
     needs: build
-    uses: ./.github/workflows/studio-artifact-verify.yml
+    uses: ./.github/workflows/studio-image-verify.yml
     secrets: inherit
     with:
       image_digest: ${{ needs.build.outputs.image_digest }}

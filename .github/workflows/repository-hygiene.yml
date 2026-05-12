@@ -1,4 +1,4 @@
-name: File Placement
+name: Repository Hygiene
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -15,6 +15,7 @@ permissions:
 
 jobs:
   check-file-placement:
+    name: File Placement
     runs-on: ubuntu-latest
     timeout-minutes: 10
 

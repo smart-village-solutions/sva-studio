@@ -1,4 +1,4 @@
-name: Monitoring Stack CI
+name: Monitoring Stack
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -11,7 +11,7 @@ on:
       - "dev/monitoring/**"
       - "packages/monitoring-client/**"
       - "scripts/ci/monitoring-stack-ci.sh"
-      - ".github/workflows/monitoring-stack-ci.yml"
+      - ".github/workflows/monitoring-stack.yml"
   push:
     branches:
       - main
@@ -20,7 +20,7 @@ on:
       - "dev/monitoring/**"
       - "packages/monitoring-client/**"
       - "scripts/ci/monitoring-stack-ci.sh"
-      - ".github/workflows/monitoring-stack-ci.yml"
+      - ".github/workflows/monitoring-stack.yml"
   workflow_dispatch:
 
 permissions:
@@ -28,6 +28,7 @@ permissions:
 
 jobs:
   monitoring-stack:
+    name: Monitoring Stack
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -55,5 +56,5 @@ jobs:
       - name: Publish monitoring summary
         if: always()
         run: |
-          echo 'Monitoring-Stack-CI abgeschlossen.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Monitoring-Stack-Checks abgeschlossen.' >> "$GITHUB_STEP_SUMMARY"
           echo "Artifact: \`monitoring-stack-metrics-${GITHUB_RUN_ID}\`" >> "$GITHUB_STEP_SUMMARY"

@@ -11,6 +11,7 @@ permissions:
 
 jobs:
   mirror-main-to-opencode:
+    name: Mirror main
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

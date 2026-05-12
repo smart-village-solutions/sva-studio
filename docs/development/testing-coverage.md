@@ -39,6 +39,8 @@ pnpm test:integration
 pnpm test:coverage:affected
 ```
 
+Standardmäßig verwendet das Kommando `origin/main` als Basis. Für andere Ziel-Branches kann `NX_BASE` gesetzt werden.
+
 ### Pull-Request-Patch lokal vorprüfen
 
 ```bash
@@ -56,12 +58,12 @@ pnpm test:pr
 Das Kommando bildet den blockierenden GitHub-PR-Workflow für lokale Vorprüfung nach:
 
 - `check:file-placement`
-- `nx affected --target=test:coverage --base=origin/main`
+- `affected` oder `full` für `lint`, `test:unit`, `test:types` und `test:coverage` abhängig vom PR-Scope
 - `patch-coverage-gate --base=origin/main` für geänderte, ausführbare Zeilen im PR-Diff
 - `coverage-gate` im PR-Modus mit optionalen Summary-Dateien
 - `complexity-gate`
-- `test:integration`
-- React-App-Build für denselben Build-Pfad wie im Coverage-Workflow
+- `affected`, `full` oder No-op für `test:integration`
+- relevanten React-App-Build und relevanten `App E2E`
 
 Nicht Bestandteil von `pnpm test:pr` sind externe Plattform-Auswertungen wie SonarCloud, Codecov oder CodeQL. Die lokale New-Code-/Patch-Coverage wird aber jetzt bereits vor dem Push geprüft, sodass die häufigste Abweichung zwischen lokalem PR-Gate und Sonar früher sichtbar wird.
 
@@ -130,12 +132,12 @@ Wenn die Komplexität eines kritischen Hotspots steigt, darf der bestehende Floo
 
 ## CI-Verhalten
 
-Workflow: `.github/workflows/test-coverage.yml`
+Workflow: `.github/workflows/runtime-gates.yml`
 
 - Pull Requests:
-  - Job `Coverage Gate`: `nx affected --target=test:coverage` gegen den PR-Base-Branch
+  - Job `Coverage Gate`: `affected` oder `full` für `test:coverage` gegen den PR-Base-Branch, gesteuert durch `scripts/ci/pr-scope.ts`
   - Job `Complexity Gate`: separates, blockierendes Komplexitäts-Gate
-  - Job `PR Integration Gate`: `nx affected --target=test:integration`, exklusive `monitoring-client`
+  - Job `PR Integration Gate`: `affected`, `full` oder bewusster No-op für `test:integration`, exklusive `monitoring-client`
   - Reine Doku-/Meta-PRs starten die Workflows weiterhin, beenden die betroffenen Jobs aber bewusst früh als erfolgreicher No-op, damit Required Checks nicht im Status `expected` hängen bleiben
 - Main + Nightly:
   - Job `Coverage Gate`: `test:coverage` (voll)
@@ -148,9 +150,9 @@ Workflow: `.github/workflows/test-coverage.yml`
 | --- | --- | --- |
 | `Coverage Gate` | Coverage für affected/full + internes Coverage-Gate | alle PRs, `main`, nightly |
 | `Complexity Gate` | Repository-weites Komplexitäts-Gate | alle PRs, `main`, nightly |
-| `PR Integration Gate` | affected `test:integration` außer Monitoring-Stack | Pull Requests |
+| `PR Integration Gate` | scoped `test:integration` außer Monitoring-Stack | Pull Requests |
 | `Integration Gate` | voller Integrationslauf | `main`, nightly |
-| `App E2E Smoke` | Browser-Smoke für App-Routen | pfadbasiert |
+| `App E2E` | Browser-Smoke für App-Routen mit No-op bei Nicht-Relevanz | alle PRs, nightly, manuell |
 | `monitoring-stack` | Monitoring-spezifische Docker-/Stack-Checks | pfadbasiert |
 | `Schema Diff Gate` | Schema-Diff gegen Staging | pfadbasiert |
 | `check-file-placement` | Dateiplatzierungs-Regeln | alle PRs und `main` |
@@ -168,8 +170,8 @@ Empfehlung für `main`:
   - `PR Integration Gate` für Pull Requests
   - `Integration Gate` für `main`
   - `check-file-placement`
-- pfadabhängig required:
-  - `App E2E Smoke`
+- zusätzlich required:
+  - `App E2E`
   - `monitoring-stack`
   - `Schema Diff Gate`
 

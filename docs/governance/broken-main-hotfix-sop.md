@@ -68,13 +68,13 @@ Fehlt eine Bedingung, ist unverzüglich auf Revert zurückzuschalten.
 
 Vor Aufhebung des Merge-Freeze müssen auf `main` grün sein:
 
-1. `Lint / lint`
-2. `Unit / unit`
-3. `Types / types`
-4. `Coverage and Quality Gates / Coverage Gate`
-5. `Coverage and Quality Gates / Complexity Gate`
-6. `Coverage and Quality Gates / PR Integration Gate` (wenn PR-bezogener Integrationsscope betroffen ist)
-7. `App E2E Smoke / App E2E Smoke` (wenn `apps/` betroffen ist)
+1. `Quality Gates / Lint`
+2. `Quality Gates / Unit`
+3. `Quality Gates / Types`
+4. `Runtime Gates / Coverage`
+5. `Runtime Gates / Complexity`
+6. `Runtime Gates / PR Integration` (wenn PR-bezogener Integrationsscope betroffen ist)
+7. `App E2E / App E2E` (wenn `apps/` betroffen ist)
 
 Zusätzlich verpflichtend:
 

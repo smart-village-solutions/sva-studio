@@ -41,7 +41,7 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - Bericht mit JSON- und Markdown-Artefakt wird unter `docs/reports/` geschrieben
   - `/health/ready` sowie Login-, JIT-, Organisations- und Membership-Nachweise müssen im Bericht als `passed` erscheinen
 - Produktionsnahe Release-Validierung:
-  - `Studio Image Build and Publish` muss genau einen Manifest-Digest für `linux/amd64` liefern
+  - `Studio Image Build` muss genau einen Manifest-Digest für `linux/amd64` liefern
   - `Studio Image Verify` muss denselben Digest gegen `/health/live`, `/health/ready` und `/` erfolgreich pruefen
   - `pnpm test:release:studio` muss `pnpm test:pr` und `pnpm verify:runtime-artifact` in dieser Reihenfolge ausführen
   - `pnpm env:release:studio:local` ist nur mit `--image-digest=sha256:...` gueltig

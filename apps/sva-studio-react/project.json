@@ -202,6 +202,9 @@
     "test:types": {
       "executor": "nx:run-commands",
       "cache": true,
+      "dependsOn": [
+        "^build"
+      ],
       "inputs": [
         "default",
         "^production",
@@ -216,6 +219,9 @@
     "typecheck": {
       "executor": "nx:run-commands",
       "cache": true,
+      "dependsOn": [
+        "^build"
+      ],
       "inputs": [
         "default",
         "^production",

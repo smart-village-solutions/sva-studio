@@ -163,7 +163,7 @@ export default function Header({
           >
             {resolvedMode === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             <span className="hidden sm:inline">
-              {resolvedMode === 'dark' ? t('shell.header.themeModeDark') : t('shell.header.themeModeLight')}
+              {resolvedMode === 'dark' ? t('shell.header.themeModeLight') : t('shell.header.themeModeDark')}
             </span>
           </Button>
           {authAction}

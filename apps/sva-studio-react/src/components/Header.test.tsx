@@ -22,7 +22,18 @@ vi.mock('../providers/locale-provider', () => ({
 }));
 
 vi.mock('@tanstack/react-router', () => ({
-  Link: ({ to, children }: { to: string; children: React.ReactNode }) => <a href={to}>{children}</a>,
+  Link: ({
+    to,
+    children,
+    ...props
+  }: {
+    to: string;
+    children: React.ReactNode;
+  } & React.AnchorHTMLAttributes<HTMLAnchorElement>) => (
+    <a {...props} href={to}>
+      {children}
+    </a>
+  ),
 }));
 
 vi.mock('./OrganizationContextSwitcher', () => ({
@@ -163,6 +174,102 @@ describe('Header auth actions', () => {
     const logoutIntent = logoutForm?.querySelector('input[name="logoutIntent"]');
     expect(logoutForm?.getAttribute('method')).toBe('post');
     expect(logoutIntent?.getAttribute('value')).toBe('user');
+  });
+
+  it('zeigt beim Theme-Toggle den Zielmodus passend zum Icon an', async () => {
+    useAuthMock.mockReturnValue({
+      user: null,
+      isAuthenticated: false,
+      isLoading: false,
+      error: null,
+      hasResolvedSession: true,
+      refetch: vi.fn(),
+      logout: vi.fn(),
+      invalidatePermissions: vi.fn(),
+    });
+    useLocaleMock.mockReturnValue({
+      locale: 'de',
+      setLocale: vi.fn(),
+    });
+
+    useThemeMock.mockReturnValue({
+      mode: 'light',
+      themeName: 'sva-default',
+      themeLabel: 'SVA Studio',
+      setMode: vi.fn(),
+      toggleMode: vi.fn(),
+    });
+
+    const { rerender } = render(<Header />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Dunklen Modus aktivieren' })).toBeTruthy();
+    });
+
+    expect(screen.getByRole('button', { name: 'Dunklen Modus aktivieren' }).textContent).toContain('Dunkel');
+
+    useThemeMock.mockReturnValue({
+      mode: 'dark',
+      themeName: 'sva-default',
+      themeLabel: 'SVA Studio',
+      setMode: vi.fn(),
+      toggleMode: vi.fn(),
+    });
+
+    rerender(<Header />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Hellen Modus aktivieren' })).toBeTruthy();
+    });
+
+    expect(screen.getByRole('button', { name: 'Hellen Modus aktivieren' }).textContent).toContain('Hell');
+  });
+
+  it('setzt cursor-pointer auf alle sichtbaren Header-Aktionen', async () => {
+    useAuthMock.mockReturnValue({
+      user: {
+        id: 'user-1',
+        name: 'Test User',
+        roles: ['editor'],
+      },
+      isAuthenticated: true,
+      isLoading: false,
+      error: null,
+      hasResolvedSession: true,
+      refetch: vi.fn(),
+      logout: vi.fn(),
+      invalidatePermissions: vi.fn(),
+    });
+    useThemeMock.mockReturnValue({
+      mode: 'light',
+      themeName: 'sva-default',
+      themeLabel: 'SVA Studio',
+      setMode: vi.fn(),
+      toggleMode: vi.fn(),
+    });
+    useLocaleMock.mockReturnValue({
+      locale: 'de',
+      setLocale: vi.fn(),
+    });
+
+    render(<Header onOpenMobileNavigation={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Navigation öffnen' })).toBeTruthy();
+    });
+
+    const interactiveElements = [
+      screen.getByRole('button', { name: 'Navigation öffnen' }),
+      screen.getByRole('button', { name: 'Auf Deutsch wechseln' }),
+      screen.getByRole('button', { name: 'Auf Englisch wechseln' }),
+      screen.getByRole('button', { name: 'Dunklen Modus aktivieren' }),
+      screen.getByRole('link', { name: 'Mein Konto' }),
+      screen.getByRole('button', { name: 'Logout' }),
+    ];
+
+    for (const element of interactiveElements) {
+      expect(element.className).toContain('cursor-pointer');
+    }
   });
 
   it('zeigt auch für system_admin keine Navigationslinks im Header', async () => {

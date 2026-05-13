@@ -204,6 +204,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [sessionRecoveryFailed, setSessionRecoveryFailed] = React.useState(false);
 
   const isMountedRef = React.useRef(true);
+  const confirmedUserRef = React.useRef<SessionUser | null>(null);
   const authFlowIdRef = React.useRef<string>(createAuthFlowId());
   const authAttemptRef = React.useRef(0);
   const sessionExpiryTimeoutRef = React.useRef<number | null>(null);
@@ -219,6 +220,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       }
     };
   }, []);
+
+  React.useEffect(() => {
+    confirmedUserRef.current = user;
+  }, [user]);
 
   const clearSessionExpiryTimer = React.useCallback(() => {
     if (sessionExpiryTimeoutRef.current !== null) {
@@ -511,9 +516,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         }
 
         if (!result.ok) {
+          const shouldClearConfirmedSnapshot = !silent || result.status === 401 || result.status === 403;
           if (isMountedRef.current) {
-            setUser(null);
-            setSessionExpiresAt(null);
+            if (shouldClearConfirmedSnapshot) {
+              setUser(null);
+              setSessionExpiresAt(null);
+            }
             setHasResolvedSession(true);
           }
           authLogger.info('auth_session_unauthenticated', {
@@ -559,9 +567,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           result: 'failed',
         });
         if (isMountedRef.current) {
-          setUser(null);
-          setSessionExpiresAt(null);
-          setError(resolvedError);
+          if (!silent) {
+            setUser(null);
+            setSessionExpiresAt(null);
+            setError(resolvedError);
+          }
           setHasResolvedSession(true);
           setIsRecoveringSession(false);
         }
@@ -579,6 +589,26 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     },
     [attemptSilentSessionRecovery, logAuthDebug, nextAuthAttempt, recordTrail, startAuthFlow]
   );
+
+  React.useEffect(() => {
+    const currentDocument = globalThis.document;
+    if (!currentDocument) {
+      return;
+    }
+
+    const handleVisibilityChange = () => {
+      if (currentDocument.visibilityState !== 'visible' || !confirmedUserRef.current) {
+        return;
+      }
+
+      void loadUser(true);
+    };
+
+    currentDocument.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      currentDocument.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [loadUser]);
 
   React.useEffect(() => {
     clearSessionExpiryTimer();

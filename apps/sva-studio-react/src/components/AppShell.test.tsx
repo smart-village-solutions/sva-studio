@@ -61,7 +61,11 @@ vi.mock('./RuntimeHealthIndicator', () => ({
 }));
 
 vi.mock('./Sidebar', () => ({
-  default: () => <aside aria-label="Seitenleiste">Sidebar</aside>,
+  default: ({ isLoading = false }: { isLoading?: boolean }) => (
+    <aside aria-label="Seitenleiste">
+      <span>{isLoading ? 'Sidebar Loading' : 'Sidebar Ready'}</span>
+    </aside>
+  ),
 }));
 
 /**
@@ -130,15 +134,21 @@ describe('AppShell', () => {
     expect(screen.queryByTestId('runtime-health-indicator')).toBeNull();
   });
 
-  it('zeigt Skeleton-Content im Ladezustand', () => {
+  it('haelt die Shell im Ladezustand gemountet und lokalisiert Pending auf den Contentbereich', async () => {
     render(
       <AppShell isLoading>
         <div>Inhalt</div>
       </AppShell>
     );
 
-    expect(screen.getByLabelText('Inhalt lädt')).toBeTruthy();
-    expect(screen.queryByText('Inhalt')).toBeNull();
+    const main = screen.getByRole('main');
+
+    expect(await screen.findByText('Sidebar Ready')).toBeTruthy();
+    expect(await screen.findByRole('link', { name: 'Mein Konto' })).toBeTruthy();
+    expect(screen.queryByText('Sidebar Loading')).toBeNull();
+    expect(within(main).getByLabelText('Inhalt lädt')).toBeTruthy();
+    expect(main.getAttribute('aria-busy')).toBe('true');
+    expect(within(main).queryByText('Inhalt')).toBeNull();
   });
 
   it('versteckt die Sidebar fuer nicht eingeloggte Nutzer', () => {

@@ -88,32 +88,62 @@ export const createMockRouteGuardUser = (): RouteGuardUser => ({
   ],
 });
 
-export const readRouteGuardUser = (payload: unknown): RouteGuardUser => {
-  const parsedPayload = payload as {
-    user?: {
-      roles?: unknown;
-      permissionActions?: unknown;
-      permissionStatus?: unknown;
-      assignedModules?: unknown;
-    };
+type RouteGuardUserPayload = {
+  user?: {
+    id?: unknown;
+    instanceId?: unknown;
+    roles?: unknown;
+    permissionActions?: unknown;
+    permissionStatus?: unknown;
+    assignedModules?: unknown;
   };
+};
 
-  const roles = Array.isArray(parsedPayload.user?.roles)
-    ? parsedPayload.user.roles.filter((entry): entry is string => typeof entry === 'string')
-    : [];
+const readRouteGuardPayloadUser = (payload: unknown): RouteGuardUserPayload['user'] => {
+  if (typeof payload !== 'object' || payload === null || !('user' in payload)) {
+    return undefined;
+  }
 
-  const permissionActions = Array.isArray(parsedPayload.user?.permissionActions)
-    ? parsedPayload.user.permissionActions.filter((entry): entry is string => typeof entry === 'string')
-    : [];
+  const { user } = payload as RouteGuardUserPayload;
+  if (typeof user !== 'object' || user === null || Array.isArray(user)) {
+    return undefined;
+  }
 
-  const assignedModules = Array.isArray(parsedPayload.user?.assignedModules)
-    ? parsedPayload.user.assignedModules.filter((entry): entry is string => typeof entry === 'string')
-    : [];
+  return user;
+};
 
-  const rawStatus = parsedPayload.user?.permissionStatus;
+const readStringArray = (value: unknown): string[] =>
+  Array.isArray(value) ? value.filter((entry: unknown): entry is string => typeof entry === 'string') : [];
+
+export const readRouteGuardUser = (payload: unknown): RouteGuardUser => {
+  const user = readRouteGuardPayloadUser(payload);
+
+  const roles = readStringArray(user?.roles);
+  const permissionActions = readStringArray(user?.permissionActions);
+  const assignedModules = readStringArray(user?.assignedModules);
+
+  const rawStatus = user?.permissionStatus;
   const permissionStatus: 'ok' | 'degraded' = rawStatus === 'degraded' ? 'degraded' : 'ok';
 
   return { roles, permissionActions, permissionStatus, assignedModules };
+};
+
+export const parseRouteGuardUser = (payload: unknown): RouteGuardUser | null => {
+  const user = readRouteGuardPayloadUser(payload);
+
+  if (!user) {
+    return null;
+  }
+
+  const hasRecognizedUserShape =
+    typeof user.id === 'string' ||
+    typeof user.instanceId === 'string' ||
+    Array.isArray(user.roles) ||
+    Array.isArray(user.permissionActions) ||
+    Array.isArray(user.assignedModules) ||
+    typeof user.permissionStatus === 'string';
+
+  return hasRecognizedUserShape ? readRouteGuardUser(payload) : null;
 };
 
 const loadRouteGuardUserFromAuthMe = async (url: string, init?: RequestInit): Promise<RouteGuardUser | null> => {
@@ -123,7 +153,7 @@ const loadRouteGuardUserFromAuthMe = async (url: string, init?: RequestInit): Pr
     return null;
   }
 
-  return readRouteGuardUser(await response.json());
+  return parseRouteGuardUser(await response.json());
 };
 
 const getRouteGuardUser = createIsomorphicFn()
@@ -159,7 +189,7 @@ const getRouteGuardUser = createIsomorphicFn()
         fetchWithRequestTimeout(new URL('/auth/me', resolveBaseUrl()).toString(), undefined, { timeoutMs: 5_000 })
       );
       if (!result.ok) return null;
-      return readRouteGuardUser(result.payload);
+      return parseRouteGuardUser(result.payload);
     } catch {
       return null;
     }

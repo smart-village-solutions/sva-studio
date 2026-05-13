@@ -88,7 +88,7 @@ export const useMediaLibrary = (query: MediaListQuery = {}): UseMediaLibraryResu
       });
     } catch (cause) {
       const resolvedError = asIamError(cause);
-      if (resolvedError.status === 403) {
+      if (resolvedError.status === 401 || resolvedError.status === 403) {
         await invalidatePermissions();
       }
       setAssets([]);
@@ -138,7 +138,7 @@ export const useCreateMediaUpload = (): UseCreateMediaUploadResult => {
         return response.data;
       } catch (cause) {
         const resolvedError = asIamError(cause);
-        if (resolvedError.status === 403) {
+        if (resolvedError.status === 401 || resolvedError.status === 403) {
           await invalidatePermissions();
         }
         setMutationError(resolvedError);
@@ -195,7 +195,7 @@ export const useMediaDetail = (assetId: string | null): UseMediaDetailResult => 
       });
     } catch (cause) {
       const resolvedError = asIamError(cause);
-      if (resolvedError.status === 403) {
+      if (resolvedError.status === 401 || resolvedError.status === 403) {
         await invalidatePermissions();
       }
       setAsset(null);
@@ -236,7 +236,7 @@ export const useMediaDetail = (assetId: string | null): UseMediaDetailResult => 
         return true;
       } catch (cause) {
         const resolvedError = asIamError(cause);
-        if (resolvedError.status === 403) {
+        if (resolvedError.status === 401 || resolvedError.status === 403) {
           await invalidatePermissions();
         }
         setMutationError(resolvedError);
@@ -262,7 +262,7 @@ export const useMediaDetail = (assetId: string | null): UseMediaDetailResult => 
       return response.data;
     } catch (cause) {
       const resolvedError = asIamError(cause);
-      if (resolvedError.status === 403) {
+      if (resolvedError.status === 401 || resolvedError.status === 403) {
         await invalidatePermissions();
       }
       setMutationError(resolvedError);
@@ -284,7 +284,7 @@ export const useMediaDetail = (assetId: string | null): UseMediaDetailResult => 
       return true;
     } catch (cause) {
       const resolvedError = asIamError(cause);
-      if (resolvedError.status === 403) {
+      if (resolvedError.status === 401 || resolvedError.status === 403) {
         await invalidatePermissions();
       }
       setMutationError(resolvedError);

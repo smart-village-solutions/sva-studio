@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   createRuntimeRouteTree,
+  parseRouteGuardUser,
   readRouteGuardUser,
   resolveBaseUrl,
 } from './router';
@@ -70,6 +71,49 @@ describe('createRuntimeRouteTree', () => {
     });
 
     expect(readRouteGuardUser({ user: { roles: 'not-an-array' } })).toEqual({
+      roles: [],
+      permissionActions: [],
+      permissionStatus: 'ok',
+      assignedModules: [],
+    });
+  });
+
+  it('reads degraded permission snapshots without throwing', () => {
+    expect(
+      readRouteGuardUser({
+        user: {
+          roles: ['editor'],
+          permissionActions: [],
+          permissionStatus: 'degraded',
+          assignedModules: ['news'],
+        },
+      }),
+    ).toEqual({
+      roles: ['editor'],
+      permissionActions: [],
+      permissionStatus: 'degraded',
+      assignedModules: ['news'],
+    });
+  });
+
+  it('treats malformed auth payloads as unauthenticated without throwing', () => {
+    expect(parseRouteGuardUser(null)).toBeNull();
+    expect(parseRouteGuardUser('invalid-payload')).toBeNull();
+    expect(parseRouteGuardUser({})).toBeNull();
+    expect(parseRouteGuardUser({ user: null })).toBeNull();
+    expect(parseRouteGuardUser({ user: {} })).toBeNull();
+    expect(parseRouteGuardUser({ user: [] })).toBeNull();
+  });
+
+  it('accepts authenticated payloads with stable user identifiers even without role arrays', () => {
+    expect(
+      parseRouteGuardUser({
+        user: {
+          id: 'user-1',
+          instanceId: 'instance-1',
+        },
+      }),
+    ).toEqual({
       roles: [],
       permissionActions: [],
       permissionStatus: 'ok',

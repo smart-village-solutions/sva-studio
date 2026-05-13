@@ -145,7 +145,7 @@ describe('root route document', () => {
     });
   });
 
-  it('marks the shell as loading after hydration when the router is pending', async () => {
+  it('keeps the shell mounted and forwards route-level pending state to the content area', async () => {
     useRouterStateMock.mockImplementation(({ select }) =>
       select({
         status: 'pending',
@@ -166,4 +166,27 @@ describe('root route document', () => {
       expect(screen.getByTestId('app-shell').getAttribute('data-is-loading')).toBe('true');
     });
   });
+
+  it('keeps the shell mounted with the current pathname during route-level pending navigation', async () => {
+    useRouterStateMock.mockImplementation(({ select }) =>
+      select({
+        status: 'pending',
+        isLoading: true,
+        location: { pathname: '/admin/users' },
+      }),
+    );
+
+    const { RootDocument } = await import('./__root');
+
+    render(
+      <RootDocument>
+        <div>content</div>
+      </RootDocument>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('app-shell').getAttribute('data-current-pathname')).toBe('/admin/users');
+    });
+  });
+
 });

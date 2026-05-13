@@ -71,6 +71,10 @@ const DEFAULT_FILTERS: OrganizationFilters = {
 };
 
 const organizationsLogger = createOperationLogger('organizations-hook', 'debug');
+const PERMISSION_INVALIDATED_EVENT = 'permission_invalidated_after_401_or_403';
+
+const getOrganizationMutationOperation = (organizationId?: string) =>
+  organizationId ? 'organization_mutation_with_detail_reload' : 'organization_mutation';
 
 export const useOrganizations = (initial?: Partial<OrganizationFilters>): UseOrganizationsResult => {
   const { invalidatePermissions } = useAuth();
@@ -150,9 +154,9 @@ export const useOrganizations = (initial?: Partial<OrganizationFilters>): UseOrg
       return true;
     } catch (cause) {
       const resolvedError = asIamError(cause);
-      if (resolvedError.status === 403) {
+      if (resolvedError.status === 401 || resolvedError.status === 403) {
         await invalidatePermissions();
-        organizationsLogger.info('permission_invalidated_after_403', {
+        organizationsLogger.info(PERMISSION_INVALIDATED_EVENT, {
           operation: 'list_organizations',
           status: resolvedError.status,
           error_code: resolvedError.code,
@@ -203,9 +207,9 @@ export const useOrganizations = (initial?: Partial<OrganizationFilters>): UseOrg
         return response.data;
       } catch (cause) {
         const resolvedError = asIamError(cause);
-        if (resolvedError.status === 403) {
+        if (resolvedError.status === 401 || resolvedError.status === 403) {
           await invalidatePermissions();
-          organizationsLogger.info('permission_invalidated_after_403', {
+          organizationsLogger.info(PERMISSION_INVALIDATED_EVENT, {
             operation: 'get_organization',
             status: resolvedError.status,
             error_code: resolvedError.code,
@@ -233,7 +237,7 @@ export const useOrganizations = (initial?: Partial<OrganizationFilters>): UseOrg
   const mutate = React.useCallback(
     async <T,>(action: () => Promise<{ data: T }>, options?: { organizationId?: string }): Promise<T | null> => {
       setMutationError(null);
-      const operation = options?.organizationId ? 'organization_mutation_with_detail_reload' : 'organization_mutation';
+      const operation = getOrganizationMutationOperation(options?.organizationId);
       logBrowserOperationStart(organizationsLogger, 'organization_mutation_started', {
         operation,
         organization_id: options?.organizationId,
@@ -257,9 +261,9 @@ export const useOrganizations = (initial?: Partial<OrganizationFilters>): UseOrg
         return result.data;
       } catch (cause) {
         const resolvedError = asIamError(cause);
-        if (resolvedError.status === 403) {
+        if (resolvedError.status === 401 || resolvedError.status === 403) {
           await invalidatePermissions();
-          organizationsLogger.info('permission_invalidated_after_403', {
+          organizationsLogger.info(PERMISSION_INVALIDATED_EVENT, {
             operation,
             status: resolvedError.status,
             error_code: resolvedError.code,

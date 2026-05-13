@@ -151,19 +151,21 @@ describe('useOrganizationContext', () => {
     expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
   });
 
-  it('stores the resolved error and invalidates permissions on forbidden responses', async () => {
-    const forbiddenError = { status: 403, code: 'forbidden', message: 'Forbidden' };
-    asIamErrorMock.mockReturnValue(forbiddenError);
-    getMyOrganizationContextMock.mockRejectedValueOnce(new Error('forbidden-load'));
+  it.each([
+    { status: 401, code: 'unauthorized', message: 'Unauthorized' },
+    { status: 403, code: 'forbidden', message: 'Forbidden' },
+  ])('stores the resolved error and invalidates permissions on protected responses (status $status, code $code)', async (protectedError) => {
+    asIamErrorMock.mockReturnValue(protectedError);
+    getMyOrganizationContextMock.mockRejectedValueOnce(new Error('protected-load'));
 
     const { result } = renderHook(() => useOrganizationContext());
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
-      expect(result.current.error).toBe(forbiddenError);
+      expect(result.current.error).toBe(protectedError);
     });
 
-    updateMyOrganizationContextMock.mockRejectedValueOnce(new Error('forbidden-switch'));
+    updateMyOrganizationContextMock.mockRejectedValueOnce(new Error('protected-switch'));
 
     await act(async () => {
       const switched = await result.current.switchOrganization('org-2');
@@ -171,6 +173,6 @@ describe('useOrganizationContext', () => {
     });
 
     expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(2);
-    expect(result.current.error).toBe(forbiddenError);
+    expect(result.current.error).toBe(protectedError);
   });
 });

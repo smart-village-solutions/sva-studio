@@ -49,6 +49,7 @@ type UseGroupsResult = {
 };
 
 const groupsLogger = createOperationLogger('groups-hook', 'debug');
+const PERMISSION_INVALIDATED_EVENT = 'permission_invalidated_after_401_or_403';
 
 type LegacyGroupMember = {
   accountId: string;
@@ -123,9 +124,9 @@ export const useGroups = (): UseGroupsResult => {
         return normalizeGroupDetail(response.data);
       } catch (cause) {
         const resolvedError = asIamError(cause);
-        if (resolvedError.status === 403) {
+        if (resolvedError.status === 401 || resolvedError.status === 403) {
           await invalidatePermissions();
-          groupsLogger.info('permission_invalidated_after_403', {
+          groupsLogger.info(PERMISSION_INVALIDATED_EVENT, {
             operation: 'get_group',
             status: resolvedError.status,
             error_code: resolvedError.code,

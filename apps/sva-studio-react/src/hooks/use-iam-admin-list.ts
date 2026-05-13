@@ -69,9 +69,9 @@ export const useIamAdminList = <TItem>(
       );
     } catch (cause) {
       const resolvedError = asIamError(cause);
-      if (resolvedError.status === 403) {
+      if (resolvedError.status === 401 || resolvedError.status === 403) {
         await invalidatePermissions();
-        adminListLogger.info('permission_invalidated_after_403', {
+        adminListLogger.info('permission_invalidated_after_401_or_403', {
           operation: 'list_refetch',
           status: resolvedError.status,
           error_code: resolvedError.code,
@@ -106,9 +106,9 @@ export const useIamAdminList = <TItem>(
         return result;
       } catch (cause) {
         const resolvedError = asIamError(cause);
-        if (resolvedError.status === 403) {
+        if (resolvedError.status === 401 || resolvedError.status === 403) {
           await invalidatePermissions();
-          adminListLogger.info('permission_invalidated_after_403', {
+          adminListLogger.info('permission_invalidated_after_401_or_403', {
             operation: typeof meta.operation === 'string' ? meta.operation : 'mutation',
             status: resolvedError.status,
             error_code: resolvedError.code,

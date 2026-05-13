@@ -642,6 +642,27 @@ describe('instance registry service facade', () => {
     );
   });
 
+  it('keeps instance detail available when waste-management settings cannot be loaded', async () => {
+    const repository = createRepository({
+      listAuditEvents: vi.fn(async () => []),
+      listKeycloakProvisioningRuns: vi.fn(async () => []),
+    });
+    const service = createInstanceRegistryService(
+      createDeps(repository, {
+        loadWasteDataSourceRecord: vi.fn(async () => {
+          throw new Error('relation "iam.instance_waste_data_sources" does not exist');
+        }),
+      })
+    );
+
+    await expect(service.getInstanceDetail('demo')).resolves.toEqual(
+      expect.objectContaining({
+        instanceId: 'demo',
+        wasteManagementSettings: undefined,
+      })
+    );
+  });
+
   it('probes tenant IAM access, persists audit evidence and returns the updated status', async () => {
     const repository = createRepository({
       appendAuditEvent: vi.fn(async () => undefined),

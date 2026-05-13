@@ -62,6 +62,8 @@ Für lokale Entwicklung den App-Login-User einmalig anlegen und auf die Runtime-
 
 ```sql
 CREATE ROLE sva_app LOGIN PASSWORD 'sva_app_local_dev_password' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT;
+GRANT CONNECT, CREATE ON DATABASE sva_studio TO sva_app;
+GRANT USAGE, CREATE ON SCHEMA public TO sva_app;
 GRANT iam_app TO sva_app;
 ```
 

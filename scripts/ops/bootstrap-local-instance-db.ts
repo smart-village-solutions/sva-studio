@@ -237,6 +237,10 @@ BEGIN
 END
 $$;
 
+GRANT CONNECT, CREATE ON DATABASE ${sqlIdentifier(options.targetDbName)} TO ${sqlIdentifier(options.targetAppDbUser)};
+GRANT USAGE, CREATE ON SCHEMA public TO ${sqlIdentifier(options.targetAppDbUser)};
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO ${sqlIdentifier(options.targetAppDbUser)};
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO ${sqlIdentifier(options.targetAppDbUser)};
 GRANT iam_app TO ${sqlIdentifier(options.targetAppDbUser)};
 GRANT USAGE ON SCHEMA iam TO ${sqlIdentifier(options.targetAppDbUser)};
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA iam TO ${sqlIdentifier(options.targetAppDbUser)};

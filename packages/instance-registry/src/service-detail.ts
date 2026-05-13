@@ -15,7 +15,7 @@ const logger = createSdkLogger({ component: 'iam-instance-registry-service', lev
 
 const loadOptionalArtifact = async <T>(
   instanceId: string,
-  artifactKey: 'keycloak_status' | 'keycloak_preflight' | 'keycloak_plan',
+  artifactKey: 'keycloak_status' | 'keycloak_preflight' | 'keycloak_plan' | 'waste_management_settings',
   load: () => Promise<T | null>
 ): Promise<T | undefined> => {
   try {
@@ -59,7 +59,11 @@ export const loadKeycloakDetailArtifacts = async (
       deps.repository.listKeycloakProvisioningRuns(instance.instanceId),
       deps.repository.getLatestTenantIamAccessProbe(instance.instanceId),
       deps.repository.getRoleReconcileSummary(instance.instanceId),
-      deps.loadWasteDataSourceRecord?.(instance.instanceId) ?? Promise.resolve(null),
+      loadOptionalArtifact(
+        instance.instanceId,
+        'waste_management_settings',
+        () => deps.loadWasteDataSourceRecord?.(instance.instanceId) ?? Promise.resolve(null)
+      ),
     ]);
 
   const tenantIamStatus = buildTenantIamStatus({

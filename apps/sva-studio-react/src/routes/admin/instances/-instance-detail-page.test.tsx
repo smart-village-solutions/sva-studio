@@ -79,16 +79,6 @@ const createSelectedInstance = (overrides: Record<string, unknown> = {}) => ({
     firstName: 'Demo',
     lastName: 'Admin',
   },
-  wasteManagementSettings: {
-    instanceId: 'demo',
-    provider: 'supabase',
-    projectUrl: 'https://waste.example.supabase.co',
-    schemaName: 'public',
-    enabled: true,
-    databaseUrlConfigured: true,
-    serviceRoleKeyConfigured: true,
-    visibleStatus: 'ok',
-  },
   keycloakStatus: {
     realmExists: true,
     clientExists: true,
@@ -244,19 +234,6 @@ describe('InstanceDetailPage', () => {
     fireEvent.change(screen.getByLabelText('Admin-Benutzername', { selector: '#detail-admin-username' }), {
       target: { value: ' updated-admin ' },
     });
-    fireEvent.change(screen.getByLabelText('Supabase-Projekt-URL', { selector: '#detail-waste-project-url' }), {
-      target: { value: ' https://waste-updated.example.supabase.co ' },
-    });
-    fireEvent.change(screen.getByLabelText('Schema-Name', { selector: '#detail-waste-schema-name' }), {
-      target: { value: ' waste_ops ' },
-    });
-    fireEvent.change(screen.getByLabelText('Datenbank-URL', { selector: '#detail-waste-database-url' }), {
-      target: { value: ' postgres://waste.example/updated ' },
-    });
-    fireEvent.change(screen.getByLabelText('Service-Role-Key', { selector: '#detail-waste-service-role-key' }), {
-      target: { value: ' updated-service-role ' },
-    });
-
     fireEvent.click(screen.getByRole('button', { name: 'Instanz speichern' }));
 
     await waitFor(() => {
@@ -277,14 +254,6 @@ describe('InstanceDetailPage', () => {
           email: 'demo@example.org',
           firstName: 'Demo',
           lastName: 'Admin',
-        },
-        wasteManagementSettings: {
-          provider: 'supabase',
-          enabled: true,
-          projectUrl: 'https://waste-updated.example.supabase.co',
-          schemaName: 'waste_ops',
-          databaseUrl: 'postgres://waste.example/updated',
-          serviceRoleKey: 'updated-service-role',
         },
       });
     });

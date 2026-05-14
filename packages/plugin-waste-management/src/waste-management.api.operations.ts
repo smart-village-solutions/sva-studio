@@ -4,6 +4,7 @@ import type {
   WasteTourDateShiftRecord,
   WasteTourRecord,
 } from '@sva/plugin-sdk';
+import type { StudioJobDetail } from '@sva/core';
 
 import type {
   CreateWasteManagementGlobalDateShiftInput,
@@ -18,7 +19,11 @@ import type {
   UpdateWasteManagementTourInput,
   WasteManagementSettingsInput,
 } from './waste-management.api.types.js';
-import { requestWasteManagementJob, requestWasteManagementMutation } from './waste-management.api.shared.js';
+import {
+  requestWasteManagementJob,
+  requestWasteManagementJobDetail,
+  requestWasteManagementMutation,
+} from './waste-management.api.shared.js';
 
 export const createWasteManagementTour = async (input: CreateWasteManagementTourInput): Promise<WasteTourRecord> =>
   requestWasteManagementMutation('/api/v1/waste-management/tours', input);
@@ -80,3 +85,8 @@ export const startWasteManagementSeed = async (input: StartWasteManagementSeedIn
 
 export const startWasteManagementReset = async (input: StartWasteManagementResetInput) =>
   requestWasteManagementJob('/api/v1/waste-management/tools/reset', input);
+
+export const getWasteManagementJobDetail = async (
+  jobId: string,
+  init?: RequestInit
+): Promise<StudioJobDetail> => requestWasteManagementJobDetail(jobId, init);

@@ -5,7 +5,6 @@ import { createGetInstanceDetail } from './service-detail.js';
 import { createStatusArtifacts, toListItem } from './service-helpers.js';
 import { createProvisioningArtifacts } from './service-provisioning.js';
 import {
-  buildWasteManagementSettingsRecord,
   DEFAULT_TENANT_ADMIN_CLIENT_ID,
   encryptAuthClientSecret,
   encryptTenantAdminClientSecret,
@@ -67,11 +66,6 @@ export const createProvisioningRequestHandler =
         request_id: input.requestId,
       });
       return { ok: false, reason: 'already_exists' as const };
-    }
-
-    if (input.wasteManagementSettings) {
-      const wasteRecord = await buildWasteManagementSettingsRecord(deps, input.instanceId, input.wasteManagementSettings);
-      await deps.saveWasteDataSourceRecord?.(wasteRecord);
     }
 
     await createProvisioningArtifacts(deps.repository, instance, input);
@@ -169,11 +163,6 @@ export const createUpdateInstanceHandler =
     });
     if (!updated) {
       return null;
-    }
-
-    if (input.wasteManagementSettings) {
-      const wasteRecord = await buildWasteManagementSettingsRecord(deps, input.instanceId, input.wasteManagementSettings);
-      await deps.saveWasteDataSourceRecord?.(wasteRecord);
     }
 
     invalidateHostWithLog(deps.invalidateHost, existing.primaryHostname, updated.instanceId);

@@ -11,6 +11,18 @@ import {
 import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 
 import type { SvaMainserverNewsInput } from '../types.js';
+import {
+  errorJson,
+  isRecord,
+  isResponse,
+  json,
+  parseAddress,
+  parseCategories,
+  parseWebUrl,
+  readBoolean,
+  readNumber,
+  readString,
+} from './content-route-helpers.js';
 import { SvaMainserverError } from './errors.js';
 import { parseMainserverListQuery } from './list-pagination.js';
 import {
@@ -30,18 +42,6 @@ type RouteMatch =
   | { readonly kind: 'collection' }
   | { readonly kind: 'item'; readonly newsId: string };
 
-type ParsedValue<T> = T | Response;
-
-const json = (body: unknown, status = 200): Response =>
-  Response.json(body, {
-    status,
-    headers: {
-      'Cache-Control': 'no-store',
-    },
-  });
-
-const errorJson = (status: number, error: string, message: string): Response => json({ error, message }, status);
-
 const matchRoute = (request: Request): RouteMatch | null => {
   const pathname = new URL(request.url).pathname;
   if (pathname === NEWS_COLLECTION_PATH) {
@@ -55,11 +55,6 @@ const matchRoute = (request: Request): RouteMatch | null => {
   }
   return null;
 };
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && Array.isArray(value) === false;
-
-const isResponse = <T>(value: ParsedValue<T>): value is Response => value instanceof Response;
 
 type ParsedNewsInput = {
   readonly news: SvaMainserverNewsInput;
@@ -87,22 +82,6 @@ const readonlyMutationFields = new Set([
   'likedByMe',
   'pushNotificationsSentAt',
 ]);
-
-const readString = (value: unknown): string | undefined =>
-  typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
-
-const readBoolean = (value: unknown): boolean | undefined => (typeof value === 'boolean' ? value : undefined);
-
-const readNumber = (value: unknown): number | undefined => {
-  if (typeof value === 'number' && Number.isFinite(value)) {
-    return value;
-  }
-  if (typeof value === 'string' && value.trim().length > 0) {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : undefined;
-  }
-  return undefined;
-};
 
 const isValidDate = (value: string): boolean => Number.isNaN(new Date(value).getTime()) === false;
 
@@ -141,108 +120,6 @@ const getVisibleTextLength = (value: string): number => {
   }
 
   return visibleLength;
-};
-
-const isHttpsUrl = (value: string): boolean => {
-  try {
-    return new URL(value).protocol === 'https:';
-  } catch {
-    return false;
-  }
-};
-
-const parseWebUrl = (value: unknown): SvaMainserverNewsInput['sourceUrl'] | undefined | Response => {
-  if (value === undefined || value === null) {
-    return undefined;
-  }
-  if (!isRecord(value)) {
-    return errorJson(400, 'invalid_request', 'URL-Angaben müssen als Objekt gesendet werden.');
-  }
-  const url = readString(value.url);
-  if (!url || !isHttpsUrl(url)) {
-    return errorJson(400, 'invalid_request', 'URL-Angaben müssen eine gültige HTTPS-URL enthalten.');
-  }
-  return {
-    url,
-    ...(readString(value.description) ? { description: readString(value.description) } : {}),
-  };
-};
-
-const parseCategories = (value: unknown): SvaMainserverNewsInput['categories'] | undefined | Response => {
-  if (value === undefined || value === null) {
-    return undefined;
-  }
-  if (!Array.isArray(value)) {
-    return errorJson(400, 'invalid_request', 'Kategorien müssen als Liste gesendet werden.');
-  }
-
-  const parseCategory = (category: unknown): NonNullable<SvaMainserverNewsInput['categories']>[number] | Response => {
-    if (!isRecord(category)) {
-      return errorJson(400, 'invalid_request', 'Kategorien müssen Objekte sein.');
-    }
-    const name = readString(category.name);
-    if (!name || name.length > 128) {
-      return errorJson(400, 'invalid_request', 'Kategorien benötigen einen Namen mit maximal 128 Zeichen.');
-    }
-    const children = parseCategories(category.children);
-    if (children instanceof Response) {
-      return children;
-    }
-    return {
-      name,
-      ...(isRecord(category.payload) ? { payload: category.payload } : {}),
-      ...(children ? { children } : {}),
-    };
-  };
-
-  const categories = [];
-  for (const item of value) {
-    const category = parseCategory(item);
-    if (category instanceof Response) {
-      return category;
-    }
-    categories.push(category);
-  }
-  return categories;
-};
-
-const parseAddress = (value: unknown): SvaMainserverNewsInput['address'] | undefined | Response => {
-  if (value === undefined || value === null) {
-    return undefined;
-  }
-  if (!isRecord(value)) {
-    return errorJson(400, 'invalid_request', 'Adressdaten müssen als Objekt gesendet werden.');
-  }
-
-  let geoLocation: NonNullable<SvaMainserverNewsInput['address']>['geoLocation'] | undefined;
-  if (value.geoLocation !== undefined && value.geoLocation !== null) {
-    if (!isRecord(value.geoLocation)) {
-      return errorJson(400, 'invalid_request', 'Geo-Koordinaten müssen als Objekt gesendet werden.');
-    }
-    const latitude = readNumber(value.geoLocation.latitude);
-    const longitude = readNumber(value.geoLocation.longitude);
-    if (
-      latitude === undefined ||
-      longitude === undefined ||
-      latitude < -90 ||
-      latitude > 90 ||
-      longitude < -180 ||
-      longitude > 180
-    ) {
-      return errorJson(400, 'invalid_request', 'Geo-Koordinaten sind ungültig.');
-    }
-    geoLocation = { latitude, longitude };
-  }
-
-  return {
-    ...(readNumber(value.id) !== undefined ? { id: readNumber(value.id) } : {}),
-    ...(readString(value.addition) ? { addition: readString(value.addition) } : {}),
-    ...(readString(value.street) ? { street: readString(value.street) } : {}),
-    ...(readString(value.zip) ? { zip: readString(value.zip) } : {}),
-    ...(readString(value.city) ? { city: readString(value.city) } : {}),
-    ...(readString(value.kind) ? { kind: readString(value.kind) } : {}),
-    ...(geoLocation ? { geoLocation } : {}),
-  };
 };
 
 const parseContentBlockMediaContents = (
@@ -397,7 +274,9 @@ const parseNewsInput = async (request: Request, options: ParseOptions): Promise<
   if (categories instanceof Response) {
     return categories;
   }
-  const address = parseAddress(body.address);
+  const address = parseAddress(body.address, {
+    requireGeoLocationObjectMessage: 'Geo-Koordinaten müssen als Objekt gesendet werden.',
+  });
   if (address instanceof Response) {
     return address;
   }

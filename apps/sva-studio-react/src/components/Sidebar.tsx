@@ -632,8 +632,6 @@ const SidebarPanel = ({
     );
   }, [flyoutGroupId, groupOpenState, isCollapsed, pathname, sections.length]);
   const showAppTitle = isCollapsed === false;
-  const showFooter = isLoading === false;
-
   return (
     <div className="flex h-full flex-col">
       <div className="px-4 py-4">
@@ -723,26 +721,26 @@ const SidebarPanel = ({
                 </ul>
               </section>
             ))}
+
+            {footerItems.length > 0 ? (
+              <section className="space-y-1 pt-4">
+                <ul className="space-y-1">
+                  {footerItems.map((item) => (
+                    <li key={item.id}>
+                      <SidebarLeafLink
+                        item={item}
+                        isActive={isLeafActive(pathname, item)}
+                        isCollapsed={isCollapsed}
+                        onClick={onNavigate}
+                      />
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ) : null}
           </div>
         )}
       </nav>
-
-      {showFooter ? (
-        <div className="px-3 py-4">
-          <ul className="space-y-1">
-            {footerItems.map((item) => (
-              <li key={item.id}>
-                <SidebarLeafLink
-                  item={item}
-                  isActive={isLeafActive(pathname, item)}
-                  isCollapsed={isCollapsed}
-                  onClick={onNavigate}
-                />
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
     </div>
   );
 };

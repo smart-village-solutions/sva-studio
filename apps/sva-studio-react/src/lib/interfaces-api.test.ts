@@ -4,8 +4,11 @@ const state = vi.hoisted(() => ({
   request: new Request('http://localhost/interfaces'),
   loadSvaMainserverInterfacesOverview: vi.fn(),
   listStoredInterfaces: vi.fn(),
+  loadInstanceById: vi.fn(),
   upsertStoredInterface: vi.fn(),
+  getStoredInterface: vi.fn(),
   deleteStoredInterface: vi.fn(),
+  runStoredInterfaceHealthcheck: vi.fn(),
   checkStoredInterfaceHealth: vi.fn(),
   isCustomInterfaceStorageAvailable: vi.fn(),
   saveSvaMainserverSettings: vi.fn(),
@@ -47,12 +50,21 @@ vi.mock('@sva/server-runtime', () => ({
   createSdkLogger: () => state.logger,
 }));
 
+vi.mock('@sva/data-repositories/server', () => ({
+  loadInstanceById: state.loadInstanceById,
+}));
+
 vi.mock('./instance-interfaces-server.js', () => ({
   listStoredInterfaces: state.listStoredInterfaces,
   upsertStoredInterface: state.upsertStoredInterface,
+  getStoredInterface: state.getStoredInterface,
   deleteStoredInterface: state.deleteStoredInterface,
   checkStoredInterfaceHealth: state.checkStoredInterfaceHealth,
   isCustomInterfaceStorageAvailable: state.isCustomInterfaceStorageAvailable,
+}));
+
+vi.mock('./instance-interface-healthcheck.server.js', () => ({
+  runStoredInterfaceHealthcheck: state.runStoredInterfaceHealthcheck,
 }));
 
 describe('interfaces app adapter', () => {
@@ -60,8 +72,11 @@ describe('interfaces app adapter', () => {
     vi.resetModules();
     state.loadSvaMainserverInterfacesOverview.mockReset();
     state.listStoredInterfaces.mockReset();
+    state.loadInstanceById.mockReset();
     state.upsertStoredInterface.mockReset();
+    state.getStoredInterface.mockReset();
     state.deleteStoredInterface.mockReset();
+    state.runStoredInterfaceHealthcheck.mockReset();
     state.checkStoredInterfaceHealth.mockReset();
     state.isCustomInterfaceStorageAvailable.mockReset();
     state.saveSvaMainserverSettings.mockReset();
@@ -75,6 +90,7 @@ describe('interfaces app adapter', () => {
       status: 'unknown',
       checkedAt: '2026-05-12T08:00:00.000Z',
     });
+    state.runStoredInterfaceHealthcheck.mockResolvedValue(null);
     state.isCustomInterfaceStorageAvailable.mockReturnValue(true);
   });
 
@@ -156,11 +172,16 @@ describe('interfaces app adapter', () => {
         updatedAt: '2026-05-03T17:00:00.000Z',
       },
     ]);
+    state.loadInstanceById.mockResolvedValue({
+      instanceId: 'de-musterhausen',
+      assignedModules: ['waste-management'],
+    });
 
     const { listInstanceInterfacesServerFn } = await import('./interfaces-api');
 
     await expect(listInstanceInterfacesServerFn()).resolves.toEqual({
       instanceId: 'de-musterhausen',
+      availableTypes: ['mainserver', 's3', 'supabase'],
       entries: [
         expect.objectContaining({
           id: 's3-1',
@@ -170,6 +191,40 @@ describe('interfaces app adapter', () => {
       ],
     });
     expect(state.listStoredInterfaces).toHaveBeenCalledWith('de-musterhausen');
+  });
+
+  it('omits supabase from the available types when the waste-management module is not assigned', async () => {
+    state.withAuthenticatedUser.mockImplementation(
+      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<unknown>) =>
+        handler({
+          user: {
+            id: 'subject-1',
+            instanceId: 'de-musterhausen',
+            roles: ['interface_manager'],
+          },
+        })
+    );
+    state.loadSvaMainserverInterfacesOverview.mockResolvedValue({
+      instanceId: 'de-musterhausen',
+      config: null,
+      status: {
+        status: 'connected',
+        checkedAt: '2026-05-03T17:00:00.000Z',
+      },
+    });
+    state.listStoredInterfaces.mockResolvedValue([]);
+    state.loadInstanceById.mockResolvedValue({
+      instanceId: 'de-musterhausen',
+      assignedModules: ['news'],
+    });
+
+    const { listInstanceInterfacesServerFn } = await import('./interfaces-api');
+
+    await expect(listInstanceInterfacesServerFn()).resolves.toEqual({
+      instanceId: 'de-musterhausen',
+      availableTypes: ['mainserver', 's3'],
+      entries: [],
+    });
   });
 
   it('rejects list requests from users without interfaces permissions before reading stored entries', async () => {
@@ -463,6 +518,87 @@ describe('interfaces app adapter', () => {
       }),
       undefined
     );
+    expect(state.runStoredInterfaceHealthcheck).toHaveBeenCalledWith({
+      instanceId: 'de-musterhausen',
+      interfaceId: 's3-1',
+    });
+  });
+
+  it('rejects supabase interface upserts when the waste-management module is not assigned', async () => {
+    state.withAuthenticatedUser.mockImplementation(
+      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<unknown>) =>
+        handler({
+          user: {
+            id: 'subject-1',
+            instanceId: 'de-musterhausen',
+            roles: ['interface_manager'],
+          },
+        })
+    );
+    state.loadInstanceById.mockResolvedValue({
+      instanceId: 'de-musterhausen',
+      assignedModules: ['news'],
+    });
+
+    const { upsertInstanceInterfaceServerFn } = await import('./interfaces-api');
+
+    await expect(
+      upsertInstanceInterfaceServerFn({
+        data: {
+          instanceId: 'de-musterhausen',
+          draft: {
+            type: 'supabase',
+            name: 'Abfallkalender',
+            enabled: true,
+            config: {
+              projectUrl: 'https://tenant.supabase.co',
+              schemaName: 'wm',
+              databaseUrl: 'postgres://db.example.local/wm',
+              serviceRoleKey: 'service-role-key',
+            },
+          },
+        },
+      })
+    ).rejects.toThrow('supabase_requires_waste_management_module');
+
+    expect(state.upsertStoredInterface).not.toHaveBeenCalled();
+  });
+
+  it('preserves specific S3 upsert errors for the client', async () => {
+    state.withAuthenticatedUser.mockImplementation(
+      async (_request: Request, handler: (ctx: { user: { id: string; instanceId?: string; roles: string[] } }) => Promise<unknown>) =>
+        handler({
+          user: {
+            id: 'subject-1',
+            instanceId: 'de-musterhausen',
+            roles: ['interface_manager'],
+          },
+        })
+    );
+    state.upsertStoredInterface.mockRejectedValue(new Error('secret_unreadable'));
+
+    const { upsertInstanceInterfaceServerFn } = await import('./interfaces-api');
+
+    await expect(
+      upsertInstanceInterfaceServerFn({
+        data: {
+          instanceId: 'de-musterhausen',
+          draft: {
+            type: 's3',
+            name: 'Uploads',
+            enabled: true,
+            config: {
+              endpoint: 'https://s3.example',
+              region: 'eu-central-1',
+              bucket: 'uploads',
+              accessKeyId: 'key-1',
+              secretAccessKey: 'secret-1',
+              forcePathStyle: false,
+            },
+          },
+        },
+      })
+    ).rejects.toThrow('secret_unreadable');
   });
 
   it('rejects interface deletions for users without interfaces permissions', async () => {

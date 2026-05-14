@@ -1,43 +1,52 @@
-export type CreateIdentityUserInput = {
-  readonly username?: string;
-  readonly email: string;
-  readonly firstName?: string;
-  readonly lastName?: string;
-  readonly enabled?: boolean;
-  readonly attributes?: Readonly<Record<string, string | readonly string[]>>;
-};
+type IdentityWritableAttributes = Readonly<Record<string, string | readonly string[]>>;
+type IdentityReadableAttributes = Readonly<Record<string, readonly string[]>>;
 
-export type UpdateIdentityUserInput = {
+type IdentityUserProfileFields = {
   readonly username?: string;
   readonly email?: string;
   readonly firstName?: string;
   readonly lastName?: string;
   readonly enabled?: boolean;
-  readonly attributes?: Readonly<Record<string, string | readonly string[]>>;
+};
+
+type IdentityListWindow = {
+  readonly first?: number;
+  readonly max?: number;
+};
+
+type IdentitySearchQuery = {
+  readonly search?: string;
+};
+
+type IdentityRoleMutationFields = {
+  readonly description?: string;
+  readonly attributes: IdentityManagedRoleAttributes;
+};
+
+export type CreateIdentityUserInput = IdentityUserProfileFields & {
+  readonly email: string;
+  readonly attributes?: IdentityWritableAttributes;
+};
+
+export type UpdateIdentityUserInput = IdentityUserProfileFields & {
+  readonly attributes?: IdentityWritableAttributes;
 };
 
 export type IdentityUser = {
   readonly externalId: string;
 };
 
-export type IdentityUserListQuery = {
-  readonly first?: number;
-  readonly max?: number;
-  readonly search?: string;
-  readonly email?: string;
-  readonly username?: string;
-  readonly enabled?: boolean;
-};
+export type IdentityUserListQuery = IdentityListWindow &
+  IdentitySearchQuery & {
+    readonly email?: string;
+    readonly username?: string;
+    readonly enabled?: boolean;
+  };
 
-export type IdentityListedUser = {
-  readonly externalId: string;
-  readonly username?: string;
-  readonly email?: string;
-  readonly firstName?: string;
-  readonly lastName?: string;
-  readonly enabled?: boolean;
-  readonly attributes?: Readonly<Record<string, readonly string[]>>;
-};
+export type IdentityListedUser = IdentityUser &
+  IdentityUserProfileFields & {
+    readonly attributes?: IdentityReadableAttributes;
+  };
 
 export type IdentityManagedRoleAttributes = {
   readonly managedBy: 'studio';
@@ -46,46 +55,36 @@ export type IdentityManagedRoleAttributes = {
   readonly displayName: string;
 };
 
-export type CreateIdentityRoleInput = {
+export type CreateIdentityRoleInput = IdentityRoleMutationFields & {
   readonly externalName: string;
-  readonly description?: string;
-  readonly attributes: IdentityManagedRoleAttributes;
 };
 
-export type UpdateIdentityRoleInput = {
-  readonly description?: string;
-  readonly attributes: IdentityManagedRoleAttributes;
-};
+export type UpdateIdentityRoleInput = IdentityRoleMutationFields;
 
 export type IdentityRole = {
   readonly id?: string;
   readonly externalName: string;
   readonly description?: string;
-  readonly attributes?: Readonly<Record<string, readonly string[]>>;
+  readonly attributes?: IdentityReadableAttributes;
   readonly composite?: boolean;
   readonly clientRole?: boolean;
   readonly containerId?: string;
 };
 
-export type IdentityRoleListQuery = {
-  readonly first?: number;
-  readonly max?: number;
-  readonly search?: string;
-};
+export type IdentityRoleListQuery = IdentityListWindow & IdentitySearchQuery;
 
-export type IdentityUserAttributes = Readonly<Record<string, readonly string[]>>;
+export type IdentityUserAttributes = IdentityReadableAttributes;
+
+export type ExecuteActionsEmailInput = {
+  readonly actions: readonly string[];
+  readonly clientId?: string;
+  readonly lifespan?: number;
+  readonly redirectUri?: string;
+};
 
 export interface IdentityProviderPort {
   createUser(input: CreateIdentityUserInput): Promise<IdentityUser>;
-  executeActionsEmail?(
-    externalId: string,
-    input: {
-      readonly actions: readonly string[];
-      readonly clientId?: string;
-      readonly lifespan?: number;
-      readonly redirectUri?: string;
-    }
-  ): Promise<void>;
+  executeActionsEmail?(externalId: string, input: ExecuteActionsEmailInput): Promise<void>;
   updateUser(externalId: string, input: UpdateIdentityUserInput): Promise<void>;
   deactivateUser(externalId: string): Promise<void>;
   listUsers(query?: IdentityUserListQuery): Promise<readonly IdentityListedUser[]>;

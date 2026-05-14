@@ -9,6 +9,7 @@ import {
   logBrowserOperationStart,
   logBrowserOperationSuccess,
 } from '../lib/browser-operation-logging';
+import { requestSingleFlight } from '../lib/request-singleflight';
 import { useAuth } from '../providers/auth-provider';
 import { useOrganizationContext } from './use-organization-context';
 
@@ -71,10 +72,14 @@ export const useContentAccess = (): UseContentAccessResult => {
     setIsLoading(true);
     setError(null);
 
-    void fetchWithRequestTimeout(buildPermissionsPath(user.instanceId, organizationContext.context?.activeOrganizationId ?? undefined), undefined, {
-      signal: controller.signal,
-      timeoutMs: 10_000,
-    })
+    const permissionsPath = buildPermissionsPath(user.instanceId, organizationContext.context?.activeOrganizationId ?? undefined);
+
+    void requestSingleFlight(`iam:permissions:${permissionsPath}`, async () =>
+      fetchWithRequestTimeout(permissionsPath, undefined, {
+        signal: controller.signal,
+        timeoutMs: 10_000,
+      })
+    )
       .then(async (response) => {
         if (!response.ok) {
           throw asIamError({

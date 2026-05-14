@@ -22,7 +22,9 @@ describe('tabs primitives', () => {
 
     expect(tabList.className).toContain('bg-transparent');
     expect(tabList.className).toContain('border-0');
+    expect(tabList.className).toContain('min-h-9');
     expect(activeTab.className).toContain('border-b-[3px]');
+    expect(activeTab.className).toContain('min-h-9');
     expect(activeTab.className).toContain('data-[state=active]:border-primary');
     expect(activeTab.className).toContain('data-[state=active]:text-primary');
     expect(activeTab.className).not.toContain('data-[state=active]:bg-background');

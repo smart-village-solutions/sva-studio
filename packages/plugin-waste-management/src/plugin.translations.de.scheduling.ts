@@ -4,6 +4,18 @@ export const wasteManagementPluginTranslationsDEScheduling = {
       "title": "Globale Ausweichtermine",
       "description": "Verschiebungen mit globaler Wirkung über mehrere Touren hinweg.",
       "cardTitle": "Globaler Termin {{value}}",
+      "table": {
+        "ariaLabel": "Tabelle globaler Waste-Ausweichtermine",
+        "caption": "Tabelle globaler Waste-Ausweichtermine mit Kontext und Aktionen.",
+        "originalDate": "Ursprünglicher Termin",
+        "actualDate": "Verschobener Termin",
+        "reason": "Grund",
+        "description": "Beschreibung",
+        "affectedTours": "Betroffene Touren",
+        "hasYear": "Jahresbezug",
+        "reasonKey": "Grundschlüssel",
+        "actions": "Aktionen"
+      },
       "actions": {
         "openCreate": "Globalen Termin anlegen",
         "edit": "Bearbeiten",
@@ -40,6 +52,19 @@ export const wasteManagementPluginTranslationsDEScheduling = {
       "title": "Tourbezogene Ausweichtermine",
       "description": "Gezielte Einzelverschiebungen für konkrete Touren.",
       "cardTitle": "Tour {{value}}",
+      "table": {
+        "ariaLabel": "Tabelle tourbezogener Waste-Ausweichtermine",
+        "caption": "Tabelle tourbezogener Waste-Ausweichtermine mit Kontext und Aktionen.",
+        "tourId": "Tour",
+        "originalDate": "Ursprünglicher Termin",
+        "actualDate": "Verschobener Termin",
+        "reason": "Grund",
+        "description": "Beschreibung",
+        "followUpMode": "Folgeeffekt",
+        "hasYear": "Jahresbezug",
+        "reasonKey": "Grundschlüssel",
+        "actions": "Aktionen"
+      },
       "actions": {
         "openCreate": "Tourtermin anlegen",
         "edit": "Bearbeiten",
@@ -102,6 +127,9 @@ export const wasteManagementPluginTranslationsDEScheduling = {
       "loadForbidden": "Für die Waste-Ausweichtermine fehlt die Berechtigung.",
       "emptyTitle": "Keine Ausweichtermine gefunden",
       "emptyBody": "Passen Sie die Filter an oder hinterlegen Sie Ausweichtermine in der Waste-Datenquelle."
+    },
+    "table": {
+      "notAvailable": "Nicht vorhanden"
     }
   }
 } as const;

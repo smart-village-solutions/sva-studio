@@ -14,6 +14,23 @@ import type {
   SvaMainserverEventInput,
   SvaMainserverWebUrlInput,
 } from '../types.js';
+import {
+  errorJson,
+  isRecord,
+  isResponse,
+  json,
+  matchRequestRoute,
+  parseAddressList,
+  parseCategories,
+  parseContact,
+  parseJsonObjectBody,
+  parseTags,
+  parseWebUrls,
+  readBoolean,
+  readString,
+  type ParsedValue,
+  type RouteMatch as SharedRouteMatch,
+} from './content-route-helpers.js';
 import { SvaMainserverError } from './errors.js';
 import { parseMainserverListQuery } from './list-pagination.js';
 import {
@@ -30,241 +47,14 @@ const logger = createSdkLogger({ component: 'sva-mainserver-events-route', level
 
 type ContentKind = 'events';
 
-type RouteMatch =
-  | { readonly kind: 'collection'; readonly contentKind: ContentKind }
-  | { readonly kind: 'item'; readonly contentKind: ContentKind; readonly itemId: string };
+type RouteMatch = SharedRouteMatch<ContentKind>;
 
 type ContentActor = {
   readonly instanceId: string;
   readonly keycloakSubject: string;
 };
 
-type ParsedValue<T> = T | Response;
-
-const json = (body: unknown, status = 200): Response =>
-  Response.json(body, {
-    status,
-    headers: {
-      'Cache-Control': 'no-store',
-    },
-  });
-
-const errorJson = (status: number, error: string, message: string): Response => json({ error, message }, status);
-
-const decodePathSegment = (value: string): string | null => {
-  try {
-    return decodeURIComponent(value);
-  } catch {
-    return null;
-  }
-};
-
-const matchCollectionOrItem = (pathname: string, collectionPath: string, contentKind: ContentKind): RouteMatch | null => {
-  if (pathname === collectionPath) {
-    return { kind: 'collection', contentKind };
-  }
-
-  const prefix = `${collectionPath}/`;
-  if (pathname.startsWith(prefix)) {
-    const itemId = decodePathSegment(pathname.slice(prefix.length));
-    if (itemId !== null && itemId.length > 0 && itemId.includes('/') === false) {
-      return { kind: 'item', contentKind, itemId };
-    }
-  }
-
-  return null;
-};
-
-const matchRoute = (request: Request): RouteMatch | null => {
-  const pathname = new URL(request.url).pathname;
-  return matchCollectionOrItem(pathname, EVENTS_COLLECTION_PATH, 'events');
-};
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && Array.isArray(value) === false;
-
-const readString = (value: unknown): string | undefined =>
-  typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
-
-const readBoolean = (value: unknown): boolean | undefined => (typeof value === 'boolean' ? value : undefined);
-
-const readNumber = (value: unknown): number | undefined => {
-  if (typeof value === 'number' && Number.isFinite(value)) {
-    return value;
-  }
-  if (typeof value === 'string' && value.trim().length > 0) {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : undefined;
-  }
-  return undefined;
-};
-
-const isHttpsUrl = (value: string): boolean => {
-  try {
-    return new URL(value).protocol === 'https:';
-  } catch {
-    return false;
-  }
-};
-
-const parseWebUrl = (value: unknown): SvaMainserverWebUrlInput | Response | undefined => {
-  if (value === undefined || value === null) {
-    return undefined;
-  }
-  if (!isRecord(value)) {
-    return errorJson(400, 'invalid_request', 'URL-Angaben müssen als Objekt gesendet werden.');
-  }
-  const url = readString(value.url);
-  if (!url || !isHttpsUrl(url)) {
-    return errorJson(400, 'invalid_request', 'URL-Angaben müssen eine gültige HTTPS-URL enthalten.');
-  }
-  return {
-    url,
-    ...(readString(value.description) ? { description: readString(value.description) } : {}),
-  };
-};
-
-const parseWebUrls = (value: unknown): readonly SvaMainserverWebUrlInput[] | Response | undefined => {
-  if (value === undefined || value === null) {
-    return undefined;
-  }
-  if (!Array.isArray(value)) {
-    return errorJson(400, 'invalid_request', 'URLs müssen als Liste gesendet werden.');
-  }
-  const urls: SvaMainserverWebUrlInput[] = [];
-  for (const item of value) {
-    const parsed = parseWebUrl(item);
-    if (parsed instanceof Response) {
-      return parsed;
-    }
-    if (parsed) {
-      urls.push(parsed);
-    }
-  }
-  return urls;
-};
-
-const parseCategories = (value: unknown): readonly SvaMainserverCategoryInput[] | Response | undefined => {
-  if (value === undefined || value === null) {
-    return undefined;
-  }
-  if (!Array.isArray(value)) {
-    return errorJson(400, 'invalid_request', 'Kategorien müssen als Liste gesendet werden.');
-  }
-
-  const parseCategory = (item: unknown): SvaMainserverCategoryInput | Response => {
-    if (!isRecord(item)) {
-      return errorJson(400, 'invalid_request', 'Kategorien müssen Objekte sein.');
-    }
-    const name = readString(item.name);
-    if (!name || name.length > 128) {
-      return errorJson(400, 'invalid_request', 'Kategorien benötigen einen Namen mit maximal 128 Zeichen.');
-    }
-    const children = parseCategories(item.children);
-    if (children instanceof Response) {
-      return children;
-    }
-    return {
-      name,
-      ...(isRecord(item.payload) ? { payload: item.payload } : {}),
-      ...(children ? { children } : {}),
-    };
-  };
-
-  const categories: SvaMainserverCategoryInput[] = [];
-  for (const item of value) {
-    const category = parseCategory(item);
-    if (category instanceof Response) {
-      return category;
-    }
-    categories.push(category);
-  }
-  return categories;
-};
-
-const parseAddress = (value: unknown): SvaMainserverAddressInput | Response | undefined => {
-  if (value === undefined || value === null) {
-    return undefined;
-  }
-  if (!isRecord(value)) {
-    return errorJson(400, 'invalid_request', 'Adressdaten müssen als Objekt gesendet werden.');
-  }
-  const latitude = isRecord(value.geoLocation) ? readNumber(value.geoLocation.latitude) : undefined;
-  const longitude = isRecord(value.geoLocation) ? readNumber(value.geoLocation.longitude) : undefined;
-  if (
-    value.geoLocation !== undefined &&
-    (latitude === undefined || longitude === undefined || latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180)
-  ) {
-    return errorJson(400, 'invalid_request', 'Geo-Koordinaten sind ungültig.');
-  }
-  return {
-    ...(readNumber(value.id) !== undefined ? { id: readNumber(value.id) } : {}),
-    ...(readString(value.addition) ? { addition: readString(value.addition) } : {}),
-    ...(readString(value.street) ? { street: readString(value.street) } : {}),
-    ...(readString(value.zip) ? { zip: readString(value.zip) } : {}),
-    ...(readString(value.city) ? { city: readString(value.city) } : {}),
-    ...(readString(value.kind) ? { kind: readString(value.kind) } : {}),
-    ...(latitude !== undefined && longitude !== undefined ? { geoLocation: { latitude, longitude } } : {}),
-  };
-};
-
-const parseAddressList = (value: unknown): readonly SvaMainserverAddressInput[] | Response | undefined => {
-  if (value === undefined || value === null) {
-    return undefined;
-  }
-  if (!Array.isArray(value)) {
-    return errorJson(400, 'invalid_request', 'Adressen müssen als Liste gesendet werden.');
-  }
-  const addresses: SvaMainserverAddressInput[] = [];
-  for (const item of value) {
-    const parsed = parseAddress(item);
-    if (parsed instanceof Response) {
-      return parsed;
-    }
-    if (parsed) {
-      addresses.push(parsed);
-    }
-  }
-  return addresses;
-};
-
-const parseContact = (value: unknown): SvaMainserverContactInput | Response | undefined => {
-  if (value === undefined || value === null) {
-    return undefined;
-  }
-  if (!isRecord(value)) {
-    return errorJson(400, 'invalid_request', 'Kontaktdaten müssen als Objekt gesendet werden.');
-  }
-  const webUrls = parseWebUrls(value.webUrls);
-  if (webUrls instanceof Response) {
-    return webUrls;
-  }
-  return {
-    ...(readString(value.firstName) ? { firstName: readString(value.firstName) } : {}),
-    ...(readString(value.lastName) ? { lastName: readString(value.lastName) } : {}),
-    ...(readString(value.phone) ? { phone: readString(value.phone) } : {}),
-    ...(readString(value.fax) ? { fax: readString(value.fax) } : {}),
-    ...(readString(value.email) ? { email: readString(value.email) } : {}),
-    ...(webUrls ? { webUrls } : {}),
-  };
-};
-
-const parseTags = (value: unknown): readonly string[] | Response | undefined => {
-  if (value === undefined || value === null) {
-    return undefined;
-  }
-  if (!Array.isArray(value)) {
-    return errorJson(400, 'invalid_request', 'Tags müssen als Liste gesendet werden.');
-  }
-  return value.map(readString).filter((tag): tag is string => Boolean(tag));
-};
-
-const isResponse = <T>(value: ParsedValue<T>): value is Response => value instanceof Response;
-
-const parseJsonObjectBody = async (request: Request, message: string): Promise<Record<string, unknown> | Response> => {
-  const body = (await request.json().catch(() => null)) as unknown;
-  return isRecord(body) ? body : errorJson(400, 'invalid_request', message);
-};
+const matchRoute = (request: Request): RouteMatch | null => matchRequestRoute(request, EVENTS_COLLECTION_PATH, 'events');
 
 const parseEventDates = (value: unknown): readonly SvaMainserverDateInput[] | undefined =>
   Array.isArray(value)

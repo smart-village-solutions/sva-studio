@@ -2,24 +2,26 @@ import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import * as instancesShared from './-instances-shared';
+import { buildInstanceDetailCockpitModel } from './-instance-detail-cockpit';
+import { evaluateInstanceConfiguration } from './-instance-detail-configuration';
+import { getKeycloakStatusEntries, getStatusGuidance } from './-instance-detail-status';
+import { getEffectiveTenantIamStatus } from './-instance-detail-tenant-iam';
+import { getSetupWorkflowSteps } from './-instance-detail-workflow';
 import {
   buildExistingRealmOperationsModel,
   buildHistoryWorkspaceModel,
   buildNewRealmOperationsModel,
   buildOperationsPrimaryAction,
-  createEmptyCreateForm,
-  evaluateInstanceConfiguration,
-  getCreateReadinessChecks,
   getErrorMessage,
-  getCreateStepValidationMessages,
   getOperationsEvidenceSourceLabel,
-  getEffectiveTenantIamStatus,
-  getKeycloakStatusEntries,
-  getPostCreateGuidance,
-  getSetupWorkflowSteps,
-  getStatusGuidance,
-  readSuggestedParentDomain,
 } from './-instances-shared';
+import {
+  createEmptyCreateForm,
+  getCreateReadinessChecks,
+  getCreateStepValidationMessages,
+  getPostCreateGuidance,
+  readSuggestedParentDomain,
+} from './-instance-form-models';
 
 const createDetailFixture = (overrides: Record<string, unknown> = {}) =>
   ({
@@ -270,7 +272,6 @@ describe('instances shared helpers', () => {
       auditEvents: [],
       keycloakPreflight: {
         overallStatus: 'blocked',
-        generatedAt: '2026-01-01T00:00:00.000Z',
         checkedAt: '2026-01-01T00:00:00.000Z',
         checks: [
           {
@@ -460,14 +461,6 @@ describe('instances shared helpers', () => {
   });
 
   it('builds a cockpit model with a single primary action and prioritizes current evidence over history', () => {
-    const buildInstanceDetailCockpitModel = (instancesShared as Record<string, unknown>)
-      .buildInstanceDetailCockpitModel;
-
-    expect(buildInstanceDetailCockpitModel).toBeTypeOf('function');
-    if (typeof buildInstanceDetailCockpitModel !== 'function') {
-      return;
-    }
-
     const model = buildInstanceDetailCockpitModel(
       {
         instanceId: 'demo',
@@ -487,16 +480,17 @@ describe('instances shared helpers', () => {
         provisioningRuns: [
           {
             id: 'registry-run-1',
-            operation: 'provision',
+            instanceId: 'demo',
+            operation: 'create',
             status: 'failed',
-            startedAt: '2025-12-31T23:00:00.000Z',
-            completedAt: '2025-12-31T23:10:00.000Z',
+            idempotencyKey: 'idem-registry-run-1',
+            createdAt: '2025-12-31T23:00:00.000Z',
+            updatedAt: '2025-12-31T23:10:00.000Z',
           },
         ],
         auditEvents: [],
         keycloakPreflight: {
           overallStatus: 'ready',
-          generatedAt: '2026-01-02T08:00:00.000Z',
           checkedAt: '2026-01-02T08:00:00.000Z',
           checks: [
             {
@@ -518,25 +512,27 @@ describe('instances shared helpers', () => {
         keycloakProvisioningRuns: [
           {
             id: 'run-1',
+            instanceId: 'demo',
             intent: 'provision',
             mode: 'existing',
             overallStatus: 'succeeded',
             driftSummary: 'Kein Drift.',
             requestId: 'req-1',
-            startedAt: '2026-01-02T08:10:00.000Z',
-            finishedAt: '2026-01-02T08:11:00.000Z',
+            createdAt: '2026-01-02T08:10:00.000Z',
+            updatedAt: '2026-01-02T08:11:00.000Z',
             steps: [],
           },
         ],
         latestKeycloakProvisioningRun: {
           id: 'run-1',
+          instanceId: 'demo',
           intent: 'provision',
           mode: 'existing',
           overallStatus: 'succeeded',
           driftSummary: 'Kein Drift.',
           requestId: 'req-1',
-          startedAt: '2026-01-02T08:10:00.000Z',
-          finishedAt: '2026-01-02T08:11:00.000Z',
+          createdAt: '2026-01-02T08:10:00.000Z',
+          updatedAt: '2026-01-02T08:11:00.000Z',
           steps: [],
         },
         tenantIamStatus: {
@@ -581,14 +577,6 @@ describe('instances shared helpers', () => {
   });
 
   it('limits the anomaly queue to three items and does not derive a green overall state from unknown tenant access', () => {
-    const buildInstanceDetailCockpitModel = (instancesShared as Record<string, unknown>)
-      .buildInstanceDetailCockpitModel;
-
-    expect(buildInstanceDetailCockpitModel).toBeTypeOf('function');
-    if (typeof buildInstanceDetailCockpitModel !== 'function') {
-      return;
-    }
-
     const model = buildInstanceDetailCockpitModel(
       {
         instanceId: 'demo',
@@ -609,7 +597,6 @@ describe('instances shared helpers', () => {
         auditEvents: [],
         keycloakPreflight: {
           overallStatus: 'ready',
-          generatedAt: '2026-01-02T08:00:00.000Z',
           checkedAt: '2026-01-02T08:00:00.000Z',
           checks: [
             {
@@ -690,14 +677,6 @@ describe('instances shared helpers', () => {
   });
 
   it('prefers the current keycloak structure over stale tenant IAM configuration evidence', () => {
-    const buildInstanceDetailCockpitModel = (instancesShared as Record<string, unknown>)
-      .buildInstanceDetailCockpitModel;
-
-    expect(buildInstanceDetailCockpitModel).toBeTypeOf('function');
-    if (typeof buildInstanceDetailCockpitModel !== 'function') {
-      return;
-    }
-
     const model = buildInstanceDetailCockpitModel(
       {
         instanceId: 'demo',
@@ -721,21 +700,27 @@ describe('instances shared helpers', () => {
         keycloakProvisioningRuns: [
           {
             id: 'run-1',
+            instanceId: 'demo',
             intent: 'provision',
             mode: 'existing',
             overallStatus: 'succeeded',
             driftSummary: 'Kein Drift.',
             requestId: 'req-1',
+            createdAt: '2026-01-02T08:10:00.000Z',
+            updatedAt: '2026-01-02T08:11:00.000Z',
             steps: [],
           },
         ],
         latestKeycloakProvisioningRun: {
           id: 'run-1',
+          instanceId: 'demo',
           intent: 'provision',
           mode: 'existing',
           overallStatus: 'succeeded',
           driftSummary: 'Kein Drift.',
           requestId: 'req-1',
+          createdAt: '2026-01-02T08:10:00.000Z',
+          updatedAt: '2026-01-02T08:11:00.000Z',
           steps: [],
         },
         tenantIamStatus: {
@@ -891,14 +876,6 @@ describe('instances shared helpers', () => {
   });
 
   it('surfaces failed provisioning runs as cockpit anomalies with provisioning source labels', () => {
-    const buildInstanceDetailCockpitModel = (instancesShared as Record<string, unknown>)
-      .buildInstanceDetailCockpitModel;
-
-    expect(buildInstanceDetailCockpitModel).toBeTypeOf('function');
-    if (typeof buildInstanceDetailCockpitModel !== 'function') {
-      return;
-    }
-
     const model = buildInstanceDetailCockpitModel(
       {
         instanceId: 'demo',
@@ -924,23 +901,27 @@ describe('instances shared helpers', () => {
         keycloakProvisioningRuns: [
           {
             id: 'run-failed-1',
+            instanceId: 'demo',
             intent: 'provision',
             mode: 'existing',
             overallStatus: 'failed',
             driftSummary: 'Provisioning fehlgeschlagen.',
             requestId: 'req-failed-1',
-            finishedAt: '2026-01-03T10:15:00.000Z',
+            createdAt: '2026-01-03T10:10:00.000Z',
+            updatedAt: '2026-01-03T10:15:00.000Z',
             steps: [],
           },
         ],
         latestKeycloakProvisioningRun: {
           id: 'run-failed-1',
+          instanceId: 'demo',
           intent: 'provision',
           mode: 'existing',
           overallStatus: 'failed',
           driftSummary: 'Provisioning fehlgeschlagen.',
           requestId: 'req-failed-1',
-          finishedAt: '2026-01-03T10:15:00.000Z',
+          createdAt: '2026-01-03T10:10:00.000Z',
+          updatedAt: '2026-01-03T10:15:00.000Z',
           steps: [],
         },
       },
@@ -1002,21 +983,27 @@ describe('instances shared helpers', () => {
         },
         latestKeycloakProvisioningRun: {
           id: 'run-1',
+          instanceId: 'demo',
           intent: 'provision',
           mode: 'new',
           overallStatus: 'failed',
           driftSummary: 'Provisioning fehlgeschlagen.',
           requestId: 'req-run-1',
+          createdAt: '2026-01-02T09:10:00.000Z',
+          updatedAt: '2026-01-02T09:15:00.000Z',
           steps: [],
         },
         keycloakProvisioningRuns: [
           {
             id: 'run-1',
+            instanceId: 'demo',
             intent: 'provision',
             mode: 'new',
             overallStatus: 'failed',
             driftSummary: 'Provisioning fehlgeschlagen.',
             requestId: 'req-run-1',
+            createdAt: '2026-01-02T09:10:00.000Z',
+            updatedAt: '2026-01-02T09:15:00.000Z',
             steps: [],
           },
         ],
@@ -1167,21 +1154,27 @@ describe('instances shared helpers', () => {
         },
         latestKeycloakProvisioningRun: {
           id: 'run-success-1',
+          instanceId: 'demo',
           intent: 'provision',
           mode: 'new',
           overallStatus: 'succeeded',
           driftSummary: 'Kein Drift.',
           requestId: 'req-success-1',
+          createdAt: '2026-01-02T09:10:00.000Z',
+          updatedAt: '2026-01-02T09:15:00.000Z',
           steps: [],
         },
         keycloakProvisioningRuns: [
           {
             id: 'run-success-1',
+            instanceId: 'demo',
             intent: 'provision',
             mode: 'new',
             overallStatus: 'succeeded',
             driftSummary: 'Kein Drift.',
             requestId: 'req-success-1',
+            createdAt: '2026-01-02T09:10:00.000Z',
+            updatedAt: '2026-01-02T09:15:00.000Z',
             steps: [],
           },
         ],
@@ -1301,33 +1294,39 @@ describe('instances shared helpers', () => {
       createDetailFixture({
         latestKeycloakProvisioningRun: {
           id: 'run-success',
+          instanceId: 'demo',
           intent: 'provision',
           mode: 'new',
           overallStatus: 'succeeded',
           driftSummary: 'Kein Drift.',
           requestId: 'req-success',
-          finishedAt: '2026-01-03T10:00:00.000Z',
+          createdAt: '2026-01-03T09:50:00.000Z',
+          updatedAt: '2026-01-03T10:00:00.000Z',
           steps: [],
         },
         keycloakProvisioningRuns: [
           {
             id: 'run-success',
+            instanceId: 'demo',
             intent: 'provision',
             mode: 'new',
             overallStatus: 'succeeded',
             driftSummary: 'Kein Drift.',
             requestId: 'req-success',
-            finishedAt: '2026-01-03T10:00:00.000Z',
+            createdAt: '2026-01-03T09:50:00.000Z',
+            updatedAt: '2026-01-03T10:00:00.000Z',
             steps: [],
           },
           {
             id: 'run-failed',
+            instanceId: 'demo',
             intent: 'provision',
             mode: 'new',
             overallStatus: 'failed',
             driftSummary: 'Früherer Fehler.',
             requestId: 'req-failed',
-            finishedAt: '2026-01-02T10:00:00.000Z',
+            createdAt: '2026-01-02T09:50:00.000Z',
+            updatedAt: '2026-01-02T10:00:00.000Z',
             steps: [],
           },
         ],
@@ -1336,33 +1335,39 @@ describe('instances shared helpers', () => {
         createDetailFixture({
           latestKeycloakProvisioningRun: {
             id: 'run-success',
+            instanceId: 'demo',
             intent: 'provision',
             mode: 'new',
             overallStatus: 'succeeded',
             driftSummary: 'Kein Drift.',
             requestId: 'req-success',
-            finishedAt: '2026-01-03T10:00:00.000Z',
+            createdAt: '2026-01-03T09:50:00.000Z',
+            updatedAt: '2026-01-03T10:00:00.000Z',
             steps: [],
           },
           keycloakProvisioningRuns: [
             {
               id: 'run-success',
+              instanceId: 'demo',
               intent: 'provision',
               mode: 'new',
               overallStatus: 'succeeded',
               driftSummary: 'Kein Drift.',
               requestId: 'req-success',
-              finishedAt: '2026-01-03T10:00:00.000Z',
+              createdAt: '2026-01-03T09:50:00.000Z',
+              updatedAt: '2026-01-03T10:00:00.000Z',
               steps: [],
             },
             {
               id: 'run-failed',
+              instanceId: 'demo',
               intent: 'provision',
               mode: 'new',
               overallStatus: 'failed',
               driftSummary: 'Früherer Fehler.',
               requestId: 'req-failed',
-              finishedAt: '2026-01-02T10:00:00.000Z',
+              createdAt: '2026-01-02T09:50:00.000Z',
+              updatedAt: '2026-01-02T10:00:00.000Z',
               steps: [],
             },
           ],

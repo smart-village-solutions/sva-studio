@@ -44,6 +44,7 @@ export const wasteManagementPluginTranslationsENTools = {
     "messages": {
       "jobStarted": "Job {{jobId}} was started.",
       "jobStartError": "The waste job could not be started.",
+      "jobStartErrorWithReason": "The waste job could not be started: {{reason}}",
       "forbidden": "Missing permission for this waste operation.",
       "importValidationError": "Import requires an import profile and a valid source reference.",
       "resetValidationError": "Reset requires a valid confirmation token."

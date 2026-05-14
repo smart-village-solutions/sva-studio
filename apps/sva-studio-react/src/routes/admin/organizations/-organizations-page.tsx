@@ -1,5 +1,4 @@
 import { Link } from '@tanstack/react-router';
-import type { IamOrganizationType } from '@sva/core';
 import React from 'react';
 
 import { ConfirmDialog } from '../../../components/ConfirmDialog';
@@ -10,44 +9,12 @@ import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
 import { Select } from '../../../components/ui/select';
 import { useOrganizations } from '../../../hooks/use-organizations';
-import { t, type TranslationKey } from '../../../i18n';
-import type { IamHttpError } from '../../../lib/iam-api';
-
-const ORGANIZATION_TYPE_KEYS = {
-  county: 'admin.organizations.types.county',
-  municipality: 'admin.organizations.types.municipality',
-  district: 'admin.organizations.types.district',
-  company: 'admin.organizations.types.company',
-  agency: 'admin.organizations.types.agency',
-  other: 'admin.organizations.types.other',
-} satisfies Record<IamOrganizationType, TranslationKey>;
-
-const organizationErrorMessage = (error: IamHttpError | null): string => {
-  if (!error) {
-    return t('admin.organizations.messages.error');
-  }
-
-  switch (error.code) {
-    case 'forbidden':
-      return t('admin.organizations.errors.forbidden');
-    case 'csrf_validation_failed':
-      return t('admin.organizations.errors.csrfValidationFailed');
-    case 'rate_limited':
-      return t('admin.organizations.errors.rateLimited');
-    case 'conflict':
-      return t('admin.organizations.errors.conflict');
-    case 'invalid_organization_id':
-      return t('admin.organizations.errors.invalidOrganization');
-    case 'organization_inactive':
-      return t('admin.organizations.errors.organizationInactive');
-    case 'database_unavailable':
-      return t('admin.organizations.errors.databaseUnavailable');
-    default:
-      return t('admin.organizations.messages.error');
-  }
-};
-
-const typeOptions = Object.keys(ORGANIZATION_TYPE_KEYS) as IamOrganizationType[];
+import { t } from '../../../i18n';
+import {
+  getOrganizationTypeTranslationKey,
+  organizationErrorMessage,
+  organizationTypeOptions,
+} from './-organization-shared';
 
 export const OrganizationsPage = () => {
   const organizationsApi = useOrganizations();
@@ -92,9 +59,9 @@ export const OrganizationsPage = () => {
             }
           >
             <option value="all">{t('admin.organizations.filters.typeAll')}</option>
-            {typeOptions.map((type) => (
+            {organizationTypeOptions.map((type) => (
               <option key={type} value={type}>
-                {t(ORGANIZATION_TYPE_KEYS[type])}
+                {t(getOrganizationTypeTranslationKey(type))}
               </option>
             ))}
           </Select>
@@ -164,7 +131,7 @@ export const OrganizationsPage = () => {
                     </div>
                   </div>
                 </td>
-                <td className="px-3 py-3">{t(ORGANIZATION_TYPE_KEYS[organization.organizationType])}</td>
+                <td className="px-3 py-3">{t(getOrganizationTypeTranslationKey(organization.organizationType))}</td>
                 <td className="px-3 py-3">{organization.parentDisplayName ?? t('admin.organizations.messages.root')}</td>
                 <td className="px-3 py-3">{organization.childCount}</td>
                 <td className="px-3 py-3">{organization.membershipCount}</td>

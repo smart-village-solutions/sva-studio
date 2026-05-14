@@ -12,7 +12,6 @@ import { t } from '../../../i18n';
 import { studioModuleIamContracts } from '../../../lib/plugins';
 import { FieldHelp } from './-field-help';
 import {
-  buildWasteManagementSettingsPayload,
   CREATE_WIZARD_STEPS,
   createEmptyCreateForm,
   getCreateReadinessChecks,
@@ -24,7 +23,6 @@ import {
 } from './-instance-form-models';
 import { getErrorMessage } from './-instance-error-messages';
 import { WorkflowStatusBadge } from './-instance-status-badges';
-import { WasteManagementSettingsFields } from './-waste-management-settings-fields';
 import type { CreateFormValues, CreateWizardStepKey } from './-instances-shared-types';
 
 import type { IamInstanceListItem } from '@sva/core';
@@ -197,7 +195,6 @@ export const InstanceCreatePage = () => {
             lastName: formValues.tenantAdminBootstrap.lastName.trim() || undefined,
           }
         : undefined,
-      wasteManagementSettings: buildWasteManagementSettingsPayload(formValues.wasteManagementSettings),
     });
 
     if (!created) {
@@ -635,16 +632,6 @@ export const InstanceCreatePage = () => {
                 </div>
               </div>
               <p className="text-xs text-muted-foreground">{t('admin.instances.wizard.tenantAdminOptional')}</p>
-              <WasteManagementSettingsFields
-                idPrefix="create"
-                value={formValues.wasteManagementSettings}
-                onChange={(updater) =>
-                  updateForm((current) => ({
-                    ...current,
-                    wasteManagementSettings: updater(current.wasteManagementSettings),
-                  }))
-                }
-              />
             </div>
           ) : null}
 
@@ -672,14 +659,6 @@ export const InstanceCreatePage = () => {
                 <ReviewRow
                   label={t('admin.instances.form.tenantAdminUsername')}
                   value={formValues.tenantAdminBootstrap.username || t('admin.instances.wizard.reviewNotConfigured')}
-                />
-                <ReviewRow
-                  label={t('admin.instances.form.wasteManagementEnabled')}
-                  value={
-                    formValues.wasteManagementSettings.enabled
-                      ? formValues.wasteManagementSettings.projectUrl || '—'
-                      : t('admin.instances.wizard.reviewNotConfigured')
-                  }
                 />
               </div>
               <div className="grid gap-2">

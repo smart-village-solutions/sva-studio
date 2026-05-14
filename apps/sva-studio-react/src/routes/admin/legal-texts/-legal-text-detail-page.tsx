@@ -11,13 +11,12 @@ import { Label } from '../../../components/ui/label';
 import { Select } from '../../../components/ui/select';
 import { useLegalTexts } from '../../../hooks/use-legal-texts';
 import { t } from '../../../i18n';
-import type { IamHttpError, UpdateLegalTextPayload } from '../../../lib/iam-api';
+import type { UpdateLegalTextPayload } from '../../../lib/iam-api';
+import { formatLegalTextDateTime, getLegalTextErrorMessage, type LegalTextStatus } from './-legal-texts-shared';
 
 type LegalTextDetailPageProps = {
   readonly legalTextVersionId: string;
 };
-
-type LegalTextStatus = 'draft' | 'valid' | 'archived';
 
 const richTextEditorCommands = {
   bold: t('admin.legalTexts.editor.bold'),
@@ -28,42 +27,6 @@ const richTextEditorCommands = {
   bulletList: t('admin.legalTexts.editor.bulletList'),
   clearFormatting: t('admin.legalTexts.editor.clearFormatting'),
 } as const;
-
-const legalTextErrorMessage = (error: IamHttpError | null): string => {
-  if (!error) {
-    return t('admin.legalTexts.messages.error');
-  }
-
-  switch (error.code) {
-    case 'forbidden':
-      return t('admin.legalTexts.errors.forbidden');
-    case 'csrf_validation_failed':
-      return t('admin.legalTexts.errors.csrfValidationFailed');
-    case 'rate_limited':
-      return t('admin.legalTexts.errors.rateLimited');
-    case 'conflict':
-      return t('admin.legalTexts.errors.conflict');
-    case 'not_found':
-      return t('admin.legalTexts.errors.notFound');
-    case 'database_unavailable':
-      return t('admin.legalTexts.errors.databaseUnavailable');
-    case 'invalid_request':
-      return error.message && error.message !== `http_${error.status}`
-        ? error.message
-        : t('admin.legalTexts.errors.invalidRequest');
-    default:
-      return t('admin.legalTexts.messages.error');
-  }
-};
-
-const formatDateTime = (value?: string): string => {
-  if (!value) {
-    return t('admin.legalTexts.table.publishedUnset');
-  }
-
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
-};
 
 const toDateTimeInputValue = (value?: string): string => {
   if (!value) {
@@ -228,8 +191,8 @@ export const LegalTextDetailPage = ({ legalTextVersionId }: LegalTextDetailPageP
 
             <div className="grid gap-4 rounded-lg border border-border bg-muted/40 p-4 text-sm text-muted-foreground md:grid-cols-3">
               <p>{t('admin.legalTexts.meta.uuid', { value: selectedLegalText.id })}</p>
-              <p>{t('admin.legalTexts.meta.createdAt', { value: formatDateTime(selectedLegalText.createdAt) })}</p>
-              <p>{t('admin.legalTexts.meta.updatedAt', { value: formatDateTime(selectedLegalText.updatedAt) })}</p>
+              <p>{t('admin.legalTexts.meta.createdAt', { value: formatLegalTextDateTime(selectedLegalText.createdAt) })}</p>
+              <p>{t('admin.legalTexts.meta.updatedAt', { value: formatLegalTextDateTime(selectedLegalText.updatedAt) })}</p>
             </div>
 
             <div className="space-y-2">
@@ -258,7 +221,7 @@ export const LegalTextDetailPage = ({ legalTextVersionId }: LegalTextDetailPageP
 
       {legalTextsApi.mutationError ? (
         <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
-          <AlertDescription>{legalTextErrorMessage(legalTextsApi.mutationError)}</AlertDescription>
+          <AlertDescription>{getLegalTextErrorMessage(legalTextsApi.mutationError)}</AlertDescription>
         </Alert>
       ) : null}
 

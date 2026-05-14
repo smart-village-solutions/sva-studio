@@ -357,6 +357,109 @@ const parseDsrRequestType = (raw: unknown): DsrRequestType | null => {
   return null;
 };
 
+const jsonError = (status: number, error: string): Response => jsonResponse(status, { error });
+
+const getRequestId = (): string | undefined => getWorkspaceContext().requestId;
+
+type ScopedInstanceResult = { ok: true; instanceId: string } | { ok: false; response: Response };
+
+const resolveJsonScopedInstance = (input: {
+  request?: Request;
+  bodyInstanceId?: string;
+  fallback?: string;
+  userInstanceId?: string;
+}): ScopedInstanceResult => {
+  const instanceId =
+    input.request !== undefined
+      ? resolveInstanceId({
+          bodyInstanceId: input.bodyInstanceId,
+          request: input.request,
+          fallback: input.fallback,
+        })
+      : input.bodyInstanceId ?? input.fallback;
+
+  if (!instanceId) {
+    return { ok: false, response: jsonError(400, 'invalid_instance_id') };
+  }
+  if (input.userInstanceId && input.userInstanceId !== instanceId) {
+    return { ok: false, response: jsonError(403, 'instance_scope_mismatch') };
+  }
+
+  return { ok: true, instanceId };
+};
+
+const resolveApiScopedInstance = (input: {
+  request?: Request;
+  bodyInstanceId?: string;
+  fallback?: string;
+  userInstanceId?: string;
+  missingMessage: string;
+  mismatchMessage: string;
+}): ScopedInstanceResult => {
+  const instanceId =
+    input.request !== undefined
+      ? resolveInstanceId({
+          bodyInstanceId: input.bodyInstanceId,
+          request: input.request,
+          fallback: input.fallback,
+        })
+      : input.bodyInstanceId ?? input.fallback;
+
+  if (!instanceId) {
+    return {
+      ok: false,
+      response: createApiError(400, 'invalid_instance_id', input.missingMessage, getRequestId()),
+    };
+  }
+  if (input.userInstanceId && input.userInstanceId !== instanceId) {
+    return {
+      ok: false,
+      response: createApiError(403, 'forbidden', input.mismatchMessage, getRequestId()),
+    };
+  }
+
+  return { ok: true, instanceId };
+};
+
+const requireJsonBody = async (
+  request: Request
+): Promise<{ ok: true; body: Record<string, unknown> } | { ok: false; response: Response }> => {
+  const body = await parseJsonBody(request);
+  if (!body) {
+    return { ok: false, response: jsonError(400, 'invalid_request') };
+  }
+  return { ok: true, body };
+};
+
+const logDsrDatabaseError = (message: string, operation: string, instanceId: string, error: unknown): void => {
+  logger.error(message, {
+    operation,
+    error: error instanceof Error ? error.message : String(error),
+    ...buildDsrLogContext(instanceId),
+  });
+};
+
+const handleJsonDatabaseError = (
+  message: string,
+  operation: string,
+  instanceId: string,
+  error: unknown
+): Response => {
+  logDsrDatabaseError(message, operation, instanceId, error);
+  return jsonError(503, 'database_unavailable');
+};
+
+const handleApiDatabaseError = (
+  message: string,
+  operation: string,
+  instanceId: string,
+  error: unknown,
+  responseMessage: string
+): Response => {
+  logDsrDatabaseError(message, operation, instanceId, error);
+  return createApiError(503, 'database_unavailable', responseMessage, getRequestId());
+};
+
 export const dataExportHandler = async (request: Request): Promise<Response> => {
   return withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
     return withAuthenticatedUser(request, async ({ user }) => {
@@ -371,17 +474,16 @@ export const dataExportHandler = async (request: Request): Promise<Response> => 
       }
       const exportRequest = exportRequestResult.data;
 
-      const instanceId = resolveInstanceId({
+      const instanceScope = resolveJsonScopedInstance({
         bodyInstanceId: exportRequest.instanceId,
         request,
         fallback: user.instanceId,
+        userInstanceId: user.instanceId,
       });
-      if (!instanceId) {
-        return jsonResponse(400, { error: 'invalid_instance_id' });
+      if (!instanceScope.ok) {
+        return instanceScope.response;
       }
-      if (user.instanceId && user.instanceId !== instanceId) {
-        return jsonResponse(403, { error: 'instance_scope_mismatch' });
-      }
+      const { instanceId } = instanceScope;
 
       const idempotencyKey = requireIdempotencyKey(request, getWorkspaceContext().requestId);
       if ('error' in idempotencyKey) {
@@ -399,12 +501,7 @@ export const dataExportHandler = async (request: Request): Promise<Response> => 
           });
         });
       } catch (error) {
-        logger.error('DSR self export failed', {
-          operation: 'data_export',
-          error: error instanceof Error ? error.message : String(error),
-          ...buildDsrLogContext(instanceId),
-        });
-        return jsonResponse(503, { error: 'database_unavailable' });
+        return handleJsonDatabaseError('DSR self export failed', 'data_export', instanceId, error);
       }
     });
   });
@@ -414,17 +511,19 @@ export const dataExportStatusHandler = async (request: Request): Promise<Respons
   return withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
     return withAuthenticatedUser(request, async ({ user }) => {
       const url = new URL(request.url);
-      const instanceId = resolveInstanceId({ request, fallback: user.instanceId });
+      const instanceScope = resolveJsonScopedInstance({
+        request,
+        fallback: user.instanceId,
+        userInstanceId: user.instanceId,
+      });
       const jobId = readString(url.searchParams.get('jobId'));
       const downloadFormat = readString(url.searchParams.get('download'))?.toLowerCase();
-      if (!instanceId) {
-        return jsonResponse(400, { error: 'invalid_instance_id' });
+      if (!instanceScope.ok) {
+        return instanceScope.response;
       }
+      const { instanceId } = instanceScope;
       if (!jobId || !isUuid(jobId)) {
-        return jsonResponse(400, { error: 'invalid_job_id' });
-      }
-      if (user.instanceId && user.instanceId !== instanceId) {
-        return jsonResponse(403, { error: 'instance_scope_mismatch' });
+        return jsonError(400, 'invalid_job_id');
       }
 
       try {
@@ -438,12 +537,7 @@ export const dataExportStatusHandler = async (request: Request): Promise<Respons
           });
         });
       } catch (error) {
-        logger.error('DSR export status lookup failed', {
-          operation: 'data_export_status',
-          error: error instanceof Error ? error.message : String(error),
-          ...buildDsrLogContext(instanceId),
-        });
-        return jsonResponse(503, { error: 'database_unavailable' });
+        return handleJsonDatabaseError('DSR export status lookup failed', 'data_export_status', instanceId, error);
       }
     });
   });
@@ -467,18 +561,16 @@ export const adminDataExportHandler = async (request: Request): Promise<Response
       }
       const exportRequest = exportRequestResult.data;
 
-      const instanceId = resolveInstanceId({
+      const instanceScope = resolveJsonScopedInstance({
         bodyInstanceId: exportRequest.instanceId,
         request,
         fallback: user.instanceId,
+        userInstanceId: user.instanceId,
       });
-
-      if (!instanceId) {
-        return jsonResponse(400, { error: 'invalid_instance_id' });
+      if (!instanceScope.ok) {
+        return instanceScope.response;
       }
-      if (user.instanceId && user.instanceId !== instanceId) {
-        return jsonResponse(403, { error: 'instance_scope_mismatch' });
-      }
+      const { instanceId } = instanceScope;
 
       const idempotencyKey = requireIdempotencyKey(request, getWorkspaceContext().requestId);
       if ('error' in idempotencyKey) {
@@ -496,12 +588,7 @@ export const adminDataExportHandler = async (request: Request): Promise<Response
           });
         });
       } catch (error) {
-        logger.error('DSR admin export failed', {
-          operation: 'admin_data_export',
-          error: error instanceof Error ? error.message : String(error),
-          ...buildDsrLogContext(instanceId),
-        });
-        return jsonResponse(503, { error: 'database_unavailable' });
+        return handleJsonDatabaseError('DSR admin export failed', 'admin_data_export', instanceId, error);
       }
     });
   });
@@ -510,23 +597,26 @@ export const adminDataExportHandler = async (request: Request): Promise<Response
 export const profileCorrectionHandler = async (request: Request): Promise<Response> => {
   return withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
     return withAuthenticatedUser(request, async ({ user }) => {
-      const body = await parseJsonBody(request);
-      if (!body) {
-        return jsonResponse(400, { error: 'invalid_request' });
+      const bodyResult = await requireJsonBody(request);
+      if (!bodyResult.ok) {
+        return bodyResult.response;
       }
+      const { body } = bodyResult;
 
-      const instanceId = readString(body.instanceId) ?? user.instanceId;
+      const instanceScope = resolveJsonScopedInstance({
+        bodyInstanceId: readString(body.instanceId),
+        fallback: user.instanceId,
+        userInstanceId: user.instanceId,
+      });
       const nextEmail = readString(body.email);
       const nextDisplayName = readString(body.displayName);
       const correctionReason = readString(body.reason);
-      if (!instanceId) {
-        return jsonResponse(400, { error: 'invalid_instance_id' });
+      if (!instanceScope.ok) {
+        return instanceScope.response;
       }
+      const { instanceId } = instanceScope;
       if (!nextEmail && !nextDisplayName) {
-        return jsonResponse(400, { error: 'missing_profile_fields' });
-      }
-      if (user.instanceId && user.instanceId !== instanceId) {
-        return jsonResponse(403, { error: 'instance_scope_mismatch' });
+        return jsonError(400, 'missing_profile_fields');
       }
 
       const encryptionConfig = parseFieldEncryptionConfigFromEnv(process.env);
@@ -648,12 +738,7 @@ VALUES ($1, $2::uuid, $2::uuid, $3, $4, $5, $6, $7);
           });
         });
       } catch (error) {
-        logger.error('DSR profile correction failed', {
-          operation: 'profile_correction',
-          error: error instanceof Error ? error.message : String(error),
-          ...buildDsrLogContext(instanceId),
-        });
-        return jsonResponse(503, { error: 'database_unavailable' });
+        return handleJsonDatabaseError('DSR profile correction failed', 'profile_correction', instanceId, error);
       }
     });
   });
@@ -833,26 +918,29 @@ WHERE id = $2::uuid;
 export const dataSubjectRequestHandler = async (request: Request): Promise<Response> => {
   return withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
     return withAuthenticatedUser(request, async ({ user }) => {
-      const body = await parseJsonBody(request);
-      if (!body) {
-        return jsonResponse(400, { error: 'invalid_request' });
+      const bodyResult = await requireJsonBody(request);
+      if (!bodyResult.ok) {
+        return bodyResult.response;
       }
+      const { body } = bodyResult;
 
-      const instanceId = readString(body.instanceId) ?? user.instanceId;
+      const instanceScope = resolveJsonScopedInstance({
+        bodyInstanceId: readString(body.instanceId),
+        fallback: user.instanceId,
+        userInstanceId: user.instanceId,
+      });
       const requestType = parseDsrRequestType(body.type);
       const payload = readObject(body.payload) ?? {};
 
-      if (!instanceId) {
-        return jsonResponse(400, { error: 'invalid_instance_id' });
+      if (!instanceScope.ok) {
+        return instanceScope.response;
       }
+      const { instanceId } = instanceScope;
       if (!requestType) {
-        return jsonResponse(400, { error: 'invalid_request_type' });
-      }
-      if (user.instanceId && user.instanceId !== instanceId) {
-        return jsonResponse(403, { error: 'instance_scope_mismatch' });
+        return jsonError(400, 'invalid_request_type');
       }
       if (requestType === 'rectification') {
-        return jsonResponse(400, { error: 'use_profile_correction_endpoint' });
+        return jsonError(400, 'use_profile_correction_endpoint');
       }
 
       try {
@@ -917,12 +1005,7 @@ export const dataSubjectRequestHandler = async (request: Request): Promise<Respo
           });
         });
       } catch (error) {
-        logger.error('DSR self request failed', {
-          operation: 'self_request',
-          error: error instanceof Error ? error.message : String(error),
-          ...buildDsrLogContext(instanceId),
-        });
-        return jsonResponse(503, { error: 'database_unavailable' });
+        return handleJsonDatabaseError('DSR self request failed', 'self_request', instanceId, error);
       }
     });
   });
@@ -931,13 +1014,17 @@ export const dataSubjectRequestHandler = async (request: Request): Promise<Respo
 export const getMyDataSubjectRightsHandler = async (request: Request): Promise<Response> => {
   return withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
     return withAuthenticatedUser(request, async ({ user }) => {
-      const instanceId = resolveInstanceId({ request, fallback: user.instanceId });
-      if (!instanceId) {
-        return createApiError(400, 'invalid_instance_id', 'Instanzkontext fehlt.', getWorkspaceContext().requestId);
+      const instanceScope = resolveApiScopedInstance({
+        request,
+        fallback: user.instanceId,
+        userInstanceId: user.instanceId,
+        missingMessage: 'Instanzkontext fehlt.',
+        mismatchMessage: 'Instanzkontext unzulässig.',
+      });
+      if (!instanceScope.ok) {
+        return instanceScope.response;
       }
-      if (user.instanceId && user.instanceId !== instanceId) {
-        return createApiError(403, 'forbidden', 'Instanzkontext unzulässig.', getWorkspaceContext().requestId);
-      }
+      const { instanceId } = instanceScope;
 
       try {
         return await withInstanceScopedDb(instanceId, async (client) => {
@@ -946,7 +1033,7 @@ export const getMyDataSubjectRightsHandler = async (request: Request): Promise<R
             keycloakSubject: user.id,
           });
           if (!requesterAccountId) {
-            return createApiError(404, 'not_found', 'Konto nicht gefunden.', getWorkspaceContext().requestId);
+            return createApiError(404, 'not_found', 'Konto nicht gefunden.', getRequestId());
           }
 
           const overview = await loadDsrSelfServiceOverview(client, {
@@ -957,14 +1044,15 @@ export const getMyDataSubjectRightsHandler = async (request: Request): Promise<R
         });
       } catch (error) {
         if (error instanceof DsrAccountSnapshotNotFoundError) {
-          return createApiError(404, 'not_found', 'Konto nicht gefunden.', getWorkspaceContext().requestId);
+          return createApiError(404, 'not_found', 'Konto nicht gefunden.', getRequestId());
         }
-        logger.error('DSR self overview failed', {
-          operation: 'self_overview',
-          error: error instanceof Error ? error.message : String(error),
-          ...buildDsrLogContext(instanceId),
-        });
-        return createApiError(503, 'database_unavailable', 'DSR-Daten konnten nicht geladen werden.', getWorkspaceContext().requestId);
+        return handleApiDatabaseError(
+          'DSR self overview failed',
+          'self_overview',
+          instanceId,
+          error,
+          'DSR-Daten konnten nicht geladen werden.'
+        );
       }
     });
   });
@@ -973,13 +1061,15 @@ export const getMyDataSubjectRightsHandler = async (request: Request): Promise<R
 export const optionalProcessingExecuteHandler = async (request: Request): Promise<Response> => {
   return withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
     return withAuthenticatedUser(request, async ({ user }) => {
-      const instanceId = resolveInstanceId({ request, fallback: user.instanceId });
-      if (!instanceId) {
-        return jsonResponse(400, { error: 'invalid_instance_id' });
+      const instanceScope = resolveJsonScopedInstance({
+        request,
+        fallback: user.instanceId,
+        userInstanceId: user.instanceId,
+      });
+      if (!instanceScope.ok) {
+        return instanceScope.response;
       }
-      if (user.instanceId && user.instanceId !== instanceId) {
-        return jsonResponse(403, { error: 'instance_scope_mismatch' });
-      }
+      const { instanceId } = instanceScope;
 
       try {
         return await withInstanceScopedDb(instanceId, async (client) => {
@@ -1007,12 +1097,12 @@ export const optionalProcessingExecuteHandler = async (request: Request): Promis
           });
         });
       } catch (error) {
-        logger.error('Optional processing execution check failed', {
-          operation: 'optional_processing_execute',
-          error: error instanceof Error ? error.message : String(error),
-          ...buildDsrLogContext(instanceId),
-        });
-        return jsonResponse(503, { error: 'database_unavailable' });
+        return handleJsonDatabaseError(
+          'Optional processing execution check failed',
+          'optional_processing_execute',
+          instanceId,
+          error
+        );
       }
     });
   });
@@ -1025,27 +1115,30 @@ export const legalHoldApplyHandler = async (request: Request): Promise<Response>
         return jsonResponse(403, { error: 'forbidden' });
       }
 
-      const body = await parseJsonBody(request);
-      if (!body) {
-        return jsonResponse(400, { error: 'invalid_request' });
+      const bodyResult = await requireJsonBody(request);
+      if (!bodyResult.ok) {
+        return bodyResult.response;
       }
+      const { body } = bodyResult;
 
-      const instanceId = readString(body.instanceId) ?? user.instanceId;
+      const instanceScope = resolveJsonScopedInstance({
+        bodyInstanceId: readString(body.instanceId),
+        fallback: user.instanceId,
+        userInstanceId: user.instanceId,
+      });
       const targetSubject = readString(body.targetKeycloakSubject);
       const holdReason = readString(body.holdReason) ?? 'legal_hold';
       const holdUntil = readString(body.holdUntil);
 
-      if (!instanceId) {
-        return jsonResponse(400, { error: 'invalid_instance_id' });
+      if (!instanceScope.ok) {
+        return instanceScope.response;
       }
+      const { instanceId } = instanceScope;
       if (!targetSubject) {
-        return jsonResponse(400, { error: 'missing_target_keycloak_subject' });
+        return jsonError(400, 'missing_target_keycloak_subject');
       }
       if (holdUntil && Number.isNaN(Date.parse(holdUntil))) {
-        return jsonResponse(400, { error: 'invalid_hold_until' });
-      }
-      if (user.instanceId && user.instanceId !== instanceId) {
-        return jsonResponse(403, { error: 'instance_scope_mismatch' });
+        return jsonError(400, 'invalid_hold_until');
       }
 
       try {
@@ -1097,12 +1190,7 @@ RETURNING id;
           });
         });
       } catch (error) {
-        logger.error('Legal hold apply failed', {
-          operation: 'legal_hold_apply',
-          error: error instanceof Error ? error.message : String(error),
-          ...buildDsrLogContext(instanceId),
-        });
-        return jsonResponse(503, { error: 'database_unavailable' });
+        return handleJsonDatabaseError('Legal hold apply failed', 'legal_hold_apply', instanceId, error);
       }
     });
   });
@@ -1115,23 +1203,26 @@ export const legalHoldReleaseHandler = async (request: Request): Promise<Respons
         return jsonResponse(403, { error: 'forbidden' });
       }
 
-      const body = await parseJsonBody(request);
-      if (!body) {
-        return jsonResponse(400, { error: 'invalid_request' });
+      const bodyResult = await requireJsonBody(request);
+      if (!bodyResult.ok) {
+        return bodyResult.response;
       }
+      const { body } = bodyResult;
 
-      const instanceId = readString(body.instanceId) ?? user.instanceId;
+      const instanceScope = resolveJsonScopedInstance({
+        bodyInstanceId: readString(body.instanceId),
+        fallback: user.instanceId,
+        userInstanceId: user.instanceId,
+      });
       const targetSubject = readString(body.targetKeycloakSubject);
       const releaseReason = readString(body.releaseReason) ?? 'hold_released';
 
-      if (!instanceId) {
-        return jsonResponse(400, { error: 'invalid_instance_id' });
+      if (!instanceScope.ok) {
+        return instanceScope.response;
       }
+      const { instanceId } = instanceScope;
       if (!targetSubject) {
-        return jsonResponse(400, { error: 'missing_target_keycloak_subject' });
-      }
-      if (user.instanceId && user.instanceId !== instanceId) {
-        return jsonResponse(403, { error: 'instance_scope_mismatch' });
+        return jsonError(400, 'missing_target_keycloak_subject');
       }
 
       try {
@@ -1181,12 +1272,7 @@ RETURNING id;
           });
         });
       } catch (error) {
-        logger.error('Legal hold release failed', {
-          operation: 'legal_hold_release',
-          error: error instanceof Error ? error.message : String(error),
-          ...buildDsrLogContext(instanceId),
-        });
-        return jsonResponse(503, { error: 'database_unavailable' });
+        return handleJsonDatabaseError('Legal hold release failed', 'legal_hold_release', instanceId, error);
       }
     });
   });
@@ -1199,22 +1285,25 @@ export const dataSubjectMaintenanceHandler = async (request: Request): Promise<R
         return jsonResponse(403, { error: 'forbidden' });
       }
 
-      const body = await parseJsonBody(request);
-      if (!body) {
-        return jsonResponse(400, { error: 'invalid_request' });
+      const bodyResult = await requireJsonBody(request);
+      if (!bodyResult.ok) {
+        return bodyResult.response;
       }
+      const { body } = bodyResult;
 
-      const instanceId = readString(body.instanceId) ?? user.instanceId;
+      const instanceScope = resolveJsonScopedInstance({
+        bodyInstanceId: readString(body.instanceId),
+        fallback: user.instanceId,
+        userInstanceId: user.instanceId,
+      });
       const dryRun = readBoolean(body.dryRun) ?? false;
       const limit = readNumber(body.limit);
       void limit;
 
-      if (!instanceId) {
-        return jsonResponse(400, { error: 'invalid_instance_id' });
+      if (!instanceScope.ok) {
+        return instanceScope.response;
       }
-      if (user.instanceId && user.instanceId !== instanceId) {
-        return jsonResponse(403, { error: 'instance_scope_mismatch' });
-      }
+      const { instanceId } = instanceScope;
 
       try {
         return await withInstanceScopedDb(instanceId, async (client) => {
@@ -1222,12 +1311,7 @@ export const dataSubjectMaintenanceHandler = async (request: Request): Promise<R
           return jsonResponse(200, result);
         });
       } catch (error) {
-        logger.error('DSR maintenance run failed', {
-          operation: 'maintenance',
-          error: error instanceof Error ? error.message : String(error),
-          ...buildDsrLogContext(instanceId),
-        });
-        return jsonResponse(503, { error: 'database_unavailable' });
+        return handleJsonDatabaseError('DSR maintenance run failed', 'maintenance', instanceId, error);
       }
     });
   });
@@ -1241,17 +1325,19 @@ export const adminDataExportStatusHandler = async (request: Request): Promise<Re
       }
 
       const url = new URL(request.url);
-      const instanceId = resolveInstanceId({ request, fallback: user.instanceId });
+      const instanceScope = resolveJsonScopedInstance({
+        request,
+        fallback: user.instanceId,
+        userInstanceId: user.instanceId,
+      });
       const jobId = readString(url.searchParams.get('jobId'));
       const downloadFormat = readString(url.searchParams.get('download'))?.toLowerCase();
-      if (!instanceId) {
-        return jsonResponse(400, { error: 'invalid_instance_id' });
+      if (!instanceScope.ok) {
+        return instanceScope.response;
       }
+      const { instanceId } = instanceScope;
       if (!jobId || !isUuid(jobId)) {
-        return jsonResponse(400, { error: 'invalid_job_id' });
-      }
-      if (user.instanceId && user.instanceId !== instanceId) {
-        return jsonResponse(403, { error: 'instance_scope_mismatch' });
+        return jsonError(400, 'invalid_job_id');
       }
 
       try {
@@ -1264,12 +1350,12 @@ export const adminDataExportStatusHandler = async (request: Request): Promise<Re
           });
         });
       } catch (error) {
-        logger.error('DSR admin export status lookup failed', {
-          operation: 'admin_data_export_status',
-          error: error instanceof Error ? error.message : String(error),
-          ...buildDsrLogContext(instanceId),
-        });
-        return jsonResponse(503, { error: 'database_unavailable' });
+        return handleJsonDatabaseError(
+          'DSR admin export status lookup failed',
+          'admin_data_export_status',
+          instanceId,
+          error
+        );
       }
     });
   });
@@ -1283,18 +1369,22 @@ export const listAdminDataSubjectRightsCasesHandler = async (request: Request): 
       }
 
       const url = new URL(request.url);
-      const instanceId = resolveInstanceId({ request, fallback: user.instanceId });
+      const instanceScope = resolveApiScopedInstance({
+        request,
+        fallback: user.instanceId,
+        userInstanceId: user.instanceId,
+        missingMessage: 'Instanzkontext fehlt.',
+        mismatchMessage: 'Instanzkontext unzulässig.',
+      });
       const type = readString(url.searchParams.get('type')) as IamDsrCaseListItem['type'] | undefined;
       const status = readString(url.searchParams.get('status')) as IamDsrCanonicalStatus | undefined;
       const search = readString(url.searchParams.get('search'));
       const { page, pageSize } = readPage(request);
 
-      if (!instanceId) {
-        return createApiError(400, 'invalid_instance_id', 'Instanzkontext fehlt.', getWorkspaceContext().requestId);
+      if (!instanceScope.ok) {
+        return instanceScope.response;
       }
-      if (user.instanceId && user.instanceId !== instanceId) {
-        return createApiError(403, 'forbidden', 'Instanzkontext unzulässig.', getWorkspaceContext().requestId);
-      }
+      const { instanceId } = instanceScope;
 
       try {
         const result = await withInstanceScopedDb(instanceId, (client) =>
@@ -1307,14 +1397,15 @@ export const listAdminDataSubjectRightsCasesHandler = async (request: Request): 
             status,
           })
         );
-        return jsonResponse(200, asApiList(result.items, { page, pageSize, total: result.total }, getWorkspaceContext().requestId));
+        return jsonResponse(200, asApiList(result.items, { page, pageSize, total: result.total }, getRequestId()));
       } catch (error) {
-        logger.error('DSR admin case list failed', {
-          operation: 'admin_case_list',
-          error: error instanceof Error ? error.message : String(error),
-          ...buildDsrLogContext(instanceId),
-        });
-        return createApiError(503, 'database_unavailable', 'DSR-Fälle konnten nicht geladen werden.', getWorkspaceContext().requestId);
+        return handleApiDatabaseError(
+          'DSR admin case list failed',
+          'admin_case_list',
+          instanceId,
+          error,
+          'DSR-Fälle konnten nicht geladen werden.'
+        );
       }
     });
   });

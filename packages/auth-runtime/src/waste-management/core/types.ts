@@ -1,5 +1,7 @@
 import type {
   EffectivePermission,
+  ExternalInterfaceConnectionCheckRecord,
+  ExternalInterfaceRecord,
   StudioJobStartRequest,
   WasteCityRecord,
   WasteCollectionLocationRecord,
@@ -10,8 +12,6 @@ import type {
   WasteLocationTourLinkRecord,
   WasteManagementAuditOverview,
   WasteManagementAuditQuery,
-  WasteManagementConnectionCheckRecord,
-  WasteManagementDataSourceRecord,
   WasteManagementHistoryOverview,
   WasteManagementMasterDataOverview,
   WasteManagementSchedulingOverview,
@@ -24,12 +24,15 @@ import type {
 import type { ResolvedWasteDataSource } from '@sva/server-runtime';
 
 import type { emitAuthAuditEvent } from '../../audit-events.js';
+import type { AuthenticatedRequestContext } from '../../middleware.js';
 
 export type WasteManagementHandlerDeps = {
   readonly getRequestId?: () => string | undefined;
-  readonly loadWasteDataSourceRecord?: (instanceId: string) => Promise<WasteManagementDataSourceRecord | null>;
-  readonly saveWasteDataSourceRecord?: (record: WasteManagementDataSourceRecord) => Promise<void>;
-  readonly saveWasteConnectionCheck?: (record: WasteManagementConnectionCheckRecord) => Promise<void>;
+  readonly loadDefaultInterfaceRecord?: (
+    instanceId: string,
+    typeKey: string
+  ) => Promise<ExternalInterfaceRecord | null>;
+  readonly saveExternalInterfaceConnectionCheck?: (record: ExternalInterfaceConnectionCheckRecord) => Promise<void>;
   readonly protectSecret?: (value: string, aad: string) => string | null | undefined;
   readonly revealSecret?: (ciphertext: string | null | undefined, aad: string) => string | null | undefined;
   readonly runConnectionProbe?: (dataSource: ResolvedWasteDataSource) => Promise<void>;
@@ -46,6 +49,22 @@ export type WasteManagementHandlerDeps = {
         readonly error: string;
       }
   >;
+  readonly resolveActorInfo?: (
+    request: Request,
+    ctx: AuthenticatedRequestContext
+  ) => Promise<
+    | {
+        readonly actor: {
+          readonly instanceId: string;
+          readonly requestId?: string;
+          readonly traceId?: string;
+          readonly actorAccountId?: string;
+        };
+      }
+    | {
+        readonly error: Response;
+      }
+  >;
   readonly startPluginOperationJob?: (input: {
     readonly instanceId: string;
     readonly actorAccountId: string;
@@ -59,10 +78,13 @@ export type WasteManagementHandlerDeps = {
   readonly loadWasteAuditOverview?: (query: WasteManagementAuditQuery) => Promise<WasteManagementAuditOverview>;
   readonly loadWasteHistoryOverview?: (query: WasteManagementAuditQuery) => Promise<WasteManagementHistoryOverview>;
   readonly loadMasterDataOverview?: (instanceId: string) => Promise<WasteManagementMasterDataOverview>;
+  readonly loadMasterDataFractionsOverview?: (instanceId: string) => Promise<WasteManagementMasterDataOverview>;
+  readonly loadMasterDataLocationsOverview?: (instanceId: string) => Promise<WasteManagementMasterDataOverview>;
   readonly loadToursOverview?: (instanceId: string) => Promise<WasteManagementToursOverview>;
   readonly loadSchedulingOverview?: (instanceId: string) => Promise<WasteManagementSchedulingOverview>;
   readonly saveWasteFraction?: (instanceId: string, input: Omit<WasteFractionRecord, 'createdAt' | 'updatedAt'>) => Promise<void>;
   readonly loadWasteFractionById?: (instanceId: string, fractionId: string) => Promise<WasteFractionRecord | null>;
+  readonly deleteWasteFraction?: (instanceId: string, fractionId: string) => Promise<void>;
   readonly saveWasteRegion?: (instanceId: string, input: Omit<WasteRegionRecord, 'createdAt' | 'updatedAt'>) => Promise<void>;
   readonly loadWasteRegionById?: (instanceId: string, regionId: string) => Promise<WasteRegionRecord | null>;
   readonly saveWasteCity?: (instanceId: string, input: Omit<WasteCityRecord, 'createdAt' | 'updatedAt'>) => Promise<void>;

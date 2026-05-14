@@ -24,8 +24,8 @@ vi.mock('pg', () => ({
 }));
 
 import {
-  buildSettingsRecord,
   defaultRunConnectionProbe,
+  loadConfiguredWasteSettings,
   sanitizeWasteSettings,
   updateWasteVisibleStatus,
 } from './settings-shared.js';
@@ -75,56 +75,52 @@ describe('waste-management settings shared helpers', () => {
     });
   });
 
-  it('builds settings records with trimmed values, defaults and protected secrets', async () => {
-    const protectSecret = vi.fn((value: string, aad: string) => `protected:${aad}:${value}`);
-
-    const record = await buildSettingsRecord(
+  it('prefers the configured supabase interface over the legacy waste datasource record', async () => {
+    const settings = await loadConfiguredWasteSettings(
       {
-        protectSecret,
-        loadWasteDataSourceRecord: vi.fn(async () => ({
+        loadDefaultInterfaceRecord: vi.fn(async () => ({
+          id: 'supabase-1',
           instanceId: 'tenant-a',
-          provider: 'supabase',
-          projectUrl: 'https://old.example',
-          schemaName: 'old',
-          enabled: false,
-          databaseUrlConfigured: true,
-          serviceRoleKeyConfigured: true,
-          databaseUrlCiphertext: 'existing-db',
-          serviceRoleKeyCiphertext: 'existing-key',
-          visibleStatus: 'ok',
-          lastCheckedAt: '2026-05-01T10:00:00.000Z',
-          lastCheckStatus: 'succeeded',
-          lastCheckErrorCode: null,
-          lastCheckErrorMessage: null,
-          updatedAt: '2026-05-01T10:00:00.000Z',
+          typeKey: 'supabase',
+          ownerKind: 'host',
+          ownerId: 'host',
+          displayName: 'Supabase',
+          alias: 'default',
+          enabled: true,
+          isDefault: true,
+          category: 'database',
+          statusCheckKind: 'supabase',
+          visibleStatus: 'error',
+          lastCheckedAt: '2026-05-09T10:00:00.000Z',
+          lastCheckStatus: 'failed',
+          lastCheckErrorCode: 'database_auth_failed',
+          lastCheckErrorMessage: 'DB auth failed',
+          updatedAt: '2026-05-09T11:00:00.000Z',
+          publicConfig: {
+            projectUrl: 'https://tenant.example',
+            schemaName: 'wm',
+          },
+          secretConfigCiphertext: 'cipher-secret',
         })),
       },
-      'tenant-a',
-      {
-        provider: 'supabase',
-        projectUrl: ' https://tenant.example ',
-        schemaName: ' ',
-        enabled: true,
-        databaseUrl: ' postgres://db ',
-        serviceRoleKey: ' service-key ',
-      }
+      'tenant-a'
     );
 
-    expect(record).toMatchObject({
+    expect(settings).toEqual({
       instanceId: 'tenant-a',
       provider: 'supabase',
       projectUrl: 'https://tenant.example',
-      schemaName: 'public',
+      schemaName: 'wm',
       enabled: true,
       databaseUrlConfigured: true,
       serviceRoleKeyConfigured: true,
-      visibleStatus: 'unknown',
-      lastCheckedAt: '2026-05-01T10:00:00.000Z',
-      lastCheckStatus: 'succeeded',
+      visibleStatus: 'error',
+      lastCheckedAt: '2026-05-09T10:00:00.000Z',
+      lastCheckStatus: 'failed',
+      lastCheckErrorCode: 'database_auth_failed',
+      lastCheckErrorMessage: 'DB auth failed',
+      updatedAt: '2026-05-09T11:00:00.000Z',
     });
-    expect(record.databaseUrlCiphertext).toContain('postgres://db');
-    expect(record.serviceRoleKeyCiphertext).toContain('service-key');
-    expect(protectSecret).toHaveBeenCalledTimes(2);
   });
 
   it('runs the default connection probe through a short-lived pg pool', async () => {
@@ -149,7 +145,7 @@ describe('waste-management settings shared helpers', () => {
   });
 
   it('updates visible status optimistically on successful writes and revalidates persisted settings', async () => {
-    const saveWasteConnectionCheck = vi.fn(async () => undefined);
+    const saveExternalInterfaceConnectionCheck = vi.fn(async () => undefined);
     resolveWasteDataSourceMock.mockResolvedValue({
       instanceId: 'tenant-a',
       schemaName: 'wm',
@@ -166,22 +162,51 @@ describe('waste-management settings shared helpers', () => {
       visibleStatus: 'ok',
     });
 
-    await updateWasteVisibleStatus({ saveWasteConnectionCheck }, 'tenant-a', 'success');
     await updateWasteVisibleStatus(
       {
-        saveWasteConnectionCheck,
-        loadWasteDataSourceRecord: vi.fn(async () => ({
+        loadDefaultInterfaceRecord: vi.fn(async () => ({
+          id: 'supabase-1',
           instanceId: 'tenant-a',
-          provider: 'supabase',
-          projectUrl: 'https://tenant.example',
-          schemaName: 'wm',
+          typeKey: 'supabase',
+          ownerKind: 'host',
+          ownerId: 'host',
+          displayName: 'Supabase',
+          alias: 'default',
           enabled: true,
-          databaseUrlConfigured: true,
-          serviceRoleKeyConfigured: true,
-          databaseUrlCiphertext: 'cipher-db',
-          serviceRoleKeyCiphertext: 'cipher-key',
+          isDefault: true,
+          category: 'database',
+          statusCheckKind: 'supabase',
           visibleStatus: 'unknown',
+          publicConfig: {},
+          secretConfigCiphertext: 'cipher-secret',
         })),
+        saveExternalInterfaceConnectionCheck,
+      },
+      'tenant-a',
+      'success'
+    );
+    await updateWasteVisibleStatus(
+      {
+        loadDefaultInterfaceRecord: vi.fn(async () => ({
+          id: 'supabase-1',
+          instanceId: 'tenant-a',
+          typeKey: 'supabase',
+          ownerKind: 'host',
+          ownerId: 'host',
+          displayName: 'Supabase',
+          alias: 'default',
+          enabled: true,
+          visibleStatus: 'unknown',
+          isDefault: true,
+          category: 'database',
+          statusCheckKind: 'supabase',
+          publicConfig: {
+            projectUrl: 'https://tenant.example',
+            schemaName: 'wm',
+          },
+          secretConfigCiphertext: 'cipher-secret',
+        })),
+        saveExternalInterfaceConnectionCheck,
         revealSecret: vi.fn((ciphertext: string | null | undefined) => ciphertext?.replace('cipher-', 'revealed-')),
         runConnectionProbe: vi.fn(async () => undefined),
       },
@@ -189,8 +214,9 @@ describe('waste-management settings shared helpers', () => {
       'revalidate'
     );
 
-    expect(saveWasteConnectionCheck).toHaveBeenNthCalledWith(1, {
+    expect(saveExternalInterfaceConnectionCheck).toHaveBeenNthCalledWith(1, {
       instanceId: 'tenant-a',
+      interfaceId: 'supabase-1',
       checkedAt: '2026-05-10T12:00:00.000Z',
       checkStatus: 'succeeded',
       visibleStatus: 'ok',
@@ -200,14 +226,21 @@ describe('waste-management settings shared helpers', () => {
   });
 
   it('persists failed connection checks when revalidation throws and skips incomplete dependency sets', async () => {
-    const saveWasteConnectionCheck = vi.fn(async () => undefined);
+    const saveExternalInterfaceConnectionCheck = vi.fn(async () => undefined);
     resolveWasteDataSourceMock.mockRejectedValue(Object.assign(new Error('Probe fehlgeschlagen.'), { code: 'probe_failed' }));
 
-    await updateWasteVisibleStatus({ saveWasteConnectionCheck }, 'tenant-a', 'revalidate');
     await updateWasteVisibleStatus(
       {
-        saveWasteConnectionCheck,
-        loadWasteDataSourceRecord: vi.fn(async () => null),
+        loadDefaultInterfaceRecord: vi.fn(async () => null),
+        saveExternalInterfaceConnectionCheck,
+      },
+      'tenant-a',
+      'revalidate'
+    );
+    await updateWasteVisibleStatus(
+      {
+        loadDefaultInterfaceRecord: vi.fn(async () => null),
+        saveExternalInterfaceConnectionCheck,
         revealSecret: vi.fn(),
       },
       'tenant-a',
@@ -215,16 +248,33 @@ describe('waste-management settings shared helpers', () => {
     );
     await updateWasteVisibleStatus(
       {
-        saveWasteConnectionCheck,
-        loadWasteDataSourceRecord: vi.fn(async () => null),
+        loadDefaultInterfaceRecord: vi.fn(async () => ({
+          id: 'supabase-1',
+          instanceId: 'tenant-a',
+          typeKey: 'supabase',
+          ownerKind: 'host',
+          ownerId: 'host',
+          displayName: 'Supabase',
+          alias: 'default',
+          enabled: true,
+          isDefault: true,
+          category: 'database',
+          statusCheckKind: 'supabase',
+          visibleStatus: 'unknown',
+          publicConfig: {},
+          secretConfigCiphertext: 'cipher-secret',
+        })),
+        saveExternalInterfaceConnectionCheck,
+        revealSecret: vi.fn(),
       },
       'tenant-a',
       'revalidate'
     );
 
-    expect(saveWasteConnectionCheck).toHaveBeenCalledTimes(1);
-    expect(saveWasteConnectionCheck).toHaveBeenCalledWith({
+    expect(saveExternalInterfaceConnectionCheck).toHaveBeenCalledTimes(1);
+    expect(saveExternalInterfaceConnectionCheck).toHaveBeenCalledWith({
       instanceId: 'tenant-a',
+      interfaceId: 'supabase-1',
       checkedAt: '2026-05-10T12:00:00.000Z',
       checkStatus: 'failed',
       visibleStatus: 'error',

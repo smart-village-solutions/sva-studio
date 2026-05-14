@@ -115,7 +115,7 @@ describe('AppShell', () => {
     expect(within(breadcrumbNavigation).getByRole('link', { name: 'Benutzerverwaltung' }).getAttribute('href')).toBe('/admin/users');
     expect(within(breadcrumbNavigation).getByText('Nutzer bearbeiten')).toBeTruthy();
     expect(screen.getByText('Inhalt')).toBeTruthy();
-    expect(await screen.findByTestId('runtime-health-indicator')).toBeTruthy();
+    expect(screen.queryByTestId('runtime-health-indicator')).toBeNull();
   });
 
   it('versteckt die Breadcrumbs auf der Startseite', async () => {
@@ -127,7 +127,7 @@ describe('AppShell', () => {
 
     expect(screen.queryByRole('navigation', { name: 'Brotkrumen-Navigation' })).toBeNull();
     expect(screen.getByText('Startseite')).toBeTruthy();
-    expect(await screen.findByTestId('runtime-health-indicator')).toBeTruthy();
+    expect(screen.queryByTestId('runtime-health-indicator')).toBeNull();
   });
 
   it('zeigt Skeleton-Content im Ladezustand', () => {

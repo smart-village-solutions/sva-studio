@@ -10,12 +10,14 @@ import { Card } from '../../../components/ui/card';
 import { Checkbox } from '../../../components/ui/checkbox';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
-import { Textarea } from '../../../components/ui/textarea';
 import { useGroups } from '../../../hooks/use-groups';
 import { useRoles } from '../../../hooks/use-roles';
 import { t } from '../../../i18n';
-import type { TranslationKey } from '../../../i18n/translate';
-import type { IamHttpError } from '../../../lib/iam-api';
+import {
+  diffGroupRoleIds,
+  groupErrorMessage,
+  GroupTextFields,
+} from './-group-shared';
 
 type GroupDetailPageProps = {
   readonly groupId: string;
@@ -39,31 +41,6 @@ const emptyMembershipForm = (): MembershipFormState => ({
   validFrom: '',
   validUntil: '',
 });
-
-const groupErrorMessage = (error: IamHttpError | null, fallbackKey: TranslationKey): string => {
-  if (!error) {
-    return t(fallbackKey);
-  }
-
-  switch (error.code) {
-    case 'forbidden':
-      return t('admin.groups.errors.forbidden');
-    case 'csrf_validation_failed':
-      return t('admin.groups.errors.csrfValidationFailed');
-    case 'rate_limited':
-      return t('admin.groups.errors.rateLimited');
-    case 'conflict':
-      return t('admin.groups.errors.conflict');
-    case 'invalid_request':
-      return t('admin.groups.errors.invalidRequest');
-    case 'database_unavailable':
-      return error.safeDetails?.reason_code === 'schema_drift'
-        ? t('admin.groups.errors.databaseSchemaDrift')
-        : t('admin.groups.errors.databaseUnavailable');
-    default:
-      return t(fallbackKey);
-  }
-};
 
 const formatDateTime = (value?: string) => {
   if (!value) {
@@ -142,24 +119,19 @@ export const GroupDetailPage = ({ groupId }: GroupDetailPageProps) => {
       return;
     }
 
-    const currentRoleIds = new Set(group.assignedRoleIds);
-    const nextRoleIds = new Set(formValues.roleIds);
+    const { roleIdsToAssign, roleIdsToRemove } = diffGroupRoleIds(group.assignedRoleIds, formValues.roleIds);
 
-    for (const roleId of nextRoleIds) {
-      if (!currentRoleIds.has(roleId)) {
-        const assigned = await assignRole(groupId, roleId);
-        if (!assigned) {
-          return;
-        }
+    for (const roleId of roleIdsToAssign) {
+      const assigned = await assignRole(groupId, roleId);
+      if (!assigned) {
+        return;
       }
     }
 
-    for (const roleId of currentRoleIds) {
-      if (!nextRoleIds.has(roleId)) {
-        const removed = await removeRole(groupId, roleId);
-        if (!removed) {
-          return;
-        }
+    for (const roleId of roleIdsToRemove) {
+      const removed = await removeRole(groupId, roleId);
+      if (!removed) {
+        return;
       }
     }
 
@@ -230,23 +202,12 @@ export const GroupDetailPage = ({ groupId }: GroupDetailPageProps) => {
         <>
           <Card className="space-y-4 p-4">
             <form className="grid gap-4" onSubmit={onEdit}>
-              <div className="grid gap-2 text-sm text-foreground">
-                <Label htmlFor="edit-group-name">{t('admin.groups.dialogs.displayNameLabel')}</Label>
-                <Input
-                  id="edit-group-name"
-                  required
-                  value={formValues.displayName}
-                  onChange={(event) => setFormValues((current) => ({ ...current, displayName: event.target.value }))}
-                />
-              </div>
-              <div className="grid gap-2 text-sm text-foreground">
-                <Label htmlFor="edit-group-description">{t('admin.groups.dialogs.descriptionLabel')}</Label>
-                <Textarea
-                  id="edit-group-description"
-                  value={formValues.description}
-                  onChange={(event) => setFormValues((current) => ({ ...current, description: event.target.value }))}
-                />
-              </div>
+              <GroupTextFields
+                descriptionId="edit-group-description"
+                displayNameId="edit-group-name"
+                formValues={formValues}
+                setFormValues={setFormValues}
+              />
               <fieldset className="grid gap-2 text-sm text-foreground">
                 <legend>{t('admin.groups.dialogs.rolesLabel')}</legend>
                 <div className="grid gap-2 sm:grid-cols-2">

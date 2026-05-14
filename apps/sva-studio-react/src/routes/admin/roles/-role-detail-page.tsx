@@ -13,8 +13,8 @@ import { useRoles } from '../../../hooks/use-roles';
 import { useUsers } from '../../../hooks/use-users';
 import { t } from '../../../i18n';
 import type { TranslationKey } from '../../../i18n/translate';
-import type { IamHttpError } from '../../../lib/iam-api';
 import { IamRuntimeDiagnosticDetails } from '../-iam-runtime-diagnostic-details';
+import { roleErrorMessage, roleStatusLabel, roleTypeLabel } from './-roles-shared';
 
 type RoleDetailTab = 'general' | 'permissions' | 'assignments' | 'sync';
 
@@ -68,58 +68,6 @@ const ROLE_TAB_LABELS: Record<RoleDetailTab, TranslationKey> = {
   permissions: 'admin.roles.detail.tabs.permissions',
   assignments: 'admin.roles.detail.tabs.assignments',
   sync: 'admin.roles.detail.tabs.sync',
-};
-
-const STATUS_LABEL_KEYS = {
-  synced: 'admin.roles.sync.synced',
-  pending: 'admin.roles.sync.pending',
-  failed: 'admin.roles.sync.failed',
-} as const;
-
-const statusLabel = (syncState: 'synced' | 'pending' | 'failed'): string => t(STATUS_LABEL_KEYS[syncState]);
-
-const roleTypeLabel = (role: { isSystemRole: boolean; managedBy: 'studio' | 'external' | 'keycloak_builtin' }): string => {
-  if (role.isSystemRole) {
-    return t('admin.roles.labels.systemRole');
-  }
-  if (role.managedBy === 'keycloak_builtin') {
-    return t('admin.roles.labels.builtInRole');
-  }
-  if (role.managedBy === 'external') {
-    return t('admin.roles.labels.externalRole');
-  }
-  return t('admin.roles.labels.customRole');
-};
-
-const roleErrorMessage = (error: IamHttpError | null, fallbackKey: TranslationKey): string => {
-  if (!error) {
-    return t(fallbackKey);
-  }
-
-  if (error.diagnosticStatus === 'recovery_laeuft') {
-    return t('admin.roles.errors.recoveryRunning');
-  }
-
-  if (error.classification === 'keycloak_reconcile') {
-    return t('admin.roles.errors.keycloakReconcile');
-  }
-
-  switch (error.code) {
-    case 'forbidden':
-      return t('admin.roles.errors.forbidden');
-    case 'csrf_validation_failed':
-      return t('admin.roles.errors.csrfValidationFailed');
-    case 'rate_limited':
-      return t('admin.roles.errors.rateLimited');
-    case 'conflict':
-      return t('admin.roles.errors.conflict');
-    case 'keycloak_unavailable':
-      return t('admin.roles.errors.keycloakUnavailable');
-    case 'database_unavailable':
-      return t('admin.roles.errors.databaseUnavailable');
-    default:
-      return t(fallbackKey);
-  }
 };
 
 const humanizePermissionSegment = (value: string): string =>
@@ -342,7 +290,12 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
       <section className="space-y-4">
         <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
           <AlertDescription className="flex flex-col gap-3">
-            <span>{roleErrorMessage(rolesApi.error, 'admin.roles.messages.error')}</span>
+            <span>
+              {roleErrorMessage(rolesApi.error, 'admin.roles.messages.error', {
+                includeKeycloakReconcileError: true,
+                includeRecoveryRunningError: true,
+              })}
+            </span>
             <IamRuntimeDiagnosticDetails error={rolesApi.error} />
           </AlertDescription>
         </Alert>
@@ -387,7 +340,7 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
           </div>
           <div className="flex flex-wrap gap-2 text-xs">
             <Badge variant="outline">{roleTypeLabel(role)}</Badge>
-            <Badge variant="outline">{statusLabel(role.syncState)}</Badge>
+            <Badge variant="outline">{roleStatusLabel(role.syncState)}</Badge>
             <Badge variant="outline">{t('admin.roles.detail.badges.permissionCount', { count: String(role.permissions.length) })}</Badge>
             <Badge variant="outline">{t('admin.roles.detail.badges.assignmentCount', { count: String(role.memberCount) })}</Badge>
           </div>
@@ -402,7 +355,12 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
       {rolesApi.mutationError ? (
         <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
           <AlertDescription className="flex flex-col gap-3">
-            <span>{roleErrorMessage(rolesApi.mutationError, 'admin.roles.messages.error')}</span>
+            <span>
+              {roleErrorMessage(rolesApi.mutationError, 'admin.roles.messages.error', {
+                includeKeycloakReconcileError: true,
+                includeRecoveryRunningError: true,
+              })}
+            </span>
             <IamRuntimeDiagnosticDetails error={rolesApi.mutationError} />
           </AlertDescription>
         </Alert>
@@ -767,7 +725,7 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
           <dl className="grid gap-2 text-sm">
             <div>
               <dt className="text-muted-foreground">{t('admin.roles.detail.sync.metadataStatus')}</dt>
-              <dd>{statusLabel(role.syncState)}</dd>
+              <dd>{roleStatusLabel(role.syncState)}</dd>
             </div>
             <div>
               <dt className="text-muted-foreground">{t('admin.roles.detail.sync.lastSyncedAt')}</dt>

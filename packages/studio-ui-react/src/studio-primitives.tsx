@@ -89,6 +89,9 @@ export type StudioListPageTemplateProps = Readonly<{
   className?: string;
 }>;
 
+const wrapHeaderActions = (actions?: React.ReactNode) =>
+  actions ? <div className="flex shrink-0 items-start">{actions}</div> : undefined;
+
 const renderStudioListPageAction = (action: StudioListPageAction) => {
   if (action.render !== undefined) {
     return action.render;
@@ -123,7 +126,9 @@ export function StudioListPageTemplate({
         title={title}
         titleId={titleId}
         description={description}
-        actions={primaryAction ? <div className="flex shrink-0 items-start">{renderStudioListPageAction(primaryAction)}</div> : undefined}
+        actions={wrapHeaderActions(
+          primaryAction ? renderStudioListPageAction(primaryAction) : undefined
+        )}
       />
 
       {hasTabs && tabs ? (
@@ -307,6 +312,47 @@ export type StudioTechnicalStatusMetaItem = Readonly<{
   value: React.ReactNode;
 }>;
 
+type StudioStatusCardBodyProps = Readonly<{
+  title: React.ReactNode;
+  description?: React.ReactNode;
+  statusLabel: React.ReactNode;
+  statusTone: StudioTechnicalStatusTone;
+  metadata?: readonly StudioTechnicalStatusMetaItem[];
+  actions?: React.ReactNode;
+  emptyState?: React.ReactNode;
+}>;
+
+const StudioStatusCardBody = ({
+  title,
+  description,
+  statusLabel,
+  statusTone,
+  metadata,
+  actions,
+  emptyState,
+}: StudioStatusCardBodyProps) => (
+  <>
+    <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="space-y-1">
+        <h3 className="text-sm font-semibold">{title}</h3>
+        {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
+      </div>
+      <Badge variant={technicalStatusBadgeVariantByTone[statusTone]}>{statusLabel}</Badge>
+    </div>
+    {metadata?.length ? (
+      <div className="flex flex-wrap gap-2">
+        {metadata.map((item) => (
+          <Badge key={item.id} variant="outline">
+            {item.label}: {item.value}
+          </Badge>
+        ))}
+      </div>
+    ) : null}
+    {!metadata?.length && emptyState ? <div className="text-sm text-muted-foreground">{emptyState}</div> : null}
+    {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
+  </>
+);
+
 export type StudioTechnicalStatusPanelProps = Readonly<{
   title: React.ReactNode;
   description?: React.ReactNode;
@@ -328,23 +374,14 @@ export function StudioTechnicalStatusPanel({
 }: StudioTechnicalStatusPanelProps) {
   return (
     <section className={cn('space-y-4 rounded-lg border border-border/70 bg-card p-4', className)}>
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="space-y-1">
-          <h3 className="text-sm font-semibold">{title}</h3>
-          {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
-        </div>
-        <Badge variant={technicalStatusBadgeVariantByTone[statusTone]}>{statusLabel}</Badge>
-      </div>
-      {metadata?.length ? (
-        <div className="flex flex-wrap gap-2">
-          {metadata.map((item) => (
-            <Badge key={item.id} variant="outline">
-              {item.label}: {item.value}
-            </Badge>
-          ))}
-        </div>
-      ) : null}
-      {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
+      <StudioStatusCardBody
+        title={title}
+        description={description}
+        statusLabel={statusLabel}
+        statusTone={statusTone}
+        metadata={metadata}
+        actions={actions}
+      />
     </section>
   );
 }
@@ -372,24 +409,15 @@ export function StudioJobSummaryCard({
 }: StudioJobSummaryCardProps) {
   return (
     <section className={cn('space-y-4 rounded-lg border border-border/70 bg-card p-4', className)}>
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="space-y-1">
-          <h3 className="text-sm font-semibold">{title}</h3>
-          {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
-        </div>
-        <Badge variant={technicalStatusBadgeVariantByTone[statusTone]}>{statusLabel}</Badge>
-      </div>
-      {metadata?.length ? (
-        <div className="flex flex-wrap gap-2">
-          {metadata.map((item) => (
-            <Badge key={item.id} variant="outline">
-              {item.label}: {item.value}
-            </Badge>
-          ))}
-        </div>
-      ) : null}
-      {!metadata?.length && emptyState ? <div className="text-sm text-muted-foreground">{emptyState}</div> : null}
-      {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
+      <StudioStatusCardBody
+        title={title}
+        description={description}
+        statusLabel={statusLabel}
+        statusTone={statusTone}
+        metadata={metadata}
+        actions={actions}
+        emptyState={emptyState}
+      />
     </section>
   );
 }

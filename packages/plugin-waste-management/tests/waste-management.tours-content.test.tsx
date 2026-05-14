@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const resolveTourAssignmentItemsMock = vi.hoisted(() => vi.fn());
 
-import { WasteToursCard } from '../src/waste-management.tours-card.js';
+import { WasteToursContent } from '../src/waste-management.tours.content.js';
 
 vi.mock('@sva/plugin-sdk', () => ({
   usePluginTranslation: () => (key: string, values?: Record<string, unknown>) =>
@@ -20,6 +20,10 @@ vi.mock('../src/waste-management.tours.locations.js', () => ({
   resolveTourAssignmentItems: resolveTourAssignmentItemsMock,
 }));
 
+vi.mock('../src/waste-management.page.support.js', () => ({
+  StatusNotice: ({ message }: { readonly message: { text: string } | null }) => (message ? <div>{message.text}</div> : null),
+}));
+
 vi.mock('@sva/studio-ui-react', () => ({
   Badge: ({
     children,
@@ -29,9 +33,14 @@ vi.mock('@sva/studio-ui-react', () => ({
     readonly variant?: string;
   }) => <span data-testid="badge" data-variant={variant ?? 'default'}>{children}</span>,
   Button: (props: React.ComponentProps<'button'>) => <button {...props} />,
+  StudioEmptyState: ({ children }: { readonly children: React.ReactNode }) => <div data-testid="empty-state">{children}</div>,
 }));
 
-describe('WasteToursCard', () => {
+vi.mock('../src/waste-management.tab-panel-actions.js', () => ({
+  useWasteTabPanelActions: vi.fn(),
+}));
+
+describe('WasteToursContent', () => {
   beforeEach(() => {
     resolveTourAssignmentItemsMock.mockReset();
   });
@@ -40,7 +49,7 @@ describe('WasteToursCard', () => {
     cleanup();
   });
 
-  it('renders metadata, custom dates, assignments, and action callbacks for active tours', () => {
+  it('renders the tours overview as a table with row actions and assignment context', () => {
     resolveTourAssignmentItemsMock.mockReturnValue([
       {
         id: 'link-1',
@@ -75,9 +84,12 @@ describe('WasteToursCard', () => {
     };
 
     render(
-      <WasteToursCard
-        tour={tour as never}
+      <WasteToursContent
+        assignmentContextLoading={false}
+        message={{ tone: 'info', text: 'tour message' } as never}
+        tours={[tour] as never}
         masterDataOverview={{} as never}
+        onOpenCreateDialog={vi.fn()}
         onOpenEditDialog={onOpenEditDialog}
         onOpenCreateAssignmentsDialog={onOpenCreateAssignmentsDialog}
         onOpenEditAssignmentsDialog={onOpenEditAssignmentsDialog}
@@ -85,76 +97,67 @@ describe('WasteToursCard', () => {
       />
     );
 
+    expect(screen.getByText('tour message')).toBeTruthy();
+    expect(screen.getByRole('table', { name: 'tours.table.ariaLabel' })).toBeTruthy();
+    expect(screen.getByRole('columnheader', { name: 'tours.table.name' })).toBeTruthy();
+    expect(screen.getByRole('columnheader', { name: 'tours.table.status' })).toBeTruthy();
+    expect(screen.getByRole('columnheader', { name: 'tours.table.recurrence' })).toBeTruthy();
+    expect(screen.getByRole('columnheader', { name: 'tours.table.assignments' })).toBeTruthy();
+    expect(screen.getByRole('columnheader', { name: 'tours.table.actions' })).toBeTruthy();
     expect(screen.getByText('Restmüll Nord')).toBeTruthy();
     expect(screen.getByText('Wöchentliche Abholung')).toBeTruthy();
     expect(screen.getByText('common.active')).toBeTruthy();
-    expect(screen.getByText('tours.meta.recurrence:recurrence:weekly')).toBeTruthy();
+    expect(screen.getByText('recurrence:weekly')).toBeTruthy();
     expect(screen.getByText('tours.meta.fractionCount:2')).toBeTruthy();
     expect(screen.getByText('tours.meta.locationCount:4')).toBeTruthy();
-    expect(screen.getByText('tours.meta.dateRange:range:tour-1')).toBeTruthy();
-    expect(screen.getByText('tours.meta.tourId:tour-1')).toBeTruthy();
+    expect(screen.getByText('range:tour-1')).toBeTruthy();
+    expect(screen.getByText('tour-1')).toBeTruthy();
+    expect(screen.getByText('Musterstraße 1')).toBeTruthy();
+    expect(screen.getByText('Bahnhofstraße 2')).toBeTruthy();
     expect(screen.getByText('2026-12-24 · Weihnachten')).toBeTruthy();
-    expect(screen.getByText('2026-12-31')).toBeTruthy();
-    expect(screen.getByText('tours.assignments.title')).toBeTruthy();
-    expect(screen.getByText('tours.assignments.meta.startDate:2026-05-01')).toBeTruthy();
-    expect(screen.getByText('tours.assignments.meta.endDate:2026-12-31')).toBeTruthy();
+    expect(screen.queryByText('tours.meta.count:1')).toBeNull();
+    expect(screen.queryAllByTestId('badge')).toHaveLength(0);
 
-    const [editButton, createAssignmentsButton, openCalendarButton] = [
-      screen.getByRole('button', { name: 'tours.actions.edit' }),
-      screen.getByRole('button', { name: 'tours.assignments.actions.openCreate' }),
-      screen.getByRole('button', { name: 'tours.yearCalendar.actions.open' }),
-    ];
-    fireEvent.click(editButton);
-    fireEvent.click(createAssignmentsButton);
-    fireEvent.click(openCalendarButton);
-    fireEvent.click(screen.getAllByRole('button', { name: 'tours.assignments.actions.edit' })[0]!);
+    fireEvent.click(screen.getByRole('button', { name: 'tours.actions.edit' }));
+    fireEvent.click(screen.getByRole('button', { name: 'tours.assignments.actions.openCreate' }));
+    fireEvent.click(screen.getByRole('button', { name: 'tours.yearCalendar.actions.open' }));
+    const [firstAssignmentEditButton] = screen.getAllByRole('button', { name: 'tours.assignments.actions.edit' });
+    expect(firstAssignmentEditButton).toBeTruthy();
+    fireEvent.click(firstAssignmentEditButton as HTMLButtonElement);
 
     expect(onOpenEditDialog).toHaveBeenCalledWith(tour);
     expect(onOpenCreateAssignmentsDialog).toHaveBeenCalledWith(tour);
     expect(onOpenCalendar).toHaveBeenCalledWith(tour);
     expect(onOpenEditAssignmentsDialog).toHaveBeenCalledWith(tour, 'link-1');
-
-    const variants = screen.getAllByTestId('badge').map((element) => element.getAttribute('data-variant'));
-    expect(variants).toContain('default');
-    expect(variants).toContain('outline');
   });
 
-  it('omits optional sections for inactive tours without master-data context', () => {
-    resolveTourAssignmentItemsMock.mockReturnValue([
-      {
-        id: 'link-ignored',
-        label: 'Ignored',
-        startDate: '2026-01-01',
-        endDate: '2026-02-01',
-      },
-    ]);
+  it('renders a loading hint while the assignment context is still loading', () => {
+    resolveTourAssignmentItemsMock.mockReturnValue([]);
 
     render(
-      <WasteToursCard
-        tour={{
-          id: 'tour-2',
-          name: 'Papier Süd',
-          description: '',
-          recurrence: undefined,
-          wasteFractionIds: [],
-          locationCount: undefined,
-          customDates: [],
-          active: false,
-        } as never}
+      <WasteToursContent
+        assignmentContextLoading
+        message={null}
+        tours={[
+          {
+            id: 'tour-1',
+            name: 'Restmüll Nord',
+            recurrence: 'weekly',
+            wasteFractionIds: [],
+            locationCount: 0,
+            customDates: [],
+            active: true,
+          },
+        ] as never}
         masterDataOverview={null}
-        onOpenEditDialog={() => undefined}
-        onOpenCreateAssignmentsDialog={() => undefined}
-        onOpenEditAssignmentsDialog={() => undefined}
-        onOpenCalendar={() => undefined}
+        onOpenCreateDialog={vi.fn()}
+        onOpenEditDialog={vi.fn()}
+        onOpenCreateAssignmentsDialog={vi.fn()}
+        onOpenEditAssignmentsDialog={vi.fn()}
+        onOpenCalendar={vi.fn()}
       />
     );
 
-    expect(screen.queryByText('tours.assignments.title')).toBeNull();
-    expect(screen.queryByText('Ignored')).toBeNull();
-    expect(screen.queryByText('tours.customDates.title')).toBeNull();
-    expect(screen.queryByText('Wöchentliche Abholung')).toBeNull();
-    expect(screen.getByText('common.inactive')).toBeTruthy();
-    expect(screen.getByText('tours.meta.locationCount:0')).toBeTruthy();
-    expect(screen.getByText('tours.meta.recurrence:recurrence:none')).toBeTruthy();
+    expect(screen.getByText('tours.table.loadingAssignments')).toBeTruthy();
   });
 });

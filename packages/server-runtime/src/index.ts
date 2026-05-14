@@ -80,8 +80,6 @@ export {
   sanitizeExternalInterfaceRecord,
 } from './external-interfaces.server.js';
 export {
-  buildWasteDatabaseUrlAad,
-  buildWasteServiceRoleKeyAad,
   resolveWasteDataSource,
   runWasteConnectionCheck,
   WasteRuntimeError,

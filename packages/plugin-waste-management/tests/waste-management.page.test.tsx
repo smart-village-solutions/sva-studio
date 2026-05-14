@@ -626,7 +626,7 @@ describe('WasteManagementPage', () => {
     });
   });
 
-  it('renders the plugin shell from normalized search params and deep-links to settings', async () => {
+  it('renders the plugin shell from normalized search params without a redundant settings shortcut', async () => {
     render(<WasteManagementPage />);
 
     expect(screen.getByText('wasteManagement.page.title')).toBeTruthy();
@@ -649,21 +649,7 @@ describe('WasteManagementPage', () => {
       expect(tab.querySelector('[data-icon-library="tabler"]')).toBeTruthy();
     }
     expect(screen.getByText('wasteManagement.tools.migrations.title')).toBeTruthy();
-
-    fireEvent.click(screen.getByRole('button', { name: 'wasteManagement.actions.openSettings' }));
-
-    expect(navigateMock).toHaveBeenCalledWith({
-      to: '/plugins/waste-management',
-      search: expect.objectContaining({
-        tab: 'settings',
-        masterDataTab: 'locations',
-        q: 'Restmüll',
-        page: 1,
-        pageSize: 50,
-        status: 'active',
-        shiftContext: 'tour',
-      }),
-    });
+    expect(screen.queryByRole('button', { name: 'wasteManagement.actions.openSettings' })).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: 'wasteManagement.tools.actions.startSeed' }));
 

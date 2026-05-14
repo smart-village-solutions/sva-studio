@@ -4,6 +4,7 @@ const state = vi.hoisted(() => ({
   getWorkspaceContext: vi.fn(() => ({ requestId: 'req-1' })),
   resolveUserMutationActor: vi.fn(),
   requireUserId: vi.fn(),
+  resolveUserMutationTargetContext: vi.fn(),
   requireUserMutationIdentityProvider: vi.fn(),
   requireIdempotencyKey: vi.fn(),
   toPayloadHash: vi.fn(() => 'payload-hash'),
@@ -81,6 +82,7 @@ vi.mock('./user-mutation-request-context.shared.js', () => ({
   requireUserId: state.requireUserId,
   requireUserMutationIdentityProvider: state.requireUserMutationIdentityProvider,
   resolveUserMutationActor: state.resolveUserMutationActor,
+  resolveUserMutationTargetContext: state.resolveUserMutationTargetContext,
 }));
 
 vi.mock('./user-detail-query.js', () => ({
@@ -118,6 +120,20 @@ describe('sendPasswordSetupEmailInternal', () => {
         executeActionsEmail: vi.fn(async () => undefined),
       },
     });
+    state.resolveUserMutationTargetContext.mockResolvedValue({
+      actor: {
+        instanceId: 'instance-1',
+        actorAccountId: 'actor-1',
+        requestId: 'req-1',
+        traceId: 'trace-1',
+      },
+      identityProvider: {
+        provider: {
+          executeActionsEmail: vi.fn(async () => undefined),
+        },
+      },
+      userId: 'user-1',
+    });
   });
 
   it('sends the password setup email and returns sent', async () => {
@@ -143,7 +159,8 @@ describe('sendPasswordSetupEmailInternal', () => {
       data: { status: 'sent' },
       requestId: 'req-1',
     });
-    const identityProvider = await state.requireUserMutationIdentityProvider.mock.results[0]?.value;
+    const targetContext = await state.resolveUserMutationTargetContext.mock.results[0]?.value;
+    const identityProvider = targetContext.identityProvider;
     expect(identityProvider.provider.executeActionsEmail).toHaveBeenCalledWith('kc-user-1', {
       actions: ['UPDATE_PASSWORD'],
       clientId: 'sva-studio',
@@ -284,8 +301,17 @@ describe('sendPasswordSetupEmailInternal', () => {
   });
 
   it('returns keycloak_unavailable when the provider cannot send execute-actions emails', async () => {
-    state.requireUserMutationIdentityProvider.mockResolvedValue({
-      provider: {},
+    state.resolveUserMutationTargetContext.mockResolvedValue({
+      actor: {
+        instanceId: 'instance-1',
+        actorAccountId: 'actor-1',
+        requestId: 'req-1',
+        traceId: 'trace-1',
+      },
+      identityProvider: {
+        provider: {},
+      },
+      userId: 'user-1',
     });
     const { sendPasswordSetupEmailInternal } = await import('./user-password-setup-email-handler.js');
 
@@ -315,12 +341,21 @@ describe('sendPasswordSetupEmailInternal', () => {
   });
 
   it('maps execute-actions-email failures to keycloak_unavailable and writes the failure audit', async () => {
-    state.requireUserMutationIdentityProvider.mockResolvedValue({
-      provider: {
-        executeActionsEmail: vi.fn(async () => {
-          throw new Error('smtp-down');
-        }),
+    state.resolveUserMutationTargetContext.mockResolvedValue({
+      actor: {
+        instanceId: 'instance-1',
+        actorAccountId: 'actor-1',
+        requestId: 'req-1',
+        traceId: 'trace-1',
       },
+      identityProvider: {
+        provider: {
+          executeActionsEmail: vi.fn(async () => {
+            throw new Error('smtp-down');
+          }),
+        },
+      },
+      userId: 'user-1',
     });
     const { sendPasswordSetupEmailInternal } = await import('./user-password-setup-email-handler.js');
 

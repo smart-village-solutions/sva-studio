@@ -19,8 +19,21 @@ export const WasteMasterDataTabContent = ({
   return tab === 'fractions' ? (
     <WasteMasterDataFractionsContent
       fractions={controller.filteredFractions}
+      fractionsSortBy={search.fractionsSortBy}
+      fractionsSortDirection={search.fractionsSortDirection}
       onOpenCreateFraction={controller.openCreateDialog}
       onOpenEditFraction={controller.openEditDialog}
+      onOpenDeleteFraction={(fraction) => controller.deleteFraction(fraction.id)}
+      onFractionsSortChange={(sortBy, sortDirection) => {
+        void navigate({
+          to: '/plugins/waste-management',
+          search: {
+            ...search,
+            fractionsSortBy: sortBy,
+            fractionsSortDirection: sortDirection,
+          },
+        });
+      }}
     />
   ) : (
     <WasteMasterDataLocationsWorkspace

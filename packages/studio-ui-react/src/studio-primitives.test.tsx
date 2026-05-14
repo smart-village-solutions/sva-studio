@@ -424,6 +424,20 @@ describe('studio-ui-react primitives', () => {
       <StudioDataTable
         ariaLabel="News"
         labels={tableLabels}
+        data={[]}
+        getRowId={(row: { id: string }) => row.id}
+        columns={[{ id: 'title', header: 'Titel', cell: (row: { id: string }) => row.id }]}
+        emptyState={<p>Keine Daten</p>}
+        toolbarEnd={<Button>Neu anlegen</Button>}
+      />
+    );
+
+    expect(screen.getByRole('button', { name: 'Neu anlegen' })).toBeTruthy();
+
+    rerender(
+      <StudioDataTable
+        ariaLabel="News"
+        labels={tableLabels}
         data={[{ id: 'a' }]}
         getRowId={(row) => row.id}
         columns={[{ id: 'title', header: 'Titel', cell: (row) => row.id }]}

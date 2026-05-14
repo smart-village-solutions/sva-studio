@@ -8,7 +8,7 @@ import type {
   WasteTourRecord,
 } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { Badge, Button, Checkbox, Select, StudioEmptyState } from '@sva/studio-ui-react';
+import { Button, Checkbox, Select, StudioEmptyState } from '@sva/studio-ui-react';
 
 export type WasteMasterDataLocationsTableProps = {
   readonly regions: readonly WasteRegionRecord[];
@@ -148,8 +148,8 @@ export const WasteMasterDataActiveTourBanner = ({
 
   return (
     <div className="flex flex-wrap items-center gap-2 border-b border-border/70 bg-muted/30 px-4 py-3">
-      <Badge variant="outline">{pt('masterData.locationsWorkspace.filters.activeTour')}</Badge>
-      <Badge>{selectedTour.name}</Badge>
+      <span className="text-sm text-muted-foreground">{pt('masterData.locationsWorkspace.filters.activeTour')}</span>
+      <span className="text-sm font-medium">{selectedTour.name}</span>
       <Button type="button" size="sm" variant="ghost" className="ml-auto" onClick={() => onTourFilterChange('')}>
         {pt('masterData.locationsWorkspace.filters.clearTour')}
       </Button>
@@ -227,12 +227,10 @@ export const WasteMasterDataLocationsRow = ({
         </div>
       </td>
       <td className="px-3 py-3 align-top">
-        <Badge variant="outline">{pt('masterData.locationsWorkspace.table.tourCount', { value: linkedTourCount })}</Badge>
+        <span className="text-sm">{pt('masterData.locationsWorkspace.table.tourCount', { value: linkedTourCount })}</span>
       </td>
       <td className="px-3 py-3 align-top">
-        <Badge variant={location.active ? 'default' : 'secondary'}>
-          {location.active ? pt('common.active') : pt('common.inactive')}
-        </Badge>
+        <span className="text-sm">{location.active ? pt('common.active') : pt('common.inactive')}</span>
       </td>
       <td className="px-3 py-3 align-top text-sm text-muted-foreground">{location.id}</td>
       <td className="px-3 py-3 align-top text-right">

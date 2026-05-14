@@ -29,17 +29,32 @@ const actor: AuthenticatedRequestContext = {
 const createDeps = () => ({
   getRequestId: () => 'req-test',
   emitAuditEvent: vi.fn(async () => undefined),
-  loadWasteDataSourceRecord: vi.fn(async () => ({
+  resolveActorInfo: vi.fn(async () => ({
+    actor: {
+      instanceId: 'tenant-a',
+      actorAccountId: 'account-1',
+      requestId: 'req-test',
+      traceId: 'trace-test',
+    },
+  })),
+  loadDefaultInterfaceRecord: vi.fn(async () => ({
+    id: 'supabase-1',
     instanceId: 'tenant-a',
-    provider: 'supabase' as const,
-    projectUrl: 'https://tenant.example',
-    schemaName: 'wm',
+    typeKey: 'supabase',
+    ownerKind: 'host' as const,
+    ownerId: 'host',
+    displayName: 'Supabase',
+    alias: 'default',
     enabled: true,
-    databaseUrlConfigured: true,
-    serviceRoleKeyConfigured: true,
-    databaseUrlCiphertext: 'cipher-db',
-    serviceRoleKeyCiphertext: 'cipher-key',
+    isDefault: true,
+    category: 'database' as const,
+    statusCheckKind: 'supabase' as const,
     visibleStatus: 'ok' as const,
+    publicConfig: {
+      projectUrl: 'https://tenant.example',
+      schemaName: 'wm',
+    },
+    secretConfigCiphertext: 'cipher-secret',
   })),
   resolvePermissions: vi.fn(async () => ({
     ok: true as const,
@@ -247,6 +262,80 @@ describe('waste-management operation handlers', () => {
       error: {
         code: 'invalid_request',
         message: expect.stringContaining('Unbekanntes Waste-Importprofil'),
+      },
+      requestId: 'req-test',
+    });
+    expect(startPluginOperationJob).not.toHaveBeenCalled();
+  });
+
+  it('resolves the IAM actor account id before starting a migrations job', async () => {
+    const startPluginOperationJob = vi.fn(async () => new Response(JSON.stringify({ data: { id: 'job-1' } }), { status: 202 }));
+
+    const response = await wasteManagementOperationHandlers.startWasteManagementMigrationsInternal(
+      createToolRequest('https://studio.test/api/v1/waste-management/tools/migrations', {
+        targetSchema: 'wm',
+      }),
+      actor,
+      {
+        ...createDeps(),
+        resolvePermissions: vi.fn(async () => ({
+          ok: true as const,
+          permissions: [
+            {
+              action: 'waste-management.settings.manage',
+              resourceType: 'waste-management',
+              effect: 'allow' as const,
+            },
+          ],
+        })),
+        startPluginOperationJob,
+      }
+    );
+
+    expect(startPluginOperationJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorAccountId: 'account-1',
+        instanceId: 'tenant-a',
+      })
+    );
+    expect(response.status).toBe(202);
+  });
+
+  it('rejects tool starts when the actor membership cannot be resolved to an IAM account', async () => {
+    const startPluginOperationJob = vi.fn();
+
+    const response = await wasteManagementOperationHandlers.startWasteManagementMigrationsInternal(
+      createToolRequest('https://studio.test/api/v1/waste-management/tools/migrations', {
+        targetSchema: 'wm',
+      }),
+      actor,
+      {
+        ...createDeps(),
+        resolveActorInfo: vi.fn(async () => ({
+          actor: {
+            instanceId: 'tenant-a',
+            requestId: 'req-test',
+          },
+        })),
+        resolvePermissions: vi.fn(async () => ({
+          ok: true as const,
+          permissions: [
+            {
+              action: 'waste-management.settings.manage',
+              resourceType: 'waste-management',
+              effect: 'allow' as const,
+            },
+          ],
+        })),
+        startPluginOperationJob,
+      }
+    );
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        code: 'forbidden',
+        message: 'Akteur-Account nicht gefunden.',
       },
       requestId: 'req-test',
     });
@@ -566,5 +655,47 @@ describe('waste-management operation handlers', () => {
       },
     });
     expect(startPluginOperationJob).not.toHaveBeenCalled();
+  });
+
+  it('binds migrations to the configured supabase interface schema when no legacy waste datasource exists', async () => {
+    const startPluginOperationJob = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ data: { id: 'job-migration-1' } }), {
+          status: 202,
+          headers: { 'Content-Type': 'application/json' },
+        })
+    );
+
+    const response = await wasteManagementOperationHandlers.startWasteManagementMigrationsInternal(
+      createToolRequest('https://studio.test/api/v1/waste-management/tools/migrations', {
+        targetSchema: 'wm',
+      }),
+      actor,
+      {
+        ...createDeps(),
+        resolvePermissions: vi.fn(async () => ({
+          ok: true as const,
+          permissions: [
+            {
+              action: 'waste-management.settings.manage',
+              resourceType: 'waste-management',
+              effect: 'allow' as const,
+            },
+          ],
+        })),
+        startPluginOperationJob,
+      }
+    );
+
+    expect(response.status).toBe(202);
+    expect(startPluginOperationJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          input: expect.objectContaining({
+            targetSchema: 'wm',
+          }),
+        }),
+      })
+    );
   });
 });

@@ -44,6 +44,7 @@ export const wasteManagementPluginTranslationsDETools = {
     "messages": {
       "jobStarted": "Job {{jobId}} wurde gestartet.",
       "jobStartError": "Der Waste-Job konnte nicht gestartet werden.",
+      "jobStartErrorWithReason": "Der Waste-Job konnte nicht gestartet werden: {{reason}}",
       "forbidden": "Für diese Waste-Operation fehlt die Berechtigung.",
       "importValidationError": "Der Import verlangt ein Importprofil und eine gültige Quell-Referenz.",
       "resetValidationError": "Der Reset verlangt ein gültiges Bestätigungstoken."

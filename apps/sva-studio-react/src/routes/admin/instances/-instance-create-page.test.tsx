@@ -143,13 +143,6 @@ describe('InstanceCreatePage', () => {
     fireEvent.change(screen.getByLabelText('Admin-E-Mail', { selector: '#instance-admin-email' }), {
       target: { value: ' admin@example.org ' },
     });
-    fireEvent.click(screen.getByLabelText('Abfallmanagement konfigurieren', { selector: '#create-waste-enabled' }));
-    fireEvent.change(screen.getByLabelText('Supabase-Projekt-URL', { selector: '#create-waste-project-url' }), {
-      target: { value: ' https://waste.example.supabase.co ' },
-    });
-    fireEvent.change(screen.getByLabelText('Schema-Name', { selector: '#create-waste-schema-name' }), {
-      target: { value: ' waste_ops ' },
-    });
     fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
 
     expect(screen.getByText('Eingaben prüfen')).toBeTruthy();
@@ -176,14 +169,6 @@ describe('InstanceCreatePage', () => {
           email: 'admin@example.org',
           firstName: undefined,
           lastName: undefined,
-        },
-        wasteManagementSettings: {
-          provider: 'supabase',
-          enabled: true,
-          projectUrl: 'https://waste.example.supabase.co',
-          schemaName: 'waste_ops',
-          databaseUrl: undefined,
-          serviceRoleKey: undefined,
         },
       });
     });
@@ -519,19 +504,6 @@ describe('InstanceCreatePage', () => {
     fireEvent.change(screen.getByLabelText('Admin-Nachname', { selector: '#instance-admin-last-name' }), {
       target: { value: ' Admin ' },
     });
-    fireEvent.click(screen.getByLabelText('Abfallmanagement konfigurieren', { selector: '#create-waste-enabled' }));
-    fireEvent.change(screen.getByLabelText('Supabase-Projekt-URL', { selector: '#create-waste-project-url' }), {
-      target: { value: ' https://tenant-waste.example.supabase.co ' },
-    });
-    fireEvent.change(screen.getByLabelText('Schema-Name', { selector: '#create-waste-schema-name' }), {
-      target: { value: ' tenant_waste ' },
-    });
-    fireEvent.change(screen.getByLabelText('Datenbank-URL', { selector: '#create-waste-database-url' }), {
-      target: { value: ' postgres://waste.example/db ' },
-    });
-    fireEvent.change(screen.getByLabelText('Service-Role-Key', { selector: '#create-waste-service-role-key' }), {
-      target: { value: ' service-role-key ' },
-    });
     fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
 
     expect(screen.getByText('Bestehender Realm')).toBeTruthy();
@@ -557,14 +529,6 @@ describe('InstanceCreatePage', () => {
           email: 'tenant-admin@example.org',
           firstName: 'Tina',
           lastName: 'Admin',
-        },
-        wasteManagementSettings: {
-          provider: 'supabase',
-          enabled: true,
-          projectUrl: 'https://tenant-waste.example.supabase.co',
-          schemaName: 'tenant_waste',
-          databaseUrl: 'postgres://waste.example/db',
-          serviceRoleKey: 'service-role-key',
         },
       });
     });

@@ -5,7 +5,7 @@ import { jsonResponse } from '../db.js';
 
 import { createApiError, requireIdempotencyKey, toPayloadHash } from './api-helpers.js';
 import { reserveIdempotency } from './shared.js';
-import { requireUserId, requireUserMutationIdentityProvider, resolveUserMutationActor } from './user-mutation-request-context.shared.js';
+import { resolveUserMutationTargetContext } from './user-mutation-request-context.shared.js';
 import { processPasswordSetupEmailSend } from './user-password-setup-email-send.js';
 
 const SEND_PASSWORD_SETUP_EMAIL_ENDPOINT = 'POST:/api/v1/iam/users/$userId/send-password-setup-email';
@@ -15,25 +15,16 @@ export const sendPasswordSetupEmailInternal = async (
   ctx: AuthenticatedRequestContext
 ): Promise<Response> => {
   const requestContext = getWorkspaceContext();
-  const actorResolution = await resolveUserMutationActor(request, ctx, {
+  const targetContext = await resolveUserMutationTargetContext(request, ctx, {
     feature: 'iam_admin',
     scope: 'write',
     requestId: requestContext.requestId,
   });
-  if ('response' in actorResolution) {
-    return actorResolution.response;
+  if (targetContext instanceof Response) {
+    return targetContext;
   }
 
-  const actor = actorResolution.actor;
-  const userId = requireUserId(request, actor.requestId);
-  if (userId instanceof Response) {
-    return userId;
-  }
-
-  const identityProvider = await requireUserMutationIdentityProvider(actor.instanceId, actor.requestId);
-  if (identityProvider instanceof Response) {
-    return identityProvider;
-  }
+  const { actor, identityProvider, userId } = targetContext;
 
   const idempotencyKey = requireIdempotencyKey(request, actor.requestId);
   if ('error' in idempotencyKey) {

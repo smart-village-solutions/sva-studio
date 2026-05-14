@@ -6,54 +6,24 @@ import { Button } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
-import { Textarea } from '../../../components/ui/textarea';
 import { useGroups } from '../../../hooks/use-groups';
 import { t } from '../../../i18n';
-import type { TranslationKey } from '../../../i18n/translate';
-import type { IamHttpError } from '../../../lib/iam-api';
-
-const groupErrorMessage = (error: IamHttpError | null, fallbackKey: TranslationKey): string => {
-  if (!error) {
-    return t(fallbackKey);
-  }
-
-  switch (error.code) {
-    case 'forbidden':
-      return t('admin.groups.errors.forbidden');
-    case 'csrf_validation_failed':
-      return t('admin.groups.errors.csrfValidationFailed');
-    case 'rate_limited':
-      return t('admin.groups.errors.rateLimited');
-    case 'conflict':
-      return t('admin.groups.errors.conflict');
-    case 'invalid_request':
-      return t('admin.groups.errors.invalidRequest');
-    case 'database_unavailable':
-      return error.safeDetails?.reason_code === 'schema_drift'
-        ? t('admin.groups.errors.databaseSchemaDrift')
-        : t('admin.groups.errors.databaseUnavailable');
-    default:
-      return t(fallbackKey);
-  }
-};
+import {
+  createGroupFormValues,
+  groupErrorMessage,
+  GroupTextFields,
+  toCreateGroupPayload,
+} from './-group-shared';
 
 export const GroupCreatePage = () => {
   const navigate = useNavigate();
   const groupsApi = useGroups();
-  const [formValues, setFormValues] = React.useState({
-    groupKey: '',
-    displayName: '',
-    description: '',
-  });
+  const [formValues, setFormValues] = React.useState(createGroupFormValues);
 
   const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    const createdGroupId = await groupsApi.createGroup({
-      groupKey: formValues.groupKey.trim().toLowerCase().replace(/\s+/g, '_'),
-      displayName: formValues.displayName.trim(),
-      description: formValues.description.trim() || undefined,
-    });
+    const createdGroupId = await groupsApi.createGroup(toCreateGroupPayload(formValues));
     if (!createdGroupId) {
       return;
     }
@@ -87,23 +57,12 @@ export const GroupCreatePage = () => {
               onChange={(event) => setFormValues((current) => ({ ...current, groupKey: event.target.value }))}
             />
           </div>
-          <div className="grid gap-2 text-sm text-foreground">
-            <Label htmlFor="create-group-name">{t('admin.groups.dialogs.displayNameLabel')}</Label>
-            <Input
-              id="create-group-name"
-              required
-              value={formValues.displayName}
-              onChange={(event) => setFormValues((current) => ({ ...current, displayName: event.target.value }))}
-            />
-          </div>
-          <div className="grid gap-2 text-sm text-foreground">
-            <Label htmlFor="create-group-description">{t('admin.groups.dialogs.descriptionLabel')}</Label>
-            <Textarea
-              id="create-group-description"
-              value={formValues.description}
-              onChange={(event) => setFormValues((current) => ({ ...current, description: event.target.value }))}
-            />
-          </div>
+          <GroupTextFields
+            descriptionId="create-group-description"
+            displayNameId="create-group-name"
+            formValues={formValues}
+            setFormValues={setFormValues}
+          />
           <div className="mt-2 flex justify-end gap-3">
             <Button asChild type="button" variant="outline">
               <Link to="/admin/groups">{t('account.actions.cancel')}</Link>

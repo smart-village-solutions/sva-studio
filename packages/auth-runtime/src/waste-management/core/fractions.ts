@@ -190,4 +190,74 @@ export const wasteManagementFractionHandlers = {
       return createApiError(503, 'database_unavailable', 'Die Waste-Fraktion konnte nicht gespeichert werden.', requestId);
     }
   },
+  deleteWasteManagementFractionInternal: async (
+    request: Request,
+    ctx: AuthenticatedRequestContext,
+    deps: WasteManagementHandlerDeps = {}
+  ): Promise<Response> => {
+    const requestId = getRequestId(deps);
+    const authError = await authorizeWasteManagementAction(ctx, 'waste-management.master-data.manage', deps, requestId);
+    if (authError) {
+      return authError;
+    }
+
+    const instanceId = requireActorInstanceId(ctx, requestId);
+    if (instanceId instanceof Response) {
+      return instanceId;
+    }
+
+    const fractionId = readPathSegment(request, 4)?.trim();
+    if (!fractionId) {
+      return createApiError(400, 'invalid_request', 'fractionId fehlt im Pfad.', requestId);
+    }
+
+    const csrfError = validateCsrf(request, requestId);
+    if (csrfError) {
+      return csrfError;
+    }
+
+    try {
+      const existing = await requireDeps(deps.loadWasteFractionById, 'loadWasteFractionById')(instanceId, fractionId);
+      if (!existing) {
+        return createApiError(404, 'not_found', 'Die Waste-Fraktion wurde nicht gefunden.', requestId);
+      }
+
+      await requireDeps(deps.deleteWasteFraction, 'deleteWasteFraction')(instanceId, fractionId);
+
+      await emitWasteAuditEvent({
+        deps,
+        ctx,
+        instanceId,
+        actionId: 'waste-management.fraction.deleted',
+        result: 'success',
+        resourceType: 'waste_fraction',
+        resourceId: fractionId,
+      });
+
+      await updateWasteVisibleStatus(deps, instanceId, 'success');
+      return new Response(JSON.stringify(asApiItem({ id: fractionId }, requestId)), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    } catch (error) {
+      if (error instanceof Error && error.message.startsWith('missing_dependency:')) {
+        throw error;
+      }
+      const isConflict = typeof error === 'object' && error !== null && 'code' in error && (error as { code?: string }).code === '23503';
+      await emitWasteAuditEvent({
+        deps,
+        ctx,
+        instanceId,
+        actionId: 'waste-management.fraction.deleted',
+        result: 'failure',
+        reasonCode: isConflict ? 'conflict' : 'database_unavailable',
+        resourceType: 'waste_fraction',
+        resourceId: fractionId,
+      });
+      await updateWasteVisibleStatus(deps, instanceId, 'revalidate');
+      return isConflict
+        ? createApiError(409, 'invalid_request', 'Die Waste-Fraktion kann wegen bestehender Zuordnungen nicht gelöscht werden.', requestId)
+        : createApiError(503, 'database_unavailable', 'Die Waste-Fraktion konnte nicht gelöscht werden.', requestId);
+    }
+  },
 };

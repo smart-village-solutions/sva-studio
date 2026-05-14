@@ -19,6 +19,7 @@ export const useWasteToursState = () => {
   const [overview, setOverview] = useState<WasteManagementToursOverview | null>(null);
   const [availableFractions, setAvailableFractions] = useState<readonly WasteFractionRecord[]>([]);
   const [masterDataOverview, setMasterDataOverview] = useState<WasteManagementMasterDataOverview | null>(null);
+  const [assignmentContextLoading, setAssignmentContextLoading] = useState(true);
   const [schedulingOverview, setSchedulingOverview] = useState<WasteManagementSchedulingOverview | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -37,6 +38,7 @@ export const useWasteToursState = () => {
     overview,
     availableFractions,
     masterDataOverview,
+    assignmentContextLoading,
     schedulingOverview,
     error,
     dialogOpen,
@@ -53,6 +55,7 @@ export const useWasteToursState = () => {
     setOverview,
     setAvailableFractions,
     setMasterDataOverview,
+    setAssignmentContextLoading,
     setSchedulingOverview,
     setError,
     setDialogOpen,

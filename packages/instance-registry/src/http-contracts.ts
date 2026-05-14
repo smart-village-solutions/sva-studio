@@ -39,30 +39,6 @@ const tenantAdminClientSchema = z
   })
   .optional();
 
-const wasteManagementSettingsSchema = z
-  .object({
-    provider: z.literal('supabase'),
-    projectUrl: z
-      .string()
-      .trim()
-      .min(1)
-      .superRefine((value, ctx) => {
-        try {
-          new URL(value);
-        } catch {
-          ctx.addIssue({
-            code: 'custom',
-            message: 'Ungültige URL',
-          });
-        }
-      }),
-    schemaName: z.string().trim().min(1).optional(),
-    enabled: z.boolean(),
-    databaseUrl: z.string().trim().min(1).optional(),
-    serviceRoleKey: z.string().trim().min(1).optional(),
-  })
-  .optional();
-
 export const listQuerySchema = z.object({
   search: z.string().trim().min(1).optional(),
   status: z.enum(instanceStatuses).optional(),
@@ -82,7 +58,6 @@ export const createInstanceSchema = z.object({
   themeKey: z.string().trim().min(1).optional(),
   mainserverConfigRef: z.string().trim().min(1).optional(),
   featureFlags: z.record(z.string(), z.boolean()).optional(),
-  wasteManagementSettings: wasteManagementSettingsSchema,
 });
 
 export const updateInstanceSchema = createInstanceSchema.omit({

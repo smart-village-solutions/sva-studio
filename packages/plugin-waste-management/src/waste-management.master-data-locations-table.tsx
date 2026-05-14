@@ -33,7 +33,7 @@ export const WasteMasterDataLocationsTable = ({
   const selectedTour = selectedTourId ? maps.toursById.get(selectedTourId) : undefined;
 
   return (
-    <section className="overflow-hidden rounded-xl border border-border bg-[rgba(255,255,255,0.32)] shadow-shell">
+    <section className="overflow-hidden rounded-xl border border-border bg-white shadow-shell">
       <WasteMasterDataLocationsTableToolbar
         selectedCollectionLocationsCount={selectedCollectionLocationsCount}
         availableTours={availableTours}

@@ -130,19 +130,10 @@ describe('WasteManagementPage shell', () => {
     expect(screen.queryByRole('button', { name: 'change-search' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'change-status' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'change-shift-context' })).toBeNull();
-
-    fireEvent.click(screen.getByRole('button', { name: 'actions.openSettings' }));
-    expect(navigateMock).toHaveBeenNthCalledWith(1, {
-      to: '/plugins/waste-management',
-      search: {
-        ...searchState,
-        tab: 'settings',
-        page: 1,
-      },
-    });
+    expect(screen.queryByRole('button', { name: 'actions.openSettings' })).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: 'change-tab' }));
-    expect(navigateMock).toHaveBeenNthCalledWith(2, {
+    expect(navigateMock).toHaveBeenNthCalledWith(1, {
       to: '/plugins/waste-management',
       search: {
         ...searchState,

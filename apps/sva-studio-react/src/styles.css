@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@source "../../packages";
+@source "../../../packages";
 
 @theme inline {
   --color-border: rgb(var(--border));

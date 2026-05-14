@@ -60,6 +60,8 @@ export type StudioDataTableProps<TData> = Readonly<{
   isLoading?: boolean;
   getRowId: (row: TData) => string;
   selectionMode?: 'none' | 'multiple';
+  sorting?: SortingState;
+  onSortingChange?: (sorting: SortingState) => void;
 }>;
 
 const getAriaSort = (sorting: false | 'asc' | 'desc') => {
@@ -153,10 +155,13 @@ export function StudioDataTable<TData>({
   isLoading = false,
   getRowId,
   selectionMode = 'multiple',
+  sorting: controlledSorting,
+  onSortingChange,
 }: StudioDataTableProps<TData>) {
-  const [sorting, setSorting] = React.useState<SortingState>([]);
+  const [uncontrolledSorting, setUncontrolledSorting] = React.useState<SortingState>([]);
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
   const selectedRowCount = Object.keys(rowSelection).length;
+  const sorting = controlledSorting ?? uncontrolledSorting;
 
   const containerRef = React.useRef<HTMLDivElement | null>(null);
   const [isCompact, setIsCompact] = React.useState(false);
@@ -183,6 +188,17 @@ export function StudioDataTable<TData>({
   const clearSelection = React.useCallback(() => {
     setRowSelection({});
   }, []);
+
+  const handleSortingChange = React.useCallback(
+    (updater: SortingState | ((current: SortingState) => SortingState)) => {
+      const nextSorting = typeof updater === 'function' ? updater(sorting) : updater;
+      onSortingChange?.(nextSorting);
+      if (controlledSorting === undefined) {
+        setUncontrolledSorting(nextSorting);
+      }
+    },
+    [controlledSorting, onSortingChange, sorting]
+  );
 
   const tableData = React.useMemo(() => [...data], [data]);
 
@@ -245,7 +261,7 @@ export function StudioDataTable<TData>({
     getSortedRowModel: getSortedRowModel(),
     getRowId,
     enableRowSelection: selectionMode === 'multiple',
-    onSortingChange: setSorting,
+    onSortingChange: handleSortingChange,
     onRowSelectionChange: setRowSelection,
     state: {
       sorting,
@@ -255,6 +271,29 @@ export function StudioDataTable<TData>({
 
   const selectedRows = table.getSelectedRowModel().rows.map((row) => row.original);
   const hasToolbar = bulkActions.length > 0 || toolbarStart || toolbarEnd;
+  const toolbarContent = hasToolbar ? (
+    <div className="flex flex-col gap-3 border-b border-border px-4 py-4 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex flex-wrap items-center gap-2">
+        {bulkActions.map((action) =>
+          action.render ? (
+            <React.Fragment key={action.id}>{action.render}</React.Fragment>
+          ) : (
+            <Button
+              key={action.id}
+              type="button"
+              variant={action.variant ?? 'outline'}
+              disabled={action.disabled ?? selectedRows.length === 0}
+              onClick={() => void action.onClick({ selectedRows, clearSelection })}
+            >
+              {action.label}
+            </Button>
+          )
+        )}
+        {toolbarStart}
+      </div>
+      {toolbarEnd ? <div className="flex flex-wrap items-center gap-2 lg:justify-end">{toolbarEnd}</div> : null}
+    </div>
+  ) : null;
 
   if (isLoading) {
     return (
@@ -269,6 +308,7 @@ export function StudioDataTable<TData>({
   if (data.length === 0) {
     return (
       <div className="rounded-xl border border-border bg-card shadow-shell">
+        {toolbarContent}
         <div className="p-6" role="status" aria-live="polite">
           {emptyState}
         </div>
@@ -278,29 +318,7 @@ export function StudioDataTable<TData>({
 
   return (
     <div ref={containerRef} className="overflow-hidden rounded-xl border border-border bg-card shadow-shell" aria-busy="false" data-selected-rows={selectedRowCount} data-layout={isCompact ? 'compact' : 'wide'}>
-      {hasToolbar ? (
-        <div className="flex flex-col gap-3 border-b border-border px-4 py-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex flex-wrap items-center gap-2">
-            {bulkActions.map((action) =>
-              action.render ? (
-                <React.Fragment key={action.id}>{action.render}</React.Fragment>
-              ) : (
-                <Button
-                  key={action.id}
-                  type="button"
-                  variant={action.variant ?? 'outline'}
-                  disabled={action.disabled ?? selectedRows.length === 0}
-                  onClick={() => void action.onClick({ selectedRows, clearSelection })}
-                >
-                  {action.label}
-                </Button>
-              )
-            )}
-            {toolbarStart}
-          </div>
-          {toolbarEnd ? <div className="flex flex-wrap items-center gap-2 lg:justify-end">{toolbarEnd}</div> : null}
-        </div>
-      ) : null}
+      {toolbarContent}
 
       <div className={isCompact ? 'hidden' : 'overflow-x-auto'}>
         <table className="min-w-full border-collapse" aria-label={ariaLabel}>

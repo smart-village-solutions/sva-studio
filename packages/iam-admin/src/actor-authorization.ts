@@ -4,6 +4,40 @@ import type { QueryClient } from './query-client.js';
 import { resolveRolesByExternalNames, resolveRolesByIds } from './role-resolution.js';
 import type { IamRoleRow } from './types.js';
 
+const SYSTEM_ADMIN_ROLE_KEY = 'system_admin';
+
+const ACTIVE_ACCOUNT_ROLE_JOIN_SQL = `
+JOIN iam.account_roles ar
+  ON ar.instance_id = im.instance_id
+ AND ar.account_id = im.account_id
+ AND ar.valid_from <= NOW()
+ AND (ar.valid_to IS NULL OR ar.valid_to > NOW())
+JOIN iam.roles r
+  ON r.instance_id = ar.instance_id
+ AND r.id = ar.role_id
+`;
+
+const ACTIVE_SYSTEM_ADMIN_EXISTS_SQL = `
+SELECT EXISTS (
+  SELECT 1
+  FROM iam.account_roles ar
+  JOIN iam.roles r
+    ON r.instance_id = ar.instance_id
+   AND r.id = ar.role_id
+  WHERE ar.instance_id = $1
+    AND ar.account_id = $2::uuid
+    AND ar.valid_from <= NOW()
+    AND (ar.valid_to IS NULL OR ar.valid_to > NOW())
+    AND r.role_key = '${SYSTEM_ADMIN_ROLE_KEY}'
+) AS has_role;
+`;
+
+const normalizeRoleNames = (roleNames: readonly string[] | undefined): readonly string[] =>
+  [...new Set(roleNames?.map((roleName) => roleName.trim()).filter((roleName) => roleName.length > 0) ?? [])];
+
+const hasSystemAdminRole = (roleNames: readonly string[] | undefined): boolean =>
+  normalizeRoleNames(roleNames).includes(SYSTEM_ADMIN_ROLE_KEY);
+
 export const resolveActorMaxRoleLevel = async (
   client: QueryClient,
   input: { readonly instanceId: string; readonly keycloakSubject: string; readonly sessionRoleNames?: readonly string[] }
@@ -15,25 +49,15 @@ FROM iam.accounts a
 JOIN iam.instance_memberships im
   ON im.account_id = a.id
  AND im.instance_id = $1
-JOIN iam.account_roles ar
-  ON ar.instance_id = im.instance_id
- AND ar.account_id = im.account_id
- AND ar.valid_from <= NOW()
- AND (ar.valid_to IS NULL OR ar.valid_to > NOW())
-JOIN iam.roles r
-  ON r.instance_id = ar.instance_id
- AND r.id = ar.role_id
+${ACTIVE_ACCOUNT_ROLE_JOIN_SQL}
 WHERE a.keycloak_subject = $2;
 `,
     [input.instanceId, input.keycloakSubject]
   );
   const persistedMaxRoleLevel = row.rows[0]?.max_role_level ?? 0;
-  const normalizedSessionRoleNames =
-    input.sessionRoleNames
-      ?.map((roleName) => roleName.trim())
-      .filter((roleName) => roleName.length > 0) ?? [];
+  const normalizedSessionRoleNames = normalizeRoleNames(input.sessionRoleNames);
 
-  if (normalizedSessionRoleNames.includes('system_admin')) {
+  if (normalizedSessionRoleNames.includes(SYSTEM_ADMIN_ROLE_KEY)) {
     return Math.max(persistedMaxRoleLevel, 100);
   }
 
@@ -66,7 +90,7 @@ export const ensureActorCanManageTarget = (input: {
     readonly roleLevel: number;
   }[];
 }): { ok: true } | { ok: false; code: ApiErrorCode; message: string } => {
-  if (input.actorRoles.includes('system_admin')) {
+  if (hasSystemAdminRole(input.actorRoles)) {
     return { ok: true };
   }
 
@@ -79,13 +103,13 @@ export const ensureActorCanManageTarget = (input: {
     };
   }
 
-  const targetHasSystemAdmin = input.targetRoles.some((role) => role.roleKey === 'system_admin');
-  const actorIsSystemAdmin = input.actorRoles.includes('system_admin');
+  const targetHasSystemAdmin = input.targetRoles.some((role) => role.roleKey === SYSTEM_ADMIN_ROLE_KEY);
+  const actorIsSystemAdmin = hasSystemAdminRole(input.actorRoles);
   if (targetHasSystemAdmin && !actorIsSystemAdmin) {
     return {
       ok: false,
       code: 'forbidden',
-      message: 'Nur system_admin darf system_admin-Nutzer verwalten.',
+      message: `Nur ${SYSTEM_ADMIN_ROLE_KEY} darf ${SYSTEM_ADMIN_ROLE_KEY}-Nutzer verwalten.`,
     };
   }
 
@@ -100,16 +124,9 @@ FROM iam.accounts a
 JOIN iam.instance_memberships im
   ON im.account_id = a.id
  AND im.instance_id = $1
-JOIN iam.account_roles ar
-  ON ar.instance_id = im.instance_id
- AND ar.account_id = im.account_id
- AND ar.valid_from <= NOW()
- AND (ar.valid_to IS NULL OR ar.valid_to > NOW())
-JOIN iam.roles r
-  ON r.instance_id = ar.instance_id
- AND r.id = ar.role_id
+${ACTIVE_ACCOUNT_ROLE_JOIN_SQL}
 WHERE a.status = 'active'
-    AND r.role_key = 'system_admin';
+    AND r.role_key = '${SYSTEM_ADMIN_ROLE_KEY}';
 `,
     [instanceId]
   );
@@ -121,20 +138,7 @@ export const isSystemAdminAccount = async (
   input: { readonly instanceId: string; readonly accountId: string }
 ): Promise<boolean> => {
   const result = await client.query<{ readonly has_role: boolean }>(
-    `
-SELECT EXISTS (
-  SELECT 1
-  FROM iam.account_roles ar
-  JOIN iam.roles r
-    ON r.instance_id = ar.instance_id
-   AND r.id = ar.role_id
-  WHERE ar.instance_id = $1
-    AND ar.account_id = $2::uuid
-    AND ar.valid_from <= NOW()
-    AND (ar.valid_to IS NULL OR ar.valid_to > NOW())
-    AND r.role_key = 'system_admin'
-) AS has_role;
-`,
+    ACTIVE_SYSTEM_ADMIN_EXISTS_SQL,
     [input.instanceId, input.accountId]
   );
   return Boolean(result.rows[0]?.has_role);
@@ -155,7 +159,7 @@ export const ensureRoleAssignmentWithinActorLevel = async (input: {
     return { ok: false, code: 'invalid_request', message: 'Mindestens eine Rolle existiert nicht.' };
   }
 
-  if (input.actorRoles?.includes('system_admin')) {
+  if (hasSystemAdminRole(input.actorRoles)) {
     return { ok: true, roles };
   }
 

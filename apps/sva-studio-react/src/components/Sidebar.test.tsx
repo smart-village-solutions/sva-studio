@@ -300,6 +300,24 @@ describe('Sidebar', () => {
     expect(screen.queryByRole('link', { name: 'Module' })).toBeNull();
   });
 
+  it('rendert Hilfe, Support und Lizenz innerhalb der Bereichsnavigation', () => {
+    useAuthMock.mockReturnValue(unauthenticatedAuthState);
+
+    render(<Sidebar />);
+
+    const navigation = screen.getByRole('navigation', { name: 'Bereichsnavigation' });
+
+    expect(within(navigation).getByRole('link', { name: 'Hilfe' }).getAttribute('href')).toBe(
+      HELP_DISCUSSIONS_URL
+    );
+    expect(within(navigation).getByRole('link', { name: 'Support' }).getAttribute('href')).toBe(
+      SUPPORT_ISSUES_URL
+    );
+    expect(within(navigation).getByRole('link', { name: 'Lizenz' }).getAttribute('href')).toBe(
+      LICENSE_ISSUE_URL
+    );
+  });
+
   it('zeigt Unterpunkte als Flyout, wenn die Desktop-Sidebar eingeklappt ist', () => {
     window.localStorage.setItem('sva-studio-sidebar-collapsed', '1');
     useAuthMock.mockReturnValue({

@@ -10,6 +10,11 @@ const state = vi.hoisted(() => ({
   revealField: vi.fn((value: string | null | undefined, aad: string) =>
     value && value.startsWith(`${aad}:`) ? value.slice(aad.length + 1) : undefined
   ),
+  logger: {
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  },
 }));
 
 vi.mock('@sva/data-repositories/server', () => ({
@@ -25,6 +30,12 @@ vi.mock('@sva/auth-runtime/server', () => ({
   revealField: state.revealField,
 }));
 
+vi.mock('@sva/server-runtime', () => ({
+  buildExternalInterfaceSecretConfigAad: (interfaceId: string) =>
+    `iam.instance_external_interfaces.secret_config:${interfaceId}`,
+  createSdkLogger: () => state.logger,
+}));
+
 describe('instance-interfaces-server', () => {
   beforeEach(() => {
     vi.resetModules();
@@ -35,6 +46,9 @@ describe('instance-interfaces-server', () => {
     state.deleteExternalInterfaceRecord.mockReset();
     state.protectField.mockClear();
     state.revealField.mockClear();
+    state.logger.info.mockReset();
+    state.logger.warn.mockReset();
+    state.logger.error.mockReset();
   });
 
   it('reports custom interface storage as available and projects persisted registry rows', async () => {
@@ -275,6 +289,16 @@ describe('instance-interfaces-server', () => {
     ).rejects.toThrow('secret_unreadable');
 
     expect(state.saveExternalInterfaceRecord).not.toHaveBeenCalled();
+    expect(state.logger.error).toHaveBeenCalledWith(
+      'Failed to read stored external interface secrets',
+      expect.objectContaining({
+        operation: 'build_interface_record',
+        workspace_id: 'de-test',
+        interface_type: 's3',
+        existing_interface_id: 'existing-interface-id',
+        error_message: 'secret_unreadable',
+      })
+    );
   });
 
   it('rejects non-object decrypted secret payloads during updates', async () => {
@@ -440,6 +464,21 @@ describe('instance-interfaces-server', () => {
       createdAt: '2026-05-12T08:00:00.000Z',
       updatedAt: '2026-05-12T08:00:00.000Z',
     } as const;
+    const missingSupabaseSecrets = {
+      id: 'supabase-2',
+      instanceId: 'de-test',
+      type: 'supabase',
+      name: 'Supabase Incomplete',
+      enabled: true,
+      config: {
+        projectUrl: 'https://project.supabase.co',
+        schemaName: 'public',
+        databaseUrl: '',
+        serviceRoleKey: '',
+      },
+      createdAt: '2026-05-12T08:00:00.000Z',
+      updatedAt: '2026-05-12T08:00:00.000Z',
+    } as const;
     const validS3 = {
       id: 's3-2',
       instanceId: 'de-test',
@@ -464,10 +503,16 @@ describe('instance-interfaces-server', () => {
         statusMessage: expect.stringContaining('Project URL erforderlich'),
       })
     );
+    expect(checkStoredInterfaceHealth(missingSupabaseSecrets)).toEqual(
+      expect.objectContaining({
+        status: 'error',
+        statusMessage: expect.stringContaining('Direkte DB-URL erforderlich'),
+      })
+    );
     expect(checkStoredInterfaceHealth(validS3)).toEqual(
       expect.objectContaining({
         status: 'unknown',
-        statusMessage: expect.stringContaining('noch nicht verfügbar'),
+        statusMessage: 'S3-Verbindungsprüfung ausstehend.',
       })
     );
   });

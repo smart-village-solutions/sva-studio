@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { resetRequestSingleFlight } from './request-singleflight';
 
 const browserLoggerMock = vi.hoisted(() => ({
   debug: vi.fn(),
@@ -69,11 +70,38 @@ import {
   normalizeRuntimeHealthResponse,
 } from './iam-api';
 
+const createJsonResponse = (body: unknown, init?: ResponseInit) =>
+  new Response(JSON.stringify(body), {
+    status: 200,
+    headers: { 'content-type': 'application/json' },
+    ...init,
+  });
+
+const createDeferredResponse = () => {
+  let resolveResponse: ((response: Response) => void) | null = null;
+  const responsePromise = new Promise<Response>((resolve) => {
+    resolveResponse = resolve;
+  });
+
+  const resolve = (response: Response) => {
+    if (!resolveResponse) {
+      throw new Error('Expected deferred response resolver to be registered.');
+    }
+    resolveResponse(response);
+  };
+
+  return {
+    responsePromise,
+    resolve,
+  };
+};
+
 describe('iam-api organization helpers', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllEnvs();
     vi.unstubAllGlobals();
+    resetRequestSingleFlight();
     vi.stubEnv('NODE_ENV', 'test');
     browserLoggerMock.debug.mockReset();
     browserLoggerMock.info.mockReset();
@@ -83,13 +111,10 @@ describe('iam-api organization helpers', () => {
 
   it('builds organization list queries and sends credentials', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          data: [],
-          pagination: { page: 2, pageSize: 10, total: 0 },
-        }),
-        { status: 200, headers: { 'content-type': 'application/json' } }
-      )
+      createJsonResponse({
+        data: [],
+        pagination: { page: 2, pageSize: 10, total: 0 },
+      })
     );
     vi.stubGlobal('fetch', fetchMock);
 
@@ -110,12 +135,9 @@ describe('iam-api organization helpers', () => {
   });
 
   it('sends module assignment, bootstrap, revoke, and baseline seed mutations to the instance IAM endpoints', async () => {
-    const fetchMock = vi.fn().mockImplementation(async () =>
-      new Response(JSON.stringify({ data: { instanceId: 'demo' } }), {
-        status: 200,
-        headers: { 'content-type': 'application/json' },
-      })
-    );
+    const fetchMock = vi
+      .fn()
+      .mockImplementation(async () => createJsonResponse({ data: { instanceId: 'demo' } }));
     vi.stubGlobal('fetch', fetchMock);
     vi.stubGlobal('crypto', { randomUUID: () => 'uuid-test-2' });
 
@@ -158,6 +180,42 @@ describe('iam-api organization helpers', () => {
     );
   });
 
+  it('deduplicates overlapping reads of my organization context', async () => {
+    const deferredResponse = createDeferredResponse();
+    const fetchMock = vi.fn().mockReturnValueOnce(deferredResponse.responsePromise);
+    vi.stubGlobal('fetch', fetchMock);
+
+    const firstRequest = getMyOrganizationContext();
+    const secondRequest = getMyOrganizationContext();
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    deferredResponse.resolve(createJsonResponse({ data: { activeOrganizationId: 'org-1' } }));
+
+    await expect(firstRequest).resolves.toMatchObject({ data: { activeOrganizationId: 'org-1' } });
+    await expect(secondRequest).resolves.toMatchObject({ data: { activeOrganizationId: 'org-1' } });
+  });
+
+  it('deduplicates overlapping reads of pending legal texts', async () => {
+    const deferredResponse = createDeferredResponse();
+    const fetchMock = vi.fn().mockReturnValueOnce(deferredResponse.responsePromise);
+    vi.stubGlobal('fetch', fetchMock);
+
+    const firstRequest = getMyPendingLegalTexts();
+    const secondRequest = getMyPendingLegalTexts();
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    deferredResponse.resolve(
+      createJsonResponse({
+        data: [{ legalTextId: 'lt-1', legalTextVersion: 'v1', locale: 'de' }],
+      })
+    );
+
+    await expect(firstRequest).resolves.toMatchObject({ data: [expect.objectContaining({ legalTextId: 'lt-1' })] });
+    await expect(secondRequest).resolves.toMatchObject({ data: [expect.objectContaining({ legalTextId: 'lt-1' })] });
+  });
+
   it('normalizes legacy runtime health responses', () => {
     const health = normalizeRuntimeHealthResponse({
       checks: {
@@ -187,12 +245,9 @@ describe('iam-api organization helpers', () => {
   });
 
   it('sends JSON headers for organization mutations', async () => {
-    const fetchMock = vi.fn().mockImplementation(async () =>
-      new Response(JSON.stringify({ data: { id: 'org-1' } }), {
-        status: 200,
-        headers: { 'content-type': 'application/json' },
-      })
-    );
+    const fetchMock = vi
+      .fn()
+      .mockImplementation(async () => createJsonResponse({ data: { id: 'org-1' } }));
     vi.stubGlobal('fetch', fetchMock);
     vi.stubGlobal('crypto', { randomUUID: () => 'uuid-test-1' });
 

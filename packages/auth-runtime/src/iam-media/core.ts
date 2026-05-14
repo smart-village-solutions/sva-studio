@@ -117,6 +117,25 @@ const readUploadSessionId = (request: Request): string | Response => {
 
 const getRequestId = (): string | undefined => getWorkspaceContext().requestId;
 
+type ScopedMediaInstanceResult = { ok: true; instanceId: string } | { ok: false; response: Response };
+
+const resolveBodyScopedInstanceId = (requestedInstanceId: string | undefined, userInstanceId?: string): ScopedMediaInstanceResult => {
+  const instanceId = requestedInstanceId ?? userInstanceId;
+  if (!instanceId) {
+    return {
+      ok: false,
+      response: createApiError(400, 'invalid_instance_id', 'Instanz-ID fehlt.', getRequestId()),
+    };
+  }
+  if (userInstanceId && instanceId !== userInstanceId) {
+    return {
+      ok: false,
+      response: createApiError(403, 'forbidden', 'Instanzkontext stimmt nicht mit der Sitzung überein.', getRequestId()),
+    };
+  }
+  return { ok: true, instanceId };
+};
+
 type MediaHttpHandlerDeps = {
   readonly withMediaService: <T>(instanceId: string, work: (service: MediaService) => Promise<T>) => Promise<T>;
   readonly storagePort: MediaStoragePort;
@@ -222,6 +241,42 @@ const mapAuthorizationFailure = (result: Exclude<MediaPrimitiveAuthorizationResu
         : result.error;
 
   return createApiError(result.status, code, result.message, getRequestId());
+};
+
+const handleMediaStorageUnavailable = async (input: {
+  readonly deps: Pick<MediaHttpHandlerDeps, 'emitAuditEvent'>;
+  readonly ctx: AuthenticatedRequestContext;
+  readonly instanceId: string;
+  readonly actionId: string;
+  readonly resourceType: string;
+  readonly resourceId?: string;
+}): Promise<Response> => {
+  await emitMediaAuditEvent({
+    deps: input.deps,
+    ctx: input.ctx,
+    instanceId: input.instanceId,
+    actionId: input.actionId,
+    result: 'failure',
+    reasonCode: 'media_storage_unavailable',
+    resourceType: input.resourceType,
+    resourceId: input.resourceId,
+  });
+
+  return createApiError(503, 'internal_error', 'Medien-Storage ist momentan nicht verfügbar.', getRequestId());
+};
+
+const withMediaStorageGuard = async (
+  work: () => Promise<Response>,
+  input: Parameters<typeof handleMediaStorageUnavailable>[0]
+): Promise<Response> => {
+  try {
+    return await work();
+  } catch (error) {
+    if (error instanceof MediaStorageUnavailableError) {
+      return handleMediaStorageUnavailable(input);
+    }
+    throw error;
+  }
 };
 
 export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
@@ -374,13 +429,11 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
       return createApiError(400, 'invalid_request', parsed.message, getRequestId());
     }
 
-    const instanceId = parsed.data.instanceId ?? ctx.user.instanceId;
-    if (!instanceId) {
-      return createApiError(400, 'invalid_instance_id', 'Instanz-ID fehlt.', getRequestId());
+    const instanceScope = resolveBodyScopedInstanceId(parsed.data.instanceId, ctx.user.instanceId);
+    if (!instanceScope.ok) {
+      return instanceScope.response;
     }
-    if (ctx.user.instanceId && instanceId !== ctx.user.instanceId) {
-      return createApiError(403, 'forbidden', 'Instanzkontext stimmt nicht mit der Sitzung überein.', getRequestId());
-    }
+    const { instanceId } = instanceScope;
     const authorization = await deps.authorizeAction({ ctx, action: 'media.create' });
     if (!authorization.ok) {
       await emitMediaAuditEvent({
@@ -415,7 +468,7 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
       });
     }
 
-    try {
+    return withMediaStorageGuard(async () => {
       const assetId = deps.createId();
       const uploadSessionId = deps.createId();
       const upload = await deps.storagePort.prepareUpload({
@@ -479,21 +532,13 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
           getRequestId()
         )
       );
-    } catch (error) {
-      if (error instanceof MediaStorageUnavailableError) {
-        await emitMediaAuditEvent({
-          deps,
-          ctx,
-          instanceId,
-          actionId: 'media.uploadInitialize',
-          result: 'failure',
-          reasonCode: 'media_storage_unavailable',
-          resourceType: 'media_asset',
-        });
-        return createApiError(503, 'internal_error', 'Medien-Storage ist momentan nicht verfügbar.', getRequestId());
-      }
-      throw error;
-    }
+    }, {
+      deps,
+      ctx,
+      instanceId,
+      actionId: 'media.uploadInitialize',
+      resourceType: 'media_asset',
+    });
   },
 
   async updateMedia(request: Request, ctx: AuthenticatedRequestContext): Promise<Response> {
@@ -502,13 +547,11 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
       return createApiError(400, 'invalid_request', parsed.message, getRequestId());
     }
 
-    const instanceId = parsed.data.instanceId ?? ctx.user.instanceId;
-    if (!instanceId) {
-      return createApiError(400, 'invalid_instance_id', 'Instanz-ID fehlt.', getRequestId());
+    const instanceScope = resolveBodyScopedInstanceId(parsed.data.instanceId, ctx.user.instanceId);
+    if (!instanceScope.ok) {
+      return instanceScope.response;
     }
-    if (ctx.user.instanceId && instanceId !== ctx.user.instanceId) {
-      return createApiError(403, 'forbidden', 'Instanzkontext stimmt nicht mit der Sitzung überein.', getRequestId());
-    }
+    const { instanceId } = instanceScope;
 
     const assetId = readAssetId(request);
     if (assetId instanceof Response) {
@@ -601,7 +644,7 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
       return mapAuthorizationFailure(authorization);
     }
 
-    try {
+    return withMediaStorageGuard(async () => {
       const result = await deps.withMediaService(instanceId, async (service) =>
         createMediaUploadProcessingService({
           service,
@@ -665,22 +708,14 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
           getRequestId()
         )
       );
-    } catch (error) {
-      if (error instanceof MediaStorageUnavailableError) {
-        await emitMediaAuditEvent({
-          deps,
-          ctx,
-          instanceId,
-          actionId: 'media.uploadComplete',
-          result: 'failure',
-          reasonCode: 'media_storage_unavailable',
-          resourceType: 'media_upload_session',
-          resourceId: uploadSessionId,
-        });
-        return createApiError(503, 'internal_error', 'Medien-Storage ist momentan nicht verfügbar.', getRequestId());
-      }
-      throw error;
-    }
+    }, {
+      deps,
+      ctx,
+      instanceId,
+      actionId: 'media.uploadComplete',
+      resourceType: 'media_upload_session',
+      resourceId: uploadSessionId,
+    });
   },
 
   async replaceReferences(request: Request, ctx: AuthenticatedRequestContext): Promise<Response> {
@@ -689,13 +724,11 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
       return createApiError(400, 'invalid_request', parsed.message, getRequestId());
     }
 
-    const instanceId = parsed.data.instanceId ?? ctx.user.instanceId;
-    if (!instanceId) {
-      return createApiError(400, 'invalid_instance_id', 'Instanz-ID fehlt.', getRequestId());
+    const instanceScope = resolveBodyScopedInstanceId(parsed.data.instanceId, ctx.user.instanceId);
+    if (!instanceScope.ok) {
+      return instanceScope.response;
     }
-    if (ctx.user.instanceId && instanceId !== ctx.user.instanceId) {
-      return createApiError(403, 'forbidden', 'Instanzkontext stimmt nicht mit der Sitzung überein.', getRequestId());
-    }
+    const { instanceId } = instanceScope;
 
     const authorization = await deps.authorizeAction({
       ctx,
@@ -850,7 +883,7 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
       return assetId;
     }
 
-    try {
+    return withMediaStorageGuard(async () => {
       const asset = await deps.withMediaService(instanceId, (service) => service.getAssetById(instanceId, assetId));
       if (!asset) {
         await emitMediaAuditEvent({
@@ -906,22 +939,14 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
       });
 
       return jsonResponse(200, asApiItem(delivery, getRequestId()));
-    } catch (error) {
-      if (error instanceof MediaStorageUnavailableError) {
-        await emitMediaAuditEvent({
-          deps,
-          ctx,
-          instanceId,
-          actionId: 'media.deliveryResolve',
-          result: 'failure',
-          reasonCode: 'media_storage_unavailable',
-          resourceType: 'media_asset',
-          resourceId: assetId,
-        });
-        return createApiError(503, 'internal_error', 'Medien-Storage ist momentan nicht verfügbar.', getRequestId());
-      }
-      throw error;
-    }
+    }, {
+      deps,
+      ctx,
+      instanceId,
+      actionId: 'media.deliveryResolve',
+      resourceType: 'media_asset',
+      resourceId: assetId,
+    });
   },
 
   async deleteMedia(request: Request, ctx: AuthenticatedRequestContext): Promise<Response> {
@@ -949,7 +974,7 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
       return mapAuthorizationFailure(authorization);
     }
 
-    try {
+    return withMediaStorageGuard(async () => {
       const asset = await deps.withMediaService(instanceId, (service) => service.getAssetById(instanceId, assetId));
       if (!asset) {
         await emitMediaAuditEvent({
@@ -1028,22 +1053,14 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
         resourceId: assetId,
       });
       return jsonResponse(200, asApiItem({ assetId, deleted: true }, getRequestId()));
-    } catch (error) {
-      if (error instanceof MediaStorageUnavailableError) {
-        await emitMediaAuditEvent({
-          deps,
-          ctx,
-          instanceId,
-          actionId: 'media.delete',
-          result: 'failure',
-          reasonCode: 'media_storage_unavailable',
-          resourceType: 'media_asset',
-          resourceId: assetId,
-        });
-        return createApiError(503, 'internal_error', 'Medien-Storage ist momentan nicht verfügbar.', getRequestId());
-      }
-      throw error;
-    }
+    }, {
+      deps,
+      ctx,
+      instanceId,
+      actionId: 'media.delete',
+      resourceType: 'media_asset',
+      resourceId: assetId,
+    });
   },
 });
 

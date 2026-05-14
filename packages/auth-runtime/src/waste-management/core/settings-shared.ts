@@ -1,16 +1,48 @@
 import { Pool } from 'pg';
+import { loadDefaultExternalInterfaceRecord } from '@sva/data-repositories/server';
 import {
-  buildWasteDatabaseUrlAad,
-  buildWasteServiceRoleKeyAad,
   resolveWasteDataSource,
   runWasteConnectionCheck,
   type ResolvedWasteDataSource,
 } from '@sva/server-runtime';
-import type { WasteManagementConnectionCheckRecord, WasteManagementDataSourceRecord, WasteManagementSettingsRecord } from '@sva/core';
-import { z } from 'zod';
+import type {
+  ExternalInterfaceConnectionCheckRecord,
+  WasteManagementDataSourceRecord,
+  WasteManagementSettingsRecord,
+} from '@sva/core';
 
-import { wasteManagementSettingsSchema } from './schemas.js';
 import type { WasteManagementHandlerDeps } from './types.js';
+
+const normalizeInterfaceWasteVisibleStatus = (
+  status: 'not_configured' | 'unknown' | 'ok' | 'error' | 'disabled'
+): WasteManagementDataSourceRecord['visibleStatus'] => (status === 'disabled' ? 'unknown' : status);
+
+const mapExternalInterfaceToWasteSettings = (
+  record: Awaited<ReturnType<typeof loadDefaultExternalInterfaceRecord>>
+): WasteManagementSettingsRecord | null => {
+  if (!record || record.typeKey !== 'supabase') {
+    return null;
+  }
+
+  return {
+    instanceId: record.instanceId,
+    provider: 'supabase',
+    projectUrl: typeof record.publicConfig.projectUrl === 'string' ? record.publicConfig.projectUrl : '',
+    schemaName:
+      typeof record.publicConfig.schemaName === 'string' && record.publicConfig.schemaName.trim().length > 0
+        ? record.publicConfig.schemaName
+        : 'public',
+    enabled: record.enabled,
+    databaseUrlConfigured: Boolean(record.secretConfigCiphertext),
+    serviceRoleKeyConfigured: Boolean(record.secretConfigCiphertext),
+    visibleStatus: normalizeInterfaceWasteVisibleStatus(record.visibleStatus),
+    lastCheckedAt: record.lastCheckedAt,
+    lastCheckStatus: record.lastCheckStatus,
+    lastCheckErrorCode: record.lastCheckErrorCode,
+    lastCheckErrorMessage: record.lastCheckErrorMessage,
+    updatedAt: record.updatedAt,
+  };
+};
 
 export const sanitizeWasteSettings = (
   record: WasteManagementDataSourceRecord | null | undefined
@@ -36,6 +68,14 @@ export const sanitizeWasteSettings = (
   };
 };
 
+export const loadConfiguredWasteSettings = async (
+  deps: WasteManagementHandlerDeps,
+  instanceId: string
+): Promise<WasteManagementSettingsRecord | null> => {
+  const interfaceRecord = await (deps.loadDefaultInterfaceRecord ?? loadDefaultExternalInterfaceRecord)(instanceId, 'supabase');
+  return mapExternalInterfaceToWasteSettings(interfaceRecord);
+};
+
 export const defaultRunConnectionProbe = async (dataSource: ResolvedWasteDataSource): Promise<void> => {
   const pool = new Pool({
     connectionString: dataSource.databaseUrl,
@@ -56,47 +96,15 @@ export const defaultRunConnectionProbe = async (dataSource: ResolvedWasteDataSou
   }
 };
 
-export const buildSettingsRecord = async (
-  deps: WasteManagementHandlerDeps,
-  instanceId: string,
-  payload: z.infer<typeof wasteManagementSettingsSchema>
-): Promise<WasteManagementDataSourceRecord> => {
-  const existing = (await deps.loadWasteDataSourceRecord?.(instanceId)) ?? null;
-  const nextDatabaseUrlCiphertext = payload.databaseUrl?.trim()
-    ? deps.protectSecret?.(payload.databaseUrl.trim(), buildWasteDatabaseUrlAad(instanceId))
-    : existing?.databaseUrlCiphertext;
-  const nextServiceRoleKeyCiphertext = payload.serviceRoleKey?.trim()
-    ? deps.protectSecret?.(payload.serviceRoleKey.trim(), buildWasteServiceRoleKeyAad(instanceId))
-    : existing?.serviceRoleKeyCiphertext;
-
-  return {
-    instanceId,
-    provider: payload.provider,
-    projectUrl: payload.projectUrl.trim(),
-    schemaName: payload.schemaName?.trim() || 'public',
-    enabled: payload.enabled,
-    databaseUrlConfigured: Boolean(nextDatabaseUrlCiphertext),
-    serviceRoleKeyConfigured: Boolean(nextServiceRoleKeyCiphertext),
-    databaseUrlCiphertext: nextDatabaseUrlCiphertext ?? undefined,
-    serviceRoleKeyCiphertext: nextServiceRoleKeyCiphertext ?? undefined,
-    visibleStatus: nextDatabaseUrlCiphertext && nextServiceRoleKeyCiphertext ? 'unknown' : 'not_configured',
-    lastCheckedAt: existing?.lastCheckedAt,
-    lastCheckStatus: existing?.lastCheckStatus,
-    lastCheckErrorCode: existing?.lastCheckErrorCode,
-    lastCheckErrorMessage: existing?.lastCheckErrorMessage,
-    updatedAt: existing?.updatedAt,
-  };
-};
-
 const persistWasteConnectionState = async (
   deps: WasteManagementHandlerDeps,
-  record: WasteManagementConnectionCheckRecord
+  record: ExternalInterfaceConnectionCheckRecord
 ): Promise<void> => {
-  if (!deps.saveWasteConnectionCheck) {
+  if (!deps.saveExternalInterfaceConnectionCheck) {
     return;
   }
 
-  await deps.saveWasteConnectionCheck(record);
+  await deps.saveExternalInterfaceConnectionCheck(record);
 };
 
 export const updateWasteVisibleStatus = async (
@@ -104,13 +112,19 @@ export const updateWasteVisibleStatus = async (
   instanceId: string,
   outcome: 'success' | 'revalidate'
 ): Promise<void> => {
-  if (!deps.saveWasteConnectionCheck) {
+  if (!deps.saveExternalInterfaceConnectionCheck) {
+    return;
+  }
+
+  const interfaceRecord = await (deps.loadDefaultInterfaceRecord ?? loadDefaultExternalInterfaceRecord)(instanceId, 'supabase');
+  if (!interfaceRecord) {
     return;
   }
 
   if (outcome === 'success') {
     await persistWasteConnectionState(deps, {
       instanceId,
+      interfaceId: interfaceRecord.id,
       checkedAt: new Date().toISOString(),
       checkStatus: 'succeeded',
       visibleStatus: 'ok',
@@ -118,14 +132,14 @@ export const updateWasteVisibleStatus = async (
     return;
   }
 
-  if (!deps.loadWasteDataSourceRecord || !deps.revealSecret) {
+  if (!deps.revealSecret) {
     return;
   }
 
   try {
     const dataSource = await resolveWasteDataSource({
       instanceId,
-      loadRecord: deps.loadWasteDataSourceRecord,
+      loadDefaultInterface: async () => interfaceRecord,
       revealSecret: (ciphertext, aad) => deps.revealSecret?.(ciphertext, aad) ?? undefined,
     });
     const connectionCheck = await runWasteConnectionCheck({
@@ -133,13 +147,17 @@ export const updateWasteVisibleStatus = async (
       probe: deps.runConnectionProbe ?? defaultRunConnectionProbe,
       now: () => new Date(),
     });
-    await persistWasteConnectionState(deps, connectionCheck);
+    await persistWasteConnectionState(deps, {
+      ...connectionCheck,
+      interfaceId: interfaceRecord.id,
+    });
   } catch (error) {
     const errorCode =
       error instanceof Error && 'code' in error && typeof error.code === 'string' ? error.code : 'connection_failed';
     const errorMessage = error instanceof Error ? error.message : 'Connection-Check fehlgeschlagen.';
     await persistWasteConnectionState(deps, {
       instanceId,
+      interfaceId: interfaceRecord.id,
       checkedAt: new Date().toISOString(),
       checkStatus: 'failed',
       visibleStatus: 'error',

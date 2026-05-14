@@ -15,63 +15,25 @@ import { usePluginOperationJobs } from '../../hooks/use-plugin-operation-jobs';
 import { t } from '../../i18n';
 import type { IamHttpError } from '../../lib/iam-api';
 import { formatMonitoringJobEventMessage, formatMonitoringJobEventTitle } from './-job-event-presentation';
+import {
+  formatMonitoringJobDateTime,
+  formatMonitoringJobProgressSummary,
+  getMonitoringJobCurrentStep,
+  monitoringJobStaleStateLabelKeyByValue,
+  monitoringJobStatusLabelKeyByValue,
+  monitoringJobStatusVariantByValue,
+} from './-job-presentation';
 
 type MonitoringJobsView = 'active' | 'history';
 type MonitoringJobsStatusFilter = 'all' | StudioJobListItem['status'];
 
 const monitoringStatusFilters = ['all', 'queued', 'running', 'retrying', 'succeeded', 'failed', 'cancelled'] as const;
 
-const statusVariantByValue: Record<StudioJobListItem['status'], 'outline' | 'secondary' | 'default' | 'destructive'> = {
-  queued: 'outline',
-  running: 'secondary',
-  retrying: 'secondary',
-  succeeded: 'default',
-  failed: 'destructive',
-  cancelled: 'destructive',
-};
-
 const staleVariantByValue = {
   fresh: 'outline',
   stale: 'destructive',
   terminal: 'default',
 } as const;
-
-const statusLabelKeyByValue = {
-  queued: 'monitoring.jobs.status.queued',
-  running: 'monitoring.jobs.status.running',
-  retrying: 'monitoring.jobs.status.retrying',
-  succeeded: 'monitoring.jobs.status.succeeded',
-  failed: 'monitoring.jobs.status.failed',
-  cancelled: 'monitoring.jobs.status.cancelled',
-} as const;
-
-const staleStateLabelKeyByValue = {
-  fresh: 'monitoring.jobs.runtime.fresh',
-  stale: 'monitoring.jobs.runtime.stale',
-  terminal: 'monitoring.jobs.runtime.terminal',
-} as const;
-
-const formatDateTime = (value?: string): string => {
-  if (!value) {
-    return t('monitoring.jobs.values.notAvailable');
-  }
-
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
-};
-
-const formatProgress = (job: StudioJobListItem): string => {
-  if (!job.progress) {
-    return t('monitoring.jobs.values.notAvailable');
-  }
-
-  const percent = job.progress.totalSteps > 0 ? Math.round((job.progress.completedSteps / job.progress.totalSteps) * 100) : 0;
-  return t('monitoring.jobs.progress.summary', {
-    current: job.progress.completedSteps,
-    total: job.progress.totalSteps,
-    percent,
-  });
-};
 
 const jobsErrorMessage = (error: IamHttpError | null): string => {
   if (!error) {
@@ -148,10 +110,12 @@ export const MonitoringJobsPage = () => {
         header: t('monitoring.jobs.table.status'),
         cell: (job) => (
           <div className="space-y-2">
-            <Badge variant={statusVariantByValue[job.status]}>{t(statusLabelKeyByValue[job.status])}</Badge>
+            <Badge variant={monitoringJobStatusVariantByValue[job.status]}>
+              {t(monitoringJobStatusLabelKeyByValue[job.status])}
+            </Badge>
             <div>
               <Badge variant={staleVariantByValue[job.runtime.staleState]}>
-                {t(staleStateLabelKeyByValue[job.runtime.staleState])}
+                {t(monitoringJobStaleStateLabelKeyByValue[job.runtime.staleState])}
               </Badge>
             </div>
           </div>
@@ -173,10 +137,8 @@ export const MonitoringJobsPage = () => {
         header: t('monitoring.jobs.table.progress'),
         cell: (job) => (
           <div className="space-y-1">
-            <p>{formatProgress(job)}</p>
-            <p className="text-xs text-muted-foreground">
-              {job.progress?.currentStepLabel ?? job.progress?.currentStepKey ?? t('monitoring.jobs.values.notAvailable')}
-            </p>
+            <p>{formatMonitoringJobProgressSummary(job.progress)}</p>
+            <p className="text-xs text-muted-foreground">{getMonitoringJobCurrentStep(job.progress)}</p>
           </div>
         ),
       },
@@ -197,9 +159,13 @@ export const MonitoringJobsPage = () => {
         header: t('monitoring.jobs.table.timestamps'),
         cell: (job) => (
           <div className="space-y-1 text-xs text-muted-foreground">
-            <p>{t('monitoring.jobs.labels.startedAt', { value: formatDateTime(job.startedAt) })}</p>
-            <p>{t('monitoring.jobs.labels.lastObservedAt', { value: formatDateTime(job.runtime.lastObservedAt) })}</p>
-            <p>{t('monitoring.jobs.labels.finishedAt', { value: formatDateTime(job.finishedAt) })}</p>
+            <p>{t('monitoring.jobs.labels.startedAt', { value: formatMonitoringJobDateTime(job.startedAt) })}</p>
+            <p>
+              {t('monitoring.jobs.labels.lastObservedAt', {
+                value: formatMonitoringJobDateTime(job.runtime.lastObservedAt),
+              })}
+            </p>
+            <p>{t('monitoring.jobs.labels.finishedAt', { value: formatMonitoringJobDateTime(job.finishedAt) })}</p>
           </div>
         ),
       },
@@ -276,7 +242,9 @@ export const MonitoringJobsPage = () => {
             >
               {monitoringStatusFilters.map((value) => (
                 <option key={value} value={value}>
-                  {value === 'all' ? t('monitoring.jobs.filters.statusAll') : t(statusLabelKeyByValue[value])}
+                  {value === 'all'
+                    ? t('monitoring.jobs.filters.statusAll')
+                    : t(monitoringJobStatusLabelKeyByValue[value])}
                 </option>
               ))}
             </Select>

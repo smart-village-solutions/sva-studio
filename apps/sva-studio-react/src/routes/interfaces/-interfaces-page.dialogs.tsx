@@ -5,10 +5,9 @@ import { Checkbox } from '../../components/ui/checkbox';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 
-const interfaceTypes: readonly InstanceInterfaceType[] = ['mainserver', 's3', 'supabase'];
-
 type TypePickerDialogProps = Readonly<{
   open: boolean;
+  availableTypes: readonly InstanceInterfaceType[];
   selectedType: InstanceInterfaceType;
   onSelectType: (type: InstanceInterfaceType) => void;
   onCancel: () => void;
@@ -17,6 +16,7 @@ type TypePickerDialogProps = Readonly<{
 
 export const TypePickerDialog = ({
   open,
+  availableTypes,
   selectedType,
   onSelectType,
   onCancel,
@@ -34,7 +34,7 @@ export const TypePickerDialog = ({
         <h2 className="text-lg font-semibold">{t('interfaces.create.dialogTitle')}</h2>
         <p className="mt-1 text-sm text-muted-foreground">{t('interfaces.create.dialogDescription')}</p>
         <div className="mt-4 grid gap-3">
-          {interfaceTypes.map((type) => {
+          {availableTypes.map((type) => {
             const meta = instanceInterfaceTypeMeta[type];
             const inputId = `interface-type-${type}`;
             return (
@@ -170,9 +170,6 @@ const S3Fields = ({
   onChange: (next: InstanceInterfaceDraft) => void;
 }) => (
   <>
-    <p className="rounded-md border border-secondary/40 bg-secondary/10 p-2 text-xs text-secondary">
-      {t('interfaces.forms.s3.notImplemented')}
-    </p>
     <div className="grid gap-2">
       <Label htmlFor="s3-endpoint">{t('interfaces.forms.s3.endpoint')}</Label>
       <Input
@@ -251,9 +248,6 @@ const SupabaseFields = ({
   onChange: (next: InstanceInterfaceDraft) => void;
 }) => (
   <>
-    <p className="rounded-md border border-secondary/40 bg-secondary/10 p-2 text-xs text-secondary">
-      {t('interfaces.forms.supabase.notImplemented')}
-    </p>
     <div className="grid gap-2">
       <Label htmlFor="supabase-project">{t('interfaces.forms.supabase.projectUrl')}</Label>
       <Input

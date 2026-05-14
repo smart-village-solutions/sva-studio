@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { Button, StudioOverviewPageTemplate } from '@sva/studio-ui-react';
+import { StudioOverviewPageTemplate } from '@sva/studio-ui-react';
 
 import {
   normalizeWasteManagementSearchParams,
@@ -72,11 +72,6 @@ export const WasteManagementPage = () => {
     <StudioOverviewPageTemplate
       title={pt('page.title')}
       description={pt('page.description')}
-      primaryAction={uiAccess.canAccessSettings ? (
-        <Button type="button" variant="outline" onClick={() => updateSearch(navigate, search, { tab: 'settings' })}>
-          {pt('actions.openSettings')}
-        </Button>
-      ) : null}
     >
       <WasteManagementPageTabs
         pt={pt}

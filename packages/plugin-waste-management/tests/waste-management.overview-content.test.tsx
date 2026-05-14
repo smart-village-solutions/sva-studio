@@ -36,7 +36,7 @@ describe('WasteOverviewContent', () => {
     expect(screen.getByTestId('empty-state').textContent).toContain('overview.messages.emptyBody');
   });
 
-  it('renders totals, section headings, optional metadata, and badge variants for populated items', () => {
+  it('renders section headings and optional metadata for populated items without table badges', () => {
     render(
       <WasteOverviewContent
         overview={
@@ -86,10 +86,16 @@ describe('WasteOverviewContent', () => {
       />
     );
 
-    expect(screen.getByText('overview.meta.total:9')).toBeTruthy();
-    expect(screen.getByText('overview.meta.visible:3')).toBeTruthy();
+    expect(screen.queryByText('overview.meta.total:9')).toBeNull();
+    expect(screen.queryByText('overview.meta.visible:3')).toBeNull();
     expect(screen.getByText('overview.sections.technical')).toBeTruthy();
     expect(screen.getByText('overview.sections.audit')).toBeTruthy();
+    expect(screen.getByRole('table', { name: 'overview.technical.table.ariaLabel' })).toBeTruthy();
+    expect(screen.getByRole('table', { name: 'overview.audit.table.ariaLabel' })).toBeTruthy();
+    expect(screen.getByRole('columnheader', { name: 'overview.technical.table.eventType' })).toBeTruthy();
+    expect(screen.getByRole('columnheader', { name: 'overview.technical.table.outcome' })).toBeTruthy();
+    expect(screen.getByRole('columnheader', { name: 'overview.audit.table.actionId' })).toBeTruthy();
+    expect(screen.getByRole('columnheader', { name: 'overview.audit.table.resource' })).toBeTruthy();
     expect(screen.getByText('overview.meta.jobId:job-1')).toBeTruthy();
     expect(screen.getByText('overview.meta.jobTypeId:waste.import')).toBeTruthy();
     expect(screen.getByText('overview.meta.reasonCode:warn')).toBeTruthy();
@@ -99,12 +105,7 @@ describe('WasteOverviewContent', () => {
     expect(screen.getByText('overview.meta.reasonCode:scheduled')).toBeTruthy();
     expect(screen.getByText('overview.meta.requestId:request-2')).toBeTruthy();
     expect(screen.getByText('overview.meta.occurredAt:formatted:2026-05-10T09:00:00.000Z')).toBeTruthy();
-
-    const variants = screen.getAllByTestId('badge').map((element) => element.getAttribute('data-variant'));
-    expect(variants).toContain('default');
-    expect(variants).toContain('destructive');
-    expect(variants).toContain('secondary');
-    expect(variants).toContain('outline');
+    expect(screen.queryAllByTestId('badge')).toHaveLength(0);
   });
 
   it('omits empty sections when only one category contains items', () => {
@@ -140,7 +141,7 @@ describe('WasteOverviewContent', () => {
     expect(screen.getByText('overview.sections.audit')).toBeTruthy();
   });
 
-  it('covers fallback totals and secondary or destructive badge variants across both card types', () => {
+  it('covers fallback totals across both card types without rendering table badges', () => {
     render(
       <WasteOverviewContent
         overview={
@@ -178,10 +179,8 @@ describe('WasteOverviewContent', () => {
       />
     );
 
-    expect(screen.getByText('overview.meta.total:0')).toBeTruthy();
-    expect(screen.getByText('overview.meta.visible:2')).toBeTruthy();
-    const variants = screen.getAllByTestId('badge').map((element) => element.getAttribute('data-variant'));
-    expect(variants.filter((variant) => variant === 'secondary')).not.toHaveLength(0);
-    expect(variants.filter((variant) => variant === 'destructive')).not.toHaveLength(0);
+    expect(screen.queryByText('overview.meta.total:0')).toBeNull();
+    expect(screen.queryByText('overview.meta.visible:2')).toBeNull();
+    expect(screen.queryAllByTestId('badge')).toHaveLength(0);
   });
 });

@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { pluginEvents } from '../src/plugin.js';
+import {
+  pluginEvents,
+  pluginEventsActionDefinitions,
+  pluginEventsPermissionDefinitions,
+} from '../src/plugin.js';
 
 describe('pluginEvents contract', () => {
   it('keeps the canonical standard content contract', () => {
@@ -19,6 +23,8 @@ describe('pluginEvents contract', () => {
       'events.update',
       'events.delete',
     ]);
+    expect(pluginEvents.actions).toEqual(pluginEventsActionDefinitions);
+    expect(pluginEvents.permissions).toEqual(pluginEventsPermissionDefinitions);
     expect(pluginEvents.adminResources).toEqual([
       expect.objectContaining({
         resourceId: 'events.content',

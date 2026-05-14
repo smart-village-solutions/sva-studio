@@ -32,6 +32,7 @@ export const WasteToursPanel = ({ search }: { readonly search: WasteManagementSe
   return (
     <>
       <WasteToursContent
+        assignmentContextLoading={controller.assignmentContextLoading}
         message={controller.message}
         tours={controller.tours}
         masterDataOverview={controller.masterDataOverview}

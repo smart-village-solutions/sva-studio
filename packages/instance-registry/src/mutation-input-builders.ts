@@ -11,7 +11,6 @@ import type {
   ReconcileInstanceKeycloakInput,
   SeedInstanceIamBaselineInput,
   UpdateInstanceInput,
-  WasteManagementSettingsInput,
 } from './mutation-types.js';
 
 type TenantAdminBootstrapPayload = {
@@ -25,8 +24,6 @@ type TenantAdminClientPayload = {
   readonly clientId: string;
   readonly secret?: string;
 };
-
-type WasteManagementSettingsPayload = WasteManagementSettingsInput;
 
 type InstanceMutationContext = {
   readonly actorId: string;
@@ -51,7 +48,6 @@ export type CreateInstancePayload = {
   readonly themeKey?: string;
   readonly mainserverConfigRef?: string;
   readonly featureFlags?: Readonly<Record<string, boolean>>;
-  readonly wasteManagementSettings?: WasteManagementSettingsPayload;
 };
 
 export type UpdateInstancePayload = Omit<CreateInstancePayload, 'instanceId'>;
@@ -101,7 +97,6 @@ export const buildCreateInstanceProvisioningInput = (
   themeKey: payload.themeKey,
   featureFlags: payload.featureFlags,
   mainserverConfigRef: payload.mainserverConfigRef,
-  wasteManagementSettings: payload.wasteManagementSettings,
 });
 
 export const buildUpdateInstanceInput = (
@@ -124,7 +119,6 @@ export const buildUpdateInstanceInput = (
   themeKey: payload.themeKey,
   featureFlags: payload.featureFlags,
   mainserverConfigRef: payload.mainserverConfigRef,
-  wasteManagementSettings: payload.wasteManagementSettings,
 });
 
 export const buildChangeInstanceStatusInput = (

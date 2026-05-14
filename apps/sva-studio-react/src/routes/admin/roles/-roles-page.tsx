@@ -15,24 +15,9 @@ import { useRoles } from '../../../hooks/use-roles';
 import { useAuth } from '../../../providers/auth-provider';
 import { t } from '../../../i18n';
 import type { TranslationKey } from '../../../i18n/translate';
-import type { IamHttpError, RoleReconcileReport } from '../../../lib/iam-api';
+import type { RoleReconcileReport } from '../../../lib/iam-api';
 import { IamRuntimeDiagnosticDetails } from '../-iam-runtime-diagnostic-details';
-
-const statusTone = (syncState: 'synced' | 'pending' | 'failed'): string => {
-  if (syncState === 'synced') {
-    return 'border-primary/40 bg-primary/10 text-primary';
-  }
-  if (syncState === 'failed') {
-    return 'border-destructive/40 bg-destructive/10 text-destructive';
-  }
-  return 'border-secondary/40 bg-secondary/10 text-secondary';
-};
-
-const STATUS_LABEL_KEYS = {
-  synced: 'admin.roles.sync.synced',
-  pending: 'admin.roles.sync.pending',
-  failed: 'admin.roles.sync.failed',
-} as const;
+import { roleErrorMessage, roleStatusLabel, roleStatusTone, roleTypeLabel } from './-roles-shared';
 
 const RECONCILE_OUTCOME_LABEL_KEYS = {
   success: 'admin.roles.messages.reconcileOutcome.success',
@@ -40,21 +25,6 @@ const RECONCILE_OUTCOME_LABEL_KEYS = {
   blocked: 'admin.roles.messages.reconcileOutcome.blocked',
   failed: 'admin.roles.messages.reconcileOutcome.failed',
 } as const satisfies Record<RoleReconcileReport['outcome'], TranslationKey>;
-
-const statusLabel = (syncState: 'synced' | 'pending' | 'failed'): string => t(STATUS_LABEL_KEYS[syncState]);
-
-const roleTypeLabel = (role: { isSystemRole: boolean; managedBy: 'studio' | 'external' | 'keycloak_builtin' }): string => {
-  if (role.isSystemRole) {
-    return t('admin.roles.labels.systemRole');
-  }
-  if (role.managedBy === 'keycloak_builtin') {
-    return t('admin.roles.labels.builtInRole');
-  }
-  if (role.managedBy === 'external') {
-    return t('admin.roles.labels.externalRole');
-  }
-  return t('admin.roles.labels.customRole');
-};
 
 const editabilityClassByValue = {
   editable: 'border-primary/40 bg-primary/10 text-primary',
@@ -76,37 +46,6 @@ const renderDiagnosticCodes = (diagnostics: readonly IamKeycloakObjectDiagnostic
       })}
     </p>
   ) : null;
-
-const roleErrorMessage = (error: IamHttpError | null, fallbackKey: TranslationKey): string => {
-  if (!error) {
-    return t(fallbackKey);
-  }
-
-  if (error.diagnosticStatus === 'recovery_laeuft') {
-    return t('admin.roles.errors.recoveryRunning');
-  }
-
-  if (error.classification === 'keycloak_reconcile') {
-    return t('admin.roles.errors.keycloakReconcile');
-  }
-
-  switch (error.code) {
-    case 'forbidden':
-      return t('admin.roles.errors.forbidden');
-    case 'csrf_validation_failed':
-      return t('admin.roles.errors.csrfValidationFailed');
-    case 'rate_limited':
-      return t('admin.roles.errors.rateLimited');
-    case 'conflict':
-      return t('admin.roles.errors.conflict');
-    case 'keycloak_unavailable':
-      return t('admin.roles.errors.keycloakUnavailable');
-    case 'database_unavailable':
-      return t('admin.roles.errors.databaseUnavailable');
-    default:
-      return t(fallbackKey);
-  }
-};
 
 export const RolesPage = () => {
   const studioDataTableLabels = createStudioDataTableLabels();
@@ -169,11 +108,11 @@ export const RolesPage = () => {
         cell: (role) => (
           <div>
             <Badge
-              className={`rounded-full ${statusTone(role.syncState)}`}
-              aria-label={`${t('admin.roles.table.headerSync')}: ${statusLabel(role.syncState)}`}
+              className={`rounded-full ${roleStatusTone(role.syncState)}`}
+              aria-label={`${t('admin.roles.table.headerSync')}: ${roleStatusLabel(role.syncState)}`}
               variant="outline"
             >
-              {statusLabel(role.syncState)}
+              {roleStatusLabel(role.syncState)}
             </Badge>
             {role.syncError ? (
               <p className="mt-2 text-xs text-destructive" role="status">
@@ -339,7 +278,12 @@ export const RolesPage = () => {
       {rolesApi.error ? (
         <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
           <AlertDescription className="flex flex-col gap-3">
-            <span>{roleErrorMessage(rolesApi.error, 'admin.roles.messages.error')}</span>
+            <span>
+              {roleErrorMessage(rolesApi.error, 'admin.roles.messages.error', {
+                includeKeycloakReconcileError: true,
+                includeRecoveryRunningError: true,
+              })}
+            </span>
             <IamRuntimeDiagnosticDetails error={rolesApi.error} />
             <div>
               <Button type="button" size="sm" variant="outline" onClick={() => void rolesApi.refetch()}>

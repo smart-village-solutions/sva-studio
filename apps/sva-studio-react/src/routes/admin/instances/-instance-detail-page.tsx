@@ -4,12 +4,11 @@ import React from 'react';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Button } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
-import { Input } from '../../../components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../components/ui/tabs';
 import { useInstances } from '../../../hooks/use-instances';
 import { t } from '../../../i18n';
 import { IamRuntimeDiagnosticDetails } from '../-iam-runtime-diagnostic-details';
-import { FieldHelp } from './-field-help';
+import { InstanceDetailConfigurationSection } from './-instance-detail-configuration-section';
 import {
   buildExistingRealmOperationsModel,
   buildHistoryWorkspaceModel,
@@ -24,18 +23,15 @@ import {
 } from './-instance-detail-models';
 import { getErrorMessage } from './-instance-error-messages';
 import {
-  buildWasteManagementSettingsPayload,
   createDetailForm,
-  INSTANCE_FIELD_HELP,
   isTenantSecretUserInputRequired,
 } from './-instance-form-models';
-import { INSTANCE_STATUS_LABELS, FormLabelWithHelp } from './-instance-detail-view-shared';
+import { COCKPIT_STATUS_STYLES, INSTANCE_STATUS_LABELS } from './-instance-detail-view-shared';
 import {
-  ConfigurationStatusBadge,
   OperationsStepStatusBadge,
   ProvisioningStepBadge,
 } from './-instance-status-badges';
-import { WasteManagementSettingsFields } from './-waste-management-settings-fields';
+import type { OperationsDetailAction, OperationsStepModel } from './-instances-shared';
 
 type InstanceDetailPageProps = {
   readonly instanceId: string;
@@ -136,13 +132,6 @@ const readWorkerUnavailableWarning = (instance: ReturnType<typeof useInstances>[
 
   return Date.now() - referenceTimestamp >= WORKER_UNAVAILABLE_WARNING_THRESHOLD_MS;
 };
-
-const OVERVIEW_STATUS_STYLES = {
-  ready: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-900',
-  degraded: 'border-amber-500/30 bg-amber-500/10 text-amber-950',
-  blocked: 'border-red-500/30 bg-red-500/10 text-red-900',
-  unknown: 'border-slate-400/30 bg-slate-500/10 text-slate-900',
-} as const;
 
 const readTenantSecretUserInputRequired = (
   detailFormValues: ReturnType<typeof createDetailForm> | null,
@@ -284,17 +273,8 @@ const OperationsStepsPanel = ({
 }: {
   title: string;
   subtitle: string;
-  steps: readonly {
-    key: string;
-    title: string;
-    status: 'offen' | 'bereit' | 'läuft' | 'erfolgreich' | 'fehlgeschlagen';
-    summary: string;
-    evidenceSource: EvidenceSource;
-    checkedAt?: string;
-    requestId?: string;
-    action?: DetailWorkflowAction | 'focus_configuration' | 'rotate_client_secret' | 'probeTenantIamAccess' | 'reconcileKeycloak';
-  }[];
-  onAction: (action: DetailWorkflowAction | 'focus_configuration' | 'rotate_client_secret' | 'probeTenantIamAccess' | 'reconcileKeycloak') => void;
+  steps: readonly OperationsStepModel[];
+  onAction: (action: OperationsDetailAction) => void;
   disabled: boolean;
 }) => (
   <Card className="space-y-4 p-4">
@@ -450,7 +430,6 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
             lastName: detailFormValues.tenantAdminBootstrap.lastName.trim() || undefined,
           }
         : undefined,
-      wasteManagementSettings: buildWasteManagementSettingsPayload(detailFormValues.wasteManagementSettings),
     });
 
     setDetailFormValues(clearSensitiveDetailFields);
@@ -642,7 +621,7 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
                 </div>
               </div>
             </div>
-            <div className={`rounded-2xl border p-4 shadow-sm ${OVERVIEW_STATUS_STYLES[operationsModel.status]}`}>
+            <div className={`rounded-2xl border p-4 shadow-sm ${COCKPIT_STATUS_STYLES[operationsModel.status]}`}>
               <div className="text-xs uppercase tracking-wide opacity-80">{t('admin.instances.operations.labels.currentState')}</div>
               <div className="mt-3 space-y-2">
                 <div className="text-lg font-semibold">{getStatusGuidance(selectedInstance).title}</div>
@@ -1073,23 +1052,6 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
                     />
                   </div>
                 </div>
-                <WasteManagementSettingsFields
-                  idPrefix="detail"
-                  value={detailFormValues.wasteManagementSettings}
-                  showConfiguredHints
-                  databaseUrlConfigured={selectedInstance.wasteManagementSettings?.databaseUrlConfigured}
-                  serviceRoleKeyConfigured={selectedInstance.wasteManagementSettings?.serviceRoleKeyConfigured}
-                  onChange={(updater) =>
-                    setDetailFormValues((current) =>
-                      current
-                        ? {
-                            ...current,
-                            wasteManagementSettings: updater(current.wasteManagementSettings),
-                          }
-                        : current
-                    )
-                  }
-                />
                 <Button type="submit" variant="outline">
                   {t('admin.instances.actions.save')}
                 </Button>

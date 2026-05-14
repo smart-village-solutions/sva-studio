@@ -58,7 +58,7 @@ describe('http-contracts', () => {
     expect(result.success).toBe(true);
   });
 
-  it('validates nested waste-management settings with a real project url', () => {
+  it('ignores legacy waste-management settings in create requests', () => {
     const result = createInstanceSchema.safeParse({
       instanceId: 'de-test',
       displayName: 'Demo',
@@ -74,9 +74,12 @@ describe('http-contracts', () => {
     });
 
     expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data).not.toHaveProperty('wasteManagementSettings');
+    }
   });
 
-  it('rejects waste-management settings with an invalid project url', () => {
+  it('strips legacy waste-management payload fragments even when their nested values are invalid', () => {
     const result = createInstanceSchema.safeParse({
       instanceId: 'de-test',
       displayName: 'Demo',
@@ -91,7 +94,7 @@ describe('http-contracts', () => {
       },
     });
 
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
   });
 
   it('extracts keycloak run ids from nested run routes', () => {

@@ -23,4 +23,14 @@ describe('waste-management.tools.messages', () => {
       'tools.messages.jobStartError'
     );
   });
+
+  it('surfaces backend reasons for migration start failures when available', () => {
+    expect(
+      createWasteToolErrorMessage({
+        action: 'migration',
+        error: new WasteManagementApiError('database_unavailable', 'Waste-Datenquelle konnte nicht geladen werden.'),
+        pt,
+      })
+    ).toBe('tools.messages.jobStartErrorWithReason');
+  });
 });

@@ -75,6 +75,34 @@ const s3Entry = {
   },
 } as const;
 
+const supabaseEntry = {
+  id: 'supabase-1',
+  instanceId: 'de-musterhausen',
+  type: 'supabase',
+  name: 'Abfallkalender',
+  enabled: true,
+  status: 'unknown',
+  statusMessage: 'Pending health check',
+  lastCheckedAt: '2026-03-15T20:02:00.000Z',
+  createdAt: '2026-03-15T20:02:00.000Z',
+  updatedAt: '2026-03-15T20:02:00.000Z',
+  config: {
+    projectUrl: 'https://tenant.supabase.co',
+    schemaName: 'public',
+    databaseUrl: '',
+    serviceRoleKey: '',
+  },
+} as const;
+
+const createListResponse = (
+  entries: readonly unknown[],
+  availableTypes: readonly ('mainserver' | 's3' | 'supabase')[] = ['mainserver', 's3', 'supabase']
+) => ({
+  instanceId: 'de-musterhausen',
+  availableTypes,
+  entries,
+});
+
 describe('InterfacesPage', () => {
   beforeEach(() => {
     state.deleteInterface.mockReset();
@@ -88,10 +116,7 @@ describe('InterfacesPage', () => {
   });
 
   it('loads the interface table and saves mainserver settings through the dedicated endpoint', async () => {
-    state.listInterfaces.mockResolvedValue({
-      instanceId: 'de-musterhausen',
-      entries: [mainserverEntry, s3Entry],
-    });
+    state.listInterfaces.mockResolvedValue(createListResponse([mainserverEntry, s3Entry]));
     state.saveMainserver.mockResolvedValue({
       ...mainserverEntry.config,
       instanceId: 'de-musterhausen',
@@ -131,10 +156,7 @@ describe('InterfacesPage', () => {
   });
 
   it('creates an s3 interface through the picker dialog and upsert endpoint', async () => {
-    state.listInterfaces.mockResolvedValue({
-      instanceId: 'de-musterhausen',
-      entries: [mainserverEntry],
-    });
+    state.listInterfaces.mockResolvedValue(createListResponse([mainserverEntry]));
     state.upsertInterface.mockResolvedValue({
       ...s3Entry,
       config: { ...s3Entry.config, secretAccessKey: '' },
@@ -177,11 +199,133 @@ describe('InterfacesPage', () => {
     });
   });
 
-  it('deletes non-mainserver interfaces through the destructive confirm dialog', async () => {
-    state.listInterfaces.mockResolvedValue({
+  it('creates a mainserver interface through the picker dialog and dedicated endpoint', async () => {
+    state.listInterfaces.mockResolvedValue(createListResponse([]));
+    state.saveMainserver.mockResolvedValue({
       instanceId: 'de-musterhausen',
-      entries: [mainserverEntry, s3Entry],
+      providerKey: 'sva_mainserver',
+      graphqlBaseUrl: 'https://mainserver.example/graphql',
+      oauthTokenUrl: 'https://mainserver.example/oauth/token',
+      enabled: true,
     });
+
+    render(<InterfacesPage />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Für diese Instanz sind noch keine Schnittstellen hinterlegt.')
+      ).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Neue Schnittstelle' }));
+    fireEvent.click(screen.getByRole('radio', { name: /SVA Mainserver/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+
+    fireEvent.change(screen.getByLabelText('GraphQL Basis-URL'), {
+      target: { value: 'https://mainserver.example/graphql' },
+    });
+    fireEvent.change(screen.getByLabelText('OAuth Token-URL'), {
+      target: { value: 'https://mainserver.example/oauth/token' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Einstellungen speichern' }));
+
+    await waitFor(() => {
+      expect(state.saveMainserver).toHaveBeenCalledWith({
+        data: {
+          enabled: true,
+          graphqlBaseUrl: 'https://mainserver.example/graphql',
+          oauthTokenUrl: 'https://mainserver.example/oauth/token',
+        },
+      });
+    });
+
+    expect(state.upsertInterface).not.toHaveBeenCalled();
+  });
+
+  it('creates a supabase interface through the picker dialog and upsert endpoint', async () => {
+    state.listInterfaces.mockResolvedValue(createListResponse([mainserverEntry]));
+    state.upsertInterface.mockResolvedValue({
+      ...supabaseEntry,
+      config: { ...supabaseEntry.config, serviceRoleKey: '' },
+    });
+
+    render(<InterfacesPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('1 Schnittstelle(n)')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Neue Schnittstelle' }));
+    fireEvent.click(screen.getByRole('radio', { name: /Supabase/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+
+    const textboxes = screen.getAllByRole('textbox');
+    fireEvent.change(textboxes[0]!, { target: { value: 'Abfallkalender' } });
+    fireEvent.change(textboxes[1]!, { target: { value: 'https://tenant.supabase.co' } });
+    fireEvent.change(textboxes[2]!, { target: { value: 'waste' } });
+    fireEvent.change(textboxes[3]!, { target: { value: 'postgres://db.example.local' } });
+    fireEvent.change(document.getElementById('supabase-key')!, { target: { value: 'service-role-1' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Einstellungen speichern' }));
+
+    await waitFor(() => {
+      expect(state.upsertInterface).toHaveBeenCalledWith({
+        data: {
+          instanceId: 'de-musterhausen',
+          draft: expect.objectContaining({
+            type: 'supabase',
+            name: 'Abfallkalender',
+            config: expect.objectContaining({
+              projectUrl: 'https://tenant.supabase.co',
+              schemaName: 'waste',
+              databaseUrl: 'postgres://db.example.local',
+              serviceRoleKey: 'service-role-1',
+            }),
+          }),
+        },
+      });
+    });
+  });
+
+  it('shows the persisted healthcheck message below the interface status', async () => {
+    state.listInterfaces.mockResolvedValue(
+      createListResponse([
+        {
+          ...supabaseEntry,
+          status: 'error',
+          statusMessage: 'Die Datenbankverbindung wurde abgelehnt. Benutzername oder Passwort der DB-URL sind falsch.',
+        },
+      ])
+    );
+
+    render(<InterfacesPage />);
+
+    await waitFor(() => {
+      expect(
+        screen.getAllByText(
+          'Die Datenbankverbindung wurde abgelehnt. Benutzername oder Passwort der DB-URL sind falsch.'
+        ).length
+      ).toBeGreaterThan(0);
+    });
+  });
+
+  it('does not offer supabase in the picker when the waste-management module is unavailable', async () => {
+    state.listInterfaces.mockResolvedValue(createListResponse([mainserverEntry], ['mainserver', 's3']));
+
+    render(<InterfacesPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('1 Schnittstelle(n)')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Neue Schnittstelle' }));
+
+    expect(screen.queryByRole('radio', { name: /Supabase/i })).toBeNull();
+    expect(screen.getByRole('radio', { name: /SVA Mainserver/i })).toBeTruthy();
+    expect(screen.getByRole('radio', { name: /S3-kompatibler Object Storage/i })).toBeTruthy();
+  });
+
+  it('deletes non-mainserver interfaces through the destructive confirm dialog', async () => {
+    state.listInterfaces.mockResolvedValue(createListResponse([mainserverEntry, s3Entry]));
     state.deleteInterface.mockResolvedValue({ deleted: true });
 
     render(<InterfacesPage />);
@@ -201,10 +345,7 @@ describe('InterfacesPage', () => {
   });
 
   it('shows the translated backend error when the backend rejects an invalid interface mutation', async () => {
-    state.listInterfaces.mockResolvedValue({
-      instanceId: 'de-musterhausen',
-      entries: [mainserverEntry],
-    });
+    state.listInterfaces.mockResolvedValue(createListResponse([mainserverEntry]));
     state.upsertInterface.mockRejectedValue(new Error('interface_type_change_not_supported'));
 
     render(<InterfacesPage />);
@@ -250,10 +391,7 @@ describe('InterfacesPage', () => {
   });
 
   it('updates an existing s3 interface through the generic endpoint with its existing id', async () => {
-    state.listInterfaces.mockResolvedValue({
-      instanceId: 'de-musterhausen',
-      entries: [mainserverEntry, s3Entry],
-    });
+    state.listInterfaces.mockResolvedValue(createListResponse([mainserverEntry, s3Entry]));
     state.upsertInterface.mockResolvedValue({
       ...s3Entry,
       name: 'Uploads aktualisiert',
@@ -290,11 +428,30 @@ describe('InterfacesPage', () => {
     });
   });
 
-  it('shows a save error when deletion reports no removed interface', async () => {
-    state.listInterfaces.mockResolvedValue({
-      instanceId: 'de-musterhausen',
-      entries: [mainserverEntry, s3Entry],
+  it('shows a specific save error when an existing s3 secret can no longer be decrypted', async () => {
+    state.listInterfaces.mockResolvedValue(createListResponse([mainserverEntry, s3Entry]));
+    state.upsertInterface.mockRejectedValue(new Error('secret_unreadable'));
+
+    render(<InterfacesPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('2 Schnittstelle(n)')).toBeTruthy();
     });
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Bearbeiten' })[1]!);
+    fireEvent.click(screen.getByRole('button', { name: 'Einstellungen speichern' }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          'Das gespeicherte Secret der Schnittstelle konnte serverseitig nicht mehr gelesen werden. Bitte den Secret-Wert neu eintragen und erneut speichern.'
+        )
+      ).toBeTruthy();
+    });
+  });
+
+  it('shows a save error when deletion reports no removed interface', async () => {
+    state.listInterfaces.mockResolvedValue(createListResponse([mainserverEntry, s3Entry]));
     state.deleteInterface.mockRejectedValue(new Error('interface_not_found'));
 
     render(<InterfacesPage />);
@@ -314,10 +471,7 @@ describe('InterfacesPage', () => {
   });
 
   it('shows the translated not-found error when deletion resolves without removing a record', async () => {
-    state.listInterfaces.mockResolvedValue({
-      instanceId: 'de-musterhausen',
-      entries: [mainserverEntry, s3Entry],
-    });
+    state.listInterfaces.mockResolvedValue(createListResponse([mainserverEntry, s3Entry]));
     state.deleteInterface.mockResolvedValue({ deleted: false });
 
     render(<InterfacesPage />);

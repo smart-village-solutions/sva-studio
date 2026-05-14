@@ -31,6 +31,7 @@ export const wasteMasterDataRepositoryContract = {
   upsertWasteFraction: defineRepositoryMethod<
     (input: Omit<WasteFractionRecord, 'createdAt' | 'updatedAt'>) => Promise<void>
   >(),
+  deleteWasteFraction: defineRepositoryMethod<(id: string) => Promise<void>>(),
   listWasteRegions: defineRepositoryMethod<(filter?: WasteRegionListFilter) => Promise<readonly WasteRegionRecord[]>>(),
   getWasteRegionById: defineRepositoryMethod<(id: string) => Promise<WasteRegionRecord | null>>(),
   upsertWasteRegion: defineRepositoryMethod<

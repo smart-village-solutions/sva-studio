@@ -2,12 +2,13 @@ import { getWasteManagementImportCatalogEntry, wasteManagementOperationsContract
 import { z } from 'zod';
 
 import type { AuthenticatedRequestContext } from '../../middleware.js';
+import { resolveActorInfo } from '../../iam-account-management/shared.js';
 import { validateCsrf } from '../../shared/request-security.js';
 import { createApiError, parseRequestBody, requireIdempotencyKey } from '../../shared/request-helpers.js';
 import { authorizeWasteManagementAction, emitWasteAuditEvent, getAuthorizedWasteManagementInstanceId } from './auth.js';
 import { startPluginOperationJobFromFacade } from './operations-support.js';
 import { wasteManagementOperationSchemas } from './schemas.js';
-import { sharedWasteManagementDeps } from '../server-context.js';
+import { loadConfiguredWasteSettings } from './settings-shared.js';
 import type { WasteManagementHandlerDeps } from './types.js';
 import { getRequestId } from './utils.js';
 
@@ -20,31 +21,34 @@ const resolveBoundTargetSchema = async (
   deps: WasteManagementHandlerDeps,
   requestedSchema: unknown
 ): Promise<string | Response> => {
-  const loadWasteDataSourceRecord = deps.loadWasteDataSourceRecord ?? sharedWasteManagementDeps.loadWasteDataSourceRecord;
-
-  let record;
   try {
-    record = await loadWasteDataSourceRecord(instanceId);
+    const settings = await loadConfiguredWasteSettings(
+      {
+        ...deps,
+        loadDefaultInterfaceRecord: deps.loadDefaultInterfaceRecord,
+      },
+      instanceId
+    );
+
+    if (!settings?.schemaName || settings.schemaName.trim().length === 0) {
+      return createApiError(400, 'invalid_request', 'Für die Instanz ist kein Waste-Schema konfiguriert.', requestId);
+    }
+
+    const configuredSchema = settings.schemaName.trim();
+    const normalizedRequestedSchema = typeof requestedSchema === 'string' ? requestedSchema.trim() : '';
+    if (normalizedRequestedSchema.length > 0 && normalizedRequestedSchema !== configuredSchema) {
+      return createApiError(
+        400,
+        'invalid_request',
+        'Waste-Operationen dürfen nur gegen das für die Instanz konfigurierte Schema ausgeführt werden.',
+        requestId
+      );
+    }
+
+    return configuredSchema;
   } catch {
     return createApiError(503, 'database_unavailable', 'Waste-Datenquelle konnte nicht geladen werden.', requestId);
   }
-
-  if (!record?.schemaName || record.schemaName.trim().length === 0) {
-    return createApiError(400, 'invalid_request', 'Für die Instanz ist kein Waste-Schema konfiguriert.', requestId);
-  }
-
-  const configuredSchema = record.schemaName.trim();
-  const normalizedRequestedSchema = typeof requestedSchema === 'string' ? requestedSchema.trim() : '';
-  if (normalizedRequestedSchema.length > 0 && normalizedRequestedSchema !== configuredSchema) {
-    return createApiError(
-      400,
-      'invalid_request',
-      'Waste-Operationen dürfen nur gegen das für die Instanz konfigurierte Schema ausgeführt werden.',
-      requestId
-    );
-  }
-
-  return configuredSchema;
 };
 
 const startToolJob = async (
@@ -66,7 +70,7 @@ const startToolJob = async (
     return authError;
   }
 
-  const instanceId = getAuthorizedWasteManagementInstanceId(ctx);
+  const authorizedInstanceId = getAuthorizedWasteManagementInstanceId(ctx);
 
   const csrfError = validateCsrf(request, requestId);
   if (csrfError) {
@@ -83,9 +87,30 @@ const startToolJob = async (
     return createApiError(400, 'invalid_request', parsed.message, requestId);
   }
 
+  const actorResolution = await (deps.resolveActorInfo ??
+    ((scopedRequest: Request, scopedCtx: AuthenticatedRequestContext) =>
+      resolveActorInfo(scopedRequest, scopedCtx, { requireActorMembership: true })))(request, ctx);
+  if ('error' in actorResolution) {
+    return actorResolution.error;
+  }
+  if (!actorResolution.actor.actorAccountId) {
+    return createApiError(
+      403,
+      'forbidden',
+      'Akteur-Account nicht gefunden.',
+      actorResolution.actor.requestId ?? requestId
+    );
+  }
+
+  const instanceId = actorResolution.actor.instanceId;
   const normalizedData = { ...(parsed.data as Record<string, unknown>) };
   if ('targetSchema' in normalizedData) {
-    const boundTargetSchema = await resolveBoundTargetSchema(instanceId, requestId, deps, normalizedData.targetSchema);
+    const boundTargetSchema = await resolveBoundTargetSchema(
+      authorizedInstanceId,
+      requestId,
+      deps,
+      normalizedData.targetSchema
+    );
     if (boundTargetSchema instanceof Response) {
       return boundTargetSchema;
     }
@@ -94,7 +119,7 @@ const startToolJob = async (
 
   const response = await (deps.startPluginOperationJob ?? startPluginOperationJobFromFacade)({
     instanceId,
-    actorAccountId: ctx.user.id,
+    actorAccountId: actorResolution.actor.actorAccountId,
     endpoint: input.endpoint,
     idempotencyKey: idempotency.key,
     requestId,

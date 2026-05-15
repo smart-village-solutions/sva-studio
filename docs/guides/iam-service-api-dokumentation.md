@@ -62,6 +62,8 @@ Diese Anleitung beschreibt die aktuell stabilen IAM-v1-Endpunkte, Response-Envel
 - `GET /api/v1/iam/users/{userId}`
   - enthält additiv `groups[]` mit `groupId`, `groupKey`, `displayName`, `groupType`, `origin`, `validFrom`, `validTo`
 - `POST /api/v1/iam/users`
+  - akzeptiert additiv `groupIds: string[]` für initiale Gruppenmitgliedschaften im aktiven Instanzkontext
+  - akzeptiert weiterhin optionale direkte `roleIds: string[]` als additive Sonderfälle
   - akzeptiert additiv `sendPasswordSetupEmail?: boolean`
   - liefert bei erfolgreicher Anlage `data.user` plus `data.invitation.status` mit `not_requested`, `sent` oder `failed`
 - `POST /api/v1/iam/users/{userId}/send-password-setup-email`

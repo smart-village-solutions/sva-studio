@@ -8,22 +8,31 @@ import { IamRuntimeDiagnosticDetails } from '../../../components/iam-runtime-dia
 import { Checkbox } from '../../../components/ui/checkbox';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
-import { Select } from '../../../components/ui/select';
+import { useGroups } from '../../../hooks/use-groups';
 import { useRoles } from '../../../hooks/use-roles';
 import { useUsers } from '../../../hooks/use-users';
 import { t } from '../../../i18n';
 import { userErrorMessage } from './-user-error-message';
 
+const appendUnique = (values: readonly string[], nextValue: string): string[] =>
+  values.includes(nextValue) ? [...values] : [...values, nextValue];
+
 export const UserCreatePage = () => {
   const navigate = useNavigate();
   const usersApi = useUsers();
   const rolesApi = useRoles();
+  const groupsApi = useGroups();
+  const selectableGroups = React.useMemo(
+    () => groupsApi.groups.filter((group) => group.isActive !== false),
+    [groupsApi.groups]
+  );
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [formValues, setFormValues] = React.useState({
     email: '',
     firstName: '',
     lastName: '',
-    roleId: '',
+    roleIds: [] as string[],
+    groupIds: [] as string[],
     sendPasswordSetupEmail: true,
   });
 
@@ -40,7 +49,8 @@ export const UserCreatePage = () => {
         firstName: formValues.firstName.trim() || undefined,
         lastName: formValues.lastName.trim() || undefined,
         displayName: `${formValues.firstName} ${formValues.lastName}`.trim() || undefined,
-        roleIds: formValues.roleId ? [formValues.roleId] : [],
+        roleIds: formValues.roleIds,
+        groupIds: formValues.groupIds,
         sendPasswordSetupEmail: formValues.sendPasswordSetupEmail,
       });
 
@@ -102,21 +112,84 @@ export const UserCreatePage = () => {
               />
             </div>
           </div>
-          <div className="grid gap-2 text-sm text-foreground">
-            <Label htmlFor="create-user-role">{t('admin.users.createDialog.roleLabel')}</Label>
-            <Select
-              id="create-user-role"
-              value={formValues.roleId}
-              onChange={(event) => setFormValues((current) => ({ ...current, roleId: event.target.value }))}
-            >
-              <option value="">{t('admin.users.createDialog.rolePlaceholder')}</option>
-              {rolesApi.roles.map((role) => (
-                <option key={role.id} value={role.id}>
-                  {role.roleName}
-                </option>
-              ))}
-            </Select>
-          </div>
+          <fieldset className="grid gap-3 rounded-lg border border-border/60 p-4">
+            <legend className="px-1 text-sm font-medium text-foreground">
+              {t('admin.users.createDialog.groupsLabel')}
+            </legend>
+            <p className="text-sm text-muted-foreground">{t('admin.users.createDialog.groupsHint')}</p>
+            {selectableGroups.length === 0 ? (
+              <p className="text-sm text-muted-foreground">{t('admin.users.createDialog.groupsEmpty')}</p>
+            ) : (
+              <div className="grid gap-3 md:grid-cols-2">
+                {selectableGroups.map((group) => {
+                  const selected = formValues.groupIds.includes(group.id);
+                  return (
+                    <label
+                      key={group.id}
+                      htmlFor={`create-user-group-${group.id}`}
+                      className="flex cursor-pointer items-start gap-3 rounded-md border border-border/60 p-3 text-sm text-foreground"
+                    >
+                      <Checkbox
+                        id={`create-user-group-${group.id}`}
+                        checked={selected}
+                        onChange={(event) =>
+                          setFormValues((current) => ({
+                            ...current,
+                            groupIds: event.target.checked
+                              ? appendUnique(current.groupIds, group.id)
+                              : current.groupIds.filter((entry) => entry !== group.id),
+                          }))
+                        }
+                      />
+                      <span className="space-y-1">
+                        <span className="block font-medium">{group.displayName}</span>
+                        {group.description ? (
+                          <span className="block text-xs text-muted-foreground">{group.description}</span>
+                        ) : null}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+          </fieldset>
+          <details className="rounded-lg border border-border/60">
+            <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium text-foreground">
+              {t('admin.users.createDialog.advancedRolesTitle')}
+            </summary>
+            <div className="grid gap-3 border-t border-border/60 px-4 py-4">
+              <p className="text-sm text-muted-foreground">{t('admin.users.createDialog.advancedRolesHint')}</p>
+              <div className="grid gap-3 md:grid-cols-2">
+                {rolesApi.roles.map((role) => {
+                  const selected = formValues.roleIds.includes(role.id);
+                  return (
+                    <label
+                      key={role.id}
+                      htmlFor={`create-user-role-${role.id}`}
+                      className="flex cursor-pointer items-start gap-3 rounded-md border border-border/60 p-3 text-sm text-foreground"
+                    >
+                      <Checkbox
+                        id={`create-user-role-${role.id}`}
+                        checked={selected}
+                        onChange={(event) =>
+                          setFormValues((current) => ({
+                            ...current,
+                            roleIds: event.target.checked
+                              ? appendUnique(current.roleIds, role.id)
+                              : current.roleIds.filter((entry) => entry !== role.id),
+                          }))
+                        }
+                      />
+                      <span className="block font-medium">{role.roleName}</span>
+                    </label>
+                  );
+                })}
+              </div>
+              {rolesApi.roles.length === 0 ? (
+                <p className="text-sm text-muted-foreground">{t('admin.users.createDialog.rolePlaceholder')}</p>
+              ) : null}
+            </div>
+          </details>
           <div className="flex items-center gap-3 rounded-md border border-border/60 px-3 py-3 text-sm text-foreground">
             <Checkbox
               id="create-user-send-password-setup-email"

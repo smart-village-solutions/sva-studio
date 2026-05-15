@@ -27,6 +27,7 @@ export type CreateUserPayloadShape = {
   readonly lastName?: string;
   readonly status?: 'active' | 'inactive' | 'pending';
   readonly roleIds: readonly string[];
+  readonly groupIds?: readonly string[];
   readonly sendPasswordSetupEmail?: boolean;
 };
 
@@ -116,6 +117,19 @@ export type CreateUserHandlerDeps<
 };
 
 const CREATE_USER_ENDPOINT = 'POST:/api/v1/iam/users';
+
+const resolveResponseBody = async (response: Response): Promise<unknown> => {
+  try {
+    return await response.clone().json();
+  } catch {
+    return {
+      error: {
+        code: 'internal_error',
+        message: 'Nutzer konnte nicht erstellt werden.',
+      },
+    };
+  }
+};
 
 const failCreateIdempotency = async (
   deps: Pick<CreateUserHandlerDeps, 'completeIdempotency' | 'jsonResponse'>,
@@ -210,7 +224,17 @@ export const createCreateUserHandlerInternal =
       });
       deps.iamUserOperationsCounter.add(1, { action: 'create_user', result: 'success' });
       return deps.jsonResponse(201, responseBody);
-    } catch {
+    } catch (error) {
+      if (error instanceof Response) {
+        const responseBody = await resolveResponseBody(error);
+        deps.iamUserOperationsCounter.add(1, { action: 'create_user', result: 'failure' });
+        return failCreateIdempotency(deps, {
+          actor: actorContext.actor,
+          idempotencyKey: idempotencyKey.key,
+          responseStatus: error.status,
+          responseBody,
+        });
+      }
       deps.iamUserOperationsCounter.add(1, { action: 'create_user', result: 'failure' });
       return failCreateIdempotency(deps, {
         actor: actorContext.actor,

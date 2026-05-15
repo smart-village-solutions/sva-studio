@@ -2,7 +2,7 @@ import type { IamUserDetail } from '@sva/core';
 
 import { getRoleExternalName } from './role-audit.js';
 import type { QueryClient } from './query-client.js';
-import type { IamRoleRow } from './types.js';
+import type { IamGroupRow, IamRoleRow } from './types.js';
 import { mapRoles } from './user-mapping.js';
 
 export type CreateUserPersistencePayload = {
@@ -19,6 +19,7 @@ export type CreateUserPersistencePayload = {
   readonly status?: 'active' | 'inactive' | 'pending';
   readonly notes?: string;
   readonly roleIds: readonly string[];
+  readonly groupIds?: readonly string[];
 };
 
 export type CreateUserPersistenceActor = {
@@ -41,6 +42,15 @@ type CreateUserActivityLogInput = {
 };
 
 export type CreateUserPersistenceDeps = {
+  readonly assignGroups: (
+    client: QueryClient,
+    input: {
+      readonly instanceId: string;
+      readonly accountId: string;
+      readonly groupIds: readonly string[];
+      readonly origin?: 'manual' | 'seed' | 'sync';
+    }
+  ) => Promise<void>;
   readonly assignRoles: (
     client: QueryClient,
     input: {
@@ -67,6 +77,14 @@ export type CreateUserPersistenceDeps = {
     }
   ) => Promise<void>;
   readonly protectField: (value: string | undefined, context: string) => string | null;
+  readonly resolveGroupsByIds: (
+    client: QueryClient,
+    input: { readonly instanceId: string; readonly groupIds: readonly string[] }
+  ) => Promise<readonly IamGroupRow[]>;
+  readonly resolveRoleIdsForGroups: (
+    client: QueryClient,
+    input: { readonly instanceId: string; readonly groupIds: readonly string[] }
+  ) => Promise<readonly string[]>;
   readonly resolveRolesByIds: (
     client: QueryClient,
     input: { readonly instanceId: string; readonly roleIds: readonly string[] }
@@ -119,6 +137,47 @@ const buildDisplayName = (payload: CreateUserPersistencePayload, externalId: str
   payload.displayName ?? ([payload.firstName, payload.lastName].filter(Boolean).join(' ') || externalId);
 
 export const createUserCreatePersistence = (deps: CreateUserPersistenceDeps) => {
+  const validateRequestedGroups = async (
+    client: QueryClient,
+    input: {
+      readonly actor: CreateUserPersistenceActor;
+      readonly actorSubject: string;
+      readonly groupIds: readonly string[];
+    }
+  ) => {
+    const uniqueGroupIds = [...new Set(input.groupIds)];
+    if (uniqueGroupIds.length === 0) {
+      return;
+    }
+
+    const groups = await deps.resolveGroupsByIds(client, {
+      instanceId: input.actor.instanceId,
+      groupIds: uniqueGroupIds,
+    });
+    if (groups.length !== uniqueGroupIds.length) {
+      throw new Error('invalid_request:Mindestens eine aktive Gruppe existiert nicht.');
+    }
+
+    const groupedRoleIds = await deps.resolveRoleIdsForGroups(client, {
+      instanceId: input.actor.instanceId,
+      groupIds: uniqueGroupIds,
+    });
+    if (groupedRoleIds.length === 0) {
+      return;
+    }
+
+    const roleValidation = await deps.ensureRoleAssignmentWithinActorLevel({
+      client,
+      instanceId: input.actor.instanceId,
+      actorSubject: input.actorSubject,
+      actorRoles: input.actor.actorRoles,
+      roleIds: groupedRoleIds,
+    });
+    if (!roleValidation.ok) {
+      throw new Error(`${roleValidation.code}:${roleValidation.message}`);
+    }
+  };
+
   const buildCreateAccountParams = (
     actor: CreateUserPersistenceActor,
     payload: CreateUserPersistencePayload,
@@ -184,6 +243,11 @@ export const createUserCreatePersistence = (deps: CreateUserPersistenceDeps) => 
     if (!roleValidation.ok) {
       throw new Error(`${roleValidation.code}:${roleValidation.message}`);
     }
+    await validateRequestedGroups(client, {
+      actor,
+      actorSubject,
+      groupIds: payload.groupIds ?? [],
+    });
 
     const inserted = await client.query<{ readonly id: string }>(
       INSERT_ACCOUNT_QUERY,
@@ -201,6 +265,12 @@ export const createUserCreatePersistence = (deps: CreateUserPersistenceDeps) => 
       roleIds: payload.roleIds,
       assignedBy: actor.actorAccountId,
     });
+    await deps.assignGroups(client, {
+      instanceId: actor.instanceId,
+      accountId,
+      groupIds: payload.groupIds ?? [],
+      origin: 'manual',
+    });
 
     const assignedRoleRows = await deps.resolveRolesByIds(client, {
       instanceId: actor.instanceId,
@@ -216,6 +286,7 @@ export const createUserCreatePersistence = (deps: CreateUserPersistenceDeps) => 
       payload: {
         target_keycloak_subject: externalId,
         role_count: payload.roleIds.length,
+        group_count: payload.groupIds?.length ?? 0,
       },
       requestId: actor.requestId,
       traceId: actor.traceId,
@@ -225,6 +296,11 @@ export const createUserCreatePersistence = (deps: CreateUserPersistenceDeps) => 
       instanceId: actor.instanceId,
       keycloakSubject: externalId,
       trigger: 'user_role_changed',
+    });
+    await deps.notifyPermissionInvalidation(client, {
+      instanceId: actor.instanceId,
+      keycloakSubject: externalId,
+      trigger: 'user_group_changed',
     });
 
     return {

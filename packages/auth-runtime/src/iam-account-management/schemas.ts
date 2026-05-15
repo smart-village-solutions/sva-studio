@@ -36,7 +36,8 @@ export const createUserSchema = z.object({
   avatarUrl: z.string().url().max(1024).optional(),
   notes: z.string().trim().max(2000).optional(),
   status: z.enum(USER_STATUS).optional(),
-  roleIds: z.array(uuidLikeString('Ungültige ID.')).max(20).default([]),
+  roleIds: uniqueUuidArray(20).default([]),
+  groupIds: uniqueUuidArray(50).default([]),
   sendPasswordSetupEmail: z.boolean().optional(),
 });
 

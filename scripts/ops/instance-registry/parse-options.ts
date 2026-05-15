@@ -37,6 +37,96 @@ export const assertRequired = (value: string | undefined, flag: string): string 
   return value.trim();
 };
 
+type ParsedCliOptions = {
+  actorId?: string;
+  authClientId?: string;
+  authIssuerUrl?: string;
+  authRealm?: string;
+  tenantAdminClientId?: string;
+  tenantAdminClientSecret?: string;
+  displayName?: string;
+  featureFlagsRaw?: string;
+  instanceId?: string;
+  jsonOutput: boolean;
+  mainserverConfigRef?: string;
+  parentDomain?: string;
+  realmMode?: InstanceRealmMode;
+  search?: string;
+  status?: string;
+  themeKey?: string;
+  idempotencyKey?: string;
+};
+
+type ParsedCliOptionSetter = (parsed: ParsedCliOptions, value: string) => void;
+
+const parseRealmModeOption = (value: string): InstanceRealmMode => {
+  if (value !== 'new' && value !== 'existing') {
+    throw new Error(`Ungültiger Realm-Modus: ${value}. Erlaubt: new, existing.`);
+  }
+
+  return value;
+};
+
+const optionSetters: Readonly<Record<string, ParsedCliOptionSetter>> = {
+  '--actor-id': (parsed, value) => {
+    parsed.actorId = value;
+  },
+  '--auth-client-id': (parsed, value) => {
+    parsed.authClientId = value;
+  },
+  '--auth-issuer-url': (parsed, value) => {
+    parsed.authIssuerUrl = value;
+  },
+  '--auth-realm': (parsed, value) => {
+    parsed.authRealm = value;
+  },
+  '--tenant-admin-client-id': (parsed, value) => {
+    parsed.tenantAdminClientId = value;
+  },
+  '--tenant-admin-client-secret': (parsed, value) => {
+    parsed.tenantAdminClientSecret = value;
+  },
+  '--instance-id': (parsed, value) => {
+    parsed.instanceId = value;
+  },
+  '--display-name': (parsed, value) => {
+    parsed.displayName = value;
+  },
+  '--parent-domain': (parsed, value) => {
+    parsed.parentDomain = value;
+  },
+  '--realm-mode': (parsed, value) => {
+    parsed.realmMode = parseRealmModeOption(value);
+  },
+  '--theme-key': (parsed, value) => {
+    parsed.themeKey = value;
+  },
+  '--mainserver-config-ref': (parsed, value) => {
+    parsed.mainserverConfigRef = value;
+  },
+  '--feature-flags': (parsed, value) => {
+    parsed.featureFlagsRaw = value;
+  },
+  '--search': (parsed, value) => {
+    parsed.search = value;
+  },
+  '--status': (parsed, value) => {
+    parsed.status = value;
+  },
+  '--idempotency-key': (parsed, value) => {
+    parsed.idempotencyKey = value;
+  },
+};
+
+const applyOption = (parsed: ParsedCliOptions, flag: string, value: string): void => {
+  const setter = optionSetters[flag];
+  if (!setter) {
+    throw new Error(`Unbekannte Option: ${flag}`);
+  }
+
+  setter(parsed, value);
+};
+
 export const parseInstanceRegistryCliOptions = (argv: readonly string[]): CliOptions => {
   const [commandRaw, ...rawOptions] = argv;
   if (!commandRaw || !instanceRegistryCommands.includes(commandRaw as Command)) {
@@ -45,25 +135,7 @@ export const parseInstanceRegistryCliOptions = (argv: readonly string[]): CliOpt
     );
   }
 
-  const parsed: {
-    actorId?: string;
-    authClientId?: string;
-    authIssuerUrl?: string;
-    authRealm?: string;
-    tenantAdminClientId?: string;
-    tenantAdminClientSecret?: string;
-    displayName?: string;
-    featureFlagsRaw?: string;
-    instanceId?: string;
-    jsonOutput: boolean;
-    mainserverConfigRef?: string;
-    parentDomain?: string;
-    realmMode?: InstanceRealmMode;
-    search?: string;
-    status?: string;
-    themeKey?: string;
-    idempotencyKey?: string;
-  } = {
+  const parsed: ParsedCliOptions = {
     jsonOutput: false,
     realmMode: 'new',
   };
@@ -77,62 +149,7 @@ export const parseInstanceRegistryCliOptions = (argv: readonly string[]): CliOpt
 
     const { flag, nextIndex, value } = readOptionValue(rawOptions, index);
     index = nextIndex;
-
-    switch (flag) {
-      case '--actor-id':
-        parsed.actorId = value;
-        break;
-      case '--auth-client-id':
-        parsed.authClientId = value;
-        break;
-      case '--auth-issuer-url':
-        parsed.authIssuerUrl = value;
-        break;
-      case '--auth-realm':
-        parsed.authRealm = value;
-        break;
-      case '--tenant-admin-client-id':
-        parsed.tenantAdminClientId = value;
-        break;
-      case '--tenant-admin-client-secret':
-        parsed.tenantAdminClientSecret = value;
-        break;
-      case '--instance-id':
-        parsed.instanceId = value;
-        break;
-      case '--display-name':
-        parsed.displayName = value;
-        break;
-      case '--parent-domain':
-        parsed.parentDomain = value;
-        break;
-      case '--realm-mode':
-        if (value !== 'new' && value !== 'existing') {
-          throw new Error(`Ungültiger Realm-Modus: ${value}. Erlaubt: new, existing.`);
-        }
-        parsed.realmMode = value;
-        break;
-      case '--theme-key':
-        parsed.themeKey = value;
-        break;
-      case '--mainserver-config-ref':
-        parsed.mainserverConfigRef = value;
-        break;
-      case '--feature-flags':
-        parsed.featureFlagsRaw = value;
-        break;
-      case '--search':
-        parsed.search = value;
-        break;
-      case '--status':
-        parsed.status = value;
-        break;
-      case '--idempotency-key':
-        parsed.idempotencyKey = value;
-        break;
-      default:
-        throw new Error(`Unbekannte Option: ${flag}`);
-    }
+    applyOption(parsed, flag, value);
   }
 
   return {

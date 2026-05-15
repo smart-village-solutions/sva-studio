@@ -23,8 +23,20 @@ cleanup() {
   fi
 }
 
-pnpm exec vite dev --host 0.0.0.0 --port "$PORT" --strictPort &
-SERVER_PID=$!
+start_server() {
+  pnpm exec vite dev --host 0.0.0.0 --port "$PORT" --strictPort &
+  SERVER_PID=$!
+}
 
 trap cleanup EXIT INT TERM
+
+start_server
+sleep 2
+
+if ! kill -0 "$SERVER_PID" 2>/dev/null; then
+  wait "$SERVER_PID" 2>/dev/null || true
+  SERVER_PID=""
+  start_server
+fi
+
 wait "$SERVER_PID"

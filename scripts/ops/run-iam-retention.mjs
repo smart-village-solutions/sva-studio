@@ -1,5 +1,12 @@
 #!/usr/bin/env node
-import { Pool } from 'pg';
+import { createRequire } from 'node:module';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const scriptDir = dirname(fileURLToPath(import.meta.url));
+const rootDir = resolve(scriptDir, '../..');
+const authRuntimeRequire = createRequire(resolve(rootDir, 'packages/auth-runtime/package.json'));
+const { Pool } = authRuntimeRequire('pg');
 
 const databaseUrl = process.env.IAM_DATABASE_URL;
 

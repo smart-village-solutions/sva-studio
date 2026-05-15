@@ -28,6 +28,16 @@ Dieses Dokument beschreibt die übergeordnete Teststrategie für das Nx-Monorepo
 - Bei Typänderungen sind Type- und Unit-Checks obligatorisch.
 - Vor größeren Test- oder Coverage-Läufen werden versehentlich erzeugte Source-Artefakte mit `pnpm clean:generated-source-artifacts` bereinigt.
 
+## Testablage und Ownership
+
+- Der Standard für neue Unit-Tests in Packages ist kolokiert unter `packages/<projekt>/src/**/*.test.ts` oder `*.test.tsx`.
+- Der Standard für neue App-nahe Tests ist kolokiert unter `apps/<app>/src/**/*.test.ts` oder `*.test.tsx`.
+- `packages/<projekt>/tests/` ist für paketweite Integrations-, Contract- und Composition-Tests reserviert.
+- `apps/<app>/tests/integration/` ist für appweite Integrations-Tests ohne echten Browser reserviert.
+- `apps/<app>/e2e/` enthält ausschließlich Browser- und Systemtests.
+- Root-weite Ordner wie `testing/` oder `tests/` sind nur für gemeinsame Test-Infrastruktur gedacht, nicht für normale fachliche Projekt-Tests.
+- Bestehende gemischte Altstruktur wird nicht sofort umgebaut; für neue Tests gilt diese Einordnung als Default.
+
 ## Empfohlener lokaler Workflow
 
 ### Kleine oder klar eingegrenzte Änderung

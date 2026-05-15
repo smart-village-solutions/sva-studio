@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
-
-import { Pool } from 'pg';
+import { createRequire } from 'node:module';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { isInstanceStatus, type InstanceRealmMode, type InstanceStatus } from '../../packages/core/src/instances/registry.js';
 import { createInstanceRegistryService } from '../../packages/auth-runtime/src/iam-instance-registry/service.js';
@@ -10,6 +11,25 @@ import { createSdkLogger } from '../../packages/server-runtime/src/logger/index.
 
 import type { SqlExecutor, SqlStatement } from '../../packages/data/src/iam/repositories/types.js';
 import type { InstanceRegistryRepository } from '../../packages/data-repositories/src/instance-registry/index.js';
+
+type PoolClient = {
+  query: (sql: string, values?: readonly unknown[]) => Promise<{ rows: unknown[] }>;
+  release: () => void;
+};
+
+type Pool = {
+  connect: () => Promise<PoolClient>;
+  end: () => Promise<void>;
+};
+
+type PgModule = {
+  Pool: new (options: { connectionString: string; max: number; idleTimeoutMillis: number }) => Pool;
+};
+
+const scriptDir = dirname(fileURLToPath(import.meta.url));
+const rootDir = resolve(scriptDir, '../..');
+const authRuntimeRequire = createRequire(resolve(rootDir, 'packages/auth-runtime/package.json'));
+const { Pool } = authRuntimeRequire('pg') as PgModule;
 
 type Command = 'list' | 'create' | 'activate' | 'suspend' | 'archive' | 'backfill-admin-client';
 

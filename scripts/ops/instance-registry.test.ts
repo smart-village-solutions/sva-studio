@@ -107,10 +107,13 @@ describe('runInstanceRegistryCli', () => {
 
   it('dispatches create commands through the mutation path', async () => {
     const createProvisioningRequest = vi.fn(async () => ({ ok: true }));
-    const withTransaction: InstanceRegistryCommandContext['withTransaction'] = async (work) =>
+    const withTransactionSpy = vi.fn(async (work: (service: unknown) => Promise<unknown>) =>
       work({
         createProvisioningRequest,
-      } as never);
+      })
+    );
+    const withTransaction: InstanceRegistryCommandContext['withTransaction'] = (work) =>
+      withTransactionSpy(work as (service: unknown) => Promise<unknown>) as Promise<Awaited<ReturnType<typeof work>>>;
     const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
 
     await expect(
@@ -137,7 +140,7 @@ describe('runInstanceRegistryCli', () => {
       )
     ).resolves.toBe(0);
 
-    expect(withTransaction).toHaveBeenCalled();
+    expect(withTransactionSpy).toHaveBeenCalled();
     expect(createProvisioningRequest).toHaveBeenCalled();
     consoleSpy.mockRestore();
   });

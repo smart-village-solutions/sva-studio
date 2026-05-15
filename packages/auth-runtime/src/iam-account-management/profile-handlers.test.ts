@@ -415,4 +415,121 @@ describe('profile handlers', () => {
       },
     });
   });
+
+  it('serves a platform self-service profile directly from the session context', async () => {
+    const { getMyProfileInternal } = await importSubject();
+
+    const response = await getMyProfileInternal(
+      new Request('https://platform.example.test/api/v1/iam/users/me/profile'),
+      {
+        user: {
+          id: 'kc-platform-user',
+          username: 'platform.admin',
+          email: 'platform@example.com',
+          firstName: 'Platform',
+          lastName: 'Admin',
+          displayName: '  ',
+          roles: ['system_admin', 'system_admin', 'ignored_role'],
+        },
+      } as const
+    );
+    const payload = (await response.json()) as {
+      data: {
+        displayName: string;
+        id: string;
+        roles: Array<{ roleId: string; roleKey: string }>;
+      };
+      requestId: string;
+    };
+
+    expect(response.status).toBe(200);
+    expect(payload.requestId).toBe('req-1');
+    expect(payload.data).toMatchObject({
+      id: 'platform:kc-platform-user',
+      displayName: 'Platform Admin',
+    });
+    expect(payload.data.roles).toEqual([
+      {
+        roleId: 'platform:system_admin',
+        roleKey: 'system_admin',
+        roleName: 'system_admin',
+        roleLevel: 0,
+      },
+    ]);
+    expect(state.loadMyProfileDetail).not.toHaveBeenCalled();
+  });
+
+  it('returns tenant_admin_client_not_configured when the tenant identity provider is unavailable', async () => {
+    state.resolveIdentityProviderForInstance.mockResolvedValue(null);
+
+    const { updateMyProfileInternal } = await importSubject();
+
+    const response = await updateMyProfileInternal(
+      new Request('https://de-studio-sandbox.studio.smart-village.app/api/v1/iam/users/me/profile', {
+        method: 'PATCH',
+      }),
+      createAuthenticatedContext()
+    );
+    const payload = (await response.json()) as {
+      error: {
+        code: string;
+        details?: {
+          reason_code?: string;
+        };
+      };
+      requestId?: string;
+    };
+
+    expect(response.status).toBe(409);
+    expect(payload.error.code).toBe('tenant_admin_client_not_configured');
+    expect(payload.error.details?.reason_code).toBe('tenant_admin_client_not_configured');
+    expect(payload.requestId).toBe('req-profile');
+  });
+
+  it('falls back to a schema drift response when profile loading fails with an unexpected database error', async () => {
+    state.loadMyProfileDetail.mockRejectedValue(new Error('db unavailable'));
+    state.classifyIamDiagnosticError.mockReturnValue({
+      status: 500,
+      code: 'internal_error',
+      message: 'Profil konnte nicht geladen werden.',
+      details: { reason_code: 'unexpected_internal_error' },
+    });
+    state.runCriticalIamSchemaGuard.mockResolvedValue({
+      ok: false,
+      checks: [
+        {
+          ok: false,
+          expectedMigration: '20240515090000_add_profile_projection',
+          schemaObject: 'iam.accounts',
+        },
+      ],
+    });
+
+    const { getMyProfileInternal } = await importSubject();
+
+    const response = await getMyProfileInternal(
+      new Request('https://de-studio-sandbox.studio.smart-village.app/api/v1/iam/users/me/profile'),
+      createAuthenticatedContext()
+    );
+    const payload = (await response.json()) as {
+      error: {
+        code: string;
+        details?: {
+          expected_migration?: string;
+          reason_code?: string;
+          schema_object?: string;
+        };
+      };
+      requestId?: string;
+    };
+
+    expect(response.status).toBe(503);
+    expect(payload.error.code).toBe('database_unavailable');
+    expect(payload.error.details).toMatchObject({
+      expected_migration: '20240515090000_add_profile_projection',
+      reason_code: 'schema_drift',
+      schema_object: 'iam.accounts',
+    });
+    expect(payload.requestId).toBe('req-profile');
+  });
 });

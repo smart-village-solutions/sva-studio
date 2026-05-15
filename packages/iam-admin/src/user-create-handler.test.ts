@@ -272,4 +272,38 @@ describe('createCreateUserHandlerInternal', () => {
       },
     });
   });
+
+  it('falls back to an internal error payload when a thrown response body is not valid json', async () => {
+    const deps = createDeps({
+      executeCreateUser: vi.fn(async () => {
+        throw new Response('unprocessable', {
+          status: 422,
+          headers: { 'content-type': 'text/plain' },
+        });
+      }),
+    });
+    const handler = createCreateUserHandlerInternal(deps);
+
+    const response = await handler(new Request('http://localhost/api/v1/iam/users'), ctx);
+
+    expect(response.status).toBe(422);
+    await expect(response.json()).resolves.toEqual({
+      error: {
+        code: 'internal_error',
+        message: 'Nutzer konnte nicht erstellt werden.',
+      },
+    });
+    expect(deps.completeIdempotency).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: 'FAILED',
+        responseStatus: 422,
+        responseBody: {
+          error: {
+            code: 'internal_error',
+            message: 'Nutzer konnte nicht erstellt werden.',
+          },
+        },
+      })
+    );
+  });
 });

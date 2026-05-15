@@ -213,4 +213,15 @@ describe('UserCreatePage', () => {
       )
     );
   });
+
+  it('renders empty states when no active groups or direct roles are available', () => {
+    useUsersMock.mockReturnValue(createUsersApiState());
+    useRolesMock.mockReturnValue({ roles: [] });
+    useGroupsMock.mockReturnValue({ groups: [] });
+
+    render(<UserCreatePage />);
+
+    expect(screen.getByText('Es sind keine aktiven Gruppen verfügbar.')).toBeTruthy();
+    expect(screen.getByText('Es sind keine direkten Rollen verfügbar.')).toBeTruthy();
+  });
 });

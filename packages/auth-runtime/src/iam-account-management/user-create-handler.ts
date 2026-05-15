@@ -106,7 +106,7 @@ const createIdpUnavailableBody = (requestId?: string) =>
 
 type CreateUserResult = Awaited<ReturnType<typeof executeCreateUser>>;
 
-const executeCreateUserWithKnownErrors: CreateUserHandlerDeps<
+export const executeCreateUserWithKnownErrors: CreateUserHandlerDeps<
   CreateUserPayload,
   IdentityProviderResolution,
   CreateUserResult

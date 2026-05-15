@@ -194,4 +194,72 @@ describe('user-create-persistence', () => {
 
     expect(client.query).not.toHaveBeenCalled();
   });
+
+  it('skips bundled group role validation when the selected groups do not add direct roles', async () => {
+    const deps = {
+      ...createDeps(),
+      resolveRoleIdsForGroups: vi.fn(async () => []),
+    };
+    const client: QueryClient = {
+      query: vi.fn(async (text: string) => {
+        if (text.includes('RETURNING id')) {
+          return { rowCount: 1, rows: [{ id: 'account-1' }] };
+        }
+        return { rowCount: 1, rows: [] };
+      }),
+    };
+    const persistence = createUserCreatePersistence(deps);
+
+    await expect(
+      persistence.persistCreatedUser(client, {
+        actor: { instanceId: 'inst-1', actorAccountId: 'actor-1', actorRoles: ['admin'] },
+        actorSubject: 'subject-actor',
+        externalId: 'subject-new',
+        payload: {
+          email: 'user@example.test',
+          roleIds: [],
+          groupIds: ['group-1'],
+        },
+      })
+    ).resolves.toMatchObject({
+      responseData: expect.objectContaining({
+        id: 'account-1',
+      }),
+    });
+
+    expect(deps.ensureRoleAssignmentWithinActorLevel).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects groups that would grant bundled roles above the actor level', async () => {
+    const deps = {
+      ...createDeps(),
+      ensureRoleAssignmentWithinActorLevel: vi
+        .fn()
+        .mockResolvedValueOnce({ ok: true as const, roles: [roleRow] })
+        .mockResolvedValueOnce({
+          ok: false as const,
+          code: 'forbidden',
+          message: 'group bundle denied',
+        }),
+    };
+    const client: QueryClient = {
+      query: vi.fn(async () => ({ rowCount: 0, rows: [] })),
+    };
+    const persistence = createUserCreatePersistence(deps);
+
+    await expect(
+      persistence.persistCreatedUser(client, {
+        actor: { instanceId: 'inst-1', actorAccountId: 'actor-1', actorRoles: ['admin'] },
+        actorSubject: 'subject-actor',
+        externalId: 'subject-new',
+        payload: {
+          email: 'user@example.test',
+          roleIds: ['role-1'],
+          groupIds: ['group-1'],
+        },
+      })
+    ).rejects.toThrow('forbidden:group bundle denied');
+
+    expect(client.query).not.toHaveBeenCalled();
+  });
 });

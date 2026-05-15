@@ -13,12 +13,13 @@ import type { SqlExecutor, SqlStatement } from '../../packages/data/src/iam/repo
 import type { InstanceRegistryRepository } from '../../packages/data-repositories/src/instance-registry/index.js';
 
 type PoolClient = {
-  query: (sql: string, values?: readonly unknown[]) => Promise<{ rows: unknown[] }>;
+  query: (sql: string, values?: readonly unknown[]) => Promise<{ rowCount: number | null; rows: unknown[] }>;
   release: () => void;
 };
 
 type Pool = {
   connect: () => Promise<PoolClient>;
+  query: (sql: string, values?: readonly unknown[]) => Promise<{ rowCount: number | null; rows: unknown[] }>;
   end: () => Promise<void>;
 };
 
@@ -249,11 +250,11 @@ const deriveTenantAdminClientId = (authClientId: string, explicitTenantAdminClie
   explicitTenantAdminClientId?.trim() || `${authClientId.trim()}-admin`;
 
 const createExecutor = (pool: Pool): SqlExecutor => ({
-  async execute(statement) {
+  async execute<TRow = Record<string, unknown>>(statement: SqlStatement) {
     const result = await pool.query(statement.text, [...statement.values]);
     return {
       rowCount: result.rowCount ?? 0,
-      rows: result.rows,
+      rows: result.rows as readonly TRow[],
     };
   },
 });

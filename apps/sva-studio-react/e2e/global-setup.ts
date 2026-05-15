@@ -6,9 +6,7 @@ const waitForAppRoute = async (): Promise<void> => {
   const readyURL = new URL('/auth/login', baseURL).toString();
   let lastError: unknown;
 
-  await sleep(2_000);
-
-  for (let attempt = 1; attempt <= 30; attempt += 1) {
+  for (let attempt = 1; attempt <= 120; attempt += 1) {
     try {
       const response = await fetch(readyURL, {
         method: 'HEAD',
@@ -22,7 +20,7 @@ const waitForAppRoute = async (): Promise<void> => {
     } catch (error) {
       lastError = error;
     }
-    await sleep(1000);
+    await sleep(250);
   }
 
   const message = lastError instanceof Error ? lastError.message : String(lastError);

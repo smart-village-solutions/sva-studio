@@ -9,6 +9,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@sva/core': resolve(currentDir, '../core/src/index.ts'),
+      '@sva/monitoring-client/logging': resolve(currentDir, '../monitoring-client/src/logging.ts'),
       '@sva/server-runtime': resolve(currentDir, '../server-runtime/src/index.ts'),
     },
   },

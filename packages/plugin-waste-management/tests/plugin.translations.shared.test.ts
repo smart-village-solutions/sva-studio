@@ -130,9 +130,7 @@ describe('waste-management translation builders', () => {
         onDemand: 'Bedarf',
         custom: 'Individuell',
       },
-      customDates: {
-        title: 'Individuelle Termine',
-      },
+      customDatesTitle: 'Individuelle Termine',
       messages: {
         loading: 'Laedt',
         loadError: 'Fehler',
@@ -148,6 +146,7 @@ describe('waste-management translation builders', () => {
 
     expect(tours.tours).not.toHaveProperty('assignments');
     expect(tours.tours).not.toHaveProperty('yearCalendar');
+    expect(tours.tours.customDates.title).toBe('Individuelle Termine');
     expect(createWasteManagementPluginTranslationLocale([tabs, tours])).toEqual({
       wasteManagement: {
         ...tabs,

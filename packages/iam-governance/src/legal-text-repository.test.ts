@@ -39,6 +39,53 @@ describe('legal-text-repository', () => {
     state = createDeps();
   });
 
+  it('loads legal text list items with mapped acceptance metadata', async () => {
+    state.client.query.mockResolvedValueOnce({
+      rowCount: 1,
+      rows: [legalTextRow],
+    });
+
+    await expect(state.repository.loadLegalTextListItems('de-musterhausen')).resolves.toEqual([
+      {
+        id: legalTextRow.id,
+        name: 'Privacy Policy',
+        legalTextVersion: '2026-03',
+        locale: 'de-DE',
+        contentHtml: '<p>Existing legal text</p>',
+        status: 'valid',
+        publishedAt: '2026-03-16T09:00:00.000Z',
+        createdAt: '2026-03-16T08:55:00.000Z',
+        updatedAt: '2026-03-16T09:30:00.000Z',
+        acceptanceCount: 4,
+        activeAcceptanceCount: 3,
+        lastAcceptedAt: '2026-03-16T10:00:00.000Z',
+      },
+    ]);
+
+    expect(state.client.query).toHaveBeenCalledTimes(1);
+    expect(state.client.query.mock.calls[0]?.[0]).toContain('ORDER BY version.name ASC');
+  });
+
+  it('loads a legal text by id and returns undefined when no row exists', async () => {
+    state.client.query
+      .mockResolvedValueOnce({ rowCount: 1, rows: [legalTextRow] })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] });
+
+    await expect(
+      state.repository.loadLegalTextById('de-musterhausen', legalTextRow.id)
+    ).resolves.toMatchObject({
+      id: legalTextRow.id,
+      name: 'Privacy Policy',
+      legalTextVersion: '2026-03',
+    });
+    await expect(
+      state.repository.loadLegalTextById('de-musterhausen', '22222222-2222-2222-2222-222222222222')
+    ).resolves.toBeUndefined();
+
+    expect(state.client.query).toHaveBeenCalledTimes(2);
+    expect(state.client.query.mock.calls[0]?.[0]).toContain('AND version.id = $2::uuid');
+  });
+
   it('loads pending legal texts via status without relying on the legacy active flag', async () => {
     state.client.query.mockResolvedValueOnce({
       rowCount: 1,
@@ -72,6 +119,63 @@ describe('legal-text-repository', () => {
     expect(state.client.query.mock.calls[0]?.[0]).not.toContain('version.is_active = true');
   });
 
+  it('creates a legal text version and emits an activity log', async () => {
+    state.client.query
+      .mockResolvedValueOnce({ rowCount: 1, rows: [{ legal_text_id: 'privacy_policy_existing' }] })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: legalTextRow.id }] });
+
+    await expect(
+      state.repository.createLegalTextVersion({
+        instanceId: 'de-musterhausen',
+        actorAccountId: 'account-1',
+        requestId: 'req-legal-text',
+        traceId: 'trace-legal-text',
+        name: 'Privacy Policy',
+        legalTextVersion: '2026-04',
+        locale: 'de-DE',
+        contentHtml: '<p>Legal text</p><script>alert(1)</script>',
+        status: 'valid',
+        publishedAt: '2026-03-16T09:00:00.000Z',
+      })
+    ).resolves.toBe(legalTextRow.id);
+
+    expect(state.client.query).toHaveBeenCalledTimes(2);
+    expect(state.client.query.mock.calls[0]?.[0]).toContain('SELECT legal_text_id');
+    expect(state.client.query.mock.calls[1]?.[0]).toContain('INSERT INTO iam.legal_text_versions');
+    expect(state.deps.emitActivityLog).toHaveBeenCalledWith(
+      state.client,
+      expect.objectContaining({
+        eventType: 'iam.legal_text.created',
+        payload: expect.objectContaining({
+          legal_text_version_id: legalTextRow.id,
+          legal_text_version: '2026-04',
+          status: 'valid',
+        }),
+      })
+    );
+  });
+
+  it('returns undefined without emitting an activity log when create hits the uniqueness guard', async () => {
+    state.client.query
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] });
+
+    await expect(
+      state.repository.createLegalTextVersion({
+        instanceId: 'de-musterhausen',
+        actorAccountId: 'account-1',
+        name: 'Privacy Policy',
+        legalTextVersion: '2026-04',
+        locale: 'de-DE',
+        contentHtml: '<p>Legal text</p>',
+        status: 'draft',
+      })
+    ).resolves.toBeUndefined();
+
+    expect(state.client.query).toHaveBeenCalledTimes(2);
+    expect(state.deps.emitActivityLog).not.toHaveBeenCalled();
+  });
+
   it('updates a legal text version within a single instance-scoped transaction', async () => {
     state.client.query
       .mockResolvedValueOnce({ rowCount: 1, rows: [legalTextRow] })
@@ -102,6 +206,40 @@ describe('legal-text-repository', () => {
     );
   });
 
+  it('returns undefined when the current legal text version does not exist during update', async () => {
+    state.client.query.mockResolvedValueOnce({ rowCount: 0, rows: [] });
+
+    await expect(
+      state.repository.updateLegalTextVersion({
+        instanceId: 'de-musterhausen',
+        actorAccountId: 'account-1',
+        legalTextVersionId: legalTextRow.id,
+        status: 'archived',
+      })
+    ).resolves.toBeUndefined();
+
+    expect(state.client.query).toHaveBeenCalledTimes(1);
+    expect(state.deps.emitActivityLog).not.toHaveBeenCalled();
+  });
+
+  it('returns undefined when the update statement affects no row', async () => {
+    state.client.query
+      .mockResolvedValueOnce({ rowCount: 1, rows: [legalTextRow] })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] });
+
+    await expect(
+      state.repository.updateLegalTextVersion({
+        instanceId: 'de-musterhausen',
+        actorAccountId: 'account-1',
+        legalTextVersionId: legalTextRow.id,
+        status: 'archived',
+      })
+    ).resolves.toBeUndefined();
+
+    expect(state.client.query).toHaveBeenCalledTimes(2);
+    expect(state.deps.emitActivityLog).not.toHaveBeenCalled();
+  });
+
   it('rejects deleting legal text versions that already have acceptances', async () => {
     state.client.query
       .mockResolvedValueOnce({ rowCount: 0, rows: [] })
@@ -119,6 +257,46 @@ describe('legal-text-repository', () => {
     expect(state.client.query.mock.calls[0]?.[0]).toContain('DELETE FROM iam.legal_text_versions version');
     expect(state.client.query.mock.calls[1]?.[0]).toContain('SELECT EXISTS');
     expect(state.deps.emitActivityLog).not.toHaveBeenCalled();
+  });
+
+  it('returns undefined when delete affects no row and no acceptances exist', async () => {
+    state.client.query
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [{ has_acceptances: false }] });
+
+    await expect(
+      state.repository.deleteLegalTextVersion({
+        instanceId: 'de-musterhausen',
+        actorAccountId: 'account-1',
+        legalTextVersionId: legalTextRow.id,
+      })
+    ).resolves.toBeUndefined();
+
+    expect(state.client.query).toHaveBeenCalledTimes(2);
+    expect(state.deps.emitActivityLog).not.toHaveBeenCalled();
+  });
+
+  it('deletes a legal text version and emits an activity log', async () => {
+    state.client.query.mockResolvedValueOnce({ rowCount: 1, rows: [{ id: legalTextRow.id }] });
+
+    await expect(
+      state.repository.deleteLegalTextVersion({
+        instanceId: 'de-musterhausen',
+        actorAccountId: 'account-1',
+        requestId: 'req-legal-text',
+        traceId: 'trace-legal-text',
+        legalTextVersionId: legalTextRow.id,
+      })
+    ).resolves.toBe(legalTextRow.id);
+
+    expect(state.client.query).toHaveBeenCalledTimes(1);
+    expect(state.deps.emitActivityLog).toHaveBeenCalledWith(
+      state.client,
+      expect.objectContaining({
+        eventType: 'iam.legal_text.deleted',
+        payload: { legal_text_version_id: legalTextRow.id },
+      })
+    );
   });
 
   it('maps foreign-key violations during legal text deletion to a conflict error', async () => {

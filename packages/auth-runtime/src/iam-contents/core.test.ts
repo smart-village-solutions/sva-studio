@@ -5,45 +5,69 @@ import type { AuthenticatedRequestContext } from '../middleware.js';
 
 const {
   authorizeContentActionMock,
+  createContentResponseMock,
+  deleteContentResponseMock,
   loadContentByIdMock,
   loadContentDetailMock,
+  loadContentHistoryMock,
   loadContentListItemsMock,
   resolveContentAccessMock,
   resolveContentActorMock,
+  updateContentResponseMock,
+  withAuthenticatedContentHandlerMock,
 } = vi.hoisted(() => ({
   authorizeContentActionMock: vi.fn(),
+  createContentResponseMock: vi.fn(),
+  deleteContentResponseMock: vi.fn(),
   loadContentByIdMock: vi.fn(),
   loadContentDetailMock: vi.fn(),
+  loadContentHistoryMock: vi.fn(),
   loadContentListItemsMock: vi.fn(),
   resolveContentAccessMock: vi.fn(),
   resolveContentActorMock: vi.fn(),
+  updateContentResponseMock: vi.fn(),
+  withAuthenticatedContentHandlerMock: vi.fn(),
 }));
 
 vi.mock('./request-context.js', () => ({
   authorizeContentAction: authorizeContentActionMock,
   resolveContentAccess: resolveContentAccessMock,
   resolveContentActor: resolveContentActorMock,
-  withAuthenticatedContentHandler: vi.fn(),
+  withAuthenticatedContentHandler: withAuthenticatedContentHandlerMock,
 }));
 
 vi.mock('./repository.js', () => ({
   loadContentById: loadContentByIdMock,
   loadContentDetail: loadContentDetailMock,
-  loadContentHistory: vi.fn(),
+  loadContentHistory: loadContentHistoryMock,
   loadContentListItems: loadContentListItemsMock,
 }));
 
 vi.mock('./mutations.js', () => ({
-  createContentResponse: vi.fn(),
-  deleteContentResponse: vi.fn(),
-  updateContentResponse: vi.fn(),
+  createContentResponse: createContentResponseMock,
+  deleteContentResponse: deleteContentResponseMock,
+  updateContentResponse: updateContentResponseMock,
 }));
 
-const { getContentInternal, listContentsInternal } = await import('./core.js');
+const {
+  createContentHandler,
+  createContentInternal,
+  deleteContentHandler,
+  deleteContentInternal,
+  getContentHandler,
+  getContentHistoryHandler,
+  getContentHistoryInternal,
+  getContentInternal,
+  listContentsHandler,
+  listContentsInternal,
+  updateContentHandler,
+  updateContentInternal,
+} = await import('./core.js');
 
 const actor = {
   instanceId: 'instance-1',
   keycloakSubject: 'subject-1',
+  actorAccountId: 'account-1',
   actorDisplayName: 'Actor',
   requestId: 'request-1',
   traceId: 'trace-1',
@@ -81,11 +105,16 @@ const ctx = { sessionId: 'session-1', user: { sub: 'subject-1' } } as unknown as
 describe('content core authorization', () => {
   beforeEach(() => {
     authorizeContentActionMock.mockReset();
+    createContentResponseMock.mockReset();
+    deleteContentResponseMock.mockReset();
     loadContentByIdMock.mockReset();
     loadContentDetailMock.mockReset();
+    loadContentHistoryMock.mockReset();
     loadContentListItemsMock.mockReset();
     resolveContentAccessMock.mockReset();
     resolveContentActorMock.mockReset();
+    updateContentResponseMock.mockReset();
+    withAuthenticatedContentHandlerMock.mockReset();
 
     resolveContentActorMock.mockResolvedValue({ actor });
     resolveContentAccessMock.mockResolvedValue(access);
@@ -141,6 +170,26 @@ describe('content core authorization', () => {
     expect(response.status).toBe(503);
   });
 
+  it('returns actor resolution errors before listing contents', async () => {
+    resolveContentActorMock.mockResolvedValue({ error: new Response(null, { status: 401 }) });
+
+    const response = await listContentsInternal(new Request('https://studio.test/api/v1/iam/contents'), ctx);
+
+    expect(response.status).toBe(401);
+    expect(loadContentListItemsMock).not.toHaveBeenCalled();
+  });
+
+  it('returns a database error when listing contents fails', async () => {
+    loadContentListItemsMock.mockRejectedValue(new Error('db_down'));
+
+    const response = await listContentsInternal(new Request('https://studio.test/api/v1/iam/contents'), ctx);
+
+    expect(response.status).toBe(503);
+    await expect(readJson(response)).resolves.toMatchObject({
+      error: expect.objectContaining({ code: 'database_unavailable' }),
+    });
+  });
+
   it('loads content metadata before authorizing detail reads', async () => {
     const content = item('content-1', '11111111-1111-4111-8111-111111111111');
     loadContentByIdMock.mockResolvedValue(content);
@@ -160,5 +209,249 @@ describe('content core authorization', () => {
       })
     );
     expect(loadContentDetailMock).toHaveBeenCalledWith('instance-1', 'content-1');
+  });
+
+  it('returns actor resolution errors before loading content details', async () => {
+    resolveContentActorMock.mockResolvedValue({ error: new Response(null, { status: 401 }) });
+
+    const response = await getContentInternal(new Request('https://studio.test/api/v1/iam/contents/content-1'), ctx);
+
+    expect(response.status).toBe(401);
+    expect(loadContentByIdMock).not.toHaveBeenCalled();
+  });
+
+  it('rejects detail reads without a content id', async () => {
+    const response = await getContentInternal(new Request('https://studio.test/api/v1/iam/contents'), ctx);
+
+    expect(response.status).toBe(400);
+    await expect(readJson(response)).resolves.toMatchObject({
+      error: expect.objectContaining({ code: 'invalid_request' }),
+    });
+  });
+
+  it('returns not found when content metadata is missing for detail reads', async () => {
+    loadContentByIdMock.mockResolvedValue(undefined);
+
+    const response = await getContentInternal(new Request('https://studio.test/api/v1/iam/contents/content-1'), ctx);
+
+    expect(response.status).toBe(404);
+  });
+
+  it('returns authorization errors from detail reads', async () => {
+    const content = item('content-1', '11111111-1111-4111-8111-111111111111');
+    loadContentByIdMock.mockResolvedValue(content);
+    authorizeContentActionMock.mockResolvedValue(new Response(null, { status: 403 }));
+
+    const response = await getContentInternal(new Request('https://studio.test/api/v1/iam/contents/content-1'), ctx);
+
+    expect(response.status).toBe(403);
+    expect(loadContentDetailMock).not.toHaveBeenCalled();
+  });
+
+  it('returns not found when detail data disappears after authorization', async () => {
+    const content = item('content-1', '11111111-1111-4111-8111-111111111111');
+    loadContentByIdMock.mockResolvedValue(content);
+    loadContentDetailMock.mockResolvedValue(undefined);
+    authorizeContentActionMock.mockResolvedValue(null);
+
+    const response = await getContentInternal(new Request('https://studio.test/api/v1/iam/contents/content-1'), ctx);
+
+    expect(response.status).toBe(404);
+  });
+
+  it('returns a database error when loading content details fails', async () => {
+    const content = item('content-1', '11111111-1111-4111-8111-111111111111');
+    loadContentByIdMock.mockResolvedValue(content);
+    loadContentDetailMock.mockRejectedValue(new Error('db_down'));
+    authorizeContentActionMock.mockResolvedValue(null);
+
+    const response = await getContentInternal(new Request('https://studio.test/api/v1/iam/contents/content-1'), ctx);
+
+    expect(response.status).toBe(503);
+    await expect(readJson(response)).resolves.toMatchObject({
+      error: expect.objectContaining({ code: 'database_unavailable' }),
+    });
+  });
+
+  it('loads content history after explicit history authorization', async () => {
+    const content = item('content-1', '11111111-1111-4111-8111-111111111111');
+    loadContentByIdMock.mockResolvedValue(content);
+    loadContentHistoryMock.mockResolvedValue([
+      {
+        id: 'history-1',
+        contentId: 'content-1',
+        action: 'updated',
+        actorDisplayName: 'Actor',
+        changedFields: ['title'],
+        createdAt: '2026-04-26T10:00:00.000Z',
+        summary: 'Titel angepasst',
+      },
+    ]);
+    authorizeContentActionMock.mockResolvedValue(null);
+
+    const response = await getContentHistoryInternal(
+      new Request('https://studio.test/api/v1/iam/contents/content-1/history'),
+      ctx
+    );
+
+    expect(response.status).toBe(200);
+    expect(authorizeContentActionMock).toHaveBeenCalledWith(
+      actor,
+      'content.readHistory',
+      expect.objectContaining({
+        contentId: 'content-1',
+        contentType: 'news.article',
+        organizationId: '11111111-1111-4111-8111-111111111111',
+      })
+    );
+    await expect(readJson(response)).resolves.toMatchObject({
+      data: [expect.objectContaining({ id: 'history-1' })],
+      pagination: expect.objectContaining({ total: 1 }),
+    });
+  });
+
+  it('returns actor resolution errors before loading content history', async () => {
+    resolveContentActorMock.mockResolvedValue({ error: new Response(null, { status: 401 }) });
+
+    const response = await getContentHistoryInternal(
+      new Request('https://studio.test/api/v1/iam/contents/content-1/history'),
+      ctx
+    );
+
+    expect(response.status).toBe(401);
+    expect(loadContentByIdMock).not.toHaveBeenCalled();
+  });
+
+  it('rejects history reads without a content id', async () => {
+    const response = await getContentHistoryInternal(new Request('https://studio.test/api/v1/iam/contents'), ctx);
+
+    expect(response.status).toBe(400);
+  });
+
+  it('returns not found when content history metadata is missing', async () => {
+    loadContentByIdMock.mockResolvedValue(undefined);
+
+    const response = await getContentHistoryInternal(
+      new Request('https://studio.test/api/v1/iam/contents/content-1/history'),
+      ctx
+    );
+
+    expect(response.status).toBe(404);
+  });
+
+  it('returns authorization errors from history reads', async () => {
+    const content = item('content-1', '11111111-1111-4111-8111-111111111111');
+    loadContentByIdMock.mockResolvedValue(content);
+    authorizeContentActionMock.mockResolvedValue(new Response(null, { status: 403 }));
+
+    const response = await getContentHistoryInternal(
+      new Request('https://studio.test/api/v1/iam/contents/content-1/history'),
+      ctx
+    );
+
+    expect(response.status).toBe(403);
+    expect(loadContentHistoryMock).not.toHaveBeenCalled();
+  });
+
+  it('returns a database error when loading content history fails', async () => {
+    const content = item('content-1', '11111111-1111-4111-8111-111111111111');
+    loadContentByIdMock.mockResolvedValue(content);
+    loadContentHistoryMock.mockRejectedValue(new Error('db_down'));
+    authorizeContentActionMock.mockResolvedValue(null);
+
+    const response = await getContentHistoryInternal(
+      new Request('https://studio.test/api/v1/iam/contents/content-1/history'),
+      ctx
+    );
+
+    expect(response.status).toBe(503);
+    await expect(readJson(response)).resolves.toMatchObject({
+      error: expect.objectContaining({ code: 'database_unavailable' }),
+    });
+  });
+
+  it('delegates content creation after resolving an actor account id', async () => {
+    const request = new Request('https://studio.test/api/v1/iam/contents', { method: 'POST' });
+    const expected = new Response(null, { status: 201 });
+    createContentResponseMock.mockResolvedValue(expected);
+
+    const response = await createContentInternal(request, ctx);
+
+    expect(response).toBe(expected);
+    expect(resolveContentActorMock).toHaveBeenCalledWith(request, ctx, { requireActorAccountId: true });
+    expect(createContentResponseMock).toHaveBeenCalledWith(request, actor);
+  });
+
+  it('returns actor resolution errors before delegating content creation', async () => {
+    const request = new Request('https://studio.test/api/v1/iam/contents', { method: 'POST' });
+    resolveContentActorMock.mockResolvedValue({ error: new Response(null, { status: 401 }) });
+
+    const response = await createContentInternal(request, ctx);
+
+    expect(response.status).toBe(401);
+    expect(createContentResponseMock).not.toHaveBeenCalled();
+  });
+
+  it('delegates content updates after resolving an actor account id', async () => {
+    const request = new Request('https://studio.test/api/v1/iam/contents/content-1', { method: 'PATCH' });
+    const expected = new Response(null, { status: 200 });
+    updateContentResponseMock.mockResolvedValue(expected);
+
+    const response = await updateContentInternal(request, ctx);
+
+    expect(response).toBe(expected);
+    expect(resolveContentActorMock).toHaveBeenCalledWith(request, ctx, { requireActorAccountId: true });
+    expect(updateContentResponseMock).toHaveBeenCalledWith(request, actor);
+  });
+
+  it('returns actor resolution errors before delegating content updates', async () => {
+    const request = new Request('https://studio.test/api/v1/iam/contents/content-1', { method: 'PATCH' });
+    resolveContentActorMock.mockResolvedValue({ error: new Response(null, { status: 401 }) });
+
+    const response = await updateContentInternal(request, ctx);
+
+    expect(response.status).toBe(401);
+    expect(updateContentResponseMock).not.toHaveBeenCalled();
+  });
+
+  it('delegates content deletion after resolving an actor account id', async () => {
+    const request = new Request('https://studio.test/api/v1/iam/contents/content-1', { method: 'DELETE' });
+    const expected = new Response(null, { status: 200 });
+    deleteContentResponseMock.mockResolvedValue(expected);
+
+    const response = await deleteContentInternal(request, ctx);
+
+    expect(response).toBe(expected);
+    expect(resolveContentActorMock).toHaveBeenCalledWith(request, ctx, { requireActorAccountId: true });
+    expect(deleteContentResponseMock).toHaveBeenCalledWith(request, actor);
+  });
+
+  it('returns actor resolution errors before delegating content deletion', async () => {
+    const request = new Request('https://studio.test/api/v1/iam/contents/content-1', { method: 'DELETE' });
+    resolveContentActorMock.mockResolvedValue({ error: new Response(null, { status: 401 }) });
+
+    const response = await deleteContentInternal(request, ctx);
+
+    expect(response.status).toBe(401);
+    expect(deleteContentResponseMock).not.toHaveBeenCalled();
+  });
+
+  it('delegates every public handler to the authenticated content wrapper', async () => {
+    const request = new Request('https://studio.test/api/v1/iam/contents/content-1');
+    const expected = new Response(null, { status: 204 });
+    withAuthenticatedContentHandlerMock.mockResolvedValue(expected);
+
+    expect(await listContentsHandler(request)).toBe(expected);
+    expect(await getContentHandler(request)).toBe(expected);
+    expect(await getContentHistoryHandler(request)).toBe(expected);
+    expect(await createContentHandler(request)).toBe(expected);
+    expect(await updateContentHandler(request)).toBe(expected);
+    expect(await deleteContentHandler(request)).toBe(expected);
+    expect(withAuthenticatedContentHandlerMock).toHaveBeenNthCalledWith(1, request, listContentsInternal);
+    expect(withAuthenticatedContentHandlerMock).toHaveBeenNthCalledWith(2, request, getContentInternal);
+    expect(withAuthenticatedContentHandlerMock).toHaveBeenNthCalledWith(3, request, getContentHistoryInternal);
+    expect(withAuthenticatedContentHandlerMock).toHaveBeenNthCalledWith(4, request, createContentInternal);
+    expect(withAuthenticatedContentHandlerMock).toHaveBeenNthCalledWith(5, request, updateContentInternal);
+    expect(withAuthenticatedContentHandlerMock).toHaveBeenNthCalledWith(6, request, deleteContentInternal);
   });
 });

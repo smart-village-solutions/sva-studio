@@ -3,16 +3,17 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const waitForAppRoute = async (): Promise<void> => {
   const configuredPort = process.env.PLAYWRIGHT_PORT ?? '4173';
   const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? `http://127.0.0.1:${configuredPort}`;
-  const readyURL = new URL('/__playwright/ready', baseURL).toString();
+  const readyURL = new URL('/auth/login', baseURL).toString();
   let lastError: unknown;
 
   for (let attempt = 1; attempt <= 30; attempt += 1) {
     try {
       const response = await fetch(readyURL, {
+        method: 'HEAD',
         redirect: 'manual',
         signal: AbortSignal.timeout(2_000),
       });
-      if (response.status === 204) {
+      if (response.status === 405) {
         return;
       }
       lastError = new Error(`status ${response.status}`);

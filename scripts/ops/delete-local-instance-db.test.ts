@@ -36,6 +36,40 @@ describe('parseDeleteLocalInstanceArgs', () => {
     ).toThrow('--force');
   });
 
+  it('accepts the force flag as a truthy boolean assignment', () => {
+    expect(
+      parseDeleteLocalInstanceArgs([
+        '--target-instance-id=demo',
+        '--target-db-container=sva-studio-postgres-hb',
+        '--force=true',
+      ]),
+    ).toMatchObject({
+      force: true,
+      targetInstanceId: 'demo',
+    });
+
+    expect(
+      parseDeleteLocalInstanceArgs([
+        '--target-instance-id=demo',
+        '--target-db-container=sva-studio-postgres-hb',
+        '--force=1',
+      ]),
+    ).toMatchObject({
+      force: true,
+      targetInstanceId: 'demo',
+    });
+  });
+
+  it('rejects falsy force assignments', () => {
+    expect(() =>
+      parseDeleteLocalInstanceArgs([
+        '--target-instance-id=demo',
+        '--target-db-container=sva-studio-postgres-hb',
+        '--force=false',
+      ]),
+    ).toThrow('--force');
+  });
+
   it('accepts dry-run and yes flags', () => {
     expect(
       parseDeleteLocalInstanceArgs([

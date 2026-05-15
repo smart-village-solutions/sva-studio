@@ -59,6 +59,11 @@ const readOptionValue = (entry: string) => {
   };
 };
 
+const isTruthyBooleanFlagValue = (value: string): boolean => {
+  const normalizedValue = value.trim().toLowerCase();
+  return normalizedValue === '1' || normalizedValue === 'true';
+};
+
 export const parseDeleteLocalInstanceArgs = (args: readonly string[]): DeleteLocalInstanceCliOptions => {
   const values = new Map<string, string>();
   const flags = new Set<string>();
@@ -85,7 +90,10 @@ export const parseDeleteLocalInstanceArgs = (args: readonly string[]): DeleteLoc
     return value;
   };
 
-  if (!flags.has('force')) {
+  const forceValue = values.get('force');
+  const hasForceFlag = flags.has('force') || (forceValue !== undefined && isTruthyBooleanFlagValue(forceValue));
+
+  if (!hasForceFlag) {
     throw new Error('Hard delete requires the explicit --force flag.');
   }
 
@@ -194,7 +202,7 @@ const dockerPsql = (container: string, dbUser: string, dbName: string, sql: stri
   run('docker', ['exec', '-i', container, 'psql', '-v', 'ON_ERROR_STOP=1', '-U', dbUser, '-d', dbName], sql);
 
 const dockerPsqlQuiet = (container: string, dbUser: string, dbName: string, sql: string) =>
-  run('docker', ['exec', '-i', container, 'psql', '-At', '-F', '\t', '-U', dbUser, '-d', dbName], sql).trim();
+  run('docker', ['exec', '-i', container, 'psql', '-v', 'ON_ERROR_STOP=1', '-At', '-F', '\t', '-U', dbUser, '-d', dbName], sql).trim();
 
 const logStep = (message: string) => {
   process.stdout.write(`\n==> ${message}\n`);

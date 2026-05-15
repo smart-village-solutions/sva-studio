@@ -5,14 +5,12 @@ import {
   type ProjectHealth,
   type ProjectPriority,
   type ProjectStatus,
-  type ProjectStatusMilestone,
   type ProjectStatusReportContract,
   type ProjectStatusWorkPackage,
 } from './project-status';
 import type { ReportFilterState } from './url-state';
 
 export type ProjectStatusReport = ProjectStatusReportContract;
-export type ProjectMilestone = ProjectStatusMilestone;
 export type ProjectWorkPackage = ProjectStatusWorkPackage;
 
 export type SelectOption = Readonly<{

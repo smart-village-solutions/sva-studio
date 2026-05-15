@@ -1,4 +1,4 @@
-import { createWasteManagementTabsTranslations } from './plugin.translations.shared.js';
+import { createWasteManagementTabsTranslations } from './plugin.translations.shared.sections.js';
 
 export const wasteManagementPluginTranslationsENTabs = createWasteManagementTabsTranslations({
   ariaLabel: 'Waste management areas',

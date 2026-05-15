@@ -1,5 +1,8 @@
 import { wasteManagementPluginTranslationsENMasterDataLocationsWorkspace } from './plugin.translations.en.masterData.locations-workspace.js';
-import { createMasterDataTabs, createWasteManagementMasterDataTranslations } from './plugin.translations.shared.js';
+import {
+  createMasterDataTabs,
+  createWasteManagementMasterDataTranslations,
+} from './plugin.translations.shared.master-data.js';
 
 export const wasteManagementPluginTranslationsENMasterData = createWasteManagementMasterDataTranslations({
   meta: {

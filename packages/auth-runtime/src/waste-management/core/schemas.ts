@@ -1,15 +1,6 @@
 import { wasteManagementMasterDataContract, wasteManagementOperationsContract, type WasteTourRecurrence } from '@sva/core';
 import { z } from 'zod';
 
-export const wasteManagementSettingsSchema = z.object({
-  provider: z.literal('supabase'),
-  projectUrl: z.string().trim().url(),
-  schemaName: z.string().trim().min(1).optional(),
-  enabled: z.boolean(),
-  databaseUrl: z.string().trim().min(1).optional(),
-  serviceRoleKey: z.string().trim().min(1).optional(),
-});
-
 const createWasteFractionSchema = z.object({
   id: z.string().trim().min(1),
   name: z.string().trim().min(1),

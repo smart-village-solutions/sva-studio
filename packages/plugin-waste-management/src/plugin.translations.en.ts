@@ -13,7 +13,7 @@ import { wasteManagementPluginTranslationsENTools } from './plugin.translations.
 import { wasteManagementPluginTranslationsENTours } from './plugin.translations.en.tours.js';
 import { wasteManagementPluginTranslationsENScheduling } from './plugin.translations.en.scheduling.js';
 import { wasteManagementPluginTranslationsENPermissions } from './plugin.translations.en.permissions.js';
-import { createWasteManagementPluginTranslationLocale } from './plugin.translations.shared.js';
+import { createWasteManagementPluginTranslationLocale } from './plugin.translations.shared.base.js';
 
 export const wasteManagementPluginTranslationsEN = createWasteManagementPluginTranslationLocale([
   wasteManagementPluginTranslationsENNavigation,

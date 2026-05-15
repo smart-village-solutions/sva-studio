@@ -148,10 +148,3 @@ export type DetailFormValues = {
   };
   tenantAdminTemporaryPassword: string;
 };
-
-export type PostCreateGuidanceInput = {
-  readonly instanceId: string;
-  readonly status: IamInstanceDetail['status'];
-  readonly primaryHostname: string;
-  readonly authRealm: string;
-};

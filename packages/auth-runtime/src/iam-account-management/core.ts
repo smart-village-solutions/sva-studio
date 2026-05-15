@@ -6,15 +6,6 @@ import {
 } from '../middleware.js';
 import { buildLogContext } from '../log-context.js';
 
-import { getFeatureFlags } from './feature-flags.js';
-import { liveInternal, readyInternal } from './platform-handlers.js';
-import {
-  createGroupInternal,
-  deleteGroupInternal,
-  getGroupInternal,
-  listGroupsInternal,
-  updateGroupInternal,
-} from './groups-handlers.js';
 import {
   createRoleInternal,
   listPermissionsInternal,
@@ -37,7 +28,6 @@ import {
   updateUserInternal,
   deactivateUserInternal,
 } from './users-handlers.js';
-import type { FeatureFlags } from './types.js';
 
 export { sanitizeRoleAuditDetails, sanitizeRoleErrorMessage } from './role-audit.js';
 export { isTrustedRequestOrigin } from './csrf.js';
@@ -121,28 +111,5 @@ export const updateRoleHandler = async (request: Request): Promise<Response> =>
 export const deleteRoleHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedIamHandler(request, deleteRoleInternal);
 
-export const listGroupsHandler = async (request: Request): Promise<Response> =>
-  withAuthenticatedIamHandler(request, listGroupsInternal);
-
-export const createGroupHandler = async (request: Request): Promise<Response> =>
-  withAuthenticatedIamHandler(request, createGroupInternal);
-
-export const getGroupHandler = async (request: Request): Promise<Response> =>
-  withAuthenticatedIamHandler(request, getGroupInternal);
-
-export const updateGroupHandler = async (request: Request): Promise<Response> =>
-  withAuthenticatedIamHandler(request, updateGroupInternal);
-
-export const deleteGroupHandler = async (request: Request): Promise<Response> =>
-  withAuthenticatedIamHandler(request, deleteGroupInternal);
-
-export const healthReadyHandler = async (request: Request): Promise<Response> =>
-  withIamRequestContext(request, () => readyInternal(request));
-
-export const healthLiveHandler = async (request: Request): Promise<Response> =>
-  withIamRequestContext(request, () => liveInternal(request));
-
 export const reconcileHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedIamHandler(request, reconcilePlaceholderInternal);
-
-export const getIamFeatureFlags = (): FeatureFlags => getFeatureFlags();

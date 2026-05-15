@@ -1,4 +1,4 @@
-import { createWasteManagementToursTranslations } from './plugin.translations.shared.js';
+import { createWasteManagementToursTranslations } from './plugin.translations.shared.scheduling.js';
 
 export const wasteManagementPluginTranslationsENTours = createWasteManagementToursTranslations({
   actions: {

@@ -1,4 +1,4 @@
-import { createWasteManagementSchedulingTranslations } from './plugin.translations.shared.js';
+import { createWasteManagementSchedulingTranslations } from './plugin.translations.shared.scheduling.js';
 
 export const wasteManagementPluginTranslationsDEScheduling = createWasteManagementSchedulingTranslations({
   global: {

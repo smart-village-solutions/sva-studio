@@ -1,4 +1,4 @@
-import { createWasteManagementOverviewTranslations } from './plugin.translations.shared.js';
+import { createWasteManagementOverviewTranslations } from './plugin.translations.shared.sections.js';
 
 export const wasteManagementPluginTranslationsENOverview = createWasteManagementOverviewTranslations({
   messages: {

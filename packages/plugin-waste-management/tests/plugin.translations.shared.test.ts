@@ -1,10 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  createWasteManagementPluginTranslationLocale,
-  createWasteManagementTabsTranslations,
-  createWasteManagementToursTranslations,
-} from '../src/plugin.translations.shared.js';
+import { createWasteManagementPluginTranslationLocale } from '../src/plugin.translations.shared.base.js';
+import { createWasteManagementToursTranslations } from '../src/plugin.translations.shared.scheduling.js';
+import { createWasteManagementTabsTranslations } from '../src/plugin.translations.shared.sections.js';
 
 describe('waste-management translation builders', () => {
   it('builds tab translations with the canonical section structure', () => {

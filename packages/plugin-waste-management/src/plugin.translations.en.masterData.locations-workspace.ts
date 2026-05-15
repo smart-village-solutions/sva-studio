@@ -1,4 +1,4 @@
-import { createWasteManagementLocationsWorkspaceTranslations } from './plugin.translations.shared.js';
+import { createWasteManagementLocationsWorkspaceTranslations } from './plugin.translations.shared.sections.js';
 
 export const wasteManagementPluginTranslationsENMasterDataLocationsWorkspace =
   createWasteManagementLocationsWorkspaceTranslations({

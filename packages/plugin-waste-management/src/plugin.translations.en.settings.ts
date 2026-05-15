@@ -1,4 +1,4 @@
-import { createWasteManagementSettingsTranslations } from './plugin.translations.shared.js';
+import { createWasteManagementSettingsTranslations } from './plugin.translations.shared.sections.js';
 
 export const wasteManagementPluginTranslationsENSettings = createWasteManagementSettingsTranslations({
   groupTitle: 'Waste data source',

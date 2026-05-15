@@ -13,11 +13,6 @@ export type GroupFormValues = {
   description: string;
 };
 
-export type GroupEditFormValues = Omit<GroupFormValues, 'groupKey'> & {
-  roleIds: string[];
-  isActive: boolean;
-};
-
 export const createGroupFormValues = (): GroupFormValues => ({
   groupKey: '',
   displayName: '',

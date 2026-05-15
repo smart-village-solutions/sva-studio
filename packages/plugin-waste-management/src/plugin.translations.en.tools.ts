@@ -1,4 +1,4 @@
-import { createWasteManagementToolsTranslations } from './plugin.translations.shared.js';
+import { createWasteManagementToolsTranslations } from './plugin.translations.shared.sections.js';
 
 export const wasteManagementPluginTranslationsENTools = createWasteManagementToolsTranslations({
   imports: {

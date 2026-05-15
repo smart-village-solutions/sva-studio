@@ -2,7 +2,7 @@ import {
   createToursAssignmentsTranslations,
   createToursYearCalendarTranslations,
   createWasteManagementToursTranslations,
-} from './plugin.translations.shared.js';
+} from './plugin.translations.shared.scheduling.js';
 
 export const wasteManagementPluginTranslationsDETours = createWasteManagementToursTranslations({
   actions: {

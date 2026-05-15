@@ -14,6 +14,26 @@ const createClient = (handler: (text: string, values?: readonly unknown[]) => un
 });
 
 describe('actor-authorization', () => {
+  it('deduplicates normalized session role names before resolving role levels', async () => {
+    let resolvedRoleNames: readonly unknown[] | undefined;
+    const client = createClient((text, values) => {
+      if (text.includes('COALESCE(MAX')) {
+        return { rowCount: 1, rows: [{ max_role_level: 20 }] };
+      }
+      resolvedRoleNames = values?.[1] as readonly unknown[] | undefined;
+      return { rowCount: 1, rows: [{ id: 'role-1', role_key: 'editor', role_level: 50 }] };
+    });
+
+    await expect(
+      resolveActorMaxRoleLevel(client, {
+        instanceId: 'inst-1',
+        keycloakSubject: 'subject-1',
+        sessionRoleNames: [' Editor ', 'Editor', ''],
+      })
+    ).resolves.toBe(50);
+    expect(resolvedRoleNames).toEqual(['Editor']);
+  });
+
   it('combines persisted and session role levels', async () => {
     const client = createClient((text) => {
       if (text.includes('COALESCE(MAX')) {

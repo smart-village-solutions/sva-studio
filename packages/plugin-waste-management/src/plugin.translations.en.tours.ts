@@ -35,6 +35,23 @@ export const wasteManagementPluginTranslationsENTours = {
       "dateRange": "Date range: {{value}}",
       "tourId": "Tour ID: {{value}}"
     },
+    "table": {
+      "ariaLabel": "Waste tours",
+      "caption": "Table of waste tours with status, assignments, and actions.",
+      "name": "Tour",
+      "status": "Status",
+      "recurrence": "Recurrence",
+      "fractions": "Fractions",
+      "locations": "Collection locations",
+      "dateRange": "Date range",
+      "assignments": "Assignments",
+      "customDates": "Custom dates",
+      "tourId": "Tour ID",
+      "actions": "Actions",
+      "loadingAssignments": "Loading assignments",
+      "noAssignments": "No assignments",
+      "noCustomDates": "No custom dates"
+    },
     "recurrence": {
       "weekly": "Weekly",
       "biweekly": "Biweekly",

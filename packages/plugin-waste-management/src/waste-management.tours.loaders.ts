@@ -14,31 +14,79 @@ export const useWasteToursDataLoading = (state: WasteToursState, pt: Translate) 
   const ptRef = useRef(pt);
   const isMountedRef = useRef(false);
   ptRef.current = pt;
-  const { setAvailableFractions, setError, setLoading, setMasterDataOverview, setOverview, setSchedulingOverview } = state;
+  const {
+    setAssignmentContextLoading,
+    setAvailableFractions,
+    setError,
+    setLoading,
+    setMasterDataOverview,
+    setOverview,
+    setSchedulingOverview,
+  } = state;
 
   const loadOverview = useCallback(
     async () => {
       try {
-        const [toursResponse, masterDataResponse, schedulingResponse] = await Promise.all([
+        const [toursResponse, fractionsResponse] = await Promise.all([
           getWasteManagementToursOverview(),
-          getWasteManagementMasterDataOverview(),
-          getWasteManagementSchedulingOverview(),
+          getWasteManagementMasterDataOverview({ scope: 'fractions' }),
         ]);
         if (!isMountedRef.current) return;
         setOverview(toursResponse);
-        setAvailableFractions(masterDataResponse.fractions);
-        setMasterDataOverview(masterDataResponse);
-        setSchedulingOverview(schedulingResponse);
+        setAvailableFractions(fractionsResponse.fractions);
+        setMasterDataOverview(null);
+        setAssignmentContextLoading(true);
         setError(null);
+
+        void (async () => {
+          try {
+            const masterDataResponse = await getWasteManagementMasterDataOverview({ scope: 'locations' });
+            if (isMountedRef.current) {
+              setMasterDataOverview(masterDataResponse);
+            }
+          } catch {
+            if (isMountedRef.current) {
+              setMasterDataOverview(null);
+            }
+          } finally {
+            if (isMountedRef.current) {
+              setAssignmentContextLoading(false);
+            }
+          }
+        })();
+
+        void (async () => {
+          try {
+            const schedulingResponse = await getWasteManagementSchedulingOverview();
+            if (isMountedRef.current) {
+              setSchedulingOverview(schedulingResponse);
+            }
+          } catch {
+            if (isMountedRef.current) {
+              setSchedulingOverview(null);
+            }
+          }
+        })();
       } catch (loadError) {
         if (!isMountedRef.current) return;
         const code = resolveApiErrorCode(loadError);
+        setMasterDataOverview(null);
+        setAssignmentContextLoading(false);
+        setSchedulingOverview(null);
         setError(code === 'forbidden' ? ptRef.current('tours.messages.loadForbidden') : ptRef.current('tours.messages.loadError'));
       } finally {
         if (isMountedRef.current) setLoading(false);
       }
     },
-    [setAvailableFractions, setError, setLoading, setMasterDataOverview, setOverview, setSchedulingOverview]
+    [
+      setAssignmentContextLoading,
+      setAvailableFractions,
+      setError,
+      setLoading,
+      setMasterDataOverview,
+      setOverview,
+      setSchedulingOverview,
+    ]
   );
 
   useEffect(() => {

@@ -1,7 +1,7 @@
 import {
-  definePluginAuditEvents,
   defineMediaPickerDefinition,
   createStandardContentPluginActionIds,
+  createStandardContentPluginDefinition,
   createStandardContentPluginContribution,
   type PluginDefinition,
 } from '@sva/plugin-sdk';
@@ -32,17 +32,10 @@ export const pluginEventsMediaPickers = {
   }),
 } as const;
 
-export const pluginEvents: PluginDefinition = {
-  id: 'events',
+export const pluginEvents: PluginDefinition = createStandardContentPluginDefinition({
+  pluginId: 'events',
   displayName: 'Events',
-  routes: [],
-  navigation: standardEventsContribution.navigation,
-  actions: pluginEventsActionDefinitions,
-  permissions: pluginEventsPermissionDefinitions,
-  moduleIam: standardEventsContribution.moduleIam,
-  contentTypes: standardEventsContribution.contentTypes,
-  adminResources: standardEventsContribution.adminResources,
-  auditEvents: definePluginAuditEvents('events', []),
+  contribution: standardEventsContribution,
   translations: {
     de: {
       events: {
@@ -179,4 +172,4 @@ export const pluginEvents: PluginDefinition = {
       },
     },
   },
-};
+});

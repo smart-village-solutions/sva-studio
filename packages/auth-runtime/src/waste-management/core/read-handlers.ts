@@ -1,7 +1,7 @@
 import { asApiItem, createApiError, readPage } from '../../shared/request-helpers.js';
 import type { AuthenticatedRequestContext } from '../../middleware.js';
 import { authorizeWasteManagementAction } from './auth.js';
-import { sanitizeWasteSettings, updateWasteVisibleStatus } from './settings-shared.js';
+import { loadConfiguredWasteSettings, updateWasteVisibleStatus } from './settings-shared.js';
 import type { WasteManagementHandlerDeps } from './types.js';
 import { getRequestId, requireActorInstanceId, requireDeps } from './utils.js';
 
@@ -23,8 +23,8 @@ export const wasteManagementReadHandlers = {
     }
 
     try {
-      const record = await requireDeps(deps.loadWasteDataSourceRecord, 'loadWasteDataSourceRecord')(instanceId);
-      return new Response(JSON.stringify(asApiItem(sanitizeWasteSettings(record), requestId)), {
+      const settings = await loadConfiguredWasteSettings(deps, instanceId);
+      return new Response(JSON.stringify(asApiItem(settings, requestId)), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       });
@@ -67,7 +67,7 @@ export const wasteManagementReadHandlers = {
     }
   },
   getWasteManagementMasterDataOverviewInternal: async (
-    _request: Request,
+    request: Request,
     ctx: AuthenticatedRequestContext,
     deps: WasteManagementHandlerDeps = {}
   ): Promise<Response> => {
@@ -83,7 +83,13 @@ export const wasteManagementReadHandlers = {
     }
 
     try {
-      const overview = await requireDeps(deps.loadMasterDataOverview, 'loadMasterDataOverview')(instanceId);
+      const scope = new URL(request.url).searchParams.get('scope')?.trim();
+      const overview =
+        scope === 'fractions'
+          ? await requireDeps(deps.loadMasterDataFractionsOverview, 'loadMasterDataFractionsOverview')(instanceId)
+          : scope === 'locations'
+            ? await requireDeps(deps.loadMasterDataLocationsOverview, 'loadMasterDataLocationsOverview')(instanceId)
+            : await requireDeps(deps.loadMasterDataOverview, 'loadMasterDataOverview')(instanceId);
       await updateWasteVisibleStatus(deps, instanceId, 'success');
       return new Response(JSON.stringify(asApiItem(overview, requestId)), {
         status: 200,

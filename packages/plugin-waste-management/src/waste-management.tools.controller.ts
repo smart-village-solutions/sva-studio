@@ -6,6 +6,7 @@ import {
   useWasteToolsControllerHelpers,
 } from './waste-management.tools.actions.js';
 import { useWasteTechnicalHistory } from './waste-management.tools.history-state.js';
+import { useWasteTrackedJob } from './waste-management.tools.job-state.js';
 import { useWasteImportState, useWasteMaintenanceState } from './waste-management.tools.state.js';
 
 type Translate = (key: string, variables?: Readonly<Record<string, string | number>>) => string;
@@ -55,6 +56,11 @@ export const useWasteToolsController = (pt: Translate) => {
     setResetToken,
     setRunningAction,
     setMessage,
+    setLastJob,
+  });
+  useWasteTrackedJob({
+    lastJob,
+    refreshTechnicalHistory,
     setLastJob,
   });
 

@@ -57,8 +57,7 @@ const createDeps = () => ({
   })),
   protectSecret: vi.fn((value: string) => `enc:${value}`),
   revealSecret: vi.fn(() => 'revealed'),
-  saveWasteDataSourceRecord: vi.fn(async () => undefined),
-  saveWasteConnectionCheck: vi.fn(async () => undefined),
+  saveExternalInterfaceConnectionCheck: vi.fn(async () => undefined),
   emitAuditEvent: vi.fn(async () => undefined),
 });
 
@@ -68,7 +67,7 @@ describe('waste-management settings handlers', () => {
     runWasteConnectionCheckMock.mockClear();
   });
 
-  it('persists settings and emits a failure-shaped connection-check audit when the probe reports failure', async () => {
+  it('rejects legacy waste settings writes because the supabase is managed via interfaces', async () => {
     const deps = createDeps();
 
     const response = await wasteManagementSettingsHandlers.updateWasteManagementSettingsInternal(
@@ -84,34 +83,27 @@ describe('waste-management settings handlers', () => {
       deps
     );
 
-    expect(response.status).toBe(200);
-    expect(resolveWasteDataSourceMock).toHaveBeenCalled();
-    expect(runWasteConnectionCheckMock).toHaveBeenCalled();
-    expect(deps.saveWasteConnectionCheck).toHaveBeenCalledWith(
-      expect.objectContaining({
-        checkStatus: 'failed',
-        visibleStatus: 'error',
-        errorCode: 'connection_failed',
-      })
-    );
+    expect(response.status).toBe(409);
+    expect(resolveWasteDataSourceMock).not.toHaveBeenCalled();
+    expect(runWasteConnectionCheckMock).not.toHaveBeenCalled();
     expect(
       deps.emitAuditEvent.mock.calls.some(
         ([event]) =>
-          event.pluginAction.actionId === 'waste-management.connection-check.failed' &&
+          event.pluginAction.actionId === 'waste-management.settings.updated' &&
           event.pluginAction.result === 'failure' &&
-          event.pluginAction.reasonCode === 'connection_failed'
+          event.pluginAction.reasonCode === 'managed_via_interfaces'
       )
     ).toBe(true);
     await expect(response.json()).resolves.toMatchObject({
-      data: {
-        visibleStatus: 'error',
-        lastCheckStatus: 'failed',
+      error: {
+        code: 'invalid_request',
+        message: 'Die Waste-Supabase wird ausschließlich über /interfaces verwaltet.',
       },
       requestId: 'req-test',
     });
   });
 
-  it('returns invalid_request for malformed payloads before touching persistence', async () => {
+  it('rejects writes before touching persistence even for malformed payloads', async () => {
     const deps = createDeps();
 
     const response = await wasteManagementSettingsHandlers.updateWasteManagementSettingsInternal(
@@ -125,61 +117,25 @@ describe('waste-management settings handlers', () => {
       deps
     );
 
-    expect(response.status).toBe(400);
-    expect(deps.saveWasteDataSourceRecord).not.toHaveBeenCalled();
+    expect(response.status).toBe(409);
     expect(runWasteConnectionCheckMock).not.toHaveBeenCalled();
   });
 
-  it('rethrows missing dependency failures from the secret resolver path', async () => {
-    resolveWasteDataSourceMock.mockImplementationOnce(async (input: { revealSecret: (ciphertext: string, aad: string) => string | undefined }) => {
-      input.revealSecret('cipher', 'aad');
-      return { databaseUrl: 'postgres://waste', schemaName: 'wm' };
-    });
-
-    await expect(
-      wasteManagementSettingsHandlers.updateWasteManagementSettingsInternal(
-        createRequest({
-          provider: 'supabase',
-          projectUrl: 'https://tenant.example',
-          schemaName: 'wm',
-          enabled: true,
-          databaseUrl: 'postgres://waste',
-          serviceRoleKey: 'service-key',
-        }),
-        actor,
-        {
-          ...createDeps(),
-          revealSecret: undefined,
-        }
-      )
-    ).rejects.toThrow('missing_dependency:revealSecret');
-  });
-
-  it('returns database_unavailable and emits a failure audit when persistence fails', async () => {
-    const deps = createDeps();
-    deps.saveWasteDataSourceRecord.mockImplementationOnce(async () => {
-      throw new Error('db down');
-    });
-
+  it('still returns guard errors before the managed-via-interfaces rejection', async () => {
     const response = await wasteManagementSettingsHandlers.updateWasteManagementSettingsInternal(
-      createRequest({
-        provider: 'supabase',
-        projectUrl: 'https://tenant.example',
-        schemaName: 'wm',
-        enabled: true,
+      new Request('https://studio.test/api/v1/waste-management/settings', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Origin: 'https://evil.test',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: JSON.stringify({}),
       }),
       actor,
-      deps
+      createDeps()
     );
 
-    expect(response.status).toBe(503);
-    expect(
-      deps.emitAuditEvent.mock.calls.some(
-        ([event]) =>
-          event.pluginAction.actionId === 'waste-management.settings.updated' &&
-          event.pluginAction.result === 'failure' &&
-          event.pluginAction.reasonCode === 'database_unavailable'
-      )
-    ).toBe(true);
+    expect(response.status).toBe(403);
   });
 });

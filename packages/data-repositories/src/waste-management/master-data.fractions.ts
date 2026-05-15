@@ -115,9 +115,17 @@ SET name = EXCLUDED.name,
   ],
 });
 
+const buildFractionDeleteStatement = (id: string): SqlStatement => ({
+  text: `
+DELETE FROM waste_fractions
+WHERE id = $1::uuid;
+`,
+  values: [id],
+});
+
 export const createWasteFractionRepositoryPart = (
   executor: SqlExecutor
-): Pick<WasteMasterDataRepository, 'listWasteFractions' | 'getWasteFractionById' | 'upsertWasteFraction'> => ({
+): Pick<WasteMasterDataRepository, 'listWasteFractions' | 'getWasteFractionById' | 'upsertWasteFraction' | 'deleteWasteFraction'> => ({
   async listWasteFractions(filter) {
     const result = await executor.execute<WasteFractionRow>(buildFractionListStatement(filter));
     return result.rows.map(mapWasteFractionRow);
@@ -129,10 +137,14 @@ export const createWasteFractionRepositoryPart = (
   async upsertWasteFraction(input) {
     await executor.execute(buildFractionUpsertStatement(input));
   },
+  async deleteWasteFraction(id) {
+    await executor.execute(buildFractionDeleteStatement(id));
+  },
 });
 
 export const wasteFractionStatements = {
   listWasteFractions: buildFractionListStatement,
   getWasteFractionById: buildFractionSelectStatement,
   upsertWasteFraction: buildFractionUpsertStatement,
+  deleteWasteFraction: buildFractionDeleteStatement,
 } as const;

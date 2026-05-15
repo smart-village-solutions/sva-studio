@@ -14,6 +14,7 @@ import { WasteMasterDataPanel } from './waste-management.master-data-panel.js';
 import { WasteOverviewPanel } from './waste-management.overview-panel.js';
 import { WasteSchedulingPanel } from './waste-management.scheduling-panel.js';
 import { WasteSettingsPanel } from './waste-management.settings-panel.js';
+import { WasteTabPanelActionsProvider } from './waste-management.tab-panel-actions.js';
 import { WasteToolsPanel } from './waste-management.tools-panel.js';
 import { WasteToursPanel } from './waste-management.tours-panel.js';
 import { type WasteManagementSearchParams, type WasteManagementTabId, wasteManagementTabIds } from './search-params.js';
@@ -108,20 +109,32 @@ export const WasteManagementPageTabs = ({
           const shouldKeepMounted = visitedTabIds.includes(tabId) && tabId !== activeTab;
           return (
             <TabsContent key={tabId} value={tabId} forceMount={shouldKeepMounted || undefined} className="mt-0">
-              <div className="space-y-4 rounded-b-2xl rounded-tr-2xl border border-border/60 bg-[#E8E8D8] p-5">
-                <section aria-label={pt(`tabs.${tabKey}.title`)} className="space-y-1 border-0 bg-transparent p-0">
-                  <h2 className="text-base font-semibold text-foreground">{pt(`tabs.${tabKey}.title`)}</h2>
-                  <p className="text-sm leading-relaxed text-muted-foreground">{pt(`tabs.${tabKey}.body`)}</p>
-                </section>
-                {content[tabId] ?? (
-                  <StudioEmptyState>
-                    <div className="space-y-2 text-left">
-                      <p className="font-medium">{pt(`tabs.${tabKey}.emptyTitle`)}</p>
-                      <p>{pt(`tabs.${tabKey}.emptyBody`)}</p>
-                    </div>
-                  </StudioEmptyState>
+              <WasteTabPanelActionsProvider
+                render={(actions) => (
+                  <div className="space-y-4 rounded-2xl border border-border/60 bg-[#E8E8D8] p-5">
+                    <section
+                      aria-label={pt(`tabs.${tabKey}.title`)}
+                      className="flex flex-col gap-3 border-0 bg-transparent p-0 lg:flex-row lg:items-start lg:justify-between"
+                    >
+                      <div className="space-y-1">
+                        <h2 className="text-base font-semibold text-foreground">{pt(`tabs.${tabKey}.title`)}</h2>
+                        <p className="text-sm leading-relaxed text-muted-foreground">{pt(`tabs.${tabKey}.body`)}</p>
+                      </div>
+                      {actions ? <div className="flex shrink-0 flex-wrap items-start justify-end gap-2">{actions}</div> : null}
+                    </section>
+                    {content[tabId] ?? (
+                      <StudioEmptyState>
+                        <div className="space-y-2 text-left">
+                          <p className="font-medium">{pt(`tabs.${tabKey}.emptyTitle`)}</p>
+                          <p>{pt(`tabs.${tabKey}.emptyBody`)}</p>
+                        </div>
+                      </StudioEmptyState>
+                    )}
+                  </div>
                 )}
-              </div>
+              >
+                <></>
+              </WasteTabPanelActionsProvider>
             </TabsContent>
           );
         })}

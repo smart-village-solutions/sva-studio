@@ -137,6 +137,12 @@ const listJobsMock = vi.hoisted(() => vi.fn(async () => ({
 })));
 
 const revealFieldMock = vi.hoisted(() => vi.fn(() => 'revealed-secret'));
+const loggerMock = vi.hoisted(() => ({
+  debug: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+}));
 
 const repositoryMocks = vi.hoisted(() => ({
   listWasteFractions: vi.fn(async () => [{ id: 'fraction-1' }]),
@@ -195,6 +201,7 @@ vi.mock('@sva/server-runtime', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@sva/server-runtime')>();
   return {
     ...actual,
+    createSdkLogger: vi.fn(() => loggerMock),
     resolveWasteDataSource: resolveWasteDataSourceMock,
   };
 });
@@ -228,12 +235,19 @@ vi.mock('pg', () => ({
   Pool: PoolMock,
 }));
 
-import { wasteManagementEntityLoaders, wasteManagementEntitySavers, wasteManagementOverviewLoaders } from './server-loaders.js';
+import {
+  wasteManagementEntityLoaders,
+  wasteManagementEntitySavers,
+  wasteManagementOverviewLoaders,
+  wasteManagementServerLoaderInternals,
+} from './server-loaders.js';
 
 describe('waste-management server loaders', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
+    vi.useRealTimers();
     poolFactoryInstances.length = 0;
+    await wasteManagementServerLoaderInternals.resetWastePoolCache();
   });
 
   it('loads overviews and maps technical job history deterministically', async () => {
@@ -280,7 +294,170 @@ describe('waste-management server loaders', () => {
       expect.objectContaining({ id: 'job:job-3:cancelled', eventType: 'seed.failed' }),
       expect.objectContaining({ id: 'technical-audit-1' }),
     ]);
+    expect(PoolMock).toHaveBeenCalledTimes(1);
+    expect(poolFactoryInstances.at(0)?.end).not.toHaveBeenCalled();
     expect(poolFactoryInstances.at(0)?.query).toHaveBeenCalledWith('SET search_path TO "wm", public;');
+  });
+
+  it('reuses the same scoped pool across multiple waste loader calls for one datasource', async () => {
+    await wasteManagementOverviewLoaders.loadMasterDataOverview('tenant-a');
+    await wasteManagementOverviewLoaders.loadToursOverview('tenant-a');
+    await wasteManagementOverviewLoaders.loadSchedulingOverview('tenant-a');
+
+    expect(resolveWasteDataSourceMock).toHaveBeenCalledTimes(3);
+    expect(PoolMock).toHaveBeenCalledTimes(1);
+    expect(poolFactoryInstances).toHaveLength(1);
+    expect(poolFactoryInstances[0]?.end).not.toHaveBeenCalled();
+  });
+
+  it('emits timing logs for each master-data repository query', async () => {
+    await wasteManagementOverviewLoaders.loadMasterDataOverview('tenant-a');
+
+    const loggedRepositorySteps = loggerMock.info.mock.calls
+      .filter(([message]) => message === 'waste_management_loader_timing')
+      .map(([, payload]) => payload)
+      .filter(
+        (payload): payload is { readonly step: string } =>
+          typeof payload === 'object' && payload !== null && 'step' in payload && typeof payload.step === 'string'
+      )
+      .map((payload) => payload.step);
+
+    expect(loggedRepositorySteps).toEqual(
+      expect.arrayContaining([
+        'repository.list_waste_fractions',
+        'repository.list_waste_regions',
+        'repository.list_waste_cities',
+        'repository.list_waste_streets',
+        'repository.list_waste_house_numbers',
+        'repository.list_waste_collection_locations',
+        'repository.list_waste_location_tour_links',
+      ])
+    );
+  });
+
+  it('evicts stale waste pools after the idle ttl expires', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-05-15T09:00:00.000Z'));
+
+    resolveWasteDataSourceMock.mockResolvedValueOnce({
+      instanceId: 'tenant-a',
+      schemaName: 'wm',
+      databaseUrl: 'postgres://waste:test@localhost:5432/waste',
+      serviceRoleKey: 'service-key',
+      projectUrl: 'https://tenant.example',
+      enabled: true,
+    });
+
+    await wasteManagementOverviewLoaders.loadMasterDataOverview('tenant-a');
+
+    vi.setSystemTime(new Date('2026-05-15T09:06:00.000Z'));
+    resolveWasteDataSourceMock.mockResolvedValueOnce({
+      instanceId: 'tenant-b',
+      schemaName: 'wm',
+      databaseUrl: 'postgres://waste:test@localhost:5432/waste-b',
+      serviceRoleKey: 'service-key',
+      projectUrl: 'https://tenant.example',
+      enabled: true,
+    });
+
+    await wasteManagementOverviewLoaders.loadToursOverview('tenant-b');
+
+    expect(poolFactoryInstances).toHaveLength(2);
+    expect(poolFactoryInstances[0]?.end).toHaveBeenCalledTimes(1);
+    expect(poolFactoryInstances[1]?.end).not.toHaveBeenCalled();
+  });
+
+  it('loads a fractions-only master-data overview without the location hierarchy', async () => {
+    const overview = await wasteManagementOverviewLoaders.loadMasterDataFractionsOverview('tenant-a');
+
+    expect(overview).toEqual({
+      fractions: [{ id: 'fraction-1' }],
+      regions: [],
+      cities: [],
+      streets: [],
+      houseNumbers: [],
+      collectionLocations: [],
+      locationTourLinks: [],
+    });
+    expect(repositoryMocks.listWasteFractions).toHaveBeenCalledTimes(1);
+    expect(repositoryMocks.listWasteRegions).not.toHaveBeenCalled();
+    expect(repositoryMocks.listWasteCities).not.toHaveBeenCalled();
+    expect(repositoryMocks.listWasteStreets).not.toHaveBeenCalled();
+    expect(repositoryMocks.listWasteHouseNumbers).not.toHaveBeenCalled();
+    expect(repositoryMocks.listWasteCollectionLocations).not.toHaveBeenCalled();
+    expect(repositoryMocks.listWasteLocationTourLinks).not.toHaveBeenCalled();
+  });
+
+  it('loads a locations-only master-data overview without fractions', async () => {
+    const overview = await wasteManagementOverviewLoaders.loadMasterDataLocationsOverview('tenant-a');
+
+    expect(overview).toEqual({
+      fractions: [],
+      regions: [{ id: 'region-1' }],
+      cities: [{ id: 'city-1' }],
+      streets: [{ id: 'street-1' }],
+      houseNumbers: [{ id: 'house-1' }],
+      collectionLocations: [{ id: 'location-1' }],
+      locationTourLinks: [{ id: 'link-1' }],
+    });
+    expect(repositoryMocks.listWasteFractions).not.toHaveBeenCalled();
+    expect(repositoryMocks.listWasteRegions).toHaveBeenCalledTimes(1);
+    expect(repositoryMocks.listWasteCities).toHaveBeenCalledTimes(1);
+    expect(repositoryMocks.listWasteStreets).toHaveBeenCalledTimes(1);
+    expect(repositoryMocks.listWasteHouseNumbers).toHaveBeenCalledTimes(1);
+    expect(repositoryMocks.listWasteCollectionLocations).toHaveBeenCalledTimes(1);
+    expect(repositoryMocks.listWasteLocationTourLinks).toHaveBeenCalledTimes(1);
+  });
+
+  it('normalizes technical job timestamps when pg returns Date objects', async () => {
+    instanceDbQueryMock.mockResolvedValueOnce({
+      rowCount: 2,
+      rows: [
+        {
+          id: 'job-date-1',
+          job_type_id: 'waste-management.apply-migrations',
+          status: 'succeeded',
+          finished_at: new Date('2026-05-09T12:00:00.000Z'),
+          updated_at: new Date('2026-05-09T12:00:00.000Z'),
+          request_id: 'req-date-1',
+          latest_event_message: 'done',
+          error_code: null,
+          error_message: null,
+          total_count: 2,
+        },
+        {
+          id: 'job-date-2',
+          job_type_id: 'waste-management.import-data',
+          status: 'failed',
+          finished_at: null,
+          updated_at: new Date('2026-05-09T11:30:00.000Z'),
+          request_id: 'req-date-2',
+          latest_event_message: 'failed',
+          error_code: 'import_failed',
+          error_message: 'Import request failed loudly',
+          total_count: 2,
+        },
+      ],
+    });
+
+    const historyOverview = await wasteManagementOverviewLoaders.loadWasteHistoryOverview({
+      instanceId: 'tenant-a',
+      page: 1,
+      pageSize: 10,
+    });
+
+    expect(historyOverview.technical.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'job:job-date-1:succeeded',
+          occurredAt: '2026-05-09T12:00:00.000Z',
+        }),
+        expect.objectContaining({
+          id: 'job:job-date-2:failed',
+          occurredAt: '2026-05-09T11:30:00.000Z',
+        }),
+      ])
+    );
   });
 
   it('delegates entity loaders, savers, and bulk link creation through the scoped repository', async () => {
@@ -328,9 +505,11 @@ describe('waste-management server loaders', () => {
     expect(repositoryMocks.upsertWasteTourDateShift).toHaveBeenCalled();
     expect(repositoryMocks.upsertWasteGlobalDateShift).toHaveBeenCalled();
     expect(bulkResult).toHaveLength(2);
+    expect(PoolMock).toHaveBeenCalledTimes(1);
     expect(poolFactoryInstances.at(-1)?.query).toHaveBeenCalledWith('BEGIN');
     expect(poolFactoryInstances.at(-1)?.query).toHaveBeenCalledWith('COMMIT');
     expect(poolFactoryInstances.at(-1)?.query).toHaveBeenCalledWith('SET search_path TO "wm", public;');
+    expect(poolFactoryInstances.at(-1)?.end).not.toHaveBeenCalled();
   });
 
   it('rolls back the bulk location-tour-link transaction when verification fails', async () => {
@@ -346,6 +525,34 @@ describe('waste-management server loaders', () => {
     ).rejects.toThrowError(/^bulk_location_tour_link_verification_failed:/);
 
     expect(poolFactoryInstances.at(-1)?.query).toHaveBeenCalledWith('ROLLBACK');
+  });
+
+  it('invalidates a scoped pool after a connection failure and recreates it on the next call', async () => {
+    let connectCalls = 0;
+    PoolMock.mockImplementationOnce(function MockPoolWithBrokenConnect() {
+      const query = vi.fn(async () => ({ rowCount: 0, rows: [] }));
+      const release = vi.fn();
+      const end = vi.fn(async () => undefined);
+      poolFactoryInstances.push({ query, release, end });
+      return {
+        connect: vi.fn(async () => {
+          connectCalls += 1;
+          throw new Error('connect_failed');
+        }),
+        end,
+      };
+    });
+
+    await expect(wasteManagementOverviewLoaders.loadToursOverview('tenant-a')).rejects.toThrow('connect_failed');
+    await expect(wasteManagementOverviewLoaders.loadToursOverview('tenant-a')).resolves.toEqual({
+      tours: [{ id: 'tour-1' }],
+    });
+
+    expect(connectCalls).toBe(1);
+    expect(PoolMock).toHaveBeenCalledTimes(2);
+    expect(poolFactoryInstances).toHaveLength(2);
+    expect(poolFactoryInstances[0]?.end).toHaveBeenCalledTimes(1);
+    expect(poolFactoryInstances[1]?.end).not.toHaveBeenCalled();
   });
 
   it('keeps technical history stable when jobs are unfinished or have unknown mappings', async () => {

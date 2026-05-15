@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router';
-import type { IamOrganizationType, IamUserListItem } from '@sva/core';
+import type { IamUserListItem } from '@sva/core';
 import React from 'react';
 
 import { ConfirmDialog } from '../../../components/ConfirmDialog';
@@ -12,19 +12,15 @@ import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
 import { Select } from '../../../components/ui/select';
 import { useOrganizations } from '../../../hooks/use-organizations';
-import { t, type TranslationKey } from '../../../i18n';
+import { t } from '../../../i18n';
 import { asIamError, listUsers, type IamHttpError } from '../../../lib/iam-api';
-
-const ORGANIZATION_TYPE_KEYS = {
-  county: 'admin.organizations.types.county',
-  municipality: 'admin.organizations.types.municipality',
-  district: 'admin.organizations.types.district',
-  company: 'admin.organizations.types.company',
-  agency: 'admin.organizations.types.agency',
-  other: 'admin.organizations.types.other',
-} satisfies Record<IamOrganizationType, TranslationKey>;
-
-const typeOptions = Object.keys(ORGANIZATION_TYPE_KEYS) as IamOrganizationType[];
+import {
+  createOrganizationFormValues,
+  OrganizationForm,
+  organizationErrorMessage,
+  toOrganizationFormValues,
+  toOrganizationMutationPayload,
+} from './-organization-shared';
 const MEMBERSHIP_USER_PAGE_SIZE = 100;
 const MEMBERSHIP_SEARCH_DEBOUNCE_MS = 300;
 
@@ -53,31 +49,6 @@ const matchesMembershipSearch = (user: IamUserListItem, search: string) => {
     .some((value) => value.toLocaleLowerCase().includes(normalizedSearch));
 };
 
-const organizationErrorMessage = (error: IamHttpError | null): string => {
-  if (!error) {
-    return t('admin.organizations.messages.error');
-  }
-
-  switch (error.code) {
-    case 'forbidden':
-      return t('admin.organizations.errors.forbidden');
-    case 'csrf_validation_failed':
-      return t('admin.organizations.errors.csrfValidationFailed');
-    case 'rate_limited':
-      return t('admin.organizations.errors.rateLimited');
-    case 'conflict':
-      return t('admin.organizations.errors.conflict');
-    case 'invalid_organization_id':
-      return t('admin.organizations.errors.invalidOrganization');
-    case 'organization_inactive':
-      return t('admin.organizations.errors.organizationInactive');
-    case 'database_unavailable':
-      return t('admin.organizations.errors.databaseUnavailable');
-    default:
-      return t('admin.organizations.messages.error');
-  }
-};
-
 type OrganizationDetailPageProps = {
   readonly organizationId: string;
 };
@@ -96,13 +67,7 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
   const [membershipUsersLoading, setMembershipUsersLoading] = React.useState(true);
   const [membershipUsersError, setMembershipUsersError] = React.useState<IamHttpError | null>(null);
   const [deactivateConfirmOpen, setDeactivateConfirmOpen] = React.useState(false);
-  const [formValues, setFormValues] = React.useState({
-    organizationKey: '',
-    displayName: '',
-    organizationType: 'other' as IamOrganizationType,
-    parentOrganizationId: '',
-    contentAuthorPolicy: 'org_only' as 'org_only' | 'org_or_personal',
-  });
+  const [formValues, setFormValues] = React.useState(createOrganizationFormValues);
 
   React.useEffect(() => {
     void loadOrganization(organizationId);
@@ -114,13 +79,7 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
       return;
     }
 
-    setFormValues({
-      organizationKey: detail.organizationKey,
-      displayName: detail.displayName,
-      organizationType: detail.organizationType,
-      parentOrganizationId: detail.parentOrganizationId ?? '',
-      contentAuthorPolicy: detail.contentAuthorPolicy,
-    });
+    setFormValues(toOrganizationFormValues(detail));
   }, [organizationId, organizationsApi.selectedOrganization]);
 
   const selectedOrganization =
@@ -191,13 +150,7 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
 
   const onSubmitOrganization = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    await organizationsApi.updateOrganization(organizationId, {
-      organizationKey: formValues.organizationKey.trim(),
-      displayName: formValues.displayName.trim(),
-      organizationType: formValues.organizationType,
-      parentOrganizationId: formValues.parentOrganizationId || undefined,
-      contentAuthorPolicy: formValues.contentAuthorPolicy,
-    });
+    await organizationsApi.updateOrganization(organizationId, toOrganizationMutationPayload(formValues));
   };
 
   const onAssignMembership = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -260,84 +213,24 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
       {selectedOrganization ? (
         <>
           <Card className="space-y-4 p-4">
-            <form className="space-y-4" onSubmit={(event) => void onSubmitOrganization(event)}>
-              <div className="grid gap-1 text-sm text-foreground">
-                <Label htmlFor="organization-key">{t('admin.organizations.form.keyLabel')}</Label>
-                <Input
-                  id="organization-key"
-                  value={formValues.organizationKey}
-                  onChange={(event) => setFormValues((current) => ({ ...current, organizationKey: event.target.value }))}
-                />
-              </div>
-              <div className="grid gap-1 text-sm text-foreground">
-                <Label htmlFor="organization-name">{t('admin.organizations.form.nameLabel')}</Label>
-                <Input
-                  id="organization-name"
-                  value={formValues.displayName}
-                  onChange={(event) => setFormValues((current) => ({ ...current, displayName: event.target.value }))}
-                />
-              </div>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="grid gap-1 text-sm text-foreground">
-                  <Label htmlFor="organization-type">{t('admin.organizations.form.typeLabel')}</Label>
-                  <Select
-                    id="organization-type"
-                    value={formValues.organizationType}
-                    onChange={(event) =>
-                      setFormValues((current) => ({
-                        ...current,
-                        organizationType: event.target.value as IamOrganizationType,
-                      }))
-                    }
-                  >
-                    {typeOptions.map((type) => (
-                      <option key={type} value={type}>
-                        {t(ORGANIZATION_TYPE_KEYS[type])}
-                      </option>
-                    ))}
-                  </Select>
-                </div>
-                <div className="grid gap-1 text-sm text-foreground">
-                  <Label htmlFor="organization-policy">{t('admin.organizations.form.policyLabel')}</Label>
-                  <Select
-                    id="organization-policy"
-                    value={formValues.contentAuthorPolicy}
-                    onChange={(event) =>
-                      setFormValues((current) => ({
-                        ...current,
-                        contentAuthorPolicy: event.target.value as 'org_only' | 'org_or_personal',
-                      }))
-                    }
-                  >
-                    <option value="org_only">{t('admin.organizations.policies.orgOnly')}</option>
-                    <option value="org_or_personal">{t('admin.organizations.policies.orgOrPersonal')}</option>
-                  </Select>
-                </div>
-              </div>
-              <div className="grid gap-1 text-sm text-foreground">
-                <Label htmlFor="organization-parent">{t('admin.organizations.form.parentLabel')}</Label>
-                <Select
-                  id="organization-parent"
-                  value={formValues.parentOrganizationId}
-                  onChange={(event) => setFormValues((current) => ({ ...current, parentOrganizationId: event.target.value }))}
+            <OrganizationForm
+              excludeOrganizationId={organizationId}
+              organizations={organizationsApi.organizations}
+              onSubmit={(event) => void onSubmitOrganization(event)}
+              setFormValues={setFormValues}
+              submitLabel={t('admin.organizations.actions.save')}
+              formValues={formValues}
+              actions={
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={() => setDeactivateConfirmOpen(true)}
+                  disabled={!selectedOrganization.isActive}
                 >
-                  <option value="">{t('admin.organizations.form.parentNone')}</option>
-                  {organizationsApi.organizations
-                    .filter((organization) => organization.id !== organizationId)
-                    .map((organization) => (
-                      <option key={organization.id} value={organization.id}>
-                        {organization.displayName}
-                      </option>
-                    ))}
-                </Select>
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button type="button" variant="destructive" onClick={() => setDeactivateConfirmOpen(true)} disabled={!selectedOrganization.isActive}>
                   {t('admin.organizations.actions.deactivate')}
                 </Button>
-                <Button type="submit">{t('admin.organizations.actions.save')}</Button>
-              </div>
-            </form>
+              }
+            />
           </Card>
 
           <Card className="space-y-4 p-4">
@@ -375,7 +268,9 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
                 <Select
                   id="membership-account"
                   value={membershipForm.accountId}
-                  onChange={(event) => setMembershipForm((current) => ({ ...current, accountId: event.target.value }))}
+                  onChange={(event: React.ChangeEvent<HTMLSelectElement>) =>
+                    setMembershipForm((current) => ({ ...current, accountId: event.target.value }))
+                  }
                   disabled={membershipUsersLoading || filteredMembershipUsers.length === 0}
                 >
                   <option value="">{t('admin.organizations.membershipsDialog.accountPlaceholder')}</option>
@@ -407,7 +302,7 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
                   <Select
                     id="membership-visibility"
                     value={membershipForm.visibility}
-                    onChange={(event) =>
+                    onChange={(event: React.ChangeEvent<HTMLSelectElement>) =>
                       setMembershipForm((current) => ({
                         ...current,
                         visibility: event.target.value as 'internal' | 'external',

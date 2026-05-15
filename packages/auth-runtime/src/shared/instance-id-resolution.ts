@@ -25,7 +25,14 @@ export type ResolveInstanceIdInput = {
   readonly displayNameForCreate?: string;
 };
 
-export const resolveInstanceId = async (input: ResolveInstanceIdInput): Promise<InstanceIdResolutionResult> => {
+type ResolveInstanceIdOptions = {
+  readonly warningMessage: string;
+};
+
+export const resolveInstanceIdWithOptions = async (
+  input: ResolveInstanceIdInput,
+  options: ResolveInstanceIdOptions
+): Promise<InstanceIdResolutionResult> => {
   const rawValue = readString(input.candidate);
   if (!rawValue) {
     return { ok: false, reason: 'missing_instance' };
@@ -74,7 +81,7 @@ RETURNING id;
     }
     return { ok: true, instanceId: createdId, fromInstanceKey: false, created: true };
   } catch (error) {
-    logger.warn('Shared instance ID resolution failed', {
+    logger.warn(options.warningMessage, {
       candidate: rawValue,
       reason_code: 'instance_id_resolution_failed',
       error_type: error instanceof Error ? error.constructor.name : typeof error,
@@ -84,3 +91,8 @@ RETURNING id;
     client.release();
   }
 };
+
+export const resolveInstanceId = async (input: ResolveInstanceIdInput): Promise<InstanceIdResolutionResult> =>
+  resolveInstanceIdWithOptions(input, {
+    warningMessage: 'Shared instance ID resolution failed',
+  });

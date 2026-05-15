@@ -1,9 +1,10 @@
 import type { WasteGlobalDateShiftRecord, WasteTourDateShiftRecord } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { Badge, Button, StudioEmptyState } from '@sva/studio-ui-react';
+import { Button, StudioEmptyState } from '@sva/studio-ui-react';
+import { useMemo } from 'react';
 
 import { StatusNotice, type StatusMessage } from './waste-management.page.support.js';
-import { ShiftCard } from './waste-management.scheduling-card.js';
+import { useWasteTabPanelActions } from './waste-management.tab-panel-actions.js';
 
 export const WasteSchedulingEmptyState = ({
   onOpenCreateGlobalShiftDialog,
@@ -47,26 +48,51 @@ const GlobalShiftList = ({
         <h3 className="text-sm font-semibold">{pt('scheduling.global.title')}</h3>
         <p className="text-sm text-muted-foreground">{pt('scheduling.global.description')}</p>
       </div>
-      {shifts.map((shift) => (
-        <ShiftCard
-          key={shift.id}
-          title={pt('scheduling.global.cardTitle', { value: shift.id })}
-          originalDate={shift.originalDate}
-          actualDate={shift.actualDate}
-          description={shift.description}
-          badges={[
-            pt('scheduling.meta.hasYear', { value: shift.hasYear ? pt('common.yes') : pt('common.no') }),
-            pt('scheduling.meta.affectedTours', { value: shift.tourIds?.length ?? 0 }),
-            ...(shift.reasonType ? [pt('scheduling.meta.reasonType', { value: pt(`scheduling.reasonTypes.${shift.reasonType}`) })] : []),
-            ...(shift.reasonKey ? [pt('scheduling.meta.reasonKey', { value: shift.reasonKey })] : []),
-          ]}
-          actions={
-            <Button type="button" variant="outline" size="sm" onClick={() => onEdit(shift)}>
-              {pt('scheduling.global.actions.edit')}
-            </Button>
-          }
-        />
-      ))}
+      <div className="overflow-hidden rounded-xl border border-border bg-white shadow-shell">
+        <div className="overflow-x-auto">
+          <table className="min-w-full border-collapse" aria-label={pt('scheduling.global.table.ariaLabel')}>
+            <caption className="sr-only">{pt('scheduling.global.table.caption')}</caption>
+            <thead className="bg-muted/40 text-left text-sm text-foreground">
+              <tr className="border-b border-border/70">
+                <th scope="col" className="px-3 py-3">{pt('scheduling.global.table.originalDate')}</th>
+                <th scope="col" className="px-3 py-3">{pt('scheduling.global.table.actualDate')}</th>
+                <th scope="col" className="px-3 py-3">{pt('scheduling.global.table.reason')}</th>
+                <th scope="col" className="px-3 py-3">{pt('scheduling.global.table.description')}</th>
+                <th scope="col" className="px-3 py-3">{pt('scheduling.global.table.affectedTours')}</th>
+                <th scope="col" className="px-3 py-3">{pt('scheduling.global.table.hasYear')}</th>
+                <th scope="col" className="px-3 py-3">{pt('scheduling.global.table.reasonKey')}</th>
+                <th scope="col" className="px-3 py-3 text-right">{pt('scheduling.global.table.actions')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {shifts.map((shift) => (
+                <tr key={shift.id} className="border-b border-border/60 align-top last:border-b-0">
+                  <td className="px-3 py-3 text-sm">{shift.originalDate}</td>
+                  <td className="px-3 py-3 text-sm">{shift.actualDate}</td>
+                  <td className="px-3 py-3 text-sm">
+                    {shift.reasonType ? pt(`scheduling.reasonTypes.${shift.reasonType}`) : pt('scheduling.table.notAvailable')}
+                  </td>
+                  <td className="px-3 py-3 text-sm">
+                    {shift.description || <span className="text-muted-foreground">{pt('scheduling.table.notAvailable')}</span>}
+                  </td>
+                  <td className="px-3 py-3 text-sm">{shift.tourIds?.length ?? 0}</td>
+                  <td className="px-3 py-3 text-sm">{shift.hasYear ? pt('common.yes') : pt('common.no')}</td>
+                  <td className="px-3 py-3 text-sm">
+                    {shift.reasonKey || <span className="text-muted-foreground">{pt('scheduling.table.notAvailable')}</span>}
+                  </td>
+                  <td className="px-3 py-3">
+                    <div className="flex justify-end">
+                      <Button type="button" variant="outline" size="sm" onClick={() => onEdit(shift)}>
+                        {pt('scheduling.global.actions.edit')}
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 };
@@ -86,26 +112,55 @@ const TourShiftList = ({
         <h3 className="text-sm font-semibold">{pt('scheduling.tour.title')}</h3>
         <p className="text-sm text-muted-foreground">{pt('scheduling.tour.description')}</p>
       </div>
-      {shifts.map((shift) => (
-        <ShiftCard
-          key={shift.id}
-          title={pt('scheduling.tour.cardTitle', { value: shift.tourId })}
-          originalDate={shift.originalDate}
-          actualDate={shift.actualDate}
-          description={shift.description}
-          badges={[
-            pt('scheduling.meta.hasYear', { value: shift.hasYear ? pt('common.yes') : pt('common.no') }),
-            ...(shift.reasonType ? [pt('scheduling.meta.reasonType', { value: pt(`scheduling.reasonTypes.${shift.reasonType}`) })] : []),
-            ...(shift.reasonKey ? [pt('scheduling.meta.reasonKey', { value: shift.reasonKey })] : []),
-            ...(shift.followUpMode ? [pt('scheduling.meta.followUpMode', { value: pt(`scheduling.followUpModes.${shift.followUpMode}`) })] : []),
-          ]}
-          actions={
-            <Button type="button" variant="outline" size="sm" onClick={() => onEdit(shift)}>
-              {pt('scheduling.tour.actions.edit')}
-            </Button>
-          }
-        />
-      ))}
+      <div className="overflow-hidden rounded-xl border border-border bg-white shadow-shell">
+        <div className="overflow-x-auto">
+          <table className="min-w-full border-collapse" aria-label={pt('scheduling.tour.table.ariaLabel')}>
+            <caption className="sr-only">{pt('scheduling.tour.table.caption')}</caption>
+            <thead className="bg-muted/40 text-left text-sm text-foreground">
+              <tr className="border-b border-border/70">
+                <th scope="col" className="px-3 py-3">{pt('scheduling.tour.table.tourId')}</th>
+                <th scope="col" className="px-3 py-3">{pt('scheduling.tour.table.originalDate')}</th>
+                <th scope="col" className="px-3 py-3">{pt('scheduling.tour.table.actualDate')}</th>
+                <th scope="col" className="px-3 py-3">{pt('scheduling.tour.table.reason')}</th>
+                <th scope="col" className="px-3 py-3">{pt('scheduling.tour.table.description')}</th>
+                <th scope="col" className="px-3 py-3">{pt('scheduling.tour.table.followUpMode')}</th>
+                <th scope="col" className="px-3 py-3">{pt('scheduling.tour.table.hasYear')}</th>
+                <th scope="col" className="px-3 py-3">{pt('scheduling.tour.table.reasonKey')}</th>
+                <th scope="col" className="px-3 py-3 text-right">{pt('scheduling.tour.table.actions')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {shifts.map((shift) => (
+                <tr key={shift.id} className="border-b border-border/60 align-top last:border-b-0">
+                  <td className="px-3 py-3 text-sm">{shift.tourId}</td>
+                  <td className="px-3 py-3 text-sm">{shift.originalDate}</td>
+                  <td className="px-3 py-3 text-sm">{shift.actualDate}</td>
+                  <td className="px-3 py-3 text-sm">
+                    {shift.reasonType ? pt(`scheduling.reasonTypes.${shift.reasonType}`) : pt('scheduling.table.notAvailable')}
+                  </td>
+                  <td className="px-3 py-3 text-sm">
+                    {shift.description || <span className="text-muted-foreground">{pt('scheduling.table.notAvailable')}</span>}
+                  </td>
+                  <td className="px-3 py-3 text-sm">
+                    {shift.followUpMode ? pt(`scheduling.followUpModes.${shift.followUpMode}`) : pt('scheduling.table.notAvailable')}
+                  </td>
+                  <td className="px-3 py-3 text-sm">{shift.hasYear ? pt('common.yes') : pt('common.no')}</td>
+                  <td className="px-3 py-3 text-sm">
+                    {shift.reasonKey || <span className="text-muted-foreground">{pt('scheduling.table.notAvailable')}</span>}
+                  </td>
+                  <td className="px-3 py-3">
+                    <div className="flex justify-end">
+                      <Button type="button" variant="outline" size="sm" onClick={() => onEdit(shift)}>
+                        {pt('scheduling.tour.actions.edit')}
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 };
@@ -128,22 +183,25 @@ export const WasteSchedulingContent = ({
   readonly onEditTourShiftDialog: (shift: WasteTourDateShiftRecord) => void;
 }) => {
   const pt = usePluginTranslation('wasteManagement');
-
-  return (
-    <div className="space-y-4">
-      <StatusNotice message={message} />
-      <div className="flex flex-wrap gap-2">
+  const panelActions = useMemo(
+    () => (
+      <>
         <Button type="button" variant="outline" onClick={onOpenCreateGlobalShiftDialog}>
           {pt('scheduling.global.actions.openCreate')}
         </Button>
         <Button type="button" onClick={onOpenCreateTourShiftDialog}>
           {pt('scheduling.tour.actions.openCreate')}
         </Button>
-      </div>
-      <div className="flex flex-wrap gap-2">
-        <Badge>{pt('scheduling.meta.globalCount', { value: globalDateShifts.length })}</Badge>
-        <Badge variant="outline">{pt('scheduling.meta.tourCount', { value: tourDateShifts.length })}</Badge>
-      </div>
+      </>
+    ),
+    [onOpenCreateGlobalShiftDialog, onOpenCreateTourShiftDialog, pt]
+  );
+
+  useWasteTabPanelActions(panelActions);
+
+  return (
+    <div className="space-y-4">
+      <StatusNotice message={message} />
       <div className="grid gap-4 xl:grid-cols-2">
         <GlobalShiftList shifts={globalDateShifts} onEdit={onEditGlobalShiftDialog} />
         <TourShiftList shifts={tourDateShifts} onEdit={onEditTourShiftDialog} />

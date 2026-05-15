@@ -726,6 +726,10 @@ export const i18nResources = {
           'Die gewählte Schnittstelle gehört nicht zur aktuellen Instanz und konnte nicht geändert werden.',
         interfaceTypeChangeNotSupported:
           'Der Typ einer vorhandenen Schnittstelle kann nicht nachträglich geändert werden.',
+        supabaseRequiresWasteManagementModule:
+          'Supabase kann nur für Instanzen mit zugewiesenem Waste-Management-Modul angelegt werden.',
+        secretUnreadable:
+          'Das gespeicherte Secret der Schnittstelle konnte serverseitig nicht mehr gelesen werden. Bitte den Secret-Wert neu eintragen und erneut speichern.',
         networkError: 'Der Verbindungsstatus konnte nicht abgerufen werden.',
         graphqlError: 'Der Mainserver hat einen GraphQL-Fehler zurückgegeben.',
         invalidResponse: 'Der Mainserver hat eine unerwartete Antwort zurückgegeben.',
@@ -752,7 +756,7 @@ export const i18nResources = {
         },
         supabase: {
           label: 'Supabase',
-          description: 'Project URL, Schema und Service-Role-Key – z. B. für den Abfallkalender.',
+          description: 'Waste-Datenquelle mit Projekt-URL, Schema, Datenbankzugang und Service-Role-Key.',
         },
       },
       create: {
@@ -784,10 +788,10 @@ export const i18nResources = {
             'Hinweis: Diese Schnittstelle wird bereits serverseitig gespeichert. Automatische Statusprüfungen und Verbindungschecks folgen noch.',
         },
         supabase: {
-          projectUrl: 'Project URL',
+          projectUrl: 'Projekt-URL',
           schemaName: 'Schema',
-          databaseUrl: 'Direct DB URL (optional)',
-          serviceRoleKey: 'Service Role Key',
+          databaseUrl: 'Direkte DB-URL',
+          serviceRoleKey: 'Service-Role-Key',
           notImplemented:
             'Hinweis: Diese Schnittstelle wird bereits serverseitig gespeichert. Automatische Statusprüfungen und Verbindungschecks folgen noch.',
         },
@@ -3522,7 +3526,7 @@ export const i18nResources = {
         },
         supabase: {
           label: 'Supabase',
-          description: 'Manage project and database settings for Supabase integrations.',
+          description: 'Waste datasource with project URL, schema, database access, and service role key.',
         },
       },
       form: {
@@ -3545,7 +3549,7 @@ export const i18nResources = {
         supabase: {
           projectUrl: 'Project URL',
           schemaName: 'Schema name',
-          databaseUrl: 'Database URL',
+          databaseUrl: 'Direct DB URL',
           serviceRoleKey: 'Service role key',
           notImplemented:
             'This interface is already persisted on the server. Automated status checks and connection probes are still pending.',
@@ -3598,6 +3602,10 @@ export const i18nResources = {
           'The selected interface belongs to a different instance and could not be changed.',
         interfaceTypeChangeNotSupported:
           'The type of an existing interface cannot be changed afterwards.',
+        supabaseRequiresWasteManagementModule:
+          'Supabase can only be created for instances that have the waste-management module assigned.',
+        secretUnreadable:
+          'The stored interface secret could no longer be read on the server. Please enter the secret value again and save once more.',
         networkError: 'The connection status could not be loaded.',
         graphqlError: 'The mainserver returned a GraphQL error.',
         invalidResponse: 'The mainserver returned an unexpected response.',

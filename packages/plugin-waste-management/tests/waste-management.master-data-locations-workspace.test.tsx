@@ -209,5 +209,7 @@ describe('WasteMasterDataLocationsWorkspace', () => {
     expect(screen.getAllByText('Musterstadt').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Hauptstraße 12').length).toBeGreaterThan(0);
     expect(screen.getAllByText('masterData.locationsWorkspace.table.tourCount:{"value":2}').length).toBeGreaterThan(0);
+    expect(screen.queryByText('masterData.meta.collectionLocationCount:{"value":1}')).toBeNull();
+    expect(screen.queryAllByTestId('badge')).toHaveLength(0);
   });
 });

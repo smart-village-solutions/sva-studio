@@ -33,6 +33,9 @@ export const updateWasteManagementFraction = async (
 ): Promise<WasteFractionRecord> =>
   requestWasteManagementMutation(`/api/v1/waste-management/fractions/${encodeURIComponent(fractionId)}`, input, 'PUT');
 
+export const deleteWasteManagementFraction = async (fractionId: string): Promise<{ readonly id: string }> =>
+  requestWasteManagementMutation(`/api/v1/waste-management/fractions/${encodeURIComponent(fractionId)}`, undefined, 'DELETE');
+
 export const createWasteManagementRegion = async (
   input: CreateWasteManagementRegionInput
 ): Promise<WasteRegionRecord> => requestWasteManagementMutation('/api/v1/waste-management/regions', input);

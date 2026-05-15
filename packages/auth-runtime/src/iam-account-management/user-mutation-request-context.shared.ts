@@ -1,18 +1,10 @@
 import type { AuthenticatedRequestContext } from '../middleware.js';
-import { isUuid } from '../shared/input-readers.js';
 
 import { ADMIN_ROLES } from './constants.js';
-import { createActorResolutionDetails } from './diagnostics.js';
-import { createApiError, readPathSegment } from './api-helpers.js';
-import { validateCsrf } from './csrf.js';
-import { ensureFeature, getFeatureFlags } from './feature-flags.js';
-import { consumeRateLimit } from './rate-limit.js';
-import { requireRoles, resolveActorInfo } from './shared-actor-resolution.js';
-import { resolveIdentityProviderForInstance } from './shared-runtime.js';
+import { requireMutationIdentityProvider, requireMutationPathId, resolveMutationActorWithAccount, type MutationActorWithAccount } from './mutation-request-context.shared.js';
+import type { IdentityProviderResolution } from './shared-runtime.js';
 
-type ResolvedActor = Exclude<Awaited<ReturnType<typeof resolveActorInfo>>, { error: Response }>['actor'];
-
-export type UserMutationActor = ResolvedActor & { actorAccountId: string };
+export type UserMutationActor = MutationActorWithAccount;
 
 export const resolveUserMutationActor = async (
   request: Request,
@@ -24,84 +16,78 @@ export const resolveUserMutationActor = async (
     provisionMissingActorMembership?: boolean;
   }
 ): Promise<{ actor: UserMutationActor } | { response: Response }> => {
-  const featureCheck = ensureFeature(getFeatureFlags(), input.feature, input.requestId);
-  if (featureCheck) {
-    return { response: featureCheck };
-  }
-
-  const roleCheck = requireRoles(ctx, ADMIN_ROLES, input.requestId);
-  if (roleCheck) {
-    return { response: roleCheck };
-  }
-
-  const actorResolution = await resolveActorInfo(request, ctx, {
-    requireActorMembership: true,
+  return resolveMutationActorWithAccount(request, ctx, {
+    ...input,
+    allowedRoles: ADMIN_ROLES,
     provisionMissingActorMembership: input.provisionMissingActorMembership ?? true,
   });
-  if ('error' in actorResolution) {
-    return { response: actorResolution.error };
-  }
-
-  if (!actorResolution.actor.actorAccountId) {
-    return {
-      response: createApiError(
-        403,
-        'forbidden',
-        'Akteur-Account nicht gefunden.',
-        actorResolution.actor.requestId,
-        createActorResolutionDetails({
-          actorResolution: 'missing_actor_account',
-          instanceId: actorResolution.actor.instanceId,
-        })
-      ),
-    };
-  }
-
-  const csrfError = validateCsrf(request, actorResolution.actor.requestId);
-  if (csrfError) {
-    return { response: csrfError };
-  }
-
-  const rateLimit = consumeRateLimit({
-    instanceId: actorResolution.actor.instanceId,
-    actorKeycloakSubject: ctx.user.id,
-    scope: input.scope,
-    requestId: actorResolution.actor.requestId,
-  });
-  if (rateLimit) {
-    return { response: rateLimit };
-  }
-
-  return { actor: actorResolution.actor as UserMutationActor };
 };
 
 export const requireUserId = (request: Request, requestId?: string): string | Response => {
-  const userId = readPathSegment(request, 4);
-  if (!userId || !isUuid(userId)) {
-    return createApiError(400, 'invalid_request', 'Ungültige userId.', requestId);
-  }
-
-  return userId;
+  return requireMutationPathId(request, { paramName: 'userId', requestId });
 };
 
 export const requireUserMutationIdentityProvider = async (instanceId: string, requestId?: string) => {
-  const identityProvider = await resolveIdentityProviderForInstance(instanceId, {
-    executionMode: 'tenant_admin',
-  });
-  if (identityProvider) {
+  return requireMutationIdentityProvider(instanceId, requestId);
+};
+
+export type UserMutationTargetActorContext =
+  | Response
+  | {
+      actor: UserMutationActor;
+      userId: string;
+    };
+
+export const resolveUserMutationTargetActorContext = async (
+  request: Request,
+  ctx: AuthenticatedRequestContext,
+  input: Parameters<typeof resolveUserMutationActor>[2]
+): Promise<UserMutationTargetActorContext> => {
+  const actorResolution = await resolveUserMutationActor(request, ctx, input);
+  if ('response' in actorResolution) {
+    return actorResolution.response;
+  }
+
+  const userId = requireUserId(request, actorResolution.actor.requestId);
+  if (userId instanceof Response) {
+    return userId;
+  }
+
+  return {
+    actor: actorResolution.actor,
+    userId,
+  };
+};
+
+export type UserMutationTargetContext =
+  | Response
+  | {
+      actor: UserMutationActor;
+      identityProvider: IdentityProviderResolution;
+      userId: string;
+    };
+
+export const resolveUserMutationTargetContext = async (
+  request: Request,
+  ctx: AuthenticatedRequestContext,
+  input: Parameters<typeof resolveUserMutationActor>[2]
+): Promise<UserMutationTargetContext> => {
+  const targetActorContext = await resolveUserMutationTargetActorContext(request, ctx, input);
+  if (targetActorContext instanceof Response) {
+    return targetActorContext;
+  }
+
+  const identityProvider = await requireUserMutationIdentityProvider(
+    targetActorContext.actor.instanceId,
+    targetActorContext.actor.requestId
+  );
+  if (identityProvider instanceof Response) {
     return identityProvider;
   }
 
-  return createApiError(
-    409,
-    'tenant_admin_client_not_configured',
-    'Tenant-lokale Keycloak-Administration ist nicht konfiguriert.',
-    requestId,
-    {
-      dependency: 'keycloak',
-      execution_mode: 'tenant_admin',
-      instance_id: instanceId,
-      reason_code: 'tenant_admin_client_not_configured',
-    }
-  );
+  return {
+    actor: targetActorContext.actor,
+    identityProvider,
+    userId: targetActorContext.userId,
+  };
 };

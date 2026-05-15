@@ -85,6 +85,7 @@ const governanceAuthHandlerMap = {
     POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.createFraction),
   },
   '/api/v1/waste-management/fractions/$fractionId': {
+    DELETE: routeHandler(authRuntimeRoutes.wasteManagementHandlers.deleteFraction),
     PUT: routeHandler(authRuntimeRoutes.wasteManagementHandlers.updateFraction),
   },
   '/api/v1/waste-management/regions': {

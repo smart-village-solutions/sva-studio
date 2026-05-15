@@ -1,8 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type {
-  WasteManagementConnectionCheckRecord,
-  WasteManagementDataSourceRecord,
+  ExternalInterfaceConnectionCheckRecord,
   WasteManagementMasterDataOverview,
   WasteManagementSchedulingOverview,
   WasteManagementSettingsRecord,
@@ -65,17 +64,33 @@ const actor: AuthenticatedRequestContext = {
   },
 };
 
-const baseRecord: WasteManagementDataSourceRecord = {
+const baseInterfaceRecord = {
+  id: 'supabase-1',
   instanceId: 'tenant-a',
-  provider: 'supabase',
-  projectUrl: 'https://tenant-a.supabase.co',
-  schemaName: 'public',
+  typeKey: 'supabase' as const,
+  ownerKind: 'host' as const,
+  ownerId: 'host',
+  displayName: 'Waste Supabase',
+  alias: 'default',
   enabled: true,
-  databaseUrlConfigured: true,
-  serviceRoleKeyConfigured: true,
-  databaseUrlCiphertext: 'cipher-db',
-  serviceRoleKeyCiphertext: 'cipher-key',
-  visibleStatus: 'unknown',
+  isDefault: true,
+  category: 'database' as const,
+  statusCheckKind: 'supabase' as const,
+  visibleStatus: 'unknown' as const,
+  publicConfig: {
+    projectUrl: 'https://tenant-a.supabase.co',
+    schemaName: 'public',
+  },
+  secretConfigCiphertext: 'cipher-secret',
+};
+
+const resolvedActorInfo = {
+  actor: {
+    instanceId: 'tenant-a',
+    actorAccountId: 'account-1',
+    requestId: 'req-test',
+    traceId: 'trace-test',
+  },
 };
 
 const allowPermission = (action: string) => [
@@ -103,7 +118,7 @@ describe('waste-management auth runtime handlers', () => {
       actor,
       {
         getRequestId: () => 'req-test',
-        loadWasteDataSourceRecord: vi.fn(async () => baseRecord),
+        loadDefaultInterfaceRecord: vi.fn(async () => baseInterfaceRecord),
         resolvePermissions: vi.fn(async () => ({
           ok: true as const,
           permissions: allowPermission('waste-management.settings.manage'),
@@ -262,7 +277,7 @@ describe('waste-management auth runtime handlers', () => {
   });
 
   it('refreshes the visible waste connection status after a successful master-data read', async () => {
-    const saveWasteConnectionCheck = vi.fn(async () => undefined);
+    const saveExternalInterfaceConnectionCheck = vi.fn(async () => undefined);
     const overview: WasteManagementMasterDataOverview = {
       fractions: [],
       regions: [],
@@ -279,7 +294,8 @@ describe('waste-management auth runtime handlers', () => {
       {
         getRequestId: () => 'req-test',
         loadMasterDataOverview: vi.fn(async () => overview),
-        saveWasteConnectionCheck,
+        loadDefaultInterfaceRecord: vi.fn(async () => baseInterfaceRecord),
+        saveExternalInterfaceConnectionCheck,
         resolvePermissions: vi.fn(async () => ({
           ok: true as const,
           permissions: allowPermission('waste-management.read'),
@@ -288,8 +304,9 @@ describe('waste-management auth runtime handlers', () => {
     );
 
     expect(response.status).toBe(200);
-    expect(saveWasteConnectionCheck).toHaveBeenCalledWith({
+    expect(saveExternalInterfaceConnectionCheck).toHaveBeenCalledWith({
       instanceId: 'tenant-a',
+      interfaceId: 'supabase-1',
       checkedAt: '2026-05-09T12:30:00.000Z',
       checkStatus: 'succeeded',
       visibleStatus: 'ok',
@@ -383,34 +400,9 @@ describe('waste-management auth runtime handlers', () => {
     });
   });
 
-  it('saves settings, preserves existing secrets and persists the connection check result', async () => {
+  it('rejects legacy settings writes because interfaces are canonical', async () => {
 
-    let currentRecord: WasteManagementDataSourceRecord | null = {
-      ...baseRecord,
-      databaseUrlCiphertext: 'old-db',
-      serviceRoleKeyCiphertext: 'old-key',
-      lastCheckedAt: '2026-05-08T12:00:00.000Z',
-      lastCheckStatus: 'failed',
-      lastCheckErrorCode: 'connection_failed',
-      lastCheckErrorMessage: 'alt',
-    };
-
-    const saveWasteDataSourceRecord = vi.fn(async (record: WasteManagementDataSourceRecord) => {
-      currentRecord = record;
-    });
-    const saveWasteConnectionCheck = vi.fn(async (record: WasteManagementConnectionCheckRecord) => {
-      if (!currentRecord) {
-        throw new Error('missing_record');
-      }
-      currentRecord = {
-        ...currentRecord,
-        visibleStatus: record.visibleStatus,
-        lastCheckedAt: record.checkedAt,
-        lastCheckStatus: record.checkStatus,
-        lastCheckErrorCode: record.errorCode,
-        lastCheckErrorMessage: record.errorMessage,
-      };
-    });
+    const saveExternalInterfaceConnectionCheck = vi.fn(async (_record: ExternalInterfaceConnectionCheckRecord) => undefined);
 
     const emitAuditEvent = vi.fn(async () => undefined);
 
@@ -432,14 +424,7 @@ describe('waste-management auth runtime handlers', () => {
       actor,
       {
         getRequestId: () => 'req-test',
-        loadWasteDataSourceRecord: vi.fn(async () => currentRecord),
-        saveWasteDataSourceRecord,
-        saveWasteConnectionCheck,
-        protectSecret: vi.fn((value: string) => `enc:${value}`),
-        revealSecret: vi.fn((ciphertext: string | null | undefined) =>
-          ciphertext === 'old-db' ? 'postgres://waste-db' : ciphertext === 'old-key' ? 'srv-key' : undefined
-        ),
-        runConnectionProbe: vi.fn(async () => undefined),
+        saveExternalInterfaceConnectionCheck,
         emitAuditEvent,
         resolvePermissions: vi.fn(async () => ({
           ok: true as const,
@@ -448,36 +433,14 @@ describe('waste-management auth runtime handlers', () => {
       }
     );
 
-    expect(saveWasteDataSourceRecord).toHaveBeenCalledWith(
-      expect.objectContaining({
-        instanceId: 'tenant-a',
-        schemaName: 'wm',
-        databaseUrlCiphertext: 'old-db',
-        serviceRoleKeyCiphertext: 'old-key',
-        visibleStatus: 'unknown',
-      })
-    );
-    expect(saveWasteConnectionCheck).toHaveBeenCalledWith({
-      instanceId: 'tenant-a',
-      checkedAt: '2026-05-09T12:30:00.000Z',
-      checkStatus: 'succeeded',
-      visibleStatus: 'ok',
-    });
-    expect(emitAuditEvent).toHaveBeenCalledTimes(3);
-    expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual({
-      data: {
-        instanceId: 'tenant-a',
-        provider: 'supabase',
-        projectUrl: 'https://tenant-a.supabase.co',
-        schemaName: 'wm',
-        enabled: true,
-        databaseUrlConfigured: true,
-        serviceRoleKeyConfigured: true,
-        visibleStatus: 'ok',
-        lastCheckedAt: '2026-05-09T12:30:00.000Z',
-        lastCheckStatus: 'succeeded',
-      } satisfies WasteManagementSettingsRecord,
+    expect(saveExternalInterfaceConnectionCheck).not.toHaveBeenCalled();
+    expect(emitAuditEvent).toHaveBeenCalledTimes(1);
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        code: 'invalid_request',
+        message: 'Die Waste-Supabase wird ausschließlich über /interfaces verwaltet.',
+      },
       requestId: 'req-test',
     });
   });
@@ -2054,9 +2017,13 @@ describe('waste-management auth runtime handlers', () => {
       {
         getRequestId: () => 'req-test',
         startPluginOperationJob: startJob,
-        loadWasteDataSourceRecord: vi.fn(async () => ({
-          ...baseRecord,
-          schemaName: 'wm',
+        resolveActorInfo: vi.fn(async () => resolvedActorInfo),
+        loadDefaultInterfaceRecord: vi.fn(async () => ({
+          ...baseInterfaceRecord,
+          publicConfig: {
+            ...baseInterfaceRecord.publicConfig,
+            schemaName: 'wm',
+          },
         })),
         resolvePermissions: vi.fn(async () => ({
           ok: true as const,
@@ -2066,7 +2033,7 @@ describe('waste-management auth runtime handlers', () => {
     );
 
     expect(startJob).toHaveBeenCalledWith({
-      actorAccountId: 'user-1',
+      actorAccountId: 'account-1',
       data: {
         input: {
           operation: 'apply-migrations',
@@ -2105,9 +2072,13 @@ describe('waste-management auth runtime handlers', () => {
       {
         getRequestId: () => 'req-test',
         startPluginOperationJob: startJob,
-        loadWasteDataSourceRecord: vi.fn(async () => ({
-          ...baseRecord,
-          schemaName: 'wm',
+        resolveActorInfo: vi.fn(async () => resolvedActorInfo),
+        loadDefaultInterfaceRecord: vi.fn(async () => ({
+          ...baseInterfaceRecord,
+          publicConfig: {
+            ...baseInterfaceRecord.publicConfig,
+            schemaName: 'wm',
+          },
         })),
         resolvePermissions: vi.fn(async () => ({
           ok: true as const,
@@ -2117,7 +2088,7 @@ describe('waste-management auth runtime handlers', () => {
     );
 
     expect(startJob).toHaveBeenCalledWith({
-      actorAccountId: 'user-1',
+      actorAccountId: 'account-1',
       data: {
         input: {
           operation: 'initialize-data-source',
@@ -2155,9 +2126,13 @@ describe('waste-management auth runtime handlers', () => {
       {
         getRequestId: () => 'req-test',
         startPluginOperationJob: startJob,
-        loadWasteDataSourceRecord: vi.fn(async () => ({
-          ...baseRecord,
-          schemaName: 'wm',
+        resolveActorInfo: vi.fn(async () => resolvedActorInfo),
+        loadDefaultInterfaceRecord: vi.fn(async () => ({
+          ...baseInterfaceRecord,
+          publicConfig: {
+            ...baseInterfaceRecord.publicConfig,
+            schemaName: 'wm',
+          },
         })),
         resolvePermissions: vi.fn(async () => ({
           ok: true as const,
@@ -2265,6 +2240,7 @@ describe('waste-management auth runtime handlers', () => {
       {
         getRequestId: () => 'req-test',
         startPluginOperationJob: startJob,
+        resolveActorInfo: vi.fn(async () => resolvedActorInfo),
         resolvePermissions: vi.fn(async () => ({
           ok: true as const,
           permissions: allowPermission('waste-management.import.execute'),
@@ -2273,7 +2249,7 @@ describe('waste-management auth runtime handlers', () => {
     );
 
     expect(startJob).toHaveBeenCalledWith({
-      actorAccountId: 'user-1',
+      actorAccountId: 'account-1',
       data: {
         input: {
           operation: 'import-data',
@@ -2327,15 +2303,14 @@ describe('waste-management auth runtime handlers', () => {
   });
 
   it('rejects settings access when the specific waste permission is missing', async () => {
-
-    const loadWasteDataSourceRecord = vi.fn(async () => baseRecord);
+    const loadDefaultInterfaceRecord = vi.fn(async () => baseInterfaceRecord);
 
     const response = await getWasteManagementSettingsInternal(
       new Request('https://studio.test/api/v1/waste-management/settings'),
       actor,
       {
         getRequestId: () => 'req-test',
-        loadWasteDataSourceRecord,
+        loadDefaultInterfaceRecord,
         resolvePermissions: vi.fn(async () => ({
           ok: true as const,
           permissions: allowPermission('waste-management.read'),
@@ -2344,7 +2319,7 @@ describe('waste-management auth runtime handlers', () => {
     );
 
     expect(response.status).toBe(403);
-    expect(loadWasteDataSourceRecord).not.toHaveBeenCalled();
+    expect(loadDefaultInterfaceRecord).not.toHaveBeenCalled();
   });
 
   it('rejects waste-fraction mutation without the dedicated master-data permission', async () => {

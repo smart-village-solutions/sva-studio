@@ -1,14 +1,9 @@
-import { useEffect, useState } from 'react';
+import { readSessionAccessSnapshot, subscribeSessionAccessSnapshot } from '@sva/plugin-sdk';
+import { useSyncExternalStore } from 'react';
 
 import type { WasteManagementTabId } from './search-params.js';
 
 const readOnlyTabIds = ['fractions', 'tours', 'locations', 'scheduling'] as const satisfies readonly WasteManagementTabId[];
-
-type AuthMePayload = {
-  readonly user?: {
-    readonly permissionActions?: readonly unknown[];
-  };
-};
 
 export type WasteManagementUiAccess = Readonly<{
   visibleTabIds: readonly WasteManagementTabId[];
@@ -20,13 +15,6 @@ export type WasteManagementUiAccess = Readonly<{
   canRunSeed: boolean;
   canRunReset: boolean;
 }>;
-
-const collectPermissionActions = (payload: unknown): readonly string[] => {
-  const candidate = payload as AuthMePayload;
-  return Array.isArray(candidate.user?.permissionActions)
-    ? candidate.user.permissionActions.filter((entry): entry is string => typeof entry === 'string')
-    : [];
-};
 
 export const deriveWasteManagementUiAccess = (
   permissionActions: readonly string[],
@@ -67,41 +55,13 @@ export const deriveWasteManagementUiAccess = (
 };
 
 export const useWasteManagementUiAccess = (currentTab?: WasteManagementTabId) => {
-  const [permissionActions, setPermissionActions] = useState<readonly string[]>([]);
-  const [isResolved, setIsResolved] = useState(false);
-
-  useEffect(() => {
-    const controller = new AbortController();
-
-    void fetch('/auth/me', { signal: controller.signal })
-      .then(async (response) => {
-        if (!response.ok) {
-          throw new Error(`auth_me_${response.status}`);
-        }
-
-        const payload = await response.json();
-        if (!controller.signal.aborted) {
-          setPermissionActions(collectPermissionActions(payload));
-        }
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) {
-          setPermissionActions([]);
-        }
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) {
-          setIsResolved(true);
-        }
-      });
-
-    return () => {
-      controller.abort();
-    };
-  }, []);
+  const sessionAccess = useSyncExternalStore(subscribeSessionAccessSnapshot, readSessionAccessSnapshot, readSessionAccessSnapshot);
 
   return {
-    isResolved,
-    ...deriveWasteManagementUiAccess(permissionActions, isResolved ? undefined : currentTab),
+    isResolved: sessionAccess.isResolved,
+    ...deriveWasteManagementUiAccess(
+      sessionAccess.permissionActions,
+      sessionAccess.isResolved ? undefined : currentTab
+    ),
   };
 };

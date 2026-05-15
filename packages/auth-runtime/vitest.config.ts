@@ -12,6 +12,7 @@ export default defineConfig({
       { find: /^@sva\/data-repositories\/server$/, replacement: resolve(currentDir, '../data-repositories/src/server.ts') },
       { find: /^@sva\/data-repositories$/, replacement: resolve(currentDir, '../data-repositories/src/index.ts') },
       { find: /^@sva\/media$/, replacement: resolve(currentDir, '../media/src/index.ts') },
+      { find: /^@sva\/monitoring-client\/logging$/, replacement: resolve(currentDir, '../monitoring-client/src/logging.ts') },
       { find: /^@sva\/plugin-sdk$/, replacement: resolve(currentDir, '../plugin-sdk/src/index.ts') },
       { find: /^@sva\/server-runtime$/, replacement: resolve(currentDir, '../server-runtime/src/index.ts') },
       { find: /^@sva\/iam-core$/, replacement: resolve(currentDir, '../iam-core/src/index.ts') },

@@ -4,19 +4,17 @@ import React from 'react';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Button } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
-import { Input } from '../../../components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../components/ui/tabs';
 import { useInstances } from '../../../hooks/use-instances';
 import { t } from '../../../i18n';
 import { IamRuntimeDiagnosticDetails } from '../-iam-runtime-diagnostic-details';
-import { FieldHelp } from './-field-help';
+import { InstanceDetailConfigurationSection } from './-instance-detail-configuration-section';
 import {
   buildExistingRealmOperationsModel,
   buildHistoryWorkspaceModel,
   buildNewRealmOperationsModel,
   buildOperationsPrimaryAction,
   type DetailWorkflowAction,
-  type EvidenceSource,
   getOperationsActionLabel,
   getOperationsEvidenceSourceLabel,
   evaluateInstanceConfiguration,
@@ -24,18 +22,15 @@ import {
 } from './-instance-detail-models';
 import { getErrorMessage } from './-instance-error-messages';
 import {
-  buildWasteManagementSettingsPayload,
   createDetailForm,
-  INSTANCE_FIELD_HELP,
   isTenantSecretUserInputRequired,
 } from './-instance-form-models';
-import { INSTANCE_STATUS_LABELS, FormLabelWithHelp } from './-instance-detail-view-shared';
+import { COCKPIT_STATUS_STYLES, INSTANCE_STATUS_LABELS } from './-instance-detail-view-shared';
 import {
-  ConfigurationStatusBadge,
   OperationsStepStatusBadge,
   ProvisioningStepBadge,
 } from './-instance-status-badges';
-import { WasteManagementSettingsFields } from './-waste-management-settings-fields';
+import type { OperationsDetailAction, OperationsStepModel } from './-instances-shared';
 
 type InstanceDetailPageProps = {
   readonly instanceId: string;
@@ -136,13 +131,6 @@ const readWorkerUnavailableWarning = (instance: ReturnType<typeof useInstances>[
 
   return Date.now() - referenceTimestamp >= WORKER_UNAVAILABLE_WARNING_THRESHOLD_MS;
 };
-
-const OVERVIEW_STATUS_STYLES = {
-  ready: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-900',
-  degraded: 'border-amber-500/30 bg-amber-500/10 text-amber-950',
-  blocked: 'border-red-500/30 bg-red-500/10 text-red-900',
-  unknown: 'border-slate-400/30 bg-slate-500/10 text-slate-900',
-} as const;
 
 const readTenantSecretUserInputRequired = (
   detailFormValues: ReturnType<typeof createDetailForm> | null,
@@ -284,17 +272,8 @@ const OperationsStepsPanel = ({
 }: {
   title: string;
   subtitle: string;
-  steps: readonly {
-    key: string;
-    title: string;
-    status: 'offen' | 'bereit' | 'läuft' | 'erfolgreich' | 'fehlgeschlagen';
-    summary: string;
-    evidenceSource: EvidenceSource;
-    checkedAt?: string;
-    requestId?: string;
-    action?: DetailWorkflowAction | 'focus_configuration' | 'rotate_client_secret' | 'probeTenantIamAccess' | 'reconcileKeycloak';
-  }[];
-  onAction: (action: DetailWorkflowAction | 'focus_configuration' | 'rotate_client_secret' | 'probeTenantIamAccess' | 'reconcileKeycloak') => void;
+  steps: readonly OperationsStepModel[];
+  onAction: (action: OperationsDetailAction) => void;
   disabled: boolean;
 }) => (
   <Card className="space-y-4 p-4">
@@ -450,7 +429,6 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
             lastName: detailFormValues.tenantAdminBootstrap.lastName.trim() || undefined,
           }
         : undefined,
-      wasteManagementSettings: buildWasteManagementSettingsPayload(detailFormValues.wasteManagementSettings),
     });
 
     setDetailFormValues(clearSensitiveDetailFields);
@@ -642,7 +620,7 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
                 </div>
               </div>
             </div>
-            <div className={`rounded-2xl border p-4 shadow-sm ${OVERVIEW_STATUS_STYLES[operationsModel.status]}`}>
+            <div className={`rounded-2xl border p-4 shadow-sm ${COCKPIT_STATUS_STYLES[operationsModel.status]}`}>
               <div className="text-xs uppercase tracking-wide opacity-80">{t('admin.instances.operations.labels.currentState')}</div>
               <div className="mt-3 space-y-2">
                 <div className="text-lg font-semibold">{getStatusGuidance(selectedInstance).title}</div>
@@ -739,362 +717,15 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
             </TabsContent>
 
             <TabsContent value="configuration" className="space-y-5">
-              {configurationAssessment ? (
-                <Card className="space-y-4 p-4">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="space-y-1">
-                      <div className="font-medium text-foreground">{t('admin.instances.configuration.title')}</div>
-                      <p className="text-sm text-muted-foreground">{configurationAssessment.title}</p>
-                    </div>
-                    <ConfigurationStatusBadge status={configurationAssessment.overallStatus} />
-                  </div>
-                  <div className="grid gap-2 text-sm md:grid-cols-2">
-                    <div className="rounded-md border border-border bg-muted/20 p-3">
-                      <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                        {t('admin.instances.configuration.labels.lifecycle')}
-                      </div>
-                      <div className="mt-1 font-medium text-foreground">{t(INSTANCE_STATUS_LABELS[selectedInstance.status])}</div>
-                    </div>
-                    <div className="rounded-md border border-border bg-muted/20 p-3">
-                      <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                        {t('admin.instances.configuration.labels.requirements')}
-                      </div>
-                      <div className="mt-1 font-medium text-foreground">
-                        {t('admin.instances.configuration.labels.requirementsValue', {
-                          satisfied: configurationAssessment.satisfiedRequirements,
-                          total: configurationAssessment.totalRequirements,
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                  <p className="text-sm text-muted-foreground">{configurationAssessment.body}</p>
-                  {configurationAssessment.blockingIssues.length > 0 ? (
-                    <div className="space-y-2">
-                      <div className="text-sm font-medium text-foreground">
-                        {t('admin.instances.configuration.labels.blockingIssues')}
-                      </div>
-                      <ul className="space-y-1 text-sm text-muted-foreground">
-                        {configurationAssessment.blockingIssues.map((issue) => (
-                          <li key={issue.key}>• {issue.label}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  ) : null}
-                  {configurationAssessment.warningIssues.length > 0 ? (
-                    <div className="space-y-2">
-                      <div className="text-sm font-medium text-foreground">
-                        {t('admin.instances.configuration.labels.warnings')}
-                      </div>
-                      <ul className="space-y-1 text-sm text-muted-foreground">
-                        {configurationAssessment.warningIssues.map((issue) => (
-                          <li key={issue.key}>• {issue.label}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  ) : null}
-                </Card>
-              ) : null}
-
-              <Card className="space-y-5 p-4">
-              <form className="space-y-4" onSubmit={onUpdateSubmit}>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-sm font-medium text-foreground">{t('admin.instances.flow.realmModeTitle')}</h2>
-                    <FieldHelp {...INSTANCE_FIELD_HELP.realmMode} />
-                  </div>
-                  <p className="text-xs text-muted-foreground">{t('admin.instances.flow.realmModeSubtitle')}</p>
-                </div>
-                <div className="grid gap-2 md:grid-cols-2">
-                  <label className="flex items-start gap-2 rounded-md border border-border p-3 text-sm">
-                    <input
-                      type="radio"
-                      name="detail-realm-mode"
-                      checked={detailFormValues.realmMode === 'new'}
-                      onChange={() => setDetailFormValues((current) => (current ? { ...current, realmMode: 'new' } : current))}
-                    />
-                    <span>{t('admin.instances.flow.realmModeNew')}</span>
-                  </label>
-                  <label className="flex items-start gap-2 rounded-md border border-border p-3 text-sm">
-                    <input
-                      type="radio"
-                      name="detail-realm-mode"
-                      checked={detailFormValues.realmMode === 'existing'}
-                      onChange={() =>
-                        setDetailFormValues((current) => (current ? { ...current, realmMode: 'existing' } : current))
-                      }
-                    />
-                    <span>{t('admin.instances.flow.realmModeExisting')}</span>
-                  </label>
-                </div>
-
-                <div className="grid gap-3 md:grid-cols-2">
-                  <div className="space-y-1">
-                    <FormLabelWithHelp htmlFor="detail-display-name" label={t('admin.instances.form.displayName')} helpKey="displayName" />
-                    <Input
-                      id="detail-display-name"
-                      value={detailFormValues.displayName}
-                      onChange={(event) =>
-                        setDetailFormValues((current) => (current ? { ...current, displayName: event.target.value } : current))
-                      }
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <FormLabelWithHelp htmlFor="detail-parent-domain" label={t('admin.instances.form.parentDomain')} helpKey="parentDomain" />
-                    <Input
-                      id="detail-parent-domain"
-                      value={detailFormValues.parentDomain}
-                      onChange={(event) =>
-                        setDetailFormValues((current) => (current ? { ...current, parentDomain: event.target.value } : current))
-                      }
-                    />
-                  </div>
-                </div>
-                <div className="grid gap-3 md:grid-cols-2">
-                  <div className="space-y-1">
-                    <FormLabelWithHelp htmlFor="detail-auth-realm" label={t('admin.instances.form.authRealm')} helpKey="authRealm" />
-                    <Input
-                      id="detail-auth-realm"
-                      value={detailFormValues.authRealm}
-                      onChange={(event) =>
-                        setDetailFormValues((current) => (current ? { ...current, authRealm: event.target.value } : current))
-                      }
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <FormLabelWithHelp
-                      htmlFor="detail-auth-client-id"
-                      label={t('admin.instances.form.authClientId')}
-                      helpKey="authClientId"
-                    />
-                    <Input
-                      id="detail-auth-client-id"
-                      value={detailFormValues.authClientId}
-                      onChange={(event) =>
-                        setDetailFormValues((current) => (current ? { ...current, authClientId: event.target.value } : current))
-                      }
-                    />
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <FormLabelWithHelp
-                    htmlFor="detail-auth-issuer-url"
-                    label={t('admin.instances.form.authIssuerUrl')}
-                    helpKey="authIssuerUrl"
-                  />
-                  <Input
-                    id="detail-auth-issuer-url"
-                    value={detailFormValues.authIssuerUrl}
-                    onChange={(event) =>
-                      setDetailFormValues((current) => (current ? { ...current, authIssuerUrl: event.target.value } : current))
-                    }
-                  />
-                </div>
-                <div className="space-y-1">
-                  <FormLabelWithHelp
-                    htmlFor="detail-auth-client-secret"
-                    label={t('admin.instances.form.authClientSecret')}
-                    helpKey="authClientSecret"
-                  />
-                  <Input
-                    id="detail-auth-client-secret"
-                    type="password"
-                    disabled={!tenantSecretUserInputRequired}
-                    placeholder={
-                      !tenantSecretUserInputRequired
-                        ? t('admin.instances.form.authClientSecretGeneratedDuringProvisioning')
-                        : selectedInstance.authClientSecretConfigured
-                        ? t('admin.instances.form.authClientSecretConfigured')
-                        : t('admin.instances.form.authClientSecretMissing')
-                    }
-                    value={detailFormValues.authClientSecret}
-                    onChange={(event) =>
-                      setDetailFormValues((current) => (current ? { ...current, authClientSecret: event.target.value } : current))
-                    }
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    {tenantSecretUserInputRequired
-                      ? t('admin.instances.form.authClientSecretHint')
-                      : t('admin.instances.form.authClientSecretGeneratedHint')}
-                  </p>
-                </div>
-
-                <div className="space-y-1">
-                  <h2 className="text-sm font-medium text-foreground">{t('admin.instances.form.tenantAdminClientTitle')}</h2>
-                  <p className="text-xs text-muted-foreground">{t('admin.instances.form.tenantAdminClientSubtitle')}</p>
-                </div>
-                <div className="grid gap-3 md:grid-cols-2">
-                  <div className="space-y-1">
-                    <FormLabelWithHelp
-                      htmlFor="detail-tenant-admin-client-id"
-                      label={t('admin.instances.form.tenantAdminClientId')}
-                      helpKey="tenantAdminClientId"
-                    />
-                    <Input
-                      id="detail-tenant-admin-client-id"
-                      value={detailFormValues.tenantAdminClient.clientId}
-                      onChange={(event) =>
-                        setDetailFormValues((current) =>
-                          current
-                            ? {
-                                ...current,
-                                tenantAdminClient: { ...current.tenantAdminClient, clientId: event.target.value },
-                              }
-                            : current
-                        )
-                      }
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <FormLabelWithHelp
-                      htmlFor="detail-tenant-admin-client-secret"
-                      label={t('admin.instances.form.tenantAdminClientSecret')}
-                      helpKey="tenantAdminClientSecret"
-                    />
-                    <Input
-                      id="detail-tenant-admin-client-secret"
-                      type="password"
-                      disabled={!tenantSecretUserInputRequired}
-                      placeholder={
-                        !tenantSecretUserInputRequired
-                          ? t('admin.instances.form.authClientSecretGeneratedDuringProvisioning')
-                          : selectedInstance.tenantAdminClient?.secretConfigured
-                          ? t('admin.instances.form.tenantAdminClientSecretConfigured')
-                          : t('admin.instances.form.tenantAdminClientSecretMissing')
-                      }
-                      value={detailFormValues.tenantAdminClient.secret}
-                      onChange={(event) =>
-                        setDetailFormValues((current) =>
-                          current
-                            ? {
-                                ...current,
-                                tenantAdminClient: { ...current.tenantAdminClient, secret: event.target.value },
-                              }
-                            : current
-                        )
-                      }
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      {tenantSecretUserInputRequired
-                        ? t('admin.instances.form.tenantAdminClientSecretHint')
-                        : t('admin.instances.form.tenantAdminClientSecretGeneratedHint')}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <h2 className="text-sm font-medium text-foreground">{t('admin.instances.form.tenantAdminTitle')}</h2>
-                  <p className="text-xs text-muted-foreground">{t('admin.instances.form.tenantAdminSubtitle')}</p>
-                </div>
-                <div className="grid gap-3 md:grid-cols-2">
-                  <div className="space-y-1">
-                    <FormLabelWithHelp
-                      htmlFor="detail-admin-username"
-                      label={t('admin.instances.form.tenantAdminUsername')}
-                      helpKey="tenantAdminUsername"
-                    />
-                    <Input
-                      id="detail-admin-username"
-                      value={detailFormValues.tenantAdminBootstrap.username}
-                      onChange={(event) =>
-                        setDetailFormValues((current) =>
-                          current
-                            ? {
-                                ...current,
-                                tenantAdminBootstrap: { ...current.tenantAdminBootstrap, username: event.target.value },
-                              }
-                            : current
-                        )
-                      }
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <FormLabelWithHelp
-                      htmlFor="detail-admin-email"
-                      label={t('admin.instances.form.tenantAdminEmail')}
-                      helpKey="tenantAdminEmail"
-                    />
-                    <Input
-                      id="detail-admin-email"
-                      value={detailFormValues.tenantAdminBootstrap.email}
-                      onChange={(event) =>
-                        setDetailFormValues((current) =>
-                          current
-                            ? {
-                                ...current,
-                                tenantAdminBootstrap: { ...current.tenantAdminBootstrap, email: event.target.value },
-                              }
-                            : current
-                        )
-                      }
-                    />
-                  </div>
-                </div>
-                <div className="grid gap-3 md:grid-cols-2">
-                  <div className="space-y-1">
-                    <FormLabelWithHelp
-                      htmlFor="detail-admin-first-name"
-                      label={t('admin.instances.form.tenantAdminFirstName')}
-                      helpKey="tenantAdminFirstName"
-                    />
-                    <Input
-                      id="detail-admin-first-name"
-                      value={detailFormValues.tenantAdminBootstrap.firstName}
-                      onChange={(event) =>
-                        setDetailFormValues((current) =>
-                          current
-                            ? {
-                                ...current,
-                                tenantAdminBootstrap: { ...current.tenantAdminBootstrap, firstName: event.target.value },
-                              }
-                            : current
-                        )
-                      }
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <FormLabelWithHelp
-                      htmlFor="detail-admin-last-name"
-                      label={t('admin.instances.form.tenantAdminLastName')}
-                      helpKey="tenantAdminLastName"
-                    />
-                    <Input
-                      id="detail-admin-last-name"
-                      value={detailFormValues.tenantAdminBootstrap.lastName}
-                      onChange={(event) =>
-                        setDetailFormValues((current) =>
-                          current
-                            ? {
-                                ...current,
-                                tenantAdminBootstrap: { ...current.tenantAdminBootstrap, lastName: event.target.value },
-                              }
-                            : current
-                        )
-                      }
-                    />
-                  </div>
-                </div>
-                <WasteManagementSettingsFields
-                  idPrefix="detail"
-                  value={detailFormValues.wasteManagementSettings}
-                  showConfiguredHints
-                  databaseUrlConfigured={selectedInstance.wasteManagementSettings?.databaseUrlConfigured}
-                  serviceRoleKeyConfigured={selectedInstance.wasteManagementSettings?.serviceRoleKeyConfigured}
-                  onChange={(updater) =>
-                    setDetailFormValues((current) =>
-                      current
-                        ? {
-                            ...current,
-                            wasteManagementSettings: updater(current.wasteManagementSettings),
-                          }
-                        : current
-                    )
-                  }
-                />
-                <Button type="submit" variant="outline">
-                  {t('admin.instances.actions.save')}
-                </Button>
-              </form>
-              </Card>
+              <InstanceDetailConfigurationSection
+                selectedInstance={selectedInstance}
+                detailFormValues={detailFormValues}
+                statusLoading={statusLoading}
+                configurationAssessment={configurationAssessment}
+                tenantSecretUserInputRequired={tenantSecretUserInputRequired}
+                setDetailFormValues={setDetailFormValues}
+                onUpdateSubmit={onUpdateSubmit}
+              />
             </TabsContent>
 
             <TabsContent value="history" className="space-y-5">

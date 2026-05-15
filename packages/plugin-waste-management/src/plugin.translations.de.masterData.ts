@@ -28,9 +28,29 @@ export const wasteManagementPluginTranslationsDEMasterData = {
       "description": "Pflegen Sie die sichtbaren Fraktionen als ersten echten Mutationspfad des Plugins.",
       "color": "Farbe: {{value}}",
       "containerSize": "Behälter: {{value}}",
+      "table": {
+        "ariaLabel": "Tabelle der Waste-Abfallfraktionen",
+        "caption": "Tabelle der Waste-Abfallfraktionen mit Status, Metadaten und Aktionen.",
+        "name": "Fraktion",
+        "nameWithContainerSize": "Name (Gefäßgröße)",
+        "selection": "Auswahl",
+        "status": "Status",
+        "color": "Farbe",
+        "containerSize": "Behälter",
+        "translations": "Übersetzungen",
+        "actions": "Aktionen",
+        "noContainerSize": "Keine Behältergröße",
+        "noTranslations": "Keine Übersetzungen",
+        "noDescription": "Keine Beschreibung",
+        "colorSwatch": "Farbwert {{value}}",
+        "selectAllRows": "Alle Einträge in {{label}} auswählen",
+        "selectRow": "Eintrag {{rowId}} auswählen",
+        "selectMobileRow": "Eintrag {{rowId}} in Kartenansicht auswählen"
+      },
       "actions": {
         "openCreate": "Fraktion anlegen",
         "edit": "Bearbeiten",
+        "delete": "Löschen",
         "cancel": "Abbrechen",
         "create": "Fraktion speichern",
         "save": "Änderungen speichern",
@@ -52,11 +72,21 @@ export const wasteManagementPluginTranslationsDEMasterData = {
         "editTitle": "Abfallfraktion bearbeiten",
         "editDescription": "Ändern Sie Name, Farbe und Sichtbarkeit der Fraktion."
       },
+      "deleteDialog": {
+        "title": "Abfallfraktion löschen",
+        "description": "Die Abfallfraktion {{value}} wird dauerhaft gelöscht.",
+        "confirm": "Löschen",
+        "cancel": "Abbrechen"
+      },
       "messages": {
         "createSuccess": "Die Waste-Fraktion wurde angelegt.",
         "updateSuccess": "Die Waste-Fraktion wurde aktualisiert.",
+        "deleteSuccess": "Die Waste-Fraktion wurde gelöscht.",
         "saveError": "Die Waste-Fraktion konnte nicht gespeichert werden.",
-        "saveForbidden": "Für das Speichern von Waste-Fraktionen fehlt die Berechtigung."
+        "saveForbidden": "Für das Speichern von Waste-Fraktionen fehlt die Berechtigung.",
+        "deleteError": "Die Waste-Fraktion konnte nicht gelöscht werden.",
+        "deleteForbidden": "Für das Löschen von Waste-Fraktionen fehlt die Berechtigung.",
+        "deleteConflict": "Die Waste-Fraktion kann wegen bestehender Zuordnungen nicht gelöscht werden."
       }
     },
     "regions": {

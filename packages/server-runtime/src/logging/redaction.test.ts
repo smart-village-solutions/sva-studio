@@ -27,7 +27,10 @@ describe('server-runtime log redaction', () => {
 
   it('redacts sensitive object keys recursively and serializes safe values', () => {
     const error = new Error('failed for alice@example.test with token=abc');
-    Object.assign(error, { user_id: 'user-1' });
+    Object.assign(error, {
+      user_id: 'user-1',
+      access_token: 'secret-token',
+    });
 
     expect(
       redactLogMeta({
@@ -49,7 +52,8 @@ describe('server-runtime log redaction', () => {
         error: {
           name: 'Error',
           message: 'failed for a***@example.test with token=[REDACTED]',
-          user_id: 'user-1',
+          user_id: '[REDACTED]',
+          access_token: '[REDACTED]',
         },
         list: ['Bearer [REDACTED]', 5, null],
       },

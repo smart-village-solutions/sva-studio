@@ -1,5 +1,6 @@
 import {
   createWasteManagementFraction,
+  deleteWasteManagementFraction,
   createWasteManagementRegion,
   updateWasteManagementFraction,
   updateWasteManagementRegion,
@@ -43,6 +44,31 @@ export const createWasteMasterDataFractionRegionSubmissions = ({
           code === 'forbidden'
             ? pt('masterData.fractions.messages.saveForbidden')
             : pt('masterData.fractions.messages.saveError'),
+      });
+    } finally {
+      state.setSaving(false);
+    }
+  },
+  deleteFraction: async (fractionId: string) => {
+    state.setSaving(true);
+    state.setMessage(null);
+    try {
+      await deleteWasteManagementFraction(fractionId);
+      await loadOverview(true);
+      state.setMessage({
+        kind: 'success',
+        text: pt('masterData.fractions.messages.deleteSuccess'),
+      });
+    } catch (saveError) {
+      const code = resolveApiErrorCode(saveError);
+      state.setMessage({
+        kind: 'error',
+        text:
+          code === 'forbidden'
+            ? pt('masterData.fractions.messages.deleteForbidden')
+            : code === 'invalid_request'
+              ? pt('masterData.fractions.messages.deleteConflict')
+              : pt('masterData.fractions.messages.deleteError'),
       });
     } finally {
       state.setSaving(false);

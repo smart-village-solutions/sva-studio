@@ -239,9 +239,10 @@ describe('WasteManagementPageTabs', () => {
     );
 
     const [tabDescription] = screen.getAllByText('tabs.fractions.body');
-    expect(tabDescription.closest('div')?.className).toContain('bg-[#E8E8D8]');
-    expect(tabDescription.closest('div')?.className).toContain('border-b');
-    expect(tabDescription.closest('div')?.className).not.toContain('border-t');
+    const tabPanelSurface = tabDescription.closest('section')?.parentElement;
+    expect(tabPanelSurface?.className).toContain('bg-[#E8E8D8]');
+    expect(tabPanelSurface?.className).toContain('border');
+    expect(tabPanelSurface?.className).toContain('rounded-2xl');
   });
 
   it('wires the overview panel into the tools tab content', () => {

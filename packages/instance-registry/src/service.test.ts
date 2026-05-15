@@ -264,7 +264,7 @@ describe('instance registry service facade', () => {
     expect(deps.invalidateHost).toHaveBeenCalledWith('demo.studio.example.org');
   });
 
-  it('persists waste-management settings during create with protected datasource secrets', async () => {
+  it('does not persist legacy waste-management settings during create', async () => {
     const repository = createRepository({
       getInstanceById: vi.fn(async () => null),
     });
@@ -279,30 +279,9 @@ describe('instance registry service facade', () => {
       authRealm: 'demo',
       authClientId: 'studio-client',
       idempotencyKey: 'idem-1',
-      wasteManagementSettings: {
-        provider: 'supabase',
-        projectUrl: 'https://tenant-a.supabase.co',
-        enabled: true,
-        databaseUrl: ' postgres://waste.example/db ',
-        serviceRoleKey: ' service-role ',
-      },
     });
 
-    expect(deps.saveWasteDataSourceRecord).toHaveBeenCalledWith(
-      expect.objectContaining({
-        instanceId: 'demo',
-        provider: 'supabase',
-        projectUrl: 'https://tenant-a.supabase.co',
-        schemaName: 'public',
-        visibleStatus: 'unknown',
-        databaseUrlConfigured: true,
-        serviceRoleKeyConfigured: true,
-        databaseUrlCiphertext:
-          'protected:iam.instance_waste_data_sources.database_url:demo:postgres://waste.example/db',
-        serviceRoleKeyCiphertext:
-          'protected:iam.instance_waste_data_sources.service_role_key:demo:service-role',
-      })
-    );
+    expect(deps.saveWasteDataSourceRecord).not.toHaveBeenCalled();
   });
 
   it('defaults the tenant admin client id on create when the form does not submit one', async () => {
@@ -454,7 +433,7 @@ describe('instance registry service facade', () => {
     expect(deps.invalidateHost).toHaveBeenCalledWith('demo.example.org');
   });
 
-  it('preserves existing waste datasource secrets on update when the form omits them', async () => {
+  it('does not update the legacy waste datasource during instance updates', async () => {
     const updated = {
       ...baseInstance,
       displayName: 'Updated',
@@ -492,25 +471,9 @@ describe('instance registry service facade', () => {
       realmMode: 'existing',
       authRealm: 'demo',
       authClientId: 'studio-client',
-      wasteManagementSettings: {
-        provider: 'supabase',
-        projectUrl: 'https://tenant-b.supabase.co',
-        enabled: true,
-      },
     });
 
-    expect(deps.saveWasteDataSourceRecord).toHaveBeenCalledWith(
-      expect.objectContaining({
-        projectUrl: 'https://tenant-b.supabase.co',
-        databaseUrlCiphertext: 'existing-db-cipher',
-        serviceRoleKeyCiphertext: 'existing-service-cipher',
-        databaseUrlConfigured: true,
-        serviceRoleKeyConfigured: true,
-        visibleStatus: 'unknown',
-        lastCheckedAt: '2026-05-09T10:00:00.000Z',
-        lastCheckStatus: 'succeeded',
-      })
-    );
+    expect(deps.saveWasteDataSourceRecord).not.toHaveBeenCalled();
   });
 
   it('returns null when updating a missing instance', async () => {

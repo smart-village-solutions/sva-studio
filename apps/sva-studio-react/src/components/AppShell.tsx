@@ -43,7 +43,8 @@ const LazyPermissionsDegradedBanner = React.lazy(async () => {
   };
 });
 
-const runtimeHealthIndicatorEnabled = import.meta.env.VITE_PLAYWRIGHT_TEST !== 'true';
+const runtimeHealthIndicatorEnabled =
+  import.meta.env.VITE_ENABLE_RUNTIME_HEALTH === 'true' && import.meta.env.VITE_PLAYWRIGHT_TEST !== 'true';
 
 export const shouldRenderLegalTextAcceptanceDialog = (input: {
   readonly isHydrated: boolean;

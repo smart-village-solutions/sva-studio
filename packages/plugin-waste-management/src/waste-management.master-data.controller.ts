@@ -13,7 +13,7 @@ type Translate = (key: string, variables?: Readonly<Record<string, string | numb
 
 export const useWasteMasterDataController = (pt: Translate, search: WasteManagementSearchParams) => {
   const state = useWasteMasterDataState();
-  const loadOverview = useWasteMasterDataDataLoading(state, pt);
+  const loadOverview = useWasteMasterDataDataLoading(state, pt, search.masterDataTab);
   const derivedState = createWasteMasterDataDerivedState(state, pt, search);
   const dialogActions = createWasteMasterDataDialogActions(state, search);
   const selectionActions = createWasteMasterDataSelectionActions(state, search, derivedState.filteredCollectionLocations);

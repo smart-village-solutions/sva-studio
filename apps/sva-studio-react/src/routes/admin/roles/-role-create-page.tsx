@@ -9,36 +9,14 @@ import { Label } from '../../../components/ui/label';
 import { Textarea } from '../../../components/ui/textarea';
 import { asIamError, createRole, type IamHttpError } from '../../../lib/iam-api';
 import { t } from '../../../i18n';
-import type { TranslationKey } from '../../../i18n/translate';
+import { roleErrorMessage } from './-roles-shared';
 
 const ROLE_KEY_PATTERN = /^[a-z0-9_]+$/;
 
-const roleErrorMessage = (error: IamHttpError | null, fallbackKey: TranslationKey): string => {
-  if (!error) {
-    return t(fallbackKey);
-  }
-
-  switch (error.code) {
-    case 'invalid_request':
-      return t('admin.roles.createDialog.errors.invalidRequest');
-    case 'forbidden':
-      return t('admin.roles.errors.forbidden');
-    case 'csrf_validation_failed':
-      return t('admin.roles.errors.csrfValidationFailed');
-    case 'idempotency_key_reuse':
-      return t('admin.roles.createDialog.errors.retry');
-    case 'rate_limited':
-      return t('admin.roles.errors.rateLimited');
-    case 'conflict':
-      return t('admin.roles.errors.conflict');
-    case 'keycloak_unavailable':
-      return t('admin.roles.errors.keycloakUnavailable');
-    case 'database_unavailable':
-      return t('admin.roles.errors.databaseUnavailable');
-    default:
-      return t(fallbackKey);
-  }
-};
+const CREATE_ROLE_ERROR_LABEL_KEYS = {
+  invalid_request: 'admin.roles.createDialog.errors.invalidRequest',
+  idempotency_key_reuse: 'admin.roles.createDialog.errors.retry',
+} as const;
 
 export const RoleCreatePage = () => {
   const navigate = useNavigate();
@@ -155,7 +133,11 @@ export const RoleCreatePage = () => {
 
       {mutationError ? (
         <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
-          <AlertDescription>{roleErrorMessage(mutationError, 'admin.roles.createDialog.errors.submitFailed')}</AlertDescription>
+          <AlertDescription>
+            {roleErrorMessage(mutationError, 'admin.roles.createDialog.errors.submitFailed', {
+              codeLabelKeys: CREATE_ROLE_ERROR_LABEL_KEYS,
+            })}
+          </AlertDescription>
         </Alert>
       ) : null}
     </section>

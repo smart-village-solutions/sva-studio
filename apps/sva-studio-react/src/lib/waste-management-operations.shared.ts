@@ -4,7 +4,7 @@ import {
   type SqlExecutor,
   type SqlStatement,
 } from '@sva/data-repositories';
-import { loadWasteDataSourceRecord } from '@sva/data-repositories/server';
+import { loadDefaultExternalInterfaceRecord } from '@sva/data-repositories/server';
 import type {
   WasteCustomTourDate,
   WasteDateShiftReasonType,
@@ -14,8 +14,6 @@ import type {
 } from '@sva/core';
 import { revealField } from '@sva/iam-admin/encryption';
 import {
-  buildWasteDatabaseUrlAad,
-  buildWasteServiceRoleKeyAad,
   resolveWasteDataSource,
   type ResolvedWasteDataSource,
 } from '@sva/server-runtime';
@@ -193,15 +191,8 @@ export const resolveRuntimeDataSource = async (
 ): Promise<ResolvedWasteDataSource> =>
   resolveWasteDataSource({
     instanceId,
-    loadRecord: deps.loadDataSourceRecord ?? loadWasteDataSourceRecord,
-    revealSecret:
-      deps.revealSecret ??
-      ((ciphertext, aad) => {
-        if (aad === buildWasteDatabaseUrlAad(instanceId) || aad === buildWasteServiceRoleKeyAad(instanceId)) {
-          return revealField(ciphertext, aad) ?? undefined;
-        }
-        return undefined;
-      }),
+    loadDefaultInterface: deps.loadDefaultInterfaceRecord ?? loadDefaultExternalInterfaceRecord,
+    revealSecret: deps.revealSecret ?? ((ciphertext, aad) => revealField(ciphertext, aad) ?? undefined),
   });
 
 export const setWasteSearchPath = async (client: SqlClient, schemaName: string): Promise<void> => {

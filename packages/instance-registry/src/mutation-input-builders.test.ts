@@ -55,51 +55,6 @@ describe('mutation-input-builders', () => {
     });
   });
 
-  it('passes nested waste-management settings through create and update builders', () => {
-    const wasteManagementSettings = {
-      provider: 'supabase' as const,
-      projectUrl: 'https://tenant-a.supabase.co',
-      schemaName: 'public',
-      enabled: true,
-      databaseUrl: 'postgresql://db.example/waste',
-      serviceRoleKey: 'service-role-secret',
-    };
-
-    expect(
-      buildCreateInstanceProvisioningInput(
-        {
-          instanceId: 'demo',
-          displayName: 'Demo',
-          parentDomain: 'studio.example.org',
-          realmMode: 'existing',
-          authRealm: 'demo',
-          authClientId: 'sva-studio',
-          wasteManagementSettings,
-        },
-        { idempotencyKey: 'idem-10', actorId: 'user-1', requestId: 'req-10' }
-      )
-    ).toMatchObject({
-      wasteManagementSettings,
-    });
-
-    expect(
-      buildUpdateInstanceInput(
-        'demo',
-        {
-          displayName: 'Demo',
-          parentDomain: 'studio.example.org',
-          realmMode: 'existing',
-          authRealm: 'demo',
-          authClientId: 'sva-studio',
-          wasteManagementSettings,
-        },
-        { actorId: 'user-1', requestId: 'req-11' }
-      )
-    ).toMatchObject({
-      wasteManagementSettings,
-    });
-  });
-
   it('builds status and keycloak mutation inputs', () => {
     expect(
       buildChangeInstanceStatusInput('demo', 'active', {

@@ -44,17 +44,24 @@ describe('waste-management read handlers', () => {
       actor,
       {
         ...createDeps('waste-management.settings.manage'),
-        loadWasteDataSourceRecord: vi.fn(async () => ({
+        loadDefaultInterfaceRecord: vi.fn(async () => ({
+          id: 'supabase-1',
           instanceId: 'tenant-a',
-          provider: 'supabase',
-          projectUrl: 'https://tenant.example',
-          schemaName: 'wm',
+          typeKey: 'supabase',
+          ownerKind: 'host',
+          ownerId: 'host',
+          displayName: 'Supabase',
+          alias: 'default',
           enabled: true,
-          databaseUrlConfigured: true,
-          serviceRoleKeyConfigured: true,
-          databaseUrlCiphertext: 'cipher-db',
-          serviceRoleKeyCiphertext: 'cipher-key',
+          isDefault: true,
+          category: 'database',
+          statusCheckKind: 'supabase',
           visibleStatus: 'ok',
+          publicConfig: {
+            projectUrl: 'https://tenant.example',
+            schemaName: 'wm',
+          },
+          secretConfigCiphertext: 'cipher-secret',
         })),
       }
     );
@@ -94,7 +101,7 @@ describe('waste-management read handlers', () => {
       actor,
       {
         ...createDeps('waste-management.settings.manage'),
-        loadWasteDataSourceRecord: vi.fn(async () => {
+        loadDefaultInterfaceRecord: vi.fn(async () => {
           throw new Error('db down');
         }),
       }
@@ -196,5 +203,88 @@ describe('waste-management read handlers', () => {
 
     expect(failureResponse.status).toBe(503);
     expect(updateWasteVisibleStatusMock).toHaveBeenCalledWith(expect.any(Object), 'tenant-a', 'revalidate');
+  });
+
+  it('uses the scoped fractions overview loader when master-data is requested with scope=fractions', async () => {
+    const loadMasterDataOverview = vi.fn(async () => ({
+      fractions: [],
+      regions: [{ id: 'region-1' }],
+      cities: [],
+      streets: [],
+      houseNumbers: [],
+      collectionLocations: [],
+      locationTourLinks: [],
+    }));
+    const loadMasterDataFractionsOverview = vi.fn(async () => ({
+      fractions: [{ id: 'fraction-1' }],
+      regions: [],
+      cities: [],
+      streets: [],
+      houseNumbers: [],
+      collectionLocations: [],
+      locationTourLinks: [],
+    }));
+
+    const response = await wasteManagementReadHandlers.getWasteManagementMasterDataOverviewInternal(
+      new Request('https://studio.test/api/v1/waste-management/master-data?scope=fractions'),
+      actor,
+      {
+        ...createDeps(),
+        loadMasterDataOverview,
+        loadMasterDataFractionsOverview,
+      }
+    );
+
+    expect(response.status).toBe(200);
+    expect(loadMasterDataOverview).not.toHaveBeenCalled();
+    expect(loadMasterDataFractionsOverview).toHaveBeenCalledWith('tenant-a');
+    await expect(response.json()).resolves.toMatchObject({
+      data: {
+        fractions: [{ id: 'fraction-1' }],
+        regions: [],
+      },
+    });
+  });
+
+  it('uses the scoped locations overview loader when master-data is requested with scope=locations', async () => {
+    const loadMasterDataOverview = vi.fn(async () => ({
+      fractions: [{ id: 'fraction-1' }],
+      regions: [],
+      cities: [],
+      streets: [],
+      houseNumbers: [],
+      collectionLocations: [],
+      locationTourLinks: [],
+    }));
+    const loadMasterDataLocationsOverview = vi.fn(async () => ({
+      fractions: [],
+      regions: [{ id: 'region-1' }],
+      cities: [{ id: 'city-1' }],
+      streets: [{ id: 'street-1' }],
+      houseNumbers: [{ id: 'house-1' }],
+      collectionLocations: [{ id: 'location-1' }],
+      locationTourLinks: [{ id: 'link-1' }],
+    }));
+
+    const response = await wasteManagementReadHandlers.getWasteManagementMasterDataOverviewInternal(
+      new Request('https://studio.test/api/v1/waste-management/master-data?scope=locations'),
+      actor,
+      {
+        ...createDeps(),
+        loadMasterDataOverview,
+        loadMasterDataLocationsOverview,
+      }
+    );
+
+    expect(response.status).toBe(200);
+    expect(loadMasterDataOverview).not.toHaveBeenCalled();
+    expect(loadMasterDataLocationsOverview).toHaveBeenCalledWith('tenant-a');
+    await expect(response.json()).resolves.toMatchObject({
+      data: {
+        fractions: [],
+        regions: [{ id: 'region-1' }],
+        collectionLocations: [{ id: 'location-1' }],
+      },
+    });
   });
 });

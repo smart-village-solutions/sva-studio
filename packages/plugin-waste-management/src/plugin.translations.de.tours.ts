@@ -35,6 +35,23 @@ export const wasteManagementPluginTranslationsDETours = {
       "dateRange": "Zeitraum: {{value}}",
       "tourId": "Tour-ID: {{value}}"
     },
+    "table": {
+      "ariaLabel": "Waste-Touren",
+      "caption": "Tabelle der Waste-Touren mit Status, Zuordnungen und Aktionen.",
+      "name": "Tour",
+      "status": "Status",
+      "recurrence": "Rhythmus",
+      "fractions": "Fraktionen",
+      "locations": "Abholorte",
+      "dateRange": "Zeitraum",
+      "assignments": "Zuordnungen",
+      "customDates": "Individuelle Termine",
+      "tourId": "Tour-ID",
+      "actions": "Aktionen",
+      "loadingAssignments": "Zuordnungen werden geladen",
+      "noAssignments": "Keine Zuordnungen",
+      "noCustomDates": "Keine individuellen Termine"
+    },
     "recurrence": {
       "weekly": "Wöchentlich",
       "biweekly": "Zweiwöchentlich",

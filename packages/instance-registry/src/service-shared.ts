@@ -1,7 +1,15 @@
 import { createSdkLogger } from '@sva/server-runtime';
 
 import type { InstanceRegistryServiceDeps } from './service-types.js';
-import type { WasteManagementSettingsInput } from './mutation-types.js';
+
+type LegacyWasteManagementSettingsInput = {
+  readonly provider: 'supabase';
+  readonly projectUrl: string;
+  readonly schemaName?: string;
+  readonly enabled: boolean;
+  readonly databaseUrl?: string;
+  readonly serviceRoleKey?: string;
+};
 
 export const instanceRegistryServiceLogger = createSdkLogger({
   component: 'iam-instance-registry-service',
@@ -81,7 +89,7 @@ export const encryptWasteServiceRoleKey = (
 export const buildWasteManagementSettingsRecord = async (
   deps: InstanceRegistryServiceDeps,
   instanceId: string,
-  input: WasteManagementSettingsInput
+  input: LegacyWasteManagementSettingsInput
 ) => {
   const existing = (await deps.loadWasteDataSourceRecord?.(instanceId)) ?? null;
   const databaseUrlCiphertext = encryptWasteDatabaseUrl(deps, instanceId, input.databaseUrl);

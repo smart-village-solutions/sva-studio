@@ -50,6 +50,7 @@ import {
   iamRuntimeRecommendedActions,
 } from '@sva/core';
 import { createBrowserLogger } from '@sva/monitoring-client/logging';
+import { requestSingleFlight } from './request-singleflight';
 
 const IAM_HEADERS = {
   'Content-Type': 'application/json',
@@ -631,14 +632,6 @@ export type CreateInstancePayload = {
     readonly firstName?: string;
     readonly lastName?: string;
   };
-  readonly wasteManagementSettings?: {
-    readonly provider: 'supabase';
-    readonly projectUrl: string;
-    readonly schemaName?: string;
-    readonly enabled: boolean;
-    readonly databaseUrl?: string;
-    readonly serviceRoleKey?: string;
-  };
   readonly themeKey?: string;
   readonly mainserverConfigRef?: string;
   readonly featureFlags?: Readonly<Record<string, boolean>>;
@@ -661,14 +654,6 @@ export type UpdateInstancePayload = {
     readonly email?: string;
     readonly firstName?: string;
     readonly lastName?: string;
-  };
-  readonly wasteManagementSettings?: {
-    readonly provider: 'supabase';
-    readonly projectUrl: string;
-    readonly schemaName?: string;
-    readonly enabled: boolean;
-    readonly databaseUrl?: string;
-    readonly serviceRoleKey?: string;
   };
   readonly themeKey?: string;
   readonly mainserverConfigRef?: string;
@@ -816,6 +801,27 @@ export const fetchWithRequestTimeout = async (
   }
 };
 
+const createNonJsonResponseError = (input: {
+  response: Response;
+  contentType: string;
+  requestId?: string;
+  mode: 'expected_json' | 'error_json';
+}): IamHttpError => {
+  const { response, contentType, requestId, mode } = input;
+  return new IamHttpError({
+    status: response.status,
+    code: 'non_json_response',
+    message:
+      mode === 'error_json'
+        ? `Server antwortete mit ${response.status} (${contentType || 'unbekannter Content-Type'}) statt JSON.`
+        : `Erwartete JSON-Antwort, erhielt ${contentType || 'unbekannten Content-Type'}.`,
+    requestId,
+    classification: 'unknown',
+    diagnosticStatus: 'degradiert',
+    recommendedAction: 'erneut_versuchen',
+  });
+};
+
 const requestJson = async <T>(
   input: string,
   init?: RequestInit,
@@ -842,27 +848,21 @@ const requestJson = async <T>(
         status: response.status,
         code: 'non_json_response',
       });
-      throw new IamHttpError({
-        status: response.status,
-        code: 'non_json_response',
-        message: `Server antwortete mit ${response.status} (${contentType || 'unbekannter Content-Type'}) statt JSON.`,
+      throw createNonJsonResponseError({
+        response,
+        contentType,
         requestId,
-        classification: 'unknown',
-        diagnosticStatus: 'degradiert',
-        recommendedAction: 'erneut_versuchen',
+        mode: 'error_json',
       });
     }
     throw await readIamErrorResponse(response);
   }
 
   if (!contentType.includes('application/json')) {
-    throw new IamHttpError({
-      status: response.status,
-      code: 'non_json_response',
-      message: `Erwartete JSON-Antwort, erhielt ${contentType || 'unbekannten Content-Type'}.`,
-      classification: 'unknown',
-      diagnosticStatus: 'degradiert',
-      recommendedAction: 'erneut_versuchen',
+    throw createNonJsonResponseError({
+      response,
+      contentType,
+      mode: 'expected_json',
     });
   }
 
@@ -896,14 +896,11 @@ const requestJsonOrText = async <T>(
         status: response.status,
         code: 'non_json_response',
       });
-      throw new IamHttpError({
-        status: response.status,
-        code: 'non_json_response',
-        message: `Server antwortete mit ${response.status} (${contentType || 'unbekannter Content-Type'}) statt JSON.`,
+      throw createNonJsonResponseError({
+        response,
+        contentType,
         requestId,
-        classification: 'unknown',
-        diagnosticStatus: 'degradiert',
-        recommendedAction: 'erneut_versuchen',
+        mode: 'error_json',
       });
     }
     throw await readIamErrorResponse(response);
@@ -916,54 +913,52 @@ const requestJsonOrText = async <T>(
   return { data: await response.text() };
 };
 
+const createMutationHeaders = (input?: {
+  reauth?: boolean;
+  idempotent?: boolean;
+}): HeadersInit => ({
+  ...IAM_HEADERS,
+  ...(input?.reauth ? { 'X-SVA-Reauth-Confirmed': 'true' } : {}),
+  ...(input?.idempotent ? { 'Idempotency-Key': createIdempotencyKey() } : {}),
+});
+
+const createJsonMutationRequestInit = <TPayload>(
+  method: 'PATCH' | 'POST' | 'PUT',
+  payload: TPayload,
+  options?: {
+    reauth?: boolean;
+    idempotent?: boolean;
+  }
+): RequestInit => ({
+  method,
+  headers: createMutationHeaders(options),
+  body: JSON.stringify(payload),
+});
+
 const patchJson = async <TResponse, TPayload>(path: string, payload: TPayload) =>
-  requestJson<TResponse>(path, {
-    method: 'PATCH',
-    headers: IAM_HEADERS,
-    body: JSON.stringify(payload),
-  });
+  requestJson<TResponse>(path, createJsonMutationRequestInit('PATCH', payload));
 
 const patchJsonWithReauth = async <TResponse, TPayload>(path: string, payload: TPayload) =>
-  requestJson<TResponse>(path, {
-    method: 'PATCH',
-    headers: {
-      ...IAM_HEADERS,
-      'X-SVA-Reauth-Confirmed': 'true',
-    },
-    body: JSON.stringify(payload),
-  });
+  requestJson<TResponse>(path, createJsonMutationRequestInit('PATCH', payload, { reauth: true }));
 
 const putJson = async <TResponse, TPayload>(path: string, payload: TPayload) =>
-  requestJson<TResponse>(path, {
-    method: 'PUT',
-    headers: IAM_HEADERS,
-    body: JSON.stringify(payload),
-  });
+  requestJson<TResponse>(path, createJsonMutationRequestInit('PUT', payload));
 
 const postJson = async <TResponse, TPayload>(path: string, payload: TPayload, idempotent = false) =>
-  requestJson<TResponse>(path, {
-    method: 'POST',
-    headers: {
-      ...IAM_HEADERS,
-      ...(idempotent ? { 'Idempotency-Key': createIdempotencyKey() } : {}),
-    },
-    body: JSON.stringify(payload),
-  });
+  requestJson<TResponse>(
+    path,
+    createJsonMutationRequestInit('POST', payload, { idempotent })
+  );
 
 const postJsonWithReauth = async <TResponse, TPayload>(
   path: string,
   payload: TPayload,
   idempotent = false
 ) =>
-  requestJson<TResponse>(path, {
-    method: 'POST',
-    headers: {
-      ...IAM_HEADERS,
-      'X-SVA-Reauth-Confirmed': 'true',
-      ...(idempotent ? { 'Idempotency-Key': createIdempotencyKey() } : {}),
-    },
-    body: JSON.stringify(payload),
-  });
+  requestJson<TResponse>(
+    path,
+    createJsonMutationRequestInit('POST', payload, { reauth: true, idempotent })
+  );
 
 export const listUsers = async (query: UsersQuery): Promise<ApiListResponse<IamUserListItem>> => {
   const params = new URLSearchParams({
@@ -1511,7 +1506,10 @@ export const removeOrganizationMembership = async (
 
 export const getMyOrganizationContext = async (): Promise<
   ApiItemResponse<IamOrganizationContext>
-> => requestJson<ApiItemResponse<IamOrganizationContext>>('/api/v1/iam/me/context');
+> =>
+  requestSingleFlight('iam:me-context', async () =>
+    requestJson<ApiItemResponse<IamOrganizationContext>>('/api/v1/iam/me/context')
+  );
 
 export const listPermissions = async (): Promise<ApiListResponse<IamPermission>> =>
   requestJson<ApiListResponse<IamPermission>>('/api/v1/iam/permissions');
@@ -1682,9 +1680,11 @@ export const getMyDataSubjectRights = async (): Promise<
   requestJson<ApiItemResponse<IamDsrSelfServiceOverview>>('/iam/me/data-subject-rights/requests');
 
 export const getMyPendingLegalTexts = async (): Promise<ApiListResponse<IamPendingLegalTextItem>> =>
-  requestJson<ApiListResponse<IamPendingLegalTextItem>>('/iam/me/legal-texts/pending', undefined, {
-    timeoutMs: HEALTH_REQUEST_TIMEOUT_MS,
-  });
+  requestSingleFlight('iam:pending-legal-texts', async () =>
+    requestJson<ApiListResponse<IamPendingLegalTextItem>>('/iam/me/legal-texts/pending', undefined, {
+      timeoutMs: HEALTH_REQUEST_TIMEOUT_MS,
+    })
+  );
 
 export const acceptLegalText = async (payload: {
   readonly instanceId: string;

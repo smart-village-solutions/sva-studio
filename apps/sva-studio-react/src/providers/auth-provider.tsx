@@ -4,6 +4,7 @@ import type {
   IamRuntimeDiagnosticStatus,
   IamRuntimeSafeDetails,
 } from '@sva/core';
+import { publishSessionAccessSnapshot } from '@sva/plugin-sdk';
 import {
   createOperationLogger,
   logBrowserOperationFailure,
@@ -38,6 +39,7 @@ type SessionUser = {
   id: string;
   instanceId?: string;
   assignedModules?: string[];
+  permissionActions?: readonly string[];
   roles: string[];
   permissionStatus?: 'ok' | 'degraded';
 };
@@ -643,6 +645,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   React.useEffect(() => {
     void loadUser(false);
   }, [loadUser]);
+
+  React.useEffect(() => {
+    publishSessionAccessSnapshot({
+      isResolved: hasResolvedSession,
+      permissionActions: user?.permissionActions ?? [],
+    });
+  }, [hasResolvedSession, user]);
 
   const refetch = React.useCallback(async () => {
     await loadUser(false);

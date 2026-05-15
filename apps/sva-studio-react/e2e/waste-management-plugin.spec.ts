@@ -388,7 +388,9 @@ test.describe('waste management plugin', () => {
     await page.getByRole('button', { name: 'Fraktion speichern' }).click();
 
     await expect(page.getByText('Die Waste-Fraktion wurde angelegt.')).toBeVisible();
-    await expect(page.getByText('Papier', { exact: true })).toBeVisible();
+    await expect(
+      page.getByRole('table', { name: 'Tabelle der Waste-Abfallfraktionen' }).getByText('Papier (240l)')
+    ).toBeVisible();
     expect(harness.requests.createdFractions).toHaveLength(1);
     expect(harness.requests.createdFractions[0]).toMatchObject({
       name: 'Papier',
@@ -462,7 +464,9 @@ test.describe('waste management plugin', () => {
     await expect(page.locator('input[placeholder="https://example.supabase.co"]')).not.toHaveValue('https://tenant-a.supabase.co');
 
     await page.getByRole('tab', { name: 'Abfallarten' }).click();
-    await expect(page.getByText('Bioabfall')).toBeVisible();
+    await expect(
+      page.getByRole('table', { name: 'Tabelle der Waste-Abfallfraktionen' }).getByText('Bioabfall')
+    ).toBeVisible();
     await page.getByRole('button', { name: 'Fraktion anlegen' }).click();
     await page.locator('#waste-fraction-name').fill('Papier Plus');
     await page.locator('#waste-fraction-color').fill('#123456');

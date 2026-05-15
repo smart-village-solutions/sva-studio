@@ -16,37 +16,17 @@ import {
   resolveProjectedMainserverCredentialState,
 } from './user-projection.js';
 import {
-  requireUserId,
-  requireUserMutationIdentityProvider,
-  resolveUserMutationActor,
+  resolveUserMutationTargetContext,
 } from './user-mutation-request-context.shared.js';
 import { createUnexpectedMutationErrorResponse, createUserMutationErrorResponse } from './user-mutation-errors.js';
 
 const resolveDeactivateRequestContext = async (request: Request, ctx: AuthenticatedRequestContext) => {
   const requestContext = getWorkspaceContext();
-  const actorResolution = await resolveUserMutationActor(request, ctx, {
+  return resolveUserMutationTargetContext(request, ctx, {
     feature: 'iam_admin',
     scope: 'write',
     requestId: requestContext.requestId,
   });
-  if ('response' in actorResolution) {
-    return actorResolution.response;
-  }
-
-  const userId = requireUserId(request, actorResolution.actor.requestId);
-  if (userId instanceof Response) {
-    return userId;
-  }
-
-  const identityProvider = await requireUserMutationIdentityProvider(
-    actorResolution.actor.instanceId,
-    actorResolution.actor.requestId
-  );
-  if (identityProvider instanceof Response) {
-    return identityProvider;
-  }
-
-  return { actor: actorResolution.actor, identityProvider, userId };
 };
 
 export const deactivateUserInternal = createDeactivateUserHandlerInternal({

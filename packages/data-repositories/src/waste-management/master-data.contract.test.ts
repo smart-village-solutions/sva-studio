@@ -8,6 +8,7 @@ describe('waste master-data repository contract', () => {
       'listWasteFractions',
       'getWasteFractionById',
       'upsertWasteFraction',
+      'deleteWasteFraction',
       'listWasteRegions',
       'getWasteRegionById',
       'upsertWasteRegion',

@@ -10,6 +10,7 @@ export default defineConfig({
       { find: /^@sva\/core$/, replacement: resolve(__dirname, '../core/src/index.ts') },
       { find: /^@sva\/data-repositories\/server$/, replacement: resolve(__dirname, '../data-repositories/src/server.ts') },
       { find: /^@sva\/data-repositories$/, replacement: resolve(__dirname, '../data-repositories/src/index.ts') },
+      { find: /^@sva\/monitoring-client\/logging$/, replacement: resolve(__dirname, '../monitoring-client/src/logging.ts') },
       { find: /^@sva\/server-runtime$/, replacement: resolve(__dirname, '../server-runtime/src/index.ts') },
     ],
   },

@@ -164,14 +164,6 @@ const createDetailFormValues = () => ({
     lastName: 'Admin',
   },
   tenantAdminTemporaryPassword: '',
-  wasteManagementSettings: {
-    provider: 'supabase' as const,
-    enabled: false,
-    projectUrl: '',
-    schemaName: 'public',
-    databaseUrl: '',
-    serviceRoleKey: '',
-  },
 });
 
 describe('instance detail split sections', () => {

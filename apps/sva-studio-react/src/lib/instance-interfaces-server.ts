@@ -12,7 +12,7 @@ import {
   saveExternalInterfaceRecord,
 } from '@sva/data-repositories/server';
 import { protectField, revealField } from '@sva/auth-runtime/server';
-import { buildExternalInterfaceSecretConfigAad } from '@sva/server-runtime';
+import { buildExternalInterfaceSecretConfigAad, createSdkLogger } from '@sva/server-runtime';
 
 import type {
   InstanceInterfaceDraft,
@@ -25,6 +25,8 @@ type StoredSupabase = Omit<InstanceInterfaceSupabase, 'status' | 'statusMessage'
 
 type StoredEntry = StoredS3 | StoredSupabase;
 type StoredInterfaceType = StoredEntry['type'];
+
+const logger = createSdkLogger({ component: 'instance-interfaces-server' });
 
 type PersistedStoredEntry = StoredEntry & Readonly<{
   visibleStatus?: ExternalInterfaceVisibleStatus;
@@ -259,17 +261,53 @@ const buildRecordFromDraft = async (input: {
   readonly draft: Extract<InstanceInterfaceDraft, { type: 's3' | 'supabase' }>;
   readonly existingId?: string;
 }): Promise<ExternalInterfaceRecord> => {
+  logger.info('Building external interface record from draft', {
+    operation: 'build_interface_record',
+    workspace_id: input.instanceId,
+    interface_type: input.draft.type,
+    existing_interface_id: input.existingId,
+    has_secret_input:
+      input.draft.type === 's3'
+        ? input.draft.config.secretAccessKey.length > 0
+        : input.draft.config.databaseUrl.length > 0 || input.draft.config.serviceRoleKey.length > 0,
+  });
   const existing = input.existingId
     ? await loadExternalInterfaceRecordById(input.instanceId, input.existingId)
     : null;
   if (input.existingId && !existing) {
+    logger.warn('Requested external interface for update was not found', {
+      operation: 'build_interface_record',
+      workspace_id: input.instanceId,
+      interface_type: input.draft.type,
+      existing_interface_id: input.existingId,
+    });
     throw new Error('interface_not_found');
   }
 
   const interfaceId = existing?.id ?? randomUUID();
-  const previousSecrets = existing ? parseSecretConfig(existing.secretConfigCiphertext, interfaceId) : {};
+  let previousSecrets: Record<string, string>;
+  try {
+    previousSecrets = existing ? parseSecretConfig(existing.secretConfigCiphertext, interfaceId) : {};
+  } catch (error) {
+    logger.error('Failed to read stored external interface secrets', {
+      operation: 'build_interface_record',
+      workspace_id: input.instanceId,
+      interface_type: input.draft.type,
+      existing_interface_id: input.existingId,
+      interface_id: interfaceId,
+      error_message: error instanceof Error ? error.message : String(error),
+    });
+    throw error;
+  }
 
   if (existing && existing.typeKey !== input.draft.type) {
+    logger.warn('Rejected external interface type change', {
+      operation: 'build_interface_record',
+      workspace_id: input.instanceId,
+      existing_interface_id: input.existingId,
+      previous_type: existing.typeKey,
+      requested_type: input.draft.type,
+    });
     throw new Error('interface_type_change_not_supported');
   }
 
@@ -309,17 +347,52 @@ export const upsertStoredInterface = async (
     throw new Error('mainserver_interfaces_use_dedicated_endpoint');
   }
 
+  logger.info('Persisting external interface draft', {
+    operation: 'upsert_stored_interface',
+    workspace_id: instanceId,
+    interface_type: draft.type,
+    existing_interface_id: existingId,
+    enabled: draft.enabled,
+  });
+
   const record = await buildRecordFromDraft({
     instanceId,
     draft,
     existingId,
   });
-  await saveExternalInterfaceRecord(record);
+
+  try {
+    await saveExternalInterfaceRecord(record);
+  } catch (error) {
+    logger.error('Failed to persist external interface record', {
+      operation: 'upsert_stored_interface',
+      workspace_id: instanceId,
+      interface_id: record.id,
+      interface_type: draft.type,
+      error_message: error instanceof Error ? error.message : String(error),
+    });
+    throw error;
+  }
+
   const stored = await loadExternalInterfaceRecordById(instanceId, record.id);
   const mapped = stored ? mapRecordToStoredEntry(stored) : null;
   if (!mapped) {
+    logger.error('Persisted external interface record could not be reloaded', {
+      operation: 'upsert_stored_interface',
+      workspace_id: instanceId,
+      interface_id: record.id,
+      interface_type: draft.type,
+    });
     throw new Error('interface_not_found');
   }
+
+  logger.info('External interface draft persisted successfully', {
+    operation: 'upsert_stored_interface',
+    workspace_id: instanceId,
+    interface_id: mapped.id,
+    interface_type: mapped.type,
+    visible_status: 'visibleStatus' in mapped ? mapped.visibleStatus : undefined,
+  });
   return mapped;
 };
 
@@ -375,7 +448,7 @@ export const checkStoredInterfaceHealth = (entry: StoredEntry): InterfaceHealthR
     }
     return {
       status: 'unknown',
-      statusMessage: 'Statusprüfung für benutzerdefinierte Schnittstellen ist noch nicht verfügbar.',
+      statusMessage: 'S3-Verbindungsprüfung ausstehend.',
       checkedAt,
     };
   }
@@ -384,6 +457,22 @@ export const checkStoredInterfaceHealth = (entry: StoredEntry): InterfaceHealthR
     return {
       status: 'error',
       statusMessage: 'Supabase-Konfiguration unvollständig (Project URL erforderlich).',
+      checkedAt,
+    };
+  }
+
+  if (!entry.config.databaseUrl && !('serviceRoleKey' in entry.config)) {
+    return {
+      status: 'error',
+      statusMessage: 'Supabase-Konfiguration unvollständig (Direkte DB-URL und Service-Role-Key erforderlich).',
+      checkedAt,
+    };
+  }
+
+  if (!entry.config.databaseUrl) {
+    return {
+      status: 'error',
+      statusMessage: 'Supabase-Konfiguration unvollständig (Direkte DB-URL erforderlich).',
       checkedAt,
     };
   }

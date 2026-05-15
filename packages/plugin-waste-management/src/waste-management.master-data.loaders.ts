@@ -5,11 +5,16 @@ import {
   getWasteManagementToursOverview,
 } from './waste-management.api.js';
 import { resolveApiErrorCode } from './waste-management.page.support.js';
+import type { WasteManagementSearchParams } from './search-params.js';
 import type { WasteMasterDataState } from './waste-management.master-data.state.js';
 
 type Translate = (key: string, variables?: Readonly<Record<string, string | number>>) => string;
 
-export const useWasteMasterDataDataLoading = (state: WasteMasterDataState, pt: Translate) => {
+export const useWasteMasterDataDataLoading = (
+  state: WasteMasterDataState,
+  pt: Translate,
+  tab: WasteManagementSearchParams['masterDataTab']
+) => {
   const ptRef = useRef(pt);
   const isMountedRef = useRef(false);
   ptRef.current = pt;
@@ -18,7 +23,9 @@ export const useWasteMasterDataDataLoading = (state: WasteMasterDataState, pt: T
   const loadOverview = useCallback(
     async () => {
       try {
-        const response = await getWasteManagementMasterDataOverview();
+        const response = await getWasteManagementMasterDataOverview(
+          tab === 'fractions' ? { scope: 'fractions' } : tab === 'locations' ? { scope: 'locations' } : undefined
+        );
         if (!isMountedRef.current) return;
         setOverview(response);
         setError(null);
@@ -30,11 +37,12 @@ export const useWasteMasterDataDataLoading = (state: WasteMasterDataState, pt: T
             ? ptRef.current('masterData.messages.loadForbidden')
             : ptRef.current('masterData.messages.loadError')
         );
+        setAvailableTours([]);
       } finally {
         if (isMountedRef.current) setLoading(false);
       }
     },
-    [setError, setLoading, setOverview]
+    [setAvailableTours, setError, setLoading, setOverview, tab]
   );
 
   useEffect(() => {
@@ -46,7 +54,10 @@ export const useWasteMasterDataDataLoading = (state: WasteMasterDataState, pt: T
   }, [loadOverview]);
 
   useEffect(() => {
-    isMountedRef.current = true;
+    if (!state.overview || tab !== 'locations') {
+      return;
+    }
+
     void (async () => {
       try {
         const response = await getWasteManagementToursOverview();
@@ -55,10 +66,7 @@ export const useWasteMasterDataDataLoading = (state: WasteMasterDataState, pt: T
         if (isMountedRef.current) setAvailableTours([]);
       }
     })();
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, [setAvailableTours]);
+  }, [setAvailableTours, state.overview, tab]);
 
   return loadOverview;
 };

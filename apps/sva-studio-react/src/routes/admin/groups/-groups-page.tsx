@@ -14,36 +14,10 @@ import { Label } from '../../../components/ui/label';
 import { useGroups } from '../../../hooks/use-groups';
 import { useRoles } from '../../../hooks/use-roles';
 import { t } from '../../../i18n';
-import type { TranslationKey } from '../../../i18n/translate';
-import type { IamHttpError } from '../../../lib/iam-api';
 import { useAuth } from '../../../providers/auth-provider';
+import { groupErrorMessage } from './-group-shared';
 
 type SortDirection = 'asc' | 'desc';
-
-const groupErrorMessage = (error: IamHttpError | null, fallbackKey: TranslationKey): string => {
-  if (!error) {
-    return t(fallbackKey);
-  }
-
-  switch (error.code) {
-    case 'forbidden':
-      return t('admin.groups.errors.forbidden');
-    case 'csrf_validation_failed':
-      return t('admin.groups.errors.csrfValidationFailed');
-    case 'rate_limited':
-      return t('admin.groups.errors.rateLimited');
-    case 'conflict':
-      return t('admin.groups.errors.conflict');
-    case 'invalid_request':
-      return t('admin.groups.errors.invalidRequest');
-    case 'database_unavailable':
-      return error.safeDetails?.reason_code === 'schema_drift'
-        ? t('admin.groups.errors.databaseSchemaDrift')
-        : t('admin.groups.errors.databaseUnavailable');
-    default:
-      return t(fallbackKey);
-  }
-};
 
 const roleCountLabel = (count: number) =>
   count === 1

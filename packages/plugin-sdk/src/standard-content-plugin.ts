@@ -2,13 +2,18 @@ import { definePluginAdminResources, type AdminResourceDefinition } from './admi
 import { definePluginContentTypes, type ContentTypeDefinition } from './content-types.js';
 import {
   definePluginActions,
+  definePluginAuditEvents,
   definePluginModuleIamContract,
   definePluginPermissions,
   type PluginActionDefinition,
+  type PluginAuditEventDefinition,
+  type PluginDefinition,
   type PluginModuleIamContract,
   type PluginModuleIamSystemRoleDefinition,
   type PluginNavigationItem,
   type PluginPermissionDefinition,
+  type PluginRouteDefinition,
+  type PluginTranslations,
 } from './plugins.js';
 
 export type StandardContentPluginActionName = 'create' | 'edit' | 'update' | 'delete';
@@ -39,6 +44,24 @@ export type StandardContentPluginContributionOptions = StandardContentAdminResou
     displayName: string;
     actionOptions?: StandardContentPluginActionOptions;
   }>;
+
+export type StandardContentPluginContribution = Readonly<{
+  navigation: readonly PluginNavigationItem[];
+  actions: readonly PluginActionDefinition[];
+  permissions: readonly PluginPermissionDefinition[];
+  moduleIam: PluginModuleIamContract;
+  contentTypes: readonly ContentTypeDefinition[];
+  adminResources: readonly AdminResourceDefinition[];
+}>;
+
+export type StandardContentPluginDefinitionOptions = Readonly<{
+  pluginId: string;
+  displayName: string;
+  contribution: StandardContentPluginContribution;
+  routes?: readonly PluginRouteDefinition[];
+  auditEvents?: readonly PluginAuditEventDefinition[];
+  translations: PluginTranslations;
+}>;
 
 const defaultPagination = {
   pageParam: 'page',
@@ -163,14 +186,9 @@ export const createStandardContentTypeDefinition = (
   displayName: string
 ): readonly ContentTypeDefinition[] => definePluginContentTypes(pluginId, [{ contentType, displayName }] as const);
 
-export const createStandardContentPluginContribution = (options: StandardContentPluginContributionOptions): Readonly<{
-  navigation: readonly PluginNavigationItem[];
-  actions: readonly PluginActionDefinition[];
-  permissions: readonly PluginPermissionDefinition[];
-  moduleIam: PluginModuleIamContract;
-  contentTypes: readonly ContentTypeDefinition[];
-  adminResources: readonly AdminResourceDefinition[];
-}> => ({
+export const createStandardContentPluginContribution = (
+  options: StandardContentPluginContributionOptions
+): StandardContentPluginContribution => ({
   navigation: [
     {
       id: `${options.pluginId}.navigation`,
@@ -186,3 +204,21 @@ export const createStandardContentPluginContribution = (options: StandardContent
   contentTypes: createStandardContentTypeDefinition(options.pluginId, options.contentType, options.displayName),
   adminResources: definePluginAdminResources(options.pluginId, [createStandardContentAdminResource(options)]),
 });
+
+export const createStandardContentPluginDefinition = (
+  options: StandardContentPluginDefinitionOptions
+): PluginDefinition => {
+  return {
+    id: options.pluginId,
+    displayName: options.displayName,
+    routes: options.routes ?? [],
+    navigation: options.contribution.navigation,
+    actions: options.contribution.actions,
+    permissions: options.contribution.permissions,
+    moduleIam: options.contribution.moduleIam,
+    contentTypes: options.contribution.contentTypes,
+    adminResources: options.contribution.adminResources,
+    auditEvents: definePluginAuditEvents(options.pluginId, options.auditEvents ?? []),
+    translations: options.translations,
+  };
+};

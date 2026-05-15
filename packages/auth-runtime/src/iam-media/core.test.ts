@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { createMediaHttpHandlers } from './core.js';
+import { MediaStorageUnavailableError } from './storage-port.js';
 
 const allowAuthorization = vi.fn(async () => ({ ok: true } as const));
 const emitAuditEvent = vi.fn(async () => undefined);
@@ -201,6 +202,38 @@ describe('media http handlers', () => {
     expect(response.status).toBe(409);
   });
 
+  it('rejects upload initialization when the requested instance mismatches the session scope', async () => {
+    const service = createService();
+    const handlers = createMediaHttpHandlers({
+      withMediaService: async (_instanceId, work) => work(service as never),
+      storagePort: { prepareUpload: vi.fn(), resolveDelivery: vi.fn() } as never,
+      authorizeAction: allowAuthorization,
+      createId: () => 'id-1',
+      now: () => '2026-04-29T19:00:00.000Z',
+      emitAuditEvent,
+    });
+
+    const response = await handlers.initializeUpload(
+      new Request('http://localhost/api/v1/iam/media/upload-sessions', {
+        method: 'POST',
+        body: JSON.stringify({
+          instanceId: 'tenant-b',
+          mediaType: 'image',
+          mimeType: 'image/jpeg',
+          byteSize: 200,
+        }),
+      }),
+      createContext('tenant-a')
+    );
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        code: 'forbidden',
+      },
+    });
+  });
+
   it('resolves usage and controlled delivery for an asset', async () => {
     const service = createService();
     const storagePort = {
@@ -236,6 +269,37 @@ describe('media http handlers', () => {
       assetId: 'asset-1',
       storageKey: 'tenant-a/originals/asset-1.jpg',
       visibility: 'protected',
+    });
+  });
+
+  it('maps media storage delivery failures to a 503 API error', async () => {
+    const service = createService();
+    const storagePort = {
+      prepareUpload: vi.fn(),
+      resolveDelivery: vi.fn(async () => {
+        throw new MediaStorageUnavailableError();
+      }),
+    };
+
+    const handlers = createMediaHttpHandlers({
+      withMediaService: async (_instanceId, work) => work(service as never),
+      storagePort: storagePort as never,
+      authorizeAction: allowAuthorization,
+      createId: () => 'id-1',
+      now: () => '2026-04-29T19:00:00.000Z',
+      emitAuditEvent,
+    });
+
+    const response = await handlers.getMediaDelivery(
+      new Request('http://localhost/api/v1/iam/media/asset-1/delivery?instanceId=tenant-a'),
+      createContext()
+    );
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        code: 'internal_error',
+      },
     });
   });
 

@@ -10,6 +10,17 @@ const externalInterfaceRuntimeErrorCodes = [
   'disabled',
   'secret_missing',
   'secret_unreadable',
+  'project_url_invalid',
+  'database_url_missing',
+  'service_role_key_missing',
+  'database_auth_failed',
+  'database_host_unreachable',
+  'schema_missing',
+  'service_role_key_invalid',
+  'rest_api_unreachable',
+  'bucket_missing',
+  's3_auth_failed',
+  's3_endpoint_unreachable',
   'connection_failed',
 ] as const;
 

@@ -202,8 +202,12 @@ const TenantSecretField = ({
 const TenantAdminClientFields = ({
   detailFormValues,
   selectedInstance,
+  tenantSecretUserInputRequired,
   setDetailFormValues,
-}: Pick<ConfigurationSectionProps, 'detailFormValues' | 'selectedInstance' | 'setDetailFormValues'>) => {
+}: Pick<
+  ConfigurationSectionProps,
+  'detailFormValues' | 'selectedInstance' | 'tenantSecretUserInputRequired' | 'setDetailFormValues'
+>) => {
   const updateClientId = updateNestedField(setDetailFormValues, 'tenantAdminClient', 'clientId');
   const updateSecret = updateNestedField(setDetailFormValues, 'tenantAdminClient', 'secret');
 
@@ -223,15 +227,22 @@ const TenantAdminClientFields = ({
           <Input
             id="detail-tenant-admin-client-secret"
             type="password"
+            disabled={!tenantSecretUserInputRequired}
             placeholder={
-              selectedInstance.tenantAdminClient?.secretConfigured
-                ? t('admin.instances.form.tenantAdminClientSecretConfigured')
-                : t('admin.instances.form.tenantAdminClientSecretMissing')
+              !tenantSecretUserInputRequired
+                ? t('admin.instances.form.authClientSecretGeneratedDuringProvisioning')
+                : selectedInstance.tenantAdminClient?.secretConfigured
+                  ? t('admin.instances.form.tenantAdminClientSecretConfigured')
+                  : t('admin.instances.form.tenantAdminClientSecretMissing')
             }
             value={detailFormValues.tenantAdminClient.secret}
             onChange={(event) => updateSecret(event.target.value)}
           />
-          <p className="text-xs text-muted-foreground">{t('admin.instances.form.tenantAdminClientSecretHint')}</p>
+          <p className="text-xs text-muted-foreground">
+            {tenantSecretUserInputRequired
+              ? t('admin.instances.form.tenantAdminClientSecretHint')
+              : t('admin.instances.form.authClientSecretGeneratedHint')}
+          </p>
         </div>
       </div>
     </>
@@ -304,6 +315,7 @@ export const InstanceDetailConfigurationSection = ({
           <TenantAdminClientFields
             detailFormValues={detailFormValues}
             selectedInstance={selectedInstance}
+            tenantSecretUserInputRequired={tenantSecretUserInputRequired}
             setDetailFormValues={setDetailFormValues}
           />
           <TenantAdminFields detailFormValues={detailFormValues} setDetailFormValues={setDetailFormValues} />

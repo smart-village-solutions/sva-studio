@@ -6,6 +6,7 @@ export {
 } from '@sva/core';
 export type {
   ApiItemResponse,
+  StudioJobDetail,
   StudioJobResponse,
   WasteCityRecord,
   WasteCollectionLocationRecord,
@@ -215,10 +216,13 @@ export type {
   StandardContentPluginActionIds,
   StandardContentPluginActionName,
   StandardContentPluginActionOptions,
+  StandardContentPluginContribution,
   StandardContentPluginContributionOptions,
+  StandardContentPluginDefinitionOptions,
 } from './standard-content-plugin.js';
 export {
   createStandardContentAdminResource,
+  createStandardContentPluginDefinition,
   createStandardContentModuleIamContract,
   createStandardContentPluginActionIds,
   createStandardContentPluginActions,
@@ -236,3 +240,10 @@ export {
   translatePluginKey,
   usePluginTranslation,
 } from './plugin-translations.js';
+export type { SessionAccessSnapshot } from './session-access.js';
+export {
+  publishSessionAccessSnapshot,
+  readSessionAccessSnapshot,
+  resetSessionAccessSnapshot,
+  subscribeSessionAccessSnapshot,
+} from './session-access.js';

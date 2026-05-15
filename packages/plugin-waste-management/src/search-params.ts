@@ -2,12 +2,16 @@ const wasteManagementTabs = ['fractions', 'tours', 'locations', 'scheduling', 't
 const wasteManagementMasterDataTabs = ['fractions', 'locations'] as const;
 const wasteManagementStatusFilters = ['all', 'active', 'inactive'] as const;
 const wasteManagementShiftContexts = ['all', 'global', 'tour'] as const;
+const wasteManagementFractionSortFields = ['name', 'containerSize', 'color', 'description', 'status'] as const;
+const wasteManagementFractionSortDirections = ['asc', 'desc'] as const;
 const allowedPageSizes = new Set([10, 25, 50, 100]);
 
 export type WasteManagementTabId = (typeof wasteManagementTabs)[number];
 export type WasteManagementMasterDataTabId = (typeof wasteManagementMasterDataTabs)[number];
 export type WasteManagementStatusFilter = (typeof wasteManagementStatusFilters)[number];
 export type WasteManagementShiftContext = (typeof wasteManagementShiftContexts)[number];
+export type WasteManagementFractionSortField = (typeof wasteManagementFractionSortFields)[number];
+export type WasteManagementFractionSortDirection = (typeof wasteManagementFractionSortDirections)[number];
 
 export type WasteManagementSearchParams = Readonly<{
   tab: WasteManagementTabId;
@@ -17,6 +21,8 @@ export type WasteManagementSearchParams = Readonly<{
   pageSize: number;
   status: WasteManagementStatusFilter;
   shiftContext: WasteManagementShiftContext;
+  fractionsSortBy: WasteManagementFractionSortField;
+  fractionsSortDirection: WasteManagementFractionSortDirection;
   regionId?: string;
   cityId?: string;
   wasteFractionId?: string;
@@ -50,6 +56,16 @@ const normalizeShiftContext = (value: unknown): WasteManagementShiftContext =>
   typeof value === 'string' && wasteManagementShiftContexts.includes(value as WasteManagementShiftContext)
     ? (value as WasteManagementShiftContext)
     : 'all';
+
+const normalizeFractionsSortBy = (value: unknown): WasteManagementFractionSortField =>
+  typeof value === 'string' && wasteManagementFractionSortFields.includes(value as WasteManagementFractionSortField)
+    ? (value as WasteManagementFractionSortField)
+    : 'name';
+
+const normalizeFractionsSortDirection = (value: unknown): WasteManagementFractionSortDirection =>
+  typeof value === 'string' && wasteManagementFractionSortDirections.includes(value as WasteManagementFractionSortDirection)
+    ? (value as WasteManagementFractionSortDirection)
+    : 'asc';
 
 const normalizePositiveInteger = (value: unknown, fallback: number): number => {
   if (typeof value === 'number' && Number.isInteger(value) && value > 0) {
@@ -93,6 +109,8 @@ export const normalizeWasteManagementSearchParams = (
     pageSize: normalizePageSize(search.pageSize),
     status: normalizeStatus(search.status),
     shiftContext: normalizeShiftContext(search.shiftContext),
+    fractionsSortBy: normalizeFractionsSortBy(search.fractionsSortBy),
+    fractionsSortDirection: normalizeFractionsSortDirection(search.fractionsSortDirection),
     regionId: compactOptionalString(search.regionId),
     cityId: compactOptionalString(search.cityId),
     wasteFractionId: compactOptionalString(search.wasteFractionId),

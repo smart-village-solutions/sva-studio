@@ -24,6 +24,7 @@ describe('external-interfaces-contract', () => {
     expect(externalInterfaceContract.isCheckStatus('failed')).toBe(true);
     expect(externalInterfaceContract.isCheckStatus('running')).toBe(false);
     expect(externalInterfaceContract.isRuntimeErrorCode('secret_unreadable')).toBe(true);
+    expect(externalInterfaceContract.isRuntimeErrorCode('schema_missing')).toBe(true);
     expect(externalInterfaceContract.isRuntimeErrorCode('unauthorized')).toBe(false);
   });
 

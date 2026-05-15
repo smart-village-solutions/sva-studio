@@ -32,15 +32,6 @@ export type InstanceFieldHelpKey =
   | 'tenantAdminFirstName'
   | 'tenantAdminLastName';
 
-export type WasteManagementSettingsFormValues = {
-  readonly provider: 'supabase';
-  readonly enabled: boolean;
-  readonly projectUrl: string;
-  readonly schemaName: string;
-  readonly databaseUrl: string;
-  readonly serviceRoleKey: string;
-};
-
 export type WorkflowStepState = 'done' | 'current' | 'blocked' | 'pending';
 export type InstanceConfigurationOverallStatus = 'complete' | 'degraded' | 'incomplete' | 'unknown';
 
@@ -135,7 +126,6 @@ export type CreateFormValues = {
     firstName: string;
     lastName: string;
   };
-  wasteManagementSettings: WasteManagementSettingsFormValues;
 };
 
 export type DetailFormValues = {
@@ -157,7 +147,6 @@ export type DetailFormValues = {
     lastName: string;
   };
   tenantAdminTemporaryPassword: string;
-  wasteManagementSettings: WasteManagementSettingsFormValues;
 };
 
 export type PostCreateGuidanceInput = {

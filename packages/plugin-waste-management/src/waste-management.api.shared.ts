@@ -1,4 +1,4 @@
-import type { ApiItemResponse, StudioJobResponse } from '@sva/plugin-sdk';
+import type { ApiItemResponse, StudioJobDetail, StudioJobResponse } from '@sva/plugin-sdk';
 import { createMainserverJsonRequestHeaders, requestMainserverJson } from '@sva/plugin-sdk';
 
 export class WasteManagementApiError extends Error {
@@ -28,13 +28,26 @@ export const requestWasteManagementItem = async <T>(input: {
   return response.data;
 };
 
-export const requestWasteManagementMutation = <T>(url: string, body: Readonly<Record<string, unknown>>, method = 'POST') =>
+export const requestWasteManagementJobDetail = async (
+  jobId: string,
+  init?: RequestInit
+): Promise<StudioJobDetail> =>
+  requestWasteManagementItem<StudioJobDetail>({
+    url: `/api/v1/plugin-operations/jobs/${encodeURIComponent(jobId)}`,
+    init,
+  });
+
+export const requestWasteManagementMutation = <T>(
+  url: string,
+  body?: Readonly<Record<string, unknown>>,
+  method = 'POST'
+) =>
   requestWasteManagementItem<T>({
     url,
     init: {
       method,
       headers: createMainserverJsonRequestHeaders(),
-      body: JSON.stringify(body),
+      body: body === undefined ? undefined : JSON.stringify(body),
     },
   });
 

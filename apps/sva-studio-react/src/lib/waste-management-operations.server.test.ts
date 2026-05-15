@@ -1,26 +1,46 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { WasteManagementDataSourceRecord } from '@sva/core';
+import type { ExternalInterfaceRecord } from '@sva/core';
+import { protectField } from '@sva/iam-admin/encryption';
+import { buildExternalInterfaceSecretConfigAad } from '@sva/server-runtime';
 import * as XLSX from 'xlsx';
 import type { SqlClient, WasteOperationSqlPool } from './waste-management-operations.types.js';
 
 import { createWasteManagementOperationRuntime } from './waste-management-operations.server.js';
+import { resolveRuntimeDataSource } from './waste-management-operations.shared.js';
 
-const createDataSourceRecord = (): WasteManagementDataSourceRecord => ({
+const createInterfaceRecord = (schemaName = 'wm'): ExternalInterfaceRecord => ({
+  id: 'iface-1',
   instanceId: 'instance-1',
-  provider: 'supabase',
-  projectUrl: 'https://tenant.supabase.co',
-  schemaName: 'wm',
+  typeKey: 'supabase' as const,
+  ownerKind: 'host' as const,
+  ownerId: 'host',
+  displayName: 'Waste Supabase',
+  alias: 'default',
   enabled: true,
-  databaseUrlConfigured: true,
-  serviceRoleKeyConfigured: true,
-  databaseUrlCiphertext: 'enc-db',
-  serviceRoleKeyCiphertext: 'enc-key',
-  visibleStatus: 'ok',
-  lastCheckStatus: 'succeeded',
+  isDefault: true,
+  category: 'database' as const,
+  baseUrl: 'https://tenant.supabase.co',
+  authMode: 'service_role',
+  publicConfig: {
+    projectUrl: 'https://tenant.supabase.co',
+    schemaName,
+  },
+  secretConfigCiphertext: 'cipher-secret',
+  statusCheckKind: 'supabase' as const,
+  visibleStatus: 'ok' as const,
+  lastCheckStatus: 'succeeded' as const,
   lastCheckedAt: '2026-05-10T10:00:00.000Z',
   updatedAt: '2026-05-10T10:00:00.000Z',
 });
+
+const revealSupabaseSecretConfig = (ciphertext: string | null | undefined): string | undefined =>
+  ciphertext
+    ? JSON.stringify({
+        databaseUrl: 'postgres://waste:test@localhost:5432/waste',
+        serviceRoleKey: 'service-key',
+      })
+    : undefined;
 
 describe('waste management operations runtime', () => {
   beforeEach(() => {
@@ -42,8 +62,8 @@ describe('waste management operations runtime', () => {
       end: vi.fn(async () => undefined),
     };
     const runtime = createWasteManagementOperationRuntime({
-      loadDataSourceRecord: vi.fn(async () => createDataSourceRecord()),
-      revealSecret: vi.fn((ciphertext) => (ciphertext ? 'postgres://waste:test@localhost:5432/waste' : undefined)),
+      loadDefaultInterfaceRecord: vi.fn(async () => createInterfaceRecord()),
+      revealSecret: vi.fn(revealSupabaseSecretConfig),
       createPool: vi.fn(() => pool),
     });
 
@@ -76,10 +96,8 @@ describe('waste management operations runtime', () => {
       end: vi.fn(async () => undefined),
     };
     const runtime = createWasteManagementOperationRuntime({
-      loadDataSourceRecord: vi.fn(async () => createDataSourceRecord()),
-      revealSecret: vi.fn((ciphertext, aad) =>
-        ciphertext ? (aad.includes('database_url') ? 'postgres://waste:test@localhost:5432/waste' : 'service-key') : undefined
-      ),
+      loadDefaultInterfaceRecord: vi.fn(async () => createInterfaceRecord()),
+      revealSecret: vi.fn(revealSupabaseSecretConfig),
       createPool: vi.fn(() => pool),
       readBinarySource: vi.fn(async () => createImportWorkbookBytes()),
     });
@@ -138,8 +156,6 @@ describe('waste management operations runtime', () => {
       const actual = await importOriginal<typeof import('@sva/server-runtime')>();
       return {
         ...actual,
-        buildWasteDatabaseUrlAad: vi.fn((instanceId: string) => `db:${instanceId}`),
-        buildWasteServiceRoleKeyAad: vi.fn((instanceId: string) => `service:${instanceId}`),
         resolveWasteDataSource,
         runWasteConnectionCheck,
       };
@@ -177,6 +193,39 @@ describe('waste management operations runtime', () => {
         schemaName: 'wm',
         missingTables: [],
       },
+    });
+  });
+
+  it('resolves interface-based waste secrets with the shared default revealSecret path', async () => {
+    const secretConfigCiphertext = protectField(
+      JSON.stringify({
+        databaseUrl: 'postgres://waste:test@localhost:5432/waste',
+        serviceRoleKey: 'service-key',
+      }),
+      buildExternalInterfaceSecretConfigAad('iface-1')
+    );
+
+    const dataSource = await resolveRuntimeDataSource(
+      {
+        loadDefaultInterfaceRecord: vi.fn(async () => ({
+          ...createInterfaceRecord(),
+          publicConfig: {
+            projectUrl: 'https://tenant.supabase.co',
+            schemaName: 'wm',
+          },
+          secretConfigCiphertext: secretConfigCiphertext ?? undefined,
+        })),
+      },
+      'instance-1'
+    );
+
+    expect(dataSource).toMatchObject({
+      instanceId: 'instance-1',
+      projectUrl: 'https://tenant.supabase.co',
+      schemaName: 'wm',
+      databaseUrl: 'postgres://waste:test@localhost:5432/waste',
+      serviceRoleKey: 'service-key',
+      visibleStatus: 'ok',
     });
   });
 
@@ -218,8 +267,8 @@ describe('waste management operations runtime', () => {
 
     const { createWasteManagementOperationRuntime: createRuntime } = await import('./waste-management-operations.server.js');
     const runtime = createRuntime({
-      loadDataSourceRecord: vi.fn(async () => createDataSourceRecord()),
-      revealSecret: vi.fn((ciphertext) => (ciphertext ? 'postgres://waste:test@localhost:5432/waste' : undefined)),
+      loadDefaultInterfaceRecord: vi.fn(async () => createInterfaceRecord()),
+      revealSecret: vi.fn(revealSupabaseSecretConfig),
       createPool: vi.fn(() => ({
         connect: vi.fn(async () => ({
           query: vi.fn(async () => ({ rowCount: 0, rows: [] })),
@@ -318,8 +367,8 @@ describe('waste management operations runtime', () => {
 
   it('rejects invalid schemas, foreign schema targets, and malformed blob references deterministically', async () => {
     const runtime = createWasteManagementOperationRuntime({
-      loadDataSourceRecord: vi.fn(async () => createDataSourceRecord()),
-      revealSecret: vi.fn((ciphertext) => (ciphertext ? 'postgres://waste:test@localhost:5432/waste' : undefined)),
+      loadDefaultInterfaceRecord: vi.fn(async () => createInterfaceRecord()),
+      revealSecret: vi.fn(revealSupabaseSecretConfig),
       createPool: vi.fn(() => ({
         connect: vi.fn(async () => ({
           query: vi.fn(async () => ({ rowCount: 0, rows: [] })),
@@ -504,8 +553,8 @@ describe('waste management operations runtime', () => {
       rows: [],
     }));
     const runtime = createWasteManagementOperationRuntime({
-      loadDataSourceRecord: vi.fn(async () => createDataSourceRecord()),
-      revealSecret: vi.fn((ciphertext) => (ciphertext ? 'postgres://waste:test@localhost:5432/waste' : undefined)),
+      loadDefaultInterfaceRecord: vi.fn(async () => createInterfaceRecord()),
+      revealSecret: vi.fn(revealSupabaseSecretConfig),
       createPool: vi.fn(() => ({
         connect: vi.fn(async () => ({
           query,
@@ -632,8 +681,8 @@ const createRuntimeWithRepositoryMock = async (
 
   const { createWasteManagementOperationRuntime: createRuntime } = await import('./waste-management-operations.server.js');
   return createRuntime({
-    loadDataSourceRecord: vi.fn(async () => createDataSourceRecord()),
-    revealSecret: vi.fn((ciphertext) => (ciphertext ? 'postgres://waste:test@localhost:5432/waste' : undefined)),
+    loadDefaultInterfaceRecord: vi.fn(async () => createInterfaceRecord()),
+    revealSecret: vi.fn(revealSupabaseSecretConfig),
     createPool: vi.fn(() => createPoolMock(createSqlClientMock(vi.fn(async () => ({ rowCount: 0, rows: [] }))))),
     readBinarySource: vi.fn(async () => workbookBytes),
   });
@@ -642,8 +691,8 @@ const createRuntimeWithRepositoryMock = async (
 const createRuntimeWithRealRepository = async (workbookBytes: Uint8Array, query: SqlClient['query']) => {
   const { createWasteManagementOperationRuntime: createRuntime } = await import('./waste-management-operations.server.js');
   return createRuntime({
-    loadDataSourceRecord: vi.fn(async () => createDataSourceRecord()),
-    revealSecret: vi.fn((ciphertext) => (ciphertext ? 'postgres://waste:test@localhost:5432/waste' : undefined)),
+    loadDefaultInterfaceRecord: vi.fn(async () => createInterfaceRecord()),
+    revealSecret: vi.fn(revealSupabaseSecretConfig),
     createPool: vi.fn(() => createPoolMock(createSqlClientMock(query))),
     readBinarySource: vi.fn(async () => workbookBytes),
   });

@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 const DEFAULT_OUTPUT_PATH = 'artifacts/sonar/lcov.info';
 const COVERAGE_REPORT_PATH = 'coverage/lcov.info';
+const SONAR_PROJECT_PROPERTIES_PATH = 'sonar-project.properties';
 
 export interface PrepareSonarLcovOptions {
   rootDir: string;
@@ -21,7 +22,33 @@ const normalizePath = (value: string): string => value.split(path.sep).join('/')
 const isWorkspaceRoot = (entry: fs.Dirent): boolean =>
   entry.isDirectory() && !entry.name.startsWith('.') && entry.name !== 'node_modules';
 
+const readSonarProjectRoots = (rootDir: string): ReadonlySet<string> => {
+  const propertiesPath = path.join(rootDir, SONAR_PROJECT_PROPERTIES_PATH);
+  if (!fs.existsSync(propertiesPath)) {
+    return new Set();
+  }
+
+  const sourcesLine = fs
+    .readFileSync(propertiesPath, 'utf8')
+    .split(/\r?\n/)
+    .find((line) => line.startsWith('sonar.sources='));
+
+  if (!sourcesLine) {
+    return new Set();
+  }
+
+  return new Set(
+    sourcesLine
+      .slice('sonar.sources='.length)
+      .split(',')
+      .map((entry) => entry.trim())
+      .filter((entry) => entry.length > 0)
+      .map((entry) => normalizePath(entry).replace(/\/src$/, ''))
+  );
+};
+
 const findCoverageReports = (rootDir: string): string[] => {
+  const sonarProjectRoots = readSonarProjectRoots(rootDir);
   const workspaceDirs = ['apps', 'packages'].flatMap((workspaceFolder) => {
     const workspaceRoot = path.join(rootDir, workspaceFolder);
     if (!fs.existsSync(workspaceRoot)) {
@@ -35,6 +62,14 @@ const findCoverageReports = (rootDir: string): string[] => {
   });
 
   return workspaceDirs
+    .filter((workspaceDir) => {
+      if (sonarProjectRoots.size === 0) {
+        return true;
+      }
+
+      const relativeWorkspaceDir = normalizePath(path.relative(rootDir, workspaceDir));
+      return sonarProjectRoots.has(relativeWorkspaceDir);
+    })
     .map((workspaceDir) => path.join(workspaceDir, COVERAGE_REPORT_PATH))
     .filter((reportPath) => fs.existsSync(reportPath))
     .sort((left, right) => left.localeCompare(right));

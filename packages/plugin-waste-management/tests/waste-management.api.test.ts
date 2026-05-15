@@ -5,6 +5,7 @@ import {
   createWasteManagementCollectionLocation,
   createWasteManagementHouseNumber,
   createWasteManagementLocationTourLinksBulk,
+  deleteWasteManagementFraction,
   createWasteManagementFraction,
   createWasteManagementGlobalDateShift,
   createWasteManagementLocationTourLink,
@@ -14,6 +15,7 @@ import {
   createWasteManagementTourDateShift,
   getWasteManagementHistoryOverview,
   getWasteManagementImportCatalog,
+  getWasteManagementJobDetail,
   getWasteManagementMasterDataOverview,
   getWasteManagementSchedulingOverview,
   getWasteManagementSettings,
@@ -149,6 +151,44 @@ describe('waste-management api client', () => {
     );
   });
 
+  it('loads a single plugin operation job detail through the host facade', async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          data: {
+            id: 'job-1',
+            instanceId: 'tenant-a',
+            pluginId: 'waste-management',
+            jobTypeId: 'waste-management.apply-migrations',
+            queueName: 'plugin-operations',
+            status: 'running',
+            inputPayload: { operation: 'apply-migrations' },
+            attempts: 1,
+            maxAttempts: 5,
+            idempotencyKey: 'idem-1',
+            scheduledAt: '2026-05-10T10:00:00.000Z',
+            createdAt: '2026-05-10T10:00:00.000Z',
+            updatedAt: '2026-05-10T10:00:05.000Z',
+            history: [],
+          },
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      )
+    );
+
+    await expect(getWasteManagementJobDetail('job-1')).resolves.toMatchObject({
+      id: 'job-1',
+      status: 'running',
+      jobTypeId: 'waste-management.apply-migrations',
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/plugin-operations/jobs/job-1',
+      expect.objectContaining({
+        credentials: 'include',
+      })
+    );
+  });
+
   it('loads the waste master-data overview through the host facade', async () => {
     fetchMock.mockResolvedValueOnce(
       new Response(
@@ -191,6 +231,104 @@ describe('waste-management api client', () => {
         credentials: 'include',
       })
     );
+  });
+
+  it('requests scoped waste master-data reads for fractions', async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          data: {
+            fractions: [{ id: 'fraction-1', name: 'Restmüll', active: true }],
+            regions: [],
+            cities: [],
+            streets: [],
+            houseNumbers: [],
+            collectionLocations: [],
+            locationTourLinks: [],
+          },
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      )
+    );
+
+    await expect(getWasteManagementMasterDataOverview({ scope: 'fractions' })).resolves.toMatchObject({
+      fractions: [expect.objectContaining({ id: 'fraction-1' })],
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/waste-management/master-data?scope=fractions',
+      expect.objectContaining({
+        credentials: 'include',
+      })
+    );
+  });
+
+  it('requests scoped waste master-data reads for locations', async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          data: {
+            fractions: [],
+            regions: [{ id: 'region-1', name: 'Nord' }],
+            cities: [],
+            streets: [],
+            houseNumbers: [],
+            collectionLocations: [],
+            locationTourLinks: [],
+          },
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      )
+    );
+
+    await expect(getWasteManagementMasterDataOverview({ scope: 'locations' })).resolves.toMatchObject({
+      regions: [expect.objectContaining({ id: 'region-1' })],
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/waste-management/master-data?scope=locations',
+      expect.objectContaining({
+        credentials: 'include',
+      })
+    );
+  });
+
+  it('deduplicates overlapping waste master-data reads', async () => {
+    let resolveResponse: ((response: Response) => void) | null = null;
+    fetchMock.mockReturnValueOnce(
+      new Promise<Response>((resolve) => {
+        resolveResponse = resolve;
+      })
+    );
+
+    const firstRequest = getWasteManagementMasterDataOverview();
+    const secondRequest = getWasteManagementMasterDataOverview();
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    resolveResponse?.(
+      new Response(
+        JSON.stringify({
+          data: {
+            fractions: [{ id: 'fraction-1', name: 'Restmüll', active: true }],
+            regions: [],
+            cities: [],
+            streets: [],
+            houseNumbers: [],
+            collectionLocations: [],
+            locationTourLinks: [],
+          },
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      )
+    );
+
+    await expect(firstRequest).resolves.toMatchObject({
+      fractions: [expect.objectContaining({ id: 'fraction-1' })],
+    });
+    await expect(secondRequest).resolves.toMatchObject({
+      fractions: [expect.objectContaining({ id: 'fraction-1' })],
+    });
   });
 
   it('creates and updates waste fractions through the host facade', async () => {
@@ -265,6 +403,24 @@ describe('waste-management api client', () => {
           color: '#123456',
           active: true,
         }),
+      })
+    );
+  });
+
+  it('deletes waste fractions through the host facade', async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ data: { id: 'fraction-3' } }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
+
+    await deleteWasteManagementFraction('fraction-3');
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/waste-management/fractions/fraction-3',
+      expect.objectContaining({
+        method: 'DELETE',
       })
     );
   });

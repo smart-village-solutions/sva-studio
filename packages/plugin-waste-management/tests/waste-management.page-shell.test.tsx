@@ -130,22 +130,15 @@ describe('WasteManagementPage shell', () => {
     expect(screen.queryByRole('button', { name: 'change-search' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'change-status' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'change-shift-context' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'actions.openSettings' })).toBeNull();
 
-    fireEvent.click(screen.getByRole('button', { name: 'actions.openSettings' }));
+    fireEvent.click(screen.getByRole('button', { name: 'change-tab' }));
     expect(navigateMock).toHaveBeenNthCalledWith(1, {
       to: '/plugins/waste-management',
       search: {
         ...searchState,
-        tab: 'settings',
-        page: 1,
-      },
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: 'change-tab' }));
-    expect(navigateMock).toHaveBeenNthCalledWith(2, {
-      to: '/plugins/waste-management',
-      search: {
-        ...searchState,
+        fractionsSortBy: 'name',
+        fractionsSortDirection: 'asc',
         tab: 'settings',
         page: 1,
       },
@@ -177,6 +170,8 @@ describe('WasteManagementPage shell', () => {
         to: '/plugins/waste-management',
         search: {
           ...searchState,
+          fractionsSortBy: 'name',
+          fractionsSortDirection: 'asc',
           tab: 'fractions',
           masterDataTab: 'fractions',
           page: 1,

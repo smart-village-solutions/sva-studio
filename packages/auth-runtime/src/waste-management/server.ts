@@ -10,6 +10,7 @@ const {
   createWasteManagementCityInternal,
   createWasteManagementCollectionLocationInternal,
   createWasteManagementFractionInternal,
+  deleteWasteManagementFractionInternal,
   createWasteManagementGlobalDateShiftInternal,
   createWasteManagementHouseNumberInternal,
   createWasteManagementLocationTourLinkInternal,
@@ -41,7 +42,14 @@ const {
   updateWasteManagementTourInternal,
 } = wasteManagementCoreHandlers;
 
-const { loadMasterDataOverview, loadSchedulingOverview, loadToursOverview, loadWasteHistoryOverview } =
+const {
+  loadMasterDataOverview,
+  loadMasterDataFractionsOverview,
+  loadMasterDataLocationsOverview,
+  loadSchedulingOverview,
+  loadToursOverview,
+  loadWasteHistoryOverview,
+} =
   wasteManagementOverviewLoaders;
 const {
   loadWasteCityById,
@@ -59,6 +67,7 @@ const {
   saveWasteCity,
   saveWasteCollectionLocation,
   saveWasteFraction,
+  deleteWasteFraction,
   saveWasteGlobalDateShift,
   saveWasteHouseNumber,
   saveWasteLocationTourLink,
@@ -82,6 +91,8 @@ export const wasteManagementHandlers = {
       getWasteManagementMasterDataOverviewInternal(nextRequest, ctx, {
         ...sharedWasteManagementDeps,
         loadMasterDataOverview,
+        loadMasterDataFractionsOverview,
+        loadMasterDataLocationsOverview,
       })
     ),
   getToursOverview: (request: Request): Promise<Response> =>
@@ -111,6 +122,14 @@ export const wasteManagementHandlers = {
       createWasteManagementFractionInternal(nextRequest, ctx, {
         ...sharedWasteManagementDeps,
         saveWasteFraction,
+        loadWasteFractionById,
+      })
+    ),
+  deleteFraction: (request: Request): Promise<Response> =>
+    withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
+      deleteWasteManagementFractionInternal(nextRequest, ctx, {
+        ...sharedWasteManagementDeps,
+        deleteWasteFraction,
         loadWasteFractionById,
       })
     ),

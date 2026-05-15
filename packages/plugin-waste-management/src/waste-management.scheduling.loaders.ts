@@ -18,17 +18,26 @@ export const useWasteSchedulingDataLoading = (state: WasteSchedulingState, pt: T
   const loadOverview = useCallback(
     async () => {
       try {
-        const [schedulingResponse, toursResponse] = await Promise.all([
-          getWasteManagementSchedulingOverview(),
-          getWasteManagementToursOverview(),
-        ]);
+        const schedulingResponse = await getWasteManagementSchedulingOverview();
         if (!isMountedRef.current) return;
         setOverview(schedulingResponse);
-        setAvailableTours(toursResponse.tours);
         setError(null);
+        void (async () => {
+          try {
+            const toursResponse = await getWasteManagementToursOverview();
+            if (isMountedRef.current) {
+              setAvailableTours(toursResponse.tours);
+            }
+          } catch {
+            if (isMountedRef.current) {
+              setAvailableTours([]);
+            }
+          }
+        })();
       } catch (loadError) {
         if (!isMountedRef.current) return;
         const code = resolveApiErrorCode(loadError);
+        setAvailableTours([]);
         setError(
           code === 'forbidden'
             ? ptRef.current('scheduling.messages.loadForbidden')

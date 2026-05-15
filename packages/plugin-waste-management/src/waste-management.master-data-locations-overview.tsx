@@ -1,5 +1,5 @@
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { Badge, StudioActionMenu } from '@sva/studio-ui-react';
+import { StudioActionMenu } from '@sva/studio-ui-react';
 
 export const WasteMasterDataLocationsOverview = ({
   collectionLocationCount,
@@ -50,14 +50,6 @@ export const WasteMasterDataLocationsOverview = ({
             },
           ]}
         />
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        <Badge>{pt('masterData.meta.collectionLocationCount', { value: collectionLocationCount })}</Badge>
-        <Badge variant="outline">{pt('masterData.meta.regionCount', { value: regionCount })}</Badge>
-        <Badge variant="outline">{pt('masterData.meta.cityCount', { value: cityCount })}</Badge>
-        <Badge variant="outline">{pt('masterData.meta.streetCount', { value: streetCount })}</Badge>
-        <Badge variant="outline">{pt('masterData.meta.houseNumberCount', { value: houseNumberCount })}</Badge>
       </div>
     </>
   );

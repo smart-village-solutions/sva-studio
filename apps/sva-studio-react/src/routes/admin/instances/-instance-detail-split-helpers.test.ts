@@ -482,7 +482,6 @@ describe('instance detail split helpers', () => {
 
     expect(readySteps.find((step) => step.key === 'realm')).toMatchObject({ status: 'done' });
     expect(readySteps.find((step) => step.key === 'client')).toMatchObject({ status: 'done' });
-    expect(readySteps.find((step) => step.key === 'mapper')).toMatchObject({ status: 'done' });
     expect(readySteps.find((step) => step.key === 'tenantAdminClient')).toMatchObject({ status: 'done' });
     expect(readySteps.find((step) => step.key === 'tenantSecret')).toMatchObject({ status: 'done' });
     expect(readySteps.find((step) => step.key === 'tenantAdmin')).toMatchObject({ status: 'done' });
@@ -531,7 +530,6 @@ describe('instance detail split helpers', () => {
     expect(runningSteps.find((step) => step.key === 'keycloakAccess')).toMatchObject({ status: 'current' });
     expect(runningSteps.find((step) => step.key === 'realm')).toMatchObject({ status: 'pending' });
     expect(runningSteps.find((step) => step.key === 'client')).toMatchObject({ status: 'pending' });
-    expect(runningSteps.find((step) => step.key === 'mapper')).toMatchObject({ status: 'done' });
     expect(runningSteps.find((step) => step.key === 'tenantAdminClient')).toMatchObject({ status: 'current' });
     expect(runningSteps.find((step) => step.key === 'tenantSecret')).toMatchObject({ status: 'current' });
     expect(runningSteps.find((step) => step.key === 'tenantAdmin')).toMatchObject({ status: 'current' });

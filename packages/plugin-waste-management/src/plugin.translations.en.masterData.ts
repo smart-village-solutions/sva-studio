@@ -28,9 +28,29 @@ export const wasteManagementPluginTranslationsENMasterData = {
       "description": "Maintain visible fractions as the first real mutation path of the plugin.",
       "color": "Color: {{value}}",
       "containerSize": "Container: {{value}}",
+      "table": {
+        "ariaLabel": "Table of waste fractions",
+        "caption": "Table of waste fractions with status, metadata, and actions.",
+        "name": "Fraction",
+        "nameWithContainerSize": "Name (Container size)",
+        "selection": "Selection",
+        "status": "Status",
+        "color": "Color",
+        "containerSize": "Container",
+        "translations": "Translations",
+        "actions": "Actions",
+        "noContainerSize": "No container size",
+        "noTranslations": "No translations",
+        "noDescription": "No description",
+        "colorSwatch": "Color value {{value}}",
+        "selectAllRows": "Select all entries in {{label}}",
+        "selectRow": "Select entry {{rowId}}",
+        "selectMobileRow": "Select entry {{rowId}} in card view"
+      },
       "actions": {
         "openCreate": "Create fraction",
         "edit": "Edit",
+        "delete": "Delete",
         "cancel": "Cancel",
         "create": "Save fraction",
         "save": "Save changes",
@@ -52,11 +72,21 @@ export const wasteManagementPluginTranslationsENMasterData = {
         "editTitle": "Edit waste fraction",
         "editDescription": "Change name, color and visibility of the fraction."
       },
+      "deleteDialog": {
+        "title": "Delete waste fraction",
+        "description": "The waste fraction {{value}} will be deleted permanently.",
+        "confirm": "Delete",
+        "cancel": "Cancel"
+      },
       "messages": {
         "createSuccess": "The waste fraction was created.",
         "updateSuccess": "The waste fraction was updated.",
+        "deleteSuccess": "The waste fraction was deleted.",
         "saveError": "The waste fraction could not be saved.",
-        "saveForbidden": "Missing permission to save waste fractions."
+        "saveForbidden": "Missing permission to save waste fractions.",
+        "deleteError": "The waste fraction could not be deleted.",
+        "deleteForbidden": "Missing permission to delete waste fractions.",
+        "deleteConflict": "The waste fraction cannot be deleted because assignments still exist."
       }
     },
     "regions": {

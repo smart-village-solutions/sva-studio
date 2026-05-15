@@ -1,7 +1,7 @@
 import {
-  definePluginAuditEvents,
   defineMediaPickerDefinition,
   createStandardContentPluginActionIds,
+  createStandardContentPluginDefinition,
   createStandardContentPluginContribution,
   type PluginDefinition,
 } from '@sva/plugin-sdk';
@@ -50,17 +50,10 @@ export const getPluginNewsActionDefinition = (
   actionId: (typeof pluginNewsActionIds)[keyof typeof pluginNewsActionIds]
 ) => pluginNewsActionDefinitions.find((action) => action.id === actionId);
 
-export const pluginNews: PluginDefinition = {
-  id: 'news',
+export const pluginNews: PluginDefinition = createStandardContentPluginDefinition({
+  pluginId: 'news',
   displayName: 'News',
-  routes: [],
-  navigation: standardNewsContribution.navigation,
-  actions: pluginNewsActionDefinitions,
-  permissions: pluginNewsPermissionDefinitions,
-  moduleIam: standardNewsContribution.moduleIam,
-  contentTypes: standardNewsContribution.contentTypes,
-  adminResources: standardNewsContribution.adminResources,
-  auditEvents: definePluginAuditEvents('news', []),
+  contribution: standardNewsContribution,
   translations: {
     de: {
       news: {
@@ -305,4 +298,4 @@ export const pluginNews: PluginDefinition = {
       },
     },
   },
-};
+});

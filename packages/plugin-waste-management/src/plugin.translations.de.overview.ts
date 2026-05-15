@@ -11,6 +11,31 @@ export const wasteManagementPluginTranslationsDEOverview = {
       "technical": "Technische Historie",
       "audit": "Audit-Historie"
     },
+    "technical": {
+      "table": {
+        "ariaLabel": "Tabelle technischer Waste-Historieneinträge",
+        "caption": "Tabelle technischer Historieneinträge für Waste.",
+        "eventType": "Ereignistyp",
+        "outcome": "Ergebnis",
+        "occurredAt": "Zeitpunkt",
+        "jobId": "Job",
+        "jobTypeId": "Jobtyp",
+        "reasonCode": "Reason-Code",
+        "requestId": "Request-ID"
+      }
+    },
+    "audit": {
+      "table": {
+        "ariaLabel": "Tabelle der Waste-Audit-Historie",
+        "caption": "Tabelle der Audit-Historie für Waste.",
+        "actionId": "Action-ID",
+        "outcome": "Ergebnis",
+        "occurredAt": "Zeitpunkt",
+        "resource": "Ressource",
+        "reasonCode": "Reason-Code",
+        "requestId": "Request-ID"
+      }
+    },
     "meta": {
       "total": "{{value}} Historieneinträge gesamt",
       "visible": "{{value}} Einträge auf dieser Seite",

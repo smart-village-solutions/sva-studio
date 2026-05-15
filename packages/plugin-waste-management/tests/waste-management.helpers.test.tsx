@@ -15,6 +15,7 @@ import {
   wasteMasterDataInputMappers,
 } from '../src/waste-management.master-data.forms.js';
 import { createWasteMasterDataLocationActions } from '../src/waste-management.master-data.location-actions.js';
+import { createWasteMasterDataFractionRegionSubmissions } from '../src/waste-management.master-data.fraction-region-submissions.js';
 import {
   ResetConfirmationDialog,
   StatusNotice,
@@ -464,6 +465,111 @@ describe('waste management helper modules', () => {
     expect(state.setAssignmentsDialogOpen).toHaveBeenCalledTimes(2);
     expect(state.setLinkForm).toHaveBeenCalled();
     expect(state.setCalendarOpen).toHaveBeenCalledWith(true);
+  });
+
+  it('covers fraction and region submission handlers for success and forbidden error branches', async () => {
+    const createWasteManagementFractionMock = vi.fn();
+    const updateWasteManagementFractionMock = vi.fn();
+    const deleteWasteManagementFractionMock = vi.fn();
+    const createWasteManagementRegionMock = vi.fn();
+    const updateWasteManagementRegionMock = vi.fn();
+    const applySuccessSpy = vi.fn((close, setMessage, text: string) => {
+      close();
+      setMessage({ kind: 'success', text });
+    });
+
+    vi.doMock('../src/waste-management.api.js', async (importOriginal) => {
+      const actual = await importOriginal<typeof import('../src/waste-management.api.js')>();
+      return {
+        ...actual,
+        createWasteManagementFraction: createWasteManagementFractionMock,
+        updateWasteManagementFraction: updateWasteManagementFractionMock,
+        deleteWasteManagementFraction: deleteWasteManagementFractionMock,
+        createWasteManagementRegion: createWasteManagementRegionMock,
+        updateWasteManagementRegion: updateWasteManagementRegionMock,
+      };
+    });
+
+    vi.doMock('../src/waste-management.master-data.state.js', async (importOriginal) => {
+      const actual = await importOriginal<typeof import('../src/waste-management.master-data.state.js')>();
+      return {
+        ...actual,
+        applySuccess: applySuccessSpy,
+      };
+    });
+
+    const { createWasteMasterDataFractionRegionSubmissions: createSubmissions } = await import(
+      '../src/waste-management.master-data.fraction-region-submissions.js'
+    );
+
+    const setSaving = vi.fn();
+    const setMessage = vi.fn();
+    const setDialogOpen = vi.fn();
+    const setRegionDialogOpen = vi.fn();
+    const loadOverview = vi.fn().mockResolvedValue(undefined);
+    const state = {
+      dialogMode: 'create',
+      regionDialogMode: 'edit',
+      fractionForm: wasteMasterDataFormDefaults.createFraction(),
+      regionForm: { id: 'region-1', name: 'Nord' },
+      setSaving,
+      setMessage,
+      setDialogOpen,
+      setRegionDialogOpen,
+    } as never;
+    const pt = (key: string) => key;
+    const handlers = createSubmissions({
+      state,
+      pt,
+      search: {} as never,
+      loadOverview,
+    });
+
+    const createEvent = { preventDefault: vi.fn() } as unknown as React.FormEvent<HTMLFormElement>;
+    await handlers.onSubmitFraction(createEvent);
+    expect(createWasteManagementFractionMock).toHaveBeenCalledOnce();
+    expect(applySuccessSpy).toHaveBeenCalledWith(
+      expect.any(Function),
+      setMessage,
+      'masterData.fractions.messages.createSuccess'
+    );
+    expect(setDialogOpen).toHaveBeenCalledWith(false);
+
+    state.dialogMode = 'edit';
+    updateWasteManagementFractionMock.mockRejectedValueOnce(new WasteManagementApiError('forbidden', 'nope'));
+    await handlers.onSubmitFraction(createEvent);
+    expect(updateWasteManagementFractionMock).toHaveBeenCalledOnce();
+    expect(setMessage).toHaveBeenLastCalledWith({
+      kind: 'error',
+      text: 'masterData.fractions.messages.saveForbidden',
+    });
+
+    deleteWasteManagementFractionMock.mockRejectedValueOnce(new WasteManagementApiError('invalid_request', 'busy'));
+    await handlers.deleteFraction('fraction-1');
+    expect(setMessage).toHaveBeenLastCalledWith({
+      kind: 'error',
+      text: 'masterData.fractions.messages.deleteConflict',
+    });
+
+    createWasteManagementRegionMock.mockRejectedValueOnce(new WasteManagementApiError('forbidden', 'nope'));
+    state.regionDialogMode = 'create';
+    await handlers.onSubmitRegion(createEvent);
+    expect(setMessage).toHaveBeenLastCalledWith({
+      kind: 'error',
+      text: 'masterData.regions.messages.saveForbidden',
+    });
+
+    state.regionDialogMode = 'edit';
+    updateWasteManagementRegionMock.mockResolvedValueOnce(undefined);
+    await handlers.onSubmitRegion(createEvent);
+    expect(updateWasteManagementRegionMock).toHaveBeenCalledWith(
+      'region-1',
+      wasteMasterDataInputMappers.toUpdateRegionInput(state.regionForm)
+    );
+    expect(setRegionDialogOpen).toHaveBeenCalledWith(false);
+
+    vi.doUnmock('../src/waste-management.api.js');
+    vi.doUnmock('../src/waste-management.master-data.state.js');
   });
 
   it('covers waste tours assignment submission handlers for success and forbidden failures', async () => {

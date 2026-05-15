@@ -27,6 +27,7 @@ export default defineConfig({
         find: /^@sva\/monitoring-client\/logger-provider.server$/,
         replacement: resolve(__dirname, '../monitoring-client/src/logger-provider.server.ts'),
       },
+      { find: /^@sva\/monitoring-client\/logging$/, replacement: resolve(__dirname, '../monitoring-client/src/logging.ts') },
       { find: /^@sva\/monitoring-client\/server$/, replacement: resolve(__dirname, '../monitoring-client/src/server.ts') },
       {
         find: /^@sva\/iam-governance\/governance-compliance-export$/,

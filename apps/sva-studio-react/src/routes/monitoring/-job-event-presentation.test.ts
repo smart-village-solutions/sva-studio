@@ -8,6 +8,14 @@ import {
   resolveMonitoringJobEventIsTerminal,
   resolveMonitoringJobEventTone,
 } from './-job-event-presentation';
+import {
+  formatMonitoringJobDateTime,
+  formatMonitoringJobProgressSummary,
+  getMonitoringJobCurrentStep,
+  monitoringJobStaleStateLabelKeyByValue,
+  monitoringJobStatusLabelKeyByValue,
+  monitoringJobStatusVariantByValue,
+} from './-job-presentation';
 
 const baseEvent: StudioJobEventRecord = {
   id: 'event-1',
@@ -79,5 +87,27 @@ describe('monitoring job event presentation', () => {
         status: 'failed',
       })
     ).toBe(true);
+  });
+
+  it('provides shared status and progress presentation helpers for monitoring pages', () => {
+    expect(monitoringJobStatusVariantByValue.failed).toBe('destructive');
+    expect(monitoringJobStatusLabelKeyByValue.running).toBe('monitoring.jobs.status.running');
+    expect(monitoringJobStaleStateLabelKeyByValue.terminal).toBe('monitoring.jobs.runtime.terminal');
+    expect(formatMonitoringJobDateTime(undefined)).toBe('Nicht verfügbar');
+    expect(formatMonitoringJobDateTime('invalid-date')).toBe('invalid-date');
+    expect(
+      formatMonitoringJobProgressSummary({
+        completedSteps: 2,
+        totalSteps: 5,
+      })
+    ).toBe('2 / 5 Schritte (40 %)');
+    expect(
+      getMonitoringJobCurrentStep({
+        completedSteps: 2,
+        totalSteps: 5,
+        currentStepLabel: 'Normalisieren',
+      })
+    ).toBe('Normalisieren');
+    expect(getMonitoringJobCurrentStep(undefined)).toBe('Nicht verfügbar');
   });
 });

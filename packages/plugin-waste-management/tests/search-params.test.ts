@@ -23,6 +23,8 @@ describe('waste-management search params', () => {
       pageSize: 25,
       status: 'all',
       shiftContext: 'all',
+      fractionsSortBy: 'name',
+      fractionsSortDirection: 'asc',
       regionId: undefined,
       cityId: undefined,
       wasteFractionId: undefined,
@@ -40,6 +42,8 @@ describe('waste-management search params', () => {
         pageSize: '50',
         status: 'active',
         shiftContext: 'tour',
+        fractionsSortBy: 'color',
+        fractionsSortDirection: 'desc',
         regionId: 'region-1',
         cityId: 'city-1',
         wasteFractionId: 'fraction-1',
@@ -53,6 +57,8 @@ describe('waste-management search params', () => {
       pageSize: 50,
       status: 'active',
       shiftContext: 'tour',
+      fractionsSortBy: 'color',
+      fractionsSortDirection: 'desc',
       regionId: 'region-1',
       cityId: 'city-1',
       wasteFractionId: 'fraction-1',
@@ -74,6 +80,31 @@ describe('waste-management search params', () => {
       pageSize: 25,
       status: 'all',
       shiftContext: 'all',
+      fractionsSortBy: 'name',
+      fractionsSortDirection: 'asc',
+      regionId: undefined,
+      cityId: undefined,
+      wasteFractionId: undefined,
+      tourId: undefined,
+    });
+  });
+
+  it('falls back to canonical fraction sort defaults for invalid sort values', () => {
+    expect(
+      normalizeWasteManagementSearchParams({
+        fractionsSortBy: 'bogus',
+        fractionsSortDirection: 'sideways',
+      })
+    ).toEqual({
+      tab: 'fractions',
+      masterDataTab: 'fractions',
+      q: '',
+      page: 1,
+      pageSize: 25,
+      status: 'all',
+      shiftContext: 'all',
+      fractionsSortBy: 'name',
+      fractionsSortDirection: 'asc',
       regionId: undefined,
       cityId: undefined,
       wasteFractionId: undefined,

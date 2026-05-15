@@ -1,4 +1,3 @@
-import type { StudioJobDetail } from '@sva/core';
 import { Link } from '@tanstack/react-router';
 
 import { Alert, AlertDescription } from '../../components/ui/alert';
@@ -13,60 +12,22 @@ import {
   formatMonitoringJobEventTitle,
   resolveMonitoringJobEventTone,
 } from './-job-event-presentation';
+import {
+  formatMonitoringJobDateTime,
+  formatMonitoringJobProgressSummary,
+  getMonitoringJobCurrentStep,
+  monitoringJobStaleStateLabelKeyByValue,
+  monitoringJobStatusLabelKeyByValue,
+  monitoringJobStatusVariantByValue,
+} from './-job-presentation';
 
 type MonitoringJobDetailPageProps = Readonly<{
   jobId: string;
 }>;
 
-const statusVariantByValue = {
-  queued: 'outline',
-  running: 'secondary',
-  retrying: 'secondary',
-  succeeded: 'default',
-  failed: 'destructive',
-  cancelled: 'destructive',
-} as const;
-
-const statusLabelKeyByValue = {
-  queued: 'monitoring.jobs.status.queued',
-  running: 'monitoring.jobs.status.running',
-  retrying: 'monitoring.jobs.status.retrying',
-  succeeded: 'monitoring.jobs.status.succeeded',
-  failed: 'monitoring.jobs.status.failed',
-  cancelled: 'monitoring.jobs.status.cancelled',
-} as const;
-
-const staleStateLabelKeyByValue = {
-  fresh: 'monitoring.jobs.runtime.fresh',
-  stale: 'monitoring.jobs.runtime.stale',
-  terminal: 'monitoring.jobs.runtime.terminal',
-} as const;
-
-const formatDateTime = (value?: string): string => {
-  if (!value) {
-    return t('monitoring.jobs.values.notAvailable');
-  }
-
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
-};
-
 const formatStructuredValue = (value: unknown): string => {
   const json = JSON.stringify(value, null, 2);
   return json && json.length > 0 ? json : '{}';
-};
-
-const formatProgressSummary = (job: StudioJobDetail): string => {
-  if (!job.progress) {
-    return t('monitoring.jobs.values.notAvailable');
-  }
-
-  const percent = job.progress.totalSteps > 0 ? Math.round((job.progress.completedSteps / job.progress.totalSteps) * 100) : 0;
-  return t('monitoring.jobs.progress.summary', {
-    current: job.progress.completedSteps,
-    total: job.progress.totalSteps,
-    percent,
-  });
 };
 
 const jobsErrorMessage = (error: IamHttpError | null): string => {
@@ -95,12 +56,12 @@ export const MonitoringJobDetailPage = ({ jobId }: MonitoringJobDetailPageProps)
       <header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-2">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge variant={job ? statusVariantByValue[job.status] : 'outline'}>
-              {job ? t(statusLabelKeyByValue[job.status]) : t('monitoring.jobs.status.queued')}
+            <Badge variant={job ? monitoringJobStatusVariantByValue[job.status] : 'outline'}>
+              {job ? t(monitoringJobStatusLabelKeyByValue[job.status]) : t('monitoring.jobs.status.queued')}
             </Badge>
             {job?.runtime ? (
               <Badge variant={job.runtime.staleState === 'stale' ? 'destructive' : 'outline'}>
-                {t(staleStateLabelKeyByValue[job.runtime.staleState])}
+                {t(monitoringJobStaleStateLabelKeyByValue[job.runtime.staleState])}
               </Badge>
             ) : null}
           </div>
@@ -131,8 +92,16 @@ export const MonitoringJobDetailPage = ({ jobId }: MonitoringJobDetailPageProps)
               <CardContent className="space-y-3 text-sm">
                 <p>{t('monitoring.jobs.labels.pluginId', { value: job.pluginId })}</p>
                 <p>{t('monitoring.jobs.labels.jobTypeId', { value: job.jobTypeId })}</p>
-                <p>{t('monitoring.jobs.labels.correlationId', { value: job.correlationId ?? t('monitoring.jobs.values.notAvailable') })}</p>
-                <p>{t('monitoring.jobs.labels.parentJobId', { value: job.parentJobId ?? t('monitoring.jobs.values.notAvailable') })}</p>
+                <p>
+                  {t('monitoring.jobs.labels.correlationId', {
+                    value: job.correlationId ?? t('monitoring.jobs.values.notAvailable'),
+                  })}
+                </p>
+                <p>
+                  {t('monitoring.jobs.labels.parentJobId', {
+                    value: job.parentJobId ?? t('monitoring.jobs.values.notAvailable'),
+                  })}
+                </p>
                 <p>{t('monitoring.jobs.labels.workerId', { value: job.workerId ?? t('monitoring.jobs.values.notAvailable') })}</p>
                 <p>{t('monitoring.jobs.labels.attempts', { current: job.attempts, max: job.maxAttempts })}</p>
               </CardContent>
@@ -143,15 +112,15 @@ export const MonitoringJobDetailPage = ({ jobId }: MonitoringJobDetailPageProps)
                 <CardTitle>{t('monitoring.jobs.detail.runtimeTitle')}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3 text-sm">
-                <p>{t('monitoring.jobs.progress.current', { value: formatProgressSummary(job) })}</p>
+                <p>{t('monitoring.jobs.progress.current', { value: formatMonitoringJobProgressSummary(job.progress) })}</p>
+                <p>{t('monitoring.jobs.progress.step', { value: getMonitoringJobCurrentStep(job.progress) })}</p>
+                <p>{t('monitoring.jobs.labels.startedAt', { value: formatMonitoringJobDateTime(job.startedAt) })}</p>
                 <p>
-                  {t('monitoring.jobs.progress.step', {
-                    value: job.progress?.currentStepLabel ?? job.progress?.currentStepKey ?? t('monitoring.jobs.values.notAvailable'),
+                  {t('monitoring.jobs.labels.lastObservedAt', {
+                    value: formatMonitoringJobDateTime(job.runtime?.lastObservedAt),
                   })}
                 </p>
-                <p>{t('monitoring.jobs.labels.startedAt', { value: formatDateTime(job.startedAt) })}</p>
-                <p>{t('monitoring.jobs.labels.lastObservedAt', { value: formatDateTime(job.runtime?.lastObservedAt) })}</p>
-                <p>{t('monitoring.jobs.labels.finishedAt', { value: formatDateTime(job.finishedAt) })}</p>
+                <p>{t('monitoring.jobs.labels.finishedAt', { value: formatMonitoringJobDateTime(job.finishedAt) })}</p>
                 <p>
                   {t('monitoring.jobs.labels.cancellationRequested', {
                     value: job.runtime?.cancellationRequested
@@ -211,19 +180,14 @@ export const MonitoringJobDetailPage = ({ jobId }: MonitoringJobDetailPageProps)
                             <Badge variant={resolveMonitoringJobEventTone(event) === 'error' ? 'destructive' : 'outline'}>
                               {formatMonitoringJobEventTitle(event)}
                             </Badge>
-                            <Badge variant={statusVariantByValue[event.status]}>{t(statusLabelKeyByValue[event.status])}</Badge>
+                            <Badge variant={monitoringJobStatusVariantByValue[event.status]}>
+                              {t(monitoringJobStatusLabelKeyByValue[event.status])}
+                            </Badge>
                           </div>
                           <p className="text-sm">{formatMonitoringJobEventMessage(event) ?? t('monitoring.jobs.values.notAvailable')}</p>
                           {event.progress ? (
                             <p className="text-xs text-muted-foreground">
-                              {t('monitoring.jobs.progress.summary', {
-                                current: event.progress.completedSteps,
-                                total: event.progress.totalSteps,
-                                percent:
-                                  event.progress.totalSteps > 0
-                                    ? Math.round((event.progress.completedSteps / event.progress.totalSteps) * 100)
-                                    : 0,
-                              })}
+                              {formatMonitoringJobProgressSummary(event.progress)}
                             </p>
                           ) : null}
                           {event.details ? (
@@ -233,7 +197,7 @@ export const MonitoringJobDetailPage = ({ jobId }: MonitoringJobDetailPageProps)
                           ) : null}
                         </div>
                         <div className="text-xs text-muted-foreground">
-                          <p>{formatDateTime(event.createdAt)}</p>
+                          <p>{formatMonitoringJobDateTime(event.createdAt)}</p>
                           <p>{t('monitoring.jobs.labels.attempts', { current: event.attempts, max: job.maxAttempts })}</p>
                         </div>
                       </div>

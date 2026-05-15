@@ -14,7 +14,8 @@ import { Label } from '../../../components/ui/label';
 import { Select } from '../../../components/ui/select';
 import { useInstances } from '../../../hooks/use-instances';
 import { t } from '../../../i18n';
-import { getErrorMessage, INSTANCE_STATUS_LABELS } from './-instances-shared';
+import { getErrorMessage } from './-instance-error-messages';
+import { INSTANCE_STATUS_LABELS } from './-instances-shared-types';
 
 type InstanceRow = IamInstanceListItem;
 

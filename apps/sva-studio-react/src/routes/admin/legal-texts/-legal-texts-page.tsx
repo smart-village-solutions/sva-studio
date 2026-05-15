@@ -10,51 +10,14 @@ import { Label } from '../../../components/ui/label';
 import { Select } from '../../../components/ui/select';
 import { useLegalTexts } from '../../../hooks/use-legal-texts';
 import { t, type TranslationKey } from '../../../i18n';
-import type { IamHttpError } from '../../../lib/iam-api';
+import { formatLegalTextDateTime, getLegalTextErrorMessage, type LegalTextStatus } from './-legal-texts-shared';
 
 type StatusFilter = 'all' | 'draft' | 'valid' | 'archived';
-type LegalTextStatus = 'draft' | 'valid' | 'archived';
 
 const statusLabelKeyByValue: Record<LegalTextStatus, TranslationKey> = {
   draft: 'admin.legalTexts.status.draft',
   valid: 'admin.legalTexts.status.valid',
   archived: 'admin.legalTexts.status.archived',
-};
-
-const legalTextErrorMessage = (error: IamHttpError | null): string => {
-  if (!error) {
-    return t('admin.legalTexts.messages.error');
-  }
-
-  switch (error.code) {
-    case 'forbidden':
-      return t('admin.legalTexts.errors.forbidden');
-    case 'csrf_validation_failed':
-      return t('admin.legalTexts.errors.csrfValidationFailed');
-    case 'rate_limited':
-      return t('admin.legalTexts.errors.rateLimited');
-    case 'conflict':
-      return t('admin.legalTexts.errors.conflict');
-    case 'not_found':
-      return t('admin.legalTexts.errors.notFound');
-    case 'database_unavailable':
-      return t('admin.legalTexts.errors.databaseUnavailable');
-    case 'invalid_request':
-      return error.message && error.message !== `http_${error.status}`
-        ? error.message
-        : t('admin.legalTexts.errors.invalidRequest');
-    default:
-      return t('admin.legalTexts.messages.error');
-  }
-};
-
-const formatDateTime = (value?: string): string => {
-  if (!value) {
-    return t('admin.legalTexts.table.publishedUnset');
-  }
-
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
 };
 
 const collapseWhitespace = (value: string): string => {
@@ -198,7 +161,7 @@ export const LegalTextsPage = () => {
       {legalTextsApi.error ? (
         <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
           <AlertDescription className="flex flex-col gap-3">
-            <span>{legalTextErrorMessage(legalTextsApi.error)}</span>
+            <span>{getLegalTextErrorMessage(legalTextsApi.error)}</span>
             <div>
               <Button type="button" size="sm" variant="outline" onClick={() => void legalTextsApi.refetch()}>
                 {t('admin.legalTexts.actions.retry')}
@@ -249,16 +212,16 @@ export const LegalTextsPage = () => {
                     <Badge variant="outline">{t(statusLabelKeyByValue[item.status])}</Badge>
                   </td>
                   <td className="max-w-xs px-3 py-3 text-sm text-foreground">{summarizeHtml(item.contentHtml)}</td>
-                  <td className="px-3 py-3 text-sm text-foreground">{formatDateTime(item.publishedAt)}</td>
-                  <td className="px-3 py-3 text-sm text-foreground">{formatDateTime(item.createdAt)}</td>
-                  <td className="px-3 py-3 text-sm text-foreground">{formatDateTime(item.updatedAt)}</td>
+                  <td className="px-3 py-3 text-sm text-foreground">{formatLegalTextDateTime(item.publishedAt)}</td>
+                  <td className="px-3 py-3 text-sm text-foreground">{formatLegalTextDateTime(item.createdAt)}</td>
+                  <td className="px-3 py-3 text-sm text-foreground">{formatLegalTextDateTime(item.updatedAt)}</td>
                   <td className="px-3 py-3 text-sm text-foreground">
                     {t('admin.legalTexts.table.acceptanceSummary', {
                       active: String(item.activeAcceptanceCount),
                       total: String(item.acceptanceCount),
                     })}
                   </td>
-                  <td className="px-3 py-3 text-sm text-foreground">{formatDateTime(item.lastAcceptedAt)}</td>
+                  <td className="px-3 py-3 text-sm text-foreground">{formatLegalTextDateTime(item.lastAcceptedAt)}</td>
                   <td className="px-3 py-3 text-right">
                     <Button asChild type="button" variant="outline" size="sm">
                       <Link to="/admin/legal-texts/$legalTextVersionId" params={{ legalTextVersionId: item.id }}>

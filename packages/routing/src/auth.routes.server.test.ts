@@ -138,6 +138,7 @@ const authServerMocks = vi.hoisted(() => {
       createCity: vi.fn(async () => response('createWasteManagementCityHandler')),
       createCollectionLocation: vi.fn(async () => response('createWasteManagementCollectionLocationHandler')),
       createFraction: vi.fn(async () => response('createWasteManagementFractionHandler')),
+      deleteFraction: vi.fn(async () => response('deleteWasteManagementFractionHandler')),
       createHouseNumber: vi.fn(async () => response('createWasteManagementHouseNumberHandler')),
       createGlobalDateShift: vi.fn(async () => response('createWasteManagementGlobalDateShiftHandler')),
       createLocationTourLinksBulk: vi.fn(async () => response('createWasteManagementLocationTourLinksBulkHandler')),
@@ -346,6 +347,8 @@ describe('auth.routes.server', () => {
 
   it('dispatches waste management routes to the auth runtime', async () => {
     const masterDataHandlers = resolveAuthHandlers('/api/v1/waste-management/master-data');
+    const fractionHandlers = resolveAuthHandlers('/api/v1/waste-management/fractions');
+    const fractionDetailHandlers = resolveAuthHandlers('/api/v1/waste-management/fractions/$fractionId');
     const collectionLocationHandlers = resolveAuthHandlers('/api/v1/waste-management/collection-locations');
     const collectionLocationDetailHandlers = resolveAuthHandlers(
       '/api/v1/waste-management/collection-locations/$locationId'
@@ -374,6 +377,8 @@ describe('auth.routes.server', () => {
     const resetHandlers = resolveAuthHandlers('/api/v1/waste-management/tools/reset');
 
     expect(masterDataHandlers?.GET).toBeDefined();
+    expect(fractionHandlers?.POST).toBeDefined();
+    expect(fractionDetailHandlers?.DELETE).toBeDefined();
     expect(collectionLocationHandlers?.POST).toBeDefined();
     expect(collectionLocationDetailHandlers?.PUT).toBeDefined();
     expect(streetHandlers?.POST).toBeDefined();
@@ -400,6 +405,12 @@ describe('auth.routes.server', () => {
 
     await masterDataHandlers.GET?.({
       request: new Request('http://localhost/api/v1/waste-management/master-data', { method: 'GET' }),
+    });
+    await fractionHandlers.POST?.({
+      request: new Request('http://localhost/api/v1/waste-management/fractions', { method: 'POST' }),
+    });
+    await fractionDetailHandlers.DELETE?.({
+      request: new Request('http://localhost/api/v1/waste-management/fractions/fraction-1', { method: 'DELETE' }),
     });
     await collectionLocationHandlers.POST?.({
       request: new Request('http://localhost/api/v1/waste-management/collection-locations', { method: 'POST' }),
@@ -479,10 +490,12 @@ describe('auth.routes.server', () => {
     });
 
     expect(authServerMocks.wasteManagementHandlers.getMasterDataOverview).toHaveBeenCalled();
+    expect(authServerMocks.wasteManagementHandlers.createFraction).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.createCollectionLocation).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.updateCollectionLocation).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.createStreet).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.updateStreet).toHaveBeenCalled();
+    expect(authServerMocks.wasteManagementHandlers.deleteFraction).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.createHouseNumber).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.updateHouseNumber).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.createLocationTourLink).toHaveBeenCalled();

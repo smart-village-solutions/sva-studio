@@ -4,6 +4,18 @@ export const wasteManagementPluginTranslationsENScheduling = {
       "title": "Global shifts",
       "description": "Shifts with global effect across multiple tours.",
       "cardTitle": "Global shift {{value}}",
+      "table": {
+        "ariaLabel": "Table of global waste shifts",
+        "caption": "Table of global waste shifts with context and actions.",
+        "originalDate": "Original date",
+        "actualDate": "Shifted date",
+        "reason": "Reason",
+        "description": "Description",
+        "affectedTours": "Affected tours",
+        "hasYear": "Year-specific",
+        "reasonKey": "Reason key",
+        "actions": "Actions"
+      },
       "actions": {
         "openCreate": "Create global shift",
         "edit": "Edit",
@@ -40,6 +52,19 @@ export const wasteManagementPluginTranslationsENScheduling = {
       "title": "Tour-related shifts",
       "description": "Targeted single-date shifts for specific tours.",
       "cardTitle": "Tour {{value}}",
+      "table": {
+        "ariaLabel": "Table of tour-related waste shifts",
+        "caption": "Table of tour-related waste shifts with context and actions.",
+        "tourId": "Tour",
+        "originalDate": "Original date",
+        "actualDate": "Shifted date",
+        "reason": "Reason",
+        "description": "Description",
+        "followUpMode": "Follow-up effect",
+        "hasYear": "Year-specific",
+        "reasonKey": "Reason key",
+        "actions": "Actions"
+      },
       "actions": {
         "openCreate": "Create tour shift",
         "edit": "Edit",
@@ -102,6 +127,9 @@ export const wasteManagementPluginTranslationsENScheduling = {
       "loadForbidden": "Missing permission for waste scheduling shifts.",
       "emptyTitle": "No scheduling shifts found",
       "emptyBody": "Adjust the filters or provide date shifts in the waste data source."
+    },
+    "table": {
+      "notAvailable": "Not available"
     }
   }
 } as const;

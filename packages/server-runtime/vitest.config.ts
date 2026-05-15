@@ -8,6 +8,7 @@ export default defineConfig({
     alias: [
       { find: /^@sva\/core\/security$/, replacement: resolve(__dirname, '../core/src/security/index.ts') },
       { find: /^@sva\/core$/, replacement: resolve(__dirname, '../core/src/index.ts') },
+      { find: /^@sva\/monitoring-client\/logging$/, replacement: resolve(__dirname, '../monitoring-client/src/logging.ts') },
       { find: /^@sva\/monitoring-client\/logger-provider.server$/, replacement: resolve(__dirname, '../monitoring-client/src/logger-provider.server.ts') },
       { find: /^@sva\/monitoring-client\/server$/, replacement: resolve(__dirname, '../monitoring-client/src/server.ts') },
     ],

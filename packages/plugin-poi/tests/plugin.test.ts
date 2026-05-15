@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { pluginPoi } from '../src/plugin.js';
+import {
+  pluginPoi,
+  pluginPoiActionDefinitions,
+  pluginPoiPermissionDefinitions,
+} from '../src/plugin.js';
 
 describe('pluginPoi contract', () => {
   it('keeps the canonical standard content contract', () => {
@@ -19,6 +23,8 @@ describe('pluginPoi contract', () => {
       'poi.update',
       'poi.delete',
     ]);
+    expect(pluginPoi.actions).toEqual(pluginPoiActionDefinitions);
+    expect(pluginPoi.permissions).toEqual(pluginPoiPermissionDefinitions);
     expect(pluginPoi.adminResources).toEqual([
       expect.objectContaining({
         resourceId: 'poi.content',

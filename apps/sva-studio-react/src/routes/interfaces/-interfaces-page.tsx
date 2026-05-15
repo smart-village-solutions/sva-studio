@@ -23,6 +23,8 @@ import {
 import { createEmptyInstanceInterfaceDraft, instanceInterfaceTypeMeta, type InstanceInterface, type InstanceInterfaceDraft, type InstanceInterfaceType } from '../../lib/instance-interfaces';
 import { InterfaceForm, TypePickerDialog } from './-interfaces-page.dialogs';
 
+const DEFAULT_AVAILABLE_TYPES: readonly InstanceInterfaceType[] = ['mainserver', 's3'];
+
 const statusBadgeClass: Record<InstanceInterface['status'], string> = {
   connected: 'border-primary/40 bg-primary/15 text-primary',
   error: 'border-destructive/40 bg-destructive/10 text-destructive',
@@ -88,6 +90,14 @@ const translateInterfacesErrorMessage = (error: unknown, fallback: string): stri
       return t('interfaces.errors.interfaceInstanceMismatch');
     case 'interface_type_change_not_supported':
       return t('interfaces.errors.interfaceTypeChangeNotSupported');
+    case 'supabase_requires_waste_management_module':
+      return t('interfaces.errors.supabaseRequiresWasteManagementModule');
+    case 'secret_unreadable':
+      return t('interfaces.errors.secretUnreadable');
+    case 'forbidden':
+      return t('interfaces.errors.forbidden');
+    case 'invalid_config':
+      return t('interfaces.errors.invalidConfig');
     default:
       return message;
   }
@@ -150,6 +160,7 @@ export const InterfacesPage = () => {
   const [statusMessage, setStatusMessage] = React.useState<string | null>(null);
   const [instanceId, setInstanceId] = React.useState('');
   const [interfaces, setInterfaces] = React.useState<readonly InstanceInterface[]>([]);
+  const [availableTypes, setAvailableTypes] = React.useState<readonly InstanceInterfaceType[]>(DEFAULT_AVAILABLE_TYPES);
   const [pickerOpen, setPickerOpen] = React.useState(false);
   const [pickerType, setPickerType] = React.useState<InstanceInterfaceType>('s3');
   const [editState, setEditState] = React.useState<EditState>({ mode: 'closed' });
@@ -161,8 +172,12 @@ export const InterfacesPage = () => {
     setErrorMessage(null);
     try {
       const result = await listInterfacesRef.current();
+      const nextAvailableTypes =
+        result.availableTypes.length > 0 ? result.availableTypes : DEFAULT_AVAILABLE_TYPES;
       setInstanceId(result.instanceId);
       setInterfaces(result.entries);
+      setAvailableTypes(nextAvailableTypes);
+      setPickerType((current) => (nextAvailableTypes.includes(current) ? current : nextAvailableTypes[0] ?? 's3'));
     } catch (error) {
       setErrorMessage(translateInterfacesErrorMessage(error, t('interfaces.messages.loadError')));
     } finally {
@@ -263,9 +278,14 @@ export const InterfacesPage = () => {
         id: 'status',
         header: t('interfaces.table.headerStatus'),
         cell: (row) => (
-          <Badge className={`rounded-full ${statusBadgeClass[row.status]}`} variant="outline">
-            {t(statusTranslationKey[row.status])}
-          </Badge>
+          <div className="flex max-w-sm flex-col gap-1">
+            <Badge className={`w-fit rounded-full ${statusBadgeClass[row.status]}`} variant="outline">
+              {t(statusTranslationKey[row.status])}
+            </Badge>
+            {row.statusMessage ? (
+              <span className="text-xs leading-snug text-muted-foreground">{row.statusMessage}</span>
+            ) : null}
+          </div>
         ),
         sortable: true,
         sortValue: (row) => row.status,
@@ -357,6 +377,7 @@ export const InterfacesPage = () => {
 
       <TypePickerDialog
         open={pickerOpen}
+        availableTypes={availableTypes}
         selectedType={pickerType}
         onSelectType={setPickerType}
         onCancel={() => setPickerOpen(false)}

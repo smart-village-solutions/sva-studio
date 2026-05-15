@@ -13,6 +13,7 @@ import type {
   InstanceInterfaceDraft,
   InstanceInterfaceS3,
   InstanceInterfaceSupabase,
+  InstanceInterfaceType,
 } from './instance-interfaces';
 
 const COMPONENT = 'interfaces-api';
@@ -25,6 +26,10 @@ type SaveInterfacesPayload = {
   readonly enabled?: boolean;
 };
 
+type AuthenticatedInterfacesRunResult<T> =
+  | { readonly ok: true; readonly result: T }
+  | { readonly ok: false; readonly error: ErrorPayload };
+
 type InterfacesErrorField = 'graphql_base_url' | 'oauth_token_url';
 
 type ErrorPayload = {
@@ -32,6 +37,8 @@ type ErrorPayload = {
   readonly error?: string;
   readonly field?: InterfacesErrorField;
 };
+
+const SAFE_CLIENT_ERROR_CODE_PATTERN = /^[a-z0-9]+(?:[_-][a-z0-9]+)*$/;
 
 const isSvaMainserverInstanceConfig = (value: unknown): value is SvaMainserverInstanceConfig => {
   if (!isRecord(value)) {
@@ -58,6 +65,18 @@ const isErrorPayload = (value: unknown): value is ErrorPayload => {
     value.field === 'graphql_base_url' ||
     value.field === 'oauth_token_url'
   );
+};
+
+const isAuthenticatedInterfacesRunResult = <T>(
+  value: unknown
+): value is AuthenticatedInterfacesRunResult<T> => {
+  if (!isRecord(value) || typeof value.ok !== 'boolean') {
+    return false;
+  }
+
+  return value.ok
+    ? 'result' in value
+    : isErrorPayload(value.error);
 };
 
 const ERROR_CODES = new Set<string>([
@@ -129,6 +148,21 @@ const readErrorCode = (error: Error): string | undefined => {
   return typeof candidate === 'string' ? candidate : undefined;
 };
 
+const isSafeClientErrorCode = (value: string | undefined): value is string =>
+  typeof value === 'string' && SAFE_CLIENT_ERROR_CODE_PATTERN.test(value);
+
+const readClientErrorCode = (error: unknown): string | undefined => {
+  const recordErrorCode =
+    isRecord(error) && typeof error.code === 'string' && isSafeClientErrorCode(error.code)
+      ? error.code
+      : undefined;
+  const instanceErrorCode = error instanceof Error ? readErrorCode(error) : undefined;
+  const messageErrorCode =
+    error instanceof Error && isSafeClientErrorCode(error.message) ? error.message : undefined;
+
+  return recordErrorCode ?? instanceErrorCode ?? messageErrorCode;
+};
+
 const getErrorStatusCode = (error: unknown, fallback: number): number => {
   if (isRecord(error) && isNumericStatusCode(error.statusCode)) {
     return error.statusCode;
@@ -146,26 +180,20 @@ const getErrorStatusCode = (error: unknown, fallback: number): number => {
 
 const getErrorPayload = (
   error: unknown,
-  fallbackCode: NonNullable<SvaMainserverConnectionStatus['errorCode']>
+  fallbackCode?: string
 ): ErrorPayload => {
-  const recordErrorCode =
-    isRecord(error) && typeof error.code === 'string' && isSvaMainserverErrorCode(error.code)
-      ? error.code
-      : undefined;
-  const instanceErrorCode = error instanceof Error ? readErrorCode(error) : undefined;
-  const errorCode = recordErrorCode ?? instanceErrorCode;
-
+  const errorCode = readClientErrorCode(error);
   const message = error instanceof Error ? error.message : readErrorMessage(error, '');
   const field = parseInterfacesErrorField(message || null);
 
   return {
-    error: errorCode && isSvaMainserverErrorCode(errorCode) ? errorCode : fallbackCode,
+    ...(errorCode || fallbackCode ? { error: errorCode ?? fallbackCode } : {}),
     ...(field ? { field } : {}),
   };
 };
 
 const createClientError = (payload: ErrorPayload | null, fallbackMessage: string): Error => {
-  const message = payload?.error && isSvaMainserverErrorCode(payload.error) ? payload.error : fallbackMessage;
+  const message = typeof payload?.error === 'string' && payload.error.length > 0 ? payload.error : fallbackMessage;
 
   return new Error(message, {
     cause: payload ?? undefined,
@@ -199,6 +227,33 @@ type InterfacesOperation =
   | 'upsert_interface'
   | 'delete_interface';
 
+const WASTE_MANAGEMENT_MODULE_ID = 'waste-management';
+const DEFAULT_AVAILABLE_INTERFACE_TYPES: readonly InstanceInterfaceType[] = ['mainserver', 's3'];
+
+const resolveAvailableInterfaceTypes = async (instanceId: string): Promise<readonly InstanceInterfaceType[]> => {
+  const { loadInstanceById } = await import('@sva/data-repositories/server');
+  const instance = await loadInstanceById(instanceId);
+  if (!instance?.assignedModules.includes(WASTE_MANAGEMENT_MODULE_ID)) {
+    return DEFAULT_AVAILABLE_INTERFACE_TYPES;
+  }
+
+  return [...DEFAULT_AVAILABLE_INTERFACE_TYPES, 'supabase'];
+};
+
+const requireWasteManagementModuleForSupabase = async (
+  draft: InstanceInterfaceDraft,
+  instanceId: string
+): Promise<void> => {
+  if (draft.type !== 'supabase') {
+    return;
+  }
+
+  const availableTypes = await resolveAvailableInterfaceTypes(instanceId);
+  if (!availableTypes.includes('supabase')) {
+    throw new Error('supabase_requires_waste_management_module');
+  }
+};
+
 const loadInterfacesRequestDependencies = async (): Promise<InterfacesRequestDependencies> => {
   const { getRequest } = await import('@tanstack/react-start/server');
   const { createSdkLogger } = await import('@sva/server-runtime');
@@ -226,18 +281,31 @@ const runWithAuthenticatedInterfacesUser = async <T>(input: {
 }): Promise<T> => {
   const { withAuthenticatedUser } = await import('@sva/auth-runtime/server');
 
-  let result: T | undefined;
   const response = await withAuthenticatedUser(input.request, async ({ user }) => {
-    result = await input.run(user);
-    return new Response(null, { status: 204 });
+    try {
+      return jsonResponse(200, {
+        ok: true,
+        result: await input.run(user),
+      } satisfies AuthenticatedInterfacesRunResult<T>);
+    } catch (error) {
+      return jsonResponse(200, {
+        ok: false,
+        error: getErrorPayload(error, 'invalid_config'),
+      } satisfies AuthenticatedInterfacesRunResult<T>);
+    }
   });
 
   if (response.ok) {
-    if (result === undefined) {
+    const payload = await parseJson<AuthenticatedInterfacesRunResult<T>>(response);
+    if (!isAuthenticatedInterfacesRunResult<T>(payload)) {
       throw new Error('missing_authenticated_result');
     }
 
-    return result;
+    if (payload.ok) {
+      return payload.result;
+    }
+
+    throw createClientError(payload.error, input.fallbackMessage);
   }
 
   const payload = await parseJson<ErrorPayload>(response);
@@ -477,6 +545,7 @@ export const loadInterfacesOverview = loadSvaMainserverInterfacesOverviewServerF
 
 type ListInstanceInterfacesResponse = Readonly<{
   instanceId: string;
+  availableTypes: readonly InstanceInterfaceType[];
   entries: readonly InstanceInterface[];
 }>;
 
@@ -531,6 +600,7 @@ export const listInstanceInterfacesServerFn = createServerFn().handler(
       const { listStoredInterfaces } = await import('./instance-interfaces-server.js');
       const stored = blockedOverview ? [] : await listStoredInterfaces(authorizedInstanceId);
       const projected = await Promise.all(stored.map((entry) => projectStoredEntry(authorizedInstanceId, entry)));
+      const availableTypes = await resolveAvailableInterfaceTypes(authorizedInstanceId);
 
       const mainserverEntry: InstanceInterface | null =
         !blockedOverview && overview.config
@@ -560,6 +630,7 @@ export const listInstanceInterfacesServerFn = createServerFn().handler(
 
       return {
         instanceId: authorizedInstanceId,
+        availableTypes,
         entries: [...(mainserverEntry ? [mainserverEntry] : []), ...projected],
       };
       },
@@ -580,7 +651,7 @@ export const upsertInstanceInterfaceServerFn = createServerFn({ method: 'POST' }
       throw new Error('mainserver_interfaces_use_dedicated_endpoint');
     }
     const dependencies = await loadInterfacesRequestDependencies();
-    const { upsertStoredInterface } = await import('./instance-interfaces-server.js');
+    const { getStoredInterface, upsertStoredInterface } = await import('./instance-interfaces-server.js');
     return runWithAuthenticatedInterfacesUser({
       request: dependencies.request,
       fallbackMessage: 'Schnittstelle konnte nicht gespeichert werden.',
@@ -591,8 +662,67 @@ export const upsertInstanceInterfaceServerFn = createServerFn({ method: 'POST' }
           'upsert_interface',
           data.instanceId
         );
-        const stored = await upsertStoredInterface(instanceId, data.draft, data.existingId);
-        return projectStoredEntry(instanceId, stored);
+        dependencies.logger.info('Received interface upsert request', {
+          operation: 'upsert_interface',
+          workspace_id: instanceId,
+          requested_workspace_id: data.instanceId,
+          interface_type: data.draft.type,
+          existing_interface_id: data.existingId,
+          enabled: data.draft.enabled,
+          user_id: user.id,
+          has_secret_input:
+            data.draft.type === 's3'
+              ? data.draft.config.secretAccessKey.length > 0
+              : data.draft.type === 'supabase'
+                ? data.draft.config.databaseUrl.length > 0 || data.draft.config.serviceRoleKey.length > 0
+                : false,
+          request_host: new URL(dependencies.request.url).host,
+          has_iam_database_url: Boolean(process.env.IAM_DATABASE_URL),
+        });
+        await requireWasteManagementModuleForSupabase(data.draft, instanceId);
+        let stored;
+        try {
+          stored = await upsertStoredInterface(instanceId, data.draft, data.existingId);
+        } catch (error) {
+          dependencies.logger.error('Interface upsert failed before projection refresh', {
+            operation: 'upsert_interface',
+            workspace_id: instanceId,
+            interface_type: data.draft.type,
+            existing_interface_id: data.existingId,
+            user_id: user.id,
+            error_message: readErrorMessage(error, 'Schnittstelle konnte nicht gespeichert werden.'),
+            ...extractErrorDiagnostics(error),
+          });
+          throw error;
+        }
+
+        if (stored.type === 'supabase' || stored.type === 's3') {
+          try {
+            const { runStoredInterfaceHealthcheck } = await import('./instance-interface-healthcheck.server.js');
+            await runStoredInterfaceHealthcheck({
+              instanceId,
+              interfaceId: stored.id,
+            });
+          } catch (error) {
+            dependencies.logger.warn('Interface healthcheck failed after save', {
+              operation: 'upsert_interface',
+              workspace_id: instanceId,
+              interface_id: stored.id,
+              interface_type: stored.type,
+              error_message: readErrorMessage(error, 'Healthcheck fehlgeschlagen.'),
+            });
+          }
+        }
+
+        const refreshed = await getStoredInterface(instanceId, stored.id);
+        dependencies.logger.info('Interface upsert finished', {
+          operation: 'upsert_interface',
+          workspace_id: instanceId,
+          interface_id: stored.id,
+          interface_type: stored.type,
+          refreshed_after_save: Boolean(refreshed),
+        });
+        return projectStoredEntry(instanceId, refreshed ?? stored);
       },
     });
   });

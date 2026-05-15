@@ -57,4 +57,43 @@ describe('prepare sonar lcov', () => {
     expect(output).toContain('SF:apps/sva-studio-react/src/styles.css');
     expect(output).toContain('SF:packages/auth-runtime/src/keycloak-user-attributes.ts');
   });
+
+  it('includes only coverage reports from projects that are part of sonar.sources', () => {
+    const rootDir = createTempRoot();
+    fs.writeFileSync(
+      path.join(rootDir, 'sonar-project.properties'),
+      [
+        'sonar.sources=apps/sva-studio-react/src,packages/auth-runtime/src',
+        'sonar.tests=apps/sva-studio-react/src,packages/auth-runtime/src',
+      ].join('\n')
+    );
+
+    writeCoverageReport(
+      rootDir,
+      'apps/sva-studio-react',
+      ['TN:', 'SF:src/styles.css', 'DA:1,1', 'end_of_record'].join('\n')
+    );
+    writeCoverageReport(
+      rootDir,
+      'packages/auth-runtime',
+      ['TN:', 'SF:src/keycloak-user-attributes.ts', 'DA:32,1', 'end_of_record'].join('\n')
+    );
+    writeCoverageReport(
+      rootDir,
+      'apps/project-report',
+      ['TN:', 'SF:src/app.tsx', 'DA:1,1', 'end_of_record'].join('\n')
+    );
+
+    const result = prepareSonarLcov({ rootDir });
+    const output = fs.readFileSync(path.join(rootDir, result.outputPath), 'utf8');
+
+    expect(result).toEqual({
+      outputPath: 'artifacts/sonar/lcov.info',
+      reports: 2,
+      sourceFiles: 2,
+    });
+    expect(output).toContain('SF:apps/sva-studio-react/src/styles.css');
+    expect(output).toContain('SF:packages/auth-runtime/src/keycloak-user-attributes.ts');
+    expect(output).not.toContain('SF:apps/project-report/src/app.tsx');
+  });
 });

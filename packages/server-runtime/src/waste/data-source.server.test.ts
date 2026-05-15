@@ -1,12 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  WasteRuntimeError,
-  buildWasteDatabaseUrlAad,
-  buildWasteServiceRoleKeyAad,
-  resolveWasteDataSource,
-  runWasteConnectionCheck,
-} from './data-source.server.js';
+import { buildExternalInterfaceSecretConfigAad } from '../external-interfaces.server.js';
+import { WasteRuntimeError, resolveWasteDataSource, runWasteConnectionCheck } from './data-source.server.js';
 
 describe('waste data source runtime', () => {
   it('resolves enabled waste data sources and reveals protected secrets with stable AADs', async () => {
@@ -15,21 +10,31 @@ describe('waste data source runtime', () => {
     await expect(
       resolveWasteDataSource({
         instanceId: 'tenant-a',
-        loadRecord: async () => ({
+        loadDefaultInterface: async () => ({
+          id: 'iface-1',
           instanceId: 'tenant-a',
-          provider: 'supabase',
-          projectUrl: 'https://tenant-a.supabase.co',
-          schemaName: 'public',
+          typeKey: 'supabase',
+          ownerKind: 'host',
+          ownerId: 'host',
+          displayName: 'Waste Supabase',
+          alias: 'default',
           enabled: true,
-          databaseUrlConfigured: true,
-          serviceRoleKeyConfigured: true,
-          databaseUrlCiphertext: 'db-cipher',
-          serviceRoleKeyCiphertext: 'service-cipher',
+          isDefault: true,
+          category: 'database',
+          statusCheckKind: 'supabase',
           visibleStatus: 'unknown',
+          publicConfig: {
+            projectUrl: 'https://tenant-a.supabase.co',
+            schemaName: 'public',
+          },
+          secretConfigCiphertext: 'db-cipher',
         }),
         revealSecret: (ciphertext, aad) => {
           revealCalls.push({ ciphertext, aad });
-          return ciphertext === 'db-cipher' ? 'postgres://db.example/waste' : 'service-role-key';
+          return JSON.stringify({
+            databaseUrl: 'postgres://db.example/waste',
+            serviceRoleKey: 'service-role-key',
+          });
         },
       })
     ).resolves.toEqual(
@@ -42,8 +47,7 @@ describe('waste data source runtime', () => {
     );
 
     expect(revealCalls).toEqual([
-      { ciphertext: 'db-cipher', aad: buildWasteDatabaseUrlAad('tenant-a') },
-      { ciphertext: 'service-cipher', aad: buildWasteServiceRoleKeyAad('tenant-a') },
+      { ciphertext: 'db-cipher', aad: buildExternalInterfaceSecretConfigAad('iface-1') },
     ]);
   });
 
@@ -51,7 +55,7 @@ describe('waste data source runtime', () => {
     await expect(
       resolveWasteDataSource({
         instanceId: 'tenant-a',
-        loadRecord: async () => null,
+        loadDefaultInterface: async () => null,
         revealSecret: () => undefined,
       })
     ).rejects.toMatchObject({
@@ -63,17 +67,24 @@ describe('waste data source runtime', () => {
     await expect(
       resolveWasteDataSource({
         instanceId: 'tenant-a',
-        loadRecord: async () => ({
+        loadDefaultInterface: async () => ({
+          id: 'iface-1',
           instanceId: 'tenant-a',
-          provider: 'supabase',
-          projectUrl: 'https://tenant-a.supabase.co',
-          schemaName: 'public',
+          typeKey: 'supabase',
+          ownerKind: 'host',
+          ownerId: 'host',
+          displayName: 'Waste Supabase',
+          alias: 'default',
           enabled: false,
-          databaseUrlConfigured: true,
-          serviceRoleKeyConfigured: true,
-          databaseUrlCiphertext: 'db-cipher',
-          serviceRoleKeyCiphertext: 'service-cipher',
+          isDefault: true,
+          category: 'database',
+          statusCheckKind: 'supabase',
           visibleStatus: 'unknown',
+          publicConfig: {
+            projectUrl: 'https://tenant-a.supabase.co',
+            schemaName: 'public',
+          },
+          secretConfigCiphertext: 'db-cipher',
         }),
         revealSecret: () => 'revealed',
       })
@@ -84,17 +95,24 @@ describe('waste data source runtime', () => {
     await expect(
       resolveWasteDataSource({
         instanceId: 'tenant-a',
-        loadRecord: async () => ({
+        loadDefaultInterface: async () => ({
+          id: 'iface-1',
           instanceId: 'tenant-a',
-          provider: 'supabase',
-          projectUrl: 'https://tenant-a.supabase.co',
-          schemaName: 'public',
+          typeKey: 'supabase',
+          ownerKind: 'host',
+          ownerId: 'host',
+          displayName: 'Waste Supabase',
+          alias: 'default',
           enabled: true,
-          databaseUrlConfigured: true,
-          serviceRoleKeyConfigured: true,
-          databaseUrlCiphertext: 'db-cipher',
-          serviceRoleKeyCiphertext: 'service-cipher',
+          isDefault: true,
+          category: 'database',
+          statusCheckKind: 'supabase',
           visibleStatus: 'unknown',
+          publicConfig: {
+            projectUrl: 'https://tenant-a.supabase.co',
+            schemaName: 'public',
+          },
+          secretConfigCiphertext: 'db-cipher',
         }),
         revealSecret: () => undefined,
       })
@@ -149,6 +167,72 @@ describe('waste data source runtime', () => {
       visibleStatus: 'error',
       errorCode: 'connection_failed',
       errorMessage: 'DB handshake failed',
+    });
+  });
+
+  it('resolves the supabase interface registry as the only waste datasource source', async () => {
+    const revealCalls: Array<{ ciphertext: string | null | undefined; aad: string }> = [];
+
+    await expect(
+      resolveWasteDataSource({
+        instanceId: 'tenant-a',
+        loadDefaultInterface: async () => ({
+          id: 'iface-1',
+          instanceId: 'tenant-a',
+          typeKey: 'supabase',
+          ownerKind: 'host',
+          ownerId: 'host',
+          displayName: 'Waste Supabase',
+          alias: 'default',
+          enabled: true,
+          isDefault: true,
+          category: 'database',
+          baseUrl: 'https://tenant-a.supabase.co',
+          authMode: 'service_role',
+          statusCheckKind: 'supabase',
+          visibleStatus: 'unknown',
+          publicConfig: {
+            projectUrl: 'https://tenant-a.supabase.co',
+            schemaName: 'wm',
+          },
+          secretConfigCiphertext: 'interface-secret-cipher',
+        }),
+        revealSecret: (ciphertext, aad) => {
+          revealCalls.push({ ciphertext, aad });
+          if (ciphertext === 'interface-secret-cipher') {
+            return JSON.stringify({
+              databaseUrl: 'postgres://db.example/interface',
+              serviceRoleKey: 'interface-service-role',
+            });
+          }
+          return undefined;
+        },
+      })
+    ).resolves.toEqual(
+      expect.objectContaining({
+        projectUrl: 'https://tenant-a.supabase.co',
+        schemaName: 'wm',
+        databaseUrl: 'postgres://db.example/interface',
+        serviceRoleKey: 'interface-service-role',
+      })
+    );
+
+    expect(revealCalls).toEqual([
+      {
+        ciphertext: 'interface-secret-cipher',
+        aad: buildExternalInterfaceSecretConfigAad('iface-1'),
+      },
+    ]);
+
+    await expect(
+      resolveWasteDataSource({
+        instanceId: 'tenant-a',
+        loadDefaultInterface: async () => null,
+        revealSecret: () => undefined,
+      })
+    ).rejects.toMatchObject({
+      code: 'not_configured',
+      message: 'Für diese Instanz ist keine Waste-Supabase-Schnittstelle konfiguriert.',
     });
   });
 });

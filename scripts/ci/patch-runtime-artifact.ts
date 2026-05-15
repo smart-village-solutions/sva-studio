@@ -22,6 +22,7 @@ const generatedEntryImportPattern = /^import \{[^}]*createStartHandler[^}]*\} fr
 const nitroSsrDirectImportPath = './_ssr/ssr.mjs';
 const nitroSsrServiceImportPath = './_libs/_.mjs';
 const nitroSsrRendererImportPath = './_chunks/ssr-renderer.mjs';
+const nitroLazyServiceImportPattern = /\["ssr"\]: lazyService\(\(\) => import\("(\.\/_libs\/[^"]+\.mjs)"\)\)/;
 
 const pathExists = async (filePath: string) => {
   try {
@@ -127,8 +128,16 @@ const main = async () => {
     nitroRendererEntryExists &&
     finalServerEntrySource.includes(nitroSsrServiceImportPath) &&
     finalServerEntrySource.includes(nitroSsrRendererImportPath);
+  const nitroLazyServiceImportMatch = finalServerEntrySource.match(nitroLazyServiceImportPattern);
+  const nitroLazyServiceEntryPath = nitroLazyServiceImportMatch
+    ? path.join(outputServerDir, nitroLazyServiceImportMatch[1].replace(/^\.\//, ''))
+    : null;
+  const usesNitroLazyServiceEntry =
+    nitroLazyServiceImportMatch !== null &&
+    nitroLazyServiceEntryPath !== null &&
+    (await pathExists(nitroLazyServiceEntryPath));
 
-  if (nitroSsrEntryExists && (usesDirectNitroSsrEntry || usesNitroSsrServiceBridge)) {
+  if (nitroSsrEntryExists && (usesDirectNitroSsrEntry || usesNitroSsrServiceBridge || usesNitroLazyServiceEntry)) {
     const generatedNitroSsrEntrySource = await readFile(generatedNitroSsrEntryPath, 'utf8');
     assertServerEntryContract(generatedNitroSsrEntrySource, generatedNitroSsrEntryPath);
 

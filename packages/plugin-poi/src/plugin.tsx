@@ -1,7 +1,7 @@
 import {
-  definePluginAuditEvents,
   defineMediaPickerDefinition,
   createStandardContentPluginActionIds,
+  createStandardContentPluginDefinition,
   createStandardContentPluginContribution,
   type PluginDefinition,
 } from '@sva/plugin-sdk';
@@ -32,17 +32,10 @@ export const pluginPoiMediaPickers = {
   }),
 } as const;
 
-export const pluginPoi: PluginDefinition = {
-  id: 'poi',
+export const pluginPoi: PluginDefinition = createStandardContentPluginDefinition({
+  pluginId: 'poi',
   displayName: 'POI',
-  routes: [],
-  navigation: standardPoiContribution.navigation,
-  actions: pluginPoiActionDefinitions,
-  permissions: pluginPoiPermissionDefinitions,
-  moduleIam: standardPoiContribution.moduleIam,
-  contentTypes: standardPoiContribution.contentTypes,
-  adminResources: standardPoiContribution.adminResources,
-  auditEvents: definePluginAuditEvents('poi', []),
+  contribution: standardPoiContribution,
   translations: {
     de: {
       poi: {
@@ -185,4 +178,4 @@ export const pluginPoi: PluginDefinition = {
       },
     },
   },
-};
+});

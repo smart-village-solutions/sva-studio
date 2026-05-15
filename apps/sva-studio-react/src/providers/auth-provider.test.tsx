@@ -1,5 +1,6 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { readSessionAccessSnapshot, resetSessionAccessSnapshot } from '@sva/plugin-sdk';
 
 import { clearAuthDiagnosticTrail, readAuthDiagnosticTrail } from '../lib/auth-diagnostics';
 import { AuthProvider, useAuth } from './auth-provider';
@@ -91,6 +92,7 @@ const AuthProbe = () => {
 describe('AuthProvider', () => {
   beforeEach(() => {
     clearAuthDiagnosticTrail();
+    resetSessionAccessSnapshot();
     vi.stubEnv('VITE_SVA_DEV_AUTH', 'false');
     vi.stubEnv('VITE_MOCK_AUTH', 'false');
     cookieState = '';
@@ -123,6 +125,7 @@ describe('AuthProvider', () => {
 
   afterEach(() => {
     clearAuthDiagnosticTrail();
+    resetSessionAccessSnapshot();
     cleanup();
     vi.useRealTimers();
     browserLoggerMock.debug.mockReset();
@@ -144,6 +147,7 @@ describe('AuthProvider', () => {
             id: 'user-1',
             roles: ['editor'],
             instanceId: 'instance-1',
+            permissionActions: ['waste-management.read', 'waste-management.settings.manage'],
           },
         })
       )
@@ -172,6 +176,10 @@ describe('AuthProvider', () => {
         instance_id: 'instance-1',
       })
     );
+    expect(readSessionAccessSnapshot()).toEqual({
+      isResolved: true,
+      permissionActions: ['waste-management.read', 'waste-management.settings.manage'],
+    });
   });
 
   it('refreshes the session shortly before cookie expiry', async () => {

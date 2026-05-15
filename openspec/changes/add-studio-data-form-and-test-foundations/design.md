@@ -23,7 +23,7 @@ Die Einführung neuer npm-Pakete ist in diesem Repository bewusst architekturwir
 
 ## ADR Requirements
 
-Dieser Change benoetigt vor oder spaetestens waehrend der Umsetzung zwei Architekturentscheidungen in `docs/architecture/`:
+Dieser Change benoetigt vor oder spaetestens waehrend der Umsetzung zwei Architekturentscheidungen in `docs/adr/`:
 
 - `ADR: Formular-Foundation mit react-hook-form und zodResolver`
   - dokumentiert Bibliothekswahl, Geltungsbereich, gemeinsame Adapter in `packages/studio-ui-react` und Migrationsregeln fuer Alt-Flows

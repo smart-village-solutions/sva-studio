@@ -28,6 +28,6 @@
 ## 5. Dokumentation
 
 - [ ] 5.1 Betroffene arc42-Abschnitte `05`, `08`, `09` und `10` zur Formular- und Test-Foundation aktualisieren
-- [ ] 5.2 ADR `Formular-Foundation mit react-hook-form und zodResolver` unter `docs/architecture/` erstellen oder aktualisieren
-- [ ] 5.3 ADR `Frontend-Test-Foundation mit MSW und selektivem fast-check` unter `docs/architecture/` erstellen oder aktualisieren
+- [ ] 5.2 ADR `Formular-Foundation mit react-hook-form und zodResolver` unter `docs/adr/` erstellen oder aktualisieren
+- [ ] 5.3 ADR `Frontend-Test-Foundation mit MSW und selektivem fast-check` unter `docs/adr/` erstellen oder aktualisieren
 - [ ] 5.4 Entwicklerdokumentation für Formularmuster, RHF-Adapter, MSW-Setup, Migrationskriterien und Property-based Testing ergänzen

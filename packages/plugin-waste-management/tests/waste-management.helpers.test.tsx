@@ -1,6 +1,6 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const createWasteManagementLocationTourLinkMock = vi.hoisted(() => vi.fn());
 const updateWasteManagementLocationTourLinkMock = vi.hoisted(() => vi.fn());
@@ -15,7 +15,6 @@ import {
   wasteMasterDataInputMappers,
 } from '../src/waste-management.master-data.forms.js';
 import { createWasteMasterDataLocationActions } from '../src/waste-management.master-data.location-actions.js';
-import { createWasteMasterDataFractionRegionSubmissions } from '../src/waste-management.master-data.fraction-region-submissions.js';
 import {
   ResetConfirmationDialog,
   StatusNotice,
@@ -88,6 +87,10 @@ vi.mock('@sva/studio-ui-react', () => ({
 }));
 
 describe('waste management helper modules', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it('covers page support helpers, download templates, and the reset dialog shell', () => {
     expect(compactOptionalString('  ')).toBeUndefined();
     expect(compactOptionalString(' value ')).toBe('value');
@@ -292,6 +295,29 @@ describe('waste management helper modules', () => {
     expect(wasteMasterDataInputMappers.resolveSingleSelectValue(form, 'cityId')).toBe('city-1');
     expect(wasteMasterDataInputMappers.resolveSingleSelectValue(form, 'tourIds')).toBe('');
     expect(wasteMasterDataInputMappers.resolveSingleSelectValue(form, 'missing')).toBe('');
+  });
+
+  it('uses cryptographically secure ids for master-data defaults', () => {
+    const randomUUID = vi.fn(() => 'secure-region-id');
+    vi.stubGlobal('crypto', { randomUUID });
+
+    expect(wasteMasterDataFormDefaults.createRegion()).toEqual({
+      id: 'fraction-secure-region-id',
+      name: '',
+    });
+  });
+
+  it('falls back to secure random bytes when randomUUID is unavailable', () => {
+    const getRandomValues = vi.fn((target: Uint8Array) => {
+      target.set([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
+      return target;
+    });
+    vi.stubGlobal('crypto', { getRandomValues });
+
+    expect(wasteMasterDataFormDefaults.createRegion()).toEqual({
+      id: 'fraction-000102030405060708090a0b0c0d0e0f',
+      name: '',
+    });
   });
 
   it('covers entity actions and location selection helpers', () => {

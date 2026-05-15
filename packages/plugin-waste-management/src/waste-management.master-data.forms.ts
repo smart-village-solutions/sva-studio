@@ -54,7 +54,30 @@ export type LocationTourLinkBulkFormState = {
   readonly endDate: string;
 };
 
-const createId = (): string => globalThis.crypto?.randomUUID?.() ?? `fraction-${Math.random().toString(36).slice(2, 10)}`;
+let localIdCounter = 0;
+
+const createSecureRandomIdSegment = (): string | undefined => {
+  const cryptoApi = globalThis.crypto;
+  if (cryptoApi?.randomUUID) {
+    return cryptoApi.randomUUID();
+  }
+  if (!cryptoApi?.getRandomValues) {
+    return undefined;
+  }
+
+  const bytes = cryptoApi.getRandomValues(new Uint8Array(16));
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+};
+
+const createId = (): string => {
+  const secureId = createSecureRandomIdSegment();
+  if (secureId) {
+    return `fraction-${secureId}`;
+  }
+
+  localIdCounter += 1;
+  return `fraction-local-${Date.now().toString(36)}-${localIdCounter.toString(36)}`;
+};
 const compactOptionalString = (value: string): string | undefined => (value.trim() ? value.trim() : undefined);
 
 const normalizeLocalizedTextRecord = (value: WasteLocalizedTextRecord): WasteLocalizedTextRecord | undefined => {

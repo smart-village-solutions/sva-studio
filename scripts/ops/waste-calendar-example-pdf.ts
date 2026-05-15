@@ -11,6 +11,7 @@ import {
   splitLegendLabel,
   WEEKDAY_SHORT_NAMES,
   YEAR,
+  type WasteCalendarDay,
   type RgbColor,
   type WasteCalendarDocument,
   type WasteCalendarMonth,

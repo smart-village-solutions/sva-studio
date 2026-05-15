@@ -120,7 +120,7 @@
       "axios": "1.15.2",
       "follow-redirects": "1.16.0",
       "postcss": "8.5.11",
-      "protobufjs@<7.5.5": "7.5.5",
+      "protobufjs@<7.5.8": "7.5.8",
       "rollup": "4.59.0",
       "srvx": "0.11.15",
       "solid-js": "1.9.11",

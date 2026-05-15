@@ -437,6 +437,35 @@ Komplexitäts-Regeln und Ticket-Workflow: `docs/development/complexity-quality-g
 - Reviews können zurückgestellt werden, wenn eine Änderung ohne erkennbaren Shift-left-Testnachweis eingereicht wird.
 - Wiederholte späte Test-Fails gelten als Prozessabweichung und müssen mit konkreter Gegenmaßnahme im PR dokumentiert werden.
 
+## 5.3 Test-Dateiplatzierung und Ownership (verbindlich)
+
+### ✅ REQUIRED
+- Neue modulnahe Unit-Tests in Workspace-Packages liegen standardmäßig kolokiert unter `packages/<projekt>/src/**/*.test.ts` oder `*.test.tsx`.
+- Neue modulnahe App-Tests liegen standardmäßig kolokiert unter `apps/<app>/src/**/*.test.ts` oder `*.test.tsx`.
+- `packages/<projekt>/tests/` ist ausschließlich für paketweite Integrations-, Contract-, Composition- oder Public-API-Tests zu verwenden, die bewusst mehrere Module eines Projekts gemeinsam prüfen.
+- `apps/<app>/tests/integration/` ist für appweite Integrations-Tests zu verwenden, zum Beispiel Router-, Provider-, Auth- oder zusammengesetzte Screen-Flows ohne echten Browser.
+- `apps/<app>/e2e/` ist ausschließlich für echte Browser-, End-to-End- und Systemtests zu verwenden.
+- Ein globaler Ordner wie `testing/` oder `tests/` auf Root-Ebene ist nur für gemeinsame Test-Infrastruktur zulässig, zum Beispiel Fixtures, Mocks, Test-Utils, Performance-Runner oder Smoke-Helfer.
+- Neue Tests sind so abzulegen, dass Ownership eindeutig beim betroffenen Nx-Projekt bleibt und projektbezogene Läufe wie `pnpm nx run <projekt>:test:unit` nachvollziehbar bleiben.
+
+### ❌ FORBIDDEN
+- Normale Einzelmodul- oder Komponenten-Tests ohne Begründung aus `src/` in separate `tests/`-Ordner auszulagern.
+- Fachliche Paket- oder App-Tests in einen globalen Root-Ordner `tests/` zu verschieben.
+- Unit-, Integrations- und E2E-Tests innerhalb desselben Ordners semantisch zu vermischen.
+- Neue verstreute Top-Level-Testordner pro Fachthema einzuführen, wenn die Tests einem bestehenden Nx-Projekt zugeordnet werden können.
+
+### Process
+1. Prüfe zuerst die Testart: modulnaher Unit-Test, paketweite Integration, appweite Integration oder E2E.
+2. Lege modulnahe Tests direkt neben dem getesteten Code in `src/` ab.
+3. Verwende `packages/<projekt>/tests/` nur dann, wenn der Test bewusst Projektgrenzen innerhalb desselben Pakets zusammensetzt.
+4. Verwende `apps/<app>/tests/integration/` für App-Komposition ohne echten Browser.
+5. Verwende `apps/<app>/e2e/` nur dann, wenn ein echter Browser, ein echter Laufzeitpfad oder ein vollständiger User-Flow geprüft wird.
+6. Bestehende Altstruktur darf vorerst bestehen bleiben; bei neuen Tests gilt diese Regel als Standard.
+
+### Enforcement
+- Reviews können neue Tests zurückweisen, wenn deren Ablage die Testart verschleiert oder Ownership zwischen Projekten unklar macht.
+- Strukturausnahmen sind im PR kurz zu begründen, insbesondere wenn ein neuer Test nicht dem Standardpfad für seine Testart folgt.
+
 ---
 
 ## 6. Security & Input Validation

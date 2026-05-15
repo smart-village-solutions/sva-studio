@@ -5,7 +5,6 @@ import { cn } from '@/lib/utils';
 import { buttonVariants } from '@/components/ui/button';
 
 const AlertDialog = AlertDialogPrimitive.Root;
-const AlertDialogTrigger = AlertDialogPrimitive.Trigger;
 const AlertDialogPortal = AlertDialogPrimitive.Portal;
 type AlertDialogOverlayElement = React.ComponentRef<typeof AlertDialogPrimitive.Overlay>;
 type AlertDialogOverlayProps = React.ComponentProps<typeof AlertDialogPrimitive.Overlay>;
@@ -101,5 +100,4 @@ export {
   AlertDialogOverlay,
   AlertDialogPortal,
   AlertDialogTitle,
-  AlertDialogTrigger,
 };

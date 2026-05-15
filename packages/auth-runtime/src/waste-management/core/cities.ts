@@ -1,9 +1,9 @@
 import type { AuthenticatedRequestContext } from '../../middleware.js';
 import { validateCsrf } from '../../shared/request-security.js';
-import { asApiItem, createApiError, parseRequestBody, readPathSegment } from '../../shared/request-helpers.js';
-import { authorizeWasteManagementAction, emitWasteAuditEvent } from './auth.js';
+import { createApiError, parseRequestBody, readPathSegment } from '../../shared/request-helpers.js';
+import { authorizeWasteManagementAction } from './auth.js';
+import { runWasteCreateMutation, runWasteUpdateMutation } from './mutation-helpers.js';
 import { wasteManagementMasterDataSchemas } from './schemas.js';
-import { updateWasteVisibleStatus } from './settings-shared.js';
 import type { WasteManagementHandlerDeps } from './types.js';
 import { getRequestId, normalizeOptionalString, requireActorInstanceId, requireDeps } from './utils.js';
 
@@ -36,60 +36,28 @@ export const wasteManagementCityHandlers = {
       return createApiError(400, 'invalid_request', parsed.message, requestId);
     }
 
-    try {
-      await requireDeps(deps.saveWasteCity, 'saveWasteCity')(instanceId, {
-        id: parsed.data.id,
-        name: parsed.data.name.trim(),
-        regionId: normalizeOptionalString(parsed.data.regionId),
-      });
-
-      const saved = await requireDeps(deps.loadWasteCityById, 'loadWasteCityById')(instanceId, parsed.data.id);
-      if (!saved) {
-        await emitWasteAuditEvent({
-          deps,
-          ctx,
-          instanceId,
-          actionId: 'waste-management.city.created',
-          result: 'failure',
-          reasonCode: 'verification_failed',
-          resourceType: 'waste_city',
-          resourceId: parsed.data.id,
-        });
-        return createApiError(503, 'database_unavailable', 'Die Waste-Stadt konnte nicht verifiziert werden.', requestId);
-      }
-
-      await emitWasteAuditEvent({
-        deps,
-        ctx,
-        instanceId,
+    return runWasteCreateMutation({
+      deps,
+      ctx,
+      instanceId,
+      requestId,
+      resourceId: parsed.data.id,
+      audit: {
         actionId: 'waste-management.city.created',
-        result: 'success',
         resourceType: 'waste_city',
-        resourceId: saved.id,
-      });
-
-      await updateWasteVisibleStatus(deps, instanceId, 'success');
-      return new Response(JSON.stringify(asApiItem(saved, requestId)), {
-        status: 201,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    } catch (error) {
-      if (error instanceof Error && error.message.startsWith('missing_dependency:')) {
-        throw error;
-      }
-      await emitWasteAuditEvent({
-        deps,
-        ctx,
-        instanceId,
-        actionId: 'waste-management.city.created',
-        result: 'failure',
-        reasonCode: 'database_unavailable',
-        resourceType: 'waste_city',
-        resourceId: parsed.data.id,
-      });
-      await updateWasteVisibleStatus(deps, instanceId, 'revalidate');
-      return createApiError(503, 'database_unavailable', 'Die Waste-Stadt konnte nicht gespeichert werden.', requestId);
-    }
+      },
+      messages: {
+        verificationFailed: 'Die Waste-Stadt konnte nicht verifiziert werden.',
+        persistenceFailed: 'Die Waste-Stadt konnte nicht gespeichert werden.',
+      },
+      save: () =>
+        requireDeps(deps.saveWasteCity, 'saveWasteCity')(instanceId, {
+          id: parsed.data.id,
+          name: parsed.data.name.trim(),
+          regionId: normalizeOptionalString(parsed.data.regionId),
+        }),
+      loadSaved: () => requireDeps(deps.loadWasteCityById, 'loadWasteCityById')(instanceId, parsed.data.id),
+    });
   },
   updateWasteManagementCityInternal: async (
     request: Request,
@@ -122,64 +90,31 @@ export const wasteManagementCityHandlers = {
       return createApiError(400, 'invalid_request', parsed.message, requestId);
     }
 
-    try {
-      const existing = await requireDeps(deps.loadWasteCityById, 'loadWasteCityById')(instanceId, cityId);
-      if (!existing) {
-        return createApiError(404, 'not_found', 'Die Waste-Stadt wurde nicht gefunden.', requestId);
-      }
+    const loadWasteCity = requireDeps(deps.loadWasteCityById, 'loadWasteCityById');
 
-      await requireDeps(deps.saveWasteCity, 'saveWasteCity')(instanceId, {
-        id: cityId,
-        name: parsed.data.name.trim(),
-        regionId: normalizeOptionalString(parsed.data.regionId),
-      });
-
-      const saved = await requireDeps(deps.loadWasteCityById, 'loadWasteCityById')(instanceId, cityId);
-      if (!saved) {
-        await emitWasteAuditEvent({
-          deps,
-          ctx,
-          instanceId,
-          actionId: 'waste-management.city.updated',
-          result: 'failure',
-          reasonCode: 'verification_failed',
-          resourceType: 'waste_city',
-          resourceId: cityId,
-        });
-        return createApiError(503, 'database_unavailable', 'Die Waste-Stadt konnte nicht verifiziert werden.', requestId);
-      }
-
-      await emitWasteAuditEvent({
-        deps,
-        ctx,
-        instanceId,
+    return runWasteUpdateMutation({
+      deps,
+      ctx,
+      instanceId,
+      requestId,
+      resourceId: cityId,
+      audit: {
         actionId: 'waste-management.city.updated',
-        result: 'success',
         resourceType: 'waste_city',
-        resourceId: saved.id,
-      });
-
-      await updateWasteVisibleStatus(deps, instanceId, 'success');
-      return new Response(JSON.stringify(asApiItem(saved, requestId)), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    } catch (error) {
-      if (error instanceof Error && error.message.startsWith('missing_dependency:')) {
-        throw error;
-      }
-      await emitWasteAuditEvent({
-        deps,
-        ctx,
-        instanceId,
-        actionId: 'waste-management.city.updated',
-        result: 'failure',
-        reasonCode: 'database_unavailable',
-        resourceType: 'waste_city',
-        resourceId: cityId,
-      });
-      await updateWasteVisibleStatus(deps, instanceId, 'revalidate');
-      return createApiError(503, 'database_unavailable', 'Die Waste-Stadt konnte nicht gespeichert werden.', requestId);
-    }
+      },
+      messages: {
+        notFound: 'Die Waste-Stadt wurde nicht gefunden.',
+        verificationFailed: 'Die Waste-Stadt konnte nicht verifiziert werden.',
+        persistenceFailed: 'Die Waste-Stadt konnte nicht gespeichert werden.',
+      },
+      loadExisting: () => loadWasteCity(instanceId, cityId),
+      save: () =>
+        requireDeps(deps.saveWasteCity, 'saveWasteCity')(instanceId, {
+          id: cityId,
+          name: parsed.data.name.trim(),
+          regionId: normalizeOptionalString(parsed.data.regionId),
+        }),
+      loadSaved: () => loadWasteCity(instanceId, cityId),
+    });
   },
 };

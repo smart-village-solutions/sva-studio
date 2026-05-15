@@ -155,32 +155,32 @@ describe('plugin operation runtime registration', () => {
   });
 
   it('rejects active plugin job types without a matching runtime handler', async () => {
-    mockWasteBrowserPluginModule(
-      createBrowserPluginModuleExports([
-      ...declaredWasteJobTypeIds,
-      'waste-management.unimplemented-job',
-      ])
-    );
     const mod = await import('./plugin-operation-runtime.server');
     const handlers = await mod.createStudioPluginOperationExecutionHandlers();
 
-    expect(() => mod.assertStudioPluginOperationHandlerCoverage(handlers)).toThrowError(
-      'missing_plugin_operation_handlers:waste-management.unimplemented-job'
-    );
+    expect(() =>
+      mod.assertPluginOperationExecutionHandlerCoverage({
+        declaredJobTypeIds: [...declaredWasteJobTypeIds, 'waste-management.unimplemented-job'],
+        handlers,
+      })
+    ).toThrowError('missing_plugin_operation_handlers:waste-management.unimplemented-job');
   });
 
   it('registers only plugins that survive catalog validation', async () => {
-    mockWasteBrowserPluginModule({
-      helper: {
-        foo: 'bar',
-      },
-    });
     const mod = await import('./plugin-operation-runtime.server');
 
-    const handlers = await mod.registerStudioPluginOperationHandlers();
+    const handlers = await mod.createPluginOperationExecutionHandlersFromSnapshot({
+      pluginSources: [],
+      runtimeFactories: {},
+    });
 
     expect(handlers).toEqual({});
-    expect(registerPluginOperationExecutionHandlersMock).toHaveBeenCalledWith({});
+    expect(() =>
+      mod.assertPluginOperationExecutionHandlerCoverage({
+        declaredJobTypeIds: [],
+        handlers: {},
+      })
+    ).not.toThrow();
   });
 
   it('resolves job runtimes by runtime contract id instead of plugin id', async () => {

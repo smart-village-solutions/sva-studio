@@ -13,23 +13,22 @@ import { wasteManagementPluginTranslationsDETools } from './plugin.translations.
 import { wasteManagementPluginTranslationsDETours } from './plugin.translations.de.tours.js';
 import { wasteManagementPluginTranslationsDEScheduling } from './plugin.translations.de.scheduling.js';
 import { wasteManagementPluginTranslationsDEPermissions } from './plugin.translations.de.permissions.js';
+import { createWasteManagementPluginTranslationLocale } from './plugin.translations.shared.base.js';
 
-export const wasteManagementPluginTranslationsDE = {
-  wasteManagement: {
-    ...wasteManagementPluginTranslationsDENavigation,
-    ...wasteManagementPluginTranslationsDEPage,
-    ...wasteManagementPluginTranslationsDEActions,
-    ...wasteManagementPluginTranslationsDEAudit,
-    ...wasteManagementPluginTranslationsDECommon,
-    ...wasteManagementPluginTranslationsDEFilters,
-    ...wasteManagementPluginTranslationsDEMeta,
-    ...wasteManagementPluginTranslationsDETabs,
-    ...wasteManagementPluginTranslationsDESettings,
-    ...wasteManagementPluginTranslationsDEOverview,
-    ...wasteManagementPluginTranslationsDEMasterData,
-    ...wasteManagementPluginTranslationsDETools,
-    ...wasteManagementPluginTranslationsDETours,
-    ...wasteManagementPluginTranslationsDEScheduling,
-    ...wasteManagementPluginTranslationsDEPermissions,
-  },
-} as const;
+export const wasteManagementPluginTranslationsDE = createWasteManagementPluginTranslationLocale([
+  wasteManagementPluginTranslationsDENavigation,
+  wasteManagementPluginTranslationsDEPage,
+  wasteManagementPluginTranslationsDEActions,
+  wasteManagementPluginTranslationsDEAudit,
+  wasteManagementPluginTranslationsDECommon,
+  wasteManagementPluginTranslationsDEFilters,
+  wasteManagementPluginTranslationsDEMeta,
+  wasteManagementPluginTranslationsDETabs,
+  wasteManagementPluginTranslationsDESettings,
+  wasteManagementPluginTranslationsDEOverview,
+  wasteManagementPluginTranslationsDEMasterData,
+  wasteManagementPluginTranslationsDETools,
+  wasteManagementPluginTranslationsDETours,
+  wasteManagementPluginTranslationsDEScheduling,
+  wasteManagementPluginTranslationsDEPermissions,
+]);

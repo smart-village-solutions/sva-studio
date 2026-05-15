@@ -1,0 +1,63 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "ignoreExportsUsedInFile": true,
+  "ignoreWorkspaces": ["tooling/testing"],
+  "ignoreDependencies": ["@eslint/js", "@nx/js", "typescript-eslint", "@sva/iam-governance", "postcss"],
+  "ignoreFiles": [
+    ".agents/**",
+    ".claude/**",
+    ".codex/**",
+    ".github/skills/**",
+    ".opencode/**",
+    "artifacts/**",
+    "concepts/**",
+    "coverage/**",
+    "deploy/**",
+    "dev/**/scripts/**",
+    "output/**",
+    "scripts/ci/**",
+    "scripts/debug/**",
+    "scripts/ops/**",
+    "apps/sva-studio-react/e2e/service-readiness.ts",
+    "apps/sva-studio-react/src/routes/__debug/**",
+    "apps/sva-studio-react/src/lib/react-dom-server-compat.ts",
+    "apps/sva-studio-react/vitest.config.ts",
+    "apps/sva-studio-react/vitest.hooks.config.ts",
+    "apps/sva-studio-react/vitest.routes.config.ts",
+    "apps/sva-studio-react/vitest.server.config.ts",
+    "apps/sva-studio-react/vitest.shared.ts",
+    "apps/sva-studio-react/vitest.ui.config.ts",
+    "apps/project-report/vitest.config.ts",
+    "packages/*/vitest.config.ts",
+    "packages/auth-runtime/src/iam-instance-registry/core-runtime.ts",
+    "packages/auth-runtime/src/iam-instance-registry/index.ts",
+    "packages/auth-runtime/src/iam-instance-registry/service-detail.ts",
+    "packages/auth-runtime/src/iam-instance-registry/service-keycloak-execution-shared.ts",
+    "packages/auth-runtime/src/iam-instance-registry/service-keycloak-execution.ts",
+    "packages/auth-runtime/src/iam-instance-registry/service.ts",
+    "packages/auth-runtime/src/iam-instance-registry/worker.ts",
+    "packages/data/scripts/**",
+    "packages/media/src/*.type-test.ts",
+    "packages/monitoring-client/scripts/**",
+    "packages/routing/bench/**",
+    "vitest.config.ts",
+    "vitest.workspace.ts"
+  ],
+  "ignoreIssues": {
+    "**/*.config.{js,cjs,mjs,ts,cts,mts}": ["exports", "types"],
+    "scripts/ci/**": ["exports", "types"],
+    "scripts/ops/**": ["exports", "types"],
+    "apps/sva-studio-react/src/lib/iam-viewer-access.ts": ["duplicates"],
+    "apps/sva-studio-react/src/lib/interfaces-api.ts": ["duplicates"],
+    "apps/sva-studio-react/src/routes/__root.tsx": ["duplicates"],
+    "packages/plugin-waste-management/src/server.ts": ["duplicates"],
+    "packages/sva-mainserver/src/generated/**": ["exports", "types"]
+  },
+  "vitest": {
+    "config": [],
+    "entry": [
+      "**/*.{bench,test,test-d,spec,spec-d}.?(c|m)[jt]s?(x)",
+      "**/__mocks__/**/*.[jt]s?(x)"
+    ]
+  }
+}

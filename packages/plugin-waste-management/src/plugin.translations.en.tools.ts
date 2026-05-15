@@ -1,68 +1,68 @@
-export const wasteManagementPluginTranslationsENTools = {
-  "tools": {
-    "imports": {
-      "title": "Imports",
-      "description": "Starts domain-near waste imports as a thin shell on top of the generic host job capability.",
-      "profileLabel": "Import profile",
-      "blobRefLabel": "Source reference (blob ref)",
-      "sourceFormatLabel": "Source format",
-      "sourceFormats": {
-        "csv": "CSV",
-        "xlsx": "Excel (.xlsx)"
-      },
-      "dryRunLabel": "Preflight only (dry run)",
-      "templateColumns": "Canonical import columns"
+import { createWasteManagementToolsTranslations } from './plugin.translations.shared.sections.js';
+
+export const wasteManagementPluginTranslationsENTools = createWasteManagementToolsTranslations({
+  imports: {
+    title: 'Imports',
+    description: 'Starts domain-near waste imports as a thin shell on top of the generic host job capability.',
+    profileLabel: 'Import profile',
+    blobRefLabel: 'Source reference (blob ref)',
+    sourceFormatLabel: 'Source format',
+    sourceFormats: {
+      csv: 'CSV',
+      xlsx: 'Excel (.xlsx)',
     },
-    "migrations": {
-      "title": "Migrations",
-      "description": "Starts asynchronous host migration jobs against the active waste data source.",
-      "schemaLabel": "Target schema",
-      "versionLabel": "Requested by version"
-    },
-    "seed": {
-      "title": "Seed",
-      "description": "Populates the waste data source through the generic job capability with the baseline."
-    },
-    "reset": {
-      "title": "Reset",
-      "description": "Reset remains a high-risk path and requires an explicit confirmation token.",
-      "tokenLabel": "Confirmation token",
-      "confirmTitle": "Start reset now?",
-      "confirmDescription": "This reset is high risk. Confirm the operation explicitly with the token.",
-      "confirmCancel": "Cancel",
-      "confirmAction": "Confirm reset"
-    },
-    "actions": {
-      "startImport": "Start import",
-      "startMigrations": "Start migrations",
-      "startSeed": "Start seed",
-      "startReset": "Start reset",
-      "starting": "Starting…",
-      "downloadTemplate": "Download template",
-      "openJob": "Open job"
-    },
-    "messages": {
-      "jobStarted": "Job {{jobId}} was started.",
-      "jobStartError": "The waste job could not be started.",
-      "jobStartErrorWithReason": "The waste job could not be started: {{reason}}",
-      "forbidden": "Missing permission for this waste operation.",
-      "importValidationError": "Import requires an import profile and a valid source reference.",
-      "resetValidationError": "Reset requires a valid confirmation token."
-    },
-    "meta": {
-      "lastJobTitle": "Last technical job",
-      "lastJobDescription": "Most recently started waste host job with technical status.",
-      "noJobYet": "No technical waste job has been started yet.",
-      "noJobStatus": "No job",
-      "technicalHistoryTitle": "Technical events",
-      "technicalHistoryDescription": "Shows the latest technical waste events with distinct outcomes for start, success, and failure.",
-      "noTechnicalHistory": "No technical waste events yet.",
-      "jobId": "Job: {{value}}",
-      "jobType": "Type: {{value}}",
-      "jobStatus": "Status: {{value}}",
-      "jobIdLabel": "Job",
-      "jobTypeLabel": "Type",
-      "jobStatusLabel": "Status"
-    }
-  }
-} as const;
+    dryRunLabel: 'Preflight only (dry run)',
+    templateColumns: 'Canonical import columns',
+  },
+  migrations: {
+    title: 'Migrations',
+    description: 'Starts asynchronous host migration jobs against the active waste data source.',
+    schemaLabel: 'Target schema',
+    versionLabel: 'Requested by version',
+  },
+  seed: {
+    title: 'Seed',
+    description: 'Populates the waste data source through the generic job capability with the baseline.',
+  },
+  reset: {
+    title: 'Reset',
+    description: 'Reset remains a high-risk path and requires an explicit confirmation token.',
+    tokenLabel: 'Confirmation token',
+    confirmTitle: 'Start reset now?',
+    confirmDescription: 'This reset is high risk. Confirm the operation explicitly with the token.',
+    confirmCancel: 'Cancel',
+    confirmAction: 'Confirm reset',
+  },
+  actions: {
+    startImport: 'Start import',
+    startMigrations: 'Start migrations',
+    startSeed: 'Start seed',
+    startReset: 'Start reset',
+    starting: 'Starting…',
+    downloadTemplate: 'Download template',
+    openJob: 'Open job',
+  },
+  messages: {
+    jobStarted: 'Job {{jobId}} was started.',
+    jobStartError: 'The waste job could not be started.',
+    jobStartErrorWithReason: 'The waste job could not be started: {{reason}}',
+    forbidden: 'Missing permission for this waste operation.',
+    importValidationError: 'Import requires an import profile and a valid source reference.',
+    resetValidationError: 'Reset requires a valid confirmation token.',
+  },
+  meta: {
+    lastJobTitle: 'Last technical job',
+    lastJobDescription: 'Most recently started waste host job with technical status.',
+    noJobYet: 'No technical waste job has been started yet.',
+    noJobStatus: 'No job',
+    technicalHistoryTitle: 'Technical events',
+    technicalHistoryDescription: 'Shows the latest technical waste events with distinct outcomes for start, success, and failure.',
+    noTechnicalHistory: 'No technical waste events yet.',
+    jobId: 'Job: {{value}}',
+    jobType: 'Type: {{value}}',
+    jobStatus: 'Status: {{value}}',
+    jobIdLabel: 'Job',
+    jobTypeLabel: 'Type',
+    jobStatusLabel: 'Status',
+  },
+});

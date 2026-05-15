@@ -19,6 +19,7 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   outputDir: './test-results',
   reporter: process.env.CI ? [['html', { open: 'never', outputFolder: 'playwright-report' }], ['list']] : 'list',
+  globalSetup: './e2e/global-setup.ts',
   use: {
     baseURL,
     trace: 'retain-on-failure',
@@ -27,8 +28,8 @@ export default defineConfig({
     // Start Vite directly to avoid nested Nx instability during Playwright startup.
     command: `sh ./scripts/playwright-webserver.sh ${webServerPort}`,
     cwd: appRoot,
-    // Probe a Vite-served asset instead of the SSR root route. Hitting `/`
-    // too early can trip Nitro startup before its dev environment is ready.
+    // Probe a Vite-served asset first; app-route readiness is gated in global setup
+    // to avoid hitting Nitro SSR before Vite has initialized its dev environment.
     url: webServerReadyURL,
     // Reusing arbitrary local processes can hide real failures by attaching to the wrong app.
     reuseExistingServer,

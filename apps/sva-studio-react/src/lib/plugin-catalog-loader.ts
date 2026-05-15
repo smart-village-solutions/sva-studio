@@ -8,7 +8,6 @@ import {
   type PluginCatalogSourceType,
   type PluginDefinition,
   type PluginManifest,
-  type PluginManifestCapability,
   type PluginPlatformHost,
   type ResolvedPluginCatalog,
 } from '@sva/plugin-sdk';
@@ -198,5 +197,3 @@ export const createStudioPluginCatalogReport = async (
     issues: [...seed.issues, ...resolved.issues],
   };
 };
-
-export const getSupportedHostCapabilities = (): readonly PluginManifestCapability[] => studioHostPluginPlatform.capabilities;

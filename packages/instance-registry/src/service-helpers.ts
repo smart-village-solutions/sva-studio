@@ -4,7 +4,6 @@ import {
 
 import type {
   InstanceStatus,
-  IamInstanceAssignedModule,
   IamInstanceDetail,
   IamInstanceKeycloakPlan,
   IamInstanceKeycloakPreflight,
@@ -139,19 +138,6 @@ export const toListItem = (
   updatedAt: item.updatedAt,
   latestProvisioningRun,
 });
-
-export const buildAssignedModules = (
-  assignedModules: readonly string[],
-  contracts: ReadonlyMap<string, { permissionIds: readonly string[]; systemRoles: readonly { roleName: string }[] }>
-): readonly IamInstanceAssignedModule[] =>
-  assignedModules.map((moduleId) => {
-    const contract = contracts.get(moduleId);
-    return {
-      moduleId,
-      permissionIds: contract?.permissionIds ?? [],
-      systemRoleNames: contract?.systemRoles.map((role) => role.roleName) ?? [],
-    };
-  });
 
 export const buildModuleIamStatus = (
   assignedModules: readonly string[],

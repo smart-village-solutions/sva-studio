@@ -18,7 +18,6 @@ import {
   resolvePluginModuleFromRegistry,
 } from './plugin-build-registry.js';
 import {
-  createStudioPluginCatalogSeed,
   createStudioPluginCatalogReport,
   getPackagePluginModuleCandidates,
   getWorkspacePluginModuleCandidates,
@@ -114,23 +113,14 @@ for (const issue of studioPluginCatalogReport.issues) {
 export const studioPluginCatalog = studioPluginCatalogReport.catalog;
 export const studioPluginCatalogIssues = studioPluginCatalogReport.issues;
 export const studioPluginSnapshot = studioPluginCatalogReport.snapshot;
-export const studioPluginCatalogSeed = createStudioPluginCatalogSeed({
-  catalogConfig: studioPluginCatalogConfigEntries,
-  resolveManifest: (entry) => (entry.sourceType === 'workspace' ? resolveWorkspaceManifest(entry) : resolveNodeManifest(entry)),
-});
 
 export const studioBuildTimeRegistry = studioPluginSnapshot.registry;
 
 mergeI18nResources(studioBuildTimeRegistry.translations);
 
 export const studioPlugins = studioBuildTimeRegistry.plugins;
-export const studioPluginRegistry = studioBuildTimeRegistry.pluginRegistry;
 export const studioPluginActionRegistry = studioBuildTimeRegistry.pluginActionRegistry;
-export const studioPluginModuleIamRegistry = studioBuildTimeRegistry.pluginModuleIamRegistry;
-export const studioPluginModuleIamContracts = studioBuildTimeRegistry.pluginModuleIamContracts;
-export const studioPluginRoutes = studioBuildTimeRegistry.routes;
 export const studioPluginNavigation = studioBuildTimeRegistry.navigation;
-export const studioPluginContentTypes = studioBuildTimeRegistry.contentTypes;
 export const studioAdminResources = studioBuildTimeRegistry.adminResources;
 const studioPluginNavigationOwners = new Map(
   studioPlugins.flatMap((plugin) =>

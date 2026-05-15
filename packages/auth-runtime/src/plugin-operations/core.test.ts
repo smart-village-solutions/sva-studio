@@ -6,7 +6,6 @@ const repositoryState = vi.hoisted(() => ({
 
 const runnerState = vi.hoisted(() => ({
   queuePluginOperationJob: vi.fn(),
-  getRegisteredPluginOperationExecutionHandlers: vi.fn(),
   getRegisteredPluginOperationExecutionRegistry: vi.fn(),
 }));
 
@@ -41,7 +40,6 @@ vi.mock('./repository.js', () => ({
 
 vi.mock('./runner.js', () => ({
   queuePluginOperationJob: runnerState.queuePluginOperationJob,
-  getRegisteredPluginOperationExecutionHandlers: runnerState.getRegisteredPluginOperationExecutionHandlers,
   getRegisteredPluginOperationExecutionRegistry: runnerState.getRegisteredPluginOperationExecutionRegistry,
 }));
 
@@ -63,9 +61,6 @@ describe('plugin operations handlers', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-05-09T12:02:00.000Z'));
     runnerState.queuePluginOperationJob.mockResolvedValue(undefined);
-    runnerState.getRegisteredPluginOperationExecutionHandlers.mockReturnValue(
-      new Map([['news.import-articles', vi.fn()]])
-    );
     runnerState.getRegisteredPluginOperationExecutionRegistry.mockReturnValue(
       new Map([
         [
@@ -352,7 +347,6 @@ describe('plugin operations handlers', () => {
   });
 
   it('rejects unknown plugin operation job types before creating jobs', async () => {
-    runnerState.getRegisteredPluginOperationExecutionHandlers.mockReturnValueOnce(new Map());
     runnerState.getRegisteredPluginOperationExecutionRegistry.mockReturnValueOnce(new Map());
 
     const response = await startPluginOperationJobHandler(

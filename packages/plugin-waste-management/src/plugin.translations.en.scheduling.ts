@@ -1,135 +1,135 @@
-export const wasteManagementPluginTranslationsENScheduling = {
-  "scheduling": {
-    "global": {
-      "title": "Global shifts",
-      "description": "Shifts with global effect across multiple tours.",
-      "cardTitle": "Global shift {{value}}",
-      "table": {
-        "ariaLabel": "Table of global waste shifts",
-        "caption": "Table of global waste shifts with context and actions.",
-        "originalDate": "Original date",
-        "actualDate": "Shifted date",
-        "reason": "Reason",
-        "description": "Description",
-        "affectedTours": "Affected tours",
-        "hasYear": "Year-specific",
-        "reasonKey": "Reason key",
-        "actions": "Actions"
-      },
-      "actions": {
-        "openCreate": "Create global shift",
-        "edit": "Edit",
-        "cancel": "Cancel",
-        "create": "Save shift",
-        "save": "Save changes",
-        "saving": "Saving…"
-      },
-      "fields": {
-        "originalDate": "Original date",
-        "actualDate": "Shifted date",
-        "reasonType": "Reason",
-        "reasonTypeUnset": "Select reason",
-        "reasonKey": "Reason key",
-        "description": "Description",
-        "hasYear": "Year-specific",
-        "tourIds": "Affected tours",
-        "noToursAvailable": "No tours are available yet."
-      },
-      "dialog": {
-        "createTitle": "Create global shift",
-        "createDescription": "Create a global shift with optionally affected tours.",
-        "editTitle": "Edit global shift",
-        "editDescription": "Adjust date, description or affected tours."
-      },
-      "messages": {
-        "createSuccess": "The global waste shift was created.",
-        "updateSuccess": "The global waste shift was updated.",
-        "saveError": "The global waste shift could not be saved.",
-        "saveForbidden": "Missing permission to save global waste shifts."
-      }
+import { createWasteManagementSchedulingTranslations } from './plugin.translations.shared.scheduling.js';
+
+export const wasteManagementPluginTranslationsENScheduling = createWasteManagementSchedulingTranslations({
+  global: {
+    title: 'Global shifts',
+    description: 'Shifts with global effect across multiple tours.',
+    cardTitle: 'Global shift {{value}}',
+    table: {
+      ariaLabel: 'Table of global waste shifts',
+      caption: 'Table of global waste shifts with context and actions.',
+      originalDate: 'Original date',
+      actualDate: 'Shifted date',
+      reason: 'Reason',
+      description: 'Description',
+      affectedTours: 'Affected tours',
+      hasYear: 'Year-specific',
+      reasonKey: 'Reason key',
+      actions: 'Actions',
     },
-    "tour": {
-      "title": "Tour-related shifts",
-      "description": "Targeted single-date shifts for specific tours.",
-      "cardTitle": "Tour {{value}}",
-      "table": {
-        "ariaLabel": "Table of tour-related waste shifts",
-        "caption": "Table of tour-related waste shifts with context and actions.",
-        "tourId": "Tour",
-        "originalDate": "Original date",
-        "actualDate": "Shifted date",
-        "reason": "Reason",
-        "description": "Description",
-        "followUpMode": "Follow-up effect",
-        "hasYear": "Year-specific",
-        "reasonKey": "Reason key",
-        "actions": "Actions"
-      },
-      "actions": {
-        "openCreate": "Create tour shift",
-        "edit": "Edit",
-        "cancel": "Cancel",
-        "create": "Save shift",
-        "save": "Save changes",
-        "saving": "Saving…"
-      },
-      "fields": {
-        "tourId": "Tour",
-        "tourUnset": "Select tour",
-        "originalDate": "Original date",
-        "actualDate": "Shifted date",
-        "reasonType": "Reason",
-        "reasonTypeUnset": "Select reason",
-        "reasonKey": "Reason key",
-        "followUpMode": "Follow-up effect",
-        "followUpModeUnset": "No follow-up effect",
-        "description": "Description",
-        "hasYear": "Year-specific"
-      },
-      "dialog": {
-        "createTitle": "Create tour-related shift",
-        "createDescription": "Create a targeted single-date shift for a specific tour.",
-        "editTitle": "Edit tour-related shift",
-        "editDescription": "Adjust the tour, date or description of the single-date shift."
-      },
-      "messages": {
-        "createSuccess": "The tour-related waste shift was created.",
-        "updateSuccess": "The tour-related waste shift was updated.",
-        "saveError": "The tour-related waste shift could not be saved.",
-        "saveForbidden": "Missing permission to save tour-related waste shifts."
-      }
+    actions: {
+      openCreate: 'Create global shift',
+      edit: 'Edit',
+      cancel: 'Cancel',
+      create: 'Save shift',
+      save: 'Save changes',
+      saving: 'Saving…',
     },
-    "meta": {
-      "globalCount": "{{value}} global shifts",
-      "tourCount": "{{value}} tour shifts",
-      "hasYear": "Year-specific: {{value}}",
-      "affectedTours": "Affected tours: {{value}}",
-      "reasonType": "Reason: {{value}}",
-      "reasonKey": "Key: {{value}}",
-      "followUpMode": "Follow-up: {{value}}"
+    fields: {
+      originalDate: 'Original date',
+      actualDate: 'Shifted date',
+      reasonType: 'Reason',
+      reasonTypeUnset: 'Select reason',
+      reasonKey: 'Reason key',
+      description: 'Description',
+      hasYear: 'Year-specific',
+      tourIds: 'Affected tours',
+      noToursAvailable: 'No tours are available yet.',
     },
-    "reasonTypes": {
-      "holiday": "Holiday",
-      "global-deviation": "Global deviation",
-      "manual-adjustment": "Manual adjustment",
-      "operational-disruption": "Operational disruption",
-      "weather": "Weather",
-      "other": "Other"
+    dialog: {
+      createTitle: 'Create global shift',
+      createDescription: 'Create a global shift with optionally affected tours.',
+      editTitle: 'Edit global shift',
+      editDescription: 'Adjust date, description or affected tours.',
     },
-    "followUpModes": {
-      "none": "None",
-      "propagate-series": "Propagate series",
-      "mark-follow-up-dates": "Mark follow-up dates"
+    messages: {
+      createSuccess: 'The global waste shift was created.',
+      updateSuccess: 'The global waste shift was updated.',
+      saveError: 'The global waste shift could not be saved.',
+      saveForbidden: 'Missing permission to save global waste shifts.',
     },
-    "messages": {
-      "loading": "Loading scheduling shifts.",
-      "loadError": "Waste scheduling shifts could not be loaded.",
-      "loadForbidden": "Missing permission for waste scheduling shifts.",
-      "emptyTitle": "No scheduling shifts found",
-      "emptyBody": "Adjust the filters or provide date shifts in the waste data source."
+  },
+  tour: {
+    title: 'Tour-related shifts',
+    description: 'Targeted single-date shifts for specific tours.',
+    cardTitle: 'Tour {{value}}',
+    table: {
+      ariaLabel: 'Table of tour-related waste shifts',
+      caption: 'Table of tour-related waste shifts with context and actions.',
+      tourId: 'Tour',
+      originalDate: 'Original date',
+      actualDate: 'Shifted date',
+      reason: 'Reason',
+      description: 'Description',
+      followUpMode: 'Follow-up effect',
+      hasYear: 'Year-specific',
+      reasonKey: 'Reason key',
+      actions: 'Actions',
     },
-    "table": {
-      "notAvailable": "Not available"
-    }
-  }
-} as const;
+    actions: {
+      openCreate: 'Create tour shift',
+      edit: 'Edit',
+      cancel: 'Cancel',
+      create: 'Save shift',
+      save: 'Save changes',
+      saving: 'Saving…',
+    },
+    fields: {
+      tourId: 'Tour',
+      tourUnset: 'Select tour',
+      originalDate: 'Original date',
+      actualDate: 'Shifted date',
+      reasonType: 'Reason',
+      reasonTypeUnset: 'Select reason',
+      reasonKey: 'Reason key',
+      followUpMode: 'Follow-up effect',
+      followUpModeUnset: 'No follow-up effect',
+      description: 'Description',
+      hasYear: 'Year-specific',
+    },
+    dialog: {
+      createTitle: 'Create tour-related shift',
+      createDescription: 'Create a targeted single-date shift for a specific tour.',
+      editTitle: 'Edit tour-related shift',
+      editDescription: 'Adjust the tour, date or description of the single-date shift.',
+    },
+    messages: {
+      createSuccess: 'The tour-related waste shift was created.',
+      updateSuccess: 'The tour-related waste shift was updated.',
+      saveError: 'The tour-related waste shift could not be saved.',
+      saveForbidden: 'Missing permission to save tour-related waste shifts.',
+    },
+  },
+  meta: {
+    globalCount: '{{value}} global shifts',
+    tourCount: '{{value}} tour shifts',
+    hasYear: 'Year-specific: {{value}}',
+    affectedTours: 'Affected tours: {{value}}',
+    reasonType: 'Reason: {{value}}',
+    reasonKey: 'Key: {{value}}',
+    followUpMode: 'Follow-up: {{value}}',
+  },
+  reasonTypes: {
+    holiday: 'Holiday',
+    'global-deviation': 'Global deviation',
+    'manual-adjustment': 'Manual adjustment',
+    'operational-disruption': 'Operational disruption',
+    weather: 'Weather',
+    other: 'Other',
+  },
+  followUpModes: {
+    none: 'None',
+    'propagate-series': 'Propagate series',
+    'mark-follow-up-dates': 'Mark follow-up dates',
+  },
+  messages: {
+    loading: 'Loading scheduling shifts.',
+    loadError: 'Waste scheduling shifts could not be loaded.',
+    loadForbidden: 'Missing permission for waste scheduling shifts.',
+    emptyTitle: 'No scheduling shifts found',
+    emptyBody: 'Adjust the filters or provide date shifts in the waste data source.',
+  },
+  table: {
+    notAvailable: 'Not available',
+  },
+});

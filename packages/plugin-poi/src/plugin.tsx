@@ -1,14 +1,11 @@
 import {
   defineMediaPickerDefinition,
-  createStandardContentPluginActionIds,
   createStandardContentPluginDefinition,
   createStandardContentPluginContribution,
   type PluginDefinition,
 } from '@sva/plugin-sdk';
 
 import { POI_CONTENT_TYPE } from './poi.constants.js';
-
-export const pluginPoiActionIds = createStandardContentPluginActionIds('poi');
 
 const standardPoiContribution = createStandardContentPluginContribution({
   pluginId: 'poi',

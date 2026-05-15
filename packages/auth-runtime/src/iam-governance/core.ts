@@ -228,14 +228,3 @@ export const governanceComplianceExportHandler = async (request: Request): Promi
     });
   });
 };
-
-export const resolveImpersonationSubject = async (input: {
-  instanceId: string;
-  actorKeycloakSubject: string;
-  targetKeycloakSubject: string;
-}): Promise<{ ok: true } | { ok: false; reasonCode: string }> => {
-  return governanceWorkflowExecutor.resolveImpersonationSubject({
-    ...input,
-    withInstanceScopedDb,
-  });
-};

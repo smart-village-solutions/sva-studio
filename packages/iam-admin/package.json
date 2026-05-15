@@ -17,8 +17,6 @@
   },
   "dependencies": {
     "@sva/core": "workspace:*",
-    "@sva/data-repositories": "workspace:*",
-    "@sva/iam-core": "workspace:*",
     "@sva/server-runtime": "workspace:*",
     "@sva/studio-module-iam": "workspace:*",
     "zod": "^4.3.6"

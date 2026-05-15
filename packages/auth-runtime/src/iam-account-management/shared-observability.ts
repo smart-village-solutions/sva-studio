@@ -129,12 +129,6 @@ export const setRoleDriftBacklog = (instanceId: string, backlog: number): void =
   roleDriftBacklogByInstance.set(instanceId, backlog);
 };
 
-export const resetInstanceAdminClientDriftSnapshotForTest = (): void => {
-  instanceAdminClientDriftByInstance.clear();
-  instanceAdminClientDriftLastRefreshAt = 0;
-  instanceAdminClientDriftRefreshPromise = null;
-};
-
 export const trackKeycloakCall = async <T>(operation: string, execute: () => Promise<T>): Promise<T> => {
   const startedAt = Date.now();
   try {

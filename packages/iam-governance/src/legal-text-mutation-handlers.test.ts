@@ -62,6 +62,17 @@ describe('legal-text-mutation-handlers', () => {
     deps = createDeps();
   });
 
+  it('returns the csrf error before create processing starts', async () => {
+    const csrfError = new Response('csrf', { status: 403 });
+    vi.mocked(deps.validateCsrf).mockReturnValueOnce(csrfError);
+    const handlers = createLegalTextMutationHandlers(deps);
+
+    const response = await handlers.createLegalTextResponse(new Request('https://example.org'), actor);
+
+    expect(response).toBe(csrfError);
+    expect(deps.requireIdempotencyKey).not.toHaveBeenCalled();
+  });
+
   it('creates legal texts with idempotency completion', async () => {
     const handlers = createLegalTextMutationHandlers(deps);
 
@@ -90,6 +101,130 @@ describe('legal-text-mutation-handlers', () => {
     expect(deps.repository.createLegalTextVersion).not.toHaveBeenCalled();
   });
 
+  it('returns the required idempotency error before parsing the create body', async () => {
+    const idempotencyError = new Response('missing-idempotency', { status: 400 });
+    vi.mocked(deps.requireIdempotencyKey).mockReturnValueOnce({ error: idempotencyError });
+    const handlers = createLegalTextMutationHandlers(deps);
+
+    const response = await handlers.createLegalTextResponse(new Request('https://example.org'), actor);
+
+    expect(response).toBe(idempotencyError);
+    expect(deps.parseRequestBody).not.toHaveBeenCalled();
+  });
+
+  it('returns invalid_request when create body parsing fails', async () => {
+    vi.mocked(deps.parseRequestBody).mockResolvedValueOnce({
+      ok: false,
+      message: 'Body invalid',
+    });
+    const handlers = createLegalTextMutationHandlers(deps);
+
+    const response = await handlers.createLegalTextResponse(new Request('https://example.org'), actor);
+    const body = await readBody(response);
+
+    expect(response.status).toBe(400);
+    expect(body.code).toBe('invalid_request');
+    expect(deps.reserveIdempotency).not.toHaveBeenCalled();
+  });
+
+  it('rejects create requests when the idempotency key is reused with a different payload', async () => {
+    vi.mocked(deps.reserveIdempotency).mockResolvedValueOnce({
+      status: 'conflict',
+      message: 'Payload mismatch',
+    });
+    const handlers = createLegalTextMutationHandlers(deps);
+
+    const response = await handlers.createLegalTextResponse(new Request('https://example.org'), actor);
+    const body = await readBody(response);
+
+    expect(response.status).toBe(409);
+    expect(body.code).toBe('idempotency_key_reuse');
+    expect(deps.repository.createLegalTextVersion).not.toHaveBeenCalled();
+    expect(deps.completeIdempotency).not.toHaveBeenCalled();
+  });
+
+  it('returns a failed idempotent conflict when the repository does not create a legal text version', async () => {
+    vi.mocked(deps.repository.createLegalTextVersion).mockResolvedValueOnce(undefined);
+    const handlers = createLegalTextMutationHandlers(deps);
+
+    const response = await handlers.createLegalTextResponse(new Request('https://example.org'), actor);
+    const body = await readBody(response);
+
+    expect(response.status).toBe(409);
+    expect(body.error).toEqual({
+      code: 'conflict',
+      message: 'Diese Rechtstext-Version existiert bereits.',
+    });
+    expect(deps.completeIdempotency).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: 'FAILED',
+        responseStatus: 409,
+        responseBody: body,
+      })
+    );
+  });
+
+  it('maps published-at validation failures during create to invalid requests', async () => {
+    vi.mocked(deps.repository.createLegalTextVersion).mockRejectedValueOnce(
+      new Error('legal_text_published_at_required')
+    );
+    const handlers = createLegalTextMutationHandlers(deps);
+
+    const response = await handlers.createLegalTextResponse(new Request('https://example.org'), actor);
+    const body = await readBody(response);
+
+    expect(response.status).toBe(400);
+    expect(body.error).toEqual({
+      code: 'invalid_request',
+      message: 'Veröffentlichungsdatum ist für gültige Rechtstexte erforderlich.',
+    });
+    expect(deps.completeIdempotency).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: 'FAILED',
+        responseStatus: 400,
+      })
+    );
+  });
+
+  it('returns a database error when the created legal text cannot be reloaded', async () => {
+    vi.mocked(deps.repository.loadLegalTextById).mockResolvedValueOnce(undefined);
+    const handlers = createLegalTextMutationHandlers(deps);
+
+    const response = await handlers.createLegalTextResponse(new Request('https://example.org'), actor);
+    const body = await readBody(response);
+
+    expect(response.status).toBe(503);
+    expect(body.error).toEqual({
+      code: 'database_unavailable',
+      message: 'Rechtstext konnte nicht gespeichert werden.',
+    });
+    expect(deps.logError).toHaveBeenCalledWith(
+      'Legal text create failed',
+      expect.objectContaining({ error: 'created_legal_text_not_found' })
+    );
+    expect(deps.completeIdempotency).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: 'FAILED',
+        responseStatus: 503,
+        responseBody: body,
+      })
+    );
+  });
+
+  it('rejects create requests without an actor account', async () => {
+    const handlers = createLegalTextMutationHandlers(deps);
+
+    const response = await handlers.createLegalTextResponse(new Request('https://example.org'), {
+      ...actor,
+      actorAccountId: undefined,
+    });
+    const body = await readBody(response);
+
+    expect(response.status).toBe(403);
+    expect(body.code).toBe('forbidden');
+    expect(deps.parseRequestBody).not.toHaveBeenCalled();
+  });
+
   it('updates legal texts and reloads the response item', async () => {
     vi.mocked(deps.parseRequestBody).mockResolvedValueOnce({
       ok: true,
@@ -106,6 +241,83 @@ describe('legal-text-mutation-handlers', () => {
     );
   });
 
+  it('returns the csrf error before update processing starts', async () => {
+    const csrfError = new Response('csrf', { status: 403 });
+    vi.mocked(deps.validateCsrf).mockReturnValueOnce(csrfError);
+    const handlers = createLegalTextMutationHandlers(deps);
+
+    const response = await handlers.updateLegalTextResponse(
+      new Request('https://example.org/api/v1/iam/legal-texts/11111111-1111-1111-1111-111111111111'),
+      actor
+    );
+
+    expect(response).toBe(csrfError);
+    expect(deps.parseRequestBody).not.toHaveBeenCalled();
+  });
+
+  it('returns invalid_request when update body parsing fails', async () => {
+    vi.mocked(deps.parseRequestBody).mockResolvedValueOnce({
+      ok: false,
+      message: 'Update invalid',
+    });
+    const handlers = createLegalTextMutationHandlers(deps);
+
+    const response = await handlers.updateLegalTextResponse(
+      new Request('https://example.org/api/v1/iam/legal-texts/11111111-1111-1111-1111-111111111111'),
+      actor
+    );
+    const body = await readBody(response);
+
+    expect(response.status).toBe(400);
+    expect(body.code).toBe('invalid_request');
+    expect(deps.repository.updateLegalTextVersion).not.toHaveBeenCalled();
+  });
+
+  it('returns not found when the repository does not update a legal text version', async () => {
+    vi.mocked(deps.repository.updateLegalTextVersion).mockResolvedValueOnce(undefined);
+    const handlers = createLegalTextMutationHandlers(deps);
+
+    const response = await handlers.updateLegalTextResponse(
+      new Request('https://example.org/api/v1/iam/legal-texts/11111111-1111-1111-1111-111111111111'),
+      actor
+    );
+    const body = await readBody(response);
+
+    expect(response.status).toBe(404);
+    expect(body.code).toBe('not_found');
+    expect(deps.repository.loadLegalTextById).not.toHaveBeenCalled();
+  });
+
+  it('returns not found when an updated legal text version cannot be reloaded', async () => {
+    vi.mocked(deps.repository.loadLegalTextById).mockResolvedValueOnce(undefined);
+    const handlers = createLegalTextMutationHandlers(deps);
+
+    const response = await handlers.updateLegalTextResponse(
+      new Request('https://example.org/api/v1/iam/legal-texts/11111111-1111-1111-1111-111111111111'),
+      actor
+    );
+    const body = await readBody(response);
+
+    expect(response.status).toBe(404);
+    expect(body.code).toBe('not_found');
+  });
+
+  it('maps published-at validation failures during update to invalid requests', async () => {
+    vi.mocked(deps.repository.updateLegalTextVersion).mockRejectedValueOnce(
+      new Error('legal_text_published_at_required')
+    );
+    const handlers = createLegalTextMutationHandlers(deps);
+
+    const response = await handlers.updateLegalTextResponse(
+      new Request('https://example.org/api/v1/iam/legal-texts/11111111-1111-1111-1111-111111111111'),
+      actor
+    );
+    const body = await readBody(response);
+
+    expect(response.status).toBe(400);
+    expect(body.code).toBe('invalid_request');
+  });
+
   it('maps legal text delete conflicts to API conflicts', async () => {
     vi.mocked(deps.repository.deleteLegalTextVersion).mockRejectedValueOnce(new LegalTextDeleteConflictError());
     const handlers = createLegalTextMutationHandlers(deps);
@@ -115,5 +327,98 @@ describe('legal-text-mutation-handlers', () => {
 
     expect(response.status).toBe(409);
     expect(body.code).toBe('conflict');
+  });
+
+  it('returns the csrf error before delete processing starts', async () => {
+    const csrfError = new Response('csrf', { status: 403 });
+    vi.mocked(deps.validateCsrf).mockReturnValueOnce(csrfError);
+    const handlers = createLegalTextMutationHandlers(deps);
+
+    const response = await handlers.deleteLegalTextResponse(
+      new Request('https://example.org/api/v1/iam/legal-texts/11111111-1111-1111-1111-111111111111'),
+      actor
+    );
+
+    expect(response).toBe(csrfError);
+    expect(deps.readPathSegment).not.toHaveBeenCalled();
+  });
+
+  it('returns invalid_request when delete is missing the legal text id', async () => {
+    vi.mocked(deps.readPathSegment).mockReturnValueOnce(undefined);
+    const handlers = createLegalTextMutationHandlers(deps);
+
+    const response = await handlers.deleteLegalTextResponse(
+      new Request('https://example.org/api/v1/iam/legal-texts'),
+      actor
+    );
+    const body = await readBody(response);
+
+    expect(response.status).toBe(400);
+    expect(body.code).toBe('invalid_request');
+    expect(deps.repository.deleteLegalTextVersion).not.toHaveBeenCalled();
+  });
+
+  it('rejects invalid legal text ids before delete reaches the repository', async () => {
+    vi.mocked(deps.readPathSegment).mockReturnValueOnce('not-a-uuid');
+    const handlers = createLegalTextMutationHandlers(deps);
+
+    const response = await handlers.deleteLegalTextResponse(
+      new Request('https://example.org/api/v1/iam/legal-texts/not-a-uuid'),
+      actor
+    );
+    const body = await readBody(response);
+
+    expect(response.status).toBe(400);
+    expect(body.code).toBe('invalid_request');
+    expect(deps.repository.deleteLegalTextVersion).not.toHaveBeenCalled();
+  });
+
+  it('rejects delete requests without an actor account', async () => {
+    const handlers = createLegalTextMutationHandlers(deps);
+
+    const response = await handlers.deleteLegalTextResponse(
+      new Request('https://example.org/api/v1/iam/legal-texts/11111111-1111-1111-1111-111111111111'),
+      {
+        ...actor,
+        actorAccountId: undefined,
+      }
+    );
+    const body = await readBody(response);
+
+    expect(response.status).toBe(403);
+    expect(body.code).toBe('forbidden');
+    expect(deps.repository.deleteLegalTextVersion).not.toHaveBeenCalled();
+  });
+
+  it('returns not found when delete does not remove a legal text version', async () => {
+    vi.mocked(deps.repository.deleteLegalTextVersion).mockResolvedValueOnce(undefined);
+    const handlers = createLegalTextMutationHandlers(deps);
+
+    const response = await handlers.deleteLegalTextResponse(
+      new Request('https://example.org/api/v1/iam/legal-texts/11111111-1111-1111-1111-111111111111'),
+      actor
+    );
+    const body = await readBody(response);
+
+    expect(response.status).toBe(404);
+    expect(body.code).toBe('not_found');
+  });
+
+  it('maps unexpected delete failures to database_unavailable', async () => {
+    vi.mocked(deps.repository.deleteLegalTextVersion).mockRejectedValueOnce(new Error('db down'));
+    const handlers = createLegalTextMutationHandlers(deps);
+
+    const response = await handlers.deleteLegalTextResponse(
+      new Request('https://example.org/api/v1/iam/legal-texts/11111111-1111-1111-1111-111111111111'),
+      actor
+    );
+    const body = await readBody(response);
+
+    expect(response.status).toBe(503);
+    expect(body.code).toBe('database_unavailable');
+    expect(deps.logError).toHaveBeenCalledWith(
+      'Legal text delete failed',
+      expect.objectContaining({ error: 'db down' })
+    );
   });
 });

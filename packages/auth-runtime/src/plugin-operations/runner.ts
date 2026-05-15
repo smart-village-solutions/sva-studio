@@ -22,7 +22,6 @@ export type PluginOperationExecutionRegistration = {
 };
 
 type PluginOperationExecutionRegistry = ReadonlyMap<string, PluginOperationExecutionRegistration>;
-type PluginOperationExecutionHandlerRegistry = ReadonlyMap<string, PluginOperationExecutionHandler>;
 
 type QueuePluginOperationJobInput = {
   readonly instanceId: string;
@@ -58,9 +57,6 @@ export const registerPluginOperationExecutionHandlers = (
     ])
   );
 };
-
-export const getRegisteredPluginOperationExecutionHandlers = (): PluginOperationExecutionHandlerRegistry =>
-  new Map(Array.from(registeredHandlers.entries(), ([jobTypeId, registration]) => [jobTypeId, registration.handler]));
 
 export const getRegisteredPluginOperationExecutionRegistry = (): PluginOperationExecutionRegistry => registeredHandlers;
 

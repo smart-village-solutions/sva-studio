@@ -1,14 +1,11 @@
 import {
   defineMediaPickerDefinition,
-  createStandardContentPluginActionIds,
   createStandardContentPluginDefinition,
   createStandardContentPluginContribution,
   type PluginDefinition,
 } from '@sva/plugin-sdk';
 
 import { EVENTS_CONTENT_TYPE } from './events.constants.js';
-
-export const pluginEventsActionIds = createStandardContentPluginActionIds('events');
 
 const standardEventsContribution = createStandardContentPluginContribution({
   pluginId: 'events',

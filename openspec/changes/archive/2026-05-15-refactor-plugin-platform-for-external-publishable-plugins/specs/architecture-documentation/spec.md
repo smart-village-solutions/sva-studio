@@ -21,6 +21,8 @@ Das System SHALL Architekturentscheidungen mit Kontext, Begründung und Auswirku
 - **THEN** referenziert der Change mindestens Bausteinsicht, Laufzeitsicht, Verteilungssicht, Querschnittskonzepte, Architekturentscheidungen, Qualitätsanforderungen und Risiken
 - **AND** dokumentiert, ob ADR-034 fortgeschrieben oder durch eine neue ADR ergänzt wird
 
+## ADDED Requirements
+
 ### Requirement: Entwicklungsdokumentation beschreibt Studio-Plugin-Nutzung
 
 Die Entwicklungsdokumentation SHALL Regeln, Beispiele und Review-Kriterien für die Nutzung der öffentlichen Plugin-Plattform enthalten.

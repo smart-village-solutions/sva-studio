@@ -446,3 +446,13 @@ The system SHALL return deterministic pagination metadata for News, Events, and 
 - **AND** it accepts only the shared page sizes `25`, `50`, or `100`
 - **AND** it never forwards a page size greater than `100` to the typed adapter
 
+### Requirement: Mainserver-Konfiguration wird aus zentraler Interface-Registry aufgeloest
+
+The system SHALL resolve instance-specific SVA-Mainserver endpoint configuration from the central external-interface registry.
+
+#### Scenario: Mainserver configuration is loaded for an instance
+
+- **WHEN** a server-side Mainserver operation resolves the active instance configuration
+- **THEN** it reads the canonical `sva_mainserver` interface from the external-interface registry
+- **AND** disabled or missing records remain fail-closed
+

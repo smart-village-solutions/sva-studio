@@ -5,7 +5,7 @@ TBD - created by archiving change add-account-user-management-ui. Update Purpose
 ## Requirements
 ### Requirement: Auth-State-Provider
 
-Das System MUST einen zentralen React-Context (`AuthProvider` in `sva-studio-react`) bereitstellen, der den Authentifizierungs-State anwendungsweit verfügbar macht und verteilte `/auth/me`-Aufrufe durch einen einheitlichen `useAuth()`-Hook ersetzt.
+Das System MUST einen zentralen React-Context (`AuthProvider` in `sva-studio-react`) bereitstellen, der den Authentifizierungs-State anwendungsweit verfügbar macht, verteilte `/auth/me`-Aufrufe durch einen einheitlichen `useAuth()`-Hook ersetzt und Auth-Unterbrechungen strukturiert diagnostizierbar macht.
 
 #### Scenario: Authentifizierter Nutzer lädt die Anwendung
 
@@ -32,6 +32,13 @@ Das System MUST einen zentralen React-Context (`AuthProvider` in `sva-studio-rea
 - **WENN** ein API-Call `403 Forbidden` zurückgibt und der Nutzer eigentlich berechtigt sein sollte
 - **DANN** wird `invalidatePermissions()` aufgerufen
 - **UND** `/auth/me` wird refetcht, um den aktuellen Berechtigungsstand zu aktualisieren
+
+#### Scenario: Session expired notice keeps correlated diagnostics
+
+- **WENN** ein Benutzer nach fehlgeschlagener stiller Session-Recovery auf `/?auth=session-expired` geleitet wird
+- **DANN** bleibt ein lokaler, tab-bezogener Auth-Diagnosepfad für den Vorfall erhalten
+- **UND** die Oberfläche darf mindestens `requestId` und `authFlowId` sichtbar machen
+- **UND** der Diagnosepfad enthält keine Tokens und keine PII
 
 ### Requirement: Protected-Route-Guard
 
@@ -1095,7 +1102,7 @@ Das System MUST auf der Instanz-Detailseite nur fachlich sinnvolle Tenant-IAM-Ak
 
 ### Requirement: Progressive Informationsarchitektur auf der Instanz-Detailseite
 
-Das System MUST die Instanz-Detailseite unter `/admin/instances/:instanceId` so strukturieren, dass aktuelle Betriebsbewertung, Konfiguration, technische Diagnose und Historie nicht mehr als gleichrangiger Lang-Scrollbereich konkurrieren.
+Das System MUST die Instanz-Detailseite unter `/admin/instances/:instanceId` so strukturieren, dass aktuelle Betriebsbewertung, Konfiguration, technische Diagnose und Historie nicht mehr als gleichrangiger Lang-Scrollbereich konkurrieren. Die Detailseite MUST den Realm-Modus als führende Betriebsdimension behandeln und abhängig von `realmMode` unterschiedliche operative Hauptansichten rendern.
 
 #### Scenario: Standardansicht priorisiert den aktuellen Operator-Kontext
 
@@ -1123,25 +1130,189 @@ Das System MUST die Instanz-Detailseite unter `/admin/instances/:instanceId` so 
 - **WENN** eine Instanz aktuell betriebsbereit oder strukturell gruen ist, aber aeltere fehlgeschlagene Provisioning-Laeufe besitzt
 - **DANN** trennt die Detailseite den aktuellen Zustand klar von der historischen Run-Historie
 - **UND** darf ein aelterer Fehl-Lauf nicht denselben visuellen Rang wie ein aktueller blockierender Befund erhalten
-- **UND** bleibt die Historie fuer Diagnosezwecke explizit oeffenbar
 
-#### Scenario: Aktionen sind hierarchisiert statt gleich laut
+#### Scenario: Detailseite rendert mode-aware Operationsansicht fuer neue Realms
 
-- **WENN** die Detailseite mehrere moegliche Bedienhandlungen anbietet
-- **DANN** hebt die Seite genau eine Primaeraktion deutlich hervor
-- **UND** gruppiert Spezial- oder Folgeaktionen sichtbar nachgeordnet
-- **UND** vermeidet in der Standardansicht mehrere gleichgewichtete Aktionsbuttons ohne erkennbare Prioritaet
+- **WENN** `realmMode` einer Instanz auf `new` steht
+- **DANN** zeigt die Detailseite im operativen Hauptbereich einen linearen Aufbaupfad fuer Realm-Erzeugung und Erstbootstrap
+- **UND** priorisiert sie die naechste sinnvolle Aufbauaktion gegenueber Diagnose- oder Rohstatuslisten
+- **UND** stellt sie erwartbar noch nicht erzeugte Artefakte nicht als aktuellen Defekt derselben Stufe wie echte Fehlzustaende dar
 
-#### Scenario: Optische Gimmicks steigern Freude ohne Unruhe
+#### Scenario: Neuer Realm fuehrt ueber die tatsaechlichen technischen Teilphasen
 
-- **WENN** die Detailseite visuelle Gimmicks oder Mikrointeraktionen einsetzt
-- **DANN** unterstuetzen diese Blickfuehrung, Statusfeedback oder die wahrgenommene Hochwertigkeit der Bedienung
-- **UND** bleiben sie dezent genug, um Incident- und Betriebsarbeit nicht zu stoeren
-- **UND** uebersteuern sie weder Statusfarben noch Fokusindikatoren noch zentrale Textlesbarkeit
+- **WENN** `realmMode` einer Instanz auf `new` steht
+- **DANN** bildet die Detailseite den Aufbaupfad mindestens entlang der Teilphasen `Registry-Vertrag`, `Vorbedingungen`, `Worker-Plan`, `Realm`, `Login-Client`, `Tenant-Admin-Client`, `Realm-Rollen`, `Tenant-Admin`, `Secret-Sync` und `Abschlussvalidierung` ab
+- **UND** fasst sie diese Teilphasen nicht zu einer einzigen unscharfen Gesamtaktion ohne Zwischenschritte zusammen
+- **UND** bleibt fuer einen Operator erkennbar, welche Teilphase bereits erfolgreich, welche laufend und welche als naechste vorgesehen ist
 
-#### Scenario: Motion bleibt ruhig und zugaenglich
+#### Scenario: Neuer Realm zeigt pro Schritt belastbare Zwischenausgaben
 
-- **WENN** die Detailseite Animationen fuer laufende Prozesse, Statuswechsel oder Hover-Zustaende einsetzt
-- **DANN** sind diese kurz, ruhig und fachlich begruendet
-- **UND** respektieren sie bestehende Accessibility-Anforderungen wie reduzierte Bewegung oder gleichwertige statische Rueckmeldung
+- **WENN** die Detailseite eine Teilphase des `new`-Pfads rendert
+- **DANN** zeigt sie fuer diese Teilphase mindestens einen fachlichen Status, die letzte belastbare Evidenz und einen kurzen artefaktspezifischen Hinweis
+- **UND** nennt sie bei Fehlern den betroffenen Artefakttyp explizit, statt nur einen generischen Gesamtfehler fuer `Provisioning` auszugeben
+- **UND** bleibt dadurch unterscheidbar, ob der Fehler aus Vorbedingungen, Plan, Keycloak-Ausfuehrung oder Abschlussvalidierung stammt
+
+#### Scenario: Detailseite rendert mode-aware Operationsansicht fuer Bestands-Realms
+
+- **WENN** `realmMode` einer Instanz auf `existing` steht
+- **DANN** zeigt die Detailseite im operativen Hauptbereich einen Diagnose- und Reconcile-Pfad fuer den vorhandenen Realm
+- **UND** stellt sie fehlende oder abweichende Vertrags- und Keycloak-Artefakte als echte Befunde oder Drift dar
+- **UND** bleibt klar erkennbar, welche Aktion den sichtbaren Befund adressiert
+
+#### Scenario: Teilweise erfolgreicher Aufbaupfad bleibt nachvollziehbar
+
+- **WENN** `realmMode` einer Instanz auf `new` steht
+- **UND** einzelne fruehe Aufbau-Schritte bereits erfolgreich waren, aber ein spaeterer Schritt fehlgeschlagen ist
+- **DANN** zeigt die Detailseite den letzten erfolgreichen Schritt, den ersten fehlgeschlagenen Schritt und die naechste sinnvolle Fortsetzungs- oder Reparaturaktion
+- **UND** faellt sie dabei nicht in eine generische Driftdarstellung fuer Bestands-Realms zurueck
+
+#### Scenario: Detailseite leitet fuer neue Realms genau eine naechste Hauptaktion ab
+
+- **WENN** `realmMode` einer Instanz auf `new` steht
+- **DANN** leitet die Detailseite aus dem ersten noch offenen oder fehlgeschlagenen relevanten Schritt genau eine primaere naechste Aktion ab
+- **UND** aendert sich diese primaere Aktion nachvollziehbar, wenn Vorbedingungen blockieren, ein Retry sinnvoll ist oder der Abschluss bereits erfolgreich war
+- **UND** muss der Operator nicht mehrere gleichrangige Buttons interpretieren, um den naechsten fachlich richtigen Schritt zu erraten
+
+#### Scenario: Neuer Realm endet im Cockpit beim erfolgreichen Realm-Grundaufbau
+
+- **WENN** `realmMode` einer Instanz auf `new` steht
+- **UND** Realm, Clients, Rollen, Tenant-Admin, Secret-Sync und Abschlussvalidierung erfolgreich sind
+- **DANN** markiert die Detailseite den `new`-Kernworkflow als fachlich abgeschlossen
+- **UND** behandelt sie eine optionale Instanzaktivierung oder nachgelagerte Modul-/IAM-Folgearbeiten nicht als noch fehlenden Pflichtschritt desselben Kernworkflows
+
+#### Scenario: Folgearbeiten bleiben sichtbar, aber vom Realm-Grundaufbau getrennt
+
+- **WENN** nach erfolgreichem Realm-Grundaufbau noch Modulzuordnung, Modul-IAM-Synchronisation oder andere Folgearbeiten sinnvoll sind
+- **DANN** zeigt die Detailseite diese Arbeiten als nachgelagerte Empfehlungen oder getrennten Bereich
+- **UND** vermischt sie diese Folgearbeiten nicht mit der linearen Aufbau-Schrittkette des neuen Realm
+
+#### Scenario: Moduskonflikt bei neuem Realm wird explizit angezeigt
+
+- **WENN** `realmMode` einer Instanz auf `new` steht
+- **UND** der Ziel-Realm in Keycloak bereits existiert
+- **DANN** zeigt die Detailseite einen expliziten Konflikt zwischen Sollmodus und Live-Zustand
+- **UND** blockiert den linearen Erstaufbaupfad sichtbar, bis der Konflikt geklaert oder bereinigt wurde
+
+#### Scenario: Moduskonflikt bei Bestands-Realm wird als harter Defekt angezeigt
+
+- **WENN** `realmMode` einer Instanz auf `existing` steht
+- **UND** der erwartete Realm live nicht existiert
+- **DANN** zeigt die Detailseite diesen Zustand als harten Strukturdefekt
+- **UND** stellt sie ihn nicht als geringfuegige Konfigurationsabweichung oder normalen Folge-Drift dar
+
+#### Scenario: Veraltete Evidenz bleibt von aktuellem Zustand unterscheidbar
+
+- **WENN** die Detailseite nur alte oder unvollstaendige Live-Evidenz fuer Provisioning, Keycloak-Status oder Tenant-IAM besitzt
+- **DANN** markiert die Uebersicht diese Evidenz sichtbar als veraltet, unvollstaendig oder fachlich gleichwertig
+- **UND** trennt den Hinweis klar von historischen Run-Eintraegen und aktuellen Erfolgs- oder Fehleraussagen
+
+#### Scenario: Erstblick bleibt trotz Fehlerdiagnose kompakt
+
+- **WENN** fuer einen Schritt technische Fehlerdetails, Request-IDs oder Rohmeldungen vorliegen
+- **DANN** zeigt der Erstblick nur Schritt, Kurzursache und naechste Aktion
+- **UND** bleiben technische Details ueber nachgelagerte Detailbereiche oder Expand-Zustaende erreichbar
+- **UND** kippt die Hauptuebersicht dadurch nicht erneut in ein konkurrierendes Lang-Scroll-Diagnoselayout
+
+#### Scenario: Nicht ausfuehrbare Aktionen bleiben sichtbar erklaert
+
+- **WENN** eine im Workflow naechstliegende Operator-Aktion aus Berechtigungs- oder Technikgruenden aktuell nicht ausfuehrbar ist
+- **DANN** bleibt der fachliche Schritt in der Detailseite sichtbar
+- **UND** kennzeichnet die UI die Aktion als nicht ausfuehrbar inklusive Grundhinweis
+- **UND** verschweigt sie nicht, dass dieser Schritt grundsaetzlich zum Workflow gehoert
+
+### Requirement: Zentraler Admin-Bereich fuer instanzbezogene Modulzuweisung auf Studio-Root-Ebene
+
+Das System SHALL einen zentralen Bereich `Module` auf Studio-Root-Ebene bereitstellen, der ausschliesslich fuer den Studio-Admin zugaenglich ist und ueber den Module Instanzen zugewiesen oder entzogen werden.
+
+#### Scenario: Studio-Admin weist einer Instanz ein Modul zu
+
+- **GIVEN** ein Studio-Admin oeffnet den zentralen Bereich `Module` auf Studio-Root-Ebene
+- **WHEN** er eine konkrete Instanz auswaehlt und ein Modul zuweist
+- **THEN** zeigt die UI verfuegbare und bereits zugewiesene Module getrennt oder gleichwertig filterbar an
+- **AND** bietet sie pro Modul eine explizite Aktion zum Zuweisen oder Entziehen an
+- **AND** ist dieser Bereich von der operativen Instanz-Detailseite getrennt und nur fuer den Studio-Admin erreichbar
+- **AND** haben Instanz-Operatoren keinen Zugriff auf diese Verwaltung
+
+### Requirement: Modulzuweisung zeigt integrierten IAM-Seeding-Effekt
+
+Das System SHALL in der Modulverwaltung klar kommunizieren, dass die Zuweisung eines Moduls zu einer Instanz die noetige IAM-Basis in derselben Operation herstellt.
+
+#### Scenario: Zuweisung zeigt fachliche Folge
+
+- **GIVEN** ein Modul ist einer Instanz noch nicht zugewiesen
+- **WHEN** der Studio-Admin die Zuweisung bestaetigt
+- **THEN** macht die UI sichtbar, dass das Modul fuer die Instanz fachlich freigeschaltet und die zugehoerige IAM-Basis in derselben Operation geseedet wird
+- **AND** zeigt sie nach Abschluss eine verstaendliche Ergebnisrueckmeldung
+
+### Requirement: Modulentzug zeigt Hard-Removal und fordert Bestaetigung
+
+Das System SHALL den Entzug eines Moduls von einer Instanz als harte, fachlich wirksame Entfernung mit Vorschau und expliziter Bestaetigung darstellen.
+
+#### Scenario: Entzug warnt vor Rechteentzug
+
+- **GIVEN** ein Modul ist einer Instanz zugewiesen
+- **WHEN** der Studio-Admin den Entzug ausloest
+- **THEN** zeigt die UI eine Bestaetigung mit Hinweis auf die harte Entfernung modulbezogener Permissions und Rollenbeziehungen
+- **AND** SHALL sie betroffene Systemrollen (Name), Permissions-Anzahl und einen Hinweis auf moegliche Auswirkungen auf aktive Nutzersitzungen in einer Vorschau sichtbar machen
+- **AND** wird der Entzug ohne explizite Bestaetigung des Studio-Admins nicht ausgefuehrt
+
+### Requirement: Instanz-Cockpit zeigt Befund fuer IAM-Basis aktiver Module
+
+Das System SHALL auf der Instanz-Detailseite einen expliziten Befund fuer die IAM-Basis aktiver Module anzeigen und dem Studio-Admin eine direkte Reparaturaktion anbieten.
+
+#### Scenario: Cockpit zeigt Reparaturpfad fuer IAM-Basis-Drift
+
+- **GIVEN** die Instanz hat aktive Module mit unvollstaendiger IAM-Basis
+- **WHEN** der Studio-Admin die Instanz-Detailseite oeffnet
+- **THEN** zeigt das Cockpit einen degradierten Befund fuer die IAM-Basis aktiver Module
+- **AND** enthaelt der Befund eine verstaendliche Klartextzeile (nicht nur das technische Label `IAM-Basis aktiver Module`)
+- **AND** ordnet die Seite diesen Befund als operativen Handlungsbedarf ein
+- **AND** bietet sie eine direkte Aktion zum Neu-Seeden von Berechtigungen und Systemrollen an
+- **AND** ist diese Aktion nur fuer den Studio-Admin sichtbar und ausfuehrbar
+
+#### Scenario: Cockpit zeigt Empty-State fuer Bestandsinstanz ohne zugewiesene Module
+
+- **GIVEN** eine Bestandsinstanz hat nach Einfuehrung des Modulvertrags noch keine zugewiesenen Module
+- **WHEN** der Studio-Admin die Instanz-Detailseite oeffnet
+- **THEN** erklaert das Cockpit, dass fuer diese Instanz noch keine Module zugewiesen wurden
+- **AND** weist es darauf hin, dass die Zuweisung im zentralen Bereich `Module` erfolgt
+- **AND** wertet es den leeren Modulsatz nicht als Fehler, sondern als erwarteten Ausgangszustand
+
+### Requirement: Instanz-Anlage-Flow fuehrt einen gefuehrten Admin-Bootstrap-Abschnitt
+
+Das System SHALL im Instanz-Anlage-Flow einen eigenen Abschnitt fuer den initialen Admin-Bootstrap der neuen Instanz bereitstellen. Der Abschnitt muss sich harmonisch in den Happy Path einfuegen, aber Fehler aus Modulzuordnung, Rollenerzeugung und Gruppierung klar getrennt sichtbar machen.
+
+#### Scenario: Abschnitt zeigt Happy-Path-Bedienung mit genau einem Sammel-Button
+
+- **GIVEN** die Instanz wurde erfolgreich angelegt
+- **WHEN** der Studio-Admin den Bootstrap-Abschnitt oeffnet
+- **THEN** zeigt die UI eine optionale Modulauswahl
+- **AND** zeigt sie genau einen Sammel-Button zum Anlegen der Admin-Struktur
+- **AND** erklaert sie knapp, dass ohne Modulauswahl mindestens `Admins` und `Core Admin` angelegt werden
+
+#### Scenario: Abschnitt zeigt Warnhinweis fuer Namenskonflikte
+
+- **GIVEN** der Bootstrap-Abschnitt kann bestehende Rollen mit denselben Namen ueberschreiben
+- **WHEN** der Studio-Admin den Abschnitt betrachtet oder die Aktion vorbereitet
+- **THEN** weist die UI sichtbar darauf hin, dass gleichnamige bestehende Rollen ueberschrieben werden koennen
+- **AND** bleibt die Aktion trotzdem als Happy-Path-Sammelaktion verstaendlich
+
+### Requirement: Initiale Admin-Struktur wird mit editierbaren Rollen aufgebaut
+
+Das System SHALL ueber den Bootstrap-Abschnitt eine initiale Gruppe `Admins` sowie sprechend benannte Initialrollen fuer `Core` und optional ausgewaehlte Module anlegen. Diese Rollen sind Startartefakte und duerfen spaeter im IAM-UI bearbeitet werden.
+
+#### Scenario: Bootstrap ohne Module erzeugt editierbare Core-Struktur
+
+- **GIVEN** der Studio-Admin fuehrt den Bootstrap-Abschnitt ohne Modulauswahl aus
+- **WHEN** die Aktion erfolgreich abgeschlossen wird
+- **THEN** legt die UI-seitig beschriebene Mutation die Gruppe `Admins` und die Rolle `Core Admin` an
+- **AND** sind diese Artefakte spaeter im IAM-UI sichtbar und bearbeitbar
+
+#### Scenario: Bootstrap mit Modulen erzeugt sprechend benannte Modul-Admin-Rollen
+
+- **GIVEN** der Studio-Admin hat im Bootstrap-Abschnitt Module ausgewaehlt
+- **WHEN** die Aktion erfolgreich abgeschlossen wird
+- **THEN** erzeugt das System zusaetzlich pro ausgewaehltem Modul eine sprechend benannte Modul-Admin-Rolle
+- **AND** verknuepft es diese Rollen zusammen mit `Core Admin` mit der Gruppe `Admins`
+- **AND** bleiben die erzeugten Rollen spaeter im IAM-UI bearbeitbar
 

@@ -9,6 +9,12 @@ Das System SHALL sensitive Mutationen nur dann als frisch re-authentisiert behan
 - **THEN** speichert das System im Session- oder benutzerbezogenen Reauth-Zustand eine serverseitig gebundene Fresh-Reauth-Evidenz
 - **AND** kann ein nachgelagerter Guard diese Evidenz gegen ein begrenztes Frischefenster pruefen
 
+#### Scenario: Silent-SSO oder Token-Refresh erzeugen keine neue Fresh-Reauth-Evidenz
+
+- **WHEN** eine Session nur ueber Silent-SSO, Token-Refresh oder einen anderen nicht-interaktiven Recovery-Pfad fortgesetzt wird
+- **THEN** erzeugt das System dadurch keine neue Fresh-Reauth-Evidenz fuer sensitive Mutationen
+- **AND** bleibt fuer den Fresh-Reauth-Guard allein eine explizit serverseitig kontrollierte Re-Authentisierung massgeblich
+
 #### Scenario: Klientseitige Bestaetigung zaehlt nicht als Reauth-Nachweis
 
 - **WHEN** ein Request nur einen Header, Query-Parameter oder sonstigen klientseitig gesetzten Marker fuer Reauth mitliefert

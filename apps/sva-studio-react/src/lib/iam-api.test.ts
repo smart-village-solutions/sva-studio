@@ -994,7 +994,6 @@ describe('iam-api instance helpers', () => {
       expect.objectContaining({
         method: 'POST',
         headers: expect.objectContaining({
-          'X-SVA-Reauth-Confirmed': 'true',
           'Idempotency-Key': 'uuid-instance-1',
         }),
       })
@@ -1004,7 +1003,7 @@ describe('iam-api instance helpers', () => {
       '/api/v1/iam/instances/demo',
       expect.objectContaining({
         method: 'PATCH',
-        headers: expect.objectContaining({
+        headers: expect.not.objectContaining({
           'X-SVA-Reauth-Confirmed': 'true',
         }),
       })
@@ -1029,7 +1028,7 @@ describe('iam-api instance helpers', () => {
       '/api/v1/iam/instances/demo/keycloak/plan',
       expect.objectContaining({
         method: 'POST',
-        headers: expect.objectContaining({
+        headers: expect.not.objectContaining({
           'X-SVA-Reauth-Confirmed': 'true',
         }),
         body: JSON.stringify({}),
@@ -1040,7 +1039,7 @@ describe('iam-api instance helpers', () => {
       '/api/v1/iam/instances/demo/keycloak/execute',
       expect.objectContaining({
         method: 'POST',
-        headers: expect.objectContaining({
+        headers: expect.not.objectContaining({
           'X-SVA-Reauth-Confirmed': 'true',
         }),
       })
@@ -1055,7 +1054,7 @@ describe('iam-api instance helpers', () => {
       '/api/v1/iam/instances/demo/keycloak/reconcile',
       expect.objectContaining({
         method: 'POST',
-        headers: expect.objectContaining({
+        headers: expect.not.objectContaining({
           'X-SVA-Reauth-Confirmed': 'true',
         }),
       })
@@ -1065,7 +1064,7 @@ describe('iam-api instance helpers', () => {
       '/api/v1/iam/instances/demo/tenant-iam/access-probe',
       expect.objectContaining({
         method: 'POST',
-        headers: expect.objectContaining({
+        headers: expect.not.objectContaining({
           'X-SVA-Reauth-Confirmed': 'true',
         }),
         body: JSON.stringify({}),
@@ -1076,7 +1075,7 @@ describe('iam-api instance helpers', () => {
       '/api/v1/iam/instances/demo/activate',
       expect.objectContaining({
         method: 'POST',
-        headers: expect.objectContaining({
+        headers: expect.not.objectContaining({
           'X-SVA-Reauth-Confirmed': 'true',
         }),
         body: JSON.stringify({ status: 'active' }),

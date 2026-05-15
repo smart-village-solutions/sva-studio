@@ -8,7 +8,7 @@ type TestSessionUser = {
 };
 
 type SessionResolutionResult =
-  | { kind: 'authenticated'; user: TestSessionUser | null }
+  | { kind: 'authenticated'; user: TestSessionUser | null; expiresAt?: number; freshReauthAt?: number }
   | { kind: 'invalid'; reason: string };
 
 const getSessionUserMock = vi.hoisted(() =>
@@ -190,17 +190,24 @@ describe('auth-runtime withAuthenticatedUser', () => {
         roles: ['admin'],
         instanceId: 'de-musterhausen',
       },
+      expiresAt: 1_800_000_000_000,
+      freshReauthAt: 1_700_000_000_000,
     });
     const request = new Request('http://localhost/auth/me', {
       headers: { cookie: 'sva_auth_session=session-2' },
     });
 
-    const response = await withAuthenticatedUser(request, ({ sessionId, user }) =>
-      Response.json({ sessionId, userId: user.id })
+    const response = await withAuthenticatedUser(request, ({ sessionId, sessionExpiresAt, freshReauthAt, user }) =>
+      Response.json({ sessionId, sessionExpiresAt, freshReauthAt, userId: user.id })
     );
 
     expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual({ sessionId: 'session-2', userId: 'user-1' });
+    await expect(response.json()).resolves.toEqual({
+      sessionId: 'session-2',
+      sessionExpiresAt: 1_800_000_000_000,
+      freshReauthAt: 1_700_000_000_000,
+      userId: 'user-1',
+    });
     expect(authServerMocks.resolveSessionUser).toHaveBeenCalledWith(
       request,
       expect.objectContaining({ id: 'user-1' })
@@ -213,8 +220,8 @@ describe('auth-runtime withAuthenticatedUser', () => {
 
     const response = await withAuthenticatedUser(
       new Request('http://localhost/auth/me'),
-      ({ user, sessionId }) =>
-        new Response(JSON.stringify({ sessionId, user }), {
+      ({ user, sessionId, isLocalDevelopmentAuth }) =>
+        new Response(JSON.stringify({ sessionId, isLocalDevelopmentAuth, user }), {
           headers: { 'content-type': 'application/json' },
         })
     );
@@ -222,6 +229,7 @@ describe('auth-runtime withAuthenticatedUser', () => {
     expect(getSessionUserMock).not.toHaveBeenCalled();
     await expect(response.json()).resolves.toEqual({
       sessionId: 'mock-auth-session',
+      isLocalDevelopmentAuth: true,
       user: {
         id: 'mock-user',
         name: 'Mock User',

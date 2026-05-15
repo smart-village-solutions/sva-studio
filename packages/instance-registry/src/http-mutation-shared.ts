@@ -37,7 +37,7 @@ export type InstanceRegistryMutationHttpDeps<TContext> = {
   readonly requireIdempotencyKey: RequireIdempotencyKey;
   readonly ensurePlatformAccess: (request: Request, ctx: TContext) => Response | null;
   readonly validateCsrf: (request: Request, requestId?: string) => Response | null;
-  readonly requireFreshReauth: (request: Request) => Response | null;
+  readonly requireFreshReauth: (request: Request, ctx: TContext) => Response | null;
   readonly withRegistryService: <T>(work: (service: InstanceRegistryService) => Promise<T>) => Promise<T>;
 };
 
@@ -86,7 +86,7 @@ export const requireMutationGuards = <TContext>(
   if (options?.requireFreshReauth === false) {
     return null;
   }
-  return deps.requireFreshReauth(request);
+  return deps.requireFreshReauth(request, ctx);
 };
 
 export const readInstanceIdOrError = <TContext>(

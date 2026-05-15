@@ -30,4 +30,7 @@ const httpGuards = createInstanceRegistryHttpGuards<AuthenticatedRequestContext>
 });
 
 export const ensurePlatformAccess = httpGuards.ensurePlatformAccess;
-export const requireFreshReauth = httpGuards.requireFreshReauth;
+export const requireFreshReauth = (
+  request: Request,
+  ctx: AuthenticatedRequestContext
+): Response | null => httpGuards.requireFreshReauth(request, ctx);

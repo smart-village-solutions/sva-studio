@@ -105,6 +105,7 @@ const persistSession = async (input: {
   claims: Record<string, unknown>;
   clientId: string;
   authConfig: AuthConfig;
+  loginState: LoginState;
   expiresAt?: number;
 }) => {
   const sessionId = randomUUID();
@@ -141,6 +142,7 @@ const persistSession = async (input: {
     idToken: input.idToken,
     expiresAt,
     createdAt: issuedAt,
+    freshReauthAt: input.loginState.silent === true ? undefined : issuedAt,
     issuedAt,
     sessionVersion,
   });
@@ -239,6 +241,7 @@ export const handleCallback = async (params: {
     claims,
     clientId: authConfig.clientId,
     authConfig,
+    loginState: normalizedLoginState,
     expiresAt: resolveSessionExpiry({
       expiresInSeconds: tokenSet.expiresIn(),
       issuedAt: Date.now(),

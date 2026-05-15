@@ -30,7 +30,7 @@ export type SessionResolutionFailureReason =
   | 'token_refresh_failed_after_expiry';
 
 export type SessionResolutionResult =
-  | { kind: 'authenticated'; user: SessionUser | null; expiresAt?: number }
+  | { kind: 'authenticated'; user: SessionUser | null; expiresAt?: number; freshReauthAt?: number }
   | { kind: 'invalid'; reason: SessionResolutionFailureReason };
 
 const readSessionInvalidationReason = async (
@@ -203,7 +203,7 @@ export const resolveSessionUser = async (sessionId: string): Promise<SessionReso
   if (!shouldRefreshSession(session.expiresAt)) {
     const user = await hydrateSessionUserFromAccessToken(sessionId, session);
     logIncompleteSessionUser(user, 'session_read');
-    return { kind: 'authenticated', user, expiresAt: session.expiresAt };
+    return { kind: 'authenticated', user, expiresAt: session.expiresAt, freshReauthAt: session.freshReauthAt };
   }
 
   if (!session.refreshToken) {
@@ -215,6 +215,7 @@ export const resolveSessionUser = async (sessionId: string): Promise<SessionReso
       kind: 'authenticated',
       user: await hydrateSessionUserFromAccessToken(sessionId, session),
       expiresAt: session.expiresAt,
+      freshReauthAt: session.freshReauthAt,
     };
   }
 
@@ -239,6 +240,7 @@ export const resolveSessionUser = async (sessionId: string): Promise<SessionReso
       kind: 'authenticated',
       user: updatedSession?.user ?? null,
       expiresAt: updatedSession?.expiresAt,
+      freshReauthAt: updatedSession?.freshReauthAt,
     };
   } catch (error) {
     return handleRefreshFailure({

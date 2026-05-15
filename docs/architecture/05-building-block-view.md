@@ -116,6 +116,7 @@ Abhängigkeiten des aktuellen Systems.
   - `packages/iam-admin`, `packages/instance-registry` und `packages/data-repositories` über klar getrennte Fach- und Repository-Verträge
 - Plattformkontext (`platform`) für Root-Host-Control-Plane, Root-Host-Auth und globale Readiness:
   - `packages/auth-runtime`, `packages/iam-admin` und `packages/instance-registry`
+  - `packages/auth-runtime` liefert die serverseitig gebundene Fresh-Reauth-Evidenz fuer kritische Root-Host-Mutationen; `packages/instance-registry` verwendet nur diesen Kontext und keine klientseitigen Marker als Sicherheitsnachweis
 - Tenant-Admin-Pfad pro Instanz:
   - `packages/iam-admin` für Tenant-Admin-Orchestrierung
   - `packages/instance-registry` für Registry-, Diagnose-, Access-Probe-, Preflight- und Provisioning-Verträge des `tenantAdminClient`

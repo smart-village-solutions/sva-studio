@@ -54,13 +54,43 @@ describe('http guards', () => {
   it('requires explicit fresh reauth confirmation for mutations', () => {
     const guards = createInstanceRegistryHttpGuards(deps);
 
-    expect(guards.requireFreshReauth(new Request('https://studio.example.org/api/instances'))?.status).toBe(403);
+    expect(
+      guards.requireFreshReauth(new Request('https://studio.example.org/api/instances'), {
+        freshReauthAt: Date.now() - 11 * 60 * 1000,
+      })?.status
+    ).toBe(403);
     expect(
       guards.requireFreshReauth(
         new Request('https://studio.example.org/api/instances', {
           headers: { 'x-sva-reauth-confirmed': 'TRUE' },
-        })
+        }),
+        {
+          freshReauthAt: Date.now(),
+        }
       )
+    ).toBeNull();
+  });
+
+  it('ignores client-side headers without server-side fresh reauth evidence', () => {
+    const guards = createInstanceRegistryHttpGuards(deps);
+
+    const response = guards.requireFreshReauth(
+      new Request('https://studio.example.org/api/instances', {
+        headers: { 'x-sva-reauth-confirmed': 'true' },
+      }),
+      {}
+    );
+
+    expect(response?.status).toBe(403);
+  });
+
+  it('allows documented local development bypasses', () => {
+    const guards = createInstanceRegistryHttpGuards(deps);
+
+    expect(
+      guards.requireFreshReauth(new Request('https://studio.example.org/api/instances'), {
+        isLocalDevelopmentAuth: true,
+      })
     ).toBeNull();
   });
 });

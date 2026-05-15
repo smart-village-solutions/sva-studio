@@ -190,6 +190,12 @@ describe('handleCallback', () => {
     expect(mocks.invalidateOidcConfig).toHaveBeenCalledWith(authConfig);
     expect(mocks.authorizationCodeGrant).toHaveBeenCalledTimes(2);
     expect(mocks.createSession).toHaveBeenCalledTimes(1);
+    expect(mocks.createSession).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        freshReauthAt: undefined,
+      })
+    );
     expect(mocks.jitProvisionAccount).toHaveBeenCalledWith({
       instanceId: 'de-test',
       keycloakSubject: 'kc-user-1',
@@ -217,6 +223,12 @@ describe('handleCallback', () => {
     });
 
     expect(result.user.id).toBe('kc-user-1');
+    expect(mocks.createSession).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        freshReauthAt: expect.any(Number),
+      })
+    );
     expect(mocks.logger.error).toHaveBeenCalledWith(
       'JIT provisioning failed after callback',
       expect.objectContaining({

@@ -913,22 +913,15 @@ const requestJsonOrText = async <T>(
   return { data: await response.text() };
 };
 
-const createMutationHeaders = (input?: {
-  reauth?: boolean;
-  idempotent?: boolean;
-}): HeadersInit => ({
+const createMutationHeaders = (input?: { idempotent?: boolean }): HeadersInit => ({
   ...IAM_HEADERS,
-  ...(input?.reauth ? { 'X-SVA-Reauth-Confirmed': 'true' } : {}),
   ...(input?.idempotent ? { 'Idempotency-Key': createIdempotencyKey() } : {}),
 });
 
 const createJsonMutationRequestInit = <TPayload>(
   method: 'PATCH' | 'POST' | 'PUT',
   payload: TPayload,
-  options?: {
-    reauth?: boolean;
-    idempotent?: boolean;
-  }
+  options?: { idempotent?: boolean }
 ): RequestInit => ({
   method,
   headers: createMutationHeaders(options),
@@ -939,7 +932,7 @@ const patchJson = async <TResponse, TPayload>(path: string, payload: TPayload) =
   requestJson<TResponse>(path, createJsonMutationRequestInit('PATCH', payload));
 
 const patchJsonWithReauth = async <TResponse, TPayload>(path: string, payload: TPayload) =>
-  requestJson<TResponse>(path, createJsonMutationRequestInit('PATCH', payload, { reauth: true }));
+  requestJson<TResponse>(path, createJsonMutationRequestInit('PATCH', payload));
 
 const putJson = async <TResponse, TPayload>(path: string, payload: TPayload) =>
   requestJson<TResponse>(path, createJsonMutationRequestInit('PUT', payload));
@@ -957,7 +950,7 @@ const postJsonWithReauth = async <TResponse, TPayload>(
 ) =>
   requestJson<TResponse>(
     path,
-    createJsonMutationRequestInit('POST', payload, { reauth: true, idempotent })
+    createJsonMutationRequestInit('POST', payload, { idempotent })
   );
 
 export const listUsers = async (query: UsersQuery): Promise<ApiListResponse<IamUserListItem>> => {

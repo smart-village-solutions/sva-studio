@@ -214,6 +214,45 @@ describe('UserCreatePage', () => {
     );
   });
 
+  it('navigates without an invite marker when the invitation was delivered normally', async () => {
+    const createUser = vi.fn().mockResolvedValue({
+      user: {
+        id: 'user-2',
+        keycloakSubject: 'subject-2',
+        displayName: 'Bob Example',
+        status: 'pending',
+        roles: [],
+        mainserverUserApplicationSecretSet: false,
+      },
+      invitation: {
+        status: 'sent',
+      },
+    });
+    useUsersMock.mockReturnValue(createUsersApiState({ createUser }));
+
+    const { container } = render(<UserCreatePage />);
+    const emailInput = container.querySelector<HTMLInputElement>('#create-user-email');
+    const firstNameInput = container.querySelector<HTMLInputElement>('#create-user-first-name');
+    const lastNameInput = container.querySelector<HTMLInputElement>('#create-user-last-name');
+
+    if (!emailInput || !firstNameInput || !lastNameInput) {
+      throw new Error('Expected create-user form inputs to be present');
+    }
+
+    fireEvent.change(emailInput, { target: { value: 'bob@example.com' } });
+    fireEvent.change(firstNameInput, { target: { value: 'Bob' } });
+    fireEvent.change(lastNameInput, { target: { value: 'Example' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Nutzer anlegen' }));
+
+    await waitFor(() =>
+      expect(navigateMock).toHaveBeenCalledWith({
+        to: '/admin/users/$userId',
+        params: { userId: 'user-2' },
+        search: undefined,
+      })
+    );
+  });
+
   it('renders empty states when no active groups or direct roles are available', () => {
     useUsersMock.mockReturnValue(createUsersApiState());
     useRolesMock.mockReturnValue({ roles: [] });

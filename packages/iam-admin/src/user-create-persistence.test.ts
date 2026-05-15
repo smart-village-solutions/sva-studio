@@ -262,4 +262,55 @@ describe('user-create-persistence', () => {
 
     expect(client.query).not.toHaveBeenCalled();
   });
+
+  it('persists users without groups and keeps explicit display names', async () => {
+    const deps = createDeps();
+    const client: QueryClient = {
+      query: vi.fn(async (text: string) => {
+        if (text.includes('RETURNING id')) {
+          return { rowCount: 1, rows: [{ id: 'account-2' }] };
+        }
+        return { rowCount: 1, rows: [] };
+      }),
+    };
+    const persistence = createUserCreatePersistence(deps);
+
+    await expect(
+      persistence.persistCreatedUser(client, {
+        actor: {
+          instanceId: 'inst-1',
+          actorAccountId: 'actor-1',
+          actorRoles: ['admin'],
+        },
+        actorSubject: 'subject-actor',
+        externalId: 'subject-new',
+        payload: {
+          email: 'user@example.test',
+          displayName: 'Ada Display',
+          roleIds: ['role-1'],
+        },
+      })
+    ).resolves.toMatchObject({
+      responseData: expect.objectContaining({
+        id: 'account-2',
+        displayName: 'Ada Display',
+      }),
+    });
+
+    expect(deps.resolveGroupsByIds).not.toHaveBeenCalled();
+    expect(deps.assignGroups).toHaveBeenCalledWith(client, {
+      instanceId: 'inst-1',
+      accountId: 'account-2',
+      groupIds: [],
+      origin: 'manual',
+    });
+    expect(deps.emitActivityLog).toHaveBeenCalledWith(
+      client,
+      expect.objectContaining({
+        payload: expect.objectContaining({
+          group_count: 0,
+        }),
+      })
+    );
+  });
 });

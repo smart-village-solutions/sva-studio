@@ -91,11 +91,19 @@ describe('executeCreateUserWithKnownErrors', () => {
         payload: {
           email: 'alice@example.com',
           roleIds: [],
-          groupIds: [],
         },
       })
     ).rejects.toBe(knownResponse);
 
+    expect(state.executeCreateUser).toHaveBeenCalledWith(
+      expect.objectContaining({
+        payload: {
+          email: 'alice@example.com',
+          roleIds: [],
+          groupIds: [],
+        },
+      })
+    );
     expect(state.createUserMutationErrorResponse).toHaveBeenCalledWith({
       error: expect.any(Error),
       requestId: 'req-1',

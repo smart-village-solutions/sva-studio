@@ -94,7 +94,12 @@ export function RootDocument({ children }: Readonly<{ children: React.ReactNode 
   const currentPathname = useRouterState({
     select: (state) => state.location.pathname,
   });
+  const [isHydrated, setIsHydrated] = React.useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    setIsHydrated(true);
+  }, []);
 
   React.useEffect(() => {
     setIsMobileSidebarOpen(false);
@@ -135,7 +140,7 @@ export function RootDocument({ children }: Readonly<{ children: React.ReactNode 
             <ThemeProvider>
               <AppShell
                 currentPathname={currentPathname}
-                isLoading={isRouterPending}
+                isLoading={isHydrated && isRouterPending}
                 isMobileSidebarOpen={isMobileSidebarOpen}
                 onMobileSidebarOpenChange={setIsMobileSidebarOpen}
               >

@@ -1,5 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const useRouterStateMock = vi.fn();
@@ -165,6 +166,26 @@ describe('root route document', () => {
     await waitFor(() => {
       expect(screen.getByTestId('app-shell').getAttribute('data-is-loading')).toBe('true');
     });
+  });
+
+  it('renders pending shell content as non-loading during server render to keep hydration stable', async () => {
+    useRouterStateMock.mockImplementation(({ select }) =>
+      select({
+        status: 'pending',
+        isLoading: true,
+        location: { pathname: '/admin/users' },
+      }),
+    );
+
+    const { RootDocument } = await import('./__root');
+
+    const markup = renderToStaticMarkup(
+      <RootDocument>
+        <div>content</div>
+      </RootDocument>,
+    );
+
+    expect(markup).toContain('data-is-loading="false"');
   });
 
   it('keeps the shell mounted with the current pathname during route-level pending navigation', async () => {

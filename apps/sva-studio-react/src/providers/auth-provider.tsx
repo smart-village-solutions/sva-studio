@@ -209,6 +209,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const authAttemptRef = React.useRef(0);
   const sessionExpiryTimeoutRef = React.useRef<number | null>(null);
   const lastPreExpiryRecoveryAttemptRef = React.useRef<number | null>(null);
+  const inFlightSilentLoadRef = React.useRef<Promise<void> | null>(null);
 
   React.useEffect(() => {
     isMountedRef.current = true;
@@ -394,6 +395,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const loadUser = React.useCallback(
     async (silent: boolean) => {
+      if (silent && inFlightSilentLoadRef.current) {
+        return inFlightSilentLoadRef.current;
+      }
+
+      const runLoadUser = async () => {
       const authFlowId = startAuthFlow();
       const firstAttempt = nextAuthAttempt();
       if (!silent && isMountedRef.current) {
@@ -584,6 +590,21 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       } finally {
         if (!silent && isMountedRef.current) {
           setIsLoading(false);
+        }
+      }
+      };
+
+      const loadPromise = runLoadUser();
+      if (!silent) {
+        return loadPromise;
+      }
+
+      inFlightSilentLoadRef.current = loadPromise;
+      try {
+        await loadPromise;
+      } finally {
+        if (inFlightSilentLoadRef.current === loadPromise) {
+          inFlightSilentLoadRef.current = null;
         }
       }
     },

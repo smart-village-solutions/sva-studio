@@ -853,6 +853,80 @@ describe('AuthProvider', () => {
     }
   });
 
+  it('does not start a second silent revalidation while a visibility-triggered refresh is still in flight', async () => {
+    let visibilityState: DocumentVisibilityState = 'hidden';
+    let resolveSecondFetch: ((response: Response) => void) | null = null;
+    const originalVisibilityStateDescriptor = Object.getOwnPropertyDescriptor(
+      document,
+      'visibilityState'
+    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          user: {
+            id: 'user-1',
+            roles: ['editor'],
+            instanceId: 'instance-1',
+          },
+        })
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise<Response>((resolve) => {
+            resolveSecondFetch = resolve;
+          })
+      );
+
+    vi.stubGlobal('fetch', fetchMock);
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      get: () => visibilityState,
+    });
+
+    try {
+      render(
+        <AuthProvider>
+          <AuthProbe />
+        </AuthProvider>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('status').textContent).toBe('ready');
+      });
+
+      visibilityState = 'visible';
+      await act(async () => {
+        document.dispatchEvent(new Event('visibilitychange'));
+        document.dispatchEvent(new Event('visibilitychange'));
+      });
+
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+
+      requireFetchResolver(resolveSecondFetch)(
+        createJsonResponse(200, {
+          user: {
+            id: 'user-1',
+            roles: ['editor', 'system_admin'],
+            instanceId: 'instance-1',
+          },
+        })
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('user-roles').textContent).toContain('system_admin');
+      });
+
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    } finally {
+      if (originalVisibilityStateDescriptor) {
+        Object.defineProperty(document, 'visibilityState', originalVisibilityStateDescriptor);
+      } else {
+        removeTestDocumentProperty('visibilityState');
+      }
+    }
+  });
+
   it('does not revalidate on visibility regain without a confirmed session snapshot', async () => {
     let visibilityState: DocumentVisibilityState = 'hidden';
     const originalVisibilityStateDescriptor = Object.getOwnPropertyDescriptor(

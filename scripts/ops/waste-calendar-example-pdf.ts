@@ -1,119 +1,28 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import {
+  getEntryLabelWidth,
+  getHolidayRenderLabel,
+  LEGEND_ORDER,
+  MONTH_NAMES,
+  resolveEntriesForDate,
+  resolveHolidayLabel,
+  splitLegendLabel,
+  WEEKDAY_SHORT_NAMES,
+  YEAR,
+  type RgbColor,
+  type WasteCalendarDocument,
+  type WasteCalendarMonth,
+  type WasteCalendarPage,
+} from './waste-calendar-example-pdf.shared.ts';
 
 const PAGE_WIDTH = 841.89;
 const PAGE_HEIGHT = 595.28;
-const YEAR = 2026;
 const OUTPUT_PATH = resolve(
   fileURLToPath(new URL('../../output/pdf/waste-calendar-example-2026.pdf', import.meta.url))
 );
-
-const MONTH_NAMES = [
-  'Januar',
-  'Februar',
-  'Maerz',
-  'April',
-  'Mai',
-  'Juni',
-  'Juli',
-  'August',
-  'September',
-  'Oktober',
-  'November',
-  'Dezember',
-] as const;
-
-const WEEKDAY_SHORT_NAMES = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'] as const;
-
-const HOLIDAYS_2026 = new Map<string, string>([
-  ['2026-01-01', 'Neujahr'],
-  ['2026-04-03', 'Karfreitag'],
-  ['2026-04-06', 'Ostermontag'],
-  ['2026-05-01', 'Maifeiertag'],
-  ['2026-05-14', 'Christi Himmelfahrt'],
-  ['2026-05-25', 'Pfingstmontag'],
-  ['2026-10-03', 'Tag der Deutschen Einheit'],
-  ['2026-12-25', '1. Weihnachtstag'],
-  ['2026-12-26', '2. Weihnachtstag'],
-] as const);
-
-const HOLIDAY_RENDER_LABELS = new Map<string, string>([
-  ['Christi Himmelfahrt', 'Christi Himmelf.'],
-  ['Tag der Deutschen Einheit', 'Tag d. Dt. Einheit'],
-  ['1. Weihnachtstag', '1. Weihnachtstag'],
-  ['2. Weihnachtstag', '2. Weihnachtstag'],
-] as const);
-
-const FRACTIONS = {
-  AG: { code: 'AG', label: 'Faelligkeit Abfallgebuehr', fillColor: [0.9, 0.9, 0.9] as RgbColor },
-  Bio: { code: 'Bio', label: 'Biotonne', fillColor: [0.45, 0.76, 0.26] as RgbColor },
-  HM: { code: 'HM', label: 'Hausmuell', fillColor: [0.68, 0.68, 0.68] as RgbColor },
-  PPK: {
-    code: 'PPK',
-    label: 'Papier, Pappe, Karton',
-    fillColor: [0.4, 0.74, 0.94] as RgbColor,
-  },
-  LVP: {
-    code: 'LVP',
-    label: 'Leichtverpackungen (gelber Sack)',
-    fillColor: [0.95, 0.94, 0.35] as RgbColor,
-  },
-  SM: { code: 'SM', label: 'Schadstoffmobil', fillColor: [0.97, 0.63, 0.63] as RgbColor },
-} as const;
-
-const LEGEND_ORDER = [
-  FRACTIONS.AG,
-  FRACTIONS.Bio,
-  FRACTIONS.HM,
-  FRACTIONS.PPK,
-  FRACTIONS.LVP,
-  FRACTIONS.SM,
-] as const;
-
-type WasteFractionCode = keyof typeof FRACTIONS;
-type RgbColor = readonly [red: number, green: number, blue: number];
-
-export type WasteCalendarEntry = {
-  readonly code: WasteFractionCode;
-  readonly fillColor: RgbColor;
-};
-
-export type WasteCalendarDay = {
-  readonly isoDate: string;
-  readonly dayOfMonth: number;
-  readonly weekdayShort: string;
-  readonly weekNumber: number | null;
-  readonly holidayLabel: string | null;
-  readonly entries: readonly WasteCalendarEntry[];
-};
-
-export type WasteCalendarMonth = {
-  readonly month: number;
-  readonly label: string;
-  readonly days: readonly WasteCalendarDay[];
-};
-
-export type WasteCalendarLegendEntry = {
-  readonly code: WasteFractionCode;
-  readonly label: string;
-  readonly fillColor: RgbColor;
-};
-
-export type WasteCalendarPage = {
-  readonly title: string;
-  readonly locationLabel: string;
-  readonly brandingPlaceholderLabel: string;
-  readonly months: readonly WasteCalendarMonth[];
-  readonly legend: readonly WasteCalendarLegendEntry[];
-  readonly notes: readonly string[];
-  readonly footerLine: string;
-};
-
-export type WasteCalendarDocument = {
-  readonly year: number;
-  readonly pages: readonly WasteCalendarPage[];
-};
+export type { WasteCalendarMonth } from './waste-calendar-example-pdf.shared.ts';
 
 export function buildWasteCalendarDocument(): WasteCalendarDocument {
   return {
@@ -196,7 +105,7 @@ function buildMonth(year: number, month: number): WasteCalendarMonth {
     const date = new Date(Date.UTC(year, month - 1, dayOfMonth));
     const isoDate = toIsoDate(date);
     const weekdayIndex = normalizeWeekday(date.getUTCDay());
-    const holidayLabel = HOLIDAYS_2026.get(isoDate) ?? null;
+    const holidayLabel = resolveHolidayLabel(isoDate);
     const entries = resolveEntriesForDate(date);
 
     days.push({
@@ -213,46 +122,6 @@ function buildMonth(year: number, month: number): WasteCalendarMonth {
     month,
     label: MONTH_NAMES[month - 1],
     days,
-  };
-}
-
-function resolveEntriesForDate(date: Date): readonly WasteCalendarEntry[] {
-  const month = date.getUTCMonth() + 1;
-  const dayOfMonth = date.getUTCDate();
-  const weekdayIndex = normalizeWeekday(date.getUTCDay());
-  const entries: WasteCalendarEntry[] = [];
-
-  if (weekdayIndex === 2 && (dayOfMonth === 14 || dayOfMonth === 17 || dayOfMonth === 25 || dayOfMonth === 28)) {
-    entries.push(createEntry('HM'));
-  }
-
-  if (weekdayIndex === 3 && (dayOfMonth === 15 || dayOfMonth === 18 || dayOfMonth === 26 || dayOfMonth === 29)) {
-    entries.push(createEntry('LVP'), createEntry('Bio'));
-  }
-
-  if (weekdayIndex === 1 && (dayOfMonth === 9 || dayOfMonth === 20 || dayOfMonth === 14 || dayOfMonth === 17)) {
-    entries.push(createEntry('PPK'));
-  }
-
-  if (dayOfMonth === 15 && (month === 3 || month === 9)) {
-    entries.push(createEntry('AG'));
-  }
-
-  if (dayOfMonth === 16 && month === 4) {
-    entries.push(createEntry('SM'));
-  }
-
-  if (dayOfMonth === 15 && month === 10) {
-    entries.push(createEntry('SM'));
-  }
-
-  return entries;
-}
-
-function createEntry(code: WasteFractionCode): WasteCalendarEntry {
-  return {
-    code,
-    fillColor: FRACTIONS[code].fillColor,
   };
 }
 
@@ -440,39 +309,6 @@ function pad2(value: number): string {
 
 function escapePdfText(text: string): string {
   return text.replaceAll('\\', '\\\\').replaceAll('(', '\\(').replaceAll(')', '\\)');
-}
-
-function getHolidayRenderLabel(label: string): string {
-  return HOLIDAY_RENDER_LABELS.get(label) ?? label;
-}
-
-function getEntryLabelWidth(code: WasteFractionCode): number {
-  switch (code) {
-    case 'Bio':
-      return 22;
-    case 'LVP':
-      return 24;
-    case 'PPK':
-      return 24;
-    default:
-      return 18;
-  }
-}
-
-function splitLegendLabel(label: string): readonly string[] {
-  if (label === 'Leichtverpackungen (gelber Sack)') {
-    return ['Leichtverpackungen', '(gelber Sack)'];
-  }
-
-  if (label === 'Papier, Pappe, Karton') {
-    return ['Papier, Pappe,', 'Karton'];
-  }
-
-  if (label === 'Faelligkeit Abfallgebuehr') {
-    return ['Faelligkeit', 'Abfallgebuehr'];
-  }
-
-  return [label];
 }
 
 class PdfBuilder {

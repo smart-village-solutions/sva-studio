@@ -30,9 +30,9 @@ test('each page contains the expected legend and placeholder branding data', () 
     assert.deepEqual(
       page.legend.map((entry) => `${entry.code}:${entry.label}`),
       [
-        'AG:Faelligkeit Abfallgebuehr',
+        'AG:Fälligkeit Abfallgebühr',
         'Bio:Biotonne',
-        'HM:Hausmuell',
+        'HM:Hausmüll',
         'PPK:Papier, Pappe, Karton',
         'LVP:Leichtverpackungen (gelber Sack)',
         'SM:Schadstoffmobil',
@@ -76,6 +76,7 @@ test('renderWasteCalendarPdf returns a valid two-page PDF buffer', () => {
   assert.match(pdfText, /Abfallkalender 2026/);
   assert.match(pdfText, /Januar/);
   assert.match(pdfText, /Juli/);
+  assert.match(pdfText, /März/);
   assert.match(pdfText, /Schadstoffmobil/);
 });
 

@@ -84,7 +84,7 @@ export function writeWasteCalendarExamplePdf(outputPath = OUTPUT_PATH): string {
 function buildHalfYearPage(months: readonly number[], notes: readonly string[]): WasteCalendarPage {
   return {
     title: `Abfallkalender ${YEAR}`,
-    locationLabel: 'Musterstadt, Ackerstrasse',
+    locationLabel: 'Musterstadt, Ackerstraße',
     brandingPlaceholderLabel: 'Logo / Bild',
     months: months.map((month) => buildMonth(YEAR, month)),
     legend: LEGEND_ORDER.map((entry) => ({
@@ -165,15 +165,19 @@ function renderMonthGrid(commands: string[], page: WasteCalendarPage): void {
         continue;
       }
 
-      drawText(commands, x + 4, rowTop + 9.3, 8.5, pad2(day.dayOfMonth), 'F1');
-      drawText(commands, x + 24, rowTop + 9.3, 8.5, day.weekdayShort, 'F1');
+      const dayTextTop = rowTop + 1.6;
+      const holidayTextTop = rowTop + 2.1;
+      const entryTextTop = rowTop + 1.8;
+
+      drawText(commands, x + 4, dayTextTop, 8.5, pad2(day.dayOfMonth), 'F1');
+      drawText(commands, x + 24, dayTextTop, 8.5, day.weekdayShort, 'F1');
 
       if (day.weekNumber !== null) {
-        drawText(commands, x - 12, rowTop + 9.3, 8, String(day.weekNumber), 'F1');
+        drawText(commands, x - 12, dayTextTop, 8, String(day.weekNumber), 'F1');
       }
 
       if (day.holidayLabel !== null) {
-        drawText(commands, x + 42, rowTop + 9.2, 7.1, getHolidayRenderLabel(day.holidayLabel), 'F1');
+        drawText(commands, x + 42, holidayTextTop, 7.1, getHolidayRenderLabel(day.holidayLabel), 'F1');
       }
 
       let labelX = x + 42;
@@ -181,7 +185,7 @@ function renderMonthGrid(commands: string[], page: WasteCalendarPage): void {
       for (const entry of day.entries) {
         const labelWidth = getEntryLabelWidth(entry.code);
         drawFilledRectangle(commands, labelX, labelY, labelWidth, rowHeight - 2.5, entry.fillColor);
-        drawText(commands, labelX + 3, rowTop + 9.2, 8.2, entry.code, 'F1');
+        drawText(commands, labelX + 3, entryTextTop, 8.2, entry.code, 'F1');
         labelX += labelWidth + 2;
       }
     }
@@ -310,7 +314,6 @@ function pad2(value: number): string {
 function escapePdfText(text: string): string {
   return text.replaceAll('\\', '\\\\').replaceAll('(', '\\(').replaceAll(')', '\\)');
 }
-
 class PdfBuilder {
   private readonly objects: string[] = [];
 

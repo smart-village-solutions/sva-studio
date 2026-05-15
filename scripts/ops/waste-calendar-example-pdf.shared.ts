@@ -3,7 +3,7 @@ export const YEAR = 2026;
 export const MONTH_NAMES = [
   'Januar',
   'Februar',
-  'Maerz',
+  'März',
   'April',
   'Mai',
   'Juni',
@@ -37,9 +37,9 @@ const HOLIDAY_RENDER_LABELS = new Map<string, string>([
 ] as const);
 
 const FRACTIONS = {
-  AG: { code: 'AG', label: 'Faelligkeit Abfallgebuehr', fillColor: [0.9, 0.9, 0.9] as RgbColor },
+  AG: { code: 'AG', label: 'Fälligkeit Abfallgebühr', fillColor: [0.9, 0.9, 0.9] as RgbColor },
   Bio: { code: 'Bio', label: 'Biotonne', fillColor: [0.45, 0.76, 0.26] as RgbColor },
-  HM: { code: 'HM', label: 'Hausmuell', fillColor: [0.68, 0.68, 0.68] as RgbColor },
+  HM: { code: 'HM', label: 'Hausmüll', fillColor: [0.68, 0.68, 0.68] as RgbColor },
   PPK: {
     code: 'PPK',
     label: 'Papier, Pappe, Karton',
@@ -183,8 +183,8 @@ export function splitLegendLabel(label: string): readonly string[] {
     return ['Papier, Pappe,', 'Karton'];
   }
 
-  if (label === 'Faelligkeit Abfallgebuehr') {
-    return ['Faelligkeit', 'Abfallgebuehr'];
+  if (label === 'Fälligkeit Abfallgebühr') {
+    return ['Fälligkeit', 'Abfallgebühr'];
   }
 
   return [label];

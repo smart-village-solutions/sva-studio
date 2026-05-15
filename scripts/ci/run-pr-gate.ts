@@ -104,6 +104,14 @@ const runIntegrationGate = (base: string, mode: GateMode, durations: DurationEnt
   }
 };
 
+const runOpsGate = (durations: DurationEntry[]): void => {
+  recordDuration(
+    durations,
+    'ops:waste-calendar-example-pdf',
+    runCommand('pnpm test:ops:waste-calendar-example-pdf')
+  );
+};
+
 const runAppBuildGate = (mode: GateMode, durations: DurationEntry[]): void => {
   if (mode !== 'skip') {
     recordDuration(durations, 'app-build', runCommand('pnpm nx run sva-studio-react:build'));
@@ -154,6 +162,7 @@ export const runPrGate = (args: readonly string[]): number => {
   runQualityGates(options.base, options.head, decision.qualityGateMode, durations);
   runCoverageGate(options.base, decision.coverageMode, durations);
   runIntegrationGate(options.base, decision.integrationMode, durations);
+  runOpsGate(durations);
   runAppBuildGate(decision.appBuildMode, durations);
   runE2EGate(decision.e2eMode, durations);
 

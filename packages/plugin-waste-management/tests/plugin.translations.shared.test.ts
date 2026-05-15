@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { createWasteManagementPluginTranslationLocale } from '../src/plugin.translations.shared.base.js';
+import { createMasterDataEntityTranslations } from '../src/plugin.translations.shared.master-data.js';
 import { createWasteManagementToursTranslations } from '../src/plugin.translations.shared.scheduling.js';
 import { createWasteManagementTabsTranslations } from '../src/plugin.translations.shared.sections.js';
 
@@ -152,6 +153,43 @@ describe('waste-management translation builders', () => {
         ...tabs,
         ...tours,
       },
+    });
+  });
+
+  it('keeps master-data entity meta labels at their public translation paths', () => {
+    expect(
+      createMasterDataEntityTranslations({
+        title: 'Regions',
+        description: 'Manage regions',
+        actions: {
+          openCreate: 'Create',
+          edit: 'Edit',
+          cancel: 'Cancel',
+          create: 'Create',
+          save: 'Save',
+          saving: 'Saving',
+        },
+        fields: {
+          name: 'Name',
+        },
+        dialog: {
+          createTitle: 'Create region',
+          createDescription: 'Create a region',
+          editTitle: 'Edit region',
+          editDescription: 'Edit a region',
+        },
+        messages: {
+          createSuccess: 'Created',
+          updateSuccess: 'Updated',
+          saveError: 'Failed',
+          saveForbidden: 'Forbidden',
+        },
+        meta: {
+          regionId: 'Region ID: {{value}}',
+        },
+      })
+    ).toMatchObject({
+      regionId: 'Region ID: {{value}}',
     });
   });
 });

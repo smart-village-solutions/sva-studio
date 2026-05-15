@@ -126,7 +126,6 @@ export default function AppShell({
         ? (sidebarSlot ?? (
         <React.Suspense fallback={null}>
           <LazySidebar
-            isLoading={isLoading}
             isMobileOpen={isMobileSidebarOpen}
             onMobileOpenChange={onMobileSidebarOpenChange}
           />
@@ -135,7 +134,6 @@ export default function AppShell({
         : null}
       <div className="relative z-0 flex min-h-screen min-w-0 flex-1 flex-col">
         <Header
-          isLoading={isLoading}
           isMobileNavigationOpen={isMobileSidebarOpen}
           onOpenMobileNavigation={
             showSidebar ? () => onMobileSidebarOpenChange?.(!isMobileSidebarOpen) : undefined

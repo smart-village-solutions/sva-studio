@@ -5,7 +5,13 @@ import { createAdminRoute, createProtectedRoute } from './protected.routes';
 
 const invokeGuard = async (
   guard: ReturnType<typeof createProtectedRoute>,
-  user: { roles: readonly string[]; permissionActions?: readonly string[] } | null,
+  user:
+    | {
+        roles: readonly string[];
+        permissionActions?: readonly string[];
+        permissionStatus?: 'ok' | 'degraded';
+      }
+    | null,
   href: string
 ) =>
   guard({
@@ -110,6 +116,18 @@ describe('protected routes', () => {
 
     await expect(
       invokeGuard(guard, { roles: ['editor'], permissionActions: ['news.read', 'events.read'] }, '/plugins/news')
+    ).resolves.toBeUndefined();
+  });
+
+  it('keeps degraded permission snapshots routable when the required permission is present', async () => {
+    const guard = createProtectedRoute({ route: '/plugins/news', requiredPermissions: ['news.read'] });
+
+    await expect(
+      invokeGuard(
+        guard,
+        { roles: ['editor'], permissionActions: ['news.read'], permissionStatus: 'degraded' },
+        '/plugins/news'
+      )
     ).resolves.toBeUndefined();
   });
 

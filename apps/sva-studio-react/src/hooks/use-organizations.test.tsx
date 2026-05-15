@@ -432,23 +432,25 @@ describe('useOrganizations', () => {
     ]);
   });
 
-  it('invalidates permissions on 403 for list and mutation errors', async () => {
-    const forbiddenError = { status: 403, code: 'forbidden', message: 'Forbidden' };
-    asIamErrorMock.mockReturnValue(forbiddenError);
-    listOrganizationsMock.mockRejectedValueOnce(new Error('forbidden-list'));
+  it.each([
+    { status: 401, code: 'unauthorized', message: 'Unauthorized' },
+    { status: 403, code: 'forbidden', message: 'Forbidden' },
+  ])('invalidates permissions on protected list and mutation errors (status $status, code $code)', async (protectedError) => {
+    asIamErrorMock.mockReturnValue(protectedError);
+    listOrganizationsMock.mockRejectedValueOnce(new Error('protected-list'));
 
     const { result } = renderHook(() => useOrganizations());
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
-      expect(result.current.error).toBe(forbiddenError);
+      expect(result.current.error).toBe(protectedError);
     });
 
     listOrganizationsMock.mockResolvedValue({
       data: [],
       pagination: { page: 1, pageSize: 25, total: 0 },
     });
-    updateOrganizationMock.mockRejectedValueOnce(new Error('forbidden-update'));
+    updateOrganizationMock.mockRejectedValueOnce(new Error('protected-update'));
 
     await act(async () => {
       await result.current.refetch();
@@ -457,17 +459,19 @@ describe('useOrganizations', () => {
     });
 
     expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(2);
-    expect(result.current.mutationError).toBe(forbiddenError);
+    expect(result.current.mutationError).toBe(protectedError);
   });
 
-  it('handles detail errors and clears transient organization state helpers', async () => {
-    const forbiddenError = { status: 403, code: 'forbidden', message: 'Forbidden' };
-    asIamErrorMock.mockReturnValue(forbiddenError);
+  it.each([
+    { status: 401, code: 'unauthorized', message: 'Unauthorized' },
+    { status: 403, code: 'forbidden', message: 'Forbidden' },
+  ])('handles protected detail errors and clears transient organization state helpers (status $status, code $code)', async (protectedError) => {
+    asIamErrorMock.mockReturnValue(protectedError);
     listOrganizationsMock.mockResolvedValue({
       data: [],
       pagination: { page: 1, pageSize: 25, total: 0 },
     });
-    getOrganizationMock.mockRejectedValueOnce(new Error('forbidden-detail'));
+    getOrganizationMock.mockRejectedValueOnce(new Error('protected-detail'));
     deactivateOrganizationMock.mockResolvedValue({ data: { id: 'org-1' } });
 
     const { result } = renderHook(() => useOrganizations());
@@ -481,7 +485,7 @@ describe('useOrganizations', () => {
       expect(detail).toBeNull();
     });
 
-    expect(result.current.mutationError).toBe(forbiddenError);
+    expect(result.current.mutationError).toBe(protectedError);
 
     act(() => {
       result.current.clearMutationError();

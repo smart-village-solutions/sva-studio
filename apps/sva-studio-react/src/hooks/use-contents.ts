@@ -71,6 +71,7 @@ export type ContentBulkMutationResult = Readonly<{
 }>;
 
 const contentsLogger = createOperationLogger('contents-hook', 'debug');
+const PERMISSION_INVALIDATED_EVENT = 'permission_invalidated_after_401_or_403';
 
 export const useContents = (): UseContentsResult => {
   const { invalidatePermissions } = useAuth();
@@ -190,9 +191,9 @@ export const useCreateContent = (): UseCreateContentResult => {
         return true;
       } catch (cause) {
         const resolvedError = asIamError(cause);
-        if (resolvedError.status === 403) {
+        if (resolvedError.status === 401 || resolvedError.status === 403) {
           await invalidatePermissions();
-          contentsLogger.info('permission_invalidated_after_403', {
+          contentsLogger.info(PERMISSION_INVALIDATED_EVENT, {
             operation: 'create_content',
             status: resolvedError.status,
             error_code: resolvedError.code,
@@ -253,9 +254,9 @@ export const useContentDetail = (contentId: string | null): UseContentDetailResu
       });
     } catch (cause) {
       const resolvedError = asIamError(cause);
-      if (resolvedError.status === 403) {
+      if (resolvedError.status === 401 || resolvedError.status === 403) {
         await invalidatePermissions();
-        contentsLogger.info('permission_invalidated_after_403', {
+        contentsLogger.info(PERMISSION_INVALIDATED_EVENT, {
           operation: 'get_content_detail',
           status: resolvedError.status,
           error_code: resolvedError.code,
@@ -298,9 +299,9 @@ export const useContentDetail = (contentId: string | null): UseContentDetailResu
         return true;
       } catch (cause) {
         const resolvedError = asIamError(cause);
-        if (resolvedError.status === 403) {
+        if (resolvedError.status === 401 || resolvedError.status === 403) {
           await invalidatePermissions();
-          contentsLogger.info('permission_invalidated_after_403', {
+          contentsLogger.info(PERMISSION_INVALIDATED_EVENT, {
             operation: 'update_content',
             status: resolvedError.status,
             error_code: resolvedError.code,

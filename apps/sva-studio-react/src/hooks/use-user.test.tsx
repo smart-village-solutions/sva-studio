@@ -51,17 +51,19 @@ describe('useUser', () => {
     authMockValue.invalidatePermissions.mockReset();
   });
 
-  it('invalidates permissions when loading user returns 403', async () => {
-    const forbiddenError = { status: 403, code: 'forbidden', message: 'Forbidden' };
-    asIamErrorMock.mockReturnValue(forbiddenError);
+  it.each([
+    { status: 401, code: 'unauthorized', message: 'Unauthorized' },
+    { status: 403, code: 'forbidden', message: 'Forbidden' },
+  ])('invalidates permissions when loading user returns a protected error (status $status, code $code)', async (protectedError) => {
+    asIamErrorMock.mockReturnValue(protectedError);
     getUserMock.mockRejectedValueOnce(new Error('no-access'));
 
-    const { result } = renderHook(() => useUser('user-403'));
+    const { result } = renderHook(() => useUser(`user-${protectedError.status}`));
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
       expect(result.current.user).toBeNull();
-      expect(result.current.error).toBe(forbiddenError);
+      expect(result.current.error).toBe(protectedError);
     });
 
     expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
@@ -138,9 +140,11 @@ describe('useUser', () => {
     expect(updateUserMock).toHaveBeenCalledWith('user-1', { displayName: 'User One Updated' });
   });
 
-  it('invalidates permissions when save returns 403', async () => {
-    const forbiddenError = { status: 403, code: 'forbidden', message: 'Forbidden' };
-    asIamErrorMock.mockReturnValue(forbiddenError);
+  it.each([
+    { status: 401, code: 'unauthorized', message: 'Unauthorized' },
+    { status: 403, code: 'forbidden', message: 'Forbidden' },
+  ])('invalidates permissions when save returns a protected error (status $status, code $code)', async (protectedError) => {
+    asIamErrorMock.mockReturnValue(protectedError);
     getUserMock.mockResolvedValueOnce({
       data: {
         id: 'user-3',
@@ -166,7 +170,7 @@ describe('useUser', () => {
 
     expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
     expect(result.current.error).toBeNull();
-    expect(result.current.mutationError).toBe(forbiddenError);
+    expect(result.current.mutationError).toBe(protectedError);
   });
 
   it('resends the password setup email successfully', async () => {
@@ -203,36 +207,41 @@ describe('useUser', () => {
     expect(authMockValue.invalidatePermissions).not.toHaveBeenCalled();
   });
 
-  it('invalidates permissions when resending the password setup email returns 403', async () => {
-    const forbiddenError = { status: 403, code: 'forbidden', message: 'Forbidden' };
-    asIamErrorMock.mockReturnValue(forbiddenError);
-    getUserMock.mockResolvedValueOnce({
-      data: {
-        id: 'user-5',
-        keycloakSubject: 'subject-5',
-        displayName: 'User Five',
-        status: 'active',
-        roles: [],
-        mainserverUserApplicationSecretSet: false,
-      },
-    });
-    sendPasswordSetupEmailMock.mockRejectedValueOnce(new Error('forbidden-resend'));
+  it.each([
+    { status: 401, code: 'unauthorized', message: 'Unauthorized' },
+    { status: 403, code: 'forbidden', message: 'Forbidden' },
+  ])(
+    'invalidates permissions when resending the password setup email returns a protected error (status $status, code $code)',
+    async (protectedError) => {
+      asIamErrorMock.mockReturnValue(protectedError);
+      getUserMock.mockResolvedValueOnce({
+        data: {
+          id: 'user-5',
+          keycloakSubject: 'subject-5',
+          displayName: 'User Five',
+          status: 'active',
+          roles: [],
+          mainserverUserApplicationSecretSet: false,
+        },
+      });
+      sendPasswordSetupEmailMock.mockRejectedValueOnce(new Error('forbidden-resend'));
 
-    const { result } = renderHook(() => useUser('user-5'));
+      const { result } = renderHook(() => useUser('user-5'));
 
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
-    });
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
+      });
 
-    await act(async () => {
-      const sent = await result.current.resendPasswordSetupEmail?.();
-      expect(sent).toBe(false);
-    });
+      await act(async () => {
+        const sent = await result.current.resendPasswordSetupEmail?.();
+        expect(sent).toBe(false);
+      });
 
-    expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
-    expect(result.current.error).toBeNull();
-    expect(result.current.mutationError).toBe(forbiddenError);
-  });
+      expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
+      expect(result.current.error).toBeNull();
+      expect(result.current.mutationError).toBe(protectedError);
+    }
+  );
 
   it('preserves mutation errors across successful refetches', async () => {
     const validationError = { status: 400, code: 'invalid', message: 'Invalid payload' };

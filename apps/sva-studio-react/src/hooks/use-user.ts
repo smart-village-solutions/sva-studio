@@ -30,6 +30,7 @@ type UseUserResult = {
 };
 
 const userLogger = createOperationLogger('user-hook', 'debug');
+const PERMISSION_INVALIDATED_EVENT = 'permission_invalidated_after_401_or_403';
 
 export const useUser = (userId: string): UseUserResult => {
   const { invalidatePermissions } = useAuth();
@@ -59,9 +60,9 @@ export const useUser = (userId: string): UseUserResult => {
       });
     } catch (cause) {
       const resolvedError = asIamError(cause);
-      if (resolvedError.status === 403) {
+      if (resolvedError.status === 401 || resolvedError.status === 403) {
         await invalidatePermissions();
-        userLogger.info('permission_invalidated_after_403', {
+        userLogger.info(PERMISSION_INVALIDATED_EVENT, {
           operation: 'get_user',
           status: resolvedError.status,
           error_code: resolvedError.code,
@@ -102,9 +103,9 @@ export const useUser = (userId: string): UseUserResult => {
         return response.data;
       } catch (cause) {
         const resolvedError = asIamError(cause);
-        if (resolvedError.status === 403) {
+        if (resolvedError.status === 401 || resolvedError.status === 403) {
           await invalidatePermissions();
-          userLogger.info('permission_invalidated_after_403', {
+          userLogger.info(PERMISSION_INVALIDATED_EVENT, {
             operation: 'update_user',
             status: resolvedError.status,
             error_code: resolvedError.code,
@@ -138,9 +139,9 @@ export const useUser = (userId: string): UseUserResult => {
       return true;
     } catch (cause) {
       const resolvedError = asIamError(cause);
-      if (resolvedError.status === 403) {
+      if (resolvedError.status === 401 || resolvedError.status === 403) {
         await invalidatePermissions();
-        userLogger.info('permission_invalidated_after_403', {
+        userLogger.info(PERMISSION_INVALIDATED_EVENT, {
           operation: 'send_password_setup_email',
           status: resolvedError.status,
           error_code: resolvedError.code,

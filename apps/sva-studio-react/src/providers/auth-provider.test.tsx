@@ -56,6 +56,17 @@ const requireScheduledCallback = (callback: (() => void) | null): (() => void) =
   return callback;
 };
 
+const removeTestDocumentProperty = (property: string) => {
+  Reflect.deleteProperty(document as Document & Record<string, unknown>, property);
+};
+
+const requireFetchResolver = <T,>(resolver: ((value: T) => void) | null): ((value: T) => void) => {
+  if (resolver === null) {
+    throw new Error('Expected deferred fetch resolver to be registered.');
+  }
+  return resolver;
+};
+
 vi.mock('@sva/monitoring-client/logging', () => ({
   createBrowserLogger: () => browserLoggerMock,
 }));
@@ -73,6 +84,7 @@ const AuthProbe = () => {
       <p data-testid="dev-auth-available">{auth.isDevAuthAvailable ? 'yes' : 'no'}</p>
       <p data-testid="user-id">{auth.user?.id ?? 'none'}</p>
       <p data-testid="user-roles">{auth.user?.roles.join(',') ?? 'none'}</p>
+      <p data-testid="error-code">{auth.error instanceof Error ? auth.error.message : 'none'}</p>
       <button type="button" onClick={() => void auth.refetch()}>
         refetch
       </button>
@@ -771,6 +783,304 @@ describe('AuthProvider', () => {
         signal: expect.any(AbortSignal),
       })
     );
+  });
+
+  it('revalidates the session when the document becomes visible again', async () => {
+    let visibilityState: DocumentVisibilityState = 'hidden';
+    const originalVisibilityStateDescriptor = Object.getOwnPropertyDescriptor(
+      document,
+      'visibilityState'
+    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          user: {
+            id: 'user-1',
+            roles: ['editor'],
+            instanceId: 'instance-1',
+          },
+        })
+      )
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          user: {
+            id: 'user-1',
+            roles: ['system_admin'],
+            instanceId: 'instance-1',
+          },
+        })
+      );
+
+    vi.stubGlobal('fetch', fetchMock);
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      get: () => visibilityState,
+    });
+
+    try {
+      render(
+        <AuthProvider>
+          <AuthProbe />
+        </AuthProvider>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('status').textContent).toBe('ready');
+      });
+
+      await act(async () => {
+        document.dispatchEvent(new Event('visibilitychange'));
+      });
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+
+      visibilityState = 'visible';
+      await act(async () => {
+        document.dispatchEvent(new Event('visibilitychange'));
+      });
+
+      await waitFor(() => {
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+      });
+      expect(screen.getByTestId('user-roles').textContent).toBe('system_admin');
+    } finally {
+      if (originalVisibilityStateDescriptor) {
+        Object.defineProperty(document, 'visibilityState', originalVisibilityStateDescriptor);
+      } else {
+        removeTestDocumentProperty('visibilityState');
+      }
+    }
+  });
+
+  it('does not start a second silent revalidation while a visibility-triggered refresh is still in flight', async () => {
+    let visibilityState: DocumentVisibilityState = 'hidden';
+    let resolveSecondFetch: ((response: Response) => void) | null = null;
+    const originalVisibilityStateDescriptor = Object.getOwnPropertyDescriptor(
+      document,
+      'visibilityState'
+    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          user: {
+            id: 'user-1',
+            roles: ['editor'],
+            instanceId: 'instance-1',
+          },
+        })
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise<Response>((resolve) => {
+            resolveSecondFetch = resolve;
+          })
+      );
+
+    vi.stubGlobal('fetch', fetchMock);
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      get: () => visibilityState,
+    });
+
+    try {
+      render(
+        <AuthProvider>
+          <AuthProbe />
+        </AuthProvider>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('status').textContent).toBe('ready');
+      });
+
+      visibilityState = 'visible';
+      await act(async () => {
+        document.dispatchEvent(new Event('visibilitychange'));
+        document.dispatchEvent(new Event('visibilitychange'));
+      });
+
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+
+      requireFetchResolver(resolveSecondFetch)(
+        createJsonResponse(200, {
+          user: {
+            id: 'user-1',
+            roles: ['editor', 'system_admin'],
+            instanceId: 'instance-1',
+          },
+        })
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('user-roles').textContent).toContain('system_admin');
+      });
+
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    } finally {
+      if (originalVisibilityStateDescriptor) {
+        Object.defineProperty(document, 'visibilityState', originalVisibilityStateDescriptor);
+      } else {
+        removeTestDocumentProperty('visibilityState');
+      }
+    }
+  });
+
+  it('does not revalidate on visibility regain without a confirmed session snapshot', async () => {
+    let visibilityState: DocumentVisibilityState = 'hidden';
+    const originalVisibilityStateDescriptor = Object.getOwnPropertyDescriptor(
+      document,
+      'visibilityState'
+    );
+    const fetchMock = vi.fn().mockResolvedValue(
+      createJsonResponse(401, {
+        error: {
+          code: 'unauthorized',
+          message: 'expired',
+          classification: 'session_store_or_session_hydration',
+          status: 'recovery_laeuft',
+          recommendedAction: 'erneut_anmelden',
+          safeDetails: {
+            reason_code: 'session_expired',
+          },
+        },
+        requestId: 'req-auth-401',
+      })
+    );
+
+    vi.stubGlobal('fetch', fetchMock);
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      get: () => visibilityState,
+    });
+
+    try {
+      render(
+        <AuthProvider>
+          <AuthProbe />
+        </AuthProvider>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('status').textContent).toBe('ready');
+      });
+
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          origin: window.location.origin,
+          data: { type: 'sva-auth:silent-sso', status: 'failed' },
+        })
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('authenticated').textContent).toBe('no');
+      });
+
+      visibilityState = 'visible';
+      await act(async () => {
+        document.dispatchEvent(new Event('visibilitychange'));
+      });
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    } finally {
+      if (originalVisibilityStateDescriptor) {
+        Object.defineProperty(document, 'visibilityState', originalVisibilityStateDescriptor);
+      } else {
+        removeTestDocumentProperty('visibilityState');
+      }
+    }
+  });
+
+  it('keeps the last confirmed user snapshot while invalidating permissions silently', async () => {
+    let resolveSecondFetch: ((response: Response) => void) | null = null;
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          user: {
+            id: 'user-1',
+            roles: ['editor'],
+            instanceId: 'instance-1',
+          },
+        })
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise<Response>((resolve) => {
+            resolveSecondFetch = resolve;
+          })
+      );
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <AuthProvider>
+        <AuthProbe />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('user-id').textContent).toBe('user-1');
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'invalidate' }));
+
+    expect(screen.getByTestId('status').textContent).toBe('ready');
+    expect(screen.getByTestId('authenticated').textContent).toBe('yes');
+    expect(screen.getByTestId('user-id').textContent).toBe('user-1');
+    expect(screen.getByTestId('user-roles').textContent).toBe('editor');
+
+    requireFetchResolver(resolveSecondFetch)(
+      createJsonResponse(200, {
+        user: {
+          id: 'user-1',
+          roles: ['editor', 'iam_admin'],
+          instanceId: 'instance-1',
+        },
+      })
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('user-roles').textContent).toContain('iam_admin');
+    });
+  });
+
+  it('does not expose a foreground auth error when silent invalidation fails', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          user: {
+            id: 'user-1',
+            roles: ['editor'],
+            instanceId: 'instance-1',
+          },
+        })
+      )
+      .mockRejectedValueOnce(new Error('silent-refresh-failed'));
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <AuthProvider>
+        <AuthProbe />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('user-id').textContent).toBe('user-1');
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'invalidate' }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+
+    expect(screen.getByTestId('authenticated').textContent).toBe('yes');
+    expect(screen.getByTestId('user-id').textContent).toBe('user-1');
+    expect(screen.getByTestId('error-code').textContent).toBe('none');
   });
 
   it('invalidates permissions via silent auth refresh', async () => {

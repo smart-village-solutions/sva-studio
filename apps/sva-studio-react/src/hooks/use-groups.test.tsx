@@ -298,25 +298,29 @@ describe('useGroups', () => {
     expect(removeGroupMembershipMock).toHaveBeenCalledWith('group-1', 'user-123');
   });
 
-  it('invalidates permissions when initial fetch returns 403', async () => {
-    const forbiddenError = { status: 403, code: 'forbidden', message: 'Forbidden' };
-    asIamErrorMock.mockReturnValue(forbiddenError);
-    listGroupsMock.mockRejectedValueOnce(new Error('forbidden-list'));
+  it.each([
+    { status: 401, code: 'unauthorized', message: 'Unauthorized' },
+    { status: 403, code: 'forbidden', message: 'Forbidden' },
+  ])('invalidates permissions when initial fetch returns a protected error (status $status, code $code)', async (protectedError) => {
+    asIamErrorMock.mockReturnValue(protectedError);
+    listGroupsMock.mockRejectedValueOnce(new Error('protected-list'));
 
     const { result } = renderHook(() => useGroups());
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
-      expect(result.current.error).toBe(forbiddenError);
+      expect(result.current.error).toBe(protectedError);
       expect(result.current.groups).toHaveLength(0);
     });
 
     expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
   });
 
-  it('stores page error and invalidates permissions when detail fetch returns 403', async () => {
-    const forbiddenError = { status: 403, code: 'forbidden', message: 'Forbidden' };
-    asIamErrorMock.mockReturnValue(forbiddenError);
+  it.each([
+    { status: 401, code: 'unauthorized', message: 'Unauthorized' },
+    { status: 403, code: 'forbidden', message: 'Forbidden' },
+  ])('stores page error and invalidates permissions when detail fetch returns a protected error (status $status, code $code)', async (protectedError) => {
+    asIamErrorMock.mockReturnValue(protectedError);
     listGroupsMock.mockResolvedValueOnce({
       data: [],
       pagination: {
@@ -325,7 +329,7 @@ describe('useGroups', () => {
         total: 0,
       },
     });
-    getGroupMock.mockRejectedValueOnce(new Error('forbidden-detail'));
+    getGroupMock.mockRejectedValueOnce(new Error('protected-detail'));
 
     const { result } = renderHook(() => useGroups());
 
@@ -339,7 +343,7 @@ describe('useGroups', () => {
 
     expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
     expect(result.current.error).toBeNull();
-    expect(result.current.detailError).toBe(forbiddenError);
+    expect(result.current.detailError).toBe(protectedError);
   });
 
   it('keeps list data visible when a row detail fetch fails', async () => {
@@ -428,9 +432,53 @@ describe('useGroups', () => {
     expect(authMockValue.invalidatePermissions).not.toHaveBeenCalled();
   });
 
-  it('invalidates permissions when membership removal fails with 403', async () => {
-    const forbiddenError = { status: 403, code: 'forbidden', message: 'Forbidden' };
-    asIamErrorMock.mockReturnValue(forbiddenError);
+  it.each([
+    { status: 401, code: 'unauthorized', message: 'Unauthorized' },
+    { status: 403, code: 'forbidden', message: 'Forbidden' },
+  ])('invalidates permissions when createGroup fails with a protected error (status $status, code $code)', async (protectedError) => {
+    asIamErrorMock.mockReturnValue(protectedError);
+    listGroupsMock.mockResolvedValueOnce({
+      data: [
+        {
+          id: 'group-1',
+          groupKey: 'editors',
+          displayName: 'Editors',
+          description: undefined,
+          groupType: 'role_bundle',
+          isActive: true,
+          memberCount: 0,
+          roleCount: 0,
+        },
+      ],
+      pagination: {
+        page: 1,
+        pageSize: 1,
+        total: 1,
+      },
+    });
+    createGroupMock.mockRejectedValueOnce(new Error('protected-create'));
+
+    const { result } = renderHook(() => useGroups());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.groups).toHaveLength(1);
+    });
+
+    await act(async () => {
+      const created = await result.current.createGroup({ groupKey: 'editors', displayName: 'Editors' });
+      expect(created).toBeNull();
+    });
+
+    expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
+    expect(result.current.mutationError).toBe(protectedError);
+  });
+
+  it.each([
+    { status: 401, code: 'unauthorized', message: 'Unauthorized' },
+    { status: 403, code: 'forbidden', message: 'Forbidden' },
+  ])('invalidates permissions when membership removal fails with a protected error (status $status, code $code)', async (protectedError) => {
+    asIamErrorMock.mockReturnValue(protectedError);
     listGroupsMock.mockResolvedValueOnce({
       data: [],
       pagination: {
@@ -454,6 +502,6 @@ describe('useGroups', () => {
 
     expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
     expect(result.current.error).toBeNull();
-    expect(result.current.mutationError).toBe(forbiddenError);
+    expect(result.current.mutationError).toBe(protectedError);
   });
 });

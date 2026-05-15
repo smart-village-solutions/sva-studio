@@ -20,6 +20,7 @@ type UseOrganizationContextResult = {
 };
 
 const organizationContextLogger = createOperationLogger('organization-context-hook', 'debug');
+const PERMISSION_INVALIDATED_EVENT = 'permission_invalidated_after_401_or_403';
 
 export const useOrganizationContext = (): UseOrganizationContextResult => {
   const { isAuthenticated, invalidatePermissions, user } = useAuth();
@@ -50,9 +51,9 @@ export const useOrganizationContext = (): UseOrganizationContextResult => {
       });
     } catch (cause) {
       const resolvedError = asIamError(cause);
-      if (resolvedError.status === 403) {
+      if (resolvedError.status === 401 || resolvedError.status === 403) {
         await invalidatePermissions();
-        organizationContextLogger.info('permission_invalidated_after_403', {
+        organizationContextLogger.info(PERMISSION_INVALIDATED_EVENT, {
           operation: 'get_my_organization_context',
           status: resolvedError.status,
           error_code: resolvedError.code,
@@ -103,9 +104,9 @@ export const useOrganizationContext = (): UseOrganizationContextResult => {
         return true;
       } catch (cause) {
         const resolvedError = asIamError(cause);
-        if (resolvedError.status === 403) {
+        if (resolvedError.status === 401 || resolvedError.status === 403) {
           await invalidatePermissions();
-          organizationContextLogger.info('permission_invalidated_after_403', {
+          organizationContextLogger.info(PERMISSION_INVALIDATED_EVENT, {
             operation: 'update_my_organization_context',
             status: resolvedError.status,
             error_code: resolvedError.code,

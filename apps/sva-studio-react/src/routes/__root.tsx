@@ -77,7 +77,7 @@ export const rootRoute = Route;
 /**
  * Rendert das HTML-Grundgerüst mit Header, Shell-Layout und Devtools.
  *
- * Die Shell zeigt Loading-Skeletons ausschließlich bei aktiver Router-Pending-Phase.
+ * Die Shell bleibt bei normaler Route-Navigation stabil gemountet; Loading bleibt lokal im Routeninhalt.
  */
 function RootComponent() {
   return (
@@ -116,8 +116,6 @@ export function RootDocument({ children }: Readonly<{ children: React.ReactNode 
     mainElement?.focus();
   }, [currentPathname]);
 
-  const isShellLoading = isHydrated && isRouterPending;
-
   return (
     <html lang="de" suppressHydrationWarning>
       <head>
@@ -142,7 +140,7 @@ export function RootDocument({ children }: Readonly<{ children: React.ReactNode 
             <ThemeProvider>
               <AppShell
                 currentPathname={currentPathname}
-                isLoading={isShellLoading}
+                isLoading={isHydrated && isRouterPending}
                 isMobileSidebarOpen={isMobileSidebarOpen}
                 onMobileSidebarOpenChange={setIsMobileSidebarOpen}
               >

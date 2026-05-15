@@ -100,6 +100,68 @@ describe('useContents', () => {
     });
   });
 
+  it.each([
+    { status: 401, code: 'unauthorized', message: 'Unauthorized' },
+    { status: 403, code: 'forbidden', message: 'Forbidden' },
+  ])('invalidates permissions when the initial content list fetch fails with a protected error (status $status, code $code)', async (protectedError) => {
+    asIamErrorMock.mockReturnValue(protectedError);
+    listContentsMock.mockRejectedValueOnce(new Error('protected-list'));
+
+    const { result } = renderHook(() => useContents());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.error).toBe(protectedError);
+      expect(result.current.contents).toEqual([]);
+    });
+
+    expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    { status: 401, code: 'unauthorized', message: 'Unauthorized' },
+    { status: 403, code: 'forbidden', message: 'Forbidden' },
+  ])('invalidates permissions when a content list refetch fails with a protected error (status $status, code $code)', async (protectedError) => {
+    asIamErrorMock.mockImplementation((cause: unknown) => cause);
+    listContentsMock
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 'content-1',
+            contentType: 'generic',
+            title: 'Startseite',
+            createdAt: '2026-03-21T10:00:00.000Z',
+            updatedAt: '2026-03-21T11:00:00.000Z',
+            author: 'Editor',
+            payload: { blocks: [] },
+            status: 'draft',
+          },
+        ],
+        pagination: { page: 1, pageSize: 1, total: 1 },
+      })
+      .mockRejectedValueOnce(new Error('protected-refetch'));
+
+    const { result } = renderHook(() => useContents());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.contents).toHaveLength(1);
+    });
+
+    asIamErrorMock.mockReturnValue(protectedError);
+
+    await act(async () => {
+      await result.current.refetch();
+    });
+
+    await waitFor(() => {
+      expect(result.current.error).toBe(protectedError);
+      expect(result.current.contents).toEqual([]);
+    });
+
+    expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
+  });
+
   it('runs bulk archive and delete actions with safe audit metadata', async () => {
     asIamErrorMock.mockImplementation((cause: unknown) => cause);
     listContentsMock.mockResolvedValue({
@@ -229,30 +291,38 @@ describe('useContents', () => {
     expect(result.current.mutationError).toBeNull();
   });
 
-  it('invalidates permissions on 403 errors and handles empty detail ids', async () => {
-    const forbiddenError = { status: 403, code: 'forbidden', message: 'Forbidden' };
-    asIamErrorMock.mockReturnValue(forbiddenError);
-    createContentMock.mockRejectedValueOnce(new Error('forbidden'));
+  it.each([
+    { status: 401, code: 'unauthorized', message: 'Unauthorized' },
+    { status: 403, code: 'forbidden', message: 'Forbidden' },
+  ])(
+    'invalidates permissions on protected create errors (status $status, code $code)',
+    async (protectedError) => {
+      asIamErrorMock.mockReturnValue(protectedError);
+      createContentMock.mockRejectedValueOnce(new Error('protected-create'));
 
-    const { result: createResult } = renderHook(() => useCreateContent());
+      const { result: createResult } = renderHook(() => useCreateContent());
 
-    await act(async () => {
-      const created = await createResult.current.createContent({
-        contentType: 'generic',
-        title: 'Landing Page',
-        payload: { hero: 'Hello' },
-        status: 'draft',
+      await act(async () => {
+        const created = await createResult.current.createContent({
+          contentType: 'generic',
+          title: 'Landing Page',
+          payload: { hero: 'Hello' },
+          status: 'draft',
+        });
+        expect(created).toBe(false);
       });
-      expect(created).toBe(false);
-    });
 
-    expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
+      expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
+    }
+  );
 
-    const { result: detailResult } = renderHook(() => useContentDetail(null));
+  it('keeps content detail idle when no content id is provided', async () => {
+    const { result } = renderHook(() => useContentDetail(null));
+
     await waitFor(() => {
-      expect(detailResult.current.isLoading).toBe(false);
-      expect(detailResult.current.content).toBeNull();
-      expect(detailResult.current.history).toEqual([]);
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.content).toBeNull();
+      expect(result.current.history).toEqual([]);
     });
   });
 
@@ -306,21 +376,29 @@ describe('useContents', () => {
     });
   });
 
-  it('stores detail and update errors and invalidates permissions on 403', async () => {
-    const forbiddenError = { status: 403, code: 'forbidden', message: 'Forbidden' };
-    asIamErrorMock.mockReturnValue(forbiddenError);
-    getContentMock.mockRejectedValueOnce(new Error('forbidden'));
+  it.each([
+    { status: 401, code: 'unauthorized', message: 'Unauthorized' },
+    { status: 403, code: 'forbidden', message: 'Forbidden' },
+  ])('stores detail errors and invalidates permissions on protected detail-load failures (status $status, code $code)', async (protectedError) => {
+    asIamErrorMock.mockReturnValue(protectedError);
+    getContentMock.mockRejectedValueOnce(new Error('protected-detail'));
     getContentHistoryMock.mockResolvedValue({ data: [], pagination: { page: 1, pageSize: 0, total: 0 } });
 
     const { result } = renderHook(() => useContentDetail('content-1'));
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
-      expect(result.current.error).toBe(forbiddenError);
+      expect(result.current.error).toBe(protectedError);
     });
 
     expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
+  });
 
+  it.each([
+    { status: 401, code: 'unauthorized', message: 'Unauthorized' },
+    { status: 403, code: 'forbidden', message: 'Forbidden' },
+  ])('stores update errors and invalidates permissions on protected update failures (status $status, code $code)', async (protectedError) => {
+    asIamErrorMock.mockImplementation((cause: unknown) => cause);
     getContentMock.mockResolvedValue({
       data: {
         id: 'content-1',
@@ -339,21 +417,26 @@ describe('useContents', () => {
       pagination: { page: 1, pageSize: 0, total: 0 },
     });
 
-    await act(async () => {
-      await result.current.refetch();
+    const { result } = renderHook(() => useContentDetail('content-1'));
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.content?.title).toBe('Startseite');
     });
 
-    updateContentMock.mockRejectedValueOnce(new Error('forbidden'));
+    asIamErrorMock.mockReturnValue(protectedError);
+    updateContentMock.mockRejectedValueOnce(new Error('protected-update'));
 
     await act(async () => {
       const updated = await result.current.updateContent({ title: 'Neu' });
       expect(updated).toBe(false);
     });
 
-    expect(result.current.mutationError).toBe(forbiddenError);
+    expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
+    expect(result.current.mutationError).toBe(protectedError);
   });
 
-  it('returns false for detail mutations without an id and clears stored mutation errors', async () => {
+  it('clears stored mutation errors for create mutations', async () => {
     const createConflict = { status: 409, code: 'conflict', message: 'Conflict' };
     asIamErrorMock.mockReturnValue(createConflict);
     createContentMock.mockRejectedValueOnce(new Error('conflict'));
@@ -378,7 +461,9 @@ describe('useContents', () => {
     });
 
     expect(createResult.current.mutationError).toBeNull();
+  });
 
+  it('returns false for detail mutations without an id and clears stored mutation errors', async () => {
     const { result: detailResult } = renderHook(() => useContentDetail(null));
 
     await waitFor(() => {

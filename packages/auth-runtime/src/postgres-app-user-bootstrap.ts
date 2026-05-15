@@ -57,6 +57,7 @@ const runBootstrap = async (): Promise<boolean> => {
   const quotedAppDbUser = quoteIdentifier(appDbUser);
   const quotedAppDbPassword = quoteLiteral(appDbPassword);
   const quotedRoleName = quoteLiteral(appDbUser);
+  const quotedPostgresDb = quoteIdentifier(postgresDb);
   let lastError: unknown;
 
   for (const superuserPassword of superuserPasswords) {
@@ -87,6 +88,9 @@ END
 $bootstrap$;
 `
       );
+      await client.query(`GRANT CONNECT ON DATABASE ${quotedPostgresDb} TO ${quotedAppDbUser}`);
+      await client.query(`GRANT CREATE ON DATABASE ${quotedPostgresDb} TO ${quotedAppDbUser}`);
+      await client.query(`GRANT USAGE, CREATE ON SCHEMA public TO ${quotedAppDbUser}`);
       await client.query(`GRANT iam_app TO ${quotedAppDbUser}`);
       await client.query(`GRANT USAGE ON SCHEMA iam TO ${quotedAppDbUser}`);
       await client.query(

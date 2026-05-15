@@ -38,7 +38,12 @@ if ! [[ "${app_user}" =~ ^[a-zA-Z0-9_]{1,63}$ ]]; then
   exit 1
 fi
 
-"${postgres_exec[@]}" -v ON_ERROR_STOP=1 -v app_user="${app_user}" -v app_password="${app_password}" -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" <<'SQL'
+if ! [[ "${POSTGRES_DB}" =~ ^[a-zA-Z0-9_]{1,63}$ ]]; then
+  echo "POSTGRES_DB must match ^[a-zA-Z0-9_]{1,63}$."
+  exit 1
+fi
+
+"${postgres_exec[@]}" -v ON_ERROR_STOP=1 -v postgres_db="${POSTGRES_DB}" -v app_user="${app_user}" -v app_password="${app_password}" -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" <<'SQL'
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'iam_app') THEN
@@ -54,6 +59,9 @@ ALTER ROLE :"app_user" WITH LOGIN INHERIT PASSWORD :'app_password';
 CREATE ROLE :"app_user" LOGIN PASSWORD :'app_password' NOSUPERUSER NOCREATEDB NOCREATEROLE INHERIT;
 \endif
 
+GRANT CONNECT ON DATABASE :"postgres_db" TO :"app_user";
+GRANT CREATE ON DATABASE :"postgres_db" TO :"app_user";
+GRANT USAGE, CREATE ON SCHEMA public TO :"app_user";
 GRANT iam_app TO :"app_user";
 GRANT USAGE ON SCHEMA iam TO :"app_user";
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA iam TO :"app_user";

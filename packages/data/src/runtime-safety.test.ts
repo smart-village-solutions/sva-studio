@@ -22,7 +22,11 @@ test('bootstrap script validates usernames and uses identifier-safe grants', () 
   const script = readRepoFile('data/scripts/bootstrap-app-user.sh');
 
   assert.match(script, /IAM_DATABASE_URL username must match \^\[a-zA-Z0-9_\]\{1,63\}\$\./);
-  assert.match(script, /-v app_user="\$\{app_user\}" -v app_password="\$\{app_password\}"/);
+  assert.match(script, /POSTGRES_DB must match \^\[a-zA-Z0-9_\]\{1,63\}\$\./);
+  assert.match(script, /-v postgres_db="\$\{POSTGRES_DB\}" -v app_user="\$\{app_user\}" -v app_password="\$\{app_password\}"/);
+  assert.match(script, /GRANT CONNECT ON DATABASE :"postgres_db" TO :"app_user";/);
+  assert.match(script, /GRANT CREATE ON DATABASE :"postgres_db" TO :"app_user";/);
+  assert.match(script, /GRANT USAGE, CREATE ON SCHEMA public TO :"app_user";/);
   assert.match(script, /GRANT iam_app TO :"app_user";/);
   assert.match(script, /\\if :role_exists/);
   assert.doesNotMatch(script, /DO \\\$\\\$/);

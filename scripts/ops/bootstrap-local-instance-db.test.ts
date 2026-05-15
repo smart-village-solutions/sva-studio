@@ -4,6 +4,7 @@ import { bootstrapAppUser, importSchema, recreateDatabase } from './bootstrap-lo
 import { sqlIdentifier, sqlLiteral } from './bootstrap-local-instance-db/docker-psql.ts';
 import { fetchKeycloakUsers } from './bootstrap-local-instance-db/keycloak-sync.ts';
 import {
+  BootstrapLocalInstanceDbCliError,
   parseBootstrapLocalInstanceDbArgs,
   renderUsage,
 } from './bootstrap-local-instance-db/parse-options.ts';
@@ -65,9 +66,15 @@ describe('database bootstrap helpers', () => {
   it('recreates the target database via docker', () => {
     const run = vi.fn(() => '');
     recreateDatabase(options, run, vi.fn());
+    expect(run).toHaveBeenCalledTimes(2);
     expect(run).toHaveBeenCalledWith(
       'docker',
-      expect.arrayContaining(['exec', '-i', 'sva-studio-postgres-hb', 'sh', '-lc'])
+      ['exec', '-i', 'sva-studio-postgres-hb', 'dropdb', '-U', 'sva', '--if-exists', 'sva_studio']
+    );
+    expect(run).toHaveBeenNthCalledWith(
+      2,
+      'docker',
+      ['exec', '-i', 'sva-studio-postgres-hb', 'createdb', '-U', 'sva', 'sva_studio']
     );
   });
 
@@ -213,5 +220,10 @@ describe('runBootstrapLocalInstanceDb', () => {
     const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
     await expect(runBootstrapLocalInstanceDb([])).resolves.toBe(2);
     stderrSpy.mockRestore();
+  });
+
+  it('throws structured cli errors for missing required options', () => {
+    expect(() => parseBootstrapLocalInstanceDbArgs([])).toThrowError(BootstrapLocalInstanceDbCliError);
+    expect(() => parseBootstrapLocalInstanceDbArgs([])).toThrowError(/Missing required option/);
   });
 });

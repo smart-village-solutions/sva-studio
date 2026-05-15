@@ -1,4 +1,6 @@
 import { createRequire } from 'node:module';
+import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { createInstanceRegistryService } from '@sva/instance-registry/service';
 import type { InstanceRegistryService } from '@sva/instance-registry/service-types';
@@ -43,7 +45,8 @@ type CreateInstanceRegistryCommandContextDeps = {
   readonly serviceFactory?: (repository: InstanceRegistryRepository) => InstanceRegistryService;
 };
 
-const cliRequire = createRequire(import.meta.url);
+const rootDir = resolve(fileURLToPath(new URL('../..', import.meta.url)));
+const cliRequire = createRequire(resolve(rootDir, 'packages/data/package.json'));
 const { Pool } = cliRequire('pg') as PgModule;
 
 export const instanceRegistryCliLogger = createSdkLogger({

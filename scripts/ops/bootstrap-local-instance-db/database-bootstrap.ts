@@ -9,9 +9,20 @@ export const recreateDatabase = (options: CliOptions, run: ShellRunner, logStep:
     'exec',
     '-i',
     options.targetDbContainer,
-    'sh',
-    '-lc',
-    `dropdb -U ${options.targetDbUser} --if-exists ${options.targetDbName} && createdb -U ${options.targetDbUser} ${options.targetDbName}`,
+    'dropdb',
+    '-U',
+    options.targetDbUser,
+    '--if-exists',
+    options.targetDbName,
+  ]);
+  run('docker', [
+    'exec',
+    '-i',
+    options.targetDbContainer,
+    'createdb',
+    '-U',
+    options.targetDbUser,
+    options.targetDbName,
   ]);
 };
 

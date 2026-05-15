@@ -10,6 +10,7 @@ import { syncCatalog } from './bootstrap-local-instance-db/catalog-sync.js';
 import { syncKeycloakUsers } from './bootstrap-local-instance-db/keycloak-sync.js';
 import { logStep } from './bootstrap-local-instance-db/logging.js';
 import {
+  BootstrapLocalInstanceDbCliError,
   parseBootstrapLocalInstanceDbArgs,
   renderUsage,
   type CliOptions,
@@ -33,9 +34,8 @@ export const runBootstrapLocalInstanceDb = async (
   try {
     options = parseBootstrapLocalInstanceDbArgs(argv);
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    if (message.startsWith('Missing required option')) {
-      process.stderr.write(`${message}\n`);
+    if (error instanceof BootstrapLocalInstanceDbCliError && error.code === 'MISSING_REQUIRED_OPTION') {
+      process.stderr.write(`${error.message}\n`);
       process.stderr.write(renderUsage());
       return 2;
     }

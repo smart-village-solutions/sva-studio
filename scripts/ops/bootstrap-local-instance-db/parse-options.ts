@@ -22,6 +22,15 @@ export type CliOptions = {
   targetRealm: string;
 };
 
+export class BootstrapLocalInstanceDbCliError extends Error {
+  readonly code: 'INVALID_ARGUMENT' | 'MISSING_REQUIRED_OPTION' | 'INVALID_NUMERIC_VALUE';
+
+  constructor(code: BootstrapLocalInstanceDbCliError['code'], message: string) {
+    super(message);
+    this.code = code;
+  }
+}
+
 export const renderUsage = (): string => `Usage: tsx scripts/ops/bootstrap-local-instance-db.ts \\
   --target-instance-id=<id> \\
   --target-realm=<realm> \\
@@ -52,7 +61,7 @@ export const parseBootstrapLocalInstanceDbArgs = (args: readonly string[]): CliO
 
   for (const entry of args) {
     if (!entry.startsWith('--')) {
-      throw new Error(`Ungültiges Argument: ${entry}`);
+      throw new BootstrapLocalInstanceDbCliError('INVALID_ARGUMENT', `Ungültiges Argument: ${entry}`);
     }
 
     const separatorIndex = entry.indexOf('=');
@@ -67,7 +76,7 @@ export const parseBootstrapLocalInstanceDbArgs = (args: readonly string[]): CliO
   const readRequired = (key: string): string => {
     const value = values.get(key);
     if (!value) {
-      throw new Error(`Missing required option --${key}=...`);
+      throw new BootstrapLocalInstanceDbCliError('MISSING_REQUIRED_OPTION', `Missing required option --${key}=...`);
     }
 
     return value;
@@ -82,7 +91,7 @@ export const parseBootstrapLocalInstanceDbArgs = (args: readonly string[]): CliO
 
     const parsed = Number.parseInt(raw, 10);
     if (!Number.isFinite(parsed) || parsed <= 0) {
-      throw new Error(`Invalid numeric value for --${key}: ${raw}`);
+      throw new BootstrapLocalInstanceDbCliError('INVALID_NUMERIC_VALUE', `Invalid numeric value for --${key}: ${raw}`);
     }
 
     return parsed;

@@ -8,7 +8,6 @@ import {
   type PluginCatalogSourceType,
   type PluginDefinition,
   type PluginManifest,
-  type PluginManifestCapability,
   type PluginPlatformHost,
   type ResolvedPluginCatalog,
 } from '@sva/plugin-sdk';

@@ -6,5 +6,5 @@
 - [x] 1.4 `service.ts` in kleinere Kompositionsmodule schneiden
 - [x] 1.5 `http-mutation-handlers.ts` in gemeinsame Vorbedingungen und Action-Handler zerlegen
 - [x] 1.6 Admin-UI-Schnitt der Instanzverwaltung weiter entlang fachlicher Arbeitsmodelle zerlegen
-- [ ] 1.7 Ops-Skript der Instanzverwaltung auf saubere Paketkanten und Command-Module umstellen
+- [x] 1.7 Ops-Skript der Instanzverwaltung auf saubere Paketkanten und Command-Module umstellen
 - [x] 1.8 Betroffene arc42-Abschnitte unter `docs/architecture/` aktualisieren

@@ -84,6 +84,8 @@ pnpm nx run sva-studio-react:test:e2e -- --grep "tenant-host login"
 
 Die nicht-interaktive CLI liegt unter [scripts/ops/instance-registry.ts](../../scripts/ops/instance-registry.ts).
 
+Der Entrypoint bleibt bewusst stabil, die interne Struktur ist aber inzwischen entlang von Command-Modulen, Formatierung und gemeinsamem Kontext geschnitten. Lokale Automatisierung und Tests sollen deshalb weiterhin nur den CLI-Einstieg aufrufen und keine internen Hilfsmodule direkt referenzieren.
+
 Beispiele:
 
 ```bash

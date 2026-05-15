@@ -6,6 +6,8 @@ const waitForAppRoute = async (): Promise<void> => {
   const readyURL = new URL('/auth/login', baseURL).toString();
   let lastError: unknown;
 
+  await sleep(2_000);
+
   for (let attempt = 1; attempt <= 30; attempt += 1) {
     try {
       const response = await fetch(readyURL, {

@@ -1,9 +1,9 @@
 import type { AuthenticatedRequestContext } from '../../middleware.js';
 import { validateCsrf } from '../../shared/request-security.js';
-import { asApiItem, createApiError, parseRequestBody, readPathSegment } from '../../shared/request-helpers.js';
-import { authorizeWasteManagementAction, emitWasteAuditEvent, getAuthorizedWasteManagementInstanceId } from './auth.js';
+import { createApiError, parseRequestBody, readPathSegment } from '../../shared/request-helpers.js';
+import { authorizeWasteManagementAction, getAuthorizedWasteManagementInstanceId } from './auth.js';
+import { runWasteCreateMutation, runWasteUpdateMutation } from './mutation-helpers.js';
 import { wasteManagementMasterDataSchemas } from './schemas.js';
-import { updateWasteVisibleStatus } from './settings-shared.js';
 import type { WasteManagementHandlerDeps } from './types.js';
 import { getRequestId, normalizeOptionalString, requireDeps } from './utils.js';
 
@@ -51,67 +51,28 @@ export const wasteManagementCollectionLocationHandlers = {
       return createApiError(400, 'invalid_request', parsed.message, requestId);
     }
 
-    try {
-      await requireDeps(deps.saveWasteCollectionLocation, 'saveWasteCollectionLocation')(
-        instanceId,
-        toCollectionLocationInput(parsed.data.id, parsed.data)
-      );
-
-      const saved = await requireDeps(
-        deps.loadWasteCollectionLocationById,
-        'loadWasteCollectionLocationById'
-      )(instanceId, parsed.data.id);
-      if (!saved) {
-        await emitWasteAuditEvent({
-          deps,
-          ctx,
+    return runWasteCreateMutation({
+      deps,
+      ctx,
+      instanceId,
+      requestId,
+      resourceId: parsed.data.id,
+      audit: {
+        actionId: 'waste-management.collection-location.created',
+        resourceType: 'waste_collection_location',
+      },
+      messages: {
+        verificationFailed: 'Der Waste-Abholort konnte nicht verifiziert werden.',
+        persistenceFailed: 'Der Waste-Abholort konnte nicht gespeichert werden.',
+      },
+      save: () =>
+        requireDeps(deps.saveWasteCollectionLocation, 'saveWasteCollectionLocation')(
           instanceId,
-          actionId: 'waste-management.collection-location.created',
-          result: 'failure',
-          reasonCode: 'verification_failed',
-          resourceType: 'waste_collection_location',
-          resourceId: parsed.data.id,
-        });
-        return createApiError(
-          503,
-          'database_unavailable',
-          'Der Waste-Abholort konnte nicht verifiziert werden.',
-          requestId
-        );
-      }
-
-      await emitWasteAuditEvent({
-        deps,
-        ctx,
-        instanceId,
-        actionId: 'waste-management.collection-location.created',
-        result: 'success',
-        resourceType: 'waste_collection_location',
-        resourceId: saved.id,
-      });
-
-      await updateWasteVisibleStatus(deps, instanceId, 'success');
-      return new Response(JSON.stringify(asApiItem(saved, requestId)), {
-        status: 201,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    } catch (error) {
-      if (error instanceof Error && error.message.startsWith('missing_dependency:')) {
-        throw error;
-      }
-      await emitWasteAuditEvent({
-        deps,
-        ctx,
-        instanceId,
-        actionId: 'waste-management.collection-location.created',
-        result: 'failure',
-        reasonCode: 'database_unavailable',
-        resourceType: 'waste_collection_location',
-        resourceId: parsed.data.id,
-      });
-      await updateWasteVisibleStatus(deps, instanceId, 'revalidate');
-      return createApiError(503, 'database_unavailable', 'Der Waste-Abholort konnte nicht gespeichert werden.', requestId);
-    }
+          toCollectionLocationInput(parsed.data.id, parsed.data)
+        ),
+      loadSaved: () =>
+        requireDeps(deps.loadWasteCollectionLocationById, 'loadWasteCollectionLocationById')(instanceId, parsed.data.id),
+    });
   },
   updateWasteManagementCollectionLocationInternal: async (
     request: Request,
@@ -141,70 +102,30 @@ export const wasteManagementCollectionLocationHandlers = {
       return createApiError(400, 'invalid_request', parsed.message, requestId);
     }
 
-    try {
-      const loadCollectionLocation = requireDeps(
-        deps.loadWasteCollectionLocationById,
-        'loadWasteCollectionLocationById'
-      );
-      const saveCollectionLocation = requireDeps(deps.saveWasteCollectionLocation, 'saveWasteCollectionLocation');
-      const existing = await loadCollectionLocation(instanceId, locationId);
-      if (!existing) {
-        return createApiError(404, 'not_found', 'Der Waste-Abholort wurde nicht gefunden.', requestId);
-      }
+    const loadCollectionLocation = requireDeps(
+      deps.loadWasteCollectionLocationById,
+      'loadWasteCollectionLocationById'
+    );
+    const saveCollectionLocation = requireDeps(deps.saveWasteCollectionLocation, 'saveWasteCollectionLocation');
 
-      await saveCollectionLocation(instanceId, toCollectionLocationInput(locationId, parsed.data));
-
-      const saved = await loadCollectionLocation(instanceId, locationId);
-      if (!saved) {
-        await emitWasteAuditEvent({
-          deps,
-          ctx,
-          instanceId,
-          actionId: 'waste-management.collection-location.updated',
-          result: 'failure',
-          reasonCode: 'verification_failed',
-          resourceType: 'waste_collection_location',
-          resourceId: locationId,
-        });
-        return createApiError(
-          503,
-          'database_unavailable',
-          'Der Waste-Abholort konnte nicht verifiziert werden.',
-          requestId
-        );
-      }
-
-      await emitWasteAuditEvent({
-        deps,
-        ctx,
-        instanceId,
+    return runWasteUpdateMutation({
+      deps,
+      ctx,
+      instanceId,
+      requestId,
+      resourceId: locationId,
+      audit: {
         actionId: 'waste-management.collection-location.updated',
-        result: 'success',
         resourceType: 'waste_collection_location',
-        resourceId: saved.id,
-      });
-
-      await updateWasteVisibleStatus(deps, instanceId, 'success');
-      return new Response(JSON.stringify(asApiItem(saved, requestId)), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    } catch (error) {
-      if (error instanceof Error && error.message.startsWith('missing_dependency:')) {
-        throw error;
-      }
-      await emitWasteAuditEvent({
-        deps,
-        ctx,
-        instanceId,
-        actionId: 'waste-management.collection-location.updated',
-        result: 'failure',
-        reasonCode: 'database_unavailable',
-        resourceType: 'waste_collection_location',
-        resourceId: locationId,
-      });
-      await updateWasteVisibleStatus(deps, instanceId, 'revalidate');
-      return createApiError(503, 'database_unavailable', 'Der Waste-Abholort konnte nicht gespeichert werden.', requestId);
-    }
+      },
+      messages: {
+        notFound: 'Der Waste-Abholort wurde nicht gefunden.',
+        verificationFailed: 'Der Waste-Abholort konnte nicht verifiziert werden.',
+        persistenceFailed: 'Der Waste-Abholort konnte nicht gespeichert werden.',
+      },
+      loadExisting: () => loadCollectionLocation(instanceId, locationId),
+      save: () => saveCollectionLocation(instanceId, toCollectionLocationInput(locationId, parsed.data)),
+      loadSaved: () => loadCollectionLocation(instanceId, locationId),
+    });
   },
 };

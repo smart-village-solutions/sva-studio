@@ -13,23 +13,22 @@ import { wasteManagementPluginTranslationsENTools } from './plugin.translations.
 import { wasteManagementPluginTranslationsENTours } from './plugin.translations.en.tours.js';
 import { wasteManagementPluginTranslationsENScheduling } from './plugin.translations.en.scheduling.js';
 import { wasteManagementPluginTranslationsENPermissions } from './plugin.translations.en.permissions.js';
+import { createWasteManagementPluginTranslationLocale } from './plugin.translations.shared.js';
 
-export const wasteManagementPluginTranslationsEN = {
-  wasteManagement: {
-    ...wasteManagementPluginTranslationsENNavigation,
-    ...wasteManagementPluginTranslationsENPage,
-    ...wasteManagementPluginTranslationsENActions,
-    ...wasteManagementPluginTranslationsENAudit,
-    ...wasteManagementPluginTranslationsENCommon,
-    ...wasteManagementPluginTranslationsENFilters,
-    ...wasteManagementPluginTranslationsENMeta,
-    ...wasteManagementPluginTranslationsENTabs,
-    ...wasteManagementPluginTranslationsENSettings,
-    ...wasteManagementPluginTranslationsENOverview,
-    ...wasteManagementPluginTranslationsENMasterData,
-    ...wasteManagementPluginTranslationsENTools,
-    ...wasteManagementPluginTranslationsENTours,
-    ...wasteManagementPluginTranslationsENScheduling,
-    ...wasteManagementPluginTranslationsENPermissions,
-  },
-} as const;
+export const wasteManagementPluginTranslationsEN = createWasteManagementPluginTranslationLocale([
+  wasteManagementPluginTranslationsENNavigation,
+  wasteManagementPluginTranslationsENPage,
+  wasteManagementPluginTranslationsENActions,
+  wasteManagementPluginTranslationsENAudit,
+  wasteManagementPluginTranslationsENCommon,
+  wasteManagementPluginTranslationsENFilters,
+  wasteManagementPluginTranslationsENMeta,
+  wasteManagementPluginTranslationsENTabs,
+  wasteManagementPluginTranslationsENSettings,
+  wasteManagementPluginTranslationsENOverview,
+  wasteManagementPluginTranslationsENMasterData,
+  wasteManagementPluginTranslationsENTools,
+  wasteManagementPluginTranslationsENTours,
+  wasteManagementPluginTranslationsENScheduling,
+  wasteManagementPluginTranslationsENPermissions,
+]);

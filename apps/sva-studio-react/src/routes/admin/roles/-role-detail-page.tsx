@@ -132,14 +132,6 @@ const groupPermissionsByCatalog = (
     .sort(([left], [right]) => left.localeCompare(right));
 };
 
-export const normalizeRoleDetailTab = (value: unknown): RoleDetailTab => {
-  if (typeof value !== 'string') {
-    return 'general';
-  }
-
-  return TABS.includes(value as RoleDetailTab) ? (value as RoleDetailTab) : 'general';
-};
-
 export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
   const rolesApi = useRoles();
   const permissionsApi = useRolePermissions();

@@ -16,7 +16,6 @@
     }
   },
   "dependencies": {
-    "@sva/core": "workspace:*",
     "@sva/data-client": "workspace:*",
     "@sva/data-repositories": "workspace:*",
     "@sva/server-runtime": "workspace:*",

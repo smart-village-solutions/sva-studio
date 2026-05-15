@@ -17,7 +17,6 @@
   },
   "dependencies": {
     "@sva/plugin-sdk": "workspace:*",
-    "@sva/studio-module-iam": "workspace:*",
     "@sva/studio-ui-react": "workspace:*"
   },
   "peerDependencies": {

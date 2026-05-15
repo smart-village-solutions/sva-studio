@@ -55,6 +55,8 @@ Das bestehende Redaktionssystem ist umständlich, schwer erweiterbar und limitie
 
 Wir nutzen `pnpm` (Version in `package.json` / `.tool-versions`).
 
+Für eine punktuelle Dead-Code- und Dependency-Analyse steht `pnpm knip:scan` bereit. Der Befehl ist bewusst nicht Teil von `test:*`, `lint`, `test:pr` oder der CI-Pipeline.
+
 ## Betriebsprofile
 
 Die drei offiziellen Laufzeitprofile werden zentral über `SVA_RUNTIME_PROFILE` und die Kommandos `pnpm env:*:<profil>` gesteuert:

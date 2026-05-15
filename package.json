@@ -73,6 +73,7 @@
     "schema-diff:sva-mainserver": "node scripts/ci/sva-mainserver-schema-diff.mjs",
     "benchmark:sva-mainserver": "node scripts/ops/benchmark-sva-mainserver.mjs",
     "iam:retention:run": "node scripts/ops/run-iam-retention.mjs",
+    "knip:scan": "knip -c knip.json --no-progress --no-exit-code --reporter compact",
     "hooks:install": "git config core.hooksPath .githooks"
   },
   "repository": {
@@ -104,6 +105,7 @@
     "knip": "^6.14.0",
     "nx": "22.7.1",
     "postcss": "8.5.11",
+    "pg": "^8.20.0",
     "tailwindcss": "4.2.4",
     "tsx": "^4.21.0",
     "typescript": "^6.0.3",

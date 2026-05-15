@@ -245,6 +245,7 @@ import {
 describe('waste-management server loaders', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
+    vi.useRealTimers();
     poolFactoryInstances.length = 0;
     await wasteManagementServerLoaderInternals.resetWastePoolCache();
   });
@@ -332,6 +333,38 @@ describe('waste-management server loaders', () => {
         'repository.list_waste_location_tour_links',
       ])
     );
+  });
+
+  it('evicts stale waste pools after the idle ttl expires', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-05-15T09:00:00.000Z'));
+
+    resolveWasteDataSourceMock.mockResolvedValueOnce({
+      instanceId: 'tenant-a',
+      schemaName: 'wm',
+      databaseUrl: 'postgres://waste:test@localhost:5432/waste',
+      serviceRoleKey: 'service-key',
+      projectUrl: 'https://tenant.example',
+      enabled: true,
+    });
+
+    await wasteManagementOverviewLoaders.loadMasterDataOverview('tenant-a');
+
+    vi.setSystemTime(new Date('2026-05-15T09:06:00.000Z'));
+    resolveWasteDataSourceMock.mockResolvedValueOnce({
+      instanceId: 'tenant-b',
+      schemaName: 'wm',
+      databaseUrl: 'postgres://waste:test@localhost:5432/waste-b',
+      serviceRoleKey: 'service-key',
+      projectUrl: 'https://tenant.example',
+      enabled: true,
+    });
+
+    await wasteManagementOverviewLoaders.loadToursOverview('tenant-b');
+
+    expect(poolFactoryInstances).toHaveLength(2);
+    expect(poolFactoryInstances[0]?.end).toHaveBeenCalledTimes(1);
+    expect(poolFactoryInstances[1]?.end).not.toHaveBeenCalled();
   });
 
   it('loads a fractions-only master-data overview without the location hierarchy', async () => {

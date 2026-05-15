@@ -337,6 +337,17 @@ const mapS3Error = (error: unknown, instanceId: string): ExternalInterfaceRuntim
   );
 };
 
+const resolveCheckedAt = (now?: () => Date | string): string => {
+  const value = now?.();
+  if (typeof value === 'string') {
+    return value;
+  }
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+  return new Date().toISOString();
+};
+
 const verifyS3Connection = async (resolvedInterface: ResolvedExternalInterface): Promise<void> => {
   const config = readS3Config(resolvedInterface);
   const client = new S3Client({
@@ -375,7 +386,7 @@ export const runStoredInterfaceHealthcheck = async (
     return null;
   }
 
-  const checkedAt = typeof input.now?.() === 'string' ? (input.now?.() as string) : new Date().toISOString();
+  const checkedAt = resolveCheckedAt(input.now);
 
   try {
     const resolvedInterface = await resolveExternalInterface({

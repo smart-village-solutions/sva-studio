@@ -111,6 +111,50 @@ describe('instance-interface-healthcheck.server', () => {
     expect(state.fetch).not.toHaveBeenCalled();
   });
 
+  it('uses the provided Date timestamp when the local healthcheck wrapper catches an error', async () => {
+    state.loadExternalInterfaceRecordById.mockResolvedValue({
+      id: 'supabase-1',
+      instanceId: 'de-test',
+      typeKey: 'supabase',
+      ownerKind: 'host',
+      ownerId: 'host',
+      displayName: 'Waste Supabase',
+      alias: 'default',
+      enabled: true,
+      isDefault: true,
+      category: 'database',
+      baseUrl: 'https://tenant.supabase.co',
+      authMode: 'service_role',
+      statusCheckKind: 'supabase',
+      visibleStatus: 'unknown',
+      publicConfig: {
+        projectUrl: 'https://tenant.supabase.co',
+        schemaName: 'wm',
+      },
+      secretConfigCiphertext:
+        'iam.instance_external_interfaces.secret_config:supabase-1:{"databaseUrl":"postgres://db.example/wm","serviceRoleKey":"service-role-key"}',
+    });
+    state.revealField.mockImplementationOnce(() => {
+      throw new Error('decrypt failed');
+    });
+
+    const { runStoredInterfaceHealthcheck } = await import('./instance-interface-healthcheck.server.js');
+
+    await expect(
+      runStoredInterfaceHealthcheck({
+        instanceId: 'de-test',
+        interfaceId: 'supabase-1',
+        now: () => new Date('2026-05-13T10:00:00.000Z'),
+      })
+    ).resolves.toEqual(
+      expect.objectContaining({
+        checkStatus: 'failed',
+        checkedAt: '2026-05-13T10:00:00.000Z',
+        errorCode: 'connection_failed',
+      })
+    );
+  });
+
   it('persists a failed connection check when the configured schema is missing', async () => {
     state.loadExternalInterfaceRecordById.mockResolvedValue({
       id: 'supabase-1',

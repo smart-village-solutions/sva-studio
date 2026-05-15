@@ -88,11 +88,14 @@ type WastePoolEntry = {
   readonly key: string;
   readonly dataSource: WasteDataSource;
   readonly pool: Pool;
+  lastUsedAt: number;
 };
 
 const toIsoTimestamp = (value: string | Date): string => (value instanceof Date ? value.toISOString() : value);
 
 const wastePoolCache = new Map<string, WastePoolEntry>();
+const WASTE_POOL_IDLE_TTL_MS = 5 * 60 * 1_000;
+const WASTE_POOL_MAX_ENTRIES = 32;
 
 const measureWasteStep = async <T>(
   operation: string,
@@ -132,11 +135,41 @@ const resolveScopedWasteDataSource = (instanceId: string, operation: string): Pr
     })
   );
 
-const getOrCreateWastePoolEntry = (dataSource: WasteDataSource): WastePoolEntry => {
+const closeWastePoolEntry = async (entry: WastePoolEntry): Promise<void> => {
+  const cachedEntry = wastePoolCache.get(entry.key);
+  if (cachedEntry === entry) {
+    wastePoolCache.delete(entry.key);
+  }
+  await entry.pool.end();
+};
+
+const evictExpiredWastePoolEntries = async (now = Date.now()): Promise<void> => {
+  const expiredEntries = [...wastePoolCache.values()].filter((entry) => now - entry.lastUsedAt >= WASTE_POOL_IDLE_TTL_MS);
+  await Promise.all(expiredEntries.map(async (entry) => closeWastePoolEntry(entry)));
+};
+
+const evictLeastRecentlyUsedWastePoolEntry = async (): Promise<void> => {
+  const oldestEntry = [...wastePoolCache.values()].reduce<WastePoolEntry | null>(
+    (oldest, candidate) => (oldest === null || candidate.lastUsedAt < oldest.lastUsedAt ? candidate : oldest),
+    null
+  );
+  if (oldestEntry) {
+    await closeWastePoolEntry(oldestEntry);
+  }
+};
+
+const getOrCreateWastePoolEntry = async (dataSource: WasteDataSource, now = Date.now()): Promise<WastePoolEntry> => {
+  await evictExpiredWastePoolEntries(now);
+
   const key = createWastePoolKey(dataSource);
   const existingEntry = wastePoolCache.get(key);
   if (existingEntry) {
+    existingEntry.lastUsedAt = now;
     return existingEntry;
+  }
+
+  if (wastePoolCache.size >= WASTE_POOL_MAX_ENTRIES) {
+    await evictLeastRecentlyUsedWastePoolEntry();
   }
 
   const nextEntry: WastePoolEntry = {
@@ -148,19 +181,10 @@ const getOrCreateWastePoolEntry = (dataSource: WasteDataSource): WastePoolEntry 
       idleTimeoutMillis: 5_000,
       connectionTimeoutMillis: 5_000,
     }),
+    lastUsedAt: now,
   };
   wastePoolCache.set(key, nextEntry);
   return nextEntry;
-};
-
-const invalidateWastePoolEntry = async (entry: WastePoolEntry): Promise<void> => {
-  const cachedEntry = wastePoolCache.get(entry.key);
-  if (cachedEntry !== entry) {
-    return;
-  }
-
-  wastePoolCache.delete(entry.key);
-  await entry.pool.end();
 };
 
 const resetWastePoolCache = async (): Promise<void> => {
@@ -181,7 +205,7 @@ const withWasteClient = async <T>(
   }) => Promise<T>
 ): Promise<T> => {
   const dataSource = await resolveScopedWasteDataSource(instanceId, operation);
-  const poolEntry = getOrCreateWastePoolEntry(dataSource);
+  const poolEntry = await getOrCreateWastePoolEntry(dataSource);
 
   const client = await measureWasteStep(
     operation,
@@ -191,7 +215,7 @@ const withWasteClient = async <T>(
       try {
         return await poolEntry.pool.connect();
       } catch (error) {
-        await invalidateWastePoolEntry(poolEntry);
+        await closeWastePoolEntry(poolEntry);
         throw error;
       }
     }
@@ -206,10 +230,11 @@ const withWasteClient = async <T>(
         async () => setWasteSearchPath(client, dataSource.schemaName)
       );
     } catch (error) {
-      await invalidateWastePoolEntry(poolEntry);
+      await closeWastePoolEntry(poolEntry);
       throw error;
     }
 
+    poolEntry.lastUsedAt = Date.now();
     return await work(client);
   } finally {
     client.release();

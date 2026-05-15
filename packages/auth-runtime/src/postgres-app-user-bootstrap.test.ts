@@ -113,6 +113,15 @@ describe('postgres app user bootstrap', () => {
     expect(state.FakeClient.instances[0]?.queryImpl).toHaveBeenCalledWith(
       expect.stringContaining('CREATE ROLE "sva_app" LOGIN PASSWORD')
     );
+    expect(state.FakeClient.instances[0]?.queryImpl).toHaveBeenCalledWith(
+      'GRANT CONNECT ON DATABASE "sva_studio" TO "sva_app"'
+    );
+    expect(state.FakeClient.instances[0]?.queryImpl).toHaveBeenCalledWith(
+      'GRANT CREATE ON DATABASE "sva_studio" TO "sva_app"'
+    );
+    expect(state.FakeClient.instances[0]?.queryImpl).toHaveBeenCalledWith(
+      'GRANT USAGE, CREATE ON SCHEMA public TO "sva_app"'
+    );
     expect(state.logger.info).toHaveBeenCalledWith(
       'Bootstrapped studio app DB role',
       expect.objectContaining({

@@ -60,6 +60,12 @@ Das System SHALL infra-abhängige Integrationstests getrennt von Unit-Coverage-G
 - **THEN** werden Integrationstests verpflichtend ausgeführt
 - **AND** deren Ergebnis wird separat ausgewiesen
 
+#### Scenario: Workflow- und CI-Dateien eskalieren Coverage nicht pauschal auf Voll-Läufe
+- **GIVEN** ein Pull Request ändert nur `.github/workflows/**`, `scripts/ci/**` oder Root-Tooling-Metadaten ohne globale Workspace-Konfigurationsänderung
+- **WHEN** das PR-Coverage-Gate seinen Scope bestimmt
+- **THEN** eskaliert es nicht allein deshalb auf einen vollen Workspace-Coverage-Lauf
+- **AND** die Absicherung erfolgt stattdessen über gezielte Tooling-Tests und Gate-Contracts
+
 ### Requirement: PR-Transparenz
 Das System SHALL Coverage-Ergebnisse in Pull Requests als strukturierte Summary und Artefakte bereitstellen.
 
@@ -234,7 +240,11 @@ Das System SHALL redundante CI-Workflow-Runs via Concurrency-Control verhindern.
 - **THEN** wird dieser niemals gecancelt (auch bei neuem Commit)
 - **AND** Deployment-kritische Workflows bleiben intakt
 
----
+#### Scenario: Quality- und Coverage-Eskalation bleibt globalen Workspace-Dateien vorbehalten
+- **GIVEN** ein Pull Request ändert `pnpm-lock.yaml`, `nx.json`, `tsconfig.base.json`, `eslint.config.mjs`, `vitest.config.ts` oder `vitest.workspace.ts`
+- **WHEN** das PR-Scope für Quality- und Coverage-Gates klassifiziert wird
+- **THEN** dürfen `Lint`, `Unit`, `Types` und `Coverage` auf volle Läufe eskalieren
+- **AND** andere Workflow- oder CI-Dateien lösen diese `full`-Eskalation nicht automatisch aus
 
 ### Requirement: Artifact-Retention-Management
 Das System SHALL Coverage-Artifacts mit automatischer Retention-Policy verwalten.
@@ -282,4 +292,24 @@ Das System SHALL Mindest-Coverage-Anforderungen für kritische Module auch bei w
 - **WHEN** Maintainer eine Anpassung der Coverage-Policy für ein kritisches Modul vorschlagen
 - **THEN** ist steigende oder hohe Komplexität kein zulässiger Grund zur Senkung des Mindest-Floors
 - **AND** etwaige Anpassungen müssen Stabilisierung oder Verschärfung der Absicherung begründen
+
+### Requirement: PR-Unit-Pfad darf App-Unit-Slices selektiv ausführen
+Das System SHALL im PR-Pfad bei isolierten App-Änderungen nur die betroffenen App-Unit-Slices statt der kompletten App-Unit-Suite ausführen dürfen.
+
+#### Scenario: App-only-PR nutzt Slice-Ausführung
+- **GIVEN** ein Pull Request ändert ausschließlich eindeutig zuordenbare Dateien unter `apps/sva-studio-react`
+- **WHEN** der PR-Unit-Pfad bestimmt wird
+- **THEN** werden nur die betroffenen App-Unit-Slices ausgeführt
+- **AND** andere betroffene Workspace-Projekte laufen weiterhin über den normalen affected-Mechanismus
+
+#### Scenario: Gemischter PR nutzt den sicheren Fallback
+- **GIVEN** ein Pull Request enthält App- und Nicht-App-Änderungen oder mehrdeutige App-Dateien
+- **WHEN** der PR-Unit-Pfad bestimmt wird
+- **THEN** fällt die App-Unit-Ausführung auf das aggregierte `sva-studio-react:test:unit`-Target zurück
+- **AND** der PR-Pfad vermeidet riskante Unterabdeckung
+
+#### Scenario: Laufzeit-Summary macht Drift sichtbar
+- **WHEN** der lokale PR-Runner oder ein gleichwertiger Gate-Runner ausgeführt wird
+- **THEN** schreibt er für Gates und ausgeführte App-Slices eine kurze Dauer-Zusammenfassung
+- **AND** Laufzeitdrift wird ohne gesonderte manuelle Messung sichtbar
 

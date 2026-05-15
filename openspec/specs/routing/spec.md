@@ -21,6 +21,27 @@ Das System SHALL eine einzige öffentliche Routing-Schnittstelle in `@sva/routin
 - **THEN** enthält er keine `/demo`-Routen
 - **AND** Demo- oder Sandbox-Routen benötigen einen separaten, expliziten Integrationseintrag
 
+#### Scenario: Generische Plugin-Operations-Endpunkte laufen über den typisierten Host-Katalog
+- **WHEN** generische Job- oder Import-Endpunkte des Hosts produktiv eingeführt werden
+- **THEN** werden sie in denselben typisierten Runtime-Route-Katalog aufgenommen wie bestehende Auth- und IAM-Endpunkte
+- **AND** Handler-Mappings und Route-Abdeckung bleiben dadurch zentral prüfbar
+- **AND** produktive Plugin-Operations-Endpunkte entstehen nicht nur durch lose Handler-Registrierung außerhalb des Katalogs
+
+#### Scenario: Erste Plugin-Operations-Endpunkte sind im Katalog sichtbar
+- **WHEN** die erste Plattformausbaustufe generische Jobs produktiv anbietet
+- **THEN** enthält der Runtime-Route-Katalog mindestens einen Start-Endpunkt und einen Detail-/Status-Endpunkt für Plugin-Operations
+- **AND** deren Handler werden über dieselben Host-Mappings verdrahtet wie bestehende Runtime-Endpunkte
+
+#### Scenario: Plugin-Operations-Listenendpunkt wird für Monitoring ergänzt
+- **WHEN** der Host unter `Monitoring > Jobs` eine lesende Jobs-Ansicht bereitstellt
+- **THEN** enthält der Runtime-Route-Katalog zusätzlich einen Listenendpunkt für Plugin-Operations-Jobs
+- **AND** dieser Endpunkt bleibt Teil desselben zentralen Host-Katalogs statt einer app-lokalen Sonderverdrahtung
+
+#### Scenario: Monitoring-Jobs-Routen bleiben Teil der kanonischen App-Routen
+- **WHEN** die App einen Unterbereich `Monitoring > Jobs` mit Listen- und Detailroute anbietet
+- **THEN** werden diese Seitenrouten über die kanonische Route-Registry bereitgestellt
+- **AND** sie entstehen nicht als app-lokale Parallelrouten außerhalb des bestehenden Routing-Contracts
+
 ### Requirement: Plugin-Route-Exports
 Plugins SHALL eigene Routen als Exporte bereitstellen können, die von der Route-Registry aufgenommen werden.
 
@@ -227,27 +248,22 @@ The system SHALL materialize host routes only after existing content, admin-reso
 - **AND** invalid input fails with the deterministic plugin guardrail diagnostics contract
 
 ### Requirement: Host-Enforced Plugin Route Materialization
-The system SHALL materialize plugin-provided routes only through the host routing registry and SHALL reject package-provided runtime route handlers that bypass host-owned guards, path conventions, or search-parameter validation.
+
+The system SHALL materialize plugin-provided routes only through the host routing registry and SHALL reject package-provided runtime route handlers that bypass host-owned guards, path conventions, search-parameter validation, or snapshot publication.
 
 Plugin-provided UI components SHALL remain allowed when they are bound to a host-materialized route and do not define independent route handlers, guard functions, or search-parameter parsing outside the registry contract.
 
 #### Scenario: Plugin route is materialized by host
 - **GIVEN** a plugin declares an admin route contribution
-- **WHEN** the host builds the route tree
+- **WHEN** the host builds the route tree from the validated plugin snapshot
 - **THEN** the route is created with the host-owned guard, canonical path, and search-parameter schema
 - **AND** the plugin UI is rendered only inside the host-materialized route boundary
 
 #### Scenario: Plugin attempts to bypass host routing
-- **GIVEN** a plugin exposes a runtime route outside the registry contract
+- **GIVEN** a plugin exposes a runtime route outside the registry or snapshot contract
 - **WHEN** the host validates plugin contributions
 - **THEN** the contribution is rejected before the route tree is built
 - **AND** the diagnostics include `plugin_guardrail_route_bypass` with plugin namespace and contribution identifier
-
-#### Scenario: Plugin declares UI without owning routing decisions
-- **GIVEN** a plugin declares a route-bound UI component and declarative search-parameter schema
-- **WHEN** the host validates and materializes the route
-- **THEN** the contribution is accepted
-- **AND** search-parameter parsing and route guards remain host-owned
 
 ### Requirement: Routing bleibt frei von Auth-Runtime-Implementierung
 
@@ -283,19 +299,23 @@ Das Routing-System SHALL produktive Plugin-Routen ohne Abhaengigkeit von einem W
 
 ### Requirement: Routing konsumiert den Build-time-Registry-Snapshot des Hosts
 
-Das Routing-System SHALL Plugin-Routen und registrierte Admin-Ressourcen aus einem kanonischen Build-time-Registry-Snapshot des Hosts beziehen statt aus voneinander getrennten Listen und Merge-Pfaden.
+Das Routing-System SHALL Plugin-Routen und registrierte Admin-Ressourcen aus einem kanonischen Plugin-Snapshot des Hosts beziehen statt aus app-lokalen Plugin-Listen, manuellen Merge-Pfaden oder ungeprüften Package-Imports.
 
-#### Scenario: Host uebergibt normalisierte Build-time-Beitraege an das Routing
+Der Snapshot darf build-time, dev-time oder install-time erzeugt werden, muss aber immer denselben validierten Host-Vertrag repräsentieren.
+
+#### Scenario: Host uebergibt normalisierte Plugin-Beitraege an das Routing
 
 - **WHEN** die Frontend-App ihren Router erzeugt
-- **THEN** uebergibt sie dem Routing die normalisierten Plugin- und Admin-Ressourcen-Beitraege aus einem gemeinsamen Build-time-Registry-Snapshot
-- **AND** das Routing muss diese Beitraege nicht erneut aus mehreren hostseitigen Hilfsregistries zusammensuchen
+- **THEN** uebergibt sie dem Routing die normalisierten Plugin- und Admin-Ressourcen-Beitraege aus einem gemeinsamen, validierten Plugin-Snapshot
+- **AND** das Routing muss diese Beitraege nicht erneut aus mehreren hostseitigen Hilfsregistries oder app-lokalen Plugin-Arrays zusammensuchen
 
-#### Scenario: Routing materialisiert weiterhin nur hostkontrollierte Routen
+#### Scenario: Routing nutzt denselben Snapshot fuer lokale und installierte Plugins
 
-- **WHEN** der Build-time-Registry-Snapshot Plugin-Routen und Admin-Ressourcen enthaelt
-- **THEN** materialisiert das Routing daraus nur die vom Host unterstuetzten Pfade und Guards
-- **AND** nicht vom Routing unterstuetzte oder nicht freigegebene Laufzeitbeitraege bleiben weiterhin ausgeschlossen
+- **GIVEN** ein Plugin stammt aus dem lokalen Development-Load
+- **AND** ein anderes Plugin stammt aus einer installierten Distribution
+- **WHEN** das Routing den Route-Baum materialisiert
+- **THEN** behandelt es beide Plugins ausschließlich über denselben Snapshot-Vertrag
+- **AND** die Quellform des Plugins ist für das Routing irrelevant
 
 ### Requirement: Registrierte Admin-Ressourcen verwenden namespacete Ressourcen-IDs
 
@@ -400,4 +420,51 @@ The routing integration SHALL keep content routes available even when no special
 - **WHEN** the route is rendered
 - **THEN** the host falls back to the standard detail implementation
 - **AND** no duplicate or parallel route tree is introduced for the same content resource
+
+### Requirement: Freie Waste-Management-Plugin-Route bleibt hostvalidiert
+
+Das System SHALL eine freie Plugin-Route für Waste-Management unter `/plugins/waste-management` materialisieren und dabei weiterhin hostgeführte Guard- und Search-Param-Validierung erzwingen.
+
+#### Scenario: Plugin-Route wird hostseitig validiert
+
+- **GIVEN** das Plugin `waste-management` deklariert seine freie Fachroute
+- **WHEN** der Host den Route-Tree aufbaut
+- **THEN** wird die Route nur über die zentrale Routing-Registry materialisiert
+- **AND** Guard- und Search-Param-Vertrag bleiben hostgeführt
+- **AND** das Plugin bringt keine eigene parallele Routing-Registrierung außerhalb des Host-Vertrags ein
+
+### Requirement: Waste-Management-Search-Params sind kanonisch und teilbar
+
+Das System SHALL für die Waste-Management-Route kanonische, typisierte Search-Params für Tabs, Filter, Suche und Paging bereitstellen.
+
+#### Scenario: Deep-Link in fachlichen Teilzustand
+
+- **WHEN** ein Benutzer einen Deep-Link auf einen bestimmten Waste-Management-Tab mit Filter- oder Suchzustand öffnet
+- **THEN** stellt das Routing denselben fachlichen Zustand reproduzierbar wieder her
+- **AND** ungültige oder unbekannte Search-Params werden deterministisch normalisiert
+
+#### Scenario: Search-Params bleiben innerhalb des Plugin-Namespace
+
+- **WHEN** die Waste-Management-Route ihren fachlichen Zustand serialisiert
+- **THEN** bleiben die Parameter auf den Plugin-Pfadkontext begrenzt
+- **AND** sie kollidieren nicht mit unverbundenen Host- oder Fremdplugin-Zuständen
+
+### Requirement: Instanzbezogenes Routing sperrt nicht zugewiesene Module fail-closed
+
+Das System SHALL modulbezogene Host-Routen und fachliche Einstiege pro Instanz gegen den expliziten zugewiesenen Modulsatz pruefen. Der zugewiesene Modulsatz wird pro Request aus dem instanzbezogenen Modulvertrag geladen; gecachte Werte werden nach jeder Zuweisungsmutation invalidiert.
+
+#### Scenario: Nicht zugewiesenes Modul wird ueber URL aufgerufen
+
+- **GIVEN** ein Modul ist global registriert, aber der Instanz nicht zugewiesen
+- **WHEN** ein Benutzer eine modulbezogene Route dieses Moduls fuer diese Instanz aufruft
+- **THEN** verweigert der Host den Zugriff fail-closed
+- **AND** rendert keine fachliche Modulansicht fuer diese Instanz
+- **AND** behandelt die Runtime das Modul nicht als implizit verfuegbar
+
+#### Scenario: Server-seitiger API-Zugriff auf nicht zugewiesenes Modul wird durch IAM-Layer blockiert
+
+- **GIVEN** ein Modul ist einer Instanz nicht zugewiesen
+- **WHEN** eine Server-Funktion oder API-Route des Moduls direkt aufgerufen wird (Umgehung des Routing-Guards)
+- **THEN** verweigert der IAM-Authorizer den Zugriff fail-closed, unabhaengig vom Routing-Layer
+- **AND** kein fachlicher Datenzugriff findet statt
 

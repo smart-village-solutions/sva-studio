@@ -504,16 +504,16 @@ Das System SHALL fuer `studio` einen Root-Skript-Einstieg bereitstellen, der den
 - **AND** es fuehrt `env:precheck:studio`, `env:deploy:studio`, `env:smoke:studio` und `env:feedback:studio` in fester Reihenfolge aus
 
 ### Requirement: Plugin Registration Phases
-The system SHALL define explicit build-time registration phases for workspace plugins so that content, admin, audit, and routing contributions are collected and validated in a deterministic order before the build-time registry snapshot is published.
+The system SHALL define explicit build-time registration phases for workspace plugins so that content, admin, audit, operations, and routing contributions are collected and validated in a deterministic order before the build-time registry snapshot is published.
 
-The canonical phase order SHALL be contribution preflight, content, admin, audit, routing, and snapshot publication. The preflight step SHALL normalize plugin namespaces and guardrail-safe contribution shapes before domain phases run.
+The canonical phase order SHALL be contribution preflight, content, admin, audit, operations, routing, and snapshot publication. The preflight step SHALL normalize plugin namespaces and guardrail-safe contribution shapes before domain phases run.
 
 The phases SHALL organize the existing `BuildTimeRegistry` outputs instead of introducing a new public plugin system.
 
 #### Scenario: Plugin contributions follow phase order
 - **GIVEN** a plugin declares contributions for multiple phases
 - **WHEN** the build-time registry snapshot is created
-- **THEN** the host processes preflight, content, admin, audit, routing, and snapshot publication in that order
+- **THEN** the host processes preflight, content, admin, audit, operations, routing, and snapshot publication in that order
 - **AND** later phases consume only outputs validated by earlier phases
 
 #### Scenario: Plugin declares phase-incompatible contribution
@@ -532,6 +532,12 @@ The phases SHALL organize the existing `BuildTimeRegistry` outputs instead of in
 - **WHEN** the registry is created through the phased implementation
 - **THEN** those existing fields remain available with the same meaning
 - **AND** no consumer is required to adopt a new public snapshot type for this change
+
+#### Scenario: Operations contributions are part of the same snapshot
+- **GIVEN** a plugin registers job types or import profiles
+- **WHEN** the build-time registry snapshot is published
+- **THEN** those operations contributions are available through the same host-controlled snapshot
+- **AND** the host does not create a second plugin-registry path just for jobs or imports
 
 ### Requirement: Verbindliche Package-Zielarchitektur
 
@@ -772,4 +778,40 @@ Das System MUST alte Sammelimporte aus `@sva/auth`, `@sva/data` und `@sva/sdk` f
 - **WHEN** ein Consumer bisher `@sva/sdk` oder einen Subpath daraus referenziert hat
 - **THEN** nutzt er direkt `@sva/plugin-sdk`, `@sva/server-runtime`, `@sva/core` oder `@sva/monitoring-client/logging`
 - **AND** es wird keine neue Sammelfassade eingefuehrt
+
+### Requirement: Tooling-Testing deckt CI- und Workflow-Governance gezielt ab
+Das Monorepo SHALL ein dediziertes `tooling-testing`-Projekt bereitstellen, das PR-Gate-Skripte, Workflow-Kontrakte und Root-Tooling-Dateien gezielt absichert.
+
+#### Scenario: Workflow-Datei ändert den Tooling-Test-Scope
+- **WHEN** eine Datei unter `.github/workflows/**` geändert wird
+- **THEN** wird `tooling-testing` im affected-Graph berücksichtigt
+- **AND** sein Lint- und Unit-Test-Target können die Änderung gezielt validieren
+
+#### Scenario: CI-Skript ändert den Tooling-Test-Scope
+- **WHEN** eine Datei unter `scripts/ci/**` geändert wird
+- **THEN** wird `tooling-testing` im affected-Graph berücksichtigt
+- **AND** Contract-Tests für PR-Scope- und Gate-Logik laufen gegen diese Änderung
+
+#### Scenario: Root-Tooling-Datei ändert den Tooling-Test-Scope
+- **WHEN** Root-`package.json` oder `tsconfig.scripts.json` geändert werden
+- **THEN** wird `tooling-testing` im affected-Graph berücksichtigt
+- **AND** die Änderung wird nicht nur über pauschale Voll-Läufe der Produkt-Suite abgesichert
+
+### Requirement: App-Unit-Targets dürfen in stabile Slices aufgeteilt werden
+Das Monorepo SHALL für große App-Test-Suiten mehrere stabile Nx-Unit-Targets neben einem aggregierten Voll-Target bereitstellen können.
+
+#### Scenario: Aggregiertes Voll-Target bleibt erhalten
+- **WHEN** `sva-studio-react` seine Unit-Suite in Slices aufteilt
+- **THEN** existiert weiterhin ein aggregiertes `test:unit`-Target für volle Läufe
+- **AND** `main`- und andere Voll-Gates behalten damit ihre bisherige Semantik
+
+#### Scenario: App-Slices sind einzeln ausführbar
+- **WHEN** ein Entwickler gezielt einen App-Teilbereich validieren will
+- **THEN** kann er `test:unit:ui`, `test:unit:routes`, `test:unit:hooks` oder `test:unit:server` direkt ausführen
+- **AND** jeder Slice nutzt dieselben gemeinsamen Vitest-Basisdefaults
+
+#### Scenario: Unklare App-Datei nutzt den sicheren Fallback
+- **WHEN** eine geänderte App-Datei keinem Slice eindeutig zugeordnet werden kann
+- **THEN** wird kein partieller Slice-Lauf erzwungen
+- **AND** der PR-Pfad fällt auf das aggregierte App-Unit-Target zurück
 

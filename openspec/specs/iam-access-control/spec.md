@@ -1055,27 +1055,28 @@ Das System SHALL Login-Pfad, Tenant-Admin-Pfad und Plattformpfad in Diagnosen un
 - **AND** wird nicht als Normalpfad für Tenant-Admin-Screens verwendet
 
 ### Requirement: Host-Enforced Plugin Authorization
+
 The system SHALL evaluate authorization for plugin contributions through host-owned IAM checks and SHALL NOT allow plugins to provide executable authorization decisions.
 
-Plugins MAY declare required fully-qualified actions, UI affordance metadata, and action bindings. Plugins SHALL NOT provide guard functions, permission resolvers, role mapping logic, or executable allow/deny decisions.
+This requirement applies equally to plugin routes, admin resource actions, server-side request handlers, job handlers, import flows, and integration entry-points.
 
-#### Scenario: Host evaluates plugin action permission
-- **GIVEN** a plugin declares a guarded contribution with required actions
-- **WHEN** a user opens or executes that contribution
-- **THEN** the host evaluates the required fully-qualified actions before access is granted
-- **AND** the plugin receives only the host decision result needed to render or execute the contribution
+#### Scenario: Host evaluates plugin route permission
+- **GIVEN** a plugin declares a guarded route contribution
+- **WHEN** the host materializes or executes the route
+- **THEN** the host evaluates the permission through the central IAM contract
+- **AND** the plugin receives only the decision result needed to render or continue execution
 
-#### Scenario: Plugin provides executable authorization logic
-- **GIVEN** a plugin contribution includes custom authorization code
-- **WHEN** the contribution is registered
-- **THEN** the host rejects the contribution as an invalid guardrail violation
+#### Scenario: Host evaluates plugin job permission
+- **GIVEN** a plugin declares a job or import operation that requires a permission
+- **WHEN** a user starts the operation through a host endpoint
+- **THEN** the host resolves authorization before the plugin handler runs
+- **AND** the plugin handler does not evaluate or override the final IAM decision itself
+
+#### Scenario: Plugin attempts custom authorization code path
+- **GIVEN** a plugin contribution includes executable authorization logic outside the host contract
+- **WHEN** the host validates or reviews the contribution
+- **THEN** the integration is rejected or documented as an architecture violation
 - **AND** the diagnostics include `plugin_guardrail_authorization_bypass` with plugin namespace and contribution identifier
-
-#### Scenario: Plugin declares action requirements without authorization logic
-- **GIVEN** a plugin declares a UI action requiring `news.publish`
-- **WHEN** the contribution is registered
-- **THEN** the host accepts the declarative action requirement
-- **AND** IAM evaluates the action through the host authorization path at use time
 
 ### Requirement: Platform and Tenant Admin Permissions
 
@@ -1329,4 +1330,41 @@ Das System SHALL fuer `instance-registry.assignModule`, `instance-registry.revok
 - **WHEN** die Mutation abgeschlossen oder abgelehnt wird
 - **THEN** schreibt das System ein Audit-Event mit `instanceId`, technischem Actor-Kontext, `correlationId`, Vorher-/Nachher-Zustand und `outcome`
 - **AND** enthaelt das Audit-Event keine personenbezogenen Klardaten wie Name oder E-Mail
+
+### Requirement: Waste-Management verwendet feingranulares Modul-IAM
+
+Das System SHALL für Waste-Management einen feingranularen, voll qualifizierten Modul-IAM-Vertrag im Namespace `waste-management.*` bereitstellen.
+
+#### Scenario: Fachrechte sind getrennt modelliert
+
+- **WHEN** das Waste-Management-Plugin Actions, Guards oder UI-Zustände deklariert
+- **THEN** referenziert es ausschließlich fully-qualified Rechte im Namespace `waste-management.*`
+- **AND** mindestens Lesen, Stammdatenpflege, Touren/Zuordnungen, Scheduling, CSV-Import, Seed, Reset und Einstellungen sind getrennt adressierbar
+
+### Requirement: Waste-Management-Rechte sind instanzgebunden
+
+Das System SHALL Waste-Management-Autorisierung strikt auf die aktive Instanz begrenzen.
+
+#### Scenario: Benutzer darf Waste-Daten nur der aktiven Instanz pflegen
+
+- **WHEN** eine Waste-Management-Operation gegen eine Ressource einer anderen Instanz gerichtet ist
+- **THEN** wird die Operation verweigert
+- **AND** ein passender Denial- oder Fehlergrund wird geliefert
+- **AND** ein Rechtebesitz ohne passenden Instanzkontext ist nicht ausreichend
+
+### Requirement: Hochrisiko-Rechte für Seed und Reset bleiben getrennt
+
+Das System SHALL Seed- und Reset-Operationen als gesondert autorisierbare Hochrisiko-Aktionen behandeln.
+
+#### Scenario: Import-Recht ist nicht gleich Reset-Recht
+
+- **WHEN** ein Benutzer CSV-Import ausführen darf, aber kein Reset-Recht besitzt
+- **THEN** bleibt der Reset-Pfad für ihn unzulässig
+- **AND** die Import-Berechtigung ermöglicht keine implizite Eskalation auf Seed oder Reset
+
+#### Scenario: Reset erfordert separates Hochrisiko-Recht
+
+- **WHEN** ein Benutzer einen Waste-Reset in einer beliebigen Umgebung auslösen möchte
+- **THEN** wird die Operation nur mit einem expliziten Reset-Recht zugelassen
+- **AND** die Berechtigung bleibt von allgemeinen Schreib- oder Verwaltungsrechten getrennt
 

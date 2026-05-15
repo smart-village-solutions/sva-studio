@@ -325,26 +325,30 @@ Plugins MAY declare audit event metadata. Runtime audit emission SHALL remain ho
 - **THEN** validation fails with `plugin_guardrail_audit_bypass`
 
 ### Requirement: Host-Owned Plugin Audit Emission
+
 The system SHALL emit audit events for plugin-provided actions through host-owned audit pipelines using validated plugin event identifiers and sanitized payloads.
 
 Plugins MAY declare audit event types and metadata schemas. Plugins SHALL NOT write audit records directly or emit security-relevant audit events through plugin-owned pipelines.
 
-#### Scenario: Plugin action is audited
-- **GIVEN** a plugin action is executed through a host route
-- **WHEN** the action completes or fails
-- **THEN** the host emits an audit event with the validated event type, actor, scope, and sanitized metadata
+This requirement applies to plugin UI actions, host-materialized routes, plugin-backed server handlers, job executions, imports, migrations, and integration operations.
+
+#### Scenario: Plugin job execution is audited by host
+- **GIVEN** a plugin job handler is started through a host-managed operation
+- **WHEN** the job starts, succeeds, fails, or is denied
+- **THEN** the host emits the corresponding audit event with validated event identifiers, actor, scope, and sanitized metadata
+- **AND** the plugin handler does not write the audit record directly
+
+#### Scenario: Plugin request handler is audited by host
+- **GIVEN** a plugin server-side request handler is executed through a host entry-point
+- **WHEN** the request completes or fails
+- **THEN** the host-owned audit pipeline emits the audit event
+- **AND** the plugin contributes only validated metadata or event identifiers defined in the plugin contract
 
 #### Scenario: Plugin attempts direct audit emission
 - **GIVEN** a plugin tries to bypass the host audit pipeline
 - **WHEN** the contribution is validated
 - **THEN** the host rejects the direct emission path before the contribution becomes available
 - **AND** the diagnostics include `plugin_guardrail_audit_bypass` with plugin namespace and contribution identifier
-
-#### Scenario: Plugin declares audit metadata only
-- **GIVEN** a plugin declares a namespaced audit event type and metadata schema
-- **WHEN** the host validates the registry snapshot
-- **THEN** the declaration is accepted
-- **AND** runtime emission remains host-owned
 
 ### Requirement: Plugin-Audit-Ereignisse sind namespace-pflichtig
 
@@ -481,4 +485,41 @@ Das System SHALL für sicherheits- und fachrelevante Medienoperationen unveränd
 - **THEN** erzeugt das System nachvollziehbare Audit-Events für den Migrations- oder Bridge-Schritt
 - **AND** Ergebnis, Scope und Zielobjekt bleiben exportierbar nachvollziehbar
 - **AND** rohe Legacy-URLs oder geheime Storage-Artefakte werden nicht unnötig offengelegt
+
+### Requirement: Waste-Management-Mutationen sind revisionsfähig auditierbar
+
+Das System SHALL für alle Mutationen des Waste-Management-Moduls revisionsfähige Audit-Events erzeugen.
+
+#### Scenario: CRUD- und Zuordnungsoperationen erzeugen Auditspur
+
+- **WHEN** Waste-Masterdaten, Abholorte, Touren, Datumsverschiebungen oder Zuordnungen erstellt, geändert oder gelöscht werden
+- **THEN** entsteht jeweils ein Audit-Event mit Zeitpunkt, pseudonymisierter Actor-Referenz, Instanzkontext, fachlicher Operation und Ergebnis
+- **AND** Klartext-PII oder rohe Request-Payloads werden nicht unverändert in die Auditspur geschrieben
+
+### Requirement: CSV-Import, Seed und Reset erzeugen erweiterte Auditmetadaten
+
+Das System SHALL für Waste-Management-Data-Tools erweiterte, aber sichere Auditmetadaten protokollieren.
+
+#### Scenario: CSV-Import bleibt nachvollziehbar
+
+- **WHEN** ein Benutzer einen Waste-CSV-Import ausführt
+- **THEN** enthält das Audit-Event mindestens Instanzkontext, Action-Namespace, Ergebnis sowie Counts für verarbeitete, übersprungene und fehlgeschlagene Datensätze
+- **AND** importierte Freitextinhalte oder PII werden nicht ungefiltert in die Auditdaten geschrieben
+
+#### Scenario: Seed und Reset sind als Hochrisiko-Ereignisse erkennbar
+
+- **WHEN** ein Seed oder Reset für Waste-Daten ausgeführt wird
+- **THEN** ist das Audit-Ereignis als Hochrisiko-Operation unterscheidbar
+- **AND** es enthält Scope, Ergebnis, best-effort `request_id` und `trace_id`
+- **AND** Reviewer können Actor, Instanz und betroffenes Werkzeug revisionssicher nachvollziehen
+
+### Requirement: Historie für Waste-Management basiert auf der Studio-Auditspur
+
+Das System SHALL Verlauf und Historie für Waste-Management auf die zentrale Studio-Auditspur stützen statt ein paralleles Primärsystem einzuführen.
+
+#### Scenario: Verlaufsansicht referenziert zentrale Auditbasis
+
+- **WHEN** Waste-Management eine Historie oder Aktivitätsansicht bereitstellt
+- **THEN** basiert sie auf der bestehenden Studio-Audit-Infrastruktur oder daraus abgeleiteten Read-Modellen
+- **AND** es wird kein davon fachlich unabhängiges Verlaufssystem als primärer Vertrag eingeführt
 

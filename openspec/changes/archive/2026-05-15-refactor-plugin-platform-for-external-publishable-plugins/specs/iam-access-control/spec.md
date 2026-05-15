@@ -1,6 +1,6 @@
 ## MODIFIED Requirements
 
-### Requirement: Das System SHALL Evaluate Authorization For Plugin Contributions Through Host-Owned IAM Checks
+### Requirement: Host-Enforced Plugin Authorization
 
 The system SHALL evaluate authorization for plugin contributions through host-owned IAM checks and SHALL NOT allow plugins to provide executable authorization decisions.
 

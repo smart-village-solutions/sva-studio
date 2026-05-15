@@ -17,18 +17,18 @@ Das System SHALL Architekturdokumentation in einer konsistenten, arc42-konformen
 
 Das System SHALL Architekturentscheidungen mit Kontext, Begründung und Auswirkungen dokumentieren.
 
-#### Scenario: Änderung mit Architekturwirkung
+#### Scenario: Plugin-Plattform verändert Entwicklungs-, Deployment- und Runtime-Grenzen
 
-- **WHEN** ein OpenSpec-Change mit Architekturwirkung erstellt wird
-- **THEN** referenziert der Change die betroffenen arc42-Abschnitte
-- **AND** die Entscheidung ist für Reviewer nachvollziehbar dokumentiert
-- **AND** Betriebsannahmen zu Deployment-Topologie, Ingress und Konfigurationsmanagement werden explizit benannt
-
-#### Scenario: Deployment- und Auth-Grenzen mit Architekturwirkung
-
-- **WHEN** ein Change Deployment-Topologie, Host-Ableitung oder Auth-Grenzen verändert
+- **WHEN** ein Change lokale Plugin-Entwicklung ohne Core-Anpassung, veröffentlichte Plugin-Distribution oder hostseitige Loader-Runtime einführt
 - **THEN** referenziert der Change mindestens Bausteinsicht, Laufzeitsicht, Verteilungssicht, Querschnittskonzepte, Architekturentscheidungen, Qualitätsanforderungen und Risiken
-- **AND** dokumentiert, ob eine neue ADR erforderlich ist oder welche bestehende ADR fortgeschrieben wird
+- **AND** dokumentiert, ob ADR-034 fortgeschrieben oder durch eine neue ADR ergänzt wird
+
+#### Scenario: Job-Runtime-Vertrag reduziert manuelle Host-Kopplung
+
+- **GIVEN** die Plugin-Plattform nutzt deklarative Runtime-Anforderungen für Job-Entry-Points
+- **WHEN** die Architekturdokumentation Risiken und technische Schulden beschreibt
+- **THEN** benennt sie die generische host-owned Runtime-Auflösung über Contract-IDs als gültiges Zielbild für `jobs`
+- **AND** grenzt verbleibende Folgearbeit für `server`- und `integrations`-Beiträge explizit ab
 
 ### Requirement: Verbindliche Pflege im Entwicklungsworkflow
 
@@ -154,28 +154,35 @@ Die Architektur- und Betriebsdokumentation SHALL den finalen Runtime-Vertrag fue
 
 Die Architekturdokumentation MUST die Package-Zielarchitektur als verbindlichen Architekturvertrag führen. OpenSpec-Changes mit Package-, IAM-, Daten-, Plugin-, Routing- oder Runtime-Wirkung MUST erklären, welche Zielpackages betroffen sind und ob der Change mit den Zielgrenzen vereinbar ist.
 
-#### Scenario: Architekturwirksamer Change wird erstellt
+#### Scenario: Plugin-Plattform-v2 wird als Zielarchitektur dokumentiert
 
-- **WHEN** ein Change Package-Grenzen, Importkanten, IAM, Datenzugriff, Plugins, Routing oder Server-Runtime betrifft
+- **WHEN** ein Change die Plugin-Plattform von statischer Workspace-Registrierung auf ein Modell mit Manifest, Katalog und Loader erweitert
 - **THEN** referenziert er `docs/architecture/package-zielarchitektur.md`
-- **AND** benennt die betroffenen Zielpackages
-- **AND** dokumentiert Abweichungen als explizite technische Schuld mit Abbaupfad
-
-#### Scenario: Zielpackage wird implementiert
-
-- **WHEN** ein Zielpackage neu angelegt oder aus einem Sammelpackage herausgelöst wird
-- **THEN** werden die betroffenen arc42-Abschnitte aktualisiert
-- **AND** `package-zielarchitektur.md` bleibt konsistent mit Package-Exports, Nx-Tags und `depConstraints`
+- **AND** benennt die Zielrollen für `@sva/plugin-sdk`, Manifest-, Loader- und Runtime-Bausteine
+- **AND** dokumentiert, welche bisherigen Verantwortungen aus App oder SDK in diese Zielbausteine wandern
 
 ### Requirement: Hard-Cut-Fortschritt bleibt nachvollziehbar
 
-Die Architektur- und Entwicklungsdokumentation MUST den Fortschritt der harten Package-Transition nachvollziehbar machen, inklusive entfernter alter Importpfade, aktivierter Enforcement-Regeln und verbleibender historischer Altlast ausserhalb des aktiven Scopes.
+Die Architektur- und Entwicklungsdokumentation MUST den Fortschritt der harten Package-Transition nachvollziehbar machen, inklusive alter Importpfade, entfernter Re-Exports, noch offener Boundary-Disables und verbleibender Risiken.
 
-#### Scenario: Sammelpfad wurde vollstaendig entfernt
+#### Scenario: Migrationsphase wird abgeschlossen
 
-- **WHEN** ein alter Sammelpfad wie `@sva/sdk` aus dem aktiven Workspace entfernt wurde
-- **THEN** beschreiben aktive Architektur-, Entwicklungs- und Governance-Quellen den Pfad nicht mehr als verfuegbaren Vertrag
-- **AND** nennen sie stattdessen die kanonischen Ersatzimporte
+- **WHEN** eine Migrationsphase abgeschlossen wird
+- **THEN** dokumentiert der PR entfernte alte Importpfade und aktivierte Enforcement-Regeln
+- **AND** verbleibende Abweichungen sind mit Ticket, Risiko und geplantem Abbau dokumentiert
+
+#### Scenario: Alter Sammelpfad bleibt voruebergehend bestehen
+
+- **WHEN** ein alter Importpfad aus `@sva/auth`, `@sva/data` oder `@sva/sdk` voruebergehend bestehen bleibt
+- **THEN** nennt die Dokumentation den Grund, die betroffenen Consumer und die Entfernungsvoraussetzung
+- **AND** der Pfad wird nicht als stabiler oeffentlicher Vertrag beschrieben
+
+#### Scenario: Dokumentation beschreibt finalen SDK-Zuschnitt konsistent
+
+- **WHEN** Architektur- oder Entwicklerdokumentation Plugin- oder Runtime-Boundaries beschreibt
+- **THEN** benennt sie `@sva/plugin-sdk` als kanonische Plugin-Boundary
+- **AND** benennt sie `@sva/server-runtime` als kanonische Server-Runtime-Boundary
+- **AND** beschreibt `@sva/sdk` hoechstens als deprecated Compatibility-Layer
 
 ### Requirement: Architektur- und Entwicklerdokumentation entfernt veraltete Beispiel-Plugin-Referenzen
 
@@ -282,4 +289,36 @@ Die aktive Architektur- und Entwicklerdokumentation SHALL entfernte Sammelpackag
 - **WHEN** ein Teammitglied `docs/monorepo.md`, `package-zielarchitektur.md`, relevante arc42-Abschnitte oder Governance-Dokumente liest
 - **THEN** findet es keine aktiven Anweisungen mehr zu `packages/sdk`, `sdk:*` oder `@sva/sdk`
 - **AND** die Quellen beschreiben stattdessen `@sva/plugin-sdk`, `@sva/server-runtime`, `@sva/core` und `@sva/monitoring-client/logging` als Zielpfade
+
+### Requirement: Arc42 dokumentiert Waste-Management als Plugin- und Server-Capability
+
+Das System SHALL die Waste-Management-Integration in den betroffenen Arc42-Abschnitten nachvollziehbar dokumentieren.
+
+#### Scenario: Plugin-, Runtime- und Sicherheitsgrenzen werden fortgeschrieben
+
+- **WHEN** der Change `add-waste-management-plugin` umgesetzt wird
+- **THEN** dokumentieren die betroffenen Arc42-Abschnitte die Plugin-Boundary, die freie Route `/plugins/waste-management`, die hostgeführte Studio-Fassade und die Datenzugriffsgrenzen gegen Supabase/Postgres
+- **AND** die Doku beschreibt, dass `Newcms` nur fachliche Referenz bleibt
+- **AND** die Doku beschreibt die Portierungsgrenze zwischen zulässiger UX-Anlehnung und unzulässiger Architekturübernahme explizit
+
+### Requirement: Arc42 dokumentiert Instanzisierung und Hochrisiko-Operationen
+
+Das System SHALL die instanzbezogene Waste-Datenhaltung sowie Seed- und Reset-Schutzmechanismen architektonisch verankern.
+
+#### Scenario: Architektur beschreibt Instanzisolierung und Reset-Risiko
+
+- **WHEN** ein Teammitglied die Arc42-Dokumentation für Waste-Management nachschlägt
+- **THEN** sind Instanzscoping, Migrationsrichtung des `waste_*`-Schemas, Auditverhalten und Hochrisiko-Schutz für Reset nachvollziehbar beschrieben
+- **AND** die Dokumentation benennt die betroffenen Qualitäts- und Risikoaspekte explizit
+
+### Requirement: Entwicklungsdokumentation beschreibt Studio-Plugin-Nutzung
+
+Die Entwicklungsdokumentation SHALL Regeln, Beispiele und Review-Kriterien für die Nutzung der öffentlichen Plugin-Plattform enthalten.
+
+#### Scenario: Externer Plugin-Entwickler sucht lokalen und publizierten Workflow
+
+- **WHEN** ein Entwickler den Plugin-Guide liest
+- **THEN** findet er Regeln für Authoring, lokalen Dev-Load, Manifest, Publish, Install und Aktivierung
+- **AND** findet er die erlaubten öffentlichen Imports und Host-Entry-Points
+- **AND** findet er die verbotenen Direktimporte in App-, Runtime-, IAM- oder Secret-Interna
 

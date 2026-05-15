@@ -1,6 +1,6 @@
-## MODIFIED Requirements
+## ADDED Requirements
 
-### Requirement: Instanzgebundene Mainserver-Konfiguration
+### Requirement: Mainserver-Konfiguration wird aus zentraler Interface-Registry aufgeloest
 
 The system SHALL resolve instance-specific SVA-Mainserver endpoint configuration from the central external-interface registry.
 

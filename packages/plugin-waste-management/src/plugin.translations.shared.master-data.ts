@@ -2,7 +2,6 @@ import {
   createCrudActions,
   createCrudDialog,
   createCrudMessages,
-  createOptionalSection,
   type CrudActionsCopy,
   type CrudDialogCopy,
   type CrudMessagesCopy,
@@ -85,18 +84,15 @@ export const createMasterDataTabs = (ariaLabel: string, fractions: string, locat
   }) as const;
 
 export const createMasterDataEntityTranslations = <const TCopy extends MasterDataEntityCopy>(copy: TCopy) =>
-  createOptionalSection(
-    {
-      title: copy.title,
-      description: copy.description,
-      actions: createCrudActions(copy.actions),
-      fields: copy.fields,
-      dialog: createCrudDialog(copy.dialog),
-      messages: createCrudMessages(copy.messages),
-    } as const,
-    'meta',
-    copy.meta,
-  );
+  ({
+    title: copy.title,
+    description: copy.description,
+    actions: createCrudActions(copy.actions),
+    fields: copy.fields,
+    dialog: createCrudDialog(copy.dialog),
+    messages: createCrudMessages(copy.messages),
+    ...(copy.meta ?? {}),
+  }) as const;
 
 export const createMasterDataFractionsTranslations = <const TCopy extends MasterDataFractionsCopy>(copy: TCopy) =>
   ({

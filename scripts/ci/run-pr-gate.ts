@@ -105,11 +105,7 @@ const runIntegrationGate = (base: string, mode: GateMode, durations: DurationEnt
 };
 
 const runOpsGate = (durations: DurationEntry[]): void => {
-  recordDuration(
-    durations,
-    'ops:waste-calendar-example-pdf',
-    runCommand('pnpm test:ops:waste-calendar-example-pdf')
-  );
+  recordDuration(durations, 'ops:critical', runCommand('pnpm test:ops:critical'));
 };
 
 const runAppBuildGate = (mode: GateMode, durations: DurationEntry[]): void => {

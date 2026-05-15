@@ -312,6 +312,8 @@ Zulässige Einstiege:
 - Studio-Control-Plane auf dem Root-Host unter `/admin/instances`
 - nicht-interaktive CLI unter `scripts/ops/instance-registry.ts`
 
+Der CLI-Pfad bleibt absichtlich stabil. Die interne Umsetzung ist in Command- und Kontextmodule zerlegt, damit lokale Ops-Automatisierung und spätere Erweiterungen an derselben öffentlichen Einstiegskante hängen bleiben.
+
 Beispiel:
 
 ```bash

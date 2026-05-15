@@ -102,6 +102,7 @@ export type {
   MediaPickerDefinition,
   MediaPickerSelectionMode,
   ApiItemResponse,
+  StudioJobDetail,
   StudioJobResponse,
   WasteCityRecord,
   WasteCollectionLocationRecord,

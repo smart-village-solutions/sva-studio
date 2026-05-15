@@ -159,6 +159,15 @@ assert_artifact_contract() {
     return 1
   fi
 
+  local nitro_dynamic_service_import_path=""
+  local nitro_dynamic_service_entry_path=""
+  nitro_dynamic_service_import_path="$(
+    perl -ne 'print "$1\n" if /\["ssr"\]: lazyService\(\(\) => import\("(\.\/_libs\/[^"]+\.mjs)"\)\)/' "${SERVER_INDEX_PATH}" | head -n 1 || true
+  )"
+  if [ -n "${nitro_dynamic_service_import_path}" ]; then
+    nitro_dynamic_service_entry_path="${APP_DIR}/.output/server/${nitro_dynamic_service_import_path#./}"
+  fi
+
   if [ -f "${NITRO_SSR_SERVER_ENTRY_PATH}" ] && \
      { \
        grep -Fq './_ssr/ssr.mjs' "${SERVER_INDEX_PATH}" || \
@@ -167,6 +176,11 @@ assert_artifact_contract() {
          grep -Fq './_chunks/ssr-renderer.mjs' "${SERVER_INDEX_PATH}" && \
          grep -Fq './_libs/_.mjs' "${SERVER_INDEX_PATH}" && \
          grep -Fq '../_ssr/ssr.mjs' "${NITRO_SERVICE_ENTRY_PATH}"; \
+       } || \
+       { \
+         [ -n "${nitro_dynamic_service_entry_path}" ] && \
+         [ -f "${nitro_dynamic_service_entry_path}" ] && \
+         grep -Fq '../_ssr/ssr.mjs' "${nitro_dynamic_service_entry_path}"; \
        }; \
      }; then
     PATCHED_SERVER_ENTRY_PATH="${NITRO_SSR_SERVER_ENTRY_PATH}"
@@ -197,6 +211,11 @@ assert_artifact_contract() {
      ! { \
        grep -Fq './_chunks/ssr-renderer.mjs' "${SERVER_INDEX_PATH}" && \
        grep -Fq './_libs/_.mjs' "${SERVER_INDEX_PATH}"; \
+     } && \
+     ! { \
+       [ -n "${nitro_dynamic_service_entry_path}" ] && \
+       [ -f "${nitro_dynamic_service_entry_path}" ] && \
+       grep -Fq '../_ssr/ssr.mjs' "${nitro_dynamic_service_entry_path}"; \
      }; then
     echo 'Finaler Server-Entry delegiert nicht an den finalen gepatchten Server-Entry.' >&2
     return 1

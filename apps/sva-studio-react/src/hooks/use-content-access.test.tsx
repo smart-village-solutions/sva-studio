@@ -147,7 +147,6 @@ describe('useContentAccess', () => {
       '/iam/me/permissions?instanceId=de-musterhausen',
       undefined,
       {
-        signal: expect.any(AbortSignal),
         timeoutMs: 10_000,
       }
     );
@@ -193,7 +192,6 @@ describe('useContentAccess', () => {
       '/iam/me/permissions?instanceId=de-musterhausen&organizationId=11111111-1111-4111-8111-111111111111',
       undefined,
       {
-        signal: expect.any(AbortSignal),
         timeoutMs: 10_000,
       }
     );
@@ -344,5 +342,42 @@ describe('useContentAccess', () => {
 
     expect(firstHook.result.current.permissionActions).toEqual(['content.read']);
     expect(secondHook.result.current.permissionActions).toEqual(['content.read']);
+  });
+
+  it('keeps a shared permission request alive when an earlier hook instance unmounts', async () => {
+    let resolveResponse: ((value: unknown) => void) | undefined;
+    const fetchMock = vi.fn().mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveResponse = resolve;
+        })
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const firstHook = renderHook(() => useContentAccess());
+    const secondHook = renderHook(() => useContentAccess());
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    firstHook.unmount();
+    resolveResponse?.({
+      ok: true,
+      json: async () => ({
+        permissions: [
+          {
+            action: 'waste-management.read',
+            resourceType: 'waste-management',
+            effect: 'allow',
+          },
+        ],
+      }),
+    });
+
+    await waitFor(() => {
+      expect(secondHook.result.current.isLoading).toBe(false);
+      expect(secondHook.result.current.permissionActions).toEqual(['waste-management.read']);
+    });
+
+    expect(asIamErrorMock).not.toHaveBeenCalled();
   });
 });

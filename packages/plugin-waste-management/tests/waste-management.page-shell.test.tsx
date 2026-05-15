@@ -137,6 +137,8 @@ describe('WasteManagementPage shell', () => {
       to: '/plugins/waste-management',
       search: {
         ...searchState,
+        fractionsSortBy: 'name',
+        fractionsSortDirection: 'asc',
         tab: 'settings',
         page: 1,
       },
@@ -168,6 +170,8 @@ describe('WasteManagementPage shell', () => {
         to: '/plugins/waste-management',
         search: {
           ...searchState,
+          fractionsSortBy: 'name',
+          fractionsSortDirection: 'asc',
           tab: 'fractions',
           masterDataTab: 'fractions',
           page: 1,

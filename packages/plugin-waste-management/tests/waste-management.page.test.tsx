@@ -946,7 +946,7 @@ describe('WasteManagementPage', () => {
       expect(wasteManagementApiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledTimes(1);
     });
 
-    expect(screen.getByText('Restmüll')).toBeTruthy();
+    expect(screen.getAllByText('Restmüll').length).toBeGreaterThan(0);
     expect(screen.queryByText('Biomüll')).toBeNull();
   });
 

@@ -42,7 +42,7 @@ export const useWasteMasterDataDataLoading = (
         if (isMountedRef.current) setLoading(false);
       }
     },
-    [setAvailableTours, setError, setLoading, setOverview]
+    [setAvailableTours, setError, setLoading, setOverview, tab]
   );
 
   useEffect(() => {

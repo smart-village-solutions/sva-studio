@@ -1,10 +1,10 @@
 import type {
+  StudioJobDetail,
   WasteGlobalDateShiftRecord,
   WasteManagementSettingsRecord,
   WasteTourDateShiftRecord,
   WasteTourRecord,
 } from '@sva/plugin-sdk';
-import type { StudioJobDetail } from '@sva/core';
 
 import type {
   CreateWasteManagementGlobalDateShiftInput,

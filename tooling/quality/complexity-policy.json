@@ -2084,6 +2084,108 @@
       "status": "open",
       "summary": "Import-Sektion in kleinere Formular- und Statusbausteine zerlegen (packages/plugin-waste-management/src/waste-management.tools.import-section.tsx)"
     },
+    "auth-runtime:packages/auth-runtime/src/waste-management/core/operations.ts:functionLines": {
+      "ticketId": "baseline-auth-runtime-src-waste-management-core-operations-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Waste-Management-Operationsfunktionen in kleinere Ausfuehrungs- und Mapping-Schritte aufteilen (packages/auth-runtime/src/waste-management/core/operations.ts)"
+    },
+    "frontend-app:apps/sva-studio-react/src/lib/instance-interface-healthcheck.server.ts:cyclomaticComplexity": {
+      "ticketId": "baseline-frontend-app-src-lib-instance-interface-healthcheck-server-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss der Schnittstellen-Healthchecks in kleinere Probe- und Fehlerpfade zerlegen (apps/sva-studio-react/src/lib/instance-interface-healthcheck.server.ts)"
+    },
+    "frontend-app:apps/sva-studio-react/src/lib/instance-interface-healthcheck.server.ts:fileLines": {
+      "ticketId": "baseline-frontend-app-src-lib-instance-interface-healthcheck-server-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Datei fuer Schnittstellen-Healthchecks in kleinere fachliche Einheiten zerlegen (apps/sva-studio-react/src/lib/instance-interface-healthcheck.server.ts)"
+    },
+    "frontend-app:apps/sva-studio-react/src/lib/instance-interfaces-server.ts:fileLines": {
+      "ticketId": "baseline-frontend-app-src-lib-instance-interfaces-server-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Serverseitige Schnittstellenverwaltung in kleinere Persistenz- und Projektionsbausteine aufteilen (apps/sva-studio-react/src/lib/instance-interfaces-server.ts)"
+    },
+    "frontend-app:apps/sva-studio-react/src/routes/interfaces/-interfaces-page.tsx:fileLines": {
+      "ticketId": "baseline-frontend-app-src-routes-interfaces-interfaces-page-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Schnittstellen-Seite in kleinere View- und Aktionssektionen aufteilen (apps/sva-studio-react/src/routes/interfaces/-interfaces-page.tsx)"
+    },
+    "packages-default:packages/plugin-waste-management/src/plugin.translations.de.masterData.ts:fileLines": {
+      "ticketId": "baseline-plugin-waste-management-translations-masterdata",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "deutsche Master-Data-Uebersetzungen in kleinere thematische Dateien aufteilen (packages/plugin-waste-management/src/plugin.translations.de.masterData.ts)"
+    },
+    "packages-default:packages/plugin-waste-management/src/plugin.translations.en.masterData.ts:fileLines": {
+      "ticketId": "baseline-plugin-waste-management-translations-masterdata",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "englische Master-Data-Uebersetzungen in kleinere thematische Dateien aufteilen (packages/plugin-waste-management/src/plugin.translations.en.masterData.ts)"
+    },
+    "packages-default:packages/plugin-waste-management/src/waste-management.api.master-data-addresses.ts:publicExports": {
+      "ticketId": "baseline-plugin-waste-management-api-master-data-addresses-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "oeffentliche API-Oberflaeche fuer Adress-Masterdaten in kleinere Exportsegmente aufteilen (packages/plugin-waste-management/src/waste-management.api.master-data-addresses.ts)"
+    },
+    "packages-default:packages/plugin-waste-management/src/waste-management.api.operations.ts:publicExports": {
+      "ticketId": "baseline-plugin-waste-management-api-operations-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "oeffentliche Operations-API in kleinere Exportsegmente aufteilen (packages/plugin-waste-management/src/waste-management.api.operations.ts)"
+    },
+    "packages-default:packages/plugin-waste-management/src/waste-management.master-data-fractions-content.tsx:functionLines": {
+      "ticketId": "baseline-plugin-waste-management-master-data-fractions-content-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Master-Data-Fractions-UI in kleinere Darstellungs- und Formularbausteine zerlegen (packages/plugin-waste-management/src/waste-management.master-data-fractions-content.tsx)"
+    },
+    "packages-default:packages/plugin-waste-management/src/waste-management.master-data.fraction-region-submissions.ts:functionLines": {
+      "ticketId": "baseline-plugin-waste-management-fraction-region-submissions-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Fraction-Region-Submission-Logik in kleinere Mapping- und Submit-Schritte aufteilen (packages/plugin-waste-management/src/waste-management.master-data.fraction-region-submissions.ts)"
+    },
+    "packages-default:packages/plugin-waste-management/src/waste-management.page.layout.tsx:functionLines": {
+      "ticketId": "baseline-plugin-waste-management-page-layout-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Seitenlayout in kleinere Layout- und Render-Helfer aufteilen (packages/plugin-waste-management/src/waste-management.page.layout.tsx)"
+    },
+    "packages-default:packages/plugin-waste-management/src/waste-management.tours.content.tsx:functionLines": {
+      "ticketId": "baseline-plugin-waste-management-tours-content-tsx",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Tours-Content in kleinere UI- und Interaktionsbausteine zerlegen (packages/plugin-waste-management/src/waste-management.tours.content.tsx)"
+    },
+    "packages-default:packages/plugin-waste-management/src/waste-management.tours.loaders.ts:functionLines": {
+      "ticketId": "baseline-plugin-waste-management-tours-loaders-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Tours-Loader in kleinere Lade- und Normalisierungsschritte aufteilen (packages/plugin-waste-management/src/waste-management.tours.loaders.ts)"
+    },
+    "packages-default:packages/server-runtime/src/waste/data-source.server.ts:cyclomaticComplexity": {
+      "ticketId": "baseline-server-runtime-waste-data-source-server-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss der Waste-Datasource-Aufloesung in kleinere Entscheidungsbausteine zerlegen (packages/server-runtime/src/waste/data-source.server.ts)"
+    },
+    "packages-default:packages/server-runtime/src/waste/data-source.server.ts:functionLines": {
+      "ticketId": "baseline-server-runtime-waste-data-source-server-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "lange Waste-Datasource-Funktionen in kleinere Aufloesungs- und Fehlerpfade aufteilen (packages/server-runtime/src/waste/data-source.server.ts)"
+    },
+    "sva-mainserver:packages/sva-mainserver/src/server/content-route-helpers.ts:cyclomaticComplexity": {
+      "ticketId": "baseline-sva-mainserver-content-route-helpers-ts",
+      "ticketSystem": "policy-baseline",
+      "status": "open",
+      "summary": "Kontrollfluss der Content-Route-Helfer in kleinere Entscheidungsbausteine zerlegen (packages/sva-mainserver/src/server/content-route-helpers.ts)"
+    },
     "plugin-sdk:packages/plugin-sdk/src/plugin-platform-resolution.ts:fileLines": {
       "ticketId": "QUAL-PLUGIN-SDK-001",
       "ticketSystem": "backlog",

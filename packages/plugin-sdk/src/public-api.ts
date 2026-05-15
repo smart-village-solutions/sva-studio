@@ -6,6 +6,7 @@ export {
 } from '@sva/core';
 export type {
   ApiItemResponse,
+  StudioJobDetail,
   StudioJobResponse,
   WasteCityRecord,
   WasteCollectionLocationRecord,

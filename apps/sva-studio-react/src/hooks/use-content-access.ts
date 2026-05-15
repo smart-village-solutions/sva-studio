@@ -64,7 +64,7 @@ export const useContentAccess = (): UseContentAccessResult => {
       return;
     }
 
-    const controller = new AbortController();
+    let isActive = true;
     logBrowserOperationStart(contentAccessLogger, 'content_access_load_started', {
       operation: 'load_content_access',
       instance_id: user.instanceId,
@@ -74,13 +74,8 @@ export const useContentAccess = (): UseContentAccessResult => {
 
     const permissionsPath = buildPermissionsPath(user.instanceId, organizationContext.context?.activeOrganizationId ?? undefined);
 
-    void requestSingleFlight(`iam:permissions:${permissionsPath}`, async () =>
-      fetchWithRequestTimeout(permissionsPath, undefined, {
-        signal: controller.signal,
-        timeoutMs: 10_000,
-      })
-    )
-      .then(async (response) => {
+    void requestSingleFlight(`iam:permissions:${permissionsPath}`, async () => {
+      const response = await fetchWithRequestTimeout(permissionsPath, undefined, { timeoutMs: 10_000 });
         if (!response.ok) {
           throw asIamError({
             status: response.status,
@@ -89,8 +84,10 @@ export const useContentAccess = (): UseContentAccessResult => {
           });
         }
 
-        const payload = (await response.json()) as MePermissionsResponse;
-        if (!controller.signal.aborted) {
+        return (await response.json()) as MePermissionsResponse;
+      })
+      .then((payload) => {
+        if (isActive) {
           setAccess(summarizeContentAccess(payload.permissions));
           setPermissionActions(collectEffectivePermissionActions(payload.permissions));
           logBrowserOperationSuccess(contentAccessLogger, 'content_access_load_succeeded', {
@@ -101,7 +98,7 @@ export const useContentAccess = (): UseContentAccessResult => {
         }
       })
       .catch(async (cause) => {
-        if (controller.signal.aborted) {
+        if (!isActive) {
           logBrowserOperationAbort(contentAccessLogger, 'content_access_load_aborted', {
             operation: 'load_content_access',
             instance_id: user.instanceId,
@@ -130,13 +127,13 @@ export const useContentAccess = (): UseContentAccessResult => {
         setError(resolvedError);
       })
       .finally(() => {
-        if (!controller.signal.aborted) {
+        if (isActive) {
           setIsLoading(false);
         }
       });
 
     return () => {
-      controller.abort(new DOMException('Content-Access-Hook wurde unmounted.', 'AbortError'));
+      isActive = false;
     };
   }, [invalidatePermissions, organizationContext.context?.activeOrganizationId, user?.instanceId]);
 

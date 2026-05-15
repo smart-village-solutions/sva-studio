@@ -98,6 +98,26 @@ const expectUnauthenticatedRedirect = async (page: Page, returnToPath: string) =
   await expect(page).toHaveURL(new RegExp(`(?:\\/auth\\/login\\?returnTo=${encodedReturnToPath}|\\/\\?auth=(?:mock-login|dev-login)&returnTo=${encodedReturnToPath})`));
 };
 
+const gotoShellRoot = async (page: Page, attempts = 5) => {
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      await page.goto('/');
+      return;
+    } catch (error) {
+      lastError = error;
+      const message = error instanceof Error ? error.message : String(error);
+      if (!message.includes('ERR_CONNECTION_REFUSED') || attempt === attempts) {
+        throw error;
+      }
+      await page.waitForTimeout(1_000);
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error(String(lastError));
+};
+
 const mockSharedShellRequests = async (page: Page) => {
   await page.route('**/iam/authorize', async (route) => {
     await route.fulfill({
@@ -299,7 +319,7 @@ test.describe('news plugin', () => {
       await fulfillContentRoute(route, newsItems);
     });
 
-    await page.goto('/');
+    await gotoShellRoot(page);
     await expect(page.getByRole('heading', { name: 'SVA Studio' })).toBeVisible();
 
     await page.getByRole('link', { name: 'News' }).click();
@@ -401,7 +421,7 @@ test.describe('news plugin', () => {
       });
     });
 
-    await page.goto('/');
+    await gotoShellRoot(page);
     await expect(page.locator('a[href="/admin/news"]')).toBeVisible();
 
     await page.locator('a[href="/admin/news"]').focus();
@@ -420,7 +440,7 @@ test.describe('news plugin', () => {
       });
     });
 
-    await page.goto('/');
+    await gotoShellRoot(page);
     await navigateClientSide(page, '/admin/news');
 
     await expectUnauthenticatedRedirect(page, '/admin/news?filters=%7B%7D&page=1&pageSize=25');
@@ -472,7 +492,7 @@ test.describe('news plugin', () => {
       await fulfillContentRoute(route, newsItems);
     });
 
-    await page.goto('/');
+    await gotoShellRoot(page);
     await navigateClientSide(page, '/admin/news');
     await expectPluginPageHeading(page, /News|news\.list\.title/);
     const listViolations = await new AxeBuilder({ page }).include('#main-content').analyze();

@@ -1469,4 +1469,107 @@ describe('waste-management master-data branch handlers', () => {
       requestId: 'req-test',
     });
   });
+
+  it('covers fraction create verification failure and delete success, conflict, and fallback errors', async () => {
+    const createDepsWithRepository = () => ({
+      ...createDeps(),
+      saveWasteFraction: vi.fn(async () => undefined),
+      loadWasteFractionById: vi
+        .fn()
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({
+          id: 'fraction-1',
+          name: 'Restmüll',
+          color: '#111111',
+          active: true,
+          createdAt: '2026-05-09T10:00:00.000Z',
+          updatedAt: '2026-05-09T10:00:00.000Z',
+        })
+        .mockResolvedValueOnce({
+          id: 'fraction-1',
+          name: 'Restmüll',
+          color: '#111111',
+          active: true,
+          createdAt: '2026-05-09T10:00:00.000Z',
+          updatedAt: '2026-05-09T10:00:00.000Z',
+        })
+        .mockResolvedValueOnce({
+          id: 'fraction-1',
+          name: 'Restmüll',
+          color: '#111111',
+          active: true,
+          createdAt: '2026-05-09T10:00:00.000Z',
+          updatedAt: '2026-05-09T10:00:00.000Z',
+        }),
+      deleteWasteFraction: vi
+        .fn()
+        .mockResolvedValueOnce(undefined)
+        .mockRejectedValueOnce({ code: '23503' })
+        .mockRejectedValueOnce(new Error('db down')),
+    });
+
+    const deps = createDepsWithRepository();
+
+    const createVerificationFailed = await wasteManagementFractionHandlers.createWasteManagementFractionInternal(
+      new Request('https://studio.test/api/v1/waste-management/fractions', {
+        method: 'POST',
+        headers: createHeaders(),
+        body: JSON.stringify({
+          id: 'fraction-1',
+          name: 'Restmüll',
+          color: '#111111',
+          active: true,
+        }),
+      }),
+      actor,
+      deps
+    );
+
+    expect(createVerificationFailed.status).toBe(503);
+    await expect(createVerificationFailed.json()).resolves.toMatchObject({
+      error: {
+        code: 'database_unavailable',
+      },
+    });
+
+    const deleteSucceeded = await wasteManagementFractionHandlers.deleteWasteManagementFractionInternal(
+      new Request('https://studio.test/api/v1/waste-management/fractions/fraction-1', {
+        method: 'DELETE',
+        headers: createHeaders(),
+      }),
+      actor,
+      deps
+    );
+    expect(deleteSucceeded.status).toBe(200);
+
+    const deleteConflict = await wasteManagementFractionHandlers.deleteWasteManagementFractionInternal(
+      new Request('https://studio.test/api/v1/waste-management/fractions/fraction-1', {
+        method: 'DELETE',
+        headers: createHeaders(),
+      }),
+      actor,
+      deps
+    );
+    expect(deleteConflict.status).toBe(409);
+    await expect(deleteConflict.json()).resolves.toMatchObject({
+      error: {
+        code: 'invalid_request',
+      },
+    });
+
+    const deleteFailure = await wasteManagementFractionHandlers.deleteWasteManagementFractionInternal(
+      new Request('https://studio.test/api/v1/waste-management/fractions/fraction-1', {
+        method: 'DELETE',
+        headers: createHeaders(),
+      }),
+      actor,
+      deps
+    );
+    expect(deleteFailure.status).toBe(503);
+    await expect(deleteFailure.json()).resolves.toMatchObject({
+      error: {
+        code: 'database_unavailable',
+      },
+    });
+  });
 });

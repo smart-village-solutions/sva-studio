@@ -1,6 +1,6 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { WasteManagementApiError } from '../src/waste-management.api.js';
 import { WasteSettingsPanel } from '../src/waste-management.settings-panel.js';
@@ -72,6 +72,13 @@ const LocationsMasterDataLoaderHarness = () => {
   return <div>{state.error ?? (state.loading ? 'loading' : 'loaded')}</div>;
 };
 
+const DynamicMasterDataLoaderHarness = ({ tab }: { readonly tab: 'fractions' | 'locations' }) => {
+  const state = useWasteMasterDataState();
+  useWasteMasterDataDataLoading(state, (key) => key, tab);
+
+  return <div>{state.error ?? (state.loading ? 'loading' : 'loaded')}</div>;
+};
+
 const ToursLoaderHarness = () => {
   const state = useWasteToursState();
   useWasteToursDataLoading(state, (key) => key);
@@ -89,6 +96,10 @@ const SchedulingLoaderHarness = () => {
 describe('waste management data loaders', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    cleanup();
   });
 
   it('keeps the master-data loader on a single failed fetch cycle', async () => {
@@ -150,6 +161,37 @@ describe('waste management data loaders', () => {
 
     expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledTimes(1);
     expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledWith({ scope: 'locations' });
+  });
+
+  it('reloads the master-data overview when the active tab scope changes', async () => {
+    apiMocks.getWasteManagementMasterDataOverview
+      .mockResolvedValueOnce({
+        fractions: [],
+      })
+      .mockResolvedValueOnce({
+        fractions: [],
+        regions: [],
+        cities: [],
+        streets: [],
+        houseNumbers: [],
+        collectionLocations: [],
+        locationTourLinks: [],
+      });
+    apiMocks.getWasteManagementToursOverview.mockResolvedValue({ tours: [] });
+
+    const { rerender } = render(<DynamicMasterDataLoaderHarness tab="fractions" />);
+
+    await waitFor(() => {
+      expect(screen.getByText('loaded')).toBeTruthy();
+    });
+
+    expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenNthCalledWith(1, { scope: 'fractions' });
+
+    rerender(<DynamicMasterDataLoaderHarness tab="locations" />);
+
+    await waitFor(() => {
+      expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenNthCalledWith(2, { scope: 'locations' });
+    });
   });
 
   it('keeps the scheduling loader on a single failed fetch cycle', async () => {

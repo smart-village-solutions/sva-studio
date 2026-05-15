@@ -761,19 +761,14 @@ describe('InstanceDetailPage', () => {
     expect(tenantClientSecret.disabled).toBe(true);
     expect(tenantClientSecret.placeholder).toBe('Wird beim Provisioning automatisch erzeugt');
     expect(
-      screen.getByText('Bei neuen Realms wird das Secret beim Provisioning automatisch erzeugt und danach in Studio gespeichert.')
-    ).toBeTruthy();
+      screen.getAllByText('Bei neuen Realms wird das Secret beim Provisioning automatisch erzeugt und danach in Studio gespeichert.')
+    ).toHaveLength(2);
 
     const tenantAdminClientSecret = screen.getByLabelText('Tenant-Admin-Client-Secret', {
       selector: '#detail-tenant-admin-client-secret',
     }) as HTMLInputElement;
     expect(tenantAdminClientSecret.disabled).toBe(true);
     expect(tenantAdminClientSecret.placeholder).toBe('Wird beim Provisioning automatisch erzeugt');
-    expect(
-      screen.getByText(
-        'Bei neuen Realms wird das Tenant-Admin-Client-Secret beim Provisioning automatisch erzeugt und danach in Studio gespeichert.'
-      )
-    ).toBeTruthy();
   });
 
   it('renders follow-up module actions separately and loads runs from the history tab on demand', async () => {

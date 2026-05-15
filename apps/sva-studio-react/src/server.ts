@@ -15,6 +15,7 @@ const startFetch = createStartHandler(defaultStreamHandler);
 const diagnosticsEnabled = (process.env.NODE_ENV ?? 'development') === 'development';
 const serverFnBase = normalizeServerFnBase(process.env.TSS_SERVER_FN_BASE);
 const pluginOperationWorkerEnabled = process.env.SVA_PLUGIN_OPERATION_WORKER_ENABLED !== 'false';
+const playwrightReadyPath = '/__playwright/ready';
 
 await registerStudioPluginOperationHandlers();
 
@@ -157,6 +158,10 @@ const instrumentedFetch: RequestHandler<Register> = async (...args) => {
   };
 
   await logServerEntryDebug('Server entry request received', {});
+  if (process.env.PLAYWRIGHT_TEST === 'true' && new URL(request.url).pathname === playwrightReadyPath) {
+    return new Response(null, { status: 204 });
+  }
+
   const dispatchMainserverNewsRequest = await getDispatchMainserverNewsRequest();
   const mainserverNewsResponse = await dispatchMainserverNewsRequest(request);
 

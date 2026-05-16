@@ -1,0 +1,146 @@
+[
+  {
+    "project": "plugin-waste-management",
+    "ms": 15650,
+    "status": "ok",
+    "tail": ""
+  },
+  {
+    "project": "data-repositories",
+    "ms": 2858,
+    "status": "ok",
+    "tail": ""
+  },
+  {
+    "project": "instance-registry",
+    "ms": 3750,
+    "status": "ok",
+    "tail": ""
+  },
+  {
+    "project": "monitoring-client",
+    "ms": 3781,
+    "status": "ok",
+    "tail": ""
+  },
+  {
+    "project": "studio-module-iam",
+    "ms": 2205,
+    "status": "ok",
+    "tail": ""
+  },
+  {
+    "project": "studio-ui-react",
+    "ms": 2921,
+    "status": "ok",
+    "tail": ""
+  },
+  {
+    "project": "iam-governance",
+    "ms": 3918,
+    "status": "ok",
+    "tail": ""
+  },
+  {
+    "project": "server-runtime",
+    "ms": 5354,
+    "status": "ok",
+    "tail": ""
+  },
+  {
+    "project": "sva-mainserver",
+    "ms": 10223,
+    "status": "ok",
+    "tail": ""
+  },
+  {
+    "project": "plugin-events",
+    "ms": 3546,
+    "status": "ok",
+    "tail": ""
+  },
+  {
+    "project": "auth-runtime",
+    "ms": 9558,
+    "status": "ok",
+    "tail": ""
+  },
+  {
+    "project": "sva-studio-react",
+    "ms": 59353,
+    "status": "ok",
+    "tail": ""
+  },
+  {
+    "project": "data-client",
+    "ms": 2365,
+    "status": "ok",
+    "tail": ""
+  },
+  {
+    "project": "plugin-news",
+    "ms": 4822,
+    "status": "ok",
+    "tail": ""
+  },
+  {
+    "project": "plugin-poi",
+    "ms": 3663,
+    "status": "ok",
+    "tail": ""
+  },
+  {
+    "project": "plugin-sdk",
+    "ms": 3047,
+    "status": "ok",
+    "tail": ""
+  },
+  {
+    "project": "project-report",
+    "ms": 2711,
+    "status": "ok",
+    "tail": ""
+  },
+  {
+    "project": "iam-admin",
+    "ms": 4972,
+    "status": "ok",
+    "tail": ""
+  },
+  {
+    "project": "iam-core",
+    "ms": 2218,
+    "status": "ok",
+    "tail": ""
+  },
+  {
+    "project": "routing",
+    "ms": 5395,
+    "status": "ok",
+    "tail": ""
+  },
+  {
+    "project": "tooling-testing",
+    "ms": 4980,
+    "status": "ok",
+    "tail": ""
+  },
+  {
+    "project": "media",
+    "ms": 2292,
+    "status": "ok",
+    "tail": ""
+  },
+  {
+    "project": "core",
+    "ms": 3304,
+    "status": "ok",
+    "tail": ""
+  },
+  {
+    "project": "data",
+    "ms": 1912,
+    "status": "ok",
+    "tail": ""
+  }
+]

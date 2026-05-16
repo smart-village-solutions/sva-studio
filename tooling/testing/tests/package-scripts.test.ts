@@ -24,7 +24,7 @@ interface TsConfigJson {
 type NamedInputValue = string | { env: string };
 
 interface NxProjectJson {
-  targets?: Record<string, { options?: { lintFilePatterns?: string[] } }>;
+  targets?: Record<string, { options?: { command?: string; lintFilePatterns?: string[] } }>;
 }
 
 function resolveRootDir(): string {
@@ -58,6 +58,11 @@ function loadToolingTestingProject(): NxProjectJson {
   return JSON.parse(
     fs.readFileSync(path.join(rootDir, 'tooling/testing/project.json'), 'utf8')
   ) as NxProjectJson;
+}
+
+function loadProjectJson(projectPath: string): NxProjectJson {
+  const rootDir = resolveRootDir();
+  return JSON.parse(fs.readFileSync(path.join(rootDir, projectPath, 'project.json'), 'utf8')) as NxProjectJson;
 }
 
 function loadQualityGatesWorkflow(): string {
@@ -179,6 +184,17 @@ describe('workspace package scripts', () => {
 
     expect(runtimeScript).toContain('nx run-many -t check:runtime --parallel=1');
     expect(runtimeScript).not.toContain('--projects=');
+  });
+
+  it('cleans instance-registry declaration artifacts before building public package exports', () => {
+    const project = loadProjectJson('packages/instance-registry');
+    const buildCommand = project.targets?.build?.options?.command;
+
+    expect(buildCommand).toBeDefined();
+    expect(typeof buildCommand).toBe('string');
+    expect(buildCommand).toContain("rmSync('packages/instance-registry/dist'");
+    expect(buildCommand).toContain("rmSync('packages/instance-registry/tsconfig.lib.tsbuildinfo'");
+    expect(buildCommand).toContain('tsc -p packages/instance-registry/tsconfig.lib.json');
   });
 
   it('exposes affected PR gate commands for lint, unit, types, and runtime checks', () => {

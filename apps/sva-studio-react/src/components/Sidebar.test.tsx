@@ -3,8 +3,10 @@
  */
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import React from 'react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { pluginNews } from '@sva/plugin-news';
 
+import { mergeI18nResources } from '../i18n';
 import Sidebar from './Sidebar';
 
 const LICENSE_ISSUE_URL = 'https://github.com/smart-village-solutions/sva-studio/issues/2';
@@ -38,6 +40,10 @@ const studioPluginNavigationMock = vi.hoisted(() => ({
 const studioPluginActionLookupMock = vi.hoisted(() => ({
   get: vi.fn(),
 }));
+
+beforeAll(() => {
+  mergeI18nResources(pluginNews.translations ?? {});
+});
 
 vi.mock('@tanstack/react-router', () => ({
   Link: ({

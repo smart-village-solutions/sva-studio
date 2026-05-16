@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { createTranslator, createTranslatorFromResources, getActiveLocale, setActiveLocale, t } from './translate';
-import { i18nResources } from './resources';
+import { i18nResources, mergeI18nResources } from './resources';
 
 describe('translate', () => {
   it('resolves account namespace keys for de locale', () => {
@@ -55,6 +55,41 @@ describe('translate', () => {
     const missingKey = ['admin', 'users', 'page', 'unknown'].join('.') as never;
 
     expect(t(missingKey)).toBe('admin.users.page.unknown');
+  });
+
+  it('rejects plugin resource keys that already exist in host resources', () => {
+    expect(() =>
+      mergeI18nResources({
+        de: {
+          shell: {
+            appName: 'Plugin-owned Studio',
+          },
+        },
+        en: {},
+      })
+    ).toThrow('duplicate_i18n_key:de:shell.appName');
+  });
+
+  it('keeps host resources unchanged when plugin translation merges fail atomically', () => {
+    const previousAppName = i18nResources.de.shell.appName;
+    const previousPluginBranch = (i18nResources.de as Record<string, unknown>).pluginAtomicityProbe;
+
+    expect(() =>
+      mergeI18nResources({
+        de: {
+          pluginAtomicityProbe: {
+            title: 'Temporäre Probe',
+          },
+          shell: {
+            appName: 'Duplikat',
+          },
+        },
+        en: {},
+      })
+    ).toThrow('duplicate_i18n_key:de:shell.appName');
+
+    expect(i18nResources.de.shell.appName).toBe(previousAppName);
+    expect((i18nResources.de as Record<string, unknown>).pluginAtomicityProbe).toBe(previousPluginBranch);
   });
 
   it('uses the active locale for global translations', () => {

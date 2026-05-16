@@ -21,7 +21,7 @@ export type InstanceRegistryKeycloakHttpDeps<TContext> = {
   readonly mapMutationError: (error: unknown) => Response;
   readonly ensurePlatformAccess: (request: Request, ctx: TContext) => Response | null;
   readonly validateCsrf: (request: Request, requestId?: string) => Response | null;
-  readonly requireFreshReauth: (request: Request) => Response | null;
+  readonly requireFreshReauth: (request: Request, ctx: TContext) => Response | null;
   readonly withRegistryService: <T>(work: (service: InstanceRegistryService) => Promise<T>) => Promise<T>;
 };
 
@@ -48,7 +48,7 @@ const guardKeycloakReadRequest = <TContext>(
     if (csrfError) {
       return csrfError;
     }
-    const reauthError = deps.requireFreshReauth(request);
+    const reauthError = deps.requireFreshReauth(request, ctx);
     if (reauthError) {
       return reauthError;
     }

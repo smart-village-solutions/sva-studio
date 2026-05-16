@@ -412,6 +412,19 @@ Zuordnung:
 - `ADR-036-kanonischer-iam-projektions-und-reconcile-vertrag.md`
   - fixiert den gemeinsamen Projektionskern für `/auth/me`, `/account`, `/admin/users` und `/admin/roles`
   - normiert deterministische Abschlusszustände für Reconcile und User-Sync
+
+### Fortschreibung 2026-05: Serverseitige Fresh-Reauth für die Root-Host-Control-Plane
+
+- `ADR-023-session-lifecycle-forced-reauth-und-silent-sso.md`
+  - bleibt führend für Session-Lifecycle, Silent-SSO und serverseitig kontrollierte Reauth-Pfade
+  - präzisiert für sensitive Root-Host-Mutationen, dass nur serverseitig gebundene Fresh-Reauth-Evidenz innerhalb eines begrenzten Frischefensters zählt
+- `ADR-030-registry-basierte-instance-freigabe-und-provisioning.md`
+  - erweitert den Root-Host-Control-Plane-Vertrag um fail-closed Fresh-Reauth-Guards für kritische Instanz- und Keycloak-Mutationen
+  - hält fest, dass lokale Dev-/Mock-Auth-Ausnahmen nur als explizite serverseitige Nicht-Produktiv-Abweichung zulässig sind
+
+Zuordnung:
+
+- Abschnitt 05/08/09: ADR-023, ADR-030
   - verankert fail-closed Drift-Blocker für tenantlokale Admin-Pfade
 
 Zuordnung:

@@ -28,4 +28,18 @@ describe('sonar-project.properties', () => {
     expect(tests).toContain('packages/media/src');
     expect(tests).toContain('packages/plugin-waste-management/src');
   });
+
+  it('keeps plugin translation resources out of copy-paste detection only', () => {
+    const cpdExclusions = readPropertyValues('sonar.cpd.exclusions');
+    const sonarExclusions = readPropertyValues('sonar.exclusions');
+    const pluginTranslationPatterns = [
+      'packages/plugin-news/src/plugin.translations*.ts',
+      'packages/plugin-waste-management/src/plugin.translations*.ts',
+    ];
+
+    for (const pattern of pluginTranslationPatterns) {
+      expect(cpdExclusions).toContain(pattern);
+      expect(sonarExclusions).not.toContain(pattern);
+    }
+  });
 });

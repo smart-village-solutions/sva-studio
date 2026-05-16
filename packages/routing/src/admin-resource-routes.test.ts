@@ -104,6 +104,11 @@ const specializedBindings = {
 const readRouteOptions = (route: unknown): RouteOptionsUnderTest =>
   (route as { options: RouteOptionsUnderTest }).options;
 
+function expectDefined<T>(value: T | undefined): T {
+  expect(value).toBeDefined();
+  return value as T;
+}
+
 describe('admin resource routes', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -305,7 +310,7 @@ describe('admin resource routes', () => {
     });
 
     expect(factory).toBeDefined();
-    const route = factory!({ id: 'root' } as never);
+    const route = expectDefined(factory)({ id: 'root' } as never);
     const beforeLoad = readRouteOptions(route).beforeLoad;
 
     await expect(
@@ -343,7 +348,7 @@ describe('admin resource routes', () => {
     });
 
     expect(factory).toBeDefined();
-    const route = factory!({ id: 'root' } as never);
+    const route = expectDefined(factory)({ id: 'root' } as never);
     const beforeLoad = readRouteOptions(route).beforeLoad;
 
     await expect(

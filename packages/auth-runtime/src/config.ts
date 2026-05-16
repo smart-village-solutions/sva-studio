@@ -33,6 +33,11 @@ const readNumber = (key: string, fallback: number) => {
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
+const readPositiveNumber = (key: string, fallback: number) => {
+  const parsed = readNumber(key, fallback);
+  return parsed > 0 ? parsed : fallback;
+};
+
 export const resolveBaseAuthConfig = (overrides: { clientSecret?: string } = {}) => {
   const clientSecret = overrides.clientSecret ?? getAuthClientSecret();
   if (!clientSecret) {
@@ -50,6 +55,7 @@ export const resolveBaseAuthConfig = (overrides: { clientSecret?: string } = {})
     silentSsoSuppressCookieName: process.env.SVA_AUTH_SILENT_SSO_SUPPRESS_COOKIE ?? 'sva_auth_silent_sso',
     sessionTtlMs: readNumber('SVA_AUTH_SESSION_TTL_MS', 60 * 60 * 1000),
     sessionRedisTtlBufferMs: readNumber('SVA_AUTH_SESSION_REDIS_TTL_BUFFER_MS', 5 * 60 * 1000),
+    freshReauthWindowMs: readPositiveNumber('SVA_AUTH_FRESH_REAUTH_WINDOW_MS', 10 * 60 * 1000),
     silentSsoSuppressAfterLogoutMs: readNumber(
       'SVA_AUTH_SILENT_SSO_SUPPRESS_AFTER_LOGOUT_MS',
       5 * 60 * 1000

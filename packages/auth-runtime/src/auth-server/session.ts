@@ -30,7 +30,7 @@ export type SessionResolutionFailureReason =
   | 'token_refresh_failed_after_expiry';
 
 export type SessionResolutionResult =
-  | { kind: 'authenticated'; user: SessionUser | null; expiresAt?: number }
+  | { kind: 'authenticated'; user: SessionUser | null; expiresAt?: number; freshReauthAt?: number }
   | { kind: 'invalid'; reason: SessionResolutionFailureReason };
 
 const readSessionInvalidationReason = async (
@@ -153,6 +153,7 @@ const handleRefreshFailure = async (input: {
   sessionId: string;
   refreshToken?: string;
   expiresAt?: number;
+  freshReauthAt?: number;
   scope?: Session['auth'];
   fallbackUser: SessionUser | null;
 }): Promise<SessionResolutionResult> => {
@@ -185,7 +186,12 @@ const handleRefreshFailure = async (input: {
     return { kind: 'invalid', reason: 'token_refresh_failed_after_expiry' };
   }
 
-  return { kind: 'authenticated', user: input.fallbackUser, expiresAt: input.expiresAt };
+  return {
+    kind: 'authenticated',
+    user: input.fallbackUser,
+    expiresAt: input.expiresAt,
+    freshReauthAt: input.freshReauthAt,
+  };
 };
 
 export const resolveSessionUser = async (sessionId: string): Promise<SessionResolutionResult> => {
@@ -203,7 +209,7 @@ export const resolveSessionUser = async (sessionId: string): Promise<SessionReso
   if (!shouldRefreshSession(session.expiresAt)) {
     const user = await hydrateSessionUserFromAccessToken(sessionId, session);
     logIncompleteSessionUser(user, 'session_read');
-    return { kind: 'authenticated', user, expiresAt: session.expiresAt };
+    return { kind: 'authenticated', user, expiresAt: session.expiresAt, freshReauthAt: session.freshReauthAt };
   }
 
   if (!session.refreshToken) {
@@ -215,6 +221,7 @@ export const resolveSessionUser = async (sessionId: string): Promise<SessionReso
       kind: 'authenticated',
       user: await hydrateSessionUserFromAccessToken(sessionId, session),
       expiresAt: session.expiresAt,
+      freshReauthAt: session.freshReauthAt,
     };
   }
 
@@ -239,6 +246,7 @@ export const resolveSessionUser = async (sessionId: string): Promise<SessionReso
       kind: 'authenticated',
       user: updatedSession?.user ?? null,
       expiresAt: updatedSession?.expiresAt,
+      freshReauthAt: updatedSession?.freshReauthAt,
     };
   } catch (error) {
     return handleRefreshFailure({
@@ -246,6 +254,7 @@ export const resolveSessionUser = async (sessionId: string): Promise<SessionReso
       sessionId,
       refreshToken: session.refreshToken,
       expiresAt: session.expiresAt,
+      freshReauthAt: session.freshReauthAt,
       scope: session.auth,
       fallbackUser: session.user ?? null,
     });

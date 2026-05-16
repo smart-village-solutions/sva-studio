@@ -143,7 +143,7 @@ export const resolveTenantKeycloakUsersWithPagination = async (
     const mapped = mappedUsersBySubject.get(user.externalId);
     return mapped
       ? mergeMappedUserWithKeycloak(mapped, user, roleNames)
-      : mapUnmappedKeycloakUser(user, roleNames, input.instanceId);
+      : mapUnmappedKeycloakUser(user, roleNames);
   });
 
   const total = input.role

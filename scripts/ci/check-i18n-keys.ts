@@ -3,12 +3,15 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { DEFAULT_LOCALE, i18nResources } from '../../apps/sva-studio-react/src/i18n/resources';
+import { pluginNewsTranslations } from '../../packages/plugin-news/src/plugin.translations';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.resolve(SCRIPT_DIR, '../..');
 const APP_SOURCE_DIR = path.join(PROJECT_ROOT, 'apps/sva-studio-react/src');
 const SOURCE_EXTENSIONS = new Set(['.ts', '.tsx']);
 const I18N_USAGE_PATTERN = /\bt\(\s*(['"`])([^'"`]+)\1/g;
+
+const pluginTranslationResources = [pluginNewsTranslations] as const;
 
 type TranslationNode = Readonly<Record<string, unknown>>;
 
@@ -111,13 +114,25 @@ const ensureLocaleParity = (): string[] => {
   return problems;
 };
 
+const collectAvailableKeys = (): Set<string> => {
+  const availableKeys = new Set(flattenTranslationKeys(i18nResources[DEFAULT_LOCALE]));
+
+  for (const resources of pluginTranslationResources) {
+    for (const key of flattenTranslationKeys(resources[DEFAULT_LOCALE] as TranslationNode)) {
+      availableKeys.add(key);
+    }
+  }
+
+  return availableKeys;
+};
+
 const run = async (): Promise<void> => {
   const parityProblems = ensureLocaleParity();
 
   const files = await collectSourceFiles(APP_SOURCE_DIR);
   const usedByFile = await collectUsedTranslationKeys(files);
 
-  const availableKeys = new Set(flattenTranslationKeys(i18nResources[DEFAULT_LOCALE]));
+  const availableKeys = collectAvailableKeys();
   const missingUsageKeys: string[] = [];
 
   for (const [filePath, keys] of usedByFile.entries()) {

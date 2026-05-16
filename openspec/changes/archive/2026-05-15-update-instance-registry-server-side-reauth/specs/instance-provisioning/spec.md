@@ -31,6 +31,12 @@ Das System SHALL fuer kritische Root-Host-Control-Plane-Mutationen der Instanzve
 - **THEN** lehnt das System die Mutation fail-closed mit `reauth_required` oder gleichwertigem stabilem Fehlercode ab
 - **AND** fuehrt es keine fachliche Mutation aus
 
+#### Scenario: Klientseitige Reauth-Marker heben den Guard nicht auf
+
+- **WHEN** ein Request fuer eine kritische Instanz- oder Keycloak-Mutation nur einen klientseitigen Header, Query-Parameter oder UI-Marker fuer Reauth mitliefert
+- **THEN** hebt dieser Marker den Fresh-Reauth-Guard nicht auf
+- **AND** bleibt allein die serverseitig gebundene Fresh-Reauth-Evidenz entscheidend
+
 #### Scenario: Lokaler Nicht-Produktiv-Pfad bleibt explizit
 
 - **WHEN** dieselbe Mutation in einem explizit als lokal oder nicht-produktiv definierten Entwicklungsprofil ausgefuehrt wird

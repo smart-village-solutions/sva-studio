@@ -12,6 +12,7 @@ describe('login-state-cookie', () => {
       createdAt: Date.now(),
       returnTo: '/admin',
       silent: true,
+      freshReauthRequested: false,
     };
 
     const encoded = encodeLoginStateCookie(payload, 'secret');

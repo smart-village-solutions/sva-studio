@@ -4,7 +4,12 @@ import { createLoginState } from '../redis-session.js';
 import { getScopeFromAuthConfig } from '../scope.js';
 import type { AuthConfig } from '../types.js';
 
-export const createLoginUrl = async (input?: { returnTo?: string; silent?: boolean; authConfig?: AuthConfig }) => {
+export const createLoginUrl = async (input?: {
+  returnTo?: string;
+  silent?: boolean;
+  reauth?: boolean;
+  authConfig?: AuthConfig;
+}) => {
   const authConfig = input?.authConfig ?? getAuthConfig();
   const config = await getOidcConfig(authConfig);
   const codeVerifier = client.randomPKCECodeVerifier();
@@ -12,12 +17,14 @@ export const createLoginUrl = async (input?: { returnTo?: string; silent?: boole
   const state = client.randomState();
   const nonce = client.randomNonce();
   const createdAt = Date.now();
+  const freshReauthRequested = input?.silent === true ? false : input?.reauth === true;
   const loginState = {
     codeVerifier,
     nonce,
     createdAt,
     returnTo: input?.returnTo,
     silent: input?.silent ?? false,
+    freshReauthRequested,
     ...getScopeFromAuthConfig(authConfig),
   };
 
@@ -31,6 +38,7 @@ export const createLoginUrl = async (input?: { returnTo?: string; silent?: boole
     state,
     nonce,
     ...(input?.silent ? { prompt: 'none' } : {}),
+    ...(freshReauthRequested ? { prompt: 'login', max_age: '0' } : {}),
   });
 
   return { url: url.href, state, loginState };

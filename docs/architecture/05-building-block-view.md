@@ -23,8 +23,8 @@ Abhängigkeiten des aktuellen Systems.
    - Runtime-Health-Bausteine: `RuntimeHealthIndicator` und `useRuntimeHealth` für die globale Anzeige des Plattformzustands
    - Skeleton-Bausteine für Kopfzeile, Seitenleiste und Contentbereich
    - Theme-Bausteine: `ThemeProvider`, semantische CSS-Token und `Sheet`-Primitive für mobile Shell-Navigation
-   - Auth- und Diagnose-Bausteine: `AuthProvider` fuer `/auth/me`, Silent-Recovery und den clientseitigen Grundzustand; `iam-api.ts` fuer Browser-Timeouts, `requestId`-Aufnahme und Safe-Detail-Parsing
-  - Host-Standard-Bausteine fuer Admin-Ressourcen: `appAdminResources` als kanonische Capability-Deklaration, route-addressable Listensteuerung in den Admin-/Content-Seiten und duenne Label-/Routing-Bindings fuer `@sva/studio-ui-react` statt app-eigener Tabellen-Owner-Schicht
+   - Auth- und Diagnose-Bausteine: `AuthProvider` für `/auth/me`, Silent-Recovery und den clientseitigen Grundzustand; `iam-api.ts` für Browser-Timeouts, `requestId`-Aufnahme und Safe-Detail-Parsing
+  - Host-Standard-Bausteine für Admin-Ressourcen: `appAdminResources` als kanonische Capability-Deklaration, route-addressable Listensteuerung in den Admin-/Content-Seiten und dünne Label-/Routing-Bindings für `@sva/studio-ui-react` statt app-eigener Tabellen-Owner-Schicht
    - Nx-Targets für `build`, `serve`, `lint`, das aggregierte `test:unit`, die gezielten App-Slices `test:unit:ui|routes|hooks|server`, `test:coverage` und `test:e2e` über Vite-, Vitest- und Playwright-Executor
 2. Core (`packages/core`)
    - generische Route-Registry Utilities (`mergeRouteFactories`, `buildRouteTree`)
@@ -116,6 +116,7 @@ Abhängigkeiten des aktuellen Systems.
   - `packages/iam-admin`, `packages/instance-registry` und `packages/data-repositories` über klar getrennte Fach- und Repository-Verträge
 - Plattformkontext (`platform`) für Root-Host-Control-Plane, Root-Host-Auth und globale Readiness:
   - `packages/auth-runtime`, `packages/iam-admin` und `packages/instance-registry`
+  - `packages/auth-runtime` liefert die serverseitig gebundene Fresh-Reauth-Evidenz für kritische Root-Host-Mutationen; `packages/instance-registry` verwendet nur diesen Kontext und keine klientseitigen Marker als Sicherheitsnachweis
 - Tenant-Admin-Pfad pro Instanz:
   - `packages/iam-admin` für Tenant-Admin-Orchestrierung
   - `packages/instance-registry` für Registry-, Diagnose-, Access-Probe-, Preflight- und Provisioning-Verträge des `tenantAdminClient`

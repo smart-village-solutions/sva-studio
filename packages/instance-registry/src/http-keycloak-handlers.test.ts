@@ -76,6 +76,15 @@ describe('http-keycloak-handlers', () => {
     expect(deps.withRegistryService).not.toHaveBeenCalled();
   });
 
+  it('passes the request context into fresh reauth checks for keycloak plans', async () => {
+    const handlers = createInstanceRegistryKeycloakHttpHandlers(deps);
+    const request = new Request('https://studio.example.org/api/v1/iam/instances/demo/keycloak/plan');
+
+    await handlers.planInstanceKeycloakProvisioning(request, ctx);
+
+    expect(deps.requireFreshReauth).toHaveBeenCalledWith(request, ctx);
+  });
+
   it('returns not_found when a provisioning run is missing', async () => {
     const handlers = createInstanceRegistryKeycloakHttpHandlers(deps);
     vi.mocked(service.getKeycloakProvisioningRun).mockResolvedValueOnce(null);

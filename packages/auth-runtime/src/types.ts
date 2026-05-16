@@ -44,6 +44,7 @@ export type Session = {
   refreshToken?: string;
   idToken?: string;
   expiresAt?: number;
+  freshReauthAt?: number;
 };
 
 export type LoginState = RuntimeScopeRef & {
@@ -52,6 +53,7 @@ export type LoginState = RuntimeScopeRef & {
   createdAt: number;
   returnTo?: string;
   silent?: boolean;
+  freshReauthRequested?: boolean;
 };
 
 export type SessionControlState = {
@@ -80,5 +82,6 @@ export type AuthConfig = RuntimeScopeRef & {
   silentSsoSuppressCookieName: string;
   sessionTtlMs: number;
   sessionRedisTtlBufferMs: number;
+  freshReauthWindowMs: number;
   silentSsoSuppressAfterLogoutMs: number;
 };

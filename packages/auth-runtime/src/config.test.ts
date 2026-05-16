@@ -14,6 +14,7 @@ describe('auth runtime config', () => {
     vi.stubEnv('SVA_AUTH_SESSION_COOKIE', 'session-cookie');
     vi.stubEnv('SVA_AUTH_LOGIN_STATE_COOKIE', 'state-cookie');
     vi.stubEnv('SVA_AUTH_SESSION_TTL_MS', '9000');
+    vi.stubEnv('SVA_AUTH_FRESH_REAUTH_WINDOW_MS', '120000');
     vi.stubEnv('SVA_AUTH_SESSION_REDIS_TTL_BUFFER_MS', 'not-a-number');
 
     expect(resolveBaseAuthConfig()).toMatchObject({
@@ -23,8 +24,19 @@ describe('auth runtime config', () => {
       sessionCookieName: 'session-cookie',
       loginStateCookieName: 'state-cookie',
       sessionTtlMs: 9000,
+      freshReauthWindowMs: 120000,
       sessionRedisTtlBufferMs: 300000,
     });
+  });
+
+  it('falls back for non-positive fresh reauth windows', () => {
+    vi.stubEnv('SVA_AUTH_CLIENT_SECRET', 'client-secret');
+    vi.stubEnv('SVA_AUTH_FRESH_REAUTH_WINDOW_MS', '0');
+
+    expect(resolveBaseAuthConfig().freshReauthWindowMs).toBe(10 * 60 * 1000);
+
+    vi.stubEnv('SVA_AUTH_FRESH_REAUTH_WINDOW_MS', '-1');
+    expect(resolveBaseAuthConfig().freshReauthWindowMs).toBe(10 * 60 * 1000);
   });
 
   it('requires a client secret for base config', () => {

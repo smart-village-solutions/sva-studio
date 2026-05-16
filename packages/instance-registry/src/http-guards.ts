@@ -1,4 +1,20 @@
 export const INSTANCE_REGISTRY_HTTP_ADMIN_ROLE = 'instance_registry_admin';
+const DEFAULT_FRESH_REAUTH_WINDOW_MS = 10 * 60 * 1000;
+
+const readFreshReauthWindowMs = (): number => {
+  const raw = process.env.SVA_AUTH_FRESH_REAUTH_WINDOW_MS;
+  if (!raw) {
+    return DEFAULT_FRESH_REAUTH_WINDOW_MS;
+  }
+
+  const parsed = Number.parseInt(raw, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_FRESH_REAUTH_WINDOW_MS;
+};
+
+export type FreshReauthContext = {
+  readonly freshReauthAt?: number;
+  readonly isLocalDevelopmentAuth?: boolean;
+};
 
 type CreateApiError = (
   status: number,
@@ -19,7 +35,7 @@ export type InstanceRegistryHttpGuardDeps<TContext> = {
   ) => Response | null;
 };
 
-export const createInstanceRegistryHttpGuards = <TContext>(
+export const createInstanceRegistryHttpGuards = <TContext extends FreshReauthContext>(
   deps: InstanceRegistryHttpGuardDeps<TContext>
 ) => {
   const adminRoles = new Set([INSTANCE_REGISTRY_HTTP_ADMIN_ROLE]);
@@ -38,9 +54,18 @@ export const createInstanceRegistryHttpGuards = <TContext>(
       return deps.requireRoles(ctx, adminRoles, deps.getRequestId());
     },
 
-    requireFreshReauth: (request: Request): Response | null => {
-      const header = request.headers.get('x-sva-reauth-confirmed');
-      if (header?.toLowerCase() === 'true') {
+    requireFreshReauth: (_request: Request, ctx: TContext): Response | null => {
+      if (ctx.isLocalDevelopmentAuth === true) {
+        return null;
+      }
+
+      const now = Date.now();
+      if (
+        typeof ctx.freshReauthAt === 'number' &&
+        Number.isFinite(ctx.freshReauthAt) &&
+        ctx.freshReauthAt <= now &&
+        ctx.freshReauthAt >= now - readFreshReauthWindowMs()
+      ) {
         return null;
       }
 

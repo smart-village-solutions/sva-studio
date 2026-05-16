@@ -63,6 +63,7 @@ Dieses Dokument beschreibt die übergeordnete Teststrategie für das Nx-Monorepo
   - `pnpm nx run sva-studio-react:test:unit:ui`
   - `pnpm nx run sva-studio-react:test:unit:routes`
   - `pnpm nx run sva-studio-react:test:unit:hooks`
+    Deckt im `affected`-Pfad auch nicht-serverseitige Änderungen unter `apps/sva-studio-react/src/lib/` ab.
   - `pnpm nx run sva-studio-react:test:unit:server`
 
 ### Vor PR-Update

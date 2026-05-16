@@ -239,6 +239,30 @@ describe('plugin registry', () => {
     expect(mergePluginTranslations([pluginA])).toEqual(pluginA.translations);
   });
 
+  it('rejects duplicate plugin translation leaf keys across plugin owners', () => {
+    const registry = createPluginRegistry([
+      pluginA,
+      {
+        id: 'events',
+        displayName: 'Events',
+        routes: [{ id: 'events.list', path: '/plugins/events', component: (() => null) as never }],
+        translations: {
+          de: {
+            news: {
+              navigation: {
+                title: 'Nachrichten',
+              },
+            },
+          },
+        },
+      },
+    ]);
+
+    expect(() => mergePluginTranslations(Array.from(registry.values()))).toThrow(
+      'duplicate_plugin_translation_key:de:news.navigation.title'
+    );
+  });
+
   it('merges nested translations and tolerates omitted optional plugin sections', () => {
     const registry = createPluginRegistry([
       pluginA,
@@ -253,7 +277,7 @@ describe('plugin registry', () => {
         routes: [{ id: 'news-override.override', path: '/plugins/news-override/override', component: (() => null) as never }],
         translations: {
           de: {
-            news: {
+            newsOverride: {
               navigation: {
                 subtitle: 'Redaktion',
               },
@@ -274,6 +298,10 @@ describe('plugin registry', () => {
         news: {
           navigation: {
             title: 'News',
+          },
+        },
+        newsOverride: {
+          navigation: {
             subtitle: 'Redaktion',
           },
         },

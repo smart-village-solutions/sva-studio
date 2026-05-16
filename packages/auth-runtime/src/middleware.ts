@@ -20,11 +20,20 @@ const logger = createSdkLogger({ component: 'iam-auth', level: 'info' });
 export type AuthenticatedRequestContext = {
   sessionId: string;
   sessionExpiresAt?: number;
+  freshReauthAt?: number;
+  isLocalDevelopmentAuth?: boolean;
   user: SessionUser;
 };
 
 type SessionResolution =
-  | { kind: 'authenticated'; sessionId: string; sessionExpiresAt?: number; user: SessionUser }
+  | {
+      kind: 'authenticated';
+      sessionId: string;
+      sessionExpiresAt?: number;
+      freshReauthAt?: number;
+      isLocalDevelopmentAuth?: boolean;
+      user: SessionUser;
+    }
   | { kind: 'response'; response: Response };
 
 const readSessionId = (request: Request) => {
@@ -55,6 +64,7 @@ const createAuthenticatedContext = async (request: Request): Promise<SessionReso
   if (isMockAuthEnabled() && hasActiveMockAuthSession(request)) {
     return {
       kind: 'authenticated',
+      isLocalDevelopmentAuth: true,
       sessionId: 'mock-auth-session',
       user: createMockSessionUser(),
     };
@@ -134,6 +144,7 @@ const createAuthenticatedContext = async (request: Request): Promise<SessionReso
 
   return {
     kind: 'authenticated',
+    freshReauthAt: sessionResolution.freshReauthAt,
     sessionId,
     sessionExpiresAt: sessionResolution.expiresAt,
     user: await resolveRuntimeSessionUser(request, sessionResolution.user),
@@ -270,6 +281,8 @@ export const withAuthenticatedUser = async (
     const ctx = {
       sessionId: resolution.sessionId,
       sessionExpiresAt: resolution.sessionExpiresAt,
+      freshReauthAt: resolution.freshReauthAt,
+      isLocalDevelopmentAuth: resolution.isLocalDevelopmentAuth,
       user: resolution.user,
     };
     logProfileDiagnosticsIfEnabled(request, ctx.user);

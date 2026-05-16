@@ -44,7 +44,7 @@ export type InstanceRegistryHttpDeps<TContext> = {
   readonly mapMutationError: (error: unknown) => Response;
   readonly ensurePlatformAccess: (request: Request, ctx: TContext) => Response | null;
   readonly validateCsrf: (request: Request, requestId?: string) => Response | null;
-  readonly requireFreshReauth: (request: Request) => Response | null;
+  readonly requireFreshReauth: (request: Request, ctx: TContext) => Response | null;
   readonly withRegistryService: <T>(work: (service: InstanceRegistryService) => Promise<T>) => Promise<T>;
   readonly onInstanceProvisioningRequested?: (event: {
     readonly instanceId: string;
@@ -66,7 +66,7 @@ export const requireMutationGuards = <TContext>(
   if (csrfError) {
     return csrfError;
   }
-  return deps.requireFreshReauth(request);
+  return deps.requireFreshReauth(request, ctx);
 };
 
 export const readInstanceIdOrError = <TContext>(

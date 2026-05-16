@@ -624,6 +624,21 @@ describe('loginHandler (full auth path)', () => {
     expect(response.headers.get('Location')).toContain('openid-connect/auth');
   });
 
+  it('forwards explicit fresh reauth requests into the login flow state', async () => {
+    const { loginHandler } = await import('./auth-route-handlers.js');
+    const { createLoginUrl } = await import('./auth-server/login.js');
+
+    await loginHandler(new Request('http://localhost/auth/login?returnTo=%2Fadmin%2Finstances&reauth=1'));
+
+    expect(createLoginUrl).toHaveBeenCalledWith(
+      expect.objectContaining({
+        returnTo: '/admin/instances',
+        reauth: true,
+        silent: false,
+      })
+    );
+  });
+
   it('returns a silent failure page when silent SSO is currently suppressed', async () => {
     const { loginHandler } = await import('./auth-route-handlers.js');
 
@@ -997,6 +1012,48 @@ describe('callbackHandler', () => {
         actorUserId: 'kc-user-1',
         workspaceId: 'platform',
         outcome: 'success',
+      })
+    );
+  });
+
+  it('preserves explicit fresh reauth intent when callback state is rebuilt from the cookie', async () => {
+    const { callbackHandler } = await import('./auth-route-handlers.js');
+    const { resolveAuthConfigForRequest } = await import('./config.js');
+    const { decodeLoginStateCookie } = await import('./login-state-cookie.js');
+    const { handleCallback } = await import('./auth-server/callback.js');
+
+    vi.mocked(resolveAuthConfigForRequest).mockResolvedValueOnce(authConfigBase as never);
+    vi.mocked(decodeLoginStateCookie).mockReturnValueOnce({
+      state: 'state-abc123def456',
+      codeVerifier: 'code-verifier',
+      nonce: 'nonce-xyz789',
+      createdAt: Date.now() - 60_000,
+      returnTo: '/profile',
+      silent: false,
+      freshReauthRequested: true,
+      kind: 'platform',
+    } as never);
+    mocks.readCookieFromRequest.mockImplementation((_request: Request, cookieName: string) =>
+      cookieName === 'sva_session' ? null : 'encoded-login-state'
+    );
+    vi.mocked(handleCallback).mockResolvedValueOnce({
+      sessionId: 'session-2',
+      user: { id: 'kc-user-1' },
+      expiresAt: 1_800_000_000_000,
+      loginState: null,
+      retryPerformed: false,
+    } as never);
+
+    const response = await callbackHandler(
+      new Request('http://localhost/auth/callback?code=abc&state=state-abc123def456')
+    );
+
+    expect(response.status).toBe(302);
+    expect(vi.mocked(handleCallback)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        loginState: expect.objectContaining({
+          freshReauthRequested: true,
+        }),
       })
     );
   });

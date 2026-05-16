@@ -20,6 +20,7 @@ type UntrustedLoginState = {
   createdAt: number;
   returnTo?: string;
   silent?: boolean;
+  freshReauthRequested?: boolean;
   kind: ScopeKind;
   instanceId?: string;
 };
@@ -35,7 +36,10 @@ const baseLoginStateSchema = z.object({
   createdAt: nonNegativeFiniteNumberSchema,
   returnTo: z.string().trim().min(1).optional(),
   silent: z.boolean().optional(),
+  freshReauthRequested: z.boolean().optional(),
 });
+
+const AUTH_TIME_SKEW_MS = 1_000;
 
 const untrustedLoginStateSchema = z.discriminatedUnion('kind', [
   baseLoginStateSchema.extend({ kind: z.literal('platform') }),
@@ -98,6 +102,32 @@ const assertLoginStateMatchesAuthConfig = (authConfig: AuthConfig, loginState: L
   }
 };
 
+const readFreshReauthAt = (input: {
+  claims: Record<string, unknown>;
+  loginState: LoginState;
+  issuedAt: number;
+}): number | undefined => {
+  if (input.loginState.silent === true || input.loginState.freshReauthRequested !== true) {
+    return undefined;
+  }
+
+  const authTimeClaim = input.claims.auth_time;
+  if (typeof authTimeClaim !== 'number' || !Number.isFinite(authTimeClaim) || authTimeClaim < 0) {
+    return undefined;
+  }
+
+  const authTimeMs = authTimeClaim * 1_000;
+  if (authTimeMs + AUTH_TIME_SKEW_MS < input.loginState.createdAt) {
+    return undefined;
+  }
+
+  if (authTimeMs - AUTH_TIME_SKEW_MS > input.issuedAt) {
+    return undefined;
+  }
+
+  return authTimeMs;
+};
+
 const persistSession = async (input: {
   accessToken?: string;
   refreshToken?: string;
@@ -105,6 +135,7 @@ const persistSession = async (input: {
   claims: Record<string, unknown>;
   clientId: string;
   authConfig: AuthConfig;
+  loginState: LoginState;
   expiresAt?: number;
 }) => {
   const sessionId = randomUUID();
@@ -141,6 +172,11 @@ const persistSession = async (input: {
     idToken: input.idToken,
     expiresAt,
     createdAt: issuedAt,
+    freshReauthAt: readFreshReauthAt({
+      claims: input.claims,
+      loginState: input.loginState,
+      issuedAt,
+    }),
     issuedAt,
     sessionVersion,
   });
@@ -239,6 +275,7 @@ export const handleCallback = async (params: {
     claims,
     clientId: authConfig.clientId,
     authConfig,
+    loginState: normalizedLoginState,
     expiresAt: resolveSessionExpiry({
       expiresInSeconds: tokenSet.expiresIn(),
       issuedAt: Date.now(),

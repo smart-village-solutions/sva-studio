@@ -10,15 +10,12 @@ import { WasteToolsImportSection } from './waste-management.tools.import-section
 import type { WasteManagementSearchParams } from './search-params.js';
 import type { WasteManagementUiAccess } from './waste-management.ui-access.js';
 
-export const WasteToolsPanel = ({
-  search: _search,
-  access,
-  overview,
-}: {
+export const WasteToolsPanel = (props: {
   readonly search: WasteManagementSearchParams;
   readonly access: WasteManagementUiAccess;
   readonly overview?: ReactNode;
 }) => {
+  const { access, overview } = props;
   const pt = usePluginTranslation('wasteManagement');
   const {
     importCatalog,

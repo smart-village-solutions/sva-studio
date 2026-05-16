@@ -1,4 +1,3 @@
-import type { WasteGlobalDateShiftRecord, WasteTourDateShiftRecord, WasteTourRecord } from '@sva/plugin-sdk';
 import { createWasteSchedulingActions } from './waste-management.scheduling.actions.js';
 import { useWasteSchedulingDataLoading } from './waste-management.scheduling.loaders.js';
 import { createWasteSchedulingSubmitHandlers } from './waste-management.scheduling.submissions.js';

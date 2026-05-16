@@ -1468,8 +1468,15 @@ describe('WasteManagementPage', () => {
     });
 
     const locationCheckboxes = screen.getAllByRole('checkbox');
-    fireEvent.click(locationCheckboxes[1]!);
-    fireEvent.click(locationCheckboxes[2]!);
+    const firstSelectableLocation = locationCheckboxes[1];
+    const secondSelectableLocation = locationCheckboxes[2];
+    expect(firstSelectableLocation).toBeDefined();
+    expect(secondSelectableLocation).toBeDefined();
+    if (!firstSelectableLocation || !secondSelectableLocation) {
+      throw new Error('expected selectable location checkboxes');
+    }
+    fireEvent.click(firstSelectableLocation);
+    fireEvent.click(secondSelectableLocation);
     fireEvent.click(
       screen.getByRole('button', { name: 'wasteManagement.masterData.collectionLocations.bulk.actions.openAssign' })
     );

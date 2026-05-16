@@ -4,7 +4,7 @@ import { listHostMediaAssets, listHostMediaReferencesByTarget, replaceHostMediaR
 
 describe('media picker client', () => {
   it('lists host media assets and references without leaking storage primitives into the request contract', async () => {
-    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
       if (url.includes('/api/v1/iam/media?')) {
         return new Response(JSON.stringify({ data: [{ id: 'asset-1', metadata: { title: 'Titel' } }] }), { status: 200 });

@@ -1237,7 +1237,9 @@ describe('waste-management api client', () => {
         headers: expect.any(Headers),
       })
     );
-    const [, init] = fetchMock.mock.calls[0]!;
+    const firstCall = fetchMock.mock.calls[0];
+    expect(firstCall).toBeDefined();
+    const [, init] = firstCall ?? [];
     const headers = init?.headers as Headers;
     expect(headers.get('Content-Type')).toBe('application/json');
     expect(headers.get('X-Requested-With')).toBe('XMLHttpRequest');
@@ -1343,7 +1345,9 @@ describe('waste-management api client', () => {
       })
     );
 
-    const [, init] = fetchMock.mock.calls[0]!;
+    const firstCall = fetchMock.mock.calls[0];
+    expect(firstCall).toBeDefined();
+    const [, init] = firstCall ?? [];
     const headers = init?.headers as Headers;
     expect(headers.get('Idempotency-Key')).toBe('idem-1');
   });

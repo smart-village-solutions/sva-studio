@@ -1,5 +1,3 @@
-import type { WasteManagementHistoryOverview } from '@sva/plugin-sdk';
-
 import { getWasteManagementImportCatalog } from './waste-management.api.js';
 import {
   createWasteToolsControllerViewModel,

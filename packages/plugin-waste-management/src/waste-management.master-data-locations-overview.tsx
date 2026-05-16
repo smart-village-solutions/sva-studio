@@ -1,18 +1,7 @@
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { StudioActionMenu } from '@sva/studio-ui-react';
 
-export const WasteMasterDataLocationsOverview = ({
-  collectionLocationCount,
-  regionCount,
-  cityCount,
-  streetCount,
-  houseNumberCount,
-  onOpenCreateRegion,
-  onOpenCreateCity,
-  onOpenCreateStreet,
-  onOpenCreateHouseNumber,
-  onOpenCreateLocation,
-}: {
+export const WasteMasterDataLocationsOverview = (props: {
   readonly collectionLocationCount: number;
   readonly regionCount: number;
   readonly cityCount: number;
@@ -24,6 +13,8 @@ export const WasteMasterDataLocationsOverview = ({
   readonly onOpenCreateHouseNumber: () => void;
   readonly onOpenCreateLocation: () => void;
 }) => {
+  const { onOpenCreateRegion, onOpenCreateCity, onOpenCreateStreet, onOpenCreateHouseNumber, onOpenCreateLocation } =
+    props;
   const pt = usePluginTranslation('wasteManagement');
 
   return (

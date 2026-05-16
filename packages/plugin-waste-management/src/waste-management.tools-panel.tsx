@@ -7,18 +7,13 @@ import { useWasteToolsController } from './waste-management.tools.controller.js'
 import { WasteToolsActionsSection } from './waste-management.tools.actions-section.js';
 import { WasteToolsHistory } from './waste-management.tools.history.js';
 import { WasteToolsImportSection } from './waste-management.tools.import-section.js';
-import type { WasteManagementSearchParams } from './search-params.js';
 import type { WasteManagementUiAccess } from './waste-management.ui-access.js';
 
-export const WasteToolsPanel = ({
-  search: _search,
-  access,
-  overview,
-}: {
-  readonly search: WasteManagementSearchParams;
+export const WasteToolsPanel = (props: {
   readonly access: WasteManagementUiAccess;
   readonly overview?: ReactNode;
 }) => {
+  const { access, overview } = props;
   const pt = usePluginTranslation('wasteManagement');
   const {
     importCatalog,

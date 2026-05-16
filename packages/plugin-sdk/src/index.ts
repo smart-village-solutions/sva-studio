@@ -175,6 +175,8 @@ export {
   definePluginManifest,
   defineMediaPickerDefinition,
   compactOptionalString,
+  formatDateTimeInEditorTimeZone,
+  formatTechnicalDateTimeInEditorTimeZone,
   findHostMediaReferenceAssetId,
   fromDatetimeLocalValue,
   listHostMediaAssets,

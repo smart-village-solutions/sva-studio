@@ -25,6 +25,7 @@ interface AffectedUnitGateOptions {
 }
 
 const APP_PROJECT = 'sva-studio-react';
+const APP_VITEST_CONFIG = 'apps/sva-studio-react/vitest.config.ts';
 const require = createRequire(import.meta.url);
 
 const APP_UI_PATTERNS = [/^apps\/sva-studio-react\/src\/(?:components|providers|i18n)\//u];
@@ -119,6 +120,18 @@ const classifyAppUnitSlice = (filePath: string): AppUnitSlice | null => {
     return 'hooks';
   }
   return null;
+};
+
+const APP_SLICE_CONFIG_FILES: Record<AppUnitSlice, string> = {
+  hooks: 'apps/sva-studio-react/vitest.hooks.config.ts',
+  routes: 'apps/sva-studio-react/vitest.routes.config.ts',
+  server: 'apps/sva-studio-react/vitest.server.config.ts',
+  ui: 'apps/sva-studio-react/vitest.ui.config.ts',
+};
+
+export const buildAppUnitCommand = (slice?: AppUnitSlice): string => {
+  const configFile = slice ? APP_SLICE_CONFIG_FILES[slice] : APP_VITEST_CONFIG;
+  return `pnpm exec vitest run --config ${configFile} --reporter=verbose`;
 };
 
 export const planAppUnitExecution = (
@@ -233,12 +246,12 @@ export const runAffectedUnitGate = (
   }
 
   if (appPlan.mode === 'aggregate') {
-    recordDuration('unit:app', runCommand(`pnpm nx run ${APP_PROJECT}:test:unit`));
+    recordDuration('unit:app', runCommand(buildAppUnitCommand()));
     return durationEntries;
   }
 
   for (const slice of appPlan.slices) {
-    recordDuration(`unit:app:${slice}`, runCommand(`pnpm nx run ${APP_PROJECT}:test:unit:${slice}`));
+    recordDuration(`unit:app:${slice}`, runCommand(buildAppUnitCommand(slice)));
   }
 
   return durationEntries;

@@ -82,6 +82,8 @@ export { listHostMediaAssets, listHostMediaReferencesByTarget, replaceHostMediaR
 export type { HostMediaFieldOption } from './content-ui-utils.js';
 export {
   compactOptionalString,
+  formatDateTimeInEditorTimeZone,
+  formatTechnicalDateTimeInEditorTimeZone,
   findHostMediaReferenceAssetId,
   fromDatetimeLocalValue,
   toDatetimeLocalValue,

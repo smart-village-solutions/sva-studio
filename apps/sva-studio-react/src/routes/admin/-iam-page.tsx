@@ -29,6 +29,7 @@ import {
   isIamCockpitEnabled,
   type IamCockpitTabKey,
 } from '../../lib/iam-viewer-access';
+import { formatEditorDateTime } from '../../lib/editor-date-time';
 import { t } from '../../i18n';
 import { useAuth } from '../../providers/auth-provider';
 import {
@@ -76,8 +77,7 @@ const formatDateTime = (value?: string) => {
   if (!value) {
     return '—';
   }
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+  return formatEditorDateTime(value) ?? value;
 };
 
 const formatObjectEntries = (value: Readonly<Record<string, unknown>> | undefined) => {

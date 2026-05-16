@@ -213,6 +213,7 @@ describe('NewsListPage', () => {
         'news.validation.contentBlocks': 'Mindestens ein Inhaltsblock benötigt Inhalt und darf maximal 50.000 Zeichen haben.',
         'news.validation.sourceUrl': 'Die Quell-URL muss mit https:// beginnen.',
         'news.validation.publishedAt': 'Das Veröffentlichungsdatum ist erforderlich.',
+        'news.validation.publicationDate': 'Das Publikationsdatum muss gültig sein.',
         'news.fields.teaserImage': 'Teaserbild',
         'news.fields.headerImage': 'Headerbild',
         'news.fields.mediaPlaceholder': 'Medium auswählen',
@@ -396,6 +397,25 @@ describe('NewsListPage', () => {
     });
 
     expect(screen.getByLabelText('Veröffentlichungsdatum').getAttribute('aria-invalid')).toBe('true');
+    expect(createNews).not.toHaveBeenCalled();
+  });
+
+  it('keeps invalid DST-gap publication dates visible and blocks submit', async () => {
+    render(<NewsCreatePage />);
+
+    fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Neue News' } });
+    fireEvent.change(screen.getByLabelText('Einleitung'), { target: { value: 'Kurztext' } });
+    fireEvent.change(screen.getByLabelText('Inhalt'), { target: { value: '<p>Body</p>' } });
+    fireEvent.change(screen.getByLabelText('Veröffentlichungsdatum'), { target: { value: '2026-04-14T09:30' } });
+    fireEvent.change(screen.getByLabelText('Publikationsdatum'), { target: { value: '2026-03-29T02:30' } });
+    fireEvent.click(screen.getByRole('button', { name: 'News anlegen' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Das Publikationsdatum muss gültig sein.')).toBeTruthy();
+    });
+
+    expect(screen.getByLabelText('Publikationsdatum').getAttribute('value')).toBe('2026-03-29T02:30');
+    expect(screen.getByLabelText('Publikationsdatum').getAttribute('aria-invalid')).toBe('true');
     expect(createNews).not.toHaveBeenCalled();
   });
 
@@ -924,9 +944,7 @@ describe('NewsListPage', () => {
     render(<NewsEditPage />);
 
     await waitFor(() => {
-      expect(screen.getByLabelText('Veröffentlichungsdatum').getAttribute('value')).toMatch(
-        /^2026-04-14T\d{2}:30$/
-      );
+      expect(screen.getByLabelText('Veröffentlichungsdatum').getAttribute('value')).toBe('2026-04-14T11:30');
     });
   });
 

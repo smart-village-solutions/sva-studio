@@ -7,6 +7,7 @@ import { Card } from '../../../components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../components/ui/tabs';
 import { useInstances } from '../../../hooks/use-instances';
 import { t } from '../../../i18n';
+import { formatEditorDateTime } from '../../../lib/editor-date-time';
 import { IamRuntimeDiagnosticDetails } from '../-iam-runtime-diagnostic-details';
 import { InstanceDetailConfigurationSection } from './-instance-detail-configuration-section';
 import {
@@ -52,9 +53,7 @@ const formatDateTime = (value?: string) => {
   if (!value) {
     return '—';
   }
-
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+  return formatEditorDateTime(value) ?? value;
 };
 
 const readActualLatestKeycloakRun = (instance: ReturnType<typeof useInstances>['selectedInstance']) =>

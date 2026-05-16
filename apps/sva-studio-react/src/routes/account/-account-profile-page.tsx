@@ -13,6 +13,7 @@ import { Label } from '../../components/ui/label';
 import { Select } from '../../components/ui/select';
 import { t } from '../../i18n';
 import { createLoginHref, resolveCurrentReturnTo } from '../../lib/auth-navigation';
+import { formatEditorDateTime } from '../../lib/editor-date-time';
 import { notifyIamUsersUpdated } from '../../lib/iam-user-events';
 import { useAuth } from '../../providers/auth-provider';
 
@@ -72,9 +73,7 @@ const formatDateTime = (value?: string) => {
   if (!value) {
     return '—';
   }
-
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+  return formatEditorDateTime(value) ?? value;
 };
 
 const validateForm = (values: ProfileFormValues): ProfileErrors => {

@@ -90,7 +90,13 @@ describe('waste-management.master-data-entity-dialogs components', () => {
       target: { value: 'Residual waste' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'masterData.fractions.actions.cancel' }));
-    fireEvent.submit(screen.getByRole('button', { name: 'masterData.fractions.actions.create' }).closest('form')!);
+    const submitButton = screen.getByRole('button', { name: 'masterData.fractions.actions.create' });
+    const form = submitButton.closest('form');
+    expect(form).toBeInstanceOf(HTMLFormElement);
+    if (!form) {
+      throw new Error('expected create fraction form');
+    }
+    fireEvent.submit(form);
 
     expect(onChange).toHaveBeenCalledWith({
       translations: { de: 'Rest', en: 'Residual waste' },

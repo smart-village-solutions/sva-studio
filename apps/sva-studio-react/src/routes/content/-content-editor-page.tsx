@@ -13,6 +13,7 @@ import { Textarea } from '../../components/ui/textarea';
 import { useContentAccess } from '../../hooks/use-content-access';
 import { useContentDetail, useCreateContent } from '../../hooks/use-contents';
 import { t } from '../../i18n';
+import { formatEditorDateTime, parseOptionalEditorDateTime, toDatetimeLocalValue } from '../../lib/editor-date-time';
 import type { CreateContentPayload, IamHttpError, UpdateContentPayload } from '../../lib/iam-api';
 
 type ContentEditorPageProps = {
@@ -37,27 +38,7 @@ const emptyFormState = (): ContentFormState => ({
 });
 
 const toDateTimeInputValue = (value?: string): string => {
-  if (!value) {
-    return '';
-  }
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return '';
-  }
-
-  const pad = (entry: number) => String(entry).padStart(2, '0');
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-};
-
-const toIsoDateTime = (value: string): string | undefined => {
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return undefined;
-  }
-
-  const date = new Date(trimmed);
-  return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
+  return toDatetimeLocalValue(value);
 };
 
 const formatDateTime = (value?: string): string => {
@@ -65,8 +46,7 @@ const formatDateTime = (value?: string): string => {
     return t('content.table.notPublished');
   }
 
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+  return formatEditorDateTime(value) ?? value;
 };
 
 const contentErrorMessage = (error: IamHttpError | null): string => {
@@ -306,16 +286,22 @@ export const ContentEditorPage = ({ mode, contentId }: ContentEditorPageProps) =
       return;
     }
 
-    const publishedAt = toIsoDateTime(formState.publishedAt);
-    if (formState.status === 'published' && !publishedAt) {
+    const publishedAt = parseOptionalEditorDateTime(formState.publishedAt, detailApi.content?.publishedAt);
+    if (publishedAt.kind === 'invalid') {
+      setPayloadError(t('content.validation.publishedAtInvalid'));
+      return;
+    }
+    if (formState.status === 'published' && publishedAt.kind === 'empty') {
       setPayloadError(t('content.validation.publishedAtRequired'));
       return;
     }
 
+    const publishedAtValue = publishedAt.kind === 'value' ? publishedAt.value : undefined;
+
     if (mode === 'create') {
-      await submitCreate(parsedPayload, publishedAt);
+      await submitCreate(parsedPayload, publishedAtValue);
     } else {
-      await submitUpdate(parsedPayload, publishedAt);
+      await submitUpdate(parsedPayload, publishedAtValue);
     }
   };
 

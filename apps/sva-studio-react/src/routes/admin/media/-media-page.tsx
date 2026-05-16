@@ -13,6 +13,7 @@ import { Select } from '../../../components/ui/select';
 import { Textarea } from '../../../components/ui/textarea';
 import { useCreateMediaUpload, useMediaDetail, useMediaLibrary } from '../../../hooks/use-media';
 import { t } from '../../../i18n';
+import { formatEditorDateTime } from '../../../lib/editor-date-time';
 import type { IamHttpError, IamMediaAsset, MediaProcessingStatus, MediaUploadStatus, MediaVisibility } from '../../../lib/iam-api';
 
 type MediaLibraryFilter = 'all' | 'public' | 'protected';
@@ -63,9 +64,7 @@ const formatDateTime = (value?: string): string => {
   if (!value) {
     return t('media.values.notAvailable');
   }
-
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+  return formatEditorDateTime(value) ?? value;
 };
 
 const formatByteSize = (value: number): string => {

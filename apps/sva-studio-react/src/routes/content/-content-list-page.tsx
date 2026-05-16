@@ -13,6 +13,7 @@ import { Select } from '../../components/ui/select';
 import { useContentAccess } from '../../hooks/use-content-access';
 import { useContents } from '../../hooks/use-contents';
 import { t } from '../../i18n';
+import { formatEditorDateTime } from '../../lib/editor-date-time';
 import type { IamHttpError } from '../../lib/iam-api';
 import { appAdminResources } from '../../routing/admin-resources';
 
@@ -61,9 +62,7 @@ const formatDateTime = (value?: string): string => {
   if (!value) {
     return t('content.table.notPublished');
   }
-
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+  return formatEditorDateTime(value) ?? value;
 };
 
 const summarizePayload = (value: unknown): string => {

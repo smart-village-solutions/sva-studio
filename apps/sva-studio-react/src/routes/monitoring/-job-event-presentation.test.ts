@@ -95,6 +95,8 @@ describe('monitoring job event presentation', () => {
     expect(monitoringJobStaleStateLabelKeyByValue.terminal).toBe('monitoring.jobs.runtime.terminal');
     expect(formatMonitoringJobDateTime(undefined)).toBe('Nicht verfügbar');
     expect(formatMonitoringJobDateTime('invalid-date')).toBe('invalid-date');
+    expect(formatMonitoringJobDateTime('2026-01-15T10:15:00.000Z')).toBe('15.01.2026, 11:15:00,000');
+    expect(formatMonitoringJobDateTime('2026-07-15T10:15:00.123Z')).toBe('15.07.2026, 12:15:00,123');
     expect(
       formatMonitoringJobProgressSummary({
         completedSteps: 2,

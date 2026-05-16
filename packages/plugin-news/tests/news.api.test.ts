@@ -27,11 +27,6 @@ const sampleResponse = {
   publishedAt: sampleInput.publishedAt,
 };
 
-const defaultListQuery = {
-  page: 1,
-  pageSize: 25,
-} as const;
-
 describe('news api', () => {
   beforeEach(() => {
     vi.stubGlobal('fetch', vi.fn());

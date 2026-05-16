@@ -44,6 +44,13 @@ vi.mock('../src/waste-management.api.js', async (importOriginal) => {
 });
 
 vi.mock('@sva/plugin-sdk', () => ({
+  formatTechnicalDateTimeInEditorTimeZone: (value?: string) => {
+    if (!value) {
+      return value;
+    }
+
+    return value === '2026-05-10T10:00:00.000Z' ? '10.05.2026, 12:00:00,000' : value;
+  },
   usePluginTranslation: () => (key: string) => key,
   wasteManagementOperationsContract: {
     resetConfirmationToken: 'RESET',
@@ -98,6 +105,7 @@ describe('waste management helper modules', () => {
     expect(resolveApiErrorCode(new Error('boom'))).toBeNull();
     expect(formatUpdatedAt(undefined)).toBe('—');
     expect(formatUpdatedAt('invalid-date')).toBe('invalid-date');
+    expect(formatUpdatedAt('2026-05-10T10:00:00.000Z')).toBe('10.05.2026, 12:00:00,000');
     expect(toTechnicalStatusTone('ok')).toBe('success');
     expect(toTechnicalStatusTone('error')).toBe('error');
     expect(toTechnicalStatusTone('unknown')).toBe('warning');

@@ -95,6 +95,11 @@ function loadAffectedUnitGateScript(): string {
   return fs.readFileSync(path.join(rootDir, 'scripts/ci/affected-unit-gate.ts'), 'utf8');
 }
 
+function loadScript(relativePath: string): string {
+  const rootDir = resolveRootDir();
+  return fs.readFileSync(path.join(rootDir, relativePath), 'utf8');
+}
+
 function loadNxJson(): { namedInputs?: Record<string, NamedInputValue[]> } {
   const rootDir = resolveRootDir();
   return JSON.parse(fs.readFileSync(path.join(rootDir, 'nx.json'), 'utf8')) as {
@@ -306,10 +311,14 @@ describe('workspace package scripts', () => {
 
   it('keeps the affected unit gate app-slice-aware', () => {
     const affectedUnitGate = loadAffectedUnitGateScript();
+    const affectedCoverageGate = loadScript('scripts/ci/affected-coverage-gate.ts');
     const runPrGateScript = loadRunPrGateScript();
 
     expect(affectedUnitGate).toContain("export type AppUnitSlice = 'hooks' | 'routes' | 'server' | 'ui'");
-    expect(affectedUnitGate).toContain('pnpm nx run ${APP_PROJECT}:test:unit:${slice}');
+    expect(affectedUnitGate).toContain("routes: 'apps/sva-studio-react/vitest.routes.config.ts'");
+    expect(affectedUnitGate).toContain('return `pnpm exec vitest run --config ${configFile} --reporter=verbose`;');
+    expect(affectedCoverageGate).toContain("const APP_VITEST_CONFIG = 'apps/sva-studio-react/vitest.config.ts';");
+    expect(affectedCoverageGate).toContain('`pnpm exec vitest run --config ${APP_VITEST_CONFIG} --coverage --reporter=verbose`');
     expect(runPrGateScript).toContain('formatDurationSummary');
     expect(runPrGateScript).toContain('for (const entry of runAffectedUnitGate({ base, head }))');
   });

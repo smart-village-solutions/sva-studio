@@ -16,6 +16,7 @@ import { useGroups } from '../../../hooks/use-groups';
 import { useRoles } from '../../../hooks/use-roles';
 import { useUser } from '../../../hooks/use-user';
 import { t } from '../../../i18n';
+import { formatEditorDateTime } from '../../../lib/editor-date-time';
 import { getUserTimeline } from '../../../lib/iam-api';
 import { userErrorMessage } from './-user-error-message';
 
@@ -127,8 +128,7 @@ const formatDateTime = (value?: string) => {
   if (!value) {
     return '—';
   }
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+  return formatEditorDateTime(value) ?? value;
 };
 
 const formatRoleValidity = (input: { validFrom?: string; validTo?: string }) => {

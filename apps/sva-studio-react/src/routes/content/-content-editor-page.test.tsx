@@ -214,6 +214,61 @@ describe('ContentEditorPage', () => {
     expect(screen.getByText('Die Inhaltsdaten konnten wegen eines Datenbankproblems nicht verarbeitet werden.')).toBeTruthy();
   });
 
+  it('blocks saving when a non-empty publication date is invalid in Europe/Berlin', async () => {
+    const updateContent = vi.fn().mockResolvedValue(true);
+    useCreateContentMock.mockReturnValue({
+      mutationError: null,
+      clearMutationError: vi.fn(),
+      createContent: vi.fn(),
+    });
+    useContentDetailMock.mockReturnValue({
+      content: {
+        id: 'content-4',
+        contentType: 'generic',
+        title: 'Mit Entwurf',
+        publishedAt: undefined,
+        createdAt: '2026-03-20T10:00:00.000Z',
+        updatedAt: '2026-03-21T11:00:00.000Z',
+        author: 'Editor',
+        payload: { hero: 'Test' },
+        status: 'draft',
+        access: {
+          state: 'editable',
+          canRead: true,
+          canCreate: true,
+          canUpdate: true,
+          organizationIds: [],
+          sourceKinds: [],
+        },
+        history: [],
+      },
+      history: [],
+      isLoading: false,
+      error: null,
+      mutationError: null,
+      refetch: vi.fn(),
+      clearMutationError: vi.fn(),
+      updateContent,
+    });
+
+    render(<ContentEditorPage mode="edit" contentId="content-4" />);
+
+    fireEvent.change(screen.getByLabelText('Veröffentlichungsdatum'), {
+      target: { value: '2026-03-29T02:30' },
+    });
+    const submitForm = screen.getByRole('button', { name: 'Änderungen speichern' }).closest('form');
+    expect(submitForm).toBeTruthy();
+    if (!submitForm) {
+      throw new Error('Submit form missing');
+    }
+    fireEvent.submit(submitForm);
+
+    await waitFor(() => {
+      expect(updateContent).not.toHaveBeenCalled();
+    });
+    expect(screen.getByText('Bitte geben Sie ein gültiges Veröffentlichungsdatum in der Fachzeitzone Europe/Berlin ein.')).toBeTruthy();
+  });
+
   it('renders edit errors and hides the form when no content is available', () => {
     useCreateContentMock.mockReturnValue({
       mutationError: null,

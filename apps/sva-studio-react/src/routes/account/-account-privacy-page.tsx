@@ -12,13 +12,13 @@ import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { t } from '../../i18n';
+import { formatEditorDateTime } from '../../lib/editor-date-time';
 
 const formatDateTime = (value?: string) => {
   if (!value) {
     return '—';
   }
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+  return formatEditorDateTime(value) ?? value;
 };
 
 const mapDsrStatusKey = (item: Pick<IamDsrCaseListItem, 'canonicalStatus'>) => {

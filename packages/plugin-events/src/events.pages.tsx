@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import {
+  formatDateTimeInEditorTimeZone,
   findHostMediaReferenceAssetId,
   fromDatetimeLocalValue,
   listHostMediaAssets,
@@ -227,7 +228,7 @@ export function EventsListPage() {
                 id: 'dateStart',
                 header: pt('fields.dateStart'),
                 cell: (item: EventContentItem) =>
-                  item.dates?.[0]?.dateStart ? new Date(item.dates[0].dateStart).toLocaleString() : '—',
+                  item.dates?.[0]?.dateStart ? formatDateTimeInEditorTimeZone(item.dates[0].dateStart) : '—',
               },
             ]}
             rowActions={(item) => (
@@ -290,6 +291,18 @@ export function EventsListPage() {
   );
 }
 
+const parseDatetimeLocalInput = (value: string, referenceValue?: string) => {
+  if (value.trim().length === 0) {
+    return { isInvalid: false, normalizedValue: '' };
+  }
+
+  const normalizedValue = fromDatetimeLocalValue(value, referenceValue);
+  return {
+    isInvalid: normalizedValue.length === 0,
+    normalizedValue,
+  };
+};
+
 function EventsEditor({ mode }: { readonly mode: 'create' | 'edit' }) {
   const pt = usePluginTranslation('events');
   const navigate = useNavigate();
@@ -302,6 +315,9 @@ function EventsEditor({ mode }: { readonly mode: 'create' | 'edit' }) {
   const [existingMediaReferenceCount, setExistingMediaReferenceCount] = React.useState(0);
   const [loading, setLoading] = React.useState(mode === 'edit');
   const [status, setStatus] = React.useState<StatusMessage | null>(null);
+  const [dateStartInput, setDateStartInput] = React.useState('');
+  const [dateEndInput, setDateEndInput] = React.useState('');
+  const [invalidDateInputs, setInvalidDateInputs] = React.useState({ dateStart: false, dateEnd: false });
 
   React.useEffect(() => {
     void listPoiForEventSelection().then(setPois).catch(() => setPois([]));
@@ -318,7 +334,11 @@ function EventsEditor({ mode }: { readonly mode: 'create' | 'edit' }) {
     getEvent(contentId)
       .then((item) => {
         if (active) {
-          setForm(itemToForm(item));
+          const nextForm = itemToForm(item);
+          setForm(nextForm);
+          setDateStartInput(toDatetimeLocalValue(nextForm.dates?.[0]?.dateStart));
+          setDateEndInput(toDatetimeLocalValue(nextForm.dates?.[0]?.dateEnd));
+          setInvalidDateInputs({ dateStart: false, dateEnd: false });
           void listHostMediaReferencesByTarget({
             fetch: globalThis.fetch.bind(globalThis),
             targetType: 'events',
@@ -352,6 +372,7 @@ function EventsEditor({ mode }: { readonly mode: 'create' | 'edit' }) {
   }, [contentId, mode, pt]);
 
   const errors = validateEventForm(form);
+  const hasDateErrors = errors.includes('dates') || invalidDateInputs.dateStart || invalidDateInputs.dateEnd;
   const setField = <TKey extends keyof EventFormInput>(key: TKey, value: EventFormInput[TKey]) =>
     setForm((current) => ({ ...current, [key]: value }));
 
@@ -362,7 +383,10 @@ function EventsEditor({ mode }: { readonly mode: 'create' | 'edit' }) {
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const compacted = compactForm(form);
-    const validationErrors = validateEventForm(compacted);
+    const validationErrors = [
+      ...validateEventForm(compacted),
+      ...(invalidDateInputs.dateStart || invalidDateInputs.dateEnd ? ['dates'] : []),
+    ];
     if (validationErrors.length > 0) {
       setStatus({ kind: 'error', text: pt('messages.validationError') });
       return;
@@ -445,11 +469,35 @@ function EventsEditor({ mode }: { readonly mode: 'create' | 'edit' }) {
           clearLabel={pt('actions.clearMedia')}
         />
         <StudioFieldGroup columns={2}>
-          <StudioField id="event-date-start" label={pt('fields.dateStart')} error={errors.includes('dates') ? pt('validation.dates') : undefined}>
-            <Input id="event-date-start" type="datetime-local" value={toDatetimeLocalValue(firstDate.dateStart)} onChange={(event) => setField('dates', [{ ...firstDate, dateStart: fromDatetimeLocalValue(event.target.value) }])} />
+          <StudioField id="event-date-start" label={pt('fields.dateStart')} error={hasDateErrors ? pt('validation.dates') : undefined}>
+            <Input
+              id="event-date-start"
+              type="datetime-local"
+              aria-invalid={hasDateErrors || undefined}
+              value={dateStartInput}
+              onChange={(event) => {
+                const nextValue = event.target.value;
+                const { isInvalid, normalizedValue } = parseDatetimeLocalInput(nextValue, firstDate.dateStart);
+                setDateStartInput(nextValue);
+                setInvalidDateInputs((current) => ({ ...current, dateStart: isInvalid }));
+                setField('dates', [{ ...firstDate, dateStart: normalizedValue }]);
+              }}
+            />
           </StudioField>
           <StudioField id="event-date-end" label={pt('fields.dateEnd')}>
-            <Input id="event-date-end" type="datetime-local" value={toDatetimeLocalValue(firstDate.dateEnd)} onChange={(event) => setField('dates', [{ ...firstDate, dateEnd: fromDatetimeLocalValue(event.target.value) }])} />
+            <Input
+              id="event-date-end"
+              type="datetime-local"
+              aria-invalid={hasDateErrors || undefined}
+              value={dateEndInput}
+              onChange={(event) => {
+                const nextValue = event.target.value;
+                const { isInvalid, normalizedValue } = parseDatetimeLocalInput(nextValue, firstDate.dateEnd);
+                setDateEndInput(nextValue);
+                setInvalidDateInputs((current) => ({ ...current, dateEnd: isInvalid }));
+                setField('dates', [{ ...firstDate, dateEnd: normalizedValue }]);
+              }}
+            />
           </StudioField>
         </StudioFieldGroup>
         <StudioFieldGroup columns={2}>

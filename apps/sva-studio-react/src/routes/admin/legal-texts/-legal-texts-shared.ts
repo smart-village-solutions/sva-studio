@@ -1,4 +1,5 @@
 import { t } from '../../../i18n';
+import { formatEditorDateTime } from '../../../lib/editor-date-time';
 import type { IamHttpError } from '../../../lib/iam-api';
 
 export type LegalTextStatus = 'draft' | 'valid' | 'archived';
@@ -34,7 +35,5 @@ export const formatLegalTextDateTime = (value?: string): string => {
   if (!value) {
     return t('admin.legalTexts.table.publishedUnset');
   }
-
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+  return formatEditorDateTime(value) ?? value;
 };

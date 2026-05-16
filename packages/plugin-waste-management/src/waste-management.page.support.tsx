@@ -4,7 +4,11 @@ import type {
   WasteManagementImportSourceFormat,
   WasteManagementSettingsRecord,
 } from '@sva/plugin-sdk';
-import { usePluginTranslation, wasteManagementOperationsContract } from '@sva/plugin-sdk';
+import {
+  formatTechnicalDateTimeInEditorTimeZone,
+  usePluginTranslation,
+  wasteManagementOperationsContract,
+} from '@sva/plugin-sdk';
 import {
   Alert,
   AlertDescription,
@@ -37,8 +41,7 @@ export const formatUpdatedAt = (value?: string) => {
   if (!value) {
     return '—';
   }
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleString();
+  return formatTechnicalDateTimeInEditorTimeZone(value) ?? value;
 };
 
 export const toTechnicalStatusTone = (

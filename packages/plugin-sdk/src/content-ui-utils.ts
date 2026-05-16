@@ -5,37 +5,179 @@ export type HostMediaFieldOption = Readonly<{
   label: string;
 }>;
 
+const editorTimeZone = 'Europe/Berlin';
+const defaultEditorLocale = 'de-DE';
+type DateTimeFormatOptionsWithFractionalSeconds = Intl.DateTimeFormatOptions & {
+  fractionalSecondDigits?: 1 | 2 | 3;
+};
+
+const editorDateTimePartsFormatter = new Intl.DateTimeFormat('en-CA', {
+  timeZone: editorTimeZone,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+});
+
+const createDateTimeFormatter = (
+  locale: string,
+  options: Omit<DateTimeFormatOptionsWithFractionalSeconds, 'timeZone'>
+) =>
+  new Intl.DateTimeFormat(locale, {
+    timeZone: editorTimeZone,
+    ...options,
+  });
+
+const datetimeLocalPattern = /^(?<year>\d{4})-(?<month>\d{2})-(?<day>\d{2})T(?<hour>\d{2}):(?<minute>\d{2})$/;
+
+const parseDate = (value?: string): Date | null => {
+  if (!value) {
+    return null;
+  }
+
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const formatEditorDateTimeParts = (date: Date) => {
+  const parts = editorDateTimePartsFormatter.formatToParts(date);
+  const readPart = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value ?? '';
+
+  return {
+    year: readPart('year'),
+    month: readPart('month'),
+    day: readPart('day'),
+    hour: readPart('hour'),
+    minute: readPart('minute'),
+  };
+};
+
 export const compactOptionalString = (value?: string): string | undefined => {
   const trimmed = value?.trim();
   return trimmed && trimmed.length > 0 ? trimmed : undefined;
 };
 
-export const toDatetimeLocalValue = (value?: string): string => {
-  if (!value) {
-    return '';
+const inferEditorLocaleFromEnvironment = (): string | undefined => {
+  if (typeof globalThis.document === 'undefined') {
+    return undefined;
   }
 
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return '';
+  const documentLocale = compactOptionalString(globalThis.document.documentElement.lang);
+  if (!documentLocale) {
+    return undefined;
   }
 
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  const hours = String(date.getHours()).padStart(2, '0');
-  const minutes = String(date.getMinutes()).padStart(2, '0');
+  if (documentLocale === 'en') {
+    return 'en-GB';
+  }
 
-  return `${year}-${month}-${day}T${hours}:${minutes}`;
+  if (documentLocale === 'de') {
+    return 'de-DE';
+  }
+
+  return documentLocale;
 };
 
-export const fromDatetimeLocalValue = (value: string): string => {
+const resolveEditorLocale = (locale?: string): string => {
+  const candidate = compactOptionalString(locale) ?? inferEditorLocaleFromEnvironment() ?? defaultEditorLocale;
+
+  try {
+    return Intl.DateTimeFormat.supportedLocalesOf(candidate)[0] ?? defaultEditorLocale;
+  } catch {
+    return defaultEditorLocale;
+  }
+};
+
+export const formatDateTimeInEditorTimeZone = (value?: string, locale?: string): string | undefined => {
+  const date = parseDate(value);
+  return date
+    ? createDateTimeFormatter(resolveEditorLocale(locale), {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hourCycle: 'h23',
+      }).format(date)
+    : value;
+};
+
+export const formatTechnicalDateTimeInEditorTimeZone = (value?: string, locale?: string): string | undefined => {
+  const date = parseDate(value);
+  return date
+    ? createDateTimeFormatter(resolveEditorLocale(locale), {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        fractionalSecondDigits: 3,
+        hourCycle: 'h23',
+      }).format(date)
+    : value;
+};
+
+export const toDatetimeLocalValue = (value?: string): string => {
+  const date = parseDate(value);
+  if (!date) {
+    return '';
+  }
+
+  const parts = formatEditorDateTimeParts(date);
+  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
+};
+
+export const fromDatetimeLocalValue = (value: string, referenceValue?: string): string => {
   if (value.length === 0) {
     return '';
   }
 
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? '' : date.toISOString();
+  const match = datetimeLocalPattern.exec(value);
+  if (!match?.groups) {
+    return '';
+  }
+
+  const year = Number(match.groups.year);
+  const month = Number(match.groups.month);
+  const day = Number(match.groups.day);
+  const hour = Number(match.groups.hour);
+  const minute = Number(match.groups.minute);
+
+  if (
+    [year, month, day, hour, minute].some((entry) => Number.isInteger(entry) === false) ||
+    month < 1 ||
+    month > 12 ||
+    day < 1 ||
+    day > 31 ||
+    hour < 0 ||
+    hour > 23 ||
+    minute < 0 ||
+    minute > 59
+  ) {
+    return '';
+  }
+
+  if (referenceValue) {
+    const referenceDate = parseDate(referenceValue);
+    if (referenceDate && toDatetimeLocalValue(referenceDate.toISOString()) === value) {
+      return referenceDate.toISOString();
+    }
+  }
+
+  const naiveUtcTime = Date.UTC(year, month - 1, day, hour, minute);
+  const searchWindowMs = 4 * 60 * 60 * 1000;
+
+  for (let currentMs = naiveUtcTime - searchWindowMs; currentMs <= naiveUtcTime + searchWindowMs; currentMs += 60_000) {
+    const isoValue = new Date(currentMs).toISOString();
+    if (toDatetimeLocalValue(isoValue) === value) {
+      return isoValue;
+    }
+  }
+
+  return '';
 };
 
 export const toHostMediaFieldOptions = (assets: readonly HostMediaAssetListItem[]): readonly HostMediaFieldOption[] =>

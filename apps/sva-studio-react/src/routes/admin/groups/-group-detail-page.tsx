@@ -13,6 +13,7 @@ import { Label } from '../../../components/ui/label';
 import { useGroups } from '../../../hooks/use-groups';
 import { useRoles } from '../../../hooks/use-roles';
 import { t } from '../../../i18n';
+import { formatEditorDateTime, parseOptionalEditorDateTime } from '../../../lib/editor-date-time';
 import {
   diffGroupRoleIds,
   groupErrorMessage,
@@ -46,17 +47,7 @@ const formatDateTime = (value?: string) => {
   if (!value) {
     return t('admin.groups.labels.noValidity');
   }
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
-};
-
-const toIsoDateTime = (value: string) => {
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return undefined;
-  }
-  const date = new Date(trimmed);
-  return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
+  return formatEditorDateTime(value) ?? value;
 };
 
 export const GroupDetailPage = ({ groupId }: GroupDetailPageProps) => {
@@ -76,6 +67,7 @@ export const GroupDetailPage = ({ groupId }: GroupDetailPageProps) => {
   } = groupsApi;
   const [group, setGroup] = React.useState<IamAdminGroupDetail | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false);
+  const [formError, setFormError] = React.useState<string | null>(null);
   const [formValues, setFormValues] = React.useState<EditFormState>({
     displayName: '',
     description: '',
@@ -140,10 +132,19 @@ export const GroupDetailPage = ({ groupId }: GroupDetailPageProps) => {
 
   const onAssignMembership = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    setFormError(null);
+
+    const validFrom = parseOptionalEditorDateTime(membershipForm.validFrom);
+    const validUntil = parseOptionalEditorDateTime(membershipForm.validUntil);
+    if (validFrom.kind === 'invalid' || validUntil.kind === 'invalid') {
+      setFormError(t('admin.groups.validation.membershipDateInvalid'));
+      return;
+    }
+
     const assigned = await assignMembership(groupId, {
       keycloakSubject: membershipForm.keycloakSubject.trim(),
-      validFrom: toIsoDateTime(membershipForm.validFrom),
-      validUntil: toIsoDateTime(membershipForm.validUntil),
+      validFrom: validFrom.kind === 'value' ? validFrom.value : undefined,
+      validUntil: validUntil.kind === 'value' ? validUntil.value : undefined,
     });
     if (!assigned) {
       return;
@@ -196,6 +197,12 @@ export const GroupDetailPage = ({ groupId }: GroupDetailPageProps) => {
         <Card className="p-5 text-sm text-muted-foreground" role="status">
           {t('admin.groups.detail.notFound')}
         </Card>
+      ) : null}
+
+      {formError ? (
+        <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
+          <AlertDescription>{formError}</AlertDescription>
+        </Alert>
       ) : null}
 
       {group ? (

@@ -20,6 +20,7 @@ const baseLoginStateCookieSchema = z.object({
   createdAt: nonNegativeFiniteNumberSchema,
   returnTo: z.string().trim().min(1).optional(),
   silent: z.boolean().optional(),
+  freshReauthRequested: z.boolean().optional(),
 });
 
 const loginStateCookiePayloadSchema = z.discriminatedUnion('kind', [

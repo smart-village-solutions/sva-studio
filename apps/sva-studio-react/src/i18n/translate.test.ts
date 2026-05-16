@@ -70,6 +70,28 @@ describe('translate', () => {
     ).toThrow('duplicate_i18n_key:de:shell.appName');
   });
 
+  it('keeps host resources unchanged when plugin translation merges fail atomically', () => {
+    const previousAppName = i18nResources.de.shell.appName;
+    const previousPluginBranch = (i18nResources.de as Record<string, unknown>).pluginAtomicityProbe;
+
+    expect(() =>
+      mergeI18nResources({
+        de: {
+          pluginAtomicityProbe: {
+            title: 'Temporäre Probe',
+          },
+          shell: {
+            appName: 'Duplikat',
+          },
+        },
+        en: {},
+      })
+    ).toThrow('duplicate_i18n_key:de:shell.appName');
+
+    expect(i18nResources.de.shell.appName).toBe(previousAppName);
+    expect((i18nResources.de as Record<string, unknown>).pluginAtomicityProbe).toBe(previousPluginBranch);
+  });
+
   it('uses the active locale for global translations', () => {
     setActiveLocale('en');
 

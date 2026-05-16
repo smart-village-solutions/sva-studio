@@ -624,6 +624,21 @@ describe('loginHandler (full auth path)', () => {
     expect(response.headers.get('Location')).toContain('openid-connect/auth');
   });
 
+  it('forwards explicit fresh reauth requests into the login flow state', async () => {
+    const { loginHandler } = await import('./auth-route-handlers.js');
+    const { createLoginUrl } = await import('./auth-server/login.js');
+
+    await loginHandler(new Request('http://localhost/auth/login?returnTo=%2Fadmin%2Finstances&reauth=1'));
+
+    expect(createLoginUrl).toHaveBeenCalledWith(
+      expect.objectContaining({
+        returnTo: '/admin/instances',
+        reauth: true,
+        silent: false,
+      })
+    );
+  });
+
   it('returns a silent failure page when silent SSO is currently suppressed', async () => {
     const { loginHandler } = await import('./auth-route-handlers.js');
 

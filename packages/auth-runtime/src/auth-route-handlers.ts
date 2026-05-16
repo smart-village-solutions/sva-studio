@@ -789,11 +789,12 @@ const createAuthMeResponse = (
 const resolveLoginRequestContext = async (request?: Request) => {
   const url = request ? new URL(request.url) : null;
   const isSilent = url?.searchParams.get('silent') === '1';
+  const isFreshReauth = url?.searchParams.get('reauth') === '1';
   const returnTo = request
     ? await sanitizeReturnTo(request, url?.searchParams.get('returnTo') ?? url?.searchParams.get('redirect'))
     : DEFAULT_POST_LOGIN_REDIRECT;
 
-  return { url, isSilent, returnTo };
+  return { url, isSilent, isFreshReauth, returnTo };
 };
 
 const handleMockLogin = async (request?: Request): Promise<Response> => {
@@ -913,7 +914,7 @@ export const loginHandler = async (request?: Request): Promise<Response> => {
     }
 
     try {
-      const { isSilent, returnTo } = await resolveLoginRequestContext(request);
+      const { isSilent, isFreshReauth, returnTo } = await resolveLoginRequestContext(request);
       if (request && isSilent && isSilentSsoSuppressed(request)) {
         return createSilentSsoResponse('failure');
       }
@@ -923,6 +924,7 @@ export const loginHandler = async (request?: Request): Promise<Response> => {
       const { url: authorizationUrl, state, loginState } = await createLoginUrl({
         returnTo,
         silent: isSilent,
+        reauth: isFreshReauth,
         authConfig,
       });
       const response = createRedirectResponse(authorizationUrl);

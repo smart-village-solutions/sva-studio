@@ -190,6 +190,8 @@ describe('workspace package scripts', () => {
     const project = loadProjectJson('packages/instance-registry');
     const buildCommand = project.targets?.build?.options?.command;
 
+    expect(buildCommand).toBeDefined();
+    expect(typeof buildCommand).toBe('string');
     expect(buildCommand).toContain("rmSync('packages/instance-registry/dist'");
     expect(buildCommand).toContain("rmSync('packages/instance-registry/tsconfig.lib.tsbuildinfo'");
     expect(buildCommand).toContain('tsc -p packages/instance-registry/tsconfig.lib.json');

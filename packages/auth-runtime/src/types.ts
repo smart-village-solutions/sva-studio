@@ -53,6 +53,7 @@ export type LoginState = RuntimeScopeRef & {
   createdAt: number;
   returnTo?: string;
   silent?: boolean;
+  freshReauthRequested?: boolean;
 };
 
 export type SessionControlState = {

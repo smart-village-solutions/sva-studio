@@ -55,13 +55,16 @@ export const createInstanceRegistryHttpGuards = <TContext extends FreshReauthCon
     },
 
     requireFreshReauth: (_request: Request, ctx: TContext): Response | null => {
-      if (ctx.isLocalDevelopmentAuth) {
+      if (ctx.isLocalDevelopmentAuth === true) {
         return null;
       }
 
+      const now = Date.now();
       if (
         typeof ctx.freshReauthAt === 'number' &&
-        ctx.freshReauthAt >= Date.now() - readFreshReauthWindowMs()
+        Number.isFinite(ctx.freshReauthAt) &&
+        ctx.freshReauthAt <= now &&
+        ctx.freshReauthAt >= now - readFreshReauthWindowMs()
       ) {
         return null;
       }

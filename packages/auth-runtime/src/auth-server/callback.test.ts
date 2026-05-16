@@ -226,7 +226,7 @@ describe('handleCallback', () => {
     expect(mocks.createSession).toHaveBeenCalledWith(
       expect.any(String),
       expect.objectContaining({
-        freshReauthAt: expect.any(Number),
+        freshReauthAt: undefined,
       })
     );
     expect(mocks.logger.error).toHaveBeenCalledWith(
@@ -236,6 +236,70 @@ describe('handleCallback', () => {
         user_id: 'kc-user-1',
         instance_id: 'de-test',
         error: 'jit unavailable',
+      })
+    );
+  });
+
+  it('stamps fresh reauth only for explicit reauth callbacks with a fresh auth_time claim', async () => {
+    const { handleCallback } = await import('./callback.js');
+
+    mocks.authorizationCodeGrant.mockResolvedValueOnce({
+      access_token: 'access-token',
+      refresh_token: 'refresh-token',
+      id_token: 'id-token',
+      expiresIn: () => 300,
+      claims: () => ({ sub: 'kc-user-1', auth_time: 2_000 }),
+    });
+
+    await handleCallback({
+      code: 'code-1',
+      state: 'state-1',
+      authConfig,
+      loginState: {
+        kind: 'platform',
+        codeVerifier: 'verifier',
+        nonce: 'nonce',
+        createdAt: 1_999_500,
+        freshReauthRequested: true,
+      },
+    });
+
+    expect(mocks.createSession).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        freshReauthAt: 2_000_000,
+      })
+    );
+  });
+
+  it('does not stamp fresh reauth when the callback lacks fresh auth evidence', async () => {
+    const { handleCallback } = await import('./callback.js');
+
+    mocks.authorizationCodeGrant.mockResolvedValueOnce({
+      access_token: 'access-token',
+      refresh_token: 'refresh-token',
+      id_token: 'id-token',
+      expiresIn: () => 300,
+      claims: () => ({ sub: 'kc-user-1', auth_time: 1_000 }),
+    });
+
+    await handleCallback({
+      code: 'code-1',
+      state: 'state-1',
+      authConfig,
+      loginState: {
+        kind: 'platform',
+        codeVerifier: 'verifier',
+        nonce: 'nonce',
+        createdAt: 2_000_000,
+        freshReauthRequested: true,
+      },
+    });
+
+    expect(mocks.createSession).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        freshReauthAt: undefined,
       })
     );
   });

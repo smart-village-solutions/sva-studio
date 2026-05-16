@@ -5599,10 +5599,16 @@ const mergeTranslationBranch = (
 export const mergeI18nResources = (
   resources: Readonly<Record<SupportedLocale, Readonly<Record<string, unknown>>>>
 ) => {
+  const mutableResources = i18nResources as unknown as Record<SupportedLocale, Record<string, unknown>>;
+
   for (const locale of Object.keys(resources) as SupportedLocale[]) {
     const source = resources[locale];
-    const target = i18nResources[locale] as unknown as Record<string, TranslationNode>;
-    mergeTranslationBranch(target, source as Record<string, TranslationNode>, locale);
+    const target = mutableResources[locale] as Record<string, TranslationNode>;
+    mutableResources[locale] = mergeTranslationBranch(
+      { ...target },
+      source as Record<string, TranslationNode>,
+      locale
+    ) as Record<string, unknown>;
   }
 };
 

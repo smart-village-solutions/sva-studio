@@ -413,7 +413,7 @@ Zuordnung:
   - fixiert den gemeinsamen Projektionskern für `/auth/me`, `/account`, `/admin/users` und `/admin/roles`
   - normiert deterministische Abschlusszustände für Reconcile und User-Sync
 
-### Fortschreibung 2026-05: Serverseitige Fresh-Reauth fuer die Root-Host-Control-Plane
+### Fortschreibung 2026-05: Serverseitige Fresh-Reauth für die Root-Host-Control-Plane
 
 - `ADR-023-session-lifecycle-forced-reauth-und-silent-sso.md`
   - bleibt führend für Session-Lifecycle, Silent-SSO und serverseitig kontrollierte Reauth-Pfade

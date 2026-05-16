@@ -153,6 +153,7 @@ const handleRefreshFailure = async (input: {
   sessionId: string;
   refreshToken?: string;
   expiresAt?: number;
+  freshReauthAt?: number;
   scope?: Session['auth'];
   fallbackUser: SessionUser | null;
 }): Promise<SessionResolutionResult> => {
@@ -185,7 +186,12 @@ const handleRefreshFailure = async (input: {
     return { kind: 'invalid', reason: 'token_refresh_failed_after_expiry' };
   }
 
-  return { kind: 'authenticated', user: input.fallbackUser, expiresAt: input.expiresAt };
+  return {
+    kind: 'authenticated',
+    user: input.fallbackUser,
+    expiresAt: input.expiresAt,
+    freshReauthAt: input.freshReauthAt,
+  };
 };
 
 export const resolveSessionUser = async (sessionId: string): Promise<SessionResolutionResult> => {
@@ -248,6 +254,7 @@ export const resolveSessionUser = async (sessionId: string): Promise<SessionReso
       sessionId,
       refreshToken: session.refreshToken,
       expiresAt: session.expiresAt,
+      freshReauthAt: session.freshReauthAt,
       scope: session.auth,
       fallbackUser: session.user ?? null,
     });

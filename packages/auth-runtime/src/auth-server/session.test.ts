@@ -90,6 +90,7 @@ const createSession = (overrides: Partial<Session> = {}): Session => ({
   createdAt: 1_000,
   issuedAt: 1_000,
   expiresAt: 10_000,
+  freshReauthAt: 4_500,
   sessionVersion: 2,
   ...overrides,
 });
@@ -223,6 +224,7 @@ describe('auth server session resolution', () => {
       kind: 'authenticated',
       user: completeUser,
       expiresAt: 5_100,
+      freshReauthAt: 4_500,
     });
     expect(state.deleteSession).not.toHaveBeenCalled();
   });

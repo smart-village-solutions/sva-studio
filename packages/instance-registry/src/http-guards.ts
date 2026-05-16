@@ -11,7 +11,7 @@ const readFreshReauthWindowMs = (): number => {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_FRESH_REAUTH_WINDOW_MS;
 };
 
-type FreshReauthContext = {
+export type FreshReauthContext = {
   readonly freshReauthAt?: number;
   readonly isLocalDevelopmentAuth?: boolean;
 };
@@ -35,7 +35,7 @@ export type InstanceRegistryHttpGuardDeps<TContext> = {
   ) => Response | null;
 };
 
-export const createInstanceRegistryHttpGuards = <TContext>(
+export const createInstanceRegistryHttpGuards = <TContext extends FreshReauthContext>(
   deps: InstanceRegistryHttpGuardDeps<TContext>
 ) => {
   const adminRoles = new Set([INSTANCE_REGISTRY_HTTP_ADMIN_ROLE]);
@@ -54,7 +54,7 @@ export const createInstanceRegistryHttpGuards = <TContext>(
       return deps.requireRoles(ctx, adminRoles, deps.getRequestId());
     },
 
-    requireFreshReauth: (request: Request, ctx: FreshReauthContext = {}): Response | null => {
+    requireFreshReauth: (_request: Request, ctx: TContext): Response | null => {
       if (ctx.isLocalDevelopmentAuth) {
         return null;
       }

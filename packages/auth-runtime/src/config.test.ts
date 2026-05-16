@@ -29,6 +29,16 @@ describe('auth runtime config', () => {
     });
   });
 
+  it('falls back for non-positive fresh reauth windows', () => {
+    vi.stubEnv('SVA_AUTH_CLIENT_SECRET', 'client-secret');
+    vi.stubEnv('SVA_AUTH_FRESH_REAUTH_WINDOW_MS', '0');
+
+    expect(resolveBaseAuthConfig().freshReauthWindowMs).toBe(10 * 60 * 1000);
+
+    vi.stubEnv('SVA_AUTH_FRESH_REAUTH_WINDOW_MS', '-1');
+    expect(resolveBaseAuthConfig().freshReauthWindowMs).toBe(10 * 60 * 1000);
+  });
+
   it('requires a client secret for base config', () => {
     vi.stubEnv('SVA_AUTH_CLIENT_SECRET', '');
     vi.stubEnv('SVA_AUTH_STATE_SECRET', '');

@@ -188,7 +188,7 @@ gleichzeitig beeinflussen.
 - Browser-seitige Auth-Recovery-Flows erzeugen pro Vorfall eine `authFlowId`, damit `/auth/me`, Silent-SSO, Redirect auf `session-expired` und nachgelagerte Retry-Schritte gemeinsam korrelierbar bleiben
 - Ein lokaler Browser-Ringpuffer in `sessionStorage` darf in Development- oder Diagnosemodi die letzten Auth-Ereignisse eines Tabs speichern; er enthält keine Tokens und keine PII, sondern nur sichere Diagnosemetadaten wie `authFlowId`, `requestId`, `reason_code` und `recovery_step`
 - Zusätzlich darf ein explizit aktivierter lokaler Dev-Auth-Modus den OIDC-Loginpfad nur auf Entwicklerrechnern umgehen; er bleibt an lokale Env-Flags, sichtbare UI-Kennzeichnung und einen synthetischen Benutzerkontext gebunden
-- Fuer lokale Dev-/Mock-Auth-Profile darf der Fresh-Reauth-Guard nur ueber einen expliziten serverseitigen Nicht-Produktiv-Bypass gelockert werden; dieselbe Abweichung bleibt in produktionsnahen Profilen unzulaessig
+- Für lokale Dev-/Mock-Auth-Profile darf der Fresh-Reauth-Guard nur über einen expliziten serverseitigen Nicht-Produktiv-Bypass gelockert werden; dieselbe Abweichung bleibt in produktionsnahen Profilen unzulässig
 - Der lokale Dev-Auth-Modus ist kein gültiger Ersatznachweis für Realm-Auflösung, Session-Lifecycle, Silent-SSO, Forced-Reauth oder feingranulare IAM-Entscheidungen und darf deshalb nicht in Staging- oder Shared-Dev-Verträgen vorausgesetzt werden
 - Workspace-Context-Warnungen erfolgen über lazy `process.emitWarning` statt `console.warn`
 - Mainserver-Logs enthalten nur `instanceId`/`workspace_id`, `operation_name`, `request_id`, `trace_id`, Status und abstrahierte Fehlercodes; API-Key, Secret, Token und unredactete Variablen werden nie geloggt

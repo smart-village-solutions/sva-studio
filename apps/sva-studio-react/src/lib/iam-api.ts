@@ -931,23 +931,10 @@ const createJsonMutationRequestInit = <TPayload>(
 const patchJson = async <TResponse, TPayload>(path: string, payload: TPayload) =>
   requestJson<TResponse>(path, createJsonMutationRequestInit('PATCH', payload));
 
-const patchJsonWithReauth = async <TResponse, TPayload>(path: string, payload: TPayload) =>
-  requestJson<TResponse>(path, createJsonMutationRequestInit('PATCH', payload));
-
 const putJson = async <TResponse, TPayload>(path: string, payload: TPayload) =>
   requestJson<TResponse>(path, createJsonMutationRequestInit('PUT', payload));
 
 const postJson = async <TResponse, TPayload>(path: string, payload: TPayload, idempotent = false) =>
-  requestJson<TResponse>(
-    path,
-    createJsonMutationRequestInit('POST', payload, { idempotent })
-  );
-
-const postJsonWithReauth = async <TResponse, TPayload>(
-  path: string,
-  payload: TPayload,
-  idempotent = false
-) =>
   requestJson<TResponse>(
     path,
     createJsonMutationRequestInit('POST', payload, { idempotent })
@@ -1196,7 +1183,7 @@ export const getInstance = async (
 export const createInstance = async (
   payload: CreateInstancePayload
 ): Promise<ApiItemResponse<IamInstanceListItem>> =>
-  postJsonWithReauth<ApiItemResponse<IamInstanceListItem>, CreateInstancePayload>(
+  postJson<ApiItemResponse<IamInstanceListItem>, CreateInstancePayload>(
     '/api/v1/iam/instances',
     payload,
     true
@@ -1206,10 +1193,7 @@ export const updateInstance = async (
   instanceId: string,
   payload: UpdateInstancePayload
 ): Promise<ApiItemResponse<IamInstanceDetail>> =>
-  patchJsonWithReauth<ApiItemResponse<IamInstanceDetail>, UpdateInstancePayload>(
-    `/api/v1/iam/instances/${instanceId}`,
-    payload
-  );
+  patchJson<ApiItemResponse<IamInstanceDetail>, UpdateInstancePayload>(`/api/v1/iam/instances/${instanceId}`, payload);
 
 export const getInstanceKeycloakStatus = async (
   instanceId: string
@@ -1228,7 +1212,7 @@ export const getInstanceKeycloakPreflight = async (
 export const planInstanceKeycloakProvisioning = async (
   instanceId: string
 ): Promise<ApiItemResponse<IamInstanceDetail['keycloakPlan']>> =>
-  postJsonWithReauth<ApiItemResponse<IamInstanceDetail['keycloakPlan']>, Record<string, never>>(
+  postJson<ApiItemResponse<IamInstanceDetail['keycloakPlan']>, Record<string, never>>(
     `/api/v1/iam/instances/${instanceId}/keycloak/plan`,
     {},
     true
@@ -1238,7 +1222,7 @@ export const executeInstanceKeycloakProvisioning = async (
   instanceId: string,
   payload: ExecuteInstanceKeycloakProvisioningPayload
 ): Promise<ApiItemResponse<IamInstanceDetail['latestKeycloakProvisioningRun']>> =>
-  postJsonWithReauth<
+  postJson<
     ApiItemResponse<IamInstanceDetail['latestKeycloakProvisioningRun']>,
     ExecuteInstanceKeycloakProvisioningPayload
   >(`/api/v1/iam/instances/${instanceId}/keycloak/execute`, payload, true);
@@ -1359,7 +1343,7 @@ export const reconcileInstanceKeycloak = async (
   instanceId: string,
   payload: ReconcileInstanceKeycloakPayload
 ): Promise<ApiItemResponse<IamInstanceDetail['keycloakStatus']>> =>
-  postJsonWithReauth<
+  postJson<
     ApiItemResponse<IamInstanceDetail['keycloakStatus']>,
     ReconcileInstanceKeycloakPayload
   >(`/api/v1/iam/instances/${instanceId}/keycloak/reconcile`, payload, true);
@@ -1367,7 +1351,7 @@ export const reconcileInstanceKeycloak = async (
 export const probeTenantIamAccess = async (
   instanceId: string
 ): Promise<ApiItemResponse<IamInstanceDetail['tenantIamStatus']>> =>
-  postJsonWithReauth<ApiItemResponse<IamInstanceDetail['tenantIamStatus']>, Record<string, never>>(
+  postJson<ApiItemResponse<IamInstanceDetail['tenantIamStatus']>, Record<string, never>>(
     `/api/v1/iam/instances/${instanceId}/tenant-iam/access-probe`,
     {},
     true
@@ -1377,7 +1361,7 @@ export const assignInstanceModule = async (
   instanceId: string,
   moduleId: string
 ): Promise<ApiItemResponse<IamInstanceDetail>> =>
-  postJsonWithReauth<ApiItemResponse<IamInstanceDetail>, { moduleId: string }>(
+  postJson<ApiItemResponse<IamInstanceDetail>, { moduleId: string }>(
     `/api/v1/iam/instances/${instanceId}/modules/assign`,
     { moduleId },
     true
@@ -1387,7 +1371,7 @@ export const bootstrapInstanceAdminStructure = async (
   instanceId: string,
   moduleIds: readonly string[]
 ): Promise<ApiItemResponse<IamInstanceDetail>> =>
-  postJsonWithReauth<ApiItemResponse<IamInstanceDetail>, { moduleIds: readonly string[] }>(
+  postJson<ApiItemResponse<IamInstanceDetail>, { moduleIds: readonly string[] }>(
     `/api/v1/iam/instances/${instanceId}/modules/bootstrap-admin-structure`,
     { moduleIds },
     true
@@ -1397,7 +1381,7 @@ export const revokeInstanceModule = async (
   instanceId: string,
   moduleId: string
 ): Promise<ApiItemResponse<IamInstanceDetail>> =>
-  postJsonWithReauth<
+  postJson<
     ApiItemResponse<IamInstanceDetail>,
     { moduleId: string; confirmation: 'REVOKE' }
   >(
@@ -1409,7 +1393,7 @@ export const revokeInstanceModule = async (
 export const seedInstanceIamBaseline = async (
   instanceId: string
 ): Promise<ApiItemResponse<IamInstanceDetail>> =>
-  postJsonWithReauth<ApiItemResponse<IamInstanceDetail>, Record<string, never>>(
+  postJson<ApiItemResponse<IamInstanceDetail>, Record<string, never>>(
     `/api/v1/iam/instances/${instanceId}/modules/seed-iam-baseline`,
     {},
     true
@@ -1418,7 +1402,7 @@ export const seedInstanceIamBaseline = async (
 export const activateInstance = async (
   instanceId: string
 ): Promise<ApiItemResponse<IamInstanceListItem>> =>
-  postJsonWithReauth<ApiItemResponse<IamInstanceListItem>, { status: 'active' }>(
+  postJson<ApiItemResponse<IamInstanceListItem>, { status: 'active' }>(
     `/api/v1/iam/instances/${instanceId}/activate`,
     { status: 'active' },
     true
@@ -1427,7 +1411,7 @@ export const activateInstance = async (
 export const suspendInstance = async (
   instanceId: string
 ): Promise<ApiItemResponse<IamInstanceListItem>> =>
-  postJsonWithReauth<ApiItemResponse<IamInstanceListItem>, { status: 'suspended' }>(
+  postJson<ApiItemResponse<IamInstanceListItem>, { status: 'suspended' }>(
     `/api/v1/iam/instances/${instanceId}/suspend`,
     { status: 'suspended' },
     true
@@ -1436,7 +1420,7 @@ export const suspendInstance = async (
 export const archiveInstance = async (
   instanceId: string
 ): Promise<ApiItemResponse<IamInstanceListItem>> =>
-  postJsonWithReauth<ApiItemResponse<IamInstanceListItem>, { status: 'archived' }>(
+  postJson<ApiItemResponse<IamInstanceListItem>, { status: 'archived' }>(
     `/api/v1/iam/instances/${instanceId}/archive`,
     { status: 'archived' },
     true

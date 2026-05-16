@@ -59,6 +59,8 @@ type WasteManagementToursCopy = Readonly<{
   table: Readonly<Record<string, string>>;
   recurrence: Readonly<Record<string, string>>;
   customDatesTitle: string;
+  deleteDialog?: Readonly<Record<string, string>>;
+  bulkDeleteDialog?: Readonly<Record<string, string>>;
   messages: Readonly<Record<string, string>>;
   assignments?: WasteManagementToursAssignmentsCopy;
   yearCalendar?: WasteManagementToursYearCalendarCopy;
@@ -120,6 +122,8 @@ export const createWasteManagementToursTranslations = <const TCopy extends Waste
           table: copy.table,
           recurrence: copy.recurrence,
           customDates: { title: copy.customDatesTitle },
+          deleteDialog: copy.deleteDialog,
+          bulkDeleteDialog: copy.bulkDeleteDialog,
           messages: copy.messages,
         } as const,
         'assignments',

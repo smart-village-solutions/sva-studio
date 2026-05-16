@@ -1,7 +1,9 @@
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { StudioErrorState, StudioLoadingState } from '@sva/studio-ui-react';
+import { useNavigate } from '@tanstack/react-router';
 
 import { useWasteMasterDataController } from './waste-management.master-data.controller.js';
+import { wasteMasterDataFormDefaults } from './waste-management.master-data.forms.js';
 import { WasteMasterDataDialogs } from './waste-management.master-data-dialogs.js';
 import { WasteMasterDataEmptyState } from './waste-management.master-data-empty-state.js';
 import { WasteMasterDataTabContent } from './waste-management.master-data-tab-content.js';
@@ -16,6 +18,7 @@ export const WasteMasterDataPanel = ({
   readonly tab: WasteManagementSearchParams['masterDataTab'];
 }) => {
   const pt = usePluginTranslation('wasteManagement');
+  const navigate = useNavigate();
   const controller = useWasteMasterDataController(pt, search);
 
   if (controller.loading) {
@@ -27,8 +30,12 @@ export const WasteMasterDataPanel = ({
   }
 
   const dialogs = <WasteMasterDataDialogs controller={controller} />;
+  const showFractionFormView = tab === 'fractions' && search.fractionsView !== 'list';
+  const showLocationFormView = tab === 'locations' && search.locationsView !== 'list';
 
   if (
+    !showFractionFormView &&
+    !showLocationFormView &&
     !controller.filteredFractions.length &&
     !controller.filteredRegions.length &&
     !controller.filteredCities.length &&
@@ -39,8 +46,36 @@ export const WasteMasterDataPanel = ({
     return (
       <>
         <WasteMasterDataEmptyState
-          onOpenCreateFraction={controller.openCreateDialog}
-          onOpenCreateLocation={controller.openCreateLocationDialog}
+          onOpenCreateFraction={() => {
+            controller.setDialogMode('create');
+            controller.setDialogOpen(false);
+            controller.resetFractionForm();
+            controller.setMessage(null);
+            void navigate({
+              to: '/plugins/waste-management',
+              search: {
+                ...search,
+                fractionsView: 'create',
+              },
+            });
+          }}
+          onOpenCreateLocation={() => {
+            controller.setLocationDialogMode('create');
+            controller.setLocationDialogOpen(false);
+            controller.setLocationForm({
+              ...wasteMasterDataFormDefaults.createCollectionLocation(),
+              regionId: search.regionId ?? '',
+              cityId: search.cityId ?? '',
+            });
+            controller.setMessage(null);
+            void navigate({
+              to: '/plugins/waste-management',
+              search: {
+                ...search,
+                locationsView: 'create',
+              },
+            });
+          }}
         />
         {dialogs}
       </>

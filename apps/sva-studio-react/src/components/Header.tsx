@@ -106,7 +106,7 @@ export default function Header({
   }
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur">
+    <header className="sticky top-0 z-40 bg-background">
       <div className="flex min-h-16 w-full items-center gap-3 px-4 py-3 text-sm text-foreground sm:px-6">
         <div className="flex min-w-0 items-center">
           {onOpenMobileNavigation ? (

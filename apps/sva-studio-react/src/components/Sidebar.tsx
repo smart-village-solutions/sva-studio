@@ -646,14 +646,14 @@ const SidebarPanel = ({
               type="button"
               size="icon"
               variant="outline"
-              className="absolute right-0 top-1/2 z-[100] hidden h-10 w-10 -translate-y-1/2 translate-x-[calc(60%+12px)] rounded-full border-sidebar-border bg-card shadow-shell lg:inline-flex"
+              className="absolute right-0 top-1/2 z-[100] hidden h-9 w-9 -translate-y-1/2 translate-x-[calc(60%+12px)] rounded-full border-sidebar-border bg-card shadow-shell lg:inline-flex"
               aria-label={isCollapsed ? t('shell.sidebar.expand') : t('shell.sidebar.collapse')}
               onClick={onToggleCollapsed}
             >
               {isCollapsed ? (
-                <IconChevronRight className="h-5 w-5" />
+                <IconChevronRight className="h-4 w-4" />
               ) : (
-                <IconChevronLeft className="h-5 w-5" />
+                <IconChevronLeft className="h-4 w-4" />
               )}
             </Button>
           ) : null}
@@ -1090,7 +1090,7 @@ export default function Sidebar({
       <aside
         aria-label={t('shell.sidebar.ariaLabel')}
         className={`relative z-[90] hidden overflow-visible border-r border-sidebar-border bg-sidebar shadow-shell transition-[width] duration-200 lg:sticky lg:top-0 lg:block lg:h-screen ${
-          isCollapsed ? 'lg:w-20' : 'lg:w-80'
+          isCollapsed ? 'lg:w-20' : 'lg:w-72'
         }`}
       >
         <SidebarPanel

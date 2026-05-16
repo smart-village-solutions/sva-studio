@@ -1,3 +1,5 @@
+import type { WasteFractionRecord } from '@sva/plugin-sdk';
+
 import {
   createWasteManagementFraction,
   deleteWasteManagementFraction,
@@ -5,7 +7,7 @@ import {
   updateWasteManagementFraction,
   updateWasteManagementRegion,
 } from './waste-management.api.js';
-import { wasteMasterDataInputMappers } from './waste-management.master-data.forms.js';
+import { wasteMasterDataFormMappers, wasteMasterDataInputMappers } from './waste-management.master-data.forms.js';
 import { applySuccess } from './waste-management.master-data.state.js';
 import type { WasteMasterDataSubmissionContext } from './waste-management.master-data.submission.types.js';
 import { resolveApiErrorCode } from './waste-management.page.support.js';
@@ -69,6 +71,59 @@ export const createWasteMasterDataFractionRegionSubmissions = ({
             : code === 'invalid_request'
               ? pt('masterData.fractions.messages.deleteConflict')
               : pt('masterData.fractions.messages.deleteError'),
+      });
+    } finally {
+      state.setSaving(false);
+    }
+  },
+  deleteFractions: async (fractionIds: readonly string[]) => {
+    if (!fractionIds.length) {
+      return;
+    }
+    state.setSaving(true);
+    state.setMessage(null);
+    try {
+      await Promise.all(fractionIds.map((fractionId) => deleteWasteManagementFraction(fractionId)));
+      await loadOverview(true);
+      state.setMessage({
+        kind: 'success',
+        text: pt('masterData.fractions.messages.deleteSuccess'),
+      });
+    } catch (saveError) {
+      const code = resolveApiErrorCode(saveError);
+      state.setMessage({
+        kind: 'error',
+        text:
+          code === 'forbidden'
+            ? pt('masterData.fractions.messages.deleteForbidden')
+            : code === 'invalid_request'
+              ? pt('masterData.fractions.messages.deleteConflict')
+              : pt('masterData.fractions.messages.deleteError'),
+      });
+    } finally {
+      state.setSaving(false);
+    }
+  },
+  setFractionActive: async (fraction: WasteFractionRecord, active: boolean) => {
+    state.setSaving(true);
+    state.setMessage(null);
+    try {
+      await updateWasteManagementFraction(
+        fraction.id,
+        wasteMasterDataInputMappers.toUpdateFractionInput({
+          ...wasteMasterDataFormMappers.fractionToForm(fraction),
+          active,
+        })
+      );
+      await loadOverview(true);
+    } catch (saveError) {
+      const code = resolveApiErrorCode(saveError);
+      state.setMessage({
+        kind: 'error',
+        text:
+          code === 'forbidden'
+            ? pt('masterData.fractions.messages.saveForbidden')
+            : pt('masterData.fractions.messages.saveError'),
       });
     } finally {
       state.setSaving(false);

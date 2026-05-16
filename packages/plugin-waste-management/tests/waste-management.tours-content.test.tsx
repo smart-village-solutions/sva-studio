@@ -33,7 +33,12 @@ vi.mock('@sva/studio-ui-react', () => ({
     readonly variant?: string;
   }) => <span data-testid="badge" data-variant={variant ?? 'default'}>{children}</span>,
   Button: (props: React.ComponentProps<'button'>) => <button {...props} />,
+  Checkbox: (props: React.ComponentProps<'input'>) => <input type="checkbox" {...props} />,
+  Input: (props: React.ComponentProps<'input'>) => <input {...props} />,
+  Select: (props: React.ComponentProps<'select'>) => <select {...props} />,
+  StudioConfirmDialog: ({ open }: { readonly open: boolean }) => (open ? <div data-testid="confirm-dialog" /> : null),
   StudioEmptyState: ({ children }: { readonly children: React.ReactNode }) => <div data-testid="empty-state">{children}</div>,
+  cn: (...values: Array<string | false | null | undefined>) => values.filter(Boolean).join(' '),
 }));
 
 vi.mock('../src/waste-management.tab-panel-actions.js', () => ({
@@ -88,12 +93,28 @@ describe('WasteToursContent', () => {
         assignmentContextLoading={false}
         message={{ tone: 'info', text: 'tour message' } as never}
         tours={[tour] as never}
+        fractions={[
+          { id: 'fraction-1', name: 'Restmüll' },
+          { id: 'fraction-2', name: 'Biomüll' },
+        ] as never}
         masterDataOverview={{} as never}
+        schedulingOverview={null}
         onOpenCreateDialog={vi.fn()}
         onOpenEditDialog={onOpenEditDialog}
         onOpenCreateAssignmentsDialog={onOpenCreateAssignmentsDialog}
         onOpenEditAssignmentsDialog={onOpenEditAssignmentsDialog}
         onOpenCalendar={onOpenCalendar}
+        onToggleTourStatus={vi.fn(async () => undefined)}
+        onDeleteTour={vi.fn(async () => undefined)}
+        onDeleteTours={vi.fn(async () => undefined)}
+        page={1}
+        pageSize={25}
+        query=""
+        status="all"
+        onPageChange={vi.fn()}
+        onPageSizeChange={vi.fn()}
+        onQueryChange={vi.fn()}
+        onStatusChange={vi.fn()}
       />
     );
 
@@ -102,33 +123,26 @@ describe('WasteToursContent', () => {
     expect(screen.getByRole('columnheader', { name: 'tours.table.name' })).toBeTruthy();
     expect(screen.getByRole('columnheader', { name: 'tours.table.status' })).toBeTruthy();
     expect(screen.getByRole('columnheader', { name: 'tours.table.recurrence' })).toBeTruthy();
-    expect(screen.getByRole('columnheader', { name: 'tours.table.assignments' })).toBeTruthy();
+    expect(screen.getByRole('columnheader', { name: 'tours.table.locations' })).toBeTruthy();
     expect(screen.getByRole('columnheader', { name: 'tours.table.actions' })).toBeTruthy();
     expect(screen.getByText('Restmüll Nord')).toBeTruthy();
     expect(screen.getByText('Wöchentliche Abholung')).toBeTruthy();
-    expect(screen.getByText('common.active')).toBeTruthy();
     expect(screen.getByText('recurrence:weekly')).toBeTruthy();
-    expect(screen.getByText('tours.meta.fractionCount:2')).toBeTruthy();
-    expect(screen.getByText('tours.meta.locationCount:4')).toBeTruthy();
-    expect(screen.getByText('range:tour-1')).toBeTruthy();
-    expect(screen.getByText('tour-1')).toBeTruthy();
-    expect(screen.getByText('Musterstraße 1')).toBeTruthy();
-    expect(screen.getByText('Bahnhofstraße 2')).toBeTruthy();
-    expect(screen.getByText('2026-12-24 · Weihnachten')).toBeTruthy();
+    expect(screen.getByText('Restmüll')).toBeTruthy();
+    expect(screen.getByText('Biomüll')).toBeTruthy();
+    expect(screen.getByText('tours.table.noShifts')).toBeTruthy();
+    expect(screen.getByText('2')).toBeTruthy();
     expect(screen.queryByText('tours.meta.count:1')).toBeNull();
-    expect(screen.queryAllByTestId('badge')).toHaveLength(0);
+    expect(screen.getAllByTestId('badge')).toHaveLength(2);
 
     fireEvent.click(screen.getByRole('button', { name: 'tours.actions.edit' }));
-    fireEvent.click(screen.getByRole('button', { name: 'tours.assignments.actions.openCreate' }));
-    fireEvent.click(screen.getByRole('button', { name: 'tours.yearCalendar.actions.open' }));
-    const [firstAssignmentEditButton] = screen.getAllByRole('button', { name: 'tours.assignments.actions.edit' });
-    expect(firstAssignmentEditButton).toBeTruthy();
-    fireEvent.click(firstAssignmentEditButton as HTMLButtonElement);
+    fireEvent.click(screen.getByRole('button', { name: 'tours.actions.openAssignments' }));
+    fireEvent.click(screen.getByRole('button', { name: 'tours.actions.openCalendar' }));
 
     expect(onOpenEditDialog).toHaveBeenCalledWith(tour);
-    expect(onOpenCreateAssignmentsDialog).toHaveBeenCalledWith(tour);
     expect(onOpenCalendar).toHaveBeenCalledWith(tour);
     expect(onOpenEditAssignmentsDialog).toHaveBeenCalledWith(tour, 'link-1');
+    expect(onOpenCreateAssignmentsDialog).not.toHaveBeenCalled();
   });
 
   it('renders a loading hint while the assignment context is still loading', () => {
@@ -149,12 +163,25 @@ describe('WasteToursContent', () => {
             active: true,
           },
         ] as never}
+        fractions={[] as never}
         masterDataOverview={null}
+        schedulingOverview={null}
         onOpenCreateDialog={vi.fn()}
         onOpenEditDialog={vi.fn()}
         onOpenCreateAssignmentsDialog={vi.fn()}
         onOpenEditAssignmentsDialog={vi.fn()}
         onOpenCalendar={vi.fn()}
+        onToggleTourStatus={vi.fn(async () => undefined)}
+        onDeleteTour={vi.fn(async () => undefined)}
+        onDeleteTours={vi.fn(async () => undefined)}
+        page={1}
+        pageSize={25}
+        query=""
+        status="all"
+        onPageChange={vi.fn()}
+        onPageSizeChange={vi.fn()}
+        onQueryChange={vi.fn()}
+        onStatusChange={vi.fn()}
       />
     );
 

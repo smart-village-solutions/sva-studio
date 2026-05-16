@@ -4,13 +4,13 @@ export const wasteManagementPluginTranslationsDETabs = createWasteManagementTabs
   ariaLabel: 'Abfallmanagement-Bereiche',
   fractions: [
     'Abfallarten',
-    'Pflegen Sie Fraktionen, Farben und Übersetzungen als eigenständigen Arbeitsbereich des Abfallmanagements.',
+    'Pflegen Sie Fraktionen, Behältergrößen, Farben und Status als eigenständigen Arbeitsbereich des Abfallmanagements.',
     'Noch keine Abfallarten vorhanden',
     'Legen Sie die erste Fraktion an, um Sammelarten für Touren und Abholorte verfügbar zu machen.',
   ],
   tours: [
     'Touren',
-    'Touren, Zuordnungen und Tour-spezifische Pflege erhalten einen eigenen fachlichen Arbeitsbereich.',
+    'Verwaltung von Touren, Abfallarten und Terminen.',
     'Touren folgen',
     'Die erste Route hält bereits den teilbaren Tab- und Filterzustand für diesen Bereich bereit.',
   ],

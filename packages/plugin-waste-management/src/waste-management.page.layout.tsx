@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import {
   IconCalendarClock,
   IconDatabase,
@@ -80,6 +80,10 @@ export const WasteManagementPageTabs = ({
     setVisitedTabIds((current) => (current.includes(activeTab) ? current : [...current, activeTab]));
   }, [activeTab]);
 
+  const warmTab = useCallback((tabId: WasteManagementTabId) => {
+    setVisitedTabIds((current) => (current.includes(tabId) ? current : [...current, tabId]));
+  }, []);
+
   return (
     <div className="space-y-4">
       <Tabs value={activeTab} onValueChange={(value) => onTabChange(value as WasteManagementTabId)} className="space-y-0">
@@ -92,6 +96,8 @@ export const WasteManagementPageTabs = ({
               <TabsTrigger
                 key={tabId}
                 value={tabId}
+                onMouseEnter={() => warmTab(tabId)}
+                onFocus={() => warmTab(tabId)}
                 className={`relative z-10 gap-2 rounded-none border-x-0 border-t-0 border-b-[3px] px-0 pr-5 shadow-none ${
                   isActive ? 'mb-[-1px] border-primary text-primary' : 'border-transparent text-muted-foreground'
                 }`}
@@ -108,7 +114,12 @@ export const WasteManagementPageTabs = ({
           const tabKey = wasteManagementTabTranslationKeyMap[tabId];
           const shouldKeepMounted = visitedTabIds.includes(tabId) && tabId !== activeTab;
           return (
-            <TabsContent key={tabId} value={tabId} forceMount={shouldKeepMounted || undefined} className="mt-0">
+            <TabsContent
+              key={tabId}
+              value={tabId}
+              forceMount={shouldKeepMounted || undefined}
+              className="mt-0 data-[state=inactive]:hidden"
+            >
               <WasteTabPanelActionsProvider
                 render={(actions) => (
                   <div className="space-y-4 rounded-2xl border border-border/60 bg-[#E8E8D8] p-5">

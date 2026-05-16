@@ -34,6 +34,9 @@ export const updateWasteManagementTour = async (
 ): Promise<WasteTourRecord> =>
   requestWasteManagementMutation(`/api/v1/waste-management/tours/${encodeURIComponent(tourId)}`, input, 'PUT');
 
+export const deleteWasteManagementTour = async (tourId: string): Promise<Readonly<{ id: string }>> =>
+  requestWasteManagementMutation(`/api/v1/waste-management/tours/${encodeURIComponent(tourId)}`, undefined, 'DELETE');
+
 export const createWasteManagementTourDateShift = async (
   input: CreateWasteManagementTourDateShiftInput
 ): Promise<WasteTourDateShiftRecord> =>

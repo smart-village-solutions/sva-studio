@@ -21,6 +21,8 @@ vi.mock('@sva/studio-ui-react', () => ({
     readonly children: React.ReactNode;
     readonly variant?: string;
   }) => <span data-testid="badge" data-variant={variant ?? 'default'}>{children}</span>,
+  Button: (props: React.ComponentProps<'button'>) => <button {...props} />,
+  Select: (props: React.ComponentProps<'select'>) => <select {...props} />,
   StudioEmptyState: ({ children }: { readonly children: React.ReactNode }) => <div data-testid="empty-state">{children}</div>,
 }));
 
@@ -30,7 +32,7 @@ afterEach(() => {
 
 describe('WasteOverviewContent', () => {
   it('renders an empty state when no audit or technical items are visible', () => {
-    render(<WasteOverviewContent overview={null} />);
+    render(<WasteOverviewContent overview={null} page={1} pageSize={25} onPageChange={vi.fn()} onPageSizeChange={vi.fn()} />);
 
     expect(screen.getByTestId('empty-state').textContent).toContain('overview.messages.emptyTitle');
     expect(screen.getByTestId('empty-state').textContent).toContain('overview.messages.emptyBody');
@@ -83,6 +85,10 @@ describe('WasteOverviewContent', () => {
             },
           } as never
         }
+        page={1}
+        pageSize={25}
+        onPageChange={vi.fn()}
+        onPageSizeChange={vi.fn()}
       />
     );
 
@@ -134,6 +140,10 @@ describe('WasteOverviewContent', () => {
             },
           } as never
         }
+        page={1}
+        pageSize={25}
+        onPageChange={vi.fn()}
+        onPageSizeChange={vi.fn()}
       />
     );
 
@@ -176,6 +186,10 @@ describe('WasteOverviewContent', () => {
             },
           } as never
         }
+        page={1}
+        pageSize={25}
+        onPageChange={vi.fn()}
+        onPageSizeChange={vi.fn()}
       />
     );
 

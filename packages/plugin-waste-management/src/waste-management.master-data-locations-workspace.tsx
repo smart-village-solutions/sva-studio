@@ -10,6 +10,7 @@ import type {
 import { WasteMasterDataLocationsHierarchy } from './waste-management.master-data-locations-hierarchy.js';
 import { WasteMasterDataLocationsOverview } from './waste-management.master-data-locations-overview.js';
 import { WasteMasterDataLocationsTable } from './waste-management.master-data-locations-table.js';
+import { createPagedItems } from './waste-management.table-frame.js';
 
 type WasteMasterDataLocationsWorkspaceProps = {
   readonly regions: readonly WasteRegionRecord[];
@@ -22,7 +23,11 @@ type WasteMasterDataLocationsWorkspaceProps = {
   readonly allFilteredLocationsSelected: boolean;
   readonly selectedCollectionLocationsCount: number;
   readonly availableTours: readonly WasteTourRecord[];
+  readonly page: number;
+  readonly pageSize: number;
   readonly selectedTourId?: string;
+  readonly onPageChange: (page: number) => void;
+  readonly onPageSizeChange: (pageSize: number) => void;
   readonly onTourFilterChange: (tourId: string) => void;
   readonly onToggleSelectAll: (checked: boolean) => void;
   readonly onToggleLocation: (locationId: string, checked: boolean) => void;
@@ -51,7 +56,11 @@ export const WasteMasterDataLocationsWorkspace = ({
   allFilteredLocationsSelected,
   selectedCollectionLocationsCount,
   availableTours,
+  page,
+  pageSize,
   selectedTourId,
+  onPageChange,
+  onPageSizeChange,
   onTourFilterChange,
   onToggleSelectAll,
   onToggleLocation,
@@ -68,6 +77,12 @@ export const WasteMasterDataLocationsWorkspace = ({
   onOpenBulkAssignments,
   getLocationLabel,
 }: WasteMasterDataLocationsWorkspaceProps) => {
+  const pagedCollectionLocations = createPagedItems({
+    items: collectionLocations,
+    page,
+    pageSize,
+  });
+
   return (
     <div className="space-y-4">
       <WasteMasterDataLocationsOverview
@@ -87,13 +102,19 @@ export const WasteMasterDataLocationsWorkspace = ({
         cities={cities}
         streets={streets}
         houseNumbers={houseNumbers}
-        collectionLocations={collectionLocations}
+        collectionLocations={pagedCollectionLocations.items}
         locationTourLinks={locationTourLinks}
         selectedLocationIds={selectedLocationIds}
         allFilteredLocationsSelected={allFilteredLocationsSelected}
         selectedCollectionLocationsCount={selectedCollectionLocationsCount}
         availableTours={availableTours}
+        page={pagedCollectionLocations.safePage}
+        pageSize={pageSize}
+        pageCount={pagedCollectionLocations.pageCount}
+        totalItems={pagedCollectionLocations.totalItems}
         selectedTourId={selectedTourId}
+        onPageChange={onPageChange}
+        onPageSizeChange={onPageSizeChange}
         onTourFilterChange={onTourFilterChange}
         onToggleSelectAll={onToggleSelectAll}
         onToggleLocation={onToggleLocation}

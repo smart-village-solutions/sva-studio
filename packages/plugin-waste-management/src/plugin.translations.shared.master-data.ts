@@ -31,6 +31,7 @@ type MasterDataFractionsCopy = Readonly<{
   table: Readonly<Record<string, string>>;
   actions: Readonly<CrudActionsCopy & { delete: string }>;
   fields: Readonly<Record<string, string>>;
+  createView: Readonly<Record<string, unknown>>;
   translationBadge: string;
   dialog: CrudDialogCopy;
   deleteDialog: Readonly<Record<string, string>>;
@@ -103,6 +104,7 @@ export const createMasterDataFractionsTranslations = <const TCopy extends Master
     table: copy.table,
     actions: copy.actions,
     fields: copy.fields,
+    createView: copy.createView,
     translationBadge: copy.translationBadge,
     dialog: createCrudDialog(copy.dialog),
     deleteDialog: copy.deleteDialog,

@@ -282,7 +282,8 @@ export function StudioDataTable<TData>({
               key={action.id}
               type="button"
               variant={action.variant ?? 'outline'}
-              disabled={action.disabled ?? selectedRows.length === 0}
+              className="disabled:border-border/60 disabled:bg-muted disabled:text-muted-foreground"
+              disabled={(action.disabled ?? false) || selectedRows.length === 0}
               onClick={() => void action.onClick({ selectedRows, clearSelection })}
             >
               {action.label}
@@ -345,7 +346,7 @@ export function StudioDataTable<TData>({
           </thead>
           <tbody>
             {table.getRowModel().rows.map((row) => (
-              <tr key={row.id} className="border-t border-border text-sm text-foreground">
+              <tr key={row.id} className="animate-row-hover border-t border-border text-sm text-foreground hover:bg-muted/40">
                 {row.getVisibleCells().map((cell) => {
                   const meta = cell.column.columnDef.meta as { className?: string } | undefined;
                   return (

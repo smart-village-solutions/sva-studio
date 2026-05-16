@@ -18,6 +18,10 @@ describe('waste-management search params', () => {
     ).toEqual({
       tab: 'fractions',
       masterDataTab: 'fractions',
+      fractionsView: 'list',
+      toursView: 'list',
+      locationsView: 'list',
+      schedulingView: 'list',
       q: '',
       page: 1,
       pageSize: 25,
@@ -52,6 +56,10 @@ describe('waste-management search params', () => {
     ).toEqual({
       tab: 'locations',
       masterDataTab: 'locations',
+      fractionsView: 'list',
+      toursView: 'list',
+      locationsView: 'list',
+      schedulingView: 'list',
       q: 'Bio',
       page: 3,
       pageSize: 50,
@@ -75,6 +83,10 @@ describe('waste-management search params', () => {
     ).toEqual({
       tab: 'fractions',
       masterDataTab: 'fractions',
+      fractionsView: 'list',
+      toursView: 'list',
+      locationsView: 'list',
+      schedulingView: 'list',
       q: '',
       page: 1,
       pageSize: 25,
@@ -98,6 +110,10 @@ describe('waste-management search params', () => {
     ).toEqual({
       tab: 'fractions',
       masterDataTab: 'fractions',
+      fractionsView: 'list',
+      toursView: 'list',
+      locationsView: 'list',
+      schedulingView: 'list',
       q: '',
       page: 1,
       pageSize: 25,

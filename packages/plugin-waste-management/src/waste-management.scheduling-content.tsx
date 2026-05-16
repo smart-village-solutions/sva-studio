@@ -1,9 +1,10 @@
 import type { WasteGlobalDateShiftRecord, WasteTourDateShiftRecord } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
+import { IconEdit } from '@tabler/icons-react';
 import { Button, StudioEmptyState } from '@sva/studio-ui-react';
-import { useMemo } from 'react';
 
 import { StatusNotice, type StatusMessage } from './waste-management.page.support.js';
+import { createPagedItems, WastePanelTableBottomBar, WastePanelTableTopBar } from './waste-management.table-frame.js';
 import { useWasteTabPanelActions } from './waste-management.tab-panel-actions.js';
 
 export const WasteSchedulingEmptyState = ({
@@ -36,11 +37,22 @@ export const WasteSchedulingEmptyState = ({
 const GlobalShiftList = ({
   shifts,
   onEdit,
+  onOpenCreate,
+  page,
+  pageSize,
+  onPageChange,
+  onPageSizeChange,
 }: {
   readonly shifts: readonly WasteGlobalDateShiftRecord[];
   readonly onEdit: (shift: WasteGlobalDateShiftRecord) => void;
+  readonly onOpenCreate: () => void;
+  readonly page: number;
+  readonly pageSize: number;
+  readonly onPageChange: (page: number) => void;
+  readonly onPageSizeChange: (pageSize: number) => void;
 }) => {
   const pt = usePluginTranslation('wasteManagement');
+  const pagedShifts = createPagedItems({ items: shifts, page, pageSize });
 
   return (
     <div className="space-y-3">
@@ -48,11 +60,18 @@ const GlobalShiftList = ({
         <h3 className="text-sm font-semibold">{pt('scheduling.global.title')}</h3>
         <p className="text-sm text-muted-foreground">{pt('scheduling.global.description')}</p>
       </div>
-      <div className="overflow-hidden rounded-xl border border-border bg-white shadow-shell">
+      <div className="overflow-hidden rounded-none border-y border-border bg-white shadow-shell">
+        <WastePanelTableTopBar>
+          <div className="ml-auto">
+            <Button type="button" variant="outline" className="rounded-lg" onClick={onOpenCreate}>
+              {pt('scheduling.global.actions.openCreate')}
+            </Button>
+          </div>
+        </WastePanelTableTopBar>
         <div className="overflow-x-auto">
           <table className="min-w-full border-collapse" aria-label={pt('scheduling.global.table.ariaLabel')}>
             <caption className="sr-only">{pt('scheduling.global.table.caption')}</caption>
-            <thead className="bg-muted/40 text-left text-sm text-foreground">
+            <thead className="bg-muted/20 text-left text-[13px] text-foreground">
               <tr className="border-b border-border/70">
                 <th scope="col" className="px-3 py-3">{pt('scheduling.global.table.originalDate')}</th>
                 <th scope="col" className="px-3 py-3">{pt('scheduling.global.table.actualDate')}</th>
@@ -65,8 +84,8 @@ const GlobalShiftList = ({
               </tr>
             </thead>
             <tbody>
-              {shifts.map((shift) => (
-                <tr key={shift.id} className="border-b border-border/60 align-top last:border-b-0">
+              {pagedShifts.items.map((shift) => (
+                <tr key={shift.id} className="animate-row-hover border-b border-border/60 align-top text-[14px] text-foreground hover:bg-muted/20 last:border-b-0">
                   <td className="px-3 py-3 text-sm">{shift.originalDate}</td>
                   <td className="px-3 py-3 text-sm">{shift.actualDate}</td>
                   <td className="px-3 py-3 text-sm">
@@ -82,8 +101,15 @@ const GlobalShiftList = ({
                   </td>
                   <td className="px-3 py-3">
                     <div className="flex justify-end">
-                      <Button type="button" variant="outline" size="sm" onClick={() => onEdit(shift)}>
-                        {pt('scheduling.global.actions.edit')}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 rounded-md px-0 text-muted-foreground hover:text-foreground"
+                        aria-label={pt('scheduling.global.actions.edit')}
+                        onClick={() => onEdit(shift)}
+                      >
+                        <IconEdit aria-hidden="true" className="h-4 w-4" />
                       </Button>
                     </div>
                   </td>
@@ -92,6 +118,15 @@ const GlobalShiftList = ({
             </tbody>
           </table>
         </div>
+        <WastePanelTableBottomBar
+          pt={pt}
+          page={pagedShifts.safePage}
+          pageSize={pageSize}
+          pageCount={pagedShifts.pageCount}
+          totalItems={pagedShifts.totalItems}
+          onPageChange={onPageChange}
+          onPageSizeChange={onPageSizeChange}
+        />
       </div>
     </div>
   );
@@ -100,11 +135,22 @@ const GlobalShiftList = ({
 const TourShiftList = ({
   shifts,
   onEdit,
+  onOpenCreate,
+  page,
+  pageSize,
+  onPageChange,
+  onPageSizeChange,
 }: {
   readonly shifts: readonly WasteTourDateShiftRecord[];
   readonly onEdit: (shift: WasteTourDateShiftRecord) => void;
+  readonly onOpenCreate: () => void;
+  readonly page: number;
+  readonly pageSize: number;
+  readonly onPageChange: (page: number) => void;
+  readonly onPageSizeChange: (pageSize: number) => void;
 }) => {
   const pt = usePluginTranslation('wasteManagement');
+  const pagedShifts = createPagedItems({ items: shifts, page, pageSize });
 
   return (
     <div className="space-y-3">
@@ -112,11 +158,18 @@ const TourShiftList = ({
         <h3 className="text-sm font-semibold">{pt('scheduling.tour.title')}</h3>
         <p className="text-sm text-muted-foreground">{pt('scheduling.tour.description')}</p>
       </div>
-      <div className="overflow-hidden rounded-xl border border-border bg-white shadow-shell">
+      <div className="overflow-hidden rounded-none border-y border-border bg-white shadow-shell">
+        <WastePanelTableTopBar>
+          <div className="ml-auto">
+            <Button type="button" className="rounded-lg" onClick={onOpenCreate}>
+              {pt('scheduling.tour.actions.openCreate')}
+            </Button>
+          </div>
+        </WastePanelTableTopBar>
         <div className="overflow-x-auto">
           <table className="min-w-full border-collapse" aria-label={pt('scheduling.tour.table.ariaLabel')}>
             <caption className="sr-only">{pt('scheduling.tour.table.caption')}</caption>
-            <thead className="bg-muted/40 text-left text-sm text-foreground">
+            <thead className="bg-muted/20 text-left text-[13px] text-foreground">
               <tr className="border-b border-border/70">
                 <th scope="col" className="px-3 py-3">{pt('scheduling.tour.table.tourId')}</th>
                 <th scope="col" className="px-3 py-3">{pt('scheduling.tour.table.originalDate')}</th>
@@ -130,8 +183,8 @@ const TourShiftList = ({
               </tr>
             </thead>
             <tbody>
-              {shifts.map((shift) => (
-                <tr key={shift.id} className="border-b border-border/60 align-top last:border-b-0">
+              {pagedShifts.items.map((shift) => (
+                <tr key={shift.id} className="animate-row-hover border-b border-border/60 align-top text-[14px] text-foreground hover:bg-muted/20 last:border-b-0">
                   <td className="px-3 py-3 text-sm">{shift.tourId}</td>
                   <td className="px-3 py-3 text-sm">{shift.originalDate}</td>
                   <td className="px-3 py-3 text-sm">{shift.actualDate}</td>
@@ -150,8 +203,15 @@ const TourShiftList = ({
                   </td>
                   <td className="px-3 py-3">
                     <div className="flex justify-end">
-                      <Button type="button" variant="outline" size="sm" onClick={() => onEdit(shift)}>
-                        {pt('scheduling.tour.actions.edit')}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 rounded-md px-0 text-muted-foreground hover:text-foreground"
+                        aria-label={pt('scheduling.tour.actions.edit')}
+                        onClick={() => onEdit(shift)}
+                      >
+                        <IconEdit aria-hidden="true" className="h-4 w-4" />
                       </Button>
                     </div>
                   </td>
@@ -160,6 +220,15 @@ const TourShiftList = ({
             </tbody>
           </table>
         </div>
+        <WastePanelTableBottomBar
+          pt={pt}
+          page={pagedShifts.safePage}
+          pageSize={pageSize}
+          pageCount={pagedShifts.pageCount}
+          totalItems={pagedShifts.totalItems}
+          onPageChange={onPageChange}
+          onPageSizeChange={onPageSizeChange}
+        />
       </div>
     </div>
   );
@@ -173,6 +242,10 @@ export const WasteSchedulingContent = ({
   onOpenCreateTourShiftDialog,
   onEditGlobalShiftDialog,
   onEditTourShiftDialog,
+  page,
+  pageSize,
+  onPageChange,
+  onPageSizeChange,
 }: {
   readonly message: StatusMessage | null;
   readonly globalDateShifts: readonly WasteGlobalDateShiftRecord[];
@@ -181,30 +254,35 @@ export const WasteSchedulingContent = ({
   readonly onOpenCreateTourShiftDialog: () => void;
   readonly onEditGlobalShiftDialog: (shift: WasteGlobalDateShiftRecord) => void;
   readonly onEditTourShiftDialog: (shift: WasteTourDateShiftRecord) => void;
+  readonly page: number;
+  readonly pageSize: number;
+  readonly onPageChange: (page: number) => void;
+  readonly onPageSizeChange: (pageSize: number) => void;
 }) => {
-  const pt = usePluginTranslation('wasteManagement');
-  const panelActions = useMemo(
-    () => (
-      <>
-        <Button type="button" variant="outline" onClick={onOpenCreateGlobalShiftDialog}>
-          {pt('scheduling.global.actions.openCreate')}
-        </Button>
-        <Button type="button" onClick={onOpenCreateTourShiftDialog}>
-          {pt('scheduling.tour.actions.openCreate')}
-        </Button>
-      </>
-    ),
-    [onOpenCreateGlobalShiftDialog, onOpenCreateTourShiftDialog, pt]
-  );
-
-  useWasteTabPanelActions(panelActions);
+  useWasteTabPanelActions(null);
 
   return (
     <div className="space-y-4">
       <StatusNotice message={message} />
       <div className="grid gap-4 xl:grid-cols-2">
-        <GlobalShiftList shifts={globalDateShifts} onEdit={onEditGlobalShiftDialog} />
-        <TourShiftList shifts={tourDateShifts} onEdit={onEditTourShiftDialog} />
+        <GlobalShiftList
+          shifts={globalDateShifts}
+          onEdit={onEditGlobalShiftDialog}
+          onOpenCreate={onOpenCreateGlobalShiftDialog}
+          page={page}
+          pageSize={pageSize}
+          onPageChange={onPageChange}
+          onPageSizeChange={onPageSizeChange}
+        />
+        <TourShiftList
+          shifts={tourDateShifts}
+          onEdit={onEditTourShiftDialog}
+          onOpenCreate={onOpenCreateTourShiftDialog}
+          page={page}
+          pageSize={pageSize}
+          onPageChange={onPageChange}
+          onPageSizeChange={onPageSizeChange}
+        />
       </div>
     </div>
   );

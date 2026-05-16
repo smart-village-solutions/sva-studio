@@ -1,4 +1,5 @@
 import { usePluginTranslation } from '@sva/plugin-sdk';
+import { useEffect, useState } from 'react';
 import {
   WasteMasterDataActiveTourBanner,
   WasteMasterDataLocationsEmptyState,
@@ -8,6 +9,7 @@ import {
   createLocationsTableMaps,
   type WasteMasterDataLocationsTableProps,
 } from './waste-management.master-data-locations-table.parts.js';
+import { WastePanelTableBottomBar } from './waste-management.table-frame.js';
 
 export const WasteMasterDataLocationsTable = ({
   regions,
@@ -20,7 +22,13 @@ export const WasteMasterDataLocationsTable = ({
   allFilteredLocationsSelected,
   selectedCollectionLocationsCount,
   availableTours,
+  page,
+  pageSize,
+  pageCount,
+  totalItems,
   selectedTourId,
+  onPageChange,
+  onPageSizeChange,
   onTourFilterChange,
   onToggleSelectAll,
   onToggleLocation,
@@ -31,39 +39,59 @@ export const WasteMasterDataLocationsTable = ({
   const pt = usePluginTranslation('wasteManagement');
   const maps = createLocationsTableMaps({ regions, cities, streets, houseNumbers, availableTours, locationTourLinks });
   const selectedTour = selectedTourId ? maps.toursById.get(selectedTourId) : undefined;
+  const [filtersOpen, setFiltersOpen] = useState(Boolean(selectedTourId));
+
+  useEffect(() => {
+    if (selectedTourId) {
+      setFiltersOpen(true);
+    }
+  }, [selectedTourId]);
 
   return (
-    <section className="overflow-hidden rounded-xl border border-border bg-white shadow-shell">
+    <section className="overflow-hidden rounded-none border-y border-border bg-white shadow-shell">
       <WasteMasterDataLocationsTableToolbar
         selectedCollectionLocationsCount={selectedCollectionLocationsCount}
         availableTours={availableTours}
-        allFilteredLocationsSelected={allFilteredLocationsSelected}
+        filtersOpen={filtersOpen}
         selectedTourId={selectedTourId}
+        allFilteredLocationsSelected={allFilteredLocationsSelected}
         onOpenBulkAssignments={onOpenBulkAssignments}
-        onToggleSelectAll={onToggleSelectAll}
         onTourFilterChange={onTourFilterChange}
+        onToggleSelectAll={onToggleSelectAll}
+        onToggleFiltersOpen={() => setFiltersOpen((current) => !current)}
       />
       <WasteMasterDataActiveTourBanner selectedTour={selectedTour} onTourFilterChange={onTourFilterChange} />
       {collectionLocations.length ? (
-        <div className="overflow-x-auto">
-          <table className="min-w-full border-collapse" aria-label={pt('masterData.collectionLocations.title')}>
-            <caption className="sr-only">{pt('masterData.locationsWorkspace.table.caption')}</caption>
-            <WasteMasterDataLocationsHeader />
-            <tbody>
-              {collectionLocations.map((location) => (
-                <WasteMasterDataLocationsRow
-                  key={location.id}
-                  location={location}
-                  maps={maps}
-                  selectedLocationIds={selectedLocationIds}
-                  onToggleLocation={onToggleLocation}
-                  onOpenEditLocation={onOpenEditLocation}
-                  getLocationLabel={getLocationLabel}
-                />
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <>
+          <div className="overflow-x-auto">
+            <table className="min-w-full border-collapse" aria-label={pt('masterData.collectionLocations.title')}>
+              <caption className="sr-only">{pt('masterData.locationsWorkspace.table.caption')}</caption>
+              <WasteMasterDataLocationsHeader />
+              <tbody>
+                {collectionLocations.map((location) => (
+                  <WasteMasterDataLocationsRow
+                    key={location.id}
+                    location={location}
+                    maps={maps}
+                    selectedLocationIds={selectedLocationIds}
+                    onToggleLocation={onToggleLocation}
+                    onOpenEditLocation={onOpenEditLocation}
+                    getLocationLabel={getLocationLabel}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <WastePanelTableBottomBar
+            pt={pt}
+            page={page}
+            pageSize={pageSize}
+            pageCount={pageCount}
+            totalItems={totalItems}
+            onPageChange={onPageChange}
+            onPageSizeChange={onPageSizeChange}
+          />
+        </>
       ) : (
         <WasteMasterDataLocationsEmptyState />
       )}

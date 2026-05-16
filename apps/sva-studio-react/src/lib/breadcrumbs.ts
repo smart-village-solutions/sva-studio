@@ -90,6 +90,10 @@ const breadcrumbRoutes: ReadonlyArray<
     build: () => [overviewBreadcrumb(), { label: t('interfaces.page.title') }],
   },
   {
+    pattern: /^\/plugins\/waste-management$/,
+    build: () => [overviewBreadcrumb(), { label: t('shell.sidebar.wasteManagement') }],
+  },
+  {
     pattern: /^\/admin\/users\/[^/]+$/,
     build: () => [
       overviewBreadcrumb(),

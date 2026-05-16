@@ -148,6 +148,7 @@ const governanceAuthHandlerMap = {
   },
   '/api/v1/waste-management/tours/$tourId': {
     PUT: routeHandler(authRuntimeRoutes.wasteManagementHandlers.updateTour),
+    DELETE: routeHandler(authRuntimeRoutes.wasteManagementHandlers.deleteTour),
   },
   '/api/v1/waste-management/settings': {
     GET: routeHandler(authRuntimeRoutes.wasteManagementHandlers.getSettings),

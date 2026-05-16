@@ -19,6 +19,7 @@ const {
   createWasteManagementStreetInternal,
   createWasteManagementTourDateShiftInternal,
   createWasteManagementTourInternal,
+  deleteWasteManagementTourInternal,
   getWasteManagementHistoryInternal,
   getWasteManagementMasterDataOverviewInternal,
   getWasteManagementSchedulingOverviewInternal,
@@ -75,6 +76,7 @@ const {
   saveWasteRegion,
   saveWasteStreet,
   saveWasteTour,
+  deleteWasteTour,
   saveWasteTourDateShift,
 } = wasteManagementEntitySavers;
 
@@ -257,6 +259,14 @@ export const wasteManagementHandlers = {
       updateWasteManagementTourInternal(nextRequest, ctx, {
         ...sharedWasteManagementDeps,
         saveWasteTour,
+        loadWasteTourById,
+      })
+    ),
+  deleteTour: (request: Request): Promise<Response> =>
+    withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
+      deleteWasteManagementTourInternal(nextRequest, ctx, {
+        ...sharedWasteManagementDeps,
+        deleteWasteTour,
         loadWasteTourById,
       })
     ),

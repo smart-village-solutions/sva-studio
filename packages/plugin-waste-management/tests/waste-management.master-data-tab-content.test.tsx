@@ -85,6 +85,10 @@ describe('WasteMasterDataTabContent', () => {
     const search = {
       tab: 'fractions',
       masterDataTab: 'fractions',
+      fractionsView: 'list',
+      toursView: 'list',
+      locationsView: 'list',
+      schedulingView: 'list',
       q: '',
       page: 1,
       pageSize: 25,

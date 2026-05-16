@@ -76,7 +76,11 @@ describe('WasteMasterDataLocationsWorkspace', () => {
             updatedAt: '2026-05-09T10:00:00.000Z',
           },
         ]}
+        page={1}
+        pageSize={25}
         selectedTourId="tour-1"
+        onPageChange={vi.fn()}
+        onPageSizeChange={vi.fn()}
         onTourFilterChange={onTourFilterChange}
         onToggleSelectAll={vi.fn()}
         onToggleLocation={vi.fn()}
@@ -182,7 +186,11 @@ describe('WasteMasterDataLocationsWorkspace', () => {
             updatedAt: '2026-05-09T10:00:00.000Z',
           },
         ]}
+        page={1}
+        pageSize={25}
         selectedTourId={undefined}
+        onPageChange={vi.fn()}
+        onPageSizeChange={vi.fn()}
         onTourFilterChange={vi.fn()}
         onToggleSelectAll={vi.fn()}
         onToggleLocation={vi.fn()}
@@ -201,15 +209,17 @@ describe('WasteMasterDataLocationsWorkspace', () => {
       />
     );
 
-    expect(screen.getAllByRole('columnheader', { name: 'masterData.locationsWorkspace.table.region' }).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole('columnheader', { name: 'masterData.locationsWorkspace.table.city' }).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole('columnheader', { name: 'masterData.locationsWorkspace.table.address' }).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole('columnheader', { name: 'masterData.locationsWorkspace.table.tours' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('table', { name: 'masterData.collectionLocations.title' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByText('masterData.locationsWorkspace.table.region').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('masterData.locationsWorkspace.table.city').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('masterData.locationsWorkspace.table.address').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('masterData.locationsWorkspace.table.tours').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('masterData.locationsWorkspace.table.status').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Nord').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Musterstadt').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Hauptstraße 12').length).toBeGreaterThan(0);
     expect(screen.getAllByText('masterData.locationsWorkspace.table.tourCount:{"value":2}').length).toBeGreaterThan(0);
-    expect(screen.queryByText('masterData.meta.collectionLocationCount:{"value":1}')).toBeNull();
+    expect(screen.getAllByText('common.active').length).toBeGreaterThan(0);
     expect(screen.queryAllByTestId('badge')).toHaveLength(0);
   });
 });

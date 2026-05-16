@@ -153,6 +153,7 @@ const authServerMocks = vi.hoisted(() => {
       getSettings: vi.fn(async () => response('getWasteManagementSettingsHandler')),
       startInitialize: vi.fn(async () => response('startWasteManagementInitializeHandler')),
       updateSettings: vi.fn(async () => response('updateWasteManagementSettingsHandler')),
+      deleteTour: vi.fn(async () => response('deleteWasteManagementTourHandler')),
       updateCity: vi.fn(async () => response('updateWasteManagementCityHandler')),
       updateCollectionLocation: vi.fn(async () => response('updateWasteManagementCollectionLocationHandler')),
       updateFraction: vi.fn(async () => response('updateWasteManagementFractionHandler')),
@@ -467,6 +468,9 @@ describe('auth.routes.server', () => {
     await tourDetailHandlers.PUT?.({
       request: new Request('http://localhost/api/v1/waste-management/tours/tour-1', { method: 'PUT' }),
     });
+    await tourDetailHandlers.DELETE?.({
+      request: new Request('http://localhost/api/v1/waste-management/tours/tour-1', { method: 'DELETE' }),
+    });
     await settingsHandlers.GET?.({
       request: new Request('http://localhost/api/v1/waste-management/settings', { method: 'GET' }),
     });
@@ -509,6 +513,7 @@ describe('auth.routes.server', () => {
     expect(authServerMocks.wasteManagementHandlers.getToursOverview).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.createTour).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.updateTour).toHaveBeenCalled();
+    expect(authServerMocks.wasteManagementHandlers.deleteTour).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.getSettings).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.updateSettings).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.startInitialize).toHaveBeenCalled();

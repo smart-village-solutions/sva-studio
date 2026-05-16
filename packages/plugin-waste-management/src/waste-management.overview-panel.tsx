@@ -1,5 +1,6 @@
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { StudioErrorState, StudioLoadingState } from '@sva/studio-ui-react';
+import { useNavigate } from '@tanstack/react-router';
 import { useEffect, useRef, useState } from 'react';
 
 import type { WasteManagementHistoryOverview } from './waste-management.api.js';
@@ -10,6 +11,7 @@ import { resolveApiErrorCode } from './waste-management.page.support.js';
 
 export const WasteOverviewPanel = ({ search }: { readonly search: WasteManagementSearchParams }) => {
   const pt = usePluginTranslation('wasteManagement');
+  const navigate = useNavigate();
   const ptRef = useRef(pt);
   ptRef.current = pt;
   const isMountedRef = useRef(true);
@@ -66,5 +68,30 @@ export const WasteOverviewPanel = ({ search }: { readonly search: WasteManagemen
     return <StudioErrorState>{error}</StudioErrorState>;
   }
 
-  return <WasteOverviewContent overview={overview} />;
+  return (
+    <WasteOverviewContent
+      overview={overview}
+      page={search.page}
+      pageSize={search.pageSize}
+      onPageChange={(page) => {
+        void navigate({
+          to: '/plugins/waste-management',
+          search: {
+            ...search,
+            page,
+          },
+        });
+      }}
+      onPageSizeChange={(pageSize) => {
+        void navigate({
+          to: '/plugins/waste-management',
+          search: {
+            ...search,
+            page: 1,
+            pageSize,
+          },
+        });
+      }}
+    />
+  );
 };

@@ -22,6 +22,7 @@ vi.mock('@sva/studio-ui-react', () => ({
     readonly variant?: string;
   }) => <span data-testid="badge" data-variant={variant ?? 'default'}>{children}</span>,
   Button: (props: React.ComponentProps<'button'>) => <button {...props} />,
+  Select: (props: React.ComponentProps<'select'>) => <select {...props} />,
   StudioEmptyState: ({ children }: { readonly children: React.ReactNode }) => <div data-testid="empty-state">{children}</div>,
 }));
 
@@ -70,6 +71,10 @@ describe('WasteSchedulingContent', () => {
         onOpenCreateTourShiftDialog={vi.fn()}
         onEditGlobalShiftDialog={onEditGlobalShiftDialog}
         onEditTourShiftDialog={onEditTourShiftDialog}
+        page={1}
+        pageSize={25}
+        onPageChange={vi.fn()}
+        onPageSizeChange={vi.fn()}
       />
     );
 

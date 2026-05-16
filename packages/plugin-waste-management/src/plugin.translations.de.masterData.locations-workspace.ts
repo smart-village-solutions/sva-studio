@@ -18,6 +18,7 @@ export const wasteManagementPluginTranslationsDEMasterDataLocationsWorkspace =
       createLocation: 'Neuer Abholort',
     },
     filters: {
+      filtersTitle: 'Filter',
       tour: 'Nach Tour filtern',
       allTours: 'Alle Touren',
       activeTour: 'Aktive Tour',

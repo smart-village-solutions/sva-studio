@@ -8,6 +8,15 @@ describe('renderStagehandMarkdownReport', () => {
       generatedAt: '2026-05-16T08:30:00.000Z',
       mission: 'admin-users-overview' as const,
       status: 'passed' as const,
+      stories: [
+        {
+          id: 18,
+          packageId: 'IAM-P2',
+          role: 'Organisations-Admin',
+          title: 'Als Organisations-Admin möchte ich neue Nutzer anlegen können, damit ich mein Team verwalten kann.',
+          acceptanceCriteria: ['Ein neuer Nutzerzugang kann im Studio angelegt werden.'],
+        },
+      ],
       findings: ['Users list loaded', 'No permission edit controls visible'],
       screenshots: ['artifacts/admin-users-overview-01.png'],
       transcriptPath: 'artifacts/admin-users-overview.jsonl',
@@ -20,6 +29,9 @@ describe('renderStagehandMarkdownReport', () => {
     expect(markdown).toContain('Status: `passed`');
     expect(markdown).toContain('Transkript:');
     expect(markdown).toContain('```text\nartifacts/admin-users-overview.jsonl\n```');
+    expect(markdown).toContain('## Story-Basis');
+    expect(markdown).toContain('IAM-P2 / Story 18');
+    expect(markdown).toContain('Ein neuer Nutzerzugang kann im Studio angelegt werden.');
     expect(markdown).toContain('Users list loaded');
     expect(markdown).toContain('No permission edit controls visible');
     expect(markdown).toContain('- Screenshot\n  ```text\n  artifacts/admin-users-overview-01.png\n  ```');
@@ -30,6 +42,7 @@ describe('renderStagehandMarkdownReport', () => {
       generatedAt: '2026-05-16T08:30:00.000Z',
       mission: 'admin-users-overview',
       status: 'blocked',
+      stories: [],
       findings: [],
       screenshots: [],
       transcriptPath: 'artifacts/admin-users-overview.jsonl',
@@ -45,6 +58,7 @@ describe('renderStagehandMarkdownReport', () => {
       generatedAt: '2026-05-16T08:30:00.000Z',
       mission: 'admin-users-overview',
       status: 'failed',
+      stories: [],
       findings: ['Erste Zeile\nZweite `Zeile`'],
       screenshots: [],
       transcriptPath: 'artifacts/admin-users-overview.jsonl',
@@ -59,6 +73,7 @@ describe('renderStagehandMarkdownReport', () => {
       generatedAt: '2026-05-16T08:30:00.000Z',
       mission: 'admin-users-overview',
       status: 'failed',
+      stories: [],
       findings: ['Pfad C:\\temp\\stagehand und `Hinweis`'],
       screenshots: [],
       transcriptPath: 'artifacts/admin-users-overview.jsonl',
@@ -72,6 +87,7 @@ describe('renderStagehandMarkdownReport', () => {
       generatedAt: '2026-05-16T08:30:00.000Z',
       mission: 'admin-users-overview',
       status: 'failed',
+      stories: [],
       findings: ['\nWichtige zweite Zeile'],
       screenshots: [],
       transcriptPath: 'artifacts/admin-users-overview.jsonl',
@@ -86,6 +102,7 @@ describe('renderStagehandMarkdownReport', () => {
       generatedAt: '2026-05-16T08:30:00.000Z',
       mission: 'admin-users-overview',
       status: 'passed',
+      stories: [],
       findings: [],
       screenshots: ['artifacts/shot-`01`.png\nartifacts/shot-02.png'],
       transcriptPath: 'artifacts/trace-`raw`\ntrace.jsonl',

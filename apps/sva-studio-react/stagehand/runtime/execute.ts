@@ -2,6 +2,7 @@ import { join } from 'node:path';
 
 import type { StagehandMissionReport } from '../reporting/report.js';
 import { getStagehandMission } from '../missions/registry.js';
+import { getStagehandMissionStories } from '../stories/catalog.js';
 import type { StagehandAdminConfig } from './types.js';
 
 export interface StagehandMissionArtifacts {
@@ -25,6 +26,7 @@ export function executeStagehandAdminMission(
   options: ExecuteStagehandMissionOptions
 ): StagehandMissionRunResult {
   const mission = getStagehandMission(config.mission);
+  const stories = getStagehandMissionStories(config.mission);
   const missionDirectory = join(options.reportsRoot, config.mission);
   const transcriptPath = join(missionDirectory, 'transcript.jsonl');
   const statusPath = join(missionDirectory, 'status.json');
@@ -40,6 +42,7 @@ export function executeStagehandAdminMission(
       generatedAt: options.generatedAt ?? new Date().toISOString(),
       mission: config.mission,
       status: 'blocked',
+      stories,
       findings: [
         'Pilotlauf vorbereitet; echte Browser-Interaktion ist in diesem Schritt noch nicht implementiert.',
         `Startpfad: ${mission.startPath}`,

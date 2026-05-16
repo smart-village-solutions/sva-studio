@@ -20,6 +20,14 @@ describe('parseStagehandAdminConfig', () => {
       baseUrl: 'https://studio.example.test/admin',
       mission: 'admin-role-management-navigation',
       openAiApiKey: 'test-openai-key',
+      runMode: 'mission',
+      storyFilters: {
+        clusters: [],
+        packageIds: [],
+        resume: false,
+        storyIds: [],
+      },
+      tenant: null,
     });
   });
 
@@ -39,6 +47,55 @@ describe('parseStagehandAdminConfig', () => {
       baseUrl: 'https://iam.example.test',
       mission: 'admin-users-overview',
       openAiApiKey: 'fallback-openai-key',
+      runMode: 'mission',
+      storyFilters: {
+        clusters: [],
+        packageIds: [],
+        resume: false,
+        storyIds: [],
+      },
+      tenant: null,
+    });
+  });
+
+  it('parses story-loop mode, tenant credentials and filter env values', () => {
+    const config = parseStagehandAdminConfig({
+      STAGEHAND_ADMIN_BASE_URL: 'https://studio.example.test',
+      STAGEHAND_ADMIN_USERNAME: 'admin-user',
+      STAGEHAND_ADMIN_PASSWORD: 'super-secret',
+      STAGEHAND_RUN_MODE: 'story-loop',
+      STAGEHAND_STORY_IDS: '18, 19, 37',
+      STAGEHAND_STORY_PACKAGE_IDS: 'IAM-P2, IAM-P5',
+      STAGEHAND_STORY_CLUSTERS: 'tenant-user-create, tenant-isolation',
+      STAGEHAND_STORY_RESUME: 'true',
+      STAGEHAND_TENANT_BASE_URL: 'https://de-musterhausen.example.test/',
+      STAGEHAND_TENANT_USERNAME: 'tenant-admin',
+      STAGEHAND_TENANT_PASSWORD: 'tenant-secret',
+      OPENAI_API_KEY: 'test-openai-key',
+    });
+
+    expect(config).toEqual({
+      admin: {
+        username: 'admin-user',
+        password: 'super-secret',
+      },
+      baseUrl: 'https://studio.example.test',
+      mission: 'admin-users-overview',
+      openAiApiKey: 'test-openai-key',
+      runMode: 'story-loop',
+      storyFilters: {
+        clusters: ['tenant-user-create', 'tenant-isolation'],
+        packageIds: ['IAM-P2', 'IAM-P5'],
+        resume: true,
+        storyIds: [18, 19, 37],
+      },
+      tenant: {
+        admin: {
+          username: 'tenant-admin',
+          password: 'tenant-secret',
+        },
+        baseUrl: 'https://de-musterhausen.example.test',
+      },
     });
   });
 

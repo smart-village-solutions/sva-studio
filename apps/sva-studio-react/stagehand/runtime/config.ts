@@ -1,8 +1,16 @@
-import { STAGEHAND_MISSION_NAMES, type StagehandAdminConfig, type StagehandMissionName } from './types.js';
+import {
+  STAGEHAND_MISSION_NAMES,
+  type StagehandAdminConfig,
+  type StagehandMissionName,
+  type StagehandRunMode,
+  type StagehandStoryFilters,
+  type StagehandTenantConfig,
+} from './types.js';
 
 type StagehandAdminEnv = Record<string, string | undefined>;
 
 const DEFAULT_MISSION: StagehandMissionName = 'admin-users-overview';
+const DEFAULT_RUN_MODE: StagehandRunMode = 'mission';
 
 const REQUIRED_ENV_SPECS = [
   {
@@ -38,6 +46,19 @@ function normalizeBaseUrl(baseUrl: string): string {
   return baseUrl.trim().replace(/\/+$/u, '');
 }
 
+function normalizeCsvValues(value: string | undefined): string[] {
+  return value
+    ?.split(',')
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0) ?? [];
+}
+
+function normalizeNumericCsvValues(value: string | undefined): number[] {
+  return normalizeCsvValues(value)
+    .map((entry) => Number.parseInt(entry, 10))
+    .filter((entry) => Number.isNaN(entry) === false);
+}
+
 function parseBaseUrl(baseUrl: string): string {
   const normalizedBaseUrl = normalizeBaseUrl(baseUrl);
 
@@ -57,6 +78,59 @@ function parseBaseUrl(baseUrl: string): string {
   }
 
   return normalizedBaseUrl;
+}
+
+function parseRunMode(runMode: string | undefined): StagehandRunMode {
+  const normalizedRunMode = runMode?.trim();
+
+  if (normalizedRunMode === undefined || normalizedRunMode === '') {
+    return DEFAULT_RUN_MODE;
+  }
+
+  if (normalizedRunMode === 'mission' || normalizedRunMode === 'story-loop') {
+    return normalizedRunMode;
+  }
+
+  throw new Error(`Invalid Stagehand run mode: ${runMode}. Expected one of: mission, story-loop`);
+}
+
+function parseResumeFlag(value: string | undefined): boolean {
+  const normalizedValue = value?.trim().toLowerCase();
+
+  return normalizedValue === '1' || normalizedValue === 'true' || normalizedValue === 'yes';
+}
+
+function parseStoryFilters(env: StagehandAdminEnv): StagehandStoryFilters {
+  return {
+    clusters: normalizeCsvValues(env.STAGEHAND_STORY_CLUSTERS),
+    packageIds: normalizeCsvValues(env.STAGEHAND_STORY_PACKAGE_IDS),
+    resume: parseResumeFlag(env.STAGEHAND_STORY_RESUME),
+    storyIds: normalizeNumericCsvValues(env.STAGEHAND_STORY_IDS),
+  };
+}
+
+function parseTenantConfig(env: StagehandAdminEnv): StagehandTenantConfig | null {
+  const baseUrl = readFirstDefined(env, ['STAGEHAND_TENANT_BASE_URL']);
+  const username = readFirstDefined(env, ['STAGEHAND_TENANT_USERNAME']);
+  const password = readFirstDefined(env, ['STAGEHAND_TENANT_PASSWORD']);
+
+  if (baseUrl === undefined && username === undefined && password === undefined) {
+    return null;
+  }
+
+  if (baseUrl === undefined || username === undefined || password === undefined) {
+    throw new Error(
+      'Missing Stagehand tenant config env vars: STAGEHAND_TENANT_BASE_URL, STAGEHAND_TENANT_USERNAME, STAGEHAND_TENANT_PASSWORD'
+    );
+  }
+
+  return {
+    admin: {
+      username,
+      password,
+    },
+    baseUrl: parseBaseUrl(baseUrl),
+  };
 }
 
 function parseMission(mission: string | undefined): StagehandMissionName {
@@ -89,6 +163,9 @@ export function parseStagehandAdminConfig(env: StagehandAdminEnv): StagehandAdmi
   const password = readFirstDefined(env, REQUIRED_ENV_SPECS[2].sources);
   const openAiApiKey = readFirstDefined(env, REQUIRED_ENV_SPECS[3].sources);
   const mission = parseMission(env.STAGEHAND_ADMIN_MISSION);
+  const runMode = parseRunMode(env.STAGEHAND_RUN_MODE);
+  const storyFilters = parseStoryFilters(env);
+  const tenant = parseTenantConfig(env);
 
   if (baseUrl === undefined || username === undefined || password === undefined || openAiApiKey === undefined) {
     throw new Error('Missing Stagehand admin config env vars: invariant violation');
@@ -102,5 +179,8 @@ export function parseStagehandAdminConfig(env: StagehandAdminEnv): StagehandAdmi
     baseUrl: parseBaseUrl(baseUrl),
     mission,
     openAiApiKey,
+    runMode,
+    storyFilters,
+    tenant,
   };
 }

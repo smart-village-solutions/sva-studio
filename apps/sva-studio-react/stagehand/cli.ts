@@ -8,11 +8,14 @@ import type { StagehandMissionReport } from './reporting/report.js';
 import { detectStagehandAuthIssue } from './runtime/auth.js';
 import { parseStagehandAdminConfig } from './runtime/config.js';
 import { assertStagehandReadiness, type StagehandFetch, type StagehandReadinessResult } from './runtime/readiness.js';
+import { runStagehandStoryLoop, type RunStagehandStoryLoopOptions, type StagehandStoryLoopSummary } from './runtime/story-loop.js';
+import { getStagehandMissionStories, type StagehandStoryReference } from './stories/catalog.js';
 
 type StagehandCliEnv = Record<string, string | undefined>;
 
-interface StagehandCliReadyPayload {
+interface StagehandCliMissionReadyPayload {
   status: 'READY';
+  runMode: 'mission';
   mission: string;
   baseUrl: string;
   adminUsername: string;
@@ -20,6 +23,17 @@ interface StagehandCliReadyPayload {
   reportPath: string;
   startUrl: string;
   statusPath: string;
+  transcriptPath: string;
+}
+
+interface StagehandCliStoryLoopReadyPayload {
+  status: 'READY';
+  runMode: 'story-loop';
+  baseUrl: string;
+  adminUsername: string;
+  reportPath: string;
+  statusPath: string;
+  summary: StagehandStoryLoopSummary;
   transcriptPath: string;
 }
 
@@ -31,13 +45,15 @@ interface StagehandCliBlockedPayload {
 interface StagehandCliResult {
   exitCode: 0 | 1;
   stream: 'stdout' | 'stderr';
-  payload: StagehandCliReadyPayload | StagehandCliBlockedPayload;
+  payload: StagehandCliMissionReadyPayload | StagehandCliStoryLoopReadyPayload | StagehandCliBlockedPayload;
 }
 
 interface RunStagehandAdminCliOptions {
+  readonly executeCluster?: RunStagehandStoryLoopOptions['executeCluster'];
   readonly fetchImpl?: StagehandFetch;
   readonly generatedAt?: string;
   readonly reportsRoot?: string;
+  readonly storySourcePath?: string;
 }
 
 interface StagehandMissionArtifacts {
@@ -55,6 +71,10 @@ interface StagehandMissionRunResult {
 const DEFAULT_REPORTS_ROOT = resolve(
   dirname(fileURLToPath(import.meta.url)),
   '../../../docs/reports/stagehand-admin-exploration'
+);
+const DEFAULT_STORY_SOURCE_PATH = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  '../../../concepts/konzeption-cms-v2/02_Anforderungen/user-stories.json'
 );
 const HTML_REQUEST_INIT = {
   headers: {
@@ -105,9 +125,14 @@ function createBaseFindings(readiness: StagehandReadinessResult, startUrl: strin
   ];
 }
 
+function createStoryBasisFinding(stories: readonly StagehandStoryReference[]): string {
+  return `Story-Basis geladen: ${stories.map((story) => `${story.packageId}#${story.id}`).join(', ')}.`;
+}
+
 function createMissionReport(
   generatedAt: string,
   transcriptPath: string,
+  stories: readonly StagehandStoryReference[],
   status: StagehandMissionReport['status'],
   findings: readonly string[]
 ): StagehandMissionReport {
@@ -115,6 +140,7 @@ function createMissionReport(
     generatedAt,
     mission: 'admin-users-overview',
     status,
+    stories,
     findings,
     screenshots: [],
     transcriptPath,
@@ -128,16 +154,18 @@ async function executeAdminUsersOverviewMission(
   fetchImpl: StagehandFetch
 ): Promise<StagehandMissionRunResult> {
   const mission = getStagehandMission('admin-users-overview');
+  const stories = getStagehandMissionStories(mission.name);
   const artifacts = createArtifacts(reportsRoot, mission.name);
   const readiness = await assertStagehandReadiness(baseUrl, fetchImpl);
   const startUrl = createStartUrl(baseUrl, mission.startPath);
-  const prompt = createMissionPrompt({ startUrl });
+  const prompt = createMissionPrompt({ startUrl, stories });
 
   createMissionPromptInvariant(prompt);
 
   const response = await fetchImpl(startUrl, HTML_REQUEST_INIT);
   const bodyText = await response.text();
   const findings = createBaseFindings(readiness, startUrl);
+  findings.push(createStoryBasisFinding(stories));
   const authIssue = detectStagehandAuthIssue({
     bodyText,
     requestedUrl: startUrl,
@@ -149,7 +177,13 @@ async function executeAdminUsersOverviewMission(
 
     return {
       artifacts,
-      report: createMissionReport(generatedAt, artifacts.transcriptPath, authIssue.kind === 'login' ? 'blocked' : 'failed', findings),
+      report: createMissionReport(
+        generatedAt,
+        artifacts.transcriptPath,
+        stories,
+        authIssue.kind === 'login' ? 'blocked' : 'failed',
+        findings
+      ),
       startUrl,
     };
   }
@@ -161,7 +195,7 @@ async function executeAdminUsersOverviewMission(
 
     return {
       artifacts,
-      report: createMissionReport(generatedAt, artifacts.transcriptPath, 'passed', findings),
+      report: createMissionReport(generatedAt, artifacts.transcriptPath, stories, 'passed', findings),
       startUrl,
     };
   }
@@ -173,7 +207,7 @@ async function executeAdminUsersOverviewMission(
 
     return {
       artifacts,
-      report: createMissionReport(generatedAt, artifacts.transcriptPath, 'passed', findings),
+      report: createMissionReport(generatedAt, artifacts.transcriptPath, stories, 'passed', findings),
       startUrl,
     };
   }
@@ -185,7 +219,7 @@ async function executeAdminUsersOverviewMission(
 
     return {
       artifacts,
-      report: createMissionReport(generatedAt, artifacts.transcriptPath, 'failed', findings),
+      report: createMissionReport(generatedAt, artifacts.transcriptPath, stories, 'failed', findings),
       startUrl,
     };
   }
@@ -195,7 +229,7 @@ async function executeAdminUsersOverviewMission(
 
     return {
       artifacts,
-      report: createMissionReport(generatedAt, artifacts.transcriptPath, 'failed', findings),
+      report: createMissionReport(generatedAt, artifacts.transcriptPath, stories, 'failed', findings),
       startUrl,
     };
   }
@@ -206,7 +240,7 @@ async function executeAdminUsersOverviewMission(
 
   return {
     artifacts,
-    report: createMissionReport(generatedAt, artifacts.transcriptPath, 'failed', findings),
+    report: createMissionReport(generatedAt, artifacts.transcriptPath, stories, 'failed', findings),
     startUrl,
   };
 }
@@ -231,12 +265,39 @@ export async function runStagehandAdminCli(
 ): Promise<StagehandCliResult> {
   try {
     const config = parseStagehandAdminConfig(env);
+    const generatedAt = options.generatedAt ?? new Date().toISOString();
+    const reportsRoot = options.reportsRoot ?? DEFAULT_REPORTS_ROOT;
+
+    if (config.runMode === 'story-loop') {
+      const loopRun = await runStagehandStoryLoop(config, {
+        executeCluster: options.executeCluster,
+        generatedAt,
+        reportsRoot,
+        storySourcePath: options.storySourcePath ?? DEFAULT_STORY_SOURCE_PATH,
+      });
+
+      return {
+        exitCode: 0,
+        stream: 'stdout',
+        payload: {
+          status: 'READY',
+          runMode: 'story-loop',
+          baseUrl: config.baseUrl,
+          adminUsername: config.admin.username,
+          reportPath: loopRun.artifacts.reportPath,
+          statusPath: loopRun.artifacts.statusPath,
+          summary: loopRun.summary,
+          transcriptPath: loopRun.artifacts.transcriptPath,
+        },
+      };
+    }
+
     const mission = getStagehandMission(config.mission);
     const missionRun = await runPilotMission(
       mission.name,
       config.baseUrl,
-      options.generatedAt ?? new Date().toISOString(),
-      options.reportsRoot ?? DEFAULT_REPORTS_ROOT,
+      generatedAt,
+      reportsRoot,
       options.fetchImpl ?? fetch
     );
 
@@ -247,6 +308,7 @@ export async function runStagehandAdminCli(
       stream: 'stdout',
       payload: {
         status: 'READY',
+        runMode: 'mission',
         mission: config.mission,
         baseUrl: config.baseUrl,
         adminUsername: config.admin.username,

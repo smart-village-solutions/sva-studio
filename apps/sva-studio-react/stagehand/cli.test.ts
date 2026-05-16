@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -59,6 +59,7 @@ describe('runStagehandAdminCli', () => {
       stream: 'stdout',
       payload: {
         status: 'READY',
+        runMode: 'mission',
         mission: 'admin-users-overview',
         baseUrl: 'https://studio.example.test',
         adminUsername: 'admin-user',
@@ -83,15 +84,42 @@ describe('runStagehandAdminCli', () => {
       generatedAt: '2026-05-16T12:00:00.000Z',
       mission: 'admin-users-overview',
       status: 'passed',
+      stories: [
+        {
+          id: 18,
+          packageId: 'IAM-P2',
+          role: 'Organisations-Admin',
+          title: 'Als Organisations-Admin möchte ich neue Nutzer anlegen können, damit ich mein Team verwalten kann.',
+          acceptanceCriteria: [
+            'Ein neuer Nutzerzugang kann im Studio angelegt werden.',
+            'Der Zugang ist einer Organisation oder einem fachlichen Kontext zuordenbar.',
+            'Nach dem Anlegen ist der neue Nutzer in der Verwaltungsansicht auffindbar.',
+          ],
+        },
+        {
+          id: 19,
+          packageId: 'IAM-P3',
+          role: 'Organisations-Admin',
+          title:
+            'Als Organisations-Admin möchte ich nur Nutzer, Rollen, Gruppen und Rechtstexte meines Mandanten sehen, damit Daten sauber getrennt bleiben.',
+          acceptanceCriteria: [
+            'Im aktiven Mandanten werden nur dessen Nutzer, Rollen, Gruppen und Rechtstexte angezeigt.',
+            'Mandantenfremde Verwaltungsdaten erscheinen nicht in regulaeren Listen oder Details.',
+            'Die Sicht ist fuer den Organisations-Admin ausreichend klar, um saubere Trennung zu pruefen.',
+          ],
+        },
+      ],
       findings: [
         'Lokale Readiness erfolgreich: https://studio.example.test (HTTP 200).',
         'Start-URL geöffnet: https://studio.example.test/admin/users',
+        'Story-Basis geladen: IAM-P2#18, IAM-P3#19.',
         'Benutzerverwaltung erkannt: Users table.',
       ],
       screenshots: [],
       transcriptPath: join(reportsRoot, 'admin-users-overview', 'transcript.jsonl'),
     });
     expect(readFileSync(result.payload.reportPath, 'utf8')).toContain('# Stagehand-Missionsbericht');
+    expect(readFileSync(result.payload.reportPath, 'utf8')).toContain('## Story-Basis');
     expect(readFileSync(result.payload.transcriptPath, 'utf8')).toContain('stagehand mission bootstrap pending');
   });
 
@@ -132,6 +160,7 @@ describe('runStagehandAdminCli', () => {
       stream: 'stdout',
       payload: {
         status: 'READY',
+        runMode: 'mission',
         mission: 'admin-users-overview',
         baseUrl: 'https://studio.example.test',
         adminUsername: 'admin-user',
@@ -152,9 +181,35 @@ describe('runStagehandAdminCli', () => {
       generatedAt: '2026-05-16T12:00:00.000Z',
       mission: 'admin-users-overview',
       status: 'blocked',
+      stories: [
+        {
+          id: 18,
+          packageId: 'IAM-P2',
+          role: 'Organisations-Admin',
+          title: 'Als Organisations-Admin möchte ich neue Nutzer anlegen können, damit ich mein Team verwalten kann.',
+          acceptanceCriteria: [
+            'Ein neuer Nutzerzugang kann im Studio angelegt werden.',
+            'Der Zugang ist einer Organisation oder einem fachlichen Kontext zuordenbar.',
+            'Nach dem Anlegen ist der neue Nutzer in der Verwaltungsansicht auffindbar.',
+          ],
+        },
+        {
+          id: 19,
+          packageId: 'IAM-P3',
+          role: 'Organisations-Admin',
+          title:
+            'Als Organisations-Admin möchte ich nur Nutzer, Rollen, Gruppen und Rechtstexte meines Mandanten sehen, damit Daten sauber getrennt bleiben.',
+          acceptanceCriteria: [
+            'Im aktiven Mandanten werden nur dessen Nutzer, Rollen, Gruppen und Rechtstexte angezeigt.',
+            'Mandantenfremde Verwaltungsdaten erscheinen nicht in regulaeren Listen oder Details.',
+            'Die Sicht ist fuer den Organisations-Admin ausreichend klar, um saubere Trennung zu pruefen.',
+          ],
+        },
+      ],
       findings: [
         'Lokale Readiness erfolgreich: https://studio.example.test (HTTP 200).',
         'Start-URL geöffnet: https://studio.example.test/admin/users',
+        'Story-Basis geladen: IAM-P2#18, IAM-P3#19.',
         'Login-Redirect erkannt; der Pilotlauf bricht ab, statt eine Login-Schleife zu tolerieren.',
       ],
       screenshots: [],
@@ -258,6 +313,127 @@ describe('runStagehandAdminCli', () => {
         status: 'BLOCKED',
         message: 'Invalid Stagehand admin base URL: /. Expected an absolute http(s) URL.',
       },
+    });
+  });
+
+  it('returns READY JSON payload and writes an overlay in story-loop mode', async () => {
+    const reportsRoot = createTempReportsRoot();
+    const storyDirectory = mkdtempSync(join(tmpdir(), 'stagehand-cli-story-loop-'));
+    temporaryDirectories.push(storyDirectory);
+    const storySourcePath = join(storyDirectory, 'user-stories.json');
+
+    const fixtureSource = JSON.stringify(
+      {
+        version: '2.7',
+        scope: 'IAM',
+        updatedAt: '2026-03-19',
+        description: 'fixture',
+        packages: [
+          {
+            id: 'IAM-P2',
+            title: 'Onboarding und Einladung',
+            stories: [
+              {
+                id: 18,
+                role: 'Organisations-Admin',
+                story: 'Als Organisations-Admin möchte ich neue Nutzer anlegen können, damit ich mein Team verwalten kann.',
+                packageId: 'IAM-P2',
+                relatedPackageIds: [],
+                legacy: true,
+                trigger: 'fixture',
+                preconditions: [],
+                acceptanceCriteria: ['Ein neuer Nutzerzugang kann im Studio angelegt werden.'],
+                evidence: ['Admin-UI'],
+                studioCheck: {
+                  status: 'offen',
+                  coverage: 'nicht_geprueft',
+                  notes: '',
+                },
+                legacyId: 11,
+                priority: 1,
+              },
+            ],
+          },
+        ],
+      },
+      null,
+      2
+    );
+
+    writeFileSync(storySourcePath, fixtureSource, 'utf8');
+
+    const result = await runStagehandAdminCli(
+      {
+        STAGEHAND_ADMIN_BASE_URL: 'https://studio.example.test',
+        STAGEHAND_ADMIN_USERNAME: 'admin-user',
+        STAGEHAND_ADMIN_PASSWORD: 'super-secret',
+        STAGEHAND_RUN_MODE: 'story-loop',
+        OPENAI_API_KEY: 'test-openai-key',
+      },
+      {
+        reportsRoot,
+        storySourcePath,
+        executeCluster: async ({ stories }) =>
+          stories.map((story) => ({
+            storyId: story.id,
+            status: 'erfuellt',
+            coverage: 'vorhanden',
+            findings: ['Loop proof created.'],
+            notes: 'Artefakte unter story-loop.',
+          })),
+      }
+    );
+
+    expect(result).toEqual({
+      exitCode: 0,
+      stream: 'stdout',
+      payload: {
+        status: 'READY',
+        runMode: 'story-loop',
+        baseUrl: 'https://studio.example.test',
+        adminUsername: 'admin-user',
+        reportPath: join(reportsRoot, 'story-loop', 'report.md'),
+        statusPath: join(reportsRoot, 'story-loop', 'status.json'),
+        transcriptPath: join(reportsRoot, 'story-loop', 'transcript.jsonl'),
+        summary: {
+          clusters: 1,
+          storiesClassified: 1,
+          storiesFailedEvidence: 0,
+          storiesPassed: 1,
+          storiesSkipped: 0,
+        },
+      },
+    });
+
+    expect(JSON.parse(readFileSync(storySourcePath, 'utf8'))).toMatchObject({
+      packages: [
+        {
+          stories: [
+            {
+              id: 18,
+              studioCheck: {
+                status: 'offen',
+                coverage: 'nicht_geprueft',
+                notes: '',
+              },
+            },
+          ],
+        },
+      ],
+    });
+    expect(JSON.parse(readFileSync(join(reportsRoot, 'story-loop', 'overlay.json'), 'utf8'))).toMatchObject({
+      sourcePath: storySourcePath,
+      stories: [
+        {
+          storyId: 18,
+          clusterId: 'tenant-user-create',
+          studioCheck: {
+            status: 'erfuellt',
+            coverage: 'vorhanden',
+            notes: 'Artefakte unter story-loop.',
+          },
+        },
+      ],
     });
   });
 });

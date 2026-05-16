@@ -1,4 +1,5 @@
 import type { StagehandMissionName } from '../runtime/types.js';
+import type { StagehandStoryReference } from '../stories/catalog.js';
 
 export type StagehandMissionStatus = 'passed' | 'failed' | 'blocked';
 
@@ -6,6 +7,7 @@ export interface StagehandMissionReport {
   generatedAt: string;
   mission: StagehandMissionName;
   status: StagehandMissionStatus;
+  stories: readonly StagehandStoryReference[];
   findings: readonly string[];
   screenshots: readonly string[];
   transcriptPath: string;
@@ -57,7 +59,16 @@ function indentBlock(value: string, indent: string): string {
     .join('\n');
 }
 
+function renderStoryEntry(story: StagehandStoryReference): string {
+  return [
+    `- ${story.packageId} / Story ${story.id}: ${escapeMarkdownText(story.title)}`,
+    ...story.acceptanceCriteria.map((criterion) => `  - ${escapeMarkdownText(criterion)}`),
+  ].join('\n');
+}
+
 export function renderStagehandMarkdownReport(report: StagehandMissionReport): string {
+  const stories =
+    report.stories.length > 0 ? report.stories.map(renderStoryEntry).join('\n') : '- Keine';
   const findings =
     report.findings.length > 0 ? report.findings.map(renderMarkdownListItem).join('\n') : '- Keine';
   const screenshots =
@@ -75,6 +86,9 @@ export function renderStagehandMarkdownReport(report: StagehandMissionReport): s
     `Status: \`${report.status}\``,
     'Transkript:',
     renderTextCodeBlock(report.transcriptPath),
+    '',
+    '## Story-Basis',
+    stories,
     '',
     '## Erkenntnisse',
     findings,

@@ -11,6 +11,18 @@ Das System SHALL eine separate, lokal ausführbare Stagehand-Explorationsschicht
 - **AND** der Lauf verwendet die laufende lokale Studio-App gegen den echten IAM-/Backend-Stack
 - **AND** der Lauf endet mit einem eindeutigen Missionsstatus
 
+### Requirement: Vollständige IAM-Story-Loop mit reviewbarem Result-Overlay
+
+Das System SHALL den vollständigen IAM-User-Story-Katalog aus `concepts/konzeption-cms-v2/02_Anforderungen/user-stories.json` in einem lokalen Story-Loop verarbeiten und die Ergebnisse als separates Overlay erzeugen.
+
+#### Scenario: Voll-Lauf klassifiziert Stories über Overlay
+
+- **WHEN** der lokale Stagehand-Story-Loop ausgeführt wird
+- **THEN** liest der Lauf alle IAM-Stories aus `user-stories.json`
+- **AND** gruppiert sie in technische Cluster statt zwingend in Einzellauf-Missionen
+- **AND** schreibt die resultierenden `studioCheck`-Entscheidungen deterministisch in ein separates Overlay
+- **AND** hinterlässt pro klassifizierter Story belastbare Notes oder Artefaktverweise
+
 ### Requirement: Lokaler Env-Vertrag für echte Admin-Laufzeitpfade
 
 Das System SHALL einen klaren lokalen Env-Vertrag für Base-URL, Readiness, dedizierte Admin-Credentials und externe LLM-Zugangsdaten definieren.
@@ -54,6 +66,13 @@ Das System SHALL pro Explorationsmission nachvollziehbare Artefakte für Diagnos
 - **WHEN** eine Stagehand-Mission endet
 - **THEN** erzeugt der Lauf mindestens einen strukturierten Status, einen deutschsprachigen Bericht, Screenshots und ein Transcript oder Schrittprotokoll
 - **AND** die Artefakte sind einem klaren Missionsnamen zugeordnet
+
+#### Scenario: Story-Loop-Artefakte werden geschrieben
+
+- **WHEN** ein Stagehand-Story-Loop endet
+- **THEN** erzeugt der Lauf mindestens einen strukturierten Status, einen deutschsprachigen Bericht, Screenshots und ein Transcript oder Schrittprotokoll
+- **AND** der Lauf erzeugt zusätzlich einen Aggregatbericht und einen Aggregatstatus für den gesamten Story-Katalog
+- **AND** die Artefakte bleiben für jede Story-Entscheidung referenzierbar
 
 ### Requirement: Nicht-blockende Pilot-Nutzung
 

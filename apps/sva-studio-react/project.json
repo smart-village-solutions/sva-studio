@@ -200,7 +200,7 @@
       ],
       "options": {
         "cwd": "apps/sva-studio-react",
-        "command": "bash ../../scripts/ci/run-workspace-node.sh --import tsx ./stagehand/cli.ts"
+        "command": "STAGEHAND_RUN_MODE=story-loop bash ../../scripts/ci/run-workspace-node.sh --import tsx ./stagehand/cli.ts"
       }
     },
     "test:integration": {

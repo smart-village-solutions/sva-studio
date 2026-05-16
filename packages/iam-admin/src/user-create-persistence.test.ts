@@ -224,10 +224,48 @@ describe('user-create-persistence', () => {
     ).resolves.toMatchObject({
       responseData: expect.objectContaining({
         id: 'account-1',
+        roles: [expect.objectContaining({ roleKey: 'editor' })],
       }),
+      roleNames: ['Editor'],
     });
 
     expect(deps.ensureRoleAssignmentWithinActorLevel).toHaveBeenCalledTimes(1);
+  });
+
+  it('deduplicates direct and group-derived role ids before resolving the synced role set', async () => {
+    const deps = {
+      ...createDeps(),
+      resolveRoleIdsForGroups: vi.fn(async () => ['role-1', 'role-1']),
+    };
+    const client: QueryClient = {
+      query: vi.fn(async (text: string) => {
+        if (text.includes('RETURNING id')) {
+          return { rowCount: 1, rows: [{ id: 'account-3' }] };
+        }
+        return { rowCount: 1, rows: [] };
+      }),
+    };
+    const persistence = createUserCreatePersistence(deps);
+
+    await expect(
+      persistence.persistCreatedUser(client, {
+        actor: { instanceId: 'inst-1', actorAccountId: 'actor-1', actorRoles: ['admin'] },
+        actorSubject: 'subject-actor',
+        externalId: 'subject-new',
+        payload: {
+          email: 'user@example.test',
+          roleIds: ['role-1'],
+          groupIds: ['group-1'],
+        },
+      })
+    ).resolves.toMatchObject({
+      roleNames: ['Editor'],
+    });
+
+    expect(deps.resolveRolesByIds).toHaveBeenCalledWith(client, {
+      instanceId: 'inst-1',
+      roleIds: ['role-1'],
+    });
   });
 
   it('rejects groups that would grant bundled roles above the actor level', async () => {

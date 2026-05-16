@@ -1,9 +1,13 @@
 import type { IamUserDetail } from '@sva/core';
 
-import { getRoleExternalName } from './role-audit.js';
 import type { QueryClient } from './query-client.js';
 import type { IamGroupRow, IamRoleRow } from './types.js';
-import { mapRoles } from './user-mapping.js';
+import {
+  buildCreateAccountParams,
+  buildCreatedUserResult,
+  resolveAssignedRoleIds,
+  validateRequestedGroups,
+} from './user-create-persistence-support.js';
 
 export type CreateUserPersistencePayload = {
   readonly email: string;
@@ -133,96 +137,7 @@ VALUES ($1, $2::uuid, 'member')
 ON CONFLICT (instance_id, account_id) DO NOTHING;
 `;
 
-const buildDisplayName = (payload: CreateUserPersistencePayload, externalId: string): string =>
-  payload.displayName ?? ([payload.firstName, payload.lastName].filter(Boolean).join(' ') || externalId);
-
 export const createUserCreatePersistence = (deps: CreateUserPersistenceDeps) => {
-  const validateRequestedGroups = async (
-    client: QueryClient,
-    input: {
-      readonly actor: CreateUserPersistenceActor;
-      readonly actorSubject: string;
-      readonly groupIds: readonly string[];
-    }
-  ) => {
-    const uniqueGroupIds = [...new Set(input.groupIds)];
-    if (uniqueGroupIds.length === 0) {
-      return;
-    }
-
-    const groups = await deps.resolveGroupsByIds(client, {
-      instanceId: input.actor.instanceId,
-      groupIds: uniqueGroupIds,
-    });
-    if (groups.length !== uniqueGroupIds.length) {
-      throw new Error('invalid_request:Mindestens eine aktive Gruppe existiert nicht.');
-    }
-
-    const groupedRoleIds = await deps.resolveRoleIdsForGroups(client, {
-      instanceId: input.actor.instanceId,
-      groupIds: uniqueGroupIds,
-    });
-    if (groupedRoleIds.length === 0) {
-      return;
-    }
-
-    const roleValidation = await deps.ensureRoleAssignmentWithinActorLevel({
-      client,
-      instanceId: input.actor.instanceId,
-      actorSubject: input.actorSubject,
-      actorRoles: input.actor.actorRoles,
-      roleIds: groupedRoleIds,
-    });
-    if (!roleValidation.ok) {
-      throw new Error(`${roleValidation.code}:${roleValidation.message}`);
-    }
-  };
-
-  const buildCreateAccountParams = (
-    actor: CreateUserPersistenceActor,
-    payload: CreateUserPersistencePayload,
-    externalId: string
-  ): readonly (string | null)[] => [
-    actor.instanceId,
-    externalId,
-    deps.protectField(payload.email, `iam.accounts.email:${externalId}`),
-    deps.protectField(buildDisplayName(payload, externalId), `iam.accounts.display_name:${externalId}`),
-    deps.protectField(payload.firstName, `iam.accounts.first_name:${externalId}`),
-    deps.protectField(payload.lastName, `iam.accounts.last_name:${externalId}`),
-    deps.protectField(payload.phone, `iam.accounts.phone:${externalId}`),
-    payload.position ?? null,
-    payload.department ?? null,
-    payload.avatarUrl ?? null,
-    payload.preferredLanguage ?? null,
-    payload.timezone ?? null,
-    payload.status ?? 'pending',
-    payload.notes ?? null,
-  ];
-
-  const buildCreatedUserResponse = (
-    accountId: string,
-    externalId: string,
-    payload: CreateUserPersistencePayload,
-    roleNames: ReturnType<typeof mapRoles>
-  ): IamUserDetail => ({
-    id: accountId,
-    keycloakSubject: externalId,
-    displayName: buildDisplayName(payload, externalId),
-    email: payload.email,
-    firstName: payload.firstName,
-    lastName: payload.lastName,
-    phone: payload.phone,
-    position: payload.position,
-    department: payload.department,
-    preferredLanguage: payload.preferredLanguage,
-    timezone: payload.timezone,
-    avatarUrl: payload.avatarUrl,
-    notes: payload.notes,
-    status: payload.status ?? 'pending',
-    roles: roleNames,
-    mainserverUserApplicationSecretSet: false,
-  });
-
   const persistCreatedUser = async (
     client: QueryClient,
     input: {
@@ -243,7 +158,7 @@ export const createUserCreatePersistence = (deps: CreateUserPersistenceDeps) => 
     if (!roleValidation.ok) {
       throw new Error(`${roleValidation.code}:${roleValidation.message}`);
     }
-    await validateRequestedGroups(client, {
+    await validateRequestedGroups(deps, client, {
       actor,
       actorSubject,
       groupIds: payload.groupIds ?? [],
@@ -251,7 +166,7 @@ export const createUserCreatePersistence = (deps: CreateUserPersistenceDeps) => 
 
     const inserted = await client.query<{ readonly id: string }>(
       INSERT_ACCOUNT_QUERY,
-      buildCreateAccountParams(actor, payload, externalId)
+      buildCreateAccountParams(deps, actor, payload, externalId)
     );
     const accountId = inserted.rows[0]?.id;
     if (!accountId) {
@@ -272,9 +187,14 @@ export const createUserCreatePersistence = (deps: CreateUserPersistenceDeps) => 
       origin: 'manual',
     });
 
-    const assignedRoleRows = await deps.resolveRolesByIds(client, {
+    const assignedRoleIds = await resolveAssignedRoleIds(deps, client, {
       instanceId: actor.instanceId,
       roleIds: payload.roleIds,
+      groupIds: payload.groupIds ?? [],
+    });
+    const assignedRoleRows = await deps.resolveRolesByIds(client, {
+      instanceId: actor.instanceId,
+      roleIds: assignedRoleIds,
     });
 
     await deps.emitActivityLog(client, {
@@ -303,10 +223,7 @@ export const createUserCreatePersistence = (deps: CreateUserPersistenceDeps) => 
       trigger: 'user_group_changed',
     });
 
-    return {
-      responseData: buildCreatedUserResponse(accountId, externalId, payload, mapRoles(assignedRoleRows)),
-      roleNames: assignedRoleRows.map((entry) => getRoleExternalName(entry)),
-    };
+    return buildCreatedUserResult(accountId, externalId, payload, assignedRoleRows);
   };
 
   return {

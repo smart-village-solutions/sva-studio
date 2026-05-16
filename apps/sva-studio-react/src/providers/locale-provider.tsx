@@ -1,3 +1,4 @@
+import { setEditorDateTimeLocale } from '@sva/plugin-sdk';
 import React from 'react';
 
 import { DEFAULT_LOCALE, isSupportedLocale, setActiveLocale, type SupportedLocale } from '../i18n';
@@ -20,15 +21,21 @@ const resolveInitialLocale = (): SupportedLocale => {
   return DEFAULT_LOCALE;
 };
 
+const toEditorDateTimeLocale = (locale: SupportedLocale): string => {
+  return locale === 'en' ? 'en-GB' : 'de-DE';
+};
+
 export const LocaleProvider = ({ children }: LocaleProviderProps) => {
   const [locale, setLocaleState] = React.useState<SupportedLocale>(() => {
     const initialLocale = resolveInitialLocale();
     setActiveLocale(initialLocale);
+    setEditorDateTimeLocale(toEditorDateTimeLocale(initialLocale));
     return initialLocale;
   });
 
   const setLocale = React.useCallback((nextLocale: SupportedLocale) => {
     setActiveLocale(nextLocale);
+    setEditorDateTimeLocale(toEditorDateTimeLocale(nextLocale));
     setLocaleState(nextLocale);
   }, []);
 
@@ -44,6 +51,7 @@ export const LocaleProvider = ({ children }: LocaleProviderProps) => {
     }
 
     setActiveLocale(persistedLocale);
+    setEditorDateTimeLocale(toEditorDateTimeLocale(persistedLocale));
     setLocaleState(persistedLocale);
   }, []);
 

@@ -83,8 +83,10 @@ export type { HostMediaFieldOption } from './content-ui-utils.js';
 export {
   compactOptionalString,
   formatDateTimeInEditorTimeZone,
+  formatTechnicalDateTimeInEditorTimeZone,
   findHostMediaReferenceAssetId,
   fromDatetimeLocalValue,
+  setEditorDateTimeLocale,
   toDatetimeLocalValue,
   toHostMediaFieldOptions,
 } from './content-ui-utils.js';

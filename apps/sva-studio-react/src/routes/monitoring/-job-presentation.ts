@@ -1,5 +1,5 @@
 import type { StudioJobDetail, StudioJobListItem, StudioJobProgress } from '@sva/core';
-import { formatDateTimeInEditorTimeZone } from '@sva/plugin-sdk';
+import { formatTechnicalDateTimeInEditorTimeZone } from '@sva/plugin-sdk';
 
 import { t } from '../../i18n';
 
@@ -37,7 +37,7 @@ export const formatMonitoringJobDateTime = (value?: string): string => {
   if (!value) {
     return t('monitoring.jobs.values.notAvailable');
   }
-  return formatDateTimeInEditorTimeZone(value) ?? value;
+  return formatTechnicalDateTimeInEditorTimeZone(value) ?? value;
 };
 
 export const formatMonitoringJobProgressSummary = (progress?: StudioJobProgress): string => {

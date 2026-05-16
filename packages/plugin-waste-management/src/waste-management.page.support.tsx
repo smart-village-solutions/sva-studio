@@ -4,7 +4,11 @@ import type {
   WasteManagementImportSourceFormat,
   WasteManagementSettingsRecord,
 } from '@sva/plugin-sdk';
-import { formatDateTimeInEditorTimeZone, usePluginTranslation, wasteManagementOperationsContract } from '@sva/plugin-sdk';
+import {
+  formatTechnicalDateTimeInEditorTimeZone,
+  usePluginTranslation,
+  wasteManagementOperationsContract,
+} from '@sva/plugin-sdk';
 import {
   Alert,
   AlertDescription,
@@ -37,7 +41,7 @@ export const formatUpdatedAt = (value?: string) => {
   if (!value) {
     return '—';
   }
-  return formatDateTimeInEditorTimeZone(value) ?? value;
+  return formatTechnicalDateTimeInEditorTimeZone(value) ?? value;
 };
 
 export const toTechnicalStatusTone = (

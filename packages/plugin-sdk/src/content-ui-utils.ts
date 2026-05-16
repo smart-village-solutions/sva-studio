@@ -5,18 +5,9 @@ export type HostMediaFieldOption = Readonly<{
   label: string;
 }>;
 
-const editorLocale = 'de-DE';
 const editorTimeZone = 'Europe/Berlin';
-
-const editorDateTimeFormatter = new Intl.DateTimeFormat(editorLocale, {
-  timeZone: editorTimeZone,
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit',
-  hour: '2-digit',
-  minute: '2-digit',
-  hourCycle: 'h23',
-});
+const defaultEditorLocale = 'de-DE';
+let editorLocale = defaultEditorLocale;
 
 const editorDateTimePartsFormatter = new Intl.DateTimeFormat('en-CA', {
   timeZone: editorTimeZone,
@@ -27,6 +18,15 @@ const editorDateTimePartsFormatter = new Intl.DateTimeFormat('en-CA', {
   minute: '2-digit',
   hourCycle: 'h23',
 });
+
+const createDateTimeFormatter = (
+  locale: string,
+  options: Omit<Intl.DateTimeFormatOptions, 'timeZone'>
+) =>
+  new Intl.DateTimeFormat(locale, {
+    timeZone: editorTimeZone,
+    ...options,
+  });
 
 const datetimeLocalPattern = /^(?<year>\d{4})-(?<month>\d{2})-(?<day>\d{2})T(?<hour>\d{2}):(?<minute>\d{2})$/;
 
@@ -57,9 +57,38 @@ export const compactOptionalString = (value?: string): string | undefined => {
   return trimmed && trimmed.length > 0 ? trimmed : undefined;
 };
 
+export const setEditorDateTimeLocale = (locale?: string): void => {
+  editorLocale = compactOptionalString(locale) ?? defaultEditorLocale;
+};
+
 export const formatDateTimeInEditorTimeZone = (value?: string): string | undefined => {
   const date = parseDate(value);
-  return date ? editorDateTimeFormatter.format(date) : value;
+  return date
+    ? createDateTimeFormatter(editorLocale, {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hourCycle: 'h23',
+      }).format(date)
+    : value;
+};
+
+export const formatTechnicalDateTimeInEditorTimeZone = (value?: string): string | undefined => {
+  const date = parseDate(value);
+  return date
+    ? createDateTimeFormatter(editorLocale, {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        fractionalSecondDigits: 3,
+        hourCycle: 'h23',
+      }).format(date)
+    : value;
 };
 
 export const toDatetimeLocalValue = (value?: string): string => {

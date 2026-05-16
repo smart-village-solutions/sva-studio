@@ -288,15 +288,6 @@ export const i18nResources = {
         },
       },
     },
-    news: {
-      navigation: {
-        title: 'News',
-      },
-      editor: {
-        createTitle: 'News-Eintrag anlegen',
-        editTitle: 'News-Eintrag bearbeiten',
-      },
-    },
     content: {
       page: {
         title: 'Inhalte',
@@ -3113,15 +3104,6 @@ export const i18nResources = {
         },
       },
     },
-    news: {
-      navigation: {
-        title: 'News',
-      },
-      editor: {
-        createTitle: 'Create news entry',
-        editTitle: 'Edit news entry',
-      },
-    },
     content: {
       page: {
         title: 'Content',
@@ -5588,15 +5570,24 @@ const isTranslationBranch = (value: unknown): value is Record<string, Translatio
 
 const mergeTranslationBranch = (
   target: Record<string, TranslationNode>,
-  source: Record<string, TranslationNode>
+  source: Record<string, TranslationNode>,
+  locale: string,
+  pathPrefix = ''
 ): Record<string, TranslationNode> => {
   for (const [key, value] of Object.entries(source)) {
+    const path = pathPrefix ? `${pathPrefix}.${key}` : key;
     if (isTranslationBranch(value) && isTranslationBranch(target[key])) {
       target[key] = mergeTranslationBranch(
         { ...(target[key] as Record<string, TranslationNode>) },
-        value
+        value,
+        locale,
+        path
       );
       continue;
+    }
+
+    if (target[key] !== undefined) {
+      throw new Error(`duplicate_i18n_key:${locale}:${path}`);
     }
 
     target[key] = value;
@@ -5611,7 +5602,7 @@ export const mergeI18nResources = (
   for (const locale of Object.keys(resources) as SupportedLocale[]) {
     const source = resources[locale];
     const target = i18nResources[locale] as unknown as Record<string, TranslationNode>;
-    mergeTranslationBranch(target, source as Record<string, TranslationNode>);
+    mergeTranslationBranch(target, source as Record<string, TranslationNode>, locale);
   }
 };
 

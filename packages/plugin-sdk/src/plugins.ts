@@ -1049,13 +1049,20 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 const mergeTranslationNode = (
   target: Record<string, unknown>,
-  source: Readonly<Record<string, unknown>>
+  source: Readonly<Record<string, unknown>>,
+  locale: string,
+  pathPrefix = ''
 ): Record<string, unknown> => {
   for (const [key, value] of Object.entries(source)) {
+    const path = pathPrefix ? `${pathPrefix}.${key}` : key;
     const targetValue = target[key];
     if (isRecord(value) && isRecord(targetValue)) {
-      target[key] = mergeTranslationNode({ ...targetValue }, value);
+      target[key] = mergeTranslationNode({ ...targetValue }, value, locale, path);
       continue;
+    }
+
+    if (targetValue !== undefined) {
+      throw new Error(`duplicate_plugin_translation_key:${locale}:${path}`);
     }
 
     target[key] = value;
@@ -1072,7 +1079,7 @@ export const mergePluginTranslations = (
   for (const plugin of plugins) {
     for (const [locale, resources] of Object.entries(plugin.translations ?? {})) {
       const currentLocaleResources = merged[locale] ?? {};
-      merged[locale] = mergeTranslationNode(currentLocaleResources, resources);
+      merged[locale] = mergeTranslationNode(currentLocaleResources, resources, locale);
     }
   }
 

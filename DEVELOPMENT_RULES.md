@@ -242,6 +242,12 @@ const invalidCreateAction = 'create';
 - Use dot notation: `section.subsection.key`
 - Be descriptive and hierarchical
 - Example: `admin.dashboard.welcome`, `common.save`, `auth.login`
+- Host- und Plugin-Keys haben klare Owner: Host-Features verwenden Host-Namespaces
+  wie `shell.*`, `admin.*`, `account.*` oder `interfaces.*`; Plugins liefern ihre
+  eigenen Namespaces über `@sva/plugin-sdk`.
+- Gleiche sichtbare Textwerte in verschiedenen Owner-Namespaces sind erlaubt.
+  Identische Übersetzungsschlüssel über Owner-Grenzen hinweg sind verboten und
+  müssen als Kollisionsfehler behandelt werden.
 
 **Where translations are stored:**
 - Database table: `translations`

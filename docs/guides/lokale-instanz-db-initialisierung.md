@@ -176,6 +176,7 @@ Zusätzlich liegen unter `packages/data/seeds/` tenant-spezifische SQL-Seeds fü
 Wichtig:
 
 - der Basiskatalog darf aus einer Referenzinstanz übernommen werden
+- Standard-Seeds behandeln geschützte Umgebungsidentität wie `parent_domain`, `primary_hostname`, `auth_realm`, `auth_client_id` und `tenant_admin_client_id` für bestehende Instanzen nur noch additiv; bestehende lokale oder staging-nahe Werte dürfen dadurch nicht still überschrieben werden
 - fachliche Nutzerkonten dürfen nicht blind von einer anderen Instanz kopiert werden
 
 ### Keycloak-Subjects
@@ -188,6 +189,15 @@ Das Skript liest aktive User aus der Ziel-Realm über die Keycloak-Admin-API und
 Damit passt die lokale IAM-Datenbank zur echten Realm und der Fehler `missing_actor_account` verschwindet.
 
 Der Login-Pfad der App liest den Ziel-Realm lokal trotzdem aus der Instanz-Registry. Die globalen Variablen `SVA_AUTH_ISSUER` und `SVA_AUTH_CLIENT_ID` bleiben nur für lokale Fallback- oder Migrationspfade bestehen und sollen für neue Instanzen nicht mehr die führende Quelle sein.
+
+Für Tenant-Hosts reicht die Registry-Auflösung allein nicht: Zusätzlich muss das tenant-spezifische `auth_client_secret` für die Zielinstanz vorhanden und lesbar sein. Fehlt dieses Secret, blockiert der Login-Pfad bewusst fail-closed statt auf das globale Plattform-Secret auszuweichen.
+
+Wenn dieselbe lokale Umgebung später über `pnpm env:up:local-keycloak` gegen `studio.localhost` reconciled wird, gilt für geschützte Identitätsfelder standardmäßig ein non-destruktiver Vertrag:
+
+- bestehende abweichende Werte werden nur als Drift gemeldet
+- fehlende Werte dürfen aufgefüllt werden
+- autoritative Korrekturen laufen nur explizit über `SVA_LOCAL_INSTANCE_IDENTITY_RECONCILE_MODE=authoritative`
+- für staging-nahe oder CI-nahe lokale Prüfpfade kann `SVA_LOCAL_INSTANCE_IDENTITY_DRIFT_MODE=fail` gesetzt werden
 
 ## Empfohlene Optionen
 

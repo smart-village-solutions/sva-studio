@@ -188,6 +188,7 @@ Abhängigkeiten des aktuellen Systems.
    - baut daraus den aggregierten Tenant-IAM-Betriebsstatus und bietet die Mutation `POST /api/v1/iam/instances/:instanceId/tenant-iam/access-probe`.
 4. `packages/auth-runtime`
    - erzwingt für die Access-Probe und tenantlokale Reconcile-Pfade den Execution-Mode `tenant_admin` ohne Plattform-Fallback.
+   - bewertet `/health/ready` fail-closed auch gegen den tenant-spezifischen Login-Vertrag aktiver Instanzen; fehlende Host-/Realm-/Client-Grunddaten oder unlesbare tenantgebundene Auth-Secrets blockieren Readiness.
 5. `apps/sva-studio-react`
    - rendert auf `/admin/instances/$instanceId` einen separaten Tenant-IAM-Bereich mit Statusachsen, Korrelation und kontextbezogenen Aktionen.
    - strukturiert dieselbe Detailseite als `Control Tower + Workbench`: fester Überblick für Gesamtstatus, Evidenzfrische, priorisierte Befunde und genau eine Primäraktion; nachgelagerte Arbeitsbereiche für `Konfiguration`, `Betrieb` und `Historie`.

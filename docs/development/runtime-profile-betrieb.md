@@ -133,7 +133,11 @@ Wichtig für den lokalen `local-keycloak`-Pfad:
 - Fehlt der Worker oder ist sein Prozess stale, meldet `pnpm env:doctor:local-keycloak` einen sichtbaren `warn`-Check, damit Provisioning-Läufe nicht unbemerkt in `planned`/`queued` hängen bleiben.
 - `KEYCLOAK_ADMIN_REALM` und `KEYCLOAK_ADMIN_CLIENT_ID` beschreiben im lokalen Profil nur noch den Plattform-/Break-Glass-Pfad. Sie sind kein impliziter Fallback für Tenant-Alltagsverwaltung mehr.
 - Realm-Provisioning im lokalen Worker nutzt explizit `KEYCLOAK_PROVISIONER_*`, standardmäßig `master` plus `sva-studio-provisioner`. Fehlen diese Variablen, fällt der Worker weiterhin auf `KEYCLOAK_ADMIN_*` zurück; das ist für neue Tenant-Realms fachlich nicht gewollt.
+- Tenant-Logins laufen fail-closed, wenn für die aktive Instanz kein tenant-spezifisches `auth_client_secret` lesbar ist. Das globale Plattform-Secret bleibt nur für den Plattform-Host zulässig und ist kein stiller Tenant-Fallback.
 - Fehlen tenantlokaler Admin-Client oder tenantlokales Secret im Instanzdatensatz, schlagen Tenant-Mutationen fail-closed mit `tenant_admin_client_not_configured` oder `tenant_admin_client_secret_missing` fehl.
+- Die lokale Registry-Reconcile behandelt geschützte Identitätsfelder (`parent_domain`, `primary_hostname`, optional `auth_realm`) standardmäßig non-destructive. Abweichende bestehende Werte werden nur gewarnt und nicht still überschrieben.
+- Für neue lokale Umgebungen oder bewusst autoritative Korrekturen kann `SVA_LOCAL_INSTANCE_IDENTITY_RECONCILE_MODE=authoritative` gesetzt werden. Dann schreibt die Reconcile diese Identitätsfelder gezielt auf das lokale Sollbild.
+- Ob erkannte lokale Identitätsdrift nur gewarnt oder hart geblockt wird, steuert `SVA_LOCAL_INSTANCE_IDENTITY_DRIFT_MODE=warn|fail`. Standard ist `warn`.
 
 Für zusätzliche lokale Instanzen oder weitere lokale Datenbanken ist `../guides/lokale-instanz-db-initialisierung.md` der kanonische Bootstrap-Pfad.
 
@@ -419,6 +423,7 @@ Für den produktionsnahen `studio`-Betrieb gilt:
 - `doctor` meldet `missing_actor_account` oder `missing_instance_membership`: Actor-/Membership-Kontext per `SVA_DOCTOR_KEYCLOAK_SUBJECT` gegen die Zielinstanz prüfen
 - bei neuer lokaler Instanz-DB zuerst `pnpm env:bootstrap:local-instance-db -- ...` verwenden statt manuell Tabellen oder User aus einer anderen Instanz zu kopieren
 - `doctor` oder `/health/ready` melden `schema_drift`: zuerst `pnpm env:migrate:<profil>`, dann `pnpm env:doctor:<profil>`
+- Tenant-Login scheitert mit `unauthorized_client` oder allgemeinem Tenant-Auth-Fehler: zuerst prüfen, ob für die Instanz ein tenant-spezifisches `auth_client_secret` in `iam.instances` hinterlegt und lesbar ist; der Plattform-Secret-Fallback greift für Tenant-Hosts bewusst nicht mehr
 - Remote-Deploy scheitert: unvollständige Portainer-Variablen in `deploy/portainer/.env.example`
 - Remote-Migration findet keinen lokalen `postgres`-Container: erwartbar bei Remote-Swarm; der Befehl startet stattdessen den dedizierten Swarm-Migrationsjob
 - Remote-Bootstrap läuft nicht oder hinterlässt `migrate`/`bootstrap` auf `replicas > 0`: Stack mit `pnpm env:status:<profil>` prüfen; die Job-Services müssen nach Erfolg wieder auf `0` stehen

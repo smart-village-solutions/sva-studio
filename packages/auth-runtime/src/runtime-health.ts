@@ -1,6 +1,7 @@
 import type { RuntimeDependencyHealth, RuntimeHealthResponse } from '@sva/core';
 import { getWorkspaceContext, withRequestContext } from '@sva/server-runtime';
 
+import { resolveTenantAuthClientSecret } from './config-tenant-secret.js';
 import { jsonResponse, resolvePool } from './db.js';
 import {
   isKeycloakIdentityProvider,
@@ -16,6 +17,14 @@ const withHealthRequestContext = <T>(request: Request, work: () => Promise<T>): 
 type RuntimeDependencyCheck = {
   readonly ready: boolean;
   readonly error?: string;
+  readonly reasonCode?: string;
+};
+
+type TenantLoginContractCheck = {
+  readonly checkedActiveInstanceCount: number;
+  readonly invalidConfigInstanceIds: readonly string[];
+  readonly invalidSecretInstanceIds: readonly string[];
+  readonly ready: boolean;
   readonly reasonCode?: string;
 };
 
@@ -128,17 +137,103 @@ const checkKeycloak = async (): Promise<RuntimeDependencyCheck> => {
   }
 };
 
+const checkTenantLoginContract = async (): Promise<TenantLoginContractCheck> => {
+  const pool = resolvePool();
+  if (!pool) {
+    return {
+      checkedActiveInstanceCount: 0,
+      invalidConfigInstanceIds: [],
+      invalidSecretInstanceIds: [],
+      ready: false,
+      reasonCode: 'database_not_configured',
+    };
+  }
+
+  const client = await pool.connect();
+  try {
+    const result = await client.query<{
+      auth_client_id: string | null;
+      auth_realm: string | null;
+      id: string;
+      primary_hostname: string | null;
+    }>(`SELECT id, primary_hostname, auth_realm, auth_client_id FROM iam.instances WHERE status = 'active' ORDER BY id`);
+
+    const invalidConfigInstanceIds = result.rows
+      .filter(
+        (row) =>
+          !row.primary_hostname?.trim() ||
+          !row.auth_realm?.trim() ||
+          !row.auth_client_id?.trim()
+      )
+      .map((row) => row.id);
+
+    const secretCandidateIds = result.rows
+      .map((row) => row.id)
+      .filter((id) => !invalidConfigInstanceIds.includes(id));
+
+    const secretChecks = await Promise.all(
+      secretCandidateIds.map(async (instanceId) => ({
+        instanceId,
+        secret: await resolveTenantAuthClientSecret(instanceId, { allowGlobalFallback: false }),
+      }))
+    );
+
+    const invalidSecretInstanceIds = secretChecks
+      .filter(
+        ({ secret }) => secret.source !== 'tenant' || !secret.configured || !secret.readable || !secret.secret
+      )
+      .map(({ instanceId }) => instanceId);
+
+    const reasonCode =
+      invalidConfigInstanceIds.length > 0
+        ? 'tenant_login_contract_incomplete'
+        : invalidSecretInstanceIds.length > 0
+          ? 'tenant_auth_client_secret_missing'
+          : undefined;
+
+    return {
+      checkedActiveInstanceCount: result.rows.length,
+      invalidConfigInstanceIds,
+      invalidSecretInstanceIds,
+      ready: invalidConfigInstanceIds.length === 0 && invalidSecretInstanceIds.length === 0,
+      reasonCode,
+    };
+  } finally {
+    client.release();
+  }
+};
+
 export const healthReadyHandler = async (request: Request): Promise<Response> =>
   withHealthRequestContext(request, async () => {
     const requestContext = getWorkspaceContext();
-    const [database, redis, keycloak] = await Promise.all([checkDatabase(), checkRedis(), checkKeycloak()]);
+    const [database, redis, keycloak, tenantLoginContract] = await Promise.all([
+      checkDatabase(),
+      checkRedis(),
+      checkKeycloak(),
+      checkTenantLoginContract(),
+    ]);
     const authorizationCache = getPermissionCacheHealth();
-    const ready = database.ready && redis.ready && keycloak.ready && authorizationCache.status !== 'failed';
+    const ready =
+      database.ready &&
+      redis.ready &&
+      keycloak.ready &&
+      tenantLoginContract.ready &&
+      authorizationCache.status !== 'failed';
     const services = createRuntimeHealthServices(database, redis, keycloak, authorizationCache);
     const diagnostics = {
       ...(database.ready ? {} : { db: { reason_code: database.reasonCode } }),
       ...(redis.ready ? {} : { redis: { reason_code: redis.reasonCode } }),
       ...(keycloak.ready ? {} : { keycloak: { reason_code: keycloak.reasonCode } }),
+      ...(tenantLoginContract.ready
+        ? {}
+        : {
+            auth: {
+              checked_active_instance_count: tenantLoginContract.checkedActiveInstanceCount,
+              invalid_config_instance_ids: tenantLoginContract.invalidConfigInstanceIds,
+              invalid_secret_instance_ids: tenantLoginContract.invalidSecretInstanceIds,
+              reason_code: tenantLoginContract.reasonCode,
+            },
+          }),
       ...(authorizationCache.status === 'degraded'
         ? { authorizationCache: { reason_code: 'authorization_cache_degraded' } }
         : {}),
@@ -163,6 +258,14 @@ export const healthReadyHandler = async (request: Request): Promise<Response> =>
         keycloak: keycloak.ready,
         diagnostics,
         errors: {
+          ...(tenantLoginContract.ready
+            ? {}
+            : {
+                auth:
+                  tenantLoginContract.invalidConfigInstanceIds.length > 0
+                    ? 'Active tenant login contract is incomplete for at least one instance.'
+                    : 'Active tenant auth secrets are unavailable for at least one instance.',
+              }),
           ...(database.ready ? {} : { db: database.error }),
           ...(redis.ready ? {} : { redis: redis.error }),
           ...(keycloak.ready ? {} : { keycloak: keycloak.error }),

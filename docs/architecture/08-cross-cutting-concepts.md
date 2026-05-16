@@ -146,6 +146,7 @@ gleichzeitig beeinflussen.
 - Runtime-Diagnostik folgt einem zweistufigen Modell: öffentliche Health-/API-Responses liefern knappe, nicht-sensitive `reason_code`s; OTEL liefert die tiefe technische Korrelation über Span-Attribute und Events
 - Der Server-Entry-Diagnosevertrag ist env-gesteuert: `SVA_SERVER_ENTRY_DEBUG=true` aktiviert strukturierte Logs für Request-Eingang, Auth-Dispatch, Delegation an TanStack Start und Antwortstatus, ohne Secrets oder Tokeninhalte zu protokollieren
 - Für produktionsnahe Remote-Profile ist `app-db-principal` ein eigener Diagnosevertrag: `/health/ready` muss `db`, `redis` und `keycloak` aus Sicht des laufenden `APP_DB_USER` als bereit ausweisen
+- Derselbe Readiness-Vertrag umfasst für aktive Tenant-Instanzen zusätzlich vollständige Login-Grunddaten (`primary_hostname`, `auth_realm`, `auth_client_id`) und ein lesbares tenant-spezifisches `auth_client_secret`; globale Plattform-Secrets sind dafür kein zulässiger Ersatz
 - Die Studio-Root-Shell rendert in allen Environments einen sichtbaren Runtime-Health-Indikator auf Basis des bestehenden IAM-Readiness-Endpunkts; die UI zeigt nur sichere Statuszustände und `reason_code`s, keine rohen Provider- oder Stack-Details
 - Label-Whitelist und PII-Blockliste in OTEL/Promtail
 - IAM-Authorize/Cache-Logs nutzen strukturierte Operations (`cache_lookup`, `cache_invalidate`, `cache_stale_detected`, `cache_invalidate_failed`)

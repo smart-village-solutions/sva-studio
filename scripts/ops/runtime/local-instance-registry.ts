@@ -1,9 +1,23 @@
 export type LocalInstanceRegistryReconciliationInput = Readonly<{
   allowedInstanceIds: readonly string[];
+  driftMode: 'fail' | 'warn';
   parentDomain: string;
+  reconcileMode: 'authoritative' | 'preserve';
   tenantAuthClientId: string;
   tenantAdminClientId: string;
   tenantAuthRealmMode: 'instance-id' | 'keep';
+}>;
+
+export type LocalInstanceRegistryIdentityRow = Readonly<{
+  auth_realm: string | null;
+  id: string;
+  parent_domain: string | null;
+  primary_hostname: string | null;
+}>;
+
+export type LocalInstanceRegistryIdentityDrift = Readonly<{
+  fields: readonly ('auth_realm' | 'parent_domain' | 'primary_hostname')[];
+  id: string;
 }>;
 
 const sqlLiteral = (value: string) => `'${value.replaceAll("'", "''")}'`;
@@ -15,6 +29,11 @@ const normalizeAllowedInstanceIds = (value: readonly string[]) =>
     .map((entry) => entry.trim())
     .filter((entry) => entry.length > 0);
 
+const normalizeMode = <T extends string>(value: string | undefined, allowed: readonly T[], fallback: T): T => {
+  const normalized = value?.trim().toLowerCase();
+  return normalized && allowed.includes(normalized as T) ? (normalized as T) : fallback;
+};
+
 export const buildLocalInstanceRegistryReconciliationInput = (
   env: NodeJS.ProcessEnv
 ): LocalInstanceRegistryReconciliationInput | null => {
@@ -25,17 +44,60 @@ export const buildLocalInstanceRegistryReconciliationInput = (
     return null;
   }
 
-  const tenantAuthRealmMode = (env.SVA_LOCAL_TENANT_AUTH_REALM_MODE?.trim().toLowerCase() ?? 'keep') === 'instance-id'
-    ? 'instance-id'
-    : 'keep';
+  const tenantAuthRealmMode = normalizeMode(env.SVA_LOCAL_TENANT_AUTH_REALM_MODE, ['instance-id', 'keep'], 'keep');
 
   return {
     allowedInstanceIds,
+    driftMode: normalizeMode(env.SVA_LOCAL_INSTANCE_IDENTITY_DRIFT_MODE, ['warn', 'fail'], 'warn'),
+    reconcileMode: normalizeMode(
+      env.SVA_LOCAL_INSTANCE_IDENTITY_RECONCILE_MODE,
+      ['preserve', 'authoritative'],
+      'preserve'
+    ),
     parentDomain,
     tenantAuthClientId: env.SVA_LOCAL_TENANT_AUTH_CLIENT_ID?.trim() || 'sva-studio-login',
     tenantAdminClientId: env.SVA_LOCAL_TENANT_ADMIN_CLIENT_ID?.trim() || 'sva-studio-realm-admin',
     tenantAuthRealmMode,
   };
+};
+
+const isNonEmpty = (value: string | null | undefined) => Boolean(value?.trim());
+
+export const evaluateLocalInstanceRegistryIdentityDrift = (
+  input: LocalInstanceRegistryReconciliationInput,
+  rows: readonly LocalInstanceRegistryIdentityRow[]
+): LocalInstanceRegistryIdentityDrift[] => {
+  const expectedById = new Map(
+    input.allowedInstanceIds.map((instanceId) => [
+      instanceId,
+      {
+        auth_realm: input.tenantAuthRealmMode === 'instance-id' ? instanceId : undefined,
+        parent_domain: input.parentDomain,
+        primary_hostname: `${instanceId}.${input.parentDomain}`,
+      },
+    ])
+  );
+
+  return rows.flatMap((row) => {
+    const expected = expectedById.get(row.id);
+    if (!expected) {
+      return [];
+    }
+
+    const fields: Array<'auth_realm' | 'parent_domain' | 'primary_hostname'> = [];
+
+    if (isNonEmpty(row.parent_domain) && row.parent_domain !== expected.parent_domain) {
+      fields.push('parent_domain');
+    }
+    if (isNonEmpty(row.primary_hostname) && row.primary_hostname !== expected.primary_hostname) {
+      fields.push('primary_hostname');
+    }
+    if (expected.auth_realm && isNonEmpty(row.auth_realm) && row.auth_realm !== expected.auth_realm) {
+      fields.push('auth_realm');
+    }
+
+    return fields.length > 0 ? [{ id: row.id, fields }] : [];
+  });
 };
 
 export const buildLocalInstanceRegistryReconciliationSql = (
@@ -45,13 +107,23 @@ export const buildLocalInstanceRegistryReconciliationSql = (
     const primaryHostname = `${instanceId}.${input.parentDomain}`;
     const authRealmAssignment =
       input.tenantAuthRealmMode === 'instance-id'
-        ? `auth_realm = ${sqlLiteral(instanceId)},`
+        ? input.reconcileMode === 'authoritative'
+          ? `auth_realm = ${sqlLiteral(instanceId)},`
+          : `auth_realm = COALESCE(NULLIF(auth_realm, ''), ${sqlLiteral(instanceId)}),`
         : '';
+    const parentDomainAssignment =
+      input.reconcileMode === 'authoritative'
+        ? `parent_domain = ${sqlLiteral(input.parentDomain)},`
+        : `parent_domain = COALESCE(NULLIF(parent_domain, ''), ${sqlLiteral(input.parentDomain)}),`;
+    const primaryHostnameAssignment =
+      input.reconcileMode === 'authoritative'
+        ? `primary_hostname = ${sqlLiteral(primaryHostname)},`
+        : `primary_hostname = COALESCE(NULLIF(primary_hostname, ''), ${sqlLiteral(primaryHostname)}),`;
 
     return [
       `UPDATE iam.instances
-SET parent_domain = ${sqlLiteral(input.parentDomain)},
-    primary_hostname = ${sqlLiteral(primaryHostname)},
+SET ${parentDomainAssignment}
+    ${primaryHostnameAssignment}
     ${authRealmAssignment}
     auth_client_id = COALESCE(NULLIF(auth_client_id, ''), ${sqlLiteral(input.tenantAuthClientId)}),
     tenant_admin_client_id = COALESCE(NULLIF(tenant_admin_client_id, ''), ${sqlLiteral(input.tenantAdminClientId)}),

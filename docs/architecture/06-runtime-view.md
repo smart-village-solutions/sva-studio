@@ -611,7 +611,7 @@ Fehlerpfad:
 
 1. Ein dedizierter Runner validiert Pflicht-Env, Testrealm und Testbenutzer gegen Keycloak.
 2. Vor dem Lauf werden Acceptance-spezifische IAM-Datensätze und Organisationsartefakte in der Testumgebung kontrolliert zurückgesetzt.
-3. Der Runner prüft `GET /health/ready` fail-closed auf Datenbank, Redis und Keycloak.
+3. Der Runner prüft `GET /health/ready` fail-closed auf Datenbank, Redis, Keycloak und den Tenant-Login-Vertrag aktiver Instanzen.
 4. Browsergestützte OIDC-Logins validieren `/auth/me`, Claims und JIT-Provisioning.
 5. API- und UI-Smokes prüfen Organisations-CRUD, Membership-Zuweisung und Sichtbarkeit in den Admin-Oberflächen.
 6. Der Lauf schreibt einen versionierten JSON-/Markdown-Bericht nach `docs/reports/`.

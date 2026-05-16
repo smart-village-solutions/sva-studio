@@ -17,7 +17,8 @@ export type TenantAuthResolutionFailureReason =
   | 'tenant_lookup_failed'
   | 'tenant_not_found'
   | 'tenant_host_invalid'
-  | 'tenant_inactive';
+  | 'tenant_inactive'
+  | 'tenant_secret_unavailable';
 
 const buildTenantAuthResolutionMessage = (input: {
   host: string;
@@ -32,6 +33,8 @@ const buildTenantAuthResolutionMessage = (input: {
       return `Tenant host ${input.host} is not valid for tenant auth resolution`;
     case 'tenant_inactive':
       return `Tenant auth configuration for ${input.host} is inactive`;
+    case 'tenant_secret_unavailable':
+      return `Tenant auth secret configuration is unavailable for ${input.host}`;
   }
 };
 
@@ -56,6 +59,8 @@ export class TenantAuthResolutionError extends Error {
       input.publicMessage ??
       (input.reason === 'tenant_inactive'
         ? 'Anmeldung ist für diesen Mandanten derzeit nicht verfügbar, weil die Instanz nicht aktiv ist.'
+        : input.reason === 'tenant_secret_unavailable'
+          ? 'Anmeldung ist für diesen Mandanten derzeit nicht verfügbar, weil die tenant-spezifische Auth-Konfiguration unvollständig ist.'
         : 'Anmeldung ist für diesen Mandanten momentan nicht verfügbar. Bitte später erneut versuchen.');
     if (input.cause !== undefined) {
       this.cause = input.cause;

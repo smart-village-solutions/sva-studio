@@ -42,6 +42,11 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - `pnpm nx run sva-studio-react:test:acceptance` läuft als separates Delivery-Gate gegen die Testumgebung
   - Bericht mit JSON- und Markdown-Artefakt wird unter `docs/reports/` geschrieben
   - `/health/ready` sowie Login-, JIT-, Organisations- und Membership-Nachweise müssen im Bericht als `passed` erscheinen
+- Stagehand-Admin-Exploration:
+  - `pnpm nx run sva-studio-react:test:explore:admin` bleibt ein lokaler, nicht blockierender Explorationslauf
+  - fehlende Env oder fehlende lokale Readiness müssen explizit als `BLOCKED` enden
+  - jede Mission schreibt nachvollziehbare Artefakte unter `docs/reports/stagehand-admin-exploration/`
+  - die Schicht darf `test:e2e` und `test:acceptance` weder funktional noch organisatorisch ersetzen
 - Produktionsnahe Release-Validierung:
   - `Studio Image Build` muss genau einen Manifest-Digest für `linux/amd64` liefern
   - `Studio Image Verify` muss denselben Digest gegen `/health/live`, `/health/ready` und `/` erfolgreich pruefen

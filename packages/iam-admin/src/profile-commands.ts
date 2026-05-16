@@ -198,32 +198,32 @@ export const createProfileCommands = (deps: ProfileCommandsDeps) => {
 UPDATE iam.accounts
 SET
   username_ciphertext = CASE
-    WHEN username_ciphertext IS NULL AND $3 IS NOT NULL THEN $3
+    WHEN username_ciphertext IS NULL AND $3::text IS NOT NULL THEN $3::text
     ELSE username_ciphertext
   END,
   email_ciphertext = CASE
-    WHEN email_ciphertext IS NULL AND $4 IS NOT NULL THEN $4
+    WHEN email_ciphertext IS NULL AND $4::text IS NOT NULL THEN $4::text
     ELSE email_ciphertext
   END,
   first_name_ciphertext = CASE
-    WHEN first_name_ciphertext IS NULL AND $5 IS NOT NULL THEN $5
+    WHEN first_name_ciphertext IS NULL AND $5::text IS NOT NULL THEN $5::text
     ELSE first_name_ciphertext
   END,
   last_name_ciphertext = CASE
-    WHEN last_name_ciphertext IS NULL AND $6 IS NOT NULL THEN $6
+    WHEN last_name_ciphertext IS NULL AND $6::text IS NOT NULL THEN $6::text
     ELSE last_name_ciphertext
   END,
   display_name_ciphertext = CASE
-    WHEN display_name_ciphertext IS NULL AND $7 IS NOT NULL THEN $7
+    WHEN display_name_ciphertext IS NULL AND $7::text IS NOT NULL THEN $7::text
     ELSE display_name_ciphertext
   END,
   updated_at = CASE
     WHEN
-      (username_ciphertext IS NULL AND $3 IS NOT NULL) OR
-      (email_ciphertext IS NULL AND $4 IS NOT NULL) OR
-      (first_name_ciphertext IS NULL AND $5 IS NOT NULL) OR
-      (last_name_ciphertext IS NULL AND $6 IS NOT NULL) OR
-      (display_name_ciphertext IS NULL AND $7 IS NOT NULL)
+      (username_ciphertext IS NULL AND $3::text IS NOT NULL) OR
+      (email_ciphertext IS NULL AND $4::text IS NOT NULL) OR
+      (first_name_ciphertext IS NULL AND $5::text IS NOT NULL) OR
+      (last_name_ciphertext IS NULL AND $6::text IS NOT NULL) OR
+      (display_name_ciphertext IS NULL AND $7::text IS NOT NULL)
     THEN NOW()
     ELSE updated_at
   END

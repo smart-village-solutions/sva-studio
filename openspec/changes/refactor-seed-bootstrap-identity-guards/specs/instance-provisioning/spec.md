@@ -20,6 +20,7 @@ Das System SHALL reproduzierbare lokale Seed-, Bootstrap- und Reconcile-Pfade f�
 - **WHEN** ein Standard-Seed auf eine bereits vorhandene Instanz mit gesetzten Werten für `parent_domain`, `primary_hostname`, `auth_realm`, `auth_client_id`, `tenant_admin_client_id` oder tenant-spezifische Auth-Secret-Zuordnungen trifft
 - **THEN** überschreibt der Seed diese bestehenden Werte nicht stillschweigend
 - **AND** darf der Seed geschützte Identitätsfelder nur setzen oder ergänzen, wenn sie noch leer oder nicht vorhanden sind
+- **AND** behandelt der Seed unterschiedliche, aber fachlich legitime Umgebungswerte nicht automatisch als Fehler, solange kein expliziter Reparatur- oder Bootstrap-Modus angefordert wurde
 
 ## ADDED Requirements
 ### Requirement: Seed, Bootstrap und Reconcile haben getrennte Verantwortung fuer Umgebungsidentitaet
@@ -37,6 +38,13 @@ Das System SHALL additive Baseline-Seeds normativ von autoritativen Bootstrap- u
 - **WHEN** eine bestehende Umgebung bewusst auf neue Host-, Realm- oder Client-Werte ausgerichtet werden soll
 - **THEN** erfolgt diese Identitätsänderung nur über einen expliziten Reconcile- oder Bootstrap-Pfad
 - **AND** nicht über einen normalen Standard-Seed
+
+#### Scenario: Standard-Reconcile schützt legitime Umgebungsunterschiede
+
+- **WHEN** ein bestehender lokaler oder staging-naher Bestand bereits konsistente, aber von einer anderen Umgebung abweichende Host-, Realm-, Client- oder Secret-Werte besitzt
+- **THEN** behandelt der Standard-Reconcile diese Abweichung nicht automatisch als zu überschreibenden Drift
+- **AND** ergänzt fehlende Pflichtbestände additiv oder weist die Abweichung sichtbar aus
+- **AND** erfordert ein autoritatives Angleichen an einen anderen Zielzustand einen expliziten Bootstrap- oder Reparaturmodus
 
 ### Requirement: Tenant-spezifische Auth-Secrets gehoeren zum geschuetzten Umgebungsvertrag
 
@@ -59,3 +67,21 @@ Das System SHALL tenant-spezifische Auth-Secret-Zuordnungen als Teil der geschü
 - **WHEN** eine bestehende Tenant-Umgebung nach Seed-, Bootstrap- oder Reconcile-Läufen geprüft wird
 - **THEN** umfasst die Prüfung mindestens Tenant-Host-Auflösung, Realm-/Client-Zuordnung, die Verwendung des tenant-spezifischen Login-Secrets im Login-Flow und die Verfügbarkeit des tenant-spezifischen Tenant-Admin-Secrets für schreibende IAM-Operationen
 - **AND** wird ein Zustand, der nur mit globalem Secret-Fallback funktioniert, am Callback scheitert oder bei Rollenanlage und ähnlichen Schreibpfaden `tenant_admin_credentials_incomplete` erzeugt, nicht als erfolgreich reconciled bewertet
+
+### Requirement: Reconcile bestehender Umgebungen ergaenzt kanonische Laufzeitbestaende
+
+Das System SHALL bei bestehenden lokalen und staging-nahen Umgebungen fehlende kanonische Laufzeitbestände ergänzen können, damit aktuelle Runtime-Pfade nicht an halb migrierten Legacy-Beständen scheitern.
+
+#### Scenario: Reconcile ergänzt neuen kanonischen Integrations-Backbone
+
+- **WHEN** die Runtime für eine Instanz einen kanonischen Speicherort wie `iam.instance_external_interfaces` für externe Schnittstellenkonfiguration verwendet
+- **AND** eine bestehende Umgebung dort noch keinen Datensatz besitzt, obwohl ältere oder parallele Bestände vorhanden oder erwartet sind
+- **THEN** darf der Reconcile-Pfad den fehlenden kanonischen Datensatz ergänzen
+- **AND** darf diese Ergänzung nicht voraussetzen, dass bestehende Umgebungsidentität still geändert wird
+- **AND** ersetzt diese Ergänzung keine bereits vorhandenen, fachlich gültigen Datensätze pauschal durch lokale Referenzwerte
+
+#### Scenario: Reconcile bewertet Profilprojektion als Teil des Laufzeitzustands
+
+- **WHEN** eine bestehende Tenant-Umgebung nach Seed-, Bootstrap- oder Reconcile-Läufen geprüft wird
+- **THEN** wird auch geprüft, ob lokale Account-Felder aus der Session robust ergänzt werden können und die Profilprojektion danach sinnvolle Namen, Mail-Adressen und Rollen liefert
+- **AND** gilt eine Umgebung mit leerer Profilprojektion oder fehlerhaftem Session-Seed nicht als vollständig reconciled

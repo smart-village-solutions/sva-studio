@@ -7,6 +7,8 @@ Für lokale Entwicklungsumgebungen, bestehende Staging-Umgebungen und neue Serve
 
 Ein realer lokaler Incident hat gezeigt, dass der Drift nicht bei Host- und Realm-Werten endet: Nach manueller Korrektur der lokalen Tenant-Registry schlug der Callback weiterhin fehl, weil für denselben Tenant kein tenant-spezifisches OIDC-Login-Client-Secret mehr in der lokalen DB hinterlegt war und die Runtime deshalb auf ein globales Secret zurückfiel. Anschließend scheiterte auch das Anlegen neuer Rollen weiter, weil zusätzlich das tenant-spezifische Tenant-Admin-Client-Secret fehlte. Umgebungsidentität umfasst also nicht nur sichtbare Routing- und Realm-Felder, sondern auch getrennte tenant-gebundene Auth-Secret-Zuordnungen für Login- und Admin-Pfade.
 
+Gleichzeitig darf die Lösung den lokalen Zustand nicht zu hart auf einen einmaligen Referenzbestand festschreiben. Lokale und staging-nahe Umgebungen entwickeln sich weiter; neue kanonische Laufzeit-Backbones, zusätzliche Secrets oder geänderte Integrationspfade müssen auch künftig ergänzt werden können, ohne andere Umgebungen durch zu aggressive Reconcile-Logik oder lokale Sonderannahmen zu beschädigen.
+
 ## What Changes
 - Trennt normative Seed-, Bootstrap- und Reconcile-Semantik für Instanz-Identität und Baseline-Daten.
 - Definiert geschützte Registry-/Auth-Felder, die in bestehenden Umgebungen standardmäßig nicht überschrieben werden dürfen.
@@ -14,6 +16,9 @@ Ein realer lokaler Incident hat gezeigt, dass der Drift nicht bei Host- und Real
 - Ergänzt Guardrails für bestehende lokale und staging-nahe Umgebungen, damit abweichende Identitätswerte nicht still überschrieben werden.
 - Ergänzt den Betriebsvertrag um tenant-spezifische Auth-Secret-Zuordnungen für Login- und Tenant-Admin-Clients, damit bestehende Umgebungen weder auf globale Fallback-Secrets zurückfallen noch Admin-Operationen mit unvollständigen Credentials ausfallen.
 - Leitet aus dem Incident Repro- und Readiness-Anforderungen für den vollständigen Login-Flow ab, nicht nur für Registry-Auflösung.
+- Legt fest, dass Reconcile für bestehende Umgebungen nicht nur Identitätsfelder schützt, sondern auch kanonische Nebenbestände wie External-Interface-Registry und Profilprojektion in einen vollständigen Sollzustand bringen muss.
+- Erweitert den lokalen Readiness-Vertrag von reinem Login-Smoke auf eine mehrstufige Laufzeitkette aus Login, Admin-Schreibpfad, Profilprojektion und externer Schnittstellenprüfung.
+- Verankert, dass Reconcile fehlende Pflichtbestände ergänzt und Teilkonfigurationen sichtbar macht, aber keine lokale Spezialkonfiguration global erzwingt und keine fachlich legitimen Bestandswerte ohne expliziten Auftrag überschreibt.
 - Verankert eine dokumentierte Unterscheidung zwischen neuer Umgebung und bestehender Umgebung im Deployment-/Betriebsvertrag.
 
 ## Impact

@@ -25,7 +25,8 @@ Abhängigkeiten des aktuellen Systems.
    - Theme-Bausteine: `ThemeProvider`, semantische CSS-Token und `Sheet`-Primitive für mobile Shell-Navigation
    - Auth- und Diagnose-Bausteine: `AuthProvider` fuer `/auth/me`, Silent-Recovery und den clientseitigen Grundzustand; `iam-api.ts` fuer Browser-Timeouts, `requestId`-Aufnahme und Safe-Detail-Parsing
   - Host-Standard-Bausteine fuer Admin-Ressourcen: `appAdminResources` als kanonische Capability-Deklaration, route-addressable Listensteuerung in den Admin-/Content-Seiten und duenne Label-/Routing-Bindings fuer `@sva/studio-ui-react` statt app-eigener Tabellen-Owner-Schicht
-   - Nx-Targets für `build`, `serve`, `lint`, das aggregierte `test:unit`, die gezielten App-Slices `test:unit:ui|routes|hooks|server`, `test:coverage` und `test:e2e` über Vite-, Vitest- und Playwright-Executor
+   - Nx-Targets für `build`, `serve`, `lint`, das aggregierte `test:unit`, die gezielten App-Slices `test:unit:ui|routes|hooks|server`, `test:coverage`, `test:e2e` und das lokale Explorations-Target `test:explore:admin`
+   - Explorationsbaustein unter `apps/sva-studio-react/stagehand/` mit den Teilbereichen `missions`, `runtime` und dem bestehenden Reporting-Pfad für lokale Admin-Missionsartefakte
 2. Core (`packages/core`)
    - generische Route-Registry Utilities (`mergeRouteFactories`, `buildRouteTree`)
    - kanonisches Inhaltsmodell für `Content`, Statusmodell und JSON-Payload-Validierung

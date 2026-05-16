@@ -1,7 +1,7 @@
 import React from 'react';
-import { formatDateTimeInEditorTimeZone } from '@sva/plugin-sdk';
 
 import { Label } from '../../../components/ui/label';
+import { formatEditorDateTime } from '../../../lib/editor-date-time';
 import { FieldHelp } from './-field-help';
 import { INSTANCE_FIELD_HELP } from './-instance-form-models';
 
@@ -83,7 +83,7 @@ export const formatDateTime = (value?: string) => {
   if (!value) {
     return '—';
   }
-  return formatDateTimeInEditorTimeZone(value) ?? value;
+  return formatEditorDateTime(value) ?? value;
 };
 
 export const FormLabelWithHelp = ({

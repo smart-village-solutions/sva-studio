@@ -1,6 +1,5 @@
 import { Link } from '@tanstack/react-router';
 import type { IamAdminGroupDetail } from '@sva/core';
-import { formatDateTimeInEditorTimeZone } from '@sva/plugin-sdk';
 import React from 'react';
 
 import { ConfirmDialog } from '../../../components/ConfirmDialog';
@@ -14,7 +13,7 @@ import { Label } from '../../../components/ui/label';
 import { useGroups } from '../../../hooks/use-groups';
 import { useRoles } from '../../../hooks/use-roles';
 import { t } from '../../../i18n';
-import { parseOptionalEditorDateTime } from '../../../lib/editor-date-time';
+import { formatEditorDateTime, parseOptionalEditorDateTime } from '../../../lib/editor-date-time';
 import {
   diffGroupRoleIds,
   groupErrorMessage,
@@ -48,7 +47,7 @@ const formatDateTime = (value?: string) => {
   if (!value) {
     return t('admin.groups.labels.noValidity');
   }
-  return formatDateTimeInEditorTimeZone(value) ?? value;
+  return formatEditorDateTime(value) ?? value;
 };
 
 export const GroupDetailPage = ({ groupId }: GroupDetailPageProps) => {

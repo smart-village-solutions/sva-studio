@@ -1,7 +1,7 @@
 import type { StudioJobDetail, StudioJobListItem, StudioJobProgress } from '@sva/core';
-import { formatTechnicalDateTimeInEditorTimeZone } from '@sva/plugin-sdk';
 
 import { t } from '../../i18n';
+import { formatTechnicalEditorDateTime } from '../../lib/editor-date-time';
 
 type MonitoringJobStatus = StudioJobListItem['status'];
 type MonitoringJobStaleState = NonNullable<StudioJobDetail['runtime']>['staleState'];
@@ -37,7 +37,7 @@ export const formatMonitoringJobDateTime = (value?: string): string => {
   if (!value) {
     return t('monitoring.jobs.values.notAvailable');
   }
-  return formatTechnicalDateTimeInEditorTimeZone(value) ?? value;
+  return formatTechnicalEditorDateTime(value) ?? value;
 };
 
 export const formatMonitoringJobProgressSummary = (progress?: StudioJobProgress): string => {

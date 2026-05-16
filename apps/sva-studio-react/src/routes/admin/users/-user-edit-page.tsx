@@ -1,6 +1,5 @@
 import React from 'react';
 import type { IamUserPermissionTraceItem } from '@sva/core';
-import { formatDateTimeInEditorTimeZone } from '@sva/plugin-sdk';
 
 import { ConfirmDialog } from '../../../components/ConfirmDialog';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
@@ -17,6 +16,7 @@ import { useGroups } from '../../../hooks/use-groups';
 import { useRoles } from '../../../hooks/use-roles';
 import { useUser } from '../../../hooks/use-user';
 import { t } from '../../../i18n';
+import { formatEditorDateTime } from '../../../lib/editor-date-time';
 import { getUserTimeline } from '../../../lib/iam-api';
 import { userErrorMessage } from './-user-error-message';
 
@@ -128,7 +128,7 @@ const formatDateTime = (value?: string) => {
   if (!value) {
     return '—';
   }
-  return formatDateTimeInEditorTimeZone(value) ?? value;
+  return formatEditorDateTime(value) ?? value;
 };
 
 const formatRoleValidity = (input: { validFrom?: string; validTo?: string }) => {

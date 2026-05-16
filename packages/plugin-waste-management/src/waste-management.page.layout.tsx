@@ -56,7 +56,7 @@ const tabContentMap = (
   locations: <WasteMasterDataPanel search={search} tab="locations" />,
   scheduling: <WasteSchedulingPanel search={search} />,
   settings: <WasteSettingsPanel />,
-  tools: <WasteToolsPanel search={search} access={access} overview={<WasteOverviewPanel search={search} />} />,
+  tools: <WasteToolsPanel access={access} overview={<WasteOverviewPanel search={search} />} />,
 });
 
 export const WasteManagementPageTabs = ({

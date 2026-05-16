@@ -1,5 +1,4 @@
 import { withServerDeniedContentAccess, type IamContentAccessSummary } from '@sva/core';
-import { formatDateTimeInEditorTimeZone } from '@sva/plugin-sdk';
 import { StudioDataTable, StudioListPageTemplate, type StudioColumnDef } from '@sva/studio-ui-react';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import React from 'react';
@@ -14,6 +13,7 @@ import { Select } from '../../components/ui/select';
 import { useContentAccess } from '../../hooks/use-content-access';
 import { useContents } from '../../hooks/use-contents';
 import { t } from '../../i18n';
+import { formatEditorDateTime } from '../../lib/editor-date-time';
 import type { IamHttpError } from '../../lib/iam-api';
 import { appAdminResources } from '../../routing/admin-resources';
 
@@ -62,7 +62,7 @@ const formatDateTime = (value?: string): string => {
   if (!value) {
     return t('content.table.notPublished');
   }
-  return formatDateTimeInEditorTimeZone(value) ?? value;
+  return formatEditorDateTime(value) ?? value;
 };
 
 const summarizePayload = (value: unknown): string => {

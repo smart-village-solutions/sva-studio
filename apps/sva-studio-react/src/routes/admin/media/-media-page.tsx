@@ -1,6 +1,5 @@
 import { StudioDataTable, StudioListPageTemplate, type StudioColumnDef } from '@sva/studio-ui-react';
 import { Link, useLocation, useNavigate, useParams } from '@tanstack/react-router';
-import { formatDateTimeInEditorTimeZone } from '@sva/plugin-sdk';
 import React from 'react';
 
 import { createStudioDataTableLabels } from '../../../components/studio-data-table-labels';
@@ -14,6 +13,7 @@ import { Select } from '../../../components/ui/select';
 import { Textarea } from '../../../components/ui/textarea';
 import { useCreateMediaUpload, useMediaDetail, useMediaLibrary } from '../../../hooks/use-media';
 import { t } from '../../../i18n';
+import { formatEditorDateTime } from '../../../lib/editor-date-time';
 import type { IamHttpError, IamMediaAsset, MediaProcessingStatus, MediaUploadStatus, MediaVisibility } from '../../../lib/iam-api';
 
 type MediaLibraryFilter = 'all' | 'public' | 'protected';
@@ -64,7 +64,7 @@ const formatDateTime = (value?: string): string => {
   if (!value) {
     return t('media.values.notAvailable');
   }
-  return formatDateTimeInEditorTimeZone(value) ?? value;
+  return formatEditorDateTime(value) ?? value;
 };
 
 const formatByteSize = (value: number): string => {

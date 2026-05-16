@@ -1,6 +1,5 @@
 import { useServerFn } from '@tanstack/react-start';
 import React from 'react';
-import { formatDateTimeInEditorTimeZone } from '@sva/plugin-sdk';
 
 import {
   StudioDataTable,
@@ -14,6 +13,7 @@ import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { createStudioDataTableLabels } from '../../components/studio-data-table-labels';
 import { t } from '../../i18n';
+import { formatEditorDateTime } from '../../lib/editor-date-time';
 import { readErrorMessage } from '../../lib/error-message-utils';
 import {
   deleteInstanceInterfaceServerFn,
@@ -294,7 +294,7 @@ export const InterfacesPage = () => {
       {
         id: 'lastChecked',
         header: t('interfaces.table.headerLastChecked'),
-        cell: (row) => (row.lastCheckedAt ? formatDateTimeInEditorTimeZone(row.lastCheckedAt) : '-'),
+        cell: (row) => (row.lastCheckedAt ? formatEditorDateTime(row.lastCheckedAt) ?? row.lastCheckedAt : '-'),
         sortable: true,
         sortValue: (row) => row.lastCheckedAt ?? '',
       },

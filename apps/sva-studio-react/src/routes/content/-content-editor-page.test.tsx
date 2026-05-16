@@ -256,7 +256,12 @@ describe('ContentEditorPage', () => {
     fireEvent.change(screen.getByLabelText('Veröffentlichungsdatum'), {
       target: { value: '2026-03-29T02:30' },
     });
-    fireEvent.submit(screen.getByRole('button', { name: 'Änderungen speichern' }).closest('form')!);
+    const submitForm = screen.getByRole('button', { name: 'Änderungen speichern' }).closest('form');
+    expect(submitForm).toBeTruthy();
+    if (!submitForm) {
+      throw new Error('Submit form missing');
+    }
+    fireEvent.submit(submitForm);
 
     await waitFor(() => {
       expect(updateContent).not.toHaveBeenCalled();

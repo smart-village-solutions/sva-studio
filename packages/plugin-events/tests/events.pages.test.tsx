@@ -164,6 +164,26 @@ describe('EventsListPage', () => {
     });
   });
 
+  it('keeps invalid DST-gap event dates visible and blocks submit', async () => {
+    render(<EventsCreatePage />);
+
+    await waitFor(() => {
+      expect(listHostMediaAssets).toHaveBeenCalled();
+    });
+
+    fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Konzertabend' } });
+    fireEvent.change(screen.getByLabelText('Startdatum'), { target: { value: '2026-03-29T02:30' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Event anlegen' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Bitte korrigieren Sie die markierten Felder.')).toBeTruthy();
+    });
+
+    expect(screen.getByLabelText('Startdatum').getAttribute('value')).toBe('2026-03-29T02:30');
+    expect(screen.getByLabelText('Startdatum').getAttribute('aria-invalid')).toBe('true');
+    expect(createEvent).not.toHaveBeenCalled();
+  });
+
   it('loads existing host media references on edit and keeps the update flow stable', async () => {
     vi.mocked(listHostMediaReferencesByTarget).mockResolvedValue([
       {

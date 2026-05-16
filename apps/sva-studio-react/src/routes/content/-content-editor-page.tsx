@@ -1,6 +1,5 @@
 import { Link, useNavigate } from '@tanstack/react-router';
 import { GENERIC_CONTENT_TYPE, withServerDeniedContentAccess, type IamContentAccessSummary, type IamContentStatus } from '@sva/core';
-import { formatDateTimeInEditorTimeZone, toDatetimeLocalValue } from '@sva/plugin-sdk';
 import React from 'react';
 
 import { Alert, AlertDescription } from '../../components/ui/alert';
@@ -14,7 +13,7 @@ import { Textarea } from '../../components/ui/textarea';
 import { useContentAccess } from '../../hooks/use-content-access';
 import { useContentDetail, useCreateContent } from '../../hooks/use-contents';
 import { t } from '../../i18n';
-import { parseOptionalEditorDateTime } from '../../lib/editor-date-time';
+import { formatEditorDateTime, parseOptionalEditorDateTime, toDatetimeLocalValue } from '../../lib/editor-date-time';
 import type { CreateContentPayload, IamHttpError, UpdateContentPayload } from '../../lib/iam-api';
 
 type ContentEditorPageProps = {
@@ -47,7 +46,7 @@ const formatDateTime = (value?: string): string => {
     return t('content.table.notPublished');
   }
 
-  return formatDateTimeInEditorTimeZone(value) ?? value;
+  return formatEditorDateTime(value) ?? value;
 };
 
 const contentErrorMessage = (error: IamHttpError | null): string => {

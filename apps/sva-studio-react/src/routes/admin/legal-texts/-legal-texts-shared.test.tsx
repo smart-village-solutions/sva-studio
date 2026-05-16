@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { IamHttpError } from '../../../lib/iam-api';
 
 vi.mock('../../../i18n', () => ({
+  getActiveLocale: () => 'de',
   t: (key: string) =>
     ({
       'admin.legalTexts.messages.error': 'Allgemeiner Fehler',

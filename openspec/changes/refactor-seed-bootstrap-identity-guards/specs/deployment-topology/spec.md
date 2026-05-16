@@ -15,7 +15,7 @@ Das System SHALL im lokalen und staging-nahen Betrieb normativ zwischen neuer Um
 - **THEN** werden `parent_domain`, `primary_hostname`, `auth_realm`, `auth_client_id`, `tenant_admin_client_id` und tenant-spezifische Auth-Secret-Zuordnungen standardmäßig nicht still überschrieben
 - **AND** bleibt die Umgebung für kontinuierliche lokale oder staging-nahe Tests stabil
 
-### Requirement: Bestehende staging-nahe Umgebungen erhalten sichtbare Drift-Guardrails fuer Identitaetsfelder
+### Requirement: Bestehende staging-nahe Umgebungen erhalten sichtbare Drift-Guardrails für Identitätsfelder
 
 Das System SHALL für bestehende staging-nahe Umgebungen sichtbare Guardrails bereitstellen, wenn Bootstrap- oder Seed-Pfade auf abweichende geschützte Identitätswerte treffen.
 
@@ -26,7 +26,7 @@ Das System SHALL für bestehende staging-nahe Umgebungen sichtbare Guardrails be
 - **THEN** wird die Abweichung mindestens als sichtbare Warnung oder harter Fehler ausgewiesen
 - **AND** der Pfad übernimmt die neue Identität nicht stillschweigend als Standardverhalten
 
-### Requirement: Betriebsfaehige Tenant-Umgebungen erfordern konsistente Secret-Zuordnungen
+### Requirement: Betriebsfähige Tenant-Umgebungen erfordern konsistente Secret-Zuordnungen
 
 Das System SHALL im lokalen und staging-nahen Betrieb tenant-spezifische Auth-Secrets als Teil der Umgebungs-Readiness behandeln, damit ein erfolgreicher Login nicht nach korrekter Host-Auflösung am Callback mit ungültigen Client-Credentials scheitert.
 

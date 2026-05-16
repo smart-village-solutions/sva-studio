@@ -1,5 +1,4 @@
 import type { AuthorizeResponse, EffectivePermission, IamDsrCaseListItem, IamGovernanceCaseListItem } from '@sva/core';
-import { formatDateTimeInEditorTimeZone } from '@sva/plugin-sdk';
 import { useNavigate } from '@tanstack/react-router';
 import React from 'react';
 
@@ -30,6 +29,7 @@ import {
   isIamCockpitEnabled,
   type IamCockpitTabKey,
 } from '../../lib/iam-viewer-access';
+import { formatEditorDateTime } from '../../lib/editor-date-time';
 import { t } from '../../i18n';
 import { useAuth } from '../../providers/auth-provider';
 import {
@@ -77,7 +77,7 @@ const formatDateTime = (value?: string) => {
   if (!value) {
     return '—';
   }
-  return formatDateTimeInEditorTimeZone(value) ?? value;
+  return formatEditorDateTime(value) ?? value;
 };
 
 const formatObjectEntries = (value: Readonly<Record<string, unknown>> | undefined) => {

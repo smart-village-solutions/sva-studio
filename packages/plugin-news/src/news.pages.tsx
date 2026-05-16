@@ -143,6 +143,18 @@ const buildDescribedBy = (...ids: readonly (string | undefined | false)[]) => {
   return describedBy.length > 0 ? describedBy : undefined;
 };
 
+const parseDatetimeLocalInput = (value: string, referenceValue?: string) => {
+  if (value.trim().length === 0) {
+    return { isInvalid: false, normalizedValue: '' };
+  }
+
+  const normalizedValue = fromDatetimeLocalValue(value, referenceValue);
+  return {
+    isInvalid: normalizedValue.length === 0,
+    normalizedValue,
+  };
+};
+
 const formatDate = (value?: string) => {
   if (!value) {
     return '—';
@@ -321,6 +333,9 @@ const NewsForm = ({
   const [statusMessage, setStatusMessage] = React.useState<StatusMessage | null>(null);
   const [deletePending, setDeletePending] = React.useState(false);
   const [loadedItem, setLoadedItem] = React.useState<NewsContentItem | null>(null);
+  const [publishedAtInput, setPublishedAtInput] = React.useState('');
+  const [publicationDateInput, setPublicationDateInput] = React.useState('');
+  const [invalidDateInputs, setInvalidDateInputs] = React.useState({ publishedAt: false, publicationDate: false });
   const [mediaOptions, setMediaOptions] = React.useState<readonly { assetId: string; label: string }[]>([]);
   const [teaserImageAssetId, setTeaserImageAssetId] = React.useState<string | null>(null);
   const [headerImageAssetId, setHeaderImageAssetId] = React.useState<string | null>(null);
@@ -351,7 +366,11 @@ const NewsForm = ({
     void getNews(contentId)
       .then((item) => {
         if (active && requestId === editLoadRequestIdRef.current) {
-          setForm(itemToForm(item));
+          const nextForm = itemToForm(item);
+          setForm(nextForm);
+          setPublishedAtInput(toDatetimeLocalValue(nextForm.publishedAt));
+          setPublicationDateInput(toDatetimeLocalValue(nextForm.publicationDate));
+          setInvalidDateInputs({ publishedAt: false, publicationDate: false });
           setLoadedItem(item);
           void listHostMediaReferencesByTarget({
             fetch: globalThis.fetch.bind(globalThis),
@@ -392,6 +411,9 @@ const NewsForm = ({
     };
   }, [contentId, mode]);
 
+  const hasPublishedAtError = hasFieldError('publishedAt') || invalidDateInputs.publishedAt;
+  const hasPublicationDateError = hasFieldError('publicationDate') || invalidDateInputs.publicationDate;
+
   const updateBlock = (index: number, patch: Partial<NewsContentBlock>) => {
     setForm((current) => ({
       ...current,
@@ -420,7 +442,11 @@ const NewsForm = ({
   const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const compactedForm = compactForm(form, mode);
-    const validationErrors = validateNewsForm(compactedForm);
+    const validationErrors = [
+      ...validateNewsForm(compactedForm),
+      ...(invalidDateInputs.publishedAt ? ['publishedAt'] : []),
+      ...(invalidDateInputs.publicationDate ? ['publicationDate'] : []),
+    ];
     setFieldErrors(validationErrors);
 
     if (validationErrors.length > 0) {
@@ -552,35 +578,43 @@ const NewsForm = ({
               id="news-published-at"
               type="datetime-local"
               required
-              aria-describedby={buildDescribedBy(hasFieldError('publishedAt') && 'news-published-at-error')}
-              aria-invalid={hasFieldError('publishedAt') || undefined}
-              value={toDatetimeLocalValue(form.publishedAt)}
-              onChange={(event) =>
+              aria-describedby={buildDescribedBy(hasPublishedAtError && 'news-published-at-error')}
+              aria-invalid={hasPublishedAtError || undefined}
+              value={publishedAtInput}
+              onChange={(event) => {
+                const nextValue = event.target.value;
+                const { isInvalid, normalizedValue } = parseDatetimeLocalInput(nextValue, form.publishedAt);
+                setPublishedAtInput(nextValue);
+                setInvalidDateInputs((current) => ({ ...current, publishedAt: isInvalid }));
                 setForm((current) => ({
                   ...current,
-                  publishedAt: fromDatetimeLocalValue(event.target.value, current.publishedAt),
-                }))
-              }
+                  publishedAt: normalizedValue,
+                }));
+              }}
             />
           </StudioField>
           <StudioField
             id="news-publication-date"
             label={pt('fields.publicationDate')}
-            error={hasFieldError('publicationDate') ? pt('validation.publicationDate') : undefined}
+            error={hasPublicationDateError ? pt('validation.publicationDate') : undefined}
             errorId="news-publication-date-error"
           >
             <Input
               id="news-publication-date"
               type="datetime-local"
-              aria-describedby={buildDescribedBy(hasFieldError('publicationDate') && 'news-publication-date-error')}
-              aria-invalid={hasFieldError('publicationDate') || undefined}
-              value={toDatetimeLocalValue(form.publicationDate)}
-              onChange={(event) =>
+              aria-describedby={buildDescribedBy(hasPublicationDateError && 'news-publication-date-error')}
+              aria-invalid={hasPublicationDateError || undefined}
+              value={publicationDateInput}
+              onChange={(event) => {
+                const nextValue = event.target.value;
+                const { isInvalid, normalizedValue } = parseDatetimeLocalInput(nextValue, form.publicationDate);
+                setPublicationDateInput(nextValue);
+                setInvalidDateInputs((current) => ({ ...current, publicationDate: isInvalid }));
                 setForm((current) => ({
                   ...current,
-                  publicationDate: fromDatetimeLocalValue(event.target.value, current.publicationDate),
-                }))
-              }
+                  publicationDate: normalizedValue,
+                }));
+              }}
             />
           </StudioField>
         </StudioFieldGroup>

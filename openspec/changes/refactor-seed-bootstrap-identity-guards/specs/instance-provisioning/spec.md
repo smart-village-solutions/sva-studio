@@ -22,7 +22,7 @@ Das System SHALL reproduzierbare lokale Seed-, Bootstrap- und Reconcile-Pfade f�
 - **AND** darf der Seed geschützte Identitätsfelder nur setzen oder ergänzen, wenn sie noch leer oder nicht vorhanden sind
 
 ## ADDED Requirements
-### Requirement: Seed, Bootstrap und Reconcile haben getrennte Verantwortung fuer Umgebungsidentitaet
+### Requirement: Seed, Bootstrap und Reconcile haben getrennte Verantwortung für Umgebungsidentität
 
 Das System SHALL additive Baseline-Seeds normativ von autoritativen Bootstrap- und Reconcile-Pfaden trennen, damit laufzeitkritische Umgebungsidentität nicht unbemerkt durch Standard-Seeds verändert wird.
 
@@ -38,7 +38,7 @@ Das System SHALL additive Baseline-Seeds normativ von autoritativen Bootstrap- u
 - **THEN** erfolgt diese Identitätsänderung nur über einen expliziten Reconcile- oder Bootstrap-Pfad
 - **AND** nicht über einen normalen Standard-Seed
 
-### Requirement: Tenant-spezifische Auth-Secrets gehoeren zum geschuetzten Umgebungsvertrag
+### Requirement: Tenant-spezifische Auth-Secrets gehören zum geschützten Umgebungsvertrag
 
 Das System SHALL tenant-spezifische Auth-Secret-Zuordnungen als Teil der geschützten Umgebungsidentität behandeln, damit ein korrigierter Tenant-Zustand nicht beim Callback auf globale Fallback-Secrets zurückfällt.
 

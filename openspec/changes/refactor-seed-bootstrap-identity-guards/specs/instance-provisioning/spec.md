@@ -17,7 +17,7 @@ Das System SHALL reproduzierbare lokale Seed-, Bootstrap- und Reconcile-Pfade f�
 
 #### Scenario: Standard-Seed ergänzt bestehende Umgebungsidentität nur nicht-destruktiv
 
-- **WHEN** ein Standard-Seed auf eine bereits vorhandene Instanz mit gesetzten Werten für `parent_domain`, `primary_hostname`, `auth_realm`, `auth_client_id` oder `tenant_admin_client_id` trifft
+- **WHEN** ein Standard-Seed auf eine bereits vorhandene Instanz mit gesetzten Werten für `parent_domain`, `primary_hostname`, `auth_realm`, `auth_client_id`, `tenant_admin_client_id` oder tenant-spezifische Auth-Secret-Zuordnungen trifft
 - **THEN** überschreibt der Seed diese bestehenden Werte nicht stillschweigend
 - **AND** darf der Seed geschützte Identitätsfelder nur setzen oder ergänzen, wenn sie noch leer oder nicht vorhanden sind
 
@@ -29,7 +29,7 @@ Das System SHALL additive Baseline-Seeds normativ von autoritativen Bootstrap- u
 #### Scenario: Neue Umgebung wird autoritativ initialisiert
 
 - **WHEN** eine neue lokale oder staging-nahe Umgebung erstmalig initialisiert wird
-- **THEN** darf der Bootstrap-Pfad `parent_domain`, `primary_hostname`, `auth_realm`, `auth_client_id` und `tenant_admin_client_id` autoritativ setzen
+- **THEN** darf der Bootstrap-Pfad `parent_domain`, `primary_hostname`, `auth_realm`, `auth_client_id`, `tenant_admin_client_id` und tenant-spezifische Auth-Secrets autoritativ setzen
 - **AND** bleibt dieser autoritative Pfad explizit von einem normalen Standard-Seed unterscheidbar
 
 #### Scenario: Bestehende Umgebung wird nur explizit reconciled
@@ -37,3 +37,19 @@ Das System SHALL additive Baseline-Seeds normativ von autoritativen Bootstrap- u
 - **WHEN** eine bestehende Umgebung bewusst auf neue Host-, Realm- oder Client-Werte ausgerichtet werden soll
 - **THEN** erfolgt diese Identitätsänderung nur über einen expliziten Reconcile- oder Bootstrap-Pfad
 - **AND** nicht über einen normalen Standard-Seed
+
+### Requirement: Tenant-spezifische Auth-Secrets gehoeren zum geschuetzten Umgebungsvertrag
+
+Das System SHALL tenant-spezifische Auth-Secret-Zuordnungen als Teil der geschützten Umgebungsidentität behandeln, damit ein korrigierter Tenant-Zustand nicht beim Callback auf globale Fallback-Secrets zurückfällt.
+
+#### Scenario: Bestehende Tenant-Umgebung nutzt hinterlegtes Secret statt globalem Fallback
+
+- **WHEN** eine bestehende lokale oder staging-nahe Umgebung einen tenant-spezifischen `auth_client_id` und `auth_realm` verwendet
+- **THEN** ist für diesen Tenant eine lesbare tenant-spezifische Secret-Zuordnung vorhanden oder wird über einen expliziten Bootstrap-/Reconcile-Pfad wiederhergestellt
+- **AND** darf ein globales Fallback-Secret nicht als dauerhafter Sollzustand für diese Umgebung gelten
+
+#### Scenario: Readiness deckt Host- und Secret-Drift gemeinsam auf
+
+- **WHEN** eine bestehende Tenant-Umgebung nach Seed-, Bootstrap- oder Reconcile-Läufen geprüft wird
+- **THEN** umfasst die Prüfung mindestens Tenant-Host-Auflösung, Realm-/Client-Zuordnung und die Verwendung des tenant-spezifischen Secrets im Login-Flow
+- **AND** wird ein Zustand, der nur mit globalem Secret-Fallback funktioniert oder am Callback scheitert, nicht als erfolgreich reconciled bewertet

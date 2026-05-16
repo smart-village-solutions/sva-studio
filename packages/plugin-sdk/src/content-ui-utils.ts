@@ -8,6 +8,9 @@ export type HostMediaFieldOption = Readonly<{
 const editorTimeZone = 'Europe/Berlin';
 const defaultEditorLocale = 'de-DE';
 let editorLocale = defaultEditorLocale;
+type DateTimeFormatOptionsWithFractionalSeconds = Intl.DateTimeFormatOptions & {
+  fractionalSecondDigits?: 1 | 2 | 3;
+};
 
 const editorDateTimePartsFormatter = new Intl.DateTimeFormat('en-CA', {
   timeZone: editorTimeZone,
@@ -21,7 +24,7 @@ const editorDateTimePartsFormatter = new Intl.DateTimeFormat('en-CA', {
 
 const createDateTimeFormatter = (
   locale: string,
-  options: Omit<Intl.DateTimeFormatOptions, 'timeZone'>
+  options: Omit<DateTimeFormatOptionsWithFractionalSeconds, 'timeZone'>
 ) =>
   new Intl.DateTimeFormat(locale, {
     timeZone: editorTimeZone,

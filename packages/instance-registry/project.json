@@ -9,7 +9,7 @@
       "dependsOn": ["^build"],
       "outputs": ["{projectRoot}/dist"],
       "options": {
-        "command": "tsc -p packages/instance-registry/tsconfig.lib.json"
+        "command": "pnpm exec node -e \"const fs=require('node:fs'); fs.rmSync('packages/instance-registry/dist', { recursive: true, force: true }); fs.rmSync('packages/instance-registry/tsconfig.lib.tsbuildinfo', { force: true });\" && tsc -p packages/instance-registry/tsconfig.lib.json"
       }
     },
     "check:runtime": {

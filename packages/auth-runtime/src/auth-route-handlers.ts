@@ -391,6 +391,7 @@ const resolveCookieLoginState = async (request: Request, state: string) => {
     createdAt: payload.createdAt,
     returnTo: await sanitizeReturnTo(request, payload.returnTo),
     silent: payload.silent === true,
+    freshReauthRequested: payload.freshReauthRequested === true,
     ...(payload.kind === 'instance' ? { kind: 'instance' as const, instanceId: payload.instanceId } : { kind: 'platform' as const }),
   };
 };

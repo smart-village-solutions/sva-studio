@@ -119,6 +119,7 @@ und Vorführungszwecke. Unterschiede zum Referenzprofil:
 - **Strikte Stack-Trennung:** Temp-Job-Stacks für `migrate` und `bootstrap` enthalten keinen `app`-Service und dürfen keine Live-Service-Spec des eigentlichen Stacks ableiten oder überschreiben.
 - **Deploy-Evidenz:** Jeder Studio-Deploy schreibt JSON- und Markdown-Artefakte unter `artifacts/runtime/deployments/` mit Image-, Actor-, Workflow-, Stack- und Verifikationsdaten.
 - **Health-Modell:** `live` bleibt prozessnah und ohne schwere optionale Abhängigkeiten; `ready` bildet nur minimale Traffic-Voraussetzungen ab; öffentliche Freigabe erfolgt erst über externe Smoke-Probes.
+- **Tenant-Login als Readiness-Bestandteil:** Für aktive Instanzen bewertet `ready` zusätzlich den Tenant-Login-Vertrag aus Registry-Grunddaten und lesbarem tenant-spezifischem Auth-Secret; ein Plattform-Secret-Fallback zählt dafür nicht als bereit.
 - **Recovery-Patch ist Legacy:** `deploy/portainer/entrypoint.sh` darf Build-Artefakte nur noch unter explizitem Recovery-Flag `SVA_ENABLE_RUNTIME_RECOVERY_PATCH=1` umschreiben. Der Standardbetrieb nutzt den finalen Build-Output unverändert.
 - **App-Principal als Betriebsvertrag:** `precheck`, `doctor` und Post-Deploy-Verifikation muessen Registry-, Auth- und RLS-relevante Readiness aus Sicht des laufenden `APP_DB_USER` bestaetigen. Eine rein administrative DB-Sicht reicht nicht als Freigabe.
 - **Persistenz:** Named Volumes für Postgres, Redis, Prometheus, Loki, Grafana und Alertmanager.

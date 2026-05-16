@@ -72,6 +72,8 @@ import { runBootstrapJobAgainstAcceptance as runBootstrapJobAgainstAcceptanceWit
 import {
   buildLocalInstanceRegistryReconciliationInput,
   buildLocalInstanceRegistryReconciliationSql,
+  evaluateLocalInstanceRegistryIdentityDrift,
+  type LocalInstanceRegistryIdentityRow,
 } from './runtime/local-instance-registry.ts';
 import {
   collectQuantumTaskSnapshots,
@@ -1621,6 +1623,26 @@ const reconcileLocalInstanceRegistry = (runtimeProfile: RuntimeProfile, env: Nod
   const input = buildLocalInstanceRegistryReconciliationInput(env);
   if (!input) {
     return;
+  }
+
+  const rows = parseJsonFromCommandOutput<LocalInstanceRegistryIdentityRow[]>(
+    createDbSqlRunner(runtimeProfile, env)(`SELECT COALESCE(json_agg(row_to_json(instance_rows) ORDER BY instance_rows.id), '[]'::json)::text
+FROM (
+  SELECT id, parent_domain, primary_hostname, auth_realm
+  FROM iam.instances
+  WHERE id = ANY(ARRAY[${input.allowedInstanceIds.map((instanceId) => sqlLiteral(instanceId)).join(', ')}]::text[])
+) AS instance_rows;`)
+  );
+  const drift = evaluateLocalInstanceRegistryIdentityDrift(input, rows);
+  if (drift.length > 0) {
+    const summary = drift.map((item) => `${item.id} [${item.fields.join(', ')}]`).join(', ');
+    const message =
+      `Lokale Registry-Identitaet driftet fuer bestehende Instanzen vom Zielbild ab: ${summary}. ` +
+      `Standardpfad bleibt non-destructive; fuer autoritative Korrekturen SVA_LOCAL_INSTANCE_IDENTITY_RECONCILE_MODE=authoritative verwenden.`;
+    if (input.driftMode === 'fail') {
+      throw new Error(message);
+    }
+    process.stderr.write(`${message}\n`);
   }
 
   const sql = buildLocalInstanceRegistryReconciliationSql(input);

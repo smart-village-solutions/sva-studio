@@ -26,25 +26,34 @@ ON CONFLICT (id) DO UPDATE
 SET
   display_name = EXCLUDED.display_name,
   status = EXCLUDED.status,
-  parent_domain = EXCLUDED.parent_domain,
-  primary_hostname = EXCLUDED.primary_hostname,
-  auth_realm = EXCLUDED.auth_realm,
-  auth_client_id = EXCLUDED.auth_client_id,
-  tenant_admin_client_id = EXCLUDED.tenant_admin_client_id,
+  parent_domain = COALESCE(NULLIF(iam.instances.parent_domain, ''), EXCLUDED.parent_domain),
+  primary_hostname = COALESCE(NULLIF(iam.instances.primary_hostname, ''), EXCLUDED.primary_hostname),
+  auth_realm = COALESCE(NULLIF(iam.instances.auth_realm, ''), EXCLUDED.auth_realm),
+  auth_client_id = COALESCE(NULLIF(iam.instances.auth_client_id, ''), EXCLUDED.auth_client_id),
+  tenant_admin_client_id = COALESCE(NULLIF(iam.instances.tenant_admin_client_id, ''), EXCLUDED.tenant_admin_client_id),
   feature_flags = EXCLUDED.feature_flags,
   updated_at = NOW();
 
 INSERT INTO iam.instance_hostnames (hostname, instance_id, is_primary, created_by)
-VALUES (
+SELECT
   'de-musterhausen.studio.smart-village.app',
   'de-musterhausen',
-  true,
+  instances.primary_hostname = 'de-musterhausen.studio.smart-village.app',
   'seed:0001_iam_personas'
-)
+FROM iam.instances AS instances
+WHERE instances.id = 'de-musterhausen'
 ON CONFLICT (hostname) DO UPDATE
 SET
   instance_id = EXCLUDED.instance_id,
-  is_primary = EXCLUDED.is_primary,
+  is_primary = CASE
+    WHEN EXISTS (
+      SELECT 1
+      FROM iam.instances AS instances
+      WHERE instances.id = EXCLUDED.instance_id
+        AND instances.primary_hostname = EXCLUDED.hostname
+    ) THEN EXCLUDED.is_primary
+    ELSE false
+  END,
   created_by = EXCLUDED.created_by;
 
 INSERT INTO iam.instance_modules (instance_id, module_id)

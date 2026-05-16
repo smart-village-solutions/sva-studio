@@ -157,6 +157,17 @@ export const resolveAuthConfigFromSessionAuth = (auth: SessionAuthContext) => ({
   ...auth,
 });
 
+const assertTenantAuthSecretAvailable = (
+  instanceId: string,
+  tenantSecret: Awaited<ReturnType<typeof resolveTenantAuthClientSecret>>
+): void => {
+  if (tenantSecret.source === 'tenant' && tenantSecret.readable && tenantSecret.secret) {
+    return;
+  }
+
+  throw new Error(`Tenant auth client secret is unavailable for ${instanceId}`);
+};
+
 export const getAuthConfig = (): AuthConfig => {
   const base = resolveBaseAuthConfig();
   return mergeAuthConfig(base, {
@@ -178,7 +189,8 @@ export const resolveAuthConfigForInstance = async (
   }
 
   const origin = options.origin ?? buildHostOrigin(instance.primaryHostname, options.protocol);
-  const tenantSecret = await resolveTenantAuthClientSecret(instance.instanceId);
+  const tenantSecret = await resolveTenantAuthClientSecret(instance.instanceId, { allowGlobalFallback: false });
+  assertTenantAuthSecretAvailable(instance.instanceId, tenantSecret);
   return mergeAuthConfig(resolveBaseAuthConfig({ clientSecret: tenantSecret.secret }), {
     kind: 'instance',
     instanceId: instance.instanceId,
@@ -239,7 +251,22 @@ export const resolveAuthConfigForRequest = async (request: Request): Promise<Aut
   }
 
   assertActiveRegistryEntry(host, requestOrigin, registryEntry);
-  const tenantSecret = await resolveTenantAuthClientSecret(registryEntry.instanceId);
+  const tenantSecret = await resolveTenantAuthClientSecret(registryEntry.instanceId, { allowGlobalFallback: false });
+  try {
+    assertTenantAuthSecretAvailable(registryEntry.instanceId, tenantSecret);
+  } catch (error) {
+    logTenantAuthResolutionFailure(request, {
+      host,
+      requestOrigin,
+      reason: 'tenant_secret_unavailable',
+      error,
+    });
+    throw new TenantAuthResolutionError({
+      host,
+      reason: 'tenant_secret_unavailable',
+      cause: error,
+    });
+  }
   const authConfig = mergeAuthConfig(resolveBaseAuthConfig({ clientSecret: tenantSecret.secret }), {
     kind: 'instance',
     instanceId: registryEntry.instanceId,

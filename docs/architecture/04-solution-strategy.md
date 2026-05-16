@@ -147,6 +147,7 @@ Referenzen:
 
 - User-Sync und Rollen-Reconcile werden als fachlich deterministische Laufzeitverträge behandelt und nicht mehr nur als technische Admin-Hilfsaktionen.
 - Führend ist ein gemeinsamer Projektionskern von Keycloak-Identität (`sub`), tenant-spezifischem Auth-Scope (`instanceId` aus Host/Registry/Realm), IAM-User und Membership bis zur Darstellung in `/auth/me`, `/account`, `/admin/users` und `/admin/roles`.
+- Für tenant-spezifische Logins gehört ein lesbares tenantgebundenes `auth_client_secret` normativ zum Laufzeitvertrag; Plattform-Secrets sind dafür kein stiller Fallback.
 - Auf dem Root-Host wird derselbe IAM-v1-Routenvertrag im `platform`-Scope ausgewertet; Plattform-User und Plattform-Rollen stammen aus dem Plattform-Realm und benötigen keine tenantgebundene `instanceId`.
 - Tenant-Admin-abhängige Reconcile- und Sync-Pfade reagieren fail-closed, sobald blockerrelevanter Drift in Registry oder Provisioning erkannt wird.
 

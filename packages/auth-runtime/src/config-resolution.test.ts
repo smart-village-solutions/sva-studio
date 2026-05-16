@@ -118,6 +118,9 @@ describe('auth config resolution', () => {
       redirectUri: 'https://tenant.example/auth/callback',
       postLogoutRedirectUri: 'https://tenant.example/',
     });
+    expect(state.resolveTenantAuthClientSecret).toHaveBeenCalledWith('tenant-a', {
+      allowGlobalFallback: false,
+    });
   });
 
   it('rejects instance resolution for missing or inactive instances', async () => {
@@ -210,5 +213,60 @@ describe('auth config resolution', () => {
     });
     expect(state.assertActiveRegistryEntry).toHaveBeenCalled();
     expect(state.logTenantAuthResolution).toHaveBeenCalled();
+    expect(state.resolveTenantAuthClientSecret).toHaveBeenCalledWith('tenant-a', {
+      allowGlobalFallback: false,
+    });
+  });
+
+  it('fails closed for tenant auth resolution when the tenant-scoped auth secret is unavailable', async () => {
+    state.getInstanceConfig.mockReturnValue({
+      canonicalAuthHost: 'auth.example.test',
+      parentDomain: 'example.test',
+    });
+    state.loadRegistryEntryForHost.mockResolvedValue({
+      instanceId: 'tenant-a',
+      status: 'active',
+      authRealm: 'tenant-a',
+      authClientId: 'tenant-client',
+      authIssuerUrl: 'https://issuer.example/realms/tenant-a',
+    });
+    state.resolveTenantAuthClientSecret.mockResolvedValue({
+      configured: false,
+      readable: false,
+      source: 'tenant',
+      reason: 'tenant_auth_client_secret_missing',
+    });
+
+    await expect(resolveAuthConfigForRequest(new Request('https://tenant.example.test/auth/login'))).rejects.toMatchObject({
+      reason: 'tenant_secret_unavailable',
+    });
+    expect(state.logTenantAuthResolutionFailure).toHaveBeenCalledWith(
+      expect.any(Request),
+      expect.objectContaining({
+        host: 'tenant.example',
+        reason: 'tenant_secret_unavailable',
+      })
+    );
+  });
+
+  it('rejects instance auth config resolution when the tenant-scoped auth secret is unavailable', async () => {
+    state.loadInstanceById.mockResolvedValue({
+      instanceId: 'tenant-a',
+      primaryHostname: 'tenant.example',
+      status: 'active',
+      authRealm: 'tenant-a',
+      authClientId: 'tenant-client',
+      authIssuerUrl: undefined,
+    });
+    state.resolveTenantAuthClientSecret.mockResolvedValue({
+      configured: false,
+      readable: false,
+      source: 'tenant',
+      reason: 'tenant_auth_client_secret_missing',
+    });
+
+    await expect(resolveAuthConfigForInstance('tenant-a')).rejects.toThrow(
+      'Tenant auth client secret is unavailable for tenant-a'
+    );
   });
 });

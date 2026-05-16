@@ -1,6 +1,5 @@
-import type { RuntimeDependencyHealth, RuntimeHealthResponse } from '@sva/core';
 import { getWorkspaceContext, withRequestContext } from '@sva/server-runtime';
-
+import { resolveTenantAuthClientSecret } from './config-tenant-secret.js';
 import { jsonResponse, resolvePool } from './db.js';
 import {
   isKeycloakIdentityProvider,
@@ -9,56 +8,21 @@ import {
 } from './iam-account-management/shared.js';
 import { getPermissionCacheHealth } from './iam-authorization/shared.js';
 import { getLastRedisError, isRedisAvailable } from './redis.js';
+import {
+  createHealthDiagnostics,
+  createHealthErrors,
+  createRuntimeHealthServices,
+  hasMissingTenantLoginConfig,
+  isValidTenantSecretState,
+  resolveTenantLoginContractReasonCode,
+  type ActiveInstanceLoginRow,
+  type RuntimeDependencyCheck,
+  type RuntimeHealthDbClient,
+  type TenantLoginContractCheck,
+} from './runtime-health.shared.js';
 
 const withHealthRequestContext = <T>(request: Request, work: () => Promise<T>): Promise<T> =>
   withRequestContext({ request, fallbackWorkspaceId: 'default' }, work);
-
-type RuntimeDependencyCheck = {
-  readonly ready: boolean;
-  readonly error?: string;
-  readonly reasonCode?: string;
-};
-
-const toDependencyStatus = (check: RuntimeDependencyCheck): RuntimeDependencyHealth['status'] =>
-  check.ready ? 'ready' : 'not_ready';
-
-const toAuthorizationCacheServiceStatus = (
-  status: ReturnType<typeof getPermissionCacheHealth>['status']
-): RuntimeDependencyHealth['status'] => {
-  if (status === 'failed') {
-    return 'not_ready';
-  }
-  return status;
-};
-
-const createRuntimeHealthServices = (
-  database: RuntimeDependencyCheck,
-  redis: RuntimeDependencyCheck,
-  keycloak: RuntimeDependencyCheck,
-  authorizationCache: ReturnType<typeof getPermissionCacheHealth>
-): RuntimeHealthResponse['checks']['services'] => ({
-  authorizationCache: {
-    reasonCode:
-      authorizationCache.status === 'ready'
-        ? undefined
-        : authorizationCache.status === 'degraded'
-          ? 'authorization_cache_degraded'
-          : 'authorization_cache_failed',
-    status: toAuthorizationCacheServiceStatus(authorizationCache.status),
-  },
-  database: {
-    reasonCode: database.reasonCode,
-    status: toDependencyStatus(database),
-  },
-  keycloak: {
-    reasonCode: keycloak.reasonCode,
-    status: toDependencyStatus(keycloak),
-  },
-  redis: {
-    reasonCode: redis.reasonCode,
-    status: toDependencyStatus(redis),
-  },
-});
 
 const checkDatabase = async (): Promise<RuntimeDependencyCheck> => {
   const pool = resolvePool();
@@ -128,24 +92,85 @@ const checkKeycloak = async (): Promise<RuntimeDependencyCheck> => {
   }
 };
 
+const checkTenantLoginContract = async (): Promise<TenantLoginContractCheck> => {
+  const pool = resolvePool();
+  if (!pool) {
+    return {
+      checkedActiveInstanceCount: 0,
+      error: 'IAM database not configured',
+      invalidConfigInstanceIds: [],
+      invalidSecretInstanceIds: [],
+      ready: false,
+      reasonCode: 'database_not_configured',
+    };
+  }
+  let client: RuntimeHealthDbClient | null = null;
+  try {
+    client = await pool.connect();
+    const result = await client.query<ActiveInstanceLoginRow>(
+      `SELECT id, primary_hostname, auth_realm, auth_client_id FROM iam.instances WHERE status = 'active' ORDER BY id`
+    );
+
+    const invalidConfigInstanceIds = result.rows.filter(hasMissingTenantLoginConfig).map((row: ActiveInstanceLoginRow) => row.id);
+
+    const secretCandidateIds = result.rows
+      .map((row: ActiveInstanceLoginRow) => row.id)
+      .filter((id: string) => !invalidConfigInstanceIds.includes(id));
+
+    const secretChecks = await Promise.all(
+      secretCandidateIds.map(async (instanceId: string) => ({
+        instanceId,
+        secret: await resolveTenantAuthClientSecret(instanceId, { allowGlobalFallback: false }),
+      }))
+    );
+
+    const invalidSecretInstanceIds = secretChecks
+      .filter(({ secret }: { secret: Awaited<ReturnType<typeof resolveTenantAuthClientSecret>> }) =>
+        !isValidTenantSecretState(secret)
+      )
+      .map(({ instanceId }: { instanceId: string }) => instanceId);
+
+    return {
+      checkedActiveInstanceCount: result.rows.length,
+      invalidConfigInstanceIds,
+      invalidSecretInstanceIds,
+      ready: invalidConfigInstanceIds.length === 0 && invalidSecretInstanceIds.length === 0,
+      reasonCode: resolveTenantLoginContractReasonCode(
+        invalidConfigInstanceIds,
+        invalidSecretInstanceIds
+      ),
+    };
+  } catch (error) {
+    return {
+      checkedActiveInstanceCount: 0,
+      error: error instanceof Error ? error.message : String(error),
+      invalidConfigInstanceIds: [],
+      invalidSecretInstanceIds: [],
+      ready: false,
+      reasonCode: 'tenant_login_contract_probe_failed',
+    };
+  } finally {
+    client?.release();
+  }
+};
+
 export const healthReadyHandler = async (request: Request): Promise<Response> =>
   withHealthRequestContext(request, async () => {
     const requestContext = getWorkspaceContext();
-    const [database, redis, keycloak] = await Promise.all([checkDatabase(), checkRedis(), checkKeycloak()]);
+    const [database, redis, keycloak, tenantLoginContract] = await Promise.all([
+      checkDatabase(),
+      checkRedis(),
+      checkKeycloak(),
+      checkTenantLoginContract(),
+    ]);
     const authorizationCache = getPermissionCacheHealth();
-    const ready = database.ready && redis.ready && keycloak.ready && authorizationCache.status !== 'failed';
+    const ready =
+      database.ready &&
+      redis.ready &&
+      keycloak.ready &&
+      tenantLoginContract.ready &&
+      authorizationCache.status !== 'failed';
     const services = createRuntimeHealthServices(database, redis, keycloak, authorizationCache);
-    const diagnostics = {
-      ...(database.ready ? {} : { db: { reason_code: database.reasonCode } }),
-      ...(redis.ready ? {} : { redis: { reason_code: redis.reasonCode } }),
-      ...(keycloak.ready ? {} : { keycloak: { reason_code: keycloak.reasonCode } }),
-      ...(authorizationCache.status === 'degraded'
-        ? { authorizationCache: { reason_code: 'authorization_cache_degraded' } }
-        : {}),
-      ...(authorizationCache.status === 'failed'
-        ? { authorizationCache: { reason_code: 'authorization_cache_failed' } }
-        : {}),
-    };
 
     return jsonResponse(ready ? 200 : 503, {
       status: ready ? 'ready' : 'not_ready',
@@ -161,12 +186,14 @@ export const healthReadyHandler = async (request: Request): Promise<Response> =>
         db: database.ready,
         redis: redis.ready,
         keycloak: keycloak.ready,
-        diagnostics,
-        errors: {
-          ...(database.ready ? {} : { db: database.error }),
-          ...(redis.ready ? {} : { redis: redis.error }),
-          ...(keycloak.ready ? {} : { keycloak: keycloak.error }),
-        },
+        diagnostics: createHealthDiagnostics(
+          database,
+          redis,
+          keycloak,
+          tenantLoginContract,
+          authorizationCache
+        ),
+        errors: createHealthErrors(database, redis, keycloak, tenantLoginContract),
         services,
       },
       ...(requestContext.requestId ? { requestId: requestContext.requestId } : {}),

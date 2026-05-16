@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { planAppUnitExecution } from './affected-unit-gate.ts';
+import { buildAppUnitCommand, planAppUnitExecution } from './affected-unit-gate.ts';
 
 describe('affected-unit-gate', () => {
   it('skips app slicing when the app is not affected', () => {
@@ -78,5 +78,14 @@ describe('affected-unit-gate', () => {
       reason: 'app-only-sliceable-change',
       slices: ['server'],
     });
+  });
+
+  it('builds direct vitest commands for aggregate and sliced app runs', () => {
+    expect(buildAppUnitCommand()).toBe(
+      'pnpm exec vitest run --config apps/sva-studio-react/vitest.config.ts --reporter=verbose'
+    );
+    expect(buildAppUnitCommand('routes')).toBe(
+      'pnpm exec vitest run --config apps/sva-studio-react/vitest.routes.config.ts --reporter=verbose'
+    );
   });
 });

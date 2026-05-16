@@ -901,7 +901,9 @@ describe('AuthProvider', () => {
         document.dispatchEvent(new Event('visibilitychange'));
       });
 
-      expect(fetchMock).toHaveBeenCalledTimes(2);
+      await waitFor(() => {
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+      });
 
       requireFetchResolver(resolveSecondFetch)(
         createJsonResponse(200, {

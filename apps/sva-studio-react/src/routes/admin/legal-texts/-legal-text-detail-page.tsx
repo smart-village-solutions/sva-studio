@@ -1,4 +1,5 @@
 import { Link, useNavigate } from '@tanstack/react-router';
+import { fromDatetimeLocalValue, toDatetimeLocalValue } from '@sva/plugin-sdk';
 import React from 'react';
 
 import { ConfirmDialog } from '../../../components/ConfirmDialog';
@@ -29,27 +30,12 @@ const richTextEditorCommands = {
 } as const;
 
 const toDateTimeInputValue = (value?: string): string => {
-  if (!value) {
-    return '';
-  }
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return '';
-  }
-
-  const pad = (entry: number) => String(entry).padStart(2, '0');
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  return toDatetimeLocalValue(value);
 };
 
 const toIsoDateTime = (value: string): string | undefined => {
   const trimmed = value.trim();
-  if (!trimmed) {
-    return undefined;
-  }
-
-  const date = new Date(trimmed);
-  return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
+  return trimmed ? fromDatetimeLocalValue(trimmed) || undefined : undefined;
 };
 
 export const LegalTextDetailPage = ({ legalTextVersionId }: LegalTextDetailPageProps) => {

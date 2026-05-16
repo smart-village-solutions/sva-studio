@@ -1,5 +1,6 @@
 import React from 'react';
 import type { IamUserPermissionTraceItem } from '@sva/core';
+import { formatDateTimeInEditorTimeZone } from '@sva/plugin-sdk';
 
 import { ConfirmDialog } from '../../../components/ConfirmDialog';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
@@ -127,8 +128,7 @@ const formatDateTime = (value?: string) => {
   if (!value) {
     return '—';
   }
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+  return formatDateTimeInEditorTimeZone(value) ?? value;
 };
 
 const formatRoleValidity = (input: { validFrom?: string; validTo?: string }) => {

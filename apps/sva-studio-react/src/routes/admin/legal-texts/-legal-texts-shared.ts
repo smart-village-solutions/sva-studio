@@ -1,3 +1,4 @@
+import { formatDateTimeInEditorTimeZone } from '@sva/plugin-sdk';
 import { t } from '../../../i18n';
 import type { IamHttpError } from '../../../lib/iam-api';
 
@@ -34,7 +35,5 @@ export const formatLegalTextDateTime = (value?: string): string => {
   if (!value) {
     return t('admin.legalTexts.table.publishedUnset');
   }
-
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+  return formatDateTimeInEditorTimeZone(value) ?? value;
 };

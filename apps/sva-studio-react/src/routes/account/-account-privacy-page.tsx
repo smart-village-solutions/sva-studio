@@ -1,4 +1,5 @@
 import type { IamDsrCaseListItem } from '@sva/core';
+import { formatDateTimeInEditorTimeZone } from '@sva/plugin-sdk';
 import React from 'react';
 
 import {
@@ -17,8 +18,7 @@ const formatDateTime = (value?: string) => {
   if (!value) {
     return '—';
   }
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+  return formatDateTimeInEditorTimeZone(value) ?? value;
 };
 
 const mapDsrStatusKey = (item: Pick<IamDsrCaseListItem, 'canonicalStatus'>) => {

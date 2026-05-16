@@ -278,6 +278,7 @@ Alle Standard-Controls werden bevorzugt aus shadcn/ui komponiert. Dazu gehören 
 
 - Datums- und Zeitfelder verwenden spezialisierte Picker oder Eingaben mit klarer Formatierung.
 - Gespeicherte Datums- und Zeitwerte müssen Zeitzonen- und Locale-Anforderungen der jeweiligen Domäne berücksichtigen.
+- Wenn eine Redaktionsdomäne mit einer festen Fachzeitzone arbeitet, müssen Anzeige und `datetime-local`-Konvertierung explizit auf diese Zeitzone festgelegt werden; im Studio ist dies für redaktionelle Zeitstempel `Europe/Berlin`, technische Logs und Audit-Exporte bleiben UTC/ISO.
 - Slider werden nur für grobe, explorative Werte verwendet, nicht für präzise Pflichtwerte.
 - Bereichsslider zeigen immer aktuellen Wert, Minimalwert und Maximalwert sichtbar an.
 - Für präzise Bereichswerte muss zusätzlich eine direkte numerische Eingabe möglich sein, wenn Genauigkeit fachlich relevant ist.

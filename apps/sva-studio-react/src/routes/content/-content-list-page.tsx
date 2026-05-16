@@ -1,4 +1,5 @@
 import { withServerDeniedContentAccess, type IamContentAccessSummary } from '@sva/core';
+import { formatDateTimeInEditorTimeZone } from '@sva/plugin-sdk';
 import { StudioDataTable, StudioListPageTemplate, type StudioColumnDef } from '@sva/studio-ui-react';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import React from 'react';
@@ -61,9 +62,7 @@ const formatDateTime = (value?: string): string => {
   if (!value) {
     return t('content.table.notPublished');
   }
-
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+  return formatDateTimeInEditorTimeZone(value) ?? value;
 };
 
 const summarizePayload = (value: unknown): string => {

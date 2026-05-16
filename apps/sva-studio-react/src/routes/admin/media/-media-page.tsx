@@ -1,5 +1,6 @@
 import { StudioDataTable, StudioListPageTemplate, type StudioColumnDef } from '@sva/studio-ui-react';
 import { Link, useLocation, useNavigate, useParams } from '@tanstack/react-router';
+import { formatDateTimeInEditorTimeZone } from '@sva/plugin-sdk';
 import React from 'react';
 
 import { createStudioDataTableLabels } from '../../../components/studio-data-table-labels';
@@ -63,9 +64,7 @@ const formatDateTime = (value?: string): string => {
   if (!value) {
     return t('media.values.notAvailable');
   }
-
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+  return formatDateTimeInEditorTimeZone(value) ?? value;
 };
 
 const formatByteSize = (value: number): string => {

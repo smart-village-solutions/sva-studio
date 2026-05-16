@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
 import {
+  formatDateTimeInEditorTimeZone,
   findHostMediaReferenceAssetId,
   fromDatetimeLocalValue,
   listHostMediaAssets,
@@ -146,9 +147,7 @@ const formatDate = (value?: string) => {
   if (!value) {
     return '—';
   }
-
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+  return formatDateTimeInEditorTimeZone(value) ?? value;
 };
 
 const formatOptionalNumber = (value?: number) => (typeof value === 'number' ? String(value) : '—');

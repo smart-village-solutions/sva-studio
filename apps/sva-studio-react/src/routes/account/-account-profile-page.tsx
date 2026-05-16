@@ -1,4 +1,5 @@
 import type { IamUserDetail } from '@sva/core';
+import { formatDateTimeInEditorTimeZone } from '@sva/plugin-sdk';
 import { Link } from '@tanstack/react-router';
 import React from 'react';
 
@@ -72,9 +73,7 @@ const formatDateTime = (value?: string) => {
   if (!value) {
     return '—';
   }
-
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+  return formatDateTimeInEditorTimeZone(value) ?? value;
 };
 
 const validateForm = (values: ProfileFormValues): ProfileErrors => {

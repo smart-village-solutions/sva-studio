@@ -1,5 +1,6 @@
 import { useServerFn } from '@tanstack/react-start';
 import React from 'react';
+import { formatDateTimeInEditorTimeZone } from '@sva/plugin-sdk';
 
 import {
   StudioDataTable,
@@ -293,7 +294,7 @@ export const InterfacesPage = () => {
       {
         id: 'lastChecked',
         header: t('interfaces.table.headerLastChecked'),
-        cell: (row) => (row.lastCheckedAt ? new Date(row.lastCheckedAt).toLocaleString() : '-'),
+        cell: (row) => (row.lastCheckedAt ? formatDateTimeInEditorTimeZone(row.lastCheckedAt) : '-'),
         sortable: true,
         sortValue: (row) => row.lastCheckedAt ?? '',
       },

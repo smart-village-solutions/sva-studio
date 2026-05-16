@@ -1,5 +1,6 @@
 import { Link } from '@tanstack/react-router';
 import type { IamAdminGroupDetail } from '@sva/core';
+import { formatDateTimeInEditorTimeZone, fromDatetimeLocalValue } from '@sva/plugin-sdk';
 import React from 'react';
 
 import { ConfirmDialog } from '../../../components/ConfirmDialog';
@@ -46,17 +47,12 @@ const formatDateTime = (value?: string) => {
   if (!value) {
     return t('admin.groups.labels.noValidity');
   }
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+  return formatDateTimeInEditorTimeZone(value) ?? value;
 };
 
 const toIsoDateTime = (value: string) => {
   const trimmed = value.trim();
-  if (!trimmed) {
-    return undefined;
-  }
-  const date = new Date(trimmed);
-  return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
+  return trimmed ? fromDatetimeLocalValue(trimmed) || undefined : undefined;
 };
 
 export const GroupDetailPage = ({ groupId }: GroupDetailPageProps) => {

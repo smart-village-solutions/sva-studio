@@ -924,9 +924,7 @@ describe('NewsListPage', () => {
     render(<NewsEditPage />);
 
     await waitFor(() => {
-      expect(screen.getByLabelText('Veröffentlichungsdatum').getAttribute('value')).toMatch(
-        /^2026-04-14T\d{2}:30$/
-      );
+      expect(screen.getByLabelText('Veröffentlichungsdatum').getAttribute('value')).toBe('2026-04-14T11:30');
     });
   });
 

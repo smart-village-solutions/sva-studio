@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import {
+  formatDateTimeInEditorTimeZone,
   findHostMediaReferenceAssetId,
   fromDatetimeLocalValue,
   listHostMediaAssets,
@@ -227,7 +228,7 @@ export function EventsListPage() {
                 id: 'dateStart',
                 header: pt('fields.dateStart'),
                 cell: (item: EventContentItem) =>
-                  item.dates?.[0]?.dateStart ? new Date(item.dates[0].dateStart).toLocaleString() : '—',
+                  item.dates?.[0]?.dateStart ? formatDateTimeInEditorTimeZone(item.dates[0].dateStart) : '—',
               },
             ]}
             rowActions={(item) => (

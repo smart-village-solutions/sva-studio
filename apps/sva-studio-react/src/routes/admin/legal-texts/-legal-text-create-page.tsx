@@ -1,4 +1,5 @@
 import { Link, useNavigate } from '@tanstack/react-router';
+import { fromDatetimeLocalValue } from '@sva/plugin-sdk';
 import React from 'react';
 
 import { Alert, AlertDescription } from '../../../components/ui/alert';
@@ -62,12 +63,7 @@ const emptyForm = () => ({
 
 const toIsoDateTime = (value: string): string | undefined => {
   const trimmed = value.trim();
-  if (!trimmed) {
-    return undefined;
-  }
-
-  const date = new Date(trimmed);
-  return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
+  return trimmed ? fromDatetimeLocalValue(trimmed) || undefined : undefined;
 };
 
 export const LegalTextCreatePage = () => {

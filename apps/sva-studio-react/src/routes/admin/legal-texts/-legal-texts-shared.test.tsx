@@ -72,6 +72,7 @@ describe('legal texts shared helpers', () => {
   it('formats dates and keeps unset or invalid values fail-closed', () => {
     expect(formatLegalTextDateTime()).toBe('Nicht veröffentlicht');
     expect(formatLegalTextDateTime('not-a-date')).toBe('not-a-date');
-    expect(formatLegalTextDateTime('2026-05-15T10:15:00.000Z')).not.toBe('Nicht veröffentlicht');
+    expect(formatLegalTextDateTime('2026-01-15T10:15:00.000Z')).toBe('15.01.2026, 11:15');
+    expect(formatLegalTextDateTime('2026-05-15T10:15:00.000Z')).toBe('15.05.2026, 12:15');
   });
 });

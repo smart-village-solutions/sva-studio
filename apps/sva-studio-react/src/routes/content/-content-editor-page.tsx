@@ -1,5 +1,6 @@
 import { Link, useNavigate } from '@tanstack/react-router';
 import { GENERIC_CONTENT_TYPE, withServerDeniedContentAccess, type IamContentAccessSummary, type IamContentStatus } from '@sva/core';
+import { formatDateTimeInEditorTimeZone, fromDatetimeLocalValue, toDatetimeLocalValue } from '@sva/plugin-sdk';
 import React from 'react';
 
 import { Alert, AlertDescription } from '../../components/ui/alert';
@@ -37,27 +38,12 @@ const emptyFormState = (): ContentFormState => ({
 });
 
 const toDateTimeInputValue = (value?: string): string => {
-  if (!value) {
-    return '';
-  }
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return '';
-  }
-
-  const pad = (entry: number) => String(entry).padStart(2, '0');
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  return toDatetimeLocalValue(value);
 };
 
 const toIsoDateTime = (value: string): string | undefined => {
   const trimmed = value.trim();
-  if (!trimmed) {
-    return undefined;
-  }
-
-  const date = new Date(trimmed);
-  return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
+  return trimmed ? fromDatetimeLocalValue(trimmed) || undefined : undefined;
 };
 
 const formatDateTime = (value?: string): string => {
@@ -65,8 +51,7 @@ const formatDateTime = (value?: string): string => {
     return t('content.table.notPublished');
   }
 
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+  return formatDateTimeInEditorTimeZone(value) ?? value;
 };
 
 const contentErrorMessage = (error: IamHttpError | null): string => {

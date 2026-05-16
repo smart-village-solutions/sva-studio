@@ -1,4 +1,5 @@
 import React from 'react';
+import { formatDateTimeInEditorTimeZone } from '@sva/plugin-sdk';
 
 import { acceptLegalText, asIamError, getMyPendingLegalTexts, LEGAL_ACCEPTANCE_REQUIRED_EVENT } from '../lib/iam-api';
 import {
@@ -35,9 +36,7 @@ const formatDateTime = (value?: string) => {
   if (!value) {
     return t('admin.legalAcceptance.missingPublishedAt');
   }
-
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+  return formatDateTimeInEditorTimeZone(value) ?? value;
 };
 
 export const LegalTextAcceptanceDialog = ({ pathname }: LegalTextAcceptanceDialogProps) => {

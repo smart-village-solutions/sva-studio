@@ -63,6 +63,7 @@ import {
   extractComposeServiceContract,
   type ComposeDocument,
 } from './runtime/deploy-project.ts';
+import { guardrailCheckOrder, runGuardrailReport, type GuardrailReport } from '../ci/guardrail-report.ts';
 import {
   getGooseConfiguredVersion as getGooseConfiguredVersionFromConfig,
   listGooseMigrationFiles as listGooseMigrationFilesFromDir,
@@ -945,6 +946,53 @@ const toDoctorCheck = (
   message,
   ...(details ? { details } : {}),
 });
+
+type GuardrailDoctorDeps = Readonly<{
+  env?: NodeJS.ProcessEnv;
+  runGuardrailReport?: (input: { runtimeProfile: string; env?: NodeJS.ProcessEnv }) => Promise<GuardrailReport>;
+}>;
+
+const mapGuardrailReportCheckToDoctorCheck = (check: GuardrailReport['checks'][number]): DoctorCheck =>
+  toDoctorCheck(check.id, check.status, check.code, check.summary, {
+    affectedTargets: check.affectedTargets,
+    details: check.details,
+    enforcementReady: check.enforcementReady,
+    evidence: check.evidence,
+    suggestedNextStep: check.suggestedNextStep,
+    wouldFailInEnforcement: check.wouldFailInEnforcement,
+  });
+
+export const buildGuardrailDoctorChecks = async (
+  runtimeProfile: RuntimeProfile,
+  deps: GuardrailDoctorDeps = {}
+): Promise<readonly DoctorCheck[]> => {
+  const guardrailRunner =
+    deps.runGuardrailReport ?? ((input: { runtimeProfile: string; env?: NodeJS.ProcessEnv }) => runGuardrailReport(input));
+
+  try {
+    const report = await guardrailRunner({
+      runtimeProfile,
+      env: deps.env,
+    });
+    return report.checks.map(mapGuardrailReportCheckToDoctorCheck);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return guardrailCheckOrder.map((checkId) =>
+      toDoctorCheck(
+        checkId,
+        'warn',
+        'guardrail_report_unavailable',
+        'Der report-only Guardrail-Runner konnte nicht geladen werden.',
+        {
+          affectedTargets: [checkId],
+          enforcementReady: false,
+          error: message,
+          wouldFailInEnforcement: false,
+        }
+      )
+    );
+  }
+};
 
 type StudioImageVerifyEvidence = Readonly<{
   imageRef?: string;
@@ -2724,6 +2772,7 @@ const precheckAcceptance = async (
   checks.push(buildInstanceAuthConfigCheck(runtimeProfile, env));
   checks.push(buildTenantAdminClientContractCheck(runtimeProfile, env));
   checks.push(await buildInstanceHostnameMappingCheck(runtimeProfile, env));
+  checks.push(...(await buildGuardrailDoctorChecks(runtimeProfile, { env })));
   if (options) {
     checks.push(await buildAcceptanceLiveSpecCheck(runtimeProfile, env, options));
   }
@@ -2866,6 +2915,7 @@ const doctorRuntime = async (runtimeProfile: RuntimeProfile, env: NodeJS.Process
     checks.push(buildTenantAdminClientContractCheck(runtimeProfile, env));
     checks.push(await buildInstanceHostnameMappingCheck(runtimeProfile, env));
   }
+  checks.push(...(await buildGuardrailDoctorChecks(runtimeProfile, { env })));
   checks.push(buildActorDoctorCheck(runtimeProfile, env));
 
   return finalizeDoctorReport(runtimeProfile, checks);

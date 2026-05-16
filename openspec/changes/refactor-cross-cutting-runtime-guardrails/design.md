@@ -2,6 +2,8 @@
 
 Die Befunde konzentrieren sich nicht auf einzelne Defekte, sondern auf Vertragslücken zwischen Auth-Runtime, Plugin-SDK, Host-Routing und CI-Governance. Das gemeinsame Muster ist, dass Konventionen bereits existieren, aber nicht deterministisch zur Build- oder Boot-Zeit erzwungen werden.
 
+Ein erster report-only Sichtbarkeits-Slice ist inzwischen implementiert. Er verdrahtet additive Guardrail-Checks in `env:doctor:studio`, `env:precheck:studio` und `pnpm check:guardrails:report`, ohne bestehende Exit-Codes oder harte Qualitäts-Gates zu verändern. Damit gibt es jetzt echte Laufzeit- und Architektur-Befunde aus dem Workspace, noch bevor Enforcement aktiviert wurde.
+
 ## Goals / Non-Goals
 
 - Goals:
@@ -16,6 +18,7 @@ Die Befunde konzentrieren sich nicht auf einzelne Defekte, sondern auf Vertragsl
 
 ## Decisions
 
+- Decision: Der Change wird in mindestens zwei Delivery-Slices umgesetzt: zuerst Sichtbarkeit ohne Blockade, danach schrittweise Enforcement der neuen Verträge.
 - Decision: Session-Refresh bleibt serverseitig und Redis-basiert, wird aber pro `sessionId` serialisiert, sodass für parallele Requests genau ein Refresh-Schreiber gewinnt und konkurrierende Requests das Ergebnis wiederverwenden.
 - Decision: `/auth/me` bleibt der kanonische Auth-Read, gibt aber nur eine explizite Allowlist stabiler Felder aus; neue interne Session- oder Profilfelder werden nicht per Object-Spread exponiert.
 - Decision: Der Host validiert Plugin-Beiträge vor Snapshot-Publikation gegen einen kanonischen Preflight-Vertrag für Namespace, SDK-SemVer, Routen, Permission-Referenzen, Translation-Ownership und Aktivierungsstatus.
@@ -26,6 +29,12 @@ Die Befunde konzentrieren sich nicht auf einzelne Defekte, sondern auf Vertragsl
 - Decision: Kritische Module dürfen bei offenen Hotspots weder Coverage-Floors absenken noch Komplexität weiter steigern; stattdessen gilt Ratcheting plus dokumentierter Refactoring-Backlog.
 
 ## Workstreams
+
+0. Sichtbarkeit ohne Blockade
+   - Report-only Guardrail-Runner
+   - Einbindung in `doctor` und `precheck`
+   - Maschinenlesbare Guardrail-Befunde mit `wouldFailInEnforcement`
+   - Erste Triage von Drift, False Positives und funktionalem Risiko
 
 1. Auth- und Runtime-Härtung
    - Session-Refresh serialisieren
@@ -51,15 +60,32 @@ Die Befunde konzentrieren sich nicht auf einzelne Defekte, sondern auf Vertragsl
    - Hostvalidierte Invalidation-Tags für Mutationen
    - Gemeinsame Cache-Invalidierung über Core und Plugins
 
+## Aktuelle Erkenntnisse aus der report-only Phase
+
+- Plugin-Vertrag:
+  - Die Workspace-Plugins `news`, `events`, `poi` und `waste-management` dokumentieren aktuell keine explizite SDK-Kompatibilitäts-Range im sichtbaren Vertrag; der report-only Check meldet dies bereits als Migrations- und Enforcement-Vorarbeit.
+- Architekturdrift:
+  - Der aktuelle server-only Leak-Check ist bewusst heuristisch und meldet viele Treffer.
+  - Ein Teil davon ist wahrscheinlich legitim, etwa Server-Entrypoints oder bewusst serverseitige Adapter.
+  - Ein anderer Teil ist echte Architekturdrift oder ein potenzieller Bundling-Risikobereich, insbesondere bei servernahen Imports in nicht explizit server-only markierten Modulen.
+- Runtime-Boot:
+  - Der report-only Lauf sieht aktuell keinen unmittelbaren OTEL- oder Migrations-Befund, bestätigt aber nur Sichtbarkeit, nicht Enforcement.
+- Auth-Session:
+  - Vorhandene Session-/Auth-Testpfade sind sichtbar, aber die eigentliche Konkurrenzsemantik für Refreshes und die adapterübergreifende Parität sind weiterhin unimplementiert.
+- Cache-Vertrag:
+  - Die ersten Inventar-Befunde zeigen Mutations-/Refresh-Pfade ohne zentral sichtbaren Invalidierungsvertrag; das ist eher funktionales Risiko als reine Stilabweichung.
+
 ## Risks / Trade-offs
 
 - Strengere Build- und Boot-Gates können bestehende Drift sofort sichtbar machen und zunächst mehrere rote Checks freilegen.
 - Die typisierte Plugin-Route-Schnittstelle ist ein öffentlicher SDK-Vertrag und braucht eine klar dokumentierte Migrationsphase für bestehende Plugins.
 - Runtime-Aktivierungsflags für build-linked Plugins reduzieren nicht den Build-Kopplungsgrad, schaffen aber einen kontrollierbaren Betriebshebel ohne Vollumbau.
+- Die report-only Phase reduziert Delivery-Risiko, kann aber wegen heuristischer Checks zunächst gemischte Befunde aus echten Problemen, legitimen Serverfällen und False Positives liefern; deshalb ist eine explizite Triage Teil des Changes.
 
 ## Migration Plan
 
-1. Zuerst Guardrails einführen, die inkonsistente Zustände sichtbar machen, ohne sofort alle Callsites umzubauen.
-2. Danach Auth- und Plugin-Hotspots auf die neuen Verträge migrieren und Characterization-Tests für Redis-, Build-time- und Host-Routing-Pfade ergänzen.
-3. Anschließend CI-Gates scharf schalten und die verbleibenden Exemptions, Floors und Hotspots dokumentiert abbauen.
-4. Die neuen Verträge in arc42 und mindestens einer ADR für Plugin- und Runtime-Guardrails verankern.
+1. Zuerst Guardrails einführen, die inkonsistente Zustände sichtbar machen, ohne sofort alle Callsites umzubauen. Dieser Slice ist mit report-only Checks in `doctor`, `precheck` und `check:guardrails:report` gestartet.
+2. Danach die report-only Befunde triagieren: legitime Serverfälle, echte Architekturdrift und funktionales Risiko voneinander trennen.
+3. Anschließend Auth- und Plugin-Hotspots auf die neuen Verträge migrieren und Characterization-Tests für Redis-, Build-time- und Host-Routing-Pfade ergänzen.
+4. Danach CI-Gates und Boot-Verträge schrittweise von report-only auf fail-fast anheben und die verbleibenden Exemptions, Floors und Hotspots dokumentiert abbauen.
+5. Die neuen Verträge in arc42 und mindestens einer ADR für Plugin- und Runtime-Guardrails verankern.

@@ -72,7 +72,7 @@ export const toDatetimeLocalValue = (value?: string): string => {
   return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
 };
 
-export const fromDatetimeLocalValue = (value: string): string => {
+export const fromDatetimeLocalValue = (value: string, referenceValue?: string): string => {
   if (value.length === 0) {
     return '';
   }
@@ -100,6 +100,13 @@ export const fromDatetimeLocalValue = (value: string): string => {
     minute > 59
   ) {
     return '';
+  }
+
+  if (referenceValue) {
+    const referenceDate = parseDate(referenceValue);
+    if (referenceDate && toDatetimeLocalValue(referenceDate.toISOString()) === value) {
+      return referenceDate.toISOString();
+    }
   }
 
   const naiveUtcTime = Date.UTC(year, month - 1, day, hour, minute);

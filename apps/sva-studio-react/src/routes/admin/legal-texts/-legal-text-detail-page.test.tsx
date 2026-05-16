@@ -144,6 +144,41 @@ describe('LegalTextDetailPage', () => {
     });
   });
 
+  it('preserves the later DST fallback instant when the published timestamp stays unchanged', async () => {
+    const updateLegalText = vi.fn().mockResolvedValue(true);
+    useLegalTextsMock.mockReturnValue(
+      createState({
+        updateLegalText,
+        legalTexts: [
+          {
+            ...legalTextFixture,
+            status: 'valid',
+            publishedAt: '2026-10-25T01:30:00.000Z',
+          },
+        ],
+      })
+    );
+
+    render(<LegalTextDetailPage legalTextVersionId="legal-1" />);
+
+    await waitFor(() => {
+      expect((screen.getByLabelText('Veröffentlicht am', { selector: '#legal-text-edit-published' }) as HTMLInputElement).value).toBe(
+        '2026-10-25T02:30'
+      );
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Änderungen speichern' }));
+
+    await waitFor(() => {
+      expect(updateLegalText).toHaveBeenCalledWith(
+        'legal-1',
+        expect.objectContaining({
+          publishedAt: '2026-10-25T01:30:00.000Z',
+        })
+      );
+    });
+  });
+
   it('renders not-found and mutation error states', async () => {
     useLegalTextsMock.mockReturnValue(
       createState({

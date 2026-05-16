@@ -556,7 +556,10 @@ const NewsForm = ({
               aria-invalid={hasFieldError('publishedAt') || undefined}
               value={toDatetimeLocalValue(form.publishedAt)}
               onChange={(event) =>
-                setForm((current) => ({ ...current, publishedAt: fromDatetimeLocalValue(event.target.value) }))
+                setForm((current) => ({
+                  ...current,
+                  publishedAt: fromDatetimeLocalValue(event.target.value, current.publishedAt),
+                }))
               }
             />
           </StudioField>
@@ -573,7 +576,10 @@ const NewsForm = ({
               aria-invalid={hasFieldError('publicationDate') || undefined}
               value={toDatetimeLocalValue(form.publicationDate)}
               onChange={(event) =>
-                setForm((current) => ({ ...current, publicationDate: fromDatetimeLocalValue(event.target.value) }))
+                setForm((current) => ({
+                  ...current,
+                  publicationDate: fromDatetimeLocalValue(event.target.value, current.publicationDate),
+                }))
               }
             />
           </StudioField>

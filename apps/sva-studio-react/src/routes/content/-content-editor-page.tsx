@@ -41,9 +41,9 @@ const toDateTimeInputValue = (value?: string): string => {
   return toDatetimeLocalValue(value);
 };
 
-const toIsoDateTime = (value: string): string | undefined => {
+const toIsoDateTime = (value: string, referenceValue?: string): string | undefined => {
   const trimmed = value.trim();
-  return trimmed ? fromDatetimeLocalValue(trimmed) || undefined : undefined;
+  return trimmed ? fromDatetimeLocalValue(trimmed, referenceValue) || undefined : undefined;
 };
 
 const formatDateTime = (value?: string): string => {
@@ -291,7 +291,7 @@ export const ContentEditorPage = ({ mode, contentId }: ContentEditorPageProps) =
       return;
     }
 
-    const publishedAt = toIsoDateTime(formState.publishedAt);
+    const publishedAt = toIsoDateTime(formState.publishedAt, detailApi.content?.publishedAt);
     if (formState.status === 'published' && !publishedAt) {
       setPayloadError(t('content.validation.publishedAtRequired'));
       return;

@@ -33,9 +33,9 @@ const toDateTimeInputValue = (value?: string): string => {
   return toDatetimeLocalValue(value);
 };
 
-const toIsoDateTime = (value: string): string | undefined => {
+const toIsoDateTime = (value: string, referenceValue?: string): string | undefined => {
   const trimmed = value.trim();
-  return trimmed ? fromDatetimeLocalValue(trimmed) || undefined : undefined;
+  return trimmed ? fromDatetimeLocalValue(trimmed, referenceValue) || undefined : undefined;
 };
 
 export const LegalTextDetailPage = ({ legalTextVersionId }: LegalTextDetailPageProps) => {
@@ -78,7 +78,7 @@ export const LegalTextDetailPage = ({ legalTextVersionId }: LegalTextDetailPageP
       locale: formValues.locale.trim(),
       contentHtml: formValues.contentHtml.trim(),
       status: formValues.status,
-      publishedAt: toIsoDateTime(formValues.publishedAt),
+      publishedAt: toIsoDateTime(formValues.publishedAt, selectedLegalText?.publishedAt),
     };
 
     await legalTextsApi.updateLegalText(legalTextVersionId, payload);

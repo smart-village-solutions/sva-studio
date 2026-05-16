@@ -447,10 +447,10 @@ function EventsEditor({ mode }: { readonly mode: 'create' | 'edit' }) {
         />
         <StudioFieldGroup columns={2}>
           <StudioField id="event-date-start" label={pt('fields.dateStart')} error={errors.includes('dates') ? pt('validation.dates') : undefined}>
-            <Input id="event-date-start" type="datetime-local" value={toDatetimeLocalValue(firstDate.dateStart)} onChange={(event) => setField('dates', [{ ...firstDate, dateStart: fromDatetimeLocalValue(event.target.value) }])} />
+            <Input id="event-date-start" type="datetime-local" value={toDatetimeLocalValue(firstDate.dateStart)} onChange={(event) => setField('dates', [{ ...firstDate, dateStart: fromDatetimeLocalValue(event.target.value, firstDate.dateStart) }])} />
           </StudioField>
           <StudioField id="event-date-end" label={pt('fields.dateEnd')}>
-            <Input id="event-date-end" type="datetime-local" value={toDatetimeLocalValue(firstDate.dateEnd)} onChange={(event) => setField('dates', [{ ...firstDate, dateEnd: fromDatetimeLocalValue(event.target.value) }])} />
+            <Input id="event-date-end" type="datetime-local" value={toDatetimeLocalValue(firstDate.dateEnd)} onChange={(event) => setField('dates', [{ ...firstDate, dateEnd: fromDatetimeLocalValue(event.target.value, firstDate.dateEnd) }])} />
           </StudioField>
         </StudioFieldGroup>
         <StudioFieldGroup columns={2}>

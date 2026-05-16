@@ -30,6 +30,13 @@ describe('content-ui-utils', () => {
     expect(fromDatetimeLocalValue('2026-01-15T11:15')).toBe('2026-01-15T10:15:00.000Z');
     expect(fromDatetimeLocalValue('2026-07-15T12:15')).toBe('2026-07-15T10:15:00.000Z');
     expect(fromDatetimeLocalValue('2026-03-29T02:30')).toBe('');
+    expect(fromDatetimeLocalValue('2026-10-25T02:30')).toBe('2026-10-25T00:30:00.000Z');
+    expect(fromDatetimeLocalValue('2026-10-25T02:30', '2026-10-25T01:30:00.000Z')).toBe(
+      '2026-10-25T01:30:00.000Z'
+    );
+    expect(fromDatetimeLocalValue('2026-10-25T02:30', '2026-10-25T00:30:00.000Z')).toBe(
+      '2026-10-25T00:30:00.000Z'
+    );
   });
 
   it('maps host media options and resolves references by role with fallback behavior', () => {

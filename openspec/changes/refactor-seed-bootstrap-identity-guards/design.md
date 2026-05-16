@@ -4,7 +4,7 @@ Historische Seeds schreiben heute nicht nur additive IAM-Basisdaten, sondern auc
 
 Die Folge ist Drift in die falsche Richtung: Ein vorhandener, funktionierender lokaler oder staging-naher Zustand kann durch einen Seed-Lauf still auf einen anderen Host- oder Realm-Vertrag zurückgedreht werden.
 
-Ein konkreter lokaler Vorfall hat außerdem gezeigt, dass die Registry-Korrektur allein nicht ausreicht. Nach Wiederherstellung von `parent_domain`, `primary_hostname` und `auth_realm` war der Login-Start wieder korrekt, der Callback scheiterte jedoch weiter mit `unauthorized_client`, weil das tenant-spezifische `auth_client_secret` für den Realm-Client `sva-studio` in der lokalen DB fehlte. Die Runtime wich deshalb auf ein globales Secret aus. Nach Behebung dieses Drifts blieb der Schreibpfad weiter gestört: Das Anlegen neuer Rollen lieferte `503 keycloak_unavailable`, weil für den Tenant-Admin-Client `sva-studio-admin` zwar eine `tenant_admin_client_id`, aber kein `tenant_admin_client_secret` in der lokalen DB vorhanden war. Daraus folgt: Zum geschützten Umgebungsvertrag gehören auch tenant-spezifische Secret-Zuordnungen und deren Konsistenz mit dem Ziel-Realm, getrennt für Login- und Admin-Pfade.
+Ein konkreter lokaler Vorfall hat außerdem gezeigt, dass die Registry-Korrektur allein nicht ausreicht. Nach Wiederherstellung von `parent_domain`, `primary_hostname` und `auth_realm` war der Login-Start wieder korrekt, der Callback scheiterte jedoch weiter mit `unauthorized_client`, weil das tenant-spezifische `auth_client_secret` für den Realm-Client `sva-studio` in der lokalen DB fehlte. Die Runtime wich deshalb auf ein globales Secret aus. Daraus folgt: Zum geschützten Umgebungsvertrag gehören auch tenant-spezifische Secret-Zuordnungen und deren Konsistenz mit dem Ziel-Realm.
 
 ## Goals / Non-Goals
 
@@ -36,10 +36,9 @@ Ein konkreter lokaler Vorfall hat außerdem gezeigt, dass die Registry-Korrektur
 - Decision: Bestehende staging-nahe Umgebungen brauchen Guardrails.
   - Wenn ein Bootstrap-/Seed-Pfad auf bereits belegte geschützte Felder mit abweichenden Zielwerten trifft, muss der Pfad mindestens warnen und darf standardmäßig nicht still überschreiben.
 
-- Decision: Secret-Fallbacks und partielle Secret-Konfiguration dürfen fehlende Tenant-Konfiguration nicht als stabilen Sollzustand maskieren.
-  - Wenn eine Umgebung tenant-spezifische Auth-Clients nutzt, muss ein Bootstrap-/Reconcile-/Readiness-Pfad prüfen können, ob das tenant-spezifische Login-Secret und das tenant-spezifische Tenant-Admin-Secret vorhanden und lesbar sind.
-  - Ein globales Secret-Fallback darf bestehende Drift diagnostisch überbrücken, ersetzt aber nicht die Pflicht zur Wiederherstellung des tenant-spezifischen Login-Secret-Zustands.
-  - Eine vorhandene `tenant_admin_client_id` ohne passendes `tenant_admin_client_secret` gilt als unvollständige Admin-Konfiguration und darf nicht erst bei schreibenden Operationen auffallen.
+- Decision: Secret-Fallbacks dürfen fehlende Tenant-Konfiguration nicht als stabilen Sollzustand maskieren.
+  - Wenn eine Umgebung tenant-spezifische Auth-Clients nutzt, muss ein Bootstrap-/Reconcile-/Readiness-Pfad prüfen können, ob das tenant-spezifische Secret vorhanden und lesbar ist.
+  - Ein globales Secret-Fallback darf bestehende Drift diagnostisch überbrücken, ersetzt aber nicht die Pflicht zur Wiederherstellung des tenant-spezifischen Secret-Zustands.
 
 ## Alternatives Considered
 
@@ -59,7 +58,7 @@ Ein konkreter lokaler Vorfall hat außerdem gezeigt, dass die Registry-Korrektur
 - Bestehende Workflows, die bisher still auf autoritative Seeds vertraut haben, müssen auf explizite Bootstrap-/Reconcile-Pfade umgestellt werden.
 - Einzelne historische Seeds könnten implizit mehr Verantwortung tragen als bisher dokumentiert; das muss bei der Umsetzung schrittweise herausgelöst werden.
 - Guardrails können zunächst zusätzliche Warnungen oder Failures sichtbar machen, wo heute Drift unbemerkt bleibt.
-- Secret-Synchronisation erhöht die Zahl der umgebungsspezifischen Artefakte, die beim Bootstrap oder Reconcile bewusst gepflegt werden müssen; insbesondere Login- und Tenant-Admin-Secret können unabhängig voneinander driften.
+- Secret-Synchronisation erhöht die Zahl der umgebungsspezifischen Artefakte, die beim Bootstrap oder Reconcile bewusst gepflegt werden müssen.
 
 ## Migration Plan
 
@@ -67,9 +66,8 @@ Ein konkreter lokaler Vorfall hat außerdem gezeigt, dass die Registry-Korrektur
 2. Historische Seeds so umstellen, dass geschützte Identitätsfelder bei bestehenden Instanzen nicht mehr autoritativ überschrieben werden.
 3. Explizite Bootstrap-/Reconcile-Pfade für neue und bewusst zu korrigierende Umgebungen beibehalten oder schärfen.
 4. Guardrails für lokale und staging-nahe Bestände ergänzen.
-5. Tenant-spezifische Secret-Bereitstellung und Readiness-Prüfungen in Bootstrap-/Reconcile-Vertrag aufnehmen, getrennt für Login- und Tenant-Admin-Clients.
-6. Schreibpfade wie Rollenanlage in die Readiness- oder Smoke-Prüfung aufnehmen, damit unvollständige Tenant-Admin-Credentials sichtbar werden.
-7. Betriebs- und Architektur-Dokumentation anpassen.
+5. Tenant-spezifische Secret-Bereitstellung und Readiness-Prüfungen in Bootstrap-/Reconcile-Vertrag aufnehmen.
+6. Betriebs- und Architektur-Dokumentation anpassen.
 
 ## Open Questions
 

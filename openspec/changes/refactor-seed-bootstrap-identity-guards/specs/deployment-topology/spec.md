@@ -28,10 +28,16 @@ Das System SHALL für bestehende staging-nahe Umgebungen sichtbare Guardrails be
 
 ### Requirement: Betriebsfaehige Tenant-Umgebungen erfordern konsistente Secret-Zuordnungen
 
-Das System SHALL im lokalen und staging-nahen Betrieb tenant-spezifische Auth-Secrets als Teil der Umgebungs-Readiness behandeln, damit ein erfolgreicher Login nicht nach korrekter Host-Auflösung am Callback mit ungültigen Client-Credentials scheitert.
+Das System SHALL im lokalen und staging-nahen Betrieb tenant-spezifische Auth-Secrets als Teil der Umgebungs-Readiness behandeln, damit ein erfolgreicher Login nicht nach korrekter Host-Auflösung am Callback mit ungültigen Client-Credentials scheitert und schreibende IAM-Operationen nicht mit unvollständigen Tenant-Admin-Credentials ausfallen.
 
 #### Scenario: Readiness erkennt Secret-Drift vor kontinuierlichem Testbetrieb
 
 - **WHEN** eine bestehende Tenant-Umgebung für kontinuierliche lokale oder staging-nahe Tests bereitgestellt oder reconciled wird
-- **THEN** prüft der Betriebs- oder Readiness-Pfad, ob tenant-spezifische Auth-Secrets für die konfigurierte Realm-/Client-Kombination vorhanden und nutzbar sind
-- **AND** wird eine Umgebung mit fehlendem tenant-spezifischem Secret nicht still als betriebsbereit eingestuft
+- **THEN** prüft der Betriebs- oder Readiness-Pfad, ob tenant-spezifische Login- und Tenant-Admin-Secrets für die konfigurierte Realm-/Client-Kombination vorhanden und nutzbar sind
+- **AND** wird eine Umgebung mit fehlendem tenant-spezifischem Login- oder Tenant-Admin-Secret nicht still als betriebsbereit eingestuft
+
+#### Scenario: Write-Path-Smoke erkennt unvollstaendige Tenant-Admin-Credentials
+
+- **WHEN** eine bestehende Tenant-Umgebung im lokalen oder staging-nahen Betrieb als betriebsbereit bewertet wird
+- **THEN** umfasst der Smoke- oder Readiness-Pfad mindestens eine schreibende IAM-Operation oder eine gleichwertige Admin-Credential-Prüfung
+- **AND** wird ein Zustand, in dem Rollenanlage oder vergleichbare Keycloak-Admin-Operationen mit `keycloak_unavailable` oder `tenant_admin_credentials_incomplete` scheitern, nicht als stabiler Zielzustand akzeptiert

@@ -40,7 +40,7 @@ Das System SHALL additive Baseline-Seeds normativ von autoritativen Bootstrap- u
 
 ### Requirement: Tenant-spezifische Auth-Secrets gehoeren zum geschuetzten Umgebungsvertrag
 
-Das System SHALL tenant-spezifische Auth-Secret-Zuordnungen als Teil der geschützten Umgebungsidentität behandeln, damit ein korrigierter Tenant-Zustand nicht beim Callback auf globale Fallback-Secrets zurückfällt.
+Das System SHALL tenant-spezifische Auth-Secret-Zuordnungen als Teil der geschützten Umgebungsidentität behandeln, damit ein korrigierter Tenant-Zustand weder beim Callback auf globale Fallback-Secrets zurückfällt noch bei schreibenden IAM-Operationen mit unvollständigen Tenant-Admin-Credentials ausfällt.
 
 #### Scenario: Bestehende Tenant-Umgebung nutzt hinterlegtes Secret statt globalem Fallback
 
@@ -48,8 +48,14 @@ Das System SHALL tenant-spezifische Auth-Secret-Zuordnungen als Teil der geschü
 - **THEN** ist für diesen Tenant eine lesbare tenant-spezifische Secret-Zuordnung vorhanden oder wird über einen expliziten Bootstrap-/Reconcile-Pfad wiederhergestellt
 - **AND** darf ein globales Fallback-Secret nicht als dauerhafter Sollzustand für diese Umgebung gelten
 
+#### Scenario: Bestehende Tenant-Umgebung besitzt vollstaendige Tenant-Admin-Credentials fuer Schreibpfade
+
+- **WHEN** eine bestehende lokale oder staging-nahe Umgebung einen tenant-spezifischen `tenant_admin_client_id` für Keycloak-Admin-Operationen verwendet
+- **THEN** ist für diesen Tenant eine lesbare tenant-spezifische `tenant_admin_client_secret`-Zuordnung vorhanden oder wird über einen expliziten Bootstrap-/Reconcile-Pfad wiederhergestellt
+- **AND** gilt eine vorhandene `tenant_admin_client_id` ohne Secret nicht als betriebsbereiter Zustand
+
 #### Scenario: Readiness deckt Host- und Secret-Drift gemeinsam auf
 
 - **WHEN** eine bestehende Tenant-Umgebung nach Seed-, Bootstrap- oder Reconcile-Läufen geprüft wird
-- **THEN** umfasst die Prüfung mindestens Tenant-Host-Auflösung, Realm-/Client-Zuordnung und die Verwendung des tenant-spezifischen Secrets im Login-Flow
-- **AND** wird ein Zustand, der nur mit globalem Secret-Fallback funktioniert oder am Callback scheitert, nicht als erfolgreich reconciled bewertet
+- **THEN** umfasst die Prüfung mindestens Tenant-Host-Auflösung, Realm-/Client-Zuordnung, die Verwendung des tenant-spezifischen Login-Secrets im Login-Flow und die Verfügbarkeit des tenant-spezifischen Tenant-Admin-Secrets für schreibende IAM-Operationen
+- **AND** wird ein Zustand, der nur mit globalem Secret-Fallback funktioniert, am Callback scheitert oder bei Rollenanlage und ähnlichen Schreibpfaden `tenant_admin_credentials_incomplete` erzeugt, nicht als erfolgreich reconciled bewertet

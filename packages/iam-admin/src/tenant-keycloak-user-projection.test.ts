@@ -18,8 +18,7 @@ describe('tenant-keycloak-user-projection', () => {
           enabled: true,
           attributes: { displayName: ['Redaktion'], instanceId: ['de-musterhausen'] },
         },
-        [],
-        'de-musterhausen'
+        []
       )
     ).toEqual({
       id: 'keycloak:kc-1',
@@ -36,7 +35,7 @@ describe('tenant-keycloak-user-projection', () => {
 
   it('keeps unmapped users independent from deprecated instance attributes', () => {
     expect(
-      mapUnmappedKeycloakUser({ externalId: 'kc-1', attributes: {} }, null, 'de-musterhausen')
+      mapUnmappedKeycloakUser({ externalId: 'kc-1', attributes: {} }, null)
     ).toEqual(
       expect.objectContaining({
         mappingStatus: 'unmapped',
@@ -50,8 +49,7 @@ describe('tenant-keycloak-user-projection', () => {
     expect(
       mapUnmappedKeycloakUser(
         { externalId: 'kc-2', attributes: { instanceId: ['de-altstadt'] } },
-        [],
-        'de-musterhausen'
+        []
       )
     ).toEqual(
       expect.objectContaining({

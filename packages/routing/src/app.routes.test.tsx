@@ -69,6 +69,11 @@ type RouteOptionsUnderTest = {
   component?: () => unknown;
 };
 
+function expectDefined<T>(value: T | undefined): T {
+  expect(value).toBeDefined();
+  return value as T;
+}
+
 const bindingKeys = [
   'home',
   'account',
@@ -625,9 +630,10 @@ describe('app.routes', () => {
       .find((candidate) => readRouteOptions(candidate).path === '/admin/media/$mediaId/usage');
 
     expect(route).toBeDefined();
+    const mediaUsageRoute = expectDefined(route);
 
     await expect(
-      readRouteOptions(route!).beforeLoad?.({
+      readRouteOptions(mediaUsageRoute).beforeLoad?.({
         context: {
           auth: { getUser: () => ({ roles: ['app_manager'], permissionActions: ['media.read'], assignedModules: [] }) },
         },
@@ -638,7 +644,7 @@ describe('app.routes', () => {
     });
 
     await expect(
-      readRouteOptions(route!).beforeLoad?.({
+      readRouteOptions(mediaUsageRoute).beforeLoad?.({
         context: {
           auth: { getUser: () => ({ roles: ['app_manager'], permissionActions: [], assignedModules: ['media'] }) },
         },
@@ -657,9 +663,10 @@ describe('app.routes', () => {
       .find((candidate) => readRouteOptions(candidate).path === '/admin/media/$mediaId/usage');
 
     expect(route).toBeDefined();
+    const mediaUsageRoute = expectDefined(route);
 
     await expect(
-      readRouteOptions(route!).beforeLoad?.({
+      readRouteOptions(mediaUsageRoute).beforeLoad?.({
         context: {
           auth: {
             getUser: () => ({

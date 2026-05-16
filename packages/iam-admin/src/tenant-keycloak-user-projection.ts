@@ -38,8 +38,7 @@ const mapKeycloakUserStatus = (user: IdentityListedUser): UserStatus => (user.en
 
 export const mapUnmappedKeycloakUser = (
   user: IdentityListedUser,
-  roleNames: readonly string[] | null,
-  _instanceId: string
+  roleNames: readonly string[] | null
 ): IamUserListItem => {
   const diagnostics: IamKeycloakObjectDiagnostic[] = [];
   diagnostics.push({ code: 'mapping_missing', objectId: user.externalId, objectType: 'user' });

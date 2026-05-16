@@ -1,4 +1,3 @@
-import type { RuntimeHealthResponse } from '@sva/core';
 import { getWorkspaceContext, withRequestContext } from '@sva/server-runtime';
 import { resolveTenantAuthClientSecret } from './config-tenant-secret.js';
 import { jsonResponse, resolvePool } from './db.js';

@@ -54,6 +54,37 @@ describe('content-ui-utils', () => {
     expect(formatDateTimeInEditorTimeZone('2026-01-15T10:15:00.000Z', 'invalid locale tag')).toBe(
       '15.01.2026, 11:15'
     );
+    expect(formatDateTimeInEditorTimeZone('2026-01-15T10:15:00.000Z', 'zz-ZZ')).toBe('15.01.2026, 11:15');
+  });
+
+  it('infers the editor locale from the document language when no explicit locale is provided', () => {
+    const originalDocument = globalThis.document;
+    const stubDocument = { documentElement: { lang: 'en' } } as Document;
+    Object.defineProperty(globalThis, 'document', {
+      configurable: true,
+      value: stubDocument,
+    });
+
+    expect(formatDateTimeInEditorTimeZone('2026-01-15T10:15:00.000Z')).toBe('15/01/2026, 11:15');
+
+    stubDocument.documentElement.lang = 'fr-FR';
+    expect(formatDateTimeInEditorTimeZone('2026-01-15T10:15:00.000Z')).toContain('2026');
+
+    stubDocument.documentElement.lang = '   ';
+    expect(formatDateTimeInEditorTimeZone('2026-01-15T10:15:00.000Z')).toBe('15.01.2026, 11:15');
+
+    Object.defineProperty(globalThis, 'document', {
+      configurable: true,
+      value: originalDocument,
+    });
+  });
+
+  it('rejects out-of-range datetime-local values before timezone conversion', () => {
+    expect(fromDatetimeLocalValue('2026-13-15T11:15')).toBe('');
+    expect(fromDatetimeLocalValue('2026-01-32T11:15')).toBe('');
+    expect(fromDatetimeLocalValue('2026-01-15T24:15')).toBe('');
+    expect(fromDatetimeLocalValue('2026-01-15T11:60')).toBe('');
+    expect(fromDatetimeLocalValue('2026-01-15T11:15', 'not-a-date')).toBe('2026-01-15T10:15:00.000Z');
   });
 
   it('maps host media options and resolves references by role with fallback behavior', () => {

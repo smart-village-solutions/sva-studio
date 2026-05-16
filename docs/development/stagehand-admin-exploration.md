@@ -41,6 +41,12 @@ Dieses Dokument beschreibt die lokale, nicht blockierende Stagehand-Schicht für
   - optionaler Tenant-Admin für mutierende Tenant-Läufe
 - `STAGEHAND_TENANT_PASSWORD`
   - optionales Passwort für diesen Tenant-Admin
+- `STAGEHAND_NEIGHBOR_TENANT_BASE_URL`
+  - optionale Basisadresse eines Nachbar-Mandanten für Cross-Tenant-Negativnachweise
+- `STAGEHAND_NEIGHBOR_TENANT_USERNAME`
+  - optionaler Tenant-Admin für den Nachbar-Mandanten
+- `STAGEHAND_NEIGHBOR_TENANT_PASSWORD`
+  - optionales Passwort für den Nachbar-Mandanten-Admin
 - `OPENAI_API_KEY`
   - bestehender LLM-Zugang für den Stagehand-Kontext
 
@@ -60,8 +66,9 @@ pnpm nx run sva-studio-react:test:explore:admin
   - `admin-user-permissions-inspection`: Stories `23`, `24`, `25` und `26`
   - `admin-role-management-navigation`: Stories `20`, `21`, `22` und `27`
 - Im Standardmodus `story-loop` liest die Schicht alle IAM-Stories aus `user-stories.json`, gruppiert sie in technische Cluster und schreibt die Ergebnisse in ein separates Overlay.
-- Der erste echte positive Tenant-Executor deckt Story `18` über Login, Nutzeranlage und Detailansicht im Mandantenkontext ab.
-- Weitere Stories werden aktuell entweder über bestehende Cluster positiv klassifiziert oder mit belastbaren Negativbegründungen fortgeschrieben.
+- Der Cluster `tenant-user-create` deckt Story `18` über Login, Nutzeranlage und Detailansicht im Mandantenkontext ab, bleibt aber ohne Cross-Tenant-Negativnachweis bewusst `unklar`.
+- Der Cluster `tenant-isolation` führt einen echten Positiv- und Negativnachweis: Nutzer im Ausgangsmandanten sichtbar, API- und UI-Zugriff im Nachbar-Mandanten verweigert oder ohne fremde Nutzerdaten.
+- Nicht implementierte Cluster werden standardmäßig als `umgebung_unzureichend` statt pauschal `unklar` fortgeschrieben.
 - Im Legacy-Modus `mission` öffnet `admin-users-overview` die Start-URL `/admin/users` über einen einfachen lokalen Bootstrap-Pfad und klassifiziert:
   - `passed`, wenn Benutzerverwaltung oder fachlich gültiger Leerzustand eindeutig erkannt werden
   - `blocked`, wenn Login-Anforderung oder Login-Redirect erkannt werden
@@ -97,7 +104,43 @@ Für den Standardmodus `story-loop` entsteht zusätzlich:
 - `test:acceptance`
   - reproduzierbarer IAM-Abnahmenachweis gegen die vereinbarte Testumgebung
 - `test:explore:admin`
-  - explorativer lokaler Zusatzlauf für IAM-Stories mit klaren Artefakten, direkter Fortschreibung von `user-stories.json`, aber ohne Gate-Charakter
+  - explorativer lokaler Zusatzlauf für IAM-Stories mit klaren Artefakten und reviewbarem Overlay, aber ohne Gate-Charakter
+
+## Strategisches Zielbild
+
+- User-Stories bleiben die fachliche Quelle für gewünschtes Verhalten im Studio.
+- Stagehand dient nicht als Ersatz für Produktentwicklung, sondern als exploratives Nachweiswerkzeug für fachliche Fähigkeiten.
+- Der technische Zuschnitt erfolgt über Cluster-Executors statt über einzelne Klickstories.
+  - Ein Cluster bündelt mehrere Stories entlang von `Entität × Aktion × Mandanten-Achse × Audit`.
+  - Ein bestandener Cluster soll eine Aussage über IAM- oder Studio-Semantik erlauben, nicht nur über einzelne Screens.
+- `erfuellt` ist absichtlich streng.
+  - Ein Story- oder Cluster-Nachweis gilt nur dann als erfüllt, wenn der gewünschte Effekt aus Nutzersicht sichtbar ist und ein passender Negativfall verifiziert wurde.
+  - Fehlende Beobachtbarkeit bleibt `unklar` oder `umgebung_unzureichend`, statt künstlich grün gerechnet zu werden.
+- Stagehand-Resultate sind reviewbare Evidenz, nicht die kanonische Wahrheit.
+  - Das Overlay und die Reports zeigen den aktuellen Nachweisstand.
+  - Der Story-Katalog bleibt bis zu einem expliziten Merge-Schritt unverändert.
+
+## Zusammenspiel Mit Produktverbesserung
+
+- Produktverbesserung beginnt weiterhin bei Fachlichkeit, UX, API-Design, Domain-Logik und klassischer Testbarkeit.
+- Stagehand hilft dabei, Story-Lücken sichtbar zu machen, Prioritäten zu schärfen und semantische Regressionen früh zu erkennen.
+- Klassische Tests und Stagehand haben unterschiedliche Rollen:
+  - Unit- und Integrationstests sichern Logik, Verträge und Randfälle schnell und deterministisch.
+  - E2E- und Acceptance-Tests sichern reproduzierbare Kernpfade.
+  - Stagehand prüft, ob das System in realen, fachlichen Admin-Journeys insgesamt stimmig wirkt.
+- Langfristig ist der Erfolg nicht „möglichst viele agentische Läufe“, sondern eine kleine Menge starker Cluster, die die wichtigsten Studio-Fähigkeiten belastbar abdecken.
+- Ein guter Cluster-Backlog folgt fachlichem Hebel:
+  - zuerst Mandantentrennung
+  - dann Rollen und Rechte
+  - danach Organisations- und Zuordnungslogik
+  - rechtliche, operative oder externe Nachweise nur dort, wo die lokale Umgebung sie ehrlich tragen kann
+
+## Was Stagehand Nicht Sein Soll
+
+- kein verpflichtendes Release-Gate für alles
+- kein Ersatz für deterministische Tests
+- kein Automatismus, der `user-stories.json` ungeprüft fortschreibt
+- kein Messinstrument für Produktfortschritt ohne menschliche Review- und Priorisierungsarbeit
 
 ## Hinweise fuer die Teamnutzung
 

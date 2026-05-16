@@ -124,12 +124,38 @@ function parseTenantConfig(env: StagehandAdminEnv): StagehandTenantConfig | null
     );
   }
 
+  const neighborBaseUrl = readFirstDefined(env, ['STAGEHAND_NEIGHBOR_TENANT_BASE_URL']);
+  const neighborUsername = readFirstDefined(env, ['STAGEHAND_NEIGHBOR_TENANT_USERNAME']);
+  const neighborPassword = readFirstDefined(env, ['STAGEHAND_NEIGHBOR_TENANT_PASSWORD']);
+
+  const hasNeighborConfig =
+    neighborBaseUrl !== undefined || neighborUsername !== undefined || neighborPassword !== undefined;
+
+  if (
+    hasNeighborConfig &&
+    (neighborBaseUrl === undefined || neighborUsername === undefined || neighborPassword === undefined)
+  ) {
+    throw new Error(
+      'Missing Stagehand neighbor tenant config env vars: STAGEHAND_NEIGHBOR_TENANT_BASE_URL, STAGEHAND_NEIGHBOR_TENANT_USERNAME, STAGEHAND_NEIGHBOR_TENANT_PASSWORD'
+    );
+  }
+
   return {
     admin: {
       username,
       password,
     },
     baseUrl: parseBaseUrl(baseUrl),
+    neighbor:
+      neighborBaseUrl === undefined || neighborUsername === undefined || neighborPassword === undefined
+        ? null
+        : {
+            admin: {
+              username: neighborUsername,
+              password: neighborPassword,
+            },
+            baseUrl: parseBaseUrl(neighborBaseUrl),
+          },
   };
 }
 

@@ -1,0 +1,215 @@
+# Stagehand-Story-Loop
+
+Erstellt am: `2026-05-16T17:21:17.707Z`
+Verarbeitete Stories: `40`
+Erfüllt: `0`
+Unklar / Lücke: `40`
+Umgebung unzureichend: `0`
+Übersprungen: `101`
+
+## Story-Ergebnisse
+- IAM-P4 / Story 13: Als Organisations-Admin möchte ich Rollen vergeben können, damit ich Berechtigungen steuern kann.
+  - Status: unklar
+  - Coverage: nachweis_fehlend
+  - Notes: Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new
+  - Finding: Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden.
+- IAM-P4 / Story 14: Als Organisations-Admin möchte ich Änderungen an Rollen sofort wirksam sehen, damit ich Kontrolle habe.
+  - Status: unklar
+  - Coverage: nachweis_fehlend
+  - Notes: Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new
+  - Finding: Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden.
+- IAM-P4 / Story 15: Als Organisations-Admin möchte ich nachvollziehen können, warum ein Nutzer Zugriff hat, damit ich Berechtigungen prüfen kann.
+  - Status: unklar
+  - Coverage: nachweis_fehlend
+  - Notes: Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new
+  - Finding: Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden.
+- IAM-P4 / Story 16: Als Organisations-Admin möchte ich sehen, welche Rechte effektiv gelten, damit ich Klarheit habe.
+  - Status: unklar
+  - Coverage: nachweis_fehlend
+  - Notes: Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new
+  - Finding: Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden.
+- IAM-P4 / Story 17: Als Organisations-Admin möchte ich sehen, aus welcher Quelle ein Recht stammt, damit ich direkte Zuweisungen, Gruppenrechte und Vererbungen unterscheiden kann.
+  - Status: unklar
+  - Coverage: nachweis_fehlend
+  - Notes: Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new
+  - Finding: Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden.
+- IAM-P4 / Story 20: Als Organisations-Admin möchte ich Gruppen erstellen können, damit ich Berechtigungen bündeln kann.
+  - Status: unklar
+  - Coverage: nachweis_fehlend
+  - Notes: Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new
+  - Finding: Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden.
+- IAM-P4 / Story 21: Als Organisations-Admin möchte ich Berechtigungen simulieren, damit ich Fehler vermeide.
+  - Status: unklar
+  - Coverage: nachweis_fehlend
+  - Notes: Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new
+  - Finding: Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden.
+- IAM-P4 / Story 22: Als Organisations-Admin möchte ich vor der Aktivierung einer Rolle prüfen können, welche effektiven Rechte sie erzeugt, damit ich keine zu weitreichenden Berechtigungen vergebe.
+  - Status: unklar
+  - Coverage: nachweis_fehlend
+  - Notes: Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new
+  - Finding: Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden.
+- IAM-P4 / Story 23: Als Organisations-Admin möchte ich für einen Nutzer alle effektiven Rechte gebündelt einsehen können, damit ich Support-Anfragen schnell beantworten kann.
+  - Status: unklar
+  - Coverage: nachweis_fehlend
+  - Notes: Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new
+  - Finding: Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden.
+- IAM-P4 / Story 24: Als Support-Verantwortliche:r möchte ich für eine konkrete Aktion prüfen können, ob sie für einen Nutzer erlaubt ist, damit ich Rechteprobleme schnell erklären kann.
+  - Status: unklar
+  - Coverage: nachweis_fehlend
+  - Notes: Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new
+  - Finding: Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden.
+- IAM-P4 / Story 25: Als Support-Verantwortliche:r möchte ich zu einer Berechtigungsentscheidung auch die Begründung sehen, damit ich Anwendern verständlich helfen kann.
+  - Status: unklar
+  - Coverage: nachweis_fehlend
+  - Notes: Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new
+  - Finding: Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden.
+- IAM-P4 / Story 26: Als Organisations-Admin möchte ich testen können, welche Rechte ein Nutzer nach einer geplanten Rollenänderung hätte, damit ich Änderungen vorab absichern kann.
+  - Status: unklar
+  - Coverage: nachweis_fehlend
+  - Notes: Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new
+  - Finding: Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden.
+- IAM-P4 / Story 27: Als Organisations-Admin möchte ich Rechteänderungen als Antrag einreichen können, damit kritische Änderungen nicht direkt ungeprüft wirksam werden.
+  - Status: unklar
+  - Coverage: nachweis_fehlend
+  - Notes: Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new
+  - Finding: Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden.
+- IAM-P4 / Story 28: Als Fachbereichsleiter:in möchte ich Rechteanträge im Vier-Augen-Prinzip freigeben oder ablehnen können, damit kritische Zugriffe kontrolliert genehmigt werden.
+  - Status: unklar
+  - Coverage: nachweis_fehlend
+  - Notes: Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new
+  - Finding: Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden.
+- IAM-P4 / Story 29: Als Organisations-Admin möchte ich temporäre Vertretungen mit Start- und Endzeit vergeben können, damit Ausfälle kontrolliert überbrückt werden.
+  - Status: unklar
+  - Coverage: nachweis_fehlend
+  - Notes: Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new
+  - Finding: Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden.
+- IAM-P4 / Story 30: Als Organisations-Admin möchte ich vor der Vergabe erkennen, ob sich beantragte Rechte mit bestehenden Rollen fachlich widersprechen, damit Konfliktkombinationen vermieden werden.
+  - Status: unklar
+  - Coverage: nachweis_fehlend
+  - Notes: Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new
+  - Finding: Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden.
+- IAM-P4 / Story 36: Als Systembetreiber möchte ich Servicekonten oder technische Clients mit begrenzten Rechten verwalten können, damit nicht-menschliche Zugriffe kontrolliert und nachvollziehbar bleiben.
+  - Status: unklar
+  - Coverage: nachweis_fehlend
+  - Notes: Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new
+  - Finding: Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden.
+- IAM-P4 / Story 62: Als Redakteur:in möchte ich sehen, ob ich Inhalte nur lesen oder auch bearbeiten darf, damit ich meine Rechte kenne.
+  - Status: unklar
+  - Coverage: nachweis_fehlend
+  - Notes: Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new
+  - Finding: Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden.
+- IAM-P4 / Story 63: Als Redakteur:in möchte ich meine Rollen einsehen können, damit ich meine Zuständigkeiten verstehe.
+  - Status: unklar
+  - Coverage: nachweis_fehlend
+  - Notes: Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new
+  - Finding: Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden.
+- IAM-P4 / Story 64: Als Redakteur:in möchte ich sehen, welche Rechte ich über Gruppen erhalte, damit ich meine Berechtigungen nachvollziehen kann.
+  - Status: unklar
+  - Coverage: nachweis_fehlend
+  - Notes: Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new
+  - Finding: Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden.
+- IAM-P4 / Story 65: Als Organisations-Admin möchte ich Rollen vererben können, damit ich weniger manuell pflegen muss.
+  - Status: unklar
+  - Coverage: nachweis_fehlend
+  - Notes: Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new
+  - Finding: Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden.
+- IAM-P4 / Story 66: Als Systembetreiber möchte ich Systemrollen definieren, damit ich Standardprozesse etablieren kann.
+  - Status: unklar
+  - Coverage: nachweis_fehlend
+  - Notes: Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new
+  - Finding: Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden.
+- IAM-P4 / Story 67: Als Systembetreiber möchte ich Änderungen an Rollen sofort invalidieren, damit falsche Rechte vermieden werden.
+  - Status: unklar
+  - Coverage: nachweis_fehlend
+  - Notes: Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new
+  - Finding: Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden.
+- IAM-P4 / Story 68: Als Systembetreiber möchte ich zentrale Autorisierungsentscheidungen einsehen, damit ich Debugging betreiben kann.
+  - Status: unklar
+  - Coverage: nachweis_fehlend
+  - Notes: Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new
+  - Finding: Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden.
+- IAM-P4 / Story 69: Als Fachbereichsleiter:in möchte ich Rollen innerhalb meines Bereichs vergeben, damit Arbeitsabläufe funktionieren.
+  - Status: unklar
+  - Coverage: nachweis_fehlend
+  - Notes: Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new
+  - Finding: Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden.
+- IAM-P4 / Story 70: Als Fachbereichsleiter:in möchte ich Berechtigungen delegieren können, damit ich entlastet werde.
+  - Status: unklar
+  - Coverage: nachweis_fehlend
+  - Notes: Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new
+  - Finding: Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden.
+- IAM-P4 / Story 71: Als Organisations-Admin möchte ich Rollen zentral ändern können, damit ich effizient arbeite.
+  - Status: unklar
+  - Coverage: nachweis_fehlend
+  - Notes: Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new
+  - Finding: Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden.
+- IAM-P4 / Story 72: Als Organisations-Admin möchte ich Gruppen wiederverwenden, damit ich Zeit spare.
+  - Status: unklar
+  - Coverage: nachweis_fehlend
+  - Notes: Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new
+  - Finding: Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden.
+- IAM-P4 / Story 73: Als Organisations-Admin möchte ich Änderungen dokumentieren, damit ich nachvollziehbar bleibe.
+  - Status: unklar
+  - Coverage: nachweis_fehlend
+  - Notes: Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new
+  - Finding: Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden.
+- IAM-P4 / Story 74: Als Systembetreiber möchte ich Berechtigungsregeln zentral definieren, damit Konsistenz besteht.
+  - Status: unklar
+  - Coverage: nachweis_fehlend
+  - Notes: Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new
+  - Finding: Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden.
+- IAM-P4 / Story 75: Als Fachbereichsleiter:in möchte ich Rechte einschränken können, damit Qualität gesichert bleibt.
+  - Status: unklar
+  - Coverage: nachweis_fehlend
+  - Notes: Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new
+  - Finding: Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden.
+- IAM-P4 / Story 76: Als Organisations-Admin möchte ich globale vs. lokale Rechte unterscheiden, damit ich sauber konfiguriere.
+  - Status: unklar
+  - Coverage: nachweis_fehlend
+  - Notes: Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new
+  - Finding: Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden.
+- IAM-P4 / Story 77: Als Organisations-Admin möchte ich Rechte granular vergeben, damit ich Sicherheit erhöhe.
+  - Status: unklar
+  - Coverage: nachweis_fehlend
+  - Notes: Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new
+  - Finding: Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden.
+- IAM-P4 / Story 78: Als Organisations-Admin möchte ich Änderungen versionieren, damit ich nachvollziehen kann, was passiert ist.
+  - Status: unklar
+  - Coverage: nachweis_fehlend
+  - Notes: Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new
+  - Finding: Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden.
+- IAM-P4 / Story 79: Als Organisations-Admin möchte ich eigene mandantenspezifische Rollen anlegen können, damit ich unsere internen Zuständigkeiten passend abbilden kann.
+  - Status: unklar
+  - Coverage: nachweis_fehlend
+  - Notes: Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new
+  - Finding: Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden.
+- IAM-P4 / Story 80: Als Organisations-Admin möchte ich bestehende Rollen kopieren und anpassen können, damit ich neue Rollen schneller erstellen kann.
+  - Status: unklar
+  - Coverage: nachweis_fehlend
+  - Notes: Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new
+  - Finding: Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden.
+- IAM-P4 / Story 81: Als Organisations-Admin möchte ich Gruppen für Redaktionsteams, Standorte oder Fachbereiche anlegen können, damit ich Berechtigungen gesammelt verwalten kann.
+  - Status: unklar
+  - Coverage: nachweis_fehlend
+  - Notes: Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new
+  - Finding: Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden.
+- IAM-P4 / Story 82: Als Organisations-Admin möchte ich sehen, welche Gruppen einem Nutzer indirekt Zugriff geben, damit ich Berechtigungen vollständig nachvollziehen kann.
+  - Status: unklar
+  - Coverage: nachweis_fehlend
+  - Notes: Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new
+  - Finding: Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden.
+- IAM-P4 / Story 83: Als Redakteur:in möchte ich erkennen können, ob meine Bearbeitungsrechte aus meiner Rolle, meiner Organisation oder einer Gruppenmitgliedschaft stammen, damit ich meine Zuständigkeit besser verstehe.
+  - Status: unklar
+  - Coverage: nachweis_fehlend
+  - Notes: Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new
+  - Finding: Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden.
+- IAM-P4 / Story 84: Als Fachbereichsleiter:in möchte ich sehen, welche Rechte in meinem Bereich vererbt weitergegeben werden, damit ich unbeabsichtigte Zugriffe vermeiden kann.
+  - Status: unklar
+  - Coverage: nachweis_fehlend
+  - Notes: Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new
+  - Finding: Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden.
+
+## Transkript
+```text
+/Users/wilimzig/Documents/Projects/SVA/sva-studio/docs/reports/stagehand-admin-exploration/story-loop/transcript.jsonl
+```

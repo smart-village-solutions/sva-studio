@@ -67,7 +67,7 @@ const resolveTenantLoginContractReasonCode = (
 
 const createTenantAuthDiagnostics = (
   tenantLoginContract: TenantLoginContractCheck
-): RuntimeHealthResponse['checks']['diagnostics']['auth'] => ({
+): Record<string, unknown> => ({
   checked_active_instance_count: tenantLoginContract.checkedActiveInstanceCount,
   invalid_config_instance_ids: tenantLoginContract.invalidConfigInstanceIds,
   invalid_secret_instance_ids: tenantLoginContract.invalidSecretInstanceIds,
@@ -99,18 +99,16 @@ const createHealthErrors = (
   keycloak: RuntimeDependencyCheck,
   tenantLoginContract: TenantLoginContractCheck
 ): RuntimeHealthResponse['checks']['errors'] => ({
-  ...(tenantLoginContract.ready
-    ? {}
-    : {
-        auth:
-          tenantLoginContract.invalidConfigInstanceIds.length > 0
-            ? 'Active tenant login contract is incomplete for at least one instance.'
-            : 'Active tenant auth secrets are unavailable for at least one instance.',
-      }),
+  ...(tenantLoginContract.ready ? {} : { auth: resolveTenantAuthError(tenantLoginContract) }),
   ...(database.ready ? {} : { db: database.error }),
   ...(redis.ready ? {} : { redis: redis.error }),
   ...(keycloak.ready ? {} : { keycloak: keycloak.error }),
 });
+
+const resolveTenantAuthError = (tenantLoginContract: TenantLoginContractCheck): string =>
+  tenantLoginContract.invalidConfigInstanceIds.length > 0
+    ? 'Active tenant login contract is incomplete for at least one instance.'
+    : 'Active tenant auth secrets are unavailable for at least one instance.';
 const createRuntimeHealthServices = (
   database: RuntimeDependencyCheck,
   redis: RuntimeDependencyCheck,

@@ -63,13 +63,6 @@ Wenn ein Service fehlt, bricht der Test früh mit klarer Fehlermeldung ab.
 - Er ist bewusst von `pnpm nx run sva-studio-react:test:acceptance` getrennt.
 - Der IAM-Acceptance-Lauf benötigt eine vereinbarte Testumgebung mit Keycloak-Testrealm, Testbenutzern und direktem Datenbankzugang.
 
-## Abgrenzung zur Stagehand-Exploration
-
-- `pnpm nx run sva-studio-react:test:explore:admin` ist eine separate explorative Schicht für lokale Admin-Journeys.
-- Diese Schicht arbeitet bewusst nicht als deterministischer Smoke und nicht als verpflichtendes Gate.
-- Stagehand-Exploration schreibt eigene Missionsartefakte unter `docs/reports/stagehand-admin-exploration/`.
-- Details zum lokalen Stagehand-Lauf stehen in `./stagehand-admin-exploration.md`.
-
 ## CI-Workflow
 
 - Workflow: `.github/workflows/app-e2e.yml` (`App E2E`)

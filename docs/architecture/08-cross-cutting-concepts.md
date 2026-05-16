@@ -240,7 +240,6 @@ gleichzeitig beeinflussen.
 - Mainserver-Delegation arbeitet fail-closed: ohne lokalen Rollencheck, Instanzkontext, Konfiguration oder gültige Credentials wird kein Upstream-Call ausgeführt
 - Pagination gegen den Mainserver arbeitet ebenfalls fail-closed: ungültige `page`-/`pageSize`-Eingaben werden auf den kanonischen Vertrag normalisiert, und ohne belastbaren Nachweis für weitere sichtbare Einträge wird `hasNextPage` nicht optimistisch gesetzt
 - Der IAM-Acceptance-Runner arbeitet ebenfalls fail-closed: fehlende Env, fehlende Testbenutzer, nicht bereite Dependencies oder unvollständige Laufzeitnachweise beenden den Lauf mit dokumentierten Fehlercodes
-- Der Stagehand-Admin-Explorationslauf arbeitet im Pilot ebenfalls fail-closed auf Env- und Readiness-Ebene: fehlende Konfiguration, nicht erreichbare Base-URLs sowie erkennbare Login-Schleifen enden explizit als `blocked` statt als Scheinerfolg
 - Der Gruppen-CRUD arbeitet fail-closed: unbekannte `roleIds`, instanzfremde Gruppen oder fehlerhafte CSRF-/Idempotency-Header erzeugen stabile `invalid_request`-, `forbidden`- oder `csrf_validation_failed`-Antworten
 - Die Rechtstext-Verwaltung arbeitet fail-closed: ungültige Statuswechsel, fehlendes `publishedAt` bei `valid` oder nicht reloadbare Neuanlagen liefern stabile `invalid_request`- bzw. `database_unavailable`-Antworten
 - Die Inhaltsverwaltung arbeitet fail-closed: ungültiges JSON, fehlendes `publishedAt` bei `published`, nicht erlaubte Rollen oder nicht auflösbare Inhalte liefern stabile `invalid_request`-, `forbidden`- bzw. `not_found`-Antworten
@@ -269,14 +268,13 @@ gleichzeitig beeinflussen.
 
 ### Build-, Test- und Cache-Konzept der Frontend-App
 
-- `apps/sva-studio-react` nutzt dedizierte Nx-Executor für Vite (`build`, `serve`, `preview`), Vitest (`test:unit`, `test:unit:ui`, `test:unit:routes`, `test:unit:hooks`, `test:unit:server`, `test:coverage`), Playwright (`test:e2e`) und einen separaten lokalen Stagehand-Bootstrap (`test:explore:admin`)
+- `apps/sva-studio-react` nutzt dedizierte Nx-Executor für Vite (`build`, `serve`, `preview`), Vitest (`test:unit`, `test:unit:ui`, `test:unit:routes`, `test:unit:hooks`, `test:unit:server`, `test:coverage`) und Playwright (`test:e2e`)
 - `apps/sva-studio-react:verify:runtime-artifact` ist der verbindliche Final-Artifact-Check nach dem Build; er validiert den finalen `.output/server/**`-Vertrag gegen echte Health-Probes und klassifiziert Fehler als `artifact-contract-failed`, `dependency-failed`, `runtime-start-failed` oder `http-dispatch-failed`
 - Cache-relevante Frontend-Konfigurationen werden über `frontendTooling` in `nx.json` explizit modelliert
 - Environment-Einflüsse mit Build-/Serve-/E2E-Relevanz (`CODECOV_TOKEN`, `TSS_DEV_SERVER`, `CI`) werden explizit in die Nx-Hash-Bildung aufgenommen
 - Pre-Build-Checks für i18n und Account-UI-Foundation bleiben als separate Nx-Targets vor dem App-Build erzwungen
 - Die App-Unit-Tests erzwingen wegen Node-25-/`jsdom`-Instabilitäten einen einzelnen Vitest-Worker im Thread-Pool
 - Der PR-Unit-Pfad darf bei isolierten App-Änderungen gezielt nur die betroffenen App-Slices ausführen; gemischte oder unklare Änderungen fallen bewusst auf das aggregierte `test:unit`-Target zurück
-- Die Stagehand-Schicht bleibt bewusst außerhalb der deterministischen Standard-Gates; ihr Mehrwert liegt in lokaler Exploration, Artefakten und manueller Diagnose, nicht in stabilen CI-Scheinerfolgen
 
 ### Studio-UI-Boundary und Design-System-Kapselung
 

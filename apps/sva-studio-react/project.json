@@ -192,17 +192,6 @@
         "command": "rm -rf coverage && mkdir -p coverage/.tmp && pnpm exec vitest run --coverage --reporter=verbose --config vitest.config.ts"
       }
     },
-    "test:explore:admin": {
-      "executor": "nx:run-commands",
-      "cache": false,
-      "outputs": [
-        "{workspaceRoot}/docs/reports/stagehand-admin-exploration"
-      ],
-      "options": {
-        "cwd": "apps/sva-studio-react",
-        "command": "bash ../../scripts/ci/run-workspace-node.sh --import tsx ./stagehand/cli.ts"
-      }
-    },
     "test:integration": {
       "executor": "nx:run-commands",
       "outputs": [],
@@ -256,8 +245,7 @@
       "options": {
         "lintFilePatterns": [
           "apps/sva-studio-react/src/**/*.{ts,tsx,js,jsx}",
-          "apps/sva-studio-react/e2e/**/*.{ts,tsx,js,jsx}",
-          "apps/sva-studio-react/stagehand/**/*.{ts,tsx,js,jsx}"
+          "apps/sva-studio-react/e2e/**/*.{ts,tsx,js,jsx}"
         ]
       }
     },

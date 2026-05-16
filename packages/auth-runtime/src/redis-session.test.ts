@@ -2,6 +2,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { LoginState, Session, SessionControlState } from './types.js';
 
+const expectDefined = <T>(value: T | undefined): T => {
+  expect(value).toBeDefined();
+  return value as T;
+};
+
 const mocks = vi.hoisted(() => {
   class FakeRedis {
     readonly data = new Map<string, string>();
@@ -235,7 +240,7 @@ describe('redis-backed auth runtime session store', () => {
     expect(prefixedSessionKey).toBeDefined();
     expect(prefixedLoginKey).toBeDefined();
     expect(prefixedSessionKey?.includes('session:session-prefixed')).toBe(true);
-    expect(mocks.redis.expirations.get(prefixedSessionKey!)).toBe(180);
+    expect(mocks.redis.expirations.get(expectDefined(prefixedSessionKey))).toBe(180);
 
     vi.stubEnv('SVA_AUTH_REDIS_KEY_PREFIX', 'custom:');
     await createSession('session-custom', createTestSession({ id: 'session-custom' }), 42);
@@ -277,7 +282,7 @@ describe('redis-backed auth runtime session store', () => {
     );
     const defaultTtlKey = [...mocks.redis.data.keys()].find((key) => key.endsWith('session:session-default-ttl'));
     expect(defaultTtlKey).toBeDefined();
-    expect(mocks.redis.expirations.get(defaultTtlKey!)).toBe(605100);
+    expect(mocks.redis.expirations.get(expectDefined(defaultTtlKey))).toBe(605100);
 
     const badEncryptionKey = [...mocks.redis.data.keys()].find((key) => key.endsWith('session:session-encrypted'))
       ?.replace('session-encrypted', 'session-bad-encryption') ?? 'session:session-bad-encryption';

@@ -101,10 +101,12 @@ describe('evaluateLocalInstanceRegistryIdentityDrift', () => {
         },
         [
           {
+            auth_client_id: '',
             auth_realm: '',
             id: 'de-musterhausen',
             parent_domain: 'studio.localhost',
             primary_hostname: '',
+            tenant_admin_client_id: '',
           },
         ]
       )
@@ -125,16 +127,24 @@ describe('evaluateLocalInstanceRegistryIdentityDrift', () => {
         },
         [
           {
+            auth_client_id: 'sva-studio',
             auth_realm: 'svs-intern-studio-staging',
             id: 'de-musterhausen',
             parent_domain: 'studio.smart-village.app',
             primary_hostname: 'de-musterhausen.studio.smart-village.app',
+            tenant_admin_client_id: 'sva-studio-admin',
           },
         ]
       )
     ).toEqual([
       {
-        fields: ['parent_domain', 'primary_hostname', 'auth_realm'],
+        fields: [
+          'parent_domain',
+          'primary_hostname',
+          'auth_client_id',
+          'auth_realm',
+          'tenant_admin_client_id',
+        ],
         id: 'de-musterhausen',
       },
     ]);

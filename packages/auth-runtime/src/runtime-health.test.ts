@@ -158,11 +158,13 @@ describe('auth-runtime health handlers', () => {
         redis: false,
         keycloak: false,
         diagnostics: {
+          auth: { reason_code: 'database_not_configured' },
           db: { reason_code: 'database_not_configured' },
           redis: { reason_code: 'redis_ping_failed' },
           keycloak: { reason_code: 'keycloak_admin_not_configured' },
         },
         errors: {
+          auth: 'Tenant login contract check requires IAM database configuration.',
           db: 'IAM database not configured',
           redis: 'redis down',
           keycloak: 'Keycloak admin client not configured',
@@ -174,6 +176,36 @@ describe('auth-runtime health handlers', () => {
           database: { reasonCode: 'database_not_configured', status: 'not_ready' },
           keycloak: { reasonCode: 'keycloak_admin_not_configured', status: 'not_ready' },
           redis: { reasonCode: 'redis_ping_failed', status: 'not_ready' },
+        },
+      },
+    });
+  });
+
+  it('returns not_ready when the tenant login contract probe throws instead of failing the handler', async () => {
+    state.resolvePool.mockReturnValue({
+      connect: vi.fn(async () => ({
+        query: vi.fn(async (sql: string) => {
+          if (sql.includes('FROM iam.instances')) {
+            throw new Error('tenant probe failed');
+          }
+          return { rows: [], rowCount: 1 };
+        }),
+        release: vi.fn(),
+      })),
+    });
+    const { healthReadyHandler } = await import('./runtime-health.js');
+
+    const response = await healthReadyHandler(new Request('http://localhost/health/ready'));
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toMatchObject({
+      status: 'not_ready',
+      checks: {
+        diagnostics: {
+          auth: { reason_code: 'tenant_login_contract_probe_failed' },
+        },
+        errors: {
+          auth: 'tenant probe failed',
         },
       },
     });

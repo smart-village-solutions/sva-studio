@@ -21,6 +21,7 @@ type RuntimeDependencyCheck = {
 
 type TenantLoginContractCheck = {
   readonly checkedActiveInstanceCount: number;
+  readonly error?: string;
   readonly invalidConfigInstanceIds: readonly string[];
   readonly invalidSecretInstanceIds: readonly string[];
   readonly ready: boolean;
@@ -31,6 +32,16 @@ type ActiveInstanceLoginRow = {
   auth_realm: string | null;
   id: string;
   primary_hostname: string | null;
+};
+
+type RuntimeHealthQueryResult<T> = {
+  rowCount: number;
+  rows: T[];
+};
+
+type RuntimeHealthDbClient = {
+  query<T>(sql: string): Promise<RuntimeHealthQueryResult<T>>;
+  release(): void;
 };
 
 const toDependencyStatus = (check: RuntimeDependencyCheck): RuntimeDependencyHealth['status'] =>
@@ -106,9 +117,13 @@ const createHealthErrors = (
 });
 
 const resolveTenantAuthError = (tenantLoginContract: TenantLoginContractCheck): string =>
-  tenantLoginContract.invalidConfigInstanceIds.length > 0
-    ? 'Active tenant login contract is incomplete for at least one instance.'
-    : 'Active tenant auth secrets are unavailable for at least one instance.';
+  tenantLoginContract.reasonCode === 'database_not_configured'
+    ? 'Tenant login contract check requires IAM database configuration.'
+    : tenantLoginContract.reasonCode === 'tenant_login_contract_probe_failed'
+      ? (tenantLoginContract.error ?? 'Tenant login contract check failed.')
+      : tenantLoginContract.invalidConfigInstanceIds.length > 0
+        ? 'Active tenant login contract is incomplete for at least one instance.'
+        : 'Active tenant auth secrets are unavailable for at least one instance.';
 const createRuntimeHealthServices = (
   database: RuntimeDependencyCheck,
   redis: RuntimeDependencyCheck,
@@ -211,35 +226,38 @@ const checkTenantLoginContract = async (): Promise<TenantLoginContractCheck> => 
   if (!pool) {
     return {
       checkedActiveInstanceCount: 0,
+      error: 'IAM database not configured',
       invalidConfigInstanceIds: [],
       invalidSecretInstanceIds: [],
       ready: false,
       reasonCode: 'database_not_configured',
     };
   }
-
-  const client = await pool.connect();
+  let client: RuntimeHealthDbClient | null = null;
   try {
+    client = await pool.connect();
     const result = await client.query<ActiveInstanceLoginRow>(
       `SELECT id, primary_hostname, auth_realm, auth_client_id FROM iam.instances WHERE status = 'active' ORDER BY id`
     );
 
-    const invalidConfigInstanceIds = result.rows.filter(hasMissingTenantLoginConfig).map((row) => row.id);
+    const invalidConfigInstanceIds = result.rows.filter(hasMissingTenantLoginConfig).map((row: ActiveInstanceLoginRow) => row.id);
 
     const secretCandidateIds = result.rows
-      .map((row) => row.id)
-      .filter((id) => !invalidConfigInstanceIds.includes(id));
+      .map((row: ActiveInstanceLoginRow) => row.id)
+      .filter((id: string) => !invalidConfigInstanceIds.includes(id));
 
     const secretChecks = await Promise.all(
-      secretCandidateIds.map(async (instanceId) => ({
+      secretCandidateIds.map(async (instanceId: string) => ({
         instanceId,
         secret: await resolveTenantAuthClientSecret(instanceId, { allowGlobalFallback: false }),
       }))
     );
 
     const invalidSecretInstanceIds = secretChecks
-      .filter(({ secret }) => !isValidTenantSecretState(secret))
-      .map(({ instanceId }) => instanceId);
+      .filter(({ secret }: { secret: Awaited<ReturnType<typeof resolveTenantAuthClientSecret>> }) =>
+        !isValidTenantSecretState(secret)
+      )
+      .map(({ instanceId }: { instanceId: string }) => instanceId);
 
     return {
       checkedActiveInstanceCount: result.rows.length,
@@ -251,8 +269,17 @@ const checkTenantLoginContract = async (): Promise<TenantLoginContractCheck> => 
         invalidSecretInstanceIds
       ),
     };
+  } catch (error) {
+    return {
+      checkedActiveInstanceCount: 0,
+      error: error instanceof Error ? error.message : String(error),
+      invalidConfigInstanceIds: [],
+      invalidSecretInstanceIds: [],
+      ready: false,
+      reasonCode: 'tenant_login_contract_probe_failed',
+    };
   } finally {
-    client.release();
+    client?.release();
   }
 };
 

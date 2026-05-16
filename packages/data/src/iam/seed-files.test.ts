@@ -28,6 +28,14 @@ describe('iam seed sql contracts', () => {
     assert.doesNotMatch(sql, /auth_realm = EXCLUDED\.auth_realm,/);
     assert.doesNotMatch(sql, /auth_client_id = EXCLUDED\.auth_client_id,/);
     assert.doesNotMatch(sql, /tenant_admin_client_id = EXCLUDED\.tenant_admin_client_id,/);
+    assert.match(
+      sql,
+      /instances\.primary_hostname = 'de-musterhausen\.studio\.smart-village\.app'/
+    );
+    assert.match(
+      sql,
+      /AND instances\.primary_hostname = EXCLUDED\.hostname/
+    );
   });
 
   it('keeps 0002 non-destructive for an already provisioned instance identity', () => {

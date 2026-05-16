@@ -9,14 +9,22 @@ export type LocalInstanceRegistryReconciliationInput = Readonly<{
 }>;
 
 export type LocalInstanceRegistryIdentityRow = Readonly<{
+  auth_client_id: string | null;
   auth_realm: string | null;
   id: string;
   parent_domain: string | null;
   primary_hostname: string | null;
+  tenant_admin_client_id: string | null;
 }>;
 
 export type LocalInstanceRegistryIdentityDrift = Readonly<{
-  fields: readonly ('auth_realm' | 'parent_domain' | 'primary_hostname')[];
+  fields: readonly (
+    | 'auth_client_id'
+    | 'auth_realm'
+    | 'parent_domain'
+    | 'primary_hostname'
+    | 'tenant_admin_client_id'
+  )[];
   id: string;
 }>;
 
@@ -71,9 +79,11 @@ export const evaluateLocalInstanceRegistryIdentityDrift = (
     input.allowedInstanceIds.map((instanceId) => [
       instanceId,
       {
+        auth_client_id: input.tenantAuthClientId,
         auth_realm: input.tenantAuthRealmMode === 'instance-id' ? instanceId : undefined,
         parent_domain: input.parentDomain,
         primary_hostname: `${instanceId}.${input.parentDomain}`,
+        tenant_admin_client_id: input.tenantAdminClientId,
       },
     ])
   );
@@ -84,7 +94,9 @@ export const evaluateLocalInstanceRegistryIdentityDrift = (
       return [];
     }
 
-    const fields: Array<'auth_realm' | 'parent_domain' | 'primary_hostname'> = [];
+    const fields: Array<
+      'auth_client_id' | 'auth_realm' | 'parent_domain' | 'primary_hostname' | 'tenant_admin_client_id'
+    > = [];
 
     if (isNonEmpty(row.parent_domain) && row.parent_domain !== expected.parent_domain) {
       fields.push('parent_domain');
@@ -92,8 +104,17 @@ export const evaluateLocalInstanceRegistryIdentityDrift = (
     if (isNonEmpty(row.primary_hostname) && row.primary_hostname !== expected.primary_hostname) {
       fields.push('primary_hostname');
     }
+    if (isNonEmpty(row.auth_client_id) && row.auth_client_id !== expected.auth_client_id) {
+      fields.push('auth_client_id');
+    }
     if (expected.auth_realm && isNonEmpty(row.auth_realm) && row.auth_realm !== expected.auth_realm) {
       fields.push('auth_realm');
+    }
+    if (
+      isNonEmpty(row.tenant_admin_client_id) &&
+      row.tenant_admin_client_id !== expected.tenant_admin_client_id
+    ) {
+      fields.push('tenant_admin_client_id');
     }
 
     return fields.length > 0 ? [{ id: row.id, fields }] : [];

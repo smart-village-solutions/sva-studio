@@ -16,7 +16,6 @@ import {
   hasMissingTenantLoginConfig,
   isValidTenantSecretState,
   resolveTenantLoginContractReasonCode,
-  toDependencyStatus,
   type ActiveInstanceLoginRow,
   type RuntimeDependencyCheck,
   type RuntimeHealthDbClient,

@@ -188,9 +188,11 @@ describe('AuthProvider', () => {
         instance_id: 'instance-1',
       })
     );
-    expect(readSessionAccessSnapshot()).toEqual({
-      isResolved: true,
-      permissionActions: ['waste-management.read', 'waste-management.settings.manage'],
+    await waitFor(() => {
+      expect(readSessionAccessSnapshot()).toEqual({
+        isResolved: true,
+        permissionActions: ['waste-management.read', 'waste-management.settings.manage'],
+      });
     });
   });
 

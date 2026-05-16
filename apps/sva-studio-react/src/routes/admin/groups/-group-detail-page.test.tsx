@@ -154,8 +154,8 @@ describe('GroupDetailPage', () => {
     await waitFor(() => {
       expect(assignMembership).toHaveBeenCalledWith('group-1', {
         keycloakSubject: 'user-2',
-        validFrom: new Date('2026-04-10T12:00').toISOString(),
-        validUntil: new Date('2026-04-20T12:00').toISOString(),
+        validFrom: '2026-04-10T10:00:00.000Z',
+        validUntil: '2026-04-20T10:00:00.000Z',
       });
     });
   });

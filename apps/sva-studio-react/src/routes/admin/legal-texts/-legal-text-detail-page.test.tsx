@@ -139,7 +139,7 @@ describe('LegalTextDetailPage', () => {
         locale: 'en-GB',
         contentHtml: '<p>Neu</p>',
         status: 'valid',
-        publishedAt: new Date('2026-04-10T10:45').toISOString(),
+        publishedAt: '2026-04-10T08:45:00.000Z',
       });
     });
   });

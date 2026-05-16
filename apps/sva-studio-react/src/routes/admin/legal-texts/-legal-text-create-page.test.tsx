@@ -94,7 +94,7 @@ describe('LegalTextCreatePage', () => {
         locale: 'de-DE',
         contentHtml: '<p> Rechtstext </p>',
         status: 'valid',
-        publishedAt: new Date('2026-04-10T09:30').toISOString(),
+        publishedAt: '2026-04-10T07:30:00.000Z',
       });
     });
     expect(navigateMock).toHaveBeenCalledWith({

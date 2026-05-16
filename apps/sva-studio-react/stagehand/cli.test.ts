@@ -376,10 +376,14 @@ describe('runStagehandAdminCli', () => {
         executeCluster: async ({ stories }) =>
           stories.map((story) => ({
             storyId: story.id,
-            status: 'erfuellt',
             coverage: 'vorhanden',
             findings: ['Loop proof created.'],
             notes: 'Artefakte unter story-loop.',
+            verification: {
+              environment: 'adequate',
+              negative: 'verified',
+              positive: 'verified',
+            },
           })),
       }
     );

@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import type { StagehandAdminConfig } from './types.ts';
-import { runStagehandStoryLoop } from './story-loop.ts';
+import { classifyStoryEvidence, runStagehandStoryLoop } from './story-loop.ts';
 
 const temporaryDirectories: string[] = [];
 
@@ -117,6 +117,50 @@ afterEach(() => {
 });
 
 describe('runStagehandStoryLoop', () => {
+  it('classifies story evidence strictly from positive and negative verification', () => {
+    expect(
+      classifyStoryEvidence({
+        storyId: 18,
+        coverage: 'vorhanden',
+        findings: ['Positiver UI-Effekt sichtbar.'],
+        notes: 'Nur der Positivfall wurde gesehen.',
+        verification: {
+          environment: 'adequate',
+          negative: 'missing',
+          positive: 'verified',
+        },
+      }).status
+    ).toBe('unklar');
+
+    expect(
+      classifyStoryEvidence({
+        storyId: 18,
+        coverage: 'vorhanden',
+        findings: ['Positiv- und Negativfall belegt.'],
+        notes: 'Mandantensicht und Isolation wurden gemeinsam verifiziert.',
+        verification: {
+          environment: 'adequate',
+          negative: 'verified',
+          positive: 'verified',
+        },
+      }).status
+    ).toBe('erfuellt');
+
+    expect(
+      classifyStoryEvidence({
+        storyId: 37,
+        coverage: 'nachweis_fehlend',
+        findings: ['Lokaler Negativnachweis ist in dieser Umgebung nicht ehrlich reproduzierbar.'],
+        notes: 'Mail- oder Cross-Tenant-Nachweis fehlt lokal.',
+        verification: {
+          environment: 'insufficient',
+          negative: 'missing',
+          positive: 'missing',
+        },
+      }).status
+    ).toBe('umgebung_unzureichend');
+  });
+
   it('classifies filtered stories, writes reports, and emits an overlay instead of mutating the catalog source', async () => {
     const storySourcePath = createTempCatalogFile();
     const reportsDirectory = mkdtempSync(join(tmpdir(), 'stagehand-story-loop-reports-'));
@@ -130,19 +174,27 @@ describe('runStagehandStoryLoop', () => {
         if (cluster.id === 'tenant-user-create') {
           return stories.map((story) => ({
             storyId: story.id,
-            status: 'erfuellt',
             coverage: 'vorhanden',
             findings: ['Neuer Nutzer wurde angelegt und in der Verwaltungsansicht gefunden.'],
             notes: 'Artefakte unter story-loop/tenant-user-create.',
+            verification: {
+              environment: 'adequate',
+              negative: 'verified',
+              positive: 'verified',
+            },
           }));
         }
 
         return stories.map((story) => ({
           storyId: story.id,
-            status: 'umgebung_unzureichend',
-            coverage: 'nachweis_fehlend',
-            findings: ['Kein sicherer lokaler Negativnachweis fuer tenant-uebergreifende Sichtpruefung verfuegbar.'],
-            notes: 'Keine beobachtbare UI/API fuer tenant-uebergreifenden Negativtest.',
+          coverage: 'nachweis_fehlend',
+          findings: ['Kein sicherer lokaler Negativnachweis fuer tenant-uebergreifende Sichtpruefung verfuegbar.'],
+          notes: 'Keine beobachtbare UI/API fuer tenant-uebergreifenden Negativtest.',
+          verification: {
+            environment: 'insufficient',
+            negative: 'missing',
+            positive: 'missing',
+          },
         }));
       },
     });
@@ -256,6 +308,49 @@ describe('runStagehandStoryLoop', () => {
       storiesFailedEvidence: 0,
       storiesPassed: 0,
       storiesSkipped: 1,
+    });
+  });
+
+  it('marks unimplemented default clusters as environment insufficient instead of unclear', async () => {
+    const storySourcePath = createTempCatalogFile();
+    const reportsDirectory = mkdtempSync(join(tmpdir(), 'stagehand-story-loop-insufficient-'));
+    temporaryDirectories.push(reportsDirectory);
+
+    const result = await runStagehandStoryLoop(
+      {
+        ...createConfig(),
+        storyFilters: {
+          clusters: ['tenant-isolation'],
+          packageIds: [],
+          resume: false,
+          storyIds: [],
+        },
+      },
+      {
+        generatedAt: '2026-05-16T18:00:00.000Z',
+        reportsRoot: join(reportsDirectory, 'reports'),
+        storySourcePath,
+      }
+    );
+
+    expect(result.summary).toEqual({
+      clusters: 1,
+      storiesClassified: 1,
+      storiesFailedEvidence: 0,
+      storiesPassed: 0,
+      storiesSkipped: 1,
+    });
+
+    expect(JSON.parse(readFileSync(result.artifacts.overlayPath, 'utf8'))).toMatchObject({
+      stories: [
+        {
+          storyId: 37,
+          studioCheck: {
+            status: 'umgebung_unzureichend',
+            coverage: 'nachweis_fehlend',
+          },
+        },
+      ],
     });
   });
 });

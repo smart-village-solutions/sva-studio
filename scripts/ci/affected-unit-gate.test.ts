@@ -27,11 +27,11 @@ describe('affected-unit-gate', () => {
     });
   });
 
-  it('uses the aggregate app target for shared lib changes', () => {
+  it('routes non-server app lib changes to the hooks-lib slice', () => {
     expect(planAppUnitExecution(['apps/sva-studio-react/src/lib/theme.ts'], ['sva-studio-react'])).toEqual({
-      mode: 'aggregate',
-      reason: 'aggregate-app-file',
-      slices: [],
+      mode: 'slices',
+      reason: 'app-only-sliceable-change',
+      slices: ['hooks'],
     });
   });
 

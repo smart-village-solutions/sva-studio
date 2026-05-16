@@ -37,6 +37,7 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
 - Unit-Test-Basis:
   - `pnpm test:unit` muss grün sein
   - isolierte App-Änderungen dürfen im PR-Pfad über `sva-studio-react:test:unit:ui|routes|hooks|server` statt über die komplette App-Suite validiert werden
+  - nicht-serverseitige Änderungen unter `apps/sva-studio-react/src/lib/` gelten dabei als Bestandteil des bestehenden Hooks/Lib-Slices
   - gemischte oder nicht eindeutig klassifizierbare App-Änderungen fallen bewusst auf das aggregierte `sva-studio-react:test:unit` zurück
 - IAM-Acceptance-Gate:
   - `pnpm nx run sva-studio-react:test:acceptance` läuft als separates Delivery-Gate gegen die Testumgebung

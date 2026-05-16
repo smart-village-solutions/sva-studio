@@ -35,11 +35,11 @@ const APP_SERVER_PATTERNS = [
 ];
 const APP_HOOKS_PATTERNS = [
   /^apps\/sva-studio-react\/src\/hooks\//u,
+  /^apps\/sva-studio-react\/src\/lib\//u,
 ];
 const APP_AGGREGATE_PATTERNS = [
   /^apps\/sva-studio-react\/(?:package\.json|tsconfig\.json|vite\.config\.ts|vitest(?:\..+)?\.config\.ts|playwright\.config\.ts)$/u,
   /^apps\/sva-studio-react\/(?:e2e|scripts)\//u,
-  /^apps\/sva-studio-react\/src\/lib\//u,
   /^apps\/sva-studio-react\/src\/(?:main|routeTreeGen|router)\.(?:ts|tsx)$/u,
 ];
 

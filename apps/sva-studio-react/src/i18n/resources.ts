@@ -447,6 +447,8 @@ export const i18nResources = {
         payloadJsonInvalid: 'Die Payload muss gültiges JSON sein.',
         publishedAtRequired:
           'Für veröffentlichte Inhalte ist ein Veröffentlichungsdatum erforderlich.',
+        publishedAtInvalid:
+          'Bitte geben Sie ein gültiges Veröffentlichungsdatum in der Fachzeitzone Europe/Berlin ein.',
       },
     },
     media: {
@@ -2551,6 +2553,10 @@ export const i18nResources = {
           databaseSchemaDrift:
             'Gruppendetails konnten wegen einer Server- oder Migrationsinkonsistenz nicht vollständig geladen werden. Bitte Deployment und Migrationen prüfen.',
         },
+        validation: {
+          membershipDateInvalid:
+            'Bitte geben Sie gültige Gültigkeitsdaten in der Fachzeitzone Europe/Berlin ein.',
+        },
       },
       legalTexts: {
         page: {
@@ -2660,6 +2666,11 @@ export const i18nResources = {
           databaseUnavailable:
             'Die IAM-Datenbank ist derzeit nicht erreichbar. Bitte später erneut versuchen.',
           invalidRequest: 'Der Rechtstext enthält ungültige oder unvollständige Daten.',
+        },
+        validation: {
+          publishedAtRequired: 'Für gültige Rechtstexte ist ein Veröffentlichungsdatum erforderlich.',
+          publishedAtInvalid:
+            'Bitte geben Sie ein gültiges Veröffentlichungsdatum in der Fachzeitzone Europe/Berlin ein.',
         },
       },
       legalAcceptance: {
@@ -3267,6 +3278,8 @@ export const i18nResources = {
       validation: {
         payloadJsonInvalid: 'The payload must be valid JSON.',
         publishedAtRequired: 'Published content requires a publication date.',
+        publishedAtInvalid:
+          'Please enter a valid publication date in the Europe/Berlin business time zone.',
       },
     },
     media: {
@@ -5308,6 +5321,10 @@ export const i18nResources = {
           databaseSchemaDrift:
             'Group details could not be loaded completely because of a server or migration inconsistency. Please verify the deployment and migrations.',
         },
+        validation: {
+          membershipDateInvalid:
+            'Please enter valid validity dates in the Europe/Berlin business time zone.',
+        },
       },
       legalTexts: {
         page: {
@@ -5415,6 +5432,11 @@ export const i18nResources = {
           notFound: 'The requested legal text version could not be found.',
           databaseUnavailable: 'The IAM database is currently unavailable. Please try again later.',
           invalidRequest: 'The legal text contains invalid or incomplete data.',
+        },
+        validation: {
+          publishedAtRequired: 'Valid legal texts require a publication date.',
+          publishedAtInvalid:
+            'Please enter a valid publication date in the Europe/Berlin business time zone.',
         },
       },
       legalAcceptance: {

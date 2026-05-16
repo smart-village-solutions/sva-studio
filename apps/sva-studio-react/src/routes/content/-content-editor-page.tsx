@@ -1,6 +1,6 @@
 import { Link, useNavigate } from '@tanstack/react-router';
 import { GENERIC_CONTENT_TYPE, withServerDeniedContentAccess, type IamContentAccessSummary, type IamContentStatus } from '@sva/core';
-import { formatDateTimeInEditorTimeZone, fromDatetimeLocalValue, toDatetimeLocalValue } from '@sva/plugin-sdk';
+import { formatDateTimeInEditorTimeZone, toDatetimeLocalValue } from '@sva/plugin-sdk';
 import React from 'react';
 
 import { Alert, AlertDescription } from '../../components/ui/alert';
@@ -14,6 +14,7 @@ import { Textarea } from '../../components/ui/textarea';
 import { useContentAccess } from '../../hooks/use-content-access';
 import { useContentDetail, useCreateContent } from '../../hooks/use-contents';
 import { t } from '../../i18n';
+import { parseOptionalEditorDateTime } from '../../lib/editor-date-time';
 import type { CreateContentPayload, IamHttpError, UpdateContentPayload } from '../../lib/iam-api';
 
 type ContentEditorPageProps = {
@@ -39,11 +40,6 @@ const emptyFormState = (): ContentFormState => ({
 
 const toDateTimeInputValue = (value?: string): string => {
   return toDatetimeLocalValue(value);
-};
-
-const toIsoDateTime = (value: string, referenceValue?: string): string | undefined => {
-  const trimmed = value.trim();
-  return trimmed ? fromDatetimeLocalValue(trimmed, referenceValue) || undefined : undefined;
 };
 
 const formatDateTime = (value?: string): string => {
@@ -291,16 +287,22 @@ export const ContentEditorPage = ({ mode, contentId }: ContentEditorPageProps) =
       return;
     }
 
-    const publishedAt = toIsoDateTime(formState.publishedAt, detailApi.content?.publishedAt);
-    if (formState.status === 'published' && !publishedAt) {
+    const publishedAt = parseOptionalEditorDateTime(formState.publishedAt, detailApi.content?.publishedAt);
+    if (publishedAt.kind === 'invalid') {
+      setPayloadError(t('content.validation.publishedAtInvalid'));
+      return;
+    }
+    if (formState.status === 'published' && publishedAt.kind === 'empty') {
       setPayloadError(t('content.validation.publishedAtRequired'));
       return;
     }
 
+    const publishedAtValue = publishedAt.kind === 'value' ? publishedAt.value : undefined;
+
     if (mode === 'create') {
-      await submitCreate(parsedPayload, publishedAt);
+      await submitCreate(parsedPayload, publishedAtValue);
     } else {
-      await submitUpdate(parsedPayload, publishedAt);
+      await submitUpdate(parsedPayload, publishedAtValue);
     }
   };
 

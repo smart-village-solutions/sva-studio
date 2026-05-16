@@ -1,5 +1,5 @@
 import { Link, useNavigate } from '@tanstack/react-router';
-import { fromDatetimeLocalValue, toDatetimeLocalValue } from '@sva/plugin-sdk';
+import { toDatetimeLocalValue } from '@sva/plugin-sdk';
 import React from 'react';
 
 import { ConfirmDialog } from '../../../components/ConfirmDialog';
@@ -12,6 +12,7 @@ import { Label } from '../../../components/ui/label';
 import { Select } from '../../../components/ui/select';
 import { useLegalTexts } from '../../../hooks/use-legal-texts';
 import { t } from '../../../i18n';
+import { parseOptionalEditorDateTime } from '../../../lib/editor-date-time';
 import type { UpdateLegalTextPayload } from '../../../lib/iam-api';
 import { formatLegalTextDateTime, getLegalTextErrorMessage, type LegalTextStatus } from './-legal-texts-shared';
 
@@ -33,11 +34,6 @@ const toDateTimeInputValue = (value?: string): string => {
   return toDatetimeLocalValue(value);
 };
 
-const toIsoDateTime = (value: string, referenceValue?: string): string | undefined => {
-  const trimmed = value.trim();
-  return trimmed ? fromDatetimeLocalValue(trimmed, referenceValue) || undefined : undefined;
-};
-
 export const LegalTextDetailPage = ({ legalTextVersionId }: LegalTextDetailPageProps) => {
   const legalTextsApi = useLegalTexts();
   const navigate = useNavigate();
@@ -46,6 +42,7 @@ export const LegalTextDetailPage = ({ legalTextVersionId }: LegalTextDetailPageP
     [legalTextVersionId, legalTextsApi.legalTexts]
   );
   const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false);
+  const [validationError, setValidationError] = React.useState<string | null>(null);
   const [formValues, setFormValues] = React.useState({
     name: '',
     legalTextVersion: '',
@@ -68,17 +65,30 @@ export const LegalTextDetailPage = ({ legalTextVersionId }: LegalTextDetailPageP
       status: selectedLegalText.status,
       publishedAt: toDateTimeInputValue(selectedLegalText.publishedAt),
     });
+    setValidationError(null);
   }, [selectedLegalText]);
 
   const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    setValidationError(null);
+
+    const publishedAt = parseOptionalEditorDateTime(formValues.publishedAt, selectedLegalText?.publishedAt);
+    if (publishedAt.kind === 'invalid') {
+      setValidationError(t('admin.legalTexts.validation.publishedAtInvalid'));
+      return;
+    }
+    if (formValues.status === 'valid' && publishedAt.kind === 'empty') {
+      setValidationError(t('admin.legalTexts.validation.publishedAtRequired'));
+      return;
+    }
+
     const payload: UpdateLegalTextPayload = {
       name: formValues.name.trim(),
       legalTextVersion: formValues.legalTextVersion.trim(),
       locale: formValues.locale.trim(),
       contentHtml: formValues.contentHtml.trim(),
       status: formValues.status,
-      publishedAt: toIsoDateTime(formValues.publishedAt, selectedLegalText?.publishedAt),
+      publishedAt: publishedAt.kind === 'value' ? publishedAt.value : undefined,
     };
 
     await legalTextsApi.updateLegalText(legalTextVersionId, payload);
@@ -205,9 +215,9 @@ export const LegalTextDetailPage = ({ legalTextVersionId }: LegalTextDetailPageP
         </Card>
       ) : null}
 
-      {legalTextsApi.mutationError ? (
+      {validationError || legalTextsApi.mutationError ? (
         <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
-          <AlertDescription>{getLegalTextErrorMessage(legalTextsApi.mutationError)}</AlertDescription>
+          <AlertDescription>{validationError ?? getLegalTextErrorMessage(legalTextsApi.mutationError)}</AlertDescription>
         </Alert>
       ) : null}
 

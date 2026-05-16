@@ -7,7 +7,6 @@ export type HostMediaFieldOption = Readonly<{
 
 const editorTimeZone = 'Europe/Berlin';
 const defaultEditorLocale = 'de-DE';
-let editorLocale = defaultEditorLocale;
 type DateTimeFormatOptionsWithFractionalSeconds = Intl.DateTimeFormatOptions & {
   fractionalSecondDigits?: 1 | 2 | 3;
 };
@@ -60,14 +59,41 @@ export const compactOptionalString = (value?: string): string | undefined => {
   return trimmed && trimmed.length > 0 ? trimmed : undefined;
 };
 
-export const setEditorDateTimeLocale = (locale?: string): void => {
-  editorLocale = compactOptionalString(locale) ?? defaultEditorLocale;
+const inferEditorLocaleFromEnvironment = (): string | undefined => {
+  if (typeof globalThis.document === 'undefined') {
+    return undefined;
+  }
+
+  const documentLocale = compactOptionalString(globalThis.document.documentElement.lang);
+  if (!documentLocale) {
+    return undefined;
+  }
+
+  if (documentLocale === 'en') {
+    return 'en-GB';
+  }
+
+  if (documentLocale === 'de') {
+    return 'de-DE';
+  }
+
+  return documentLocale;
 };
 
-export const formatDateTimeInEditorTimeZone = (value?: string): string | undefined => {
+const resolveEditorLocale = (locale?: string): string => {
+  const candidate = compactOptionalString(locale) ?? inferEditorLocaleFromEnvironment() ?? defaultEditorLocale;
+
+  try {
+    return Intl.DateTimeFormat.supportedLocalesOf(candidate)[0] ?? defaultEditorLocale;
+  } catch {
+    return defaultEditorLocale;
+  }
+};
+
+export const formatDateTimeInEditorTimeZone = (value?: string, locale?: string): string | undefined => {
   const date = parseDate(value);
   return date
-    ? createDateTimeFormatter(editorLocale, {
+    ? createDateTimeFormatter(resolveEditorLocale(locale), {
         year: 'numeric',
         month: '2-digit',
         day: '2-digit',
@@ -78,10 +104,10 @@ export const formatDateTimeInEditorTimeZone = (value?: string): string | undefin
     : value;
 };
 
-export const formatTechnicalDateTimeInEditorTimeZone = (value?: string): string | undefined => {
+export const formatTechnicalDateTimeInEditorTimeZone = (value?: string, locale?: string): string | undefined => {
   const date = parseDate(value);
   return date
-    ? createDateTimeFormatter(editorLocale, {
+    ? createDateTimeFormatter(resolveEditorLocale(locale), {
         year: 'numeric',
         month: '2-digit',
         day: '2-digit',

@@ -86,7 +86,6 @@ export {
   formatTechnicalDateTimeInEditorTimeZone,
   findHostMediaReferenceAssetId,
   fromDatetimeLocalValue,
-  setEditorDateTimeLocale,
   toDatetimeLocalValue,
   toHostMediaFieldOptions,
 } from './content-ui-utils.js';

@@ -207,7 +207,6 @@ export {
   registerPluginTranslationResolver,
   resetSessionAccessSnapshot,
   requestMainserverJson,
-  setEditorDateTimeLocale,
   subscribeSessionAccessSnapshot,
   toDatetimeLocalValue,
   toHostMediaFieldOptions,

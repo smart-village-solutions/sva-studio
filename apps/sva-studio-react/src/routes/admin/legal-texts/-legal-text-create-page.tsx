@@ -1,5 +1,4 @@
 import { Link, useNavigate } from '@tanstack/react-router';
-import { fromDatetimeLocalValue } from '@sva/plugin-sdk';
 import React from 'react';
 
 import { Alert, AlertDescription } from '../../../components/ui/alert';
@@ -11,6 +10,7 @@ import { Select } from '../../../components/ui/select';
 import { RichTextEditor } from '../../../components/RichTextEditor';
 import { useLegalTexts } from '../../../hooks/use-legal-texts';
 import { t } from '../../../i18n';
+import { parseOptionalEditorDateTime } from '../../../lib/editor-date-time';
 import type { CreateLegalTextPayload, IamHttpError } from '../../../lib/iam-api';
 
 type LegalTextStatus = 'draft' | 'valid' | 'archived';
@@ -61,25 +61,33 @@ const emptyForm = () => ({
   publishedAt: '',
 });
 
-const toIsoDateTime = (value: string): string | undefined => {
-  const trimmed = value.trim();
-  return trimmed ? fromDatetimeLocalValue(trimmed) || undefined : undefined;
-};
-
 export const LegalTextCreatePage = () => {
   const navigate = useNavigate();
   const legalTextsApi = useLegalTexts();
   const [formValues, setFormValues] = React.useState(emptyForm);
+  const [validationError, setValidationError] = React.useState<string | null>(null);
 
   const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    setValidationError(null);
+
+    const publishedAt = parseOptionalEditorDateTime(formValues.publishedAt);
+    if (publishedAt.kind === 'invalid') {
+      setValidationError(t('admin.legalTexts.validation.publishedAtInvalid'));
+      return;
+    }
+    if (formValues.status === 'valid' && publishedAt.kind === 'empty') {
+      setValidationError(t('admin.legalTexts.validation.publishedAtRequired'));
+      return;
+    }
+
     const payload: CreateLegalTextPayload = {
       name: formValues.name.trim(),
       legalTextVersion: formValues.legalTextVersion.trim(),
       locale: formValues.locale.trim(),
       contentHtml: formValues.contentHtml.trim(),
       status: formValues.status,
-      publishedAt: toIsoDateTime(formValues.publishedAt),
+      publishedAt: publishedAt.kind === 'value' ? publishedAt.value : undefined,
     };
 
     const created = await legalTextsApi.createLegalText(payload);
@@ -182,9 +190,9 @@ export const LegalTextCreatePage = () => {
         </form>
       </Card>
 
-      {legalTextsApi.mutationError ? (
+      {validationError || legalTextsApi.mutationError ? (
         <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
-          <AlertDescription>{legalTextErrorMessage(legalTextsApi.mutationError)}</AlertDescription>
+          <AlertDescription>{validationError ?? legalTextErrorMessage(legalTextsApi.mutationError)}</AlertDescription>
         </Alert>
       ) : null}
     </section>

@@ -137,4 +137,32 @@ describe('LegalTextCreatePage', () => {
 
     expect(screen.getByRole('alert').textContent).toContain('Version fehlt');
   });
+
+  it('blocks submission when a non-empty publication date cannot be converted', async () => {
+    const createLegalText = vi.fn().mockResolvedValue({ id: 'legal-3' });
+    useLegalTextsMock.mockReturnValue(createState({ createLegalText }));
+
+    render(<LegalTextCreatePage />);
+
+    fireEvent.change(screen.getByLabelText('Name', { selector: '#legal-text-create-name' }), {
+      target: { value: 'Datenschutzhinweise' },
+    });
+    fireEvent.change(screen.getByLabelText('Version', { selector: '#legal-text-create-version' }), {
+      target: { value: '2026-04' },
+    });
+    fireEvent.change(screen.getByLabelText('Status', { selector: '#legal-text-create-status' }), {
+      target: { value: 'valid' },
+    });
+    fireEvent.change(screen.getByLabelText('Veröffentlicht am', { selector: '#legal-text-create-published' }), {
+      target: { value: '2026-03-29T02:30' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Rechtstext anlegen' }));
+
+    await waitFor(() => {
+      expect(createLegalText).not.toHaveBeenCalled();
+    });
+    expect(screen.getByRole('alert').textContent).toContain(
+      'Bitte geben Sie ein gültiges Veröffentlichungsdatum in der Fachzeitzone Europe/Berlin ein.'
+    );
+  });
 });

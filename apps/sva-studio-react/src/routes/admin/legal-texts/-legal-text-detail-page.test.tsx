@@ -193,6 +193,29 @@ describe('LegalTextDetailPage', () => {
     expect(screen.getByRole('alert')).toBeTruthy();
   });
 
+  it('blocks updates when a non-empty publication date cannot be converted', async () => {
+    const updateLegalText = vi.fn().mockResolvedValue(true);
+    useLegalTextsMock.mockReturnValue(createState({ updateLegalText }));
+
+    render(<LegalTextDetailPage legalTextVersionId="legal-1" />);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Veröffentlicht am', { selector: '#legal-text-edit-published' })).toBeTruthy();
+    });
+
+    fireEvent.change(screen.getByLabelText('Veröffentlicht am', { selector: '#legal-text-edit-published' }), {
+      target: { value: '2026-03-29T02:30' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Änderungen speichern' }));
+
+    await waitFor(() => {
+      expect(updateLegalText).not.toHaveBeenCalled();
+    });
+    expect(screen.getByRole('alert').textContent).toContain(
+      'Bitte geben Sie ein gültiges Veröffentlichungsdatum in der Fachzeitzone Europe/Berlin ein.'
+    );
+  });
+
   it('deletes the selected legal text after confirmation and navigates back to the list', async () => {
     const deleteLegalText = vi.fn().mockResolvedValue(true);
     useLegalTextsMock.mockReturnValue(createState({ deleteLegalText }));

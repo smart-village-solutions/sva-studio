@@ -160,6 +160,32 @@ describe('GroupDetailPage', () => {
     });
   });
 
+  it('blocks membership assignment when a non-empty validity date is invalid in Europe/Berlin', async () => {
+    const assignMembership = vi.fn().mockResolvedValue(true);
+    useGroupsMock.mockReturnValue(createGroupsState({ assignMembership }));
+
+    render(<GroupDetailPage groupId="group-1" />);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Keycloak-Subject', { selector: '#group-membership-subject' })).toBeTruthy();
+    });
+
+    fireEvent.change(screen.getByLabelText('Keycloak-Subject', { selector: '#group-membership-subject' }), {
+      target: { value: 'user-2' },
+    });
+    fireEvent.change(screen.getByLabelText('Gültig ab', { selector: '#group-membership-valid-from' }), {
+      target: { value: '2026-03-29T02:30' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Mitgliedschaft zuweisen' }));
+
+    await waitFor(() => {
+      expect(assignMembership).not.toHaveBeenCalled();
+    });
+    expect(screen.getByRole('alert').textContent).toContain(
+      'Bitte geben Sie gültige Gültigkeitsdaten in der Fachzeitzone Europe/Berlin ein.'
+    );
+  });
+
   it('renders mutation errors and deletes after confirmation', async () => {
     const deleteGroup = vi.fn().mockResolvedValue(true);
     useGroupsMock.mockReturnValue(

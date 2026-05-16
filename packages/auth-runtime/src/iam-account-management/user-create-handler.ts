@@ -1,5 +1,8 @@
 import type { ApiErrorResponse } from '@sva/core';
-import { createCreateUserHandlerInternal } from '@sva/iam-admin';
+import {
+  createCreateUserHandlerInternal,
+  type CreateUserHandlerDeps,
+} from '@sva/iam-admin';
 import { getWorkspaceContext } from '@sva/server-runtime';
 
 import type { AuthenticatedRequestContext } from '../middleware.js';
@@ -24,8 +27,11 @@ import {
   resolveActorInfo,
   resolveIdentityProviderForInstance,
 } from './shared.js';
+import type { IdentityProviderResolution } from './shared-runtime.js';
 import { validateCsrf } from './csrf.js';
+import { createUserMutationErrorResponse } from './user-mutation-errors.js';
 import { executeCreateUser } from './user-create-operation.js';
+import type { CreateUserPayload } from './user-create-persistence.js';
 
 type CreateUserActorContext = {
   actor: {
@@ -98,12 +104,41 @@ const createIdpUnavailableBody = (requestId?: string) =>
     ...(requestId ? { requestId } : {}),
   }) satisfies ApiErrorResponse;
 
+type CreateUserResult = Awaited<ReturnType<typeof executeCreateUser>>;
+
+export const executeCreateUserWithKnownErrors: CreateUserHandlerDeps<
+  CreateUserPayload,
+  IdentityProviderResolution,
+  CreateUserResult
+>['executeCreateUser'] = async (input) => {
+  try {
+    return await executeCreateUser({
+      ...input,
+      payload: {
+        ...input.payload,
+        roleIds: [...input.payload.roleIds],
+        groupIds: input.payload.groupIds ? [...input.payload.groupIds] : [],
+      },
+    });
+  } catch (error) {
+    const knownError = createUserMutationErrorResponse({
+      error,
+      requestId: input.actor.requestId,
+      forbiddenFallbackMessage: 'Nutzer enthält unzulässige Rollen- oder Gruppenzuweisungen.',
+    });
+    if (knownError) {
+      throw knownError;
+    }
+    throw error;
+  }
+};
+
 export const createUserInternal = createCreateUserHandlerInternal({
   asApiItem,
   completeIdempotency,
   createApiError,
   createIdpUnavailableBody,
-  executeCreateUser,
+  executeCreateUser: executeCreateUserWithKnownErrors,
   iamUserOperationsCounter,
   jsonResponse,
   parseCreateUserBody: (request) => parseRequestBody(request, createUserSchema),

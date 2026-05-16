@@ -1902,8 +1902,13 @@ export const i18nResources = {
         createDialog: {
           title: 'Nutzer anlegen',
           description: 'Erstellt ein neues Nutzerkonto in Keycloak und IAM.',
-          roleLabel: 'Startrolle',
-          rolePlaceholder: 'Keine Rolle vorauswählen',
+          groupsLabel: 'Gruppen-Zuweisung',
+          groupsHint: 'Gruppen sind der bevorzugte Startpunkt für neue Nutzer und bündeln passende Rollen.',
+          groupsEmpty: 'Es sind keine aktiven Gruppen verfügbar.',
+          advancedRolesTitle: 'Direkte Rollen optional ergänzen',
+          advancedRolesHint:
+            'Direkte Rollen sind additive Sonderfälle und sollten nur zusätzlich zu Gruppen verwendet werden.',
+          rolePlaceholder: 'Es sind keine direkten Rollen verfügbar.',
           sendPasswordSetupEmail: 'Einladungs-E-Mail zum Passwort setzen senden',
         },
         confirm: {
@@ -4682,8 +4687,12 @@ export const i18nResources = {
         createDialog: {
           title: 'Create user',
           description: 'Creates a new user account in Keycloak and IAM.',
-          roleLabel: 'Initial role',
-          rolePlaceholder: 'No preselected role',
+          groupsLabel: 'Group assignment',
+          groupsHint: 'Groups are the preferred starting point for new users and bundle matching roles.',
+          groupsEmpty: 'No active groups are available.',
+          advancedRolesTitle: 'Optionally add direct roles',
+          advancedRolesHint: 'Direct roles are additive exceptions and should only complement groups.',
+          rolePlaceholder: 'No direct roles are available.',
           sendPasswordSetupEmail: 'Send invitation email to set password',
         },
         confirm: {

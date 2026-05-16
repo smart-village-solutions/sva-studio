@@ -14,16 +14,28 @@ const roleRow = {
 };
 
 const createDeps = () => ({
+  assignGroups: vi.fn(async () => undefined),
   assignRoles: vi.fn(async () => undefined),
   emitActivityLog: vi.fn(async () => undefined),
   ensureRoleAssignmentWithinActorLevel: vi.fn(async () => ({ ok: true as const, roles: [roleRow] })),
   notifyPermissionInvalidation: vi.fn(async () => undefined),
   protectField: vi.fn((value: string | undefined, context: string) => (value ? `${context}:${value}` : null)),
+  resolveGroupsByIds: vi.fn(async () => [
+    {
+      id: 'group-1',
+      group_key: 'redaktion',
+      display_name: 'Redaktion',
+      description: null,
+      group_type: 'role_bundle',
+      is_active: true,
+    },
+  ]),
+  resolveRoleIdsForGroups: vi.fn(async () => ['role-1']),
   resolveRolesByIds: vi.fn(async () => [roleRow]),
 });
 
 describe('user-create-persistence', () => {
-  it('persists a created user with membership, roles, activity log and invalidation', async () => {
+  it('persists a created user with membership, groups, roles, activity log and invalidation', async () => {
     const deps = createDeps();
     const client: QueryClient = {
       query: vi.fn(async (text: string) => {
@@ -51,6 +63,7 @@ describe('user-create-persistence', () => {
           firstName: 'Ada',
           lastName: 'Lovelace',
           roleIds: ['role-1'],
+          groupIds: ['group-1'],
         },
       })
     ).resolves.toEqual({
@@ -71,6 +84,10 @@ describe('user-create-persistence', () => {
       actorSubject: 'subject-actor',
       actorRoles: ['admin'],
       roleIds: ['role-1'],
+    });
+    expect(deps.resolveGroupsByIds).toHaveBeenCalledWith(client, {
+      instanceId: 'inst-1',
+      groupIds: ['group-1'],
     });
     expect(client.query).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO iam.accounts'), [
       'inst-1',
@@ -98,6 +115,12 @@ describe('user-create-persistence', () => {
       roleIds: ['role-1'],
       assignedBy: 'actor-1',
     });
+    expect(deps.assignGroups).toHaveBeenCalledWith(client, {
+      instanceId: 'inst-1',
+      accountId: 'account-1',
+      groupIds: ['group-1'],
+      origin: 'manual',
+    });
     expect(deps.emitActivityLog).toHaveBeenCalledWith(
       client,
       expect.objectContaining({
@@ -109,6 +132,11 @@ describe('user-create-persistence', () => {
       instanceId: 'inst-1',
       keycloakSubject: 'subject-new',
       trigger: 'user_role_changed',
+    });
+    expect(deps.notifyPermissionInvalidation).toHaveBeenCalledWith(client, {
+      instanceId: 'inst-1',
+      keycloakSubject: 'subject-new',
+      trigger: 'user_group_changed',
     });
   });
 
@@ -139,5 +167,188 @@ describe('user-create-persistence', () => {
     ).rejects.toThrow('forbidden:denied');
 
     expect(client.query).not.toHaveBeenCalled();
+  });
+
+  it('rejects unknown groups before writing the account', async () => {
+    const deps = {
+      ...createDeps(),
+      resolveGroupsByIds: vi.fn(async () => []),
+    };
+    const client: QueryClient = {
+      query: vi.fn(async () => ({ rowCount: 0, rows: [] })),
+    };
+    const persistence = createUserCreatePersistence(deps);
+
+    await expect(
+      persistence.persistCreatedUser(client, {
+        actor: { instanceId: 'inst-1', actorAccountId: 'actor-1', actorRoles: ['admin'] },
+        actorSubject: 'subject-actor',
+        externalId: 'subject-new',
+        payload: {
+          email: 'user@example.test',
+          roleIds: [],
+          groupIds: ['missing-group'],
+        },
+      })
+    ).rejects.toThrow('invalid_request:Mindestens eine aktive Gruppe existiert nicht.');
+
+    expect(client.query).not.toHaveBeenCalled();
+  });
+
+  it('skips bundled group role validation when the selected groups do not add direct roles', async () => {
+    const deps = {
+      ...createDeps(),
+      resolveRoleIdsForGroups: vi.fn(async () => []),
+    };
+    const client: QueryClient = {
+      query: vi.fn(async (text: string) => {
+        if (text.includes('RETURNING id')) {
+          return { rowCount: 1, rows: [{ id: 'account-1' }] };
+        }
+        return { rowCount: 1, rows: [] };
+      }),
+    };
+    const persistence = createUserCreatePersistence(deps);
+
+    await expect(
+      persistence.persistCreatedUser(client, {
+        actor: { instanceId: 'inst-1', actorAccountId: 'actor-1', actorRoles: ['admin'] },
+        actorSubject: 'subject-actor',
+        externalId: 'subject-new',
+        payload: {
+          email: 'user@example.test',
+          roleIds: [],
+          groupIds: ['group-1'],
+        },
+      })
+    ).resolves.toMatchObject({
+      responseData: expect.objectContaining({
+        id: 'account-1',
+        roles: [expect.objectContaining({ roleKey: 'editor' })],
+      }),
+      roleNames: ['Editor'],
+    });
+
+    expect(deps.ensureRoleAssignmentWithinActorLevel).toHaveBeenCalledTimes(1);
+  });
+
+  it('deduplicates direct and group-derived role ids before resolving the synced role set', async () => {
+    const deps = {
+      ...createDeps(),
+      resolveRoleIdsForGroups: vi.fn(async () => ['role-1', 'role-1']),
+    };
+    const client: QueryClient = {
+      query: vi.fn(async (text: string) => {
+        if (text.includes('RETURNING id')) {
+          return { rowCount: 1, rows: [{ id: 'account-3' }] };
+        }
+        return { rowCount: 1, rows: [] };
+      }),
+    };
+    const persistence = createUserCreatePersistence(deps);
+
+    await expect(
+      persistence.persistCreatedUser(client, {
+        actor: { instanceId: 'inst-1', actorAccountId: 'actor-1', actorRoles: ['admin'] },
+        actorSubject: 'subject-actor',
+        externalId: 'subject-new',
+        payload: {
+          email: 'user@example.test',
+          roleIds: ['role-1'],
+          groupIds: ['group-1'],
+        },
+      })
+    ).resolves.toMatchObject({
+      roleNames: ['Editor'],
+    });
+
+    expect(deps.resolveRolesByIds).toHaveBeenCalledWith(client, {
+      instanceId: 'inst-1',
+      roleIds: ['role-1'],
+    });
+  });
+
+  it('rejects groups that would grant bundled roles above the actor level', async () => {
+    const deps = {
+      ...createDeps(),
+      ensureRoleAssignmentWithinActorLevel: vi
+        .fn()
+        .mockResolvedValueOnce({ ok: true as const, roles: [roleRow] })
+        .mockResolvedValueOnce({
+          ok: false as const,
+          code: 'forbidden',
+          message: 'group bundle denied',
+        }),
+    };
+    const client: QueryClient = {
+      query: vi.fn(async () => ({ rowCount: 0, rows: [] })),
+    };
+    const persistence = createUserCreatePersistence(deps);
+
+    await expect(
+      persistence.persistCreatedUser(client, {
+        actor: { instanceId: 'inst-1', actorAccountId: 'actor-1', actorRoles: ['admin'] },
+        actorSubject: 'subject-actor',
+        externalId: 'subject-new',
+        payload: {
+          email: 'user@example.test',
+          roleIds: ['role-1'],
+          groupIds: ['group-1'],
+        },
+      })
+    ).rejects.toThrow('forbidden:group bundle denied');
+
+    expect(client.query).not.toHaveBeenCalled();
+  });
+
+  it('persists users without groups and keeps explicit display names', async () => {
+    const deps = createDeps();
+    const client: QueryClient = {
+      query: vi.fn(async (text: string) => {
+        if (text.includes('RETURNING id')) {
+          return { rowCount: 1, rows: [{ id: 'account-2' }] };
+        }
+        return { rowCount: 1, rows: [] };
+      }),
+    };
+    const persistence = createUserCreatePersistence(deps);
+
+    await expect(
+      persistence.persistCreatedUser(client, {
+        actor: {
+          instanceId: 'inst-1',
+          actorAccountId: 'actor-1',
+          actorRoles: ['admin'],
+        },
+        actorSubject: 'subject-actor',
+        externalId: 'subject-new',
+        payload: {
+          email: 'user@example.test',
+          displayName: 'Ada Display',
+          roleIds: ['role-1'],
+        },
+      })
+    ).resolves.toMatchObject({
+      responseData: expect.objectContaining({
+        id: 'account-2',
+        displayName: 'Ada Display',
+      }),
+    });
+
+    expect(deps.resolveGroupsByIds).not.toHaveBeenCalled();
+    expect(deps.assignGroups).toHaveBeenCalledWith(client, {
+      instanceId: 'inst-1',
+      accountId: 'account-2',
+      groupIds: [],
+      origin: 'manual',
+    });
+    expect(deps.emitActivityLog).toHaveBeenCalledWith(
+      client,
+      expect.objectContaining({
+        payload: expect.objectContaining({
+          group_count: 0,
+        }),
+      })
+    );
   });
 });

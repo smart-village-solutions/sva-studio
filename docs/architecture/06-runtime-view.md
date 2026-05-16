@@ -573,6 +573,21 @@ Fehlerpfad:
 - Fehlt der Admin-Kontext oder ist die Zielperson außerhalb des zulässigen Manage-Scope, endet der Vorgang fail-closed mit `forbidden`.
 - Reine Nutzerrechte-Änderungen schreiben nur Studio-IAM-Daten und lösen keinen Keycloak-Write aus.
 
+### Szenario 15b: Admin legt einen Benutzer gruppenbasiert an
+
+1. Ein Admin öffnet `/admin/users/new`.
+2. Die UI bietet primär aktive Gruppen der aktuellen Instanz zur Auswahl an und führt direkte Rollen als optionale erweiterte Einstellung.
+3. Beim Speichern sendet die UI `POST /api/v1/iam/users` mit Basisprofil, optionalen `groupIds`, optionalen additiven `roleIds` und optional `sendPasswordSetupEmail`.
+4. Der Backend-Service erstellt zuerst die Identität in Keycloak und schreibt danach Account, Membership, Gruppenmitgliedschaften und direkte Rollen im Instanzkontext.
+5. Gruppen- und Rollenänderungen invalidieren die Permission-Snapshots des neuen Benutzers deterministisch über `user_group_changed` und `user_role_changed`.
+6. Wenn angefordert, stößt der Service anschließend die Keycloak-Einladungs-E-Mail zum Passwortsetzen an.
+
+Fehlerpfad:
+
+- Unbekannte oder instanzfremde Gruppen werden fail-closed mit `invalid_request` abgewiesen.
+- Scheitert der lokale Persistenzschritt nach erfolgreicher Keycloak-Anlage, deaktiviert der Service den externen Benutzer kompensierend.
+- Fehlschlägt nur die Einladungs-E-Mail, bleibt die Benutzeranlage erfolgreich und markiert den Einladungstatus als `failed`.
+
 ### Szenario 16: Authorize wertet Geo-Hierarchie mit restriktiver Priorität aus
 
 1. Client oder interne Serverlogik ruft `POST /iam/authorize` mit `instanceId`, `action`, `resource` und optional `context.attributes.geoHierarchy` bzw. `resource.attributes.geoUnitId` auf.

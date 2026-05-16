@@ -371,6 +371,7 @@ export type CreateUserPayload = {
   readonly preferredLanguage?: string;
   readonly timezone?: string;
   readonly roleIds?: readonly string[];
+  readonly groupIds?: readonly string[];
   readonly sendPasswordSetupEmail?: boolean;
 };
 

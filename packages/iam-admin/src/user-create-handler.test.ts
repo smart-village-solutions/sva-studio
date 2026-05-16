@@ -11,6 +11,7 @@ type TestPayload = {
   readonly lastName?: string;
   readonly status?: 'active' | 'inactive' | 'pending';
   readonly roleIds: readonly string[];
+  readonly groupIds?: readonly string[];
 };
 
 const actor = {
@@ -34,6 +35,7 @@ const payload = {
   firstName: 'Alice',
   status: 'active',
   roleIds: ['role-editor'],
+  groupIds: ['group-editors'],
 } satisfies TestPayload;
 
 const identityProvider = {
@@ -227,5 +229,81 @@ describe('createCreateUserHandlerInternal', () => {
       action: 'create_user',
       result: 'failure',
     });
+  });
+
+  it('returns known mutation responses thrown by the create operation and stores them as failed idempotency results', async () => {
+    const invalidRequestResponse = createJsonResponse(400, {
+      error: {
+        code: 'invalid_request',
+        message: 'Mindestens eine aktive Gruppe existiert nicht.',
+      },
+      requestId: 'req-create',
+    });
+    const deps = createDeps({
+      executeCreateUser: vi.fn(async () => {
+        throw invalidRequestResponse;
+      }),
+    });
+    const handler = createCreateUserHandlerInternal(deps);
+
+    const response = await handler(new Request('http://localhost/api/v1/iam/users'), ctx);
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: {
+        code: 'invalid_request',
+        message: 'Mindestens eine aktive Gruppe existiert nicht.',
+      },
+      requestId: 'req-create',
+    });
+    expect(deps.completeIdempotency).toHaveBeenCalledWith({
+      instanceId: 'de-musterhausen',
+      actorAccountId: 'actor-account-1',
+      endpoint: 'POST:/api/v1/iam/users',
+      idempotencyKey: 'idem-create-1',
+      status: 'FAILED',
+      responseStatus: 400,
+      responseBody: {
+        error: {
+          code: 'invalid_request',
+          message: 'Mindestens eine aktive Gruppe existiert nicht.',
+        },
+        requestId: 'req-create',
+      },
+    });
+  });
+
+  it('falls back to an internal error payload when a thrown response body is not valid json', async () => {
+    const deps = createDeps({
+      executeCreateUser: vi.fn(async () => {
+        throw new Response('unprocessable', {
+          status: 422,
+          headers: { 'content-type': 'text/plain' },
+        });
+      }),
+    });
+    const handler = createCreateUserHandlerInternal(deps);
+
+    const response = await handler(new Request('http://localhost/api/v1/iam/users'), ctx);
+
+    expect(response.status).toBe(422);
+    await expect(response.json()).resolves.toEqual({
+      error: {
+        code: 'internal_error',
+        message: 'Nutzer konnte nicht erstellt werden.',
+      },
+    });
+    expect(deps.completeIdempotency).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: 'FAILED',
+        responseStatus: 422,
+        responseBody: {
+          error: {
+            code: 'internal_error',
+            message: 'Nutzer konnte nicht erstellt werden.',
+          },
+        },
+      })
+    );
   });
 });

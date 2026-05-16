@@ -7,6 +7,7 @@ import { UserCreatePage } from './-user-create-page';
 const navigateMock = vi.fn();
 const useUsersMock = vi.fn();
 const useRolesMock = vi.fn();
+const useGroupsMock = vi.fn();
 
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ to, children, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { to: string }) => (
@@ -25,6 +26,10 @@ vi.mock('../../../hooks/use-roles', () => ({
   useRoles: () => useRolesMock(),
 }));
 
+vi.mock('../../../hooks/use-groups', () => ({
+  useGroups: () => useGroupsMock(),
+}));
+
 const createUsersApiState = (overrides: Record<string, unknown> = {}) => ({
   createUser: vi.fn(),
   error: null,
@@ -36,6 +41,9 @@ describe('UserCreatePage', () => {
     vi.clearAllMocks();
     useRolesMock.mockReturnValue({
       roles: [{ id: 'role-1', roleName: 'Editor' }],
+    });
+    useGroupsMock.mockReturnValue({
+      groups: [{ id: 'group-1', displayName: 'Redaktion', description: 'Redaktionsteam', isActive: true }],
     });
   });
 
@@ -71,7 +79,7 @@ describe('UserCreatePage', () => {
     expect(checkbox?.checked).toBe(true);
   });
 
-  it('submits the invite flag and navigates with a warning marker when invitation delivery failed', async () => {
+  it('submits selected groups as the primary assignment and navigates with a warning marker when invitation delivery failed', async () => {
     const createUser = vi.fn().mockResolvedValue({
       user: {
         id: 'user-1',
@@ -91,21 +99,23 @@ describe('UserCreatePage', () => {
     const emailInput = container.querySelector<HTMLInputElement>('#create-user-email');
     const firstNameInput = container.querySelector<HTMLInputElement>('#create-user-first-name');
     const lastNameInput = container.querySelector<HTMLInputElement>('#create-user-last-name');
-    const roleSelect = container.querySelector<HTMLSelectElement>('#create-user-role');
+    const groupCheckbox = container.querySelector<HTMLInputElement>('#create-user-group-group-1');
 
-    if (!emailInput || !firstNameInput || !lastNameInput || !roleSelect) {
+    if (!emailInput || !firstNameInput || !lastNameInput || !groupCheckbox) {
       throw new Error('Expected create-user form inputs to be present');
     }
 
     fireEvent.change(emailInput, { target: { value: 'alice@example.com' } });
     fireEvent.change(firstNameInput, { target: { value: 'Alice' } });
     fireEvent.change(lastNameInput, { target: { value: 'Example' } });
-    fireEvent.change(roleSelect, { target: { value: 'role-1' } });
+    fireEvent.click(groupCheckbox);
     fireEvent.click(screen.getByRole('button', { name: 'Nutzer anlegen' }));
 
     await waitFor(() =>
       expect(createUser).toHaveBeenCalledWith(
         expect.objectContaining({
+          groupIds: ['group-1'],
+          roleIds: [],
           sendPasswordSetupEmail: true,
         })
       )
@@ -158,5 +168,99 @@ describe('UserCreatePage', () => {
         })
       )
     );
+  });
+
+  it('supports additive direct roles in the advanced section together with groups', async () => {
+    const createUser = vi.fn().mockResolvedValue({
+      user: {
+        id: 'user-1',
+        keycloakSubject: 'subject-1',
+        displayName: 'Alice Example',
+        status: 'pending',
+        roles: [],
+        mainserverUserApplicationSecretSet: false,
+      },
+      invitation: {
+        status: 'not_requested',
+      },
+    });
+    useUsersMock.mockReturnValue(createUsersApiState({ createUser }));
+
+    const { container } = render(<UserCreatePage />);
+    const emailInput = container.querySelector<HTMLInputElement>('#create-user-email');
+    const firstNameInput = container.querySelector<HTMLInputElement>('#create-user-first-name');
+    const lastNameInput = container.querySelector<HTMLInputElement>('#create-user-last-name');
+    const groupCheckbox = container.querySelector<HTMLInputElement>('#create-user-group-group-1');
+    const roleCheckbox = container.querySelector<HTMLInputElement>('#create-user-role-role-1');
+
+    if (!emailInput || !firstNameInput || !lastNameInput || !groupCheckbox || !roleCheckbox) {
+      throw new Error('Expected create-user assignment controls to be present');
+    }
+
+    fireEvent.change(emailInput, { target: { value: 'alice@example.com' } });
+    fireEvent.change(firstNameInput, { target: { value: 'Alice' } });
+    fireEvent.change(lastNameInput, { target: { value: 'Example' } });
+    fireEvent.click(groupCheckbox);
+    fireEvent.click(roleCheckbox);
+    fireEvent.click(screen.getByRole('button', { name: 'Nutzer anlegen' }));
+
+    await waitFor(() =>
+      expect(createUser).toHaveBeenCalledWith(
+        expect.objectContaining({
+          groupIds: ['group-1'],
+          roleIds: ['role-1'],
+        })
+      )
+    );
+  });
+
+  it('navigates without an invite marker when the invitation was delivered normally', async () => {
+    const createUser = vi.fn().mockResolvedValue({
+      user: {
+        id: 'user-2',
+        keycloakSubject: 'subject-2',
+        displayName: 'Bob Example',
+        status: 'pending',
+        roles: [],
+        mainserverUserApplicationSecretSet: false,
+      },
+      invitation: {
+        status: 'sent',
+      },
+    });
+    useUsersMock.mockReturnValue(createUsersApiState({ createUser }));
+
+    const { container } = render(<UserCreatePage />);
+    const emailInput = container.querySelector<HTMLInputElement>('#create-user-email');
+    const firstNameInput = container.querySelector<HTMLInputElement>('#create-user-first-name');
+    const lastNameInput = container.querySelector<HTMLInputElement>('#create-user-last-name');
+
+    if (!emailInput || !firstNameInput || !lastNameInput) {
+      throw new Error('Expected create-user form inputs to be present');
+    }
+
+    fireEvent.change(emailInput, { target: { value: 'bob@example.com' } });
+    fireEvent.change(firstNameInput, { target: { value: 'Bob' } });
+    fireEvent.change(lastNameInput, { target: { value: 'Example' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Nutzer anlegen' }));
+
+    await waitFor(() =>
+      expect(navigateMock).toHaveBeenCalledWith({
+        to: '/admin/users/$userId',
+        params: { userId: 'user-2' },
+        search: undefined,
+      })
+    );
+  });
+
+  it('renders empty states when no active groups or direct roles are available', () => {
+    useUsersMock.mockReturnValue(createUsersApiState());
+    useRolesMock.mockReturnValue({ roles: [] });
+    useGroupsMock.mockReturnValue({ groups: [] });
+
+    render(<UserCreatePage />);
+
+    expect(screen.getByText('Es sind keine aktiven Gruppen verfügbar.')).toBeTruthy();
+    expect(screen.getByText('Es sind keine direkten Rollen verfügbar.')).toBeTruthy();
   });
 });

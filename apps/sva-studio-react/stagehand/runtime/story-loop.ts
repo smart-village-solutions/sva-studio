@@ -9,6 +9,7 @@ import {
   type StagehandStoryCheck,
   type StagehandStoryRecord,
 } from '../stories/state.js';
+import { buildStagehandStoryClusters } from './clusters.js';
 import type { StagehandAdminConfig, StagehandStoryCheckStatus, StagehandStoryCoverage } from './types.js';
 
 export interface StagehandStoryCluster {
@@ -23,6 +24,20 @@ export interface StagehandStoryEvidence {
   readonly notes: string;
   readonly status: StagehandStoryCheckStatus;
   readonly storyId: number;
+}
+
+export interface StagehandStoryVerification {
+  readonly environment: 'adequate' | 'insufficient';
+  readonly negative: 'missing' | 'verified';
+  readonly positive: 'missing' | 'verified';
+}
+
+export interface StagehandStoryEvidenceInput {
+  readonly coverage: StagehandStoryCoverage;
+  readonly findings: readonly string[];
+  readonly notes: string;
+  readonly storyId: number;
+  readonly verification: StagehandStoryVerification;
 }
 
 export interface StagehandStoryLoopSummary {
@@ -47,7 +62,7 @@ export interface RunStagehandStoryLoopOptions {
   readonly executeCluster?: (input: {
     cluster: StagehandStoryCluster;
     stories: readonly StagehandStoryRecord[];
-  }) => Promise<readonly StagehandStoryEvidence[]>;
+  }) => Promise<readonly StagehandStoryEvidenceInput[]>;
   readonly generatedAt?: string;
   readonly reportsRoot: string;
   readonly storySourcePath: string;
@@ -112,94 +127,54 @@ function shouldSkipStory(config: StagehandAdminConfig, story: StagehandStoryReco
   return false;
 }
 
-function mapStoryToClusterId(story: StagehandStoryRecord): string {
-  if (story.id === 18) {
-    return 'tenant-user-create';
-  }
-
-  if (story.id === 19 || story.packageId === 'IAM-P5') {
-    return 'tenant-isolation';
-  }
-
-  if (story.packageId === 'IAM-P1') {
-    return 'tenant-login-context';
-  }
-
-  if (story.packageId === 'IAM-P2') {
-    return 'tenant-user-lifecycle';
-  }
-
-  if (story.packageId === 'IAM-P3') {
-    return 'tenant-user-assignments';
-  }
-
-  if (story.packageId === 'IAM-P4') {
-    return 'role-and-permission-management';
-  }
-
-  if (story.packageId === 'IAM-P6') {
-    return 'legal-text-governance';
-  }
-
-  return 'audit-and-monitoring';
-}
-
-function clusterReason(clusterId: string): string {
-  switch (clusterId) {
-    case 'tenant-user-create':
-      return 'Tenant-Mutationslauf für Nutzeranlage und Sichtbarkeit im Mandantenkontext.';
-    case 'tenant-isolation':
-      return 'Mandanten- und Sichttrennung erfordert Negativ- und Kontextnachweise.';
-    case 'tenant-login-context':
-      return 'Login- und Einstiegsszenarien benötigen tenant-spezifischen UI-Kontext.';
-    case 'tenant-user-lifecycle':
-      return 'Onboarding- und Lebenszykluspfade laufen über tenant-nahe Nutzerverwaltung.';
-    case 'tenant-user-assignments':
-      return 'Organisations- und Bereichszuordnungen sind tenantgebundene Admin-Flows.';
-    case 'role-and-permission-management':
-      return 'Rollen-, Gruppen- und Rechtebeweise erfordern dedizierte Admin-Oberflächen.';
-    case 'legal-text-governance':
-      return 'Rechtstexte und Zustimmungen sind separate Governance-Flows.';
-    default:
-      return 'Audit-, Monitoring- oder Betriebsnachweise liegen nicht direkt in einer lokalen UI vor.';
-  }
-}
-
 function buildClusters(config: StagehandAdminConfig, stories: readonly StagehandStoryRecord[]): StagehandStoryCluster[] {
-  const grouped = new Map<string, StagehandStoryRecord[]>();
-
-  for (const story of stories) {
-    if (shouldSkipStory(config, story)) {
-      continue;
-    }
-
-    const clusterId = mapStoryToClusterId(story);
-
-    if (config.storyFilters.clusters.length > 0 && config.storyFilters.clusters.includes(clusterId) === false) {
-      continue;
-    }
-
-    grouped.set(clusterId, [...(grouped.get(clusterId) ?? []), story]);
-  }
-
-  return [...grouped.entries()].map(([id, clusterStories]) => ({
-    id,
-    reason: clusterReason(id),
-    stories: clusterStories.sort((left, right) => left.id - right.id),
-  }));
+  return buildStagehandStoryClusters(stories.filter((story) => shouldSkipStory(config, story) === false))
+    .filter(
+      (cluster) => config.storyFilters.clusters.length === 0 || config.storyFilters.clusters.includes(cluster.definition.id)
+    )
+    .map((cluster) => ({
+      id: cluster.definition.id,
+      reason: cluster.definition.reason,
+      stories: cluster.stories,
+    }));
 }
 
-function defaultEvidenceForCluster(cluster: StagehandStoryCluster): readonly StagehandStoryEvidence[] {
+function defaultEvidenceForCluster(cluster: StagehandStoryCluster): readonly StagehandStoryEvidenceInput[] {
   return cluster.stories.map((story) => ({
     storyId: story.id,
-    status: cluster.id === 'audit-and-monitoring' || cluster.id === 'legal-text-governance' ? 'umgebung_unzureichend' : 'unklar',
     coverage: 'nachweis_fehlend',
     notes: `Cluster ${cluster.id}: ${cluster.reason}`,
     findings: [
       'Für diese Story existiert im aktuellen lokalen Stagehand-Ausbau noch kein belastbarer Vollnachweis.',
       `Grund: ${cluster.reason}`,
     ],
+    verification: {
+      environment: 'insufficient',
+      negative: 'missing',
+      positive: 'missing',
+    },
   }));
+}
+
+export function classifyStoryEvidence(input: StagehandStoryEvidenceInput): StagehandStoryEvidence {
+  if (input.verification.environment === 'insufficient') {
+    return {
+      ...input,
+      status: 'umgebung_unzureichend',
+    };
+  }
+
+  if (input.verification.positive === 'verified' && input.verification.negative === 'verified') {
+    return {
+      ...input,
+      status: 'erfuellt',
+    };
+  }
+
+  return {
+    ...input,
+    status: 'unklar',
+  };
 }
 
 async function loadChromium() {
@@ -292,7 +267,7 @@ function createMutationHeaders(baseUrl: string, idempotencyKey: string): Record<
 async function executeTenantUserCreateCluster(
   config: StagehandAdminConfig,
   cluster: StagehandStoryCluster
-): Promise<readonly StagehandStoryEvidence[]> {
+): Promise<readonly StagehandStoryEvidenceInput[]> {
   if (config.tenant === null) {
     return defaultEvidenceForCluster(cluster).map((entry) => ({
       ...entry,
@@ -341,7 +316,6 @@ async function executeTenantUserCreateCluster(
     if (response.status() !== 201 || responsePayload.data?.user?.id === undefined) {
       return cluster.stories.map((story) => ({
         storyId: story.id,
-        status: 'unklar',
         coverage: 'nachweis_fehlend',
         notes:
           responsePayload.error?.message ??
@@ -350,6 +324,11 @@ async function executeTenantUserCreateCluster(
           `Tenant-Create-Call fehlgeschlagen: HTTP ${response.status()}.`,
           'Die Story konnte lokal nicht positiv nachgewiesen werden.',
         ],
+        verification: {
+          environment: 'adequate',
+          negative: 'missing',
+          positive: 'missing',
+        },
       }));
     }
 
@@ -366,25 +345,34 @@ async function executeTenantUserCreateCluster(
     if ((pageContent?.includes(email) ?? false) === false || (pageContent?.includes(displayName) ?? false) === false) {
       return cluster.stories.map((story) => ({
         storyId: story.id,
-        status: 'unklar',
         coverage: 'nachweis_fehlend',
         notes: 'Nutzer wurde erzeugt, konnte aber in der Detailansicht nicht eindeutig nachgewiesen werden.',
         findings: [
           `User-ID ${userId} wurde erstellt, aber Name/E-Mail waren nicht in /admin/users/${userId} sichtbar.`,
         ],
+        verification: {
+          environment: 'adequate',
+          negative: 'missing',
+          positive: 'missing',
+        },
       }));
     }
 
     return cluster.stories.map((story) => ({
       storyId: story.id,
-      status: 'erfuellt',
-      coverage: 'vorhanden',
-      notes: `Tenant-Nachweis über User ${email} auf ${config.tenant?.baseUrl}/admin/users/${userId}.`,
+      coverage: 'luecke',
+      notes: `Tenant-Nachweis über User ${email} auf ${config.tenant?.baseUrl}/admin/users/${userId}; tenant-übergreifender Negativnachweis fehlt noch.`,
       findings: [
         `Nutzer ${email} wurde im Tenant erfolgreich angelegt.`,
         `Die Detailansicht /admin/users/${userId} zeigte Name und E-Mail.`,
         `Passwort-Einladung wurde mit Status ${responsePayload.data?.invitation?.status ?? 'not_requested'} verarbeitet.`,
+        'Ein Negativnachweis gegen einen Nachbar-Mandanten wurde in diesem Executor noch nicht geführt.',
       ],
+      verification: {
+        environment: 'adequate',
+        negative: 'missing',
+        positive: 'verified',
+      },
     }));
   } finally {
     await browser.close();
@@ -394,7 +382,7 @@ async function executeTenantUserCreateCluster(
 async function executeDefaultCluster(
   config: StagehandAdminConfig,
   cluster: StagehandStoryCluster
-): Promise<readonly StagehandStoryEvidence[]> {
+): Promise<readonly StagehandStoryEvidenceInput[]> {
   if (cluster.id === 'tenant-user-create') {
     return executeTenantUserCreateCluster(config, cluster);
   }
@@ -475,7 +463,9 @@ export async function runStagehandStoryLoop(
     options.executeCluster ?? (async ({ cluster }) => executeDefaultCluster(config, cluster));
   const evidence = (
     await Promise.all(clusters.map((cluster) => executeCluster({ cluster, stories: cluster.stories })))
-  ).flat();
+  )
+    .flat()
+    .map((entry) => classifyStoryEvidence(entry));
   const summary = createSummary(clusters, evidence, skippedStories);
   const artifacts = createAggregateArtifacts(options.reportsRoot);
   const generatedAt = options.generatedAt ?? new Date().toISOString();

@@ -1,0 +1,486 @@
+{
+  "generatedAt": "2026-05-16T17:21:17.707Z",
+  "sourcePath": "/Users/wilimzig/Documents/Projects/SVA/sva-studio/concepts/konzeption-cms-v2/02_Anforderungen/user-stories.json",
+  "stories": [
+    {
+      "clusterId": "role-and-permission-management",
+      "storyId": 13,
+      "studioCheck": {
+        "status": "unklar",
+        "coverage": "nachweis_fehlend",
+        "notes": "Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new"
+      },
+      "findings": [
+        "Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden."
+      ]
+    },
+    {
+      "clusterId": "role-and-permission-management",
+      "storyId": 14,
+      "studioCheck": {
+        "status": "unklar",
+        "coverage": "nachweis_fehlend",
+        "notes": "Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new"
+      },
+      "findings": [
+        "Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden."
+      ]
+    },
+    {
+      "clusterId": "role-and-permission-management",
+      "storyId": 15,
+      "studioCheck": {
+        "status": "unklar",
+        "coverage": "nachweis_fehlend",
+        "notes": "Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new"
+      },
+      "findings": [
+        "Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden."
+      ]
+    },
+    {
+      "clusterId": "role-and-permission-management",
+      "storyId": 16,
+      "studioCheck": {
+        "status": "unklar",
+        "coverage": "nachweis_fehlend",
+        "notes": "Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new"
+      },
+      "findings": [
+        "Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden."
+      ]
+    },
+    {
+      "clusterId": "role-and-permission-management",
+      "storyId": 17,
+      "studioCheck": {
+        "status": "unklar",
+        "coverage": "nachweis_fehlend",
+        "notes": "Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new"
+      },
+      "findings": [
+        "Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden."
+      ]
+    },
+    {
+      "clusterId": "role-and-permission-management",
+      "storyId": 20,
+      "studioCheck": {
+        "status": "unklar",
+        "coverage": "nachweis_fehlend",
+        "notes": "Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new"
+      },
+      "findings": [
+        "Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden."
+      ]
+    },
+    {
+      "clusterId": "role-and-permission-management",
+      "storyId": 21,
+      "studioCheck": {
+        "status": "unklar",
+        "coverage": "nachweis_fehlend",
+        "notes": "Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new"
+      },
+      "findings": [
+        "Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden."
+      ]
+    },
+    {
+      "clusterId": "role-and-permission-management",
+      "storyId": 22,
+      "studioCheck": {
+        "status": "unklar",
+        "coverage": "nachweis_fehlend",
+        "notes": "Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new"
+      },
+      "findings": [
+        "Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden."
+      ]
+    },
+    {
+      "clusterId": "role-and-permission-management",
+      "storyId": 23,
+      "studioCheck": {
+        "status": "unklar",
+        "coverage": "nachweis_fehlend",
+        "notes": "Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new"
+      },
+      "findings": [
+        "Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden."
+      ]
+    },
+    {
+      "clusterId": "role-and-permission-management",
+      "storyId": 24,
+      "studioCheck": {
+        "status": "unklar",
+        "coverage": "nachweis_fehlend",
+        "notes": "Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new"
+      },
+      "findings": [
+        "Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden."
+      ]
+    },
+    {
+      "clusterId": "role-and-permission-management",
+      "storyId": 25,
+      "studioCheck": {
+        "status": "unklar",
+        "coverage": "nachweis_fehlend",
+        "notes": "Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new"
+      },
+      "findings": [
+        "Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden."
+      ]
+    },
+    {
+      "clusterId": "role-and-permission-management",
+      "storyId": 26,
+      "studioCheck": {
+        "status": "unklar",
+        "coverage": "nachweis_fehlend",
+        "notes": "Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new"
+      },
+      "findings": [
+        "Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden."
+      ]
+    },
+    {
+      "clusterId": "role-and-permission-management",
+      "storyId": 27,
+      "studioCheck": {
+        "status": "unklar",
+        "coverage": "nachweis_fehlend",
+        "notes": "Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new"
+      },
+      "findings": [
+        "Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden."
+      ]
+    },
+    {
+      "clusterId": "role-and-permission-management",
+      "storyId": 28,
+      "studioCheck": {
+        "status": "unklar",
+        "coverage": "nachweis_fehlend",
+        "notes": "Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new"
+      },
+      "findings": [
+        "Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden."
+      ]
+    },
+    {
+      "clusterId": "role-and-permission-management",
+      "storyId": 29,
+      "studioCheck": {
+        "status": "unklar",
+        "coverage": "nachweis_fehlend",
+        "notes": "Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new"
+      },
+      "findings": [
+        "Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden."
+      ]
+    },
+    {
+      "clusterId": "role-and-permission-management",
+      "storyId": 30,
+      "studioCheck": {
+        "status": "unklar",
+        "coverage": "nachweis_fehlend",
+        "notes": "Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new"
+      },
+      "findings": [
+        "Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden."
+      ]
+    },
+    {
+      "clusterId": "role-and-permission-management",
+      "storyId": 36,
+      "studioCheck": {
+        "status": "unklar",
+        "coverage": "nachweis_fehlend",
+        "notes": "Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new"
+      },
+      "findings": [
+        "Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden."
+      ]
+    },
+    {
+      "clusterId": "role-and-permission-management",
+      "storyId": 62,
+      "studioCheck": {
+        "status": "unklar",
+        "coverage": "nachweis_fehlend",
+        "notes": "Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new"
+      },
+      "findings": [
+        "Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden."
+      ]
+    },
+    {
+      "clusterId": "role-and-permission-management",
+      "storyId": 63,
+      "studioCheck": {
+        "status": "unklar",
+        "coverage": "nachweis_fehlend",
+        "notes": "Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new"
+      },
+      "findings": [
+        "Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden."
+      ]
+    },
+    {
+      "clusterId": "role-and-permission-management",
+      "storyId": 64,
+      "studioCheck": {
+        "status": "unklar",
+        "coverage": "nachweis_fehlend",
+        "notes": "Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new"
+      },
+      "findings": [
+        "Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden."
+      ]
+    },
+    {
+      "clusterId": "role-and-permission-management",
+      "storyId": 65,
+      "studioCheck": {
+        "status": "unklar",
+        "coverage": "nachweis_fehlend",
+        "notes": "Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new"
+      },
+      "findings": [
+        "Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden."
+      ]
+    },
+    {
+      "clusterId": "role-and-permission-management",
+      "storyId": 66,
+      "studioCheck": {
+        "status": "unklar",
+        "coverage": "nachweis_fehlend",
+        "notes": "Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new"
+      },
+      "findings": [
+        "Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden."
+      ]
+    },
+    {
+      "clusterId": "role-and-permission-management",
+      "storyId": 67,
+      "studioCheck": {
+        "status": "unklar",
+        "coverage": "nachweis_fehlend",
+        "notes": "Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new"
+      },
+      "findings": [
+        "Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden."
+      ]
+    },
+    {
+      "clusterId": "role-and-permission-management",
+      "storyId": 68,
+      "studioCheck": {
+        "status": "unklar",
+        "coverage": "nachweis_fehlend",
+        "notes": "Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new"
+      },
+      "findings": [
+        "Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden."
+      ]
+    },
+    {
+      "clusterId": "role-and-permission-management",
+      "storyId": 69,
+      "studioCheck": {
+        "status": "unklar",
+        "coverage": "nachweis_fehlend",
+        "notes": "Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new"
+      },
+      "findings": [
+        "Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden."
+      ]
+    },
+    {
+      "clusterId": "role-and-permission-management",
+      "storyId": 70,
+      "studioCheck": {
+        "status": "unklar",
+        "coverage": "nachweis_fehlend",
+        "notes": "Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new"
+      },
+      "findings": [
+        "Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden."
+      ]
+    },
+    {
+      "clusterId": "role-and-permission-management",
+      "storyId": 71,
+      "studioCheck": {
+        "status": "unklar",
+        "coverage": "nachweis_fehlend",
+        "notes": "Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new"
+      },
+      "findings": [
+        "Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden."
+      ]
+    },
+    {
+      "clusterId": "role-and-permission-management",
+      "storyId": 72,
+      "studioCheck": {
+        "status": "unklar",
+        "coverage": "nachweis_fehlend",
+        "notes": "Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new"
+      },
+      "findings": [
+        "Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden."
+      ]
+    },
+    {
+      "clusterId": "role-and-permission-management",
+      "storyId": 73,
+      "studioCheck": {
+        "status": "unklar",
+        "coverage": "nachweis_fehlend",
+        "notes": "Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new"
+      },
+      "findings": [
+        "Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden."
+      ]
+    },
+    {
+      "clusterId": "role-and-permission-management",
+      "storyId": 74,
+      "studioCheck": {
+        "status": "unklar",
+        "coverage": "nachweis_fehlend",
+        "notes": "Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new"
+      },
+      "findings": [
+        "Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden."
+      ]
+    },
+    {
+      "clusterId": "role-and-permission-management",
+      "storyId": 75,
+      "studioCheck": {
+        "status": "unklar",
+        "coverage": "nachweis_fehlend",
+        "notes": "Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new"
+      },
+      "findings": [
+        "Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden."
+      ]
+    },
+    {
+      "clusterId": "role-and-permission-management",
+      "storyId": 76,
+      "studioCheck": {
+        "status": "unklar",
+        "coverage": "nachweis_fehlend",
+        "notes": "Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new"
+      },
+      "findings": [
+        "Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden."
+      ]
+    },
+    {
+      "clusterId": "role-and-permission-management",
+      "storyId": 77,
+      "studioCheck": {
+        "status": "unklar",
+        "coverage": "nachweis_fehlend",
+        "notes": "Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new"
+      },
+      "findings": [
+        "Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden."
+      ]
+    },
+    {
+      "clusterId": "role-and-permission-management",
+      "storyId": 78,
+      "studioCheck": {
+        "status": "unklar",
+        "coverage": "nachweis_fehlend",
+        "notes": "Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new"
+      },
+      "findings": [
+        "Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden."
+      ]
+    },
+    {
+      "clusterId": "role-and-permission-management",
+      "storyId": 79,
+      "studioCheck": {
+        "status": "unklar",
+        "coverage": "nachweis_fehlend",
+        "notes": "Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new"
+      },
+      "findings": [
+        "Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden."
+      ]
+    },
+    {
+      "clusterId": "role-and-permission-management",
+      "storyId": 80,
+      "studioCheck": {
+        "status": "unklar",
+        "coverage": "nachweis_fehlend",
+        "notes": "Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new"
+      },
+      "findings": [
+        "Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden."
+      ]
+    },
+    {
+      "clusterId": "role-and-permission-management",
+      "storyId": 81,
+      "studioCheck": {
+        "status": "unklar",
+        "coverage": "nachweis_fehlend",
+        "notes": "Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new"
+      },
+      "findings": [
+        "Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden."
+      ]
+    },
+    {
+      "clusterId": "role-and-permission-management",
+      "storyId": 82,
+      "studioCheck": {
+        "status": "unklar",
+        "coverage": "nachweis_fehlend",
+        "notes": "Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new"
+      },
+      "findings": [
+        "Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden."
+      ]
+    },
+    {
+      "clusterId": "role-and-permission-management",
+      "storyId": 83,
+      "studioCheck": {
+        "status": "unklar",
+        "coverage": "nachweis_fehlend",
+        "notes": "Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new"
+      },
+      "findings": [
+        "Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden."
+      ]
+    },
+    {
+      "clusterId": "role-and-permission-management",
+      "storyId": 84,
+      "studioCheck": {
+        "status": "unklar",
+        "coverage": "nachweis_fehlend",
+        "notes": "Die Rollenanlage führte nicht auf eine belastbare Detail-URL: http://de-musterhausen.studio.localhost:3000/admin/roles/new"
+      },
+      "findings": [
+        "Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden."
+      ]
+    }
+  ]
+}

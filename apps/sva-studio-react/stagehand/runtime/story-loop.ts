@@ -64,6 +64,7 @@ export interface RunStagehandStoryLoopOptions {
     stories: readonly StagehandStoryRecord[];
   }) => Promise<readonly StagehandStoryEvidenceInput[]>;
   readonly generatedAt?: string;
+  readonly loadChromium?: () => Promise<BrowserModule['chromium']>;
   readonly reportsRoot: string;
   readonly storySourcePath: string;
 }
@@ -181,6 +182,229 @@ async function loadChromium() {
   return (appRequire('@playwright/test') as BrowserModule).chromium;
 }
 
+async function loginTenantAdmin(
+  page: import('@playwright/test').Page,
+  tenant: { admin: { password: string; username: string }; baseUrl: string }
+): Promise<void> {
+  await page.goto(new URL('/auth/login', tenant.baseUrl).toString(), {
+    timeout: 45_000,
+    waitUntil: 'domcontentloaded',
+  });
+  await performKeycloakLogin(page, tenant.admin);
+  await page.waitForURL(new RegExp(`${tenant.baseUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/.*`), {
+    timeout: 45_000,
+  });
+  await page.waitForLoadState('networkidle');
+}
+
+async function openTenantContext(
+  browser: import('@playwright/test').Browser,
+  tenant: { admin: { password: string; username: string }; baseUrl: string }
+) {
+  const context = await browser.newContext();
+  const page = await context.newPage();
+
+  await loginTenantAdmin(page, tenant);
+
+  return {
+    context,
+    page,
+  };
+}
+
+function createTenantUserPayload(timestamp: string) {
+  const uniqueSuffix = timestamp.slice(-6);
+  const email = `stagehand.story18.${timestamp}@example.invalid`;
+  const firstName = 'Stagehand';
+  const lastName = `Loop${uniqueSuffix}`;
+  const displayName = `${firstName} ${lastName}`;
+  const idempotencyKey = `stagehand-story18-${timestamp}`;
+
+  return {
+    displayName,
+    email,
+    firstName,
+    idempotencyKey,
+    lastName,
+  };
+}
+
+async function createTenantUser(
+  context: import('@playwright/test').BrowserContext,
+  tenantBaseUrl: string,
+  user: ReturnType<typeof createTenantUserPayload>
+): Promise<ApiResponsePayload & { readonly httpStatus: number }> {
+  const response = await context.request.post(new URL('/api/v1/iam/users', tenantBaseUrl).toString(), {
+    data: {
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      displayName: user.displayName,
+      roleIds: [],
+      sendPasswordSetupEmail: false,
+    },
+    failOnStatusCode: false,
+    headers: createMutationHeaders(tenantBaseUrl, user.idempotencyKey),
+  });
+  const payload = (await response.json().catch(() => ({}))) as ApiResponsePayload;
+
+  return {
+    ...payload,
+    httpStatus: response.status(),
+  };
+}
+
+async function verifyTenantUserVisible(
+  page: import('@playwright/test').Page,
+  tenantBaseUrl: string,
+  userId: string,
+  user: Pick<ReturnType<typeof createTenantUserPayload>, 'displayName' | 'email'>
+): Promise<boolean> {
+  await page.goto(new URL(`/admin/users/${userId}`, tenantBaseUrl).toString(), {
+    timeout: 45_000,
+    waitUntil: 'domcontentloaded',
+  });
+  await page.waitForLoadState('networkidle');
+
+  const pageContent = await page.textContent('body');
+
+  return (pageContent?.includes(user.email) ?? false) && (pageContent?.includes(user.displayName) ?? false);
+}
+
+async function verifyTenantUserHiddenFromNeighbor(
+  browser: import('@playwright/test').Browser,
+  tenant: NonNullable<StagehandAdminConfig['tenant']>,
+  userId: string,
+  user: Pick<ReturnType<typeof createTenantUserPayload>, 'displayName' | 'email'>
+): Promise<{ readonly verified: boolean; readonly details: readonly string[] }> {
+  const neighbor = tenant.neighbor;
+
+  if (neighbor === null) {
+    return {
+      verified: false,
+      details: ['Nachbar-Mandant ist nicht konfiguriert.'],
+    };
+  }
+
+  const { context, page } = await openTenantContext(browser, neighbor);
+  const details: string[] = [];
+
+  try {
+    const apiResponse = await context.request.get(new URL(`/api/v1/iam/users/${userId}`, neighbor.baseUrl).toString(), {
+      failOnStatusCode: false,
+      headers: {
+        Accept: 'application/json',
+      },
+    });
+    const apiDenied = apiResponse.status() === 403 || apiResponse.status() === 404;
+    details.push(`Nachbar-Mandanten-API antwortete mit HTTP ${apiResponse.status()}.`);
+
+    await page.goto(new URL(`/admin/users/${userId}`, neighbor.baseUrl).toString(), {
+      timeout: 45_000,
+      waitUntil: 'domcontentloaded',
+    });
+    await page.waitForLoadState('networkidle');
+
+    const pageContent = await page.textContent('body');
+    const uiHidden =
+      (pageContent?.includes(user.email) ?? false) === false && (pageContent?.includes(user.displayName) ?? false) === false;
+
+    details.push(
+      uiHidden
+        ? 'Im Nachbar-Mandanten waren weder E-Mail noch Anzeigename sichtbar.'
+        : 'Im Nachbar-Mandanten waren fremde Nutzerdaten sichtbar.'
+    );
+
+    return {
+      verified: apiDenied && uiHidden,
+      details,
+    };
+  } finally {
+    await context.close();
+  }
+}
+
+function createRolePayload(timestamp: string) {
+  const uniqueSuffix = timestamp.slice(-6);
+  const roleName = `stagehand_role_${uniqueSuffix}`.toLowerCase();
+  const displayName = `Stagehand Role ${uniqueSuffix}`;
+  const description = `Stagehand-Testrolle ${uniqueSuffix}`;
+  const idempotencyKey = `stagehand-role-${timestamp}`;
+
+  return {
+    description,
+    displayName,
+    idempotencyKey,
+    roleLevel: 40,
+    roleName,
+  };
+}
+
+async function verifyUserRoleAssignment(
+  context: import('@playwright/test').BrowserContext,
+  tenantBaseUrl: string,
+  userId: string,
+  roleId: string,
+  roleDisplayName: string
+): Promise<boolean> {
+  const response = await context.request.get(new URL(`/api/v1/iam/users/${userId}`, tenantBaseUrl).toString(), {
+    failOnStatusCode: false,
+    headers: {
+      Accept: 'application/json',
+    },
+  });
+
+  if (response.status() !== 200) {
+    return false;
+  }
+
+  const payload = (await response.json().catch(() => ({}))) as {
+    readonly data?: {
+      readonly roles?: readonly {
+        readonly roleId?: string;
+        readonly roleName?: string;
+      }[];
+    };
+  };
+
+  return (
+    payload.data?.roles?.some((role) => role.roleId === roleId || role.roleName === roleDisplayName) ?? false
+  );
+}
+
+async function verifyRoleVisibleInCatalog(
+  context: import('@playwright/test').BrowserContext,
+  tenantBaseUrl: string,
+  roleId: string,
+  roleName: string,
+  roleDisplayName: string
+): Promise<boolean> {
+  const response = await context.request.get(new URL('/api/v1/iam/roles', tenantBaseUrl).toString(), {
+    failOnStatusCode: false,
+    headers: {
+      Accept: 'application/json',
+    },
+  });
+
+  if (response.status() !== 200) {
+    return false;
+  }
+
+  const payload = (await response.json().catch(() => ({}))) as {
+    readonly data?: readonly {
+      readonly id?: string;
+      readonly roleName?: string;
+      readonly displayName?: string;
+    }[];
+  };
+
+  return (
+    payload.data?.some(
+      (role) => role.id === roleId || role.roleName === roleName || role.displayName === roleDisplayName
+    ) ?? false
+  );
+}
+
 async function fillIfVisible(page: import('@playwright/test').Page, selectors: readonly string[], value: string): Promise<boolean> {
   for (const selector of selectors) {
     const locator = page.locator(selector);
@@ -231,6 +455,120 @@ async function clickIfVisible(
   return false;
 }
 
+async function createRoleViaUi(
+  page: import('@playwright/test').Page,
+  tenantBaseUrl: string,
+  role: ReturnType<typeof createRolePayload>
+): Promise<string> {
+  await page.goto(new URL('/admin/roles/new', tenantBaseUrl).toString(), {
+    timeout: 45_000,
+    waitUntil: 'domcontentloaded',
+  });
+  await page.waitForLoadState('networkidle');
+
+  const roleKeyFilled = await fillIfVisible(page, ['#create-role-key'], role.roleName);
+  const roleNameFilled = await fillIfVisible(page, ['#create-role-name'], role.displayName);
+  const roleDescriptionFilled = await fillIfVisible(page, ['#create-role-description'], role.description);
+  const roleLevelFilled = await fillIfVisible(page, ['#create-role-level'], String(role.roleLevel));
+
+  if (roleKeyFilled === false || roleNameFilled === false || roleDescriptionFilled === false || roleLevelFilled === false) {
+    throw new Error('Die Rollenanlage konnte in der UI nicht vollständig befüllt werden.');
+  }
+
+  const createClicked = await clickIfVisible(page, [{ kind: 'role', value: /rolle anlegen/i }]);
+
+  if (createClicked === false) {
+    throw new Error('Der UI-Button für die Rollenanlage wurde nicht gefunden.');
+  }
+
+  await page.waitForURL(/\/admin\/roles\/(?!new(?:[/?#]|$))[^/?#]+(?:[?#].*)?$/u, { timeout: 45_000 });
+  await page.waitForLoadState('networkidle');
+
+  const createdRoleUrl = page.url();
+  const roleId = new URL(createdRoleUrl).pathname.split('/').pop();
+
+  if (roleId === undefined || roleId === '' || roleId === 'new') {
+    throw new Error(`Die Rollenanlage führte nicht auf eine belastbare Detail-URL: ${createdRoleUrl}`);
+  }
+
+  return roleId;
+}
+
+async function createUserViaUi(
+  page: import('@playwright/test').Page,
+  tenantBaseUrl: string,
+  user: ReturnType<typeof createTenantUserPayload>
+): Promise<string> {
+  await page.goto(new URL('/admin/users/new', tenantBaseUrl).toString(), {
+    timeout: 45_000,
+    waitUntil: 'domcontentloaded',
+  });
+  await page.waitForLoadState('networkidle');
+
+  const emailFilled = await fillIfVisible(page, ['#create-user-email'], user.email);
+  const firstNameFilled = await fillIfVisible(page, ['#create-user-first-name'], user.firstName);
+  const lastNameFilled = await fillIfVisible(page, ['#create-user-last-name'], user.lastName);
+
+  if (emailFilled === false || firstNameFilled === false || lastNameFilled === false) {
+    throw new Error('Die Nutzeranlage konnte in der UI nicht vollständig befüllt werden.');
+  }
+
+  const createClicked = await clickIfVisible(page, [{ kind: 'role', value: /nutzer anlegen/i }]);
+
+  if (createClicked === false) {
+    throw new Error('Der UI-Button für die Nutzeranlage wurde nicht gefunden.');
+  }
+
+  await page.waitForURL(/\/admin\/users\/[^/]+/u, { timeout: 45_000 });
+  await page.waitForLoadState('networkidle');
+
+  const createdUserUrl = page.url();
+  const userId = new URL(createdUserUrl).pathname.split('/').pop();
+
+  if (userId === undefined || userId === '' || userId === 'new') {
+    throw new Error(`Die Nutzeranlage führte nicht auf eine belastbare Detail-URL: ${createdUserUrl}`);
+  }
+
+  return userId;
+}
+
+async function assignRoleToUserViaUi(
+  page: import('@playwright/test').Page,
+  tenantBaseUrl: string,
+  roleId: string,
+  userEmail: string
+): Promise<void> {
+  await page.goto(new URL(`/admin/roles/${roleId}`, tenantBaseUrl).toString(), {
+    timeout: 45_000,
+    waitUntil: 'domcontentloaded',
+  });
+  await page.waitForLoadState('networkidle');
+
+  const assignmentsTabClicked = await clickIfVisible(page, [{ kind: 'role', value: /zuweisungen/i }]);
+
+  if (assignmentsTabClicked === false) {
+    throw new Error('Der Zuweisungen-Tab der Rollen-Detailseite wurde nicht gefunden.');
+  }
+
+  await page.waitForLoadState('networkidle');
+
+  const searchFilled = await fillIfVisible(page, ['#role-assignment-search'], userEmail);
+
+  if (searchFilled === false) {
+    throw new Error('Die Benutzer-Suche im Rollen-Zuweisungsbereich wurde nicht gefunden.');
+  }
+
+  await page.waitForLoadState('networkidle');
+
+  const assignClicked = await clickIfVisible(page, [{ kind: 'role', value: /zuweisen/i }]);
+
+  if (assignClicked === false) {
+    throw new Error('Der UI-Button für die Rollenzuweisung wurde nicht gefunden.');
+  }
+
+  await page.waitForLoadState('networkidle');
+}
+
 async function performKeycloakLogin(
   page: import('@playwright/test').Page,
   credentials: { password: string; username: string }
@@ -266,7 +604,8 @@ function createMutationHeaders(baseUrl: string, idempotencyKey: string): Record<
 
 async function executeTenantUserCreateCluster(
   config: StagehandAdminConfig,
-  cluster: StagehandStoryCluster
+  cluster: StagehandStoryCluster,
+  chromiumFactory: () => Promise<BrowserModule['chromium']>
 ): Promise<readonly StagehandStoryEvidenceInput[]> {
   if (config.tenant === null) {
     return defaultEvidenceForCluster(cluster).map((entry) => ({
@@ -275,53 +614,25 @@ async function executeTenantUserCreateCluster(
     }));
   }
 
-  const chromium = await loadChromium();
+  const tenant = config.tenant;
+  const chromium = await chromiumFactory();
   const browser = await chromium.launch({ headless: true });
   const timestamp = new Date().toISOString().replace(/[-:.TZ]/gu, '').slice(0, 14);
-  const uniqueSuffix = timestamp.slice(-6);
-  const email = `stagehand.story18.${timestamp}@example.invalid`;
-  const firstName = 'Stagehand';
-  const lastName = `Loop${uniqueSuffix}`;
-  const displayName = `${firstName} ${lastName}`;
-  const idempotencyKey = `stagehand-story18-${timestamp}`;
+  const user = createTenantUserPayload(timestamp);
 
   try {
-    const context = await browser.newContext();
-    const page = await context.newPage();
+    const { context, page } = await openTenantContext(browser, tenant);
+    const responsePayload = await createTenantUser(context, tenant.baseUrl, user);
 
-    await page.goto(new URL('/auth/login', config.tenant.baseUrl).toString(), {
-      timeout: 45_000,
-      waitUntil: 'domcontentloaded',
-    });
-    await performKeycloakLogin(page, config.tenant.admin);
-    await page.waitForURL(new RegExp(`${config.tenant.baseUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/.*`), {
-      timeout: 45_000,
-    });
-    await page.waitForLoadState('networkidle');
-
-    const response = await context.request.post(new URL('/api/v1/iam/users', config.tenant.baseUrl).toString(), {
-      data: {
-        email,
-        firstName,
-        lastName,
-        displayName,
-        roleIds: [],
-        sendPasswordSetupEmail: false,
-      },
-      failOnStatusCode: false,
-      headers: createMutationHeaders(config.tenant.baseUrl, idempotencyKey),
-    });
-    const responsePayload = (await response.json().catch(() => ({}))) as ApiResponsePayload;
-
-    if (response.status() !== 201 || responsePayload.data?.user?.id === undefined) {
+    if (responsePayload.httpStatus !== 201 || responsePayload.data?.user?.id === undefined) {
       return cluster.stories.map((story) => ({
         storyId: story.id,
         coverage: 'nachweis_fehlend',
         notes:
           responsePayload.error?.message ??
-          `Nutzeranlage antwortete mit HTTP ${response.status()} und lieferte keine belastbare User-ID.`,
+          `Nutzeranlage antwortete mit HTTP ${responsePayload.httpStatus} und lieferte keine belastbare User-ID.`,
         findings: [
-          `Tenant-Create-Call fehlgeschlagen: HTTP ${response.status()}.`,
+          `Tenant-Create-Call fehlgeschlagen: HTTP ${responsePayload.httpStatus}.`,
           'Die Story konnte lokal nicht positiv nachgewiesen werden.',
         ],
         verification: {
@@ -333,16 +644,9 @@ async function executeTenantUserCreateCluster(
     }
 
     const userId = responsePayload.data.user.id;
+    const visibleInTenant = await verifyTenantUserVisible(page, tenant.baseUrl, userId, user);
 
-    await page.goto(new URL(`/admin/users/${userId}`, config.tenant.baseUrl).toString(), {
-      timeout: 45_000,
-      waitUntil: 'domcontentloaded',
-    });
-    await page.waitForLoadState('networkidle');
-
-    const pageContent = await page.textContent('body');
-
-    if ((pageContent?.includes(email) ?? false) === false || (pageContent?.includes(displayName) ?? false) === false) {
+    if (visibleInTenant === false) {
       return cluster.stories.map((story) => ({
         storyId: story.id,
         coverage: 'nachweis_fehlend',
@@ -361,9 +665,9 @@ async function executeTenantUserCreateCluster(
     return cluster.stories.map((story) => ({
       storyId: story.id,
       coverage: 'luecke',
-      notes: `Tenant-Nachweis über User ${email} auf ${config.tenant?.baseUrl}/admin/users/${userId}; tenant-übergreifender Negativnachweis fehlt noch.`,
+      notes: `Tenant-Nachweis über User ${user.email} auf ${tenant.baseUrl}/admin/users/${userId}; tenant-übergreifender Negativnachweis fehlt noch.`,
       findings: [
-        `Nutzer ${email} wurde im Tenant erfolgreich angelegt.`,
+        `Nutzer ${user.email} wurde im Tenant erfolgreich angelegt.`,
         `Die Detailansicht /admin/users/${userId} zeigte Name und E-Mail.`,
         `Passwort-Einladung wurde mit Status ${responsePayload.data?.invitation?.status ?? 'not_requested'} verarbeitet.`,
         'Ein Negativnachweis gegen einen Nachbar-Mandanten wurde in diesem Executor noch nicht geführt.',
@@ -379,12 +683,184 @@ async function executeTenantUserCreateCluster(
   }
 }
 
+async function executeTenantIsolationCluster(
+  config: StagehandAdminConfig,
+  cluster: StagehandStoryCluster,
+  chromiumFactory: () => Promise<BrowserModule['chromium']>
+): Promise<readonly StagehandStoryEvidenceInput[]> {
+  if (config.tenant === null || config.tenant.neighbor === null) {
+    return defaultEvidenceForCluster(cluster).map((entry) => ({
+      ...entry,
+      notes: 'Tenant- oder Nachbar-Mandanten-Konfiguration fehlt; Isolation kann lokal nicht ehrlich geprüft werden.',
+    }));
+  }
+
+  const tenant = config.tenant;
+  const chromium = await chromiumFactory();
+  const browser = await chromium.launch({ headless: true });
+  const timestamp = new Date().toISOString().replace(/[-:.TZ]/gu, '').slice(0, 14);
+  const user = createTenantUserPayload(timestamp);
+
+  try {
+    const { context, page } = await openTenantContext(browser, tenant);
+    const responsePayload = await createTenantUser(context, tenant.baseUrl, user);
+
+    if (responsePayload.httpStatus !== 201 || responsePayload.data?.user?.id === undefined) {
+      return cluster.stories.map((story) => ({
+        storyId: story.id,
+        coverage: 'nachweis_fehlend',
+        notes:
+          responsePayload.error?.message ??
+          `Isolationstest konnte den Ausgangsnutzer nicht anlegen: HTTP ${responsePayload.httpStatus}.`,
+        findings: [
+          `Tenant-Create-Call für Isolationstest fehlgeschlagen: HTTP ${responsePayload.httpStatus}.`,
+        ],
+        verification: {
+          environment: 'adequate',
+          negative: 'missing',
+          positive: 'missing',
+        },
+      }));
+    }
+
+    const userId = responsePayload.data.user.id;
+    const visibleInTenant = await verifyTenantUserVisible(page, tenant.baseUrl, userId, user);
+
+    if (visibleInTenant === false) {
+      return cluster.stories.map((story) => ({
+        storyId: story.id,
+        coverage: 'nachweis_fehlend',
+        notes: 'Isolationstest konnte die erzeugten Ausgangsdaten im Ausgangsmandanten nicht sichtbar reproduzieren.',
+        findings: [`User-ID ${userId} war im Ausgangsmandanten nicht sichtbar.`],
+        verification: {
+          environment: 'adequate',
+          negative: 'missing',
+          positive: 'missing',
+        },
+      }));
+    }
+
+    const negativeProof = await verifyTenantUserHiddenFromNeighbor(browser, tenant, userId, user);
+
+    return cluster.stories.map((story) => ({
+      storyId: story.id,
+      coverage: negativeProof.verified ? 'vorhanden' : 'luecke',
+      notes: negativeProof.verified
+        ? `Mandantentrennung für User ${user.email} zwischen ${tenant.baseUrl} und ${tenant.neighbor?.baseUrl} nachgewiesen.`
+        : `Ausgangsmandant sichtbar, aber Negativnachweis gegen ${tenant.neighbor?.baseUrl} blieb unvollständig.`,
+      findings: [
+        `Nutzer ${user.email} war im Ausgangsmandanten sichtbar.`,
+        ...negativeProof.details,
+      ],
+      verification: {
+        environment: 'adequate',
+        negative: negativeProof.verified ? 'verified' : 'missing',
+        positive: 'verified',
+      },
+    }));
+  } finally {
+    await browser.close();
+  }
+}
+
+async function executeRoleAndPermissionManagementCluster(
+  config: StagehandAdminConfig,
+  cluster: StagehandStoryCluster,
+  chromiumFactory: () => Promise<BrowserModule['chromium']>
+): Promise<readonly StagehandStoryEvidenceInput[]> {
+  if (config.tenant === null) {
+    return defaultEvidenceForCluster(cluster).map((entry) => ({
+      ...entry,
+      notes: 'Tenant-Konfiguration fehlt; Rollen- und Zuweisungslauf kann lokal nicht automatisch geprüft werden.',
+    }));
+  }
+
+  const tenant = config.tenant;
+  const chromium = await chromiumFactory();
+  const browser = await chromium.launch({ headless: true });
+  const timestamp = new Date().toISOString().replace(/[-:.TZ]/gu, '').slice(0, 14);
+  const user = createTenantUserPayload(timestamp);
+  const role = createRolePayload(timestamp);
+
+  try {
+    const { context, page } = await openTenantContext(browser, tenant);
+    const createdRoleId = await createRoleViaUi(page, tenant.baseUrl, role);
+    const createdUserId = await createUserViaUi(page, tenant.baseUrl, user);
+    await assignRoleToUserViaUi(page, tenant.baseUrl, createdRoleId, user.email);
+
+    const userRoleVerified = await verifyUserRoleAssignment(
+      context,
+      tenant.baseUrl,
+      createdUserId,
+      createdRoleId,
+      role.displayName
+    );
+    const roleVisibleInCatalog = await verifyRoleVisibleInCatalog(
+      context,
+      tenant.baseUrl,
+      createdRoleId,
+      role.roleName,
+      role.displayName
+    );
+
+    return cluster.stories.map((story) => ({
+      storyId: story.id,
+      coverage: userRoleVerified && roleVisibleInCatalog ? 'vorhanden' : 'luecke',
+      notes:
+        userRoleVerified && roleVisibleInCatalog
+          ? `Nutzer ${user.email} erhielt die Rolle ${role.displayName} und beide Nachweise waren über API sichtbar.`
+          : `Rolle ${role.displayName} oder ihre Zuweisung zu ${user.email} blieb nur teilweise nachweisbar.`,
+      findings: [
+        `Rolle ${role.displayName} wurde angelegt.`,
+        `Nutzer ${user.email} wurde angelegt.`,
+        `Rolle ${role.displayName} wurde dem Nutzer zugeordnet.`,
+        userRoleVerified
+          ? 'Die Nutzerdetail-API zeigte die Rollenzuweisung.'
+          : 'Die Nutzerdetail-API zeigte die Rollenzuweisung nicht belastbar.',
+        roleVisibleInCatalog
+          ? 'Die Rollenliste enthielt die neue Rolle.'
+          : 'Die Rollenliste enthielt die neue Rolle nicht belastbar.',
+      ],
+      verification: {
+        environment: 'adequate',
+        negative: userRoleVerified ? 'verified' : 'missing',
+        positive: userRoleVerified && roleVisibleInCatalog ? 'verified' : 'missing',
+      },
+    }));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Der browsergeführte Rollen- und Zuweisungslauf ist fehlgeschlagen.';
+
+    return cluster.stories.map((story) => ({
+      storyId: story.id,
+      coverage: 'nachweis_fehlend',
+      notes: message,
+      findings: ['Der browsergeführte Rollen-/Nutzer-/Zuweisungsflow konnte nicht vollständig ausgeführt werden.'],
+      verification: {
+        environment: 'adequate',
+        negative: 'missing',
+        positive: 'missing',
+      },
+    }));
+  } finally {
+    await browser.close();
+  }
+}
+
 async function executeDefaultCluster(
   config: StagehandAdminConfig,
-  cluster: StagehandStoryCluster
+  cluster: StagehandStoryCluster,
+  chromiumFactory: () => Promise<BrowserModule['chromium']>
 ): Promise<readonly StagehandStoryEvidenceInput[]> {
   if (cluster.id === 'tenant-user-create') {
-    return executeTenantUserCreateCluster(config, cluster);
+    return executeTenantUserCreateCluster(config, cluster, chromiumFactory);
+  }
+
+  if (cluster.id === 'tenant-isolation') {
+    return executeTenantIsolationCluster(config, cluster, chromiumFactory);
+  }
+
+  if (cluster.id === 'role-and-permission-management') {
+    return executeRoleAndPermissionManagementCluster(config, cluster, chromiumFactory);
   }
 
   return defaultEvidenceForCluster(cluster);
@@ -459,8 +935,9 @@ export async function runStagehandStoryLoop(
   const resumeSkippedStories = stories.filter((story) => shouldSkipStory(config, story)).length;
   const filteredOutStories = eligibleStories.length - storiesCoveredByClusters.size;
   const skippedStories = resumeSkippedStories + filteredOutStories;
+  const chromiumFactory = options.loadChromium ?? loadChromium;
   const executeCluster =
-    options.executeCluster ?? (async ({ cluster }) => executeDefaultCluster(config, cluster));
+    options.executeCluster ?? (async ({ cluster }) => executeDefaultCluster(config, cluster, chromiumFactory));
   const evidence = (
     await Promise.all(clusters.map((cluster) => executeCluster({ cluster, stories: cluster.stories })))
   )

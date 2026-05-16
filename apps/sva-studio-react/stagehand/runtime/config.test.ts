@@ -71,6 +71,9 @@ describe('parseStagehandAdminConfig', () => {
       STAGEHAND_TENANT_BASE_URL: 'https://de-musterhausen.example.test/',
       STAGEHAND_TENANT_USERNAME: 'tenant-admin',
       STAGEHAND_TENANT_PASSWORD: 'tenant-secret',
+      STAGEHAND_NEIGHBOR_TENANT_BASE_URL: 'https://de-nachbarstadt.example.test/',
+      STAGEHAND_NEIGHBOR_TENANT_USERNAME: 'neighbor-admin',
+      STAGEHAND_NEIGHBOR_TENANT_PASSWORD: 'neighbor-secret',
       OPENAI_API_KEY: 'test-openai-key',
     });
 
@@ -95,8 +98,32 @@ describe('parseStagehandAdminConfig', () => {
           password: 'tenant-secret',
         },
         baseUrl: 'https://de-musterhausen.example.test',
+        neighbor: {
+          admin: {
+            username: 'neighbor-admin',
+            password: 'neighbor-secret',
+          },
+          baseUrl: 'https://de-nachbarstadt.example.test',
+        },
       },
     });
+  });
+
+  it('rejects partial neighbor tenant config deterministically', () => {
+    expect(() =>
+      parseStagehandAdminConfig({
+        STAGEHAND_ADMIN_BASE_URL: 'https://studio.example.test',
+        STAGEHAND_ADMIN_USERNAME: 'admin-user',
+        STAGEHAND_ADMIN_PASSWORD: 'super-secret',
+        STAGEHAND_TENANT_BASE_URL: 'https://de-musterhausen.example.test/',
+        STAGEHAND_TENANT_USERNAME: 'tenant-admin',
+        STAGEHAND_TENANT_PASSWORD: 'tenant-secret',
+        STAGEHAND_NEIGHBOR_TENANT_BASE_URL: 'https://de-nachbarstadt.example.test/',
+        OPENAI_API_KEY: 'test-openai-key',
+      })
+    ).toThrowError(
+      'Missing Stagehand neighbor tenant config env vars: STAGEHAND_NEIGHBOR_TENANT_BASE_URL, STAGEHAND_NEIGHBOR_TENANT_USERNAME, STAGEHAND_NEIGHBOR_TENANT_PASSWORD'
+    );
   });
 
   it('defaults whitespace-only mission values to admin-users-overview', () => {

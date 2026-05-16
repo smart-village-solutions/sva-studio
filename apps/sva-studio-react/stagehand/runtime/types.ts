@@ -24,6 +24,10 @@ export interface StagehandStoryFilters {
 export interface StagehandTenantConfig {
   admin: StagehandAdminCredentials;
   baseUrl: string;
+  neighbor: {
+    admin: StagehandAdminCredentials;
+    baseUrl: string;
+  } | null;
 }
 
 export interface StagehandAdminConfig {

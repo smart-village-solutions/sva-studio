@@ -106,7 +106,275 @@ function createConfig(): StagehandAdminConfig {
         password: 'tenant-secret',
       },
       baseUrl: 'https://de-musterhausen.example.test',
+      neighbor: null,
     },
+  };
+}
+
+function createFakeLocator() {
+  return {
+    count: async () => 1,
+    first: () => ({
+      click: async () => undefined,
+      fill: async (_value: string) => undefined,
+      isVisible: async () => true,
+    }),
+  };
+}
+
+function createFakeChromiumForTenantIsolation() {
+  const state: {
+    createdDisplayName: string | null;
+    createdEmail: string | null;
+    createdUserId: string | null;
+  } = {
+    createdDisplayName: null,
+    createdEmail: null,
+    createdUserId: null,
+  };
+
+  function createPage(kind: 'primary' | 'neighbor') {
+    let currentUrl = '';
+
+    return {
+      getByRole: () => createFakeLocator(),
+      locator: () => createFakeLocator(),
+      goto: async (url: string) => {
+        currentUrl = url;
+      },
+      textContent: async () => {
+        if (kind === 'primary' && currentUrl.endsWith(`/admin/users/${state.createdUserId ?? ''}`)) {
+          return `${state.createdEmail ?? ''} ${state.createdDisplayName ?? ''}`;
+        }
+
+        if (kind === 'neighbor' && currentUrl.endsWith(`/admin/users/${state.createdUserId ?? ''}`)) {
+          return 'Nicht gefunden';
+        }
+
+        return '';
+      },
+      waitForLoadState: async () => undefined,
+      waitForURL: async () => undefined,
+    };
+  }
+
+  function createContext(kind: 'primary' | 'neighbor') {
+    return {
+      close: async () => undefined,
+      newPage: async () => createPage(kind),
+      request: {
+        get: async (url: string) => {
+          if (kind === 'neighbor' && url.endsWith(`/api/v1/iam/users/${state.createdUserId ?? ''}`)) {
+            return {
+              json: async () => ({ error: { message: 'Not found' } }),
+              status: () => 404,
+            };
+          }
+
+          throw new Error(`Unexpected GET URL for ${kind}: ${url}`);
+        },
+        post: async (url: string, input: { data: { displayName: string; email: string } }) => {
+          if (kind === 'primary' && url.endsWith('/api/v1/iam/users')) {
+            state.createdDisplayName = input.data.displayName;
+            state.createdEmail = input.data.email;
+            state.createdUserId = 'user-123';
+
+            return {
+              json: async () => ({ data: { invitation: { status: 'not_requested' }, user: { id: 'user-123' } } }),
+              status: () => 201,
+            };
+          }
+
+          throw new Error(`Unexpected POST URL for ${kind}: ${url}`);
+        },
+      },
+    };
+  }
+
+  const contexts = [createContext('primary'), createContext('neighbor')];
+
+  return {
+    launch: async () => ({
+      close: async () => undefined,
+      newContext: async () => {
+        const next = contexts.shift();
+
+        if (next === undefined) {
+          throw new Error('Unexpected extra browser context request');
+        }
+
+        return next;
+      },
+    }),
+  };
+}
+
+function createFakeChromiumForUserRoleAssignment() {
+  const state: {
+    activeRoleTab: 'assignments' | 'general';
+    createdRoleDisplayName: string | null;
+    createdRoleId: string | null;
+    createdRoleName: string | null;
+    createdUserDisplayName: string | null;
+    createdUserEmail: string | null;
+    createdUserId: string | null;
+    assignedRoleIds: string[];
+    currentUrl: string;
+    formValues: Record<string, string>;
+    loginClicked: boolean;
+  } = {
+    activeRoleTab: 'general',
+    createdRoleDisplayName: null,
+    createdRoleId: null,
+    createdRoleName: null,
+    createdUserDisplayName: null,
+    createdUserEmail: null,
+    createdUserId: null,
+    assignedRoleIds: [],
+    currentUrl: '',
+    formValues: {},
+    loginClicked: false,
+  };
+
+  function createLocator(query: { selector?: string; roleName?: string | RegExp }) {
+    const isVisible = () => {
+      if (query.selector === '#role-assignment-search') {
+        return state.currentUrl.includes('/admin/roles/') && state.activeRoleTab === 'assignments';
+      }
+
+      if (query.roleName instanceof RegExp) {
+        const label = query.roleName.source.toLowerCase();
+        if (label.includes('zuweisen')) {
+          return state.activeRoleTab === 'assignments' && state.formValues['#role-assignment-search'] === state.createdUserEmail;
+        }
+      }
+
+      return true;
+    };
+
+    return {
+      count: async () => (isVisible() ? 1 : 0),
+      first: () => ({
+        click: async () => {
+          if (query.selector === '#kc-login' || (query.roleName instanceof RegExp && query.roleName.source.toLowerCase().includes('login'))) {
+            state.loginClicked = true;
+            state.currentUrl = 'https://de-musterhausen.example.test/dashboard';
+            return;
+          }
+
+          if (query.roleName instanceof RegExp && query.roleName.source.toLowerCase().includes('rolle anlegen')) {
+            state.createdRoleName = state.formValues['#create-role-key'] ?? null;
+            state.createdRoleDisplayName = state.formValues['#create-role-name'] ?? null;
+            state.createdRoleId = 'role-assign-123';
+            state.currentUrl = `https://de-musterhausen.example.test/admin/roles/${state.createdRoleId}`;
+            return;
+          }
+
+          if (query.roleName instanceof RegExp && query.roleName.source.toLowerCase().includes('nutzer anlegen')) {
+            const firstName = state.formValues['#create-user-first-name'] ?? '';
+            const lastName = state.formValues['#create-user-last-name'] ?? '';
+            state.createdUserDisplayName = `${firstName} ${lastName}`.trim();
+            state.createdUserEmail = state.formValues['#create-user-email'] ?? null;
+            state.createdUserId = 'user-role-123';
+            state.currentUrl = `https://de-musterhausen.example.test/admin/users/${state.createdUserId}`;
+            return;
+          }
+
+          if (query.roleName instanceof RegExp && query.roleName.source.toLowerCase().includes('zuweisungen')) {
+            state.activeRoleTab = 'assignments';
+            return;
+          }
+
+          if (query.roleName instanceof RegExp && query.roleName.source.toLowerCase().includes('zuweisen')) {
+            if (state.createdRoleId !== null) {
+              state.assignedRoleIds = [state.createdRoleId];
+            }
+          }
+        },
+        fill: async (value: string) => {
+          if (query.selector !== undefined) {
+            state.formValues[query.selector] = value;
+          }
+        },
+        isVisible: async () => isVisible(),
+        selectOption: async (value: string) => {
+          if (query.selector !== undefined) {
+            state.formValues[query.selector] = value;
+          }
+        },
+      }),
+    };
+  }
+
+  function createPage() {
+    return {
+      getByRole: (_role: string, options: { name: string | RegExp }) => createLocator({ roleName: options.name }),
+      locator: (selector: string) => createLocator({ selector }),
+      goto: async (url: string) => {
+        state.currentUrl = url;
+        if (url.includes('/admin/roles/')) {
+          state.activeRoleTab = 'general';
+        }
+      },
+      textContent: async () => '',
+      url: () => state.currentUrl,
+      waitForLoadState: async () => undefined,
+      waitForURL: async () => undefined,
+    };
+  }
+
+  const context = {
+    close: async () => undefined,
+    newPage: async () => createPage(),
+    request: {
+      get: async (url: string) => {
+        if (url.endsWith(`/api/v1/iam/users/${state.createdUserId ?? ''}`)) {
+          return {
+            json: async () => ({
+              data: {
+                id: state.createdUserId,
+                email: state.createdUserEmail,
+                displayName: state.createdUserDisplayName,
+                roles: state.assignedRoleIds.map((roleId) => ({
+                  roleId,
+                  roleName: state.createdRoleDisplayName,
+                })),
+              },
+            }),
+            status: () => 200,
+          };
+        }
+
+        if (url.endsWith('/api/v1/iam/roles')) {
+          return {
+            json: async () => ({
+              data: [
+                {
+                  id: state.createdRoleId,
+                  displayName: state.createdRoleDisplayName,
+                  roleName: state.createdRoleName,
+                },
+              ],
+            }),
+            status: () => 200,
+          };
+        }
+
+        throw new Error(`Unexpected GET URL: ${url}`);
+      },
+      post: async (
+        url: string
+      ) => {
+        throw new Error(`Unexpected POST URL: ${url}`);
+      },
+    },
+  };
+
+  return {
+    launch: async () => ({
+      close: async () => undefined,
+      newContext: async () => context,
+    }),
   };
 }
 
@@ -352,5 +620,312 @@ describe('runStagehandStoryLoop', () => {
         },
       ],
     });
+  });
+
+  it('verifies tenant isolation with a neighbor tenant negative proof on the default executor path', async () => {
+    const storySourcePath = createTempCatalogFile();
+    const reportsDirectory = mkdtempSync(join(tmpdir(), 'stagehand-story-loop-tenant-isolation-'));
+    temporaryDirectories.push(reportsDirectory);
+
+    const result = await runStagehandStoryLoop(
+      {
+        ...createConfig(),
+        storyFilters: {
+          clusters: ['tenant-isolation'],
+          packageIds: [],
+          resume: false,
+          storyIds: [],
+        },
+        tenant: {
+          admin: {
+            username: 'tenant-admin',
+            password: 'tenant-secret',
+          },
+          baseUrl: 'https://de-musterhausen.example.test',
+          neighbor: {
+            admin: {
+              username: 'neighbor-admin',
+              password: 'neighbor-secret',
+            },
+            baseUrl: 'https://de-nachbarstadt.example.test',
+          },
+        },
+      },
+      {
+        generatedAt: '2026-05-16T18:00:00.000Z',
+        loadChromium: async () => createFakeChromiumForTenantIsolation() as never,
+        reportsRoot: join(reportsDirectory, 'reports'),
+        storySourcePath,
+      }
+    );
+
+    expect(result.summary).toEqual({
+      clusters: 1,
+      storiesClassified: 1,
+      storiesFailedEvidence: 0,
+      storiesPassed: 1,
+      storiesSkipped: 1,
+    });
+
+    expect(JSON.parse(readFileSync(result.artifacts.overlayPath, 'utf8'))).toMatchObject({
+      stories: [
+        {
+          storyId: 37,
+          studioCheck: {
+            status: 'erfuellt',
+            coverage: 'vorhanden',
+          },
+          findings: expect.arrayContaining([
+            expect.stringContaining('Nutzer'),
+            expect.stringContaining('Nachbar-Mandanten'),
+          ]),
+        },
+      ],
+    });
+  });
+
+  it('creates a user and role, assigns the role, and verifies the assignment on the default executor path', async () => {
+    const storySourcePath = createTempCatalogFile();
+    const reportsDirectory = mkdtempSync(join(tmpdir(), 'stagehand-story-loop-role-assignment-'));
+    temporaryDirectories.push(reportsDirectory);
+
+    const result = await runStagehandStoryLoop(
+      {
+        ...createConfig(),
+        storyFilters: {
+          clusters: ['role-and-permission-management'],
+          packageIds: [],
+          resume: false,
+          storyIds: [],
+        },
+      },
+      {
+        generatedAt: '2026-05-16T18:00:00.000Z',
+        loadChromium: async () => createFakeChromiumForUserRoleAssignment() as never,
+        reportsRoot: join(reportsDirectory, 'reports'),
+        storySourcePath: (() => {
+          writeFileSync(
+            storySourcePath,
+            JSON.stringify(
+              {
+                version: '2.7',
+                scope: 'IAM',
+                updatedAt: '2026-03-19',
+                description: 'fixture',
+                packages: [
+                  {
+                    id: 'IAM-P4',
+                    title: 'Rollen und Rechte',
+                    stories: [
+                      {
+                        id: 23,
+                        role: 'Organisations-Admin',
+                        story: 'Als Organisations-Admin möchte ich Rollen verwalten.',
+                        packageId: 'IAM-P4',
+                        relatedPackageIds: [],
+                        legacy: true,
+                        trigger: 'fixture',
+                        preconditions: [],
+                        acceptanceCriteria: ['Rollen können Nutzern zugeordnet werden.'],
+                        evidence: ['Admin-UI'],
+                        studioCheck: {
+                          status: 'offen',
+                          coverage: 'nicht_geprueft',
+                          notes: '',
+                        },
+                        legacyId: 23,
+                        priority: 1,
+                      },
+                    ],
+                  },
+                ],
+              },
+              null,
+              2
+            ),
+            'utf8'
+          );
+
+          return storySourcePath;
+        })(),
+      }
+    );
+
+    expect(result.summary).toEqual({
+      clusters: 1,
+      storiesClassified: 1,
+      storiesFailedEvidence: 0,
+      storiesPassed: 1,
+      storiesSkipped: 0,
+    });
+
+    expect(JSON.parse(readFileSync(result.artifacts.overlayPath, 'utf8'))).toMatchObject({
+      stories: [
+        {
+          storyId: 23,
+          studioCheck: {
+            status: 'erfuellt',
+            coverage: 'vorhanden',
+          },
+          findings: expect.arrayContaining([
+            expect.stringContaining('Rolle'),
+            expect.stringContaining('Nutzer'),
+          ]),
+        },
+      ],
+    });
+  });
+
+  it('accepts role detail URLs with search params after browser-driven creation', async () => {
+    const storySourcePath = createTempCatalogFile();
+    const reportsDirectory = mkdtempSync(join(tmpdir(), 'stagehand-story-loop-role-create-query-'));
+    temporaryDirectories.push(reportsDirectory);
+
+    const roleWithQueryChromium = {
+      launch: async () => ({
+        close: async () => undefined,
+        newContext: async () => ({
+          close: async () => undefined,
+          newPage: async () => {
+            let currentUrl = 'https://de-musterhausen.example.test/dashboard';
+            const formValues: Record<string, string> = {};
+
+            const createLocator = (query: { selector?: string; roleName?: string | RegExp }) => ({
+              count: async () => 1,
+              first: () => ({
+                click: async () => {
+                  if (query.roleName instanceof RegExp && query.roleName.source.toLowerCase().includes('rolle anlegen')) {
+                    currentUrl =
+                      'https://de-musterhausen.example.test/admin/roles/64099c2a-a598-409f-9229-4d421d4f459d?tab=general';
+                  }
+                },
+                fill: async (value: string) => {
+                  if (query.selector) {
+                    formValues[query.selector] = value;
+                  }
+                },
+                isVisible: async () => true,
+              }),
+            });
+
+            return {
+              getByRole: (_role: string, options: { name: string | RegExp }) => createLocator({ roleName: options.name }),
+              locator: (selector: string) => createLocator({ selector }),
+              goto: async (url: string) => {
+                currentUrl = url;
+              },
+              textContent: async () => '',
+              url: () => currentUrl,
+              waitForLoadState: async () => undefined,
+              waitForURL: async (matcher: RegExp) => {
+                if (matcher.test(currentUrl) === false) {
+                  throw new Error(`URL did not match: ${currentUrl}`);
+                }
+              },
+            };
+          },
+          request: {
+            get: async (url: string) => {
+              if (url.endsWith('/api/v1/iam/roles')) {
+                return {
+                  json: async () => ({
+                    data: [
+                      {
+                        id: '64099c2a-a598-409f-9229-4d421d4f459d',
+                        displayName: 'Stagehand Role 123456',
+                        roleName: 'stagehand_role_123456',
+                      },
+                    ],
+                  }),
+                  status: () => 200,
+                };
+              }
+
+              if (url.endsWith('/api/v1/iam/users/user-role-123')) {
+                return {
+                  json: async () => ({
+                    data: {
+                      roles: [
+                        {
+                          roleId: '64099c2a-a598-409f-9229-4d421d4f459d',
+                          roleName: 'Stagehand Role 123456',
+                        },
+                      ],
+                    },
+                  }),
+                  status: () => 200,
+                };
+              }
+
+              throw new Error(`Unexpected GET URL: ${url}`);
+            },
+          },
+        }),
+      }),
+    };
+
+    const result = await runStagehandStoryLoop(
+      {
+        ...createConfig(),
+        storyFilters: {
+          clusters: ['role-and-permission-management'],
+          packageIds: [],
+          resume: false,
+          storyIds: [],
+        },
+      },
+      {
+        generatedAt: '2026-05-16T18:00:00.000Z',
+        loadChromium: async () => roleWithQueryChromium as never,
+        reportsRoot: join(reportsDirectory, 'reports'),
+        storySourcePath: (() => {
+          writeFileSync(
+            storySourcePath,
+            JSON.stringify(
+              {
+                version: '2.7',
+                scope: 'IAM',
+                updatedAt: '2026-03-19',
+                description: 'fixture',
+                packages: [
+                  {
+                    id: 'IAM-P4',
+                    title: 'Rollen und Rechte',
+                    stories: [
+                      {
+                        id: 23,
+                        role: 'Organisations-Admin',
+                        story: 'Als Organisations-Admin möchte ich Rollen verwalten.',
+                        packageId: 'IAM-P4',
+                        relatedPackageIds: [],
+                        legacy: true,
+                        trigger: 'fixture',
+                        preconditions: [],
+                        acceptanceCriteria: ['Rollen können Nutzern zugeordnet werden.'],
+                        evidence: ['Admin-UI'],
+                        studioCheck: {
+                          status: 'offen',
+                          coverage: 'nicht_geprueft',
+                          notes: '',
+                        },
+                        legacyId: 23,
+                        priority: 1,
+                      },
+                    ],
+                  },
+                ],
+              },
+              null,
+              2
+            ),
+            'utf8'
+          );
+
+          return storySourcePath;
+        })(),
+      }
+    );
+
+    expect(result.summary.storiesPassed).toBe(1);
   });
 });

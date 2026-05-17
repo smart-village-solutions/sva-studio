@@ -9,7 +9,6 @@ const wasteManagementShiftContexts = ['all', 'global', 'tour'] as const;
 const wasteManagementFractionSortFields = ['name', 'containerSize', 'color', 'description', 'status'] as const;
 const wasteManagementFractionSortDirections = ['asc', 'desc'] as const;
 const allowedPageSizes = new Set([10, 25, 50, 100]);
-export const wasteManagementAllPageSize = 2_147_483_647;
 
 export type WasteManagementTabId = (typeof wasteManagementTabs)[number];
 export type WasteManagementMasterDataTabId = (typeof wasteManagementMasterDataTabs)[number];
@@ -114,11 +113,8 @@ const normalizePositiveInteger = (value: unknown, fallback: number): number => {
 };
 
 const normalizePageSize = (value: unknown): number => {
-  if (value === 'all') {
-    return wasteManagementAllPageSize;
-  }
   const pageSize = normalizePositiveInteger(value, 25);
-  return allowedPageSizes.has(pageSize) || pageSize === wasteManagementAllPageSize ? pageSize : 25;
+  return allowedPageSizes.has(pageSize) ? pageSize : 25;
 };
 
 const normalizeMasterDataTabForTab = (
@@ -146,7 +142,7 @@ export const normalizeWasteManagementSearchParams = (
     locationsView: normalizeLocationsView(search.locationsView),
     schedulingView: normalizeSchedulingView(search.schedulingView),
     q: compactOptionalString(search.q) ?? '',
-    page: pageSize === wasteManagementAllPageSize ? 1 : normalizePositiveInteger(search.page, 1),
+    page: normalizePositiveInteger(search.page, 1),
     pageSize,
     status: normalizeStatus(search.status),
     shiftContext: normalizeShiftContext(search.shiftContext),

@@ -6,7 +6,6 @@ export const wasteManagementPluginTranslationsDEMeta = {
     "pagination": {
       "ariaLabel": "Tabellen-Paginierung",
       "pageSizeLabel": "Zeige",
-      "all": "alle",
       "rangeLabel": "{{start}} bis {{end}} von {{total}} Ergebnissen",
       "previous": "Zurück",
       "next": "Weiter"

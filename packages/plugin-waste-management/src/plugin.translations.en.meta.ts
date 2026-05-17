@@ -6,7 +6,6 @@ export const wasteManagementPluginTranslationsENMeta = {
     "pagination": {
       "ariaLabel": "Table pagination",
       "pageSizeLabel": "Show",
-      "all": "all",
       "rangeLabel": "{{start}} to {{end}} of {{total}} results",
       "previous": "Previous",
       "next": "Next"

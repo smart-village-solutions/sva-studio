@@ -128,7 +128,7 @@ describe('waste-management search params', () => {
     });
   });
 
-  it('forces the page back to 1 when the all-page-size sentinel is used', () => {
+  it('falls back to the default page size when an unsupported page size is used', () => {
     expect(
       normalizeWasteManagementSearchParams({
         page: '3',
@@ -142,8 +142,8 @@ describe('waste-management search params', () => {
       locationsView: 'list',
       schedulingView: 'list',
       q: '',
-      page: 1,
-      pageSize: 2_147_483_647,
+      page: 3,
+      pageSize: 25,
       status: 'all',
       shiftContext: 'all',
       fractionsSortBy: 'name',

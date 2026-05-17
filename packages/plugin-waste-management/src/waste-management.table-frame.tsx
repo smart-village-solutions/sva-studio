@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react';
 import { Button, Select } from '@sva/studio-ui-react';
-import { wasteManagementAllPageSize } from './search-params.js';
 
 export const createPagedItems = <TItem,>({
   items,
@@ -11,15 +10,6 @@ export const createPagedItems = <TItem,>({
   readonly page: number;
   readonly pageSize: number;
 }) => {
-  if (pageSize === wasteManagementAllPageSize) {
-    return {
-      items,
-      pageCount: 1,
-      safePage: 1,
-      totalItems: items.length,
-    } as const;
-  }
-
   const pageCount = Math.max(1, Math.ceil(items.length / pageSize));
   const safePage = Math.min(Math.max(page, 1), pageCount);
   const startIndex = (safePage - 1) * pageSize;
@@ -61,16 +51,13 @@ export const WastePanelTableBottomBar = ({
       <Select
         aria-label={pt('meta.pagination.pageSizeLabel')}
         className="h-9 w-auto min-w-24"
-        value={pageSize === wasteManagementAllPageSize ? 'all' : String(pageSize)}
-        onChange={(event) =>
-          onPageSizeChange(event.target.value === 'all' ? wasteManagementAllPageSize : Number(event.target.value))
-        }
+        value={String(pageSize)}
+        onChange={(event) => onPageSizeChange(Number(event.target.value))}
       >
         <option value="10">10</option>
         <option value="25">25</option>
         <option value="50">50</option>
         <option value="100">100</option>
-        <option value="all">{pt('meta.pagination.all')}</option>
       </Select>
     </div>
     <div className="flex items-center gap-4">

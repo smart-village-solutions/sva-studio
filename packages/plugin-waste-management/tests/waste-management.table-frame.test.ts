@@ -1,20 +1,19 @@
 import { describe, expect, it } from 'vitest';
 
-import { wasteManagementAllPageSize } from '../src/search-params.js';
 import { createPagedItems } from '../src/waste-management.table-frame.js';
 
 describe('createPagedItems', () => {
-  it('collapses the all-page-size sentinel into a single full page', () => {
+  it('caps the active page to the available page count', () => {
     expect(
       createPagedItems({
         items: ['a', 'b', 'c'],
         page: 3,
-        pageSize: wasteManagementAllPageSize,
+        pageSize: 2,
       })
     ).toEqual({
-      items: ['a', 'b', 'c'],
-      pageCount: 1,
-      safePage: 1,
+      items: ['c'],
+      pageCount: 2,
+      safePage: 2,
       totalItems: 3,
     });
   });

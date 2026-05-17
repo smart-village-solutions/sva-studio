@@ -113,6 +113,7 @@ const ensurePluginOperationHandlersRegistered = async (): Promise<void> => {
     await registerPluginOperationHandlers();
   })().catch((error) => {
     pluginOperationHandlerRegistrationPromise = null;
+    registerStudioPluginOperationHandlersPromise = null;
     throw error;
   });
 
@@ -206,6 +207,10 @@ const instrumentedFetch: RequestHandler<Register> = async (...args) => {
       status: mainserverPoiResponse.status,
     });
     return mainserverPoiResponse;
+  }
+
+  if (pluginOperationWorkerEnabled) {
+    await ensurePluginOperationHandlersRegistered();
   }
 
   const dispatchAuthRouteRequest = await getDispatchAuthRouteRequest();

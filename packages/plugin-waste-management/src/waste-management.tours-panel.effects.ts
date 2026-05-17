@@ -118,12 +118,13 @@ export const useWasteToursEditRouteHydration = ({
       return;
     }
 
+    const latestController = latestControllerRef.current;
+    latestController.setDialogMode('edit');
+
     if (controller.tourForm.id === routeTour.id) {
       return;
     }
 
-    const latestController = latestControllerRef.current;
-    latestController.setDialogMode('edit');
     latestController.setTourForm(mapTourToForm(routeTour));
   }, [
     controller.overview,

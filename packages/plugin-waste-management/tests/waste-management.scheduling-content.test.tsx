@@ -103,4 +103,61 @@ describe('WasteSchedulingContent', () => {
     expect(onEditGlobalShiftDialog).toHaveBeenCalledWith(expect.objectContaining({ id: 'global-1' }));
     expect(onEditTourShiftDialog).toHaveBeenCalledWith(expect.objectContaining({ id: 'tour-shift-1' }));
   });
+
+  it('does not clamp the shared page from the global list when the tour list still has that page', () => {
+    const onPageChange = vi.fn();
+
+    render(
+      <WasteSchedulingContent
+        message={null}
+        globalDateShifts={[
+          {
+            id: 'global-1',
+            originalDate: '2026-01-01',
+            actualDate: '2026-01-02',
+            description: 'Neujahr',
+            hasYear: true,
+            reasonType: 'holiday',
+            reasonKey: 'holiday.new-year',
+            tourIds: ['tour-1'],
+          },
+        ] as never}
+        tourDateShifts={[
+          {
+            id: 'tour-shift-1',
+            tourId: 'tour-1',
+            originalDate: '2026-02-01',
+            actualDate: '2026-02-03',
+            description: 'Baustelle',
+            hasYear: false,
+            reasonType: 'operational-disruption',
+            reasonKey: 'ops.roadwork',
+            followUpMode: 'propagate-series',
+          },
+          {
+            id: 'tour-shift-2',
+            tourId: 'tour-2',
+            originalDate: '2026-02-04',
+            actualDate: '2026-02-05',
+            description: 'Streik',
+            hasYear: false,
+            reasonType: 'operational-disruption',
+            reasonKey: 'ops.strike',
+            followUpMode: 'propagate-series',
+          },
+        ] as never}
+        onOpenCreateGlobalShiftDialog={vi.fn()}
+        onOpenCreateTourShiftDialog={vi.fn()}
+        onEditGlobalShiftDialog={vi.fn()}
+        onEditTourShiftDialog={vi.fn()}
+        page={2}
+        pageSize={1}
+        onPageChange={onPageChange}
+        onPageSizeChange={vi.fn()}
+      />
+    );
+
+    expect(onPageChange).not.toHaveBeenCalled();
+    expect(screen.getByText('tour-2')).toBeTruthy();
+  });
 });

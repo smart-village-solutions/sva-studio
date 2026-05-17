@@ -77,12 +77,11 @@ export const WasteMasterDataFractionsTabView = ({
       }}
       page={search.page}
       pageSize={search.pageSize}
-      onPageChange={(page) => {
-        void navigate({ to: '/plugins/waste-management', search: { ...search, page } });
-      }}
-      onPageSizeChange={(pageSize) => {
-        void navigate({ to: '/plugins/waste-management', search: { ...search, page: 1, pageSize } });
-      }}
+      onPageChange={(page) => void navigate({ to: '/plugins/waste-management', search: { ...search, page } })}
+      onSyncPageChange={(page) =>
+        void navigate({ to: '/plugins/waste-management', search: { ...search, page }, replace: true })}
+      onPageSizeChange={(pageSize) =>
+        void navigate({ to: '/plugins/waste-management', search: { ...search, page: 1, pageSize } })}
       saving={controller.saving}
     />
   );

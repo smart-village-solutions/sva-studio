@@ -1,6 +1,6 @@
 import type { WasteFractionRecord } from '@sva/plugin-sdk';
 import { useMemo, useState } from 'react';
-import { createPagedItems } from './waste-management.table-frame.js';
+import { createPagedItems, usePagedRouteSync } from './waste-management.table-frame.js';
 import { useWasteTabPanelActions } from './waste-management.tab-panel-actions.js';
 import {
   createFractionSorting,
@@ -27,6 +27,7 @@ export const WasteMasterDataFractionsContent = ({
   page,
   pageSize,
   onPageChange,
+  onSyncPageChange,
   onPageSizeChange,
   saving,
 }: WasteFractionsContentProps) => {
@@ -45,6 +46,7 @@ export const WasteMasterDataFractionsContent = ({
   const bulkActions = useFractionBulkActions({ saving, onDeleteFractions });
   const columns = useFractionColumns({ saving, onToggleFractionStatus });
 
+  usePagedRouteSync({ page, safePage: pagedFractions.safePage, onPageChange, onSyncPageChange });
   useWasteTabPanelActions(null);
 
   return (

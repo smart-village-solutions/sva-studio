@@ -3,8 +3,7 @@ import type { WasteTourRecord } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 
 import type { WasteManagementMasterDataOverview, WasteManagementSchedulingOverview } from './waste-management.api.js';
-import { WastePanelTableBottomBar } from './waste-management.table-frame.js';
-import { createPagedItems } from './waste-management.table-frame.js';
+import { WastePanelTableBottomBar, createPagedItems, usePagedRouteSync } from './waste-management.table-frame.js';
 import { WasteToursTableHeader } from './waste-management.tours.table.parts.js';
 import { WasteToursTableRow } from './waste-management.tours.table-row.js';
 
@@ -21,6 +20,7 @@ type WasteToursTableProps = {
   readonly page: number;
   readonly pageSize: number;
   readonly onPageChange: (page: number) => void;
+  readonly onSyncPageChange?: (page: number) => void;
   readonly onPageSizeChange: (pageSize: number) => void;
   readonly onToggleSelectAllVisible: (checked: boolean) => void;
   readonly onToggleSelectedTour: (tourId: string, checked: boolean) => void;
@@ -45,6 +45,7 @@ export const WasteToursTable = ({
   page,
   pageSize,
   onPageChange,
+  onSyncPageChange,
   onPageSizeChange,
   onToggleSelectAllVisible,
   onToggleSelectedTour,
@@ -58,11 +59,12 @@ export const WasteToursTable = ({
   const pt = usePluginTranslation('wasteManagement');
   const pagedTours = useMemo(() => createPagedItems({ items: tours, page, pageSize }), [page, pageSize, tours]);
   const fractionsById = useMemo(() => new Map(fractions.map((fraction) => [fraction.id, fraction.name] as const)), [fractions]);
+  usePagedRouteSync({ page, safePage: pagedTours.safePage, onPageChange, onSyncPageChange });
 
   return (
     <section className="overflow-hidden rounded-none border-y border-border bg-white shadow-shell">
       <div className="overflow-x-auto">
-        <table className="min-w-full border-collapse" aria-label={pt('tours.table.ariaLabel')}>
+        <table className="min-w-full border-collapse">
           <caption className="sr-only">{pt('tours.table.caption')}</caption>
           <WasteToursTableHeader
             allVisibleSelected={allVisibleSelected}

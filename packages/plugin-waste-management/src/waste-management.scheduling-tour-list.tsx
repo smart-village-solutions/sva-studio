@@ -2,7 +2,12 @@ import type { WasteTourDateShiftRecord } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Button } from '@sva/studio-ui-react';
 
-import { WastePanelTableBottomBar, WastePanelTableTopBar, createPagedItems } from './waste-management.table-frame.js';
+import {
+  WastePanelTableBottomBar,
+  WastePanelTableTopBar,
+  createPagedItems,
+  usePagedRouteSync,
+} from './waste-management.table-frame.js';
 import { WasteSchedulingListActionCell, WasteSchedulingMissingValue } from './waste-management.scheduling-list.parts.js';
 
 type WasteSchedulingTourShiftListProps = {
@@ -12,8 +17,31 @@ type WasteSchedulingTourShiftListProps = {
   readonly page: number;
   readonly pageSize: number;
   readonly onPageChange: (page: number) => void;
+  readonly onSyncPageChange?: (page: number) => void;
   readonly onPageSizeChange: (pageSize: number) => void;
 };
+
+type WasteManagementTranslator = ReturnType<typeof usePluginTranslation>;
+
+type WasteSchedulingTourTableHeaderProps = {
+  readonly pt: WasteManagementTranslator;
+};
+
+const WasteSchedulingTourTableHeader = ({ pt }: WasteSchedulingTourTableHeaderProps) => (
+  <thead className="bg-muted/20 text-left text-[13px] text-foreground">
+    <tr className="border-b border-border/70">
+      <th scope="col" className="px-3 py-3">{pt('scheduling.tour.table.tourId')}</th>
+      <th scope="col" className="px-3 py-3">{pt('scheduling.tour.table.originalDate')}</th>
+      <th scope="col" className="px-3 py-3">{pt('scheduling.tour.table.actualDate')}</th>
+      <th scope="col" className="px-3 py-3">{pt('scheduling.tour.table.reason')}</th>
+      <th scope="col" className="px-3 py-3">{pt('scheduling.tour.table.description')}</th>
+      <th scope="col" className="px-3 py-3">{pt('scheduling.tour.table.followUpMode')}</th>
+      <th scope="col" className="px-3 py-3">{pt('scheduling.tour.table.hasYear')}</th>
+      <th scope="col" className="px-3 py-3">{pt('scheduling.tour.table.reasonKey')}</th>
+      <th scope="col" className="px-3 py-3 text-right">{pt('scheduling.tour.table.actions')}</th>
+    </tr>
+  </thead>
+);
 
 export const WasteSchedulingTourShiftList = ({
   shifts,
@@ -22,10 +50,12 @@ export const WasteSchedulingTourShiftList = ({
   page,
   pageSize,
   onPageChange,
+  onSyncPageChange,
   onPageSizeChange,
 }: WasteSchedulingTourShiftListProps) => {
   const pt = usePluginTranslation('wasteManagement');
   const pagedShifts = createPagedItems({ items: shifts, page, pageSize });
+  usePagedRouteSync({ page, safePage: pagedShifts.safePage, onPageChange, onSyncPageChange });
 
   return (
     <div className="space-y-3">
@@ -44,19 +74,7 @@ export const WasteSchedulingTourShiftList = ({
         <div className="overflow-x-auto">
           <table className="min-w-full border-collapse" aria-label={pt('scheduling.tour.table.ariaLabel')}>
             <caption className="sr-only">{pt('scheduling.tour.table.caption')}</caption>
-            <thead className="bg-muted/20 text-left text-[13px] text-foreground">
-              <tr className="border-b border-border/70">
-                <th scope="col" className="px-3 py-3">{pt('scheduling.tour.table.tourId')}</th>
-                <th scope="col" className="px-3 py-3">{pt('scheduling.tour.table.originalDate')}</th>
-                <th scope="col" className="px-3 py-3">{pt('scheduling.tour.table.actualDate')}</th>
-                <th scope="col" className="px-3 py-3">{pt('scheduling.tour.table.reason')}</th>
-                <th scope="col" className="px-3 py-3">{pt('scheduling.tour.table.description')}</th>
-                <th scope="col" className="px-3 py-3">{pt('scheduling.tour.table.followUpMode')}</th>
-                <th scope="col" className="px-3 py-3">{pt('scheduling.tour.table.hasYear')}</th>
-                <th scope="col" className="px-3 py-3">{pt('scheduling.tour.table.reasonKey')}</th>
-                <th scope="col" className="px-3 py-3 text-right">{pt('scheduling.tour.table.actions')}</th>
-              </tr>
-            </thead>
+            <WasteSchedulingTourTableHeader pt={pt} />
             <tbody>
               {pagedShifts.items.map((shift) => (
                 <tr key={shift.id} className="animate-row-hover border-b border-border/60 align-top text-[14px] text-foreground hover:bg-muted/20 last:border-b-0">

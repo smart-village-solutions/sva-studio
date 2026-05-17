@@ -38,6 +38,7 @@ export type WasteManagementSearchParams = Readonly<{
   regionId?: string;
   cityId?: string;
   wasteFractionId?: string;
+  collectionLocationId?: string;
   tourId?: string;
   tourDateShiftId?: string;
   globalDateShiftId?: string;
@@ -153,6 +154,7 @@ export const normalizeWasteManagementSearchParams = (
     regionId: compactOptionalString(search.regionId),
     cityId: compactOptionalString(search.cityId),
     wasteFractionId: compactOptionalString(search.wasteFractionId),
+    collectionLocationId: compactOptionalString(search.collectionLocationId),
     tourId: compactOptionalString(search.tourId),
     tourDateShiftId: compactOptionalString(search.tourDateShiftId),
     globalDateShiftId: compactOptionalString(search.globalDateShiftId),

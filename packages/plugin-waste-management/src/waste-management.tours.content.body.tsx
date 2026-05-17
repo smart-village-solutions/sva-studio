@@ -25,6 +25,7 @@ type WasteToursContentBodyProps = {
   readonly status: 'all' | 'active' | 'inactive';
   readonly onOpenCreateDialog: () => void;
   readonly onPageChange: (page: number) => void;
+  readonly onSyncPageChange?: (page: number) => void;
   readonly onPageSizeChange: (pageSize: number) => void;
   readonly onQueryChange: (value: string) => void;
   readonly onStatusChange: (value: 'all' | 'active' | 'inactive') => void;
@@ -66,6 +67,7 @@ export const WasteToursContentBody = (props: WasteToursContentBodyProps) => (
       page={props.page}
       pageSize={props.pageSize}
       onPageChange={props.onPageChange}
+      onSyncPageChange={props.onSyncPageChange}
       onPageSizeChange={props.onPageSizeChange}
       onToggleSelectAllVisible={props.toggleSelectAllVisible}
       onToggleSelectedTour={props.toggleSelectedTour}

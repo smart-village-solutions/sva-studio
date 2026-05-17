@@ -67,15 +67,33 @@ export const useWasteMasterDataFractionEditRouteHydration = ({
       return;
     }
 
-    const routeFraction = controller.overview?.fractions.find((fraction) => fraction.id === search.wasteFractionId);
-    if (!routeFraction || controller.fractionForm.id === routeFraction.id) {
+    if (!controller.overview) {
+      return;
+    }
+
+    const routeFraction = controller.overview.fractions.find((fraction) => fraction.id === search.wasteFractionId);
+    if (!routeFraction) {
+      void navigate({
+        to: '/plugins/waste-management',
+        search: {
+          ...search,
+          fractionsView: 'list',
+          wasteFractionId: undefined,
+        },
+        replace: true,
+      });
       return;
     }
 
     controller.setDialogMode('edit');
-    controller.setFractionForm(wasteMasterDataFormMappers.fractionToForm(routeFraction));
     controller.setMessage(null);
     controller.setLastOutcome(null);
+
+    if (controller.fractionForm.id === routeFraction.id) {
+      return;
+    }
+
+    controller.setFractionForm(wasteMasterDataFormMappers.fractionToForm(routeFraction));
   }, [
     controller.fractionForm.id,
     controller.overview,
@@ -114,6 +132,7 @@ export const useWasteMasterDataLocationSuccessRedirect = ({
       search: {
         ...search,
         locationsView: 'list',
+        collectionLocationId: undefined,
       },
       replace: true,
     });
@@ -122,6 +141,75 @@ export const useWasteMasterDataLocationSuccessRedirect = ({
     controller.setLastOutcome,
     controller.setLocationDialogOpen,
     locationViewSuccess,
+    navigate,
+    search,
+  ]);
+};
+
+export const useWasteMasterDataLocationEditRouteHydration = ({
+  controller,
+  navigate,
+  search,
+}: {
+  readonly controller: WasteMasterDataController;
+  readonly navigate: ReturnType<typeof useNavigate>;
+  readonly search: WasteManagementSearchParams;
+}) => {
+  useEffect(() => {
+    if (search.locationsView !== 'edit') {
+      return;
+    }
+
+    if (!search.collectionLocationId) {
+      void navigate({
+        to: '/plugins/waste-management',
+        search: {
+          ...search,
+          locationsView: 'list',
+          collectionLocationId: undefined,
+        },
+        replace: true,
+      });
+      return;
+    }
+
+    if (!controller.overview) {
+      return;
+    }
+
+    const routeLocation = controller.overview.collectionLocations.find(
+      (location) => location.id === search.collectionLocationId,
+    );
+
+    if (!routeLocation) {
+      void navigate({
+        to: '/plugins/waste-management',
+        search: {
+          ...search,
+          locationsView: 'list',
+          collectionLocationId: undefined,
+        },
+        replace: true,
+      });
+      return;
+    }
+
+    controller.setLocationDialogMode('edit');
+    controller.setMessage(null);
+    controller.setLastOutcome(null);
+
+    if (controller.locationForm?.id === routeLocation.id) {
+      return;
+    }
+
+    controller.setLocationForm(wasteMasterDataFormMappers.collectionLocationToForm(routeLocation));
+  }, [
+    controller.locationForm?.id,
+    controller.overview,
+    controller.setLastOutcome,
+    controller.setLocationDialogMode,
+    controller.setLocationForm,
+    controller.setMessage,
     navigate,
     search,
   ]);

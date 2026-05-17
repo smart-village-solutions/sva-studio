@@ -45,6 +45,7 @@ export const WasteSchedulingContent = ({
   page,
   pageSize,
   onPageChange,
+  onSyncPageChange,
   onPageSizeChange,
 }: {
   readonly message: StatusMessage | null;
@@ -57,6 +58,7 @@ export const WasteSchedulingContent = ({
   readonly page: number;
   readonly pageSize: number;
   readonly onPageChange: (page: number) => void;
+  readonly onSyncPageChange?: (page: number) => void;
   readonly onPageSizeChange: (pageSize: number) => void;
 }) => {
   useWasteTabPanelActions(null);
@@ -81,6 +83,7 @@ export const WasteSchedulingContent = ({
           page={page}
           pageSize={pageSize}
           onPageChange={onPageChange}
+          onSyncPageChange={onSyncPageChange}
           onPageSizeChange={onPageSizeChange}
         />
       </div>

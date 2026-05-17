@@ -26,6 +26,7 @@ export type WasteToursContentProps = {
   readonly query: string;
   readonly status: 'all' | 'active' | 'inactive';
   readonly onPageChange: (page: number) => void;
+  readonly onSyncPageChange?: (page: number) => void;
   readonly onPageSizeChange: (pageSize: number) => void;
   readonly onQueryChange: (value: string) => void;
   readonly onStatusChange: (value: 'all' | 'active' | 'inactive') => void;

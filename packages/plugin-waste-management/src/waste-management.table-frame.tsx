@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { Button, Select } from '@sva/studio-ui-react';
 
 export const createPagedItems = <TItem,>({
@@ -20,6 +20,26 @@ export const createPagedItems = <TItem,>({
     safePage,
     totalItems: items.length,
   } as const;
+};
+
+export const usePagedRouteSync = ({
+  page,
+  safePage,
+  onPageChange,
+  onSyncPageChange,
+}: {
+  readonly page: number;
+  readonly safePage: number;
+  readonly onPageChange: (page: number) => void;
+  readonly onSyncPageChange?: (page: number) => void;
+}) => {
+  useEffect(() => {
+    if (page === safePage) {
+      return;
+    }
+
+    (onSyncPageChange ?? onPageChange)(safePage);
+  }, [onPageChange, onSyncPageChange, page, safePage]);
 };
 
 export const WastePanelTableTopBar = ({ children }: { readonly children?: ReactNode }) => (

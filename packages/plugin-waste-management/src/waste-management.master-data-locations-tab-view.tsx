@@ -50,6 +50,7 @@ export const WasteMasterDataLocationsTabView = ({
       selectedTourId={search.tourId}
       onTourFilterChange={navigation.setTourFilter}
       onPageChange={navigation.setPage}
+      onSyncPageChange={navigation.syncPage}
       onPageSizeChange={navigation.setPageSize}
       onToggleSelectAll={controller.toggleSelectAllFilteredLocations}
       onToggleLocation={controller.toggleLocationSelection}

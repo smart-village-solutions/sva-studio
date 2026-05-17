@@ -29,6 +29,7 @@ export type WasteFractionsContentProps = {
   readonly page: number;
   readonly pageSize: number;
   readonly onPageChange: (page: number) => void;
+  readonly onSyncPageChange?: (page: number) => void;
   readonly onPageSizeChange: (pageSize: number) => void;
   readonly saving?: boolean;
 };

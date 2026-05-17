@@ -40,6 +40,7 @@ export const WasteToursListView = ({
       query={search.q}
       status={search.status}
       onPageChange={navigation.setPage}
+      onSyncPageChange={navigation.syncPage}
       onPageSizeChange={navigation.setPageSize}
       onQueryChange={navigation.setQuery}
       onStatusChange={navigation.setStatus}

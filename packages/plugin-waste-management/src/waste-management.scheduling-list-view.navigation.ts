@@ -6,6 +6,8 @@ import { useWasteSchedulingController } from './waste-management.scheduling.cont
 import {
   createDefaultGlobalDateShiftForm,
   createDefaultTourDateShiftForm,
+  mapGlobalDateShiftToForm,
+  mapTourDateShiftToForm,
 } from './waste-management.scheduling.shared.js';
 
 type WasteSchedulingController = ReturnType<typeof useWasteSchedulingController>;
@@ -98,14 +100,18 @@ export const useWasteSchedulingListNavigation = (
       void navigate({ to: '/plugins/waste-management', search: toCreateTourShiftSearch(search) });
     },
     openEditGlobal: (shift: WasteGlobalDateShiftRecord) => {
-      controller.openEditGlobalShiftDialog(shift);
+      controller.setGlobalDialogMode('edit');
       controller.setGlobalDialogOpen(false);
+      controller.setGlobalShiftForm(mapGlobalDateShiftToForm(shift));
+      controller.setMessage(null);
       controller.setLastOutcome(null);
       void navigate({ to: '/plugins/waste-management', search: toEditGlobalShiftSearch(search, shift.id) });
     },
     openEditTour: (shift: WasteTourDateShiftRecord) => {
-      controller.openEditTourShiftDialog(shift);
+      controller.setDialogMode('edit');
       controller.setDialogOpen(false);
+      controller.setTourShiftForm(mapTourDateShiftToForm(shift));
+      controller.setMessage(null);
       controller.setLastOutcome(null);
       void navigate({ to: '/plugins/waste-management', search: toEditTourShiftSearch(search, shift.id) });
     },

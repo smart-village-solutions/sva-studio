@@ -62,7 +62,7 @@ export const WasteToursTable = ({
   return (
     <section className="overflow-hidden rounded-none border-y border-border bg-white shadow-shell">
       <div className="overflow-x-auto">
-        <table className="min-w-full border-collapse" aria-label={pt('tours.table.ariaLabel')}>
+        <table className="min-w-full border-collapse">
           <caption className="sr-only">{pt('tours.table.caption')}</caption>
           <WasteToursTableHeader
             allVisibleSelected={allVisibleSelected}

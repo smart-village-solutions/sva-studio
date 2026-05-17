@@ -4,6 +4,7 @@ import { useWasteMasterDataController } from './waste-management.master-data.con
 import {
   useWasteMasterDataFractionEditRouteHydration,
   useWasteMasterDataFractionSuccessRedirect,
+  useWasteMasterDataLocationEditRouteHydration,
   useWasteMasterDataLocationSuccessRedirect,
 } from './waste-management.master-data-tab-content.effects.js';
 import {
@@ -25,6 +26,7 @@ export const WasteMasterDataTabContent = ({
   useWasteMasterDataFractionSuccessRedirect({ controller, navigate, search });
   useWasteMasterDataFractionEditRouteHydration({ controller, navigate, search });
   useWasteMasterDataLocationSuccessRedirect({ controller, navigate, search });
+  useWasteMasterDataLocationEditRouteHydration({ controller, navigate, search });
 
   if (tab === 'fractions') {
     return <WasteMasterDataFractionsTabView controller={controller} search={search} />;

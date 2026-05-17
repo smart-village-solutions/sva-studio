@@ -123,7 +123,7 @@ describe('WasteToursContent', () => {
     );
 
     expect(screen.getByText('tour message')).toBeTruthy();
-    expect(screen.getByRole('table', { name: 'tours.table.ariaLabel' })).toBeTruthy();
+    expect(screen.getByRole('table', { name: 'tours.table.caption' })).toBeTruthy();
     expect(screen.getByRole('columnheader', { name: 'tours.table.name' })).toBeTruthy();
     expect(screen.getByRole('columnheader', { name: 'tours.table.status' })).toBeTruthy();
     expect(screen.getByRole('columnheader', { name: 'tours.table.recurrence' })).toBeTruthy();

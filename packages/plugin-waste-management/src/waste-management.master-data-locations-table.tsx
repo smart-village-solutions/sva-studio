@@ -5,7 +5,7 @@ import {
   createLocationsTableMaps,
   type WasteMasterDataLocationsTableProps,
 } from './waste-management.master-data-locations-table.parts.js';
-import { useLocationsFiltersOpen } from './waste-management.master-data-locations-table.helpers2.js';
+import { useLocationsFiltersOpen } from './waste-management.master-data-locations-table.filters-state.js';
 import { WasteMasterDataLocationsTableSection } from './waste-management.master-data-locations-table.section.js';
 import { WastePanelTableBottomBar } from './waste-management.table-frame.js';
 

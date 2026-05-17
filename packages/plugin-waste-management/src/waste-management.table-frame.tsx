@@ -11,6 +11,15 @@ export const createPagedItems = <TItem,>({
   readonly page: number;
   readonly pageSize: number;
 }) => {
+  if (pageSize === wasteManagementAllPageSize) {
+    return {
+      items,
+      pageCount: 1,
+      safePage: 1,
+      totalItems: items.length,
+    } as const;
+  }
+
   const pageCount = Math.max(1, Math.ceil(items.length / pageSize));
   const safePage = Math.min(Math.max(page, 1), pageCount);
   const startIndex = (safePage - 1) * pageSize;

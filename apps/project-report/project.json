@@ -36,7 +36,7 @@
       "outputs": [],
       "options": {
         "cwd": "apps/project-report",
-        "command": "pnpm exec vitest run --reporter=verbose --config vitest.config.ts --passWithNoTests"
+        "command": "pnpm exec tsx ../../scripts/ci/run-vitest-target.ts --reporter=verbose --config vitest.config.ts --passWithNoTests"
       }
     },
     "test:coverage": {
@@ -46,7 +46,7 @@
       "outputs": ["{projectRoot}/coverage"],
       "options": {
         "cwd": "apps/project-report",
-        "command": "pnpm exec vitest run --coverage --reporter=verbose --config vitest.config.ts --passWithNoTests"
+        "command": "pnpm exec tsx ../../scripts/ci/run-vitest-target.ts --coverage --reporter=verbose --config vitest.config.ts --passWithNoTests"
       }
     },
     "test:types": {

@@ -31,7 +31,7 @@
       "executor": "nx:run-commands",
       "options": {
         "cwd": "packages/monitoring-client",
-        "command": "pnpm exec vitest run tests --reporter=verbose --config vitest.config.ts --passWithNoTests"
+        "command": "pnpm exec tsx ../../scripts/ci/run-vitest-target.ts tests --reporter=verbose --config vitest.config.ts --passWithNoTests"
       }
     },
     "test:types": {
@@ -45,7 +45,7 @@
       "executor": "nx:run-commands",
       "options": {
         "cwd": "packages/monitoring-client",
-        "command": "pnpm exec vitest run tests --coverage --reporter=verbose --config vitest.config.ts --passWithNoTests"
+        "command": "pnpm exec tsx ../../scripts/ci/run-vitest-target.ts tests --coverage --reporter=verbose --config vitest.config.ts --passWithNoTests"
       }
     },
     "test:integration": {

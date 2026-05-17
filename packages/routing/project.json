@@ -29,7 +29,7 @@
       "executor": "nx:run-commands",
       "options": {
         "cwd": "packages/routing",
-        "command": "pnpm exec vitest run"
+        "command": "pnpm exec tsx ../../scripts/ci/run-vitest-target.ts"
       },
       "configurations": {
         "watch": {
@@ -49,7 +49,7 @@
       "executor": "nx:run-commands",
       "options": {
         "cwd": "packages/routing",
-        "command": "pnpm exec vitest run --coverage --reporter=verbose --config vitest.config.ts --passWithNoTests"
+        "command": "pnpm exec tsx ../../scripts/ci/run-vitest-target.ts --coverage --reporter=verbose --config vitest.config.ts --passWithNoTests"
       }
     }
   },

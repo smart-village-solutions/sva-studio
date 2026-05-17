@@ -190,13 +190,13 @@ export const useWasteMasterDataLocationEditRouteHydration = ({
     controller.setMessage(null);
     controller.setLastOutcome(null);
 
-    if (controller.locationForm.id === routeLocation.id) {
+    if (controller.locationForm?.id === routeLocation.id) {
       return;
     }
 
     controller.setLocationForm(wasteMasterDataFormMappers.collectionLocationToForm(routeLocation));
   }, [
-    controller.locationForm.id,
+    controller.locationForm?.id,
     controller.overview,
     controller.setLastOutcome,
     controller.setLocationDialogMode,

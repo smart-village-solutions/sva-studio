@@ -80,6 +80,9 @@ export const WasteMasterDataFractionsTabView = ({
       onPageChange={(page) => {
         void navigate({ to: '/plugins/waste-management', search: { ...search, page } });
       }}
+      onSyncPageChange={(page) => {
+        void navigate({ to: '/plugins/waste-management', search: { ...search, page }, replace: true });
+      }}
       onPageSizeChange={(pageSize) => {
         void navigate({ to: '/plugins/waste-management', search: { ...search, page: 1, pageSize } });
       }}

@@ -325,6 +325,80 @@ describe('WasteMasterDataTabContent', () => {
     });
   });
 
+  it('does not redirect fraction edit deep links before the overview has loaded', () => {
+    const controller = {
+      filteredFractions: [],
+      filteredRegions: [],
+      filteredCities: [],
+      filteredStreets: [],
+      filteredHouseNumbers: [],
+      filteredCollectionLocations: [],
+      overview: null,
+      fractionForm: { id: 'stale-form-id' },
+      locationForm: { id: 'location-form-1' },
+      selectedLocationIds: [],
+      allFilteredLocationsSelected: false,
+      selectedCollectionLocations: [],
+      availableTours: [],
+      toggleSelectAllFilteredLocations: vi.fn(),
+      toggleLocationSelection: vi.fn(),
+      openCreateRegionDialog: vi.fn(),
+      openCreateCityDialog: vi.fn(),
+      openCreateStreetDialog: vi.fn(),
+      openCreateHouseNumberDialog: vi.fn(),
+      openCreateLocationDialog: vi.fn(),
+      openEditRegionDialog: vi.fn(),
+      openEditCityDialog: vi.fn(),
+      openEditStreetDialog: vi.fn(),
+      openEditHouseNumberDialog: vi.fn(),
+      openBulkAssignmentsDialog: vi.fn(),
+      openEditLocationDialog: vi.fn(),
+      getLocationLabel: vi.fn(),
+      setDialogOpen: vi.fn(),
+      resetFractionForm: vi.fn(),
+      setLastOutcome: vi.fn(),
+      setDialogMode: vi.fn(),
+      setFractionForm: vi.fn(),
+      setMessage: vi.fn(),
+      setLocationDialogMode: vi.fn(),
+      setLocationForm: vi.fn(),
+      setLocationDialogOpen: vi.fn(),
+      resetLocationForm: vi.fn(),
+    } as never;
+
+    render(
+      <WasteMasterDataTabContent
+        controller={controller}
+        search={{
+          tab: 'fractions',
+          masterDataTab: 'fractions',
+          fractionsView: 'edit',
+          toursView: 'list',
+          locationsView: 'list',
+          schedulingView: 'list',
+          q: '',
+          page: 1,
+          pageSize: 25,
+          status: 'all',
+          shiftContext: 'all',
+          fractionsSortBy: 'name',
+          fractionsSortDirection: 'asc',
+          regionId: undefined,
+          cityId: undefined,
+          wasteFractionId: 'fraction-99',
+          collectionLocationId: undefined,
+          tourId: undefined,
+          tourDateShiftId: undefined,
+          globalDateShiftId: undefined,
+        }}
+        tab="fractions"
+      />
+    );
+
+    expect(navigateMock).not.toHaveBeenCalled();
+    expect(controller.setFractionForm).not.toHaveBeenCalled();
+  });
+
   it('hydrates the location edit form from the route collection location id after a reload', () => {
     const controller = {
       filteredFractions: [],
@@ -416,5 +490,75 @@ describe('WasteMasterDataTabContent', () => {
         id: 'location-99',
       })
     );
+  });
+
+  it('does not redirect location edit deep links before the overview has loaded', () => {
+    const controller = {
+      filteredFractions: [],
+      filteredRegions: [],
+      filteredCities: [],
+      filteredStreets: [],
+      filteredHouseNumbers: [],
+      filteredCollectionLocations: [],
+      overview: null,
+      fractionForm: { id: 'fraction-form-1' },
+      locationForm: { id: 'stale-location-id' },
+      selectedLocationIds: [],
+      allFilteredLocationsSelected: false,
+      selectedCollectionLocations: [],
+      availableTours: [],
+      toggleSelectAllFilteredLocations: vi.fn(),
+      toggleLocationSelection: vi.fn(),
+      openCreateRegionDialog: vi.fn(),
+      openCreateCityDialog: vi.fn(),
+      openCreateStreetDialog: vi.fn(),
+      openCreateHouseNumberDialog: vi.fn(),
+      openCreateLocationDialog: vi.fn(),
+      openEditRegionDialog: vi.fn(),
+      openEditCityDialog: vi.fn(),
+      openEditStreetDialog: vi.fn(),
+      openEditHouseNumberDialog: vi.fn(),
+      openBulkAssignmentsDialog: vi.fn(),
+      openEditLocationDialog: vi.fn(),
+      getLocationLabel: vi.fn(),
+      setLocationDialogMode: vi.fn(),
+      setLocationForm: vi.fn(),
+      setLastOutcome: vi.fn(),
+      setMessage: vi.fn(),
+      setLocationDialogOpen: vi.fn(),
+      resetLocationForm: vi.fn(),
+    } as never;
+
+    render(
+      <WasteMasterDataTabContent
+        controller={controller}
+        search={{
+          tab: 'locations',
+          masterDataTab: 'locations',
+          fractionsView: 'list',
+          toursView: 'list',
+          locationsView: 'edit',
+          schedulingView: 'list',
+          q: '',
+          page: 1,
+          pageSize: 25,
+          status: 'all',
+          shiftContext: 'all',
+          fractionsSortBy: 'name',
+          fractionsSortDirection: 'asc',
+          regionId: undefined,
+          cityId: undefined,
+          wasteFractionId: undefined,
+          collectionLocationId: 'location-99',
+          tourId: undefined,
+          tourDateShiftId: undefined,
+          globalDateShiftId: undefined,
+        }}
+        tab="locations"
+      />
+    );
+
+    expect(navigateMock).not.toHaveBeenCalled();
+    expect(controller.setLocationForm).not.toHaveBeenCalled();
   });
 });

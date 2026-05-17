@@ -67,7 +67,11 @@ export const useWasteMasterDataFractionEditRouteHydration = ({
       return;
     }
 
-    const routeFraction = controller.overview?.fractions.find((fraction) => fraction.id === search.wasteFractionId);
+    if (!controller.overview) {
+      return;
+    }
+
+    const routeFraction = controller.overview.fractions.find((fraction) => fraction.id === search.wasteFractionId);
     if (!routeFraction) {
       void navigate({
         to: '/plugins/waste-management',
@@ -169,7 +173,11 @@ export const useWasteMasterDataLocationEditRouteHydration = ({
       return;
     }
 
-    const routeLocation = controller.overview?.collectionLocations.find(
+    if (!controller.overview) {
+      return;
+    }
+
+    const routeLocation = controller.overview.collectionLocations.find(
       (location) => location.id === search.collectionLocationId,
     );
 

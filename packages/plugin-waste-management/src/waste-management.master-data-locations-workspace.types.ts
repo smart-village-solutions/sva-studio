@@ -23,6 +23,7 @@ export type WasteMasterDataLocationsWorkspaceProps = {
   readonly pageSize: number;
   readonly selectedTourId?: string;
   readonly onPageChange: (page: number) => void;
+  readonly onSyncPageChange?: (page: number) => void;
   readonly onPageSizeChange: (pageSize: number) => void;
   readonly onTourFilterChange: (tourId: string) => void;
   readonly onToggleSelectAll: (checked: boolean) => void;

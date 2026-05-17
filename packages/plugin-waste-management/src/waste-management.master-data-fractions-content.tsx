@@ -27,6 +27,7 @@ export const WasteMasterDataFractionsContent = ({
   page,
   pageSize,
   onPageChange,
+  onSyncPageChange,
   onPageSizeChange,
   saving,
 }: WasteFractionsContentProps) => {
@@ -45,7 +46,7 @@ export const WasteMasterDataFractionsContent = ({
   const bulkActions = useFractionBulkActions({ saving, onDeleteFractions });
   const columns = useFractionColumns({ saving, onToggleFractionStatus });
 
-  usePagedRouteSync({ page, safePage: pagedFractions.safePage, onPageChange });
+  usePagedRouteSync({ page, safePage: pagedFractions.safePage, onPageChange, onSyncPageChange });
   useWasteTabPanelActions(null);
 
   return (

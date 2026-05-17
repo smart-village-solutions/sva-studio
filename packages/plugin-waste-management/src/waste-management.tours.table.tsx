@@ -20,6 +20,7 @@ type WasteToursTableProps = {
   readonly page: number;
   readonly pageSize: number;
   readonly onPageChange: (page: number) => void;
+  readonly onSyncPageChange?: (page: number) => void;
   readonly onPageSizeChange: (pageSize: number) => void;
   readonly onToggleSelectAllVisible: (checked: boolean) => void;
   readonly onToggleSelectedTour: (tourId: string, checked: boolean) => void;
@@ -44,6 +45,7 @@ export const WasteToursTable = ({
   page,
   pageSize,
   onPageChange,
+  onSyncPageChange,
   onPageSizeChange,
   onToggleSelectAllVisible,
   onToggleSelectedTour,
@@ -57,7 +59,7 @@ export const WasteToursTable = ({
   const pt = usePluginTranslation('wasteManagement');
   const pagedTours = useMemo(() => createPagedItems({ items: tours, page, pageSize }), [page, pageSize, tours]);
   const fractionsById = useMemo(() => new Map(fractions.map((fraction) => [fraction.id, fraction.name] as const)), [fractions]);
-  usePagedRouteSync({ page, safePage: pagedTours.safePage, onPageChange });
+  usePagedRouteSync({ page, safePage: pagedTours.safePage, onPageChange, onSyncPageChange });
 
   return (
     <section className="overflow-hidden rounded-none border-y border-border bg-white shadow-shell">

@@ -52,6 +52,9 @@ export const useWasteLocationsTabNavigation = (controller: WasteMasterDataContro
     setPage: (page: number) => {
       void navigate({ to: '/plugins/waste-management', search: { ...search, page } });
     },
+    syncPage: (page: number) => {
+      void navigate({ to: '/plugins/waste-management', search: { ...search, page }, replace: true });
+    },
     setPageSize: (pageSize: number) => {
       void navigate({ to: '/plugins/waste-management', search: { ...search, page: 1, pageSize } });
     },

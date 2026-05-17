@@ -17,6 +17,7 @@ type WasteSchedulingTourShiftListProps = {
   readonly page: number;
   readonly pageSize: number;
   readonly onPageChange: (page: number) => void;
+  readonly onSyncPageChange?: (page: number) => void;
   readonly onPageSizeChange: (pageSize: number) => void;
 };
 
@@ -49,11 +50,12 @@ export const WasteSchedulingTourShiftList = ({
   page,
   pageSize,
   onPageChange,
+  onSyncPageChange,
   onPageSizeChange,
 }: WasteSchedulingTourShiftListProps) => {
   const pt = usePluginTranslation('wasteManagement');
   const pagedShifts = createPagedItems({ items: shifts, page, pageSize });
-  usePagedRouteSync({ page, safePage: pagedShifts.safePage, onPageChange });
+  usePagedRouteSync({ page, safePage: pagedShifts.safePage, onPageChange, onSyncPageChange });
 
   return (
     <div className="space-y-3">

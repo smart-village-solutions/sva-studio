@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { act, renderHook } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { WasteManagementSearchParams } from '../src/search-params.js';
 import {
@@ -8,7 +9,15 @@ import {
   toToursPageSizeSearch,
   toToursQuerySearch,
   toToursStatusSearch,
+  useWasteToursListNavigation,
 } from '../src/waste-management.tours-list-view.navigation.js';
+import type { useWasteToursController } from '../src/waste-management.tours.controller.js';
+
+const navigateMock = vi.fn();
+
+vi.mock('@tanstack/react-router', () => ({
+  useNavigate: () => navigateMock,
+}));
 
 const createSearch = (): WasteManagementSearchParams => ({
   tab: 'tours',
@@ -32,7 +41,24 @@ const createSearch = (): WasteManagementSearchParams => ({
   globalDateShiftId: undefined,
 });
 
+type WasteToursController = ReturnType<typeof useWasteToursController>;
+
+const createController = (
+  overrides: Partial<WasteToursController> = {}
+): WasteToursController =>
+  ({
+    setDialogMode: vi.fn(),
+    setTourForm: vi.fn(),
+    setMessage: vi.fn(),
+    setLastOutcome: vi.fn(),
+    ...overrides,
+  }) as WasteToursController;
+
 describe('waste-management.tours-list-view.navigation', () => {
+  beforeEach(() => {
+    navigateMock.mockReset();
+  });
+
   it('builds create and edit search states for tours', () => {
     const search = createSearch();
 
@@ -73,6 +99,25 @@ describe('waste-management.tours-list-view.navigation', () => {
       ...search,
       status: 'inactive',
       page: 1,
+    });
+  });
+
+  it('replaces history entries when syncing an invalid page back into range', () => {
+    const controller = createController();
+    const search = createSearch();
+    const { result } = renderHook(() => useWasteToursListNavigation(controller, search));
+
+    act(() => {
+      result.current.syncPage(2);
+    });
+
+    expect(navigateMock).toHaveBeenCalledWith({
+      to: '/plugins/waste-management',
+      search: {
+        ...search,
+        page: 2,
+      },
+      replace: true,
     });
   });
 });

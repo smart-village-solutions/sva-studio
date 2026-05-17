@@ -33,6 +33,7 @@ export const WasteToursContent = ({
   query,
   status,
   onPageChange,
+  onSyncPageChange,
   onPageSizeChange,
   onQueryChange,
   onStatusChange,
@@ -76,6 +77,7 @@ export const WasteToursContent = ({
         status={status}
         onOpenCreateDialog={onOpenCreateDialog}
         onPageChange={onPageChange}
+        onSyncPageChange={onSyncPageChange}
         onPageSizeChange={onPageSizeChange}
         onQueryChange={onQueryChange}
         onStatusChange={onStatusChange}

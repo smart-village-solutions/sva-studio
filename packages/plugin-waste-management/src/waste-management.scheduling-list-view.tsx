@@ -35,6 +35,7 @@ export const WasteSchedulingListView = ({
       page={search.page}
       pageSize={search.pageSize}
       onPageChange={navigation.setPage}
+      onSyncPageChange={navigation.syncPage}
       onPageSizeChange={navigation.setPageSize}
     />
   );

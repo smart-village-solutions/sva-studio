@@ -118,6 +118,13 @@ export const useWasteSchedulingListNavigation = (
     setPage: (page: number) => {
       void navigate({ to: '/plugins/waste-management', search: toSchedulingPageSearch(search, page) });
     },
+    syncPage: (page: number) => {
+      void navigate({
+        to: '/plugins/waste-management',
+        search: toSchedulingPageSearch(search, page),
+        replace: true,
+      });
+    },
     setPageSize: (pageSize: number) => {
       void navigate({ to: '/plugins/waste-management', search: toSchedulingPageSizeSearch(search, pageSize) });
     },

@@ -2,12 +2,7 @@ import type { WasteGlobalDateShiftRecord } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Button } from '@sva/studio-ui-react';
 
-import {
-  WastePanelTableBottomBar,
-  WastePanelTableTopBar,
-  createPagedItems,
-  usePagedRouteSync,
-} from './waste-management.table-frame.js';
+import { WastePanelTableBottomBar, WastePanelTableTopBar, createPagedItems } from './waste-management.table-frame.js';
 import { WasteSchedulingListActionCell, WasteSchedulingMissingValue } from './waste-management.scheduling-list.parts.js';
 
 type WasteSchedulingGlobalShiftListProps = {
@@ -31,7 +26,6 @@ export const WasteSchedulingGlobalShiftList = ({
 }: WasteSchedulingGlobalShiftListProps) => {
   const pt = usePluginTranslation('wasteManagement');
   const pagedShifts = createPagedItems({ items: shifts, page, pageSize });
-  usePagedRouteSync({ page, safePage: pagedShifts.safePage, onPageChange });
 
   return (
     <div className="space-y-3">

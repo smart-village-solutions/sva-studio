@@ -7,6 +7,7 @@ export const WasteMasterDataPagedLocationsTable = ({
   collectionLocations,
   page,
   pageSize,
+  onSyncPageChange,
   ...props
 }: Pick<
   WasteMasterDataLocationsWorkspaceProps,
@@ -24,6 +25,7 @@ export const WasteMasterDataPagedLocationsTable = ({
   | 'pageSize'
   | 'selectedTourId'
   | 'onPageChange'
+  | 'onSyncPageChange'
   | 'onPageSizeChange'
   | 'onTourFilterChange'
   | 'onToggleSelectAll'
@@ -33,7 +35,12 @@ export const WasteMasterDataPagedLocationsTable = ({
   | 'getLocationLabel'
 >) => {
   const pagedCollectionLocations = createPagedItems({ items: collectionLocations, page, pageSize });
-  usePagedRouteSync({ page, safePage: pagedCollectionLocations.safePage, onPageChange: props.onPageChange });
+  usePagedRouteSync({
+    page,
+    safePage: pagedCollectionLocations.safePage,
+    onPageChange: props.onPageChange,
+    onSyncPageChange,
+  });
 
   return (
     <WasteMasterDataLocationsTableSection

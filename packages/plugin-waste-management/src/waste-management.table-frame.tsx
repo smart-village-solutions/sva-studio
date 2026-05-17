@@ -26,18 +26,20 @@ export const usePagedRouteSync = ({
   page,
   safePage,
   onPageChange,
+  onSyncPageChange,
 }: {
   readonly page: number;
   readonly safePage: number;
   readonly onPageChange: (page: number) => void;
+  readonly onSyncPageChange?: (page: number) => void;
 }) => {
   useEffect(() => {
     if (page === safePage) {
       return;
     }
 
-    onPageChange(safePage);
-  }, [onPageChange, page, safePage]);
+    (onSyncPageChange ?? onPageChange)(safePage);
+  }, [onPageChange, onSyncPageChange, page, safePage]);
 };
 
 export const WastePanelTableTopBar = ({ children }: { readonly children?: ReactNode }) => (

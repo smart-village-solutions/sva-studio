@@ -18,7 +18,7 @@ type WasteMasterDataFractionCreateContentProps = {
   readonly saving: boolean;
   readonly onChange: (patch: Partial<FractionFormState>) => void;
   readonly onCancel: () => void;
-  readonly onSubmit: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
+  readonly onSubmit: (event: FormEvent<HTMLFormElement>, mode?: 'create' | 'edit') => void | Promise<void>;
 };
 
 export const WasteMasterDataFractionCreateContent = ({
@@ -74,7 +74,7 @@ export const WasteMasterDataFractionCreateContent = ({
             event.preventDefault();
             return;
           }
-          void onSubmit(event);
+          void onSubmit(event, mode);
         }}
       >
         <FractionBasicsSection form={form} submitAttempted={submitAttempted} errors={errors} onChange={onChange} />

@@ -1,3 +1,4 @@
+import type { ChangeEvent } from 'react';
 import type { WasteManagementImportSourceFormat } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Input, Select, StudioField, StudioFieldGroup } from '@sva/studio-ui-react';
@@ -20,7 +21,7 @@ export const createImportFileChangeHandler = ({
 }: {
   readonly onImportBlobRefChange: (value: string) => void;
   readonly readFileAsDataUrl: (file: File) => Promise<string>;
-}) => (event: React.ChangeEvent<HTMLInputElement>) => {
+}) => (event: ChangeEvent<HTMLInputElement>) => {
   const file = event.target.files?.[0] ?? null;
   if (!file) {
     onImportBlobRefChange('');
@@ -49,7 +50,7 @@ export const WasteToolsImportFields = ({
   readonly selectedImportProfile: ImportCatalogEntry | null;
   readonly onImportProfileIdChange: (value: string) => void;
   readonly onImportSourceFormatChange: (value: WasteManagementImportSourceFormat) => void;
-  readonly onImportFileChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  readonly onImportFileChange: (event: ChangeEvent<HTMLInputElement>) => void;
 }) => {
   const pt = usePluginTranslation('wasteManagement');
 

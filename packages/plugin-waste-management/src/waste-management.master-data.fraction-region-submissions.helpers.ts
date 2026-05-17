@@ -54,35 +54,37 @@ const setRegionSaveErrorMessage = (ctx: FractionRegionSubmissionHelperContext, e
   });
 };
 
-export const createSubmitFractionHandler = (ctx: FractionRegionSubmissionHelperContext) => async (event: React.FormEvent<HTMLFormElement>) => {
-  event.preventDefault();
-  ctx.state.setSaving(true);
-  ctx.state.setMessage(null);
-  ctx.state.setLastOutcome(null);
-  try {
-    if (ctx.state.dialogMode === 'create') {
-      await createWasteManagementFraction(wasteMasterDataInputMappers.toCreateFractionInput(ctx.state.fractionForm));
-    } else {
-      await updateWasteManagementFraction(
-        ctx.state.fractionForm.id,
-        wasteMasterDataInputMappers.toUpdateFractionInput(ctx.state.fractionForm)
+export const createSubmitFractionHandler =
+  (ctx: FractionRegionSubmissionHelperContext) =>
+  async (event: React.FormEvent<HTMLFormElement>, mode = ctx.state.dialogMode) => {
+    event.preventDefault();
+    ctx.state.setSaving(true);
+    ctx.state.setMessage(null);
+    ctx.state.setLastOutcome(null);
+    try {
+      if (mode === 'create') {
+        await createWasteManagementFraction(wasteMasterDataInputMappers.toCreateFractionInput(ctx.state.fractionForm));
+      } else {
+        await updateWasteManagementFraction(
+          ctx.state.fractionForm.id,
+          wasteMasterDataInputMappers.toUpdateFractionInput(ctx.state.fractionForm)
+        );
+      }
+      await ctx.loadOverview(true);
+      applySuccess(
+        () => ctx.state.setDialogOpen(false),
+        ctx.state.setMessage,
+        mode === 'create'
+          ? ctx.pt('masterData.fractions.messages.createSuccess')
+          : ctx.pt('masterData.fractions.messages.updateSuccess'),
+        () => ctx.state.setLastOutcome(mode === 'create' ? 'fraction-create-success' : 'fraction-update-success')
       );
+    } catch (error) {
+      setFractionSaveErrorMessage(ctx, error);
+    } finally {
+      ctx.state.setSaving(false);
     }
-    await ctx.loadOverview(true);
-    applySuccess(
-      () => ctx.state.setDialogOpen(false),
-      ctx.state.setMessage,
-      ctx.state.dialogMode === 'create'
-        ? ctx.pt('masterData.fractions.messages.createSuccess')
-        : ctx.pt('masterData.fractions.messages.updateSuccess'),
-      () => ctx.state.setLastOutcome(ctx.state.dialogMode === 'create' ? 'fraction-create-success' : 'fraction-update-success')
-    );
-  } catch (error) {
-    setFractionSaveErrorMessage(ctx, error);
-  } finally {
-    ctx.state.setSaving(false);
-  }
-};
+  };
 
 export const createDeleteFractionHandler = (ctx: FractionRegionSubmissionHelperContext) => async (fractionId: string) => {
   ctx.state.setSaving(true);

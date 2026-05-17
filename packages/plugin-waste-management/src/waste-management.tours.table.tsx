@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 import type { WasteTourRecord } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { Checkbox } from '@sva/studio-ui-react';
 
 import type { WasteManagementMasterDataOverview, WasteManagementSchedulingOverview } from './waste-management.api.js';
 import { WastePanelTableBottomBar } from './waste-management.table-frame.js';

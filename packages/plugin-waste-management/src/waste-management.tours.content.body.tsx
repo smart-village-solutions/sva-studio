@@ -1,3 +1,4 @@
+import type { Dispatch, SetStateAction } from 'react';
 import type { WasteTourRecord } from '@sva/plugin-sdk';
 
 import type { WasteManagementMasterDataOverview, WasteManagementSchedulingOverview } from './waste-management.api.js';
@@ -8,8 +9,8 @@ import { WasteToursToolbar } from './waste-management.tours.toolbar.js';
 type WasteToursContentBodyProps = {
   readonly filtersOpen: boolean;
   readonly selectedTourIds: readonly string[];
-  readonly setFiltersOpen: React.Dispatch<React.SetStateAction<boolean>>;
-  readonly setBulkDeleteOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  readonly setFiltersOpen: Dispatch<SetStateAction<boolean>>;
+  readonly setBulkDeleteOpen: Dispatch<SetStateAction<boolean>>;
   readonly tours: readonly WasteTourRecord[];
   readonly fractions: readonly { readonly id: string; readonly name: string }[];
   readonly masterDataOverview: WasteManagementMasterDataOverview | null;
@@ -34,7 +35,7 @@ type WasteToursContentBodyProps = {
   readonly onOpenCreateAssignmentsDialog: (tour: WasteTourRecord) => void;
   readonly onOpenEditAssignmentsDialog: (tour: WasteTourRecord, linkId: string) => void;
   readonly onToggleTourStatus: (tour: WasteTourRecord, nextActive: boolean) => Promise<void>;
-  readonly setTourPendingDelete: React.Dispatch<React.SetStateAction<WasteTourRecord | null>>;
+  readonly setTourPendingDelete: Dispatch<SetStateAction<WasteTourRecord | null>>;
 };
 
 export const WasteToursContentBody = (props: WasteToursContentBodyProps) => (

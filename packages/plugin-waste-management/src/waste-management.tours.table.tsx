@@ -3,8 +3,7 @@ import type { WasteTourRecord } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 
 import type { WasteManagementMasterDataOverview, WasteManagementSchedulingOverview } from './waste-management.api.js';
-import { WastePanelTableBottomBar } from './waste-management.table-frame.js';
-import { createPagedItems } from './waste-management.table-frame.js';
+import { WastePanelTableBottomBar, createPagedItems, usePagedRouteSync } from './waste-management.table-frame.js';
 import { WasteToursTableHeader } from './waste-management.tours.table.parts.js';
 import { WasteToursTableRow } from './waste-management.tours.table-row.js';
 
@@ -58,6 +57,7 @@ export const WasteToursTable = ({
   const pt = usePluginTranslation('wasteManagement');
   const pagedTours = useMemo(() => createPagedItems({ items: tours, page, pageSize }), [page, pageSize, tours]);
   const fractionsById = useMemo(() => new Map(fractions.map((fraction) => [fraction.id, fraction.name] as const)), [fractions]);
+  usePagedRouteSync({ page, safePage: pagedTours.safePage, onPageChange });
 
   return (
     <section className="overflow-hidden rounded-none border-y border-border bg-white shadow-shell">

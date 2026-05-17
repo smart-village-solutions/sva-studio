@@ -1,4 +1,4 @@
-import { createPagedItems } from './waste-management.table-frame.js';
+import { createPagedItems, usePagedRouteSync } from './waste-management.table-frame.js';
 
 import type { WasteMasterDataLocationsWorkspaceProps } from './waste-management.master-data-locations-workspace.types.js';
 import { WasteMasterDataLocationsTableSection } from './waste-management.master-data-locations-workspace.parts.js';
@@ -33,6 +33,7 @@ export const WasteMasterDataPagedLocationsTable = ({
   | 'getLocationLabel'
 >) => {
   const pagedCollectionLocations = createPagedItems({ items: collectionLocations, page, pageSize });
+  usePagedRouteSync({ page, safePage: pagedCollectionLocations.safePage, onPageChange: props.onPageChange });
 
   return (
     <WasteMasterDataLocationsTableSection

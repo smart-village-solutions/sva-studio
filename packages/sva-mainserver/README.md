@@ -11,6 +11,13 @@ Serverseitige Integrationsschicht für den externen SVA-Mainserver mit typsicher
 
 Die Server-Schicht übernimmt das Laden und Validieren der Instanzkonfiguration, die Credential-Auflösung über Keycloak, den OAuth2-Tokenabruf sowie den GraphQL-Transport inklusive Fehlerabbildung, Logging und Observability.
 
+Intern ist die Laufzeitlogik entlang klarer Verantwortlichkeiten getrennt:
+
+- `service.ts` bildet die stabile öffentliche Fassade und verdrahtet Defaults, Dependency-Wiring und Default-Singleton
+- `service-internals/credentials.ts`, `access-token-provider.ts` und `graphql-client.ts` kapseln Credential-, Token- und Transportlogik
+- `service-internals/observability.ts` und `cache.ts` bündeln Hop-Observability, Log-Kontext und kurzlebige Laufzeit-Caches
+- `service-internals/*-mappers.ts` und `*-operations.ts` trennen Nested-Mapping von News-, Event- und POI-spezifischen GraphQL-Operationen
+
 ## Öffentliche API
 
 ### `@sva/sva-mainserver`
@@ -52,7 +59,8 @@ packages/sva-mainserver/
 |  |- types.ts                # gemeinsame Typmodelle
 |  |- generated/              # generierte GraphQL-Dokumente und Schemasnapshot
 |  `- server/
-|     |- service.ts           # Hauptservice für Diagnose und CRUD-Aufrufe
+|     |- service.ts           # öffentliche Fassade für Diagnose und CRUD-Aufrufe
+|     |- service-internals/   # interne Provider, Transport-, Mapper- und Operations-Module
 |     |- settings.ts          # Laden/Speichern der Integrationseinstellungen
 |     |- config-store.ts      # Laden und Validieren der aktiven Instanzkonfiguration
 |     |- upstream-url-validation.ts

@@ -66,6 +66,7 @@ Abhängigkeiten des aktuellen Systems.
   - trennt client-sichere Typen von serverseitigen Delegations- und Diagnostikfunktionen
   - exportiert die kanonischen serverseitigen Host-Verträge für Mainserver-News, -Events, -POI und die Schnittstellenverwaltung; `apps/sva-studio-react` hält dafür nur dünne Request- und TanStack-Adapter
   - liest seine instanzbezogene Endpunktkonfiguration nicht mehr aus einer Mainserver-Spezialtabelle, sondern aus der zentralen External-Interface-Registry
+  - hält `src/server/service.ts` bewusst als schlanke Fassade; Credentials, Token, GraphQL-Transport, Sichtbarkeits-Pagination, Mapper und ressourcenspezifische Operationen liegen in getrennten internen Modulen unter `src/server/service-internals/`
 10. Plugin News (`packages/plugin-news`)
    - produktives Fachplugin für Mainserver-News mit pluginnahem Modell `news.article`
    - eigene Listen- und Editor-Ansichten, plugin-beigestellte Admin-Ressourcen-Spezialisierungen, Navigation und Übersetzungen
@@ -137,7 +138,7 @@ Abhängigkeiten des aktuellen Systems.
   - `apps/sva-studio-react/src/routes/content/*` für Listen- und Editor-UI unter `/admin/content`
   - `packages/plugin-news` für plugin-spezifische News-Ansichten auf Basis derselben Core-Content-API
 - Externe Mainserver-Anbindung:
-  - `packages/sva-mainserver` (`server/config-store.ts`, `server/service.ts`, `generated/*`)
+  - `packages/sva-mainserver` (`server/config-store.ts`, `server/service.ts`, `server/service-internals/*`, `generated/*`)
 
 ### IAM-Server-Schnittmuster
 

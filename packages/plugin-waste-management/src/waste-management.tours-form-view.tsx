@@ -26,7 +26,7 @@ export const WasteToursFormView = ({
         controller.setDialogOpen(false);
         controller.resetTourForm();
         controller.setMessage(null);
-        void navigate({ to: '/plugins/waste-management', search: { ...search, toursView: 'list' } });
+        void navigate({ to: '/plugins/waste-management', search: { ...search, toursView: 'list', tourId: undefined } });
       }}
       onSubmit={(event) => controller.onSubmitTour(event, search.toursView === 'edit' ? 'edit' : 'create')}
     />

@@ -6,6 +6,7 @@ import { useNavigate } from '@tanstack/react-router';
 import { useWasteToursController } from './waste-management.tours.controller.js';
 import { WasteToursDialogs } from './waste-management.tours-dialogs-panel.js';
 import { WasteToursFormView, WasteToursListView } from './waste-management.tours-panel.views.js';
+import { mapTourToForm } from './waste-management.tours.shared.js';
 import type { WasteManagementSearchParams } from './search-params.js';
 
 export const WasteToursPanel = ({ search }: { readonly search: WasteManagementSearchParams }) => {
@@ -29,10 +30,41 @@ export const WasteToursPanel = ({ search }: { readonly search: WasteManagementSe
       search: {
         ...search,
         toursView: 'list',
+        tourId: undefined,
       },
       replace: true,
     });
   }, [controller.resetTourForm, controller.setDialogOpen, controller.setLastOutcome, navigate, search, toursViewSuccess]);
+
+  useEffect(() => {
+    if (search.toursView !== 'edit') {
+      return;
+    }
+
+    if (!search.tourId) {
+      void navigate({
+        to: '/plugins/waste-management',
+        search: {
+          ...search,
+          toursView: 'list',
+        },
+        replace: true,
+      });
+      return;
+    }
+
+    const routeTour = controller.overview?.tours.find((tour) => tour.id === search.tourId);
+    if (!routeTour) {
+      return;
+    }
+
+    if (controller.tourForm.id === routeTour.id) {
+      return;
+    }
+
+    controller.setDialogMode('edit');
+    controller.setTourForm(mapTourToForm(routeTour));
+  }, [controller.overview?.tours, controller.setDialogMode, controller.setTourForm, controller.tourForm.id, navigate, search]);
 
   if (controller.loading) {
     return <StudioLoadingState>{pt('tours.messages.loading')}</StudioLoadingState>;

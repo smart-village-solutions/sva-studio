@@ -25,7 +25,7 @@ export const WasteToursListView = ({
           controller.setTourForm(createDefaultTourForm());
           controller.setMessage(null);
           controller.setLastOutcome(null);
-          void navigate({ to: '/plugins/waste-management', search: { ...search, toursView: 'create' } });
+          void navigate({ to: '/plugins/waste-management', search: { ...search, toursView: 'create', tourId: undefined } });
         }}
       />
     );
@@ -45,7 +45,7 @@ export const WasteToursListView = ({
         controller.setTourForm(createDefaultTourForm());
         controller.setMessage(null);
         controller.setLastOutcome(null);
-        void navigate({ to: '/plugins/waste-management', search: { ...search, toursView: 'create' } });
+        void navigate({ to: '/plugins/waste-management', search: { ...search, toursView: 'create', tourId: undefined } });
       }}
       onOpenEditDialog={(tour) => {
         controller.setDialogMode('edit');
@@ -53,7 +53,7 @@ export const WasteToursListView = ({
         controller.setTourForm(mapTourToForm(tour));
         controller.setMessage(null);
         controller.setLastOutcome(null);
-        void navigate({ to: '/plugins/waste-management', search: { ...search, toursView: 'edit' } });
+        void navigate({ to: '/plugins/waste-management', search: { ...search, toursView: 'edit', tourId: tour.id } });
       }}
       onOpenCreateAssignmentsDialog={controller.openCreateAssignmentsDialog}
       onOpenEditAssignmentsDialog={controller.openEditAssignmentsDialog}

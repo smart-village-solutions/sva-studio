@@ -80,7 +80,7 @@ describe('WasteToursListView', () => {
     expect(controller.setLastOutcome).toHaveBeenCalledWith(null);
     expect(navigateMock).toHaveBeenCalledWith({
       to: '/plugins/waste-management',
-      search: expect.objectContaining({ toursView: 'create' }),
+      search: expect.objectContaining({ toursView: 'create', tourId: undefined }),
     });
   });
 
@@ -132,7 +132,7 @@ describe('WasteToursListView', () => {
     expect(controller.setLastOutcome).toHaveBeenCalledWith(null);
     expect(navigateMock).toHaveBeenCalledWith({
       to: '/plugins/waste-management',
-      search: expect.objectContaining({ toursView: 'edit' }),
+      search: expect.objectContaining({ toursView: 'edit', tourId: 'tour-1' }),
     });
   });
 });
